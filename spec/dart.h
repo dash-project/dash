@@ -147,18 +147,19 @@ int dart_bcast(int root, int team, void* data, int size);
 
 // Paarweise synchronisation von Prozessen?!
 
-typedef /* ... */ dart_lock_t; // shared per default
- // content: global pointer, status
+///////////////////////
+// locks
+// see redmine issue #6
+///////////////////////
+typedef struct dart_opaque_lock_t* dart_lock;
 
-int init_lock( 
-destroy_lock...
+int dart_lock_init(dart_lock* lock); // creates lock in local-shared address space -> do we need this -> how to pass locks between processes
+int dart_lock_team_init(int team_id, dart_lock* lock); // team_id may be DART_TEAM_ALL. Create lock at team member 0?
+int dart_lock_free(dart_lock* lock); // lock becomes DART_LOCK_NULL. may be called by any team member that initialized the lock?!
 
-dash_acquire_lock( dart_lock_t lock );
-// blockierende funktion, 
-// 
-
-// --> look at UPC locks, might be exactly what we need
-
+int dart_lock_acquire(dart_lock lock); // blocking call
+int dart_lock_try_acquire(dart_lock lock); // returns DART_LOCK_ACQUIRE_SUCCESS, DART_LOCK_ACQUIRE_FAILURE, or something like that
+int dart_lock_release(dart_lock lock); 
 
 /*
  * --- DART onesided communication ---
