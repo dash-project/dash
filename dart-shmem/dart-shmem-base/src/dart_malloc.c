@@ -5,11 +5,11 @@
  *      Author: maierm
  */
 
-#include "dart_teams.h"
+#include "shmem_teams.h"
 #include "dart_logger.h"
 #include "dart_mempool_private.h"
 #include <stddef.h>
-#include "dart_malloc.h"
+#include "shmem_malloc.h"
 
 shmid_address shmid2address[MAXNUM_TEAMS];
 

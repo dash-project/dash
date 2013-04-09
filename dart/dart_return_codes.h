@@ -1,6 +1,8 @@
 /*
  * dart_return_codes.h
  *
+ * TODO: the name of this file is a little bit misleading...
+ *
  *  Created on: Apr 3, 2013
  *      Author: maierm
  */
@@ -18,5 +20,14 @@
 #define DART_ERR_INVAL   -998
 
 #define DART_TEAM_ALL      0
+
+// TODO: the following may be implementation-specific constants set by the build-process or something like that.
+// This might not be the right place...
+
+// max. number of members in a group
+#define MAXSIZE_GROUP 100
+
+// maximum number of supported teams
+#define MAXNUM_TEAMS 64
 
 #endif /* DART_RETURN_CODES_H_ */

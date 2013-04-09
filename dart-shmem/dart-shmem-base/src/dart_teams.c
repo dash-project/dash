@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <stddef.h>
 
-#include "dart_return_codes.h"
-#include "dart_teams.h"
+#include "shmem_teams.h"
 #include "dart_mempool_private.h"
 #include "dart_logger.h"
-#include "dart_malloc.h"
+#include "shmem_malloc.h"
 #include "shmif_multicast.h"
 #include "shmif_barriers.h"
 #include "shmif_memory_manager.h"
@@ -120,6 +119,16 @@ int dart_team_size(int teamid)
 
 	res = teams[teamid].group.nmem;
 	return res;
+}
+
+int dart_myid()
+{
+	return dart_team_myid(DART_TEAM_ALL);
+}
+
+int dart_size()
+{
+	return dart_team_size(DART_TEAM_ALL);
 }
 
 int dart_team_getgroup(int teamid, dart_group_t *g)

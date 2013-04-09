@@ -5,8 +5,7 @@
  *      Author: maierm
  */
 
-#include "dart_group.h"
-#include "dart_return_codes.h"
+#include "shmem_group.h"
 #include <stdio.h>
 
 int dart_group_init(dart_group_t *group)

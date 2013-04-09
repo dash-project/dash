@@ -16,9 +16,7 @@
 #include "sysv_logger.h"
 #include <unistd.h>
 #include <fcntl.h>
-
-#define MAXNUM_TEAMS 64
-#define MAXSIZE_GROUP 64
+#include "dart/dart_return_codes.h"
 
 typedef struct fifo_pair_struct
 {

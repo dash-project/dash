@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
-#include "dart_return_codes.h"
-#include "dart_gptr.h"
+#include "dart/dart_return_codes.h"
+#include "dart/dart_gptr.h"
 
 extern int _glob_myid;
 

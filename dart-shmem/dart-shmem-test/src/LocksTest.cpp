@@ -10,6 +10,7 @@
 #include "Util.h"
 #include <regex>
 #include <unistd.h>
+#include <string>
 using namespace std;
 
 int LocksTest::integration_test_method(int argc, char** argv)
@@ -20,12 +21,11 @@ int LocksTest::integration_test_method(int argc, char** argv)
 
 	dart_team_attach_mempool(DART_TEAM_ALL, 4096);
 	gptr_t gptr = dart_alloc_aligned(DART_TEAM_ALL, sizeof(int));
-	char* s = gptr_to_string(gptr);
-	TLOG("received gptr: %s", s);
-	free(s);
+	std::string s = Util::gptr_to_string(gptr);
+	TLOG("received gptr: %s", s.c_str());
 
 	int i = -1;
-	if(dart_team_myid(DART_TEAM_ALL) == 0)
+	if (dart_team_myid(DART_TEAM_ALL) == 0)
 	{
 		i = 40;
 		dart_put(gptr, &i, sizeof(int));

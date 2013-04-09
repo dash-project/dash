@@ -1,12 +1,18 @@
 /*
  * dart_locks.h
  *
- *  Created on: Apr 7, 2013
+ *  Created on: Apr 9, 2013
  *      Author: maierm
  */
 
 #ifndef DART_LOCKS_H_
 #define DART_LOCKS_H_
+
+/*
+ --- DART pairwise synchronization ---
+ */
+
+/* DART locks: See redmine issue refs #6 */
 
 typedef struct dart_opaque_lock_t* dart_lock;
 

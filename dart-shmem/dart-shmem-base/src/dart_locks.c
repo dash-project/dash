@@ -5,11 +5,11 @@
  *      Author: maierm
  */
 
-#include "dart_locks.h"
+#include "dart/dart_locks.h"
 #include "shmif_locks.h"
 #include <malloc.h>
-#include "dart_teams.h"
-#include "dart_malloc.h"
+#include "shmem_teams.h"
+#include "shmem_malloc.h"
 #include "dart_logger.h"
 
 struct dart_opaque_lock_t
@@ -27,7 +27,7 @@ int dart_lock_team_init(int team_id, dart_lock* lock)
 	int myid = dart_team_myid(team_id);
 	if (myid == 0)
 	{
-		void* addr = DART_ADDRESSOF(gptr);
+		void* addr = getAdress(gptr);
 		DEBUG("creating lock at address: %p", addr);
 		if (shmif_lock_create_at(addr) != 0)
 			return DART_ERR_OTHER;
@@ -44,7 +44,7 @@ int dart_lock_free(dart_lock* lock)
 	free(*lock);
 	if (myid == 0)
 	{
-		void* addr = DART_ADDRESSOF(gptr);
+		void* addr = getAdress(gptr);
 		DEBUG("freeing lock at address: %p", addr);
 		if (shmif_lock_destroy(addr) != 0)
 			return DART_ERR_OTHER;

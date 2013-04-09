@@ -9,6 +9,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <string>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -19,6 +20,14 @@ extern "C"
 }
 
 using namespace std;
+
+std::string Util::gptr_to_string(gptr_t ptr)
+{
+	ostringstream sstr;
+	sstr << "{" << ptr.unitid << ", " << ptr.segid << ", " << ptr.flags << ", "
+			<< ptr.offset << "}";
+	return sstr.str();
+}
 
 std::string Util::args_to_string(int argc, char* argv[])
 {
@@ -51,7 +60,7 @@ std::string Util::start_integration_test(const std::string& test_class,
 	filename += "#";
 	filename += test_method;
 	filename += ".err";
-	close(STDERR_FILENO);
+	close (STDERR_FILENO);
 	int fd = open(filename.c_str(), O_RDWR | O_CREAT | O_APPEND | O_TRUNC,
 			S_IRWXU);
 

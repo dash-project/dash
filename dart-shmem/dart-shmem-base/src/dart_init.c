@@ -5,9 +5,8 @@
  *      Author: maierm
  */
 
-#include <stddef.h>
-#include "dart_return_codes.h"
-#include "dart_teams.h"
+#include "dart/dart_return_codes.h"
+#include "shmem_teams.h"
 #include "dart_logger.h"
 #include "shmif_barriers.h"
 #include "shmif_memory_manager.h"
@@ -18,6 +17,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stddef.h>
 
 extern int _glob_myid;
 const int numDartArgs = 4;
