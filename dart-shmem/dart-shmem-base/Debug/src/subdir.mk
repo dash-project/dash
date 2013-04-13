@@ -4,6 +4,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../src/dart_communication.c \
 ../src/dart_globals.c \
 ../src/dart_group.c \
 ../src/dart_init.c \
@@ -14,6 +15,7 @@ C_SRCS += \
 ../src/dart_teams.c 
 
 OBJS += \
+./src/dart_communication.o \
 ./src/dart_globals.o \
 ./src/dart_group.o \
 ./src/dart_init.o \
@@ -24,6 +26,7 @@ OBJS += \
 ./src/dart_teams.o 
 
 C_DEPS += \
+./src/dart_communication.d \
 ./src/dart_globals.d \
 ./src/dart_group.d \
 ./src/dart_init.d \

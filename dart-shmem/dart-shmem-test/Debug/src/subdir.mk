@@ -7,6 +7,7 @@ CPP_SRCS += \
 ../src/InitTest.cpp \
 ../src/LocksTest.cpp \
 ../src/MempoolTest.cpp \
+../src/TeamTest.cpp \
 ../src/Util.cpp \
 ../src/main.cpp 
 
@@ -14,6 +15,7 @@ OBJS += \
 ./src/InitTest.o \
 ./src/LocksTest.o \
 ./src/MempoolTest.o \
+./src/TeamTest.o \
 ./src/Util.o \
 ./src/main.o 
 
@@ -21,6 +23,7 @@ CPP_DEPS += \
 ./src/InitTest.d \
 ./src/LocksTest.d \
 ./src/MempoolTest.d \
+./src/TeamTest.d \
 ./src/Util.d \
 ./src/main.d 
 

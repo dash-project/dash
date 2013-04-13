@@ -8,6 +8,9 @@
 #ifndef DART_COMMUNICATION_H_
 #define DART_COMMUNICATION_H_
 
+#include <stddef.h>
+#include "dart_gptr.h"
+
 /*
  --- DART collective communication ---
 

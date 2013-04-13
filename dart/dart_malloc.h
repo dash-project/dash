@@ -22,6 +22,15 @@
  */
 gptr_t dart_alloc(size_t nbytes);
 
+/**
+ * ???????????????????????????????????????????????????????????????
+ * same as dart_alloc but the returned pointer may only be used by
+ * the specified team
+ *
+ * @param team_id: set of processes that may access the allocated memory
+ */
+//gptr_t dart_alloc_restricted(int team_id, size_t nbytes);
+
 /*
  dart_team_alloc_aligned() is a collective function on the specified
  team. Each team member calls the function and must request the same
@@ -48,6 +57,9 @@ gptr_t dart_alloc_aligned(int teamid, size_t nbytes);
 
 /* collective call to free the allocated memory */
 void dart_free(int teamid, gptr_t ptr);
+
+// TODO: do we need this? how to free locally allocated memory?
+void dart_free(gptr_t ptr);
 
 /**
  * reverves (dart_team_size(teamid)*local_size)-bytes of globally addressable memory

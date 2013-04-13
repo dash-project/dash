@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "dart_mempool.h"
 #include "dart_mempool_private.h"
+#include "dart_logger.h"
 
 // static helpers
 
@@ -56,8 +57,10 @@ dart_mempool dart_mempool_create(void* pos, size_t size)
 
 void dart_mempool_destroy(dart_mempool pool)
 {
+	int num_allocated = dart_mempool_list_size(pool->allocated);
+	if(num_allocated > 0)
+		ERROR("mempool: destroy called but number of allocated chunks = %d", num_allocated);
 	free_mempool_list(pool->free);
-	// TODO: error if length(allocated) != 0
 	free_mempool_list(pool->allocated);
 	free(pool);
 }

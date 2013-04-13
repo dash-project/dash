@@ -8,6 +8,24 @@
 #include "shmem_group.h"
 #include <stdio.h>
 
+int dart_group_get_members(dart_group_t *g, int unitids[])
+{
+	int i;
+	for (i = 0; i < g->nmem; i++)
+		unitids[i] = g->l2g[i];
+	return DART_OK;
+}
+
+int dart_group_size(dart_group_t *g)
+{
+	return g->nmem;
+}
+
+size_t dart_group_size_of()
+{
+	return sizeof(dart_group_t);
+}
+
 int dart_group_init(dart_group_t *group)
 {
 	int i;

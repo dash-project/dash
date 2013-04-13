@@ -9,8 +9,8 @@
 #include "shmif_locks.h"
 #include <malloc.h>
 #include "shmem_teams.h"
-#include "shmem_malloc.h"
 #include "dart_logger.h"
+#include "shmem_malloc.h"
 
 struct dart_opaque_lock_t
 {
@@ -27,7 +27,7 @@ int dart_lock_team_init(int team_id, dart_lock* lock)
 	int myid = dart_team_myid(team_id);
 	if (myid == 0)
 	{
-		void* addr = getAdress(gptr);
+		void* addr = find_local_address(gptr);
 		DEBUG("creating lock at address: %p", addr);
 		if (shmif_lock_create_at(addr) != 0)
 			return DART_ERR_OTHER;
@@ -44,7 +44,7 @@ int dart_lock_free(dart_lock* lock)
 	free(*lock);
 	if (myid == 0)
 	{
-		void* addr = getAdress(gptr);
+		void* addr = find_local_address(gptr);
 		DEBUG("freeing lock at address: %p", addr);
 		if (shmif_lock_destroy(addr) != 0)
 			return DART_ERR_OTHER;
@@ -56,7 +56,7 @@ int dart_lock_free(dart_lock* lock)
 
 int dart_lock_acquire(dart_lock lock)
 {
-	void* addr = getAdress(lock->gptr);
+	void* addr = find_local_address(lock->gptr);
 	if (shmif_lock_acquire(addr, 1) != 0)
 		return DART_ERR_OTHER;
 	return DART_OK;
@@ -64,7 +64,7 @@ int dart_lock_acquire(dart_lock lock)
 
 int dart_lock_try_acquire(dart_lock lock)
 {
-	void* addr = getAdress(lock->gptr);
+	void* addr = find_local_address(lock->gptr);
 	if (shmif_lock_acquire(addr, 0) != 0)
 		return DART_ERR_OTHER;
 	return DART_OK;
@@ -72,7 +72,7 @@ int dart_lock_try_acquire(dart_lock lock)
 
 int dart_lock_release(dart_lock lock)
 {
-	void* addr = getAdress(lock->gptr);
+	void* addr = find_local_address(lock->gptr);
 	if (shmif_lock_release(addr) != 0)
 		return DART_ERR_OTHER;
 	return DART_OK;

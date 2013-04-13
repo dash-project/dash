@@ -128,7 +128,7 @@ shmif_barrier_t shmif_barriers_create_barrier(int num_procs_to_wait)
 	dart_barrier_create(&(area->barriers[area->num_barriers]),
 			num_procs_to_wait);
 	int result = area->num_barriers;
-	area->num_barriers += area->num_barriers + 1;
+	area->num_barriers = area->num_barriers + 1;
 	PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->lock)));
 	return result;
 }

@@ -11,36 +11,38 @@
 #include <stddef.h>
 #include "shmem_malloc.h"
 
-shmid_address shmid2address[MAXNUM_TEAMS];
-
-static void* find_shm_address(int shm_id, int offset)
+void* find_local_address(gptr_t ptr)
 {
-	for (int i = 0; i < MAXNUM_TEAMS; i++)
+	int segid = ptr.segid % MAXNUM_TEAMS;
+	int is_aligned = ptr.segid / MAXNUM_TEAMS;
+	void* seg_begin = dart_team_memory_segment_begin(segid, is_aligned);
+	return ((char*)seg_begin) + ptr.offset;
+}
+
+gptr_t dart_alloc(size_t nbytes)
+{
+	gptr_t result = GPTR_NULL;
+	dart_mempool mempool = dart_team_mempool_aligned(DART_TEAM_ALL);
+	if (mempool == DART_MEMPOOL_NULL )
 	{
-		if (shmid2address[i].key == shm_id
-				&& shmid2address[i].value != ((void*) 0))
-			return ((char*) shmid2address[i].value) + offset;
+		ERROR("Could not alloc memory in mempool: DART_MEMPOOL_NULL%s", "");
+		return result;
 	}
-	return ((void*) 0);
-}
-
-void putAddress(int teamid, int key, void* value)
-{
-	shmid_address toAdd =
-	{ .key = key, .value = value };
-	shmid2address[teamid] = toAdd;
-	// TODO sort and binarySearch
-}
-
-void* getAdress(gptr_t gptr)
-{
-	return find_shm_address(gptr.unitid, gptr.offset);
+	void* addr = dart_mempool_alloc(mempool, nbytes);
+	if (addr == ((void*) 0))
+	{
+		ERROR("Could not alloc memory in mempool%s", "");
+		return result;
+	}
+	result.segid = dart_team_unique_id(DART_TEAM_ALL);
+	result.offset = ((char*) addr) - ((char*) mempool->shm_address);
+	return result;
 }
 
 gptr_t dart_alloc_aligned(int teamid, size_t nbytes)
 {
 	gptr_t result = GPTR_NULL;
-	dart_mempool mempool = dart_team_mempool(teamid);
+	dart_mempool mempool = dart_team_mempool_aligned(teamid);
 	if (mempool == DART_MEMPOOL_NULL )
 	{
 		ERROR("Could not alloc memory in mempool: DART_MEMPOOL_NULL%s", "");
@@ -55,7 +57,7 @@ gptr_t dart_alloc_aligned(int teamid, size_t nbytes)
 	}
 
 	int myid = dart_team_myid(teamid);
-	result.unitid = mempool->shm_id;
+	result.segid = dart_team_unique_id(teamid) + MAXNUM_TEAMS;
 	result.offset = ((char*) addr) - ((char*) mempool->shm_address);
 	result.offset -= myid * mempool->size;
 	dart_barrier(teamid);
@@ -64,34 +66,37 @@ gptr_t dart_alloc_aligned(int teamid, size_t nbytes)
 
 void dart_free(int teamid, gptr_t ptr)
 {
-	dart_mempool mempool = dart_team_mempool(teamid);
+	int is_aligned = ptr.segid >= MAXNUM_TEAMS;
+	dart_mempool mempool =
+			(is_aligned) ?
+					dart_team_mempool_aligned(teamid) :
+					dart_team_mempool_nonAligned(teamid);
 	if (mempool == DART_MEMPOOL_NULL )
 	{
 		ERROR("Could not free memory in mempool DART_MEMPOOL_NULL%s", "");
 		return;
 	}
-	if (ptr.unitid != mempool->shm_id)
-	{
-		ERROR("Could not free memory: %s", "pointer has wrong segment");
-		return;
-	}
+
 	char* shm_addr = (char*) mempool->shm_address;
 	char* addr = shm_addr + ptr.offset;
-	int myid = dart_team_myid(teamid);
-	addr += myid * mempool->size;
+	if (is_aligned)
+	{
+		int myid = dart_team_myid(teamid);
+		addr += myid * mempool->size;
+	}
 	dart_mempool_free(mempool, addr);
 	dart_barrier(teamid);
 }
 
 void dart_put(gptr_t ptr, void *src, size_t nbytes)
 {
-	char* dest = (char*) find_shm_address(ptr.unitid, ptr.offset);
+	char* dest = (char*) find_local_address(ptr);
 	memcpy(dest, src, nbytes);
 }
 
 void dart_get(void *dest, gptr_t ptr, size_t nbytes)
 {
-	char* src = (char*) find_shm_address(ptr.unitid, ptr.offset);
+	char* src = (char*) find_local_address(ptr);
 	memcpy(dest, src, nbytes);
 }
 

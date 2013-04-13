@@ -21,6 +21,17 @@ extern "C"
 
 using namespace std;
 
+std::string Util::group_to_string(dart_group_t* g)
+{
+	ostringstream sstr;
+	int nmem = dart_group_size(g);
+	int members[nmem];
+	dart_group_get_members(g, members);
+	for (int i = 0; i < nmem; i++)
+		sstr << members[i] << ((i < nmem - 1) ? " : " : "");
+	return sstr.str();
+}
+
 std::string Util::gptr_to_string(gptr_t ptr)
 {
 	ostringstream sstr;
@@ -42,12 +53,15 @@ std::string Util::args_to_string(int argc, char* argv[])
 }
 
 std::string Util::start_integration_test(const std::string& test_class,
-		const std::string& test_method, int* start_res)
+		const std::string& test_method, int* start_res, int num_procs)
 {
 	int argc = 6;
 	const char* argv[argc + 1];
 	argv[0] = "./dartrun";
-	argv[1] = "2";
+	ostringstream sstr;
+	sstr << num_procs;
+	string num_procs_str = sstr.str();
+	argv[1] = num_procs_str.c_str();
 	argv[2] = "./test-dart-shmem";
 	argv[3] = "integration-test";
 	argv[4] = test_class.c_str();

@@ -33,7 +33,19 @@ int dart_group_intersect(const dart_group_t *g1, const dart_group_t *g2,
 		dart_group_t *gout);
 int dart_group_addmember(dart_group_t *g, int unitid);
 int dart_group_delmember(dart_group_t *g, int unitid);
+
 int dart_group_ismember(const dart_group_t *g, int unitid);
+
+/**
+ * Fills 'unitids' with 'global' unitids of processes that belong to group g.
+ * length of 'unitids' must be at least dart_group_size(g).
+ */
+int dart_group_get_members(dart_group_t *g, int unitids[]);
+
+int dart_group_size(dart_group_t *g);
+
 int dart_group_split(const dart_group_t *g, size_t n, dart_group_t *gout);
+
+size_t dart_group_size_of();
 
 #endif /* DART_GROUP_H_ */

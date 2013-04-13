@@ -111,7 +111,8 @@ int shmif_multicast_release_multicast_group(int group_id, int my_id,
 	{
 		if ((pname = team2fifos[group_id][i].pname_read))
 		{
-			unlink(pname);
+			if(unlink(pname) == -1)
+				ERRNO("shmif_multicast_release_multicast_group%s", "");
 		}
 	}
 	return 0;

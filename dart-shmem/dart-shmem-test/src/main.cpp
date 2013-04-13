@@ -11,6 +11,7 @@
 #include <string>
 #include "InitTest.h"
 #include "LocksTest.h"
+#include "TeamTest.h"
 
 using namespace std;
 
@@ -37,6 +38,10 @@ GTEST_API_ int main(int argc, char **argv)
 		if (string("LocksTest") == argv[2])
 		{
 			LocksTest::integration_test_method(argc, argv);
+		}
+		if (string("TeamTest") == argv[2])
+		{
+			TeamTest::integration_test_method(argc, argv);
 		}
 		else
 		{

@@ -14,14 +14,20 @@ struct team_impl_struct {
 
 	// the members of the team
 	dart_group_t group;
-	// associated mempool (may be DART_MEMPOOL_NULL)
-	dart_mempool mempool;
-	int barrier_idx;
+	// associated mempools (may be DART_MEMPOOL_NULL)
+	dart_mempool mempools[2];
+	int unique_id;
 };
 
 int dart_team_l2g(int teamid, int id);
 int dart_team_g2l(int teamid, int id);
 
-dart_mempool dart_team_mempool(int teamid);
+dart_mempool dart_team_mempool_aligned(int teamid);
+
+dart_mempool dart_team_mempool_nonAligned(int teamid);
+
+void* dart_team_memory_segment_begin(int unique_id, int is_aligned);
+
+int dart_team_unique_id(int teamid);
 
 #endif /* SHMEM_TEAMS_H_INCLUDED */
