@@ -10,7 +10,8 @@
 #ifndef DART_RETURN_CODES_H_
 #define DART_RETURN_CODES_H_
 
-#define DART_OK          0    /* no error */
+#define DART_OK          					0    /* no error */
+#define DART_LOCK_ALREADY_AQUIRED			1
 
 /* TODO: expand the list of error codes as needed.
  it might be a good idea to use negative integers as

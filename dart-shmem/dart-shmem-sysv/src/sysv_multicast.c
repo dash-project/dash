@@ -89,7 +89,7 @@ int shmif_multicast_init_multicast_group(int group_id, int id_in_group,
 		if (mkfifo(buf, 0666) < 0)
 		{
 			ERROR("Error creating fifo: '%s'\n", buf);
-			return -999;
+			return DART_ERR_OTHER;
 		}
 
 		// pipe for sending from <id_in_group> to <i>
@@ -98,7 +98,7 @@ int shmif_multicast_init_multicast_group(int group_id, int id_in_group,
 				id_in_group, i);
 		team2fifos[group_id][i].pname_write = strdup(buf);
 	}
-	return 0;
+	return DART_OK;
 }
 
 int shmif_multicast_release_multicast_group(int group_id, int my_id,
@@ -115,7 +115,7 @@ int shmif_multicast_release_multicast_group(int group_id, int my_id,
 				ERRNO("shmif_multicast_release_multicast_group%s", "");
 		}
 	}
-	return 0;
+	return DART_OK;
 }
 
 int shmif_multicast_bcast(void* buf, size_t nbytes, int root, int group_id,
@@ -133,6 +133,6 @@ int shmif_multicast_bcast(void* buf, size_t nbytes, int root, int group_id,
 	{
 		recv(buf, nbytes, group_id, root);
 	}
-	return 0;
+	return DART_OK;
 }
 

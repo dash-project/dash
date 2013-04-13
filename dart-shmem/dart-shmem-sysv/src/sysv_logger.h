@@ -32,10 +32,10 @@
     int _retval;                                                     \
     if ((_retval = fncall) != 0) {                                   \
       fprintf(stderr, "ERROR calling: %s\n"                          \
-                      " at: %s:%i\n",                                \
-              #fncall, __FILE__, __LINE__);                          \
+                      " at: %s:%i, return value: %s\n",              \
+              #fncall, __FILE__, __LINE__, strerror(_retval));\
       fflush(stderr);                                                \
-      return -999;                                         \
+      return -999;                                                   \
     }                                                                \
   } while(0)
 
@@ -43,8 +43,8 @@
     int _retval;                                                     \
     if ((_retval = fncall) != 0) {                                   \
       fprintf(stderr, "ERROR calling: %s\n"                          \
-                      " at: %s:%i\n",                                \
-              #fncall, __FILE__, __LINE__);                          \
+                      " at: %s:%i, return value: %s\n",              \
+              #fncall, __FILE__, __LINE__, strerror(_retval));\
       fflush(stderr);                                                \
     }                                                                \
   } while(0)

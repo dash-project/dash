@@ -59,7 +59,7 @@ gptr_t dart_alloc_aligned(int teamid, size_t nbytes);
 void dart_free(int teamid, gptr_t ptr);
 
 // TODO: do we need this? how to free locally allocated memory?
-void dart_free(gptr_t ptr);
+// void dart_free(gptr_t ptr);
 
 /**
  * reverves (dart_team_size(teamid)*local_size)-bytes of globally addressable memory

@@ -8,6 +8,7 @@
 #include "dart-shmem-base/shmif_locks.h"
 #include "sysv_logger.h"
 #include <pthread.h>
+#include "dart/dart_return_codes.h"
 #ifndef _POSIX_THREAD_PROCESS_SHARED
 #error "This platform does not support process shared mutex"
 #endif
@@ -21,13 +22,13 @@ int shmif_lock_create_at(void* addr)
 	PTHREAD_SAFE(
 			pthread_mutex_init((pthread_mutex_t*)addr, &mutex_shared_attr));
 	PTHREAD_SAFE(pthread_mutexattr_destroy(&mutex_shared_attr));
-	return 0;
+	return DART_OK;
 }
 
 int shmif_lock_destroy(void* addr)
 {
 	PTHREAD_SAFE(pthread_mutex_destroy((pthread_mutex_t*)addr));
-	return 0;
+	return DART_OK;
 }
 
 int shmif_lock_acquire(void* addr, int is_blocking)
@@ -38,18 +39,22 @@ int shmif_lock_acquire(void* addr, int is_blocking)
 	}
 	else
 	{
-		int result = -1;
-		PTHREAD_SAFE(result = pthread_mutex_trylock((pthread_mutex_t*)addr));
+		int result = pthread_mutex_trylock((pthread_mutex_t*)addr);
 		if (result == EBUSY)
-			return 1;
+			return DART_LOCK_ALREADY_AQUIRED;
+		else if (result != 0)
+		{
+			ERROR("pthread_mutex_trylock%s", "");
+			return DART_ERR_OTHER;
+		}
 	}
-	return 0;
+	return DART_OK;
 }
 
 int shmif_lock_release(void* addr)
 {
 	PTHREAD_SAFE(pthread_mutex_unlock((pthread_mutex_t*)addr));
-	return 0;
+	return DART_OK;
 }
 
 int shmif_lock_size_of()

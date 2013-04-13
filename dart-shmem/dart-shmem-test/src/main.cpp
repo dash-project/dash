@@ -35,11 +35,11 @@ GTEST_API_ int main(int argc, char **argv)
 		{
 			InitTest::integration_test_method(argc, argv);
 		}
-		if (string("LocksTest") == argv[2])
+		else if (string("LocksTest") == argv[2])
 		{
 			LocksTest::integration_test_method(argc, argv);
 		}
-		if (string("TeamTest") == argv[2])
+		else if (string("TeamTest") == argv[2])
 		{
 			TeamTest::integration_test_method(argc, argv);
 		}
