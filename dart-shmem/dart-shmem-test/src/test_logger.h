@@ -7,10 +7,7 @@
 
 #ifndef TEST_LOGGER_H_
 #define TEST_LOGGER_H_
-extern "C"
-{
 #include "dart/dart_team.h"
-}
 
 #define TEST_INDICATOR "\e[1;45mTEST \e[0m";
 

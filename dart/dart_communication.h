@@ -8,6 +8,10 @@
 #ifndef DART_COMMUNICATION_H_
 #define DART_COMMUNICATION_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stddef.h>
 #include "dart_gptr.h"
 
@@ -62,5 +66,9 @@ int dart_testall(dart_handle_t *handle);
  - Do we need a way to specify the data to trasmit in
  a more complex way - strides, offsets, etc. (like in Global Arrays)
  */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DART_COMMUNICATION_H_ */

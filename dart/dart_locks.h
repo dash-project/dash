@@ -8,6 +8,10 @@
 #ifndef DART_LOCKS_H_
 #define DART_LOCKS_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  --- DART pairwise synchronization ---
  */
@@ -31,5 +35,9 @@ int dart_lock_acquire(dart_lock lock);
 // returns DART_LOCK_ACQUIRE_SUCCESS, DART_LOCK_ACQUIRE_FAILURE, or something like that
 int dart_lock_try_acquire(dart_lock lock);
 int dart_lock_release(dart_lock lock);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DART_LOCKS_H_ */

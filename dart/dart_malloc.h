@@ -8,6 +8,10 @@
 #ifndef DART_MALLOC_H_
 #define DART_MALLOC_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "dart_gptr.h"
 
 /*
@@ -69,5 +73,9 @@ void dart_free(int teamid, gptr_t ptr);
  */
 void dart_team_attach_mempool(int teamid, size_t local_size);
 void dart_team_detach_mempool(int teamid);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DART_MALLOC_H_ */

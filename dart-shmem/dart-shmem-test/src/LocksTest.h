@@ -9,9 +9,7 @@
 #define LOCKSTEST_H_
 
 #include "gtest/gtest.h"
-extern "C" {
 #include "dart/dart.h"
-}
 
 class LocksTest: public testing::Test {
 

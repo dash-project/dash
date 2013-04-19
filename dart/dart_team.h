@@ -8,6 +8,10 @@
 #ifndef DART_TEAM_H_
 #define DART_TEAM_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "dart_group.h"
 
 int dart_teams_init(int myid, int size);
@@ -30,5 +34,9 @@ int dart_size();
  we could think about including a split-phase barrier as well...
  */
 int dart_barrier(int team);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DART_TEAM_H_ */

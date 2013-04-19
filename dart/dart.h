@@ -69,6 +69,9 @@
 
  */ 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
    --- DART version number and build date ---
@@ -100,6 +103,9 @@ extern unsigned int _dart_version;
 
 #include "dart_locks.h"
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DART_H_INCLUDED */
 

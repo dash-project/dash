@@ -6,6 +6,7 @@
 C_SRCS += \
 ../src/dart_communication.c \
 ../src/dart_globals.c \
+../src/dart_gptr.c \
 ../src/dart_group.c \
 ../src/dart_init.c \
 ../src/dart_locks.c \
@@ -17,6 +18,7 @@ C_SRCS += \
 OBJS += \
 ./src/dart_communication.o \
 ./src/dart_globals.o \
+./src/dart_gptr.o \
 ./src/dart_group.o \
 ./src/dart_init.o \
 ./src/dart_locks.o \
@@ -28,6 +30,7 @@ OBJS += \
 C_DEPS += \
 ./src/dart_communication.d \
 ./src/dart_globals.d \
+./src/dart_gptr.d \
 ./src/dart_group.d \
 ./src/dart_init.d \
 ./src/dart_locks.d \

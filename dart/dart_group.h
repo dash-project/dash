@@ -8,6 +8,10 @@
 #ifndef DART_GROUP_H_
 #define DART_GROUP_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stddef.h>
 
 /*
@@ -47,5 +51,9 @@ int dart_group_size(dart_group_t *g);
 int dart_group_split(const dart_group_t *g, size_t n, dart_group_t *gout);
 
 size_t dart_group_size_of();
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DART_GROUP_H_ */

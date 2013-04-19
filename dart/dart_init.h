@@ -8,6 +8,10 @@
 #ifndef DART_INIT_H_
 #define DART_INIT_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * parses command line, starts n <executable> processes and waits for them.
  * Command line format: execname <n> <executable> <args> (see usage)
@@ -20,5 +24,9 @@ void dart_usage(char *s);
 int dart_init(int *argc, char ***argv);
 
 void dart_exit(int exitcode);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DART_INIT_H_ */

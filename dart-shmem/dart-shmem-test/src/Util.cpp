@@ -14,10 +14,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-extern "C"
-{
 #include "dart/dart_init.h"
-}
 
 using namespace std;
 

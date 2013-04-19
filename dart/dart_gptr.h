@@ -8,6 +8,10 @@
 #ifndef DART_GPTR_H_
 #define DART_GPTR_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
    --- DART global pointers ---
 
@@ -87,5 +91,11 @@ typedef struct
 
 /* some initializer for pointers */
 #define DART_NULLPTR
+
+gptr_t dart_gptr_inc_by(gptr_t ptr, int inc);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DART_GPTR_H_ */

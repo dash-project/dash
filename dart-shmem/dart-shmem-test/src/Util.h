@@ -9,11 +9,8 @@
 #define UTIL_H_
 
 #include <string>
-extern "C"
-{
 #include "dart/dart_gptr.h"
 #include "dart/dart_group.h"
-}
 
 class Util
 {

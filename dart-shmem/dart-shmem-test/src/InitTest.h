@@ -12,9 +12,7 @@
 
 #include "gtest/gtest.h"
 #include <malloc.h>
-extern "C" {
 #include "dart/dart_init.h"
-}
 
 class InitTest: public testing::Test {
 

@@ -9,9 +9,7 @@
 #define TEAMTEST_H_
 
 #include "gtest/gtest.h"
-extern "C" {
 #include "dart/dart.h"
-}
 
 class TeamTest: public testing::Test {
 
