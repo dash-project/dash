@@ -58,7 +58,14 @@ post-build:
 	-cp libdash.so $(DASH_LIBS)
 	-@echo ' '
 
-.PHONY: all clean dependents
+install:
+	-rm -rf $(DASH_INCLUDES)/dash
+	-mkdir -p $(DASH_INCLUDES)/dash
+	-cp -v ../src/*.h $(DASH_INCLUDES)/dash/
+	-@echo ' '
+
+
+.PHONY: all clean dependents install
 .SECONDARY: post-build
 
 -include ../makefile.targets
