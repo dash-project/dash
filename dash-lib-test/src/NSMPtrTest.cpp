@@ -12,56 +12,38 @@
 #include "Util.h"
 #include <regex>
 #include "dart/dart.h"
+#include "dash/DartDataAccess.h"
 
 #define TEAM_SIZE 4
-#define MAX_DATA_ACCESSORS 100
 
 using namespace std;
 using namespace dash;
 typedef NSMRef<int> IRef;
 typedef NSMPtr<int> IPtr;
 
-static dash::NonSequentialMemory* m_nsm;
-static dash::DartDataAccessor* m_accessors[MAX_DATA_ACCESSORS];
-static int m_num_accessors;
-
 void test_std_sort();
+void test_dart_data_access();
 
 NSMPtr<int> allocInt(int teamid, int numLocalInts)
 {
 	size_t local_size = numLocalInts * sizeof(int);
 	gptr_t ptr = dart_alloc_aligned(teamid, local_size);
-	int team_size = dart_team_size(teamid);
-	for (int i = 0; i < team_size; i++)
-	{
-		gptr_t da_ptr = dart_gptr_inc_by(ptr, local_size * i);
-		m_accessors[m_num_accessors] = new DartDataAccessor(da_ptr);
-		m_nsm->add_segment(
-				MemorySegment(m_accessors[m_num_accessors], local_size));
-		m_num_accessors++;
-	}
-	NonSequentialMemoryAccessor<int> beginAcc =
-			NonSequentialMemoryAccessor<int>::begin(m_nsm);
-	return NSMPtr<int>(beginAcc);
+	return NSMPtr<int>(teamid, ptr, local_size);
 }
 
 int NSMPtrTest::integration_test_method(int argc, char** argv)
 {
 	dart_init(&argc, &argv);
-	m_nsm = new dash::NonSequentialMemory();
-	m_num_accessors = 0;
-	for (int i = 0; i < MAX_DATA_ACCESSORS; i++)
-		m_accessors[i] = NULL;
-
 	if (string(argv[3]) == "std_sort")
 	{
 		test_std_sort();
 	}
+	else if (string(argv[3]) == "dart_data_access")
+	{
+		test_dart_data_access();
+	}
 
 	dart_exit(0);
-	for (int i = 0; i < m_num_accessors; i++)
-		delete m_accessors[i];
-	delete m_nsm;
 	return 0;
 }
 
@@ -120,5 +102,66 @@ TEST_F(NSMPtrTest, integration_test_std_sort)
 	EXPECT_TRUE(regex_match(log, regex("(.|\n)*1 # asc 9 not found(.|\n)*")));
 	EXPECT_TRUE(regex_match(log, regex("(.|\n)*1 # desc 9 found(.|\n)*")));
 	EXPECT_TRUE(regex_match(log, regex("(.|\n)*1 # desc 99 not found(.|\n)*")));
+	cout << log;
+}
+
+void test_dart_data_access()
+{
+	dart_team_attach_mempool(DART_TEAM_ALL, 4096);
+	const int num_ints_local = 4;
+	gptr_t ptr = dart_alloc_aligned(DART_TEAM_ALL,
+			num_ints_local * sizeof(int));
+	DartDataAccess<int> acc(DART_TEAM_ALL, ptr, num_ints_local * sizeof(int));
+
+	if (dart_myid() == 1)
+	{
+		auto printArr = [=]() -> std::string
+		{
+			ostringstream oss;
+			gptr_t tmp = ptr;
+			for (int i = 0; i < TEAM_SIZE * num_ints_local; i++)
+			{
+				int val;
+				dart_get(&val, tmp, sizeof(int));
+				oss << val << ",";
+				tmp = dart_gptr_inc_by(tmp, sizeof(int));
+			}
+			return oss.str();
+		};
+
+		TLOG("before: %s", printArr().c_str());
+
+		for (int i = 0; i < TEAM_SIZE * num_ints_local; i++)
+		{
+			acc.put_value(i);
+			acc.increment();
+		}
+
+		DartDataAccess<int> acc2(DART_TEAM_ALL, ptr,
+				num_ints_local * sizeof(int), num_ints_local * TEAM_SIZE - 1);
+		ostringstream oss;
+		for (int i = 0; i < TEAM_SIZE * num_ints_local; i++)
+		{
+			int out;
+			acc2.get_value(&out);
+			oss << out << ",";
+			acc2.decrement();
+		}
+		TLOG("reverse: %s", oss.str().c_str());
+		acc2.increment(17);
+		TLOG("acc == acc2? %d", acc.equals(acc2));
+		acc2.decrement(10);
+		TLOG("acc.diff(acc2)? %lld", acc.difference(acc2));
+		TLOG("acc2.diff(acc)? %lld", acc2.difference(acc));
+	}
+
+}
+
+TEST_F(NSMPtrTest, integration_test_dart_data_access)
+{
+	using namespace dash;
+	int result = -1;
+	string log = Util::start_integration_test("NSMPtrTest", "dart_data_access",
+			&result, TEAM_SIZE);
 	cout << log;
 }

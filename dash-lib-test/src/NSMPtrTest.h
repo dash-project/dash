@@ -10,9 +10,6 @@
 
 #include "gtest/gtest.h"
 #include "dash/NSMPtr.h"
-#include "dash/NonSequentialMemory.h"
-#include "dash/DartDataAccessor.h"
-#include "dash/NSMPtr.h"
 #include <vector>
 #include <sstream>
 
