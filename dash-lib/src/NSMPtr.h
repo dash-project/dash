@@ -9,7 +9,8 @@
 #define NSMPTR_H_
 
 #include "NSMRef.h"
-#include "NonSequentialMemoryAccessor.h"
+#include "DartDataAccess.h"
+#include "dart/dart.h"
 
 namespace dash
 {
@@ -23,12 +24,13 @@ class NSMPtr: public std::iterator<std::random_access_iterator_tag, T,
 		gas_ptrdiff_t, NSMPtr<T>, NSMRef<T> >
 {
 public:
-	explicit NSMPtr() :
-			m_acc(0, 0, 0)
+	explicit NSMPtr(int team, gptr_t begin, local_size_t local_size,
+			gas_size_t index = 0) :
+			m_acc(team, begin, local_size, index)
 	{
 	}
 
-	explicit NSMPtr(const NonSequentialMemoryAccessor<T>& acc) :
+	explicit NSMPtr(const DartDataAccess<T>& acc) :
 			m_acc(acc)
 	{
 	}
@@ -51,7 +53,7 @@ public:
 	// prefix operator
 	NSMPtr<T>& operator++()
 	{
-		m_acc = m_acc.increment();
+		m_acc.increment();
 		return *this;
 	}
 
@@ -59,14 +61,14 @@ public:
 	NSMPtr<T> operator++(int)
 	{
 		NSMPtr<T> result = *this;
-		m_acc = m_acc.increment();
+		m_acc.increment();
 		return result;
 	}
 
 	// prefix operator
 	NSMPtr& operator--()
 	{
-		m_acc = m_acc.decrement();
+		m_acc.decrement();
 		return *this;
 	}
 
@@ -74,50 +76,52 @@ public:
 	NSMPtr<T> operator--(int)
 	{
 		NSMPtr<T> result = *this;
-		m_acc = m_acc.decrement();
+		m_acc.decrement();
 		return result;
 	}
 
 	NSMRef<T> operator[](gas_ptrdiff_t n) const
 	{
-		return NSMRef<T>(m_acc.increment(n));
+		DartDataAccess<T> acc(m_acc);
+		acc.increment(n);
+		return NSMRef<T>(acc);
 	}
 
 	NSMPtr<T>& operator+=(gas_ptrdiff_t n)
 	{
 		if (n > 0)
-			m_acc = m_acc.increment(n);
+			m_acc.increment(n);
 		else
-			m_acc = m_acc.decrement(-n);
+			m_acc.decrement(-n);
 		return *this;
 	}
 
 	NSMPtr<T>& operator-=(gas_ptrdiff_t n)
 	{
 		if (n > 0)
-			m_acc = m_acc.decrement(n);
+			m_acc.decrement(n);
 		else
-			m_acc = m_acc.increment(-n);
+			m_acc.increment(-n);
 		return *this;
 	}
 
 	NSMPtr<T> operator+(gas_ptrdiff_t n) const
 	{
-		NonSequentialMemoryAccessor<T> acc(m_acc);
+		DartDataAccess<T> acc(m_acc);
 		if (n > 0)
-			acc = acc.increment(n);
+			acc.increment(n);
 		else
-			acc = acc.decrement(-n);
+			acc.decrement(-n);
 		return NSMPtr<T>(acc);
 	}
 
 	NSMPtr<T> operator-(gas_ptrdiff_t n) const
 	{
-		NonSequentialMemoryAccessor<T> acc(m_acc);
+		DartDataAccess<T> acc(m_acc);
 		if (n > 0)
-			acc = acc.decrement(n);
+			acc.decrement(n);
 		else
-			acc = acc.increment(-n);
+			acc.increment(-n);
 		return NSMPtr<T>(acc);
 	}
 
@@ -159,13 +163,12 @@ public:
 	std::string to_string() const
 	{
 		std::ostringstream oss;
-		oss << "NSMPtr[" << m_acc.m_segmentNumber << "," << m_acc.m_offset
-				<< "]";
+		oss << "NSMPtr[m_acc:" << m_acc.to_string() << "]";
 		return oss.str();
 	}
 
 private:
-	NonSequentialMemoryAccessor<T> m_acc;
+	DartDataAccess<T> m_acc;
 
 };
 

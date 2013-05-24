@@ -9,9 +9,9 @@ CPP_SRCS += \
 ../src/NonSequentialMemory.cpp 
 
 OBJS += \
-./src/DartDataAccessor.o \
-./src/NSMDataAccessorIF.o \
-./src/NonSequentialMemory.o 
+#./src/DartDataAccessor.o \
+#./src/NSMDataAccessorIF.o \
+#./src/NonSequentialMemory.o 
 
 CPP_DEPS += \
 ./src/DartDataAccessor.d \

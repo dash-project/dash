@@ -8,7 +8,7 @@
 #ifndef NSMREF_H_
 #define NSMREF_H_
 
-#include "NonSequentialMemoryAccessor.h"
+#include "DartDataAccess.h"
 
 namespace dash
 {
@@ -18,7 +18,7 @@ class NSMRef
 {
 
 public:
-	NSMRef(NonSequentialMemoryAccessor<T> acc) :
+	NSMRef(DartDataAccess<T> acc) :
 			m_acc(acc)
 	{
 	}
@@ -45,13 +45,13 @@ public:
 		return *this = T(ref);
 	}
 
-	NonSequentialMemoryAccessor<T> get_accessor() const
+	DartDataAccess<T> get_accessor() const
 	{
 		return m_acc;
 	}
 
 private:
-	NonSequentialMemoryAccessor<T> m_acc;
+	DartDataAccess<T> m_acc;
 
 };
 
