@@ -23,10 +23,10 @@ C_DEPS += \
 
 
 # Each subdirectory must supply rules for building sources it contributes
-src/%.o: ../src/%.c
+src/%.o: ../src/%.c env_check
 	@echo 'Building file: $<'
 	@echo 'Invoking: GCC C Compiler'
-	gcc -D_POSIX_THREAD_PROCESS_SHARED -D_SVID_SOURCE -DDART_LOG -DDART_DEBUG -O0 -g3 -Wall -c -fmessage-length=0 -std=c99 -fPIC -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
+	gcc -I$(DASH_INCLUDES) -D_POSIX_THREAD_PROCESS_SHARED -D_SVID_SOURCE -DDART_LOG -DDART_DEBUG -O0 -g3 -Wall -c -fmessage-length=0 -std=c99 -fPIC -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

@@ -26,7 +26,7 @@ endif
 all: libdart-shmem-base.so
 
 # Tool invocations
-libdart-shmem-base.so: $(OBJS) $(USER_OBJS)
+libdart-shmem-base.so: $(OBJS) $(USER_OBJS) env_check
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
 	gcc -shared -o "libdart-shmem-base.so" $(OBJS) $(USER_OBJS) $(LIBS)
@@ -39,9 +39,15 @@ clean:
 	-$(RM) $(OBJS)$(C_DEPS)$(LIBRARIES) libdart-shmem-base.so
 	-@echo ' '
 
-post-build:
+post-build: env_check
+	-mkdir -p $(DASH_LIBS)
 	-cp libdart-shmem-base.so $(DASH_LIBS)
+	-rm -rf $(DASH_INCLUDES)/dart-shmem-base
+	-mkdir -p $(DASH_INCLUDES)/dart-shmem-base
+	-cp ../src/*.h $(DASH_INCLUDES)/dart-shmem-base
 	-@echo ' '
+
+-include ../../../env_check.mk
 
 .PHONY: all clean dependents
 .SECONDARY: post-build

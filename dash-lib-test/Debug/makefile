@@ -41,7 +41,7 @@ endif
 all: dash-lib-test
 
 # Tool invocations
-dash-lib-test: $(OBJS) $(USER_OBJS)
+dash-lib-test: $(OBJS) $(USER_OBJS) env_check
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
 	g++ -L$(DASH_LIBS) -o "dash-lib-test" $(OBJS) $(USER_OBJS) $(LIBS)
@@ -52,6 +52,8 @@ dash-lib-test: $(OBJS) $(USER_OBJS)
 clean:
 	-$(RM) $(OBJS)$(C++_DEPS)$(C_DEPS)$(CC_DEPS)$(CPP_DEPS)$(EXECUTABLES)$(CXX_DEPS)$(C_UPPER_DEPS) dash-lib-test
 	-@echo ' '
+
+-include ../../env_check.mk
 
 .PHONY: all clean dependents
 .SECONDARY:
