@@ -9,6 +9,9 @@
 
 #ifndef DART_SHMIF_BARRIERS_H_
 #define DART_SHMIF_BARRIERS_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef int shmif_barrier_t;
 
@@ -31,4 +34,7 @@ shmif_barrier_t shmif_barriers_create_barrier(int num_procs_to_wait);
 
 void shmif_barriers_barrier_wait(shmif_barrier_t barrier);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* SHMIF_BARRIERS_H_ */

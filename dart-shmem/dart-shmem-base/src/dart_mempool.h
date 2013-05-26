@@ -9,6 +9,9 @@
 
 #ifndef DART_MEMPOOL_H_
 #define DART_MEMPOOL_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stddef.h>
 #include <stdio.h>
@@ -30,4 +33,7 @@ void* dart_mempool_alloc(dart_mempool pool, size_t size);
 
 void dart_mempool_print(dart_mempool pool, FILE* f);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* DART_MEMPOOL_H_ */

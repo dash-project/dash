@@ -7,6 +7,9 @@
 
 #ifndef SHMEM_GROUP_H_
 #define SHMEM_GROUP_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "dart/dart_return_codes.h"
 #include "dart/dart_group.h"
@@ -29,4 +32,7 @@ struct dart_group_struct {
 	int l2g[MAXSIZE_GROUP];
 };
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* SHMEM_GROUP_H_ */

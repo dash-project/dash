@@ -7,6 +7,9 @@
 
 #ifndef DART_MEMPOOL_PRIVATE_H_
 #define DART_MEMPOOL_PRIVATE_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stddef.h>
 
@@ -42,4 +45,7 @@ void dart_mempool_list_to_string(FILE* f, dart_mempool_list list);
 
 int dart_mempool_list_size(dart_mempool_list list);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* DART_MEMPOOL_PRIVATE_H_ */

@@ -55,11 +55,9 @@ gptr_t dart_alloc_aligned(int teamid, size_t nbytes)
 		ERROR("Could not alloc memory in mempool%s", "");
 		return result;
 	}
-
-	int myid = dart_team_myid(teamid);
 	result.segid = dart_team_unique_id(teamid) + MAXNUM_TEAMS;
 	result.offset = ((char*) addr) - ((char*) mempool->shm_address);
-	result.offset -= myid * mempool->size;
+	result = dart_gptr_switch_unit(result, teamid, dart_team_myid(teamid), 0);
 	dart_barrier(teamid);
 	return result;
 }

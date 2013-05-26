@@ -94,6 +94,13 @@ typedef struct
 
 gptr_t dart_gptr_inc_by(gptr_t ptr, int inc);
 
+/**
+ * changes the unit of ptr with respect to the specified teamid.
+ * This means that the result points to the 'same' address as ptr in the to_unit
+ * (ptr must be a result of a call to dart_alloc_aligned and point to an address in from_unit)
+ */
+gptr_t dart_gptr_switch_unit(gptr_t ptr, int teamid, int from_unit, int to_unit);
+
 #ifdef __cplusplus
 }
 #endif

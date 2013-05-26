@@ -7,6 +7,9 @@
 
 #ifndef DART_SHMIF_MULTICAST_H_
 #define DART_SHMIF_MULTICAST_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stddef.h>
 
@@ -19,4 +22,7 @@ int shmif_multicast_init_multicast_group(int group_id, int my_id,
 int shmif_multicast_release_multicast_group(int group_id, int my_id,
 		int group_size);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* SHMIF_MULTICAST_H_ */

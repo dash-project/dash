@@ -7,6 +7,9 @@
 
 #ifndef DART_SHMIF_MEMORY_MANAGER_H_
 #define DART_SHMIF_MEMORY_MANAGER_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stddef.h>
 
@@ -30,4 +33,7 @@ void* shmif_mm_attach(int shmem_key);
  */
 void shmif_mm_detach(void* addr);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* SHMIF_MEMORY_MANAGER_H_ */

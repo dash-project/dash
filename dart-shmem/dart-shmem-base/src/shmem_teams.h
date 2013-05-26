@@ -1,5 +1,8 @@
 #ifndef SHMEM_TEAMS_H_INCLUDED
 #define SHMEM_TEAMS_H_INCLUDED
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "dart_mempool.h"
 #include "shmem_group.h"
@@ -30,4 +33,7 @@ void* dart_team_memory_segment_begin(int unique_id, int is_aligned);
 
 int dart_team_unique_id(int teamid);
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* SHMEM_TEAMS_H_INCLUDED */
