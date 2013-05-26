@@ -26,7 +26,7 @@ endif
 all: libdart-shmem-sysv.so
 
 # Tool invocations
-libdart-shmem-sysv.so: $(OBJS) $(USER_OBJS)
+libdart-shmem-sysv.so: $(OBJS) $(USER_OBJS) env_check
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
 	gcc -shared -o "libdart-shmem-sysv.so" $(OBJS) $(USER_OBJS) $(LIBS)
@@ -39,9 +39,12 @@ clean:
 	-$(RM) $(OBJS)$(C_DEPS)$(LIBRARIES) libdart-shmem-sysv.so
 	-@echo ' '
 
-post-build:
+post-build: env_check
+	-mkdir -p $(DASH_LIBS)
 	-cp libdart-shmem-sysv.so $(DASH_LIBS)
 	-@echo ' '
+
+-include ../../../env_check.mk
 
 .PHONY: all clean dependents
 .SECONDARY: post-build

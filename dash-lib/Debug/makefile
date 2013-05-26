@@ -41,7 +41,7 @@ endif
 all: libdash.so
 
 # Tool invocations
-libdash.so: $(OBJS) $(USER_OBJS)
+libdash.so: $(OBJS) $(USER_OBJS) env_check
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
 	g++ -L$(DASH_LIBS) -shared -o "libdash.so" $(OBJS) $(USER_OBJS) $(LIBS)
@@ -54,18 +54,17 @@ clean:
 	-$(RM) $(OBJS)$(C++_DEPS)$(C_DEPS)$(CC_DEPS)$(LIBRARIES)$(CPP_DEPS)$(CXX_DEPS)$(C_UPPER_DEPS) libdash.so
 	-@echo ' '
 
-post-build:
+post-build: env_check
+	-mkdir -p $(DASH_LIBS)
 	-cp libdash.so $(DASH_LIBS)
-	-@echo ' '
-
-install:
 	-rm -rf $(DASH_INCLUDES)/dash
 	-mkdir -p $(DASH_INCLUDES)/dash
-	-cp -v ../src/*.h $(DASH_INCLUDES)/dash/
+	-cp ../src/*.h $(DASH_INCLUDES)/dash
 	-@echo ' '
 
+-include ../../env_check.mk
 
-.PHONY: all clean dependents install
+.PHONY: all clean dependents
 .SECONDARY: post-build
 
 -include ../makefile.targets
