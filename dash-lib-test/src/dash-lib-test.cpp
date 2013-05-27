@@ -1,6 +1,7 @@
 #include "gtest/gtest.h"
 #include <iostream>
 #include "NSMPtrTest.h"
+#include "ArrayTest.h"
 
 using namespace std;
 
@@ -23,6 +24,10 @@ GTEST_API_ int main(int argc, char **argv)
 		if (string("NSMPtrTest") == argv[2])
 		{
 			NSMPtrTest::integration_test_method(argc, argv);
+		}
+		else if (string("ArrayTest") == argv[2])
+		{
+			ArrayTest::integration_test_method(argc, argv);
 		}
 		else
 		{

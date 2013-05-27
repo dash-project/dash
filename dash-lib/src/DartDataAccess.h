@@ -57,6 +57,15 @@ public:
 
 	std::string to_string() const;
 
+	gptr_t actual_ptr() const
+	{
+		int unit_id = (int) (m_index / m_num_local_slots);
+		local_size_t unit_offset = (local_size_t) (m_index % m_num_local_slots);
+		gptr_t switched_ptr = dart_gptr_switch_unit(m_begin, m_teamid, 0, unit_id);
+		gptr_t actual_ptr = dart_gptr_inc_by(switched_ptr,
+				unit_offset * sizeof(T)); // TODO: dataTypes!!!
+		return actual_ptr;
+	}
 };
 
 template<typename T>
@@ -77,15 +86,13 @@ DartDataAccess<T>::~DartDataAccess()
 template<typename T>
 void DartDataAccess<T>::get_value(T* value_out) const
 {
-	gptr_t ptr = dart_gptr_inc_by(m_begin, m_index * sizeof(T)); // TODO: dataTypes!!!
-	dart_get(value_out, ptr, sizeof(T));
+	dart_get(value_out, actual_ptr(), sizeof(T));
 }
 
 template<typename T>
 void DartDataAccess<T>::put_value(const T& newValue) const
 {
-	gptr_t ptr = dart_gptr_inc_by(m_begin, m_index * sizeof(T)); // TODO: dataTypes!!!
-	dart_put(ptr, (void*) &newValue, sizeof(T));
+	dart_put(actual_ptr(), (void*) &newValue, sizeof(T));
 }
 
 template<typename T>

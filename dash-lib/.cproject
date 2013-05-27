@@ -22,7 +22,7 @@
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="dash" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.exe.debug.398040919" name="Debug" parent="cdt.managedbuild.config.gnu.exe.debug" postbuildStep="cp libdash.so $(DASH_LIBS); rm $(DASH_INCLUDES)/dash/*">
+				<configuration artifactExtension="so" artifactName="dash" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" cleanCommand="rm -rf" description="" id="cdt.managedbuild.config.gnu.exe.debug.398040919" name="Debug" parent="cdt.managedbuild.config.gnu.exe.debug" postbuildStep="cp libdash.so $(DASH_LIBS); rm -f $(DASH_INCLUDES)/dash/*; cp ../src/*.h  $(DASH_INCLUDES)/dash">
 					<folderInfo id="cdt.managedbuild.config.gnu.exe.debug.398040919." name="/" resourcePath="">
 						<toolChain id="cdt.managedbuild.toolchain.gnu.exe.debug.403394812" name="Linux GCC" superClass="cdt.managedbuild.toolchain.gnu.exe.debug">
 							<targetPlatform id="cdt.managedbuild.target.gnu.platform.exe.debug.1429021575" name="Debug Platform" superClass="cdt.managedbuild.target.gnu.platform.exe.debug"/>
