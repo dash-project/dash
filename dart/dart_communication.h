@@ -30,13 +30,14 @@ extern "C" {
 int dart_bcast(void* buf, size_t nbytes, int root, int team);
 
 /*
- gather and scatter with similar semantics as in MPI;
+ (all_)gather and scatter with similar semantics as in MPI;
  size specifies the message size between each pair of
  communicating processes
  */
 int dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, int root,
 		int team);
 int dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, int root, int team);
+int dart_all_gather(void *sendbuf, void *recvbuf, size_t nbytes, int team);
 
 /*
  --- DART onesided communication ---

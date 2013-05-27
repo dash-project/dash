@@ -16,6 +16,9 @@ extern "C" {
 int shmif_multicast_bcast(void* buf, size_t nbytes, int root, int group_id,
 		int id_in_group, int group_size);
 
+int shmif_multicast_gather(void *sendbuf, void *recvbuf, size_t nbytes,
+		int root, int group_id, int id_in_group, int group_size);
+
 int shmif_multicast_init_multicast_group(int group_id, int my_id,
 		int group_size);
 

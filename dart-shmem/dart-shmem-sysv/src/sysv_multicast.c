@@ -136,3 +136,24 @@ int shmif_multicast_bcast(void* buf, size_t nbytes, int root, int group_id,
 	return DART_OK;
 }
 
+int shmif_multicast_gather(void *sendbuf, void *recvbuf, size_t nbytes,
+		int root, int group_id, int id_in_group, int group_size)
+{
+	if (id_in_group == root)
+	{
+		for (int i = 0; i < group_size; i++)
+		{
+			char* buf = ((char*) recvbuf) + i * nbytes;
+			if (i != root)
+				recv(buf, nbytes, group_id, i);
+			else
+				memcpy(buf, sendbuf, nbytes);
+		}
+	}
+	else
+	{
+		send(sendbuf, nbytes, group_id, root);
+	}
+	return DART_OK;
+}
+

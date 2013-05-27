@@ -142,6 +142,56 @@ int TeamTest::integration_test_method(int argc, char** argv)
 			TLOG("received: %d", i);
 		}
 	}
+	else if(string("gather012") == argv[3])
+	{
+		if (dart_myid() >= 0 && dart_myid() < 3)
+		{
+			int sb = dart_myid() + 9;
+			int rb[3];
+			for (int i = 0; i < 3; i++)
+				rb[i] = -1;
+			dart_gather(&sb, rb, sizeof(int), 1, t012);
+			if (dart_myid() == 1)
+			{
+				TLOG("received: %d %d %d", rb[0], rb[1], rb[2]);
+			}
+		}
+	}
+	else if (string("gatherTEAM_ALL") == argv[3])
+	{
+		int sb = dart_myid() + 1000000;
+		if (dart_myid() == 5)
+		{
+			int rb[6];
+			for (int i = 0; i < 6; i++)
+				rb[i] = -1;
+			dart_gather(&sb, rb, sizeof(int), 5, DART_TEAM_ALL);
+			TLOG("received: %d %d %d %d %d %d",
+					rb[0], rb[1], rb[2], rb[3], rb[4], rb[5]);
+		}
+		else
+		{
+			dart_gather(&sb, 0, sizeof(int), 5, DART_TEAM_ALL);
+		}
+	}
+	else if (string("all_gather012") == argv[3])
+	{
+		if (dart_myid() >= 0 && dart_myid() < 3)
+		{
+			int sb = dart_myid() + 1;
+			int rb[3];
+			dart_all_gather(&sb, rb, sizeof(int), t012);
+			TLOG("received: %d %d %d", rb[0], rb[1], rb[2]);
+		}
+	}
+	else if (string("all_gatherTEAM_ALL") == argv[3])
+	{
+		int sb = dart_myid() * 2;
+		int rb[6];
+		dart_all_gather(&sb, rb, sizeof(int), DART_TEAM_ALL);
+		TLOG("received: %d %d %d %d %d %d",
+				rb[0], rb[1], rb[2], rb[3], rb[4], rb[5]);
+	}
 	else if(string("onesided_aligned") == argv[3])
 	{
 		test_onesided_aligned(t012, t345, t01, t45);
@@ -288,6 +338,59 @@ TEST_F(TeamTest, integration_test_multicast012)
 	EXPECT_TRUE(regex_match(log, regex("(.|\n)*# 0 # received: 84(.|\n)*")));
 	EXPECT_TRUE(regex_match(log, regex("(.|\n)*# 1 # received: 84(.|\n)*")));
 	EXPECT_TRUE(regex_match(log, regex("(.|\n)*# 2 # received: 84(.|\n)*")));
+}
+
+TEST_F(TeamTest, integration_test_gather012)
+{
+	int res = -1;
+	string log = Util::start_integration_test("TeamTest", "gather012", &res, 6);
+	EXPECT_EQ(0, res);
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 1 # received: 9 10 11(.|\n)*")));
+}
+
+TEST_F(TeamTest, integration_test_gatherTEAM_ALL)
+{
+	int res = -1;
+	string log = Util::start_integration_test("TeamTest", "gatherTEAM_ALL",
+			&res, 6);
+	EXPECT_EQ(0, res);
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 5 # received: 1000000 1000001 1000002 1000003 1000004 1000005(.|\n)*")));
+}
+
+TEST_F(TeamTest, integration_test_all_gather012)
+{
+	int res = -1;
+	string log = Util::start_integration_test("TeamTest", "all_gather012", &res,
+			6);
+	EXPECT_EQ(0, res);
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 0 # received: 1 2 3(.|\n)*")));
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 1 # received: 1 2 3(.|\n)*")));
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 2 # received: 1 2 3(.|\n)*")));
+}
+
+TEST_F(TeamTest, integration_test_all_gatherTEAM_ALL)
+{
+	int res = -1;
+	string log = Util::start_integration_test("TeamTest", "all_gatherTEAM_ALL",
+			&res, 6);
+	EXPECT_EQ(0, res);
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 0 # received: 0 2 4 6 8 10(.|\n)*")));
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 1 # received: 0 2 4 6 8 10(.|\n)*")));
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 2 # received: 0 2 4 6 8 10(.|\n)*")));
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 3 # received: 0 2 4 6 8 10(.|\n)*")));
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 4 # received: 0 2 4 6 8 10(.|\n)*")));
+	EXPECT_TRUE(
+			regex_match(log, regex("(.|\n)*# 5 # received: 0 2 4 6 8 10(.|\n)*")));
 }
 
 TEST_F(TeamTest, integration_test_myid)
