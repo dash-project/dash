@@ -11,7 +11,8 @@ CPP_SRCS += \
 OBJS += \
 ./src/NSMPtrTest.o \
 ./src/Util.o \
-./src/dash-lib-test.o 
+./src/dash-lib-test.o \
+./src/ArrayTest.o
 
 CPP_DEPS += \
 ./src/NSMPtrTest.d \
