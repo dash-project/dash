@@ -1,6 +1,8 @@
 
-CC       = gcc -std=c99
-CFLAGS   = -I..
+include ../make.defs
+
+CFLAGS += -I..
+
 LIBDART  = libdart.a
 
 FILES = dart_groups_impl dart_onesided_impl dart_init_impl \

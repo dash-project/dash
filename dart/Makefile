@@ -1,7 +1,7 @@
 
+include make.defs
+
 ONEHEADER = ./bin/oneheader.pl
-CC        = gcc -std=c99 
-CPPC      = g++
 
 LIBDART = dart-dummy/libdart-dummy.a
 

@@ -1,7 +1,7 @@
 
-CC   = gcc -std=c99
-CPPC = g++ -std=c++0x
-CFLAGS = -I..
+include ../make.defs
+
+CFLAGS += -I..
 
 LIBDART = ../dart-dummy/libdart.a
 
@@ -11,7 +11,7 @@ test : test.c $(LIBDART)
 	$(CC) $(CFLAGS) -o test test.c $(LIBDART) 
 
 test_cpp : test.c $(LIBDART)
-	$(CPPC) $(CFLAGS) -o test_cpp test.c $(LIBDART) 
+	$(CXX) $(CFLAGS) -o test_cpp test.c $(LIBDART) 
 
 $(LIBDART) : 
 	make -C ../dart-dummy/

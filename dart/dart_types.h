@@ -3,6 +3,7 @@
 #define DART_TYPES_H_INCLUDED
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -10,18 +11,9 @@ extern "C" {
 
 #define DART_INTERFACE_ON
 
-#if __STDC_VERSION__ >= 199901L
-#define HAVE_C99
-#endif
-
 /*
    --- DART Types ---
 */
-#ifdef HAVE_C99
-#include <stdint.h>
-#else
-#include "dart_stdint.h"
-#endif
 
 typedef enum 
   {
