@@ -64,7 +64,7 @@ dart_ret_t dart_group_getmembers(const dart_group_t *g, int32_t *unitids)
   return DART_OK;
 }
 
-dart_ret_t dart_group_split(const dart_group_t *g, uint32_t n,
+dart_ret_t dart_group_split(const dart_group_t *g, size_t n,
                             dart_group_t *gout)
 {
   return DART_OK;

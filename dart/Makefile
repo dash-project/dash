@@ -1,8 +1,7 @@
 
 ONEHEADER = ./bin/oneheader.pl
-CC        = clang
+CC        = gcc -std=c99 
 CPPC      = g++
-#CFLAGS    = -std=c99 
 
 LIBDART = dart-dummy/libdart-dummy.a
 

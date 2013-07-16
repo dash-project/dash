@@ -1,6 +1,6 @@
 
-CC   = gcc
-CPPC = g++
+CC   = gcc -std=c99
+CPPC = g++ -std=c++0x
 CFLAGS = -I..
 
 LIBDART = ../dart-dummy/libdart.a

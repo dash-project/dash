@@ -25,7 +25,7 @@ int main( int argc, char* argv[])
   dart_group_init(group);
 
   int iam;
-  unsigned size;
+  size_t size;
   dart_myid(&iam);
   dart_size(&size);
 
