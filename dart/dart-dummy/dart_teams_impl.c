@@ -8,7 +8,7 @@
 dart_ret_t dart_team_create(dart_team_t teamid, const dart_group_t *group, 
 			    dart_team_t *newteam)
 {
-  fprintf(stderr, "In dart_team_create: the groups object is %d bytes big\n", 
+  fprintf(stderr, "In dart_team_create: the groups object is %zu bytes big\n", 
 	  sizeof(dart_group_t));
   *newteam = 33;
 

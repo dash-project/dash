@@ -23,7 +23,7 @@ int main( int argc, char* argv[])
   dart_group_t *group;
   dart_group_sizeof(&sz);
 
-  fprintf(stderr, "A DART group object is %d bytes\n", sz);
+  fprintf(stderr, "A DART group object is %zu bytes\n", sz);
   group = (dart_group_t*) malloc(sz);
   dart_group_init(group);
 
@@ -32,20 +32,23 @@ int main( int argc, char* argv[])
   dart_myid(&iam);
   dart_size(&size);
 
-  fprintf(stderr, "I'm %d of %d in this DART world\n",
+  fprintf(stderr, "I'm %d of %zu in this DART world\n",
 	  iam, size);
 
   dart_team_t newteam;
   dart_team_create(DART_TEAM_ALL, group, &newteam); 
 
   dart_gptr_t ptr;
-  fprintf(stderr, "A DART global pointer is %d bytes\n", 
+  fprintf(stderr, "A DART global pointer is %zu bytes\n", 
 	  sizeof(dart_gptr_t));
 
+  
   dart_handle_t hdle;
-  fprintf(stderr, "A DART handle is %d bytes\n", 
+  fprintf(stderr, "A DART handle is %zu bytes\n", 
 	  sizeof(dart_handle_t));  
 
+  
+  ptr = DART_GPTR_NULL;
   dart_get_nb(buf, ptr, 100, &hdle);
   dart_wait(hdle);
 
