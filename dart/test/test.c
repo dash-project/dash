@@ -4,6 +4,9 @@
 
 #include "dart.h"
 
+void test_gptr();
+
+
 int main( int argc, char* argv[])
 {
   char buf[100];
@@ -55,6 +58,38 @@ int main( int argc, char* argv[])
 
 
   dart_lock_acquire(lock);
+
+  test_gptr();
+}
+
+
+void test_gptr()
+{
+  int localvar;
+  dart_gptr_t ptr = DART_GPTR_NULL;
+  dart_gptr_t ptr2;
+
+  ptr2 = DART_GPTR_NULL;
+  
+  if( DART_GPTR_ISNULL(ptr) ) {
+    fprintf(stderr, "ptr is a nullpoitner\n");
+  }
+  if( DART_GPTR_ISNULL(ptr2) ) {
+    fprintf(stderr, "ptr2 is a nullpoitner\n");
+  }
+
+  DART_GPTR_SETADDR(ptr, &localvar);
+  DART_GPTR_SETOFFS(ptr, 234234);
+
+  if( DART_GPTR_EQUAL(ptr,ptr2) ) {
+    fprintf(stderr, "ptr and ptr2 are the same (they shouldn't be!)\n");
+  }
+
+  ptr2=ptr;
+  if( DART_GPTR_EQUAL(ptr,ptr2) ) {
+    fprintf(stderr, "ptr and ptr2 are the same (they should be!)\n");
+  }
+
 
 
 }
