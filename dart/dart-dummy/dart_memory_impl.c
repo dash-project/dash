@@ -19,6 +19,7 @@ dart_ret_t dart_memfree(dart_gptr_t gptr)
 dart_ret_t dart_team_memalloc_aligned(int32_t teamid, 
 				      size_t nbytes, dart_gptr_t *gptr)
 {
+  (gptr->addr_or_offs).addr = (void*) malloc( nbytes);
   return DART_OK;
 }
 

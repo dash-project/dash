@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "dart.h"
+#include "dart_gptr_impl.h"
 
 void test_gptr();
 
@@ -82,7 +83,6 @@ void test_gptr()
   }
 
   DART_GPTR_SETADDR(ptr, &localvar);
-  DART_GPTR_SETOFFS(ptr, 234234);
 
   if( DART_GPTR_EQUAL(ptr,ptr2) ) {
     fprintf(stderr, "ptr and ptr2 are the same (they shouldn't be!)\n");

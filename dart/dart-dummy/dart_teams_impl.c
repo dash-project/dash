@@ -22,24 +22,24 @@ dart_ret_t dart_team_destroy(dart_team_t teamid)
 
 dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
 {
-  *myid=42;
+  *myid=3;
   return DART_OK;
 }
 
 dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
 {
-  *size=63;
+  *size=8;
   return DART_OK;
 }
 
 dart_ret_t dart_myid(dart_unit_t *myid)
 {
-  *myid=42;
+  *myid=3;
   return DART_OK;
 }
 
 dart_ret_t dart_size(size_t *size)
 {
-  *size=63;
+  *size=8;
   return DART_OK;
 }

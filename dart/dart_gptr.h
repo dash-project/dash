@@ -73,19 +73,22 @@ typedef struct
    gptr_.flags==0 && gptr_.addr_or_offs.addr==0) 
   
   
-#define DART_GPTR_SETADDR(gptr_, addr_)		\
-  gptr_.addr_or_offs.addr=addr_;
+#define DART_GPTR_SETUNIT(gptr_, unitid_)	\
+  gptr_.unitid = unitid_;
 
-#define DART_GPTR_SETOFFS(gptr_, offs_)		\
-  gptr_.addr_or_offs.offset=offs_;
-  
 #define DART_GPTR_EQUAL(gptr1_, gptr2_ )		\
   ((gptr1_.unitid == gptr2_.unitid) &&			\
    (gptr1_.segid == gptr2_.segid) &&			\
    (gptr1_.flags == gptr2_.flags) &&			\
    (gptr1_.addr_or_offs.offset ==			\
     gptr2_.addr_or_offs.offset) )
-  
+
+#define DART_GPTR_GETADDR(gptr_)		\
+  must_be_redefined_by_implemenation
+
+#define DART_GPTR_SETADDR(gptr_, addr_)		\
+  must_be_redefined_by_implemenation
+
   
 
 #define DART_INTERFACE_OFF
