@@ -24,8 +24,11 @@ int main( int argc, char* argv[])
   dart_team_memalloc_aligned(DART_TEAM_ALL,
 			     ITEMS_PER_UNIT*sizeof(int), &gptr);  
 
-  // gptr now points to the beginning of the
-  // of the allocation (on unit 0)
+  // dart_team_memalloc_aligned is a collective call
+  // on *each unit* it sets the passed gptr to the beginning of
+  // the whole allocation, so gptr will be identical on all units
+  // after the call
+
 
   // one could do the following:
   if( myid==1 ) {
@@ -35,8 +38,8 @@ int main( int argc, char* argv[])
     dart_put( gptr, &i, sizeof(int) );
   }
 
-  // initialize the array in parallel (all units  initialize their
-  // portion of the array
+  // initialize the array in parallel (all units initialize their
+  // portion of the array) a.k.a. "owner computes" 
   int *localaddr;
   DART_GPTR_SETUNIT(gptr, myid);
   localaddr = DART_GPTR_GETADDR(gptr);
@@ -47,13 +50,13 @@ int main( int argc, char* argv[])
 
   dart_barrier(DART_TEAM_ALL);
 
-  // unit 3 outputs the whole array
+  // unit 3 prints the whole array
   if( myid==3 ) 
     {
       for(i=0; i<ITEMS_PER_UNIT*nunits; i++ ) {
 
-	// here we can construct the gptr to any location in the 
-	// array by simple arithmetic. This only works because the 
+	// here we can construct the gptr to *any* location in the 
+	// allocation by simple arithmetic. This only works because the 
 	// allocation was symmetric and team-aligned
 	DART_GPTR_SETUNIT(gptr, i/ITEMS_PER_UNIT);
 	DART_GPTR_SETADDR(gptr, localaddr+i%ITEMS_PER_UNIT);
