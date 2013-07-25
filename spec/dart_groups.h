@@ -15,7 +15,7 @@ extern "C" {
   be expensive.
 */
 
-/* DART groups are represented by an opage struct dart_group_struct */
+/* DART groups are represented by an opaque struct dart_group_struct */
 typedef struct dart_group_struct dart_group_t;
 
 
@@ -70,7 +70,7 @@ dart_ret_t dart_group_getmembers(const dart_group_t *g,
 
 
 /* split the group into n groups of approx. same size,
-   gout must be an array of dart_group_t obejcts of size at least n
+   gout must be an array of dart_group_t objects of size at least n
 */
 dart_ret_t dart_group_split(const dart_group_t *g, size_t n, 
 			    dart_group_t *gout);
