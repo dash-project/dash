@@ -10,6 +10,9 @@ DART_FILES = dart_init.h dart_types.h dart_groups.h dart_teams.h    \
 
 all : dart_full.h dart_full.html $(LIBDART) test/test
 
+publish : dart_full.html
+	cp highlight.css dart_full.html $(HOME)/Dropbox/Public
+
 dart_full.html : dart_full.h
 	highlight --style moria --syntax c -i dart_full.h  -o dart_full.html
 
@@ -27,6 +30,7 @@ clean :
 	rm -f *.o 
 	rm -f dart_full.h
 	rm -f dart_full.html
+	rm -f highlight.css
 	make -C dart-dummy/ clean
 	make -C test/ clean
 

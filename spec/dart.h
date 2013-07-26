@@ -116,14 +116,15 @@ extern "C" {
 */
 #include "dart_onesided.h"
 
-#ifdef __cplusplus
-}
-#endif
-
 /*
    --- DART pairwise synchronization ---
 */
 #include "dart_locks.h"
+
+#ifdef __cplusplus
+}
+#endif
+
 
 #endif /* DART_H_INCLUDED */
 
