@@ -12,6 +12,7 @@ extern "C" {
 dart_ret_t dart_init(int *argc, char ***argv);
 dart_ret_t dart_exit();
 
+dart_ret_t dart_usage(char* s);
 
 #define DART_INTERFACE_OFF
 
