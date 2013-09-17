@@ -1,7 +1,6 @@
 
 #include "dart_types.h"
-#include "dart_gptr.h"
-#include "dart_memory.h"
+#include "dart_globmem.h"
 
 
 dart_ret_t dart_memalloc(size_t nbytes, dart_gptr_t *gptr)

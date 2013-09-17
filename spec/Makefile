@@ -5,13 +5,16 @@ ONEHEADER = ./bin/oneheader.pl
 
 LIBDART = dart-dummy/libdart-dummy.a
 
-DART_FILES = dart_init.h dart_types.h dart_groups.h dart_teams.h    \
-	dart_gptr.h dart_memory.h dart_collective.h dart_onesided.h
+DART_FILES = dart_types.h dart_initialization.h dart_team_group.h \
+	dart_globmem.h dart_communication.h dart_synchronization.h
 
 all : dart_full.h dart_full.html $(LIBDART) test/test
 
 publish : dart_full.html
 	cp highlight.css dart_full.html $(HOME)/Dropbox/Public
+
+deploy : 
+	cp $(DART_FILES) dart.h ../dart-new
 
 dart_full.html : dart_full.h
 	highlight --style moria --syntax c -i dart_full.h  -o dart_full.html

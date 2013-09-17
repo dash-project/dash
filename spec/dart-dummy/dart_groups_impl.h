@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#include "dart_groups.h"
+#include "dart_team_group.h"
 
 struct dart_group_struct
 {

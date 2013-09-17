@@ -1,32 +1,23 @@
-/*
- * dart_init.h
- *
- *  Created on: Apr 5, 2013
- *      Author: maierm
- */
-
-#ifndef DART_INIT_H_
-#define DART_INIT_H_
+#ifndef DART_INITIALIZATION_H_INCLUDED
+#define DART_INITIALIZATION_H_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**
- * parses command line, starts n <executable> processes and waits for them.
- * Command line format: execname <n> <executable> <args> (see usage)
- * @return DART_OK, on success
- */
-int dart_start(int argc, char* argv[]);
+#include "dart_types.h"
 
-void dart_usage(char *s);
+#define DART_INTERFACE_ON
 
-int dart_init(int *argc, char ***argv);
+dart_ret_t dart_init(int *argc, char ***argv);
+dart_ret_t dart_exit();
 
-void dart_exit(int exitcode);
+dart_ret_t dart_usage(char* s);
+
+#define DART_INTERFACE_OFF
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* DART_INIT_H_ */
+#endif /* DART_INITIALIZATION_H_INCLUDED */

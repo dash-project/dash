@@ -1,5 +1,5 @@
-#ifndef DART_INIT_H_INCLUDED
-#define DART_INIT_H_INCLUDED
+#ifndef DART_INITIALIZATION_H_INCLUDED
+#define DART_INITIALIZATION_H_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,4 +20,4 @@ dart_ret_t dart_usage(char* s);
 }
 #endif
 
-#endif /* DART_INIT_H_INCLUDED */
+#endif /* DART_INITIALIZATION_H_INCLUDED */

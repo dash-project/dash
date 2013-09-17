@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 /*
-   --- DASH/DART Terminology ---
+ --- DASH/DART Terminology ---
  
  DASH is a realization of the PGAS (partitioned global address space)
  programming model. Below is an attempt to define some of the
@@ -28,15 +28,15 @@ extern "C" {
  
  Teams are ordered sets of units, identified by an integer ID.  Each
  unit has a non-negative, zero-based integer ID in a given team, which
- always remains unchanged throughout the program execution.  In each
- application there exists a default team that contains all the units
- that comprise the program. Teams are identified by an integer ID.
+ always remains unchanged throughout the lifetime of the team.  In
+ each application there exists a default team that contains all the
+ units that comprise the program denoted by DART_TEAM_ALL.
  
  Groups are also sets of units. The difference between groups and
  teams is that groups have local meaning only, while teams are
  coherent across several units. In effect, group related operations
  are local, while operations to manipulate teams are collective and
- will require communication and can thus be costly.
+ will require communication and can thus be costly. 
  
  Local/Global/Private/Shared
  ---------------------------
@@ -74,6 +74,13 @@ extern "C" {
  any member of the team is able to locally compute a global pointer to
  any location in the allocated memory.
 
+ 
+ A note on thread safety:
+ ------------------------
+
+ All functions in the DART interface shall be implemented in a thread
+ safe way.
+
  */ 
 
 
@@ -91,35 +98,29 @@ extern "C" {
 /*
    --- DART init/finalization 
  */
-#include "dart_init.h"
+#include "dart_initialization.h"
 
 /* 
    --- DART group and team management ---
  */
-#include "dart_groups.h"
-#include "dart_teams.h"
-
+#include "dart_team_group.h"
 
 /* 
    --- DART global pointer and memory management ---
  */
-#include "dart_gptr.h"
-#include "dart_memory.h"
+#include "dart_globmem.h"
 
 /*
    --- DART collective communication ---
- */
-#include "dart_collective.h"
-
-/*
    --- DART onesided communication ---
-*/
-#include "dart_onesided.h"
+ */
+#include "dart_communication.h"
 
 /*
-   --- DART pairwise synchronization ---
+   --- DART synchronization ---
 */
-#include "dart_locks.h"
+#include "dart_synchronization.h"
+
 
 #ifdef __cplusplus
 }

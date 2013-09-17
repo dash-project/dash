@@ -1,5 +1,5 @@
-#ifndef DART_LOCKS_H_INCLUDED
-#define DART_LOCKS_H_INCLUDED
+#ifndef DART_SYNCHRONIZATION_H_INCLUDED
+#define DART_SYNCHRONIZATION_H_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,5 +30,5 @@ dart_ret_t dart_lock_release(dart_lock_t lock);
 }
 #endif
 
+#endif /* DART_SYNCHRONIZATION_H_INCLUDED */
 
-#endif /* DART_LOCKS_H_INCLUDED */

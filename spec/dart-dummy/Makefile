@@ -7,7 +7,7 @@ LIBDART  = libdart.a
 
 FILES = dart_groups_impl dart_onesided_impl dart_init_impl \
 	dart_collective_impl dart_teams_impl dart_memory_impl \
-	dart_locks_impl
+	dart_locks_impl dart_gptr_impl
 
 
 OBJS = $(addsuffix .o, $(FILES))

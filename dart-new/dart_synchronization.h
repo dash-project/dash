@@ -1,43 +1,34 @@
-/*
- * dart_locks.h
- *
- *  Created on: Apr 9, 2013
- *      Author: maierm
- */
-
-#ifndef DART_LOCKS_H_
-#define DART_LOCKS_H_
+#ifndef DART_SYNCHRONIZATION_H_INCLUDED
+#define DART_SYNCHRONIZATION_H_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/*
- --- DART pairwise synchronization ---
- */
+#define DART_INTERFACE_ON
 
-/* DART locks: See redmine issue refs #6 */
+typedef struct dart_lock_struct *dart_lock_t;
 
-typedef struct dart_opaque_lock_t* dart_lock;
 
-// creates lock in local-shared address space -> do we need this -> how to pass locks between processes
-// int dart_lock_init(dart_lock* lock);
+dart_ret_t dart_team_lock_init(dart_team_t teamid, 
+			       dart_lock_t* lock);
 
-// team_id may be DART_TEAM_ALL. Create lock at team member 0?
-int dart_lock_team_init(int team_id, dart_lock* lock);
+dart_ret_t dart_team_lock_free(dart_team_t teamid,
+			       dart_lock_t* lock);
 
-// lock becomes DART_LOCK_NULL. may be called by any team member that initialized the lock?!
-int dart_lock_free(dart_lock* lock);
+/* blocking call */
+dart_ret_t dart_lock_acquire(dart_lock_t lock);
 
-// blocking call
-int dart_lock_acquire(dart_lock lock);
+dart_ret_t dart_lock_try_acquire(dart_lock_t lock);
 
-// returns DART_LOCK_ACQUIRE_SUCCESS, DART_LOCK_ACQUIRE_FAILURE, or something like that
-int dart_lock_try_acquire(dart_lock lock);
-int dart_lock_release(dart_lock lock);
+dart_ret_t dart_lock_release(dart_lock_t lock);
+
+
+#define DART_INTERFACE_OFF
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* DART_LOCKS_H_ */
+#endif /* DART_SYNCHRONIZATION_H_INCLUDED */
+

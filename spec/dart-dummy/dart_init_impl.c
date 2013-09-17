@@ -1,5 +1,5 @@
 
-#include "dart_init.h"
+#include "dart_initialization.h"
 
 dart_ret_t dart_init(int *argc, char ***argv)
 {

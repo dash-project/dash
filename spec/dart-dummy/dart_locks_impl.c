@@ -1,6 +1,6 @@
 
 #include "dart_types.h"
-#include "dart_locks.h"
+#include "dart_synchronization.h"
 
 dart_ret_t dart_team_lock_init(dart_team_t teamid, 
 			       dart_lock_t* lock)

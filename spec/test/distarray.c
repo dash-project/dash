@@ -35,14 +35,14 @@ int main( int argc, char* argv[])
     // unit 1 writes the value '42' into the first element 
     // of the allocated memory (owned by unit 0)
     i=42;
-    dart_put( gptr, &i, sizeof(int) );
+    dart_put_blocking( gptr, &i, sizeof(int) );
   }
 
   // initialize the array in parallel (all units initialize their
   // portion of the array) a.k.a. "owner computes" 
   int *localaddr;
-  DART_GPTR_SETUNIT(gptr, myid);
-  localaddr = DART_GPTR_GETADDR(gptr);
+  dart_gptr_setunit(gptr, myid);
+  dart_gptr_getaddr(gptr, &localaddr);
   
   for(i=0; i<ITEMS_PER_UNIT; i++ ) {
     localaddr[i] = myid+i;
@@ -58,13 +58,13 @@ int main( int argc, char* argv[])
 	// here we can construct the gptr to *any* location in the 
 	// allocation by simple arithmetic. This only works because the 
 	// allocation was symmetric and team-aligned
-	DART_GPTR_SETUNIT(gptr, i/ITEMS_PER_UNIT);
-	DART_GPTR_SETADDR(gptr, localaddr+i%ITEMS_PER_UNIT);
+	dart_gptr_setunit(gptr, i/ITEMS_PER_UNIT);
+	dart_gptr_setaddr(gptr, localaddr+i%ITEMS_PER_UNIT);
 
-	void *addr;	
-	addr = DART_GPTR_GETADDR(gptr);
+	void *addr;
+	dart_gptr_getaddr(gptr, addr);
 	
-	dart_get( &val, gptr, sizeof(int) );
+	dart_get_blocking( &val, gptr, sizeof(int) );
 	fprintf(stdout, "Element %3d: val=%d local_addr=%p\n", 
 		i, val, addr);
       }

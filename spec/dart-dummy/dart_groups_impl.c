@@ -1,6 +1,6 @@
 
 #include "dart_types.h"
-#include "dart_groups.h"
+#include "dart_team_group.h"
 #include "dart_groups_impl.h"
 
 dart_ret_t dart_group_init(dart_group_t *group)

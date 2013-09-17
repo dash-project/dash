@@ -50,7 +50,7 @@ int main( int argc, char* argv[])
 
   
   ptr = DART_GPTR_NULL;
-  dart_get_nb(buf, ptr, 100, &hdle);
+  dart_get(buf, ptr, 100, &hdle);
   dart_wait(hdle);
 
   dart_team_memalloc_aligned(newteam, 100, &ptr);
@@ -82,7 +82,7 @@ void test_gptr()
     fprintf(stderr, "ptr2 is a nullpoitner\n");
   }
 
-  DART_GPTR_SETADDR(ptr, &localvar);
+  dart_gptr_setaddr(ptr, &localvar);
 
   if( DART_GPTR_EQUAL(ptr,ptr2) ) {
     fprintf(stderr, "ptr and ptr2 are the same (they shouldn't be!)\n");

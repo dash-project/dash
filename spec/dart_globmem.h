@@ -1,6 +1,5 @@
-
-#ifndef DART_GPTR_H_INCLUDED
-#define DART_GPTR_H_INCLUDED
+#ifndef DART_GLOBMEM_H_INCLUDED
+#define DART_GLOBMEM_H_INCLUDED
 
 #ifdef __cplusplus
 extern "C" {
@@ -72,24 +71,59 @@ typedef struct
   (gptr_.unitid<0 && gptr_.segid==0 &&		\
    gptr_.flags==0 && gptr_.addr_or_offs.addr==0) 
   
-  
-#define DART_GPTR_SETUNIT(gptr_, unitid_)	\
-  gptr_.unitid = unitid_;
-
 #define DART_GPTR_EQUAL(gptr1_, gptr2_ )		\
   ((gptr1_.unitid == gptr2_.unitid) &&			\
    (gptr1_.segid == gptr2_.segid) &&			\
    (gptr1_.flags == gptr2_.flags) &&			\
    (gptr1_.addr_or_offs.offset ==			\
     gptr2_.addr_or_offs.offset) )
-
-#define DART_GPTR_GETADDR(gptr_)		\
-  must_be_redefined_by_implemenation
-
-#define DART_GPTR_SETADDR(gptr_, addr_)		\
-  must_be_redefined_by_implemenation
-
   
+
+/* get the local memory address for the specified global pointer
+   gptr. I.e., if the global pointer has affinity to the local unit,
+   return the local memory address.
+*/
+dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void *addr);
+
+
+/* set the local memory address for the specified global pointer such 
+   the the specified address 
+*/
+dart_ret_t dart_gptr_setaddr(dart_gptr_t gptr, void *addr);
+
+/* set the unit inforation for the specified global pointer */
+dart_ret_t dart_gptr_setunit(dart_gptr_t gptr, dart_unit_t);
+
+
+/*
+ Allocates nbytes of memory in the global address space of the calling
+ unit and returns a global pointer to it.  This is *not* a collective
+ function.
+ */
+dart_ret_t dart_memalloc(size_t nbytes, dart_gptr_t *gptr);
+dart_ret_t dart_memfree(dart_gptr_t gptr);
+
+/* 
+  Collective function on the specified team to allocate nbytes of
+  memory in each unit's global address space.  The allocated memory is
+  team-aligned (i.e., a global pointer to anywhere in the allocation
+  can easily be formed locally. The global pointer to the beginning of
+  the allocation is is returned in gptr on each participating
+  unit. I.e., Each participating unit has to call
+  dart_team_memalloc_aligned with the same specification of teamid and
+  nbytes. Each unit will receive the a global pointer to the beginning
+  of the allocation (on unit 0) in gptr.
+
+  Accessibility of memory allocated with this function is limited to
+  those units that are part of the team allocating the memory. I.e.,
+  if unit X was not part of the team that allocated the memory M, then
+  X may not be able to acces a memory location in M.
+
+ */
+dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, 
+				      size_t nbytes, dart_gptr_t *gptr);
+dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr);
+
 
 #define DART_INTERFACE_OFF
 
@@ -97,5 +131,5 @@ typedef struct
 }
 #endif
 
-#endif /* DART_GPTR_H_INCLUDED */
+#endif /* DART_GLOBMEM_H_INCLUDED */
 

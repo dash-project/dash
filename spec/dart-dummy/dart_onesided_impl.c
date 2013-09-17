@@ -1,23 +1,25 @@
 
 #include "dart_types.h"
-#include "dart_gptr.h"
-#include "dart_onesided.h"
+#include "dart_globmem.h"
+#include "dart_communication.h"
 #include "dart_onesided_impl.h"
 
 #include <string.h>
 
-dart_ret_t dart_get(void *dest, dart_gptr_t ptr, size_t nbytes)
+dart_ret_t dart_get_blocking(void *dest, 
+			     dart_gptr_t ptr, size_t nbytes)
 {
   memset(dest, 42, nbytes);
   return DART_OK;
 }
 
-dart_ret_t dart_put(dart_gptr_t ptr, void *src, size_t nbytes)
+dart_ret_t dart_put_blocking(dart_gptr_t ptr, 
+			     void *src, size_t nbytes)
 {
   return DART_OK;
 }
 
-dart_ret_t dart_get_nb(void *dest, dart_gptr_t ptr, 
+dart_ret_t dart_get(void *dest, dart_gptr_t ptr, 
 		       size_t nbytes, dart_handle_t *handle)
 {
   (*handle) = (dart_handle_t) 
@@ -26,7 +28,7 @@ dart_ret_t dart_get_nb(void *dest, dart_gptr_t ptr,
   return DART_OK;
 }
 
-dart_ret_t dart_put_nb(dart_gptr_t ptr, void *src, 
+dart_ret_t dart_put(dart_gptr_t ptr, void *src, 
 		       size_t nbytes, dart_handle_t *handle)
 {
   (*handle) = (dart_handle_t) 
