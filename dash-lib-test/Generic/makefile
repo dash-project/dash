@@ -7,7 +7,7 @@ LD = g++
 CFLAGS = -D__GXX_EXPERIMENTAL_CXX0X__ -O0 -g3 -Wall -std=c++11
 OPTFLAGS = -DDART_DEBUG -DDART_LOG
 LIBS := -ldash -ldart-shmem-base -ldart-shmem-sysv -lgtest -lpthread
-PROJECT_NAME = test-dash
+PROJECT_NAME = dash-lib-test
 
 OBJS += \
 ./src/NSMPtrTest.o \
