@@ -9,7 +9,7 @@
 #define TEAM_H_
 
 #include <memory>
-#include "dash/group.h"
+#include "group.h"
 #include <string>
 
 namespace dash
