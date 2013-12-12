@@ -1,6 +1,6 @@
 Build instructions:
 
-1. Set shell environment:  DASH_INCLUDES, DASH_LIBS
+1. Set shell environment:  DASH_INCLUDES, DASH_LIBS (e.g. > . set_env.sh INCLUDE_AND_LIB_PARENT_DIR)
 2. cp gtest headers and libs to $DASH_INCLUDES/gtest and $DASH_LIBS respectively to build tests.
 3. Call make in the dash root directory.
 

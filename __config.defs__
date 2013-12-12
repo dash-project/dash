@@ -1,0 +1,11 @@
+#####################################
+# example build config file:
+#
+# > cp __config.defs__ config.defs
+# edit config.defs ...
+#####################################
+
+BUILD_CONFIG = Generic 
+DART_IF_VERSION = v1
+DART_IMPL = shmem
+
