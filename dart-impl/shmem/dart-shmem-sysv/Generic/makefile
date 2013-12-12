@@ -6,8 +6,8 @@ CC = gcc
 LD = gcc
 CFLAGS = -O0 -g3 -Wall -std=c99
 OPTFLAGS = -D_POSIX_THREAD_PROCESS_SHARED -D_SVID_SOURCE -DDART_DEBUG -DDART_LOG
-LIBS :=
-LIB_NAME = dart-shmem-sysv
+LIBS := -Wl,-whole-archive "../../dart-shmem-base/Generic/libdart-shmem-base.a" -Wl,-no-whole-archive 
+LIB_NAME = dash-rt
 
 OBJS += \
 ./src/sysv_barriers.o \

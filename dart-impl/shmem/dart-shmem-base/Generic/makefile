@@ -21,5 +21,5 @@ OBJS += \
 ./src/dart_mempool.o \
 ./src/dart_teams.o 
 
--include $(DASH_HOME)/shared_lib.mk
+-include $(DASH_HOME)/static_lib.mk
 
