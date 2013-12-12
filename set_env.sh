@@ -16,7 +16,7 @@ mkdir -p $DASH_LIBS
 export CPATH=$DASH_INCLUDES
 export LD_LIBRARY_PATH=$DASH_LIBS
 
-if [ ! -d "$PARENT_DIR/gtest" ]; then
+if [ ! -d "$DASH_INCLUDES/gtest" ]; then
     echo ' '
     echo "---> unzipping google test lib into $PARENT_DIR"
     echo ' '
