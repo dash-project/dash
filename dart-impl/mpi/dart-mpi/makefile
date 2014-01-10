@@ -1,9 +1,9 @@
 TLIB=tlib.a
-OBJS= dart_team_group.o dart_teamnode.o dart_translation.o dart_mem.o dart_initialization.o dart_communication.o dart_globmem.o mpi_team_private.o
+OBJS= dart_adapt_translation.o mpi_adapt_team_private.o dart_adapt_team_group.o dart_adapt_teamnode.o dart_adapt_mem.o dart_adapt_initialization.o dart_adapt_globmem.o dart_adapt_communication.o dart_adapt_synchronization.o 
 CC=cc
 DARTPATH=../dart
 LOCALPATH=.
-CFLAGS=-g -I$(LOCALPATH) -I$(DARTPATH)
+CFLAGS=-h msglevel_4 -g -I$(LOCALPATH) -I$(DARTPATH)
 
 
 .c.o:
@@ -12,7 +12,7 @@ CFLAGS=-g -I$(LOCALPATH) -I$(DARTPATH)
 $(TLIB): $(OBJS)
 	ar cr $(TLIB) $(OBJS)
 
-$(OBJS): ./mpi_team_private.h $(LOCALPATH)/dart_mem.h $(LOCALPATH)/dart_translation.h $(LOCALPATH)/dart_teamnode.h $(DARTPATH)/dart_types.h $(DARTPATH)/dart_team_group.h $(DARTPATH)/dart_initialization.h $(DARTPATH)/dart_communication.h $(DARTPATH)/dart_globmem.h
+$(OBJS): ./dart_deb_log.h ./dart_adapt_translation.h ./mpi_adapt_team_private.h ./dart_adapt_mem.h ./dart_adapt_teamnode.h $(DARTPATH)/dart_types.h $(DARTPATH)/dart_team_group.h $(DARTPATH)/dart_initialization.h $(DARTPATH)/dart_communication.h $(DARTPATH)/dart_globmem.h $(DARTPATH)/dart_synchronization.h
 
 cleanall:
 	-rm -f *.o *.a

@@ -1,5 +1,12 @@
-#include<stdio.h>
-#include"dart_mem.h"
+/** @file dart_adapt_mem.c
+ *  @date 21 Nov 2013
+ *  @brief Implementations for the operations on the shared memory region.
+ */
+
+#include <stdio.h>
+#include <malloc.h>
+#include"dart_adapt_mem.h"
+
 void free_mempool_list(dart_mempool_list list)
 {
 	dart_mempool_list current = list;
@@ -24,7 +31,6 @@ dart_mempool dart_mempool_create( size_t size)
 
 void dart_mempool_destroy(dart_mempool pool)
 {
-
 	free_mempool_list(pool->free_mem);
 	free_mempool_list(pool->allocated_mem);
 	free(pool);
@@ -44,12 +50,12 @@ int dart_mempool_alloc (dart_mempool pool, size_t size)
 	if (current == NULL )
 		return ((void*) 0);
 
-	// add allocated element
+	/* Add allocated element. */
 	dart_list_entry newAllocEntry;					
 	newAllocEntry.size = size;
 	newAllocEntry.offset = current->offset;
 	pool->allocated_mem = dart_push_front(pool->allocated_mem, newAllocEntry);
-	// remove element from free list
+	/* Remove element from free list. */
 					
 	if (current->size == size)					
 	{
@@ -137,7 +143,7 @@ dart_mempool_list dart_list_melt(dart_mempool_list list)
 	{
 		if ((prev->offset + prev->size) == current->offset)
 		{
-		// melt the two entries
+		/* Melt the two entries */
 		        prev->size += current->size;
 		        prev->next = current->next;
 	        	free(current);
