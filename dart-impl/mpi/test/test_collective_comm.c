@@ -21,7 +21,7 @@ int main (int argc, char ** argv)
 	dart_memalloc (100, &point);
 
 
-        /*create sub-team by using newgroup*/
+        /* Create sub-team by using newgroup */
 
 	dart_group_t *group, *newgroup;
 	int array1 [2];
@@ -41,7 +41,7 @@ int main (int argc, char ** argv)
 
         
 	 
-	/*dart has not provided the following sub-group creating functions or similar*/
+	/* Dart has not provided the following sub-group creating functions or similar. */
 	
 	MPI_Group group2, newgroup2, newgroup3, newgroup4, newgroup5;
 	MPI_Comm_group (MPI_COMM_WORLD, &group2);
@@ -61,7 +61,7 @@ int main (int argc, char ** argv)
 	MPI_Group_incl (newgroup3, 2, array4, &newgroup5);
 	dgroup4.mpi_group = newgroup5;
 
-	/* return team_id to represent this new sub-team*/
+	/* Return team_id to represent this new sub-team. */
 
 	dart_team_t team_id, team_id2, team_id3, team_id4;
 
@@ -75,13 +75,9 @@ int main (int argc, char ** argv)
 	dart_barrier (DART_TEAM_ALL);
 	dart_team_create (team_id2, &dgroup4, &team_id4);
 	dart_barrier (DART_TEAM_ALL);
-
-
         
         dart_team_myid (team_id4, &unitid2);
 
-	printf ("unitid2 is %d\n", unitid2);
-	printf ("the level of header is %d\n",DART_TEAM_ALL.level);
 	dart_team_memalloc_aligned (team_id4, 100, &p);
 
 	
@@ -95,7 +91,8 @@ int main (int argc, char ** argv)
 	        {
 			receive[i] = i + unitid2*2;
 		}
-		printf ("the infos of p: p.offset = %d, p.flags = %d, p.segid = %d\n", p.addr_or_offs.offset, p.flags, p.segid);
+		printf ("%2d: TESTTEAM %d	- infos of p: p.offset = %d, p.flags = %d, p.segid = %d\n", 
+				unitid2, team_id4.team_id, unitid2, p.addr_or_offs.offset, p.flags, p.segid);
 	}
 	dart_barrier (DART_TEAM_ALL);
 	
@@ -103,47 +100,52 @@ int main (int argc, char ** argv)
 	{
 		dart_allgather (receive, send, 5*sizeof (int), team_id4);
 	}
-        PTINFO("\n******* test \"dart_gather\" *******\n")
+        PTINFO("\n******* Test \"dart_gather\" *******\n")
 
 	if (unitid2 == 0)
 	{
 		for (i=0;i<10;i++)
 		{
-			printf ("unitid %d: send[%d] = %d\n",unitid2, i,send[i]);
+			printf ("%2d: TESTTEAM %d	- send[%d] = %d\n", unitid2, team_id4.team_id, i, send[i]);
 		}
 	}
  
 	dart_barrier (DART_TEAM_ALL);
-        PTINFO ("\n******* test \"dart_broadcast \" *******\n")
+        PTINFO ("\n******* Test \"dart_broadcast \" *******\n")
 	
+	dart_gptr_t p_copy;
+	DART_GPTR_COPY (p_copy, point);
 	if (unitid == 1)
 	{
-		printf ("before broadcast: the info of p.offset, p.segid, p.unitid and p.flags are %d, %d, %d, %d\n", point.addr_or_offs.offset, point.segid, point.unitid, point.flags);
+		printf ("%2d: Before broadcast, the info of p.offset, p.segid, p.unitid and p.flags are %d, %d, %d, %d\n",
+			       	unitid, p_copy.addr_or_offs.offset, p_copy.segid, p_copy.unitid, p_copy.flags);
 	}
 
 
-	dart_bcast (&point, sizeof (dart_gptr_t), 0, DART_TEAM_ALL);
+	dart_bcast (&p_copy, sizeof (dart_gptr_t), 0, DART_TEAM_ALL);
 
 	
 	if (unitid == 1)
 	{
-		printf ("after broadcast: the info of p.offset, p.segid, p.unitid and p.flags are %d, %d, %d, %d\n", point.addr_or_offs.offset, point.segid, point.unitid, point.flags);
+		printf ("%2d: After broadcast: the info of p.offset, p.segid, p.unitid and p.flags are %d, %d, %d, %d\n", 
+				unitid, p_copy.addr_or_offs.offset, p_copy.segid, p_copy.unitid, p_copy.flags);
 	}
-
-	PTINFO ("\n******* test \"dart_gptr_inc_by \" *******\n")
-	
+		
         dart_barrier (DART_TEAM_ALL);
 	
         
 	dart_team_memfree (team_id4, p1);
+	
+	dart_barrier (DART_TEAM_ALL);
+        
 	dart_team_memfree (team_id, p);
 	dart_memfree (point);
        
 	dart_team_destroy (team_id4);
         dart_team_destroy (team_id2);
-	dart_barrier (DART_TEAM_ALL);
+	
 	dart_team_destroy (team_id);
-
+	
 	dart_exit ();
 	return 0;
 }

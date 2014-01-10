@@ -13,26 +13,32 @@ int main (int argc, char* argv[])
 	dart_size (&nunits);
 	dart_myid (&myid);
 	dart_gptr_t gptr = DART_GPTR_NULL;
+	dart_gptr_t point;
 	dart_gptr_t p;
-	dart_handle_t handle1, handle2;
+
+        dart_handle_t handle[ITEMS_PER_UNIT * nunits];
+	for (i = 0; i < ITEMS_PER_UNIT * nunits; i++)
+	{
+		handle[i] = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
+	}
 
 	dart_team_memalloc_aligned (DART_TEAM_ALL, ITEMS_PER_UNIT * sizeof (int), &gptr);
         
-
-        DART_GPTR_COPY (p, gptr);	
+	dart_barrier (DART_TEAM_ALL);
+	DART_GPTR_COPY (p, gptr);	
 	if (myid == 1)
 	{
 		i = 42;
-		dart_put_blocking (p, &i, sizeof (int), &handle1);
-		dart_fence (handle1);
+		dart_put_blocking (p, &i, sizeof (int));
 	}
         
 	dart_barrier (DART_TEAM_ALL);
 
 	int *localaddr;
-	dart_gptr_setunit(&p, myid);
-	dart_gptr_getaddr (p, &offset);
-	localaddr = mempool_globalalloc[0] + offset;
+
+	offset = p.addr_or_offs.offset;
+
+	dart_gptr_getaddr (gptr, &localaddr);
 
 	for (i = 0; i<ITEMS_PER_UNIT; i++)
 	{
@@ -49,16 +55,18 @@ int main (int argc, char* argv[])
 		for (i = 0;i < ITEMS_PER_UNIT * nunits; i++)
 		{
 			dart_gptr_setunit(&p, i/ITEMS_PER_UNIT);
-			value = localaddr - (int*)(mempool_globalalloc[0]) + (i%ITEMS_PER_UNIT)*sizeof(int);
-			dart_gptr_setaddr(&p, value);
-			dart_get (val + i, p, sizeof(int), &handle1);
+			
+			value = offset + (i%ITEMS_PER_UNIT)*sizeof(int);
+			p.addr_or_offs.offset = value;
+				
+			dart_get (val + i, p, sizeof(int), &handle[i]);
 	      
 		}
-                dart_fence (handle1);
+                dart_waitall (handle, ITEMS_PER_UNIT * nunits);
 
 		for (i = 0;i < ITEMS_PER_UNIT * nunits; i++)
 		{
-			printf ("Element %d: val = %d\n", i, val[i]);
+			printf ("%2d: (Element %d) <=> (val = %d)\n", myid, i, val[i]);
 		}
 		free(val);	
 	}
