@@ -1,0 +1,28 @@
+#include <stdio.h>
+#include "dart_synchronization.h"
+
+
+dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
+{
+	       return dart_adapt_team_lock_init (dart_team_t teamid, dart_lock_t* lock);
+}
+dart_ret_t dart_lock_acquire (dart_lock_t lock)
+{
+	       return dart_adapt_lock_acquire (dart_lock_t lock) ;
+}
+dart_ret_t dart_lock_try_acquire (dart_lock_t lock)
+{
+	       return dart_adapt_lock_try_acquire (dart_lock_t lock);
+}
+dart_ret_t dart_lock_release (dart_lock_t lock)
+{
+	       return dart_adapt_lock_release (dart_lock_t lock);
+}
+dart_ret_t dart_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
+{
+	       return dart_adapt_team_lock_free (dart_team_t teamid, dart_lock_t* lock);
+}
+
+
+
+
