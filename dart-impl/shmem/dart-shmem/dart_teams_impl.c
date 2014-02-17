@@ -299,7 +299,10 @@ dart_ret_t dart_shmem_team_delete(dart_team_t teamid,
   // todo: check return value of below
   dart_shmem_p2p_destroy(teamid, tsize, myid, shmid);
 
-  shmem_syncarea_delteam(teamid, tsize);
+  dart_barrier(teamid);
+  if( myid==0 ) {
+    shmem_syncarea_delteam(teamid, tsize);
+  }
 
   return DART_OK;
 }

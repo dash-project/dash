@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
   
   fprintf(stderr, "Hello World, I'm %d of %d\n",
 	  myid, size);
-  
+
   dart_group_t *g1;  
   size_t gsize;
   dart_group_sizeof(&gsize);
@@ -23,21 +23,19 @@ int main(int argc, char* argv[])
   dart_group_init(g1);
 
   int i;
-  for( i=0; i<size; i+=2 ) {
+  for( i=1; i<size; i+=2 ) {
     dart_group_addmember(g1, i);
   }
 
   dart_team_t even;
-  for( i=0; i<100; i++ ) {
+  for( i=0; i<10; i++ ) {
     dart_team_create(DART_TEAM_ALL, g1, &even);
 
-    if( myid==0 ) {
-      fprintf(stderr, "new team id is %d\n", even);
+    if(myid==0) {
+      fprintf(stderr, "i=%d, my new teamid is%d\n", i, even);
     }
-     
     dart_team_destroy(even);
   }
-
 
   dart_exit();
 }

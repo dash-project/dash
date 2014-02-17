@@ -13,7 +13,8 @@ FILES = dart_init_impl dart_init_shmem 	    	\
 	dart_collective_impl			\
 	sysv/shmem_barriers_sysv 		\
 	sysv/shmem_mm_sysv			\
-	sysv/shmem_p2p_sysv
+	sysv/shmem_p2p_sysv			\
+	dart_mempool
 
 
 OBJS = $(addsuffix .o, $(FILES))

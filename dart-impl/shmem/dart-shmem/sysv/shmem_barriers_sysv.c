@@ -119,7 +119,9 @@ int shmem_syncarea_delteam(dart_team_t teamid, int numprocs)
   //slot = shmem_syncarea_findteam(teamid);
   if( 1<=slot && slot<MAXNUM_TEAMS ) {
     // fprintf(stderr, "destroying barrier at slot %d\n", slot);
-    sysv_barrier_destroy( &((area->teams[slot]).barr) );
+    if( area->teams[slot].inuse ) {
+      sysv_barrier_destroy( &((area->teams[slot]).barr) );
+    }
     area->teams[slot].inuse=0;
   }
   
