@@ -1,11 +1,10 @@
 #ifndef DART_MEMPOOL_PRIV_H_INCLUDED
 #define DART_MEMPOOL_PRIV_H_INCLUDED
 
-#include "extern_c.h"
-
-EXTERN_C_BEGIN
-
 #include <stddef.h>
+
+#include "extern_c.h"
+EXTERN_C_BEGIN
 
 typedef struct dart_mempool_list_entry* dart_mempool_list;
 typedef struct dart_mempool_list_entry dart_list_entry;

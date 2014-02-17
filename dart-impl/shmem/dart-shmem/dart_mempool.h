@@ -1,15 +1,13 @@
 #ifndef DART_MEMPOOL_H_INCLUDED
 #define DART_MEMPOOL_H_INCLUDED
 
-#include "extern_c.h"
-
-EXTERN_C_BEGIN
-
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-
 #include "dart_mempool_priv.h"
+
+#include "extern_c.h"
+EXTERN_C_BEGIN
 
 struct dart_opaque_mempool;
 typedef struct dart_opaque_mempool* dart_mempool;

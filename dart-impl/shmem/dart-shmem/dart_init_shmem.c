@@ -2,9 +2,11 @@
 #include <assert.h>
 #include <stdio.h>
 
-
+#include "dart_types.h"
+#include "dart_globmem.h"
 #include "dart_initialization.h"
 #include "dart_team_group.h"
+#include "dart_communication.h"
 
 #include "dart_shmem.h"
 #include "shmem_mm_if.h"

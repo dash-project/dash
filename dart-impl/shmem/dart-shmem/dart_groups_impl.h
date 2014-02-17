@@ -4,14 +4,7 @@
 #include "dart_types.h"
 #include "dart_team_group.h"
 
-#ifdef __cplusplus
-#define EXTERN_C_BEGIN  extern "C" {
-#define EXTERN_C_END    }
-#else
-#define EXTERN_C_BEGIN
-#define EXTERN_C_END
-#endif
-
+#include "extern_c.h"
 EXTERN_C_BEGIN
 
 #define MAXSIZE_GROUP 256

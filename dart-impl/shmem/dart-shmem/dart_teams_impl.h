@@ -2,19 +2,11 @@
 #define DART_TEAMS_IMPL_H_INCLUDED
 
 #include <unistd.h>
-
 #include "dart_types.h"
 #include "dart_team_group.h"
 #include "dart_groups_impl.h"
 
-#ifdef __cplusplus
-#define EXTERN_C_BEGIN  extern "C" {
-#define EXTERN_C_END    }
-#else
-#define EXTERN_C_BEGIN
-#define EXTERN_C_END
-#endif
-
+#include "extern_c.h"
 EXTERN_C_BEGIN
 
 // max number of simultaneously existing teams
@@ -64,7 +56,6 @@ dart_ret_t dart_shmem_team_delete(dart_team_t team,
 				  dart_unit_t myid, size_t tsize );
 
 dart_ret_t dart_shmem_team_valid(dart_team_t team);
-
 
 
 EXTERN_C_END

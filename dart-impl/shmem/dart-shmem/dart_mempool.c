@@ -1,11 +1,12 @@
 
-#include "dart_mempool.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <unistd.h>
+
+#include "dart_mempool.h"
+#include "shmem_logger.h"
 
 // static helpers
 static void* add_to_pvoid(void* p, size_t size)

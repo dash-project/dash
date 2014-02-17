@@ -5,6 +5,9 @@
 #include <string.h>
 #include <stdio.h>
 
+#include "extern_c.h"
+EXTERN_C_BEGIN
+
 // KF #include "dart/dart_return_codes.h"
 // KF #include "dart/dart_gptr.h"
 
@@ -75,5 +78,7 @@ extern int _glob_myid;
 
 // KF
 //char* gptr_to_string(gptr_t ptr);
+
+EXTERN_C_END
 
 #endif /* SHMEM_LOGGER_H_INCLUDED */

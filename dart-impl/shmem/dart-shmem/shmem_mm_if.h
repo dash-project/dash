@@ -1,6 +1,9 @@
 #ifndef SHMEM_MM_H_INCLUDED
 #define SHMEM_MM_H_INCLUDED
 
+#include "extern_c.h"
+EXTERN_C_BEGIN
+
 /* Interface for SHMEM memory management */
 
 /*
@@ -22,5 +25,7 @@ void* shmem_mm_attach(int shmem_key);
  * detaches the shared-memory-segment
  */
 void shmem_mm_detach(void* addr);
+
+EXTERN_C_END
 
 #endif /* SHMEM_MM_H_INCLUDED */

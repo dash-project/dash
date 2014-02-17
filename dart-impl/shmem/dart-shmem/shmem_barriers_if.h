@@ -2,9 +2,11 @@
 #define SHMEM_BARRIER_IF_H_INCLUDED
 
 #include <pthread.h>
-
 #include "dart_types.h"
 #include "dart_teams_impl.h"
+
+#include "extern_c.h"
+EXTERN_C_BEGIN
 
 struct sysv_barrier
 {
@@ -57,5 +59,8 @@ int shmem_syncarea_barrier_wait(int slot);
 int sysv_barrier_create(sysv_barrier_t barrier, int num_procs);
 int sysv_barrier_destroy(sysv_barrier_t barrier);
 int sysv_barrier_await(sysv_barrier_t barrier);
+
+
+EXTERN_C_END
 
 #endif /* SHMEM_BARRIER_IF_H_INCLUDED */
