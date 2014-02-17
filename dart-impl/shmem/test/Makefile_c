@@ -3,6 +3,7 @@ DART_ROOT = $(shell pwd)/../..
 LIBDART   = $(DART_ROOT)/dart-shmem/libdart.a -lpthread
 DART_IF   = $(DART_ROOT)/../../dart-if/v2
 
+include $(DART_ROOT)/make.defs
 
 PWD  = $(shell basename `pwd`)
 PAT  = $(shell echo -n $(PWD) )
