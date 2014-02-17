@@ -9,6 +9,7 @@
 
 #include "../shmem_p2p_if.h"
 #include "../shmem_logger.h"
+#include "../shmem_barriers_if.h"
 #include "shmem_p2p_sysv.h"
 
 
