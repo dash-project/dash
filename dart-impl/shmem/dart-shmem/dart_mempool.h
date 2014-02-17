@@ -9,7 +9,7 @@ EXTERN_C_BEGIN
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "dart_mempool_private.h"
+#include "dart_mempool_priv.h"
 
 struct dart_opaque_mempool;
 typedef struct dart_opaque_mempool* dart_mempool;

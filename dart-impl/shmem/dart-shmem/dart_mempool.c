@@ -64,7 +64,8 @@ void dart_mempool_destroy(dart_mempool pool)
   free_mempool_list(pool->allocated);
   free(pool);
 }
-g
+
+
 int dart_mempool_free(dart_mempool pool, void* pos)
 {
   dart_mempool_list current = pool->allocated;
@@ -245,7 +246,7 @@ void dart_mempool_list_to_string(FILE* f, dart_mempool_list list)
   dart_mempool_list current = list;
   while (current != NULL )
     {
-      fprintf(f, "[pos:%p, size:%u],", current->pos, current->size);
+      fprintf(f, "[pos:%p, size:%zu],", current->pos, current->size);
       current = current->next;
     }
 }

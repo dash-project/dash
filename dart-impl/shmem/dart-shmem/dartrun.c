@@ -60,16 +60,17 @@ int dart_start(int argc, char* argv[])
   
   int shm_id = shmem_mm_create(syncarea_size);
   void* shm_addr = shmem_mm_attach(shm_id);
-  
+  int i;
+
   shmem_syncarea_init(nprocs, shm_addr, shm_id);
   
-  for (int i = 0; i < nprocs; i++)
+  for (i = 0; i < nprocs; i++)
     {
       dart_spawn(i, nprocs, shm_id, syncarea_size, 
 		 dashapp, argc, argv, nargs);
     }
   
-  for (int i = 0; i < nprocs; i++)
+  for(i = 0; i < nprocs; i++)
     {
       int status;
       pid_t pid = waitpid(-1, &status, 0);
@@ -113,7 +114,7 @@ pid_t dart_spawn(int id, int nprocs, int shm_id,
   sprintf(dartv[i++], "--dart-id=%d", id);
   sprintf(dartv[i++], "--dart-size=%d", nprocs);
   sprintf(dartv[i++], "--dart-syncarea_id=%d", shm_id);
-  sprintf(dartv[i++], "--dart-syncarea_size=%d", syncarea_size);
+  sprintf(dartv[i++], "--dart-syncarea_size=%zu", syncarea_size);
   
   pid = fork();
   if (pid == 0)

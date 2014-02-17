@@ -45,7 +45,7 @@ int dart_init_shmem(int *argc, char ***argv)
       DEBUG("dart_init got %d for --dart-syncarea_id", shm_id);
     }
     
-    if (sscanf((*argv)[i], "--dart-syncarea_size=%d", &stmp) > 0) {
+    if (sscanf((*argv)[i], "--dart-syncarea_size=%zu", &stmp) > 0) {
       syncarea_size = stmp;
       DEBUG("dart_init got %d for --dart-syncarea_size", 
 	    syncarea_size);
