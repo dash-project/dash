@@ -36,11 +36,27 @@ int shmem_syncarea_init(int numprocs, void* shm_addr, int shmid)
   sysv_barrier_create( &((area->teams[0]).barr), numprocs );
   area->teams[0].teamid = DART_TEAM_ALL;
   area->teams[0].inuse=1;
-
   area->nextid=1;
 
+  for( i=0; i<MAXNUM_UNITS; i++ ) {
+    area->unitstate[i] = UNIT_STATE_NOT_INITIALIZED;
+  }
+  
   return 0;
 }
+
+int shmem_syncarea_getunitstate(dart_unit_t unit)
+{ 
+  return area->unitstate[unit];
+}
+
+int shmem_syncarea_setunitstate(dart_unit_t unit, int state)
+{
+  int old = area->unitstate[unit];
+  area->unitstate[unit] = state;
+  return old;
+}
+
 
 int shmem_syncarea_delete(int numprocs, void* shm_addr, int shmid)
 {
