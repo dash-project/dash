@@ -1,11 +1,11 @@
 
 #include <unistd.h>
 #include <stdio.h>
-#include <dart.h>
 
 #include "../utils.h"
+#include <dart.h>
 
-#define NUMBARR 10000
+#define NUMBARR 1000
 
 int main(int argc, char* argv[])
 {
@@ -14,10 +14,10 @@ int main(int argc, char* argv[])
   size_t size;
   double tstart, tstop;
 
-  dart_init(&argc, &argv);
+  CHECK(dart_init(&argc, &argv));
 
-  dart_myid(&myid);
-  dart_size(&size);
+  CHECK(dart_myid(&myid));
+  CHECK(dart_size(&size));
 
   fprintf(stderr, "Hello World, I'm %d of %d\n",
 	  myid, size);
@@ -25,17 +25,17 @@ int main(int argc, char* argv[])
   if( myid==0 ) {
     sleep(1.0);
   }
-  dart_barrier(DART_TEAM_ALL);
+  CHECK(dart_barrier(DART_TEAM_ALL));
 
   fprintf(stderr, "Unit %d after barrier!\n", myid);
 
   if( myid==0 ) {
-    fprintf(stderr, "Doing %d barriers...\n", NUMBARR);
+    fprintf(stderr, "Doing %d barriers now...\n", NUMBARR);
   }
 
   TIMESTAMP(tstart);
   for(i=0; i<NUMBARR; i++ ) {
-    dart_barrier(DART_TEAM_ALL);
+    CHECK(dart_barrier(DART_TEAM_ALL));
   }
   TIMESTAMP(tstop);
 
@@ -43,5 +43,5 @@ int main(int argc, char* argv[])
     fprintf(stderr, "Done in %f secs!\n", tstop-tstart);
   }
 
-  dart_exit();
+  CHECK(dart_exit());
 }
