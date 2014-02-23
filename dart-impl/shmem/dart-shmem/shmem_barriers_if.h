@@ -27,14 +27,23 @@ struct sysv_team
   int                  inuse;
 };
 
+#define MAXNUM_UNITS   512
+
+#define UNIT_STATE_NOT_INITIALIZED  0
+#define UNIT_STATE_INITIALIZED      1
+#define UNIT_STATE_CLEAN_EXIT       2
 
 struct syncarea_struct
 {
   pthread_mutex_t lock;
   int             shmem_key;
   dart_team_t     nextid;
+
+  int unitstate[MAXNUM_UNITS];
   
   struct sysv_team teams[MAXNUM_TEAMS];
+
+  
 };
 
 typedef struct syncarea_struct* syncarea_t;
@@ -56,9 +65,14 @@ int shmem_syncarea_delteam(dart_team_t teamid, int numprocs);
 int shmem_syncarea_findteam(dart_team_t teamid);
 int shmem_syncarea_barrier_wait(int slot);
 
+int shmem_syncarea_getunitstate(dart_unit_t unit);
+int shmem_syncarea_setunitstate(dart_unit_t unit, int state);
+
 int sysv_barrier_create(sysv_barrier_t barrier, int num_procs);
 int sysv_barrier_destroy(sysv_barrier_t barrier);
 int sysv_barrier_await(sysv_barrier_t barrier);
+
+
 
 
 EXTERN_C_END

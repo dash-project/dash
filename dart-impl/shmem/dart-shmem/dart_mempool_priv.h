@@ -21,6 +21,7 @@ struct dart_opaque_mempool
   dart_mempool_list free;
   dart_mempool_list allocated;
   void* shm_address;
+  int localsize;
   int shm_id;
   size_t size;
 };

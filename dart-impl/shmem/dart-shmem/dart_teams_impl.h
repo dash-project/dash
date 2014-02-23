@@ -5,6 +5,7 @@
 #include "dart_types.h"
 #include "dart_team_group.h"
 #include "dart_groups_impl.h"
+#include "dart_memarea.h"
 
 #include "extern_c.h"
 EXTERN_C_BEGIN
@@ -17,6 +18,7 @@ enum state_enum
   VALID,
   NOT_INITIALIZED
 };
+
 
 struct team_impl_struct 
 {
@@ -32,9 +34,7 @@ struct team_impl_struct
   // the team members;
   dart_group_t group;
   
-  // associated mempools (may be DART_MEMPOOL_NULL)
-  // KF dart_mempool mempools[2];
-  // KF int unique_id;
+  dart_memarea_t mem;
 };
 
 
@@ -57,6 +57,7 @@ dart_ret_t dart_shmem_team_delete(dart_team_t team,
 
 dart_ret_t dart_shmem_team_valid(dart_team_t team);
 
+dart_memarea_t *dart_shmem_team_get_memarea(dart_team_t team);
 
 EXTERN_C_END
 

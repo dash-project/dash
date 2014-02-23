@@ -10,18 +10,23 @@
 
 dart_ret_t dart_barrier(dart_team_t teamid)
 {
+  dart_ret_t ret;
+
   if( teamid==DART_TEAM_ALL ) {
     shmem_syncarea_barrier_wait(0);
+    ret = DART_OK;
   } else {
     int slot;
     slot = shmem_syncarea_findteam(teamid);
     if( 0<=slot && slot<MAXNUM_TEAMS ) {
       shmem_syncarea_barrier_wait(slot);
+      ret = DART_OK;
+    } else {
+      ret = DART_ERR_NOTFOUND;
     }
   }
-
-  // todo: barrier on the other teams
-  return DART_OK;
+  
+  return ret;
 }
 
 
@@ -36,22 +41,29 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes,
   dart_team_myid(team, &myid);
   dart_team_size(team, &size);
 
+  // TODO: this barrier was necessary to
+  // make the bcast test case working reliably
+  dart_barrier(team);
+
   DEBUG("dart_bcast on team %d, root=%d, tsize=%d", team, root, size);
   if( myid==root ) 
     {
       for(i=0; i<size; i++) {
 	if( i!=root ) {
-	  DEBUG("dart_bcast sending to %d", i);
+	  DEBUG("dart_bcast sending to %d %d bytes", i, nbytes);
 	  dart_shmem_send(buf, nbytes, team, i);
 	}
       } 
   } 
   else 
     {
+      DEBUG("dart_bcast receiving from %d %d bytes", root, nbytes);
       dart_shmem_recv(buf, nbytes, team, root);
     }
 
-  //shmem_barriers_barrier_wait(team);
+  // TODO: this barrier was necessary to
+  // make the bcast test case working reliably
+  dart_barrier(team);
 
   return DART_OK;
 }

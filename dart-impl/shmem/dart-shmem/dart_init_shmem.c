@@ -53,14 +53,17 @@ int dart_init_shmem(int *argc, char ***argv)
 	    syncarea_size);
     }
   }
+
+  if (myid < 0 || team_size < 1)  {
+    fprintf(stderr, "ABORT: This program must be started with dartrun!\n");
+    fprintf(stderr, "\n");
+    exit(1);
+    //    return DART_ERR_OTHER;
+  }
   
   // DART args are passed at the end
   *argc -= NUM_DART_ARGS;
   (*argv)[*argc] = NULL;
-  
-  if (myid < 0 || team_size < 1)  {
-    return DART_ERR_OTHER;
-  }
   
   DEBUG("dart_init attaching shm %d...", shm_id);
   void* syncarea = shmem_mm_attach(shm_id);
@@ -102,6 +105,11 @@ dart_ret_t dart_exit_shmem()
 	    dart_shmem_team_delete(DART_TEAM_ALL,
 				   myid, tsize)
 	    );
+
+  shmem_syncarea_setunitstate(myid, 
+			      UNIT_STATE_CLEAN_EXIT);
+
+
 
   /* KF
   int size = dart_team_size(DART_TEAM_ALL);

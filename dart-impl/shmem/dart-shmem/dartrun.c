@@ -1,16 +1,28 @@
 
+#define _POSIX_SOURCE
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <dirent.h>
+#include <signal.h>
 
 #include "dart_shmem.h"
 #include "shmem_logger.h"
 #include "shmem_barriers_if.h"
 #include "shmem_mm_if.h"
 
+typedef struct
+{
+  int aborted;
+  pid_t pid;
+} spawn_t;
+
+spawn_t spawntable[MAXNUM_UNITS];
 
 int  dart_start(int argc, char* argv[]);
 void dart_usage(char *s);
@@ -20,9 +32,17 @@ pid_t dart_spawn(int id, int nprocs, int shm_id,
 		 char *exec, int argc, char **argv,
 		 int nargs);
 
+void dartrun_cleanup(int shmem_id);
+
 
 int main( int argc, char* argv[] )
 {
+  int i;
+  for(i=0; i<MAXNUM_UNITS; i++ ) {
+    spawntable[i].pid=0;
+    spawntable[i].aborted=0;
+  }
+
   int ret = dart_start(argc, argv);
   if(ret!=0) dart_usage(argv[0]);
 }
@@ -60,27 +80,60 @@ int dart_start(int argc, char* argv[])
   
   int shm_id = shmem_mm_create(syncarea_size);
   void* shm_addr = shmem_mm_attach(shm_id);
-  int i;
+  int i, j;
 
   shmem_syncarea_init(nprocs, shm_addr, shm_id);
   
   for (i = 0; i < nprocs; i++)
     {
-      dart_spawn(i, nprocs, shm_id, syncarea_size, 
-		 dashapp, argc, argv, nargs);
+      pid_t spid;
+      
+      spid = dart_spawn(i, nprocs, shm_id, syncarea_size, 
+			dashapp, argc, argv, nargs);
+      
+      spawntable[i].pid = spid;
     }
   
-  for(i = 0; i < nprocs; i++)
+  int abort=0;
+  for( i=0; i < nprocs; i++ )
     {
       int status;
       pid_t pid = waitpid(-1, &status, 0);
       DEBUG("child process %d terminated\n", pid);
+      
+      int found=0;
+      for( j=0; j<MAXNUM_UNITS; j++ ) {
+	if( spawntable[j].pid==pid  ) {
+	  found=1;
+	  break;
+	}
+      }
+
+      if( found && shmem_syncarea_getunitstate(j) != 
+	  UNIT_STATE_CLEAN_EXIT ) {
+	ERROR("Unit %d terminated, aborting!", j);
+	spawntable[j].aborted=1;
+	abort=1;
+	break;
+      }
     }
+
+  if( abort ) {
+    for( i=0; i < nprocs; i++ )
+      {
+	if( spawntable[i].pid!=0 && 
+	    !spawntable[i].aborted ) {
+	  kill( spawntable[i].pid, SIGTERM );
+	}
+      }
+  }
   
   shmem_syncarea_delete(nprocs, shm_addr, shm_id);
 
   shmem_mm_detach(shm_addr);
   shmem_mm_destroy(shm_id);
+
+  dartrun_cleanup(shm_id);
   return 0;
 }
 
@@ -131,3 +184,33 @@ pid_t dart_spawn(int id, int nprocs, int shm_id,
 }
 
 
+#define DART_SYSV_TMP_DIR "/tmp/"
+#define DART_SYSV_TMP_PAT "sysv-%d"
+
+// clean up any resources that have not been 
+// freed by the launched processes
+void dartrun_cleanup(int shmem_id)
+{
+  int ret;
+  DIR *dirp;
+  struct dirent *dp;
+  char pat[80]; char *s;
+  char fname[256];
+
+  sprintf(pat, DART_SYSV_TMP_PAT, shmem_id);
+  dirp = opendir(DART_SYSV_TMP_DIR);
+
+  // try to find leftover files and delete them
+  while( (dp=readdir(dirp))!=NULL ) {
+    if( s=strstr(dp->d_name, pat) ) {
+      sprintf(fname, "%s/%s", DART_SYSV_TMP_DIR,
+	      dp->d_name);
+      ret = unlink(fname);
+      if( ret!=0 ) {
+	ERROR("Couldn't delete file %s", fname);
+      }
+    }
+  }
+  
+  closedir(dirp);
+}

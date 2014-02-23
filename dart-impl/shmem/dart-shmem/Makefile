@@ -14,7 +14,10 @@ FILES = dart_init_impl dart_init_shmem 	    	\
 	sysv/shmem_barriers_sysv 		\
 	sysv/shmem_mm_sysv			\
 	sysv/shmem_p2p_sysv			\
-	dart_mempool
+	dart_mempool				\
+	dart_memarea				\
+	dart_malloc				\
+	dart_onesided
 
 
 OBJS = $(addsuffix .o, $(FILES))

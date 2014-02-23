@@ -157,8 +157,10 @@ dart_ret_t dart_team_destroy(dart_team_t teamid)
   
   dart_ret_t ret;
   ret = dart_shmem_team_valid(teamid);
-  if( ret!=DART_OK )
+  if( ret!=DART_OK ) {
+    fprintf(stderr, "got %d\n", ret);
     return ret;
+  }
 
   dart_barrier(teamid);
 
@@ -231,7 +233,6 @@ dart_ret_t dart_size(size_t *size)
 }
 
 
-
 int dart_shmem_team_new( dart_team_t *team, 
 			 size_t tsize )
 {
@@ -279,6 +280,24 @@ dart_ret_t dart_shmem_team_init( dart_team_t team,
   // todo: check return value of below 
   dart_shmem_p2p_init(team, tsize, myid, shmid);
   
+
+  // --- from here on, we can use 
+  //          communication in the new team ---
+
+  dart_memarea_init( &(teams[slot].mem) );
+  
+  if( team==DART_TEAM_ALL ) 
+    {
+      // init the default mempool
+      dart_memarea_create_mempool( &(teams[slot].mem),
+				   0,
+				   DART_TEAM_ALL,
+				   myid,
+				   tsize,
+				   4096 );
+    }
+  
+  
   teams[slot].state=VALID;
   return DART_OK;
 }
@@ -288,6 +307,7 @@ dart_ret_t dart_shmem_team_init( dart_team_t team,
 dart_ret_t dart_shmem_team_delete(dart_team_t teamid,
 				  dart_unit_t myid, size_t tsize )
 {
+  int slot;
   dart_ret_t ret;
   
   ret=dart_shmem_team_valid(teamid);
@@ -296,6 +316,12 @@ dart_ret_t dart_shmem_team_delete(dart_team_t teamid,
 
   int shmid = shmem_syncarea_get_shmid();
 
+  slot = shmem_syncarea_findteam(teamid);
+  dart_memarea_destroy_mempool( &(teams[slot].mem),
+				0,
+				teamid,
+				myid );
+  
   // todo: check return value of below
   dart_shmem_p2p_destroy(teamid, tsize, myid, shmid);
 
@@ -303,6 +329,8 @@ dart_ret_t dart_shmem_team_delete(dart_team_t teamid,
   if( myid==0 ) {
     shmem_syncarea_delteam(teamid, tsize);
   }
+
+
 
   return DART_OK;
 }
@@ -322,3 +350,19 @@ dart_ret_t dart_shmem_team_valid(dart_team_t team)
   return DART_ERR_NOTFOUND;
 }
 
+
+dart_memarea_t *dart_shmem_team_get_memarea(dart_team_t team) 
+{
+  int i;
+  dart_memarea_t *ret=0;
+  
+  for( i=0; i<MAXNUM_TEAMS; i++ ) {
+    if( teams[i].state==VALID && 
+	teams[i].teamid==team ) {
+      ret = &(teams[i].mem);
+      break;
+    }
+  }
+
+  return ret;
+}
