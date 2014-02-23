@@ -191,7 +191,6 @@ dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
 	*myid = teams[slot].myid; 
 	ret=DART_OK;
       } else {
-	*myid = DART_UNIT_NIL;
 	ret=DART_ERR_INVAL;
       }
     }
