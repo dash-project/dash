@@ -152,11 +152,11 @@ dart_ret_t dart_adapt_wait (dart_handle_t handle)
 	win = handle -> mpi_win;
 	MPI_Wait (&mpi_req, &mpi_sta);
 	handle -> request = mpi_req; 
-#endi#000059
+#endif
 	MPI_Win win;
 	dart_unit_t target_unitid;
 	win = handle -> mpi_win;
-	target_unitid = h#000000#000000andle -> unitid;
+	target_unitid = handle -> unitid;
 	MPI_Win_flush (target_unitid, win);
 	printf ("WAIT	- target %d finished\n", target_unitid);
 }
