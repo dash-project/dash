@@ -1,0 +1,10 @@
+
+# where the DART interface is located
+DART_IF = ../../dart-if/v2.1
+
+CC      = gcc -std=c99
+CXX     = g++ -std=c++0x
+MPICC	= cc 
+#mpicc
+MPICXX	= CC
+#mpic++
