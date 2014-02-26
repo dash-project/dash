@@ -54,7 +54,7 @@ int test_union( dart_group_t *g1,
 		dart_group_t *g2, 
 		dart_group_t *g3 )
 {
-  int i;
+  int i, j;
   int mem1[5] = {0,2,5,6,33};
   int mem2[5] = {5,1,7,11,22};
   int mem3[10];
@@ -77,10 +77,22 @@ int test_union( dart_group_t *g1,
   CHECK(dart_group_size(g3, &nmemb));
   CHECK(dart_group_getmembers(g3, mem3));
   
+  if( nmemb!=9 )
+    return 0;
+
   int pass=1;
   for(i=0; i<nmemb; i++ ) {
-    // fprintf(stderr, "%d =?= %d\n", mem3[i], mem4[i]);
-    if( mem3[i]!=mem4[i] ) pass=0;
+    int found=0;
+    for( j=0; j<nmemb; j++ ) {
+      if( mem3[i]==mem4[j] ) {
+	found=1;
+	break;
+      }
+    }
+    if(!found) {
+      pass=0;
+      break;
+    }
   } 
 
   CHECK(dart_group_fini(g1));
@@ -95,7 +107,7 @@ int test_intersect( dart_group_t *g1,
 		    dart_group_t *g2, 
 		    dart_group_t *g3 )
 {
-  int i;
+  int i, j;
   int mem1[5] = {0,2,5,6,33};
   int mem2[5] = {5,1,7,11,22};
   int mem3[10];
@@ -118,10 +130,23 @@ int test_intersect( dart_group_t *g1,
   CHECK(dart_group_size(g3, &nmemb));
   CHECK(dart_group_getmembers(g3, mem3));
 
+
+  if( nmemb!=1 )
+    return 0;
+
   int pass=1;
   for(i=0; i<nmemb; i++ ) {
-    // fprintf(stderr, "%d =?= %d\n", mem3[i], mem4[i]);
-    if( mem3[i]!=mem4[i] ) pass=0;
+    int found=0;
+    for( j=0; j<nmemb; j++ ) {
+      if( mem3[i]==mem4[j] ) {
+	found=1;
+	break;
+      }
+    }
+    if(!found) {
+      pass=0;
+      break;
+    }
   } 
 
   CHECK(dart_group_fini(g1));
