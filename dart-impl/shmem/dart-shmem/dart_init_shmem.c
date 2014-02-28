@@ -72,9 +72,14 @@ int dart_init_shmem(int *argc, char ***argv)
   DEBUG("dart_init initializing interal sync area...%s", "");
   shmem_syncarea_setaddr(syncarea);
 
+  // we can pass a zero pointer as a group 
+  // spec, because dart_shmem_team_init will 
+  // take care of initializing the group for
+  // dart_team_all
   assert(DART_TEAM_ALL==0);
   dart_shmem_team_init(DART_TEAM_ALL,
-		       myid, team_size);
+		       myid, team_size,
+		       0);
 
   /* KF
   DEBUG("dart_init %s", "teams_init");

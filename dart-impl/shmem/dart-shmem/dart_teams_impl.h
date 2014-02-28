@@ -49,8 +49,8 @@ int dart_shmem_team_new(dart_team_t *team,
 			size_t tsize );
 
 // init the local data structures associated with a team
-dart_ret_t dart_shmem_team_init(dart_team_t team,
-				dart_unit_t myid, size_t tsize );
+dart_ret_t dart_shmem_team_init(dart_team_t team, dart_unit_t myid, 
+				size_t tsize, const dart_group_t *group);
 
 dart_ret_t dart_shmem_team_delete(dart_team_t team,
 				  dart_unit_t myid, size_t tsize );

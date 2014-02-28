@@ -6,6 +6,9 @@
 #include <time.h>
 #include <stdio.h>
 
+#ifndef MAXSIZE_GROUP
+#define MAXSIZE_GROUP 256
+#endif
 
 #define MYTIMEVAL( tv_ )			\
   ((tv_.tv_sec)+(tv_.tv_usec)*1.0e-6)
@@ -32,5 +35,26 @@
       fflush(stderr);                                                \
     }                                                                \
   } while(0)
+
+
+#define GROUP_SPRINTF(buf_, group_)					\
+  do {									\
+    size_t size;							\
+    char *str;								\
+    int i,len;								\
+    dart_unit_t members[MAXSIZE_GROUP];					\
+    dart_group_size(group_, &size);					\
+    dart_group_getmembers(group_, members);				\
+    str=buf_;								\
+    len=sprintf(str, "size=%d members=", size);				\
+    str=str+len;							\
+    for( i=0; i<size; i++ ) {						\
+      len=sprintf(str, "%d ", members[i]);				\
+      str=str+len;							\
+    }									\
+  }									\
+  while(0)
+
+
 
 #endif /* UTILS_H_INCLUDED */
