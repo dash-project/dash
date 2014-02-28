@@ -1,9 +1,14 @@
 #include <stdio.h>
-#include "dart_types.h"
+#include <dart_types.h>
 #include "dart_globmem.h"
 #include "dart_team_group.h"
 #include "dart_communication.h"
 
+#include "adapt/dart_adapt_synchronization.h"
+#include "adapt/dart_adapt_initialization.h"
+#include "adapt/dart_adapt_globmem.h"
+#include "adapt/dart_adapt_team_group.h"
+#include "adapt/dart_adapt_communication.h"
 
 
 dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t *handle)

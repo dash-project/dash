@@ -1,8 +1,12 @@
 #include <stdio.h>
-#include <dart_types.h>
+#include "dart_types.h"
 #include "dart_globmem.h"
 
-
+#include "adapt/dart_adapt_synchronization.h"
+#include "adapt/dart_adapt_initialization.h"
+#include "adapt/dart_adapt_globmem.h"
+#include "adapt/dart_adapt_team_group.h"
+#include "adapt/dart_adapt_communication.h"
 dart_ret_t dart_gptr_getaddr (dart_gptr_t gptr, void* addr)
 {
            return	dart_adapt_gptr_getaddr (gptr, addr);

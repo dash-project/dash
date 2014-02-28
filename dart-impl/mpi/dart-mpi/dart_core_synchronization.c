@@ -1,7 +1,12 @@
 #include <stdio.h>
-#include <dart_types.h>
+#include "dart_types.h"
 #include "dart_synchronization.h"
 
+#include "adapt/dart_adapt_synchronization.h"
+#include "adapt/dart_adapt_initialization.h"
+#include "adapt/dart_adapt_globmem.h"
+#include "adapt/dart_adapt_team_group.h"
+#include "adapt/dart_adapt_communication.h"
 
 dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 {

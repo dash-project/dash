@@ -1,7 +1,12 @@
 #include <stdio.h>
-#include <dart_types.h>
+#include "dart_types.h"
 #include "dart_team_group.h"
 
+#include "adapt/dart_adapt_synchronization.h"
+#include "adapt/dart_adapt_initialization.h"
+#include "adapt/dart_adapt_globmem.h"
+#include "adapt/dart_adapt_team_group.h"
+#include "adapt/dart_adapt_communication.h"
 
 
 dart_ret_t dart_group_init (dart_group_t *group)
@@ -12,15 +17,15 @@ dart_ret_t dart_group_fini (dart_group_t *group)
 {
            return dart_adapt_group_fini (group);
 }
-/*dart_ret_t dart_group_copy (dart_group_t *gin, dart_group_t *gout)
+/*dart_ret_t dart_group_copy (dart_group_t gin, dart_group_t gout)
 {
            return dart_adapt_group_copy(gin, gout);
 }
-dart_ret_t dart_group_union (dart_group_t *g1, dart_group_t *g2, dart_group_t *g3)
+dart_ret_t dart_group_union (dart_group_t g1, dart_group_t g2, dart_group_t gout)
 {
 	       return dart_adapt_group_union (g1, g2, gout);
 }
-dart_ret_t dart_group_intersect (dart_group_t *g1, dart_group_t *g2, dart_group_t *g3)
+dart_ret_t dart_group_intersect (dart_group_t g1, dart_group_t g2, dart_group_t gout)
 {
 		   return dart_adapt_group_intersect (g1, g2, gout);
 }*/
