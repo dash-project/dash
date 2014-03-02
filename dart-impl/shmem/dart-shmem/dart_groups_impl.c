@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "dart_types.h"
 #include "dart_team_group.h"
 #include "dart_groups_impl.h"
@@ -152,7 +154,7 @@ dart_ret_t dart_group_getmembers(const dart_group_t *g, int32_t *unitids)
 }
 
 dart_ret_t dart_group_split(const dart_group_t *g, size_t nsplits,
-                            dart_group_t *gsplit)
+                            dart_group_t **gsplit)
 {
   int i, j, k;
   int nmem = (g->nmem);
@@ -164,14 +166,15 @@ dart_ret_t dart_group_split(const dart_group_t *g, size_t nsplits,
   for (i = 0; i < nsplits; i++)
     {
       bsize = (i < brem) ? (bdiv + 1) : bdiv;
-      dart_group_init(&(gsplit[i]));
-      
+      dart_group_init(gsplit[i]);
+
       for (k = 0; (k < bsize) && (j < nmem); k++, j++)
 	{
-	  (gsplit[i].g2l)[g->l2g[j]] = 1;
+	  //fprintf(stderr, "%d %d %d -- %d\n", i, j, k, g->l2g[j]);
+	  (gsplit[i]->g2l)[g->l2g[j]] = 1;
 	}
       
-      group_rebuild(&(gsplit[i]));
+      group_rebuild(gsplit[i]);
     }
   
   return DART_OK;

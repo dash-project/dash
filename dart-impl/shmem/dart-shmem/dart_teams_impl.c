@@ -74,7 +74,7 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
   dart_team_unit_l2g(oldteamid, 
 		     oldmyid, &oldmyid_global);
   
-  /*
+  /*  
   fprintf(stderr, 
 	  "dart_team_create: "
 	  "oldteamid=%d, oldsize=%d, oldmyid=%d, oldmyid_global=%d\n", 
@@ -120,7 +120,11 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
       // STEP 5: master calls dart_shmem_team_new
       nmsg.slot = dart_shmem_team_new(&(nmsg.teamid), 
 				      newsize);
-      
+
+      if( !SLOT_IS_VALID(nmsg.slot) ) {
+	ERROR("dart_shmem_team_new failed", "");
+      }
+
       // STEP 6: send out info to all other members
       nmsg.newid=1;
       for( i=0; i<globalsize; i++ ) {
@@ -171,20 +175,20 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
       slot = shmem_syncarea_findteam(nmsg.teamid);	
 
       
+      /*
       fprintf(stderr, 
-	      "dart_team_create: "
+      "dart_team_create: "
 	      "oldteamid=%d, nmsg.teamid=%d, nmsg.newid=%d, nmsg.size=%d, slot=%d\n",
 	      oldteamid, nmsg.teamid, nmsg.newid, nmsg.size, slot);
-      
+      */
 
       if( SLOT_IS_VALID(slot) ) {
 	teams[slot].myid = nmsg.newid; 
 	(*newteam)=nmsg.teamid;
       } else {
-	// todo: handle error
+	ERROR("dart_shmem_team_init failed", "");
       }
     }
-  
 
   dart_barrier(oldteamid);
 
@@ -295,7 +299,7 @@ int dart_shmem_team_new( dart_team_t *team,
   slot = shmem_syncarea_newteam(&newteam, tsize);
   if( SLOT_IS_VALID(slot) ){
     (*team)=newteam;
-  }
+  } 
   return slot;
 }
 
