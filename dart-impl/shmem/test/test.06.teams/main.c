@@ -7,9 +7,29 @@
 
 #define REPEAT 100
 
-dart_ret_t split_even_odd_by_local_ids(dart_team_t teamin, 
-				       dart_team_t *teameven, 
-				       dart_team_t *teamodd)
+// split the input team into an "odd" and an "even" 
+// subteam, where odd and even are determined by 
+// a unit's ID in the parent team (not by the global ID)
+//
+// Example:
+// Using the notation g.l (g=global id, l=local id)
+//
+// {0.0, 1.1, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7} ->
+//    {0.0, 2.1, 4.2, 6.3}
+//    {1.0, 3.1, 5.2, 7.3}
+//
+// {0.0, 2.1, 4.2, 6.3} ->
+//    {0.0, 4.1}
+//    {2.0, 6.1}
+//
+// {1.0, 3.1, 5.2, 7.3} ->
+//    {1.0, 5.1}
+//    {3.0, 7.1}
+
+dart_ret_t 
+split_even_odd_by_local_ids(dart_team_t teamin, 
+			    dart_team_t *teameven, 
+			    dart_team_t *teamodd)
 {
   char buf[200];
   
@@ -30,13 +50,12 @@ dart_ret_t split_even_odd_by_local_ids(dart_team_t teamin,
   CHECK(dart_team_get_group(teamin, gin));
 
   /*  
-  GROUP_SPRINTF(buf, gin);
-  fprintf(stderr, "Group to split: %s\n", buf);
+      GROUP_SPRINTF(buf, gin);
+      fprintf(stderr, "Group to split: %s\n", buf);
   */
-
+  
   size_t insize;
   CHECK(dart_team_size(teamin, &insize));
-  //  fprintf(stderr, "Teamsize: %d\n", insize);
   
   for(int i=0; i<insize; i++ ) {
     dart_unit_t globid;
@@ -51,16 +70,16 @@ dart_ret_t split_even_odd_by_local_ids(dart_team_t teamin,
   }
   
   /*
-  GROUP_SPRINTF(buf, geven);
-  fprintf(stderr, "Group even: %s\n", buf);
+    GROUP_SPRINTF(buf, geven);
+    fprintf(stderr, "Group even: %s\n", buf);
   */  
-
-  /*
-  GROUP_SPRINTF(buf, godd);
-  fprintf(stderr, "Group odd: %s\n", buf);
   
+  /*
+    GROUP_SPRINTF(buf, godd);
+    fprintf(stderr, "Group odd: %s\n", buf);
+    
   */
-
+  
   CHECK(dart_team_create(teamin, geven, teameven));
   CHECK(dart_team_create(teamin, godd, teamodd));
 
@@ -78,41 +97,38 @@ dart_ret_t split_even_odd_by_local_ids(dart_team_t teamin,
 
 
 void recursive_split(int level, 
-		     dart_team_t tin)
+		     dart_team_t inteam)
 {
   size_t insize;
-  dart_unit_t oldid;
+  dart_unit_t inid;
   dart_team_t team1, team2;
 
-  fprintf(stderr, "splitting team %d on level %d\n", tin, level);
-
-  dart_team_size(tin, &insize);
-  dart_team_myid(tin, &oldid);
+  CHECK(dart_team_size(inteam, &insize));
+  CHECK(dart_team_myid(inteam, &inid));
 
   if( insize<2 ) 
     return;
 
-  team1=DART_TEAM_ALL;
-  team2=DART_TEAM_ALL;
-  split_even_odd_by_local_ids(tin, &team1, &team2);
+  if( inid==0 ) {
+    fprintf(stderr, 
+	    "Splitting team %d (size=%d) on level %d\n", 
+	    inteam, insize, level);
+  }
+
+  team1=DART_TEAM_NIL;
+  team2=DART_TEAM_NIL;
+  split_even_odd_by_local_ids(inteam, &team1, &team2);
 
   dart_unit_t id;
-
-  
   if( dart_team_myid(team1, &id)==DART_OK ) {
-    //  if( level<3 ) {
-      recursive_split(level+1, team1);
-      //}
-  }
-  
-  
-  if( dart_team_myid(team2, &id)==DART_OK ) {
-    //if( level<3 ) {
-      recursive_split(level+1, team2);
-      //}
+    recursive_split(level+1, team1);
   }
 
-  dart_barrier(tin);
+  if( dart_team_myid(team2, &id)==DART_OK ) {
+    recursive_split(level+1, team2);
+  }
+
+  dart_barrier(inteam);
 }
 
 
@@ -129,6 +145,8 @@ int main(int argc, char* argv[])
   
   fprintf(stderr, "Hello World, I'm %d of %d\n",
 	  myid, size);
+  
+  CHECK(dart_barrier(DART_TEAM_ALL));
 
   recursive_split(1, DART_TEAM_ALL);
 

@@ -37,23 +37,23 @@
   } while(0)
 
 
-#define GROUP_SPRINTF(buf_, group_)					\
+#define GROUP_SPRINTF(_buf, _group)					\
   do {									\
-    size_t size;							\
-    char *str;								\
-    int i,len;								\
-    dart_unit_t members[MAXSIZE_GROUP];					\
-    dart_group_size(group_, &size);					\
-    dart_group_getmembers(group_, members);				\
-    str=buf_;								\
-    len=sprintf(str, "size=%d members=", size);				\
-    str=str+len;							\
-    for( i=0; i<size; i++ ) {						\
-      len=sprintf(str, "%d ", members[i]);				\
-      str=str+len;							\
+    size_t _size;							\
+    char *_str;								\
+    int _i, _len;							\
+    dart_unit_t _members[MAXSIZE_GROUP];				\
+    dart_group_size(_group, &_size);					\
+    dart_group_getmembers(_group, _members);				\
+    _str=_buf;								\
+    _len=sprintf(_str, "size=%d members=", _size);			\
+    _str=_str+_len;							\
+    for( _i=0; _i<_size; _i++ ) {					\
+      _len=sprintf(_str, "%d ", _members[_i]);				\
+      _str=_str+_len;							\
     }									\
   }									\
-  while(0)
+  while(0) 
 
 
 

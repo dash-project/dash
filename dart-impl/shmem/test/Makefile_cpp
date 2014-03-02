@@ -20,10 +20,10 @@ $(LIBDART) :
 	make -C $(DART_ROOT)/dart-shmem/
 
 $(PROG) : main.o
-	$(CC) $(LFLGAS) -o $@ $+ $(LIBDART)
+	$(CXX) $(LFLGAS) -o $@ $+ $(LIBDART)
 
-%.o 	: %.c 
-	$(CC) -c $(CFLAGS) -I$(DART_INC) $+
+%.o 	: %.cpp 
+	$(CXX) -c $(CFLAGS) -I$(DART_INC) $+
 
 clean : 
 	rm -f *.o *~
