@@ -25,7 +25,7 @@ typedef struct
 spawn_t spawntable[MAXNUM_UNITS];
 
 int  dart_start(int argc, char* argv[]);
-void dart_usage(char *s);
+dart_ret_t dart_usage(char *s);
 
 pid_t dart_spawn(int id, int nprocs, int shm_id, 
 		 size_t syncarea_size,
@@ -137,11 +137,12 @@ int dart_start(int argc, char* argv[])
   return 0;
 }
 
-void dart_usage(char *s)
+dart_ret_t dart_usage(char *s)
 {
   fprintf(stderr, 
 	  "Usage: %s [-n <n>] <executable> <args> \n"
 	  "       runs n copies of executable\n", s);
+  return DART_OK;
 }
 
 pid_t dart_spawn(int id, int nprocs, int shm_id, 

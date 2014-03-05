@@ -33,8 +33,12 @@ struct team_impl_struct
   
   // the team members;
   dart_group_t group;
+
+  int mempoolid_aligned[MAXNUM_MEMPOOLS];
+  int mempoolid_unaligned[MAXNUM_MEMPOOLS];
   
-  dart_memarea_t mem;
+  //  dart_memarea_t mem;
+  
 };
 
 
@@ -57,7 +61,7 @@ dart_ret_t dart_shmem_team_delete(dart_team_t team,
 
 dart_ret_t dart_shmem_team_valid(dart_team_t team);
 
-dart_memarea_t *dart_shmem_team_get_memarea(dart_team_t team);
+//dart_memarea_t *dart_shmem_team_get_memarea(dart_team_t team);
 
 EXTERN_C_END
 

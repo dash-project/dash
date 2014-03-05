@@ -308,15 +308,22 @@ dart_ret_t dart_shmem_team_init( dart_team_t team, dart_unit_t myid,
 				 size_t tsize, 
 				 const dart_group_t *group)
 {
-  int i, slot;
+  int i, j, slot;
   
   if( team==DART_TEAM_ALL )  {
     // init all data structures for all teams
     for( i=0; i<MAXNUM_TEAMS; i++ ) {
       teams[i].syncslot=-1;
       teams[i].state=NOT_INITIALIZED;
+      
+      for( j=0; j<MAXNUM_MEMPOOLS; j++ ) {
+	teams[i].mempoolid_aligned[j]=-1;
+	teams[i].mempoolid_unaligned[j]=-1;
+      }
     }
-    
+
+    dart_memarea_init();
+
     slot=0;
   } else {
     slot = shmem_syncarea_findteam(team);
@@ -348,19 +355,19 @@ dart_ret_t dart_shmem_team_init( dart_team_t team, dart_unit_t myid,
   // --- from here on, we can use 
   //          communication in the new team ---
 
-  dart_memarea_init( &(teams[slot].mem) );
-  
   if( team==DART_TEAM_ALL ) 
     {
-      // init the default mempool
-      dart_memarea_create_mempool( &(teams[slot].mem),
-				   0,
-				   DART_TEAM_ALL,
-				   myid,
-				   tsize,
-				   4096 );
+      int res;
+      res = dart_memarea_create_mempool( DART_TEAM_ALL,
+					 tsize, 
+					 myid, 
+					 4096,
+					 0 /* not aligned */ );
+
+      fprintf(stderr, "created a mempool=%d\n", res);
+
+      teams[DART_TEAM_ALL].mempoolid_unaligned[0]=res;
     }
-  
   
   teams[slot].state=VALID;
   return DART_OK;
@@ -381,10 +388,13 @@ dart_ret_t dart_shmem_team_delete(dart_team_t teamid,
   int shmid = shmem_syncarea_get_shmid();
 
   slot = shmem_syncarea_findteam(teamid);
+
+#if 0
   dart_memarea_destroy_mempool( &(teams[slot].mem),
 				0,
 				teamid,
 				myid );
+#endif 
   
   // todo: check return value of below
   dart_shmem_p2p_destroy(teamid, tsize, myid, shmid);
@@ -435,7 +445,7 @@ dart_ret_t dart_shmem_team_valid(dart_team_t team)
   return DART_ERR_NOTFOUND;
 }
 
-
+#if 0
 dart_memarea_t *dart_shmem_team_get_memarea(dart_team_t team) 
 {
   int i;
@@ -451,6 +461,7 @@ dart_memarea_t *dart_shmem_team_get_memarea(dart_team_t team)
 
   return ret;
 }
+#endif
 
 
 dart_ret_t dart_team_unit_l2g(dart_team_t teamid, 

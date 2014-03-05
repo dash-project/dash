@@ -24,59 +24,74 @@ dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr);
 
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
 {
+  dart_mempoolptr pool;
+  int poolid;
+  char *base;
   void *ptr; 
-  dart_mempool pool;
-  dart_memarea_t *mem;
-  
-  mem = dart_shmem_team_get_memarea(DART_TEAM_ALL);
-  if(!mem) return DART_ERR_OTHER;
 
-  pool = dart_memarea_get_mempool_unaligned(mem, 0);
-  if(!pool) return DART_ERR_OTHER;
+  poolid = gptr.segid;
   
-  ptr = gptr.addr_or_offs.offset + ((char*)pool->shm_address);
-  
+  pool = dart_memarea_get_mempool_by_id(poolid);
+  if(!pool ) 
+    return DART_ERR_OTHER;
+
+  base = (char*)(pool->base_addr);
+  ptr = base + gptr.addr_or_offs.offset;
   (*addr) = ptr; 
+
   return DART_OK;
 }
 
 
+//
+// unaligned allocation in the mempool of 
+// DART_TEAM_All (to make the memory accessibly 
+// by all units)
+//
 dart_ret_t dart_memalloc(size_t nbytes,
 			 dart_gptr_t *gptr)
 {
-  dart_mempool pool;
-  dart_memarea_t *mem;
   dart_unit_t myid;
+  dart_mempoolptr pool;
+  dart_membucket bucket;
+  int poolid;
 
-  if(!gptr) return DART_ERR_INVAL;
+  // 1. find the right pool id in DART_TEAM_ALL for the allocation
+  // 2. get the mempool using this pool id
+  // 3. perform the allocation
+  // 4. set gptr members
 
-  mem = dart_shmem_team_get_memarea(DART_TEAM_ALL);
-  if(!mem) return DART_ERR_OTHER;
+  if( !gptr ) 
+    return DART_ERR_INVAL;
 
-  pool = dart_memarea_get_mempool_unaligned(mem, 0);
-  if(!pool) return DART_ERR_OTHER;
+  // todo: this is not always 0
+  poolid = 0;
+  pool = dart_memarea_get_mempool_by_id(poolid);
+  
+  if( !pool ) 
+    return DART_ERR_OTHER;
 
+  bucket = pool->bucket;
+  if( !bucket ) 
+    return DART_ERR_OTHER;
+  
   void *addr;
-  addr = dart_mempool_alloc(pool, nbytes);
+  addr = dart_membucket_alloc(bucket, nbytes);
   if( addr==((void*)0) )
     {
       ERROR("Could not alloc memory in mempool%s", "");
       return DART_ERR_OTHER;
     }
-  
+
   dart_myid(&myid);
-
-  gptr->unitid = myid;
   
-  // abusing segment id
-  gptr->segid = DART_TEAM_ALL * MAXNUM_MEMPOOLS + 0;
+  gptr->unitid  = myid;
+  gptr->segid   = poolid;
   gptr->addr_or_offs.offset = 
-    ((char*)addr)-((char*)pool->shm_address);
+    ((char*)addr)-((char*)pool->base_addr);
 
-  //fprintf(stderr, "got %p for addr\n", addr);
-  /*
-    result.segid = dart_team_unique_id(DART_TEAM_ALL);
-    result.offset = ((char*) addr) - ((char*) mempool->shm_address);
-    */
   return DART_OK;
 }
+
+
+
