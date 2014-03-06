@@ -117,14 +117,17 @@ int dart_shmem_recv(void *buf, size_t nbytes,
   int ret, slot;
 
   slot = shmem_syncarea_findteam(teamid);
-
-  if ((team2fifos[slot][source].readfrom = 
-       open( team2fifos[slot][source].pname_read, O_RDONLY)) < 0)
-    {
+  
+  if( team2fifos[slot][source].readfrom<0 ) {
+    team2fifos[slot][source].readfrom = 
+      open( team2fifos[slot][source].pname_read, O_RDONLY);
+   
+    if( team2fifos[slot][source].readfrom<0 ) {
       fprintf(stderr, "Error opening fifo for reading: '%s'\n",
 	      team2fifos[slot][source].pname_read);
-      return -999;
+      return -999;    
     }
+  }
 
   offs=0; 
   while(offs<nbytes) {

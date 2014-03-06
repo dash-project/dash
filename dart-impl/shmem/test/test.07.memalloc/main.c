@@ -5,7 +5,7 @@
 
 #include "../utils.h"
 
-#define REPEAT 5
+#define REPEAT 500
 
 int main(int argc, char* argv[])
 {

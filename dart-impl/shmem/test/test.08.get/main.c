@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
   for( i=0; i<REPEAT; i++ ) 
     {
       if( myid==1 ) {
-	gptr.addr_or_offs.offset+=1;
+	//	gptr.addr_or_offs.offset+=1;
 	char buf[80];
 	dart_get_blocking(buf, gptr, 80);
 	
