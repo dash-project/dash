@@ -12,7 +12,8 @@ CFLAGS+=-I$(DART_INC) -I../include
 
 LIBDARTMPI  = libdartmpi.a
 
-FILES = mpi_init
+FILES = mpi_init \
+	mpi_sendrecv
 
 OBJS = $(addsuffix .o, $(FILES))
 

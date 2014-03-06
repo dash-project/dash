@@ -7,6 +7,8 @@ typedef int MPI_Status;
 
 typedef dart_team_t MPI_Comm;
 
+typedef dart_handle_t MPI_Request;
+
 typedef enum 
   {
     MPI_CHAR = 0,

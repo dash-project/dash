@@ -53,36 +53,3 @@ double MPI_Wtime()
 }
 
 
-int MPI_Send(void* buf, int count, MPI_Datatype datatype,
-	     int dest, int tag, MPI_Comm comm)
-{
-  int nbytes;
-  switch( datatype ) {
-  case MPI_CHAR:
-    nbytes = count;
-  default:
-    nbytes = count;
-  }
-
-  dart_shmem_send(buf, nbytes, comm, dest);
-  return 0;
-}
-
-
-
-int MPI_Recv(void* buf, int count, MPI_Datatype datatype,
-	     int source, int tag, MPI_Comm comm, MPI_Status *status)
-{
-  int nbytes;
-  switch( datatype ) {
-  case MPI_CHAR:
-    nbytes = count;
-  default:
-    nbytes = count;
-  }
-
-  dart_shmem_recv(buf, nbytes, comm, source);
-  return 0;
-}
-
-

@@ -2,6 +2,11 @@
 #include <assert.h>
 #include <stdio.h>
 
+#ifdef DART_USE_HELPER_THREAD
+#include <pthread.h>
+#include "dart_helper_thread.h"
+#endif 
+
 #include "dart_types.h"
 #include "dart_globmem.h"
 #include "dart_initialization.h"
@@ -15,6 +20,9 @@
 #include "shmem_logger.h"
 #include "shmem_barriers_if.h"
 
+#ifdef DART_USE_HELPER_THREAD
+pthread_t _helper_thread;
+#endif
 
 int _glob_myid=-1;
 int _glob_size=-1;
@@ -75,19 +83,19 @@ int dart_init_shmem(int *argc, char ***argv)
   // we can pass a zero pointer as a group 
   // spec, because dart_shmem_team_init will 
   // take care of initializing the group for
-  // dart_team_all
+  // dart_team_all!
   assert(DART_TEAM_ALL==0);
   dart_shmem_team_init(DART_TEAM_ALL,
 		       myid, team_size,
 		       0);
 
-  /* KF
-  DEBUG("dart_init %s", "teams_init");
-  dart_teams_init(myid, team_size);
-
-  DEBUG("dart_init %s", "calling barrier");
   DART_SAFE(dart_barrier(DART_TEAM_ALL));
-  */
+
+#ifdef DART_USE_HELPER_THREAD
+  dart_work_queue_init();
+  pthread_create(&_helper_thread, 0, dart_helper_thread, 0 );
+#endif // DART_USE_HELPER_THREAD
+
 
   DEBUG("dart_init %s", "done");
   return DART_OK;
@@ -114,6 +122,13 @@ dart_ret_t dart_exit_shmem()
   shmem_syncarea_setunitstate(myid, 
 			      UNIT_STATE_CLEAN_EXIT);
 
+
+
+  dart_work_queue_shutdown();
+  
+#ifdef DART_USE_HELPER_THREAD
+  pthread_join(_helper_thread, 0);
+#endif 
 
 
   /* KF

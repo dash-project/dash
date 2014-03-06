@@ -12,6 +12,9 @@
 #include "../shmem_barriers_if.h"
 #include "shmem_p2p_sysv.h"
 
+#ifdef DART_USE_HELPER_THREAD
+#include "../dart_helper_thread.h"
+#endif
 
 int dart_shmem_mkfifo(char *pname) {
   if (mkfifo(pname, 0666) < 0)
@@ -144,4 +147,53 @@ int dart_shmem_recv(void *buf, size_t nbytes,
     
   }
   return (ret != nbytes) ? -999 : 0;
+}
+
+
+int dart_shmem_isend(void *buf, size_t nbytes, 
+		     dart_team_t teamid, dart_unit_t dest, 
+		     dart_handle_t *handle)
+{
+  int ret;
+#ifdef DART_USE_HELPER_THREAD
+  work_item_t item;
+
+  item.buf=buf;
+  item.nbytes=nbytes;
+  item.team=teamid;
+  item.unit=dest;
+  item.handle=handle;
+  
+  item.selector = WORK_NB_SEND;
+
+  dart_work_queue_push_item(&item);
+  
+#else
+  ret = dart_shmem_send(buf, nbytes, teamid, dest);
+#endif
+  return ret;
+}
+
+int dart_shmem_irecv(void *buf, size_t nbytes,
+		     dart_team_t teamid, dart_unit_t source,
+		     dart_handle_t *handle)
+{
+  int ret;
+#ifdef DART_USE_HELPER_THREAD
+  work_item_t item;
+
+  item.buf=buf;
+  item.nbytes=nbytes;
+  item.team=teamid;
+  item.unit=source;
+  item.handle=handle;
+  
+  item.selector = WORK_NB_RECV;
+  
+  dart_work_queue_push_item(&item);
+  
+#else
+  ret = dart_shmem_recv(buf, nbytes, teamid, source);
+#endif
+  return ret;
 }

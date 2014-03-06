@@ -13,7 +13,7 @@ PWD  = $(shell basename `pwd`)
 PAT  = $(shell echo -n $(PWD) )
 PROG = $(shell echo -n $(PAT) | cut -d . -f 3)
 
-all : $(LIBDART) $(PROG)
+all : $(LIBDART) $(LIBDARTMPI) $(PROG)
 
 printenv : 
 	 @echo "DART_ROOT    = $(DART_ROOT)"
@@ -24,6 +24,11 @@ printenv :
 
 $(LIBDART) :
 	make -C $(DART_ROOT)/dart-shmem/
+
+$(LIBDARTMPI) :
+	make -C $(DARTMPI_ROOT)/lib
+	
+	     
 
 $(PROG) : main.o
 	$(CC) $(LFLGAS) -o $@ $+ $(LIBDARTMPI) $(LIBDART) 

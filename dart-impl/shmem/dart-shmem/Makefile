@@ -5,6 +5,7 @@ CFLAGS+=-I.. -I../$(DART_IF)
 
 #CFLAGS+=-DDART_DEBUG
 CFLAGS+=-D_SVID_SOURCE
+CFLAGS+=-DDART_USE_HELPER_THREAD=1
 
 LIBDART  = libdart.a
 
@@ -18,7 +19,8 @@ FILES = dart_init_impl dart_init_shmem 	    	\
 	dart_mempool				\
 	dart_membucket				\
 	dart_malloc				\
-	dart_onesided
+	dart_onesided				\
+	dart_helper_thread
 
 OBJS = $(addsuffix .o, $(FILES))
 
