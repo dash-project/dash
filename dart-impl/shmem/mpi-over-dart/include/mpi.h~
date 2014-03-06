@@ -1,7 +1,0 @@
-#ifndef MPI_OVER_DART_H_INCLUDED
-#define MPI_OVER_DART_H_INCLUDED
-
-int MPI_Init(int *argc, char ***argv);
-int MPI_Finalize();
-
-#endif /* MPI_OVER_DART_H_INCLUDED */
