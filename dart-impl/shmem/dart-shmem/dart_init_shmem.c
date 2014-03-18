@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-#ifdef DART_USE_HELPER_THREAD
+#ifdef USE_HELPER_THREAD
 #include <pthread.h>
 #include "dart_helper_thread.h"
 #endif 
@@ -20,7 +20,7 @@
 #include "shmem_logger.h"
 #include "shmem_barriers_if.h"
 
-#ifdef DART_USE_HELPER_THREAD
+#ifdef USE_HELPER_THREAD
 pthread_t _helper_thread;
 #endif
 
@@ -91,10 +91,10 @@ int dart_init_shmem(int *argc, char ***argv)
 
   DART_SAFE(dart_barrier(DART_TEAM_ALL));
 
-#ifdef DART_USE_HELPER_THREAD
+#ifdef USE_HELPER_THREAD
   dart_work_queue_init();
   pthread_create(&_helper_thread, 0, dart_helper_thread, 0 );
-#endif // DART_USE_HELPER_THREAD
+#endif // USE_HELPER_THREAD
 
 
   DEBUG("dart_init %s", "done");
@@ -126,7 +126,7 @@ dart_ret_t dart_exit_shmem()
 
   dart_work_queue_shutdown();
   
-#ifdef DART_USE_HELPER_THREAD
+#ifdef USE_HELPER_THREAD
   pthread_join(_helper_thread, 0);
 #endif 
 

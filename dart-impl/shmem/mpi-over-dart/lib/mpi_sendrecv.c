@@ -17,7 +17,7 @@ int MPI_Send(void* buf, int count, MPI_Datatype datatype,
     nbytes = count;
   }
 
-  dart_shmem_send(buf, nbytes, comm, dest);
+  dart_shmem_sendevt(buf, nbytes, comm, dest);
   return 0;
 }
 
@@ -34,7 +34,7 @@ int MPI_Recv(void* buf, int count, MPI_Datatype datatype,
     nbytes = count;
   }
 
-  dart_shmem_recv(buf, nbytes, comm, source);
+  dart_shmem_recvevt(buf, nbytes, comm, source);
   return 0;
 }
 

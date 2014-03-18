@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include "mpi.h"
 
+#define REPEAT 10
+
 int main(int argc, char* argv[])
 {
   int i;
@@ -16,7 +18,7 @@ int main(int argc, char* argv[])
 
   MPI_Barrier(MPI_COMM_WORLD); 
 
-  for(i=0; i<10000; i++ ) {
+  for(i=0; i<REPEAT; i++ ) {
     if( rank== 0 ) {
       MPI_Send(buf, 1, MPI_CHAR, 1, 33, MPI_COMM_WORLD);
     }

@@ -97,7 +97,7 @@ int dart_shmem_send(void *buf, size_t nbytes,
   int ret, slot;
 
   slot = shmem_syncarea_findteam(teamid);
-
+  
   if (team2fifos[slot][dest].writeto < 0)
     {
       ret = team2fifos[slot][dest].writeto = 
@@ -110,7 +110,33 @@ int dart_shmem_send(void *buf, size_t nbytes,
 	}
     }
   ret = write(team2fifos[slot][dest].writeto, buf, nbytes);
+  
   return ret;
+}
+
+int dart_shmem_sendevt(void *buf, size_t nbytes, 
+		       dart_team_t teamid, dart_unit_t dest)
+{
+  int evtfd;
+  long long value=42;
+  evtfd = shmem_syncarea_geteventfd();
+  
+  write( evtfd, &value, 8);
+  //  fprintf(stderr, "after write\n");
+  return nbytes;
+}
+
+int dart_shmem_recvevt(void *buf, size_t nbytes,
+		       dart_team_t teamid, dart_unit_t source)
+{
+  int evtfd;
+  long long value;
+  evtfd = shmem_syncarea_geteventfd();
+
+  read( evtfd, &value, 8);
+  //  fprintf(stderr, "after read\n");  
+
+  return nbytes;
 }
 
 int dart_shmem_recv(void *buf, size_t nbytes,
