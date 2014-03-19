@@ -35,7 +35,7 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
   int i_am_master=0; 
   int i;
 
-  *newteam=DART_TEAM_NIL;
+  *newteam=DART_TEAM_NULL;
 
   struct newteam_msg nmsg;
 
@@ -228,7 +228,7 @@ dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
 {
   dart_ret_t ret;
 
-  if( teamid==DART_TEAM_NIL ) 
+  if( teamid==DART_TEAM_NULL ) 
     return DART_ERR_INVAL;
   
   if( teamid==DART_TEAM_ALL ) 
@@ -258,7 +258,7 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
   int slot=-1;
   *size = 0;
 
-  if( teamid==DART_TEAM_NIL ) 
+  if( teamid==DART_TEAM_NULL ) 
     return DART_ERR_INVAL;
 
   if( teamid==DART_TEAM_ALL ) {
