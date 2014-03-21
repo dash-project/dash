@@ -10,7 +10,7 @@
 namespace dash 
 {
   Team all(DART_TEAM_ALL, 0);
-  Team nil(DART_TEAM_NIL, 0);
+  Team null(DART_TEAM_NULL, 0);
 };
 
 dash::Team::Team(dart_team_t teamid, 
@@ -37,7 +37,7 @@ dash::Team* dash::Team::split( unsigned nParts) {
     gout[i] = (dart_group_t*) malloc(size);
   }
 
-  Team *result = &(dash::nil);
+  Team *result = &(dash::null);
 
   dart_group_init(group);
   dart_team_get_group(teamId, group);
@@ -63,7 +63,7 @@ dash::Team* dash::Team::split( unsigned nParts) {
     */
 
     Team *newTeam = new Team(newteam, this, i);
-    if(newteam!=DART_TEAM_NIL) {
+    if(newteam!=DART_TEAM_NULL) {
       result=newTeam;
     }
        

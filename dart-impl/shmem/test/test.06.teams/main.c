@@ -115,8 +115,8 @@ void recursive_split(int level,
 	    inteam, insize, level);
   }
 
-  team1=DART_TEAM_NIL;
-  team2=DART_TEAM_NIL;
+  team1=DART_TEAM_NULL;
+  team2=DART_TEAM_NULL;
   split_even_odd_by_local_ids(inteam, &team1, &team2);
 
   dart_unit_t id;
