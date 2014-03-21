@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
     char *addr;
 
     CHECK(dart_memalloc(100, &gptr));
-    CHECK(dart_gptr_getaddr(gptr, &addr));
+    CHECK(dart_gptr_getaddr(gptr, (void**)&addr));
     sprintf(addr, "Message from unit %d: AHOI!", myid);
   }
   CHECK(dart_bcast( &gptr, sizeof(dart_gptr_t), 0, DART_TEAM_ALL ));
