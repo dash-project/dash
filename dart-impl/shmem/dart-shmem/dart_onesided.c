@@ -30,9 +30,9 @@ dart_ret_t dart_testall(dart_handle_t *handle, size_t n);
 dart_ret_t dart_get_blocking(void *dest, 
 			     dart_gptr_t ptr, size_t nbytes)
 {  
-  dart_mempoolptr pool;
-  int poolid;
   char *addr;
+  int poolid;
+  dart_mempoolptr pool;
 
   poolid = ptr.segid;
   pool = dart_memarea_get_mempool_by_id(poolid);
@@ -49,8 +49,21 @@ dart_ret_t dart_get_blocking(void *dest,
 dart_ret_t dart_put_blocking(dart_gptr_t ptr, 
 			     void *src, size_t nbytes)
 {
-  dart_ret_t ret = DART_OK;
+  char *addr;
+  int poolid;
+  dart_mempoolptr pool;
 
-  return ret;
+  poolid = ptr.segid;
+  pool = dart_memarea_get_mempool_by_id(poolid);
+  
+  if(!pool) 
+    return DART_ERR_OTHER;
+
+  addr = ((char*)pool->base_addr)+ptr.addr_or_offs.offset;
+
+  fprintf(stderr, "put_blocking\n");
+
+  memcpy(addr, src, nbytes);
+  return DART_OK;
 }
 
