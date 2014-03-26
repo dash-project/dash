@@ -26,5 +26,7 @@ Add a Comment describing your test before the main methode!
 When calling make, the exectuable <Categoryname>_<Testname> is created. Run it using 
 dartrun -n <n> <executable> <args>
 
+For implementation specific tests, move these to dart-impl/<specific_implementation>/test
+
 A more elaborate testing framework for distributed testing is under development.
 
