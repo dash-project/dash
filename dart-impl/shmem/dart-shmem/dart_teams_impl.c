@@ -279,12 +279,16 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
 
 dart_ret_t dart_myid(dart_unit_t *myid)
 {
+  DART_INIT_CHECK();
+
   *myid=_glob_myid;
   return DART_OK;
 }
 
 dart_ret_t dart_size(size_t *size)
 {
+  DART_INIT_CHECK();
+
   *size=_glob_size;
   return DART_OK;
 }
