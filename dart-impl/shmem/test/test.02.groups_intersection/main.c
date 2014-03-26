@@ -6,7 +6,7 @@
 #include "../utils.h"
 #include <dart.h>
 
-// Group test: Union
+// Group test: Intersection
 
 static int comparInt(const void *a,const void *b){
   const int* aI = (int*)a;
@@ -20,9 +20,9 @@ static int comparInt(const void *a,const void *b){
   }
 }
 
-int test_union(int* a, int size_a, dart_group_t *g_a,
-               int* b, int size_b, dart_group_t *g_b,
-               int* ex, int size_ex, dart_group_t *g_res);
+int test_intersection(int* a, int size_a, dart_group_t *g_a,
+                      int* b, int size_b, dart_group_t *g_b,
+                      int* ex, int size_ex, dart_group_t *g_res);
 
 
 int main(int argc, char* argv[]){
@@ -43,55 +43,71 @@ int main(int argc, char* argv[]){
   g_b = malloc(gsize);
   g_res = malloc(gsize);
 
-  //normal union
-  fprintf(stderr,"Testing: normal union.\n");
+//normal intersection
+  fprintf(stderr,"Testing: normal intersection.\n");
   int a1[3] = {0,2,4};
   int b1[6] = {17,0,4,1,5,33};
-  int c1[7] = {0,1,2,4,5,17,33};
-  EXPECT_TRUE( test_union( a1, 3, g_a,
-                           b1, 6, g_b,
-                           c1, 7, g_res));
+  int c1[7] = {0,4};
+  EXPECT_TRUE( test_intersection( a1, 3, g_a,
+                                  b1, 6, g_b,
+                                  c1, 2, g_res));
   
-  // union with no intersection 
-  fprintf(stderr,"Testing: union with no intersection.\n");
+// intersection empty
+  fprintf(stderr,"Testing: intersection empty.\n");
   int a2[3] = {0,1,2};
   int b2[3] = {3,4,5};
-  int c2[6] = {0,1,2,3,4,5};
-  EXPECT_TRUE( test_union( a2, 3, g_a, 
+  int c2[0];
+  EXPECT_TRUE( test_intersection( a2, 3, g_a, 
                            b2, 3, g_b,
-                           c2, 6, g_res));
+                           c2, 0, g_res));
 
   
-  //union with equal groups,
-  fprintf(stderr,"Testing: union with equal groups.\n");
+//intersection with equal groups,
+  fprintf(stderr,"Testing: intersection with equal groups.\n");
   int a3[3] = {0,1,2};
   int b3[3] = {0,1,2};
   int c3[3] = {0,1,2};
-  EXPECT_TRUE( test_union( a3, 3, g_a, 
+  EXPECT_TRUE( test_intersection( a3, 3, g_a, 
                            b3, 3, g_b,
                            c3, 3, g_res));
 
-  //union with neutral group
-  fprintf(stderr,"Testing: union with neutral groups.\n");
-  int a4[3] = {0,1,2};
-  int b4[0];
-  int c4[3] = {0,1,2};
-  EXPECT_TRUE( test_union( a4, 3, g_a, 
-                           b4, 0, g_b,
-                           c4, 3, g_res));
+//Intersection with neutral element  
+  fprintf(stderr,"Testing: intersection with neutral element.\n");
+  // WARNING: g_all ist not the neutral element! 
+  // The universe is defined globaly by teams, 
+  // but the elements of the groups are not part of this universe!
+  dart_group_t *g_all;
+  size_t  *g_all_size;
   
-  //test if false unions are detected
-  fprintf(stderr,"Testing: false union.\n");
+  g_all = malloc(gsize);
+  CHECK( dart_group_init(g_all));
+  CHECK( dart_team_get_group( DART_TEAM_ALL, g_all));
+  CHECK( dart_group_size( g_all, g_all_size));
+  int* g_all_unitids=malloc(sizeof(int)* *g_all_size);
+  CHECK( dart_group_getmembers(g_all,g_all_unitids));
+  int a4[3] = {0,1,2};
+  // b4 = g_all_unitids with size g_all_size
+  int c4[3] = {0,1,2};
+  EXPECT_TRUE(test_intersection( a4, 3, g_a, 
+                                 g_all_unitids, *g_all_size, g_b,
+                                 c4, 3, g_res));
+  
+  CHECK(dart_group_fini(g_all));  
+  free(g_all_unitids);
+  free(g_all);
+  
+//test if false intersections are detected
+  fprintf(stderr,"Testing: false intersection.\n");
   int a5[4] = {0,1,2,3};
   int b5[4] = {0,1,2};
   int c5[4] = {0,1,3};
-  EXPECT_FALSE( test_union( a5, 4, g_a,
+  EXPECT_FALSE( test_intersection( a5, 4, g_a,
                             b5, 4, g_b,
                             c5, 4, g_res));
  
 
-  // all tests finished 
-  fprintf(stderr, "All union tests passed.\n");
+// all tests finished 
+  fprintf(stderr,"All intersection tests passed.\n");
   free(g_a);
   free(g_b);
   free(g_res); 
@@ -100,9 +116,9 @@ int main(int argc, char* argv[]){
 
 // input arrays a and b, size of a and b, groups for a and b (both initialized)
 // expected output array ex, size of expected output array, and group for the result
-int test_union(int* a, int size_a, dart_group_t *g_a,
-               int* b, int size_b, dart_group_t *g_b,
-               int* ex, int size_ex, dart_group_t *g_res){
+int test_intersection( int* a, int size_a, dart_group_t *g_a,
+                       int* b, int size_b, dart_group_t *g_b,
+                       int* ex, int size_ex, dart_group_t *g_res){
   int i, j;
   int size_res;
   CHECK(dart_group_init(g_a));
@@ -115,7 +131,7 @@ int test_union(int* a, int size_a, dart_group_t *g_a,
   for(i=0; i < size_b; i++){
     CHECK(dart_group_addmember( g_b, b[i]));
   }
-  CHECK(dart_group_union( g_a, g_b, g_res));
+  CHECK(dart_group_intersect( g_a, g_b, g_res));
   
   CHECK(dart_group_size(g_res, &size_res));
   int* res=malloc(sizeof(int)* size_res);
