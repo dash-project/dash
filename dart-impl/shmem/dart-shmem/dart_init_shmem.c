@@ -26,6 +26,8 @@ pthread_t _helper_thread;
 
 int _glob_myid=-1;
 int _glob_size=-1;
+int _glob_state=DART_STATE_NOT_INITIALIZED;
+
 
 int dart_init_shmem(int *argc, char ***argv)
 {
