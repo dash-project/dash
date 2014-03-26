@@ -1,0 +1,9 @@
+
+# where the DART interface is located
+DART_IF = ../../dart-if/v2.1
+
+# where the DART implementation is locaetd
+DART_IMPL = ../../dart-impl/shmem
+
+CC      = gcc -std=c99
+CXX     = g++ -std=c++0x $(CFLAGS)
