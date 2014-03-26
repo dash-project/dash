@@ -24,10 +24,10 @@ dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr);
 
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
 {
+  int   poolid;
+  char  *base;
+  void  *ptr; 
   dart_mempoolptr pool;
-  int poolid;
-  char *base;
-  void *ptr; 
 
   poolid = gptr.segid;
   
@@ -41,6 +41,59 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
 
   return DART_OK;
 }
+
+
+dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr)
+{
+  int   poolid;
+  char  *base;
+  void  *ptr; 
+  dart_mempoolptr pool;
+
+  if(!gptr ) {
+    return DART_ERR_INVAL;
+  }
+
+  poolid = gptr->segid;
+  pool = dart_memarea_get_mempool_by_id(poolid);
+  if(!pool ) 
+    return DART_ERR_OTHER;
+
+  base = (char*)(pool->base_addr);
+
+  gptr->addr_or_offs.offset = ((char*)(addr) - base);
+
+  return DART_OK;
+}
+
+dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t u)
+{
+  if(!gptr ) {
+    return DART_ERR_INVAL;
+  }
+  gptr->unitid = u;
+}
+
+dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int offs)
+{
+  int   poolid;
+  void  *ptr; 
+  dart_mempoolptr pool;
+
+  if(!gptr ) {
+    return DART_ERR_INVAL;
+  }
+
+  poolid = gptr->segid;
+  pool = dart_memarea_get_mempool_by_id(poolid);
+  if(!pool ) 
+    return DART_ERR_OTHER;
+
+  gptr->addr_or_offs.offset += offs;
+
+  return DART_OK;
+}
+
 
 
 //
@@ -95,3 +148,39 @@ dart_ret_t dart_memalloc(size_t nbytes,
 
 
 
+dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, 
+				      size_t nbytes, dart_gptr_t *gptr)
+{
+  dart_ret_t ret;
+  size_t teamsize;
+  dart_unit_t myid;
+  dart_unit_t unit;
+  dart_mempoolptr pool;
+  int poolid;
+  
+  if( !gptr ) 
+    return DART_ERR_OTHER;
+  
+  ret = dart_team_size(teamid, &teamsize);
+  if( ret!=DART_OK ) 
+    return DART_ERR_OTHER;
+
+  ret = dart_team_myid(teamid, &myid);
+  if( ret!=DART_OK ) 
+    return DART_ERR_OTHER;
+
+  poolid = dart_memarea_create_mempool(teamid, teamsize,
+				       myid, nbytes, 1);
+  if( poolid<0 )
+    return DART_ERR_OTHER;
+
+  pool = dart_memarea_get_mempool_by_id(poolid);
+
+  dart_team_unit_l2g(teamid, 0, &unit);
+
+  gptr->unitid  = unit;
+  gptr->segid   = poolid;
+  gptr->addr_or_offs.offset = 0;
+
+  return DART_OK;
+}

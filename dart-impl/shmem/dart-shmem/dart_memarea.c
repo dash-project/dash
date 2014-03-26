@@ -32,26 +32,26 @@ int dart_memarea_create_mempool(dart_team_t teamid,
 				int is_aligned)
 {
   dart_ret_t ret;
+
   int res=-1; 
-
-  
-  if( 0<=memarea.next_free && 
-      memarea.next_free<MAXNUM_MEMPOOLS ) {
-    dart_mempoolptr pool = 
-      &((memarea.mempools)[memarea.next_free]);
-
-    ret = dart_mempool_create(pool, teamid, teamsize, 
-			      myid, localsize);
-
-    if( ret==DART_OK ) {
-      res=memarea.next_free;
+  if( 0 <= memarea.next_free && 
+      memarea.next_free < MAXNUM_MEMPOOLS ) 
+    {
+      dart_mempoolptr pool = 
+	&((memarea.mempools)[memarea.next_free]);
       
-      pool->state = (is_aligned?MEMPOOL_ALIGNED:MEMPOOL_UNALIGNED);
-      pool->teamid = teamid;
-
-      memarea.next_free++;
+      ret = dart_mempool_create(pool, teamid, teamsize, 
+				myid, localsize);
+      
+      if( ret==DART_OK ) {
+	res=memarea.next_free;
+	
+	pool->state = (is_aligned?MEMPOOL_ALIGNED:MEMPOOL_UNALIGNED);
+	pool->teamid = teamid;
+	
+	memarea.next_free++;
+      }
     }
-  }
-
+  
   return res;
 }

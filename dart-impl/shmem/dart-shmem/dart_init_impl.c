@@ -6,6 +6,9 @@
 
 dart_ret_t dart_init(int *argc, char ***argv)
 {
+  if( !argc || !argv ) {
+    return DART_ERR_INVAL;
+  }
   dart_init_shmem(argc, argv);
   return DART_OK;
 }
