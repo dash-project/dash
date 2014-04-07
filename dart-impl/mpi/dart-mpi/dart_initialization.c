@@ -10,11 +10,11 @@
 #include <stdio.h>
 #include <mpi.h>
 #include "dart_types.h"
-#include "dart_adapt_mem.h"
-#include "dart_adapt_team_private.h"
-#include "dart_adapt_translation.h"
-#include "dart_adapt_initialization.h"
-#include "dart_adapt_team_group.h"
+#include "dart_mem.h"
+#include "dart_team_private.h"
+#include "dart_translation.h"
+#include "dart_initialization.h"
+#include "dart_team_group.h"
 
 /* -- Global objects for dart memory management -- */
 
@@ -27,7 +27,7 @@ dart_mempool localpool; /* Help to do memory management work for local allocatio
 /* Each item helps to do memory management work on corresponding team for collective allocation/free. */
 dart_mempool globalpool[MAX_TEAM_NUMBER];
 
-dart_ret_t dart_adapt_init (int* argc, char*** argv)
+dart_ret_t dart_init (int* argc, char*** argv)
 {
 	int rank, index;
 	
@@ -81,12 +81,12 @@ dart_ret_t dart_adapt_init (int* argc, char*** argv)
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_exit ()
+dart_ret_t dart_exit ()
 {
 	int index;
 	dart_unit_t unitid;
 
-	dart_adapt_myid (&unitid);
+	dart_myid (&unitid);
 
 	/* End the shared access epoch in win_local_alloc. */
  	MPI_Win_unlock_all (win_local_alloc); 

@@ -3,6 +3,7 @@
  *  @brief synchronization operations.
  */
 
+#include "dart_deb_log.h"
 #ifndef ENABLE_DEBUG
 #define ENABLE_DEBUG
 #endif
@@ -12,16 +13,16 @@
 #include <unistd.h>
 #include <malloc.h>
 #include "dart_types.h"
-#include "dart_adapt_translation.h"
-#include "dart_adapt_team_private.h"
-#include "dart_adapt_mem.h"
-#include "dart_adapt_globmem.h"
-#include "dart_adapt_team_group.h"
-#include "dart_adapt_communication.h"
-#include "dart_adapt_synchronization.h"
+#include "dart_translation.h"
+#include "dart_team_private.h"
+#include "dart_mem.h"
+#include "dart_globmem.h"
+#include "dart_team_group.h"
+#include "dart_communication.h"
+#include "dart_synchronization.h"
 
 
-dart_ret_t dart_adapt_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
+dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 {
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
@@ -37,7 +38,7 @@ dart_ret_t dart_adapt_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	}
 	comm = teams[index];
 
-	dart_adapt_team_myid (teamid, &unitid);
+	dart_team_myid (teamid, &unitid);
 	*lock = (dart_lock_t) malloc (sizeof (struct dart_lock_struct));
 		
 
@@ -45,7 +46,7 @@ dart_ret_t dart_adapt_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	if (unitid == 0)
 	{
 		dart_adapt_memalloc (sizeof (int), &gptr_tail);
-		dart_adapt_gptr_getaddr (gptr_tail, &addr);
+		dart_gptr_getaddr (gptr_tail, &addr);
 		
 		/* Local store is safe and effective followed by the sync call. */
 		*addr = -1;
@@ -54,15 +55,15 @@ dart_ret_t dart_adapt_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 
 	
 	MPI_Comm_dup (comm, &((*lock) -> comm));
-	dart_adapt_bcast (&gptr_tail, sizeof (dart_gptr_t), 0, teamid);
+	dart_bcast (&gptr_tail, sizeof (dart_gptr_t), 0, teamid);
 		
 	/* Create a global memory region across the teamid, and every local memory segment related certain unit
 	 * hold the next blocking unit info waiting on the lock. */
-	dart_adapt_team_memalloc_aligned (teamid, sizeof(int), &gptr_list);
+	dart_team_memalloc_aligned (teamid, sizeof(int), &gptr_list);
 	int begin;
 	MPI_Win win;
 	dart_adapt_transtable_query (index, gptr_list.addr_or_offs.offset, &begin, &win);
-	dart_adapt_gptr_getaddr (gptr_list, &addr);
+	dart_gptr_getaddr (gptr_list, &addr);
 	*addr = -1;
 	MPI_Win_sync (win);
 	DART_GPTR_COPY ((*lock) -> gptr_tail, gptr_tail);
@@ -76,10 +77,10 @@ dart_ret_t dart_adapt_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_lock_acquire (dart_lock_t lock)
+dart_ret_t dart_lock_acquire (dart_lock_t lock)
 {
 	dart_unit_t unitid;
-	dart_adapt_team_myid (lock -> teamid, &unitid);
+	dart_team_myid (lock -> teamid, &unitid);
 
 	if (lock -> acquired == 1)
 	{
@@ -133,10 +134,10 @@ EXIT:
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_lock_try_acquire (dart_lock_t lock, int *acquired)
+dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int *acquired)
 {
 	dart_unit_t unitid;
-	dart_adapt_team_myid (lock -> teamid, &unitid);
+	dart_team_myid (lock -> teamid, &unitid);
 	if (lock -> acquired == 1)
 	{
 		printf ("Warning: TRYLOCK	- %2d has acquired the lock already\n", unitid);
@@ -173,10 +174,10 @@ EXIT:
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_lock_release (dart_lock_t lock)
+dart_ret_t dart_lock_release (dart_lock_t lock)
 {
 	dart_unit_t unitid;
-	dart_adapt_team_myid (lock -> teamid, &unitid);
+	dart_team_myid (lock -> teamid, &unitid);
 	if (lock -> acquired == 0)
 	{
 		printf ("Warning: RELEASE	- %2d has not yet required the lock\n", unitid);
@@ -195,7 +196,7 @@ dart_ret_t dart_adapt_lock_release (dart_lock_t lock)
 	int offset_list = gptr_list.addr_or_offs.offset;
 	int offset_tail = gptr_tail.addr_or_offs.offset;
 	int tail = gptr_tail.unitid;
-	dart_adapt_gptr_getaddr (gptr_list, &addr2);
+	dart_gptr_getaddr (gptr_list, &addr2);
 
 	win = lock -> win;
 	
@@ -234,7 +235,7 @@ EXIT:
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
+dart_ret_t dart_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
 {
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
@@ -242,14 +243,14 @@ dart_ret_t dart_adapt_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
 	DART_GPTR_COPY (gptr_tail, (*lock) -> gptr_tail);
 	DART_GPTR_COPY (gptr_list, (*lock) -> gptr_list);
 	
-	dart_adapt_team_myid (teamid, &unitid);
+	dart_team_myid (teamid, &unitid);
 	if (unitid == 0)
 	{
-		dart_adapt_memfree (gptr_tail);
+		dart_memfree (gptr_tail);
 	}
 	if (unitid >= 0)
 	{
-		dart_adapt_team_memfree (teamid, gptr_list);
+		dart_team_memfree (teamid, gptr_list);
 		MPI_Comm_free (&((*lock) -> comm));
 		DEBUG ("%2d: Free	- done in team %d", unitid, teamid);
 	}

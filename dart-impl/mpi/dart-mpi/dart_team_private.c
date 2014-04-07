@@ -4,7 +4,7 @@
  */
 #include<stdio.h>
 #include"dart_types.h"
-#include"dart_adapt_team_private.h"
+#include"dart_team_private.h"
 
 int32_t teamlist[MAX_TEAM_NUMBER]; 
 
@@ -59,7 +59,7 @@ int dart_adapt_teamlist_convert (dart_team_t teamid, int* index)
 	if (i == MAX_TEAM_NUMBER)
 	{
 		ERROR ("Invalid teamid input");
-		dart_adapt_exit ();
+		dart_exit ();
 		return -1;
 	}
 	/* Locate the teamid in the teamlist. */

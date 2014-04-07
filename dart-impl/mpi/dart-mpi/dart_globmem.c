@@ -6,18 +6,19 @@
  *  one-sided runtime system.
  */
 
+#include "dart_deb_log.h"
 #ifndef ENABLE_DEBUG
 #define ENABLE_DEBUG
 #endif
 #include <stdio.h>
 #include <mpi.h>
 #include "dart_types.h"
-#include "dart_adapt_mem.h"
-#include "dart_adapt_translation.h"
-#include "dart_adapt_team_private.h"
-#include "dart_adapt_globmem.h"
-#include "dart_adapt_team_group.h"
-#include "dart_adapt_communication.h"
+#include "dart_mem.h"
+#include "dart_translation.h"
+#include "dart_team_private.h"
+#include "dart_globmem.h"
+#include "dart_team_group.h"
+#include "dart_communication.h"
 
 /**
  * @note For dart collective allocation/free: offset in the returned gptr represents the displacement
@@ -26,7 +27,7 @@
  * For dart local allocation/free: offset in the returned gptr represents the displacement relative to 
  * the base address of memory region reserved for the dart local allocation/free.
  */
-dart_ret_t dart_adapt_gptr_getaddr (const dart_gptr_t gptr, void **addr)
+dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 {
 	int flag = gptr.flags;
 	uint64_t offset;
@@ -46,7 +47,7 @@ dart_ret_t dart_adapt_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_gptr_setaddr (dart_gptr_t* gptr, void* addr)
+dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
 {
 	int flag = gptr->flags;
 
@@ -72,7 +73,7 @@ dart_ret_t dart_gptr_setunit (dart_gptr_t* gptr, dart_unit_t unit_id)
 }
 #endif 
 
-dart_ret_t dart_adapt_memalloc (size_t nbytes, dart_gptr_t *gptr)
+dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 {
 	dart_unit_t unitid;
 	dart_myid (&unitid);
@@ -84,7 +85,7 @@ dart_ret_t dart_adapt_memalloc (size_t nbytes, dart_gptr_t *gptr)
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_memfree (dart_gptr_t gptr)
+dart_ret_t dart_memfree (dart_gptr_t gptr)
 {	
 	if (dart_mempool_free (localpool, gptr.addr_or_offs.offset) == -1)
 	{
@@ -95,10 +96,10 @@ dart_ret_t dart_adapt_memfree (dart_gptr_t gptr)
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_gptr_t *gptr)
+dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_gptr_t *gptr)
 {
  	dart_unit_t unitid, gptr_unitid = -1;
-	dart_adapt_team_myid(teamid, &unitid);
+	dart_team_myid(teamid, &unitid);
 		
 	int offset;
 
@@ -127,7 +128,7 @@ dart_ret_t dart_adapt_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, 
 	}
 	MPI_Bcast (&offset, 1, MPI_INT, 0, comm);
 	
-	dart_adapt_team_unit_l2g (teamid, 0, &gptr_unitid);
+	dart_team_unit_l2g (teamid, 0, &gptr_unitid);
 	
 	MPI_Win_create (mempool_globalalloc[index] + offset, nbytes, sizeof (char), MPI_INFO_NULL, comm, &win);
 		
@@ -156,10 +157,10 @@ dart_ret_t dart_adapt_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, 
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
+dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 {		
 	dart_unit_t unitid;
-       	dart_adapt_team_myid (teamid, &unitid);
+       	dart_team_myid (teamid, &unitid);
 	int index;
 	int result = dart_adapt_teamlist_convert (teamid, &index);
 	if (result == -1)
@@ -181,7 +182,7 @@ dart_ret_t dart_adapt_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
      	
 	/** TODO: is this barrier needed really?
 	 */
-	dart_adapt_barrier (teamid);
+	dart_barrier (teamid);
 	if (unitid == 0)
 	{
 		if (dart_mempool_free (globalpool[index], gptr.addr_or_offs.offset) == -1)

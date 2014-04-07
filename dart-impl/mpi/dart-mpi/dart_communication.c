@@ -5,6 +5,7 @@
  *  All the following functions are implemented with the underling *MPI-3*
  *  one-sided runtime system.
  */
+#include "dart_deb_log.h"
 #ifndef ENABLE_DEBUG
 #define ENABLE_DEBUG
 #endif
@@ -14,17 +15,17 @@
 #include <stdio.h>
 #include <mpi.h>
 #include "dart_types.h"
-#include "dart_adapt_translation.h"
-#include "dart_adapt_team_private.h"
-#include "dart_adapt_mem.h"
-#include "dart_adapt_initialization.h"
-#include "dart_adapt_globmem.h"
-#include "dart_adapt_team_group.h"
-#include "dart_adapt_communication.h"
+#include "dart_translation.h"
+#include "dart_team_private.h"
+#include "dart_mem.h"
+#include "dart_initialization.h"
+#include "dart_globmem.h"
+#include "dart_team_group.h"
+#include "dart_communication.h"
 
 /* -- Non-blocking dart one-sided operations -- */
 
-dart_ret_t dart_adapt_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t *handle)
+dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t *handle)
 {
 	MPI_Request mpi_req;
 	dart_unit_t target_unitid;
@@ -59,7 +60,7 @@ dart_ret_t dart_adapt_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_han
 		 * Note: target_unitid should not be the global unitID but rather the local unitID relative to
 		 * the team associated with the specified win object.
 		 */
-		dart_adapt_team_unit_g2l (teamid, gptr.unitid, &target_unitid);
+		dart_team_unit_g2l (teamid, gptr.unitid, &target_unitid);
 
 		/* MPI-3 newly added feature: request version of get call. */
 
@@ -85,7 +86,7 @@ dart_ret_t dart_adapt_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_han
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *handle)
+dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *handle)
 {
 	MPI_Request mpi_req;
 	dart_unit_t target_unitid;
@@ -105,7 +106,7 @@ dart_ret_t dart_adapt_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_hand
 
 		int difference = offset - begin;
 				
-		dart_adapt_team_unit_g2l (teamid, gptr.unitid, &target_unitid);
+		dart_team_unit_g2l (teamid, gptr.unitid, &target_unitid);
 		/** TODO: Check if MPI_Raccumulate (src, nbytes, MPI_BYTE, target_unitid, difference, nbytes, MPI_BYTE,
 		 *  REPLACE, win, &mpi_req) could be a better alternative? 
 		 */
@@ -131,11 +132,11 @@ dart_ret_t dart_adapt_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_hand
 
 /** TODO: Check if MPI_Get_accumulate (MPI_NO_OP) can bring better performance? 
  */
-dart_ret_t dart_adapt_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
+dart_ret_t dart_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 {
 	dart_handle_t dart_req = (dart_handle_t) malloc (sizeof(struct dart_handle_struct));
 	MPI_Status mpi_sta;
-	if (dart_adapt_get (dest, gptr, nbytes, &dart_req) != DART_OK)
+	if (dart_get (dest, gptr, nbytes, &dart_req) != DART_OK)
 	{
 		return DART_ERR_INVAL;
 	}
@@ -147,11 +148,11 @@ dart_ret_t dart_adapt_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 
 /** TODO: Check if MPI_Accumulate (REPLACE) can bring better performance? 
  */
-dart_ret_t dart_adapt_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
+dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 {
 	dart_handle_t dart_req = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
 	MPI_Status mpi_sta;
-	if (dart_adapt_put (gptr, src, nbytes, &dart_req) != DART_OK)
+	if (dart_put (gptr, src, nbytes, &dart_req) != DART_OK)
 	{
 		return DART_ERR_INVAL;
 	}
@@ -162,7 +163,7 @@ dart_ret_t dart_adapt_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 }
 
 
-dart_ret_t dart_adapt_wait (dart_handle_t handle)
+dart_ret_t dart_wait (dart_handle_t handle)
 {
 	MPI_Status mpi_sta;
 	MPI_Wait (&(handle -> request), &mpi_sta);
@@ -171,7 +172,7 @@ dart_ret_t dart_adapt_wait (dart_handle_t handle)
 	return DART_OK;
 }
 
-dart_ret_t dart_adapt_test (dart_handle_t handle, int* finished)
+dart_ret_t dart_test (dart_handle_t handle, int* finished)
 {
 	MPI_Status mpi_sta;
 	MPI_Test (&(handle -> request), finished, &mpi_sta);
@@ -181,7 +182,7 @@ dart_ret_t dart_adapt_test (dart_handle_t handle, int* finished)
 }
 
 
-dart_ret_t dart_adapt_waitall (dart_handle_t *handle, size_t n)
+dart_ret_t dart_waitall (dart_handle_t *handle, size_t n)
 {
 	int i;
 	MPI_Status *mpi_sta;
@@ -208,7 +209,7 @@ dart_ret_t dart_adapt_waitall (dart_handle_t *handle, size_t n)
 /** TODO:	Rectify its return val type or add another new param in which returns the testing result.\n 
  *  FIX:	Adding a flag param here.
  */
-dart_ret_t dart_adapt_testall (dart_handle_t *handle, size_t n, int* finished)
+dart_ret_t dart_testall (dart_handle_t *handle, size_t n, int* finished)
 {
 	int i;
 	MPI_Status *mpi_sta;
@@ -234,7 +235,7 @@ dart_ret_t dart_adapt_testall (dart_handle_t *handle, size_t n, int* finished)
 
 /* -- Dart collective operations -- */
 
-dart_ret_t dart_adapt_barrier (dart_team_t teamid)
+dart_ret_t dart_barrier (dart_team_t teamid)
 {
 	MPI_Comm comm;	
 	int index;
@@ -249,7 +250,7 @@ dart_ret_t dart_adapt_barrier (dart_team_t teamid)
 	return MPI_Barrier (comm);
 }
 
-dart_ret_t dart_adapt_bcast (void *buf, size_t nbytes, int root, dart_team_t teamid)
+dart_ret_t dart_bcast (void *buf, size_t nbytes, int root, dart_team_t teamid)
 {
 	MPI_Comm comm;
 	int index;
@@ -263,7 +264,7 @@ dart_ret_t dart_adapt_bcast (void *buf, size_t nbytes, int root, dart_team_t tea
 	return MPI_Bcast (buf, nbytes, MPI_BYTE, root, comm);
 }
 
-dart_ret_t dart_adapt_scatter (void *sendbuf, void *recvbuf, size_t nbytes, int root, dart_team_t teamid)
+dart_ret_t dart_scatter (void *sendbuf, void *recvbuf, size_t nbytes, int root, dart_team_t teamid)
 {
 	MPI_Comm comm;
 	int index;
@@ -277,7 +278,7 @@ dart_ret_t dart_adapt_scatter (void *sendbuf, void *recvbuf, size_t nbytes, int 
 	return MPI_Scatter (sendbuf, nbytes, MPI_BYTE, recvbuf, nbytes, MPI_BYTE, root, comm);
 }
 
-dart_ret_t dart_adapt_gather (void *sendbuf, void *recvbuf, size_t nbytes, int root, dart_team_t teamid)
+dart_ret_t dart_gather (void *sendbuf, void *recvbuf, size_t nbytes, int root, dart_team_t teamid)
 {
 	MPI_Comm comm;
 	int index;
@@ -292,7 +293,7 @@ dart_ret_t dart_adapt_gather (void *sendbuf, void *recvbuf, size_t nbytes, int r
 	return MPI_Gather (sendbuf, nbytes, MPI_BYTE, recvbuf, nbytes, MPI_BYTE, root, comm);
 }
 
-dart_ret_t dart_adapt_allgather (void *sendbuf, void *recvbuf, size_t nbytes, dart_team_t teamid)
+dart_ret_t dart_allgather (void *sendbuf, void *recvbuf, size_t nbytes, dart_team_t teamid)
 {
 	MPI_Comm comm;
 	int index;
