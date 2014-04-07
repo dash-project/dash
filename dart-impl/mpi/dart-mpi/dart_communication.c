@@ -133,7 +133,7 @@ dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *
 
 /** TODO: Check if MPI_Get_accumulate (MPI_NO_OP) can bring better performance? 
  */
-dart_ret_t dart_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
+dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 {
 	dart_handle_t dart_req = (dart_handle_t) malloc (sizeof(struct dart_handle_struct));
 	MPI_Status mpi_sta;

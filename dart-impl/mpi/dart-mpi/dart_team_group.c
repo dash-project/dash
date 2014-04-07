@@ -112,7 +112,7 @@ dart_ret_t dart_group_addmember (dart_group_t *g, dart_unit_t unitid)
 	MPI_Group_incl (group_all, 1, array, &newgroup);
 
 	/* Make the new group being an ordered group. */
-	dart_group_union (group_copy, &newgroup, &(g -> mpi_group));
+	dart_group_union (group_copy, &newgroup, g);
 	free (group_copy);
 	return DART_OK;
 }
