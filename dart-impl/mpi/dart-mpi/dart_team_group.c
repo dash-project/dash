@@ -61,7 +61,7 @@ dart_ret_t dart_group_union (const dart_group_t *g1, const dart_group_t *g2, dar
 	
 			pre_unitidsout = (int *)malloc (size_out * sizeof (int));
 			post_unitidsout = (int *)malloc (size_out * sizeof (int));
-			dart_adapt_group_getmembers (gout, pre_unitidsout);
+			dart_group_getmembers (gout, pre_unitidsout);
 
 			/* Sort gout by the method of 'merge sort'. */
 			i = k = 0;
