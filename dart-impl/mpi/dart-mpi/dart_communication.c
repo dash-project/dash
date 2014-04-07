@@ -22,6 +22,7 @@
 #include "dart_globmem.h"
 #include "dart_team_group.h"
 #include "dart_communication.h"
+#include "dart_communication_priv.h"
 
 /* -- Non-blocking dart one-sided operations -- */
 

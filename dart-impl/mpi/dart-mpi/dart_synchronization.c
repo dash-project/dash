@@ -20,6 +20,8 @@
 #include "dart_team_group.h"
 #include "dart_communication.h"
 #include "dart_synchronization.h"
+#include "dart_synchronization_priv.h"
+
 
 
 dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
@@ -45,7 +47,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	/* Unit 0 is the process holding the gptr_tail by default. */
 	if (unitid == 0)
 	{
-		dart_adapt_memalloc (sizeof (int), &gptr_tail);
+		dart_memalloc (sizeof (int), &gptr_tail);
 		dart_gptr_getaddr (gptr_tail, &addr);
 		
 		/* Local store is safe and effective followed by the sync call. */

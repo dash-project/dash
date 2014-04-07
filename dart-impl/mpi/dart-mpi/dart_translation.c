@@ -6,8 +6,8 @@
 #ifndef ENABLE_LOG
 #define ENABLE_LOG
 #endif
-#include "dart_adapt_translation.h"
-#include "dart_adapt_mem.h"
+#include "dart_translation.h"
+#include "dart_mem.h"
 
 /* Global array: the set of translation table headers for MAX_TEAM_NUMBER teams. */
 node_t transtable_globalalloc [MAX_TEAM_NUMBER];

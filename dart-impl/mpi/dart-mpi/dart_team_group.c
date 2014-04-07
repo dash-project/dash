@@ -9,10 +9,11 @@
 #endif
 
 #include "dart_types.h"
-#include "dart_adapt_mem.h"
-#include "dart_adapt_team_private.h"
-#include "dart_adapt_translation.h"
-#include "dart_adapt_team_group.h"
+#include "dart_mem.h"
+#include "dart_team_private.h"
+#include "dart_translation.h"
+#include "dart_team_group.h"
+#include "dart_group_priv.h"
 
 int next_availteamid;
 
@@ -149,8 +150,9 @@ dart_ret_t dart_group_getmembers (const dart_group_t *g, dart_unit_t *unitids)
 	return DART_OK;
 }
 
-dart_ret_t dart_group_split (const dart_group_t *g, size_t n, dart_group_t *gout)
+dart_ret_t dart_group_split (const dart_group_t *g, size_t n, dart_group_t **gout)
 {
+#if 0
 	MPI_Group grouptem;
 	int size, i, length;
 	int ranges[1][3];
@@ -185,6 +187,7 @@ dart_ret_t dart_group_split (const dart_group_t *g, size_t n, dart_group_t *gout
 			(gout + i) -> mpi_group = MPI_GROUP_EMPTY;
 		}
 	}
+#endif 
 	return DART_OK;
 }
 

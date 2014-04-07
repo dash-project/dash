@@ -133,7 +133,7 @@
 
 #include <mpi.h>
 #include "dart_deb_log.h"
-#include "dart_adapt_mem.h"
+#include "dart_mem.h"
 
 /* @brief Storing all the teamIDs that are already used. 
  *
@@ -177,4 +177,8 @@ int dart_adapt_teamlist_recycle(int index);
 /* @brief Locate the given teamid in the teamlist.
  */
 int dart_adapt_teamlist_convert (dart_team_t teamid, int* index);
+
+extern int next_availteamid;
+
 #endif /*DART_ADAPT_TEAMNODE_H_INCLUDED*/
+
