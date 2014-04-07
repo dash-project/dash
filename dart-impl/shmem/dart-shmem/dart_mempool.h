@@ -1,25 +1,39 @@
 #ifndef DART_MEMPOOL_H_INCLUDED
 #define DART_MEMPOOL_H_INCLUDED
 
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include "dart_mempool_priv.h"
-
 #include "extern_c.h"
 EXTERN_C_BEGIN
 
-struct dart_opaque_mempool;
-typedef struct dart_opaque_mempool* dart_mempool;
-#define DART_MEMPOOL_NULL ((dart_mempool)0)
+#include "dart.h"
+#include "dart_membucket.h"
 
-dart_mempool dart_mempool_create(void *pos, size_t size);
-void dart_mempool_destroy(dart_mempool pool);
+#define MAXNUM_MEMPOOLS     64
 
-void* dart_mempool_alloc(dart_mempool pool, size_t size);
-int dart_mempool_free(dart_mempool pool, void* pos);
+#define MEMPOOL_NULL        0
+#define MEMPOOL_ALIGNED     1
+#define MEMPOOL_UNALIGNED   2
 
-void dart_mempool_print(dart_mempool pool, FILE* f);
+struct dart_mempool
+{
+  unsigned         state;
+  void             *base_addr;
+  int              shmem_key;
+  dart_team_t      teamid;
+  dart_membucket   bucket;
+};
+
+typedef struct dart_mempool* dart_mempoolptr;
+
+void dart_mempool_init(dart_mempoolptr pool);
+
+// this is a collective call!
+dart_ret_t dart_mempool_create(dart_mempoolptr pool,
+			       dart_team_t teamid,
+			       size_t teamsize,
+			       dart_unit_t myid,
+			       size_t localsz);
+
+
 
 
 EXTERN_C_END

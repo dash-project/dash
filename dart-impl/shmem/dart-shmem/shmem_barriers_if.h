@@ -2,6 +2,12 @@
 #define SHMEM_BARRIER_IF_H_INCLUDED
 
 #include <pthread.h>
+
+#ifdef USE_EVENTFD
+#include <sys/eventfd.h>
+#endif /* USE_EVENTFD */
+
+
 #include "dart_types.h"
 #include "dart_teams_impl.h"
 
@@ -43,7 +49,10 @@ struct syncarea_struct
   
   struct sysv_team teams[MAXNUM_TEAMS];
 
-  
+#ifdef USE_EVENTFD
+  int eventfd;
+#endif 
+
 };
 
 typedef struct syncarea_struct* syncarea_t;
@@ -72,6 +81,9 @@ int sysv_barrier_create(sysv_barrier_t barrier, int num_procs);
 int sysv_barrier_destroy(sysv_barrier_t barrier);
 int sysv_barrier_await(sysv_barrier_t barrier);
 
+#ifdef USE_EVENTFD
+int shmem_syncarea_geteventfd();
+#endif
 
 
 
