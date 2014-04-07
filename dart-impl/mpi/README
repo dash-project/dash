@@ -1,7 +1,0 @@
-load mpi compiler
-execute "./runmk" to compile
-the binary files are located in test folder
-finally, execute "XXrun -n N testfile.bin" under test folder
-note: in this case, the input n should be >= '4'
-quickbulid refman.tex
-
