@@ -66,6 +66,12 @@ dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
 	return DART_OK;
 }
 
+dart_ret_t dart_gptr_incaddr (dart_gptr_t* gptr, int offs)
+{
+	gptr -> addr_or_offs.offset += offs;
+	return DART_OK;
+}
+
 #if 0
 dart_ret_t dart_gptr_setunit (dart_gptr_t* gptr, dart_unit_t unit_id)
 {

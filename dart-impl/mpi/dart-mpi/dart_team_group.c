@@ -152,7 +152,6 @@ dart_ret_t dart_group_getmembers (const dart_group_t *g, dart_unit_t *unitids)
 
 dart_ret_t dart_group_split (const dart_group_t *g, size_t n, dart_group_t **gout)
 {
-#if 0
 	MPI_Group grouptem;
 	int size, i, length;
 	int ranges[1][3];
@@ -180,14 +179,13 @@ dart_ret_t dart_group_split (const dart_group_t *g, size_t n, dart_group_t **gou
 
 			ranges[0][2] = 1;
 			MPI_Group_range_incl (g -> mpi_group, 1, ranges, &grouptem);
-			(gout + i) -> mpi_group = grouptem;
+			*(gout + i) -> mpi_group = grouptem;
 		}
 		else 
 		{
-			(gout + i) -> mpi_group = MPI_GROUP_EMPTY;
+			*(gout + i) -> mpi_group = MPI_GROUP_EMPTY;
 		}
 	}
-#endif 
 	return DART_OK;
 }
 
