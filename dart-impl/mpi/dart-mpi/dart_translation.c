@@ -6,6 +6,7 @@
 #ifndef ENABLE_LOG
 #define ENABLE_LOG
 #endif
+#include "dart_deb_log.h"
 #include "dart_translation.h"
 #include "dart_mem.h"
 

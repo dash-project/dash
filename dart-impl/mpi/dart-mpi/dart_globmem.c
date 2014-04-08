@@ -6,10 +6,11 @@
  *  one-sided runtime system.
  */
 
-#include "dart_deb_log.h"
+
 #ifndef ENABLE_DEBUG
 #define ENABLE_DEBUG
 #endif
+#include "dart_deb_log.h"
 #include <stdio.h>
 #include <mpi.h>
 #include "dart_types.h"

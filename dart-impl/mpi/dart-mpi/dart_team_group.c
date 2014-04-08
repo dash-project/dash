@@ -3,11 +3,12 @@
  *  @brief implementation of dart operations on team&group.
  */
 
-#include "dart_deb_log.h"
+
 #ifndef ENABLE_DEBUG
 #define ENABLE_DEBUG
 #endif
 
+#include "dart_deb_log.h"
 #include "dart_types.h"
 #include "dart_mem.h"
 #include "dart_team_private.h"
@@ -252,7 +253,9 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 	subcomm = MPI_COMM_NULL;
 
 	MPI_Comm_create (comm, group -> mpi_group, &subcomm);
-#if 0
+	
+	*newteam = DART_TEAM_NULL;
+
 	/* Get the maximum next_availteamid among all the units belonging to the parent team specified by 'teamid'. */
 	MPI_Allreduce (&next_availteamid, &max_teamid, 1, MPI_INT, MPI_MAX, comm);
 	next_availteamid = max_teamid + 1;
@@ -270,8 +273,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 		*newteam = max_teamid;
 		teams[index] = subcomm;
 	}
-#endif
-	
+#if 0
 	if (subcomm != MPI_COMM_NULL)
 	{
 		/* Get the maximum next_availteamid among all the units belonging to the created sub-communicator. */
@@ -319,7 +321,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 			next_availteamid = max_teamid + 1;
 		}
 	}
-
+#endif
 	if (subcomm != MPI_COMM_NULL)
 	{
 		/* Reserve resources for the dart operations on newteam. */
