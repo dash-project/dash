@@ -179,11 +179,11 @@ dart_ret_t dart_group_split (const dart_group_t *g, size_t n, dart_group_t **gou
 
 			ranges[0][2] = 1;
 			MPI_Group_range_incl (g -> mpi_group, 1, ranges, &grouptem);
-			*(gout + i) -> mpi_group = grouptem;
+			(*(gout + i)) -> mpi_group = grouptem;
 		}
 		else 
 		{
-			*(gout + i) -> mpi_group = MPI_GROUP_EMPTY;
+			(*(gout + i)) -> mpi_group = MPI_GROUP_EMPTY;
 		}
 	}
 	return DART_OK;
