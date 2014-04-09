@@ -90,6 +90,6 @@ int dart_adapt_transtable_query (int index, int offset, int *begin, MPI_Win *win
 
 /** @brief Destroy the translation table associated with the speicified team.
  */
-int dart_adapt_transtable_destory (int index);
+int dart_adapt_transtable_destroy (int index);
 
 #endif /*DART_ADAPT_TRANSLATION_H_INCLUDED*/

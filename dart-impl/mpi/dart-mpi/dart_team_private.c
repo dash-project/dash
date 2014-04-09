@@ -59,7 +59,6 @@ int dart_adapt_teamlist_convert (dart_team_t teamid, int* index)
 	if (i == MAX_TEAM_NUMBER)
 	{
 		ERROR ("Invalid teamid input");
-		dart_exit ();
 		return -1;
 	}
 	/* Locate the teamid in the teamlist. */

@@ -3,10 +3,11 @@
  *  @brief synchronization operations.
  */
 
-#include "dart_deb_log.h"
 #ifndef ENABLE_DEBUG
 #define ENABLE_DEBUG
 #endif
+
+#include "dart_deb_log.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +17,7 @@
 #include "dart_translation.h"
 #include "dart_team_private.h"
 #include "dart_mem.h"
+#include "dart_globmem_priv.h"
 #include "dart_globmem.h"
 #include "dart_team_group.h"
 #include "dart_communication.h"
@@ -48,7 +50,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	if (unitid == 0)
 	{
 		dart_memalloc (sizeof (int), &gptr_tail);
-		dart_gptr_getaddr (gptr_tail, &addr);
+		dart_gptr_getaddr (gptr_tail, (void*)&addr);
 		
 		/* Local store is safe and effective followed by the sync call. */
 		*addr = -1;
@@ -65,7 +67,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	int begin;
 	MPI_Win win;
 	dart_adapt_transtable_query (index, gptr_list.addr_or_offs.offset, &begin, &win);
-	dart_gptr_getaddr (gptr_list, &addr);
+	dart_gptr_getaddr (gptr_list, (void*)&addr);
 	*addr = -1;
 	MPI_Win_sync (win);
 	DART_GPTR_COPY ((*lock) -> gptr_tail, gptr_tail);
@@ -87,7 +89,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 	if (lock -> acquired == 1)
 	{
 		printf ("Warning: LOCK	- %2d has acquired the lock already\n", unitid);
-		goto EXIT;
+		return DART_OK;
 	}
 
 	dart_gptr_t gptr_tail;
@@ -132,7 +134,6 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 	
 	DEBUG ("%2d: LOCK	- lock required in team %d", unitid, (lock -> teamid));
 	lock -> acquired = 1;
-EXIT:
 	return DART_OK;
 }
 
@@ -143,7 +144,7 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int *acquired)
 	if (lock -> acquired == 1)
 	{
 		printf ("Warning: TRYLOCK	- %2d has acquired the lock already\n", unitid);
-		goto EXIT;
+		return DART_OK;
 	}
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
@@ -172,7 +173,6 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int *acquired)
 	}
 	char* string = (*acquired) ? "success" : "Non-success";
 	DEBUG ("%2d: TRYLOCK	- %s in team %d", unitid, string, (lock -> teamid));
-EXIT:
 	return DART_OK;
 }
 
@@ -183,7 +183,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 	if (lock -> acquired == 0)
 	{
 		printf ("Warning: RELEASE	- %2d has not yet required the lock\n", unitid);
-		goto EXIT;
+		return DART_OK;
 	}
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
@@ -198,7 +198,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 	int offset_list = gptr_list.addr_or_offs.offset;
 	int offset_tail = gptr_tail.addr_or_offs.offset;
 	int tail = gptr_tail.unitid;
-	dart_gptr_getaddr (gptr_list, &addr2);
+	dart_gptr_getaddr (gptr_list, (void*)&addr2);
 
 	win = lock -> win;
 	
@@ -233,7 +233,6 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 	}
 	lock -> acquired = 0;
 	DEBUG ("%2d: UNLOCK	- release lock in team %d", unitid, (lock -> teamid));
-EXIT:
 	return DART_OK;
 }
 

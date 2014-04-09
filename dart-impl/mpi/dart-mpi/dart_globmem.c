@@ -73,12 +73,12 @@ dart_ret_t dart_gptr_incaddr (dart_gptr_t* gptr, int offs)
 	return DART_OK;
 }
 
-#if 0
+
 dart_ret_t dart_gptr_setunit (dart_gptr_t* gptr, dart_unit_t unit_id)
 {
 	gptr->unitid = unit_id;
+	return DART_OK;
 }
-#endif 
 
 dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 {
