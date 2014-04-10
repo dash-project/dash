@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <mpi.h>
 #define MAX_TEAM_NUMBER (256)
-#define MAX_LENGTH (1024*1024*1024)
+#define MAX_LENGTH (1024*1024)
 
 extern char* mempool_localalloc;
 extern char* mempool_globalalloc [MAX_TEAM_NUMBER];

@@ -429,11 +429,11 @@ dart_ret_t dart_team_size (dart_team_t teamid, size_t *size)
 dart_ret_t dart_team_unit_l2g (dart_team_t teamid, dart_unit_t localid, dart_unit_t *globalid)
 {
 	dart_unit_t *unitids;
-	size_t size; 
+	int size; 
 	int i = 0;
 	dart_group_t group;
 	dart_team_get_group (teamid, &group);
-	dart_group_size (&group, &size);
+	MPI_Group_size (group.mpi_group, &size);
 	if (localid >= size)
 	{
 		ERROR ("Invalid localid input");
@@ -450,11 +450,11 @@ dart_ret_t dart_team_unit_l2g (dart_team_t teamid, dart_unit_t localid, dart_uni
 dart_ret_t dart_team_unit_g2l (dart_team_t teamid, dart_unit_t globalid, dart_unit_t *localid)
 {
 	dart_unit_t *unitids;
-	size_t size;
+	int size;
 	int i;
 	dart_group_t group;
 	dart_team_get_group (teamid, &group);
-	dart_group_size (&group, &size);
+	MPI_Group_size (group.mpi_group, &size);
 	unitids = (dart_unit_t *)malloc (sizeof (dart_unit_t) * size);
 	dart_group_getmembers (&group, unitids);
 
