@@ -6,6 +6,7 @@
 #define DART_ADAPT_MEM_H_INCLUDED
 #include <stdio.h>
 #include <mpi.h>
+#include <stdint.h>
 #define MAX_TEAM_NUMBER (256)
 #define MAX_LENGTH (1024*1024)
 
