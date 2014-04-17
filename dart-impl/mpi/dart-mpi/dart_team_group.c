@@ -134,7 +134,10 @@ dart_ret_t dart_group_delmember (dart_group_t *g, dart_unit_t unitid)
 
 dart_ret_t dart_group_size (const dart_group_t *g, size_t *size)
 {
-	MPI_Group_size (g -> mpi_group, (int*)size);
+	int s;
+	MPI_Group_size (g -> mpi_group, &s);
+	(*size) = s;
+
 	return DART_OK;
 }
 
@@ -164,10 +167,10 @@ dart_ret_t dart_group_split (const dart_group_t *g, size_t n, dart_group_t **gou
 	MPI_Group_size (g -> mpi_group, &size);
 
 	/* Ceiling division. */
-	length = (size+n-1)/n;
+	length = (size+(int)n-1)/(int)n;
         
 	/* Note: split the group into chunks of subgroups. */
-	for (i = 0; i < n; i++)
+	for (i = 0; i < (int)n; i++)
 	{
 		if (i * length < size)
 		{
@@ -386,7 +389,10 @@ dart_ret_t dart_myid(dart_unit_t *unitid)
 
 dart_ret_t dart_size(size_t *size)
 {
-	MPI_Comm_size (MPI_COMM_WORLD, (int*)size);
+	int s;
+	MPI_Comm_size (MPI_COMM_WORLD, &s);
+	(*size) = s;
+
 	return DART_OK;
 }
 
@@ -422,7 +428,10 @@ dart_ret_t dart_team_size (dart_team_t teamid, size_t *size)
 	}
 	comm = teams[index];
 
-	MPI_Comm_size (comm, (int *)size);
+	int s;
+	MPI_Comm_size (comm, &s);
+	(*size) = s;
+
 	return DART_OK;
 }
 
