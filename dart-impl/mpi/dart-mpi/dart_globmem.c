@@ -33,7 +33,7 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 	int flag = gptr.flags;
 	uint64_t offset;
 	offset = gptr.addr_or_offs.offset;
-
+  
 	if (flag == 1)
 	{
 		int index;
@@ -44,6 +44,7 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 	{
 		*addr = offset + mempool_localalloc;
 	}
+	
 
 	return DART_OK;
 }
@@ -88,6 +89,11 @@ dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 	gptr->segid = MAX_TEAM_NUMBER;
 	gptr->flags = 0; /* For local allocation, the flag is marked as '0'. */
 	gptr->addr_or_offs.offset = dart_mempool_alloc (localpool, nbytes);
+	if (gptr->addr_or_offs.offset == -1)
+	{
+		ERROR ("Out of bound: the global memory is exhausted");
+		return DART_ERR_OTHER;
+	}
 	DEBUG ("%2d: LOCALALLOC	- %d bytes, offset = %d", unitid, nbytes, gptr->addr_or_offs.offset);
 	return DART_OK;
 }
@@ -96,8 +102,8 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
 {	
 	if (dart_mempool_free (localpool, gptr.addr_or_offs.offset) == -1)
 	{
-		ERROR ("Out of bound: the global memory is exhausted");
-		return DART_ERR_OTHER;
+		ERROR ("Free invalid local global pointer");
+		return DART_ERR_INVAL;
 	}
 	DEBUG ("%2d: LOCALFREE	- offset = %d", gptr.unitid, gptr.addr_or_offs.offset);
 	return DART_OK;

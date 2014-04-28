@@ -472,8 +472,8 @@ dart_ret_t dart_team_unit_g2l (dart_team_t teamid, dart_unit_t globalid, dart_un
 
 	if ((i == size) || (unitids[i] > globalid))
 	{
-		ERROR ("Invalid globalid input");
-		return DART_ERR_INVAL;
+		*localid = -1;
+		return DART_OK;
 	}
 
 	*localid = i;
