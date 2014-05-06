@@ -71,17 +71,71 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes,
 dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, 
 			dart_unit_t root, dart_team_t team)
 {
+  //SANITY_CHECK_TEAM(team);
+  dart_unit_t myid;
+  size_t size;
+  int i;
+  //explicit casts to avoid warnings!! carefully double check please!
+  char* sbuf = (char*)sendbuf;
+  char* rbuf = (char*)recvbuf;
+
+  dart_team_myid( team, &myid);
+  dart_team_size( team, &size);
+  
+  DEBUG("dart_gather on team %d, root=%d, tsize=%d", team,root,size);
+  if( myid == root){
+    for( i = 0; i < size; i++){
+      if( i != root){
+        DEBUG("dart_scatter sending to %d %d bytes",i,nbytes);
+        dart_shmem_send(&sbuf[nbytes*i],nbytes,team,i);
+      }else{
+        memcpy(&sbuf[nbytes*i],rbuf,nbytes);
+      }
+    }
+  }else{
+    DEBUG("dart_scatter receiving from %d %d bytes",root, nbytes);
+    dart_shmem_recv(rbuf,nbytes,team,root);
+  }
   return DART_OK;
 }
 
 dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, 
 		       dart_unit_t root, dart_team_t team)
 {
+  //SANITY_CHECK_TEAM(team);
+  dart_unit_t myid;
+  size_t size;
+  int i;
+  //explicit casts to avoid warnings!! carefully double check please!
+  char* sbuf=(char*)sendbuf;
+  char* rbuf=(char*)recvbuf;
+
+  dart_team_myid(team, &myid);
+  dart_team_size(team, &size);
+  DEBUG("dart_gather on team %d, root=%d, tsize=%d", team,root,size);
+  if( myid == root){
+    for( i = 0; i< size; i++){
+      if(i != root){
+        DEBUG("dart_gather receiving from %d %d bytes", i, nbytes);
+        dart_shmem_recv(&rbuf[nbytes*i], nbytes, team, i); 
+      }else{
+        memcpy(&rbuf[nbytes*i],sbuf,nbytes);
+      }
+    }
+  }else{
+    DEBUG("dart_gather sending to %d %d bytes", root, nbytes);
+    dart_shmem_send(sbuf,nbytes,team,root);
+  }
+  dart_barrier(team);
   return DART_OK;
 }
   
 dart_ret_t dart_allgather(void *sendbuf, void *recvbuf, size_t nbytes, 
 			  dart_team_t team)
-{
+{ 
+  dart_unit_t root = 0;
+  DEBUG("dart_allgather on team %d, tsize=%d", team, root, size);
+  dart_gather(sendbuf,recvbuf,nbytes,root,team);
+  dart_bcast(recvbuf,nbytes,root,team);
   return DART_OK;
 }
