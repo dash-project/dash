@@ -5,6 +5,10 @@
 #include <pthread.h>
 #include <unistd.h>
 
+#ifdef USE_EVENTFD
+#include <sys/eventfd.h>
+#endif 
+
 #ifndef _POSIX_THREAD_PROCESS_SHARED
 #error "This platform does not support process shared mutex"
 #endif
@@ -41,9 +45,20 @@ int shmem_syncarea_init(int numprocs, void* shm_addr, int shmid)
   for( i=0; i<MAXNUM_UNITS; i++ ) {
     area->unitstate[i] = UNIT_STATE_NOT_INITIALIZED;
   }
-  
+
+#ifdef USE_EVENTFD
+  area->eventfd = eventfd(0,0);
+#endif
+
   return 0;
 }
+
+#ifdef USE_EVENTFD
+int shmem_syncarea_geteventfd()
+{
+  return area->eventfd;
+}
+#endif
 
 int shmem_syncarea_getunitstate(dart_unit_t unit)
 { 
