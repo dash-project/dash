@@ -85,6 +85,11 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
   // TODO: check santiy of group spec
   // if group is not empty, it must be the same on all 
   // participating processes 
+  if( !group ) {
+    dart_barrier(oldteamid);
+    return DART_OK;
+  }
+
   dart_group_size(group, &newsize);
 
   // TODO:
