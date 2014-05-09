@@ -61,7 +61,7 @@ dart_ret_t dart_put_blocking(dart_gptr_t ptr,
 
   addr = ((char*)pool->base_addr)+ptr.addr_or_offs.offset;
 
-  fprintf(stderr, "put_blocking\n");
+  //  fprintf(stderr, "put_blocking\n");
 
   memcpy(addr, src, nbytes);
   return DART_OK;
