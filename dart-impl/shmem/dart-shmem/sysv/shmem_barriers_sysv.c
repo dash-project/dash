@@ -149,7 +149,7 @@ int shmem_syncarea_delteam(dart_team_t teamid, int numprocs)
   
   //slot = shmem_syncarea_findteam(teamid);
   if( 1<=slot && slot<MAXNUM_TEAMS ) {
-    // fprintf(stderr, "destroying barrier at slot %d\n", slot);
+    //fprintf(stderr, "destroying barrier at slot %d\n", slot);
     if( area->teams[slot].inuse ) {
       sysv_barrier_destroy( &((area->teams[slot]).barr) );
     }
@@ -199,7 +199,8 @@ int sysv_barrier_create(sysv_barrier_t barrier, int num_procs)
 int sysv_barrier_destroy(sysv_barrier_t barrier)
 {
   PTHREAD_SAFE(pthread_cond_destroy(&(barrier->cond)));
-  PTHREAD_SAFE(pthread_mutex_destroy(&(barrier->mutex)));
+  // device or resource busy() bug
+  pthread_mutex_destroy(&(barrier->mutex));
   return 0;
 }
 
