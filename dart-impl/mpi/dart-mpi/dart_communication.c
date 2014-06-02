@@ -36,6 +36,8 @@ dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t 
 	int flags = gptr. flags;
 	MPI_Win win;
 
+	*handle = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
+
 	/* The memory accessed is allocated with collective allocation. */
 	if (flags == 1)
 	{
@@ -95,6 +97,8 @@ dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *
 	int offset = gptr.addr_or_offs.offset;
 	int flags = gptr.flags;
 	MPI_Win win;
+
+	*(handle) = (dart_handle_t)malloc (sizeof (struct dart_handle_struct));
 	if (flags == 1)
 	{
 		int index, begin;
@@ -136,7 +140,7 @@ dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *
  */
 dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 {
-	dart_handle_t dart_req = (dart_handle_t) malloc (sizeof(struct dart_handle_struct));
+	dart_handle_t dart_req;
 	MPI_Status mpi_sta;
 	if (dart_get (dest, gptr, nbytes, &dart_req) != DART_OK)
 	{
@@ -144,6 +148,7 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 	}
 		
 	MPI_Wait (&(dart_req -> request), &mpi_sta);
+	free (dart_req);
 	LOG ("GET_BLOCKING	- finished");
 	return DART_OK;
 }
@@ -152,7 +157,7 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
  */
 dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 {
-	dart_handle_t dart_req = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
+	dart_handle_t dart_req;
 	MPI_Status mpi_sta;
 	if (dart_put (gptr, src, nbytes, &dart_req) != DART_OK)
 	{
@@ -160,6 +165,7 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 	}
 
 	MPI_Wait (&(dart_req -> request), &mpi_sta);
+	free (dart_req);
 	LOG ("PUT_BLOCKING	- finished");
 	return DART_OK;
 }
