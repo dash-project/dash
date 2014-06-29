@@ -98,7 +98,6 @@ int dart_init_shmem(int *argc, char ***argv)
   pthread_create(&_helper_thread, 0, dart_helper_thread, 0 );
 #endif // USE_HELPER_THREAD
 
-
   DEBUG("dart_init %s", "done");
   return DART_OK;
 }
@@ -123,8 +122,6 @@ dart_ret_t dart_exit_shmem()
 
   shmem_syncarea_setunitstate(myid, 
 			      UNIT_STATE_CLEAN_EXIT);
-
-
 
   dart_work_queue_shutdown();
   

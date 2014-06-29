@@ -12,6 +12,7 @@ void dart_mempool_init(dart_mempoolptr pool)
 
   pool->state     = MEMPOOL_NULL;
   pool->base_addr = 0;
+  pool->localbase_addr = 0;
   pool->shmem_key = -1;
   pool->teamid    = -1;
   pool->bucket    = DART_MEMBUCKET_NULL;
@@ -50,6 +51,8 @@ dart_ret_t dart_mempool_create(dart_mempoolptr pool,
     
   pool->bucket    = membucket;
   pool->base_addr = attach_addr;
+  pool->localbase_addr = ((char*)attach_addr)+myoffset;
+  pool->localsz   = localsz;
   pool->shmem_key = attach_key;
 
   //pool->state = ...

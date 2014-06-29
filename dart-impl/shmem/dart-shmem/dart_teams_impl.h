@@ -34,9 +34,11 @@ struct team_impl_struct
   // the team members;
   dart_group_t group;
 
+#if 0
   int mempoolid_aligned[MAXNUM_MEMPOOLS];
   int mempoolid_unaligned[MAXNUM_MEMPOOLS];
-  
+#endif  
+
   //  dart_memarea_t mem;
   
 };
