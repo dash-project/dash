@@ -199,7 +199,13 @@ int sysv_barrier_create(sysv_barrier_t barrier, int num_procs)
 int sysv_barrier_destroy(sysv_barrier_t barrier)
 {
   PTHREAD_SAFE(pthread_cond_destroy(&(barrier->cond)));
-  // device or resource busy() bug
+  //
+  // TODO: if the following call is checked with the 
+  // PTHREAD_SAFE macro, then we're getting spurious 
+  // "device or resource busy" messages;
+  // As a workaround, I've removed the PTHREAD_SAFE
+  // call for now (KF)
+  //
   pthread_mutex_destroy(&(barrier->mutex));
   return 0;
 }
