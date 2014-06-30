@@ -32,6 +32,7 @@ dart_ret_t dart_get_blocking(void *dest,
 {  
   char *addr;
   int poolid;
+  dart_unit_t myid;
   dart_mempoolptr pool;
 
   poolid = ptr.segid;
@@ -40,8 +41,22 @@ dart_ret_t dart_get_blocking(void *dest,
   if(!pool) 
     return DART_ERR_OTHER;
 
-  addr = ((char*)pool->base_addr)+ptr.addr_or_offs.offset;
-  
+  dart_myid(&myid);
+
+  addr = ((char*)pool->localbase_addr) +
+    ((ptr.unitid-myid)*(pool->localsz)) +
+    ptr.addr_or_offs.offset;
+
+  /*
+  {
+    char buf[200];
+    GPTR_SPRINTF(buf, ptr);
+
+    fprintf(stderr, "[%0d] GETting %d bytes from addr=%0x base_addr=%x\n", 
+	    myid, nbytes, addr, ((char*)pool->base_addr) );
+  }
+  */
+
   memcpy(dest, addr, nbytes);
   return DART_OK;
 }
@@ -51,6 +66,7 @@ dart_ret_t dart_put_blocking(dart_gptr_t ptr,
 {
   char *addr;
   int poolid;
+  dart_unit_t myid;
   dart_mempoolptr pool;
 
   poolid = ptr.segid;
@@ -59,10 +75,21 @@ dart_ret_t dart_put_blocking(dart_gptr_t ptr,
   if(!pool) 
     return DART_ERR_OTHER;
 
-  addr = ((char*)pool->base_addr)+ptr.addr_or_offs.offset;
+  dart_myid(&myid);
+  
+  addr = ((char*)pool->localbase_addr) +
+    ((ptr.unitid-myid)*(pool->localsz)) +
+    ptr.addr_or_offs.offset;
 
-  fprintf(stderr, "put_blocking %p -> %p (%d bytes)\n",
-	  src, addr, nbytes);
+  /*
+  {
+    char buf[200];
+    GPTR_SPRINTF(buf, ptr);
+
+    fprintf(stderr, "[%0d] GETting %d bytes from addr=%0x base_addr=%x\n", 
+	    myid, nbytes, addr, ((char*)pool->base_addr) );
+  }
+  */
 
   memcpy(addr, src, nbytes);
   return DART_OK;

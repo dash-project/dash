@@ -17,6 +17,8 @@ struct dart_mempool
 {
   unsigned         state;
   void             *base_addr;
+  void             *localbase_addr;
+  size_t           localsz;
   int              shmem_key;
   dart_team_t      teamid;
   dart_membucket   bucket;

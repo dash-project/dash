@@ -30,12 +30,12 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
   dart_mempoolptr pool;
 
   poolid = gptr.segid;
-  
   pool = dart_memarea_get_mempool_by_id(poolid);
   if(!pool ) 
     return DART_ERR_OTHER;
 
-  base = (char*)(pool->base_addr);
+  base = ((char*)pool->localbase_addr);
+
   ptr = base + gptr.addr_or_offs.offset;
   (*addr) = ptr; 
 
