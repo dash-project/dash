@@ -5,12 +5,6 @@
 #include "dart_mempool.h"
 #include "dart_memarea.h"
 
-#define GPTR_SPRINTF(buf_, gptr_)				\
-  sprintf(buf_, "(unit=%d,seg=%d,flags=%d,addr=%p)",		\
-	  gptr_.unitid, gptr_.segid, gptr_.flags,		\
-	  gptr_.addr_or_offs.addr);
-
-
 /* --- TO IMPLEMENT --- 
 
 // blocking versions of one-sided communication operations
@@ -92,11 +86,11 @@ dart_ret_t dart_put_blocking(dart_gptr_t ptr,
     char buf[200];
     GPTR_SPRINTF(buf, ptr);
 
-    fprintf(stderr, "[%0d] PUTing %d bytes from addr=%0x base_addr=%x\n", 
+    fprintf(stderr, "[%0d] GETting %d bytes from addr=%0x base_addr=%x\n", 
 	    myid, nbytes, addr, ((char*)pool->base_addr) );
   }
   */
-  
+
   memcpy(addr, src, nbytes);
   return DART_OK;
 }

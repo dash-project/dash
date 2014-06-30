@@ -325,7 +325,7 @@ dart_ret_t dart_shmem_team_init( dart_team_t team, dart_unit_t myid,
       teams[i].syncslot=-1;
       teams[i].state=NOT_INITIALIZED;
 
-#if 0 
+#if 0 /* TODO: remove me */
       for( j=0; j<MAXNUM_MEMPOOLS; j++ ) {
 	teams[i].mempoolid_aligned[j]=-1;
 	teams[i].mempoolid_unaligned[j]=-1;
@@ -377,7 +377,7 @@ dart_ret_t dart_shmem_team_init( dart_team_t team, dart_unit_t myid,
 
       fprintf(stderr, "created a mempool=%d\n", res);
 
-#if 0
+#if 0 /* TODO: Remove me */
       teams[DART_TEAM_ALL].mempoolid_unaligned[0]=res;
 #endif
     }

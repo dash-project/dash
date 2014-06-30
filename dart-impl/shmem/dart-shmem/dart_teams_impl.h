@@ -34,7 +34,7 @@ struct team_impl_struct
   // the team members;
   dart_group_t group;
 
-#if 0
+#if 0 /* TODO: remove me */
   int mempoolid_aligned[MAXNUM_MEMPOOLS];
   int mempoolid_unaligned[MAXNUM_MEMPOOLS];
 #endif  
