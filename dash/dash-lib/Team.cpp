@@ -75,14 +75,18 @@ size_t dash::Team::getSize() const {
   return size;
 }
 
+dart_team_t dash::Team::getTeamId() const {
+  return teamId;
+}
+
 unsigned dash::Team::getPos() const {
   return pos;
 }
 
-unsigned dash::Team::myId() const {
-  dart_unit_t myId;
-  dart_team_myid(teamId, &myId);
-  return myId;
+unsigned dash::Team::myUnitId() const {
+  dart_unit_t myUnitId;
+  dart_team_myid(teamId, &myUnitId);
+  return myUnitId;
 }
 
 unsigned dash::myId() {

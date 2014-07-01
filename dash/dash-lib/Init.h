@@ -3,6 +3,11 @@
 
 #include "dart.h"
 
+//
+// thin wrappers around the corresponding
+// DART functions
+//
+
 namespace dash
 {
   void init(int *argc, char ***argv);
@@ -10,7 +15,6 @@ namespace dash
 
   int myid();
   int size();
-
 };
 
 

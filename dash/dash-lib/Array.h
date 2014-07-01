@@ -1,59 +1,88 @@
+
 #ifndef DASH_ARRAY_H_INCLUDED
 #define DASH_ARRAY_H_INCLUDED
 
 #include <stdexcept>
 
+#include "GlobPtr.h"
+#include "Team.h"
 #include "dart.h"
 
 namespace dash
 {
-template<typename ELEM_TYPE>
+/* 
+   TYPE DEFINITION CONVENTIONS FOR STL CONTAINERS 
+
+            value_type  Type of element
+        allocator_type  Type of memory manager
+             size_type  Unsigned type of container 
+                        subscripts, element counts, etc.
+       difference_type  Signed type of difference between
+                        iterators
+
+              iterator  Behaves like value_type∗
+        const_iterator  Behaves like const value_type∗
+      reverse_iterator  Behaves like value_type∗
+const_reverse_iterator  Behaves like const value_type∗
+
+             reference  value_type&
+       const_reference  const value_type&
+
+               pointer  Behaves like value_type∗
+         const_pointer  Behaves like const value_type∗
+*/
+
+template<typename ELEMENT_TYPE>
 class array
 {
 public:
-  typedef ELEM_TYPE                       value_type;
-  typedef GlobPtr<value_type>             pointer;
-  typedef const GlobPtr<value_type>       const_pointer;
-  typedef GlobRef<value_type>             reference;
-  typedef const GlobRef<value_type>       const_reference;
-  typedef GlobPtr<value_type>             iterator;
-  typedef const GlobRef<value_type>       const_iterator;
-  typedef dash::gsize_t                   size_type;
-  typedef dash::gptrdiff_t                difference_type;
-  typedef std::reverse_iterator<iterator> reverse_iterator;
+  typedef ELEMENT_TYPE value_type;
+
+  // NO allocator_type 
+  typedef size_t size_type;
+  typedef size_t difference_type;
+
+  typedef       GlobPtr<value_type>         iterator;
+  typedef const GlobPtr<value_type>   const_iterator;
+  typedef std::reverse_iterator<      iterator>       reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-private:
-  pointer*   m_ptr;
-  size_type  m_size;
-  int        m_team_id;
-  
-public:
-  // KF XXX: why public?
-  dart_gptr_t  m_dart_ptr;
-  
-  array(size_type size, int team_id)
-  {
-    m_team_id = team_id;
-    m_size    = size;
-    
-    size_t teamsize;
-    dart_team_size(team_id, &teamsize);
-    
-    if( (size%teamsize) > 0 ) {
-      throw 
-	std::invalid_argument("size has to be a multiple of dart_team_size(team_id)");
-    }
-    
-    lsize_t local_size = 
-      lsize_t(size * sizeof(ELEM_TYPE) / teamsize);
+  typedef       GlobRef<value_type>       reference;
+  typedef const GlobRef<value_type> const_reference;
 
-    dart_team_memalloc_aligned(team_id, local_size, &m_dart_ptr );
+  typedef       GlobPtr<value_type>       pointer;
+  typedef const GlobPtr<value_type> const_pointer;
+
+private:
+  dash::Team&  m_team;
+  dart_gptr_t  m_gptr;
+  size_type    m_size;  // total size (# of elements)
+  size_type    m_lsize; // local size (# of local elements)
+  size_type    m_realsize;
+  pointer*     m_ptr;
+
+
+public: 
+  array(size_t nelem, Team &t=dash::TeamAll) : m_team(t) 
+  {
+    dart_team_t teamid = t.getTeamId();
+
+    size_t lel = nelem/(m_team.getSize());
+    if( nelem%m_team.getSize()!=0 ) {
+      lel+=1;
+    }
+    size_t lsz = lel * sizeof(value_type);
+
+    //fprintf(stderr, "Allocating memory of local-size %d\n", lsz);
+
+    dart_team_memalloc_aligned(teamid, lsz, &m_gptr);
+    m_ptr = new GlobPtr<value_type>(teamid, m_gptr, lel);
     
-    m_ptr = new GlobPtr<ELEM_TYPE>(team_id, m_dart_ptr, local_size);
+    m_size = nelem;
+    m_lsize = lel;
+    m_realsize = lel * m_team.getSize();
   }
 
-  // Capacity.
   constexpr size_type size() const noexcept
   {
     return m_size;
@@ -61,76 +90,55 @@ public:
   
   constexpr size_type max_size() const noexcept
   {
-    return m_size;
+    return m_realsize;
   }
 
   constexpr bool empty() const noexcept
   {
     return size() == 0;
   }
-  
-  pointer data() noexcept
+
+  void barrier() const
   {
-    return *m_ptr;
+    m_team.barrier();
   }
-  
+
   const_pointer data() const noexcept
   {
     return *m_ptr;
   }
   
-  // Iterators.
   iterator begin() noexcept
   {
     return iterator(data());
   }
-  
+
   iterator end() noexcept
   {
     return iterator(data() + m_size);
   }
 
+  iterator lbegin() noexcept
+  {
+    return iterator(data() + m_team.myUnitId()*m_lsize);
+  }
+
+  iterator lend() noexcept
+  {
+    size_type end = (m_team.myUnitId()+1)*m_lsize;
+    if( m_size<end ) end = m_size;
+    
+    return iterator(data() + end);
+  }
+
   reference operator[](size_type n)
   {
     return begin()[n];
+    //return m_ptr[n];
   }
-  
-#if 0  
-  reverse_iterator rbegin() noexcept
-  {
-    return reverse_iterator(end());
-  }
-  
-  reverse_iterator rend() noexcept
-  {
-    return reverse_iterator(begin());
-  }
-  
-  reference operator[](size_type n)
-  {
-    return (*m_ptr)[n];
-  }
-  
-  reference at(size_type n)
-  {
-    if (n >= m_size)
-      throw std::out_of_range("array::at");
-    return (*m_ptr)[n];
-  }
-  
-  reference front()
-  {
-    return *begin();
-  }
-  
-  reference back()
-  {
-    return m_size ? *(end() - 1) : *end();
-  }  
-#endif  
-  
+
 };
- 
-}
+
+} // namespace dash
 
 #endif /* DASH_ARRAY_H_INCLUDED */

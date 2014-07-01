@@ -1,17 +1,23 @@
 #ifndef GLOBREF_H_INCLUDED
 #define GLOBREF_H_INCLUDED
 
-#include "SymmetricAlignedAccess.h"
+#include "MemAccess.h"
 
 namespace dash {
 
 template<typename T>
 class GlobRef
 {
+private:
+  // KF: Q: do we want a copy of the accessor here or a reference=
+  MemAccess<T>  m_accessor;
+  size_t        m_idx;
+  
 public:
-  GlobRef( SymmetricAlignedAccess<T> acc ) :
+  GlobRef( MemAccess<T>& acc, size_t idx ) :
     m_accessor(acc) 
   {
+    m_idx = idx;
   }
   
   virtual ~GlobRef()
@@ -21,13 +27,13 @@ public:
   operator T() const
   {
     T t;
-    m_accessor.get_value(&t);
+    m_accessor.get_value(&t, m_idx);
     return t;
   }
   
-  GlobRef<T>& operator=(const T i)
+  GlobRef<T>& operator=(const T val)
   {
-    m_accessor.put_value(i);
+    m_accessor.put_value(val, m_idx);
     return *this;
   }
   
@@ -35,14 +41,11 @@ public:
   {
     return *this = T(ref);
   }
-
-  SymmetricAlignedAccess<T> get_accessor() const 
+  
+  MemAccess<T> get_accessor() const 
   {
     return m_accessor;
   }
-
-private:
-  SymmetricAlignedAccess<T> m_accessor;
 };
 
 }

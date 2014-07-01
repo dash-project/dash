@@ -1,9 +1,10 @@
+# change this to the name of the DART implementation 
+# ("mpi", "shmem", etc.)
+DART_IMPL   = shmem
 
-# where the DART interface is located
-DART_IF = ../../dart-if/v2.1
+LIBDART_DIR = $(DASH_ROOT)/../dart-impl/$(DART_IMPL)/dart-$(DART_IMPL)/
 
-# where the DART implementation is locaetd
-DART_IMPL = ../../dart-impl/shmem
+include $(LIBDART_DIR)/../make.defs
 
-CC      = gcc -std=c99
-CXX     = g++ -std=c++0x $(CFLAGS)
+LIBDART     = $(LIBDART_DIR)/libdart.a $(LIBDART_EXTRA)
+DART_INC    = $(LIBDART_DIR)/../$(DART_IF)

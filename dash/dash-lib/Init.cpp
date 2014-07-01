@@ -4,7 +4,6 @@
 void dash::init(int *argc, char ***argv)
 {
   dart_init(argc,argv);
-  
 }
 
 void dash::finalize()
@@ -18,7 +17,6 @@ int dash::myid()
   dart_myid(&myid);
   return myid;
 }
-
 
 int dash::size()
 {

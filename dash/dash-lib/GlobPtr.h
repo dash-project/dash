@@ -1,120 +1,133 @@
 #ifndef GLOBPTR_H_INCLUDED
 #define GLOBPTR_H_INCLUDED
 
-#include "GlobRef.h"
-#include "SymmetricAlignedAccess.h"
+#include <iostream>
+#include <sstream>
+#include <string>
 
+#include "GlobRef.h"
+#include "MemAccess.h"
+
+// KF
+typedef long long gptrdiff_t;
 
 namespace dash
 {
 
 template<typename T>
-class GlobPtr : public std::iterator< std::random_access_iterator_tag,
-				      T, dash::gptrdiff_t,
-				      GlobPtr<T>, GlobRef<T> >
+class GlobPtr : 
+    public std::iterator<std::random_access_iterator_tag,
+			 T, gptrdiff_t,
+			 GlobPtr<T>, GlobRef<T> >
 {
-public:
+private:
+  MemAccess<T> m_acc;
+  size_t       m_idx;
   
-  explicit GlobPtr(int team, dart_gptr_t begin, 
-		   dash::lsize_t local_size,
-		   dash::gsize_t index = 0) :
-    m_acc(team, begin, local_size, index)
+public:
+  explicit GlobPtr(dart_team_t teamid,
+		   dart_gptr_t begptr, 
+		   size_t nlelem,
+		   size_t idx = 0) :
+    m_acc(teamid, begptr, nlelem)
   {
+    m_idx = idx;
   }
   
-  explicit GlobPtr(const SymmetricAlignedAccess<T>& acc) :
+  explicit GlobPtr(const MemAccess<T>& acc,
+		   size_t idx = 0) :
     m_acc(acc)
   {
+    m_idx = idx;
   }
   
   virtual ~GlobPtr()
   {
   }
 
-private:
-  SymmetricAlignedAccess<T> m_acc;
-
 public: 
-  
+
   GlobRef<T> operator*()
   { // const
-    return GlobRef<T>(m_acc);
+    return GlobRef<T>(m_acc, m_idx);
   }
   
-  // prefix operator
+  // prefix++ operator
   GlobPtr<T>& operator++()
   {
-    m_acc.increment();
+    m_idx++;
     return *this;
   }
   
-  // postfix operator
+  // postfix++ operator
   GlobPtr<T> operator++(int)
   {
     GlobPtr<T> result = *this;
-    m_acc.increment();
+    m_idx++;
     return result;
   }
-  
-  // prefix operator
-  GlobPtr& operator--()
+
+  // prefix-- operator
+  GlobPtr<T>& operator--()
   {
-    m_acc.decrement();
+    m_idx--;
     return *this;
   }
   
-  // postfix operator
+  // postfix-- operator
   GlobPtr<T> operator--(int)
   {
     GlobPtr<T> result = *this;
-    m_acc.decrement();
+    m_idx--;
     return result;
-  }
-  
-  GlobRef<T> operator[](gptrdiff_t n) const
-  {
-    SymmetricAlignedAccess<T> acc(m_acc);
-    acc.increment(n);
-    return GlobRef<T>(acc);
   }
   
   GlobPtr<T>& operator+=(gptrdiff_t n)
   {
-    if (n > 0)
-      m_acc.increment(n);
-    else
-      m_acc.decrement(-n);
+    m_idx+=n;
     return *this;
   }
   
   GlobPtr<T>& operator-=(gptrdiff_t n)
   {
-    if (n > 0)
-      m_acc.decrement(n);
-    else
-      m_acc.increment(-n);
+    m_idx-=n;
     return *this;
   }
 
+  // subscript
+  GlobRef<T> operator[](gptrdiff_t n) 
+  {
+    return GlobRef<T>(m_acc, n);
+  }
+
+  
   GlobPtr<T> operator+(gptrdiff_t n) const
   {
-    SymmetricAlignedAccess<T> acc(m_acc);
-    if (n > 0)
-      acc.increment(n);
-    else
-      acc.decrement(-n);
-    return GlobPtr<T>(acc);
+    MemAccess<T> acc(m_acc);
+    size_t idx=m_idx+n; 
+   
+    return GlobPtr<T>(acc,idx);
   }
   
   GlobPtr<T> operator-(gptrdiff_t n) const
   {
-    SymmetricAlignedAccess<T> acc(m_acc);
-    if (n > 0)
-      acc.decrement(n);
-    else
-      acc.increment(-n);
-    return GlobPtr<T>(acc);
+    MemAccess<T> acc(m_acc);
+    size_t idx=m_idx-n; 
+   
+    return GlobPtr<T>(acc,idx);
   }
+
+  bool operator!=(const GlobPtr<T>& p) const
+  {
+    return m_idx!=p.m_idx || !(m_acc.equals(p.m_acc));
+  }
+
+
+
+#if 0  
+  
+
+
 
 
   gptrdiff_t operator-(const GlobPtr& other) const
@@ -147,22 +160,16 @@ public:
     return m_acc.equals(p.m_acc);
   }
   
-  bool operator!=(const GlobPtr<T>& p) const
-  {
-    return !(m_acc.equals(p.m_acc));
-  }
+
   
-#if 0
   std::string to_string() const
   {
     std::ostringstream oss;
     oss << "GlobPtr[m_acc:" << m_acc.to_string() << "]";
     return oss.str();
   }
+  
 #endif
-  
-  
-  
 
 };
 

@@ -40,8 +40,10 @@ class Team
   Team* parent();
 
   size_t    getSize() const;
-  unsigned  myId() const;
+  unsigned  myUnitId() const;
   unsigned  getPos() const;
+
+  dart_team_t getTeamId() const;
 
   void barrier();
 
@@ -50,6 +52,9 @@ class Team
   bool isEmpty();
 #endif
 };
+
+extern Team TeamAll;
+extern Team TeamNull;
 
 }
 
