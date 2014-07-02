@@ -1,7 +1,7 @@
 
 DART_ROOT = $(shell pwd)/../..
 LIBDART   = $(DART_ROOT)/dart-shmem/libdart.a -lpthread
-DART_INC  = $(DART_ROOT)/../../dart-if/v2
+DART_INC  = $(DART_ROOT)/../../dart-if/v3
 
 include $(DART_ROOT)/make.defs
 
