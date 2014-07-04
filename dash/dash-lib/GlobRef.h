@@ -30,7 +30,7 @@ public:
     m_accessor.get_value(&t, m_idx);
     return t;
   }
-  
+
   GlobRef<T>& operator=(const T val)
   {
     m_accessor.put_value(val, m_idx);

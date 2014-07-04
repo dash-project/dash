@@ -99,7 +99,6 @@ public:
   {
     return GlobRef<T>(m_acc, n);
   }
-
   
   GlobPtr<T> operator+(gptrdiff_t n) const
   {
@@ -117,50 +116,41 @@ public:
     return GlobPtr<T>(acc,idx);
   }
 
-  bool operator!=(const GlobPtr<T>& p) const
-  {
-    return m_idx!=p.m_idx || !(m_acc.equals(p.m_acc));
-  }
-
-
-
-#if 0  
-  
-
-
-
-
   gptrdiff_t operator-(const GlobPtr& other) const
   {
-    return m_acc.difference(other.m_acc);
+    return gptrdiff_t(m_idx)-gptrdiff_t(other.m_idx);
+  }
+
+  bool operator!=(const GlobPtr<T>& other) const
+  {
+    return m_idx!=other.m_idx || !(m_acc.equals(other.m_acc));
+  }
+
+  bool operator==(const GlobPtr<T>& other) const
+  {
+    return m_idx==other.m_idx && m_acc.equals(other.m_acc) ;
   }
 
   bool operator<(const GlobPtr<T>& other) const
   {
-    return m_acc.lt(other.m_acc);
+    // TODO: check that m_acc equals other.m_acc?!
+    return m_idx < other.m_idx;
   }
-  
   bool operator>(const GlobPtr<T>& other) const
   {
-    return m_acc.gt(other.m_acc);
+    // TODO: check that m_acc equals other.m_acc?!
+    return m_idx > other.m_idx;
   }
-  
   bool operator<=(const GlobPtr<T>& other) const
   {
-    return m_acc.lt(other.m_acc) || m_acc.equals(other.m_acc);
+    // TODO: check that m_acc equals other.m_acc?!
+    return m_idx <= other.m_idx;
   }
-  
   bool operator>=(const GlobPtr<T>& other) const
   {
-    return m_acc.gt(other.m_acc) || m_acc.equals(other.m_acc);
+    // TODO: check that m_acc equals other.m_acc?!
+    return m_idx >= other.m_idx;
   }
-  
-  bool operator==(const GlobPtr<T>& p) const
-  {
-    return m_acc.equals(p.m_acc);
-  }
-  
-
   
   std::string to_string() const
   {
@@ -168,9 +158,6 @@ public:
     oss << "GlobPtr[m_acc:" << m_acc.to_string() << "]";
     return oss.str();
   }
-  
-#endif
-
 };
 
 

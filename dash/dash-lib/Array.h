@@ -65,10 +65,12 @@ private:
 public: 
   array(size_t nelem, Team &t=dash::TeamAll) : m_team(t) 
   {
-    dart_team_t teamid = t.getTeamId();
+    // array is a friend of Team and can access
+    // the protected member m_dartid
+    dart_team_t teamid = t.m_dartid;
 
-    size_t lel = nelem/(m_team.getSize());
-    if( nelem%m_team.getSize()!=0 ) {
+    size_t lel = nelem/(m_team.size());
+    if( nelem%m_team.size()!=0 ) {
       lel+=1;
     }
     size_t lsz = lel * sizeof(value_type);
@@ -80,7 +82,7 @@ public:
     
     m_size = nelem;
     m_lsize = lel;
-    m_realsize = lel * m_team.getSize();
+    m_realsize = lel * m_team.size();
   }
 
   constexpr size_type size() const noexcept
@@ -120,12 +122,12 @@ public:
 
   iterator lbegin() noexcept
   {
-    return iterator(data() + m_team.myUnitId()*m_lsize);
+    return iterator(data() + m_team.myid()*m_lsize);
   }
 
   iterator lend() noexcept
   {
-    size_type end = (m_team.myUnitId()+1)*m_lsize;
+    size_type end = (m_team.myid()+1)*m_lsize;
     if( m_size<end ) end = m_size;
     
     return iterator(data() + end);

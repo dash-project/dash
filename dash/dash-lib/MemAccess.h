@@ -90,12 +90,20 @@ void MemAccess<T>::put_value(const T& newval, size_t idx) const
 template<typename T>
 dart_gptr_t MemAccess<T>::dart_gptr(size_t idx) const
 {
-  dart_unit_t unit = (dart_unit_t) (idx / m_nlelem);
-  size_t offs = (size_t) (idx % m_nlelem);
+  size_t teamsize;
+  dart_unit_t lunit, gunit; 
+  dart_unit_t unitoffs = (dart_unit_t) (idx / m_nlelem);
+  size_t      addroffs = (size_t) (idx % m_nlelem);
 
   dart_gptr_t gptr=m_begptr;
-  dart_gptr_setunit(&gptr, unit);
-  dart_gptr_incaddr(&gptr, offs*sizeof(T));
+
+  dart_team_size(m_teamid, &teamsize);
+  dart_team_unit_g2l(m_teamid, gptr.unitid, &lunit);
+  lunit = (lunit+unitoffs)%teamsize;
+  dart_team_unit_l2g(m_teamid, lunit, &gunit);
+
+  dart_gptr_setunit(&gptr, gunit);
+  dart_gptr_incaddr(&gptr, addroffs*sizeof(T));
 
   return gptr;
 }

@@ -13,8 +13,8 @@ namespace dash
   void init(int *argc, char ***argv);
   void finalize();
 
-  int myid();
-  int size();
+  int    myid();
+  size_t size();
 };
 
 

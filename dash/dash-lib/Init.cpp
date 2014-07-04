@@ -18,7 +18,7 @@ int dash::myid()
   return myid;
 }
 
-int dash::size()
+size_t dash::size()
 {
   size_t size;
   dart_size(&size);
