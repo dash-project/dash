@@ -17,9 +17,9 @@ int main(int argc, char* argv[])
   dash::array<int> arr(10, t);
   
   cout<<"Hello world: I'm global "<<myid<<" of "<<size<<" and "
-    "I'm "<<t.myUnitId()<<" of "<<t.getSize()<<" in my sub-team"<<endl;
+    "I'm "<<t.myid()<<" of "<<t.size()<<" in my sub-team"<<endl;
   
-  if( t.getPos()==1 ) {
+  if( t.position()==1 ) {
     std::fill(arr.lbegin(), arr.lend(), myid);
   }
 
