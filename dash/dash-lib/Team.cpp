@@ -32,7 +32,7 @@ size_t dash::Team::size() const {
   return size;
 }
 
-unsigned dash::Team::position() const {
+size_t dash::Team::position() const {
   return m_position;
 }
 
