@@ -8,6 +8,7 @@
 
 #include "Debug.h"
 
+
 namespace dash
 {
 //
@@ -19,9 +20,9 @@ template<typename T>
 class MemAccess 
 {
 private:
-  const dart_gptr_t m_begptr;  // beginning of allocation
-  dart_team_t       m_teamid;    
-  size_t            m_nlelem;  // number of *local* elements
+  dart_gptr_t    m_begptr;  // beginning of allocation
+  dart_team_t    m_teamid;    
+  size_t         m_nlelem;  // number of *local* elements
   
 public:
   explicit MemAccess( dart_team_t teamid,
@@ -34,6 +35,8 @@ public:
   bool equals( const MemAccess<T>& other ) const;
 
   std::string to_string() const;
+
+  MemAccess<T>& operator=(const MemAccess<T>& other);
 
 private:
   
@@ -125,8 +128,15 @@ bool MemAccess<T>::equals(const MemAccess<T>& other) const
   bool equal = DART_GPTR_EQUAL(m_begptr, other.m_begptr);
   return equal;
 }
+ 
 
-
+ template<typename T>
+   dash::MemAccess<T>&  dash::MemAccess<T>::operator=(const dash::MemAccess<T>& other) 
+   {
+     m_begptr = other.m_begptr;
+     m_teamid = other.m_teamid;
+     m_nlelem = other.m_nelem;
+   }
 
 } // namespace dash
 
