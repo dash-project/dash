@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
   int size = dash::size();
 
   
-  dash::array<int> arr(100, DART_TEAM_ALL);
+  dash::array<int> arr(100, dash::TeamAll);
 
   if( myid==0 ) {
     for( int i=0; i<100; i++ ) {
