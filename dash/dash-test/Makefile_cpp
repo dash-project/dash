@@ -1,0 +1,34 @@
+
+DASH_ROOT_REL = $(shell pwd)/../..
+DASH_ROOT = $(shell cd $(DASH_ROOT_REL);pwd)
+
+include $(DASH_ROOT)/make.defs
+
+LIBDASH   = $(DASH_ROOT)/dash-lib/libdash.a
+DASH_INC  = $(DASH_ROOT)/dash-lib/
+
+
+PWD  = $(shell basename `pwd`)
+PAT  = $(shell echo -n $(PWD) )
+PROG = $(shell echo -n $(PAT) | cut -d . -f 3)
+
+all : $(LIBDASH) $(PROG)
+
+printenv : 
+	 @echo "DASH_ROOT     = $(DASH_ROOT)"
+	 @echo "LIBDASH       = $(LIBDASH)"
+	 @echo "DART_IMPL     = $(DART_IMPL)"
+	 @echo "LIBDART       = $(LIBDART)"
+
+$(LIBDASH) :
+	make -C $(DASH_ROOT)/dash-lib/
+
+$(PROG) : main.o
+	$(CXX) $(LFLGAS) -o $@ $+ $(LIBDASH) $(LIBDART)
+
+%.o 	: %.cpp 
+	$(CXX) -c $(CFLAGS) -I$(DART_INC) -I$(DASH_INC) $+
+
+clean : 
+	rm -f *.o *~
+	rm -f $(PROG)
