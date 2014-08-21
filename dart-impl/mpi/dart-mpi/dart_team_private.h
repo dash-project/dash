@@ -135,27 +135,55 @@
 #include "dart_deb_log.h"
 #include "dart_mem.h"
 
-/* @brief Storing all the teamIDs that are already used. 
- *
- * Each element of this array has the possibility of indicating a specific teamID that is already used.
- * if teamlist[i] = -1, which indicates that ith element is an empty slot and can be allocated.
- * else teamlist[i] will equal to certain teamID and can't be rewritten.
- */
-extern int32_t teamlist[MAX_TEAM_NUMBER];
+extern dart_team_t next_availteamid;
 
-/* @brief Translate the given teamid into its corresponding communicator. 
+/* @brief Translate the given teamid (indicated uniquely by the index) into its corresponding communicator. 
  * 
- * After locating the given teamid in the teamlist, we find that teamlist[i] equals to teamid, which means teams[i] 
+ * After locating the given teamid in the teamlist, 
+ * we find that teamlist[i] equals to teamid, which meas teams[i] 
  * will be the corresponding communicator of teamid.
  */
 extern MPI_Comm teams[MAX_TEAM_NUMBER];
 
+/* @brief Store the sub-communicator with regard to certain node, where the units can 
+ * communicate via shared memory.
+ *
+ * The units runing in certain node vary 
+ * according to the specified team.
+ * The values of numa_comm_list[i] are different for the units belonging to different nodes. 
+ */
+extern MPI_Comm sharedmem_comm_list[MAX_TEAM_NUMBER];
+
+/* @brief Sets of units who are located in the same node for each unit in MAX_TEAM_NUMBER teams.
+ *
+ * Each element of this array will relate to certain team A.
+ * Set of units belonging to the same node vary for different team.
+ * Each unit stores all the IDs of those units (including itself) who are parts of team A as well as
+ * located in the same node as it.
+ */
+//extern int* dart_unit_mapping[MAX_TEAM_NUMBER];
+
+/* @brief This table is represented as a hash table
+ * , which is used to determine the units who are located in the same node.
+ *
+ * Each element of this array will relate to certain team.
+ */
+extern int* dart_sharedmem_table[MAX_TEAM_NUMBER];
+
+/* @brief Set of the size of node for each unit in MAX_TEAM_NUMBER teams.
+ */
+extern int dart_sharedmemnode_size[MAX_TEAM_NUMBER];
+
+/* @brief Set of MPI dynamic window objects corresponding to MAX_TEAM_NUMBER teams. */
+extern MPI_Win win_lists[MAX_TEAM_NUMBER];
 /* @brief Initiate the teamlist.
  *
  * This call will be invoked within dart_adapt_init(), and each element in the returned list 
  * is thought to be an empty slot.
  */
 int dart_adapt_teamlist_init ();
+
+int dart_adapt_teamlist_destroy ();
 
 /* @brief Allocate the first empty slot in the teamlist.
  *
@@ -172,13 +200,11 @@ int dart_adapt_teamlist_alloc(dart_team_t teamid, int *index);
  * This call will be invoked when a new team is destroyed. teamlist[index]
  * = -1, which means the index-th element goes back to an empty slot.
  */
-int dart_adapt_teamlist_recycle(int index);
+int dart_adapt_teamlist_recycle(int index, int pos);
 
 /* @brief Locate the given teamid in the teamlist.
  */
 int dart_adapt_teamlist_convert (dart_team_t teamid, int* index);
-
-extern int next_availteamid;
 
 #endif /*DART_ADAPT_TEAMNODE_H_INCLUDED*/
 

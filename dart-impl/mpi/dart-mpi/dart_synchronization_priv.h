@@ -18,8 +18,7 @@ struct dart_lock_struct
 	dart_gptr_t gptr_tail; /**< Pointer to the tail of lock queue. Stored in unit 0 by default. */
 	dart_gptr_t gptr_list; /**< Pointer to next waiting unit. envisioned as a distributed list across the teamid. */
 	dart_team_t teamid; 
-	MPI_Comm comm; /**< Communicator corresponding to the above teamid. */
-	MPI_Win win; /**< Distinguish different locks on the identical team. */
+	int index;
 	int acquired; /**< Indicate if certain unit has acquired the lock or not. */
 };
 

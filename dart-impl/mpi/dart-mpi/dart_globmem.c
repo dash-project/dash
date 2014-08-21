@@ -6,10 +6,12 @@
  *  one-sided runtime system.
  */
 
-
+/*
 #ifndef ENABLE_DEBUG
 #define ENABLE_DEBUG
 #endif
+*/
+
 #include "dart_deb_log.h"
 #include <stdio.h>
 #include <mpi.h>
@@ -30,28 +32,36 @@
  */
 dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 {
-	int flag = gptr.flags;
-	uint64_t offset;
-	offset = gptr.addr_or_offs.offset;
+	uint16_t flag = gptr.flags;
+	uint64_t offset = gptr.addr_or_offs.offset;
   
 	if (flag == 1)
 	{
-		int index;
+		int index, flag;
+		uint64_t begin;
+		MPI_Win win;
 		int result = dart_adapt_teamlist_convert (gptr.segid, &index);
-		*addr = offset + mempool_globalalloc[index];	
+		if (dart_adapt_transtable_query_win (index, offset, &begin, &win) == -1)
+		{
+			return DART_ERR_INVAL;
+		}
+		MPI_Win_get_attr (win, MPI_WIN_BASE, addr, &flag);
+
+		*addr = (offset - begin) + (char *)(*addr);
 	}
 	else
 	{
 		*addr = offset + mempool_localalloc;
 	}
 	
-
 	return DART_OK;
 }
 
+#if 0
 dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
 {
 	int flag = gptr->flags;
+	int 
 
 	/* The modification to addr is reflected in the fact that modifying the offset. */
 	if (flag == 1)
@@ -67,6 +77,7 @@ dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
 
 	return DART_OK;
 }
+#endif
 
 dart_ret_t dart_gptr_incaddr (dart_gptr_t* gptr, int offs)
 {
@@ -111,27 +122,36 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
 
 dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_gptr_t *gptr)
 {
+	size_t size;
+	
  	dart_unit_t unitid, gptr_unitid = -1;
 	dart_team_myid(teamid, &unitid);
-		
-	int offset;
+	dart_team_size (teamid, &size);
+
+	uint64_t offset;
+	char* sub_mem;
 
 	/* The units belonging to the specified team are eligible to participate
 	 * below codes enclosed. */
 	 
-	MPI_Win win;
-	MPI_Comm comm;
-        int index;
+	MPI_Win win, numa_win;
+	MPI_Comm comm, numa_comm;
+	MPI_Aint disp;
+	MPI_Aint* disp_set = (MPI_Aint*)malloc (size * sizeof (MPI_Aint));
+	
+	int index;
 	int result = dart_adapt_teamlist_convert (teamid, &index);
+
 	if (result == -1)
 	{
 		return DART_ERR_INVAL;
 	}
 	comm = teams[index];
+	numa_comm = sharedmem_comm_list[index];
+
 	if (unitid == 0)
 	{
-	/* Get the adequate available memory region from the memory region
-	 * reserved for unitid 0 in teamid. */
+	/* Get the adequate offset from the infinite memory pool relating to teamid. */
 		offset = dart_mempool_alloc (globalpool[index], nbytes); 
 		if (offset == -1)
 		{
@@ -139,12 +159,28 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
 			return DART_ERR_OTHER;
 		}
 	}
-	MPI_Bcast (&offset, 1, MPI_INT, 0, comm);
+
+	MPI_Bcast (&offset, 1, MPI_UINT64_T, 0, comm);
 	
 	dart_team_unit_l2g (teamid, 0, &gptr_unitid);
-	
-	MPI_Win_create (mempool_globalalloc[index] + offset, nbytes, sizeof (char), MPI_INFO_NULL, comm, &win);
+
+	MPI_Info win_info;
+	MPI_Info_create (&win_info);
+	MPI_Info_set (win_info, "alloc_shared_noncontig", "true");
+
+	/* Allocate shared memory on numa_comm, and create the related numa_win */
+	MPI_Win_allocate_shared (nbytes, sizeof (char), win_info, numa_comm, &sub_mem, &numa_win);
 		
+
+	win = win_lists[index];
+	/* Attach the allocated shared memory to win */
+	MPI_Win_attach (win, sub_mem, nbytes);
+
+	MPI_Get_address (sub_mem, &disp);
+
+	/* Collect the disp information from all the ranks in comm */
+	MPI_Allgather (&disp, 1, MPI_AINT, disp_set, 1, MPI_LONG, comm);
+
 	/* -- Updating infos on gptr -- */
 	gptr->unitid = gptr_unitid;
 	gptr->segid = teamid; /* Segid equals to teamid, identifies a team uniquely from certain unit point of view. */
@@ -155,17 +191,17 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
 	info_t item;
 	item.offset = offset;
 	item.size = nbytes;
-        GMRh handler;
-        handler.win = win;
+        item.disp = disp_set;
+	GMRh handler;
+        handler.win = numa_win;
 	item.handle = handler;
 		
 	/* Add this newly generated correspondence relationship record into the translation table. */
 	dart_adapt_transtable_add (index, item);
+
+	MPI_Info_free (&win_info);
         DEBUG ("%2d: COLLECTIVEALLOC	-  %d bytes, offset = %d, gptr_unitid = %d across team %d",
 			     unitid, nbytes, offset, gptr_unitid, teamid);
-	        
-	/* Start a shared access epoch to all the units of the specified teamid*/
-	MPI_Win_lock_all (0, handler.win); 
 	
 	return DART_OK;
 }
@@ -175,30 +211,36 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 	dart_unit_t unitid;
        	dart_team_myid (teamid, &unitid);
 	int index;
+	char* sub_mem;
 	int result = dart_adapt_teamlist_convert (teamid, &index);
 	if (result == -1)
 	{
 		return DART_ERR_INVAL;
 	}
 	
-	MPI_Win win;
-	int begin;
-	int offset = gptr.addr_or_offs.offset;
-		
-	/* Query the win info from related translation table
-	 * according to the given offset. */
-	dart_adapt_transtable_query (index, offset, &begin, &win);
-		
-	/* End the shared access epoch to all the units of the specified teamid. */
-	MPI_Win_unlock_all (win); 		
+	MPI_Win win, numa_win;
 	
+	int flag;
+	uint64_t begin, offset = gptr.addr_or_offs.offset;	
      	
-	/** TODO: is this barrier needed really?
-	 */
-	dart_barrier (teamid);
+	win = win_lists[index];
+        
+	
+	if (dart_adapt_transtable_query_win (index, offset, NULL, &numa_win) == -1)
+	{
+		return DART_ERR_INVAL;
+	}
+
+	/* Detach the freed sub-memory from win */
+        MPI_Win_get_attr (numa_win, MPI_WIN_BASE, &sub_mem, &flag);
+	MPI_Win_detach (win, sub_mem);
+
+	/* Release the shared memory win object related to the freed shared momory */
+	MPI_Win_free (&numa_win); 
+	
 	if (unitid == 0)
 	{
-		if (dart_mempool_free (globalpool[index], gptr.addr_or_offs.offset) == -1)
+		if (dart_mempool_free (globalpool[index], offset) == -1)
 		{
 			ERROR ("Invalid offset input, can't remove global memory from the memory pool");
 			return DART_ERR_INVAL;
@@ -206,12 +248,11 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 	}
 	
 	DEBUG ("%2d: COLLECTIVEFREE	- offset = %d, gptr_unitid = %d across team %d", 
-			unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
+			unitid, offset, gptr.unitid, teamid);
 
 	/* Remove the related correspondence relation record from the related translation table. */
-	if (dart_adapt_transtable_remove (index, gptr.addr_or_offs.offset) == -1)
+	if (dart_adapt_transtable_remove (index, offset) == -1)
 	{
-		ERROR ("Invalid offset input, can't remove record from translation table");
 		return DART_ERR_INVAL;
 	}
 	

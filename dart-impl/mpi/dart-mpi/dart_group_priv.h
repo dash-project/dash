@@ -10,9 +10,9 @@
 
 /** @brief Dart group type.
  */
+
  struct dart_group_struct {
 	 MPI_Group mpi_group;
  };
-
 
 #endif /* DART_ADAPT_GROUP_PRIV_H_INCLUDED */

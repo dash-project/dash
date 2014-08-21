@@ -6,15 +6,19 @@
  *  one-sided runtime system.
  */
 
+/*
 #ifndef ENABLE_DEBUG
 #define ENABLE_DEBUG
 #endif
 #ifndef ENABLE_LOG
 #define ENABLE_LOG
 #endif
+*/
+
 #include "dart_deb_log.h"
 #include <stdio.h>
 #include <mpi.h>
+#include <string.h>
 #include "dart_types.h"
 #include "dart_translation.h"
 #include "dart_team_private.h"
@@ -30,60 +34,73 @@
 dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t *handle)
 {
 	MPI_Request mpi_req;
-	dart_unit_t target_unitid;
-//	dart_unit_t unitid;
-	int offset = gptr.addr_or_offs.offset;
-	int flags = gptr. flags;
+	MPI_Aint disp_s, difference;
+	dart_unit_t target_unitid_abs;
+	uint64_t begin, offset = gptr.addr_or_offs.offset;
+	uint16_t flags = gptr. flags;
 	MPI_Win win;
 
 	*handle = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
-
+	target_unitid_abs = gptr.unitid;
+//	long difference;
+	
 	/* The memory accessed is allocated with collective allocation. */
 	if (flags == 1)
 	{
-		int index, begin;
-		int teamid = gptr.segid;
+		int index, teamid, target_unitid_rel;
+
+		teamid = gptr.segid;
 		int result = dart_adapt_teamlist_convert (teamid, &index);
 
 		if (result == -1)
 		{
 			return DART_ERR_INVAL;
 		}
-	        if (dart_adapt_transtable_query (index, offset, &begin, &win) == -1)
+		/*
+	        if (dart_adapt_transtable_query_win (index, offset, &begin, &win) == -1)
 		{
 			ERROR ("Invalid accessing operation");
 			return DART_ERR_INVAL;
 		}
-		
+	        */
+		win = win_lists[index];
 		/* Difference: the offset relative to the base location of the sub-memory region
 		 * spanned by win for unitid. */
-		int difference = offset - begin; 
+
 		
 		/* Translate local unitID (relative to teamid) into global unitID (relative to DART_TEAM_ALL).
 		 *
 		 * Note: target_unitid should not be the global unitID but rather the local unitID relative to
 		 * the team associated with the specified win object.
 		 */
-		dart_team_unit_g2l (teamid, gptr.unitid, &target_unitid);
+		dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
 
+		if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &begin, &disp_s)== -1)
+		{
+			return DART_ERR_INVAL;
+		}
+
+		difference = disp_s + (offset - begin);
+		 
 		/* MPI-3 newly added feature: request version of get call. */
 
 		/** TODO: Check if MPI_Rget_accumulate (NULL, 0, MPI_BYTE, dest, nbytes, MPI_BYTE, 
 		 *  target_unitid, difference, nbytes, MPI_BYTE, MPI_NO_OP, win, &mpi_req) could be an better alternative? 
 		 */
-		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid, difference, nbytes, MPI_BYTE, win, &mpi_req);
+	//	MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
+		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
+
 		DEBUG ("GET	- %d bytes (allocated with collective allocation) from %d at the offset %d", 
-				nbytes, target_unitid, offset);
+				nbytes, target_unitid_abs, offset);
 	}
 
 	/* The memory accessed is allocated with local allocation. */
 	else if (flags == 0)
 	{
 		win = win_local_alloc;
-		target_unitid = gptr.unitid;
-		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid, offset, nbytes, MPI_BYTE, win, &mpi_req);
+		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_abs, offset, nbytes, MPI_BYTE, win, &mpi_req);
 		DEBUG ("GET	- %d bytes (allocated with local allocation) from %d at the offset %d",
-			       	nbytes, target_unitid, offset);
+			       	nbytes, target_unitid_abs, offset);
 	}
 	
 	(*handle) -> request = mpi_req;
@@ -92,99 +109,391 @@ dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t 
 
 dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *handle)
 {
+	int i, j;
 	MPI_Request mpi_req;
-	dart_unit_t target_unitid;
-	int offset = gptr.addr_or_offs.offset;
-	int flags = gptr.flags;
+	MPI_Aint disp_s, difference;
+	dart_unit_t target_unitid_abs;
+	uint64_t begin, offset = gptr.addr_or_offs.offset;
+	uint16_t flags = gptr.flags;
 	MPI_Win win;
+	
+	*handle = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
+	target_unitid_abs = gptr.unitid;
 
-	*(handle) = (dart_handle_t)malloc (sizeof (struct dart_handle_struct));
 	if (flags == 1)
 	{
-		int index, begin;
-		int teamid = gptr.segid;
+		int index, teamid, target_unitid_rel;
+	
+		teamid = gptr.segid;
 		int result = dart_adapt_teamlist_convert (teamid, &index);
+		if (result == -1)
+		{
+			return DART_ERR_INVAL;
+		}
+		/*
 		if (dart_adapt_transtable_query (index, offset, &begin, &win) == -1)
 		{
 			ERROR ("Invalid accessing operation");
 			return DART_ERR_INVAL;
 		}
+		*/
 
-		int difference = offset - begin;
-				
-		dart_team_unit_g2l (teamid, gptr.unitid, &target_unitid);
+		win = win_lists[index];		
+		dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
+		if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &begin, &disp_s) == -1)
+		{
+			return DART_ERR_INVAL;
+		}	
+
+		difference = disp_s + (offset - begin);
 		/** TODO: Check if MPI_Raccumulate (src, nbytes, MPI_BYTE, target_unitid, difference, nbytes, MPI_BYTE,
 		 *  REPLACE, win, &mpi_req) could be a better alternative? 
 		 */
-		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid, difference, nbytes, MPI_BYTE, win, &mpi_req);
-		DEBUG ("PUT	- %d bytes (allocated with collective allocation) to %d at the offset %d", 
-				nbytes, target_unitid, offset);
+//		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
+		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
+		DEBUG ("PUT	-%d bytes (allocated with collective allocation) to %d at the offset %d",
+				nbytes, target_unitid_abs, offset);
+
 	}
 	else if (flags == 0)
 	{
 		win = win_local_alloc;
-		target_unitid = gptr.unitid;
 		
-		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid, offset, nbytes, MPI_BYTE, win, &mpi_req);
+		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_abs, offset, nbytes, MPI_BYTE, win, &mpi_req);
 		DEBUG ("PUT	- %d bytes (allocated with local allocation) to %d at the offset %d", 
-				nbytes, target_unitid, offset);
+				nbytes, target_unitid_abs, offset);
 	}
 
 	(*handle) -> request = mpi_req;
 	return DART_OK;
 }
 
+/*
+int binary_search(int A[], int key, int imin, int imax)
+{
+	  // continually narrow search until just one element remains
+	 
+	  while (imin < imax)
+	  {
+		  int imid = (imin + imax) >> 1;
+	      
+	          // code must guarantee the interval is reduced at each iteration
+	//	  assert(imid < imax);
+	  //   note: 0 <= imin < imax implies imid will always be less than imax
+	                                
+	           //reduce the search
+	          if (A[imid] < key)
+		  {
+			  imin = imid + 1;
+		  }
+		  else
+		  {
+	                  imax = imid;
+	          }
+	  }
+	  //   At exit of while:                                                                                  //   if A[] is empty, then imax < imin
+	  //   otherwise imax == imin
+	  //   deferred test for equality     
+	  
+	  
+	  if ((imax == imin) && (A[imin] == key))
+	  {
+		  return imin;
+	  }
+	  else 
+	  {
+		  return -1;
+	  }
+
+}
+*/
 /* -- Blocking dart one-sided operations -- */
 
 /** TODO: Check if MPI_Get_accumulate (MPI_NO_OP) can bring better performance? 
  */
-dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
+
+dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 {
-	dart_handle_t dart_req;
+	int i, is_sharedmem = 0;
+	int index, teamid, result;
+
+	MPI_Win win;
 	MPI_Status mpi_sta;
-	if (dart_get (dest, gptr, nbytes, &dart_req) != DART_OK)
+	MPI_Request mpi_req;
+	MPI_Aint disp_s, maximum_size, difference;
+
+	uint64_t begin, offset = gptr.addr_or_offs.offset;
+	uint16_t flags = gptr.flags;
+	dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
+
+	int disp_unit;
+	char *baseptr;
+
+	if (flags == 1)
 	{
-		return DART_ERR_INVAL;
+		teamid = gptr.segid;
+		result = dart_adapt_teamlist_convert (teamid, &index);
+		if (result == -1)
+		{
+			return DART_ERR_INVAL;
+		}
 	}
+	else 
+	{
+		index = DART_TEAM_ALL;
+	}
+
+	/* Checking whether origin and target are in the same numa domain. 
+	 * We use the approatch of shared memory accessing only when it passsed the above check. */
+	
+			
+//	i = binary_search (dart_unit_mapping[j], gptr.unitid, 0, dart_numa_size[j] - 1);
+	/* The value of i will be the target's relative ID in teamid. */
+	i = dart_sharedmem_table[index][gptr.unitid];
+
+	if (i >= 0)
+	{
+		is_sharedmem = 1;
+	}
+	
+
+	if (is_sharedmem)
+	{
+		dart_myid (&unitid);
+		if (flags == 1)
+		{
+			if (dart_adapt_transtable_query_win (index, offset, &begin, &win) == -1)
+			{
+				return DART_ERR_INVAL;
+			}
+		}
 		
-	MPI_Wait (&(dart_req -> request), &mpi_sta);
-	free (dart_req);
-	LOG ("GET_BLOCKING	- finished");
+		if (unitid == target_unitid_abs)
+		{/* If orgin and target are identical, then switchs to local access. */
+			if (flags == 1)
+			{
+				int flag;
+				
+				MPI_Win_get_attr (win, MPI_WIN_BASE, &baseptr, &flag);
+				baseptr = baseptr + (offset - begin);
+			}
+			else
+			{
+				baseptr = offset + mempool_localalloc;
+			}
+		}
+		else
+		{/* Accesses through shared memory (store). */
+			if (flags == 1)
+			{
+				difference = offset - begin;
+			}
+			else
+			{
+				difference = offset;
+				win = numa_win_local_alloc;
+			}
+			MPI_Win_shared_query (win, i, &maximum_size, &disp_unit, &baseptr);
+			baseptr += difference;
+		}
+			memcpy (baseptr, ((char*)src), nbytes);
+	}
+	else
+	{/* The traditional remote access method */
+		if (flags == 1)
+		{	
+			win = win_lists[index];
+	           	dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
+			if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &begin, &disp_s) == -1)
+			{
+				return DART_ERR_INVAL;
+			}	
+			difference = disp_s + (offset - begin);
+		}
+		else
+		{
+			win = win_local_alloc;
+			difference = offset;
+			target_unitid_rel = target_unitid_abs;
+		}
+	
+	//	MPI_Put (src, nbytes, MPI_BYTE, target_unitid, difference, nbytes, MPI_BYTE, win);
+		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
+		MPI_Wait (&mpi_req, &mpi_sta);
+	}
+	
+	if (flags == 1)
+ 	{
+        	DEBUG ("PUT_BLOCKING	- %d bytes (allocated with collective allocation) to %d at the offset %d", nbytes, target_unitid_abs, offset);
+	}
+	else
+        {
+		DEBUG ("PUT_BLOCKING - %d bytes (allocated with local allocation) to %d at the offset %d", nbytes, target_unitid_abs, offset);
+	}
+
 	return DART_OK;
 }
 
+
 /** TODO: Check if MPI_Accumulate (REPLACE) can bring better performance? 
  */
-dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
+dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 {
-	dart_handle_t dart_req;
+	int i, j, is_sharedmem = 0;
+	dart_team_t teamid;
+	int index, result;
+	
+	MPI_Win win;
 	MPI_Status mpi_sta;
-	if (dart_put (gptr, src, nbytes, &dart_req) != DART_OK)
+	MPI_Request mpi_req;
+	MPI_Aint disp_s, maximum_size, difference;
+	
+	uint64_t begin, offset = gptr.addr_or_offs.offset;
+	uint16_t flags = gptr.flags;
+	dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
+	
+	int disp_unit;
+	char* baseptr;
+	
+	if (flags == 1)
 	{
-		return DART_ERR_INVAL;
+		teamid = gptr.segid;
+		result = dart_adapt_teamlist_convert (teamid, &index);
+		if (result == -1)
+		{
+			return DART_ERR_INVAL;
+		}
+	}
+	else 
+	{
+		index = 0;
+	}
+	j = index;
+
+//	i = binary_search (dart_unit_mapping[j], gptr.unitid, 0, dart_numa_size[j] - 1);
+
+	/* Check whether the target is in the same numa node as the calling unit or not. */
+	i = dart_sharedmem_table[j][gptr.unitid];
+	if (i >= 0)
+	{
+		is_sharedmem = 1;
 	}
 
-	MPI_Wait (&(dart_req -> request), &mpi_sta);
-	free (dart_req);
-	LOG ("PUT_BLOCKING	- finished");
+	if (is_sharedmem)
+	{
+		dart_myid (&unitid);
+		if (flags == 1)
+		{
+			if (dart_adapt_transtable_query_win (index, offset, &begin, &win) == -1)
+			{
+				return DART_ERR_INVAL;
+			}
+		}
+
+		if (unitid == target_unitid_abs)
+		{
+			if (flags == 1)
+			{
+				int flag;
+				MPI_Win_get_attr (win, MPI_WIN_BASE, &baseptr, &flag);
+		//		dart_adapt_transtable_query_addr (index, offset, &begin, &baseptr);
+				baseptr = baseptr + (offset - begin);
+			}
+			else
+			{
+				baseptr = offset + mempool_localalloc;
+			}
+		}
+		else
+		{/* Accesses through shared memory (load)*/
+			if (flags == 1)
+			{			
+				difference = offset - begin;
+			}
+			else
+			{
+				win = numa_win_local_alloc;
+				difference = offset;
+			}
+			MPI_Win_shared_query (win, i, &maximum_size, &disp_unit, &baseptr);
+			baseptr += difference;
+		}
+	/*	
+		for (j = 0; j < nbytes; j++)
+		{
+			((char*)dest)[j] = baseptr[j];
+		}
+	*/	
+		memcpy ((char*)dest, baseptr, nbytes);	
+	}
+	else
+	{
+		if (flags == 1)
+		{
+			win = win_lists[index];
+			dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
+			if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &begin, &disp_s) == -1)
+			{
+				return DART_ERR_INVAL;
+			}
+			difference = disp_s + (offset - begin);
+		}
+		else
+		{
+			win = win_local_alloc;
+			difference = offset;
+			target_unitid_rel = target_unitid_abs;
+		}
+
+	//	MPI_Get (dest, nbytes, MPI_BYTE, target_unitid, offset, nbytes, MPI_BYTE, win);
+		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
+		
+		MPI_Wait (&mpi_req, &mpi_sta);
+	}
+	if (flags == 1)
+	{
+		DEBUG ("GET_BLOCKING	- %d bytes (allocated with collective allocation) from %d at the offset %d", 
+				nbytes, target_unitid_abs, offset);
+	}
+	else 
+	{	
+		DEBUG ("GET_BLOCKING - %d bytes (allocated with local allocation) from %d at the offset %d", 
+				nbytes, target_unitid_abs, offset);
+	}
 	return DART_OK;
 }
 
 
 dart_ret_t dart_wait (dart_handle_t handle)
 {
-	MPI_Status mpi_sta;
-	MPI_Wait (&(handle -> request), &mpi_sta);
+	if (handle)
+	{
+		MPI_Status mpi_sta;
+		MPI_Wait (&(handle -> request), &mpi_sta);
 
+		handle = NULL;
+		free (handle);
+	}
 	LOG ("WAIT	- finished");
 	return DART_OK;
 }
 
 dart_ret_t dart_test (dart_handle_t handle, int* finished)
 {
+	if (!handle)
+	{
+		*finished = 1;
+		return DART_OK;
+	}
+
 	MPI_Status mpi_sta;
 	MPI_Test (&(handle -> request), finished, &mpi_sta);
 
+	if (*finished)
+	{
+		handle = NULL;
+		free (handle);
+	}
 	LOG ("TEST	- finished");
 	return DART_OK;
 }
@@ -192,24 +501,31 @@ dart_ret_t dart_test (dart_handle_t handle, int* finished)
 
 dart_ret_t dart_waitall (dart_handle_t *handle, size_t n)
 {
-	int i;
-	MPI_Status *mpi_sta;
-	MPI_Request *mpi_req;
-	mpi_req = (MPI_Request *)malloc (n * sizeof (MPI_Request));
-	mpi_sta = (MPI_Status *)malloc (n * sizeof (MPI_Status));
-
-	for (i = 0; i < n; i++)
+	if (*handle)
 	{
-		mpi_req [i] = handle[i] -> request;
-	}
-	MPI_Waitall (n, mpi_req, mpi_sta);
-	for (i = 0; i < n; i++)
-	{
-		handle[i] -> request = mpi_req [i];
-	}
+		int i;
+		MPI_Status *mpi_sta;
+		MPI_Request *mpi_req;
+	
+		mpi_req = (MPI_Request *)malloc (n * sizeof (MPI_Request));
+		mpi_sta = (MPI_Status *)malloc (n * sizeof (MPI_Status));
 
-	free (mpi_req);
-	free (mpi_sta);
+		for (i = 0; i < n; i++)
+		{
+			mpi_req [i] = handle[i] -> request;
+		}
+		MPI_Waitall (n, mpi_req, mpi_sta);
+		
+		for (i = 0; i < n; i++)
+		{
+			handle[i] -> request = mpi_req [i];
+			handle[i] = NULL;
+			free(handle[i]);
+		}
+	
+		free (mpi_req);
+		free (mpi_sta);
+	}
 	LOG ("WAITALL	- finished");
 	return DART_OK;
 }
@@ -219,6 +535,12 @@ dart_ret_t dart_waitall (dart_handle_t *handle, size_t n)
  */
 dart_ret_t dart_testall (dart_handle_t *handle, size_t n, int* finished)
 {
+	if (!(*handle))
+	{
+		*finished = 1;
+		return DART_OK;
+	}
+
 	int i;
 	MPI_Status *mpi_sta;
 	MPI_Request *mpi_req;
@@ -235,6 +557,14 @@ dart_ret_t dart_testall (dart_handle_t *handle, size_t n, int* finished)
 		handle[i] -> request = mpi_req[i];
 	}
 
+	if (*finished)
+	{
+		for (i = 0; i < n; i++)
+		{
+			handle[i] = NULL;
+			free (handle[i]);
+		}
+	}
 	free (mpi_req);
 	free (mpi_sta);
 	LOG ("TESTALL	- finished");

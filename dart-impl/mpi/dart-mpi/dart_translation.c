@@ -14,24 +14,25 @@
 node_t transtable_globalalloc [MAX_TEAM_NUMBER];
 
 MPI_Win win_local_alloc;
+MPI_Win numa_win_local_alloc;
+
 
 int dart_adapt_transtable_create (int index)
 {
-	int i;
 	transtable_globalalloc [index] = NULL;
 	return 0;
 }
 
 int dart_adapt_transtable_add (int index, info_t item)
 {
-	int i;
 	node_t pre, q;
 	node_t p = (node_t) malloc (sizeof (node_info_t));
 	p -> trans.offset = item.offset;
 	p -> trans.size = item.size;
 	p -> trans.handle.win = item.handle.win;
+	p -> trans.disp = item.disp;
 	p -> next = NULL;
-	int compare = item.offset;
+	uint64_t compare = item.offset;
 
 	/* The translation table is empty. */
 	if (transtable_globalalloc[index] == NULL)
@@ -54,7 +55,7 @@ int dart_adapt_transtable_add (int index, info_t item)
 	return 0;
 }
 
-int dart_adapt_transtable_remove (int index, int offset)
+int dart_adapt_transtable_remove (int index, uint64_t offset)
 {
 	node_t p, pre;
 	p = transtable_globalalloc [index];
@@ -71,21 +72,49 @@ int dart_adapt_transtable_remove (int index, int offset)
 		}
 		if (p == NULL)
 		{
-			ERROR ("Can't remove the record from translation table");
+			ERROR ("Invalid offset: %d,can't remove the record from translation table", offset);
 			return -1;
 		}
 	 	pre -> next = p -> next;
 	}
 
+	free (p->trans.disp);
 	free (p);
 	return 0;
 }
 
-int dart_adapt_transtable_query (int index, int offset, int *begin, MPI_Win* win)
+int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t* begin, MPI_Win* win)
 {
 	node_t p, pre;
-	MPI_Win result_win;
 	p = transtable_globalalloc [index];
+	
+	while ((p != NULL) && (offset >= ((p -> trans).offset)))
+	{
+		pre = p;
+		p = p -> next;
+	}
+
+	if (((pre -> trans).offset + (pre -> trans).size) <= offset)
+	{
+		ERROR ("Invalid offset: %d, can not get the related window object", offset);
+		return -1;
+	}
+
+	if (begin != NULL)
+	{
+		*begin = (pre -> trans).offset;/* "begin" indicates the base location of the memory region for the specified team. */
+	}
+
+	*win = (pre -> trans).handle.win;
+	return 0;;
+}
+
+/*
+int dart_adapt_transtable_query_addr (int index, int offset, int* begin, void **addr)
+{
+	node_t p, pre;
+	p = transtable_globalalloc [index];
+
 	while ((p != NULL) && (offset >= (p -> trans.offset)))
 	{
 		pre = p;
@@ -96,10 +125,35 @@ int dart_adapt_transtable_query (int index, int offset, int *begin, MPI_Win* win
 	{
 		return -1;
 	}
-	
-	result_win = (pre -> trans).handle.win;
-	*begin = pre -> trans.offset;/* "begin" indicates the base location of the memory region for the specified team. */
-	*win = result_win;
+
+
+	*begin = (pre -> trans).offset;
+	*addr = (pre -> trans).addr;
+	return 0;
+}
+*/
+
+int dart_adapt_transtable_query_disp (int index, uint64_t offset, dart_unit_t rel_unitid, uint64_t* begin, MPI_Aint *disp_s)
+{
+	node_t p, pre;
+	p = transtable_globalalloc [index];
+
+	while ((p != NULL) && (offset >= ((p -> trans).offset)))
+	{
+		pre = p;
+		p = p -> next;
+	}
+	if (((pre -> trans).offset + (pre -> trans).size) <= offset)
+	{
+		ERROR ("Invalid offset : %d, can not get the related displacement", offset);
+		return -1;
+	}
+
+	if (begin != NULL)
+	{
+		*begin = (pre -> trans).offset;
+	}
+	*disp_s = (pre -> trans).disp[rel_unitid];
 	return 0;
 }
 
@@ -115,6 +169,7 @@ int dart_adapt_transtable_destroy (int index)
 	{
 		pre = p;
 		p = p -> next;
+		free (pre->trans.disp);
 		free (pre);
 	}
 	transtable_globalalloc[index] = NULL;

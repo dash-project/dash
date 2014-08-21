@@ -13,19 +13,19 @@
 
 /* Global object for one-sided communication on memory region allocated with 'local allocation'. */
 extern MPI_Win win_local_alloc; 
-
+extern MPI_Win numa_win_local_alloc;
 /** @brief Definition of translation table.
  * 
  *  This translation table is created for dart collective memory allocation.
  *  Here, several features for translation table are itemized below:
  *
- *  - created every time a new team is generated.
+ *  - created every time a collective global memory is generated.
  *
- *  - store the one-to-one correspondence relationship between global pointer and window.
+ *  - store the one-to-one correspondence relationship between global pointer and shared memory window.
  *
  *  - arranged in an increasing order based upon global pointer.
  * 
- *  @note global pointer (offset) <-> window (win object), win object should be determined by offset uniquely.
+ *  @note global pointer (offset) <-> shared memory window (win object), win object should be determined by offset uniquely.
  */
 typedef struct
 {
@@ -34,8 +34,9 @@ typedef struct
 
 typedef struct
 {
-	int offset; /* The displacement relative to the base address of the memory segment associated with certain team. */
-	int size;
+	uint64_t offset; /* The displacement relative to the base address of the allocated collective memory memory segment. */
+	size_t size;
+	MPI_Aint* disp; /* the address set of the memory location of all the units in certain team. */
 	GMRh handle;
 }info_t;
 
@@ -72,21 +73,37 @@ int dart_adapt_transtable_add (int index, info_t item);
  *
  *  Offset can determine a record in the every translation table uniquely.
  */ 
-int dart_adapt_transtable_remove (int index, int offset);
+int dart_adapt_transtable_remove (int index, uint64_t offset);
 
-/** @brief Query a item associated with the specified offset.
+/** @brief Query the shared memory window object associated with the specified offset.
  *
  *  "Difference = offset - begin" is what we ultimately want,
  *  which is the displacement relative to the beginning address of 
- *  sub-memory associated with specified dart allocation. 
+ *  sub-memory associated with specified dart collective global allocation. 
  *
  *  @param[in] index	Ditto.
  *  @param[in] offset
- *  @param[out] begin	The same as the difference.
  *  @param[out] win	A MPI window object. 
+ *
+ *  @retval non-negative integer Search successfully, it indicates the beginning
+ *  address of sub-memory associated with specified dart collective global allcoation.
+ *  @retval negative integer Failure.
  */
 
-int dart_adapt_transtable_query (int index, int offset, int *begin, MPI_Win *win);
+int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t *begin, MPI_Win *win);
+
+//int dart_adapt_transtable_query_addr (int index, int offset, int *begin, void **addr);
+
+/** @brief Query the address set of the memory location of all the units in specified team.
+ *
+ *  The address set information targets for the dart inter-node communication, which means
+ *  the one-sided communication proceed within the dynamic window object instead of the 
+ *  shared memory window object.
+ *
+ *  @retval ditto
+ */
+
+int dart_adapt_transtable_query_disp (int index, uint64_t offset, dart_unit_t rel_unit, uint64_t *begin, MPI_Aint* disp_s);
 
 /** @brief Destroy the translation table associated with the speicified team.
  */

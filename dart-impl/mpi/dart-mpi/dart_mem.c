@@ -36,7 +36,7 @@ void dart_mempool_destroy(dart_mempool pool)
 	free(pool);
 }
 
-int dart_mempool_alloc (dart_mempool pool, size_t size)
+uint64_t dart_mempool_alloc (dart_mempool pool, size_t size)
 {
 	dart_mempool_list current = pool->free_mem;
 	dart_mempool_list prev = NULL;
@@ -47,6 +47,7 @@ int dart_mempool_alloc (dart_mempool pool, size_t size)
 		prev = current;
 		current = current->next;
 	}
+
 	if (current == NULL )
 	{
 		return -1;
@@ -57,6 +58,7 @@ int dart_mempool_alloc (dart_mempool pool, size_t size)
 	newAllocEntry.size = size;
 	newAllocEntry.offset = current->offset;
 	pool->allocated_mem = dart_push_front(pool->allocated_mem, newAllocEntry);
+
 	/* Remove element from free list. */
 					
 	if (current->size == size)					
@@ -68,9 +70,10 @@ int dart_mempool_alloc (dart_mempool pool, size_t size)
 		current->size -= size;
 		current->offset = current->offset + size;
 	}
+
 	return newAllocEntry.offset;
 }
-int dart_mempool_free (dart_mempool pool, int offset)
+int dart_mempool_free (dart_mempool pool, uint64_t offset)
 {
 	dart_mempool_list current = pool->allocated_mem;
 	dart_mempool_list prev = NULL;
@@ -100,6 +103,7 @@ dart_mempool_list dart_push_front (dart_mempool_list list, dart_list_entry newEn
 	dart_mempool_list newAlloc = (dart_mempool_list) malloc(sizeof(dart_list_entry));
 	*newAlloc = newEntry;
 	newAlloc->next = list;
+	
 	return newAlloc;
 }
 
@@ -158,6 +162,6 @@ dart_mempool_list dart_list_melt(dart_mempool_list list)
 	        {
 			prev = current;
 			current = current->next;
-		}											 																							}
+		}											 														  }
 	return list;
 }														
