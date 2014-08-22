@@ -136,10 +136,6 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, int* index)
 int dart_adapt_teamlist_recycle (int index, int pos)
 {
 	int i;
-	int unitid;
-	dart_myid (&unitid);
-//	printf ("unitid %d: recycle, index is %d, pos is %d\n", unitid, index, pos);
-//	teamlist[index] = -1;
 	dart_free_teamlist_ptr newAllocateEntry = (dart_free_teamlist_ptr)malloc (sizeof (dart_free_entry));
 	newAllocateEntry -> index = index;
 	newAllocateEntry -> next = dart_free_teamlist_header;
