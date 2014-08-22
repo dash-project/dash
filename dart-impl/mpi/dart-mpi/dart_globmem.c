@@ -51,7 +51,7 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 	}
 	else
 	{
-		*addr = offset + mempool_localalloc;
+		*addr = offset + dart_mempool_localalloc;
 	}
 	
 	return DART_OK;
@@ -97,9 +97,9 @@ dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 	dart_unit_t unitid;
 	dart_myid (&unitid);
 	gptr->unitid = unitid;
-	gptr->segid = MAX_TEAM_NUMBER;
+	gptr->segid = DART_MAX_TEAM_NUMBER;
 	gptr->flags = 0; /* For local allocation, the flag is marked as '0'. */
-	gptr->addr_or_offs.offset = dart_mempool_alloc (localpool, nbytes);
+	gptr->addr_or_offs.offset = dart_mempool_alloc (dart_localpool, nbytes);
 	if (gptr->addr_or_offs.offset == -1)
 	{
 		ERROR ("Out of bound: the global memory is exhausted");
@@ -111,7 +111,7 @@ dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 
 dart_ret_t dart_memfree (dart_gptr_t gptr)
 {	
-	if (dart_mempool_free (localpool, gptr.addr_or_offs.offset) == -1)
+	if (dart_mempool_free (dart_localpool, gptr.addr_or_offs.offset) == -1)
 	{
 		ERROR ("Free invalid local global pointer");
 		return DART_ERR_INVAL;
@@ -146,13 +146,13 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
 	{
 		return DART_ERR_INVAL;
 	}
-	comm = teams[index];
-	numa_comm = sharedmem_comm_list[index];
+	comm = dart_teams[index];
+	numa_comm = dart_sharedmem_comm_list[index];
 
 	if (unitid == 0)
 	{
 	/* Get the adequate offset from the infinite memory pool relating to teamid. */
-		offset = dart_mempool_alloc (globalpool[index], nbytes); 
+		offset = dart_mempool_alloc (dart_globalpool[index], nbytes); 
 		if (offset == -1)
 		{
 			ERROR ("Out of bound: the global memory is exhausted");
@@ -172,7 +172,7 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
 	MPI_Win_allocate_shared (nbytes, sizeof (char), win_info, numa_comm, &sub_mem, &numa_win);
 		
 
-	win = win_lists[index];
+	win = dart_win_lists[index];
 	/* Attach the allocated shared memory to win */
 	MPI_Win_attach (win, sub_mem, nbytes);
 
@@ -223,7 +223,7 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 	int flag;
 	uint64_t begin, offset = gptr.addr_or_offs.offset;	
      	
-	win = win_lists[index];
+	win = dart_win_lists[index];
         
 	
 	if (dart_adapt_transtable_query_win (index, offset, NULL, &numa_win) == -1)
@@ -240,7 +240,7 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 	
 	if (unitid == 0)
 	{
-		if (dart_mempool_free (globalpool[index], offset) == -1)
+		if (dart_mempool_free (dart_globalpool[index], offset) == -1)
 		{
 			ERROR ("Invalid offset input, can't remove global memory from the memory pool");
 			return DART_ERR_INVAL;

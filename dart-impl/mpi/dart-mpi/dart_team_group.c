@@ -11,13 +11,12 @@
 
 #include "dart_deb_log.h"
 #include "dart_types.h"
-//#include "dart_mem.h"
 #include "dart_team_private.h"
 #include "dart_translation.h"
 #include "dart_team_group.h"
 #include "dart_group_priv.h"
 
-dart_team_t next_availteamid;
+dart_team_t dart_next_availteamid;
 
 dart_ret_t dart_group_init (dart_group_t *group)
 {
@@ -239,7 +238,7 @@ dart_ret_t dart_team_get_group (dart_team_t teamid, dart_group_t *group)
 	{
 		return DART_ERR_INVAL;
 	}
-	comm = teams[index];
+	comm = dart_teams[index];
 	MPI_Comm_group (comm, & (group->mpi_group));
 	return DART_OK;
 }
@@ -272,7 +271,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 	{
 		return DART_ERR_INVAL;	
 	}
-	comm = teams[unique_id];
+	comm = dart_teams[unique_id];
 	subcomm = MPI_COMM_NULL;
 
 	MPI_Comm_create (comm, group -> mpi_group, &subcomm);
@@ -280,8 +279,8 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 	*newteam = DART_TEAM_NULL;
 
 	/* Get the maximum next_availteamid among all the units belonging to the parent team specified by 'teamid'. */
-	MPI_Allreduce (&next_availteamid, &max_teamid, 1, MPI_INT32_T, MPI_MAX, comm);
-	next_availteamid = max_teamid + 1;
+	MPI_Allreduce (&dart_next_availteamid, &max_teamid, 1, MPI_INT32_T, MPI_MAX, comm);
+	dart_next_availteamid = max_teamid + 1;
 
 	if (subcomm != MPI_COMM_NULL)
 	{
@@ -293,9 +292,9 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 		}
 		/* max_teamid is thought to be the new created team ID. */
 		*newteam = max_teamid;
-		teams[index] = subcomm;
+		dart_teams[index] = subcomm;
 		MPI_Win_create_dynamic (MPI_INFO_NULL, subcomm, &win);
-		win_lists[index] = win;
+		dart_win_lists[index] = win;
 	}
 #if 0
 	/* Another way of generating the available teamID for the newly crated team. */
@@ -356,7 +355,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 		MPI_Comm numa_comm;
 		MPI_Group numa_group, group_all;
 		MPI_Comm_split_type (subcomm, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &numa_comm);
-		sharedmem_comm_list[index] = numa_comm;
+		dart_sharedmem_comm_list[index] = numa_comm;
 		if (numa_comm != MPI_COMM_NULL)
 		{
 			MPI_Comm_size (numa_comm, &(dart_sharedmemnode_size[index]));
@@ -406,7 +405,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 		MPI_Comm_rank (subcomm, &rank);
 		if (rank == 0)
 	 	{
-			globalpool[index] = dart_mempool_create(INFINITE);
+			dart_globalpool[index] = dart_mempool_create(DART_INFINITE);
 		}
 
 		MPI_Win_lock_all (0, win);
@@ -428,7 +427,7 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 	{
 		return DART_ERR_INVAL;
 	}
-       	comm = teams[index];
+       	comm = dart_teams[index];
 
 	dart_myid (&id);
 
@@ -443,7 +442,7 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 	/* -- Free up resources that were allocated for teamid before -- */
 	if (unitid == 0)
 	{
-		dart_mempool_destroy (globalpool[index]);
+		dart_mempool_destroy (dart_globalpool[index]);
 	}
 
 //	free (dart_unit_mapping[index]);
@@ -452,7 +451,7 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 //	MPI_Win_free (&(numa_win_list[index]));
 
 	free (dart_sharedmem_table[index]);
-	win = win_lists[index];
+	win = dart_win_lists[index];
 	MPI_Win_unlock_all (win);
 	MPI_Win_free (&win);
 	dart_adapt_teamlist_recycle (index, result);
@@ -494,7 +493,7 @@ dart_ret_t dart_team_myid (dart_team_t teamid, dart_unit_t *unitid)
 	{
 		return DART_ERR_INVAL;
 	}
-	comm = teams[index];
+	comm = dart_teams[index];
 	MPI_Comm_rank (comm, unitid); 
 
 	return DART_OK;
@@ -513,7 +512,7 @@ dart_ret_t dart_team_size (dart_team_t teamid, size_t *size)
 	{
 		return DART_ERR_INVAL;
 	}
-	comm = teams[index];
+	comm = dart_teams[index];
 
 	int s;
 	MPI_Comm_size (comm, &s);

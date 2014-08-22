@@ -52,7 +52,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 		
 		/* Local store is safe and effective followed by the sync call. */
 		*addr = -1;
-		MPI_Win_sync (win_local_alloc);
+		MPI_Win_sync (dart_win_local_alloc);
 	}
 
 	
@@ -63,7 +63,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	dart_team_memalloc_aligned (teamid, sizeof(int32_t), &gptr_list);
 	
 	MPI_Win win;
-	win = win_lists[index];
+	win = dart_win_lists[index];
 	dart_gptr_getaddr (gptr_list, (void*)&addr);
 	*addr = -1;
 	MPI_Win_sync (win);
@@ -108,8 +108,8 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 
 	
 	/* MPI-3 newly added feature: atomic operation*/
-	MPI_Fetch_and_op (&unitid, predecessor, MPI_INT32_T, tail, offset_tail, MPI_REPLACE, win_local_alloc);
-	MPI_Win_flush (tail, win_local_alloc);
+	MPI_Fetch_and_op (&unitid, predecessor, MPI_INT32_T, tail, offset_tail, MPI_REPLACE, dart_win_local_alloc);
+	MPI_Win_flush (tail, dart_win_local_alloc);
 
 	/* If there was a previous tail (predecessor), update the previous tail's next pointer with unitid
 	 * and wait for notification from its predecessor. */
@@ -119,7 +119,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 		{		
 			return DART_ERR_INVAL;
 		}
-		win = win_lists[index];
+		win = dart_win_lists[index];
 	
 		/* Atomicity: Update its predecessor's next pointer */
 		MPI_Fetch_and_op (&unitid, result, MPI_INT32_T, *predecessor, disp_list, MPI_REPLACE, win);
@@ -130,7 +130,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 		DEBUG ("%2d: LOCK	- waiting for notification from %d in team %d", 
 				unitid, *predecessor, (lock -> teamid));
 
-		MPI_Recv (NULL, 0, MPI_INT, *predecessor, 0, teams[index], &status);
+		MPI_Recv (NULL, 0, MPI_INT, *predecessor, 0, dart_teams[index], &status);
 	}
 	
 	DEBUG ("%2d: LOCK	- lock required in team %d", unitid, (lock -> teamid));
@@ -159,8 +159,8 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int *acquired)
 	uint32_t offset = gptr_tail.addr_or_offs.offset;
 	
 	/* Atomicity: Check if the lock is available and claim it if it is. */
- 	MPI_Compare_and_swap (&unitid, compare, result, MPI_INT32_T, tail, offset, win_local_alloc);
-	MPI_Win_flush (tail, win_local_alloc);
+ 	MPI_Compare_and_swap (&unitid, compare, result, MPI_INT32_T, tail, offset, dart_win_local_alloc);
+	MPI_Win_flush (tail, dart_win_local_alloc);
 
 	/* If the old predecessor was -1, we will claim the lock, otherwise, do nothing. */
 	if (*result == -1)
@@ -204,12 +204,12 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 	int index = lock -> index;
 	dart_gptr_getaddr (gptr_list, (void*)&addr2);
 
-	win = win_lists[index];
+	win = dart_win_lists[index];
 	
 	/* Atomicity: Check if we are at the tail of this lock queue, if so, we are done.
 	 * Otherwise, we still need to send notification. */
-	MPI_Compare_and_swap (origin, &unitid, result, MPI_INT32_T, tail, offset_tail, win_local_alloc);
-	MPI_Win_flush (tail, win_local_alloc);
+	MPI_Compare_and_swap (origin, &unitid, result, MPI_INT32_T, tail, offset_tail, dart_win_local_alloc);
+	MPI_Win_flush (tail, dart_win_local_alloc);
 		
 	/* We are not at the tail of this lock queue. */
 	if (*result != unitid)
@@ -235,7 +235,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 		
 		/* Notifying the next unit waiting on the lock queue. */
 
-		MPI_Send (NULL, 0, MPI_INT, next, 0, teams[index]);
+		MPI_Send (NULL, 0, MPI_INT, next, 0, dart_teams[index]);
 		*addr2 = -1;
 		MPI_Win_sync (win);
 	}

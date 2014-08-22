@@ -7,12 +7,12 @@
 #include <stdio.h>
 #include <mpi.h>
 #include <stdint.h>
-#define MAX_TEAM_NUMBER (256)
-#define MAX_LENGTH (1024 * 1024 * 16)
-#define INFINITE (1<<30)
+#define DART_MAX_TEAM_NUMBER (256)
+#define DART_MAX_LENGTH (1024 * 1024 * 16)
+#define DART_INFINITE (1<<30)
 
-extern char* mempool_localalloc;
-extern char* mempool_globalalloc [MAX_TEAM_NUMBER];
+extern char* dart_mempool_localalloc;
+extern char* dart_mempool_globalalloc [DART_MAX_TEAM_NUMBER];
 
 struct dart_mempool_list_entry
 {
@@ -30,8 +30,8 @@ struct dart_opaque_mempool
 };
 typedef struct dart_opaque_mempool* dart_mempool;
 
-extern dart_mempool localpool;
-extern dart_mempool globalpool[MAX_TEAM_NUMBER];
+extern dart_mempool dart_localpool;
+extern dart_mempool dart_globalpool[DART_MAX_TEAM_NUMBER];
 dart_mempool dart_mempool_create (size_t size);
 void dart_mempool_destroy(dart_mempool pool);
 uint64_t dart_mempool_alloc (dart_mempool pool, size_t size);

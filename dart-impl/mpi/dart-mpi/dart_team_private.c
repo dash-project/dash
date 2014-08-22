@@ -14,14 +14,14 @@
  *  else teamlist[i] will equal to certain teamID and can't be rewritten.i
  */ 
 
-MPI_Comm teams[MAX_TEAM_NUMBER];
-MPI_Comm sharedmem_comm_list[MAX_TEAM_NUMBER];
+MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
+MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 
 //MPI_Win numa_win_list[MAX_TEAM_NUMBER];
-MPI_Win win_lists[MAX_TEAM_NUMBER];
+MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
 //int* dart_unit_mapping[MAX_TEAM_NUMBER];
-int* dart_sharedmem_table[MAX_TEAM_NUMBER];
-int dart_sharedmemnode_size[MAX_TEAM_NUMBER];
+int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
+int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 
 int dart_allocated_teamlist_size;
 struct dart_free_teamlist_entry
@@ -40,14 +40,14 @@ struct dart_allocated_teamlist_entry
 };
 typedef struct dart_allocated_teamlist_entry dart_allocated_entry;
 
-dart_allocated_entry dart_allocated_teamlist_array[MAX_TEAM_NUMBER];
+dart_allocated_entry dart_allocated_teamlist_array[DART_MAX_TEAM_NUMBER];
 
 int dart_adapt_teamlist_init ()
 {
 	int i;
 	dart_free_teamlist_ptr pre = NULL;
 	dart_free_teamlist_ptr newAllocateEntry;
-	for (i = 0; i < MAX_TEAM_NUMBER; i++)
+	for (i = 0; i < DART_MAX_TEAM_NUMBER; i++)
 	{
 		newAllocateEntry = (dart_free_teamlist_ptr)malloc(sizeof (dart_free_entry));
 		newAllocateEntry -> index = i;

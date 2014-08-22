@@ -12,8 +12,8 @@
 #include "dart_deb_log.h"
 
 /* Global object for one-sided communication on memory region allocated with 'local allocation'. */
-extern MPI_Win win_local_alloc; 
-extern MPI_Win numa_win_local_alloc;
+extern MPI_Win dart_win_local_alloc; 
+extern MPI_Win dart_numa_win_local_alloc;
 /** @brief Definition of translation table.
  * 
  *  This translation table is created for dart collective memory allocation.

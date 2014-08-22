@@ -21,14 +21,14 @@
 
 /* -- Global objects for dart memory management -- */
 
-char* mempool_localalloc; /* Point to the base address of memory region for local allocation. */
+char* dart_mempool_localalloc; /* Point to the base address of memory region for local allocation. */
 
-char* mempool_globalalloc[MAX_TEAM_NUMBER]; /* Each item points to the base address of allocated memory region for related team. */
+char* dart_mempool_globalalloc[DART_MAX_TEAM_NUMBER]; /* Each item points to the base address of allocated memory region for related team. */
 
-dart_mempool localpool; /* Help to do memory management work for local allocation/free. */
+dart_mempool dart_localpool; /* Help to do memory management work for local allocation/free. */
 
 /* Each item helps to do memory management work on corresponding team for collective allocation/free. */
-dart_mempool globalpool[MAX_TEAM_NUMBER];
+dart_mempool dart_globalpool[DART_MAX_TEAM_NUMBER];
 
 
 dart_ret_t dart_init (int* argc, char*** argv)
@@ -48,20 +48,20 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	/* Initialize the teamlist. */
 	dart_adapt_teamlist_init ();
 
-	next_availteamid = 0;
+	dart_next_availteamid = 0;
 	int result = dart_adapt_teamlist_alloc (DART_TEAM_ALL, &index);
 	if (result == -1)
 	{
 		return DART_ERR_OTHER;
 	}
-	teams[index] = MPI_COMM_WORLD;
+	dart_teams[index] = MPI_COMM_WORLD;
 	
-	next_availteamid ++;
+	dart_next_availteamid ++;
 	
 
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 	MPI_Comm_size (MPI_COMM_WORLD, &size);	
-	localpool = dart_mempool_create (MAX_LENGTH);
+	dart_localpool = dart_mempool_create (DART_MAX_LENGTH);
 
 	/* NOTE: rank 0 on behalf of other ranks in MPI_COMM_WORLD to provide 
 	 * the information on the management of global memory pool (globalpool[0]). 
@@ -71,7 +71,7 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	 */
 	if (rank == 0)
 	{
-		globalpool[index] = dart_mempool_create (INFINITE);
+		dart_globalpool[index] = dart_mempool_create (DART_INFINITE);
 	}
 
 	/* -- Generate separated numa node and Reserve neccessary resources for dart programm -- */
@@ -80,15 +80,15 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	/* Splits the communicator into subcommunicators, each of which can create a shared memory region (numa domain) */
 	MPI_Comm_split_type (MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &numa_comm);
 	
-	sharedmem_comm_list[index] = numa_comm;
+	dart_sharedmem_comm_list[index] = numa_comm;
 
 	MPI_Group group_all, numa_group;
 
 	if (numa_comm != MPI_COMM_NULL)
 	{
 		/* Reserve a free shared memory block for non-collective global memory allocation. */	
-		MPI_Win_allocate_shared (MAX_LENGTH, sizeof (char), win_info, numa_comm,
-				&(mempool_localalloc), &numa_win_local_alloc);
+		MPI_Win_allocate_shared (DART_MAX_LENGTH, sizeof (char), win_info, numa_comm,
+				&(dart_mempool_localalloc), &dart_numa_win_local_alloc);
 
 	
 		MPI_Comm_size (numa_comm, &(dart_sharedmemnode_size[index]));
@@ -139,18 +139,18 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	 * the aboved allocated shared memory.
 	 *
 	 * Return in win_local_alloc. */
-	MPI_Win_create (mempool_localalloc, MAX_LENGTH, sizeof (char), MPI_INFO_NULL, 
-			MPI_COMM_WORLD, &win_local_alloc);
+	MPI_Win_create (dart_mempool_localalloc, DART_MAX_LENGTH, sizeof (char), MPI_INFO_NULL, 
+			MPI_COMM_WORLD, &dart_win_local_alloc);
 
 	/* Create a dynamic win object for all the dart collective allocation based on MPI_COMM_WORLD.
 	 * Return in win. */
 	MPI_Win_create_dynamic (MPI_INFO_NULL, MPI_COMM_WORLD, &win);
-	win_lists[index] = win;
+	dart_win_lists[index] = win;
 
 	/* Start a shared access epoch in win_local_alloc, and later on all the units
 	 * can access the memory region allocated by the local allocation
 	 * function through win_local_alloc. */	
-	MPI_Win_lock_all (0, win_local_alloc);
+	MPI_Win_lock_all (0, dart_win_local_alloc);
 	/* Start a shared access epoch in win, and later on all the units can access
 	 * the attached memory region allocated by the collective allocation function
 	 * through win. */
@@ -172,21 +172,21 @@ dart_ret_t dart_exit ()
 	int result = dart_adapt_teamlist_convert (DART_TEAM_ALL, &index);
 
 //	printf ("unitid %d: the teamid is %d, the index is %d and the result is %d\n", unitid, DART_TEAM_ALL, index, result);
-	MPI_Win_unlock_all (win_lists[index]);
+	MPI_Win_unlock_all (dart_win_lists[index]);
 
 	/* End the shared access epoch in win_local_alloc. */
-	MPI_Win_unlock_all (win_local_alloc);
+	MPI_Win_unlock_all (dart_win_local_alloc);
 	
 	/* -- Free up all the resources for dart programme -- */
-	MPI_Win_free (&win_local_alloc);
-	MPI_Win_free (&numa_win_local_alloc);
+	MPI_Win_free (&dart_win_local_alloc);
+	MPI_Win_free (&dart_numa_win_local_alloc);
 
-	MPI_Win_free (&win_lists[index]);
+	MPI_Win_free (&dart_win_lists[index]);
 	
-	dart_mempool_destroy (localpool);
+	dart_mempool_destroy (dart_localpool);
 	if (unitid == 0)
 	{
-		dart_mempool_destroy (globalpool[index]);
+		dart_mempool_destroy (dart_globalpool[index]);
 	}
 	
 

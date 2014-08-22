@@ -11,15 +11,15 @@
 #include "dart_mem.h"
 
 /* Global array: the set of translation table headers for MAX_TEAM_NUMBER teams. */
-node_t transtable_globalalloc [MAX_TEAM_NUMBER];
+node_t dart_transtable_globalalloc [DART_MAX_TEAM_NUMBER];
 
-MPI_Win win_local_alloc;
-MPI_Win numa_win_local_alloc;
+MPI_Win dart_win_local_alloc;
+MPI_Win dart_numa_win_local_alloc;
 
 
 int dart_adapt_transtable_create (int index)
 {
-	transtable_globalalloc [index] = NULL;
+	dart_transtable_globalalloc [index] = NULL;
 	return 0;
 }
 
@@ -35,15 +35,15 @@ int dart_adapt_transtable_add (int index, info_t item)
 	uint64_t compare = item.offset;
 
 	/* The translation table is empty. */
-	if (transtable_globalalloc[index] == NULL)
+	if (dart_transtable_globalalloc[index] == NULL)
 	{
-		transtable_globalalloc [index] = p;
+		dart_transtable_globalalloc [index] = p;
 	}
 
 	/* Otherwise, insert into the translation table based upon offset. */
 	else
 	{
-		q = transtable_globalalloc [index];
+		q = dart_transtable_globalalloc [index];
 		while ((q != NULL) && (compare > (q->trans.offset)))
 		{
 			pre = q;
@@ -58,10 +58,10 @@ int dart_adapt_transtable_add (int index, info_t item)
 int dart_adapt_transtable_remove (int index, uint64_t offset)
 {
 	node_t p, pre;
-	p = transtable_globalalloc [index];
+	p = dart_transtable_globalalloc [index];
   	if (offset == (p -> trans.offset))
 	{
-		transtable_globalalloc [index] = p -> next;
+		dart_transtable_globalalloc [index] = p -> next;
 	}
         else
 	{
@@ -86,7 +86,7 @@ int dart_adapt_transtable_remove (int index, uint64_t offset)
 int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t* begin, MPI_Win* win)
 {
 	node_t p, pre;
-	p = transtable_globalalloc [index];
+	p = dart_transtable_globalalloc [index];
 	
 	while ((p != NULL) && (offset >= ((p -> trans).offset)))
 	{
@@ -136,7 +136,7 @@ int dart_adapt_transtable_query_addr (int index, int offset, int* begin, void **
 int dart_adapt_transtable_query_disp (int index, uint64_t offset, dart_unit_t rel_unitid, uint64_t* begin, MPI_Aint *disp_s)
 {
 	node_t p, pre;
-	p = transtable_globalalloc [index];
+	p = dart_transtable_globalalloc [index];
 
 	while ((p != NULL) && (offset >= ((p -> trans).offset)))
 	{
@@ -160,7 +160,7 @@ int dart_adapt_transtable_query_disp (int index, uint64_t offset, dart_unit_t re
 int dart_adapt_transtable_destroy (int index)
 {
 	node_t p, pre;
-	p = transtable_globalalloc[index];
+	p = dart_transtable_globalalloc[index];
 	if (p != NULL)
 	{
 		LOG ("Free up the translation table forcibly as there are still global memory blocks functioning on this team.");
@@ -172,6 +172,6 @@ int dart_adapt_transtable_destroy (int index)
 		free (pre->trans.disp);
 		free (pre);
 	}
-	transtable_globalalloc[index] = NULL;
+	dart_transtable_globalalloc[index] = NULL;
 	return 0;
 }

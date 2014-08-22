@@ -135,7 +135,7 @@
 #include "dart_deb_log.h"
 #include "dart_mem.h"
 
-extern dart_team_t next_availteamid;
+extern dart_team_t dart_next_availteamid;
 
 /* @brief Translate the given teamid (indicated uniquely by the index) into its corresponding communicator. 
  * 
@@ -143,7 +143,7 @@ extern dart_team_t next_availteamid;
  * we find that teamlist[i] equals to teamid, which meas teams[i] 
  * will be the corresponding communicator of teamid.
  */
-extern MPI_Comm teams[MAX_TEAM_NUMBER];
+extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
 
 /* @brief Store the sub-communicator with regard to certain node, where the units can 
  * communicate via shared memory.
@@ -152,7 +152,7 @@ extern MPI_Comm teams[MAX_TEAM_NUMBER];
  * according to the specified team.
  * The values of numa_comm_list[i] are different for the units belonging to different nodes. 
  */
-extern MPI_Comm sharedmem_comm_list[MAX_TEAM_NUMBER];
+extern MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 
 /* @brief Sets of units who are located in the same node for each unit in MAX_TEAM_NUMBER teams.
  *
@@ -168,14 +168,14 @@ extern MPI_Comm sharedmem_comm_list[MAX_TEAM_NUMBER];
  *
  * Each element of this array will relate to certain team.
  */
-extern int* dart_sharedmem_table[MAX_TEAM_NUMBER];
+extern int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
 
 /* @brief Set of the size of node for each unit in MAX_TEAM_NUMBER teams.
  */
-extern int dart_sharedmemnode_size[MAX_TEAM_NUMBER];
+extern int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 
 /* @brief Set of MPI dynamic window objects corresponding to MAX_TEAM_NUMBER teams. */
-extern MPI_Win win_lists[MAX_TEAM_NUMBER];
+extern MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
 /* @brief Initiate the teamlist.
  *
  * This call will be invoked within dart_adapt_init(), and each element in the returned list 
