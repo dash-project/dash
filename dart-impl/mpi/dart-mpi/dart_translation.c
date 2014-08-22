@@ -72,7 +72,7 @@ int dart_adapt_transtable_remove (int index, uint64_t offset)
 		}
 		if (p == NULL)
 		{
-			ERROR ("Invalid offset: %d,can't remove the record from translation table", offset);
+			ERROR ("Invalid offset: %llu,can't remove the record from translation table", offset);
 			return -1;
 		}
 	 	pre -> next = p -> next;
@@ -96,7 +96,7 @@ int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t* begin
 
 	if (((pre -> trans).offset + (pre -> trans).size) <= offset)
 	{
-		ERROR ("Invalid offset: %d, can not get the related window object", offset);
+		ERROR ("Invalid offset: %llu, can not get the related window object", offset);
 		return -1;
 	}
 
@@ -145,7 +145,7 @@ int dart_adapt_transtable_query_disp (int index, uint64_t offset, dart_unit_t re
 	}
 	if (((pre -> trans).offset + (pre -> trans).size) <= offset)
 	{
-		ERROR ("Invalid offset : %d, can not get the related displacement", offset);
+		ERROR ("Invalid offset : %llu, can not get the related displacement", offset);
 		return -1;
 	}
 
