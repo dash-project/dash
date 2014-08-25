@@ -34,50 +34,72 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 {
 	uint16_t flag = gptr.flags;
 	uint64_t offset = gptr.addr_or_offs.offset;
+	dart_unit_t myid;
+	dart_myid (&myid);
   
-	if (flag == 1)
+	if (myid == gptr.unitid)
 	{
-		int index, flag;
-		uint64_t begin;
-		MPI_Win win;
-		int result = dart_adapt_teamlist_convert (gptr.segid, &index);
-		if (dart_adapt_transtable_query_win (index, offset, &begin, &win) == -1)
+		if (flag == 1)
 		{
-			return DART_ERR_INVAL;
-		}
-		MPI_Win_get_attr (win, MPI_WIN_BASE, addr, &flag);
+			int index, flag;
+			uint64_t begin;
+			MPI_Win win;
+			int result = dart_adapt_teamlist_convert (gptr.segid, &index);
+			if (dart_adapt_transtable_query_win (index, offset, &begin, &win) == -1)
+			{
+				return DART_ERR_INVAL;
+			}
+			MPI_Win_get_attr (win, MPI_WIN_BASE, addr, &flag);
 
-		*addr = (offset - begin) + (char *)(*addr);
+			*addr = (offset - begin) + (char *)(*addr);
+		}
+		else
+		{
+			if (myid == gptr.unitid)
+			{
+				*addr = offset + dart_mempool_localalloc;
+			}
+		
+		}
 	}
 	else
 	{
-		*addr = offset + dart_mempool_localalloc;
+		*addr = NULL;
 	}
 	
 	return DART_OK;
 }
 
-#if 0
 dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
 {
-	int flag = gptr->flags;
-	int 
+	uint16_t flags = gptr->flags;
 
 	/* The modification to addr is reflected in the fact that modifying the offset. */
-	if (flag == 1)
+	if (flags == 1)
 	{
-		int index;
+		MPI_Win win;
+		char* addr_base;
+		int index, flag;
+		uint64_t begin;
 		int result = dart_adapt_teamlist_convert (gptr -> segid, &index);
-		gptr->addr_or_offs.offset = (char *)addr - mempool_globalalloc[index];
+		if (result == -1)
+		{
+			return DART_ERR_INVAL;
+		}
+		if ((dart_adapt_transtable_query_win (index, gptr->addr_or_offs.offset, &begin, &win)) == -1)
+		{
+			return DART_ERR_INVAL;
+		}
+    		MPI_Win_get_attr (win, MPI_WIN_BASE, &addr_base, &flag);
+		gptr->addr_or_offs.offset = ((char *)addr - addr_base) + begin;
 	}
 	else
 	{
-		gptr->addr_or_offs.offset = (char *)addr - mempool_localalloc;
+		gptr->addr_or_offs.offset = (char *)addr - dart_mempool_localalloc;
 	}
 
 	return DART_OK;
 }
-#endif
 
 dart_ret_t dart_gptr_incaddr (dart_gptr_t* gptr, int offs)
 {
@@ -113,10 +135,10 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
 {	
 	if (dart_mempool_free (dart_localpool, gptr.addr_or_offs.offset) == -1)
 	{
-		ERROR ("Free invalid local global pointer");
+		ERROR ("Free invalid local global pointer: invalid offset = %llu\n", gptr.addr_or_offs.offset);
 		return DART_ERR_INVAL;
 	}
-	DEBUG ("%2d: LOCALFREE	- offset = %d", gptr.unitid, gptr.addr_or_offs.offset);
+	DEBUG ("%2d: LOCALFREE	- offset = %llu", gptr.unitid, gptr.addr_or_offs.offset);
 	return DART_OK;
 }
 

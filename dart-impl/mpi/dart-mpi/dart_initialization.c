@@ -195,8 +195,6 @@ dart_ret_t dart_exit ()
 	dart_adapt_teamlist_destroy ();
 	LOG ("%2d: EXIT - Finalization finished", unitid);
         return MPI_Finalize();
-
-//	return DART_OK;
 }
 
 

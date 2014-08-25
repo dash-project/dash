@@ -140,7 +140,7 @@ extern dart_team_t dart_next_availteamid;
 /* @brief Translate the given teamid (indicated uniquely by the index) into its corresponding communicator. 
  * 
  * After locating the given teamid in the teamlist, 
- * we find that teamlist[i] equals to teamid, which meas teams[i] 
+ * we find that teamlist[i] equals to teamid, which means teams[i] 
  * will be the corresponding communicator of teamid.
  */
 extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
@@ -150,7 +150,7 @@ extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
  *
  * The units runing in certain node vary 
  * according to the specified team.
- * The values of numa_comm_list[i] are different for the units belonging to different nodes. 
+ * The values of dart_numa_comm_list[i] are different for the units belonging to different nodes. 
  */
 extern MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 
@@ -158,8 +158,8 @@ extern MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
  *
  * Each element of this array will relate to certain team A.
  * Set of units belonging to the same node vary for different team.
- * Each unit stores all the IDs of those units (including itself) who are parts of team A as well as
- * located in the same node as it.
+ * Each unit stores all the IDs of those units (including itself) who are parts of team A and
+ * located in the same node as it is.
  */
 //extern int* dart_unit_mapping[MAX_TEAM_NUMBER];
 
@@ -176,33 +176,40 @@ extern int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 
 /* @brief Set of MPI dynamic window objects corresponding to MAX_TEAM_NUMBER teams. */
 extern MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
-/* @brief Initiate the teamlist.
+
+/* @brief Initiate the free-team-list and allocated-team-list.
  *
- * This call will be invoked within dart_adapt_init(), and each element in the returned list 
- * is thought to be an empty slot.
+ * This call will be invoked within dart_init(), and the free teamlist consist of 
+ * 256 nodes with index ranging from 0 to 255. The allocated teamlist array is set to
+ * be empty.
  */
 int dart_adapt_teamlist_init ();
 
+/* @brief Destroy the free-team-list and allocated-team-list. 
+ *
+ * This call will be invoked within dart_eixt(), and the free teamlist is freed, 
+ * the allocated teamlist array is reset back to be empty. 
+ */
 int dart_adapt_teamlist_destroy ();
 
-/* @brief Allocate the first empty slot in the teamlist.
+/* @brief Allocate the first available index from the free-team-list.
  *
  * This call will be invoked when a team with teamid is created, and only 
  * the units belonging to the given teamid can enter this call.
  *
- * @param[in]	teamid	The new created team ID.
- * @param[out]	index	The position of the given teamid in the teamlist.
+ * @param[in]	teamid	The newly created team ID.
+ * @param[out]	index	The unique ID related to the newly created team.
  */
 int dart_adapt_teamlist_alloc(dart_team_t teamid, int *index);
 
-/* @brief Free the slot specified by index in the teamlist.
+/* @brief Insert the freed index into the free-team-list, and delete the element with given index
+ * from the allocated-team-list-array.
  *
- * This call will be invoked when a new team is destroyed. teamlist[index]
- * = -1, which means the index-th element goes back to an empty slot.
+ * This call will be invoked when a new team is destroyed. 
  */
 int dart_adapt_teamlist_recycle(int index, int pos);
 
-/* @brief Locate the given teamid in the teamlist.
+/* @brief Locate the given teamid in the alloated-team-list-array.
  */
 int dart_adapt_teamlist_convert (dart_team_t teamid, int* index);
 

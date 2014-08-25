@@ -359,14 +359,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 		if (numa_comm != MPI_COMM_NULL)
 		{
 			MPI_Comm_size (numa_comm, &(dart_sharedmemnode_size[index]));
-
-//			MPI_Win_allocate_shared (MAX_LENGTH, sizeof(char), MPI_INFO_NULL, numa_comm,
-//				       	&(mempool_globalalloc[index]), &numa_win);
-			
-	//		MPI_Win_create_dynamic (MPI_INFO_NULL, subcomm, numa_win);
-	//		numa_win_list[index] = numa_win;
-			
-//			numa_win_list[index] = numa_win;
+		
 	//		dart_unit_mapping[index] = (int*)malloc (dart_numa_size[index] * sizeof (int));
 
 			MPI_Comm_group (numa_comm, &numa_group);

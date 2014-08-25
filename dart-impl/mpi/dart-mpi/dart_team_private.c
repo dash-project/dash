@@ -7,23 +7,14 @@
 #include "dart_team_private.h"
 #include "dart_team_group.h"
 
-/* @brief Storing all the teamIDs that are already used. 
- * 
- *  Each element of this array has the possibility of indicating a specific teamID that is already used.
- *  if teamlist[i] = -1, which indicates that ith element is an empty slot and can be allocated.
- *  else teamlist[i] will equal to certain teamID and can't be rewritten.i
- */ 
-
 MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
 MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 
-//MPI_Win numa_win_list[MAX_TEAM_NUMBER];
 MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
 //int* dart_unit_mapping[MAX_TEAM_NUMBER];
 int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
 int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 
-int dart_allocated_teamlist_size;
 struct dart_free_teamlist_entry
 {
 	int index;
@@ -33,6 +24,7 @@ typedef struct dart_free_teamlist_entry dart_free_entry;
 typedef dart_free_entry* dart_free_teamlist_ptr;
 dart_free_teamlist_ptr dart_free_teamlist_header;
 
+/* Structure of the allocated teamlist entry */
 struct dart_allocated_teamlist_entry
 {
 	int index;
@@ -40,7 +32,10 @@ struct dart_allocated_teamlist_entry
 };
 typedef struct dart_allocated_teamlist_entry dart_allocated_entry;
 
+/* This array is used to store all the correspondences between indexs and teams */
 dart_allocated_entry dart_allocated_teamlist_array[DART_MAX_TEAM_NUMBER];
+/* Indicate the length of the allocated teamlist */
+int dart_allocated_teamlist_size;
 
 int dart_adapt_teamlist_init ()
 {
@@ -84,23 +79,6 @@ int dart_adapt_teamlist_destroy ()
 
 int dart_adapt_teamlist_alloc (dart_team_t teamid, int* index)
 {
-	/*
-	int i;
-	for (i = 0; i < MAX_TEAM_NUMBER; i++)
-	{
-		if (teamlist[i] == -1)
-		{
-			break;
-		}
-	}
-	if (i == MAX_TEAM_NUMBER)
-	{
-		ERROR ("Out of bound: exceed the MAX_TEAM_NUMBER limit");
-		return -1;
-	}
-	teamlist[i] = teamid;
-	*index = i;
-	*/
 	int i, j;
 	dart_free_teamlist_ptr p;
 	if (dart_free_teamlist_header != NULL)
@@ -110,7 +88,7 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, int* index)
 		
 		dart_free_teamlist_header = dart_free_teamlist_header -> next;
 		free (p);
-		/*
+#if 0
 		for (j = dart_allocated_teamlist_size - 1; (j>=0)&&(dart_allocated_teamlist_array[j].allocated_teamid > teamid); j--)
 		{
 			dart_allocated_teamlist_array[j + 1].index = dart_allocated_teamlist_array[j].index;
@@ -118,11 +96,22 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, int* index)
 		}
 		dart_allocated_teamlist_array[j+1].index = *index;
 		dart_allocated_teamlist_array[j+1].allocated_teamid = teamid;
-		*/
+#endif
 
+
+		/* The allocated teamlist array should be arranged in an increasing order based on 
+		 * the member of allocated_teamid.
+		 *
+		 * Notes: the newly created teamid will always be increased because the teamid 
+		 * is not reused after certain team is destroyed.
+		 */
 		dart_allocated_teamlist_array[dart_allocated_teamlist_size].index = *index;
 		dart_allocated_teamlist_array[dart_allocated_teamlist_size].allocated_teamid = teamid;
 		dart_allocated_teamlist_size ++;
+		
+		/* If allocated successfully, the position of the new element in the allcoated array
+		 * is return.
+		 */
 		return (dart_allocated_teamlist_size - 1);
 
 	}
@@ -136,11 +125,15 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, int* index)
 int dart_adapt_teamlist_recycle (int index, int pos)
 {
 	int i;
+	int unitid;
+	dart_myid (&unitid);
 	dart_free_teamlist_ptr newAllocateEntry = (dart_free_teamlist_ptr)malloc (sizeof (dart_free_entry));
 	newAllocateEntry -> index = index;
 	newAllocateEntry -> next = dart_free_teamlist_header;
 	dart_free_teamlist_header = newAllocateEntry;
-
+	/* The allocated teamlist array should be keeped as an ordered array
+	 * after deleting the given element.
+	 */
 	for (i = pos; i < dart_allocated_teamlist_size - 1; i ++)
 	{
 		dart_allocated_teamlist_array[i].allocated_teamid = dart_allocated_teamlist_array[i + 1].allocated_teamid;
@@ -152,28 +145,12 @@ int dart_adapt_teamlist_recycle (int index, int pos)
 
 int dart_adapt_teamlist_convert (dart_team_t teamid, int* index)
 {
-#if 0
-	int i;
-	for (i = 0; i <MAX_TEAM_NUMBER; i++)
-	{
-		if (teamlist[i] == teamid)
-		{
-			break;
-		}
-	}
-	if (i == MAX_TEAM_NUMBER)
-	{
-		ERROR ("Invalid teamid input: %d", teamid);
-		return -1;
-	}
-	/* Locate the teamid in the teamlist. */
-	*index = i;
-#endif
 	if (teamid == DART_TEAM_ALL)
 	{
 		*index = 0;
 		return 0;
 	}
+	/* Locate the teamid in the allocated teamlist array by using the binary-search approach. */
 	int i, imin, imax;
 	imin = 0;
 	imax = dart_allocated_teamlist_size - 1;
@@ -192,6 +169,7 @@ int dart_adapt_teamlist_convert (dart_team_t teamid, int* index)
 	if ((imax == imin) && (dart_allocated_teamlist_array[imin].allocated_teamid == teamid))
 	{
 		*index = dart_allocated_teamlist_array[imin].index;
+		/* If search successfully, the position of the teamid in array is returned. */
 		return imin;
 	}
 	else

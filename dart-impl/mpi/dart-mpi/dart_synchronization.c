@@ -30,7 +30,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 {
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
-	dart_unit_t    unitid;
+	dart_unit_t    unitid, myid;
 	int32_t *addr, *next;
 
 	int index;
@@ -41,6 +41,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	}
 
 	dart_team_myid (teamid, &unitid);
+	dart_myid (&myid);
 	*lock = (dart_lock_t) malloc (sizeof (struct dart_lock_struct));
 		
 
@@ -64,6 +65,8 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	
 	MPI_Win win;
 	win = dart_win_lists[index];
+
+	dart_gptr_setunit (&gptr_list, myid);
 	dart_gptr_getaddr (gptr_list, (void*)&addr);
 	*addr = -1;
 	MPI_Win_sync (win);
@@ -257,12 +260,9 @@ dart_ret_t dart_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
 	{
 		dart_memfree (gptr_tail);
 	}
-	if (unitid >= 0)
-	{
-		dart_team_memfree (teamid, gptr_list);
-		DEBUG ("%2d: Free	- done in team %d", unitid, teamid);
-	}
 
+	dart_team_memfree (teamid, gptr_list);
+	DEBUG ("%2d: Free	- done in team %d", unitid, teamid);
 	*lock = NULL;
 	free (*lock);
 	return DART_OK;	
