@@ -148,9 +148,9 @@ extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
 /* @brief Store the sub-communicator with regard to certain node, where the units can 
  * communicate via shared memory.
  *
- * The units runing in certain node vary 
+ * The units running in certain node vary 
  * according to the specified team.
- * The values of dart_numa_comm_list[i] are different for the units belonging to different nodes. 
+ * The values of dart_sharedmem_comm_list[i] are different for the units belonging to different nodes. 
  */
 extern MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 

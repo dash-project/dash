@@ -285,7 +285,6 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 	if (subcomm != MPI_COMM_NULL)
 	{
 		int result = dart_adapt_teamlist_alloc (max_teamid, &index);
-//		printf ("unit %d: create: max_teamid = %d, index  = %d, result = %d\n", unit, max_teamid, index, result);
 		if (result == -1)
 		{
 			return DART_ERR_OTHER;
@@ -351,34 +350,34 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 	{
 		int i;
 
-		MPI_Win numa_win;
-		MPI_Comm numa_comm;
-		MPI_Group numa_group, group_all;
-		MPI_Comm_split_type (subcomm, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &numa_comm);
-		dart_sharedmem_comm_list[index] = numa_comm;
-		if (numa_comm != MPI_COMM_NULL)
+		MPI_Win sharedmem_win;
+		MPI_Comm sharedmem_comm;
+		MPI_Group sharedmem_group, group_all;
+		MPI_Comm_split_type (subcomm, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &sharedmem_comm);
+		dart_sharedmem_comm_list[index] = sharedmem_comm;
+		if (sharedmem_comm != MPI_COMM_NULL)
 		{
-			MPI_Comm_size (numa_comm, &(dart_sharedmemnode_size[index]));
+			MPI_Comm_size (sharedmem_comm, &(dart_sharedmemnode_size[index]));
 		
-	//		dart_unit_mapping[index] = (int*)malloc (dart_numa_size[index] * sizeof (int));
+	//		dart_unit_mapping[index] = (int*)malloc (dart_sharedmem_size[index] * sizeof (int));
 
-			MPI_Comm_group (numa_comm, &numa_group);
+			MPI_Comm_group (sharedmem_comm, &sharedmem_group);
 			MPI_Comm_group (MPI_COMM_WORLD, &group_all);
 
 			int* dart_unit_mapping = (int *)malloc (dart_sharedmemnode_size[index] * sizeof (int));
-			int* numa_ranks = (int*)malloc (dart_sharedmemnode_size[index] * sizeof (int));
+			int* sharedmem_ranks = (int*)malloc (dart_sharedmemnode_size[index] * sizeof (int));
 			
 			dart_sharedmem_table[index] = (int*)malloc (size * sizeof (int));
 		
 			for (i = 0; i < dart_sharedmemnode_size[index]; i++)
 			{
-				numa_ranks[i] = i;
+				sharedmem_ranks[i] = i;
 			}
 			
-	//		MPI_Group_translate_ranks (numa_group, dart_numa_size[index], 
-	//				numa_ranks, group_all, dart_unit_mapping[index]);
-			MPI_Group_translate_ranks (numa_group, dart_sharedmemnode_size[index],
-					numa_ranks, group_all, dart_unit_mapping);
+	//		MPI_Group_translate_ranks (sharedmem_group, dart_sharedmem_size[index], 
+	//				sharedmem_ranks, group_all, dart_unit_mapping[index]);
+			MPI_Group_translate_ranks (sharedmem_group, dart_sharedmemnode_size[index],
+					sharedmem_ranks, group_all, dart_unit_mapping);
 
 			for (i = 0; i < size; i++)
 			{
@@ -389,7 +388,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 				dart_sharedmem_table[index][dart_unit_mapping[i]] = i;
 			}
 
-			free (numa_ranks);
+			free (sharedmem_ranks);
 			free (dart_unit_mapping);
 		}
 
@@ -441,7 +440,7 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 //	free (dart_unit_mapping[index]);
 //	MPI_Free_mem (mempool_globalalloc[index]);
 
-//	MPI_Win_free (&(numa_win_list[index]));
+//	MPI_Win_free (&(sharedmem_win_list[index]));
 
 	free (dart_sharedmem_table[index]);
 	win = dart_win_lists[index];

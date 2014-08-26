@@ -32,7 +32,7 @@ struct dart_allocated_teamlist_entry
 };
 typedef struct dart_allocated_teamlist_entry dart_allocated_entry;
 
-/* This array is used to store all the correspondences between indexs and teams */
+/* This array is used to store all the correspondences between indice and teams */
 dart_allocated_entry dart_allocated_teamlist_array[DART_MAX_TEAM_NUMBER];
 /* Indicate the length of the allocated teamlist */
 int dart_allocated_teamlist_size;
@@ -131,7 +131,7 @@ int dart_adapt_teamlist_recycle (int index, int pos)
 	newAllocateEntry -> index = index;
 	newAllocateEntry -> next = dart_free_teamlist_header;
 	dart_free_teamlist_header = newAllocateEntry;
-	/* The allocated teamlist array should be keeped as an ordered array
+	/* The allocated teamlist array should be keep as an ordered array
 	 * after deleting the given element.
 	 */
 	for (i = pos; i < dart_allocated_teamlist_size - 1; i ++)

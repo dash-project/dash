@@ -13,7 +13,7 @@
 
 /* Global object for one-sided communication on memory region allocated with 'local allocation'. */
 extern MPI_Win dart_win_local_alloc; 
-extern MPI_Win dart_numa_win_local_alloc;
+extern MPI_Win dart_sharedmem_win_local_alloc;
 /** @brief Definition of translation table.
  * 
  *  This translation table is created for dart collective memory allocation.
@@ -86,7 +86,7 @@ int dart_adapt_transtable_remove (int index, uint64_t offset);
  *  @param[out] win	A MPI window object. 
  *
  *  @retval non-negative integer Search successfully, it indicates the beginning
- *  address of sub-memory associated with specified dart collective global allcoation.
+ *  address of sub-memory associated with specified dart collective global allocation.
  *  @retval negative integer Failure.
  */
 

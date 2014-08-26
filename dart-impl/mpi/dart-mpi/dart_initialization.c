@@ -66,62 +66,67 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	/* NOTE: rank 0 on behalf of other ranks in MPI_COMM_WORLD to provide 
 	 * the information on the management of global memory pool (globalpool[0]). 
 	 *
-	 * Actually there is no statically memory block reserved for dart collective global memory allocation, and dart collective global memory is managed dynamically, which the collective global memory is allocated only when the dart_team_memalloc_aligned is called. Therefore, the size of the collective memory pool can be seen as an infinite pool. 
-	 * The reason why the memory pool mechanism is still adopted by dart collective memory management is that the adaptive 'offset' should be returned in the global pointer. 
+	 * Actually there is no statically memory block reserved 
+	 * for dart collective global memory allocation, and dart collective global memory 
+	 * is managed dynamically, which the collective global memory is allocated 
+	 * only when the dart_team_memalloc_aligned is called. 
+	 * Therefore, the size of the collective memory pool can be seen as an infinite pool. 
+	 * The reason why the memory pool mechanism is still adopted by dart collective 
+	 * memory management is that the adaptive 'offset' should be returned in the global pointer. 
 	 */
 	if (rank == 0)
 	{
 		dart_globalpool[index] = dart_mempool_create (DART_INFINITE);
 	}
 
-	/* -- Generate separated numa node and Reserve neccessary resources for dart programm -- */
-	MPI_Comm numa_comm;
+	/* -- Generate separated intra-node communicators and Reserve necessary resources for dart programm -- */
+	MPI_Comm sharedmem_comm;
 
-	/* Splits the communicator into subcommunicators, each of which can create a shared memory region (numa domain) */
-	MPI_Comm_split_type (MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &numa_comm);
+	/* Splits the communicator into subcommunicators, each of which can create a shared memory region */
+	MPI_Comm_split_type (MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &sharedmem_comm);
 	
-	dart_sharedmem_comm_list[index] = numa_comm;
+	dart_sharedmem_comm_list[index] = sharedmem_comm;
 
-	MPI_Group group_all, numa_group;
+	MPI_Group group_all, sharedmem_group;
 
-	if (numa_comm != MPI_COMM_NULL)
+	if (sharedmem_comm != MPI_COMM_NULL)
 	{
 		/* Reserve a free shared memory block for non-collective global memory allocation. */	
-		MPI_Win_allocate_shared (DART_MAX_LENGTH, sizeof (char), win_info, numa_comm,
-				&(dart_mempool_localalloc), &dart_numa_win_local_alloc);
+		MPI_Win_allocate_shared (DART_MAX_LENGTH, sizeof (char), win_info, sharedmem_comm,
+				&(dart_mempool_localalloc), &dart_sharedmem_win_local_alloc);
 
 	
-		MPI_Comm_size (numa_comm, &(dart_sharedmemnode_size[index]));
+		MPI_Comm_size (sharedmem_comm, &(dart_sharedmemnode_size[index]));
 	
-		MPI_Comm_group (numa_comm, &numa_group);
+		MPI_Comm_group (sharedmem_comm, &sharedmem_group);
 		MPI_Comm_group (MPI_COMM_WORLD, &group_all);
 
-	//	dart_unit_mapping[index] = (int *)malloc (sizeof (int) * dart_numa_size[index]);
+	//	dart_unit_mapping[index] = (int *)malloc (sizeof (int) * dart_sharedmem_size[index]);
 		
 		/* The length of this hash table is set to be the size of DART_TEAM_ALL. */
 		dart_sharedmem_table[index] = (int *)malloc (sizeof (int) * size);
 
 		int* dart_unit_mapping = (int *)malloc (sizeof (int) * dart_sharedmemnode_size[index]);
-		int* numa_ranks = (int *)malloc (sizeof (int) * dart_sharedmemnode_size[index]);
+		int* sharedmem_ranks = (int *)malloc (sizeof (int) * dart_sharedmemnode_size[index]);
 
 		for (i = 0; i < dart_sharedmemnode_size[index]; i++)
 		{
-			numa_ranks[i] = i;
+			sharedmem_ranks[i] = i;
 		}
 		for (i = 0; i < size; i++)
 		{
 			dart_sharedmem_table[index][i] = -1;
 		}
 
-		/* Generate the set (dart_unit_mapping) of units with absolut IDs, 
-		 * which are located in the same numa domain. 
+		/* Generate the set (dart_unit_mapping) of units with absolute IDs, 
+		 * which are located in the same node 
 		 */
-//		MPI_Group_translate_ranks (numa_group, dart_numa_size[index], 
-//					numa_ranks, group_all, dart_unit_mapping[index]);
+//		MPI_Group_translate_ranks (sharedmem_group, dart_sharedmem_size[index], 
+//					sharedmem_ranks, group_all, dart_unit_mapping[index]);
 
 		
-		MPI_Group_translate_ranks (numa_group, dart_sharedmemnode_size[index],
-				numa_ranks, group_all, dart_unit_mapping);
+		MPI_Group_translate_ranks (sharedmem_group, dart_sharedmemnode_size[index],
+				sharedmem_ranks, group_all, dart_unit_mapping);
 	
 		/* The non-negative elements in the array 'dart_hash_table[index]' consist of
 		 * a node, where the units can communicate via shared memory
@@ -131,7 +136,7 @@ dart_ret_t dart_init (int* argc, char*** argv)
 		{
 			dart_sharedmem_table[index][dart_unit_mapping[i]] = i;
 		}
-		free (numa_ranks);
+		free (sharedmem_ranks);
 		free (dart_unit_mapping);
 	}
 
@@ -171,7 +176,6 @@ dart_ret_t dart_exit ()
  	
 	int result = dart_adapt_teamlist_convert (DART_TEAM_ALL, &index);
 
-//	printf ("unitid %d: the teamid is %d, the index is %d and the result is %d\n", unitid, DART_TEAM_ALL, index, result);
 	MPI_Win_unlock_all (dart_win_lists[index]);
 
 	/* End the shared access epoch in win_local_alloc. */
@@ -179,7 +183,7 @@ dart_ret_t dart_exit ()
 	
 	/* -- Free up all the resources for dart programme -- */
 	MPI_Win_free (&dart_win_local_alloc);
-	MPI_Win_free (&dart_numa_win_local_alloc);
+	MPI_Win_free (&dart_sharedmem_win_local_alloc);
 
 	MPI_Win_free (&dart_win_lists[index]);
 	

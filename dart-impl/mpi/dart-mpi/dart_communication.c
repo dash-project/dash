@@ -42,7 +42,6 @@ dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t 
 
 	*handle = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
 	target_unitid_abs = gptr.unitid;
-//	long difference;
 	
 	/* The memory accessed is allocated with collective allocation. */
 	if (flags == 1)
@@ -168,45 +167,7 @@ dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *
 	return DART_OK;
 }
 
-/*
-int binary_search(int A[], int key, int imin, int imax)
-{
-	  // continually narrow search until just one element remains
-	 
-	  while (imin < imax)
-	  {
-		  int imid = (imin + imax) >> 1;
-	      
-	          // code must guarantee the interval is reduced at each iteration
-	//	  assert(imid < imax);
-	  //   note: 0 <= imin < imax implies imid will always be less than imax
-	                                
-	           //reduce the search
-	          if (A[imid] < key)
-		  {
-			  imin = imid + 1;
-		  }
-		  else
-		  {
-	                  imax = imid;
-	          }
-	  }
-	  //   At exit of while:                                                                                  //   if A[] is empty, then imax < imin
-	  //   otherwise imax == imin
-	  //   deferred test for equality     
-	  
-	  
-	  if ((imax == imin) && (A[imin] == key))
-	  {
-		  return imin;
-	  }
-	  else 
-	  {
-		  return -1;
-	  }
 
-}
-*/
 /* -- Blocking dart one-sided operations -- */
 
 /** TODO: Check if MPI_Get_accumulate (MPI_NO_OP) can bring better performance? 
@@ -243,11 +204,11 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 		index = DART_TEAM_ALL;
 	}
 
-	/* Checking whether origin and target are in the same numa domain. 
-	 * We use the approatch of shared memory accessing only when it passsed the above check. */
+	/* Checking whether origin and target are in the same node. 
+	 * We use the approach of shared memory accessing only when it passed the above check. */
 	
 			
-//	i = binary_search (dart_unit_mapping[j], gptr.unitid, 0, dart_numa_size[j] - 1);
+//	i = binary_search (dart_unit_mapping[j], gptr.unitid, 0, dart_sharedmem_size[j] - 1);
 	/* The value of i will be the target's relative ID in teamid. */
 	i = dart_sharedmem_table[index][gptr.unitid];
 
@@ -269,7 +230,7 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 		}
 		
 		if (unitid == target_unitid_abs)
-		{/* If orgin and target are identical, then switchs to local access. */
+		{/* If orgin and target are identical, then switches to local access. */
 			if (flags == 1)
 			{
 				int flag;
@@ -291,7 +252,7 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 			else
 			{
 				difference = offset;
-				win = dart_numa_win_local_alloc;
+				win = dart_sharedmem_win_local_alloc;
 			}
 			MPI_Win_shared_query (win, i, &maximum_size, &disp_unit, &baseptr);
 			baseptr += difference;
@@ -370,9 +331,9 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 	}
 	j = index;
 
-//	i = binary_search (dart_unit_mapping[j], gptr.unitid, 0, dart_numa_size[j] - 1);
+//	i = binary_search (dart_unit_mapping[j], gptr.unitid, 0, dart_sharedmem_size[j] - 1);
 
-	/* Check whether the target is in the same numa node as the calling unit or not. */
+	/* Check whether the target is in the same node as the calling unit or not. */
 	i = dart_sharedmem_table[j][gptr.unitid];
 	if (i >= 0)
 	{
@@ -412,18 +373,13 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 			}
 			else
 			{
-				win = dart_numa_win_local_alloc;
+				win = dart_sharedmem_win_local_alloc;
 				difference = offset;
 			}
 			MPI_Win_shared_query (win, i, &maximum_size, &disp_unit, &baseptr);
 			baseptr += difference;
 		}
-	/*	
-		for (j = 0; j < nbytes; j++)
-		{
-			((char*)dest)[j] = baseptr[j];
-		}
-	*/	
+
 		memcpy ((char*)dest, baseptr, nbytes);	
 	}
 	else

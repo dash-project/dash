@@ -156,8 +156,8 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
 	/* The units belonging to the specified team are eligible to participate
 	 * below codes enclosed. */
 	 
-	MPI_Win win, numa_win;
-	MPI_Comm comm, numa_comm;
+	MPI_Win win, sharedmem_win;
+	MPI_Comm comm, sharedmem_comm;
 	MPI_Aint disp;
 	MPI_Aint* disp_set = (MPI_Aint*)malloc (size * sizeof (MPI_Aint));
 	
@@ -169,7 +169,7 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
 		return DART_ERR_INVAL;
 	}
 	comm = dart_teams[index];
-	numa_comm = dart_sharedmem_comm_list[index];
+	sharedmem_comm = dart_sharedmem_comm_list[index];
 
 	if (unitid == 0)
 	{
@@ -190,8 +190,8 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
 	MPI_Info_create (&win_info);
 	MPI_Info_set (win_info, "alloc_shared_noncontig", "true");
 
-	/* Allocate shared memory on numa_comm, and create the related numa_win */
-	MPI_Win_allocate_shared (nbytes, sizeof (char), win_info, numa_comm, &sub_mem, &numa_win);
+	/* Allocate shared memory on sharedmem_comm, and create the related sharedmem_win */
+	MPI_Win_allocate_shared (nbytes, sizeof (char), win_info, sharedmem_comm, &sub_mem, &sharedmem_win);
 		
 
 	win = dart_win_lists[index];
@@ -215,7 +215,7 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
 	item.size = nbytes;
         item.disp = disp_set;
 	GMRh handler;
-        handler.win = numa_win;
+        handler.win = sharedmem_win;
 	item.handle = handler;
 		
 	/* Add this newly generated correspondence relationship record into the translation table. */
@@ -240,7 +240,7 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 		return DART_ERR_INVAL;
 	}
 	
-	MPI_Win win, numa_win;
+	MPI_Win win, sharedmem_win;
 	
 	int flag;
 	uint64_t begin, offset = gptr.addr_or_offs.offset;	
@@ -248,17 +248,17 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 	win = dart_win_lists[index];
         
 	
-	if (dart_adapt_transtable_query_win (index, offset, NULL, &numa_win) == -1)
+	if (dart_adapt_transtable_query_win (index, offset, NULL, &sharedmem_win) == -1)
 	{
 		return DART_ERR_INVAL;
 	}
 
 	/* Detach the freed sub-memory from win */
-        MPI_Win_get_attr (numa_win, MPI_WIN_BASE, &sub_mem, &flag);
+        MPI_Win_get_attr (sharedmem_win, MPI_WIN_BASE, &sub_mem, &flag);
 	MPI_Win_detach (win, sub_mem);
 
-	/* Release the shared memory win object related to the freed shared momory */
-	MPI_Win_free (&numa_win); 
+	/* Release the shared memory win object related to the freed shared memory */
+	MPI_Win_free (&sharedmem_win); 
 	
 	if (unitid == 0)
 	{

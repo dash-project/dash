@@ -14,7 +14,7 @@
 node_t dart_transtable_globalalloc [DART_MAX_TEAM_NUMBER];
 
 MPI_Win dart_win_local_alloc;
-MPI_Win dart_numa_win_local_alloc;
+MPI_Win dart_sharedmem_win_local_alloc;
 
 
 int dart_adapt_transtable_create (int index)
