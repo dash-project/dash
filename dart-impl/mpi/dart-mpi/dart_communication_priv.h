@@ -1,5 +1,5 @@
-/** @file dart_adapt_communication_priv.h
- *  @date 25 Mar 2014
+/** @file dart_communication_priv.h
+ *  @date 25 Aug 2014
  *  @brief Definition of dart_handle_struct
  */
 #ifndef DART_ADAPT_COMMUNICATION_PRIV_H_INCLUDED

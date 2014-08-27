@@ -1,5 +1,5 @@
-/** @file dart_adapt_team_private.c
- *  @date 25 Mar 2014
+/** @file dart_team_private.c
+ *  @date 25 Aug 2014
  *  @brief Implementations for the operations on teamlist.
  */
 #include<stdio.h>
@@ -110,7 +110,7 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, int* index)
 		dart_allocated_teamlist_size ++;
 		
 		/* If allocated successfully, the position of the new element in the allcoated array
-		 * is return.
+		 * is returned.
 		 */
 		return (dart_allocated_teamlist_size - 1);
 

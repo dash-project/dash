@@ -1,5 +1,5 @@
-/** @file dart_adapt_team_private.h
- *  @date 25 Mar 2014
+/** @file dart_team_private.h
+ *  @date 25 Aug 2014
  *  @brief Function prototypes for operations on available teamID linked list.
  *
  *  Question on the teamID numbering rules:

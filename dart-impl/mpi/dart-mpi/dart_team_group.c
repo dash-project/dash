@@ -1,5 +1,5 @@
-/** @file dart_adapt_team_group.c
- *  @date 25 Mar 2014
+/** @file dart_team_group.c
+ *  @date 25 Aug 2014
  *  @brief implementation of dart operations on team&group.
  */
 
@@ -107,7 +107,7 @@ dart_ret_t dart_group_addmember (dart_group_t *g, dart_unit_t unitid)
 	MPI_Group  newgroup, group_all;
 
 
-	/* Group_all comprise all the running units. */
+	/* Group_all comprises all the running units. */
 	MPI_Comm_group (MPI_COMM_WORLD, &group_all);
 	group_copy = (dart_group_t*)malloc (sizeof (dart_group_t));
 	group = (dart_group_t*)malloc (sizeof (dart_group_t));
@@ -451,8 +451,6 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 	/* -- Release the communicator associated with teamid -- */
 	MPI_Comm_free (&comm);
 
-	// get the corresponding inter-node window object
-//	MPI_Win_free (&win);
 	DEBUG ("%2d: TEAMDESTROY	- destroy team %d", id, teamid);
 
 	return DART_OK;

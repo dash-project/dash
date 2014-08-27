@@ -1,5 +1,5 @@
-/** @file dart_adapt_synchronization_priv.h
- *  @date 25 Mar 2014
+/** @file dart_synchronization_priv.h
+ *  @date 25 Aug 2014
  *  @brief Definition of dart_lock_struct.
  */
 

@@ -1,4 +1,4 @@
-/** @file dart_adapt_mem.c
+/** @file dart_mem.c
  *  @date 21 Nov 2013
  *  @brief Implementations for the operations on the shared memory region.
  */

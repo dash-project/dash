@@ -1,5 +1,5 @@
-/** @file dart_adapt_translation.c
- *  @date 25 Mar 2014
+/** @file dart_translation.c
+ *  @date 25 Aug 2014
  *  @brief Implementation for the operations on translation table.
  */
 
@@ -102,7 +102,7 @@ int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t* begin
 
 	if (begin != NULL)
 	{
-		*begin = (pre -> trans).offset;/* "begin" indicates the base location of the memory region for the specified team. */
+		*begin = (pre -> trans).offset;/* "begin" indicates the base location of the specified global memory region . */
 	}
 
 	*win = (pre -> trans).handle.win;

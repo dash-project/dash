@@ -1,5 +1,5 @@
-/** @file dart_adapt_globmem.c
- *  @date 25 Mar 2014
+/** @file dart_globmem.c
+ *  @date 25 Aug 2014
  *  @brief Implementation of all the related global pointer operations
  *
  *  All the following functions are implemented with the underlying *MPI-3*

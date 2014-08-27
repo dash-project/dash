@@ -1,5 +1,5 @@
-/** @file dart_adapt_communication.c
- *  @date 25 Mar 2014
+/** @file dart_communication.c
+ *  @date 25 Aug 2014
  *  @brief Implementations of all the dart communication operations. 
  *  
  *  All the following functions are implemented with the underling *MPI-3*

@@ -1,5 +1,5 @@
-/** @file dart_adapt_initialization.c
- *  @date 25 Mar 2014
+/** @file dart_initialization.c
+ *  @date 25 Aug 2014
  *  @brief Implementations of the dart init and exit operations.
  */
 
@@ -143,7 +143,7 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	/* Create a single global win object for dart local allocation based on
 	 * the aboved allocated shared memory.
 	 *
-	 * Return in win_local_alloc. */
+	 * Return in dart_win_local_alloc. */
 	MPI_Win_create (dart_mempool_localalloc, DART_MAX_LENGTH, sizeof (char), MPI_INFO_NULL, 
 			MPI_COMM_WORLD, &dart_win_local_alloc);
 
@@ -154,7 +154,7 @@ dart_ret_t dart_init (int* argc, char*** argv)
 
 	/* Start a shared access epoch in win_local_alloc, and later on all the units
 	 * can access the memory region allocated by the local allocation
-	 * function through win_local_alloc. */	
+	 * function through dart_win_local_alloc. */	
 	MPI_Win_lock_all (0, dart_win_local_alloc);
 	/* Start a shared access epoch in win, and later on all the units can access
 	 * the attached memory region allocated by the collective allocation function
@@ -178,7 +178,7 @@ dart_ret_t dart_exit ()
 
 	MPI_Win_unlock_all (dart_win_lists[index]);
 
-	/* End the shared access epoch in win_local_alloc. */
+	/* End the shared access epoch in dart_win_local_alloc. */
 	MPI_Win_unlock_all (dart_win_local_alloc);
 	
 	/* -- Free up all the resources for dart programme -- */

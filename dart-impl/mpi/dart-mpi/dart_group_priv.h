@@ -1,4 +1,4 @@
-/** @file dart_adapt_group_priv.h
+/** @file dart_group_priv.h
  *  @date 25 Mar 2014
  *  @brief Definition of dart_group_struct.
  */

@@ -1,5 +1,5 @@
-/** @file dart_adapt_translation.h
- *  @date 25 Mar 2014
+/** @file dart_translation.h
+ *  @date 25 Aug 2014
  *  @brief Function prototypes for the operations on translation table.
  */
 

@@ -1,5 +1,5 @@
-/** @file dart_adapt_mem.h
- *  @date 21 Nov 2013
+/** @file dart_mem.h
+ *  @date 25 Aug 2014
  *  @brief Function prototypes for dart shared memory region management.
  */
 #ifndef DART_ADAPT_MEM_H_INCLUDED

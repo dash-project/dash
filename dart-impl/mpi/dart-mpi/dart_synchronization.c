@@ -1,5 +1,5 @@
-/** @file dart_adapt_synchronization.c
- *  @date 25 Mar 2014
+/** @file dart_synchronization.c
+ *  @date 25 Aug 2014
  *  @brief synchronization operations.
  */
 
