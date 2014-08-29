@@ -80,18 +80,18 @@ dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
 		MPI_Win win;
 		char* addr_base;
 		int index, flag;
-		uint64_t begin;
+		uint64_t base;
 		int result = dart_adapt_teamlist_convert (gptr -> segid, &index);
 		if (result == -1)
 		{
 			return DART_ERR_INVAL;
 		}
-		if ((dart_adapt_transtable_query_win (index, gptr->addr_or_offs.offset, &begin, &win)) == -1)
+		if ((dart_adapt_transtable_query_win (index, gptr->addr_or_offs.offset, &base, &win)) == -1)
 		{
 			return DART_ERR_INVAL;
 		}
     		MPI_Win_get_attr (win, MPI_WIN_BASE, &addr_base, &flag);
-		gptr->addr_or_offs.offset = ((char *)addr - addr_base) + begin;
+		gptr->addr_or_offs.offset = ((char *)addr - addr_base) + base;
 	}
 	else
 	{
@@ -243,7 +243,7 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 	MPI_Win win, sharedmem_win;
 	
 	int flag;
-	uint64_t begin, offset = gptr.addr_or_offs.offset;	
+	uint64_t offset = gptr.addr_or_offs.offset;	
      	
 	win = dart_win_lists[index];
         

@@ -19,7 +19,7 @@ struct dart_lock_struct
 	dart_gptr_t gptr_list; /**< Pointer to next waiting unit. envisioned as a distributed list across the teamid. */
 	dart_team_t teamid; 
 	int index;
-	int acquired; /**< Indicate if certain unit has acquired the lock or not. */
+	int32_t is_acquired; /**< Indicate if certain unit has acquired the lock or not. */
 };
 
 #endif /* DART_ADAPT_SYNCHRONIZATION_PRIV_H_INCLUDED */

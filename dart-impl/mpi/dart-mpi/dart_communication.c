@@ -34,9 +34,9 @@
 dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t *handle)
 {
 	MPI_Request mpi_req;
-	MPI_Aint disp_s, difference;
+	MPI_Aint disp_s, disp_rel;
 	dart_unit_t target_unitid_abs;
-	uint64_t begin, offset = gptr.addr_or_offs.offset;
+	uint64_t base, offset = gptr.addr_or_offs.offset;
 	uint16_t flags = gptr. flags;
 	MPI_Win win;
 
@@ -74,20 +74,20 @@ dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t 
 		 */
 		dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
 
-		if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &begin, &disp_s)== -1)
+		if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &base, &disp_s)== -1)
 		{
 			return DART_ERR_INVAL;
 		}
 
-		difference = disp_s + (offset - begin);
+		disp_rel = disp_s + (offset - base);
 		 
 		/* MPI-3 newly added feature: request version of get call. */
 
 		/** TODO: Check if MPI_Rget_accumulate (NULL, 0, MPI_BYTE, dest, nbytes, MPI_BYTE, 
-		 *  target_unitid, difference, nbytes, MPI_BYTE, MPI_NO_OP, win, &mpi_req) could be an better alternative? 
+		 *  target_unitid, disp_rel, nbytes, MPI_BYTE, MPI_NO_OP, win, &mpi_req) could be an better alternative? 
 		 */
-	//	MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
-		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
+	//	MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win, &mpi_req);
+		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win, &mpi_req);
 
 		DEBUG ("GET	- %d bytes (allocated with collective allocation) from %d at the offset %d", 
 				nbytes, target_unitid_abs, offset);
@@ -110,9 +110,9 @@ dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *
 {
 	int i, j;
 	MPI_Request mpi_req;
-	MPI_Aint disp_s, difference;
+	MPI_Aint disp_s, disp_rel;
 	dart_unit_t target_unitid_abs;
-	uint64_t begin, offset = gptr.addr_or_offs.offset;
+	uint64_t base, offset = gptr.addr_or_offs.offset;
 	uint16_t flags = gptr.flags;
 	MPI_Win win;
 	
@@ -139,17 +139,17 @@ dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *
 
 		win = dart_win_lists[index];		
 		dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
-		if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &begin, &disp_s) == -1)
+		if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &base, &disp_s) == -1)
 		{
 			return DART_ERR_INVAL;
 		}	
 
-		difference = disp_s + (offset - begin);
-		/** TODO: Check if MPI_Raccumulate (src, nbytes, MPI_BYTE, target_unitid, difference, nbytes, MPI_BYTE,
+		disp_rel = disp_s + (offset - base);
+		/** TODO: Check if MPI_Raccumulate (src, nbytes, MPI_BYTE, target_unitid, disp_rel, nbytes, MPI_BYTE,
 		 *  REPLACE, win, &mpi_req) could be a better alternative? 
 		 */
-//		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
-		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
+//		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win, &mpi_req);
+		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win, &mpi_req);
 		DEBUG ("PUT	-%d bytes (allocated with collective allocation) to %d at the offset %d",
 				nbytes, target_unitid_abs, offset);
 
@@ -181,9 +181,9 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 	MPI_Win win;
 	MPI_Status mpi_sta;
 	MPI_Request mpi_req;
-	MPI_Aint disp_s, maximum_size, difference;
+	MPI_Aint disp_s, maximum_size, disp_rel;
 
-	uint64_t begin, offset = gptr.addr_or_offs.offset;
+	uint64_t base, offset = gptr.addr_or_offs.offset;
 	uint16_t flags = gptr.flags;
 	dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
 
@@ -223,7 +223,7 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 		dart_myid (&unitid);
 		if (flags == 1)
 		{
-			if (dart_adapt_transtable_query_win (index, offset, &begin, &win) == -1)
+			if (dart_adapt_transtable_query_win (index, offset, &base, &win) == -1)
 			{
 				return DART_ERR_INVAL;
 			}
@@ -236,7 +236,7 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 				int flag;
 				
 				MPI_Win_get_attr (win, MPI_WIN_BASE, &baseptr, &flag);
-				baseptr = baseptr + (offset - begin);
+				baseptr = baseptr + (offset - base);
 			}
 			else
 			{
@@ -247,15 +247,15 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 		{/* Accesses through shared memory (store). */
 			if (flags == 1)
 			{
-				difference = offset - begin;
+				disp_rel = offset - base;
 			}
 			else
 			{
-				difference = offset;
+				disp_rel = offset;
 				win = dart_sharedmem_win_local_alloc;
 			}
 			MPI_Win_shared_query (win, i, &maximum_size, &disp_unit, &baseptr);
-			baseptr += difference;
+			baseptr += disp_rel;
 		}
 			memcpy (baseptr, ((char*)src), nbytes);
 	}
@@ -265,21 +265,21 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 		{	
 			win = dart_win_lists[index];
 	           	dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
-			if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &begin, &disp_s) == -1)
+			if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &base, &disp_s) == -1)
 			{
 				return DART_ERR_INVAL;
 			}	
-			difference = disp_s + (offset - begin);
+			disp_rel = disp_s + (offset - base);
 		}
 		else
 		{
 			win = dart_win_local_alloc;
-			difference = offset;
+			disp_rel = offset;
 			target_unitid_rel = target_unitid_abs;
 		}
 	
 	//	MPI_Put (src, nbytes, MPI_BYTE, target_unitid, difference, nbytes, MPI_BYTE, win);
-		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
+		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win, &mpi_req);
 		MPI_Wait (&mpi_req, &mpi_sta);
 	}
 	
@@ -307,9 +307,9 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 	MPI_Win win;
 	MPI_Status mpi_sta;
 	MPI_Request mpi_req;
-	MPI_Aint disp_s, maximum_size, difference;
+	MPI_Aint disp_s, maximum_size, disp_rel;
 	
-	uint64_t begin, offset = gptr.addr_or_offs.offset;
+	uint64_t base, offset = gptr.addr_or_offs.offset;
 	uint16_t flags = gptr.flags;
 	dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
 	
@@ -345,7 +345,7 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 		dart_myid (&unitid);
 		if (flags == 1)
 		{
-			if (dart_adapt_transtable_query_win (index, offset, &begin, &win) == -1)
+			if (dart_adapt_transtable_query_win (index, offset, &base, &win) == -1)
 			{
 				return DART_ERR_INVAL;
 			}
@@ -358,7 +358,7 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 				int flag;
 				MPI_Win_get_attr (win, MPI_WIN_BASE, &baseptr, &flag);
 		//		dart_adapt_transtable_query_addr (index, offset, &begin, &baseptr);
-				baseptr = baseptr + (offset - begin);
+				baseptr = baseptr + (offset - base);
 			}
 			else
 			{
@@ -369,15 +369,15 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 		{/* Accesses through shared memory (load)*/
 			if (flags == 1)
 			{			
-				difference = offset - begin;
+				disp_rel = offset - base;
 			}
 			else
 			{
 				win = dart_sharedmem_win_local_alloc;
-				difference = offset;
+				disp_rel = offset;
 			}
 			MPI_Win_shared_query (win, i, &maximum_size, &disp_unit, &baseptr);
-			baseptr += difference;
+			baseptr += disp_rel;
 		}
 
 		memcpy ((char*)dest, baseptr, nbytes);	
@@ -388,21 +388,21 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 		{
 			win = dart_win_lists[index];
 			dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
-			if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &begin, &disp_s) == -1)
+			if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &base, &disp_s) == -1)
 			{
 				return DART_ERR_INVAL;
 			}
-			difference = disp_s + (offset - begin);
+			disp_rel = disp_s + (offset - base);
 		}
 		else
 		{
 			win = dart_win_local_alloc;
-			difference = offset;
+			disp_rel = offset;
 			target_unitid_rel = target_unitid_abs;
 		}
 
 	//	MPI_Get (dest, nbytes, MPI_BYTE, target_unitid, offset, nbytes, MPI_BYTE, win);
-		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_rel, difference, nbytes, MPI_BYTE, win, &mpi_req);
+		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win, &mpi_req);
 		
 		MPI_Wait (&mpi_req, &mpi_sta);
 	}
@@ -435,16 +435,16 @@ dart_ret_t dart_wait (dart_handle_t handle)
 	return DART_OK;
 }
 
-dart_ret_t dart_test (dart_handle_t handle, int* finished)
+dart_ret_t dart_test (dart_handle_t handle, int32_t* is_finished)
 {
 	if (!handle)
 	{
-		*finished = 1;
+		*is_finished = 1;
 		return DART_OK;
 	}
 
 	MPI_Status mpi_sta;
-	MPI_Test (&(handle -> request), finished, &mpi_sta);
+	MPI_Test (&(handle -> request), is_finished, &mpi_sta);
 
 	LOG ("TEST	- finished");
 	return DART_OK;
@@ -487,11 +487,11 @@ dart_ret_t dart_waitall (dart_handle_t *handle, size_t n)
 /** TODO:	Rectify its return val type or add another new param in which returns the testing result.\n 
  *  FIX:	Adding a flag param here.
  */
-dart_ret_t dart_testall (dart_handle_t *handle, size_t n, int* finished)
+dart_ret_t dart_testall (dart_handle_t *handle, size_t n, int32_t* is_finished)
 {
 	if (!(*handle))
 	{
-		*finished = 1;
+		*is_finished = 1;
 		return DART_OK;
 	}
 
@@ -505,7 +505,7 @@ dart_ret_t dart_testall (dart_handle_t *handle, size_t n, int* finished)
 	{
 		mpi_req [i] = handle[i] -> request;
 	}
-	MPI_Testall (n, mpi_req, finished, mpi_sta);
+	MPI_Testall (n, mpi_req, is_finished, mpi_sta);
 	for (i = 0; i < n; i++)
 	{
 		handle[i] -> request = mpi_req[i];

@@ -83,7 +83,7 @@ int dart_adapt_transtable_remove (int index, uint64_t offset)
 	return 0;
 }
 
-int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t* begin, MPI_Win* win)
+int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t* base, MPI_Win* win)
 {
 	node_t p, pre;
 	p = dart_transtable_globalalloc [index];
@@ -100,9 +100,9 @@ int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t* begin
 		return -1;
 	}
 
-	if (begin != NULL)
+	if (base != NULL)
 	{
-		*begin = (pre -> trans).offset;/* "begin" indicates the base location of the specified global memory region . */
+		*base = (pre -> trans).offset;/* "base" indicates the base location of the specified global memory region . */
 	}
 
 	*win = (pre -> trans).handle.win;
@@ -110,7 +110,7 @@ int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t* begin
 }
 
 /*
-int dart_adapt_transtable_query_addr (int index, int offset, int* begin, void **addr)
+int dart_adapt_transtable_query_addr (int index, int offset, int* base, void **addr)
 {
 	node_t p, pre;
 	p = transtable_globalalloc [index];
@@ -127,13 +127,13 @@ int dart_adapt_transtable_query_addr (int index, int offset, int* begin, void **
 	}
 
 
-	*begin = (pre -> trans).offset;
+	*base = (pre -> trans).offset;
 	*addr = (pre -> trans).addr;
 	return 0;
 }
 */
 
-int dart_adapt_transtable_query_disp (int index, uint64_t offset, dart_unit_t rel_unitid, uint64_t* begin, MPI_Aint *disp_s)
+int dart_adapt_transtable_query_disp (int index, uint64_t offset, dart_unit_t rel_unitid, uint64_t* base, MPI_Aint *disp_s)
 {
 	node_t p, pre;
 	p = dart_transtable_globalalloc [index];
@@ -149,9 +149,9 @@ int dart_adapt_transtable_query_disp (int index, uint64_t offset, dart_unit_t re
 		return -1;
 	}
 
-	if (begin != NULL)
+	if (base != NULL)
 	{
-		*begin = (pre -> trans).offset;
+		*base = (pre -> trans).offset;
 	}
 	*disp_s = (pre -> trans).disp[rel_unitid];
 	return 0;

@@ -75,7 +75,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	DART_GPTR_COPY ((*lock) -> gptr_list, gptr_list);
 	(*lock) -> teamid = teamid;		
 	(*lock) -> index = index;
-	(*lock) -> acquired = 0;
+	(*lock) -> is_acquired = 0;
 			
 	DEBUG ("%2d: INIT	- done", unitid);
 	
@@ -87,7 +87,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 	dart_unit_t unitid;
 	dart_team_myid (lock -> teamid, &unitid);
 
-	if (lock -> acquired == 1)
+	if (lock -> is_acquired == 1)
 	{
 		printf ("Warning: LOCK	- %2d has acquired the lock already\n", unitid);
 		return DART_OK;
@@ -137,15 +137,15 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 	}
 	
 	DEBUG ("%2d: LOCK	- lock required in team %d", unitid, (lock -> teamid));
-	lock -> acquired = 1;
+	lock -> is_acquired = 1;
 	return DART_OK;
 }
 
-dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int *acquired)
+dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 {
 	dart_unit_t unitid;
 	dart_team_myid (lock -> teamid, &unitid);
-	if (lock -> acquired == 1)
+	if (lock -> is_acquired == 1)
 	{
 		printf ("Warning: TRYLOCK	- %2d has acquired the lock already\n", unitid);
 		return DART_OK;
@@ -168,14 +168,14 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int *acquired)
 	/* If the old predecessor was -1, we will claim the lock, otherwise, do nothing. */
 	if (*result == -1)
 	{
-		lock -> acquired = 1;
-		*acquired = 1;
+		lock -> is_acquired = 1;
+		*is_acquired = 1;
 	}
 	else
 	{
-		*acquired = 0;
+		*is_acquired = 0;
 	}
-	char* string = (*acquired) ? "success" : "Non-success";
+	char* string = (*is_acquired) ? "success" : "Non-success";
 	DEBUG ("%2d: TRYLOCK	- %s in team %d", unitid, string, (lock -> teamid));
 	return DART_OK;
 }
@@ -184,7 +184,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 {
 	dart_unit_t unitid;
 	dart_team_myid (lock -> teamid, &unitid);
-	if (lock -> acquired == 0)
+	if (lock -> is_acquired == 0)
 	{
 		printf ("Warning: RELEASE	- %2d has not yet required the lock\n", unitid);
 		return DART_OK;
@@ -242,7 +242,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 		*addr2 = -1;
 		MPI_Win_sync (win);
 	}
-	lock -> acquired = 0;
+	lock -> is_acquired = 0;
 	DEBUG ("%2d: UNLOCK	- release lock in team %d", unitid, (lock -> teamid));
 	return DART_OK;
 }
