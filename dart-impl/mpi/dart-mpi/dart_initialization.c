@@ -48,7 +48,7 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	/* Initialize the teamlist. */
 	dart_adapt_teamlist_init ();
 
-	dart_next_availteamid = 0;
+	dart_next_availteamid = DART_TEAM_ALL;
 	int result = dart_adapt_teamlist_alloc (DART_TEAM_ALL, &index);
 	if (result == -1)
 	{

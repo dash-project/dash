@@ -16,8 +16,6 @@
 #include "dart_team_group.h"
 #include "dart_group_priv.h"
 
-dart_team_t dart_next_availteamid;
-
 dart_ret_t dart_group_init (dart_group_t *group)
 {
 	group -> mpi_group = MPI_GROUP_EMPTY;

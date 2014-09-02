@@ -56,7 +56,7 @@ dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t 
 			return DART_ERR_INVAL;
 		}
 		/*
-	        if (dart_adapt_transtable_query_win (index, offset, &begin, &win) == -1)
+	        if (dart_adapt_transtable_get_win (index, offset, &begin, &win) == -1)
 		{
 			ERROR ("Invalid accessing operation");
 			return DART_ERR_INVAL;
@@ -74,7 +74,7 @@ dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t 
 		 */
 		dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
 
-		if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &base, &disp_s)== -1)
+		if (dart_adapt_transtable_get_disp (index, offset, target_unitid_rel, &base, &disp_s)== -1)
 		{
 			return DART_ERR_INVAL;
 		}
@@ -130,7 +130,7 @@ dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *
 			return DART_ERR_INVAL;
 		}
 		/*
-		if (dart_adapt_transtable_query (index, offset, &begin, &win) == -1)
+		if (dart_adapt_transtable_get_win (index, offset, &begin, &win) == -1)
 		{
 			ERROR ("Invalid accessing operation");
 			return DART_ERR_INVAL;
@@ -139,7 +139,7 @@ dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *
 
 		win = dart_win_lists[index];		
 		dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
-		if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &base, &disp_s) == -1)
+		if (dart_adapt_transtable_get_disp (index, offset, target_unitid_rel, &base, &disp_s) == -1)
 		{
 			return DART_ERR_INVAL;
 		}	
@@ -223,7 +223,7 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 		dart_myid (&unitid);
 		if (flags == 1)
 		{
-			if (dart_adapt_transtable_query_win (index, offset, &base, &win) == -1)
+			if (dart_adapt_transtable_get_win (index, offset, &base, &win) == -1)
 			{
 				return DART_ERR_INVAL;
 			}
@@ -257,7 +257,7 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 			MPI_Win_shared_query (win, i, &maximum_size, &disp_unit, &baseptr);
 			baseptr += disp_rel;
 		}
-			memcpy (baseptr, ((char*)src), nbytes);
+		memcpy (baseptr, ((char*)src), nbytes);
 	}
 	else
 	{/* The traditional remote access method */
@@ -265,7 +265,7 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 		{	
 			win = dart_win_lists[index];
 	           	dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
-			if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &base, &disp_s) == -1)
+			if (dart_adapt_transtable_get_disp (index, offset, target_unitid_rel, &base, &disp_s) == -1)
 			{
 				return DART_ERR_INVAL;
 			}	
@@ -345,7 +345,7 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 		dart_myid (&unitid);
 		if (flags == 1)
 		{
-			if (dart_adapt_transtable_query_win (index, offset, &base, &win) == -1)
+			if (dart_adapt_transtable_get_win (index, offset, &base, &win) == -1)
 			{
 				return DART_ERR_INVAL;
 			}
@@ -357,7 +357,7 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 			{
 				int flag;
 				MPI_Win_get_attr (win, MPI_WIN_BASE, &baseptr, &flag);
-		//		dart_adapt_transtable_query_addr (index, offset, &begin, &baseptr);
+		//		dart_adapt_transtable_get_addr (index, offset, &begin, &baseptr);
 				baseptr = baseptr + (offset - base);
 			}
 			else
@@ -388,7 +388,7 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 		{
 			win = dart_win_lists[index];
 			dart_team_unit_g2l (teamid, target_unitid_abs, &target_unitid_rel);
-			if (dart_adapt_transtable_query_disp (index, offset, target_unitid_rel, &base, &disp_s) == -1)
+			if (dart_adapt_transtable_get_disp (index, offset, target_unitid_rel, &base, &disp_s) == -1)
 			{
 				return DART_ERR_INVAL;
 			}

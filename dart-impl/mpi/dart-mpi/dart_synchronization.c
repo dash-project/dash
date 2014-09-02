@@ -118,7 +118,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 	 * and wait for notification from its predecessor. */
 	if (*predecessor != -1)
 	{
-		if (dart_adapt_transtable_query_disp (index, offset_list, *predecessor, NULL, &disp_list) == -1)
+		if (dart_adapt_transtable_get_disp (index, offset_list, *predecessor, NULL, &disp_list) == -1)
 		{		
 			return DART_ERR_INVAL;
 		}
@@ -220,7 +220,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 		DEBUG ("%2d: UNLOCK	- waiting for next pointer (tail = %d) in team %d", 
 				unitid, *result, (lock -> teamid));
 
-		if (dart_adapt_transtable_query_disp (index, offset_list, unitid, NULL, &disp_list) == -1) 
+		if (dart_adapt_transtable_get_disp (index, offset_list, unitid, NULL, &disp_list) == -1) 
 		{
 			return DART_ERR_INVAL;
 		}

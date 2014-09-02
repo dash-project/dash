@@ -7,6 +7,7 @@
 #include "dart_team_private.h"
 #include "dart_team_group.h"
 
+dart_team_t dart_next_availteamid;
 MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
 MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 
@@ -125,8 +126,7 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, int* index)
 int dart_adapt_teamlist_recycle (int index, int pos)
 {
 	int i;
-	int unitid;
-	dart_myid (&unitid);
+	
 	dart_free_teamlist_ptr newAllocateEntry = (dart_free_teamlist_ptr)malloc (sizeof (dart_free_entry));
 	newAllocateEntry -> index = index;
 	newAllocateEntry -> next = dart_free_teamlist_header;

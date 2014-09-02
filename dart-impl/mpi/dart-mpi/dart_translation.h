@@ -90,9 +90,9 @@ int dart_adapt_transtable_remove (int index, uint64_t offset);
  *  @retval negative integer Failure.
  */
 
-int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t *base, MPI_Win *win);
+int dart_adapt_transtable_get_win (int index, uint64_t offset, uint64_t *base, MPI_Win *win);
 
-//int dart_adapt_transtable_query_addr (int index, int offset, int *begin, void **addr);
+//int dart_adapt_transtable_get_addr (int index, int offset, int *begin, void **addr);
 
 /** @brief Query the address set of the memory location of all the units in specified team.
  *
@@ -103,7 +103,7 @@ int dart_adapt_transtable_query_win (int index, uint64_t offset, uint64_t *base,
  *  @retval ditto
  */
 
-int dart_adapt_transtable_query_disp (int index, uint64_t offset, dart_unit_t rel_unit, uint64_t *base, MPI_Aint* disp_s);
+int dart_adapt_transtable_get_disp (int index, uint64_t offset, dart_unit_t rel_unit, uint64_t *base, MPI_Aint* disp_s);
 
 /** @brief Destroy the translation table associated with the speicified team.
  */
