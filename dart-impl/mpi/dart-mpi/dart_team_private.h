@@ -200,18 +200,18 @@ int dart_adapt_teamlist_destroy ();
  * @param[in]	teamid	The newly created team ID.
  * @param[out]	index	The unique ID related to the newly created team.
  */
-int dart_adapt_teamlist_alloc(dart_team_t teamid, int *index);
+int dart_adapt_teamlist_alloc(dart_team_t teamid, uint16_t *index);
 
 /* @brief Insert the freed index into the free-team-list, and delete the element with given index
  * from the allocated-team-list-array.
  *
  * This call will be invoked when a new team is destroyed. 
  */
-int dart_adapt_teamlist_recycle(int index, int pos);
+int dart_adapt_teamlist_recycle(uint16_t index, int pos);
 
 /* @brief Locate the given teamid in the alloated-team-list-array.
  */
-int dart_adapt_teamlist_convert (dart_team_t teamid, int* index);
+int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index);
 
 #endif /*DART_ADAPT_TEAMNODE_H_INCLUDED*/
 

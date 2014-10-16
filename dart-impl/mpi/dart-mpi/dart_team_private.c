@@ -18,7 +18,7 @@ int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 
 struct dart_free_teamlist_entry
 {
-	int index;
+	uint16_t index;
 	struct dart_free_teamlist_entry* next;
 };
 typedef struct dart_free_teamlist_entry dart_free_entry;
@@ -28,7 +28,7 @@ dart_free_teamlist_ptr dart_free_teamlist_header;
 /* Structure of the allocated teamlist entry */
 struct dart_allocated_teamlist_entry
 {
-	int index;
+	uint16_t index;
 	dart_team_t allocated_teamid;
 };
 typedef struct dart_allocated_teamlist_entry dart_allocated_entry;
@@ -78,7 +78,7 @@ int dart_adapt_teamlist_destroy ()
 	return 0;
 }
 
-int dart_adapt_teamlist_alloc (dart_team_t teamid, int* index)
+int dart_adapt_teamlist_alloc (dart_team_t teamid, uint16_t* index)
 {
 	int i, j;
 	dart_free_teamlist_ptr p;
@@ -123,7 +123,7 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, int* index)
 	}
 }
 
-int dart_adapt_teamlist_recycle (int index, int pos)
+int dart_adapt_teamlist_recycle (uint16_t index, int pos)
 {
 	int i;
 	
@@ -143,7 +143,7 @@ int dart_adapt_teamlist_recycle (int index, int pos)
 	return 0;	
 }
 
-int dart_adapt_teamlist_convert (dart_team_t teamid, int* index)
+int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index)
 {
 	if (teamid == DART_TEAM_ALL)
 	{

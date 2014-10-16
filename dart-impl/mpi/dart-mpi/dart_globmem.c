@@ -25,33 +25,32 @@
 
 /**
  * @note For dart collective allocation/free: offset in the returned gptr represents the displacement
- * relative to the base address of memory region reserved for certain team rather than 
- * the beginning of sub-memory spanned by certain dart collective allocation.
+ * relative to the beginning of sub-memory spanned by certain dart collective allocation.
  * For dart local allocation/free: offset in the returned gptr represents the displacement relative to 
  * the base address of memory region reserved for the dart local allocation/free.
  */
+int16_t dart_memid;
 dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 {
-	uint16_t flag = gptr.flags;
+	int16_t seg_id = gptr.segid;
 	uint64_t offset = gptr.addr_or_offs.offset;
 	dart_unit_t myid;
 	dart_myid (&myid);
   
 	if (myid == gptr.unitid)
 	{
-		if (flag == 1)
+		if (seg_id)
 		{
-			int index, flag;
-			uint64_t base;
+			int flag;
 			MPI_Win win;
-			int result = dart_adapt_teamlist_convert (gptr.segid, &index);
-			if (dart_adapt_transtable_get_win (index, offset, &base, &win) == -1)
+
+			if (dart_adapt_transtable_get_win (seg_id, &win) == -1)
 			{
 				return DART_ERR_INVAL;
 			}
 			MPI_Win_get_attr (win, MPI_WIN_BASE, addr, &flag);
 
-			*addr = (offset - base) + (char *)(*addr);
+			*addr = offset + (char *)(*addr);
 		}
 		else
 		{
@@ -72,26 +71,21 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 
 dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
 {
-	uint16_t flags = gptr->flags;
+	int16_t seg_id = gptr->segid;
 
 	/* The modification to addr is reflected in the fact that modifying the offset. */
-	if (flags == 1)
+	if (seg_id)
 	{
 		MPI_Win win;
 		char* addr_base;
-		int index, flag;
+		int flag;
 		uint64_t base;
-		int result = dart_adapt_teamlist_convert (gptr -> segid, &index);
-		if (result == -1)
-		{
-			return DART_ERR_INVAL;
-		}
-		if ((dart_adapt_transtable_get_win (index, gptr->addr_or_offs.offset, &base, &win)) == -1)
+		if ((dart_adapt_transtable_get_win (seg_id, &win)) == -1)
 		{
 			return DART_ERR_INVAL;
 		}
     		MPI_Win_get_attr (win, MPI_WIN_BASE, &addr_base, &flag);
-		gptr->addr_or_offs.offset = ((char *)addr - addr_base) + base;
+		gptr->addr_or_offs.offset = (char *)addr - addr_base;
 	}
 	else
 	{
@@ -119,7 +113,7 @@ dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 	dart_unit_t unitid;
 	dart_myid (&unitid);
 	gptr->unitid = unitid;
-	gptr->segid = DART_MAX_TEAM_NUMBER;
+	gptr->segid = 0; /* For local allocation, the segid is marked as '0'. */
 	gptr->flags = 0; /* For local allocation, the flag is marked as '0'. */
 	gptr->addr_or_offs.offset = dart_mempool_alloc (dart_localpool, nbytes);
 	if (gptr->addr_or_offs.offset == -1)
@@ -149,8 +143,7 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
  	dart_unit_t unitid, gptr_unitid = -1;
 	dart_team_myid(teamid, &unitid);
 	dart_team_size (teamid, &size);
-
-	uint64_t offset;
+	
 	char* sub_mem;
 
 	/* The units belonging to the specified team are eligible to participate
@@ -161,7 +154,7 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
 	MPI_Aint disp;
 	MPI_Aint* disp_set = (MPI_Aint*)malloc (size * sizeof (MPI_Aint));
 	
-	int index;
+	uint16_t index;
 	int result = dart_adapt_teamlist_convert (teamid, &index);
 
 	if (result == -1)
@@ -171,59 +164,58 @@ dart_ret_t dart_team_memalloc_aligned (dart_team_t teamid, size_t nbytes, dart_g
 	comm = dart_teams[index];
 	sharedmem_comm = dart_sharedmem_comm_list[index];
 
-	if (unitid == 0)
+	dart_unit_t localid = 0;
+	if (index == 0)
 	{
-	/* Get the adequate offset from the infinite memory pool relating to teamid. */
-		offset = dart_mempool_alloc (dart_globalpool[index], nbytes); 
-		if (offset == -1)
-		{
-			ERROR ("Out of bound: the global memory is exhausted");
-			return DART_ERR_OTHER;
-		}
+		gptr_unitid = localid;		
 	}
-
-	MPI_Bcast (&offset, 1, MPI_UINT64_T, 0, comm);
-	
-	dart_team_unit_l2g (teamid, 0, &gptr_unitid);
+	else
+	{
+		MPI_Group group;
+		MPI_Group group_all;
+		MPI_Comm_group (comm, &group);
+		MPI_Comm_group (MPI_COMM_WORLD, &group_all);
+		MPI_Group_translate_ranks (group, 1, &localid, group_all, &gptr_unitid);
+	}
 
 	MPI_Info win_info;
 	MPI_Info_create (&win_info);
 	MPI_Info_set (win_info, "alloc_shared_noncontig", "true");
+	
 
 	/* Allocate shared memory on sharedmem_comm, and create the related sharedmem_win */
 	MPI_Win_allocate_shared (nbytes, sizeof (char), win_info, sharedmem_comm, &sub_mem, &sharedmem_win);
 		
-
 	win = dart_win_lists[index];
 	/* Attach the allocated shared memory to win */
 	MPI_Win_attach (win, sub_mem, nbytes);
 
 	MPI_Get_address (sub_mem, &disp);
+	
 
 	/* Collect the disp information from all the ranks in comm */
-	MPI_Allgather (&disp, 1, MPI_AINT, disp_set, 1, MPI_LONG, comm);
+	MPI_Allgather (&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
 
 	/* -- Updating infos on gptr -- */
 	gptr->unitid = gptr_unitid;
-	gptr->segid = teamid; /* Segid equals to teamid, identifies a team uniquely from certain unit point of view. */
-	gptr->flags = 1; /* For collective allocation, the flag is marked as '1'. */
-	gptr->addr_or_offs.offset = offset;
-
+	gptr->segid = dart_memid; /* Segid equals to dart_memid (always a positive integer), identifies an unique collective global memory. */
+	gptr->flags = index; /* For collective allocation, the flag is marked as 'index' */
+	gptr->addr_or_offs.offset = 0;
+	
 	/* -- Updating the translation table of teamid with the created (offset, win) infos -- */
 	info_t item;
-	item.offset = offset;
+	item.seg_id = dart_memid;
 	item.size = nbytes;
         item.disp = disp_set;
-	GMRh handler;
-        handler.win = sharedmem_win;
-	item.handle = handler;
+	item.win = sharedmem_win;
 		
 	/* Add this newly generated correspondence relationship record into the translation table. */
-	dart_adapt_transtable_add (index, item);
+	dart_adapt_transtable_add (item);
 
 	MPI_Info_free (&win_info);
+	dart_memid ++;
         DEBUG ("%2d: COLLECTIVEALLOC	-  %d bytes, offset = %d, gptr_unitid = %d across team %d",
-			     unitid, nbytes, offset, gptr_unitid, teamid);
+			     unitid, nbytes, 0, gptr_unitid, teamid);
 	
 	return DART_OK;
 }
@@ -232,23 +224,18 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 {		
 	dart_unit_t unitid;
        	dart_team_myid (teamid, &unitid);
-	int index;
+	uint16_t index = gptr.flags;
 	char* sub_mem;
-	int result = dart_adapt_teamlist_convert (teamid, &index);
-	if (result == -1)
-	{
-		return DART_ERR_INVAL;
-	}
-	
+		
 	MPI_Win win, sharedmem_win;
 	
-	int flag;
-	uint64_t offset = gptr.addr_or_offs.offset;	
-     	
+	int flag;	
+     	int16_t seg_id = gptr.segid;
+
 	win = dart_win_lists[index];
         
 	
-	if (dart_adapt_transtable_get_win (index, offset, NULL, &sharedmem_win) == -1)
+	if (dart_adapt_transtable_get_win (seg_id, &sharedmem_win) == -1)
 	{
 		return DART_ERR_INVAL;
 	}
@@ -260,20 +247,12 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 	/* Release the shared memory win object related to the freed shared memory */
 	MPI_Win_free (&sharedmem_win); 
 	
-	if (unitid == 0)
-	{
-		if (dart_mempool_free (dart_globalpool[index], offset) == -1)
-		{
-			ERROR ("Invalid offset input, can't remove global memory from the memory pool");
-			return DART_ERR_INVAL;
-		}
-	}
 	
 	DEBUG ("%2d: COLLECTIVEFREE	- offset = %d, gptr_unitid = %d across team %d", 
-			unitid, offset, gptr.unitid, teamid);
+			unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 
 	/* Remove the related correspondence relation record from the related translation table. */
-	if (dart_adapt_transtable_remove (index, offset) == -1)
+	if (dart_adapt_transtable_remove (seg_id) == -1)
 	{
 		return DART_ERR_INVAL;
 	}

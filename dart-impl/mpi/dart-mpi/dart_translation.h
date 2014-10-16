@@ -16,28 +16,24 @@ extern MPI_Win dart_win_local_alloc;
 extern MPI_Win dart_sharedmem_win_local_alloc;
 /** @brief Definition of translation table.
  * 
- *  This translation table is created for dart collective memory allocation.
+ *  This global translation table is created for dart collective memory allocation.
  *  Here, several features for translation table are itemized below:
  *
- *  - created every time a collective global memory is generated.
+ *  - created a global collective global memory when a DART program is initiated.
  *
  *  - store the one-to-one correspondence relationship between global pointer and shared memory window.
  *
- *  - arranged in an increasing order based upon global pointer.
+ *  - arranged in an increasing order based upon global pointer (segid).
  * 
- *  @note global pointer (offset) <-> shared memory window (win object), win object should be determined by offset uniquely.
+ *  @note global pointer (segid) <-> shared memory window (win object), win object should be determined by seg_id uniquely.
  */
-typedef struct
-{
-	MPI_Win win;
-}GMRh;
 
 typedef struct
 {
-	uint64_t offset; /* The displacement relative to the base address of the allocated collective memory memory segment. */
+	int16_t seg_id; /* seg_id determines a global pointer uniquely */
 	size_t size;
 	MPI_Aint* disp; /* the address set of the memory location of all the units in certain team. */
-	GMRh handle;
+	MPI_Win win;
 }info_t;
 
 struct node
@@ -51,62 +47,60 @@ typedef node_info_t* node_t;
 
 /* -- The operations on translation table -- */
 
-/** @brief Initialize the translation table for the specified team.
+/** @brief Initialize this global translation table.
  *  
  *  Every translation table is arranged in a linked list fashion, so what "transtable_create" has done 
  *  is just to let the translation table on the specified team (teamid) be NULL.
  *
- *  @param[in] index	Used to determine a team uniquely for certain unit.
  */
-int dart_adapt_transtable_create (int index);
+int dart_adapt_transtable_create ();
 
 /** @brief Add a new item into the specified translation table.
  *  
- *  Every translation table is arranged in an increasing order based upon 'offset'.
+ *  The translation table is arranged in an increasing order based upon 'seg_id'.
  *
- *  @param[in] index	Ditto.
- *  @param[in] item	Record to be inserted into the specified translation table.
+ *  @param[in] item	Record to be inserted into the translation table.
  */
-int dart_adapt_transtable_add (int index, info_t item);
+int dart_adapt_transtable_add (info_t item);
 
-/** @brief Remove a item from the specified translation table.
+/** @brief Remove a item from the translation table.
  *
- *  Offset can determine a record in the every translation table uniquely.
+ *  Seg_id can determine a record in the translation table uniquely.
+ *
+ *  @param[in] seg_id 
  */ 
-int dart_adapt_transtable_remove (int index, uint64_t offset);
+int dart_adapt_transtable_remove (int16_t seg_id);
 
-/** @brief Query the shared memory window object associated with the specified offset.
- *
- *  "Difference = offset - begin" is what we ultimately want,
- *  which is the displacement relative to the beginning address of 
- *  sub-memory associated with specified dart collective global allocation. 
- *
- *  @param[in] index	Ditto.
- *  @param[in] offset
+/** @brief Query the shared memory window object associated with the specified seg_id.
+ * 
+ *  @param[in] seg_id
  *  @param[out] win	A MPI window object. 
  *
- *  @retval non-negative integer Search successfully, it indicates the beginning
- *  address of sub-memory associated with specified dart collective global allocation.
+ *  @retval non-negative integer Search successfully.
  *  @retval negative integer Failure.
  */
 
-int dart_adapt_transtable_get_win (int index, uint64_t offset, uint64_t *base, MPI_Win *win);
+int dart_adapt_transtable_get_win (int16_t seg_id, MPI_Win *win);
 
-//int dart_adapt_transtable_get_addr (int index, int offset, int *begin, void **addr);
-
-/** @brief Query the address set of the memory location of all the units in specified team.
+/** @brief Query the address of the memory location of the specified rel_unit in specified team.
  *
- *  The address set information targets for the dart inter-node communication, which means
+ *  The output disp_s information targets for the dart inter-node communication, which means
  *  the one-sided communication proceed within the dynamic window object instead of the 
  *  shared memory window object.
  *
  *  @retval ditto
  */
 
-int dart_adapt_transtable_get_disp (int index, uint64_t offset, dart_unit_t rel_unit, uint64_t *base, MPI_Aint* disp_s);
+int dart_adapt_transtable_get_disp (int16_t seg_id, dart_unit_t rel_unit, MPI_Aint* disp_s);
+
+/** @brief Query the length of the global memory block indicated by the specified seg_id.
+ *
+ *  @retval ditto
+ */
+int dart_adapt_transtable_get_size (int16_t seg_id, size_t* size);
 
 /** @brief Destroy the translation table associated with the speicified team.
  */
-int dart_adapt_transtable_destroy (int index);
+int dart_adapt_transtable_destroy ();
 
 #endif /*DART_ADAPT_TRANSLATION_H_INCLUDED*/

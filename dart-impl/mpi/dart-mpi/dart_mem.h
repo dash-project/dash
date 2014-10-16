@@ -9,7 +9,6 @@
 #include <stdint.h>
 #define DART_MAX_TEAM_NUMBER (256)
 #define DART_MAX_LENGTH (1024 * 1024 * 16)
-#define DART_INFINITE (1<<30)
 
 extern char* dart_mempool_localalloc;
 extern char* dart_mempool_globalalloc [DART_MAX_TEAM_NUMBER];

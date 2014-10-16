@@ -229,7 +229,7 @@ dart_ret_t dart_group_ismember (const dart_group_t *g, dart_unit_t unitid, int32
 dart_ret_t dart_team_get_group (dart_team_t teamid, dart_group_t *group)
 {
 	MPI_Comm comm;
-	int index;
+	uint16_t index;
 	
 	int result = dart_adapt_teamlist_convert (teamid, &index);
 	if (result == -1)
@@ -252,10 +252,10 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 	MPI_Comm comm;	
 	MPI_Comm subcomm;
 	MPI_Win win;
-	int unique_id, index;
+	int root = -1;
+	uint16_t index, unique_id;
 	dart_unit_t rank;
 	size_t size;
-	int root = -1;
 	dart_team_t max_teamid = -1;
 	dart_unit_t sub_unit, unit;
 
@@ -390,14 +390,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 			free (dart_unit_mapping);
 		}
 
-		dart_adapt_transtable_create (index);
-	
-		MPI_Comm_rank (subcomm, &rank);
-		if (rank == 0)
-	 	{
-			dart_globalpool[index] = dart_mempool_create(DART_INFINITE);
-		}
-
+		
 		MPI_Win_lock_all (0, win);
 		DEBUG ("%2d: TEAMCREATE	- create team %d out of parent team %d", unit, *newteam, teamid);
 	}
@@ -408,7 +401,7 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 {
 	MPI_Comm comm;
 	MPI_Win win;
-	int index;
+	uint16_t index;
 	dart_unit_t unitid, id;
 
 	int result = dart_adapt_teamlist_convert (teamid, &index);
@@ -420,23 +413,8 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
        	comm = dart_teams[index];
 
 	dart_myid (&id);
-
-	//printf ("unitid %d: the teamid is %d, the index is %d, the result is %d\n", id, teamid,  index, result);
-	dart_team_myid (teamid, &unitid);
 	
-
-      
-	/* -- Destroy the translation table associated with teamid -- */
-	dart_adapt_transtable_destroy (index);
-
-	/* -- Free up resources that were allocated for teamid before -- */
-	if (unitid == 0)
-	{
-		dart_mempool_destroy (dart_globalpool[index]);
-	}
-
 //	free (dart_unit_mapping[index]);
-//	MPI_Free_mem (mempool_globalalloc[index]);
 
 //	MPI_Win_free (&(sharedmem_win_list[index]));
 
@@ -462,7 +440,6 @@ dart_ret_t dart_myid(dart_unit_t *unitid)
 
 dart_ret_t dart_size(size_t *size)
 {
-
 	int s;
 	MPI_Comm_size (MPI_COMM_WORLD, &s);
 	(*size) = s;
@@ -474,7 +451,7 @@ dart_ret_t dart_team_myid (dart_team_t teamid, dart_unit_t *unitid)
 {
 	MPI_Comm comm;
 
-	int index;
+	uint16_t index;
 
 	int result = dart_adapt_teamlist_convert (teamid, &index);
 	if (result == -1)
@@ -490,7 +467,7 @@ dart_ret_t dart_team_myid (dart_team_t teamid, dart_unit_t *unitid)
 dart_ret_t dart_team_size (dart_team_t teamid, size_t *size)
 {
 	MPI_Comm comm;
-	int index;
+	uint16_t index;
 	if (teamid == DART_TEAM_NULL)
 	{
 		return DART_ERR_INVAL;
