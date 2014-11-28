@@ -10,9 +10,11 @@ namespace dash
 
 class Team
 {
-  template<typename T> friend class array;
-  
- private:
+  template< class U> friend class Array;
+  template< class U> friend class GlobPtr;
+  template< class U> friend class GlobRef;
+
+private:
   dart_team_t         m_dartid;
   Team*               m_parent;
   size_t              m_position;
@@ -54,7 +56,7 @@ public:
   size_t position() const; 
 
   void barrier();
-  
+
 #if 0
   dart_team_t getTeamId() const;
   bool isEmpty();

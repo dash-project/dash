@@ -11,29 +11,38 @@ class GlobRef
 private:
   // KF: Q: do we want a copy of the accessor here or a reference=
   MemAccess<T>  m_accessor;
+  size_t        m_unit;
   size_t        m_idx;
   
 public:
-  GlobRef( MemAccess<T>& acc, size_t idx ) :
+  GlobRef( const MemAccess<T>& acc, size_t unit, size_t idx ) :
     m_accessor(acc) 
   {
     m_idx = idx;
+    m_unit = unit;
   }
-  
-  virtual ~GlobRef()
+    virtual ~GlobRef()
   {
+  }
+
+  friend void swap(GlobRef<T> a, GlobRef<T> b) 
+  {
+    using std::swap;
+    swap(a.m_unit, b.m_unit);
+    swap(a.m_idx, b.m_idx);
+    //swap(a.m_accessor, b.m_accessor);
   }
   
   operator T() const
   {
     T t;
-    m_accessor.get_value(&t, m_idx);
+    m_accessor.get_value(&t, m_unit, m_idx);
     return t;
   }
 
   GlobRef<T>& operator=(const T val)
   {
-    m_accessor.put_value(val, m_idx);
+    m_accessor.put_value(val, m_unit, m_idx);
     return *this;
   }
   
@@ -41,6 +50,17 @@ public:
   {
     return *this = T(ref);
   }
+
+  GlobRef<T>& operator+=(const T& ref)
+  {
+    T val = operator T();
+    val += ref;
+    operator=(val);
+
+    return *this;
+  }
+
+  
   
   MemAccess<T> get_accessor() const 
   {

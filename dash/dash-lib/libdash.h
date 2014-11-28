@@ -5,7 +5,7 @@
 #include "Init.h"
 #include "Team.h"
 
-//#include "BlockedDist.H"
+#include "Pattern.h"
 #include "MemAccess.h"
 #include "GlobRef.h"
 #include "GlobPtr.h"
