@@ -4,8 +4,11 @@ DASH_ROOT = $(shell cd $(DASH_ROOT_REL);pwd)
 
 include $(DASH_ROOT)/make.defs
 
+#CFLAGS+=-DDASH_DEBUG
+
 LIBDASH   = $(DASH_ROOT)/dash-lib/libdash.a
 DASH_INC  = $(DASH_ROOT)/dash-lib/
+
 
 PWD  = $(shell basename `pwd`)
 PAT  = $(shell echo -n $(PWD) )
@@ -14,11 +17,15 @@ PROG = $(shell echo -n $(PAT) | cut -d . -f 3)
 all : $(LIBDART) $(LIBDASH) $(PROG)
 
 printenv : 
+	 @echo "CXX           = $(CXX)"
+	 @echo "CFLAGS        = $(CFLAGS)"
+	 @echo "LFLAGS        = $(LFLAGS)"
 	 @echo "DASH_ROOT     = $(DASH_ROOT)"
 	 @echo "LIBDASH       = $(LIBDASH)"
 	 @echo "DART_IMPL     = $(DART_IMPL)"
 	 @echo "LIBDART       = $(LIBDART)"
 	 @echo "LIBDART_EXTRA = $(LIBDART_EXTRA)"
+	 
 
 $(LIBDASH) :
 	make -C $(DASH_ROOT)/dash-lib/
@@ -27,7 +34,7 @@ $(LIBDART) :
 	make -C $(LIBDART_DIR)
 
 $(PROG) : main.o
-	$(CXX) $(LFLGAS) -o $@ $+ $(LIBDASH) $(LIBDART) $(LIBDART_EXTRA)
+	$(CXX) $(LFLAGS) -o $@ $+ $(LIBDASH) $(LIBDART) $(LIBDART_EXTRA)
 
 %.o 	: %.cpp 
 	$(CXX) -c $(CFLAGS) -I$(DART_INC) -I$(DASH_INC) $+
