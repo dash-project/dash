@@ -1,10 +1,11 @@
 # change this to the name of the DART implementation 
 # ("mpi", "shmem", etc.)
-DART_IMPL   = shmem
+DART_IMPL   = mpi
 
 LIBDART_DIR = $(DASH_ROOT)/../dart-impl/$(DART_IMPL)/dart-$(DART_IMPL)/
 
 include $(LIBDART_DIR)/../make.defs
 
-LIBDART     = $(LIBDART_DIR)/libdart.a $(LIBDART_EXTRA)
+LIBDART     = $(LIBDART_DIR)/libdart.a 
 DART_INC    = $(LIBDART_DIR)/../$(DART_IF)
+

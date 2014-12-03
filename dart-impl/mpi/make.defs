@@ -3,5 +3,5 @@
 DART_IF = ../../dart-if/v3
 
 CC      = mpicc -std=c99
-
+CXX     = mpic++ -std=c++0x
 

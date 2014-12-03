@@ -4,15 +4,18 @@
 
 #include <stdexcept>
 
-#include "GlobPtr.h"
 #include "Team.h"
+#include "Pattern.h"
+#include "GlobPtr.h"
+#include "GlobRef.h"
+
 #include "dart.h"
 
 namespace dash
 {
 /* 
    TYPE DEFINITION CONVENTIONS FOR STL CONTAINERS 
-
+   
             value_type  Type of element
         allocator_type  Type of memory manager
              size_type  Unsigned type of container 
@@ -32,13 +35,38 @@ const_reverse_iterator  Behaves like const value_type∗
          const_pointer  Behaves like const value_type∗
 */
 
+template<typename T>
+class Array;
+
+template<typename T>
+class LocalProxyArray
+{
+private:
+  Array<T> *m_ptr;
+
+public:
+  LocalProxyArray(Array<T>* ptr) {
+    m_ptr = ptr;
+  }
+  
+  T* begin() noexcept
+  {
+    return m_ptr->lbegin();
+  }
+
+  T* end() noexcept
+  {
+    return m_ptr->lend();
+  }
+};
+
 template<typename ELEMENT_TYPE>
-class array
+class Array
 {
 public:
   typedef ELEMENT_TYPE value_type;
 
-  // NO allocator_type 
+  // NO allocator_type!
   typedef size_t size_type;
   typedef size_t difference_type;
 
@@ -54,46 +82,77 @@ public:
   typedef const GlobPtr<value_type> const_pointer;
 
 private:
-  dash::Team&  m_team;
-  dart_gptr_t  m_gptr;
-  size_type    m_size;  // total size (# of elements)
-  size_type    m_lsize; // local size (# of local elements)
-  size_type    m_realsize;
-  pointer*     m_ptr;
+  dash::Team&    m_team;
+  dart_unit_t    m_myid;
+  dash::Pattern  m_pattern;
+  size_type      m_size;    // total size (#elements)
+  size_type      m_lsize;   // local size (#local elements)
+  pointer*       m_ptr;
+  dart_gptr_t    m_dart_gptr;
 
+#if 0
+  // xxx needs fix
+  size_type      m_realsize;
+#endif 
 
+public:
+  LocalProxyArray<ELEMENT_TYPE> local;
+  
 public: 
-  array(size_t nelem, Team &t=dash::TeamAll) : m_team(t) 
+
+  Array(size_t nelem, dash::DistSpec ds=dash::BLOCKED,
+	Team &t=dash::TeamAll) : 
+    m_team(t), 
+    m_pattern(nelem, ds, t),
+    local(this)
   {
-    // array is a friend of Team and can access
-    // the protected member m_dartid
-    dart_team_t teamid = t.m_dartid;
-
-    size_t lel = nelem/(m_team.size());
-    if( nelem%m_team.size()!=0 ) {
-      lel+=1;
-    }
-    size_t lsz = lel * sizeof(value_type);
-
-    //fprintf(stderr, "Allocating memory of local-size %d\n", lsz);
-
-    dart_team_memalloc_aligned(teamid, lsz, &m_gptr);
-    m_ptr = new GlobPtr<value_type>(teamid, m_gptr, lel);
+    // Array is a friend of class Team 
+    dart_team_t teamid = m_team.m_dartid;    
     
-    m_size = nelem;
-    m_lsize = lel;
-    m_realsize = lel * m_team.size();
+    size_t lelem = m_pattern.max_elem_per_unit();
+    size_t lsize = lelem* sizeof(value_type);
+
+    m_dart_gptr = DART_GPTR_NULL;
+    dart_ret_t ret = 
+      dart_team_memalloc_aligned(teamid, lsize, &m_dart_gptr);
+    
+    m_ptr = new GlobPtr<value_type>(m_pattern, m_dart_gptr, 0);
+    
+    m_size     = m_pattern.nelem();
+    m_lsize    = lelem;
+    
+    m_myid = m_team.myid();
+  
+    //m_realsize = lelem * m_team.size();
+  }
+
+  // delegating constructor
+  Array(const dash::Pattern& pat ) : 
+    Array(pat.nelem(), pat.distspec(), pat.team())
+  { }
+
+#if 0
+  // delegating constructor
+  Array(size_t nelem, 
+	Team &t=dash::TeamAll) : 
+    Array(nelem, dash::BLOCKED, t)
+  { }
+#endif 
+
+  ~Array() {
+    dart_team_t teamid = m_team.m_dartid;
+    dart_team_memfree(teamid, m_dart_gptr);
   }
 
   constexpr size_type size() const noexcept
   {
     return m_size;
   }
-  
-  constexpr size_type max_size() const noexcept
-  {
-    return m_realsize;
-  }
+
+  //constexpr size_type max_size() const noexcept
+  //{
+  //return m_realsize;
+  // }
 
   constexpr bool empty() const noexcept
   {
@@ -120,25 +179,63 @@ public:
     return iterator(data() + m_size);
   }
 
+  ELEMENT_TYPE* lbegin() noexcept
+  {
+    void *addr; 
+    dart_gptr_t gptr = m_dart_gptr;
+
+    dart_gptr_setunit(&gptr, m_myid);
+    dart_gptr_getaddr(gptr, &addr);
+    return (ELEMENT_TYPE*)(addr);
+  }
+
+  ELEMENT_TYPE* lend() noexcept
+  {
+    void *addr; 
+    dart_gptr_t gptr = m_dart_gptr;
+
+    dart_gptr_setunit(&gptr, m_myid);
+    dart_gptr_incaddr(&gptr, m_lsize*sizeof(ELEMENT_TYPE));
+    dart_gptr_getaddr(gptr, &addr);
+    return (ELEMENT_TYPE*)(addr);
+  }
+
+  
+
+#if 0
   iterator lbegin() noexcept
   {
+    // xxx needs fix
     return iterator(data() + m_team.myid()*m_lsize);
   }
 
   iterator lend() noexcept
   {
+    // xxx needs fix
     size_type end = (m_team.myid()+1)*m_lsize;
     if( m_size<end ) end = m_size;
     
     return iterator(data() + end);
   }
+#endif
 
   reference operator[](size_type n)
   {
     return begin()[n];
-    //return m_ptr[n];
   }
 
+  reference at(size_type pos)
+  {
+    if( !(pos < size()) ) 
+      throw std::out_of_range("Out of range");
+
+    return operator[](pos);
+  }
+
+  bool islocal(size_type n)
+  {
+    return m_pattern.index_to_unit(n)==m_myid;
+  }
 };
 
 } // namespace dash
