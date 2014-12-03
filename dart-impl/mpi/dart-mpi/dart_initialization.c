@@ -135,12 +135,12 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	MPI_Win_create_dynamic (MPI_INFO_NULL, MPI_COMM_WORLD, &win);
 	dart_win_lists[index] = win;
 
-	/* Start a shared access epoch in win_local_alloc, and later on all the units
+	/* Start an access epoch on dart_win_local_alloc, and later on all the units
 	 * can access the memory region allocated by the local allocation
 	 * function through dart_win_local_alloc. */	
 	MPI_Win_lock_all (0, dart_win_local_alloc);
 
-	/* Start a shared access epoch in win, and later on all the units can access
+	/* Start an access epoch on win, and later on all the units can access
 	 * the attached memory region allocated by the collective allocation function
 	 * through win. */
 	MPI_Win_lock_all (0, win);
