@@ -5,9 +5,11 @@
 #include <iostream>
 #include <memory>
 #include <deque>
+#include <type_traits>
 
 #include "Init.h"
 #include "View.h"
+#include "Cart.h"
 #include "dart.h"
 
 using std::cout;
@@ -27,6 +29,28 @@ class Team
   template< class U> friend class Array;
   template< class U> friend class GlobPtr;
   template< class U> friend class GlobRef;
+
+public:
+  struct iterator
+  {
+    int val;
+    
+    iterator(int v) : val(v) {}
+    iterator& operator+=(const iterator &rhs) {
+      val+=rhs.val;
+      return *this;
+    }
+    
+    int operator*() {
+      return val;
+    }
+    
+    operator int() const { return val; }
+  };
+
+  iterator begin() { return iterator(0); }
+  iterator end() { return iterator(size()); }
+
 
 private:
   dart_team_t  m_dartid=DART_TEAM_NULL;
@@ -167,19 +191,33 @@ public:
 };
 
 template<int DIM>
-class TeamView : public Team
+class CartView<Team::iterator, DIM> : 
+  public CartViewBase<Team::iterator,DIM>
 {
-private:
-  CartView<DIM> m_cartview;
-  
 public:
-  template<typename... Args>
-  TeamView(Team& t, Args... args) : Team(t), m_cartview{args...} {
-    static_assert(sizeof...(Args)==DIM,
-		  "Invalid number of dim. extents");
-  }
+  template<typename Cont, typename... Args>
+  CartView(Cont& cont, Args... args) : 
+    CartViewBase<Team::iterator,DIM>(cont,args...) {}
 };
 
+template<int DIM>
+using TeamView = CartView<Team::iterator, DIM>;
+
 } // namespace dash
+
+namespace std {
+
+template<>
+struct iterator_traits<dash::Team::iterator>
+{
+public:
+  typedef dash::Team::iterator value_type;
+  typedef dash::Team::iterator reference;
+  typedef dash::Team::iterator difference_type;
+  typedef random_access_iterator_tag iterator_category;
+};
+
+
+} // namespace std
 
 #endif /* TEAM_H_INCLUDED */
