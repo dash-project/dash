@@ -3,7 +3,7 @@ include ../make.defs
 
 CXXFLAGS+=-I$(DART_INC)
 
-#CFLAGS+=-DDART_DEBUG
+#CXXFLAGS+=-DDASH_DEBUG
 #CFLAGS+=-D_SVID_SOURCE
 
 LIBDASH = libdash.a
@@ -29,5 +29,4 @@ printenv :
 	 @echo "LIBDART_DIR = $(LIBDART_DIR)"
 	 @echo "LIBDART     = $(LIBDART)"
 	 @echo "DART_INC    = $(DART_INC)"
-
 

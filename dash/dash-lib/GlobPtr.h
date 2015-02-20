@@ -21,26 +21,29 @@ class GlobPtr :
 			 GlobPtr<T>, GlobRef<T> >
 {
 private:
-  MemAccess<T> m_acc;
-  size_t       m_idx;
+  Pattern       m_pat;
+  MemAccess<T>  m_acc;
+  long long     m_idx;
   
 public:
-  explicit GlobPtr(dart_team_t teamid,
-		   dart_gptr_t begptr, 
-		   size_t nlelem,
-		   size_t idx = 0) :
-    m_acc(teamid, begptr, nlelem)
+  explicit GlobPtr(const Pattern& pattern,
+		   dart_gptr_t    begptr,
+		   long long      idx=0) :
+    m_pat(pattern),
+    m_acc(pattern.team().m_dartid, begptr, pattern.nelem())
   {
     m_idx = idx;
   }
-  
-  explicit GlobPtr(const MemAccess<T>& acc,
-		   size_t idx = 0) :
-    m_acc(acc)
+
+  explicit GlobPtr(const Pattern&      pattern,
+		   const MemAccess<T>& accessor, 
+		   long long      idx=0) :
+    m_pat(pattern),
+    m_acc(accessor)
   {
     m_idx = idx;
   }
-  
+
   virtual ~GlobPtr()
   {
   }
@@ -49,7 +52,9 @@ public:
 
   GlobRef<T> operator*()
   { // const
-    return GlobRef<T>(m_acc, m_idx);
+    size_t unit = m_pat.index_to_unit(m_idx);
+    size_t elem = m_pat.index_to_elem(m_idx);
+    return GlobRef<T>(m_acc, unit, elem);
   }
   
   // prefix++ operator
@@ -97,23 +102,21 @@ public:
   // subscript
   GlobRef<T> operator[](gptrdiff_t n) 
   {
-    return GlobRef<T>(m_acc, n);
+    size_t unit = m_pat.index_to_unit(n);
+    size_t elem = m_pat.index_to_elem(n);
+    return GlobRef<T>(m_acc, unit, elem);
   }
   
   GlobPtr<T> operator+(gptrdiff_t n) const
   {
-    MemAccess<T> acc(m_acc);
-    size_t idx=m_idx+n; 
-   
-    return GlobPtr<T>(acc,idx);
+    GlobPtr<T> res(m_pat, m_acc, m_idx+n);
+    return res;
   }
   
   GlobPtr<T> operator-(gptrdiff_t n) const
   {
-    MemAccess<T> acc(m_acc);
-    size_t idx=m_idx-n; 
-   
-    return GlobPtr<T>(acc,idx);
+    GlobPtr<T> res(m_pat, m_acc, m_idx-n);
+    return res;
   }
 
   gptrdiff_t operator-(const GlobPtr& other) const

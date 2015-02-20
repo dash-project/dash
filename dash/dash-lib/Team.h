@@ -1,70 +1,185 @@
-#ifndef TEAMS_H_INCLUDED
-#define TEAMS_H_INCLUDED
 
-#include <vector>
+#ifndef TEAM_H_INCLUDED
+#define TEAM_H_INCLUDED
 
+#include <iostream>
+#include <memory>
+#include <deque>
+
+#include "Init.h"
+#include "View.h"
 #include "dart.h"
+
+using std::cout;
+using std::endl;
+using std::deque;
+
 
 namespace dash
 {
-
+// Team is a move-only type:
+// - no copy construction
+// - no assignment operator
+// - move-construction
+// - move-assignment
 class Team
 {
-  template<typename T> friend class array;
+  template< class U> friend class Array;
+  template< class U> friend class GlobPtr;
+  template< class U> friend class GlobRef;
+
+private:
+  dart_team_t  m_dartid=DART_TEAM_NULL;
+  Team        *m_parent=nullptr;
+  Team        *m_child=nullptr;
+  size_t       m_position=0;
+  static Team  m_team_all;
+  static Team  m_team_null;
+
+  void free_team() {
+    if( m_dartid!=DART_TEAM_NULL ) {
+      cout<<myid()<<" Freeing Team with id "<<m_dartid<<endl;
+    }
+  }
+
+public:
+  void trace_parent() {
+    cout<<"I'm "<<m_dartid<<"("<<this<<")"<<" my parent "<<
+      (m_parent?m_parent->m_dartid:DART_TEAM_NULL)<<endl;
+    if( m_parent ) m_parent->trace_parent();
+  }
+  void trace_child() {
+    cout<<"I'm "<<m_dartid<<"("<<this<<")"<<" my child "<<
+      (m_child?m_child->m_dartid:DART_TEAM_NULL)<<endl;
+    if( m_child ) m_child->trace_child();
+  }
+
+private:
+  Team(dart_team_t id, 
+       Team* parent=nullptr, 
+       size_t pos=0) : m_parent(parent) { 
+    m_dartid=id; 
+    m_position=pos;
+    
+    /*
+    fprintf(stderr, "[%d] creating a new team for ID: %d as %p\n",
+	    dash::myid(),
+	    id, this);
+    */
+
+    if(parent ) {
+      if( parent->m_child ) {
+	fprintf(stderr, "Error: %p already has a child!, not setting to %p\n", 
+		parent, this);
+      } else {
+	//	fprintf(stderr, "Setting child for  %p to %p\n", parent, this);
+	parent->m_child=this;
+      }
+    }
+  }
+  //Team() : Team(DART_TEAM_NULL) {}
+
+protected:
+  Team(const Team& t) = default;
+
+public:
+  Team& operator=(const Team& t) = delete;
+
+  Team(Team&& t) { 
+    m_dartid=t.m_dartid; t.m_dartid=DART_TEAM_NULL; 
+  }
+  Team& operator=(Team&& t) {
+    free_team();
+    m_dartid=t.m_dartid; t.m_dartid=DART_TEAM_NULL; 
+    return *this;
+  }
+  ~Team() {
+    if( m_child ) delete(m_child);
+    barrier();
+    free_team();
+  }
   
- private:
-  dart_team_t         m_dartid;
-  Team*               m_parent;
-  size_t              m_position;
-  std::vector<Team*>  m_children;
+  static Team& All() {
+    return m_team_all;
+  }
+  static Team& Null() {
+    return m_team_null;
+  }
 
- public:
-  // the only way to create a new team is by splitting an existing
-  // team. The resulting hierarchy is maintained in parent and child
-  // pointers. A split is a non-overlapping partitioning of the parent
-  // team, therefore a unit is a member of exactly one subteam. A
-  // split can result in one or more subteams being NULL
-  Team() = delete;
-  Team(Team const&) = delete;
+  Team& split(unsigned n);
 
-public:
-  // no default and no copy constructor!
-  // the only way to construct a team is by 
-  // passing a dart team ID (may be NULL or ALL)
-  Team(dart_team_t teamID, 
-       Team *parent, unsigned pos=0);
-
-public:
-  bool operator==(const Team& rhs) {
+  bool operator==(const Team& rhs) const {
     return m_dartid==rhs.m_dartid;
   }
-  bool operator!=(const Team& rhs) {
+  bool operator!=(const Team& rhs) const {
     return !(operator==(rhs));
   }
 
-public:
-  // split a team into n parts
-  Team& split(unsigned int n);
-  Team& parent() const;
+  bool isAll() const {
+    return operator==(All());
+  }
+  bool isNull() const {
+    return operator==(Null());
+  }
+  bool isLeaf() const {
+    return m_child==nullptr;
+  }
+  bool isRoot() const {
+    return m_parent==nullptr;
+  }
 
-  size_t size() const; // number of units in this team
-  size_t myid() const; // calling unit's local id
+  Team& bottom() {
+    Team *t=this;
+    while(t && !(t->isLeaf()) ) {
+      t=t->m_child;
+    }
+    return *t;
+  }
+
+  void barrier() const {
+    if( !isNull() ) {
+      //fprintf(stderr, "Barrier on team %d (size %d)\n", 
+      //m_dartid, size());
+      dart_barrier(m_dartid);
+    }
+  }
+
+  size_t myid() const {
+    dart_unit_t res;
+    dart_team_myid(m_dartid, &res);
+    return res;
+  }
   
-  size_t level() const; // TeamAll has level 0
-  size_t position() const; 
+  size_t size() const {
+    size_t size;
+    dart_team_size(m_dartid, &size);
+    return size;
+  }
 
-  void barrier();
-  
-#if 0
-  dart_team_t getTeamId() const;
-  bool isEmpty();
-#endif
+  dart_team_t dart_id() const {
+    return m_dartid;
+  }
 
+  void print() {
+    cout<<"id: "<<m_dartid<<" "<<this<<" parent: "<<m_parent;
+    cout<<" child: "<<m_child<<endl;
+  }
 };
 
-extern Team TeamAll;
-extern Team TeamNull;
+template<int DIM>
+class TeamView : public Team
+{
+private:
+  CartView<DIM> m_cartview;
+  
+public:
+  template<typename... Args>
+  TeamView(Team& t, Args... args) : Team(t), m_cartview{args...} {
+    static_assert(sizeof...(Args)==DIM,
+		  "Invalid number of dim. extents");
+  }
+};
 
-}
+} // namespace dash
 
-#endif /* TEAMS_H_INCLUDED */
+#endif /* TEAM_H_INCLUDED */
