@@ -21,22 +21,22 @@ class GlobPtr :
 			 GlobPtr<T>, GlobRef<T> >
 {
 private:
-  Pattern       m_pat;
-  MemAccess<T>  m_acc;
-  long long     m_idx;
+  Pattern1D      m_pat;
+  MemAccess<T>   m_acc;
+  long long      m_idx;
   
 public:
-  explicit GlobPtr(const Pattern& pattern,
-		   dart_gptr_t    begptr,
-		   long long      idx=0) :
+  explicit GlobPtr(const Pattern1D& pattern,
+		   dart_gptr_t      begptr,
+		   long long        idx=0) :
     m_pat(pattern),
     m_acc(pattern.team().m_dartid, begptr, pattern.nelem())
   {
     m_idx = idx;
   }
 
-  explicit GlobPtr(const Pattern&      pattern,
-		   const MemAccess<T>& accessor, 
+  explicit GlobPtr(const Pattern1D&      pattern,
+		   const MemAccess<T>&   accessor, 
 		   long long      idx=0) :
     m_pat(pattern),
     m_acc(accessor)

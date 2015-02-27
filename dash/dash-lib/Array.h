@@ -5,9 +5,10 @@
 #include <stdexcept>
 
 #include "Team.h"
-#include "Pattern.h"
+#include "Pattern1D.h"
 #include "GlobPtr.h"
 #include "GlobRef.h"
+#include "HView.h"
 
 #include "dart.h"
 
@@ -82,13 +83,13 @@ public:
   typedef const GlobPtr<value_type> const_pointer;
 
 private:
-  dash::Team&    m_team;
-  dart_unit_t    m_myid;
-  dash::Pattern  m_pattern;
-  size_type      m_size;    // total size (#elements)
-  size_type      m_lsize;   // local size (#local elements)
-  pointer*       m_ptr;
-  dart_gptr_t    m_dart_gptr;
+  dash::Team&      m_team;
+  dart_unit_t      m_myid;
+  dash::Pattern1D  m_pattern;
+  size_type        m_size;    // total size (#elements)
+  size_type        m_lsize;   // local size (#local elements)
+  pointer*         m_ptr;
+  dart_gptr_t      m_dart_gptr;
 
 #if 0
   // xxx needs fix
@@ -127,21 +128,27 @@ public:
   }
 
   // delegating constructor
-  Array(const dash::Pattern& pat ) : 
+  Array(const dash::Pattern1D& pat ) : 
     Array(pat.nelem(), pat.distspec(), pat.team())
   { }
 
-#if 0
   // delegating constructor
   Array(size_t nelem, 
 	Team &t=dash::Team::All()) : 
     Array(nelem, dash::BLOCKED, t)
   { }
-#endif 
 
   ~Array() {
     dart_team_t teamid = m_team.m_dartid;
     dart_team_memfree(teamid, m_dart_gptr);
+  }
+
+  Pattern1D& pattern() {
+    return m_pattern;
+  }
+
+  Team& team() {
+    return m_team;
   }
 
   constexpr size_type size() const noexcept
@@ -235,6 +242,11 @@ public:
   bool islocal(size_type n)
   {
     return m_pattern.index_to_unit(n)==m_myid;
+  }
+
+  template<int level>
+  dash::HView<Array<ELEMENT_TYPE>, level> hview() {
+    return dash::HView<Array<ELEMENT_TYPE>, level>(*this);
   }
 };
 

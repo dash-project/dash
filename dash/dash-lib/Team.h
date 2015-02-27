@@ -27,6 +27,7 @@ namespace dash
 class Team
 {
   template< class U> friend class Array;
+  template< class U> friend class Shared;
   template< class U> friend class GlobPtr;
   template< class U> friend class GlobRef;
 
@@ -53,6 +54,10 @@ public:
 
 
 private:
+  size_t       m_firstunit=0;
+  size_t       m_lastunit=0;
+  bool         m_havefirstlast=false;
+
   dart_team_t  m_dartid=DART_TEAM_NULL;
   Team        *m_parent=nullptr;
   Team        *m_child=nullptr;
@@ -65,6 +70,33 @@ private:
       cout<<myid()<<" Freeing Team with id "<<m_dartid<<endl;
     }
   }
+
+  void get_firstlast() {
+    size_t size;
+    size_t nunit;
+    dart_group_t *group;
+
+    dart_group_sizeof(&size);
+    group = (dart_group_t*)malloc(size);
+
+    dart_group_init(group);
+    dart_team_get_group(m_dartid, group);
+
+    dart_group_size(group, &nunit);
+
+    dart_unit_t* units = 
+      (dart_unit_t*)malloc(sizeof(dart_unit_t)*nunit);
+    
+    dart_group_getmembers(group, units);
+    m_firstunit = units[0];
+    m_lastunit = units[nunit-1];
+
+    free(group);
+    free(units);
+    m_havefirstlast=true;
+  }
+
+
 
 public:
   void trace_parent() {
@@ -152,6 +184,15 @@ public:
     return m_parent==nullptr;
   }
 
+  Team& sub(size_t n=1) {
+    Team *t=this;
+    while(t && n>0 && !(t->isLeaf()) ) {
+      t=t->m_child;
+      n--;
+    }
+    return *t;
+  }
+
   Team& bottom() {
     Team *t=this;
     while(t && !(t->isLeaf()) ) {
@@ -169,15 +210,37 @@ public:
   }
 
   size_t myid() const {
-    dart_unit_t res;
-    dart_team_myid(m_dartid, &res);
+    dart_unit_t res=0;
+    if( m_dartid!=DART_TEAM_NULL ) {
+      dart_team_myid(m_dartid, &res);
+    }
     return res;
   }
-  
+
+  size_t first_unit() {
+    if( !m_havefirstlast ) {
+      get_firstlast();
+    }
+    return m_firstunit;
+  }
+
+  size_t last_unit() {
+    if( !m_havefirstlast ) {
+      get_firstlast();
+    }
+    return m_lastunit;
+  }
+
   size_t size() const {
-    size_t size;
-    dart_team_size(m_dartid, &size);
+    size_t size=0;
+    if( m_dartid!=DART_TEAM_NULL ) {    
+      dart_team_size(m_dartid, &size);
+    }
     return size;
+  }
+
+  size_t position() const {
+    return m_position;
   }
 
   dart_team_t dart_id() const {

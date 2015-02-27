@@ -1,5 +1,5 @@
-#ifndef PATTERN_H_INCLUDED
-#define PATTERN_H_INCLUDED
+#ifndef PATTERN1D_H_INCLUDED
+#define PATTERN1D_H_INCLUDED
 
 #include <assert.h>
 #include <functional>
@@ -53,7 +53,7 @@ constexpr ExtentSpec EXTENT(size_t size,
 }
 
 
-class Pattern
+class Pattern1D
 {
 private:
   DistSpec     m_dist;
@@ -72,9 +72,9 @@ private:
 
 public:
   
-  Pattern(long long nelem, 
-	  DistSpec ds=BLOCKED,
-	  dash::Team& team = dash::Team::All()) : m_team(team)
+  Pattern1D(long long nelem, 
+	    DistSpec ds=BLOCKED,
+	    dash::Team& team = dash::Team::All()) : m_team(team)
   { 
     m_dist        = ds;
     m_range.nelem = nelem;
@@ -101,17 +101,17 @@ public:
   }
 
   // delegating constructor
-  Pattern(ExtentSpec es,
-	  dash::Team& team = dash::Team::All()) : 
+  Pattern1D(ExtentSpec es,
+	    dash::Team& team = dash::Team::All()) : 
     
-    Pattern(es.range.nelem,
-	    es.dist, 
-	    team)
+    Pattern1D(es.range.nelem,
+	      es.dist, 
+	      team)
   {}
 
 #if 0
   template<typename... Exts>
-  explicit Pattern(Exts... exts) : m_extent{exts...} , m_team(dash::Team::All())
+  explicit Pattern1D(Exts... exts) : m_extent{exts...} , m_team(dash::Team::All())
   {}
 #endif 
 
@@ -213,7 +213,7 @@ public:
       return idx;
   }
   
-  Pattern& operator= (const Pattern& other)
+  Pattern1D& operator= (const Pattern1D& other)
   {
     if (this != &other) {
       m_dist   = other.m_dist;
@@ -244,4 +244,4 @@ public:
 } // namespace dash
 
 
-#endif /* PATTERN_H_INCLUDED */
+#endif /* PATTERN1D_H_INCLUDED */
