@@ -4,7 +4,13 @@
 #include <assert.h>
 #include <functional>
 #include <cstring>
-#include "Team.h"
+#include <iostream>
+#include <array>
+
+#include "Cart.h"
+
+using std::cout;
+using std::endl;
 
 namespace dash
 {
@@ -47,24 +53,10 @@ namespace dash
 	class DimBase
 	{
 	private:
-		template<typename T_>
-		void readRests(T_ value)
-		{
-			data[m_ndim - 1] = value;
-		}
-
-		template<typename T_, typename... values>
-		void readRests(T_ value, values... Values)
-		{
-			size_t index = m_ndim - 1 - sizeof...(values);
-			assert(index >= 0);
-			data[index] = value;
-			readRests(Values...);
-		}
 
 	protected:
 		size_t m_ndim = ndim_;
-		T data[ndim_];
+		T m_extent[ndim_];
 
 	public:
 
@@ -74,31 +66,26 @@ namespace dash
 		{
 		}
 
-		template<typename T_, typename... values>
-		DimBase(T_ value, values... Values)
+		template<typename... values>
+		DimBase(values... Values):m_extent{SIZE(Values)...}
 		{
-			assert(m_ndim - 1 == sizeof...(Values));
-			readRests(value, Values...);
+		    static_assert(sizeof...(Values)==ndim_,
+				  "Invalid number of arguments");
 		}
 	};
 
 	template<size_t ndim_>
-	class DimRangeBase :public DimBase < long long, ndim_ >
+	class DimRangeBase :public CartCoord < ndim_, long long >
 	{
 
 	protected:
-		long long m_nelem = -1;
-		long long offset[ndim_];
 
 	public:
 		
 		template<size_t ndim__> friend class Pattern;
 
 
-		long long nelem() const
-		{
-			return m_nelem;
-		}
+
 
 		DimRangeBase()
 		{
@@ -107,67 +94,18 @@ namespace dash
 		void construct()
 		{
 			long long cap = 1;
-			offset[this->m_ndim - 1] = 1;
+			this->m_offset[this->m_ndim - 1] = 1;
 			for (size_t i = this->m_ndim - 1; i >= 1; i--)
 			{
-				cap *= this->data[i];
-				offset[i - 1] = cap;
+				cap *= this->m_extent[i];
+				this->m_offset[i - 1] = cap;
 			}
-			m_nelem = cap*this->data[0];
+			this->m_size = cap*this->m_extent[0];
 		}
 
-		template<typename T_, typename... values>
-		DimRangeBase(T_ value, values... Values):DimBase<long long, ndim_>::DimBase(value, Values...)
+		template<typename... values>
+		DimRangeBase(values... Values):CartCoord<ndim_, long long>::CartCoord(Values...)
 		{
-			construct();
-		}
-
-		long long at(int value) const
-		{
-			return value - 1;
-		}
-
-		template<typename T, typename... values>
-		long long at(T value, values... Values) const
-		{
-			size_t index = this->m_ndim - 1 - sizeof...(values);
-			long long rs = value*offset[index] + getUnitIDbyIndex(Values...);
-			assert(rs <= this->nunits - 1);
-			return rs;
-		}
-
-		long long at(long long index[]) const
-		{
-			long long rs = 0;
-			for (size_t i = 0; i < this->m_ndim; i++)
-				if (index[i] != -1)//omit NONE distribution
-					rs += index[i] * offset[i];
-			assert(rs <= m_nelem - 1);
-			return rs;
-		}
-
-		long long at(long long index[], long long cyclicfix[]) const
-		{
-			long long rs = 0;
-			for (size_t i = 0; i < this->m_ndim; i++)
-				if (index[i] != -1)//omit NONE distribution
-					rs += index[i] * (offset[i] + cyclicfix[i]);
-			//assert(rs <= nelem - 1);
-			return rs;
-		}
-
-		std::array<long long, ndim_> coords(long long pos) const
-		{
-			std::array<long long, ndim_> indexes;
-			long long remaind = pos;
-			for (size_t i = 0; i < this->m_ndim; i++)
-			{
-				indexes[i] = remaind / this->capacity[i];
-				remaind = remaind % this->capacity[i];
-				cout << indexes[i] << " ";
-			}
-			cout << endl;
-			return indexes;
 		}
 	};
 
@@ -179,8 +117,8 @@ namespace dash
 		DistSPec()
 		{
 			for (size_t i = 1; i < ndim_; i++)
-				this->data[i] = NONE;
-			this->data[1] = BLOCKED;
+				this->m_extent[i] = NONE;
+			this->m_extent[1] = BLOCKED;
 		}
 
 		template<typename T_, typename... values>
@@ -210,8 +148,8 @@ namespace dash
 		TeamSpec()
 		{
 			for (size_t i = 0; i < ndim_; i++)
-				this->data[i] = 1;
-			this->data[ndim_ - 1] = this->m_nelem = DEFAULT_TEAM_UNIT;
+				this->m_extent[i] = 1;
+			this->m_extent[ndim_ - 1] = this->m_size = DEFAULT_TEAM_UNIT;
 			this->construct();
 			this->m_ndim = 1;
 		}
@@ -269,11 +207,11 @@ namespace dash
 		{
 		}
 
-		ViewOrg(DataSpec<ndim_> dataorg)
+		ViewOrg(DataSpec<ndim_> m_extentorg)
 		{
-			memcpy(this->data, dataorg.data, sizeof(long long)*ndim_);
-			memcpy(range, dataorg.data, sizeof(long long)*ndim_);
-			nelem = dataorg.nelem();
+			memcpy(this->m_extent, m_extentorg.m_extent, sizeof(long long)*ndim_);
+			memcpy(range, m_extentorg.m_extent, sizeof(long long)*ndim_);
+			nelem = m_extentorg.size();
 			for (size_t i = 0; i < ndim_; i++)
 				begin[i] = 0;
 		}
@@ -316,7 +254,7 @@ namespace dash
 		template<int count>
 		void check(long long extent) {
 			//static_assert(count < ndim_, "Too many parameters for extent");
-			m_dataorg.data[count] = extent;
+			m_m_extentorg.m_extent[count] = extent;
 			argc_extents++;
 			cout << "I got " << extent << " for extent in dimension " << count << endl;
 		};
@@ -330,7 +268,7 @@ namespace dash
 			//static_assert(count < 2 * ndim_, "Too many parameters for pattern");
 
 			//constexpr int dim = count - ndim_;
-			//m_dist.data[dim] = ds;
+			//m_dist.m_extent[dim] = ds;
 			//cout << "I got " << ds << " for dist. pattern in dimension " << dim << endl;
 			m_teamorg = ts;
 		}
@@ -341,9 +279,9 @@ namespace dash
 			//static_assert(count < 2 * ndim_, "Too many parameters for pattern");
 
 			//constexpr int dim = count - ndim_;
-			//m_dist.data[dim] = ds;
+			//m_dist.m_extent[dim] = ds;
 			//cout << "I got " << ds << " for dist. pattern in dimension " << dim << endl;
-			m_dataorg = ds;
+			m_m_extentorg = ds;
 			argc_extents += ndim_;
 		}
 
@@ -353,7 +291,7 @@ namespace dash
 			//static_assert(count < 2 * ndim_, "Too many parameters for pattern");
 
 			//constexpr int dim = count - ndim_;
-			//m_dist.data[dim] = ds;
+			//m_dist.m_extent[dim] = ds;
 			//cout << "I got " << ds << " for dist. pattern in dimension " << dim << endl;
 			m_dist = ds;
 		}
@@ -367,7 +305,7 @@ namespace dash
 			//static_assert(count < 2 * ndim_, "Too many parameters for pattern");
 
 			int dim = count - ndim_;
-			m_dist.data[dim] = ds;
+			m_dist.m_extent[dim] = ds;
 			argc_DistEnum++;
 			//	cout << "I got " << ds << " for dist. pattern in dimension " << dim << endl;
 		}
@@ -397,9 +335,9 @@ namespace dash
 			int invalid = 0;
 			for (int i = 0; i < ndim_ - 1; i++)
 			{
-				if (m_dist.data[i].type == DistEnum::disttype::TILE)
+				if (m_dist.m_extent[i].type == DistEnum::disttype::TILE)
 					hastile = 1;
-				if (m_dist.data[i].type != m_dist.data[i + 1].type)
+				if (m_dist.m_extent[i].type != m_dist.m_extent[i + 1].type)
 					invalid = 1;
 			}
 			assert(!(hastile && invalid));
@@ -407,7 +345,7 @@ namespace dash
 			{
 				for (int i = 0; i < ndim_; i++)
 				{
-					assert(m_dataorg.data[i] % (m_dist.data[i].blocksz) == 0);
+					assert(m_m_extentorg.m_extent[i] % (m_dist.m_extent[i].blocksz) == 0);
 				}
 			}
 		}
@@ -417,7 +355,7 @@ namespace dash
 			int n_validdist = 0;
 			for (int i = 0; i < ndim_; i++)
 			{
-				if (m_dist.data[i].type != DistEnum::disttype::NONE)
+				if (m_dist.m_extent[i].type != DistEnum::disttype::NONE)
 					n_validdist++;
 			}
 			assert(n_validdist == m_teamorg.ndim());
@@ -430,29 +368,29 @@ namespace dash
 				long long dimunit;
 
 				if (ndim_>1 && m_teamorg.ndim() == 1)
-					dimunit = m_teamorg.nelem();
+					dimunit = m_teamorg.size();
 				else
-					dimunit = m_teamorg.data[i];
+					dimunit = m_teamorg.m_extent[i];
 
-				switch (m_dist.data[i].type)
+				switch (m_dist.m_extent[i].type)
 				{
 				case DistEnum::disttype::BLOCKED:
-					m_accessunit.data[i] = m_dataorg.data[i] % dimunit == 0 ? m_dataorg.data[i] / dimunit : m_dataorg.data[i] / dimunit + 1;
+					m_accessunit.m_extent[i] = m_m_extentorg.m_extent[i] % dimunit == 0 ? m_m_extentorg.m_extent[i] / dimunit : m_m_extentorg.m_extent[i] / dimunit + 1;
 					break;
 				case DistEnum::disttype::BLOCKCYCLIC:
-					if (m_dataorg.data[i] / (dimunit * m_dist.data[i].blocksz) == 0)
-						m_accessunit.data[i] = m_dist.data[i].blocksz;
+					if (m_m_extentorg.m_extent[i] / (dimunit * m_dist.m_extent[i].blocksz) == 0)
+						m_accessunit.m_extent[i] = m_dist.m_extent[i].blocksz;
 					else
-						m_accessunit.data[i] = m_dataorg.data[i] / (dimunit * m_dist.data[i].blocksz) * m_dist.data[i].blocksz;
+						m_accessunit.m_extent[i] = m_m_extentorg.m_extent[i] / (dimunit * m_dist.m_extent[i].blocksz) * m_dist.m_extent[i].blocksz;
 					break;
 				case DistEnum::disttype::CYCLIC:
-					m_accessunit.data[i] = m_dataorg.data[i] / dimunit;
+					m_accessunit.m_extent[i] = m_m_extentorg.m_extent[i] / dimunit;
 					break;
 				case DistEnum::disttype::TILE:
-					m_accessunit.data[i] = m_dist.data[i].blocksz;
+					m_accessunit.m_extent[i] = m_dist.m_extent[i].blocksz;
 					break;
 				case DistEnum::disttype::NONE:
-					m_accessunit.data[i] = m_dataorg.data[i];
+					m_accessunit.m_extent[i] = m_m_extentorg.m_extent[i];
 					break;
 				default:
 					break;
@@ -464,7 +402,7 @@ namespace dash
 		DistSPec<ndim_>		m_dist;
 		TeamSpec<ndim_>		m_teamorg;
 		AccessUnit<ndim_>   m_accessunit;
-		DataSpec<ndim_>		m_dataorg;
+		DataSpec<ndim_>		m_m_extentorg;
 		ViewOrg<ndim_>		m_vieworg;
 		long long			m_nunits;
 		long long			view_dim;
@@ -489,25 +427,25 @@ namespace dash
 			//BLOCKED for the 1st, NONE for the rest
 			if (argc_DistEnum == 0)
 			{
-				m_dist.data[0] = BLOCKED;
+				m_dist.m_extent[0] = BLOCKED;
 				argc_DistEnum = 1;
 			}
 			for (size_t i = argc_DistEnum; i < ndim_; i++)
 			{
-				m_dist.data[i] = NONE;
+				m_dist.m_extent[i] = NONE;
 			}
 
 			assert(argc_extents == ndim_);
 			checkValidDistEnum();
 
 
-			m_dataorg.construct();
-			m_vieworg = ViewOrg<ndim_>(m_dataorg);
+			m_m_extentorg.construct();
+			m_vieworg = ViewOrg<ndim_>(m_m_extentorg);
 			view_dim = ndim_;
 
 			checkTile();
 
-			if (m_teamorg.nelem() == -1)
+			if (m_teamorg.size() == 0)
 				m_teamorg = TeamSpec < ndim_ >();
 
 			constructAccessBase();
@@ -515,12 +453,12 @@ namespace dash
 
 
 
-		Pattern(const DataSpec<ndim_> &dataorg, const DistSPec<ndim_> &dist = DistSPec<ndim_>(), const TeamSpec<ndim_> &teamorg = TeamSpec < ndim_ >()) :m_dataorg(dataorg), m_dist(dist), m_teamorg(teamorg)
+		Pattern(const DataSpec<ndim_> &m_extentorg, const DistSPec<ndim_> &dist = DistSPec<ndim_>(), const TeamSpec<ndim_> &teamorg = TeamSpec < ndim_ >()) :m_m_extentorg(m_extentorg), m_dist(dist), m_teamorg(teamorg)
 		{
 			// unnecessary check
-			// assert(dist.ndim == teamorg.ndim && dist.ndim == dataorg.ndim);
-			m_nunits = teamorg.nelem();
-			m_vieworg = ViewOrg<ndim_>(m_dataorg);
+			// assert(dist.ndim == teamorg.ndim && dist.ndim == m_extentorg.ndim);
+			m_nunits = teamorg.size();
+			m_vieworg = ViewOrg<ndim_>(m_m_extentorg);
 			view_dim = ndim_;
 
 			checkValidDistEnum();
@@ -536,7 +474,7 @@ namespace dash
 			long long rs = -1;
 			long long inputindex[ndim_] = { Values... };
 			long long index[ndim_] = { Values... };
-			long long teamorgindex[ndim_];
+			std::array<long long, ndim_> teamorgindex;
 
 			if (m_teamorg.ndim() == 1)
 			{
@@ -547,27 +485,27 @@ namespace dash
 					if (ndim_ - i <= view_dim)
 						index[i] += inputindex[i - (ndim_ - view_dim)];
 
-					long long cycle = m_teamorg.nelem() * m_dist.data[i].blocksz;
-					switch (m_dist.data[i].type)
+					long long cycle = m_teamorg.size() * m_dist.m_extent[i].blocksz;
+					switch (m_dist.m_extent[i].type)
 					{
 					case DistEnum::disttype::BLOCKED:
-						rs += index[i] / (m_dataorg.data[i] % m_teamorg.nelem() == 0 ? m_dataorg.data[i] / m_teamorg.nelem() : m_dataorg.data[i] / m_teamorg.nelem() + 1);
+						rs += index[i] / (m_m_extentorg.m_extent[i] % m_teamorg.size() == 0 ? m_m_extentorg.m_extent[i] / m_teamorg.size() : m_m_extentorg.m_extent[i] / m_teamorg.size() + 1);
 						break;
 					case DistEnum::disttype::CYCLIC:
-						rs += modulo(index[i], m_teamorg.nelem());
+						rs += modulo(index[i], m_teamorg.size());
 						break;
 					case DistEnum::disttype::BLOCKCYCLIC:
-						rs += (index[i] % cycle) / m_dist.data[i].blocksz;
+						rs += (index[i] % cycle) / m_dist.m_extent[i].blocksz;
 						break;
 					case DistEnum::disttype::TILE:
-						rs += (index[i] % cycle) / m_dist.data[i].blocksz;
+						rs += (index[i] % cycle) / m_dist.m_extent[i].blocksz;
 						break;
 					case DistEnum::disttype::NONE:
 						rs += 0;
 						break;
 					}
 				}
-				rs = rs%m_teamorg.nelem();
+				rs = rs%m_teamorg.size();
 			}
 			else
 			{
@@ -578,21 +516,21 @@ namespace dash
 					if (ndim_ - i <= view_dim)
 						index[i] += inputindex[i - (ndim_ - view_dim)];
 
-					long long cycle = m_teamorg.data[i] * m_dist.data[i].blocksz;
+					long long cycle = m_teamorg.m_extent[i] * m_dist.m_extent[i].blocksz;
 					assert(index[i] >= 0);
-					switch (m_dist.data[i].type)
+					switch (m_dist.m_extent[i].type)
 					{
 					case DistEnum::disttype::BLOCKED:
-						teamorgindex[i] = index[i] / (m_dataorg.data[i] % m_teamorg.data[i] == 0 ? m_dataorg.data[i] / m_teamorg.data[i] : m_dataorg.data[i] / m_teamorg.data[i] + 1);
+						teamorgindex[i] = index[i] / (m_m_extentorg.m_extent[i] % m_teamorg.m_extent[i] == 0 ? m_m_extentorg.m_extent[i] / m_teamorg.m_extent[i] : m_m_extentorg.m_extent[i] / m_teamorg.m_extent[i] + 1);
 						break;
 					case DistEnum::disttype::CYCLIC:
-						teamorgindex[i] = modulo(index[i], m_teamorg.data[i]);
+						teamorgindex[i] = modulo(index[i], m_teamorg.m_extent[i]);
 						break;
 					case DistEnum::disttype::BLOCKCYCLIC:
-						teamorgindex[i] = (index[i] % cycle) / m_dist.data[i].blocksz;
+						teamorgindex[i] = (index[i] % cycle) / m_dist.m_extent[i].blocksz;
 						break;
 					case DistEnum::disttype::TILE:
-						teamorgindex[i] = (index[i] % cycle) / m_dist.data[i].blocksz;
+						teamorgindex[i] = (index[i] % cycle) / m_dist.m_extent[i].blocksz;
 						break;
 					case DistEnum::disttype::NONE:
 						teamorgindex[i] = -1;
@@ -611,8 +549,8 @@ namespace dash
 			long long rs = -1;
 			long long inputindex[ndim_] = { Values... };
 			long long index[ndim_] = { Values... };
-			long long teamorgindex[ndim_];
-			long long cyclicfix[ndim_];
+			std::array<long long, ndim_> teamorgindex;
+			std::array<long long, ndim_> cyclicfix;
 			long long DTeamfix = 0;
 			long long blocksz[ndim_];
 
@@ -621,59 +559,59 @@ namespace dash
 				long long dimunit;
 				if (ndim_ > 1 && m_teamorg.ndim() == 1)
 				{
-					dimunit = m_teamorg.nelem();
+					dimunit = m_teamorg.size();
 				}
 				else
-					dimunit = m_teamorg.data[i];
+					dimunit = m_teamorg.m_extent[i];
 
 				index[i] = 0;
 				index[i] += m_vieworg.begin[i];
 				if (ndim_ - i <= view_dim)
 					index[i] += inputindex[i - (ndim_ - view_dim)];
 
-				long long cycle = dimunit * m_dist.data[i].blocksz;
-				blocksz[i] = getCeil(m_dataorg.data[i], dimunit);
-				teamorgindex[i] = index[i] % blocksz[i];
+				long long cycle = dimunit * m_dist.m_extent[i].blocksz;
+				blocksz[i] = getCeil(m_m_extentorg.m_extent[i], dimunit);
+				teamorgindex[i] = (long long)(index[i] % blocksz[i]);
 				cyclicfix[i] = 0;
 
 				assert(index[i] >= 0);
-				switch (m_dist.data[i].type)
+				switch (m_dist.m_extent[i].type)
 				{
 				case DistEnum::disttype::BLOCKED:
 					teamorgindex[i] = index[i] % blocksz[i];
 					if (i > 0)
 					{
-						if (m_dataorg.data[i] % dimunit != 0 && getCeil(index[i] + 1, blocksz[i]) == dimunit)
+						if (m_m_extentorg.m_extent[i] % dimunit != 0 && getCeil(index[i] + 1, blocksz[i]) == dimunit)
 							cyclicfix[i - 1] = -1;
 					}
 					break;
 				case DistEnum::disttype::CYCLIC:
 					teamorgindex[i] = index[i] / dimunit;
 					if (i > 0)
-						cyclicfix[i - 1] = (index[i] % dimunit) < (m_dataorg.data[i] % dimunit) ? 1 : 0;
+						cyclicfix[i - 1] = (index[i] % dimunit) < (m_m_extentorg.m_extent[i] % dimunit) ? 1 : 0;
 					break;
 				case DistEnum::disttype::BLOCKCYCLIC:
-					teamorgindex[i] = (index[i] / cycle) *  m_dist.data[i].blocksz + (index[i] % cycle) % m_dist.data[i].blocksz;
+					teamorgindex[i] = (index[i] / cycle) *  m_dist.m_extent[i].blocksz + (index[i] % cycle) % m_dist.m_extent[i].blocksz;
 					if (i > 0)
 					{
-						if (m_dataorg.data[i] < cycle)
+						if (m_m_extentorg.m_extent[i] < cycle)
 							cyclicfix[i - 1] = 0;
-						else if ((index[i] / m_dist.data[i].blocksz) % dimunit < getFloor(m_dataorg.data[i] % cycle, m_dist.data[i].blocksz))
-							cyclicfix[i - 1] = m_dist.data[i].blocksz;
-						else if ((index[i] / m_dist.data[i].blocksz) % dimunit < getCeil(m_dataorg.data[i] % cycle, m_dist.data[i].blocksz))
-							cyclicfix[i - 1] = m_dataorg.data[i] % m_dist.data[i].blocksz;
+						else if ((index[i] / m_dist.m_extent[i].blocksz) % dimunit < getFloor(m_m_extentorg.m_extent[i] % cycle, m_dist.m_extent[i].blocksz))
+							cyclicfix[i - 1] = m_dist.m_extent[i].blocksz;
+						else if ((index[i] / m_dist.m_extent[i].blocksz) % dimunit < getCeil(m_m_extentorg.m_extent[i] % cycle, m_dist.m_extent[i].blocksz))
+							cyclicfix[i - 1] = m_m_extentorg.m_extent[i] % m_dist.m_extent[i].blocksz;
 						else
 							cyclicfix[i - 1] = 0;
 					}
 					break;
 				case DistEnum::disttype::TILE:
-					teamorgindex[i] = (index[i] / cycle) *  m_dist.data[i].blocksz + (index[i] % cycle) % m_dist.data[i].blocksz;
+					teamorgindex[i] = (index[i] / cycle) *  m_dist.m_extent[i].blocksz + (index[i] % cycle) % m_dist.m_extent[i].blocksz;
 					if (i > 0)
 					{
-						if ((index[i] / m_dist.data[i].blocksz) % dimunit < getFloor(m_dataorg.data[i] % cycle, m_dist.data[i].blocksz))
-							cyclicfix[i - 1] = m_dist.data[i].blocksz;
-						else if ((index[i] / m_dist.data[i].blocksz) % dimunit < getCeil(m_dataorg.data[i] % cycle, m_dist.data[i].blocksz))
-							cyclicfix[i - 1] = m_dataorg.data[i] % cycle;
+						if ((index[i] / m_dist.m_extent[i].blocksz) % dimunit < getFloor(m_m_extentorg.m_extent[i] % cycle, m_dist.m_extent[i].blocksz))
+							cyclicfix[i - 1] = m_dist.m_extent[i].blocksz;
+						else if ((index[i] / m_dist.m_extent[i].blocksz) % dimunit < getCeil(m_m_extentorg.m_extent[i] % cycle, m_dist.m_extent[i].blocksz))
+							cyclicfix[i - 1] = m_m_extentorg.m_extent[i] % cycle;
 						else
 							cyclicfix[i - 1] = 0;
 					}
@@ -684,23 +622,23 @@ namespace dash
 				}
 			}
 
-			if (m_dist.data[0].type == DistEnum::disttype::TILE)
+			if (m_dist.m_extent[0].type == DistEnum::disttype::TILE)
 			{
 				rs = 0;
 				long long incre[ndim_];
-				incre[ndim_ - 1] = m_accessunit.nelem();
+				incre[ndim_ - 1] = m_accessunit.size();
 				for (size_t i = 1; i < ndim_; i++)
 				{
 					long long dim = ndim_ - i - 1;
-					long long cycle = m_teamorg.data[dim] * m_dist.data[dim].blocksz;
-					long long ntile = m_dataorg.data[i] / cycle + cyclicfix[dim] / m_accessunit.data[i];
+					long long cycle = m_teamorg.m_extent[dim] * m_dist.m_extent[dim].blocksz;
+					long long ntile = m_m_extentorg.m_extent[i] / cycle + cyclicfix[dim] / m_accessunit.m_extent[i];
 					incre[dim] = incre[dim + 1] * ntile;
 				}
 				for (size_t i = 0; i < ndim_; i++)
 				{
-					long long tile_index = (teamorgindex[i]) / m_accessunit.data[i];
-					long long tile_index_remain = (teamorgindex[i]) % m_accessunit.data[i];
-					rs += tile_index_remain*m_accessunit.offset[i] + tile_index * incre[i];
+					long long tile_index = (teamorgindex[i]) / m_accessunit.m_extent[i];
+					long long tile_index_remain = (teamorgindex[i]) % m_accessunit.m_extent[i];
+					rs += tile_index_remain*m_accessunit.m_offset[i] + tile_index * incre[i];
 				}
 				return rs;
 			}

@@ -12,12 +12,19 @@ namespace dash {
 template<int DIM, typename SIZE=size_t>
 class CartCoord
 {
-private:
-  SIZE m_size;
+protected:
+  SIZE m_size = 0;
   SIZE m_extent[DIM];
   SIZE m_offset[DIM];
+  size_t m_ndim = DIM;
 
 public:
+	
+  CartCoord()
+  {
+  	
+  }
+  
   template<typename... Args>
   CartCoord(Args... args) : m_extent{SIZE(args)...} {
     static_assert(sizeof...(Args)==DIM,
@@ -45,19 +52,43 @@ public:
     assert(dim<DIM);
     return m_extent[dim];
   }
+  
+SIZE at(std::array<SIZE, DIM> pos) const
+{
+    static_assert(pos.size()==DIM,
+		  "Invalid number of arguments");
+		  
+	      SIZE offs=0;
+	      for(int i=0; i<DIM; i++ ) {
+	        offs += m_offset[i]*pos[i];
+	      }
+	      return offs;
+}
+
+SIZE at(std::array<SIZE, DIM> pos, std::array<SIZE, DIM> cyclicfix) const
+{
+    static_assert(pos.size()==DIM,
+		  "Invalid number of arguments");
+		  
+	static_assert(cyclicfix.size()==DIM,
+	  	  "Invalid number of arguments");
+		  
+	SIZE offs=0;
+	for (int i = 0; i < DIM; i++)
+		if (pos[i] != -1)//omit NONE distribution
+			offs += pos[i] * (m_offset[i] + cyclicfix[i]);
+	//assert(rs <= nelem - 1);
+	return offs;
+}
 
   template<typename... Args>
   SIZE at(Args... args) const {
     static_assert(sizeof...(Args)==DIM,
 		  "Invalid number of arguments");
     
-    SIZE pos[DIM] = {SIZE(args)...};
+    std::array<SIZE, DIM> pos = {SIZE(args)...};
 
-    SIZE offs=0;
-    for(int i=0; i<DIM; i++ ) {
-      offs += m_offset[i]*pos[i];
-    }
-    return offs;
+    return at(pos);
   }
 
   // offset -> coordinates
