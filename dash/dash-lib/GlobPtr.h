@@ -20,7 +20,7 @@ class GlobPtr :
 			 T, gptrdiff_t,
 			 GlobPtr<T>, GlobRef<T> >
 {
-private:
+protected:
   Pattern1D      m_pat;
   MemAccess<T>   m_acc;
   long long      m_idx;

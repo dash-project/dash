@@ -2,6 +2,7 @@
 #ifndef DASH_ARRAY_H_INCLUDED
 #define DASH_ARRAY_H_INCLUDED
 
+#include <type_traits>
 #include <stdexcept>
 
 #include "Team.h"
@@ -98,11 +99,18 @@ private:
 
 public:
   LocalProxyArray<ELEMENT_TYPE> local;
+
+  static_assert(std::is_trivial<ELEMENT_TYPE>::value, 
+		"Element type must be trivial copyable");
+  /*
+  static_assert(std::is_trivially_copyable<ELEMENT_TYPE>::value, 
+		"Element type must be trivially copyable");
+  */
   
 public: 
 
-  Array(size_t nelem, dash::DistSpec ds=dash::BLOCKED,
-	Team &t=dash::Team::All()) : 
+  Array(size_t nelem, dash::DistSpec ds, 
+	Team& t=dash::Team::All() ) : 
     m_team(t), 
     m_pattern(nelem, ds, t),
     local(this)
@@ -137,6 +145,12 @@ public:
 	Team &t=dash::Team::All()) : 
     Array(nelem, dash::BLOCKED, t)
   { }
+
+#if 0
+  Array(size_t nelem) :
+    Array(nelem, dash::BLOCKED, dash::Team::All())
+  {}
+#endif 
 
   ~Array() {
     dart_team_t teamid = m_team.m_dartid;
@@ -207,7 +221,12 @@ public:
     return (ELEMENT_TYPE*)(addr);
   }
 
-  
+
+  void forall(std::function<void(long long)> func) 
+  {
+    m_pattern.forall(func);
+  }
+
 
 #if 0
   iterator lbegin() noexcept
