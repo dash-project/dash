@@ -13,17 +13,15 @@ int main(int argc, char* argv[])
 
   int myid = dash::myid();
   int size = dash::size();
-
   
-  dash::array<int> arr(100, dash::TeamAll);
-
+  dash::Array<int> arr(100, dash::Team::All() );
+  
   if( myid==0 ) {
     for( int i=0; i<100; i++ ) {
       arr[i]=rand();
     }
   }
-  
-  dart_barrier(DART_TEAM_ALL);
+  arr.barrier();
 
   if( myid==1 ) {
     std::sort(arr.begin(), arr.end());
