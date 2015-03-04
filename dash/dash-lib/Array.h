@@ -99,7 +99,7 @@ private:
 #endif 
 
 public:
-  LocalProxyArray<ELEMENT_TYPE> local;
+  LocalProxyArray<ELEMENT_TYPE, DIM> local;
 
   static_assert(std::is_trivial<ELEMENT_TYPE>::value, 
 		"Element type must be trivial copyable");
@@ -110,9 +110,9 @@ public:
   
 public: 
 
-  Array(dash::SizeSpec<DIM> ss, dash::DistSpec<DIM> ds=dash::DistSpec<DIM>::DistSpec(), const TeamSpec<DIM> &ts =
-			TeamSpec<DIM>(), 
-	Team &t=dash::Team::All()) : 
+  Array(const dash::SizeSpec<DIM>& ss, const dash::DistSpec<DIM>& ds=dash::DistSpec<DIM>(), 
+	 Team &t=dash::Team::All(), const TeamSpec<DIM> &ts =
+			TeamSpec<DIM>()) : 
     m_team(t), 
     m_pattern(ss, ds, ts, t),
     local(this)
@@ -139,7 +139,7 @@ public:
 
   // delegating constructor
   Array(const dash::Pattern<DIM>& pat ) : 
-    Array(pat.nelem(), pat.distspec(), pat.team())
+    Array(pat.sizespec(), pat.distspec(), pat.team())
   { }
 
   // delegating constructor

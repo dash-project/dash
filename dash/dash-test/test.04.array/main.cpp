@@ -13,9 +13,9 @@ int main(int argc, char* argv[])
   int myid = dash::myid();
   int size = dash::size();
 
-  dash::Pattern1D pat(19, dash::BLOCKCYCLIC(2));
-  dash::Array<int>     arr1(pat);
-  dash::Array<double>  arr2(pat);
+  dash::Pattern<1> pat(19, dash::BLOCKCYCLIC(2));
+  dash::Array<int, 1>     arr1(pat);
+  dash::Array<double, 1>  arr2(pat);
   
   for( int i=0; i<arr1.size(); i++ ) {
     if( arr2.islocal(i) ) {

@@ -15,12 +15,13 @@ class CartCoord
 protected:
   SIZE m_size = 0;
 
-  SIZE m_offset[DIM];
+
   size_t m_ndim = DIM;
 
 public:
 	
   SIZE m_extent[DIM];
+  SIZE m_offset[DIM];
 
   CartCoord()
   {

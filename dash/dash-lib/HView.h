@@ -56,7 +56,7 @@ public:
 };
 
 
-template<class CONT, int LEVEL>
+template<class CONT, int LEVEL, size_t DIM>
 class HView
 {
 public:
@@ -103,8 +103,8 @@ public:
 };
 
 
-template<class CONT>
-class HView<CONT, -1>
+template<class CONT, size_t DIM>
+class HView<CONT, -1, DIM>
 {
 public:
   typedef typename CONT::iterator     iterator;
@@ -113,7 +113,7 @@ public:
 private:
   Team&     m_subteam;
   CONT&     m_container;
-  Pattern1D&  m_pat;
+  Pattern<DIM>&  m_pat;
 
 public:
   HView(CONT& cont) : m_container(cont), 

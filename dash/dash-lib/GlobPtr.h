@@ -7,6 +7,7 @@
 
 #include "GlobRef.h"
 #include "MemAccess.h"
+#include "Pattern.h"
 
 // KF
 typedef long long gptrdiff_t;
