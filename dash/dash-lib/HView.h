@@ -4,57 +4,133 @@
 #include <iostream>
 #include "Team.h"
 
+using std::cout; 
+using std::endl;
+
 
 namespace dash {
 
-template<class Cont, int level, size_t DIM>
+template<class CONT, int LEVEL> 
+class HIter : public CONT::iterator
+{
+private:
+  Pattern1D&  m_pattern;
+  Team&       m_subteam;
+
+public:
+  HIter<CONT,LEVEL>& advance() {
+    auto idx = CONT::iterator::m_idx;
+    
+    for(;idx<m_pattern.nelem(); idx++ ) {
+      auto unit = m_pattern.index_to_unit(idx);
+      //cout<<"Index: "<<idx<<" Unit: "<<unit<<endl;
+      
+      if( m_subteam.isMember(unit) )
+	break;
+    }
+
+    //cout<<" ----------------" <<endl;
+    CONT::iterator::m_idx = idx;
+    return *this;
+  }
+
+
+public:
+  HIter(typename CONT::iterator it, 
+	Pattern1D& pattern,
+	Team& subteam) : CONT::iterator(it), 
+			 m_pattern(pattern),
+			 m_subteam(subteam) {
+  }
+
+  void print() {
+    cout<<CONT::iterator::m_idx<<endl;
+  }
+
+  HIter<CONT,LEVEL>& operator++() 
+  {
+    CONT::iterator::m_idx++;
+    return advance();
+  }
+    
+};
+
+
+template<class CONT, int LEVEL>
 class HView
 {
 public:
-  typedef typename Cont::iterator  iterator;
-
+  typedef typename CONT::iterator    iterator;
+  typedef typename CONT::value_type  value_type;
+  
 private:
-  Team&     m_team;
-  Cont&     m_cont;
-  //Pattern1D&  m_pat;
-  Pattern<DIM>&  m_pat;
+  CONT&        m_container;
+  Team&        m_subteam;
+  Pattern1D&   m_pat;
+
+  HIter<CONT,LEVEL> m_begin;
+  HIter<CONT,LEVEL> m_end;
+
+  HIter<CONT,LEVEL> find_begin() {
+    HIter<CONT,LEVEL> it = {m_container.begin(),m_pat,m_subteam};
+    it.advance();
+    return it;
+  }
+
+  HIter<CONT,LEVEL> find_end() {
+    return {m_container.end(),m_pat,m_subteam};
+  }
   
 public:
-  HView(Cont& cont) : m_cont(cont), 
-		      m_team(cont.team()),
-		      m_pat(cont.pattern()) {};
+  HView(CONT& cont) : m_container(cont), 
+		      m_subteam(cont.team().sub(LEVEL)),
+		      m_pat(cont.pattern()),
+		      m_begin(find_begin()),
+		      m_end(find_end()) 
+  {};
   
   void print() {
-    std::cout<<"This team has size "<<m_team.size()<<std::endl;
-  }
-
-  iterator begin() { 
-    auto unit = first_unit();
-    auto idx  = m_pat.unit_and_elem_to_index(unit, 0);
-
-    return iterator(m_cont.data()+idx);
-  }
-
-  iterator end() { 
-    auto unit = last_unit();
-    if( unit==dash::size()-1 ) {
-      return m_cont.end();
-    } 
-    auto idx  = m_pat.unit_and_elem_to_index(unit+1, 0);
-    return iterator(m_cont.data()+idx);
-  }
-
-  size_t first_unit() const {
-    Team& t = m_team.sub(level);
-    return t.first_unit();
+    std::cout<<"This team has size "<<m_subteam.size()<<std::endl;
   }
   
-  size_t last_unit() const {
-    Team& t = m_team.sub(level);
-    return t.last_unit();
+  HIter<CONT,LEVEL> begin() { 
+    return m_begin;
   }
-
+  
+  HIter<CONT,LEVEL> end() { 
+    return m_end;
+  }
 };
+
+
+template<class CONT>
+class HView<CONT, -1>
+{
+public:
+  typedef typename CONT::iterator     iterator;
+  typedef typename CONT::value_type   value_type;
+
+private:
+  Team&     m_subteam;
+  CONT&     m_container;
+  Pattern1D&  m_pat;
+
+public:
+  HView(CONT& cont) : m_container(cont), 
+		      m_subteam(cont.team()),
+		      m_pat(cont.pattern()) {};
+  
+  value_type* begin() { 
+    return m_container.lbegin();
+  }
+  
+  value_type* end() { 
+    return m_container.lend();
+  }
+};
+
+
+
 
 } // namespace dash
 

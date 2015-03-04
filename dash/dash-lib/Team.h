@@ -42,6 +42,10 @@ public:
       return *this;
     }
     
+    iterator& operator++() {
+      return operator+=(1);
+    }
+
     int operator*() {
       return val;
     }
@@ -54,49 +58,22 @@ public:
 
 
 private:
-  size_t       m_firstunit=0;
-  size_t       m_lastunit=0;
-  bool         m_havefirstlast=false;
+  dart_team_t   m_dartid=DART_TEAM_NULL;
+  dart_group_t *m_group;
 
-  dart_team_t  m_dartid=DART_TEAM_NULL;
   Team        *m_parent=nullptr;
   Team        *m_child=nullptr;
   size_t       m_position=0;
   static Team  m_team_all;
   static Team  m_team_null;
 
+
+
   void free_team() {
     if( m_dartid!=DART_TEAM_NULL ) {
       cout<<myid()<<" Freeing Team with id "<<m_dartid<<endl;
     }
   }
-
-  void get_firstlast() {
-    size_t size;
-    size_t nunit;
-    dart_group_t *group;
-
-    dart_group_sizeof(&size);
-    group = (dart_group_t*)malloc(size);
-
-    dart_group_init(group);
-    dart_team_get_group(m_dartid, group);
-
-    dart_group_size(group, &nunit);
-
-    dart_unit_t* units = 
-      (dart_unit_t*)malloc(sizeof(dart_unit_t)*nunit);
-    
-    dart_group_getmembers(group, units);
-    m_firstunit = units[0];
-    m_lastunit = units[nunit-1];
-
-    free(group);
-    free(units);
-    m_havefirstlast=true;
-  }
-
-
 
 public:
   void trace_parent() {
@@ -117,12 +94,21 @@ private:
     m_dartid=id; 
     m_position=pos;
     
-    /*
-    fprintf(stderr, "[%d] creating a new team for ID: %d as %p\n",
-	    dash::myid(),
-	    id, this);
-    */
+    if( m_dartid!=DART_TEAM_NULL ) {
+      // get the group for the team
+      size_t sz; dart_group_sizeof(&sz);
+      m_group = (dart_group_t*)malloc(sz);
+      dart_group_init(m_group);
+      
+      dart_team_get_group(m_dartid, m_group);
+    }
 
+    /*
+      fprintf(stderr, "[%d] creating a new team for ID: %d as %p\n",
+      dash::myid(),
+      id, this);
+    */
+    
     if(parent ) {
       if( parent->m_child ) {
 	fprintf(stderr, "Error: %p already has a child!, not setting to %p\n", 
@@ -161,9 +147,59 @@ public:
   static Team& Null() {
     return m_team_null;
   }
-
-  Team& split(unsigned n);
-
+  
+  Team& split(unsigned nParts) {
+    dart_group_t *group;
+    dart_group_t *gout[nParts];
+    size_t size;
+    char buf[200];
+    
+    dart_group_sizeof(&size);
+    
+    group = (dart_group_t*) malloc(size);
+    for(int i=0; i<nParts; i++ ) {
+      gout[i] = (dart_group_t*) malloc(size);
+    }
+    
+    Team *result = &(dash::Team::Null());
+    
+    if( this->size()<=1 ) {
+      return *result;
+    }
+    
+    dart_group_init(group);
+    dart_team_get_group(m_dartid, group);
+    dart_group_split(group, nParts, gout);
+    /*
+      GROUP_SPRINTF(buf, group);
+      fprintf(stderr, "[%d]: Splitting team[%d]: %s\n", 
+      dash::myId(), m_dartid, buf);
+    */
+    
+    dart_team_t oldteam = m_dartid;
+    
+    for(int i=0; i<nParts; i++) {
+      dart_team_t newteam;
+      
+      dart_team_create(oldteam, gout[i], &newteam);
+      
+      /*
+	GROUP_SPRINTF(buf, gout[i]);
+	fprintf(stderr, "[%d] New subteam[%d]: %s\n", 
+	myId(), newteam, buf);
+      */
+      if(newteam!=DART_TEAM_NULL) {
+	result=new Team(newteam, this, i);
+      }
+      
+      /*    
+	    GROUP_SPRINTF(buf, gout[i]);
+	    fprintf(stderr, "%d: %s\n", i, buf);
+      */
+    }
+    return *result;
+  }
+    
   bool operator==(const Team& rhs) const {
     return m_dartid==rhs.m_dartid;
   }
@@ -182,6 +218,18 @@ public:
   }
   bool isRoot() const {
     return m_parent==nullptr;
+  }
+
+  bool isMember(size_t guid) {
+    int32_t ismember;
+    dart_group_ismember(m_group, guid, 
+			&ismember);
+    return ismember;
+  }
+
+  Team& parent() {
+    if(m_parent) { return *m_parent; }
+    else { return Null(); } 
   }
 
   Team& sub(size_t n=1) {
@@ -217,20 +265,6 @@ public:
     return res;
   }
 
-  size_t first_unit() {
-    if( !m_havefirstlast ) {
-      get_firstlast();
-    }
-    return m_firstunit;
-  }
-
-  size_t last_unit() {
-    if( !m_havefirstlast ) {
-      get_firstlast();
-    }
-    return m_lastunit;
-  }
-
   size_t size() const {
     size_t size=0;
     if( m_dartid!=DART_TEAM_NULL ) {    
@@ -251,6 +285,17 @@ public:
     cout<<"id: "<<m_dartid<<" "<<this<<" parent: "<<m_parent;
     cout<<" child: "<<m_child<<endl;
   }
+  
+  size_t globalid(size_t localid) {
+    dart_unit_t globalid;
+    
+    dart_team_unit_l2g(m_dartid,
+		       localid,
+		       &globalid);
+    
+    return globalid;
+  }
+
 };
 
 template<int DIM>
@@ -266,7 +311,11 @@ public:
 template<int DIM>
 using TeamView = CartView<Team::iterator, DIM>;
 
+
 } // namespace dash
+
+
+
 
 namespace std {
 
@@ -279,6 +328,8 @@ public:
   typedef dash::Team::iterator difference_type;
   typedef random_access_iterator_tag iterator_category;
 };
+
+
 
 
 } // namespace std

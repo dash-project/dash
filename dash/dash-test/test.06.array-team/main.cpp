@@ -13,8 +13,8 @@ int main(int argc, char* argv[])
   int myid = dash::myid();
   int size = dash::size();
 
-  dash::Team& t = dash::TeamAll.split(2);
-  dash::array<int> arr(10, t);
+  dash::Team& t = dash::Team::All().split(2);
+  dash::Array<int> arr(10, t);
   
   cout<<"Hello world: I'm global "<<myid<<" of "<<size<<" and "
     "I'm "<<t.myid()<<" of "<<t.size()<<" in my sub-team"<<endl;
@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 
   t.barrier();
   
-  if( myid==2) {
+  if( myid==size-1) {
     for( auto v: arr ) {
       cout<<v<<endl;
     }

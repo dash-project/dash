@@ -6,7 +6,6 @@
 using namespace std;
 using namespace dash;
 
-
 void test_fwd_mapping(size_t size);
 void test_rev_mapping(size_t size);
 
@@ -24,7 +23,7 @@ int main(int argc, char* argv[])
 
 #if 0
   if( myid==size-1 ) {
-    dash::Pattern p1(n, BLOCKED);
+    dash::Pattern1D p1(n, BLOCKED);
 
     /*
     dash::Team& t1 = dash::TeamAll.split(1);
@@ -39,12 +38,12 @@ int main(int argc, char* argv[])
 
 void test_fwd_mapping(size_t size) 
 {
-  Pattern p1(size); // team and blocking implicit
-  Pattern p2(size, BLOCKED );
-  Pattern p3(size, CYCLIC );
-  Pattern p4(size, BLOCKCYCLIC(1) );
-  Pattern p5(size, BLOCKCYCLIC(2) );
-  Pattern p6(size, BLOCKCYCLIC(size) );
+  Pattern1D p1(size); // team and blocking implicit
+  Pattern1D p2(size, BLOCKED );
+  Pattern1D p3(size, CYCLIC );
+  Pattern1D p4(size, BLOCKCYCLIC(1) );
+  Pattern1D p5(size, BLOCKCYCLIC(2) );
+  Pattern1D p6(size, BLOCKCYCLIC(size) );
 
   //  Pattern p6(EXTENT(-1, size-1, BLOCKED) );
 
@@ -84,14 +83,14 @@ void test_rev_mapping(size_t size)
 {
   int i, j;
 
-  Pattern p1(size); // team and blocking implicit
-  Pattern p2(size, BLOCKED );
-  Pattern p3(size, CYCLIC );
-  Pattern p4(size, BLOCKCYCLIC(1) );
-  Pattern p5(size, BLOCKCYCLIC(2) );
-  Pattern p6(size, BLOCKCYCLIC(size) );
+  Pattern1D p1(size); // team and blocking implicit
+  Pattern1D p2(size, BLOCKED );
+  Pattern1D p3(size, CYCLIC );
+  Pattern1D p4(size, BLOCKCYCLIC(1) );
+  Pattern1D p5(size, BLOCKCYCLIC(2) );
+  Pattern1D p6(size, BLOCKCYCLIC(size) );
 
-  std::map<Pattern*, std::string>  pattern;
+  std::map<Pattern1D*, std::string>  pattern;
   pattern[&p1] = "default";
   pattern[&p2] = "BLOCKED";
   pattern[&p3] = "CYCLIC";
@@ -100,7 +99,7 @@ void test_rev_mapping(size_t size)
   pattern[&p6] = "BLOCKCYCLIC(size)";
 
   for( auto& it : pattern ) {
-    Pattern *pat = it.first;
+    Pattern1D *pat = it.first;
     fprintf(stderr, "%s:\n", it.second.c_str());
     
     for( i=0; i<pat->nunits(); i++ ) {

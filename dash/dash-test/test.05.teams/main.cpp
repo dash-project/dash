@@ -7,14 +7,17 @@ using namespace std;
 
 void test_team(dash::Team& t)
 {
-  cout<<"Is this team TeamAll ?: "<<((t==dash::TeamAll)?"YES":"NO")<<endl;
-  cout<<"Is this team TeamNull?: "<<((t==dash::TeamNull)?"YES":"NO")<<endl;
+  cout<<"Is this team Team::All() ?: "<<
+    ((t==dash::Team::All())?"YES":"NO")<<endl;
 
+  cout<<"Is this team Team::Null()?: "<<
+    ((t==dash::Team::Null())?"YES":"NO")<<endl;
+  
   cout<<"Size of this team:  "<<t.size()<<endl;
   cout<<"My ID in this team: "<<t.myid()<<endl;
   cout<<"This Team's position: "<<t.position()<<endl;
 
-  if( t.parent()!=dash::TeamNull ) {
+  if( t.parent()!=dash::Team::Null() ) {
     cout<<"This team does have a parent!"<<endl;
   }
 
@@ -27,7 +30,7 @@ int main(int argc, char* argv[])
   int    myid   = dash::myid();
   size_t nunits = dash::size();
   
-  dash::Team& t = dash::TeamAll.split(3);
+  dash::Team& t = dash::Team::All().split(3);
   
   test_team(t);
   
