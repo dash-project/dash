@@ -227,6 +227,11 @@ public:
     return ismember;
   }
 
+  Team& parent() {
+    if(m_parent) { return *m_parent; }
+    else { return Null(); } 
+  }
+
   Team& sub(size_t n=1) {
     Team *t=this;
     while(t && n>0 && !(t->isLeaf()) ) {
