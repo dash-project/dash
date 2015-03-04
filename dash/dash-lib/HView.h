@@ -7,7 +7,7 @@
 
 namespace dash {
 
-template<class Cont, int level>
+template<class Cont, int level, size_t DIM>
 class HView
 {
 public:
@@ -16,8 +16,9 @@ public:
 private:
   Team&     m_team;
   Cont&     m_cont;
-  Pattern1D&  m_pat;
-
+  //Pattern1D&  m_pat;
+  Pattern<DIM>&  m_pat;
+  
 public:
   HView(Cont& cont) : m_cont(cont), 
 		      m_team(cont.team()),

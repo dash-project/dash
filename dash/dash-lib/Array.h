@@ -5,7 +5,8 @@
 #include <stdexcept>
 
 #include "Team.h"
-#include "Pattern1D.h"
+//#include "Pattern.h"
+#include "Pattern.h"
 #include "GlobPtr.h"
 #include "GlobRef.h"
 #include "HView.h"
@@ -36,17 +37,17 @@ const_reverse_iterator  Behaves like const value_type∗
          const_pointer  Behaves like const value_type∗
 */
 
-template<typename T>
+template<typename T, size_t DIM>
 class Array;
 
-template<typename T>
+template<typename T, size_t DIM>
 class LocalProxyArray
 {
 private:
-  Array<T> *m_ptr;
+	Array<T, DIM> *m_ptr;
 
 public:
-  LocalProxyArray(Array<T>* ptr) {
+  LocalProxyArray(Array<T, DIM>* ptr) {
     m_ptr = ptr;
   }
   
@@ -61,7 +62,7 @@ public:
   }
 };
 
-template<typename ELEMENT_TYPE>
+template<typename ELEMENT_TYPE, size_t DIM>
 class Array
 {
 public:
@@ -71,21 +72,21 @@ public:
   typedef size_t size_type;
   typedef size_t difference_type;
 
-  typedef       GlobPtr<value_type>         iterator;
-  typedef const GlobPtr<value_type>   const_iterator;
+  typedef       GlobPtr<value_type, DIM>         iterator;
+  typedef const GlobPtr<value_type, DIM>   const_iterator;
   typedef std::reverse_iterator<      iterator>       reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   typedef       GlobRef<value_type>       reference;
   typedef const GlobRef<value_type> const_reference;
 
-  typedef       GlobPtr<value_type>       pointer;
-  typedef const GlobPtr<value_type> const_pointer;
+  typedef       GlobPtr<value_type, DIM>       pointer;
+  typedef const GlobPtr<value_type, DIM> const_pointer;
 
 private:
   dash::Team&      m_team;
   dart_unit_t      m_myid;
-  dash::Pattern1D  m_pattern;
+  dash::Pattern<DIM>    m_pattern;
   size_type        m_size;    // total size (#elements)
   size_type        m_lsize;   // local size (#local elements)
   pointer*         m_ptr;
@@ -97,14 +98,15 @@ private:
 #endif 
 
 public:
-  LocalProxyArray<ELEMENT_TYPE> local;
+  LocalProxyArray<ELEMENT_TYPE, DIM> local;
   
 public: 
 
-  Array(size_t nelem, dash::DistSpec ds=dash::BLOCKED,
+  Array(dash::SizeSpec<DIM> ss, dash::DistSpec<DIM> ds=dash::DistSpec<DIM>::DistSpec(), const TeamSpec<DIM> &ts =
+			TeamSpec<DIM>(), 
 	Team &t=dash::Team::All()) : 
     m_team(t), 
-    m_pattern(nelem, ds, t),
+    m_pattern(ss, ds, ts, t),
     local(this)
   {
     // Array is a friend of class Team 
@@ -117,7 +119,7 @@ public:
     dart_ret_t ret = 
       dart_team_memalloc_aligned(teamid, lsize, &m_dart_gptr);
     
-    m_ptr = new GlobPtr<value_type>(m_pattern, m_dart_gptr, 0);
+    m_ptr = new GlobPtr<value_type, DIM>(m_pattern, m_dart_gptr, 0);
     
     m_size     = m_pattern.nelem();
     m_lsize    = lelem;
@@ -128,7 +130,7 @@ public:
   }
 
   // delegating constructor
-  Array(const dash::Pattern1D& pat ) : 
+  Array(const dash::Pattern<DIM>& pat ) : 
     Array(pat.nelem(), pat.distspec(), pat.team())
   { }
 
@@ -143,7 +145,7 @@ public:
     dart_team_memfree(teamid, m_dart_gptr);
   }
 
-  Pattern1D& pattern() {
+  Pattern<DIM>& pattern() {
     return m_pattern;
   }
 
@@ -245,8 +247,8 @@ public:
   }
 
   template<int level>
-  dash::HView<Array<ELEMENT_TYPE>, level> hview() {
-    return dash::HView<Array<ELEMENT_TYPE>, level>(*this);
+  dash::HView<Array<ELEMENT_TYPE, DIM>, level, DIM> hview() {
+    return dash::HView<Array<ELEMENT_TYPE, DIM>, level, DIM>(*this);
   }
 };
 

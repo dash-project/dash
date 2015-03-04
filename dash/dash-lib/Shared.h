@@ -3,7 +3,8 @@
 #define DASH_SHARED_H_INCLUDED
 
 #include "Team.h"
-#include "Pattern1D.h"
+//#include "Pattern1D.h"
+#include "Pattern.h"
 #include "GlobPtr.h"
 #include "GlobRef.h"
 
@@ -12,20 +13,20 @@
 namespace dash
 {
 
-template<typename TYPE>
+template<typename TYPE, size_t DIM>
 class Shared
 {
 public:
   typedef TYPE value_type;
   typedef GlobRef<value_type> reference;
-  typedef GlobPtr<value_type> pointer;
+  typedef GlobPtr<value_type, DIM> pointer;
 
 private:
   dash::Team&      m_team;
   dart_unit_t      m_myid;
   dart_gptr_t      m_dart_gptr;
   pointer*         m_ptr;
-  dash::Pattern1D  m_pattern;
+  dash::Pattern<DIM>    m_pattern;
 
 public:
   Shared(dash::Team& t=dash::Team::All()) : 
@@ -39,7 +40,7 @@ public:
     dart_ret_t ret = 
       dart_team_memalloc_aligned(teamid, lsize, &m_dart_gptr);
 
-    m_ptr = new GlobPtr<value_type>(m_pattern, m_dart_gptr, 0);
+    m_ptr = new GlobPtr<value_type, DIM>(m_pattern, m_dart_gptr, 0);
   }
 
   reference operator=(const TYPE& rhs)
