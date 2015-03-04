@@ -375,7 +375,7 @@ dart_ret_t dart_shmem_team_init( dart_team_t team, dart_unit_t myid,
 					 4096,
 					 0 /* not aligned */ );
 
-      fprintf(stderr, "created a mempool=%d\n", res);
+      // fprintf(stderr, "created a mempool=%d\n", res);
 
 #if 0 /* TODO: Remove me */
       teams[DART_TEAM_ALL].mempoolid_unaligned[0]=res;
