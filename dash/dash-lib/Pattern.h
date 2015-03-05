@@ -166,6 +166,13 @@ namespace dash {
 		SizeSpec() {
 		}
 
+		SizeSpec(size_t nelem) {
+			static_assert(ndim_==1, "Not enough parameters for extent");
+			this->m_extent[0]=nelem;
+			this->construct();
+			this->m_ndim=1;
+		}
+
 		template<typename T_, typename ... values>
 		SizeSpec(T_ value, values ... Values) :
 			DimRangeBase<ndim_>::DimRangeBase(value, Values...) {

@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
   int size = dash::size();
 
   dash::Team& t = dash::Team::All().split(2);
-  dash::Array<int> arr(10, t);
+  dash::Array<int, 1> arr(10, t);
   
   cout<<"Hello world: I'm global "<<myid<<" of "<<size<<" and "
     "I'm "<<t.myid()<<" of "<<t.size()<<" in my sub-team"<<endl;

@@ -26,7 +26,7 @@ bool test_for_each(size_t n)
   int myid = dash::myid();
   int size = dash::size();
   
-  dash::Array<int> arr(n);
+  dash::Array<int, 1> arr(n);
   //std::vector<int> arr(10);
 
   if( myid==0 ) {
@@ -70,7 +70,7 @@ bool test_count(size_t n)
   int myid = dash::myid();
   int size = dash::size();
   
-  dash::Array<int> arr(n);
+  dash::Array<int, 1> arr(n);
   //std::vector<int> arr(10);
 
   if( myid==0 ) {
@@ -90,7 +90,7 @@ void test_sequence_predicates()
   int myid = dash::myid();
   int size = dash::size();
   
-  dash::Array<int> arr(10);
+  dash::Array<int, 1> arr(10);
   //vector<int> arr(10);
   std::fill( arr.begin(), arr.end(), 1);
 

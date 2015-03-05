@@ -145,7 +145,7 @@ public:
   // delegating constructor
   Array(size_t nelem, 
 	Team &t=dash::Team::All()) : 
-    Array(nelem, dash::BLOCKED, t)
+    Array(dash::SizeSpec<DIM>(nelem), dash::DistSpec<DIM>(), t)
   { }
 
 #if 0
