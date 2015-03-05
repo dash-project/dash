@@ -184,3 +184,14 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid,
 
   return DART_OK;
 }
+
+
+dart_ret_t dart_memfree(dart_gptr_t gptr)
+{
+  return DART_OK;
+}
+
+dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr)
+{
+  return DART_OK;
+}

@@ -6,3 +6,4 @@ LIBDART_EXTRA = -lpthread
 
 CC      = gcc -std=c99
 CXX     = g++ -std=c++0x
+#CXX     = clang -std=c++11

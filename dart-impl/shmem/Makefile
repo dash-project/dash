@@ -28,6 +28,7 @@ clean :
 	rm -f *.o 
 	rm -f dart_full.h
 	make -C dart-shmem/ clean
+	make -C test/ clean
 
 
 
