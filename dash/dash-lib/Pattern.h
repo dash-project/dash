@@ -101,7 +101,7 @@ namespace dash {
 		DistSpec() {
 			for (size_t i = 1; i < ndim_; i++)
 				this->m_extent[i] = NONE;
-			this->m_extent[1] = BLOCKED;
+			this->m_extent[0] = BLOCKED;
 		}
 
 		template<typename T_, typename ... values>
@@ -266,8 +266,13 @@ namespace dash {
 			//m_dist.m_extent[dim] = ds;
 			//cout << "I got " << ds << " for dist. pattern in dimension " << dim << endl;
 			m_teamorg = ts;
+			argc_ts ++;
 		}
-
+        
+	        template<int count>
+		void check(dash::Team & t) {
+	                m_team = Team(t);	
+		}
 
 
 		template<int count>
@@ -410,6 +415,7 @@ namespace dash {
 		long long			m_blocksz;
 		int 				argc_DistEnum = 0;
 		int 				argc_extents = 0;
+		int                             argc_ts = 0;
 		dash::Team&  		m_team = dash::Team::All();
 
 	public:
@@ -445,7 +451,7 @@ namespace dash {
 
 			checkTile();
 
-			if (m_teamorg.size() == 0)
+			if (argc_ts == 0)
 				m_teamorg=TeamSpec<ndim_>(m_team);
 
 			constructAccessBase();
