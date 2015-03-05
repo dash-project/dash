@@ -12,8 +12,9 @@ int main(int argc, char* argv[])
   
   int myid = dash::myid();
   int size = dash::size();
+  int nelem = 11;
 
-  dash::Pattern<1> pat(19, dash::BLOCKCYCLIC(2));
+  dash::Pattern<1> pat(nelem);
   dash::Array<int, 1>     arr1(pat);
   dash::Array<double, 1>  arr2(pat);
   
@@ -31,7 +32,7 @@ int main(int argc, char* argv[])
   if( myid==size-1 ) {
     for( int i=0; i<arr1.size(); i++ ) {
       int res = arr1[i];
-      fprintf(stdout, "Owner of %d: %d\n", i, res);
+      fprintf(stdout, "Owner of %d: %d atunit %d atunit %d max %d nelem %d  \n", i, res, pat.index_to_elem(i), arr1.pattern().index_to_unit(i), arr1.pattern().max_elem_per_unit(), arr1.pattern().nelem());
     }
   }
   fflush(stdout);

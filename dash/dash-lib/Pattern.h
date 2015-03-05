@@ -230,6 +230,11 @@ namespace dash {
 			check<count>((long long)(extent));
 		}
 
+		template<int count>
+		void check(size_t extent) {
+			check<count>((long long)(extent));
+		}
+
 		// the first DIM parameters must be used to
 		// specify the extent
 		template<int count>
@@ -341,6 +346,8 @@ namespace dash {
 		}
 
 		void constructAccessBase() {
+			m_blocksz = 1;
+
 			for (size_t i = 0; i < ndim_; i++) {
 				long long dimunit;
 
@@ -355,6 +362,7 @@ namespace dash {
 						m_sizespec.m_extent[i] % dimunit == 0 ?
 						m_sizespec.m_extent[i] / dimunit :
 						m_sizespec.m_extent[i] / dimunit + 1;
+					m_blocksz *= m_accessunit.m_extent[i];
 					break;
 				case DistEnum::disttype::BLOCKCYCLIC:
 					if (m_sizespec.m_extent[i]
@@ -364,15 +372,19 @@ namespace dash {
 						m_accessunit.m_extent[i] = m_sizespec.m_extent[i]
 						/ (dimunit * m_dist.m_extent[i].blocksz)
 						* m_dist.m_extent[i].blocksz;
+					m_blocksz *=  m_dist.m_extent[i].blocksz;
 					break;
 				case DistEnum::disttype::CYCLIC:
 					m_accessunit.m_extent[i] = m_sizespec.m_extent[i] / dimunit;
+					m_blocksz *=  1;
 					break;
 				case DistEnum::disttype::TILE:
 					m_accessunit.m_extent[i] = m_dist.m_extent[i].blocksz;
+					m_blocksz *=  m_dist.m_extent[i].blocksz;
 					break;
 				case DistEnum::disttype::NONE:
 					m_accessunit.m_extent[i] = m_sizespec.m_extent[i];
+					m_blocksz *=  m_sizespec.m_extent[i];
 					break;
 				default:
 					break;
@@ -386,8 +398,9 @@ namespace dash {
 		AccessUnit<ndim_> 	m_accessunit;
 		SizeSpec<ndim_> 	m_sizespec;
 		ViewOrg<ndim_> 		m_vieworg;
-		long long 			m_nunits;
+		long long 			m_nunits=dash::Team::All().size();
 		long long 			view_dim;
+		long long			m_blocksz;
 		int 				argc_DistEnum = 0;
 		int 				argc_extents = 0;
 		dash::Team&  		m_team = dash::Team::All();
@@ -402,6 +415,8 @@ namespace dash {
 				"Invalid number of constructor arguments.");
 
 			check<0>(std::forward<Args>(args)...);
+                        m_nunits = m_team.size();
+
 			int argc = sizeof...(Args);
 
 			//Speficy default patterns for all dims
@@ -551,9 +566,9 @@ namespace dash {
 		long long unit_and_elem_to_index(long long unit,
 			long long elem)
 		{
-			long long blockoffs = elem / m_accessunit.size() + 1;
-			long long i = (blockoffs - 1) * m_accessunit.size() * m_nunits +
-				unit * m_accessunit.size() + elem % m_accessunit.size();
+			long long blockoffs = elem / m_blocksz + 1;
+			long long i = (blockoffs - 1) * m_blocksz * m_nunits +
+				unit * m_blocksz + elem % m_blocksz;
 
 			long long idx = modulo(i, m_sizespec.size());
 
@@ -568,12 +583,14 @@ namespace dash {
 
 			for (int i = 0; i < ndim_; i++) {
 				long long dimunit;
-				long long cycle = dimunit * m_dist.m_extent[i].blocksz;
+				
 
 				if (m_teamorg.ndim() == 1)
 					dimunit = m_teamorg.size();
 				else
 					dimunit = m_teamorg.m_extent[i];
+
+				long long cycle = dimunit * m_dist.m_extent[i].blocksz;
 
 				switch (m_dist.m_extent[i].type) {
 				case DistEnum::disttype::BLOCKED:
@@ -617,13 +634,13 @@ namespace dash {
 		long long index_to_unit(std::array<long long, ndim_> input) const {
 			// i -> [0, nelem)
 
-			return at_(input);
+			return atunit_(input);
 		}
 
 		long long index_to_elem(std::array<long long, ndim_> input) const {
 			// i -> [0, nelem)
 
-			return atunit_(input);
+			return at_(input);
 		}
 
 		template<typename ... values>
@@ -762,8 +779,10 @@ namespace dash {
 				m_vieworg = other.m_vieworg;
 				m_nunits = other.m_nunits;
 				view_dim = other.view_dim;
+				m_blocksz = other.m_blocksz;
 				argc_DistEnum = other.argc_DistEnum;
 				argc_extents = other.argc_extents;
+
 			}
 			return *this;
 		}
@@ -784,6 +803,10 @@ namespace dash {
 			return m_sizespec;
 		}
 
+		TeamSpec<ndim_> teamspec() const {
+			return m_teamorg;
+		}
+		
 		Pattern row(const long long index) const {
 			Pattern<ndim_> rs = this;
 			rs.view_dim = view_dim - 1;

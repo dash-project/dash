@@ -139,7 +139,7 @@ public:
 
   // delegating constructor
   Array(const dash::Pattern<DIM>& pat ) : 
-    Array(pat.sizespec(), pat.distspec(), pat.team())
+    Array(pat.sizespec(), pat.distspec(), pat.team(), pat.teamspec())
   { }
 
   // delegating constructor
@@ -259,6 +259,10 @@ public:
 
     return operator[](pos);
   }
+
+		Pattern<DIM> pattern() const {
+			return m_pattern;
+		}
 
   bool islocal(size_type n)
   {
