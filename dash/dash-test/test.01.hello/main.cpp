@@ -14,6 +14,8 @@ int main(int argc, char* argv[])
   int myid = dash::myid();
   int size = dash::size();
 
+  dash::Team& t = dash::Team::All();
+
   gethostname(buf, 100);
   
   cout<<"'Hello world' from unit "<<myid<<

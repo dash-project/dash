@@ -8,7 +8,7 @@ void dash::init(int *argc, char ***argv)
 
 void dash::finalize()
 {
-  dart_exit();
+  //dart_exit();
 }
 
 int dash::myid()
