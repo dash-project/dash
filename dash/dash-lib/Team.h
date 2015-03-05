@@ -73,7 +73,7 @@ private:
 
   void free_team() {
     if( m_dartid!=DART_TEAM_NULL ) {
-      cout<<myid()<<" Freeing Team with id "<<m_dartid<<endl;
+      //cout<<myid()<<" Freeing Team with id "<<m_dartid<<endl;
     }
   }
 
