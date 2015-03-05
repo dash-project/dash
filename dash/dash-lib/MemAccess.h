@@ -131,6 +131,7 @@ bool MemAccess<T>::equals(const MemAccess<T>& other) const
      m_begptr = other.m_begptr;
      m_teamid = other.m_teamid;
      m_nlelem = other.m_nlelem;
+     return *this;
    }
 
 } // namespace dash

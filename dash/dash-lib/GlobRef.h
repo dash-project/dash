@@ -60,7 +60,10 @@ public:
     return *this;
   }
 
-  
+  bool is_local() const {
+    return m_unit==dash::myid();
+  }
+
   
   MemAccess<T> get_accessor() const 
   {
