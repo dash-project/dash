@@ -4,6 +4,7 @@
 #include <libdash.h>
 #include <list>
 
+#define Pattern Pattern1D
 #define HUGE 33133
 
 using namespace std;
@@ -36,7 +37,7 @@ int main(int argc, char* argv[])
     
     for( i=0; i<dash::size(); i++ ) {
       for( j=0; j<dash::size(); j++ ) {
-	dash::TeamAll.barrier();
+	dash::Team::All().barrier();
 	if( dash::myid()==0 ) {
 	  fprintf(stderr, "Testing size=%u reader=%d writer=%d\n", 
 		  size, i, j);
