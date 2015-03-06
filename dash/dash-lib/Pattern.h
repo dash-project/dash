@@ -820,6 +820,17 @@ namespace dash {
 			return m_teamorg;
 		}
 		
+	    void forall(std::function<void(long long)> func)
+	    {
+	      for( long long i=0; i<m_sizespec.size(); i++ ) {
+	        long long idx = unit_and_elem_to_index(m_team.myid(), i);
+	        if( idx<0  ) {
+	  	break;
+	        }
+	        func(idx);
+	      }
+	    } 
+		
 		Pattern row(const long long index) const {
 			Pattern<ndim_> rs = this;
 			rs.view_dim = view_dim - 1;
@@ -828,6 +839,8 @@ namespace dash {
 
 			return rs;
 		}
+		
+		
 	};
 }
 
