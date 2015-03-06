@@ -822,6 +822,7 @@ namespace dash {
 		
 	    void forall(std::function<void(long long)> func)
 	    {
+			printf("called\n");
 	      for( long long i=0; i<m_sizespec.size(); i++ ) {
 	        long long idx = unit_and_elem_to_index(m_team.myid(), i);
 	        if( idx<0  ) {
