@@ -59,13 +59,14 @@ public:
 
 private:
   dart_team_t   m_dartid=DART_TEAM_NULL;
-  dart_group_t *m_group=nullptr;
+  dart_group_t *m_group;
 
   Team        *m_parent=nullptr;
   Team        *m_child=nullptr;
   size_t       m_position=0;
   static Team  m_team_all;
   static Team  m_team_null;
+  bool         m_havegroup=false;
 
   void free_team() {
     if( m_dartid!=DART_TEAM_NULL ) {
@@ -79,6 +80,7 @@ private:
     dart_group_init(m_group);
     
     dart_team_get_group(m_dartid, m_group);
+    m_havegroup=true;
   }
 
 public:
@@ -159,6 +161,7 @@ public:
     group = (dart_group_t*) malloc(size);
     for(int i=0; i<nParts; i++ ) {
       gout[i] = (dart_group_t*) malloc(size);
+      dart_group_init(gout[i]);
     }
     
     Team *result = &(dash::Team::Null());
@@ -179,7 +182,7 @@ public:
     dart_team_t oldteam = m_dartid;
     
     for(int i=0; i<nParts; i++) {
-      dart_team_t newteam;
+      dart_team_t newteam=DART_TEAM_NULL;
       
       dart_team_create(oldteam, gout[i], &newteam);
       
@@ -222,9 +225,9 @@ public:
 
   bool isMember(size_t guid) {
     int32_t ismember;
-
-    if(!m_group) {get_group();}
-
+    if(!m_havegroup) { 
+      get_group();
+    }
     dart_group_ismember(m_group, guid, 
 			&ismember);
     return ismember;
