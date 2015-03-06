@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
 
   dash::Team& t = dash::Team::All().split(2);
   dash::Pattern<1> pat(10, dash::BLOCKED, t);
-  dash::Array<int, 1> arr(10, t);
+  dash::Array<int> arr(10, t);
   
   cout<<"Hello world: I'm global "<<myid<<" of "<<size<<" and "
     "I'm "<<t.myid()<<" of "<<t.size()<<" in my sub-team "<< arr.pattern().nunits() << " per unit " << endl;

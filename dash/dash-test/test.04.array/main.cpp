@@ -15,8 +15,8 @@ int main(int argc, char* argv[])
   int nelem = 11;
 
   dash::Pattern<1> pat(nelem);
-  dash::Array<int, 1>     arr1(pat);
-  dash::Array<double, 1>  arr2(pat);
+  dash::Array<int>     arr1(pat);
+  dash::Array<double>  arr2(pat);
   
   for( int i=0; i<arr1.size(); i++ ) {
     if( arr2.islocal(i) ) {

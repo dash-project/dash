@@ -38,17 +38,17 @@ const_reverse_iterator  Behaves like const value_type∗
          const_pointer  Behaves like const value_type∗
 */
 
-template<typename T, size_t DIM>
+template<typename T>
 class Array;
 
-template<typename T, size_t DIM>
+template<typename T>
 class LocalProxyArray
 {
 private:
-	Array<T, DIM> *m_ptr;
+	Array<T> *m_ptr;
 
 public:
-  LocalProxyArray(Array<T, DIM>* ptr) {
+  LocalProxyArray(Array<T>* ptr) {
     m_ptr = ptr;
   }
   
@@ -63,7 +63,7 @@ public:
   }
 };
 
-template<typename ELEMENT_TYPE, size_t DIM>
+template<typename ELEMENT_TYPE>
 class Array
 {
 public:
@@ -73,21 +73,21 @@ public:
   typedef size_t size_type;
   typedef size_t difference_type;
 
-  typedef       GlobPtr<value_type, DIM>         iterator;
-  typedef const GlobPtr<value_type, DIM>   const_iterator;
+  typedef       GlobPtr<value_type, 1>         iterator;
+  typedef const GlobPtr<value_type, 1>   const_iterator;
   typedef std::reverse_iterator<      iterator>       reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   typedef       GlobRef<value_type>       reference;
   typedef const GlobRef<value_type> const_reference;
 
-  typedef       GlobPtr<value_type, DIM>       pointer;
-  typedef const GlobPtr<value_type, DIM> const_pointer;
+  typedef       GlobPtr<value_type, 1>       pointer;
+  typedef const GlobPtr<value_type, 1> const_pointer;
 
 private:
   dash::Team&      m_team;
   dart_unit_t      m_myid;
-  dash::Pattern<DIM>    m_pattern;
+  dash::Pattern<1>    m_pattern;
   size_type        m_size;    // total size (#elements)
   size_type        m_lsize;   // local size (#local elements)
   pointer*         m_ptr;
@@ -99,7 +99,7 @@ private:
 #endif 
 
 public:
-  LocalProxyArray<ELEMENT_TYPE, DIM> local;
+  LocalProxyArray<ELEMENT_TYPE> local;
 
   static_assert(std::is_trivial<ELEMENT_TYPE>::value, 
 		"Element type must be trivial copyable");
@@ -110,9 +110,9 @@ public:
   
 public: 
 
-  Array(const dash::SizeSpec<DIM>& ss, const dash::DistSpec<DIM>& ds=dash::DistSpec<DIM>(), 
-	 Team &t=dash::Team::All(), const TeamSpec<DIM> &ts =
-			TeamSpec<DIM>()) : 
+  Array(const dash::SizeSpec<1>& ss, const dash::DistSpec<1>& ds=dash::DistSpec<1>(), 
+	 Team &t=dash::Team::All(), const TeamSpec<1> &ts =
+			TeamSpec<1>()) : 
     m_team(t), 
     m_pattern(ss, ds, ts, t),
     local(this)
@@ -127,7 +127,7 @@ public:
     dart_ret_t ret = 
       dart_team_memalloc_aligned(teamid, lsize, &m_dart_gptr);
     
-    m_ptr = new GlobPtr<value_type, DIM>(m_pattern, m_dart_gptr, 0);
+    m_ptr = new GlobPtr<value_type, 1>(m_pattern, m_dart_gptr, 0);
     
     m_size     = m_pattern.nelem();
     m_lsize    = lelem;
@@ -138,14 +138,14 @@ public:
   }
 
   // delegating constructor
-  Array(const dash::Pattern<DIM>& pat ) : 
+  Array(const dash::Pattern<1>& pat ) : 
     Array(pat.sizespec(), pat.distspec(), pat.team(), pat.teamspec())
   { }
 
   // delegating constructor
   Array(size_t nelem, 
 	Team &t=dash::Team::All()) : 
-    Array(dash::Pattern<DIM>(nelem, t))
+    Array(dash::Pattern<1>(nelem, t))
   { }
 
 #if 0
@@ -159,7 +159,7 @@ public:
     dart_team_memfree(teamid, m_dart_gptr);
   }
 
-  Pattern<DIM>& pattern() {
+  Pattern<1>& pattern() {
     return m_pattern;
   }
 
@@ -260,7 +260,7 @@ public:
     return operator[](pos);
   }
 
-		Pattern<DIM> pattern() const {
+		Pattern<1> pattern() const {
 			return m_pattern;
 		}
 
@@ -270,8 +270,8 @@ public:
   }
 
   template<int level>
-  dash::HView<Array<ELEMENT_TYPE, DIM>, level, DIM> hview() {
-    return dash::HView<Array<ELEMENT_TYPE, DIM>, level, DIM>(*this);
+  dash::HView<Array<ELEMENT_TYPE>, level, 1> hview() {
+    return dash::HView<Array<ELEMENT_TYPE>, level, 1>(*this);
   }
 };
 
