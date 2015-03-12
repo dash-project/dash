@@ -13,5 +13,6 @@
 #include "Array.h"
 #include "Shared.h"
 #include "HView.h"
+#include "Matrix.h"
 
 #endif /* LIBDASH_H_INCLUDED */
