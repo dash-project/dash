@@ -139,7 +139,7 @@ namespace dash {
 				this->m_extent[i] = 1;
 			this->m_extent[ndim_ - 1] = this->m_size = t.size();
 			this->construct();
-			this->m_ndim = 1;			
+			this->m_ndim = 1;
 		}
 
 		template<typename T, typename ... values>
@@ -167,10 +167,10 @@ namespace dash {
 		}
 
 		SizeSpec(size_t nelem) {
-			static_assert(ndim_==1, "Not enough parameters for extent");
-			this->m_extent[0]=nelem;
+			static_assert(ndim_ == 1, "Not enough parameters for extent");
+			this->m_extent[0] = nelem;
 			this->construct();
-			this->m_ndim=1;
+			this->m_ndim = 1;
 		}
 
 		template<typename T_, typename ... values>
@@ -266,12 +266,12 @@ namespace dash {
 			//m_dist.m_extent[dim] = ds;
 			//cout << "I got " << ds << " for dist. pattern in dimension " << dim << endl;
 			m_teamorg = ts;
-			argc_ts ++;
+			argc_ts++;
 		}
-        
-	        template<int count>
+
+		template<int count>
 		void check(dash::Team & t) {
-	                m_team = Team(t);	
+			m_team = Team(t);
 		}
 
 
@@ -384,19 +384,19 @@ namespace dash {
 						m_accessunit.m_extent[i] = m_sizespec.m_extent[i]
 						/ (dimunit * m_dist.m_extent[i].blocksz)
 						* m_dist.m_extent[i].blocksz;
-					m_blocksz *=  m_dist.m_extent[i].blocksz;
+					m_blocksz *= m_dist.m_extent[i].blocksz;
 					break;
 				case DistEnum::disttype::CYCLIC:
 					m_accessunit.m_extent[i] = m_sizespec.m_extent[i] / dimunit;
-					m_blocksz *=  1;
+					m_blocksz *= 1;
 					break;
 				case DistEnum::disttype::TILE:
 					m_accessunit.m_extent[i] = m_dist.m_extent[i].blocksz;
-					m_blocksz *=  m_dist.m_extent[i].blocksz;
+					m_blocksz *= m_dist.m_extent[i].blocksz;
 					break;
 				case DistEnum::disttype::NONE:
 					m_accessunit.m_extent[i] = m_sizespec.m_extent[i];
-					m_blocksz *=  m_sizespec.m_extent[i];
+					m_blocksz *= m_sizespec.m_extent[i];
 					break;
 				default:
 					break;
@@ -410,7 +410,7 @@ namespace dash {
 		AccessUnit<ndim_> 	m_accessunit;
 		SizeSpec<ndim_> 	m_sizespec;
 		ViewOrg<ndim_> 		m_vieworg;
-		long long 			m_nunits=dash::Team::All().size();
+		long long 			m_nunits = dash::Team::All().size();
 		long long 			view_dim;
 		long long			m_blocksz;
 		int 				argc_DistEnum = 0;
@@ -428,7 +428,7 @@ namespace dash {
 				"Invalid number of constructor arguments.");
 
 			check<0>(std::forward<Args>(args)...);
-                        m_nunits = m_team.size();
+			m_nunits = m_team.size();
 
 			int argc = sizeof...(Args);
 
@@ -452,12 +452,12 @@ namespace dash {
 			checkTile();
 
 			if (argc_ts == 0)
-				m_teamorg=TeamSpec<ndim_>(m_team);
+				m_teamorg = TeamSpec<ndim_>(m_team);
 
 			constructAccessBase();
 		}
 
-//TODO
+		//TODO
 		Pattern(const SizeSpec<ndim_> &sizespec, const DistSpec<ndim_> &dist =
 			DistSpec<ndim_>(), const TeamSpec<ndim_> &teamorg = TeamSpec<ndim_>::TeamSpec(), dash::Team& team = dash::Team::All()) :
 			m_sizespec(sizespec), m_dist(dist), m_teamorg(teamorg), m_team(team) {
@@ -479,7 +479,7 @@ namespace dash {
 			m_sizespec(sizespec), m_dist(dist), m_teamorg(m_team) {
 			// unnecessary check
 			// assert(dist.ndim == teamorg.ndim && dist.ndim == m_extentorg.ndim);
-			
+
 			m_team = team;
 			m_nunits = m_team.size();
 			m_vieworg = ViewOrg<ndim_>(m_sizespec);
@@ -596,7 +596,7 @@ namespace dash {
 
 			for (int i = 0; i < ndim_; i++) {
 				long long dimunit;
-				
+
 
 				if (m_teamorg.ndim() == 1)
 					dimunit = m_teamorg.size();
@@ -630,16 +630,14 @@ namespace dash {
 
 		long long index_to_unit(long long idx) const {
 			// i -> [0, nelem)
-                        std::array<long long, 1> input;
-                        input[0] = idx;
-                        
+			std::array<long long, ndim_> input = m_teamorg.coords(idx);
+
 			return index_to_unit(input);
 		}
 
 		long long index_to_elem(long long idx) const {
 			// i -> [0, nelem)
-                        std::array<long long, 1> input;
-                        input[0] = idx;
+			std::array<long long, ndim_> input = m_sizespec.coords(idx);
 
 			return index_to_elem(input);
 		}
@@ -819,18 +817,75 @@ namespace dash {
 		TeamSpec<ndim_> teamspec() const {
 			return m_teamorg;
 		}
-		
-	    void forall(std::function<void(long long)> func)
-	    {
-	      for( long long i=0; i<m_sizespec.size(); i++ ) {
-	        long long idx = unit_and_elem_to_index(m_team.myid(), i);
-	        if( idx<0  ) {
-	  	break;
-	        }
-	        func(idx);
-	      }
-	    } 
-		
+
+		void forall(std::function<void(long long)> func)
+		{
+			for (long long i = 0; i < m_sizespec.size(); i++) {
+				long long idx = unit_and_elem_to_index(m_team.myid(), i);
+				if (idx < 0) {
+					break;
+				}
+				func(idx);
+			}
+		}
+
+		bool is_local(size_t idx, size_t myid, size_t dim)
+		{
+			long long dimunit;
+			size_t myidx;
+			bool ret = false;
+			long long cycle = m_teamorg.size() * m_dist.m_extent[dim].blocksz;
+
+                        
+			if (ndim_ > 1 && m_teamorg.ndim() == 1)
+			{
+				dimunit = m_teamorg.size();
+				myidx = m_teamorg.index_at_dim(myid, ndim_ - 1);
+			}
+			else
+			{
+				dimunit = m_teamorg.m_extent[dim];
+				myidx = m_teamorg.index_at_dim(myid, dim);
+			}
+
+//                        printf("idx %d myid %d dim %d myidx %d dimunit %d cycle %d\n", idx, myid, dim, myidx, dimunit, cycle);			
+
+			switch (m_dist.m_extent[dim].type) {
+			case DistEnum::disttype::BLOCKED:
+
+
+				if ( (idx >= getCeil(m_sizespec.m_extent[dim], dimunit)*(myidx)) &&
+					(idx < getCeil(m_sizespec.m_extent[dim], dimunit)*(myidx + 1) ) )
+					ret = true;
+
+				break;
+			case DistEnum::disttype::BLOCKCYCLIC:
+
+				ret = ((idx % cycle) >= m_dist.m_extent[dim].blocksz * (myidx) ) &&
+					((idx % cycle) < m_dist.m_extent[dim].blocksz * (myidx + 1) );
+
+				break;
+			case DistEnum::disttype::CYCLIC:
+
+				ret = idx % dimunit == myidx;
+
+				break;
+			case DistEnum::disttype::TILE:
+
+				ret = ((idx % cycle) >= m_dist.m_extent[dim].blocksz * (myidx)) &&
+					((idx % cycle) < m_dist.m_extent[dim].blocksz * (myidx + 1) );
+
+				break;
+			case DistEnum::disttype::NONE:
+				ret = true;
+				break;
+			default:
+				break;
+			}
+			
+			return ret;
+		}
+
 		Pattern row(const long long index) const {
 			Pattern<ndim_> rs = this;
 			rs.view_dim = view_dim - 1;
@@ -839,8 +894,8 @@ namespace dash {
 
 			return rs;
 		}
-		
-		
+
+
 	};
 }
 

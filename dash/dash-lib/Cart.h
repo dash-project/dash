@@ -121,6 +121,11 @@ SIZE at(std::array<SIZE, DIM> pos, std::array<SIZE, DIM> cyclicfix) const
   typename std::enable_if<(U>2),SIZE>::type z(SIZE offs) const {
     return coords(offs)[2];
   }
+
+  SIZE index_at_dim(SIZE offs, int dim_) const {
+	  assert(dim_<DIM);
+	  return coords(offs)[dim_];
+  }
 };
 
 } // namespace dash
