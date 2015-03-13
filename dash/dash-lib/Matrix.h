@@ -93,7 +93,7 @@ namespace dash {
 		template<typename T_, size_t DIM_> friend class Matrix;
 
 		T& get_from_ref(std::array<int, DIM> coord) const {
-			m_mat->at(m_mat->m_pattern->index_to_elem(coord));
+			m_proxy->m_mat->at(m_proxy->m_mat->m_pattern->index_to_elem(coord));
 		}
 
 	    Matrix_Ref<T, DIM, 1>()=default;
