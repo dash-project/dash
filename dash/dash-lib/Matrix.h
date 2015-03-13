@@ -32,51 +32,75 @@ namespace dash {
 		T *end() noexcept{ return m_ptr->lend(); }
 	};
 
+	template <typename T, size_t DIM> class Matrix_RefProxy {
+
+		private:
+    		int m_dim = 0;
+    		Matrix<T, DIM> *m_mat;
+    		std::array<T, DIM> m_coord;
+
+		public:
+			template<typename T_, size_t DIM_> friend class Matrix_Ref;
+    		Matrix_RefProxy<T, DIM>() = default;	
+	};
+
 	template <typename T, size_t DIM, size_t CUR> class Matrix_Ref {
 
+	private:
+			Matrix_RefProxy<T, DIM> * m_proxy;
+			
 	public:
-		int m_dim = 0;
-		Matrix<T, DIM> *m_mat;
-		std::array<int, DIM> m_coord;
+		template<typename T_, size_t DIM_> friend class Matrix;
 
-		T& get_from_ref(std::array<int, DIM> coord) const {
-			m_mat->at(m_mat->m_pattern->index_to_elem(coord));
-		}
+	    operator Matrix_Ref<T, DIM, CUR - 1> && ()
+	    {
+	        Matrix_Ref<T, DIM, CUR - 1> * ref = new Matrix_Ref<T, DIM, CUR - 1>;;
+	        ref->m_proxy = m_proxy;
+	        return std::move(*ref);
+	    }
+		
+	    Matrix_Ref<T, DIM, CUR>() = default;
 
-		Matrix_Ref<T, DIM, CUR>(Matrix_Ref<T, DIM, CUR + 1>&& o) : m_coord(std::move(o.m_coord)) {
-		m_dim = o.m_dim;
-                m_mat = o.m_mat;
-		}
+	    Matrix_Ref<T, DIM, CUR - 1> && operator[](size_t n) && {
 
-		Matrix_Ref<T, DIM, CUR - 1> && operator[](size_t n) && {
-			m_coord[m_dim] = n;
-			m_dim++;
-			return std::move(*this);
-		};
+	        m_proxy->m_coord[ m_proxy->m_dim] = n;
+	        m_proxy->m_dim++;
+	        return *this;
+	    };
 
-		Matrix_Ref<T, DIM, CUR - 1>  operator[](size_t n) const & {
-			Matrix_Ref<T, DIM, CUR - 1> ref;
-			ref.m_coord = m_coord;
-			ref.m_coord[m_dim] = n;
-			ref.m_dim = m_dim + 1;
-			ref.m_mat = m_mat;
-			return std::move(ref);
-		}
+	    Matrix_Ref<T, DIM, CUR - 1> operator[](size_t n) const & {
+
+	        Matrix_Ref<T, DIM, CUR - 1> * ref = new Matrix_Ref<T, DIM, CUR - 1>;
+	        ref->m_proxy = new Matrix_RefProxy<T, DIM>;
+			ref->m_proxy->m_coord = m_proxy->m_coord;
+	        ref->m_proxy->m_coord[m_proxy->m_dim] = n;
+	        ref->m_proxy->m_dim = m_proxy->m_dim+1;
+
+	        return *ref;
+	    }
 
 	};
 
 
 	template <typename T, size_t DIM>
-	class Matrix_Ref<T, DIM, 0>
+	class Matrix_Ref<T, DIM, 1>
 	{
-		int m_dim = DIM-1;
-		Matrix<T, DIM> *m_mat;
-		std::array<int, DIM> m_coord;
+		
+	private:
+			Matrix_RefProxy<T, DIM> * m_proxy;
+			
+	public:
+		template<typename T_, size_t DIM_> friend class Matrix;
 
-		T & operator[](size_t n) {
-			m_coord[m_dim] = n;
-			return &get_from_ref(m_coord);
-		};
+		T& get_from_ref(std::array<int, DIM> coord) const {
+			m_mat->at(m_mat->m_pattern->index_to_elem(coord));
+		}
+
+	    Matrix_Ref<T, DIM, 1>()=default;
+
+	    T& operator[](size_t n) const {
+	        return get_from_ref(m_proxy->m_coord);
+	    };
 	};
 
 
