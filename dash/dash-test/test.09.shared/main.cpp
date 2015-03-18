@@ -1,3 +1,8 @@
+/* 
+ * shared/main.cpp 
+ *
+ * author(s): Karl Fuerlinger, LMU Munich */
+/* @DASH_HEADER@ */
 
 #include <iostream>
 #include <libdash.h>
@@ -14,14 +19,13 @@ int main(int argc, char* argv[])
   }
   dash::Team::All().barrier();
   
-
   for( int i=0; i<dash::size(); i++ ) {
     if( dash::myid()==i )
       a=a+1;
   }
-
+  
   dash::Team::All().barrier();
-
+  
   if( dash::myid()==0 ) 
     cout<<a<<endl;
   

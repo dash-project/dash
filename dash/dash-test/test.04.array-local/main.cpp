@@ -20,9 +20,11 @@ int main(int argc, char* argv[])
   auto size = dash::size();
 
   dash::Array<int> arr(SIZE);
-  for( auto it = arr.lbegin(); it!=arr.lend(); it++ ) {
-    (*it)=myid;
+
+  for( auto i=0; i<2; i++ ) {
+    arr.local[i]=myid;
   }
+
   arr.barrier();
   
   if(myid==0 ) {  
@@ -31,7 +33,6 @@ int main(int argc, char* argv[])
     }
     cout<<endl;
   }
-
   
   dash::finalize();
 }

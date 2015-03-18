@@ -1,5 +1,5 @@
 /* 
- * array/main.cpp 
+ * datatypes/main.cpp 
  *
  * author(s): Karl Fuerlinger, LMU Munich */
 /* @DASH_HEADER@ */
@@ -7,8 +7,6 @@
 #include <unistd.h>
 #include <iostream>
 #include <libdash.h>
-
-#define SIZE 10
 
 using namespace std;
 
@@ -19,19 +17,24 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
 
-  dash::Array<int> arr(SIZE);
-  for( auto it = arr.lbegin(); it!=arr.lend(); it++ ) {
-    (*it)=myid;
+  typedef pair<int, int> pair_t;
+  dash::Array<pair_t> arr(100);
+
+  if(myid==0 ) {
+    for(auto i=0; i<arr.size(); i++)  {
+      arr[i] = {i,i+1};
+    }
   }
-  arr.barrier();
   
-  if(myid==0 ) {  
-    for( auto it = arr.begin(); it!=arr.end(); it++ ) {
-      cout<<(*it)<<" ";
+  arr.barrier();
+
+  pair_t p;
+  if(myid==size-1) {
+    for(auto el: arr ) {
+      cout<<((pair_t)el).second<<" ";
     }
     cout<<endl;
   }
-
   
   dash::finalize();
 }

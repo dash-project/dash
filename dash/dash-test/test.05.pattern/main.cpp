@@ -1,3 +1,8 @@
+/* 
+ * pattern/main.cpp 
+ *
+ * author(s): Karl Fuerlinger, LMU Munich */
+/* @DASH_HEADER@ */
 
 #include <map>
 #include <iostream>
@@ -21,18 +26,6 @@ int main(int argc, char* argv[])
     test_rev_mapping(11);
   }
 
-#if 0
-  if( myid==size-1 ) {
-    dash::Pattern1D p1(n, BLOCKED);
-
-    /*
-    dash::Team& t1 = dash::TeamAll.split(1);
-    dash::Pattern p2(n, CYCLIC, t1);
-    dash::Pattern p3(n, BLOCKCYCLIC(4), t1 );
-    */
-  }
-#endif
-  
   dash::finalize();
 }
 

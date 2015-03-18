@@ -1,3 +1,8 @@
+/* 
+ * array-pat2/main.cpp 
+ *
+ * author(s): Karl Fuerlinger, LMU Munich */
+/* @DASH_HEADER@ */
 
 #include <stdio.h>
 #include <iostream>

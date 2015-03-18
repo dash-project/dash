@@ -1,14 +1,13 @@
 /* 
- * array/main.cpp 
+ * team-all/main.cpp 
  *
  * author(s): Karl Fuerlinger, LMU Munich */
 /* @DASH_HEADER@ */
 
+#include <assert.h>
 #include <unistd.h>
 #include <iostream>
 #include <libdash.h>
-
-#define SIZE 10
 
 using namespace std;
 
@@ -18,19 +17,17 @@ int main(int argc, char* argv[])
   
   auto myid = dash::myid();
   auto size = dash::size();
-
-  dash::Array<int> arr(SIZE);
-  for( auto it = arr.lbegin(); it!=arr.lend(); it++ ) {
-    (*it)=myid;
-  }
-  arr.barrier();
   
-  if(myid==0 ) {  
-    for( auto it = arr.begin(); it!=arr.end(); it++ ) {
-      cout<<(*it)<<" ";
-    }
-    cout<<endl;
-  }
+  dash::Team& t = dash::Team::All();
+  assert( myid == t.myid() );
+  assert( size == t.size() );
+
+  cerr<<"Unit "<<myid<<" before barrier..."<<endl;
+  if( myid==size-1 ) 
+    sleep(2);
+  t.barrier();
+
+  cerr<<"Unit "<<myid<<" after barrier!"<<endl;
 
   
   dash::finalize();

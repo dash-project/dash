@@ -1,3 +1,8 @@
+/* 
+ * rangefor/main.cpp 
+ *
+ * author(s): Karl Fuerlinger, LMU Munich */
+/* @DASH_HEADER@ */
 
 #include <stdio.h>
 #include <iostream>
@@ -33,9 +38,9 @@ void test() {
   
   if(myid==size-1) {
     for( auto it: arr1 ) {
-      fprintf(stderr, "%d ", (int)it);
+      cout<<it<<" ";
     }
-    fprintf(stderr, "\n");
+    cout<<endl;
   }  
 }
 
