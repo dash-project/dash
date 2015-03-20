@@ -43,6 +43,9 @@ class Array;
 template<typename T>
 class LocalProxyArray
 {
+public: 
+  typedef size_t size_type;
+
 private:
   Array<T> *m_ptr;
 
@@ -51,14 +54,19 @@ public:
     m_ptr = ptr;
   }
   
-  T* begin() noexcept
+  T* begin() const noexcept
   {
     return m_ptr->lbegin();
   }
 
-  T* end() noexcept
+  T* end() const noexcept
   {
     return m_ptr->lend();
+  }
+
+  T& operator[](size_type n)
+  {
+    return begin()[n];
   }
 };
 
@@ -91,7 +99,9 @@ private:
   size_type        m_lsize;   // local size (#local elements)
   pointer*         m_ptr;
   dart_gptr_t      m_dart_gptr;
-
+  ELEMENT_TYPE*    m_lbegin;
+  ELEMENT_TYPE*    m_lend;
+  
 #if 0
   // xxx needs fix
   size_type      m_realsize;
@@ -100,8 +110,10 @@ private:
 public:
   LocalProxyArray<ELEMENT_TYPE> local;
 
+  
   static_assert(std::is_trivial<ELEMENT_TYPE>::value, 
 		"Element type must be trivial copyable");
+  
   /*
   static_assert(std::is_trivially_copyable<ELEMENT_TYPE>::value, 
 		"Element type must be trivially copyable");
@@ -131,6 +143,20 @@ public:
     m_lsize    = lelem;
     
     m_myid = m_team.myid();
+
+    {
+      void *addr; 
+      dart_gptr_t gptr = m_dart_gptr;
+      dart_gptr_setunit(&gptr, m_myid);
+      dart_gptr_getaddr(gptr, &addr);
+      m_lbegin=static_cast<ELEMENT_TYPE*>(addr);
+
+      gptr = m_dart_gptr;
+      dart_gptr_setunit(&gptr, m_myid);
+      dart_gptr_incaddr(&gptr, m_lsize*sizeof(ELEMENT_TYPE));
+      dart_gptr_getaddr(gptr, &addr);
+      m_lend=static_cast<ELEMENT_TYPE*>(addr);
+    }
   
     //m_realsize = lelem * m_team.size();
   }
@@ -200,27 +226,13 @@ public:
     return iterator(data() + m_size);
   }
 
-  ELEMENT_TYPE* lbegin() noexcept
-  {
-    void *addr; 
-    dart_gptr_t gptr = m_dart_gptr;
-
-    dart_gptr_setunit(&gptr, m_myid);
-    dart_gptr_getaddr(gptr, &addr);
-    return (ELEMENT_TYPE*)(addr);
+  ELEMENT_TYPE* lbegin() const noexcept {
+    return m_lbegin;
   }
 
-  ELEMENT_TYPE* lend() noexcept
-  {
-    void *addr; 
-    dart_gptr_t gptr = m_dart_gptr;
-
-    dart_gptr_setunit(&gptr, m_myid);
-    dart_gptr_incaddr(&gptr, m_lsize*sizeof(ELEMENT_TYPE));
-    dart_gptr_getaddr(gptr, &addr);
-    return (ELEMENT_TYPE*)(addr);
+  ELEMENT_TYPE* lend() const noexcept {
+    return m_lend;
   }
-
 
   void forall(std::function<void(long long)> func) 
   {
