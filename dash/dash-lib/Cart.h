@@ -6,10 +6,13 @@
 
 namespace dash {
 
+
+enum MemArrange { ROW_MAJOR, COL_MAJOR };
+
 //
 // translate between linar and cartesian coordinates
 //
-template<int DIM, typename SIZE=size_t>
+template<int DIM, typename SIZE=size_t, MemArrange arr=ROW_MAJOR>
 class CartCoord
 {
 protected:
@@ -41,10 +44,25 @@ public:
 
     }
     
-    m_offset[DIM-1]=1;
-    for(auto i=DIM-2; i>=0; i--) {
-      m_offset[i]=m_offset[i+1]*m_extent[i+1];
-    }
+	construct();
+  }
+
+  void construct()
+  {
+	  if (arr == ROW_MAJOR)
+	  {
+		  m_offset[DIM - 1] = 1;
+		  for (auto i = DIM - 2; i >= 0; i--) {
+			  m_offset[i] = m_offset[i + 1] * m_extent[i + 1];
+		  }
+	  }
+	  else
+	  {
+		  m_offset[0] = 1;
+		  for (auto i = 1; i <= DIM-1; i++) {
+			  m_offset[i] = m_offset[i - 1] * m_extent[i - 1];
+		  }
+	  }
   }
 
   int  rank() const { return DIM;  }

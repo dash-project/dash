@@ -53,7 +53,7 @@ namespace dash {
 
 	public:
 
-		template<size_t ndim__> friend class Pattern;
+		template<size_t ndim__, MemArrange arr> friend class Pattern;
 
 		DimBase() {
 		}
@@ -66,14 +66,14 @@ namespace dash {
 		}
 	};
 
-	template<size_t ndim_>
-	class DimRangeBase : public CartCoord < ndim_, long long > {
+	template<size_t ndim_, MemArrange arr = ROW_MAJOR>
+	class DimRangeBase : public CartCoord < ndim_, long long, arr > {
 
 	protected:
 
 	public:
 
-		template<size_t ndim__> friend class Pattern;
+		template<size_t ndim__, MemArrange arr2> friend class Pattern;
 
 		DimRangeBase() {
 		}
@@ -110,8 +110,8 @@ namespace dash {
 		}
 	};
 
-	template<size_t ndim_>
-	class AccessUnit : public DimRangeBase < ndim_ > {
+	template<size_t ndim_, MemArrange arr = ROW_MAJOR>
+	class AccessUnit : public DimRangeBase < ndim_, arr > {
 	public:
 		AccessUnit() {
 		}
@@ -157,11 +157,11 @@ namespace dash {
 		return{ nunit };
 	}
 
-	template<size_t ndim_>
+	template<size_t ndim_, MemArrange arr = ROW_MAJOR>
 	class SizeSpec : public DimRangeBase < ndim_ > {
 	public:
 
-		template<size_t ndim__> friend class ViewOrg;
+		template<size_t ndim__> friend class ViewSpec;
 
 		SizeSpec() {
 		}
@@ -186,17 +186,33 @@ namespace dash {
 	};
 
 	template<size_t ndim_>
-	class ViewOrg : public DimBase < ViewPair, ndim_ > {
+	class ViewSpec : public DimBase < ViewPair, ndim_ > {
+
+	private:
+
+		void update_size()
+		{
+			nelem = 1;
+
+			for (size_t i = 0; i < ndim_; i++)
+			{
+				assert(range[ndim_]>0);
+				nelem *= range[ndim_];
+			}
+		}
+
 	public:
 		long long begin[ndim_];
 		long long range[ndim_];
 		size_t ndim = ndim_;
+		size_t view_dim = ndim_;
 		long long nelem = 0;
 
-		ViewOrg() {
+		ViewSpec() {
 		}
 
-		ViewOrg(SizeSpec<ndim_> m_extentorg) {
+		ViewSpec(SizeSpec<ndim_> m_extentorg) {
+			//TODO
 			memcpy(this->m_extent, m_extentorg.m_extent, sizeof(long long) * ndim_);
 			memcpy(range, m_extentorg.m_extent, sizeof(long long) * ndim_);
 			nelem = m_extentorg.size();
@@ -205,12 +221,17 @@ namespace dash {
 		}
 
 		template<typename T_, typename ... values>
-		ViewOrg(ViewPair value, values ... Values) :
+		ViewSpec(ViewPair value, values ... Values) :
 			DimBase<ViewPair, ndim_>::DimBase(value, Values...) {
+		}
+
+		long long size()
+		{
+			return nelem;
 		}
 	};
 
-	template<size_t ndim_>
+	template<size_t ndim_, MemArrange arr = ROW_MAJOR>
 	class Pattern {
 	private:
 
@@ -276,7 +297,7 @@ namespace dash {
 
 
 		template<int count>
-		void check(const SizeSpec<ndim_> & ds) {
+		void check(const SizeSpec<ndim_, arr> & ds) {
 			//static_assert(count >= ndim_, "Not enough parameters for extent");
 			//static_assert(count < 2 * ndim_, "Too many parameters for pattern");
 
@@ -407,11 +428,12 @@ namespace dash {
 
 		DistSpec<ndim_> 	m_dist;
 		TeamSpec<ndim_> 	m_teamorg;
-		AccessUnit<ndim_> 	m_accessunit;
-		SizeSpec<ndim_> 	m_sizespec;
-		ViewOrg<ndim_> 		m_vieworg;
+		AccessUnit<ndim_, arr> 	m_accessunit;
+		SizeSpec<ndim_, arr> 	m_sizespec;
+		ViewSpec<ndim_> 		m_viewspec;
+		long long    		m_local_begin[ndim_];
 		long long 			m_nunits = dash::Team::All().size();
-		long long 			view_dim;
+		//		long long 			view_dim;
 		long long			m_blocksz;
 		int 				argc_DistEnum = 0;
 		int 				argc_extents = 0;
@@ -446,8 +468,8 @@ namespace dash {
 			checkValidDistEnum();
 
 			m_sizespec.construct();
-			m_vieworg = ViewOrg<ndim_>(m_sizespec);
-			view_dim = ndim_;
+			m_viewspec = ViewSpec<ndim_>(m_sizespec);
+			//view_dim = ndim_;
 
 			checkTile();
 
@@ -458,15 +480,15 @@ namespace dash {
 		}
 
 		//TODO
-		Pattern(const SizeSpec<ndim_> &sizespec, const DistSpec<ndim_> &dist =
+		Pattern(const SizeSpec<ndim_, arr> &sizespec, const DistSpec<ndim_> &dist =
 			DistSpec<ndim_>(), const TeamSpec<ndim_> &teamorg = TeamSpec<ndim_>::TeamSpec(), dash::Team& team = dash::Team::All()) :
 			m_sizespec(sizespec), m_dist(dist), m_teamorg(teamorg), m_team(team) {
 			// unnecessary check
 			// assert(dist.ndim == teamorg.ndim && dist.ndim == m_extentorg.ndim);
 
 			m_nunits = m_team.size();
-			m_vieworg = ViewOrg<ndim_>(m_sizespec);
-			view_dim = ndim_;
+			m_viewspec = ViewSpec<ndim_>(m_sizespec);
+			//			view_dim = ndim_;
 
 			checkValidDistEnum();
 
@@ -474,7 +496,7 @@ namespace dash {
 			constructAccessBase();
 		}
 
-		Pattern(const SizeSpec<ndim_> &sizespec, const DistSpec<ndim_> &dist =
+		Pattern(const SizeSpec<ndim_, arr> &sizespec, const DistSpec<ndim_> &dist =
 			DistSpec<ndim_>(), dash::Team& team = dash::Team::All()) :
 			m_sizespec(sizespec), m_dist(dist), m_teamorg(m_team) {
 			// unnecessary check
@@ -482,8 +504,8 @@ namespace dash {
 
 			m_team = team;
 			m_nunits = m_team.size();
-			m_vieworg = ViewOrg<ndim_>(m_sizespec);
-			view_dim = ndim_;
+			m_viewspec = ViewSpec<ndim_>(m_sizespec);
+			//			view_dim = ndim_;
 
 			checkValidDistEnum();
 
@@ -493,12 +515,12 @@ namespace dash {
 
 		template<typename ... values>
 		long long atunit(values ... Values) const {
-			assert(sizeof...(Values) == view_dim);
+			assert(sizeof...(Values) == ndim_);
 			std::array<long long, ndim_> inputindex = { Values... };
 			return atunit_(inputindex);
 		}
 
-		long long atunit_(std::array<long long, ndim_> input) const {
+		long long atunit_(std::array<long long, ndim_> input, ViewSpec<ndim_> &vs) const {
 			assert(input.size() == ndim_);
 			long long rs = -1;
 			long long index[ndim_];
@@ -507,9 +529,9 @@ namespace dash {
 			if (m_teamorg.ndim() == 1) {
 				rs = 0;
 				for (size_t i = 0; i < ndim_; i++) {
-					index[i] = m_vieworg.begin[i];
-					if (ndim_ - i <= view_dim)
-						index[i] += input[i - (ndim_ - view_dim)];
+					index[i] = m_viewspec.begin[i];
+					if (ndim_ - i <= vs.view_dim)
+						index[i] += input[i - (ndim_ - vs.view_dim)];
 
 					long long cycle = m_teamorg.size() * m_dist.m_extent[i].blocksz;
 					switch (m_dist.m_extent[i].type) {
@@ -538,9 +560,9 @@ namespace dash {
 			}
 			else {
 				for (size_t i = 0; i < ndim_; i++) {
-					index[i] = m_vieworg.begin[i];
-					if (ndim_ - i <= view_dim)
-						index[i] += input[i - (ndim_ - view_dim)];
+					index[i] = m_viewspec.begin[i];
+					if (ndim_ - i <= vs.view_dim)
+						index[i] += input[i - (ndim_ - vs.view_dim)];
 
 					long long cycle = m_teamorg.m_extent[i]
 						* m_dist.m_extent[i].blocksz;
@@ -644,25 +666,51 @@ namespace dash {
 
 		long long index_to_unit(std::array<long long, ndim_> input) const {
 			// i -> [0, nelem)
-
-			return atunit_(input);
+			ViewSpec<ndim_> vs(m_sizespec);
+			return atunit_(input, vs);
 		}
 
 		long long index_to_elem(std::array<long long, ndim_> input) const {
 			// i -> [0, nelem)
+			ViewSpec<ndim_> vs(m_sizespec);
+			return at_(input, vs);
+		}
 
-			return at_(input);
+		long long index_to_elem(std::array<long long, ndim_> input, ViewSpec<ndim_> &vs) const {
+			// i -> [0, nelem)
+
+			return at_(input, vs);
 		}
 
 		template<typename ... values>
 		long long at(values ... Values) const {
-			assert(sizeof...(Values) == view_dim);
+			static_assert(sizeof...(Values) == ndim_, "Wrong parameter number");
 			std::array<long long, ndim_> inputindex = { Values... };
 			return at_(inputindex);
 		}
 
-		long long at_(std::array<long long, ndim_> input) const {
-			assert(input.size() == view_dim);
+		long long local_at_(std::array<long long, ndim_> input, ViewSpec<ndim_> &local_vs) const {
+
+			assert(input.size() == ndim_);
+			long long rs = -1;
+			std::array<long long, ndim_> index;
+			std::array<long long, ndim_> cyclicfix;
+
+			for (size_t i = 0; i < ndim_; i++) {
+
+				index[i] = local_vs.begin[i];
+				if (ndim_ - i <= local_vs.view_dim)
+					index[i] += input[i - (ndim_ - local_vs.view_dim)];
+				cyclicfix[i] = 0;
+			}
+
+			rs = m_accessunit.at(index, cyclicfix);
+		}
+
+
+
+		long long at_(std::array<long long, ndim_> input, ViewSpec<ndim_> &vs) const {
+			assert(input.size() == ndim_);
 			long long rs = -1;
 			long long index[ndim_];
 			std::array<long long, ndim_> teamorgindex;
@@ -678,9 +726,9 @@ namespace dash {
 				else
 					dimunit = m_teamorg.m_extent[i];
 
-				index[i] = m_vieworg.begin[i];
-				if (ndim_ - i <= view_dim)
-					index[i] += input[i - (ndim_ - view_dim)];
+				index[i] = vs.begin[i];
+				if (ndim_ - i <= vs.view_dim)
+					index[i] += input[i - (ndim_ - vs.view_dim)];
 
 				long long cycle = dimunit * m_dist.m_extent[i].blocksz;
 				blocksz[i] = getCeil(m_sizespec.m_extent[i], dimunit);
@@ -787,9 +835,9 @@ namespace dash {
 				m_teamorg = other.m_teamorg;
 				m_accessunit = other.m_accessunit;
 				m_sizespec = other.m_sizespec;
-				m_vieworg = other.m_vieworg;
+				m_viewspec = other.m_viewspec;
 				m_nunits = other.m_nunits;
-				view_dim = other.view_dim;
+				//				view_dim = other.view_dim;
 				m_blocksz = other.m_blocksz;
 				argc_DistEnum = other.argc_DistEnum;
 				argc_extents = other.argc_extents;
@@ -810,7 +858,7 @@ namespace dash {
 			return m_dist;
 		}
 
-		SizeSpec<ndim_> sizespec() const {
+		SizeSpec<ndim_, arr> sizespec() const {
 			return m_sizespec;
 		}
 
@@ -829,14 +877,14 @@ namespace dash {
 			}
 		}
 
-		bool is_local(size_t idx, size_t myid, size_t dim)
+		bool is_local(size_t idx, size_t myid, size_t dim, ViewSpec<ndim_> &vs)
 		{
 			long long dimunit;
 			size_t myidx;
 			bool ret = false;
 			long long cycle = m_teamorg.size() * m_dist.m_extent[dim].blocksz;
 
-                        
+
 			if (ndim_ > 1 && m_teamorg.ndim() == 1)
 			{
 				dimunit = m_teamorg.size();
@@ -848,21 +896,21 @@ namespace dash {
 				myidx = m_teamorg.index_at_dim(myid, dim);
 			}
 
-//                        printf("idx %d myid %d dim %d myidx %d dimunit %d cycle %d\n", idx, myid, dim, myidx, dimunit, cycle);			
+			//                        printf("idx %d myid %d dim %d myidx %d dimunit %d cycle %d\n", idx, myid, dim, myidx, dimunit, cycle);			
 
 			switch (m_dist.m_extent[dim].type) {
 			case DistEnum::disttype::BLOCKED:
 
 
-				if ( (idx >= getCeil(m_sizespec.m_extent[dim], dimunit)*(myidx)) &&
-					(idx < getCeil(m_sizespec.m_extent[dim], dimunit)*(myidx + 1) ) )
+				if ((idx >= getCeil(m_sizespec.m_extent[dim], dimunit)*(myidx)) &&
+					(idx < getCeil(m_sizespec.m_extent[dim], dimunit)*(myidx + 1)))
 					ret = true;
 
 				break;
 			case DistEnum::disttype::BLOCKCYCLIC:
 
-				ret = ((idx % cycle) >= m_dist.m_extent[dim].blocksz * (myidx) ) &&
-					((idx % cycle) < m_dist.m_extent[dim].blocksz * (myidx + 1) );
+				ret = ((idx % cycle) >= m_dist.m_extent[dim].blocksz * (myidx)) &&
+					((idx % cycle) < m_dist.m_extent[dim].blocksz * (myidx + 1));
 
 				break;
 			case DistEnum::disttype::CYCLIC:
@@ -873,7 +921,7 @@ namespace dash {
 			case DistEnum::disttype::TILE:
 
 				ret = ((idx % cycle) >= m_dist.m_extent[dim].blocksz * (myidx)) &&
-					((idx % cycle) < m_dist.m_extent[dim].blocksz * (myidx + 1) );
+					((idx % cycle) < m_dist.m_extent[dim].blocksz * (myidx + 1));
 
 				break;
 			case DistEnum::disttype::NONE:
@@ -882,15 +930,15 @@ namespace dash {
 			default:
 				break;
 			}
-			
+
 			return ret;
 		}
 
 		Pattern row(const long long index) const {
 			Pattern<ndim_> rs = this;
-			rs.view_dim = view_dim - 1;
-			assert(ndim_ - rs.view_dim - 1 >= 0);
-			rs.m_vieworg.begin[ndim_ - rs.view_dim - 1] = index;
+			//			rs.view_dim = view_dim - 1;
+			//			assert(ndim_ - rs.view_dim - 1 >= 0);
+			//			rs.m_viewspec.begin[ndim_ - rs.view_dim - 1] = index;
 
 			return rs;
 		}

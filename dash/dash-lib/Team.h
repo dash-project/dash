@@ -26,7 +26,7 @@ namespace dash
 // - move-assignment
 class Team
 {
-  template<size_t DIM> friend class Pattern;
+  template<size_t ndim__, MemArrange arr2> friend class Pattern;
   template<size_t DIM> friend class TeamSpec;
   template< class U> friend class Array;
   template< class U, size_t DIM> friend class Matrix;
