@@ -1,3 +1,8 @@
+/* 
+ * stdalgo/main.cpp 
+ *
+ * author(s): Karl Fuerlinger, LMU Munich */
+/* @DASH_HEADER@ */
 
 #include <algorithm>
 #include <iostream>
@@ -13,10 +18,10 @@ void test_sequence_predicates();
 int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
-
+  
   test_for_each(100);
   test_count(100);
-  //test_sequence_predicates();
+  test_sequence_predicates();
 
   dash::finalize();
 }
