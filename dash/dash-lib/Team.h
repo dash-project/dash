@@ -66,13 +66,21 @@ private:
   size_t       m_position=0;
   static Team  m_team_all;
   static Team  m_team_null;
-
-
+  bool         m_havegroup=false;
 
   void free_team() {
     if( m_dartid!=DART_TEAM_NULL ) {
       //cout<<myid()<<" Freeing Team with id "<<m_dartid<<endl;
     }
+  }
+
+  void get_group() {
+    size_t sz; dart_group_sizeof(&sz);
+    m_group = (dart_group_t*)malloc(sz);
+    dart_group_init(m_group);
+    
+    dart_team_get_group(m_dartid, m_group);
+    m_havegroup=true;
   }
 
 public:
@@ -139,6 +147,9 @@ public:
     if( m_child ) delete(m_child);
     barrier();
     free_team();
+    if(m_dartid==DART_TEAM_ALL) {
+      dart_exit();
+    }
   }
   
   static Team& All() {
@@ -159,6 +170,7 @@ public:
     group = (dart_group_t*) malloc(size);
     for(int i=0; i<nParts; i++ ) {
       gout[i] = (dart_group_t*) malloc(size);
+      dart_group_init(gout[i]);
     }
     
     Team *result = &(dash::Team::Null());
@@ -179,7 +191,7 @@ public:
     dart_team_t oldteam = m_dartid;
     
     for(int i=0; i<nParts; i++) {
-      dart_team_t newteam;
+      dart_team_t newteam=DART_TEAM_NULL;
       
       dart_team_create(oldteam, gout[i], &newteam);
       
@@ -222,6 +234,9 @@ public:
 
   bool isMember(size_t guid) {
     int32_t ismember;
+    if(!m_havegroup) { 
+      get_group();
+    }
     dart_group_ismember(m_group, guid, 
 			&ismember);
     return ismember;

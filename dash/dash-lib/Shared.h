@@ -42,6 +42,11 @@ public:
     m_ptr = new GlobPtr<value_type>(m_pattern, m_dart_gptr, 0);
   }
 
+  Shared(TYPE val, dash::Team& t=dash::Team::All()) :
+    Shared(t) {
+    (*m_ptr[0])=val;
+  }
+
   reference operator=(const TYPE& rhs)
   {
     reference ref = (*m_ptr[0])=rhs;
