@@ -8,7 +8,7 @@
 #include "Pattern1D.h"
 #include "MemAccess.h"
 #include "GlobRef.h"
-#include "GlobPtr.h"
+#include "GlobIter.h"
 #include "Array.h"
 #include "Shared.h"
 #include "HView.h"

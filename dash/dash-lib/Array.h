@@ -7,7 +7,7 @@
 
 #include "Team.h"
 #include "Pattern1D.h"
-#include "GlobPtr.h"
+#include "GlobIter.h"
 #include "GlobRef.h"
 #include "HView.h"
 
@@ -80,16 +80,16 @@ public:
   typedef size_t size_type;
   typedef size_t difference_type;
 
-  typedef       GlobPtr<value_type>         iterator;
-  typedef const GlobPtr<value_type>   const_iterator;
+  typedef       GlobIter<value_type>         iterator;
+  typedef const GlobIter<value_type>   const_iterator;
   typedef std::reverse_iterator<      iterator>       reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   typedef       GlobRef<value_type>       reference;
   typedef const GlobRef<value_type> const_reference;
 
-  typedef       GlobPtr<value_type>       pointer;
-  typedef const GlobPtr<value_type> const_pointer;
+  typedef       GlobIter<value_type>       pointer;
+  typedef const GlobIter<value_type> const_pointer;
 
 private:
   dash::Team&      m_team;
@@ -137,7 +137,7 @@ public:
     dart_ret_t ret = 
       dart_team_memalloc_aligned(teamid, lsize, &m_dart_gptr);
     
-    m_ptr = new GlobPtr<value_type>(m_pattern, m_dart_gptr, 0);
+    m_ptr = new GlobIter<value_type>(m_pattern, m_dart_gptr, 0);
     
     m_size     = m_pattern.nelem();
     m_lsize    = lelem;

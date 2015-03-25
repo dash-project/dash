@@ -4,7 +4,7 @@
 
 #include "Team.h"
 #include "Pattern1D.h"
-#include "GlobPtr.h"
+#include "GlobIter.h"
 #include "GlobRef.h"
 
 #include "dart.h"
@@ -18,7 +18,7 @@ class Shared
 public:
   typedef TYPE value_type;
   typedef GlobRef<value_type> reference;
-  typedef GlobPtr<value_type> pointer;
+  typedef GlobIter<value_type> pointer;
 
 private:
   dash::Team&      m_team;
@@ -39,7 +39,7 @@ public:
     dart_ret_t ret = 
       dart_team_memalloc_aligned(teamid, lsize, &m_dart_gptr);
 
-    m_ptr = new GlobPtr<value_type>(m_pattern, m_dart_gptr, 0);
+    m_ptr = new GlobIter<value_type>(m_pattern, m_dart_gptr, 0);
   }
 
   Shared(TYPE val, dash::Team& t=dash::Team::All()) :

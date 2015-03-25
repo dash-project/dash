@@ -28,7 +28,7 @@ class Team
 {
   template< class U> friend class Array;
   template< class U> friend class Shared;
-  template< class U> friend class GlobPtr;
+  template< class U> friend class GlobIter;
   template< class U> friend class GlobRef;
 
 public:
