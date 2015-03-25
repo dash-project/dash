@@ -473,7 +473,7 @@ public:
     Matrix(const dash::SizeSpec<DIM> &ss,
            const dash::DistSpec<DIM> &ds = dash::DistSpec<DIM>(),
            Team &t = dash::Team::All(), const TeamSpec<DIM> &ts = TeamSpec<DIM>())
-        : m_team(t), m_pattern(ss, ds, ts, t), local(this) {
+        : m_team(t), m_pattern(ss, ds, ts, t) {
         // Matrix is a friend of class Team
         dart_team_t teamid = m_team.m_dartid;
 
@@ -490,6 +490,10 @@ public:
 
         m_myid = m_team.myid();
 
+	m_ref.m_proxy = new Matrix_RefProxy<value_type, DIM>;
+	m_ref.m_proxy->m_dim = 0;
+	m_ref.m_proxy->m_mat = this;
+	m_ref.m_proxy->m_viewspec = m_pattern.m_viewspec;
         // m_realsize = lelem * m_team.size();
     }
 

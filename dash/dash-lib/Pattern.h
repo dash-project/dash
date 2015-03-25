@@ -430,7 +430,9 @@ namespace dash {
 		TeamSpec<ndim_> 	m_teamorg;
 		AccessUnit<ndim_, arr> 	m_accessunit;
 		SizeSpec<ndim_, arr> 	m_sizespec;
+		public:
 		ViewSpec<ndim_> 		m_viewspec;
+		private:
 		long long    		m_local_begin[ndim_];
 		long long 			m_nunits = dash::Team::All().size();
 		//		long long 			view_dim;
