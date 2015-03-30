@@ -7,6 +7,7 @@
 
 #include "GlobRef.h"
 #include "MemAccess.h"
+#include "Pattern.h"
 
 // KF
 typedef long long gptrdiff_t;
@@ -14,19 +15,20 @@ typedef long long gptrdiff_t;
 namespace dash
 {
 
-template<typename T>
+template<typename T, size_t DIM>
 class GlobIter : 
     public std::iterator<std::random_access_iterator_tag,
 			 T, gptrdiff_t,
-			 GlobIter<T>, GlobRef<T> >
+			 GlobPtr<T, DIM>, GlobRef<T> >
 {
-protected:
-  Pattern1D      m_pat;
+private:
+//  Pattern1D      m_pat;
+  Pattern<DIM>        m_pat;
   MemAccess<T>   m_acc;
   long long      m_idx;
   
 public:
-  explicit GlobIter(const Pattern1D& pattern,
+  explicit GlobPtr(const Pattern<DIM>& pattern,
 		   dart_gptr_t      begptr,
 		   long long        idx=0) :
     m_pat(pattern),
@@ -35,7 +37,7 @@ public:
     m_idx = idx;
   }
 
-  explicit GlobIter(const Pattern1D&      pattern,
+  explicit GlobPtr(const Pattern<DIM>&      pattern,
 		   const MemAccess<T>&   accessor, 
 		   long long      idx=0) :
     m_pat(pattern),
@@ -50,72 +52,77 @@ public:
 
 public: 
 
-  GlobRef<T> operator*()
+/*  GlobRef<T> operator*()
   { // const
     size_t unit = m_pat.index_to_unit(m_idx);
     size_t elem = m_pat.index_to_elem(m_idx);
     return GlobRef<T>(m_acc, unit, elem);
+  }*/
+
+  GlobRef<T> get(size_t unit , size_t elem)
+  { // const
+    return GlobRef<T>(m_acc, unit, elem);
   }
   
   // prefix++ operator
-  GlobIter<T>& operator++()
+  GlobPtr<T, DIM>& operator++()
   {
     m_idx++;
     return *this;
   }
   
   // postfix++ operator
-  GlobIter<T> operator++(int)
+  GlobPtr<T, DIM> operator++(int)
   {
-    GlobIter<T> result = *this;
+    GlobPtr<T, DIM> result = *this;
     m_idx++;
     return result;
   }
 
   // prefix-- operator
-  GlobIter<T>& operator--()
+  GlobPtr<T, DIM>& operator--()
   {
     m_idx--;
     return *this;
   }
   
   // postfix-- operator
-  GlobIter<T> operator--(int)
+  GlobPtr<T, DIM> operator--(int)
   {
-    GlobIter<T> result = *this;
+    GlobPtr<T, DIM> result = *this;
     m_idx--;
     return result;
   }
   
-  GlobIter<T>& operator+=(gptrdiff_t n)
+  GlobPtr<T, DIM>& operator+=(gptrdiff_t n)
   {
     m_idx+=n;
     return *this;
   }
   
-  GlobIter<T>& operator-=(gptrdiff_t n)
+  GlobPtr<T, DIM>& operator-=(gptrdiff_t n)
   {
     m_idx-=n;
     return *this;
   }
 
   // subscript
-  GlobRef<T> operator[](gptrdiff_t n) 
+/*  GlobRef<T> operator[](gptrdiff_t n) 
   {
     size_t unit = m_pat.index_to_unit(n);
     size_t elem = m_pat.index_to_elem(n);
     return GlobRef<T>(m_acc, unit, elem);
-  }
+  }*/
   
-  GlobIter<T> operator+(gptrdiff_t n) const
+  GlobPtr<T, DIM> operator+(gptrdiff_t n) const
   {
-    GlobIter<T> res(m_pat, m_acc, m_idx+n);
+    GlobPtr<T, DIM> res(m_pat, m_acc, m_idx+n);
     return res;
   }
   
-  GlobIter<T> operator-(gptrdiff_t n) const
+  GlobPtr<T, DIM> operator-(gptrdiff_t n) const
   {
-    GlobIter<T> res(m_pat, m_acc, m_idx-n);
+    GlobPtr<T, DIM> res(m_pat, m_acc, m_idx-n);
     return res;
   }
 
@@ -124,32 +131,32 @@ public:
     return gptrdiff_t(m_idx)-gptrdiff_t(other.m_idx);
   }
 
-  bool operator!=(const GlobIter<T>& other) const
+  bool operator!=(const GlobPtr<T, DIM>& other) const
   {
     return m_idx!=other.m_idx || !(m_acc.equals(other.m_acc));
   }
 
-  bool operator==(const GlobIter<T>& other) const
+  bool operator==(const GlobPtr<T, DIM>& other) const
   {
     return m_idx==other.m_idx && m_acc.equals(other.m_acc) ;
   }
 
-  bool operator<(const GlobIter<T>& other) const
+  bool operator<(const GlobPtr<T, DIM>& other) const
   {
     // TODO: check that m_acc equals other.m_acc?!
     return m_idx < other.m_idx;
   }
-  bool operator>(const GlobIter<T>& other) const
+  bool operator>(const GlobPtr<T, DIM>& other) const
   {
     // TODO: check that m_acc equals other.m_acc?!
     return m_idx > other.m_idx;
   }
-  bool operator<=(const GlobIter<T>& other) const
+  bool operator<=(const GlobPtr<T, DIM>& other) const
   {
     // TODO: check that m_acc equals other.m_acc?!
     return m_idx <= other.m_idx;
   }
-  bool operator>=(const GlobIter<T>& other) const
+  bool operator>=(const GlobPtr<T, DIM>& other) const
   {
     // TODO: check that m_acc equals other.m_acc?!
     return m_idx >= other.m_idx;

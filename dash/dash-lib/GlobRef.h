@@ -11,10 +11,13 @@ class GlobRef
 private:
   // KF: Q: do we want a copy of the accessor here or a reference=
   MemAccess<T>  m_accessor;
-  size_t        m_unit;
+
   size_t        m_idx;
   
 public:
+
+  size_t        m_unit;
+
   GlobRef( const MemAccess<T>& acc, size_t unit, size_t idx ) :
     m_accessor(acc) 
   {

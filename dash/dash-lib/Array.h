@@ -6,8 +6,8 @@
 #include <stdexcept>
 
 #include "Team.h"
-#include "Pattern1D.h"
-#include "GlobIter.h"
+//#include "Pattern.h"
+#include "Pattern.h"
 #include "GlobRef.h"
 #include "HView.h"
 
@@ -25,16 +25,16 @@ namespace dash
        difference_type  Signed type of difference between
                         iterators
 
-              iterator  Behaves like value_typeâˆ—
-        const_iterator  Behaves like const value_typeâˆ—
-      reverse_iterator  Behaves like value_typeâˆ—
-const_reverse_iterator  Behaves like const value_typeâˆ—
+              iterator  Behaves like value_typeâˆ
+        const_iterator  Behaves like const value_typeâˆ
+      reverse_iterator  Behaves like value_typeâˆ
+const_reverse_iterator  Behaves like const value_typeâˆ
 
              reference  value_type&
        const_reference  const value_type&
 
-               pointer  Behaves like value_typeâˆ—
-         const_pointer  Behaves like const value_typeâˆ—
+               pointer  Behaves like value_typeâˆ
+         const_pointer  Behaves like const value_typeâˆ
 */
 
 template<typename T>
@@ -47,7 +47,7 @@ public:
   typedef size_t size_type;
 
 private:
-  Array<T> *m_ptr;
+	Array<T> *m_ptr;
 
 public:
   LocalProxyArray(Array<T>* ptr) {
@@ -80,21 +80,21 @@ public:
   typedef size_t size_type;
   typedef size_t difference_type;
 
-  typedef       GlobIter<value_type>         iterator;
-  typedef const GlobIter<value_type>   const_iterator;
+  typedef       GlobPtr<value_type, 1>         iterator;
+  typedef const GlobPtr<value_type, 1>   const_iterator;
   typedef std::reverse_iterator<      iterator>       reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   typedef       GlobRef<value_type>       reference;
   typedef const GlobRef<value_type> const_reference;
 
-  typedef       GlobIter<value_type>       pointer;
-  typedef const GlobIter<value_type> const_pointer;
+  typedef       GlobPtr<value_type, 1>       pointer;
+  typedef const GlobPtr<value_type, 1> const_pointer;
 
 private:
   dash::Team&      m_team;
   dart_unit_t      m_myid;
-  dash::Pattern1D  m_pattern;
+  dash::Pattern<1>    m_pattern;
   size_type        m_size;    // total size (#elements)
   size_type        m_lsize;   // local size (#local elements)
   pointer*         m_ptr;
@@ -121,10 +121,11 @@ public:
   
 public: 
 
-  Array(size_t nelem, dash::DistSpec ds, 
-	Team& t=dash::Team::All() ) : 
+  Array(const dash::SizeSpec<1>& ss, const dash::DistSpec<1>& ds=dash::DistSpec<1>(), 
+	 Team &t=dash::Team::All(), const TeamSpec<1> &ts =
+			TeamSpec<1>()) : 
     m_team(t), 
-    m_pattern(nelem, ds, t),
+    m_pattern(ss, ds, ts, t),
     local(this)
   {
     // Array is a friend of class Team 
@@ -137,7 +138,7 @@ public:
     dart_ret_t ret = 
       dart_team_memalloc_aligned(teamid, lsize, &m_dart_gptr);
     
-    m_ptr = new GlobIter<value_type>(m_pattern, m_dart_gptr, 0);
+    m_ptr = new GlobPtr<value_type, 1>(m_pattern, m_dart_gptr, 0);
     
     m_size     = m_pattern.nelem();
     m_lsize    = lelem;
@@ -162,14 +163,14 @@ public:
   }
 
   // delegating constructor
-  Array(const dash::Pattern1D& pat ) : 
-    Array(pat.nelem(), pat.distspec(), pat.team())
+  Array(const dash::Pattern<1>& pat ) : 
+    Array(pat.sizespec(), pat.distspec(), pat.team(), pat.teamspec())
   { }
 
   // delegating constructor
   Array(size_t nelem, 
 	Team &t=dash::Team::All()) : 
-    Array(nelem, dash::BLOCKED, t)
+    Array(dash::Pattern<1>(nelem, t))
   { }
 
 #if 0
@@ -183,7 +184,7 @@ public:
     dart_team_memfree(teamid, m_dart_gptr);
   }
 
-  Pattern1D& pattern() {
+  Pattern<1>& pattern() {
     return m_pattern;
   }
 
@@ -270,14 +271,18 @@ public:
     return operator[](pos);
   }
 
+		Pattern<1> pattern() const {
+			return m_pattern;
+		}
+
   bool islocal(size_type n)
   {
     return m_pattern.index_to_unit(n)==m_myid;
   }
 
   template<int level>
-  dash::HView<Array<ELEMENT_TYPE>, level> hview() {
-    return dash::HView<Array<ELEMENT_TYPE>, level>(*this);
+  dash::HView<Array<ELEMENT_TYPE>, level, 1> hview() {
+    return dash::HView<Array<ELEMENT_TYPE>, level, 1>(*this);
   }
 };
 

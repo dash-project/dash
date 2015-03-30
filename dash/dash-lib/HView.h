@@ -10,15 +10,15 @@ using std::endl;
 
 namespace dash {
 
-template<class CONT, int LEVEL> 
+template<class CONT, int LEVEL, size_t DIM> 
 class HIter : public CONT::iterator
 {
 private:
-  Pattern1D&  m_pattern;
+  Pattern<DIM>&  m_pattern;
   Team&       m_subteam;
 
 public:
-  HIter<CONT,LEVEL>& advance() {
+  HIter<CONT,LEVEL, DIM>& advance() {
     auto idx = CONT::iterator::m_idx;
     
     for(;idx<m_pattern.nelem(); idx++ ) {
@@ -37,7 +37,7 @@ public:
 
 public:
   HIter(typename CONT::iterator it, 
-	Pattern1D& pattern,
+	Pattern<DIM>& pattern,
 	Team& subteam) : CONT::iterator(it), 
 			 m_pattern(pattern),
 			 m_subteam(subteam) {
@@ -47,7 +47,7 @@ public:
     cout<<CONT::iterator::m_idx<<endl;
   }
 
-  HIter<CONT,LEVEL>& operator++() 
+  HIter<CONT,LEVEL, DIM>& operator++() 
   {
     CONT::iterator::m_idx++;
     return advance();
@@ -56,7 +56,7 @@ public:
 };
 
 
-template<class CONT, int LEVEL>
+template<class CONT, int LEVEL, size_t DIM>
 class HView
 {
 public:
@@ -66,18 +66,18 @@ public:
 private:
   CONT&        m_container;
   Team&        m_subteam;
-  Pattern1D&   m_pat;
+  Pattern<DIM>&   m_pat;
 
-  HIter<CONT,LEVEL> m_begin;
-  HIter<CONT,LEVEL> m_end;
+  HIter<CONT,LEVEL,DIM> m_begin;
+  HIter<CONT,LEVEL, DIM> m_end;
 
-  HIter<CONT,LEVEL> find_begin() {
-    HIter<CONT,LEVEL> it = {m_container.begin(),m_pat,m_subteam};
+  HIter<CONT,LEVEL,DIM> find_begin() {
+    HIter<CONT,LEVEL,DIM> it = {m_container.begin(),m_pat,m_subteam};
     it.advance();
     return it;
   }
 
-  HIter<CONT,LEVEL> find_end() {
+  HIter<CONT,LEVEL,DIM> find_end() {
     return {m_container.end(),m_pat,m_subteam};
   }
   
@@ -93,18 +93,18 @@ public:
     std::cout<<"This team has size "<<m_subteam.size()<<std::endl;
   }
   
-  HIter<CONT,LEVEL> begin() { 
+  HIter<CONT,LEVEL,DIM> begin() { 
     return m_begin;
   }
   
-  HIter<CONT,LEVEL> end() { 
+  HIter<CONT,LEVEL,DIM> end() { 
     return m_end;
   }
 };
 
 
-template<class CONT>
-class HView<CONT, -1>
+template<class CONT, size_t DIM>
+class HView<CONT, -1, DIM>
 {
 public:
   typedef typename CONT::iterator     iterator;
@@ -113,7 +113,7 @@ public:
 private:
   Team&     m_subteam;
   CONT&     m_container;
-  Pattern1D&  m_pat;
+  Pattern<DIM>&  m_pat;
 
 public:
   HView(CONT& cont) : m_container(cont), 
