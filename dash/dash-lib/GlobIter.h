@@ -16,10 +16,10 @@ namespace dash
 {
 
 template<typename T, size_t DIM>
-class GlobPtr : 
+class GlobIter : 
     public std::iterator<std::random_access_iterator_tag,
 			 T, gptrdiff_t,
-			 GlobPtr<T, DIM>, GlobRef<T> >
+			 GlobIter<T, DIM>, GlobRef<T> >
 {
 private:
 //  Pattern1D      m_pat;
@@ -28,7 +28,7 @@ private:
   long long      m_idx;
   
 public:
-  explicit GlobPtr(const Pattern<DIM>& pattern,
+  explicit GlobIter(const Pattern<DIM>& pattern,
 		   dart_gptr_t      begptr,
 		   long long        idx=0) :
     m_pat(pattern),
@@ -37,7 +37,7 @@ public:
     m_idx = idx;
   }
 
-  explicit GlobPtr(const Pattern<DIM>&      pattern,
+  explicit GlobIter(const Pattern<DIM>&      pattern,
 		   const MemAccess<T>&   accessor, 
 		   long long      idx=0) :
     m_pat(pattern),
@@ -46,7 +46,7 @@ public:
     m_idx = idx;
   }
 
-  virtual ~GlobPtr()
+  virtual ~GlobIter()
   {
   }
 
@@ -65,42 +65,42 @@ public:
   }
   
   // prefix++ operator
-  GlobPtr<T, DIM>& operator++()
+  GlobIter<T, DIM>& operator++()
   {
     m_idx++;
     return *this;
   }
   
   // postfix++ operator
-  GlobPtr<T, DIM> operator++(int)
+  GlobIter<T, DIM> operator++(int)
   {
-    GlobPtr<T, DIM> result = *this;
+    GlobIter<T, DIM> result = *this;
     m_idx++;
     return result;
   }
 
   // prefix-- operator
-  GlobPtr<T, DIM>& operator--()
+  GlobIter<T, DIM>& operator--()
   {
     m_idx--;
     return *this;
   }
   
   // postfix-- operator
-  GlobPtr<T, DIM> operator--(int)
+  GlobIter<T, DIM> operator--(int)
   {
-    GlobPtr<T, DIM> result = *this;
+    GlobIter<T, DIM> result = *this;
     m_idx--;
     return result;
   }
   
-  GlobPtr<T, DIM>& operator+=(gptrdiff_t n)
+  GlobIter<T, DIM>& operator+=(gptrdiff_t n)
   {
     m_idx+=n;
     return *this;
   }
   
-  GlobPtr<T, DIM>& operator-=(gptrdiff_t n)
+  GlobIter<T, DIM>& operator-=(gptrdiff_t n)
   {
     m_idx-=n;
     return *this;
@@ -114,49 +114,49 @@ public:
     return GlobRef<T>(m_acc, unit, elem);
   }*/
   
-  GlobPtr<T, DIM> operator+(gptrdiff_t n) const
+  GlobIter<T, DIM> operator+(gptrdiff_t n) const
   {
-    GlobPtr<T, DIM> res(m_pat, m_acc, m_idx+n);
+    GlobIter<T, DIM> res(m_pat, m_acc, m_idx+n);
     return res;
   }
   
-  GlobPtr<T, DIM> operator-(gptrdiff_t n) const
+  GlobIter<T, DIM> operator-(gptrdiff_t n) const
   {
-    GlobPtr<T, DIM> res(m_pat, m_acc, m_idx-n);
+    GlobIter<T, DIM> res(m_pat, m_acc, m_idx-n);
     return res;
   }
 
-  gptrdiff_t operator-(const GlobPtr& other) const
+  gptrdiff_t operator-(const GlobIter& other) const
   {
     return gptrdiff_t(m_idx)-gptrdiff_t(other.m_idx);
   }
 
-  bool operator!=(const GlobPtr<T, DIM>& other) const
+  bool operator!=(const GlobIter<T, DIM>& other) const
   {
     return m_idx!=other.m_idx || !(m_acc.equals(other.m_acc));
   }
 
-  bool operator==(const GlobPtr<T, DIM>& other) const
+  bool operator==(const GlobIter<T, DIM>& other) const
   {
     return m_idx==other.m_idx && m_acc.equals(other.m_acc) ;
   }
 
-  bool operator<(const GlobPtr<T, DIM>& other) const
+  bool operator<(const GlobIter<T, DIM>& other) const
   {
     // TODO: check that m_acc equals other.m_acc?!
     return m_idx < other.m_idx;
   }
-  bool operator>(const GlobPtr<T, DIM>& other) const
+  bool operator>(const GlobIter<T, DIM>& other) const
   {
     // TODO: check that m_acc equals other.m_acc?!
     return m_idx > other.m_idx;
   }
-  bool operator<=(const GlobPtr<T, DIM>& other) const
+  bool operator<=(const GlobIter<T, DIM>& other) const
   {
     // TODO: check that m_acc equals other.m_acc?!
     return m_idx <= other.m_idx;
   }
-  bool operator>=(const GlobPtr<T, DIM>& other) const
+  bool operator>=(const GlobIter<T, DIM>& other) const
   {
     // TODO: check that m_acc equals other.m_acc?!
     return m_idx >= other.m_idx;
@@ -165,7 +165,7 @@ public:
   std::string to_string() const
   {
     std::ostringstream oss;
-    oss << "GlobPtr[m_acc:" << m_acc.to_string() << "]";
+    oss << "GlobIter[m_acc:" << m_acc.to_string() << "]";
     return oss.str();
   }
 };

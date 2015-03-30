@@ -31,7 +31,7 @@ class Team
   template< class U> friend class Array;
   template< class U, size_t DIM> friend class Matrix;
   template< class U, size_t DIM> friend class Shared;
-  template< class U, size_t DIM> friend class GlobPtr;
+  template< class U, size_t DIM> friend class GlobIter;
   template< class U> friend class GlobRef;
 
 public:

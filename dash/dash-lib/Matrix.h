@@ -53,16 +53,16 @@ namespace dash {
 		typedef size_t size_type;
 		typedef size_t difference_type;
 
-		typedef GlobPtr<value_type, DIM> iterator;
-		typedef const GlobPtr<value_type, DIM> const_iterator;
+		typedef GlobIter<value_type, DIM> iterator;
+		typedef const GlobIter<value_type, DIM> const_iterator;
 		typedef std::reverse_iterator<iterator> reverse_iterator;
 		typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
 		typedef GlobRef<value_type> reference;
 		typedef const GlobRef<value_type> const_reference;
 
-		typedef GlobPtr<value_type, DIM> pointer;
-		typedef const GlobPtr<value_type, DIM> const_pointer;
+		typedef GlobIter<value_type, DIM> pointer;
+		typedef const GlobIter<value_type, DIM> const_pointer;
 
 		operator Local_Ref<T, DIM, CUR - 1> && ()
 		{
@@ -242,16 +242,16 @@ namespace dash {
 		typedef size_t size_type;
 		typedef size_t difference_type;
 
-		typedef GlobPtr<value_type, DIM> iterator;
-		typedef const GlobPtr<value_type, DIM> const_iterator;
+		typedef GlobIter<value_type, DIM> iterator;
+		typedef const GlobIter<value_type, DIM> const_iterator;
 		typedef std::reverse_iterator<iterator> reverse_iterator;
 		typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
 		typedef GlobRef<value_type> reference;
 		typedef const GlobRef<value_type> const_reference;
 
-		typedef GlobPtr<value_type, DIM> pointer;
-		typedef const GlobPtr<value_type, DIM> const_pointer;
+		typedef GlobIter<value_type, DIM> pointer;
+		typedef const GlobIter<value_type, DIM> const_pointer;
 
 		operator Matrix_Ref<T, DIM, CUR - 1> && ()
 		{
@@ -510,16 +510,16 @@ namespace dash {
 		typedef size_t size_type;
 		typedef size_t difference_type;
 
-		typedef GlobPtr<value_type, DIM> iterator;
-		typedef const GlobPtr<value_type, DIM> const_iterator;
+		typedef GlobIter<value_type, DIM> iterator;
+		typedef const GlobIter<value_type, DIM> const_iterator;
 		typedef std::reverse_iterator<iterator> reverse_iterator;
 		typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
 		typedef GlobRef<value_type> reference;
 		typedef const GlobRef<value_type> const_reference;
 
-		typedef GlobPtr<value_type, DIM> pointer;
-		typedef const GlobPtr<value_type, DIM> const_pointer;
+		typedef GlobIter<value_type, DIM> pointer;
+		typedef const GlobIter<value_type, DIM> const_pointer;
 
 	private:
 		dash::Team &m_team;
@@ -561,7 +561,7 @@ namespace dash {
 			m_dart_gptr = DART_GPTR_NULL;
 			dart_ret_t ret = dart_team_memalloc_aligned(teamid, lsize, &m_dart_gptr);
 
-			m_ptr = new GlobPtr<value_type, DIM>(m_pattern, m_dart_gptr, 0);
+			m_ptr = new GlobIter<value_type, DIM>(m_pattern, m_dart_gptr, 0);
 
 			m_size = m_pattern.nelem();
 			m_lsize = lelem;
