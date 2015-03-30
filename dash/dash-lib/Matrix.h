@@ -21,6 +21,8 @@ namespace dash {
 	template <typename T, size_t DIM, size_t CUR> class Matrix_Ref;
 	template <typename T, size_t DIM, size_t CUR> class Local_Ref;
 
+	// RefProxy stores information needed by subscripting and subdim selection.
+	// New RefProxy should be created once for multi-subscripting.
 	template <typename T, size_t DIM> class Matrix_RefProxy {
 
 	private:
@@ -36,7 +38,8 @@ namespace dash {
 
 		Matrix_RefProxy<T, DIM>() = default;
 	};
-
+	
+	// Wrapper class for RefProxy. Local_Ref represents local part of a Matrix and provices local operations.
 	template <typename T, size_t DIM, size_t CUR = DIM> class Local_Ref {
 
 	private:
@@ -71,6 +74,7 @@ namespace dash {
 			return std::move(ref);
 		}
 
+		// SHOULD avoid cast from Matrix_Ref to Local_Ref. Different operation semantics.
 		operator Matrix_Ref<T, DIM, CUR> ()
 		{
 			Matrix_Ref<T, DIM, CUR>  ref;
@@ -229,6 +233,8 @@ namespace dash {
 		}
 	};
 
+
+	// Wrapper class for RefProxy. Matrix_Ref represents Matrix and Submatrix a Matrix and provices global operations.
 	template <typename T, size_t DIM, size_t CUR = DIM> class Matrix_Ref {
 
 	private:
@@ -417,7 +423,7 @@ namespace dash {
 			return m_proxy->m_mat->m_pattern;
 		}
 
-		//For 1D
+		//For 1D. OBSOLETE
 		bool islocal(size_type n) {
 			return m_proxy->m_mat->m_pattern.index_to_unit(n, m_proxy->m_viewspec) == m_proxy->m_mat->m_myid;
 		}
@@ -432,6 +438,7 @@ namespace dash {
 		}
 	};
 
+	// Partial Specialization for value deferencing.
 	template <typename T, size_t DIM>
 	class Local_Ref < T, DIM, 0 >
 	{
@@ -466,6 +473,7 @@ namespace dash {
 		}
 	};
 
+	// Partial Specialization for value deferencing.
 	template <typename T, size_t DIM>
 	class Matrix_Ref < T, DIM, 0 >
 	{
@@ -548,6 +556,7 @@ namespace dash {
 			return m_local;
 		}
 
+		// Proxy, Matrix_Ref and Local_Ref are created at initialization.
 		Matrix(const dash::SizeSpec<DIM> &ss,
 			const dash::DistSpec<DIM> &ds = dash::DistSpec<DIM>(),
 			Team &t = dash::Team::All(), const TeamSpec<DIM> &ts = TeamSpec<DIM>())

@@ -683,6 +683,8 @@ namespace dash {
 			return res;
 		}
 
+		// Obsolete for N-D. Should pass N-D coordinates
+
 /*		long long index_to_unit(long long idx) const {
 			std::array<long long, ndim_> input = m_sizespec.coords(idx);
 			return index_to_unit(input);
@@ -729,6 +731,7 @@ namespace dash {
 			return at_(inputindex, m_viewspec);
 		}
 
+		// Receive local coordicates and returns local offsets based on AccessBase.
 		long long local_at_(std::array<long long, ndim_> input, ViewSpec<ndim_> &local_vs) const {
 
 			assert(input.size() == ndim_);
@@ -746,6 +749,8 @@ namespace dash {
 			rs = m_accessbase.at(index, cyclicfix);
 		}
 
+		// Receive global coordicates and returns local offsets.
+		// TODO: cyclic can be eliminated when accessbase.m_extent[] has m_lextent[] values.
 		long long at_(std::array<long long, ndim_> input, ViewSpec<ndim_> vs) const {
 			assert(input.size() == ndim_);
 			long long rs = -1;
@@ -913,10 +918,11 @@ namespace dash {
 			}
 		}
 
+		// Returns whether the given dim offset involves any local part
 		bool is_local(size_t idx, size_t myid, size_t dim, ViewSpec<ndim_> &vs)
 		{
 			long long dimunit;
-			size_t myidx;
+			size_t dim_offs;
 			bool ret = false;
 			long long cycle = m_teamspec.size() * m_distspec.m_extent[dim].blocksz;
 
@@ -924,38 +930,38 @@ namespace dash {
 			if (ndim_ > 1 && m_teamspec.ndim() == 1)
 			{
 				dimunit = m_teamspec.size();
-				myidx = m_teamspec.index_at_dim(myid, ndim_ - 1);
+				dim_offs = m_teamspec.index_at_dim(myid, ndim_ - 1);
 			}
 			else
 			{
 				dimunit = m_teamspec.m_extent[dim];
-				myidx = m_teamspec.index_at_dim(myid, dim);
+				dim_offs = m_teamspec.index_at_dim(myid, dim);
 			}
 
 			switch (m_distspec.m_extent[dim].type) {
 			case DistEnum::disttype::BLOCKED:
 
 
-				if ((idx >= getCeil(m_sizespec.m_extent[dim], dimunit)*(myidx)) &&
-					(idx < getCeil(m_sizespec.m_extent[dim], dimunit)*(myidx + 1)))
+				if ((idx >= getCeil(m_sizespec.m_extent[dim], dimunit)*(dim_offs)) &&
+					(idx < getCeil(m_sizespec.m_extent[dim], dimunit)*(dim_offs + 1)))
 					ret = true;
 
 				break;
 			case DistEnum::disttype::BLOCKCYCLIC:
 
-				ret = ((idx % cycle) >= m_distspec.m_extent[dim].blocksz * (myidx)) &&
-					((idx % cycle) < m_distspec.m_extent[dim].blocksz * (myidx + 1));
+				ret = ((idx % cycle) >= m_distspec.m_extent[dim].blocksz * (dim_offs)) &&
+					((idx % cycle) < m_distspec.m_extent[dim].blocksz * (dim_offs + 1));
 
 				break;
 			case DistEnum::disttype::CYCLIC:
 
-				ret = idx % dimunit == myidx;
+				ret = idx % dimunit == dim_offs;
 
 				break;
 			case DistEnum::disttype::TILE:
 
-				ret = ((idx % cycle) >= m_distspec.m_extent[dim].blocksz * (myidx)) &&
-					((idx % cycle) < m_distspec.m_extent[dim].blocksz * (myidx + 1));
+				ret = ((idx % cycle) >= m_distspec.m_extent[dim].blocksz * (dim_offs)) &&
+					((idx % cycle) < m_distspec.m_extent[dim].blocksz * (dim_offs + 1));
 
 				break;
 			case DistEnum::disttype::NONE:
