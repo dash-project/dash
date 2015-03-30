@@ -8,7 +8,7 @@
 #include "Team.h"
 //#include "Pattern.h"
 #include "Pattern.h"
-#include "GlobPtr.h"
+#include "GlobIter.h"
 #include "GlobRef.h"
 #include "HView.h"
 

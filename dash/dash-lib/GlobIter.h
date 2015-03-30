@@ -16,7 +16,7 @@ namespace dash
 {
 
 template<typename T, size_t DIM>
-class GlobIter : 
+class GlobPtr : 
     public std::iterator<std::random_access_iterator_tag,
 			 T, gptrdiff_t,
 			 GlobPtr<T, DIM>, GlobRef<T> >
@@ -46,7 +46,7 @@ public:
     m_idx = idx;
   }
 
-  virtual ~GlobIter()
+  virtual ~GlobPtr()
   {
   }
 
@@ -126,7 +126,7 @@ public:
     return res;
   }
 
-  gptrdiff_t operator-(const GlobIter& other) const
+  gptrdiff_t operator-(const GlobPtr& other) const
   {
     return gptrdiff_t(m_idx)-gptrdiff_t(other.m_idx);
   }
@@ -165,7 +165,7 @@ public:
   std::string to_string() const
   {
     std::ostringstream oss;
-    oss << "GlobIter[m_acc:" << m_acc.to_string() << "]";
+    oss << "GlobPtr[m_acc:" << m_acc.to_string() << "]";
     return oss.str();
   }
 };
