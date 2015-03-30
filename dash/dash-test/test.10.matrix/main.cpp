@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
 
     int myid = dash::myid();
     int size = dash::size();
-    int nelem = 11;
+    int nelem = 5;
 
     dash::Pattern<2> pat(nelem, nelem);
 
@@ -30,34 +30,68 @@ int main(int argc, char* argv[])
             if( !mat2.islocal(1, j) ) continue;
             assert(mat1.islocal(0, i));
             assert(mat1.islocal(1, j));
-	    printf("myid %d at %d %d \n", myid, i, j);
-            mat1[i][j]=myid;
-	    printf("after myid %d at %d %d \n", myid, i, j);
-            mat2[i][j]=10.0*((double)(i)+1);
-            fprintf(stdout, "I'm unit %03d, element %03d is local to me\n",
-                    myid, i);
+	    
+            mat1.at(i,j)=myid;
+
+            mat2.at(i,j)=100.0*((double)(i)+1)+10.0*((double)(j));
+            fprintf(stdout, "I'm unit %03d, element %2d %2d is local to me\n",
+                    myid, i, j);
         }
     }
 
     mat1.barrier();
 
-/*
     if( myid==size-1 ) {
-        for( int i=0; i<arr1.size(); i++ ) {
-            int res = arr1[i];
-            fprintf(stdout, "Owner of %d: %d at %d atunit %d max %d nelem %d  \n", i, res, pat.index_to_elem(i), arr1.pattern().index_to_unit(i), arr1.pattern().max_elem_per_unit(), arr1.pattern().nelem());
-        }
-    }
+        for( int i=0; i<mat1.extent(0); i++ ) {
+	        for( int j=0; j<mat1.extent(1); j++ ) {
+            int res = mat1.at(i,j);
+            fprintf(stdout, "Owner of %2d %2d: %d \n", i, j, res);
+    	    }
+    	}
+	}
     fflush(stdout);
 
-    arr2.barrier();
+    mat2.barrier();
     if( myid==size-1 ) {
-        for( int i=0; i<arr2.size(); i++ ) {
-            double res = arr2[i];
-            fprintf(stdout, "Value at %d: %f\n", i, res);
-        }
-    }
-    fflush(stdout); */
+        for( int i=0; i<mat2.extent(0); i++ ) {
+	        for( int j=0; j<mat2.extent(1); j++ ) {
+            double res = mat2.at(i,j);
+            fprintf(stdout, "Value at %2d %2d: %f\n", i, j, res);
+    	    }
+    	}
+	}
+
+    fflush(stdout);  
+
+    mat2.barrier();
+
+    int nelem2 = 4;
+
+	dash::TeamSpec<2> ts(2, 2);
+	dash::SizeSpec<2> ss(nelem2, nelem2);
+	dash::DistSpec<2> ds(dash::BLOCKED, dash::BLOCKED);
+
+    dash::Pattern<2> pat2(ss, ds, ts);
+
+    dash::Matrix<int, 2>     matA(pat2);
+
+	if(myid==0)
+	{
+		for(int i=0;i<nelem2;i++)
+			for(int j=0;j<nelem2;j++)
+				{
+					matA[i][j] = 10*i+j;
+				}
+
+		for(int i=0;i<nelem2;i++)
+		{
+			for(int j=0;j<nelem2;j++)
+				{
+					cout << matA[i][j] << " ";
+				}
+				cout << endl;	
+		}
+	}
 
     dash::finalize();
 }

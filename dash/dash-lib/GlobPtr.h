@@ -52,10 +52,15 @@ public:
 
 public: 
 
-  GlobRef<T> operator*()
+/*  GlobRef<T> operator*()
   { // const
     size_t unit = m_pat.index_to_unit(m_idx);
     size_t elem = m_pat.index_to_elem(m_idx);
+    return GlobRef<T>(m_acc, unit, elem);
+  }*/
+
+  GlobRef<T> get(size_t unit , size_t elem)
+  { // const
     return GlobRef<T>(m_acc, unit, elem);
   }
   
@@ -102,12 +107,12 @@ public:
   }
 
   // subscript
-  GlobRef<T> operator[](gptrdiff_t n) 
+/*  GlobRef<T> operator[](gptrdiff_t n) 
   {
     size_t unit = m_pat.index_to_unit(n);
     size_t elem = m_pat.index_to_elem(n);
     return GlobRef<T>(m_acc, unit, elem);
-  }
+  }*/
   
   GlobPtr<T, DIM> operator+(gptrdiff_t n) const
   {

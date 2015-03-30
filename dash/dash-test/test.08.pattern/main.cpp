@@ -15,35 +15,38 @@ int main(int argc, char* argv[])
   int myid = dash::myid();
   int size = dash::size();
 
-	long long ext1 = 15;
-	long long ext2 = 19;
+	long long ext1 = 10;
+	long long ext2 = 10;
 	
 	long long i=0;
 	long long j=0;
 	
-	dash::Pattern<1> p1(19, dash::BLOCKCYCLIC(2));
+	dash::TeamSpec<2> ts(2, 2);
+	dash::SizeSpec<2> ss(ext1, ext2);
+	dash::DistSpec<2> ds(dash::BLOCKED, dash::BLOCKCYCLIC(3));
+
+	dash::Pattern<2> p1(ss, ds, ts);
 	
 if(myid==0)
 {
 	printf("Unit layout: \n");
 			
-//	for(i=0;i<ext1;i++)
-//	{
+	for(i=0;i<ext1;i++)
+	{
 		for(j=0;j<ext2;j++)
 		{
-			printf("%d ", p1.atunit(j));
+			printf("%d ", p1.atunit(i, j));
 		}
 		printf("\n");
-//	}		
+	}		
 
 	printf("Element layout\n");
 	
-	for(i=0;i<size;i++)
+	for(i=0;i<ext1;i++)
 	{
-                printf("unit %d \n", i);
 		for(j=0;j<ext2;j++)
 		{
-			printf("%3d ", p1.unit_and_elem_to_index(i,j));
+			printf("%3d ", p1.at(i,j));
 		}
 		printf("\n");
 	}	
