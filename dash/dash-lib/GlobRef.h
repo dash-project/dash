@@ -1,80 +1,55 @@
 #ifndef GLOBREF_H_INCLUDED
 #define GLOBREF_H_INCLUDED
 
-#include "MemAccess.h"
+#include "GlobMem.h"
 
-namespace dash {
+namespace dash
+{
+
+template<typename T> class GlobMem;
+template<typename T> class GlobPtr;
 
 template<typename T>
-class GlobRef
-{
+class GlobRef {
 private:
-  // KF: Q: do we want a copy of the accessor here or a reference=
-  MemAccess<T>  m_accessor;
-
-  size_t        m_idx;
+  GlobPtr<T> m_gptr;
   
 public:
-
-  size_t        m_unit;
-
-  GlobRef( const MemAccess<T>& acc, size_t unit, size_t idx ) :
-    m_accessor(acc) 
-  {
-    m_idx = idx;
-    m_unit = unit;
-  }
-    virtual ~GlobRef()
-  {
-  }
-
-  friend void swap(GlobRef<T> a, GlobRef<T> b) 
-  {
-    using std::swap;
-    swap(a.m_unit, b.m_unit);
-    swap(a.m_idx, b.m_idx);
-    //swap(a.m_accessor, b.m_accessor);
+  GlobRef(GlobPtr<T>& gptr) : m_gptr(gptr) {
   }
   
   operator T() const
   {
     T t;
-    m_accessor.get_value(&t, m_unit, m_idx);
+    GlobMem<T>::get_value(&t, m_gptr);
     return t;
   }
 
   GlobRef<T>& operator=(const T val)
   {
-    m_accessor.put_value(val, m_unit, m_idx);
-    return *this;
-  }
-  
-  GlobRef<T>& operator=(const GlobRef<T>& ref)
-  {
-    return *this = T(ref);
-  }
-
-  GlobRef<T>& operator+=(const T& ref)
-  {
-    T val = operator T();
-    val += ref;
-    operator=(val);
-
+    GlobMem<T>::put_value(val, m_gptr);
     return *this;
   }
 
-  bool is_local() const {
-    return m_unit==dash::myid();
+  template<typename MEMTYPE>
+  GlobRef<MEMTYPE> member(size_t offs) {
+    dart_gptr_t dartptr = m_gptr.dartptr();    
+    dart_gptr_incaddr(&dartptr, offs);
+    GlobPtr<MEMTYPE> gptr(dartptr);
+
+    return GlobRef<MEMTYPE>(gptr);
   }
 
-  
-  MemAccess<T> get_accessor() const 
-  {
-    return m_accessor;
+#if 0
+  template<typename MEMTYPE>
+  GlobRef<MEMTYPE>& member(MEMTYPE T::*ptr) {
+    GlobPtr<MEMTYPE> gptr(m_gptr.dartptr());
+    return GlobRef<MEMTYPE>(gptr);
   }
+#endif
 };
 
-}
+};
 
 
 #endif /* GLOBREF_H_INCLUDED */

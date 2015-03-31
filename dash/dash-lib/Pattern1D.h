@@ -64,7 +64,7 @@ private:
 
 private:
 
-  inline long long modulo(long long i, long long k) {
+  inline long long modulo(long long i, long long k) const {
     long long res = i % k;
     if(res<0) res+=k;
     return res;
@@ -123,7 +123,7 @@ public:
   // - function to check that the pattern specification is 
   //   the same across the team
 
-  long long index_to_unit( long long i ) {
+  long long index_to_unit( long long i ) const {
     // i -> [0, nelem)
     long long idx       = modulo(i, m_range.nelem);
 
@@ -135,7 +135,7 @@ public:
     return blockunit;
   }
 
-  long long index_to_elem( long long i ) {
+  long long index_to_elem( long long i ) const {
     // i -> [0, nelem)
     long long idx = modulo(i, m_range.nelem);
 

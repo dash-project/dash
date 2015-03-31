@@ -6,25 +6,20 @@
 
 namespace dash {
 
-
-enum MemArrange { ROW_MAJOR, COL_MAJOR };
-
 //
 // translate between linar and cartesian coordinates
 //
-template<int DIM, typename SIZE=size_t, MemArrange arr=ROW_MAJOR>
+template<int DIM, typename SIZE=size_t>
 class CartCoord
 {
 protected:
   SIZE m_size = 0;
-  size_t m_ndim = DIM;
   SIZE m_extent[DIM];
   SIZE m_offset[DIM];
+  size_t m_ndim = DIM;
 
 public:
 	
-
-
   CartCoord()
   {
   	
@@ -44,25 +39,10 @@ public:
 
     }
     
-	construct();
-  }
-
-  void construct()
-  {
-	  if (arr == ROW_MAJOR)
-	  {
-		  m_offset[DIM - 1] = 1;
-		  for (auto i = DIM - 2; i >= 0; i--) {
-			  m_offset[i] = m_offset[i + 1] * m_extent[i + 1];
-		  }
-	  }
-	  else
-	  {
-		  m_offset[0] = 1;
-		  for (auto i = 1; i <= DIM-1; i++) {
-			  m_offset[i] = m_offset[i - 1] * m_extent[i - 1];
-		  }
-	  }
+    m_offset[DIM-1]=1;
+    for(auto i=DIM-2; i>=0; i--) {
+      m_offset[i]=m_offset[i+1]*m_extent[i+1];
+    }
   }
 
   int  rank() const { return DIM;  }
@@ -138,11 +118,6 @@ SIZE at(std::array<SIZE, DIM> pos, std::array<SIZE, DIM> cyclicfix) const
   template<int U=DIM>
   typename std::enable_if<(U>2),SIZE>::type z(SIZE offs) const {
     return coords(offs)[2];
-  }
-
-  SIZE index_at_dim(SIZE offs, int dim_) const {
-	  assert(dim_<DIM);
-	  return coords(offs)[dim_];
   }
 };
 

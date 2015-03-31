@@ -14,6 +14,11 @@ void dash::finalize()
   //dart_exit();
 }
 
+void dash::barrier()
+{
+  dash::Team::All().barrier();
+}
+
 int dash::myid()
 {
   dart_unit_t myid;

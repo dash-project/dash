@@ -5,14 +5,22 @@
 #include "Init.h"
 #include "Team.h"
 #include "Cart.h"
-//#include "Pattern1D.h"
-#include "Pattern.h"
+#include "Pattern1D.h"
+#include "GlobMem.h"
+#include "GlobPtr.h"
+#include "GlobIter.h"
+#include "GlobRef.h"
+
+#include "Array.h"
+
+#if 0
+
 #include "MemAccess.h"
 #include "GlobRef.h"
 #include "GlobIter.h"
 #include "Array.h"
 #include "Shared.h"
 #include "HView.h"
-#include "Matrix.h"
+#endif 
 
 #endif /* LIBDASH_H_INCLUDED */

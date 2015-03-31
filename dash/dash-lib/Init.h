@@ -15,6 +15,8 @@ namespace dash
 
   int    myid();
   size_t size();
+
+void barrier();
 };
 
 

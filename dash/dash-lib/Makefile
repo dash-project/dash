@@ -9,7 +9,7 @@ CXXFLAGS+=-I$(DART_INC)
 
 LIBDASH = libdash.a
 
-FILES = Init Team Pattern Matrix
+FILES = Init Team
 
 OBJS = $(addsuffix .o, $(FILES))
 
