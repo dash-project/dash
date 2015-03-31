@@ -14,6 +14,10 @@ private:
   dart_gptr_t  m_dartptr;
   
 public:
+  explicit GlobPtr() {
+    m_dartptr=DART_GPTR_NULL;
+  }
+
   explicit GlobPtr(dart_gptr_t p) { 
     m_dartptr=p; 
   }
@@ -27,7 +31,6 @@ public:
     return *this;
   }
 
-
   explicit operator dart_gptr_t() const {
     return m_dartptr;
   }
@@ -39,6 +42,10 @@ public:
   GlobRef<T> operator*()
   {
     // xxx
+  }
+
+  bool is_local() {
+    return m_dartptr.unitid==dash::myid();
   }
 
   void print() {

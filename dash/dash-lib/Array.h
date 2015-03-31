@@ -121,22 +121,25 @@ public:
 
     m_globmem = new GlobMem(m_team, m_lsize);
 
-    m_begin(iterator(*m_globmem, m_pattern));
+    m_begin = iterator(m_globmem, m_pattern);
 
-    {
-      void *addr; 
-      dart_gptr_t gptr = m_globmem->begin().dartptr();
-      dart_gptr_setunit(&gptr, m_myid);
-      dart_gptr_getaddr(gptr, &addr);
-      m_lbegin=static_cast<ELEMENT_TYPE*>(addr);
+    // determine local begin and end addresses
+    void *addr; dart_gptr_t gptr; 
+    gptr = m_globmem->begin().dartptr();
 
-      gptr = m_globmem->begin().dartptr();
-      dart_gptr_setunit(&gptr, m_myid);
-      dart_gptr_incaddr(&gptr, m_lsize*sizeof(ELEMENT_TYPE));
-      dart_gptr_getaddr(gptr, &addr);
-      m_lend=static_cast<ELEMENT_TYPE*>(addr);
-    }
+    dart_gptr_setunit(&gptr, m_myid);
+    dart_gptr_getaddr(gptr, &addr);
+    m_lbegin=static_cast<ELEMENT_TYPE*>(addr);
+
+    dart_gptr_incaddr(&gptr, m_lsize*sizeof(ELEMENT_TYPE));
+    dart_gptr_getaddr(gptr, &addr);
+    m_lend=static_cast<ELEMENT_TYPE*>(addr);
   }  
+
+  // delegating constructor
+  Array(const dash::Pattern1D& pat ) : 
+    Array(pat.nelem(), pat.distspec(), pat.team())
+  { }
   
   // delegating constructor
   Array(size_t nelem, 
@@ -182,9 +185,6 @@ public:
   void barrier() const {
     m_team.barrier();
   }
-
-
-
 
 };
 

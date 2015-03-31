@@ -75,19 +75,22 @@ int main(int argc, char* argv[])
 
     dash::Matrix<int, 2>     matA(pat2);
 
+    cout<<matA.extent(0)<<" "<<matA.extent(1)<<endl;
 	if(myid==0)
 	{
 		for(int i=0;i<nelem2;i++)
 			for(int j=0;j<nelem2;j++)
 				{
-					matA[i][j] = 10*i+j;
+				  matA(i,j)= 10*i+j;
+				  //matA[i][j] = 10*i+j;
 				}
 
 		for(int i=0;i<nelem2;i++)
 		{
 			for(int j=0;j<nelem2;j++)
 				{
-					cout << matA[i][j] << " ";
+				  cout<<matA(i,j)<<" ";
+				  //cout << matA[i][j] << " ";
 				}
 				cout << endl;	
 		}

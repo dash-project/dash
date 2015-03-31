@@ -31,6 +31,10 @@ public:
     return *this;
   }
 
+  bool is_local() {
+    return m_gptr.is_local();
+  }
+
   template<typename MEMTYPE>
   GlobRef<MEMTYPE> member(size_t offs) {
     dart_gptr_t dartptr = m_gptr.dartptr();    
