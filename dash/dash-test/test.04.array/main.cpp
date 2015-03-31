@@ -8,7 +8,7 @@
 #include <iostream>
 #include <libdash.h>
 
-#define SIZE 10
+#define NELEM 10
 
 using namespace std;
 
@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
 
-  dash::Array<int> arr(SIZE);
+  dash::Array<int> arr(NELEM*size);
   for( auto it = arr.lbegin(); it!=arr.lend(); it++ ) {
     (*it)=myid;
   }
@@ -31,7 +31,6 @@ int main(int argc, char* argv[])
     }
     cout<<endl;
   }
-
   
   dash::finalize();
 }
