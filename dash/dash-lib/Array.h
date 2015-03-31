@@ -182,6 +182,11 @@ public:
     return size() == 0;
   }
 
+  bool is_local(size_type n) const
+  {
+    return m_pattern.index_to_unit(n)==m_myid;
+  }
+  
   void barrier() const {
     m_team.barrier();
   }

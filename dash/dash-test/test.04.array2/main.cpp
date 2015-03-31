@@ -18,13 +18,14 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
   
-  dash::Pattern1D pat(19, dash::BLOCKCYCLIC(2));
+  dash::Pattern1D      pat(19, dash::BLOCKCYCLIC(2));
   dash::Array<int>     arr1(pat);
   dash::Array<double>  arr2(pat);
   
+
   for( int i=0; i<arr1.size(); i++ ) {
-    if( arr2.islocal(i) ) {
-      assert(arr1.islocal(i));
+    if( arr2.is_local(i) ) {
+      assert(arr1.is_local(i));
       arr1[i]=myid;
       arr2[i]=10.0*((double)(i)+1);
       fprintf(stdout, "I'm unit %03d, element %03d is local to me\n",
