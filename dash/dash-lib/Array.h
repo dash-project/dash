@@ -63,6 +63,10 @@ public:
   T* end() const noexcept {
     return m_ptr->lend();
   }
+
+  size_type size() const noexcept {
+    return end()-begin();
+  }
   
   T& operator[](size_type n) {
     return begin()[n];

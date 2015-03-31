@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 
   dash::Array<int> arr(SIZE);
 
-  for( auto i=0; i<2; i++ ) {
+  for( auto i=0; i<arr.local.size(); i++ ) {
     arr.local[i]=myid;
   }
 
