@@ -1,5 +1,5 @@
-#ifndef CART_H_INCLUDED
-#define CART_H_INCLUDED
+#ifndef CARTESIAN_H_INCLUDED
+#define CARTESIAN_H_INCLUDED
 
 #include <array>
 #include <cassert>
@@ -16,15 +16,9 @@ protected:
   SIZE m_size = 0;
   SIZE m_extent[DIM];
   SIZE m_offset[DIM];
-  size_t m_ndim = DIM;
+  //  size_t m_ndim = DIM;
 
 public:
-	
-  CartCoord()
-  {
-  	
-  }
-  
   template<typename... Args>
   CartCoord(Args... args) : m_extent{SIZE(args)...} {
     static_assert(sizeof...(Args)==DIM,
@@ -36,7 +30,6 @@ public:
 
       // TODO: assert( std::numeric_limits<SIZE>::max()/m_extent[i]);
       m_size*=m_extent[i];
-
     }
     
     m_offset[DIM-1]=1;
@@ -44,7 +37,7 @@ public:
       m_offset[i]=m_offset[i+1]*m_extent[i+1];
     }
   }
-
+  
   int  rank() const { return DIM;  }
   SIZE size() const { return m_size; }
   
@@ -53,56 +46,56 @@ public:
     return m_extent[dim];
   }
   
-SIZE at(std::array<SIZE, DIM> pos) const
-{
+  SIZE at(std::array<SIZE, DIM> pos) const
+  {
     static_assert(pos.size()==DIM,
 		  "Invalid number of arguments");
-		  
-	      SIZE offs=0;
-	      for(int i=0; i<DIM; i++ ) {
-	        offs += m_offset[i]*pos[i];
-	      }
-	      return offs;
-}
-
-SIZE at(std::array<SIZE, DIM> pos, std::array<SIZE, DIM> cyclicfix) const
-{
+    
+    SIZE offs=0;
+    for(int i=0; i<DIM; i++ ) {
+      offs += m_offset[i]*pos[i];
+    }
+    return offs;
+  }
+  
+  SIZE at(std::array<SIZE, DIM> pos, std::array<SIZE, DIM> cyclicfix) const
+  {
     static_assert(pos.size()==DIM,
 		  "Invalid number of arguments");
-		  
-	static_assert(cyclicfix.size()==DIM,
+    
+    static_assert(cyclicfix.size()==DIM,
 	  	  "Invalid number of arguments");
-		  
-	SIZE offs=0;
-	for (int i = 0; i < DIM; i++)
-		if (pos[i] != -1)//omit NONE distribution
-			offs += pos[i] * (m_offset[i] + cyclicfix[i]);
-	//assert(rs <= nelem - 1);
-	return offs;
-}
-
+    
+    SIZE offs=0;
+    for (int i = 0; i < DIM; i++)
+      if (pos[i] != -1)//omit NONE distribution
+	offs += pos[i] * (m_offset[i] + cyclicfix[i]);
+    //assert(rs <= nelem - 1);
+    return offs;
+  }
+  
   template<typename... Args>
   SIZE at(Args... args) const {
     static_assert(sizeof...(Args)==DIM,
 		  "Invalid number of arguments");
     
     std::array<SIZE, DIM> pos = {SIZE(args)...};
-
+    
     return at(pos);
   }
-
+  
   // offset -> coordinates
   std::array<SIZE, DIM> coords(SIZE offs) const {
     std::array<SIZE, DIM> pos;
-
+    
     for(int i=0; i<DIM; i++ ) {
       pos[i] = offs / m_offset[i];
       offs = offs % m_offset[i];
     }
-
+    
     return pos;
   }
-
+  
   // x(), y(), z() accessors 
   // enabled only for the appropriate sizes
   template<int U=DIM>
@@ -123,5 +116,5 @@ SIZE at(std::array<SIZE, DIM> pos, std::array<SIZE, DIM> cyclicfix) const
 
 } // namespace dash
 
-#endif /* CART_H_INCLUDED */
+#endif /* CARTESIAN_H_INCLUDED */
 

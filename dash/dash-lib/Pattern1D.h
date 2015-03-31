@@ -124,7 +124,7 @@ public:
   //   the same across the team
 
   long long index_to_unit( long long i ) const {
-    // i -> [0, nelem)
+    // i -> [0, nunits)
     long long idx       = modulo(i, m_range.nelem);
 
     long long blockid   = idx / m_dist.blocksz;
