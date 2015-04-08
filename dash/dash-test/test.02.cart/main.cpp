@@ -8,7 +8,7 @@
 #include <iostream>
 #include <libdash.h>
 
-#include "Cart.h"
+#include "Cartesian.h"
 using namespace std;
 
 int main(int argc, char* argv[])
@@ -24,8 +24,8 @@ int main(int argc, char* argv[])
     for(auto i=0; i<cc.extent(0); i++) {
       for(auto j=0; j<cc.extent(1); j++) {
 	for(auto k=0; k<cc.extent(2); k++) {
-	  fprintf(stderr, "%d %d %d %d\n", 
-		  i, j, k, cc.at(i,j,k) );
+	  cout<<i<<" "<<j<<" "<<k<<" "<<
+	    cc.at(i,j,k)<<endl;
 	}
       }
     }
