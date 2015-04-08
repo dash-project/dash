@@ -97,7 +97,7 @@ public:
   typedef const GlobIter<value_type> const_pointer;
   
 private:
-  typedef dash::GlobMem<value_type>  GlobMem;
+  typedef dash::GlobMem<value_type>    GlobMem;
   
   dash::Team&   m_team;
   dart_unit_t   m_myid;

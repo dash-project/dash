@@ -2,12 +2,21 @@
 #define GLOBREF_H_INCLUDED
 
 #include "GlobMem.h"
+#include "Init.h"
 
 namespace dash
 {
 
+// forward declarations...
 template<typename T> class GlobMem;
 template<typename T> class GlobPtr;
+
+template<typename T>
+void put_value(const T& newval, const GlobPtr<T>& gptr);
+
+template<typename T>
+void get_value(T* ptr, const GlobPtr<T>& gptr);
+
 
 template<typename T>
 class GlobRef {
@@ -21,13 +30,13 @@ public:
   operator T() const
   {
     T t;
-    GlobMem<T>::get_value(&t, m_gptr);
+    dash::get_value(&t, m_gptr);
     return t;
   }
 
   GlobRef<T>& operator=(const T val)
   {
-    GlobMem<T>::put_value(val, m_gptr);
+    dash::put_value(val, m_gptr);
     return *this;
   }
 

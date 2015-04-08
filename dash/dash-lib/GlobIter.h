@@ -13,9 +13,9 @@ template<typename T>
 class GlobIter : public GlobPtr<T>
 {
 private:
-  GlobMem<T>*     m_globmem;
-  Pattern1D*      m_pattern;
-  size_t          m_idx;
+  GlobMem<T>*      m_globmem;
+  Pattern1D*       m_pattern;
+  size_t           m_idx;
   
 public:
   GlobIter() : GlobPtr<T>() {
@@ -24,9 +24,9 @@ public:
     m_idx=0;
   }
 
-  GlobIter(GlobMem<T>*        mem,
-	   Pattern1D&         pat,
-	   size_t             idx=0) : GlobPtr<T>(mem->begin())
+  GlobIter(GlobMem<T>*     mem,
+	   Pattern1D&      pat,
+	   size_t          idx=0) : GlobPtr<T>(mem->begin())
   {
     m_globmem = mem;
     m_pattern = &pat;

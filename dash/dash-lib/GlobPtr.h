@@ -49,7 +49,7 @@ public:
   }
 
   void print() {
-    fprintf(stderr, "%d\n", (int)m_dartptr);
+    //fprintf(stderr, "%d\n", (int)m_dartptr);
   }
 };
 
