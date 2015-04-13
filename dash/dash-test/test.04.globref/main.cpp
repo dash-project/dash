@@ -22,22 +22,38 @@ int main(int argc, char* argv[])
   dash::Array<int> arr(SIZE);
   
   if(myid==0) {
-    dash::GlobRef<int> r1 = arr[SIZE-4];
-    dash::GlobRef<int> r2 = arr[SIZE-3];
-    dash::GlobRef<int> r3 = arr[SIZE-2];
-    dash::GlobRef<int> r4 = arr[SIZE-1];
+    dash::GlobRef<int> r1 = arr[0];
+    dash::GlobRef<int> r2 = arr[1];
+    dash::GlobRef<int> r3 = arr[2];
+    dash::GlobRef<int> r4 = arr[3];
+    dash::GlobRef<int> r5 = arr[4];
  
-    r1=33; r3=10; r4=20; // on lhs
-    int a = r4;          // on rhs
+    r1=33; r2=-1; r3=42; // on lhs
+    
+    int a = 0;
+    a = r3;              // on rhs
+    assert(a==42);
 
-    assert(a==20);
-    r2 = r1;             // lhs and rhs     
-    r3+=r1;
+    r3 = r1;             // lhs and rhs
+    assert(r3==33);
+
+    r3+=5;  // r3 is 38
+
+    r4 = r3;     // r4 is 38
+    r5 = r4+=r3; // r5 is 76; r4 too
+
+    ++r5; // r5 is 77
   }
   
   arr.barrier();
 
-  if(myid==0) {
+  if(myid==size-1) {
+    assert( arr[0]==33 );
+    assert( arr[1]==-1 );
+    assert( arr[2]==38 );
+    assert( arr[3]==76 );
+    assert( arr[4]==77 );
+
     for( auto i=0; i<arr.size(); i++ ) cout<<arr[i]<<" ";
     cout<<endl;
   }
