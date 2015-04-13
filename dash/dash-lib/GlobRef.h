@@ -1,3 +1,9 @@
+/* 
+ * dash-lib/GlobRef.h
+ *
+ * author(s): Karl Fuerlinger, LMU Munich */
+/* @DASH_HEADER@ */
+
 #ifndef GLOBREF_H_INCLUDED
 #define GLOBREF_H_INCLUDED
 
@@ -40,10 +46,33 @@ public:
     return *this;
   }
 
-  bool is_local() {
+  GlobRef<T>& operator=(const GlobRef<T>& ref)
+  {
+    return *this = T(ref);
+  }
+
+  GlobRef<T>& operator+=(const T& ref)
+  {
+    T val = operator T();
+    val += ref;
+    operator=(val);
+    return *this;
+  }
+
+  GlobRef<T>& operator++()
+  {
+    T val = operator T();
+    val++;
+    operator=(val);
+    return *this;
+  }
+
+  bool is_local() const {
     return m_gptr.is_local();
   }
 
+  // get a global ref to a member of a certain type at the 
+  // specified offset
   template<typename MEMTYPE>
   GlobRef<MEMTYPE> member(size_t offs) {
     dart_gptr_t dartptr = m_gptr.dartptr();    
@@ -53,13 +82,13 @@ public:
     return GlobRef<MEMTYPE>(gptr);
   }
 
-#if 0
-  template<typename MEMTYPE>
-  GlobRef<MEMTYPE>& member(MEMTYPE T::*ptr) {
-    GlobPtr<MEMTYPE> gptr(m_gptr.dartptr());
-    return GlobRef<MEMTYPE>(gptr);
+  // get the member via pointer to member
+  template<class MEMTYPE, class P=T>
+  GlobRef<MEMTYPE> member(const MEMTYPE P::*mem)
+  {
+    size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
+    return member<MEMTYPE>(offs);
   }
-#endif
 };
 
 };
