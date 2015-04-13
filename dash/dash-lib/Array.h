@@ -7,6 +7,8 @@
 #ifndef ARRAY_H_INCLUDED
 #define ARRAY_H_INCLUDED
 
+#include <stdexcept>
+
 #include "GlobMem.h"
 #include "GlobIter.h"
 #include "GlobRef.h"
@@ -72,8 +74,8 @@ public:
     return begin()[n];
   }
 };
-
-
+ 
+ 
 
 template<typename ELEMENT_TYPE>
 class Array
@@ -106,13 +108,25 @@ private:
   iterator      m_begin;
   size_type     m_size;   // total size (# elements)
   size_type     m_lsize;  // local size (# local elements)
-
+  
   ELEMENT_TYPE*  m_lbegin;
   ELEMENT_TYPE*  m_lend;
   
-public:   
-  LocalProxyArray<value_type> local;
+public:
+  // check requirements on element type 
+  static_assert(std::is_trivial<ELEMENT_TYPE>::value,
+		"Element type must be trivially copyable");
 
+  /*
+    is_trivially_copyable is not implemented presently, so 
+    we use is_trivial instead...
+
+  static_assert(std::is_trivially_copyable<ELEMENT_TYPE>::value,
+  "Element type must be trivially copyable");
+  */
+  
+  
+public:
   Array(size_t nelem, dash::DistSpec ds,
 	Team& t=dash::Team::All() ) : 
     m_team(t),
@@ -140,12 +154,16 @@ public:
     m_lend=static_cast<ELEMENT_TYPE*>(addr);
   }  
 
-  // delegating constructor
+  // this local proxy object enables arr.local to be used in
+  // range-based for loops
+  LocalProxyArray<value_type> local;
+
+  // delegating constructor : specify pattern explicitly
   Array(const dash::Pattern1D& pat ) : 
     Array(pat.nelem(), pat.distspec(), pat.team())
   { }
   
-  // delegating constructor
+  // delegating constructor : only specify the size
   Array(size_t nelem, 
 	Team &t=dash::Team::All()) : 
     Array(nelem, dash::BLOCKED, t)
@@ -174,10 +192,18 @@ public:
   ELEMENT_TYPE* lend() const noexcept {
     return m_lend;
   }  
+
   reference operator[](size_type n) {
     return begin()[n];
   }
-  
+
+  reference at(size_type pos) {
+    if( !(pos<size()) )  {
+      throw std::out_of_range("Out of range");
+    }
+    return begin()[pos];
+  }
+
   constexpr size_type size() const noexcept {
     return m_size;
   }
@@ -194,7 +220,6 @@ public:
   void barrier() const {
     m_team.barrier();
   }
-
 };
 
 
