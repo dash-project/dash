@@ -49,7 +49,7 @@ constexpr ExtentSpec EXTENT(long long b, long long e,
 constexpr ExtentSpec EXTENT(size_t size, 
 			    DistSpec ds=BLOCKED)
 {
-  return {{0,size-1}, ds};
+  return {{0,(long long)size-1}, ds};
 }
 
 

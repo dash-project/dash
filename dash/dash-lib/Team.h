@@ -1,3 +1,8 @@
+/* 
+ * dash-lib/Team.h
+ *
+ * author(s): Karl Fuerlinger, LMU Munich */
+/* @DASH_HEADER@ */
 
 #ifndef TEAM_H_INCLUDED
 #define TEAM_H_INCLUDED
@@ -15,7 +20,6 @@
 using std::cout;
 using std::endl;
 using std::deque;
-
 
 namespace dash
 {
