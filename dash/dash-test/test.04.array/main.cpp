@@ -19,18 +19,35 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
 
-  dash::Array<int> arr(NELEM*size);
-  for( auto it = arr.lbegin(); it!=arr.lend(); it++ ) {
-    (*it)=myid;
+  // testing of various constructor options
+  dash::Array<int> arr1(NELEM*size);
+  dash::Array<int> arr2(NELEM*size, dash::BLOCKED);
+  dash::Array<int> arr3(NELEM*size, dash::Team::All() );
+  dash::Array<int> arr4(NELEM*size, dash::BLOCKED, 
+			dash::Team::All() );
+
+  if( myid==0 ) {
+    for( int i=0; i<arr1.size(); i++ ) {
+      arr1[i]=i;
+      arr2[i]=i;
+      arr3[i]=i;
+      arr4[i]=i;
+    }
   }
-  arr.barrier();
-  
-  if(myid==0 ) {  
-    for( auto it = arr.begin(); it!=arr.end(); it++ ) {
-      cout<<(*it)<<" ";
+
+  dash::Team::All().barrier();
+
+  if( myid==size-1 ) {
+    for( int i=0; i<arr1.size(); i++ ) {
+      assert( (int)arr1[i]==(int)arr2[i]);
+      assert( (int)arr1[i]==(int)arr3[i]);
+      assert( (int)arr1[i]==(int)arr4[i]);
+
+      cout<<arr4[i]<<" ";
     }
     cout<<endl;
   }
+
   
   dash::finalize();
 }
