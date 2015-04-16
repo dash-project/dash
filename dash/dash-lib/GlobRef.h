@@ -25,6 +25,19 @@ void get_value(T* ptr, const GlobPtr<T>& gptr);
 
 
 template<typename T>
+struct has_subscript_operator
+{
+  typedef char (& yes)[1];
+  typedef char (& no)[2];
+  
+  template <typename C> static yes check(decltype(&C::operator[]));
+  template <typename> static no check(...);
+  
+  static bool const value = sizeof(check<T>(0)) == sizeof(yes);
+};
+
+
+template<typename T>
 class GlobRef {
 private:
   GlobPtr<T> m_gptr;
@@ -66,6 +79,19 @@ public:
     operator=(val);
     return *this;
   }
+  
+  
+#if 0
+  template<typename X=T, 
+	   typename std::enable_if<has_subscript_operator<X>::value, int>::type *ptr=nullptr>
+  auto operator[](size_t pos) -> 
+    typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
+  {
+    T val = operator T();
+    return val[pos];
+  }
+  
+#endif 
 
   bool is_local() const {
     return m_gptr.is_local();

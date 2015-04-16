@@ -116,6 +116,7 @@ public:
   // check requirements on element type 
   static_assert(std::is_trivial<ELEMENT_TYPE>::value,
 		"Element type must be trivially copyable");
+  
 
   /*
     is_trivially_copyable is not implemented presently, so 

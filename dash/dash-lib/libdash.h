@@ -12,6 +12,7 @@
 #include "GlobRef.h"
 
 #include "Array.h"
+#include "Shared.h"
 
 #if 0
 
