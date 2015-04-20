@@ -14,5 +14,7 @@
 struct dart_handle_struct
 {
 	MPI_Request request;
+	MPI_Win	    win;
+	dart_unit_t dest;
 };
 #endif /* DART_ADAPT_COMMUNICATION_PRIV_H_INCLUDED */

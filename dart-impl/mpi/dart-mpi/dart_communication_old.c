@@ -46,79 +46,9 @@ int unit_g2l (uint16_t index, dart_unit_t abs_id, dart_unit_t *rel_id)
 	}
 	return 0;
 }
-dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes)
-{
-	MPI_Aint disp_s, disp_rel;
-	dart_unit_t target_unitid_abs;
-	uint64_t offset = gptr.addr_or_offs.offset;
-	int16_t seg_id = gptr.segid;
-	target_unitid_abs = gptr.unitid;
-	MPI_Win win;
-
-	if (seg_id)
-	{
-		uint16_t index = gptr.flags;
-		dart_unit_t target_unitid_rel;
-																		    
-		win = dart_win_lists[index];
-		unit_g2l (index, target_unitid_abs, &target_unitid_rel);			
-		if (dart_adapt_transtable_get_disp (seg_id, target_unitid_rel, &disp_s)== -1)		
-		{
-			return DART_ERR_INVAL;
-		}
-		disp_rel = disp_s + offset;
-		MPI_Get (dest, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win);
-		DEBUG ("GET	- %d bytes (allocated with collective allocation) from %d at the offset %d", 
-				nbytes, target_unitid_abs, offset);
-	}
-	else{
-		win = dart_win_local_alloc;
-		MPI_Get (dest, nbytes, MPI_BYTE, target_unitid_abs, offset, nbytes, MPI_BYTE, win);
-		DEBUG ("GET	- %d bytes (allocated with local allocation) from %d at the offset %d",
-				nbytes, target_unitid_abs, offset);
-	}
-												
-	return DART_OK;
-}
-dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes)
-{
-	MPI_Aint disp_s, disp_rel;
-	dart_unit_t target_unitid_abs;
-	uint64_t offset = gptr.addr_or_offs.offset;
-	int16_t seg_id = gptr.segid;
-	MPI_Win win;
-
-	target_unitid_abs = gptr.unitid;
-	if (seg_id)
-	{
-		uint16_t index = gptr.flags;
-		dart_unit_t target_unitid_rel;
-		win = dart_win_lists[index];		
-		unit_g2l (index, target_unitid_abs, &target_unitid_rel);
-		if (dart_adapt_transtable_get_disp (seg_id, target_unitid_rel, &disp_s) == -1)
-		{
-			return DART_ERR_INVAL;
-		}	
-
-		disp_rel = disp_s + offset;
-		MPI_Put (src, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win);
-		DEBUG ("PUT	-%d bytes (allocated with collective allocation) to %d at the offset %d",
-								nbytes, target_unitid_abs, offset);
-
-	}
-	else
-	{
-		win = dart_win_local_alloc;
-		MPI_Put (src, nbytes, MPI_BYTE, target_unitid_abs, offset, nbytes, MPI_BYTE, win);
-		DEBUG ("PUT	- %d bytes (allocated with local allocation) to %d at the offset %d", 
-						nbytes, target_unitid_abs, offset);
-	}
-
-	return DART_OK;
-}
 
 /* -- Non-blocking dart one-sided operations -- */
-dart_ret_t dart_get_handle (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t *handle)
+dart_ret_t dart_get (void *dest, dart_gptr_t gptr, size_t nbytes, dart_handle_t *handle)
 {
 	MPI_Request mpi_req;
 	MPI_Aint disp_s, disp_rel;
@@ -168,7 +98,6 @@ dart_ret_t dart_get_handle (void *dest, dart_gptr_t gptr, size_t nbytes, dart_ha
 		 *  could be an better alternative? 
 		 */
 		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win, &mpi_req);
-		(*handle) -> dest = target_unitid_rel;
 
 		DEBUG ("GET	- %d bytes (allocated with collective allocation) from %d at the offset %d", 
 				nbytes, target_unitid_abs, offset);
@@ -179,17 +108,15 @@ dart_ret_t dart_get_handle (void *dest, dart_gptr_t gptr, size_t nbytes, dart_ha
 	{
 		win = dart_win_local_alloc;
 		MPI_Rget (dest, nbytes, MPI_BYTE, target_unitid_abs, offset, nbytes, MPI_BYTE, win, &mpi_req);
-		(*handle) -> dest = target_unitid_abs;
 		DEBUG ("GET	- %d bytes (allocated with local allocation) from %d at the offset %d",
 			       	nbytes, target_unitid_abs, offset);
 	}
 	
 	(*handle) -> request = mpi_req;
-	(*handle) -> win     = win;
 	return DART_OK;
 }
 
-dart_ret_t dart_put_handle (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *handle)
+dart_ret_t dart_put (dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *handle)
 {
 	MPI_Request mpi_req;
 	MPI_Aint disp_s, disp_rel;
@@ -227,7 +154,6 @@ dart_ret_t dart_put_handle (dart_gptr_t gptr, void *src, size_t nbytes, dart_han
 		 *  REPLACE, win, &mpi_req) could be a better alternative? 
 		 */
 		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win, &mpi_req);
-		(*handle) -> dest = target_unitid_rel;
 		DEBUG ("PUT	-%d bytes (allocated with collective allocation) to %d at the offset %d",
 				nbytes, target_unitid_abs, offset);
 
@@ -239,11 +165,9 @@ dart_ret_t dart_put_handle (dart_gptr_t gptr, void *src, size_t nbytes, dart_han
 		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_abs, offset, nbytes, MPI_BYTE, win, &mpi_req);
 		DEBUG ("PUT	- %d bytes (allocated with local allocation) to %d at the offset %d", 
 				nbytes, target_unitid_abs, offset);
-		(*handle) -> dest = target_unitid_abs;
 	}
 
 	(*handle) -> request = mpi_req;
-	(*handle) -> win     = win;
 	return DART_OK;
 }
 
@@ -258,6 +182,7 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 	int i, is_sharedmem = 0;
 	MPI_Win win;
 	MPI_Status mpi_sta;
+	MPI_Request mpi_req;
 	MPI_Aint disp_s, maximum_size, disp_rel;
 
 	uint64_t offset = gptr.addr_or_offs.offset;
@@ -267,7 +192,6 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 
 	int disp_unit;
 	char *baseptr;
-//	MPI_Request mpi_req;
 
 
 	/* Checking whether origin and target are in the same node. 
@@ -340,18 +264,17 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 			target_unitid_rel = target_unitid_abs;
 		}
 	
-		MPI_Put (src, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win);
-//		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win, &mpi_req);
+//		MPI_Put (src, nbytes, MPI_BYTE, target_unitid, difference, nbytes, MPI_BYTE, win);
+		MPI_Rput (src, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win, &mpi_req);
 		/* Make sure the access is completed remotedly */
 		MPI_Win_flush (target_unitid_rel, win);
 		/* MPI_Wait is invoked to release the resource brought by the mpi request handle */
-//		MPI_Wait (&mpi_req, &mpi_sta);
+		MPI_Wait (&mpi_req, &mpi_sta);
 	}
 	
 	if (seg_id)
  	{
-        	DEBUG ("PUT_BLOCKING	- %d bytes (allocated with collective allocation) to %d at the offset %d", nbytes, 
-				target_unitid_abs, offset);
+        	DEBUG ("PUT_BLOCKING	- %d bytes (allocated with collective allocation) to %d at the offset %d", nbytes, target_unitid_abs, offset);
 	}
 	else
         {
@@ -463,53 +386,6 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 	return DART_OK;
 }
 
-dart_ret_t dart_fence (dart_gptr_t gptr)
-{
-	dart_unit_t target_unitid_abs;
-	int16_t seg_id = gptr.segid;
-	MPI_Win win;
-	
-	target_unitid_abs = gptr.unitid;
-	if (seg_id){
-		uint16_t index = gptr.flags;
-		dart_unit_t target_unitid_rel;
-		win = dart_win_lists[index];
-		unit_g2l (index, target_unitid_abs, &target_unitid_rel);		
-		MPI_Win_flush (target_unitid_rel, win);
-	}
-	else{
-		win = dart_win_local_alloc;
-		MPI_Win_flush (target_unitid_abs, win);
-	}
-	LOG ("FENCE	- finished");
-}
-
-dart_ret_t dart_fence_all (dart_gptr_t gptr)
-{
-	int16_t seg_id = gptr.segid;
-	MPI_Win win;
-	if (seg_id){
-		uint16_t index = gptr.flags;
-		win = dart_win_lists[index];
-	}
-	else{
-		win = dart_win_local_alloc;
-	}
-	MPI_Win_flush_all (win);
-	LOG ("FENCE_ALL	- finished");
-}
-
-dart_ret_t dart_wait_local (dart_handle_t handle)
-{
-	if (handle)
-	{
-		MPI_Status mpi_sta;
-		MPI_Wait (&(handle->request), &mpi_sta);
-	}
-
-	LOG ("WAIT_LOCAL	- finished");
-	return DART_OK;
-}
 
 dart_ret_t dart_wait (dart_handle_t handle)
 {
@@ -517,8 +393,6 @@ dart_ret_t dart_wait (dart_handle_t handle)
 	{
 		MPI_Status mpi_sta;
 		MPI_Wait (&(handle -> request), &mpi_sta);
-		
-		MPI_Win_flush (handle->dest, handle->win);
 		handle = NULL;
 		free (handle);
 	}
@@ -527,7 +401,7 @@ dart_ret_t dart_wait (dart_handle_t handle)
 	return DART_OK;
 }
 
-dart_ret_t dart_test_local (dart_handle_t handle, int32_t* is_finished)
+dart_ret_t dart_test (dart_handle_t handle, int32_t* is_finished)
 {
 	if (!handle)
 	{
@@ -536,50 +410,22 @@ dart_ret_t dart_test_local (dart_handle_t handle, int32_t* is_finished)
 	}
 
 	MPI_Status mpi_sta;
-	MPI_Test (&(handle->request), is_finished, &mpi_sta);
+	MPI_Test (&(handle -> request), is_finished, &mpi_sta);
 
-	LOG ("TEST_LOCAL	- finished");
-	return DART_OK;
-}
-
-dart_ret_t dart_waitall_local (dart_handle_t *handle, size_t n)
-{
-	int i, r_n=0;
-	if (*handle)
+	if (*is_finished)
 	{
-		MPI_Status *mpi_sta;
-		MPI_Request *mpi_req;
-
-		mpi_req = (MPI_Request *)malloc (n * sizeof (MPI_Request));
-		mpi_sta = (MPI_Status *)malloc (n * sizeof (MPI_Status));
-		
-		for (i = 0; i < n; i++)	
-		{
-			if (handle[i])
-			{
-				mpi_req[r_n++] = handle[i] -> request;
-			} 
-		}	
-		
-		MPI_Waitall (r_n, mpi_req, mpi_sta);
-		r_n=0;
-		for (i = 0; i < n; i++)
-		{
-			if (handle[i])
-			{
-				handle[r_n++] -> request = mpi_req[i++];
-			}
-		}
-		free (mpi_req);
-		free (mpi_sta);
+		handle = NULL;
+		free (handle);
 	}
-	LOG ("WAITALL_LOCAL	- finished");
+
+	LOG ("TEST	- finished");
 	return DART_OK;
 }
+
 
 dart_ret_t dart_waitall (dart_handle_t *handle, size_t n)
 {
-	int i, n_r=0;
+	int i;
 	if (*handle)
 	{
 		MPI_Status *mpi_sta;
@@ -590,31 +436,20 @@ dart_ret_t dart_waitall (dart_handle_t *handle, size_t n)
 
 		for (i = 0; i < n; i++)
 		{
-			if (handle[i]){
-				mpi_req [n_r++] = handle[i] -> request;
-			}
+			mpi_req [i] = handle[i] -> request;
 		}
-
-		MPI_Waitall (n_r, mpi_req, mpi_sta);
-		n_r = 0;
+		MPI_Waitall (n, mpi_req, mpi_sta);
 		for (i = 0; i < n; i++)
 		{
-			if (handle[i])
-			{
-				handle[i] -> request = mpi_req[n_r++];
-			}
+			handle[i] -> request = mpi_req[i];
 		}
-	
 		free (mpi_req);
 		free (mpi_sta);
-
+		
 		for (i = 0; i < n; i++)
 		{
-			if (handle[i]){
-				MPI_Win_flush (handle[i]->dest, handle[i]->win);
-				handle[i] = NULL;
-				free (handle[i]);
-			}
+			handle[i] = NULL;
+			free(handle[i]);
 		}
 	}
 	
@@ -622,9 +457,15 @@ dart_ret_t dart_waitall (dart_handle_t *handle, size_t n)
 	return DART_OK;
 }
 
-dart_ret_t dart_testall_local (dart_handle_t *handle, size_t n, int32_t* is_finished)
+dart_ret_t dart_testall (dart_handle_t *handle, size_t n, int32_t* is_finished)
 {
-	int i, r_n=0;
+	if (!(*handle))
+	{
+		*is_finished = 1;
+		return DART_OK;
+	}
+
+	int i;
 	MPI_Status *mpi_sta;
 	MPI_Request *mpi_req;
 	mpi_req = (MPI_Request *)malloc (n * sizeof (MPI_Request));
@@ -632,22 +473,27 @@ dart_ret_t dart_testall_local (dart_handle_t *handle, size_t n, int32_t* is_fini
 
 	for (i = 0; i < n; i++)
 	{
-		if (handle[i]){
-			mpi_req[r_n++] = handle[i] -> request;
-		}
+		mpi_req [i] = handle[i] -> request;
 	}
-	MPI_Testall (r_n, mpi_req, is_finished, mpi_sta);
-	r_n=0;
+	MPI_Testall (n, mpi_req, is_finished, mpi_sta);
 	for (i = 0; i < n; i++)
 	{
-		if (handle[i]){
-			handle[i] -> request = mpi_req[r_n++];
-		}
+		handle[i] -> request = mpi_req[i];
 	}
+
 	free (mpi_req);
 	free (mpi_sta);
-	
-	LOG ("TESTALL_LOCAL	- finished");
+	/* If the tested operations are finished, then release the handler resource */
+	if (*is_finished)
+	{
+		for (i = 0; i < n; i++)
+		{
+			handle[i] = NULL;
+			free (handle[i]);
+		}
+
+	}
+	LOG ("TESTALL	- finished");
 	return DART_OK;
 }
 
