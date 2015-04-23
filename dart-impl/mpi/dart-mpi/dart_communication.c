@@ -463,6 +463,8 @@ dart_ret_t dart_get_blocking (void *dest, dart_gptr_t gptr, size_t nbytes)
 	return DART_OK;
 }
 
+/* -- Dart RMA Synchronization Operations -- */
+
 dart_ret_t dart_fence (dart_gptr_t gptr)
 {
 	dart_unit_t target_unitid_abs;
@@ -519,6 +521,8 @@ dart_ret_t dart_wait (dart_handle_t handle)
 		MPI_Wait (&(handle -> request), &mpi_sta);
 		
 		MPI_Win_flush (handle->dest, handle->win);
+		
+		/* Free handle resource */
 		handle = NULL;
 		free (handle);
 	}
@@ -612,6 +616,7 @@ dart_ret_t dart_waitall (dart_handle_t *handle, size_t n)
 		{
 			if (handle[i]){
 				MPI_Win_flush (handle[i]->dest, handle[i]->win);
+				/* Free handle resource */
 				handle[i] = NULL;
 				free (handle[i]);
 			}
