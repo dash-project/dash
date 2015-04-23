@@ -18,11 +18,12 @@
 #include "dart_team_group.h"
 #include "dart_globmem_priv.h"
 
+#define DART_BUDDY_ORDER 24
+
 /* -- Global objects for dart memory management -- */
 
 char* dart_mempool_localalloc; /* Point to the base address of memory region for local allocation. */
-
-dart_mempool dart_localpool; /* Help to do memory management work for local allocation/free. */
+struct dart_buddy* dart_localpool; /* Help to do memory management work for local allocation/free */
 
 dart_ret_t dart_init (int* argc, char*** argv)
 {
@@ -59,7 +60,7 @@ dart_ret_t dart_init (int* argc, char*** argv)
 
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 	MPI_Comm_size (MPI_COMM_WORLD, &size);	
-	dart_localpool = dart_mempool_create (DART_MAX_LENGTH);
+	dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
 
 	/* -- Generate separated intra-node communicators and Reserve necessary resources for dart programm -- */
 	MPI_Comm sharedmem_comm;
@@ -172,9 +173,8 @@ dart_ret_t dart_exit ()
 	MPI_Win_free (&dart_win_lists[index]);
 	
 	dart_adapt_transtable_destroy ();
-	dart_mempool_destroy (dart_localpool);
+	dart_buddy_delete (dart_localpool);
 		
-
 	free (dart_sharedmem_table[index]);
 
 	dart_adapt_teamlist_destroy ();
