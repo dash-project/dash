@@ -23,8 +23,10 @@ int main(int argc, char* argv[])
   assert( size == t.size() );
 
   cerr<<"Unit "<<myid<<" before barrier..."<<endl;
-  if( myid==size-1 ) 
+  if( myid==size-1 ) {
+    cerr<<"Unit "<<myid<<" sleeping..."<<endl;
     sleep(2);
+  }
   t.barrier();
 
   cerr<<"Unit "<<myid<<" after barrier!"<<endl;
