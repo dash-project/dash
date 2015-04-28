@@ -1,3 +1,10 @@
+/* 
+ * dash-lib/GlobPtr.h
+ *
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
+/* @DASH_HEADER@ */
+
 #ifndef GLOBPTR_H_INCLUDED
 #define GLOBPTR_H_INCLUDED
 
@@ -49,13 +56,13 @@ public:
   }
   
 
-  // prefix++ operator
+  // prefix increment operator
   GlobPtr<T>& operator++() {
     dart_gptr_incaddr(&m_dartptr, sizeof(T));
     return *this;
   }
   
-  // postfix++ operator
+  // postfix increment operator
   GlobPtr<T> operator++(int) {
     GlobPtr<T> result = *this;
     dart_gptr_incaddr(&m_dartptr, sizeof(T));
@@ -77,23 +84,26 @@ public:
     return !DART_GPTR_EQUAL(m_dartptr, other.m_dartptr);
   }
   
-#if 0
   GlobRef<T> operator[](gptrdiff_t n) 
   {
-    auto unit = m_pattern->index_to_unit(n);
-    auto elem = m_pattern->index_to_elem(n);
-
-    GlobPtr<T> ptr = m_globmem->get_globptr(unit,elem);
+    GlobPtr<T> ptr = (*this)+n;
     return GlobRef<T>(ptr);
   }
-  #endif
 
   GlobRef<T> operator*()
   {
     return GlobRef<T>(*this);
   }
+  
+  operator T*() {
+    void *addr=0;
+    if(is_local()) {
+      dart_gptr_getaddr(m_dartptr, &addr);
+    }
+    return static_cast<T*>(addr);
+  }
 
-  bool is_local() {
+  bool is_local() const {
     return m_dartptr.unitid==dash::myid();
   }
 

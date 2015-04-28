@@ -1,3 +1,10 @@
+/* 
+ * dash-lib/Shared.h
+ *
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
+/* @DASH_HEADER@ */
+
 #ifndef PATTERN1D_H_INCLUDED
 #define PATTERN1D_H_INCLUDED
 

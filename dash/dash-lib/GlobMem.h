@@ -1,3 +1,10 @@
+g/* 
+ * dash-lib/GlobMem.h
+ *
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
+/* @DASH_HEADER@ */
+
 #ifndef GLOBMEM_H_INCLUDED
 #define GLOBMEM_H_INCLUDED
 
@@ -116,6 +123,17 @@ public:
     return GlobPtr<TYPE>(gptr);
   }
 };
+
+template<typename T>
+GlobPtr<T> memalloc(size_t nelem) 
+{
+  dart_gptr_t gptr;
+  size_t lsize = sizeof(T)*nelem;
+  
+  dart_memalloc(lsize, &gptr);
+  return GlobPtr<T>(gptr);
+}
+
 
 }; // namespace dash
 

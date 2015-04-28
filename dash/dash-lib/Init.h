@@ -1,3 +1,10 @@
+/* 
+ * dash-lib/Init.h
+ *
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
+/* @DASH_HEADER@ */
+
 #ifndef INIT_H_INCLUDED
 #define INIT_H_INCLUDED
 

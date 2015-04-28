@@ -9,25 +9,47 @@
 
 using namespace std;
 
+class Foo
+{
+public:
+  int operator[](size_t pos) {
+    return 1;
+  }
+};
+
 int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
   
-  dash::Shared<int> a;
-  if( dash::myid==0 ) {
-    a=0;
+  auto myid = dash::myid();
+  auto size = dash::size();
+
+  dash::Array< dash::GlobPtr<int> > arr(size);
+
+  dash::Shared<int> shared(100);
+
+  arr[myid] = shared.begin();
+  
+  if( myid==0 ) {
+    dash::GlobPtr<int> ptr = arr[size-1];
+    
+    for( int i=0; i<100; i++ ) {
+      ptr[i]=i;
+    }
   }
-  dash::Team::All().barrier();
+
+  dash::barrier();
   
-  for( int i=0; i<dash::size(); i++ ) {
-    if( dash::myid()==i )
-      a=a+1;
+
+  for( auto it=shared.begin(); it!=shared.end(); it++ ) {
+    cout<<myid<<":"<<*it<<" ";
   }
+  cout<<endl;
   
-  dash::Team::All().barrier();
   
-  if( dash::myid()==0 ) 
-    cout<<a<<endl;
+
+  
+
   
   dash::finalize();
 }

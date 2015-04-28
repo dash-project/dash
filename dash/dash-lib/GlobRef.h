@@ -1,7 +1,8 @@
 /* 
  * dash-lib/GlobRef.h
  *
- * author(s): Karl Fuerlinger, LMU Munich */
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
 /* @DASH_HEADER@ */
 
 #ifndef GLOBREF_H_INCLUDED
@@ -79,8 +80,11 @@ public:
     operator=(val);
     return *this;
   }
-  
-  
+
+  GlobPtr<T> operator &() {
+    return m_gptr;
+  }
+
 #if 0
   template<typename X=T, 
 	   typename std::enable_if<has_subscript_operator<X>::value, int>::type *ptr=nullptr>
@@ -90,8 +94,8 @@ public:
     T val = operator T();
     return val[pos];
   }
-  
-#endif 
+#endif
+
 
   bool is_local() const {
     return m_gptr.is_local();
@@ -107,6 +111,7 @@ public:
 
     return GlobRef<MEMTYPE>(gptr);
   }
+
 
   // get the member via pointer to member
   template<class MEMTYPE, class P=T>

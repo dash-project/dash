@@ -1,7 +1,8 @@
 /* 
  * dash-lib/Array.h
  *
- * author(s): Karl Fuerlinger, LMU Munich */
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
 /* @DASH_HEADER@ */
 
 #ifndef ARRAY_H_INCLUDED
@@ -134,6 +135,7 @@ public:
     m_pattern(nelem, ds, t),
     local(this)
   {
+    assert(nelem>0);
     m_size  = m_pattern.nelem();
     m_lsize = m_pattern.max_elem_per_unit();
     m_myid  = m_team.myid();

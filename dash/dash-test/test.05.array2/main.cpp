@@ -22,7 +22,6 @@ int main(int argc, char* argv[])
   dash::Array<int>     arr1(pat);
   dash::Array<double>  arr2(pat);
   
-
   for( int i=0; i<arr1.size(); i++ ) {
     if( arr2.is_local(i) ) {
       assert(arr1.is_local(i));

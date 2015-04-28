@@ -1,3 +1,10 @@
+/* 
+ * dash-lib/GlobIter.h
+ *
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
+/* @DASH_HEADER@ */
+
 #ifndef GLOBITER_H_INCLUDED
 #define GLOBITER_H_INCLUDED
 

@@ -1,7 +1,8 @@
 /* 
  * dash-lib/Team.h
  *
- * author(s): Karl Fuerlinger, LMU Munich */
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
 /* @DASH_HEADER@ */
 
 #ifndef TEAM_H_INCLUDED

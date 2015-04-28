@@ -1,7 +1,8 @@
 /* 
  * dash-lib/Shared.h
  *
- * author(s): Karl Fuerlinger, LMU Munich */
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
 /* @DASH_HEADER@ */
 
 #ifndef SHARED_H_INCLUDED

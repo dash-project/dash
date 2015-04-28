@@ -1,3 +1,10 @@
+/* 
+ * dash-lib/Cartesian.h
+ *
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
+/* @DASH_HEADER@ */
+
 #ifndef CARTESIAN_H_INCLUDED
 #define CARTESIAN_H_INCLUDED
 
