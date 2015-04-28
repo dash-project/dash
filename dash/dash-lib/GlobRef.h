@@ -49,14 +49,22 @@ public:
 
   friend void swap(GlobRef<T> a, GlobRef<T> b) 
   {
-    using std::swap;
-    swap(a.m_gptr, b.m_gptr);
+    std::cerr<<"swap"<<std::endl;
   }
+
+#if 0
+
+    cout<<"swap"<<endl;
+    //using std::swap;
+    //swap(a.m_gptr, b.m_gptr);
+  }
+#endif
   
   operator T() const
   {
     T t;
     dash::get_value(&t, m_gptr);
+    std::cerr<<"operatorT() --> "<<t<<std::endl;
     return t;
   }
 
@@ -87,9 +95,11 @@ public:
     return *this;
   }
 
+#if 0
   GlobPtr<T> operator &() {
     return m_gptr;
   }
+#endif
 
 #if 0
   template<typename X=T, 

@@ -22,7 +22,7 @@ class GlobIter : public GlobPtr<T> ,
 				      T, gptrdiff_t,
 				      GlobIter<T>, GlobRef<T> >
 {
-private:
+protected:
   GlobMem<T>*      m_globmem;
   Pattern1D*       m_pattern;
   size_t           m_idx;
@@ -56,6 +56,7 @@ public:
     auto unit = m_pattern->index_to_unit(m_idx);
     auto elem = m_pattern->index_to_elem(m_idx);
 
+    //std::cerr<<"Operator* "<<m_idx<<" "<<unit<<" "<<elem<<std::endl;
     GlobPtr<T> ptr = m_globmem->get_globptr(unit,elem);
     return GlobRef<T>(ptr);
   }  
@@ -125,6 +126,7 @@ public:
   }
 
   bool operator<(const GlobIter<T>& other) const {
+    //std::cerr<<"Operator<"<<std::endl;
     return m_idx < other.m_idx;
   }
 
@@ -133,11 +135,12 @@ public:
   }
 
   bool operator>(const GlobIter<T>& other) const {
+    //std::cerr<<"Operator>"<<std::endl;
     return m_idx > other.m_idx;
   }
 
   bool operator>=(const GlobIter<T>& other) const {
-    return m_idx > other.m_idx;
+    return m_idx >= other.m_idx;
   }
 
   bool operator==(const GlobIter<T>& other) const {

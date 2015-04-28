@@ -15,6 +15,7 @@
 #include "GlobRef.h"
 #include "Team.h"
 #include "Pattern1D.h" 
+#include "HView.h"
 
 namespace dash
 {
@@ -222,6 +223,21 @@ public:
   
   void barrier() const {
     m_team.barrier();
+  }
+
+  Pattern1D& pattern() { return m_pattern; }
+  Team& team() { return m_team; }
+
+  // xxx: the long long should maybe be taken from the
+  // pattern 
+  void forall(std::function<void(long long)> func) 
+  {
+    m_pattern.forall(func);
+  }
+
+  template<int level>
+  dash::HView<Array<ELEMENT_TYPE>, level> hview() {
+    return dash::HView<Array<ELEMENT_TYPE>, level>(*this);
   }
 };
 

@@ -55,7 +55,6 @@ public:
     return m_dartptr;
   }
   
-
   // prefix increment operator
   GlobPtr<T>& operator++() {
     dart_gptr_incaddr(&m_dartptr, sizeof(T));
