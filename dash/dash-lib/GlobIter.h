@@ -14,10 +14,13 @@
 namespace dash
 {
 // KF: check 
-typedef long long gptrdiff_t;
+typedef long gptrdiff_t;
 
 template<typename T>
-class GlobIter : public GlobPtr<T>
+class GlobIter : public GlobPtr<T> ,
+		 public std::iterator<std::random_access_iterator_tag,
+				      T, gptrdiff_t,
+				      GlobIter<T>, GlobRef<T> >
 {
 private:
   GlobMem<T>*      m_globmem;
@@ -78,6 +81,21 @@ public:
   {
     GlobIter<T> result = *this;
     m_idx++;
+    return result;
+  }
+
+  // prefix-- operator
+  GlobIter<T>& operator--()
+  {
+    m_idx--;
+    return *this;
+  }
+  
+  // postfix-- operator
+  GlobIter<T> operator--(int)
+  {
+    GlobIter<T> result = *this;
+    m_idx--;
     return result;
   }
   

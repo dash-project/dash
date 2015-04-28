@@ -1,4 +1,4 @@
-g/* 
+/* 
  * dash-lib/GlobMem.h
  *
  * author(s): Karl Fuerlinger, LMU Munich 

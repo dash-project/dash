@@ -46,6 +46,12 @@ private:
 public:
   GlobRef(GlobPtr<T>& gptr) : m_gptr(gptr) {
   }
+
+  friend void swap(GlobRef<T> a, GlobRef<T> b) 
+  {
+    using std::swap;
+    swap(a.m_gptr, b.m_gptr);
+  }
   
   operator T() const
   {
