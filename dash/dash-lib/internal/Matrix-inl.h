@@ -38,7 +38,7 @@ Matrix_Ref<T, DIM, CUR> Local_Ref<T, DIM, CUR>::operator () {
 }
 
 template<typename T, size_t DIM, size_t CUR>
-LocalRef<T, DIM, CUR>::Local_Ref<T, DIM, CUR>(Matrix<T, DIM> * mat) {
+Local_Ref<T, DIM, CUR>::Local_Ref<T, DIM, CUR>(Matrix<T, DIM> * mat) {
   _proxy = new Matrix_RefProxy < T, DIM >;
   *_proxy = *(mat->_ref._proxy);
 
@@ -89,7 +89,7 @@ T & Local_Ref<T, DIM, CUR>::operator()(Args... args) {
 }
 
 template<typename T, size_t DIM, size_t CUR>
-LocalRef<T, DIM, CUR-1> && Local_Ref<T, DIM, CUR>::operator[](size_t n) {
+Local_Ref<T, DIM, CUR-1> && Local_Ref<T, DIM, CUR>::operator[](size_t n) {
   Local_Ref<T, DIM, CUR-1>  ref;
   ref._proxy = _proxy;
   _proxy->_coord[_proxy->_dim] = n;
@@ -99,7 +99,7 @@ LocalRef<T, DIM, CUR-1> && Local_Ref<T, DIM, CUR>::operator[](size_t n) {
 }
 
 template<typename T, size_t DIM, size_t CUR>
-LocalRef<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::operator[](size_t n) const {
+Local_Ref<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::operator[](size_t n) const {
   Local_Ref<T, DIM, CUR - 1> ref;
   ref._proxy = new Matrix_RefProxy < T, DIM > ;
   ref._proxy->_coord = _proxy->_coord;
@@ -114,7 +114,7 @@ LocalRef<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::operator[](size_t n) const {
 
 template<typename T, size_t DIM, size_t CUR>
 template<size_t SUBDIM>
-LocalRef<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::sub(size_type n) const {
+Local_Ref<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::sub(size_type n) const {
   static_assert(DIM - 1 > 0, "Dimension too low for sub()");
   static_assert(SUBDIM < DIM && SUBDIM >= 0, "Illegal sub-dimension");
   size_t target_dim = SUBDIM + _proxy->_dim;
@@ -134,18 +134,18 @@ LocalRef<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::sub(size_type n) const {
 }
 
 template<typename T, size_t DIM, size_t CUR>
-LocalRef<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::col(size_type n) const {
+Local_Ref<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::col(size_type n) const {
   return sub<1>(n);
 }
 
 template<typename T, size_t DIM, size_t CUR>
-LocalRef<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::row(size_type n) const {
+Local_Ref<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::row(size_type n) const {
   return sub<0>(n);
 }
 
 template<typename T, size_t DIM, size_t CUR>
 template<size_t SUBDIM>
-LocalRef<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::submat(
+Local_Ref<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::submat(
   size_type n,
   size_type range) {
   static_assert(SUBDIM < DIM && SUBDIM >= 0, "Wrong sub-dimension");
@@ -163,14 +163,14 @@ LocalRef<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::submat(
 }
 
 template<typename T, size_t DIM, size_t CUR>
-LocalRef<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::rows(
+Local_Ref<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::rows(
   size_type n,
   size_type range) {
   return submat<0>(n, range);
 }
 
 template<typename T, size_t DIM, size_t CUR>
-LocalRef<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::cols(
+Local_Ref<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::cols(
   size_type n,
   size_type range) {
   return submat<1>(n, range);
