@@ -18,16 +18,16 @@ using std::endl;
 
 namespace dash {
 
-template<class CONT, int LEVEL> 
-class HIter : public CONT::iterator
+template<class CONTAINER, int LEVEL> 
+class HIter : public CONTAINER::iterator
 {
 private:
   Pattern<1> & m_pattern;
   Team&        m_subteam;
 
 public:
-  HIter<CONT,LEVEL>& advance() {
-    auto idx = CONT::iterator::m_idx;
+  HIter<CONTAINER,LEVEL>& advance() {
+    auto idx = CONTAINER::iterator::m_idx;
     
     for(;idx<m_pattern.nelem(); idx++ ) {
       auto unit = m_pattern.index_to_unit(idx);
@@ -38,59 +38,59 @@ public:
     }
 
     //cout<<" ----------------" <<endl;
-    CONT::iterator::m_idx = idx;
+    CONTAINER::iterator::m_idx = idx;
     return *this;
   }
 
 
 public:
-  HIter(typename CONT::iterator it, 
+  HIter(typename CONTAINER::iterator it, 
 	Pattern<1> & pattern,
-	Team& subteam) : CONT::iterator(it), 
+	Team& subteam) : CONTAINER::iterator(it), 
 			 m_pattern(pattern),
 			 m_subteam(subteam) {
   }
 
   void print() {
-    cout<<CONT::iterator::m_idx<<endl;
+    cout<<CONTAINER::iterator::m_idx<<endl;
   }
 
-  HIter<CONT,LEVEL>& operator++() 
+  HIter<CONTAINER,LEVEL>& operator++() 
   {
-    CONT::iterator::m_idx++;
+    CONTAINER::iterator::m_idx++;
     return advance();
   }
     
 };
 
 
-template<class CONT, int LEVEL>
+template<class CONTAINER, int LEVEL>
 class HView
 {
 public:
-  typedef typename CONT::iterator    iterator;
-  typedef typename CONT::value_type  value_type;
+  typedef typename CONTAINER::iterator    iterator;
+  typedef typename CONTAINER::value_type  value_type;
   
 private:
-  CONT&        m_container;
+  CONTAINER&        m_container;
   Team&        m_subteam;
   Pattern<1> & m_pat;
 
-  HIter<CONT,LEVEL> m_begin;
-  HIter<CONT,LEVEL> m_end;
+  HIter<CONTAINER,LEVEL> m_begin;
+  HIter<CONTAINER,LEVEL> m_end;
 
-  HIter<CONT,LEVEL> find_begin() {
-    HIter<CONT,LEVEL> it = {m_container.begin(),m_pat,m_subteam};
+  HIter<CONTAINER,LEVEL> find_begin() {
+    HIter<CONTAINER,LEVEL> it = {m_container.begin(),m_pat,m_subteam};
     it.advance();
     return it;
   }
 
-  HIter<CONT,LEVEL> find_end() {
+  HIter<CONTAINER,LEVEL> find_end() {
     return {m_container.end(),m_pat,m_subteam};
   }
   
 public:
-  HView(CONT& cont) : m_container(cont), 
+  HView(CONTAINER& cont) : m_container(cont), 
 		      m_subteam(cont.team().sub(LEVEL)),
 		      m_pat(cont.pattern()),
 		      m_begin(find_begin()),
@@ -101,30 +101,30 @@ public:
     std::cout<<"This team has size "<<m_subteam.size()<<std::endl;
   }
   
-  HIter<CONT,LEVEL> begin() { 
+  HIter<CONTAINER,LEVEL> begin() { 
     return m_begin;
   }
   
-  HIter<CONT,LEVEL> end() { 
+  HIter<CONTAINER,LEVEL> end() { 
     return m_end;
   }
 };
 
 
-template<class CONT>
-class HView<CONT, -1>
+template<class CONTAINER>
+class HView<CONTAINER, -1>
 {
 public:
-  typedef typename CONT::iterator     iterator;
-  typedef typename CONT::value_type   value_type;
+  typedef typename CONTAINER::iterator     iterator;
+  typedef typename CONTAINER::value_type   value_type;
 
 private:
   Team&        m_subteam;
-  CONT&        m_container;
+  CONTAINER&        m_container;
   Pattern<1> & m_pat;
 
 public:
-  HView(CONT& cont) 
+  HView(CONTAINER& cont) 
   : m_container(cont), 
 	  m_subteam(cont.team()),
 	  m_pat(cont.pattern()) {};

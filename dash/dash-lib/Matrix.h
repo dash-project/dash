@@ -51,16 +51,16 @@ template <typename T, size_t DIM, size_t CUR = DIM> class Local_Ref {
   typedef size_t size_type;
   typedef size_t difference_type;
 
-  typedef GlobIter<value_type, DIM> iterator;
-  typedef const GlobIter<value_type, DIM> const_iterator;
+  typedef GlobIter<value_type> iterator;
+  typedef const GlobIter<value_type> const_iterator;
   typedef std::reverse_iterator<iterator> reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   typedef GlobRef<value_type> reference;
   typedef const GlobRef<value_type> const_reference;
 
-  typedef GlobIter<value_type, DIM> pointer;
-  typedef const GlobIter<value_type, DIM> const_pointer;
+  typedef GlobIter<value_type> pointer;
+  typedef const GlobIter<value_type> const_pointer;
 
   Local_Ref<T, DIM, CUR>() = default;
 
@@ -91,8 +91,8 @@ template <typename T, size_t DIM, size_t CUR = DIM> class Local_Ref {
   template<size_t SUBDIM>
   Local_Ref<T, DIM, DIM> submat(size_type n, size_type range);
 
-  inline Local_Ref<T, DIM, DIM> rows(size_type n, size_type range)
-  inline Local_Ref<T, DIM, DIM> cols(size_type n, size_type range)
+  inline Local_Ref<T, DIM, DIM> rows(size_type n, size_type range);
+  inline Local_Ref<T, DIM, DIM> cols(size_type n, size_type range);
 };
 
 // Wrapper class for RefProxy. Matrix_Ref represents Matrix and Submatrix a Matrix and provices global operations.
@@ -106,16 +106,16 @@ template <typename T, size_t DIM, size_t CUR = DIM> class Matrix_Ref {
   typedef size_t size_type;
   typedef size_t difference_type;
 
-  typedef GlobIter<value_type, DIM> iterator;
-  typedef const GlobIter<value_type, DIM> const_iterator;
+  typedef GlobIter<value_type> iterator;
+  typedef const GlobIter<value_type> const_iterator;
   typedef std::reverse_iterator<iterator> reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   typedef GlobRef<value_type> reference;
   typedef const GlobRef<value_type> const_reference;
 
-  typedef GlobIter<value_type, DIM> pointer;
-  typedef const GlobIter<value_type, DIM> const_pointer;
+  typedef GlobIter<value_type> pointer;
+  typedef const GlobIter<value_type> const_pointer;
 
   inline operator Matrix_Ref<T, DIM, CUR - 1> && ();
 
@@ -126,13 +126,13 @@ template <typename T, size_t DIM, size_t CUR = DIM> class Matrix_Ref {
   Team & team();
 
   inline constexpr size_type size() const noexcept;
-  inline size_type extent(size_type dim) const noexcept
-  inline constexpr bool empty() const noexcept
-  inline void barrier() const
-  inline void forall(std::function<void(long long)> func)
+  inline size_type extent(size_type dim) const noexcept;
+  inline constexpr bool empty() const noexcept;
+  inline void barrier() const;
+  inline void forall(::std::function<void(long long)> func);
   inline Pattern<DIM> pattern() const;
 
-  Matrix_Ref<T, DIM, CUR-1> && operator[](size_t n)
+  Matrix_Ref<T, DIM, CUR-1> && operator[](size_t n);
   Matrix_Ref<T, DIM, CUR-1> operator[](size_t n) const;
 
   template<size_t SUBDIM>
@@ -154,10 +154,10 @@ template <typename T, size_t DIM, size_t CUR = DIM> class Matrix_Ref {
   reference operator()(Args... args);
 
   // For 1D. OBSOLETE
-  inline bool islocal(size_type n);
-  inline bool islocal(size_t dim, size_type n);
+  inline bool isLocal(size_type n);
+  inline bool isLocal(size_t dim, size_type n);
 
-  inline template <int level> dash::HView<Matrix<T, DIM>, level, DIM> hview();
+  template <int level> dash::HView<Matrix<T, DIM>, level> inline hview();
 
  private:
   Matrix_RefProxy<T, DIM> * _proxy;
@@ -201,16 +201,16 @@ template <typename ELEMENT_TYPE, size_t DIM> class Matrix {
   typedef size_t size_type;
   typedef size_t difference_type;
 
-  typedef GlobIter<value_type, DIM> iterator;
-  typedef const GlobIter<value_type, DIM> const_iterator;
+  typedef GlobIter<value_type> iterator;
+  typedef const GlobIter<value_type> const_iterator;
   typedef std::reverse_iterator<iterator> reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   typedef GlobRef<value_type> reference;
   typedef const GlobRef<value_type> const_reference;
 
-  typedef GlobIter<value_type, DIM> pointer;
-  typedef const GlobIter<value_type, DIM> const_pointer;
+  typedef GlobIter<value_type> pointer;
+  typedef const GlobIter<value_type> const_pointer;
 
  public:
   template<typename T_, size_t DIM1, size_t DIM2> friend class Matrix_Ref;
@@ -273,11 +273,11 @@ template <typename ELEMENT_TYPE, size_t DIM> class Matrix {
   template<typename... Args>
   inline reference operator()(Args... args);
   inline Pattern<DIM> pattern() const;
-  inline bool islocal(size_type n);
-  inline bool islocal(size_t dim, size_type n);
+  inline bool isLocal(size_type n);
+  inline bool isLocal(size_t dim, size_type n);
 
   template <int level>
-  inline dash::HView<Matrix<ELEMENT_TYPE, DIM>, level, DIM> hview();
+  inline dash::HView<Matrix<ELEMENT_TYPE, DIM>, level> hview();
   inline operator Matrix_Ref<ELEMENT_TYPE, DIM, DIM> ();
 
  private:
