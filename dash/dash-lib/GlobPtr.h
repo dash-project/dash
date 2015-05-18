@@ -8,14 +8,16 @@
 #ifndef GLOBPTR_H_INCLUDED
 #define GLOBPTR_H_INCLUDED
 
-#include "GlobRef.h"
+// #include "GlobRef.h"
 #include "dart.h"
 
-namespace dash
-{
+namespace dash {
+
+// Forward-declaration
+template<typename T> class GlobRef;
+
 template<typename T>
-class GlobPtr
-{
+class GlobPtr {
 public:
   typedef long long gptrdiff_t;
 

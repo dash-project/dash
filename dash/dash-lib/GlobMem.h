@@ -112,13 +112,13 @@ public:
     //fprintf(stderr, "get_globptr\n");
     dart_unit_t lunit, gunit; 
     
-    dart_gptr_t gptr=m_begptr;
+    dart_gptr_t gptr = m_begptr;
     dart_team_unit_g2l(m_teamid, gptr.unitid, &lunit);
-    lunit = (lunit+unit)%m_nunits;
+    lunit = (lunit + unit) % m_nunits;
     dart_team_unit_l2g(m_teamid, lunit, &gunit);
     
     dart_gptr_setunit(&gptr, gunit);
-    dart_gptr_incaddr(&gptr, idx*sizeof(TYPE));
+    dart_gptr_incaddr(&gptr, idx * sizeof(TYPE));
 
     return GlobPtr<TYPE>(gptr);
   }
@@ -128,7 +128,7 @@ template<typename T>
 GlobPtr<T> memalloc(size_t nelem) 
 {
   dart_gptr_t gptr;
-  size_t lsize = sizeof(T)*nelem;
+  size_t lsize = sizeof(T) * nelem;
   
   dart_memalloc(lsize, &gptr);
   return GlobPtr<T>(gptr);

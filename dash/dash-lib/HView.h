@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include "Team.h"
+#include "Pattern.h"
 
 using std::cout; 
 using std::endl;
@@ -21,8 +22,8 @@ template<class CONT, int LEVEL>
 class HIter : public CONT::iterator
 {
 private:
-  Pattern1D&  m_pattern;
-  Team&       m_subteam;
+  Pattern<1> & m_pattern;
+  Team&        m_subteam;
 
 public:
   HIter<CONT,LEVEL>& advance() {
@@ -44,7 +45,7 @@ public:
 
 public:
   HIter(typename CONT::iterator it, 
-	Pattern1D& pattern,
+	Pattern<1> & pattern,
 	Team& subteam) : CONT::iterator(it), 
 			 m_pattern(pattern),
 			 m_subteam(subteam) {
@@ -73,7 +74,7 @@ public:
 private:
   CONT&        m_container;
   Team&        m_subteam;
-  Pattern1D&   m_pat;
+  Pattern<1> & m_pat;
 
   HIter<CONT,LEVEL> m_begin;
   HIter<CONT,LEVEL> m_end;
@@ -118,14 +119,15 @@ public:
   typedef typename CONT::value_type   value_type;
 
 private:
-  Team&     m_subteam;
-  CONT&     m_container;
-  Pattern1D&  m_pat;
+  Team&        m_subteam;
+  CONT&        m_container;
+  Pattern<1> & m_pat;
 
 public:
-  HView(CONT& cont) : m_container(cont), 
-		      m_subteam(cont.team()),
-		      m_pat(cont.pattern()) {};
+  HView(CONT& cont) 
+  : m_container(cont), 
+	  m_subteam(cont.team()),
+	  m_pat(cont.pattern()) {};
   
   value_type* begin() { 
     return m_container.lbegin();

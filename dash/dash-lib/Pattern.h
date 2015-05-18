@@ -15,6 +15,12 @@ using std::endl;
 
 namespace dash {
 
+  enum MemArrange {
+    Undefined = 0,
+    ROW_MAJOR,
+    COL_MAJOR
+  };
+
 	struct DistEnum {
 		enum disttype {
 			BLOCKED,      // = BLOCKCYCLIC(ceil(nelem/nunits))
@@ -69,9 +75,7 @@ namespace dash {
 
 	// Wrapper class of CartCoord
 	template<size_t ndim_, MemArrange arr = ROW_MAJOR>
-	class DimRangeBase : public CartCoord < ndim_, long long, arr > {
-
-	protected:
+	class DimRangeBase : public CartCoord < ndim_, long long > {
 
 	public:
 

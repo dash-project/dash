@@ -11,8 +11,7 @@
 #include "GlobMem.h"
 #include "Init.h"
 
-namespace dash
-{
+namespace dash {
 
 // forward declarations...
 template<typename T> class GlobMem;
@@ -36,7 +35,6 @@ struct has_subscript_operator
   
   static bool const value = sizeof(check<T>(0)) == sizeof(yes);
 };
-
 
 template<typename T>
 class GlobRef {

@@ -9,6 +9,7 @@
 #define GLOBITER_H_INCLUDED
 
 #include "Pattern.h"
+#include "GlobRef.h"
 
 namespace dash {
 
@@ -28,8 +29,8 @@ protected:
   
 public:
   GlobIter() : GlobPtr<T>() {
-    m_globmem=nullptr;
-    m_pattern=nullptr;
+    m_globmem = nullptr;
+    m_pattern = nullptr;
     m_idx=0;
   }
 
@@ -50,16 +51,18 @@ public:
   }
   
   GlobRef<T> operator*() {
-    auto unit = m_pattern->index_to_unit(m_idx);
-    auto elem = m_pattern->index_to_elem(m_idx);
-    GlobPtr<T> ptr = m_globmem->get_globptr(unit,elem);
+    auto coord = m_pattern->sizespec().coords(m_idx);
+    auto unit  = m_pattern->index_to_unit(coord);
+    auto elem  = m_pattern->index_to_elem(coord);
+    GlobPtr<T> ptr = m_globmem->get_globptr(unit, elem);
     return GlobRef<T>(ptr);
   }  
 
   GlobRef<T> operator[](gptrdiff_t n) {
-    auto unit = m_pattern->index_to_unit(n);
-    auto elem = m_pattern->index_to_elem(n);
-    GlobPtr<T> ptr = m_globmem->get_globptr(unit,elem);
+    auto coord = m_pattern->sizespec().coords(n);
+    auto unit  = m_pattern->index_to_unit(coord);
+    auto elem  = m_pattern->index_to_elem(coord);
+    GlobPtr<T> ptr = m_globmem->get_globptr(unit, elem);
     return GlobRef<T>(ptr);
   }
 

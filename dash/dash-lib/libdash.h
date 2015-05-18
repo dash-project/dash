@@ -11,7 +11,7 @@
 #include "Init.h"
 #include "Team.h"
 #include "Cartesian.h"
-#include "Pattern1D.h"
+#include "Pattern.h"
 #include "GlobMem.h"
 #include "GlobPtr.h"
 #include "GlobIter.h"

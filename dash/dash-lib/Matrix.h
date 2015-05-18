@@ -27,7 +27,7 @@ template <typename T, size_t DIM> class Matrix_RefProxy {
  private:
   int _dim;
   Matrix<T, DIM> * _mat;
-  std::array<long long, DIM> _coord;
+  ::std::array<long long, DIM> _coord;
   ViewSpec<DIM> _viewspec;
 
  public:
@@ -67,14 +67,10 @@ template <typename T, size_t DIM, size_t CUR = DIM> class Local_Ref {
   Local_Ref<T, DIM, CUR>(Matrix<T, DIM> * mat);
 
   inline operator Local_Ref<T, DIM, CUR - 1> && ();
-
   // SHOULD avoid cast from Matrix_Ref to Local_Ref. Different operation semantics.
   inline operator Matrix_Ref<T, DIM, CUR> ();
-
   inline long long extent(size_t dim) const;
-
   inline size_type size() const;
-
   inline T & at_(size_type pos);
 
   template<typename ... Args>
@@ -84,21 +80,18 @@ template <typename T, size_t DIM, size_t CUR = DIM> class Local_Ref {
   T& operator()(Args... args);
 
   Local_Ref<T, DIM, CUR - 1> && operator[](size_t n);
-
   Local_Ref<T, DIM, CUR - 1> operator[](size_t n) const;
 
   template<size_t SUBDIM>
   Local_Ref<T, DIM, DIM - 1> sub(size_type n);
 
   inline Local_Ref<T, DIM, DIM - 1> col(size_type n);
-
   inline Local_Ref<T, DIM, DIM - 1> row(size_type n);
 
   template<size_t SUBDIM>
   Local_Ref<T, DIM, DIM> submat(size_type n, size_type range);
 
   inline Local_Ref<T, DIM, DIM> rows(size_type n, size_type range)
-
   inline Local_Ref<T, DIM, DIM> cols(size_type n, size_type range)
 };
 
@@ -196,7 +189,6 @@ class Matrix_Ref < T, DIM, 0 > {
   Matrix_Ref<T, DIM, 0>() = default;
 
   operator T();
-
   T operator=(const T value);
 };
 
@@ -263,22 +255,27 @@ template <typename ELEMENT_TYPE, size_t DIM> class Matrix {
   inline ELEMENT_TYPE * lbegin() noexcept;
   inline ELEMENT_TYPE * lend() noexcept;
   inline void forall(std::function<void(long long)> func);
+
   template<size_t SUBDIM>
   inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM - 1> sub(size_type n);
   inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM - 1> col(size_type n);
   inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM - 1> row(size_type n);
+
   template<size_t SUBDIM>
   inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM> submat(size_type n, size_type range);
   inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM> rows(size_type n, size_type range);
   inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM> cols(size_type n, size_type range);
   inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM - 1> operator[](size_type n);
+
   template<typename ... Args>
   inline reference at(Args... args);
+
   template<typename... Args>
   inline reference operator()(Args... args);
   inline Pattern<DIM> pattern() const;
   inline bool islocal(size_type n);
   inline bool islocal(size_t dim, size_type n);
+
   template <int level>
   inline dash::HView<Matrix<ELEMENT_TYPE, DIM>, level, DIM> hview();
   inline operator Matrix_Ref<ELEMENT_TYPE, DIM, DIM> ();
