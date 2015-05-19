@@ -89,7 +89,7 @@ int dart_start(int argc, char* argv[])
       pid_t spid;
       
       spid = dart_spawn(i, nprocs, shm_id, syncarea_size, 
-			dashapp, argc, argv, nargs);
+			dashapp, argc, argv, nargs+1);
       
       spawntable[i].pid = spid;
     }
