@@ -107,6 +107,7 @@ private:
     m_dartid=id; 
     m_position=pos;
     
+    /*
     if( m_dartid!=DART_TEAM_NULL ) {
       // get the group for the team
       size_t sz; dart_group_sizeof(&sz);
@@ -115,6 +116,7 @@ private:
       
       dart_team_get_group(m_dartid, m_group);
     }
+    */
 
     /*
       fprintf(stderr, "[%d] creating a new team for ID: %d as %p\n",
