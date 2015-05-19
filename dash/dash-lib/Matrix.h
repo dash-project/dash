@@ -168,6 +168,7 @@ template <typename T, size_t DIM>
 class Local_Ref < T, DIM, 0 > {
  public:
   template<typename T_, size_t DIM_> friend class Matrix;
+
   Matrix_RefProxy<T, DIM> * _proxy;
 
   Local_Ref<T, DIM, 0>() = default;
@@ -182,6 +183,7 @@ template <typename T, size_t DIM>
 class Matrix_Ref < T, DIM, 0 > {
  public:
   template<typename T_, size_t DIM_> friend class Matrix;
+
   Matrix_RefProxy<T, DIM> * _proxy;
   
   inline GlobRef<T> at_(size_t unit, size_t elem) const;
@@ -193,7 +195,8 @@ class Matrix_Ref < T, DIM, 0 > {
 };
 
 
-template <typename ELEMENT_TYPE, size_t DIM> class Matrix {
+template <typename ELEMENT_TYPE, size_t DIM>
+class Matrix {
  public:
   typedef ELEMENT_TYPE value_type;
 

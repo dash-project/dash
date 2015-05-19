@@ -43,10 +43,10 @@ Local_Ref<T, DIM, CUR>::Local_Ref(Matrix<T, DIM> * mat) {
   *_proxy = *(mat->_ref._proxy);
 
   for (int i = 0; i < DIM; i++) {
-    _proxy->_viewspec.begin[i] = 0;
-    _proxy->_viewspec.range[i] = mat->_pattern.local_extent(i);
+    _proxy->m_viewspec.begin[i] = 0;
+    _proxy->m_viewspec.range[i] = mat->_pattern.local_extent(i);
   }
-  _proxy->_viewspec.update_size();
+  _proxy->m_viewspec.update_size();
 }
 
 template<typename T, size_t DIM, size_t CUR>
@@ -57,12 +57,12 @@ long long Local_Ref<T, DIM, CUR>::extent(size_t dim) const {
 
 template<typename T, size_t DIM, size_t CUR>
 size_t Local_Ref<T, DIM, CUR>::size() const {
-  return _proxy->_viewspec.size();
+  return _proxy->m_viewspec.size();
 }
 
 template<typename T, size_t DIM, size_t CUR>
 T & Local_Ref<T, DIM, CUR>::at_(size_type pos) {
-  if (!(pos < _proxy->_viewspec.size())) {
+  if (!(pos < _proxy->m_viewspec.size())) {
     throw std::out_of_range("Out of range");
   }
   return _proxy->_mat->lbegin()[pos];
@@ -79,7 +79,7 @@ T & Local_Ref<T, DIM, CUR>::at(Args... args) {
   return at_(
       _proxy->_mat->_pattern.local_at_(
         _proxy->_coord,
-        _proxy->_viewspec));
+        _proxy->m_viewspec));
 }
 
 template<typename T, size_t DIM, size_t CUR>
@@ -94,7 +94,7 @@ Local_Ref<T, DIM, CUR-1> && Local_Ref<T, DIM, CUR>::operator[](size_t n) {
   ref._proxy = _proxy;
   _proxy->_coord[_proxy->_dim] = n;
   _proxy->_dim++;
-  _proxy->_viewspec.update_size();
+  _proxy->m_viewspec.update_size();
   return std::move(ref);
 }
 
@@ -106,9 +106,9 @@ Local_Ref<T, DIM, CUR-1> Local_Ref<T, DIM, CUR>::operator[](size_t n) const {
   ref._proxy->_coord[_proxy->_dim] = n;
   ref._proxy->_dim = _proxy->_dim + 1;
   ref._proxy->_mat = _proxy->_mat;
-  ref._proxy->_viewspec = _proxy->_viewspec;
-  ref._proxy->_viewspec.view_dim--;
-  ref._proxy->_viewspec.update_size();
+  ref._proxy->m_viewspec = _proxy->m_viewspec;
+  ref._proxy->m_viewspec.view_dim--;
+  ref._proxy->m_viewspec.update_size();
   return ref;
 }
 
@@ -119,15 +119,15 @@ Local_Ref<T, DIM, DIM-1> Local_Ref<T, DIM, CUR>::sub(size_type n) {
   static_assert(SUBDIM < DIM && SUBDIM >= 0, "Illegal sub-dimension");
   size_t target_dim = SUBDIM + _proxy->_dim;
   Local_Ref<T, DIM, DIM - 1> ref;
-  Matrix_RefProxy<T, DIM> * proxy = new Matrix_RefProxy < T, DIM >();
+  Matrix_RefProxy<T, DIM> * proxy = new Matrix_RefProxy<T, DIM>();
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
   ref._proxy = proxy;
   ref._proxy->_coord[target_dim] = 0;
-  ref._proxy->_viewspec = _proxy->_viewspec;
-  ref._proxy->_viewspec.begin[target_dim] = n;
-  ref._proxy->_viewspec.range[target_dim] = 1;
-  ref._proxy->_viewspec.view_dim--;
-  ref._proxy->_viewspec.update_size();
+  ref._proxy->m_viewspec = _proxy->m_viewspec;
+  ref._proxy->m_viewspec.begin[target_dim] = n;
+  ref._proxy->m_viewspec.range[target_dim] = 1;
+  ref._proxy->m_viewspec.view_dim--;
+  ref._proxy->m_viewspec.update_size();
   ref._proxy->_mat = _proxy->_mat;
   ref._proxy->_dim = _proxy->_dim + 1;
   return ref;
@@ -150,15 +150,15 @@ Local_Ref<T, DIM, DIM> Local_Ref<T, DIM, CUR>::submat(
   size_type range) {
   static_assert(SUBDIM < DIM && SUBDIM >= 0, "Wrong sub-dimension");
   Local_Ref<T, DIM, DIM> ref;
-  Matrix_RefProxy<T, DIM> * proxy = new Matrix_RefProxy < T, DIM > ;
+  Matrix_RefProxy<T, DIM> * proxy = new Matrix_RefProxy<T, DIM>();
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
 
   ref._proxy = proxy;
-  ref._proxy->_viewspec = _proxy->_viewspec;
-  ref._proxy->_viewspec.begin[SUBDIM] = n;
-  ref._proxy->_viewspec.range[SUBDIM] = range;
+  ref._proxy->m_viewspec = _proxy->m_viewspec;
+  ref._proxy->m_viewspec.begin[SUBDIM] = n;
+  ref._proxy->m_viewspec.range[SUBDIM] = range;
   ref._proxy->_mat = _proxy->_mat;
-  ref._proxy->_viewspec.update_size();
+  ref._proxy->m_viewspec.update_size();
   return ref;
 }
 
@@ -196,13 +196,13 @@ Team & Matrix_Ref<T, DIM, CUR>::team() {
 }
 
 template<typename T, size_t DIM, size_t CUR>
-constexpr size_type Matrix_Ref<T, DIM, CUR>::size() const noexcept {
+constexpr typename Matrix_Ref<T, DIM, CUR>::size_type Matrix_Ref<T, DIM, CUR>::size() const noexcept {
   return _proxy->_size;
 }
 
 template<typename T, size_t DIM, size_t CUR>
-size_type Matrix_Ref<T, DIM, CUR>::extent(size_type dim) const noexcept {
-  return _proxy->_viewspec.range[dim];
+typename Matrix_Ref<T, DIM, CUR>::size_type Matrix_Ref<T, DIM, CUR>::extent(size_type dim) const noexcept {
+  return _proxy->m_viewspec.range[dim];
 }
 
 template<typename T, size_t DIM, size_t CUR>
@@ -217,7 +217,7 @@ void Matrix_Ref<T, DIM, CUR>::barrier() const {
 
 template<typename T, size_t DIM, size_t CUR>
 inline void Matrix_Ref<T, DIM, CUR>::forall(::std::function<void(long long)> func) {
-  _proxy->_mat->_pattern.forall(func, _proxy->_viewspec);
+  _proxy->_mat->_pattern.forall(func, _proxy->m_viewspec);
 }
 
 template<typename T, size_t DIM, size_t CUR>
@@ -225,7 +225,7 @@ Matrix_Ref<T, DIM, CUR-1> && Matrix_Ref<T, DIM, CUR>::operator[](size_t n) {
   Matrix_Ref<T, DIM, CUR-1> ref;
   _proxy->_coord[_proxy->_dim] = n;
   _proxy->_dim++;
-  _proxy->_viewspec.update_size();
+  _proxy->m_viewspec.update_size();
   ref._proxy = _proxy;
   return std::move(ref);
 }
@@ -238,9 +238,9 @@ Matrix_Ref<T, DIM, CUR-1> Matrix_Ref<T, DIM, CUR>::operator[](size_t n) const {
   ref._proxy->_coord[_proxy->_dim] = n;
   ref._proxy->_dim = _proxy->_dim + 1;
   ref._proxy->_mat = _proxy->_mat;
-  ref._proxy->_viewspec = _proxy->_viewspec;
-  ref._proxy->_viewspec.view_dim--;
-  ref._proxy->_viewspec.update_size();
+  ref._proxy->m_viewspec = _proxy->m_viewspec;
+  ref._proxy->m_viewspec.view_dim--;
+  ref._proxy->m_viewspec.update_size();
   return ref;
 }
 
@@ -256,11 +256,11 @@ Matrix_Ref<T, DIM, DIM-1> Matrix_Ref<T, DIM, CUR>::sub(size_type n) {
 
   ref._proxy = proxy;
   ref._proxy->_coord[target_dim] = 0;
-  ref._proxy->_viewspec = _proxy->_viewspec;
-  ref._proxy->_viewspec.begin[target_dim] = n;
-  ref._proxy->_viewspec.range[target_dim] = 1;
-  ref._proxy->_viewspec.view_dim--;
-  ref._proxy->_viewspec.update_size();
+  ref._proxy->m_viewspec = _proxy->m_viewspec;
+  ref._proxy->m_viewspec.begin[target_dim] = n;
+  ref._proxy->m_viewspec.range[target_dim] = 1;
+  ref._proxy->m_viewspec.view_dim--;
+  ref._proxy->m_viewspec.update_size();
   ref._proxy->_mat = _proxy->_mat;
   ref._proxy->_dim = _proxy->_dim + 1;
   return ref;
@@ -287,11 +287,11 @@ Matrix_Ref<T, DIM, DIM> Matrix_Ref<T, DIM, CUR>::submat(
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
 
   ref._proxy = proxy;
-  ref._proxy->_viewspec = _proxy->_viewspec;
-  ref._proxy->_viewspec.begin[SUBDIM] = n;
-  ref._proxy->_viewspec.range[SUBDIM] = range;
+  ref._proxy->m_viewspec = _proxy->m_viewspec;
+  ref._proxy->m_viewspec.begin[SUBDIM] = n;
+  ref._proxy->m_viewspec.range[SUBDIM] = range;
   ref._proxy->_mat = _proxy->_mat;
-  ref._proxy->_viewspec.update_size();
+  ref._proxy->m_viewspec.update_size();
   return ref;
 }
 
@@ -311,7 +311,8 @@ inline Matrix_Ref<T, DIM, DIM> Matrix_Ref<T, DIM, CUR>::rows(
 
 template<typename T, size_t DIM, size_t CUR>
 template<typename ... Args>
-inline reference Matrix_Ref<T, DIM, CUR>::at(Args... args) {
+inline typename Matrix_Ref<T, DIM, CUR>::reference
+Matrix_Ref<T, DIM, CUR>::at(Args... args) {
   assert(sizeof...(Args) == DIM - _proxy->_dim);
   ::std::array<long long, DIM> coord = { args... };
   for(int i = _proxy->_dim; i < DIM; ++i) {
@@ -328,7 +329,8 @@ inline reference Matrix_Ref<T, DIM, CUR>::at(Args... args) {
 
 template<typename T, size_t DIM, size_t CUR>
 template<typename ... Args>
-inline reference Matrix_Ref<T, DIM, CUR>::operator()(Args... args) {
+inline typename Matrix_Ref<T, DIM, CUR>::reference
+Matrix_Ref<T, DIM, CUR>::operator()(Args... args) {
   return at(args...);
 }
 
@@ -339,7 +341,7 @@ inline Pattern<DIM> Matrix_Ref<T, DIM, CUR>::pattern() const {
 
 template<typename T, size_t DIM, size_t CUR>
 inline bool Matrix_Ref<T, DIM, CUR>::isLocal(size_type n) {
-  return (_proxy->_mat->_pattern.index_to_unit(n, _proxy->_viewspec) ==
+  return (_proxy->_mat->_pattern.index_to_unit(n, _proxy->m_viewspec) ==
           _proxy->_mat->_myid);
 }
 
@@ -371,14 +373,14 @@ inline T * Local_Ref<T, DIM, 0>::at_(size_t pos) {
 
 template <typename T, size_t DIM>
 inline Local_Ref<T, DIM, 0>::operator T() {
-  T ret = *at_(_proxy->_mat->_pattern.local_at_(_proxy->_coord, _proxy->_viewspec));
+  T ret = *at_(_proxy->_mat->_pattern.local_at_(_proxy->_coord, _proxy->m_viewspec));
   delete _proxy;
   return ret;
 }
 
 template <typename T, size_t DIM>
 inline T Local_Ref<T, DIM, 0>::operator=(const T value) {
-  T* ref = at_(_proxy->_mat->_pattern.local_at_(_proxy->_coord, _proxy->_viewspec));
+  T* ref = at_(_proxy->_mat->_pattern.local_at_(_proxy->_coord, _proxy->m_viewspec));
   *ref = value;
   delete _proxy;
   return value;
@@ -395,8 +397,8 @@ inline GlobRef<T> Matrix_Ref<T, DIM, 0 >::at_(size_t unit, size_t elem) const {
 template <typename T, size_t DIM>
 inline Matrix_Ref<T, DIM, 0>::operator T() {
   GlobRef<T> ref = at_(
-      _proxy->_mat->_pattern.atunit_(_proxy->_coord, _proxy->_viewspec),
-      _proxy->_mat->_pattern.at_(_proxy->_coord, _proxy->_viewspec)
+      _proxy->_mat->_pattern.atunit_(_proxy->_coord, _proxy->m_viewspec),
+      _proxy->_mat->_pattern.at_(_proxy->_coord, _proxy->m_viewspec)
   );
   delete _proxy;  
   return ref;
@@ -404,8 +406,8 @@ inline Matrix_Ref<T, DIM, 0>::operator T() {
 
 template <typename T, size_t DIM>
 inline T Matrix_Ref<T, DIM, 0>::operator=(const T value) {
-  GlobRef<T> ref = at_(_proxy->_mat->_pattern.atunit_(_proxy->_coord, _proxy->_viewspec),
-                       _proxy->_mat->_pattern.at_(_proxy->_coord, _proxy->_viewspec));
+  GlobRef<T> ref = at_(_proxy->_mat->_pattern.atunit_(_proxy->_coord, _proxy->m_viewspec),
+                       _proxy->_mat->_pattern.at_(_proxy->_coord, _proxy->m_viewspec));
   ref = value;
   delete _proxy;
   return value;
@@ -428,8 +430,8 @@ Matrix<ELEMENT_TYPE, DIM>::Matrix(
 : _team(t),
   _pattern(ss, ds, ts, t) {
   // Matrix is a friend of class Team
-  dart_team_t teamid = _team.m_dartid;
-  size_t lelem = _pattern.max_ele_per_unit();
+  dart_team_t teamid = _team.dart_id();
+  size_t lelem = _pattern.max_elem_per_unit();
   size_t lsize = lelem * sizeof(value_type);
 
   _dart_gptr = DART_GPTR_NULL;
@@ -442,13 +444,13 @@ Matrix<ELEMENT_TYPE, DIM>::Matrix(
   _ref._proxy = new Matrix_RefProxy<value_type, DIM>;
   _ref._proxy->_dim = 0;
   _ref._proxy->_mat = this;
-  _ref._proxy->_viewspec = _pattern._viewspec;
+  _ref._proxy->_viewspec = _pattern.m_viewspec;
   _local = Local_Ref<ELEMENT_TYPE, DIM, DIM>(this);
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
 inline Matrix<ELEMENT_TYPE, DIM>::~Matrix() {
-  dart_team_t teamid = _team.m_dartid;
+  dart_team_t teamid = _team.dart_id();
   dart_team_memfree(teamid, _dart_gptr);
 }
 
@@ -458,17 +460,19 @@ inline Pattern<DIM> & Matrix<ELEMENT_TYPE, DIM>::pattern() {
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
-inline Team<DIM> & Matrix<ELEMENT_TYPE, DIM>::team() {
+inline dash::Team & Matrix<ELEMENT_TYPE, DIM>::team() {
   return _team;
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
-inline constexpr size_type Matrix<ELEMENT_TYPE, DIM>::size() const noexcept {
+inline constexpr typename Matrix<ELEMENT_TYPE, DIM>::size_type
+Matrix<ELEMENT_TYPE, DIM>::size() const noexcept {
   return _size;
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
-inline size_type Matrix<ELEMENT_TYPE, DIM>::extent(size_t dim) const noexcept {
+inline typename Matrix<ELEMENT_TYPE, DIM>::size_type
+Matrix<ELEMENT_TYPE, DIM>::extent(size_t dim) const noexcept {
   return _size;
 }
 
@@ -483,17 +487,20 @@ inline void Matrix<ELEMENT_TYPE, DIM>::barrier() const {
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
-inline const_pointer Matrix<ELEMENT_TYPE, DIM>::data() const noexcept {
+inline typename Matrix<ELEMENT_TYPE, DIM>::const_pointer
+Matrix<ELEMENT_TYPE, DIM>::data() const noexcept {
   return *_ptr;
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
-inline iterator Matrix<ELEMENT_TYPE, DIM>::begin() noexcept {
+inline typename Matrix<ELEMENT_TYPE, DIM>::iterator
+Matrix<ELEMENT_TYPE, DIM>::begin() noexcept {
   return iterator(data());
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
-inline iterator Matrix<ELEMENT_TYPE, DIM>::end() noexcept {
+inline typename Matrix<ELEMENT_TYPE, DIM>::iterator
+Matrix<ELEMENT_TYPE, DIM>::end() noexcept {
   return iterator(data() + _size);
 }
 
@@ -518,27 +525,27 @@ inline ELEMENT_TYPE * Matrix<ELEMENT_TYPE, DIM>::lend() noexcept {
 
 template <typename ELEMENT_TYPE, size_t DIM>
 inline void Matrix<ELEMENT_TYPE, DIM>::forall(
-  ::std::function<void(long long) func) {
+  ::std::function<void(long long)> func) {
   _pattern.forall(func);
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
 template<size_t SUBDIM>
-inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM-1
+inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM-1>
 Matrix<ELEMENT_TYPE, DIM>::sub(
   size_type n) {
   return _ref.sub<SUBDIM>(n);
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
-inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM-1
+inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM-1>
 Matrix<ELEMENT_TYPE, DIM>::col(
   size_type n) {
   return _ref.sub<1>(n);
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
-inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM-1
+inline Matrix_Ref<ELEMENT_TYPE, DIM, DIM-1>
 Matrix<ELEMENT_TYPE, DIM>::row(
   size_type n) {
   return _ref.sub<0>(n);
@@ -577,14 +584,14 @@ Matrix<ELEMENT_TYPE, DIM>::operator[](size_type n) {
 
 template <typename ELEMENT_TYPE, size_t DIM>
 template <typename ... Args>
-inline reference
+inline typename Matrix<ELEMENT_TYPE, DIM>::reference
 Matrix<ELEMENT_TYPE, DIM>::at(Args... args) {
   return _ref.at(args...);
 }
 
 template <typename ELEMENT_TYPE, size_t DIM>
 template <typename ... Args>
-inline reference
+inline typename Matrix<ELEMENT_TYPE, DIM>::reference
 Matrix<ELEMENT_TYPE, DIM>::operator()(Args... args) {
   return _ref.at(args...);
 }
@@ -609,7 +616,7 @@ inline bool Matrix<ELEMENT_TYPE, DIM>::isLocal(
 
 template <typename ELEMENT_TYPE, size_t DIM>
 template <int level>
-inline dash::HView<Matrix<ELEMENT_TYPE, DIM>, level, DIM>
+inline dash::HView<Matrix<ELEMENT_TYPE, DIM>, level>
 Matrix<ELEMENT_TYPE, DIM>::hview() {
   return _ref.hview<level>();
 }

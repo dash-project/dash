@@ -120,8 +120,8 @@ int main(int argc, char* argv[])
 	for (int i=0;i<p;i++)
 	{
 		matA.barrier();		
-		int rx = ts.index_at_dim(myid, 0);
-		int ry = ts.index_at_dim(myid, 1);
+		int rx = ts.coords(myid)[0];
+		int ry = ts.coords(myid)[1];
 
 		Multiply(matA.rows((rx)*b, b).cols((i)*b, b), matB.rows((i)*b, b).cols((ry)*b, b), tempC.rows((rx)*b, b).cols((ry)*b, b), b, b, b);
 		MatrixAdd(lrefc, temp_lrefc, b, b);
