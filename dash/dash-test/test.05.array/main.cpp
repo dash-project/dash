@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
 
-  dash::Pattern1D pat(NELEM*size);
+  dash::Pattern<1> pat(NELEM*size);
 
   // testing of various constructor options
   dash::Array<int> arr1(NELEM*size);

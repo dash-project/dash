@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
 
 	dash::TeamSpec<2> ts(2, 2);
 	dash::SizeSpec<2> ss(nelem2, nelem2);
-	dash::DistSpec<2> ds(dash::BLOCKED, dash::BLOCKED);
+	dash::DistributionSpec<2> ds(dash::BLOCKED, dash::BLOCKED);
 
     dash::Pattern<2> pat2(ss, ds, ts);
 

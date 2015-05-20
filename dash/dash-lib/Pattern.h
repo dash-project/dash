@@ -7,6 +7,7 @@
 #include <iostream>
 #include <array>
 
+#include "Enums.h"
 #include "Cartesian.h"
 #include "Team.h"
 
@@ -14,40 +15,6 @@ using std::cout;
 using std::endl;
 
 namespace dash {
-
-  enum MemArrange {
-    Undefined = 0,
-    ROW_MAJOR,
-    COL_MAJOR
-  };
-
-  struct DistEnum {
-    enum disttype {
-      BLOCKED,      // = BLOCKCYCLIC(ceil(nelem/nunits))
-      CYCLIC,       // = BLOCKCYCLIC(1) Will be removed
-      BLOCKCYCLIC,
-      TILE,
-      NONE
-    }; // general blocked distribution
-
-    disttype type;
-    long long blocksz;
-  };
-
-  struct DistEnum BLOCKED { DistEnum::BLOCKED, -1 };
-  //obsolete
-  struct DistEnum CYCLIC_ { DistEnum::CYCLIC, -1 };
-  struct DistEnum CYCLIC { DistEnum::BLOCKCYCLIC, 1 };
-
-  struct DistEnum NONE { DistEnum::NONE, -1 };
-
-  struct DistEnum TILE(int bs) {
-    return{ DistEnum::TILE, bs };
-  }
-
-  struct DistEnum BLOCKCYCLIC(int bs) {
-    return{ DistEnum::BLOCKCYCLIC, bs };
-  }
 
   // Base class for dim-related specification, ie DistributionSpec etc.
   template<typename T, size_t ndim_>
@@ -105,19 +72,20 @@ namespace dash {
 
   // DistributionSpec describes distribution patterns of all dimensions.
   template<size_t ndim_>
-  class DistributionSpec : public DimBase < DistEnum, ndim_ > {
+  class DistributionSpec : public DimBase<DistEnum, ndim_> {
   public:
 
     // Default distribution: BLOCKED, NONE, ...
     DistributionSpec() {
-      for (size_t i = 1; i < ndim_; i++)
+      for (size_t i = 1; i < ndim_; i++) {
         this->m_extent[i] = NONE;
+      }
       this->m_extent[0] = BLOCKED;
     }
 
     template<typename T_, typename ... values>
-    DistributionSpec(T_ value, values ... Values) :
-      DimBase<DistEnum, ndim_>::DimBase(value, Values...) {
+    DistributionSpec(T_ value, values ... Values)
+    : DimBase<DistEnum, ndim_>::DimBase(value, Values...) {
     }
   };
 
@@ -131,15 +99,15 @@ namespace dash {
     }
 
     template<typename T, typename ... values>
-    AccessBase(T value, values ... Values) :
-      DimRangeBase<ndim_>::DimRangeBase(value, Values...) {
+    AccessBase(T value, values ... Values)
+    : DimRangeBase<ndim_>::DimRangeBase(value, Values...) {
     }
   };
 
   // TeamSpec specifies the arrangement of team units on all dimentions
   // Size of TeamSpec implies the size of the team.
+  // 
   // TODO: unit reoccurrence not supported
-  
   template<size_t ndim_>
   class TeamSpec : public DimRangeBase<ndim_> {
   public:
@@ -152,8 +120,7 @@ namespace dash {
       this->m_ndim = 1;
     }
 
-    TeamSpec(dash::Team & t)
-    {
+    TeamSpec(dash::Team & t) {
       for (size_t i = 0; i < ndim_; i++)
         this->m_extent[i] = 1;
       this->m_extent[ndim_ - 1] = this->m_size = t.size();
@@ -162,8 +129,8 @@ namespace dash {
     }
 
     template<typename T, typename ... values>
-    TeamSpec(T value, values ... Values) :
-      DimRangeBase<ndim_>::DimRangeBase(value, Values...) {
+    TeamSpec(T value, values ... Values)
+    : DimRangeBase<ndim_>::DimRangeBase(value, Values...) {
     }
 
     int ndim() const {
@@ -206,10 +173,8 @@ namespace dash {
 
   // ViewSpec specifies view parameters for implementing submat, rows and cols
   template<size_t ndim_>
-  class ViewSpec : public DimBase < ViewPair, ndim_ > {
-
+  class ViewSpec : public DimBase<ViewPair, ndim_> {
   public:
-
     void update_size() {
       nelem = 1;
 
@@ -258,7 +223,6 @@ namespace dash {
   template<size_t ndim_, MemArrange arr = ROW_MAJOR>
   class Pattern {
   private:
-
     inline long long modulo(const long long i, const long long k) const {
       long long res = i % k;
       if (res < 0)
@@ -461,12 +425,14 @@ namespace dash {
         m_lnelem *= m_lextent[i];
     }
 
-    DistributionSpec<ndim_>         m_distspec;
+    DistributionSpec<ndim_> m_distspec;
     TeamSpec<ndim_>         m_teamspec;
     AccessBase<ndim_, arr>  m_accessbase;
     SizeSpec<ndim_, arr>    m_sizespec;
+
   public:
     ViewSpec<ndim_>         m_viewspec;
+
   private:
     long long      m_local_begin[ndim_];
     long long      m_lextent[ndim_];
@@ -479,9 +445,6 @@ namespace dash {
     dash::Team&    m_team = dash::Team::All();
 
   public:
-
-  public:
-
     template<typename ... Args>
     Pattern(Args&&... args) {
       static_assert(sizeof...(Args) >= ndim_,
@@ -562,8 +525,11 @@ namespace dash {
       return m_lnelem;
     }
 
-    // Get input coordinates and view coordinates and return the belonging unit id of the point.
-    long long atunit_(std::array<long long, ndim_> input, ViewSpec<ndim_> vs) const {
+    // Expects input coordinates and view coordinates and returns the
+    // corresponding unit id of the point.
+    long long atunit_(
+      std::array<long long, ndim_> input,
+      ViewSpec<ndim_> vs) const {
       assert(input.size() == ndim_);
       long long rs = -1;
       long long index[ndim_];
@@ -575,7 +541,6 @@ namespace dash {
           index[i] = vs.begin[i] + input[i];
           //if (i >= vs.view_dim)
           //  index[i] += input[i + ndim_ - vs.view_dim];
-
           long long cycle = m_teamspec.size() * m_distspec.m_extent[i].blocksz;
           switch (m_distspec.m_extent[i].type) {
           case DistEnum::disttype::BLOCKED:
@@ -596,7 +561,7 @@ namespace dash {
             break;
           }
         }
-//        rs = rs % m_teamspec.size();
+//      rs = rs % m_teamspec.size();
       }
       else {
         for (size_t i = 0; i < ndim_; i++) {
@@ -609,8 +574,9 @@ namespace dash {
           assert(index[i] >= 0);
           switch (m_distspec.m_extent[i].type) {
           case DistEnum::disttype::BLOCKED:
-          
-            accessbase_coord[i] = index[i] / getCeil(m_sizespec.m_extent[i] , m_teamspec.m_extent[i]);
+            accessbase_coord[i] = index[i] /
+                                    getCeil(m_sizespec.m_extent[i],
+                                            m_teamspec.m_extent[i]);
             break;
           case DistEnum::disttype::CYCLIC:
             accessbase_coord[i] = modulo(index[i], m_teamspec.m_extent[i]);
@@ -633,9 +599,9 @@ namespace dash {
       return rs;
     }
 
-    long long unit_and_elem_to_index(long long unit,
-      long long elem)
-    {
+    long long unit_and_elem_to_index(
+      long long unit,
+      long long elem) {
       long long blockoffs = elem / m_blocksz + 1;
       long long i = (blockoffs - 1) * m_blocksz * m_nunits +
         unit * m_blocksz + elem % m_blocksz;
@@ -684,18 +650,6 @@ namespace dash {
       return res;
     }
 
-    // Obsolete for N-D. Should pass N-D coordinates
-
-/*    long long index_to_unit(long long idx) const {
-      std::array<long long, ndim_> input = m_sizespec.coords(idx);
-      return index_to_unit(input);
-    }
-
-    long long index_to_elem(long long idx) const {
-      std::array<long long, ndim_> input = m_sizespec.coords(idx);
-      return index_to_elem(input);
-    }*/
-
     long long index_to_unit(std::array<long long, ndim_> input) const {
       return atunit_(input, m_viewspec);
     }
@@ -719,7 +673,7 @@ namespace dash {
       }
 
       return  m_sizespec.at(index);
-    }    
+    }
 
     long long index_to_elem(std::array<long long, ndim_> input, ViewSpec<ndim_> &vs) const {
       return at_(input, vs);
@@ -733,8 +687,9 @@ namespace dash {
     }
 
     // Receive local coordicates and returns local offsets based on AccessBase.
-    long long local_at_(std::array<long long, ndim_> input, ViewSpec<ndim_> &local_vs) const {
-
+    long long local_at_(
+      std::array<long long, ndim_> input,
+      ViewSpec<ndim_> &local_vs) const {
       assert(input.size() == ndim_);
       long long rs = -1;
       std::array<long long, ndim_> index;
@@ -752,7 +707,9 @@ namespace dash {
 
     // Receive global coordicates and returns local offsets.
     // TODO: cyclic can be eliminated when accessbase.m_extent[] has m_lextent[] values.
-    long long at_(std::array<long long, ndim_> input, ViewSpec<ndim_> vs) const {
+    long long at_(
+      std::array<long long, ndim_> input,
+      ViewSpec<ndim_> vs) const {
       assert(input.size() == ndim_);
       long long rs = -1;
       long long index[ndim_];

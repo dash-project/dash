@@ -9,7 +9,7 @@
 #include <libdash.h>
 #include <list>
 
-#define Pattern Pattern1D
+#define Pattern Pattern<1>
 #define HUGE 33133
 
 using namespace std;

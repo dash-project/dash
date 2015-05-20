@@ -11,7 +11,11 @@
 #include <array>
 #include <cassert>
 
+#include "Enums.h"
+
 namespace dash {
+
+template<size_t NumDimensions_, MemArrange arr> class Pattern;
 
 //
 // translate between linar and cartesian coordinates
@@ -19,6 +23,9 @@ namespace dash {
 template<int NumDimensions, typename SizeType = size_t>
 class CartCoord
 {
+public:
+  template<size_t NumDimensions_, MemArrange arr> friend class Pattern;
+
 protected:
   SizeType m_size = 0;
   SizeType m_extent[NumDimensions];
@@ -31,7 +38,8 @@ public:
   }
 
   template<typename... Args>
-  CartCoord(Args... args) : m_extent{SizeType(args)...} {
+  CartCoord(Args... args) 
+  : m_extent{SizeType(args)...} {
     static_assert(
       sizeof...(Args) == NumDimensions,
       "Invalid number of arguments");

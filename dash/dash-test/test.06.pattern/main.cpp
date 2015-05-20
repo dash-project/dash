@@ -31,12 +31,12 @@ int main(int argc, char* argv[])
 
 void test_fwd_mapping(size_t size) 
 {
-  Pattern1D p1(size); // team and blocking implicit
-  Pattern1D p2(size, BLOCKED );
-  Pattern1D p3(size, CYCLIC );
-  Pattern1D p4(size, BLOCKCYCLIC(1) );
-  Pattern1D p5(size, BLOCKCYCLIC(2) );
-  Pattern1D p6(size, BLOCKCYCLIC(size) );
+  Pattern<1> p1(size); // team and blocking implicit
+  Pattern<1> p2(size, BLOCKED );
+  Pattern<1> p3(size, CYCLIC );
+  Pattern<1> p4(size, BLOCKCYCLIC(1) );
+  Pattern<1> p5(size, BLOCKCYCLIC(2) );
+  Pattern<1> p6(size, BLOCKCYCLIC(size) );
 
   //  Pattern p6(EXTENT(-1, size-1, BLOCKED) );
 
@@ -47,20 +47,21 @@ void test_fwd_mapping(size_t size)
   fprintf(stderr, "       p1          p2          p3          p4          p5          p6\n");
   fprintf(stderr, "------------------------------------------------------------------------- \n");
   for( long long i=-4; i<size+4; i++ ) {
+    auto coords = p1.sizespec().coords(i);
     fprintf(stderr, "%3lld -> "
-	    "b=%lld (%2lld,%2lld) "
-	    "b=%lld (%2lld,%2lld) "
-	    "b=%lld (%2lld,%2lld) "
-	    "b=%lld (%2lld,%2lld) "
-	    "b=%lld (%2lld,%2lld) "
-	    "b=%lld (%2lld,%2lld) \n",
+	    "b=(%2lld,%2lld) "
+	    "b=(%2lld,%2lld) "
+	    "b=(%2lld,%2lld) "
+	    "b=(%2lld,%2lld) "
+	    "b=(%2lld,%2lld) "
+	    "b=(%2lld,%2lld) \n",
 	    i, 
-	    p1.index_to_block(i), p1.index_to_unit(i), p1.index_to_elem(i),
-	    p2.index_to_block(i), p2.index_to_unit(i), p2.index_to_elem(i),
-	    p3.index_to_block(i), p3.index_to_unit(i), p3.index_to_elem(i),
-	    p4.index_to_block(i), p4.index_to_unit(i), p4.index_to_elem(i),
-	    p5.index_to_block(i), p5.index_to_unit(i), p5.index_to_elem(i),
-	    p6.index_to_block(i), p6.index_to_unit(i), p6.index_to_elem(i)
+	    p1.index_to_unit(coords), p1.index_to_elem(coords),
+	    p2.index_to_unit(coords), p2.index_to_elem(coords),
+	    p3.index_to_unit(coords), p3.index_to_elem(coords),
+	    p4.index_to_unit(coords), p4.index_to_elem(coords),
+	    p5.index_to_unit(coords), p5.index_to_elem(coords),
+	    p6.index_to_unit(coords), p6.index_to_elem(coords)
 	    );
     long long m = i%size;
     if( m<0 ) m+=size;
@@ -76,14 +77,14 @@ void test_rev_mapping(size_t size)
 {
   int i, j;
 
-  Pattern1D p1(size); // team and blocking implicit
-  Pattern1D p2(size, BLOCKED );
-  Pattern1D p3(size, CYCLIC );
-  Pattern1D p4(size, BLOCKCYCLIC(1) );
-  Pattern1D p5(size, BLOCKCYCLIC(2) );
-  Pattern1D p6(size, BLOCKCYCLIC(size) );
+  Pattern<1> p1(size); // team and blocking implicit
+  Pattern<1> p2(size, BLOCKED );
+  Pattern<1> p3(size, CYCLIC );
+  Pattern<1> p4(size, BLOCKCYCLIC(1) );
+  Pattern<1> p5(size, BLOCKCYCLIC(2) );
+  Pattern<1> p6(size, BLOCKCYCLIC(size) );
 
-  std::map<Pattern1D*, std::string>  pattern;
+  std::map<Pattern<1>*, std::string>  pattern;
   pattern[&p1] = "default";
   pattern[&p2] = "BLOCKED";
   pattern[&p3] = "CYCLIC";
@@ -92,7 +93,7 @@ void test_rev_mapping(size_t size)
   pattern[&p6] = "BLOCKCYCLIC(size)";
 
   for( auto& it : pattern ) {
-    Pattern1D *pat = it.first;
+    Pattern<1> *pat = it.first;
     fprintf(stderr, "%s:\n", it.second.c_str());
     
     for( i=0; i<pat->nunits(); i++ ) {
@@ -105,7 +106,6 @@ void test_rev_mapping(size_t size)
       fprintf(stderr, "\n");
     }
     fprintf(stderr, "max_elem_per_unit   : %d\n", pat->max_elem_per_unit());
-    fprintf(stderr, "max_blocks_per_unit : %d\n", pat->max_blocks_per_unit());
     fprintf(stderr, "\n");
   }
 }

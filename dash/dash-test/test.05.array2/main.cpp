@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
   
-  dash::Pattern1D      pat(19, dash::BLOCKCYCLIC(2));
+  dash::Pattern<1>     pat(19, dash::BLOCKCYCLIC(2));
   dash::Array<int>     arr1(pat);
   dash::Array<double>  arr2(pat);
   

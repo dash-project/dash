@@ -24,12 +24,12 @@ int main(int argc, char* argv[])
 
 void test_pattern(size_t size) 
 {
-  Pattern1D p1(size); // team and blocking implicit
-  Pattern1D p2(size, BLOCKED );
-  Pattern1D p3(size, CYCLIC );
-  Pattern1D p4(size, BLOCKCYCLIC(1) );
-  Pattern1D p5(size, BLOCKCYCLIC(2) );
-  Pattern1D p6(size, BLOCKCYCLIC(size) );
+  Pattern<1> p1(size); // team and blocking implicit
+  Pattern<1> p2(size, BLOCKED );
+  Pattern<1> p3(size, CYCLIC );
+  Pattern<1> p4(size, BLOCKCYCLIC(1) );
+  Pattern<1> p5(size, BLOCKCYCLIC(2) );
+  Pattern<1> p6(size, BLOCKCYCLIC(size) );
 
   dash::Array<int> a1(p1);
   dash::Array<int> a2(p2);

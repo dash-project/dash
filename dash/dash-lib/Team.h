@@ -16,6 +16,7 @@
 #include "Init.h"
 #include "View.h"
 #include "Cartesian.h"
+#include "Enums.h"
 #include "dart.h"
 
 using std::cout;
@@ -32,6 +33,8 @@ namespace dash
 class Team
 {
   template< class U> friend class Array;
+  template< size_t DIM, MemArrange ma> friend class Pattern;
+  template< size_t DIM> friend class TeamSpec;
   template< class U> friend class Shared;
   template< class U, class Pattern> friend class GlobIter;
   template< class U> friend class GlobRef;
