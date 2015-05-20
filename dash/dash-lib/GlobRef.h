@@ -62,7 +62,7 @@ public:
   {
     T t;
     dash::get_value(&t, m_gptr);
-    std::cerr<<"operatorT() --> "<<t<<std::endl;
+    //std::cerr<<"operatorT() --> "<<t<<std::endl;
     return t;
   }
 

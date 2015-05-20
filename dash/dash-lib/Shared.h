@@ -65,6 +65,13 @@ public:
     return iterator(data() + m_size);
   }
 
+  size_type size() const noexcept {
+    return m_size;
+  }
+
+  reference operator[](size_type n) {
+    return begin()[n];
+  }
 };
 
 }; // namespace dash

@@ -114,6 +114,7 @@ private:
   : m_parent(parent) { 
     m_dartid = id; 
     m_position = pos;
+  /*
     if( m_dartid!=DART_TEAM_NULL ) {
       // get the group for the team
       size_t sz; dart_group_sizeof(&sz);
@@ -122,24 +123,18 @@ private:
       
       dart_team_get_group(m_dartid, m_group);
     }
-
-    /*
-      fprintf(stderr, "[%d] creating a new team for ID: %d as %p\n",
-      dash::myid(),
-      id, this);
-    */
-    
+  */
     if(parent ) {
       if( parent->m_child ) {
         fprintf(stderr, "Error: %p already has a child!, not setting to %p\n", 
           parent, this);
       } else {
-    //	fprintf(stderr, "Setting child for  %p to %p\n", parent, this);
         parent->m_child=this;
       }
     }
   }
-  //Team() : Team(DART_TEAM_NULL) {}
+
+//Team() : Team(DART_TEAM_NULL) {}
 
 protected:
   Team(const Team& t) = default;
