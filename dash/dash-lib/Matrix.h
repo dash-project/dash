@@ -95,11 +95,17 @@ template <typename T, size_t NumDimensions, size_t CUR = NumDimensions> class Lo
   inline Local_Ref<T, NumDimensions, NumDimensions> cols(size_type n, size_type range);
 };
 
-// Wrapper class for RefProxy. Matrix_Ref represents Matrix and Submatrix a Matrix and provices global operations.
-template <typename T, size_t NumDimensions, size_t CUR = NumDimensions> class Matrix_Ref {
+// Wrapper class for RefProxy. Matrix_Ref represents Matrix and Submatrix a Matrix and
+// provices global operations.
+template <typename T, size_t NumDimensions, size_t CUR = NumDimensions>
+class Matrix_Ref {
  public:
-  template<typename T_, size_t NumDimensions_> friend class Matrix;
-  template<typename T_, size_t NumDimensions1, size_t NumDimensions2> friend class Local_Ref;
+  template<typename T_, size_t NumDimensions_>
+    friend class Matrix;
+  template<typename T_, size_t NumDimensions1, size_t NumDimensions2>
+    friend class Matrix_Ref;
+  template<typename T_, size_t NumDimensions1, size_t NumDimensions2>
+    friend class Local_Ref;
 
   typedef T value_type;
 
@@ -118,7 +124,7 @@ template <typename T, size_t NumDimensions, size_t CUR = NumDimensions> class Ma
   typedef GlobIter<value_type, Pattern<NumDimensions>> pointer;
   typedef const GlobIter<value_type, Pattern<NumDimensions>> const_pointer;
 
-  inline operator Matrix_Ref<T, NumDimensions, CUR - 1> && ();
+  inline operator Matrix_Ref<T, NumDimensions, CUR-1> && ();
 
   Matrix_Ref<T, NumDimensions, CUR>() = default;
 
@@ -184,6 +190,7 @@ template <typename T, size_t NumDimensions>
 class Matrix_Ref < T, NumDimensions, 0 > {
  public:
   template<typename T_, size_t NumDimensions_> friend class Matrix;
+  template<typename T_, size_t NumDimensions1, size_t NumDimensions2> friend class Matrix_Ref;
 
   Matrix_RefProxy<T, NumDimensions> * _proxy;
   
@@ -194,7 +201,6 @@ class Matrix_Ref < T, NumDimensions, 0 > {
   operator T();
   T operator=(const T value);
 };
-
 
 template <typename ElementType, size_t NumDimensions>
 class Matrix {
@@ -231,8 +237,10 @@ class Matrix {
   // Proxy, Matrix_Ref and Local_Ref are created at initialization.
   Matrix(
     const dash::SizeSpec<NumDimensions> & ss,
-    const dash::DistSpec<NumDimensions> &ds = dash::DistSpec<NumDimensions>(),
-    Team &t = dash::Team::All(), const TeamSpec<NumDimensions> &ts = TeamSpec<NumDimensions>());
+    const dash::DistributionSpec<NumDimensions> & ds =
+      dash::DistributionSpec<NumDimensions>(),
+    Team &t = dash::Team::All(), const TeamSpec<NumDimensions> & ts =
+      TeamSpec<NumDimensions>());
 
   // delegating constructor
   inline Matrix(const dash::Pattern<NumDimensions> &pat)

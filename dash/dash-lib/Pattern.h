@@ -49,7 +49,7 @@ namespace dash {
     return{ DistEnum::BLOCKCYCLIC, bs };
   }
 
-  // Base class for dim-related specification, ie DistSpec etc.
+  // Base class for dim-related specification, ie DistributionSpec etc.
   template<typename T, size_t ndim_>
   class DimBase {
   private:
@@ -103,20 +103,20 @@ namespace dash {
     }
   };
 
-  // DistSpec describes distribution patterns of all dimensions.
+  // DistributionSpec describes distribution patterns of all dimensions.
   template<size_t ndim_>
-  class DistSpec : public DimBase < DistEnum, ndim_ > {
+  class DistributionSpec : public DimBase < DistEnum, ndim_ > {
   public:
 
     // Default distribution: BLOCKED, NONE, ...
-    DistSpec() {
+    DistributionSpec() {
       for (size_t i = 1; i < ndim_; i++)
         this->m_extent[i] = NONE;
       this->m_extent[0] = BLOCKED;
     }
 
     template<typename T_, typename ... values>
-    DistSpec(T_ value, values ... Values) :
+    DistributionSpec(T_ value, values ... Values) :
       DimBase<DistEnum, ndim_>::DimBase(value, Values...) {
     }
   };
@@ -317,7 +317,7 @@ namespace dash {
     }
 
     template<int count>
-    void check(const DistSpec<ndim_> & ds) {
+    void check(const DistributionSpec<ndim_> & ds) {
       argc_DistEnum = ndim_;
       m_distspec = ds;
     }
@@ -461,7 +461,7 @@ namespace dash {
         m_lnelem *= m_lextent[i];
     }
 
-    DistSpec<ndim_>         m_distspec;
+    DistributionSpec<ndim_>         m_distspec;
     TeamSpec<ndim_>         m_teamspec;
     AccessBase<ndim_, arr>  m_accessbase;
     SizeSpec<ndim_, arr>    m_sizespec;
@@ -516,8 +516,8 @@ namespace dash {
     }
 
     //TODO: merge Pattern constructors
-    Pattern(const SizeSpec<ndim_, arr> &sizespec, const DistSpec<ndim_> &dist =
-      DistSpec<ndim_>(), const TeamSpec<ndim_> &teamorg = TeamSpec<ndim_>::TeamSpec(), dash::Team& team = dash::Team::All()) :
+    Pattern(const SizeSpec<ndim_, arr> &sizespec, const DistributionSpec<ndim_> &dist =
+      DistributionSpec<ndim_>(), const TeamSpec<ndim_> &teamorg = TeamSpec<ndim_>::TeamSpec(), dash::Team& team = dash::Team::All()) :
       m_sizespec(sizespec), m_distspec(dist), m_teamspec(teamorg), m_team(team) {
 
       m_nunits = m_team.size();
@@ -530,8 +530,8 @@ namespace dash {
       constructAccessBase();
     }
 
-    Pattern(const SizeSpec<ndim_, arr> &sizespec, const DistSpec<ndim_> &dist =
-      DistSpec<ndim_>(), dash::Team& team = dash::Team::All()) :
+    Pattern(const SizeSpec<ndim_, arr> &sizespec, const DistributionSpec<ndim_> &dist =
+      DistributionSpec<ndim_>(), dash::Team& team = dash::Team::All()) :
       m_sizespec(sizespec), m_distspec(dist), m_teamspec(m_team) {
 
       m_team = team;
@@ -896,7 +896,7 @@ namespace dash {
       return m_team;
     }
 
-    DistSpec<ndim_> distspec() const {
+    DistributionSpec<ndim_> distspec() const {
       return m_distspec;
     }
 

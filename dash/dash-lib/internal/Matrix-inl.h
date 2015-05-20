@@ -59,12 +59,12 @@ long long Local_Ref<T, NumDimensions, CUR>::extent(size_t dim) const {
 
 template<typename T, size_t NumDimensions, size_t CUR>
 size_t Local_Ref<T, NumDimensions, CUR>::size() const {
-  return _proxy->m_viewspec.size();
+  return _proxy->_viewspec.size();
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
 T & Local_Ref<T, NumDimensions, CUR>::at_(size_type pos) {
-  if (!(pos < _proxy->m_viewspec.size())) {
+  if (!(pos < _proxy->_viewspec.size())) {
     throw std::out_of_range("Out of range");
   }
   return _proxy->_mat->lbegin()[pos];
@@ -81,7 +81,7 @@ T & Local_Ref<T, NumDimensions, CUR>::at(Args... args) {
   return at_(
       _proxy->_mat->_pattern.local_at_(
         _proxy->_coord,
-        _proxy->m_viewspec));
+        _proxy->_viewspec));
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
@@ -97,7 +97,7 @@ Local_Ref<T, NumDimensions, CUR>::operator[](size_t n) {
   ref._proxy = _proxy;
   _proxy->_coord[_proxy->_dim] = n;
   _proxy->_dim++;
-  _proxy->m_viewspec.update_size();
+  _proxy->_viewspec.update_size();
   return std::move(ref);
 }
 
@@ -110,9 +110,9 @@ Local_Ref<T, NumDimensions, CUR>::operator[](size_t n) const {
   ref._proxy->_coord[_proxy->_dim] = n;
   ref._proxy->_dim = _proxy->_dim + 1;
   ref._proxy->_mat = _proxy->_mat;
-  ref._proxy->m_viewspec = _proxy->m_viewspec;
-  ref._proxy->m_viewspec.view_dim--;
-  ref._proxy->m_viewspec.update_size();
+  ref._proxy->_viewspec = _proxy->_viewspec;
+  ref._proxy->_viewspec.view_dim--;
+  ref._proxy->_viewspec.update_size();
   return ref;
 }
 
@@ -133,11 +133,11 @@ Local_Ref<T, NumDimensions, CUR>::sub(size_type n) {
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
   ref._proxy = proxy;
   ref._proxy->_coord[target_dim] = 0;
-  ref._proxy->m_viewspec = _proxy->m_viewspec;
-  ref._proxy->m_viewspec.begin[target_dim] = n;
-  ref._proxy->m_viewspec.range[target_dim] = 1;
-  ref._proxy->m_viewspec.view_dim--;
-  ref._proxy->m_viewspec.update_size();
+  ref._proxy->_viewspec = _proxy->_viewspec;
+  ref._proxy->_viewspec.begin[target_dim] = n;
+  ref._proxy->_viewspec.range[target_dim] = 1;
+  ref._proxy->_viewspec.view_dim--;
+  ref._proxy->_viewspec.update_size();
   ref._proxy->_mat = _proxy->_mat;
   ref._proxy->_dim = _proxy->_dim + 1;
   return ref;
@@ -168,11 +168,11 @@ Local_Ref<T, NumDimensions, NumDimensions> Local_Ref<T, NumDimensions, CUR>::sub
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
 
   ref._proxy = proxy;
-  ref._proxy->m_viewspec = _proxy->m_viewspec;
-  ref._proxy->m_viewspec.begin[SubDimension] = n;
-  ref._proxy->m_viewspec.range[SubDimension] = range;
+  ref._proxy->_viewspec = _proxy->_viewspec;
+  ref._proxy->_viewspec.begin[SubDimension] = n;
+  ref._proxy->_viewspec.range[SubDimension] = range;
   ref._proxy->_mat = _proxy->_mat;
-  ref._proxy->m_viewspec.update_size();
+  ref._proxy->_viewspec.update_size();
   return ref;
 }
 
@@ -220,7 +220,7 @@ Matrix_Ref<T, NumDimensions, CUR>::size() const noexcept {
 template<typename T, size_t NumDimensions, size_t CUR>
 typename Matrix_Ref<T, NumDimensions, CUR>::size_type
 Matrix_Ref<T, NumDimensions, CUR>::extent(size_type dim) const noexcept {
-  return _proxy->m_viewspec.range[dim];
+  return _proxy->_viewspec.range[dim];
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
@@ -237,7 +237,7 @@ template<typename T, size_t NumDimensions, size_t CUR>
 inline void
 Matrix_Ref<T, NumDimensions, CUR>::forall(
   ::std::function<void(long long)> func) {
-  _proxy->_mat->_pattern.forall(func, _proxy->m_viewspec);
+  _proxy->_mat->_pattern.forall(func, _proxy->_viewspec);
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
@@ -246,7 +246,7 @@ Matrix_Ref<T, NumDimensions, CUR>::operator[](size_t n) {
   Matrix_Ref<T, NumDimensions, CUR-1> ref;
   _proxy->_coord[_proxy->_dim] = n;
   _proxy->_dim++;
-  _proxy->m_viewspec.update_size();
+  _proxy->_viewspec.update_size();
   ref._proxy = _proxy;
   return std::move(ref);
 }
@@ -260,9 +260,9 @@ Matrix_Ref<T, NumDimensions, CUR>::operator[](size_t n) const {
   ref._proxy->_coord[_proxy->_dim] = n;
   ref._proxy->_dim = _proxy->_dim + 1;
   ref._proxy->_mat = _proxy->_mat;
-  ref._proxy->m_viewspec = _proxy->m_viewspec;
-  ref._proxy->m_viewspec.view_dim--;
-  ref._proxy->m_viewspec.update_size();
+  ref._proxy->_viewspec = _proxy->_viewspec;
+  ref._proxy->_viewspec.view_dim--;
+  ref._proxy->_viewspec.update_size();
   return ref;
 }
 
@@ -284,11 +284,11 @@ Matrix_Ref<T, NumDimensions, CUR>::sub(size_type n) {
 
   ref._proxy = proxy;
   ref._proxy->_coord[target_dim] = 0;
-  ref._proxy->m_viewspec = _proxy->m_viewspec;
-  ref._proxy->m_viewspec.begin[target_dim] = n;
-  ref._proxy->m_viewspec.range[target_dim] = 1;
-  ref._proxy->m_viewspec.view_dim--;
-  ref._proxy->m_viewspec.update_size();
+  ref._proxy->_viewspec = _proxy->_viewspec;
+  ref._proxy->_viewspec.begin[target_dim] = n;
+  ref._proxy->_viewspec.range[target_dim] = 1;
+  ref._proxy->_viewspec.view_dim--;
+  ref._proxy->_viewspec.update_size();
   ref._proxy->_mat = _proxy->_mat;
   ref._proxy->_dim = _proxy->_dim + 1;
   return ref;
@@ -320,11 +320,11 @@ Matrix_Ref<T, NumDimensions, CUR>::submat(
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
 
   ref._proxy = proxy;
-  ref._proxy->m_viewspec = _proxy->m_viewspec;
-  ref._proxy->m_viewspec.begin[SubDimension] = n;
-  ref._proxy->m_viewspec.range[SubDimension] = range;
+  ref._proxy->_viewspec = _proxy->_viewspec;
+  ref._proxy->_viewspec.begin[SubDimension] = n;
+  ref._proxy->_viewspec.range[SubDimension] = range;
   ref._proxy->_mat = _proxy->_mat;
-  ref._proxy->m_viewspec.update_size();
+  ref._proxy->_viewspec.update_size();
   return ref;
 }
 
@@ -387,7 +387,7 @@ Matrix_Ref<T, NumDimensions, CUR>::pattern() const {
 template<typename T, size_t NumDimensions, size_t CUR>
 inline bool
 Matrix_Ref<T, NumDimensions, CUR>::isLocal(size_type n) {
-  return (_proxy->_mat->_pattern.index_to_unit(n, _proxy->m_viewspec) ==
+  return (_proxy->_mat->_pattern.index_to_unit(n, _proxy->_viewspec) ==
           _proxy->_mat->_myid);
 }
 
@@ -424,7 +424,7 @@ template <typename T, size_t NumDimensions>
 inline Local_Ref<T, NumDimensions, 0>::operator T() {
   T ret = *at_(_proxy->_mat->_pattern.local_at_(
                  _proxy->_coord,
-                 _proxy->m_viewspec));
+                 _proxy->_viewspec));
   delete _proxy;
   return ret;
 }
@@ -434,7 +434,7 @@ inline T
 Local_Ref<T, NumDimensions, 0>::operator=(const T value) {
   T* ref = at_(_proxy->_mat->_pattern.local_at_(
                  _proxy->_coord,
-                 _proxy->m_viewspec));
+                 _proxy->_viewspec));
   *ref = value;
   delete _proxy;
   return value;
@@ -446,14 +446,14 @@ Local_Ref<T, NumDimensions, 0>::operator=(const T value) {
 template <typename T, size_t NumDimensions>
 inline GlobRef<T>
 Matrix_Ref<T, NumDimensions, 0 >::at_(size_t unit, size_t elem) const {
-  return _proxy->_mat->begin().get(unit, elem);
+  return *(_proxy->_mat->begin()); // .get(unit, elem);
 }
 
 template <typename T, size_t NumDimensions>
 inline Matrix_Ref<T, NumDimensions, 0>::operator T() {
   GlobRef<T> ref = at_(
-      _proxy->_mat->_pattern.atunit_(_proxy->_coord, _proxy->m_viewspec),
-      _proxy->_mat->_pattern.at_(_proxy->_coord, _proxy->m_viewspec)
+      _proxy->_mat->_pattern.atunit_(_proxy->_coord, _proxy->_viewspec),
+      _proxy->_mat->_pattern.at_(_proxy->_coord, _proxy->_viewspec)
   );
   delete _proxy;  
   return ref;
@@ -464,10 +464,10 @@ inline T
 Matrix_Ref<T, NumDimensions, 0>::operator=(const T value) {
   GlobRef<T> ref = at_(_proxy->_mat->_pattern.atunit_(
                          _proxy->_coord,
-                         _proxy->m_viewspec),
+                         _proxy->_viewspec),
                        _proxy->_mat->_pattern.at_(
                          _proxy->_coord,
-                         _proxy->m_viewspec));
+                         _proxy->_viewspec));
   ref = value;
   delete _proxy;
   return value;
@@ -485,7 +485,7 @@ Matrix<ElementType, NumDimensions>::local() const {
 template <typename ElementType, size_t NumDimensions>
 Matrix<ElementType, NumDimensions>::Matrix(
   const dash::SizeSpec<NumDimensions> & ss,
-  const dash::DistSpec<NumDimensions> & ds,
+  const dash::DistributionSpec<NumDimensions> & ds,
   Team & t,
   const TeamSpec<NumDimensions> & ts)
 : _team(t),

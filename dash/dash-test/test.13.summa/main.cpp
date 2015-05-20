@@ -58,28 +58,28 @@ void MatrixAdd(dash::Local_Ref<int, 2> A, dash::Local_Ref<int, 2> B, unsigned m,
 
 int main(int argc, char* argv[])
 {
-    dash::init(&argc, &argv);
+  dash::init(&argc, &argv);
 
-    int myid = dash::myid();
-    int size = dash::size();
-    int nelem = 10;
+  int myid = dash::myid();
+  int size = dash::size();
+  int nelem = 10;
 
 	dash::TeamSpec<2> ts(2, 2);
 	dash::SizeSpec<2> ss(nelem, nelem);
-	dash::DistSpec<2> ds(dash::BLOCKED, dash::BLOCKED);
+	dash::DistributionSpec<2> ds(dash::BLOCKED, dash::BLOCKED);
 
-    dash::Pattern<2> pat(ss, ds, ts);
+  dash::Pattern<2> pat(ss, ds, ts);
 
-    dash::Matrix<int, 2>     matA(pat);
+  dash::Matrix<int, 2>   matA(pat);
 	dash::Matrix<int, 2> 	 matB(pat);
 	dash::Matrix<int, 2> 	 matC(pat);
 
 	dash::Matrix<int, 2> 	 tempC(pat);
 
-    dash::Local_Ref<int, 2> lrefa = matA.local();
-    dash::Local_Ref<int, 2> lrefb = matB.local();
-    dash::Local_Ref<int, 2> lrefc = matC.local();
-    dash::Local_Ref<int, 2> temp_lrefc = tempC.local();
+  dash::Local_Ref<int, 2> lrefa = matA.local();
+  dash::Local_Ref<int, 2> lrefb = matB.local();
+  dash::Local_Ref<int, 2> lrefc = matC.local();
+  dash::Local_Ref<int, 2> temp_lrefc = tempC.local();
 
 	int p = 2; // 2*2=4 units
 	int b = nelem/p;
@@ -114,8 +114,8 @@ int main(int argc, char* argv[])
 
 	matA.barrier();
 	
-    unsigned long t1,t2;
-    t1 = (unsigned long)GetCycleCount();
+  unsigned long t1,t2;
+  t1 = (unsigned long)GetCycleCount();
 
 	for (int i=0;i<p;i++)
 	{

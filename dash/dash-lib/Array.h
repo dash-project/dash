@@ -14,7 +14,7 @@
 #include "GlobIter.h"
 #include "GlobRef.h"
 #include "Team.h"
-#include "Pattern1D.h" 
+#include "Pattern.h" 
 #include "HView.h"
 
 namespace dash
@@ -105,7 +105,7 @@ private:
   
   dash::Team&   m_team;
   dart_unit_t   m_myid;
-  Pattern1D     m_pattern;  
+  Pattern<1>    m_pattern;  
   GlobMem*      m_globmem; 
   iterator      m_begin;
   size_type     m_size;   // total size (# elements)
@@ -130,7 +130,7 @@ public:
   
   
 public:
-  Array(size_t nelem, dash::DistSpec ds,
+  Array(size_t nelem, dash::DistributionSpec<1> ds,
 	Team& t=dash::Team::All() ) : 
     m_team(t),
     m_pattern(nelem, ds, t),
@@ -163,7 +163,7 @@ public:
   LocalProxyArray<value_type> local;
 
   // delegating constructor : specify pattern explicitly
-  Array(const dash::Pattern1D& pat ) : 
+  Array(const dash::Pattern<1>& pat ) : 
     Array(pat.nelem(), pat.distspec(), pat.team())
   { }
   
@@ -202,7 +202,7 @@ public:
   }
 
   reference at(size_type pos) {
-    if( !(pos<size()) )  {
+    if (!(pos<size()))  {
       throw std::out_of_range("Out of range");
     }
     return begin()[pos];
@@ -216,16 +216,16 @@ public:
     return size() == 0;
   }
 
-  bool is_local(size_type n) const
-  {
-    return m_pattern.index_to_unit(n)==m_myid;
+  bool is_local(size_type n) const {
+    auto coord = m_pattern.sizespec().coords(n);
+    return m_pattern.index_to_unit(coord) == m_myid;
   }
   
   void barrier() const {
     m_team.barrier();
   }
 
-  Pattern1D& pattern() { return m_pattern; }
+  Pattern<1> & pattern() { return m_pattern; }
   Team& team() { return m_team; }
 
   // xxx: the long long should maybe be taken from the
