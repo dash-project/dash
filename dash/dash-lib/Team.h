@@ -33,7 +33,7 @@ class Team
 {
   template< class U> friend class Array;
   template< class U> friend class Shared;
-  template< class U> friend class GlobIter;
+  template< class U, class Pattern> friend class GlobIter;
   template< class U> friend class GlobRef;
 
 public:

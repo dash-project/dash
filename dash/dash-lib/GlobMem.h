@@ -55,8 +55,10 @@ private:
   GlobMemKind   m_kind;
 
 public:
-  GlobMem(Team& team, size_t nlelem) // #of local elements
-  {
+  GlobMem(
+    Team & team,
+    size_t nlelem // # of local elements
+  ) {
     m_begptr = DART_GPTR_NULL;
     m_teamid = team.dart_id();
     m_nlelem = nlelem;
@@ -84,11 +86,12 @@ public:
   }
 
   ~GlobMem() {
-    if( !DART_GPTR_ISNULL(m_begptr) ) {
-      if( m_kind == COLLECTIVE ) 
-	dart_team_memfree(m_teamid, m_begptr);
-      else 
-	dart_memfree(m_begptr);
+    if (!DART_GPTR_ISNULL(m_begptr)) {
+      if (m_kind == COLLECTIVE) {
+        dart_team_memfree(m_teamid, m_begptr);
+      } else {
+        dart_memfree(m_begptr);
+      } 
     }
   }
 

@@ -75,15 +75,15 @@ namespace dash {
 
   // Wrapper class of CartCoord
   template<size_t ndim_, MemArrange arr = ROW_MAJOR>
-  class DimRangeBase : public CartCoord < ndim_, long long > {
+  class DimRangeBase : public CartCoord<ndim_, long long> {
 
   public:
-
     template<size_t ndim__, MemArrange arr2> friend class Pattern;
 
-    DimRangeBase() {
-    }
+//private:
+    DimRangeBase() { }
 
+  public:
     // Need to be called manually when elements are changed to update size
     void construct() {
       long long cap = 1;
@@ -178,7 +178,7 @@ namespace dash {
 
   // SizeSpec specifies the data sizes on all dimentions
   template<size_t ndim_, MemArrange arr = ROW_MAJOR>
-  class SizeSpec : public DimRangeBase < ndim_ > {
+  class SizeSpec : public DimRangeBase<ndim_> {
   public:
 
     template<size_t ndim__> friend class ViewSpec;
@@ -210,8 +210,7 @@ namespace dash {
 
   public:
 
-    void update_size()
-    {
+    void update_size() {
       nelem = 1;
 
       for (size_t i = ndim_ - view_dim; i < ndim_; i++)

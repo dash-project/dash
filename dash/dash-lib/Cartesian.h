@@ -27,26 +27,29 @@ protected:
   size_t m_ndim = NumDimensions;
 
 public:
+  CartCoord() {
+  }
+
   template<typename... Args>
   CartCoord(Args... args) : m_extent{SizeType(args)...} {
-    static_assert(sizeof...(Args)==NumDimensions,
+    static_assert(
+      sizeof...(Args) == NumDimensions,
       "Invalid number of arguments");
 
-    m_size=1;
-    for(auto i=0; i<NumDimensions; i++ ) {
+    m_size = 1;
+    for(auto i = 0; i < NumDimensions; i++ ) {
       assert(m_extent[i]>0);
-
       // TODO: assert( std::numeric_limits<SizeType>::max()/m_extent[i]);
-      m_size*=m_extent[i];
+      m_size *= m_extent[i];
     }
     
     m_offset[NumDimensions-1]=1;
-    for(auto i=NumDimensions-2; i>=0; i--) {
-      m_offset[i]=m_offset[i+1]*m_extent[i+1];
+    for(auto i = NumDimensions-2; i >= 0; i--) {
+      m_offset[i] = m_offset[i+1] * m_extent[i+1];
     }
   }
   
-  int  rank() const { return NumDimensions;  }
+  int rank() const { return NumDimensions;  }
   SizeType size() const { return m_size; }
   
   SizeType extent(SizeType dim) const { 

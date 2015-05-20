@@ -16,16 +16,18 @@ namespace dash {
 // KF: check 
 typedef long gptrdiff_t;
 
-template<typename T>
+template<
+  typename T,
+  typename PatternType = Pattern<1> >
 class GlobIter 
 : public GlobPtr<T>,
   public std::iterator<
             std::random_access_iterator_tag,
 				    T, gptrdiff_t, GlobIter<T>, GlobRef<T> > {
 protected:
-  GlobMem<T> * m_globmem;
-  Pattern<1> * m_pattern;
-  size_t       m_idx;
+  GlobMem<T>  * m_globmem;
+  PatternType * m_pattern;
+  size_t        m_idx;
   
 public:
   GlobIter() : GlobPtr<T>() {
@@ -35,9 +37,9 @@ public:
   }
 
   GlobIter(
-    GlobMem<T> * mem,
-	  Pattern<1> & pat,
-	  size_t       idx = 0)
+    GlobMem<T>  * mem,
+	  PatternType & pat,
+	  size_t        idx = 0)
   : GlobPtr<T>(mem->begin()) {
     m_globmem = mem;
     m_pattern = &pat;
@@ -113,7 +115,6 @@ public:
   }
 
   bool operator<(const GlobIter<T>& other) const {
-    //std::cerr<<"Operator<"<<std::endl;
     return m_idx < other.m_idx;
   }
 
@@ -122,7 +123,6 @@ public:
   }
 
   bool operator>(const GlobIter<T>& other) const {
-    //std::cerr<<"Operator>"<<std::endl;
     return m_idx > other.m_idx;
   }
 
@@ -139,6 +139,6 @@ public:
   }
 };
 
-};
+} // namespace dash
 
 #endif /* GLOBPTR_H_INCLUDED */
