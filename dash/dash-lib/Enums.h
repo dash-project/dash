@@ -1,42 +1,34 @@
-#ifndef DASH__DASH_LIB__ENUMS_H__INCLUDED__
-#define DASH__DASH_LIB__ENUMS_H__INCLUDED__
+#ifndef ENUMS_H_INCLUDED
+#define ENUMS_H_INCLUDED
 
 namespace dash {
 
-  enum MemArrange {
-    Undefined = 0,
-    ROW_MAJOR,
-    COL_MAJOR
-  };
+enum MemArrange {
+  Undefined = 0,
+  ROW_MAJOR,
+  COL_MAJOR
+};
 
-  struct DistEnum {
-    enum disttype {
-      BLOCKED,      // = BLOCKCYCLIC(ceil(nelem/nunits))
-      CYCLIC,       // = BLOCKCYCLIC(1) Will be removed
-      BLOCKCYCLIC,
-      TILE,
-      NONE
-    }; // general blocked distribution
+typedef struct DistEnum {
+  enum disttype {
+    BLOCKED,      // = BLOCKCYCLIC(ceil(nelem/nunits))
+    CYCLIC,       // = BLOCKCYCLIC(1) Will be removed
+    BLOCKCYCLIC,
+    TILE,
+    NONE
+  }; // general blocked distribution
 
-    disttype type;
-    long long blocksz;
-  };
+  disttype type;
+  long long blocksz;
+} DistEnum;
 
-  struct DistEnum BLOCKED { DistEnum::BLOCKED, -1 };
+static DistEnum BLOCKED { DistEnum::BLOCKED, -1 };
+static DistEnum CYCLIC { DistEnum::BLOCKCYCLIC, 1 };
+static DistEnum NONE { DistEnum::NONE, -1 };
 
-  // obsolete
-  struct DistEnum CYCLIC_ { DistEnum::CYCLIC, -1 };
-  struct DistEnum CYCLIC { DistEnum::BLOCKCYCLIC, 1 };
+DistEnum TILE(int blockSize);
 
-  struct DistEnum NONE { DistEnum::NONE, -1 };
-
-  struct DistEnum TILE(int bs) {
-    return{ DistEnum::TILE, bs };
-  }
-
-  struct DistEnum BLOCKCYCLIC(int bs) {
-    return{ DistEnum::BLOCKCYCLIC, bs };
-  }
+DistEnum BLOCKCYCLIC(int blockSize);
 
 } // namespace dash
 

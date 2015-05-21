@@ -9,7 +9,7 @@ CXXFLAGS+=-I$(DART_INC)
 
 LIBDASH = libdash.a
 
-FILES = Init Team
+FILES = Init Team Enums
 
 OBJS = $(addsuffix .o, $(FILES))
 

@@ -17,7 +17,9 @@
 #include "GlobIter.h"
 #include "GlobRef.h"
 
+#include "Enums.h"
 #include "Array.h"
+#include "Matrix.h"
 #include "Shared.h"
 
 #if 0
