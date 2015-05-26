@@ -10,13 +10,13 @@
 */
 #include <stdio.h>
 #include <mpi.h>
-#include "dart_types.h"
-#include "dart_mem.h"
-#include "dart_team_private.h"
-#include "dart_translation.h"
-#include "dart_initialization.h"
-#include "dart_team_group.h"
-#include "dart_globmem_priv.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/mpi/dart_mem.h>
+#include <dash/dart/mpi/dart_team_private.h>
+#include <dash/dart/mpi/dart_translation.h">
+#include <dash/dart/mpi/dart_initialization.h">
+#include <dash/dart/mpi/dart_team_group.h">
+#include <dash/dart/mpi/dart_globmem_priv.h">
 
 #define DART_BUDDY_ORDER 24
 

@@ -1,34 +1,28 @@
+include ../make.defs
 
-include make.defs
+CFLAGS+=-I.. -I../$(DART_IF) 
 
-ONEHEADER = $(DART_IF)/../oneheader.pl
+#CFLAGS+=-DDART_DEBUG
 
-LIBDART = dart-mpi/libdart-mpi.a
+LIBDART  = libdart.a
 
-# components of the dart interface spec
-DART_COMP = dart.h dart_types.h dart_initialization.h \
-	dart_team_group.h dart_globmem.h \
-	dart_communication.h dart_synchronization.h
+FILES = dart_communication    	\
+	dart_globmem		\
+	dart_initialization	\
+	dart_mem			\
+	dart_synchronization	\
+	dart_team_group		\
+	dart_team_private		\
+	dart_translation
 
-DART_FILES = $(addprefix $(DART_IF)/, $(DART_COMP))
+OBJS = $(addsuffix .o, $(FILES))
 
-all : $(LIBDART) test
+all : $(LIBDART) 
 
-test : 	$(LIBDART)
+$(LIBDART) : $(OBJS)
+	ar rcs $(LIBDART) $(OBJS)
 
-dart_full.h : $(DART_IF)/dart.h $(DART_FILES)
-	$(ONEHEADER) $(DART_IF)/dart.h > dart_full.h
-
-dart-mpi/libdart-mpi.a : 
-	make -C dart-mpi/
-
-clean :
+clean : 
 	rm -f *~
-	rm -f *.o 
-	rm -f dart_full.h
-	make -C dart-mpi/ clean
-
-
-
-
-
+	rm -f *.o
+	rm -f $(LIBDART)

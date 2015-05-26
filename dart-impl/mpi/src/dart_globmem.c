@@ -12,16 +12,16 @@
 #endif
 */
 
-#include "dart_deb_log.h"
+#include <dash/dart/mpi/dart_deb_log.h>
 #include <stdio.h>
 #include <mpi.h>
-#include "dart_types.h"
-#include "dart_mem.h"
-#include "dart_translation.h"
-#include "dart_team_private.h"
-#include "dart_globmem.h"
-#include "dart_team_group.h"
-#include "dart_communication.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/mpi/dart_mem.h>
+#include <dash/dart/mpi/dart_translation.h>
+#include <dash/dart/mpu/dart_team_private.h>
+#include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_communication.h>
 
 /**
  * @note For dart collective allocation/free: offset in the returned gptr represents the displacement

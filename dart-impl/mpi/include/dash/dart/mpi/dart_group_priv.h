@@ -6,7 +6,7 @@
 #define DART_ADAPT_GROUP_PRIV_H_INCLUDED
 #include <stdio.h>
 #include <mpi.h>
-#include "dart_team_group.h"
+#include <dash/dart/mpi/dart_team_group.h>
 
 /** @brief Dart group type.
  */

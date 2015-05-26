@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <mpi.h>
-#include "dart_communication.h"
+#include <dash/dart/if/dart_communication.h>
 
 /** @brief Dart handle type for non-blocking one-sided operations.
  */

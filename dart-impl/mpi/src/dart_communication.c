@@ -15,19 +15,19 @@
 #endif
 */
 
-#include "dart_deb_log.h"
+#include <dash/dart/mpi/dart_deb_log.h>
 #include <stdio.h>
 #include <mpi.h>
 #include <string.h>
-#include "dart_types.h"
-#include "dart_translation.h"
-#include "dart_team_private.h"
-#include "dart_mem.h"
-#include "dart_initialization.h"
-#include "dart_globmem.h"
-#include "dart_team_group.h"
-#include "dart_communication.h"
-#include "dart_communication_priv.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/mpi/dart_translation.h>
+#include <dash/dart/mpi/dart_team_private.h>
+#include <dash/dart/mpi/dart_mem.h>
+#include <dash/dart/if/dart_initialization.h>
+#include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_communication.h>
+#include <dash/dart/mpi/dart_communication_priv.h>
 
 int unit_g2l (uint16_t index, dart_unit_t abs_id, dart_unit_t *rel_id)
 {

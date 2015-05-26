@@ -8,8 +8,8 @@
 
 #include <stdio.h>
 #include <mpi.h>
-#include "dart_types.h"
-#include "dart_deb_log.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/mpi/dart_deb_log.h>
 
 /* Global object for one-sided communication on memory region allocated with 'local allocation'. */
 extern MPI_Win dart_win_local_alloc; 
