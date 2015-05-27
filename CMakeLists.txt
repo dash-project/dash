@@ -43,5 +43,6 @@ message("-- change using -DDART_IF_VERSION=<version>)")
 # add_subdirectory(dart-if)
 add_subdirectory(dart-impl/mpi)
 add_subdirectory(dart-impl/shmem)
+add_subdirectory(dart-impl/cuda)
 # add_subdirectory(dash)
 
