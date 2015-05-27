@@ -11,8 +11,6 @@ file(GLOB_RECURSE DASH_DART_IMPL_SHMEM_HEADERS "include/*.h")
 set(DASH_DART_IF_INCLUDE_DIR
    ${CMAKE_CURRENT_SOURCE_DIR}/../../dart-if/v${DART_IF_VERSION}/include)
 
-message("-- DART interface include path: " "${DASH_DART_IF_INCLUDE_DIR}")
-
 ## Build targets
 
 # Directories containing the implementation of the library (-I):

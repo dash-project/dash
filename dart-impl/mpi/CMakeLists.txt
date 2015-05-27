@@ -36,7 +36,6 @@ set(DASH_DART_IF_INCLUDE_DIR
    ${CMAKE_CURRENT_SOURCE_DIR}/../../dart-if/v${DART_IF_VERSION}/include)
 
 message("-- MPI include path: " "${MPI_INCLUDE_PATH}")
-message("-- DART interface include path: " "${DASH_DART_IF_INCLUDE_DIR}")
 
 ## Build targets
 

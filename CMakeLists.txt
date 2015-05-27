@@ -33,16 +33,20 @@ endif(NOT CMAKE_BUILD_TYPE)
 option(BUILD_TESTS "Whether tests should be built" on)
 option(INSTALL_DOCS "Whether doxygen docs should be installed" on)
 option(WARNINGS_AS_ERRORS "Specify whether warnings should be treated as errors" off)
+option(DART_CUDA "Specify whether to build the CUDA implementation of DART" off)
 
 set(DART_IF_VERSION "3.1" CACHE STRING "Version of the DART interface")
-message("-- Using DART interface version " ${DART_IF_VERSION})
-message("-- change using -DDART_IF_VERSION=<version>)")
+message("-- Using DART interface version " ${DART_IF_VERSION} " (change using -DDART_IF_VERSION=<version>)")
 
 ## Subprojects, one for each deliverable
 #
 # add_subdirectory(dart-if)
 add_subdirectory(dart-impl/mpi)
 add_subdirectory(dart-impl/shmem)
-add_subdirectory(dart-impl/cuda)
+
+if (${DART_CUDA})
+  add_subdirectory(dart-impl/cuda)
+endif()
+
 # add_subdirectory(dash)
 
