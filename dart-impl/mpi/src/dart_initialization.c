@@ -11,12 +11,12 @@
 #include <stdio.h>
 #include <mpi.h>
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_initialization.h>
+#include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_team_private.h>
-#include <dash/dart/mpi/dart_translation.h">
-#include <dash/dart/mpi/dart_initialization.h">
-#include <dash/dart/mpi/dart_team_group.h">
-#include <dash/dart/mpi/dart_globmem_priv.h">
+#include <dash/dart/mpi/dart_translation.h>
+#include <dash/dart/mpi/dart_globmem_priv.h>
 
 #define DART_BUDDY_ORDER 24
 
@@ -66,7 +66,10 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	MPI_Comm sharedmem_comm;
 
 	/* Splits the communicator into subcommunicators, each of which can create a shared memory region */
-	MPI_Comm_split_type (MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &sharedmem_comm);
+//  MPI_COMM_TYPE_SHARED is not mentioned in MPIv3.1, see 
+//  http://www.mpich.org/static/docs/v3.1/www3/MPI_Comm_split_type.html
+//MPI_Comm_split_type (MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &sharedmem_comm);
+	MPI_Comm_split_type (MPI_COMM_WORLD, MPI_UNDEFINED, 1, MPI_INFO_NULL, &sharedmem_comm);
 	
 	dart_sharedmem_comm_list[index] = sharedmem_comm;
 

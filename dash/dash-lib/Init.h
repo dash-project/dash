@@ -10,21 +10,16 @@
 
 #include "dart.h"
 
-//
-// thin wrappers around the corresponding
-// DART functions
-//
-
+/**
+ * Thin wrappers around the corresponding DART functions
+ */
 namespace dash
 {
-  void init(int *argc, char ***argv);
-  void finalize();
-
+  void   init(int *argc, char ***argv);
+  void   finalize();
   int    myid();
   size_t size();
-
-void barrier();
-};
-
+  void   barrier();
+}
 
 #endif /* INIT_H_INCLUDED */
