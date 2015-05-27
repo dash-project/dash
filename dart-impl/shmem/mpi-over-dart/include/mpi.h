@@ -1,7 +1,7 @@
 #ifndef MPI_OVER_DART_H_INCLUDED
 #define MPI_OVER_DART_H_INCLUDED
 
-#include "dart.h"
+#include <dash/dart/if/dart.h>
 
 typedef int MPI_Status;
 
@@ -31,7 +31,5 @@ int MPI_Send(void* buf,int count,MPI_Datatype datatype,
 
 int MPI_Recv( void *buf, int count, MPI_Datatype datatype, int source,
 	      int tag, MPI_Comm comm, MPI_Status *status );
-
-
 
 #endif /* MPI_OVER_DART_H_INCLUDED */
