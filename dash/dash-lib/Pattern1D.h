@@ -100,11 +100,13 @@ public:
       m_dist.blocksz=ds.blocksz;
       break;
     }      
-    
-    assert(m_dist.blocksz>0);
-    assert(m_range.nelem>0);
-    assert(m_nunits>0);
-    assert(m_dist.blocksz<=m_range.nelem);
+
+    if( m_range.nelem!=0 ) {
+      assert(m_dist.blocksz>0);
+      assert(m_range.nelem>0);
+      assert(m_nunits>0);
+      assert(m_dist.blocksz<=m_range.nelem);
+    }
   }
 
   // delegating constructor
