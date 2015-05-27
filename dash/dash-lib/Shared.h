@@ -14,7 +14,6 @@
 
 namespace dash
 {
-
 template<typename ELEMENT_TYPE>
 class Shared 
 {
@@ -23,11 +22,6 @@ public:
   typedef size_t        size_type;
   typedef size_t        difference_type;  
 
-  typedef       GlobPtr<value_type>         iterator;
-  typedef const GlobPtr<value_type>   const_iterator;
-  typedef std::reverse_iterator<      iterator>       reverse_iterator;
-  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
-  
   typedef       GlobRef<value_type>       reference;
   typedef const GlobRef<value_type> const_reference;
   
@@ -37,41 +31,36 @@ public:
 private:
   typedef dash::GlobMem<value_type>    GlobMem;
   GlobMem*      m_globmem; 
-  size_type     m_size;
-  iterator      m_begin;
-  
-public:
-  
-  Shared(size_t nelem=1) {
-    m_size    = nelem;
-    m_globmem = new GlobMem(nelem);  
+  dash::Team&   m_team;
+  pointer       m_ptr;
 
-    m_begin = m_globmem->begin();
+public:
+  Shared(Team& t=dash::Team::All()) : 
+    m_team(t) 
+  {
+    if( m_team.myid()==0 ) {
+      m_globmem = new GlobMem(1);
+      m_ptr=m_globmem->begin();
+    }
+    
+    dart_bcast(&m_ptr, sizeof(pointer),
+	       0, m_team.dart_id() );
   }
   
   ~Shared() {
-    delete m_globmem;
+    if( m_team.myid()==0 ) {
+      delete m_globmem;
+    }
   }
 
-  const_pointer data() const noexcept {
-    return m_begin;
+  void set(ELEMENT_TYPE val) noexcept {
+    *m_ptr = val;
   }
 
-  iterator begin() noexcept {
-    return iterator(data());
+  reference get() noexcept {
+    return *m_ptr;
   }
 
-  iterator end() noexcept {
-    return iterator(data() + m_size);
-  }
-
-  size_type size() const noexcept {
-    return m_size;
-  }
-
-  reference operator[](size_type n) {
-    return begin()[n];
-  }
 };
 
 }; // namespace dash
