@@ -9,6 +9,7 @@
 #define ARRAY_H_INCLUDED
 
 #include <stdexcept>
+#include <algorithm>
 
 #include "GlobMem.h"
 #include "GlobIter.h"
@@ -16,6 +17,7 @@
 #include "Team.h"
 #include "Pattern1D.h" 
 #include "HView.h"
+#include "Shared.h"
 
 namespace dash
 {
@@ -37,8 +39,7 @@ const_reverse_iterator  Behaves like const value_type*
              reference  value_type&
        const_reference  const value_type&
 
-               pointer  Behaves like value_type*
-         const_pointer  Behaves like const value_type*
+               pointer  Behaves like value_type*         const_pointer  Behaves like const value_type*
 */
 
 
@@ -74,6 +75,15 @@ public:
   
   T& operator[](size_type n) {
     return begin()[n];
+  }
+
+  // get a global pointer for a local pointer
+  GlobPtr<T> globptr(T* lptr) {
+    GlobPtr<T> gptr=m_ptr->begin();
+    gptr.set_unit(dash::myid());
+    auto lptrdiff = lptr-begin();
+    
+    return gptr+lptrdiff;
   }
 };
  
@@ -130,21 +140,36 @@ public:
   
   
 public:
+  Array(Team& t=dash::Team::All()) :
+    m_team(t),
+    m_pattern(0, dash::BLOCKED, t),
+    local(this)
+  {
+    m_size=0;
+  }
+
   Array(size_t nelem, dash::DistSpec ds,
 	Team& t=dash::Team::All() ) : 
     m_team(t),
     m_pattern(nelem, ds, t),
     local(this)
   {
+    allocate(nelem, ds);
+  }  
+
+  bool allocate(size_t nelem, dash::DistSpec ds) {
     assert(nelem>0);
+    
+    m_pattern = Pattern1D(nelem, ds, m_team);
+
     m_size  = m_pattern.nelem();
     m_lsize = m_pattern.max_elem_per_unit();
     m_myid  = m_team.myid();
 
     m_globmem = new GlobMem(m_team, m_lsize);
-
+    
     m_begin = iterator(m_globmem, m_pattern);
-
+    
     // determine local begin and end addresses
     void *addr; dart_gptr_t gptr; 
     gptr = m_globmem->begin().dartptr();
@@ -155,8 +180,17 @@ public:
 
     dart_gptr_incaddr(&gptr, m_lsize*sizeof(ELEMENT_TYPE));
     dart_gptr_getaddr(gptr, &addr);
-    m_lend=static_cast<ELEMENT_TYPE*>(addr);
-  }  
+    m_lend=static_cast<ELEMENT_TYPE*>(addr);    
+    
+    return true;
+  }
+
+  bool deallocate() {
+    if( m_size>0 ) {
+      delete m_globmem;
+      m_size=0;
+    }
+  }
 
   // this local proxy object enables arr.local to be used in
   // range-based for loops
@@ -174,7 +208,7 @@ public:
   { }
 
   ~Array() {
-    delete m_globmem;
+    deallocate();
   }
 
   const_pointer data() const noexcept {
@@ -182,7 +216,9 @@ public:
   }
   
   iterator begin() noexcept {
-    return iterator(data());
+    iterator res = iterator(data());
+    //cout<<"#### "<<res<<endl;
+    return res;
   }
 
   iterator end() noexcept {
@@ -239,6 +275,40 @@ public:
   dash::HView<Array<ELEMENT_TYPE>, level> hview() {
     return dash::HView<Array<ELEMENT_TYPE>, level>(*this);
   }
+  
+  void min_element() {
+    dash::Array<ELEMENT_TYPE> minval(m_team.size());
+    
+    // find the local min element
+    ELEMENT_TYPE* lmin =std::min_element(lbegin(), lend()); 
+    minval[m_team.myid()] = *lmin;
+    
+    minval.barrier();
+
+    typedef dash::GlobPtr<ELEMENT_TYPE> globptr_t;
+    dash::Shared<globptr_t> minel(m_team);
+
+    if( minval.team().myid()==0 ) {
+      globptr_t ptr = std::min_element(minval.begin(), minval.end());
+
+      minel.set(ptr);
+
+      //std::cout<<ptr<<" "<<*ptr<<std::endl;
+
+      //std::cout<<ptr<<" "<<*ptr<<std::endl;
+      //std::cout<<globptr_t(ptr)<<" "<<*globptr_t(ptr)<<std::endl;
+    }    
+    
+    m_team.barrier();
+    
+
+    if( minval.team().myid()==0 ) {
+      globptr_t ptr = minel.get();
+
+      std::cout<<ptr<<" "<<*ptr<<std::endl;
+    }
+  }  
+
 };
 
 
