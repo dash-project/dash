@@ -2,10 +2,10 @@
  *  @date 25 Aug 2014
  *  @brief Implementations for the operations on teamlist.
  */
-#include<stdio.h>
-#include "dart_types.h"
-#include "dart_team_private.h"
-#include "dart_team_group.h"
+#include <stdio.h>
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/mpi/dart_team_private.h>
 
 dart_team_t dart_next_availteamid;
 MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];

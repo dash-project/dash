@@ -6,9 +6,9 @@
 #ifndef ENABLE_LOG
 #define ENABLE_LOG
 #endif
-#include "dart_deb_log.h"
-#include "dart_translation.h"
-#include "dart_mem.h"
+#include <dash/dart/mpi/dart_deb_log.h>
+#include <dash/dart/mpi/dart_translation.h>
+#include <dash/dart/mpi/dart_mem.h>
 
 /* Global array: the header for the global translation table. */
 node_t dart_transtable_globalalloc;

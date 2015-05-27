@@ -18,7 +18,7 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_translation.h>
-#include <dash/dart/mpu/dart_team_private.h>
+#include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_communication.h>

@@ -1,6 +1,6 @@
 //https://github.com/cloudwu/buddy
 
-#include "dart_mem.h"
+#include <dash/dart/mpi/dart_mem.h>
 
 #define NODE_UNUSED 0
 #define NODE_USED 1	
