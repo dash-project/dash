@@ -8,6 +8,7 @@
 #ifndef GLOBITER_H_INCLUDED
 #define GLOBITER_H_INCLUDED
 
+#include <iostream>
 #include "Pattern1D.h"
 
 
@@ -17,8 +18,7 @@ namespace dash
 typedef long gptrdiff_t;
 
 template<typename T>
-class GlobIter : public GlobPtr<T> ,
-		 public std::iterator<std::random_access_iterator_tag,
+class GlobIter : public std::iterator<std::random_access_iterator_tag,
 				      T, gptrdiff_t,
 				      GlobIter<T>, GlobRef<T> >
 {
@@ -26,9 +26,12 @@ protected:
   GlobMem<T>*      m_globmem;
   Pattern1D*       m_pattern;
   size_t           m_idx;
+
+  template<typename U>
+  friend std::ostream& operator<<(std::ostream& os, const GlobIter<U>& it);
   
 public:
-  GlobIter() : GlobPtr<T>() {
+  GlobIter() {
     m_globmem=nullptr;
     m_pattern=nullptr;
     m_idx=0;
@@ -36,28 +39,32 @@ public:
 
   GlobIter(GlobMem<T>*     mem,
 	   Pattern1D&      pat,
-	   size_t          idx=0) : GlobPtr<T>(mem->begin())
+	   size_t          idx=0)
   {
     m_globmem = mem;
     m_pattern = &pat;
     m_idx = idx;
   }
 
-  GlobIter(const GlobIter<T>& other) 
-  {
-    m_globmem = other.m_globmem;
-    m_pattern = other.m_pattern;
-    m_idx     = other.m_idx;
+  GlobIter(const GlobIter<T>& other) = default;
+  GlobIter<T>& operator=(const GlobIter<T>& other) = default;
+
+  operator GlobPtr<T>() const {
+    auto unit = m_pattern->index_to_unit(m_idx);
+    auto elem = m_pattern->index_to_elem(m_idx);
+    GlobPtr<T> ptr = m_globmem->get_globptr(unit,elem);
+    return ptr;
   }
-  
 
   GlobRef<T> operator*()
   {
+    /*
     auto unit = m_pattern->index_to_unit(m_idx);
     auto elem = m_pattern->index_to_elem(m_idx);
+    */
 
     //std::cerr<<"Operator* "<<m_idx<<" "<<unit<<" "<<elem<<std::endl;
-    GlobPtr<T> ptr = m_globmem->get_globptr(unit,elem);
+    GlobPtr<T> ptr(*this);
     return GlobRef<T>(ptr);
   }  
 
@@ -151,6 +158,19 @@ public:
     return m_idx != other.m_idx;
   }
 };
+
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const GlobIter<T>& it)
+{
+  GlobPtr<T> ptr(it); 
+
+  os<<"GlobIter<T>: ";
+  os<<"idx="<<it.m_idx<<std::endl;
+  os<<"--> ";
+  
+  return operator<<(os, ptr);
+}
+
 
 };
 
