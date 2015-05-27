@@ -1,9 +1,9 @@
 
 #include <string.h>
 
-#include "dart.h"
-#include "dart_mempool.h"
-#include "dart_memarea.h"
+#include <dash/dart/if/dart.h>
+#include <dash/dart/shmem/dart_mempool.h>
+#include <dash/dart/shmem/dart_memarea.h>
 
 /* --- TO IMPLEMENT --- 
 

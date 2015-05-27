@@ -2,7 +2,7 @@
 #include <pthread.h>
 #include <stdio.h>
 
-#include "dart_helper_thread.h"
+#include <dash/dart/shmem/dart_helper_thread.h>
 
 static struct work_queue queue = {
   PTHREAD_MUTEX_INITIALIZER,

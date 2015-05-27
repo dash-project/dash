@@ -1,7 +1,7 @@
 #ifndef SHMEM_P2P_IF_H_INCLUDED
 #define SHMEM_P2P_IF_H_INCLUDED
 
-#include "dart_types.h"
+#include <dash/dart/if/dart_types.h>
 
 #include "extern_c.h"
 EXTERN_C_BEGIN

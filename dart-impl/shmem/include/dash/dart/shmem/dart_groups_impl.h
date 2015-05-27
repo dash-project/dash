@@ -1,10 +1,10 @@
 #ifndef DART_GROUPS_IMPL_H_INCLUDED
 #define DART_GROUPS_IMPL_H_INCLUDED
 
-#include "dart_types.h"
-#include "dart_team_group.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
 
-#include "extern_c.h"
+#include <dash/dart/shmem/extern_c.h>
 EXTERN_C_BEGIN
 
 #define MAXSIZE_GROUP 256

@@ -1,6 +1,8 @@
 
 project(project_dash)
 
+include(${CMAKE_SOURCE_DIR}/CMakeExt/CompilerFlags.cmake)
+
 cmake_minimum_required (VERSION 2.8)
 
 set(DASH_VERSION_MAJOR 0)
@@ -33,13 +35,13 @@ option(INSTALL_DOCS "Whether doxygen docs should be installed" on)
 option(WARNINGS_AS_ERRORS "Specify whether warnings should be treated as errors" off)
 
 set(DART_IF_VERSION "3.1" CACHE STRING "Version of the DART interface")
-
-# include(CMakeExt/SetCompilerFlags.cmake)
-# SetCompilerFlags(compiler_libs compiler_flags)
+message("-- Using DART interface version " ${DART_IF_VERSION})
+message("-- change using -DDART_IF_VERSION=<version>)")
 
 ## Subprojects, one for each deliverable
 #
 # add_subdirectory(dart-if)
 add_subdirectory(dart-impl/mpi)
+add_subdirectory(dart-impl/shmem)
 # add_subdirectory(dash)
 

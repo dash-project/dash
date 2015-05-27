@@ -11,10 +11,10 @@
 #include <dirent.h>
 #include <signal.h>
 
-#include "dart_shmem.h"
-#include "shmem_logger.h"
-#include "shmem_barriers_if.h"
-#include "shmem_mm_if.h"
+#include <dash/dart/shmem/dart_shmem.h>
+#include <dash/dart/shmem/shmem_logger.h>
+#include <dash/dart/shmem/shmem_barriers_if.h>
+#include <dash/dart/shmem/shmem_mm_if.h>
 
 typedef struct
 {

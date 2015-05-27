@@ -1,9 +1,8 @@
 
-#include "dart.h"
-
-#include "dart_shmem.h"
-#include "dart_initialization.h"
-#include "dart_init_shmem.h"
+#include <dash/dart/if/dart.h>
+#include <dash/dart/if/dart_initialization.h>
+#include <dash/dart/shmem/dart_shmem.h>
+#include <dash/dart/shmem/dart_init_shmem.h>
 
 dart_ret_t dart_init(int *argc, char ***argv)
 {

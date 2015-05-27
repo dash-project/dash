@@ -8,10 +8,10 @@
 #endif /* USE_EVENTFD */
 
 
-#include "dart_types.h"
-#include "dart_teams_impl.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/shmem/dart_teams_impl.h>
 
-#include "extern_c.h"
+#include <dash/dart/shmem/extern_c.h>
 EXTERN_C_BEGIN
 
 struct sysv_barrier

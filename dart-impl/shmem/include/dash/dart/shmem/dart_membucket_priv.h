@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "extern_c.h"
+#include <dash/dart/shmem/extern_c.h>
 EXTERN_C_BEGIN
 
 typedef struct dart_membucket_list_entry* dart_membucket_list;

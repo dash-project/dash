@@ -1,9 +1,9 @@
 #ifndef SHMEM_P2P_SYSV_H_INCLUDED
 #define SHMEM_P2P_SYSV_H_INCLUDED
 
-#include "dart_types.h"
-#include "../dart_groups_impl.h" // for MAXSIZE_GROUP
-#include "../dart_teams_impl.h"  // for MAXNUM_TEAMS
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/shmem/dart_groups_impl.h> // for MAXSIZE_GROUP
+#include <dash/dart/shmem/dart_teams_impl.h>  // for MAXNUM_TEAMS
 
 typedef struct fifo_pair_struct
 {

@@ -1,8 +1,8 @@
 #include <stdio.h>
 
-#include "dart_types.h"
-#include "dart_team_group.h"
-#include "dart_groups_impl.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/shmem/dart_groups_impl.h>
 
 dart_ret_t dart_group_sizeof(size_t *size)
 {

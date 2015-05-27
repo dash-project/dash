@@ -5,8 +5,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "dart_membucket.h"
-#include "shmem_logger.h"
+#include <dash/dart/shmem/dart_membucket.h>
+#include <dash/dart/shmem/shmem_logger.h>
 
 // static helpers
 static void* add_to_pvoid(void* p, size_t size)

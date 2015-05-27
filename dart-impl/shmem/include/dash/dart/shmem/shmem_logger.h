@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "extern_c.h"
+#include <dash/dart/shmem/extern_c.h>
 EXTERN_C_BEGIN
 
 // KF #include "dart/dart_return_codes.h"

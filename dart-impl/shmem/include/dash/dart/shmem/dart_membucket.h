@@ -2,9 +2,9 @@
 #define DART_MEMBUCKET_H_INCLUDED
 
 #include <stdio.h>
-#include "dart_membucket_priv.h"
+#include <dash/dart/shmem/dart_membucket_priv.h>
 
-#include "extern_c.h"
+#include <dash/dart/shmem/extern_c.h>
 EXTERN_C_BEGIN
 
 struct dart_opaque_membucket;

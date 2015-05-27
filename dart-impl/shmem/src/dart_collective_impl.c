@@ -1,12 +1,11 @@
 
-#include "dart_types.h"
-#include "dart_globmem.h"
-#include "dart_communication.h"
-#include "dart_team_group.h"
-#include "shmem_p2p_if.h"
-#include "shmem_logger.h"
-#include "shmem_barriers_if.h"
-
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_communication.h>
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/shmem/shmem_p2p_if.h>
+#include <dash/dart/shmem/shmem_logger.h>
+#include <dash/dart/shmem/shmem_barriers_if.h>
 
 dart_ret_t dart_barrier(dart_team_t teamid)
 {

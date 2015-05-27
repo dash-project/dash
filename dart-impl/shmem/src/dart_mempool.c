@@ -1,10 +1,10 @@
 
-#include "dart.h"
+#include <dash/dart/if/dart.h>
 
-#include "dart_membucket.h"
-#include "dart_mempool.h"
-#include "shmem_mm_if.h"
-#include "shmem_logger.h"
+#include <dash/dart/shmem/dart_membucket.h>
+#include <dash/dart/shmem/dart_mempool.h>
+#include <dash/dart/shmem/shmem_mm_if.h>
+#include <dash/dart/shmem/shmem_logger.h>
 
 void dart_mempool_init(dart_mempoolptr pool)
 {

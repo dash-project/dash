@@ -1,5 +1,5 @@
 
-#include "dart_memarea.h"
+#include <dash/dart/shmem/dart_memarea.h>
 
 dart_memarea_t memarea;
 

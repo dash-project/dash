@@ -2,7 +2,7 @@
 #define DART_HELPER_THREAD_H_INCLUDED
 
 #include <pthread.h>
-#include "dart.h"
+#include <dash/dart/if/dart.h>
 
 #define MAXNUM_WORK_ITEMS    1024
 

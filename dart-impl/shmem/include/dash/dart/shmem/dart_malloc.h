@@ -1,7 +1,7 @@
 #ifndef DART_MALLOC_H_INCLUDED
 #define DART_MALLOC_H_INCLUDED
 
-#include "extern_c.h"
+#include <dash/dart/shmem/extern_c.h>
 EXTERN_C_BEGIN
 
 

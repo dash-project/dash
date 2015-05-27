@@ -5,7 +5,7 @@ set(MPICC_COMPILER "mpic" CACHE STRING  "MPI C compiler wrapper")
 set(MPICXX_COMPILER "mpicxx" CACHE STRING  "MPI C++ compiler wrapper")
 
 # Library name
-set(DASH_DART_IMPL_MPI_LIBRARY libdart)
+set(DASH_DART_IMPL_MPI_LIBRARY dart-mpi)
 
 ## Locate MPI
 #

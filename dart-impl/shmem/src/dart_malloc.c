@@ -1,12 +1,11 @@
 
-#include <dart.h>
+#include <dash/dart/if/dart.h>
 
-#include "dart_malloc.h"
-#include "dart_memarea.h"
-#include "dart_mempool.h"
-#include "dart_teams_impl.h"
-#include "shmem_logger.h"
-
+#include <dash/dart/shmem/dart_malloc.h>
+#include <dash/dart/shmem/dart_memarea.h>
+#include <dash/dart/shmem/dart_mempool.h>
+#include <dash/dart/shmem/dart_teams_impl.h>
+#include <dash/dart/shmem/shmem_logger.h>
 
 /* TO IMPLEMENT */
 /*

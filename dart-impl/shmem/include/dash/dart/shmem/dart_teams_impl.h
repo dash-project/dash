@@ -2,12 +2,12 @@
 #define DART_TEAMS_IMPL_H_INCLUDED
 
 #include <unistd.h>
-#include "dart_types.h"
-#include "dart_team_group.h"
-#include "dart_groups_impl.h"
-#include "dart_memarea.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/shmem/dart_groups_impl.h>
+#include <dash/dart/shmem/dart_memarea.h>
 
-#include "extern_c.h"
+#include <dash/dart/shmem/extern_c.h>
 EXTERN_C_BEGIN
 
 // max number of simultaneously existing teams

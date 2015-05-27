@@ -1,11 +1,11 @@
 #ifndef DART_MEMPOOL_H_INCLUDED
 #define DART_MEMPOOL_H_INCLUDED
 
-#include "extern_c.h"
+#include <dash/dart/shmem/extern_c.h>
 EXTERN_C_BEGIN
 
-#include "dart.h"
-#include "dart_membucket.h"
+#include <dash/dart/if/dart.h>
+#include <dash/dart/shmem/dart_membucket.h>
 
 #define MAXNUM_MEMPOOLS     64
 

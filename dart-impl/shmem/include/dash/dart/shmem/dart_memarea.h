@@ -2,10 +2,10 @@
 #ifndef DART_MEMAREA_H_INCLUDED
 #define DART_MEMAREA_H_INCLUDED
 
-#include "extern_c.h"
+#include <dash/dart/shmem/extern_c.h>
 EXTERN_C_BEGIN
 
-#include "dart_mempool.h"
+#include <dash/dart/shmem/dart_mempool.h>
 
 struct dart_memarea
 {
