@@ -33,12 +33,12 @@ add_library(
   ${DASH_DART_IMPL_SHMEM_MPI_SOURCES} # sources
   ${DASH_DART_IMPL_SHMEM_MPI_HEADERS} # headers
 )
-
 # Link dependencies
 target_link_libraries(
-  ${DASH_DART_IMPL_SHMEM_LIBRARY}
+  ${DASH_DART_IMPL_SHMEM_MPI_LIBRARY}
   dart-shmem
 )
+DeployLibrary(${DASH_DART_IMPL_SHMEM_MPI_LIBRARY})
 
 ## Installation
 
