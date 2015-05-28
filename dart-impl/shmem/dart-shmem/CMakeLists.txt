@@ -1,5 +1,9 @@
 project(project_dash_dart_impl_shmem)
 
+# Extra flags
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_HELPER_THREAD=1 -DUSE_EVENTFD -D_SVID_SOURCE")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_HELPER_THREAD=1 -DUSE_EVENTFD -D_SVID_SOURCE")
+
 # Library name
 set(DASH_DART_IMPL_SHMEM_LIBRARY dart-shmem)
 
@@ -34,12 +38,12 @@ add_library(
 add_executable(
   dartrun-shmem
   src/dartrun.c
-  ${DASH_DART_IMPL_SHMEM_SOURCES} # sources
   ${DASH_DART_IMPL_SHMEM_HEADERS} # headers
 )
 
 target_link_libraries(
   dartrun-shmem
+  ${DASH_DART_IMPL_SHMEM_LIBRARY} # library name
   pthread
 )
 

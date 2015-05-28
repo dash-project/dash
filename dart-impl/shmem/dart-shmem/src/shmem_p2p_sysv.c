@@ -8,9 +8,9 @@
 #include <stdio.h>
 
 #include <dash/dart/shmem/shmem_p2p_if.h>
+#include <dash/dart/shmem/sysv/shmem_p2p_sysv.h>
 #include <dash/dart/shmem/shmem_logger.h>
 #include <dash/dart/shmem/shmem_barriers_if.h>
-#include <dash/dart/shmem/sysv/shmem_p2p_sysv.h>
 
 #ifdef DART_USE_HELPER_THREAD
 #include <dash/dart/shmem/dart_helper_thread.h>
