@@ -2,9 +2,8 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "dart.h"
-#include "mpi.h"
-
+#include <dash/dart/if/dart.h>
+#include <dash/dart/shmem/mpi/mpi.h>
 
 int MPI_Send(void* buf, int count, MPI_Datatype datatype,
 	     int dest, int tag, MPI_Comm comm)
@@ -21,8 +20,6 @@ int MPI_Send(void* buf, int count, MPI_Datatype datatype,
   return 0;
 }
 
-
-
 int MPI_Recv(void* buf, int count, MPI_Datatype datatype,
 	     int source, int tag, MPI_Comm comm, MPI_Status *status)
 {
@@ -38,8 +35,6 @@ int MPI_Recv(void* buf, int count, MPI_Datatype datatype,
   return 0;
 }
 
-
-
 int MPI_Isend(void* buf, int count, MPI_Datatype datatype,
 	      int dest, int tag, MPI_Comm comm, MPI_Request *request)
 {
@@ -54,8 +49,6 @@ int MPI_Isend(void* buf, int count, MPI_Datatype datatype,
   dart_shmem_isend(buf, nbytes, comm, dest, request);
   return 0;
 }
-
-
 
 int MPI_Irecv(void* buf, int count, MPI_Datatype datatype,
 	     int source, int tag, MPI_Comm comm, MPI_Request *request)

@@ -28,6 +28,8 @@ set(CMAKE_BUILD_TYPE "Release" cache string
   "Choose the type of build, options are: Debug Release." force)
 endif(NOT CMAKE_BUILD_TYPE)
 
+message("-- Build type: " ${CMAKE_BUILD_TYPE})
+
 ## Build options
 #
 option(BUILD_TESTS "Whether tests should be built" on)
@@ -42,7 +44,8 @@ message("-- Using DART interface version " ${DART_IF_VERSION} " (change using -D
 #
 # add_subdirectory(dart-if)
 add_subdirectory(dart-impl/mpi)
-add_subdirectory(dart-impl/shmem)
+add_subdirectory(dart-impl/shmem/dart-shmem)
+add_subdirectory(dart-impl/shmem/dart-shmem-mpi)
 
 if (${DART_CUDA})
   add_subdirectory(dart-impl/cuda)
