@@ -31,6 +31,18 @@ add_library(
   ${DASH_DART_IMPL_SHMEM_HEADERS} # headers
 )
 
+add_executable(
+  dartrun-shmem
+  src/dartrun.c
+  ${DASH_DART_IMPL_SHMEM_SOURCES} # sources
+  ${DASH_DART_IMPL_SHMEM_HEADERS} # headers
+)
+
+target_link_libraries(
+  dartrun-shmem
+  pthread
+)
+
 # Link dependencies
 # target_link_libraries(
 #   ${DASH_DART_IMPL_SHMEM_LIBRARY}

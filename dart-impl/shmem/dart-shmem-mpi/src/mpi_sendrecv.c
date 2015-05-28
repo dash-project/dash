@@ -4,6 +4,7 @@
 
 #include <dash/dart/if/dart.h>
 #include <dash/dart/shmem/mpi/mpi.h>
+#include <dash/dart/shmem/sysv/shmem_p2p_sysv.h>
 
 int MPI_Send(void* buf, int count, MPI_Datatype datatype,
 	     int dest, int tag, MPI_Comm comm)

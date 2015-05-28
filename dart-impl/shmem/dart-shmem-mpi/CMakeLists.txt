@@ -10,6 +10,8 @@ file(GLOB_RECURSE DASH_DART_IMPL_SHMEM_MPI_HEADERS "include/*.h")
 # Include directory to selected version of DART interface
 set(DASH_DART_IF_INCLUDE_DIR
    ${CMAKE_SOURCE_DIR}/dart-if/v${DART_IF_VERSION}/include)
+set(DASH_DART_IMPL_SHMEM_INCLUDE_DIRS
+  ${CMAKE_CURRENT_SOURCE_DIR}/../dart-shmem/include)
 
 ## Build targets
 
@@ -21,6 +23,7 @@ set(DASH_DART_IMPL_SHMEM_MPI_INCLUDE_DIRS
 
 include_directories(
   ${DASH_DART_IMPL_SHMEM_MPI_INCLUDE_DIRS}
+  ${DASH_DART_IMPL_SHMEM_INCLUDE_DIRS}
   ${DASH_DART_IF_INCLUDE_DIR}
 )
 
