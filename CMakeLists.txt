@@ -76,9 +76,14 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/doc)
 
 ## Subprojects, one for each deliverable
-add_subdirectory(dart-impl/mpi)
-add_subdirectory(dart-impl/shmem/dart-shmem)
-add_subdirectory(dart-impl/shmem/dart-shmem-mpi)
+if (${DART_IMPLEMENTATION} STREQUAL "mpi")
+  add_subdirectory(dart-impl/mpi)
+endif()
+
+if (${DART_IMPLEMENTATION} STREQUAL "shmem")
+  add_subdirectory(dart-impl/shmem/dart-shmem)
+  add_subdirectory(dart-impl/shmem/dart-shmem-mpi)
+endif()
 
 if (${DART_IMPLEMENTATION} STREQUAL "cuda")
   add_subdirectory(dart-impl/cuda)
