@@ -100,8 +100,9 @@ public:
 #endif
 
 #if 0
-  template<typename X=T, 
-	   typename std::enable_if<has_subscript_operator<X>::value, int>::type *ptr=nullptr>
+  template<
+    typename X=T, 
+	  typename std::enable_if<has_subscript_operator<X>::value, int>::type *ptr = nullptr>
   auto operator[](size_t pos) -> 
     typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
   {
@@ -109,7 +110,6 @@ public:
     return val[pos];
   }
 #endif
-
 
   bool is_local() const {
     return m_gptr.is_local();
@@ -126,7 +126,6 @@ public:
     return GlobRef<MEMTYPE>(gptr);
   }
 
-
   // get the member via pointer to member
   template<class MEMTYPE, class P=T>
   GlobRef<MEMTYPE> member(const MEMTYPE P::*mem)
@@ -137,6 +136,5 @@ public:
 };
 
 };
-
 
 #endif /* GLOBREF_H_INCLUDED */

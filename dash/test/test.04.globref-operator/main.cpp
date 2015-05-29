@@ -10,14 +10,12 @@
 
 #define SIZE 10
 
-
 class Foo {
 public:
-  double operator[](size_t pos) {
+  double operator[](int pos) {
     return 33.3;
   }
 };
-
 
 class Bar {
 };
@@ -31,11 +29,13 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
 
-  dash::Array<Bar> arr(SIZE);
+  dash::Array<Foo> arr(SIZE);
   
   if(myid==0) {
-    auto r1 = arr[0];
+    dash::GlobRef<Foo> r1 = arr[0];
+#if 0
     cout << r1[33] << endl;
+#endif
   }
   
   arr.barrier();

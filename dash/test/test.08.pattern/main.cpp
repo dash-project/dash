@@ -3,8 +3,8 @@
 #include <vector>
 #include <list>
 
-#include "Pattern.h"
-#include "Team.h"
+#include <dash/Pattern.h>
+#include <dash/Team.h>
 
 using namespace std;
 
@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
 	
 	dash::TeamSpec<2> ts(2, 2);
 	dash::SizeSpec<2> ss(ext1, ext2);
-	dash::DistSpec<2> ds(dash::BLOCKED, dash::BLOCKCYCLIC(3));
+	dash::DistributionSpec<2> ds(dash::BLOCKED, dash::BLOCKCYCLIC(3));
 
 	dash::Pattern<2> p1(ss, ds, ts);
 	

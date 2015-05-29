@@ -115,20 +115,16 @@ private:
   ELEMENT_TYPE*  m_lend;
   
 public:
-  // check requirements on element type 
-  static_assert(std::is_trivial<ELEMENT_TYPE>::value,
-		"Element type must be trivially copyable");
-  
+/* Check requirements on element type 
+   is_trivially_copyable is not implemented presently, and is_trivial
+   is too strict (e.g. fails on std::pair).
 
-  /*
-    is_trivially_copyable is not implemented presently, so 
-    we use is_trivial instead...
+   static_assert(std::is_trivially_copyable<ELEMENT_TYPE>::value,
+     "Element type must be trivially copyable");
+   static_assert(std::is_trivial<ELEMENT_TYPE>::value,
+		 "Element type must be trivially copyable");
+*/
 
-  static_assert(std::is_trivially_copyable<ELEMENT_TYPE>::value,
-  "Element type must be trivially copyable");
-  */
-  
-  
 public:
   Array(size_t nelem, dash::DistributionSpec<1> ds,
 	Team& t=dash::Team::All() ) : 

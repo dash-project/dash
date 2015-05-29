@@ -3,10 +3,9 @@
 #include <vector>
 #include <list>
 
-#include "Pattern.h"
-#include "Matrix.h"
-
-#include "Team.h"
+#include <dash/Pattern.h>
+#include <dash/Matrix.h>
+#include <dash/Team.h>
 
 using namespace std;
 
