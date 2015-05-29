@@ -67,8 +67,8 @@ set(
   "dash"
   CACHE STRING INTERNAL FORCE)
 
-message(">> DART library: " ${DART_LIBRARY})
-message(">> DASH library: " ${DASH_LIBRARY})
+message("-- DART library: " ${DART_LIBRARY})
+message("-- DASH library: " ${DASH_LIBRARY})
 
 ## Build results output directories (/bin, /lib, /doc)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -76,6 +76,9 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/doc)
 
 ## Subprojects, one for each deliverable
+
+add_subdirectory(dart-if)
+
 if (${DART_IMPLEMENTATION} STREQUAL "mpi")
   add_subdirectory(dart-impl/mpi)
 endif()
