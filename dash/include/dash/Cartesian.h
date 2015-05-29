@@ -11,7 +11,7 @@
 #include <array>
 #include <cassert>
 
-#include "Enums.h"
+#include <dash/Enums.h>
 
 namespace dash {
 
@@ -27,19 +27,22 @@ public:
   template<size_t NumDimensions_, MemArrange arr> friend class Pattern;
 
 protected:
-  SizeType m_size = 0;
+  SizeType m_size;
   SizeType m_extent[NumDimensions];
   SizeType m_offset[NumDimensions];
 
-  size_t m_ndim = NumDimensions;
+  size_t m_ndim;
 
 public:
-  CartCoord() {
+  CartCoord()
+  : m_size(0),
+    m_ndim(NumDimensions) {
   }
 
   template<typename... Args>
   CartCoord(Args... args) 
-  : m_extent{SizeType(args)...} {
+  : m_extent { SizeType(args)... },
+    m_size(0) {
     static_assert(
       sizeof...(Args) == NumDimensions,
       "Invalid number of arguments");

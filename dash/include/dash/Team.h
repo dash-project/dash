@@ -1,3 +1,9 @@
+/* 
+ * dash-lib/Team.h
+ *
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
+/* @DASH_HEADER@ */
 
 #ifndef TEAM_H_INCLUDED
 #define TEAM_H_INCLUDED
@@ -7,15 +13,15 @@
 #include <deque>
 #include <type_traits>
 
-#include "Init.h"
-#include "View.h"
-#include "Cart.h"
-#include "dart.h"
+#include <dash/Init.h>
+#include <dash/View.h>
+#include <dash/Cartesian.h>
+#include <dash/Enums.h>
+#include <dash/dart/if/dart.h>
 
 using std::cout;
 using std::endl;
 using std::deque;
-
 
 namespace dash
 {
@@ -27,8 +33,10 @@ namespace dash
 class Team
 {
   template< class U> friend class Array;
+  template< size_t DIM, MemArrange ma> friend class Pattern;
+  template< size_t DIM> friend class TeamSpec;
   template< class U> friend class Shared;
-  template< class U> friend class GlobIter;
+  template< class U, class Pattern> friend class GlobIter;
   template< class U> friend class GlobRef;
 
 public:
@@ -58,18 +66,18 @@ public:
 
 
 private:
-  dart_team_t   m_dartid=DART_TEAM_NULL;
-  dart_group_t *m_group;
+  dart_team_t     m_dartid = DART_TEAM_NULL;
+  dart_group_t  * m_group;
 
-  Team        *m_parent=nullptr;
-  Team        *m_child=nullptr;
-  size_t       m_position=0;
-  static Team  m_team_all;
-  static Team  m_team_null;
-  bool         m_havegroup=false;
+  Team          * m_parent=nullptr;
+  Team          * m_child=nullptr;
+  size_t          m_position=0;
+  static Team     m_team_all;
+  static Team     m_team_null;
+  bool            m_havegroup=false;
 
   void free_team() {
-    if( m_dartid!=DART_TEAM_NULL ) {
+    if( m_dartid != DART_TEAM_NULL ) {
       //cout<<myid()<<" Freeing Team with id "<<m_dartid<<endl;
     }
   }
@@ -85,23 +93,28 @@ private:
 
 public:
   void trace_parent() {
-    cout<<"I'm "<<m_dartid<<"("<<this<<")"<<" my parent "<<
-      (m_parent?m_parent->m_dartid:DART_TEAM_NULL)<<endl;
-    if( m_parent ) m_parent->trace_parent();
+    cout << "I'm " << m_dartid << "(" << this << ")" << " my parent "
+         << (m_parent ? m_parent->m_dartid
+                      : DART_TEAM_NULL)
+         << endl;
+    if (m_parent) m_parent->trace_parent();
   }
   void trace_child() {
-    cout<<"I'm "<<m_dartid<<"("<<this<<")"<<" my child "<<
-      (m_child?m_child->m_dartid:DART_TEAM_NULL)<<endl;
-    if( m_child ) m_child->trace_child();
+    cout << "I'm " << m_dartid << "(" << this << ")" << " my child " 
+         << (m_child ? m_child->m_dartid
+                     : DART_TEAM_NULL) 
+         << endl;
+    if (m_child) m_child->trace_child();
   }
 
 private:
   Team(dart_team_t id, 
        Team* parent=nullptr, 
-       size_t pos=0) : m_parent(parent) { 
-    m_dartid=id; 
-    m_position=pos;
-    
+       size_t pos=0)
+  : m_parent(parent) { 
+    m_dartid = id; 
+    m_position = pos;
+  /*
     if( m_dartid!=DART_TEAM_NULL ) {
       // get the group for the team
       size_t sz; dart_group_sizeof(&sz);
@@ -110,24 +123,18 @@ private:
       
       dart_team_get_group(m_dartid, m_group);
     }
-
-    /*
-      fprintf(stderr, "[%d] creating a new team for ID: %d as %p\n",
-      dash::myid(),
-      id, this);
-    */
-    
+  */
     if(parent ) {
       if( parent->m_child ) {
-	fprintf(stderr, "Error: %p already has a child!, not setting to %p\n", 
-		parent, this);
+        fprintf(stderr, "Error: %p already has a child!, not setting to %p\n", 
+          parent, this);
       } else {
-	//	fprintf(stderr, "Setting child for  %p to %p\n", parent, this);
-	parent->m_child=this;
+        parent->m_child=this;
       }
     }
   }
-  //Team() : Team(DART_TEAM_NULL) {}
+
+//Team() : Team(DART_TEAM_NULL) {}
 
 protected:
   Team(const Team& t) = default;
@@ -329,9 +336,6 @@ using TeamView = CartView<Team::iterator, DIM>;
 
 } // namespace dash
 
-
-
-
 namespace std {
 
 template<>
@@ -343,9 +347,6 @@ public:
   typedef dash::Team::iterator difference_type;
   typedef random_access_iterator_tag iterator_category;
 };
-
-
-
 
 } // namespace std
 

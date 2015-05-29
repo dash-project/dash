@@ -32,6 +32,9 @@ else()
 endif()
 message("-- Install prefix: " ${CMAKE_INSTALL_PREFIX})
 
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Debug")
+endif()
 message("-- Build type: " ${CMAKE_BUILD_TYPE})
 
 ## Build options
@@ -42,7 +45,7 @@ option(WARNINGS_AS_ERRORS "Specify whether warnings should be treated as errors"
 option(DART_CUDA "Specify whether to build the CUDA implementation of DART" off)
 
 set(DART_IF_VERSION "3.1" CACHE STRING "Version of the DART interface")
-message("-- Using DART interface version " ${DART_IF_VERSION} " (change using -DDART_IF_VERSION=<version>)")
+message("-- Using DART interface v" ${DART_IF_VERSION} " (change using -DDART_IF_VERSION=<version>)")
 
 ## Build results output directories (/bin, /lib, /doc)
 #
@@ -61,5 +64,5 @@ if (${DART_CUDA})
   add_subdirectory(dart-impl/cuda)
 endif()
 
-# add_subdirectory(dash)
+add_subdirectory(dash)
 

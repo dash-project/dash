@@ -8,7 +8,7 @@
 #ifndef INIT_H_INCLUDED
 #define INIT_H_INCLUDED
 
-#include "dart.h"
+#include <dash/dart/if/dart.h>
 
 /**
  * Thin wrappers around the corresponding DART functions

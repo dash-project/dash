@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include <stdio.h>
 
+#include <dash/dart/shmem/shmem_p2p_if.h>
 #include <dash/dart/shmem/dart_helper_thread.h>
 
 static struct work_queue queue = {

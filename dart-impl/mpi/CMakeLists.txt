@@ -7,24 +7,6 @@ set(MPICXX_COMPILER "mpicxx" CACHE STRING  "MPI C++ compiler wrapper")
 # Library name
 set(DASH_DART_IMPL_MPI_LIBRARY dart-mpi)
 
-## Locate MPI
-#
-#  This module will set the following variables:
-#    MPI_WRAPPER_FOUND          TRUE if we have found MPI wrappers
-#    MPI_FOUND                  TRUE if we have found MPI
-#    MPI_COMPILE_FLAGS          Compilation flags for MPI programs
-#    MPI_INCLUDE_PATH           Include path(s) for MPI header
-#    MPI_LINK_FLAGS             Linking flags for MPI programs
-#    MPI_LIBRARY                First MPI library to link against (cached)
-#    MPI_EXTRA_LIBRARY          Extra MPI libraries to link against (cached)
-#    MPI_LIBRARIES              All libraries to link MPI programs against
-#
-#  Circumvent MPI auto-detection by setting MPI paths manually:
-#    set(MPI_C_LIBRARIES /path/to/lib)
-#    set(MPI_C_INCLUDE_PATH /path/to/include)
-#    set(MPI_CXX_LIBRARIES /path/to/lib)
-#    set(MPI_CXX_INCLUDE_PATH /path/to/include)
-#
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 
 # Source- and header files to be compiled (OBJ):
@@ -65,7 +47,21 @@ target_link_libraries(
   ${MPI_C_LIBRARIES}
 )
 
+if(MPI_COMPILE_FLAGS)
+  set_target_properties(
+    ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
+    COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
+endif()
+
+if(MPI_LINK_FLAGS)
+  set_target_properties(
+    ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
+    LINK_FLAGS "${MPI_LINK_FLAGS}")
+endif()
+
 ## Installation
+
+DeployLibrary(${DASH_DART_IMPL_MPI_LIBRARY})
 
 # Headers
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash

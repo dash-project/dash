@@ -10,12 +10,12 @@
 
 #include <stdexcept>
 
-#include "GlobMem.h"
-#include "GlobIter.h"
-#include "GlobRef.h"
-#include "Team.h"
-#include "Pattern.h" 
-#include "HView.h"
+#include <dash/GlobMem.h>
+#include <dash/GlobIter.h>
+#include <dash/GlobRef.h>
+#include <dash/Team.h>
+#include <dash/Pattern.h>
+#include <dash/HView.h>
 
 namespace dash
 {

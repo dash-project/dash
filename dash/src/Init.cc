@@ -1,6 +1,6 @@
 
-#include "Init.h"
-#include "Team.h"
+#include <dash/Init.h>
+#include <dash/Team.h>
 
 void dash::init(int *argc, char ***argv)
 {
