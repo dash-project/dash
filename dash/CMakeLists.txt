@@ -3,6 +3,7 @@ project(project_dash_libdash)
 set(DASH_DART_IF_INCLUDE_DIR ${DASH_DART_IF_INCLUDE_DIR} PARENT_SCOPE)
 set(DASH_DART_IF_INCLUDE_DIR ${DART_LIBRARY} PARENT_SCOPE)
 set(DASH_DART_IF_INCLUDE_DIR ${DASH_LIBRARY} PARENT_SCOPE)
+set(BUILD_EXAMPLES ${BUILD_EXAMPLES} PARENT_SCOPE)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES "src/*.c" "src/*.h" "src/*.cc")
@@ -31,24 +32,25 @@ target_link_libraries(
 )
 DeployLibrary(${DASH_LIBRARY})
 
-## Tests
+## Examples
 
-SubDirList(DASH_TEST_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/test)
-foreach(testname ${DASH_TEST_DIRECTORIES})
-  if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/test/${testname})
-    add_executable(${testname} test/${testname}/main.cpp)
-    include_directories(
-      ${CMAKE_SOURCE_DIR}/dash/include
-    )
-    target_link_libraries(
-      ${testname}
-      ${DASH_LIBRARY}
-      ${DART_LIBRARY})
-    DeployBinary(${testname})
-    install(TARGETS ${testname} DESTINATION bin/dash/test)
-  endif()
-endforeach(testname ${DASH_TEST_DIRECTORIES})
-
+if (BUILD_EXAMPLES)
+  SubDirList(DASH_TEST_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/examples)
+  foreach(examplename ${DASH_TEST_DIRECTORIES})
+    if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename})
+      add_executable(${examplename} examples/${examplename}/main.cpp)
+      include_directories(
+        ${CMAKE_SOURCE_DIR}/dash/include
+      )
+      target_link_libraries(
+        ${examplename}
+        ${DASH_LIBRARY}
+        ${DART_LIBRARY})
+      DeployBinary(${examplename})
+      install(TARGETS ${examplename} DESTINATION bin/dash/example)
+    endif()
+  endforeach(examplename ${DASH_TEST_DIRECTORIES})
+endif()
 ## Installation
 
 # Headers
