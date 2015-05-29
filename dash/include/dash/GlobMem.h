@@ -8,9 +8,9 @@
 #ifndef GLOBMEM_H_INCLUDED
 #define GLOBMEM_H_INCLUDED
 
-#include "dart.h"
-#include "GlobPtr.h"
-#include "Team.h"
+#include <dash/dart/if/dart.h>
+#include <dash/GlobPtr.h>
+#include <dash/Team.h>
 
 namespace dash
 {

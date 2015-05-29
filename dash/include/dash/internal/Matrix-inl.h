@@ -4,13 +4,13 @@
 #include <type_traits>
 #include <stdexcept>
 
-#include "dart.h"
+#include <dash/dart/if/dart.h>
 
-#include "Team.h"
-#include "Pattern.h"
-#include "GlobIter.h"
-#include "GlobRef.h"
-#include "HView.h"
+#include <dash/Team.h>
+#include <dash/Pattern.h>
+#include <dash/GlobIter.h>
+#include <dash/GlobRef.h>
+#include <dash/HView.h>
 
 namespace dash {
 

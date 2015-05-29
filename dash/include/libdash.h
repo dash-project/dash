@@ -8,19 +8,19 @@
 #ifndef LIBDASH_H_INCLUDED
 #define LIBDASH_H_INCLUDED
 
-#include "Init.h"
-#include "Team.h"
-#include "Cartesian.h"
-#include "Pattern.h"
-#include "GlobMem.h"
-#include "GlobPtr.h"
-#include "GlobIter.h"
-#include "GlobRef.h"
+#include <dash/Init.h>
+#include <dash/Team.h>
+#include <dash/Cartesian.h>
+#include <dash/Pattern.h>
+#include <dash/GlobMem.h>
+#include <dash/GlobPtr.h>
+#include <dash/GlobIter.h>
+#include <dash/GlobRef.h>
 
-#include "Enums.h"
-#include "Array.h"
-#include "Matrix.h"
-#include "Shared.h"
+#include <dash/Enums.h>
+#include <dash/Array.h>
+#include <dash/Matrix.h>
+#include <dash/Shared.h>
 
 #if 0
 

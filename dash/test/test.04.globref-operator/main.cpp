@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
   
   if(myid==0) {
     auto r1 = arr[0];
-    cout<<r1[33]<<endl;
+    cout << r1[33] << endl;
   }
   
   arr.barrier();

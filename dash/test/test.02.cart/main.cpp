@@ -8,7 +8,7 @@
 #include <iostream>
 #include <libdash.h>
 
-#include "Cartesian.h"
+#include <dash/Cartesian.h>
 using namespace std;
 
 int main(int argc, char* argv[])

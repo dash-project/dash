@@ -9,12 +9,11 @@
 #define HVIEW_H_INCLUDED
 
 #include <iostream>
-#include "Team.h"
-#include "Pattern.h"
+#include <dash/Team.h>
+#include <dash/Pattern.h>
 
 using std::cout; 
 using std::endl;
-
 
 namespace dash {
 

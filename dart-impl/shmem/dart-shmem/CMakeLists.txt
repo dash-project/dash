@@ -1,12 +1,13 @@
 project(project_dash_dart_impl_shmem)
 
 # Extra flags
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_HELPER_THREAD=1 -DUSE_EVENTFD -D_SVID_SOURCE")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_HELPER_THREAD=1 -DUSE_EVENTFD -D_SVID_SOURCE")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_HELPER_THREAD=1 -DUSE_EVENTFD -D_SVID_SOURCE -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_HELPER_THREAD=1 -DUSE_EVENTFD -D_SVID_SOURCE -pthread")
 
 # Library name
+set(DASH_LIBRARY ${DASH_LIBRARY} PARENT_SCOPE)
 set(DASH_DART_IMPL_SHMEM_LIBRARY dart-shmem)
-set(DASH_DART_IMPL_SHMEM_DARTRUN_BINARY dartrun-shmem)
+set(DARTRUN_BINARY dartrun-shmem)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_DART_IMPL_SHMEM_SOURCES "src/*.c" "src/*.h" "src/*.cc")
@@ -35,19 +36,23 @@ add_library(
   ${DASH_DART_IMPL_SHMEM_SOURCES} # sources
   ${DASH_DART_IMPL_SHMEM_HEADERS} # headers
 )
+target_link_libraries(
+  ${DASH_DART_IMPL_SHMEM_LIBRARY} # library name
+  pthread
+)
 DeployLibrary(${DASH_DART_IMPL_SHMEM_LIBRARY})
 
 add_executable(
-  ${DASH_DART_IMPL_SHMEM_DARTRUN_BINARY}
+  ${DARTRUN_BINARY}
   src/dartrun.c
   ${DASH_DART_IMPL_SHMEM_HEADERS} # headers
 )
 target_link_libraries(
-  ${DASH_DART_IMPL_SHMEM_DARTRUN_BINARY}
+  ${DARTRUN_BINARY}
   ${DASH_DART_IMPL_SHMEM_LIBRARY} # library name
   pthread
 )
-DeployBinary(${DASH_DART_IMPL_SHMEM_DARTRUN_BINARY})
+DeployBinary(${DARTRUN_BINARY})
 
 ## Installation
 

@@ -8,8 +8,7 @@
 #ifndef GLOBPTR_H_INCLUDED
 #define GLOBPTR_H_INCLUDED
 
-// #include "GlobRef.h"
-#include "dart.h"
+#include <dash/dart/if/dart.h>
 
 namespace dash {
 

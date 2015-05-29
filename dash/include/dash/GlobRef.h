@@ -8,8 +8,8 @@
 #ifndef GLOBREF_H_INCLUDED
 #define GLOBREF_H_INCLUDED
 
-#include "GlobMem.h"
-#include "Init.h"
+#include <dash/GlobMem.h>
+#include <dash/Init.h>
 
 namespace dash {
 
