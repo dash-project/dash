@@ -1,15 +1,18 @@
 project(project_dash_libdash)
 
-set(DASH_DART_IF_INCLUDE_DIR ${DASH_DART_IF_INCLUDE_DIR} PARENT_SCOPE)
-set(DASH_DART_IF_INCLUDE_DIR ${DART_LIBRARY} PARENT_SCOPE)
-set(DASH_DART_IF_INCLUDE_DIR ${DASH_LIBRARY} PARENT_SCOPE)
-set(BUILD_EXAMPLES ${BUILD_EXAMPLES} PARENT_SCOPE)
+# Load global build settings
+set(DASH_DART_IF_INCLUDE_DIR ${DASH_DART_IF_INCLUDE_DIR} 
+    PARENT_SCOPE)
+set(DART_IMPLEMENTATIONS_LIST ${DART_IMPLEMENTATIONS_LIST} 
+    PARENT_SCOPE)
+set(BUILD_EXAMPLES ${BUILD_EXAMPLES}
+    PARENT_SCOPE)
 
 # Source- and header files to be compiled (OBJ):
-file(GLOB_RECURSE DASH_LIBRARY_SOURCES "src/*.c" "src/*.h" "src/*.cc")
-file(GLOB_RECURSE DASH_LIBRARY_HEADERS "include/*.h")
-
-## Build targets
+file(GLOB_RECURSE DASH_LIBRARY_SOURCES
+     "src/*.c" "src/*.h" "src/*.cc")
+file(GLOB_RECURSE DASH_LIBRARY_HEADERS 
+     "include/*.h")
 
 # Directories containing the implementation of the library (-I):
 set(DASH_LIBRARY_INCLUDE_DIRS
@@ -20,45 +23,75 @@ include_directories(
   ${DASH_LIBRARY_INCLUDE_DIRS}
   ${DASH_DART_IF_INCLUDE_DIR}
 )
-# Library compilation sources
-add_library(
-  ${DASH_LIBRARY}         # library name
-  ${DASH_LIBRARY_SOURCES} # sources
-  ${DASH_LIBRARY_HEADERS} # headers
-)
-target_link_libraries(
-  ${DASH_LIBRARY} # library name
-  ${DART_LIBRARY} # dep
-)
-DeployLibrary(${DASH_LIBRARY})
 
-## Examples
+## Build targets
 
-if (BUILD_EXAMPLES)
-  SubDirList(DASH_TEST_DIRECTORIES ${CMAKE_CURRENT_SOURCE_DIR}/examples)
-  foreach(examplename ${DASH_TEST_DIRECTORIES})
-    if(IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename})
-      add_executable(${examplename} examples/${examplename}/main.cpp)
-      include_directories(
-        ${CMAKE_SOURCE_DIR}/dash/include
-      )
-      target_link_libraries(
-        ${examplename}
-        ${DASH_LIBRARY}
-        ${DART_LIBRARY})
-      DeployBinary(${examplename})
-      install(TARGETS ${examplename} DESTINATION bin/dash/example)
-    endif()
-  endforeach(examplename ${DASH_TEST_DIRECTORIES})
-endif()
+# DASH library for every enabled DART variant:
+#
+foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+  set(DART_LIBRARY "dart-${dart_variant}")
+  set(DASH_LIBRARY "dash-${dart_variant}")
+  message("-- Building DASH library " ${DASH_LIBRARY})
+
+  if (${dart_variant} STREQUAL "mpi")
+    set(ADD_INCLUDES ${MPI_INCLUDE_PATH})
+    set(ADD_LIBS ${MPI_CXX_LIBRARIES})
+  else()
+    set(ADD_INCLUDES "")
+    set(ADD_LIBS "")
+  endif()
+
+  include_directories(${ADD_INCLUDES})
+
+  # Library compilation sources
+  add_library(
+    ${DASH_LIBRARY}         # library name
+  # SHARED                  # SHARED for shared library
+    ${DASH_LIBRARY_SOURCES} # sources
+    ${DASH_LIBRARY_HEADERS} # headers
+  )
+  target_link_libraries(
+    ${DASH_LIBRARY}           # library name
+    ${DASH_LINK_DART_LIBRARY} # dep
+    ${ADD_LIBS}               # dep
+  )
+  DeployLibrary(${DASH_LIBRARY})
+
+  # Install library
+  install(TARGETS ${DASH_LIBRARY} DESTINATION lib)
+
+  # Examples
+  if (BUILD_EXAMPLES)
+    SubDirList(
+      DASH_TEST_DIRECTORIES
+      ${CMAKE_CURRENT_SOURCE_DIR}/examples)
+    foreach(examplename ${DASH_TEST_DIRECTORIES})
+      set(exampletarget ${examplename}.${dart_variant})
+      if(IS_DIRECTORY
+         ${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename})
+        add_executable(
+          ${exampletarget}
+          examples/${examplename}/main.cpp
+        )
+        include_directories(
+          ${CMAKE_SOURCE_DIR}/dash/include
+        )
+        target_link_libraries(
+          ${exampletarget}
+          ${DASH_LIBRARY}
+          ${DART_LIBRARY})
+        DeployBinary(${exampletarget})
+        install(
+          TARGETS ${exampletarget}
+          DESTINATION bin/dash/examples/${dart_variant})
+      endif()
+    endforeach(examplename ${DASH_TEST_DIRECTORIES})
+  endif()
+endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+
 ## Installation
 
 # Headers
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
-        DESTINATION include FILES_MATCHING PATTERN "*.h")
-# Generated headers, if any
-# install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/dash
-#         DESTINATION include FILES_MATCHING PATTERN "*.h")
-# Library
-install(TARGETS ${DASH_LIBRARY} DESTINATION lib)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
+          DESTINATION include FILES_MATCHING PATTERN "*.h")
 

@@ -10,12 +10,14 @@ set(DASH_DART_IMPL_SHMEM_LIBRARY dart-shmem)
 set(DARTRUN_BINARY dartrun-shmem)
 
 # Source- and header files to be compiled (OBJ):
-file(GLOB_RECURSE DASH_DART_IMPL_SHMEM_SOURCES "src/*.c" "src/*.h" "src/*.cc")
-file(GLOB_RECURSE DASH_DART_IMPL_SHMEM_HEADERS "include/*.h")
+file(GLOB_RECURSE DASH_DART_IMPL_SHMEM_SOURCES
+     "src/*.c" "src/*.h" "src/*.cc")
+file(GLOB_RECURSE DASH_DART_IMPL_SHMEM_HEADERS
+     "include/*.h")
 
 # Include directory to selected version of DART interface
-set(DASH_DART_IF_INCLUDE_DIR
-   ${CMAKE_SOURCE_DIR}/dart-if/v${DART_IF_VERSION}/include)
+set(DASH_DART_IF_INCLUDE_DIR ${DASH_DART_IF_INCLUDE_DIR}
+    PARENT_SCOPE)
 
 ## Build targets
 
@@ -33,6 +35,7 @@ include_directories(
 # Library compilation sources
 add_library(
   ${DASH_DART_IMPL_SHMEM_LIBRARY} # library name
+# SHARED                          # SHARED for shared library
   ${DASH_DART_IMPL_SHMEM_SOURCES} # sources
   ${DASH_DART_IMPL_SHMEM_HEADERS} # headers
 )

@@ -28,7 +28,7 @@ endif(POLICY CMP0053)
 # endif()
 
 if (INSTALL_PREFIX)
-  # User given install path given when calling cmake as "-DINSTALL_PREFIX=...".
+  # Install path given in "-DINSTALL_PREFIX=..."
   set(CMAKE_INSTALL_PREFIX ${INSTALL_PREFIX})
 else()
   set(CMAKE_INSTALL_PREFIX "/usr/local")
@@ -41,54 +41,63 @@ endif()
 message("-- Build type: " ${CMAKE_BUILD_TYPE})
 
 ## Build options
-option(BUILD_TESTS "Whether tests should be built" on)
-option(INSTALL_DOCS "Whether doxygen docs should be installed" on)
-option(WARNINGS_AS_ERRORS "Specify whether warnings should be treated as errors" off)
-option(BUILD_EXAMPLES "Specify whether to build examples" on)
+option(BUILD_TESTS
+       "Whether tests should be built" on)
+option(INSTALL_DOCS
+       "Whether doxygen docs should be installed" on)
+option(WARNINGS_AS_ERRORS
+       "Specify whether warnings should be treated as errors" off)
+option(BUILD_EXAMPLES
+       "Specify whether to build examples" on)
 
-set(DART_IF_VERSION "3.1" CACHE STRING "Version of the DART interface")
+set(DART_IF_VERSION "3.1" CACHE STRING
+    "Version of the DART interface")
 message("-- Using DART interface v" ${DART_IF_VERSION})
 
-set(
-  DART_IMPLEMENTATION
-  "mpi" CACHE STRING "Variant of the DASH runtime implementation (mpi | cuda | shmem)")
-set(
-  DASH_DART_IF_INCLUDE_DIR
-  ${CMAKE_CURRENT_SOURCE_DIR}/dart-if/v${DART_IF_VERSION}/include
-  CACHE PATH INTERNAL FORCE)
-message("-- DART interface include path: " ${DASH_DART_IF_INCLUDE_DIR})
-
-set(
-  DART_LIBRARY
-  "dart-${DART_IMPLEMENTATION}"
-  CACHE STRING INTERNAL FORCE)
-set(
-  DASH_LIBRARY
-  "dash"
-  CACHE STRING INTERNAL FORCE)
-
-message("-- DART library: " ${DART_LIBRARY})
-message("-- DASH library: " ${DASH_LIBRARY})
+# Include path of selected DART interface:
+set(DASH_DART_IF_INCLUDE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/dart-if/v${DART_IF_VERSION}/include
+    CACHE PATH INTERNAL FORCE)
+message("-- DART interface include path: "
+        ${DASH_DART_IF_INCLUDE_DIR})
 
 ## Build results output directories (/bin, /lib, /doc)
+
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/doc)
 
 ## Subprojects, one for each deliverable
 
+set(DART_IMPLEMENTATIONS
+    "mpi;shmem" CACHE STRING 
+    "Comma-separated list of DASH runtime implementations to
+     build, default is mpi,shmem")
+
+string(REPLACE "," ";"
+       DART_IMPLEMENTATIONS_LIST
+       ${DART_IMPLEMENTATIONS})
+
+# DART interface:
 add_subdirectory(dart-if)
 
-if (${DART_IMPLEMENTATION} STREQUAL "mpi")
+# DART implementation of every enabled DART variant:
+if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
+  set(DART_IMPLEMENTATION_MPI_ENABLED ON 
+      CACHE BOOL INTERNAL FORCE)
   add_subdirectory(dart-impl/mpi)
 endif()
 
-if (${DART_IMPLEMENTATION} STREQUAL "shmem")
+if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
+  set(DART_IMPLEMENTATION_SHMEM_ENABLED ON 
+      CACHE BOOL INTERNAL FORCE)
   add_subdirectory(dart-impl/shmem/dart-shmem)
   add_subdirectory(dart-impl/shmem/dart-shmem-mpi)
 endif()
 
-if (${DART_IMPLEMENTATION} STREQUAL "cuda")
+if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";cuda;")
+  set(DART_IMPLEMENTATION_CUDA_ENABLED ON 
+      CACHE BOOL INTERNAL FORCE)
   add_subdirectory(dart-impl/cuda)
 endif()
 
