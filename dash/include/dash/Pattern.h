@@ -1,5 +1,5 @@
-#ifndef PATTERN_H_INCLUDED
-#define PATTERN_H_INCLUDED
+#ifndef DASH__PATTERN_H_
+#define DASH__PATTERN_H_
 
 #include <assert.h>
 #include <functional>
@@ -138,10 +138,12 @@ namespace dash {
     }
   };
 
+#if 0
   typedef TeamSpec<1> DefaultTeamSpec;
   DefaultTeamSpec DEFAULT1DTEAM(long long nunit) {
     return{ nunit };
   }
+#endif
 
   // SizeSpec specifies the data sizes on all dimentions
   template<size_t ndim_, MemArrange arr = ROW_MAJOR>
@@ -919,4 +921,4 @@ namespace dash {
   };
 }
 
-#endif /* PATTERN_H_INCLUDED */
+#endif // DASH__PATTERN_H_

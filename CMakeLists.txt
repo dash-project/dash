@@ -70,7 +70,7 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/doc)
 ## Subprojects, one for each deliverable
 
 set(DART_IMPLEMENTATIONS
-    "mpi;shmem" CACHE STRING 
+    "mpi,shmem" CACHE STRING 
     "Comma-separated list of DASH runtime implementations to
      build, default is mpi,shmem")
 

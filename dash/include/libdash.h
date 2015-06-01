@@ -5,8 +5,8 @@
  */
 /* @DASH_HEADER@ */
 
-#ifndef LIBDASH_H_INCLUDED
-#define LIBDASH_H_INCLUDED
+#ifndef DASH__LIBDASH_H_
+#define DASH__LIBDASH_H_
 
 #include <dash/Init.h>
 #include <dash/Team.h>
@@ -22,14 +22,4 @@
 #include <dash/Matrix.h>
 #include <dash/Shared.h>
 
-#if 0
-
-#include "MemAccess.h"
-#include "GlobRef.h"
-#include "GlobIter.h"
-#include "Array.h"
-#include "Shared.h"
-#include "HView.h"
-#endif 
-
-#endif /* LIBDASH_H_INCLUDED */
+#endif // DASH__LIBDASH_H_

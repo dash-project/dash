@@ -27,15 +27,12 @@ include_directories(
   ${MPI_INCLUDE_PATH}
   ${DASH_DART_IF_INCLUDE_DIR}
 )
-
 # Library compilation sources
 add_library(
   ${DASH_DART_IMPL_MPI_LIBRARY} # library name
-# SHARED                        # SHARED for shared library
   ${DASH_DART_IMPL_MPI_SOURCES} # sources
   ${DASH_DART_IMPL_MPI_HEADERS} # headers
 )
-
 # Link dependencies
 target_link_libraries(
   ${DASH_DART_IMPL_MPI_LIBRARY}

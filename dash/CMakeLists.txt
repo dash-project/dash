@@ -7,12 +7,16 @@ set(DART_IMPLEMENTATIONS_LIST ${DART_IMPLEMENTATIONS_LIST}
     PARENT_SCOPE)
 set(BUILD_EXAMPLES ${BUILD_EXAMPLES}
     PARENT_SCOPE)
+set(BUILD_TESTS ${BUILD_TESTS}
+    PARENT_SCOPE)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
-     "src/*.c" "src/*.h" "src/*.cc")
+     "src/*.c" "src/*.h" "src/*.cc" "src/*.cpp" )
 file(GLOB_RECURSE DASH_LIBRARY_HEADERS 
      "include/*.h")
+file(GLOB_RECURSE DASH_TEST_SOURCES
+     "test/*.c" "test/*.h" "test/*.cc" "src/*.cpp")
 
 # Directories containing the implementation of the library (-I):
 set(DASH_LIBRARY_INCLUDE_DIRS
@@ -46,7 +50,6 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # Library compilation sources
   add_library(
     ${DASH_LIBRARY}         # library name
-  # SHARED                  # SHARED for shared library
     ${DASH_LIBRARY_SOURCES} # sources
     ${DASH_LIBRARY_HEADERS} # headers
   )
@@ -60,6 +63,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # Install library
   install(TARGETS ${DASH_LIBRARY} DESTINATION lib)
 
+  # Tests
   # Examples
   if (BUILD_EXAMPLES)
     SubDirList(
@@ -88,6 +92,35 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
     endforeach(examplename ${DASH_TEST_DIRECTORIES})
   endif()
 endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+
+## Tests
+#
+if (BUILD_TESTS)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
+  foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+    set(DASH_LIBRARY "dash-${dart_variant}")
+    set(DART_LIBRARY "dart-${dart_variant}")
+    set(DASH_TEST "dash-test-${dart_variant}")
+    include_directories(
+      ${GTEST_INCLUDES}
+      ${CMAKE_SOURCE_DIR}/dash/include
+    )
+    add_executable(
+      ${DASH_TEST}
+      ${DASH_TEST_SOURCES}
+    )
+    target_link_libraries(
+      ${DASH_TEST}
+      GTest
+      ${DASH_LIBRARY}
+      ${DART_LIBRARY}
+    )
+    DeployBinary(${DASH_TEST})
+    install(
+      TARGETS ${DASH_TEST}
+      DESTINATION bin/dash/test/${dart_variant})
+  endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+endif()
 
 ## Installation
 
