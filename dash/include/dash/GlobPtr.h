@@ -5,8 +5,8 @@
  */
 /* @DASH_HEADER@ */
 
-#ifndef GLOBPTR_H_INCLUDED
-#define GLOBPTR_H_INCLUDED
+#ifndef DASH__GLOB_PTR_H_
+#define DASH__GLOB_PTR_H_
 
 #include <dash/dart/if/dart.h>
 
@@ -22,7 +22,10 @@ public:
 
 private:
   dart_gptr_t  m_dartptr;
-  
+
+  template<typename U>
+  friend std::ostream& operator<<(std::ostream& os, const GlobPtr<U>& it);
+
 public:
   explicit GlobPtr() = default;
 
@@ -33,7 +36,7 @@ public:
   GlobPtr(const GlobPtr& other) = default;
   GlobPtr<T>& operator=(const GlobPtr& other) = default;
 
-  /* 
+/* 
   explicit GlobPtr() {
     m_dartptr=DART_GPTR_NULL;
   }
@@ -46,7 +49,7 @@ public:
     m_dartptr=other.m_dartptr;
     return *this;
   }
-  */
+*/
 
   explicit operator dart_gptr_t() const {
     return m_dartptr;
@@ -84,7 +87,13 @@ public:
     return !DART_GPTR_EQUAL(m_dartptr, other.m_dartptr);
   }
   
-  GlobRef<T> operator[](gptrdiff_t n) 
+  const GlobRef<T> operator[](gptrdiff_t n) const 
+  {
+    GlobPtr<T> ptr = (*this)+n;
+    return GlobRef<T>(ptr);
+  }
+
+  GlobRef<T> operator[](gptrdiff_t n)
   {
     GlobPtr<T> ptr = (*this)+n;
     return GlobRef<T>(ptr);
@@ -95,12 +104,16 @@ public:
     return GlobRef<T>(*this);
   }
   
-  operator T*() {
+  explicit operator T*() {
     void *addr=0;
     if(is_local()) {
       dart_gptr_getaddr(m_dartptr, &addr);
     }
     return static_cast<T*>(addr);
+  }
+
+  void set_unit(int unitid) {
+    m_dartptr.unitid=unitid;
   }
 
   bool is_local() const {
@@ -112,6 +125,26 @@ public:
   }
 };
 
-};
+template<typename T>
+std::ostream& operator<<(std::ostream & os, const GlobPtr<T> & it) {
+  char buf[100];
+  sprintf(buf,
+          "<%08X|%04X|%04X|%016X>",
+          it.m_dartptr.unitid,
+          it.m_dartptr.segid,
+          it.m_dartptr.flags,
+          it.m_dartptr.addr_or_offs.offset);
 
-#endif /* GLOBPTR_H_INCLUDED */
+  os << "GlobPtr<T>: " << buf;
+
+/*
+  os<<"unitid="<<it.m_dartptr.unitid<<" ";
+  os<<"segid="<<it.m_dartptr.segid<<" ";
+  os<<"offset="<<it.m_dartptr.addr_or_offs.offset<<" ";
+*/
+  return os;
+}
+
+} // namespace dash
+
+#endif // DASH__GLOB_PTR_H_
