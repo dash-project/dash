@@ -466,7 +466,7 @@ namespace dash {
     int            argc_DistEnum = 0;
     int            argc_extents = 0;
     int            argc_ts = 0;
-    dash::Team&    m_team = dash::Team::All();
+    dash::Team &   m_team = dash::Team::All();
 
   public:
     template<typename ... Args>
@@ -738,7 +738,7 @@ namespace dash {
       rs = m_accessbase.at(index, cyclicfix);
     }
 
-    // Receive global coordicates and returns local offsets.
+    // Receive global coordinates and returns local offsets.
     // TODO: cyclic can be eliminated when accessbase.m_extent[] has
     // m_lextent[] values.
     long long at_(
@@ -863,7 +863,7 @@ namespace dash {
       return m_nunits;
     }
 
-    Pattern& operator=(const Pattern& other) {
+    Pattern & operator=(const Pattern& other) {
       if (this != &other) {
         m_distspec = other.m_distspec;
         m_teamspec = other.m_teamspec;
@@ -883,7 +883,7 @@ namespace dash {
       return m_sizespec.size();
     }
 
-    dash::Team& team() const {
+    dash::Team & team() const {
       return m_team;
     }
 
@@ -897,6 +897,10 @@ namespace dash {
 
     TeamSpec<ndim_> teamspec() const {
       return m_teamspec;
+    }
+
+    long long blocksize(size_t dim) const {
+      return m_accessbase.m_extent[dim];
     }
 
     void forall(std::function<void(long long)> func) {
