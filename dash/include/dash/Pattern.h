@@ -43,11 +43,8 @@ namespace dash {
   // Wrapper class of CartCoord
   template<size_t ndim_, MemArrange arr = ROW_MAJOR>
   class DimRangeBase : public CartCoord<ndim_, long long> {
-
   public:
     template<size_t ndim__, MemArrange arr2> friend class Pattern;
-
-//private:
     DimRangeBase() { }
 
   public:
@@ -89,7 +86,8 @@ namespace dash {
     }
   };
 
-  // AccessBase represents the local laylout according to the specified pattern.
+  // AccessBase represents the local laylout according to the specified
+  // pattern.
   // 
   // TODO: can be optimized
   template<size_t ndim_, MemArrange arr = ROW_MAJOR>
@@ -104,7 +102,7 @@ namespace dash {
     }
   };
 
-  // TeamSpec specifies the arrangement of team units on all dimentions
+  // TeamSpec specifies the arrangement of team units in all dimensions
   // Size of TeamSpec implies the size of the team.
   // 
   // TODO: unit reoccurrence not supported
@@ -145,7 +143,7 @@ namespace dash {
   }
 #endif
 
-  // SizeSpec specifies the data sizes on all dimentions
+  // SizeSpec specifies the data sizes on all dimensions
   template<size_t ndim_, MemArrange arr = ROW_MAJOR>
   class SizeSpec : public DimRangeBase<ndim_> {
   public:
@@ -333,10 +331,18 @@ namespace dash {
       assert(n_validdist == m_teamspec.ndim());
     }
 
-    // AccessBase is an aggregation of local layout of a unit among the global unit.
-    // It is initialized after pattern parameters are received based on the DistEnum and SizeSpec, and has to be construct() if extents are changed.
-    // AccessBase is currently identical at all units, difference is further fixed during at() and atunit().
-    // TODO: m_lextent[] is a revised apprach to calculate unit-dependent local layout. It is calcualted via myid£¬ and results in unit-dependent AccessBase. If AccessBase.m_extent[] values are replaced with m_lextent[] values, then on-the-fly cyclicfix[] can be eliminated.
+    // AccessBase is an aggregation of local layout of a unit among the
+    // global unit.
+    // It is initialized after pattern parameters are received based on the
+    // DistEnum and SizeSpec, and has to be construct() if extents are
+    // changed.
+    // AccessBase is currently identical at all units, difference is
+    // further fixed during at() and atunit().
+    // TODO: m_lextent[] is a revised apprach to calculate unit-dependent
+    // local layout. It is calcualted via myid£¬ and results in unit-
+    // dependent AccessBase. If AccessBase.m_extent[] values are replaced
+    // with m_lextent[] values, then on-the-fly cyclicfix[] can be
+    // eliminated.
     void constructAccessBase() {
       m_blocksz = 1;
 
@@ -367,9 +373,10 @@ namespace dash {
 
           if (m_sizespec.m_extent[i] % dimunit != 0)
               if( myidx == dimunit - 1)
-                m_lextent[i] = m_sizespec.m_extent[i] % ( m_sizespec.m_extent[i] / dimunit + 1 );
+                m_lextent[i] = m_sizespec.m_extent[i] % (
+                    m_sizespec.m_extent[i] / dimunit + 1);
               else
-                m_lextent[i] = m_sizespec.m_extent[i] / dimunit + 1;              
+                m_lextent[i] = m_sizespec.m_extent[i] / dimunit + 1;
           else    
             m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
 
@@ -385,7 +392,14 @@ namespace dash {
           m_blocksz *= m_distspec.m_extent[i].blocksz;
 
           if (m_sizespec.m_extent[i] % cycle != 0)
-            m_lextent[i] = (m_sizespec.m_extent[i] / cycle) * m_distspec.m_extent[i].blocksz + ( myidx - (m_sizespec.m_extent[i] % cycle) / m_distspec.m_extent[i].blocksz ) < 0 ? m_distspec.m_extent[i].blocksz : (m_sizespec.m_extent[i] % cycle) % m_distspec.m_extent[i].blocksz;
+            m_lextent[i] =
+              (m_sizespec.m_extent[i] / cycle) *
+              m_distspec.m_extent[i].blocksz +
+              (myidx - (m_sizespec.m_extent[i] % cycle) /
+                        m_distspec.m_extent[i].blocksz ) < 0
+                ? m_distspec.m_extent[i].blocksz
+                : (m_sizespec.m_extent[i] % cycle) %
+                  m_distspec.m_extent[i].blocksz;
           else
             m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
 
@@ -394,7 +408,8 @@ namespace dash {
           m_accessbase.m_extent[i] = m_sizespec.m_extent[i] / dimunit;
           m_blocksz *= 1;
 
-          if (m_sizespec.m_extent[i] % dimunit != 0 && myidx > (m_sizespec.m_extent[i] % dimunit) - 1)
+          if (m_sizespec.m_extent[i] % dimunit != 0 &&
+              myidx > (m_sizespec.m_extent[i] % dimunit) - 1)
             m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
           else
             m_lextent[i] = m_sizespec.m_extent[i] / dimunit + 1;
@@ -405,7 +420,14 @@ namespace dash {
           m_blocksz *= m_distspec.m_extent[i].blocksz;
 
           if (m_sizespec.m_extent[i] % cycle != 0)
-            m_lextent[i] = (m_sizespec.m_extent[i] / cycle) * m_distspec.m_extent[i].blocksz + ( myidx - (m_sizespec.m_extent[i] % cycle) / m_distspec.m_extent[i].blocksz ) < 0 ? m_distspec.m_extent[i].blocksz : (m_sizespec.m_extent[i] % cycle) % m_distspec.m_extent[i].blocksz;
+            m_lextent[i] = 
+              (m_sizespec.m_extent[i] / cycle) *
+              m_distspec.m_extent[i].blocksz + 
+              (myidx - (m_sizespec.m_extent[i] % cycle) /
+                        m_distspec.m_extent[i].blocksz) < 0
+                ? m_distspec.m_extent[i].blocksz
+                : (m_sizespec.m_extent[i] % cycle) %
+                  m_distspec.m_extent[i].blocksz;
           else
             m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
 
@@ -480,31 +502,36 @@ namespace dash {
       constructAccessBase();
     }
 
-    //TODO: merge Pattern constructors
-    Pattern(const SizeSpec<ndim_, arr> &sizespec, const DistributionSpec<ndim_> &dist =
-      DistributionSpec<ndim_>(), const TeamSpec<ndim_> &teamorg = TeamSpec<ndim_>::TeamSpec(), dash::Team& team = dash::Team::All()) :
-      m_sizespec(sizespec), m_distspec(dist), m_teamspec(teamorg), m_team(team) {
-
-      m_nunits = m_team.size();
+    Pattern(
+      const SizeSpec<ndim_, arr> & sizespec,
+      const DistributionSpec<ndim_> & dist =
+        DistributionSpec<ndim_>(), 
+      const TeamSpec<ndim_> & teamorg =
+        TeamSpec<ndim_>::TeamSpec(),
+      dash::Team & team =
+        dash::Team::All()) 
+    : m_sizespec(sizespec),
+      m_distspec(dist),
+      m_teamspec(teamorg),
+      m_team(team) {
+      m_nunits   = m_team.size();
       m_viewspec = ViewSpec<ndim_>(m_sizespec);
-        m_distspec = dist;
-
       checkValidDistEnum();
-
       checkTile();
       constructAccessBase();
     }
 
-    Pattern(const SizeSpec<ndim_, arr> &sizespec, const DistributionSpec<ndim_> &dist =
-      DistributionSpec<ndim_>(), dash::Team& team = dash::Team::All()) :
-      m_sizespec(sizespec), m_distspec(dist), m_teamspec(m_team) {
-
-      m_team = team;
-      m_nunits = m_team.size();
+    Pattern(
+      const SizeSpec<ndim_, arr> & sizespec,
+      const DistributionSpec<ndim_> & dist =
+        DistributionSpec<ndim_>(), dash::Team& team = dash::Team::All())
+    : m_sizespec(sizespec),
+      m_distspec(dist),
+      m_teamspec(m_team) {
+      m_team     = team;
+      m_nunits   = m_team.size();
       m_viewspec = ViewSpec<ndim_>(m_sizespec);
-
       checkValidDistEnum();
-
       checkTile();
       constructAccessBase();
     }
@@ -543,7 +570,8 @@ namespace dash {
           index[i] = vs.begin[i] + input[i];
           //if (i >= vs.view_dim)
           //  index[i] += input[i + ndim_ - vs.view_dim];
-          long long cycle = m_teamspec.size() * m_distspec.m_extent[i].blocksz;
+          long long cycle = m_teamspec.size() *
+                            m_distspec.m_extent[i].blocksz;
           switch (m_distspec.m_extent[i].type) {
           case DistEnum::disttype::BLOCKED:
             rs = index[i]
@@ -618,17 +646,14 @@ namespace dash {
 
     long long max_elem_per_unit() const {
       long long res = 1;
-
       for (int i = 0; i < ndim_; i++) {
         long long dimunit;
-
         if (m_teamspec.ndim() == 1)
           dimunit = m_teamspec.size();
         else
           dimunit = m_teamspec.m_extent[i];
 
         long long cycle = dimunit * m_distspec.m_extent[i].blocksz;
-
         switch (m_distspec.m_extent[i].type) {
         case DistEnum::disttype::BLOCKED:
           res *= getCeil(m_sizespec.m_extent[i], dimunit);
@@ -647,7 +672,6 @@ namespace dash {
           break;
         }
       }
-
       assert(res > 0);
       return res;
     }
@@ -660,11 +684,15 @@ namespace dash {
       return at_(input, m_viewspec);
     }
 
-    long long glob_index_to_elem(std::array<long long, ndim_> input, ViewSpec<ndim_> &vs) const {
+    long long glob_index_to_elem(
+      std::array<long long, ndim_> input,
+      ViewSpec<ndim_> & vs) const {
       return glob_at_(input, vs);
     }
 
-    long long glob_at_(std::array<long long, ndim_> input, ViewSpec<ndim_> &vs) const {
+    long long glob_at_(
+      std::array<long long, ndim_> input,
+      ViewSpec<ndim_> &vs) const {
       assert(input.size() == ndim_);
 
       std::array<long long, ndim_> index;
@@ -677,7 +705,9 @@ namespace dash {
       return  m_sizespec.at(index);
     }
 
-    long long index_to_elem(std::array<long long, ndim_> input, ViewSpec<ndim_> &vs) const {
+    long long index_to_elem(
+      std::array<long long, ndim_> input,
+      ViewSpec<ndim_> &vs) const {
       return at_(input, vs);
     }
 
@@ -688,7 +718,8 @@ namespace dash {
       return at_(inputindex, m_viewspec);
     }
 
-    // Receive local coordicates and returns local offsets based on AccessBase.
+    // Receive local coordicates and returns local offsets based on
+    // AccessBase.
     long long local_at_(
       std::array<long long, ndim_> input,
       ViewSpec<ndim_> &local_vs) const {
@@ -708,7 +739,8 @@ namespace dash {
     }
 
     // Receive global coordicates and returns local offsets.
-    // TODO: cyclic can be eliminated when accessbase.m_extent[] has m_lextent[] values.
+    // TODO: cyclic can be eliminated when accessbase.m_extent[] has
+    // m_lextent[] values.
     long long at_(
       std::array<long long, ndim_> input,
       ViewSpec<ndim_> vs) const {
@@ -878,7 +910,11 @@ namespace dash {
     }
 
     // Returns whether the given dim offset involves any local part
-    bool is_local(size_t idx, size_t myid, size_t dim, ViewSpec<ndim_> &vs) {
+    bool is_local(
+      size_t idx,
+      size_t myid,
+      size_t dim,
+      ViewSpec<ndim_> & vs) {
       long long dimunit;
       size_t dim_offs;
       bool ret = false;

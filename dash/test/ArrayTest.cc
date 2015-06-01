@@ -1,5 +1,4 @@
 #include <libdash.h>
-#include <dash/Array.h>
 #include "ArrayTest.h"
 
 TEST_F(ArrayTest, SingleWriteMultipleRead) {
