@@ -125,8 +125,12 @@ public:
   }
 };
 
+} // namespace dash
+
 template<typename T>
-std::ostream& operator<<(std::ostream & os, const GlobPtr<T> & it) {
+std::ostream& operator<<(
+  std::ostream & os,
+  const dash::GlobPtr<T> & it) {
   char buf[100];
   sprintf(buf,
           "<%08X|%04X|%04X|%016X>",
@@ -134,17 +138,8 @@ std::ostream& operator<<(std::ostream & os, const GlobPtr<T> & it) {
           it.m_dartptr.segid,
           it.m_dartptr.flags,
           it.m_dartptr.addr_or_offs.offset);
-
-  os << "GlobPtr<T>: " << buf;
-
-/*
-  os<<"unitid="<<it.m_dartptr.unitid<<" ";
-  os<<"segid="<<it.m_dartptr.segid<<" ";
-  os<<"offset="<<it.m_dartptr.addr_or_offs.offset<<" ";
-*/
+  os << "dash::GlobPtr<T>: " << buf;
   return os;
 }
-
-} // namespace dash
 
 #endif // DASH__GLOB_PTR_H_

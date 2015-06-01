@@ -10,7 +10,7 @@
 #include <list>
 
 #define Pattern Pattern<1>
-#define HUGE 33133
+#define DASH_TEST_HUGE_SIZE 33133
 
 using namespace std;
 
@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
   sizes.push_back(dash::size()-1);
   sizes.push_back(dash::size()+1);
   sizes.push_back(31133);
-  sizes.push_back(HUGE);
+  sizes.push_back(DASH_TEST_HUGE_SIZE);
 
   for( size_t size : sizes ) {
     dash::Pattern pat00(size, dash::CYCLIC);

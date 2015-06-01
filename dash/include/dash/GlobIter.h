@@ -5,8 +5,8 @@
  */
 /* @DASH_HEADER@ */
 
-#ifndef GLOBITER_H_INCLUDED
-#define GLOBITER_H_INCLUDED
+#ifndef DASH__GLOB_ITER_H_
+#define DASH__GLOB_ITER_H_
 
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
@@ -15,7 +15,7 @@
 namespace dash {
 
 // KF: check 
-typedef long gptrdiff_t;
+typedef size_t gptrdiff_t;
 
 template<typename T, class PatternType = Pattern<1> >
 class GlobIter : public std::iterator<
@@ -27,9 +27,9 @@ protected:
   PatternType * m_pattern;
   size_t        m_idx;
 
-  template<typename U, class P>
-  friend std::ostream & operator<<(std::ostream& os, const GlobIter<U, P> & it);
-  
+  template<typename U>
+  friend std::ostream & operator<<(std::ostream& os, const GlobIter<U> & it);
+
 public:
   GlobIter() {
     m_globmem = nullptr;
@@ -50,9 +50,10 @@ public:
   GlobIter<T, PatternType>& operator=(const GlobIter<T, PatternType>& other) = default;
 
   operator GlobPtr<T>() const {
-    auto unit = m_pattern->index_to_unit(m_idx);
-    auto elem = m_pattern->index_to_elem(m_idx);
-    GlobPtr<T> ptr = m_globmem->get_globptr(unit,elem);
+    auto coord = m_pattern->sizespec().coords(m_idx);
+    auto unit  = m_pattern->index_to_unit(coord);
+    auto elem  = m_pattern->index_to_elem(coord);
+    GlobPtr<T> ptr = m_globmem->get_globptr(unit, elem);
     return ptr;
   }
 
@@ -110,12 +111,36 @@ public:
   }
 
   GlobIter<T, PatternType> operator+(gptrdiff_t n) const {
-    GlobIter<T, PatternType> res(m_globmem, *m_pattern, m_idx+n);
+    GlobIter<T, PatternType> res(
+      m_globmem,
+      *m_pattern,
+      m_idx + static_cast<size_t>(n));
     return res;
   }
 
   GlobIter<T, PatternType> operator-(gptrdiff_t n) const {
-    GlobIter<T, PatternType> res(m_globmem, *m_pattern, m_idx-n);
+    GlobIter<T, PatternType> res(
+      m_globmem,
+      *m_pattern,
+      m_idx - static_cast<size_t>(n));
+    return res;
+  }
+
+  GlobIter<T, PatternType> operator+(
+    const GlobIter<T, PatternType> & other) const {
+    GlobIter<T, PatternType> res(
+      m_globmem,
+      *m_pattern,
+      m_idx + other.m_idx);
+    return res;
+  }
+
+  GlobIter<T, PatternType> operator-(
+    const GlobIter<T, PatternType> & other) const {
+    GlobIter<T, PatternType> res(
+      m_globmem,
+      *m_pattern,
+      m_idx - other.m_idx);
     return res;
   }
 
@@ -144,19 +169,17 @@ public:
   }
 };
 
-template<typename T, class PatternType>
+} // namespace dash
+
+template<typename T>
 std::ostream & operator<<(
   std::ostream & os,
-  const GlobIter<T, PatternType> & it) {
-  GlobPtr<T> ptr(it); 
-
-  os<<"GlobIter<T, PatternType>: ";
-  os<<"idx="<<it.m_idx<<std::endl;
-  os<<"--> ";
-  
+  const dash::GlobIter<T> & it) {
+  dash::GlobPtr<T> ptr(it); 
+  os << "dash::GlobIter<T, PatternType>: ";
+  os << "idx=" << it.m_idx << std::endl;
+  os << "--> ";
   return operator<<(os, ptr);
 }
 
-} // namespace dash
-
-#endif // GLOBPTR_H_INCLUDED
+#endif // DASH__GLOB_ITER_H_
