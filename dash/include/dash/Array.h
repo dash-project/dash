@@ -86,8 +86,6 @@ public:
     return gptr+lptrdiff;
   }
 };
- 
- 
 
 template<typename ELEMENT_TYPE>
 class Array
@@ -113,16 +111,16 @@ public:
 private:
   typedef dash::GlobMem<value_type>    GlobMem;
   
-  dash::Team&   m_team;
-  dart_unit_t   m_myid;
-  Pattern<1>    m_pattern;  
-  GlobMem*      m_globmem; 
-  iterator      m_begin;
-  size_type     m_size;   // total size (# elements)
-  size_type     m_lsize;  // local size (# local elements)
+  dash::Team   & m_team;
+  dart_unit_t    m_myid;
+  Pattern<1>     m_pattern;  
+  GlobMem*       m_globmem; 
+  iterator       m_begin;
+  size_type      m_size;   // total size (# elements)
+  size_type      m_lsize;  // local size (# local elements)
   
-  ELEMENT_TYPE*  m_lbegin;
-  ELEMENT_TYPE*  m_lend;
+  ELEMENT_TYPE * m_lbegin;
+  ELEMENT_TYPE * m_lend;
   
 public:
 /* Check requirements on element type 
@@ -154,10 +152,12 @@ public:
     allocate(nelem, ds);
   }  
 
-  bool allocate(size_t nelem, dash::DistSpec ds) {
-    assert(nelem>0);
+  bool allocate(
+    size_t nelem,
+    dash::DistributionSpec<1> ds) {
+    assert(nelem > 0);
     
-    m_pattern = Pattern1D(nelem, ds, m_team);
+    m_pattern = Pattern<1>(nelem, ds, m_team);
 
     m_size  = m_pattern.nelem();
     m_lsize = m_pattern.max_elem_per_unit();

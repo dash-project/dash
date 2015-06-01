@@ -10,7 +10,6 @@
 
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
-#include <dash/Pattern.h>
 #include <iostream>
 
 namespace dash {
@@ -18,18 +17,18 @@ namespace dash {
 // KF: check 
 typedef long gptrdiff_t;
 
-template<typename T>
+template<typename T, class PatternType = Pattern<1> >
 class GlobIter : public std::iterator<
                           std::random_access_iterator_tag,
                           T, gptrdiff_t,
-                          GlobIter<T>, GlobRef<T> > {
+                          GlobIter<T, PatternType>, GlobRef<T> > {
 protected:
-  GlobMem<T> *     m_globmem;
-  Pattern<1> *     m_pattern;
-  size_t           m_idx;
+  GlobMem<T> *  m_globmem;
+  PatternType * m_pattern;
+  size_t        m_idx;
 
-  template<typename U>
-  friend std::ostream & operator<<(std::ostream& os, const GlobIter<U> & it);
+  template<typename U, class P>
+  friend std::ostream & operator<<(std::ostream& os, const GlobIter<U, P> & it);
   
 public:
   GlobIter() {
@@ -39,16 +38,16 @@ public:
   }
 
   GlobIter(
-    GlobMem<T> * mem,
-	  Pattern<1> & pat,
-	  size_t       idx = 0) {
+    GlobMem<T>  * mem,
+	  PatternType & pat,
+	  size_t        idx = 0) {
     m_globmem = mem;
     m_pattern = &pat;
-    m_idx = idx;
+    m_idx     = idx;
   }
 
-  GlobIter(const GlobIter<T>& other) = default;
-  GlobIter<T>& operator=(const GlobIter<T>& other) = default;
+  GlobIter(const GlobIter<T, PatternType>& other) = default;
+  GlobIter<T, PatternType>& operator=(const GlobIter<T, PatternType>& other) = default;
 
   operator GlobPtr<T>() const {
     auto unit = m_pattern->index_to_unit(m_idx);
@@ -75,81 +74,83 @@ public:
   }
 
   // prefix++ operator
-  GlobIter<T>& operator++() {
+  GlobIter<T, PatternType>& operator++() {
     m_idx++;
     return *this;
   }
   
   // postfix++ operator
-  GlobIter<T> operator++(int) {
-    GlobIter<T> result = *this;
+  GlobIter<T, PatternType> operator++(int) {
+    GlobIter<T, PatternType> result = *this;
     m_idx++;
     return result;
   }
 
   // prefix-- operator
-  GlobIter<T>& operator--() {
+  GlobIter<T, PatternType>& operator--() {
     m_idx--;
     return *this;
   }
   
   // postfix-- operator
-  GlobIter<T> operator--(int) {
-    GlobIter<T> result = *this;
+  GlobIter<T, PatternType> operator--(int) {
+    GlobIter<T, PatternType> result = *this;
     m_idx--;
     return result;
   }
   
-  GlobIter<T>& operator+=(gptrdiff_t n) {
+  GlobIter<T, PatternType>& operator+=(gptrdiff_t n) {
     m_idx+=n;
     return *this;
   }
   
-  GlobIter<T>& operator-=(gptrdiff_t n) {
+  GlobIter<T, PatternType>& operator-=(gptrdiff_t n) {
     m_idx-=n;
     return *this;
   }
 
-  GlobIter<T> operator+(gptrdiff_t n) const {
-    GlobIter<T> res(m_globmem, *m_pattern, m_idx+n);
+  GlobIter<T, PatternType> operator+(gptrdiff_t n) const {
+    GlobIter<T, PatternType> res(m_globmem, *m_pattern, m_idx+n);
     return res;
   }
 
-  GlobIter<T> operator-(gptrdiff_t n) const {
-    GlobIter<T> res(m_globmem, *m_pattern, m_idx-n);
+  GlobIter<T, PatternType> operator-(gptrdiff_t n) const {
+    GlobIter<T, PatternType> res(m_globmem, *m_pattern, m_idx-n);
     return res;
   }
 
-  bool operator<(const GlobIter<T>& other) const {
+  bool operator<(const GlobIter<T, PatternType>& other) const {
     return m_idx < other.m_idx;
   }
 
-  bool operator<=(const GlobIter<T>& other) const {
+  bool operator<=(const GlobIter<T, PatternType>& other) const {
     return m_idx <= other.m_idx;
   }
 
-  bool operator>(const GlobIter<T>& other) const {
+  bool operator>(const GlobIter<T, PatternType>& other) const {
     return m_idx > other.m_idx;
   }
 
-  bool operator>=(const GlobIter<T>& other) const {
+  bool operator>=(const GlobIter<T, PatternType>& other) const {
     return m_idx >= other.m_idx;
   }
 
-  bool operator==(const GlobIter<T>& other) const {
+  bool operator==(const GlobIter<T, PatternType>& other) const {
     return m_idx == other.m_idx;
   }
 
-  bool operator!=(const GlobIter<T>& other) const {
+  bool operator!=(const GlobIter<T, PatternType>& other) const {
     return m_idx != other.m_idx;
   }
 };
 
-template<typename T>
-std::ostream & operator<<(std::ostream & os, const GlobIter<T> & it) {
+template<typename T, class PatternType>
+std::ostream & operator<<(
+  std::ostream & os,
+  const GlobIter<T, PatternType> & it) {
   GlobPtr<T> ptr(it); 
 
-  os<<"GlobIter<T>: ";
+  os<<"GlobIter<T, PatternType>: ";
   os<<"idx="<<it.m_idx<<std::endl;
   os<<"--> ";
   
