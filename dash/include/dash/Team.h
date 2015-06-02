@@ -25,6 +25,7 @@ using std::deque;
 
 namespace dash
 {
+
 // Team is a move-only type:
 // - no copy construction
 // - no assignment operator
@@ -36,7 +37,7 @@ class Team
   template< size_t DIM, MemArrange ma> friend class Pattern;
   template< size_t DIM> friend class TeamSpec;
   template< class U> friend class Shared;
-  template< class U, class Pattern> friend class GlobIter;
+  template< class U, class Pattern > friend class GlobIter;
   template< class U> friend class GlobRef;
 
 public:

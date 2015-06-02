@@ -14,6 +14,9 @@ namespace dash {
 
 // Forward-declaration
 template<typename T> class GlobRef;
+template<typename T> class GlobPtr;
+template<typename U>
+std::ostream& operator<<(std::ostream& os, const GlobPtr<U>& it);
 
 template<typename T>
 class GlobPtr {
@@ -30,26 +33,11 @@ public:
   explicit GlobPtr() = default;
 
   explicit GlobPtr(dart_gptr_t p) { 
-    m_dartptr=p; 
+    m_dartptr = p; 
   }
 
   GlobPtr(const GlobPtr& other) = default;
   GlobPtr<T>& operator=(const GlobPtr& other) = default;
-
-/* 
-  explicit GlobPtr() {
-    m_dartptr=DART_GPTR_NULL;
-  }
-
-  GlobPtr(const GlobPtr& other) { 
-    m_dartptr=other.m_dartptr; 
-  }
-
-  GlobPtr<T>& operator=(const GlobPtr& other) { 
-    m_dartptr=other.m_dartptr;
-    return *this;
-  }
-*/
 
   explicit operator dart_gptr_t() const {
     return m_dartptr;
@@ -59,6 +47,8 @@ public:
     return m_dartptr;
   }
   
+  // Increment operators
+
   // prefix increment operator
   GlobPtr<T>& operator++() {
     dart_gptr_incaddr(&m_dartptr, sizeof(T));
@@ -74,10 +64,44 @@ public:
 
   GlobPtr<T> operator+(gptrdiff_t n) const {
     dart_gptr_t gptr = m_dartptr;
-    dart_gptr_incaddr(&gptr, n*sizeof(T));
-    
+    dart_gptr_incaddr(&gptr, n * sizeof(T));
     return GlobPtr<T>(gptr);
   }
+
+  GlobPtr<T> operator+=(gptrdiff_t n) {
+    GlobPtr<T> result = *this;
+    dart_gptr_incaddr(&m_dartptr, n * sizeof(T));
+    return result;
+  }
+
+  // Decrement operators
+  
+  // prefix increment operator
+  GlobPtr<T>& operator--() {
+    dart_gptr_incaddr(&m_dartptr, -sizeof(T));
+    return *this;
+  }
+  
+  // postfix increment operator
+  GlobPtr<T> operator--(int) {
+    GlobPtr<T> result = *this;
+    dart_gptr_incaddr(&m_dartptr, -sizeof(T));
+    return result;
+  }
+
+  GlobPtr<T> operator-(gptrdiff_t n) const {
+    dart_gptr_t gptr = m_dartptr;
+    dart_gptr_incaddr(&gptr, -(n * sizeof(T)));
+    return GlobPtr<T>(gptr);
+  }
+
+  GlobPtr<T> operator-=(gptrdiff_t n) {
+    GlobPtr<T> result = *this;
+    dart_gptr_incaddr(&m_dartptr, -(n * sizeof(T)));
+    return result;
+  }
+
+  // Comparison operators
 
   bool operator==(const GlobPtr<T>& other) const { 
     return DART_GPTR_EQUAL(m_dartptr, other.m_dartptr);
@@ -119,18 +143,12 @@ public:
   bool is_local() const {
     return m_dartptr.unitid==dash::myid();
   }
-
-  void print() {
-    //fprintf(stderr, "%d\n", (int)m_dartptr);
-  }
 };
 
-} // namespace dash
-
 template<typename T>
-std::ostream& operator<<(
+std::ostream & operator<<(
   std::ostream & os,
-  const dash::GlobPtr<T> & it) {
+  const GlobPtr<T> & it) {
   char buf[100];
   sprintf(buf,
           "<%08X|%04X|%04X|%016X>",
@@ -141,5 +159,7 @@ std::ostream& operator<<(
   os << "dash::GlobPtr<T>: " << buf;
   return os;
 }
+
+} // namespace dash
 
 #endif // DASH__GLOB_PTR_H_

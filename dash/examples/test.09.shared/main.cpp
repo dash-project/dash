@@ -9,16 +9,7 @@
 
 using namespace std;
 
-class Foo
-{
-public:
-  int operator[](size_t pos) {
-    return 1;
-  }
-};
-
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
   dash::init(&argc, &argv);
   
   auto myid = dash::myid();
@@ -26,31 +17,26 @@ int main(int argc, char* argv[])
 
   dash::Array< dash::GlobPtr<int> > arr(size);
 
-  dash::Shared<int> shared(100);
+  dash::Shared<int> shared;
+  shared.set(100);
 
+/*
   arr[myid] = shared.begin();
   
-  if( myid==0 ) {
+  if (myid == 0) {
     dash::GlobPtr<int> ptr = arr[size-1];
-    
-    for( int i=0; i<100; i++ ) {
-      ptr[i]=i;
+    for( int i=0; i < 100; i++ ) {
+      ptr[i] = i;
     }
   }
 
   dash::barrier();
-  
 
-  for( auto it=shared.begin(); it!=shared.end(); it++ ) {
-    cout<<myid<<":"<<*it<<" ";
+  for (auto it = shared.begin(); it != shared.end(); it++) {
+    cout << myid << ":" << *it << " ";
   }
-  cout<<endl;
-  
-  
-
-  
-
-  
+  cout << endl;
+*/
   dash::finalize();
 }
 

@@ -63,7 +63,6 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # Install library
   install(TARGETS ${DASH_LIBRARY} DESTINATION lib)
 
-  # Tests
   # Examples
   if (BUILD_EXAMPLES)
     SubDirList(
@@ -79,11 +78,14 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
         )
         include_directories(
           ${CMAKE_SOURCE_DIR}/dash/include
+          ${ADD_INCLUDES}
         )
         target_link_libraries(
           ${exampletarget}
           ${DASH_LIBRARY}
-          ${DART_LIBRARY})
+          ${DART_LIBRARY}
+          ${ADD_LIBS}
+        )
         DeployBinary(${exampletarget})
         install(
           TARGETS ${exampletarget}

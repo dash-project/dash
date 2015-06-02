@@ -79,17 +79,16 @@ public:
 
   // get a global pointer for a local pointer
   GlobPtr<T> globptr(T* lptr) {
-    GlobPtr<T> gptr=m_ptr->begin();
+    GlobPtr<T> gptr = m_ptr->begin();
     gptr.set_unit(dash::myid());
-    auto lptrdiff = lptr-begin();
-    
-    return gptr+lptrdiff;
+    auto lptrdiff = lptr - begin();
+    gptr += static_cast<long long>(lptrdiff);
+    return gptr;
   }
 };
 
 template<typename ELEMENT_TYPE>
-class Array
-{
+class Array {
 public: 
   typedef ELEMENT_TYPE  value_type;
 

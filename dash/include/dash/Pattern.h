@@ -7,12 +7,9 @@
 #include <iostream>
 #include <array>
 
-#include "Enums.h"
-#include "Cartesian.h"
-#include "Team.h"
-
-using std::cout;
-using std::endl;
+#include <dash/Enums.h>
+#include <dash/Cartesian.h>
+#include <dash/Team.h>
 
 namespace dash {
 
@@ -135,13 +132,6 @@ namespace dash {
       return this->m_ndim;
     }
   };
-
-#if 0
-  typedef TeamSpec<1> DefaultTeamSpec;
-  DefaultTeamSpec DEFAULT1DTEAM(long long nunit) {
-    return{ nunit };
-  }
-#endif
 
   // SizeSpec specifies the data sizes on all dimensions
   template<size_t ndim_, MemArrange arr = ROW_MAJOR>

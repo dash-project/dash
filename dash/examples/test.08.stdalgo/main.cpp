@@ -50,20 +50,20 @@ bool test_for_each(size_t n)
     int sum=0;
     // for_each with global iterators
     for_each(arr.begin(), arr.end(), [&sum](int x) {sum+=x;});
-    cout<<"Sum is: "<<sum<<endl;
+    ::std::cout<<"Sum is: "<<sum<<endl;
   }
 
   // for_each_with local iterators
   int mysum=0;
   for_each(arr.lbegin(), arr.lend(), [&mysum](int x) {mysum+=x;});
-  cout<<"["<<myid<<"] mysum is: "<<mysum<<endl;
+  ::std::cout<<"["<<myid<<"] mysum is: "<<mysum<<endl;
 
 #if 0
   if( myid==0 ) {
     for( auto v: arr) {
-      cout<<v<<" ";
+      ::std::cout<<v<<" ";
     }
-    cout<<endl;
+    ::std::cout<<endl;
   }
 #endif
 
@@ -84,11 +84,10 @@ bool test_count(size_t n)
   arr.barrier();
 
   int count = std::count(arr.lbegin(), arr.lend(), 5);
-  cout<<"["<<myid<<"] Found the number: "<<count<<endl;
+  ::std::cout<<"["<<myid<<"] Found the number: "<<count<<endl;
 
   return true;
 }
-
 
 void test_sequence_predicates()
 {
@@ -105,26 +104,38 @@ void test_sequence_predicates()
   //
   if( myid==1 ) {
     if( std::all_of(arr.begin(), arr.end(), [](int x){ return x>0;}) ) {
-      cout<<"All are greater than 0"<<endl;
+      ::std::cout << "All are greater than 0" << endl;
     } else {
-      cout<<"Some are not greater than 0"<<endl;
+      ::std::cout << "Some are not greater than 0" << endl;
     }
     if( std::any_of(arr.begin(), arr.end(), [](int x){ return x>0;}) ) {
-      cout<<"Some are greater than 0"<<endl;
+      ::std::cout << "Some are greater than 0" << endl;
     } else {
-      cout<<"None are greater than 0"<<endl;
+      ::std::cout << "None are greater than 0" << endl;
     }
     if( std::none_of(arr.begin(), arr.end(), [](int x){ return x>0;}) ) {
-      cout<<"None are greater than 0"<<endl;
+      ::std::cout << "None are greater than 0" << endl;
     } else {
-      cout<<"Some are greater than 0"<<endl;
+      ::std::cout << "Some are greater than 0" << endl;
     }
   }
 
   bool myresult;
-  myresult = std::all_of(arr.lbegin(), arr.lend(), [](int x){ return x>0;});
-  myresult = std::any_of(arr.lbegin(), arr.lend(), [](int x){ return x>0;});
-  myresult = std::none_of(arr.lbegin(), arr.lend(), [](int x){ return x>0;});
-  cout<<"["<<myid<<"] myresult is: "<<myresult<<endl;
+  myresult = std::all_of(
+               arr.lbegin(),
+               arr.lend(),
+               [](int x){ return x > 0;});
+  myresult = std::any_of(
+               arr.lbegin(),
+               arr.lend(),
+               [](int x){ return x > 0;});
+  myresult = std::none_of(
+               arr.lbegin(),
+               arr.lend(),
+               [](int x){ return x > 0;});
+  std::cout << "[" << myid << "] myresult is: " 
+            << myresult 
+            << std::endl;
   
 }
+

@@ -12,41 +12,37 @@
 #include <dash/GlobPtr.h>
 #include <dash/Team.h>
 
-namespace dash
-{
+namespace dash {
 
 enum class GlobMemKind {
-  COLLECTIVE, LOCAL };
+  COLLECTIVE,
+  LOCAL
+};
 
-constexpr GlobMemKind COLLECTIVE {GlobMemKind::COLLECTIVE};
-constexpr GlobMemKind COLL       {GlobMemKind::COLLECTIVE};
-constexpr GlobMemKind LOCAL      {GlobMemKind::LOCAL};
-
+constexpr GlobMemKind COLLECTIVE { GlobMemKind::COLLECTIVE };
+constexpr GlobMemKind COLL       { GlobMemKind::COLLECTIVE };
+constexpr GlobMemKind LOCAL      { GlobMemKind::LOCAL };
 
 template<typename T>
-void put_value(const T& newval, const GlobPtr<T>& gptr)
-{
-  //fprintf(stderr, "put_value %d\n", newval);
-  
+void put_value(const T & newval, const GlobPtr<T> & gptr) {
   // BLOCKING !!
-  dart_put_blocking(gptr.dartptr(), 
-		    (void*)&newval, sizeof(T)); 
+  dart_put_blocking(
+    gptr.dartptr(),
+    (void *)(&newval),
+    sizeof(T)); 
 }
 
 template<typename T>
-void get_value(T* ptr, const GlobPtr<T>& gptr)
-{ 
+void get_value(T * ptr, const GlobPtr<T> & gptr) {
   // BLOCKING !!
-  dart_get_blocking(ptr, gptr.dartptr(), 
-		    sizeof(T));
-  //fprintf(stderr, "get_value %d\n", ptr);
+  dart_get_blocking(
+    ptr,
+    gptr.dartptr(),
+		sizeof(T));
 }
-
-
 
 template<typename TYPE>
-class GlobMem
-{
+class GlobMem {
 private:
   dart_gptr_t   m_begptr;   
   dart_team_t   m_teamid;
@@ -57,7 +53,8 @@ private:
 public:
   GlobMem(
     Team & team,
-    size_t nlelem // # of local elements
+    /// # of local elements
+    size_t nlelem
   ) {
     m_begptr = DART_GPTR_NULL;
     m_teamid = team.dart_id();
@@ -66,21 +63,25 @@ public:
     
     dart_team_size(m_teamid, &m_nunits);
     
-    size_t lsize = sizeof(TYPE)*nlelem;
+    size_t lsize = sizeof(TYPE) * nlelem;
     
-    dart_team_memalloc_aligned(m_teamid, 
-			       lsize, &m_begptr);
+    dart_team_memalloc_aligned(
+      m_teamid, 
+			lsize,
+      &m_begptr);
   }
 
-  GlobMem(size_t nlelem) // #of local elements
-  {
+  GlobMem(
+      /// [IN] Number of local elements
+      size_t nlelem
+  ) {
     m_begptr = DART_GPTR_NULL;
     m_teamid = DART_TEAM_NULL;
     m_nlelem = nlelem;
     m_nunits = 1;
     m_kind   = LOCAL;
 
-    size_t lsize = sizeof(TYPE)*nlelem;
+    size_t lsize = sizeof(TYPE) * nlelem;
 
     dart_memalloc(lsize, &m_begptr);
   }
@@ -100,19 +101,15 @@ public:
   }
 
   template<typename T=TYPE>
-  void put_value(const T& newval, size_t idx)
-  {
+  void put_value(const T & newval, size_t idx) {
     // idx to gptr
   }
 
   template<typename T=TYPE>
-  void get_value(T* ptr, size_t idx)
-  {
+  void get_value(T * ptr, size_t idx) {
   }
 
-  GlobPtr<TYPE> get_globptr(size_t unit, size_t idx) 
-  {
-    //fprintf(stderr, "get_globptr\n");
+  GlobPtr<TYPE> get_globptr(size_t unit, size_t idx) {
     dart_unit_t lunit, gunit; 
     
     dart_gptr_t gptr = m_begptr;
@@ -128,8 +125,7 @@ public:
 };
 
 template<typename T>
-GlobPtr<T> memalloc(size_t nelem) 
-{
+GlobPtr<T> memalloc(size_t nelem) {
   dart_gptr_t gptr;
   size_t lsize = sizeof(T) * nelem;
   
@@ -137,8 +133,7 @@ GlobPtr<T> memalloc(size_t nelem)
   return GlobPtr<T>(gptr);
 }
 
+} // namespace dash
 
-}; // namespace dash
-
-#endif /* GLOBMEM_H_INCLUDED */
+#endif // GLOBMEM_H_INCLUDED
 
