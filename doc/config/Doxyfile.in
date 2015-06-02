@@ -5,7 +5,11 @@ PROJECT_NUMBER         = @DASH_VERSION_MAJOR@.@DASH_VERSION_MINOR@.@DASH_VERSION
 STRIP_FROM_PATH        = @PROJECT_SOURCE_DIR@ \
                          @PROJECT_BINARY_DIR@
 INPUT                  = @doxy_main_page@ \
-                         @PROJECT_SOURCE_DIR@
+                         "@PROJECT_SOURCE_DIR@/dart-if/v3.1/include" \
+                         "@PROJECT_SOURCE_DIR@/dash-impl/mpi/include" \
+                         "@PROJECT_SOURCE_DIR@/dash-impl/shmem/dart-shmem/include" \
+                         "@PROJECT_SOURCE_DIR@/dash-impl/cuda/dart-cuda/include" \
+                         "@PROJECT_SOURCE_DIR@/dash/include" \
 OUTPUT_DIRECTORY       = "doc"
 FILE_PATTERNS          = *.h \
                        = *.c \
