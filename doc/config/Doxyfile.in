@@ -1,0 +1,19 @@
+PROJECT_NAME           = "DASH"
+PROJECT_NUMBER         = @VERSION_MAJOR@.@VERSION_MINOR@.@VERSION_PATCH@
+STRIP_FROM_PATH        = @PROJECT_SOURCE_DIR@ \
+                         @PROJECT_BINARY_DIR@
+INPUT                  = @doxy_main_page@ \
+                         @PROJECT_SOURCE_DIR@
+OUTPUT_DIRECTORY       = "doc"
+FILE_PATTERNS          = *.h \
+                       = *.c \
+                       = *.cpp \
+                         *.cc
+EXCLUDE_PATTERNS       = */test/* \
+                         */examples/*
+                         */internal/*
+EXCLUDE_SYMBOLS        = *test* \
+                         *::examples::*
+                         *::internal::*
+RECURSIVE              = YES
+USE_MDFILE_AS_MAINPAGE = @doxy_main_page@

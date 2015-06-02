@@ -4,12 +4,19 @@ project(project_dash)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/CompilerFlags.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 
 cmake_minimum_required (VERSION 2.8)
 
-set(DASH_VERSION_MAJOR 0)
-set(DASH_VERSION_MINOR 1)
-set(DASH_VERSION_PATCH 0)
+## Version number
+set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
+set(DASH_VERSION_MINOR 1 CACHE STRING "DASH minor version number.")
+set(DASH_VERSION_PATCH 0 CACHE STRING "DASH patch version number.")
+mark_as_advanced(DASH_VERSION_MAJOR DASH_VERSION_MINOR DASH_VERSION_PATCH)
+
+set(DASH_VERSIONED_PROJECT_NAME
+    "dash-${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
+    CACHE STRING INTERNAL FORCE)
 
 set(CMAKE_RULE_MESSAGES ON)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
@@ -22,13 +29,8 @@ if(POLICY CMP0053)
   cmake_policy(SET CMP0053 OLD)
 endif(POLICY CMP0053)
 
-# include(CMakeExt/LocateGTest.cmake)
-# if (not GTestAvailable)
-#   message(status "GoogleTest not found, building without unit tests")
-# endif()
-
+## Install path
 if (INSTALL_PREFIX)
-  # Install path given in "-DINSTALL_PREFIX=..."
   set(CMAKE_INSTALL_PREFIX ${INSTALL_PREFIX})
 else()
   set(CMAKE_INSTALL_PREFIX "/usr/local")
@@ -43,18 +45,18 @@ message("-- Build type: " ${CMAKE_BUILD_TYPE})
 ## Build options
 option(BUILD_TESTS
        "Whether tests should be built" on)
-option(INSTALL_DOCS
-       "Whether doxygen docs should be installed" on)
-option(WARNINGS_AS_ERRORS
-       "Specify whether warnings should be treated as errors" off)
+option(BUILD_DOCS
+       "Whether doxygen documentation should be installed" on)
 option(BUILD_EXAMPLES
        "Specify whether to build examples" on)
+option(WARNINGS_AS_ERRORS
+       "Specify whether warnings should be treated as errors" off)
 
 set(DART_IF_VERSION "3.1" CACHE STRING
     "Version of the DART interface")
 message("-- Using DART interface v" ${DART_IF_VERSION})
 
-# Include path of selected DART interface:
+## Include path of selected DART interface:
 set(DASH_DART_IF_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/dart-if/v${DART_IF_VERSION}/include
     CACHE PATH INTERNAL FORCE)
@@ -102,4 +104,9 @@ if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";cuda;")
 endif()
 
 add_subdirectory(dash)
+
+## Documentation
+if (BUILD_DOCS)
+  CreateDoxygenTarget()
+endif()
 
