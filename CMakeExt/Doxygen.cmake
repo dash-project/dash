@@ -7,6 +7,9 @@ function (CreateDoxygenTarget)
     set(doxyfile ${CMAKE_CURRENT_BINARY_DIR}/doc/config/Doxyfile)
     set(DASH_VERSIONED_PROJECT_NAME ${DASH_VERSIONED_PROJECT_NAME}
         PARENT_SCOPE)
+    set(DASH_VERSION_MAJOR ${DASH_VERSION_MAJOR} PARENT_SCOPE)
+    set(DASH_VERSION_MINOR ${DASH_VERSION_MINOR} PARENT_SCOPE)
+    set(DASH_VERSION_PATCH ${DASH_VERSION_PATCH} PARENT_SCOPE)
 
     configure_file(${doxyfile_in} ${doxyfile} @ONLY)
 
