@@ -1,3 +1,7 @@
+#
+# In-place makefile for use side-by-side with the 
+# CMake build system
+#
 
 DASH_ROOT_REL = $(shell pwd)/../..
 DASH_ROOT = $(shell cd $(DASH_ROOT_REL);pwd)
@@ -6,9 +10,8 @@ include $(DASH_ROOT)/make.defs
 
 #CFLAGS+=-DDASH_DEBUG
 
-LIBDASH   = $(DASH_ROOT)/dash-lib/libdash.a
-DASH_INC  = $(DASH_ROOT)/dash-lib/
-
+LIBDASH   = $(DASH_ROOT)/src/libdash.a
+DASH_INC  = $(DASH_ROOT)/include/
 
 PWD  = $(shell basename `pwd`)
 PAT  = $(shell echo -n $(PWD) )
@@ -23,7 +26,7 @@ printenv :
 	 @echo "DASH_ROOT     = $(DASH_ROOT)"
 	 @echo "LIBDASH       = $(LIBDASH)"
 	 @echo "DART_IMPL     = $(DART_IMPL)"
-	 @echo "LIBDART       = $(LIBDART)"
+	 @echo "LIBDARTem       = $(LIBDART)"
 	 @echo "LIBDART_EXTRA = $(LIBDART_EXTRA)"
 	 
 
