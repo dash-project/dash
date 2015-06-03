@@ -1,4 +1,3 @@
-
 project(project_dash)
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/CompilerFlags.cmake)
@@ -67,7 +66,7 @@ message("-- DART interface include path: "
 
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/doc)
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/shared)
 
 ## Subprojects, one for each deliverable
 
@@ -109,4 +108,3 @@ add_subdirectory(dash)
 if (BUILD_DOCS)
   CreateDoxygenTarget()
 endif()
-

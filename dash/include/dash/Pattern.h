@@ -13,17 +13,18 @@
 
 namespace dash {
 
-  // Base class for dim-related specification, ie DistributionSpec etc.
+  /**
+   * Base class for dimension-related attribute types, such as
+   * DistributionSpec and TeamSpec.
+   * Contains an extent value for every dimension.
+   */
   template<typename T, size_t ndim_>
   class DimBase {
-  private:
-
   protected:
     size_t m_ndim = ndim_;
     T m_extent[ndim_];
 
   public:
-
     template<size_t ndim__, MemArrange arr> friend class Pattern;
 
     DimBase() {
@@ -37,14 +38,24 @@ namespace dash {
     }
   };
 
-  // Wrapper class of CartCoord
-  template<size_t ndim_, MemArrange arr = ROW_MAJOR>
-  class DimRangeBase : public CartCoord<ndim_, long long> {
+  /**
+   * Base class for dimensional range attribute types, containing
+   * offset and extent for every dimension.
+   * Specialization of CartCoord.
+   */
+  template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
+  class DimRangeBase : public CartCoord<NumDimensions, long long> {
   public:
-    template<size_t ndim__, MemArrange arr2> friend class Pattern;
+    template<size_t NumDimensions_, MemArrange Arrange_> friend class Pattern;
     DimRangeBase() { }
 
-  public:
+    // Variadic constructor
+    template<typename ... values>
+    DimRangeBase(values ... Values) :
+      CartCoord<NumDimensions, long long>::CartCoord(Values...) {
+    }
+
+  protected:
     // Need to be called manually when elements are changed to update size
     void construct() {
       long long cap = 1;
@@ -56,22 +67,16 @@ namespace dash {
       }
       this->m_size = cap * this->m_extent[0];
     }
-
-    // Variadic constructor
-    template<typename ... values>
-    DimRangeBase(values ... Values) :
-      CartCoord<ndim_, long long>::CartCoord(Values...) {
-    }
   };
 
   // DistributionSpec describes distribution patterns of all dimensions.
-  template<size_t ndim_>
-  class DistributionSpec : public DimBase<DistEnum, ndim_> {
+  template<size_t NumDimensions>
+  class DistributionSpec : public DimBase<DistEnum, NumDimensions> {
   public:
 
     // Default distribution: BLOCKED, NONE, ...
     DistributionSpec() {
-      for (size_t i = 1; i < ndim_; i++) {
+      for (size_t i = 1; i < NumDimensions; i++) {
         this->m_extent[i] = NONE;
       }
       this->m_extent[0] = BLOCKED;
@@ -79,53 +84,61 @@ namespace dash {
 
     template<typename T_, typename ... values>
     DistributionSpec(T_ value, values ... Values)
-    : DimBase<DistEnum, ndim_>::DimBase(value, Values...) {
+    : DimBase<DistEnum, NumDimensions>::DimBase(value, Values...) {
     }
   };
 
-  // AccessBase represents the local laylout according to the specified
-  // pattern.
-  // 
-  // TODO: can be optimized
-  template<size_t ndim_, MemArrange arr = ROW_MAJOR>
-  class AccessBase : public DimRangeBase < ndim_, arr > {
+  /** 
+   * Represents the local laylout according to the specified pattern.
+   * 
+   * TODO: Can be optimized
+   */
+  template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
+  class AccessBase : public DimRangeBase<NumDimensions, Arrange> {
   public:
     AccessBase() {
     }
 
     template<typename T, typename ... values>
     AccessBase(T value, values ... Values)
-    : DimRangeBase<ndim_>::DimRangeBase(value, Values...) {
+    : DimRangeBase<NumDimensions>::DimRangeBase(value, Values...) {
     }
   };
 
-  // TeamSpec specifies the arrangement of team units in all dimensions
-  // Size of TeamSpec implies the size of the team.
-  // 
-  // TODO: unit reoccurrence not supported
-  template<size_t ndim_>
-  class TeamSpec : public DimRangeBase<ndim_> {
+  /** 
+   * TeamSpec specifies the arrangement of team units in all dimensions.
+   * Size of TeamSpec implies the size of the team.
+   * 
+   * TODO: unit reoccurrence not supported
+   *
+   * \tparam  NumDimensions  Number of dimensions
+   */
+  template<size_t NumDimensions>
+  class TeamSpec : public DimRangeBase<NumDimensions> {
   public:
     TeamSpec() {
-      for (size_t i = 0; i < ndim_; i++) {
+      // Set extent in all dimensions to 1 (minimum)
+      for (size_t i = 0; i < NumDimensions; i++) {
         this->m_extent[i] = 1;
       }
-      this->m_extent[ndim_ - 1] = this->m_size = dash::Team::All().size();
+      // Set extent in highest dimension to size of team
+      this->m_size = dash::Team::All().size();
+      this->m_extent[NumDimensions - 1] = this->m_size;
       this->construct();
       this->m_ndim = 1;
     }
 
     TeamSpec(dash::Team & t) {
-      for (size_t i = 0; i < ndim_; i++)
+      for (size_t i = 0; i < NumDimensions; i++)
         this->m_extent[i] = 1;
-      this->m_extent[ndim_ - 1] = this->m_size = t.size();
+      this->m_extent[NumDimensions - 1] = this->m_size = t.size();
       this->construct();
       this->m_ndim = 1;
     }
 
-    template<typename T, typename ... values>
-    TeamSpec(T value, values ... Values)
-    : DimRangeBase<ndim_>::DimRangeBase(value, Values...) {
+    template<typename ExtentType, typename ... values>
+    TeamSpec(ExtentType value, values ... Values)
+    : DimRangeBase<NumDimensions>::DimRangeBase(value, Values...) {
     }
 
     int ndim() const {
@@ -133,18 +146,19 @@ namespace dash {
     }
   };
 
-  // SizeSpec specifies the data sizes on all dimensions
-  template<size_t ndim_, MemArrange arr = ROW_MAJOR>
-  class SizeSpec : public DimRangeBase<ndim_> {
+  /**
+   * Specifies the data sizes on all dimensions
+   */
+  template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
+  class SizeSpec : public DimRangeBase<NumDimensions> {
   public:
-
-    template<size_t ndim__> friend class ViewSpec;
+    template<size_t NumDimensions_> friend class ViewSpec;
 
     SizeSpec() {
     }
 
     SizeSpec(size_t nelem) {
-      static_assert(ndim_ == 1, "Not enough parameters for extent");
+      static_assert(NumDimensions == 1, "Not enough parameters for extent");
       this->m_extent[0] = nelem;
       this->construct();
       this->m_ndim = 1;
@@ -152,7 +166,7 @@ namespace dash {
 
     template<typename T_, typename ... values>
     SizeSpec(T_ value, values ... Values) :
-      DimRangeBase<ndim_>::DimRangeBase(value, Values...) {
+      DimRangeBase<NumDimensions>::DimRangeBase(value, Values...) {
     }
   };
 
@@ -161,14 +175,16 @@ namespace dash {
     long long range;
   };
 
-  // ViewSpec specifies view parameters for implementing submat, rows and cols
-  template<size_t ndim_>
-  class ViewSpec : public DimBase<ViewPair, ndim_> {
+  /**
+   * Specifies view parameters for implementing submat, rows and cols
+   */
+  template<size_t NumDimensions>
+  class ViewSpec : public DimBase<ViewPair, NumDimensions> {
   public:
     void update_size() {
       nelem = 1;
 
-      for (size_t i = ndim_ - view_dim; i < ndim_; i++)
+      for (size_t i = NumDimensions - view_dim; i < NumDimensions; i++)
       {
         if(range[i]<=0)
         printf("i %d rangei %d\n", i, range[i]);
@@ -178,34 +194,45 @@ namespace dash {
     }
 
   public:
-    long long begin[ndim_];
-    long long range[ndim_];
-    size_t ndim = ndim_;
-    size_t view_dim = ndim_;
-    long long nelem = 0;
+    long long begin[NumDimensions];
+    long long range[NumDimensions];
+    size_t    ndim;
+    size_t    view_dim;
+    long long nelem;
 
-    ViewSpec() {
+    ViewSpec()
+    : ndim(NumDimensions),
+      view_dim(NumDimensions),
+      nelem(0) {
     }
 
-    ViewSpec(SizeSpec<ndim_> sizespec) {
-      //TODO
-      memcpy(this->m_extent, sizespec.m_extent, sizeof(long long) * ndim_);
-      memcpy(range, sizespec.m_extent, sizeof(long long) * ndim_);
+    ViewSpec(SizeSpec<NumDimensions> sizespec)
+    : ndim(NumDimensions),
+      view_dim(NumDimensions),
+      nelem(0) {
+      // TODO
+      memcpy(this->m_extent,
+             sizespec.m_extent,
+             sizeof(long long) * NumDimensions);
+      memcpy(range,
+             sizespec.m_extent,
+             sizeof(long long) * NumDimensions);
       nelem = sizespec.size();
-      for (size_t i = 0; i < ndim_; i++)
-      {
+      for (size_t i = 0; i < NumDimensions; i++) {
         begin[i] = 0;
         range[i] = sizespec.m_extent[i];
       }
     }
 
     template<typename T_, typename ... values>
-    ViewSpec(ViewPair value, values ... Values) :
-      DimBase<ViewPair, ndim_>::DimBase(value, Values...) {
+    ViewSpec(ViewPair value, values ... Values)
+    : DimBase<ViewPair, NumDimensions>::DimBase(value, Values...),
+      ndim(NumDimensions),
+      view_dim(NumDimensions),
+      nelem(0) {
     }
 
-    long long size()
-    {
+    inline long long size() const {
       return nelem;
     }
   };
@@ -340,13 +367,11 @@ namespace dash {
         long long dimunit;
         size_t myidx;
 
-        if (ndim_ > 1 && m_teamspec.ndim() == 1)
-        {
+        if (ndim_ > 1 && m_teamspec.ndim() == 1) {
           dimunit = m_teamspec.size();
           myidx = m_teamspec.coords(m_team.myid())[ndim_-1];
         }
-        else
-        {
+        else {
           dimunit = m_teamspec.m_extent[i];
           myidx = m_teamspec.coords(m_team.myid())[i];
         }
@@ -372,8 +397,7 @@ namespace dash {
 
           break;
         case DistEnum::disttype::BLOCKCYCLIC:
-          if (m_sizespec.m_extent[i]
-            / cycle == 0)
+          if (m_sizespec.m_extent[i] / cycle == 0)
             m_accessbase.m_extent[i] = m_distspec.m_extent[i].blocksz;
           else
             m_accessbase.m_extent[i] = m_sizespec.m_extent[i]

@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <libdash.h>
+#include <algorithm>
 
 #define NELEM 10
 
@@ -37,6 +38,7 @@ int main(int argc, char* argv[])
       arr4[i]=i;
       arr5[i]=i;
     }
+    std::sort(arr5.begin(), arr5.end());
   }
 
   dash::Team::All().barrier();
