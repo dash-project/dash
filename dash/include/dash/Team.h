@@ -10,7 +10,6 @@
 
 #include <iostream>
 #include <memory>
-#include <deque>
 #include <type_traits>
 
 #include <dash/Init.h>
@@ -19,10 +18,6 @@
 #include <dash/Enums.h>
 #include <dash/Exception.h>
 #include <dash/dart/if/dart.h>
-
-using std::cout;
-using std::endl;
-using std::deque;
 
 namespace dash {
 
@@ -95,26 +90,33 @@ private:
     dart_group_init(m_group);
     
     dart_team_get_group(m_dartid, m_group);
-    m_havegroup=true;
+    m_havegroup = true;
   }
 
+/* 
+  TODO: Use operator<<(std::ostream & os, Team t)
 public:
   void trace_parent() {
-    cout << "I'm " << m_dartid << "(" << this << ")" << " my parent "
+    std::cout << "I'm " << m_dartid << "(" << this << ")" << " my parent "
          << (m_parent ? m_parent->m_dartid
                       : DART_TEAM_NULL)
-         << endl;
+         << std::endl;
     if (m_parent) m_parent->trace_parent();
   }
   void trace_child() {
-    cout << "I'm " << m_dartid << "(" << this << ")" << " my child " 
+    std::cout << "I'm " << m_dartid << "(" << this << ")" << " my child " 
          << (m_child ? m_child->m_dartid
                      : DART_TEAM_NULL) 
-         << endl;
+         << std::endl;
     if (m_child) m_child->trace_child();
   }
+*/
 
 private:
+  /**
+   * Constructor, allows to specify the instance's parent team and its position within the
+   * team group.
+   */
   Team(dart_team_t id, 
        Team * parent = nullptr, 
        size_t pos = 0)
@@ -143,19 +145,27 @@ private:
   }
 
 protected:
+  /**
+   * Copy-constructor, internal.
+   */
   Team(const Team & t) = default;
+
+private:
+  /// Forbid assignment
+  Team & operator=(const Team & t) = delete;
 
 public:
   /**
-   * Assignment operator, forbidden.
+   * Move-constructor.
    */
-  Team & operator=(const Team & t) = delete;
-
   Team(Team && t) { 
     m_dartid   = t.m_dartid;
     t.m_dartid = DART_TEAM_NULL; 
   }
 
+  /**
+   * Move-assignment operator.
+   */
   Team & operator=(Team && t) {
     free_team();
     m_dartid   = t.m_dartid;
@@ -177,10 +187,16 @@ public:
     }
   }
   
+  /**
+   * The invariant Team instance containing all available units.
+   */
   static Team & All() {
     return m_team_all;
   }
 
+  /**
+   * The invariant Team instance representing an undefined team.
+   */
   static Team & Null() {
     return m_team_null;
   }
@@ -301,11 +317,11 @@ public:
     else { return Null(); } 
   }
 
-  Team & sub(size_t n = 1) {
+  Team & sub(size_t level = 1) {
     Team * t = this;
-    while (t && n > 0 && !(t->isLeaf())) {
+    while (t && level > 0 && !(t->isLeaf())) {
       t = t->m_child;
-      n--;
+      level--;
     }
     return *t;
   }
@@ -332,8 +348,13 @@ public:
     return res;
   }
 
+  /**
+   * The number of units in this team.
+   *
+   * \return  The number of unit grouped in this Team instance
+   */
   size_t size() const {
-    size_t size=0;
+    size_t size = 0;
     if (m_dartid != DART_TEAM_NULL) {
       dart_team_size(m_dartid, &size);
     }
@@ -351,18 +372,18 @@ public:
 /* 
   TODO: Use operator<<(std::ostream & os, Team t)
   void print() {
-    cout<<"id: "<<m_dartid<<" "<<this<<" parent: "<<m_parent;
-    cout<<" child: "<<m_child<<endl;
+    std::cout<<"id: "<<m_dartid<<" "<<this<<" parent: "<<m_parent;
+    std::cout<<" child: "<<m_child<<std::endl;
   }
 */
 
-  size_t globalid(size_t localid) {
-    dart_unit_t globalid;
+  size_t global_id(size_t localId) {
+    dart_unit_t g_id;
     dart_team_unit_l2g(
       m_dartid,
-      localid,
-      &globalid);
-    return globalid;
+      localId,
+      &g_id);
+    return g_id;
   }
 };
 

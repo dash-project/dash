@@ -21,8 +21,10 @@ template <typename T, size_t NumDimensions, size_t CUR> class Matrix_Ref;
 /// Forward-declaration
 template <typename T, size_t NumDimensions, size_t CUR> class Local_Ref;
 
-// RefProxy stores information needed by subscripting and subdim selection.
-// New RefProxy should be created once for multi-subscripting.
+/**
+ * Stores information needed by subscripting and subdim selection.
+ * A new RefProxy instance is created once for every dimension in multi-subscripting.
+ */
 template <typename T, size_t NumDimensions> class Matrix_RefProxy {
  private:
   int _dim;
@@ -38,7 +40,10 @@ template <typename T, size_t NumDimensions> class Matrix_RefProxy {
   Matrix_RefProxy<T, NumDimensions>();
 };
 
-// Wrapper class for RefProxy. Local_Ref represents local part of a Matrix and provices local operations.
+/**
+ * Local_Ref represents local part of a Matrix and provices local operations.
+ * Wrapper class for RefProxy. 
+ */
 template <typename T, size_t NumDimensions, size_t CUR = NumDimensions> class Local_Ref {
  public:
   template<typename T_, size_t NumDimensions_> friend class Matrix;
@@ -82,13 +87,13 @@ template <typename T, size_t NumDimensions, size_t CUR = NumDimensions> class Lo
   Local_Ref<T, NumDimensions, CUR - 1> && operator[](size_t n);
   Local_Ref<T, NumDimensions, CUR - 1> operator[](size_t n) const;
 
-  template<size_t SUBNumDimensions>
+  template<size_t NumSubDimensions>
   Local_Ref<T, NumDimensions, NumDimensions - 1> sub(size_type n);
 
   inline Local_Ref<T, NumDimensions, NumDimensions - 1> col(size_type n);
   inline Local_Ref<T, NumDimensions, NumDimensions - 1> row(size_type n);
 
-  template<size_t SUBNumDimensions>
+  template<size_t NumSubDimensions>
   Local_Ref<T, NumDimensions, NumDimensions> submat(size_type n, size_type range);
 
   inline Local_Ref<T, NumDimensions, NumDimensions> rows(size_type n, size_type range);
@@ -142,12 +147,12 @@ class Matrix_Ref {
   Matrix_Ref<T, NumDimensions, CUR-1> && operator[](size_t n);
   Matrix_Ref<T, NumDimensions, CUR-1> operator[](size_t n) const;
 
-  template<size_t SUBNumDimensions>
+  template<size_t NumSubDimensions>
   Matrix_Ref<T, NumDimensions, NumDimensions-1> sub(size_type n);
   Matrix_Ref<T, NumDimensions, NumDimensions-1> col(size_type n);
   Matrix_Ref<T, NumDimensions, NumDimensions-1> row(size_type n);
 
-  template<size_t SUBNumDimensions>
+  template<size_t NumSubDimensions>
   Matrix_Ref<T, NumDimensions, NumDimensions> submat(size_type n, size_type range);
   Matrix_Ref<T, NumDimensions, NumDimensions> rows(size_type n, size_type range);
   Matrix_Ref<T, NumDimensions, NumDimensions> cols(size_type n, size_type range);
@@ -207,7 +212,6 @@ class Matrix {
  public:
   typedef ElementType value_type;
 
-  // NO allocator_type!
   typedef size_t size_type;
   typedef size_t difference_type;
 
@@ -268,12 +272,12 @@ class Matrix {
   inline ElementType * lend() noexcept;
   inline void forall(std::function<void(long long)> func);
 
-  template<size_t SUBNumDimensions>
+  template<size_t NumSubDimensions>
   inline Matrix_Ref<ElementType, NumDimensions, NumDimensions - 1> sub(size_type n);
   inline Matrix_Ref<ElementType, NumDimensions, NumDimensions - 1> col(size_type n);
   inline Matrix_Ref<ElementType, NumDimensions, NumDimensions - 1> row(size_type n);
 
-  template<size_t SUBNumDimensions>
+  template<size_t NumSubDimensions>
   inline Matrix_Ref<ElementType, NumDimensions, NumDimensions> submat(size_type n, size_type range);
   inline Matrix_Ref<ElementType, NumDimensions, NumDimensions> rows(size_type n, size_type range);
   inline Matrix_Ref<ElementType, NumDimensions, NumDimensions> cols(size_type n, size_type range);
@@ -293,11 +297,15 @@ class Matrix {
   inline operator Matrix_Ref<ElementType, NumDimensions, NumDimensions> ();
 
  private:
-  dash::Team &_team;
+  dash::Team & _team;
+  /// DART id of the unit that owns this matrix instance
   dart_unit_t _myid;
+  /// The matrix elements' distribution pattern
   dash::Pattern<NumDimensions> _pattern;
-  size_type _size;  // total size (#elements)
-  size_type _local_mem_size; // local size (#local elements)
+  /// Capacity (total number of elements) of the matrix
+  size_type _size;
+  /// Number of elements in the matrix local to this unit
+  size_type _local_mem_size;
   pointer * _ptr;
   dart_gptr_t _dart_gptr;
   GlobMem<ElementType> _glob_mem;

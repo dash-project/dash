@@ -56,7 +56,7 @@ int sum(dash::Array<int>& arr, dash::Team& t)
  
   if( t.myid()==0 ) {
     for( auto i=0; i<t.size(); i++ ) {
-      res += arr[t.globalid(i)];
+      res += arr[t.global_id(i)];
     }
     cout<<"Leaf sum: "<<res<<endl;
     return res;
