@@ -31,7 +31,7 @@ printenv :
 	 
 
 $(LIBDASH) :
-	make -C $(DASH_ROOT)/dash-lib/
+	make -C $(DASH_ROOT)/src
 
 $(LIBDART) :
 	make -C $(LIBDART_DIR)
