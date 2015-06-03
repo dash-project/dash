@@ -8,7 +8,7 @@
 #define DASH_THROW(excep_type, msg_stream) do {\
     ::std::ostringstream os; \
     os << msg_stream; \
-    throw(excep_type(ostrstream.str())); \
+    throw(excep_type(os.str())); \
   } while(0)
 
 #endif // DASH__EXCEPTION_H_

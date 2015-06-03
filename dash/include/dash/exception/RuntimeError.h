@@ -9,7 +9,7 @@ namespace exception {
 
 class RuntimeError : ::std::runtime_error {
 public:
-  RuntimeError(::std::string & message)
+  RuntimeError(const ::std::string & message)
   : std::runtime_error(message) {
   }
 };

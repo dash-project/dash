@@ -8,17 +8,15 @@
 #ifndef VIEW_H_INCLUDED
 #define VIEW_H_INCLUDED
 
-#include "Cartesian.h"
+#include <dash/Cartesian.h>
 
 namespace dash {
 
-//
-// base class for a cartesian view (i.e., n-dimensional view 
-// with cartesian coordinates)
-//
+/**
+ * Base class for a cartesian view, i.e. an n-dimensional view with cartesian coordinates.
+ */
 template<typename Iter, int DIM>
-class CartViewBase
-{ 
+class CartViewBase { 
 public: 
   typedef typename std::iterator_traits<Iter>::value_type value_type;
   typedef typename std::iterator_traits<Iter>::reference  reference;
