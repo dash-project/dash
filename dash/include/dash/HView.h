@@ -12,121 +12,110 @@
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 
-using std::cout; 
-using std::endl;
-
 namespace dash {
 
-template<class CONTAINER, int LEVEL> 
-class HIter : public CONTAINER::iterator
-{
+template<class ContainerType, int LEVEL> 
+class HIter : public ContainerType::iterator {
 private:
   Pattern<1> & m_pattern;
   Team&        m_subteam;
 
 public:
-  HIter<CONTAINER,LEVEL>& advance() {
-    auto idx = CONTAINER::iterator::m_idx;
-    
-    for(;idx<m_pattern.nelem(); idx++ ) {
+  HIter<ContainerType,LEVEL>& advance() {
+    auto idx = ContainerType::iterator::m_idx;
+    for(; idx < m_pattern.capacity(); idx++) {
       auto unit = m_pattern.index_to_unit(idx);
-      //cout<<"Index: "<<idx<<" Unit: "<<unit<<endl;
-      
-      if( m_subteam.isMember(unit) )
-	break;
+      if (m_subteam.isMember(unit)) {
+        break;
+      }
     }
-
-    //cout<<" ----------------" <<endl;
-    CONTAINER::iterator::m_idx = idx;
+    ContainerType::iterator::m_idx = idx;
     return *this;
   }
 
-
 public:
-  HIter(typename CONTAINER::iterator it, 
-	Pattern<1> & pattern,
-	Team& subteam) : CONTAINER::iterator(it), 
-			 m_pattern(pattern),
-			 m_subteam(subteam) {
+  HIter(
+    typename ContainerType::iterator it, 
+    Pattern<1> & pattern,
+    Team & subteam)
+  : ContainerType::iterator(it), 
+    m_pattern(pattern),
+    m_subteam(subteam) {
   }
 
   void print() {
-    cout<<CONTAINER::iterator::m_idx<<endl;
+    std::cout << ContainerType::iterator::m_idx << std::endl;
   }
 
-  HIter<CONTAINER,LEVEL>& operator++() 
-  {
-    CONTAINER::iterator::m_idx++;
+  HIter<ContainerType,LEVEL>& operator++() {
+    ContainerType::iterator::m_idx++;
     return advance();
   }
-    
 };
 
-
-template<class CONTAINER, int LEVEL>
-class HView
-{
+template<class ContainerType, int LEVEL>
+class HView {
 public:
-  typedef typename CONTAINER::iterator    iterator;
-  typedef typename CONTAINER::value_type  value_type;
+  typedef typename ContainerType::iterator    iterator;
+  typedef typename ContainerType::value_type  value_type;
   
 private:
-  CONTAINER&        m_container;
-  Team&        m_subteam;
-  Pattern<1> & m_pat;
+  ContainerType & m_container;
+  Team&           m_subteam;
+  Pattern<1> &    m_pat;
 
-  HIter<CONTAINER,LEVEL> m_begin;
-  HIter<CONTAINER,LEVEL> m_end;
+  HIter<ContainerType,LEVEL> m_begin;
+  HIter<ContainerType,LEVEL> m_end;
 
-  HIter<CONTAINER,LEVEL> find_begin() {
-    HIter<CONTAINER,LEVEL> it = {m_container.begin(),m_pat,m_subteam};
+  HIter<ContainerType,LEVEL> find_begin() {
+    HIter<ContainerType, LEVEL> it = {m_container.begin(),m_pat,m_subteam};
     it.advance();
     return it;
   }
 
-  HIter<CONTAINER,LEVEL> find_end() {
-    return {m_container.end(),m_pat,m_subteam};
+  HIter<ContainerType, LEVEL> find_end() {
+    return { m_container.end(), m_pat,m_subteam };
   }
   
 public:
-  HView(CONTAINER& cont) : m_container(cont), 
-		      m_subteam(cont.team().sub(LEVEL)),
-		      m_pat(cont.pattern()),
-		      m_begin(find_begin()),
-		      m_end(find_end()) 
-  {};
-  
-  void print() {
-    std::cout<<"This team has size "<<m_subteam.size()<<std::endl;
+  HView(ContainerType& cont) 
+  : m_container(cont), 
+    m_subteam(cont.team().sub(LEVEL)),
+    m_pat(cont.pattern()),
+    m_begin(find_begin()),
+    m_end(find_end()) {
   }
   
-  HIter<CONTAINER,LEVEL> begin() { 
+  void print() {
+    std::cout << "This team has size " << m_subteam.size() << std::endl;
+  }
+  
+  HIter<ContainerType, LEVEL> begin() { 
     return m_begin;
   }
   
-  HIter<CONTAINER,LEVEL> end() { 
+  HIter<ContainerType, LEVEL> end() { 
     return m_end;
   }
 };
 
-
-template<class CONTAINER>
-class HView<CONTAINER, -1>
-{
+template<class ContainerType>
+class HView<ContainerType, -1> {
 public:
-  typedef typename CONTAINER::iterator     iterator;
-  typedef typename CONTAINER::value_type   value_type;
+  typedef typename ContainerType::iterator   iterator;
+  typedef typename ContainerType::value_type value_type;
 
 private:
-  Team&        m_subteam;
-  CONTAINER&        m_container;
-  Pattern<1> & m_pat;
+  Team &          m_subteam;
+  ContainerType & m_container;
+  Pattern<1> &    m_pat;
 
 public:
-  HView(CONTAINER& cont) 
+  HView(ContainerType& cont) 
   : m_container(cont), 
-	  m_subteam(cont.team()),
-	  m_pat(cont.pattern()) {};
+    m_subteam(cont.team()),
+    m_pat(cont.pattern()) {
+  };
   
   value_type* begin() { 
     return m_container.lbegin();
@@ -136,9 +125,6 @@ public:
     return m_container.lend();
   }
 };
-
-
-
 
 } // namespace dash
 

@@ -14,22 +14,23 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
 
-  dash::Team& t = dash::Team::All();
+  dash::Team & t = dash::Team::All();
 
   // create a binary tree of teams
   while( t.bottom().size()>2 ) {
     t.bottom().split(2);
   }
 
-  cout<<myid<<":";
+  std::cout << myid << ":";
   for( int i=0; ; i++ ) {
     dash::Team& t = dash::Team::All().sub(i);
-    cout<<t.myid()<<" ";
+    std::cout << t.myid() << " ";
     
-    if( t.isLeaf() )
+    if( t.isLeaf()) {
       break;
+    }
   }
-  cout<<endl;
+  std::cout << std::endl;
 
   dash::finalize();
 }

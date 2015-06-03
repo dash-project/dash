@@ -497,12 +497,12 @@ Matrix<ElementType, NumDimensions>::Matrix(
 
   _dart_gptr = DART_GPTR_NULL;
   dart_ret_t ret = dart_team_memalloc_aligned(
-      teamid,
-      _local_mem_size,
-      &_dart_gptr);
+    teamid,
+    _local_mem_size,
+    &_dart_gptr);
 
-  _ptr = new GlobIter<value_type, Pattern<NumDimensions> >(&_glob_mem, _pattern, 0lu);
-  _size = _pattern.nelem();
+  _ptr  = new GlobIter<value_type, Pattern<NumDimensions> >(&_glob_mem, _pattern, 0lu);
+  _size = _pattern.capacity();
   _myid = _team.myid();
   _ref._proxy = new Matrix_RefProxy<value_type, NumDimensions>;
   _ref._proxy->_dim = 0;

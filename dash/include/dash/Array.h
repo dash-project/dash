@@ -158,7 +158,7 @@ public:
     
     m_pattern = Pattern<1>(nelem, ds, m_team);
 
-    m_size  = m_pattern.nelem();
+    m_size  = m_pattern.capacity();
     m_lsize = m_pattern.max_elem_per_unit();
     m_myid  = m_team.myid();
 
@@ -188,17 +188,16 @@ public:
     }
   }
 
-  // this local proxy object enables arr.local to be used in
-  // range-based for loops
+  /// Local proxy object enables arr.local to be used in range-based for loops
   LocalProxyArray<value_type> local;
 
-  // delegating constructor : specify pattern explicitly
+  /// Delegating constructor, specify pattern explicitly
   Array(
     const dash::Pattern<1> & pat)
-  : Array(pat.nelem(), pat.distspec(), pat.team()) {
+  : Array(pat.capacity(), pat.distspec(), pat.team()) {
   }
   
-  // delegating constructor : only specify the size
+  /// Delegating constructor, only specify the size
   Array(
     size_t nelem,
     Team & t = dash::Team::All())

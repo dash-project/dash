@@ -97,18 +97,18 @@ int main(int argc, char* argv[])
 		{
 			for(int j=0;j<nelem;j++)
 				{
-					cout << matA[i][j] << " ";
+					std::cout << matA[i][j] << " ";
 				}
-				cout << endl;	
+				std::cout << std::endl;	
 		}
 
 		for(int i=0;i<nelem;i++)
 		{
 			for(int j=0;j<nelem;j++)
 				{
-					cout << matB[i][j] << " ";
+					std::cout << matB[i][j] << " ";
 				}
-				cout << endl;	
+				std::cout << std::endl;	
 		} 
 	}
 
@@ -136,9 +136,9 @@ int main(int argc, char* argv[])
 		{
 			for(int j=0;j<b;j++)
 				{
-					cout << temp_lrefc[i][j] << " ";
+					std::cout << temp_lrefc[i][j] << " ";
 				}
-				cout << endl;		
+				std::cout << std::endl;		
 		} 
 
 	matA.barrier();			
@@ -148,9 +148,9 @@ int main(int argc, char* argv[])
 		{
 			for(int j=0;j<b;j++)
 				{
-					cout << temp_lrefc[i][j] << " ";
+					std::cout << temp_lrefc[i][j] << " ";
 				}
-				cout << endl;		
+				std::cout << std::endl;		
 		} 
 
 	matA.barrier();			
@@ -160,9 +160,9 @@ int main(int argc, char* argv[])
 		{
 			for(int j=0;j<b;j++)
 				{
-					cout << temp_lrefc[i][j] << " ";
+					std::cout << temp_lrefc[i][j] << " ";
 				}
-				cout << endl;		
+				std::cout << std::endl;		
 		} 
 
 	matA.barrier();			
@@ -174,7 +174,7 @@ int main(int argc, char* argv[])
 				{
 					printf("%5d ", temp_lrefc[i][j]);
 				}
-				cout << endl;		
+				std::cout << std::endl;		
 		} 
 
 //	if(myid==0)
@@ -189,7 +189,7 @@ int main(int argc, char* argv[])
 				{
 					printf("%5d ", (int)matC[i][j]);
 				}
-				cout << endl;		
+				std::cout << std::endl;		
 		} 
 
     dash::finalize();

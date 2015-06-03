@@ -237,232 +237,14 @@ namespace dash {
     }
   };
 
+  /**
+   * Defines how a list of global indices is mapped to single units within a Team.
+   * 
+   *
+   */
   template<size_t ndim_, MemArrange arr = ROW_MAJOR>
   class Pattern {
   private:
-    inline long long modulo(const long long i, const long long k) const {
-      long long res = i % k;
-      if (res < 0)
-        res += k;
-      return res;
-    }
-
-    inline long long getCeil(const long long i, const long long k) const {
-      if (i % k == 0)
-        return i / k;
-      else
-        return i / k + 1;
-    }
-
-    inline long long getFloor(const long long i, const long long k) const {
-      return i / k;
-    }
-
-    template<int count>
-    void check(int extent) {
-      check<count>((long long)(extent));
-    }
-
-    template<int count>
-    void check(size_t extent) {
-      check<count>((long long)(extent));
-    }
-
-    // the first DIM parameters must be used to
-    // specify the extent
-    template<int count>
-    void check(long long extent) {
-      m_sizespec.m_extent[count] = extent;
-      argc_extents++;
-
-    }
-
-    // the next (up to DIM) parameters may be used to 
-    // specify the distribution pattern
-    // TODO: How many are required? 0/1/DIM ?
-    template<int count>
-    void check(const TeamSpec<ndim_> & ts) {
-      m_teamspec = ts;
-      argc_ts++;
-    }
-
-    template<int count>
-    void check(dash::Team & t) {
-      m_team = Team(t);
-    }
-
-    template<int count>
-    void check(const SizeSpec<ndim_, arr> & ds) {
-      m_sizespec = ds;
-      argc_extents += ndim_;
-    }
-
-    template<int count>
-    void check(const DistributionSpec<ndim_> & ds) {
-      argc_DistEnum = ndim_;
-      m_distspec = ds;
-    }
-
-    template<int count>
-    void check(const DistEnum& ds) {
-      int dim = count - ndim_;
-      m_distspec.m_extent[dim] = ds;
-      argc_DistEnum++;
-    }
-
-    // peel off one argument and call 
-    // the appropriate check() function
-
-    template<int count, typename T, typename ... Args>
-    void check(T t, Args&&... args) {
-      check<count>(t);
-      check<count + 1>(std::forward<Args>(args)...);
-    }
-
-    // check pattern constraints for tile
-    void checkTile() const {
-      int hastile = 0;
-      int invalid = 0;
-      for (int i = 0; i < ndim_ - 1; i++) {
-        if (m_distspec.m_extent[i].type == DistEnum::disttype::TILE)
-          hastile = 1;
-        if (m_distspec.m_extent[i].type != m_distspec.m_extent[i + 1].type)
-          invalid = 1;
-      }
-      assert(!(hastile && invalid));
-      if (hastile) {
-        for (int i = 0; i < ndim_; i++) {
-          assert(
-            m_sizespec.m_extent[i] % (m_distspec.m_extent[i].blocksz)
-            == 0);
-        }
-      }
-    }
-
-    void checkValidDistEnum() {
-      int n_validdist = 0;
-      for (int i = 0; i < ndim_; i++) {
-        if (m_distspec.m_extent[i].type != DistEnum::disttype::NONE)
-          n_validdist++;
-      }
-      assert(n_validdist == m_teamspec.ndim());
-    }
-
-    // AccessBase is an aggregation of local layout of a unit among the
-    // global unit.
-    // It is initialized after pattern parameters are received based on the
-    // DistEnum and SizeSpec, and has to be construct() if extents are
-    // changed.
-    // AccessBase is currently identical at all units, difference is
-    // further fixed during at() and atunit().
-    // TODO: m_lextent[] is a revised apprach to calculate unit-dependent
-    // local layout. It is calcualted via myid£¬ and results in unit-
-    // dependent AccessBase. If AccessBase.m_extent[] values are replaced
-    // with m_lextent[] values, then on-the-fly cyclicfix[] can be
-    // eliminated.
-    void constructAccessBase() {
-      m_blocksz = 1;
-
-      for (size_t i = 0; i < ndim_; i++) {
-        long long dimunit;
-        size_t myidx;
-
-        if (ndim_ > 1 && m_teamspec.ndim() == 1) {
-          dimunit = m_teamspec.size();
-          myidx = m_teamspec.coords(m_team.myid())[ndim_-1];
-        }
-        else {
-          dimunit = m_teamspec.m_extent[i];
-          myidx = m_teamspec.coords(m_team.myid())[i];
-        }
-
-        long long cycle = dimunit * m_distspec.m_extent[i].blocksz;
-
-        switch (m_distspec.m_extent[i].type) {
-        case DistEnum::disttype::BLOCKED:
-          m_accessbase.m_extent[i] =
-            m_sizespec.m_extent[i] % dimunit == 0 ?
-            m_sizespec.m_extent[i] / dimunit :
-            m_sizespec.m_extent[i] / dimunit + 1;
-          m_blocksz *= m_accessbase.m_extent[i];
-
-          if (m_sizespec.m_extent[i] % dimunit != 0)
-              if( myidx == dimunit - 1)
-                m_lextent[i] = m_sizespec.m_extent[i] % (
-                    m_sizespec.m_extent[i] / dimunit + 1);
-              else
-                m_lextent[i] = m_sizespec.m_extent[i] / dimunit + 1;
-          else    
-            m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
-
-          break;
-        case DistEnum::disttype::BLOCKCYCLIC:
-          if (m_sizespec.m_extent[i] / cycle == 0)
-            m_accessbase.m_extent[i] = m_distspec.m_extent[i].blocksz;
-          else
-            m_accessbase.m_extent[i] = m_sizespec.m_extent[i]
-            / cycle
-            * m_distspec.m_extent[i].blocksz;
-          m_blocksz *= m_distspec.m_extent[i].blocksz;
-
-          if (m_sizespec.m_extent[i] % cycle != 0)
-            m_lextent[i] =
-              (m_sizespec.m_extent[i] / cycle) *
-              m_distspec.m_extent[i].blocksz +
-              (myidx - (m_sizespec.m_extent[i] % cycle) /
-                        m_distspec.m_extent[i].blocksz ) < 0
-                ? m_distspec.m_extent[i].blocksz
-                : (m_sizespec.m_extent[i] % cycle) %
-                  m_distspec.m_extent[i].blocksz;
-          else
-            m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
-
-          break;
-        case DistEnum::disttype::CYCLIC:
-          m_accessbase.m_extent[i] = m_sizespec.m_extent[i] / dimunit;
-          m_blocksz *= 1;
-
-          if (m_sizespec.m_extent[i] % dimunit != 0 &&
-              myidx > (m_sizespec.m_extent[i] % dimunit) - 1)
-            m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
-          else
-            m_lextent[i] = m_sizespec.m_extent[i] / dimunit + 1;
-
-          break;
-        case DistEnum::disttype::TILE:
-          m_accessbase.m_extent[i] = m_distspec.m_extent[i].blocksz;
-          m_blocksz *= m_distspec.m_extent[i].blocksz;
-
-          if (m_sizespec.m_extent[i] % cycle != 0)
-            m_lextent[i] = 
-              (m_sizespec.m_extent[i] / cycle) *
-              m_distspec.m_extent[i].blocksz + 
-              (myidx - (m_sizespec.m_extent[i] % cycle) /
-                        m_distspec.m_extent[i].blocksz) < 0
-                ? m_distspec.m_extent[i].blocksz
-                : (m_sizespec.m_extent[i] % cycle) %
-                  m_distspec.m_extent[i].blocksz;
-          else
-            m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
-
-          break;
-        case DistEnum::disttype::NONE:
-          m_accessbase.m_extent[i] = m_sizespec.m_extent[i];
-          m_blocksz *= m_sizespec.m_extent[i];
-
-          m_lextent[i] = m_sizespec.m_extent[i];
-
-          break;
-        default:
-          break;
-        }
-      }
-      m_accessbase.construct();
-
-      for (int i = 0; i < ndim_; i++)
-        m_lnelem *= m_lextent[i];
-    }
-
     DistributionSpec<ndim_> m_distspec;
     TeamSpec<ndim_>         m_teamspec;
     AccessBase<ndim_, arr>  m_accessbase;
@@ -879,24 +661,30 @@ namespace dash {
 
     Pattern & operator=(const Pattern& other) {
       if (this != &other) {
-        m_distspec = other.m_distspec;
-        m_teamspec = other.m_teamspec;
-        m_accessbase = other.m_accessbase;
-        m_sizespec = other.m_sizespec;
-        m_viewspec = other.m_viewspec;
-        m_nunits = other.m_nunits;
-        m_blocksz = other.m_blocksz;
+        m_distspec    = other.m_distspec;
+        m_teamspec    = other.m_teamspec;
+        m_accessbase  = other.m_accessbase;
+        m_sizespec    = other.m_sizespec;
+        m_viewspec    = other.m_viewspec;
+        m_nunits      = other.m_nunits;
+        m_blocksz     = other.m_blocksz;
         argc_DistEnum = other.argc_DistEnum;
-        argc_extents = other.argc_extents;
+        argc_extents  = other.argc_extents;
 
       }
       return *this;
     }
 
-    long long nelem() const {
+    /**
+     * The number of elements arranged in this pattern.
+     */
+    long long capacity() const {
       return m_sizespec.size();
     }
 
+    /**
+     * The Team containing the units this Pattern's index range is mapped to.
+     */
     dash::Team & team() const {
       return m_team;
     }
@@ -969,8 +757,231 @@ namespace dash {
       default:
         break;
       }
-
       return ret;
+    }
+
+  private:
+    inline long long modulo(const long long i, const long long k) const {
+      long long res = i % k;
+      if (res < 0)
+        res += k;
+      return res;
+    }
+
+    inline long long getCeil(const long long i, const long long k) const {
+      if (i % k == 0)
+        return i / k;
+      else
+        return i / k + 1;
+    }
+
+    inline long long getFloor(const long long i, const long long k) const {
+      return i / k;
+    }
+
+    template<int count>
+    void check(int extent) {
+      check<count>((long long)(extent));
+    }
+
+    template<int count>
+    void check(size_t extent) {
+      check<count>((long long)(extent));
+    }
+
+    // the first DIM parameters must be used to
+    // specify the extent
+    template<int count>
+    void check(long long extent) {
+      m_sizespec.m_extent[count] = extent;
+      argc_extents++;
+
+    }
+
+    // the next (up to DIM) parameters may be used to 
+    // specify the distribution pattern
+    // TODO: How many are required? 0/1/DIM ?
+    template<int count>
+    void check(const TeamSpec<ndim_> & ts) {
+      m_teamspec = ts;
+      argc_ts++;
+    }
+
+    template<int count>
+    void check(dash::Team & t) {
+      m_team = Team(t);
+    }
+
+    template<int count>
+    void check(const SizeSpec<ndim_, arr> & ds) {
+      m_sizespec = ds;
+      argc_extents += ndim_;
+    }
+
+    template<int count>
+    void check(const DistributionSpec<ndim_> & ds) {
+      argc_DistEnum = ndim_;
+      m_distspec = ds;
+    }
+
+    template<int count>
+    void check(const DistEnum& ds) {
+      int dim = count - ndim_;
+      m_distspec.m_extent[dim] = ds;
+      argc_DistEnum++;
+    }
+
+    // peel off one argument and call 
+    // the appropriate check() function
+
+    template<int count, typename T, typename ... Args>
+    void check(T t, Args&&... args) {
+      check<count>(t);
+      check<count + 1>(std::forward<Args>(args)...);
+    }
+
+    // check pattern constraints for tile
+    void checkTile() const {
+      int hastile = 0;
+      int invalid = 0;
+      for (int i = 0; i < ndim_ - 1; i++) {
+        if (m_distspec.m_extent[i].type == DistEnum::disttype::TILE)
+          hastile = 1;
+        if (m_distspec.m_extent[i].type != m_distspec.m_extent[i + 1].type)
+          invalid = 1;
+      }
+      assert(!(hastile && invalid));
+      if (hastile) {
+        for (int i = 0; i < ndim_; i++) {
+          assert(
+            m_sizespec.m_extent[i] % (m_distspec.m_extent[i].blocksz)
+            == 0);
+        }
+      }
+    }
+
+    void checkValidDistEnum() {
+      int n_validdist = 0;
+      for (int i = 0; i < ndim_; i++) {
+        if (m_distspec.m_extent[i].type != DistEnum::disttype::NONE)
+          n_validdist++;
+      }
+      assert(n_validdist == m_teamspec.ndim());
+    }
+
+    // AccessBase is an aggregation of local layout of a unit among the
+    // global unit.
+    // It is initialized after pattern parameters are received based on the
+    // DistEnum and SizeSpec, and has to be construct() if extents are
+    // changed.
+    // AccessBase is currently identical at all units, difference is
+    // further fixed during at() and atunit().
+    // TODO: m_lextent[] is a revised apprach to calculate unit-dependent
+    // local layout. It is calcualted via myid£¬ and results in unit-
+    // dependent AccessBase. If AccessBase.m_extent[] values are replaced
+    // with m_lextent[] values, then on-the-fly cyclicfix[] can be
+    // eliminated.
+    void constructAccessBase() {
+      m_blocksz = 1;
+
+      for (size_t i = 0; i < ndim_; i++) {
+        long long dimunit;
+        size_t myidx;
+
+        if (ndim_ > 1 && m_teamspec.ndim() == 1) {
+          dimunit = m_teamspec.size();
+          myidx = m_teamspec.coords(m_team.myid())[ndim_-1];
+        }
+        else {
+          dimunit = m_teamspec.m_extent[i];
+          myidx = m_teamspec.coords(m_team.myid())[i];
+        }
+
+        long long cycle = dimunit * m_distspec.m_extent[i].blocksz;
+
+        switch (m_distspec.m_extent[i].type) {
+        case DistEnum::disttype::BLOCKED:
+          m_accessbase.m_extent[i] =
+            m_sizespec.m_extent[i] % dimunit == 0 ?
+            m_sizespec.m_extent[i] / dimunit :
+            m_sizespec.m_extent[i] / dimunit + 1;
+          m_blocksz *= m_accessbase.m_extent[i];
+
+          if (m_sizespec.m_extent[i] % dimunit != 0)
+              if( myidx == dimunit - 1)
+                m_lextent[i] = m_sizespec.m_extent[i] % (
+                    m_sizespec.m_extent[i] / dimunit + 1);
+              else
+                m_lextent[i] = m_sizespec.m_extent[i] / dimunit + 1;
+          else    
+            m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
+
+          break;
+        case DistEnum::disttype::BLOCKCYCLIC:
+          if (m_sizespec.m_extent[i] / cycle == 0)
+            m_accessbase.m_extent[i] = m_distspec.m_extent[i].blocksz;
+          else
+            m_accessbase.m_extent[i] = m_sizespec.m_extent[i]
+            / cycle
+            * m_distspec.m_extent[i].blocksz;
+          m_blocksz *= m_distspec.m_extent[i].blocksz;
+
+          if (m_sizespec.m_extent[i] % cycle != 0)
+            m_lextent[i] =
+              (m_sizespec.m_extent[i] / cycle) *
+              m_distspec.m_extent[i].blocksz +
+              (myidx - (m_sizespec.m_extent[i] % cycle) /
+                        m_distspec.m_extent[i].blocksz ) < 0
+                ? m_distspec.m_extent[i].blocksz
+                : (m_sizespec.m_extent[i] % cycle) %
+                  m_distspec.m_extent[i].blocksz;
+          else
+            m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
+
+          break;
+        case DistEnum::disttype::CYCLIC:
+          m_accessbase.m_extent[i] = m_sizespec.m_extent[i] / dimunit;
+          m_blocksz *= 1;
+
+          if (m_sizespec.m_extent[i] % dimunit != 0 &&
+              myidx > (m_sizespec.m_extent[i] % dimunit) - 1)
+            m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
+          else
+            m_lextent[i] = m_sizespec.m_extent[i] / dimunit + 1;
+
+          break;
+        case DistEnum::disttype::TILE:
+          m_accessbase.m_extent[i] = m_distspec.m_extent[i].blocksz;
+          m_blocksz *= m_distspec.m_extent[i].blocksz;
+
+          if (m_sizespec.m_extent[i] % cycle != 0)
+            m_lextent[i] = 
+              (m_sizespec.m_extent[i] / cycle) *
+              m_distspec.m_extent[i].blocksz + 
+              (myidx - (m_sizespec.m_extent[i] % cycle) /
+                        m_distspec.m_extent[i].blocksz) < 0
+                ? m_distspec.m_extent[i].blocksz
+                : (m_sizespec.m_extent[i] % cycle) %
+                  m_distspec.m_extent[i].blocksz;
+          else
+            m_lextent[i] = m_sizespec.m_extent[i] / dimunit;
+
+          break;
+        case DistEnum::disttype::NONE:
+          m_accessbase.m_extent[i] = m_sizespec.m_extent[i];
+          m_blocksz *= m_sizespec.m_extent[i];
+
+          m_lextent[i] = m_sizespec.m_extent[i];
+
+          break;
+        default:
+          break;
+        }
+      }
+      m_accessbase.construct();
+
+      for (int i = 0; i < ndim_; i++)
+        m_lnelem *= m_lextent[i];
     }
   };
 }

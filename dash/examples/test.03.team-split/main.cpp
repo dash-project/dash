@@ -19,11 +19,11 @@ int main(int argc, char* argv[])
   dash::Team& t1 = t0.split(2);
   dash::Team& t2 = t1.split(2);
 
-  cout<<myid<<"/"<<size<<": ";
-  cout<<t0.position()<<":["<<t0.myid()<<","<<t0.size()<<"] ";
-  cout<<t1.position()<<":["<<t1.myid()<<","<<t1.size()<<"] ";
-  cout<<t2.position()<<":["<<t2.myid()<<","<<t2.size()<<"] ";
-  cout<<endl;
+  std::cout << myid << "/" << size << ": "
+            << t0.position() << ":[" << t0.myid() << "," << t0.size() <<"] "
+            << t1.position() << ":[" << t1.myid() << "," << t1.size() <<"] "
+            << t2.position() << ":[" << t2.myid() << "," << t2.size() <<"] "
+            << std::endl;
 
   dash::finalize();
 }

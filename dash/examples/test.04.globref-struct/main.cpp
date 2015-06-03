@@ -21,7 +21,7 @@ struct MyStruct
 
 std::ostream& operator<<(std::ostream& os, const MyStruct& s)
 {
-  os << "a:'"<<s.a<<"' b:"<<s.b<<" c:"<<s.c<<endl;
+  os << "a:'"<<s.a<<"' b:"<<s.b<<" c:"<<s.c<<std::endl;
   return os;
 }
 

@@ -1,7 +1,7 @@
 #include <libdash.h>
 #include "PatternTest.h"
 
-TEST_F(PatternTest, DistributeDim1) {
+TEST_F(PatternTest, Distribute1DimBlocked) {
   int team_size  = dash::Team::All().size();
   int block_size = ceil(_num_elem / team_size);
   dash::Pattern<1> pat_blocked(
@@ -10,7 +10,7 @@ TEST_F(PatternTest, DistributeDim1) {
       dash::TeamSpec<1>(),
       dash::Team::All());
   // Fails:
-  EXPECT_EQ(pat_blocked.nelem(), _num_elem);
+  EXPECT_EQ(pat_blocked.capacity(), _num_elem);
   EXPECT_EQ(pat_blocked.blocksize(1), block_size);
   // First element -> unit 0
   EXPECT_EQ(
@@ -25,4 +25,10 @@ TEST_F(PatternTest, DistributeDim1) {
   EXPECT_EQ(
       pat_blocked.index_to_unit(std::array<long long, 1> {block_size}),
       1);
+}
+
+TEST_F(PatternTest, Distribute1DimCyclic) {
+}
+
+TEST_F(PatternTest, Distribute1DimBlockcyclic) {
 }

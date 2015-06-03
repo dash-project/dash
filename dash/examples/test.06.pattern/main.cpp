@@ -42,7 +42,7 @@ void test_fwd_mapping(size_t size)
 
   fprintf(stderr, "------------------------------------------------------------------------- \n");
   fprintf(stderr, " *** This is a test with %lld units and index space of %lld elements *** \n",
-	  p1.nunits(), p1.nelem() );
+	  p1.nunits(), p1.capacity() );
   fprintf(stderr, " index -> b=block-id (unit-id, elem-id)\n");
   fprintf(stderr, "       p1          p2          p3          p4          p5          p6\n");
   fprintf(stderr, "------------------------------------------------------------------------- \n");
