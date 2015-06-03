@@ -4,7 +4,8 @@ PROJECT_NAME           = "DASH"
 PROJECT_NUMBER         = @DASH_VERSION_MAJOR@.@DASH_VERSION_MINOR@.@DASH_VERSION_PATCH@
 STRIP_FROM_PATH        = @PROJECT_SOURCE_DIR@ \
                          @PROJECT_BINARY_DIR@
-INPUT                  = "@PROJECT_SOURCE_DIR@/dart-if/v3.1/include" \
+INPUT                  = "@PROJECT_SOURCE_DIR@/doc/config/mainpage.dox" \
+                         "@PROJECT_SOURCE_DIR@/dart-if/v3.1/include" \
                          "@PROJECT_SOURCE_DIR@/dash/include"
 #                        "@PROJECT_SOURCE_DIR@/dart-impl/mpi/include" \
 #                        "@PROJECT_SOURCE_DIR@/dart-impl/shmem/dart-shmem/include" \
