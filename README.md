@@ -1,4 +1,4 @@
-DASH 
+DASH
 ====
 
 A C++ Template Library for Distributed Data Structures with Support
@@ -117,4 +117,18 @@ Links
 
 The DART project homepage: http://www.dart-project.org
 The Munich Network Management homepage: http://www.mnm-team.org
+
+Developer Notes
+===============
+
+This section is relevant if you intend to contribute code to the DASH project.
+
+We follow the Google C++ Style Guide which is widely accepted in prevalent open source projects:
+http://google.github.io/styleguide/cppguide.html
+
+The standards defined by the LLVM team are worth mentioning, too:
+http://llvm.org/docs/CodingStandards.html
+
+The Chrome project maintains a best practice guide for the use of C++11 features:
+Chrome (C++11 features): http://chromium-cpp.appspot.com
 
