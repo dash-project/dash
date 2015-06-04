@@ -29,6 +29,7 @@ clean :
 
 printenv : 
 	@echo "DART_IMPL   = $(DART_IMPL)"
+	@echo "DART_IF     = $(DART_IF)"
 	@echo "DASH_ROOT   = $(DASH_ROOT)"
 	@echo "LIBDART_DIR = $(LIBDART_DIR)"
 	@echo "LIBDART     = $(LIBDART)"
