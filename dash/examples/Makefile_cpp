@@ -26,7 +26,7 @@ printenv :
 	 @echo "DASH_ROOT     = $(DASH_ROOT)"
 	 @echo "LIBDASH       = $(LIBDASH)"
 	 @echo "DART_IMPL     = $(DART_IMPL)"
-	 @echo "LIBDARTem       = $(LIBDART)"
+	 @echo "LIBDART       = $(LIBDART)"
 	 @echo "LIBDART_EXTRA = $(LIBDART_EXTRA)"
 	 
 
@@ -45,3 +45,8 @@ $(PROG) : main.o
 clean : 
 	rm -f *.o *~
 	rm -f $(PROG)
+
+# clean dash lib and dart lib too
+fresh : clean
+	make -C $(DASH_ROOT)/src clean
+	make -C $(LIBDART_DIR) clean
