@@ -21,5 +21,6 @@
 #include <dash/Array.h>
 #include <dash/Matrix.h>
 #include <dash/Shared.h>
+#include <dash/Exception.h>
 
 #endif // DASH__LIBDASH_H_

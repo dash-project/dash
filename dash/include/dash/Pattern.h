@@ -262,15 +262,14 @@ public:
 
   long long glob_at_(
     std::array<long long, NumDimensions> input,
-    ViewSpec<NumDimensions> &vs) const {
+    ViewSpec<NumDimensions> & vs) const {
     assert(input.size() == NumDimensions);
 
     std::array<long long, NumDimensions> index;
     for (size_t i = 0; i < NumDimensions; i++) {
       index[i] = vs.begin[i] + input[i];
     }
-
-    return  m_sizespec.at(index);
+    return m_sizespec.at(index);
   }
 
   long long index_to_elem(

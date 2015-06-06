@@ -12,6 +12,7 @@
 #include <cassert>
 
 #include <dash/Enums.h>
+#include <dash/Exception.h>
 
 namespace dash {
 
@@ -35,25 +36,38 @@ protected:
   size_t m_ndim;
 
 public:
+  /**
+   * Default constructor, creates a cartesian coordinate of extent 0
+   * in all dimensions.
+   */
   CartCoord()
   : m_size(0),
     m_ndim(NumDimensions) {
     for(auto i = 0; i < NumDimensions; i++) {
       m_extent[i] = 0;
+      m_offset[i] = 0;
     }
   }
 
+  /**
+   * Constructor, creates a cartesian coordinate of given extents in
+   * all dimensions.
+   */
   template<typename... Args>
   CartCoord(Args... args) 
-  : m_extent { SizeType(args)... },
-    m_size(0) {
+  : m_size(0),
+    m_extent { SizeType(args)... },
+    m_ndim(NumDimensions) {
     static_assert(
       sizeof...(Args) == NumDimensions,
       "Invalid number of arguments");
-
     m_size = 1;
     for(auto i = 0; i < NumDimensions; i++ ) {
-      assert(m_extent[i] > 0);
+      if (m_extent[i] <= 0) {
+        DASH_THROW(
+          dash::exception::OutOfBounds,
+          "Coordinates for CartCoord() must be greater than 0");
+      }
       // TODO: assert( std::numeric_limits<SizeType>::max()/m_extent[i]);
       m_size *= m_extent[i];
     }
@@ -64,14 +78,31 @@ public:
     }
   }
   
+  /**
+   * The coordinate's rank.
+   *
+   * \return The number of dimensions in the coordinate
+   */
   int rank() const {
     return NumDimensions;
   }
   
+  /**
+   * The number of discrete elements within the space spanned by the
+   * coordinate.
+   *
+   * \return The number of discrete elements in the coordinate's space
+   */
   SizeType size() const {
     return m_size;
   }
   
+  /**
+   * The coordinate's extent in the given dimension.
+   *
+   * \param  dim  The dimension in the coordinate
+   * \return      The extent in the given dimension
+   */
   SizeType extent(SizeType dim) const { 
     assert(dim < NumDimensions);
     return m_extent[dim];
@@ -86,6 +117,12 @@ public:
       "Invalid number of arguments");
     SizeType offs = 0;
     for (int i = 0; i < NumDimensions; i++) {
+      if (pos[i] >= m_extent[i]) {
+        // Coordinate out of bounds:
+        DASH_THROW(
+          dash::exception::OutOfBounds,
+          "Given coordinate for CartCoord::at() is out of bounds");
+      }
       offs += m_offset[i] * pos[i];
     }
     return offs;

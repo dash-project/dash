@@ -2,9 +2,6 @@
 #define DASH__DIMENSIONAL_SPEC_H_
 
 #include <assert.h>
-#include <functional>
-#include <cstring>
-#include <iostream>
 #include <array>
 
 #include <dash/Enums.h>
