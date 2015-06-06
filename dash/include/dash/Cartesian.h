@@ -38,6 +38,9 @@ public:
   CartCoord()
   : m_size(0),
     m_ndim(NumDimensions) {
+    for(auto i = 0; i < NumDimensions; i++) {
+      m_extent[i] = 0;
+    }
   }
 
   template<typename... Args>
@@ -91,9 +94,11 @@ public:
   SizeType at(
     ::std::array<SizeType, NumDimensions> pos,
     ::std::array<SizeType, NumDimensions> cyclicfix) const {
-    static_assert(pos.size()==NumDimensions,
+    static_assert(
+      pos.size()==NumDimensions,
       "Invalid number of arguments");
-    static_assert(cyclicfix.size() == NumDimensions,
+    static_assert(
+      cyclicfix.size() == NumDimensions,
       "Invalid number of arguments");
     SizeType offs = 0;
     for (int i = 0; i < NumDimensions; i++) {
