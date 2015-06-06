@@ -21,7 +21,7 @@ struct MyStruct
 
 std::ostream& operator<<(std::ostream& os, const MyStruct& s)
 {
-  os << "a:'"<<s.a<<"' b:"<<s.b<<" c:"<<s.c<<std::endl;
+  os << "a:'"<<s.a<<"' b:"<<s.b<<" c:"<<s.c;
   return os;
 }
 
@@ -41,11 +41,18 @@ int main(int argc, char* argv[])
     auto r2 = arr[1];
     // !! r1.a = 'x'; can't overload "." operator
 
-    // auto r1_char = r1.member<char>(offsetof(MyStruct,a));
-    // r1_char = 'c';
+    auto r1_char = r1.member<char>(offsetof(MyStruct,a));
+    r1_char = 'c';
 
-    //auto r2_char = r2.member<char>(&MyStruct::a);
-    //r2_char = 'd';
+    auto r2_char = r2.member<char>(&MyStruct::a);
+    r2_char = 'd';
+
+    arr[2].member<char>(&MyStruct::a)='e';
+    
+    // template param. automatically deduced
+    arr[3].member(&MyStruct::a)='f';
+
+    arr[4].member(&MyStruct::c)=22.3;
   }
   
   arr.barrier();

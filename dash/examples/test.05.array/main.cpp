@@ -38,23 +38,22 @@ int main(int argc, char* argv[])
       arr4[i]=i;
       arr5[i]=i;
     }
-    std::sort(arr5.begin(), arr5.end());
   }
 
   dash::Team::All().barrier();
 
   if( myid==size-1 ) {
     for( int i=0; i<arr1.size(); i++ ) {
+      assert( i==arr1[i] );
       assert( (int)arr1[i]==(int)arr2[i]);
       assert( (int)arr1[i]==(int)arr3[i]);
       assert( (int)arr1[i]==(int)arr4[i]);
       assert( (int)arr1[i]==(int)arr5[i]);
-
-      cout<<arr5[i]<<" ";
     }
-    cout<<endl;
+
+    for( auto el: arr1 ) { cout<<el<<" "; } cout<<endl;	  
   }
 
-  
+
   dash::finalize();
 }
