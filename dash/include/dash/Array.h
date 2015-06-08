@@ -39,7 +39,8 @@ const_reverse_iterator  Behaves like const value_type*
              reference  value_type&
        const_reference  const value_type&
 
-               pointer  Behaves like value_type*         const_pointer  Behaves like const value_type*
+               pointer  Behaves like value_type*         
+         const_pointer  Behaves like const value_type*
 */
 
 
@@ -174,6 +175,12 @@ public:
     dart_gptr_getaddr(gptr, &addr);
     m_lbegin=static_cast<ELEMENT_TYPE*>(addr);
 
+    // determine the real number of local elements
+    for( ; m_lsize>0; m_lsize-- ) {
+      if( m_pattern.unit_and_elem_to_index(m_myid, m_lsize-1)>= 0 )
+	break;
+    }
+    
     dart_gptr_incaddr(&gptr, m_lsize*sizeof(ELEMENT_TYPE));
     dart_gptr_getaddr(gptr, &addr);
     m_lend=static_cast<ELEMENT_TYPE*>(addr);    
@@ -244,6 +251,10 @@ public:
   constexpr size_type size() const noexcept {
     return m_size;
   }
+
+  constexpr size_type lsize() const noexcept {
+    return m_lsize;
+  }
   
   constexpr bool empty() const noexcept {
     return size() == 0;
@@ -272,40 +283,36 @@ public:
   dash::HView<Array<ELEMENT_TYPE>, level> hview() {
     return dash::HView<Array<ELEMENT_TYPE>, level>(*this);
   }
-  
-  void min_element() {
-    dash::Array<ELEMENT_TYPE> minval(m_team.size());
-    
-    // find the local min element
-    ELEMENT_TYPE* lmin =std::min_element(lbegin(), lend()); 
-    minval[m_team.myid()] = *lmin;
-    
-    minval.barrier();
 
+
+  // find the location of the global min. element
+  // TODO: support custom comparison operator, similar to 
+  // std::min_element()
+  GlobPtr<ELEMENT_TYPE> min_element() {
     typedef dash::GlobPtr<ELEMENT_TYPE> globptr_t;
-    dash::Shared<globptr_t> minel(m_team);
 
-    if( minval.team().myid()==0 ) {
-      globptr_t ptr = std::min_element(minval.begin(), minval.end());
+    dash::Array<globptr_t> minarr(m_team.size());
 
-      minel.set(ptr);
+    // find the local min. element in parallel
+    ELEMENT_TYPE *lmin =std::min_element(lbegin(), lend());     
+    minarr[m_team.myid()] = local.globptr(lmin);
 
-      //std::cout<<ptr<<" "<<*ptr<<std::endl;
+    dash::Shared<globptr_t> min;
 
-      //std::cout<<ptr<<" "<<*ptr<<std::endl;
-      //std::cout<<globptr_t(ptr)<<" "<<*globptr_t(ptr)<<std::endl;
-    }    
-    
-    m_team.barrier();
-    
-
-    if( minval.team().myid()==0 ) {
-      globptr_t ptr = minel.get();
-
-      std::cout<<ptr<<" "<<*ptr<<std::endl;
+    // find the global min. element
+    if(m_team.myid()==0) {
+      globptr_t minloc=minarr[0];
+      ELEMENT_TYPE minval=*minloc;
+      for( auto i=1; i<minarr.size(); i++ ) {
+	if( *((globptr_t)minarr[i])<minval ) 
+	  minloc=minarr[i];
+      }
+      min.set(minloc);
     }
-  }  
+    m_team.barrier();
 
+    return min.get();
+  }
 };
 
 
