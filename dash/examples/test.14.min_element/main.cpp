@@ -20,18 +20,14 @@ int main(int argc, char* argv[]) {
 
   if (myid == 0) {
     for (int i = 0; i < arr.size(); i++) {
-      arr[i] = 200-i;
+      arr[i] = 1000-i;
     }
   }
-
-  if (myid == 1) {
-    auto lptr = arr.local.begin();
-    auto gptr = arr.local.globptr(lptr);
-    cout << gptr << endl; // << (*gptr) << endl;
-  }
-
+  
   arr.barrier();
-  arr.min_element();
+
+  auto min =  arr.min_element();
+  cout<<min<<" "<<*min<<endl;
 
   dash::finalize();
 }
