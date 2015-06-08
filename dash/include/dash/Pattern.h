@@ -18,16 +18,18 @@ namespace dash {
  * Defines how a list of global indices is mapped to single units
  * within a Team.
  */
-template<size_t NumDimensions, MemArrange arr = ROW_MAJOR>
+template<
+  size_t NumDimensions,
+  MemArrange Arrangement = ROW_MAJOR>
 class Pattern {
 private:
-  DistributionSpec<NumDimensions> m_distspec;
-  TeamSpec<NumDimensions>         m_teamspec;
-  AccessBase<NumDimensions, arr>  m_accessbase;
-  SizeSpec<NumDimensions, arr>    m_sizespec;
+  DistributionSpec<NumDimensions>        m_distspec;
+  TeamSpec<NumDimensions>                m_teamspec;
+  AccessBase<NumDimensions, Arrangement> m_accessbase;
+  SizeSpec<NumDimensions, Arrangement>   m_sizespec;
 
 public:
-  ViewSpec<NumDimensions>         m_viewspec;
+  ViewSpec<NumDimensions>                m_viewspec;
 
 private:
   long long      m_local_begin[NumDimensions];
@@ -75,7 +77,7 @@ public:
   }
 
   Pattern(
-    const SizeSpec<NumDimensions, arr> & sizespec,
+    const SizeSpec<NumDimensions, Arrangement> & sizespec,
     const DistributionSpec<NumDimensions> & dist =
       DistributionSpec<NumDimensions>(), 
     const TeamSpec<NumDimensions> & teamorg =
@@ -94,7 +96,7 @@ public:
   }
 
   Pattern(
-    const SizeSpec<NumDimensions, arr> & sizespec,
+    const SizeSpec<NumDimensions, Arrangement> & sizespec,
     const DistributionSpec<NumDimensions> & dist =
       DistributionSpec<NumDimensions>(),
     dash::Team & team =
@@ -436,7 +438,6 @@ public:
       m_blocksz     = other.m_blocksz;
       argc_DistEnum = other.argc_DistEnum;
       argc_extents  = other.argc_extents;
-
     }
     return *this;
   }
@@ -459,7 +460,7 @@ public:
     return m_distspec;
   }
 
-  SizeSpec<NumDimensions, arr> sizespec() const {
+  SizeSpec<NumDimensions, Arrangement> sizespec() const {
     return m_sizespec;
   }
 
@@ -529,21 +530,21 @@ public:
   }
 
 private:
-  inline long long modulo(const long long i, const long long k) const {
+  long long modulo(const long long i, const long long k) const {
     long long res = i % k;
     if (res < 0)
       res += k;
     return res;
   }
 
-  inline long long getCeil(const long long i, const long long k) const {
+  long long getCeil(const long long i, const long long k) const {
     if (i % k == 0)
       return i / k;
     else
       return i / k + 1;
   }
 
-  inline long long getFloor(const long long i, const long long k) const {
+  long long getFloor(const long long i, const long long k) const {
     return i / k;
   }
 
@@ -581,7 +582,7 @@ private:
   }
 
   template<int count>
-  void check(const SizeSpec<NumDimensions, arr> & ds) {
+  void check(const SizeSpec<NumDimensions, Arrangement> & ds) {
     m_sizespec = ds;
     argc_extents += NumDimensions;
   }
