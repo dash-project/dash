@@ -372,7 +372,7 @@ dart_ret_t dart_shmem_team_init( dart_team_t team, dart_unit_t myid,
       res = dart_memarea_create_mempool( DART_TEAM_ALL,
 					 tsize, 
 					 myid, 
-					 4096,
+					 1024*1024,
 					 0 /* not aligned */ );
 
       // fprintf(stderr, "created a mempool=%d\n", res);
