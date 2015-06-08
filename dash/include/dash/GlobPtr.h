@@ -8,6 +8,7 @@
 #ifndef DASH__GLOB_PTR_H_
 #define DASH__GLOB_PTR_H_
 
+#include <cstddef>
 #include <dash/dart/if/dart.h>
 
 namespace dash {
@@ -34,6 +35,10 @@ public:
 
   explicit GlobPtr(dart_gptr_t p) { 
     m_dartptr = p; 
+  }
+  
+  GlobPtr(nullptr_t p) {
+    m_dartptr = DART_GPTR_NULL;
   }
 
   GlobPtr(const GlobPtr& other) = default;
