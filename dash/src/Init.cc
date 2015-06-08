@@ -11,6 +11,7 @@ void dash::init(int *argc, char ***argv)
 
 void dash::finalize()
 {
+    dash::barrier();
   //dart_exit();
 }
 
