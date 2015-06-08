@@ -295,20 +295,38 @@ public:
 
     // find the local min. element in parallel
     ELEMENT_TYPE *lmin =std::min_element(lbegin(), lend());     
-    minarr[m_team.myid()] = local.globptr(lmin);
 
+    if( lmin==lend() ) {
+      minarr[m_team.myid()] = nullptr;
+    } else {
+      minarr[m_team.myid()] = local.globptr(lmin);
+
+      //std::cout<<"Local min at "<<m_team.myid()<<": "<<
+      //*((globptr_t)minarr[m_team.myid()])<<std::endl;
+    }
+
+    dash::barrier();
     dash::Shared<globptr_t> min;
-
+ 
     // find the global min. element
     if(m_team.myid()==0) {
       globptr_t minloc=minarr[0];
       ELEMENT_TYPE minval=*minloc;
+
       for( auto i=1; i<minarr.size(); i++ ) {
-	if( *((globptr_t)minarr[i])<minval ) 
-	  minloc=minarr[i];
+	if( (globptr_t)minarr[i] != nullptr ) {
+	  ELEMENT_TYPE val = *(globptr_t)minarr[i];
+
+	  if( val<minval ) {
+	    minloc=minarr[i];
+	    //std::cout<<"Setting min val to "<<val<<std::endl;
+	    minval=val;
+	  }
+	}
       }
       min.set(minloc);
     }
+
     m_team.barrier();
 
     return min.get();
