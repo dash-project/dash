@@ -45,7 +45,8 @@ private:
 public:
   template<typename ... Args>
   Pattern(Args && ... args) {
-    static_assert(sizeof...(Args) >= NumDimensions,
+    static_assert(
+      sizeof...(Args) >= NumDimensions,
       "Invalid number of constructor arguments.");
 
     check<0>(std::forward<Args>(args)...);
@@ -600,7 +601,7 @@ private:
   }
 
   template<int count>
-  void check(const DistEnum& ds) {
+  void check(const DistEnum & ds) {
     int dim = count - NumDimensions;
     m_distspec.m_extent[dim] = ds;
     argc_DistEnum++;
