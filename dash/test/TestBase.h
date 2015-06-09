@@ -22,12 +22,15 @@ extern void ColoredPrintf(
 } // namespace testing
 
 #define LOG_MESSAGE(...) do { \
-  testing::internal::ColoredPrintf(\
+  testing::internal::ColoredPrintf( \
     testing::internal::COLOR_GREEN, \
     "[          ] "); \
   testing::internal::ColoredPrintf(\
     testing::internal::COLOR_YELLOW, \
     __VA_ARGS__); \
+  testing::internal::ColoredPrintf( \
+    testing::internal::COLOR_YELLOW, \
+    "\n"); \
 } while(0)
 
 #endif // DASH__TEST__TEST_BASE_H_

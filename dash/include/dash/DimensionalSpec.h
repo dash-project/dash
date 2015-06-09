@@ -41,7 +41,7 @@ public:
  * Specialization of CartCoord.
  */
 template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
-class DimRangeBase : public CartCoord<NumDimensions, long long> {
+class DimRangeBase : public CartCoord<NumDimensions, long long, Arrange> {
 public:
   template<size_t NumDimensions_, MemArrange Arrange_> friend class Pattern;
   DimRangeBase() { }
@@ -49,7 +49,7 @@ public:
   // Variadic constructor
   template<typename ... values>
   DimRangeBase(values ... Values) :
-    CartCoord<NumDimensions, long long>::CartCoord(Values...) {
+    CartCoord<NumDimensions, long long, Arrange>::CartCoord(Values...) {
   }
 
 protected:
@@ -184,11 +184,8 @@ public:
   void update_size() {
     nelem = 1;
 
-    for (size_t i = NumDimensions - view_dim; i < NumDimensions; i++)
-    {
-      if(range[i]<=0)
-      printf("i %d rangei %d\n", i, range[i]);
-      assert(range[i]>0);
+    for (size_t i = NumDimensions - view_dim; i < NumDimensions; i++) {
+      assert(range[i] > 0);
       nelem *= range[i];
     }
   }
