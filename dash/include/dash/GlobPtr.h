@@ -37,7 +37,7 @@ public:
     m_dartptr = p; 
   }
   
-  GlobPtr(nullptr_t p) {
+  GlobPtr(std::nullptr_t p) {
     m_dartptr = DART_GPTR_NULL;
   }
 
