@@ -153,8 +153,16 @@ public:
    * \param  dim  The dimension in the coordinate
    * \return      The extent in the given dimension
    */
-  SizeType extent(SizeType dim) const { 
+  SizeType extent(SizeType dim) const {
     assert(dim < NumDimensions);
+    if (dim >= NumDimensions) {
+      // Dimension out of bounds:
+      DASH_THROW(
+        dash::exception::OutOfBounds,
+        "Given dimension " << dim <<
+        " for CartCoord::extent() is out of bounds" <<
+        " (" << NumDimensions << ")");
+    }
     return m_extent[dim];
   }
   
@@ -173,18 +181,6 @@ public:
     return at(pos);
   }
   
-#if 0
-  /**
-   * Convert the given coordinates to a linear index.
-   *
-   * \param  pos  An array containing the coordinates, ordered by
-   * dimension (x, y, z, ...)
-   */
-  SizeType at(std::array<SizeType, NumDimensions> pos) const {
-    return at<MemArrange>(pos);
-  }
-#endif
-
   /**
    * Convert the given coordinates to a linear index.
    *

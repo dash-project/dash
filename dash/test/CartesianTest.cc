@@ -72,6 +72,41 @@ TEST_F(CartesianTest, Conversion2Dim) {
   }
 }
 
+TEST_F(CartesianTest, Conversion3Dim) {
+  int extent_x = 5;
+  int extent_y = 7;
+  int extent_z = 11;
+  size_t size  = extent_x * extent_y * extent_z;
+  dash::CartCoord<3, size_t, dash::ROW_MAJOR> cartesian3dR(
+    extent_x, extent_y, extent_z);
+  dash::CartCoord<3, size_t, dash::COL_MAJOR> cartesian3dC(
+    extent_x, extent_y, extent_z);
+  EXPECT_EQ(cartesian3dR.rank(), 3);
+  EXPECT_EQ(cartesian3dC.rank(), 3);
+  EXPECT_EQ(cartesian3dR.size(), size);
+  EXPECT_EQ(cartesian3dC.size(), size);
+  EXPECT_EQ(cartesian3dR.extent(0), extent_x);
+  EXPECT_EQ(cartesian3dR.extent(0), extent_x);
+  EXPECT_EQ(cartesian3dC.extent(1), extent_y);
+  EXPECT_EQ(cartesian3dC.extent(1), extent_y);
+  EXPECT_EQ(cartesian3dC.extent(2), extent_z);
+  EXPECT_EQ(cartesian3dC.extent(2), extent_z);
+  for (size_t x = 0; x < extent_x; ++x) {
+    for (size_t y = 0; y < extent_y; ++y) {
+      for (size_t z = 0; z < extent_z; ++z) {
+        size_t exp_index_row_major = (z * extent_x * extent_y) + (y * extent_x) + x;
+        size_t exp_index_col_major = (x * extent_y * extent_z) + (y * extent_z) + z;
+        EXPECT_EQ(exp_index_row_major, cartesian3dR.at(x, y, z));
+        EXPECT_EQ(x, cartesian3dR.coords(exp_index_row_major)[0]);
+        EXPECT_EQ(y, cartesian3dR.coords(exp_index_row_major)[1]);
+        EXPECT_EQ(exp_index_col_major, cartesian3dC.at(x, y, z));
+        EXPECT_EQ(x, cartesian3dC.coords(exp_index_col_major)[0]);
+        EXPECT_EQ(y, cartesian3dC.coords(exp_index_col_major)[1]);
+      }
+    }
+  }
+}
+
 TEST_F(CartesianTest, Conversion10Dim) {
   const size_t Dimensions = 10;
   ::std::array<size_t, Dimensions> extents =

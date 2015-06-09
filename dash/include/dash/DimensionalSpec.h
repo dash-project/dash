@@ -7,6 +7,7 @@
 #include <dash/Enums.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
+#include <dash/Exception.h>
 
 namespace dash {
 
@@ -59,7 +60,11 @@ protected:
     long long cap = 1;
     this->m_offset[this->m_ndim - 1] = 1;
     for (size_t i = this->m_ndim - 1; i >= 1; i--) {
-      assert(this->m_extent[i]>0);
+      if (this->m_extent[i] <= 0) {
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Extent must be greater than 0");
+      }
       cap *= this->m_extent[i];
       this->m_offset[i - 1] = cap;
     }
@@ -87,7 +92,7 @@ public:
 };
 
 /** 
- * Represents the local laylout according to the specified pattern.
+ * Represents the local layout according to the specified pattern.
  * 
  * TODO: Can be optimized
  */
