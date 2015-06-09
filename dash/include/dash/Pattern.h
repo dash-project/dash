@@ -249,10 +249,18 @@ public:
     return res;
   }
 
+  /**
+   * Convert given coordinate in pattern to its assigned unit id.
+   * TODO: Will be renamed to \c coord_to_unit.
+   */
   long long index_to_unit(std::array<long long, NumDimensions> input) const {
     return atunit_(input, m_viewspec);
   }
 
+  /**
+   * Convert given coordinate in pattern to its linear local index.
+   * TODO: Will be renamed to \c coord_to_local_index.
+   */
   long long index_to_elem(std::array<long long, NumDimensions> input) const {
     return at_(input, m_viewspec);
   }
@@ -266,8 +274,12 @@ public:
   long long glob_at_(
     std::array<long long, NumDimensions> input,
     ViewSpec<NumDimensions> & vs) const {
-    assert(input.size() == NumDimensions);
-
+    if (input.size() != NumDimensions) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Invalid number of arguments for Pattern::glob_at_: "
+        << "Epected " << NumDimensions << ", got " << input.size());
+    }
     std::array<long long, NumDimensions> index;
     for (size_t i = 0; i < NumDimensions; i++) {
       index[i] = vs.begin[i] + input[i];
@@ -293,7 +305,12 @@ public:
   long long local_at_(
     std::array<long long, NumDimensions> input,
     ViewSpec<NumDimensions> &local_vs) const {
-    assert(input.size() == NumDimensions);
+    if (input.size() != NumDimensions) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Invalid number of arguments for Pattern::local_at_: "
+        << "Epected " << NumDimensions << ", got " << input.size());
+    }
     long long rs = -1;
     std::array<long long, NumDimensions> index;
     std::array<long long, NumDimensions> cyclicfix;
@@ -311,7 +328,12 @@ public:
   long long at_(
     std::array<long long, NumDimensions> input,
     ViewSpec<NumDimensions> vs) const {
-    assert(input.size() == NumDimensions);
+    if (input.size() != NumDimensions) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Invalid number of arguments for Pattern::at_: "
+        << "Epected " << NumDimensions << ", got " << input.size());
+    }
     long long rs = -1;
     long long index[NumDimensions];
     std::array<long long, NumDimensions> accessbase_coord;

@@ -33,4 +33,10 @@ extern void ColoredPrintf(
     "\n"); \
 } while(0)
 
+#define DASH_TEST_LOCAL_ONLY() do { \
+  if (dash::myid() > 0) { \
+    return; \
+  } \
+} while(0)
+
 #endif // DASH__TEST__TEST_BASE_H_

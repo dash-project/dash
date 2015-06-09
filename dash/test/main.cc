@@ -4,6 +4,7 @@
 
 #include "ArrayTest.h"
 #include "PatternTest.h"
+#include "CartesianTest.h"
 
 int main(int argc, char * argv[]) {
   // Init GoogleTest (strips gtest arguments from argv)

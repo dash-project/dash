@@ -137,7 +137,7 @@ private:
       if (parent->m_child) {
         DASH_THROW(
           dash::exception::InvalidArgument,
-          "Error: " << parent << " already has a child, not setting to " << this); 
+          "Child already set for " << parent << ", not setting to " << this); 
       } else {
         parent->m_child = this;
       }

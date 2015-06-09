@@ -5,8 +5,8 @@
  */
 /* @DASH_HEADER@ */
 
-#ifndef INIT_H_INCLUDED
-#define INIT_H_INCLUDED
+#ifndef DASH_INIT_H_
+#define DASH_INIT_H_
 
 #include <dash/dart/if/dart.h>
 
@@ -24,4 +24,4 @@ namespace dash
   void   barrier();
 }
 
-#endif /* INIT_H_INCLUDED */
+#endif // DASH_INIT_H_
