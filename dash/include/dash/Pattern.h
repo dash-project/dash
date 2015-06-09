@@ -10,7 +10,7 @@
 #include <dash/Enums.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/DimensionalSpec.h>
+#include <dash/Dimensional.h>
 
 namespace dash {
 
@@ -24,7 +24,7 @@ template<
 class Pattern {
 private:
   DistributionSpec<NumDimensions>        m_distspec;
-  TeamSpec<NumDimensions>                m_teamspec;
+  TeamSpec<NumDimensions, Arrangement>   m_teamspec;
   AccessBase<NumDimensions, Arrangement> m_accessbase;
   SizeSpec<NumDimensions, Arrangement>   m_sizespec;
 
@@ -53,8 +53,8 @@ public:
 
     int argc = sizeof...(Args);
 
-    //Speficy default patterns for all dims
-    //BLOCKED for the 1st, NONE for the rest
+    // Speficy default patterns for all dims
+    // BLOCKED for the 1st, NONE for the rest
     if (argc_DistEnum == 0) {
       m_distspec.m_extent[0] = BLOCKED;
       argc_DistEnum = 1;
@@ -151,7 +151,7 @@ public:
         switch (m_distspec.m_extent[i].type) {
         case DistEnum::disttype::BLOCKED:
           rs = index[i]
-            / getCeil(m_sizespec.m_extent[i] , m_teamspec.size());
+            / divCeil(m_sizespec.m_extent[i] , m_teamspec.size());
           break;
         case DistEnum::disttype::CYCLIC:
           rs = modulo(index[i], m_teamspec.size());
@@ -177,7 +177,7 @@ public:
         switch (m_distspec.m_extent[i].type) {
         case DistEnum::disttype::BLOCKED:
           accessbase_coord[i] = index[i] /
-                                  getCeil(m_sizespec.m_extent[i],
+                                  divCeil(m_sizespec.m_extent[i],
                                           m_teamspec.m_extent[i]);
           break;
         case DistEnum::disttype::CYCLIC:
@@ -228,16 +228,16 @@ public:
       long long cycle = dimunit * m_distspec.m_extent[i].blocksz;
       switch (m_distspec.m_extent[i].type) {
       case DistEnum::disttype::BLOCKED:
-        res *= getCeil(m_sizespec.m_extent[i], dimunit);
+        res *= divCeil(m_sizespec.m_extent[i], dimunit);
         break;
 
       case DistEnum::disttype::CYCLIC:
-        res *= getCeil(m_sizespec.m_extent[i], dimunit);
+        res *= divCeil(m_sizespec.m_extent[i], dimunit);
         break;
 
       case DistEnum::disttype::BLOCKCYCLIC:
         res *= m_distspec.m_extent[i].blocksz
-          * getCeil(m_sizespec.m_extent[i], cycle);
+          * divCeil(m_sizespec.m_extent[i], cycle);
         break;
       case DistEnum::disttype::NONE:
         res *= m_sizespec.m_extent[i];
@@ -329,7 +329,7 @@ public:
       index[i] = vs.begin[i] + input[i];
 
       long long cycle = dimunit * m_distspec.m_extent[i].blocksz;
-      blocksz[i] = getCeil(m_sizespec.m_extent[i], dimunit);
+      blocksz[i] = divCeil(m_sizespec.m_extent[i], dimunit);
       accessbase_coord[i] = (long long)(index[i] % blocksz[i]);
       cyclicfix[i] = 0;
 
@@ -339,7 +339,7 @@ public:
         accessbase_coord[i] = index[i] % blocksz[i];
         if (i > 0) {
           if (m_sizespec.m_extent[i] % dimunit != 0
-            && getCeil(index[i] + 1, blocksz[i]) == dimunit)
+            && divCeil(index[i] + 1, blocksz[i]) == dimunit)
             cyclicfix[i - 1] = -1;
         }
         break;
@@ -359,11 +359,11 @@ public:
           if (m_sizespec.m_extent[i] < cycle)
             cyclicfix[i - 1] = 0;
           else if ((index[i] / m_distspec.m_extent[i].blocksz) % dimunit
-            < getFloor(m_sizespec.m_extent[i] % cycle,
+            < divFloor(m_sizespec.m_extent[i] % cycle,
             m_distspec.m_extent[i].blocksz))
             cyclicfix[i - 1] = m_distspec.m_extent[i].blocksz;
           else if ((index[i] / m_distspec.m_extent[i].blocksz) % dimunit
-            < getCeil(m_sizespec.m_extent[i] % cycle,
+            < divCeil(m_sizespec.m_extent[i] % cycle,
             m_distspec.m_extent[i].blocksz))
             cyclicfix[i - 1] = m_sizespec.m_extent[i]
             % m_distspec.m_extent[i].blocksz;
@@ -377,11 +377,11 @@ public:
           + (index[i] % cycle) % m_distspec.m_extent[i].blocksz;
         if (i > 0) {
           if ((index[i] / m_distspec.m_extent[i].blocksz) % dimunit
-            < getFloor(m_sizespec.m_extent[i] % cycle,
+            < divFloor(m_sizespec.m_extent[i] % cycle,
             m_distspec.m_extent[i].blocksz))
             cyclicfix[i - 1] = m_distspec.m_extent[i].blocksz;
           else if ((index[i] / m_distspec.m_extent[i].blocksz) % dimunit
-            < getCeil(m_sizespec.m_extent[i] % cycle,
+            < divCeil(m_sizespec.m_extent[i] % cycle,
             m_distspec.m_extent[i].blocksz))
             cyclicfix[i - 1] = m_sizespec.m_extent[i] % cycle;
           else
@@ -443,7 +443,7 @@ public:
   }
 
   /**
-   * The number of elements arranged in this pattern.
+   * The maximum number of elements arranged in this pattern.
    */
   long long capacity() const {
     return m_sizespec.size();
@@ -468,6 +468,12 @@ public:
     return m_teamspec;
   }
 
+  /**
+   * Number of elements in the block in given dimension.
+   *
+   * \param  dim  The dimension in the pattern
+   * \return  The blocksize in the given dimension
+   */
   long long blocksize(size_t dim) const {
     return m_accessbase.m_extent[dim];
   }
@@ -505,8 +511,8 @@ public:
 
     switch (m_distspec.m_extent[dim].type) {
     case DistEnum::disttype::BLOCKED:
-      if ((idx >= getCeil(m_sizespec.m_extent[dim], dimunit)*(dim_offs)) &&
-        (idx < getCeil(m_sizespec.m_extent[dim], dimunit)*(dim_offs + 1)))
+      if ((idx >= divCeil(m_sizespec.m_extent[dim], dimunit)*(dim_offs)) &&
+        (idx < divCeil(m_sizespec.m_extent[dim], dimunit)*(dim_offs + 1)))
         ret = true;
       break;
     case DistEnum::disttype::BLOCKCYCLIC:
@@ -537,14 +543,14 @@ private:
     return res;
   }
 
-  long long getCeil(const long long i, const long long k) const {
+  long long divCeil(const long long i, const long long k) const {
     if (i % k == 0)
       return i / k;
     else
       return i / k + 1;
   }
 
-  long long getFloor(const long long i, const long long k) const {
+  long long divFloor(const long long i, const long long k) const {
     return i / k;
   }
 
@@ -600,9 +606,7 @@ private:
     argc_DistEnum++;
   }
 
-  // peel off one argument and call 
-  // the appropriate check() function
-
+  // Isolates first argument and calls the appropriate check() function.
   template<int count, typename T, typename ... Args>
   void check(T t, Args&&... args) {
     check<count>(t);
@@ -647,7 +651,7 @@ private:
   // further fixed during at() and atunit().
   // TODO: m_lextent[] is a revised apprach to calculate 
   // unit-dependent
-  // local layout. It is calcualted via myid£¬ and results in unit-
+  // local layout. It is calcualted via myid and results in unit-
   // dependent AccessBase. If AccessBase.m_extent[] values are 
   // replaced
   // with m_lextent[] values, then on-the-fly cyclicfix[] can be

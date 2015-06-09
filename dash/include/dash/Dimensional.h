@@ -1,5 +1,5 @@
-#ifndef DASH__DIMENSIONAL_SPEC_H_
-#define DASH__DIMENSIONAL_SPEC_H_
+#ifndef DASH__DIMENSIONAL_H_
+#define DASH__DIMENSIONAL_H_
 
 #include <assert.h>
 #include <array>
@@ -126,7 +126,7 @@ public:
  * \tparam  NumDimensions  Number of dimensions
  */
 template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
-class TeamSpec : public DicmRangeBase<NumDimensions, Arrange> {
+class TeamSpec : public DimRangeBase<NumDimensions, Arrange> {
 public:
   TeamSpec() {
     // Set extent in all dimensions to 1 (minimum)
@@ -251,4 +251,4 @@ public:
 
 }
 
-#endif // DASH__DIMENSIONAL_SPEC_H_
+#endif // DASH__DIMENSIONAL_H_

@@ -1,9 +1,13 @@
 #include <libdash.h>
+#include "TestBase.h"
 #include "PatternTest.h"
 
 TEST_F(PatternTest, Distribute1DimBlocked) {
   int team_size  = dash::Team::All().size();
-  int block_size = ceil(_num_elem / team_size);
+  // Ceil division
+  int block_size = (_num_elem % team_size == 0)
+                     ? _num_elem / team_size
+                     : _num_elem / team_size + 1;
   dash::Pattern<1> pat_blocked(
       dash::SizeSpec<1, dash::ROW_MAJOR>(_num_elem),
       dash::DistributionSpec<1>(dash::BLOCKED),

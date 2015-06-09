@@ -34,8 +34,8 @@ namespace dash {
  */
 class Team {
   template< class U> friend class Array;
-  template< size_t DIM, MemArrange ma> friend class Pattern;
-  template< size_t DIM> friend class TeamSpec;
+  template< size_t DIM, MemArrange MA> friend class Pattern;
+  template< size_t DIM, MemArrange MA> friend class TeamSpec;
   template< class U> friend class Shared;
   template< class U, class Pattern > friend class GlobIter;
   template< class U> friend class GlobRef;
