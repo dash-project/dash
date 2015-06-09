@@ -40,7 +40,8 @@ protected:
   size_t m_ndim;
   /// Extents of the coordinate by dimension.
   SizeType m_extent[NumDimensions];
-  /// Cumulative index offsets of the coordinate by dimension.
+  /// Cumulative index offsets of the coordinate by dimension. Avoids
+  /// recalculation of \c NumDimensions-1 offsets in every call of \at().
   SizeType m_offset[NumDimensions];
 
 public:
@@ -64,32 +65,7 @@ public:
   CartCoord(::std::array<SizeType, NumDimensions> extents)
   : m_size(0),
     m_ndim(NumDimensions) {
-    static_assert(
-      extents.size() == NumDimensions,
-      "Invalid number of arguments");
-    ::std::copy(extents.begin(), extents.end(), m_extent);
-    m_size = 1;
-    for(auto i = 0; i < NumDimensions; i++ ) {
-      if (m_extent[i] <= 0) {
-        DASH_THROW(
-          dash::exception::OutOfBounds,
-          "Coordinates for CartCoord() must be greater than 0");
-      }
-      // TODO: assert( std::numeric_limits<SizeType>::max()/m_extent[i]);
-      m_size *= m_extent[i];
-    }
-   
-    if (Arrangement == COL_MAJOR) {
-      m_offset[NumDimensions-1] = 1;
-      for(auto i = NumDimensions-2; i >= 0; --i) {
-        m_offset[i] = m_offset[i+1] * m_extent[i+1];
-      }
-    } else if (Arrangement == ROW_MAJOR) {
-      m_offset[0] = 1;
-      for(auto i = 1; i < NumDimensions; ++i) {
-        m_offset[i] = m_offset[i-1] * m_extent[i-1];
-      }
-    }
+    resize(extents);
   }
 
   /**
@@ -99,11 +75,34 @@ public:
   template<typename... Args>
   CartCoord(Args... args) 
   : m_size(0),
-    m_extent { SizeType(args)... },
     m_ndim(NumDimensions) {
+    resize(args...);
+  }
+
+  /**
+   * Change the coordinate's extent in every dimension.
+   */
+  template<typename... Args>
+  void resize(Args... args) {
     static_assert(
       sizeof...(Args) == NumDimensions,
       "Invalid number of arguments");
+    std::array<SizeType, NumDimensions> extents = { SizeType(args)... };
+    resize(extents);
+  }
+
+  /**
+   * Change the coordinate's extent in every dimension.
+   */
+  template<typename... Args>
+  void resize(std::array<SizeType, NumDimensions> extents) {
+    // Check number of dimensions in extents:
+    static_assert(
+      extents.size() == NumDimensions,
+      "Invalid number of arguments");
+    // Set extents:
+    ::std::copy(extents.begin(), extents.end(), m_extent);
+    // Update size:
     m_size = 1;
     for(auto i = 0; i < NumDimensions; i++ ) {
       if (m_extent[i] <= 0) {
@@ -111,10 +110,9 @@ public:
           dash::exception::OutOfBounds,
           "Coordinates for CartCoord() must be greater than 0");
       }
-      // TODO: assert( std::numeric_limits<SizeType>::max()/m_extent[i]);
       m_size *= m_extent[i];
     }
-   
+    // Update offsets:
     if (Arrangement == COL_MAJOR) {
       m_offset[NumDimensions-1] = 1;
       for(auto i = NumDimensions-2; i >= 0; --i) {
