@@ -11,8 +11,8 @@ void dash::init(int *argc, char ***argv)
 
 void dash::finalize()
 {
-    dash::barrier();
-  //dart_exit();
+  dash::barrier();
+//dart_exit();
 }
 
 void dash::barrier()
@@ -22,9 +22,12 @@ void dash::barrier()
 
 int dash::myid()
 {
-  dart_unit_t myid;
-  dart_myid(&myid);
-  return myid;
+  if (dash::_myid < 0) {
+    dart_unit_t myid;
+    dart_myid(&myid);
+    dash::_myid = myid;
+  }
+  return dash::_myid;
 }
 
 size_t dash::size()

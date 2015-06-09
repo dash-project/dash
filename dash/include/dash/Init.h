@@ -15,6 +15,8 @@
  */
 namespace dash
 {
+  static int _myid = -1;
+
   void   init(int *argc, char ***argv);
   void   finalize();
   int    myid();

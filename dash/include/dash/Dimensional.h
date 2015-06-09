@@ -17,7 +17,7 @@ namespace dash {
  * Contains an extent value for every dimension.
  */
 template<typename T, size_t ndim_>
-class DimBase {
+class Dimensional {
 protected:
   size_t m_ndim = ndim_;
   T m_extent[ndim_];
@@ -25,11 +25,11 @@ protected:
 public:
   template<size_t ndim__, MemArrange arr> friend class Pattern;
 
-  DimBase() {
+  Dimensional() {
   }
 
   template<typename ... values>
-  DimBase(values ... Values) :
+  Dimensional(values ... Values) :
     m_extent{ T(Values)... } {
     static_assert(sizeof...(Values) == ndim_,
       "Invalid number of arguments");
@@ -57,6 +57,10 @@ protected:
   // Need to be called manually when elements are changed to
   // update size
   void construct() {
+#if 0
+    std::array<long long, NumDimensions> extents = { (long long)(this->m_extent) };
+    this->resize(extents);
+#endif
     long long cap = 1;
     this->m_offset[this->m_ndim - 1] = 1;
     for (size_t i = this->m_ndim - 1; i >= 1; i--) {
@@ -72,22 +76,27 @@ protected:
   }
 };
 
-// DistributionSpec describes distribution patterns of all dimensions.
+/**
+ * DistributionSpec describes distribution patterns of all dimensions,
+ * \see dash::DistEnum.
+ */
 template<size_t NumDimensions>
-class DistributionSpec : public DimBase<DistEnum, NumDimensions> {
+class DistributionSpec : public Dimensional<DistEnum, NumDimensions> {
 public:
-
-  // Default distribution: BLOCKED, NONE, ...
+  /**
+   * Default constructor, initializes default blocked distribution 
+   * (BLOCKED, NONE*).
+   */
   DistributionSpec() {
+    this->m_extent[0] = BLOCKED;
     for (size_t i = 1; i < NumDimensions; i++) {
       this->m_extent[i] = NONE;
     }
-    this->m_extent[0] = BLOCKED;
   }
 
   template<typename T_, typename ... values>
   DistributionSpec(T_ value, values ... Values)
-  : DimBase<DistEnum, NumDimensions>::DimBase(value, Values...) {
+  : Dimensional<DistEnum, NumDimensions>::Dimensional(value, Values...) {
   }
 };
 
@@ -112,12 +121,12 @@ public:
  * TeamSpec specifies the arrangement of team units in all dimensions.
  * Size of TeamSpec implies the size of the team.
  * 
- * TODO: unit reoccurrence not supported
+ * Reoccurring units are currently not supported.
  *
  * \tparam  NumDimensions  Number of dimensions
  */
-template<size_t NumDimensions>
-class TeamSpec : public DimRangeBase<NumDimensions> {
+template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
+class TeamSpec : public DicmRangeBase<NumDimensions, Arrange> {
 public:
   TeamSpec() {
     // Set extent in all dimensions to 1 (minimum)
@@ -132,8 +141,9 @@ public:
   }
 
   TeamSpec(dash::Team & t) {
-    for (size_t i = 0; i < NumDimensions; i++)
+    for (size_t i = 0; i < NumDimensions; i++) {
       this->m_extent[i] = 1;
+    }
     this->m_extent[NumDimensions - 1] = this->m_size = t.size();
     this->construct();
     this->m_ndim = 1;
@@ -141,7 +151,7 @@ public:
 
   template<typename ExtentType, typename ... values>
   TeamSpec(ExtentType value, values ... Values)
-  : DimRangeBase<NumDimensions>::DimRangeBase(value, Values...) {
+  : DimRangeBase<NumDimensions, Arrange>::DimRangeBase(value, Values...) {
   }
 
   int ndim() const {
@@ -153,7 +163,7 @@ public:
  * Specifies the data sizes on all dimensions
  */
 template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
-class SizeSpec : public DimRangeBase<NumDimensions> {
+class SizeSpec : public DimRangeBase<NumDimensions, Arrange> {
 public:
   template<size_t NumDimensions_> friend class ViewSpec;
 
@@ -171,7 +181,7 @@ public:
 
   template<typename T_, typename ... values>
   SizeSpec(T_ value, values ... Values) :
-    DimRangeBase<NumDimensions>::DimRangeBase(value, Values...) {
+    DimRangeBase<NumDimensions, Arrange>::DimRangeBase(value, Values...) {
   }
 };
 
@@ -184,7 +194,7 @@ class ViewPair {
  * Specifies view parameters for implementing submat, rows and cols
  */
 template<size_t NumDimensions>
-class ViewSpec : public DimBase<ViewPair, NumDimensions> {
+class ViewSpec : public Dimensional<ViewPair, NumDimensions> {
 public:
   void update_size() {
     nelem = 1;
@@ -228,7 +238,7 @@ public:
 
   template<typename T_, typename ... values>
   ViewSpec(ViewPair value, values ... Values)
-  : DimBase<ViewPair, NumDimensions>::DimBase(value, Values...),
+  : Dimensional<ViewPair, NumDimensions>::Dimensional(value, Values...),
     ndim(NumDimensions),
     view_dim(NumDimensions),
     nelem(0) {
