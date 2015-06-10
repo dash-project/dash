@@ -13,7 +13,7 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
                      ? _num_elem / team_size
                      : _num_elem / team_size + 1;
   dash::Pattern<1> pat_blocked(
-      dash::SizeSpec<1, dash::ROW_MAJOR>(_num_elem),
+      dash::SizeSpec<1>(_num_elem),
       dash::DistributionSpec<1>(dash::BLOCKED),
       dash::TeamSpec<1>(),
       dash::Team::All());
@@ -30,19 +30,23 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
 }
 
 TEST_F(PatternTest, Distribute2DimBlockedY) {
-  return;
   DASH_TEST_LOCAL_ONLY();
   // 2-dimensional, blocked partitioning in second dimension:
-  // 
-  // [ .. team 0 ..   | .. team 0 ..   | ... | team 0   ]
-  // [ .. team 0 ..   | .. team 0 ..   | ... | team 0   ]
-  // [ .. team 1 ..   | .. team 1 ..   | ... | team 1   ]
-  // [ .. team 1 ..   | .. team 1 ..   | ... | team 1   ]
-  // [                       ...                        ]
-  // [ .. team n-1 .. | .. team n-1 .. | ... | team n-1 ]
+  // Row major:
+  // [ team 0[0] | team 0[1] | ... | team 0[2] ]
+  // [ team 0[3] | team 0[4] | ... | team 0[5] ]
+  // [ team 1[0] | team 1[1] | ... | team 1[2] ]
+  // [ team 1[3] | team 1[4] | ... | team 1[5] ]
+  // [                   ...                   ]
+  // Column major:
+  // [ team 0[0] | team 0[2] | ... | team 0[4] ]
+  // [ team 0[1] | team 0[3] | ... | team 0[5] ]
+  // [ team 1[0] | team 1[2] | ... | team 1[4] ]
+  // [ team 1[1] | team 1[3] | ... | team 1[5] ]
+  // [                   ...                   ]
   int team_size = dash::Team::All().size();
   int extent_x  = 3;
-  int extent_y  = 3;
+  int extent_y  = 4;
   size_t size   = extent_x * extent_y;
   // Ceil division
   int block_size_x = extent_x;
@@ -50,29 +54,46 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
                        ? extent_y / team_size
                        : extent_y / team_size + 1;
   int max_per_unit = block_size_x * block_size_y;
-  dash::Pattern<2> pat_blocked(
-      dash::SizeSpec<2, dash::ROW_MAJOR>(extent_x, extent_y),
+  dash::Pattern<2, dash::ROW_MAJOR> pat_blocked_row(
+      dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(dash::NONE, dash::BLOCKED),
-      dash::TeamSpec<2>(dash::Team::All()),
+      dash::TeamSpec<2, dash::ROW_MAJOR>(dash::Team::All()),
       dash::Team::All());
-  EXPECT_EQ(pat_blocked.capacity(), size);
-  EXPECT_EQ(pat_blocked.max_elem_per_unit(), max_per_unit);
-  EXPECT_EQ(pat_blocked.blocksize(0), block_size_x);
-  EXPECT_EQ(pat_blocked.blocksize(1), block_size_y);
+  dash::Pattern<2, dash::COL_MAJOR> pat_blocked_col(
+      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::DistributionSpec<2>(dash::NONE, dash::BLOCKED),
+      dash::TeamSpec<2, dash::COL_MAJOR>(dash::Team::All()),
+      dash::Team::All());
+  EXPECT_EQ(pat_blocked_row.capacity(), size);
+  EXPECT_EQ(pat_blocked_row.max_elem_per_unit(), max_per_unit);
+  EXPECT_EQ(pat_blocked_row.blocksize(0), block_size_x);
+  EXPECT_EQ(pat_blocked_row.blocksize(1), block_size_y);
+  EXPECT_EQ(pat_blocked_col.capacity(), size);
+  EXPECT_EQ(pat_blocked_col.max_elem_per_unit(), max_per_unit);
+  EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_x);
+  EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
   int expected_unit_id = 0;
+  LOG_MESSAGE("block size: x: %d, y: %d",
+    block_size_x, block_size_y);
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
-      int expected_index_row_order = (y * extent_x) + x;
-      int expected_index_col_order = (x * extent_y) + y;
-      int expected_offset_row_order = expected_index_row_order % max_per_unit;
-      int expected_offset_col_order = expected_index_col_order % max_per_unit;
+      int expected_index_row_order  = (y * extent_x) + x;
+      int expected_index_col_order  = (x * extent_y) + y;
+      int expected_offset_row_order =
+        expected_index_row_order % max_per_unit;
+      int expected_offset_col_order = y % block_size_y + x * block_size_y;
       expected_unit_id = y / block_size_y;
+      LOG_MESSAGE("x: %d, y: %d, eo: %d, ao: %d, ei: %d",
+        x, y,
+        expected_offset_col_order,
+        pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }),
+        expected_index_col_order);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked.index_to_unit(std::array<long long, 2> { x, y }));
+        pat_blocked_row.index_to_unit(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_col_order,
-        pat_blocked.index_to_elem(std::array<long long, 2> { x, y }));
+        pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }));
     }
   }
 }
@@ -88,7 +109,7 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
   // [                               ...                                 ]
   int team_size    = dash::Team::All().size();
   int extent_x     = 3;
-  int extent_y     = 3;
+  int extent_y     = 4;
   size_t size      = extent_x * extent_y;
   // Ceil division
   int block_size_x = (extent_x % team_size == 0)
@@ -97,7 +118,7 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
   int block_size_y = extent_y;
   int max_per_unit = block_size_x * block_size_y;
   dash::Pattern<2> pat_blocked(
-      dash::SizeSpec<2, dash::ROW_MAJOR>(extent_x, extent_y),
+      dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE),
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
@@ -110,8 +131,10 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
     for (int y = 0; y < extent_y; ++y) {
       int expected_index_row_order  = (y * extent_x) + x;
       int expected_index_col_order  = (x * extent_y) + y;
-      int expected_offset_row_order = expected_index_row_order % max_per_unit;
-      int expected_offset_col_order = expected_index_col_order % max_per_unit;
+      int expected_offset_row_order =
+        expected_index_row_order % max_per_unit;
+      int expected_offset_col_order =
+        expected_index_col_order % max_per_unit;
       expected_unit_id = x / block_size_x;
       EXPECT_EQ(
         expected_unit_id,

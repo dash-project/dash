@@ -132,3 +132,19 @@ http://llvm.org/docs/CodingStandards.html
 The Chrome project maintains a best practice guide for the use of C++11 features:
 Chrome (C++11 features): http://chromium-cpp.appspot.com
 
+Running Tests
+-------------
+
+Launch the DASH unit test suite using <code>dash-test-shmem</code> or <code>dash-test-mpi</code>:
+
+  (bin/dash/test/shmem)$ dartrun-shmem <dartrun options> dash-test-shmem <gtest options>
+
+or
+
+  (bin/dash/test/mpi)$ mpirun <MPI options> dash-test-mpi <gtest options>
+
+For example, you would all unit tests of matrix data structures on 4 units using the SHMEM runtime
+with:
+
+  (bin/dash/test/shmem)$ dartrun-shmem -n 4 dash-test-shmem --gtest_filter=Matrix*
+

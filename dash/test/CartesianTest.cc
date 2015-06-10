@@ -48,8 +48,10 @@ TEST_F(CartesianTest, Conversion1Dim) {
 TEST_F(CartesianTest, Conversion2Dim) {
   int extent_x = 3;
   int extent_y = 5;
-  dash::CartCoord<2, size_t, dash::ROW_MAJOR> cartesian2dR(extent_x, extent_y);
-  dash::CartCoord<2, size_t, dash::COL_MAJOR> cartesian2dC(extent_x, extent_y);
+  dash::CartCoord<2, dash::ROW_MAJOR, size_t> cartesian2dR(
+    extent_x, extent_y);
+  dash::CartCoord<2, dash::COL_MAJOR, size_t> cartesian2dC(
+    extent_x, extent_y);
   EXPECT_EQ(cartesian2dR.rank(), 2);
   EXPECT_EQ(cartesian2dC.rank(), 2);
   EXPECT_EQ(cartesian2dR.size(), extent_x * extent_y);
@@ -77,9 +79,9 @@ TEST_F(CartesianTest, Conversion3Dim) {
   int extent_y = 7;
   int extent_z = 11;
   size_t size  = extent_x * extent_y * extent_z;
-  dash::CartCoord<3, size_t, dash::ROW_MAJOR> cartesian3dR(
+  dash::CartCoord<3, dash::ROW_MAJOR, size_t> cartesian3dR(
     extent_x, extent_y, extent_z);
-  dash::CartCoord<3, size_t, dash::COL_MAJOR> cartesian3dC(
+  dash::CartCoord<3, dash::COL_MAJOR, size_t> cartesian3dC(
     extent_x, extent_y, extent_z);
   EXPECT_EQ(cartesian3dR.rank(), 3);
   EXPECT_EQ(cartesian3dC.rank(), 3);
@@ -94,8 +96,10 @@ TEST_F(CartesianTest, Conversion3Dim) {
   for (size_t x = 0; x < extent_x; ++x) {
     for (size_t y = 0; y < extent_y; ++y) {
       for (size_t z = 0; z < extent_z; ++z) {
-        size_t exp_index_row_major = (z * extent_x * extent_y) + (y * extent_x) + x;
-        size_t exp_index_col_major = (x * extent_y * extent_z) + (y * extent_z) + z;
+        size_t exp_index_row_major =
+          (z * extent_x * extent_y) + (y * extent_x) + x;
+        size_t exp_index_col_major =
+          (x * extent_y * extent_z) + (y * extent_z) + z;
         EXPECT_EQ(exp_index_row_major, cartesian3dR.at(x, y, z));
         EXPECT_EQ(x, cartesian3dR.coords(exp_index_row_major)[0]);
         EXPECT_EQ(y, cartesian3dR.coords(exp_index_row_major)[1]);
@@ -113,8 +117,8 @@ TEST_F(CartesianTest, Conversion10Dim) {
     { 3, 13, 17, 23, 2, 3, 1, 1, 2, 2 };
   size_t size = ::std::accumulate(extents.begin(), extents.end(), 1,
                                   ::std::multiplies<size_t>());
-  dash::CartCoord<Dimensions, size_t, dash::ROW_MAJOR> cartesianR(extents);
-  dash::CartCoord<Dimensions, size_t, dash::COL_MAJOR> cartesianC(extents);
+  dash::CartCoord<Dimensions, dash::ROW_MAJOR, size_t> cartesianR(extents);
+  dash::CartCoord<Dimensions, dash::COL_MAJOR, size_t> cartesianC(extents);
   EXPECT_EQ(cartesianR.rank(), Dimensions);
   EXPECT_EQ(cartesianC.rank(), Dimensions);
   EXPECT_EQ(cartesianR.size(), size);

@@ -14,25 +14,20 @@
 #include <cstring>
 
 #include <dash/Enums.h>
+#include <dash/Dimensional.h>
 #include <dash/Exception.h>
 
 namespace dash {
 
-/// Forward-declaration
-template<size_t NumDimensions_, MemArrange arr> class Pattern;
-
 /**
  * Translates between linar and cartesian coordinates
- * TODO: Could be renamed to MemoryOrder?
+ * TODO: Could be renamed to MemoryLayout?
  */
 template<
   int NumDimensions,
-  typename SizeType      = size_t,
-  MemArrange Arrangement = ROW_MAJOR >
+  MemArrange Arrangement = ROW_MAJOR,
+  typename SizeType      = size_t >
 class CartCoord {
-public:
-  template<size_t NumDimensions_, MemArrange arr> friend class Pattern;
-
 protected:
   /// Number of elements in the cartesian space spanned by this coordinate.
   SizeType m_size;
@@ -77,6 +72,16 @@ public:
   : m_size(0),
     m_ndim(NumDimensions) {
     resize(args...);
+  }
+
+  /**
+   * Constructor, initializes a new instance from dimensional size
+   * specification.
+   */
+  CartCoord(const SizeSpec<NumDimensions> & sizeSpec)
+  : m_size(sizeSpec.size()),
+    m_ndim(NumDimensions) {
+    resize(sizeSpec.extents());
   }
 
   /**
@@ -253,7 +258,8 @@ public:
    * Accessor for dimension 1 (x), enabled for dimensionality > 0.
    */
   template<int U = NumDimensions>
-  typename std::enable_if< (U > 0), SizeType >::type x(SizeType offs) const {
+  typename std::enable_if< (U > 0), SizeType >::type
+  x(SizeType offs) const {
     return coords(offs)[0];
   }
   
@@ -261,7 +267,8 @@ public:
    * Accessor for dimension 2 (y), enabled for dimensionality > 1.
    */
   template<int U = NumDimensions>
-  typename std::enable_if< (U > 1), SizeType >::type y(SizeType offs) const {
+  typename std::enable_if< (U > 1), SizeType >::type
+  y(SizeType offs) const {
     return coords(offs)[1];
   }
   
@@ -269,7 +276,8 @@ public:
    * Accessor for dimension 3 (z), enabled for dimensionality > 2.
    */
   template<int U = NumDimensions>
-  typename std::enable_if< (U > 2), SizeType >::type z(SizeType offs) const {
+  typename std::enable_if< (U > 2), SizeType >::type 
+  z(SizeType offs) const {
     return coords(offs)[2];
   }
 };

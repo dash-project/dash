@@ -13,8 +13,7 @@
 #include <type_traits>
 
 #include <dash/Init.h>
-#include <dash/View.h>
-#include <dash/Cartesian.h>
+// #include <dash/View.h>
 #include <dash/Enums.h>
 #include <dash/Exception.h>
 #include <dash/dart/if/dart.h>
@@ -35,7 +34,7 @@ namespace dash {
 class Team {
   template< class U> friend class Array;
   template< size_t DIM, MemArrange MA> friend class Pattern;
-  template< size_t DIM, MemArrange MA> friend class TeamSpec;
+  template< size_t DIM> friend class TeamSpec;
   template< class U> friend class Shared;
   template< class U, class Pattern > friend class GlobIter;
   template< class U> friend class GlobRef;
@@ -387,17 +386,20 @@ public:
   }
 };
 
+#if 0
+// TODO: Solve dependendy circle
 template<int DIM>
 class CartView<Team::iterator, DIM> : 
   public CartViewBase<Team::iterator, DIM> {
 public:
   template<typename Cont, typename... Args>
-  CartView(Cont& cont, Args... args) : 
+  CartView(Cont & cont, Args... args) : 
     CartViewBase<Team::iterator, DIM>(cont,args...) {}
 };
 
 template<int DIM>
 using TeamView = CartView<Team::iterator, DIM>;
+#endif
 
 } // namespace dash
 

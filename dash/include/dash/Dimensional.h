@@ -12,68 +12,76 @@
 namespace dash {
 
 /**
- * Base class for dimension-related attribute types, such as
- * DistributionSpec and TeamSpec.
- * Contains an extent value for every dimension.
+ * Base class for dimensional attributes, stores values
+ * of identical type in a given number of dimensions.
+ *
+ * \tparam  T  The contained value type
+ * \tparam  NumDimensions  The number of dimensions
  */
-template<typename T, size_t ndim_>
+template<typename T, size_t NumDimensions>
 class Dimensional {
+/* 
+ * Concept Dimensional:
+ *   + Dimensional<T,D>::Dimensional(values[D]);
+ *   + Dimensional<T,D>::dim(d | 0 < d < D);
+ *   + Dimensional<T,D>::[d](d | 0 < d < D);
+ */
 protected:
-  size_t m_ndim = ndim_;
-  T m_extent[ndim_];
+  T _values[NumDimensions];
 
 public:
-  template<size_t ndim__, MemArrange arr> friend class Pattern;
-
-  Dimensional() {
-  }
-
-  template<typename ... values>
-  Dimensional(values ... Values) :
-    m_extent{ T(Values)... } {
-    static_assert(sizeof...(Values) == ndim_,
+  /**
+   * Constructor, expects one value for every dimension.
+   */
+  template<typename ... Values>
+  Dimensional(Values ... values)
+  : _values { T(values)... } {
+    static_assert(
+      sizeof...(values) == NumDimensions,
       "Invalid number of arguments");
   }
-};
 
-/**
- * Base class for dimensional range attribute types, containing
- * offset and extent for every dimension.
- * Specialization of CartCoord.
- */
-template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
-class DimRangeBase : public CartCoord<NumDimensions, long long, Arrange> {
-public:
-  template<size_t NumDimensions_, MemArrange Arrange_> friend class Pattern;
-  DimRangeBase() { }
-
-  // Variadic constructor
-  template<typename ... values>
-  DimRangeBase(values ... Values) :
-    CartCoord<NumDimensions, long long, Arrange>::CartCoord(Values...) {
+  /**
+   * Copy-constructor.
+   */
+  Dimensional(const Dimensional<T, NumDimensions> & other)
+  : _values(other._values) {
   }
 
-protected:
-  // Need to be called manually when elements are changed to
-  // update size
-  void construct() {
-#if 0
-    std::array<long long, NumDimensions> extents = { (long long)(this->m_extent) };
-    this->resize(extents);
-#endif
-    long long cap = 1;
-    this->m_offset[this->m_ndim - 1] = 1;
-    for (size_t i = this->m_ndim - 1; i >= 1; i--) {
-      if (this->m_extent[i] <= 0) {
-        DASH_THROW(
-          dash::exception::InvalidArgument,
-          "Extent must be greater than 0");
-      }
-      cap *= this->m_extent[i];
-      this->m_offset[i - 1] = cap;
+  /**
+   * The value in the given dimension.
+   *
+   * \param  dimension  The dimension
+   * \returns  The value in the given dimension
+   */
+  T dim(size_t dimension) const {
+    if (dimension >= NumDimensions) {
+      DASH_THROW(
+        dash::exception::OutOfBounds,
+        "Dimension for Dimensional::extent() must be lower than " <<
+        NumDimensions);
     }
-    this->m_size = cap * this->m_extent[0];
+    return _values[dimension];
   }
+
+  /**
+   * Subscript operator, access to value in dimension given by index.
+   * Alias for \c dim.
+   *
+   * \param  dimension  The dimension
+   * \returns  The value in the given dimension
+   */
+  T operator[](size_t dimension) const {
+    return dim(dimension);
+  }
+
+  size_t rank() const {
+    return NumDimensions;
+  }
+
+private:
+  /// Prevent default-construction.
+  Dimensional() = delete;
 };
 
 /**
@@ -101,23 +109,6 @@ public:
 };
 
 /** 
- * Represents the local layout according to the specified pattern.
- * 
- * TODO: Can be optimized
- */
-template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
-class AccessBase : public DimRangeBase<NumDimensions, Arrange> {
-public:
-  AccessBase() {
-  }
-
-  template<typename T, typename ... values>
-  AccessBase(T value, values ... Values)
-  : DimRangeBase<NumDimensions>::DimRangeBase(value, Values...) {
-  }
-};
-
-/** 
  * TeamSpec specifies the arrangement of team units in all dimensions.
  * Size of TeamSpec implies the size of the team.
  * 
@@ -125,69 +116,100 @@ public:
  *
  * \tparam  NumDimensions  Number of dimensions
  */
-template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
-class TeamSpec : public DimRangeBase<NumDimensions, Arrange> {
+template<size_t MaxDimensions>
+class TeamSpec : public Dimensional<size_t, MaxDimensions> {
 public:
-  TeamSpec() {
-    // Set extent in all dimensions to 1 (minimum)
-    for (size_t i = 0; i < NumDimensions; i++) {
-      this->m_extent[i] = 1;
+  TeamSpec(Team & team = dash::Team::All()) {
+    for (size_t i = 0; i < MaxDimensions; i++) {
+      this->_values[i] = 1;
     }
-    // Set extent in highest dimension to size of team
-    this->m_size = dash::Team::All().size();
-    this->m_extent[NumDimensions - 1] = this->m_size;
-    this->construct();
-    this->m_ndim = 1;
-  }
-
-  TeamSpec(dash::Team & t) {
-    for (size_t i = 0; i < NumDimensions; i++) {
-      this->m_extent[i] = 1;
-    }
-    this->m_extent[NumDimensions - 1] = this->m_size = t.size();
-    this->construct();
-    this->m_ndim = 1;
+    _num_units      = team.size();
+    _num_dimensions = 1;
+    this->_values[MaxDimensions - 1] = _num_units;
   }
 
   template<typename ExtentType, typename ... values>
   TeamSpec(ExtentType value, values ... Values)
-  : DimRangeBase<NumDimensions, Arrange>::DimRangeBase(value, Values...) {
+  : Dimensional<size_t, MaxDimensions>::Dimensional(value, Values...) {
   }
 
-  int ndim() const {
-    return this->m_ndim;
+  size_t rank() const {
+    return _num_dimensions;
   }
+
+  size_t size() const {
+    return _num_units;
+  }
+
+private:
+  /// Actual number of dimensions of the team layout specification.
+  size_t _num_dimensions;
+  /// Number of units in the team layout specification.
+  size_t _num_units;
 };
 
 /**
- * Specifies the data sizes on all dimensions
+ * Specifies an cartesian extent in a specific number of dimensions.
  */
-template<size_t NumDimensions, MemArrange Arrange = ROW_MAJOR>
-class SizeSpec : public DimRangeBase<NumDimensions, Arrange> {
+template<size_t NumDimensions>
+class SizeSpec : public Dimensional<long long, NumDimensions> {
+  /* 
+   * TODO: Define concept MemoryLayout<MemArrange> : CartCoord<MemArrange>
+   * Concept SizeSpec:
+   *   + SizeSpec::SizeSpec(extents ...);
+   *   + SizeSpec::extent(dim);
+   *   + SizeSpec::size();
+   */
 public:
-  template<size_t NumDimensions_> friend class ViewSpec;
-
-  SizeSpec() {
+  template<typename ... Values>
+  SizeSpec(Values ... values)
+  : Dimensional<long long, NumDimensions>::Dimensional(values...),
+    _size(1) {
+    for (int d = 0; d < NumDimensions; ++d) {
+      _size *= this->dim(d);
+    }
+    if (_size == 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Extents for SizeSpec::SizeSpec() must be non-zero");
+    }
   }
 
-  SizeSpec(size_t nelem) {
-    static_assert(
-      NumDimensions == 1,
-      "Not enough parameters for extent");
-    this->m_extent[0] = nelem;
-    this->construct();
-    this->m_ndim = 1;
+  /**
+   * The size (extent) in the given dimension.
+   *
+   * \param  dimension  The dimension
+   * \returns  The extent in the given dimension
+   */
+  long long extent(size_t dimension) const {
+    return this->dim(dimension);
   }
 
-  template<typename T_, typename ... values>
-  SizeSpec(T_ value, values ... Values) :
-    DimRangeBase<NumDimensions, Arrange>::DimRangeBase(value, Values...) {
+  std::array<long long, NumDimensions> extents() const {
+    std::array<long long, NumDimensions> ext { (long long)(this->_values) };
+    return ext;
   }
+
+  /**
+   * The total size (volume) of all dimensions, e.g. \c (x * y * z).
+   *
+   * \returns  The total size of all dimensions.
+   */
+  size_t size() const {
+    return _size;
+  }
+
+private:
+  /// Prevent default-construction.
+  SizeSpec() = delete;
+
+private:
+  long long _size;
 };
 
 class ViewPair {
-  long long begin;
-  long long range;
+  long long offset;
+  long long extent;
 };
 
 /**
@@ -195,6 +217,7 @@ class ViewPair {
  */
 template<size_t NumDimensions>
 class ViewSpec : public Dimensional<ViewPair, NumDimensions> {
+#if 0
 public:
   void update_size() {
     nelem = 1;
@@ -204,51 +227,45 @@ public:
       nelem *= range[i];
     }
   }
-
-public:
-  long long begin[NumDimensions];
-  long long range[NumDimensions];
-  size_t    ndim;
-  size_t    view_dim;
-  long long nelem;
-
-  ViewSpec()
-  : ndim(NumDimensions),
-    view_dim(NumDimensions),
-    nelem(0) {
-  }
+#endif
+private:
+  long long _offset[NumDimensions];
+  long long _extent[NumDimensions];
+  long long _size;
 
   ViewSpec(SizeSpec<NumDimensions> sizespec)
-  : ndim(NumDimensions),
-    view_dim(NumDimensions),
-    nelem(0) {
-    // TODO
-    memcpy(this->m_extent,
-           sizespec.m_extent,
-           sizeof(long long) * NumDimensions);
-    memcpy(range,
-           sizespec.m_extent,
-           sizeof(long long) * NumDimensions);
-    nelem = sizespec.size();
+  : Dimensional<ViewPair, NumDimensions>(sizespec),
+    _size(sizespec.size()) {
     for (size_t i = 0; i < NumDimensions; i++) {
-      begin[i] = 0;
-      range[i] = sizespec.m_extent[i];
+      _offset[i] = 0;
+      _extent[i] = sizespec.extent(i);
     }
   }
 
-  template<typename T_, typename ... values>
-  ViewSpec(ViewPair value, values ... Values)
-  : Dimensional<ViewPair, NumDimensions>::Dimensional(value, Values...),
-    ndim(NumDimensions),
-    view_dim(NumDimensions),
-    nelem(0) {
+  template<typename T_, typename ... Values>
+  ViewSpec(Values... values)
+  : Dimensional<ViewPair, NumDimensions>::Dimensional(values...),
+    _size(0) {
+    for (size_t i = 0; i < NumDimensions; i++) {
+      ViewPair vp = this->dim(i);
+      _offset[i] = vp.offset;
+      _extent[i] = vp.extent;
+    }
   }
 
-  inline long long size() const {
-    return nelem;
+  long long size() const {
+    return _size;
+  }
+
+  long long begin(size_t dimension) const {
+    return _offset[dimension];
+  }
+
+  long long size(size_t dimension) const {
+    return _extent[dimension];
   }
 };
 
-}
+} // namespace dash
 
 #endif // DASH__DIMENSIONAL_H_

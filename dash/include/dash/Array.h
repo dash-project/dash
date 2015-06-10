@@ -261,7 +261,7 @@ public:
   }
 
   bool is_local(size_type n) const {
-    auto coord = m_pattern.sizespec().coords(n);
+    auto coord = m_pattern.coords(n);
     return m_pattern.index_to_unit(coord) == m_myid;
   }
   
@@ -269,21 +269,18 @@ public:
     m_team.barrier();
   }
 
-  Pattern<1> & pattern() { return m_pattern; }
-  Team& team() { return m_team; }
+  Pattern<1> & pattern() {
+    return m_pattern;
+  }
 
-  // xxx: the long long should maybe be taken from the
-  // pattern 
-  void forall(std::function<void(long long)> func) 
-  {
-    m_pattern.forall(func);
+  Team & team() {
+    return m_team;
   }
 
   template<int level>
   dash::HView<Array<ELEMENT_TYPE>, level> hview() {
     return dash::HView<Array<ELEMENT_TYPE>, level>(*this);
   }
-
 
   // find the location of the global min. element
   // TODO: support custom comparison operator, similar to 
