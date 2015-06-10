@@ -19,11 +19,11 @@ using namespace std;
 #endif 
 
 #ifndef REPEAT
-#define REPEAT         100
+#define REPEAT         200
 #endif 
 
 #ifndef ELEM_PER_UNIT
-#define ELEM_PER_UNIT  100000
+#define ELEM_PER_UNIT  10000
 #endif
 
 
@@ -64,6 +64,7 @@ int main(int argc, char* argv[])
   double t7 = test_raw_array();
 
   if(dash::myid()==0 ) {
+    cout<<"Results (in sequential Giga Updates Per Second)"<<endl;
     cout<<"global_iterator : "<<gups(size, t1)<<endl;
     cout<<"local_iterator  : "<<gups(size, t2)<<endl;
     cout<<"local_subscript : "<<gups(size, t3)<<endl;
