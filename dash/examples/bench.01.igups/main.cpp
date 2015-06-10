@@ -24,6 +24,7 @@ void validate_array(dash::Array<TYPE>& a, unsigned, unsigned);
 double test_dash_global_iter(dash::Array<TYPE>& a, unsigned, unsigned);
 double test_dash_local_iter(dash::Array<TYPE>& a, unsigned, unsigned);
 double test_dash_local_subscript(dash::Array<TYPE>& a, unsigned, unsigned);
+double test_dash_local_pointer(dash::Array<TYPE>& a, unsigned, unsigned);
 //double test_stl_array(unsigned, unsigned);
 double test_stl_vector(unsigned, unsigned);
 double test_stl_deque(unsigned, unsigned);
@@ -49,16 +50,21 @@ int main(int argc, char* argv[])
 
   std::deque<std::pair<int, int>> tests;
 
-  tests.push_back({100  , 10000});
-  tests.push_back({200  , 10000});
-  tests.push_back({400  , 10000});
-  tests.push_back({800  , 10000});
-  tests.push_back({1600 , 1000});
-  tests.push_back({3200 , 1000});
-  tests.push_back({6400 , 100});
-  tests.push_back({12800, 80});
-  tests.push_back({25600, 40});
-  tests.push_back({51200, 20});
+  tests.push_back({0          , 0}); // this prints the header
+  tests.push_back({4          , 100000});
+  tests.push_back({16         , 10000});
+  tests.push_back({64         , 10000});
+  tests.push_back({256        , 10000});
+  tests.push_back({1024       , 1000});
+  tests.push_back({4096       , 1000});
+  tests.push_back({4*4096     , 100});
+  tests.push_back({16*4096    , 100});
+  tests.push_back({64*4096    , 50});
+
+  //tests.push_back({256*4096   , 20});
+  //tests.push_back({512*4096   , 20});
+  //tests.push_back({1024*4096  , 20});
+  //tests.push_back({4096*4096  , 20});
 
   for( auto test: tests ) {
     perform_test(test.first, test.second);
@@ -72,13 +78,28 @@ void perform_test(unsigned ELEM_PER_UNIT,
 		  unsigned REPEAT)
 {
   auto size = dash::size();
+
+  if( ELEM_PER_UNIT==0 ) {
+    if(dash::myid()==0 ) {
+      cout<<ELEM_PER_UNIT<<","<<REPEAT;
+      cout<<","<<"dash_glob_iter";
+      cout<<","<<"dash_local_iter";
+      cout<<","<<"dash_local_subscript";
+      cout<<","<<"dash_local_pointer";
+      cout<<","<<"stl_vector";
+      cout<<","<<"stl_deque";
+      cout<<","<<"raw_array";
+      cout<<endl;
+    }
+    return;
+  }
   
   dash::Array<int> arr(ELEM_PER_UNIT*size);
   
   double t1 = test_dash_global_iter(arr, ELEM_PER_UNIT, REPEAT);
   double t2 = test_dash_local_iter(arr, ELEM_PER_UNIT, REPEAT);
   double t3 = test_dash_local_subscript(arr, ELEM_PER_UNIT, REPEAT);
-  //  double t4 = test_stl_array(ELEM_PER_UNIT, REPEAT);
+  double t4 = test_dash_local_pointer(arr, ELEM_PER_UNIT, REPEAT);
   double t5 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
   double t6 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
   double t7 = test_raw_array(ELEM_PER_UNIT, REPEAT);
@@ -88,7 +109,7 @@ void perform_test(unsigned ELEM_PER_UNIT,
     double gups1 = gups(size, t1, ELEM_PER_UNIT, REPEAT);
     double gups2 = gups(size, t2, ELEM_PER_UNIT, REPEAT);
     double gups3 = gups(size, t3, ELEM_PER_UNIT, REPEAT);
-    //double gups4 = gups(size, t4, ELEM_PER_UNIT, REPEAT);
+    double gups4 = gups(size, t4, ELEM_PER_UNIT, REPEAT);
     double gups5 = gups(size, t5, ELEM_PER_UNIT, REPEAT);
     double gups6 = gups(size, t6, ELEM_PER_UNIT, REPEAT);
     double gups7 = gups(size, t7, ELEM_PER_UNIT, REPEAT);
@@ -97,11 +118,12 @@ void perform_test(unsigned ELEM_PER_UNIT,
     cout<<","<<gups1;
     cout<<","<<gups2;
     cout<<","<<gups3;
-    //cout<<","<<gups4;
+    cout<<","<<gups4;
     cout<<","<<gups5;
     cout<<","<<gups6;
     cout<<","<<gups7;
     cout<<endl;
+
     /*
     cout<<"Results (in sequential Giga Updates Per Second)"<<endl;
     cout<<"global_iterator : "<<gups(size, t1, ELEM_PER_UNIT, REPEAT)<<endl;
@@ -193,6 +215,29 @@ double test_dash_local_subscript(dash::Array<TYPE>& a,
   for(auto i=0; i<REPEAT; i++ ) {
     for(auto j=0; j<ELEM_PER_UNIT/*j<arr.local.size()*/; j++ ) {
       loc[j]++;
+    }
+  }  
+  TIMESTAMP(tend);  
+
+  validate_array(a, ELEM_PER_UNIT, REPEAT);
+
+  return tend-tstart;
+}
+
+double test_dash_local_pointer(dash::Array<TYPE>& a,
+			       unsigned ELEM_PER_UNIT, 
+			       unsigned REPEAT)
+{
+  init_array(a, ELEM_PER_UNIT, REPEAT);
+  
+  double tstart, tend;
+  TIMESTAMP(tstart);
+  auto lbegin = a.lbegin();
+  auto lend   = a.lend();
+
+  for(auto i=0; i<REPEAT; i++ ) {
+    for(auto j=lbegin; j!=lend; j++ ) {
+      (*j)++;
     }
   }  
   TIMESTAMP(tend);  
