@@ -116,6 +116,7 @@ public:
       m_size *= m_extent[i];
     }
     if (m_size <= 0) {
+      std::cout << std::endl;
       DASH_THROW(
         dash::exception::InvalidArgument,
         "Extents for CartCoord::resize must be greater than 0");
@@ -160,13 +161,12 @@ public:
    * \return      The extent in the given dimension
    */
   SizeType extent(SizeType dim) const {
-    assert(dim < NumDimensions);
     if (dim >= NumDimensions) {
       // Dimension out of bounds:
       DASH_THROW(
         dash::exception::OutOfBounds,
         "Given dimension " << dim <<
-        " for CartCoord::extent() is out of bounds" <<
+        " for CartCoord::extent(dim) is out of bounds" <<
         " (" << NumDimensions << ")");
     }
     return m_extent[dim];

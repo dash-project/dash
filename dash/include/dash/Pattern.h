@@ -111,15 +111,14 @@ private:
     /// specifying the distribution pattern.
     template<int count>
     void check(const TeamSpec_t & teamSpec) {
-      _argc_team++;
-      _teamspec = teamSpec;
+      _argc_team += teamSpec.rank();
+      _teamspec   = teamSpec;
     }
     /// Pattern matching for one optional parameter specifying the 
     /// team.
     template<int count>
     void check(dash::Team & team) {
-      _argc_team += NumDimensions;
-      _teamspec   = TeamSpec<NumDimensions>(team);
+      _teamspec = TeamSpec<NumDimensions>(team);
     }
     /// Pattern matching for one optional parameter specifying the 
     /// size (extents).
@@ -214,10 +213,10 @@ public:
     checkTile();
   }
 
-  template<typename ... values>
-  long long atunit(values ... Values) const {
+  template<typename ... Values>
+  long long atunit(Values ... values) const {
     assert(sizeof...(Values) == NumDimensions);
-    std::array<long long, NumDimensions> inputindex = { Values... };
+    std::array<long long, NumDimensions> inputindex = { values... };
     return atunit_(inputindex, m_viewspec);
   }
 
@@ -295,10 +294,16 @@ public:
     return 0;
   }
 
+  /**
+   * The number of units to which this pattern's elements are mapped.
+   */
   long long num_units() const {
     return m_teamspec.size();
   }
 
+  /**
+   * Assignment operator.
+   */
   Pattern & operator=(const Pattern & other) {
     if (this != &other) {
       m_distspec      = other.m_distspec;
@@ -319,7 +324,8 @@ public:
   }
 
   /**
-   * The Team containing the units this Pattern's index range is mapped to.
+   * The Team containing the units to which this pattern's elements are
+   * mapped.
    */
   dash::Team & team() const {
     return m_team;
@@ -360,11 +366,18 @@ public:
    * Convert given linear offset (index) to cartesian coordinates.
    * Inverse of \c at(...).
    */
-  std::array<long long, NumDimensions> coords(long long offs) const {
-    return m_memory_layout.coords(offs);
+  std::array<long long, NumDimensions> coords(long long index) const {
+    return m_memory_layout.coords(index);
   }
 
 private:
+  /**
+   * Specify the memory layout's distribution in the given dimension.
+   */
+  void distribute(size_t dimension, DistEnum distribution) {
+    
+  }
+
   long long modulo(const long long i, const long long k) const {
     long long res = i % k;
     if (res < 0)

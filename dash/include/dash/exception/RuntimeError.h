@@ -7,7 +7,7 @@
 namespace dash {
 namespace exception {
 
-class RuntimeError : ::std::runtime_error {
+class RuntimeError : public ::std::runtime_error {
 public:
   RuntimeError(const ::std::string & message)
   : std::runtime_error(message) {

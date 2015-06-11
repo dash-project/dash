@@ -9,7 +9,10 @@ TEST_F(PatternTest, SimpleConstructors) {
   int extent_z = 4;
   int size = extent_x * extent_y * extent_z;
   // Should default to distribution BLOCKED, NONE, NONE:
-  dash::Pattern<1> pat_default(extent_x, extent_y, extent_z);
+  dash::Pattern<3> pat_default(extent_x, extent_y, extent_z);
+  EXPECT_EQ(dash::DistributionSpec<3>(), pat_default.distspec());
+  EXPECT_EQ(dash::Team::All(), pat_default.team());
+  EXPECT_EQ(dash::Team::All().size(), pat_default.num_units());
   EXPECT_EQ(size, pat_default.capacity());
 }
 

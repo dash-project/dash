@@ -20,6 +20,13 @@ typedef struct DistEnum {
 
   disttype type;
   long long blocksz;
+
+  bool operator==(const DistEnum & other) const {
+    return (type == other.type && blocksz == other.blocksz);
+  }
+  bool operator!=(const DistEnum & other) const {
+    return !(*this == other);
+  }
 } DistEnum;
 
 static DistEnum BLOCKED { DistEnum::BLOCKED, -1 };

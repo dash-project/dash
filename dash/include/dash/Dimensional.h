@@ -27,7 +27,7 @@ class Dimensional {
  *   + Dimensional<T,D>::[d](d | 0 < d < D);
  */
 protected:
-  T _values[NumDimensions];
+  std::array<T, NumDimensions> _values;
 
 public:
   /**
@@ -35,7 +35,7 @@ public:
    */
   template<typename ... Values>
   Dimensional(Values ... values)
-  : _values { T(values)... } {
+  : _values {{ (T)values... }} {
     static_assert(
       sizeof...(values) == NumDimensions,
       "Invalid number of arguments");
@@ -48,6 +48,13 @@ public:
     for (int d = 0; d < NumDimensions; ++d) {
       _values[d] = other._values[d];
     }
+  }
+
+  /**
+   * Return value with all dimensions as array of \c NumDimensions elements.
+   */
+  const std::array<T, NumDimensions> & values() const {
+    return _values;
   }
 
   /**
@@ -89,6 +96,23 @@ public:
   }
 
   /**
+   * Equality comparison operator.
+   */
+  bool operator==(const Dimensional<T, NumDimensions> & other) const {
+    for (int d = 0; d < NumDimensions; ++d) {
+      if (dim(d) != other.dim(d)) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Equality comparison operator.
+   */
+  bool operator!=(const Dimensional<T, NumDimensions> & other) const {
+    return !(*this == other);
+  }
+ 
+  /**
    * The number of dimensions of the value.
    */
   size_t rank() const {
@@ -120,10 +144,17 @@ public:
     }
   }
 
+  template<typename ... Values>
+  DistributionSpec(Values ... values)
+  : Dimensional<DistEnum, NumDimensions>::Dimensional(values...) {
+  }
+
+/*
   template<typename T_, typename ... values>
   DistributionSpec(T_ value, values ... Values)
   : Dimensional<DistEnum, NumDimensions>::Dimensional(value, Values...) {
   }
+*/
 };
 
 /** 
@@ -211,8 +242,7 @@ public:
   }
 
   std::array<long long, NumDimensions> extents() const {
-    std::array<long long, NumDimensions> ext { (long long)(this->_values) };
-    return ext;
+    return this->values();
   }
 
   /**
