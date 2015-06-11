@@ -6,6 +6,6 @@
 # where the DART interface is located
 DART_IF = ../../dart-if/v3.1
 
-CC      = mpicc -std=c99
-CXX     = mpic++ -std=c++0x
+CC      = mpicc $(OPT_FLAGS) -std=c99
+CXX     = mpic++ $(OPT_FLAGS) -std=c++0x
 
