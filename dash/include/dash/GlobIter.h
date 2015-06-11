@@ -79,6 +79,13 @@ public:
     return GlobRef<T>(ptr);
   }
 
+
+bool is_local() const {
+  Team& team = m_pattern->team();
+  auto coord = m_pattern->sizespec().coords(m_idx);
+  return m_pattern->index_to_unit(coord) == team.myid();
+}
+
   // prefix++ operator
   GlobIter<T, PatternType>& operator++() {
     m_idx++;
