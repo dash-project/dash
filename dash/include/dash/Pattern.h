@@ -28,12 +28,135 @@ private:
   typedef SizeSpec<NumDimensions>                SizeSpec_t;
   typedef CartCoord<NumDimensions, Arrangement>  MemoryLayout_t;
   typedef ViewSpec<NumDimensions>                ViewSpec_t;
+
 private:
+  /**
+   * Extracting size-, distribution- and team specifications from
+   * arguments passed to Pattern varargs constructor.
+   *
+   * \see Pattern<typename ... Args>::Pattern(Args && ... args)
+   */
+  class ArgumentParser {
+  private:
+    SizeSpec_t         _sizespec;
+    DistributionSpec_t _distspec;
+    TeamSpec_t         _teamspec;
+    ViewSpec_t         _viewspec;
+    /// Number of distribution specifying arguments in varargs
+    int                _argc_dist = 0;
+    /// Number of size/extent specifying arguments in varargs
+    int                _argc_size = 0;
+    /// Number of team specifying arguments in varargs
+    int                _argc_team = 0;
+
+  public:
+    template<typename ... Args>
+    ArgumentParser(Args && ... args) {
+      static_assert(
+        sizeof...(Args) >= NumDimensions,
+        "Invalid number of arguments for Pattern::ArgumentParser");
+      check<0>(std::forward<Args>(args)...);
+      // Validate number of arguments after parsing:
+      if (_argc_size > 0 && _argc_size != NumDimensions) {
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Invalid number of size arguments for Pattern(...), " <<
+          "expected " << NumDimensions << ", got " << _argc_size);
+      }
+      if (_argc_dist > 0 && _argc_dist != NumDimensions) {
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Invalid number of distribution arguments for Pattern(...), " <<
+          "expected " << NumDimensions << ", got " << _argc_dist);
+      }
+      if (_argc_team > 0 && _argc_team != NumDimensions) {
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Invalid number of team spec arguments for Pattern(...), " <<
+          "expected " << NumDimensions << ", got " << _argc_team);
+      }
+    }
+  
+    SizeSpec_t sizespec() const {
+      return _sizespec;
+    }
+    DistributionSpec_t distspec() const {
+      return _distspec;
+    }
+    TeamSpec_t teamspec() const {
+      return _teamspec;
+    }
+    ViewSpec_t viewspec() const {
+      return _viewspec;
+    }
+
+  private:
+    /// Pattern matching for extent value of type int.
+    template<int count>
+    void check(int extent) {
+      check<count>((long long)(extent));
+    }
+    /// Pattern matching for extent value of type size_t.
+    template<int count>
+    void check(size_t extent) {
+      check<count>((long long)(extent));
+    }
+    /// Pattern matching for extent value of type long long.
+    template<int count>
+    void check(long long extent) {
+      _argc_size++;
+      _sizespec[count] = extent;
+    }
+    /// Pattern matching for up to \c NumDimensions optional parameters
+    /// specifying the distribution pattern.
+    template<int count>
+    void check(const TeamSpec_t & teamSpec) {
+      _argc_team++;
+      _teamspec = teamSpec;
+    }
+    /// Pattern matching for one optional parameter specifying the 
+    /// team.
+    template<int count>
+    void check(dash::Team & team) {
+      _argc_team += NumDimensions;
+      _teamspec   = TeamSpec<NumDimensions>(team);
+    }
+    /// Pattern matching for one optional parameter specifying the 
+    /// size (extents).
+    template<int count>
+    void check(const SizeSpec_t & sizeSpec) {
+      _argc_size += NumDimensions;
+      _sizespec   = sizeSpec;
+    }
+    /// Pattern matching for one optional parameter specifying the 
+    /// distribution.
+    template<int count>
+    void check(const DistributionSpec<NumDimensions> & ds) {
+      _argc_dist += NumDimensions;
+      _distspec   = ds;
+    }
+    /// Pattern matching for up to NumDimensions optional parameters
+    /// specifying the distribution.
+    template<int count>
+    void check(const DistEnum & ds) {
+      _argc_dist++;
+      int dim = count - NumDimensions;
+      _distspec[dim] = ds;
+    }
+    /// Isolates first argument and calls the appropriate check() function
+    /// on each argument via recursion on the argument list.
+    template<int count, typename T, typename ... Args>
+    void check(T t, Args &&... args) {
+      check<count>(t);
+      check<count + 1>(std::forward<Args>(args)...);
+    }
+  };
+
+private:
+  ArgumentParser     m_arguments;
   DistributionSpec_t m_distspec;
   TeamSpec_t         m_teamspec;
   MemoryLayout_t     m_memory_layout;
-
-public:
   ViewSpec_t         m_viewspec;
 
 private:
@@ -46,36 +169,20 @@ private:
   size_t             m_local_capacity = 1;
   size_t             m_nunits         = dash::Team::All().size();
   size_t             m_blocksz;
-  int                argc_DistEnum    = 0;
-  int                argc_extents     = 0;
-  int                argc_ts          = 0;
-  dash::Team &       m_team = dash::Team::All();
+  dash::Team &       m_team           = dash::Team::All();
 
 public:
   template<typename ... Args>
-  Pattern(Args && ... args) {
-    static_assert(
-      sizeof...(Args) >= NumDimensions,
-      "Invalid number of constructor arguments.");
+  Pattern(Args && ... args)
+  : m_arguments(args...),
+    m_distspec(m_arguments.distspec()), 
+    m_teamspec(m_arguments.teamspec()), 
+    m_memory_layout(m_arguments.sizespec()), 
+    m_viewspec(m_arguments.viewspec()) {
+    m_nunits = m_teamspec.size();
 
-    check<0>(std::forward<Args>(args)...);
-    m_nunits = m_team.size();
-
-    int argc = sizeof...(Args);
-
-    assert(argc_extents == NumDimensions);
     checkValidDistEnum();
-
-    std::array<size_t, NumDimensions> extent = { (size_t)(m_extent) };
-    // Resize memory layout to given size spec:
-    m_memory_layout.resize(extent);
-    // Initialize view spec from given size spec:
-    m_viewspec.resize(extent);
     checkTile();
-
-    if (argc_ts == 0) {
-      m_teamspec = TeamSpec_t(m_team);
-    }
   }
 
   Pattern(
@@ -200,8 +307,6 @@ public:
       m_viewspec      = other.m_viewspec;
       m_nunits        = other.m_nunits;
       m_blocksz       = other.m_blocksz;
-      argc_DistEnum   = other.argc_DistEnum;
-      argc_extents    = other.argc_extents;
     }
     return *this;
   }
@@ -276,64 +381,6 @@ private:
 
   long long divFloor(const long long i, const long long k) const {
     return i / k;
-  }
-
-  template<int count>
-  void check(int extent) {
-    check<count>((long long)(extent));
-  }
-
-  template<int count>
-  void check(size_t extent) {
-    check<count>((long long)(extent));
-  }
-
-  // the first DIM parameters must be used to
-  // specify the extent
-  template<int count>
-  void check(long long extent) {
-    m_extent[count] = extent;
-    argc_extents++;
-  }
-
-  // the next (up to DIM) parameters may be used to 
-  // specify the distribution pattern
-  // TODO: How many are required? 0/1/DIM ?
-  template<int count>
-  void check(const TeamSpec_t & ts) {
-    m_teamspec = ts;
-    argc_ts++;
-  }
-
-  template<int count>
-  void check(dash::Team & t) {
-    m_team = Team(t);
-  }
-
-  template<int count>
-  void check(const SizeSpec_t & ss) {
-    m_memory_layout = ss;
-    argc_extents += NumDimensions;
-  }
-
-  template<int count>
-  void check(const DistributionSpec<NumDimensions> & ds) {
-    argc_DistEnum = NumDimensions;
-    m_distspec = ds;
-  }
-
-  template<int count>
-  void check(const DistEnum & ds) {
-    int dim = count - NumDimensions;
-    m_distspec[dim] = ds;
-    argc_DistEnum++;
-  }
-
-  // Isolates first argument and calls the appropriate check() function.
-  template<int count, typename T, typename ... Args>
-  void check(T t, Args&&... args) {
-    check<count>(t);
-    check<count + 1>(std::forward<Args>(args)...);
   }
 
   // check pattern constraints for tile

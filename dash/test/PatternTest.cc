@@ -2,6 +2,17 @@
 #include "TestBase.h"
 #include "PatternTest.h"
 
+TEST_F(PatternTest, SimpleConstructors) {
+  DASH_TEST_LOCAL_ONLY();
+  int extent_x = 2;
+  int extent_y = 3;
+  int extent_z = 4;
+  int size = extent_x * extent_y * extent_z;
+  // Should default to distribution BLOCKED, NONE, NONE:
+  dash::Pattern<1> pat_default(extent_x, extent_y, extent_z);
+  EXPECT_EQ(size, pat_default.capacity());
+}
+
 TEST_F(PatternTest, Distribute1DimBlocked) {
   DASH_TEST_LOCAL_ONLY();
   // Simple 1-dimensional blocked partitioning:

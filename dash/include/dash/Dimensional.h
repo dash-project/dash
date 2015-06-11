@@ -85,7 +85,7 @@ public:
    * \returns  A reference to the value in the given dimension
    */
   T & operator[](size_t dimension) {
-    return _values[index];
+    return _values[dimension];
   }
 
   /**
@@ -96,7 +96,8 @@ public:
   }
 
 protected:
-  /// Prevent default-construction.
+  /// Prevent default-construction for non-derived types, as initial values
+  /// for \c _values have unknown defaults.
   Dimensional() {
   }
 };
@@ -178,6 +179,13 @@ class SizeSpec : public Dimensional<long long, NumDimensions> {
    *   + SizeSpec::size();
    */
 public:
+  SizeSpec()
+  : _size(0) {
+    for (size_t i = 0; i < NumDimensions; i++) {
+      this->_values[i] = 0;
+    }
+  }
+
   template<typename ... Values>
   SizeSpec(Values ... values)
   : Dimensional<long long, NumDimensions>::Dimensional(values...),
@@ -217,10 +225,6 @@ public:
   }
 
 private:
-  /// Prevent default-construction.
-  SizeSpec() = delete;
-
-private:
   size_t _size;
 };
 
@@ -234,32 +238,12 @@ class ViewPair {
  */
 template<size_t NumDimensions>
 class ViewSpec : public Dimensional<ViewPair, NumDimensions> {
-#if 0
-public:
-  void update_size() {
-    nelem = 1;
-
-    for (size_t i = NumDimensions - view_dim; i < NumDimensions; i++) {
-      assert(range[i] > 0);
-      nelem *= range[i];
-    }
-  }
-#endif
 public:
   ViewSpec()
   : _size(0) {
     for (size_t i = 0; i < NumDimensions; i++) {
       _offset[i] = 0;
       _extent[i] = 0;
-    }
-  }
-
-  ViewSpec(SizeSpec<NumDimensions> sizespec)
-  : Dimensional<ViewPair, NumDimensions>(sizespec),
-    _size(sizespec.size()) {
-    for (size_t i = 0; i < NumDimensions; i++) {
-      _offset[i] = 0;
-      _extent[i] = sizespec.extent(i);
     }
   }
 
@@ -272,6 +256,25 @@ public:
       _offset[i] = vp.offset;
       _extent[i] = vp.extent;
       _size *= vp.extent;
+    }
+  }
+
+  ViewSpec(const SizeSpec<NumDimensions> & sizespec)
+  : Dimensional<ViewPair, NumDimensions>(sizespec),
+    _size(sizespec.size()) {
+    for (size_t i = 0; i < NumDimensions; i++) {
+      _offset[i] = 0;
+      _extent[i] = sizespec.extent(i);
+    }
+  }
+
+  ViewSpec(const ViewSpec<NumDimensions> & other)
+  : Dimensional<ViewPair, NumDimensions>(
+      static_cast< const Dimensional<ViewPair, NumDimensions> & >(other)),
+    _size(other._size) {
+    for (size_t i = 0; i < NumDimensions; i++) {
+      _offset[i] = other._offset[i];
+      _extent[i] = other._extent[i];
     }
   }
 
