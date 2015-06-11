@@ -7,11 +7,11 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
   // Simple 1-dimensional blocked partitioning:
   //
   // [ .. team 0 .. | .. team 1 .. | ... | team n-1 ]
-  int team_size  = dash::Team::All().size();
+  size_t team_size  = dash::Team::All().size();
   // Ceil division
-  int block_size = (_num_elem % team_size == 0)
-                     ? _num_elem / team_size
-                     : _num_elem / team_size + 1;
+  size_t block_size = (_num_elem % team_size == 0)
+                      ? _num_elem / team_size
+                      : _num_elem / team_size + 1;
   dash::Pattern<1> pat_blocked(
       dash::SizeSpec<1>(_num_elem),
       dash::DistributionSpec<1>(dash::BLOCKED),
@@ -20,7 +20,7 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
   EXPECT_EQ(pat_blocked.capacity(), _num_elem);
   EXPECT_EQ(pat_blocked.blocksize(0), block_size);
   
-  int expected_unit_id = 0;
+  size_t expected_unit_id = 0;
   for (int x = 0; x < _num_elem; ++x) {
     expected_unit_id = x / block_size;
     EXPECT_EQ(
@@ -57,12 +57,12 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   dash::Pattern<2, dash::ROW_MAJOR> pat_blocked_row(
       dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(dash::NONE, dash::BLOCKED),
-      dash::TeamSpec<2, dash::ROW_MAJOR>(dash::Team::All()),
+      dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
   dash::Pattern<2, dash::COL_MAJOR> pat_blocked_col(
       dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(dash::NONE, dash::BLOCKED),
-      dash::TeamSpec<2, dash::COL_MAJOR>(dash::Team::All()),
+      dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
   EXPECT_EQ(pat_blocked_row.capacity(), size);
   EXPECT_EQ(pat_blocked_row.max_elem_per_unit(), max_per_unit);

@@ -28,11 +28,14 @@ template<
   MemArrange Arrangement = ROW_MAJOR,
   typename SizeType      = size_t >
 class CartCoord {
+public:
+  typedef long long IndexType;
+
 protected:
   /// Number of elements in the cartesian space spanned by this coordinate.
   SizeType m_size;
   /// Number of dimensions of this coordinate.
-  size_t m_ndim;
+  SizeType m_ndim;
   /// Extents of the coordinate by dimension.
   SizeType m_extent[NumDimensions];
   /// Cumulative index offsets of the coordinate by dimension. Avoids
@@ -99,8 +102,8 @@ public:
   /**
    * Change the coordinate's extent in every dimension.
    */
-  template<typename... Args>
-  void resize(std::array<SizeType, NumDimensions> extents) {
+  template<typename SizeType_>
+  void resize(std::array<SizeType_, NumDimensions> extents) {
     // Check number of dimensions in extents:
     static_assert(
       extents.size() == NumDimensions,
@@ -110,12 +113,12 @@ public:
     // Update size:
     m_size = 1;
     for(auto i = 0; i < NumDimensions; i++ ) {
-      if (m_extent[i] <= 0) {
-        DASH_THROW(
-          dash::exception::OutOfBounds,
-          "Coordinates for CartCoord() must be greater than 0");
-      }
       m_size *= m_extent[i];
+    }
+    if (m_size <= 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Extents for CartCoord::resize must be greater than 0");
     }
     // Update offsets:
     if (Arrangement == COL_MAJOR) {
@@ -136,7 +139,7 @@ public:
    *
    * \return The number of dimensions in the coordinate
    */
-  int rank() const {
+  SizeType rank() const {
     return NumDimensions;
   }
   
@@ -176,7 +179,7 @@ public:
    *               by dimension (x, y, z, ...)
    */
   template<typename... Args>
-  SizeType at(Args... args) const {
+  IndexType at(Args... args) const {
     static_assert(
       sizeof...(Args) == NumDimensions,
       "Invalid number of arguments");
@@ -190,7 +193,7 @@ public:
    * \param  pos  An array containing the coordinates, ordered by
    * dimension (x, y, z, ...)
    */
-  SizeType at(std::array<SizeType, NumDimensions> pos) const {
+  IndexType at(std::array<SizeType, NumDimensions> pos) const {
     static_assert(
       pos.size() == NumDimensions,
       "Invalid number of arguments");
@@ -231,24 +234,24 @@ public:
    * Convert given linear offset (index) to cartesian coordinates.
    * Inverse of \c at(...).
    */
-  std::array<SizeType, NumDimensions> coords(SizeType offs) const {
-    if (offs >= m_size) {
+  std::array<IndexType, NumDimensions> coords(IndexType index) const {
+    if (index >= m_size) {
       // Index out of bounds:
       DASH_THROW(
         dash::exception::OutOfBounds,
-        "Given index " << offs <<
+        "Given index " << index <<
         " for CartCoord::coords() is out of bounds");
     }
-    ::std::array<SizeType, NumDimensions> pos;
+    ::std::array<IndexType, NumDimensions> pos;
     if (Arrangement == COL_MAJOR) {
       for(int i = 0; i < NumDimensions; ++i) {
-        pos[i] = offs / m_offset[i];
-        offs   = offs % m_offset[i];
+        pos[i] = index / m_offset[i];
+        index  = index % m_offset[i];
       }
     } else if (Arrangement == ROW_MAJOR) {
       for(int i = NumDimensions-1; i >= 0; --i) {
-        pos[i] = offs / m_offset[i];
-        offs   = offs % m_offset[i];
+        pos[i] = index / m_offset[i];
+        index  = index % m_offset[i];
       }
     }
     return pos;

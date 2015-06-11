@@ -55,7 +55,7 @@ public:
       const GlobIter<T, PatternType>& other) = default;
 
   operator GlobPtr<T>() const {
-    auto coord = m_pattern->sizespec().coords(m_idx);
+    auto coord = m_pattern->coords(m_idx);
     auto unit  = m_pattern->index_to_unit(coord);
     auto elem  = m_pattern->index_to_elem(coord);
     GlobPtr<T> ptr = m_globmem->get_globptr(unit, elem);
@@ -72,7 +72,7 @@ public:
   }  
 
   GlobRef<T> operator[](gptrdiff_t n) {
-    auto coord = m_pattern->sizespec().coords(n);
+    auto coord = m_pattern->coords(n);
     auto unit  = m_pattern->index_to_unit(coord);
     auto elem  = m_pattern->index_to_elem(coord);
     GlobPtr<T> ptr = m_globmem->get_globptr(unit, elem);

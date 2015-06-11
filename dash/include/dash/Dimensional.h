@@ -12,8 +12,8 @@
 namespace dash {
 
 /**
- * Base class for dimensional attributes, stores values
- * of identical type in a given number of dimensions.
+ * Base class for dimensional attributes, stores an
+ * n-dimensional value with identical type all dimensions.
  *
  * \tparam  T  The contained value type
  * \tparam  NumDimensions  The number of dimensions
@@ -44,8 +44,10 @@ public:
   /**
    * Copy-constructor.
    */
-  Dimensional(const Dimensional<T, NumDimensions> & other)
-  : _values(other._values) {
+  Dimensional(const Dimensional<T, NumDimensions> & other) {
+    for (int d = 0; d < NumDimensions; ++d) {
+      _values[d] = other._values[d];
+    }
   }
 
   /**
@@ -75,13 +77,28 @@ public:
     return dim(dimension);
   }
 
+  /**
+   * Subscript assignment operator, access to value in dimension given by index.
+   * Alias for \c dim.
+   *
+   * \param  dimension  The dimension
+   * \returns  A reference to the value in the given dimension
+   */
+  T & operator[](size_t dimension) {
+    return _values[index];
+  }
+
+  /**
+   * The number of dimensions of the value.
+   */
   size_t rank() const {
     return NumDimensions;
   }
 
-private:
+protected:
   /// Prevent default-construction.
-  Dimensional() = delete;
+  Dimensional() {
+  }
 };
 
 /**
@@ -96,9 +113,9 @@ public:
    * (BLOCKED, NONE*).
    */
   DistributionSpec() {
-    this->m_extent[0] = BLOCKED;
+    this->_values[0] = BLOCKED;
     for (size_t i = 1; i < NumDimensions; i++) {
-      this->m_extent[i] = NONE;
+      this->_values[i] = NONE;
     }
   }
 
@@ -204,12 +221,12 @@ private:
   SizeSpec() = delete;
 
 private:
-  long long _size;
+  size_t _size;
 };
 
 class ViewPair {
   long long offset;
-  long long extent;
+  size_t extent;
 };
 
 /**
@@ -228,10 +245,14 @@ public:
     }
   }
 #endif
-private:
-  long long _offset[NumDimensions];
-  long long _extent[NumDimensions];
-  long long _size;
+public:
+  ViewSpec()
+  : _size(0) {
+    for (size_t i = 0; i < NumDimensions; i++) {
+      _offset[i] = 0;
+      _extent[i] = 0;
+    }
+  }
 
   ViewSpec(SizeSpec<NumDimensions> sizespec)
   : Dimensional<ViewPair, NumDimensions>(sizespec),
@@ -245,25 +266,60 @@ private:
   template<typename T_, typename ... Values>
   ViewSpec(Values... values)
   : Dimensional<ViewPair, NumDimensions>::Dimensional(values...),
-    _size(0) {
+    _size(1) {
     for (size_t i = 0; i < NumDimensions; i++) {
       ViewPair vp = this->dim(i);
       _offset[i] = vp.offset;
       _extent[i] = vp.extent;
+      _size *= vp.extent;
     }
   }
 
-  long long size() const {
-    return _size;
+  /**
+   * Change the view specification's extent in every dimension.
+   */
+  template<typename... Args>
+  void resize(Args... args) {
+    static_assert(
+      sizeof...(Args) == NumDimensions,
+      "Invalid number of arguments");
+    std::array<size_t, NumDimensions> extents = { (size_t)(args)... };
+    resize(extents);
+  }
+
+  /**
+   * Change the view specification's extent in every dimension.
+   */
+  template<typename SizeType_>
+  void resize(std::array<SizeType_, NumDimensions> extent) {
+    _size = 1;
+    for (size_t i = 0; i < NumDimensions; i++) {
+      _extent[i] = extent[i];
+      _size *= extent[i];
+    }
+    if (_size <= 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Extents for ViewSpec::resize must be greater than 0");
+    }
   }
 
   long long begin(size_t dimension) const {
     return _offset[dimension];
   }
 
+  long long size() const {
+    return _size;
+  }
+
   long long size(size_t dimension) const {
     return _extent[dimension];
   }
+
+private:
+  long long _offset[NumDimensions];
+  size_t _extent[NumDimensions];
+  size_t _size;
 };
 
 } // namespace dash

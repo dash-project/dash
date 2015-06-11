@@ -37,15 +37,19 @@ public:
   ViewSpec_t         m_viewspec;
 
 private:
-  long long      m_local_begin[NumDimensions];
-  long long      m_lextent[NumDimensions];
-  long long      m_local_capacity = 1;
-  long long      m_nunits = dash::Team::All().size();
-  long long      m_blocksz;
-  int            argc_DistEnum = 0;
-  int            argc_extents = 0;
-  int            argc_ts = 0;
-  dash::Team &   m_team = dash::Team::All();
+  /// The local offsets of the pattern in all dimensions
+  long long          m_local_offset[NumDimensions];
+  /// The local extents of the pattern in all dimensions
+  size_t             m_local_extent[NumDimensions];
+  /// The global extents of the pattern in all dimensions
+  size_t             m_extent[NumDimensions];
+  size_t             m_local_capacity = 1;
+  size_t             m_nunits         = dash::Team::All().size();
+  size_t             m_blocksz;
+  int                argc_DistEnum    = 0;
+  int                argc_extents     = 0;
+  int                argc_ts          = 0;
+  dash::Team &       m_team = dash::Team::All();
 
 public:
   template<typename ... Args>
@@ -59,20 +63,14 @@ public:
 
     int argc = sizeof...(Args);
 
-    // Speficy default patterns for all dims
-    // BLOCKED for the 1st, NONE for the rest
-    if (argc_DistEnum == 0) {
-      m_distspec.m_extent[0] = BLOCKED;
-      argc_DistEnum = 1;
-    }
-    for (size_t i = argc_DistEnum; i < NumDimensions; i++) {
-      m_distspec.m_extent[i] = NONE;
-    }
-
     assert(argc_extents == NumDimensions);
     checkValidDistEnum();
 
-    m_viewspec = ViewSpec<NumDimensions>(m_memory_layout);
+    std::array<size_t, NumDimensions> extent = { (size_t)(m_extent) };
+    // Resize memory layout to given size spec:
+    m_memory_layout.resize(extent);
+    // Initialize view spec from given size spec:
+    m_viewspec.resize(extent);
     checkTile();
 
     if (argc_ts == 0) {
@@ -118,7 +116,7 @@ public:
 
   long long local_extent(size_t dim) const {
     assert(dim < NumDimensions && dim >= 0);
-    return m_lextent[dim];
+    return m_local_extent[dim];
   }
 
   long long local_size() const {
@@ -126,12 +124,12 @@ public:
   }
 
   long long unit_and_elem_to_index(
-    long long unit,
-    long long elem) {
+    size_t unit,
+    size_t elem) {
     // TODO
   }
 
-  long long max_elem_per_unit() const {
+  size_t max_elem_per_unit() const {
     // TODO
     return 0;
   }
@@ -140,7 +138,7 @@ public:
    * Convert given coordinate in pattern to its assigned unit id.
    * TODO: Will be renamed to \c unit_at_coord.
    */
-  long long index_to_unit(
+  size_t index_to_unit(
     std::array<long long, NumDimensions> input) const {
     // return atunit_(input, m_viewspec);
     // TODO
@@ -151,7 +149,7 @@ public:
    * Convert given coordinate in pattern to its linear local index.
    * TODO: Will be renamed to \c coord_to_local_index.
    */
-  long long index_to_elem(
+  size_t index_to_elem(
     std::array<long long, NumDimensions> input) const {
     // return at_(input, m_viewspec);
     // TODO
@@ -162,7 +160,7 @@ public:
    * Convert given coordinate in pattern to its linear local index.
    * TODO: Will be renamed to \c coord_to_local_index.
    */
-  long long index_to_elem(
+  size_t index_to_elem(
     std::array<long long, NumDimensions> input,
     ViewSpec<NumDimensions> & viewspec) const {
     // return at_(input, viewspec);
@@ -294,7 +292,7 @@ private:
   // specify the extent
   template<int count>
   void check(long long extent) {
-    m_memory_layout.m_extent[count] = extent;
+    m_extent[count] = extent;
     argc_extents++;
   }
 
@@ -327,7 +325,7 @@ private:
   template<int count>
   void check(const DistEnum & ds) {
     int dim = count - NumDimensions;
-    m_distspec.m_extent[dim] = ds;
+    m_distspec[dim] = ds;
     argc_DistEnum++;
   }
 
@@ -342,17 +340,17 @@ private:
   void checkTile() const {
     int hastile = 0;
     int invalid = 0;
-    for (int i = 0; i < NumDimensions - 1; i++) {
-      if (m_distspec.m_extent[i].type == DistEnum::disttype::TILE)
+    for (int i = 0; i < NumDimensions-1; i++) {
+      if (m_distspec.dim(i).type == DistEnum::disttype::TILE)
         hastile = 1;
-      if (m_distspec.m_extent[i].type != m_distspec.m_extent[i + 1].type)
+      if (m_distspec.dim(i).type != m_distspec.dim(i+1).type)
         invalid = 1;
     }
     assert(!(hastile && invalid));
     if (hastile) {
       for (int i = 0; i < NumDimensions; i++) {
         assert(
-          m_memory_layout.extent(i) % (m_distspec.m_extent[i].blocksz)
+          m_memory_layout.extent(i) % (m_distspec.dim(i).blocksz)
           == 0);
       }
     }
@@ -361,10 +359,10 @@ private:
   void checkValidDistEnum() {
     int n_validdist = 0;
     for (int i = 0; i < NumDimensions; i++) {
-      if (m_distspec.m_extent[i].type != DistEnum::disttype::NONE)
+      if (m_distspec.dim(i).type != DistEnum::disttype::NONE)
         n_validdist++;
     }
-    assert(n_validdist == m_teamspec.ndim());
+    assert(n_validdist == m_teamspec.rank());
   }
 };
 
