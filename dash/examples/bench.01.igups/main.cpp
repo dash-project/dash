@@ -174,8 +174,14 @@ double test_dash_global_iter(dash::Array<TYPE>& a,
   TIMESTAMP(tstart);
   for(auto i=0; i<REPEAT; i++ ) {
     for(auto it=a.begin(); it!=a.end(); it++) {
+      if( it.is_local() ) {
+	(*it)=(*it)+1;
+      }
+
+      /*
       if( (*it).is_local() ) 
 	(*it)=(*it)+1;
+      */
     }
   }
   TIMESTAMP(tend);
