@@ -159,7 +159,7 @@ public:
 
 /** 
  * TeamSpec specifies the arrangement of team units in all dimensions.
- * Size of TeamSpec implies the size of the team.
+ * Size of TeamSpec implies the number of units in the team.
  * 
  * Reoccurring units are currently not supported.
  *
@@ -182,10 +182,28 @@ public:
   : Dimensional<size_t, MaxDimensions>::Dimensional(value, Values...) {
   }
 
+  /**
+   * The number of units (extent) available in the given dimension.
+   *
+   * \param    dimension  The dimension
+   * \returns  The number of units in the given dimension
+   */
+  long long num_units(size_t dimension) const {
+    return (_num_dimensions == 1)
+           ? size() // for TeamSpec<D>(N, 1, 1, ...)
+           : this->dim(dimension);
+  }
+
+  /**
+   * The actual number of dimensions in this team arragement.
+   */
   size_t rank() const {
     return _num_dimensions;
   }
 
+  /**
+   * The total number of units in this team arrangement.
+   */
   size_t size() const {
     return _num_units;
   }

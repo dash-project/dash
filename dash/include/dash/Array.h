@@ -19,8 +19,8 @@
 #include <dash/HView.h>
 #include <dash/Shared.h>
 
-namespace dash
-{
+namespace dash {
+
 /* 
    STANDARD TYPE DEFINITION CONVENTIONS FOR STL CONTAINERS 
    
@@ -43,22 +43,22 @@ const_reverse_iterator  Behaves like const value_type*
          const_pointer  Behaves like const value_type*
 */
 
-
 // forward declaration
-template<typename T> class Array;
+template<
+  typename ElementType,
+  class PatternType >
+class Array;
 
-
-template<typename T>
-class LocalProxyArray
-{
+template<typename T, class PatternType>
+class LocalProxyArray {
 public: 
   typedef size_t size_type;
   
 private:
-  Array<T> *m_ptr;
+  Array<T, PatternType> *m_ptr;
   
 public:
-  LocalProxyArray(Array<T>* ptr) {
+  LocalProxyArray(Array<T, PatternType>* ptr) {
     m_ptr = ptr;
   }
   
@@ -88,10 +88,12 @@ public:
   }
 };
 
-template<typename ELEMENT_TYPE>
+template<
+  typename ElementType,
+  class PatternType = Pattern<1, ROW_MAJOR> >
 class Array {
 public: 
-  typedef ELEMENT_TYPE  value_type;
+  typedef ElementType  value_type;
 
   // NO allocator_type!
   typedef size_t size_type;
@@ -113,23 +115,23 @@ private:
   
   dash::Team   & m_team;
   dart_unit_t    m_myid;
-  Pattern<1>     m_pattern;  
+  PatternType    m_pattern;  
   GlobMem*       m_globmem; 
   iterator       m_begin;
   size_type      m_size;   // total size (# elements)
   size_type      m_lsize;  // local size (# local elements)
   
-  ELEMENT_TYPE * m_lbegin;
-  ELEMENT_TYPE * m_lend;
+  ElementType * m_lbegin;
+  ElementType * m_lend;
   
 public:
 /* Check requirements on element type 
    is_trivially_copyable is not implemented presently, and is_trivial
    is too strict (e.g. fails on std::pair).
 
-   static_assert(std::is_trivially_copyable<ELEMENT_TYPE>::value,
+   static_assert(std::is_trivially_copyable<ElementType>::value,
      "Element type must be trivially copyable");
-   static_assert(std::is_trivial<ELEMENT_TYPE>::value,
+   static_assert(std::is_trivial<ElementType>::value,
      "Element type must be trivially copyable");
 */
 
@@ -157,7 +159,7 @@ public:
     dash::DistributionSpec<1> ds) {
     assert(nelem > 0);
     
-    m_pattern = Pattern<1>(nelem, ds, m_team);
+    m_pattern = PatternType(nelem, ds, m_team);
 
     m_size  = m_pattern.capacity();
     m_lsize = m_pattern.max_elem_per_unit();
@@ -173,18 +175,17 @@ public:
 
     dart_gptr_setunit(&gptr, m_myid);
     dart_gptr_getaddr(gptr, &addr);
-    m_lbegin=static_cast<ELEMENT_TYPE*>(addr);
+    m_lbegin=static_cast<ElementType*>(addr);
 
     // determine the real number of local elements
-    for( ; m_lsize>0; m_lsize-- ) {
-      if( m_pattern.unit_and_elem_to_index(m_myid, m_lsize-1)>= 0 )
-	break;
+    for (; m_lsize > 0; --m_lsize) {
+      if (m_pattern.unit_and_elem_to_index(m_myid, m_lsize-1) >= 0) {
+        break;
+      }
     }
-    
-    dart_gptr_incaddr(&gptr, m_lsize*sizeof(ELEMENT_TYPE));
+    dart_gptr_incaddr(&gptr, m_lsize*sizeof(ElementType));
     dart_gptr_getaddr(gptr, &addr);
-    m_lend=static_cast<ELEMENT_TYPE*>(addr);    
-    
+    m_lend = static_cast<ElementType*>(addr);    
     return true;
   }
 
@@ -195,12 +196,13 @@ public:
     }
   }
 
-  /// Local proxy object enables arr.local to be used in range-based for loops
-  LocalProxyArray<value_type> local;
+  /// Local proxy object enables arr.local to be used in range-based for
+  /// loops
+  LocalProxyArray<value_type, PatternType> local;
 
   /// Delegating constructor, specify pattern explicitly
   Array(
-    const dash::Pattern<1> & pat)
+    const PatternType & pat)
   : Array(pat.capacity(), pat.distspec(), pat.team()) {
   }
   
@@ -221,7 +223,6 @@ public:
   
   iterator begin() noexcept {
     iterator res = iterator(data());
-    //cout<<"#### "<<res<<endl;
     return res;
   }
 
@@ -229,11 +230,11 @@ public:
     return iterator(data() + m_size);
   }
 
-  ELEMENT_TYPE* lbegin() const noexcept {
+  ElementType* lbegin() const noexcept {
     return m_lbegin;
   }
 
-  ELEMENT_TYPE* lend() const noexcept {
+  ElementType* lend() const noexcept {
     return m_lend;
   }  
 
@@ -269,7 +270,7 @@ public:
     m_team.barrier();
   }
 
-  Pattern<1> & pattern() {
+  PatternType & pattern() {
     return m_pattern;
   }
 
@@ -278,20 +279,20 @@ public:
   }
 
   template<int level>
-  dash::HView<Array<ELEMENT_TYPE>, level> hview() {
-    return dash::HView<Array<ELEMENT_TYPE>, level>(*this);
+  dash::HView<Array<ElementType>, level> hview() {
+    return dash::HView<Array<ElementType>, level>(*this);
   }
 
   // find the location of the global min. element
   // TODO: support custom comparison operator, similar to 
   // std::min_element()
-  GlobPtr<ELEMENT_TYPE> min_element() {
-    typedef dash::GlobPtr<ELEMENT_TYPE> globptr_t;
+  GlobPtr<ElementType> min_element() {
+    typedef dash::GlobPtr<ElementType> globptr_t;
 
     dash::Array<globptr_t> minarr(m_team.size());
 
     // find the local min. element in parallel
-    ELEMENT_TYPE *lmin =std::min_element(lbegin(), lend());     
+    ElementType *lmin =std::min_element(lbegin(), lend());     
     minarr[m_team.myid()] = local.globptr(lmin);
 
     dash::Shared<globptr_t> min;
@@ -299,7 +300,7 @@ public:
     // find the global min. element
     if(m_team.myid()==0) {
       globptr_t minloc=minarr[0];
-      ELEMENT_TYPE minval=*minloc;
+      ElementType minval=*minloc;
       for( auto i=1; i<minarr.size(); i++ ) {
 	if( *((globptr_t)minarr[i])<minval ) 
 	  minloc=minarr[i];

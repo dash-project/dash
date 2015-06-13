@@ -1,5 +1,5 @@
-#ifndef ENUMS_H_INCLUDED
-#define ENUMS_H_INCLUDED
+#ifndef DASH__ENUMS_H_ 
+#define DASH__ENUMS_H_
 
 namespace dash {
 
@@ -22,11 +22,13 @@ typedef struct DistEnum {
   long long blocksz;
 
   bool operator==(const DistEnum & other) const {
-    return (type == other.type && blocksz == other.blocksz);
+    return (this->type == other.type &&
+            this->blocksz == other.blocksz);
   }
   bool operator!=(const DistEnum & other) const {
     return !(*this == other);
   }
+
 } DistEnum;
 
 static DistEnum BLOCKED { DistEnum::BLOCKED, -1 };
@@ -39,4 +41,4 @@ DistEnum BLOCKCYCLIC(int blockSize);
 
 } // namespace dash
 
-#endif // DASH__DASH_LIB__ENUMS_H__INCLUDED__
+#endif // DASH__ENUMS_H_

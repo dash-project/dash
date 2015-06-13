@@ -100,14 +100,21 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
       LOG_MESSAGE("x: %d, y: %d, eo: %d, ao: %d, ei: %d",
         x, y,
         expected_offset_col_order,
-        pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }),
+        pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }),
         expected_index_col_order);
+
       EXPECT_EQ(
         expected_unit_id,
         pat_blocked_row.index_to_unit(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
-        expected_offset_col_order,
+        expected_unit_id,
+        pat_blocked_col.index_to_unit(std::array<long long, 2> { x, y }));
+      EXPECT_EQ(
+        expected_offset_row_order,
         pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }));
+      EXPECT_EQ(
+        expected_offset_col_order,
+        pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }));
     }
   }
 }
@@ -116,11 +123,11 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
   DASH_TEST_LOCAL_ONLY();
   // 2-dimensional, blocked partitioning in first dimension:
   // 
-  // [ .. team 0 .. | .. team 1 .. | .. team 2 .. | ... | .. team n-1 .. ]
-  // [ .. team 0 .. | .. team 1 .. | .. team 2 .. | ... | .. team n-1 .. ]
-  // [ .. team 0 .. | .. team 1 .. | .. team 2 .. | ... | .. team n-1 .. ]
-  // [ .. team 0 .. | .. team 1 .. | .. team 2 .. | ... | .. team n-1 .. ]
-  // [                               ...                                 ]
+  // [ team 0[0] | team 1[0] | team 2[0] | ... | team n-1 ]
+  // [ team 0[1] | team 1[1] | team 2[1] | ... | team n-1 ]
+  // [ team 0[2] | team 1[2] | team 2[2] | ... | team n-1 ]
+  // [ team 0[3] | team 1[3] | team 2[3] | ... | team n-1 ]
+  // [                       ...                          ]
   int team_size    = dash::Team::All().size();
   int extent_x     = 3;
   int extent_y     = 4;
@@ -131,15 +138,24 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
                        : extent_x / team_size + 1;
   int block_size_y = extent_y;
   int max_per_unit = block_size_x * block_size_y;
-  dash::Pattern<2> pat_blocked(
+  dash::Pattern<2, dash::ROW_MAJOR> pat_blocked_row(
       dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE),
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
-  EXPECT_EQ(pat_blocked.capacity(), size);
-  EXPECT_EQ(pat_blocked.max_elem_per_unit(), max_per_unit);
-  EXPECT_EQ(pat_blocked.blocksize(0), block_size_x);
-  EXPECT_EQ(pat_blocked.blocksize(1), block_size_y);
+  dash::Pattern<2, dash::COL_MAJOR> pat_blocked_col(
+      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE),
+      dash::TeamSpec<2>(dash::Team::All()),
+      dash::Team::All());
+  EXPECT_EQ(pat_blocked_row.capacity(), size);
+  EXPECT_EQ(pat_blocked_row.max_elem_per_unit(), max_per_unit);
+  EXPECT_EQ(pat_blocked_row.blocksize(0), block_size_x);
+  EXPECT_EQ(pat_blocked_row.blocksize(1), block_size_y);
+  EXPECT_EQ(pat_blocked_col.capacity(), size);
+  EXPECT_EQ(pat_blocked_col.max_elem_per_unit(), max_per_unit);
+  EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_x);
+  EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
   int expected_unit_id = 0;
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
@@ -152,10 +168,16 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
       expected_unit_id = x / block_size_x;
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked.index_to_unit(std::array<long long, 2> { x, y }));
+        pat_blocked_row.index_to_unit(std::array<long long, 2> { x, y }));
+      EXPECT_EQ(
+        expected_unit_id,
+        pat_blocked_col.index_to_unit(std::array<long long, 2> { x, y }));
+      EXPECT_EQ(
+        expected_offset_row_order,
+        pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_col_order,
-        pat_blocked.index_to_elem(std::array<long long, 2> { x, y }));
+        pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }));
     }
   }
 }

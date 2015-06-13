@@ -164,6 +164,10 @@ public:
   bool operator!=(const GlobIter<T, PatternType>& other) const {
     return m_idx != other.m_idx;
   }
+
+  const PatternType & pattern() const {
+    return *m_pattern;
+  }
 };
 
 } // namespace dash

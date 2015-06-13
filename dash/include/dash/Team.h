@@ -13,7 +13,6 @@
 #include <type_traits>
 
 #include <dash/Init.h>
-// #include <dash/View.h>
 #include <dash/Enums.h>
 #include <dash/Exception.h>
 #include <dash/dart/if/dart.h>
@@ -32,8 +31,6 @@ namespace dash {
  * - move-assignment
  */
 class Team {
-  template< class U> friend class Array;
-  template< size_t DIM, MemArrange MA> friend class Pattern;
   template< size_t DIM> friend class TeamSpec;
   template< class U> friend class Shared;
   template< class U, class Pattern > friend class GlobIter;
@@ -113,8 +110,8 @@ public:
 
 private:
   /**
-   * Constructor, allows to specify the instance's parent team and its position within the
-   * team group.
+   * Constructor, allows to specify the instance's parent team and its
+   * position within the team group.
    */
   Team(dart_team_t id, 
        Team * parent = nullptr, 
@@ -136,7 +133,8 @@ private:
       if (parent->m_child) {
         DASH_THROW(
           dash::exception::InvalidArgument,
-          "Child already set for " << parent << ", not setting to " << this); 
+          "Child already set for " << parent 
+          << ", not setting to " << this); 
       } else {
         parent->m_child = this;
       }
@@ -249,7 +247,8 @@ public:
    * Equality comparison operator.
    *
    * \param   rhs  The Team instance to compare
-   * \return  True if and only if the given Team instance and this Team share the same DART id
+   * \return  True if and only if the given Team instance and this Team
+   *          share the same DART id
    */
   bool operator==(const Team & rhs) const {
     return m_dartid == rhs.m_dartid;
@@ -259,8 +258,8 @@ public:
    * Inequality comparison operator.
    *
    * \param   rhs  The Team instance to compare
-   * \return  True if and only if the given Team instance and this Team  do not share the same 
-   *          DART id
+   * \return  True if and only if the given Team instance and this Team 
+   *          do not share the same DART id
    */
   bool operator!=(const Team & rhs) const {
     return !(operator == (rhs));
@@ -281,26 +280,28 @@ public:
   }
 
   /**
-   * Whether this Team is a leaf node in a Team hierarchy, i.e. does not have any child Teams 
-   * assigned.
+   * Whether this Team is a leaf node in a Team hierarchy, i.e. does not 
+   * have any child Teams assigned.
    */
   bool isLeaf() const {
     return m_child == nullptr;
   }
 
   /**
-   * Whether this Team is a root node in a Team hierarchy, i.e. does not have a parent Team
-   * assigned.
+   * Whether this Team is a root node in a Team hierarchy, i.e. does not 
+   * have a parent Team assigned.
    */
   bool isRoot() const {
     return m_parent == nullptr;
   }
 
   /**
-   * Whether this Team instance is a member of the group with given group id.
+   * Whether this Team instance is a member of the group with given group 
+   * id.
    *
    * \param   groupId   The id of the group to test for membership
-   * \return  True if and only if this Team instance is member of a group with given id
+   * \return  True if and only if this Team instance is member of a group 
+   *          with given id
    */
   bool isMember(size_t groupId) {
     int32_t ismember;
