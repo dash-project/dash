@@ -1,6 +1,7 @@
 #ifndef DASH__ENUMS_H_ 
 #define DASH__ENUMS_H_
 
+#include <dash/Exception.h>
 #include <dash/internal/Math.h>
 #include <cstddef>
 #include <functional>
@@ -52,7 +53,36 @@ public:
       case DistEnum::disttype::TILE:
         return blocksz;
       default:
-        return -1;
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Distribution type undefined in blocksize_in_range");
+    }
+  }
+
+  /**
+   * Resolve the associated unit id offset of the given block offset.
+   */
+  size_t block_coord_to_unit_offset(
+    long long block_coord,
+    int dimension,
+    long long num_units) const {
+    switch (type) {
+      case DistEnum::disttype::NONE:
+        // Unit id is unchanged:
+        return 0;
+      case DistEnum::disttype::BLOCKED:
+      case DistEnum::disttype::CYCLIC:
+      case DistEnum::disttype::BLOCKCYCLIC:
+        // Advance one unit id per block coordinate:
+        return block_coord;
+      case DistEnum::disttype::TILE:
+        // Advance one unit id per block coordinate and
+        // one unit id per dimension:
+        return block_coord + dimension;
+      default:
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Distribution type undefined in block_coord_to_unit_offset");
     }
   }
 

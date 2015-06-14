@@ -356,15 +356,29 @@ public:
     m_viewspec = ViewSpec<NumDimensions>(m_memory_layout);
   }
 
+  long long unit_at(
+    const std::array<long long, NumDimensions> & coords,
+    const ViewSpec_t & viewspec) const {
+    // Apply viewspec offsets to coordinates:
+    std::array<long long, NumDimensions> vs_coords;
+    for (int d = 0; d < NumDimensions; ++d) {
+      vs_coords[d] = coords[d] + viewspec[d].offset;
+    }
+    // Index of block containing the given coordinates:
+    std::array<long long, NumDimensions> block_coords = 
+      coords_to_block_coords(vs_coords);
+    // Unit assigned to this block index:
+    return block_coords_to_unit(block_coords);
+  }
+
   /**
    * Convert given coordinate in pattern to its assigned unit id.
-   * TODO: Will be renamed to \c unit_at_coord.
    */
   template<typename ... Values>
-  long long atunit(Values ... values) const {
+  long long unit_at(Values ... values) const {
     assert(sizeof...(Values) == NumDimensions);
     std::array<long long, NumDimensions> inputindex = { values... };
-    return atunit_(inputindex, m_viewspec);
+    return unit_at(inputindex, m_viewspec);
   }
 
   long long local_extent(size_t dim) const {
@@ -399,18 +413,16 @@ public:
 
   /**
    * Convert given coordinate in pattern to its assigned unit id.
-   * TODO: Will be renamed to \c unit_at_coord.
+   * TODO: Will be renamed to \c unit_at_coords.
    */
   size_t index_to_unit(
-    std::array<long long, NumDimensions> input) const {
-    // return atunit_(input, m_viewspec);
-    // TODO
-    return 0;
+    const std::array<long long, NumDimensions> & input) const {
+    return unit_at(input, m_viewspec);
   }
 
   /**
    * Convert given coordinate in pattern to its linear local index.
-   * TODO: Will be renamed to \c coord_to_local_index.
+   * TODO: Will be renamed to \c coords_to_local_index.
    */
   size_t index_to_elem(
     std::array<long long, NumDimensions> input) const {
@@ -419,15 +431,18 @@ public:
 
   /**
    * Convert given coordinate in pattern to its linear local index.
-   * TODO: Will be renamed to \c coord_to_local_index.
+   * TODO: Will be renamed to \c coords_to_local_index.
    */
   size_t index_to_elem(
     std::array<long long, NumDimensions> input,
-    const ViewSpec<NumDimensions> & viewspec) const {
+    const ViewSpec_t & viewspec) const {
     // TODO
     return 0;
   }
 
+  /**
+   * Convert given coordinate in pattern to its linear local index.
+   */
   template<typename ... values>
   size_t at(values ... Values) const {
     static_assert(
@@ -439,7 +454,7 @@ public:
 
   /**
    * Convert given coordinate in pattern to its linear global index.
-   * TODO: Will be renamed to \c coord_to_index.
+   * TODO: Will be renamed to \c coords_to_index.
    */
   long long glob_index_to_elem(
     std::array<long long, NumDimensions> input,
@@ -512,11 +527,11 @@ public:
     return m_team;
   }
 
-  DistributionSpec<NumDimensions> distspec() const {
+  DistributionSpec_t distspec() const {
     return m_distspec;
   }
 
-  SizeSpec<NumDimensions> sizespec() const {
+  SizeSpec_t sizespec() const {
     return m_memory_layout;
   }
 
@@ -533,20 +548,40 @@ public:
   }
 
 private:
-
-  size_t units_in_dimension(int dimension) const {
-    // old implementation: 
-    // teamspec.rank() == 1 ? teamspec.size() : teamspec[dimension]
-    return m_teamspec[dimension];
-  }
-
+  /**
+   * Convert global index coordinates to the coordinates of its block in
+   * the pattern.
+   */
   std::array<long long, NumDimensions> coords_to_block_coords(
-    std::array<long long, NumDimensions> & coords) const {
+    const std::array<long long, NumDimensions> & coords) const {
     std::array<long long, NumDimensions> block_coords;
     for (int d = 0; d < NumDimensions; ++d) {
       block_coords[d] = coords[d] / blocksize(d);
     }
     return block_coords;
+  }
+
+  /**
+   * Resolve the associated unit id of the given block.
+   */
+  size_t block_coords_to_unit(
+    std::array<long long, NumDimensions> & block_coords) const {
+    size_t unit_id = 0;
+    for (int d = 0; d < NumDimensions; ++d) {
+      DistEnum dist = m_distspec[d];
+      unit_id += dist.block_coord_to_unit_offset(
+                    block_coords[d], // block coordinate
+                    d,               // dimension
+                    m_teamspec[d]);  // number of units in dimension
+      unit_id %= m_teamspec[d];
+    }
+    return unit_id;
+  }
+
+  size_t units_in_dimension(int dimension) const {
+    // old implementation: 
+    // teamspec.rank() == 1 ? teamspec.size() : teamspec[dimension]
+    return m_teamspec[dimension];
   }
 
   /**
@@ -556,10 +591,10 @@ private:
   }
 };
 
-template<typename FwdIterator>
+template<typename PatternIterator>
 void forall(
-  FwdIterator begin,
-  FwdIterator end,
+  PatternIterator begin,
+  PatternIterator end,
   ::std::function<void(long long)> func) {
   auto pattern = begin.pattern();
   for (long long i = 0; i < pattern.sizespec.size(); i++) {

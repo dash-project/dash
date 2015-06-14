@@ -276,7 +276,7 @@ private:
   size_t _size;
 };
 
-class ViewPair {
+struct ViewPair {
   long long offset;
   size_t extent;
 };

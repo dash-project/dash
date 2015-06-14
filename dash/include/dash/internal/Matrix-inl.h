@@ -362,7 +362,7 @@ Matrix_Ref<T, NumDimensions, CUR>::at(Args... args) {
   for(int i = _proxy->_dim; i < NumDimensions; ++i) {
     _proxy->_coord[i] = coord[i-_proxy->_dim];
   }   
-  size_t unit = _proxy->_mat->_pattern.atunit_(
+  size_t unit = _proxy->_mat->_pattern.unit_at(
                   _proxy->_coord,
                   _proxy->_viewspec);
   size_t elem = _proxy->_mat->_pattern.at_(
@@ -452,7 +452,7 @@ Matrix_Ref<T, NumDimensions, 0 >::at_(size_t unit, size_t elem) const {
 template <typename T, size_t NumDimensions>
 inline Matrix_Ref<T, NumDimensions, 0>::operator T() {
   GlobRef<T> ref = at_(
-      _proxy->_mat->_pattern.atunit_(_proxy->_coord, _proxy->_viewspec),
+      _proxy->_mat->_pattern.unit_at(_proxy->_coord, _proxy->_viewspec),
       _proxy->_mat->_pattern.at_(_proxy->_coord, _proxy->_viewspec)
   );
   delete _proxy;  
@@ -462,7 +462,7 @@ inline Matrix_Ref<T, NumDimensions, 0>::operator T() {
 template <typename T, size_t NumDimensions>
 inline T
 Matrix_Ref<T, NumDimensions, 0>::operator=(const T value) {
-  GlobRef<T> ref = at_(_proxy->_mat->_pattern.atunit_(
+  GlobRef<T> ref = at_(_proxy->_mat->_pattern.unit_at(
                          _proxy->_coord,
                          _proxy->_viewspec),
                        _proxy->_mat->_pattern.at_(
