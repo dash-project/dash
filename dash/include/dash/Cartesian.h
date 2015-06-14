@@ -164,7 +164,7 @@ public:
     if (dim >= NumDimensions) {
       // Dimension out of bounds:
       DASH_THROW(
-        dash::exception::OutOfBounds,
+        dash::exception::OutOfRange,
         "Given dimension " << dim <<
         " for CartCoord::extent(dim) is out of bounds" <<
         " (" << NumDimensions << ")");
@@ -202,7 +202,7 @@ public:
       if (pos[i] >= m_extent[i]) {
         // Coordinate out of bounds:
         DASH_THROW(
-          dash::exception::OutOfBounds,
+          dash::exception::OutOfRange,
           "Given coordinate " << pos[i] <<
           " for CartCoord::at() is out of bounds");
       }
@@ -238,7 +238,7 @@ public:
     if (index >= m_size) {
       // Index out of bounds:
       DASH_THROW(
-        dash::exception::OutOfBounds,
+        dash::exception::OutOfRange,
         "Given index " << index <<
         " for CartCoord::coords() is out of bounds");
     }

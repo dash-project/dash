@@ -13,10 +13,10 @@ TEST_F(CartesianTest, DefaultConstrutor) {
   EXPECT_EQ(cartesian1d.extent(0), 0);
   EXPECT_THROW(
     cartesian1d.at(0),
-    dash::exception::OutOfBounds);
+    dash::exception::OutOfRange);
   EXPECT_THROW(
     cartesian1d.coords(0),
-    dash::exception::OutOfBounds);
+    dash::exception::OutOfRange);
   // 4-dimensional:
   dash::CartCoord<4> cartesian4d;
   EXPECT_EQ(cartesian4d.size(), 0);
@@ -27,10 +27,10 @@ TEST_F(CartesianTest, DefaultConstrutor) {
   EXPECT_EQ(cartesian4d.extent(3), 0);
   EXPECT_THROW(
     cartesian4d.at(0, 0, 0, 0),
-    dash::exception::OutOfBounds);
+    dash::exception::OutOfRange);
   EXPECT_THROW(
     cartesian4d.coords(0),
-    dash::exception::OutOfBounds);
+    dash::exception::OutOfRange);
 }
 
 TEST_F(CartesianTest, Conversion1Dim) {

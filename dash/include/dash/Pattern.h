@@ -8,6 +8,7 @@
 #include <array>
 
 #include <dash/Enums.h>
+#include <dash/Exception.h>
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
@@ -356,6 +357,9 @@ public:
     m_viewspec = ViewSpec<NumDimensions>(m_memory_layout);
   }
 
+  /**
+   * Convert given coordinate in pattern to its assigned unit id.
+   */
   long long unit_at(
     const std::array<long long, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
@@ -376,13 +380,25 @@ public:
    */
   template<typename ... Values>
   long long unit_at(Values ... values) const {
-    assert(sizeof...(Values) == NumDimensions);
+    if (sizeof...(Values) != NumDimensions) {
+      DASH_THROW(
+        dash::exception::OutOfRange,
+        "Wrong number of arguments for Pattern::unit_at. "
+        << "Expected " << NumDimensions << ", "
+        << "got" << sizeof...(Values));
+    }
     std::array<long long, NumDimensions> inputindex = { values... };
     return unit_at(inputindex, m_viewspec);
   }
 
   long long local_extent(size_t dim) const {
-    assert(dim < NumDimensions && dim >= 0);
+    if (dim >= NumDimensions || dim < 0); {
+      DASH_THROW(
+        dash::exception::OutOfRange,
+        "Wrong dimensionfor Pattern::local_extent. "
+        << "Expected dimension between 0 and " << NumDimensions-1 << ", "
+        << "got" << dim);
+    }
     return m_local_extent[dim];
   }
 
@@ -397,7 +413,7 @@ public:
   }
 
   /**
-   * TODO: Will be renamed to \c local_to_global_index
+   * Will be renamed to \c local_to_global_index
    */
   long long unit_and_elem_to_index(
     size_t unit,
@@ -406,14 +422,10 @@ public:
     return 0;
   }
 
-  size_t max_elem_per_unit() const {
-    // TODO
-    return 0;
-  }
-
   /**
    * Convert given coordinate in pattern to its assigned unit id.
-   * TODO: Will be renamed to \c unit_at_coords.
+   * 
+   * Will be renamed to \c unit_at_coords.
    */
   size_t index_to_unit(
     const std::array<long long, NumDimensions> & input) const {
@@ -422,7 +434,8 @@ public:
 
   /**
    * Convert given coordinate in pattern to its linear local index.
-   * TODO: Will be renamed to \c coords_to_local_index.
+   * 
+   * Will be renamed to \c coords_to_local_index.
    */
   size_t index_to_elem(
     std::array<long long, NumDimensions> input) const {
@@ -431,7 +444,8 @@ public:
 
   /**
    * Convert given coordinate in pattern to its linear local index.
-   * TODO: Will be renamed to \c coords_to_local_index.
+   * 
+   * Will be renamed to \c coords_to_local_index.
    */
   size_t index_to_elem(
     std::array<long long, NumDimensions> input,
@@ -454,7 +468,8 @@ public:
 
   /**
    * Convert given coordinate in pattern to its linear global index.
-   * TODO: Will be renamed to \c coords_to_index.
+   * 
+   * Will be renamed to \c coords_to_index.
    */
   long long glob_index_to_elem(
     std::array<long long, NumDimensions> input,
@@ -477,8 +492,7 @@ public:
 /// DONE ////
 
   /**
-   * Maximum number of elements in the block in given dimension, equivalent
-   * to the local capacity of every unit in this pattern.
+   * Maximum number of elements in a single block in the given dimension.
    *
    * \param  dim  The dimension in the pattern
    * \return  The blocksize in the given dimension
@@ -488,6 +502,32 @@ public:
     return dist.blocksize_in_range(
       m_memory_layout.extent(dimension), // size of range (extent)
       m_teamspec[dimension]);            // number of blocks (units)
+  }
+
+  /**
+   * Maximum number of elements assigned to a single unit in total,
+   * equivalent to the local capacity of every unit in this pattern.
+   */
+  size_t max_elem_per_unit() const {
+    size_t max_elements = 1;
+    for (int d = 0; d < NumDimensions; ++d) {
+      size_t num_units = units_in_dimension(d);
+      DistEnum dist = m_distspec[d];
+      // Block size in given dimension:
+      auto dim_blocksize = dist.blocksize_in_range(
+                              // size of range:
+                              m_memory_layout.extent(d),
+                              // number of blocks:
+                              num_units
+                            );
+      // Maximum number of occurrences of a single unit in given dimension:
+      size_t dim_unit_occurences = dash::math::div_ceil(
+                                     m_memory_layout.extent(d),
+                                     num_units);
+      // Accumulate result:
+      max_elements *= (dim_unit_occurences * dim_blocksize);
+    }
+    return max_elements;
   }
 
   /**

@@ -66,7 +66,7 @@ public:
   T dim(size_t dimension) const {
     if (dimension >= NumDimensions) {
       DASH_THROW(
-        dash::exception::OutOfBounds,
+        dash::exception::OutOfRange,
         "Dimension for Dimensional::extent() must be lower than " <<
         NumDimensions);
     }
