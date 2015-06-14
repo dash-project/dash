@@ -11,6 +11,7 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
+#include <dash/internal/Math.h>
 
 namespace dash {
 
@@ -388,6 +389,7 @@ public:
     size_t unit,
     size_t elem) {
     // TODO
+    return 0;
   }
 
   size_t max_elem_per_unit() const {
@@ -412,9 +414,7 @@ public:
    */
   size_t index_to_elem(
     std::array<long long, NumDimensions> input) const {
-    // return at_(input, m_viewspec);
-    // TODO
-    return 0;
+    return index_to_elem(input, m_viewspec);
   }
 
   /**
@@ -423,19 +423,18 @@ public:
    */
   size_t index_to_elem(
     std::array<long long, NumDimensions> input,
-    ViewSpec<NumDimensions> & viewspec) const {
-    // return at_(input, viewspec);
+    const ViewSpec<NumDimensions> & viewspec) const {
     // TODO
     return 0;
   }
 
   template<typename ... values>
-  long long at(values ... Values) const {
+  size_t at(values ... Values) const {
     static_assert(
       sizeof...(Values) == NumDimensions,
       "Wrong parameter number");
     std::array<long long, NumDimensions> inputindex = { Values... };
-    return at_(inputindex, m_viewspec);
+    return index_to_elem(inputindex, m_viewspec);
   }
 
   /**
@@ -444,10 +443,23 @@ public:
    */
   long long glob_index_to_elem(
     std::array<long long, NumDimensions> input,
-    ViewSpec<NumDimensions> & viewspec) const {
+    const ViewSpec<NumDimensions> & viewspec) const {
     // TODO
     return 0;
   }
+
+  /**
+   * Whether the given dimension offset involves any local part
+   */
+  bool is_local(
+    size_t dim,
+    size_t index,
+    const ViewSpec<NumDimensions> & viewspec) const {
+    // TODO
+    return true;
+  }
+
+/// DONE ////
 
   /**
    * Maximum number of elements in the block in given dimension, equivalent
@@ -458,39 +470,10 @@ public:
    */
   long long blocksize(size_t dimension) const {
     DistEnum dist = m_distspec[dimension];
-    switch (dist.type) {
-      case DistEnum::disttype::NONE:
-        return m_memory_layout.extent(dimension);
-      case DistEnum::disttype::BLOCKED:
-        return div_ceil(m_memory_layout.extent(dimension),
-                        m_teamspec[dimension]);
-      case DistEnum::disttype::CYCLIC:
-        return 1;
-      case DistEnum::disttype::BLOCKCYCLIC:
-        return dist.blocksz;
-      case DistEnum::disttype::TILE:
-        return dist.blocksz;
-      default:
-        return -1;
-    }
-    // return dist.blocksize_of_range(
-    //          m_extent[dimension], // rangesize
-    //          num_units()          // number of blocks
-    //        );
+    return dist.blocksize_in_range(
+      m_memory_layout.extent(dimension), // size of range (extent)
+      m_teamspec[dimension]);            // number of blocks (units)
   }
-
-  /**
-   * Whether the given dimension offset involves any local part
-   */
-  bool is_local(
-    size_t dim,
-    size_t index,
-    ViewSpec<NumDimensions> & viewspec) {
-    // TODO
-    return true;
-  }
-
-/// DONE ////
 
   /**
    * The number of units to which this pattern's elements are mapped.
@@ -550,37 +533,26 @@ public:
   }
 
 private:
-  std::array<long long, NumDimensions> coord_to_block_coord(
-    std::array<long long, NumDimensions> & coord ) const {
-    std::array<long long, NumDimensions> block_coord;
+
+  size_t units_in_dimension(int dimension) const {
+    // old implementation: 
+    // teamspec.rank() == 1 ? teamspec.size() : teamspec[dimension]
+    return m_teamspec[dimension];
+  }
+
+  std::array<long long, NumDimensions> coords_to_block_coords(
+    std::array<long long, NumDimensions> & coords) const {
+    std::array<long long, NumDimensions> block_coords;
     for (int d = 0; d < NumDimensions; ++d) {
-      block_coord[d] = coord[d] / blocksize(d);
+      block_coords[d] = coords[d] / blocksize(d);
     }
-    return block_coord;
+    return block_coords;
   }
 
   /**
    * Specify the memory layout's distribution in the given dimension.
    */
-  void distribute(size_t dimension, DistEnum distribution) {
-  }
-
-  long long modulo(const long long i, const long long k) const {
-    long long res = i % k;
-    if (res < 0)
-      res += k;
-    return res;
-  }
-
-  long long div_ceil(const long long i, const long long k) const {
-    if (i % k == 0)
-      return i / k;
-    else
-      return i / k + 1;
-  }
-
-  long long div_floor(const long long i, const long long k) const {
-    return i / k;
+  void blockify(size_t dimension, DistEnum distribution) {
   }
 };
 

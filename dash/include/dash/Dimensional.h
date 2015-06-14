@@ -169,12 +169,12 @@ template<size_t MaxDimensions>
 class TeamSpec : public Dimensional<size_t, MaxDimensions> {
 public:
   TeamSpec(Team & team = dash::Team::All()) {
-    for (size_t i = 0; i < MaxDimensions; i++) {
-      this->_values[i] = 1;
-    }
+    // old implementation: [ 1, 1, ..., team.size() ]
     _num_units      = team.size();
     _num_dimensions = 1;
-    this->_values[MaxDimensions - 1] = _num_units;
+    for (size_t i = 0; i < MaxDimensions; i++) {
+      this->_values[i] = _num_units;;
+    }
   }
 
   template<typename ExtentType, typename ... values>
