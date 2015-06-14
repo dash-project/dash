@@ -38,6 +38,10 @@ public:
     blocksz(blockSize) {
   }
 
+  size_t num_elements_of_unit(size_t unit_id) {
+
+  }
+
   long long blocksize_in_range(
     size_t range,
     size_t num_blocks) const {

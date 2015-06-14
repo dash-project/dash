@@ -130,7 +130,7 @@ private:
     /// specifying the distribution pattern.
     template<int count>
     void check(const TeamSpec_t & teamSpec) {
-      _argc_team += teamSpec.rank();
+//    _argc_team += teamSpec.rank();
       _teamspec   = teamSpec;
     }
     /// Pattern matching for one optional parameter specifying the 
@@ -448,10 +448,25 @@ public:
    * Will be renamed to \c coords_to_local_index.
    */
   size_t index_to_elem(
-    std::array<long long, NumDimensions> input,
+    const std::array<long long, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
     // TODO
-    return 0;
+    // Convert coordinates to linear global index:
+    long long glob_index = m_memory_layout.at(coords);
+    return glob_index / m_teamspec.size();
+
+#if 0
+    std::array<long long, NumDimensions> block_coords =
+      coords_to_block_coords(coords);
+#endif
+  }
+
+  /**
+   * Number of elements in the overflow block of given dimension, with
+   * 0 <= \c overflow_blocksize(d) < blocksize(d).
+   */
+  size_t overflow_blocksize(int dimension) const {
+    return m_memory_layout.extent(dimension) % blocksize(dimension);
   }
 
   /**
@@ -523,7 +538,7 @@ public:
       // Maximum number of occurrences of a single unit in given dimension:
       size_t dim_unit_occurences = dash::math::div_ceil(
                                      m_memory_layout.extent(d),
-                                     num_units);
+                                     dim_blocksize);
       // Accumulate result:
       max_elements *= (dim_unit_occurences * dim_blocksize);
     }

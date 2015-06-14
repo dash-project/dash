@@ -26,6 +26,7 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
   size_t block_size = (_num_elem % team_size == 0)
                       ? _num_elem / team_size
                       : _num_elem / team_size + 1;
+  size_t local_cap  = block_size;
   dash::Pattern<1> pat_blocked(
       dash::SizeSpec<1>(_num_elem),
       dash::DistributionSpec<1>(dash::BLOCKED),
@@ -33,10 +34,16 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
       dash::Team::All());
   EXPECT_EQ(pat_blocked.capacity(), _num_elem);
   EXPECT_EQ(pat_blocked.blocksize(0), block_size);
+  EXPECT_EQ(pat_blocked.max_elem_per_unit(), local_cap);
   
   size_t expected_unit_id = 0;
+  std::array<long long, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
-    expected_unit_id = x / block_size;
+    expected_unit_id   = x / block_size;
+    expected_coords[0] = x;
+    EXPECT_EQ(
+      expected_coords,
+      pat_blocked.coords(x));
     EXPECT_EQ(
       expected_unit_id,
       pat_blocked.index_to_unit(std::array<long long, 1> { x }));
@@ -95,7 +102,8 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
       int expected_index_col_order  = (x * extent_y) + y;
       int expected_offset_row_order =
         expected_index_row_order % max_per_unit;
-      int expected_offset_col_order = y % block_size_y + x * block_size_y;
+      int expected_offset_col_order =
+        y % block_size_y + x * block_size_y;
       expected_unit_id = y / block_size_y;
       LOG_MESSAGE("x: %d, y: %d, eo: %d, ao: %d, ei: %d",
         x, y,

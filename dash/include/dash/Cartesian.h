@@ -193,7 +193,8 @@ public:
    * \param  pos  An array containing the coordinates, ordered by
    * dimension (x, y, z, ...)
    */
-  IndexType at(std::array<SizeType, NumDimensions> pos) const {
+  template<typename OffsetType>
+  IndexType at(std::array<OffsetType, NumDimensions> pos) const {
     static_assert(
       pos.size() == NumDimensions,
       "Invalid number of arguments");
