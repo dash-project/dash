@@ -489,12 +489,23 @@ public:
   /**
    * Convert given coordinate in pattern to its linear local index.
    */
-  template<typename ... values>
-  size_t at(values ... Values) const {
+  size_t at(
+    const std::array<long long, NumDimensions> & coords,
+    const ViewSpec_t & viewspec) const {
+    return index_to_elem(coords, m_viewspec);
+  }
+
+  /**
+   * Convert given coordinate in pattern to its linear local index.
+   */
+  template<typename ... Values>
+  size_t at(Values ... values) const {
     static_assert(
-      sizeof...(Values) == NumDimensions,
+      sizeof...(values) == NumDimensions,
       "Wrong parameter number");
-    std::array<long long, NumDimensions> inputindex = { Values... };
+    std::array<long long, NumDimensions> inputindex = { 
+      (long long)values...
+    };
     return index_to_elem(inputindex, m_viewspec);
   }
 
@@ -520,7 +531,7 @@ public:
     DistEnum dist = m_distspec[dimension];
     return dist.blocksize_in_range(
       m_memory_layout.extent(dimension), // size of range (extent)
-      m_teamspec[dimension]);            // number of blocks (units)
+      m_teamspec.extent(dimension));     // number of blocks (units)
   }
 
   /**
@@ -639,8 +650,8 @@ private:
       unit_id += dist.block_coord_to_unit_offset(
                     block_coords[d], // block coordinate
                     d,               // dimension
-                    m_teamspec[d]);  // number of units in dimension
-      unit_id %= m_teamspec[d];
+                    m_teamspec.extent(d));  // number of units in dimension
+      unit_id %= m_teamspec.extent(d);
     }
     return unit_id;
   }
@@ -648,7 +659,7 @@ private:
   size_t units_in_dimension(int dimension) const {
     // old implementation: 
     // teamspec.rank() == 1 ? teamspec.size() : teamspec[dimension]
-    return m_teamspec[dimension];
+    return m_teamspec.extent(dimension);
   }
 
   /**

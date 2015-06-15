@@ -88,7 +88,7 @@ public:
    * \returns  The value in the given dimension
    */
   T operator[](size_t dimension) const {
-    return dim(dimension);
+    return _values[dimension];
   }
 
   /**
@@ -162,64 +162,6 @@ public:
   : Dimensional<DistEnum, NumDimensions>::Dimensional(value, Values...) {
   }
 */
-};
-
-/** 
- * TeamSpec specifies the arrangement of team units in all dimensions.
- * Size of TeamSpec implies the number of units in the team.
- * 
- * Reoccurring units are currently not supported.
- *
- * \tparam  NumDimensions  Number of dimensions
- */
-template<size_t MaxDimensions>
-class TeamSpec : public Dimensional<size_t, MaxDimensions> {
-public:
-  TeamSpec(Team & team = dash::Team::All()) {
-    // old implementation: [ 1, 1, ..., team.size() ]
-    _num_units      = team.size();
-    _num_dimensions = 1;
-    for (size_t i = 0; i < MaxDimensions; i++) {
-      this->_values[i] = _num_units;;
-    }
-  }
-
-  template<typename ExtentType, typename ... values>
-  TeamSpec(ExtentType value, values ... Values)
-  : Dimensional<size_t, MaxDimensions>::Dimensional(value, Values...) {
-  }
-
-  /**
-   * The number of units (extent) available in the given dimension.
-   *
-   * \param    dimension  The dimension
-   * \returns  The number of units in the given dimension
-   */
-  long long num_units(size_t dimension) const {
-    return (_num_dimensions == 1)
-           ? size() // for TeamSpec<D>(N, 1, 1, ...)
-           : this->dim(dimension);
-  }
-
-  /**
-   * The actual number of dimensions in this team arragement.
-   */
-  size_t rank() const {
-    return _num_dimensions;
-  }
-
-  /**
-   * The total number of units in this team arrangement.
-   */
-  size_t size() const {
-    return _num_units;
-  }
-
-private:
-  /// Actual number of dimensions of the team layout specification.
-  size_t _num_dimensions;
-  /// Number of units in the team layout specification.
-  size_t _num_units;
 };
 
 /**
@@ -382,12 +324,12 @@ public:
   void resize_dim(
     int dimension,
     size_t extent,
-    long long offset = 0) {
+    long long offset) {
     _offset[dimension] = offset;
     _extent[dimension] = extent;
-    this->values[dimension].offset = offset;
-    this->values[dimension].extent = extent;
-    resize(_extent);
+    this->_values[dimension].offset = offset;
+    this->_values[dimension].extent = extent;
+    resize(std::array<size_t, NumDimensions> { (size_t)_extent });
   }
 
   long long begin(size_t dimension) const {

@@ -5,8 +5,8 @@
  */
 /* @DASH_HEADER@ */
 
-#ifndef CARTESIAN_H_INCLUDED
-#define CARTESIAN_H_INCLUDED
+#ifndef DASH__CARTESIAN_H_
+#define DASH__CARTESIAN_H_
 
 #include <array>
 #include <algorithm>
@@ -290,7 +290,66 @@ public:
   }
 };
 
+/** 
+ * TeamSpec specifies the arrangement of team units in all dimensions.
+ * Size of TeamSpec implies the number of units in the team.
+ * 
+ * Reoccurring units are currently not supported.
+ *
+ * \tparam  NumDimensions  Number of dimensions
+ */
+template<size_t MaxDimensions>
+class TeamSpec : public CartCoord<MaxDimensions, ROW_MAJOR, size_t> {
+public:
+  TeamSpec(Team & team = dash::Team::All()) {
+    // old implementation: [ 1, 1, ..., team.size() ]
+    _num_units = team.size();
+    _rank      = 1;
+    for (size_t d = 0; d < MaxDimensions; ++d) {
+      this->m_extent[d] = _num_units;;
+    }
+  }
+
+  template<typename ExtentType, typename ... values>
+  TeamSpec(ExtentType value, values ... Values)
+  : CartCoord<MaxDimensions, ROW_MAJOR, size_t>::CartCoord(value, Values...) {
+  }
+
+  /**
+   * The number of units (extent) available in the given dimension.
+   *
+   * \param    dimension  The dimension
+   * \returns  The number of units in the given dimension
+   */
+  long long num_units(size_t dimension) const {
+    return (_rank == 1)
+           ? _num_units // for TeamSpec<D>(N, 1, 1, ...)
+           : this->extent(dimension);
+  }
+
+  /**
+   * The actual number of dimensions in this team arragement, i.e. the
+   * dimension of the vector space spanned by this team arrangement.
+   */
+  size_t rank() const {
+    return _rank;
+  }
+
+  /**
+   * The total number of units in this team arrangement.
+   */
+  size_t size() const {
+    return _num_units;
+  }
+
+private:
+  /// Actual number of dimensions of the team layout specification.
+  size_t _rank;
+  /// Number of units in the team layout specification.
+  size_t _num_units;
+};
+
 } // namespace dash
 
-#endif /* CARTESIAN_H_INCLUDED */
+#endif // DASH__CARTESIAN_H_
 
