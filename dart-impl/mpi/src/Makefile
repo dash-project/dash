@@ -3,6 +3,7 @@ include ../make.defs
 CFLAGS+=-I.. -I../$(DART_IF)/include -I../include
 
 #CFLAGS+=-DDART_DEBUG
+#OPT_FLAGS=-O3
 
 LIBDART  = libdart.a
 

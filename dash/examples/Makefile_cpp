@@ -31,10 +31,10 @@ printenv :
 	 
 
 $(LIBDASH) :
-	make -C $(DASH_ROOT)/src
+	make OPT_FLAGS="$(OPT_FLAGS)" -C $(DASH_ROOT)/src
 
 $(LIBDART) :
-	make -C $(LIBDART_DIR)
+	make OPT_FLAGS="$(OPT_FLAGS)" -C $(LIBDART_DIR)
 
 $(PROG) : main.o
 	$(CXX) $(LFLAGS) -o $@ $+ $(LIBDASH) $(LIBDART) $(LIBDART_EXTRA)

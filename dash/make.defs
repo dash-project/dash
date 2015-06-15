@@ -8,6 +8,8 @@
 #DART_IMPL   = shmem/dart-shmem
 DART_IMPL   = mpi
 
+OPT_FLAGS = -O4
+
 LIBDART_DIR = $(DASH_ROOT)/../dart-impl/$(DART_IMPL)/src
 
 include $(LIBDART_DIR)/../make.defs

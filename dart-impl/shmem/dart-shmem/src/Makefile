@@ -6,6 +6,7 @@
 include ../make.defs
 
 CFLAGS+=-I.. -I../$(DART_IF)/include -I../include 
+#OPT_FLAGS=-O3
 
 #CFLAGS+=-DDART_DEBUG
 CFLAGS+=-D_SVID_SOURCE
