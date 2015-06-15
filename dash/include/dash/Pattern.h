@@ -43,8 +43,10 @@ private:
   typedef DistributionSpec<NumDimensions>        DistributionSpec_t;
   typedef TeamSpec<NumDimensions>                TeamSpec_t;
   typedef SizeSpec<NumDimensions>                SizeSpec_t;
-  typedef CartCoord<NumDimensions, Arrangement>  MemoryLayout_t;
   typedef ViewSpec<NumDimensions>                ViewSpec_t;
+  typedef CartCoord<NumDimensions, Arrangement>  MemoryLayout_t;
+  typedef CartCoord<NumDimensions, Arrangement>  BlockSpec_t;
+  typedef CartCoord<NumDimensions, Arrangement>  BlockSizeSpec_t;
 
 private:
   /**
@@ -209,23 +211,31 @@ private:
   };
 
 private:
-  ArgumentParser     m_arguments;
-  DistributionSpec_t m_distspec;
-  TeamSpec_t         m_teamspec;
-  MemoryLayout_t     m_memory_layout;
-  ViewSpec_t         m_viewspec;
+  ArgumentParser     _arguments;
+  /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
+  /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
+  /// dimensions
+  DistributionSpec_t _distspec;
+  /// Cartesian arrangement of units within the team
+  TeamSpec_t         _teamspec;
+  MemoryLayout_t     _memory_layout;
+  ViewSpec_t         _viewspec;
+  /// Number of blocks in all dimensions.
+  BlockSpec_t        _blockspec;
+  /// Maximum extents of a block in this pattern.
+  BlockSizeSpec_t    _blocksize_spec;
 
 private:
   /// The local offsets of the pattern in all dimensions
   long long          m_local_offset[NumDimensions];
   /// The local extents of the pattern in all dimensions
-  size_t             m_local_extent[NumDimensions];
+  size_t             _local_extent[NumDimensions];
   /// The global extents of the pattern in all dimensions
-  size_t             m_extent[NumDimensions];
-  size_t             m_local_size = 1;
-  size_t             m_nunits     = dash::Team::All().size();
-  size_t             m_blocksz;
-  dash::Team &       m_team       = dash::Team::All();
+  size_t             _extent[NumDimensions];
+  size_t             _local_size = 1;
+  size_t             _nunits     = dash::Team::All().size();
+  size_t             _max_blocksize;
+  dash::Team &       _team       = dash::Team::All();
 
 public:
   /**
@@ -270,12 +280,24 @@ public:
     /// elements) in every dimension followed by optional distribution     
     /// types.
     Args && ... args)
-  : m_arguments(args...),
-    m_distspec(m_arguments.distspec()), 
-    m_teamspec(m_arguments.teamspec()), 
-    m_memory_layout(m_arguments.sizespec()), 
-    m_viewspec(m_arguments.viewspec()) {
-    m_nunits = m_teamspec.size();
+  : _arguments(args...),
+    _distspec(_arguments.distspec()), 
+    _teamspec(_arguments.teamspec()), 
+    _memory_layout(_arguments.sizespec()), 
+    _viewspec(_arguments.viewspec()) {
+    _nunits        = _teamspec.size();
+    _max_blocksize = 1;
+    // Number of blocks in all dimensions:
+    std::array<size_t, NumDimensions> n_blocks;
+    // Extents of a single block:
+    std::array<size_t, NumDimensions> s_blocks;
+    for (int d = 0; d < NumDimensions; ++d) {
+      n_blocks[d]      = num_blocks(d);
+      s_blocks[d]      = blocksize(d);
+      _max_blocksize *= s_blocks[d];
+    }
+    _blockspec      = BlockSpec_t(n_blocks);
+    _blocksize_spec = BlockSizeSpec_t(s_blocks);
   }
 
   /**
@@ -309,15 +331,29 @@ public:
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(), 
+    const DistributionSpec_t & dist = DistributionSpec_t(),
+    /// Cartesian arrangement of units within the team
     const TeamSpec_t & teamorg      = TeamSpec_t::TeamSpec(),
+    /// Team containing units to which this pattern maps its elements
     dash::Team & team               = dash::Team::All()) 
-  : m_memory_layout(sizespec),
-    m_distspec(dist),
-    m_teamspec(m_distspec, teamorg),
-    m_team(team) {
-    m_nunits   = m_team.size();
-    m_viewspec = ViewSpec_t(m_memory_layout.extents());
+  : _memory_layout(sizespec),
+    _distspec(dist),
+    _teamspec(_distspec, teamorg),
+    _team(team) {
+    _nunits   = _team.size();
+    _viewspec = ViewSpec_t(_memory_layout.extents());
+    _max_blocksize = 1;
+    // Number of blocks in all dimensions:
+    std::array<size_t, NumDimensions> n_blocks;
+    // Extents of a single block:
+    std::array<size_t, NumDimensions> s_blocks;
+    for (int d = 0; d < NumDimensions; ++d) {
+      n_blocks[d]      = num_blocks(d);
+      s_blocks[d]      = blocksize(d);
+      _max_blocksize *= s_blocks[d];
+    }
+    _blockspec      = BlockSpec_t(n_blocks);
+    _blocksize_spec = BlockSizeSpec_t(s_blocks);
   }
 
   /**
@@ -358,13 +394,26 @@ public:
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
     const DistributionSpec_t & dist = DistributionSpec_t(),
+    /// Team containing units to which this pattern maps its elements
     dash::Team & team               = dash::Team::All())
-  : m_memory_layout(sizespec),
-    m_distspec(dist),
-    m_teamspec(m_distspec, m_team) {
-    m_team     = team;
-    m_nunits   = m_team.size();
-    m_viewspec = ViewSpec<NumDimensions>(m_memory_layout);
+  : _memory_layout(sizespec),
+    _distspec(dist),
+    _teamspec(_distspec, _team) {
+    _team          = team;
+    _nunits        = _team.size();
+    _viewspec      = ViewSpec<NumDimensions>(_memory_layout);
+    _max_blocksize = 1;
+    // Number of blocks in all dimensions:
+    std::array<size_t, NumDimensions> n_blocks;
+    // Extents of a single block:
+    std::array<size_t, NumDimensions> s_blocks;
+    for (int d = 0; d < NumDimensions; ++d) {
+      n_blocks[d]      = num_blocks(d);
+      s_blocks[d]      = blocksize(d);
+      _max_blocksize *= s_blocks[d];
+    }
+    _blockspec      = BlockSpec_t(n_blocks);
+    _blocksize_spec = BlockSizeSpec_t(s_blocks);
   }
 
   /**
@@ -398,7 +447,7 @@ public:
         << "got" << sizeof...(Values));
     }
     std::array<long long, NumDimensions> inputindex = { values... };
-    return unit_at(inputindex, m_viewspec);
+    return unit_at(inputindex, _viewspec);
   }
 
   long long local_at(
@@ -417,7 +466,7 @@ public:
         << "got" << dim);
     }
     // TODO
-    return m_local_extent[dim];
+    return _local_extent[dim];
   }
 
   /**
@@ -427,7 +476,7 @@ public:
    * \see blocksize()
    */
   long long local_size() const {
-    return m_local_size;
+    return _local_size;
   }
 
   /**
@@ -448,7 +497,7 @@ public:
    */
   size_t index_to_unit(
     const std::array<long long, NumDimensions> & input) const {
-    return unit_at(input, m_viewspec);
+    return unit_at(input, _viewspec);
   }
 
   /**
@@ -458,7 +507,7 @@ public:
    */
   size_t index_to_elem(
     std::array<long long, NumDimensions> input) const {
-    return index_to_elem(input, m_viewspec);
+    return index_to_elem(input, _viewspec);
   }
 
   /**
@@ -469,21 +518,37 @@ public:
   size_t index_to_elem(
     const std::array<long long, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
-    // Convert coordinates to linear global index:
-    long long glob_index = m_memory_layout.at(coords);
-    return glob_index / m_teamspec.size();
-#if 0
+    // Convert coordinates to linear global index respective to memory
+    // order:
+    long long glob_index = _memory_layout.at(coords);
     std::array<long long, NumDimensions> block_coords =
       coords_to_block_coords(coords);
+    // Global index of block start point:
+    std::array<long long, NumDimensions> block_begin_coords(block_coords);
+    // Input coords transformed to their offset within the block:
+    std::array<long long, NumDimensions> relative_coords(coords);
+    for (int d = 0; d < NumDimensions; ++d) {
+      block_begin_coords[d] *= blocksize(d);
+      relative_coords[d] -= block_begin_coords[d];
+    }
+    // Block offset, i.e. number of blocks in front of referenced block:
+    size_t block_offset       = _blockspec.at(block_coords);
+    // Offset of the referenced block within all blocks local to its unit,
+    // i.e. nth block of this unit:
+    size_t local_block_offset = block_offset / _teamspec.size();
+    // Resolve local element offset from local block offset:
+    size_t local_elem_offset  = local_block_offset * max_blocksize();
+    // Offset of the referenced index within its block:
+    // Correct for ROW_MAJOR only:
+    size_t elem_block_offset  = _blocksize_spec.at(relative_coords);
+#if 0
+    std::cout << "block offset: " << block_offset << ", "
+              << "local block offset: " << local_block_offset << ", "
+              << "local elem offset: " << local_elem_offset << ", "
+              << "elem block offset: " << elem_block_offset
+              << std::endl;
 #endif
-  }
-
-  /**
-   * Number of elements in the overflow block of given dimension, with
-   * 0 <= \c overflow_blocksize(d) < blocksize(d).
-   */
-  size_t overflow_blocksize(int dimension) const {
-    return m_memory_layout.extent(dimension) % blocksize(dimension);
+    return local_elem_offset + elem_block_offset;
   }
 
   /**
@@ -492,7 +557,7 @@ public:
   size_t at(
     const std::array<long long, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
-    return index_to_elem(coords, m_viewspec);
+    return index_to_elem(coords, _viewspec);
   }
 
   /**
@@ -506,7 +571,7 @@ public:
     std::array<long long, NumDimensions> inputindex = { 
       (long long)values...
     };
-    return index_to_elem(inputindex, m_viewspec);
+    return index_to_elem(inputindex, _viewspec);
   }
 
   /**
@@ -527,11 +592,15 @@ public:
    * \param  dim  The dimension in the pattern
    * \return  The blocksize in the given dimension
    */
-  long long blocksize(size_t dimension) const {
-    DistEnum dist = m_distspec[dimension];
+  size_t blocksize(size_t dimension) const {
+    DistEnum dist = _distspec[dimension];
     return dist.blocksize_in_range(
-      m_memory_layout.extent(dimension), // size of range (extent)
-      m_teamspec.extent(dimension));     // number of blocks (units)
+      _memory_layout.extent(dimension), // size of range (extent)
+      _teamspec.extent(dimension));     // number of blocks (units)
+  }
+
+  size_t max_blocksize() const {
+    return _max_blocksize;
   }
 
   /**
@@ -542,20 +611,20 @@ public:
     size_t max_elements = 1;
     for (int d = 0; d < NumDimensions; ++d) {
       size_t num_units = units_in_dimension(d);
-      DistEnum dist = m_distspec[d];
+      DistEnum dist = _distspec[d];
       // Block size in given dimension:
-      auto dim_blocksize = dist.blocksize_in_range(
-                              // size of range:
-                              m_memory_layout.extent(d),
-                              // number of blocks:
-                              num_units
-                            );
+      auto dim_max_blocksize = dist.blocksize_in_range(
+                                 // size of range:
+                                 _memory_layout.extent(d),
+                                 // number of blocks:
+                                 num_units
+                               );
       // Maximum number of occurrences of a single unit in given dimension:
       size_t dim_num_blocks = dash::math::div_ceil(
-                                m_memory_layout.extent(d),
-                                dim_blocksize);
+                                _memory_layout.extent(d),
+                                dim_max_blocksize);
       // Accumulate result:
-      max_elements *= (dim_num_blocks * dim_blocksize / num_units);
+      max_elements *= (dim_num_blocks * dim_max_blocksize / num_units);
     }
     return max_elements;
   }
@@ -564,7 +633,7 @@ public:
    * The number of units to which this pattern's elements are mapped.
    */
   long long num_units() const {
-    return m_teamspec.size();
+    return _teamspec.size();
   }
 
   /**
@@ -572,12 +641,14 @@ public:
    */
   Pattern & operator=(const Pattern & other) {
     if (this != &other) {
-      m_distspec      = other.m_distspec;
-      m_teamspec      = other.m_teamspec;
-      m_memory_layout = other.m_memory_layout;
-      m_viewspec      = other.m_viewspec;
-      m_nunits        = other.m_nunits;
-      m_blocksz       = other.m_blocksz;
+      _distspec       = other._distspec;
+      _teamspec       = other._teamspec;
+      _memory_layout  = other._memory_layout;
+      _viewspec       = other._viewspec;
+      _nunits         = other._nunits;
+      _max_blocksize  = other._max_blocksize;
+      _blockspec      = other._blockspec;
+      _blocksize_spec = other._blocksize_spec;
     }
     return *this;
   }
@@ -586,7 +657,7 @@ public:
    * The maximum number of elements arranged in this pattern.
    */
   long long capacity() const {
-    return m_memory_layout.size();
+    return _memory_layout.size();
   }
 
   /**
@@ -594,27 +665,27 @@ public:
    * mapped.
    */
   dash::Team & team() const {
-    return m_team;
+    return _team;
   }
 
   DistributionSpec_t distspec() const {
-    return m_distspec;
+    return _distspec;
   }
 
   SizeSpec_t sizespec() const {
-    return SizeSpec_t(m_memory_layout.extents());
+    return SizeSpec_t(_memory_layout.extents());
   }
 
   const MemoryLayout_t & memory_layout() const {
-    return m_memory_layout;
+    return _memory_layout;
   }
 
   TeamSpec_t teamspec() const {
-    return m_teamspec;
+    return _teamspec;
   }
 
   const ViewSpec_t & viewspec() const {
-    return m_viewspec;
+    return _viewspec;
   }
 
   /**
@@ -622,10 +693,50 @@ public:
    * Inverse of \see at(...).
    */
   std::array<long long, NumDimensions> coords(long long index) const {
-    return m_memory_layout.coords(index);
+    return _memory_layout.coords(index);
   }
 
 private:
+  /**
+   * Number of elements in the overflow block of given dimension, with
+   * 0 <= \c overflow_blocksize(d) < blocksize(d).
+   */
+  size_t overflow_blocksize(int dimension) const {
+    return _memory_layout.extent(dimension) % blocksize(dimension);
+  }
+
+  /**
+   * Number of elements missing in the overflow block of given dimension
+   * compared to the regular blocksize (\see blocksize(d)), with
+   * 0 <= \c underflow_blocksize(d) < blocksize(d).
+   */
+  size_t underflow_blocksize(int dimension) const {
+    // Underflow blocksize = regular blocksize - overflow blocksize:
+    auto regular_blocksize = blocksize(dimension);
+    return regular_blocksize - 
+             (_memory_layout.extent(dimension) % regular_blocksize) %
+               regular_blocksize;
+  }
+
+  /**
+   * The number of blocks in the given dimension.
+   */
+  size_t num_blocks(int dimension) const {
+    size_t num_units = units_in_dimension(dimension);
+    DistEnum dist = _distspec[dimension];
+    // Block size in given dimension:
+    auto dim_max_blocksize = dist.blocksize_in_range(
+                            // size of range:
+                            _memory_layout.extent(dimension),
+                            // number of blocks:
+                            num_units
+                          );
+    // Maximum number of occurrences of a single unit in given dimension:
+    return dash::math::div_ceil(
+             _memory_layout.extent(dimension),
+             dim_max_blocksize);
+  }
+
   /**
    * Convert global index coordinates to the coordinates of its block in
    * the pattern.
@@ -646,20 +757,18 @@ private:
     std::array<long long, NumDimensions> & block_coords) const {
     size_t unit_id = 0;
     for (int d = 0; d < NumDimensions; ++d) {
-      DistEnum dist = m_distspec[d];
+      DistEnum dist = _distspec[d];
       unit_id += dist.block_coord_to_unit_offset(
-                    block_coords[d], // block coordinate
-                    d,               // dimension
-                    m_teamspec.extent(d));  // number of units in dimension
-      unit_id %= m_teamspec.extent(d);
+                    block_coords[d],        // block coordinate
+                    d,                      // dimension
+                    units_in_dimension(d)); // number of units in dimension
+      unit_id %= _teamspec.extent(d);
     }
     return unit_id;
   }
 
   size_t units_in_dimension(int dimension) const {
-    // old implementation: 
-    // teamspec.rank() == 1 ? teamspec.size() : teamspec[dimension]
-    return m_teamspec.extent(dimension);
+    return _teamspec.extent(dimension);
   }
 
   /**

@@ -21,7 +21,7 @@ namespace dash {
 
 /**
  * Translates between linar and cartesian coordinates
- * TODO: Could be renamed to MemoryLayout?
+ * TODO: Could be renamed to CartesianSpace or MemoryLayout?
  */
 template<
   int NumDimensions,
@@ -195,7 +195,7 @@ public:
    * Convert the given coordinates to a linear index.
    *
    * \param  pos  An array containing the coordinates, ordered by
-   * dimension (x, y, z, ...)
+   *              dimension (x, y, z, ...)
    */
   template<typename OffsetType>
   IndexType at(std::array<OffsetType, NumDimensions> pos) const {
@@ -307,7 +307,6 @@ public:
    */
   TeamSpec(
     Team & team = dash::Team::All()) {
-    // old implementation: [ 1, 1, ..., team.size() ]
     _num_units = team.size();
     _rank      = 1;
     this->m_extent[0] = _num_units;
@@ -326,11 +325,19 @@ public:
     Team & team = dash::Team::All()) {
     _num_units = team.size();
     _rank      = 1;
+    bool distrib_dim_set = false;
     for (size_t d = 0; d < MaxDimensions; ++d) {
       if (distribution[d].type == DistEnum::disttype::NONE) {
         this->m_extent[d] = 1;
       } else {
         this->m_extent[d] = _num_units;
+        if (distrib_dim_set) {
+          DASH_THROW(
+            dash::exception::InvalidArgument,
+            "TeamSpec(DistributionSpec, Team) only allows "
+            "one distributed dimension");
+        }
+        distrib_dim_set = true;
       }
     }
   }
