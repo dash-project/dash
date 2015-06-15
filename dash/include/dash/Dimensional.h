@@ -5,7 +5,7 @@
 #include <array>
 
 #include <dash/Enums.h>
-#include <dash/Cartesian.h>
+// #include <dash/Cartesian.h>
 #include <dash/Team.h>
 #include <dash/Exception.h>
 
@@ -39,6 +39,13 @@ public:
     static_assert(
       sizeof...(values) == NumDimensions,
       "Invalid number of arguments");
+  }
+
+  /**
+   * Constructor, expects array containing values for every dimension.
+   */
+  Dimensional(const std::array<T, NumDimensions> & values)
+  : _values(values) {
   }
 
   /**
@@ -219,7 +226,7 @@ private:
  * Specifies an cartesian extent in a specific number of dimensions.
  */
 template<size_t NumDimensions>
-class SizeSpec : public Dimensional<long long, NumDimensions> {
+class SizeSpec : public Dimensional<size_t, NumDimensions> {
   /* 
    * TODO: Define concept MemoryLayout<MemArrange> : CartCoord<MemArrange>
    * Concept SizeSpec:
@@ -237,7 +244,20 @@ public:
 
   template<typename ... Values>
   SizeSpec(Values ... values)
-  : Dimensional<long long, NumDimensions>::Dimensional(values...),
+  : Dimensional<size_t, NumDimensions>::Dimensional(values...),
+    _size(1) {
+    for (int d = 0; d < NumDimensions; ++d) {
+      _size *= this->dim(d);
+    }
+    if (_size == 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Extents for SizeSpec::SizeSpec() must be non-zero");
+    }
+  }
+
+  SizeSpec(const std::array<size_t, NumDimensions> & extents)
+  : Dimensional<size_t, NumDimensions>::Dimensional(extents),
     _size(1) {
     for (int d = 0; d < NumDimensions; ++d) {
       _size *= this->dim(d);
@@ -255,11 +275,11 @@ public:
    * \param  dimension  The dimension
    * \returns  The extent in the given dimension
    */
-  long long extent(size_t dimension) const {
+  size_t extent(size_t dimension) const {
     return this->dim(dimension);
   }
 
-  std::array<long long, NumDimensions> extents() const {
+  std::array<size_t, NumDimensions> extents() const {
     return this->values();
   }
 
@@ -303,16 +323,19 @@ public:
       ViewPair vp = this->dim(i);
       _offset[i] = vp.offset;
       _extent[i] = vp.extent;
-      _size *= vp.extent;
+      _size     *= vp.extent;
     }
   }
 
-  ViewSpec(const SizeSpec<NumDimensions> & sizespec)
-  : Dimensional<ViewPair, NumDimensions>(sizespec),
-    _size(sizespec.size()) {
+  ViewSpec(const std::array<size_t, NumDimensions> & extents)
+  : Dimensional<ViewPair, NumDimensions>(),
+    _size(1) {
     for (size_t i = 0; i < NumDimensions; i++) {
       _offset[i] = 0;
-      _extent[i] = sizespec.extent(i);
+      _extent[i] = extents[i];
+      _size     *= extents[i];
+      ViewPair vp { _offset[i], _extent[i] };
+      this->_values[i] = vp;
     }
   }
 
@@ -346,13 +369,25 @@ public:
     _size = 1;
     for (size_t i = 0; i < NumDimensions; i++) {
       _extent[i] = extent[i];
-      _size *= extent[i];
+      _size *= extent[i] - _offset[i];
+      this->_values[i].extent = _extent[i];
     }
     if (_size <= 0) {
       DASH_THROW(
         dash::exception::InvalidArgument,
         "Extents for ViewSpec::resize must be greater than 0");
     }
+  }
+
+  void resize_dim(
+    int dimension,
+    size_t extent,
+    long long offset = 0) {
+    _offset[dimension] = offset;
+    _extent[dimension] = extent;
+    this->values[dimension].offset = offset;
+    this->values[dimension].extent = extent;
+    resize(_extent);
   }
 
   long long begin(size_t dimension) const {
@@ -368,6 +403,7 @@ public:
   }
 
 private:
+  // TODO: Use this->_values instead of _offset and _extent
   long long _offset[NumDimensions];
   size_t _extent[NumDimensions];
   size_t _size;

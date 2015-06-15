@@ -243,11 +243,13 @@ class Matrix {
     const dash::SizeSpec<NumDimensions> & ss,
     const dash::DistributionSpec<NumDimensions> & ds =
       dash::DistributionSpec<NumDimensions>(),
-    Team &t = dash::Team::All(), const TeamSpec<NumDimensions> & ts =
+    Team & t =
+      dash::Team::All(),
+    const TeamSpec<NumDimensions> & ts =
       TeamSpec<NumDimensions>());
 
   // delegating constructor
-  inline Matrix(const dash::Pattern<NumDimensions> &pat)
+  inline Matrix(const dash::Pattern<NumDimensions> & pat)
     : Matrix(pat.sizespec(),
              pat.distspec(),
              pat.team(),

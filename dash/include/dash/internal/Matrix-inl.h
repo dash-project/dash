@@ -44,11 +44,20 @@ Local_Ref<T, NumDimensions, CUR>::Local_Ref(Matrix<T, NumDimensions> * mat) {
   _proxy = new Matrix_RefProxy < T, NumDimensions >;
   *_proxy = *(mat->_ref._proxy);
 
+  std::array<size_t, NumDimensions> local_extents;
+  for (int d = 0; d < NumDimensions; ++d) {
+    local_extents[d] = mat->_pattern.local_extent(d);
+  }
+  _proxy->_viewspec.resize(local_extents);
+
+#if 0
+  // Old implementation:
   for (int i = 0; i < NumDimensions; i++) {
     _proxy->_viewspec.begin[i] = 0;
     _proxy->_viewspec.range[i] = mat->_pattern.local_extent(i);
   }
   _proxy->_viewspec.update_size();
+#endif
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
@@ -79,7 +88,7 @@ T & Local_Ref<T, NumDimensions, CUR>::at(Args... args) {
     _proxy->_coord[i] = coord[i-_proxy->_dim];
   }
   return at_(
-      _proxy->_mat->_pattern.local_at_(
+      _proxy->_mat->_pattern.local_at(
         _proxy->_coord,
         _proxy->_viewspec));
 }
@@ -97,7 +106,11 @@ Local_Ref<T, NumDimensions, CUR>::operator[](size_t n) {
   ref._proxy = _proxy;
   _proxy->_coord[_proxy->_dim] = n;
   _proxy->_dim++;
+
+  // TODO
+#if 0
   _proxy->_viewspec.update_size();
+#endif
   return std::move(ref);
 }
 
@@ -111,8 +124,11 @@ Local_Ref<T, NumDimensions, CUR>::operator[](size_t n) const {
   ref._proxy->_dim = _proxy->_dim + 1;
   ref._proxy->_mat = _proxy->_mat;
   ref._proxy->_viewspec = _proxy->_viewspec;
+  // TODO
+#if 0
   ref._proxy->_viewspec.view_dim--;
   ref._proxy->_viewspec.update_size();
+#endif
   return ref;
 }
 
@@ -134,10 +150,15 @@ Local_Ref<T, NumDimensions, CUR>::sub(size_type n) {
   ref._proxy = proxy;
   ref._proxy->_coord[target_dim] = 0;
   ref._proxy->_viewspec = _proxy->_viewspec;
+
+  // TODO
+  ref._proxy->_viewspec.resize_dim(target_dim, 1, n);
+#if 0
   ref._proxy->_viewspec.begin[target_dim] = n;
   ref._proxy->_viewspec.range[target_dim] = 1;
   ref._proxy->_viewspec.view_dim--;
   ref._proxy->_viewspec.update_size();
+#endif
   ref._proxy->_mat = _proxy->_mat;
   ref._proxy->_dim = _proxy->_dim + 1;
   return ref;
@@ -169,10 +190,15 @@ Local_Ref<T, NumDimensions, NumDimensions> Local_Ref<T, NumDimensions, CUR>::sub
 
   ref._proxy = proxy;
   ref._proxy->_viewspec = _proxy->_viewspec;
+
+  // TODO
+  ref._proxy->_viewspec.resize_dim(SubDimension, range, n);
+#if 0
   ref._proxy->_viewspec.begin[SubDimension] = n;
   ref._proxy->_viewspec.range[SubDimension] = range;
-  ref._proxy->_mat = _proxy->_mat;
   ref._proxy->_viewspec.update_size();
+#endif
+  ref._proxy->_mat = _proxy->_mat;
   return ref;
 }
 
@@ -237,7 +263,8 @@ template<typename T, size_t NumDimensions, size_t CUR>
 inline void
 Matrix_Ref<T, NumDimensions, CUR>::forall(
   ::std::function<void(long long)> func) {
-  _proxy->_mat->_pattern.forall(func, _proxy->_viewspec);
+  // TODO
+  // _proxy->_mat->_pattern.forall(func, _proxy->_viewspec);
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
@@ -246,7 +273,10 @@ Matrix_Ref<T, NumDimensions, CUR>::operator[](size_t n) {
   Matrix_Ref<T, NumDimensions, CUR-1> ref;
   _proxy->_coord[_proxy->_dim] = n;
   _proxy->_dim++;
+  // TODO
+#if 0
   _proxy->_viewspec.update_size();
+#endif
   ref._proxy = _proxy;
   return std::move(ref);
 }
@@ -261,8 +291,11 @@ Matrix_Ref<T, NumDimensions, CUR>::operator[](size_t n) const {
   ref._proxy->_dim = _proxy->_dim + 1;
   ref._proxy->_mat = _proxy->_mat;
   ref._proxy->_viewspec = _proxy->_viewspec;
+  // TODO
+#if 0
   ref._proxy->_viewspec.view_dim--;
   ref._proxy->_viewspec.update_size();
+#endif
   return ref;
 }
 
@@ -285,10 +318,16 @@ Matrix_Ref<T, NumDimensions, CUR>::sub(size_type n) {
   ref._proxy = proxy;
   ref._proxy->_coord[target_dim] = 0;
   ref._proxy->_viewspec = _proxy->_viewspec;
+
+  // TODO
+  ref._proxy->_viewspec.resize_dim(target_dim, 1, n);
+#if 0
   ref._proxy->_viewspec.begin[target_dim] = n;
   ref._proxy->_viewspec.range[target_dim] = 1;
   ref._proxy->_viewspec.view_dim--;
   ref._proxy->_viewspec.update_size();
+#endif
+
   ref._proxy->_mat = _proxy->_mat;
   ref._proxy->_dim = _proxy->_dim + 1;
   return ref;
@@ -321,10 +360,15 @@ Matrix_Ref<T, NumDimensions, CUR>::submat(
 
   ref._proxy = proxy;
   ref._proxy->_viewspec = _proxy->_viewspec;
+
+  // TODO
+  ref._proxy->_viewspec.resize_dim(SubDimension, range, n);
+#if 0
   ref._proxy->_viewspec.begin[SubDimension] = n;
   ref._proxy->_viewspec.range[SubDimension] = range;
-  ref._proxy->_mat = _proxy->_mat;
   ref._proxy->_viewspec.update_size();
+#endif
+  ref._proxy->_mat = _proxy->_mat;
   return ref;
 }
 
@@ -365,7 +409,7 @@ Matrix_Ref<T, NumDimensions, CUR>::at(Args... args) {
   size_t unit = _proxy->_mat->_pattern.unit_at(
                   _proxy->_coord,
                   _proxy->_viewspec);
-  size_t elem = _proxy->_mat->_pattern.at_(
+  size_t elem = _proxy->_mat->_pattern.index_to_elem(
                   _proxy->_coord,
                   _proxy->_viewspec);
   return at_(unit , elem);
@@ -422,7 +466,7 @@ Local_Ref<T, NumDimensions, 0>::at_(size_t pos) {
 
 template <typename T, size_t NumDimensions>
 inline Local_Ref<T, NumDimensions, 0>::operator T() {
-  T ret = *at_(_proxy->_mat->_pattern.local_at_(
+  T ret = *at_(_proxy->_mat->_pattern.local_at(
                  _proxy->_coord,
                  _proxy->_viewspec));
   delete _proxy;
@@ -432,7 +476,7 @@ inline Local_Ref<T, NumDimensions, 0>::operator T() {
 template <typename T, size_t NumDimensions>
 inline T
 Local_Ref<T, NumDimensions, 0>::operator=(const T value) {
-  T* ref = at_(_proxy->_mat->_pattern.local_at_(
+  T* ref = at_(_proxy->_mat->_pattern.local_at(
                  _proxy->_coord,
                  _proxy->_viewspec));
   *ref = value;
@@ -453,7 +497,7 @@ template <typename T, size_t NumDimensions>
 inline Matrix_Ref<T, NumDimensions, 0>::operator T() {
   GlobRef<T> ref = at_(
       _proxy->_mat->_pattern.unit_at(_proxy->_coord, _proxy->_viewspec),
-      _proxy->_mat->_pattern.at_(_proxy->_coord, _proxy->_viewspec)
+      _proxy->_mat->_pattern.at(_proxy->_coord, _proxy->_viewspec)
   );
   delete _proxy;  
   return ref;
@@ -465,7 +509,7 @@ Matrix_Ref<T, NumDimensions, 0>::operator=(const T value) {
   GlobRef<T> ref = at_(_proxy->_mat->_pattern.unit_at(
                          _proxy->_coord,
                          _proxy->_viewspec),
-                       _proxy->_mat->_pattern.at_(
+                       _proxy->_mat->_pattern.at(
                          _proxy->_coord,
                          _proxy->_viewspec));
   ref = value;
@@ -507,7 +551,7 @@ Matrix<ElementType, NumDimensions>::Matrix(
   _ref._proxy = new Matrix_RefProxy<value_type, NumDimensions>;
   _ref._proxy->_dim = 0;
   _ref._proxy->_mat = this;
-  _ref._proxy->_viewspec = _pattern.m_viewspec;
+  _ref._proxy->_viewspec = _pattern.viewspec();
   _local = Local_Ref<ElementType, NumDimensions, NumDimensions>(this);
 }
 
@@ -594,7 +638,8 @@ template <typename ElementType, size_t NumDimensions>
 inline void
 Matrix<ElementType, NumDimensions>::forall(
   ::std::function<void(long long)> func) {
-  _pattern.forall(func);
+  // TODO
+  // _pattern.forall(func);
 }
 
 template <typename ElementType, size_t NumDimensions>

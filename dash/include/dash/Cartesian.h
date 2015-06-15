@@ -153,6 +153,10 @@ public:
   SizeType size() const {
     return m_size;
   }
+
+  std::array<SizeType, NumDimensions> extents() const {
+    return std::array<SizeType, NumDimensions> { (SizeType)m_extent };
+  }
   
   /**
    * The coordinate's extent in the given dimension.

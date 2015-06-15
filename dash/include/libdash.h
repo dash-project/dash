@@ -11,6 +11,7 @@
 #include <dash/Init.h>
 #include <dash/Team.h>
 #include <dash/Cartesian.h>
+#include <dash/View.h>
 #include <dash/Pattern.h>
 #include <dash/GlobMem.h>
 #include <dash/GlobPtr.h>

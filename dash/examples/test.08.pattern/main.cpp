@@ -35,7 +35,7 @@ if(myid==0)
 	{
 		for(j=0;j<ext2;j++)
 		{
-			printf("%d ", p1.atunit(i, j));
+			printf("%d ", p1.unit_at(i, j));
 		}
 		printf("\n");
 	}		

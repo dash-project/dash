@@ -67,6 +67,16 @@ private:
     int                _argc_team = 0;
 
   public:
+    /**
+     * Default constructor, used if no argument list is parsed.
+     */
+    ArgumentParser() {
+    }
+
+    /**
+     * Constructor, parses settings in argument list and checks for
+     * constraints.
+     */
     template<typename ... Args>
     ArgumentParser(Args && ... args) {
       static_assert(
@@ -307,7 +317,7 @@ public:
     m_teamspec(teamorg),
     m_team(team) {
     m_nunits   = m_team.size();
-    m_viewspec = ViewSpec_t(m_memory_layout);
+    m_viewspec = ViewSpec_t(m_memory_layout.extents()); // fix conversion
   }
 
   /**
@@ -391,14 +401,22 @@ public:
     return unit_at(inputindex, m_viewspec);
   }
 
+  long long local_at(
+    const std::array<long long, NumDimensions> & coords,
+    const ViewSpec_t & viewspec) const {
+    // TODO
+    return 0;
+  }
+
   long long local_extent(size_t dim) const {
     if (dim >= NumDimensions || dim < 0); {
       DASH_THROW(
         dash::exception::OutOfRange,
-        "Wrong dimensionfor Pattern::local_extent. "
+        "Wrong dimension for Pattern::local_extent. "
         << "Expected dimension between 0 and " << NumDimensions-1 << ", "
         << "got" << dim);
     }
+    // TODO
     return m_local_extent[dim];
   }
 
@@ -413,6 +431,7 @@ public:
   }
 
   /**
+   * Inverse of \see index_to_elem.
    * Will be renamed to \c local_to_global_index
    */
   long long unit_and_elem_to_index(
@@ -450,11 +469,9 @@ public:
   size_t index_to_elem(
     const std::array<long long, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
-    // TODO
     // Convert coordinates to linear global index:
     long long glob_index = m_memory_layout.at(coords);
     return glob_index / m_teamspec.size();
-
 #if 0
     std::array<long long, NumDimensions> block_coords =
       coords_to_block_coords(coords);
@@ -482,29 +499,16 @@ public:
   }
 
   /**
-   * Convert given coordinate in pattern to its linear global index.
-   * 
-   * Will be renamed to \c coords_to_index.
-   */
-  long long glob_index_to_elem(
-    std::array<long long, NumDimensions> input,
-    const ViewSpec<NumDimensions> & viewspec) const {
-    // TODO
-    return 0;
-  }
-
-  /**
    * Whether the given dimension offset involves any local part
    */
   bool is_local(
-    size_t dim,
     size_t index,
+    size_t unit_id,
+    size_t dim,
     const ViewSpec<NumDimensions> & viewspec) const {
     // TODO
     return true;
   }
-
-/// DONE ////
 
   /**
    * Maximum number of elements in a single block in the given dimension.
@@ -587,6 +591,10 @@ public:
   }
 
   SizeSpec_t sizespec() const {
+    return SizeSpec_t(m_memory_layout.extents());
+  }
+
+  const MemoryLayout_t & memory_layout() const {
     return m_memory_layout;
   }
 
@@ -594,9 +602,13 @@ public:
     return m_teamspec;
   }
 
+  const ViewSpec_t & viewspec() const {
+    return m_viewspec;
+  }
+
   /**
    * Convert given linear offset (index) to cartesian coordinates.
-   * Inverse of \c at(...).
+   * Inverse of \see at(...).
    */
   std::array<long long, NumDimensions> coords(long long index) const {
     return m_memory_layout.coords(index);

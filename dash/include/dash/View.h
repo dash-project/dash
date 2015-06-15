@@ -16,15 +16,19 @@ namespace dash {
  * Base class for a cartesian view, i.e. an n-dimensional view with 
  * cartesian coordinates.
  */
-template<typename Iter, int DIM>
+template<
+  typename Iter,
+  int DIM,
+  MemArrange Arrangement = ROW_MAJOR
+>
 class CartViewBase { 
 public: 
   typedef typename std::iterator_traits<Iter>::value_type value_type;
   typedef typename std::iterator_traits<Iter>::reference  reference;
   
 private:
-  CartCoord<DIM, size_t> m_cart;
-  Iter                   m_begin;
+  CartCoord<DIM, Arrangement, size_t> m_cart;
+  Iter                                m_begin;
   
 public:
   // construct from iterator

@@ -42,12 +42,12 @@ void test_fwd_mapping(size_t size)
 
   fprintf(stderr, "------------------------------------------------------------------------- \n");
   fprintf(stderr, " *** This is a test with %lld units and index space of %lld elements *** \n",
-	  p1.nunits(), p1.capacity() );
+	  p1.num_units(), p1.capacity() );
   fprintf(stderr, " index -> b=block-id (unit-id, elem-id)\n");
   fprintf(stderr, "       p1          p2          p3          p4          p5          p6\n");
   fprintf(stderr, "------------------------------------------------------------------------- \n");
   for( long long i=-4; i<size+4; i++ ) {
-    auto coords = p1.sizespec().coords(i);
+    auto coords = p1.memory_layout().coords(i);
     fprintf(stderr, "%3lld -> "
 	    "b=(%2lld,%2lld) "
 	    "b=(%2lld,%2lld) "
@@ -96,12 +96,12 @@ void test_rev_mapping(size_t size)
     Pattern<1> *pat = it.first;
     fprintf(stderr, "%s:\n", it.second.c_str());
     
-    for( i=0; i<pat->nunits(); i++ ) {
+    for( i=0; i<pat->num_units(); i++ ) {
       fprintf(stderr, "Unit %3d: ", i);
       for( j=0; j<size; j++ ) {
-	long long res = pat->unit_and_elem_to_index(i,j);
-	if( res<0 ) break;
-	fprintf(stderr, "%d ", res);
+        long long res = pat->unit_and_elem_to_index(i,j);
+        if( res<0 ) break;
+        fprintf(stderr, "%d ", res);
       }
       fprintf(stderr, "\n");
     }
