@@ -317,7 +317,7 @@ public:
     m_teamspec(teamorg),
     m_team(team) {
     m_nunits   = m_team.size();
-    m_viewspec = ViewSpec_t(m_memory_layout.extents()); // fix conversion
+    m_viewspec = ViewSpec_t(m_memory_layout.extents());
   }
 
   /**
@@ -551,11 +551,11 @@ public:
                               num_units
                             );
       // Maximum number of occurrences of a single unit in given dimension:
-      size_t dim_unit_occurences = dash::math::div_ceil(
-                                     m_memory_layout.extent(d),
-                                     dim_blocksize);
+      size_t dim_num_blocks = dash::math::div_ceil(
+                                m_memory_layout.extent(d),
+                                dim_blocksize);
       // Accumulate result:
-      max_elements *= (dim_unit_occurences * dim_blocksize);
+      max_elements *= (dim_num_blocks * dim_blocksize / num_units);
     }
     return max_elements;
   }

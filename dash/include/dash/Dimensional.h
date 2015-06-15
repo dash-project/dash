@@ -266,6 +266,7 @@ public:
       _offset[i] = vp.offset;
       _extent[i] = vp.extent;
       _size     *= vp.extent;
+      this->_values[i] = vp;
     }
   }
 
@@ -288,6 +289,8 @@ public:
     for (size_t i = 0; i < NumDimensions; i++) {
       _offset[i] = other._offset[i];
       _extent[i] = other._extent[i];
+      ViewPair vp { _offset[i], _extent[i] };
+      this->_values[i] = vp;
     }
   }
 
