@@ -301,12 +301,37 @@ public:
 template<size_t MaxDimensions>
 class TeamSpec : public CartCoord<MaxDimensions, ROW_MAJOR, size_t> {
 public:
-  TeamSpec(Team & team = dash::Team::All()) {
+  /**
+   * Constructor, creates an instance of TeamSpec from a team (set of
+   * units) with all team units assigned to the first dimension.
+   */
+  TeamSpec(
+    Team & team = dash::Team::All()) {
     // old implementation: [ 1, 1, ..., team.size() ]
     _num_units = team.size();
     _rank      = 1;
+    this->m_extent[0] = _num_units;
+    for (size_t d = 1; d < MaxDimensions; ++d) {
+      this->m_extent[d] = 1;
+    }
+  }
+
+  /**
+   * Constructor, creates an instance of TeamSpec from a team (set of
+   * units) and a distribution spec.
+   * All but one element in the distribution spec must be \c NONE.
+   */
+  TeamSpec(
+    const DistributionSpec<MaxDimensions> & distribution,
+    Team & team = dash::Team::All()) {
+    _num_units = team.size();
+    _rank      = 1;
     for (size_t d = 0; d < MaxDimensions; ++d) {
-      this->m_extent[d] = _num_units;;
+      if (distribution[d].type == DistEnum::disttype::NONE) {
+        this->m_extent[d] = 1;
+      } else {
+        this->m_extent[d] = _num_units;
+      }
     }
   }
 

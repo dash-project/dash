@@ -147,7 +147,7 @@ private:
     /// team.
     template<int count>
     void check(dash::Team & team) {
-      _teamspec = TeamSpec<NumDimensions>(team);
+      _teamspec = TeamSpec<NumDimensions>(_distspec, team);
     }
     /// Pattern matching for one optional parameter specifying the 
     /// size (extents).
@@ -314,7 +314,7 @@ public:
     dash::Team & team               = dash::Team::All()) 
   : m_memory_layout(sizespec),
     m_distspec(dist),
-    m_teamspec(teamorg),
+    m_teamspec(m_distspec, teamorg),
     m_team(team) {
     m_nunits   = m_team.size();
     m_viewspec = ViewSpec_t(m_memory_layout.extents());
@@ -361,7 +361,7 @@ public:
     dash::Team & team               = dash::Team::All())
   : m_memory_layout(sizespec),
     m_distspec(dist),
-    m_teamspec(m_team) {
+    m_teamspec(m_distspec, m_team) {
     m_team     = team;
     m_nunits   = m_team.size();
     m_viewspec = ViewSpec<NumDimensions>(m_memory_layout);
