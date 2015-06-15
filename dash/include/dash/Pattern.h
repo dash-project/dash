@@ -338,7 +338,7 @@ public:
     dash::Team & team               = dash::Team::All()) 
   : _memory_layout(sizespec),
     _distspec(dist),
-    _teamspec(_distspec, teamorg),
+    _teamspec(teamorg),
     _team(team) {
     _nunits   = _team.size();
     _viewspec = ViewSpec_t(_memory_layout.extents());
@@ -476,6 +476,7 @@ public:
    * \see blocksize()
    */
   long long local_size() const {
+    // TODO
     return _local_size;
   }
 
@@ -598,6 +599,12 @@ public:
       _teamspec.extent(dimension));     // number of blocks (units)
   }
 
+  /**
+   * Maximum number of elements in a single block.
+   *
+   * \return  The maximum number of elements in a single block assigned to
+   *          a unit.
+   */
   size_t max_blocksize() const {
     return _max_blocksize;
   }
@@ -761,8 +768,8 @@ private:
                     block_coords[d], // block coordinate
                     d                // dimension
                  );
-  //  unit_id %= _teamspec.extent(d);
     }
+    // TODO: Use _teamspec to resolve actual unit id
     return unit_id;
   }
 

@@ -40,7 +40,8 @@ Matrix_Ref<T, NumDimensions, CUR> () {
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
-Local_Ref<T, NumDimensions, CUR>::Local_Ref(Matrix<T, NumDimensions> * mat) {
+Local_Ref<T, NumDimensions, CUR>::Local_Ref(
+  Matrix<T, NumDimensions> * mat) {
   _proxy = new Matrix_RefProxy < T, NumDimensions >;
   *_proxy = *(mat->_ref._proxy);
 
@@ -178,14 +179,16 @@ Local_Ref<T, NumDimensions, CUR>::row(size_type n) {
 
 template<typename T, size_t NumDimensions, size_t CUR>
 template<size_t SubDimension>
-Local_Ref<T, NumDimensions, NumDimensions> Local_Ref<T, NumDimensions, CUR>::submat(
+Local_Ref<T, NumDimensions, NumDimensions>
+Local_Ref<T, NumDimensions, CUR>::submat(
   size_type n,
   size_type range) {
   static_assert(
       SubDimension < NumDimensions && SubDimension >= 0,
       "Wrong sub-dimension");
   Local_Ref<T, NumDimensions, NumDimensions> ref;
-  Matrix_RefProxy<T, NumDimensions> * proxy = new Matrix_RefProxy<T, NumDimensions>();
+  Matrix_RefProxy<T, NumDimensions> * proxy =
+    new Matrix_RefProxy<T, NumDimensions>();
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
 
   ref._proxy = proxy;
@@ -203,14 +206,16 @@ Local_Ref<T, NumDimensions, NumDimensions> Local_Ref<T, NumDimensions, CUR>::sub
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
-Local_Ref<T, NumDimensions, NumDimensions> Local_Ref<T, NumDimensions, CUR>::rows(
+Local_Ref<T, NumDimensions, NumDimensions>
+Local_Ref<T, NumDimensions, CUR>::rows(
   size_type n,
   size_type range) {
   return submat<0>(n, range);
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
-Local_Ref<T, NumDimensions, NumDimensions> Local_Ref<T, NumDimensions, CUR>::cols(
+Local_Ref<T, NumDimensions, NumDimensions>
+Local_Ref<T, NumDimensions, CUR>::cols(
   size_type n,
   size_type range) {
   return submat<1>(n, range);
@@ -355,7 +360,8 @@ Matrix_Ref<T, NumDimensions, CUR>::submat(
       SubDimension < NumDimensions && SubDimension >= 0,
       "Wrong sub-dimension for submat()");
   Matrix_Ref<T, NumDimensions, NumDimensions> ref;
-  Matrix_RefProxy<T, NumDimensions> * proxy = new Matrix_RefProxy < T, NumDimensions > ;
+  Matrix_RefProxy<T, NumDimensions> * proxy =
+    new Matrix_RefProxy < T, NumDimensions >();
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
 
   ref._proxy = proxy;
@@ -545,7 +551,8 @@ Matrix<ElementType, NumDimensions>::Matrix(
     _local_mem_size,
     &_dart_gptr);
 
-  _ptr  = new GlobIter<value_type, Pattern<NumDimensions> >(&_glob_mem, _pattern, 0lu);
+  _ptr  = new GlobIter<value_type, Pattern<NumDimensions> >(
+            &_glob_mem, _pattern, 0lu);
   _size = _pattern.capacity();
   _myid = _team.myid();
   _ref._proxy = new Matrix_RefProxy<value_type, NumDimensions>;
@@ -562,7 +569,8 @@ inline Matrix<ElementType, NumDimensions>::~Matrix() {
 }
 
 template <typename ElementType, size_t NumDimensions>
-inline Pattern<NumDimensions> & Matrix<ElementType, NumDimensions>::pattern() {
+inline Pattern<NumDimensions> &
+Matrix<ElementType, NumDimensions>::pattern() {
   return _pattern;
 }
 

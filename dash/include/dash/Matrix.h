@@ -253,11 +253,11 @@ class Matrix {
     : Matrix(pat.sizespec(),
              pat.distspec(),
              pat.team(),
-             pat.teamspec()) {  }
+             pat.teamspec()) { }
   // delegating constructor
   inline Matrix(size_t nelem,
                 Team &t = dash::Team::All())
-    : Matrix(dash::Pattern<NumDimensions>(nelem, t)) {  }
+    : Matrix(dash::Pattern<NumDimensions>(nelem, t)) { }
 
   inline ~Matrix();
 

@@ -342,9 +342,9 @@ public:
     }
   }
 
-  template<typename ExtentType, typename ... values>
-  TeamSpec(ExtentType value, values ... Values)
-  : CartCoord<MaxDimensions, ROW_MAJOR, size_t>::CartCoord(value, Values...) {
+  template<typename ... Types>
+  TeamSpec(size_t value, Types ... values)
+  : CartCoord<MaxDimensions, ROW_MAJOR, size_t>::CartCoord(value, values...) {
   }
 
   /**
