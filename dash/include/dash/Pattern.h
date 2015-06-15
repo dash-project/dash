@@ -539,7 +539,6 @@ public:
     // Resolve local element offset from local block offset:
     size_t local_elem_offset  = local_block_offset * max_blocksize();
     // Offset of the referenced index within its block:
-    // Correct for ROW_MAJOR only:
     size_t elem_block_offset  = _blocksize_spec.at(relative_coords);
 #if 0
     std::cout << "block offset: " << block_offset << ", "
@@ -759,22 +758,16 @@ private:
     for (int d = 0; d < NumDimensions; ++d) {
       DistEnum dist = _distspec[d];
       unit_id += dist.block_coord_to_unit_offset(
-                    block_coords[d],        // block coordinate
-                    d,                      // dimension
-                    units_in_dimension(d)); // number of units in dimension
-      unit_id %= _teamspec.extent(d);
+                    block_coords[d], // block coordinate
+                    d                // dimension
+                 );
+  //  unit_id %= _teamspec.extent(d);
     }
     return unit_id;
   }
 
   size_t units_in_dimension(int dimension) const {
     return _teamspec.extent(dimension);
-  }
-
-  /**
-   * Specify the memory layout's distribution in the given dimension.
-   */
-  void blockify(size_t dimension, DistEnum distribution) {
   }
 };
 

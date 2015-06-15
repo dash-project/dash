@@ -66,7 +66,7 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   // [ team 1[1] | team 1[3] | ... | team 1[5] ]
   // [                   ...                   ]
   int team_size = dash::Team::All().size();
-  int extent_x  = 3;
+  int extent_x  = 5;
   int extent_y  = 4;
   size_t size   = extent_x * extent_y;
   // Ceil division
@@ -93,7 +93,6 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   EXPECT_EQ(pat_blocked_col.max_elem_per_unit(), max_per_unit);
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
-  int expected_unit_id = 0;
   LOG_MESSAGE("block size: x: %d, y: %d",
     block_size_x, block_size_y);
   for (int x = 0; x < extent_x; ++x) {
@@ -104,22 +103,30 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
         expected_index_row_order % max_per_unit;
       int expected_offset_col_order =
         y % block_size_y + x * block_size_y;
-      expected_unit_id = y / block_size_y;
-      LOG_MESSAGE("x: %d, y: %d, eo: %d, ao: %d, ei: %d",
-        x, y,
-        expected_offset_col_order,
-        pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }),
-        expected_index_col_order);
+      int expected_unit_id = y / block_size_y;
 
+      LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
+        x, y,
+        expected_offset_row_order,
+        pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }),
+        expected_index_row_order,
+        block_size_x, block_size_y);
       EXPECT_EQ(
         expected_unit_id,
         pat_blocked_row.index_to_unit(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
-        expected_unit_id,
-        pat_blocked_col.index_to_unit(std::array<long long, 2> { x, y }));
-      EXPECT_EQ(
         expected_offset_row_order,
         pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }));
+
+      LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
+        x, y,
+        expected_offset_col_order,
+        pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }),
+        expected_index_col_order,
+        block_size_x, block_size_y);
+      EXPECT_EQ(
+        expected_unit_id,
+        pat_blocked_col.index_to_unit(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_col_order,
         pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }));
@@ -137,8 +144,8 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
   // [ team 0[3] | team 1[3] | team 2[3] | ... | team n-1 ]
   // [                       ...                          ]
   int team_size    = dash::Team::All().size();
-  int extent_x     = 3;
-  int extent_y     = 4;
+  int extent_x     = 4;
+  int extent_y     = 5;
   size_t size      = extent_x * extent_y;
   // Ceil division
   int block_size_x = (extent_x % team_size == 0)
@@ -164,25 +171,37 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
   EXPECT_EQ(pat_blocked_col.max_elem_per_unit(), max_per_unit);
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
-  int expected_unit_id = 0;
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
       int expected_index_row_order  = (y * extent_x) + x;
       int expected_index_col_order  = (x * extent_y) + y;
-      int expected_offset_row_order =
-        expected_index_row_order % max_per_unit;
-      int expected_offset_col_order =
-        expected_index_col_order % max_per_unit;
-      expected_unit_id = x / block_size_x;
+      int expected_offset_row_order = (x % block_size_x) + y * block_size_x;
+      int expected_offset_col_order = expected_index_col_order % 
+                                        max_per_unit;
+      int expected_unit_id = x / block_size_x;
+
+      LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
+        x, y,
+        expected_offset_row_order,
+        pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }),
+        expected_index_row_order,
+        block_size_x, block_size_y);
       EXPECT_EQ(
         expected_unit_id,
         pat_blocked_row.index_to_unit(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
-        expected_unit_id,
-        pat_blocked_col.index_to_unit(std::array<long long, 2> { x, y }));
-      EXPECT_EQ(
         expected_offset_row_order,
         pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }));
+
+      LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
+        x, y,
+        expected_offset_col_order,
+        pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }),
+        expected_index_col_order,
+        block_size_x, block_size_y);
+      EXPECT_EQ(
+        expected_unit_id,
+        pat_blocked_col.index_to_unit(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_col_order,
         pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }));

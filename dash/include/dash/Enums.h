@@ -64,8 +64,7 @@ public:
    */
   size_t block_coord_to_unit_offset(
     long long block_coord,
-    int dimension,
-    long long num_units) const {
+    int dimension) const {
     switch (type) {
       case DistEnum::disttype::NONE:
         // Unit id is unchanged:
