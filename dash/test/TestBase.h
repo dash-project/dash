@@ -1,7 +1,10 @@
 #ifndef DASH__TEST__TEST_BASE_H_
 #define DASH__TEST__TEST_BASE_H_
 
+#define DASH_TEST 1
+
 #include <gtest/gtest.h>
+#include <dash/internal/Logging.h>
 
 namespace testing {
 namespace internal {

@@ -155,13 +155,6 @@ public:
   DistributionSpec(Values ... values)
   : Dimensional<DistEnum, NumDimensions>::Dimensional(values...) {
   }
-
-/*
-  template<typename T_, typename ... values>
-  DistributionSpec(T_ value, values ... Values)
-  : Dimensional<DistEnum, NumDimensions>::Dimensional(value, Values...) {
-  }
-*/
 };
 
 /**

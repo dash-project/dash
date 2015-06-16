@@ -13,6 +13,7 @@
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
 #include <dash/internal/Math.h>
+#include <dash/internal/Logging.h>
 
 namespace dash {
 
@@ -348,7 +349,10 @@ public:
   : _distspec(dist),
     _memory_layout(sizespec),
     _team(team),
-    _teamspec(teamorg) {
+    _teamspec(
+      teamorg,
+      _distspec,
+      _team) {
     _nunits        = _team.size();
     _viewspec      = ViewSpec_t(_memory_layout.extents());
     _max_blocksize = 1;
@@ -622,13 +626,12 @@ public:
     size_t local_elem_offset  = local_block_offset * max_blocksize();
     // Offset of the referenced index within its block:
     size_t elem_block_offset  = _blocksize_spec.at(relative_coords);
-#if 0
-    std::cout << "block offset: " << block_offset << ", "
-              << "local block offset: " << local_block_offset << ", "
-              << "local elem offset: " << local_elem_offset << ", "
-              << "elem block offset: " << elem_block_offset
-              << std::endl;
-#endif
+    
+    DASH_LOG("Pattern.index_to_elem",
+             "block offset: ",block_offset, ", ",
+             "local block offset: ", local_block_offset, ", ",
+             "local elem offset: ", local_elem_offset, ", ",
+             "elem block offset: ", elem_block_offset);
     return local_elem_offset + elem_block_offset;
   }
 
@@ -712,6 +715,13 @@ public:
                                 dim_max_blocksize);
       // Accumulate result:
       max_elements *= (dim_num_blocks * dim_max_blocksize / num_units);
+#ifdef DASH_TEST
+      std::cout << d << " nunits: " << num_units << ", "
+                << "dim_max_blocksize: " << dim_max_blocksize << ", "
+                << "dim_num_blocks: " << dim_num_blocks << ", "
+                << "max_elements: " << max_elements
+                << std::endl;
+#endif
     }
     return max_elements;
   }

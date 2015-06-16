@@ -1,5 +1,5 @@
 /* 
- * dash-lib/Shared.h
+ * libdash.h
  *
  * author(s): Karl Fuerlinger, LMU Munich 
  */
@@ -23,5 +23,7 @@
 #include <dash/Matrix.h>
 #include <dash/Shared.h>
 #include <dash/Exception.h>
+
+#include <dash/internal/Logging.h>
 
 #endif // DASH__LIBDASH_H_

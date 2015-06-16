@@ -346,6 +346,62 @@ public:
   }
 
   /**
+   * Constructor, creates an instance of TeamSpec with given extents
+   * from a team (set of units) and a distribution spec.
+   * The number of elements in the distribution different from NONE
+   * must be equal to the rank of the extents.
+   *
+   * This constructor adjusts extents according to given distribution
+   * spec if the passed team spec has been default constructed.
+   *
+   * \b Example:
+   *
+   * \code
+   *   TeamSpec<2> ts(
+   *     // default-constructed, extents: [Team::All().size(), 1]
+   *     TeamSpec<2>(),
+   *     // distributed in dimension 1 (y)
+   *     DistSpec<2>(NONE, BLOCKED),
+   *     Team::All().split(2));
+   *   // Will be adjusted to:
+   *   size_t units_x = ts.extent(0); // -> 1
+   *   size_t units_y = ts.extent(1); // -> Team::All().size() / 2
+   * \endcode
+   */
+  TeamSpec(
+    const TeamSpec<MaxDimensions> & other,
+    const DistributionSpec<MaxDimensions> & distribution,
+    Team & team = dash::Team::All()) 
+  : CartCoord<MaxDimensions, ROW_MAJOR, size_t>(other.extents()) {
+    if (this->size() != team.size()) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Size of team " << team.size() << " differs from " <<
+        "size of teamspec" << this->size() << "in TeamSpec()");
+    }
+    // Test if other teamspec has been default-constructed:
+    if (other.rank() == 1 && distribution.rank() > 1) {
+      // Set extent of teamspec in the dimension the distribution is
+      // different from NONE:
+      for (size_t d = 0; d < MaxDimensions; ++d) {
+        if (distribution[d].type == DistEnum::disttype::NONE) {
+          this->m_extent[d] = 1;
+        } else {
+          // Use size of given team; possibly different from size
+          // of default-constructed team spec:
+          this->m_extent[d] = team.size();
+        }
+      }
+    } 
+    for (size_t d = 0; d < MaxDimensions; ++d) {
+      if (distribution[d].type != DistEnum::disttype::NONE) {
+        _rank++;
+      }
+    }
+    this->resize(this->m_extent);
+  }
+
+  /**
    * Constructor, creates an instance of TeamSpec from a team (set of
    * units) and a distribution spec.
    * All but one element in the distribution spec must be \c NONE.
@@ -353,7 +409,7 @@ public:
   TeamSpec(
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All()) {
-    _rank      = 1;
+    _rank = 1;
     bool distrib_dim_set = false;
     for (size_t d = 0; d < MaxDimensions; ++d) {
       if (distribution[d].type == DistEnum::disttype::NONE) {
