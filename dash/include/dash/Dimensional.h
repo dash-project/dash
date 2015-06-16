@@ -15,8 +15,15 @@ namespace dash {
  * Base class for dimensional attributes, stores an
  * n-dimensional value with identical type all dimensions.
  *
+ * Different from a SizeSpec or cartesian space, a Dimensional
+ * does not define metric/scalar extents or a size, but just a 
+ * vector of possibly non-scalar attributes.
+ *
  * \tparam  T  The contained value type
  * \tparam  NumDimensions  The number of dimensions
+ *
+ * \see SizeSpec
+ * \see CartCoord
  */
 template<typename T, size_t NumDimensions>
 class Dimensional {
@@ -151,6 +158,17 @@ public:
     }
   }
 
+  /**
+   * Constructor, initializes distribution with given distribution types
+   * for every dimension.
+   *
+   * \b Example: 
+   * \code
+   *   // Blocked distribution in second dimension (y), cyclic distribution
+   *   // in third dimension (z)
+   *   DistributionSpec<3> ds(NONE, BLOCKED, CYCLIC);
+   * \endcode
+   */
   template<typename ... Values>
   DistributionSpec(Values ... values)
   : Dimensional<DistEnum, NumDimensions>::Dimensional(values...) {
@@ -170,6 +188,10 @@ class SizeSpec : public Dimensional<size_t, NumDimensions> {
    *   + SizeSpec::size();
    */
 public:
+  /**
+   * Default constructor, initializes new instance of SizeSpec with
+   * extent 0 in all dimensions.
+   */
   SizeSpec()
   : _size(0) {
     for (size_t i = 0; i < NumDimensions; i++) {

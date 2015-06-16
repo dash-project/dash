@@ -20,7 +20,9 @@
 namespace dash {
 
 /**
- * Translates between linar and cartesian coordinates
+ * Defines a cartesian, totally-ordered index space by mapping linear
+ * indices to cartesian coordinates depending on memory order.
+ *
  * TODO: Could be renamed to CartesianSpace or MemoryLayout?
  */
 template<
@@ -244,27 +246,6 @@ public:
     return offs;
   }
   
-#if 0
-  SizeType at(
-    ::std::array<SizeType, NumDimensions> pos,
-    ::std::array<SizeType, NumDimensions> cyclicfix) const {
-    static_assert(
-      pos.size() == NumDimensions,
-      "Invalid number of arguments");
-    static_assert(
-      cyclicfix.size() == NumDimensions,
-      "Invalid number of arguments");
-    SizeType offs = 0;
-    for (int i = 0; i < NumDimensions; i++) {
-      // omit NONE distribution
-      if (pos[i] != -1) { 
-        offs += pos[i] * (m_offset[i] + cyclicfix[i]);
-      }
-    }
-    return offs;
-  }
-#endif
-
   /**
    * Convert given linear offset (index) to cartesian coordinates.
    * Inverse of \c at(...).
@@ -321,7 +302,8 @@ public:
 };
 
 /** 
- * TeamSpec specifies the arrangement of team units in all dimensions.
+ * TeamSpec specifies the arrangement of team units in a specified number
+ * of dimensions.
  * Size of TeamSpec implies the number of units in the team.
  * 
  * Reoccurring units are currently not supported.
@@ -333,11 +315,12 @@ class TeamSpec : public CartCoord<MaxDimensions, ROW_MAJOR, size_t> {
 public:
   /**
    * Constructor, creates an instance of TeamSpec from a team (set of
-   * units) with all team units assigned to the first dimension.
+   * units) with all team units organized linearly in the first
+   * dimension.
    */
   TeamSpec(
     Team & team = dash::Team::All()) {
-    _rank      = 1;
+    _rank = 1;
     this->m_extent[0] = team.size();
     for (size_t d = 1; d < MaxDimensions; ++d) {
       this->m_extent[d] = 1;
@@ -428,6 +411,16 @@ public:
     this->resize(this->m_extent);
   }
 
+  /**
+   * Constructor, initializes new instance of TeamSpec with
+   * extents specified in argument list.
+   *
+   * \b Example:
+   *
+   * \code
+   *   TeamSpec<3> ts(1,2,3); // extents 1x2x3
+   * \endcode
+   */
   template<typename ... Types>
   TeamSpec(size_t value, Types ... values)
   : CartCoord<MaxDimensions, ROW_MAJOR, size_t>::CartCoord(value, values...) {
@@ -454,8 +447,16 @@ public:
   }
 
   /**
-   * The actual number of dimensions in this team arragement, i.e. the
-   * dimension of the vector space spanned by this team arrangement.
+   * The actual number of dimensions with extent greater than 1 in
+   * this team arragement, that is the dimension of the vector space
+   * spanned by the team arrangement's extents.
+   *
+   * \b Example:
+   *
+   * \code
+   *   TeamSpec<3> ts(1,2,3); // extents 1x2x3
+   *   ts.rank(); // returns 2, as one dimension has extent 1
+   * \endcode
    */
   size_t rank() const {
     return _rank;
