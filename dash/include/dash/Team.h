@@ -31,7 +31,6 @@ namespace dash {
  * - move-assignment
  */
 class Team {
-  template< size_t DIM> friend class TeamSpec;
   template< class U> friend class Shared;
   template< class U, class Pattern > friend class GlobIter;
   template< class U> friend class GlobRef;

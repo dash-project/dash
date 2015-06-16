@@ -40,10 +40,10 @@ protected:
   /// Number of dimensions of this coordinate.
   SizeType m_ndim;
   /// Extents of the coordinate by dimension.
-  SizeType m_extent[NumDimensions];
+  std::array<SizeType, NumDimensions> m_extent;
   /// Cumulative index offsets of the coordinate by dimension. Avoids
   /// recalculation of \c NumDimensions-1 offsets in every call of \at().
-  SizeType m_offset[NumDimensions];
+  std::array<SizeType, NumDimensions> m_offset;
 
 public:
   /**
@@ -136,7 +136,8 @@ public:
       extents.size() == NumDimensions,
       "Invalid number of arguments");
     // Set extents:
-    ::std::copy(extents.begin(), extents.end(), m_extent);
+    // ::std::copy(extents.begin(), extents.end(), m_extent);
+    m_extent = extents;
     // Update size:
     m_size = 1;
     for(auto i = 0; i < NumDimensions; i++ ) {
@@ -181,8 +182,8 @@ public:
     return m_size;
   }
 
-  std::array<SizeType, NumDimensions> extents() const {
-    return std::array<SizeType, NumDimensions> { (SizeType)m_extent };
+  const std::array<SizeType, NumDimensions> & extents() const {
+    return m_extent;
   }
   
   /**
@@ -210,11 +211,11 @@ public:
    *               by dimension (x, y, z, ...)
    */
   template<typename... Args>
-  IndexType at(Args... args) const {
+  IndexType at(IndexType arg, Args... args) const {
     static_assert(
-      sizeof...(Args) == NumDimensions,
+      sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
-    ::std::array<SizeType, NumDimensions> pos = { SizeType(args) ... };
+    ::std::array<IndexType, NumDimensions> pos = { arg, IndexType(args) ... };
     return at(pos);
   }
   
@@ -243,6 +244,7 @@ public:
     return offs;
   }
   
+#if 0
   SizeType at(
     ::std::array<SizeType, NumDimensions> pos,
     ::std::array<SizeType, NumDimensions> cyclicfix) const {
@@ -261,7 +263,8 @@ public:
     }
     return offs;
   }
-  
+#endif
+
   /**
    * Convert given linear offset (index) to cartesian coordinates.
    * Inverse of \c at(...).
@@ -334,12 +337,12 @@ public:
    */
   TeamSpec(
     Team & team = dash::Team::All()) {
-    _num_units = team.size();
     _rank      = 1;
-    this->m_extent[0] = _num_units;
+    this->m_extent[0] = team.size();
     for (size_t d = 1; d < MaxDimensions; ++d) {
       this->m_extent[d] = 1;
     }
+    this->resize(this->m_extent);
   }
 
   /**
@@ -350,14 +353,13 @@ public:
   TeamSpec(
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All()) {
-    _num_units = team.size();
     _rank      = 1;
     bool distrib_dim_set = false;
     for (size_t d = 0; d < MaxDimensions; ++d) {
       if (distribution[d].type == DistEnum::disttype::NONE) {
         this->m_extent[d] = 1;
       } else {
-        this->m_extent[d] = _num_units;
+        this->m_extent[d] = team.size();
         if (distrib_dim_set) {
           DASH_THROW(
             dash::exception::InvalidArgument,
@@ -367,11 +369,22 @@ public:
         distrib_dim_set = true;
       }
     }
+    this->resize(this->m_extent);
   }
 
   template<typename ... Types>
   TeamSpec(size_t value, Types ... values)
   : CartCoord<MaxDimensions, ROW_MAJOR, size_t>::CartCoord(value, values...) {
+  }
+
+  /**
+   * Copy constructor.
+   */
+  TeamSpec(
+    /// Teamspec instance to copy
+    const TeamSpec<MaxDimensions> & other)
+  : CartCoord<MaxDimensions, ROW_MAJOR, size_t>::CartCoord(other.extents()),
+    _rank(other._rank) {
   }
 
   /**
@@ -381,9 +394,7 @@ public:
    * \returns  The number of units in the given dimension
    */
   long long num_units(size_t dimension) const {
-    return (_rank == 1)
-           ? _num_units // for TeamSpec<D>(N, 1, 1, ...)
-           : this->extent(dimension);
+    return this->size();
   }
 
   /**
@@ -394,18 +405,9 @@ public:
     return _rank;
   }
 
-  /**
-   * The total number of units in this team arrangement.
-   */
-  size_t size() const {
-    return _num_units;
-  }
-
 private:
   /// Actual number of dimensions of the team layout specification.
   size_t _rank;
-  /// Number of units in the team layout specification.
-  size_t _num_units;
 };
 
 } // namespace dash

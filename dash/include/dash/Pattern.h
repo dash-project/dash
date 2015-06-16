@@ -100,6 +100,7 @@ private:
       static_assert(
         sizeof...(Args) >= NumDimensions,
         "Invalid number of arguments for Pattern::ArgumentParser");
+      // Parse argument list:
       check<0>(std::forward<Args>(args)...);
       // Validate number of arguments after parsing:
       if (_argc_size > 0 && _argc_size != NumDimensions) {
@@ -114,14 +115,7 @@ private:
           "Invalid number of distribution arguments for Pattern(...), " <<
           "expected " << NumDimensions << ", got " << _argc_dist);
       }
-      if (_argc_team > 0 && _argc_team != NumDimensions) {
-        DASH_THROW(
-          dash::exception::InvalidArgument,
-          "Invalid number of team spec arguments for Pattern(...), " <<
-          "expected " << NumDimensions << ", got " << _argc_team);
-      }
       check_tile_constraints();
-      check_distribution_constraints();
     }
   
     const SizeSpec_t & sizespec() const {
@@ -158,13 +152,16 @@ private:
     /// specifying the distribution pattern.
     template<int count>
     void check(const TeamSpec_t & teamSpec) {
+      _argc_team++;
       _teamspec   = teamSpec;
     }
     /// Pattern matching for one optional parameter specifying the 
     /// team.
     template<int count>
     void check(dash::Team & team) {
-      _teamspec = TeamSpec<NumDimensions>(_distspec, team);
+      if (_argc_team == 0) {
+        _teamspec = TeamSpec<NumDimensions>(_distspec, team);
+      }
     }
     /// Pattern matching for one optional parameter specifying the 
     /// size (extents).
@@ -214,15 +211,6 @@ private:
         }
       }
     }
-    /// Check pattern constraints on distribution specification.
-    void check_distribution_constraints() const {
-      int n_validdist = 0;
-      for (int i = 0; i < NumDimensions; i++) {
-        if (_distspec.dim(i).type != DistEnum::disttype::NONE)
-          n_validdist++;
-      }
-      assert(n_validdist == _teamspec.rank());
-    }
   };
 
 private:
@@ -231,6 +219,8 @@ private:
   /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
   /// dimensions
   DistributionSpec_t _distspec;
+  /// Team containing the units to which the patterns element are mapped
+  dash::Team &       _team       = dash::Team::All();
   /// Cartesian arrangement of units within the team
   TeamSpec_t         _teamspec;
   /// The layout of the pattern's elements in memory respective to memory
@@ -243,8 +233,6 @@ private:
   BlockSpec_t        _blockspec;
   /// Maximum extents of a block in this pattern.
   BlockSizeSpec_t    _blocksize_spec;
-
-private:
   /// Local extents of the pattern in all dimensions
   size_t             _local_extent[NumDimensions];
   /// Actual number of elements local to the active unit
@@ -253,8 +241,6 @@ private:
   size_t             _nunits     = dash::Team::All().size();
   /// Maximum number of elements in a single block
   size_t             _max_blocksize;
-  /// Team containing the units to which the patterns element are mapped
-  dash::Team &       _team       = dash::Team::All();
 
 public:
   /**
@@ -299,8 +285,8 @@ public:
     /// Argument list consisting of the pattern size (extent, number of 
     /// elements) in every dimension followed by optional distribution     
     /// types.
-    Args && ... args)
-  : _arguments(args...),
+    size_t arg, Args && ... args)
+  : _arguments(arg, args...),
     _distspec(_arguments.distspec()), 
     _teamspec(_arguments.teamspec()), 
     _memory_layout(_arguments.sizespec()), 
@@ -350,21 +336,21 @@ public:
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension 
-    const SizeSpec_t & sizespec,
+    const SizeSpec_t &         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(),
+    const DistributionSpec_t & dist      = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t & teamorg      = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t &         teamorg   = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
-    dash::Team & team               = dash::Team::All()) 
-  : _memory_layout(sizespec),
-    _distspec(dist),
-    _teamspec(teamorg),
-    _team(team) {
-    _nunits   = _team.size();
-    _viewspec = ViewSpec_t(_memory_layout.extents());
+    dash::Team &               team      = dash::Team::All()) 
+  : _distspec(dist),
+    _memory_layout(sizespec),
+    _team(team),
+    _teamspec(teamorg) {
+    _nunits        = _team.size();
+    _viewspec      = ViewSpec_t(_memory_layout.extents());
     _max_blocksize = 1;
     // Number of blocks in all dimensions:
     std::array<size_t, NumDimensions> n_blocks;
@@ -415,17 +401,17 @@ public:
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension 
-    const SizeSpec_t & sizespec,
+    const SizeSpec_t &        sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(),
+    const DistributionSpec_t & dist    = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
-    dash::Team & team               = dash::Team::All())
-  : _memory_layout(sizespec),
-    _distspec(dist),
-    _teamspec(_distspec, _team) {
-    _team          = team;
+    Team &                     team    = dash::Team::All())
+  : _distspec(dist),
+    _team(team),
+    _teamspec(_distspec, _team),
+    _memory_layout(sizespec) {
     _nunits        = _team.size();
     _viewspec      = ViewSpec<NumDimensions>(_memory_layout);
     _max_blocksize = 1;
