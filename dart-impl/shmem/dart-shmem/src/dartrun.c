@@ -76,7 +76,7 @@ int dart_start(int argc, char* argv[])
     return 1;
   }
   
-  size_t syncarea_size = 4096*8; 
+  size_t syncarea_size = 4096*64; 
   
   int shm_id = shmem_mm_create(syncarea_size);
   void* shm_addr = shmem_mm_attach(shm_id);

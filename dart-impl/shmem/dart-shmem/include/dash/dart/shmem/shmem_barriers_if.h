@@ -22,8 +22,18 @@ struct sysv_barrier
   int num_procs;
 };
 
+
 typedef struct sysv_barrier* sysv_barrier_t;
 #define SYSV_BARRIER_NULL ((sysv_barrier_t)0)
+
+#define MAXNUM_LOCKS   32
+
+struct dart_lock_struct
+{
+  pthread_mutex_t mutex;
+  dart_team_t     teamid;
+  int             inuse;
+};
 
 
 struct sysv_team
@@ -33,6 +43,7 @@ struct sysv_team
   int                  inuse;
 };
 
+
 #define MAXNUM_UNITS   512
 
 #define UNIT_STATE_NOT_INITIALIZED  0
@@ -41,11 +52,13 @@ struct sysv_team
 
 struct syncarea_struct
 {
-  pthread_mutex_t lock;
+  pthread_mutex_t barrier_lock;
   int             shmem_key;
   dart_team_t     nextid;
 
   int unitstate[MAXNUM_UNITS];
+
+  struct dart_lock_struct locks[MAXNUM_LOCKS];
   
   struct sysv_team teams[MAXNUM_TEAMS];
 
@@ -76,6 +89,8 @@ int shmem_syncarea_barrier_wait(int slot);
 
 int shmem_syncarea_getunitstate(dart_unit_t unit);
 int shmem_syncarea_setunitstate(dart_unit_t unit, int state);
+
+syncarea_t shmem_getsyncarea();
 
 int sysv_barrier_create(sysv_barrier_t barrier, int num_procs);
 int sysv_barrier_destroy(sysv_barrier_t barrier);
