@@ -244,6 +244,25 @@ struct ViewPair {
 };
 
 /**
+ * Equality comparison operator for ViewPair.
+ */
+static bool operator==(const ViewPair & lhs, const ViewPair & rhs) {
+  if (&lhs == &rhs) {
+    return true;
+  }
+  return (
+    lhs.offset == rhs.offset && 
+    lhs.extent == rhs.extent);
+}
+
+/**
+ * Inequality comparison operator for ViewPair.
+ */
+static bool operator!=(const ViewPair & lhs, const ViewPair & rhs) {
+  return !(lhs == rhs);
+}
+
+/**
  * Specifies view parameters for implementing submat, rows and cols
  */
 template<size_t NumDimensions>

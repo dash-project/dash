@@ -28,6 +28,9 @@ template<
   MemArrange Arrangement = ROW_MAJOR,
   typename SizeType      = size_t >
 class CartCoord {
+private:
+  typedef CartCoord<NumDimensions, Arrangement, SizeType> self_t;
+
 public:
   typedef long long IndexType;
 
@@ -85,6 +88,30 @@ public:
   : m_size(sizeSpec.size()),
     m_ndim(NumDimensions) {
     resize(sizeSpec.extents());
+  }
+
+  /**
+   * Equality comparison operator.
+   */
+  bool operator==(const self_t & other) const {
+    if (this == &other) {
+      return true;
+    }
+    for(auto i = 0; i < NumDimensions; i++) {
+      if (m_extent[i] != other.m_extent[i]) return false;
+      if (m_offset[i] != other.m_offset[i]) return false;
+    }
+    return (
+      m_size == other.m_size &&
+      m_ndim == other.m_ndim
+    );
+  }
+
+  /**
+   * Inequality comparison operator.
+   */
+  bool operator!=(const self_t & other) const {
+    return !(*this == other);
   }
 
   /**
