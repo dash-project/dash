@@ -18,6 +18,12 @@
 
 static syncarea_t area = (syncarea_t) 0;
 
+
+syncarea_t shmem_getsyncarea() 
+{
+  return area;
+}
+
 int shmem_syncarea_init(int numprocs, void* shm_addr, int shmid)
 {
   pthread_mutexattr_t mutex_shared_attr;
@@ -28,15 +34,23 @@ int shmem_syncarea_init(int numprocs, void* shm_addr, int shmid)
   PTHREAD_SAFE(pthread_mutexattr_init(&mutex_shared_attr));
   PTHREAD_SAFE(pthread_mutexattr_setpshared(&mutex_shared_attr, 
 					    PTHREAD_PROCESS_SHARED));
-
-  PTHREAD_SAFE(pthread_mutex_init(&(area->lock), &mutex_shared_attr));
-  PTHREAD_SAFE(pthread_mutexattr_destroy(&mutex_shared_attr));
-
+  
+  PTHREAD_SAFE(pthread_mutex_init(&(area->barrier_lock), &mutex_shared_attr));
+  
   int i;
   for( i=0; i<MAXNUM_TEAMS; i++ ) {
     (area->teams[i]).inuse=0;
   }
+  
+  for( i=0; i<MAXNUM_LOCKS; i++ ) {
+    PTHREAD_SAFE(pthread_mutex_init(&((area->locks[i]).mutex), 
+				    &mutex_shared_attr));
+    (area->locks[i]).inuse=0;
+  }
 
+  PTHREAD_SAFE(pthread_mutexattr_destroy(&mutex_shared_attr));
+
+  
   sysv_barrier_create( &((area->teams[0]).barr), numprocs );
   area->teams[0].teamid = DART_TEAM_ALL;
   area->teams[0].inuse=1;
@@ -92,8 +106,10 @@ int shmem_syncarea_get_shmid()
 
 int shmem_syncarea_newteam(dart_team_t *teamid, int numprocs)
 {
+  pthread_mutexattr_t mutex_shared_attr;
   int i, slot=-1;
-  PTHREAD_SAFE_NORET(pthread_mutex_lock(&(area->lock)));
+
+  PTHREAD_SAFE_NORET(pthread_mutex_lock(&(area->barrier_lock)));
 
   // find a free slot
   for( i=1; i<MAXNUM_TEAMS; i++ ) {
@@ -102,17 +118,17 @@ int shmem_syncarea_newteam(dart_team_t *teamid, int numprocs)
       break;
     }
   }
-
+  
   if( 1<=slot && slot<MAXNUM_TEAMS ) {
     sysv_barrier_create( &((area->teams[slot]).barr), numprocs );
     area->teams[slot].teamid = area->nextid;
     (*teamid) =area->teams[slot].teamid;
     area->teams[slot].inuse=1;
-
+    
     (area->nextid)++;
   }
 
-  PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->lock)));
+  PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->barrier_lock)));
   return slot;
 }
 
@@ -120,7 +136,7 @@ int shmem_syncarea_findteam(dart_team_t teamid)
 {
   int i, res=-1;
 
-  PTHREAD_SAFE_NORET(pthread_mutex_lock(&(area->lock)));
+  PTHREAD_SAFE_NORET(pthread_mutex_lock(&(area->barrier_lock)));
 
   for(i=0; i<MAXNUM_TEAMS; i++ ) {
     if( (area->teams[i]).inuse &&
@@ -129,7 +145,7 @@ int shmem_syncarea_findteam(dart_team_t teamid)
       break;
     }
   }
-  PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->lock)));
+  PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->barrier_lock)));
 
   return res;
 }
@@ -137,7 +153,7 @@ int shmem_syncarea_findteam(dart_team_t teamid)
 int shmem_syncarea_delteam(dart_team_t teamid, int numprocs)
 {
   int i, slot=-1;
-  PTHREAD_SAFE_NORET(pthread_mutex_lock(&(area->lock)));
+  PTHREAD_SAFE_NORET(pthread_mutex_lock(&(area->barrier_lock)));
 
   for(i=0; i<MAXNUM_TEAMS; i++ ) {
     if( (area->teams[i]).inuse &&
@@ -156,7 +172,7 @@ int shmem_syncarea_delteam(dart_team_t teamid, int numprocs)
     area->teams[slot].inuse=0;
   }
   
-  PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->lock)));
+  PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->barrier_lock)));
   
   return 0;
 }
@@ -248,10 +264,10 @@ void shmem_barriers_destroy()
 
 shmem_barrier_t shmem_barriers_create_barrier(int num_procs_to_wait)
 {
-  PTHREAD_SAFE_NORET(pthread_mutex_lock(&(area->lock)));
+  PTHREAD_SAFE_NORET(pthread_mutex_lock(&(area->barrier_lock)));
   if (area->num_barriers >= MAXNUM_BARRIERS)
     {
-      PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->lock)));
+      PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->barrier_lock)));
       ERROR("Could not create barrier: %s", "maxnum exceeded");
       return -1;
     }
@@ -259,7 +275,7 @@ shmem_barrier_t shmem_barriers_create_barrier(int num_procs_to_wait)
 		      num_procs_to_wait);
   int result = area->num_barriers;
   area->num_barriers = area->num_barriers + 1;
-  PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->lock)));
+  PTHREAD_SAFE_NORET(pthread_mutex_unlock(&(area->barrier_lock)));
   return result;
 }
 

@@ -25,7 +25,8 @@ FILES = dart_init_impl dart_init_shmem 	    	\
 	dart_membucket				\
 	dart_malloc				\
 	dart_onesided				\
-	dart_helper_thread
+	dart_helper_thread                      \
+	dart_locks
 
 OBJS = $(addsuffix .o, $(FILES))
 
