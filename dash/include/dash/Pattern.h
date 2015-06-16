@@ -23,17 +23,26 @@ namespace dash {
  * Consequently, a pattern realizes a projection of a global index
  * range to a local view:
  *
- * Distribution                 |      Container:
+ * Distribution                 | Container
  * ---------------------------- | -----------------------------
- * <tt>[ team 0 | team 1 ]</tt> | <tt>[ 0  1  2  3  4  5 ]</tt>
- * <tt>[ team 1 | team 0 ]</tt> | <tt>[ 6  7  8  9 10 11 ]</tt>
- *  
+ * <tt>[ team 0 : team 1 ]</tt> | <tt>[ 0  1  2  3  4  5 ]</tt>
+ * <tt>[ team 1 : team 0 ]</tt> | <tt>[ 6  7  8  9 10 11 ]</tt>
+ *
  * This pattern would assign local indices to teams like this:
  * 
  * Team            | Local indices
  * --------------- | -----------------------------
  * <tt>team 0</tt> | <tt>[ 0  1  2  9 10 11 ]</tt>
  * <tt>team 1</tt> | <tt>[ 3  4  5  6  7  8 ]</tt>
+ *
+ *
+ * \tparam  NumDimensions  The number of dimensions of the pattern
+ * \tparam  Arrangement    The memory order of the pattern (ROW_ORDER
+ *                         or COL_ORDER), defaults to ROW_ORDER.
+ *                         Memory order defines how elements in the
+ *                         pattern will be iterated predominantly
+ *                         \see MemArrange
+ *                         
  */
 template<
   size_t NumDimensions,
@@ -57,9 +66,15 @@ private:
    */
   class ArgumentParser {
   private:
+    /// The extents of the pattern space in every dimension
     SizeSpec_t         _sizespec;
+    /// The distribution type for every pattern dimension
     DistributionSpec_t _distspec;
+    /// The cartesian arrangement of the units in the team to which the
+    /// patterns element are mapped
     TeamSpec_t         _teamspec;
+    /// The view specification of the pattern, consisting of offset and
+    /// extent in every dimension
     ViewSpec_t         _viewspec;
     /// Number of distribution specifying arguments in varargs
     int                _argc_dist = 0;
@@ -142,7 +157,6 @@ private:
     /// specifying the distribution pattern.
     template<int count>
     void check(const TeamSpec_t & teamSpec) {
-//    _argc_team += teamSpec.rank();
       _teamspec   = teamSpec;
     }
     /// Pattern matching for one optional parameter specifying the 
@@ -218,7 +232,11 @@ private:
   DistributionSpec_t _distspec;
   /// Cartesian arrangement of units within the team
   TeamSpec_t         _teamspec;
+  /// The layout of the pattern's elements in memory respective to memory
+  /// order. Also specifies the extents of the pattern space
   MemoryLayout_t     _memory_layout;
+  /// The view specification of the pattern, consisting of offset and
+  /// extent in every dimension
   ViewSpec_t         _viewspec;
   /// Number of blocks in all dimensions.
   BlockSpec_t        _blockspec;
@@ -226,15 +244,19 @@ private:
   BlockSizeSpec_t    _blocksize_spec;
 
 private:
-  /// The local offsets of the pattern in all dimensions
+  /// Local offsets of the pattern in all dimensions
   long long          m_local_offset[NumDimensions];
-  /// The local extents of the pattern in all dimensions
+  /// Local extents of the pattern in all dimensions
   size_t             _local_extent[NumDimensions];
-  /// The global extents of the pattern in all dimensions
+  /// Global extents of the pattern in all dimensions
   size_t             _extent[NumDimensions];
+  /// Actual number of elements local to the active unit
   size_t             _local_size = 1;
+  /// Total amount of units to which this pattern's elements are mapped
   size_t             _nunits     = dash::Team::All().size();
+  /// Maximum number of elements in a single block
   size_t             _max_blocksize;
+  /// Team containing the units to which the patterns element are mapped
   dash::Team &       _team       = dash::Team::All();
 
 public:
@@ -245,6 +267,7 @@ public:
    *
    * Examples:
    *
+   * \code
    *   // A 5x3 rectangle with blocked distribution in the first dimension
    *   Pattern p1(5,3, BLOCKED);
    *   // Same as
@@ -272,7 +295,7 @@ public:
    *   // A cube with sidelength 3 with blockwise distribution in the third
    *   // dimension
    *   Pattern p4(3,3,3, NONE, NONE, BLOCKED);
-   *
+   * \endcode
    */
   template<typename ... Args>
   Pattern(
@@ -305,6 +328,8 @@ public:
    * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
    *
    * Examples:
+   *
+   * \code
    *   // A 5x3 rectangle with blocked distribution in the first dimension
    *   Pattern p1(SizeSpec<2>(5,3),
    *              DistributionSpec<2>(BLOCKED, NONE),
@@ -324,6 +349,7 @@ public:
    *   Pattern p1(SizeSpec<2>(5,3),
    *              DistributionSpec<2>(BLOCKED, NONE),
    *              TeamSpec<2>(dash::Team::All(), 1));
+   * \endcode
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension 
@@ -361,6 +387,8 @@ public:
    * \c SizeSpec, \c DistributionSpec and a \c Team.
    *
    * Examples:
+   *
+   * \code
    *   // A 5x3 rectangle with blocked distribution in the first dimension
    *   Pattern p1(SizeSpec<2>(5,3),
    *              DistributionSpec<2>(BLOCKED, NONE),
@@ -386,6 +414,7 @@ public:
    *   Pattern p1(SizeSpec<2>(5,3),
    *              DistributionSpec<2>(BLOCKED, NONE),
    *              TeamSpec<2>(dash::Team::All(), 1));
+   * \endcode
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension 
@@ -417,10 +446,12 @@ public:
   }
 
   /**
-   * Convert given coordinate in pattern to its assigned unit id.
+   * Convert given point in pattern to its assigned unit id.
    */
   long long unit_at(
+    /// Absolute coordinates of the point
     const std::array<long long, NumDimensions> & coords,
+    /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
     // Apply viewspec offsets to coordinates:
     std::array<long long, NumDimensions> vs_coords;
@@ -435,10 +466,13 @@ public:
   }
 
   /**
-   * Convert given coordinate in pattern to its assigned unit id.
+   * Convert given point in pattern to its assigned unit id.
    */
   template<typename ... Values>
-  long long unit_at(Values ... values) const {
+  long long unit_at(
+    /// Absolute coordinates of the point
+    Values ... values
+  ) const {
     if (sizeof...(Values) != NumDimensions) {
       DASH_THROW(
         dash::exception::OutOfRange,
@@ -450,8 +484,13 @@ public:
     return unit_at(inputindex, _viewspec);
   }
 
+  /**
+   * Convert given relative coordinates to local offset.
+   */
   long long local_at(
+    /// Point in local memory
     const std::array<long long, NumDimensions> & coords,
+    /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
     // TODO
     return 0;
@@ -481,8 +520,9 @@ public:
   }
 
   /**
-   * Inverse of \see index_to_elem.
    * Will be renamed to \c local_to_global_index
+   *
+   * \see index_to_elem Inverse of unit_and_elem_to_index
    */
   long long unit_and_elem_to_index(
     size_t unit,
@@ -696,7 +736,8 @@ public:
 
   /**
    * Convert given linear offset (index) to cartesian coordinates.
-   * Inverse of \see at(...).
+   *
+   * \see at(...) Inverse of coords(index)
    */
   std::array<long long, NumDimensions> coords(long long index) const {
     return _memory_layout.coords(index);

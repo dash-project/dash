@@ -145,6 +145,7 @@ Local_Ref<T, NumDimensions, CUR>::sub(size_type n) {
       "Illegal sub-dimension");
   size_t target_dim = SubDimension + _proxy->_dim;
   Local_Ref<T, NumDimensions, NumDimensions - 1> ref;
+  // TODO: Memory leak: Allocated but never freed
   Matrix_RefProxy<T, NumDimensions> * proxy =
     new Matrix_RefProxy<T, NumDimensions>();
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
@@ -187,6 +188,7 @@ Local_Ref<T, NumDimensions, CUR>::submat(
       SubDimension < NumDimensions && SubDimension >= 0,
       "Wrong sub-dimension");
   Local_Ref<T, NumDimensions, NumDimensions> ref;
+  // TODO: Memory leak: Allocated but never freed
   Matrix_RefProxy<T, NumDimensions> * proxy =
     new Matrix_RefProxy<T, NumDimensions>();
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);

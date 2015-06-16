@@ -24,7 +24,7 @@ extern void ColoredPrintf(
 #define LOG_MESSAGE(...) do { \
   testing::internal::ColoredPrintf( \
     testing::internal::COLOR_GREEN, \
-    "[          ] "); \
+    "[ LOG      ] "); \
   testing::internal::ColoredPrintf(\
     testing::internal::COLOR_YELLOW, \
     __VA_ARGS__); \
