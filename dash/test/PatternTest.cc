@@ -2,11 +2,11 @@
 #include "TestBase.h"
 #include "PatternTest.h"
 
-TEST_F(PatternTest, SimpleConstructors) {
+TEST_F(PatternTest, SimpleConstructor) {
   DASH_TEST_LOCAL_ONLY();
-  int extent_x = 2;
-  int extent_y = 3;
-  int extent_z = 4;
+  int extent_x = 21;
+  int extent_y = 37;
+  int extent_z = 41;
   int size = extent_x * extent_y * extent_z;
   // Should default to distribution BLOCKED, NONE, NONE:
   dash::Pattern<3> pat_default(extent_x, extent_y, extent_z);
@@ -14,6 +14,55 @@ TEST_F(PatternTest, SimpleConstructors) {
   EXPECT_EQ(dash::Team::All(), pat_default.team());
   EXPECT_EQ(dash::Team::All().size(), pat_default.num_units());
   EXPECT_EQ(size, pat_default.capacity());
+
+  dash::DistributionSpec<3> ds_blocked_z(
+      dash::NONE, dash::NONE, dash::BLOCKED);
+  dash::Pattern<3> pat_ds(
+      extent_x, extent_y, extent_z, 
+      ds_blocked_z);
+  EXPECT_EQ(ds_blocked_z, pat_ds.distspec());
+  EXPECT_EQ(size, pat_ds.capacity());
+
+  // Splits in consecutive test cases within a single test
+  // run are not supported for now:
+  // dash::Team & team_split_2 = dash::Team::All().split(2);
+  dash::Pattern<3> pat_ds_t(
+      extent_x, extent_y, extent_z, 
+      ds_blocked_z,
+      dash::Team::All());
+  EXPECT_EQ(ds_blocked_z, pat_ds_t.distspec());
+  EXPECT_EQ(size, pat_ds_t.capacity());
+  EXPECT_EQ(dash::Team::All().size(), pat_ds_t.num_units());
+}
+
+TEST_F(PatternTest, EqualityComparison) {
+  DASH_TEST_LOCAL_ONLY();
+  int extent_x = 21;
+  int extent_y = 37;
+  int extent_z = 41;
+  dash::Pattern<3> pat_default(extent_x, extent_y, extent_z);
+  EXPECT_EQ(pat_default, pat_default);
+}
+
+TEST_F(PatternTest, CopyConstructorAndAssignment) {
+  DASH_TEST_LOCAL_ONLY();
+  int extent_x = 12;
+  int extent_y = 13;
+  int extent_z = 14;
+  // Splits in consecutive test cases within a single test
+  // run are not supported for now:
+  // dash::Team & team_split_2 = dash::Team::All().split(2);
+  int num_units = dash::Team::All().size();
+  dash::TeamSpec<3> teamspec_2_by_n(2, 1, num_units / 2);
+  dash::Pattern<3> pat_org(
+      dash::SizeSpec<3>(3, 7, 13),
+      dash::DistributionSpec<3>(dash::BLOCKED, dash::NONE, dash::CYCLIC),
+      teamspec_2_by_n,
+      dash::Team::All());
+
+  dash::Pattern<3> pat_copy(pat_org);
+  dash::Pattern<3> pat_assign(extent_x, extent_y, extent_z);
+  pat_assign = pat_org;
 }
 
 TEST_F(PatternTest, Distribute1DimBlocked) {

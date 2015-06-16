@@ -49,6 +49,7 @@ template<
   MemArrange Arrangement = ROW_MAJOR>
 class Pattern {
 private:
+  typedef Pattern<NumDimensions, Arrangement>    self_t;
   typedef DistributionSpec<NumDimensions>        DistributionSpec_t;
   typedef TeamSpec<NumDimensions>                TeamSpec_t;
   typedef SizeSpec<NumDimensions>                SizeSpec_t;
@@ -244,12 +245,8 @@ private:
   BlockSizeSpec_t    _blocksize_spec;
 
 private:
-  /// Local offsets of the pattern in all dimensions
-  long long          m_local_offset[NumDimensions];
   /// Local extents of the pattern in all dimensions
   size_t             _local_extent[NumDimensions];
-  /// Global extents of the pattern in all dimensions
-  size_t             _extent[NumDimensions];
   /// Actual number of elements local to the active unit
   size_t             _local_size = 1;
   /// Total amount of units to which this pattern's elements are mapped
@@ -443,6 +440,64 @@ public:
     }
     _blockspec      = BlockSpec_t(n_blocks);
     _blocksize_spec = BlockSizeSpec_t(s_blocks);
+  }
+
+  /**
+   * Copy constructor.
+   */
+  Pattern(const self_t & other)
+  : _distspec(other._distspec), 
+    _teamspec(other._teamspec),
+    _memory_layout(other._memory_layout),
+    _viewspec(other._viewspec),
+    _blockspec(other._blocksize_spec),
+    _blocksize_spec(other._blocksize_spec),
+    _nunits(other._nunits),
+    _local_size(other._local_size),
+    _max_blocksize(other._max_blocksize) {
+  }
+
+  /**
+   * Copy constructor using non-const lvalue reference parameter.
+   *
+   * Introduced so variadic constructor is not a better match for
+   * copy-construction.
+   */
+  Pattern(self_t & other)
+  : Pattern(static_cast<const self_t &>(other)) {
+  }
+
+  /**
+   * Equality comparison operator.
+   */
+  bool operator==(
+    /// Pattern instance to compare for equality
+    const self_t & other
+  ) const {
+    if (this == &other) {
+      return true;
+    }
+    return(
+      _distspec       == other._distspec &&
+      _teamspec       == other._teamspec &&
+      _memory_layout  == other._memory_layout &&
+      _viewspec       == other._viewspec &&
+      _blockspec      == other._blockspec &&
+      _blocksize_spec == other._blocksize_spec &&
+      _nunits         == other._nunits &&
+      _local_size     == other._local_size &&
+      _max_blocksize  == other._max_blocksize
+    );
+  }
+
+  /**
+   * Inquality comparison operator.
+   */
+  bool operator!=(
+    /// Pattern instance to compare for inequality
+    const self_t & other
+  ) const {
+    return !(*this == other);
   }
 
   /**
