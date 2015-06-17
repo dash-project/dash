@@ -22,17 +22,27 @@ extern void ColoredPrintf(
 } // namespace internal
 } // namespace testing
 
+#if defined(DASH_ENABLE_LOGGING)
+
 #define LOG_MESSAGE(...) do { \
+  char buffer[200]; \
+  sprintf(buffer, __VA_ARGS__); \
   testing::internal::ColoredPrintf( \
     testing::internal::COLOR_GREEN, \
     "[   LOG    ] "); \
   testing::internal::ColoredPrintf(\
     testing::internal::COLOR_YELLOW, \
-    __VA_ARGS__); \
+    buffer); \
   testing::internal::ColoredPrintf( \
     testing::internal::COLOR_YELLOW, \
     "\n"); \
 } while(0)
+
+#else // DASH_ENABLE_LOGGING
+
+#define LOG_MESSAGE(...) do {  } while(0)
+
+#endif
 
 #define DASH_TEST_LOCAL_ONLY() do { \
   if (dash::myid() > 0) { \

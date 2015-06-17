@@ -224,9 +224,15 @@ private:
   dash::Team &       _team       = dash::Team::All();
   /// Cartesian arrangement of units within the team
   TeamSpec_t         _teamspec;
-  /// The layout of the pattern's elements in memory respective to memory
-  /// order. Also specifies the extents of the pattern space
+  /// The global layout of the pattern's elements in memory respective to
+  /// memory order. Also specifies the extents of the pattern space.
   MemoryLayout_t     _memory_layout;
+  /// A projected view of the global memory layout representing the
+  /// local memory layout of this unit's elements respective to memory
+  /// order.
+  MemoryLayout_t     _local_memory_layout;
+  /// The view specification of the pattern, consisting of offset and
+  /// extent in every dimension
   /// The view specification of the pattern, consisting of offset and
   /// extent in every dimension
   ViewSpec_t         _viewspec;
@@ -623,21 +629,26 @@ public:
       relative_coords[d] -= block_begin_coords[d];
     }
     // Block offset, i.e. number of blocks in front of referenced block:
+    // TODO: Depends on memory order?
     size_t block_offset       = _blockspec.at(block_coords);
     // Offset of the referenced block within all blocks local to its unit,
     // i.e. nth block of this unit:
     size_t local_block_offset = block_offset / _teamspec.size();
-    // Resolve local element offset from local block offset:
-    size_t local_elem_offset  = local_block_offset * max_blocksize();
+    // Local offset of the first element in the block:
+    // TODO: Should be actual_block_size instead of max_blocksize
+    size_t block_base_offset  = local_block_offset * max_blocksize();
     // Offset of the referenced index within its block:
     size_t elem_block_offset  = _blocksize_spec.at(relative_coords);
-    
+    // Local offset of the element with all of the unit's local elements:
+    size_t local_elem_offset  = block_base_offset + elem_block_offset;
     DASH_LOG_TRACE("Pattern.index_to_elem",
                    "block offset", block_offset,
                    "local block offset", local_block_offset,
-                   "local elem offset", local_elem_offset,
-                   "elem block offset", elem_block_offset);
-    return local_elem_offset + elem_block_offset;
+                   "block base offset", block_base_offset,
+                   "elem block offset", elem_block_offset,
+                   "local elem offset", local_elem_offset);
+
+    return local_elem_offset;
   }
 
   /**

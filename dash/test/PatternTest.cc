@@ -277,8 +277,6 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
 }
 
 TEST_F(PatternTest, Distribute1DimCyclicX) {
-  // Fails for -n 7 (extents 11x5, 7 units)
-
   DASH_TEST_LOCAL_ONLY();
   // 2-dimensional, blocked partitioning in first dimension:
   // 
@@ -289,8 +287,10 @@ TEST_F(PatternTest, Distribute1DimCyclicX) {
   // [                        ...                          ]
   int team_size      = dash::Team::All().size();
   // Choose 'inconvenient' extents:
-  int extent_x       = team_size + 7;
-  int extent_y       = 23;
+//  int extent_x       = team_size + 7;
+//  int extent_y       = 23;
+  int extent_x       = 8;
+  int extent_y       = 4;
   size_t size        = extent_x * extent_y;
   int block_size_x   = 1;
   int max_per_unit_x = dash::math::div_ceil(extent_x, team_size);
@@ -318,15 +318,42 @@ TEST_F(PatternTest, Distribute1DimCyclicX) {
   EXPECT_EQ(pat_cyclic_col.max_elem_per_unit(), max_per_unit);
   EXPECT_EQ(pat_cyclic_col.blocksize(0), block_size_x);
   EXPECT_EQ(pat_cyclic_col.blocksize(1), block_size_y);
+  // offset to add for every y-coordinate:
+  int add_offset_per_y    = extent_x / team_size;
+  // number of overflow blocks, e.g. 7 elements, 3 teams -> 1
+  int num_overflow_blocks = extent_x % team_size;
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
       int expected_unit_id = x % team_size;
+
+      int expected_offset_row_order =
+        x / team_size + (y * (add_offset_per_y + num_overflow_blocks - x));
+      int expected_offset_col_order =
+        expected_offset_row_order;
+
+      LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, of: %d",
+        x, y,
+        expected_offset_row_order,
+        pat_cyclic_row.index_to_elem(std::array<long long, 2> { x, y }),
+        num_overflow_blocks);
       EXPECT_EQ(
         expected_unit_id,
         pat_cyclic_row.index_to_unit(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
+        expected_offset_row_order,
+        pat_cyclic_row.index_to_elem(std::array<long long, 2> { x, y }));
+
+      LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, of: %d",
+        x, y,
+        expected_offset_col_order,
+        pat_cyclic_col.index_to_elem(std::array<long long, 2> { x, y }),
+        num_overflow_blocks);
+      EXPECT_EQ(
         expected_unit_id,
         pat_cyclic_col.index_to_unit(std::array<long long, 2> { x, y }));
+      EXPECT_EQ(
+        expected_offset_col_order,
+        pat_cyclic_col.index_to_elem(std::array<long long, 2> { x, y }));
     }
   }
 }

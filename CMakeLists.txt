@@ -50,6 +50,10 @@ option(BUILD_EXAMPLES
        "Specify whether to build examples" on)
 option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
+option(ENABLE_LOGGING
+       "Specify whether logging should be enabled" off)
+option(ENABLE_TRACE_LOGGING
+       "Specify whether trace messages should be logged" off)
 
 set(DART_IF_VERSION "3.1" CACHE STRING
     "Version of the DART interface")
