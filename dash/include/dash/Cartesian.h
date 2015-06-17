@@ -360,7 +360,7 @@ public:
       DASH_THROW(
         dash::exception::InvalidArgument,
         "Size of team " << team.size() << " differs from " <<
-        "size of teamspec" << this->size() << "in TeamSpec()");
+        "size of teamspec " << this->size() << " in TeamSpec()");
     }
     // Test if other teamspec has been default-constructed:
     if (other.rank() == 1 && distribution.rank() > 1) {

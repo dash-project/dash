@@ -507,7 +507,12 @@ public:
     std::array<long long, NumDimensions> block_coords = 
       coords_to_block_coords(vs_coords);
     // Unit assigned to this block index:
-    return block_coords_to_unit(block_coords);
+    long long unit_id = block_coords_to_unit(block_coords);
+    DASH_LOG_TRACE("Pattern.unit_at",
+                   "coords", coords,
+                   "block coords", block_coords,
+                   "unit id", unit_id);
+    return unit_id;
   }
 
   /**
@@ -627,11 +632,11 @@ public:
     // Offset of the referenced index within its block:
     size_t elem_block_offset  = _blocksize_spec.at(relative_coords);
     
-    DASH_LOG("Pattern.index_to_elem",
-             "block offset: ",block_offset, ", ",
-             "local block offset: ", local_block_offset, ", ",
-             "local elem offset: ", local_elem_offset, ", ",
-             "elem block offset: ", elem_block_offset);
+    DASH_LOG_TRACE("Pattern.index_to_elem",
+                   "block offset", block_offset,
+                   "local block offset", local_block_offset,
+                   "local elem offset", local_elem_offset,
+                   "elem block offset", elem_block_offset);
     return local_elem_offset + elem_block_offset;
   }
 
@@ -678,7 +683,7 @@ public:
    */
   size_t blocksize(size_t dimension) const {
     DistEnum dist = _distspec[dimension];
-    return dist.blocksize_in_range(
+    return dist.max_blocksize_in_range(
       _memory_layout.extent(dimension), // size of range (extent)
       _teamspec.extent(dimension));     // number of blocks (units)
   }
@@ -703,18 +708,24 @@ public:
       size_t num_units = units_in_dimension(d);
       DistEnum dist = _distspec[d];
       // Block size in given dimension:
-      auto dim_max_blocksize = dist.blocksize_in_range(
+      auto dim_max_blocksize = dist.max_blocksize_in_range(
                                  // size of range:
                                  _memory_layout.extent(d),
                                  // number of blocks:
                                  num_units
                                );
       // Maximum number of occurrences of a single unit in given dimension:
-      size_t dim_num_blocks = dash::math::div_ceil(
-                                _memory_layout.extent(d),
-                                dim_max_blocksize);
-      // Accumulate result:
-      max_elements *= (dim_num_blocks * dim_max_blocksize / num_units);
+      size_t dim_num_blocks  = dist.max_local_blocks_in_range(
+                                 // size of range:
+                                 _memory_layout.extent(d),
+                                 // number of blocks:
+                                 num_units
+                               );
+//    size_t dim_num_blocks = dash::math::div_ceil(
+//                              _memory_layout.extent(d),
+//                              dim_max_blocksize);
+//    max_elements *= (dim_num_blocks * dim_max_blocksize / num_units);
+      max_elements *= dim_max_blocksize * dim_num_blocks;
 #ifdef DASH_TEST
       std::cout << d << " nunits: " << num_units << ", "
                 << "dim_max_blocksize: " << dim_max_blocksize << ", "
@@ -823,7 +834,7 @@ private:
     size_t num_units = units_in_dimension(dimension);
     DistEnum dist = _distspec[dimension];
     // Block size in given dimension:
-    auto dim_max_blocksize = dist.blocksize_in_range(
+    auto dim_max_blocksize = dist.max_blocksize_in_range(
                             // size of range:
                             _memory_layout.extent(dimension),
                             // number of blocks:
@@ -858,7 +869,8 @@ private:
       DistEnum dist = _distspec[d];
       unit_id += dist.block_coord_to_unit_offset(
                     block_coords[d], // block coordinate
-                    d                // dimension
+                    d,               // dimension
+                    _teamspec.size() // number of units
                  );
     }
     // TODO: Use _teamspec to resolve actual unit id

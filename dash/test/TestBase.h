@@ -1,8 +1,6 @@
 #ifndef DASH__TEST__TEST_BASE_H_
 #define DASH__TEST__TEST_BASE_H_
 
-#define DASH_TEST 1
-
 #include <gtest/gtest.h>
 #include <dash/internal/Logging.h>
 
@@ -40,6 +38,10 @@ extern void ColoredPrintf(
   if (dash::myid() > 0) { \
     return; \
   } \
+} while(0)
+
+#define SCOPED_TRACE_MSG(msg) do { \
+  SCOPED_TRACE(::testing::Message() << msg); \
 } while(0)
 
 #endif // DASH__TEST__TEST_BASE_H_

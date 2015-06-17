@@ -117,6 +117,10 @@ if (BUILD_TESTS)
       ${DASH_LIBRARY}
       ${DART_LIBRARY}
     )
+    set_target_properties(
+      ${DASH_TEST} PROPERTIES
+      COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_LOGGING"
+    )
     DeployBinary(${DASH_TEST})
     install(
       TARGETS ${DASH_TEST}
@@ -127,6 +131,6 @@ endif()
 ## Installation
 
 # Headers
-  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
-          DESTINATION include FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
+        DESTINATION include FILES_MATCHING PATTERN "*.h")
 

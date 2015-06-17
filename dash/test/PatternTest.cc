@@ -1,5 +1,5 @@
-#include <libdash.h>
 #include "TestBase.h"
+#include <libdash.h>
 #include "PatternTest.h"
 #include <dash/internal/Math.h>
 
@@ -66,16 +66,19 @@ TEST_F(PatternTest, CopyConstructorAndAssignment) {
   // run are not supported for now:
   // dash::Team & team_split_2 = dash::Team::All().split(2);
   int num_units = dash::Team::All().size();
-  dash::TeamSpec<3> teamspec_2_by_n(2, 1, num_units / 2);
-  dash::Pattern<3> pat_org(
-      dash::SizeSpec<3>(3, 7, 13),
-      dash::DistributionSpec<3>(dash::BLOCKED, dash::NONE, dash::CYCLIC),
-      teamspec_2_by_n,
-      dash::Team::All());
+  if (num_units % 2 == 0) {
+    // This test requires that (2 * 1 * (num_units/2)) == num_units
+    dash::TeamSpec<3> teamspec_2_by_n(2, 1, num_units / 2);
+    dash::Pattern<3> pat_org(
+        dash::SizeSpec<3>(3, 7, 13),
+        dash::DistributionSpec<3>(dash::BLOCKED, dash::NONE, dash::CYCLIC),
+        teamspec_2_by_n,
+        dash::Team::All());
 
-  dash::Pattern<3> pat_copy(pat_org);
-  dash::Pattern<3> pat_assign(extent_x, extent_y, extent_z);
-  pat_assign = pat_org;
+    dash::Pattern<3> pat_copy(pat_org);
+    dash::Pattern<3> pat_assign(extent_x, extent_y, extent_z);
+    pat_assign = pat_org;
+  }
 }
 
 TEST_F(PatternTest, Distribute1DimBlocked) {
@@ -128,8 +131,8 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   // [ team 1[1] | team 1[3] | ... | team 1[5] ]
   // [                   ...                   ]
   int team_size = dash::Team::All().size();
-  int extent_x  = 5;
-  int extent_y  = 4;
+  int extent_x  = 17;
+  int extent_y  = 41;
   size_t size   = extent_x * extent_y;
   // Ceil division
   int block_size_x = extent_x;
@@ -137,6 +140,10 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
                        ? extent_y / team_size
                        : extent_y / team_size + 1;
   int max_per_unit = block_size_x * block_size_y;
+  LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpu: %d",
+      extent_x, extent_y,
+      block_size_x, block_size_y,
+      max_per_unit);
   dash::Pattern<2, dash::ROW_MAJOR> pat_blocked_row(
       dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(dash::NONE, dash::BLOCKED),
@@ -206,8 +213,8 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
   // [ team 0[3] | team 1[3] | team 2[3] | ... | team n-1 ]
   // [                       ...                          ]
   int team_size    = dash::Team::All().size();
-  int extent_x     = 4;
-  int extent_y     = 5;
+  int extent_x     = 41;
+  int extent_y     = 17;
   size_t size      = extent_x * extent_y;
   // Ceil division
   int block_size_x = dash::math::div_ceil(extent_x, team_size);
@@ -281,8 +288,9 @@ TEST_F(PatternTest, Distribute1DimCyclicX) {
   // [ team 0[6] | team 1[6] | team 0[7] | team 1[7] | ... ]
   // [                        ...                          ]
   int team_size      = dash::Team::All().size();
-  int extent_x       = team_size + 4;
-  int extent_y       = 5;
+  // Choose 'inconvenient' extents:
+  int extent_x       = team_size + 7;
+  int extent_y       = 23;
   size_t size        = extent_x * extent_y;
   int block_size_x   = 1;
   int max_per_unit_x = dash::math::div_ceil(extent_x, team_size);
@@ -312,7 +320,13 @@ TEST_F(PatternTest, Distribute1DimCyclicX) {
   EXPECT_EQ(pat_cyclic_col.blocksize(1), block_size_y);
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
-      
+      int expected_unit_id = x % team_size;
+      EXPECT_EQ(
+        expected_unit_id,
+        pat_cyclic_row.index_to_unit(std::array<long long, 2> { x, y }));
+      EXPECT_EQ(
+        expected_unit_id,
+        pat_cyclic_col.index_to_unit(std::array<long long, 2> { x, y }));
     }
   }
 }

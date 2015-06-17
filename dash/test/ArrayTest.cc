@@ -1,4 +1,6 @@
 #include <libdash.h>
+#include <gtest/gtest.h>
+#include "TestBase.h"
 #include "ArrayTest.h"
 
 TEST_F(ArrayTest, SingleWriteMultipleRead) {
@@ -9,10 +11,12 @@ TEST_F(ArrayTest, SingleWriteMultipleRead) {
   dash::Array<int> arr3(_num_elem * _dash_size,
                         dash::Team::All());
   dash::Array<int> arr4(_num_elem * _dash_size,
-                        dash::BLOCKED,
+                        dash::CYCLIC,
                         dash::Team::All());
+  dash::Array<int> arr5(_num_elem * _dash_size,
+                        dash::BLOCKCYCLIC(12));
   dash::Pattern<1> pat(_num_elem * _dash_size);
-  dash::Array<int> arr5(pat);
+  dash::Array<int> arr6(pat);
   // Fill arrays with incrementing values
   if(_dash_id == 0) {
     for(int i = 0; i < arr1.size(); i++) {
@@ -21,6 +25,7 @@ TEST_F(ArrayTest, SingleWriteMultipleRead) {
       arr3[i] = i;
       arr4[i] = i;
       arr5[i] = i;
+      arr6[i] = i;
     }
   }
   // Wait for teams
@@ -31,6 +36,7 @@ TEST_F(ArrayTest, SingleWriteMultipleRead) {
     EXPECT_EQ(static_cast<int>(arr1[i]), static_cast<int>(arr3[i]));
     EXPECT_EQ(static_cast<int>(arr1[i]), static_cast<int>(arr4[i]));
     EXPECT_EQ(static_cast<int>(arr1[i]), static_cast<int>(arr5[i]));
+    EXPECT_EQ(static_cast<int>(arr1[i]), static_cast<int>(arr6[i]));
   }
 }
 
