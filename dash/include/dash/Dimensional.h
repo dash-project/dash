@@ -5,7 +5,6 @@
 #include <array>
 
 #include <dash/Enums.h>
-// #include <dash/Cartesian.h>
 #include <dash/Team.h>
 #include <dash/Exception.h>
 
@@ -23,7 +22,7 @@ namespace dash {
  * \tparam  NumDimensions  The number of dimensions
  *
  * \see SizeSpec
- * \see CartCoord
+ * \see CartesianIndexSpace
  */
 template<typename T, size_t NumDimensions>
 class Dimensional {
@@ -176,12 +175,11 @@ public:
 };
 
 /**
- * Specifies an cartesian extent in a specific number of dimensions.
+ * Specifies cartesian extents in a specific number of dimensions.
  */
 template<size_t NumDimensions>
 class SizeSpec : public Dimensional<size_t, NumDimensions> {
   /* 
-   * TODO: Define concept MemoryLayout<MemArrange> : CartCoord<MemArrange>
    * Concept SizeSpec:
    *   + SizeSpec::SizeSpec(extents ...);
    *   + SizeSpec::extent(dim);

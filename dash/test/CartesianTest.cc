@@ -7,7 +7,7 @@
 
 TEST_F(CartesianTest, DefaultConstrutor) {
   // 1-dimensional:
-  dash::CartCoord<1> cartesian1d;
+  dash::CartesianIndexSpace<1> cartesian1d;
   EXPECT_EQ(cartesian1d.size(), 0);
   EXPECT_EQ(cartesian1d.rank(), 1);
   EXPECT_EQ(cartesian1d.extent(0), 0);
@@ -18,7 +18,7 @@ TEST_F(CartesianTest, DefaultConstrutor) {
     cartesian1d.coords(0),
     dash::exception::OutOfRange);
   // 4-dimensional:
-  dash::CartCoord<4> cartesian4d;
+  dash::CartesianIndexSpace<4> cartesian4d;
   EXPECT_EQ(cartesian4d.size(), 0);
   EXPECT_EQ(cartesian4d.rank(), 4);
   EXPECT_EQ(cartesian4d.extent(0), 0);
@@ -35,7 +35,7 @@ TEST_F(CartesianTest, DefaultConstrutor) {
 
 TEST_F(CartesianTest, Conversion1Dim) {
   int extent = 42;
-  dash::CartCoord<1> cartesian1d(extent);
+  dash::CartesianIndexSpace<1> cartesian1d(extent);
   EXPECT_EQ(cartesian1d.rank(), 1);
   EXPECT_EQ(cartesian1d.size(), extent);
   EXPECT_EQ(cartesian1d.extent(0), extent);
@@ -48,9 +48,9 @@ TEST_F(CartesianTest, Conversion1Dim) {
 TEST_F(CartesianTest, Conversion2Dim) {
   int extent_x = 3;
   int extent_y = 5;
-  dash::CartCoord<2, dash::ROW_MAJOR, size_t> cartesian2dR(
+  dash::CartesianIndexSpace<2, dash::ROW_MAJOR, size_t> cartesian2dR(
     extent_x, extent_y);
-  dash::CartCoord<2, dash::COL_MAJOR, size_t> cartesian2dC(
+  dash::CartesianIndexSpace<2, dash::COL_MAJOR, size_t> cartesian2dC(
     extent_x, extent_y);
   EXPECT_EQ(cartesian2dR.rank(), 2);
   EXPECT_EQ(cartesian2dC.rank(), 2);
@@ -79,9 +79,9 @@ TEST_F(CartesianTest, Conversion3Dim) {
   int extent_y = 7;
   int extent_z = 11;
   size_t size  = extent_x * extent_y * extent_z;
-  dash::CartCoord<3, dash::ROW_MAJOR, size_t> cartesian3dR(
+  dash::CartesianIndexSpace<3, dash::ROW_MAJOR, size_t> cartesian3dR(
     extent_x, extent_y, extent_z);
-  dash::CartCoord<3, dash::COL_MAJOR, size_t> cartesian3dC(
+  dash::CartesianIndexSpace<3, dash::COL_MAJOR, size_t> cartesian3dC(
     extent_x, extent_y, extent_z);
   EXPECT_EQ(cartesian3dR.rank(), 3);
   EXPECT_EQ(cartesian3dC.rank(), 3);
@@ -117,8 +117,10 @@ TEST_F(CartesianTest, Conversion10Dim) {
     { 3, 13, 17, 23, 2, 3, 1, 1, 2, 2 };
   size_t size = ::std::accumulate(extents.begin(), extents.end(), 1,
                                   ::std::multiplies<size_t>());
-  dash::CartCoord<Dimensions, dash::ROW_MAJOR, size_t> cartesianR(extents);
-  dash::CartCoord<Dimensions, dash::COL_MAJOR, size_t> cartesianC(extents);
+  dash::CartesianIndexSpace<Dimensions, dash::ROW_MAJOR, size_t>
+    cartesianR(extents);
+  dash::CartesianIndexSpace<Dimensions, dash::COL_MAJOR, size_t>
+    cartesianC(extents);
   EXPECT_EQ(cartesianR.rank(), Dimensions);
   EXPECT_EQ(cartesianC.rank(), Dimensions);
   EXPECT_EQ(cartesianR.size(), size);

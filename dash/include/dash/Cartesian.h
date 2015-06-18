@@ -22,37 +22,35 @@ namespace dash {
 /**
  * Defines a cartesian, totally-ordered index space by mapping linear
  * indices to cartesian coordinates depending on memory order.
- *
- * TODO: Could be renamed to CartesianSpace or MemoryLayout?
  */
 template<
   int NumDimensions,
   MemArrange Arrangement = ROW_MAJOR,
   typename SizeType      = size_t >
-class CartCoord {
+class CartesianIndexSpace {
 private:
-  typedef CartCoord<NumDimensions, Arrangement, SizeType> self_t;
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, SizeType> self_t;
 
 public:
   typedef long long IndexType;
 
 protected:
-  /// Number of elements in the cartesian space spanned by this coordinate.
+  /// Number of elements in the cartesian space spanned by this instance.
   SizeType m_size;
-  /// Number of dimensions of this coordinate.
+  /// Number of dimensions of the cartesian space.
   SizeType m_ndim;
-  /// Extents of the coordinate by dimension.
+  /// Extents of the cartesian space by dimension.
   std::array<SizeType, NumDimensions> m_extent;
-  /// Cumulative index offsets of the coordinate by dimension. Avoids
+  /// Cumulative index offsets of the index space by dimension. Avoids
   /// recalculation of \c NumDimensions-1 offsets in every call of \at().
   std::array<SizeType, NumDimensions> m_offset;
 
 public:
   /**
-   * Default constructor, creates a cartesian coordinate of extent 0
+   * Default constructor, creates a cartesian index space of extent 0
    * in all dimensions.
    */
-  CartCoord()
+  CartesianIndexSpace()
   : m_size(0),
     m_ndim(NumDimensions) {
     for(auto i = 0; i < NumDimensions; i++) {
@@ -62,21 +60,21 @@ public:
   }
 
   /**
-   * Constructor, creates a cartesian coordinate of given extents in
+   * Constructor, creates a cartesian index space of given extents in
    * all dimensions.
    */
-  CartCoord(::std::array<SizeType, NumDimensions> extents)
+  CartesianIndexSpace(::std::array<SizeType, NumDimensions> extents)
   : m_size(0),
     m_ndim(NumDimensions) {
     resize(extents);
   }
 
   /**
-   * Constructor, creates a cartesian coordinate of given extents in
+   * Constructor, creates a cartesian index space of given extents in
    * all dimensions.
    */
   template<typename... Args>
-  CartCoord(Args... args) 
+  CartesianIndexSpace(Args... args) 
   : m_size(0),
     m_ndim(NumDimensions) {
     resize(args...);
@@ -86,7 +84,7 @@ public:
    * Constructor, initializes a new instance from dimensional size
    * specification.
    */
-  CartCoord(const SizeSpec<NumDimensions> & sizeSpec)
+  CartesianIndexSpace(const SizeSpec<NumDimensions> & sizeSpec)
   : m_size(sizeSpec.size()),
     m_ndim(NumDimensions) {
     resize(sizeSpec.extents());
@@ -117,7 +115,7 @@ public:
   }
 
   /**
-   * Change the coordinate's extent in every dimension.
+   * Change the extent of the cartesian space in every dimension.
    */
   template<typename... Args>
   void resize(Args... args) {
@@ -129,7 +127,7 @@ public:
   }
 
   /**
-   * Change the coordinate's extent in every dimension.
+   * Change the extent of the cartesian space in every dimension.
    */
   template<typename SizeType_>
   void resize(std::array<SizeType_, NumDimensions> extents) {
@@ -149,7 +147,7 @@ public:
       std::cout << std::endl;
       DASH_THROW(
         dash::exception::InvalidArgument,
-        "Extents for CartCoord::resize must be greater than 0");
+        "Extents for CartesianIndexSpace::resize must be greater than 0");
     }
     // Update offsets:
     if (Arrangement == COL_MAJOR) {
@@ -166,11 +164,24 @@ public:
   }
   
   /**
-   * The coordinate's rank.
+   * The number of dimension in the cartesian space with extent greater than 1.
+   *
+   * \see num_dimensions()
    *
    * \return The number of dimensions in the coordinate
    */
   SizeType rank() const {
+    return NumDimensions;
+  }
+  
+  /**
+   * The number of dimension in the cartesian space.
+   *
+   * \see rank()
+   *
+   * \return The number of dimensions in the coordinate
+   */
+  SizeType num_dimensions() const {
     return NumDimensions;
   }
   
@@ -184,6 +195,9 @@ public:
     return m_size;
   }
 
+  /**
+   * Extents of the cartesian space, by dimension.
+   */
   const std::array<SizeType, NumDimensions> & extents() const {
     return m_extent;
   }
@@ -200,7 +214,7 @@ public:
       DASH_THROW(
         dash::exception::OutOfRange,
         "Given dimension " << dim <<
-        " for CartCoord::extent(dim) is out of bounds" <<
+        " for CartesianIndexSpace::extent(dim) is out of bounds" <<
         " (" << NumDimensions << ")");
     }
     return m_extent[dim];
@@ -239,7 +253,7 @@ public:
         DASH_THROW(
           dash::exception::OutOfRange,
           "Given coordinate " << pos[i] <<
-          " for CartCoord::at() is out of bounds");
+          " for CartesianIndexSpace::at() is out of bounds");
       }
       offs += m_offset[i] * pos[i];
     }
@@ -256,7 +270,7 @@ public:
       DASH_THROW(
         dash::exception::OutOfRange,
         "Given index " << index <<
-        " for CartCoord::coords() is out of bounds");
+        " for CartesianIndexSpace::coords() is out of bounds");
     }
     ::std::array<IndexType, NumDimensions> pos;
     if (Arrangement == COL_MAJOR) {
@@ -311,7 +325,7 @@ public:
  * \tparam  NumDimensions  Number of dimensions
  */
 template<size_t MaxDimensions>
-class TeamSpec : public CartCoord<MaxDimensions, ROW_MAJOR, size_t> {
+class TeamSpec : public CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t> {
 public:
   /**
    * Constructor, creates an instance of TeamSpec from a team (set of
@@ -355,7 +369,7 @@ public:
     const TeamSpec<MaxDimensions> & other,
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All()) 
-  : CartCoord<MaxDimensions, ROW_MAJOR, size_t>(other.extents()) {
+  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t>(other.extents()) {
     if (this->size() != team.size()) {
       DASH_THROW(
         dash::exception::InvalidArgument,
@@ -423,7 +437,8 @@ public:
    */
   template<typename ... Types>
   TeamSpec(size_t value, Types ... values)
-  : CartCoord<MaxDimensions, ROW_MAJOR, size_t>::CartCoord(value, values...) {
+  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t>::CartesianIndexSpace(
+      value, values...) {
   }
 
   /**
@@ -432,7 +447,8 @@ public:
   TeamSpec(
     /// Teamspec instance to copy
     const TeamSpec<MaxDimensions> & other)
-  : CartCoord<MaxDimensions, ROW_MAJOR, size_t>::CartCoord(other.extents()),
+  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t>::CartesianIndexSpace(
+      other.extents()),
     _rank(other._rank) {
   }
 

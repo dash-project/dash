@@ -38,6 +38,9 @@ INHERIT_DOCS           = YES
 SEPARATE_MEMBER_PAGES  = NO
 TAB_SIZE               = 3
 
+# Custom commands
+ALIASES += concept{1}="@ingroup \1\n@par Implemented concepts:\n@ref \1"
+
 # Build related
 
 EXTRACT_ALL            = NO

@@ -27,8 +27,8 @@ public:
   typedef typename std::iterator_traits<Iter>::reference  reference;
   
 private:
-  CartCoord<DIM, Arrangement, size_t> m_cart;
-  Iter                                m_begin;
+  CartesianIndexSpace<DIM, Arrangement, size_t> m_cart;
+  Iter                                          m_begin;
   
 public:
   // construct from iterator

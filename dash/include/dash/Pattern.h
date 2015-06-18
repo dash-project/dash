@@ -63,14 +63,14 @@ template<
   MemArrange Arrangement = ROW_MAJOR>
 class Pattern {
 private:
-  typedef Pattern<NumDimensions, Arrangement>    self_t;
-  typedef DistributionSpec<NumDimensions>        DistributionSpec_t;
-  typedef TeamSpec<NumDimensions>                TeamSpec_t;
-  typedef SizeSpec<NumDimensions>                SizeSpec_t;
-  typedef ViewSpec<NumDimensions>                ViewSpec_t;
-  typedef CartCoord<NumDimensions, Arrangement>  MemoryLayout_t;
-  typedef CartCoord<NumDimensions, Arrangement>  BlockSpec_t;
-  typedef CartCoord<NumDimensions, Arrangement>  BlockSizeSpec_t;
+  typedef Pattern<NumDimensions, Arrangement>             self_t;
+  typedef DistributionSpec<NumDimensions>                 DistribSpec_t;
+  typedef TeamSpec<NumDimensions>                         TeamSpec_t;
+  typedef SizeSpec<NumDimensions>                         SizeSpec_t;
+  typedef ViewSpec<NumDimensions>                         ViewSpec_t;
+  typedef CartesianIndexSpace<NumDimensions, Arrangement> MemoryLayout_t;
+  typedef CartesianIndexSpace<NumDimensions, Arrangement> BlockSpec_t;
+  typedef CartesianIndexSpace<NumDimensions, Arrangement> BlockSizeSpec_t;
 
 private:
   /**
@@ -84,7 +84,7 @@ private:
     /// The extents of the pattern space in every dimension
     SizeSpec_t         _sizespec;
     /// The distribution type for every pattern dimension
-    DistributionSpec_t _distspec;
+    DistribSpec_t _distspec;
     /// The cartesian arrangement of the units in the team to which the
     /// patterns element are mapped
     TeamSpec_t         _teamspec;
@@ -135,7 +135,7 @@ private:
     const SizeSpec_t & sizespec() const {
       return _sizespec;
     }
-    const DistributionSpec_t & distspec() const {
+    const DistribSpec_t & distspec() const {
       return _distspec;
     }
     const TeamSpec_t & teamspec() const {
@@ -232,7 +232,7 @@ private:
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
   /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
   /// dimensions
-  DistributionSpec_t _distspec;
+  DistribSpec_t _distspec;
   /// Team containing the units to which the patterns element are mapped
   dash::Team &       _team       = dash::Team::All();
   /// Cartesian arrangement of units within the team
@@ -349,7 +349,7 @@ public:
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist      = DistributionSpec_t(),
+    const DistribSpec_t & dist      = DistribSpec_t(),
     /// Cartesian arrangement of units within the team
     const TeamSpec_t &         teamorg   = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
@@ -406,7 +406,7 @@ public:
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist    = DistributionSpec_t(),
+    const DistribSpec_t & dist    = DistribSpec_t(),
     /// Team containing units to which this pattern maps its elements
     Team &                     team    = dash::Team::All())
   : _distspec(dist),
@@ -752,7 +752,7 @@ public:
     return _team;
   }
 
-  DistributionSpec_t distspec() const {
+  DistribSpec_t distspec() const {
     return _distspec;
   }
 
@@ -783,8 +783,8 @@ public:
 
 private:
   /**
-   * Initialize block- and block size specs from memory layout, team spec and
-   * distribution spec. Called from constructors.
+   * Initialize block- and block size specs from memory layout, team spec
+   * and distribution spec. Called from constructors.
    */
   void initialize_block_specs() {
     // Number of blocks in all dimensions:
