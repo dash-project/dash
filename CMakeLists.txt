@@ -96,8 +96,7 @@ endif()
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
   set(DART_IMPLEMENTATION_SHMEM_ENABLED ON 
       CACHE BOOL INTERNAL FORCE)
-  add_subdirectory(dart-impl/shmem/dart-shmem)
-  add_subdirectory(dart-impl/shmem/dart-shmem-mpi)
+  add_subdirectory(dart-impl/shmem)
 endif()
 
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";cuda;")
