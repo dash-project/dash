@@ -10,7 +10,7 @@ namespace internal {
  * Concept \c Distribution, specifies a distribution of a
  * one-dimensional range to a number of units.
  */
-template<dash::DistType DistributionType>
+template<dash::internal::DistributionType DistributionType>
 class DistributionFunctor {
   /**
    * The capacity of a single block in the given range for
@@ -38,12 +38,12 @@ class DistributionFunctor {
 };
 
 template<>
-class DistributionFunctor<dash::BLOCKED> {
+class DistributionFunctor<dash::internal::DIST_BLOCKED> {
 public:
   size_t blocksize_of_range(
     size_t range,
     size_t num_blocks) const {
-    return div_ceil(range, num_blocks);
+    return dash::math::div_ceil(range, num_blocks);
   }
 
   size_t local_capacity_of_range(
@@ -61,7 +61,7 @@ public:
 };
 
 template<>
-class DistributionFunctor<dash::CYCLIC> {
+class DistributionFunctor<dash::internal::DIST_CYCLIC> {
 public:
   size_t blocksize_of_range(
     size_t range,
@@ -72,21 +72,23 @@ public:
   size_t local_capacity_of_range(
     size_t range,
     size_t num_blocks) const {
-    
+    // TODO
+    return 0;
   }
 
   size_t index_to_unit(
     size_t range,
     size_t num_blocks,
     long long index) const {
-    
+    // TODO
+    return 0;
   }
 };
 
 template<>
-class DistributionFunctor<dash::BLOCKCYCLIC> {
+class DistributionFunctor<dash::internal::DIST_BLOCKCYCLIC> {
 public:
-  Distribution(size_t blocksize)
+  DistributionFunctor(size_t blocksize)
   : _blocksize(blocksize) {
   }
 
@@ -106,7 +108,8 @@ public:
     size_t range,
     size_t num_blocks,
     long long index) const {
-    
+    // TODO
+    return 0;
   }
 
 private:
@@ -114,9 +117,9 @@ private:
 };
 
 template<>
-class DistributionFunctor<dash::TILE> {
+class DistributionFunctor<dash::internal::DIST_TILE> {
 public:
-  Distribution(size_t tilesize)
+  DistributionFunctor(size_t tilesize)
   : _tilesize(tilesize) {
   }
 
@@ -130,7 +133,7 @@ public:
     size_t range,
     size_t num_blocks) const {
     // Number of tiles in the given range:
-    size_t num_tiles = div_ceil(range, _blocksize);
+    size_t num_tiles = dash::math::div_ceil(range, _blocksize);
     // Number of elements in all tiles:
     return _blocksize * num_tiles;
   }
@@ -139,11 +142,13 @@ public:
     size_t range,
     size_t num_blocks,
     long long index) const {
-    
+    // TODO
+    return 0;
   }
 
 private:
   size_t _tilesize;
+  size_t _blocksize;
 };
 
 } // namespace internal

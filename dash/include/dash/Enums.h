@@ -14,6 +14,18 @@ typedef enum MemArrange {
   COL_MAJOR
 } MemArrange;
 
+namespace internal {
+
+typedef enum DistributionType {
+  Undefined = 0,
+  DIST_NONE,
+  DIST_BLOCKED,      // = BLOCKCYCLIC(ceil(nelem/nunits))
+  DIST_CYCLIC,       // = BLOCKCYCLIC(1) Will be removed
+  DIST_BLOCKCYCLIC,
+  DIST_TILE
+} DistributionType; // general blocked distribution
+
+} // namespace internal
 } // namespace dash
 
 #endif // DASH__ENUMS_H_

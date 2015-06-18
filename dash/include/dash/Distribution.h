@@ -8,24 +8,17 @@ namespace dash {
 
 class Distribution {
 public:
-  typedef enum disttype {
-    BLOCKED,      // = BLOCKCYCLIC(ceil(nelem/nunits))
-    CYCLIC,       // = BLOCKCYCLIC(1) Will be removed
-    BLOCKCYCLIC,
-    TILE,
-    NONE
-  } disttype; // general blocked distribution
-
-public:
-  disttype type;
+  dash::internal::DistributionType type;
   long long blocksz;
 
   Distribution()
-  : type(disttype::NONE),
+  : type(dash::internal::DIST_NONE),
     blocksz(-1) {
   }
 
-  Distribution(disttype distType, long long blockSize)
+  Distribution(
+    dash::internal::DistributionType distType,
+    long long blockSize)
   : type(distType),
     blocksz(blockSize) {
   }
@@ -41,19 +34,19 @@ public:
     size_t num_units) const {
     size_t num_blocks;
     switch (type) {
-      case Distribution::disttype::NONE:
+      case dash::internal::DIST_NONE:
         return 1;
-      case Distribution::disttype::BLOCKED:
+      case dash::internal::DIST_BLOCKED:
         return 1;
-      case Distribution::disttype::CYCLIC:
+      case dash::internal::DIST_CYCLIC:
         // same as block cyclic with blocksz = 1
         return dash::math::div_ceil(range, num_units);
-      case Distribution::disttype::BLOCKCYCLIC:
+      case dash::internal::DIST_BLOCKCYCLIC:
         // extent to blocks:
         num_blocks = dash::math::div_ceil(range, blocksz);
         // blocks to units:
         return dash::math::div_ceil(num_blocks, num_units);
-      case Distribution::disttype::TILE:
+      case dash::internal::DIST_TILE:
         // same as block cyclic
         num_blocks = dash::math::div_ceil(range, blocksz);
         return dash::math::div_ceil(num_blocks, num_units);
@@ -74,15 +67,15 @@ public:
     /// Number of units to which elements are distributed
     size_t num_units) const {
     switch (type) {
-      case Distribution::disttype::NONE:
+      case dash::internal::DIST_NONE:
         return range;
-      case Distribution::disttype::BLOCKED:
+      case dash::internal::DIST_BLOCKED:
         return dash::math::div_ceil(range, num_units);
-      case Distribution::disttype::CYCLIC:
+      case dash::internal::DIST_CYCLIC:
         return 1;
-      case Distribution::disttype::BLOCKCYCLIC:
+      case dash::internal::DIST_BLOCKCYCLIC:
         return blocksz;
-      case Distribution::disttype::TILE:
+      case dash::internal::DIST_TILE:
         return blocksz;
       default:
         DASH_THROW(
@@ -99,15 +92,15 @@ public:
     int dimension,
     int num_units) const {
     switch (type) {
-      case Distribution::disttype::NONE:
+      case dash::internal::DIST_NONE:
         // Unit id is unchanged:
         return 0;
-      case Distribution::disttype::BLOCKED:
-      case Distribution::disttype::CYCLIC:
-      case Distribution::disttype::BLOCKCYCLIC:
+      case dash::internal::DIST_BLOCKED:
+      case dash::internal::DIST_CYCLIC:
+      case dash::internal::DIST_BLOCKCYCLIC:
         // Advance one unit id per block coordinate:
         return block_coord % num_units;
-      case Distribution::disttype::TILE:
+      case dash::internal::DIST_TILE:
         // Advance one unit id per block coordinate and
         // one unit id per dimension:
         return block_coord + dimension;
@@ -133,9 +126,9 @@ public:
   }
 };
 
-static Distribution BLOCKED(Distribution::BLOCKED, -1);
-static Distribution CYCLIC(Distribution::BLOCKCYCLIC, 1);
-static Distribution NONE(Distribution::NONE, -1);
+static Distribution BLOCKED(dash::internal::DIST_BLOCKED, -1);
+static Distribution CYCLIC(dash::internal::DIST_BLOCKCYCLIC, 1);
+static Distribution NONE(dash::internal::DIST_NONE, -1);
 
 Distribution TILE(int blockSize);
 

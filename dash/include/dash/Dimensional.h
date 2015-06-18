@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <array>
 
-#include <dash/Enums.h>
+#include <dash/Distribution.h>
 #include <dash/Team.h>
 #include <dash/Exception.h>
 

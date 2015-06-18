@@ -212,7 +212,7 @@ private:
       bool has_tile = false;
       bool invalid  = false;
       for (int i = 0; i < NumDimensions-1; i++) {
-        if (_distspec.dim(i).type == Distribution::disttype::TILE)
+        if (_distspec.dim(i).type == dash::internal::DIST_TILE)
           has_tile = true;
         if (_distspec.dim(i).type != _distspec.dim(i+1).type)
           invalid = true;
