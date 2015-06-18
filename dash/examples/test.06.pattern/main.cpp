@@ -99,7 +99,7 @@ void test_rev_mapping(size_t size)
     for( i=0; i<pat->num_units(); i++ ) {
       fprintf(stderr, "Unit %3d: ", i);
       for( j=0; j<size; j++ ) {
-        long long res = pat->unit_and_elem_to_index(i,j);
+        long long res = pat->local_to_global_index(i,j);
         if( res<0 ) break;
         fprintf(stderr, "%d ", res);
       }

@@ -26,13 +26,13 @@ namespace dash {
 template<
   int NumDimensions,
   MemArrange Arrangement = ROW_MAJOR,
-  typename SizeType      = size_t >
+  typename IndexType     = int,
+  typename SizeType      = size_t>
 class CartesianIndexSpace {
 private:
-  typedef CartesianIndexSpace<NumDimensions, Arrangement, SizeType> self_t;
-
-public:
-  typedef long long IndexType;
+  typedef 
+    CartesianIndexSpace<NumDimensions, Arrangement, IndexType, SizeType> 
+    self_t;
 
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
@@ -164,7 +164,8 @@ public:
   }
   
   /**
-   * The number of dimension in the cartesian space with extent greater than 1.
+   * The number of dimension in the cartesian space with extent greater
+   * than 1.
    *
    * \see num_dimensions()
    *
@@ -231,7 +232,8 @@ public:
     static_assert(
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
-    ::std::array<IndexType, NumDimensions> pos = { arg, IndexType(args) ... };
+    ::std::array<IndexType, NumDimensions> pos =
+      { arg, IndexType(args) ... };
     return at(pos);
   }
   
@@ -325,7 +327,8 @@ public:
  * \tparam  NumDimensions  Number of dimensions
  */
 template<size_t MaxDimensions>
-class TeamSpec : public CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t> {
+class TeamSpec :
+  public CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t> {
 public:
   /**
    * Constructor, creates an instance of TeamSpec from a team (set of
@@ -437,8 +440,8 @@ public:
    */
   template<typename ... Types>
   TeamSpec(size_t value, Types ... values)
-  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t>::CartesianIndexSpace(
-      value, values...) {
+  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t>::
+      CartesianIndexSpace(value, values...) {
   }
 
   /**
@@ -447,8 +450,8 @@ public:
   TeamSpec(
     /// Teamspec instance to copy
     const TeamSpec<MaxDimensions> & other)
-  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t>::CartesianIndexSpace(
-      other.extents()),
+  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t>::
+      CartesianIndexSpace(other.extents()),
     _rank(other._rank) {
   }
 
@@ -486,4 +489,3 @@ private:
 } // namespace dash
 
 #endif // DASH__CARTESIAN_H_
-

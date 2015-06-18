@@ -179,7 +179,7 @@ public:
 
     // determine the real number of local elements
     for (; m_lsize > 0; --m_lsize) {
-      if (m_pattern.unit_and_elem_to_index(m_myid, m_lsize-1) >= 0) {
+      if (m_pattern.local_to_global_index(m_myid, m_lsize-1) >= 0) {
         break;
       }
     }

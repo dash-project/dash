@@ -110,6 +110,7 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
   for (int x = 0; x < _num_elem; ++x) {
     int expected_unit_id = x / block_size;
     int expected_offset  = x % block_size;
+    int expected_index   = x;
     expected_coords[0]   = x;
     LOG_MESSAGE("x: %d, eu: %d, eo: %d",
       x, expected_unit_id, expected_offset);
@@ -123,6 +124,10 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
     EXPECT_EQ(
       expected_offset,
       pat_blocked_row.index_to_elem(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_index,
+      pat_blocked_row.local_to_global_index(
+        expected_unit_id, expected_offset));
     // Column order:
     EXPECT_EQ(
       expected_coords,
@@ -133,6 +138,10 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
     EXPECT_EQ(
       expected_offset,
       pat_blocked_col.index_to_elem(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_index,
+      pat_blocked_col.local_to_global_index(
+        expected_unit_id, expected_offset));
   }
 }
 
@@ -166,6 +175,7 @@ TEST_F(PatternTest, Distribute1DimCyclic) {
   for (int x = 0; x < _num_elem; ++x) {
     int expected_unit_id = x % team_size;
     int expected_offset  = x / team_size;
+    int expected_index   = x;
     expected_coords[0]   = x;
     LOG_MESSAGE("x: %d, eu: %d, eo: %d",
       x, expected_unit_id, expected_offset);
@@ -179,6 +189,10 @@ TEST_F(PatternTest, Distribute1DimCyclic) {
     EXPECT_EQ(
       expected_offset,
       pat_cyclic_row.index_to_elem(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_index,
+      pat_cyclic_row.local_to_global_index(
+        expected_unit_id, expected_offset));
     // Column order:
     EXPECT_EQ(
       expected_coords,
@@ -189,6 +203,10 @@ TEST_F(PatternTest, Distribute1DimCyclic) {
     EXPECT_EQ(
       expected_offset,
       pat_cyclic_col.index_to_elem(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_index,
+      pat_cyclic_col.local_to_global_index(
+        expected_unit_id, expected_offset));
   }
 }
 
@@ -228,6 +246,7 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic) {
     int block_base_offset = block_size * (block_index / team_size);
     int expected_unit_id  = block_index % team_size;
     int expected_offset   = (x % block_size) + block_base_offset;
+    int expected_index    = x;
     expected_coords[0]    = x;
     LOG_MESSAGE("x: %d, eu: %d, eo: %d, bi: %d bbo: %d",
       x, expected_unit_id, expected_offset, block_index, block_base_offset);
@@ -241,6 +260,10 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic) {
     EXPECT_EQ(
       expected_offset,
       pat_blockcyclic_row.index_to_elem(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_index,
+      pat_blockcyclic_row.local_to_global_index(
+        expected_unit_id, expected_offset));
     // Column order:
     EXPECT_EQ(
       expected_coords,
@@ -251,6 +274,10 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic) {
     EXPECT_EQ(
       expected_offset,
       pat_blockcyclic_col.index_to_elem(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_index,
+      pat_blockcyclic_col.local_to_global_index(
+        expected_unit_id, expected_offset));
   }
 }
 
@@ -427,8 +454,8 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
   // [                        ...                          ]
   int team_size      = dash::Team::All().size();
   // Choose 'inconvenient' extents:
-//  int extent_x       = team_size + 7;
-//  int extent_y       = 23;
+  // int extent_x       = team_size + 7;
+  // int extent_y       = 23;
   int extent_x       = 8;
   int extent_y       = 4;
   size_t size        = extent_x * extent_y;
