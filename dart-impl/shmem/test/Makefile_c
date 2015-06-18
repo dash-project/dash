@@ -1,0 +1,27 @@
+
+DART_ROOT = $(shell pwd)/../..
+LIBDART   = $(DART_ROOT)/dart-shmem/libdart.a -lpthread
+DART_INC  = $(DART_ROOT)/../../dart-if/v2
+
+include $(DART_ROOT)/make.defs
+
+PWD  = $(shell basename `pwd`)
+PAT  = $(shell echo -n $(PWD) )
+PROG = $(shell echo -n $(PAT) | cut -d . -f 3)
+
+all : $(PROG)
+
+printenv : 
+	 @echo "DART_ROOT = $(DART_ROOT)"
+	 @echo "LIBDART = $(LIBDART)"
+	 @echo "DART_INC = $(DART_INC)"
+
+$(PROG) : main.o
+	$(CC) $(LFLGAS) -o $@ $+ $(LIBDART)
+
+%.o 	: %.c 
+	$(CC) -c $(CFLAGS) -I$(DART_INC) $+
+
+clean : 
+	rm -f *.o *~
+	rm -f $(PROG)
