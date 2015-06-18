@@ -87,33 +87,173 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
   //
   // [ .. team 0 .. | .. team 1 .. | ... | team n-1 ]
   size_t team_size  = dash::Team::All().size();
-  // Ceil division
-  size_t block_size = (_num_elem % team_size == 0)
-                      ? _num_elem / team_size
-                      : _num_elem / team_size + 1;
+  size_t block_size = dash::math::div_ceil(_num_elem, team_size);
   size_t local_cap  = block_size;
-  dash::Pattern<1> pat_blocked(
+  dash::Pattern<1, dash::ROW_MAJOR> pat_blocked_row(
       dash::SizeSpec<1>(_num_elem),
       dash::DistributionSpec<1>(dash::BLOCKED),
       dash::TeamSpec<1>(),
       dash::Team::All());
-  EXPECT_EQ(pat_blocked.capacity(), _num_elem);
-  EXPECT_EQ(pat_blocked.blocksize(0), block_size);
-  EXPECT_EQ(pat_blocked.max_elem_per_unit(), local_cap);
+  dash::Pattern<1, dash::COL_MAJOR> pat_blocked_col(
+      dash::SizeSpec<1>(_num_elem),
+      dash::DistributionSpec<1>(dash::BLOCKED),
+      dash::TeamSpec<1>(),
+      dash::Team::All());
+  EXPECT_EQ(pat_blocked_row.capacity(), _num_elem);
+  EXPECT_EQ(pat_blocked_row.blocksize(0), block_size);
+  EXPECT_EQ(pat_blocked_row.max_elem_per_unit(), local_cap);
+  EXPECT_EQ(pat_blocked_col.capacity(), _num_elem);
+  EXPECT_EQ(pat_blocked_col.blocksize(0), block_size);
+  EXPECT_EQ(pat_blocked_col.max_elem_per_unit(), local_cap);
   
-  size_t expected_unit_id = 0;
   std::array<long long, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
-    expected_unit_id   = x / block_size;
-    expected_coords[0] = x;
+    int expected_unit_id = x / block_size;
+    int expected_offset  = x % block_size;
+    expected_coords[0]   = x;
+    LOG_MESSAGE("x: %d, eu: %d, eo: %d",
+      x, expected_unit_id, expected_offset);
+    // Row order:
     EXPECT_EQ(
       expected_coords,
-      pat_blocked.coords(x));
+      pat_blocked_row.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_blocked.index_to_unit(std::array<long long, 1> { x }));
+      pat_blocked_row.index_to_unit(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_offset,
+      pat_blocked_row.index_to_elem(std::array<long long, 1> { x }));
+    // Column order:
+    EXPECT_EQ(
+      expected_coords,
+      pat_blocked_col.coords(x));
+    EXPECT_EQ(
+      expected_unit_id,
+      pat_blocked_col.index_to_unit(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_offset,
+      pat_blocked_col.index_to_elem(std::array<long long, 1> { x }));
   }
 }
+
+TEST_F(PatternTest, Distribute1DimCyclic) {
+  DASH_TEST_LOCAL_ONLY();
+  // Simple 1-dimensional cyclic partitioning:
+  //
+  // [ team 0 | team 1 | team 0 | team 1 | ... ]
+  size_t team_size  = dash::Team::All().size();
+  size_t block_size = dash::math::div_ceil(_num_elem, team_size);
+  size_t local_cap  = block_size;
+  dash::Pattern<1, dash::ROW_MAJOR> pat_cyclic_row(
+      dash::SizeSpec<1>(_num_elem),
+      dash::DistributionSpec<1>(dash::CYCLIC),
+      dash::TeamSpec<1>(),
+      dash::Team::All());
+  // Column order must be irrelevant:
+  dash::Pattern<1, dash::COL_MAJOR> pat_cyclic_col(
+      dash::SizeSpec<1>(_num_elem),
+      dash::DistributionSpec<1>(dash::CYCLIC),
+      dash::TeamSpec<1>(),
+      dash::Team::All());
+  EXPECT_EQ(pat_cyclic_row.capacity(), _num_elem);
+  EXPECT_EQ(pat_cyclic_row.blocksize(0), 1);
+  EXPECT_EQ(pat_cyclic_row.max_elem_per_unit(), local_cap);
+  EXPECT_EQ(pat_cyclic_col.capacity(), _num_elem);
+  EXPECT_EQ(pat_cyclic_col.blocksize(0), 1);
+  EXPECT_EQ(pat_cyclic_col.max_elem_per_unit(), local_cap);
+  size_t expected_unit_id;
+  std::array<long long, 1> expected_coords;
+  for (int x = 0; x < _num_elem; ++x) {
+    int expected_unit_id = x % team_size;
+    int expected_offset  = x / team_size;
+    expected_coords[0]   = x;
+    LOG_MESSAGE("x: %d, eu: %d, eo: %d",
+      x, expected_unit_id, expected_offset);
+    // Row order:
+    EXPECT_EQ(
+      expected_coords,
+      pat_cyclic_row.coords(x));
+    EXPECT_EQ(
+      expected_unit_id,
+      pat_cyclic_row.index_to_unit(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_offset,
+      pat_cyclic_row.index_to_elem(std::array<long long, 1> { x }));
+    // Column order:
+    EXPECT_EQ(
+      expected_coords,
+      pat_cyclic_col.coords(x));
+    EXPECT_EQ(
+      expected_unit_id,
+      pat_cyclic_col.index_to_unit(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_offset,
+      pat_cyclic_col.index_to_elem(std::array<long long, 1> { x }));
+  }
+}
+
+TEST_F(PatternTest, Distribute1DimBlockcyclic) {
+  DASH_TEST_LOCAL_ONLY();
+  // Simple 1-dimensional blocked partitioning:
+  //
+  // [ team 0 | team 1 | team 0 | team 1 | ... ]
+  size_t team_size  = dash::Team::All().size();
+  size_t block_size = 23;
+  size_t num_blocks = dash::math::div_ceil(_num_elem, block_size);
+  size_t local_cap  = block_size *
+                        dash::math::div_ceil(num_blocks, team_size);
+  dash::Pattern<1, dash::ROW_MAJOR> pat_blockcyclic_row(
+      dash::SizeSpec<1>(_num_elem),
+      dash::DistributionSpec<1>(dash::BLOCKCYCLIC(block_size)),
+      dash::TeamSpec<1>(),
+      dash::Team::All());
+  // Column order must be irrelevant:
+  dash::Pattern<1, dash::COL_MAJOR> pat_blockcyclic_col(
+      dash::SizeSpec<1>(_num_elem),
+      dash::DistributionSpec<1>(dash::BLOCKCYCLIC(block_size)),
+      dash::TeamSpec<1>(),
+      dash::Team::All());
+  EXPECT_EQ(pat_blockcyclic_row.capacity(), _num_elem);
+  EXPECT_EQ(pat_blockcyclic_row.blocksize(0), block_size);
+  EXPECT_EQ(pat_blockcyclic_row.max_elem_per_unit(), local_cap);
+  EXPECT_EQ(pat_blockcyclic_col.capacity(), _num_elem);
+  EXPECT_EQ(pat_blockcyclic_col.blocksize(0), block_size);
+  EXPECT_EQ(pat_blockcyclic_col.max_elem_per_unit(), local_cap);
+  size_t expected_unit_id;
+  LOG_MESSAGE("num elem: %d, block size: %d, num blocks: %d",
+    _num_elem, block_size, num_blocks);
+  std::array<long long, 1> expected_coords;
+  for (int x = 0; x < _num_elem; ++x) {
+    int block_index       = x / block_size;
+    int block_base_offset = block_size * (block_index / team_size);
+    int expected_unit_id  = block_index % team_size;
+    int expected_offset   = (x % block_size) + block_base_offset;
+    expected_coords[0]    = x;
+    LOG_MESSAGE("x: %d, eu: %d, eo: %d, bi: %d bbo: %d",
+      x, expected_unit_id, expected_offset, block_index, block_base_offset);
+    // Row order:
+    EXPECT_EQ(
+      expected_coords,
+      pat_blockcyclic_row.coords(x));
+    EXPECT_EQ(
+      expected_unit_id,
+      pat_blockcyclic_row.index_to_unit(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_offset,
+      pat_blockcyclic_row.index_to_elem(std::array<long long, 1> { x }));
+    // Column order:
+    EXPECT_EQ(
+      expected_coords,
+      pat_blockcyclic_col.coords(x));
+    EXPECT_EQ(
+      expected_unit_id,
+      pat_blockcyclic_col.index_to_unit(std::array<long long, 1> { x }));
+    EXPECT_EQ(
+      expected_offset,
+      pat_blockcyclic_col.index_to_elem(std::array<long long, 1> { x }));
+  }
+}
+
 
 TEST_F(PatternTest, Distribute2DimBlockedY) {
   DASH_TEST_LOCAL_ONLY();
@@ -276,7 +416,7 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
   }
 }
 
-TEST_F(PatternTest, Distribute1DimCyclicX) {
+TEST_F(PatternTest, Distribute2DimCyclicX) {
   DASH_TEST_LOCAL_ONLY();
   // 2-dimensional, blocked partitioning in first dimension:
   // 
@@ -358,6 +498,3 @@ TEST_F(PatternTest, Distribute1DimCyclicX) {
   }
 }
 
-TEST_F(PatternTest, Distribute1DimBlockcyclic) {
-  DASH_TEST_LOCAL_ONLY();
-}
