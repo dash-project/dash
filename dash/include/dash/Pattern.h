@@ -18,6 +18,18 @@
 namespace dash {
 
 /**
+ * \defgroup DASH_CONCEPT_PATTERN Pattern Concept
+ * Concept for distribution pattern of n-dimensional containers to
+ * units in a team.
+ *
+ * \ingroup DASH_CONCEPT
+ * \{
+ * \par Description
+ *
+ * \}
+ */
+
+/**
  * Defines how a list of global indices is mapped to single units
  * within a Team.
  *
@@ -43,7 +55,8 @@ namespace dash {
  *                         Memory order defines how elements in the
  *                         pattern will be iterated predominantly
  *                         \see MemArrange
- *                         
+ * 
+ * \concept DASH_CONCEPT_PATTERN
  */
 template<
   size_t NumDimensions,
@@ -298,19 +311,8 @@ public:
     _teamspec(_arguments.teamspec()), 
     _memory_layout(_arguments.sizespec()), 
     _viewspec(_arguments.viewspec()) {
-    _nunits        = _teamspec.size();
-    _max_blocksize = 1;
-    // Number of blocks in all dimensions:
-    std::array<size_t, NumDimensions> n_blocks;
-    // Extents of a single block:
-    std::array<size_t, NumDimensions> s_blocks;
-    for (int d = 0; d < NumDimensions; ++d) {
-      n_blocks[d]      = num_blocks(d);
-      s_blocks[d]      = blocksize(d);
-      _max_blocksize *= s_blocks[d];
-    }
-    _blockspec      = BlockSpec_t(n_blocks);
-    _blocksize_spec = BlockSizeSpec_t(s_blocks);
+    _nunits = _teamspec.size();
+    initialize_block_specs();
   }
 
   /**
@@ -359,20 +361,9 @@ public:
       teamorg,
       _distspec,
       _team) {
-    _nunits        = _team.size();
-    _viewspec      = ViewSpec_t(_memory_layout.extents());
-    _max_blocksize = 1;
-    // Number of blocks in all dimensions:
-    std::array<size_t, NumDimensions> n_blocks;
-    // Extents of a single block:
-    std::array<size_t, NumDimensions> s_blocks;
-    for (int d = 0; d < NumDimensions; ++d) {
-      n_blocks[d]      = num_blocks(d);
-      s_blocks[d]      = blocksize(d);
-      _max_blocksize *= s_blocks[d];
-    }
-    _blockspec      = BlockSpec_t(n_blocks);
-    _blocksize_spec = BlockSizeSpec_t(s_blocks);
+    _nunits   = _team.size();
+    _viewspec = ViewSpec_t(_memory_layout.extents());
+    initialize_block_specs();
   }
 
   /**
@@ -424,18 +415,7 @@ public:
     _memory_layout(sizespec) {
     _nunits        = _team.size();
     _viewspec      = ViewSpec<NumDimensions>(_memory_layout);
-    _max_blocksize = 1;
-    // Number of blocks in all dimensions:
-    std::array<size_t, NumDimensions> n_blocks;
-    // Extents of a single block:
-    std::array<size_t, NumDimensions> s_blocks;
-    for (int d = 0; d < NumDimensions; ++d) {
-      n_blocks[d]      = num_blocks(d);
-      s_blocks[d]      = blocksize(d);
-      _max_blocksize *= s_blocks[d];
-    }
-    _blockspec      = BlockSpec_t(n_blocks);
-    _blocksize_spec = BlockSizeSpec_t(s_blocks);
+    initialize_block_specs();
   }
 
   /**
@@ -481,8 +461,7 @@ public:
       _blockspec      == other._blockspec &&
       _blocksize_spec == other._blocksize_spec &&
       _nunits         == other._nunits &&
-      _local_size     == other._local_size &&
-      _max_blocksize  == other._max_blocksize
+      _local_size     == other._local_size
     );
   }
 
@@ -529,13 +508,6 @@ public:
     /// Absolute coordinates of the point
     Values ... values
   ) const {
-    if (sizeof...(Values) != NumDimensions) {
-      DASH_THROW(
-        dash::exception::OutOfRange,
-        "Wrong number of arguments for Pattern::unit_at. "
-        << "Expected " << NumDimensions << ", "
-        << "got" << sizeof...(Values));
-    }
     std::array<long long, NumDimensions> inputindex = { values... };
     return unit_at(inputindex, _viewspec);
   }
@@ -552,6 +524,13 @@ public:
     return 0;
   }
 
+  /**
+   * The actual number of elements in this pattern that are local to the
+   * calling unit in the given dimension.
+   *
+   * \see blocksize()
+   * \see local_size()
+   */
   long long local_extent(size_t dim) const {
     if (dim >= NumDimensions || dim < 0); {
       DASH_THROW(
@@ -566,9 +545,10 @@ public:
 
   /**
    * The actual number of elements in this pattern that are local to the
-   * calling unit.
+   * calling unit in total.
    *
    * \see blocksize()
+   * \see local_extent()
    */
   long long local_size() const {
     // TODO
@@ -629,7 +609,6 @@ public:
       relative_coords[d] -= block_begin_coords[d];
     }
     // Block offset, i.e. number of blocks in front of referenced block:
-    // TODO: Depends on memory order?
     size_t block_offset       = _blockspec.at(block_coords);
     // Offset of the referenced block within all blocks local to its unit,
     // i.e. nth block of this unit:
@@ -693,14 +672,11 @@ public:
    * \return  The blocksize in the given dimension
    */
   size_t blocksize(size_t dimension) const {
-    DistEnum dist = _distspec[dimension];
-    return dist.max_blocksize_in_range(
-      _memory_layout.extent(dimension), // size of range (extent)
-      _teamspec.extent(dimension));     // number of blocks (units)
+    return _blocksize_spec.extent(dimension);
   }
 
   /**
-   * Maximum number of elements in a single block.
+   * Maximum number of elements in a single block in all dimensions.
    *
    * \return  The maximum number of elements in a single block assigned to
    *          a unit.
@@ -719,12 +695,7 @@ public:
       size_t num_units = units_in_dimension(d);
       DistEnum dist = _distspec[d];
       // Block size in given dimension:
-      auto dim_max_blocksize = dist.max_blocksize_in_range(
-                                 // size of range:
-                                 _memory_layout.extent(d),
-                                 // number of blocks:
-                                 num_units
-                               );
+      auto dim_max_blocksize = blocksize(d);
       // Maximum number of occurrences of a single unit in given dimension:
       size_t dim_num_blocks  = dist.max_local_blocks_in_range(
                                  // size of range:
@@ -732,18 +703,12 @@ public:
                                  // number of blocks:
                                  num_units
                                );
-//    size_t dim_num_blocks = dash::math::div_ceil(
-//                              _memory_layout.extent(d),
-//                              dim_max_blocksize);
-//    max_elements *= (dim_num_blocks * dim_max_blocksize / num_units);
       max_elements *= dim_max_blocksize * dim_num_blocks;
-#ifdef DASH_TEST
-      std::cout << d << " nunits: " << num_units << ", "
-                << "dim_max_blocksize: " << dim_max_blocksize << ", "
-                << "dim_num_blocks: " << dim_num_blocks << ", "
-                << "max_elements: " << max_elements
-                << std::endl;
-#endif
+      DASH_LOG_TRACE("Pattern.max_elem_per_unit",
+                     "Dim", d, "nunits", num_units,
+                     "dim_max_blocksize", dim_max_blocksize,
+                     "dim_num_blocks", dim_num_blocks,
+                     "max_elements", max_elements);
     }
     return max_elements;
   }
@@ -818,6 +783,31 @@ public:
 
 private:
   /**
+   * Initialize block- and block size specs from memory layout, team spec and
+   * distribution spec. Called from constructors.
+   */
+  void initialize_block_specs() {
+    // Number of blocks in all dimensions:
+    std::array<size_t, NumDimensions> n_blocks;
+    // Extents of a single block:
+    std::array<size_t, NumDimensions> s_blocks;
+    for (int d = 0; d < NumDimensions; ++d) {
+      DistEnum dist = _distspec[d];
+      size_t blocksize = dist.max_blocksize_in_range(
+        _memory_layout.extent(d), // size of range (extent)
+        _teamspec.extent(d));     // number of blocks (units)
+      size_t num_blocks = dash::math::div_ceil(
+        _memory_layout.extent(d),
+        blocksize);
+      n_blocks[d]     = num_blocks;
+      s_blocks[d]     = blocksize;
+    }
+    _blockspec      = BlockSpec_t(n_blocks);
+    _blocksize_spec = BlockSizeSpec_t(s_blocks);
+    _max_blocksize  = _blocksize_spec.size();
+  }
+
+  /**
    * Number of elements in the overflow block of given dimension, with
    * 0 <= \c overflow_blocksize(d) < blocksize(d).
    */
@@ -842,19 +832,7 @@ private:
    * The number of blocks in the given dimension.
    */
   size_t num_blocks(int dimension) const {
-    size_t num_units = units_in_dimension(dimension);
-    DistEnum dist = _distspec[dimension];
-    // Block size in given dimension:
-    auto dim_max_blocksize = dist.max_blocksize_in_range(
-                            // size of range:
-                            _memory_layout.extent(dimension),
-                            // number of blocks:
-                            num_units
-                          );
-    // Maximum number of occurrences of a single unit in given dimension:
-    return dash::math::div_ceil(
-             _memory_layout.extent(dimension),
-             dim_max_blocksize);
+    return _blockspec[dimension];
   }
 
   /**
@@ -898,8 +876,11 @@ void forall(
   PatternIterator begin,
   PatternIterator end,
   ::std::function<void(long long)> func) {
+  auto range   = end - begin;
   auto pattern = begin.pattern();
-  for (long long i = 0; i < pattern.sizespec.size(); i++) {
+  for (long long i = 0;
+       i < pattern.sizespec.size() && range > 0;
+       ++i, --range) {
     long long idx = pattern.unit_and_elem_to_index(
       pattern.team().myid(), i);
     if (idx < 0) {
