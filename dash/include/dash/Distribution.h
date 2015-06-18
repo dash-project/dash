@@ -1,147 +1,145 @@
 #ifndef DASH__DISTRIBUTION_H_
 #define DASH__DISTRIBUTION_H_
 
+#include <dash/Enums.h>
+#include <dash/internal/DistributionFunc.h>
+
 namespace dash {
 
-/**
- * Concept \c Distribution, specifies a distribution of a
- * one-dimensional range to a number of units.
- */
-template<DistType DistributionType>
-class DistributionFunctor {
+class Distribution {
+public:
+  typedef enum disttype {
+    BLOCKED,      // = BLOCKCYCLIC(ceil(nelem/nunits))
+    CYCLIC,       // = BLOCKCYCLIC(1) Will be removed
+    BLOCKCYCLIC,
+    TILE,
+    NONE
+  } disttype; // general blocked distribution
+
+public:
+  disttype type;
+  long long blocksz;
+
+  Distribution()
+  : type(disttype::NONE),
+    blocksz(-1) {
+  }
+
+  Distribution(disttype distType, long long blockSize)
+  : type(distType),
+    blocksz(blockSize) {
+  }
+
   /**
-   * The capacity of a single block in the given range for
-   * a given total number of blocks.
+   * The maximum number of blocks local to a single unit within an
+   * extent for a given total number of units.
    */
-  size_t blocksize_of_range(
+  long long max_local_blocks_in_range(
+    /// Number of elements to distribute
     size_t range,
-    size_t num_blocks) const;
+    /// Number of units to which elements are distributed
+    size_t num_units) const {
+    size_t num_blocks;
+    switch (type) {
+      case Distribution::disttype::NONE:
+        return 1;
+      case Distribution::disttype::BLOCKED:
+        return 1;
+      case Distribution::disttype::CYCLIC:
+        // same as block cyclic with blocksz = 1
+        return dash::math::div_ceil(range, num_units);
+      case Distribution::disttype::BLOCKCYCLIC:
+        // extent to blocks:
+        num_blocks = dash::math::div_ceil(range, blocksz);
+        // blocks to units:
+        return dash::math::div_ceil(num_blocks, num_units);
+      case Distribution::disttype::TILE:
+        // same as block cyclic
+        num_blocks = dash::math::div_ceil(range, blocksz);
+        return dash::math::div_ceil(num_blocks, num_units);
+      default:
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Distribution type undefined in max_blocksize_in_range");
+    }
+  }
 
   /**
-   * The number of elements of all blocks in the given range for a
-   * single unit.
+   * The maximum size of a single block within an extent for
+   * a given total number of units.
    */
-  size_t local_capacity_of_range(
+  long long max_blocksize_in_range(
+    /// Number of elements to distribute
     size_t range,
-    size_t num_blocks) const;
+    /// Number of units to which elements are distributed
+    size_t num_units) const {
+    switch (type) {
+      case Distribution::disttype::NONE:
+        return range;
+      case Distribution::disttype::BLOCKED:
+        return dash::math::div_ceil(range, num_units);
+      case Distribution::disttype::CYCLIC:
+        return 1;
+      case Distribution::disttype::BLOCKCYCLIC:
+        return blocksz;
+      case Distribution::disttype::TILE:
+        return blocksz;
+      default:
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Distribution type undefined in max_blocksize_in_range");
+    }
+  }
 
   /**
-   * Retreive the assigned unit id to a given index in a range.
+   * Resolve the associated unit id offset of the given block offset.
    */
-  size_t index_to_unit(
-    size_t range,
-    size_t num_blocks,
-    long long index) const;
-};
-
-template<>
-class DistributionFunctor<BLOCKED> {
-public:
-  size_t blocksize_of_range(
-    size_t range,
-    size_t num_blocks) const {
-    return div_ceil(range, num_blocks);
+  size_t block_coord_to_unit_offset(
+    long long block_coord,
+    int dimension,
+    int num_units) const {
+    switch (type) {
+      case Distribution::disttype::NONE:
+        // Unit id is unchanged:
+        return 0;
+      case Distribution::disttype::BLOCKED:
+      case Distribution::disttype::CYCLIC:
+      case Distribution::disttype::BLOCKCYCLIC:
+        // Advance one unit id per block coordinate:
+        return block_coord % num_units;
+      case Distribution::disttype::TILE:
+        // Advance one unit id per block coordinate and
+        // one unit id per dimension:
+        return block_coord + dimension;
+      default:
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Distribution type undefined in block_coord_to_unit_offset");
+    }
   }
 
-  size_t local_capacity_of_range(
-    size_t range,
-    size_t num_blocks) const {
-    
+  /**
+   * Equality comparison operator.
+   */
+  bool operator==(const Distribution & other) const {
+    return (this->type == other.type &&
+            this->blocksz == other.blocksz);
   }
-
-  size_t index_to_unit(
-    size_t range,
-    size_t num_blocks,
-    long long index) const {
-    return index / num_blocks;
-  }
-};
-
-template<>
-class DistributionFunctor<CYCLIC> {
-public:
-  size_t blocksize_of_range(
-    size_t range,
-    size_t num_blocks) const {
-    return 1;
-  }
-
-  size_t local_capacity_of_range(
-    size_t range,
-    size_t num_blocks) const {
-    
-  }
-
-  size_t index_to_unit(
-    size_t range,
-    size_t num_blocks,
-    long long index) const {
-    
+  /**
+   * Inequality comparison operator.
+   */
+  bool operator!=(const Distribution & other) const {
+    return !(*this == other);
   }
 };
 
-template<>
-class DistributionFunctor<BLOCKCYCLIC> {
-public:
-  Distribution(size_t blocksize)
-  : _blocksize(blocksize) {
-  }
+static Distribution BLOCKED(Distribution::BLOCKED, -1);
+static Distribution CYCLIC(Distribution::BLOCKCYCLIC, 1);
+static Distribution NONE(Distribution::NONE, -1);
 
-  size_t blocksize_of_range(
-    size_t range,
-    size_t num_blocks) const {
-    return _blocksize;
-  }
+Distribution TILE(int blockSize);
 
-  size_t local_capacity_of_range(
-    size_t range,
-    size_t num_blocks) const {
-    return _blocksize * num_blocks;
-  }
-
-  size_t index_to_unit(
-    size_t range,
-    size_t num_blocks,
-    long long index) const {
-    
-  }
-
-private:
-  size_t _blocksize;
-};
-
-template<>
-class DistributionFunctor<TILE> {
-public:
-  Distribution(size_t tilesize)
-  : _tilesize(tilesize) {
-  }
-
-  size_t blocksize_of_range(
-    size_t range,
-    size_t num_blocks) const {
-    return _blocksize;
-  }
-
-  size_t local_capacity_of_range(
-    size_t range,
-    size_t num_blocks) const {
-    // Number of tiles in the given range:
-    size_t num_tiles = div_ceil(range, _blocksize);
-    // Number of elements in all tiles:
-    return _blocksize * num_tiles;
-  }
-
-  size_t index_to_unit(
-    size_t range,
-    size_t num_blocks,
-    long long index) const {
-    
-  }
-
-private:
-  size_t _tilesize;
-};
+Distribution BLOCKCYCLIC(int blockSize);
 
 } // namespace dash
 

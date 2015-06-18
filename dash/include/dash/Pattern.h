@@ -8,6 +8,7 @@
 #include <array>
 
 #include <dash/Enums.h>
+#include <dash/Distribution.h>
 #include <dash/Exception.h>
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
@@ -194,7 +195,7 @@ private:
     /// Pattern matching for up to NumDimensions optional parameters
     /// specifying the distribution.
     template<int count>
-    void check(const DistEnum & ds) {
+    void check(const Distribution & ds) {
       _argc_dist++;
       int dim = count - NumDimensions;
       _distspec[dim] = ds;
@@ -211,7 +212,7 @@ private:
       bool has_tile = false;
       bool invalid  = false;
       for (int i = 0; i < NumDimensions-1; i++) {
-        if (_distspec.dim(i).type == DistEnum::disttype::TILE)
+        if (_distspec.dim(i).type == Distribution::disttype::TILE)
           has_tile = true;
         if (_distspec.dim(i).type != _distspec.dim(i+1).type)
           invalid = true;
@@ -693,7 +694,7 @@ public:
     size_t max_elements = 1;
     for (int d = 0; d < NumDimensions; ++d) {
       size_t num_units = units_in_dimension(d);
-      DistEnum dist = _distspec[d];
+      Distribution dist = _distspec[d];
       // Block size in given dimension:
       auto dim_max_blocksize = blocksize(d);
       // Maximum number of occurrences of a single unit in given dimension:
@@ -792,7 +793,7 @@ private:
     // Extents of a single block:
     std::array<size_t, NumDimensions> s_blocks;
     for (int d = 0; d < NumDimensions; ++d) {
-      DistEnum dist = _distspec[d];
+      Distribution dist = _distspec[d];
       size_t blocksize = dist.max_blocksize_in_range(
         _memory_layout.extent(d), // size of range (extent)
         _teamspec.extent(d));     // number of blocks (units)
@@ -855,7 +856,7 @@ private:
     std::array<long long, NumDimensions> & block_coords) const {
     size_t unit_id = 0;
     for (int d = 0; d < NumDimensions; ++d) {
-      DistEnum dist = _distspec[d];
+      Distribution dist = _distspec[d];
       unit_id += dist.block_coord_to_unit_offset(
                     block_coords[d], // block coordinate
                     d,               // dimension

@@ -381,7 +381,7 @@ public:
       // Set extent of teamspec in the dimension the distribution is
       // different from NONE:
       for (size_t d = 0; d < MaxDimensions; ++d) {
-        if (distribution[d].type == DistEnum::disttype::NONE) {
+        if (distribution[d].type == Distribution::disttype::NONE) {
           this->m_extent[d] = 1;
         } else {
           // Use size of given team; possibly different from size
@@ -391,7 +391,7 @@ public:
       }
     } 
     for (size_t d = 0; d < MaxDimensions; ++d) {
-      if (distribution[d].type != DistEnum::disttype::NONE) {
+      if (distribution[d].type != Distribution::disttype::NONE) {
         _rank++;
       }
     }
@@ -409,7 +409,7 @@ public:
     _rank = 1;
     bool distrib_dim_set = false;
     for (size_t d = 0; d < MaxDimensions; ++d) {
-      if (distribution[d].type == DistEnum::disttype::NONE) {
+      if (distribution[d].type == Distribution::disttype::NONE) {
         this->m_extent[d] = 1;
       } else {
         this->m_extent[d] = team.size();

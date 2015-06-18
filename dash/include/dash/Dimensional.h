@@ -141,10 +141,10 @@ protected:
 
 /**
  * DistributionSpec describes distribution patterns of all dimensions,
- * \see dash::DistEnum.
+ * \see dash::Distribution.
  */
 template<size_t NumDimensions>
-class DistributionSpec : public Dimensional<DistEnum, NumDimensions> {
+class DistributionSpec : public Dimensional<Distribution, NumDimensions> {
 public:
   /**
    * Default constructor, initializes default blocked distribution 
@@ -170,7 +170,7 @@ public:
    */
   template<typename ... Values>
   DistributionSpec(Values ... values)
-  : Dimensional<DistEnum, NumDimensions>::Dimensional(values...) {
+  : Dimensional<Distribution, NumDimensions>::Dimensional(values...) {
   }
 };
 
