@@ -18,56 +18,66 @@ namespace dash {
  */
 template<
   typename Iter,
-  int DIM,
-  MemArrange Arrangement = ROW_MAJOR
->
+  unsigned int NumDimensions,
+  MemArrange Arrangement = ROW_MAJOR,
+  typename SizeType      = unsigned long long >
 class CartViewBase { 
 public: 
   typedef typename std::iterator_traits<Iter>::value_type value_type;
   typedef typename std::iterator_traits<Iter>::reference  reference;
   
 private:
-  CartesianIndexSpace<DIM, Arrangement, size_t> m_cart;
-  Iter                                          m_begin;
+  CartesianIndexSpace<NumDimensions, Arrangement, SizeType> m_cart;
+  Iter                                            m_begin;
   
 public:
   // construct from iterator
-  template<typename... Args>
+  template<typename ... Args>
   CartViewBase(Iter it, Args... args) : 
-    m_cart{args...}, m_begin{it} {  
+    m_cart { (SizeType)args ... },
+    m_begin { it } {  
   }
 
   // construct from container
-  template<typename Cont, typename... Args>
-  CartViewBase(Cont& cont, Args... args) : 
-    m_cart{args...}, m_begin{cont.begin()} {  
+  template<typename Container, typename... Args>
+  CartViewBase(Container & container, Args... args) : 
+    m_cart { args ... },
+    m_begin { container.begin() } {  
   }
 
-  size_t rank() const { return m_cart.rank();  }
-  size_t size() const { return m_cart.size(); }
-  size_t extent(size_t dim) const { return m_cart.extent(dim); }
+  SizeType rank() const {
+    return m_cart.rank();
+  }
 
-  template<typename... Args>
-  reference at(Args... args) const {
+  SizeType size() const {
+    return m_cart.size();
+  }
+
+  SizeType extent(unsigned int dim) const {
+    return m_cart.extent(dim);
+  }
+
+  template<typename ... Args>
+  reference at(Args ... args) const {
     Iter it = m_begin;
-    std::advance(it,m_cart.at(args...));
+    std::advance(it, m_cart.at(args...));
     return *it;
   }
 
   // x(), y(), z() accessors 
   // enabled only for the appropriate sizes
-  template<int U=DIM>
-  typename std::enable_if<(U>0),size_t>::type x(size_t offs) const {
+  template<int U=NumDimensions>
+  typename std::enable_if<(U>0),SizeType>::type x(SizeType offs) const {
     return m_cart.x(offs);
   }
   
-  template<int U=DIM>
-  typename std::enable_if<(U>1),size_t>::type y(size_t offs) const {
+  template<int U=NumDimensions>
+  typename std::enable_if<(U>1),SizeType>::type y(SizeType offs) const {
     return m_cart.y(offs);
   }
   
-  template<int U=DIM>
-  typename std::enable_if<(U>2),size_t>::type z(size_t offs) const {
+  template<int U=NumDimensions>
+  typename std::enable_if<(U>2),SizeType>::type z(SizeType offs) const {
     return m_cart.z(offs);
   }
 
@@ -76,16 +86,31 @@ public:
 //
 // cartesian view class
 //
-template<typename Iter, int DIM>
-struct CartView : public CartViewBase<Iter, DIM> {
+template<
+  typename Iter,
+  unsigned int NumDimensions,
+  MemArrange Arrangement = ROW_MAJOR,
+  typename SizeType      = unsigned long long >
+struct CartView 
+: public CartViewBase<Iter, NumDimensions, Arrangement, SizeType> {
 public:
   template<typename... Args>
-  CartView(Iter it, Args... args) : 
-    CartViewBase<Iter,DIM>(it,args...) {}
+  CartView(
+    Iter it,
+    Args... args) 
+  : CartViewBase<Iter, NumDimensions, Arrangement, SizeType>(
+      it,
+      args...) {
+  }
 
-  template<typename Cont, typename... Args>
-  CartView(Cont& cont, Args... args) : 
-    CartViewBase<Iter,DIM>(cont,args...) {}
+  template<typename Container, typename... Args>
+  CartView(
+    Container & cont,
+    Args... args)
+  : CartViewBase<Iter, NumDimensions, Arrangement, SizeType>(
+      cont,
+      args...) {
+  }
 };
 
 } // namespace dash
