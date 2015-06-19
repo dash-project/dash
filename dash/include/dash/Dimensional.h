@@ -18,13 +18,13 @@ namespace dash {
  * does not define metric/scalar extents or a size, but just a 
  * vector of possibly non-scalar attributes.
  *
- * \tparam  T  The contained value type
+ * \tparam  ElementType    The type of the contained values
  * \tparam  NumDimensions  The number of dimensions
  *
  * \see SizeSpec
  * \see CartesianIndexSpace
  */
-template<typename T, size_t NumDimensions>
+template<typename ElementType, size_t NumDimensions>
 class Dimensional {
 /* 
  * Concept Dimensional:
@@ -32,41 +32,45 @@ class Dimensional {
  *   + Dimensional<T,D>::dim(d | 0 < d < D);
  *   + Dimensional<T,D>::[d](d | 0 < d < D);
  */
+private:
+  typedef Dimensional<ElementType, NumDimensions> self_t;
+
 protected:
-  std::array<T, NumDimensions> _values;
+  std::array<ElementType, NumDimensions> _values;
 
 public:
   /**
    * Constructor, expects one value for every dimension.
    */
   template<typename ... Values>
-  Dimensional(Values ... values)
-  : _values {{ (T)values... }} {
+  Dimensional(ElementType & value, Values ... values)
+  : _values {{ value, (ElementType)values... }} {
     static_assert(
-      sizeof...(values) == NumDimensions,
+      sizeof...(values) == NumDimensions-1,
       "Invalid number of arguments");
   }
 
   /**
    * Constructor, expects array containing values for every dimension.
    */
-  Dimensional(const std::array<T, NumDimensions> & values)
+  Dimensional(const std::array<ElementType, NumDimensions> & values)
   : _values(values) {
   }
 
   /**
    * Copy-constructor.
    */
-  Dimensional(const Dimensional<T, NumDimensions> & other) {
+  Dimensional(const self_t & other) {
     for (int d = 0; d < NumDimensions; ++d) {
       _values[d] = other._values[d];
     }
   }
 
   /**
-   * Return value with all dimensions as array of \c NumDimensions elements.
+   * Return value with all dimensions as array of \c NumDimensions
+   * elements.
    */
-  const std::array<T, NumDimensions> & values() const {
+  const std::array<ElementType, NumDimensions> & values() const {
     return _values;
   }
 
@@ -76,7 +80,7 @@ public:
    * \param  dimension  The dimension
    * \returns  The value in the given dimension
    */
-  T dim(size_t dimension) const {
+  ElementType dim(size_t dimension) const {
     if (dimension >= NumDimensions) {
       DASH_THROW(
         dash::exception::OutOfRange,
@@ -93,7 +97,7 @@ public:
    * \param  dimension  The dimension
    * \returns  The value in the given dimension
    */
-  T operator[](size_t dimension) const {
+  ElementType operator[](size_t dimension) const {
     return _values[dimension];
   }
 
@@ -104,14 +108,14 @@ public:
    * \param  dimension  The dimension
    * \returns  A reference to the value in the given dimension
    */
-  T & operator[](size_t dimension) {
+  ElementType & operator[](size_t dimension) {
     return _values[dimension];
   }
 
   /**
    * Equality comparison operator.
    */
-  bool operator==(const Dimensional<T, NumDimensions> & other) const {
+  bool operator==(const self_t & other) const {
     for (int d = 0; d < NumDimensions; ++d) {
       if (dim(d) != other.dim(d)) return false;
     }
@@ -121,7 +125,7 @@ public:
   /**
    * Equality comparison operator.
    */
-  bool operator!=(const Dimensional<T, NumDimensions> & other) const {
+  bool operator!=(const self_t & other) const {
     return !(*this == other);
   }
  
@@ -177,14 +181,19 @@ public:
 /**
  * Specifies cartesian extents in a specific number of dimensions.
  */
-template<size_t NumDimensions>
-class SizeSpec : public Dimensional<size_t, NumDimensions> {
+template<
+  size_t NumDimensions,
+  typename SizeType = unsigned long long>
+class SizeSpec : public Dimensional<SizeType, NumDimensions> {
   /* 
    * Concept SizeSpec:
    *   + SizeSpec::SizeSpec(extents ...);
    *   + SizeSpec::extent(dim);
    *   + SizeSpec::size();
    */
+private:
+  typedef typename std::make_signed<SizeType>::type IndexType;
+
 public:
   /**
    * Default constructor, initializes new instance of SizeSpec with
@@ -198,10 +207,10 @@ public:
   }
 
   template<typename ... Values>
-  SizeSpec(Values ... values)
-  : Dimensional<size_t, NumDimensions>::Dimensional(values...),
+  SizeSpec(SizeType value, Values ... values)
+  : Dimensional<SizeType, NumDimensions>::Dimensional(value, values...),
     _size(1) {
-    for (int d = 0; d < NumDimensions; ++d) {
+    for (size_t d = 0; d < NumDimensions; ++d) {
       _size *= this->dim(d);
     }
     if (_size == 0) {
@@ -211,10 +220,10 @@ public:
     }
   }
 
-  SizeSpec(const std::array<size_t, NumDimensions> & extents)
-  : Dimensional<size_t, NumDimensions>::Dimensional(extents),
+  SizeSpec(const std::array<SizeType, NumDimensions> & extents)
+  : Dimensional<SizeType, NumDimensions>::Dimensional(extents),
     _size(1) {
-    for (int d = 0; d < NumDimensions; ++d) {
+    for (size_t d = 0; d < NumDimensions; ++d) {
       _size *= this->dim(d);
     }
     if (_size == 0) {
@@ -230,11 +239,11 @@ public:
    * \param  dimension  The dimension
    * \returns  The extent in the given dimension
    */
-  size_t extent(size_t dimension) const {
+  SizeType extent(size_t dimension) const {
     return this->dim(dimension);
   }
 
-  std::array<size_t, NumDimensions> extents() const {
+  std::array<SizeType, NumDimensions> extents() const {
     return this->values();
   }
 
@@ -243,12 +252,12 @@ public:
    *
    * \returns  The total size of all dimensions.
    */
-  size_t size() const {
+  SizeType size() const {
     return _size;
   }
 
 private:
-  size_t _size;
+  SizeType _size;
 };
 
 struct ViewPair {
@@ -278,8 +287,12 @@ static bool operator!=(const ViewPair & lhs, const ViewPair & rhs) {
 /**
  * Specifies view parameters for implementing submat, rows and cols
  */
-template<size_t NumDimensions>
+template<
+  size_t NumDimensions,
+  typename IndexType = long long>
 class ViewSpec : public Dimensional<ViewPair, NumDimensions> {
+private:
+  typedef typename std::make_unsigned<IndexType>::type SizeType;
 public:
   ViewSpec()
   : _size(0) {
@@ -302,7 +315,7 @@ public:
     }
   }
 
-  ViewSpec(const std::array<size_t, NumDimensions> & extents)
+  ViewSpec(const std::array<SizeType, NumDimensions> & extents)
   : Dimensional<ViewPair, NumDimensions>(),
     _size(1) {
     for (size_t i = 0; i < NumDimensions; i++) {
@@ -334,7 +347,8 @@ public:
     static_assert(
       sizeof...(Args) == NumDimensions,
       "Invalid number of arguments");
-    std::array<size_t, NumDimensions> extents = { (size_t)(args)... };
+    std::array<SizeType, NumDimensions> extents = 
+      { (SizeType)(args)... };
     resize(extents);
   }
 
@@ -357,33 +371,33 @@ public:
   }
 
   void resize_dim(
-    int dimension,
-    size_t extent,
-    long long offset) {
+    unsigned int dimension,
+    SizeType extent,
+    IndexType offset) {
     _offset[dimension] = offset;
     _extent[dimension] = extent;
     this->_values[dimension].offset = offset;
     this->_values[dimension].extent = extent;
-    resize(std::array<size_t, NumDimensions> { (size_t)_extent });
+    resize(std::array<SizeType, NumDimensions> { (SizeType)_extent });
   }
 
-  long long begin(size_t dimension) const {
+  IndexType begin(unsigned int dimension) const {
     return _offset[dimension];
   }
 
-  long long size() const {
+  IndexType size() const {
     return _size;
   }
 
-  long long size(size_t dimension) const {
+  IndexType size(unsigned int dimension) const {
     return _extent[dimension];
   }
 
 private:
   // TODO: Use this->_values instead of _offset and _extent
-  long long _offset[NumDimensions];
-  size_t _extent[NumDimensions];
-  size_t _size;
+  IndexType _offset[NumDimensions];
+  SizeType _extent[NumDimensions];
+  SizeType _size;
 };
 
 } // namespace dash

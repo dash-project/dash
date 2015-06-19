@@ -6,6 +6,7 @@
 #include <cstring>
 #include <iostream>
 #include <array>
+#include <type_traits>
 
 #include <dash/Enums.h>
 #include <dash/Distribution.h>
@@ -60,23 +61,24 @@ namespace dash {
  * \concept DASH_CONCEPT_PATTERN
  */
 template<
-  unsigned int NumDimensions,
+  size_t NumDimensions,
   MemArrange Arrangement = ROW_MAJOR,
-  typename IndexType     = long long,
-  typename SizeType      = size_t>
+  typename IndexType     = long long>
 class Pattern {
 private:
-  typedef Pattern<NumDimensions, Arrangement> self_t;
-  typedef DistributionSpec<NumDimensions>     DistribSpec_t;
-  typedef TeamSpec<NumDimensions>             TeamSpec_t;
-  typedef SizeSpec<NumDimensions>             SizeSpec_t;
-  typedef ViewSpec<NumDimensions>             ViewSpec_t;
-  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType, SizeType>
+  typedef typename std::make_unsigned<IndexType>::type SizeType;
+  typedef Pattern<NumDimensions, Arrangement, IndexType>
+    self_t;
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     MemoryLayout_t;
-  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType, SizeType>
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     BlockSpec_t;
-  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType, SizeType>
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     BlockSizeSpec_t;
+  typedef DistributionSpec<NumDimensions> DistributionSpec_t;
+  typedef TeamSpec<NumDimensions, IndexType> TeamSpec_t;
+  typedef SizeSpec<NumDimensions, SizeType>  SizeSpec_t;
+  typedef ViewSpec<NumDimensions, IndexType> ViewSpec_t;
 
 private:
   /**
@@ -90,7 +92,7 @@ private:
     /// The extents of the pattern space in every dimension
     SizeSpec_t         _sizespec;
     /// The distribution type for every pattern dimension
-    DistribSpec_t _distspec;
+    DistributionSpec_t _distspec;
     /// The cartesian arrangement of the units in the team to which the
     /// patterns element are mapped
     TeamSpec_t         _teamspec;
@@ -141,7 +143,7 @@ private:
     const SizeSpec_t & sizespec() const {
       return _sizespec;
     }
-    const DistribSpec_t & distspec() const {
+    const DistributionSpec_t & distspec() const {
       return _distspec;
     }
     const TeamSpec_t & teamspec() const {
@@ -154,13 +156,23 @@ private:
   private:
     /// Pattern matching for extent value of type int.
     template<int count>
+    void check() {
+      // Terminator
+    }
+    /// Pattern matching for extent value of type int.
+    template<int count>
     void check(int extent) {
-      check<count>((IndexType)(extent));
+      check<count>((SizeType)(extent));
+    }
+    /// Pattern matching for extent value of type int.
+    template<int count>
+    void check(unsigned int extent) {
+      check<count>((SizeType)(extent));
     }
     /// Pattern matching for extent value of type size_t.
     template<int count>
-    void check(size_t extent) {
-      check<count>((IndexType)(extent));
+    void check(unsigned long extent) {
+      check<count>((SizeType)(extent));
     }
     /// Pattern matching for extent value of type IndexType.
     template<int count>
@@ -238,7 +250,7 @@ private:
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
   /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
   /// dimensions
-  DistribSpec_t _distspec;
+  DistributionSpec_t _distspec;
   /// Team containing the units to which the patterns element are mapped
   dash::Team &       _team       = dash::Team::All();
   /// Cartesian arrangement of units within the team
@@ -355,15 +367,15 @@ public:
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension 
-    const SizeSpec_t &         sizespec,
+    const SizeSpec_t &    sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistribSpec_t & dist      = DistribSpec_t(),
+    const DistributionSpec_t & dist      = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t &         teamorg   = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t &    teamorg   = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
-    dash::Team &               team      = dash::Team::All()) 
+    dash::Team &          team      = dash::Team::All()) 
   : _distspec(dist),
     _memory_layout(sizespec),
     _team(team),
@@ -412,13 +424,13 @@ public:
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension 
-    const SizeSpec_t &        sizespec,
+    const SizeSpec_t &    sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistribSpec_t & dist    = DistribSpec_t(),
+    const DistributionSpec_t & dist    = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
-    Team &                     team    = dash::Team::All())
+    Team &                team    = dash::Team::All())
   : _distspec(dist),
     _team(team),
     _teamspec(_distspec, _team),
@@ -577,12 +589,41 @@ public:
     SizeType num_units = _teamspec.size();
     // Local element index to local block offset
     SizeType local_block_offset = elem / blocksize;
+    // Global coords of the element's block within all blocks:
+    std::array<IndexType, NumDimensions> block_coord;
+    // Coordinates of the unit within the team spec:
+    std::array<IndexType, NumDimensions> unit_ts_coord =
+      _teamspec.coords(unit);
+    for (unsigned int d = 0; d < NumDimensions; ++d) {
+      const Distribution & dist = _distspec[d];
+      block_coord[d] = dist.local_index_to_block_coord(
+                         unit_ts_coord[d],    // unit offset in d
+                         elem,                // local index
+                         _teamspec.extent(d), // number of units in d
+                         _blockspec.extent(d) // number of blocks in d
+                       );
+    }
+    // Global, linear index of the element's block within all blocks:
+    SizeType block_index = _blockspec.at(block_coord);
+    // Offset of the element within its block. As the given local index
+    // is already respective to active memory order, it does not have
+    // to be considered here.
+    SizeType elem_block_offset = elem % blocksize;
+    // Global index of the given local element:
+    IndexType index = (block_index * blocksize)
+                      + elem_block_offset;
+#if COMMENT_BLOCK
     // Local block offset to global block index:
     SizeType block_index = local_block_offset * num_units;
-    
-    IndexType index = (local_block_offset * blocksize * num_units) +
-                      (unit * blocksize) +
-                      (elem % blocksize);
+    IndexType index;
+    if (Arrangement == dash::ROW_ORDER) {
+      index = (local_block_offset * blocksize * num_units) +
+              (unit * blocksize) +
+              (elem % blocksize);
+    } else if (Arrangement == dash::COL_ORDER) {
+      // TODO
+    }
+#endif
     if (index >= _memory_layout.size()) {
       DASH_THROW(
         dash::exception::OutOfRange,
@@ -717,17 +758,17 @@ public:
   SizeType max_elem_per_unit() const {
     SizeType max_elements = 1;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
-      SizeType num_units = units_in_dimension(d);
-      Distribution dist  = _distspec[d];
+      SizeType num_units  = units_in_dimension(d);
+      const Distribution & dist = _distspec[d];
       // Block size in given dimension:
       auto dim_max_blocksize = blocksize(d);
       // Maximum number of occurrences of a single unit in given dimension:
-      SizeType dim_num_blocks  = dist.max_local_blocks_in_range(
-                                   // size of range:
-                                   _memory_layout.extent(d),
-                                   // number of blocks:
-                                   num_units
-                                 );
+      SizeType dim_num_blocks = dist.max_local_blocks_in_range(
+                                  // size of range:
+                                  _memory_layout.extent(d),
+                                  // number of blocks:
+                                  num_units
+                                );
       max_elements *= dim_max_blocksize * dim_num_blocks;
       DASH_LOG_TRACE("Pattern.max_elem_per_unit",
                      "Dim", d, "nunits", num_units,
@@ -780,10 +821,13 @@ public:
   /**
    * Distribution specification of this pattern.
    */
-  DistribSpec_t distspec() const {
+  DistributionSpec_t distspec() const {
     return _distspec;
   }
 
+  /**
+   * Size specification of the index space mapped by this pattern.
+   */
   SizeSpec_t sizespec() const {
     return SizeSpec_t(_memory_layout.extents());
   }
@@ -796,10 +840,18 @@ public:
     return _memory_layout;
   }
 
+  /**
+   * Cartesian arrangement of the Team containing the units to which this
+   * pattern's elements are mapped.
+   */
   TeamSpec_t teamspec() const {
     return _teamspec;
   }
 
+  /**
+   * View specification of this pattern as offset and extent in every
+   * dimension.
+   */
   const ViewSpec_t & viewspec() const {
     return _viewspec;
   }
@@ -824,15 +876,15 @@ private:
     // Extents of a single block:
     std::array<SizeType, NumDimensions> s_blocks;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
-      Distribution dist = _distspec[d];
+      const Distribution & dist = _distspec[d];
       SizeType blocksize = dist.max_blocksize_in_range(
         _memory_layout.extent(d), // size of range (extent)
         _teamspec.extent(d));     // number of blocks (units)
       SizeType num_blocks = dash::math::div_ceil(
         _memory_layout.extent(d),
         blocksize);
-      n_blocks[d]     = num_blocks;
-      s_blocks[d]     = blocksize;
+      n_blocks[d] = num_blocks;
+      s_blocks[d] = blocksize;
     }
     _blockspec      = BlockSpec_t(n_blocks);
     _blocksize_spec = BlockSizeSpec_t(s_blocks);
@@ -887,7 +939,7 @@ private:
     std::array<IndexType, NumDimensions> & block_coords) const {
     size_t unit_id = 0;
     for (int d = 0; d < NumDimensions; ++d) {
-      Distribution dist = _distspec[d];
+      const Distribution & dist = _distspec[d];
       unit_id += dist.block_coord_to_unit_offset(
                     block_coords[d], // block coordinate
                     d,               // dimension

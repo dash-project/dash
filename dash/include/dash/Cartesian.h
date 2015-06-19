@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <type_traits>
 
 #include <dash/Enums.h>
 #include <dash/Dimensional.h>
@@ -26,12 +27,12 @@ namespace dash {
 template<
   int NumDimensions,
   MemArrange Arrangement = ROW_MAJOR,
-  typename IndexType     = int,
-  typename SizeType      = size_t>
+  typename IndexType     = long long >
 class CartesianIndexSpace {
 private:
+  typedef typename std::make_unsigned<IndexType>::type SizeType;
   typedef 
-    CartesianIndexSpace<NumDimensions, Arrangement, IndexType, SizeType> 
+    CartesianIndexSpace<NumDimensions, Arrangement, IndexType> 
     self_t;
 
 protected:
@@ -74,17 +75,19 @@ public:
    * all dimensions.
    */
   template<typename... Args>
-  CartesianIndexSpace(Args... args) 
+  CartesianIndexSpace(SizeType arg, Args... args) 
   : m_size(0),
     m_ndim(NumDimensions) {
-    resize(args...);
+    resize(arg, args...);
   }
 
   /**
    * Constructor, initializes a new instance from dimensional size
    * specification.
    */
-  CartesianIndexSpace(const SizeSpec<NumDimensions> & sizeSpec)
+  CartesianIndexSpace(
+    const SizeSpec<NumDimensions,
+    SizeType> & sizeSpec)
   : m_size(sizeSpec.size()),
     m_ndim(NumDimensions) {
     resize(sizeSpec.extents());
@@ -118,11 +121,12 @@ public:
    * Change the extent of the cartesian space in every dimension.
    */
   template<typename... Args>
-  void resize(Args... args) {
+  void resize(SizeType arg, Args... args) {
     static_assert(
-      sizeof...(Args) == NumDimensions,
+      sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
-    std::array<SizeType, NumDimensions> extents = { SizeType(args)... };
+    std::array<SizeType, NumDimensions> extents =
+      { arg, (SizeType)args... };
     resize(extents);
   }
 
@@ -137,11 +141,11 @@ public:
       "Invalid number of arguments");
     // Set extents:
     // ::std::copy(extents.begin(), extents.end(), m_extent);
-    m_extent = extents;
     // Update size:
     m_size = 1;
     for(auto i = 0; i < NumDimensions; i++ ) {
-      m_size *= m_extent[i];
+      m_extent[i] = static_cast<SizeType>(extents[i]);
+      m_size     *= m_extent[i];
     }
     if (m_size <= 0) {
       std::cout << std::endl;
@@ -326,9 +330,13 @@ public:
  *
  * \tparam  NumDimensions  Number of dimensions
  */
-template<size_t MaxDimensions>
+template<
+  size_t MaxDimensions,
+  typename IndexType = long long>
 class TeamSpec :
-  public CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t> {
+  public CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType> {
+private:
+  typedef typename std::make_unsigned<IndexType>::type SizeType;
 public:
   /**
    * Constructor, creates an instance of TeamSpec from a team (set of
@@ -372,7 +380,8 @@ public:
     const TeamSpec<MaxDimensions> & other,
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All()) 
-  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t>(other.extents()) {
+  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>(
+      other.extents()) {
     if (this->size() != team.size()) {
       DASH_THROW(
         dash::exception::InvalidArgument,
@@ -440,7 +449,7 @@ public:
    */
   template<typename ... Types>
   TeamSpec(size_t value, Types ... values)
-  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t>::
+  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
       CartesianIndexSpace(value, values...) {
   }
 
@@ -450,7 +459,7 @@ public:
   TeamSpec(
     /// Teamspec instance to copy
     const TeamSpec<MaxDimensions> & other)
-  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, size_t>::
+  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
       CartesianIndexSpace(other.extents()),
     _rank(other._rank) {
   }
