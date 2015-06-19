@@ -52,8 +52,8 @@ namespace dash {
  *
  *
  * \tparam  NumDimensions  The number of dimensions of the pattern
- * \tparam  Arrangement    The memory order of the pattern (ROW_ORDER
- *                         or COL_ORDER), defaults to ROW_ORDER.
+ * \tparam  Arrangement    The memory order of the pattern (ROW_MAJOR
+ *                         or COL_MAJOR), defaults to ROW_MAJOR.
  *                         Memory order defines how elements in the
  *                         pattern will be iterated predominantly
  *                         \see MemArrange
@@ -156,11 +156,6 @@ private:
   private:
     /// Pattern matching for extent value of type int.
     template<int count>
-    void check() {
-      // Terminator
-    }
-    /// Pattern matching for extent value of type int.
-    template<int count>
     void check(int extent) {
       check<count>((SizeType)(extent));
     }
@@ -176,7 +171,7 @@ private:
     }
     /// Pattern matching for extent value of type IndexType.
     template<int count>
-    void check(long long extent) {
+    void check(SizeType extent) {
       _argc_size++;
       _sizespec[count] = extent;
     }
@@ -192,7 +187,7 @@ private:
     template<int count>
     void check(dash::Team & team) {
       if (_argc_team == 0) {
-        _teamspec = TeamSpec<NumDimensions>(_distspec, team);
+        _teamspec = TeamSpec_t(_distspec, team);
       }
     }
     /// Pattern matching for one optional parameter specifying the 
@@ -205,7 +200,7 @@ private:
     /// Pattern matching for one optional parameter specifying the 
     /// distribution.
     template<int count>
-    void check(const DistributionSpec<NumDimensions> & ds) {
+    void check(const DistributionSpec_t & ds) {
       _argc_dist += NumDimensions;
       _distspec   = ds;
     }
@@ -220,9 +215,11 @@ private:
     /// Isolates first argument and calls the appropriate check() function
     /// on each argument via recursion on the argument list.
     template<int count, typename T, typename ... Args>
-    void check(T t, Args &&... args) {
+    void check(T t, Args && ... args) {
       check<count>(t);
-      check<count + 1>(std::forward<Args>(args)...);
+      if (sizeof...(Args) > 0) {
+        check<count + 1>(std::forward<Args>(args)...);
+      }
     }
     /// Check pattern constraints for tile
     void check_tile_constraints() const {
@@ -269,6 +266,8 @@ private:
   ViewSpec_t         _viewspec;
   /// Number of blocks in all dimensions.
   BlockSpec_t        _blockspec;
+  /// Number of blocks in all dimensions.
+  BlockSpec_t        _blockspec_transposed;
   /// Maximum extents of a block in this pattern.
   BlockSizeSpec_t    _blocksize_spec;
   /// Local extents of the pattern in all dimensions
@@ -578,7 +577,8 @@ public:
   }
 
   /**
-   * Will be renamed to \c local_to_global_index
+   * Resolve an element's linear global index from a given unit's local
+   * index.
    *
    * \see index_to_elem Inverse of local_to_global_index
    */
@@ -587,40 +587,70 @@ public:
     IndexType elem) {
     SizeType blocksize = max_blocksize();
     SizeType num_units = _teamspec.size();
-    // Local element index to local block offset
+    // Local element index to local block offset:
     SizeType local_block_offset = elem / blocksize;
-    // Global coords of the element's block within all blocks:
-    std::array<IndexType, NumDimensions> block_coord;
+    // Global coords of the element's block within all blocks.
+    // Use initializer so elements are initialized with 0s:
+    std::array<IndexType, NumDimensions> block_coord = {  };
     // Coordinates of the unit within the team spec:
     std::array<IndexType, NumDimensions> unit_ts_coord =
       _teamspec.coords(unit);
+    // Coordinates of the element within its block:
+    std::array<IndexType, NumDimensions> block_elem_coord =
+      _blocksize_spec.coords(elem);
+    // Offset of the element within its block:
+    DASH_LOG_TRACE("Pattern.local_to_global_index",
+                   "block_elem_coord", block_elem_coord);
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
+      unsigned int d_t = NumDimensions - 1 - d;
       block_coord[d] = dist.local_index_to_block_coord(
-                         unit_ts_coord[d],    // unit offset in d
-                         elem,                // local index
-                         _teamspec.extent(d), // number of units in d
-                         _blockspec.extent(d) // number of blocks in d
-                       );
+                         unit_ts_coord[d],     // unit offset in d
+                         elem,                 // local index
+                         _teamspec.extent(d),  // number of units in d
+                         _blockspec.extent(d), // number of blocks in d
+                         blocksize
+                       ) * _blocksize_spec.extent(d);
+      if (Arrangement == dash::ROW_MAJOR) {
+        if (d > 0) {
+          block_coord[d_t] += block_elem_coord[d];
+        } else {
+          block_coord[d] += block_elem_coord[d];
+        }
+      } else if (Arrangement == dash::COL_MAJOR) {
+        if (d < NumDimensions - 1) {
+          block_coord[d] += block_elem_coord[d];
+        } else {
+          block_coord[d_t] += block_elem_coord[d];
+        }
+      }
+      DASH_LOG_TRACE("Pattern.local_to_global_index", "\n",
+                     "dim", d, "\n",
+                     "unit ts coord", unit_ts_coord[d], "\n",
+                     "elem", elem, "\n",
+                     "units in d", _teamspec.extent(d), "\n",
+                     "blocks in d", _blockspec.extent(d), "\n",
+                     "blocksize", blocksize, "\n",
+                     "blocksize_d", _blocksize_spec.extent(d_t), "\n",
+                     "-> block coord[d]", block_coord[d]);
     }
-    // Global, linear index of the element's block within all blocks:
-    SizeType block_index = _blockspec.at(block_coord);
-    // Offset of the element within its block. As the given local index
-    // is already respective to active memory order, it does not have
-    // to be considered here.
-    SizeType elem_block_offset = elem % blocksize;
-    // Global index of the given local element:
-    IndexType index = (block_index * blocksize)
-                      + elem_block_offset;
-#if COMMENT_BLOCK
+    DASH_LOG_TRACE("Pattern.local_to_global_index",
+                   "-> index coord", block_coord);
+    // Number of blocks assigned to any unit that are in front of the
+    // element's block.
+    SizeType index = _memory_layout.at(block_coord);
+    DASH_LOG_TRACE("Pattern.local_to_global_index", "\n",
+                   "block_coord", block_coord, "\n",
+                   "index", index);
+#if 0
     // Local block offset to global block index:
     SizeType block_index = local_block_offset * num_units;
     IndexType index;
-    if (Arrangement == dash::ROW_ORDER) {
+    if (Arrangement == dash::ROW_MAJOR) {
       index = (local_block_offset * blocksize * num_units) +
               (unit * blocksize) +
               (elem % blocksize);
-    } else if (Arrangement == dash::COL_ORDER) {
+    } else if (Arrangement == dash::COL_MAJOR) {
       // TODO
     }
 #endif
@@ -690,6 +720,7 @@ public:
                    "block offset", block_offset,
                    "local block offset", local_block_offset,
                    "block base offset", block_base_offset,
+                   "relative coords", relative_coords,
                    "elem block offset", elem_block_offset,
                    "local elem offset", local_elem_offset);
 

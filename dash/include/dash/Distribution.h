@@ -37,7 +37,10 @@ public:
     // Number of units in the distribution's dimension
     SizeType num_units_in_dim,
     // Number of blocks in the distribution's dimension
-    SizeType num_blocks_in_dim) const {
+    SizeType num_blocks_in_dim,
+    // Number of elements in the distribution's dimension in a single block
+    SizeType blocksize) const {
+    // NOTE: blocksize should be this->blocksz
     SizeType local_block_offset = 0;
     switch (type) {
       case dash::internal::DIST_NONE:
@@ -46,7 +49,7 @@ public:
         return 0;
       case dash::internal::DIST_BLOCKED:
         // Offset of the block in this dimension:
-        return unit_teamspec_coord * blocksz;
+        return unit_teamspec_coord;
       case dash::internal::DIST_TILE:
         // Same as blockcyclic
       case dash::internal::DIST_BLOCKCYCLIC:
@@ -55,11 +58,12 @@ public:
         local_block_offset = local_index / blocksz;
         // Number of blocks of any unit that are in front
         // of the given local index:
-        return local_block_offset * 
-          (num_blocks_in_dim / num_units_in_dim);
+        return local_block_offset
+                 * (num_blocks_in_dim / num_units_in_dim);
       case dash::internal::DIST_CYCLIC:
         // Like blockcyclic, but with blocksize 1:
-        return local_index * num_units_in_dim;
+        return local_index
+                 * (num_blocks_in_dim / num_units_in_dim);
       default:
         DASH_THROW(
           dash::exception::InvalidArgument,

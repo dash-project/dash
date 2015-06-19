@@ -17,6 +17,7 @@
 #include <dash/Enums.h>
 #include <dash/Dimensional.h>
 #include <dash/Exception.h>
+#include <dash/internal/Logging.h>
 
 namespace dash {
 
@@ -42,9 +43,14 @@ protected:
   SizeType m_ndim;
   /// Extents of the cartesian space by dimension.
   std::array<SizeType, NumDimensions> m_extent;
-  /// Cumulative index offsets of the index space by dimension. Avoids
-  /// recalculation of \c NumDimensions-1 offsets in every call of \at().
-  std::array<SizeType, NumDimensions> m_offset;
+  /// Cumulative index offsets of the index space by dimension respective
+  /// to row order. Avoids recalculation of \c NumDimensions-1 offsets
+  /// in every call of \at<ROW_ORDER>().
+  std::array<SizeType, NumDimensions> m_offset_row_major;
+  /// Cumulative index offsets of the index space by dimension respective
+  /// to column order. Avoids recalculation of \c NumDimensions-1 offsets
+  /// in every call of \at<COL_ORDER>().
+  std::array<SizeType, NumDimensions> m_offset_col_major;
 
 public:
   /**
@@ -55,8 +61,9 @@ public:
   : m_size(0),
     m_ndim(NumDimensions) {
     for(auto i = 0; i < NumDimensions; i++) {
-      m_extent[i] = 0;
-      m_offset[i] = 0;
+      m_extent[i]           = 0;
+      m_offset_row_major[i] = 0;
+      m_offset_col_major[i] = 0;
     }
   }
 
@@ -101,8 +108,13 @@ public:
       return true;
     }
     for(auto i = 0; i < NumDimensions; i++) {
-      if (m_extent[i] != other.m_extent[i]) return false;
-      if (m_offset[i] != other.m_offset[i]) return false;
+      if (m_extent[i] != other.m_extent[i]) {
+        return false;
+      }
+      // Comparing either row- or column major offsets suffices:
+      if (m_offset_row_major[i] != other.m_offset_row_major[i]) {
+        return false; 
+      }
     }
     return (
       m_size == other.m_size &&
@@ -154,16 +166,13 @@ public:
         "Extents for CartesianIndexSpace::resize must be greater than 0");
     }
     // Update offsets:
-    if (Arrangement == COL_MAJOR) {
-      m_offset[NumDimensions-1] = 1;
-      for(auto i = NumDimensions-2; i >= 0; --i) {
-        m_offset[i] = m_offset[i+1] * m_extent[i+1];
-      }
-    } else if (Arrangement == ROW_MAJOR) {
-      m_offset[0] = 1;
-      for(auto i = 1; i < NumDimensions; ++i) {
-        m_offset[i] = m_offset[i-1] * m_extent[i-1];
-      }
+    m_offset_col_major[NumDimensions-1] = 1;
+    for(auto i = NumDimensions-2; i >= 0; --i) {
+      m_offset_col_major[i] = m_offset_col_major[i+1] * m_extent[i+1];
+    }
+    m_offset_row_major[0] = 1;
+    for(auto i = 1; i < NumDimensions; ++i) {
+      m_offset_row_major[i] = m_offset_row_major[i-1] * m_extent[i-1];
     }
   }
   
@@ -231,14 +240,16 @@ public:
    * \param  args  An argument list consisting of the coordinates, ordered
    *               by dimension (x, y, z, ...)
    */
-  template<typename... Args>
+  template<
+    typename... Args,
+    MemArrange AtArrangement = Arrangement>
   IndexType at(IndexType arg, Args... args) const {
     static_assert(
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
     ::std::array<IndexType, NumDimensions> pos =
       { arg, IndexType(args) ... };
-    return at(pos);
+    return at<AtArrangement>(pos);
   }
   
   /**
@@ -247,11 +258,10 @@ public:
    * \param  pos  An array containing the coordinates, ordered by
    *              dimension (x, y, z, ...)
    */
-  template<typename OffsetType>
-  IndexType at(std::array<OffsetType, NumDimensions> pos) const {
-    static_assert(
-      pos.size() == NumDimensions,
-      "Invalid number of arguments");
+  template<
+    MemArrange AtArrangement = Arrangement,
+    typename OffsetType>
+  IndexType at(const std::array<OffsetType, NumDimensions> & pos) const {
     SizeType offs = 0;
     for (int i = 0; i < NumDimensions; i++) {
       if (pos[i] >= m_extent[i]) {
@@ -259,9 +269,17 @@ public:
         DASH_THROW(
           dash::exception::OutOfRange,
           "Given coordinate " << pos[i] <<
-          " for CartesianIndexSpace::at() is out of bounds");
+          " for CartesianIndexSpace::at() exceeds extent " << m_extent[i]);
       }
-      offs += m_offset[i] * pos[i];
+      SizeType offset_dim = 0;
+      if (AtArrangement == ROW_MAJOR) {
+        DASH_LOG_TRACE("Cartesian.at", "ROW_MAJOR");
+        offset_dim = m_offset_row_major[i];
+      } else if (AtArrangement == COL_MAJOR) {
+        DASH_LOG_TRACE("Cartesian.at", "COL_MAJOR");
+        offset_dim = m_offset_col_major[i];
+      }
+      offs += offset_dim * pos[i];
     }
     return offs;
   }
@@ -281,18 +299,18 @@ public:
     ::std::array<IndexType, NumDimensions> pos;
     if (Arrangement == COL_MAJOR) {
       for(int i = 0; i < NumDimensions; ++i) {
-        pos[i] = index / m_offset[i];
-        index  = index % m_offset[i];
+        pos[i] = index / m_offset_col_major[i];
+        index  = index % m_offset_col_major[i];
       }
     } else if (Arrangement == ROW_MAJOR) {
       for(int i = NumDimensions-1; i >= 0; --i) {
-        pos[i] = index / m_offset[i];
-        index  = index % m_offset[i];
+        pos[i] = index / m_offset_row_major[i];
+        index  = index % m_offset_row_major[i];
       }
     }
     return pos;
   }
-  
+
   /**
    * Accessor for dimension 1 (x), enabled for dimensionality > 0.
    */

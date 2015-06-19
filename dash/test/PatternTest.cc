@@ -10,14 +10,21 @@ TEST_F(PatternTest, SimpleConstructor) {
   int extent_z = 41;
   int size = extent_x * extent_y * extent_z;
   // Should default to distribution BLOCKED, NONE, NONE:
+  LOG_MESSAGE("pat_default");
   dash::Pattern<3> pat_default(extent_x, extent_y, extent_z);
+  LOG_MESSAGE("1");
   EXPECT_EQ(dash::DistributionSpec<3>(), pat_default.distspec());
+  LOG_MESSAGE("2");
   EXPECT_EQ(dash::Team::All(), pat_default.team());
+  LOG_MESSAGE("3");
   EXPECT_EQ(dash::Team::All().size(), pat_default.num_units());
+  LOG_MESSAGE("4");
   EXPECT_EQ(size, pat_default.capacity());
 
+  LOG_MESSAGE("ds_blocked_z");
   dash::DistributionSpec<3> ds_blocked_z(
       dash::NONE, dash::NONE, dash::BLOCKED);
+  LOG_MESSAGE("pat_ds");
   dash::Pattern<3> pat_ds(
       extent_x, extent_y, extent_z, 
       ds_blocked_z);
@@ -27,6 +34,7 @@ TEST_F(PatternTest, SimpleConstructor) {
   // Splits in consecutive test cases within a single test
   // run are not supported for now:
   // dash::Team & team_split_2 = dash::Team::All().split(2);
+  LOG_MESSAGE("pat_ds_t");
   dash::Pattern<3> pat_ds_t(
       extent_x, extent_y, extent_z, 
       ds_blocked_z,
@@ -472,7 +480,7 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
   // Choose 'inconvenient' extents:
   // int extent_x       = team_size + 7;
   // int extent_y       = 23;
-  int extent_x       = 8;
+  int extent_x       = 7;
   int extent_y       = 4;
   size_t size        = extent_x * extent_y;
   int block_size_x   = 1;
