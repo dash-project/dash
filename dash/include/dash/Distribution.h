@@ -3,6 +3,7 @@
 
 #include <dash/Enums.h>
 #include <dash/internal/DistributionFunc.h>
+#include <dash/internal/Logging.h>
 
 namespace dash {
 
@@ -62,8 +63,11 @@ public:
                  * (num_blocks_in_dim / num_units_in_dim);
       case dash::internal::DIST_CYCLIC:
         // Like blockcyclic, but with blocksize 1:
-        return local_index
-                 * (num_blocks_in_dim / num_units_in_dim);
+        DASH_LOG_TRACE("Distribution.local_index_to_block_coord",
+                       "unit_teamspec_coord", unit_teamspec_coord,
+                       "local_index", local_index,
+                       "num_units_in_dim", num_units_in_dim);
+        return unit_teamspec_coord + local_index * num_units_in_dim;
       default:
         DASH_THROW(
           dash::exception::InvalidArgument,
@@ -179,7 +183,7 @@ public:
 };
 
 static Distribution BLOCKED(dash::internal::DIST_BLOCKED, -1);
-static Distribution CYCLIC(dash::internal::DIST_BLOCKCYCLIC, 1);
+static Distribution CYCLIC(dash::internal::DIST_CYCLIC, 1);
 static Distribution NONE(dash::internal::DIST_NONE, -1);
 
 Distribution TILE(int blockSize);
