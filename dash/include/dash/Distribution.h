@@ -58,9 +58,11 @@ public:
         // in front of the given local index:
         local_block_offset = local_index / blocksz;
         // Number of blocks of any unit that are in front
-        // of the given local index:
-        return local_block_offset
-                 * (num_blocks_in_dim / num_units_in_dim);
+        // of the given local index. Unit's coordinate in team
+        // spec is equivalent to the number of units in front of
+        // the unit.
+        return (local_block_offset * num_units_in_dim) +
+                  unit_teamspec_coord;
       case dash::internal::DIST_CYCLIC:
         // Like blockcyclic, but with blocksize 1:
         DASH_LOG_TRACE("Distribution.local_index_to_block_coord",

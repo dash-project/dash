@@ -589,23 +589,30 @@ public:
     SizeType num_units = _teamspec.size();
     // Local element index to local block offset:
     SizeType local_block_offset = elem / blocksize;
-    // Index of the element's block as element offset:
-    std::array<IndexType, NumDimensions> block_coord = {  };
+    // Offset of the element within its block:
+    SizeType elem_block_offset = elem % blocksize;
     // Coordinates of the unit within the team spec:
     std::array<IndexType, NumDimensions> unit_ts_coord =
       _teamspec.coords(unit);
     // Global coords of the element's block within all blocks.
     // Use initializer so elements are initialized with 0s:
     std::array<IndexType, NumDimensions> block_index = {  };
+    // Index of the element's block as element offset:
+    std::array<IndexType, NumDimensions> block_coord = {  };
+    // Index of the element:
+    std::array<IndexType, NumDimensions> elem_index;;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
-      unsigned int d_t = NumDimensions - 1 - d;
+      unsigned int d_t  = NumDimensions - 1 - d;
       auto num_units_d  = _teamspec.extent(d); 
       auto num_blocks_d = _blockspec.extent(d);
       auto blocksize_d  = _blocksize_spec.extent(d_t);
+      // Offset of the element within its block in d:
+      auto elem_block_offset_d = elem % blocksize_d;
+      // Global coords of the element's block within all blocks:
       block_index[d] = dist.local_index_to_block_coord(
-                         unit_ts_coord[d],      // unit ts offset in d
-                         elem,                  // local index
+                         unit_ts_coord[d], // unit ts offset in d
+                         elem,
                          num_units_d,
                          num_blocks_d,
                          blocksize
@@ -627,6 +634,7 @@ public:
           }
         }
       }
+      elem_index[d] = block_coord[d] + elem_block_offset_d;
       DASH_LOG_TRACE("Pattern.local_to_global_index", "\n",
                      "dim", d, "\n",
                      "unit_ts_coord", unit_ts_coord[d], "\n",
@@ -637,13 +645,16 @@ public:
                      "block_index_d", block_index[d], "\n",
                      "blocksize", blocksize, "\n",
                      "blocksize_d", blocksize_d, "\n",
+                     "elem_block_offset_d", elem_block_offset_d, "\n",
                      "-> block coord[d]", block_coord[d]);
     }
-    DASH_LOG_TRACE("Pattern.local_to_global_index",
-                   "-> index coord", block_coord);
+    DASH_LOG_TRACE("Pattern.local_to_global_index", "\n",
+                   "block_index", block_index, "\n",
+                   "block_coord", block_coord, "\n",
+                   "--> elem index", elem_index);
     // Number of blocks assigned to any unit that are in front of the
     // element's block.
-    SizeType index = _memory_layout.at(block_coord);
+    SizeType index = _memory_layout.at(block_coord) + elem_block_offset;
     DASH_LOG_TRACE("Pattern.local_to_global_index", "\n",
                    "block_coord", block_coord, "\n",
                    "index", index);
@@ -758,10 +769,11 @@ public:
   /**
    * Maximum number of elements in a single block in the given dimension.
    *
-   * \param  dim  The dimension in the pattern
    * \return  The blocksize in the given dimension
    */
-  SizeType blocksize(unsigned int dimension) const {
+  SizeType blocksize(
+    /// The dimension in the pattern
+    unsigned int dimension) const {
     return _blocksize_spec.extent(dimension);
   }
 
@@ -979,10 +991,23 @@ private:
   }
 };
 
+/**
+ * Invoke a function on every element in a range distributed by a pattern.
+ * Being a collaborative operation, each unit will invoke the given
+ * function on its local elements only.
+ *
+ * \tparam  PatternInterator  An iterator implementing the
+ *                            PatternInterator concept
+ * \tparam  IndexType         Parameter type expected by function to
+ *                            invoke, deduced from parameter \c func
+ */
 template<typename PatternIterator, typename IndexType>
 void forall(
+  /// Iterator pointing to the first element of a range
   PatternIterator begin,
+  /// Iterator pointing behind the last element of a range
   PatternIterator end,
+  /// Function to invoke on every index in the range
   ::std::function<void(IndexType)> func) {
   auto range   = end - begin;
   auto pattern = begin.pattern();
