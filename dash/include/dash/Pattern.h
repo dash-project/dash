@@ -899,9 +899,9 @@ public:
   /**
    * Number of elements missing in the overflow block of given dimension
    * compared to the regular blocksize (\see blocksize(d)), with
-   * 0 <= \c underflow_blocksize(d) < blocksize(d).
+   * 0 <= \c underfilled_blocksize(d) < blocksize(d).
    */
-  SizeType underflow_blocksize(int dimension) const {
+  SizeType underfilled_blocksize(int dimension) const {
     // Underflow blocksize = regular blocksize - overflow blocksize:
     auto regular_blocksize = blocksize(dimension);
     return regular_blocksize - 
@@ -965,11 +965,11 @@ private:
         _local_extent[d] = num_elem_d;
       } else {
         // Initialize with minimum local extent:
-        _local_extent[d]            = min_local_blocks * blocksize_d;
+        _local_extent[d] = min_local_blocks * blocksize_d;
         // Add overflow block extent if the last block
         // in the dimension is assigned to the local unit:
         // TODO
-        SizeType last_block_unit_id = (num_blocks_d % num_units_d);
+        auto last_block_unit_id = (num_blocks_d % num_units_d);
         DASH_LOG_TRACE_VAR("Pattern.initialize", last_block_unit_id);
         if (last_block_unit_id == my_unit_id) {
           SizeType overflow_d = overflow_blocksize(d);

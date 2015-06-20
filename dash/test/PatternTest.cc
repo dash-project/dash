@@ -302,8 +302,8 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   // [ team 1[1] | team 1[3] | ... | team 1[5] ]
   // [                   ...                   ]
   int team_size = dash::Team::All().size();
-  int extent_x  = 7;
-  int extent_y  = 4;
+  int extent_x  = 71;
+  int extent_y  = 41;
   size_t size   = extent_x * extent_y;
   // Ceil division
   int block_size_x   = extent_x;
@@ -331,14 +331,18 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   EXPECT_EQ(pat_blocked_row.max_elem_per_unit(), max_per_unit);
   EXPECT_EQ(pat_blocked_row.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_row.blocksize(1), block_size_y);
+  EXPECT_EQ(pat_blocked_row.overflow_blocksize(0), overflow_bs_x);
+  EXPECT_EQ(pat_blocked_row.overflow_blocksize(1), overflow_bs_y);
+  EXPECT_EQ(pat_blocked_row.underfilled_blocksize(0), underfill_bs_x);
+  EXPECT_EQ(pat_blocked_row.underfilled_blocksize(1), underfill_bs_y);
   EXPECT_EQ(pat_blocked_col.capacity(), size);
   EXPECT_EQ(pat_blocked_col.max_elem_per_unit(), max_per_unit);
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
   EXPECT_EQ(pat_blocked_col.overflow_blocksize(0), overflow_bs_x);
   EXPECT_EQ(pat_blocked_col.overflow_blocksize(1), overflow_bs_y);
-  EXPECT_EQ(pat_blocked_col.underflow_blocksize(0), underfill_bs_x);
-  EXPECT_EQ(pat_blocked_col.underflow_blocksize(1), underfill_bs_y);
+  EXPECT_EQ(pat_blocked_col.underfilled_blocksize(0), underfill_bs_x);
+  EXPECT_EQ(pat_blocked_col.underfilled_blocksize(1), underfill_bs_y);
   LOG_MESSAGE("block size: x: %d, y: %d",
     block_size_x, block_size_y);
   for (int x = 0; x < extent_x; ++x) {
@@ -488,10 +492,8 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
   // [                        ...                          ]
   int team_size      = dash::Team::All().size();
   // Choose 'inconvenient' extents:
-  int extent_x       = 7;
-  int extent_y       = 4;
-//  int extent_x       = team_size + 7;
-//  int extent_y       = 23;
+  int extent_x       = team_size + 7;
+  int extent_y       = 23;
   size_t size        = extent_x * extent_y;
   int block_size_x   = 1;
   int max_per_unit_x = dash::math::div_ceil(extent_x, team_size);
@@ -573,5 +575,62 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
         glob_coords_col);
     }
   }
+}
+
+TEST_F(PatternTest, LocalExtents) {
+  // 2-dimensional, blocked partitioning in first dimension:
+  // 
+  // [ team 0[0] | team 1[0] | team 0[1] | team 1[1] | ... ]
+  // [ team 0[2] | team 1[2] | team 0[3] | team 1[3] | ... ]
+  // [ team 0[4] | team 1[4] | team 0[5] | team 1[5] | ... ]
+  // [ team 0[6] | team 1[6] | team 0[7] | team 1[7] | ... ]
+  // [                        ...                          ]
+  int team_size      = dash::Team::All().size();
+  // Choose 'inconvenient' extents:
+  int extent_x       = team_size + 7;
+  int extent_y       = 23;
+  size_t size        = extent_x * extent_y;
+  int block_size_x   = 1;
+  int max_per_unit_x = dash::math::div_ceil(extent_x, team_size);
+  int block_size_y   = extent_y;
+  int max_per_unit   = max_per_unit_x * block_size_y;
+  int overflow_bs_x  = extent_x % block_size_x;
+  int overflow_bs_y  = extent_y % block_size_y;
+  int underfill_bs_x = block_size_x - overflow_bs_x;
+  int underfill_bs_y = block_size_y - overflow_bs_y;
+  int local_extent_x;
+  int local_extent_y;
+  LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpx: %d, mpu: %d",
+      extent_x, extent_y,
+      block_size_x, block_size_y,
+      max_per_unit_x, max_per_unit);
+  dash::Pattern<2, dash::ROW_MAJOR> pat_cyclic_row(
+      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::DistributionSpec<2>(dash::CYCLIC, dash::NONE),
+      dash::TeamSpec<2>(dash::Team::All()),
+      dash::Team::All());
+  dash::Pattern<2, dash::COL_MAJOR> pat_cyclic_col(
+      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::DistributionSpec<2>(dash::CYCLIC, dash::NONE),
+      dash::TeamSpec<2>(dash::Team::All()),
+      dash::Team::All());
+  // Row major:
+  EXPECT_EQ(pat_cyclic_col.overflow_blocksize(0), overflow_bs_x);
+  EXPECT_EQ(pat_cyclic_col.overflow_blocksize(1), overflow_bs_y);
+  EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(0), underfill_bs_x);
+  EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(1), underfill_bs_y);
+  local_extent_x = 1;
+  local_extent_y = 1;
+  EXPECT_EQ(pat_cyclic_row.local_size(),
+            local_extent_x * local_extent_y);
+  // Col major:
+  EXPECT_EQ(pat_cyclic_col.overflow_blocksize(0), overflow_bs_x);
+  EXPECT_EQ(pat_cyclic_col.overflow_blocksize(1), overflow_bs_y);
+  EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(0), underfill_bs_x);
+  EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(1), underfill_bs_y);
+  local_extent_x = 1;
+  local_extent_y = 1;
+  EXPECT_EQ(pat_cyclic_col.local_size(),
+            local_extent_x * local_extent_y);
 }
 
