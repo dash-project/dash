@@ -7,16 +7,37 @@
 
 namespace dash {
 
+/**
+ * Specifies how a Pattern distributes elements to units
+ * in a specific dimension.
+ *
+ * Predefined configurations are 
+ *   * BLOCKED
+ *   * BLOCKCYCLIC
+ *   * CYCLIC
+ *   * TILE
+ *   * NONE
+ *
+ * \see Pattern
+ */
 class Distribution {
 public:
   dash::internal::DistributionType type;
   size_t blocksz;
 
+  /**
+   * Constructor, initializes Distribution with distribution
+   * type NONE.
+   */
   Distribution()
   : type(dash::internal::DIST_NONE),
     blocksz(-1) {
   }
 
+  /**
+   * Constructor, initializes Distribution with a
+   * distribution type and a block size.
+   */
   Distribution(
     dash::internal::DistributionType distType,
     size_t blockSize)
@@ -185,12 +206,35 @@ public:
   }
 };
 
+/**
+ * Distribution specifying that elements in a Pattern's
+ * dimension shall be distributed to units in even-sized
+ * blocks.
+ */
 static Distribution BLOCKED(dash::internal::DIST_BLOCKED, -1);
+/**
+ * Distribution specifying that elements in a Pattern's
+ * dimension shall be distributed by cycling among units.
+ * Semantically equivalent to BLOCKCYCLIC(1) but with slight
+ * performance improvement.
+ */
 static Distribution CYCLIC(dash::internal::DIST_CYCLIC, 1);
+/**
+ * Distribution specifying that elements in a Pattern's
+ * dimension shall not be distributed.
+ */
 static Distribution NONE(dash::internal::DIST_NONE, -1);
-
+/**
+ * Distribution specifying that elements in a Pattern's
+ * dimension shall be distributed to units in a tiled blocks of
+ * the given size.
+ */
 Distribution TILE(int blockSize);
-
+/**
+ * Distribution specifying that elements in a Pattern's
+ * dimension shall be distributed to units in blocks of the
+ * given size.
+ */
 Distribution BLOCKCYCLIC(int blockSize);
 
 } // namespace dash
