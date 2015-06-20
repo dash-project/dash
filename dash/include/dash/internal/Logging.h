@@ -2,6 +2,7 @@
 #define DASH__INTERNAL__LOGGING_H_
 
 #include <dash/internal/Macro.h>
+#include <dash/Init.h>
 
 #if defined(DASH_ENABLE_LOGGING) && \
     defined(DASH_ENABLE_TRACE_LOGGING)
@@ -13,6 +14,10 @@
 #define DASH_LOG_TRACE(...) \
   dash::internal::logging::LogWrapper(\
     __FILE__, __LINE__, __VA_ARGS__)
+
+#define DASH_LOG_TRACE_VAR(context, var) \
+  dash::internal::logging::LogVarWrapper(\
+    __FILE__, __LINE__, context, #var, (var))
 
 namespace dash {
 namespace internal {
@@ -34,8 +39,10 @@ static void Log_Recursive(
   int line,
   const char* context_tag,
   std::ostringstream & msg) {
-  std::cout << "[  TRACE   ][" << context_tag << "] "
-            << file << ":" << line << " "
+  std::cout << "[ " << dash::myid()
+            << " TRACE  ] " 
+            << file << ":" << line << " ["
+            << context_tag << "] "
             << msg.str() << std::endl;
 }
 
@@ -70,6 +77,27 @@ static void LogWrapper(
     msg, args...);
 }
 
+// Log_Recursive wrapper that creates the ostringstream
+template<typename T, typename... Args>
+static void LogVarWrapper(
+  const char* filepath,
+  int line,
+  const char* context_tag,
+  const char* var_name,
+  const T & var_value,
+  const Args & ... args) {
+  std::ostringstream msg;
+  msg << "|= " << var_name << " = " << var_value;
+  // Extract file name from path
+  std::string filename(filepath);
+  std::size_t offset = filename.find_last_of("/\\");
+  Log_Recursive(
+    filename.substr(offset+1).c_str(),
+    line,
+    context_tag,
+    msg);
+}
+
 } // namespace logging
 } // namespace internal
 } // namespace dash
@@ -77,6 +105,7 @@ static void LogWrapper(
 #else 
 
 #define DASH_LOG_TRACE(...) do {  } while(0)
+#define DASH_LOG_TRACE_VAR(...) do {  } while(0)
 
 #endif // DASH_ENABLE_LOGGING
 

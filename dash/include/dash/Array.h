@@ -154,52 +154,7 @@ public:
     allocate(nelem, ds);
   }  
 
-  bool allocate(
-    size_t nelem,
-    dash::DistributionSpec<1> ds) {
-    assert(nelem > 0);
-    
-    m_pattern = PatternType(nelem, ds, m_team);
-
-    m_size  = m_pattern.capacity();
-    m_lsize = m_pattern.max_elem_per_unit();
-    m_myid  = m_team.myid();
-
-    m_globmem = new GlobMem(m_team, m_lsize);
-    
-    m_begin = iterator(m_globmem, m_pattern);
-    
-    // determine local begin and end addresses
-    void *addr; dart_gptr_t gptr; 
-    gptr = m_globmem->begin().dartptr();
-
-    dart_gptr_setunit(&gptr, m_myid);
-    dart_gptr_getaddr(gptr, &addr);
-    m_lbegin=static_cast<ElementType*>(addr);
-
-    // determine the real number of local elements
-    for (; m_lsize > 0; --m_lsize) {
-      long long glob_idx = m_pattern.local_coords_to_global_index(
-                             m_myid, 
-                             std::array<long long, 1> {
-                               (long long)m_lsize-1 } );
-      if (glob_idx >= 0) {
-        break;
-      }
-    }
-    dart_gptr_incaddr(&gptr, m_lsize*sizeof(ElementType));
-    dart_gptr_getaddr(gptr, &addr);
-    m_lend = static_cast<ElementType*>(addr);    
-    return true;
-  }
-
-  bool deallocate() {
-    if( m_size>0 ) {
-      delete m_globmem;
-      m_size=0;
-    }
-  }
-
+public:
   /// Local proxy object enables arr.local to be used in range-based for
   /// loops
   LocalProxyArray<value_type, PatternType> local;
@@ -247,7 +202,7 @@ public:
   }
 
   reference at(size_type pos) {
-    if (!(pos<size()))  {
+    if (pos >= size())  {
       throw std::out_of_range("Out of range");
     }
     return begin()[pos];
@@ -292,49 +247,71 @@ public:
   // std::min_element()
   GlobPtr<ElementType> min_element() {
     typedef dash::GlobPtr<ElementType> globptr_t;
-
     dash::Array<globptr_t> minarr(m_team.size());
-
     // find the local min. element in parallel
     ElementType *lmin =std::min_element(lbegin(), lend());     
-
-    if( lmin==lend() ) {
+    if (lmin == lend()) {
       minarr[m_team.myid()] = nullptr;
     } else {
       minarr[m_team.myid()] = local.globptr(lmin);
-
-      //std::cout<<"Local min at "<<m_team.myid()<<": "<<
-      //*((globptr_t)minarr[m_team.myid()])<<std::endl;
     }
-
     dash::barrier();
-    dash::Shared<globptr_t> min;
- 
+    dash::Shared<globptr_t> min; 
     // find the global min. element
-    if(m_team.myid()==0) {
-      globptr_t minloc=minarr[0];
-      ElementType minval=*minloc;
-      for( auto i=1; i<minarr.size(); i++ ) {
-        if( (globptr_t)minarr[i] != nullptr ) {
+    if (m_team.myid() == 0) {
+      globptr_t minloc   = minarr[0];
+      ElementType minval = *minloc;
+      for (auto i = 1; i < minarr.size(); i++) {
+        if ((globptr_t)minarr[i] != nullptr) {
           ElementType val = *(globptr_t)minarr[i];
-
-          if( val<minval ) {
-            minloc=minarr[i];
-            //std::cout<<"Setting min val to "<<val<<std::endl;
-            minval=val;
+          if (val < minval) {
+            minloc = minarr[i];
+            DASH_LOG_TRACE("Array.min_elem", 
+                           "Setting min val to ", val);
+            minval = val;
           }
         }
       }
       min.set(minloc);
     }
-
     m_team.barrier();
-
     return min.get();
+  }
+
+  bool allocate(
+    size_t nelem,
+    dash::DistributionSpec<1> ds) {
+    assert(nelem > 0);
+    
+    m_pattern = PatternType(nelem, ds, m_team);
+    m_size    = m_pattern.capacity();
+    m_lsize   = m_pattern.local_size();
+    m_myid    = m_team.myid();
+    m_globmem = new GlobMem(m_team, m_lsize);
+    m_begin   = iterator(m_globmem, m_pattern);
+    
+    // determine local begin and end addresses
+    void *addr;
+    dart_gptr_t gptr = m_globmem->begin().dartptr();
+
+    dart_gptr_setunit(&gptr, m_myid);
+    dart_gptr_getaddr(gptr, &addr);
+    m_lbegin = static_cast<ElementType*>(addr);
+
+    dart_gptr_incaddr(&gptr, m_lsize * sizeof(ElementType));
+    dart_gptr_getaddr(gptr, &addr);
+    m_lend   = static_cast<ElementType*>(addr);    
+    return true;
+  }
+
+  bool deallocate() {
+    if (m_size > 0) {
+      delete m_globmem;
+      m_size=0;
+    }
   }
 };
 
-
-}; // namespace dash
+} // namespace dash
 
 #endif /* ARRAY_H_INCLUDED */

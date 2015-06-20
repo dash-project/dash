@@ -143,7 +143,7 @@ public:
   }
 
   /**
-   * Resolve the associated unit id offset of the given block offset.
+   * Resolve the associated unit id of the given block offset.
    */
   template< typename IndexType, typename SizeType>
   SizeType block_coord_to_unit_offset(

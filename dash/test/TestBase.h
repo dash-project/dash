@@ -29,7 +29,7 @@ extern void ColoredPrintf(
   sprintf(buffer, __VA_ARGS__); \
   testing::internal::ColoredPrintf( \
     testing::internal::COLOR_GREEN, \
-    "[   LOG    ] "); \
+    "[ %d LOG    ] ", dash::myid()); \
   testing::internal::ColoredPrintf(\
     testing::internal::COLOR_YELLOW, \
     buffer); \

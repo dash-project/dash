@@ -560,7 +560,6 @@ public:
         << "Expected dimension between 0 and " << NumDimensions-1 << ", "
         << "got" << dim);
     }
-    // TODO
     return _local_extent[dim];
   }
 
@@ -585,7 +584,7 @@ public:
   std::array<IndexType, NumDimensions> local_to_global_coords(
     size_t unit,
     const std::array<IndexType, NumDimensions> & local_index) {
-    DASH_LOG_TRACE("Pattern.local_to_global_index()",
+    DASH_LOG_TRACE("Pattern.local_to_global()",
                    "unit", unit,
                    "local_index", local_index);
     SizeType blocksize = max_blocksize();
@@ -620,24 +619,22 @@ public:
                        );
       block_coord[d] = block_index[d] * blocksize_d;
       glob_index[d]  = block_coord[d] + elem_block_offset_d;
-      DASH_LOG_TRACE("Pattern.local_to_global_index for",
-                     "dim", d, "\n",
-                     "unit_ts_coord", unit_ts_coord[d], "\n",
-                     "elem", local_index_d, "\n",
-                     "num_units_d", num_units_d, "\n",
-                     "num_blocks_d", num_blocks_d, "\n",
-                     "block_index_d", block_index[d], "\n",
-                     "blocksize", blocksize, "\n",
-                     "blocksize_d", blocksize_d, "\n",
-                     "blocksize_d_t", blocksize_d_t, "\n",
-                     "elem_block_offset_d", elem_block_offset_d, "\n",
-                     "-> block coord[d]", block_coord[d], "\n",
-                     "-> glob_index[d]", glob_index[d]);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", d);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", unit_ts_coord[d]);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", local_index_d);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", num_units_d);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", num_blocks_d);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", block_index[d]);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", blocksize);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", blocksize_d);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", blocksize_d_t);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", elem_block_offset_d);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", block_coord[d]);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", glob_index[d]);
     }
-    DASH_LOG_TRACE("Pattern.local_to_global_index", "\n",
-                   "block_index", block_index, "\n",
-                   "block_coord", block_coord, "\n",
-                   "--> glob index", glob_index);
+    DASH_LOG_TRACE_VAR("Pattern.local_to_global", block_index);
+    DASH_LOG_TRACE_VAR("Pattern.local_to_global", block_coord);
+    DASH_LOG_TRACE_VAR("Pattern.local_to_global", glob_index);
     return glob_index;
   }
 
@@ -652,6 +649,7 @@ public:
     const std::array<IndexType, NumDimensions> & local_index) {
     std::array<IndexType, NumDimensions> global_coords =
       local_to_global_coords(unit, local_index);
+    DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx", global_coords);
     return _memory_layout.at(global_coords);
   }
 
@@ -683,6 +681,9 @@ public:
   IndexType index_to_elem(
     const std::array<IndexType, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem()", coords);
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem",
+                       dash::ROW_MAJOR == Arrangement);
     // Convert coordinates to linear global index respective to memory
     // order:
     IndexType glob_index = _memory_layout.at(coords);
@@ -694,7 +695,7 @@ public:
     std::array<IndexType, NumDimensions> relative_coords(coords);
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       block_begin_coords[d] *= blocksize(d);
-      relative_coords[d] -= block_begin_coords[d];
+      relative_coords[d]    -= block_begin_coords[d];
     }
     // Block offset, i.e. number of blocks in front of referenced block:
     SizeType block_offset       = _blockspec.at(block_coords);
@@ -708,13 +709,12 @@ public:
     SizeType elem_block_offset  = _blocksize_spec.at(relative_coords);
     // Local offset of the element with all of the unit's local elements:
     SizeType local_elem_offset  = block_base_offset + elem_block_offset;
-    DASH_LOG_TRACE("Pattern.index_to_elem",
-                   "block offset", block_offset,
-                   "local block offset", local_block_offset,
-                   "block base offset", block_base_offset,
-                   "relative coords", relative_coords,
-                   "elem block offset", elem_block_offset,
-                   "local elem offset", local_elem_offset);
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", block_offset);
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", local_block_offset);
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", block_base_offset);
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", relative_coords);
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", elem_block_offset);
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", local_elem_offset);
 
     return local_elem_offset;
   }
@@ -794,11 +794,11 @@ public:
                                   num_units
                                 );
       max_elements *= dim_max_blocksize * dim_num_blocks;
-      DASH_LOG_TRACE("Pattern.max_elem_per_unit",
-                     "Dim", d, "nunits", num_units,
-                     "dim_max_blocksize", dim_max_blocksize,
-                     "dim_num_blocks", dim_num_blocks,
-                     "max_elements", max_elements);
+      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit", d);
+      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit", num_units);
+      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit", dim_max_blocksize);
+      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit", dim_num_blocks);
+      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit", max_elements);
     }
     return max_elements;
   }
@@ -889,32 +889,6 @@ public:
     return _memory_layout.coords(index);
   }
 
-private:
-  /**
-   * Initialize block- and block size specs from memory layout, team spec
-   * and distribution spec. Called from constructors.
-   */
-  void initialize_block_specs() {
-    // Number of blocks in all dimensions:
-    std::array<SizeType, NumDimensions> n_blocks;
-    // Extents of a single block:
-    std::array<SizeType, NumDimensions> s_blocks;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
-      const Distribution & dist = _distspec[d];
-      SizeType blocksize = dist.max_blocksize_in_range(
-        _memory_layout.extent(d), // size of range (extent)
-        _teamspec.extent(d));     // number of blocks (units)
-      SizeType num_blocks = dash::math::div_ceil(
-        _memory_layout.extent(d),
-        blocksize);
-      n_blocks[d] = num_blocks;
-      s_blocks[d] = blocksize;
-    }
-    _blockspec      = BlockSpec_t(n_blocks);
-    _blocksize_spec = BlockSizeSpec_t(s_blocks);
-    _max_blocksize  = _blocksize_spec.size();
-  }
-
   /**
    * Number of elements in the overflow block of given dimension, with
    * 0 <= \c overflow_blocksize(d) < blocksize(d).
@@ -934,6 +908,79 @@ private:
     return regular_blocksize - 
              (_memory_layout.extent(dimension) % regular_blocksize) %
                regular_blocksize;
+  }
+
+private:
+  /**
+   * Initialize block- and block size specs from memory layout, team spec
+   * and distribution spec.
+   * Called from constructors.
+   */
+  void initialize_block_specs() {
+    // Number of blocks in all dimensions:
+    std::array<SizeType, NumDimensions> n_blocks;
+    // Extents of a single block:
+    std::array<SizeType, NumDimensions> s_blocks;
+    // Local unit id:
+    auto my_unit_id       = dash::myid();
+    // Coordinates of local unit id in team spec:
+    auto my_unit_ts_coord = _teamspec.coords(my_unit_id);
+
+    DASH_LOG_TRACE_VAR("Pattern.initialize", my_unit_id);
+    DASH_LOG_TRACE_VAR("Pattern.initialize", my_unit_ts_coord);
+    //// Pre-initialize specs:
+    for (unsigned int d = 0; d < NumDimensions; ++d) {
+      const Distribution & dist = _distspec[d];
+      SizeType max_blocksize_d = dist.max_blocksize_in_range(
+        _memory_layout.extent(d), // size of range (extent)
+        _teamspec.extent(d));     // number of blocks (units)
+      SizeType max_blocks_d = dash::math::div_ceil(
+        _memory_layout.extent(d),
+        max_blocksize_d);
+      n_blocks[d] = max_blocks_d;
+      s_blocks[d] = max_blocksize_d;
+    }
+    _blockspec      = BlockSpec_t(n_blocks);
+    _blocksize_spec = BlockSizeSpec_t(s_blocks);
+    _max_blocksize  = _blocksize_spec.size();
+    //// Pre-initialize local extents:
+    for (unsigned int d = 0; d < NumDimensions; ++d) {
+      auto num_elem_d         = _memory_layout.extent(d);
+      // Number of units in dimension:
+      auto num_units_d        = _teamspec.extent(d);
+      // Number of blocks in dimension:
+      auto num_blocks_d       = _blockspec.extent(d);
+      // Maximum extent of single block in dimension:
+      auto blocksize_d        = _blocksize_spec.extent(d);
+      // Minimum number of blocks local to every unit in dimension:
+      auto min_local_blocks   = num_blocks_d / num_units_d;
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d", d);
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_elem_d);
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_units_d);
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_blocks_d);
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d", blocksize_d);
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d", min_local_blocks);
+      if (num_blocks_d == 0) {
+        // One block with full extent in dimension:
+        _local_extent[d] = num_elem_d;
+      } else {
+        // Initialize with minimum local extent:
+        _local_extent[d]            = min_local_blocks * blocksize_d;
+        // Add overflow block extent if the last block
+        // in the dimension is assigned to the local unit:
+        // TODO
+        SizeType last_block_unit_id = (num_blocks_d % num_units_d);
+        DASH_LOG_TRACE_VAR("Pattern.initialize", last_block_unit_id);
+        if (last_block_unit_id == my_unit_id) {
+          SizeType overflow_d = overflow_blocksize(d);
+          DASH_LOG_TRACE_VAR("Pattern.initialize", overflow_d);
+          // Last block in dimension is assigned to local unit
+          _local_extent[d] += overflow_d;
+        }
+      }
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d", _local_extent[d]);
+    }
+    DASH_LOG_TRACE_VAR("Pattern.initialize.d", _local_extent);
   }
 
   /**

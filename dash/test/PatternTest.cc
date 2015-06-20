@@ -286,7 +286,6 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic) {
   }
 }
 
-
 TEST_F(PatternTest, Distribute2DimBlockedY) {
   DASH_TEST_LOCAL_ONLY();
   // 2-dimensional, blocked partitioning in second dimension:
@@ -307,9 +306,13 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   int extent_y  = 4;
   size_t size   = extent_x * extent_y;
   // Ceil division
-  int block_size_x = extent_x;
-  int block_size_y = dash::math::div_ceil(extent_y, team_size);
-  int max_per_unit = block_size_x * block_size_y;
+  int block_size_x   = extent_x;
+  int block_size_y   = dash::math::div_ceil(extent_y, team_size);
+  int max_per_unit   = block_size_x * block_size_y;
+  int overflow_bs_x  = extent_x % block_size_x;
+  int overflow_bs_y  = extent_y % block_size_y;
+  int underfill_bs_x = block_size_x - overflow_bs_x;
+  int underfill_bs_y = block_size_y - overflow_bs_y;
   LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpu: %d",
       extent_x, extent_y,
       block_size_x, block_size_y,
@@ -332,6 +335,10 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   EXPECT_EQ(pat_blocked_col.max_elem_per_unit(), max_per_unit);
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
+  EXPECT_EQ(pat_blocked_col.overflow_blocksize(0), overflow_bs_x);
+  EXPECT_EQ(pat_blocked_col.overflow_blocksize(1), overflow_bs_y);
+  EXPECT_EQ(pat_blocked_col.underflow_blocksize(0), underfill_bs_x);
+  EXPECT_EQ(pat_blocked_col.underflow_blocksize(1), underfill_bs_y);
   LOG_MESSAGE("block size: x: %d, y: %d",
     block_size_x, block_size_y);
   for (int x = 0; x < extent_x; ++x) {
@@ -344,7 +351,7 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
         y % block_size_y + x * block_size_y;
       int expected_unit_id          = y / block_size_y;
       int local_x                   = x;
-      int local_y                   = y % team_size;
+      int local_y                   = y % block_size_y;
       // Row order:
       LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
         x, y,
@@ -481,10 +488,10 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
   // [                        ...                          ]
   int team_size      = dash::Team::All().size();
   // Choose 'inconvenient' extents:
-//int extent_x       = team_size + 7;
-//int extent_y       = 23;
   int extent_x       = 7;
   int extent_y       = 4;
+//  int extent_x       = team_size + 7;
+//  int extent_y       = 23;
   size_t size        = extent_x * extent_y;
   int block_size_x   = 1;
   int max_per_unit_x = dash::math::div_ceil(extent_x, team_size);
@@ -522,9 +529,8 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
       int expected_index_col_order  = (x * extent_y) + y;
       int expected_unit_id = x % team_size;
       int expected_offset_row_order =
-        x / team_size + (y * (add_offset_per_y + num_overflow_blocks - x));
-      int expected_offset_col_order =
-        expected_offset_row_order;
+        x / team_size + (y * (add_offset_per_y + num_overflow_blocks));
+      int expected_offset_col_order = y * (x / team_size) + y;
       int local_x                   = x / team_size;
       int local_y                   = y;
       auto glob_coords_row = 

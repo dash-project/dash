@@ -273,10 +273,8 @@ public:
       }
       SizeType offset_dim = 0;
       if (AtArrangement == ROW_MAJOR) {
-        DASH_LOG_TRACE("Cartesian.at", "ROW_MAJOR");
         offset_dim = m_offset_row_major[i];
       } else if (AtArrangement == COL_MAJOR) {
-        DASH_LOG_TRACE("Cartesian.at", "COL_MAJOR");
         offset_dim = m_offset_col_major[i];
       }
       offs += offset_dim * pos[i];
