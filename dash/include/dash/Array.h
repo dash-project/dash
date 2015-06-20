@@ -179,7 +179,11 @@ public:
 
     // determine the real number of local elements
     for (; m_lsize > 0; --m_lsize) {
-      if (m_pattern.local_to_global_index(m_myid, m_lsize-1) >= 0) {
+      long long glob_idx = m_pattern.local_coords_to_global_index(
+                             m_myid, 
+                             std::array<long long, 1> {
+                               (long long)m_lsize-1 } );
+      if (glob_idx >= 0) {
         break;
       }
     }

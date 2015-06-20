@@ -99,13 +99,16 @@ void test_rev_mapping(size_t size)
     for( i=0; i<pat->num_units(); i++ ) {
       fprintf(stderr, "Unit %3d: ", i);
       for( j=0; j<size; j++ ) {
-        long long res = pat->local_to_global_index(i,j);
+        long long res = pat->local_coords_to_global_index(
+                          i,
+                          std::array<long long, 1> { (long long)j } );
         if( res<0 ) break;
         fprintf(stderr, "%d ", res);
       }
       fprintf(stderr, "\n");
     }
-    fprintf(stderr, "max_elem_per_unit   : %d\n", pat->max_elem_per_unit());
+    fprintf(stderr, "max_elem_per_unit   : %d\n",
+                    pat->max_elem_per_unit());
     fprintf(stderr, "\n");
   }
 }

@@ -288,6 +288,7 @@ public:
    * Convert given linear offset (index) to cartesian coordinates.
    * Inverse of \c at(...).
    */
+  template<MemArrange CoordArrangement = Arrangement>
   std::array<IndexType, NumDimensions> coords(IndexType index) const {
     if (index >= m_size) {
       // Index out of bounds:
@@ -297,12 +298,12 @@ public:
         " for CartesianIndexSpace::coords() is out of bounds");
     }
     ::std::array<IndexType, NumDimensions> pos;
-    if (Arrangement == COL_MAJOR) {
+    if (CoordArrangement == COL_MAJOR) {
       for(int i = 0; i < NumDimensions; ++i) {
         pos[i] = index / m_offset_col_major[i];
         index  = index % m_offset_col_major[i];
       }
-    } else if (Arrangement == ROW_MAJOR) {
+    } else if (CoordArrangement == ROW_MAJOR) {
       for(int i = NumDimensions-1; i >= 0; --i) {
         pos[i] = index / m_offset_row_major[i];
         index  = index % m_offset_row_major[i];

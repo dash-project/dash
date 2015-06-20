@@ -49,7 +49,8 @@ public:
         // block coordinate is 0:
         return 0;
       case dash::internal::DIST_BLOCKED:
-        // Offset of the block in this dimension:
+        // Same as blockcyclic, but local block offset is
+        // always 0:
         return unit_teamspec_coord;
       case dash::internal::DIST_TILE:
         // Same as blockcyclic

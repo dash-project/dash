@@ -582,15 +582,14 @@ public:
    *
    * \see index_to_elem Inverse of local_to_global_index
    */
-  IndexType local_to_global_index(
+  std::array<IndexType, NumDimensions> local_to_global_coords(
     size_t unit,
-    IndexType elem) {
+    const std::array<IndexType, NumDimensions> & local_index) {
+    DASH_LOG_TRACE("Pattern.local_to_global_index()",
+                   "unit", unit,
+                   "local_index", local_index);
     SizeType blocksize = max_blocksize();
     SizeType num_units = _teamspec.size();
-    // Local element index to local block offset:
-    SizeType local_block_offset = elem / blocksize;
-    // Offset of the element within its block:
-    SizeType elem_block_offset = elem % blocksize;
     // Coordinates of the unit within the team spec:
     std::array<IndexType, NumDimensions> unit_ts_coord =
       _teamspec.coords(unit);
@@ -600,71 +599,60 @@ public:
     // Index of the element's block as element offset:
     std::array<IndexType, NumDimensions> block_coord = {  };
     // Index of the element:
-    std::array<IndexType, NumDimensions> elem_index;;
+    std::array<IndexType, NumDimensions> glob_index;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
-      unsigned int d_t  = NumDimensions - 1 - d;
-      auto num_units_d  = _teamspec.extent(d); 
-      auto num_blocks_d = _blockspec.extent(d);
-      auto blocksize_d  = _blocksize_spec.extent(d_t);
-      // Offset of the element within its block in d:
-      auto elem_block_offset_d = elem % blocksize_d;
+      unsigned int d_t          = NumDimensions - 1 - d;
+      auto num_units_d          = _teamspec.extent(d); 
+      auto num_blocks_d         = _blockspec.extent(d);
+      auto blocksize_d          = _blocksize_spec.extent(d);
+      auto blocksize_d_t        = _blocksize_spec.extent(d_t);
+      auto local_index_d        = local_index[d];
+      // TOOD: Use % (blocksize_d - underfill_d)
+      auto elem_block_offset_d  = local_index_d % blocksize_d;
       // Global coords of the element's block within all blocks:
       block_index[d] = dist.local_index_to_block_coord(
                          unit_ts_coord[d], // unit ts offset in d
-                         elem,
+                         local_index_d,
                          num_units_d,
                          num_blocks_d,
                          blocksize
                        );
-      SizeType num_foreign_blocks_d = block_index[d] / num_units_d;
       block_coord[d] = block_index[d] * blocksize_d;
-      if (NumDimensions > 1) {
-        if (Arrangement == dash::ROW_MAJOR) {
-          if (d > 0) {
-            block_coord[d_t] += num_foreign_blocks_d * blocksize_d;
-          } else {
-            block_coord[d] += num_foreign_blocks_d * blocksize_d;
-          }
-        } else if (Arrangement == dash::COL_MAJOR) {
-          if (d < NumDimensions - 1) {
-            block_coord[d] += num_foreign_blocks_d * blocksize_d;
-          } else {
-            block_coord[d_t] += num_foreign_blocks_d * blocksize_d;
-          }
-        }
-      }
-      elem_index[d] = block_coord[d] + elem_block_offset_d;
-      DASH_LOG_TRACE("Pattern.local_to_global_index", "\n",
+      glob_index[d]  = block_coord[d] + elem_block_offset_d;
+      DASH_LOG_TRACE("Pattern.local_to_global_index for",
                      "dim", d, "\n",
                      "unit_ts_coord", unit_ts_coord[d], "\n",
-                     "elem", elem, "\n",
+                     "elem", local_index_d, "\n",
                      "num_units_d", num_units_d, "\n",
                      "num_blocks_d", num_blocks_d, "\n",
-                     "num_foreign_blocks_d", num_foreign_blocks_d, "\n",
                      "block_index_d", block_index[d], "\n",
                      "blocksize", blocksize, "\n",
                      "blocksize_d", blocksize_d, "\n",
+                     "blocksize_d_t", blocksize_d_t, "\n",
                      "elem_block_offset_d", elem_block_offset_d, "\n",
-                     "-> block coord[d]", block_coord[d]);
+                     "-> block coord[d]", block_coord[d], "\n",
+                     "-> glob_index[d]", glob_index[d]);
     }
     DASH_LOG_TRACE("Pattern.local_to_global_index", "\n",
                    "block_index", block_index, "\n",
                    "block_coord", block_coord, "\n",
-                   "--> elem index", elem_index);
-    // Number of blocks assigned to any unit that are in front of the
-    // element's block.
-    SizeType index = _memory_layout.at(block_coord) + elem_block_offset;
-    DASH_LOG_TRACE("Pattern.local_to_global_index", "\n",
-                   "block_coord", block_coord, "\n",
-                   "index", index);
-    if (index >= _memory_layout.size()) {
-      DASH_THROW(
-        dash::exception::OutOfRange,
-        "Index from Pattern::local_to_global_index " << index << " " <<
-        "exceed maximum index " << _memory_layout.size());
-    }
-    return index;
+                   "--> glob index", glob_index);
+    return glob_index;
+  }
+
+  /**
+   * Resolve an element's linear global index from a given unit's local
+   * coordinates.
+   *
+   * \see index_to_elem Inverse of local_to_global_index
+   */
+  IndexType local_coords_to_global_index(
+    size_t unit,
+    const std::array<IndexType, NumDimensions> & local_index) {
+    std::array<IndexType, NumDimensions> global_coords =
+      local_to_global_coords(unit, local_index);
+    return _memory_layout.at(global_coords);
   }
 
   /**

@@ -2,6 +2,7 @@
 #include <libdash.h>
 #include "PatternTest.h"
 #include <dash/internal/Math.h>
+#include <gtest/gtest.h>
 
 TEST_F(PatternTest, SimpleConstructor) {
   DASH_TEST_LOCAL_ONLY();
@@ -10,21 +11,14 @@ TEST_F(PatternTest, SimpleConstructor) {
   int extent_z = 41;
   int size = extent_x * extent_y * extent_z;
   // Should default to distribution BLOCKED, NONE, NONE:
-  LOG_MESSAGE("pat_default");
   dash::Pattern<3> pat_default(extent_x, extent_y, extent_z);
-  LOG_MESSAGE("1");
   EXPECT_EQ(dash::DistributionSpec<3>(), pat_default.distspec());
-  LOG_MESSAGE("2");
   EXPECT_EQ(dash::Team::All(), pat_default.team());
-  LOG_MESSAGE("3");
   EXPECT_EQ(dash::Team::All().size(), pat_default.num_units());
-  LOG_MESSAGE("4");
   EXPECT_EQ(size, pat_default.capacity());
 
-  LOG_MESSAGE("ds_blocked_z");
   dash::DistributionSpec<3> ds_blocked_z(
       dash::NONE, dash::NONE, dash::BLOCKED);
-  LOG_MESSAGE("pat_ds");
   dash::Pattern<3> pat_ds(
       extent_x, extent_y, extent_z, 
       ds_blocked_z);
@@ -34,7 +28,6 @@ TEST_F(PatternTest, SimpleConstructor) {
   // Splits in consecutive test cases within a single test
   // run are not supported for now:
   // dash::Team & team_split_2 = dash::Team::All().split(2);
-  LOG_MESSAGE("pat_ds_t");
   dash::Pattern<3> pat_ds_t(
       extent_x, extent_y, extent_z, 
       ds_blocked_z,
@@ -120,6 +113,12 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
     int expected_offset  = x % block_size;
     int expected_index   = x;
     expected_coords[0]   = x;
+    auto glob_coords_row = 
+      pat_blocked_row.local_to_global_coords(
+        expected_unit_id, std::array<long long, 1> { expected_offset });
+    auto glob_coords_col = 
+      pat_blocked_col.local_to_global_coords(
+        expected_unit_id, std::array<long long, 1> { expected_offset });
     LOG_MESSAGE("x: %d, eu: %d, eo: %d",
       x, expected_unit_id, expected_offset);
     // Row order:
@@ -133,9 +132,8 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
       expected_offset,
       pat_blocked_row.index_to_elem(std::array<long long, 1> { x }));
     EXPECT_EQ(
-      expected_index,
-      pat_blocked_row.local_to_global_index(
-        expected_unit_id, expected_offset));
+      (std::array<long long, 1> { expected_index }),
+      glob_coords_row);
     // Column order:
     EXPECT_EQ(
       expected_coords,
@@ -147,9 +145,8 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
       expected_offset,
       pat_blocked_col.index_to_elem(std::array<long long, 1> { x }));
     EXPECT_EQ(
-      expected_index,
-      pat_blocked_col.local_to_global_index(
-        expected_unit_id, expected_offset));
+      (std::array<long long, 1> { expected_index }),
+      glob_coords_col);
   }
 }
 
@@ -198,9 +195,9 @@ TEST_F(PatternTest, Distribute1DimCyclic) {
       expected_offset,
       pat_cyclic_row.index_to_elem(std::array<long long, 1> { x }));
     EXPECT_EQ(
-      expected_index,
-      pat_cyclic_row.local_to_global_index(
-        expected_unit_id, expected_offset));
+      (std::array<long long, 1> { expected_index }),
+      pat_cyclic_row.local_to_global_coords(
+        expected_unit_id, (std::array<long long, 1> { expected_offset })));
     // Column order:
     EXPECT_EQ(
       expected_coords,
@@ -212,9 +209,9 @@ TEST_F(PatternTest, Distribute1DimCyclic) {
       expected_offset,
       pat_cyclic_col.index_to_elem(std::array<long long, 1> { x }));
     EXPECT_EQ(
-      expected_index,
-      pat_cyclic_col.local_to_global_index(
-        expected_unit_id, expected_offset));
+      (std::array<long long, 1> { expected_index }),
+      pat_cyclic_col.local_to_global_coords(
+        expected_unit_id, (std::array<long long, 1> { expected_offset })));
   }
 }
 
@@ -269,9 +266,9 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic) {
       expected_offset,
       pat_blockcyclic_row.index_to_elem(std::array<long long, 1> { x }));
     EXPECT_EQ(
-      expected_index,
-      pat_blockcyclic_row.local_to_global_index(
-        expected_unit_id, expected_offset));
+      (std::array<long long, 1> { expected_index }),
+      pat_blockcyclic_row.local_to_global_coords(
+        expected_unit_id, (std::array<long long, 1> { expected_offset })));
     // Column order:
     EXPECT_EQ(
       expected_coords,
@@ -283,9 +280,9 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic) {
       expected_offset,
       pat_blockcyclic_col.index_to_elem(std::array<long long, 1> { x }));
     EXPECT_EQ(
-      expected_index,
-      pat_blockcyclic_col.local_to_global_index(
-        expected_unit_id, expected_offset));
+      (std::array<long long, 1> { expected_index }),
+      pat_blockcyclic_col.local_to_global_coords(
+        expected_unit_id, (std::array<long long, 1> { expected_offset })));
   }
 }
 
@@ -311,9 +308,7 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   size_t size   = extent_x * extent_y;
   // Ceil division
   int block_size_x = extent_x;
-  int block_size_y = (extent_y % team_size == 0)
-                       ? extent_y / team_size
-                       : extent_y / team_size + 1;
+  int block_size_y = dash::math::div_ceil(extent_y, team_size);
   int max_per_unit = block_size_x * block_size_y;
   LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpu: %d",
       extent_x, extent_y,
@@ -347,7 +342,9 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
         expected_index_row_order % max_per_unit;
       int expected_offset_col_order =
         y % block_size_y + x * block_size_y;
-      int expected_unit_id = y / block_size_y;
+      int expected_unit_id          = y / block_size_y;
+      int local_x                   = x;
+      int local_y                   = y % team_size;
       // Row order:
       LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
         x, y,
@@ -362,9 +359,10 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
         expected_offset_row_order,
         pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
-        expected_index_row_order,
-        pat_blocked_row.local_to_global_index(
-          expected_unit_id, expected_offset_row_order));
+        (std::array<long long, 2> { x, y }),
+        pat_blocked_row.local_to_global_coords(
+          expected_unit_id, 
+          (std::array<long long, 2> { local_x, local_y  })));
       // Col order:
       LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
         x, y,
@@ -379,9 +377,10 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
         expected_offset_col_order,
         pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
-        expected_index_col_order,
-        pat_blocked_col.local_to_global_index(
-          expected_unit_id, expected_offset_col_order));
+        (std::array<long long, 2> { x, y }),
+        pat_blocked_col.local_to_global_coords(
+          expected_unit_id,
+          (std::array<long long, 2> { local_x, local_y })));
     }
   }
 }
@@ -428,7 +427,9 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
       int expected_offset_row_order = (x % block_size_x) + y * block_size_x;
       int expected_offset_col_order = expected_index_col_order % 
                                         max_per_unit;
-      int expected_unit_id = x / block_size_x;
+      int expected_unit_id          = x / block_size_x;
+      int local_x                   = x % block_size_x;
+      int local_y                   = y;
       // Row order:
       LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
         x, y,
@@ -443,9 +444,10 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
         expected_offset_row_order,
         pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
-        expected_index_row_order,
-        pat_blocked_row.local_to_global_index(
-          expected_unit_id, expected_offset_row_order));
+        (std::array<long long, 2> { x, y }),
+        pat_blocked_row.local_to_global_coords(
+          expected_unit_id,
+          (std::array<long long, 2> { local_x, local_y })));
       // Col order:
       LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
         x, y,
@@ -460,9 +462,10 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
         expected_offset_col_order,
         pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
-        expected_index_col_order,
-        pat_blocked_col.local_to_global_index(
-          expected_unit_id, expected_offset_col_order));
+        (std::array<long long, 2> { x, y }),
+        pat_blocked_col.local_to_global_coords(
+          expected_unit_id,
+          (std::array<long long, 2> { local_x, local_y })));
     }
   }
 }
@@ -478,8 +481,8 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
   // [                        ...                          ]
   int team_size      = dash::Team::All().size();
   // Choose 'inconvenient' extents:
-  // int extent_x       = team_size + 7;
-  // int extent_y       = 23;
+//int extent_x       = team_size + 7;
+//int extent_y       = 23;
   int extent_x       = 7;
   int extent_y       = 4;
   size_t size        = extent_x * extent_y;
@@ -522,6 +525,16 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
         x / team_size + (y * (add_offset_per_y + num_overflow_blocks - x));
       int expected_offset_col_order =
         expected_offset_row_order;
+      int local_x                   = x / team_size;
+      int local_y                   = y;
+      auto glob_coords_row = 
+        pat_cyclic_row.local_to_global_coords(
+          expected_unit_id,
+          std::array<long long, 2> { local_x, local_y });
+      auto glob_coords_col =
+        pat_cyclic_col.local_to_global_coords(
+          expected_unit_id,
+          std::array<long long, 2> { local_x, local_y });
       // Row order:
       LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, of: %d",
         x, y,
@@ -535,9 +548,8 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
         expected_offset_row_order,
         pat_cyclic_row.index_to_elem(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
-        expected_index_row_order,
-        pat_cyclic_row.local_to_global_index(
-          expected_unit_id, expected_offset_row_order));
+        (std::array<long long, 2> { x, y }),
+        glob_coords_row);
       // Col order:
       LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, of: %d",
         x, y,
@@ -551,9 +563,8 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
         expected_offset_col_order,
         pat_cyclic_col.index_to_elem(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
-        expected_index_col_order,
-        pat_cyclic_col.local_to_global_index(
-          expected_unit_id, expected_offset_col_order));
+        (std::array<long long, 2> { x, y }),
+        glob_coords_col);
     }
   }
 }
