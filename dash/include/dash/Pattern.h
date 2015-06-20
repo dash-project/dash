@@ -571,7 +571,6 @@ public:
    * \see local_extent()
    */
   size_t local_size() const {
-    // TODO
     return _local_size;
   }
 
@@ -944,16 +943,17 @@ private:
     _blocksize_spec = BlockSizeSpec_t(s_blocks);
     _max_blocksize  = _blocksize_spec.size();
     //// Pre-initialize local extents:
+    _local_size     = 1;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
-      auto num_elem_d         = _memory_layout.extent(d);
+      auto num_elem_d       = _memory_layout.extent(d);
       // Number of units in dimension:
-      auto num_units_d        = _teamspec.extent(d);
+      auto num_units_d      = _teamspec.extent(d);
       // Number of blocks in dimension:
-      auto num_blocks_d       = _blockspec.extent(d);
+      auto num_blocks_d     = _blockspec.extent(d);
       // Maximum extent of single block in dimension:
-      auto blocksize_d        = _blocksize_spec.extent(d);
+      auto blocksize_d      = _blocksize_spec.extent(d);
       // Minimum number of blocks local to every unit in dimension:
-      auto min_local_blocks   = num_blocks_d / num_units_d;
+      auto min_local_blocks = num_blocks_d / num_units_d;
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", d);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_elem_d);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_units_d);
@@ -978,6 +978,7 @@ private:
           _local_extent[d] += overflow_d;
         }
       }
+      _local_size *= _local_extent[d];
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", _local_extent[d]);
     }
     DASH_LOG_TRACE_VAR("Pattern.initialize.d", _local_extent);
