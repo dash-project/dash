@@ -577,8 +577,8 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
   }
 }
 
-TEST_F(PatternTest, LocalExtents) {
-  // 2-dimensional, blocked partitioning in first dimension:
+TEST_F(PatternTest, LocalExtentsCyclic) {
+  // 2-dimensional, cyclic partitioning in first dimension:
   // 
   // [ team 0[0] | team 1[0] | team 0[1] | team 1[1] | ... ]
   // [ team 0[2] | team 1[2] | team 0[3] | team 1[3] | ... ]
@@ -586,20 +586,23 @@ TEST_F(PatternTest, LocalExtents) {
   // [ team 0[6] | team 1[6] | team 0[7] | team 1[7] | ... ]
   // [                        ...                          ]
   int team_size      = dash::Team::All().size();
-  // Choose 'inconvenient' extents:
-  int extent_x       = team_size + 7;
-  int extent_y       = 23;
-  size_t size        = extent_x * extent_y;
+  // Two blocks for every unit, plus one block
+  int extent_x       = (2 * team_size) + 1;
+  int extent_y       = 41;
   int block_size_x   = 1;
-  int max_per_unit_x = dash::math::div_ceil(extent_x, team_size);
   int block_size_y   = extent_y;
+  int overflow_bs_x  = 0;
+  int overflow_bs_y  = 0;
+  int underfill_bs_x = 0;
+  int underfill_bs_y = 0;
+  size_t size        = extent_x * extent_y;
+  int max_per_unit_x = dash::math::div_ceil(extent_x, team_size);
   int max_per_unit   = max_per_unit_x * block_size_y;
-  int overflow_bs_x  = extent_x % block_size_x;
-  int overflow_bs_y  = extent_y % block_size_y;
-  int underfill_bs_x = block_size_x - overflow_bs_x;
-  int underfill_bs_y = block_size_y - overflow_bs_y;
-  int local_extent_x;
-  int local_extent_y;
+  // Unit 0 should have 1 additional block assigned:
+  int local_extent_x = (dash::myid() == 0)
+                         ? 3
+                         : 2;
+  int local_extent_y = extent_y;
   LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpx: %d, mpu: %d",
       extent_x, extent_y,
       block_size_x, block_size_y,
@@ -619,8 +622,8 @@ TEST_F(PatternTest, LocalExtents) {
   EXPECT_EQ(pat_cyclic_col.overflow_blocksize(1), overflow_bs_y);
   EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(0), underfill_bs_x);
   EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(1), underfill_bs_y);
-  local_extent_x = 1;
-  local_extent_y = 1;
+  ASSERT_EQ(pat_cyclic_row.local_extent(0), local_extent_x);
+  ASSERT_EQ(pat_cyclic_row.local_extent(1), local_extent_y);
   EXPECT_EQ(pat_cyclic_row.local_size(),
             local_extent_x * local_extent_y);
   // Col major:
@@ -628,8 +631,8 @@ TEST_F(PatternTest, LocalExtents) {
   EXPECT_EQ(pat_cyclic_col.overflow_blocksize(1), overflow_bs_y);
   EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(0), underfill_bs_x);
   EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(1), underfill_bs_y);
-  local_extent_x = 1;
-  local_extent_y = 1;
+  ASSERT_EQ(pat_cyclic_col.local_extent(0), local_extent_x);
+  ASSERT_EQ(pat_cyclic_col.local_extent(1), local_extent_y);
   EXPECT_EQ(pat_cyclic_col.local_size(),
             local_extent_x * local_extent_y);
 }

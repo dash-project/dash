@@ -66,7 +66,11 @@ template<
   typename IndexType     = long long>
 class Pattern {
 private:
+  /// Derive size type from given signed index / ptrdiff type
   typedef typename std::make_unsigned<IndexType>::type SizeType;
+  /// N-dimensional size type
+  typedef ::std::array<SizeType, NumDimensions> SizeTypeNDim;
+  /// Full type definition of self
   typedef Pattern<NumDimensions, Arrangement, IndexType>
     self_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
@@ -249,7 +253,7 @@ private:
   /// dimensions
   DistributionSpec_t _distspec;
   /// Team containing the units to which the patterns element are mapped
-  dash::Team &       _team       = dash::Team::All();
+  dash::Team &       _team            = dash::Team::All();
   /// Cartesian arrangement of units within the team
   TeamSpec_t         _teamspec;
   /// The global layout of the pattern's elements in memory respective to
@@ -271,11 +275,11 @@ private:
   /// Maximum extents of a block in this pattern.
   BlockSizeSpec_t    _blocksize_spec;
   /// Local extents of the pattern in all dimensions
-  SizeType           _local_extent[NumDimensions];
+  SizeTypeNDim       _local_extent    = {  };
   /// Actual number of elements local to the active unit
-  SizeType           _local_size = 1;
+  SizeType           _local_size      = 1;
   /// Total amount of units to which this pattern's elements are mapped
-  SizeType           _nunits     = dash::Team::All().size();
+  SizeType           _nunits          = dash::Team::All().size();
   /// Maximum number of elements in a single block
   SizeType           _max_blocksize;
 
@@ -370,7 +374,7 @@ public:
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist      = DistributionSpec_t(),
+    const DistributionSpec_t & dist = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
     const TeamSpec_t &    teamorg   = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
@@ -427,9 +431,9 @@ public:
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist    = DistributionSpec_t(),
+    const DistributionSpec_t & dist = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
-    Team &                team    = dash::Team::All())
+    Team &                team      = dash::Team::All())
   : _distspec(dist),
     _team(team),
     _teamspec(_distspec, _team),
@@ -553,12 +557,12 @@ public:
    * \see local_size()
    */
   IndexType local_extent(unsigned int dim) const {
-    if (dim >= NumDimensions || dim < 0); {
+    if (dim >= NumDimensions || dim < 0) {
       DASH_THROW(
         dash::exception::OutOfRange,
         "Wrong dimension for Pattern::local_extent. "
         << "Expected dimension between 0 and " << NumDimensions-1 << ", "
-        << "got" << dim);
+        << "got " << dim);
     }
     return _local_extent[dim];
   }
@@ -901,12 +905,15 @@ public:
    * compared to the regular blocksize (\see blocksize(d)), with
    * 0 <= \c underfilled_blocksize(d) < blocksize(d).
    */
-  SizeType underfilled_blocksize(int dimension) const {
+  SizeType underfilled_blocksize(unsigned int dimension) const {
     // Underflow blocksize = regular blocksize - overflow blocksize:
-    auto regular_blocksize = blocksize(dimension);
-    return regular_blocksize - 
-             (_memory_layout.extent(dimension) % regular_blocksize) %
-               regular_blocksize;
+    auto reg_blocksize = blocksize(dimension);
+    auto ovf_blocksize = overflow_blocksize(dimension);
+    if (ovf_blocksize == 0) {
+      return 0;
+    } else {
+      return reg_blocksize - ovf_blocksize;
+    }
   }
 
 private:
@@ -921,12 +928,12 @@ private:
     // Extents of a single block:
     std::array<SizeType, NumDimensions> s_blocks;
     // Local unit id:
-    auto my_unit_id       = dash::myid();
+    auto my_unit_id        = dash::myid();
     // Coordinates of local unit id in team spec:
-    auto my_unit_ts_coord = _teamspec.coords(my_unit_id);
+    auto my_unit_ts_coords = _teamspec.coords(my_unit_id);
 
     DASH_LOG_TRACE_VAR("Pattern.initialize", my_unit_id);
-    DASH_LOG_TRACE_VAR("Pattern.initialize", my_unit_ts_coord);
+    DASH_LOG_TRACE_VAR("Pattern.initialize", my_unit_ts_coords);
     //// Pre-initialize specs:
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
@@ -945,37 +952,44 @@ private:
     //// Pre-initialize local extents:
     _local_size     = 1;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
-      auto num_elem_d       = _memory_layout.extent(d);
+      auto num_elem_d         = _memory_layout.extent(d);
       // Number of units in dimension:
-      auto num_units_d      = _teamspec.extent(d);
+      auto num_units_d        = _teamspec.extent(d);
       // Number of blocks in dimension:
-      auto num_blocks_d     = _blockspec.extent(d);
+      auto num_blocks_d       = _blockspec.extent(d);
       // Maximum extent of single block in dimension:
-      auto blocksize_d      = _blocksize_spec.extent(d);
+      auto blocksize_d        = _blocksize_spec.extent(d);
       // Minimum number of blocks local to every unit in dimension:
-      auto min_local_blocks = num_blocks_d / num_units_d;
+      auto min_local_blocks_d = num_blocks_d / num_units_d;
+      // Coordinate of this unit id in teamspec in dimension:
+      auto my_unit_ts_coord   = my_unit_ts_coords[d];
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", d);
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d", my_unit_ts_coord);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_elem_d);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_units_d);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_blocks_d);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", blocksize_d);
-      DASH_LOG_TRACE_VAR("Pattern.initialize.d", min_local_blocks);
-      if (num_blocks_d == 0) {
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d", min_local_blocks_d);
+      _local_extent[d] = min_local_blocks_d * blocksize_d;
+      if (num_blocks_d == 1) {
         // One block with full extent in dimension:
         _local_extent[d] = num_elem_d;
       } else {
-        // Initialize with minimum local extent:
-        _local_extent[d] = min_local_blocks * blocksize_d;
-        // Add overflow block extent if the last block
-        // in the dimension is assigned to the local unit:
-        // TODO
-        auto last_block_unit_id = (num_blocks_d % num_units_d);
-        DASH_LOG_TRACE_VAR("Pattern.initialize", last_block_unit_id);
-        if (last_block_unit_id == my_unit_id) {
-          SizeType overflow_d = overflow_blocksize(d);
-          DASH_LOG_TRACE_VAR("Pattern.initialize", overflow_d);
-          // Last block in dimension is assigned to local unit
-          _local_extent[d] += overflow_d;
+        // Number of additional blocks for this unit, if any:
+        auto num_add_blocks = num_blocks_d % num_units_d;
+        DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_add_blocks);
+        if (my_unit_ts_coord < num_add_blocks) {
+          // Unit is assigned to an additional block:
+          _local_extent[d] += blocksize_d;
+          DASH_LOG_TRACE_VAR("Pattern.initialize.d", _local_extent[d]);
+          // If the last block in the dimension is underfilled and
+          // assigned to the local unit, subtract the missing extent:
+          if (my_unit_ts_coord == num_add_blocks - 1) {
+            // Last block in dimension is assigned to local unit
+            SizeType undfill_blocksize_d = underfilled_blocksize(d);
+            DASH_LOG_TRACE_VAR("Pattern.initialize", undfill_blocksize_d);
+            _local_extent[d] -= undfill_blocksize_d;
+          }
         }
       }
       _local_size *= _local_extent[d];

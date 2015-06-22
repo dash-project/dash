@@ -116,7 +116,7 @@ public:
    * Equality comparison operator.
    */
   bool operator==(const self_t & other) const {
-    for (int d = 0; d < NumDimensions; ++d) {
+    for (size_t d = 0; d < NumDimensions; ++d) {
       if (dim(d) != other.dim(d)) return false;
     }
     return true;
