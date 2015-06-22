@@ -253,9 +253,8 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 	MPI_Comm comm;	
 	MPI_Comm subcomm;
 	MPI_Win win;
-	int root = -1;
+//int root = -1;
 	uint16_t index, unique_id;
-	dart_unit_t rank;
 	size_t size;
 	dart_team_t max_teamid = -1;
 	dart_unit_t sub_unit, unit;
@@ -349,7 +348,6 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 	{
 		int i;
 
-		MPI_Win sharedmem_win;
 		MPI_Comm sharedmem_comm;
 		MPI_Group sharedmem_group, group_all;
 		MPI_Comm_split_type (subcomm, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &sharedmem_comm);
@@ -403,7 +401,7 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 	MPI_Comm comm;
 	MPI_Win win;
 	uint16_t index;
-	dart_unit_t unitid, id;
+	dart_unit_t id;
 
 	int result = dart_adapt_teamlist_convert (teamid, &index);
 	

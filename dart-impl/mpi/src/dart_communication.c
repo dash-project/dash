@@ -6,15 +6,6 @@
  *  one-sided runtime system.
  */
 
-/*
-#ifndef ENABLE_DEBUG
-#define ENABLE_DEBUG
-#endif
-#ifndef ENABLE_LOG
-#define ENABLE_LOG
-#endif
-*/
-
 #include <dash/dart/mpi/dart_deb_log.h>
 #include <stdio.h>
 #include <mpi.h>
@@ -257,7 +248,6 @@ dart_ret_t dart_put_blocking (dart_gptr_t gptr, void *src, size_t nbytes)
 {
 	int i, is_sharedmem = 0;
 	MPI_Win win;
-	MPI_Status mpi_sta;
 	MPI_Aint disp_s, maximum_size, disp_rel;
 
 	uint64_t offset = gptr.addr_or_offs.offset;
@@ -484,21 +474,23 @@ dart_ret_t dart_fence (dart_gptr_t gptr)
 		MPI_Win_flush (target_unitid_abs, win);
 	}
 	LOG ("FENCE	- finished");
+	return DART_OK;
 }
 
 dart_ret_t dart_fence_all (dart_gptr_t gptr)
 {
 	int16_t seg_id = gptr.segid;
 	MPI_Win win;
-	if (seg_id){
+	if (seg_id) {
 		uint16_t index = gptr.flags;
 		win = dart_win_lists[index];
 	}
-	else{
+	else {
 		win = dart_win_local_alloc;
 	}
 	MPI_Win_flush_all (win);
 	LOG ("FENCE_ALL	- finished");
+	return DART_OK;
 }
 
 dart_ret_t dart_wait_local (dart_handle_t handle)

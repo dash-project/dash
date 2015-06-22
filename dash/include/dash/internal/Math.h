@@ -7,16 +7,6 @@ namespace math {
 /**
  * TODO: Fix unsafe arithmetics
  */
-static long long modulo(long long i, long long k) {
-  long long res = i % k;
-  if (res < 0)
-    res += k;
-  return res;
-}
-
-/**
- * TODO: Fix unsafe arithmetics
- */
 static long long div_ceil(long long i, long long k) {
   if (i % k == 0)
     return i / k;

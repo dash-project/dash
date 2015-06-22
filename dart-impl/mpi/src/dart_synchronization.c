@@ -28,13 +28,12 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 {
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
-	dart_unit_t    unitid, myid;
-	int32_t *addr, *next;/*  the same type wiht "dart_unit_t" */
+	dart_unit_t unitid, myid;
+	int32_t *addr;
 
 	uint16_t index;
 	int result = dart_adapt_teamlist_convert (teamid, &index);
-	if (result == -1)
-	{
+	if (result == -1) {
 		return DART_ERR_INVAL;
 	}
 
@@ -44,8 +43,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 		
 
 	/* Unit 0 is the process holding the gptr_tail by default. */
-	if (unitid == 0)
-	{
+	if (unitid == 0) {
 		dart_memalloc (sizeof (int32_t), &gptr_tail);
 		dart_gptr_getaddr (gptr_tail, (void*)&addr);
 		
@@ -53,9 +51,8 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 		*addr = -1;
 		MPI_Win_sync (dart_win_local_alloc);
 	}
-
 	
-	dart_bcast (&gptr_tail, sizeof (dart_gptr_t), 0, teamid);
+	dart_bcast(&gptr_tail, sizeof (dart_gptr_t), 0, teamid);
 		
 	/* Create a global memory region across the teamid, 
 	 * and every local memory segment related certain unit
@@ -102,7 +99,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 	DART_GPTR_COPY (gptr_list, lock -> gptr_list);
 
 	uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
-	uint64_t offset_list = gptr_list.addr_or_offs.offset;
+//uint64_t offset_list = gptr_list.addr_or_offs.offset;
 	int16_t seg_id = gptr_list.segid;
 	dart_unit_t tail = gptr_tail.unitid;
 	uint16_t index = gptr_list.flags;
@@ -150,12 +147,10 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 		return DART_OK;
 	}
 	dart_gptr_t gptr_tail;
-	dart_gptr_t gptr_list;
 
 	int32_t result[1];
 	int32_t compare[1] = {-1};
 
-	MPI_Status status;
 	DART_GPTR_COPY (gptr_tail, lock -> gptr_tail);
 	dart_unit_t tail = gptr_tail.unitid;
 	uint64_t offset = gptr_tail.addr_or_offs.offset;
@@ -190,9 +185,8 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 	}
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
-	MPI_Status mpi_status;
 	MPI_Win win;
-	int32_t successor, *addr2, next, result[1];
+	int32_t *addr2, next, result[1];
 
 	MPI_Aint disp_list;
 	int32_t origin[1] = {-1};
@@ -201,7 +195,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
 	DART_GPTR_COPY (gptr_list, lock -> gptr_list);
 
 	uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
-	uint64_t offset_list = gptr_list.addr_or_offs.offset;
+//uint64_t offset_list = gptr_list.addr_or_offs.offset;
 	int16_t seg_id = gptr_list.segid;
 	dart_unit_t tail = gptr_tail.unitid;
 	uint16_t index = gptr_list.flags;

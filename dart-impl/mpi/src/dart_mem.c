@@ -2,6 +2,10 @@
 
 #include <dash/dart/mpi/dart_mem.h>
 
+/* For PRIu64, uint64_t in printf */
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #define NODE_UNUSED 0
 #define NODE_USED 1	
 #define NODE_SPLIT 2
@@ -10,7 +14,8 @@
 struct dart_buddy *
 	dart_buddy_new(int level) {
 	int size = 1 << level;
-	struct dart_buddy * self = malloc(sizeof(struct dart_buddy) + sizeof(uint8_t) * (size * 2 - 2));
+	struct dart_buddy * self =
+    malloc(sizeof(struct dart_buddy) + sizeof(uint8_t) * (size * 2 - 2));
 	self->level = level;
 	memset(self->tree, NODE_UNUSED, size * 2 - 1);
 	return self;
@@ -48,7 +53,8 @@ static void
 _mark_parent(struct dart_buddy * self, int index) {
 	for (;;) {
 		int buddy = index - 1 + (index & 1) * 2;
-		if (buddy > 0 && (self->tree[buddy] == NODE_USED || self->tree[buddy] == NODE_FULL)) {
+		if (buddy > 0 && (self->tree[buddy] == NODE_USED ||
+        self->tree[buddy] == NODE_FULL)) {
 			index = (index + 1) / 2 - 1;
 			self->tree[index] = NODE_FULL;
 		}
@@ -127,7 +133,8 @@ _combine(struct dart_buddy * self, int index) {
 		int buddy = index - 1 + (index & 1) * 2;
 		if (buddy < 0 || self->tree[buddy] != NODE_UNUSED) {
 			self->tree[index] = NODE_UNUSED;
-			while (((index = (index + 1) / 2 - 1) >= 0) && self->tree[index] == NODE_FULL){
+			while (((index = (index + 1) / 2 - 1) >= 0) &&
+             self->tree[index] == NODE_FULL){
 				self->tree[index] = NODE_SPLIT;
 			}
 			return;
@@ -206,10 +213,14 @@ static void
 _dump(struct dart_buddy * self, int index, int level) {
 	switch (self->tree[index]) {
 	case NODE_UNUSED:
-		printf("(%d:%d)", _index_offset(index, level, self->level), 1 << (self->level - level));
+		printf("(%"PRIu64":%d)",
+           _index_offset(index, level, self->level),
+           1 << (self->level - level));
 		break;
 	case NODE_USED:
-		printf("[%d:%d]", _index_offset(index, level, self->level), 1 << (self->level - level));
+		printf("[%"PRIu64":%d]",
+           _index_offset(index, level, self->level),
+           1 << (self->level - level));
 		break;
 	case NODE_FULL:
 		printf("{");

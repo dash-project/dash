@@ -20,16 +20,18 @@
 
 #define DART_BUDDY_ORDER 24
 
-/* -- Global objects for dart memory management -- */
+/* Global objects for dart memory management */
 
-char* dart_mempool_localalloc; /* Point to the base address of memory region for local allocation. */
-struct dart_buddy* dart_localpool; /* Help to do memory management work for local allocation/free */
+/* Point to the base address of memory region for local allocation. */
+char* dart_mempool_localalloc;
+/* Help to do memory management work for local allocation/free */
+struct dart_buddy* dart_localpool;
 
 dart_ret_t dart_init (int* argc, char*** argv)
 {
-	int i, j;
+	int i;
 	int rank, size;
-        uint16_t index;
+  uint16_t index;
 	MPI_Win win;
 	
 	MPI_Init (argc, argv);
@@ -56,16 +58,17 @@ dart_ret_t dart_init (int* argc, char*** argv)
 
 	/* Create a global translation table for all the collective global memory */
 	dart_adapt_transtable_create ();
-	
 
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 	MPI_Comm_size (MPI_COMM_WORLD, &size);	
 	dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
 
-	/* -- Generate separated intra-node communicators and Reserve necessary resources for dart programm -- */
+	/* Generate separated intra-node communicators and Reserve necessary
+   * resources for dart programm */
 	MPI_Comm sharedmem_comm;
 
-	/* Splits the communicator into subcommunicators, each of which can create a shared memory region */
+	/* Splits the communicator into subcommunicators, each of which can
+   * create a shared memory region */
 	MPI_Comm_split_type (MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &sharedmem_comm);
 	
 	dart_sharedmem_comm_list[index] = sharedmem_comm;
@@ -78,14 +81,11 @@ dart_ret_t dart_init (int* argc, char*** argv)
 		MPI_Win_allocate_shared (DART_MAX_LENGTH, sizeof (char), win_info, sharedmem_comm,
 				&(dart_mempool_localalloc), &dart_sharedmem_win_local_alloc);
 
-	
 		MPI_Comm_size (sharedmem_comm, &(dart_sharedmemnode_size[index]));
 	
 		MPI_Comm_group (sharedmem_comm, &sharedmem_group);
 		MPI_Comm_group (MPI_COMM_WORLD, &group_all);
 
-	//	dart_unit_mapping[index] = (int *)malloc (sizeof (int) * dart_sharedmem_size[index]);
-		
 		/* The length of this table is set to be the size of DART_TEAM_ALL. */
 		dart_sharedmem_table[index] = (int *)malloc (sizeof (int) * size);
 
@@ -160,6 +160,7 @@ dart_ret_t dart_exit ()
 	dart_myid (&unitid);
  	
 	int result = dart_adapt_teamlist_convert (DART_TEAM_ALL, &index);
+  // TODO unchecked result
 
 	MPI_Win_unlock_all (dart_win_lists[index]);
 
@@ -179,7 +180,7 @@ dart_ret_t dart_exit ()
 
 	dart_adapt_teamlist_destroy ();
 	LOG ("%2d: EXIT - Finalization finished", unitid);
-        return MPI_Finalize();
+  return MPI_Finalize();
 }
 
 
