@@ -9,6 +9,8 @@ set(BUILD_EXAMPLES ${BUILD_EXAMPLES}
     PARENT_SCOPE)
 set(BUILD_TESTS ${BUILD_TESTS}
     PARENT_SCOPE)
+set(ENABLE_LOGGING ${ENABLE_LOGGING}
+    PARENT_SCOPE)
 set(ENABLE_TRACE_LOGGING ${ENABLE_TRACE_LOGGING}
     PARENT_SCOPE)
 
@@ -119,10 +121,12 @@ if (BUILD_TESTS)
       ${DASH_LIBRARY}
       ${DART_LIBRARY}
     )
-    set_target_properties(
-      ${DASH_TEST} PROPERTIES
-      COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_LOGGING"
-    )
+    if (ENABLE_LOGGING)
+      set_target_properties(
+        ${DASH_TEST} PROPERTIES
+        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_LOGGING"
+      )
+    endif()
     if (ENABLE_TRACE_LOGGING)
       set_target_properties(
         ${DASH_TEST} PROPERTIES
