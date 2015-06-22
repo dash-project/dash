@@ -1,10 +1,12 @@
-#include "TestBase.h"
 #include <libdash.h>
-#include "PatternTest.h"
 #include <dash/internal/Math.h>
 #include <gtest/gtest.h>
 
-TEST_F(PatternTest, SimpleConstructor) {
+#include "TestBase.h"
+#include "PatternTest.h"
+
+TEST_F(PatternTest, SimpleConstructor)
+{
   DASH_TEST_LOCAL_ONLY();
   int extent_x = 21;
   int extent_y = 37;
@@ -37,7 +39,8 @@ TEST_F(PatternTest, SimpleConstructor) {
   EXPECT_EQ(dash::Team::All().size(), pat_ds_t.num_units());
 }
 
-TEST_F(PatternTest, EqualityComparison) {
+TEST_F(PatternTest, EqualityComparison)
+{
   DASH_TEST_LOCAL_ONLY();
   int num_units = dash::Team::All().size();
   int extent_x = 21;
@@ -58,7 +61,8 @@ TEST_F(PatternTest, EqualityComparison) {
   EXPECT_NE(pat_1, pat_4);
 }
 
-TEST_F(PatternTest, CopyConstructorAndAssignment) {
+TEST_F(PatternTest, CopyConstructorAndAssignment)
+{
   DASH_TEST_LOCAL_ONLY();
   int extent_x = 12;
   int extent_y = 13;
@@ -82,7 +86,8 @@ TEST_F(PatternTest, CopyConstructorAndAssignment) {
   }
 }
 
-TEST_F(PatternTest, Distribute1DimBlocked) {
+TEST_F(PatternTest, Distribute1DimBlocked)
+{
   DASH_TEST_LOCAL_ONLY();
   // Simple 1-dimensional blocked partitioning:
   //
@@ -150,7 +155,8 @@ TEST_F(PatternTest, Distribute1DimBlocked) {
   }
 }
 
-TEST_F(PatternTest, Distribute1DimCyclic) {
+TEST_F(PatternTest, Distribute1DimCyclic)
+{
   DASH_TEST_LOCAL_ONLY();
   // Simple 1-dimensional cyclic partitioning:
   //
@@ -215,7 +221,8 @@ TEST_F(PatternTest, Distribute1DimCyclic) {
   }
 }
 
-TEST_F(PatternTest, Distribute1DimBlockcyclic) {
+TEST_F(PatternTest, Distribute1DimBlockcyclic)
+{
   DASH_TEST_LOCAL_ONLY();
   // Simple 1-dimensional blocked partitioning:
   //
@@ -286,7 +293,8 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic) {
   }
 }
 
-TEST_F(PatternTest, Distribute2DimBlockedY) {
+TEST_F(PatternTest, Distribute2DimBlockedY)
+{
   DASH_TEST_LOCAL_ONLY();
   // 2-dimensional, blocked partitioning in second dimension:
   // Row major:
@@ -311,8 +319,12 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   int max_per_unit   = block_size_x * block_size_y;
   int overflow_bs_x  = extent_x % block_size_x;
   int overflow_bs_y  = extent_y % block_size_y;
-  int underfill_bs_x = block_size_x - overflow_bs_x;
-  int underfill_bs_y = block_size_y - overflow_bs_y;
+  int underfill_bs_x = (overflow_bs_x == 0)
+                       ? 0
+                       : block_size_x - overflow_bs_x;
+  int underfill_bs_y = (overflow_bs_y == 0)
+                       ? 0
+                       : block_size_y - overflow_bs_y;
   LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpu: %d",
       extent_x, extent_y,
       block_size_x, block_size_y,
@@ -396,7 +408,8 @@ TEST_F(PatternTest, Distribute2DimBlockedY) {
   }
 }
 
-TEST_F(PatternTest, Distribute2DimBlockedX) {
+TEST_F(PatternTest, Distribute2DimBlockedX)
+{
   DASH_TEST_LOCAL_ONLY();
   // 2-dimensional, blocked partitioning in first dimension:
   // 
@@ -481,7 +494,8 @@ TEST_F(PatternTest, Distribute2DimBlockedX) {
   }
 }
 
-TEST_F(PatternTest, Distribute2DimCyclicX) {
+TEST_F(PatternTest, Distribute2DimCyclicX)
+{
   DASH_TEST_LOCAL_ONLY();
   // 2-dimensional, blocked partitioning in first dimension:
   // 
@@ -577,7 +591,9 @@ TEST_F(PatternTest, Distribute2DimCyclicX) {
   }
 }
 
-TEST_F(PatternTest, LocalExtentsCyclic) {
+TEST_F(PatternTest, LocalExtents2DimCyclicX) {
+  // Must be run on all units as local extents differ
+
   // 2-dimensional, cyclic partitioning in first dimension:
   // 
   // [ team 0[0] | team 1[0] | team 0[1] | team 1[1] | ... ]
@@ -634,6 +650,94 @@ TEST_F(PatternTest, LocalExtentsCyclic) {
   ASSERT_EQ(pat_cyclic_col.local_extent(0), local_extent_x);
   ASSERT_EQ(pat_cyclic_col.local_extent(1), local_extent_y);
   EXPECT_EQ(pat_cyclic_col.local_size(),
+            local_extent_x * local_extent_y);
+}
+
+TEST_F(PatternTest, LocalExtents2DimBlockcyclicY) {
+  // Must be run on all units as local extents differ
+
+  // 2-dimensional, blocked partitioning in second dimension:
+  // Row major:
+  // [ team 0[0] | team 0[1] | ... | team 0[2] ]
+  // [ team 0[3] | team 0[4] | ... | team 0[5] ]
+  // [ team 1[0] | team 1[1] | ... | team 1[2] ]
+  // [ team 1[3] | team 1[4] | ... | team 1[5] ]
+  // [                   ...                   ]
+  // Column major:
+  // [ team 0[0] | team 0[2] | ... | team 0[4] ]
+  // [ team 0[1] | team 0[3] | ... | team 0[5] ]
+  // [ team 1[0] | team 1[2] | ... | team 1[4] ]
+  // [ team 1[1] | team 1[3] | ... | team 1[5] ]
+  // [                   ...                   ]
+  //
+  // For units 0..n: 
+  // - unit n has no additional block
+  // - unit n-1 has additional block with 1 extent smaller than
+  //   regular block size
+  // - unit n-2 has additional block with regular block size
+  // - all other units have no additional block
+  int team_size      = dash::Team::All().size();
+  int extent_x       = 41;
+  int block_size_y   = 3;
+  int underfill_bs_x = 0;
+  // Last block is 1 extent smaller:
+  int underfill_bs_y = 1;
+  int overflow_bs_x  = 0;
+  int overflow_bs_y  = block_size_y - underfill_bs_y;
+  // Two blocks for every unit, plus one additional block for
+  // half of the units:
+  int num_add_blocks = dash::math::div_ceil(team_size, 2);
+  int min_blocks_y   = 2 * team_size;
+  int num_blocks_y   = min_blocks_y + num_add_blocks;
+  int extent_y       = (num_blocks_y * block_size_y) - underfill_bs_y;
+  int block_size_x   = extent_x;
+  // First half of team should have 1 additional block assigned:
+  int local_extent_x = extent_x;
+  int local_min_ex_y = (min_blocks_y / team_size) * block_size_y;
+  int local_extent_y = local_min_ex_y;
+  if (dash::myid() < num_add_blocks) {
+    // Unit has additional block:
+    local_extent_y += block_size_y;
+    if (dash::myid() == num_add_blocks - 1) {
+      // Unit has additional underfilled block:
+      local_extent_y -= underfill_bs_y;
+    }
+  }
+  LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, nby: %d, "
+              "aby: %d, lex: %d, ley: %d",
+      extent_x, extent_y,
+      block_size_x, block_size_y,
+      num_blocks_y, num_add_blocks,
+      local_extent_x, local_extent_y);
+  dash::Pattern<2, dash::ROW_MAJOR> pat_blockcyclic_row(
+      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::DistributionSpec<2>(
+        dash::NONE, dash::BLOCKCYCLIC(block_size_y)),
+      dash::TeamSpec<2>(dash::Team::All()),
+      dash::Team::All());
+  dash::Pattern<2, dash::COL_MAJOR> pat_blockcyclic_col(
+      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::DistributionSpec<2>(
+        dash::NONE, dash::BLOCKCYCLIC(block_size_y)),
+      dash::TeamSpec<2>(dash::Team::All()),
+      dash::Team::All());
+  // Row major:
+  EXPECT_EQ(pat_blockcyclic_col.overflow_blocksize(0), overflow_bs_x);
+  EXPECT_EQ(pat_blockcyclic_col.overflow_blocksize(1), overflow_bs_y);
+  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(0), underfill_bs_x);
+  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(1), underfill_bs_y);
+  ASSERT_EQ(pat_blockcyclic_row.local_extent(0), local_extent_x);
+  ASSERT_EQ(pat_blockcyclic_row.local_extent(1), local_extent_y);
+  EXPECT_EQ(pat_blockcyclic_row.local_size(),
+            local_extent_x * local_extent_y);
+  // Col major:
+  EXPECT_EQ(pat_blockcyclic_col.overflow_blocksize(0), overflow_bs_x);
+  EXPECT_EQ(pat_blockcyclic_col.overflow_blocksize(1), overflow_bs_y);
+  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(0), underfill_bs_x);
+  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(1), underfill_bs_y);
+  ASSERT_EQ(pat_blockcyclic_col.local_extent(0), local_extent_x);
+  ASSERT_EQ(pat_blockcyclic_col.local_extent(1), local_extent_y);
+  EXPECT_EQ(pat_blockcyclic_col.local_size(),
             local_extent_x * local_extent_y);
 }
 
