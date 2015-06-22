@@ -87,7 +87,6 @@ void dart_work_queue_push_item( work_item_t *item )
 
 void* dart_helper_thread(void *ptr)
 {
-  int i; 
   work_item_t item;
 
   while(1) {

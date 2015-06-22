@@ -56,12 +56,10 @@ void dart_membucket_destroy(dart_membucket bucket)
 {
   int num_allocated = dart_membucket_list_size(bucket->allocated);
 
-  /*
   if(num_allocated > 0) {
     ERROR("membucket: destroy called but number of "
 	  "allocated chunks = %d", num_allocated);
   }
-  */
   
   free_membucket_list(bucket->free);
   free_membucket_list(bucket->allocated);

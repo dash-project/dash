@@ -93,7 +93,6 @@ int dart_shmem_p2p_destroy(dart_team_t teamid, size_t tsize,
 int dart_shmem_send(void *buf, size_t nbytes, 
 		    dart_team_t teamid, dart_unit_t dest)
 {
-  int offs;
   int ret, slot;
 
   slot = shmem_syncarea_findteam(teamid);
@@ -143,34 +142,30 @@ int dart_shmem_recv(void *buf, size_t nbytes,
 		    dart_team_t teamid, dart_unit_t source)
 {
   int offs;
-  int ret, slot;
-
-  slot = shmem_syncarea_findteam(teamid);
+  int ret  = 0;
+  int slot = shmem_syncarea_findteam(teamid);
   
-  if( team2fifos[slot][source].readfrom<0 ) {
+  if (team2fifos[slot][source].readfrom<0 ) {
     team2fifos[slot][source].readfrom = 
-      open( team2fifos[slot][source].pname_read, O_RDONLY);
-   
-    if( team2fifos[slot][source].readfrom<0 ) {
-      fprintf(stderr, "Error opening fifo for reading: '%s'\n",
-	      team2fifos[slot][source].pname_read);
+      open(team2fifos[slot][source].pname_read, O_RDONLY);
+    if (team2fifos[slot][source].readfrom<0 ) {
+      fprintf(stderr,
+              "Error opening fifo for reading: '%s'\n",
+              team2fifos[slot][source].pname_read);
       return -999;
     }
   }
-
-  offs=0; 
-  while(offs<nbytes) {
+  offs = 0; 
+  while (offs<nbytes) {
     ret = read(team2fifos[slot][source].readfrom, 
 	       buf+offs, nbytes-offs);
-    if(ret<0) 
+    if (ret < 0) 
       break;
      offs+=ret;
   }
-  
-  if(offs!=nbytes) {
+  if (offs != nbytes) {
     ERROR("read only %d bytes error=%s\n", 
 	  offs, strerror(errno));
-    
   }
   return (ret != nbytes) ? -999 : 0;
 }
