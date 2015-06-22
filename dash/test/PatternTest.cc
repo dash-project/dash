@@ -293,6 +293,27 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
   }
 }
 
+TEST_F(PatternTest, Distribute1DimTile)
+{
+/*
+  TODO
+
+  DASH_TEST_LOCAL_ONLY();
+  int block_size = 3;
+  dash::Pattern<1, dash::ROW_MAJOR> pat_tile_row(
+      dash::SizeSpec<1>(_num_elem),
+      dash::DistributionSpec<1>(dash::TILE(block_size)),
+      dash::TeamSpec<1>(),
+      dash::Team::All());
+  // Column order must be irrelevant:
+  dash::Pattern<1, dash::COL_MAJOR> pat_tile_col(
+      dash::SizeSpec<1>(_num_elem),
+      dash::DistributionSpec<1>(dash::TILE(block_size)),
+      dash::TeamSpec<1>(),
+      dash::Team::All());
+*/
+}
+
 TEST_F(PatternTest, Distribute2DimBlockedY)
 {
   DASH_TEST_LOCAL_ONLY();
@@ -591,7 +612,8 @@ TEST_F(PatternTest, Distribute2DimCyclicX)
   }
 }
 
-TEST_F(PatternTest, LocalExtents2DimCyclicX) {
+TEST_F(PatternTest, LocalExtents2DimCyclicX)
+{
   // Must be run on all units as local extents differ
 
   // 2-dimensional, cyclic partitioning in first dimension:
@@ -653,7 +675,8 @@ TEST_F(PatternTest, LocalExtents2DimCyclicX) {
             local_extent_x * local_extent_y);
 }
 
-TEST_F(PatternTest, LocalExtents2DimBlockcyclicY) {
+TEST_F(PatternTest, LocalExtents2DimBlockcyclicY)
+{
   // Must be run on all units as local extents differ
 
   // 2-dimensional, blocked partitioning in second dimension:

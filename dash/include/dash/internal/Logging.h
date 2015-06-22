@@ -13,11 +13,19 @@
 
 #define DASH_LOG_TRACE(...) \
   dash::internal::logging::LogWrapper(\
-    __FILE__, __LINE__, __VA_ARGS__)
+    "TRACE", __FILE__, __LINE__, __VA_ARGS__)
 
 #define DASH_LOG_TRACE_VAR(context, var) \
   dash::internal::logging::LogVarWrapper(\
-    __FILE__, __LINE__, context, #var, (var))
+    "TRACE", __FILE__, __LINE__, context, #var, (var))
+
+#define DASH_LOG_DEBUG(...) \
+  dash::internal::logging::LogWrapper(\
+    "DEBUG", __FILE__, __LINE__, __VA_ARGS__)
+
+#define DASH_LOG_DEBUG_VAR(context, var) \
+  dash::internal::logging::LogVarWrapper(\
+    "DEBUG", __FILE__, __LINE__, context, #var, (var))
 
 namespace dash {
 namespace internal {
@@ -35,20 +43,21 @@ std::ostream & operator<<(
 
 // Terminator
 static void Log_Recursive(
+  const char* level,
   const char* file,
   int line,
   const char* context_tag,
   std::ostringstream & msg) {
-  std::cout << "[ " << dash::myid()
-            << " TRACE  ] " 
-            << file << ":" << line << " ["
-            << context_tag << "] "
+  std::cout << "[ " << dash::myid() << " " << level << " ] " 
+            << file << ":" << line << " "
+            << "(" << context_tag << ") "
             << msg.str() << std::endl;
 }
 
 // "Recursive" variadic function
 template<typename T, typename... Args>
 static void Log_Recursive(
+  const char* level,
   const char* file,
   int line,
   const char* context_tag,
@@ -56,12 +65,13 @@ static void Log_Recursive(
   T value,
   const Args & ... args) {
   msg << value << " ";
-  Log_Recursive(file, line, context_tag, msg, args...);
+  Log_Recursive(level, file, line, context_tag, msg, args...);
 }
 
 // Log_Recursive wrapper that creates the ostringstream
 template<typename... Args>
 static void LogWrapper(
+  const char* level,
   const char* filepath,
   int line,
   const char* context_tag,
@@ -71,6 +81,7 @@ static void LogWrapper(
   std::string filename(filepath);
   std::size_t offset = filename.find_last_of("/\\");
   Log_Recursive(
+    level,
     filename.substr(offset+1).c_str(),
     line,
     context_tag,
@@ -80,6 +91,7 @@ static void LogWrapper(
 // Log_Recursive wrapper that creates the ostringstream
 template<typename T, typename... Args>
 static void LogVarWrapper(
+  const char* level,
   const char* filepath,
   int line,
   const char* context_tag,
@@ -87,11 +99,12 @@ static void LogVarWrapper(
   const T & var_value,
   const Args & ... args) {
   std::ostringstream msg;
-  msg << "|= " << var_name << " = " << var_value;
+  msg << "| " << var_name << "(" << var_value << ")";
   // Extract file name from path
   std::string filename(filepath);
   std::size_t offset = filename.find_last_of("/\\");
   Log_Recursive(
+    level,
     filename.substr(offset+1).c_str(),
     line,
     context_tag,
@@ -106,6 +119,8 @@ static void LogVarWrapper(
 
 #define DASH_LOG_TRACE(...) do {  } while(0)
 #define DASH_LOG_TRACE_VAR(...) do {  } while(0)
+#define DASH_LOG_DEBUG(...) do {  } while(0)
+#define DASH_LOG_DEBUG_VAR(...) do {  } while(0)
 
 #endif // DASH_ENABLE_LOGGING
 

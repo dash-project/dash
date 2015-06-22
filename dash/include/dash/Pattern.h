@@ -587,9 +587,7 @@ public:
   std::array<IndexType, NumDimensions> local_to_global_coords(
     size_t unit,
     const std::array<IndexType, NumDimensions> & local_index) {
-    DASH_LOG_TRACE("Pattern.local_to_global()",
-                   "unit", unit,
-                   "local_index", local_index);
+    DASH_LOG_DEBUG_VAR("Pattern.local_to_global()", local_index);
     SizeType blocksize = max_blocksize();
     SizeType num_units = _teamspec.size();
     // Coordinates of the unit within the team spec:
@@ -637,7 +635,7 @@ public:
     }
     DASH_LOG_TRACE_VAR("Pattern.local_to_global", block_index);
     DASH_LOG_TRACE_VAR("Pattern.local_to_global", block_coord);
-    DASH_LOG_TRACE_VAR("Pattern.local_to_global", glob_index);
+    DASH_LOG_DEBUG_VAR("Pattern.local_to_global", glob_index);
     return glob_index;
   }
 
@@ -684,9 +682,7 @@ public:
   IndexType index_to_elem(
     const std::array<IndexType, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem()", coords);
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem",
-                       dash::ROW_MAJOR == Arrangement);
+    DASH_LOG_DEBUG_VAR("Pattern.index_to_elem()", coords);
     // Convert coordinates to linear global index respective to memory
     // order:
     IndexType glob_index = _memory_layout.at(coords);
@@ -717,8 +713,7 @@ public:
     DASH_LOG_TRACE_VAR("Pattern.index_to_elem", block_base_offset);
     DASH_LOG_TRACE_VAR("Pattern.index_to_elem", relative_coords);
     DASH_LOG_TRACE_VAR("Pattern.index_to_elem", elem_block_offset);
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", local_elem_offset);
-
+    DASH_LOG_DEBUG_VAR("Pattern.index_to_elem", local_elem_offset);
     return local_elem_offset;
   }
 
@@ -797,12 +792,13 @@ public:
                                   num_units
                                 );
       max_elements *= dim_max_blocksize * dim_num_blocks;
-      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit", d);
-      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit", num_units);
-      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit", dim_max_blocksize);
-      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit", dim_num_blocks);
-      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit", max_elements);
+      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", d);
+      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", num_units);
+      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", dim_max_blocksize);
+      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", dim_num_blocks);
+      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", max_elements);
     }
+    DASH_LOG_DEBUG_VAR("Pattern.max_elem_per_unit", max_elements);
     return max_elements;
   }
 
@@ -995,7 +991,7 @@ private:
       _local_size *= _local_extent[d];
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", _local_extent[d]);
     }
-    DASH_LOG_TRACE_VAR("Pattern.initialize.d", _local_extent);
+    DASH_LOG_DEBUG_VAR("Pattern.initialize", _local_extent);
   }
 
   /**
