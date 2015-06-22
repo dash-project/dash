@@ -70,7 +70,7 @@ private:
   typedef typename std::make_unsigned<IndexType>::type SizeType;
   /// N-dimensional size type
   typedef ::std::array<SizeType, NumDimensions> SizeTypeNDim;
-  /// Full type definition of self
+  /// Fully specified type definition of self
   typedef Pattern<NumDimensions, Arrangement, IndexType>
     self_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
@@ -934,7 +934,7 @@ private:
 
     DASH_LOG_TRACE_VAR("Pattern.initialize", my_unit_id);
     DASH_LOG_TRACE_VAR("Pattern.initialize", my_unit_ts_coords);
-    //// Pre-initialize specs:
+    //// Pre-initialize block specs:
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
       SizeType max_blocksize_d = dist.max_blocksize_in_range(
@@ -971,7 +971,7 @@ private:
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", blocksize_d);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", min_local_blocks_d);
       _local_extent[d] = min_local_blocks_d * blocksize_d;
-      if (num_blocks_d == 1) {
+      if (num_blocks_d == 1 || num_units_d == 1) {
         // One block with full extent in dimension:
         _local_extent[d] = num_elem_d;
       } else {

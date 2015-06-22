@@ -12,11 +12,11 @@ namespace dash {
  * in a specific dimension.
  *
  * Predefined configurations are 
- *   * BLOCKED
- *   * BLOCKCYCLIC
- *   * CYCLIC
- *   * TILE
- *   * NONE
+ *   * dash::BLOCKED
+ *   * dash::BLOCKCYCLIC
+ *   * dash::CYCLIC
+ *   * dash::TILE
+ *   * dash::NONE
  *
  * \see Pattern
  */
