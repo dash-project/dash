@@ -2,12 +2,7 @@
  *  @date 25 Aug 2014
  *  @brief Implementations of the dart init and exit operations.
  */
-/*
-#include "dart_deb_log.h"
-#ifndef ENABLE_DEBUG
-#define ENABLE_DEBUG
-#endif
-*/
+
 #include <stdio.h>
 #include <mpi.h>
 #include <dash/dart/if/dart_types.h>
@@ -104,9 +99,8 @@ dart_ret_t dart_init (int* argc, char*** argv)
 		/* Generate the set (dart_unit_mapping) of units with absolute IDs, 
 		 * which are located in the same node 
 		 */
-//		MPI_Group_translate_ranks (sharedmem_group, dart_sharedmem_size[index], 
-//					sharedmem_ranks, group_all, dart_unit_mapping[index]);
-
+//	MPI_Group_translate_ranks (sharedmem_group, dart_sharedmem_size[index], 
+//				sharedmem_ranks, group_all, dart_unit_mapping[index]);
 		
 		MPI_Group_translate_ranks (sharedmem_group, dart_sharedmemnode_size[index],
 				sharedmem_ranks, group_all, dart_unit_mapping);
@@ -159,8 +153,8 @@ dart_ret_t dart_exit ()
 
 	dart_myid (&unitid);
  	
-	int result = dart_adapt_teamlist_convert (DART_TEAM_ALL, &index);
-  // TODO unchecked result
+  // TODO return value unchecked
+	dart_adapt_teamlist_convert (DART_TEAM_ALL, &index);
 
 	MPI_Win_unlock_all (dart_win_lists[index]);
 
