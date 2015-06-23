@@ -1008,19 +1008,30 @@ private:
         // Number of additional blocks for this unit, if any:
         IndexType num_add_blocks = static_cast<IndexType>(
                                      num_blocks_d % num_units_d);
+        // Unit id assigned to the last block in dimension:
+        auto last_block_unit_d = (num_blocks_d % num_units_d == 0)
+                                 ? num_blocks_d - 1
+                                 : (num_blocks_d % num_units_d) - 1;
+        DASH_LOG_TRACE_VAR("Pattern.initialize.d", last_block_unit_d);
         DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_add_blocks);
         if (my_unit_ts_coord < num_add_blocks) {
           // Unit is assigned to an additional block:
           local_extents[d] += blocksize_d;
           DASH_LOG_TRACE_VAR("Pattern.initialize.d", local_extents[d]);
-          // If the last block in the dimension is underfilled and
-          // assigned to the local unit, subtract the missing extent:
+          // TODO: Might be redundant, see same check below
           if (my_unit_ts_coord == num_add_blocks - 1) {
-            // Last block in dimension is assigned to local unit
+            // If the last block in the dimension is underfilled and
+            // assigned to the local unit, subtract the missing extent:
             SizeType undfill_blocksize_d = underfilled_blocksize(d);
             DASH_LOG_TRACE_VAR("Pattern.initialize", undfill_blocksize_d);
             local_extents[d] -= undfill_blocksize_d;
           }
+        } else if (my_unit_ts_coord == last_block_unit_d) {
+          // If the last block in the dimension is underfilled and
+          // assigned to the local unit, subtract the missing extent:
+          SizeType undfill_blocksize_d = underfilled_blocksize(d);
+          DASH_LOG_TRACE_VAR("Pattern.initialize", undfill_blocksize_d);
+          local_extents[d] -= undfill_blocksize_d;
         }
       }
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", local_extents[d]);
