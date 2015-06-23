@@ -9,9 +9,9 @@ namespace dash {
 
 template<typename ElementType>
 struct LocalRange {
-  ElementType * begin;
-  ElementType * end;
-} LocalRange;
+  const ElementType * begin;
+  const ElementType * end;
+};
 
 /**
  * Resolve the number of elements between two global iterators.
@@ -38,23 +38,27 @@ gptrdiff_t distance(
  * \tparam      ElementType  Type of the elements in the sequence
  * \complexity  O(d)
  */
-template<typename ElementType>
+template<
+  typename ElementType,
+  class PatternType>
 LocalRange<ElementType> local_subrange(
   /// Iterator to the initial position in the global sequence
-  const GlobIter<ElementType> & first,
+  const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the global sequence
-  const GlobIter<ElementType> & last) {
-  auto begin_gindex   = first.pos();
-  auto end_gindex     = last.pos();
+  const GlobIter<ElementType, PatternType> & last) {
+  typedef typename PatternType::index_type idx_t;
   // Get pattern from global iterators, O(1):
   auto pattern        = first.pattern();
+  // Get offsets of iterators within global memory, O(1):
+  idx_t begin_gindex  = static_cast<idx_t>(first.pos());
+  idx_t end_gindex    = static_cast<idx_t>(last.pos());
   // Global index of first element in pattern, O(1):
-  auto lbegin_gindex  = pattern.lbegin();
+  idx_t lbegin_gindex = pattern.lbegin();
   // Global index of last element in pattern, O(1):
-  auto lend_gindex    = pattern.lend();
+  idx_t lend_gindex   = pattern.lend();
   // Intersect local range and global range, in global index domain:
-  auto goffset_lbegin = std::max(lbegin_gindex, begin_gindex);
-  auto goffset_lend   = std::min(lend_gindex, end_gindex);
+  auto goffset_lbegin = std::max<idx_t>(lbegin_gindex, begin_gindex);
+  auto goffset_lend   = std::min<idx_t>(lend_gindex, end_gindex);
   // Global positions of local range to global coordinates, O(d):
   auto lbegin_gcoords = pattern.coords(goffset_lbegin);
   auto lend_gcoords   = pattern.coords(goffset_lend);
@@ -76,19 +80,20 @@ LocalRange<ElementType> local_subrange(
  * Being a collaborative operation, each unit will invoke the given
  * function on its local elements only.
  *
- * \tparam      PatternIterator  Type of the global iterator specifying the
- *                               element range to scan, implementing the
- *                               PatternInterator concept
- * \tparam      IndexType        Parameter type expected by function to
- *                               invoke, deduced from parameter \c func
+ * \tparam      ElementType  Type of the elements in the sequence
+ * \tparam      IndexType    Parameter type expected by function to
+ *                           invoke, deduced from parameter \c func
  * \complexity  O(n)
  */
-template<typename PatternIterator, typename IndexType>
+template<
+  typename ElementType,
+  typename IndexType,
+  class PatternType>
 void for_each(
   /// Iterator to the initial position in the sequence
-  const PatternIterator begin,
+  const GlobIter<ElementType, PatternType> & begin,
   /// Iterator to the final position in the sequence
-  const PatternIterator end,
+  const GlobIter<ElementType, PatternType> & end,
   /// Function to invoke on every index in the range
   ::std::function<void(IndexType)> func) {
   auto range   = end - begin;
@@ -112,18 +117,17 @@ void for_each(
  * \return  An iterator to smallest value in the range, or last if the 
  *          range is empty.
  *
- * \tparam  ElementType      Type of the elements in the sequence
- * \tparam  PatternIterator  Type of the global iterator specifying the
- *                           element sequence to scan, implementing the
- *                           PatternInterator concept
+ * \tparam      ElementType  Type of the elements in the sequence
  * \complexity  O(n)
  */
-template<typename ElementType>
+template<
+  typename ElementType,
+  class PatternType>
 GlobPtr<ElementType> min_element(
   /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType> first,
+  const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the sequence
-  const GlobIter<ElementType> last) {
+  const GlobIter<ElementType, PatternType> & last) {
   typedef dash::GlobPtr<ElementType> globptr_t;
   auto pattern         = first.pattern();
   dash::Team & team    = pattern.team();
@@ -134,15 +138,17 @@ GlobPtr<ElementType> min_element(
   }
   // Find the local min. element in parallel
   // Get local address range between global iterators:
-  auto local_range     = dash::local_subrange(first, last);
-  ElementType * lbegin = local_range.begin;
-  ElementType * lend   = local_range.end;
-  ElementType *lmin    = ::std::min_element(lbegin, lend);     
+  auto local_range           = dash::local_subrange(first, last);
+  const ElementType * lbegin = local_range.begin;
+  const ElementType * lend   = local_range.end;
+  const ElementType * lmin   = ::std::min_element(lbegin, lend);     
   if (lmin == lend) {
     // local range is empty
     minarr[team.myid()] = nullptr;
   } else {
-    minarr[team.myid()] = first.globmem().globptr(team.myid(), lmin);
+    minarr[team.myid()] = first.globmem().index_to_gptr(
+                            team.myid(),
+                            lmin - lbegin);
   }
   dash::barrier();
   dash::Shared<globptr_t> min; 

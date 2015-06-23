@@ -49,8 +49,8 @@ private:
   size_t       m_nunits;
   size_t       m_nlelem;
   GlobMemKind  m_kind;
-  const TYPE * m_lbegin;
-  const TYPE * m_lend;
+  TYPE       * m_lbegin;
+  TYPE       * m_lend;
 
 public:
   /**
@@ -110,6 +110,13 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
+  const GlobPtr<TYPE> begin() const {
+    return GlobPtr<TYPE>(m_begptr);
+  }
+
+  /**
+   * Global pointer of the initial address of the global memory.
+   */
   GlobPtr<TYPE> begin() {
     return GlobPtr<TYPE>(m_begptr);
   }
@@ -118,12 +125,24 @@ public:
    * Native pointer of the initial address of the local memory of
    * a unit.
    */
-  const TYPE * lbegin(dart_unit_t unit_id) {
+  const TYPE * lbegin(dart_unit_t unit_id) const {
     void *addr;
     dart_gptr_t gptr = begin().dartptr();
     dart_gptr_setunit(&gptr, unit_id);
     dart_gptr_getaddr(gptr, &addr);
     return static_cast<const TYPE *>(addr);
+  }
+
+  /**
+   * Native pointer of the initial address of the local memory of
+   * a unit.
+   */
+  TYPE * lbegin(dart_unit_t unit_id) {
+    void *addr;
+    dart_gptr_t gptr = begin().dartptr();
+    dart_gptr_setunit(&gptr, unit_id);
+    dart_gptr_getaddr(gptr, &addr);
+    return static_cast<TYPE *>(addr);
   }
 
   /**
@@ -135,10 +154,18 @@ public:
   }
 
   /**
+   * Native pointer of the initial address of the local memory of
+   * the unit that initialized this GlobMem instance.
+   */
+  TYPE * lbegin() {
+    return m_lbegin;
+  }
+
+  /**
    * Native pointer of the final address of the local memory of
    * a unit.
    */
-  const TYPE * lend(dart_unit_t unit_id) {
+  const TYPE * lend(dart_unit_t unit_id) const {
     // TODO: Why not lbegin() + m_lsize?
     void *addr;
     dart_gptr_t gptr = begin().dartptr();
@@ -149,10 +176,32 @@ public:
   }
 
   /**
+   * Native pointer of the final address of the local memory of
+   * a unit.
+   */
+  TYPE * lend(dart_unit_t unit_id) {
+    // TODO: Why not lbegin() + m_lsize?
+    void *addr;
+    dart_gptr_t gptr = begin().dartptr();
+    dart_gptr_setunit(&gptr, unit_id);
+    dart_gptr_incaddr(&gptr, m_nlelem * sizeof(TYPE));
+    dart_gptr_getaddr(gptr, &addr);
+    return static_cast<TYPE *>(addr);
+  }
+
+  /**
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
   const TYPE * lend() const {
+    return m_lend;
+  }
+
+  /**
+   * Native pointer of the initial address of the local memory of
+   * the unit that initialized this GlobMem instance.
+   */
+  TYPE * lend() {
     return m_lend;
   }
 
@@ -169,13 +218,13 @@ public:
    * Resolve the global pointer from an element position in a unit's
    * local memory.
    */
-  GlobPtr<TYPE> globptr(
+  GlobPtr<TYPE> index_to_gptr(
     /// The unit id
     size_t unit,
     /// The unit's local address offset
-    size_t idx) {
+    long long idx) const {
     dart_unit_t lunit, gunit; 
-    
+    // TODO: Clarify: what is lunit, gunit?
     dart_gptr_t gptr = m_begptr;
     dart_team_unit_g2l(m_teamid, gptr.unitid, &lunit);
     lunit = (lunit + unit) % m_nunits;
@@ -186,21 +235,22 @@ public:
 
     return GlobPtr<TYPE>(gptr);
   }
-
+#if 0
   /**
    * Resolve the global pointer from a unit's local pointer
    */
-  GlobPtr<TYPE> globptr(
+  GlobPtr<TYPE> ptr_to_gptr(
     /// The unit id
     dart_unit_t unit,
     /// The unit's local address
-    TYPE * local_ptr) {
+    const TYPE * local_ptr) const {
     GlobPtr<TYPE> gptr = begin();
     gptr.set_unit(unit);
     auto lptrdiff = local_ptr - begin();
     gptr += static_cast<long long>(lptrdiff);
     return gptr;
   }
+#endif
 };
 
 template<typename T>

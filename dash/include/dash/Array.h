@@ -65,16 +65,24 @@ public:
     m_ptr = ptr;
   }
   
-  T * begin() const noexcept {
+  T * begin() noexcept {
     return m_ptr->lbegin();
   }
   
-  T * end() const noexcept {
+  const T * begin() const noexcept {
+    return m_ptr->lbegin();
+  }
+  
+  T * end() noexcept {
+    return m_ptr->lend();
+  }
+  
+  const T * end() const noexcept {
     return m_ptr->lend();
   }
 
   size_type size() const noexcept {
-    return end()-begin();
+    return end() - begin();
   }
   
   T & operator[](size_type n) {
@@ -111,36 +119,36 @@ public:
   /// Derive size type from given signed index / gptrdiff type
   typedef typename std::make_unsigned<IndexType>::type difference_type;
 
-  typedef       GlobIter<value_type>         iterator;
-  typedef const GlobIter<value_type>   const_iterator;
+  typedef       GlobIter<value_type>                          iterator;
+  typedef const GlobIter<value_type>                    const_iterator;
   typedef std::reverse_iterator<      iterator>       reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
   
-  typedef       GlobRef<value_type>       reference;
-  typedef const GlobRef<value_type> const_reference;
+  typedef       GlobRef<value_type>                          reference;
+  typedef const GlobRef<value_type>                    const_reference;
   
-  typedef       GlobIter<value_type>       pointer;
-  typedef const GlobIter<value_type> const_pointer;
+  typedef       GlobIter<value_type>                           pointer;
+  typedef const GlobIter<value_type>                     const_pointer;
   
 private:
-  typedef dash::GlobMem<value_type>    GlobMem_t;
+  typedef dash::GlobMem<value_type> GlobMem_t;
   
-  dash::Team   & m_team;
-  dart_unit_t    m_myid;
-  PatternType    m_pattern;  
-  GlobMem_t    * m_globmem; 
+  dash::Team         & m_team;
+  dart_unit_t          m_myid;
+  PatternType          m_pattern;  
+  GlobMem_t          * m_globmem; 
   /// Iterator to initial element in the array
-  iterator       m_begin;
+  iterator             m_begin;
   /// Iterator to final element in the array
-  iterator       m_end;
+  iterator             m_end;
   /// Total number of elements in the array
-  size_type      m_size;
+  size_type            m_size;
   /// Number of local elements in the array
-  size_type      m_lsize;
+  size_type            m_lsize;
   /// Native pointer to first local element in the array
-  const ElementType  * m_lbegin;
+  ElementType        * m_lbegin;
   /// Native pointer past last local element in the array
-  const ElementType  * m_lend;
+  ElementType        * m_lend;
   
 public:
 /* Check requirements on element type 
@@ -225,16 +233,30 @@ public:
   /**
    * Native pointer to the first local element in the array.
    */
-  ElementType* lbegin() const noexcept {
+  ElementType * lbegin() noexcept {
+    return m_lbegin;
+  }
+
+  /**
+   * Native pointer to the first local element in the array.
+   */
+  const ElementType * lbegin() const noexcept {
     return m_lbegin;
   }
 
   /**
    * Native pointer to the end of the array.
    */
-  ElementType* lend() const noexcept {
+  ElementType * lend() noexcept {
     return m_lend;
-  }  
+  }
+
+  /**
+   * Native pointer to the end of the array.
+   */
+  const ElementType * lend() const noexcept {
+    return m_lend;
+  }
 
   /**
    * Subscript assignment operator, not range-checked.

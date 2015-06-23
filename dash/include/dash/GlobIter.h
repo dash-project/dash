@@ -69,7 +69,7 @@ public:
     auto coord = m_pattern->coords(m_idx);
     auto unit  = m_pattern->index_to_unit(coord);
     auto elem  = m_pattern->index_to_elem(coord);
-    GlobPtr<ElementType> ptr = m_globmem->get_globptr(unit, elem);
+    GlobPtr<ElementType> ptr = m_globmem->index_to_gptr(unit, elem);
     return ptr;
   }
 
@@ -94,7 +94,7 @@ public:
     auto unit  = m_pattern->index_to_unit(coord);
     auto elem  = m_pattern->index_to_elem(coord);
     // Global pointer to element at given position:
-    GlobPtr<ElementType> ptr = m_globmem->globptr(unit, elem);
+    GlobPtr<ElementType> ptr = m_globmem->index_to_gptr(unit, elem);
     // Global reference to element at given position:
     return GlobRef<ElementType>(ptr);
   }
@@ -110,11 +110,18 @@ public:
   }
 
   /**
+   * Global offset of the iterator within overall element range.
+   */
+  gptrdiff_t pos() const {
+    return m_idx;
+  }
+
+  /**
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
   const GlobMem<ElementType> & globmem() const {
-    return m_globmem;
+    return *m_globmem;
   }
 
   /**

@@ -82,6 +82,10 @@ private:
   typedef SizeSpec<NumDimensions, SizeType>  SizeSpec_t;
   typedef ViewSpec<NumDimensions, IndexType> ViewSpec_t;
 
+public:
+  typedef IndexType index_type;
+  typedef SizeType  size_type;
+
 private:
   /**
    * Extracting size-, distribution- and team specifications from
@@ -596,7 +600,7 @@ public:
    */
   std::array<IndexType, NumDimensions> local_to_global_coords(
     size_t unit,
-    const std::array<IndexType, NumDimensions> & local_index) {
+    const std::array<IndexType, NumDimensions> & local_index) const {
     DASH_LOG_DEBUG_VAR("Pattern.local_to_global()", local_index);
     SizeType blocksize = max_blocksize();
     SizeType num_units = _teamspec.size();
@@ -655,7 +659,7 @@ public:
    */
   IndexType local_coords_to_global_index(
     size_t unit,
-    const std::array<IndexType, NumDimensions> & local_coords) {
+    const std::array<IndexType, NumDimensions> & local_coords) const {
     std::array<IndexType, NumDimensions> global_coords =
       local_to_global_coords(unit, local_coords);
     DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx", global_coords);
@@ -669,7 +673,7 @@ public:
    * \see index_to_elem Inverse of local_to_global_index
    */
   IndexType local_to_global_index(
-    IndexType local_index) {
+    IndexType local_index) const {
     std::array<IndexType, NumDimensions> local_coords =
       _local_memory_layout.coords(local_index);
     std::array<IndexType, NumDimensions> global_coords =
