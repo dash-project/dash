@@ -508,11 +508,11 @@ public:
   }
 
   /**
-   * Resolves the global index of the last local element in the pattern.
+   * Resolves the global index past the last local element in the pattern.
    */
   IndexType lend() const {
     // TODO: Can be cached
-    return local_to_global_index(local_size() - 1);
+    return local_to_global_index(local_size() - 1) + 1;
   }
 
   /**
@@ -857,6 +857,13 @@ public:
    * The maximum number of elements arranged in this pattern.
    */
   IndexType capacity() const {
+    return _memory_layout.size();
+  }
+
+  /**
+   * The number of elements arranged in this pattern.
+   */
+  IndexType size() const {
     return _memory_layout.size();
   }
 

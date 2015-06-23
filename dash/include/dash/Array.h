@@ -102,6 +102,7 @@ public:
 /**
  * A distributed array.
  *
+ * \concept{dash_container_concept}
  * \concept{dash_array_concept}
  */
 template<
@@ -112,6 +113,7 @@ class Array {
 private:
   typedef Array<ElementType, IndexType, PatternType> self_t;
 
+/// Public types as required by iterator concept
 public: 
   typedef ElementType  value_type;
   /// Derive size type from given signed index / gptrdiff type
@@ -129,6 +131,11 @@ public:
   
   typedef       GlobIter<value_type>                           pointer;
   typedef const GlobIter<value_type>                     const_pointer;
+
+/// Public types as required by dash container concept
+public:
+  /// The type of the pattern used to distribute array elements to units
+  typedef PatternType pattern_type;
   
 private:
   typedef dash::GlobMem<value_type> GlobMem_t;
@@ -222,11 +229,26 @@ public:
     iterator res = iterator(data());
     return res;
   }
+  
+  /**
+   * Global pointer to the beginning of the array.
+   */
+  const_iterator begin() const noexcept {
+    iterator res = iterator(data());
+    return res;
+  }
 
   /**
    * Global pointer to the end of the array.
    */
   const_iterator end() const noexcept {
+    return m_end;
+  }
+
+  /**
+   * Global pointer to the end of the array.
+   */
+  iterator end() noexcept {
     return m_end;
   }
 

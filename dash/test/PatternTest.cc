@@ -1,5 +1,4 @@
 #include <libdash.h>
-#include <dash/internal/Math.h>
 #include <gtest/gtest.h>
 
 #include "TestBase.h"

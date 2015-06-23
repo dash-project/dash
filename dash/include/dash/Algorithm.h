@@ -1,6 +1,7 @@
 #ifndef DASH__ALGORITHM_H_
 #define DASH__ALGORITHM_H_
 
+#include <dash/internal/Logging.h>
 #include <algorithm>
 #include <functional>
 #include <cstddef>
@@ -11,6 +12,12 @@ template<typename ElementType>
 struct LocalRange {
   const ElementType * begin;
   const ElementType * end;
+};
+
+template<typename IndexType>
+struct LocalIndexRange {
+  IndexType begin;
+  IndexType end;
 };
 
 /**
@@ -29,19 +36,22 @@ gptrdiff_t distance(
 }
 
 /**
- * Resolves the local address range between global iterators:
+ * Resolves the local index range between global iterators.
  *
  * \return      A local range consisting of native pointers to the first
  *              and last local element within the sequence limited by the
  *              given global iterators.
  *
  * \tparam      ElementType  Type of the elements in the sequence
- * \complexity  O(d)
+ * \tparam      PatternType  Type of the global iterators' pattern 
+ *                           implementation
+ * \complexity  O(d), with \c d dimensions in the global iterators' pattern
  */
 template<
   typename ElementType,
   class PatternType>
-LocalRange<ElementType> local_subrange(
+LocalIndexRange<typename PatternType::index_type>
+local_index_subrange(
   /// Iterator to the initial position in the global sequence
   const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the global sequence
@@ -52,10 +62,14 @@ LocalRange<ElementType> local_subrange(
   // Get offsets of iterators within global memory, O(1):
   idx_t begin_gindex  = static_cast<idx_t>(first.pos());
   idx_t end_gindex    = static_cast<idx_t>(last.pos());
+  DASH_LOG_TRACE_VAR("local_index_subrange", begin_gindex);
+  DASH_LOG_TRACE_VAR("local_index_subrange", end_gindex);
   // Global index of first element in pattern, O(1):
   idx_t lbegin_gindex = pattern.lbegin();
   // Global index of last element in pattern, O(1):
   idx_t lend_gindex   = pattern.lend();
+  DASH_LOG_TRACE_VAR("local_index_subrange", lbegin_gindex);
+  DASH_LOG_TRACE_VAR("local_index_subrange", lend_gindex);
   // Intersect local range and global range, in global index domain:
   auto goffset_lbegin = std::max<idx_t>(lbegin_gindex, begin_gindex);
   auto goffset_lend   = std::min<idx_t>(lend_gindex, end_gindex);
@@ -65,8 +79,62 @@ LocalRange<ElementType> local_subrange(
   // Global coordinates of local range to local indices, O(d):
   auto lbegin_index   = pattern.index_to_elem(lbegin_gcoords);
   auto lend_index     = pattern.index_to_elem(lend_gcoords);
+  // Return local index range
+  return LocalIndexRange<idx_t> { lbegin_index, lend_index };
+}
+
+/**
+ * Resolves the local address range between global iterators.
+ *
+ * \return      A local range consisting of native pointers to the first
+ *              and last local element within the sequence limited by the
+ *              given global iterators.
+ *
+ * \tparam      ElementType  Type of the elements in the sequence
+ * \tparam      PatternType  Type of the global iterators' pattern 
+ *                           implementation
+ * \complexity  O(d), with \c d dimensions in the global iterators' pattern
+ */
+template<
+  typename ElementType,
+  class PatternType>
+LocalRange<ElementType> local_subrange(
+  /// Iterator to the initial position in the global sequence
+  const GlobIter<ElementType, PatternType> & first,
+  /// Iterator to the final position in the global sequence
+  const GlobIter<ElementType, PatternType> & last) {
+  typedef typename PatternType::index_type idx_t;
+#if 0
+  // Get pattern from global iterators, O(1):
+  auto pattern        = first.pattern();
+  // Get offsets of iterators within global memory, O(1):
+  idx_t begin_gindex  = static_cast<idx_t>(first.pos());
+  idx_t end_gindex    = static_cast<idx_t>(last.pos());
+  DASH_LOG_TRACE_VAR("local_subrange", begin_gindex);
+  DASH_LOG_TRACE_VAR("local_subrange", end_gindex);
+  // Global index of first element in pattern, O(1):
+  idx_t lbegin_gindex = pattern.lbegin();
+  // Global index of last element in pattern, O(1):
+  idx_t lend_gindex   = pattern.lend();
+  DASH_LOG_TRACE_VAR("local_subrange", lbegin_gindex);
+  DASH_LOG_TRACE_VAR("local_subrange", lend_gindex);
+  // Intersect local range and global range, in global index domain:
+  auto goffset_lbegin = std::max<idx_t>(lbegin_gindex, begin_gindex);
+  auto goffset_lend   = std::min<idx_t>(lend_gindex, end_gindex);
+  // Global positions of local range to global coordinates, O(d):
+  auto lbegin_gcoords = pattern.coords(goffset_lbegin);
+  auto lend_gcoords   = pattern.coords(goffset_lend);
+  // Global coordinates of local range to local indices, O(d):
+  auto lbegin_index   = pattern.index_to_elem(lbegin_gcoords);
+  auto lend_index     = pattern.index_to_elem(lend_gcoords);
+#endif
+
+  /// Global iterators to local index range, O(d):
+  auto index_range   = local_index_subrange(first, last);
+  idx_t lbegin_index = index_range.begin;
+  idx_t lend_index   = index_range.end;
   // Local start address from global memory:
-  auto lbegin         = first.globmem().lbegin();
+  auto lbegin        = first.globmem().lbegin();
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
     return LocalRange<ElementType> { nullptr, nullptr };
@@ -91,22 +159,22 @@ template<
   class PatternType>
 void for_each(
   /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & begin,
+  const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & end,
+  const GlobIter<ElementType, PatternType> & last,
   /// Function to invoke on every index in the range
-  ::std::function<void(IndexType)> func) {
-  auto range   = end - begin;
-  auto pattern = begin.pattern();
-  for (IndexType i = 0;
-       i < pattern.size() && range > 0;
-       ++i, --range) {
-    IndexType idx = pattern.local_to_global_index(
-      pattern.team().myid(), i);
-    if (idx < 0) {
-      break;
-    }
-    func(idx);
+  ::std::function<void(IndexType)> & func) {
+  /// Global iterators to local index range:
+  auto index_range  = local_index_subrange(first, last);
+  auto lbegin_index = index_range.begin;
+  auto lend_index   = index_range.end;
+  // Pattern from global begin iterator:
+  auto pattern      = first.pattern();
+  for (IndexType lindex = lbegin_index;
+       lindex != lend_index;
+       ++lindex) {
+    IndexType gindex = pattern.local_to_global_index(lindex);
+    func(gindex);
   }
 }
 
