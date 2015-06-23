@@ -47,16 +47,10 @@ public:
 
   friend void swap(GlobRef<T> a, GlobRef<T> b) 
   {
-    std::cerr<<"swap"<<std::endl;
-  }
-
-#if 0
-
-    cout<<"swap"<<endl;
-    //using std::swap;
-    //swap(a.m_gptr, b.m_gptr);
-  }
-#endif
+    T temp = (T)a;
+    a = b;
+    b = temp;
+   }
   
   operator T() const
   {
