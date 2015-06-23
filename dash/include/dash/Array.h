@@ -307,8 +307,10 @@ public:
   bool deallocate() {
     if (m_size > 0) {
       delete m_globmem;
-      m_size=0;
+      m_size = 0;
+      return true;
     }
+    return false;
   }
 };
 

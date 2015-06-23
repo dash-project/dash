@@ -213,7 +213,7 @@ public:
     dart_group_sizeof(&size);
     
     group = static_cast<dart_group_t *>(malloc(size));
-    for(int i = 0; i < nParts; i++ ) {
+    for (unsigned int i = 0; i < nParts; i++) {
       sub_groups[i] = static_cast<dart_group_t *>(malloc(size));
       dart_group_init(sub_groups[i]);
     }
@@ -232,7 +232,7 @@ public:
     
     // Create a child Team for every part with parent set to
     // this instance:
-    for(int i = 0; i < nParts; i++) {
+    for(unsigned int i = 0; i < nParts; i++) {
       dart_team_t newteam = DART_TEAM_NULL;
       dart_team_create(oldteam, sub_groups[i], &newteam);
       if(newteam != DART_TEAM_NULL) {

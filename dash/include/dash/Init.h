@@ -5,18 +5,13 @@
  */
 /* @DASH_HEADER@ */
 
-#ifndef DASH_INIT_H_
-#define DASH_INIT_H_
+#ifndef DASH__INIT_H_
+#define DASH__INIT_H_
 
 #include <dash/dart/if/dart.h>
 
-/**
- * Thin wrappers around the corresponding DART functions
- */
 namespace dash
 {
-  static int _myid = -1;
-
   void   init(int *argc, char ***argv);
   void   finalize();
   int    myid();
@@ -24,4 +19,4 @@ namespace dash
   void   barrier();
 }
 
-#endif // DASH_INIT_H_
+#endif // DASH__INIT_H_

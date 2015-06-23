@@ -7,12 +7,7 @@ namespace math {
 /**
  * TODO: Fix unsafe arithmetics
  */
-static long long div_ceil(long long i, long long k) {
-  if (i % k == 0)
-    return i / k;
-  else
-    return i / k + 1;
-}
+long long div_ceil(long long i, long long k);
 
 } // namespace math
 } // namespace dash

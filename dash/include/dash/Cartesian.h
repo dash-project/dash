@@ -138,7 +138,7 @@ public:
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
     std::array<SizeType, NumDimensions> extents =
-      { arg, (SizeType)args... };
+      { arg, (SizeType)(args)... };
     resize(extents);
   }
 
@@ -248,7 +248,7 @@ public:
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
     ::std::array<IndexType, NumDimensions> pos =
-      { arg, IndexType(args) ... };
+      { arg, (IndexType)(args) ... };
     return at<AtArrangement>(pos);
   }
   
@@ -263,8 +263,8 @@ public:
     typename OffsetType>
   IndexType at(const std::array<OffsetType, NumDimensions> & pos) const {
     SizeType offs = 0;
-    for (int i = 0; i < NumDimensions; i++) {
-      if (pos[i] >= m_extent[i]) {
+    for (unsigned int i = 0; i < NumDimensions; i++) {
+      if (static_cast<SizeType>(pos[i]) >= m_extent[i]) {
         // Coordinate out of bounds:
         DASH_THROW(
           dash::exception::OutOfRange,
@@ -288,7 +288,7 @@ public:
    */
   template<MemArrange CoordArrangement = Arrangement>
   std::array<IndexType, NumDimensions> coords(IndexType index) const {
-    if (index >= m_size) {
+    if (static_cast<SizeType>(index) >= m_size) {
       // Index out of bounds:
       DASH_THROW(
         dash::exception::OutOfRange,
