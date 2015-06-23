@@ -211,19 +211,20 @@ public:
  * dimension shall be distributed to units in even-sized
  * blocks.
  */
-static Distribution BLOCKED(dash::internal::DIST_BLOCKED, -1);
+extern Distribution BLOCKED;
 /**
  * Distribution specifying that elements in a Pattern's
  * dimension shall be distributed by cycling among units.
  * Semantically equivalent to BLOCKCYCLIC(1) but with slight
  * performance improvement.
  */
-static Distribution CYCLIC(dash::internal::DIST_CYCLIC, 1);
+extern Distribution CYCLIC;
 /**
  * Distribution specifying that elements in a Pattern's
  * dimension shall not be distributed.
  */
-static Distribution NONE(dash::internal::DIST_NONE, -1);
+extern Distribution NONE;
+
 /**
  * Distribution specifying that elements in a Pattern's
  * dimension shall be distributed to units in a tiled blocks of
