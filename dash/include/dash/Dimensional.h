@@ -61,7 +61,7 @@ public:
    * Copy-constructor.
    */
   Dimensional(const self_t & other) {
-    for (int d = 0; d < NumDimensions; ++d) {
+    for (unsigned int d = 0; d < NumDimensions; ++d) {
       _values[d] = other._values[d];
     }
   }
@@ -102,7 +102,8 @@ public:
   }
 
   /**
-   * Subscript assignment operator, access to value in dimension given by index.
+   * Subscript assignment operator, access to value in dimension given by 
+   * index.
    * Alias for \c dim.
    *
    * \param  dimension  The dimension

@@ -2,6 +2,10 @@
 #include <dash/Init.h>
 #include <dash/Team.h>
 
+namespace dash {
+  static int _myid = -1;
+}
+
 void dash::init(int *argc, char ***argv)
 {
   dart_init(argc,argv);

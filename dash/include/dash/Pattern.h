@@ -229,7 +229,7 @@ private:
     void check_tile_constraints() const {
       bool has_tile = false;
       bool invalid  = false;
-      for (int i = 0; i < NumDimensions-1; i++) {
+      for (unsigned int i = 0; i < NumDimensions-1; i++) {
         if (_distspec.dim(i).type == dash::internal::DIST_TILE)
           has_tile = true;
         if (_distspec.dim(i).type != _distspec.dim(i+1).type)
@@ -237,7 +237,7 @@ private:
       }
       assert(!(has_tile && invalid));
       if (has_tile) {
-        for (int i = 0; i < NumDimensions; i++) {
+        for (unsigned int i = 0; i < NumDimensions; i++) {
           assert(
             _sizespec.extent(i) % (_distspec.dim(i).blocksz)
             == 0);
@@ -380,8 +380,8 @@ public:
     /// Team containing units to which this pattern maps its elements
     dash::Team &          team      = dash::Team::All()) 
   : _distspec(dist),
-    _memory_layout(sizespec),
     _team(team),
+    _memory_layout(sizespec),
     _teamspec(
       teamorg,
       _distspec,
@@ -453,8 +453,8 @@ public:
     _viewspec(other._viewspec),
     _blockspec(other._blocksize_spec),
     _blocksize_spec(other._blocksize_spec),
-    _nunits(other._nunits),
     _local_size(other._local_size),
+    _nunits(other._nunits),
     _max_blocksize(other._max_blocksize) {
   }
 
@@ -510,7 +510,7 @@ public:
     const ViewSpec_t & viewspec) const {
     // Apply viewspec offsets to coordinates:
     std::array<IndexType, NumDimensions> vs_coords;
-    for (int d = 0; d < NumDimensions; ++d) {
+    for (unsigned int d = 0; d < NumDimensions; ++d) {
       vs_coords[d] = coords[d] + viewspec[d].offset;
     }
     // Index of block containing the given coordinates:
@@ -606,7 +606,6 @@ public:
       auto num_units_d          = _teamspec.extent(d); 
       auto num_blocks_d         = _blockspec.extent(d);
       auto blocksize_d          = _blocksize_spec.extent(d);
-      auto blocksize_d_t        = _blocksize_spec.extent(d_t);
       auto local_index_d        = local_index[d];
       // TOOD: Use % (blocksize_d - underfill_d)
       auto elem_block_offset_d  = local_index_d % blocksize_d;
@@ -628,7 +627,6 @@ public:
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", block_index[d]);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", blocksize);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", blocksize_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", blocksize_d_t);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", elem_block_offset_d);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", block_coord[d]);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", glob_index[d]);
@@ -685,7 +683,7 @@ public:
     DASH_LOG_DEBUG_VAR("Pattern.index_to_elem()", coords);
     // Convert coordinates to linear global index respective to memory
     // order:
-    IndexType glob_index = _memory_layout.at(coords);
+ // IndexType glob_index = _memory_layout.at(coords);
     std::array<IndexType, NumDimensions> block_coords =
       coords_to_block_coords(coords);
     // Global index of block start point:
@@ -972,7 +970,8 @@ private:
         _local_extent[d] = num_elem_d;
       } else {
         // Number of additional blocks for this unit, if any:
-        auto num_add_blocks = num_blocks_d % num_units_d;
+        IndexType num_add_blocks = static_cast<IndexType>(
+                                     num_blocks_d % num_units_d);
         DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_add_blocks);
         if (my_unit_ts_coord < num_add_blocks) {
           // Unit is assigned to an additional block:
@@ -997,7 +996,7 @@ private:
   /**
    * The number of blocks in the given dimension.
    */
-  SizeType num_blocks(int dimension) const {
+  SizeType num_blocks(unsigned int dimension) const {
     return _blockspec[dimension];
   }
 
@@ -1008,7 +1007,7 @@ private:
   std::array<IndexType, NumDimensions> coords_to_block_coords(
     const std::array<IndexType, NumDimensions> & coords) const {
     std::array<IndexType, NumDimensions> block_coords;
-    for (int d = 0; d < NumDimensions; ++d) {
+    for (unsigned int d = 0; d < NumDimensions; ++d) {
       block_coords[d] = coords[d] / blocksize(d);
     }
     return block_coords;
@@ -1020,7 +1019,7 @@ private:
   size_t block_coords_to_unit(
     std::array<IndexType, NumDimensions> & block_coords) const {
     size_t unit_id = 0;
-    for (int d = 0; d < NumDimensions; ++d) {
+    for (unsigned int d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
       unit_id += dist.block_coord_to_unit_offset(
                     block_coords[d], // block coordinate
@@ -1032,7 +1031,7 @@ private:
     return unit_id;
   }
 
-  SizeType units_in_dimension(int dimension) const {
+  SizeType units_in_dimension(unsigned int dimension) const {
     return _teamspec.extent(dimension);
   }
 };

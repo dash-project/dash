@@ -30,9 +30,9 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
   size_t oldsize, newsize, globalsize;
   dart_unit_t oldmyid;
   dart_unit_t oldmyid_global;
-  dart_unit_t newmaster;
-  int i_am_member=0; 
-  int i_am_master=0; 
+  dart_unit_t newmaster = 0;
+  int i_am_member = 0; 
+  int i_am_master = 0; 
   int i;
 
   *newteam=DART_TEAM_NULL;
@@ -89,10 +89,10 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
 
   // STEP 4: find new master 
   int ismember;
-  for(i=0; i<globalsize; i++ ) {
+  for (i = 0; i<globalsize; i++ ) {
     dart_group_ismember(group, i, &ismember);
-    if( ismember ) {
-      newmaster=i;
+    if (ismember) {
+      newmaster = i;
       break;
     }
   }
@@ -103,10 +103,10 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
 
   dart_group_ismember(group, oldmyid_global, &i_am_member);
 
-  if( i_am_master ) 
+  if (i_am_master ) 
   {
     nmsg.slot = -1;
-    nmsg.size=newsize;
+    nmsg.size = newsize;
     // STEP 5: master calls dart_shmem_team_new
     nmsg.slot = dart_shmem_team_new(
                   &(nmsg.teamid), 
@@ -135,7 +135,7 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
       }
     }
     // reset id for master to 0
-    nmsg.newid=0;
+    nmsg.newid = 0;
   } 
   else 
   {
@@ -156,7 +156,7 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
     }
   }
   // STEP 7: all new members call dart_shmem_team_init
-  if( i_am_member ) 
+  if (i_am_member) 
   {
     int slot;
     dart_shmem_team_init(
@@ -165,7 +165,7 @@ dart_ret_t dart_team_create(dart_team_t oldteamid,
       nmsg.size,
       group);
     slot = shmem_syncarea_findteam(nmsg.teamid);	
-    if( SLOT_IS_VALID(slot) ) {
+    if (SLOT_IS_VALID(slot)) {
       teams[slot].myid = nmsg.newid; 
       (*newteam)=nmsg.teamid;
     } else {
@@ -269,7 +269,6 @@ dart_ret_t dart_size(size_t *size)
   return DART_OK;
 }
 
-
 int dart_shmem_team_new(
   dart_team_t *team, 
 	size_t tsize )
@@ -284,14 +283,13 @@ int dart_shmem_team_new(
   return slot;
 }
 
-
 dart_ret_t dart_shmem_team_init(
   dart_team_t team,
   dart_unit_t myid, 
 	size_t tsize, 
 	const dart_group_t *group)
 {
-  int i, j, slot;
+  int i, slot;
   if (team == DART_TEAM_ALL)  {
     // init all data structures for all teams
     for (i = 0; i < MAXNUM_TEAMS; i++) {
@@ -355,14 +353,16 @@ dart_ret_t dart_shmem_team_delete(dart_team_t teamid,
 {
   int slot;
   dart_ret_t ret;
-  
-  ret=dart_shmem_team_valid(teamid);
-  if( ret!=DART_OK ) 
+
+  ret = dart_shmem_team_valid(teamid);
+  if (ret != DART_OK) { 
     return ret;
-
+  }
   int shmid = shmem_syncarea_get_shmid();
-
   slot = shmem_syncarea_findteam(teamid);
+  if (!SLOT_IS_VALID(slot)) {
+    return DART_ERR_INVAL;
+  }
 
 #if 0
   dart_memarea_destroy_mempool( &(teams[slot].mem),
@@ -372,13 +372,15 @@ dart_ret_t dart_shmem_team_delete(dart_team_t teamid,
 #endif 
   
   // todo: check return value of below
-  dart_shmem_p2p_destroy(teamid, tsize, myid, shmid);
-
+  dart_shmem_p2p_destroy(
+    teamid,
+    tsize,
+    myid,
+    shmid);
   dart_barrier(teamid);
-  if( myid==0 ) {
+  if (myid == 0) {
     shmem_syncarea_delteam(teamid, tsize);
   }
-
   return DART_OK;
 }
 
@@ -398,7 +400,7 @@ dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group)
     ret = dart_group_copy( &(teams[slot].group),
 			   group);
   } else {
-    ret=DART_ERR_INVAL;
+    ret = DART_ERR_INVAL;
   }
 
   return ret;

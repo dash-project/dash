@@ -84,48 +84,48 @@ int dart_start(int argc, char* argv[])
 
   shmem_syncarea_init(nprocs, shm_addr, shm_id);
   
-  for (i = 0; i < nprocs; i++)
-    {
-      pid_t spid;
-      
-      spid = dart_spawn(i, nprocs, shm_id, syncarea_size, 
-			dashapp, argc, argv, nargs+1);
-      
-      spawntable[i].pid = spid;
-    }
-  
-  int abort=0;
-  for( i=0; i < nprocs; i++ )
-    {
-      int status;
-      pid_t pid = waitpid(-1, &status, 0);
-      DEBUG("child process %d terminated\n", pid);
-      
-      int found=0;
-      for( j=0; j<MAXNUM_UNITS; j++ ) {
-	if( spawntable[j].pid==pid  ) {
-	  found=1;
-	  break;
-	}
-      }
-
-      if( found && shmem_syncarea_getunitstate(j) != 
-	  UNIT_STATE_CLEAN_EXIT ) {
-	ERROR("Unit %d terminated, aborting!", j);
-	spawntable[j].aborted=1;
-	abort=1;
-	break;
+  for (i = 0; i < nprocs; i++) {
+    pid_t spid;
+    spid = dart_spawn(
+             i,
+             nprocs,
+             shm_id,
+             syncarea_size,
+             dashapp,
+             argc,
+             argv,
+             nargs + 1);
+    spawntable[i].pid = spid;
+  }
+  int abort = 0;
+  for (i = 0; i < nprocs; i++) {
+    int status;
+    pid_t pid = waitpid(-1, &status, 0);
+    DEBUG("child process %d terminated\n", pid);
+    
+    int found = 0;
+    for (j = 0; j < MAXNUM_UNITS; j++) {
+      if (spawntable[j].pid == pid) {
+        found = 1;
+        break;
       }
     }
-
-  if( abort ) {
-    for( i=0; i < nprocs; i++ )
-      {
-	if( spawntable[i].pid!=0 && 
-	    !spawntable[i].aborted ) {
-	  kill( spawntable[i].pid, SIGTERM );
-	}
+    if (found &&
+        shmem_syncarea_getunitstate(j) != 
+          UNIT_STATE_CLEAN_EXIT ) {
+      ERROR("Unit %d terminated, aborting!", j);
+      spawntable[j].aborted=1;
+      abort=1;
+      break;
+    }
+  }
+  if (abort) {
+    for (i = 0; i < nprocs; i++) {
+      if (spawntable[i].pid != 0 && 
+          !spawntable[i].aborted) {
+        kill(spawntable[i].pid, SIGTERM);
       }
+    }
   }
   
   shmem_syncarea_delete(nprocs, shm_addr, shm_id);
@@ -145,17 +145,25 @@ dart_ret_t dart_usage(char *s)
   return DART_OK;
 }
 
-pid_t dart_spawn(int id, int nprocs, int shm_id, 
-		 size_t syncarea_size,
-		 char *exec, int argc, char **argv,
-		 int nargs)
+pid_t dart_spawn(
+  int id,
+  int nprocs,
+  int shm_id, 
+  size_t syncarea_size,
+  char *exec,
+  int argc,
+  char **argv,
+  int nargs)
 {
   const int maxArgLen = 256;
   pid_t pid;
   int i = 0;
-  int dartc;    // new argc for spawned process
-  dartc = argc - nargs; // don't need initial executable and <n> Parameter
-  dartc += NUM_DART_ARGS + 1; // Dart args and NULL-Pointer
+  // new argc for spawned process
+  int dartc;
+  // don't need initial executable and <n> Parameter
+  dartc = argc - nargs;
+  // Dart args and NULL-Pointer
+  dartc += NUM_DART_ARGS + 1;
   
   char* dartv[dartc];
   for (i = nargs; i < argc; i++)
@@ -171,16 +179,14 @@ pid_t dart_spawn(int id, int nprocs, int shm_id,
   sprintf(dartv[i++], "--dart-syncarea_size=%zu", syncarea_size);
   
   pid = fork();
-  if (pid == 0)
-    {
-      int result = execv(exec, dartv);
-      if (result == -1)
-	{
-	  char* s = strerror(errno);
-	  fprintf(stderr, "execv failed: %s\n", s);
-	}
-      exit(result);
+  if (pid == 0) {
+    int result = execv(exec, dartv);
+    if (result == -1) {
+      char* s = strerror(errno);
+      fprintf(stderr, "execv failed: %s\n", s);
     }
+    exit(result);
+  }
   return pid;
 }
 
@@ -202,16 +208,19 @@ void dartrun_cleanup(int shmem_id)
   dirp = opendir(DART_SYSV_TMP_DIR);
 
   // try to find leftover files and delete them
-  while( (dp=readdir(dirp))!=NULL ) {
-    if( s=strstr(dp->d_name, pat) ) {
-      sprintf(fname, "%s/%s", DART_SYSV_TMP_DIR,
+  while ((dp = readdir(dirp)) != NULL) {
+    s = strstr(dp->d_name, pat);
+    if (s > 0) {
+      sprintf(
+        fname,
+        "%s/%s",
+        DART_SYSV_TMP_DIR,
 	      dp->d_name);
       ret = unlink(fname);
-      if( ret!=0 ) {
-	ERROR("Couldn't delete file %s", fname);
+      if (ret != 0) {
+        ERROR("Couldn't delete file %s", fname);
       }
     }
   }
-  
   closedir(dirp);
 }
