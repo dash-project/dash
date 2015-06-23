@@ -2,7 +2,6 @@
 #define DASH__DISTRIBUTION_H_
 
 #include <dash/Enums.h>
-// #include <dash/internal/DistributionFunc.h>
 #include <dash/internal/Logging.h>
 
 namespace dash {

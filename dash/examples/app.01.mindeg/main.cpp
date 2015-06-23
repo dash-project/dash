@@ -296,7 +296,7 @@ int init_nodes(nodearray_t& nodes,
 
 int find_min_degree_node(nodearray_t& nodes)
 {
-  auto min = nodes.min_element();
+  auto min = dash::min_element(nodes.begin(), nodes.end());
   node_t min_node = *min;
 
 #if 0

@@ -68,8 +68,6 @@ class Pattern {
 private:
   /// Derive size type from given signed index / ptrdiff type
   typedef typename std::make_unsigned<IndexType>::type SizeType;
-  /// N-dimensional size type
-  typedef ::std::array<SizeType, NumDimensions> SizeTypeNDim;
   /// Fully specified type definition of self
   typedef Pattern<NumDimensions, Arrangement, IndexType>
     self_t;
@@ -274,10 +272,6 @@ private:
   BlockSpec_t        _blockspec_transposed;
   /// Maximum extents of a block in this pattern.
   BlockSizeSpec_t    _blocksize_spec;
-  /// Local extents of the pattern in all dimensions
-  SizeTypeNDim       _local_extent    = {  };
-  /// Actual number of elements local to the active unit
-  SizeType           _local_size      = 1;
   /// Total amount of units to which this pattern's elements are mapped
   SizeType           _nunits          = dash::Team::All().size();
   /// Maximum number of elements in a single block
@@ -370,22 +364,22 @@ public:
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension 
-    const SizeSpec_t &    sizespec,
+    const SizeSpec_t &         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
     const DistributionSpec_t & dist = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t &    teamorg   = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t &         teamorg   = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
-    dash::Team &          team      = dash::Team::All()) 
+    dash::Team &               team      = dash::Team::All()) 
   : _distspec(dist),
     _team(team),
-    _memory_layout(sizespec),
     _teamspec(
       teamorg,
       _distspec,
-      _team) {
+      _team),
+    _memory_layout(sizespec) {
     _nunits   = _team.size();
     _viewspec = ViewSpec_t(_memory_layout.extents());
     initialize_block_specs();
@@ -427,13 +421,13 @@ public:
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension 
-    const SizeSpec_t &    sizespec,
+    const SizeSpec_t &         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
     const DistributionSpec_t & dist = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
-    Team &                team      = dash::Team::All())
+    Team &                     team = dash::Team::All())
   : _distspec(dist),
     _team(team),
     _teamspec(_distspec, _team),
@@ -450,10 +444,10 @@ public:
   : _distspec(other._distspec), 
     _teamspec(other._teamspec),
     _memory_layout(other._memory_layout),
+    _local_memory_layout(other._local_memory_layout),
     _viewspec(other._viewspec),
     _blockspec(other._blocksize_spec),
     _blocksize_spec(other._blocksize_spec),
-    _local_size(other._local_size),
     _nunits(other._nunits),
     _max_blocksize(other._max_blocksize) {
   }
@@ -478,6 +472,8 @@ public:
     if (this == &other) {
       return true;
     }
+    // no need to compare local memory layout as it is
+    // derived from other members
     return(
       _distspec       == other._distspec &&
       _teamspec       == other._teamspec &&
@@ -485,8 +481,7 @@ public:
       _viewspec       == other._viewspec &&
       _blockspec      == other._blockspec &&
       _blocksize_spec == other._blocksize_spec &&
-      _nunits         == other._nunits &&
-      _local_size     == other._local_size
+      _nunits         == other._nunits
     );
   }
 
@@ -498,6 +493,22 @@ public:
     const self_t & other
   ) const {
     return !(*this == other);
+  }
+
+  /**
+   * Resolves the global index of the first local element in the pattern.
+   */
+  IndexType lbegin() const {
+    // TODO: Can be cached
+    return local_to_global_index(0);
+  }
+
+  /**
+   * Resolves the global index of the last local element in the pattern.
+   */
+  IndexType lend() const {
+    // TODO: Can be cached
+    return local_to_global_index(local_size() - 1);
   }
 
   /**
@@ -542,11 +553,10 @@ public:
    */
   IndexType local_at(
     /// Point in local memory
-    const std::array<IndexType, NumDimensions> & coords,
+    const std::array<IndexType, NumDimensions> & local_coords,
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
-    // TODO
-    return 0;
+    return _local_memory_layout.at(local_coords);
   }
 
   /**
@@ -564,7 +574,7 @@ public:
         << "Expected dimension between 0 and " << NumDimensions-1 << ", "
         << "got " << dim);
     }
-    return _local_extent[dim];
+    return _local_memory_layout.extent(dim);
   }
 
   /**
@@ -575,7 +585,7 @@ public:
    * \see local_extent()
    */
   size_t local_size() const {
-    return _local_size;
+    return _local_memory_layout.size();
   }
 
   /**
@@ -639,15 +649,31 @@ public:
 
   /**
    * Resolve an element's linear global index from a given unit's local
-   * coordinates.
+   * coordinates of that element.
    *
-   * \see index_to_elem Inverse of local_to_global_index
+   * \see index_to_elem
    */
   IndexType local_coords_to_global_index(
     size_t unit,
-    const std::array<IndexType, NumDimensions> & local_index) {
+    const std::array<IndexType, NumDimensions> & local_coords) {
     std::array<IndexType, NumDimensions> global_coords =
-      local_to_global_coords(unit, local_index);
+      local_to_global_coords(unit, local_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx", global_coords);
+    return _memory_layout.at(global_coords);
+  }
+
+  /**
+   * Resolve an element's linear global index from the calling unit's local
+   * index of that element.
+   *
+   * \see index_to_elem Inverse of local_to_global_index
+   */
+  IndexType local_to_global_index(
+    IndexType local_index) {
+    std::array<IndexType, NumDimensions> local_coords =
+      _local_memory_layout.coords(local_index);
+    std::array<IndexType, NumDimensions> global_coords =
+      local_to_global_coords(dash::myid(), local_coords);
     DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx", global_coords);
     return _memory_layout.at(global_coords);
   }
@@ -663,17 +689,18 @@ public:
   }
 
   /**
-   * Convert given coordinate in pattern to its linear local index.
+   * Convert given global coordinates in pattern to their respective linear
+   * local index.
    * 
    * Will be renamed to \c coords_to_local_index.
    */
   IndexType index_to_elem(
-    std::array<IndexType, NumDimensions> input) const {
-    return index_to_elem(input, _viewspec);
+    std::array<IndexType, NumDimensions> global_coords) const {
+    return index_to_elem(global_coords, _viewspec);
   }
 
   /**
-   * Convert given coordinate in pattern to its linear local index.
+   * Convert given global coordinate in pattern to its linear local index.
    * 
    * Will be renamed to \c coords_to_local_index.
    */
@@ -681,9 +708,7 @@ public:
     const std::array<IndexType, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
     DASH_LOG_DEBUG_VAR("Pattern.index_to_elem()", coords);
-    // Convert coordinates to linear global index respective to memory
-    // order:
- // IndexType glob_index = _memory_layout.at(coords);
+    // Convert coordinates to global block coordinates:
     std::array<IndexType, NumDimensions> block_coords =
       coords_to_block_coords(coords);
     // Global index of block start point:
@@ -943,8 +968,8 @@ private:
     _blockspec      = BlockSpec_t(n_blocks);
     _blocksize_spec = BlockSizeSpec_t(s_blocks);
     _max_blocksize  = _blocksize_spec.size();
-    //// Pre-initialize local extents:
-    _local_size     = 1;
+    //// Pre-initialize local extents of the pattern in all dimensions
+    ::std::array<SizeType, NumDimensions> local_extents;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       auto num_elem_d         = _memory_layout.extent(d);
       // Number of units in dimension:
@@ -964,10 +989,10 @@ private:
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_blocks_d);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", blocksize_d);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", min_local_blocks_d);
-      _local_extent[d] = min_local_blocks_d * blocksize_d;
+      local_extents[d] = min_local_blocks_d * blocksize_d;
       if (num_blocks_d == 1 || num_units_d == 1) {
         // One block with full extent in dimension:
-        _local_extent[d] = num_elem_d;
+        local_extents[d] = num_elem_d;
       } else {
         // Number of additional blocks for this unit, if any:
         IndexType num_add_blocks = static_cast<IndexType>(
@@ -975,22 +1000,23 @@ private:
         DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_add_blocks);
         if (my_unit_ts_coord < num_add_blocks) {
           // Unit is assigned to an additional block:
-          _local_extent[d] += blocksize_d;
-          DASH_LOG_TRACE_VAR("Pattern.initialize.d", _local_extent[d]);
+          local_extents[d] += blocksize_d;
+          DASH_LOG_TRACE_VAR("Pattern.initialize.d", local_extents[d]);
           // If the last block in the dimension is underfilled and
           // assigned to the local unit, subtract the missing extent:
           if (my_unit_ts_coord == num_add_blocks - 1) {
             // Last block in dimension is assigned to local unit
             SizeType undfill_blocksize_d = underfilled_blocksize(d);
             DASH_LOG_TRACE_VAR("Pattern.initialize", undfill_blocksize_d);
-            _local_extent[d] -= undfill_blocksize_d;
+            local_extents[d] -= undfill_blocksize_d;
           }
         }
       }
-      _local_size *= _local_extent[d];
-      DASH_LOG_TRACE_VAR("Pattern.initialize.d", _local_extent[d]);
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d", local_extents[d]);
     }
-    DASH_LOG_DEBUG_VAR("Pattern.initialize", _local_extent);
+    _local_memory_layout.resize(local_extents);
+    DASH_LOG_DEBUG_VAR("Pattern.initialize",
+                       _local_memory_layout.extents());
   }
 
   /**
@@ -1035,38 +1061,6 @@ private:
     return _teamspec.extent(dimension);
   }
 };
-
-/**
- * Invoke a function on every element in a range distributed by a pattern.
- * Being a collaborative operation, each unit will invoke the given
- * function on its local elements only.
- *
- * \tparam  PatternInterator  An iterator implementing the
- *                            PatternInterator concept
- * \tparam  IndexType         Parameter type expected by function to
- *                            invoke, deduced from parameter \c func
- */
-template<typename PatternIterator, typename IndexType>
-void forall(
-  /// Iterator pointing to the first element of a range
-  PatternIterator begin,
-  /// Iterator pointing behind the last element of a range
-  PatternIterator end,
-  /// Function to invoke on every index in the range
-  ::std::function<void(IndexType)> func) {
-  auto range   = end - begin;
-  auto pattern = begin.pattern();
-  for (IndexType i = 0;
-       i < pattern.sizespec.size() && range > 0;
-       ++i, --range) {
-    IndexType idx = pattern.local_to_global_index(
-      pattern.team().myid(), i);
-    if (idx < 0) {
-      break;
-    }
-    func(idx);
-  }
-}
 
 } // namespace dash
 
