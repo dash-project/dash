@@ -334,6 +334,7 @@ public:
     _teamspec(_arguments.teamspec()), 
     _memory_layout(_arguments.sizespec()), 
     _viewspec(_arguments.viewspec()) {
+    DASH_LOG_TRACE("Pattern()", "Constructor with Argument list");
     _nunits = _teamspec.size();
     initialize_block_specs();
   }
@@ -372,18 +373,19 @@ public:
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(),
+    const DistributionSpec_t & dist     = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t &         teamorg   = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t &         teamspec = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
-    dash::Team &               team      = dash::Team::All()) 
+    dash::Team &               team     = dash::Team::All()) 
   : _distspec(dist),
     _team(team),
     _teamspec(
-      teamorg,
+      teamspec,
       _distspec,
       _team),
     _memory_layout(sizespec) {
+    DASH_LOG_TRACE("Pattern()", "(sizespec, dist, teamspec, team)");
     _nunits   = _team.size();
     _viewspec = ViewSpec_t(_memory_layout.extents());
     initialize_block_specs();
@@ -436,6 +438,7 @@ public:
     _team(team),
     _teamspec(_distspec, _team),
     _memory_layout(sizespec) {
+    DASH_LOG_TRACE("Pattern()", "(sizespec, dist, team)");
     _nunits        = _team.size();
     _viewspec      = ViewSpec<NumDimensions>(_memory_layout);
     initialize_block_specs();
@@ -536,7 +539,7 @@ public:
     DASH_LOG_TRACE("Pattern.unit_at",
                    "coords", coords,
                    "block coords", block_coords,
-                   "unit id", unit_id);
+                   "-> unit id", unit_id);
     return unit_id;
   }
 
@@ -740,7 +743,7 @@ public:
     DASH_LOG_TRACE_VAR("Pattern.index_to_elem", block_base_offset);
     DASH_LOG_TRACE_VAR("Pattern.index_to_elem", relative_coords);
     DASH_LOG_TRACE_VAR("Pattern.index_to_elem", elem_block_offset);
-    DASH_LOG_DEBUG_VAR("Pattern.index_to_elem", local_elem_offset);
+    DASH_LOG_DEBUG_VAR("Pattern.index_to_elem ->", local_elem_offset);
     return local_elem_offset;
   }
 
@@ -772,11 +775,35 @@ public:
    */
   bool is_local(
     IndexType index,
-    size_t unit_id,
+    dart_unit_t unit_id,
     unsigned int dim,
     const ViewSpec<NumDimensions> & viewspec) const {
     // TODO
-    return true;
+    DASH_THROW(
+      dash::exception::NotImplemented,
+      "Pattern.is_local(index, unit, dim, viewspec)");
+  }
+
+  /**
+   * Whether the given global index is local to the specified unit
+   */
+  bool is_local(
+    IndexType index,
+    dart_unit_t unit) const {
+    auto glob_coords = coords(index);
+    auto coords_unit = index_to_unit(glob_coords);
+    DASH_LOG_TRACE_VAR("Pattern.is_local ->", (coords_unit == unit));
+    return coords_unit == unit;
+  }
+
+  /**
+   * Whether the given global index is local to the unit that created
+   * this pattern instance.
+   */
+  bool is_local(
+    IndexType index) const {
+    dart_unit_t unit = team().myid();
+    return is_local(index, unit);
   }
 
   /**
@@ -898,6 +925,14 @@ public:
   }
 
   /**
+   * Cartesian index space representing the underlying local memory model
+   * of this pattern for the calling unit.
+   */
+  const MemoryLayout_t & local_memory_layout() const {
+    return _local_memory_layout;
+  }
+
+  /**
    * Cartesian arrangement of the Team containing the units to which this
    * pattern's elements are mapped.
    */
@@ -962,7 +997,7 @@ private:
     // Coordinates of local unit id in team spec:
     auto my_unit_ts_coords = _teamspec.coords(my_unit_id);
 
-    DASH_LOG_TRACE_VAR("Pattern.initialize", my_unit_id);
+    DASH_LOG_TRACE_VAR("Pattern.initialize()", my_unit_id);
     DASH_LOG_TRACE_VAR("Pattern.initialize", my_unit_ts_coords);
     //// Pre-initialize block specs:
     for (unsigned int d = 0; d < NumDimensions; ++d) {

@@ -30,7 +30,7 @@ private:
 
 protected:
   GlobMem<ElementType> * m_globmem;
-  PatternType          * m_pattern;
+  const PatternType    * m_pattern;
   size_t                 m_idx;
 
   // For ostream output
@@ -42,10 +42,10 @@ public:
   /**
    * Default constructor.
    */
-  GlobIter() {
-    m_globmem = nullptr;
-    m_pattern = nullptr;
-    m_idx     = 0;
+  GlobIter()
+  : m_globmem(nullptr),
+    m_pattern(nullptr),
+    m_idx(0) {
   }
 
   /**
@@ -53,16 +53,16 @@ public:
    */
   GlobIter(
     GlobMem<ElementType> * mem,
-	  PatternType &          pat,
-	  size_t                 idx = 0) {
-    m_globmem = mem;
-    m_pattern = &pat;
-    m_idx     = idx;
+	  const PatternType    & pat,
+	  size_t                 idx = 0)
+  : m_globmem(mem), 
+    m_pattern(&pat),
+    m_idx(idx) {
   }
 
   GlobIter(
       const self_t & other) = default;
-  GlobIter<ElementType, PatternType>& operator=(
+  GlobIter<ElementType, PatternType> & operator=(
       const self_t & other) = default;
 
   operator GlobPtr<ElementType>() const {
@@ -89,8 +89,8 @@ public:
    */
   GlobRef<ElementType> operator[](
     /// The global position of an element
-    gptrdiff_t pos) const {
-    auto coord = m_pattern->coords(pos);
+    gptrdiff_t global_index) const {
+    auto coord = m_pattern->coords(global_index);
     auto unit  = m_pattern->index_to_unit(coord);
     auto elem  = m_pattern->index_to_elem(coord);
     // Global pointer to element at given position:
@@ -105,8 +105,7 @@ public:
    */
   bool is_local() const {
     Team & team = m_pattern->team();
-    auto coord  = m_pattern->memory_layout().coords(m_idx);
-    return m_pattern->index_to_unit(coord) == team.myid();
+    return m_pattern->is_local(m_idx, team.myid());
   }
 
   /**

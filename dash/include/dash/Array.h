@@ -58,42 +58,63 @@ public:
   typedef typename std::make_unsigned<IndexType>::type size_type;
   
 private:
-  Array<T, IndexType, PatternType> *m_ptr;
+  Array<T, IndexType, PatternType> * m_array;
   
 public:
-  LocalProxyArray(Array<T, IndexType, PatternType> * ptr) {
-    m_ptr = ptr;
+  /**
+   * Constructor, creates a local access proxy for the given array.
+   */
+  LocalProxyArray(
+    Array<T, IndexType, PatternType> * array)
+  : m_array(array) {
   }
   
+  /**
+   * Pointer to initial local element in the array.
+   */
   T * begin() noexcept {
-    return m_ptr->lbegin();
+    return m_array->lbegin();
   }
   
   const T * begin() const noexcept {
-    return m_ptr->lbegin();
+    return m_array->lbegin();
   }
   
+  /**
+   * Pointer past final local element in the array.
+   */
   T * end() noexcept {
-    return m_ptr->lend();
+    return m_array->lend();
   }
   
   const T * end() const noexcept {
-    return m_ptr->lend();
+    return m_array->lend();
   }
 
+  /**
+   * Number of array elements in local memory.
+   */
   size_type size() const noexcept {
     return end() - begin();
   }
   
+  /**
+   * Subscript operator, access to local array element at given position.
+   */
   T & operator[](size_type n) {
     return begin()[n];
   }
 
-  // get a global pointer for a local pointer
-  GlobPtr<T> globptr(T* lptr) {
-    GlobPtr<T> gptr = m_ptr->begin();
-    gptr.set_unit(dash::myid());
+  /**
+   * Resolve the global pointer for a local pointer.
+   */
+  GlobPtr<T> globptr(T * lptr) {
+    // Get global begin pointer depending on unit
+    GlobPtr<T> gptr = m_array->begin();
+    gptr.set_unit(m_array->team().myid());
+    // Get local offset
     auto lptrdiff = lptr - begin();
+    // Add local offset to global begin pointer
     gptr += static_cast<long long>(lptrdiff);
     return gptr;
   }
@@ -116,6 +137,7 @@ private:
 /// Public types as required by iterator concept
 public: 
   typedef ElementType  value_type;
+  typedef IndexType    index_type;
   /// Derive size type from given signed index / gptrdiff type
   typedef typename std::make_unsigned<IndexType>::type size_type;
   /// Derive size type from given signed index / gptrdiff type
@@ -174,29 +196,38 @@ public:
 
 public:
   Array(
-    Team & t = dash::Team::All())
-  : m_team(t),
-    m_pattern(0, dash::BLOCKED, t),
+    Team & team = dash::Team::All())
+  : m_team(team),
+    m_pattern(0, dash::BLOCKED, team),
     local(this),
     m_size(0) {
+    DASH_LOG_TRACE("Array()", "default constructor");
   }
 
+  /**
+   * Constructor, specifies distribution type explicitly.
+   */
   Array(
     size_t nelem,
-    dash::DistributionSpec<1> ds,
-    Team & t = dash::Team::All())
-  : m_team(t),
-    m_pattern(nelem, ds, t),
+    dash::DistributionSpec<1> distribution,
+    Team & team = dash::Team::All())
+  : m_team(team),
+    m_pattern(nelem, distribution, team),
     local(this) {
-    allocate(nelem, ds);
+    DASH_LOG_TRACE("Array()", nelem);
+    allocate(m_pattern);
   }  
 
   /**
-   * Delegating constructor, specifies distribution pattern explicitly
+   * Constructor, specifies distribution pattern explicitly.
    */
   Array(
-    const PatternType & pat)
-  : Array(pat.capacity(), pat.distspec(), pat.team()) {
+    const PatternType & pattern)
+  : m_team(pattern.team()),
+    m_pattern(pattern),
+    local(this) {
+    DASH_LOG_TRACE("Array()", "pattern instance constructor");
+    allocate(m_pattern);
   }
   
   /**
@@ -204,8 +235,9 @@ public:
    */
   Array(
     size_t nelem,
-    Team & t = dash::Team::All())
-  : Array(nelem, dash::BLOCKED, t) {
+    Team & team = dash::Team::All())
+  : Array(nelem, dash::BLOCKED, team) {
+    DASH_LOG_TRACE("Array()", "finished delegating constructor", nelem);
   }
 
   /**
@@ -226,7 +258,7 @@ public:
    * Global pointer to the beginning of the array.
    */
   iterator begin() noexcept {
-    iterator res = iterator(data());
+    iterator res = iterator(m_begin);
     return res;
   }
   
@@ -234,7 +266,14 @@ public:
    * Global pointer to the beginning of the array.
    */
   const_iterator begin() const noexcept {
-    iterator res = iterator(data());
+    return m_begin;
+  }
+
+  /**
+   * Global pointer to the end of the array.
+   */
+  iterator end() noexcept {
+    iterator res = iterator(m_end);
     return res;
   }
 
@@ -242,13 +281,6 @@ public:
    * Global pointer to the end of the array.
    */
   const_iterator end() const noexcept {
-    return m_end;
-  }
-
-  /**
-   * Global pointer to the end of the array.
-   */
-  iterator end() noexcept {
     return m_end;
   }
 
@@ -366,6 +398,16 @@ public:
   }
 
   /**
+   * The team containing all units accessing this array.
+   *
+   * \return  The instance of Team that this array has been instantiated
+   *          with
+   */
+  const Team & team() const noexcept {
+    return m_team;
+  }
+
+  /**
    * The size of the local part of array.
    *
    * \return  The number of elements in the array that are local to the
@@ -392,9 +434,8 @@ public:
    */
   bool is_local(
     /// A global array index
-    size_type index) const {
-    auto coord = m_pattern.coords(index);
-    return m_pattern.index_to_unit(coord) == m_myid;
+    index_type index) const {
+    return m_pattern.is_local(index, m_myid);
   }
   
   /**
@@ -407,15 +448,8 @@ public:
   /**
    * The pattern used to distribute array elements to units.
    */
-  PatternType & pattern() {
+  const PatternType & pattern() const {
     return m_pattern;
-  }
-
-  /**
-   * The team containing all units operating on the array.
-   */
-  Team & team() {
-    return m_team;
   }
 
   template<int level>
@@ -425,24 +459,17 @@ public:
 
   bool allocate(
     size_t nelem,
-    dash::DistributionSpec<1> ds) {
-    // check requested capacity:
+    dash::DistributionSpec<1> distribution) {
+    DASH_LOG_TRACE("Array.allocate()", nelem);
+    // Check requested capacity:
     if (nelem == 0) {
       DASH_THROW(
         dash::exception::InvalidArgument,
-        "Tried to allocate 0 elements in Array.allocate()");
+        "Tried to allocate dash::Array with size 0");
     }
-    // initialize members:
-    m_pattern = PatternType(nelem, ds, m_team);
-    m_size    = m_pattern.capacity();
-    m_lsize   = m_pattern.local_size();
-    m_myid    = m_team.myid();
-    m_globmem = new GlobMem_t(m_team, m_lsize);
-    m_begin   = iterator(m_globmem, m_pattern);
-    m_end     = iterator(m_begin) + m_size;
-    m_lbegin  = m_globmem->lbegin();
-    m_lend    = m_globmem->lend();
-    return true;
+    DASH_LOG_TRACE("Array.allocate", "initializing pattern");
+    m_pattern = PatternType(nelem, distribution, m_team);
+    return allocate(m_pattern);
   }
 
   bool deallocate() {
@@ -452,6 +479,35 @@ public:
       return true;
     }
     return false;
+  }
+
+private:
+  bool allocate(
+    const PatternType & pattern) {
+    DASH_LOG_TRACE("Array.allocate()", "pattern", 
+                   pattern.memory_layout().extents());
+    // Check requested capacity:
+    m_size    = m_pattern.capacity();
+    if (m_size == 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Tried to allocate dash::Array with size 0");
+    }
+    // Initialize members:
+    m_lsize   = m_pattern.local_size();
+    m_myid    = m_team.myid();
+    m_globmem = new GlobMem_t(m_team, m_lsize);
+    // Global iterators:
+    m_begin   = iterator(m_globmem, m_pattern);
+    m_end     = iterator(m_begin) + m_size;
+    // Local iterators:
+    m_lbegin  = m_globmem->lbegin();
+    m_lend    = m_globmem->lend();
+    DASH_LOG_TRACE_VAR("Array.allocate", m_myid);
+    DASH_LOG_TRACE_VAR("Array.allocate", m_size);
+    DASH_LOG_TRACE_VAR("Array.allocate", m_lsize);
+    DASH_LOG_TRACE("Array.allocate() finished");
+    return true;
   }
 };
 

@@ -4,6 +4,7 @@
 #include <dash/exception/RuntimeError.h>
 #include <dash/exception/InvalidArgument.h>
 #include <dash/exception/OutOfRange.h>
+#include <dash/exception/NotImplemented.h>
 #include <sstream>
 
 #define DASH_THROW(excep_type, msg_stream) do {\
