@@ -979,6 +979,8 @@ private:
     _blockspec      = BlockSpec_t(n_blocks);
     _blocksize_spec = BlockSizeSpec_t(s_blocks);
     _max_blocksize  = _blocksize_spec.size();
+    DASH_LOG_TRACE_VAR("Pattern.initialize", _blockspec.extents());
+    DASH_LOG_TRACE_VAR("Pattern.initialize", _max_blocksize);
     //// Pre-initialize local extents of the pattern in all dimensions
     ::std::array<SizeType, NumDimensions> local_extents;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
