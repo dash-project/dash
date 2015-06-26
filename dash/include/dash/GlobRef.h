@@ -5,8 +5,8 @@
  */
 /* @DASH_HEADER@ */
 
-#ifndef GLOBREF_H_INCLUDED
-#define GLOBREF_H_INCLUDED
+#ifndef DASH__GLOBREF_H_
+#define DASH__GLOBREF_H_
 
 #include <dash/GlobMem.h>
 #include <dash/Init.h>
@@ -18,10 +18,10 @@ template<typename T> class GlobMem;
 template<typename T> class GlobPtr;
 
 template<typename T>
-void put_value(const T& newval, const GlobPtr<T>& gptr);
+void put_value(const T & newval, const GlobPtr<T> & gptr);
 
 template<typename T>
-void get_value(T* ptr, const GlobPtr<T>& gptr);
+void get_value(T* ptr, const GlobPtr<T> & gptr);
 
 
 template<typename T>
@@ -42,51 +42,37 @@ private:
   GlobPtr<T> m_gptr;
   
 public:
-  GlobRef(GlobPtr<T>& gptr) : m_gptr(gptr) {
+  GlobRef(GlobPtr<T>& gptr)
+  : m_gptr(gptr) {
   }
 
-  friend void swap(GlobRef<T> a, GlobRef<T> b) 
-  {
-    std::cerr<<"swap"<<std::endl;
+  friend void swap(GlobRef<T> a, GlobRef<T> b)  {
+    DASH_LOG_TRACE("GlobRef.swap()");
   }
 
-#if 0
-
-    cout<<"swap"<<endl;
-    //using std::swap;
-    //swap(a.m_gptr, b.m_gptr);
-  }
-#endif
-  
-  operator T() const
-  {
+  operator T() const {
     T t;
     dash::get_value(&t, m_gptr);
-    //std::cerr<<"operatorT() --> "<<t<<std::endl;
     return t;
   }
 
-  GlobRef<T>& operator=(const T val)
-  {
+  GlobRef<T> & operator=(const T val) {
     dash::put_value(val, m_gptr);
     return *this;
   }
 
-  GlobRef<T>& operator=(const GlobRef<T>& ref)
-  {
+  GlobRef<T> & operator=(const GlobRef<T>& ref) {
     return *this = T(ref);
   }
 
-  GlobRef<T>& operator+=(const T& ref)
-  {
+  GlobRef<T> & operator+=(const T& ref) {
     T val = operator T();
     val += ref;
     operator=(val);
     return *this;
   }
 
-  GlobRef<T>& operator++()
-  {
+  GlobRef<T> & operator++() {
     T val = operator T();
     val++;
     operator=(val);
@@ -111,30 +97,39 @@ public:
   }
 #endif
 
+  /**
+   * Checks whether the globally referenced element is in
+   * the calling unit's local memory.
+   */
   bool is_local() const {
     return m_gptr.is_local();
   }
 
-  // get a global ref to a member of a certain type at the 
-  // specified offset
+  /**
+   * Get a global ref to a member of a certain type at the
+   * specified offset
+   */
   template<typename MEMTYPE>
   GlobRef<MEMTYPE> member(size_t offs) {
     dart_gptr_t dartptr = m_gptr.dartptr();    
-    dart_gptr_incaddr(&dartptr, offs);
+    DASH_ASSERT(
+      dart_gptr_incaddr(&dartptr, offs) == DART_OK);
     GlobPtr<MEMTYPE> gptr(dartptr);
-
     return GlobRef<MEMTYPE>(gptr);
   }
 
-  // get the member via pointer to member
+  /**
+   * Get the member via pointer to member
+   */
   template<class MEMTYPE, class P=T>
-  GlobRef<MEMTYPE> member(const MEMTYPE P::*mem)
-  {
+  GlobRef<MEMTYPE> member(
+    const MEMTYPE P::*mem) {
+    // TODO: Thaaaat ... looks hacky.
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
     return member<MEMTYPE>(offs);
   }
 };
 
-};
+} // namespace dash
 
-#endif /* GLOBREF_H_INCLUDED */
+#endif // DASH__GLOBREF_H_

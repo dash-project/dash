@@ -66,11 +66,12 @@ public:
       const self_t & other) = default;
 
   operator GlobPtr<ElementType>() const {
-    auto coord = m_pattern->coords(m_idx);
-    auto unit  = m_pattern->index_to_unit(coord);
-    auto elem  = m_pattern->index_to_elem(coord);
-    GlobPtr<ElementType> ptr = m_globmem->index_to_gptr(unit, elem);
-    return ptr;
+    auto glob_coords = m_pattern->coords(m_idx);
+    auto unit        = m_pattern->index_to_unit(glob_coords);
+    auto local_index = m_pattern->index_to_elem(glob_coords);
+    GlobPtr<ElementType> gptr =
+      m_globmem->index_to_gptr(unit, local_index);
+    return gptr;
   }
 
   /**
@@ -84,19 +85,23 @@ public:
   }  
 
   /**
-   * Subscript operator, resolves global reference to element at given
+   * Subscript operator, returns global reference to element at given
    * global index.
    */
   GlobRef<ElementType> operator[](
-    /// The global position of an element
+    /// The global position of the element
     gptrdiff_t global_index) const {
-    auto coord = m_pattern->coords(global_index);
-    auto unit  = m_pattern->index_to_unit(coord);
-    auto elem  = m_pattern->index_to_elem(coord);
+    auto glob_coords = m_pattern->coords(global_index);
+    auto unit        = m_pattern->index_to_unit(glob_coords);
+    auto local_index = m_pattern->index_to_elem(glob_coords);
+    DASH_LOG_TRACE_VAR("GlobIter.[]", global_index);
+    DASH_LOG_TRACE_VAR("GlobIter.[]", unit);
+    DASH_LOG_TRACE_VAR("GlobIter.[]", local_index);
     // Global pointer to element at given position:
-    GlobPtr<ElementType> ptr = m_globmem->index_to_gptr(unit, elem);
+    GlobPtr<ElementType> gptr =
+      m_globmem->index_to_gptr(unit, local_index);
     // Global reference to element at given position:
-    return GlobRef<ElementType>(ptr);
+    return GlobRef<ElementType>(gptr);
   }
 
   /**

@@ -14,6 +14,8 @@
 
 namespace dash {
 
+namespace internal {
+
 enum class GlobMemKind {
   COLLECTIVE,
   LOCAL
@@ -23,34 +25,57 @@ constexpr GlobMemKind COLLECTIVE { GlobMemKind::COLLECTIVE };
 constexpr GlobMemKind COLL       { GlobMemKind::COLLECTIVE };
 constexpr GlobMemKind LOCAL      { GlobMemKind::LOCAL };
 
+} // namespace internal
+
+/**
+ * Write a value to a global pointer.
+ *
+ * \blocking
+ */
 template<typename T>
-void put_value(const T & newval, const GlobPtr<T> & gptr) {
-  // BLOCKING !!
-  dart_put_blocking(
-    gptr.dartptr(),
-    (void *)(&newval),
-    sizeof(T)); 
+void put_value(
+  /// [IN]  Value to set
+  const T & newval,
+  /// [IN]  Global pointer referencing target address of value
+  const GlobPtr<T> & gptr
+) {
+  DASH_ASSERT(
+    dart_put_blocking(gptr.dartptr(),
+                      (void *)(&newval),
+                      sizeof(T))
+    == DART_OK);
 }
 
+/**
+ * Read a value fom a global pointer.
+ *
+ * \blocking
+ */
 template<typename T>
-void get_value(T * ptr, const GlobPtr<T> & gptr) {
-  // BLOCKING !!
-  dart_get_blocking(
-    ptr,
-    gptr.dartptr(),
-		sizeof(T));
+void get_value(
+  /// [OUT] Local pointer that will contain the value of the 
+  //        global address
+  T * ptr,
+  /// [IN]  Global pointer to read
+  const GlobPtr<T> & gptr
+) {
+  DASH_ASSERT(
+    dart_get_blocking(ptr,
+                      gptr.dartptr(),
+                      sizeof(T))
+    == DART_OK);
 }
 
 template<typename TYPE>
 class GlobMem {
 private:
-  dart_gptr_t  m_begptr;
-  dart_team_t  m_teamid;
-  size_t       m_nunits;
-  size_t       m_nlelem;
-  GlobMemKind  m_kind;
-  TYPE       * m_lbegin;
-  TYPE       * m_lend;
+  dart_gptr_t             m_begptr;
+  dart_team_t             m_teamid;
+  size_t                  m_nunits;
+  size_t                  m_nlelem;
+  internal::GlobMemKind   m_kind;
+  TYPE                  * m_lbegin;
+  TYPE                  * m_lend;
 
 public:
   /**
@@ -66,7 +91,7 @@ public:
     m_begptr     = DART_GPTR_NULL;
     m_teamid     = team.dart_id();
     m_nlelem     = nlelem;
-    m_kind       = COLLECTIVE;
+    m_kind       = dash::internal::COLLECTIVE;
     size_t lsize = sizeof(TYPE) * nlelem;
     dart_team_size(m_teamid, &m_nunits);
     dart_team_memalloc_aligned(
@@ -82,12 +107,13 @@ public:
    */
   GlobMem(
       /// [IN] Number of local elements to allocate
-      size_t nlelem) {
+      size_t nlelem
+  ) {
     m_begptr     = DART_GPTR_NULL;
     m_teamid     = DART_TEAM_NULL;
     m_nlelem     = nlelem;
     m_nunits     = 1;
-    m_kind       = LOCAL;
+    m_kind       = dash::internal::LOCAL;
     size_t lsize = sizeof(TYPE) * nlelem;
     dart_memalloc(lsize, &m_begptr);
     m_lbegin     = lbegin(dash::myid());
@@ -99,7 +125,7 @@ public:
    */
   ~GlobMem() {
     if (!DART_GPTR_ISNULL(m_begptr)) {
-      if (m_kind == COLLECTIVE) {
+      if (m_kind == dash::internal::COLLECTIVE) {
         dart_team_memfree(m_teamid, m_begptr);
       } else {
         dart_memfree(m_begptr);
@@ -222,18 +248,24 @@ public:
     /// The unit id
     size_t unit,
     /// The unit's local address offset
-    long long idx) const {
-    dart_unit_t lunit, gunit; 
+    long long local_index) const {
+    GlobPtr<TYPE> gptr = begin();
+    gptr.set_unit(unit);
+    gptr += static_cast<long long>(local_index);
+    return gptr;
+#if 0
     // TODO: Clarify: what is lunit, gunit?
+    dart_unit_t lunit, gunit; 
     dart_gptr_t gptr = m_begptr;
     dart_team_unit_g2l(m_teamid, gptr.unitid, &lunit);
     lunit = (lunit + unit) % m_nunits;
     dart_team_unit_l2g(m_teamid, lunit, &gunit);
     
     dart_gptr_setunit(&gptr, gunit);
-    dart_gptr_incaddr(&gptr, idx * sizeof(TYPE));
+    dart_gptr_incaddr(&gptr, local_index * sizeof(TYPE));
 
     return GlobPtr<TYPE>(gptr);
+#endif
   }
 #if 0
   /**
