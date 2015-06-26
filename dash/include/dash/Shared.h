@@ -5,8 +5,8 @@
  */
 /* @DASH_HEADER@ */
 
-#ifndef SHARED_H_INCLUDED
-#define SHARED_H_INCLUDED
+#ifndef DASH__SHARED_H_
+#define DASH__SHARED_H_
 
 #include <dash/GlobMem.h>
 #include <dash/GlobIter.h>
@@ -14,10 +14,16 @@
 
 namespace dash {
 
-template<typename ELEMENT_TYPE>
+/**
+ * Shared access to a value in global memory across a team.
+ * TODO: No support for atomic operations (like increment) so far
+ *
+ * \tparam  ElementType  The type of the shared value.
+ */
+template<typename ElementType>
 class Shared {
 public:
-  typedef ELEMENT_TYPE  value_type;
+  typedef ElementType  value_type;
   typedef size_t        size_type;
   typedef size_t        difference_type;  
 
@@ -34,8 +40,13 @@ private:
   pointer       m_ptr;
 
 public:
-  Shared(Team & t = dash::Team::All())
-  : m_team(t) {
+  /**
+   * Constructor.
+   */
+  Shared(
+    /// Team containing all units accessing the element in shared memory
+    Team & team = dash::Team::All())
+  : m_team(team) {
     if (m_team.myid() == 0) {
       m_globmem = new GlobMem(1);
       m_ptr     = m_globmem->begin();
@@ -47,22 +58,35 @@ public:
       m_team.dart_id());
   }
   
+  /**
+   * Destructor, frees shared memory.
+   */
   ~Shared() {
     if (m_team.myid() == 0) {
       delete m_globmem;
     }
   }
 
-  void set(ELEMENT_TYPE val) noexcept {
+  /**
+   * Set the value of the shared element.
+   */
+  void set(ElementType val) noexcept {
     *m_ptr = val;
   }
 
+  /**
+   * Get the value of the shared element.
+   */
   reference get() noexcept {
     return *m_ptr;
   }
+
+private:
+  /// Prevent copy-construction.
+  Shared(const Shared & other) = delete;
 
 };
 
 } // namespace dash
 
-#endif /* SHARED_H_INCLUDED */
+#endif // DASH__SHARED_H_

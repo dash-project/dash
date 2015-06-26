@@ -7,6 +7,13 @@
 namespace testing {
 namespace internal {
 
+#define ASSERT_FAIL() ASSERT_EQ(0, 1) << "ASSERT_FAIL"
+
+#define ASSERT_EQ_U(e,a) ASSERT_EQ(e,a) << "Unit " << dash::myid()
+#define ASSERT_NE_U(e,a) ASSERT_NE(e,a) << "Unit " << dash::myid()
+#define EXPECT_EQ_U(e,a) EXPECT_EQ(e,a) << "Unit " << dash::myid()
+#define EXPECT_NE_U(e,a) EXPECT_NE(e,a) << "Unit " << dash::myid()
+
 enum GTestColor {
     COLOR_DEFAULT,
     COLOR_RED,
@@ -25,24 +32,20 @@ extern void ColoredPrintf(
 #if defined(DASH_ENABLE_LOGGING)
 
 #define LOG_MESSAGE(...) do { \
-  char buffer[200]; \
+  char buffer[300]; \
   sprintf(buffer, __VA_ARGS__); \
   testing::internal::ColoredPrintf( \
-    testing::internal::COLOR_GREEN, \
-    "[ %d LOG    ] ", dash::myid()); \
-  testing::internal::ColoredPrintf(\
     testing::internal::COLOR_YELLOW, \
+    "[ %d LOG    ] %s \n", \
+    dash::myid(),\
     buffer); \
-  testing::internal::ColoredPrintf( \
-    testing::internal::COLOR_YELLOW, \
-    "\n"); \
 } while(0)
 
-#else // DASH_ENABLE_LOGGING
+#else  // DASH_ENABLE_LOGGING
 
 #define LOG_MESSAGE(...) do {  } while(0)
 
-#endif
+#endif // DASH_ENABLE_LOGGING
 
 #define DASH_TEST_LOCAL_ONLY() do { \
   if (dash::myid() > 0) { \

@@ -30,7 +30,7 @@ private:
 
 protected:
   GlobMem<ElementType> * m_globmem;
-  PatternType          * m_pattern;
+  const PatternType    * m_pattern;
   size_t                 m_idx;
 
   // For ostream output
@@ -42,10 +42,10 @@ public:
   /**
    * Default constructor.
    */
-  GlobIter() {
-    m_globmem = nullptr;
-    m_pattern = nullptr;
-    m_idx     = 0;
+  GlobIter()
+  : m_globmem(nullptr),
+    m_pattern(nullptr),
+    m_idx(0) {
   }
 
   /**
@@ -53,24 +53,25 @@ public:
    */
   GlobIter(
     GlobMem<ElementType> * mem,
-	  PatternType &          pat,
-	  size_t                 idx = 0) {
-    m_globmem = mem;
-    m_pattern = &pat;
-    m_idx     = idx;
+	  const PatternType    & pat,
+	  size_t                 idx = 0)
+  : m_globmem(mem), 
+    m_pattern(&pat),
+    m_idx(idx) {
   }
 
   GlobIter(
       const self_t & other) = default;
-  GlobIter<ElementType, PatternType>& operator=(
+  GlobIter<ElementType, PatternType> & operator=(
       const self_t & other) = default;
 
   operator GlobPtr<ElementType>() const {
-    auto coord = m_pattern->coords(m_idx);
-    auto unit  = m_pattern->index_to_unit(coord);
-    auto elem  = m_pattern->index_to_elem(coord);
-    GlobPtr<ElementType> ptr = m_globmem->index_to_gptr(unit, elem);
-    return ptr;
+    auto glob_coords = m_pattern->coords(m_idx);
+    auto unit        = m_pattern->index_to_unit(glob_coords);
+    auto local_index = m_pattern->index_to_elem(glob_coords);
+    GlobPtr<ElementType> gptr =
+      m_globmem->index_to_gptr(unit, local_index);
+    return gptr;
   }
 
   /**
@@ -79,24 +80,37 @@ public:
    * \return  A global reference to the element at the iterator's position
    */
   GlobRef<ElementType> operator*() {
-    GlobPtr<ElementType> ptr(*this);
-    return GlobRef<ElementType>(ptr);
+    auto glob_coords = m_pattern->coords(m_idx);
+    auto unit        = m_pattern->index_to_unit(glob_coords);
+    auto local_index = m_pattern->index_to_elem(glob_coords);
+    DASH_LOG_TRACE_VAR("GlobIter.*", m_idx);
+    DASH_LOG_TRACE_VAR("GlobIter.*", unit);
+    DASH_LOG_TRACE_VAR("GlobIter.*", local_index);
+    // Global pointer to element at given position:
+    GlobPtr<ElementType> gptr =
+      m_globmem->index_to_gptr(unit, local_index);
+    // Global reference to element at given position:
+    return GlobRef<ElementType>(gptr);
   }  
 
   /**
-   * Subscript operator, resolves global reference to element at given
+   * Subscript operator, returns global reference to element at given
    * global index.
    */
   GlobRef<ElementType> operator[](
-    /// The global position of an element
-    gptrdiff_t pos) const {
-    auto coord = m_pattern->coords(pos);
-    auto unit  = m_pattern->index_to_unit(coord);
-    auto elem  = m_pattern->index_to_elem(coord);
+    /// The global position of the element
+    gptrdiff_t global_index) const {
+    auto glob_coords = m_pattern->coords(global_index);
+    auto unit        = m_pattern->index_to_unit(glob_coords);
+    auto local_index = m_pattern->index_to_elem(glob_coords);
+    DASH_LOG_TRACE_VAR("GlobIter.[]", global_index);
+    DASH_LOG_TRACE_VAR("GlobIter.[]", unit);
+    DASH_LOG_TRACE_VAR("GlobIter.[]", local_index);
     // Global pointer to element at given position:
-    GlobPtr<ElementType> ptr = m_globmem->index_to_gptr(unit, elem);
+    GlobPtr<ElementType> gptr =
+      m_globmem->index_to_gptr(unit, local_index);
     // Global reference to element at given position:
-    return GlobRef<ElementType>(ptr);
+    return GlobRef<ElementType>(gptr);
   }
 
   /**
@@ -105,8 +119,7 @@ public:
    */
   bool is_local() const {
     Team & team = m_pattern->team();
-    auto coord  = m_pattern->memory_layout().coords(m_idx);
-    return m_pattern->index_to_unit(coord) == team.myid();
+    return m_pattern->is_local(m_idx, team.myid());
   }
 
   /**
@@ -185,12 +198,12 @@ public:
   }
 
   gptrdiff_t operator+(
-    const self_t  & other) const {
+    const self_t & other) const {
     return m_idx + other.m_idx;
   }
 
   gptrdiff_t operator-(
-    const self_t  & other) const {
+    const self_t & other) const {
     return m_idx - other.m_idx;
   }
 

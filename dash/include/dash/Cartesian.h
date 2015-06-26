@@ -39,10 +39,10 @@ private:
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
   SizeType m_size;
-  /// Number of dimensions of the cartesian space.
+  /// Number of dimensions of the cartesian space, initialized with 0's.
   SizeType m_ndim;
   /// Extents of the cartesian space by dimension.
-  std::array<SizeType, NumDimensions> m_extent;
+  std::array<SizeType, NumDimensions> m_extent = {  };
   /// Cumulative index offsets of the index space by dimension respective
   /// to row order. Avoids recalculation of \c NumDimensions-1 offsets
   /// in every call of \at<ROW_ORDER>().
@@ -159,11 +159,10 @@ public:
       m_extent[i] = static_cast<SizeType>(extents[i]);
       m_size     *= m_extent[i];
     }
-    if (m_size <= 0) {
-      std::cout << std::endl;
+    if (m_size < 0) {
       DASH_THROW(
         dash::exception::InvalidArgument,
-        "Extents for CartesianIndexSpace::resize must be greater than 0");
+        "Extents for CartesianIndexSpace::resize must be positive");
     }
     // Update offsets:
     m_offset_col_major[NumDimensions-1] = 1;

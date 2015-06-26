@@ -48,7 +48,7 @@ static void Log_Recursive(
   int line,
   const char* context_tag,
   std::ostringstream & msg) {
-  std::cout << "[ " << dash::myid() << " " << level << " ] " 
+  std::cout << "[ " << dash::myid() << "  " << level << " ] " 
             << file << ":" << line << " "
             << "(" << context_tag << ") "
             << msg.str() << std::endl;

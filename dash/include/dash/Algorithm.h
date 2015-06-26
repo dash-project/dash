@@ -38,6 +38,15 @@ gptrdiff_t distance(
 /**
  * Resolves the local index range between global iterators.
  *
+ * \b Example:
+ *
+ *   Total range      | <tt>0 1 2 3 4 5 6 7 8 9</tt>
+ *   ---------------- | --------------------------------
+ *   Global iterators | <tt>first = 4; last = 7;</tt>
+ *                    | <tt>0 1 2 3 [4 5 6 7] 8 9]</tt>
+ *   Local elements   | (local index:value) <tt>0:2 1:3 2:6 3:7</tt>
+ *   Result           | (local indices) <tt>2 3</tt>
+ *
  * \return      A local range consisting of native pointers to the first
  *              and last local element within the sequence limited by the
  *              given global iterators.
@@ -90,6 +99,15 @@ local_index_subrange(
 
 /**
  * Resolves the local address range between global iterators.
+ *
+ * \b Example:
+ *
+ *   Total range      | <tt>a b c d e f g h i j</tt>
+ *   ---------------- | --------------------------------
+ *   Global iterators | <tt>first = b; last = i;</tt>
+ *                    | <tt>a b [c d e f g h] i j]</tt>
+ *   Local elements   | <tt>a b d e</tt>
+ *   Result           | <tt>d e</tt>
  *
  * \return      A local range consisting of native pointers to the first
  *              and last local element within the sequence limited by the
