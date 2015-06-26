@@ -52,7 +52,7 @@ dart_ret_t dart_gptr_setaddr(
   char  *base;
   dart_mempoolptr pool;
 
-  if(!gptr ) {
+  if (!gptr) {
     return DART_ERR_INVAL;
   }
 
@@ -72,10 +72,11 @@ dart_ret_t dart_gptr_setunit(
   dart_gptr_t *gptr,
   dart_unit_t u)
 {
-  if(!gptr ) {
+  if (!gptr) {
     return DART_ERR_INVAL;
   }
   gptr->unitid = u;
+  return DART_OK;
 }
 
 dart_ret_t dart_gptr_incaddr(
