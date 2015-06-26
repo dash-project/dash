@@ -8,9 +8,6 @@
 #ifndef ARRAY_H_INCLUDED
 #define ARRAY_H_INCLUDED
 
-#include <stdexcept>
-#include <algorithm>
-
 #include <dash/GlobMem.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
@@ -18,6 +15,7 @@
 #include <dash/Pattern.h>
 #include <dash/HView.h>
 #include <dash/Shared.h>
+#include <dash/Exception.h>
 
 namespace dash {
 
@@ -46,83 +44,142 @@ const_reverse_iterator  Behaves like const value_type*
 // forward declaration
 template<
   typename ElementType,
+  typename IndexType,
   class PatternType >
 class Array;
 
-template<typename T, class PatternType>
+template<
+  typename T,
+  typename IndexType,
+  class PatternType>
 class LocalProxyArray {
 public: 
-  typedef size_t size_type;
+  /// Derive size type from given signed index / gptrdiff type
+  typedef typename std::make_unsigned<IndexType>::type size_type;
   
 private:
-  Array<T, PatternType> *m_ptr;
+  Array<T, IndexType, PatternType> * m_array;
   
 public:
-  LocalProxyArray(Array<T, PatternType>* ptr) {
-    m_ptr = ptr;
+  /**
+   * Constructor, creates a local access proxy for the given array.
+   */
+  LocalProxyArray(
+    Array<T, IndexType, PatternType> * array)
+  : m_array(array) {
   }
   
-  T* begin() const noexcept {
-    return m_ptr->lbegin();
+  /**
+   * Pointer to initial local element in the array.
+   */
+  T * begin() noexcept {
+    return m_array->lbegin();
   }
   
-  T* end() const noexcept {
-    return m_ptr->lend();
+  const T * begin() const noexcept {
+    return m_array->lbegin();
+  }
+  
+  /**
+   * Pointer past final local element in the array.
+   */
+  T * end() noexcept {
+    return m_array->lend();
+  }
+  
+  const T * end() const noexcept {
+    return m_array->lend();
   }
 
+  /**
+   * Number of array elements in local memory.
+   */
   size_type size() const noexcept {
-    return end()-begin();
+    return end() - begin();
   }
   
-  T& operator[](size_type n) {
+  /**
+   * Subscript operator, access to local array element at given position.
+   */
+  T & operator[](size_type n) {
     return begin()[n];
   }
 
-  // get a global pointer for a local pointer
-  GlobPtr<T> globptr(T* lptr) {
-    GlobPtr<T> gptr = m_ptr->begin();
-    gptr.set_unit(dash::myid());
+  /**
+   * Resolve the global pointer for a local pointer.
+   */
+  GlobPtr<T> globptr(T * lptr) {
+    // Get global begin pointer depending on unit
+    GlobPtr<T> gptr = m_array->begin();
+    gptr.set_unit(m_array->team().myid());
+    // Get local offset
     auto lptrdiff = lptr - begin();
+    // Add local offset to global begin pointer
     gptr += static_cast<long long>(lptrdiff);
     return gptr;
   }
 };
 
+/**
+ * A distributed array.
+ *
+ * \concept{dash_container_concept}
+ * \concept{dash_array_concept}
+ */
 template<
   typename ElementType,
-  class PatternType = Pattern<1, ROW_MAJOR> >
+  typename IndexType   = long long,
+  class PatternType    = Pattern<1, ROW_MAJOR, IndexType> >
 class Array {
+private:
+  typedef Array<ElementType, IndexType, PatternType> self_t;
+
+/// Public types as required by iterator concept
 public: 
   typedef ElementType  value_type;
+  typedef IndexType    index_type;
+  /// Derive size type from given signed index / gptrdiff type
+  typedef typename std::make_unsigned<IndexType>::type size_type;
+  /// Derive size type from given signed index / gptrdiff type
+  typedef typename std::make_unsigned<IndexType>::type difference_type;
 
-  // NO allocator_type!
-  typedef size_t size_type;
-  typedef size_t difference_type;
-
-  typedef       GlobIter<value_type>         iterator;
-  typedef const GlobIter<value_type>   const_iterator;
+  typedef       GlobIter<value_type>                          iterator;
+  typedef const GlobIter<value_type>                    const_iterator;
   typedef std::reverse_iterator<      iterator>       reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
   
-  typedef       GlobRef<value_type>       reference;
-  typedef const GlobRef<value_type> const_reference;
+  typedef       GlobRef<value_type>                          reference;
+  typedef const GlobRef<value_type>                    const_reference;
   
-  typedef       GlobIter<value_type>       pointer;
-  typedef const GlobIter<value_type> const_pointer;
+  typedef       GlobIter<value_type>                           pointer;
+  typedef const GlobIter<value_type>                     const_pointer;
+
+/// Public types as required by dash container concept
+public:
+  /// The type of the pattern used to distribute array elements to units
+  typedef PatternType pattern_type;
   
 private:
-  typedef dash::GlobMem<value_type>    GlobMem;
+  typedef dash::GlobMem<value_type> GlobMem_t;
   
-  dash::Team   & m_team;
-  dart_unit_t    m_myid;
-  PatternType    m_pattern;  
-  GlobMem*       m_globmem; 
-  iterator       m_begin;
-  size_type      m_size;   // total size (# elements)
-  size_type      m_lsize;  // local size (# local elements)
-  
-  ElementType * m_lbegin;
-  ElementType * m_lend;
+  dash::Team         & m_team;
+  dart_unit_t          m_myid;
+  PatternType          m_pattern;  
+  GlobMem_t          * m_globmem; 
+  /// Iterator to initial element in the array
+  iterator             m_begin;
+  /// Iterator to final element in the array
+  iterator             m_end;
+  /// Total number of elements in the array
+  size_type            m_size;
+  /// Number of local elements in the array
+  size_type            m_lsize;
+  /// Number allocated local elements in the array
+  size_type            m_lcapacity;
+  /// Native pointer to first local element in the array
+  ElementType        * m_lbegin;
+  /// Native pointer past last local element in the array
+  ElementType        * m_lend;
   
 public:
 /* Check requirements on element type 
@@ -135,173 +192,306 @@ public:
      "Element type must be trivially copyable");
 */
 
-public:
-  Array(
-    Team & t = dash::Team::All())
-  : m_team(t),
-    m_pattern(0, dash::BLOCKED, t),
-    local(this),
-    m_size(0) {
-  }
-
-  Array(
-    size_t nelem,
-    dash::DistributionSpec<1> ds,
-    Team & t = dash::Team::All())
-  : m_team(t),
-    m_pattern(nelem, ds, t),
-    local(this) {
-    allocate(nelem, ds);
-  }  
-
-public:
   /// Local proxy object enables arr.local to be used in range-based for
   /// loops
-  LocalProxyArray<value_type, PatternType> local;
+  LocalProxyArray<value_type, IndexType, PatternType> local;
 
-  /// Delegating constructor, specify pattern explicitly
+public:
   Array(
-    const PatternType & pat)
-  : Array(pat.capacity(), pat.distspec(), pat.team()) {
+    Team & team = dash::Team::All())
+  : m_team(team),
+    m_pattern(0, dash::BLOCKED, team),
+    m_size(0),
+    m_lsize(0),
+    m_lcapacity(0),
+    local(this) {
+    DASH_LOG_TRACE("Array()", "default constructor");
   }
-  
-  /// Delegating constructor, only specify the size
+
+  /**
+   * Constructor, specifies distribution type explicitly.
+   */
   Array(
     size_t nelem,
-    Team & t = dash::Team::All())
-  : Array(nelem, dash::BLOCKED, t) {
+    dash::DistributionSpec<1> distribution,
+    Team & team = dash::Team::All())
+  : m_team(team),
+    m_pattern(nelem, distribution, team),
+    m_size(0),
+    m_lsize(0),
+    m_lcapacity(0),
+    local(this) {
+    DASH_LOG_TRACE("Array()", nelem);
+    allocate(m_pattern);
+  }  
+
+  /**
+   * Constructor, specifies distribution pattern explicitly.
+   */
+  Array(
+    const PatternType & pattern)
+  : m_team(pattern.team()),
+    m_pattern(pattern),
+    m_size(0),
+    m_lsize(0),
+    m_lcapacity(0),
+    local(this) {
+    DASH_LOG_TRACE("Array()", "pattern instance constructor");
+    allocate(m_pattern);
+  }
+  
+  /**
+   * Delegating constructor, specifies the size of the array.
+   */
+  Array(
+    size_t nelem,
+    Team & team = dash::Team::All())
+  : Array(nelem, dash::BLOCKED, team) {
+    DASH_LOG_TRACE("Array()", "finished delegating constructor");
   }
 
+  /**
+   * Destructor, deallocates array elements.
+   */
   ~Array() {
     deallocate();
   }
 
+  /**
+   * Global const pointer to the beginning of the array.
+   */
   const_pointer data() const noexcept {
     return m_begin;
   }
   
+  /**
+   * Global pointer to the beginning of the array.
+   */
   iterator begin() noexcept {
-    iterator res = iterator(data());
+    iterator res = iterator(m_begin);
+    return res;
+  }
+  
+  /**
+   * Global pointer to the beginning of the array.
+   */
+  const_iterator begin() const noexcept {
+    return m_begin;
+  }
+
+  /**
+   * Global pointer to the end of the array.
+   */
+  iterator end() noexcept {
+    iterator res = iterator(m_end);
     return res;
   }
 
-  iterator end() noexcept {
-    return iterator(data() + m_size);
+  /**
+   * Global pointer to the end of the array.
+   */
+  const_iterator end() const noexcept {
+    return m_end;
   }
 
-  ElementType* lbegin() const noexcept {
+  /**
+   * Native pointer to the first local element in the array.
+   */
+  ElementType * lbegin() noexcept {
     return m_lbegin;
   }
 
-  ElementType* lend() const noexcept {
+  /**
+   * Native pointer to the first local element in the array.
+   */
+  const ElementType * lbegin() const noexcept {
+    return m_lbegin;
+  }
+
+  /**
+   * Native pointer to the end of the array.
+   */
+  ElementType * lend() noexcept {
     return m_lend;
-  }  
-
-  reference operator[](size_type n) {
-    return begin()[n];
   }
 
-  reference at(size_type pos) {
-    if (pos >= size())  {
-      throw std::out_of_range("Out of range");
+  /**
+   * Native pointer to the end of the array.
+   */
+  const ElementType * lend() const noexcept {
+    return m_lend;
+  }
+
+  /**
+   * Subscript assignment operator, not range-checked.
+   *
+   * \return  A global reference to the element in the array at the given
+   *          index.
+   */
+  reference operator[](
+    /// The position of the element to return
+    size_type global_index) {
+    DASH_LOG_TRACE("Array.[]=", global_index);
+    return begin()[global_index];
+  }
+
+  /**
+   * Subscript operator, not range-checked.
+   *
+   * \return  A global reference to the element in the array at the given
+   *          index.
+   */
+  const_reference operator[](
+    /// The position of the element to return
+    size_type global_index) const {
+    DASH_LOG_TRACE("Array.[]", global_index);
+    return begin()[global_index];
+  }
+
+  /**
+   * Random access assignment operator, range-checked.
+   *
+   * \see operator[]
+   *
+   * \return  A global reference to the element in the array at the given
+   *          index.
+   */
+  reference at(
+    /// The position of the element to return
+    size_type global_pos) {
+    if (global_pos >= size())  {
+      DASH_THROW(
+          dash::exception::OutOfRange,
+          "Position " << global_pos 
+          << " is out of range " << size() 
+          << " in Array.at()" );
     }
-    return begin()[pos];
+    return begin()[global_pos];
   }
 
+  /**
+   * Random access operator, range-checked.
+   *
+   * \see operator[]
+   *
+   * \return  A global reference to the element in the array at the given
+   *          index.
+   */
+  const_reference at(
+    /// The position of the element to return
+    size_type global_pos) const {
+    if (global_pos >= size())  {
+      DASH_THROW(
+          dash::exception::OutOfRange,
+          "Position " << global_pos 
+          << " is out of range " << size() 
+          << " in Array.at()" );
+    }
+    return begin()[global_pos];
+  }
+
+  /**
+   * The size of the array.
+   *
+   * \return  The number of elements in the array.
+   */
   constexpr size_type size() const noexcept {
     return m_size;
   }
 
+  /**
+   * The number of elements that can be held in currently allocated storage
+   * of the array.
+   *
+   * \return  The number of elements in the array.
+   */
+  constexpr size_type capacity() const noexcept {
+    return m_size;
+  }
+
+  /**
+   * The team containing all units accessing this array.
+   *
+   * \return  The instance of Team that this array has been instantiated
+   *          with
+   */
+  const Team & team() const noexcept {
+    return m_team;
+  }
+
+  /**
+   * The number of elements in the local part of the array.
+   *
+   * \return  The number of elements in the array that are local to the
+   *          calling unit.
+   */
   constexpr size_type lsize() const noexcept {
     return m_lsize;
   }
+
+  /**
+   * The capacity of the local part of the array.
+   *
+   * \return  The number of allocated elements in the array that are local
+   *          to the calling unit.
+   */
+  constexpr size_type lcapacity() const noexcept {
+    return m_lcapacity;
+  }
   
+  /**
+   * Checks whether the array is empty.
+   *
+   * \return  True if \c size() is 0, otherwise false
+   */
   constexpr bool empty() const noexcept {
     return size() == 0;
   }
 
-  bool is_local(size_type n) const {
-    auto coord = m_pattern.coords(n);
-    return m_pattern.index_to_unit(coord) == m_myid;
+  /**
+   * Checks whether the given global index is local to the calling unit.
+   *
+   * \return  True if the array element referenced by the index is held
+   *          in the calling unit's local memory
+   */
+  bool is_local(
+    /// A global array index
+    index_type global_index) const {
+    return m_pattern.is_local(global_index, m_myid);
   }
   
+  /**
+   * Establish a barrier for all units operating on the array.
+   */
   void barrier() const {
     m_team.barrier();
   }
 
-  PatternType & pattern() {
+  /**
+   * The pattern used to distribute array elements to units.
+   */
+  const PatternType & pattern() const {
     return m_pattern;
   }
 
-  Team & team() {
-    return m_team;
-  }
-
   template<int level>
-  dash::HView<Array<ElementType>, level> hview() {
-    return dash::HView<Array<ElementType>, level>(*this);
-  }
-
-  // find the location of the global min. element
-  // TODO: support custom comparison operator, similar to 
-  // std::min_element()
-  GlobPtr<ElementType> min_element() {
-    typedef dash::GlobPtr<ElementType> globptr_t;
-    dash::Array<globptr_t> minarr(m_team.size());
-    // find the local min. element in parallel
-    ElementType *lmin =std::min_element(lbegin(), lend());     
-    if (lmin == lend()) {
-      minarr[m_team.myid()] = nullptr;
-    } else {
-      minarr[m_team.myid()] = local.globptr(lmin);
-    }
-    dash::barrier();
-    dash::Shared<globptr_t> min; 
-    // find the global min. element
-    if (m_team.myid() == 0) {
-      globptr_t minloc   = minarr[0];
-      ElementType minval = *minloc;
-      for (auto i = 1; i < minarr.size(); i++) {
-        if ((globptr_t)minarr[i] != nullptr) {
-          ElementType val = *(globptr_t)minarr[i];
-          if (val < minval) {
-            minloc = minarr[i];
-            DASH_LOG_TRACE("Array.min_elem", 
-                           "Setting min val to ", val);
-            minval = val;
-          }
-        }
-      }
-      min.set(minloc);
-    }
-    m_team.barrier();
-    return min.get();
+  dash::HView<self_t, level> hview() {
+    return dash::HView<self_t, level>(*this);
   }
 
   bool allocate(
     size_t nelem,
-    dash::DistributionSpec<1> ds) {
-    assert(nelem > 0);
-    
-    m_pattern = PatternType(nelem, ds, m_team);
-    m_size    = m_pattern.capacity();
-    m_lsize   = m_pattern.local_size();
-    m_myid    = m_team.myid();
-    m_globmem = new GlobMem(m_team, m_lsize);
-    m_begin   = iterator(m_globmem, m_pattern);
-    
-    // determine local begin and end addresses
-    void *addr;
-    dart_gptr_t gptr = m_globmem->begin().dartptr();
-
-    dart_gptr_setunit(&gptr, m_myid);
-    dart_gptr_getaddr(gptr, &addr);
-    m_lbegin = static_cast<ElementType*>(addr);
-
-    dart_gptr_incaddr(&gptr, m_lsize * sizeof(ElementType));
-    dart_gptr_getaddr(gptr, &addr);
-    m_lend   = static_cast<ElementType*>(addr);    
-    return true;
+    dash::DistributionSpec<1> distribution) {
+    DASH_LOG_TRACE("Array.allocate()", nelem);
+    // Check requested capacity:
+    if (nelem == 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Tried to allocate dash::Array with size 0");
+    }
+    DASH_LOG_TRACE("Array.allocate", "initializing pattern");
+    m_pattern = PatternType(nelem, distribution, m_team);
+    return allocate(m_pattern);
   }
 
   bool deallocate() {
@@ -311,6 +501,39 @@ public:
       return true;
     }
     return false;
+  }
+
+private:
+  bool allocate(
+    const PatternType & pattern) {
+    DASH_LOG_TRACE("Array.allocate()", "pattern", 
+                   pattern.memory_layout().extents());
+    // Check requested capacity:
+    m_size      = m_pattern.capacity();
+    if (m_size == 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Tried to allocate dash::Array with size 0");
+    }
+    // Initialize members:
+    m_lsize     = m_pattern.local_size();
+    m_lcapacity = m_pattern.max_elem_per_unit();
+    m_myid      = m_team.myid();
+    // Allocate local memory of identical size on every unit:
+    DASH_LOG_TRACE_VAR("Array.allocate", m_lcapacity);
+    DASH_LOG_TRACE_VAR("Array.allocate", m_lsize);
+    m_globmem   = new GlobMem_t(m_team, m_lcapacity);
+    // Global iterators:
+    m_begin     = iterator(m_globmem, m_pattern);
+    m_end       = iterator(m_begin) + m_size;
+    // Local iterators:
+    m_lbegin    = m_globmem->lbegin(m_myid);
+    m_lend      = m_globmem->lend(m_myid);
+    DASH_LOG_TRACE_VAR("Array.allocate", m_myid);
+    DASH_LOG_TRACE_VAR("Array.allocate", m_size);
+    DASH_LOG_TRACE_VAR("Array.allocate", m_lsize);
+    DASH_LOG_TRACE("Array.allocate() finished");
+    return true;
   }
 };
 

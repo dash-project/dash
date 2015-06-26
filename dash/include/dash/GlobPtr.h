@@ -25,7 +25,7 @@ public:
   typedef long long gptrdiff_t;
 
 private:
-  dart_gptr_t  m_dartptr;
+  dart_gptr_t m_dartptr;
 
   template<typename U>
   friend std::ostream& operator<<(std::ostream& os, const GlobPtr<U>& it);
@@ -41,8 +41,8 @@ public:
     m_dartptr = DART_GPTR_NULL;
   }
 
-  GlobPtr(const GlobPtr& other) = default;
-  GlobPtr<T>& operator=(const GlobPtr& other) = default;
+  GlobPtr(const GlobPtr & other) = default;
+  GlobPtr<T>& operator=(const GlobPtr & other) = default;
 
   explicit operator dart_gptr_t() const {
     return m_dartptr;
@@ -56,26 +56,34 @@ public:
 
   // prefix increment operator
   GlobPtr<T>& operator++() {
-    dart_gptr_incaddr(&m_dartptr, sizeof(T));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&m_dartptr, sizeof(T)),
+      DART_OK);
     return *this;
   }
   
   // postfix increment operator
   GlobPtr<T> operator++(int) {
     GlobPtr<T> result = *this;
-    dart_gptr_incaddr(&m_dartptr, sizeof(T));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&m_dartptr, sizeof(T)),
+      DART_OK);
     return result;
   }
 
   GlobPtr<T> operator+(gptrdiff_t n) const {
     dart_gptr_t gptr = m_dartptr;
-    dart_gptr_incaddr(&gptr, n * sizeof(T));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&gptr, n * sizeof(T)),
+      DART_OK);
     return GlobPtr<T>(gptr);
   }
 
   GlobPtr<T> operator+=(gptrdiff_t n) {
     GlobPtr<T> result = *this;
-    dart_gptr_incaddr(&m_dartptr, n * sizeof(T));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&m_dartptr, n * sizeof(T)),
+      DART_OK);
     return result;
   }
 
@@ -83,26 +91,34 @@ public:
   
   // prefix increment operator
   GlobPtr<T>& operator--() {
-    dart_gptr_incaddr(&m_dartptr, -sizeof(T));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&m_dartptr, -sizeof(T)),
+      DART_OK);
     return *this;
   }
   
   // postfix increment operator
   GlobPtr<T> operator--(int) {
     GlobPtr<T> result = *this;
-    dart_gptr_incaddr(&m_dartptr, -sizeof(T));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&m_dartptr, -sizeof(T)),
+      DART_OK);
     return result;
   }
 
   GlobPtr<T> operator-(gptrdiff_t n) const {
     dart_gptr_t gptr = m_dartptr;
-    dart_gptr_incaddr(&gptr, -(n * sizeof(T)));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&gptr, -(n * sizeof(T))),
+      DART_OK);
     return GlobPtr<T>(gptr);
   }
 
   GlobPtr<T> operator-=(gptrdiff_t n) {
     GlobPtr<T> result = *this;
-    dart_gptr_incaddr(&m_dartptr, -(n * sizeof(T)));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&m_dartptr, -(n * sizeof(T))),
+      DART_OK);
     return result;
   }
 
@@ -134,19 +150,24 @@ public:
   }
   
   explicit operator T*() {
-    void *addr=0;
+    void *addr = 0;
     if(is_local()) {
-      dart_gptr_getaddr(m_dartptr, &addr);
+      DASH_ASSERT_RETURNS(
+        dart_gptr_getaddr(m_dartptr, &addr),
+        DART_OK);
     }
+    // TODO: Returning (void*)(0) for non-local pointer?
     return static_cast<T*>(addr);
   }
 
-  void set_unit(int unitid) {
-    m_dartptr.unitid=unitid;
+  void set_unit(dart_unit_t unit_id) {
+    DASH_ASSERT_RETURNS(
+      dart_gptr_setunit(&m_dartptr, unit_id),
+      DART_OK);
   }
 
   bool is_local() const {
-    return m_dartptr.unitid==dash::myid();
+    return m_dartptr.unitid == dash::myid();
   }
 };
 

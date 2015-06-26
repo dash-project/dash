@@ -2,7 +2,6 @@
 #define DASH__DISTRIBUTION_H_
 
 #include <dash/Enums.h>
-// #include <dash/internal/DistributionFunc.h>
 #include <dash/internal/Logging.h>
 
 namespace dash {
@@ -210,31 +209,41 @@ public:
  * Distribution specifying that elements in a Pattern's
  * dimension shall be distributed to units in even-sized
  * blocks.
+ *
+ * \relates Distribution
  */
-extern Distribution BLOCKED;
+extern const Distribution BLOCKED;
 /**
  * Distribution specifying that elements in a Pattern's
  * dimension shall be distributed by cycling among units.
  * Semantically equivalent to BLOCKCYCLIC(1) but with slight
  * performance improvement.
+ *
+ * \relates Distribution
  */
-extern Distribution CYCLIC;
+extern const Distribution CYCLIC;
 /**
  * Distribution specifying that elements in a Pattern's
  * dimension shall not be distributed.
+ *
+ * \relates Distribution
  */
-extern Distribution NONE;
+extern const Distribution NONE;
 
 /**
  * Distribution specifying that elements in a Pattern's
  * dimension shall be distributed to units in a tiled blocks of
  * the given size.
+ *
+ * \relates Distribution
  */
 Distribution TILE(int blockSize);
 /**
  * Distribution specifying that elements in a Pattern's
  * dimension shall be distributed to units in blocks of the
  * given size.
+ *
+ * \relates Distribution
  */
 Distribution BLOCKCYCLIC(int blockSize);
 

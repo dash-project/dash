@@ -31,18 +31,17 @@ void test1() {
   
   dash::Array<int> arr1(31);
   
-  for( auto it=arr1.lbegin(); it!=arr1.lend(); it++ ) {
-    *it=myid;
+  for (auto it = arr1.lbegin(); it != arr1.lend(); ++it) {
+    *it = myid;
   }
-  
   arr1.barrier();
   
-  if(myid==size-1) {
+  if (myid == size-1) {
     fprintf(stderr, "Test1: ");
-    for( auto it: arr1 ) {
-      cout<<it<<" ";
+    for (auto it: arr1) {
+      cout << it << " ";
     }
-    cout<<endl;
+    cout << endl;
   }  
 }
 
@@ -52,16 +51,16 @@ void test2() {
 
   dash::Array<int> arr1(31);
 
-  for( auto& it : arr1.local ) {
-    it=myid;
+  for (auto & it : arr1.local) {
+    it = myid;
   }
   arr1.barrier();
   
-  if(myid==size-1) {
+  if (myid == size-1) {
     fprintf(stderr, "Test2: ");
     for( auto it: arr1 ) {
-      cout<<it<<" ";
+      cout << it << " ";
     }
-    cout<<endl;
+    cout << endl;
   }
 }

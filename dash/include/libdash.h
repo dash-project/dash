@@ -23,7 +23,9 @@
 #include <dash/Matrix.h>
 #include <dash/Shared.h>
 #include <dash/Exception.h>
+#include <dash/Algorithm.h>
 
+#include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 
 #endif // DASH__LIBDASH_H_

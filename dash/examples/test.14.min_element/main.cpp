@@ -26,8 +26,8 @@ int main(int argc, char* argv[]) {
   
   arr.barrier();
 
-  auto min =  arr.min_element();
-  cout<<min<<" "<<*min<<endl;
+  auto min = dash::min_element(arr.begin(), arr.end());
+  cout << min << " " << *min << endl;
 
   dash::finalize();
 }
