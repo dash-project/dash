@@ -714,7 +714,7 @@ public:
   IndexType index_to_elem(
     const std::array<IndexType, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
-    DASH_LOG_DEBUG_VAR("Pattern.index_to_elem()", coords);
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem()", coords);
     // Convert coordinates to global block coordinates:
     std::array<IndexType, NumDimensions> block_coords =
       coords_to_block_coords(coords);

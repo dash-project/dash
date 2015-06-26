@@ -39,11 +39,11 @@ void put_value(
   /// [IN]  Global pointer referencing target address of value
   const GlobPtr<T> & gptr
 ) {
-  DASH_ASSERT(
+  DASH_ASSERT_RETURNS(
     dart_put_blocking(gptr.dartptr(),
                       (void *)(&newval),
-                      sizeof(T))
-    == DART_OK);
+                      sizeof(T)),
+    DART_OK);
 }
 
 /**
@@ -59,11 +59,11 @@ void get_value(
   /// [IN]  Global pointer to read
   const GlobPtr<T> & gptr
 ) {
-  DASH_ASSERT(
+  DASH_ASSERT_RETURNS(
     dart_get_blocking(ptr,
                       gptr.dartptr(),
-                      sizeof(T))
-    == DART_OK);
+                      sizeof(T)),
+    DART_OK);
 }
 
 template<typename TYPE>
@@ -88,18 +88,19 @@ public:
     /// Number of local elements to allocate
     size_t nlelem
   ) {
+    DASH_LOG_TRACE("GlobMem(team, nelem)", team.size(), nlelem);
     m_begptr     = DART_GPTR_NULL;
     m_teamid     = team.dart_id();
     m_nlelem     = nlelem;
     m_kind       = dash::internal::COLLECTIVE;
-    size_t lsize = sizeof(TYPE) * nlelem;
+    size_t lsize = sizeof(TYPE) * m_nlelem;
     dart_team_size(m_teamid, &m_nunits);
     dart_team_memalloc_aligned(
       m_teamid, 
 			lsize,
       &m_begptr);
-    m_lbegin     = lbegin(team.myid());
-    m_lend       = lend(team.myid());
+    m_lbegin     = lbegin(m_teamid);
+    m_lend       = lend(m_teamid);
   }
 
   /**
@@ -109,15 +110,18 @@ public:
       /// [IN] Number of local elements to allocate
       size_t nlelem
   ) {
+    DASH_LOG_TRACE("GlobMem(nelem)", nlelem);
     m_begptr     = DART_GPTR_NULL;
     m_teamid     = DART_TEAM_NULL;
     m_nlelem     = nlelem;
     m_nunits     = 1;
     m_kind       = dash::internal::LOCAL;
-    size_t lsize = sizeof(TYPE) * nlelem;
-    dart_memalloc(lsize, &m_begptr);
-    m_lbegin     = lbegin(dash::myid());
-    m_lend       = lend(dash::myid());
+    size_t lsize = sizeof(TYPE) * m_nlelem;
+    dart_memalloc(
+      lsize,
+      &m_begptr);
+    m_lbegin     = lbegin(m_teamid);
+    m_lend       = lend(m_teamid);
   }
 
   /**
@@ -249,11 +253,13 @@ public:
     size_t unit,
     /// The unit's local address offset
     long long local_index) const {
+    // TODO: Why not like this:
+#if 0
     GlobPtr<TYPE> gptr = begin();
     gptr.set_unit(unit);
     gptr += static_cast<long long>(local_index);
     return gptr;
-#if 0
+#endif
     // TODO: Clarify: what is lunit, gunit?
     dart_unit_t lunit, gunit; 
     dart_gptr_t gptr = m_begptr;
@@ -265,7 +271,6 @@ public:
     dart_gptr_incaddr(&gptr, local_index * sizeof(TYPE));
 
     return GlobPtr<TYPE>(gptr);
-#endif
   }
 #if 0
   /**

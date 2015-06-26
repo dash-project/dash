@@ -80,8 +80,17 @@ public:
    * \return  A global reference to the element at the iterator's position
    */
   GlobRef<ElementType> operator*() {
-    GlobPtr<ElementType> ptr(*this);
-    return GlobRef<ElementType>(ptr);
+    auto glob_coords = m_pattern->coords(m_idx);
+    auto unit        = m_pattern->index_to_unit(glob_coords);
+    auto local_index = m_pattern->index_to_elem(glob_coords);
+    DASH_LOG_TRACE_VAR("GlobIter.*", m_idx);
+    DASH_LOG_TRACE_VAR("GlobIter.*", unit);
+    DASH_LOG_TRACE_VAR("GlobIter.*", local_index);
+    // Global pointer to element at given position:
+    GlobPtr<ElementType> gptr =
+      m_globmem->index_to_gptr(unit, local_index);
+    // Global reference to element at given position:
+    return GlobRef<ElementType>(gptr);
   }  
 
   /**
@@ -189,12 +198,12 @@ public:
   }
 
   gptrdiff_t operator+(
-    const self_t  & other) const {
+    const self_t & other) const {
     return m_idx + other.m_idx;
   }
 
   gptrdiff_t operator-(
-    const self_t  & other) const {
+    const self_t & other) const {
     return m_idx - other.m_idx;
   }
 

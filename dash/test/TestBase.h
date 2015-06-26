@@ -32,24 +32,20 @@ extern void ColoredPrintf(
 #if defined(DASH_ENABLE_LOGGING)
 
 #define LOG_MESSAGE(...) do { \
-  char buffer[200]; \
+  char buffer[300]; \
   sprintf(buffer, __VA_ARGS__); \
   testing::internal::ColoredPrintf( \
-    testing::internal::COLOR_GREEN, \
-    "[ %d LOG    ] ", dash::myid()); \
-  testing::internal::ColoredPrintf(\
     testing::internal::COLOR_YELLOW, \
+    "[ %d LOG    ] %s \n", \
+    dash::myid(),\
     buffer); \
-  testing::internal::ColoredPrintf( \
-    testing::internal::COLOR_YELLOW, \
-    "\n"); \
 } while(0)
 
-#else // DASH_ENABLE_LOGGING
+#else  // DASH_ENABLE_LOGGING
 
 #define LOG_MESSAGE(...) do {  } while(0)
 
-#endif
+#endif // DASH_ENABLE_LOGGING
 
 #define DASH_TEST_LOCAL_ONLY() do { \
   if (dash::myid() > 0) { \
