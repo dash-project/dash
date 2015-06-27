@@ -6,6 +6,10 @@
 #include <functional>
 #include <cstddef>
 
+/**
+ * \defgroup  Algorithms  Algorithms operating on DASH containers.
+ */
+
 namespace dash {
 
 template<typename ElementType>
@@ -25,6 +29,8 @@ struct LocalIndexRange {
  *
  * \tparam      ElementType  Type of the elements in the range
  * \complexity  O(1)
+ *
+ * \ingroup     Algorithms
  */
 template<typename ElementType>
 gptrdiff_t distance(
@@ -40,6 +46,8 @@ gptrdiff_t distance(
  *
  * \tparam      ElementType  Type of the elements in the range
  * \complexity  O(1)
+ *
+ * \ingroup     Algorithms
  */
 template<typename ElementType>
 gptrdiff_t distance(
@@ -73,6 +81,8 @@ gptrdiff_t distance(
  *                           implementation
  * \complexity  O(d), with \c d dimensions in the global iterators'
  *              pattern
+ *
+ * \ingroup     Algorithms
  */
 template<
   typename ElementType,
@@ -141,6 +151,8 @@ local_index_subrange(
  * \tparam      PatternType  Type of the global iterators' pattern 
  *                           implementation
  * \complexity  O(d), with \c d dimensions in the global iterators' pattern
+ *
+ * \ingroup     Algorithms
  */
 template<
   typename ElementType,
@@ -179,6 +191,8 @@ LocalRange<ElementType> local_subrange(
  *                           invoke, deduced from parameter \c func
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
+ *
+ * \ingroup     Algorithms
  */
 template<
   typename ElementType,
@@ -219,6 +233,8 @@ void for_each(
  * \tparam      ElementType  Type of the elements in the sequence
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
+ *
+ * \ingroup     Algorithms
  */
 template<
   typename ElementType,
@@ -302,6 +318,8 @@ GlobPtr<ElementType> min_element(
  * \tparam      ElementType  Type of the elements in the sequence
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
+ *
+ * \ingroup     Algorithms
  */
 template<
   typename ElementType,
