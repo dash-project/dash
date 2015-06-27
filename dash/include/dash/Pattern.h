@@ -267,19 +267,19 @@ private:
   MemoryLayout_t     _local_memory_layout;
   /// The view specification of the pattern, consisting of offset and
   /// extent in every dimension
-  /// The view specification of the pattern, consisting of offset and
-  /// extent in every dimension
   ViewSpec_t         _viewspec;
-  /// Number of blocks in all dimensions.
+  /// Number of blocks in all dimensions
   BlockSpec_t        _blockspec;
-  /// Number of blocks in all dimensions.
-  BlockSpec_t        _blockspec_transposed;
-  /// Maximum extents of a block in this pattern.
+  /// Maximum extents of a block in this pattern
   BlockSizeSpec_t    _blocksize_spec;
   /// Total amount of units to which this pattern's elements are mapped
   SizeType           _nunits          = dash::Team::All().size();
   /// Maximum number of elements in a single block
   SizeType           _max_blocksize;
+  /// Corresponding global index to first local index of the active unit
+  IndexType          _lbegin;
+  /// Corresponding global index past last local index of the active unit
+  IndexType          _lend;
 
 public:
   /**
@@ -449,6 +449,7 @@ public:
    */
   Pattern(const self_t & other)
   : _distspec(other._distspec), 
+    _team(other._team),
     _teamspec(other._teamspec),
     _memory_layout(other._memory_layout),
     _local_memory_layout(other._local_memory_layout),
@@ -456,7 +457,11 @@ public:
     _blockspec(other._blockspec),
     _blocksize_spec(other._blocksize_spec),
     _nunits(other._nunits),
-    _max_blocksize(other._max_blocksize) {
+    _max_blocksize(other._max_blocksize),
+    _lbegin(other._lbegin),
+    _lend(other._lend) {
+    // No need to copy _arguments as it is just used to
+    // initialize other members.
   }
 
   /**
@@ -480,6 +485,8 @@ public:
       return true;
     }
     // no need to compare local memory layout as it is
+    // derived from other members
+    // no need to compare lbegin, lend as both are
     // derived from other members
     return(
       _distspec       == other._distspec &&
@@ -506,16 +513,14 @@ public:
    * Resolves the global index of the first local element in the pattern.
    */
   IndexType lbegin() const {
-    // TODO: Can be cached
-    return local_to_global_index(0);
+    return _lbegin;
   }
 
   /**
    * Resolves the global index past the last local element in the pattern.
    */
   IndexType lend() const {
-    // TODO: Can be cached
-    return local_to_global_index(local_size() - 1) + 1;
+    return _lend;
   }
 
   /**
@@ -1075,8 +1080,13 @@ private:
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", local_extents[d]);
     }
     _local_memory_layout.resize(local_extents);
-    DASH_LOG_DEBUG_VAR("Pattern.initialize >",
-                       _local_memory_layout.extents());
+    // First local index transformed to global index
+    _lbegin = local_to_global_index(0);
+    // Index past last local index transformed to global index
+    _lend   = local_to_global_index(local_size() - 1) + 1;
+    DASH_LOG_DEBUG_VAR("Pattern.initialize >", _local_memory_layout.extents());
+    DASH_LOG_DEBUG_VAR("Pattern.initialize >", lbegin);
+    DASH_LOG_DEBUG_VAR("Pattern.initialize >", lend);
   }
 
   /**
