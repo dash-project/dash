@@ -1085,8 +1085,8 @@ private:
     // Index past last local index transformed to global index
     _lend   = local_to_global_index(local_size() - 1) + 1;
     DASH_LOG_DEBUG_VAR("Pattern.initialize >", _local_memory_layout.extents());
-    DASH_LOG_DEBUG_VAR("Pattern.initialize >", lbegin);
-    DASH_LOG_DEBUG_VAR("Pattern.initialize >", lend);
+    DASH_LOG_DEBUG_VAR("Pattern.initialize >", _lbegin);
+    DASH_LOG_DEBUG_VAR("Pattern.initialize >", _lend);
   }
 
   /**
