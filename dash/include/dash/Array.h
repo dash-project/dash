@@ -123,6 +123,9 @@ public:
 /**
  * A distributed array.
  *
+ * \related dash::min_element
+ * \related dash::max_element
+ *
  * \concept{dash_container_concept}
  * \concept{dash_array_concept}
  */
