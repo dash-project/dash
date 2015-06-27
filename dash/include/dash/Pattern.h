@@ -453,7 +453,7 @@ public:
     _memory_layout(other._memory_layout),
     _local_memory_layout(other._local_memory_layout),
     _viewspec(other._viewspec),
-    _blockspec(other._blocksize_spec),
+    _blockspec(other._blockspec),
     _blocksize_spec(other._blocksize_spec),
     _nunits(other._nunits),
     _max_blocksize(other._max_blocksize) {
@@ -539,7 +539,7 @@ public:
     DASH_LOG_TRACE("Pattern.unit_at",
                    "coords", coords,
                    "block coords", block_coords,
-                   "-> unit id", unit_id);
+                   "> unit id", unit_id);
     return unit_id;
   }
 
@@ -726,8 +726,11 @@ public:
       block_begin_coords[d] *= blocksize(d);
       relative_coords[d]    -= block_begin_coords[d];
     }
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", relative_coords);
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", _blockspec.extents());
     // Block offset, i.e. number of blocks in front of referenced block:
     SizeType block_offset       = _blockspec.at(block_coords);
+    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", block_offset);
     // Offset of the referenced block within all blocks local to its unit,
     // i.e. nth block of this unit:
     SizeType local_block_offset = block_offset / _teamspec.size();
@@ -738,12 +741,10 @@ public:
     SizeType elem_block_offset  = _blocksize_spec.at(relative_coords);
     // Local offset of the element with all of the unit's local elements:
     SizeType local_elem_offset  = block_base_offset + elem_block_offset;
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", block_offset);
     DASH_LOG_TRACE_VAR("Pattern.index_to_elem", local_block_offset);
     DASH_LOG_TRACE_VAR("Pattern.index_to_elem", block_base_offset);
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", relative_coords);
     DASH_LOG_TRACE_VAR("Pattern.index_to_elem", elem_block_offset);
-    DASH_LOG_DEBUG_VAR("Pattern.index_to_elem ->", local_elem_offset);
+    DASH_LOG_DEBUG_VAR("Pattern.index_to_elem >", local_elem_offset);
     return local_elem_offset;
   }
 
@@ -792,7 +793,7 @@ public:
     dart_unit_t unit) const {
     auto glob_coords = coords(index);
     auto coords_unit = index_to_unit(glob_coords);
-    DASH_LOG_TRACE_VAR("Pattern.is_local ->", (coords_unit == unit));
+    DASH_LOG_TRACE_VAR("Pattern.is_local >", (coords_unit == unit));
     return coords_unit == unit;
   }
 
@@ -852,7 +853,7 @@ public:
       DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", dim_num_blocks);
       DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", max_elements);
     }
-    DASH_LOG_DEBUG_VAR("Pattern.max_elem_per_unit", max_elements);
+    DASH_LOG_DEBUG_VAR("Pattern.max_elem_per_unit >", max_elements);
     return max_elements;
   }
 
@@ -1074,7 +1075,7 @@ private:
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", local_extents[d]);
     }
     _local_memory_layout.resize(local_extents);
-    DASH_LOG_DEBUG_VAR("Pattern.initialize",
+    DASH_LOG_DEBUG_VAR("Pattern.initialize >",
                        _local_memory_layout.extents());
   }
 
@@ -1091,10 +1092,12 @@ private:
    */
   std::array<IndexType, NumDimensions> coords_to_block_coords(
     const std::array<IndexType, NumDimensions> & coords) const {
+    DASH_LOG_TRACE_VAR("Pattern.coords_to_block_coords()", coords);
     std::array<IndexType, NumDimensions> block_coords;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       block_coords[d] = coords[d] / blocksize(d);
     }
+    DASH_LOG_TRACE_VAR("Pattern.coords_to_block_coords >", block_coords);
     return block_coords;
   }
 
