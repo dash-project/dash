@@ -1043,9 +1043,11 @@ private:
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_blocks_d);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", blocksize_d);
       DASH_LOG_TRACE_VAR("Pattern.initialize.d", min_local_blocks_d);
+      // Possibly there are more blocks than units in dimension and no
+      // block left for this unit. Local extent in d then becomes 0.
       local_extents[d] = min_local_blocks_d * blocksize_d;
-      if (num_blocks_d == 1 || num_units_d == 1) {
-        // One block with full extent in dimension:
+      if (num_blocks_d == 1 && num_units_d == 1) {
+        // One block assigned to one unit, use full extent in dimension:
         local_extents[d] = num_elem_d;
       } else {
         // Number of additional blocks for this unit, if any:
@@ -1077,13 +1079,18 @@ private:
           local_extents[d] -= undfill_blocksize_d;
         }
       }
-      DASH_LOG_TRACE_VAR("Pattern.initialize.d", local_extents[d]);
+      DASH_LOG_TRACE_VAR("Pattern.initialize.d >", local_extents[d]);
     }
     _local_memory_layout.resize(local_extents);
-    // First local index transformed to global index
-    _lbegin = local_to_global_index(0);
-    // Index past last local index transformed to global index
-    _lend   = local_to_global_index(local_size() - 1) + 1;
+    if (_local_memory_layout.size() == 0) {
+      _lbegin = 0;
+      _lend   = 0;
+    } else {
+      // First local index transformed to global index
+      _lbegin = local_to_global_index(0);
+      // Index past last local index transformed to global index
+      _lend   = local_to_global_index(local_size() - 1) + 1;
+    }
     DASH_LOG_DEBUG_VAR("Pattern.initialize >", _local_memory_layout.extents());
     DASH_LOG_DEBUG_VAR("Pattern.initialize >", _lbegin);
     DASH_LOG_DEBUG_VAR("Pattern.initialize >", _lend);

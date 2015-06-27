@@ -83,6 +83,9 @@ TEST_F(MinElementTest, TestFindArrayUnderfilled)
   int block_size   = 19;
   size_t num_units = dash::Team::All().size();
   size_t num_elem  = ((num_units - 1) * block_size) - block_size / 2;
+  if (num_units < 2) {
+    num_elem = block_size - 1;
+  }
   LOG_MESSAGE("Units: %d, block size: %d, elements: %d",
               num_units, block_size, num_elem);
   Element_t min_value = 21;
