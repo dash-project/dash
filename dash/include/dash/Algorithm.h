@@ -24,15 +24,32 @@ struct LocalIndexRange {
  * Resolve the number of elements between two global iterators.
  *
  * \tparam      ElementType  Type of the elements in the range
- * \complexity  O(d)
+ * \complexity  O(1)
  */
 template<typename ElementType>
 gptrdiff_t distance(
-  /// Iterator to the initial position in the global sequence
+  /// Global iterator to the initial position in the global sequence
   const GlobIter<ElementType> & first,
-  /// Iterator to the final position in the global sequence
+  /// Global iterator to the final position in the global sequence
   const GlobIter<ElementType> & last) {
   return last - first;
+}
+
+/**
+ * Resolve the number of elements between two global pointers.
+ *
+ * \tparam      ElementType  Type of the elements in the range
+ * \complexity  O(1)
+ */
+template<typename ElementType>
+gptrdiff_t distance(
+  /// Global pointer to the initial position in the global sequence
+  dart_gptr_t first,
+  /// Global pointer to the final position in the global sequence
+  dart_gptr_t last) {
+  GlobPtr<ElementType> & gptr_first(dart_gptr_t(first));
+  GlobPtr<ElementType> & gptr_last(dart_gptr_t(last));
+  return gptr_last - gptr_first;
 }
 
 /**
@@ -54,7 +71,8 @@ gptrdiff_t distance(
  * \tparam      ElementType  Type of the elements in the sequence
  * \tparam      PatternType  Type of the global iterators' pattern 
  *                           implementation
- * \complexity  O(d), with \c d dimensions in the global iterators' pattern
+ * \complexity  O(d), with \c d dimensions in the global iterators'
+ *              pattern
  */
 template<
   typename ElementType,
@@ -195,8 +213,8 @@ void for_each(
  * Returns an iterator pointing to the element with the smallest value in
  * the range [first,last).
  *
- * \return      An iterator to smallest value in the range, or last if the 
- *              range is empty.
+ * \return      An iterator to the first occurrence of the smallest value 
+ *              in the range, or \c last if the range is empty.
  *
  * \tparam      ElementType  Type of the elements in the sequence
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
@@ -209,7 +227,12 @@ GlobPtr<ElementType> min_element(
   /// Iterator to the initial position in the sequence
   const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last) {
+  const GlobIter<ElementType, PatternType> & last,
+  /// Element comparison function, defaults to std::less
+  const std::function<
+      bool(const ElementType &, const ElementType)
+    > & compare
+      = std::less<const ElementType &>()) {
   typedef dash::GlobPtr<ElementType> globptr_t;
   auto pattern      = first.pattern();
   dash::Team & team = pattern.team();
@@ -229,7 +252,8 @@ GlobPtr<ElementType> min_element(
     minarr[team.myid()] = nullptr;
     DASH_LOG_DEBUG("min_element", "local range empty");
   } else {
-    const ElementType * lmin = ::std::min_element(lbegin, lend);     
+    const ElementType * lmin = 
+      ::std::min_element(lbegin, lend, compare);     
     DASH_LOG_TRACE_VAR("min_element", lend - lbegin);
     DASH_LOG_TRACE_VAR("min_element", lmin - lbegin);
     DASH_LOG_DEBUG_VAR("min_element", *lmin);
