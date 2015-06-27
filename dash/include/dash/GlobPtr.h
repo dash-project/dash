@@ -28,41 +28,67 @@ private:
   dart_gptr_t m_dartptr;
 
   template<typename U>
-  friend std::ostream& operator<<(std::ostream& os, const GlobPtr<U>& it);
+  friend std::ostream& operator<<(
+    std::ostream& os,
+    const GlobPtr<U>& it);
 
 public:
+  /**
+   * Default constructor, underlying global address is unspecified.
+   */
   explicit GlobPtr() = default;
 
+  /**
+   * Constructor, specifies underlying global address.
+   */
   explicit GlobPtr(dart_gptr_t p) { 
     m_dartptr = p; 
   }
   
+  /**
+   * Constructor for conversion of std::nullptr_t.
+   */
   GlobPtr(std::nullptr_t p) {
     m_dartptr = DART_GPTR_NULL;
   }
 
+  /**
+   * Copy constructor.
+   */
   GlobPtr(const GlobPtr & other) = default;
+
+  /**
+   * Assignment operator.
+   */
   GlobPtr<T>& operator=(const GlobPtr & other) = default;
 
+  /**
+   * Converts pointer to its underlying global address.
+   */
   explicit operator dart_gptr_t() const {
     return m_dartptr;
   }
 
+  /**
+   * The pointer's underlying global address.
+   */
   dart_gptr_t dartptr() const {
     return m_dartptr;
   }
   
-  // Increment operators
-
-  // prefix increment operator
-  GlobPtr<T>& operator++() {
+  /**
+   * Prefix increment operator.
+   */
+  GlobPtr<T> & operator++() {
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&m_dartptr, sizeof(T)),
       DART_OK);
     return *this;
   }
   
-  // postfix increment operator
+  /**
+   * Postfix increment operator.
+   */
   GlobPtr<T> operator++(int) {
     GlobPtr<T> result = *this;
     DASH_ASSERT_RETURNS(
@@ -71,6 +97,9 @@ public:
     return result;
   }
 
+  /**
+   * Pointer increment operator.
+   */
   GlobPtr<T> operator+(gptrdiff_t n) const {
     dart_gptr_t gptr = m_dartptr;
     DASH_ASSERT_RETURNS(
@@ -79,6 +108,9 @@ public:
     return GlobPtr<T>(gptr);
   }
 
+  /**
+   * Pointer increment operator.
+   */
   GlobPtr<T> operator+=(gptrdiff_t n) {
     GlobPtr<T> result = *this;
     DASH_ASSERT_RETURNS(
@@ -87,17 +119,19 @@ public:
     return result;
   }
 
-  // Decrement operators
-  
-  // prefix increment operator
-  GlobPtr<T>& operator--() {
+  /**
+   * Prefix decrement operator.
+   */
+  GlobPtr<T> & operator--() {
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&m_dartptr, -sizeof(T)),
       DART_OK);
     return *this;
   }
   
-  // postfix increment operator
+  /**
+   * Postfix decrement operator.
+   */
   GlobPtr<T> operator--(int) {
     GlobPtr<T> result = *this;
     DASH_ASSERT_RETURNS(
@@ -106,6 +140,18 @@ public:
     return result;
   }
 
+  /**
+   * Pointer distance operator.
+   */
+  gptrdiff_t operator-(const GlobPtr<T> & rhs) {
+    // TODO: Is distance between two global pointers
+    // defined this way?
+    return m_dartptr - rhs.m_dart_ptr;
+  }
+
+  /**
+   * Pointer decrement operator.
+   */
   GlobPtr<T> operator-(gptrdiff_t n) const {
     dart_gptr_t gptr = m_dartptr;
     DASH_ASSERT_RETURNS(
@@ -114,6 +160,9 @@ public:
     return GlobPtr<T>(gptr);
   }
 
+  /**
+   * Pointer decrement operator.
+   */
   GlobPtr<T> operator-=(gptrdiff_t n) {
     GlobPtr<T> result = *this;
     DASH_ASSERT_RETURNS(
@@ -122,33 +171,46 @@ public:
     return result;
   }
 
-  // Comparison operators
-
+  /**
+   * Equality comparison operator.
+   */
   bool operator==(const GlobPtr<T>& other) const { 
     return DART_GPTR_EQUAL(m_dartptr, other.m_dartptr);
   }
   
+  /**
+   * Inequality comparison operator.
+   */
   bool operator!=(const GlobPtr<T>& other) const {
     return !DART_GPTR_EQUAL(m_dartptr, other.m_dartptr);
   }
   
-  const GlobRef<T> operator[](gptrdiff_t n) const 
-  {
+  /**
+   * Subscript operator.
+   */
+  const GlobRef<T> operator[](gptrdiff_t n) const {
     GlobPtr<T> ptr = (*this)+n;
     return GlobRef<T>(ptr);
   }
 
-  GlobRef<T> operator[](gptrdiff_t n)
-  {
+  /**
+   * Subscript assignment operator.
+   */
+  GlobRef<T> operator[](gptrdiff_t n) {
     GlobPtr<T> ptr = (*this)+n;
     return GlobRef<T>(ptr);
   }
 
-  GlobRef<T> operator*()
-  {
+  /**
+   * Dereference operator.
+   */
+  GlobRef<T> operator*() {
     return GlobRef<T>(*this);
   }
   
+  /**
+   * Dereference operator.
+   */
   explicit operator T*() {
     void *addr = 0;
     if(is_local()) {
@@ -160,12 +222,19 @@ public:
     return static_cast<T*>(addr);
   }
 
+  /**
+   * Set the global pointer's associated unit.
+   */
   void set_unit(dart_unit_t unit_id) {
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&m_dartptr, unit_id),
       DART_OK);
   }
 
+  /**
+   * Check whether the global pointer is in the local
+   * address space the pointer's associated unit.
+   */
   bool is_local() const {
     return m_dartptr.unitid == dash::myid();
   }
