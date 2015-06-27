@@ -74,6 +74,11 @@ local_index_subrange(
   DASH_LOG_TRACE_VAR("local_index_subrange", begin_gindex);
   DASH_LOG_TRACE_VAR("local_index_subrange", end_gindex);
   DASH_LOG_TRACE_VAR("local_index_subrange", pattern.local_size());
+  if (pattern.local_size() == 0) {
+    // Local index range is empty
+    DASH_LOG_TRACE("local_index_subrange ->", 0, 0);
+    return LocalIndexRange<idx_t> { 0, 0 };
+  }
   // Global index of first element in pattern, O(1):
   idx_t lbegin_gindex = pattern.lbegin();
   // Global index of last element in pattern, O(1):
@@ -94,6 +99,7 @@ local_index_subrange(
   // last index:
   auto lend_index     = pattern.index_to_elem(lend_gcoords)+1;
   // Return local index range
+  DASH_LOG_TRACE("local_index_subrange ->", lbegin_index, lend_index);
   return LocalIndexRange<idx_t> { lbegin_index, lend_index };
 }
 
@@ -128,11 +134,15 @@ LocalRange<ElementType> local_subrange(
   const GlobIter<ElementType, PatternType> & last) {
   typedef typename PatternType::index_type idx_t;
   /// Global iterators to local index range, O(d):
-  auto index_range   = local_index_subrange(first, last);
+  auto index_range   = dash::local_index_subrange(first, last);
   idx_t lbegin_index = index_range.begin;
   idx_t lend_index   = index_range.end;
+  if (lbegin_index == lend_index) {
+    // Local range is empty
+    return LocalRange<ElementType> { nullptr, nullptr };
+  }
   // Local start address from global memory:
-  auto lbegin        = first.globmem().lbegin();
+  auto lbegin = first.globmem().lbegin();
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
     return LocalRange<ElementType> { nullptr, nullptr };
@@ -164,11 +174,15 @@ void for_each(
   /// Function to invoke on every index in the range
   ::std::function<void(IndexType)> & func) {
   /// Global iterators to local index range:
-  auto index_range  = local_index_subrange(first, last);
+  auto index_range  = dash::local_index_subrange(first, last);
   auto lbegin_index = index_range.begin;
   auto lend_index   = index_range.end;
+  if (lbegin_index == lend_index) {
+    // Local range is empty
+    return;
+  }
   // Pattern from global begin iterator:
-  auto pattern      = first.pattern();
+  auto pattern = first.pattern();
   for (IndexType lindex = lbegin_index;
        lindex != lend_index;
        ++lindex) {
@@ -181,8 +195,8 @@ void for_each(
  * Returns an iterator pointing to the element with the smallest value in
  * the range [first,last).
  *
- * \return  An iterator to smallest value in the range, or last if the 
- *          range is empty.
+ * \return      An iterator to smallest value in the range, or last if the 
+ *              range is empty.
  *
  * \tparam      ElementType  Type of the elements in the sequence
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
@@ -197,8 +211,9 @@ GlobPtr<ElementType> min_element(
   /// Iterator to the final position in the sequence
   const GlobIter<ElementType, PatternType> & last) {
   typedef dash::GlobPtr<ElementType> globptr_t;
-  auto pattern         = first.pattern();
-  dash::Team & team    = pattern.team();
+  auto pattern      = first.pattern();
+  dash::Team & team = pattern.team();
+  DASH_LOG_DEBUG("min_element", "allocate minarr");
   dash::Array<globptr_t> minarr(team.size());
   // return last for empty array
   if (first == last) {
@@ -209,11 +224,15 @@ GlobPtr<ElementType> min_element(
   auto local_range           = dash::local_subrange(first, last);
   const ElementType * lbegin = local_range.begin;
   const ElementType * lend   = local_range.end;
-  const ElementType * lmin   = ::std::min_element(lbegin, lend);     
-  if (lmin == lend) {
+  if (lbegin == lend || lbegin == nullptr || lend == nullptr) {
     // local range is empty
     minarr[team.myid()] = nullptr;
+    DASH_LOG_DEBUG("min_element", "local range empty");
   } else {
+    const ElementType * lmin = ::std::min_element(lbegin, lend);     
+    DASH_LOG_TRACE_VAR("min_element", lend - lbegin);
+    DASH_LOG_TRACE_VAR("min_element", lmin - lbegin);
+    DASH_LOG_DEBUG_VAR("min_element", *lmin);
     minarr[team.myid()] = first.globmem().index_to_gptr(
                             team.myid(),
                             lmin - lbegin);
@@ -225,10 +244,13 @@ GlobPtr<ElementType> min_element(
     globptr_t minloc   = minarr[0];
     ElementType minval = *minloc;
     for (auto i = 1; i < minarr.size(); ++i) {
-      if ((globptr_t)minarr[i] != nullptr) {
-        ElementType val = *(globptr_t)minarr[i];
+      globptr_t lmingptr = static_cast<globptr_t>(minarr[i]);
+      // Local gptr of units might be null if unit
+      // had empty range
+      if (lmingptr != nullptr) {
+        ElementType val = *lmingptr;
         if (val < minval) {
-          minloc = minarr[i];
+          minloc = lmingptr;
           DASH_LOG_TRACE("Array.min_element", 
                          "Setting min val to ", val);
           minval = val;

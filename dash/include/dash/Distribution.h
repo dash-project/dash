@@ -130,7 +130,7 @@ public:
       default:
         DASH_THROW(
           dash::exception::InvalidArgument,
-          "Distribution type undefined in max_blocksize_in_range");
+          "Distribution type undefined in max_local_blocks_in_range");
     }
   }
 
@@ -152,9 +152,10 @@ public:
       case dash::internal::DIST_CYCLIC:
         return 1;
       case dash::internal::DIST_BLOCKCYCLIC:
-        return blocksz;
       case dash::internal::DIST_TILE:
-        return blocksz;
+        // Shrink block size in dimension if it exceeds the number
+        // of elements in dimension:
+        return std::min<SizeType>(range, blocksz);
       default:
         DASH_THROW(
           dash::exception::InvalidArgument,

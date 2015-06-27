@@ -6,7 +6,7 @@
 #include <vector>
 
 /**
- * Test fixture for class dash::ForEach
+ * Test fixture for algorithm dash::for_each.
  */
 class ForEachTest : public ::testing::Test {
 protected:

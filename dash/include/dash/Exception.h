@@ -6,10 +6,16 @@
 #include <dash/exception/OutOfRange.h>
 #include <dash/exception/NotImplemented.h>
 #include <dash/exception/AssertionFailed.h>
+#include <dash/exception/StackTrace.h>
 #include <sstream>
+
+#define DASH_STACK_TRACE() do { \
+    dash__print_stacktrace(); \
+  } while(0)
 
 #define DASH_THROW(excep_type, msg_stream) do { \
     ::std::ostringstream os; \
+    os << "[ Unit " << dash::myid() << " ] "; \
     os << msg_stream; \
     throw(excep_type(os.str())); \
   } while(0)
