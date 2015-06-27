@@ -1047,7 +1047,7 @@ private:
                                      num_blocks_d % num_units_d);
         // Unit id assigned to the last block in dimension:
         auto last_block_unit_d = (num_blocks_d % num_units_d == 0)
-                                 ? num_blocks_d - 1
+                                 ? num_units_d - 1
                                  : (num_blocks_d % num_units_d) - 1;
         DASH_LOG_TRACE_VAR("Pattern.initialize.d", last_block_unit_d);
         DASH_LOG_TRACE_VAR("Pattern.initialize.d", num_add_blocks);
