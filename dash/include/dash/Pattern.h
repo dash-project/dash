@@ -20,23 +20,16 @@
 namespace dash {
 
 /**
- * \defgroup DASH_CONCEPT_PATTERN Pattern Concept
+ * \defgroup  DashPatternConcept  Pattern Concept
  * Concept for distribution pattern of n-dimensional containers to
  * units in a team.
  *
- * \ingroup DASH_CONCEPT
+ * \ingroup DashConcept
  * \{
  * \par Description
  *
- * \}
- */
-
-/**
- * Defines how a list of global indices is mapped to single units
- * within a Team.
- *
- * Consequently, a pattern realizes a projection of a global index
- * range to a local view:
+ * A pattern realizes a projection of a global index range to a
+ * local view:
  *
  * Distribution                 | Container                     |
  * ---------------------------- | ----------------------------- |
@@ -50,6 +43,28 @@ namespace dash {
  * <tt>team 0</tt> | <tt>[ 0  1  2  9 10 11 ]</tt> |
  * <tt>team 1</tt> | <tt>[ 3  4  5  6  7  8 ]</tt> |
  *
+ * \par Methods
+ * <table>
+ *   <tr>
+ *     <th>Method Signature</th>
+ *     <th>Semantics</th>
+ *   </tr>
+ *   <tr>
+ *     <td>
+ *       \c coords(gindex)
+ *     </td>
+ *     <td>
+ *       Returns the cartesian coordinates for a linear index
+ *       within the pattern.
+ *     </td>
+ *   </tr>
+ * </table>
+ * \}
+ */
+
+/**
+ * Defines how a list of global indices is mapped to single units
+ * within a Team.
  *
  * \tparam  NumDimensions  The number of dimensions of the pattern
  * \tparam  Arrangement    The memory order of the pattern (ROW_MAJOR
@@ -58,7 +73,7 @@ namespace dash {
  *                         pattern will be iterated predominantly
  *                         \see MemArrange
  * 
- * \concept DASH_CONCEPT_PATTERN
+ * \concept{DashPatternConcept}
  */
 template<
   size_t NumDimensions,

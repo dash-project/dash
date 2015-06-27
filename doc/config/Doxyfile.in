@@ -1,53 +1,117 @@
 # Project related
 
-PROJECT_NAME           = "DASH"
-PROJECT_NUMBER         = @DASH_VERSION_MAJOR@.@DASH_VERSION_MINOR@.@DASH_VERSION_PATCH@
-STRIP_FROM_PATH        = @PROJECT_SOURCE_DIR@ \
-                         @PROJECT_BINARY_DIR@
-INPUT                  = "@PROJECT_SOURCE_DIR@/doc/config/mainpage.dox" \
-                         "@PROJECT_SOURCE_DIR@/dart-if/v3.1/include" \
-                         "@PROJECT_SOURCE_DIR@/dash/include"
-#                        "@PROJECT_SOURCE_DIR@/dart-impl/mpi/include" \
-#                        "@PROJECT_SOURCE_DIR@/dart-impl/shmem/dart-shmem/include" \
-#                        "@PROJECT_SOURCE_DIR@/dart-impl/cuda/dart-cuda/include" \
-OUTPUT_DIRECTORY       = "doc"
-FILE_PATTERNS          = *.h \
-                       = *.c \
-                       = *.cpp \
-                         *.cc
-EXCLUDE_PATTERNS       = */test/* \
-                         */gtest/* \
-                         */examples/* \
-                         */internal/*
-EXCLUDE_SYMBOLS        = *::test::* \
-                         *::testing::* \
-                         *::examples::* \
-                         *::internal::*
-RECURSIVE              = YES
-USE_MDFILE_AS_MAINPAGE = @doxy_main_page@
-ALWAYS_DETAILED_SEC    = YES
-INLINE_INHERITED_MEMB  = YES
-FULL_PATH_NAMES        = YES
-STRIP_FROM_PATH        = "@CMAKE_SOURCE_DIR@"
-STRIP_FROM_INC_PATH    = 
-SHORT_NAMES            = NO
-JAVADOC_AUTOBRIEF      = YES
-QT_AUTOBRIEF           = NO
-MULTILINE_CPP_IS_BRIEF = NO
-INHERIT_DOCS           = YES
-SEPARATE_MEMBER_PAGES  = NO
-TAB_SIZE               = 3
+PROJECT_NAME            = "DASH"
+PROJECT_NUMBER          = @DASH_VERSION_MAJOR@.@DASH_VERSION_MINOR@.@DASH_VERSION_PATCH@
+STRIP_FROM_PATH         = @PROJECT_SOURCE_DIR@ \
+                          @PROJECT_BINARY_DIR@
+INPUT                   = "@PROJECT_SOURCE_DIR@/doc/config/mainpage.dox" \
+                          "@PROJECT_SOURCE_DIR@/dart-if/v3.1/include" \
+                          "@PROJECT_SOURCE_DIR@/dash/include"
+#                         "@PROJECT_SOURCE_DIR@/dart-impl/mpi/include" \
+#                         "@PROJECT_SOURCE_DIR@/dart-impl/shmem/dart-shmem/include" \
+#                         "@PROJECT_SOURCE_DIR@/dart-impl/cuda/dart-cuda/include" \
+OUTPUT_DIRECTORY        = "doc"
+FILE_PATTERNS           = *.h \
+                        = *.c \
+                        = *.cpp \
+                          *.cc
+EXCLUDE_PATTERNS        = */test/* \
+                          */gtest/* \
+                          */examples/* \
+                          */internal/*
+EXCLUDE_SYMBOLS         = *::test::* \
+                          *::testing::* \
+                          *::examples::* \
+                          *::internal::*
+RECURSIVE               = YES
+USE_MDFILE_AS_MAINPAGE  = @doxy_main_page@
+ALWAYS_DETAILED_SEC     = YES
+INLINE_INHERITED_MEMB   = YES
+FULL_PATH_NAMES         = YES
+STRIP_FROM_PATH         = "@CMAKE_SOURCE_DIR@"
+STRIP_FROM_INC_PATH     = 
+SHORT_NAMES             = NO
+JAVADOC_AUTOBRIEF       = YES
+QT_AUTOBRIEF            = NO
+MULTILINE_CPP_IS_BRIEF  = NO
+INHERIT_DOCS            = YES
+SEPARATE_MEMBER_PAGES   = NO
+TAB_SIZE                = 2
+MARKDOWN_SUPPORT        = YES
+DISTRIBUTE_GROUP_DOC    = YES
+SUBGROUPING             = YES
+SOURCE_BROWSER          = YES
+INLINE_SOURCES          = NO
+STRIP_CODE_COMMENTS     = YES
+REFERENCED_BY_RELATION  = YES
+REFERENCES_RELATION     = YES
+REFERENCES_LINK_SOURCE  = YES
+SOURCE_TOOLTIPS         = YES
+USE_HTAGS               = YES
+VERBATIM_HEADERS        = YES
 
 # Custom commands
-ALIASES += concept{1}="@ingroup \1\n@par Implemented concepts:\n@ref \1"
+ALIASES += concept{1}="@ingroup \1\n@par Implemented concept:\n@ref \1"
+ALIASES += blocking="\b Calls to this routine are blocking"
+ALIASES += complexity="\n@par Time complexity\n"
 
 # Build related
 
-EXTRACT_ALL            = NO
-EXTRACT_PRIVATE        = NO
-EXTRACT_PACKAGE        = NO
-EXTRACT_STATIC         = YES
-EXTRACT_LOCAL_CLASSES  = YES
-EXTRACT_LOCAL_METHODS  = NO
-EXTRACT_ANON_NSPACES   = NO
-HIDE_UNDOC_MEMBERS     = NO
+EXTRACT_ALL             = YES
+EXTRACT_PRIVATE         = NO
+EXTRACT_PACKAGE         = NO
+EXTRACT_STATIC          = YES
+EXTRACT_LOCAL_CLASSES   = YES
+EXTRACT_LOCAL_METHODS   = YES
+EXTRACT_ANON_NSPACES    = NO
+HIDE_UNDOC_MEMBERS      = NO
+SHOW_FILES              = YES
+SHOW_INCLUDE_FILES      = YES
+SHOW_NAMESPACES         = YES
+HIDE_UNDOC_CLASSES      = YES
+HIDE_FRIEND_COMPOUNDS   = YES
+GENERATE_TODOLIST       = YES
+GENERATE_TESTLIST       = YES
+GENERATE_BUGLIST        = YES
+GENERATE_DEPRECATEDLIST = YES
+
+ENABLE_PREPROCESSING    = YES
+MACRO_EXPANSION         = YES
+EXPAND_ONLY_PREDEF      = NO
+SEARCH_INCLUDES         = YES
+INCLUDE_PATH            = 
+INCLUDE_FILE_PATTERNS   = 
+PREDEFINED              = protected=private \
+                          DOXYGEN
+EXPAND_AS_DEFINED       = 
+SKIP_FUNCTION_MACROS    = YES
+
+# Doxygen build options
+WARNINGS                = YES
+WARN_IF_UNDOCUMENTED    = YES
+WARN_IF_DOC_ERROR       = YES
+WARN_NO_PARAMDOC        = YES
+
+# HTML options
+GENERATE_HTML           = YES
+HTML_OUTPUT             = html
+HTML_FILE_EXTENSION     = .html
+
+# LaTex options
+GENERATE_LATEX          = YES
+LATEX_OUTPUT            = latex
+LATEX_CMD_NAME          = latex
+MAKEINDEX_CMD_NAME      = makeindex
+COMPACT_LATEX           = NO
+PAPER_TYPE              = a4
+EXTRA_PACKAGES          = 
+LATEX_HEADER            = 
+LATEX_FOOTER            = 
+LATEX_EXTRA_FILES       = 
+PDF_HYPERLINKS          = YES
+USE_PDFLATEX            = YES
+LATEX_BATCHMODE         = NO
+LATEX_HIDE_INDICES      = NO
+LATEX_SOURCE_CODE       = NO
+LATEX_BIB_STYLE         = plain
+

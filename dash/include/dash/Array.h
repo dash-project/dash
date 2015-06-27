@@ -17,6 +17,59 @@
 #include <dash/Shared.h>
 #include <dash/Exception.h>
 
+/**
+ * \defgroup  DashContainerConcept  Container Concept
+ * Concept for iterable distributed containers
+ *
+ * \ingroup DashConcept
+ * \{
+ * \par Description
+ *
+ * \par Methods
+ * <table>
+ *   <tr>
+ *     <th>Method Signature</th>
+ *     <th>Semantics</th>
+ *   </tr>
+ *   <tr>
+ *     <td>
+ *       \c [](gindex)
+ *     </td>
+ *     <td>
+ *       Returns the element located at the given global position
+ *       in the container.
+ *     </td>
+ *   </tr>
+ * </table>
+ * \}
+ */
+
+/**
+ * \defgroup  DashArrayConcept  Array Concept
+ * A distributed array
+ *
+ * \ingroup DashConcept
+ * \{
+ * \par Description
+ *
+ * \par Methods
+ * <table>
+ *   <tr>
+ *     <th>Method Signature</th>
+ *     <th>Semantics</th>
+ *   <tr>
+ *     <td>
+ *       \c [](gindex)
+ *     </td>
+ *     <td>
+ *       Returns the element located at the given global position
+ *       in the array.
+ *     </td>
+ *   </tr>
+ * </table>
+ * \}
+ */
+
 namespace dash {
 
 /* 
@@ -123,8 +176,8 @@ public:
 /**
  * A distributed array.
  *
- * \concept{dash_container_concept}
- * \concept{dash_array_concept}
+ * \concept{DashContainerConcept}
+ * \concept{DashArrayConcept}
  */
 template<
   typename ElementType,

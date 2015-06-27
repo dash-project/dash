@@ -28,4 +28,9 @@
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 
+/**
+ * \defgroup DashConcept Dash C++ Concepts
+ * Concepts for C++ components in DASH
+ */
+
 #endif // DASH__LIBDASH_H_
