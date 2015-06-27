@@ -122,10 +122,10 @@ local_index_subrange(
   // past the last index which is out of the valid coordinates range:
   auto lend_gcoords   = pattern.coords(goffset_lend-1);
   // Global coordinates of local range to local indices, O(d):
-  auto lbegin_index   = pattern.index_to_elem(lbegin_gcoords);
+  auto lbegin_index   = pattern.at(lbegin_gcoords);
   // Add 1 to local end index to it points one coordinate past the
   // last index:
-  auto lend_index     = pattern.index_to_elem(lend_gcoords)+1;
+  auto lend_index     = pattern.at(lend_gcoords)+1;
   // Return local index range
   DASH_LOG_TRACE("local_index_subrange ->", lbegin_index, lend_index);
   return LocalIndexRange<idx_t> { lbegin_index, lend_index };

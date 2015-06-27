@@ -56,12 +56,12 @@ void test_fwd_mapping(size_t size)
 	    "b=(%2lld,%2lld) "
 	    "b=(%2lld,%2lld) \n",
 	    i, 
-	    p1.index_to_unit(coords), p1.index_to_elem(coords),
-	    p2.index_to_unit(coords), p2.index_to_elem(coords),
-	    p3.index_to_unit(coords), p3.index_to_elem(coords),
-	    p4.index_to_unit(coords), p4.index_to_elem(coords),
-	    p5.index_to_unit(coords), p5.index_to_elem(coords),
-	    p6.index_to_unit(coords), p6.index_to_elem(coords)
+	    p1.unit_at(coords), p1.at(coords),
+	    p2.unit_at(coords), p2.at(coords),
+	    p3.unit_at(coords), p3.at(coords),
+	    p4.unit_at(coords), p4.at(coords),
+	    p5.unit_at(coords), p5.at(coords),
+	    p6.unit_at(coords), p6.at(coords)
 	    );
     long long m = i%size;
     if( m<0 ) m+=size;
@@ -107,8 +107,8 @@ void test_rev_mapping(size_t size)
       }
       fprintf(stderr, "\n");
     }
-    fprintf(stderr, "max_elem_per_unit   : %d\n",
-                    pat->max_elem_per_unit());
+    fprintf(stderr, "local_capacity   : %d\n",
+                    pat->local_capacity());
     fprintf(stderr, "\n");
   }
 }

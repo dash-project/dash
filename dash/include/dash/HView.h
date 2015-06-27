@@ -24,7 +24,7 @@ public:
   HIter<ContainerType,LEVEL>& advance() {
     auto idx = ContainerType::iterator::m_idx;
     for(; idx < m_pattern.capacity(); idx++) {
-      auto unit = m_pattern.index_to_unit(idx);
+      auto unit = m_pattern.unit_at(idx);
       if (m_subteam.isMember(unit)) {
         break;
       }

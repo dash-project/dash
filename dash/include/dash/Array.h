@@ -573,7 +573,7 @@ private:
     }
     // Initialize members:
     m_lsize     = m_pattern.local_size();
-    m_lcapacity = m_pattern.max_elem_per_unit();
+    m_lcapacity = m_pattern.local_capacity();
     m_myid      = m_team.myid();
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array.allocate", m_lcapacity);

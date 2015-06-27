@@ -417,7 +417,7 @@ Matrix_Ref<T, NumDimensions, CUR>::at(Args... args) {
   size_t unit = _proxy->_mat->_pattern.unit_at(
                   _proxy->_coord,
                   _proxy->_viewspec);
-  size_t elem = _proxy->_mat->_pattern.index_to_elem(
+  size_t elem = _proxy->_mat->_pattern.at(
                   _proxy->_coord,
                   _proxy->_viewspec);
   return at_(unit , elem);
@@ -439,7 +439,7 @@ Matrix_Ref<T, NumDimensions, CUR>::pattern() const {
 template<typename T, size_t NumDimensions, size_t CUR>
 inline bool
 Matrix_Ref<T, NumDimensions, CUR>::isLocal(size_type n) {
-  return (_proxy->_mat->_pattern.index_to_unit(n, _proxy->_viewspec) ==
+  return (_proxy->_mat->_pattern.unit_at(n, _proxy->_viewspec) ==
           _proxy->_mat->_myid);
 }
 
@@ -542,7 +542,7 @@ Matrix<ElementType, NumDimensions>::Matrix(
   const TeamSpec<NumDimensions> & ts)
 : _team(t),
   _pattern(ss, ds, ts, t),
-  _local_mem_size(_pattern.max_elem_per_unit() * sizeof(value_type)),
+  _local_mem_size(_pattern.local_capacity() * sizeof(value_type)),
   _glob_mem(_team, _local_mem_size) {
   // Matrix is a friend of class Team
   dart_team_t teamid = _team.dart_id();

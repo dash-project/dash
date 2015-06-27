@@ -291,6 +291,8 @@ private:
   SizeType           _nunits          = dash::Team::All().size();
   /// Maximum number of elements in a single block
   SizeType           _max_blocksize;
+  /// Maximum number of elements assigned to a single unit
+  SizeType           _local_capacity;
   /// Corresponding global index to first local index of the active unit
   IndexType          _lbegin;
   /// Corresponding global index past last local index of the active unit
@@ -351,7 +353,7 @@ public:
     _viewspec(_arguments.viewspec()) {
     DASH_LOG_TRACE("Pattern()", "Constructor with Argument list");
     _nunits = _teamspec.size();
-    initialize_block_specs();
+    initialize_specs();
   }
 
   /**
@@ -403,7 +405,7 @@ public:
     DASH_LOG_TRACE("Pattern()", "(sizespec, dist, teamspec, team)");
     _nunits   = _team.size();
     _viewspec = ViewSpec_t(_memory_layout.extents());
-    initialize_block_specs();
+    initialize_specs();
   }
 
   /**
@@ -456,7 +458,7 @@ public:
     DASH_LOG_TRACE("Pattern()", "(sizespec, dist, team)");
     _nunits        = _team.size();
     _viewspec      = ViewSpec<NumDimensions>(_memory_layout);
-    initialize_block_specs();
+    initialize_specs();
   }
 
   /**
@@ -473,6 +475,7 @@ public:
     _blocksize_spec(other._blocksize_spec),
     _nunits(other._nunits),
     _max_blocksize(other._max_blocksize),
+    _local_capacity(other._local_capacity),
     _lbegin(other._lbegin),
     _lend(other._lend) {
     // No need to copy _arguments as it is just used to
@@ -525,7 +528,27 @@ public:
   }
 
   /**
+   * Assignment operator.
+   */
+  Pattern & operator=(const Pattern & other) {
+    if (this != &other) {
+      _distspec       = other._distspec;
+      _teamspec       = other._teamspec;
+      _memory_layout  = other._memory_layout;
+      _viewspec       = other._viewspec;
+      _nunits         = other._nunits;
+      _max_blocksize  = other._max_blocksize;
+      _local_capacity = other._local_capacity;
+      _blockspec      = other._blockspec;
+      _blocksize_spec = other._blocksize_spec;
+    }
+    return *this;
+  }
+
+  /**
    * Resolves the global index of the first local element in the pattern.
+   *
+   * \see DashPatternConcept
    */
   IndexType lbegin() const {
     return _lbegin;
@@ -533,6 +556,8 @@ public:
 
   /**
    * Resolves the global index past the last local element in the pattern.
+   *
+   * \see DashPatternConcept
    */
   IndexType lend() const {
     return _lend;
@@ -540,8 +565,10 @@ public:
 
   /**
    * Convert given point in pattern to its assigned unit id.
+   *
+   * \see DashPatternConcept
    */
-  IndexType unit_at(
+  dart_unit_t unit_at(
     /// Absolute coordinates of the point
     const std::array<IndexType, NumDimensions> & coords,
     /// View specification (offsets) to apply on \c coords
@@ -553,9 +580,9 @@ public:
     }
     // Index of block containing the given coordinates:
     std::array<IndexType, NumDimensions> block_coords = 
-      coords_to_block_coords(vs_coords);
+      block_coords_at(vs_coords);
     // Unit assigned to this block index:
-    IndexType unit_id = block_coords_to_unit(block_coords);
+    dart_unit_t unit_id = unit_at_block(block_coords);
     DASH_LOG_TRACE("Pattern.unit_at",
                    "coords", coords,
                    "block coords", block_coords,
@@ -564,10 +591,20 @@ public:
   }
 
   /**
+   * Convert given coordinate in pattern to its assigned unit id.
+   *
+   * \see DashPatternConcept
+   */
+  dart_unit_t unit_at(
+    const std::array<IndexType, NumDimensions> & coords) const {
+    return unit_at(coords, _viewspec);
+  }
+
+  /**
    * Convert given point in pattern to its assigned unit id.
    */
   template<typename ... Values>
-  IndexType unit_at(
+  dart_unit_t unit_at(
     /// Absolute coordinates of the point
     Values ... values
   ) const {
@@ -577,6 +614,8 @@ public:
 
   /**
    * Convert given relative coordinates to local offset.
+   *
+   * \see DashPatternConcept
    */
   IndexType local_at(
     /// Point in local memory
@@ -592,6 +631,8 @@ public:
    *
    * \see blocksize()
    * \see local_size()
+   *
+   * \see DashPatternConcept
    */
   IndexType local_extent(unsigned int dim) const {
     if (dim >= NumDimensions || dim < 0) {
@@ -608,8 +649,10 @@ public:
    * The actual number of elements in this pattern that are local to the
    * calling unit in total.
    *
-   * \see blocksize()
-   * \see local_extent()
+   * \see  blocksize()
+   * \see  local_extent()
+   *
+   * \see  DashPatternConcept
    */
   size_t local_size() const {
     return _local_memory_layout.size();
@@ -619,12 +662,14 @@ public:
    * Resolve an element's linear global index from a given unit's local
    * index.
    *
-   * \see index_to_elem Inverse of local_to_global_index
+   * \see  at Inverse of local_to_global_index
+   *
+   * \see  DashPatternConcept
    */
   std::array<IndexType, NumDimensions> local_to_global_coords(
-    size_t unit,
-    const std::array<IndexType, NumDimensions> & local_index) const {
-    DASH_LOG_DEBUG_VAR("Pattern.local_to_global()", local_index);
+    dart_unit_t unit,
+    const std::array<IndexType, NumDimensions> & local_coords) const {
+    DASH_LOG_DEBUG_VAR("Pattern.local_to_global()", local_coords);
     SizeType blocksize = max_blocksize();
     SizeType num_units = _teamspec.size();
     // Coordinates of the unit within the team spec:
@@ -643,7 +688,7 @@ public:
       auto num_units_d          = _teamspec.extent(d); 
       auto num_blocks_d         = _blockspec.extent(d);
       auto blocksize_d          = _blocksize_spec.extent(d);
-      auto local_index_d        = local_index[d];
+      auto local_index_d        = local_coords[d];
       // TOOD: Use % (blocksize_d - underfill_d)
       auto elem_block_offset_d  = local_index_d % blocksize_d;
       // Global coords of the element's block within all blocks:
@@ -678,10 +723,12 @@ public:
    * Resolve an element's linear global index from a given unit's local
    * coordinates of that element.
    *
-   * \see index_to_elem
+   * \see  at
+   *
+   * \see  DashPatternConcept
    */
   IndexType local_coords_to_global_index(
-    size_t unit,
+    dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
     std::array<IndexType, NumDimensions> global_coords =
       local_to_global_coords(unit, local_coords);
@@ -693,7 +740,9 @@ public:
    * Resolve an element's linear global index from the calling unit's local
    * index of that element.
    *
-   * \see index_to_elem Inverse of local_to_global_index
+   * \see  at  Inverse of local_to_global_index
+   *
+   * \see  DashPatternConcept
    */
   IndexType local_to_global_index(
     IndexType local_index) const {
@@ -706,38 +755,19 @@ public:
   }
 
   /**
-   * Convert given coordinate in pattern to its assigned unit id.
-   * 
-   * Will be renamed to \c unit_at_coords.
-   */
-  size_t index_to_unit(
-    const std::array<IndexType, NumDimensions> & input) const {
-    return unit_at(input, _viewspec);
-  }
-
-  /**
-   * Convert given global coordinates in pattern to their respective linear
-   * local index.
-   * 
-   * Will be renamed to \c coords_to_local_index.
-   */
-  IndexType index_to_elem(
-    std::array<IndexType, NumDimensions> global_coords) const {
-    return index_to_elem(global_coords, _viewspec);
-  }
-
-  /**
+   * Global coordinates and viewspec to local index.
+   *
    * Convert given global coordinate in pattern to its linear local index.
-   * 
-   * Will be renamed to \c coords_to_local_index.
+   *
+   * \see  DashPatternConcept
    */
-  IndexType index_to_elem(
+  IndexType at(
     const std::array<IndexType, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem()", coords);
+    DASH_LOG_TRACE_VAR("Pattern.at()", coords);
     // Convert coordinates to global block coordinates:
     std::array<IndexType, NumDimensions> block_coords =
-      coords_to_block_coords(coords);
+      block_coords_at(coords);
     // Global index of block start point:
     std::array<IndexType, NumDimensions> block_begin_coords(block_coords);
     // Input coords transformed to their offset within the block:
@@ -746,39 +776,53 @@ public:
       block_begin_coords[d] *= blocksize(d);
       relative_coords[d]    -= block_begin_coords[d];
     }
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", relative_coords);
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", _blockspec.extents());
+    DASH_LOG_TRACE_VAR("Pattern.at", relative_coords);
+    DASH_LOG_TRACE_VAR("Pattern.at", _blockspec.extents());
     // Block offset, i.e. number of blocks in front of referenced block:
     SizeType block_offset       = _blockspec.at(block_coords);
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", block_offset);
+    DASH_LOG_TRACE_VAR("Pattern.at", block_offset);
+    // Local offset of the element with all of the unit's local elements:
+    SizeType local_elem_offset  = 0;
+#if 0
+    for (unsigned int d = 0; d < NumDimensions; ++d) {
+      
+    }
+#endif
     // Offset of the referenced block within all blocks local to its unit,
     // i.e. nth block of this unit:
     SizeType local_block_offset = block_offset / _teamspec.size();
     // Local offset of the first element in the block:
-    // TODO: Should be actual_block_size instead of max_blocksize?
     SizeType block_base_offset  = local_block_offset * max_blocksize();
     // Offset of the referenced index within its block:
     SizeType elem_block_offset  = _blocksize_spec.at(relative_coords);
     // Local offset of the element with all of the unit's local elements:
-    SizeType local_elem_offset  = block_base_offset + elem_block_offset;
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", local_block_offset);
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", block_base_offset);
-    DASH_LOG_TRACE_VAR("Pattern.index_to_elem", elem_block_offset);
-    DASH_LOG_DEBUG_VAR("Pattern.index_to_elem >", local_elem_offset);
+    local_elem_offset           = block_base_offset + elem_block_offset;
+    DASH_LOG_TRACE_VAR("Pattern.at", local_block_offset);
+    DASH_LOG_TRACE_VAR("Pattern.at", block_base_offset);
+    DASH_LOG_TRACE_VAR("Pattern.at", elem_block_offset);
+    DASH_LOG_DEBUG_VAR("Pattern.at >", local_elem_offset);
     return local_elem_offset;
   }
 
   /**
-   * Convert given coordinate in pattern to its linear local index.
+   * Global coordinates to local index.
+   *
+   * Convert given global coordinates in pattern to their respective linear
+   * local index.
+   * 
+   * \see  DashPatternConcept
    */
   IndexType at(
-    const std::array<IndexType, NumDimensions> & coords,
-    const ViewSpec_t & viewspec) const {
-    return index_to_elem(coords, _viewspec);
+    std::array<IndexType, NumDimensions> global_coords) const {
+    return at(global_coords, _viewspec);
   }
 
   /**
+   * Global coordinates to local index.
+   *
    * Convert given coordinate in pattern to its linear local index.
+   *
+   * \see  DashPatternConcept
    */
   template<typename ... Values>
   IndexType at(Values ... values) const {
@@ -788,15 +832,17 @@ public:
     std::array<IndexType, NumDimensions> inputindex = { 
       (IndexType)values...
     };
-    return index_to_elem(inputindex, _viewspec);
+    return at(inputindex, _viewspec);
   }
 
   /**
    * Whether the given dimension offset involves any local part
+   *
+   * \see  DashPatternConcept
    */
   bool is_local(
     IndexType index,
-    dart_unit_t unit_id,
+    dart_unit_t unit,
     unsigned int dim,
     const ViewSpec<NumDimensions> & viewspec) const {
     // TODO
@@ -807,12 +853,14 @@ public:
 
   /**
    * Whether the given global index is local to the specified unit
+   *
+   * \see  DashPatternConcept
    */
   bool is_local(
     IndexType index,
     dart_unit_t unit) const {
     auto glob_coords = coords(index);
-    auto coords_unit = index_to_unit(glob_coords);
+    auto coords_unit = unit_at(glob_coords);
     DASH_LOG_TRACE_VAR("Pattern.is_local >", (coords_unit == unit));
     return coords_unit == unit;
   }
@@ -820,6 +868,8 @@ public:
   /**
    * Whether the given global index is local to the unit that created
    * this pattern instance.
+   *
+   * \see  DashPatternConcept
    */
   bool is_local(
     IndexType index) const {
@@ -831,6 +881,8 @@ public:
    * Maximum number of elements in a single block in the given dimension.
    *
    * \return  The blocksize in the given dimension
+   *
+   * \see  DashPatternConcept
    */
   SizeType blocksize(
     /// The dimension in the pattern
@@ -843,6 +895,8 @@ public:
    *
    * \return  The maximum number of elements in a single block assigned to
    *          a unit.
+   *
+   * \see DashPatternConcept
    */
   SizeType max_blocksize() const {
     return _max_blocksize;
@@ -852,29 +906,8 @@ public:
    * Maximum number of elements assigned to a single unit in total,
    * equivalent to the local capacity of every unit in this pattern.
    */
-  SizeType max_elem_per_unit() const {
-    SizeType max_elements = 1;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
-      SizeType num_units  = units_in_dimension(d);
-      const Distribution & dist = _distspec[d];
-      // Block size in given dimension:
-      auto dim_max_blocksize = blocksize(d);
-      // Maximum number of occurrences of a single unit in given dimension:
-      SizeType dim_num_blocks = dist.max_local_blocks_in_range(
-                                  // size of range:
-                                  _memory_layout.extent(d),
-                                  // number of blocks:
-                                  num_units
-                                );
-      max_elements *= dim_max_blocksize * dim_num_blocks;
-      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", d);
-      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", num_units);
-      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", dim_max_blocksize);
-      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", dim_num_blocks);
-      DASH_LOG_TRACE_VAR("Pattern.max_elem_per_unit.d", max_elements);
-    }
-    DASH_LOG_DEBUG_VAR("Pattern.max_elem_per_unit >", max_elements);
-    return max_elements;
+  SizeType local_capacity() const {
+    return _local_capacity;
   }
 
   /**
@@ -882,23 +915,6 @@ public:
    */
   IndexType num_units() const {
     return _teamspec.size();
-  }
-
-  /**
-   * Assignment operator.
-   */
-  Pattern & operator=(const Pattern & other) {
-    if (this != &other) {
-      _distspec       = other._distspec;
-      _teamspec       = other._teamspec;
-      _memory_layout  = other._memory_layout;
-      _viewspec       = other._viewspec;
-      _nunits         = other._nunits;
-      _max_blocksize  = other._max_blocksize;
-      _blockspec      = other._blockspec;
-      _blocksize_spec = other._blocksize_spec;
-    }
-    return *this;
   }
 
   /**
@@ -1006,9 +1022,9 @@ private:
   /**
    * Initialize block- and block size specs from memory layout, team spec
    * and distribution spec.
-   * Called from constructors.
+   * Only to be called from \ref resize().
    */
-  void initialize_block_specs() {
+  void initialize_specs() {
     // Number of blocks in all dimensions:
     std::array<SizeType, NumDimensions> n_blocks;
     // Extents of a single block:
@@ -1020,7 +1036,9 @@ private:
 
     DASH_LOG_TRACE_VAR("Pattern.initialize()", my_unit_id);
     DASH_LOG_TRACE_VAR("Pattern.initialize", my_unit_ts_coords);
-    //// Pre-initialize block specs:
+    //
+    // Pre-initialize block specs:
+    //
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
       SizeType max_blocksize_d = dist.max_blocksize_in_range(
@@ -1036,8 +1054,35 @@ private:
     _blocksize_spec = BlockSizeSpec_t(s_blocks);
     _max_blocksize  = _blocksize_spec.size();
     DASH_LOG_TRACE_VAR("Pattern.initialize", _blockspec.extents());
+    DASH_LOG_TRACE_VAR("Pattern.initialize", _blocksize_spec.extents());
     DASH_LOG_TRACE_VAR("Pattern.initialize", _max_blocksize);
-    //// Pre-initialize local extents of the pattern in all dimensions
+    //
+    // Pre-initialize max. elements per unit (local capacity)
+    //
+    _local_capacity = 1;
+    for (unsigned int d = 0; d < NumDimensions; ++d) {
+      SizeType num_units_d      = units_in_dimension(d);
+      const Distribution & dist = _distspec[d];
+      // Block size in given dimension:
+      auto dim_max_blocksize    = _blocksize_spec.extent(d);
+      // Maximum number of occurrences of a single unit in given dimension:
+      SizeType dim_num_blocks   = dist.max_local_blocks_in_range(
+                                    // size of range:
+                                    _memory_layout.extent(d),
+                                    // number of blocks:
+                                    num_units_d
+                                  );
+      _local_capacity *= dim_max_blocksize * dim_num_blocks;
+      DASH_LOG_TRACE_VAR("Pattern.init_local_capacity.d", d);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_capacity.d", num_units_d);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_capacity.d", dim_max_blocksize);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_capacity.d", dim_num_blocks);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_capacity.d", _local_capacity);
+    }
+    DASH_LOG_DEBUG_VAR("Pattern.init_local_capacity >", _local_capacity);
+    //
+    // Pre-initialize local extents of the pattern in all dimensions
+    //
     ::std::array<SizeType, NumDimensions> local_extents;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       auto num_elem_d         = _memory_layout.extent(d);
@@ -1123,23 +1168,23 @@ private:
    * Convert global index coordinates to the coordinates of its block in
    * the pattern.
    */
-  std::array<IndexType, NumDimensions> coords_to_block_coords(
+  std::array<IndexType, NumDimensions> block_coords_at(
     const std::array<IndexType, NumDimensions> & coords) const {
-    DASH_LOG_TRACE_VAR("Pattern.coords_to_block_coords()", coords);
+    DASH_LOG_TRACE_VAR("Pattern.block_coords_at()", coords);
     std::array<IndexType, NumDimensions> block_coords;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       block_coords[d] = coords[d] / blocksize(d);
     }
-    DASH_LOG_TRACE_VAR("Pattern.coords_to_block_coords >", block_coords);
+    DASH_LOG_TRACE_VAR("Pattern.block_coords_at >", block_coords);
     return block_coords;
   }
 
   /**
    * Resolve the associated unit id of the given block.
    */
-  size_t block_coords_to_unit(
+  dart_unit_t unit_at_block(
     std::array<IndexType, NumDimensions> & block_coords) const {
-    size_t unit_id = 0;
+    dart_unit_t unit_id = 0;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
       unit_id += dist.block_coord_to_unit_offset(

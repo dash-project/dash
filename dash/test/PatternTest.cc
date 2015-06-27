@@ -106,10 +106,10 @@ TEST_F(PatternTest, Distribute1DimBlocked)
       dash::Team::All());
   EXPECT_EQ(pat_blocked_row.capacity(), _num_elem);
   EXPECT_EQ(pat_blocked_row.blocksize(0), block_size);
-  EXPECT_EQ(pat_blocked_row.max_elem_per_unit(), local_cap);
+  EXPECT_EQ(pat_blocked_row.local_capacity(), local_cap);
   EXPECT_EQ(pat_blocked_col.capacity(), _num_elem);
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size);
-  EXPECT_EQ(pat_blocked_col.max_elem_per_unit(), local_cap);
+  EXPECT_EQ(pat_blocked_col.local_capacity(), local_cap);
   
   std::array<long long, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
@@ -131,10 +131,10 @@ TEST_F(PatternTest, Distribute1DimBlocked)
       pat_blocked_row.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_blocked_row.index_to_unit(std::array<long long, 1> { x }));
+      pat_blocked_row.unit_at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_blocked_row.index_to_elem(std::array<long long, 1> { x }));
+      pat_blocked_row.at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       (std::array<long long, 1> { expected_index }),
       glob_coords_row);
@@ -144,10 +144,10 @@ TEST_F(PatternTest, Distribute1DimBlocked)
       pat_blocked_col.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_blocked_col.index_to_unit(std::array<long long, 1> { x }));
+      pat_blocked_col.unit_at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_blocked_col.index_to_elem(std::array<long long, 1> { x }));
+      pat_blocked_col.at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       (std::array<long long, 1> { expected_index }),
       glob_coords_col);
@@ -176,10 +176,10 @@ TEST_F(PatternTest, Distribute1DimCyclic)
       dash::Team::All());
   EXPECT_EQ(pat_cyclic_row.capacity(), _num_elem);
   EXPECT_EQ(pat_cyclic_row.blocksize(0), 1);
-  EXPECT_EQ(pat_cyclic_row.max_elem_per_unit(), local_cap);
+  EXPECT_EQ(pat_cyclic_row.local_capacity(), local_cap);
   EXPECT_EQ(pat_cyclic_col.capacity(), _num_elem);
   EXPECT_EQ(pat_cyclic_col.blocksize(0), 1);
-  EXPECT_EQ(pat_cyclic_col.max_elem_per_unit(), local_cap);
+  EXPECT_EQ(pat_cyclic_col.local_capacity(), local_cap);
   size_t expected_unit_id;
   std::array<long long, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
@@ -195,10 +195,10 @@ TEST_F(PatternTest, Distribute1DimCyclic)
       pat_cyclic_row.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_cyclic_row.index_to_unit(std::array<long long, 1> { x }));
+      pat_cyclic_row.unit_at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_cyclic_row.index_to_elem(std::array<long long, 1> { x }));
+      pat_cyclic_row.at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       (std::array<long long, 1> { expected_index }),
       pat_cyclic_row.local_to_global_coords(
@@ -209,10 +209,10 @@ TEST_F(PatternTest, Distribute1DimCyclic)
       pat_cyclic_col.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_cyclic_col.index_to_unit(std::array<long long, 1> { x }));
+      pat_cyclic_col.unit_at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_cyclic_col.index_to_elem(std::array<long long, 1> { x }));
+      pat_cyclic_col.at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       (std::array<long long, 1> { expected_index }),
       pat_cyclic_col.local_to_global_coords(
@@ -244,10 +244,10 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
       dash::Team::All());
   EXPECT_EQ(pat_blockcyclic_row.capacity(), _num_elem);
   EXPECT_EQ(pat_blockcyclic_row.blocksize(0), block_size);
-  EXPECT_EQ(pat_blockcyclic_row.max_elem_per_unit(), local_cap);
+  EXPECT_EQ(pat_blockcyclic_row.local_capacity(), local_cap);
   EXPECT_EQ(pat_blockcyclic_col.capacity(), _num_elem);
   EXPECT_EQ(pat_blockcyclic_col.blocksize(0), block_size);
-  EXPECT_EQ(pat_blockcyclic_col.max_elem_per_unit(), local_cap);
+  EXPECT_EQ(pat_blockcyclic_col.local_capacity(), local_cap);
   size_t expected_unit_id;
   LOG_MESSAGE("num elem: %d, block size: %d, num blocks: %d",
     _num_elem, block_size, num_blocks);
@@ -267,10 +267,10 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
       pat_blockcyclic_row.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_blockcyclic_row.index_to_unit(std::array<long long, 1> { x }));
+      pat_blockcyclic_row.unit_at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_blockcyclic_row.index_to_elem(std::array<long long, 1> { x }));
+      pat_blockcyclic_row.at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       (std::array<long long, 1> { expected_index }),
       pat_blockcyclic_row.local_to_global_coords(
@@ -281,10 +281,10 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
       pat_blockcyclic_col.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_blockcyclic_col.index_to_unit(std::array<long long, 1> { x }));
+      pat_blockcyclic_col.unit_at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_blockcyclic_col.index_to_elem(std::array<long long, 1> { x }));
+      pat_blockcyclic_col.at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       (std::array<long long, 1> { expected_index }),
       pat_blockcyclic_col.local_to_global_coords(
@@ -360,7 +360,7 @@ TEST_F(PatternTest, Distribute2DimBlockedY)
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
   EXPECT_EQ(pat_blocked_row.capacity(), size);
-  EXPECT_EQ(pat_blocked_row.max_elem_per_unit(), max_per_unit);
+  EXPECT_EQ(pat_blocked_row.local_capacity(), max_per_unit);
   EXPECT_EQ(pat_blocked_row.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_row.blocksize(1), block_size_y);
   EXPECT_EQ(pat_blocked_row.overflow_blocksize(0), overflow_bs_x);
@@ -368,7 +368,7 @@ TEST_F(PatternTest, Distribute2DimBlockedY)
   EXPECT_EQ(pat_blocked_row.underfilled_blocksize(0), underfill_bs_x);
   EXPECT_EQ(pat_blocked_row.underfilled_blocksize(1), underfill_bs_y);
   EXPECT_EQ(pat_blocked_col.capacity(), size);
-  EXPECT_EQ(pat_blocked_col.max_elem_per_unit(), max_per_unit);
+  EXPECT_EQ(pat_blocked_col.local_capacity(), max_per_unit);
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
   EXPECT_EQ(pat_blocked_col.overflow_blocksize(0), overflow_bs_x);
@@ -392,15 +392,15 @@ TEST_F(PatternTest, Distribute2DimBlockedY)
       LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
         x, y,
         expected_offset_row_order,
-        pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }),
+        pat_blocked_row.at(std::array<long long, 2> { x, y }),
         expected_index_row_order,
         block_size_x, block_size_y);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked_row.index_to_unit(std::array<long long, 2> { x, y }));
+        pat_blocked_row.unit_at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_row_order,
-        pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }));
+        pat_blocked_row.at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
         pat_blocked_row.local_to_global_coords(
@@ -410,15 +410,15 @@ TEST_F(PatternTest, Distribute2DimBlockedY)
       LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
         x, y,
         expected_offset_col_order,
-        pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }),
+        pat_blocked_col.at(std::array<long long, 2> { x, y }),
         expected_index_col_order,
         block_size_x, block_size_y);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked_col.index_to_unit(std::array<long long, 2> { x, y }));
+        pat_blocked_col.unit_at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_col_order,
-        pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }));
+        pat_blocked_col.at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
         pat_blocked_col.local_to_global_coords(
@@ -457,11 +457,11 @@ TEST_F(PatternTest, Distribute2DimBlockedX)
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
   EXPECT_EQ(pat_blocked_row.capacity(), size);
-  EXPECT_EQ(pat_blocked_row.max_elem_per_unit(), max_per_unit);
+  EXPECT_EQ(pat_blocked_row.local_capacity(), max_per_unit);
   EXPECT_EQ(pat_blocked_row.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_row.blocksize(1), block_size_y);
   EXPECT_EQ(pat_blocked_col.capacity(), size);
-  EXPECT_EQ(pat_blocked_col.max_elem_per_unit(), max_per_unit);
+  EXPECT_EQ(pat_blocked_col.local_capacity(), max_per_unit);
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
   for (int x = 0; x < extent_x; ++x) {
@@ -478,15 +478,15 @@ TEST_F(PatternTest, Distribute2DimBlockedX)
       LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
         x, y,
         expected_offset_row_order,
-        pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }),
+        pat_blocked_row.at(std::array<long long, 2> { x, y }),
         expected_index_row_order,
         block_size_x, block_size_y);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked_row.index_to_unit(std::array<long long, 2> { x, y }));
+        pat_blocked_row.unit_at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_row_order,
-        pat_blocked_row.index_to_elem(std::array<long long, 2> { x, y }));
+        pat_blocked_row.at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
         pat_blocked_row.local_to_global_coords(
@@ -496,15 +496,15 @@ TEST_F(PatternTest, Distribute2DimBlockedX)
       LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
         x, y,
         expected_offset_col_order,
-        pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }),
+        pat_blocked_col.at(std::array<long long, 2> { x, y }),
         expected_index_col_order,
         block_size_x, block_size_y);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked_col.index_to_unit(std::array<long long, 2> { x, y }));
+        pat_blocked_col.unit_at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_col_order,
-        pat_blocked_col.index_to_elem(std::array<long long, 2> { x, y }));
+        pat_blocked_col.at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
         pat_blocked_col.local_to_global_coords(
@@ -548,11 +548,11 @@ TEST_F(PatternTest, Distribute2DimCyclicX)
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
   EXPECT_EQ(pat_cyclic_row.capacity(), size);
-  EXPECT_EQ(pat_cyclic_row.max_elem_per_unit(), max_per_unit);
+  EXPECT_EQ(pat_cyclic_row.local_capacity(), max_per_unit);
   EXPECT_EQ(pat_cyclic_row.blocksize(0), block_size_x);
   EXPECT_EQ(pat_cyclic_row.blocksize(1), block_size_y);
   EXPECT_EQ(pat_cyclic_col.capacity(), size);
-  EXPECT_EQ(pat_cyclic_col.max_elem_per_unit(), max_per_unit);
+  EXPECT_EQ(pat_cyclic_col.local_capacity(), max_per_unit);
   EXPECT_EQ(pat_cyclic_col.blocksize(0), block_size_x);
   EXPECT_EQ(pat_cyclic_col.blocksize(1), block_size_y);
   // offset to add for every y-coordinate:
@@ -581,14 +581,14 @@ TEST_F(PatternTest, Distribute2DimCyclicX)
       LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, of: %d",
         x, y,
         expected_offset_row_order,
-        pat_cyclic_row.index_to_elem(std::array<long long, 2> { x, y }),
+        pat_cyclic_row.at(std::array<long long, 2> { x, y }),
         num_overflow_blocks);
       EXPECT_EQ(
         expected_unit_id,
-        pat_cyclic_row.index_to_unit(std::array<long long, 2> { x, y }));
+        pat_cyclic_row.unit_at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_row_order,
-        pat_cyclic_row.index_to_elem(std::array<long long, 2> { x, y }));
+        pat_cyclic_row.at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
         glob_coords_row);
@@ -596,14 +596,14 @@ TEST_F(PatternTest, Distribute2DimCyclicX)
       LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, of: %d",
         x, y,
         expected_offset_col_order,
-        pat_cyclic_col.index_to_elem(std::array<long long, 2> { x, y }),
+        pat_cyclic_col.at(std::array<long long, 2> { x, y }),
         num_overflow_blocks);
       EXPECT_EQ(
         expected_unit_id,
-        pat_cyclic_col.index_to_unit(std::array<long long, 2> { x, y }));
+        pat_cyclic_col.unit_at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_col_order,
-        pat_cyclic_col.index_to_elem(std::array<long long, 2> { x, y }));
+        pat_cyclic_col.at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
         glob_coords_col);
