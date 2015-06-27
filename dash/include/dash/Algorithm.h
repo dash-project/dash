@@ -210,7 +210,7 @@ void for_each(
 }
 
 /**
- * Returns an iterator pointing to the element with the smallest value in
+ * Finds an iterator pointing to the element with the smallest value in
  * the range [first,last).
  *
  * \return      An iterator to the first occurrence of the smallest value 
@@ -273,7 +273,7 @@ GlobPtr<ElementType> min_element(
       // had empty range
       if (lmingptr != nullptr) {
         ElementType val = *lmingptr;
-        if (val < minval) {
+        if (compare(val, minval)) {
           minloc = lmingptr;
           DASH_LOG_TRACE("Array.min_element", 
                          "Setting min val to ", val);
@@ -290,6 +290,34 @@ GlobPtr<ElementType> min_element(
     return last;
   }
   return minimum;
+}
+
+/**
+ * Finds an iterator pointing to the element with the greatest value in
+ * the range [first,last).
+ *
+ * \return      An iterator to the first occurrence of the greatest value 
+ *              in the range, or \c last if the range is empty.
+ *
+ * \tparam      ElementType  Type of the elements in the sequence
+ * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
+ *              pattern and \c nl local elements within the global range
+ */
+template<
+  typename ElementType,
+  class PatternType>
+GlobPtr<ElementType> max_element(
+  /// Iterator to the initial position in the sequence
+  const GlobIter<ElementType, PatternType> & first,
+  /// Iterator to the final position in the sequence
+  const GlobIter<ElementType, PatternType> & last,
+  /// Element comparison function, defaults to std::less
+  const std::function<
+      bool(const ElementType &, const ElementType)
+    > & compare
+      = std::greater<const ElementType &>()) {
+  // Same as min_element with different compare function
+  return dash::min_element(first, last, compare);
 }
 
 } // namespace dash
