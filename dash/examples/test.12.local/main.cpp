@@ -22,8 +22,8 @@ int main(int argc, char* argv[])
     dash::Matrix<int, 2>     mat1(pat);
     dash::Matrix<double, 2>  mat2(pat);
 
-    dash::Local_Ref<int, 2, 2> lref1 = mat1.local();
-    dash::Local_Ref<double, 2, 2> lref2 = mat2.local();
+    dash::LocalRef<int, 2, 2> lref1 = mat1.local();
+    dash::LocalRef<double, 2, 2> lref2 = mat2.local();
 
     printf("1 local extent myid %d 1 %d 2 %d \n", myid, mat1.local().extent(0), mat1.local().extent(1));
     printf("2 local extent myid %d 1 %d 2 %d \n", myid, mat2.local().extent(0), mat2.local().extent(1));

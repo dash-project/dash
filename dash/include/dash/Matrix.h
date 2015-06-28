@@ -17,15 +17,17 @@ namespace dash {
 /// Forward-declaration
 template <typename T, size_t NumDimensions> class Matrix;
 /// Forward-declaration
-template <typename T, size_t NumDimensions, size_t CUR> class Matrix_Ref;
+template <typename T, size_t NumDimensions, size_t CUR> class MatrixRef;
 /// Forward-declaration
-template <typename T, size_t NumDimensions, size_t CUR> class Local_Ref;
+template <typename T, size_t NumDimensions, size_t CUR> class LocalRef;
 
 /**
  * Stores information needed by subscripting and subdim selection.
- * A new RefProxy instance is created once for every dimension in multi-subscripting.
+ * A new RefProxy instance is created once for every dimension in
+ * multi-subscripting.
  */
-template <typename T, size_t NumDimensions> class Matrix_RefProxy {
+template <typename T, size_t NumDimensions>
+class MatrixRefProxy {
  private:
   int _dim;
   Matrix<T, NumDimensions> * _mat;
@@ -33,22 +35,25 @@ template <typename T, size_t NumDimensions> class Matrix_RefProxy {
   ViewSpec<NumDimensions> _viewspec;
 
  public:
-  template<typename T_, size_t NumDimensions1, size_t NumDimensions2> friend class Matrix_Ref;
-  template<typename T_, size_t NumDimensions1, size_t NumDimensions2> friend class Local_Ref;
+  template<typename T_, size_t NumDimensions1, size_t NumDimensions2> 
+    friend class MatrixRef;
+  template<typename T_, size_t NumDimensions1, size_t NumDimensions2> 
+    friend class LocalRef;
   template<typename T_, size_t NumDimensions1> friend class Matrix;
 
-  Matrix_RefProxy<T, NumDimensions>();
+  MatrixRefProxy<T, NumDimensions>();
 };
 
 /**
- * Local_Ref represents local part of a Matrix and provices local operations.
+ * Local part of a Matrix, provides local operations.
  * Wrapper class for RefProxy. 
  */
-template <typename T, size_t NumDimensions, size_t CUR = NumDimensions> class Local_Ref {
+template <typename T, size_t NumDimensions, size_t CUR = NumDimensions> 
+class LocalRef {
  public:
   template<typename T_, size_t NumDimensions_> friend class Matrix;
 
-  Matrix_RefProxy<T, NumDimensions> * _proxy;
+  MatrixRefProxy<T, NumDimensions> * _proxy;
 
   typedef T value_type;
 
@@ -67,13 +72,14 @@ template <typename T, size_t NumDimensions, size_t CUR = NumDimensions> class Lo
   typedef GlobIter<value_type, Pattern<NumDimensions>> pointer;
   typedef const GlobIter<value_type, Pattern<NumDimensions>> const_pointer;
 
-  Local_Ref<T, NumDimensions, CUR>() = default;
+  LocalRef<T, NumDimensions, CUR>() = default;
 
-  Local_Ref<T, NumDimensions, CUR>(Matrix<T, NumDimensions> * mat);
+  LocalRef<T, NumDimensions, CUR>(Matrix<T, NumDimensions> * mat);
 
-  inline operator Local_Ref<T, NumDimensions, CUR - 1> && ();
-  // SHOULD avoid cast from Matrix_Ref to Local_Ref. Different operation semantics.
-  inline operator Matrix_Ref<T, NumDimensions, CUR> ();
+  inline operator LocalRef<T, NumDimensions, CUR - 1> && ();
+  // SHOULD avoid cast from MatrixRef to LocalRef.
+  // Different operation semantics.
+  inline operator MatrixRef<T, NumDimensions, CUR> ();
   inline long long extent(size_t dim) const;
   inline size_type size() const;
   inline T & at_(size_type pos);
@@ -84,37 +90,48 @@ template <typename T, size_t NumDimensions, size_t CUR = NumDimensions> class Lo
   template<typename... Args>
   T& operator()(Args... args);
 
-  Local_Ref<T, NumDimensions, CUR - 1> && operator[](size_t n);
-  Local_Ref<T, NumDimensions, CUR - 1> operator[](size_t n) const;
+  LocalRef<T, NumDimensions, CUR - 1> && operator[](size_t n);
+  LocalRef<T, NumDimensions, CUR - 1> operator[](size_t n) const;
 
   template<size_t NumSubDimensions>
-  Local_Ref<T, NumDimensions, NumDimensions - 1> sub(size_type n);
+  LocalRef<T, NumDimensions, NumDimensions - 1> sub(size_type n);
 
-  inline Local_Ref<T, NumDimensions, NumDimensions - 1> col(size_type n);
-  inline Local_Ref<T, NumDimensions, NumDimensions - 1> row(size_type n);
+  inline LocalRef<T, NumDimensions, NumDimensions - 1> col(size_type n);
+  inline LocalRef<T, NumDimensions, NumDimensions - 1> row(size_type n);
 
   template<size_t NumSubDimensions>
-  Local_Ref<T, NumDimensions, NumDimensions> submat(size_type n, size_type range);
+  LocalRef<T, NumDimensions, NumDimensions> submat(
+    size_type n,
+    size_type range);
 
-  inline Local_Ref<T, NumDimensions, NumDimensions> rows(size_type n, size_type range);
-  inline Local_Ref<T, NumDimensions, NumDimensions> cols(size_type n, size_type range);
+  inline LocalRef<T, NumDimensions, NumDimensions> rows(
+    size_type n,
+    size_type range);
+
+  inline LocalRef<T, NumDimensions, NumDimensions> cols(
+    size_type n,
+    size_type range);
 };
 
-// Wrapper class for RefProxy. Matrix_Ref represents Matrix and Submatrix a Matrix and
-// provices global operations.
-template <typename T, size_t NumDimensions, size_t CUR = NumDimensions>
-class Matrix_Ref {
+/**
+ * Wrapper class for RefProxy, represents Matrix and submatrix of a
+ * Matrix and provides global operations.
+ */
+template <
+  typename T,
+  size_t NumDimensions,
+  size_t CUR = NumDimensions>
+class MatrixRef {
  public:
   template<typename T_, size_t NumDimensions_>
     friend class Matrix;
   template<typename T_, size_t NumDimensions1, size_t NumDimensions2>
-    friend class Matrix_Ref;
+    friend class MatrixRef;
   template<typename T_, size_t NumDimensions1, size_t NumDimensions2>
-    friend class Local_Ref;
+    friend class LocalRef;
 
   typedef T value_type;
 
-  // NO allocator_type!
   typedef size_t size_type;
   typedef size_t difference_type;
 
@@ -129,9 +146,9 @@ class Matrix_Ref {
   typedef GlobIter<value_type, Pattern<NumDimensions>> pointer;
   typedef const GlobIter<value_type, Pattern<NumDimensions>> const_pointer;
 
-  inline operator Matrix_Ref<T, NumDimensions, CUR-1> && ();
+  inline operator MatrixRef<T, NumDimensions, CUR-1> && ();
 
-  Matrix_Ref<T, NumDimensions, CUR>() = default;
+  MatrixRef<T, NumDimensions, CUR>() = default;
 
   Pattern<NumDimensions> & pattern();
 
@@ -144,18 +161,26 @@ class Matrix_Ref {
   inline void forall(::std::function<void(long long)> func);
   inline Pattern<NumDimensions> pattern() const;
 
-  Matrix_Ref<T, NumDimensions, CUR-1> && operator[](size_t n);
-  Matrix_Ref<T, NumDimensions, CUR-1> operator[](size_t n) const;
+  MatrixRef<T, NumDimensions, CUR-1> && operator[](size_t n);
+  MatrixRef<T, NumDimensions, CUR-1> operator[](size_t n) const;
 
   template<size_t NumSubDimensions>
-  Matrix_Ref<T, NumDimensions, NumDimensions-1> sub(size_type n);
-  Matrix_Ref<T, NumDimensions, NumDimensions-1> col(size_type n);
-  Matrix_Ref<T, NumDimensions, NumDimensions-1> row(size_type n);
+  MatrixRef<T, NumDimensions, NumDimensions-1> sub(size_type n);
+  MatrixRef<T, NumDimensions, NumDimensions-1> col(size_type n);
+  MatrixRef<T, NumDimensions, NumDimensions-1> row(size_type n);
 
   template<size_t NumSubDimensions>
-  Matrix_Ref<T, NumDimensions, NumDimensions> submat(size_type n, size_type range);
-  Matrix_Ref<T, NumDimensions, NumDimensions> rows(size_type n, size_type range);
-  Matrix_Ref<T, NumDimensions, NumDimensions> cols(size_type n, size_type range);
+  MatrixRef<T, NumDimensions, NumDimensions> submat(
+    size_type n,
+    size_type range);
+
+  MatrixRef<T, NumDimensions, NumDimensions> rows(
+    size_type n,
+    size_type range);
+  
+  MatrixRef<T, NumDimensions, NumDimensions> cols(
+    size_type n,
+    size_type range);
 
   inline reference at_(size_type unit, size_type elem);
 
@@ -165,25 +190,25 @@ class Matrix_Ref {
   template<typename... Args>
   reference operator()(Args... args);
 
-  // For 1D. OBSOLETE
-  inline bool isLocal(size_type n);
-  inline bool isLocal(size_t dim, size_type n);
+  inline bool is_local(size_type n);
+  inline bool is_local(size_t dim, size_type n);
 
-  template <int level> dash::HView<Matrix<T, NumDimensions>, level> inline hview();
+  template <int level>
+  dash::HView<Matrix<T, NumDimensions>, level> inline hview();
 
  private:
-  Matrix_RefProxy<T, NumDimensions> * _proxy;
+  MatrixRefProxy<T, NumDimensions> * _proxy;
 };
 
 // Partial Specialization for value deferencing.
 template <typename T, size_t NumDimensions>
-class Local_Ref < T, NumDimensions, 0 > {
+class LocalRef<T, NumDimensions, 0> {
  public:
   template<typename T_, size_t NumDimensions_> friend class Matrix;
 
-  Matrix_RefProxy<T, NumDimensions> * _proxy;
+  MatrixRefProxy<T, NumDimensions> * _proxy;
 
-  Local_Ref<T, NumDimensions, 0>() = default;
+  LocalRef<T, NumDimensions, 0>() = default;
 
   inline T * at_(size_t pos);
   inline operator T();
@@ -192,16 +217,17 @@ class Local_Ref < T, NumDimensions, 0 > {
 
 // Partial Specialization for value deferencing.
 template <typename T, size_t NumDimensions>
-class Matrix_Ref < T, NumDimensions, 0 > {
+class MatrixRef<T, NumDimensions, 0> {
  public:
   template<typename T_, size_t NumDimensions_> friend class Matrix;
-  template<typename T_, size_t NumDimensions1, size_t NumDimensions2> friend class Matrix_Ref;
+  template<typename T_, size_t NumDimensions1, size_t NumDimensions2> 
+    friend class MatrixRef;
 
-  Matrix_RefProxy<T, NumDimensions> * _proxy;
+  MatrixRefProxy<T, NumDimensions> * _proxy;
   
   inline GlobRef<T> at_(size_t unit, size_t elem) const;
 
-  Matrix_Ref<T, NumDimensions, 0>() = default;
+  MatrixRef<T, NumDimensions, 0>() = default;
 
   operator T();
   T operator=(const T value);
@@ -227,18 +253,20 @@ class Matrix {
   typedef const GlobIter<value_type, Pattern<NumDimensions>> const_pointer;
 
  public:
-  template<typename T_, size_t NumDimensions1, size_t NumDimensions2> friend class Matrix_Ref;
-  template<typename T_, size_t NumDimensions1, size_t NumDimensions2> friend class Local_Ref;
+  template<typename T_, size_t NumDimensions1, size_t NumDimensions2>
+    friend class MatrixRef;
+  template<typename T_, size_t NumDimensions1, size_t NumDimensions2>
+    friend class LocalRef;
 
-  Local_Ref<ElementType, NumDimensions, NumDimensions> _local;
+  LocalRef<ElementType, NumDimensions, NumDimensions> _local;
 
   static_assert(std::is_trivial<ElementType>::value,
     "Element type must be trivial copyable");
 
  public:
-  inline Local_Ref<ElementType, NumDimensions, NumDimensions> local() const;
+  inline LocalRef<ElementType, NumDimensions, NumDimensions> local() const;
 
-  // Proxy, Matrix_Ref and Local_Ref are created at initialization.
+  // Proxy, MatrixRef and LocalRef are created at initialization.
   Matrix(
     const dash::SizeSpec<NumDimensions> & ss,
     const dash::DistributionSpec<NumDimensions> & ds =
@@ -256,7 +284,7 @@ class Matrix {
              pat.teamspec()) { }
   // delegating constructor
   inline Matrix(size_t nelem,
-                Team &t = dash::Team::All())
+                Team & t = dash::Team::All())
     : Matrix(dash::Pattern<NumDimensions>(nelem, t)) { }
 
   inline ~Matrix();
@@ -275,15 +303,27 @@ class Matrix {
   inline void forall(std::function<void(long long)> func);
 
   template<size_t NumSubDimensions>
-  inline Matrix_Ref<ElementType, NumDimensions, NumDimensions - 1> sub(size_type n);
-  inline Matrix_Ref<ElementType, NumDimensions, NumDimensions - 1> col(size_type n);
-  inline Matrix_Ref<ElementType, NumDimensions, NumDimensions - 1> row(size_type n);
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions - 1> 
+  sub(size_type n);
+  
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions - 1> 
+  col(size_type n);
+  
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions - 1> 
+  row(size_type n);
 
   template<size_t NumSubDimensions>
-  inline Matrix_Ref<ElementType, NumDimensions, NumDimensions> submat(size_type n, size_type range);
-  inline Matrix_Ref<ElementType, NumDimensions, NumDimensions> rows(size_type n, size_type range);
-  inline Matrix_Ref<ElementType, NumDimensions, NumDimensions> cols(size_type n, size_type range);
-  inline Matrix_Ref<ElementType, NumDimensions, NumDimensions - 1> operator[](size_type n);
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions> 
+  submat(size_type n, size_type range);
+
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions> 
+  rows(size_type n, size_type range);
+  
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions>
+  cols(size_type n, size_type range);
+  
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions - 1>   
+  operator[](size_type n);
 
   template<typename ... Args>
   inline reference at(Args... args);
@@ -291,12 +331,12 @@ class Matrix {
   template<typename... Args>
   inline reference operator()(Args... args);
   inline Pattern<NumDimensions> pattern() const;
-  inline bool isLocal(size_type n);
-  inline bool isLocal(size_t dim, size_type n);
+  inline bool is_local(size_type n);
+  inline bool is_local(size_t dim, size_type n);
 
   template <int level>
   inline dash::HView<Matrix<ElementType, NumDimensions>, level> hview();
-  inline operator Matrix_Ref<ElementType, NumDimensions, NumDimensions> ();
+  inline operator MatrixRef<ElementType, NumDimensions, NumDimensions> ();
 
  private:
   dash::Team & _team;
@@ -311,7 +351,7 @@ class Matrix {
   pointer * _ptr;
   dart_gptr_t _dart_gptr;
   GlobMem<ElementType> _glob_mem;
-  Matrix_Ref<ElementType, NumDimensions, NumDimensions> _ref;
+  MatrixRef<ElementType, NumDimensions, NumDimensions> _ref;
 };
 
 }  // namespace dash

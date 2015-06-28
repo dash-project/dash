@@ -23,12 +23,12 @@ int main(int argc, char* argv[])
     dash::Matrix<double, 2>  mat2(pat);
 
     for( int i=0; i<nelem; i++ ) {
-        if( !mat2.isLocal(0, i) ) continue;
+        if( !mat2.is_local(0, i) ) continue;
         for (int j=0; j<nelem; j++)
         {
-            if( !mat2.isLocal(1, j) ) continue;
-            assert(mat1.isLocal(0, i));
-            assert(mat1.isLocal(1, j));
+            if( !mat2.is_local(1, j) ) continue;
+            assert(mat1.is_local(0, i));
+            assert(mat1.is_local(1, j));
 	    
             mat1.at(i,j)=myid;
 

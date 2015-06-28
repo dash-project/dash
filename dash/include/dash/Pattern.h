@@ -630,13 +630,34 @@ public:
   }
 
   /**
+   * The number of elements in this pattern in the given dimension.
+   *
+   * \see  blocksize()
+   * \see  local_size()
+   * \see  local_extent()
+   *
+   * \see  DashPatternConcept
+   */
+  IndexType extent(unsigned int dim) const {
+    if (dim >= NumDimensions || dim < 0) {
+      DASH_THROW(
+        dash::exception::OutOfRange,
+        "Wrong dimension for Pattern::local_extent. "
+        << "Expected dimension between 0 and " << NumDimensions-1 << ", "
+        << "got " << dim);
+    }
+    return _memory_layout.extent(dim);
+  }
+
+  /**
    * The actual number of elements in this pattern that are local to the
    * calling unit in the given dimension.
    *
-   * \see blocksize()
-   * \see local_size()
+   * \see  blocksize()
+   * \see  local_size()
+   * \see  extent()
    *
-   * \see DashPatternConcept
+   * \see  DashPatternConcept
    */
   IndexType local_extent(unsigned int dim) const {
     if (dim >= NumDimensions || dim < 0) {
@@ -1086,7 +1107,7 @@ private:
     //
     _local_capacity = 1;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
-      SizeType num_units_d      = units_in_dimension(d);
+      SizeType num_units_d      = _teamspec.extent(d);
       const Distribution & dist = _distspec[d];
       // Block size in given dimension:
       auto dim_max_blocksize    = _blocksize_spec.extent(d);
@@ -1227,10 +1248,6 @@ private:
     }
     // TODO: Use _teamspec and _team to resolve actual unit id?
     return unit_id;
-  }
-
-  SizeType units_in_dimension(unsigned int dimension) const {
-    return _teamspec.extent(dimension);
   }
 };
 

@@ -27,7 +27,7 @@ static __inline__ unsigned long long GetCycleCount(void)
 using namespace dash;
 
 
-void Multiply(dash::Matrix_Ref<int, 2> A, dash::Matrix_Ref<int, 2> B, dash::Matrix_Ref<int, 2> C, unsigned m, unsigned n, unsigned p)
+void Multiply(dash::MatrixRef<int, 2> A, dash::MatrixRef<int, 2> B, dash::MatrixRef<int, 2> C, unsigned m, unsigned n, unsigned p)
 {
 	int i, j, k;
 
@@ -45,7 +45,7 @@ void Multiply(dash::Matrix_Ref<int, 2> A, dash::Matrix_Ref<int, 2> B, dash::Matr
 		}
 }
 
-void MatrixAdd(dash::Local_Ref<int, 2> A, dash::Local_Ref<int, 2> B, unsigned m, unsigned n) //the result remain in A 
+void MatrixAdd(dash::LocalRef<int, 2> A, dash::LocalRef<int, 2> B, unsigned m, unsigned n) //the result remain in A 
 {
 	int i, j;
 	for (i = 0; i < m; i++)
@@ -76,10 +76,10 @@ int main(int argc, char* argv[])
 
 	dash::Matrix<int, 2> 	 tempC(pat);
 
-  dash::Local_Ref<int, 2> lrefa = matA.local();
-  dash::Local_Ref<int, 2> lrefb = matB.local();
-  dash::Local_Ref<int, 2> lrefc = matC.local();
-  dash::Local_Ref<int, 2> temp_lrefc = tempC.local();
+  dash::LocalRef<int, 2> lrefa = matA.local();
+  dash::LocalRef<int, 2> lrefb = matB.local();
+  dash::LocalRef<int, 2> lrefc = matC.local();
+  dash::LocalRef<int, 2> temp_lrefc = tempC.local();
 
 	int p = 2; // 2*2=4 units
 	int b = nelem/p;
