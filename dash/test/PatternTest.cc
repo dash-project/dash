@@ -330,8 +330,8 @@ TEST_F(PatternTest, Distribute2DimBlockedY)
   // [ team 1[1] | team 1[3] | ... | team 1[5] ]
   // [                   ...                   ]
   int team_size = dash::Team::All().size();
-  int extent_x  = 71;
-  int extent_y  = 41;
+  int extent_x  = 27;
+  int extent_y  = 5;
   size_t size   = extent_x * extent_y;
   // Ceil division
   int block_size_x   = extent_x;
@@ -379,22 +379,30 @@ TEST_F(PatternTest, Distribute2DimBlockedY)
     block_size_x, block_size_y);
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
+      // Units might have empty local range, e.g. when distributing 41 elements
+      // to 8 units.
+      int num_blocks_y              = dash::math::div_ceil(extent_y, block_size_y);
+      // Subtract missing elements in last block if any:
+      int underfill_y               = (y >= (num_blocks_y-1) * block_size_y)
+                                      ? (block_size_y * num_blocks_y) - extent_y
+                                      : 0;
+      // Actual extent of block, adjusted for underfilled extent:
+      int block_size_y_adj          = block_size_y - underfill_y;
       int expected_index_row_order  = (y * extent_x) + x;
       int expected_index_col_order  = (x * extent_y) + y;
       int expected_offset_row_order =
         expected_index_row_order % max_per_unit;
-      int expected_offset_col_order =
-        y % block_size_y + x * block_size_y;
+      int expected_offset_col_order = (y % block_size_y) + (x * block_size_y_adj);
       int expected_unit_id          = y / block_size_y;
       int local_x                   = x;
       int local_y                   = y % block_size_y;
       // Row order:
-      LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
+      LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d, bya: %d",
         x, y,
         expected_offset_row_order,
         pat_blocked_row.at(std::array<long long, 2> { x, y }),
         expected_index_row_order,
-        block_size_x, block_size_y);
+        block_size_x, block_size_y, block_size_y_adj);
       EXPECT_EQ(
         expected_unit_id,
         pat_blocked_row.unit_at(std::array<long long, 2> { x, y }));
@@ -466,21 +474,30 @@ TEST_F(PatternTest, Distribute2DimBlockedX)
   EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
+      // Units might have empty local range, e.g. when distributing 41 elements
+      // to 8 units.
+      int num_blocks_x              = dash::math::div_ceil(extent_x, block_size_x);
+      // Subtract missing elements in last block if any:
+      int underfill_x               = (x >= (num_blocks_x-1) * block_size_x)
+                                      ? (block_size_x * num_blocks_x) - extent_x
+                                      : 0;
+      // Actual extent of block, adjusted for underfilled extent:
+      int block_size_x_adj          = block_size_x - underfill_x;
       int expected_index_row_order  = (y * extent_x) + x;
       int expected_index_col_order  = (x * extent_y) + y;
-      int expected_offset_row_order = (x % block_size_x) + y * block_size_x;
+      int expected_offset_row_order = (x % block_size_x) + (y * block_size_x_adj);
       int expected_offset_col_order = expected_index_col_order % 
                                         max_per_unit;
       int expected_unit_id          = x / block_size_x;
       int local_x                   = x % block_size_x;
       int local_y                   = y;
       // Row order:
-      LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
+      LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, nbx: %d, bx: %d, by: %d, bxa: %d",
         x, y,
         expected_offset_row_order,
         pat_blocked_row.at(std::array<long long, 2> { x, y }),
-        expected_index_row_order,
-        block_size_x, block_size_y);
+        num_blocks_x,
+        block_size_x, block_size_y, block_size_x_adj);
       EXPECT_EQ(
         expected_unit_id,
         pat_blocked_row.unit_at(std::array<long long, 2> { x, y }));
