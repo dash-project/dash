@@ -572,18 +572,22 @@ TEST_F(PatternTest, Distribute2DimCyclicX)
   EXPECT_EQ(pat_cyclic_col.local_capacity(), max_per_unit);
   EXPECT_EQ(pat_cyclic_col.blocksize(0), block_size_x);
   EXPECT_EQ(pat_cyclic_col.blocksize(1), block_size_y);
-  // offset to add for every y-coordinate:
-  int add_offset_per_y    = extent_x / team_size;
   // number of overflow blocks, e.g. 7 elements, 3 teams -> 1
   int num_overflow_blocks = extent_x % team_size;
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
+      int unit_id                   = x % team_size;
+      int min_blocks_x              = extent_x / team_size;
+      int num_add_blocks_x          = extent_x % team_size;
+      int num_blocks_unit_x         = min_blocks_x;
+      if (unit_id < num_add_blocks_x) {
+        num_blocks_unit_x++;
+      }
       int expected_index_row_order  = (y * extent_x) + x;
       int expected_index_col_order  = (x * extent_y) + y;
       int expected_unit_id = x % team_size;
-      int expected_offset_row_order =
-        x / team_size + (y * (add_offset_per_y + num_overflow_blocks));
-      int expected_offset_col_order = y * (x / team_size) + y;
+      int expected_offset_row_order = (y * num_blocks_unit_x) + x / team_size;
+      int expected_offset_col_order = ((x / team_size) * extent_y) + y;
       int local_x                   = x / team_size;
       int local_y                   = y;
       auto glob_coords_row = 
@@ -595,11 +599,12 @@ TEST_F(PatternTest, Distribute2DimCyclicX)
           expected_unit_id,
           std::array<long long, 2> { local_x, local_y });
       // Row order:
-      LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, of: %d",
+      LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, of: %d, nbu: %d",
         x, y,
         expected_offset_row_order,
         pat_cyclic_row.at(std::array<long long, 2> { x, y }),
-        num_overflow_blocks);
+        num_overflow_blocks,
+        num_blocks_unit_x);
       EXPECT_EQ(
         expected_unit_id,
         pat_cyclic_row.unit_at(std::array<long long, 2> { x, y }));
