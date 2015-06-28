@@ -770,47 +770,19 @@ public:
     // Local offset of the element within all of the unit's local elements:
     SizeType local_elem_offset = 0;
     auto unit           = unit_at(coords);
-    auto l_extents      = local_extents(unit);
-    auto l_mem_layout   = MemoryLayout_t(l_extents);
     auto unit_ts_coords = _teamspec.coords(unit);
     // Global coords to local coords:
     std::array<IndexType, NumDimensions> l_coords = coords_to_local(coords);
     DASH_LOG_TRACE_VAR("Pattern.at", l_coords);
-    return l_mem_layout.at(l_coords);
-#if 0
-    // Convert coordinates to global block coordinates:
-    std::array<IndexType, NumDimensions> block_coords =
-      block_coords_at(coords);
-    // Global index of block start point:
-    std::array<IndexType, NumDimensions> block_begin_coords(block_coords);
-    // Input coords transformed to their offset within the block:
-    std::array<IndexType, NumDimensions> relative_coords(coords);
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
-      block_begin_coords[d] *= blocksize(d);
-      relative_coords[d]    -= block_begin_coords[d];
+    if (unit == _team.myid()) {
+      // Coords are local to this unit, use pre-generated local memory layout
+      return _local_memory_layout.at(l_coords);
+    } else {
+      // Coords are not local to this unit, generate local memory layout for
+      // unit assigned to coords:
+      auto l_mem_layout = MemoryLayout_t(local_extents(unit));
+      return l_mem_layout.at(l_coords);
     }
-    DASH_LOG_TRACE_VAR("Pattern.at", relative_coords);
-    DASH_LOG_TRACE_VAR("Pattern.at", _blockspec.extents());
-    // Block offset, i.e. number of blocks in front of referenced block:
-    SizeType block_offset       = _blockspec.at(block_coords);
-    DASH_LOG_TRACE_VAR("Pattern.at", block_offset);
-    // Correct for 1-dimensional patterns only:
-    //
-    // Offset of the referenced block within all blocks local to its unit,
-    // i.e. nth block of this unit:
-    SizeType local_block_offset = block_offset / _teamspec.size();
-    // Local offset of the first element in the block:
-    SizeType block_base_offset  = local_block_offset * max_blocksize();
-    // Offset of the referenced index within its block:
-    SizeType elem_block_offset  = _blocksize_spec.at(relative_coords);
-    // Local offset of the element within all of the unit's local elements:
-    SizeType local_elem_offset  = block_base_offset + elem_block_offset;
-    DASH_LOG_TRACE_VAR("Pattern.at", local_block_offset);
-    DASH_LOG_TRACE_VAR("Pattern.at", block_base_offset);
-    DASH_LOG_TRACE_VAR("Pattern.at", elem_block_offset);
-    DASH_LOG_DEBUG_VAR("Pattern.at >", local_elem_offset);
-    return local_elem_offset;
-#endif
   }
 
   /**
@@ -1129,9 +1101,9 @@ private:
   std::array<SizeType, NumDimensions> local_extents(
     dart_unit_t unit) const {
     // Coordinates of local unit id in team spec:
-    auto my_unit_ts_coords = _teamspec.coords(unit);
+    auto unit_ts_coords = _teamspec.coords(unit);
     DASH_LOG_TRACE_VAR("Pattern.local_extents()", unit);
-    DASH_LOG_TRACE_VAR("Pattern.local_extents", my_unit_ts_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local_extents", unit_ts_coords);
     ::std::array<SizeType, NumDimensions> l_extents;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       auto num_elem_d         = _memory_layout.extent(d);
@@ -1144,9 +1116,9 @@ private:
       // Minimum number of blocks local to every unit in dimension:
       auto min_local_blocks_d = num_blocks_d / num_units_d;
       // Coordinate of this unit id in teamspec in dimension:
-      auto my_unit_ts_coord   = my_unit_ts_coords[d];
+      auto unit_ts_coord      = unit_ts_coords[d];
       DASH_LOG_TRACE_VAR("Pattern.local_extents.d", d);
-      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", my_unit_ts_coord);
+      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", unit_ts_coord);
       DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_elem_d);
       DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_units_d);
       DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_blocks_d);
@@ -1168,12 +1140,12 @@ private:
                                  : (num_blocks_d % num_units_d) - 1;
         DASH_LOG_TRACE_VAR("Pattern.local_extents.d", last_block_unit_d);
         DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_add_blocks);
-        if (my_unit_ts_coord < num_add_blocks) {
+        if (unit_ts_coord < num_add_blocks) {
           // Unit is assigned to an additional block:
           l_extents[d] += blocksize_d;
           DASH_LOG_TRACE_VAR("Pattern.local_extents.d", l_extents[d]);
         } 
-        if (my_unit_ts_coord == last_block_unit_d) {
+        if (unit_ts_coord == last_block_unit_d) {
           // If the last block in the dimension is underfilled and
           // assigned to the local unit, subtract the missing extent:
           SizeType undfill_blocksize_d = underfilled_blocksize(d);
@@ -1227,6 +1199,9 @@ private:
     return unit_id;
   }
 
+  /**
+   * Converts global coords to local coords.
+   */
   std::array<IndexType, NumDimensions> coords_to_local(
     const std::array<IndexType, NumDimensions> & global_coords) const {
     std::array<IndexType, NumDimensions> local_coords;

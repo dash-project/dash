@@ -37,5 +37,7 @@ TEST_F(ForEachTest, TestArrayAllInvoked)
   size_t num_invoked_indices_all = num_invoked_indices.get();
   LOG_MESSAGE("Total number of inspected indices: %d",
     num_invoked_indices_all);
+#if DART_ATOMIC_COUNTER_AVAILABLE
   EXPECT_EQ(_num_elem, num_invoked_indices_all);
+#endif
 }
