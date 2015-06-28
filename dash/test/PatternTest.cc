@@ -118,10 +118,10 @@ TEST_F(PatternTest, Distribute1DimBlocked)
     int expected_index   = x;
     expected_coords[0]   = x;
     auto glob_coords_row = 
-      pat_blocked_row.local_to_global_coords(
+      pat_blocked_row.coords_to_global(
         expected_unit_id, std::array<long long, 1> { expected_offset });
     auto glob_coords_col = 
-      pat_blocked_col.local_to_global_coords(
+      pat_blocked_col.coords_to_global(
         expected_unit_id, std::array<long long, 1> { expected_offset });
     LOG_MESSAGE("x: %d, eu: %d, eo: %d",
       x, expected_unit_id, expected_offset);
@@ -201,7 +201,7 @@ TEST_F(PatternTest, Distribute1DimCyclic)
       pat_cyclic_row.at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       (std::array<long long, 1> { expected_index }),
-      pat_cyclic_row.local_to_global_coords(
+      pat_cyclic_row.coords_to_global(
         expected_unit_id, (std::array<long long, 1> { expected_offset })));
     // Column order:
     EXPECT_EQ(
@@ -215,7 +215,7 @@ TEST_F(PatternTest, Distribute1DimCyclic)
       pat_cyclic_col.at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       (std::array<long long, 1> { expected_index }),
-      pat_cyclic_col.local_to_global_coords(
+      pat_cyclic_col.coords_to_global(
         expected_unit_id, (std::array<long long, 1> { expected_offset })));
   }
 }
@@ -273,7 +273,7 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
       pat_blockcyclic_row.at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       (std::array<long long, 1> { expected_index }),
-      pat_blockcyclic_row.local_to_global_coords(
+      pat_blockcyclic_row.coords_to_global(
         expected_unit_id, (std::array<long long, 1> { expected_offset })));
     // Column order:
     EXPECT_EQ(
@@ -287,7 +287,7 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
       pat_blockcyclic_col.at(std::array<long long, 1> { x }));
     EXPECT_EQ(
       (std::array<long long, 1> { expected_index }),
-      pat_blockcyclic_col.local_to_global_coords(
+      pat_blockcyclic_col.coords_to_global(
         expected_unit_id, (std::array<long long, 1> { expected_offset })));
   }
 }
@@ -411,7 +411,7 @@ TEST_F(PatternTest, Distribute2DimBlockedY)
         pat_blocked_row.at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
-        pat_blocked_row.local_to_global_coords(
+        pat_blocked_row.coords_to_global(
           expected_unit_id, 
           (std::array<long long, 2> { local_x, local_y  })));
       // Col order:
@@ -429,7 +429,7 @@ TEST_F(PatternTest, Distribute2DimBlockedY)
         pat_blocked_col.at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
-        pat_blocked_col.local_to_global_coords(
+        pat_blocked_col.coords_to_global(
           expected_unit_id,
           (std::array<long long, 2> { local_x, local_y })));
     }
@@ -506,7 +506,7 @@ TEST_F(PatternTest, Distribute2DimBlockedX)
         pat_blocked_row.at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
-        pat_blocked_row.local_to_global_coords(
+        pat_blocked_row.coords_to_global(
           expected_unit_id,
           (std::array<long long, 2> { local_x, local_y })));
       // Col order:
@@ -524,7 +524,7 @@ TEST_F(PatternTest, Distribute2DimBlockedX)
         pat_blocked_col.at(std::array<long long, 2> { x, y }));
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
-        pat_blocked_col.local_to_global_coords(
+        pat_blocked_col.coords_to_global(
           expected_unit_id,
           (std::array<long long, 2> { local_x, local_y })));
     }
@@ -591,11 +591,11 @@ TEST_F(PatternTest, Distribute2DimCyclicX)
       int local_x                   = x / team_size;
       int local_y                   = y;
       auto glob_coords_row = 
-        pat_cyclic_row.local_to_global_coords(
+        pat_cyclic_row.coords_to_global(
           expected_unit_id,
           std::array<long long, 2> { local_x, local_y });
       auto glob_coords_col =
-        pat_cyclic_col.local_to_global_coords(
+        pat_cyclic_col.coords_to_global(
           expected_unit_id,
           std::array<long long, 2> { local_x, local_y });
       // Row order:
