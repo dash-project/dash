@@ -29,32 +29,39 @@ template <typename T, size_t NumDimensions, size_t CUR> class LocalRef;
 template <typename T, size_t NumDimensions>
 class MatrixRefProxy {
  private:
-  int _dim;
-  Matrix<T, NumDimensions> * _mat;
-  ::std::array<long long, NumDimensions> _coord;
-  ViewSpec<NumDimensions> _viewspec;
+  int                                      _dim;
+  Matrix<T, NumDimensions>               * _mat;
+  ::std::array<long long, NumDimensions>   _coord     = {  };
+  ViewSpec<NumDimensions>                  _viewspec;
 
  public:
   template<typename T_, size_t NumDimensions1, size_t NumDimensions2> 
     friend class MatrixRef;
   template<typename T_, size_t NumDimensions1, size_t NumDimensions2> 
     friend class LocalRef;
-  template<typename T_, size_t NumDimensions1> friend class Matrix;
+  template<typename T_, size_t NumDimensions1>
+    friend class Matrix;
 
   MatrixRefProxy<T, NumDimensions>();
+  MatrixRefProxy<T, NumDimensions>(Matrix<T, NumDimensions> * matrix);
 };
 
 /**
  * Local part of a Matrix, provides local operations.
  * Wrapper class for RefProxy. 
  */
-template <typename T, size_t NumDimensions, size_t CUR = NumDimensions> 
+template <
+  typename T,
+  size_t NumDimensions,
+  size_t CUR = NumDimensions> 
 class LocalRef {
  public:
   template<typename T_, size_t NumDimensions_> friend class Matrix;
 
+ public:
   MatrixRefProxy<T, NumDimensions> * _proxy;
 
+ public:
   typedef T value_type;
 
   // NO allocator_type!
@@ -72,6 +79,7 @@ class LocalRef {
   typedef GlobIter<value_type, Pattern<NumDimensions>> pointer;
   typedef const GlobIter<value_type, Pattern<NumDimensions>> const_pointer;
 
+ public:
   LocalRef<T, NumDimensions, CUR>() = default;
 
   LocalRef<T, NumDimensions, CUR>(Matrix<T, NumDimensions> * mat);
@@ -113,6 +121,21 @@ class LocalRef {
     size_type range);
 };
 
+// Partial Specialization for value deferencing.
+template <typename T, size_t NumDimensions>
+class LocalRef<T, NumDimensions, 0> {
+ public:
+  template<typename T_, size_t NumDimensions_> friend class Matrix;
+
+  MatrixRefProxy<T, NumDimensions> * _proxy;
+
+  LocalRef<T, NumDimensions, 0>() = default;
+
+  inline T * at_(size_t pos);
+  inline operator T();
+  inline T operator=(const T value);
+};
+
 /**
  * Wrapper class for RefProxy, represents Matrix and submatrix of a
  * Matrix and provides global operations.
@@ -148,7 +171,11 @@ class MatrixRef {
 
   inline operator MatrixRef<T, NumDimensions, CUR-1> && ();
 
-  MatrixRef<T, NumDimensions, CUR>() = default;
+  MatrixRef<T, NumDimensions, CUR>()
+  : _proxy(nullptr) { // = default;
+    DASH_LOG_TRACE_VAR("MatrixRef<T, D, 0>()", NumDimensions);
+  }
+//MatrixRef<T, NumDimensions, CUR>(Matrix<T, NumDimensions> * mat);
 
   Pattern<NumDimensions> & pattern();
 
@@ -161,7 +188,7 @@ class MatrixRef {
   inline void forall(::std::function<void(long long)> func);
   inline Pattern<NumDimensions> pattern() const;
 
-  MatrixRef<T, NumDimensions, CUR-1> && operator[](size_t n);
+//MatrixRef<T, NumDimensions, CUR-1> && operator[](size_t n);
   MatrixRef<T, NumDimensions, CUR-1> operator[](size_t n) const;
 
   template<size_t NumSubDimensions>
@@ -202,21 +229,6 @@ class MatrixRef {
 
 // Partial Specialization for value deferencing.
 template <typename T, size_t NumDimensions>
-class LocalRef<T, NumDimensions, 0> {
- public:
-  template<typename T_, size_t NumDimensions_> friend class Matrix;
-
-  MatrixRefProxy<T, NumDimensions> * _proxy;
-
-  LocalRef<T, NumDimensions, 0>() = default;
-
-  inline T * at_(size_t pos);
-  inline operator T();
-  inline T operator=(const T value);
-};
-
-// Partial Specialization for value deferencing.
-template <typename T, size_t NumDimensions>
 class MatrixRef<T, NumDimensions, 0> {
  public:
   template<typename T_, size_t NumDimensions_> friend class Matrix;
@@ -225,32 +237,55 @@ class MatrixRef<T, NumDimensions, 0> {
 
   MatrixRefProxy<T, NumDimensions> * _proxy;
   
-  inline GlobRef<T> at_(size_t unit, size_t elem) const;
+  inline const GlobRef<T> at_(size_t unit, size_t elem) const;
+  inline GlobRef<T> at_(size_t unit, size_t elem);
 
-  MatrixRef<T, NumDimensions, 0>() = default;
+  MatrixRef<T, NumDimensions, 0>()
+  : _proxy(nullptr)
+  { // = default;
+    DASH_LOG_TRACE_VAR("MatrixRef<T, D, 0>()", NumDimensions);
+  }
 
   operator T();
   T operator=(const T value);
 };
 
-template <typename ElementType, size_t NumDimensions>
+template<
+  typename ElementType,
+  size_t NumDimensions>
 class Matrix {
+  static_assert(std::is_trivial<ElementType>::value,
+    "Element type must be trivial copyable");
+
+ private:
+  typedef Matrix<ElementType, NumDimensions>
+    self_t;
+  typedef MatrixRef<ElementType, NumDimensions, NumDimensions>
+    MatrixRef_t;
+  typedef MatrixRefProxy<ElementType, NumDimensions>
+    MatrixRefProxy_t;
+  typedef LocalRef<ElementType, NumDimensions, NumDimensions>
+    LocalRef_t;
+  typedef Pattern<NumDimensions>
+    Pattern_t;
+  typedef GlobIter<ElementType, Pattern<NumDimensions> >
+    GlobIter_t;
+
  public:
-  typedef ElementType value_type;
+  typedef ElementType                                         value_type;
+  typedef size_t                                               size_type;
+  typedef size_t                                         difference_type;
 
-  typedef size_t size_type;
-  typedef size_t difference_type;
+  typedef GlobIter_t                                            iterator;
+  typedef const GlobIter_t                                const_iterator;
+  typedef std::reverse_iterator<iterator>               reverse_iterator;
+  typedef std::reverse_iterator<const_iterator>   const_reverse_iterator;
 
-  typedef GlobIter<value_type, Pattern<NumDimensions>> iterator;
-  typedef const GlobIter<value_type, Pattern<NumDimensions>> const_iterator;
-  typedef std::reverse_iterator<iterator> reverse_iterator;
-  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+  typedef GlobRef<value_type>                                  reference;
+  typedef const GlobRef<value_type>                      const_reference;
 
-  typedef GlobRef<value_type> reference;
-  typedef const GlobRef<value_type> const_reference;
-
-  typedef GlobIter<value_type, Pattern<NumDimensions>> pointer;
-  typedef const GlobIter<value_type, Pattern<NumDimensions>> const_pointer;
+  typedef GlobIter_t                                             pointer;
+  typedef const GlobIter_t                                 const_pointer;
 
  public:
   template<typename T_, size_t NumDimensions1, size_t NumDimensions2>
@@ -258,13 +293,11 @@ class Matrix {
   template<typename T_, size_t NumDimensions1, size_t NumDimensions2>
     friend class LocalRef;
 
+ public:
   LocalRef<ElementType, NumDimensions, NumDimensions> _local;
 
-  static_assert(std::is_trivial<ElementType>::value,
-    "Element type must be trivial copyable");
-
  public:
-  inline LocalRef<ElementType, NumDimensions, NumDimensions> local() const;
+  inline LocalRef_t local() const;
 
   // Proxy, MatrixRef and LocalRef are created at initialization.
   Matrix(
@@ -289,15 +322,16 @@ class Matrix {
 
   inline ~Matrix();
 
-  inline Pattern<NumDimensions> & pattern();
-  inline Team &team();
+  inline Team & team();
   inline constexpr size_type size() const noexcept;
   inline size_type extent(size_type dim) const noexcept;
   inline constexpr bool empty() const noexcept;
   inline void barrier() const;
   inline const_pointer data() const noexcept;
   inline iterator begin() noexcept;
+  inline const_iterator begin() const noexcept;
   inline iterator end() noexcept;
+  inline const_iterator end() const noexcept;
   inline ElementType * lbegin() noexcept;
   inline ElementType * lend() noexcept;
   inline void forall(std::function<void(long long)> func);
@@ -330,7 +364,7 @@ class Matrix {
 
   template<typename... Args>
   inline reference operator()(Args... args);
-  inline Pattern<NumDimensions> pattern() const;
+  inline const Pattern<NumDimensions> & pattern() const;
   inline bool is_local(size_type n);
   inline bool is_local(size_t dim, size_type n);
 
@@ -339,19 +373,19 @@ class Matrix {
   inline operator MatrixRef<ElementType, NumDimensions, NumDimensions> ();
 
  private:
-  dash::Team & _team;
+  dash::Team           & _team;
   /// DART id of the unit that owns this matrix instance
   dart_unit_t _myid;
   /// The matrix elements' distribution pattern
-  dash::Pattern<NumDimensions> _pattern;
+  Pattern_t              _pattern;
   /// Capacity (total number of elements) of the matrix
-  size_type _size;
+  size_type              _size;
   /// Number of elements in the matrix local to this unit
-  size_type _local_mem_size;
-  pointer * _ptr;
-  dart_gptr_t _dart_gptr;
-  GlobMem<ElementType> _glob_mem;
-  MatrixRef<ElementType, NumDimensions, NumDimensions> _ref;
+  size_type              _local_mem_size;
+  pointer              * _ptr;
+  dart_gptr_t            _dart_gptr;
+  GlobMem<ElementType>   _glob_mem;
+  MatrixRef_t            _ref;
 };
 
 }  // namespace dash

@@ -181,6 +181,8 @@ public:
 
 /**
  * Specifies cartesian extents in a specific number of dimensions.
+ *
+ * \concept(DashCartesianSpaceConcept)
  */
 template<
   size_t NumDimensions,
@@ -287,6 +289,8 @@ static bool operator!=(const ViewPair & lhs, const ViewPair & rhs) {
 
 /**
  * Specifies view parameters for implementing submat, rows and cols
+ *
+ * \concept(DashCartesianSpaceConcept)
  */
 template<
   size_t NumDimensions,
@@ -295,95 +299,116 @@ class ViewSpec : public Dimensional<ViewPair, NumDimensions> {
 private:
   typedef typename std::make_unsigned<IndexType>::type SizeType;
 public:
+  /**
+   * Default constructor, initialize with extent and offset 0 in all
+   * dimensions.
+   */
   ViewSpec()
-  : _size(0) {
+  : _size(0),
+    _rank(NumDimensions) {
     for (size_t i = 0; i < NumDimensions; i++) {
-      _offset[i] = 0;
-      _extent[i] = 0;
-    }
-  }
-
-  template<typename T_, typename ... Values>
-  ViewSpec(Values... values)
-  : Dimensional<ViewPair, NumDimensions>::Dimensional(values...),
-    _size(1) {
-    for (size_t i = 0; i < NumDimensions; i++) {
-      ViewPair vp = this->dim(i);
-      _offset[i] = vp.offset;
-      _extent[i] = vp.extent;
-      _size     *= vp.extent;
-      this->_values[i] = vp;
-    }
-  }
-
-  ViewSpec(const std::array<SizeType, NumDimensions> & extents)
-  : Dimensional<ViewPair, NumDimensions>(),
-    _size(1) {
-    for (size_t i = 0; i < NumDimensions; i++) {
-      _offset[i] = 0;
-      _extent[i] = extents[i];
-      _size     *= extents[i];
-      ViewPair vp { _offset[i], _extent[i] };
-      this->_values[i] = vp;
-    }
-  }
-
-  ViewSpec(const ViewSpec<NumDimensions> & other)
-  : Dimensional<ViewPair, NumDimensions>(
-      static_cast< const Dimensional<ViewPair, NumDimensions> & >(other)),
-    _size(other._size) {
-    for (size_t i = 0; i < NumDimensions; i++) {
-      _offset[i] = other._offset[i];
-      _extent[i] = other._extent[i];
-      ViewPair vp { _offset[i], _extent[i] };
+      ViewPair vp { 0, 0 };
       this->_values[i] = vp;
     }
   }
 
   /**
+   * Constructor, initialize with given extents and offset 0 in all
+   * dimensions.
+   */
+  template<typename T_, typename ... Values>
+  ViewSpec(Values... values)
+  : Dimensional<ViewPair, NumDimensions>::Dimensional(values...),
+    _size(1),
+    _rank(NumDimensions) {
+    update_size();
+  }
+
+  /**
+   * Constructor, initialize with given extents and offset 0 in all
+   * dimensions.
+   */
+  ViewSpec(const std::array<SizeType, NumDimensions> & extents)
+  : Dimensional<ViewPair, NumDimensions>(),
+    _size(1),
+    _rank(NumDimensions) {
+    for (size_t i = 0; i < NumDimensions; ++i) {
+      ViewPair vp { 0, extents[i] };
+      this->_values[i] = vp;
+      _size *= extents[i];
+    }
+  }
+
+  /**
+   * Copy constructor.
+   */
+  ViewSpec(const ViewSpec<NumDimensions> & other)
+  : Dimensional<ViewPair, NumDimensions>(
+      static_cast< const Dimensional<ViewPair, NumDimensions> & >(other)),
+    _size(other._size),
+    _rank(other._rank) {
+  }
+
+  /**
    * Change the view specification's extent in every dimension.
    */
-  template<typename... Args>
-  void resize(Args... args) {
+  template<typename ... Args>
+  void resize(SizeType arg, Args... args) {
     static_assert(
-      sizeof...(Args) == NumDimensions,
+      sizeof...(Args) == (NumDimensions-1),
       "Invalid number of arguments");
     std::array<SizeType, NumDimensions> extents = 
-      { (SizeType)(args)... };
+      { arg, (SizeType)(args)... };
     resize(extents);
+  }
+
+  /**
+   * Change the view specification's extent and offset in every dimension.
+   */
+  void resize(const std::array<ViewPair, NumDimensions> & view) {
+    for (size_t i = 0; i < NumDimensions; i++) {
+      this->_values[i] = view[i];
+    }
+    update_size();
   }
 
   /**
    * Change the view specification's extent in every dimension.
    */
   template<typename SizeType_>
-  void resize(std::array<SizeType_, NumDimensions> extent) {
-    _size = 1;
+  void resize(const std::array<SizeType_, NumDimensions> & extent) {
     for (size_t i = 0; i < NumDimensions; i++) {
-      _extent[i] = extent[i];
-      _size *= extent[i] - _offset[i];
-      this->_values[i].extent = _extent[i];
+      this->_values[i].extent = extent[i];
     }
-    if (_size <= 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Extents for ViewSpec::resize must be greater than 0");
-    }
+    update_size();
   }
 
   void resize_dim(
     unsigned int dimension,
     SizeType extent,
     IndexType offset) {
-    _offset[dimension] = offset;
-    _extent[dimension] = extent;
-    this->_values[dimension].offset = offset;
-    this->_values[dimension].extent = extent;
-    resize(std::array<SizeType, NumDimensions> { (SizeType)_extent });
+    ViewPair vp { offset, extent };
+    this->_values[dimension] = vp;
+    resize(this->_values);
+  }
+
+  /**
+   * Set rank of the view spec to a dimensionality between 1 and
+   * \c NumDimensions.
+   */
+  void set_rank(unsigned int dimensions) {
+    if (dimensions > NumDimensions || dimensions < 1) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Extents for ViewSpec::set_rank must be between 1 and "
+        << NumDimensions);
+    }
+    _rank = dimensions;
+    update_size();
   }
 
   IndexType begin(unsigned int dimension) const {
-    return _offset[dimension];
+    return this->_values[dimension].offset;
   }
 
   IndexType size() const {
@@ -391,14 +416,25 @@ public:
   }
 
   IndexType size(unsigned int dimension) const {
-    return _extent[dimension];
+    return this->_values[dimension].extent;
   }
 
 private:
-  // TODO: Use this->_values instead of _offset and _extent
-  IndexType _offset[NumDimensions];
-  SizeType _extent[NumDimensions];
   SizeType _size;
+  SizeType _rank;
+
+  void update_size() {
+    _size = 1;
+    for (size_t i = 0; i < _rank; ++i) {
+      _size *= (this->_values[i].extent -
+                this->_values[i].offset);
+    }
+    if (_size <= 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Extents for ViewSpec::resize must be greater than 0");
+    }
+  }
 };
 
 } // namespace dash
