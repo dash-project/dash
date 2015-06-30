@@ -169,12 +169,17 @@ LocalRange<ElementType> local_subrange(
   idx_t lend_index   = index_range.end;
   if (lbegin_index == lend_index) {
     // Local range is empty
+    DASH_LOG_TRACE("local_subrange", "empty local range",
+                   lbegin_index, lend_index);
     return LocalRange<ElementType> { nullptr, nullptr };
   }
   // Local start address from global memory:
-  auto lbegin = first.globmem().lbegin();
+  auto pattern       = first.pattern();
+  auto lbegin        = first.globmem().lbegin(
+                         pattern.team().myid());
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
+    DASH_LOG_TRACE("local_subrange", "lbegin null");
     return LocalRange<ElementType> { nullptr, nullptr };
   }
   return LocalRange<ElementType> { lbegin + lbegin_index,
@@ -252,7 +257,8 @@ GlobPtr<ElementType> min_element(
   typedef dash::GlobPtr<ElementType> globptr_t;
   auto pattern      = first.pattern();
   dash::Team & team = pattern.team();
-  DASH_LOG_DEBUG("min_element", "allocate minarr");
+  DASH_LOG_DEBUG("min_element",
+                 "allocate minarr, size", team.size());
   dash::Array<globptr_t> minarr(team.size());
   // return last for empty array
   if (first == last) {
@@ -277,7 +283,7 @@ GlobPtr<ElementType> min_element(
                             team.myid(),
                             lmin - lbegin);
   }
-  dash::barrier();
+  team.barrier();
   dash::Shared<globptr_t> min; 
   // find the global min. element
   if (team.myid() == 0) {
@@ -292,7 +298,7 @@ GlobPtr<ElementType> min_element(
         if (compare(val, minval)) {
           minloc = lmingptr;
           DASH_LOG_TRACE("Array.min_element", 
-                         "Setting min val to ", val);
+                         "Setting min val to", val);
           minval = val;
         }
       }

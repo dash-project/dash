@@ -8,14 +8,10 @@
 TEST_F(ForEachTest, TestArrayAllInvoked)
 {
   // Shared variable for total number of invoked callbacks:
-  dash::Shared<size_t> num_invoked_indices;
+  dash::SharedCounter<size_t> count_invokes;
   // Create for_each callback from member function:
   std::function<void(index_t)> invoke =
     std::bind(&ForEachTest::count_invoke, this, std::placeholders::_1);
-  // Initialize callback counter:
-  if (dash::myid() == 0) {
-    num_invoked_indices.set(0);
-  }
   // Ensure value global counter is published to all units
   dash::Team::All().barrier();
   // Initialize global array:
@@ -26,18 +22,13 @@ TEST_F(ForEachTest, TestArrayAllInvoked)
   LOG_MESSAGE("Local number of inspected indices: %d",
     _invoked_indices.size());
   EXPECT_EQ(array.lsize(), _invoked_indices.size());
-  // TODO: Not exactly an atomic increment:
-  // atomic {
-  size_t num_invoked_indices_cur = num_invoked_indices.get();
-  num_invoked_indices.set(
-    num_invoked_indices_cur + _invoked_indices.size());
-  // }
+  // Count number of local invokes
+  count_invokes.inc(_invoked_indices.size());
   // Wait for all units
   array.barrier();
-  size_t num_invoked_indices_all = num_invoked_indices.get();
+  // Test number of total invokes
+  size_t num_invoked_indices_all = count_invokes.get();
   LOG_MESSAGE("Total number of inspected indices: %d",
     num_invoked_indices_all);
-#if DART_ATOMIC_COUNTER_AVAILABLE
   EXPECT_EQ(_num_elem, num_invoked_indices_all);
-#endif
 }
