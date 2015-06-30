@@ -6,6 +6,7 @@
 
 TEST_F(MinElementTest, TestFindArrayDefault)
 {
+  _num_elem = dash::Team::All().size();
   Element_t min_value = 11;
   // Initialize global array:
   Array_t array(_num_elem);
