@@ -1,6 +1,5 @@
 project(project_dash)
 
-include(${CMAKE_SOURCE_DIR}/CMakeExt/CompilerFlags.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
@@ -37,7 +36,7 @@ endif()
 message("-- Install prefix: " ${CMAKE_INSTALL_PREFIX})
 
 if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Debug")
+  set(CMAKE_BUILD_TYPE "Release")
 endif()
 message("-- Build type: " ${CMAKE_BUILD_TYPE})
 
@@ -54,6 +53,8 @@ option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
 option(ENABLE_TRACE_LOGGING
        "Specify whether trace messages should be logged" off)
+option(ENABLE_ASSERTIONS
+       "Specify whether runtime assertions should be checked" off)
 
 set(DART_IF_VERSION "3.1" CACHE STRING
     "Version of the DART interface")
@@ -65,6 +66,9 @@ set(DASH_DART_IF_INCLUDE_DIR
     CACHE PATH INTERNAL FORCE)
 message("-- DART interface include path: "
         ${DASH_DART_IF_INCLUDE_DIR})
+
+## Set compiler flags (depend on CMake options)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/CompilerFlags.cmake)
 
 ## Build results output directories (/bin, /lib, /doc)
 

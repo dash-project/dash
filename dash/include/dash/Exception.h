@@ -20,6 +20,8 @@
     throw(excep_type(os.str())); \
   } while(0)
 
+#if defined(DASH_ENABLE_ASSERTIONS)
+
 #define DASH_ASSERT_RETURNS(expr, exp_value) do { \
   if ((expr) != (exp_value)) { \
     DASH_THROW(dash::exception::AssertionFailed, \
@@ -35,5 +37,12 @@
                __FILE__ << ":" << __LINE__); \
   }\
 } while(0)
+
+#else  // DASH_ENABLE_ASSERTIONS
+
+#define DASH_ASSERT_RETURNS(expr, exp_value) (expr)
+#define DASH_ASSERT(expr) do { } while(0)
+
+#endif // DASH_ENABLE_ASSERTIONS
 
 #endif // DASH__EXCEPTION_H_

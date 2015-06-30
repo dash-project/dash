@@ -5,8 +5,8 @@
 
 TEST_F(MatrixTest, SingleWriteMultipleRead) {
   dart_unit_t myid  = dash::myid();
-  size_t extent_cols = 41;
-  size_t extent_rows = 53;
+  size_t extent_cols = 431;
+  size_t extent_rows = 547;
   dash::Matrix<int, 2> matrix(
                          dash::SizeSpec<2>(
                            extent_cols, extent_rows),
