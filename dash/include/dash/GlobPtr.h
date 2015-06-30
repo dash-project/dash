@@ -142,10 +142,11 @@ public:
 
   /**
    * Pointer distance operator.
+   * 
+   * TODO: Distance between two global pointers is not well-defined yet.
+   *       This method is only provided to comply to the pointer concept.
    */
   gptrdiff_t operator-(const GlobPtr<T> & rhs) {
-    // TODO: Is distance between two global pointers
-    // defined this way?
     return m_dartptr - rhs.m_dart_ptr;
   }
 
@@ -210,6 +211,10 @@ public:
   
   /**
    * Dereference operator.
+   * 
+   * \returns  A native pointer to the local element referenced by this
+   *           GlobPtr instance, or \c nullptr if the referenced element
+   *           is not local to the calling unit.
    */
   explicit operator T*() {
     void *addr = 0;
@@ -218,7 +223,6 @@ public:
         dart_gptr_getaddr(m_dartptr, &addr),
         DART_OK);
     }
-    // TODO: Returning (void*)(0) for non-local pointer?
     return static_cast<T*>(addr);
   }
 
