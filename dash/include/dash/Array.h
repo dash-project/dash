@@ -217,10 +217,13 @@ public:
   
 private:
   typedef dash::GlobMem<value_type> GlobMem_t;
-  
+  /// Team containing all units interacting with the array
   dash::Team         & m_team;
+  /// DART id of the unit that created the array
   dart_unit_t          m_myid;
-  PatternType          m_pattern;  
+  /// Element distribution pattern
+  PatternType          m_pattern;
+  /// Global memory allocation and -access
   GlobMem_t          * m_globmem; 
   /// Iterator to initial element in the array
   iterator             m_begin;

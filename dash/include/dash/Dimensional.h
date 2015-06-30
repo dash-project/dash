@@ -404,7 +404,7 @@ public:
     if (dimensions > NumDimensions || dimensions < 1) {
       DASH_THROW(
         dash::exception::InvalidArgument,
-        "Extents for ViewSpec::set_rank must be between 1 and "
+        "Dimension for ViewSpec::set_rank must be between 1 and "
         << NumDimensions);
     }
     _rank = dimensions;
@@ -432,11 +432,6 @@ private:
     for (size_t i = 0; i < _rank; ++i) {
       _size *= (this->_values[i].extent -
                 this->_values[i].offset);
-    }
-    if (_size <= 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Extents for ViewSpec::resize must be greater than 0");
     }
   }
 };

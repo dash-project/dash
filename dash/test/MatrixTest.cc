@@ -5,8 +5,8 @@
 
 TEST_F(MatrixTest, SingleWriteMultipleRead) {
   dart_unit_t myid  = dash::myid();
-  size_t extent_cols = 431;
-  size_t extent_rows = 547;
+  size_t extent_cols = 43;
+  size_t extent_rows = 54;
   dash::Matrix<int, 2> matrix(
                          dash::SizeSpec<2>(
                            extent_cols, extent_rows),
@@ -40,14 +40,19 @@ TEST_F(MatrixTest, SingleWriteMultipleRead) {
 }
 
 TEST_F(MatrixTest, Distribute1DimBlockcyclicY) {
-  dart_unit_t myid  = dash::myid();
-  size_t extent_cols = 431;
-  size_t extent_rows = 547;
+  dart_unit_t myid   = dash::myid();
+  size_t extent_cols = 43;
+  size_t extent_rows = 54;
   dash::Matrix<int, 2> matrix(
                          dash::SizeSpec<2>(
                            extent_cols, extent_rows),
                          dash::DistributionSpec<2>(
-                           dash::NONE, dash::BLOCKCYCLIC(51)));
+                           dash::NONE, dash::BLOCKCYCLIC(5)));
+  
+  LOG_MESSAGE("Wait for team barrier ...");
+  dash::Team::All().barrier();
+  LOG_MESSAGE("Team barrier passed");
+
   size_t matrix_size = extent_cols * extent_rows;
   ASSERT_EQ(matrix_size, matrix.size());
   ASSERT_EQ(extent_cols, matrix.extent(0));
@@ -63,7 +68,9 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY) {
     }
   }
   // Units waiting for value initialization
+  LOG_MESSAGE("Wait for team barrier ...");
   dash::Team::All().barrier();
+  LOG_MESSAGE("Team barrier passed");
 
   // Read and assert values in matrix
   for(int i = 0; i < matrix.extent(0); ++i) {
