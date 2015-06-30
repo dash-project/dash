@@ -97,7 +97,7 @@ public:
     dart_team_size(m_teamid, &m_nunits);
     dart_team_memalloc_aligned(
       m_teamid, 
-			lsize,
+      lsize,
       &m_begptr);
     m_lbegin     = lbegin(m_teamid);
     m_lend       = lend(m_teamid);
@@ -196,7 +196,6 @@ public:
    * a unit.
    */
   const TYPE * lend(dart_unit_t unit_id) const {
-    // TODO: Why not lbegin() + m_lsize?
     void *addr;
     dart_gptr_t gptr = begin().dartptr();
     dart_gptr_setunit(&gptr, unit_id);
@@ -210,7 +209,6 @@ public:
    * a unit.
    */
   TYPE * lend(dart_unit_t unit_id) {
-    // TODO: Why not lbegin() + m_lsize?
     void *addr;
     dart_gptr_t gptr = begin().dartptr();
     dart_gptr_setunit(&gptr, unit_id);

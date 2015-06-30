@@ -79,13 +79,13 @@ MatrixRef<T, NumDimensions, CUR> () {
 template<typename T, size_t NumDimensions, size_t CUR>
 LocalRef<T, NumDimensions, CUR>::LocalRef(
   Matrix<T, NumDimensions> * mat) {
-  _proxy = new MatrixRefProxy < T, NumDimensions >;
-  *_proxy = *(mat->_ref._proxy);
-
+  _proxy = new MatrixRefProxy<T, NumDimensions>(
+             *(mat->_ref._proxy));
   std::array<size_t, NumDimensions> local_extents;
   for (int d = 0; d < NumDimensions; ++d) {
     local_extents[d] = mat->_pattern.local_extent(d);
   }
+  DASH_LOG_TRACE_VAR("LocalRef()", local_extents);
   _proxy->_viewspec.resize(local_extents);
 }
 
@@ -618,29 +618,47 @@ Matrix<ElementType, NumDimensions>::Matrix(
   const TeamSpec<NumDimensions> & ts)
 : _team(t),
   _pattern(ss, ds, ts, t),
-  _local_mem_size(_pattern.local_capacity() * sizeof(value_type)),
-  _glob_mem(_team, _local_mem_size)
+  _size(_pattern.size()),
+  _lsize(_pattern.local_size()),
+  _lcapacity(_pattern.local_capacity()),
+  _local_mem_size(_lcapacity * sizeof(ElementType)),
+  _glob_mem(_team, _lcapacity)
 {
+  DASH_LOG_TRACE_VAR("Matrix()", _size);
+  DASH_LOG_TRACE_VAR("Matrix()", _lsize);
+  DASH_LOG_TRACE_VAR("Matrix()", _lcapacity);
+#if OLD_IMPL
   dart_team_t teamid = _team.dart_id();
   DASH_LOG_TRACE_VAR("Matrix()", teamid);
-  DASH_LOG_TRACE_VAR("Matrix()", _local_mem_size);
-  _dart_gptr     = DART_GPTR_NULL;
-  dart_ret_t ret = dart_team_memalloc_aligned(
-                     teamid,
-                     _local_mem_size,
-                     &_dart_gptr);
+  _dart_gptr         = DART_GPTR_NULL;
+  DASH_ASSERT_RETURNS(
+    dart_team_memalloc_aligned(
+      teamid,
+      _local_mem_size,
+      &_dart_gptr),
+    DART_OK);
+#endif
   _size          = _pattern.capacity();
   _myid          = _team.myid();
-  DASH_LOG_TRACE_VAR("Matrix()", _size);
-  _ptr           = new GlobIter_t(&_glob_mem, _pattern, 0lu);
+  DASH_LOG_TRACE_VAR("Matrix()", _myid);
+  _begin         = GlobIter_t(&_glob_mem, _pattern);
+  DASH_LOG_TRACE("Matrix()", "_begin initialized");
   _ref._proxy    = new MatrixRefProxy_t(this);
+  DASH_LOG_TRACE("Matrix()", "_ref._proxy initialized");
   _local         = LocalRef_t(this);
+  DASH_LOG_TRACE("Matrix()", "_local initialized");
+  // Local iterators:
+  _lbegin        = _glob_mem.lbegin(_myid);
+  _lend          = _glob_mem.lend(_myid);
+  DASH_LOG_TRACE("Matrix()", "Initialized");
 }
 
 template <typename ElementType, size_t NumDimensions>
 inline Matrix<ElementType, NumDimensions>::~Matrix() {
+#if OLD_IMPL
   dart_team_t teamid = _team.dart_id();
   dart_team_memfree(teamid, _dart_gptr);
+#endif
 }
 
 template <typename ElementType, size_t NumDimensions>
@@ -675,7 +693,7 @@ Matrix<ElementType, NumDimensions>::barrier() const {
 template <typename ElementType, size_t NumDimensions>
 inline typename Matrix<ElementType, NumDimensions>::const_pointer
 Matrix<ElementType, NumDimensions>::data() const noexcept {
-  return *_ptr;
+  return _begin;
 }
 
 template <typename ElementType, size_t NumDimensions>
@@ -705,22 +723,28 @@ Matrix<ElementType, NumDimensions>::end() noexcept {
 template <typename ElementType, size_t NumDimensions>
 inline ElementType *
 Matrix<ElementType, NumDimensions>::lbegin() noexcept {
+#if OLD_IMPL
   void * addr;
   dart_gptr_t gptr = _dart_gptr;
   dart_gptr_setunit(&gptr, _myid);
   dart_gptr_getaddr(gptr, &addr);
   return (ElementType *)(addr);
+#endif
+  return _lbegin;
 }
 
 template <typename ElementType, size_t NumDimensions>
 inline ElementType *
 Matrix<ElementType, NumDimensions>::lend() noexcept {
+#if OLD_IMPL
   void * addr;
   dart_gptr_t gptr = _dart_gptr;
   dart_gptr_setunit(&gptr, _myid);
   dart_gptr_incaddr(&gptr, _local_mem_size * sizeof(ElementType));
   dart_gptr_getaddr(gptr, &addr);
   return (ElementType *)(addr);
+#endif
+  return _lend;
 }
 
 template <typename ElementType, size_t NumDimensions>

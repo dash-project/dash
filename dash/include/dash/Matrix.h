@@ -405,12 +405,22 @@ class Matrix {
   Pattern_t              _pattern;
   /// Capacity (total number of elements) of the matrix
   size_type              _size;
+  /// Number of local elements in the array
+  size_type              _lsize;
+  /// Number allocated local elements in the array
+  size_type              _lcapacity;
   /// Number of elements in the matrix local to this unit
   size_type              _local_mem_size;
-  pointer              * _ptr;
+  /// Global pointer to initial element in the array
+  pointer                _begin;
   dart_gptr_t            _dart_gptr;
+  /// Global memory allocation and -access
   GlobMem<ElementType>   _glob_mem;
   MatrixRef_t            _ref;
+  /// Native pointer to first local element in the array
+  ElementType          * _lbegin;
+  /// Native pointer past last local element in the array
+  ElementType          * _lend;
 };
 
 }  // namespace dash

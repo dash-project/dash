@@ -389,14 +389,6 @@ public:
     return m_dartid;
   }
 
-/* 
-  TODO: Use operator<<(std::ostream & os, Team t)
-  void print() {
-    std::cout<<"id: "<<m_dartid<<" "<<this<<" parent: "<<m_parent;
-    std::cout<<" child: "<<m_child<<std::endl;
-  }
-*/
-
   size_t global_id(size_t localId) {
     dart_unit_t g_id;
     DASH_ASSERT_RETURNS(
