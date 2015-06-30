@@ -22,6 +22,7 @@
 #include <dash/Array.h>
 #include <dash/Matrix.h>
 #include <dash/Shared.h>
+#include <dash/SharedCounter.h>
 #include <dash/Exception.h>
 #include <dash/Algorithm.h>
 

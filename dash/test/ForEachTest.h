@@ -17,8 +17,6 @@ protected:
 
   /// Using a prime to cause inconvenient strides
   size_t _num_elem      = 251;
-  /// Incremented for every call of count_invoke
-  size_t _count_invokes = 0;
   /// Stores indices passed to count_invoke
   std::vector<index_t> _invoked_indices;
 
@@ -36,9 +34,6 @@ protected:
 
 public:
   void count_invoke(index_t index) {
-    LOG_MESSAGE("Invoke #%d with index %d",
-                _count_invokes, index);
-    _count_invokes++;
     _invoked_indices.push_back(index);
   }
 };
