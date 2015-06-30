@@ -181,7 +181,7 @@ LocalRef<T, NumDimensions, CUR>::sub(
   size_type n)
 {
   static_assert(
-      NumDimensions - 1 > 0,
+      NumDimensions-1 > 0,
       "Dimension too low for sub()");
   static_assert(
       SubDimension < NumDimensions && SubDimension >= 0,
@@ -222,8 +222,8 @@ template<typename T, size_t NumDimensions, size_t CUR>
 template<size_t SubDimension>
 LocalRef<T, NumDimensions, NumDimensions>
 LocalRef<T, NumDimensions, CUR>::submat(
-  size_type n,
-  size_type range)
+  size_type offset,
+  size_type extent)
 {
   static_assert(
       SubDimension < NumDimensions && SubDimension >= 0,
@@ -234,7 +234,10 @@ LocalRef<T, NumDimensions, CUR>::submat(
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
   ref._proxy = proxy;
   ref._proxy->_viewspec = _proxy->_viewspec;
-  ref._proxy->_viewspec.resize_dim(SubDimension, range, n);
+  ref._proxy->_viewspec.resize_dim(
+                          SubDimension,
+                          extent,
+                          offset);
   ref._proxy->_mat = _proxy->_mat;
   return ref;
 }
@@ -242,19 +245,19 @@ LocalRef<T, NumDimensions, CUR>::submat(
 template<typename T, size_t NumDimensions, size_t CUR>
 LocalRef<T, NumDimensions, NumDimensions>
 LocalRef<T, NumDimensions, CUR>::rows(
-  size_type n,
-  size_type range)
+  size_type offset,
+  size_type extent)
 {
-  return submat<0>(n, range);
+  return submat<0>(offset, extent);
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
 LocalRef<T, NumDimensions, NumDimensions>
 LocalRef<T, NumDimensions, CUR>::cols(
-  size_type n,
-  size_type range)
+  size_type offset,
+  size_type extent)
 {
-  return submat<1>(n, range);
+  return submat<1>(offset, extent);
 }
 
 // LocalRef<T, NumDimensions, 0>
@@ -450,39 +453,41 @@ template<typename T, size_t NumDimensions, size_t CUR>
 template<size_t SubDimension>
 MatrixRef<T, NumDimensions, NumDimensions>
 MatrixRef<T, NumDimensions, CUR>::submat(
-  size_type n,
-  size_type range)
+  size_type offset,
+  size_type extent)
 {
   static_assert(
-      SubDimension < NumDimensions && SubDimension >= 0,
-      "Wrong sub-dimension for submat()");
+    SubDimension < NumDimensions && SubDimension >= 0,
+    "Wrong sub-dimension for submat()");
   MatrixRef<T, NumDimensions, NumDimensions> ref;
   MatrixRefProxy<T, NumDimensions> * proxy =
-    new MatrixRefProxy < T, NumDimensions >();
-
-  ref._proxy = proxy;
+    new MatrixRefProxy< T, NumDimensions>();
+  ref._proxy            = proxy;
+  ref._proxy->_mat      = _proxy->_mat;
   ref._proxy->_viewspec = _proxy->_viewspec;
-  ref._proxy->_viewspec.resize_dim(SubDimension, range, n);
-  ref._proxy->_mat = _proxy->_mat;
+  ref._proxy->_viewspec.resize_dim(
+                          SubDimension,
+                          extent,
+                          offset);
   return ref;
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
 inline MatrixRef<T, NumDimensions, NumDimensions>
 MatrixRef<T, NumDimensions, CUR>::rows(
-  size_type n,
-  size_type range)
+  size_type offset,
+  size_type extent)
 {
-  return submat<0>(n, range);
+  return submat<0>(offset, extent);
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
 inline MatrixRef<T, NumDimensions, NumDimensions>
 MatrixRef<T, NumDimensions, CUR>::cols(
-  size_type n,
-  size_type range)
+  size_type offset,
+  size_type extent)
 {
-  return submat<1>(n, range);
+  return submat<1>(offset, extent);
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
@@ -744,25 +749,25 @@ template <typename ElementType, size_t NumDimensions>
 template<size_t SubDimension>
 inline MatrixRef<ElementType, NumDimensions, NumDimensions>
 Matrix<ElementType, NumDimensions>::submat(
-  size_type n,
-  size_type range) {
-  return _ref.submat<SubDimension>(n, range);
+  size_type offset,
+  size_type exent) {
+  return _ref.submat<SubDimension>(offset, extent);
 }
 
 template <typename ElementType, size_t NumDimensions>
 inline MatrixRef<ElementType, NumDimensions, NumDimensions>
 Matrix<ElementType, NumDimensions>::rows(
-  size_type n,
-  size_type range) {
-  return _ref.submat<0>(n, range);
+  size_type offset,
+  size_type extent) {
+  return _ref.submat<0>(offset, extent);
 }
 
 template <typename ElementType, size_t NumDimensions>
 inline MatrixRef<ElementType, NumDimensions, NumDimensions>
 Matrix<ElementType, NumDimensions>::cols(
-  size_type n,
-  size_type range) {
-  return _ref.submat<1>(n, range);
+  size_type offset,
+  size_type extent) {
+  return _ref.submat<1>(offset, extent);
 }
 
 template <typename ElementType, size_t NumDimensions>

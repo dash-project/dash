@@ -383,6 +383,10 @@ public:
     update_size();
   }
 
+  /**
+   * Change the view specification's extent and offset in the
+   * given dimension.
+   */
   void resize_dim(
     unsigned int dimension,
     SizeType extent,

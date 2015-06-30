@@ -118,3 +118,49 @@ TEST_F(MinElementTest, TestFindArrayUnderfilled)
               min_value, found_min);
   EXPECT_EQ(min_value, found_min);
 }
+
+TEST_F(MinElementTest, TestFindMatrixDefault)
+{
+  Element_t min_value = 11;
+  size_t extent_cols  = 431;
+  size_t extent_rows  = 547;
+  int min_pos_x       = 234;
+  int min_pos_y       = 534;
+  dash::Matrix<Element_t, 2> matrix(
+                         dash::SizeSpec<2>(
+                           extent_cols, extent_rows),
+                         dash::DistributionSpec<2>(
+                           dash::NONE, dash::BLOCKCYCLIC(51)));
+  size_t matrix_size = extent_cols * extent_rows;
+  ASSERT_EQ(matrix_size, matrix.size());
+  ASSERT_EQ(extent_cols, matrix.extent(0));
+  ASSERT_EQ(extent_rows, matrix.extent(1));
+  LOG_MESSAGE("Matrix size: %d", matrix_size);
+  // Fill matrix
+  if (dash::myid() == 0) {
+    LOG_MESSAGE("Assigning matrix values");
+    for(int i = 0; i < matrix.extent(0); ++i) {
+      for(int k = 0; k < matrix.extent(1); ++k) {
+        matrix[i][k] = 20 + (i * 11) + (k * 97);
+      }
+    }
+    LOG_MESSAGE("Setting matrix[%d][%d] = %d (min)", 
+                min_pos_x, min_pos_y, min_value);
+    matrix[min_pos_x][min_pos_y] = min_value;
+  }
+  // Units waiting for value initialization
+  dash::Team::All().barrier();
+  // Run min_element on complete matrix
+  dash::GlobPtr<Element_t> found_gptr =
+    dash::min_element(
+      matrix.begin(),
+      matrix.end());
+  // Check that a minimum has been found (found != last):
+  EXPECT_NE_U(found_gptr, nullptr);
+  // Check minimum value found
+  Element_t found_min = *found_gptr;
+  LOG_MESSAGE("Expected min value: %d, found minimum value %d",
+              min_value, found_min);
+  EXPECT_EQ(min_value, found_min);
+}
+
