@@ -43,7 +43,12 @@ class MatrixRefProxy {
     friend class Matrix;
 
   MatrixRefProxy<T, NumDimensions>();
-  MatrixRefProxy<T, NumDimensions>(Matrix<T, NumDimensions> * matrix);
+  MatrixRefProxy<T, NumDimensions>(
+    Matrix<T, NumDimensions> * matrix);
+  MatrixRefProxy<T, NumDimensions>(
+    const MatrixRefProxy<T, NumDimensions> & other);
+
+  GlobRef<T> global_reference() const;
 };
 
 /**
@@ -93,10 +98,10 @@ class LocalRef {
   inline T & at_(size_type pos);
 
   template<typename ... Args>
-  T& at(Args... args);
+  T & at(Args... args);
 
   template<typename... Args>
-  T& operator()(Args... args);
+  T & operator()(Args... args);
 
   LocalRef<T, NumDimensions, CUR - 1> && operator[](size_t n);
   LocalRef<T, NumDimensions, CUR - 1> operator[](size_t n) const;
@@ -175,7 +180,9 @@ class MatrixRef {
   : _proxy(nullptr) { // = default;
     DASH_LOG_TRACE_VAR("MatrixRef<T, D, 0>()", NumDimensions);
   }
-//MatrixRef<T, NumDimensions, CUR>(Matrix<T, NumDimensions> * mat);
+  MatrixRef<T, NumDimensions, CUR>(
+    const MatrixRef<T, NumDimensions, CUR+1> & previous,
+    long long coord);
 
   Pattern<NumDimensions> & pattern();
 
@@ -209,8 +216,6 @@ class MatrixRef {
     size_type n,
     size_type range);
 
-  inline reference at_(size_type unit, size_type elem);
-
   template<typename ... Args>
   reference at(Args... args);
 
@@ -242,9 +247,13 @@ class MatrixRef<T, NumDimensions, 0> {
 
   MatrixRef<T, NumDimensions, 0>()
   : _proxy(nullptr)
-  { // = default;
+  {
     DASH_LOG_TRACE_VAR("MatrixRef<T, D, 0>()", NumDimensions);
   }
+
+  MatrixRef<T, NumDimensions, 0>(
+    const MatrixRef<T, NumDimensions, 1> & previous,
+    long long coord);
 
   operator T();
   T operator=(const T value);

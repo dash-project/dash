@@ -9,6 +9,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 #include <iterator>
 
 #define DASH_LOG_TRACE(...) \
@@ -48,9 +49,13 @@ static void Log_Recursive(
   int line,
   const char* context_tag,
   std::ostringstream & msg) {
-  std::cout << "[ " << dash::myid() << "  " << level << " ] " 
-            << file << ":" << line << " "
-            << "(" << context_tag << ") "
+  std::cout << "[ " << dash::myid() << "  " << level << " ] "
+            << std::left << std::setw(20)
+            << file << ":" 
+            << std::left << std::setw(4)
+            << line << " | "
+            << std::left << std::setw(35)
+            << context_tag
             << msg.str() << std::endl;
 }
 

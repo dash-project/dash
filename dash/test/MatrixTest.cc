@@ -5,8 +5,8 @@
 
 TEST_F(MatrixTest, SingleWriteMultipleRead) {
   dart_unit_t myid  = dash::myid();
-  size_t extent_cols = 19;
-  size_t extent_rows = 41;
+  size_t extent_cols = 41;
+  size_t extent_rows = 53;
   dash::Matrix<int, 2> matrix(
                          dash::SizeSpec<2>(
                            extent_cols, extent_rows),
@@ -23,23 +23,18 @@ TEST_F(MatrixTest, SingleWriteMultipleRead) {
     LOG_MESSAGE("Assigning matrix values");
     for(int i = 0; i < matrix.extent(0); ++i) {
       for(int k = 0; k < matrix.extent(1); ++k) {
-        LOG_MESSAGE("Matrix[i]");
-        dash::MatrixRef<int, 2, 1> matrix_ref_i  = matrix[i];
-        LOG_MESSAGE("Matrix[i][k]");
-        dash::MatrixRef<int, 2, 0> matrix_ref_ik = matrix_ref_i[k];
-        LOG_MESSAGE("Assigning (%d,%d) = %d", i, k, i + k);
-        matrix_ref_ik = i + k;
+        matrix[i][k] = (i * 11) + (k * 97);
       }
     }
   }
   // Units waiting for value initialization
   dash::Team::All().barrier();
+
   // Read and assert values in matrix
-  for(int i = 0; i < matrix.extent(i); ++i) {
-    for(int k = 0; k < matrix.extent(k); ++k) {
+  for(int i = 0; i < matrix.extent(0); ++i) {
+    for(int k = 0; k < matrix.extent(1); ++k) {
       int value    = matrix[i][k];
-      int expected = i + k;
-      LOG_MESSAGE("Checking i:%d k:%d", i, k);
+      int expected = (i * 11) + (k * 97);
       ASSERT_EQ_U(expected, value);
     }
   }

@@ -59,6 +59,8 @@ public:
   }
 
   GlobRef<T> & operator=(const T val) {
+    DASH_LOG_TRACE_VAR("GlobRef.=()", val);
+    DASH_LOG_TRACE_VAR("GlobRef.=", m_gptr);
     dash::put_value(val, m_gptr);
     return *this;
   }

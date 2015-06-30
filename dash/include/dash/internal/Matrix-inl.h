@@ -31,6 +31,29 @@ MatrixRefProxy<T, NumDimensions>::MatrixRefProxy(
 {
 }
 
+template<typename T, size_t NumDimensions>
+MatrixRefProxy<T, NumDimensions>::MatrixRefProxy(
+  const MatrixRefProxy<T, NumDimensions> & other)
+: _dim(other._dim),
+  _mat(other._mat),
+  _coord(other._coord),
+  _viewspec(other._viewspec)
+{
+}
+
+template<typename T, size_t NumDimensions>
+GlobRef<T>
+MatrixRefProxy<T, NumDimensions>::global_reference() const {
+  DASH_LOG_TRACE_VAR("MatrixRefProxy.global_reference()", _coord);
+  auto pattern       = _mat->pattern();
+  auto memory_layout = pattern.memory_layout();
+  auto global_index  = memory_layout.at(_coord, _viewspec);
+  DASH_LOG_TRACE_VAR("MatrixRefProxy.global_reference()", global_index);
+  auto global_begin  = _mat->begin();
+  GlobRef<T> ref     = global_begin[global_index];
+  return ref;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // LocalRef
 ////////////////////////////////////////////////////////////////////////
@@ -64,15 +87,6 @@ LocalRef<T, NumDimensions, CUR>::LocalRef(
     local_extents[d] = mat->_pattern.local_extent(d);
   }
   _proxy->_viewspec.resize(local_extents);
-
-#if 0
-  // Old implementation:
-  for (int i = 0; i < NumDimensions; i++) {
-    _proxy->_viewspec.begin[i] = 0;
-    _proxy->_viewspec.range[i] = mat->_pattern.local_extent(i);
-  }
-  _proxy->_viewspec.update_size();
-#endif
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
@@ -150,15 +164,12 @@ LocalRef<T, NumDimensions, CUR>::operator[](
 template<typename T, size_t NumDimensions, size_t CUR>
 LocalRef<T, NumDimensions, CUR-1>
 LocalRef<T, NumDimensions, CUR>::operator[](
-  size_t n) const
+  size_t pos) const
 {
   LocalRef<T, NumDimensions, CUR-1> ref;
-  ref._proxy = new MatrixRefProxy < T, NumDimensions > ;
-  ref._proxy->_coord = _proxy->_coord;
-  ref._proxy->_coord[_proxy->_dim] = n;
-  ref._proxy->_dim = _proxy->_dim + 1;
-  ref._proxy->_mat = _proxy->_mat;
-  ref._proxy->_viewspec = _proxy->_viewspec;
+  ref._proxy = new MatrixRefProxy<T, NumDimensions>(*_proxy);
+  ref._proxy->_coord[_proxy->_dim] = pos;
+  ref._proxy->_dim                 =  _proxy->_dim + 1;
   ref._proxy->_viewspec.set_rank(CUR);
   return ref;
 }
@@ -177,10 +188,8 @@ LocalRef<T, NumDimensions, CUR>::sub(
       "Illegal sub-dimension");
   size_t target_dim = SubDimension + _proxy->_dim;
   LocalRef<T, NumDimensions, NumDimensions - 1> ref;
-  // TODO: Memory leak: Allocated but never freed
   MatrixRefProxy<T, NumDimensions> * proxy =
     new MatrixRefProxy<T, NumDimensions>();
-  ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
   ref._proxy = proxy;
   ref._proxy->_coord[target_dim] = 0;
 
@@ -223,8 +232,6 @@ LocalRef<T, NumDimensions, CUR>::submat(
   MatrixRefProxy<T, NumDimensions> * proxy =
     new MatrixRefProxy<T, NumDimensions>();
   ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
-  // TODO: Memory leak: Allocated and passed ownership to ref, but
-  // never freed:
   ref._proxy = proxy;
   ref._proxy->_viewspec = _proxy->_viewspec;
   ref._proxy->_viewspec.resize_dim(SubDimension, range, n);
@@ -293,6 +300,21 @@ LocalRef<T, NumDimensions, 0>::operator=(
 ////////////////////////////////////////////////////////////////////////
 // MatrixRef
 ////////////////////////////////////////////////////////////////////////
+
+template<typename T, size_t NumDimensions, size_t CUR>
+MatrixRef<T, NumDimensions, CUR>::MatrixRef(
+  const MatrixRef<T, NumDimensions, CUR+1> & previous,
+  long long coord)
+{
+  DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", CUR);
+  // Copy proxy of MatrixRef from last dimension:
+  _proxy = new MatrixRefProxy<T, NumDimensions>(*(previous._proxy));
+  _proxy->_coord[_proxy->_dim] = coord;
+  _proxy->_dim                 = _proxy->_dim + 1;
+  _proxy->_viewspec.set_rank(CUR+1);
+  DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", _proxy->_dim);
+  DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", _proxy->_coord);
+}
 
 template<typename T, size_t NumDimensions, size_t CUR>
 MatrixRef<T, NumDimensions, CUR>::operator
@@ -372,18 +394,9 @@ MatrixRef<T, NumDimensions, CUR-1>
 MatrixRef<T, NumDimensions, CUR>::operator[](
   size_t pos) const
 {
-  DASH_LOG_TRACE_VAR("MatrixRef.[]()", pos);
-  DASH_LOG_TRACE_VAR("MatrixRef.[]", CUR);
-  MatrixRef<T, NumDimensions, CUR-1> ref;
-  ref._proxy = new MatrixRefProxy<T, NumDimensions>;
-  ref._proxy->_coord = _proxy->_coord;
-  ref._proxy->_coord[_proxy->_dim] = pos;
-  DASH_LOG_TRACE_VAR("MatrixRef.[]", _proxy->_coord);
-  ref._proxy->_dim = _proxy->_dim + 1;
-  DASH_LOG_TRACE_VAR("MatrixRef.[]", _proxy->_dim);
-  ref._proxy->_mat = _proxy->_mat;
-  ref._proxy->_viewspec = _proxy->_viewspec;
-  ref._proxy->_viewspec.set_rank(CUR);
+  DASH_LOG_TRACE_VAR("MatrixRef<D>.[]()", pos);
+  DASH_LOG_TRACE_VAR("MatrixRef<D>.[]", CUR);
+  MatrixRef<T, NumDimensions, CUR-1> ref(*this, pos);
   return ref;
 }
 
@@ -400,10 +413,10 @@ MatrixRef<T, NumDimensions, CUR>::sub(
       SubDimension < NumDimensions && SubDimension >= 0,
       "Wrong sub-dimension for sub()");
   size_t target_dim = SubDimension + _proxy->_dim;
+
   MatrixRef<T, NumDimensions, NumDimensions - 1> ref;
   MatrixRefProxy<T, NumDimensions> * proxy =
     new MatrixRefProxy<T, NumDimensions>;
-  ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
 
   ref._proxy = proxy;
   ref._proxy->_coord[target_dim] = 0;
@@ -446,7 +459,6 @@ MatrixRef<T, NumDimensions, CUR>::submat(
   MatrixRef<T, NumDimensions, NumDimensions> ref;
   MatrixRefProxy<T, NumDimensions> * proxy =
     new MatrixRefProxy < T, NumDimensions >();
-  ::std::fill(proxy->_coord.begin(), proxy->_coord.end(), 0);
 
   ref._proxy = proxy;
   ref._proxy->_viewspec = _proxy->_viewspec;
@@ -474,18 +486,6 @@ MatrixRef<T, NumDimensions, CUR>::cols(
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
-inline typename MatrixRef<T, NumDimensions, CUR>::reference
-MatrixRef<T, NumDimensions, CUR>::at_(
-  size_type unit,
-  size_type elem)
-{
-  if (!(elem < _proxy->_viewspec.size())) {
-    throw std::out_of_range("Out of range");
-  }
-  return *(_proxy->_mat->begin());
-}
-
-template<typename T, size_t NumDimensions, size_t CUR>
 template<typename ... Args>
 inline typename MatrixRef<T, NumDimensions, CUR>::reference
 MatrixRef<T, NumDimensions, CUR>::at(Args... args)
@@ -501,14 +501,7 @@ MatrixRef<T, NumDimensions, CUR>::at(Args... args)
   for(int i = _proxy->_dim; i < NumDimensions; ++i) {
     _proxy->_coord[i] = coord[i-_proxy->_dim];
   }
-  // TODO: Can be optimized by introducing
-  //   Pattern.unit_and_local_index_at
-  return at_(_proxy->_mat->_pattern.unit_at(
-               _proxy->_coord,
-               _proxy->_viewspec),
-             _proxy->_mat->_pattern.at(
-               _proxy->_coord,
-               _proxy->_viewspec));
+  return _proxy->global_reference();
 }
 
 template<typename T, size_t NumDimensions, size_t CUR>
@@ -559,36 +552,28 @@ MatrixRef<T, NumDimensions, CUR>::hview()
 // MatrixRef<T, NumDimensions, 0>
 // Partial Specialization for value deferencing.
 
-template <typename T, size_t NumDimensions>
-inline const GlobRef<T>
-MatrixRef<T, NumDimensions, 0>::at_(
-  size_t unit,
-  size_t elem) const
+template<typename T, size_t NumDimensions>
+MatrixRef<T, NumDimensions, 0>::MatrixRef(
+  const MatrixRef<T, NumDimensions, 1> & previous,
+  long long coord)
 {
-  return *(_proxy->_mat->begin()); // .get(unit, elem);
-}
-
-template <typename T, size_t NumDimensions>
-inline GlobRef<T>
-MatrixRef<T, NumDimensions, 0>::at_(
-  size_t unit,
-  size_t elem)
-{
-  return *(_proxy->_mat->begin()); // .get(unit, elem);
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.(MatrixRef prev)", 0);
+  // Copy proxy of MatrixRef from last dimension:
+  _proxy = new MatrixRefProxy<T, NumDimensions>(*(previous._proxy));
+  _proxy->_coord[_proxy->_dim] = coord;
+  _proxy->_dim                 = _proxy->_dim + 1;
+  _proxy->_viewspec.set_rank(1);
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.(MatrixRef prev)", _proxy->_coord);
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.(MatrixRef prev)", _proxy->_dim);
 }
 
 template <typename T, size_t NumDimensions>
 inline MatrixRef<T, NumDimensions, 0>::operator T()
 {
   DASH_LOG_TRACE_VAR("MatrixRef<0>.T()", _proxy->_coord);
-  GlobRef<T> ref = at_(
-      _proxy->_mat->_pattern.unit_at(
-         _proxy->_coord,
-         _proxy->_viewspec),
-      _proxy->_mat->_pattern.at(
-        _proxy->_coord,
-        _proxy->_viewspec));
+  GlobRef<T> ref = _proxy->global_reference();
   DASH_LOG_TRACE("MatrixRef<0>.T()", "delete _proxy");
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.T() delete", _proxy);
   delete _proxy;
   return ref;
 }
@@ -600,16 +585,10 @@ MatrixRef<T, NumDimensions, 0>::operator=(
 {
   DASH_LOG_TRACE_VAR("MatrixRef<0>.=()", value);
   DASH_LOG_TRACE_VAR("MatrixRef<0>.=", _proxy->_coord);
-  // TODO: Can be optimized by introducing
-  //   Pattern.unit_and_local_index_at
-  GlobRef<T> ref = at_(_proxy->_mat->_pattern.unit_at(
-                         _proxy->_coord,
-                         _proxy->_viewspec),
-                       _proxy->_mat->_pattern.at(
-                         _proxy->_coord,
-                         _proxy->_viewspec));
+  GlobRef<T> ref = _proxy->global_reference();
   ref = value;
   DASH_LOG_TRACE("MatrixRef<0>.=", "delete _proxy");
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.= delete", _proxy);
   delete _proxy;
   return value;
 }
@@ -650,11 +629,6 @@ Matrix<ElementType, NumDimensions>::Matrix(
   DASH_LOG_TRACE_VAR("Matrix()", _size);
   _ptr           = new GlobIter_t(&_glob_mem, _pattern, 0lu);
   _ref._proxy    = new MatrixRefProxy_t(this);
-#if OLD_IMPL
-  _ref._proxy->_dim      = 0;
-  _ref._proxy->_mat      = this;
-  _ref._proxy->_viewspec = _pattern.viewspec();
-#endif
   _local         = LocalRef_t(this);
 }
 

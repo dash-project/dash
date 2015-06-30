@@ -282,6 +282,28 @@ public:
   }
   
   /**
+   * Convert the given coordinates to a linear index, respective to
+   * the offsets specified in the given ViewSpec.
+   *
+   * \param  pos       An array containing the coordinates, ordered by
+   *                   dimension (x, y, z, ...)
+   * \param  viewspec  An instance of ViewSpec to apply to the given
+   *                   point before resolving the linear index.
+   */
+  template<
+    MemArrange AtArrangement = Arrangement,
+    typename OffsetType>
+  IndexType at(
+    const std::array<OffsetType, NumDimensions> & pos,
+    const ViewSpec<NumDimensions> & viewspec) const {
+    std::array<OffsetType, NumDimensions> coords;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      coords[d] = pos[d] + viewspec[d].offset;
+    }
+    return at(coords);
+  }
+
+  /**
    * Convert given linear offset (index) to cartesian coordinates.
    * Inverse of \c at(...).
    */
