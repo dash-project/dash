@@ -158,8 +158,12 @@ public:
   const TYPE * lbegin(dart_unit_t unit_id) const {
     void *addr;
     dart_gptr_t gptr = begin().dartptr();
-    dart_gptr_setunit(&gptr, unit_id);
-    dart_gptr_getaddr(gptr, &addr);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_setunit(&gptr, unit_id),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_getaddr(gptr, &addr),
+      DART_OK);
     return static_cast<const TYPE *>(addr);
   }
 
@@ -169,9 +173,17 @@ public:
    */
   TYPE * lbegin(dart_unit_t unit_id) {
     void *addr;
+    DASH_LOG_TRACE_VAR("GlobMem.lbegin()", unit_id);
     dart_gptr_t gptr = begin().dartptr();
-    dart_gptr_setunit(&gptr, unit_id);
-    dart_gptr_getaddr(gptr, &addr);
+    DASH_LOG_TRACE_VAR("GlobMem.lbegin()", 
+                       GlobPtr<TYPE>((dart_gptr_t)gptr));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_setunit(&gptr, unit_id),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_getaddr(gptr, &addr),
+      DART_OK);
+    DASH_LOG_TRACE_VAR("GlobMem.lbegin()", addr);
     return static_cast<TYPE *>(addr);
   }
 
@@ -198,9 +210,15 @@ public:
   const TYPE * lend(dart_unit_t unit_id) const {
     void *addr;
     dart_gptr_t gptr = begin().dartptr();
-    dart_gptr_setunit(&gptr, unit_id);
-    dart_gptr_incaddr(&gptr, m_nlelem * sizeof(TYPE));
-    dart_gptr_getaddr(gptr, &addr);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_setunit(&gptr, unit_id),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&gptr, m_nlelem * sizeof(TYPE)),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_getaddr(gptr, &addr),
+      DART_OK);
     return static_cast<const TYPE *>(addr);
   }
 
@@ -211,9 +229,15 @@ public:
   TYPE * lend(dart_unit_t unit_id) {
     void *addr;
     dart_gptr_t gptr = begin().dartptr();
-    dart_gptr_setunit(&gptr, unit_id);
-    dart_gptr_incaddr(&gptr, m_nlelem * sizeof(TYPE));
-    dart_gptr_getaddr(gptr, &addr);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_setunit(&gptr, unit_id),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(&gptr, m_nlelem * sizeof(TYPE)),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_getaddr(gptr, &addr),
+      DART_OK);
     return static_cast<TYPE *>(addr);
   }
 
