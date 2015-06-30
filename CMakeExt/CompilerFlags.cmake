@@ -1,7 +1,5 @@
 ## Compiler flags
 
-set(ENABLE_ASSERTIONS ${ENABLE_ASSERTIONS}
-    PARENT_SCOPE)
 
 set(CMAKE_C_FLAGS
     "${CMAKE_C_FLAGS} -O3 -std=c99")

@@ -41,7 +41,7 @@
 #else  // DASH_ENABLE_ASSERTIONS
 
 #define DASH_ASSERT_RETURNS(expr, exp_value) (expr)
-#define DASH_ASSERT(expr) do { } while(0)
+#define DASH_ASSERT(expr) do { } while (expr)
 
 #endif // DASH_ENABLE_ASSERTIONS
 
