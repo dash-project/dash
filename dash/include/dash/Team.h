@@ -215,7 +215,9 @@ public:
     group = static_cast<dart_group_t *>(malloc(size));
     for (unsigned int i = 0; i < nParts; i++) {
       sub_groups[i] = static_cast<dart_group_t *>(malloc(size));
-      dart_group_init(sub_groups[i]);
+      DASH_ASSERT_RETURNS(
+        dart_group_init(sub_groups[i]),
+        DART_OK);
     }
     
     Team *result = &(dash::Team::Null());
@@ -223,18 +225,26 @@ public:
     if (this->size() <= 1) {
       return *result;
     }
-    
-    dart_group_init(group);
-    dart_team_get_group(m_dartid, group);
-    dart_group_split(group, nParts, sub_groups);
-    
+    DASH_ASSERT_RETURNS(
+      dart_group_init(group),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_team_get_group(m_dartid, group),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_group_split(group, nParts, sub_groups),
+      DART_OK);
     dart_team_t oldteam = m_dartid;
-    
     // Create a child Team for every part with parent set to
     // this instance:
     for(unsigned int i = 0; i < nParts; i++) {
       dart_team_t newteam = DART_TEAM_NULL;
-      dart_team_create(oldteam, sub_groups[i], &newteam);
+      DASH_ASSERT_RETURNS(
+        dart_team_create(
+          oldteam,
+          sub_groups[i],
+          &newteam),
+        DART_OK);
       if(newteam != DART_TEAM_NULL) {
         result = new Team(newteam, this, i);
       }
@@ -307,7 +317,12 @@ public:
     if(!m_havegroup) { 
       get_group();
     }
-    dart_group_ismember(m_group, groupId, &ismember);
+    DASH_ASSERT_RETURNS(
+      dart_group_ismember(
+        m_group,
+        groupId,
+        &ismember),
+      DART_OK);
     return ismember;
   }
 
@@ -335,14 +350,18 @@ public:
 
   void barrier() const {
     if (!isNull()) {
-      dart_barrier(m_dartid);
+      DASH_ASSERT_RETURNS(
+        dart_barrier(m_dartid),
+        DART_OK);
     }
   }
 
   size_t myid() const {
     dart_unit_t res = 0;
     if (m_dartid != DART_TEAM_NULL) {
-      dart_team_myid(m_dartid, &res);
+      DASH_ASSERT_RETURNS(
+        dart_team_myid(m_dartid, &res),
+        DART_OK);
     }
     return res;
   }
@@ -355,7 +374,9 @@ public:
   size_t size() const {
     size_t size = 0;
     if (m_dartid != DART_TEAM_NULL) {
-      dart_team_size(m_dartid, &size);
+      DASH_ASSERT_RETURNS(
+        dart_team_size(m_dartid, &size),
+        DART_OK);
     }
     return size;
   }
@@ -378,10 +399,12 @@ public:
 
   size_t global_id(size_t localId) {
     dart_unit_t g_id;
-    dart_team_unit_l2g(
-      m_dartid,
-      localId,
-      &g_id);
+    DASH_ASSERT_RETURNS(
+      dart_team_unit_l2g(
+        m_dartid,
+        localId,
+        &g_id),
+      DART_OK);
     return g_id;
   }
 };
