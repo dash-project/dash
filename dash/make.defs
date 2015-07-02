@@ -5,8 +5,8 @@
 
 # change this to the name of the DART implementation 
 # ("mpi", "shmem", etc.)
-DART_IMPL   = shmem
-#DART_IMPL   = mpi
+#DART_IMPL   = shmem
+DART_IMPL   = mpi
 
 OPT_FLAGS = -O4
 

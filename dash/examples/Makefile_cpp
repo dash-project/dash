@@ -13,11 +13,18 @@ include $(DASH_ROOT)/make.defs
 LIBDASH   = $(DASH_ROOT)/src/libdash.a
 DASH_INC  = $(DASH_ROOT)/include/
 
+LIBIPM_DIR = $(DASH_ROOT)/../ipm/src
+LIBIPM     = $(LIBIPM_DIR)/libipm.a
+
 PWD  = $(shell basename `pwd`)
 PAT  = $(shell echo -n $(PWD) )
 PROG = $(shell echo -n $(PAT) | cut -d . -f 3)
 
-all : $(LIBDART) $(LIBDASH) $(PROG)
+all : regular ipm 
+
+regular : $(LIBDART) $(LIBDASH) $(PROG) 
+
+ipm: $(LIBDART) $(LIBDASH) $(LIBIPM) $(PROG).ipm
 
 printenv : 
 	 @echo "CXX           = $(CXX)"
@@ -36,8 +43,14 @@ $(LIBDASH) :
 $(LIBDART) :
 	make OPT_FLAGS="$(OPT_FLAGS)" -C $(LIBDART_DIR)
 
+$(LIBIPM) : 
+	make OPT_FLAGS="$(OPT_FLAGS)" -C $(LIBIPM_DIR)
+
 $(PROG) : main.o
 	$(CXX) $(LFLAGS) -o $@ $+ $(LIBDASH) $(LIBDART) $(LIBDART_EXTRA)
+
+$(PROG).ipm : main.o
+	$(CXX) $(LFLAGS) -o $@ $+ $(LIBDASH) $(LIBDART) $(LIBDART_EXTRA) $(LIBIPM)
 
 %.o 	: %.cpp 
 	$(CXX) -c $(CFLAGS) -I$(DART_INC) -I$(DASH_INC) $+
@@ -45,8 +58,13 @@ $(PROG) : main.o
 clean : 
 	rm -f *.o *~
 	rm -f $(PROG)
+	rm -f $(PROG).ipm
+	rm -f *.ipm.xml
+	rm -f *.trace.*.txt
+
 
 # clean dash lib and dart lib too
 fresh : clean
 	make -C $(DASH_ROOT)/src clean
 	make -C $(LIBDART_DIR) clean
+	make -C $(LIBIPM_DIR) clean
