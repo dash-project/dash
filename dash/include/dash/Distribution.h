@@ -104,7 +104,7 @@ public:
    * extent for a given total number of units.
    */
   template<typename SizeType>
-  SizeType max_local_blocks_in_range(
+  SizeType max_local_elements_in_range(
     /// Number of elements to distribute
     SizeType range,
     /// Number of units to which elements are distributed
@@ -112,21 +112,18 @@ public:
     SizeType num_blocks;
     switch (type) {
       case dash::internal::DIST_NONE:
-        return 1;
+        return range;
       case dash::internal::DIST_BLOCKED:
-        return 1;
+        return dash::math::div_ceil(range, num_units);
       case dash::internal::DIST_CYCLIC:
         // same as block cyclic with blocksz = 1
         return dash::math::div_ceil(range, num_units);
       case dash::internal::DIST_BLOCKCYCLIC:
         // extent to blocks:
-        num_blocks = dash::math::div_ceil(range, blocksz);
-        // blocks to units:
-        return dash::math::div_ceil(num_blocks, num_units);
+        return dash::math::div_ceil(range, num_units);
       case dash::internal::DIST_TILE:
         // same as block cyclic
-        num_blocks = dash::math::div_ceil(range, blocksz);
-        return dash::math::div_ceil(num_blocks, num_units);
+        return dash::math::div_ceil(range, num_units);
       default:
         DASH_THROW(
           dash::exception::InvalidArgument,

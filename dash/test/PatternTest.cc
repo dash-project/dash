@@ -229,8 +229,7 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
   size_t team_size  = dash::Team::All().size();
   size_t block_size = 23;
   size_t num_blocks = dash::math::div_ceil(_num_elem, block_size);
-  size_t local_cap  = block_size *
-                        dash::math::div_ceil(num_blocks, team_size);
+  size_t local_cap  = dash::math::div_ceil(_num_elem, team_size);
   dash::Pattern<1, dash::ROW_MAJOR> pat_blockcyclic_row(
       dash::SizeSpec<1>(_num_elem),
       dash::DistributionSpec<1>(dash::BLOCKCYCLIC(block_size)),
@@ -300,8 +299,7 @@ TEST_F(PatternTest, Distribute1DimTile)
   size_t block_size = 3;
   size_t extent     = team_size * (block_size * 3) + 1;
   size_t num_blocks = dash::math::div_ceil(extent, block_size);
-  size_t local_cap  = block_size *
-                        dash::math::div_ceil(num_blocks, team_size);
+  size_t local_cap  = dash::math::div_ceil(extent, team_size);
   dash::Pattern<1, dash::ROW_MAJOR> pat_tile_row(
       dash::SizeSpec<1>(extent),
       dash::DistributionSpec<1>(dash::TILE(block_size)),
@@ -674,6 +672,141 @@ TEST_F(PatternTest, Distribute2DimCyclicX)
       EXPECT_EQ(
         (std::array<long long, 2> { x, y }),
         glob_coords_col);
+    }
+  }
+}
+
+TEST_F(PatternTest, Distribute3DimBlockcyclicX)
+{
+  DASH_TEST_LOCAL_ONLY();
+  // 2-dimensional, blocked partitioning in first dimension:
+  // 
+  // [ team 0[0] | team 1[0] | team 0[1] | team 1[1] | ... ]
+  // [ team 0[2] | team 1[2] | team 0[3] | team 1[3] | ... ]
+  // [ team 0[4] | team 1[4] | team 0[5] | team 1[5] | ... ]
+  // [ team 0[6] | team 1[6] | team 0[7] | team 1[7] | ... ]
+  // [                        ...                          ]
+  size_t team_size    = dash::Team::All().size();
+  // Choose 'inconvenient' extents:
+  size_t extent_x     = team_size + 7;
+  size_t extent_y     = 5;
+  size_t extent_z     = 3;
+  size_t size         = extent_x * extent_y * extent_z;
+  size_t block_size_x = 2;
+  int max_per_unit_x  = dash::math::div_ceil(extent_x, team_size);
+  int block_size_y    = extent_y;
+  int block_size_z    = extent_z;
+  int max_per_unit    = max_per_unit_x * block_size_y * block_size_z;
+  LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpx: %d, mpu: %d",
+      extent_x, extent_y,
+      block_size_x, block_size_y,
+      max_per_unit_x, max_per_unit);
+  dash::Pattern<3, dash::ROW_MAJOR> pat_blockcyclic_row(
+      dash::SizeSpec<3>(extent_x, extent_y, extent_z),
+      dash::DistributionSpec<3>(dash::BLOCKCYCLIC(block_size_x), dash::NONE, dash::NONE),
+      dash::TeamSpec<3>(dash::Team::All()),
+      dash::Team::All());
+  dash::Pattern<3, dash::COL_MAJOR> pat_blockcyclic_col(
+      dash::SizeSpec<3>(extent_x, extent_y, extent_z),
+      dash::DistributionSpec<3>(dash::BLOCKCYCLIC(block_size_x), dash::NONE, dash::NONE),
+      dash::TeamSpec<3>(dash::Team::All()),
+      dash::Team::All());
+  ASSERT_EQ(pat_blockcyclic_row.capacity(), size);
+  ASSERT_EQ(pat_blockcyclic_row.local_capacity(), max_per_unit);
+  ASSERT_EQ(pat_blockcyclic_row.blocksize(0), block_size_x);
+  ASSERT_EQ(pat_blockcyclic_row.blocksize(1), block_size_y);
+  ASSERT_EQ(pat_blockcyclic_row.blocksize(2), block_size_z);
+  ASSERT_EQ(pat_blockcyclic_col.capacity(), size);
+  ASSERT_EQ(pat_blockcyclic_col.local_capacity(), max_per_unit);
+  ASSERT_EQ(pat_blockcyclic_col.blocksize(0), block_size_x);
+  ASSERT_EQ(pat_blockcyclic_col.blocksize(1), block_size_y);
+  ASSERT_EQ(pat_blockcyclic_col.blocksize(2), block_size_z);
+  // number of overflow blocks, e.g. 7 elements, 3 teams -> 1
+  int num_overflow_blocks = extent_x % team_size;
+  for (int x = 0; x < extent_x; ++x) {
+    for (int y = 0; y < extent_y; ++y) {
+      for (int z = 0; z < extent_z; ++z) {
+        int unit_id                   = (x / block_size_x) % team_size;
+        int min_blocks_x              = (extent_x / block_size_x) / team_size;
+        int num_blocks_x              = dash::math::div_ceil(extent_x, block_size_x);
+        int num_add_blocks_x          = extent_x % team_size;
+        int overflow_block_size_x     = extent_x % block_size_x;
+        int num_blocks_unit_x         = min_blocks_x;
+        int num_add_elem_x            = 0;
+        int block_offset_x            = x / block_size_x;
+        if (unit_id < num_add_blocks_x) {
+          num_blocks_unit_x++;
+          num_add_elem_x += block_size_x;
+        }
+        if (unit_id == (num_blocks_x-1) % team_size) {
+          if (overflow_block_size_x > 0) { 
+            num_add_elem_x -= block_size_x - overflow_block_size_x;
+          }
+        }
+        int local_extent_x            = (min_blocks_x * block_size_x) + num_add_elem_x;
+        int local_block_index_x       = block_offset_x / team_size;
+        int expected_index_row_order  = (z * extent_y * extent_x) + (y * extent_x) + x;
+        int expected_index_col_order  = (x * extent_y * extent_z) + (y * extent_z) + z;
+        int expected_unit_id          = (x / block_size_x) % team_size;
+        int local_index_x             = (local_block_index_x * block_size_x) + (x % block_size_x);
+        int expected_offset_row_order = local_index_x +
+                                        (y * local_extent_x) +
+                                        (z * local_extent_x * extent_y);
+        int expected_offset_col_order = z +
+                                        (y * extent_z) +
+                                        (local_index_x * extent_y * extent_z);
+        int local_x                   = local_index_x;
+        int local_y                   = y;
+        int local_z                   = z;
+        auto glob_coords_row = 
+          pat_blockcyclic_row.coords_to_global(
+            expected_unit_id,
+            std::array<long long, 3> { local_x, local_y, local_z });
+        auto glob_coords_col =
+          pat_blockcyclic_col.coords_to_global(
+            expected_unit_id,
+            std::array<long long, 3> { local_x, local_y, local_z });
+        // Row major:
+        LOG_MESSAGE("R %d,%d,%d, u:%d, nbu:%d, nbx:%d, box:%d, lbox:%d, na:%d, lex:%d, lx:%d",
+          x, y, z,
+          unit_id,
+          num_blocks_unit_x,
+          num_blocks_x,
+          block_offset_x,
+          local_block_index_x,
+          num_add_elem_x,
+          local_extent_x,
+          local_index_x);
+        EXPECT_EQ(
+          expected_unit_id,
+          pat_blockcyclic_row.unit_at(std::array<long long, 3> { x, y, z }));
+        EXPECT_EQ(
+          expected_offset_row_order,
+          pat_blockcyclic_row.at(std::array<long long, 3> { x, y, z }));
+        EXPECT_EQ(
+          (std::array<long long, 3> { x, y, z }),
+          glob_coords_row);
+        // Col major:
+        LOG_MESSAGE("C %d,%d,%d, u:%d, nbu:%d, nbx:%d, box:%d, lbox:%d, na:%d, lex:%d, lx:%d",
+          x, y, z,
+          unit_id,
+          num_blocks_unit_x,
+          num_blocks_x,
+          block_offset_x,
+          local_block_index_x,
+          num_add_elem_x,
+          local_extent_x,
+          local_index_x);
+        EXPECT_EQ(
+          expected_unit_id,
+          pat_blockcyclic_col.unit_at(std::array<long long, 3> { x, y, z }));
+        EXPECT_EQ(
+          expected_offset_col_order,
+          pat_blockcyclic_col.at(std::array<long long, 3> { x, y, z }));
+        EXPECT_EQ(
+          (std::array<long long, 3> { x, y, z }),
+          glob_coords_col);
+      }
     }
   }
 }
