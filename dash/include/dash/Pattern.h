@@ -88,6 +88,8 @@ private:
     self_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     MemoryLayout_t;
+  typedef LocalMemoryLayout<NumDimensions, Arrangement, IndexType>
+    LocalMemoryLayout_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     BlockSpec_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
@@ -264,39 +266,39 @@ private:
   };
 
 private:
-  ArgumentParser     _arguments;
+  ArgumentParser      _arguments;
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
   /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
   /// dimensions
-  DistributionSpec_t _distspec;
+  DistributionSpec_t  _distspec;
   /// Team containing the units to which the patterns element are mapped
-  dash::Team &       _team            = dash::Team::All();
+  dash::Team &        _team            = dash::Team::All();
   /// Cartesian arrangement of units within the team
-  TeamSpec_t         _teamspec;
+  TeamSpec_t          _teamspec;
   /// The global layout of the pattern's elements in memory respective to
   /// memory order. Also specifies the extents of the pattern space.
-  MemoryLayout_t     _memory_layout;
+  MemoryLayout_t      _memory_layout;
   /// A projected view of the global memory layout representing the
   /// local memory layout of this unit's elements respective to memory
   /// order.
-  MemoryLayout_t     _local_memory_layout;
+  LocalMemoryLayout_t _local_memory_layout;
   /// The view specification of the pattern, consisting of offset and
   /// extent in every dimension
-  ViewSpec_t         _viewspec;
+  ViewSpec_t          _viewspec;
   /// Number of blocks in all dimensions
-  BlockSpec_t        _blockspec;
+  BlockSpec_t         _blockspec;
   /// Maximum extents of a block in this pattern
-  BlockSizeSpec_t    _blocksize_spec;
+  BlockSizeSpec_t     _blocksize_spec;
   /// Total amount of units to which this pattern's elements are mapped
-  SizeType           _nunits          = dash::Team::All().size();
+  SizeType            _nunits          = dash::Team::All().size();
   /// Maximum number of elements in a single block
-  SizeType           _max_blocksize;
+  SizeType            _max_blocksize;
   /// Maximum number of elements assigned to a single unit
-  SizeType           _local_capacity;
+  SizeType            _local_capacity;
   /// Corresponding global index to first local index of the active unit
-  IndexType          _lbegin;
+  IndexType           _lbegin;
   /// Corresponding global index past last local index of the active unit
-  IndexType          _lend;
+  IndexType           _lend;
 
 public:
   /**
@@ -350,6 +352,7 @@ public:
     _distspec(_arguments.distspec()), 
     _teamspec(_arguments.teamspec()), 
     _memory_layout(_arguments.sizespec()), 
+    _local_memory_layout(_arguments.distspec()), 
     _viewspec(_arguments.viewspec()) {
     DASH_LOG_TRACE("Pattern()", "Constructor with Argument list");
     _nunits = _teamspec.size();
@@ -401,7 +404,8 @@ public:
       teamspec,
       _distspec,
       _team),
-    _memory_layout(sizespec) {
+    _memory_layout(sizespec),
+    _local_memory_layout(_distspec) {
     DASH_LOG_TRACE("Pattern()", "(sizespec, dist, teamspec, team)");
     _nunits   = _team.size();
     _viewspec = ViewSpec_t(_memory_layout.extents());
@@ -454,7 +458,8 @@ public:
   : _distspec(dist),
     _team(team),
     _teamspec(_distspec, _team),
-    _memory_layout(sizespec) {
+    _memory_layout(sizespec),
+    _local_memory_layout(_distspec) {
     DASH_LOG_TRACE("Pattern()", "(sizespec, dist, team)");
     _nunits        = _team.size();
     _viewspec      = ViewSpec<NumDimensions>(_memory_layout);
@@ -812,7 +817,7 @@ public:
     } else {
       // Coords are not local to this unit, generate local memory layout for
       // unit assigned to coords:
-      auto l_mem_layout = MemoryLayout_t(local_extents(unit));
+      auto l_mem_layout = LocalMemoryLayout_t(local_extents(unit), _distspec);
       return l_mem_layout.at(l_coords);
     }
   }
@@ -1028,7 +1033,7 @@ public:
    * Cartesian index space representing the underlying local memory model
    * of this pattern for the calling unit.
    */
-  const MemoryLayout_t & local_memory_layout() const {
+  const LocalMemoryLayout_t & local_memory_layout() const {
     return _local_memory_layout;
   }
 
