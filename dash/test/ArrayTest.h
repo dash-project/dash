@@ -25,7 +25,7 @@ protected:
   virtual void SetUp() {
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-    _num_elem  = 10;
+    _num_elem  = 100;
   }
 
   virtual void TearDown() {

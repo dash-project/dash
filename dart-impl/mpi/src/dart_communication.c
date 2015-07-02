@@ -354,7 +354,7 @@ dart_ret_t dart_put_blocking(
   if (is_sharedmem) {
     dart_myid (&unitid);
     if (seg_id)  {
-      if (dart_adapt_transtable_get_win (seg_id, &win) == -1)  {
+      if (dart_adapt_transtable_get_win(seg_id, &win) == -1)  {
         return DART_ERR_INVAL;
       }
     } else {
@@ -364,9 +364,8 @@ dart_ret_t dart_put_blocking(
       /* If orgin and target are identical, then switches to local
        * access.
        */
-      if (seg_id)  {
+      if (seg_id) {
         int flag;
-        
         MPI_Win_get_attr (win, MPI_WIN_BASE, &baseptr, &flag);
         baseptr = baseptr + offset;
       }  else {

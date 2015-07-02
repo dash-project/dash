@@ -229,7 +229,8 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
   size_t team_size  = dash::Team::All().size();
   size_t block_size = 23;
   size_t num_blocks = dash::math::div_ceil(_num_elem, block_size);
-  size_t local_cap  = dash::math::div_ceil(_num_elem, team_size);
+  size_t local_cap  = block_size *
+                        dash::math::div_ceil(num_blocks, team_size);
   dash::Pattern<1, dash::ROW_MAJOR> pat_blockcyclic_row(
       dash::SizeSpec<1>(_num_elem),
       dash::DistributionSpec<1>(dash::BLOCKCYCLIC(block_size)),
@@ -252,6 +253,7 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
     _num_elem, block_size, num_blocks);
   std::array<long long, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
+    int unit_id           = (x / block_size) % team_size;
     int block_index       = x / block_size;
     int block_base_offset = block_size * (block_index / team_size);
     int expected_unit_id  = block_index % team_size;
@@ -264,6 +266,8 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
     EXPECT_EQ(
       expected_coords,
       pat_blockcyclic_row.coords(x));
+    EXPECT_TRUE(
+      pat_blockcyclic_row.is_local(x, unit_id));
     EXPECT_EQ(
       expected_unit_id,
       pat_blockcyclic_row.unit_at(std::array<long long, 1> { x }));
@@ -278,6 +282,8 @@ TEST_F(PatternTest, Distribute1DimBlockcyclic)
     EXPECT_EQ(
       expected_coords,
       pat_blockcyclic_col.coords(x));
+    EXPECT_TRUE(
+      pat_blockcyclic_col.is_local(x, unit_id));
     EXPECT_EQ(
       expected_unit_id,
       pat_blockcyclic_col.unit_at(std::array<long long, 1> { x }));
@@ -299,7 +305,8 @@ TEST_F(PatternTest, Distribute1DimTile)
   size_t block_size = 3;
   size_t extent     = team_size * (block_size * 3) + 1;
   size_t num_blocks = dash::math::div_ceil(extent, block_size);
-  size_t local_cap  = dash::math::div_ceil(extent, team_size);
+  size_t local_cap  = block_size *
+                        dash::math::div_ceil(num_blocks, team_size);
   dash::Pattern<1, dash::ROW_MAJOR> pat_tile_row(
       dash::SizeSpec<1>(extent),
       dash::DistributionSpec<1>(dash::TILE(block_size)),
@@ -693,7 +700,9 @@ TEST_F(PatternTest, Distribute3DimBlockcyclicX)
   size_t extent_z     = 3;
   size_t size         = extent_x * extent_y * extent_z;
   size_t block_size_x = 2;
-  int max_per_unit_x  = dash::math::div_ceil(extent_x, team_size);
+  int num_blocks_x    = dash::math::div_ceil(extent_x, block_size_x);
+  int max_per_unit_x  = block_size_x *
+                          dash::math::div_ceil(num_blocks_x, team_size);
   int block_size_y    = extent_y;
   int block_size_z    = extent_z;
   int max_per_unit    = max_per_unit_x * block_size_y * block_size_z;
@@ -728,7 +737,6 @@ TEST_F(PatternTest, Distribute3DimBlockcyclicX)
       for (int z = 0; z < extent_z; ++z) {
         int unit_id                   = (x / block_size_x) % team_size;
         int min_blocks_x              = (extent_x / block_size_x) / team_size;
-        int num_blocks_x              = dash::math::div_ceil(extent_x, block_size_x);
         int num_add_blocks_x          = extent_x % team_size;
         int overflow_block_size_x     = extent_x % block_size_x;
         int num_blocks_unit_x         = min_blocks_x;
@@ -780,6 +788,10 @@ TEST_F(PatternTest, Distribute3DimBlockcyclicX)
         EXPECT_EQ(
           expected_unit_id,
           pat_blockcyclic_row.unit_at(std::array<long long, 3> { x, y, z }));
+        EXPECT_TRUE(
+          pat_blockcyclic_row.is_local(
+            expected_index_row_order,
+            unit_id));
         EXPECT_EQ(
           expected_offset_row_order,
           pat_blockcyclic_row.at(std::array<long long, 3> { x, y, z }));
@@ -800,6 +812,10 @@ TEST_F(PatternTest, Distribute3DimBlockcyclicX)
         EXPECT_EQ(
           expected_unit_id,
           pat_blockcyclic_col.unit_at(std::array<long long, 3> { x, y, z }));
+        EXPECT_TRUE(
+          pat_blockcyclic_col.is_local(
+            expected_index_col_order,
+            unit_id));
         EXPECT_EQ(
           expected_offset_col_order,
           pat_blockcyclic_col.at(std::array<long long, 3> { x, y, z }));

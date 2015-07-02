@@ -1128,23 +1128,21 @@ private:
       SizeType num_units_d      = _teamspec.extent(d);
       const Distribution & dist = _distspec[d];
       // Block size in given dimension:
-//    auto dim_max_blocksize    = _blocksize_spec.extent(d);
-      // Maximum number of local elements in given dimension for any unit:
-      // TODO: Should be 
-      //   dash::math::div_ceil(_memory_layout.extent(d), num_units_d)
-      // in any case
-      SizeType dim_max_elements = dist.max_local_elements_in_range(
+      auto dim_max_blocksize    = _blocksize_spec.extent(d);
+      // Maximum number of occurrences of a single unit in given dimension:
+      // TODO: Should be dist.max_local_elements_in_range for later
+      //       support of dash::BALANCED_*
+      SizeType dim_num_blocks   = dist.max_local_blocks_in_range(
                                     // size of range:
                                     _memory_layout.extent(d),
                                     // number of units:
                                     num_units_d
                                   );
-      _local_capacity *= dim_max_elements;
+      _local_capacity *= dim_max_blocksize * dim_num_blocks;
       DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", d);
       DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", num_units_d);
-      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", dim_max_elements);
-//    DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", dim_max_blocksize);
-//    DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", dim_num_blocks);
+      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", dim_max_blocksize);
+      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", dim_num_blocks);
       DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", _local_capacity);
     }
     DASH_LOG_DEBUG_VAR("Pattern.init_lcapacity >", _local_capacity);
