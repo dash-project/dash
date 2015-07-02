@@ -154,7 +154,7 @@ LocalRef<T, NumDimensions, CUR-1> &&
 LocalRef<T, NumDimensions, CUR>::operator[](
   size_t n)
 {
-  LocalRef<T, NumDimensions, CUR-1>  ref;
+  LocalRef<T, NumDimensions, CUR-1> ref;
   ref._proxy = _proxy;
   _proxy->_coord[_proxy->_dim] = n;
   _proxy->_dim++;
@@ -371,27 +371,6 @@ void MatrixRef<T, NumDimensions, CUR>::barrier() const
   _proxy->_mat->_team.barrier();
 }
 
-/*
-template<typename T, size_t NumDimensions, size_t CUR>
-MatrixRef<T, NumDimensions, CUR-1> &&
-MatrixRef<T, NumDimensions, CUR>::operator[](
-  size_t pos)
-{
-  DASH_LOG_TRACE_VAR("MatrixRef.[]() &&", pos);
-  DASH_LOG_TRACE_VAR("MatrixRef.[] &&", CUR);
-
-  DASH_LOG_TRACE_VAR("MatrixRef.[] &&", _proxy);
-  _proxy->_coord[_proxy->_dim] = pos;
-  DASH_LOG_TRACE_VAR("MatrixRef.[] &&", _proxy->_coord);
-  _proxy->_dim++;
-  DASH_LOG_TRACE_VAR("MatrixRef.[] &&", _proxy->_dim);
-
-  MatrixRef<T, NumDimensions, CUR-1> ref;
-  ref._proxy = _proxy;
-  return std::move(ref);
-}
-*/
-
 template<typename T, size_t NumDimensions, size_t CUR>
 MatrixRef<T, NumDimensions, CUR-1>
 MatrixRef<T, NumDimensions, CUR>::operator[](
@@ -539,10 +518,10 @@ MatrixRef<T, NumDimensions, CUR>::is_local(
   size_t dim,
   size_type pos)
 {
-  return _proxy->_mat->_pattern.is_local(
+  return _proxy->_mat->_pattern.has_local_elements(
+           dim,
            pos,
            _proxy->_mat->_myid,
-           dim,
            _proxy->_viewspec);
 }
 
@@ -822,15 +801,16 @@ Matrix<ElementType, NumDimensions>::pattern() const {
 }
 
 template <typename ElementType, size_t NumDimensions>
-inline bool Matrix<ElementType, NumDimensions>::is_local(size_type n) {
-  return _ref.is_local(n);
+inline bool Matrix<ElementType, NumDimensions>::is_local(
+  size_type offset) {
+  return _ref.is_local(offset);
 }
 
 template <typename ElementType, size_t NumDimensions>
 inline bool Matrix<ElementType, NumDimensions>::is_local(
   size_t dim,
-  size_type n) {
-  return _ref.is_local(dim, n);
+  size_type offset) {
+  return _ref.is_local(dim, offset);
 }
 
 template <typename ElementType, size_t NumDimensions>

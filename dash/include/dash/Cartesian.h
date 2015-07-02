@@ -216,7 +216,7 @@ public:
   }
   
   /**
-   * The coordinate's extent in the given dimension.
+   * The extent of the cartesian space in the given dimension.
    *
    * \param  dim  The dimension in the coordinate
    * \return      The extent in the given dimension
@@ -234,7 +234,7 @@ public:
   }
   
   /**
-   * Convert the given coordinates to a linear index.
+   * Convert the given coordinates to their respective linear index.
    *
    * \param  args  An argument list consisting of the coordinates, ordered
    *               by dimension (x, y, z, ...)
@@ -242,7 +242,8 @@ public:
   template<
     typename... Args,
     MemArrange AtArrangement = Arrangement>
-  IndexType at(IndexType arg, Args... args) const {
+  IndexType at(
+      IndexType arg, Args... args) const {
     static_assert(
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
@@ -252,22 +253,23 @@ public:
   }
   
   /**
-   * Convert the given coordinates to a linear index.
+   * Convert the given cartesian point to its respective linear index.
    *
-   * \param  pos  An array containing the coordinates, ordered by
-   *              dimension (x, y, z, ...)
+   * \param  point  An array containing the coordinates, ordered by
+   *                dimension (x, y, z, ...)
    */
   template<
     MemArrange AtArrangement = Arrangement,
     typename OffsetType>
-  IndexType at(const std::array<OffsetType, NumDimensions> & pos) const {
+  IndexType at(
+    const std::array<OffsetType, NumDimensions> & point) const {
     SizeType offs = 0;
     for (unsigned int i = 0; i < NumDimensions; i++) {
-      if (static_cast<SizeType>(pos[i]) >= m_extent[i]) {
+      if (static_cast<SizeType>(point[i]) >= m_extent[i]) {
         // Coordinate out of bounds:
         DASH_THROW(
           dash::exception::OutOfRange,
-          "Given coordinate " << pos[i] <<
+          "Given coordinate " << point[i] <<
           " for CartesianIndexSpace::at() exceeds extent " << m_extent[i]);
       }
       SizeType offset_dim = 0;
@@ -276,16 +278,16 @@ public:
       } else if (AtArrangement == COL_MAJOR) {
         offset_dim = m_offset_col_major[i];
       }
-      offs += offset_dim * pos[i];
+      offs += offset_dim * point[i];
     }
     return offs;
   }
   
   /**
-   * Convert the given coordinates to a linear index, respective to
+   * Convert the given cartesian point to a linear index, respective to
    * the offsets specified in the given ViewSpec.
    *
-   * \param  pos       An array containing the coordinates, ordered by
+   * \param  point     An array containing the coordinates, ordered by
    *                   dimension (x, y, z, ...)
    * \param  viewspec  An instance of ViewSpec to apply to the given
    *                   point before resolving the linear index.
@@ -294,11 +296,11 @@ public:
     MemArrange AtArrangement = Arrangement,
     typename OffsetType>
   IndexType at(
-    const std::array<OffsetType, NumDimensions> & pos,
+    const std::array<OffsetType, NumDimensions> & point,
     const ViewSpec<NumDimensions> & viewspec) const {
     std::array<OffsetType, NumDimensions> coords;
     for (auto d = 0; d < NumDimensions; ++d) {
-      coords[d] = pos[d] + viewspec[d].offset;
+      coords[d] = point[d] + viewspec[d].offset;
     }
     return at(coords);
   }
@@ -329,6 +331,31 @@ public:
       }
     }
     return pos;
+  }
+
+  /**
+   * Whether the given index lies in the cartesian sub-space specified by a
+   * dimension and offset in the dimension.
+   */
+  template<MemArrange CoordArrangement = Arrangement>
+  bool includes_index(
+    IndexType index,
+    int dimension,
+    IndexType dim_offset) const {
+    if (m_ndim == 1) {
+      // Shortcut for trivial case
+      return (index >= 0 && index < size());
+    }
+    auto base_offset = 0;
+    if (CoordArrangement == COL_MAJOR) {
+      base_offset = m_offset_col_major[dimension];
+    } else if (CoordArrangement == ROW_MAJOR) {
+      base_offset = m_offset_row_major[dimension];
+    }
+    for (auto d = 0; d < NumDimensions; ++d) {
+      // TODO
+    }
+    return true;
   }
 
   /**
@@ -374,7 +401,12 @@ template<
 class TeamSpec :
   public CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType> {
 private:
-  typedef typename std::make_unsigned<IndexType>::type SizeType;
+  typedef typename std::make_unsigned<IndexType>::type
+    SizeType;
+  typedef TeamSpec<MaxDimensions, IndexType>
+    self_t;
+  typedef CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>
+    parent_t;
 public:
   /**
    * Constructor, creates an instance of TeamSpec from a team (set of
@@ -500,6 +532,21 @@ public:
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
       CartesianIndexSpace(other.extents()),
     _rank(other._rank) {
+  }
+
+  /**
+   * Whether the given index lies in the cartesian sub-space specified by a
+   * dimension and offset in the dimension.
+   */
+  bool includes_index(
+    IndexType index,
+    int dimension,
+    IndexType dim_offset) const {
+    if (_rank == 1) {
+      // Shortcut for trivial case
+      return (index >= 0 && index < size());
+    }
+    return parent_t::includes_index(index, dimension, dim_offset);
   }
 
   /**
