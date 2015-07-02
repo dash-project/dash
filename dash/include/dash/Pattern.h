@@ -1130,10 +1130,12 @@ private:
       // Block size in given dimension:
       auto dim_max_blocksize    = _blocksize_spec.extent(d);
       // Maximum number of occurrences of a single unit in given dimension:
+      // TODO: Should be dist.max_local_elements_in_range for later
+      //       support of dash::BALANCED_*
       SizeType dim_num_blocks   = dist.max_local_blocks_in_range(
                                     // size of range:
                                     _memory_layout.extent(d),
-                                    // number of blocks:
+                                    // number of units:
                                     num_units_d
                                   );
       _local_capacity *= dim_max_blocksize * dim_num_blocks;
