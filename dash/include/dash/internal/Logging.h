@@ -4,21 +4,29 @@
 #include <dash/internal/Macro.h>
 #include <dash/Init.h>
 
-#if defined(DASH_ENABLE_LOGGING) && \
-    defined(DASH_ENABLE_TRACE_LOGGING)
+#if defined(DASH_ENABLE_LOGGING)
 
 #include <sstream>
 #include <iostream>
 #include <iomanip>
 #include <iterator>
 
-#define DASH_LOG_TRACE(...) \
-  dash::internal::logging::LogWrapper(\
-    "TRACE", __FILE__, __LINE__, __VA_ARGS__)
+#if defined(DASH_ENABLE_TRACE_LOGGING)
 
-#define DASH_LOG_TRACE_VAR(context, var) \
-  dash::internal::logging::LogVarWrapper(\
-    "TRACE", __FILE__, __LINE__, context, #var, (var))
+#  define DASH_LOG_TRACE(...) \
+     dash::internal::logging::LogWrapper(\
+       "TRACE", __FILE__, __LINE__, __VA_ARGS__)
+
+#  define DASH_LOG_TRACE_VAR(context, var) \
+     dash::internal::logging::LogVarWrapper(\
+       "TRACE", __FILE__, __LINE__, context, #var, (var))
+
+#else  // DASH_ENABLE_TRACE_LOGGING
+
+#  define DASH_LOG_TRACE(...) do {  } while(0)
+#  define DASH_LOG_TRACE_VAR(...) do {  } while(0)
+
+#endif // DASH_ENABLE_TRACE_LOGGING
 
 #define DASH_LOG_DEBUG(...) \
   dash::internal::logging::LogWrapper(\
@@ -120,12 +128,12 @@ static void LogVarWrapper(
 } // namespace internal
 } // namespace dash
 
-#else 
+#else  // DASH_ENABLE_LOGGING
 
-#define DASH_LOG_TRACE(...) do {  } while(0)
-#define DASH_LOG_TRACE_VAR(...) do {  } while(0)
-#define DASH_LOG_DEBUG(...) do {  } while(0)
-#define DASH_LOG_DEBUG_VAR(...) do {  } while(0)
+#  define DASH_LOG_TRACE(...) do {  } while(0)
+#  define DASH_LOG_TRACE_VAR(...) do {  } while(0)
+#  define DASH_LOG_DEBUG(...) do {  } while(0)
+#  define DASH_LOG_DEBUG_VAR(...) do {  } while(0)
 
 #endif // DASH_ENABLE_LOGGING
 

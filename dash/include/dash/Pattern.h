@@ -849,23 +849,40 @@ public:
   }
 
   /**
-   * Whether the given dimension offset involves any local part
+   * Whether there are local elements in a dimension at a given offset, e.g. in a specific
+   * row or column.
    *
    * \see  DashPatternConcept
    */
-  bool is_local(
-    IndexType index,
-    dart_unit_t unit,
+  bool has_local_elements(
+    /// Dimension to check
     unsigned int dim,
+    /// Offset in dimension
+    IndexType dim_offset,
+    /// DART id of the unit
+    dart_unit_t unit,
+    /// Viewspec to apply
     const ViewSpec<NumDimensions> & viewspec) const {
-    // TODO
-    DASH_THROW(
-      dash::exception::NotImplemented,
-      "Pattern.is_local(index, unit, dim, viewspec)");
+    DASH_LOG_TRACE_VAR("Pattern.has_local_elements()", dim);
+    DASH_LOG_TRACE_VAR("Pattern.has_local_elements()", dim_offset);
+    DASH_LOG_TRACE_VAR("Pattern.has_local_elements()", unit);
+    // Apply viewspec offset in dimension to given position
+    dim_offset += viewspec[dim].offset;
+    // Offset to block offset
+    IndexType block_coord_d    = dim_offset / _blocksize_spec.extent(dim);
+    DASH_LOG_TRACE_VAR("Pattern.has_local_elements", block_coord_d);
+    // Coordinate of unit in team spec in given dimension
+    IndexType teamspec_coord_d = block_coord_d % _teamspec.extent(dim);
+    DASH_LOG_TRACE_VAR("Pattern.has_local_elements()", teamspec_coord_d);
+    // Check if unit id lies in cartesian sub-space of team spec
+    return _teamspec.includes_index(
+              teamspec_coord_d,
+              dim,
+              dim_offset);
   }
 
   /**
-   * Whether the given global index is local to the specified unit
+   * Whether the given global index is local to the specified unit.
    *
    * \see  DashPatternConcept
    */
@@ -1036,7 +1053,8 @@ public:
   }
 
   /**
-   * Convert given global linear offset (index) to global cartesian coordinates.
+   * Convert given global linear offset (index) to global cartesian
+   * coordinates.
    *
    * \see DashPatternConcept
    */
@@ -1119,13 +1137,13 @@ private:
                                     num_units_d
                                   );
       _local_capacity *= dim_max_blocksize * dim_num_blocks;
-      DASH_LOG_TRACE_VAR("Pattern.init_local_capacity.d", d);
-      DASH_LOG_TRACE_VAR("Pattern.init_local_capacity.d", num_units_d);
-      DASH_LOG_TRACE_VAR("Pattern.init_local_capacity.d", dim_max_blocksize);
-      DASH_LOG_TRACE_VAR("Pattern.init_local_capacity.d", dim_num_blocks);
-      DASH_LOG_TRACE_VAR("Pattern.init_local_capacity.d", _local_capacity);
+      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", d);
+      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", num_units_d);
+      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", dim_max_blocksize);
+      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", dim_num_blocks);
+      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", _local_capacity);
     }
-    DASH_LOG_DEBUG_VAR("Pattern.init_local_capacity >", _local_capacity);
+    DASH_LOG_DEBUG_VAR("Pattern.init_lcapacity >", _local_capacity);
     //
     // Pre-initialize local extents of the pattern in all dimensions
     //
@@ -1153,7 +1171,7 @@ private:
     dart_unit_t unit) const {
     // Coordinates of local unit id in team spec:
     auto unit_ts_coords = _teamspec.coords(unit);
-    DASH_LOG_TRACE_VAR("Pattern.local_extents()", unit);
+    DASH_LOG_DEBUG_VAR("Pattern.local_extents()", unit);
     DASH_LOG_TRACE_VAR("Pattern.local_extents", unit_ts_coords);
     ::std::array<SizeType, NumDimensions> l_extents;
     for (unsigned int d = 0; d < NumDimensions; ++d) {
@@ -1206,7 +1224,7 @@ private:
       }
       DASH_LOG_TRACE_VAR("Pattern.local_extents.d", l_extents[d]);
     }
-    DASH_LOG_TRACE_VAR("Pattern.local_extents >", l_extents);
+    DASH_LOG_DEBUG_VAR("Pattern.local_extents >", l_extents);
     return l_extents;
   }
 
@@ -1250,6 +1268,59 @@ private:
     return unit_id;
   }
 };
+
+#if PATTERN_ITERATOR
+
+// To provide 
+//
+// dash::for_each(
+//   container.pattern().begin(),
+//   container.pattern().end());
+
+/**
+ * Iterator interface to types implementing the Pattern concept.
+ *
+ * \see DashPatternConcept
+ */
+template<typename PatternType>
+class PatternIterator {
+private:
+  typedef PatternIterator<PatternType> self_f;
+  typedef PatternType::size_type size_type;
+  typedef PatternType::index_type index_type;
+
+public:
+  typedef std::pair<dart_unit_t, PatternType::index_type>
+    value_type;
+
+public:
+  PatternIterator(
+    const PatternType & pattern,
+    size_t index = 0)
+  : _pattern(pattern),
+    _index(index) {
+  }
+
+  self_t & operator++() {
+    ++_index;
+    return *this;
+  }
+
+  self_t & operator--() {
+    --_index;
+    return *this;
+  }
+
+  value_type operator*() {
+    return std::make_pair(unit, local_index);
+  }
+
+private:
+  const PatternType & _pattern;
+  size_t _index = 0;
+};
+
+#endif
 
 } // namespace dash
 

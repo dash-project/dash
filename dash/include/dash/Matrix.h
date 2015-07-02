@@ -89,7 +89,7 @@ class LocalRef {
 
   LocalRef<T, NumDimensions, CUR>(Matrix<T, NumDimensions> * mat);
 
-  inline operator LocalRef<T, NumDimensions, CUR - 1> && ();
+  inline operator LocalRef<T, NumDimensions, CUR-1> && ();
   // SHOULD avoid cast from MatrixRef to LocalRef.
   // Different operation semantics.
   inline operator MatrixRef<T, NumDimensions, CUR> ();
@@ -103,14 +103,14 @@ class LocalRef {
   template<typename... Args>
   T & operator()(Args... args);
 
-  LocalRef<T, NumDimensions, CUR - 1> && operator[](size_t n);
-  LocalRef<T, NumDimensions, CUR - 1> operator[](size_t n) const;
+  LocalRef<T, NumDimensions, CUR-1> && operator[](size_t n);
+  LocalRef<T, NumDimensions, CUR-1> operator[](size_t n) const;
 
   template<size_t NumSubDimensions>
-  LocalRef<T, NumDimensions, NumDimensions - 1> sub(size_type n);
+  LocalRef<T, NumDimensions, NumDimensions-1> sub(size_type n);
 
-  inline LocalRef<T, NumDimensions, NumDimensions - 1> col(size_type n);
-  inline LocalRef<T, NumDimensions, NumDimensions - 1> row(size_type n);
+  inline LocalRef<T, NumDimensions, NumDimensions-1> col(size_type n);
+  inline LocalRef<T, NumDimensions, NumDimensions-1> row(size_type n);
 
   template<size_t NumSubDimensions>
   LocalRef<T, NumDimensions, NumDimensions> submat(
@@ -206,7 +206,6 @@ class MatrixRef {
   inline void forall(::std::function<void(long long)> func);
   inline Pattern<NumDimensions> pattern() const;
 
-//MatrixRef<ElementType, NumDimensions, CUR-1> && operator[](size_t n);
   MatrixRef<ElementType, NumDimensions, CUR-1> operator[](size_t n) const;
 
   template<size_t NumSubDimensions>
@@ -362,13 +361,13 @@ class Matrix {
   inline void forall(std::function<void(long long)> func);
 
   template<size_t NumSubDimensions>
-  inline MatrixRef<ElementType, NumDimensions, NumDimensions - 1> 
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions-1> 
   sub(size_type n);
   
-  inline MatrixRef<ElementType, NumDimensions, NumDimensions - 1> 
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions-1> 
   col(size_type n);
   
-  inline MatrixRef<ElementType, NumDimensions, NumDimensions - 1> 
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions-1> 
   row(size_type n);
 
   template<size_t NumSubDimensions>
@@ -381,7 +380,7 @@ class Matrix {
   inline MatrixRef<ElementType, NumDimensions, NumDimensions>
   cols(size_type n, size_type range);
   
-  inline MatrixRef<ElementType, NumDimensions, NumDimensions - 1>   
+  inline MatrixRef<ElementType, NumDimensions, NumDimensions-1>   
   operator[](size_type n);
 
   template<typename ... Args>
