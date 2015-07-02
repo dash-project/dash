@@ -323,7 +323,7 @@ TEST_F(PatternTest, Distribute1DimTile)
   std::array<long long, 1> expected_coord;
   for (int x = 0; x < extent; ++x) {
     expected_coord[0]     = x;
-    int expected_unit_id  = x / block_size;
+    int expected_unit_id  = (x / block_size) % team_size;
     int block_index       = x / block_size;
     int block_base_offset = block_size * (block_index / team_size);
     int expected_offset   = (x % block_size) + block_base_offset;

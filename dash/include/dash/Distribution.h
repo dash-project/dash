@@ -183,7 +183,7 @@ public:
       case dash::internal::DIST_TILE:
         // Advance one unit id per block coordinate and
         // one unit id per dimension:
-        return block_coord + dimension;
+        return (block_coord % num_units) + dimension;
       default:
         DASH_THROW(
           dash::exception::InvalidArgument,
