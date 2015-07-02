@@ -155,9 +155,10 @@ public:
    * Default constructor, initializes default blocked distribution 
    * (BLOCKED, NONE*).
    */
-  DistributionSpec() {
+  DistributionSpec()
+  : _is_tiled(false) {
     this->_values[0] = BLOCKED;
-    for (size_t i = 1; i < NumDimensions; i++) {
+    for (size_t i = 1; i < NumDimensions; ++i) {
       this->_values[i] = NONE;
     }
   }
@@ -174,9 +175,35 @@ public:
    * \endcode
    */
   template<typename ... Values>
-  DistributionSpec(Values ... values)
-  : Dimensional<Distribution, NumDimensions>::Dimensional(values...) {
+  DistributionSpec(Distribution value, Values ... values)
+  : Dimensional<Distribution, NumDimensions>::Dimensional(value, values...),
+    _is_tiled(false) {
+    for (size_t i = 1; i < NumDimensions; ++i) {
+      if (this->_values[i].type == dash::internal::DIST_TILE) {
+        _is_tiled = true;
+        break;
+      }
+    }
   }
+  
+  /**
+   * Whether the distribution in the given dimension is tiled.
+   */
+  bool is_tiled_in_dimension(
+    unsigned int dimension) const {
+    return (_is_tiled &&
+            this->_values[dimension].type == dash::internal::DIST_TILE);
+  }
+  
+  /**
+   * Whether the distribution is tiled in any dimension.
+   */
+  bool is_tiled() const {
+    return _is_tiled;
+  }
+
+private:
+  bool _is_tiled;
 };
 
 /**
