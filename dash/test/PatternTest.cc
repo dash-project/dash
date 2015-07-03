@@ -835,7 +835,7 @@ TEST_F(PatternTest, Distribute3DimBlockcyclicX)
   // [                        ...                          ]
   size_t team_size    = dash::Team::All().size();
   // Choose 'inconvenient' extents:
-  size_t extent_x     = team_size + 7;
+  size_t extent_x     = 9;
   size_t extent_y     = 5;
   size_t extent_z     = 3;
   size_t size         = extent_x * extent_y * extent_z;
@@ -880,18 +880,23 @@ TEST_F(PatternTest, Distribute3DimBlockcyclicX)
     for (int y = 0; y < extent_y; ++y) {
       for (int z = 0; z < extent_z; ++z) {
         int unit_id                   = (x / block_size_x) % team_size;
+        int num_blocks_x              = dash::math::div_ceil(
+                                          extent_x, block_size_x);
         int min_blocks_x              = (extent_x / block_size_x) /
                                           team_size;
-        int num_add_blocks_x          = extent_x % team_size;
+        int num_add_blocks_x          = num_blocks_x % team_size;
         int overflow_block_size_x     = extent_x % block_size_x;
         int num_blocks_unit_x         = min_blocks_x;
         int num_add_elem_x            = 0;
         int block_offset_x            = x / block_size_x;
+        int last_block_unit           = (num_blocks_x % team_size == 0)
+                                        ? team_size-1
+                                        : (num_blocks_x % team_size) - 1;
         if (unit_id < num_add_blocks_x) {
           num_blocks_unit_x++;
           num_add_elem_x += block_size_x;
         }
-        if (unit_id == (num_blocks_x-1) % team_size) {
+        if (unit_id == last_block_unit) {
           if (overflow_block_size_x > 0) { 
             num_add_elem_x -= block_size_x - overflow_block_size_x;
           }
