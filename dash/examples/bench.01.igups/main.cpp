@@ -103,6 +103,8 @@ void perform_test(unsigned ELEM_PER_UNIT,
   double t5 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
   double t6 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
   double t7 = test_raw_array(ELEM_PER_UNIT, REPEAT);
+
+  dash::barrier();
   
   if(dash::myid()==0 ) {
 

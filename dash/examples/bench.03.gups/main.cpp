@@ -140,7 +140,7 @@ int main(int argc, char **argv)
 #if 1 // VERIFY  
   if (dash::myid() == 0) printf ("\nVerifying...\n");
   RandomAccessUpdate();  // do it again
-  // barrier(); 
+  dash::barrier(); 
   uint64_t errors = RandomAccessVerify();
   if (dash::myid() == 0) {
     if ((double)errors/NUPDATE < 0.01) {
@@ -153,6 +153,7 @@ int main(int argc, char **argv)
   }
 #endif
   
+  dash::barrier();
   delete Table;
   dash::finalize();
   
