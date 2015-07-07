@@ -9,6 +9,10 @@
 
 using namespace std;
 
+namespace dash {
+  typedef dash::Pattern<2, dash::ROW_MAJOR, long long> Pattern2Dim;
+}
+
 int main(int argc, char* argv[])
 {
     dash::init(&argc, &argv);
@@ -17,7 +21,7 @@ int main(int argc, char* argv[])
     int size = dash::size();
     int nelem = 5;
 
-    dash::Pattern<2> pat(nelem, nelem);
+    dash::Pattern2Dim pat(nelem, nelem);
 
     dash::Matrix<int, 2>     mat1(pat);
     dash::Matrix<double, 2>  mat2(pat);
@@ -70,7 +74,7 @@ int main(int argc, char* argv[])
 	dash::SizeSpec<2> ss(nelem2, nelem2);
 	dash::DistributionSpec<2> ds(dash::BLOCKED, dash::BLOCKED);
 
-    dash::Pattern<2> pat2(ss, ds, ts);
+    dash::Pattern2Dim pat2(ss, ds, ts);
 
     dash::Matrix<int, 2>     matA(pat2);
 

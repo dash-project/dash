@@ -11,6 +11,8 @@
 using namespace std;
 using namespace dash;
 
+typedef dash::Pattern<1, ROW_MAJOR, long long > Pattern1Dim;
+
 void test_fwd_mapping(size_t size);
 void test_rev_mapping(size_t size);
 
@@ -31,14 +33,12 @@ int main(int argc, char* argv[])
 
 void test_fwd_mapping(size_t size) 
 {
-  Pattern<1> p1(size); // team and blocking implicit
-  Pattern<1> p2(size, BLOCKED );
-  Pattern<1> p3(size, CYCLIC );
-  Pattern<1> p4(size, BLOCKCYCLIC(1) );
-  Pattern<1> p5(size, BLOCKCYCLIC(2) );
-  Pattern<1> p6(size, BLOCKCYCLIC(size) );
-
-  //  Pattern p6(EXTENT(-1, size-1, BLOCKED) );
+  Pattern1Dim p1(size); // team and blocking implicit
+  Pattern1Dim p2(size, BLOCKED );
+  Pattern1Dim p3(size, CYCLIC );
+  Pattern1Dim p4(size, BLOCKCYCLIC(1) );
+  Pattern1Dim p5(size, BLOCKCYCLIC(2) );
+  Pattern1Dim p6(size, BLOCKCYCLIC(size) );
 
   fprintf(stderr, "------------------------------------------------------------------------- \n");
   fprintf(stderr, " *** This is a test with %lld units and index space of %lld elements *** \n",
@@ -77,14 +77,14 @@ void test_rev_mapping(size_t size)
 {
   int i, j;
 
-  Pattern<1> p1(size); // team and blocking implicit
-  Pattern<1> p2(size, BLOCKED );
-  Pattern<1> p3(size, CYCLIC );
-  Pattern<1> p4(size, BLOCKCYCLIC(1) );
-  Pattern<1> p5(size, BLOCKCYCLIC(2) );
-  Pattern<1> p6(size, BLOCKCYCLIC(size) );
+  Pattern1Dim p1(size); // team and blocking implicit
+  Pattern1Dim p2(size, BLOCKED );
+  Pattern1Dim p3(size, CYCLIC );
+  Pattern1Dim p4(size, BLOCKCYCLIC(1) );
+  Pattern1Dim p5(size, BLOCKCYCLIC(2) );
+  Pattern1Dim p6(size, BLOCKCYCLIC(size) );
 
-  std::map<Pattern<1>*, std::string>  pattern;
+  std::map<Pattern1Dim*, std::string>  pattern;
   pattern[&p1] = "default";
   pattern[&p2] = "BLOCKED";
   pattern[&p3] = "CYCLIC";
@@ -93,7 +93,7 @@ void test_rev_mapping(size_t size)
   pattern[&p6] = "BLOCKCYCLIC(size)";
 
   for( auto& it : pattern ) {
-    Pattern<1> *pat = it.first;
+    Pattern1Dim *pat = it.first;
     fprintf(stderr, "%s:\n", it.second.c_str());
     
     for( i=0; i<pat->num_units(); i++ ) {

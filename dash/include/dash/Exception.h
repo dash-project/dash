@@ -22,14 +22,6 @@
 
 #if defined(DASH_ENABLE_ASSERTIONS)
 
-#define DASH_ASSERT_RETURNS(expr, exp_value) do { \
-  if ((expr) != (exp_value)) { \
-    DASH_THROW(dash::exception::AssertionFailed, \
-               "Assertion failed: Expected " << (exp_value) << \
-               __FILE__ << ":" << __LINE__); \
-  }\
-} while(0)
-
 #define DASH_ASSERT(expr) do { \
   if (!(expr)) { \
     DASH_THROW(dash::exception::AssertionFailed, \
@@ -38,10 +30,30 @@
   }\
 } while(0)
 
+#define DASH_ASSERT_RETURNS(expr, exp_value) do { \
+  if ((expr) != (exp_value)) { \
+    DASH_THROW(dash::exception::AssertionFailed, \
+               "Assertion failed: Expected " << (exp_value) << \
+               __FILE__ << ":" << __LINE__); \
+  }\
+} while(0)
+
+#define DASH_ASSERT_RANGE(lower, value, upper, message) do { \
+  if (value > upper || value < lower) { \
+    DASH_THROW(dash::exception::OutOfRange, \
+               "Range assertion " \
+               << lower << " <= " << value << " <= " << upper \
+               << " failed: " \
+               << message \
+               << __FILE__ << ":" << __LINE__); \
+  }\
+} while(0)
+
 #else  // DASH_ENABLE_ASSERTIONS
 
-#define DASH_ASSERT_RETURNS(expr, exp_value) (expr)
 #define DASH_ASSERT(expr) do { } while (expr)
+#define DASH_ASSERT_RETURNS(expr, exp_value) (expr)
+#define DASH_ASSERT_RANGE(lower, value, upper, message) do { } while(0)
 
 #endif // DASH_ENABLE_ASSERTIONS
 

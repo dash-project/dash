@@ -184,7 +184,7 @@ public:
  */
 template<
   typename ElementType,
-  typename IndexType   = long long,
+  typename IndexType   = int,
   class PatternType    = Pattern<1, ROW_MAJOR, IndexType> >
 class Array {
 private:
@@ -199,16 +199,16 @@ public:
   /// Derive size type from given signed index / gptrdiff type
   typedef typename std::make_unsigned<IndexType>::type difference_type;
 
-  typedef       GlobIter<value_type>                          iterator;
-  typedef const GlobIter<value_type>                    const_iterator;
+  typedef       GlobIter<value_type, PatternType>             iterator;
+  typedef const GlobIter<value_type, PatternType>       const_iterator;
   typedef std::reverse_iterator<      iterator>       reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
   
   typedef       GlobRef<value_type>                          reference;
   typedef const GlobRef<value_type>                    const_reference;
   
-  typedef       GlobIter<value_type>                           pointer;
-  typedef const GlobIter<value_type>                     const_pointer;
+  typedef       GlobIter<value_type, PatternType>              pointer;
+  typedef const GlobIter<value_type, PatternType>        const_pointer;
 
 /// Public types as required by dash container concept
 public:
@@ -271,7 +271,7 @@ public:
    * Constructor, specifies distribution type explicitly.
    */
   Array(
-    size_t nelem,
+    size_type nelem,
     dash::DistributionSpec<1> distribution,
     Team & team = dash::Team::All())
   : m_team(team),
@@ -303,7 +303,7 @@ public:
    * Delegating constructor, specifies the size of the array.
    */
   Array(
-    size_t nelem,
+    size_type nelem,
     Team & team = dash::Team::All())
   : Array(nelem, dash::BLOCKED, team) {
     DASH_LOG_TRACE("Array()", "finished delegating constructor");
@@ -539,7 +539,7 @@ public:
   }
 
   bool allocate(
-    size_t nelem,
+    size_type nelem,
     dash::DistributionSpec<1> distribution) {
     DASH_LOG_TRACE("Array.allocate()", nelem);
     // Check requested capacity:

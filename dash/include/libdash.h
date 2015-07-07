@@ -8,6 +8,7 @@
 #ifndef DASH__LIBDASH_H_
 #define DASH__LIBDASH_H_
 
+#include <dash/Types.h>
 #include <dash/Init.h>
 #include <dash/Team.h>
 #include <dash/Cartesian.h>
