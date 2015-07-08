@@ -34,10 +34,15 @@ int main(int argc, char* argv[])
     cout<<"MPICH          : "<<MPICH<<endl;
     cout<<"MPICH_NAME     : "<<MPICH_NAME<<endl;
     cout<<"MPICH_HAS_C2F  : "<<MPICH_HAS_C2F<<endl;
-#endif
+#endif // MPICH
+#ifdef OPEN_MPI
+    cout<<"OPEN_MPI       : "<<OPEN_MPI<<endl;
+#endif // OPEN_MPI
   }
-#endif
-
+#endif // MPI_VERSION
+  
+  dash::barrier();
+  
   cout<<"'Hello world' from unit "<<myid<<
     " of "<<size<<" on "<<buf<<" pid="<<pid<<endl;
 
