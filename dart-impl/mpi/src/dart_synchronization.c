@@ -2,11 +2,11 @@
  *  @date 25 Aug 2014
  *  @brief synchronization operations.
  */
-
+/*
 #ifndef ENABLE_DEBUG
 #define ENABLE_DEBUG
 #endif
-
+*/
 #include <dash/dart/mpi/dart_deb_log.h>
 
 #include <stdio.h>

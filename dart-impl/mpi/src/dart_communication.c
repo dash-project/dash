@@ -7,6 +7,7 @@
  * one-sided runtime system.
  */
 
+
 #include <dash/dart/mpi/dart_deb_log.h>
 #include <stdio.h>
 #include <mpi.h>
@@ -323,17 +324,21 @@ dart_ret_t dart_put_blocking(
   void *src,
   size_t nbytes)
 {
-  int i, is_sharedmem = 0;
   MPI_Win win;
-  MPI_Aint disp_s, maximum_size, disp_rel;
+//  MPI_Aint *baseptr_set;
+  MPI_Aint disp_s, disp_rel;
 
   uint64_t offset = gptr.addr_or_offs.offset;
   int16_t seg_id = gptr.segid;
   uint16_t index = gptr.flags;
   dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
 
+#ifdef SHAREDMEM_ENABLE
+  int i, is_sharedmem = 0;
+  MPI_Aint maximum_size;
   int disp_unit;
-  char *baseptr;
+  char* baseptr;
+//  char *baseptr;
 //MPI_Request mpi_req;
 
   /* Checking whether origin and target are in the same node. 
@@ -352,14 +357,18 @@ dart_ret_t dart_put_blocking(
     is_sharedmem = 1;
   }
   if (is_sharedmem) {
-    dart_myid (&unitid);
-    if (seg_id)  {
-      if (dart_adapt_transtable_get_win(seg_id, &win) == -1)  {
-        return DART_ERR_INVAL;
-      }
+    if (seg_id) {
+       if (dart_adapt_transtable_get_baseptr (seg_id, i, &baseptr) == -1)
+	return DART_ERR_INVAL;
     } else {
-      win = dart_sharedmem_win_local_alloc;
+       baseptr = dart_sharedmem_local_baseptr_set[i];
     }
+    disp_rel = offset;
+    baseptr = baseptr + disp_rel;
+    
+    memcpy (baseptr, ((char*)src), nbytes);
+   
+#if 0
     if (unitid == target_unitid_abs) {
       /* If orgin and target are identical, then switches to local
        * access.
@@ -383,7 +392,10 @@ dart_ret_t dart_put_blocking(
       baseptr += disp_rel;
     }
     memcpy (baseptr, ((char*)src), nbytes);
-  } else {
+#endif
+  } else 
+#endif
+  {
     /* The traditional remote access method */
     if (seg_id)  {  
       win = dart_win_lists[index];
@@ -446,17 +458,19 @@ dart_ret_t dart_get_blocking(
   dart_gptr_t gptr,
   size_t nbytes)
 {
-  int i, is_sharedmem = 0;
   MPI_Win win;
   MPI_Status mpi_sta;
   MPI_Request mpi_req;
-  MPI_Aint disp_s, maximum_size, disp_rel;
+  MPI_Aint disp_s, disp_rel;
   
   uint64_t offset = gptr.addr_or_offs.offset;
   int16_t seg_id = gptr.segid;
   uint16_t index  = gptr.flags;
   dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
-  
+
+#ifdef SHAREDMEM_ENABLE
+  int i, is_sharedmem = 0;
+  MPI_Aint maximum_size;
   int disp_unit;
   char* baseptr;
 
@@ -474,14 +488,17 @@ dart_ret_t dart_get_blocking(
     is_sharedmem = 1;
   }
   if (is_sharedmem) {
-    dart_myid (&unitid);
     if (seg_id) {
-      if (dart_adapt_transtable_get_win(seg_id, &win) == -1) {
-        return DART_ERR_INVAL;
-      }
+  	if (dart_adapt_transtable_get_baseptr (seg_id, i, &baseptr)!=-1)
+		return DART_ERR_INVAL;
     } else {
-      win = dart_sharedmem_win_local_alloc;
+      	baseptr = dart_sharedmem_local_baseptr_set[i];
     }
+    disp_rel = offset;
+    baseptr += disp_rel;
+    memcpy ((char*)dest, baseptr, nbytes);
+
+#if 0
     if (unitid == target_unitid_abs) {
       if (seg_id) {
         int flag;
@@ -496,8 +513,11 @@ dart_ret_t dart_get_blocking(
       MPI_Win_shared_query(win, i, &maximum_size, &disp_unit, &baseptr);
       baseptr += disp_rel;
     }
-    memcpy((char*)dest, baseptr, nbytes);  
-  } else {
+    memcpy((char*)dest, baseptr, nbytes); 
+#endif 
+  } else 
+#endif
+  {
     if (seg_id) {
       win = dart_win_lists[index];
       unit_g2l(index, target_unitid_abs, &target_unitid_rel);

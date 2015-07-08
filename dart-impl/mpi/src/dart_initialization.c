@@ -19,22 +19,28 @@
 
 /* Point to the base address of memory region for local allocation. */
 char* dart_mempool_localalloc;
+#ifdef SHAREDMEM_ENABLE
+char**dart_sharedmem_local_baseptr_set;
+#endif
 /* Help to do memory management work for local allocation/free */
 struct dart_buddy* dart_localpool;
 
 dart_ret_t dart_init (int* argc, char*** argv)
 {
-	int i;
+	int initialized;
+	MPI_Initialized(&initialized);
+	if (!initialized)
+		   MPI_Init(argc, argv);
+
 	int rank, size;
-  uint16_t index;
+	uint16_t index;
 	MPI_Win win;
 	
-	MPI_Init (argc, argv);
-
+#ifdef SHAREDMEM_ENABLE
 	MPI_Info win_info;
 	MPI_Info_create (&win_info);
 	MPI_Info_set (win_info, "alloc_shared_noncontig", "true");
-
+#endif
 	
 	/* Initialize the teamlist. */
 	dart_adapt_teamlist_init ();
@@ -57,6 +63,8 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank);
 	MPI_Comm_size (MPI_COMM_WORLD, &size);	
 	dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
+#ifdef SHAREDMEM_ENABLE
+	int i;
 
 	/* Generate separated intra-node communicators and Reserve necessary
    * resources for dart programm */
@@ -69,15 +77,32 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	dart_sharedmem_comm_list[index] = sharedmem_comm;
 
 	MPI_Group group_all, sharedmem_group;
+	char *baseptr;
+	int flag;
 
 	if (sharedmem_comm != MPI_COMM_NULL)
 	{
+		int sharedmem_unitid;
 		/* Reserve a free shared memory block for non-collective global memory allocation. */	
 		MPI_Win_allocate_shared (DART_MAX_LENGTH, sizeof (char), win_info, sharedmem_comm,
 				&(dart_mempool_localalloc), &dart_sharedmem_win_local_alloc);
 
 		MPI_Comm_size (sharedmem_comm, &(dart_sharedmemnode_size[index]));
-	
+		MPI_Comm_rank (sharedmem_comm, &sharedmem_unitid);
+		dart_sharedmem_local_baseptr_set = (char**)malloc (sizeof(char*) * 
+				dart_sharedmemnode_size[index]);
+		MPI_Aint winseg_size;
+		int disp_unit;
+
+		for (i = 0; i < dart_sharedmemnode_size[index]; i++)
+		{
+			if (sharedmem_unitid != i){
+				MPI_Win_shared_query (dart_sharedmem_win_local_alloc, i, 
+						&winseg_size, &disp_unit, &baseptr);
+				dart_sharedmem_local_baseptr_set[i] = baseptr;}
+			else dart_sharedmem_local_baseptr_set[i] = dart_mempool_localalloc;
+		}
+
 		MPI_Comm_group (sharedmem_comm, &sharedmem_group);
 		MPI_Comm_group (MPI_COMM_WORLD, &group_all);
 
@@ -117,7 +142,9 @@ dart_ret_t dart_init (int* argc, char*** argv)
 		free (sharedmem_ranks);
 		free (dart_unit_mapping);
 	}
-
+#else
+	MPI_Alloc_mem (DART_MAX_LENGTH, MPI_INFO_NULL, &dart_mempool_localalloc);
+#endif
 	/* Create a single global win object for dart local allocation based on
 	 * the aboved allocated shared memory.
 	 *
@@ -140,7 +167,9 @@ dart_ret_t dart_init (int* argc, char*** argv)
 	 * through win. */
 	MPI_Win_lock_all (0, win);
 
+#ifdef SHAREDMEM_ENABLE
 	MPI_Info_free (&win_info);
+#endif
 	LOG ("%2d: INIT	- initialization finished", rank);
 
 	return DART_OK;
@@ -148,6 +177,7 @@ dart_ret_t dart_init (int* argc, char*** argv)
 
 dart_ret_t dart_exit ()
 {
+	int finalized;
 	uint16_t index;
 	dart_unit_t unitid;
 
@@ -163,18 +193,24 @@ dart_ret_t dart_exit ()
 	
 	/* -- Free up all the resources for dart programme -- */
 	MPI_Win_free (&dart_win_local_alloc);
+#ifdef SHAREDMEM_ENABLE
 	MPI_Win_free (&dart_sharedmem_win_local_alloc);
-
+#endif
 	MPI_Win_free (&dart_win_lists[index]);
 	
 	dart_adapt_transtable_destroy ();
 	dart_buddy_delete (dart_localpool);
-		
+#ifdef SHAREDMEM_ENABLE	
 	free (dart_sharedmem_table[index]);
-
+	free (dart_sharedmem_local_baseptr_set);
+#endif
 	dart_adapt_teamlist_destroy ();
 	LOG ("%2d: EXIT - Finalization finished", unitid);
-  return MPI_Finalize();
+
+	MPI_Finalized(&finalized);
+	if (!finalized)
+		MPI_Finalize();
+	return DART_OK;
 }
 
 

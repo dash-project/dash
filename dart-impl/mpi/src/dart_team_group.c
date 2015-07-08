@@ -3,11 +3,6 @@
  *  @brief implementation of dart operations on team&group.
  */
 
-/*
-#ifndef ENABLE_DEBUG
-#define ENABLE_DEBUG
-#endif
-*/
 
 #include <mpi.h>
 #include <dash/dart/if/dart_team_group.h>
@@ -16,7 +11,11 @@
 #include <dash/dart/mpi/dart_deb_log.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_group_priv.h>
-
+/*
+#ifndef SHAREDMEM_ENABLE
+#define SHAREDMEM_ENABLE
+#endif
+*/
 dart_ret_t dart_group_init (dart_group_t *group)
 {
 	group -> mpi_group = MPI_GROUP_EMPTY;
@@ -346,6 +345,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 
 	if (subcomm != MPI_COMM_NULL)
 	{
+#ifdef SHAREDMEM_ENABLE
 		int i;
 
 		MPI_Comm sharedmem_comm;
@@ -389,7 +389,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 			free (dart_unit_mapping);
 		}
 
-		
+#endif
 		MPI_Win_lock_all (0, win);
 		DEBUG ("%2d: TEAMCREATE	- create team %d out of parent team %d", unit, *newteam, teamid);
 	}
@@ -416,8 +416,9 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 //	free (dart_unit_mapping[index]);
 
 //	MPI_Win_free (&(sharedmem_win_list[index]));
-
+#ifdef SHAREDMEM_ENABLE
 	free (dart_sharedmem_table[index]);
+#endif
 	win = dart_win_lists[index];
 	MPI_Win_unlock_all (win);
 	MPI_Win_free (&win);
