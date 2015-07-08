@@ -8,6 +8,14 @@ DASH_ROOT = $(shell cd $(DASH_ROOT_REL);pwd)
 
 include $(DASH_ROOT)/make.defs
 
+ifeq ($(DART_IMPL), mpi)
+     CFLAGS+=-DDART_MPI
+endif
+ifeq ($(DART_IMPL), shmem)
+     CFLAGS+=-DDART_SHMEM
+endif
+
+
 #CFLAGS+=-DDASH_DEBUG
 
 LIBDASH   = $(DASH_ROOT)/src/libdash.a

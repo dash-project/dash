@@ -9,7 +9,10 @@
 #include <cstddef>
 
 #include <libdash.h>
+
+#ifdef DART_MPI
 #include "mpi.h"
+#endif
 
 using namespace std;
 
