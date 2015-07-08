@@ -86,14 +86,13 @@ public:
     if (this == &other) {
       return true;
     }
-    if (_ndim != other._ndim) {
-      return false;
-    }
     for(auto i = 0; i < NumDimensions; i++) {
       if (_extents[i] != other._extents[i]) {
         return false;
       }
     }
+    // No need to compare _size as it is derived from _extents.
+    return true;
   }
 
   /**
@@ -313,10 +312,8 @@ public:
         return false; 
       }
     }
-    return (
-      _size == other._size &&
-      _ndim == other._ndim
-    );
+    // No need to compare _size as it is derived from _extents.
+    return true;
   }
 
   /**

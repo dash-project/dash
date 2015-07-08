@@ -79,7 +79,7 @@ namespace dash {
 template<
   dim_t NumDimensions,
   MemArrange Arrangement = ROW_MAJOR,
-  typename IndexType     = int>
+  typename IndexType     = dash::default_index_t>
 class Pattern {
 private:
   /// Derive size type from given signed index / ptrdiff type
@@ -92,9 +92,9 @@ private:
     MemoryLayout_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     LocalMemoryLayout_t;
-  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
+  typedef CartesianSpace<NumDimensions, SizeType>
     BlockSpec_t;
-  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
+  typedef CartesianSpace<NumDimensions, SizeType>
     BlockSizeSpec_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
@@ -183,23 +183,6 @@ private:
     }
 
   private:
-#if 0
-    /// Pattern matching for extent value of type int.
-    template<int count>
-    void check(int extent) {
-      check<count>((SizeType)(extent));
-    }
-    /// Pattern matching for extent value of type int.
-    template<int count>
-    void check(unsigned int extent) {
-      check<count>((SizeType)(extent));
-    }
-    /// Pattern matching for extent value of type size_t.
-    template<int count>
-    void check(unsigned long extent) {
-      check<count>((SizeType)(extent));
-    }
-#endif
     /// Pattern matching for extent value of type IndexType.
     template<int count>
     void check(SizeType extent) {
@@ -246,7 +229,7 @@ private:
     void check(const Distribution & ds) {
       DASH_LOG_TRACE("Pattern::ArgumentParser.check(dist)");
       _argc_dist++;
-      int dim = count - NumDimensions;
+      dim_t dim = count - NumDimensions;
       _distspec[dim] = ds;
     }
     /// Isolates first argument and calls the appropriate check() function
@@ -631,7 +614,7 @@ public:
     const ViewSpec_t & viewspec) const {
     // Apply viewspec offsets to coordinates:
     std::array<IndexType, NumDimensions> vs_coords;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       vs_coords[d] = coords[d] + viewspec[d].offset;
     }
     // Index of block containing the given coordinates:
@@ -664,7 +647,8 @@ public:
     /// Absolute coordinates of the point
     Values ... values
   ) const {
-    std::array<IndexType, NumDimensions> inputindex = { (IndexType)values... };
+    std::array<IndexType, NumDimensions> inputindex =
+      { (IndexType)values... };
     return unit_at(inputindex, _viewspec);
   }
 
@@ -679,7 +663,7 @@ public:
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
     auto coords = local_coords;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] += viewspec[d].offset;
     }
     return _local_memory_layout.at(coords);
@@ -694,7 +678,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType extent(unsigned int dim) const {
+  IndexType extent(dim_t dim) const {
     if (dim >= NumDimensions || dim < 0) {
       DASH_THROW(
         dash::exception::OutOfRange,
@@ -715,7 +699,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType local_extent(unsigned int dim) const {
+  IndexType local_extent(dim_t dim) const {
     if (dim >= NumDimensions || dim < 0) {
       DASH_THROW(
         dash::exception::OutOfRange,
@@ -735,7 +719,7 @@ public:
   std::array<IndexType, NumDimensions> coords_to_local(
     const std::array<IndexType, NumDimensions> & global_coords) const {
     std::array<IndexType, NumDimensions> local_coords;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       auto block_size_d     = _blocksize_spec.extent(d);
       auto b_offset_d       = global_coords[d] % block_size_d;
       auto g_block_offset_d = global_coords[d] / block_size_d;
@@ -767,9 +751,9 @@ public:
     std::array<IndexType, NumDimensions> block_coord;
     // Index of the element:
     std::array<IndexType, NumDimensions> glob_index;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
-      unsigned int d_t          = NumDimensions - 1 - d;
+      auto d_t          = NumDimensions - 1 - d;
       auto num_units_d          = _teamspec.extent(d); 
       auto num_blocks_d         = _blockspec.extent(d);
       auto blocksize_d          = _blocksize_spec.extent(d);
@@ -850,13 +834,15 @@ public:
     const std::array<IndexType, NumDimensions> & global_coords,
     const ViewSpec_t & viewspec) const {
     auto coords = global_coords;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] += viewspec[d].offset;
     }
-    // Note: Cannot use _local_memory_layout here as it is only defined for
-    // the active unit but does not specify local memory of other units.
+    // Note: Cannot use _local_memory_layout here as it is only defined
+    // for the active unit but does not specify local memory of other 
+    // units.
     DASH_LOG_TRACE_VAR("Pattern.at()", coords);
-    // Local offset of the element within all of the unit's local elements:
+    // Local offset of the element within all of the unit's local
+    // elements:
     SizeType local_elem_offset = 0;
     auto unit           = unit_at(coords);
     auto unit_ts_coords = _teamspec.coords(unit);
@@ -879,8 +865,8 @@ public:
   /**
    * Global coordinates to local index.
    *
-   * Convert given global coordinates in pattern to their respective linear
-   * local index.
+   * Convert given global coordinates in pattern to their respective
+   * linear local index.
    * 
    * \see  DashPatternConcept
    */
@@ -975,7 +961,7 @@ public:
    */
   SizeType blocksize(
     /// The dimension in the pattern
-    unsigned int dimension) const {
+    dim_t dimension) const {
     return _blocksize_spec.extent(dimension);
   }
 
@@ -1076,7 +1062,7 @@ public:
   }
 
   /**
-   * Cartesian index space representing the underlying memory model of this
+   * Cartesian index space representing the underlying memory model of the
    * pattern.
    */
   const MemoryLayout_t & memory_layout() const {
@@ -1127,7 +1113,7 @@ public:
    * 0 <= \c overflow_blocksize(d) < blocksize(d).
    */
   SizeType overflow_blocksize(
-    unsigned int dimension) const {
+    dim_t dimension) const {
     return _memory_layout.extent(dimension) % blocksize(dimension);
   }
 
@@ -1137,7 +1123,7 @@ public:
    * 0 <= \c underfilled_blocksize(d) < blocksize(d).
    */
   SizeType underfilled_blocksize(
-    unsigned int dimension) const {
+    dim_t dimension) const {
     // Underflow blocksize = regular blocksize - overflow blocksize:
     auto ovf_blocksize = overflow_blocksize(dimension);
     if (ovf_blocksize == 0) {
@@ -1161,7 +1147,7 @@ private:
     std::array<SizeType, NumDimensions> n_blocks;
     // Extents of a single block:
     std::array<SizeType, NumDimensions> s_blocks;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = distspec[d];
       SizeType max_blocksize_d  = dist.max_blocksize_in_range(
         sizespec.extent(d),  // size of range (extent)
@@ -1182,7 +1168,7 @@ private:
     const TeamSpec_t         & teamspec) const {
     // Number of blocks in all dimensions:
     std::array<SizeType, NumDimensions> n_blocks;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = distspec[d];
       SizeType max_blocksize_d  = blocksizespec.extent(d);
       SizeType max_blocks_d     = dash::math::div_ceil(
@@ -1198,12 +1184,13 @@ private:
    */
   SizeType initialize_local_capacity() {
     SizeType l_capacity = 1;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       SizeType num_units_d      = _teamspec.extent(d);
       const Distribution & dist = _distspec[d];
       // Block size in given dimension:
       auto dim_max_blocksize    = _blocksize_spec.extent(d);
-      // Maximum number of occurrences of a single unit in given dimension:
+      // Maximum number of occurrences of a single unit in given
+      // dimension:
       // TODO: Should be dist.max_local_elements_in_range for later
       //       support of dash::BALANCED_*
       SizeType dim_num_blocks   = dist.max_local_blocks_in_range(
@@ -1253,7 +1240,7 @@ private:
     DASH_LOG_DEBUG_VAR("Pattern.local_extents()", unit);
     DASH_LOG_TRACE_VAR("Pattern.local_extents", unit_ts_coords);
     ::std::array<SizeType, NumDimensions> l_extents;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       auto num_elem_d         = _memory_layout.extent(d);
       // Number of units in dimension:
       auto num_units_d        = _teamspec.extent(d);
@@ -1315,7 +1302,7 @@ private:
     const std::array<IndexType, NumDimensions> & coords) const {
     DASH_LOG_TRACE_VAR("Pattern.block_coords_at()", coords);
     std::array<IndexType, NumDimensions> block_coords;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       block_coords[d] = coords[d] / blocksize(d);
     }
     DASH_LOG_TRACE_VAR("Pattern.block_coords_at >", block_coords);
@@ -1328,7 +1315,7 @@ private:
   dart_unit_t unit_at_block(
     std::array<IndexType, NumDimensions> & block_coords) const {
     dart_unit_t unit_id = 0;
-    for (unsigned int d = 0; d < NumDimensions; ++d) {
+    for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
       unit_id += dist.block_coord_to_unit_offset(
                     block_coords[d], // block coordinate

@@ -187,7 +187,7 @@ public:
  */
 template<
   typename ElementType,
-  typename IndexType   = int,
+  typename IndexType   = dash::default_index_t,
   class PatternType    = Pattern<1, ROW_MAJOR, IndexType> >
 class Array {
 private:
@@ -216,7 +216,10 @@ public:
 /// Public types as required by dash container concept
 public:
   /// The type of the pattern used to distribute array elements to units
-  typedef PatternType pattern_type;
+  typedef PatternType
+    pattern_type;
+  typedef LocalProxyArray<value_type, IndexType, PatternType>
+    local_type;
   
 private:
   typedef dash::GlobMem<value_type> GlobMem_t;
@@ -242,9 +245,15 @@ private:
   ElementType        * m_lbegin;
   /// Native pointer past last local element in the array
   ElementType        * m_lend;
+
+public:
+  /// Local proxy object enables arr.local to be used in range-based for
+  /// loops.
+  local_type           local;
   
 public:
-/* Check requirements on element type 
+/* 
+   Check requirements on element type 
    is_trivially_copyable is not implemented presently, and is_trivial
    is too strict (e.g. fails on std::pair).
 
@@ -254,13 +263,15 @@ public:
      "Element type must be trivially copyable");
 */
 
-  /// Local proxy object enables arr.local to be used in range-based for
-  /// loops
-  LocalProxyArray<value_type, IndexType, PatternType> local;
-
 public:
+  /**
+   * Default constructor, for delayed allocation.
+   *
+   * Sets the associated team to DART_TEAM_NULL for global array instances
+   * that are declared before \c dash::Init().
+   */
   Array(
-    Team & team = dash::Team::All())
+    Team & team = dash::Team::Null())
   : m_team(team),
     m_pattern(0, dash::BLOCKED, team),
     m_size(0),
@@ -543,7 +554,8 @@ public:
 
   bool allocate(
     size_type nelem,
-    dash::DistributionSpec<1> distribution) {
+    dash::DistributionSpec<1> distribution,
+    dash::Team & team = dash::Team::All()) {
     DASH_LOG_TRACE("Array.allocate()", nelem);
     // Check requested capacity:
     if (nelem == 0) {
@@ -551,8 +563,15 @@ public:
         dash::exception::InvalidArgument,
         "Tried to allocate dash::Array with size 0");
     }
-    DASH_LOG_TRACE("Array.allocate", "initializing pattern");
-    m_pattern = PatternType(nelem, distribution, m_team);
+    if (m_team == dash::Team::Null()) {
+      DASH_LOG_TRACE("Array.allocate",
+                     "initializing pattern with Team::All()");
+      m_pattern = PatternType(nelem, distribution, team);
+    } else {
+      DASH_LOG_TRACE("Array.allocate",
+                     "initializing pattern with initial team");
+      m_pattern = PatternType(nelem, distribution, m_team);
+    }
     return allocate(m_pattern);
   }
 

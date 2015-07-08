@@ -16,6 +16,11 @@ typedef int dim_t;
  */
 typedef int default_index_t;
 
+/**
+ * Unsigned integer type used as default for size values.
+ */
+typedef typename std::make_unsigned<default_index_t>::type default_size_t;
+
 template<
   dash::dim_t NumDimensions,
   typename IndexType = int>
