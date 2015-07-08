@@ -20,11 +20,12 @@ PWD  = $(shell basename `pwd`)
 PAT  = $(shell echo -n $(PWD) )
 PROG = $(shell echo -n $(PAT) | cut -d . -f 3)
 
-all : regular ipm 
+all : regular 
+
+ipm : with-ipm
 
 regular : $(LIBDART) $(LIBDASH) $(PROG) 
-
-ipm: $(LIBDART) $(LIBDASH) $(LIBIPM) $(PROG).ipm
+with-ipm: $(LIBDART) $(LIBDASH) $(LIBIPM) $(PROG).ipm
 
 printenv : 
 	 @echo "CXX           = $(CXX)"
