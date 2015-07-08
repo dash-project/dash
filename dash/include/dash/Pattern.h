@@ -152,7 +152,7 @@ private:
         sizeof...(Args) >= NumDimensions,
         "Invalid number of arguments for Pattern::ArgumentParser");
       // Parse argument list:
-      check<0>(std::forward<Args>(args)...);
+      check_recurse<0>(std::forward<Args>(args)...);
       // Validate number of arguments after parsing:
       if (_argc_size > 0 && _argc_size != NumDimensions) {
         DASH_THROW(
@@ -200,12 +200,10 @@ private:
       check<count>((SizeType)(extent));
     }
 #endif
-    template<int count>
-    void check() {
-    }
     /// Pattern matching for extent value of type IndexType.
     template<int count>
     void check(SizeType extent) {
+      DASH_LOG_TRACE("Pattern::ArgumentParser.check(extent)", extent);
       _argc_size++;
       _sizespec.resize(count, extent);
     }
@@ -213,6 +211,7 @@ private:
     /// specifying the distribution pattern.
     template<int count>
     void check(const TeamSpec_t & teamSpec) {
+      DASH_LOG_TRACE("Pattern::ArgumentParser.check(teamSpec)");
       _argc_team++;
       _teamspec   = teamSpec;
     }
@@ -220,6 +219,7 @@ private:
     /// team.
     template<int count>
     void check(dash::Team & team) {
+      DASH_LOG_TRACE("Pattern::ArgumentParser.check(team)");
       if (_argc_team == 0) {
         _teamspec = TeamSpec_t(_distspec, team);
       }
@@ -228,6 +228,7 @@ private:
     /// size (extents).
     template<int count>
     void check(const SizeSpec_t & sizeSpec) {
+      DASH_LOG_TRACE("Pattern::ArgumentParser.check(sizeSpec)");
       _argc_size += NumDimensions;
       _sizespec   = sizeSpec;
     }
@@ -235,6 +236,7 @@ private:
     /// distribution.
     template<int count>
     void check(const DistributionSpec_t & ds) {
+      DASH_LOG_TRACE("Pattern::ArgumentParser.check(distSpec)");
       _argc_dist += NumDimensions;
       _distspec   = ds;
     }
@@ -242,6 +244,7 @@ private:
     /// specifying the distribution.
     template<int count>
     void check(const Distribution & ds) {
+      DASH_LOG_TRACE("Pattern::ArgumentParser.check(dist)");
       _argc_dist++;
       int dim = count - NumDimensions;
       _distspec[dim] = ds;
@@ -249,11 +252,18 @@ private:
     /// Isolates first argument and calls the appropriate check() function
     /// on each argument via recursion on the argument list.
     template<int count, typename T, typename ... Args>
-    void check(T t, Args && ... args) {
-      check<count>(t);
+    void check_recurse(T && t, Args && ... args) {
+      DASH_LOG_TRACE("Pattern::ArgumentParser.check(args) ",
+                     "count", count,
+                     "argc", sizeof...(Args));
+      check<count>(std::forward<T>(t));
       if (sizeof...(Args) > 0) {
-        check<count + 1>(std::forward<Args>(args)...);
+        check_recurse<count + 1>(std::forward<Args>(args)...);
       }
+    }
+    /// Terminator function for recursive argument parsing
+    template<int count>
+    void check_recurse() {
     }
     /// Check pattern constraints for tile
     void check_tile_constraints() const {

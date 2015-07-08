@@ -26,34 +26,37 @@ static __inline__ unsigned long long GetCycleCount(void)
 
 using namespace dash;
 
-
-void Multiply(dash::MatrixRef<int, 2> A, dash::MatrixRef<int, 2> B, dash::MatrixRef<int, 2> C, unsigned m, unsigned n, unsigned p)
-{
+void Multiply(
+  dash::MatrixRef<int, 2> A,
+  dash::MatrixRef<int, 2> B,
+  dash::MatrixRef<int, 2> C,
+  unsigned m,
+  unsigned n,
+  unsigned p) {
 	int i, j, k;
-
-	for (i = 0; i < m; i++)
-		for (j = 0; j < p; j++)
-		{
+	for (i = 0; i < m; i++) {
+		for (j = 0; j < p; j++) {
 			int result = 0;
-			for (k = 0; k < n; k++)
-			{
-//				result = A(i, k) * B(k, j) + result;
+			for (k = 0; k < n; k++) {
 				result = A[i][k] * B[k][j] + result;
 			}
-//			C(i,j) = result;
 			C[i][j] = result;
 		}
+  }
 }
 
-void MatrixAdd(dash::LocalRef<int, 2> A, dash::LocalRef<int, 2> B, unsigned m, unsigned n) //the result remain in A 
+void MatrixAdd(
+  dash::LocalRef<int, 2> A,
+  dash::LocalRef<int, 2> B,
+  unsigned m,
+  unsigned n) // the result remains in A 
 {
 	int i, j;
-	for (i = 0; i < m; i++)
-		for (j = 0; j < n; j++)
-		{
-//			A(i, j) = A(i, j) + B(i, j);
+	for (i = 0; i < m; i++) {
+		for (j = 0; j < n; j++) {
 			A[i][j] = A[i][j] + B[i][j];
 		}
+  }
 }
 
 int main(int argc, char* argv[])
@@ -123,13 +126,15 @@ int main(int argc, char* argv[])
 		int rx = ts.coords(myid)[0];
 		int ry = ts.coords(myid)[1];
 
-		Multiply(matA.rows((rx)*b, b).cols((i)*b, b), matB.rows((i)*b, b).cols((ry)*b, b), tempC.rows((rx)*b, b).cols((ry)*b, b), b, b, b);
+		Multiply(
+      matA.rows((rx)*b, b).cols((i)*b, b),
+      matB.rows((i)*b, b).cols((ry)*b, b),
+      tempC.rows((rx)*b, b).cols((ry)*b, b), b, b, b);
 		MatrixAdd(lrefc, temp_lrefc, b, b);
 	}
 
 	matA.barrier();			
     t2 = (unsigned long)GetCycleCount();
- //   printf("Elapsed Time:%f\n",(t2 - t1)*1.0);
 
 	if(myid==0)
 		for(int i=0;i<b;i++)
@@ -176,9 +181,6 @@ int main(int argc, char* argv[])
 				}
 				std::cout << std::endl;		
 		} 
-
-//	if(myid==0)
-
 	
 	matA.barrier();	
 
