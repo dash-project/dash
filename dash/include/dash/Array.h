@@ -181,6 +181,9 @@ public:
  *
  * \concept{DashContainerConcept}
  * \concept{DashArrayConcept}
+ *
+ * TODO: Template parameter IndexType could be deduced from pattern type:
+ *       PatternT::index_type
  */
 template<
   typename ElementType,

@@ -70,6 +70,16 @@ public:
   }
 
   /**
+   * Constructor, creates a cartesian space of given extents.
+   */
+  CartesianSpace(
+    const ::std::array<SizeType, NumDimensions> & extents)
+  : _size(0),
+    _ndim(NumDimensions) {
+    resize(extents);
+  }
+
+  /**
    * Equality comparison operator.
    */
   bool operator==(const self_t & other) const {
@@ -202,12 +212,20 @@ public:
   }
 
   /**
-   * Constructor, creates a cartesian space of given extents in all
-   * dimensions.
+   * Constructor, creates a cartesian space of given extents.
    */
   template<typename... Args>
   SizeSpec(SizeType arg, Args... args)
   : parent_t(arg, args...) {
+  }
+
+  /**
+   * Constructor, creates a cartesian index space of given extents in
+   * all dimensions.
+   */
+  SizeSpec(
+    const ::std::array<SizeType, NumDimensions> & extents)
+  : parent_t(extents) {
   }
 };
 
@@ -225,6 +243,8 @@ private:
     SizeType;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     self_t;
+  typedef ViewSpec<NumDimensions, IndexType>
+    ViewSpec_t;
 /* 
  * Note: Not derived from CartesianSpace to provide resizing in O(d)
  *       instead of O(2d).
@@ -258,8 +278,7 @@ public:
   }
 
   /**
-   * Constructor, creates a cartesian index space of given extents in
-   * all dimensions.
+   * Constructor, creates a cartesian index space of given extents.
    */
   CartesianIndexSpace(
     const ::std::array<SizeType, NumDimensions> & extents)
@@ -269,8 +288,7 @@ public:
   }
 
   /**
-   * Constructor, creates a cartesian index space of given extents in
-   * all dimensions.
+   * Constructor, creates a cartesian index space of given extents.
    */
   template<typename... Args>
   CartesianIndexSpace(SizeType arg, Args... args) 
@@ -465,7 +483,7 @@ public:
     typename OffsetType>
   IndexType at(
     const std::array<OffsetType, NumDimensions> & point,
-    const ViewSpec<NumDimensions> & viewspec) const {
+    const ViewSpec_t & viewspec) const {
     std::array<OffsetType, NumDimensions> coords;
     for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] = point[d] + viewspec[d].offset;
@@ -611,7 +629,7 @@ public:
    * \endcode
    */
   TeamSpec(
-    const TeamSpec<MaxDimensions> & other,
+    const self_t & other,
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All()) 
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>(

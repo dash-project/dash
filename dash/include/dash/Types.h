@@ -11,6 +11,11 @@ namespace dash {
  */
 typedef int dim_t;
 
+/**
+ * Signed integer type used as default for index values.
+ */
+typedef int default_index_t;
+
 template<
   dash::dim_t NumDimensions,
   typename IndexType = int>

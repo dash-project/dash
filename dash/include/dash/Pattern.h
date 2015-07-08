@@ -654,7 +654,7 @@ public:
     /// Absolute coordinates of the point
     Values ... values
   ) const {
-    std::array<IndexType, NumDimensions> inputindex = { values... };
+    std::array<IndexType, NumDimensions> inputindex = { (IndexType)values... };
     return unit_at(inputindex, _viewspec);
   }
 
@@ -905,13 +905,13 @@ public:
    */
   bool has_local_elements(
     /// Dimension to check
-    unsigned int dim,
+    dim_t dim,
     /// Offset in dimension
     IndexType dim_offset,
     /// DART id of the unit
     dart_unit_t unit,
     /// Viewspec to apply
-    const ViewSpec<NumDimensions> & viewspec) const {
+    const ViewSpec_t & viewspec) const {
     DASH_LOG_TRACE_VAR("Pattern.has_local_elements()", dim);
     DASH_LOG_TRACE_VAR("Pattern.has_local_elements()", dim_offset);
     DASH_LOG_TRACE_VAR("Pattern.has_local_elements()", unit);

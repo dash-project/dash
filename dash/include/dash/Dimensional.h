@@ -255,6 +255,8 @@ template<
   typename IndexType = int>
 class ViewSpec : public Dimensional<ViewPair<IndexType>, NumDimensions> {
 private:
+  typedef ViewSpec<NumDimensions, IndexType>
+    self_t;
   typedef typename std::make_unsigned<IndexType>::type
     SizeType;
   typedef ViewPair<IndexType>
@@ -292,7 +294,7 @@ public:
   /**
    * Copy constructor.
    */
-  ViewSpec(const ViewSpec<NumDimensions> & other)
+  ViewSpec(const self_t & other)
   : Dimensional<ViewPair_t, NumDimensions>(
       static_cast< const Dimensional<ViewPair_t, NumDimensions> & >(other)),
     _size(other._size),
