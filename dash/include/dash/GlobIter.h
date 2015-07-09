@@ -101,6 +101,8 @@ public:
     /// The global position of the element
     gptrdiff_t global_index) const {
     auto glob_coords = m_pattern->coords(global_index);
+    // TODO: Avoid redundant derivation of unit id by introducing
+    //       Pattern::unit_and_local_index_at(glob_coords)
     auto unit        = m_pattern->unit_at(glob_coords);
     auto local_index = m_pattern->at(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.[]", global_index);
