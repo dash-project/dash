@@ -1,5 +1,5 @@
-#ifndef DASH__TEST__PATTERN_TEST_H_
-#define DASH__TEST__PATTERN_TEST_H_
+#ifndef DASH__TEST__TILE_PATTERN_TEST_H_
+#define DASH__TEST__TILE_PATTERN_TEST_H_
 
 #include <gtest/gtest.h>
 #include <libdash.h>
@@ -7,17 +7,17 @@
 /**
  * Test fixture for class dash::Pattern
  */
-class PatternTest : public ::testing::Test {
+class TilePatternTest : public ::testing::Test {
 protected:
   int _num_elem;
   int _dash_size;
 
-  PatternTest()
+  TilePatternTest()
   : _num_elem(0), 
     _dash_size(0) {
   }
 
-  virtual ~PatternTest() {
+  virtual ~TilePatternTest() {
   }
 
   virtual void SetUp() {
@@ -29,4 +29,4 @@ protected:
   }
 };
 
-#endif // DASH__TEST__PATTERN_TEST_H_
+#endif // DASH__TEST__TILE_PATTERN_TEST_H_

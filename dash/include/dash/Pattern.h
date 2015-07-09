@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <functional>
 #include <cstring>
-#include <iostream>
 #include <array>
 #include <type_traits>
 
@@ -17,6 +16,7 @@
 #include <dash/Team.h>
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
+#include <dash/internal/PatternArguments.h>
 
 namespace dash {
 
@@ -104,203 +104,45 @@ private:
     SizeSpec_t;
   typedef ViewSpec<NumDimensions, IndexType>
     ViewSpec_t;
+  typedef internal::PatternArguments<NumDimensions, IndexType>
+    PatternArguments_t;
 
 public:
   typedef IndexType index_type;
   typedef SizeType  size_type;
 
 private:
-  /**
-   * Extracting size-, distribution- and team specifications from
-   * arguments passed to Pattern varargs constructor.
-   *
-   * \see Pattern<typename ... Args>::Pattern(Args && ... args)
-   */
-  class ArgumentParser {
-  private:
-    /// The extents of the pattern space in every dimension
-    SizeSpec_t         _sizespec;
-    /// The distribution type for every pattern dimension
-    DistributionSpec_t _distspec;
-    /// The cartesian arrangement of the units in the team to which the
-    /// patterns element are mapped
-    TeamSpec_t         _teamspec;
-    /// The view specification of the pattern, consisting of offset and
-    /// extent in every dimension
-    ViewSpec_t         _viewspec;
-    /// Number of distribution specifying arguments in varargs
-    int                _argc_dist = 0;
-    /// Number of size/extent specifying arguments in varargs
-    int                _argc_size = 0;
-    /// Number of team specifying arguments in varargs
-    int                _argc_team = 0;
-
-  public:
-    /**
-     * Default constructor, used if no argument list is parsed.
-     */
-    ArgumentParser() {
-    }
-
-    /**
-     * Constructor, parses settings in argument list and checks for
-     * constraints.
-     */
-    template<typename ... Args>
-    ArgumentParser(Args && ... args) {
-      static_assert(
-        sizeof...(Args) >= NumDimensions,
-        "Invalid number of arguments for Pattern::ArgumentParser");
-      // Parse argument list:
-      check_recurse<0>(std::forward<Args>(args)...);
-      // Validate number of arguments after parsing:
-      if (_argc_size > 0 && _argc_size != NumDimensions) {
-        DASH_THROW(
-          dash::exception::InvalidArgument,
-          "Invalid number of size arguments for Pattern(...), " <<
-          "expected " << NumDimensions << ", got " << _argc_size);
-      }
-      if (_argc_dist > 0 && _argc_dist != NumDimensions) {
-        DASH_THROW(
-          dash::exception::InvalidArgument,
-          "Invalid number of distribution arguments for Pattern(...), " <<
-          "expected " << NumDimensions << ", got " << _argc_dist);
-      }
-      check_tile_constraints();
-    }
-  
-    const SizeSpec_t & sizespec() const {
-      return _sizespec;
-    }
-    const DistributionSpec_t & distspec() const {
-      return _distspec;
-    }
-    const TeamSpec_t & teamspec() const {
-      return _teamspec;
-    }
-    const ViewSpec_t & viewspec() const {
-      return _viewspec;
-    }
-
-  private:
-    /// Pattern matching for extent value of type IndexType.
-    template<int count>
-    void check(SizeType extent) {
-      DASH_LOG_TRACE("Pattern::ArgumentParser.check(extent)", extent);
-      _argc_size++;
-      _sizespec.resize(count, extent);
-    }
-    /// Pattern matching for up to \c NumDimensions optional parameters
-    /// specifying the distribution pattern.
-    template<int count>
-    void check(const TeamSpec_t & teamSpec) {
-      DASH_LOG_TRACE("Pattern::ArgumentParser.check(teamSpec)");
-      _argc_team++;
-      _teamspec   = teamSpec;
-    }
-    /// Pattern matching for one optional parameter specifying the 
-    /// team.
-    template<int count>
-    void check(dash::Team & team) {
-      DASH_LOG_TRACE("Pattern::ArgumentParser.check(team)");
-      if (_argc_team == 0) {
-        _teamspec = TeamSpec_t(_distspec, team);
-      }
-    }
-    /// Pattern matching for one optional parameter specifying the 
-    /// size (extents).
-    template<int count>
-    void check(const SizeSpec_t & sizeSpec) {
-      DASH_LOG_TRACE("Pattern::ArgumentParser.check(sizeSpec)");
-      _argc_size += NumDimensions;
-      _sizespec   = sizeSpec;
-    }
-    /// Pattern matching for one optional parameter specifying the 
-    /// distribution.
-    template<int count>
-    void check(const DistributionSpec_t & ds) {
-      DASH_LOG_TRACE("Pattern::ArgumentParser.check(distSpec)");
-      _argc_dist += NumDimensions;
-      _distspec   = ds;
-    }
-    /// Pattern matching for up to NumDimensions optional parameters
-    /// specifying the distribution.
-    template<int count>
-    void check(const Distribution & ds) {
-      DASH_LOG_TRACE("Pattern::ArgumentParser.check(dist)");
-      _argc_dist++;
-      dim_t dim = count - NumDimensions;
-      _distspec[dim] = ds;
-    }
-    /// Isolates first argument and calls the appropriate check() function
-    /// on each argument via recursion on the argument list.
-    template<int count, typename T, typename ... Args>
-    void check_recurse(T && t, Args && ... args) {
-      DASH_LOG_TRACE("Pattern::ArgumentParser.check(args) ",
-                     "count", count,
-                     "argc", sizeof...(Args));
-      check<count>(std::forward<T>(t));
-      if (sizeof...(Args) > 0) {
-        check_recurse<count + 1>(std::forward<Args>(args)...);
-      }
-    }
-    /// Terminator function for recursive argument parsing
-    template<int count>
-    void check_recurse() {
-    }
-    /// Check pattern constraints for tile
-    void check_tile_constraints() const {
-      bool has_tile = false;
-      bool invalid  = false;
-      for (auto i = 0; i < NumDimensions-1; i++) {
-        if (_distspec.dim(i).type == dash::internal::DIST_TILE)
-          has_tile = true;
-        if (_distspec.dim(i).type != _distspec.dim(i+1).type)
-          invalid = true;
-      }
-      assert(!(has_tile && invalid));
-      if (has_tile) {
-        for (auto i = 0; i < NumDimensions; i++) {
-          assert(
-            _sizespec.extent(i) % (_distspec.dim(i).blocksz)
-            == 0);
-        }
-      }
-    }
-  };
-
-private:
-  ArgumentParser      _arguments;
+  PatternArguments_t          _arguments;
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
   /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
   /// dimensions
-  DistributionSpec_t  _distspec;
+  DistributionSpec_t          _distspec;
   /// Team containing the units to which the patterns element are mapped
-  dash::Team &        _team            = dash::Team::All();
+  dash::Team &                _team            = dash::Team::All();
   /// Cartesian arrangement of units within the team
-  TeamSpec_t          _teamspec;
+  TeamSpec_t                  _teamspec;
   /// The global layout of the pattern's elements in memory respective to
   /// memory order. Also specifies the extents of the pattern space.
-  MemoryLayout_t      _memory_layout;
+  MemoryLayout_t              _memory_layout;
   /// Maximum extents of a block in this pattern
-  BlockSizeSpec_t     _blocksize_spec;
+  BlockSizeSpec_t             _blocksize_spec;
   /// Number of blocks in all dimensions
-  BlockSpec_t         _blockspec;
+  BlockSpec_t                 _blockspec;
   /// A projected view of the global memory layout representing the
   /// local memory layout of this unit's elements respective to memory
   /// order.
-  LocalMemoryLayout_t _local_memory_layout;
+  LocalMemoryLayout_t         _local_memory_layout;
   /// Total amount of units to which this pattern's elements are mapped
-  SizeType            _nunits          = dash::Team::All().size();
+  SizeType                    _nunits          = dash::Team::All().size();
   /// Maximum number of elements assigned to a single unit
-  SizeType            _local_capacity;
+  SizeType                    _local_capacity;
   /// The view specification of the pattern, consisting of offset and
   /// extent in every dimension
-  ViewSpec_t          _viewspec;
+  ViewSpec_t                  _viewspec;
   /// Corresponding global index to first local index of the active unit
-  IndexType           _lbegin;
+  IndexType                   _lbegin;
   /// Corresponding global index past last local index of the active unit
-  IndexType           _lend;
+  IndexType                   _lend;
 
 public:
   /**
@@ -771,14 +613,16 @@ public:
       block_coord[d] = block_index[d] * blocksize_d;
       glob_index[d]  = block_coord[d] + elem_block_offset_d;
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", d);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", unit_ts_coord[d]);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", 
+                         unit_ts_coord[d]);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", local_index_d);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", num_units_d);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", num_blocks_d);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", block_index[d]);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", blocksize);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", blocksize_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", elem_block_offset_d);
+      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", 
+                         elem_block_offset_d);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", block_coord[d]);
       DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", glob_index[d]);
     }
@@ -837,9 +681,6 @@ public:
     for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] += viewspec[d].offset;
     }
-    // Note: Cannot use _local_memory_layout here as it is only defined
-    // for the active unit but does not specify local memory of other 
-    // units.
     DASH_LOG_TRACE_VAR("Pattern.at()", coords);
     // Local offset of the element within all of the unit's local
     // elements:
@@ -855,8 +696,9 @@ public:
       // layout
       return _local_memory_layout.at(l_coords);
     } else {
-      // Coords are not local to this unit, generate local memory layout 
-      // for unit assigned to coords:
+      // Cannot use _local_memory_layout as it is only defined for the 
+      // active unit but does not specify local memory of other units.
+      // Generate local memory layout for unit assigned to coords:
       auto l_mem_layout = LocalMemoryLayout_t(local_extents(unit));
       return l_mem_layout.at(l_coords);
     }
@@ -918,7 +760,8 @@ public:
     DASH_LOG_TRACE_VAR("Pattern.has_local_elements", block_coord_d);
     // Coordinate of unit in team spec in given dimension
     IndexType teamspec_coord_d = block_coord_d % _teamspec.extent(dim);
-    DASH_LOG_TRACE_VAR("Pattern.has_local_elements()", teamspec_coord_d);
+    DASH_LOG_TRACE_VAR("Pattern.has_local_elements()",  
+                       teamspec_coord_d);
     // Check if unit id lies in cartesian sub-space of team spec
     return _teamspec.includes_index(
               teamspec_coord_d,
@@ -1181,6 +1024,10 @@ private:
 
   /**
    * Max. elements per unit (local capacity)
+   *
+   * Note:
+   * Currently calculated as (num_local_blocks * block_size), thus
+   * ignoring underfilled blocks.
    */
   SizeType initialize_local_capacity() {
     SizeType l_capacity = 1;
@@ -1202,9 +1049,9 @@ private:
       l_capacity *= dim_max_blocksize * dim_num_blocks;
       DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", d);
       DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", num_units_d);
-      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", dim_max_blocksize);
+      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", 
+                         dim_max_blocksize);
       DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", dim_num_blocks);
-      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", _local_capacity);
     }
     DASH_LOG_DEBUG_VAR("Pattern.init_lcapacity >", l_capacity);
     return l_capacity;
@@ -1258,7 +1105,8 @@ private:
       DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_units_d);
       DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_blocks_d);
       DASH_LOG_TRACE_VAR("Pattern.local_extents.d", blocksize_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", min_local_blocks_d);
+      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", 
+                         min_local_blocks_d);
       // Possibly there are more blocks than units in dimension and no
       // block left for this unit. Local extent in d then becomes 0.
       l_extents[d] = min_local_blocks_d * blocksize_d;
@@ -1273,7 +1121,8 @@ private:
         auto last_block_unit_d = (num_blocks_d % num_units_d == 0)
                                  ? num_units_d - 1
                                  : (num_blocks_d % num_units_d) - 1;
-        DASH_LOG_TRACE_VAR("Pattern.local_extents.d", last_block_unit_d);
+        DASH_LOG_TRACE_VAR("Pattern.local_extents.d", 
+                           last_block_unit_d);
         DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_add_blocks);
         if (unit_ts_coord < num_add_blocks) {
           // Unit is assigned to an additional block:
@@ -1284,7 +1133,8 @@ private:
           // If the last block in the dimension is underfilled and
           // assigned to the local unit, subtract the missing extent:
           SizeType undfill_blocksize_d = underfilled_blocksize(d);
-          DASH_LOG_TRACE_VAR("Pattern.local_extents", undfill_blocksize_d);
+          DASH_LOG_TRACE_VAR("Pattern.local_extents", 
+                             undfill_blocksize_d);
           l_extents[d] -= undfill_blocksize_d;
         }
       }
@@ -1327,59 +1177,6 @@ private:
     return unit_id;
   }
 };
-
-#if PATTERN_ITERATOR
-
-// To provide 
-//
-// dash::for_each(
-//   container.pattern().begin(),
-//   container.pattern().end());
-
-/**
- * Iterator interface to types implementing the Pattern concept.
- *
- * \see DashPatternConcept
- */
-template<typename PatternType>
-class PatternIterator {
-private:
-  typedef PatternIterator<PatternType> self_f;
-  typedef PatternType::size_type size_type;
-  typedef PatternType::index_type index_type;
-
-public:
-  typedef std::pair<dart_unit_t, PatternType::index_type>
-    value_type;
-
-public:
-  PatternIterator(
-    const PatternType & pattern,
-    size_t index = 0)
-  : _pattern(pattern),
-    _index(index) {
-  }
-
-  self_t & operator++() {
-    ++_index;
-    return *this;
-  }
-
-  self_t & operator--() {
-    --_index;
-    return *this;
-  }
-
-  value_type operator*() {
-    return std::make_pair(unit, local_index);
-  }
-
-private:
-  const PatternType & _pattern;
-  size_t _index = 0;
-};
-
-#endif
 
 } // namespace dash
 
