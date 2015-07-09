@@ -54,6 +54,5 @@ int main(int argc, char* argv[])
     for( auto el: arr1 ) { cout<<el<<" "; } cout<<endl;	  
   }
 
-
   dash::finalize();
 }
