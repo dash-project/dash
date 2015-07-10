@@ -67,10 +67,9 @@ public:
 
   operator GlobPtr<ElementType>() const {
     auto glob_coords = m_pattern->coords(m_idx);
-    auto unit        = m_pattern->unit_at(glob_coords);
-    auto local_index = m_pattern->at(glob_coords);
+    auto local_pos   = m_pattern->at_unit(glob_coords);
     GlobPtr<ElementType> gptr =
-      m_globmem->index_to_gptr(unit, local_index);
+      m_globmem->index_to_gptr(local_pos.unit, local_pos.index);
     return gptr;
   }
 
@@ -79,16 +78,15 @@ public:
    *
    * \return  A global reference to the element at the iterator's position
    */
-  GlobRef<ElementType> operator*() {
+  GlobRef<ElementType> operator*() const {
     auto glob_coords = m_pattern->coords(m_idx);
-    auto unit        = m_pattern->unit_at(glob_coords);
-    auto local_index = m_pattern->at(glob_coords);
+    auto local_pos   = m_pattern->at_unit(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.*", m_idx);
-    DASH_LOG_TRACE_VAR("GlobIter.*", unit);
-    DASH_LOG_TRACE_VAR("GlobIter.*", local_index);
+    DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
     // Global pointer to element at given position:
     GlobPtr<ElementType> gptr =
-      m_globmem->index_to_gptr(unit, local_index);
+      m_globmem->index_to_gptr(local_pos.unit, local_pos.index);
     // Global reference to element at given position:
     return GlobRef<ElementType>(gptr);
   }  
@@ -101,14 +99,13 @@ public:
     /// The global position of the element
     gptrdiff_t global_index) const {
     auto glob_coords = m_pattern->coords(global_index);
-    auto unit        = m_pattern->unit_at(glob_coords);
-    auto local_index = m_pattern->at(glob_coords);
+    auto local_pos   = m_pattern->at_unit(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.[]", global_index);
-    DASH_LOG_TRACE_VAR("GlobIter.[]", unit);
-    DASH_LOG_TRACE_VAR("GlobIter.[]", local_index);
+    DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.index);
     // Global pointer to element at given position:
     GlobPtr<ElementType> gptr =
-      m_globmem->index_to_gptr(unit, local_index);
+      m_globmem->index_to_gptr(local_pos.unit, local_pos.index);
     // Global reference to element at given position:
     return GlobRef<ElementType>(gptr);
   }
@@ -118,8 +115,7 @@ public:
    * the calling unit's local memory.
    */
   bool is_local() const {
-    Team & team = m_pattern->team();
-    return m_pattern->is_local(m_idx, team.myid());
+    return m_pattern->is_local(m_idx);
   }
 
   /**

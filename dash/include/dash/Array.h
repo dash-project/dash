@@ -8,6 +8,7 @@
 #ifndef ARRAY_H_INCLUDED
 #define ARRAY_H_INCLUDED
 
+#include <dash/Types.h>
 #include <dash/GlobMem.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
@@ -112,36 +113,55 @@ public:
   
 private:
   Array<T, IndexType, PatternType> * m_array;
+  T * m_lbegin;
+  T * m_lend;
   
 public:
+  /**
+   * Default constructor.
+   */
+  LocalProxyArray()
+  : m_array(nullptr),
+    m_lbegin(nullptr),
+    m_lend(nullptr) {
+  }
+
   /**
    * Constructor, creates a local access proxy for the given array.
    */
   LocalProxyArray(
     Array<T, IndexType, PatternType> * array)
-  : m_array(array) {
+  : m_array(array),
+    m_lbegin(array->lbegin()),
+    m_lend(array->lend()) {
   }
   
   /**
    * Pointer to initial local element in the array.
    */
   T * begin() noexcept {
-    return m_array->lbegin();
+    return m_lbegin;
   }
   
+  /**
+   * Pointer to initial local element in the array.
+   */
   const T * begin() const noexcept {
-    return m_array->lbegin();
+    return m_lbegin;
   }
   
   /**
    * Pointer past final local element in the array.
    */
   T * end() noexcept {
-    return m_array->lend();
+    return m_lend;
   }
   
+  /**
+   * Pointer past final local element in the array.
+   */
   const T * end() const noexcept {
-    return m_array->lend();
+    return m_lend;
   }
 
   /**
@@ -154,7 +174,14 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  T & operator[](size_type n) {
+  inline T & operator[](size_type n) {
+    return begin()[n];
+  }
+  
+  /**
+   * Subscript operator, access to local array element at given position.
+   */
+  constexpr const T & operator[](size_type n) const {
     return begin()[n];
   }
 
@@ -168,7 +195,7 @@ public:
     // Get local offset
     auto lptrdiff = lptr - begin();
     // Add local offset to global begin pointer
-    gptr += static_cast<long long>(lptrdiff);
+    gptr += static_cast<dash::gptr_diff_t>(lptrdiff);
     return gptr;
   }
 };
@@ -181,10 +208,13 @@ public:
  *
  * \concept{DashContainerConcept}
  * \concept{DashArrayConcept}
+ *
+ * Note: Template parameter IndexType could be deduced from pattern type:
+ *       PatternT::index_type
  */
 template<
   typename ElementType,
-  typename IndexType   = long long,
+  typename IndexType   = dash::default_index_t,
   class PatternType    = Pattern<1, ROW_MAJOR, IndexType> >
 class Array {
 private:
@@ -199,21 +229,24 @@ public:
   /// Derive size type from given signed index / gptrdiff type
   typedef typename std::make_unsigned<IndexType>::type difference_type;
 
-  typedef       GlobIter<value_type>                          iterator;
-  typedef const GlobIter<value_type>                    const_iterator;
+  typedef       GlobIter<value_type, PatternType>             iterator;
+  typedef const GlobIter<value_type, PatternType>       const_iterator;
   typedef std::reverse_iterator<      iterator>       reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
   
   typedef       GlobRef<value_type>                          reference;
   typedef const GlobRef<value_type>                    const_reference;
   
-  typedef       GlobIter<value_type>                           pointer;
-  typedef const GlobIter<value_type>                     const_pointer;
+  typedef       GlobIter<value_type, PatternType>              pointer;
+  typedef const GlobIter<value_type, PatternType>        const_pointer;
 
 /// Public types as required by dash container concept
 public:
   /// The type of the pattern used to distribute array elements to units
-  typedef PatternType pattern_type;
+  typedef PatternType
+    pattern_type;
+  typedef LocalProxyArray<value_type, IndexType, PatternType>
+    local_type;
   
 private:
   typedef dash::GlobMem<value_type> GlobMem_t;
@@ -239,9 +272,15 @@ private:
   ElementType        * m_lbegin;
   /// Native pointer past last local element in the array
   ElementType        * m_lend;
+
+public:
+  /// Local proxy object enables arr.local to be used in range-based for
+  /// loops.
+  local_type           local;
   
 public:
-/* Check requirements on element type 
+/* 
+   Check requirements on element type 
    is_trivially_copyable is not implemented presently, and is_trivial
    is too strict (e.g. fails on std::pair).
 
@@ -251,19 +290,20 @@ public:
      "Element type must be trivially copyable");
 */
 
-  /// Local proxy object enables arr.local to be used in range-based for
-  /// loops
-  LocalProxyArray<value_type, IndexType, PatternType> local;
-
 public:
+  /**
+   * Default constructor, for delayed allocation.
+   *
+   * Sets the associated team to DART_TEAM_NULL for global array instances
+   * that are declared before \c dash::Init().
+   */
   Array(
-    Team & team = dash::Team::All())
+    Team & team = dash::Team::Null())
   : m_team(team),
     m_pattern(0, dash::BLOCKED, team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0),
-    local(this) {
+    m_lcapacity(0) {
     DASH_LOG_TRACE("Array()", "default constructor");
   }
 
@@ -271,15 +311,14 @@ public:
    * Constructor, specifies distribution type explicitly.
    */
   Array(
-    size_t nelem,
+    size_type nelem,
     dash::DistributionSpec<1> distribution,
     Team & team = dash::Team::All())
   : m_team(team),
     m_pattern(nelem, distribution, team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0),
-    local(this) {
+    m_lcapacity(0) {
     DASH_LOG_TRACE("Array()", nelem);
     allocate(m_pattern);
   }  
@@ -293,8 +332,7 @@ public:
     m_pattern(pattern),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0),
-    local(this) {
+    m_lcapacity(0) {
     DASH_LOG_TRACE("Array()", "pattern instance constructor");
     allocate(m_pattern);
   }
@@ -303,7 +341,7 @@ public:
    * Delegating constructor, specifies the size of the array.
    */
   Array(
-    size_t nelem,
+    size_type nelem,
     Team & team = dash::Team::All())
   : Array(nelem, dash::BLOCKED, team) {
     DASH_LOG_TRACE("Array()", "finished delegating constructor");
@@ -391,7 +429,7 @@ public:
     /// The position of the element to return
     size_type global_index) {
     DASH_LOG_TRACE("Array.[]=", global_index);
-    return begin()[global_index];
+    return m_begin[global_index];
   }
 
   /**
@@ -404,7 +442,7 @@ public:
     /// The position of the element to return
     size_type global_index) const {
     DASH_LOG_TRACE("Array.[]", global_index);
-    return begin()[global_index];
+    return m_begin[global_index];
   }
 
   /**
@@ -425,7 +463,7 @@ public:
           << " is out of range " << size() 
           << " in Array.at()" );
     }
-    return begin()[global_pos];
+    return m_begin[global_pos];
   }
 
   /**
@@ -446,7 +484,7 @@ public:
           << " is out of range " << size() 
           << " in Array.at()" );
     }
-    return begin()[global_pos];
+    return m_begin[global_pos];
   }
 
   /**
@@ -539,8 +577,9 @@ public:
   }
 
   bool allocate(
-    size_t nelem,
-    dash::DistributionSpec<1> distribution) {
+    size_type nelem,
+    dash::DistributionSpec<1> distribution,
+    dash::Team & team = dash::Team::All()) {
     DASH_LOG_TRACE("Array.allocate()", nelem);
     // Check requested capacity:
     if (nelem == 0) {
@@ -548,8 +587,15 @@ public:
         dash::exception::InvalidArgument,
         "Tried to allocate dash::Array with size 0");
     }
-    DASH_LOG_TRACE("Array.allocate", "initializing pattern");
-    m_pattern = PatternType(nelem, distribution, m_team);
+    if (m_team == dash::Team::Null()) {
+      DASH_LOG_TRACE("Array.allocate",
+                     "initializing pattern with Team::All()");
+      m_pattern = PatternType(nelem, distribution, team);
+    } else {
+      DASH_LOG_TRACE("Array.allocate",
+                     "initializing pattern with initial team");
+      m_pattern = PatternType(nelem, distribution, m_team);
+    }
     return allocate(m_pattern);
   }
 
@@ -592,6 +638,7 @@ private:
     DASH_LOG_TRACE_VAR("Array.allocate", m_size);
     DASH_LOG_TRACE_VAR("Array.allocate", m_lsize);
     DASH_LOG_TRACE("Array.allocate() finished");
+    local       = local_type(this);
     return true;
   }
 };

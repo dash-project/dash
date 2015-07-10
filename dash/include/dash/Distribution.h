@@ -1,6 +1,7 @@
 #ifndef DASH__DISTRIBUTION_H_
 #define DASH__DISTRIBUTION_H_
 
+#include <dash/Types.h>
 #include <dash/Enums.h>
 #include <dash/internal/Logging.h>
 
@@ -22,7 +23,7 @@ namespace dash {
 class Distribution {
 public:
   dash::internal::DistributionType type;
-  size_t blocksz;
+  dash::default_size_t blocksz;
 
   /**
    * Constructor, initializes Distribution with distribution
@@ -37,9 +38,10 @@ public:
    * Constructor, initializes Distribution with a
    * distribution type and a block size.
    */
+  template <typename SizeType>
   Distribution(
     dash::internal::DistributionType distType,
-    size_t blockSize)
+    SizeType blockSize)
   : type(distType),
     blocksz(blockSize) {
   }
@@ -48,8 +50,8 @@ public:
    * Resolve the block coordinate for a given local index
    * in the distribution's dimension.
    */
-  template< typename IndexType, typename SizeType>
-  IndexType local_index_to_block_coord(
+  template <typename IndexType, typename SizeType>
+  constexpr IndexType local_index_to_block_coord(
     // The unit's offset in the distribution's dimension
     // within the global team specification
     IndexType unit_teamspec_coord,
@@ -103,8 +105,8 @@ public:
    * The maximum number of blocks local to a single unit within an
    * extent for a given total number of units.
    */
-  template<typename SizeType>
-  SizeType max_local_blocks_in_range(
+  template <typename SizeType>
+  constexpr SizeType max_local_blocks_in_range(
     /// Number of elements to distribute
     SizeType range,
     /// Number of units to which elements are distributed
@@ -138,8 +140,8 @@ public:
    * The maximum size of a single block within an extent for
    * a given total number of units.
    */
-  template< typename IndexType, typename SizeType>
-  IndexType max_blocksize_in_range(
+  template <typename IndexType, typename SizeType>
+  constexpr IndexType max_blocksize_in_range(
     /// Number of elements to distribute
     IndexType range,
     /// Number of units to which elements are distributed
@@ -167,9 +169,9 @@ public:
    * Resolve the associated unit id of the given block offset.
    */
   template< typename IndexType, typename SizeType>
-  SizeType block_coord_to_unit_offset(
+  constexpr SizeType block_coord_to_unit_offset(
     IndexType block_coord,
-    unsigned int dimension,
+    dim_t dimension,
     SizeType num_units) const {
     switch (type) {
       case dash::internal::DIST_NONE:
