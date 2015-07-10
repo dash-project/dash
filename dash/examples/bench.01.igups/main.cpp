@@ -11,6 +11,7 @@
 #include <vector>
 #include <deque>
 #include <iostream>
+#include <iomanip>
 
 using namespace std;
 
@@ -36,8 +37,8 @@ void validate(Iter begin, Iter end, unsigned, unsigned);
 void perform_test(unsigned ELEM_PER_UNIT, unsigned REPEAT);
 
 double gups(unsigned N, double dur, 
-	    unsigned ELEM_PER_UNIT, 
-	    unsigned REPEAT) {
+      unsigned ELEM_PER_UNIT, 
+      unsigned REPEAT) {
   double res = (double) N * ELEM_PER_UNIT * REPEAT;
   res *= 1.0e-9; 
   res /= dur;
@@ -75,26 +76,27 @@ int main(int argc, char* argv[])
 
 
 void perform_test(unsigned ELEM_PER_UNIT,
-		  unsigned REPEAT)
+      unsigned REPEAT)
 {
   auto size = dash::size();
 
   if( ELEM_PER_UNIT==0 ) {
     if(dash::myid()==0 ) {
-      cout<<ELEM_PER_UNIT<<","<<REPEAT;
-      cout<<","<<"dash_glob_iter";
-      cout<<","<<"dash_local_iter";
-      cout<<","<<"dash_local_subscript";
-      cout<<","<<"dash_local_pointer";
-      cout<<","<<"stl_vector";
-      cout<<","<<"stl_deque";
-      cout<<","<<"raw_array";
-      cout<<endl;
+      cout << std::setw(10) << "elem/unit";
+      cout << "," << std::setw(10) << "iterations";
+      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash g_it";
+      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash l_it";
+      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash l[]";
+      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash l*";
+      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "stl vector";
+      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "stl deque";
+      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "raw array";
+      cout << endl;
     }
     return;
   }
   
-  dash::Array<int> arr(ELEM_PER_UNIT*size);
+  dash::Array<int> arr(ELEM_PER_UNIT * size);
   
   double t1 = test_dash_global_iter(arr, ELEM_PER_UNIT, REPEAT);
   double t2 = test_dash_local_iter(arr, ELEM_PER_UNIT, REPEAT);
@@ -116,14 +118,15 @@ void perform_test(unsigned ELEM_PER_UNIT,
     double gups6 = gups(size, t6, ELEM_PER_UNIT, REPEAT);
     double gups7 = gups(size, t7, ELEM_PER_UNIT, REPEAT);
 
-    cout<<ELEM_PER_UNIT<<","<<REPEAT;
-    cout<<","<<gups1;
-    cout<<","<<gups2;
-    cout<<","<<gups3;
-    cout<<","<<gups4;
-    cout<<","<<gups5;
-    cout<<","<<gups6;
-    cout<<","<<gups7;
+    cout << std::setw(10) << ELEM_PER_UNIT;
+    cout << "," << std::setw(10) << REPEAT;
+    cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups1;
+    cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups2;
+    cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups3;
+    cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups4;
+    cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups5;
+    cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups6;
+    cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups7;
     cout<<endl;
 
     /*
@@ -141,8 +144,8 @@ void perform_test(unsigned ELEM_PER_UNIT,
 
 
 void init_array(dash::Array<TYPE>& arr,
-		unsigned ELEM_PER_UNIT, 
-		unsigned REPEAT)		    
+    unsigned ELEM_PER_UNIT, 
+    unsigned REPEAT)        
 {
   auto myid = dash::myid();
   auto size = dash::size();
@@ -156,34 +159,29 @@ void init_array(dash::Array<TYPE>& arr,
 }
 
 void validate_array(dash::Array<TYPE>& arr,
-		    unsigned ELEM_PER_UNIT, 
-		    unsigned REPEAT)		    
+        unsigned ELEM_PER_UNIT, 
+        unsigned REPEAT)        
 {
   arr.barrier();
   if(dash::myid()==0) {
     validate(arr.begin(), arr.end(), 
-	     ELEM_PER_UNIT, REPEAT);
+       ELEM_PER_UNIT, REPEAT);
   }
 }
 
 double test_dash_global_iter(dash::Array<TYPE>& a,
-			    unsigned ELEM_PER_UNIT, 
-			    unsigned REPEAT)
+          unsigned ELEM_PER_UNIT, 
+          unsigned REPEAT)
 {
   init_array(a, ELEM_PER_UNIT, REPEAT);
 
   double tstart, tend;
   TIMESTAMP(tstart);
-  for(auto i=0; i<REPEAT; i++ ) {
-    for(auto it=a.begin(); it!=a.end(); it++) {
-      if( it.is_local() ) {
-	(*it)=(*it)+1;
+  for (auto i = 0; i < REPEAT; ++i) {
+    for (auto it = a.begin(); it != a.end(); ++it) {
+      if (it.is_local()) {
+        ++(*it);
       }
-
-      /*
-      if( (*it).is_local() ) 
-	(*it)=(*it)+1;
-      */
     }
   }
   TIMESTAMP(tend);
@@ -193,16 +191,17 @@ double test_dash_global_iter(dash::Array<TYPE>& a,
 }
 
 double test_dash_local_iter(dash::Array<TYPE>& a,
-			    unsigned ELEM_PER_UNIT, 
-			    unsigned REPEAT)
+          unsigned ELEM_PER_UNIT, 
+          unsigned REPEAT)
 {
   init_array(a, ELEM_PER_UNIT, REPEAT);
 
   double tstart, tend;
   TIMESTAMP(tstart);
-  for(auto i=0; i<REPEAT; i++ ) {
-    for(auto it=a.lbegin(); it!=a.lend(); it++) {
-      (*it)++;
+  auto lend = a.lend();
+  for (auto i = 0; i < REPEAT; i++) {
+    for (auto it = a.lbegin(); it != lend; ++it) {
+      ++(*it); // Same as ++(a.lbegin()[x]);
     }
   }
   TIMESTAMP(tend);
@@ -212,17 +211,22 @@ double test_dash_local_iter(dash::Array<TYPE>& a,
 }
 
 double test_dash_local_subscript(dash::Array<TYPE>& a,
-				 unsigned ELEM_PER_UNIT, 
-				 unsigned REPEAT)
+         unsigned ELEM_PER_UNIT, 
+         unsigned REPEAT)
 {
   init_array(a, ELEM_PER_UNIT, REPEAT);
 
   double tstart, tend;
   TIMESTAMP(tstart);
   auto loc = a.local;
-  for(auto i=0; i<REPEAT; i++ ) {
-    for(auto j=0; j<ELEM_PER_UNIT/*j<arr.local.size()*/; j++ ) {
-      loc[j]++;
+  for (auto i = 0; i < REPEAT; ++i) {
+    for (auto j = 0; j < ELEM_PER_UNIT; ++j) {
+// TODO: 
+// Clarify why this has same efficiency as local pointer
+// and local iterator:
+//    ++(loc.begin()[j]);
+// and this does not:
+      ++(loc[j]);
     }
   }  
   TIMESTAMP(tend);  
@@ -233,8 +237,8 @@ double test_dash_local_subscript(dash::Array<TYPE>& a,
 }
 
 double test_dash_local_pointer(dash::Array<TYPE>& a,
-			       unsigned ELEM_PER_UNIT, 
-			       unsigned REPEAT)
+             unsigned ELEM_PER_UNIT, 
+             unsigned REPEAT)
 {
   init_array(a, ELEM_PER_UNIT, REPEAT);
   
@@ -245,7 +249,7 @@ double test_dash_local_pointer(dash::Array<TYPE>& a,
 
   for(auto i=0; i<REPEAT; i++ ) {
     for(auto j=lbegin; j!=lend; j++ ) {
-      (*j)++;
+      ++(*j);
     }
   }  
   TIMESTAMP(tend);  
@@ -257,7 +261,7 @@ double test_dash_local_pointer(dash::Array<TYPE>& a,
 
 /*
 double test_stl_array(unsigned ELEM_PER_UNIT, 
-		      unsigned REPEAT)
+          unsigned REPEAT)
 {
   double tstart, tend;
   
@@ -275,14 +279,14 @@ double test_stl_array(unsigned ELEM_PER_UNIT,
   TIMESTAMP(tend);  
 
   validate(arr.begin(), arr.end(), 
-	   ELEM_PER_UNIT, REPEAT););
+     ELEM_PER_UNIT, REPEAT););
 
   return tend-tstart;
 }
 */
 
 double test_stl_vector(unsigned ELEM_PER_UNIT, 
-		       unsigned REPEAT)
+           unsigned REPEAT)
 {
   double tstart, tend;
   
@@ -300,13 +304,13 @@ double test_stl_vector(unsigned ELEM_PER_UNIT,
   TIMESTAMP(tend);  
 
   validate(arr.begin(), arr.end(),
-	   ELEM_PER_UNIT, REPEAT );
+     ELEM_PER_UNIT, REPEAT );
   return tend-tstart;
 }
 
 
 double test_stl_deque(unsigned ELEM_PER_UNIT, 
-		      unsigned REPEAT)
+          unsigned REPEAT)
 {
   double tstart, tend;
   
@@ -329,7 +333,7 @@ double test_stl_deque(unsigned ELEM_PER_UNIT,
 }
 
 double test_raw_array(unsigned ELEM_PER_UNIT, 
-		      unsigned REPEAT)
+          unsigned REPEAT)
 {
   double tstart, tend;
   
@@ -347,15 +351,15 @@ double test_raw_array(unsigned ELEM_PER_UNIT,
   TIMESTAMP(tend);  
 
   validate(arr, arr+ELEM_PER_UNIT, 
-	   ELEM_PER_UNIT, REPEAT);
+     ELEM_PER_UNIT, REPEAT);
   return tend-tstart;
 }
 
 
 template<typename Iter>
 void validate(Iter begin, Iter end, 
-	      unsigned ELEM_PER_UNIT, 
-	      unsigned REPEAT)
+        unsigned ELEM_PER_UNIT, 
+        unsigned REPEAT)
 {
   bool valid=true; auto i=0;
   for(auto it=begin; it!=end; it++, i++) {

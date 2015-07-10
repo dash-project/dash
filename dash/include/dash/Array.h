@@ -8,6 +8,7 @@
 #ifndef ARRAY_H_INCLUDED
 #define ARRAY_H_INCLUDED
 
+#include <dash/Types.h>
 #include <dash/GlobMem.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
@@ -112,36 +113,55 @@ public:
   
 private:
   Array<T, IndexType, PatternType> * m_array;
+  T * m_lbegin;
+  T * m_lend;
   
 public:
+  /**
+   * Default constructor.
+   */
+  LocalProxyArray()
+  : m_array(nullptr),
+    m_lbegin(nullptr),
+    m_lend(nullptr) {
+  }
+
   /**
    * Constructor, creates a local access proxy for the given array.
    */
   LocalProxyArray(
     Array<T, IndexType, PatternType> * array)
-  : m_array(array) {
+  : m_array(array),
+    m_lbegin(array->lbegin()),
+    m_lend(array->lend()) {
   }
   
   /**
    * Pointer to initial local element in the array.
    */
   T * begin() noexcept {
-    return m_array->lbegin();
+    return m_lbegin;
   }
   
+  /**
+   * Pointer to initial local element in the array.
+   */
   const T * begin() const noexcept {
-    return m_array->lbegin();
+    return m_lbegin;
   }
   
   /**
    * Pointer past final local element in the array.
    */
   T * end() noexcept {
-    return m_array->lend();
+    return m_lend;
   }
   
+  /**
+   * Pointer past final local element in the array.
+   */
   const T * end() const noexcept {
-    return m_array->lend();
+    return m_lend;
   }
 
   /**
@@ -154,7 +174,14 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  T & operator[](size_type n) {
+  inline T & operator[](size_type n) {
+    return begin()[n];
+  }
+  
+  /**
+   * Subscript operator, access to local array element at given position.
+   */
+  constexpr const T & operator[](size_type n) const {
     return begin()[n];
   }
 
@@ -168,7 +195,7 @@ public:
     // Get local offset
     auto lptrdiff = lptr - begin();
     // Add local offset to global begin pointer
-    gptr += static_cast<long long>(lptrdiff);
+    gptr += static_cast<dash::gptr_diff_t>(lptrdiff);
     return gptr;
   }
 };
@@ -182,7 +209,7 @@ public:
  * \concept{DashContainerConcept}
  * \concept{DashArrayConcept}
  *
- * TODO: Template parameter IndexType could be deduced from pattern type:
+ * Note: Template parameter IndexType could be deduced from pattern type:
  *       PatternT::index_type
  */
 template<
@@ -276,8 +303,7 @@ public:
     m_pattern(0, dash::BLOCKED, team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0),
-    local(this) {
+    m_lcapacity(0) {
     DASH_LOG_TRACE("Array()", "default constructor");
   }
 
@@ -292,8 +318,7 @@ public:
     m_pattern(nelem, distribution, team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0),
-    local(this) {
+    m_lcapacity(0) {
     DASH_LOG_TRACE("Array()", nelem);
     allocate(m_pattern);
   }  
@@ -307,8 +332,7 @@ public:
     m_pattern(pattern),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0),
-    local(this) {
+    m_lcapacity(0) {
     DASH_LOG_TRACE("Array()", "pattern instance constructor");
     allocate(m_pattern);
   }
@@ -405,7 +429,7 @@ public:
     /// The position of the element to return
     size_type global_index) {
     DASH_LOG_TRACE("Array.[]=", global_index);
-    return begin()[global_index];
+    return m_begin[global_index];
   }
 
   /**
@@ -418,7 +442,7 @@ public:
     /// The position of the element to return
     size_type global_index) const {
     DASH_LOG_TRACE("Array.[]", global_index);
-    return begin()[global_index];
+    return m_begin[global_index];
   }
 
   /**
@@ -439,7 +463,7 @@ public:
           << " is out of range " << size() 
           << " in Array.at()" );
     }
-    return begin()[global_pos];
+    return m_begin[global_pos];
   }
 
   /**
@@ -460,7 +484,7 @@ public:
           << " is out of range " << size() 
           << " in Array.at()" );
     }
-    return begin()[global_pos];
+    return m_begin[global_pos];
   }
 
   /**
@@ -614,6 +638,7 @@ private:
     DASH_LOG_TRACE_VAR("Array.allocate", m_size);
     DASH_LOG_TRACE_VAR("Array.allocate", m_lsize);
     DASH_LOG_TRACE("Array.allocate() finished");
+    local       = local_type(this);
     return true;
   }
 };

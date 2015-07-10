@@ -269,12 +269,15 @@ public:
   /**
    * Resolve the global pointer from an element position in a unit's
    * local memory.
+   *
+   * TODO: Clarify if dart-calls can be avoided if GlobRef is local.
    */
+  template <typename IndexType>
   GlobPtr<TYPE> index_to_gptr(
     /// The unit id
-    size_t unit,
+    dart_unit_t unit,
     /// The unit's local address offset
-    long long local_index) const {
+    IndexType local_index) const {
     // TODO: Why not like this:
 #if 0
     GlobPtr<TYPE> gptr = begin();
@@ -294,22 +297,6 @@ public:
 
     return GlobPtr<TYPE>(gptr);
   }
-#if 0
-  /**
-   * Resolve the global pointer from a unit's local pointer
-   */
-  GlobPtr<TYPE> ptr_to_gptr(
-    /// The unit id
-    dart_unit_t unit,
-    /// The unit's local address
-    const TYPE * local_ptr) const {
-    GlobPtr<TYPE> gptr = begin();
-    gptr.set_unit(unit);
-    auto lptrdiff = local_ptr - begin();
-    gptr += static_cast<long long>(lptrdiff);
-    return gptr;
-  }
-#endif
 };
 
 template<typename T>

@@ -5,7 +5,8 @@
 #include <iostream>
 
 #include "ArrayTest.h"
-#include "PatternTest.h"
+#include "BlockPatternTest.h"
+#include "TilePatternTest.h"
 #include "CartesianTest.h"
 #include "TeamSpecTest.h"
 
