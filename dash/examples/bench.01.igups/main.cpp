@@ -198,8 +198,11 @@ double test_dash_local_iter(dash::Array<TYPE>& a,
   TIMESTAMP(tstart);
   auto lend = a.lend();
   for (auto i = 0; i < REPEAT; i++) {
-    for (auto it = a.lbegin(); it != lend; ++it) {
-      ++(*it); // Same as ++(a.lbegin()[x]);
+    int x = 0;
+    for (auto it = a.lbegin(); it != lend; ++it, ++x) {
+      ++(*it);
+//    Same as 
+//    ++(a.lbegin()[x]);
     }
   }
   TIMESTAMP(tend);
@@ -224,7 +227,7 @@ double test_dash_local_subscript(dash::Array<TYPE>& a,
 // and local iterator:
 //    ++(loc.begin()[j]);
 // and this does not:
-      ++(loc[j]);
+      ++loc[j];
     }
   }  
   TIMESTAMP(tend);  

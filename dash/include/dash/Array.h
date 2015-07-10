@@ -18,6 +18,8 @@
 #include <dash/Shared.h>
 #include <dash/Exception.h>
 
+#include <iterator>
+
 /**
  * \defgroup  DashContainerConcept  Container Concept
  * Concept for iterable distributed containers
@@ -106,85 +108,89 @@ template<
   typename T,
   typename IndexType,
   class PatternType>
-class LocalProxyArray {
-public: 
-  /// Derive size type from given signed index / gptrdiff type
-  typedef typename std::make_unsigned<IndexType>::type size_type;
-  
+class LocalProxyArray :
+  public std::iterator<std::random_access_iterator_tag,
+                       T, IndexType, T*, T&> {
 private:
-  Array<T, IndexType, PatternType> * m_array;
-  T * m_lbegin;
-  T * m_lend;
+  typedef LocalProxyArray<T, IndexType, PatternType>
+    self_t;
+
+public:
+  template <typename T_, typename I_, typename P_>
+    friend class LocalProxyArray;
+
+public: 
+  typedef T                                                  value_type;
+  typedef typename std::make_unsigned<IndexType>::type        size_type;
+  typedef IndexType                                     difference_type;
+
+  typedef typename std::iterator_traits<self_t>::reference    reference;
+  typedef const T &                                     const_reference;
+
+  typedef typename std::iterator_traits<self_t>::pointer        pointer;
+  typedef const T *                                       const_pointer;
+
+private:
+  Array<T, IndexType, PatternType> * const m_array;
   
 public:
-  /**
-   * Default constructor.
-   */
-  LocalProxyArray()
-  : m_array(nullptr),
-    m_lbegin(nullptr),
-    m_lend(nullptr) {
-  }
-
   /**
    * Constructor, creates a local access proxy for the given array.
    */
   LocalProxyArray(
-    Array<T, IndexType, PatternType> * array)
-  : m_array(array),
-    m_lbegin(array->lbegin()),
-    m_lend(array->lend()) {
+    Array<T, IndexType, PatternType> * const array)
+  : m_array(array) {
+  }
+
+  /**
+   * Pointer to initial local element in the array.
+   */
+  pointer begin() noexcept {
+    return m_array->lbegin();
   }
   
   /**
    * Pointer to initial local element in the array.
    */
-  T * begin() noexcept {
-    return m_lbegin;
-  }
-  
-  /**
-   * Pointer to initial local element in the array.
-   */
-  const T * begin() const noexcept {
-    return m_lbegin;
+  constexpr const_pointer begin() const noexcept {
+    return m_array->lbegin();
   }
   
   /**
    * Pointer past final local element in the array.
    */
-  T * end() noexcept {
-    return m_lend;
+  pointer end() noexcept {
+    return m_array->lend();
   }
   
   /**
    * Pointer past final local element in the array.
    */
-  const T * end() const noexcept {
-    return m_lend;
+  constexpr const_pointer end() const noexcept {
+    return m_array->lend();
   }
 
   /**
    * Number of array elements in local memory.
    */
-  size_type size() const noexcept {
+  constexpr size_type size() const noexcept {
     return end() - begin();
   }
   
   /**
    * Subscript operator, access to local array element at given position.
    */
-  inline T & operator[](size_type n) {
-    return begin()[n];
+  constexpr value_type operator[](const size_t n) const {
+    return m_array->lbegin()[n];
   }
-  
+ 
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr const T & operator[](size_type n) const {
-    return begin()[n];
+  reference operator[](const size_t n) {
+    return m_array->lbegin()[n];
   }
-
+ 
   /**
    * Resolve the global pointer for a local pointer.
    */
@@ -303,7 +309,8 @@ public:
     m_pattern(0, dash::BLOCKED, team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0) {
+    m_lcapacity(0),
+    local(this) {
     DASH_LOG_TRACE("Array()", "default constructor");
   }
 
@@ -318,7 +325,8 @@ public:
     m_pattern(nelem, distribution, team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0) {
+    m_lcapacity(0),
+    local(this) {
     DASH_LOG_TRACE("Array()", nelem);
     allocate(m_pattern);
   }  
@@ -332,7 +340,8 @@ public:
     m_pattern(pattern),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0) {
+    m_lcapacity(0),
+    local(this) {
     DASH_LOG_TRACE("Array()", "pattern instance constructor");
     allocate(m_pattern);
   }
@@ -394,28 +403,14 @@ public:
   /**
    * Native pointer to the first local element in the array.
    */
-  ElementType * lbegin() noexcept {
-    return m_lbegin;
-  }
-
-  /**
-   * Native pointer to the first local element in the array.
-   */
-  const ElementType * lbegin() const noexcept {
+  ElementType * const lbegin() const noexcept {
     return m_lbegin;
   }
 
   /**
    * Native pointer to the end of the array.
    */
-  ElementType * lend() noexcept {
-    return m_lend;
-  }
-
-  /**
-   * Native pointer to the end of the array.
-   */
-  const ElementType * lend() const noexcept {
+  ElementType * const lend() const noexcept {
     return m_lend;
   }
 
@@ -638,7 +633,6 @@ private:
     DASH_LOG_TRACE_VAR("Array.allocate", m_size);
     DASH_LOG_TRACE_VAR("Array.allocate", m_lsize);
     DASH_LOG_TRACE("Array.allocate() finished");
-    local       = local_type(this);
     return true;
   }
 };

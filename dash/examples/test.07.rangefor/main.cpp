@@ -29,18 +29,18 @@ void test() {
 
   dash::Array<int> arr1(3113);
 
-  if(myid==0) {
-    for( auto it: arr1 ) {
-      it=33;
+  if (myid == 0) {
+    for (auto it: arr1) {
+      it = 33;
     }
   }
   arr1.barrier();
   
-  if(myid==size-1) {
+  if (myid == size-1) {
     for( auto it: arr1 ) {
-      cout<<it<<" ";
+      cout << it << " ";
     }
-    cout<<endl;
+    cout << endl;
   }  
 }
 
