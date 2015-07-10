@@ -13,13 +13,14 @@
 
 namespace dash {
 
-// forward declarations...
+// Forward declaration
 template<typename T> class GlobMem;
+// Forward declaration
 template<typename T> class GlobPtr;
-
+// Forward declaration
 template<typename T>
 void put_value(const T & newval, const GlobPtr<T> & gptr);
-
+// Forward declaration
 template<typename T>
 void get_value(T* ptr, const GlobPtr<T> & gptr);
 
@@ -61,6 +62,8 @@ public:
   GlobRef<T> & operator=(const T val) {
     DASH_LOG_TRACE_VAR("GlobRef.=()", val);
     DASH_LOG_TRACE_VAR("GlobRef.=", m_gptr);
+    // TODO: Clarify if dart-call can be avoided if
+    //       m_gptr->is_local()
     dash::put_value(val, m_gptr);
     return *this;
   }
@@ -78,9 +81,32 @@ public:
 
   GlobRef<T> & operator++() {
     T val = operator T();
-    val++;
+    ++val;
     operator=(val);
     return *this;
+  }
+
+  GlobRef<T> operator++(int) {
+    GlobRef<T> result = *this;
+    T val = operator T();
+    ++val;
+    operator=(val);
+    return result;
+  }
+
+  GlobRef<T> & operator--() {
+    T val = operator T();
+    --val;
+    operator=(val);
+    return *this;
+  }
+
+  GlobRef<T> operator--(int) {
+    GlobRef<T> result = *this;
+    T val = operator T();
+    --val;
+    operator=(val);
+    return result;
   }
 
 #if 0

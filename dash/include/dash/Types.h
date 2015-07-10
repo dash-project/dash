@@ -17,6 +17,11 @@ typedef int dim_t;
 typedef int default_index_t;
 
 /**
+ * Difference type for global pointers.
+ */
+typedef long long gptr_diff_t;
+
+/**
  * Unsigned integer type used as default for size values.
  */
 typedef typename std::make_unsigned<default_index_t>::type default_size_t;

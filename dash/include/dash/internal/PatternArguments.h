@@ -16,9 +16,10 @@ namespace internal {
 
 /**
  * Extracting size-, distribution- and team specifications from
- * arguments passed to BlockPattern varargs constructor.
+ * arguments passed to pattern varargs constructors.
  *
- * \see BlockPattern<typename ... Args>::BlockPattern(Args && ... args)
+ * \see  Pattern<typename ... Args>::Pattern(Args && ... args)
+ * \see  DashPatternConcept
  */
 template<
   dim_t NumDimensions,
@@ -87,6 +88,15 @@ public:
         "expected " << NumDimensions << ", got " << _argc_dist);
     }
     check_tile_constraints();
+  }
+
+  bool is_tiled() const {
+    for (auto d = 0; d < NumDimensions; ++d) {
+      if (_distspec[d].is_tiled()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   const SizeSpec_t & sizespec() const {

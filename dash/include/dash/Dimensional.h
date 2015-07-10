@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <array>
 
+#include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Team.h>
 #include <dash/Exception.h>
@@ -24,7 +25,7 @@ namespace dash {
  * \see SizeSpec
  * \see CartesianIndexSpace
  */
-template<typename ElementType, size_t NumDimensions>
+template<typename ElementType, dim_t NumDimensions>
 class Dimensional {
 /* 
  * Concept Dimensional:
@@ -80,7 +81,7 @@ public:
    * \param  dimension  The dimension
    * \returns  The value in the given dimension
    */
-  ElementType dim(size_t dimension) const {
+  ElementType dim(dim_t dimension) const {
     if (dimension >= NumDimensions) {
       DASH_THROW(
         dash::exception::OutOfRange,
@@ -97,7 +98,7 @@ public:
    * \param  dimension  The dimension
    * \returns  The value in the given dimension
    */
-  ElementType operator[](size_t dimension) const {
+  ElementType operator[](dim_t dimension) const {
     return _values[dimension];
   }
 
@@ -109,15 +110,15 @@ public:
    * \param  dimension  The dimension
    * \returns  A reference to the value in the given dimension
    */
-  ElementType & operator[](size_t dimension) {
+  ElementType & operator[](dim_t dimension) {
     return _values[dimension];
   }
 
   /**
    * Equality comparison operator.
    */
-  bool operator==(const self_t & other) const {
-    for (size_t d = 0; d < NumDimensions; ++d) {
+  constexpr bool operator==(const self_t & other) const {
+    for (dim_t d = 0; d < NumDimensions; ++d) {
       if (dim(d) != other.dim(d)) return false;
     }
     return true;
@@ -126,14 +127,14 @@ public:
   /**
    * Equality comparison operator.
    */
-  bool operator!=(const self_t & other) const {
+  constexpr bool operator!=(const self_t & other) const {
     return !(*this == other);
   }
  
   /**
    * The number of dimensions of the value.
    */
-  size_t rank() const {
+  dim_t rank() const {
     return NumDimensions;
   }
 
@@ -148,7 +149,7 @@ protected:
  * DistributionSpec describes distribution patterns of all dimensions,
  * \see dash::Distribution.
  */
-template<size_t NumDimensions>
+template<dim_t NumDimensions>
 class DistributionSpec : public Dimensional<Distribution, NumDimensions> {
 public:
   /**
@@ -158,7 +159,7 @@ public:
   DistributionSpec()
   : _is_tiled(false) {
     this->_values[0] = BLOCKED;
-    for (size_t i = 1; i < NumDimensions; ++i) {
+    for (dim_t i = 1; i < NumDimensions; ++i) {
       this->_values[i] = NONE;
     }
   }
@@ -178,7 +179,7 @@ public:
   DistributionSpec(Distribution value, Values ... values)
   : Dimensional<Distribution, NumDimensions>::Dimensional(value, values...),
     _is_tiled(false) {
-    for (size_t i = 1; i < NumDimensions; ++i) {
+    for (dim_t i = 1; i < NumDimensions; ++i) {
       if (this->_values[i].type == dash::internal::DIST_TILE) {
         _is_tiled = true;
         break;
@@ -270,7 +271,7 @@ public:
   ViewSpec()
   : _size(0),
     _rank(NumDimensions) {
-    for (size_t i = 0; i < NumDimensions; i++) {
+    for (dim_t i = 0; i < NumDimensions; i++) {
       ViewPair_t vp { 0, 0 };
       this->_values[i] = vp;
     }
@@ -318,7 +319,7 @@ public:
    * Change the view specification's extent and offset in every dimension.
    */
   void resize(const std::array<ViewPair_t, NumDimensions> & view) {
-    for (size_t i = 0; i < NumDimensions; i++) {
+    for (dim_t i = 0; i < NumDimensions; i++) {
       this->_values[i] = view[i];
     }
     update_size();
@@ -329,7 +330,7 @@ public:
    */
   template<typename SizeType_>
   void resize(const std::array<SizeType_, NumDimensions> & extent) {
-    for (size_t i = 0; i < NumDimensions; i++) {
+    for (dim_t i = 0; i < NumDimensions; i++) {
       this->_values[i].extent = extent[i];
     }
     update_size();
@@ -381,7 +382,7 @@ private:
 
   void update_size() {
     _size = 1;
-    for (size_t i = 0; i < _rank; ++i) {
+    for (dim_t i = 0; i < _rank; ++i) {
       _size *= (this->_values[i].extent -
                 this->_values[i].offset);
     }
