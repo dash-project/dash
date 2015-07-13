@@ -24,13 +24,17 @@ char**dart_sharedmem_local_baseptr_set;
 #endif
 /* Help to do memory management work for local allocation/free */
 struct dart_buddy* dart_localpool;
+int init_by_dart = 0;
 
 dart_ret_t dart_init (int* argc, char*** argv)
 {
 	int initialized;
 	MPI_Initialized(&initialized);
 	if (!initialized)
-		   MPI_Init(argc, argv);
+	{
+		init_by_dart = 1;
+		MPI_Init(argc, argv);
+	}
 
 	int rank, size;
 	uint16_t index;
@@ -207,9 +211,8 @@ dart_ret_t dart_exit ()
 	dart_adapt_teamlist_destroy ();
 	LOG ("%2d: EXIT - Finalization finished", unitid);
 
-	MPI_Finalized(&finalized);
-	if (!finalized)
-		MPI_Finalize();
+	if (init_by_dart)
+		MPI_Finalize ();
 	return DART_OK;
 }
 
