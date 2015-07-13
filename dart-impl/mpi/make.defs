@@ -8,7 +8,7 @@ DART_IF = ../../dart-if/v3.1
 
 ifeq ($(CRAYOS_VERSION),) 
 CC      = mpicc $(OPT_FLAGS) -std=c99
-CXX     = mpic++ $(OPT_FLAGS) -std=c++11
+CXX     = mpiCC $(OPT_FLAGS) -std=c++11
 else  
 CC      = cc $(OPT_FLAGS) -std=c99
 CXX     = CC $(OPT_FLAGS) -std=c++11
