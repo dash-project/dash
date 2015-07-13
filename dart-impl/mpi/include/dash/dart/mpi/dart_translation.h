@@ -13,12 +13,13 @@
 
 /* Global object for one-sided communication on memory region allocated with 'local allocation'. */
 extern MPI_Win dart_win_local_alloc; 
+#ifdef SHAREDMEM_ENABLE
 extern MPI_Win dart_sharedmem_win_local_alloc;
 /** @brief Definition of translation table.
  * 
  *  This global translation table is created for dart collective memory allocation.
  *  Here, several features for translation table are itemized below:
- *
+ **
  *  - created a global collective global memory when a DART program is initiated.
  *
  *  - store the one-to-one correspondence relationship between global pointer and shared memory window.
@@ -27,14 +28,24 @@ extern MPI_Win dart_sharedmem_win_local_alloc;
  * 
  *  @note global pointer (segid) <-> shared memory window (win object), win object should be determined by seg_id uniquely.
  */
-
 typedef struct
 {
 	int16_t seg_id; /* seg_id determines a global pointer uniquely */
 	size_t size;
 	MPI_Aint* disp; /* the address set of the memory location of all the units in certain team. */
+	char**baseptr;
 	MPI_Win win;
 }info_t;
+#else
+typedef struct
+{
+	int16_t seg_id;
+	size_t size;
+	MPI_Aint* disp;
+	char*selfbaseptr;
+}info_t;
+#endif
+
 
 struct node
 {
@@ -79,9 +90,9 @@ int dart_adapt_transtable_remove (int16_t seg_id);
  *  @retval non-negative integer Search successfully.
  *  @retval negative integer Failure.
  */
-
+#ifdef SHAREDMEM_ENABLE
 int dart_adapt_transtable_get_win (int16_t seg_id, MPI_Win *win);
-
+#endif
 /** @brief Query the address of the memory location of the specified rel_unit in specified team.
  *
  *  The output disp_s information targets for the dart inter-node communication, which means
@@ -91,12 +102,18 @@ int dart_adapt_transtable_get_win (int16_t seg_id, MPI_Win *win);
  *  @retval ditto
  */
 
-int dart_adapt_transtable_get_disp (int16_t seg_id, dart_unit_t rel_unit, MPI_Aint* disp_s);
+int dart_adapt_transtable_get_disp (int16_t seg_id, int rel_unit, MPI_Aint *disp_s);
 
 /** @brief Query the length of the global memory block indicated by the specified seg_id.
  *
  *  @retval ditto
  */
+#ifdef SHAREDMEM_ENABLE
+int dart_adapt_transtable_get_baseptr (int16_t seg_id, int rel_unit, char**baseptr);
+#else
+int dart_adapt_transtable_get_selfbaseptr (int16_t seg_id, char**selfbaseptr);
+#endif
+
 int dart_adapt_transtable_get_size (int16_t seg_id, size_t* size);
 
 /** @brief Destroy the translation table associated with the speicified team.

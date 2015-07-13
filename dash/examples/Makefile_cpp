@@ -8,6 +8,14 @@ DASH_ROOT = $(shell cd $(DASH_ROOT_REL);pwd)
 
 include $(DASH_ROOT)/make.defs
 
+ifeq ($(DART_IMPL), mpi)
+     CFLAGS+=-DDART_MPI
+endif
+ifeq ($(DART_IMPL), shmem)
+     CFLAGS+=-DDART_SHMEM
+endif
+
+
 #CFLAGS+=-DDASH_DEBUG
 
 LIBDASH   = $(DASH_ROOT)/src/libdash.a
@@ -20,11 +28,12 @@ PWD  = $(shell basename `pwd`)
 PAT  = $(shell echo -n $(PWD) )
 PROG = $(shell echo -n $(PAT) | cut -d . -f 3)
 
-all : regular ipm 
+all : regular 
+
+ipm : with-ipm
 
 regular : $(LIBDART) $(LIBDASH) $(PROG) 
-
-ipm: $(LIBDART) $(LIBDASH) $(LIBIPM) $(PROG).ipm
+with-ipm: $(LIBDART) $(LIBDASH) $(LIBIPM) $(PROG).ipm
 
 printenv : 
 	 @echo "CXX           = $(CXX)"

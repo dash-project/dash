@@ -8,7 +8,7 @@
 #DART_IMPL   = shmem
 DART_IMPL   = mpi
 
-OPT_FLAGS = -O4
+OPT_FLAGS = -O3
 
 LIBDART_DIR = $(DASH_ROOT)/../dart-impl/$(DART_IMPL)/src
 
