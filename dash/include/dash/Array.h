@@ -17,6 +17,8 @@
 #include <dash/HView.h>
 #include <dash/Shared.h>
 #include <dash/Exception.h>
+#include <dash/Cartesian.h>
+#include <dash/Dimensional.h>
 
 #include <iterator>
 
@@ -125,10 +127,10 @@ public:
   typedef IndexType                                     difference_type;
 
   typedef typename std::iterator_traits<self_t>::reference    reference;
-  typedef const T &                                     const_reference;
+  typedef const reference                               const_reference;
 
   typedef typename std::iterator_traits<self_t>::pointer        pointer;
-  typedef const T *                                       const_pointer;
+  typedef const pointer                                   const_pointer;
 
 private:
   Array<T, IndexType, PatternType> * const m_array;
@@ -145,28 +147,28 @@ public:
   /**
    * Pointer to initial local element in the array.
    */
-  pointer begin() noexcept {
+  constexpr pointer begin() const noexcept {
     return m_array->lbegin();
   }
   
   /**
    * Pointer to initial local element in the array.
    */
-  constexpr const_pointer begin() const noexcept {
+  constexpr const_pointer cbegin() const noexcept {
     return m_array->lbegin();
   }
   
   /**
    * Pointer past final local element in the array.
    */
-  pointer end() noexcept {
+  constexpr pointer end() const noexcept {
     return m_array->lend();
   }
   
   /**
    * Pointer past final local element in the array.
    */
-  constexpr const_pointer end() const noexcept {
+  constexpr const_pointer cend() const noexcept {
     return m_array->lend();
   }
 
@@ -180,17 +182,25 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr value_type operator[](const size_t n) const {
+  constexpr value_type operator[](const size_t & n) const {
     return m_array->lbegin()[n];
   }
  
   /**
    * Subscript operator, access to local array element at given position.
    */
-  reference operator[](const size_t n) {
+  reference operator[](const size_t & n) {
     return m_array->lbegin()[n];
   }
  
+  pointer operator+(const size_t & n) {
+    return (m_array->lbegin()) + n;
+  }
+  pointer operator-(const size_t & n) {
+    return (m_array->lbegin()) - n;
+  }
+
+#if 0
   /**
    * Resolve the global pointer for a local pointer.
    */
@@ -204,6 +214,7 @@ public:
     gptr += static_cast<dash::gptr_diff_t>(lptrdiff);
     return gptr;
   }
+#endif
 };
 
 /**
@@ -253,6 +264,12 @@ public:
     pattern_type;
   typedef LocalProxyArray<value_type, IndexType, PatternType>
     local_type;
+
+private:
+  typedef DistributionSpec<1>
+    DistributionSpec_t;
+  typedef SizeSpec<1, size_type>
+    SizeSpec_t;
   
 private:
   typedef dash::GlobMem<value_type> GlobMem_t;
@@ -306,7 +323,10 @@ public:
   Array(
     Team & team = dash::Team::Null())
   : m_team(team),
-    m_pattern(0, dash::BLOCKED, team),
+    m_pattern(
+      SizeSpec_t(0),
+      DistributionSpec_t(dash::BLOCKED),
+      team),
     m_size(0),
     m_lsize(0),
     m_lcapacity(0),
@@ -319,10 +339,13 @@ public:
    */
   Array(
     size_type nelem,
-    dash::DistributionSpec<1> distribution,
+    const DistributionSpec_t & distribution,
     Team & team = dash::Team::All())
   : m_team(team),
-    m_pattern(nelem, distribution, team),
+    m_pattern(
+      SizeSpec_t(nelem),
+      distribution,
+      team),
     m_size(0),
     m_lsize(0),
     m_lcapacity(0),
@@ -609,22 +632,22 @@ private:
     DASH_LOG_TRACE("Array.allocate()", "pattern", 
                    pattern.memory_layout().extents());
     // Check requested capacity:
-    m_size      = m_pattern.capacity();
+    m_size      = pattern.capacity();
     if (m_size == 0) {
       DASH_THROW(
         dash::exception::InvalidArgument,
         "Tried to allocate dash::Array with size 0");
     }
     // Initialize members:
-    m_lsize     = m_pattern.local_size();
-    m_lcapacity = m_pattern.local_capacity();
+    m_lsize     = pattern.local_size();
+    m_lcapacity = pattern.local_capacity();
     m_myid      = m_team.myid();
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array.allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array.allocate", m_lsize);
     m_globmem   = new GlobMem_t(m_team, m_lcapacity);
     // Global iterators:
-    m_begin     = iterator(m_globmem, m_pattern);
+    m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
     m_lbegin    = m_globmem->lbegin(m_myid);

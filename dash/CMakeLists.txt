@@ -74,8 +74,10 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
       ${CMAKE_CURRENT_SOURCE_DIR}/examples)
     foreach(examplename ${DASH_TEST_DIRECTORIES})
       set(exampletarget ${examplename}.${dart_variant})
-      if(IS_DIRECTORY
+      if (IS_DIRECTORY
          ${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename})
+      if (EXISTS
+         ${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename}/main.cpp)
         add_executable(
           ${exampletarget}
           examples/${examplename}/main.cpp
@@ -83,6 +85,10 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
         include_directories(
           ${CMAKE_SOURCE_DIR}/dash/include
           ${ADD_INCLUDES}
+        )
+        set_target_properties(
+          ${exampletarget} PROPERTIES
+          COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_LOGGING -DDASH_ENABLE_TRACE_LOGGING"
         )
         target_link_libraries(
           ${exampletarget}
@@ -94,6 +100,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
         install(
           TARGETS ${exampletarget}
           DESTINATION bin/dash/examples/${dart_variant})
+      endif()
       endif()
     endforeach(examplename ${DASH_TEST_DIRECTORIES})
   endif()

@@ -71,7 +71,7 @@ public:
   PatternArguments(Args && ... args) {
     static_assert(
       sizeof...(Args) >= NumDimensions,
-      "Invalid number of arguments for BlockPattern::PatternArguments");
+      "Invalid number of arguments for PatternArguments");
     // Parse argument list:
     check_recurse<0>(std::forward<Args>(args)...);
     // Validate number of arguments after parsing:
@@ -116,7 +116,7 @@ private:
   /// BlockPattern matching for extent value of type IndexType.
   template<int count>
   void check(SizeType extent) {
-    DASH_LOG_TRACE("BlockPattern::PatternArguments.check(extent)", extent);
+    DASH_LOG_TRACE("PatternArguments.check(extent)", extent);
     _argc_size++;
     _sizespec.resize(count, extent);
   }
@@ -124,7 +124,7 @@ private:
   /// parameters specifying the distribution pattern.
   template<int count>
   void check(const TeamSpec_t & teamSpec) {
-    DASH_LOG_TRACE("BlockPattern::PatternArguments.check(teamSpec)");
+    DASH_LOG_TRACE("PatternArguments.check(teamSpec)");
     _argc_team++;
     _teamspec   = teamSpec;
   }
@@ -132,7 +132,7 @@ private:
   /// team.
   template<int count>
   void check(dash::Team & team) {
-    DASH_LOG_TRACE("BlockPattern::PatternArguments.check(team)");
+    DASH_LOG_TRACE("PatternArguments.check(team)");
     if (_argc_team == 0) {
       _teamspec = TeamSpec_t(_distspec, team);
     }
@@ -141,7 +141,7 @@ private:
   /// size (extents).
   template<int count>
   void check(const SizeSpec_t & sizeSpec) {
-    DASH_LOG_TRACE("BlockPattern::PatternArguments.check(sizeSpec)");
+    DASH_LOG_TRACE("PatternArguments.check(sizeSpec)");
     _argc_size += NumDimensions;
     _sizespec   = sizeSpec;
   }
@@ -149,7 +149,7 @@ private:
   /// distribution.
   template<int count>
   void check(const DistributionSpec_t & ds) {
-    DASH_LOG_TRACE("BlockPattern::PatternArguments.check(distSpec)");
+    DASH_LOG_TRACE("PatternArguments.check(distSpec)");
     _argc_dist += NumDimensions;
     _distspec   = ds;
   }
@@ -157,7 +157,7 @@ private:
   /// specifying the distribution.
   template<int count>
   void check(const Distribution & ds) {
-    DASH_LOG_TRACE("BlockPattern::PatternArguments.check(dist)");
+    DASH_LOG_TRACE("PatternArguments.check(dist)");
     _argc_dist++;
     dim_t dim = count - NumDimensions;
     _distspec[dim] = ds;
@@ -166,7 +166,7 @@ private:
   /// on each argument via recursion on the argument list.
   template<int count, typename T, typename ... Args>
   void check_recurse(T && t, Args && ... args) {
-    DASH_LOG_TRACE("BlockPattern::PatternArguments.check(args) ",
+    DASH_LOG_TRACE("PatternArguments.check(args) ",
                    "count", count,
                    "argc", sizeof...(Args));
     check<count>(std::forward<T>(t));

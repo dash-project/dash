@@ -586,6 +586,7 @@ private:
     self_t;
   typedef CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>
     parent_t;
+
 public:
   /**
    * Constructor, creates an instance of TeamSpec from a team (set of

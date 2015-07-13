@@ -98,7 +98,7 @@ public:
    * \param  dimension  The dimension
    * \returns  The value in the given dimension
    */
-  ElementType operator[](dim_t dimension) const {
+  ElementType operator[](size_t dimension) const {
     return _values[dimension];
   }
 
@@ -110,7 +110,7 @@ public:
    * \param  dimension  The dimension
    * \returns  A reference to the value in the given dimension
    */
-  ElementType & operator[](dim_t dimension) {
+  ElementType & operator[](size_t dimension) {
     return _values[dimension];
   }
 

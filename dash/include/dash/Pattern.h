@@ -213,8 +213,9 @@ public:
         local_extents(_team.myid())),
     _local_capacity(initialize_local_capacity()),
     _viewspec(_arguments.viewspec()) {
-    DASH_LOG_TRACE("Pattern()", "Constructor with Argument list");
+    DASH_LOG_TRACE("Pattern()", "Constructor with argument list");
     _nunits = _teamspec.size();
+    DASH_LOG_TRACE_VAR("Pattern()", _nunits);
     initialize_local_range();
   }
 
@@ -591,7 +592,7 @@ public:
   std::array<IndexType, NumDimensions> coords_to_global(
     dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
-    DASH_LOG_DEBUG_VAR("Pattern.local_to_global()", local_coords);
+    DASH_LOG_DEBUG_VAR("Pattern.coords_to_global()", local_coords);
     SizeType blocksize = max_blocksize();
     // Coordinates of the unit within the team spec:
     std::array<IndexType, NumDimensions> unit_ts_coord =
@@ -621,23 +622,23 @@ public:
                        );
       block_coord[d] = block_index[d] * blocksize_d;
       glob_index[d]  = block_coord[d] + elem_block_offset_d;
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", d);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", 
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", d);
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", 
                          unit_ts_coord[d]);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", local_index_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", num_units_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", num_blocks_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", block_index[d]);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", blocksize);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", blocksize_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", 
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", local_index_d);
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", num_units_d);
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", num_blocks_d);
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", block_index[d]);
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", blocksize);
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", blocksize_d);
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", 
                          elem_block_offset_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", block_coord[d]);
-      DASH_LOG_TRACE_VAR("Pattern.local_to_global.d", glob_index[d]);
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", block_coord[d]);
+      DASH_LOG_TRACE_VAR("Pattern.coords_to_global.d", glob_index[d]);
     }
-    DASH_LOG_TRACE_VAR("Pattern.local_to_global", block_index);
-    DASH_LOG_TRACE_VAR("Pattern.local_to_global", block_coord);
-    DASH_LOG_DEBUG_VAR("Pattern.local_to_global", glob_index);
+    DASH_LOG_TRACE_VAR("Pattern.coords_to_global", block_index);
+    DASH_LOG_TRACE_VAR("Pattern.coords_to_global", block_coord);
+    DASH_LOG_DEBUG_VAR("Pattern.coords_to_global", glob_index);
     return glob_index;
   }
 
@@ -670,9 +671,10 @@ public:
     IndexType local_index) const {
     std::array<IndexType, NumDimensions> local_coords =
       _local_memory_layout.coords(local_index);
+    DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx()", local_coords);
     std::array<IndexType, NumDimensions> global_coords =
       coords_to_global(dash::myid(), local_coords);
-    DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx", global_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx >", global_coords);
     return _memory_layout.at(global_coords);
   }
 
@@ -863,7 +865,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_capacity() const {
+  constexpr SizeType local_capacity() const {
     return _local_capacity;
   }
 
@@ -877,7 +879,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_size() const {
+  constexpr SizeType local_size() const {
     return _local_memory_layout.size();
   }
 
@@ -886,7 +888,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType num_units() const {
+  constexpr IndexType num_units() const {
     return _nunits;
   }
 
@@ -895,7 +897,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType capacity() const {
+  constexpr IndexType capacity() const {
     return _memory_layout.size();
   }
 
@@ -904,7 +906,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType size() const {
+  constexpr IndexType size() const {
     return _memory_layout.size();
   }
 
@@ -912,7 +914,7 @@ public:
    * The Team containing the units to which this pattern's elements are
    * mapped.
    */
-  dash::Team & team() const {
+  constexpr dash::Team & team() const {
     return _team;
   }
 
@@ -1023,8 +1025,9 @@ private:
     const SizeSpec_t         & sizespec,
     const DistributionSpec_t & distspec,
     const TeamSpec_t         & teamspec) const {
-    // Number of blocks in all dimensions:
-    std::array<SizeType, NumDimensions> n_blocks;
+    if (teamspec.size() == 0) {
+      return BlockSizeSpec_t();
+    }
     // Extents of a single block:
     std::array<SizeType, NumDimensions> s_blocks;
     for (auto d = 0; d < NumDimensions; ++d) {
@@ -1046,16 +1049,21 @@ private:
     const DistributionSpec_t & distspec,
     const BlockSizeSpec_t    & blocksizespec,
     const TeamSpec_t         & teamspec) const {
+    if (blocksizespec.size() == 0) {
+      return BlockSpec_t();
+    }
     // Number of blocks in all dimensions:
     std::array<SizeType, NumDimensions> n_blocks;
     for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = distspec[d];
+      DASH_LOG_TRACE_VAR("Pattern.init_blockspec", dist.type);
       SizeType max_blocksize_d  = blocksizespec.extent(d);
       SizeType max_blocks_d     = dash::math::div_ceil(
         sizespec.extent(d),
         max_blocksize_d);
       n_blocks[d] = max_blocks_d;
     }
+    DASH_LOG_TRACE_VAR("Pattern.init_blockspec", n_blocks);
     return BlockSpec_t(n_blocks);
   }
 
@@ -1099,19 +1107,19 @@ private:
    * and distribution spec.
    */
   void initialize_local_range() {
-    if (_local_memory_layout.size() == 0) {
+    auto l_size = _local_memory_layout.size(); 
+    DASH_LOG_DEBUG_VAR("Pattern.init_local_range()", l_size);
+    if (l_size == 0) {
       _lbegin = 0;
       _lend   = 0;
     } else {
       // First local index transformed to global index
       _lbegin = local_to_global_index(0);
       // Index past last local index transformed to global index
-      _lend   = local_to_global_index(local_size() - 1) + 1;
+      _lend   = local_to_global_index(l_size - 1) + 1;
     }
-    DASH_LOG_DEBUG_VAR("Pattern.initialize >", 
-                       _local_memory_layout.extents());
-    DASH_LOG_DEBUG_VAR("Pattern.initialize >", _lbegin);
-    DASH_LOG_DEBUG_VAR("Pattern.initialize >", _lend);
+    DASH_LOG_DEBUG_VAR("Pattern.init_local_range >", _lbegin);
+    DASH_LOG_DEBUG_VAR("Pattern.init_local_range >", _lend);
   }
 
   /**
@@ -1119,6 +1127,9 @@ private:
    */
   std::array<SizeType, NumDimensions> local_extents(
     dart_unit_t unit) const {
+    if (_nunits == 0) {
+      return ::std::array<SizeType, NumDimensions> {  };
+    }
     // Coordinates of local unit id in team spec:
     auto unit_ts_coords = _teamspec.coords(unit);
     DASH_LOG_DEBUG_VAR("Pattern.local_extents()", unit);
