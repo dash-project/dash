@@ -203,8 +203,6 @@ double test_dash_local_iter(dash::Array<TYPE>& a,
     int x = 0;
     for (auto it = a.lbegin(); it != lend; ++it, ++x) {
       ++(*it);
-//    Same as 
-//    ++(a.lbegin()[x]);
     }
   }
   TIMESTAMP(tend);
@@ -221,17 +219,12 @@ double test_dash_local_subscript(dash::Array<TYPE>& a,
 
   double tstart, tend;
   TIMESTAMP(tstart);
-  auto loc = a.local;
+  typename dash::Array<TYPE>::local_type loc = a.local;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto j = 0; j < ELEM_PER_UNIT; ++j) {
-// TODO: 
-// Clarify why this has same efficiency as local pointer
-// and local iterator:
-//    ++(loc.begin()[j]);
-// and this does not:
       ++loc[j];
     }
-  }  
+  }
   TIMESTAMP(tend);  
 
   validate_array(a, ELEM_PER_UNIT, REPEAT);

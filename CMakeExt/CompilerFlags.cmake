@@ -2,9 +2,9 @@
 
 
 set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} -O3 -std=c99")
+    "${CMAKE_C_FLAGS} -Ofast -std=c99")
 set(CMAKE_CXX_FLAGS
-    "${CMAKE_CXX_FLAGS} -O3 -std=c++11")
+    "${CMAKE_CXX_FLAGS} -Ofast -std=gnu++11")
 
 set(CMAKE_C_FLAGS_DEBUG
     "${CMAKE_C_FLAGS_DEBUG} -DDASH_DEBUG -ggdb")

@@ -110,9 +110,7 @@ template<
   typename T,
   typename IndexType,
   class PatternType>
-class LocalProxyArray :
-  public std::iterator<std::random_access_iterator_tag,
-                       T, IndexType, T*, T&> {
+class LocalProxyArray {
 private:
   typedef LocalProxyArray<T, IndexType, PatternType>
     self_t;
@@ -126,10 +124,10 @@ public:
   typedef typename std::make_unsigned<IndexType>::type        size_type;
   typedef IndexType                                     difference_type;
 
-  typedef typename std::iterator_traits<self_t>::reference    reference;
+  typedef T &                                                 reference;
   typedef const reference                               const_reference;
 
-  typedef typename std::iterator_traits<self_t>::pointer        pointer;
+  typedef T *                                                   pointer;
   typedef const pointer                                   const_pointer;
 
 private:
@@ -147,31 +145,17 @@ public:
   /**
    * Pointer to initial local element in the array.
    */
-  constexpr pointer begin() const noexcept {
-    return m_array->lbegin();
-  }
-  
-  /**
-   * Pointer to initial local element in the array.
-   */
-  constexpr const_pointer cbegin() const noexcept {
-    return m_array->lbegin();
-  }
-  
-  /**
-   * Pointer past final local element in the array.
-   */
-  constexpr pointer end() const noexcept {
-    return m_array->lend();
-  }
-  
-  /**
-   * Pointer past final local element in the array.
-   */
-  constexpr const_pointer cend() const noexcept {
-    return m_array->lend();
+  constexpr const_pointer begin() const noexcept {
+    return m_array->m_lbegin;
   }
 
+  /**
+   * Pointer past final local element in the array.
+   */
+  constexpr const_pointer end() const noexcept {
+    return m_array->m_lend;
+  }
+  
   /**
    * Number of array elements in local memory.
    */
@@ -182,24 +166,17 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr value_type operator[](const size_t & n) const {
-    return m_array->lbegin()[n];
+  constexpr value_type operator[](const size_t n) const  {
+    return (m_array->m_lbegin)[n];
   }
- 
+  
   /**
    * Subscript operator, access to local array element at given position.
    */
-  reference operator[](const size_t & n) {
-    return m_array->lbegin()[n];
+  reference operator[](const size_t n) {
+    return (m_array->m_lbegin)[n];
   }
  
-  pointer operator+(const size_t & n) {
-    return (m_array->lbegin()) + n;
-  }
-  pointer operator-(const size_t & n) {
-    return (m_array->lbegin()) - n;
-  }
-
 #if 0
   /**
    * Resolve the global pointer for a local pointer.
@@ -256,6 +233,13 @@ public:
   
   typedef       GlobIter<value_type, PatternType>              pointer;
   typedef const GlobIter<value_type, PatternType>        const_pointer;
+
+public:
+  template<
+    typename T_,
+    typename I_,
+    class P_>
+  friend class LocalProxyArray;
 
 /// Public types as required by dash container concept
 public:
