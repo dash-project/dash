@@ -44,15 +44,15 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 			int flag;
 #ifdef SHAREDMEM_ENABLE
 			MPI_Win win;
-			if (dart_adapt_transtable_get_win (seg_id, &win) == -1) {
+			if (dart_adapt_transtable_get_win(seg_id, &win) == -1) {
 				return DART_ERR_INVAL;
 			}
-			MPI_Win_get_attr (win, MPI_WIN_BASE, addr, &flag);
+			MPI_Win_get_attr(win, MPI_WIN_BASE, addr, &flag);
 #else
-			if (dart_adapt_transtable_get_selfbaseptr (seg_id, addr) == -1)
+			if (dart_adapt_transtable_get_selfbaseptr(seg_id, (char **)addr) == -1) {
 				return DART_ERR_INVAL;
+      }
 #endif
-
 			*addr = offset + (char *)(*addr);
 		} else {
 			if (myid == gptr.unitid) {
@@ -81,7 +81,7 @@ dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
 		}
     MPI_Win_get_attr (win, MPI_WIN_BASE, &addr_base, &flag);
 #else
-    		if (dart_adapt_transtable_get_selfbaseptr (seg_id, &addr_base) == -1)
+    		if (dart_adapt_transtable_get_selfbaseptr(seg_id, &addr_base) == -1)
 			return DART_ERR_INVAL;
 #endif
 		gptr->addr_or_offs.offset = (char *)addr - addr_base;
