@@ -125,9 +125,14 @@ private:
   dash::Team &                _team            = dash::Team::All();
   /// Cartesian arrangement of units within the team
   TeamSpec_t                  _teamspec;
+  /// Total amount of units to which this pattern's elements are mapped
+  SizeType                    _nunits          = 0;
   /// The global layout of the pattern's elements in memory respective to
   /// memory order. Also specifies the extents of the pattern space.
   MemoryLayout_t              _memory_layout;
+  /// The view specification of the pattern, consisting of offset and
+  /// extent in every dimension
+  ViewSpec_t                  _viewspec;
   /// Maximum extents of a block in this pattern
   BlockSizeSpec_t             _blocksize_spec;
   /// Number of blocks in all dimensions
@@ -136,13 +141,8 @@ private:
   /// local memory layout of this unit's elements respective to memory
   /// order.
   LocalMemoryLayout_t         _local_memory_layout;
-  /// Total amount of units to which this pattern's elements are mapped
-  SizeType                    _nunits          = dash::Team::All().size();
   /// Maximum number of elements assigned to a single unit
   SizeType                    _local_capacity;
-  /// The view specification of the pattern, consisting of offset and
-  /// extent in every dimension
-  ViewSpec_t                  _viewspec;
   /// Corresponding global index to first local index of the active unit
   IndexType                   _lbegin;
   /// Corresponding global index past last local index of the active unit
@@ -199,7 +199,9 @@ public:
   : _arguments(arg, args...),
     _distspec(_arguments.distspec()), 
     _teamspec(_arguments.teamspec()), 
+    _nunits(_team.size()),
     _memory_layout(_arguments.sizespec().extents()),
+    _viewspec(_arguments.viewspec()),
     _blocksize_spec(initialize_blocksizespec(
         _arguments.sizespec(),
         _distspec,
@@ -211,11 +213,8 @@ public:
         _teamspec)),
     _local_memory_layout(
         local_extents(_team.myid())),
-    _local_capacity(initialize_local_capacity()),
-    _viewspec(_arguments.viewspec()) {
+    _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("Pattern()", "Constructor with argument list");
-    _nunits = _teamspec.size();
-    DASH_LOG_TRACE_VAR("Pattern()", _nunits);
     initialize_local_range();
   }
 
@@ -264,7 +263,9 @@ public:
       teamspec,
       _distspec,
       _team),
+    _nunits(_team.size()),
     _memory_layout(sizespec.extents()),
+    _viewspec(_memory_layout.extents()),
     _blocksize_spec(initialize_blocksizespec(
         sizespec,
         _distspec,
@@ -278,8 +279,6 @@ public:
         local_extents(_team.myid())),
     _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("Pattern()", "(sizespec, dist, teamspec, team)");
-    _nunits   = _team.size();
-    _viewspec = ViewSpec_t(_memory_layout.extents());
     initialize_local_range();
   }
 
@@ -329,7 +328,9 @@ public:
   : _distspec(dist),
     _team(team),
     _teamspec(_distspec, _team),
+    _nunits(_team.size()),
     _memory_layout(sizespec.extents()),
+    _viewspec(_memory_layout.extents()),
     _blocksize_spec(initialize_blocksizespec(
         sizespec,
         _distspec,
@@ -343,8 +344,6 @@ public:
         local_extents(_team.myid())),
     _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("Pattern()", "(sizespec, dist, team)");
-    _nunits   = _team.size();
-    _viewspec = ViewSpec<NumDimensions>(_memory_layout.extents());
     initialize_local_range();
   }
 
@@ -355,12 +354,12 @@ public:
   : _distspec(other._distspec), 
     _team(other._team),
     _teamspec(other._teamspec),
+    _nunits(other._nunits),
     _memory_layout(other._memory_layout),
     _blocksize_spec(other._blocksize_spec),
     _blockspec(other._blockspec),
     _local_memory_layout(other._local_memory_layout),
     _local_capacity(other._local_capacity),
-    _nunits(other._nunits),
     _viewspec(other._viewspec),
     _lbegin(other._lbegin),
     _lend(other._lend) {
@@ -593,6 +592,9 @@ public:
     dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
     DASH_LOG_DEBUG_VAR("Pattern.coords_to_global()", local_coords);
+    if (_teamspec.size() < 2) {
+      return local_coords;
+    }
     SizeType blocksize = max_blocksize();
     // Coordinates of the unit within the team spec:
     std::array<IndexType, NumDimensions> unit_ts_coord =
@@ -1025,6 +1027,7 @@ private:
     const SizeSpec_t         & sizespec,
     const DistributionSpec_t & distspec,
     const TeamSpec_t         & teamspec) const {
+    DASH_LOG_TRACE_VAR("Pattern.init_blocksizespec", teamspec.size());
     if (teamspec.size() == 0) {
       return BlockSizeSpec_t();
     }
@@ -1133,6 +1136,7 @@ private:
     // Coordinates of local unit id in team spec:
     auto unit_ts_coords = _teamspec.coords(unit);
     DASH_LOG_DEBUG_VAR("Pattern.local_extents()", unit);
+    DASH_LOG_DEBUG_VAR("Pattern.local_extents()", _nunits);
     DASH_LOG_TRACE_VAR("Pattern.local_extents", unit_ts_coords);
     ::std::array<SizeType, NumDimensions> l_extents;
     for (auto d = 0; d < NumDimensions; ++d) {
