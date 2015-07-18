@@ -698,6 +698,22 @@ public:
   }
 
   /**
+   * The calling unit invokes the function 'func' for each 
+   * of the indices owned by it.
+   */
+  void for_each(::std::function<void(IndexType)> func) {
+    IndexType sz = size();
+    
+    for(IndexType i=0; i<local_capacity(); ++i) {
+      IndexType gidx = local_to_global_index(i);
+      if( 0<=gidx && gidx<sz ) {
+	func(gidx);
+      }
+    }
+  }
+  
+
+  /**
    * Global coordinates to local index.
    *
    * Convert given global coordinates in pattern to their respective
