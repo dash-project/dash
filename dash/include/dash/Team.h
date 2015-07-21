@@ -15,6 +15,7 @@
 #include <dash/Init.h>
 #include <dash/Enums.h>
 #include <dash/Exception.h>
+#include <dash/internal/Logging.h>
 #include <dash/dart/if/dart.h>
 
 namespace dash {
@@ -67,19 +68,20 @@ public:
   }
 
 private:
-  dart_team_t     m_dartid    = DART_TEAM_NULL;
-  dart_group_t  * m_group;
-  Team          * m_parent    = nullptr;
-  Team          * m_child     = nullptr;
-  size_t          m_position  = 0;
-  static Team     m_team_all;
-  static Team     m_team_null;
-  bool            m_havegroup = false;
+  dart_team_t             m_dartid    = DART_TEAM_NULL;
+  Team                  * m_parent    = nullptr;
+  Team                  * m_child     = nullptr;
+  size_t                  m_position  = 0;
+  mutable bool            m_havegroup = false;
+  mutable dart_group_t  * m_group     = nullptr;
+
+  static Team _team_all;
+  static Team _team_null;
 
   void free_team() {
   }
 
-  void get_group() {
+  void get_group() const {
     size_t sz; dart_group_sizeof(&sz);
     m_group = (dart_group_t*)malloc(sz);
     dart_group_init(m_group);
@@ -187,14 +189,16 @@ public:
    * The invariant Team instance containing all available units.
    */
   static Team & All() {
-    return m_team_all;
+    DASH_LOG_TRACE_VAR("Team::All()", Team::_team_all.size());
+    return Team::_team_all;
   }
 
   /**
    * The invariant Team instance representing an undefined team.
    */
   static Team & Null() {
-    return m_team_null;
+    DASH_LOG_TRACE_VAR("Team::Null()", Team::_team_null.size());
+    return Team::_team_null;
   }
   
   /**
@@ -213,7 +217,7 @@ public:
     dart_group_sizeof(&size);
     
     group = static_cast<dart_group_t *>(malloc(size));
-    for (unsigned int i = 0; i < nParts; i++) {
+    for (auto i = 0; i < nParts; i++) {
       sub_groups[i] = static_cast<dart_group_t *>(malloc(size));
       DASH_ASSERT_RETURNS(
         dart_group_init(sub_groups[i]),
@@ -237,7 +241,7 @@ public:
     dart_team_t oldteam = m_dartid;
     // Create a child Team for every part with parent set to
     // this instance:
-    for(unsigned int i = 0; i < nParts; i++) {
+    for(auto i = 0; i < nParts; i++) {
       dart_team_t newteam = DART_TEAM_NULL;
       DASH_ASSERT_RETURNS(
         dart_team_create(
@@ -277,14 +281,14 @@ public:
   /**
    * Whether this Team contains all available units.
    */
-  bool isAll() const {
+  bool is_all() const {
     return operator==(All());
   }
 
   /**
    * Whether this Team is empty.
    */
-  bool isNull() const {
+  bool is_null() const {
     return operator==(Null());
   }
 
@@ -292,7 +296,7 @@ public:
    * Whether this Team is a leaf node in a Team hierarchy, i.e. does not 
    * have any child Teams assigned.
    */
-  bool isLeaf() const {
+  bool is_leaf() const {
     return m_child == nullptr;
   }
 
@@ -300,7 +304,7 @@ public:
    * Whether this Team is a root node in a Team hierarchy, i.e. does not 
    * have a parent Team assigned.
    */
-  bool isRoot() const {
+  bool is_root() const {
     return m_parent == nullptr;
   }
 
@@ -312,7 +316,7 @@ public:
    * \return  True if and only if this Team instance is member of a group 
    *          with given id
    */
-  bool isMember(size_t groupId) {
+  bool is_member(size_t groupId) const {
     int32_t ismember;
     if(!m_havegroup) { 
       get_group();
@@ -333,7 +337,7 @@ public:
 
   Team & sub(size_t level = 1) {
     Team * t = this;
-    while (t && level > 0 && !(t->isLeaf())) {
+    while (t && level > 0 && !(t->is_leaf())) {
       t = t->m_child;
       level--;
     }
@@ -342,14 +346,14 @@ public:
 
   Team & bottom() {
     Team *t = this;
-    while (t && !(t->isLeaf())) {
+    while (t && !(t->is_leaf())) {
       t = t->m_child;
     }
     return *t;
   }
 
   void barrier() const {
-    if (!isNull()) {
+    if (!is_null()) {
       DASH_ASSERT_RETURNS(
         dart_barrier(m_dartid),
         DART_OK);
@@ -358,7 +362,7 @@ public:
 
   size_t myid() const {
     dart_unit_t res = 0;
-    if (m_dartid != DART_TEAM_NULL) {
+    if (dash::is_initialized() && m_dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
         dart_team_myid(m_dartid, &res),
         DART_OK);
@@ -373,7 +377,7 @@ public:
    */
   size_t size() const {
     size_t size = 0;
-    if (m_dartid != DART_TEAM_NULL) {
+    if (dash::is_initialized() && m_dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
         dart_team_size(m_dartid, &size),
         DART_OK);

@@ -14,6 +14,7 @@ namespace dash
 {
   void   init(int *argc, char ***argv);
   void   finalize();
+  bool   is_initialized();
   int    myid();
   size_t size();
   void   barrier();
