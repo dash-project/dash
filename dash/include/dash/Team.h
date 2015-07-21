@@ -73,7 +73,7 @@ private:
   Team                  * m_child     = nullptr;
   size_t                  m_position  = 0;
   mutable bool            m_havegroup = false;
-  mutable dart_group_t  * m_group;
+  mutable dart_group_t  * m_group     = nullptr;
 
   static Team _team_all;
   static Team _team_null;
@@ -217,7 +217,7 @@ public:
     dart_group_sizeof(&size);
     
     group = static_cast<dart_group_t *>(malloc(size));
-    for (unsigned int i = 0; i < nParts; i++) {
+    for (auto i = 0; i < nParts; i++) {
       sub_groups[i] = static_cast<dart_group_t *>(malloc(size));
       DASH_ASSERT_RETURNS(
         dart_group_init(sub_groups[i]),
@@ -241,7 +241,7 @@ public:
     dart_team_t oldteam = m_dartid;
     // Create a child Team for every part with parent set to
     // this instance:
-    for(unsigned int i = 0; i < nParts; i++) {
+    for(auto i = 0; i < nParts; i++) {
       dart_team_t newteam = DART_TEAM_NULL;
       DASH_ASSERT_RETURNS(
         dart_team_create(
@@ -362,7 +362,7 @@ public:
 
   size_t myid() const {
     dart_unit_t res = 0;
-    if (m_dartid != DART_TEAM_NULL) {
+    if (dash::is_initialized() && m_dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
         dart_team_myid(m_dartid, &res),
         DART_OK);
@@ -377,7 +377,7 @@ public:
    */
   size_t size() const {
     size_t size = 0;
-    if (m_dartid != DART_TEAM_NULL) {
+    if (dash::is_initialized() && m_dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
         dart_team_size(m_dartid, &size),
         DART_OK);

@@ -7,11 +7,9 @@
 
 #include <dash/Team.h>
 
-namespace dash 
-{
+namespace dash {
 
-Team Team::m_team_all{DART_TEAM_ALL, nullptr};
-Team Team::m_team_null{DART_TEAM_NULL, nullptr};
+Team Team::_team_all  { DART_TEAM_ALL, nullptr };
+Team Team::_team_null { DART_TEAM_NULL, nullptr };
 
-};
-
+} // namespace dash
