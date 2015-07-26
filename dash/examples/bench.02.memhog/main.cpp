@@ -4,32 +4,39 @@
 
 using namespace std;
 
-bool test_array(size_t size);
+template<typename T>
+bool alloc_array(size_t lelem);
+
 
 int main(int argc, char* argv[]) 
 {
   dash::init(&argc, &argv);
 
-  long long nelem = 1024*1024;
-  while(nelem< 100ULL*1024*1024*1024) {
-    test_array(nelem);
-    nelem*=2;
+  // 100 MB per unit
+  size_t nelem = 25*1024*1024;
+  while(nelem<1024*1024*1024) {
+    alloc_array<int>(nelem);
+    nelem += 25*1024*1024;
   }
 
   dash::finalize();
 }
 
-bool test_array(size_t nelem) 
+template<typename T>
+bool alloc_array(size_t lelem) 
 {
-  double size = (double)nelem*sizeof(int);
-  size /= ((double)(1024*1024));
+  unsigned long long nelem;
+  nelem = (unsigned long long)lelem * dash::size();
+
+  double lsize = (double)lelem*sizeof(T) / ((double)(1024*1024));
+  double gsize = lsize*(double)dash::size();
 
   if(dash::myid()==0 ) {
-    cout<<"Allocating "<<size<<" MB on "<<dash::size()<<" unit(s) = "<<
-      size/(double)dash::size()<<" MB per unit";
+    cout<<"Allocating "<<gsize<<" MB on "<<dash::size()<<" unit(s) = "<<
+      lsize<<" MB per unit";
   }
   
-  dash::Array<int> arr(nelem);
+  dash::Array<T, long long> arr(nelem);
   
   for( int i=0; i<arr.lsize(); i++ ) {
     arr.local[i] = 33;
@@ -41,3 +48,7 @@ bool test_array(size_t nelem)
   }
 
 }
+
+#if 0
+
+#endif
