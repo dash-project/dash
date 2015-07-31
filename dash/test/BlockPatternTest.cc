@@ -590,7 +590,9 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
       int block_size_x_adj          = block_size_x - underfill_x;
       int expected_offset_row_order = 0;
       int expected_offset_col_order = 0;
-      int expected_unit_id          = (x / block_size_x) +
+      int block_coord_x             = (x / block_size_x) % num_units_x;
+      int block_coord_y             = (y / block_size_y) % num_units_y;
+      int expected_unit_id          = block_coord_y * num_units_x + block_coord_x;
                                       (y / (extent_y / num_units_y)) * 
                                         num_units_x;
       int local_x                   = x % block_size_x;
