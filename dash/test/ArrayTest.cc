@@ -3,6 +3,17 @@
 #include "TestBase.h"
 #include "ArrayTest.h"
 
+// global var
+dash::Array<int> array_global;
+
+TEST_F(ArrayTest, Allocation) {
+  dash::Array<int> array_local;
+  
+  DASH_LOG_DEBUG("Delayed allocate");
+  array_global.allocate(19 * dash::size(), dash::BLOCKED);
+  array_local.allocate(19 * dash::size(), dash::BLOCKED);
+}
+
 TEST_F(ArrayTest, SingleWriteMultipleRead) {
   dart_unit_t myid  = dash::myid();
   size_t array_size = _num_elem * _dash_size;

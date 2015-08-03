@@ -595,8 +595,10 @@ public:
    */
   TeamSpec(
     Team & team = dash::Team::All()) {
+    DASH_LOG_TRACE_VAR("TeamSpec(t)", team.is_null());
+    auto team_size = team.is_null() ? 0 : team.size();
     _rank = 1;
-    this->_extents[0] = team.size();
+    this->_extents[0] = team_size;
     for (auto d = 1; d < MaxDimensions; ++d) {
       this->_extents[d] = 1;
     }
@@ -632,6 +634,7 @@ public:
     Team & team = dash::Team::All()) 
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>(
       other.extents()) {
+    DASH_LOG_TRACE_VAR("TeamSpec(ts, dist, t)", team.is_null());
     if (this->size() != team.size()) {
       DASH_THROW(
         dash::exception::InvalidArgument,
@@ -668,6 +671,7 @@ public:
   TeamSpec(
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All()) {
+    DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", team.is_null());
     _rank = 1;
     bool distrib_dim_set = false;
     for (auto d = 0; d < MaxDimensions; ++d) {

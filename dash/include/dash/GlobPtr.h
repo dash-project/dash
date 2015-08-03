@@ -255,7 +255,7 @@ std::ostream & operator<<(
           it.m_dartptr.segid,
           it.m_dartptr.flags,
           it.m_dartptr.addr_or_offs.offset);
-  os << "dash::GlobPtr<T>: " << buf;
+  os << "dash::GlobPtr<" << typeid(T).name() << ">: " << buf;
   return os;
 }
 

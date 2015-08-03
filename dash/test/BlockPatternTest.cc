@@ -541,7 +541,7 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
     return;
   }
   size_t extent_x     = 11;
-  size_t extent_y     = 8;
+  size_t extent_y     = 13;
   size_t size         = extent_x * extent_y;
   // Ceil division
   size_t block_size_x = 3;
@@ -590,7 +590,9 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
       int block_size_x_adj          = block_size_x - underfill_x;
       int expected_offset_row_order = 0;
       int expected_offset_col_order = 0;
-      int expected_unit_id          = (x / block_size_x) +
+      int block_coord_x             = (x / block_size_x) % num_units_x;
+      int block_coord_y             = (y / block_size_y) % num_units_y;
+      int expected_unit_id          = block_coord_y * num_units_x + block_coord_x;
                                       (y / (extent_y / num_units_y)) * 
                                         num_units_x;
       int local_x                   = x % block_size_x;
@@ -764,8 +766,8 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
   int block_size_y    = extent_y;
   int block_size_z    = extent_z;
   int max_per_unit    = max_per_unit_x * block_size_y * block_size_z;
-  LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpx: %d, mpu: %d",
-      extent_x, extent_y,
+  LOG_MESSAGE("ex: %d, ey: %d, ez: %d, bsx: %d, bsy: %d, mpx: %d, mpu: %d",
+      extent_x, extent_y, extent_z,
       block_size_x, block_size_y,
       max_per_unit_x, max_per_unit);
   dash::Pattern<3, dash::ROW_MAJOR> pat_blockcyclic_row(
@@ -800,8 +802,9 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
         int unit_id                   = (x / block_size_x) % team_size;
         int num_blocks_x              = dash::math::div_ceil(
                                           extent_x, block_size_x);
-        int min_blocks_x              = (extent_x / block_size_x) /
-                                          team_size;
+        int min_blocks_x              = dash::math::div_ceil(
+                                          extent_x, block_size_x) /
+                                        team_size;
         int num_add_blocks_x          = num_blocks_x % team_size;
         int overflow_block_size_x     = extent_x % block_size_x;
         int num_blocks_unit_x         = min_blocks_x;

@@ -431,18 +431,14 @@ public:
   dart_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & coords) const {
     dart_unit_t unit_id = 0;
+    std::array<IndexType, NumDimensions> unit_coords;
+    // Coord to block coord to unit coord:
     for (auto d = 0; d < NumDimensions; ++d) {
-#if TILED_ONLY
-      auto block_coord_d = (coords[d] / _blocksize_spec.extent(d));
-      auto dist          = _distspec[d];
-      unit_id += dist.block_coord_to_unit_offset(
-                    block_coord_d, // block coordinate
-                    d,             // dimension
-                    _nunits        // number of units
-                 );
-#endif
-      unit_id += (coords[d] / _blocksize_spec.extent(d)) % _nunits;
+      unit_coords[d] = (coords[d] / _blocksize_spec.extent(d)) 
+                         % _teamspec.extent(d);
     }
+    // Unit coord to unit id:
+    unit_id = _teamspec.at(unit_coords);
     DASH_LOG_TRACE("Pattern.unit_at",
                    "coords", coords,
                    "> unit id", unit_id);
@@ -669,7 +665,7 @@ public:
     // Local offset of the element within all of the unit's local
     // elements:
     SizeType local_elem_offset = 0;
-    auto unit           = unit_at(global_coords);
+    auto unit = unit_at(global_coords);
     // Global coords to local coords:
     std::array<IndexType, NumDimensions> l_coords = 
       coords_to_local(global_coords);
