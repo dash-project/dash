@@ -269,7 +269,8 @@ public:
    * Default constructor, creates a cartesian index space of extent 0
    * in all dimensions.
    */
-  CartesianIndexSpace() {
+  CartesianIndexSpace()
+  : _size(0) {
     for(auto i = 0; i < NumDimensions; i++) {
       _offset_row_major[i] = 0;
       _offset_col_major[i] = 0;
@@ -451,6 +452,7 @@ public:
   IndexType at(
     const std::array<OffsetType, NumDimensions> & point) const {
     SizeType offs = 0;
+    DASH_ASSERT_GT(_size, 0, "CartesianIndexSpace has size 0");
     for (auto i = 0; i < NumDimensions; i++) {
       DASH_ASSERT_RANGE(
         0, static_cast<SizeType>(point[i]), _extents[i]-1,
@@ -494,6 +496,7 @@ public:
    */
   template<MemArrange CoordArrangement = Arrangement>
   std::array<IndexType, NumDimensions> coords(IndexType index) const {
+    DASH_ASSERT_GT(_size, 0, "CartesianIndexSpace has size 0");
     DASH_ASSERT_RANGE(
       0, static_cast<SizeType>(index), _size-1,
       "Given index for CartesianIndexSpace::coords() is out of bounds");

@@ -137,6 +137,13 @@ public:
   dim_t rank() const {
     return NumDimensions;
   }
+ 
+  /**
+   * The number of dimensions of the value.
+   */
+  dim_t ndim() const {
+    return NumDimensions;
+  }
 
 protected:
   /// Prevent default-construction for non-derived types, as initial values

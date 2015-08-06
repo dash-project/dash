@@ -21,8 +21,10 @@
 namespace dash {
 
 /**
- * Defines how a list of global indices is mapped to single units
- * within a Team.
+ * Defines how a list of global indices is mapped to single units within
+ * a Team. 
+ * Expects \c extent[d] to be a multiple of \c (blocksize[d] * nunits[d])
+ * to ensure the balanced property.
  *
  * \tparam  NumDimensions  The number of dimensions of the pattern
  * \tparam  Arrangement    The memory order of the pattern (ROW_MAJOR
@@ -49,9 +51,9 @@ private:
     MemoryLayout_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     LocalMemoryLayout_t;
-  typedef CartesianSpace<NumDimensions, SizeType>
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, SizeType>
     BlockSpec_t;
-  typedef CartesianSpace<NumDimensions, SizeType>
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, SizeType>
     BlockSizeSpec_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
@@ -111,32 +113,28 @@ public:
    *
    * \code
    *   // A 5x3 rectangle with blocked distribution in the first dimension
-   *   TilePattern p1(5,3, BLOCKED);
+   *   TilePattern p1(10,20);
+   *   auto num_units = dash::Team::All.size();
    *   // Same as
-   *   TilePattern p1(SizeSpec<2>(5,3),
-   *              DistributionSpec<2>(BLOCKED, NONE));
+   *   TilePattern p1(SizeSpec<2>(10,20,
+   *                  DistributionSpec<2>(TILE(10/num_units),
+   *                                      TILE(20/num_units)));
    *   // Same as
-   *   TilePattern p1(SizeSpec<2>(5,3),
-   *              DistributionSpec<2>(BLOCKED, NONE),
-   *              TeamSpec<2>(dash::Team::All(), 1));
+   *   TilePattern p1(SizeSpec<2>(10,20),
+   *                  DistributionSpec<2>(TILE(10/num_units),
+   *                                      TILE(20/num_units)));
+   *                  TeamSpec<2>(dash::Team::All(), 1));
    *   // Same as
-   *   TilePattern p1(SizeSpec<2>(5,3),
-   *              DistributionSpec<2>(BLOCKED, NONE),
-   *              // How teams are arranged in all dimensions, default is
-   *              // an extent of all units in first, and 1 in all higher
-   *              // dimensions:
-   *              TeamSpec<2>(dash::Team::All(), 1),
-   *              // The team containing the units to which the pattern 
-   *              // maps the global indices. Defaults to all all units:
-   *              dash::Team::All());
-   *   // A cube with sidelength 3 with blockwise distribution in the first
-   *   // dimension
-   *   TilePattern p2(3,3,3, BLOCKED);
-   *   // Same as p2
-   *   TilePattern p3(3,3,3);
-   *   // A cube with sidelength 3 with blockwise distribution in the third
-   *   // dimension
-   *   TilePattern p4(3,3,3, NONE, NONE, BLOCKED);
+   *   TilePattern p1(SizeSpec<2>(10,20),
+   *                  DistributionSpec<2>(TILE(10/num_units),
+   *                                      TILE(20/num_units)));
+   *                  // How teams are arranged in all dimensions, default is
+   *                  // an extent of all units in first, and 1 in all higher
+   *                  // dimensions:
+   *                  TeamSpec<2>(dash::Team::All(), 1),
+   *                  // The team containing the units to which the pattern 
+   *                  // maps the global indices. Defaults to all all units:
+   *                  dash::Team::All());
    * \endcode
    */
   template<typename ... Args>
@@ -179,24 +177,28 @@ public:
    *
    * \code
    *   // A 5x3 rectangle with blocked distribution in the first dimension
-   *   TilePattern p1(SizeSpec<2>(5,3),
-   *              DistributionSpec<2>(BLOCKED, NONE),
-   *              // How teams are arranged in all dimensions, default is
-   *              // an extent of all units in first, and 1 in all higher
-   *              // dimensions:
-   *              TeamSpec<2>(dash::Team::All(), 1),
-   *              // The team containing the units to which the pattern 
-   *              // maps the global indices. Defaults to all all units:
-   *              dash::Team::All());
+   *   TilePattern p1(10,20);
+   *   auto num_units = dash::Team::All.size();
    *   // Same as
-   *   TilePattern p1(5,3, BLOCKED);
+   *   TilePattern p1(SizeSpec<2>(10,20,
+   *                  DistributionSpec<2>(TILE(10/num_units),
+   *                                      TILE(20/num_units)));
    *   // Same as
-   *   TilePattern p1(SizeSpec<2>(5,3),
-   *              DistributionSpec<2>(BLOCKED, NONE));
+   *   TilePattern p1(SizeSpec<2>(10,20),
+   *                  DistributionSpec<2>(TILE(10/num_units),
+   *                                      TILE(20/num_units)));
+   *                  TeamSpec<2>(dash::Team::All(), 1));
    *   // Same as
-   *   TilePattern p1(SizeSpec<2>(5,3),
-   *              DistributionSpec<2>(BLOCKED, NONE),
-   *              TeamSpec<2>(dash::Team::All(), 1));
+   *   TilePattern p1(SizeSpec<2>(10,20),
+   *                  DistributionSpec<2>(TILE(10/num_units),
+   *                                      TILE(20/num_units)));
+   *                  // How teams are arranged in all dimensions, default is
+   *                  // an extent of all units in first, and 1 in all higher
+   *                  // dimensions:
+   *                  TeamSpec<2>(dash::Team::All(), 1),
+   *                  // The team containing the units to which the pattern 
+   *                  // maps the global indices. Defaults to all all units:
+   *                  dash::Team::All());
    * \endcode
    */
   TilePattern(
@@ -243,30 +245,28 @@ public:
    *
    * \code
    *   // A 5x3 rectangle with blocked distribution in the first dimension
-   *   TilePattern p1(SizeSpec<2>(5,3),
-   *              DistributionSpec<2>(BLOCKED, NONE),
-   *              // The team containing the units to which the pattern 
-   *              // maps the global indices. Defaults to all all units:
-   *              dash::Team::All());
+   *   TilePattern p1(10,20);
+   *   auto num_units = dash::Team::All.size();
    *   // Same as
-   *   TilePattern p1(SizeSpec<2>(5,3),
-   *              DistributionSpec<2>(BLOCKED, NONE),
-   *              // How teams are arranged in all dimensions, default is
-   *              // an extent of all units in first, and 1 in all higher
-   *              // dimensions:
-   *              TeamSpec<2>(dash::Team::All(), 1),
-   *              // The team containing the units to which the pattern 
-   *              // maps the global indices. Defaults to all all units:
-   *              dash::Team::All());
+   *   TilePattern p1(SizeSpec<2>(10,20,
+   *                  DistributionSpec<2>(TILE(10/num_units),
+   *                                      TILE(20/num_units)));
    *   // Same as
-   *   TilePattern p1(5,3, BLOCKED);
+   *   TilePattern p1(SizeSpec<2>(10,20),
+   *                  DistributionSpec<2>(TILE(10/num_units),
+   *                                      TILE(20/num_units)));
+   *                  TeamSpec<2>(dash::Team::All(), 1));
    *   // Same as
-   *   TilePattern p1(SizeSpec<2>(5,3),
-   *              DistributionSpec<2>(BLOCKED, NONE));
-   *   // Same as
-   *   TilePattern p1(SizeSpec<2>(5,3),
-   *              DistributionSpec<2>(BLOCKED, NONE),
-   *              TeamSpec<2>(dash::Team::All(), 1));
+   *   TilePattern p1(SizeSpec<2>(10,20),
+   *                  DistributionSpec<2>(TILE(10/num_units),
+   *                                      TILE(20/num_units)));
+   *                  // How teams are arranged in all dimensions, default is
+   *                  // an extent of all units in first, and 1 in all higher
+   *                  // dimensions:
+   *                  TeamSpec<2>(dash::Team::All(), 1),
+   *                  // The team containing the units to which the pattern 
+   *                  // maps the global indices. Defaults to all all units:
+   *                  dash::Team::All());
    * \endcode
    */
   TilePattern(
@@ -413,17 +413,17 @@ public:
     const ViewSpec_t & viewspec) const {
     // Apply viewspec offsets to coordinates:
     std::array<IndexType, NumDimensions> vs_coords;
+    // Unit id from diagonals in cartesian index space,
+    // e.g (x + y + z) % nunits
+    dart_unit_t unit_id = 0;
     for (auto d = 0; d < NumDimensions; ++d) {
-      vs_coords[d] = coords[d] + viewspec[d].offset;
+      vs_coords[d]      = coords[d] + viewspec[d].offset;
+      // Global block coordinate:
+      auto block_coord  = vs_coords[d] / _blocksize_spec.extent(d);
+      unit_id          += block_coord;
     }
-    // Index of block containing the given coordinates:
-    std::array<IndexType, NumDimensions> block_coords = 
-      block_coords_at(vs_coords);
-    // Unit assigned to this block index:
-    dart_unit_t unit_id = unit_at_block(block_coords);
+    unit_id %= _teamspec.size();
     DASH_LOG_TRACE("TilePattern.unit_at",
-                   "coords", coords,
-                   "block coords", block_coords,
                    "> unit id", unit_id);
     return unit_id;
   }
@@ -632,33 +632,29 @@ public:
    * \see  DashPatternConcept
    */
   IndexType at(
-    const std::array<IndexType, NumDimensions> & global_coords,
+    const std::array<IndexType, NumDimensions> & coords,
     const ViewSpec_t & viewspec) const {
-    auto coords = global_coords;
+    // Note:
+    // Expects extent[d] to be a multiple of blocksize[d] * nunits[d]
+    // to ensure the balanced property.
+
+    // Phase coordinates of element:
+    std::array<IndexType, NumDimensions> phase_coords;
+    // Coordinates of the block containing the element:
+    std::array<IndexType, NumDimensions> block_coords;
     for (auto d = 0; d < NumDimensions; ++d) {
-      coords[d] += viewspec[d].offset;
+      auto vs_coord     = coords[d] + viewspec[d].offset;
+      phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
+      block_coords[d]   = vs_coord / _blocksize_spec.extent(d);
     }
     DASH_LOG_TRACE_VAR("TilePattern.at()", coords);
-    // Local offset of the element within all of the unit's local
-    // elements:
-    SizeType local_elem_offset = 0;
-    auto unit           = unit_at(coords);
-    auto unit_ts_coords = _teamspec.coords(unit);
-    // Global coords to local coords:
-    std::array<IndexType, NumDimensions> l_coords = 
-      coords_to_local(coords);
-    DASH_LOG_TRACE_VAR("TilePattern.at", l_coords);
-    if (unit == _team.myid()) {
-      // Coords are local to this unit, use pre-generated local memory 
-      // layout
-      return _local_memory_layout.at(l_coords);
-    } else {
-      // Cannot use _local_memory_layout as it is only defined for the 
-      // active unit but does not specify local memory of other units.
-      // Generate local memory layout for unit assigned to coords:
-      auto l_mem_layout = LocalMemoryLayout_t(local_extents(unit));
-      return l_mem_layout.at(l_coords);
-    }
+    DASH_LOG_TRACE_VAR("TilePattern.at()", block_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.at()", phase_coords);
+    // Number of blocks preceeding the coordinates' block, equivalent
+    // to linear global block offset divided by team size:
+    auto block_offset_l = _blockspec.at(block_coords) / _teamspec.size();
+    return block_offset_l * _blocksize_spec.size() + // preceeding blocks
+           _blocksize_spec.at(phase_coords);         // element phase
   }
 
   /**
@@ -1114,24 +1110,6 @@ private:
     }
     DASH_LOG_TRACE_VAR("TilePattern.block_coords_at >", block_coords);
     return block_coords;
-  }
-
-  /**
-   * Resolve the associated unit id of the given block.
-   */
-  dart_unit_t unit_at_block(
-    std::array<IndexType, NumDimensions> & block_coords) const {
-    dart_unit_t unit_id = 0;
-    for (auto d = 0; d < NumDimensions; ++d) {
-      const Distribution & dist = _distspec[d];
-      unit_id += dist.block_coord_to_unit_offset(
-                    block_coords[d], // block coordinate
-                    d,               // dimension
-                    _teamspec.size() // number of units
-                 );
-    }
-    // TODO: Use _teamspec and _team to resolve actual unit id?
-    return unit_id;
   }
 };
 

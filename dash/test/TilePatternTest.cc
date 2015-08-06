@@ -14,13 +14,13 @@ TEST_F(TilePatternTest, Distribute1DimTile)
   size_t num_blocks = dash::math::div_ceil(extent, block_size);
   size_t local_cap  = block_size *
                         dash::math::div_ceil(num_blocks, team_size);
-  dash::Pattern<1, dash::ROW_MAJOR> pat_tile_row(
+  dash::TilePattern<1, dash::ROW_MAJOR> pat_tile_row(
       dash::SizeSpec<1>(extent),
       dash::DistributionSpec<1>(dash::TILE(block_size)),
       dash::TeamSpec<1>(),
       dash::Team::All());
   // Check that memory order is irrelevant for 1-dim
-  dash::Pattern<1, dash::COL_MAJOR> pat_tile_col(
+  dash::TilePattern<1, dash::COL_MAJOR> pat_tile_col(
       dash::SizeSpec<1>(extent),
       dash::DistributionSpec<1>(dash::TILE(block_size)),
       dash::TeamSpec<1>(),
@@ -83,7 +83,7 @@ TEST_F(TilePatternTest, Distribute2DimTileX)
   // Choose 'inconvenient' extents:
   size_t extent_y       = 7;
   size_t block_size_x   = 3;
-  size_t extent_x       = team_size * block_size_x * 7;
+  size_t extent_x       = team_size * block_size_x * 2;
   size_t size           = extent_x * extent_y;
   size_t max_per_unit_x = dash::math::div_ceil(extent_x, team_size);
   size_t block_size_y   = extent_y;
@@ -92,14 +92,14 @@ TEST_F(TilePatternTest, Distribute2DimTileX)
       extent_x, extent_y,
       block_size_x, block_size_y,
       max_per_unit_x, max_per_unit);
-  dash::Pattern<2, dash::ROW_MAJOR> pat_tile_row(
+  dash::TilePattern<2, dash::ROW_MAJOR> pat_tile_row(
       dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(
         dash::TILE(block_size_x),
         dash::TILE(block_size_y)),
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
-  dash::Pattern<2, dash::COL_MAJOR> pat_tile_col(
+  dash::TilePattern<2, dash::COL_MAJOR> pat_tile_col(
       dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(
         dash::TILE(block_size_x),

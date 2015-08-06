@@ -25,16 +25,16 @@
 #define DASH_ASSERT(expr) do { \
   if (!(expr)) { \
     DASH_THROW(dash::exception::AssertionFailed, \
-               "Assertion failed: " << \
-               __FILE__ << ":" << __LINE__); \
+               "Assertion failed: " \
+               << " " << __FILE__ << ":" << __LINE__); \
   }\
 } while(0)
 
 #define DASH_ASSERT_RETURNS(expr, exp_value) do { \
   if ((expr) != (exp_value)) { \
     DASH_THROW(dash::exception::AssertionFailed, \
-               "Assertion failed: Expected " << (exp_value) << \
-               __FILE__ << ":" << __LINE__); \
+               "Assertion failed: Expected " << (exp_value) \
+               << " " << __FILE__ << ":" << __LINE__); \
   }\
 } while(0)
 
@@ -44,9 +44,31 @@
                "Range assertion " \
                << lower << " <= " << value << " <= " << upper \
                << " failed: " \
-               << message \
+               << message << " "\
                << __FILE__ << ":" << __LINE__); \
   }\
+} while(0)
+
+#define DASH_ASSERT_GT(value, min, message) do { \
+  if (value <= min) { \
+    DASH_THROW(dash::exception::OutOfRange, \
+               "Range assertion " \
+               << value << " > " << min \
+               << " failed: " \
+               << message << " " \
+               << __FILE__ << ":" << __LINE__); \
+  } \
+} while(0)
+
+#define DASH_ASSERT_LT(value, max, message) do { \
+  if (value >= max) { \
+    DASH_THROW(dash::exception::OutOfRange, \
+               "Range assertion " \
+               << value << " < " << max \
+               << " failed: " \
+               << message << " "\
+               << __FILE__ << ":" << __LINE__); \
+  } \
 } while(0)
 
 #else  // DASH_ENABLE_ASSERTIONS
@@ -54,6 +76,8 @@
 #define DASH_ASSERT(expr) do { } while (expr)
 #define DASH_ASSERT_RETURNS(expr, exp_value) (expr)
 #define DASH_ASSERT_RANGE(lower, value, upper, message) do { } while(0)
+#define DASH_ASSERT_GT(val, min, message) do { } while (expr)
+#define DASH_ASSERT_LT(val, max, message) do { } while (expr)
 
 #endif // DASH_ENABLE_ASSERTIONS
 

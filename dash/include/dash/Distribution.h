@@ -166,34 +166,6 @@ public:
   }
 
   /**
-   * Resolve the associated unit id of the given block offset.
-   */
-  template< typename IndexType, typename SizeType>
-  constexpr SizeType block_coord_to_unit_offset(
-    IndexType block_coord,
-    dim_t dimension,
-    SizeType num_units) const {
-    switch (type) {
-      case dash::internal::DIST_NONE:
-        // Unit id is unchanged:
-        return 0;
-      case dash::internal::DIST_BLOCKED:
-      case dash::internal::DIST_CYCLIC:
-      case dash::internal::DIST_BLOCKCYCLIC:
-        // Advance one unit id per block coordinate:
-        return block_coord % num_units;
-      case dash::internal::DIST_TILE:
-        // Advance one unit id per block coordinate and
-        // one unit id per dimension:
-        return (block_coord % num_units) + dimension;
-      default:
-        DASH_THROW(
-          dash::exception::InvalidArgument,
-          "Distribution type undefined in block_coord_to_unit_offset");
-    }
-  }
-
-  /**
    * Equality comparison operator.
    */
   bool operator==(const Distribution & other) const {
