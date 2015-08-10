@@ -140,10 +140,10 @@ TEST_F(TilePatternTest, Distribute2DimTileX)
       int phase_col           = (x % block_size_x) * block_size_y +
                                 (y % block_size_y);
       
-      int expected_offset_row_order = (l_block_index_row * block_size) +
-                                      phase_row;
-      int local_x                   = x;
-      int local_y                   = y;
+      int local_index_row     = (l_block_index_row * block_size) +
+                                phase_row;
+      auto local_coords_row   = pat_tile_row.coords_to_local(
+                                  std::array<int, 2> { x, y });
       // Row major:
       LOG_MESSAGE("R %d,%d, u:%d, b:%d,%d, nlb:%d,%d, lbi:%d, p:%d",
         x, y,
@@ -154,16 +154,16 @@ TEST_F(TilePatternTest, Distribute2DimTileX)
         num_l_blocks_y,
         l_block_index_row,
         phase_row);
-      auto glob_coords_row = 
-        pat_tile_row.coords_to_global(
-          unit_id,
-          std::array<int, 2> { local_x, local_y });
       EXPECT_EQ(
         unit_id,
         pat_tile_row.unit_at(std::array<int, 2> { x, y }));
       EXPECT_EQ(
-        expected_offset_row_order,
+        local_index_row,
         pat_tile_row.at(std::array<int, 2> { x, y }));
+      auto glob_coords_row = 
+        pat_tile_row.coords_to_global(
+          unit_id,
+          std::array<int, 2> { local_coords_row[0], local_coords_row[1] });
       EXPECT_EQ(
         (std::array<int, 2> { x, y }),
         glob_coords_row);
