@@ -66,8 +66,12 @@ public:
       const self_t & other) = default;
 
   operator GlobPtr<ElementType>() const {
+    // Global index to local index and unit:
     auto glob_coords = m_pattern->coords(m_idx);
     auto local_pos   = m_pattern->at_unit(glob_coords);
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", m_idx);
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", local_pos.index);
     GlobPtr<ElementType> gptr =
       m_globmem->index_to_gptr(local_pos.unit, local_pos.index);
     return gptr;
@@ -79,6 +83,7 @@ public:
    * \return  A global reference to the element at the iterator's position
    */
   GlobRef<ElementType> operator*() const {
+    // Global index to local index and unit:
     auto glob_coords = m_pattern->coords(m_idx);
     auto local_pos   = m_pattern->at_unit(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.*", m_idx);
@@ -98,6 +103,7 @@ public:
   GlobRef<ElementType> operator[](
     /// The global position of the element
     gptrdiff_t global_index) const {
+    // Global index to local index and unit:
     auto glob_coords = m_pattern->coords(global_index);
     auto local_pos   = m_pattern->at_unit(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.[]", global_index);

@@ -10,7 +10,6 @@
 
 #include <array>
 #include <algorithm>
-#include <cassert>
 #include <cstring>
 #include <type_traits>
 
@@ -648,13 +647,25 @@ public:
     if (other.rank() == 1 && distribution.rank() > 1) {
       // Set extent of teamspec in the dimension the distribution is
       // different from NONE:
-      for (auto d = 0; d < MaxDimensions; ++d) {
-        if (distribution[d].type == dash::internal::DIST_NONE) {
+      if (distribution.is_tiled()) {
+        bool major_tiled_dim_set = false;
+        for (auto d = 0; d < MaxDimensions; ++d) {
           this->_extents[d] = 1;
-        } else {
-          // Use size of given team; possibly different from size
-          // of default-constructed team spec:
-          this->_extents[d] = team.size();
+          if (!major_tiled_dim_set &&
+              distribution[d].type == dash::internal::DIST_TILE) {
+            this->_extents[d] = team.size();
+            major_tiled_dim_set = true;
+          }
+        }
+      } else {
+        for (auto d = 0; d < MaxDimensions; ++d) {
+          if (distribution[d].type == dash::internal::DIST_NONE) {
+            this->_extents[d] = 1;
+          } else {
+            // Use size of given team; possibly different from size
+            // of default-constructed team spec:
+            this->_extents[d] = team.size();
+          }
         }
       }
     } 
@@ -663,7 +674,9 @@ public:
         _rank++;
       }
     }
+    DASH_LOG_TRACE_VAR("TeamSpec(ts, dist, t)", this->_extents);
     this->resize(this->_extents);
+    DASH_LOG_TRACE_VAR("TeamSpec(ts, dist, t)", this->size());
   }
 
   /**
@@ -677,21 +690,35 @@ public:
     DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", team.is_null());
     _rank = 1;
     bool distrib_dim_set = false;
-    for (auto d = 0; d < MaxDimensions; ++d) {
-      if (distribution[d].type == dash::internal::DIST_NONE) {
+    if (distribution.is_tiled()) {
+      bool major_tiled_dim_set = false;
+      for (auto d = 0; d < MaxDimensions; ++d) {
         this->_extents[d] = 1;
-      } else {
-        this->_extents[d] = team.size();
-        if (distrib_dim_set) {
-          DASH_THROW(
-            dash::exception::InvalidArgument,
-            "TeamSpec(DistributionSpec, Team) only allows "
-            "one distributed dimension");
+        if (!major_tiled_dim_set &&
+            distribution[d].type == dash::internal::DIST_TILE) {
+          this->_extents[d] = team.size();
+          major_tiled_dim_set = true;
         }
-        distrib_dim_set = true;
+      }
+    } else {
+      for (auto d = 0; d < MaxDimensions; ++d) {
+        if (distribution[d].type == dash::internal::DIST_NONE) {
+          this->_extents[d] = 1;
+        } else {
+          this->_extents[d] = team.size();
+          if (distrib_dim_set) {
+            DASH_THROW(
+              dash::exception::InvalidArgument,
+              "TeamSpec(DistributionSpec, Team) only allows "
+              "one distributed dimension");
+          }
+          distrib_dim_set = true;
+        }
       }
     }
+    DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", this->_extents);
     this->resize(this->_extents);
+    DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", this->size());
   }
 
   /**

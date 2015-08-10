@@ -138,7 +138,7 @@ T & LocalRef<T, NumDim, CUR, PatternT>::at(
       "got " << sizeof...(Args));
   }
   std::array<long long, NumDim> coord = { args... };
-  for(int i=_proxy->_dim;i<NumDim;i++) {
+  for(auto i = _proxy->_dim; i < NumDim; ++i) {
     _proxy->_coord[i] = coord[i-_proxy->_dim];
   }
   return at_(
@@ -160,6 +160,7 @@ LocalRef<T, NumDim, CUR-1, PatternT> &&
 LocalRef<T, NumDim, CUR, PatternT>::operator[](
   index_type n)
 {
+  DASH_LOG_TRACE_VAR("LocalRef.[]()", n);
   LocalRef<T, NumDim, CUR-1, PatternT> ref;
   ref._proxy = _proxy;
   _proxy->_coord[_proxy->_dim] = n;
@@ -172,6 +173,7 @@ LocalRef<T, NumDim, CUR-1, PatternT>
 LocalRef<T, NumDim, CUR, PatternT>::operator[](
   index_type pos) const
 {
+  DASH_LOG_TRACE_VAR("LocalRef.[]()", pos);
   LocalRef<T, NumDim, CUR-1, PatternT> ref;
   ref._proxy = new MatrixRefProxy<T, NumDim, PatternT>(*_proxy);
   ref._proxy->_coord[_proxy->_dim] = pos;
@@ -385,8 +387,8 @@ MatrixRef<T, NumDim, CUR-1, PatternT>
 MatrixRef<T, NumDim, CUR, PatternT>::operator[](
   index_type pos) const
 {
-  DASH_LOG_TRACE_VAR("MatrixRef<D>.[]()", pos);
-  DASH_LOG_TRACE_VAR("MatrixRef<D>.[]", CUR);
+  DASH_LOG_TRACE_VAR("MatrixRef.[]()", pos);
+  DASH_LOG_TRACE_VAR("MatrixRef.[]", CUR);
   MatrixRef<T, NumDim, CUR-1, PatternT> ref(*this, pos);
   return ref;
 }
@@ -576,6 +578,7 @@ inline MatrixRef<T, NumDim, 0, PatternT>::operator T()
   DASH_LOG_TRACE("MatrixRef<0>.T()", "delete _proxy");
   DASH_LOG_TRACE_VAR("MatrixRef<0>.T() delete", _proxy);
   delete _proxy;
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.T() >", (T)ref);
   return ref;
 }
 

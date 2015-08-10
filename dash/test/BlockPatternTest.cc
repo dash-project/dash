@@ -110,7 +110,22 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
   EXPECT_EQ(pat_blocked_col.capacity(), _num_elem);
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size);
   EXPECT_EQ(pat_blocked_col.local_capacity(), local_cap);
-  
+  // Test local extents:
+  for (auto u = 0; 0 < team_size; ++u) {
+    size_t local_extent_x;
+    if (u < _num_elem / block_size) {
+      // Full block
+      local_extent_x = block_size;
+    } else if (u == _num_elem / block_size) {
+      // Underfilled block
+      local_extent_x = _num_elem % block_size;
+    } else {
+      // Empty block
+      local_extent_x = 0;
+    }
+    EXPECT_EQ(local_extent_x, pat_blocked_row.local_extents(u)[0]);
+    EXPECT_EQ(local_extent_x, pat_blocked_col.local_extents(u)[0]);
+  }
   std::array<int, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
     int expected_unit_id = x / block_size;

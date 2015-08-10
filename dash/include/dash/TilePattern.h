@@ -69,6 +69,10 @@ private:
 public:
   typedef IndexType index_type;
   typedef SizeType  size_type;
+  typedef struct {
+    dart_unit_t unit;
+    IndexType   index;
+  } local_index_t;
 
 private:
   PatternArguments_t          _arguments;
@@ -83,16 +87,24 @@ private:
   /// The global layout of the pattern's elements in memory respective to
   /// memory order. Also specifies the extents of the pattern space.
   MemoryLayout_t              _memory_layout;
+  /// Total amount of units to which this pattern's elements are mapped
+  SizeType                    _nunits          = dash::Team::All().size();
+  /// Major tiled dimension, i.e. lowest tiled dimension in row-major,
+  /// highest tiled dimension in column-major order
+  dim_t                       _major_tiled_dim;
+  /// Minor tiled dimension, i.e. any dimension different from major tiled
+  /// dimension
+  dim_t                       _minor_tiled_dim;
   /// Maximum extents of a block in this pattern
   BlockSizeSpec_t             _blocksize_spec;
-  /// Number of blocks in all dimensions
+  /// Arrangement of blocks in all dimensions
   BlockSpec_t                 _blockspec;
+  /// Arrangement of local blocks in all dimensions
+  BlockSpec_t                 _local_blockspec;
   /// A projected view of the global memory layout representing the
   /// local memory layout of this unit's elements respective to memory
   /// order.
   LocalMemoryLayout_t         _local_memory_layout;
-  /// Total amount of units to which this pattern's elements are mapped
-  SizeType                    _nunits          = dash::Team::All().size();
   /// Maximum number of elements assigned to a single unit
   SizeType                    _local_capacity;
   /// The view specification of the pattern, consisting of offset and
@@ -102,12 +114,6 @@ private:
   IndexType                   _lbegin;
   /// Corresponding global index past last local index of the active unit
   IndexType                   _lend;
-  /// Major tiled dimension, i.e. lowest tiled dimension in row-major,
-  /// highest tiled dimension in column-major order
-  dim_t                       _major_tiled_dim;
-  /// Minor tiled dimension, i.e. any dimension different from major tiled
-  /// dimension
-  dim_t                       _minor_tiled_dim;
 
 public:
   /**
@@ -134,12 +140,13 @@ public:
    *   TilePattern p1(SizeSpec<2>(10,20),
    *                  DistributionSpec<2>(TILE(10/num_units),
    *                                      TILE(20/num_units)));
-   *                  // How teams are arranged in all dimensions, default is
-   *                  // an extent of all units in first, and 1 in all higher
-   *                  // dimensions:
+   *                  // How teams are arranged in all dimensions, default 
+   *                  // is an extent of all units in first, and 1 in all
+   *                  // higher dimensions:
    *                  TeamSpec<2>(dash::Team::All(), 1),
-   *                  // The team containing the units to which the pattern 
-   *                  // maps the global indices. Defaults to all all units:
+   *                  // The team containing the units to which the 
+   *                  // pattern maps the global indices. Defaults to all 
+   *                  // all units:
    *                  dash::Team::All());
    * \endcode
    */
@@ -157,6 +164,9 @@ public:
     _distspec(_arguments.distspec()), 
     _teamspec(_arguments.teamspec()), 
     _memory_layout(_arguments.sizespec().extents()),
+    _nunits(_teamspec.size()),
+    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
+    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
     _blocksize_spec(initialize_blocksizespec(
         _arguments.sizespec(),
         _distspec,
@@ -166,14 +176,14 @@ public:
         _distspec,
         _blocksize_spec,
         _teamspec)),
+    _local_blockspec(initialize_local_blockspec(
+        _blockspec,
+        _major_tiled_dim)),
     _local_memory_layout(
-        local_extents(_team.myid())),
+        initialize_local_extents(_team.myid())),
     _local_capacity(initialize_local_capacity()),
-    _viewspec(_arguments.viewspec()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions) {
+    _viewspec(_arguments.viewspec()) {
     DASH_LOG_TRACE("TilePattern()", "Constructor with Argument list");
-    _nunits = _teamspec.size();
     initialize_local_range();
   }
 
@@ -228,6 +238,9 @@ public:
       _distspec,
       _team),
     _memory_layout(sizespec.extents()),
+    _nunits(_teamspec.size()),
+    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
+    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
     _blocksize_spec(initialize_blocksizespec(
         sizespec,
         _distspec,
@@ -237,14 +250,14 @@ public:
         _distspec,
         _blocksize_spec,
         _teamspec)),
+    _local_blockspec(initialize_local_blockspec(
+        _blockspec,
+        _major_tiled_dim)),
     _local_memory_layout(
-        local_extents(_team.myid())),
+        initialize_local_extents(_team.myid())),
     _local_capacity(initialize_local_capacity()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions) {
+    _viewspec(_memory_layout.extents()) {
     DASH_LOG_TRACE("TilePattern()", "(sizespec, dist, teamspec, team)");
-    _nunits   = _team.size();
-    _viewspec = ViewSpec_t(_memory_layout.extents());
     initialize_local_range();
   }
 
@@ -271,12 +284,13 @@ public:
    *   TilePattern p1(SizeSpec<2>(10,20),
    *                  DistributionSpec<2>(TILE(10/num_units),
    *                                      TILE(20/num_units)));
-   *                  // How teams are arranged in all dimensions, default is
-   *                  // an extent of all units in first, and 1 in all higher
-   *                  // dimensions:
+   *                  // How teams are arranged in all dimensions, default 
+   *                  // is an extent of all units in first, and 1 in all
+   *                  // higher dimensions:
    *                  TeamSpec<2>(dash::Team::All(), 1),
-   *                  // The team containing the units to which the pattern 
-   *                  // maps the global indices. Defaults to all all units:
+   *                  // The team containing the units to which the 
+   *                  // pattern maps the global indices. Defaults to all 
+   *                  // all units:
    *                  dash::Team::All());
    * \endcode
    */
@@ -293,6 +307,9 @@ public:
     _team(team),
     _teamspec(_distspec, _team),
     _memory_layout(sizespec.extents()),
+    _nunits(_teamspec.size()),
+    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
+    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
     _blocksize_spec(initialize_blocksizespec(
         sizespec,
         _distspec,
@@ -302,14 +319,14 @@ public:
         _distspec,
         _blocksize_spec,
         _teamspec)),
+    _local_blockspec(initialize_local_blockspec(
+        _blockspec,
+        _major_tiled_dim)),
     _local_memory_layout(
-        local_extents(_team.myid())),
+        initialize_local_extents(_team.myid())),
     _local_capacity(initialize_local_capacity()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions) {
+    _viewspec(_memory_layout.extents()) {
     DASH_LOG_TRACE("TilePattern()", "(sizespec, dist, team)");
-    _nunits   = _team.size();
-    _viewspec = ViewSpec<NumDimensions>(_memory_layout.extents());
     initialize_local_range();
   }
 
@@ -323,6 +340,7 @@ public:
     _memory_layout(other._memory_layout),
     _blocksize_spec(other._blocksize_spec),
     _blockspec(other._blockspec),
+    _local_blockspec(other._local_blockspec),
     _local_memory_layout(other._local_memory_layout),
     _local_capacity(other._local_capacity),
     _nunits(other._nunits),
@@ -389,6 +407,7 @@ public:
       _local_memory_layout = other._local_memory_layout;
       _blocksize_spec      = other._blocksize_spec;
       _blockspec           = other._blockspec;
+      _local_blockspec     = other._local_blockspec;
       _local_capacity      = other._local_capacity;
       _viewspec            = other._viewspec;
       _nunits              = other._nunits;
@@ -467,7 +486,8 @@ public:
   }
 
   /**
-   * Convert given local coordinates to linear local offset (index).
+   * Convert given local coordinates and viewspec to linear local offset
+   * (index).
    *
    * \see DashPatternConcept
    */
@@ -476,11 +496,37 @@ public:
     const std::array<IndexType, NumDimensions> & local_coords,
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
-    auto coords = local_coords;
+    IndexType l_index = 0;
+    // Phase coordinates of element:
+    std::array<IndexType, NumDimensions> phase_coords;
+    // Coordinates of the local block containing the element:
+    std::array<IndexType, NumDimensions> block_coords_l;
     for (auto d = 0; d < NumDimensions; ++d) {
-      coords[d] += viewspec[d].offset;
+      auto vs_coord_d   = local_coords[d] + viewspec[d].offset;
+      phase_coords[d]   = vs_coord_d % _blocksize_spec.extent(d);
+      block_coords_l[d] = vs_coord_d / _blocksize_spec.extent(d);
     }
-    return _local_memory_layout.at(coords);
+    // Number of blocks preceeding the coordinates' block:
+    auto block_offset   = _local_blockspec.at(block_coords_l);
+    auto block_offset_l = block_offset / _nunits;
+    return block_offset_l * _blocksize_spec.size() + // preceeding blocks
+           _blocksize_spec.at(phase_coords);         // element phase
+  }
+
+  /**
+   * Convert given local coordinates to linear local offset (index).
+   *
+   * \see DashPatternConcept
+   */
+  IndexType local_at(
+    /// Point in local memory
+    const std::array<IndexType, NumDimensions> & local_coords) const {
+    return local_at(local_coords, _viewspec);
+    IndexType l_index = 0;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      
+    }
+    return l_index;
   }
 
   /**
@@ -507,6 +553,7 @@ public:
    * The actual number of elements in this pattern that are local to the
    * calling unit in the given dimension.
    *
+   * \see  local_extents()
    * \see  blocksize()
    * \see  local_size()
    * \see  extent()
@@ -522,6 +569,23 @@ public:
         << "got " << dim);
     }
     return _local_memory_layout.extent(dim);
+  }
+
+  /**
+   * The actual number of elements in this pattern that are local to the
+   * given unit, by dimension.
+   *
+   * \see  local_extent()
+   * \see  blocksize()
+   * \see  local_size()
+   * \see  extent()
+   *
+   * \see  DashPatternConcept
+   */
+  std::array<SizeType, NumDimensions> local_extents(
+    dart_unit_t unit) const {
+    // Same local memory layout for all units:
+    return _local_memory_layout.extents();
   }
 
   /**
@@ -592,6 +656,8 @@ public:
   IndexType local_to_global_index(
     dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
+    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", local_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", unit);
     std::array<IndexType, NumDimensions> global_coords =
       coords_to_global(unit, local_coords);
     DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx", global_coords);
@@ -608,8 +674,11 @@ public:
    */
   IndexType local_to_global_index(
     IndexType local_index) const {
+    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", local_index);
+    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", dash::myid());
     std::array<IndexType, NumDimensions> local_coords =
       _local_memory_layout.coords(local_index);
+    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx", local_coords);
     std::array<IndexType, NumDimensions> global_coords =
       coords_to_global(dash::myid(), local_coords);
     DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx", global_coords);
@@ -683,6 +752,26 @@ public:
       (IndexType)values...
     };
     return at(inputindex, _viewspec);
+  }
+
+  /**
+   * Resolves the unit and the local index from global coordinates.
+   * 
+   * \see  DashPatternConcept
+   */
+  local_index_t at_unit(
+    std::array<IndexType, NumDimensions> & global_coords) const {
+    DASH_LOG_TRACE_VAR("Pattern.at_unit()", global_coords);
+    // Local offset of the element within all of the unit's local
+    // elements:
+    SizeType local_elem_offset = 0;
+    auto unit = unit_at(global_coords);
+    DASH_LOG_TRACE_VAR("Pattern.at_unit >", unit);
+    // Global coords to local coords:
+    std::array<IndexType, NumDimensions> l_coords = 
+      coords_to_local(global_coords);
+    DASH_LOG_TRACE_VAR("Pattern.at_unit >", l_coords);
+    return local_index_t { unit, local_at(l_coords) };
   }
 
   /**
@@ -947,6 +1036,20 @@ private:
   }
 
   /**
+   * Initialize local block spec from global block spec, major tiled
+   * dimension, and team spec.
+   */
+  BlockSpec_t initialize_local_blockspec(
+    const BlockSpec_t        & blockspec,
+    dim_t                      major_tiled_dim) const {
+    // Number of local blocks in all dimensions:
+    auto l_blocks = blockspec.extents();
+    l_blocks[major_tiled_dim] /= _nunits;
+    DASH_LOG_TRACE_VAR("TilePattern.init_local_blockspec", l_blocks);
+    return BlockSpec_t(l_blocks);
+  }
+
+  /**
    * Max. elements per unit (local capacity)
    *
    * Note:
@@ -986,26 +1089,29 @@ private:
    * and distribution spec.
    */
   void initialize_local_range() {
-    if (_local_memory_layout.size() == 0) {
+    auto local_size = _local_memory_layout.size();
+    DASH_LOG_DEBUG_VAR("TilePattern.initialize_local_range()", local_size);
+    if (local_size == 0) {
       _lbegin = 0;
       _lend   = 0;
     } else {
       // First local index transformed to global index
       _lbegin = local_to_global_index(0);
       // Index past last local index transformed to global index
-      _lend   = local_to_global_index(local_size() - 1) + 1;
+      _lend   = local_to_global_index(local_size - 1) + 1;
     }
-    DASH_LOG_DEBUG_VAR("TilePattern.initialize >", 
+    DASH_LOG_DEBUG_VAR("TilePattern.initialize_local_range >", 
                        _local_memory_layout.extents());
-    DASH_LOG_DEBUG_VAR("TilePattern.initialize >", _lbegin);
-    DASH_LOG_DEBUG_VAR("TilePattern.initialize >", _lend);
+    DASH_LOG_DEBUG_VAR("TilePattern.initialize_local_range >", _lbegin);
+    DASH_LOG_DEBUG_VAR("TilePattern.initialize_local_range >", _lend);
   }
 
   /**
-   * Return major dimension with tiled distribution, i.e. lowest tiled dimension
-   * in row-major, or highest tiled dimension in column-major arrangement.
+   * Return major dimension with tiled distribution, i.e. lowest tiled 
+   * dimension.
    */
   dim_t initialize_major_tiled_dim(const DistributionSpec_t & ds) {
+    DASH_LOG_TRACE("TilePattern.init_major_tiled_dim()");
     for (auto d = 0; d < NumDimensions; ++d) {
       if (ds[d].type == dash::internal::DIST_TILE) return d;
     }
@@ -1016,12 +1122,12 @@ private:
   /**
    * Resolve extents of local memory layout for a specified unit.
    */
-  std::array<SizeType, NumDimensions> local_extents(
+  std::array<SizeType, NumDimensions> initialize_local_extents(
     dart_unit_t unit) const {
     // Coordinates of local unit id in team spec:
     auto unit_ts_coords = _teamspec.coords(unit);
-    DASH_LOG_DEBUG_VAR("TilePattern.local_extents()", unit);
-    DASH_LOG_TRACE_VAR("TilePattern.local_extents", unit_ts_coords);
+    DASH_LOG_DEBUG_VAR("TilePattern._local_extents()", unit);
+    DASH_LOG_TRACE_VAR("TilePattern._local_extents", unit_ts_coords);
     ::std::array<SizeType, NumDimensions> l_extents;
     for (auto d = 0; d < NumDimensions; ++d) {
       auto num_elem_d         = _memory_layout.extent(d);
@@ -1035,20 +1141,20 @@ private:
       auto min_local_blocks_d = num_blocks_d / num_units_d;
       // Coordinate of this unit id in teamspec in dimension:
       auto unit_ts_coord      = unit_ts_coords[d];
-      DASH_LOG_TRACE_VAR("TilePattern.local_extents.d", d);
-      DASH_LOG_TRACE_VAR("TilePattern.local_extents.d", unit_ts_coord);
-      DASH_LOG_TRACE_VAR("TilePattern.local_extents.d", num_elem_d);
-      DASH_LOG_TRACE_VAR("TilePattern.local_extents.d", num_units_d);
-      DASH_LOG_TRACE_VAR("TilePattern.local_extents.d", num_blocks_d);
-      DASH_LOG_TRACE_VAR("TilePattern.local_extents.d", blocksize_d);
-      DASH_LOG_TRACE_VAR("TilePattern.local_extents.d", 
+      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", d);
+      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", unit_ts_coord);
+      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", num_elem_d);
+      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", num_units_d);
+      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", num_blocks_d);
+      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", blocksize_d);
+      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", 
                          min_local_blocks_d);
       // Possibly there are more blocks than units in dimension and no
       // block left for this unit. Local extent in d then becomes 0.
       l_extents[d] = min_local_blocks_d * blocksize_d;
-      DASH_LOG_TRACE_VAR("TilePattern.local_extents.d", l_extents[d]);
+      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", l_extents[d]);
     }
-    DASH_LOG_DEBUG_VAR("TilePattern.local_extents >", l_extents);
+    DASH_LOG_DEBUG_VAR("TilePattern._local_extents >", l_extents);
     return l_extents;
   }
 };

@@ -10,7 +10,7 @@ TEST_F(TilePatternTest, Distribute1DimTile)
 
   size_t team_size  = dash::Team::All().size();
   size_t block_size = 3;
-  size_t extent     = team_size * (block_size * 3) + 1;
+  size_t extent     = team_size * (block_size * 3);
   size_t num_blocks = dash::math::div_ceil(extent, block_size);
   size_t local_cap  = block_size *
                         dash::math::div_ceil(num_blocks, team_size);
