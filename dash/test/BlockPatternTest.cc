@@ -92,6 +92,9 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
   //
   // [ .. team 0 .. | .. team 1 .. | ... | team n-1 ]
   size_t team_size  = dash::Team::All().size();
+  LOG_MESSAGE("Team size: %d", team_size);
+  // One underfilled block:
+  _num_elem = 11 * team_size - 1;
   size_t block_size = dash::math::div_ceil(_num_elem, team_size);
   size_t local_cap  = block_size;
   dash::Pattern<1, dash::ROW_MAJOR> pat_blocked_row(
@@ -111,7 +114,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size);
   EXPECT_EQ(pat_blocked_col.local_capacity(), local_cap);
   // Test local extents:
-  for (auto u = 0; 0 < team_size; ++u) {
+  for (auto u = 0; u < team_size; ++u) {
     size_t local_extent_x;
     if (u < _num_elem / block_size) {
       // Full block
@@ -123,6 +126,8 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
       // Empty block
       local_extent_x = 0;
     }
+    LOG_MESSAGE("local extents: u:%d, le: %d",
+      u, local_extent_x);
     EXPECT_EQ(local_extent_x, pat_blocked_row.local_extents(u)[0]);
     EXPECT_EQ(local_extent_x, pat_blocked_col.local_extents(u)[0]);
   }
@@ -132,12 +137,6 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
     int expected_offset  = x % block_size;
     int expected_index   = x;
     expected_coords[0]   = x;
-    auto glob_coords_row = 
-      pat_blocked_row.coords_to_global(
-        expected_unit_id, std::array<int, 1> { expected_offset });
-    auto glob_coords_col = 
-      pat_blocked_col.coords_to_global(
-        expected_unit_id, std::array<int, 1> { expected_offset });
     LOG_MESSAGE("x: %d, eu: %d, eo: %d",
       x, expected_unit_id, expected_offset);
     // Row major:
@@ -150,6 +149,9 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
     EXPECT_EQ(
       expected_offset,
       pat_blocked_row.at(std::array<int, 1> { x }));
+    auto glob_coords_row = 
+      pat_blocked_row.coords_to_global(
+        expected_unit_id, std::array<int, 1> { expected_offset });
     EXPECT_EQ(
       (std::array<int, 1> { expected_index }),
       glob_coords_row);
@@ -163,6 +165,9 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
     EXPECT_EQ(
       expected_offset,
       pat_blocked_col.at(std::array<int, 1> { x }));
+    auto glob_coords_col = 
+      pat_blocked_col.coords_to_global(
+        expected_unit_id, std::array<int, 1> { expected_offset });
     EXPECT_EQ(
       (std::array<int, 1> { expected_index }),
       glob_coords_col);
@@ -276,7 +281,8 @@ TEST_F(BlockPatternTest, Distribute1DimBlockcyclic)
     int expected_index    = x;
     expected_coords[0]    = x;
     LOG_MESSAGE("x: %d, eu: %d, eo: %d, bi: %d bbo: %d",
-      x, expected_unit_id, expected_offset, block_index, block_base_offset);
+      x, expected_unit_id, expected_offset,
+      block_index, block_base_offset);
     // Row major:
     EXPECT_EQ(
       expected_coords,
@@ -378,12 +384,15 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
     block_size_x, block_size_y);
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
-      // Units might have empty local range, e.g. when distributing 41 elements
-      // to 8 units.
-      int num_blocks_y              = dash::math::div_ceil(extent_y, block_size_y);
+      // Units might have empty local range, e.g. when distributing 41 
+      // elements to 8 units.
+      int num_blocks_y              = dash::math::div_ceil(
+                                        extent_y, block_size_y);
       // Subtract missing elements in last block if any:
-      int underfill_y               = (y >= (num_blocks_y-1) * block_size_y)
-                                      ? (block_size_y * num_blocks_y) - extent_y
+      int underfill_y               = (y >= (num_blocks_y-1) * 
+                                            block_size_y)
+                                      ? (block_size_y * num_blocks_y) - 
+                                        extent_y
                                       : 0;
       // Actual extent of block, adjusted for underfilled extent:
       int block_size_y_adj          = block_size_y - underfill_y;
@@ -391,12 +400,13 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
       int expected_index_col_order  = (x * extent_y) + y;
       int expected_offset_row_order =
         expected_index_row_order % max_per_unit;
-      int expected_offset_col_order = (y % block_size_y) + (x * block_size_y_adj);
+      int expected_offset_col_order = (y % block_size_y) + (x * 
+                                        block_size_y_adj);
       int expected_unit_id          = y / block_size_y;
       int local_x                   = x;
       int local_y                   = y % block_size_y;
       // Row major:
-      LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d, bya: %d",
+      LOG_MESSAGE("R %d,%d, eo:%d, ao:%d, ei:%d, bx:%d, by:%d, bya:%d",
         x, y,
         expected_offset_row_order,
         pat_blocked_row.at(std::array<int, 2> { x, y }),
@@ -414,7 +424,7 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
           expected_unit_id, 
           (std::array<int, 2> { local_x, local_y  })));
       // Col major:
-      LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, ei: %d, bx: %d, by: %d",
+      LOG_MESSAGE("C %d,%d, eo:%d, ao:%d, ei:%d, bx:%d, by:%d",
         x, y,
         expected_offset_col_order,
         pat_blocked_col.at(std::array<int, 2> { x, y }),
@@ -607,9 +617,8 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
       int expected_offset_col_order = 0;
       int block_coord_x             = (x / block_size_x) % num_units_x;
       int block_coord_y             = (y / block_size_y) % num_units_y;
-      int expected_unit_id          = block_coord_y * num_units_x + block_coord_x;
-                                      (y / (extent_y / num_units_y)) * 
-                                        num_units_x;
+      int expected_unit_id          = block_coord_y * num_units_x + 
+                                      block_coord_x;
       int local_x                   = x % block_size_x;
       int local_y                   = y;
       // Row major:

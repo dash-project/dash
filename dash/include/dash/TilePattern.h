@@ -455,8 +455,7 @@ public:
       unit_id          += block_coord;
     }
     unit_id %= _nunits;
-    DASH_LOG_TRACE("TilePattern.unit_at",
-                   "> unit id", unit_id);
+    DASH_LOG_TRACE("TilePattern.unit_at", "> unit id", unit_id);
     return unit_id;
   }
 
@@ -615,7 +614,6 @@ public:
     const std::array<IndexType, NumDimensions> & local_coords) const {
     DASH_LOG_DEBUG_VAR("TilePattern.local_to_global()", local_coords);
     DASH_LOG_DEBUG_VAR("TilePattern.local_to_global()", unit);
-    DASH_LOG_DEBUG_VAR("TilePattern.local_to_global()", _nunits);
     // Global coordinate of local element:
     std::array<IndexType, NumDimensions> global_coords = local_coords;
     // Local block coordinate of local element:
@@ -759,18 +757,18 @@ public:
    * 
    * \see  DashPatternConcept
    */
-  local_index_t at_unit(
+  local_index_t local(
     std::array<IndexType, NumDimensions> & global_coords) const {
-    DASH_LOG_TRACE_VAR("Pattern.at_unit()", global_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local()", global_coords);
     // Local offset of the element within all of the unit's local
     // elements:
     SizeType local_elem_offset = 0;
     auto unit = unit_at(global_coords);
-    DASH_LOG_TRACE_VAR("Pattern.at_unit >", unit);
+    DASH_LOG_TRACE_VAR("Pattern.local >", unit);
     // Global coords to local coords:
     std::array<IndexType, NumDimensions> l_coords = 
       coords_to_local(global_coords);
-    DASH_LOG_TRACE_VAR("Pattern.at_unit >", l_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local >", l_coords);
     return local_index_t { unit, local_at(l_coords) };
   }
 
