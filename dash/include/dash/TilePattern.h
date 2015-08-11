@@ -338,19 +338,17 @@ public:
     _team(other._team),
     _teamspec(other._teamspec),
     _memory_layout(other._memory_layout),
+    _nunits(other._nunits),
+    _major_tiled_dim(other._major_tiled_dim),
+    _minor_tiled_dim(other._minor_tiled_dim),
     _blocksize_spec(other._blocksize_spec),
     _blockspec(other._blockspec),
     _local_blockspec(other._local_blockspec),
     _local_memory_layout(other._local_memory_layout),
     _local_capacity(other._local_capacity),
-    _nunits(other._nunits),
     _viewspec(other._viewspec),
     _lbegin(other._lbegin),
-    _lend(other._lend),
-    _major_tiled_dim(other._major_tiled_dim),
-    _minor_tiled_dim(other._minor_tiled_dim) {
-    // No need to copy _arguments as it is just used to
-    // initialize other members.
+    _lend(other._lend) {
   }
 
   /**
@@ -625,8 +623,10 @@ public:
     auto blocksize_min     = _blocksize_spec.extent(_minor_tiled_dim);
     auto l_block_coord_maj = local_coords[_major_tiled_dim] / 
                                blocksize_maj;
-    auto l_block_coord_min = local_coords[_minor_tiled_dim] / 
-                               blocksize_min;
+    auto l_block_coord_min = (NumDimensions > 1)
+                             ? local_coords[_minor_tiled_dim] / 
+                               blocksize_min
+                             : 0;
     DASH_LOG_TRACE_VAR("TilePattern.local_to_global", _major_tiled_dim);
     DASH_LOG_TRACE_VAR("TilePattern.local_to_global", _minor_tiled_dim);
     DASH_LOG_TRACE_VAR("TilePattern.local_to_global", l_block_coord_min);
