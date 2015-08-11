@@ -10,7 +10,7 @@ TEST_F(TilePatternTest, Distribute1DimTile)
 
   size_t team_size  = dash::Team::All().size();
   size_t block_size = 3;
-  size_t extent     = team_size * (block_size * 3);
+  size_t extent     = team_size * block_size * 2;
   size_t num_blocks = dash::math::div_ceil(extent, block_size);
   size_t local_cap  = block_size *
                         dash::math::div_ceil(num_blocks, team_size);
@@ -70,7 +70,7 @@ TEST_F(TilePatternTest, Distribute1DimTile)
   }
 }
 
-TEST_F(TilePatternTest, Distribute2DimTileX)
+TEST_F(TilePatternTest, Distribute2DimTileXY)
 {
   DASH_TEST_LOCAL_ONLY();
   // 2-dimensional, blocked partitioning in first dimension:
@@ -87,14 +87,12 @@ TEST_F(TilePatternTest, Distribute2DimTileX)
   size_t extent_x       = team_size * 2 * block_size_x;
   size_t extent_y       = team_size * 3 * block_size_y;
   size_t size           = extent_x * extent_y;
-  size_t max_per_unit_x = dash::math::div_ceil(extent_x, team_size);
-  size_t max_per_unit_y = dash::math::div_ceil(extent_y, team_size);
-  size_t max_per_unit   = max_per_unit_x * max_per_unit_y;
-  LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d,%d=%d",
+  size_t max_per_unit   = size / team_size;
+  LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
       extent_x, extent_y,
       block_size_x, block_size_y,
       team_size,
-      max_per_unit_x, max_per_unit_y, max_per_unit);
+      max_per_unit);
   dash::TilePattern<2, dash::ROW_MAJOR> pat_tile_row(
       dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(
