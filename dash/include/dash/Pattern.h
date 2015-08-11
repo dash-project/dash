@@ -36,15 +36,132 @@ namespace dash {
  *     <th>Method Signature</th>
  *     <th>Semantics</th>
  *   </tr>
+ *
  *   <tr>
  *     <td>
- *       \c coords(gindex)
+ *       \c Index[D] coords(Index gi)
  *     </td>
  *     <td>
- *       Returns the cartesian coordinates for a linear index
- *       within the pattern.
+ *       Global linear offset to global cartesian coordinates
  *     </td>
  *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c Index at(Index[D] gp)
+ *     </td>
+ *     <td>
+ *       Global point to local linear offset
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c Index local_at(Index[D] lp)
+ *     </td>
+ *     <td>
+ *       Lobal point to local linear offset
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c { dart_unit_t u, Index li } local(Index[D] gp)
+ *     </td>
+ *     <td>
+ *       Global point to unit and local linear offset, inverse of
+ *       \c global
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c Index[D] global(dart_unit_t u, Index gi)
+ *     </td>
+ *     <td>
+ *       Unit and lobal linear offset to global cartesian coordinates,
+ *       inverse of \c local.
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c bool is_local(Index gi, dart_unit_t u)
+ *     </td>
+ *     <td>
+ *       Whether element at global index \gi is local to unit \c u
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c bool is_local(dim_t d, Index go, dart_unit_t u)
+ *     </td>
+ *     <td>
+ *       Whether any element in dimension \c d at global offset \go (such
+ *       as a matrix row) is local to unit \c u
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c Size capacity()
+ *     </td>
+ *     <td>
+ *       Size of the cartesian index space, total number of elements in
+ *       the pattern, alias of \c size()
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c Size local_capacity()
+ *     </td>
+ *     <td>
+ *       Maximum size of the local cartesian index space for any unit, i.e.
+ *       maximum number of elements assigned to a single unit
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c Size size()
+ *     </td>
+ *     <td>
+ *       Maximum size of the local cartesian index space for any unit, i.e.
+ *       maximum number of elements assigned to a single unit, alias of
+ *       \c capacity().
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c Size local_size()
+ *     </td>
+ *     <td>
+ *       Actual number of elements assigned to the active unit
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c Size extent(dim_t d)
+ *     </td>
+ *     <td>
+ *       Number of elements in the pattern in dimension \c d
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \c Size local_extent(dim_t d)
+ *     </td>
+ *     <td>
+ *       Number of elements in the pattern in dimension \c d that are local
+ *       to the active unit
+ *     </td>
+ *   </tr>
+ *
  * </table>
  * \}
  */

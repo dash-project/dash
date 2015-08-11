@@ -169,7 +169,7 @@ public:
         _blocksize_spec,
         _teamspec)),
     _local_memory_layout(
-        local_extents(_team.myid())),
+        initialize_local_extents(_team.myid())),
     _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("Pattern()", "Constructor with argument list");
     initialize_local_range();
@@ -233,7 +233,7 @@ public:
         _blocksize_spec,
         _teamspec)),
     _local_memory_layout(
-        local_extents(_team.myid())),
+        initialize_local_extents(_team.myid())),
     _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("Pattern()", "(sizespec, dist, teamspec, team)");
     initialize_local_range();
@@ -298,7 +298,7 @@ public:
         _blocksize_spec,
         _teamspec)),
     _local_memory_layout(
-        local_extents(_team.myid())),
+        initialize_local_extents(_team.myid())),
     _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("Pattern()", "(sizespec, dist, team)");
     initialize_local_range();
@@ -459,7 +459,8 @@ public:
   }
 
   /**
-   * Convert given local coordinates to linear local offset (index).
+   * Convert given local coordinates and viewspec to linear local offset
+   * (index).
    *
    * \see DashPatternConcept
    */
@@ -473,6 +474,17 @@ public:
       coords[d] += viewspec[d].offset;
     }
     return _local_memory_layout.at(coords);
+  }
+
+  /**
+   * Convert given local coordinates to linear local offset (index).
+   *
+   * \see DashPatternConcept
+   */
+  IndexType local_at(
+    /// Point in local memory
+    const std::array<IndexType, NumDimensions> & local_coords) const {
+    return _local_memory_layout.at(local_coords);
   }
 
   /**
@@ -499,6 +511,7 @@ public:
    * The actual number of elements in this pattern that are local to the
    * calling unit in the given dimension.
    *
+   * \see  local_extents()
    * \see  blocksize()
    * \see  local_size()
    * \see  extent()
@@ -514,6 +527,28 @@ public:
         << "got " << dim);
     }
     return _local_memory_layout.extent(dim);
+  }
+
+  /**
+   * The actual number of elements in this pattern that are local to the
+   * given unit, by dimension.
+   *
+   * \see  local_extent()
+   * \see  blocksize()
+   * \see  local_size()
+   * \see  extent()
+   *
+   * \see  DashPatternConcept
+   */
+  std::array<SizeType, NumDimensions> local_extents(
+    dart_unit_t unit) const {
+    if (unit == _team.myid()) {
+      // Local unit id, get extents from member instance:
+      return _local_memory_layout.extents();
+    }
+    // Remote unit id, initialize local memory layout for given unit:
+    return LocalMemoryLayout_t(initialize_local_extents(unit))
+           .extents();
   }
 
   /**
@@ -628,7 +663,7 @@ public:
       _local_memory_layout.coords(local_index);
     DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx()", local_coords);
     std::array<IndexType, NumDimensions> global_coords =
-      coords_to_global(dash::myid(), local_coords);
+      coords_to_global(_team.myid(), local_coords);
     DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx >", global_coords);
     return _memory_layout.at(global_coords);
   }
@@ -678,7 +713,8 @@ public:
       // Cannot use _local_memory_layout as it is only defined for the 
       // active unit but does not specify local memory of other units.
       // Generate local memory layout for unit assigned to coords:
-      auto l_mem_layout = LocalMemoryLayout_t(local_extents(unit));
+      auto l_mem_layout = 
+        LocalMemoryLayout_t(initialize_local_extents(unit));
       return l_mem_layout.at(l_coords);
     }
   }
@@ -690,14 +726,16 @@ public:
    */
   local_index_t at_unit(
     std::array<IndexType, NumDimensions> & global_coords) const {
+    DASH_LOG_TRACE_VAR("Pattern.at_unit()", global_coords);
     // Local offset of the element within all of the unit's local
     // elements:
     SizeType local_elem_offset = 0;
     auto unit = unit_at(global_coords);
+    DASH_LOG_TRACE_VAR("Pattern.at_unit", unit);
     // Global coords to local coords:
     std::array<IndexType, NumDimensions> l_coords = 
       coords_to_local(global_coords);
-    DASH_LOG_TRACE_VAR("Pattern.at", l_coords);
+    DASH_LOG_TRACE_VAR("Pattern.at_unit", l_coords);
     if (unit == _team.myid()) {
       // Coords are local to this unit, use pre-generated local memory 
       // layout
@@ -706,7 +744,7 @@ public:
       // Cannot use _local_memory_layout as it is only defined for the 
       // active unit but does not specify local memory of other units.
       // Generate local memory layout for unit assigned to coords:
-      auto l_mem_layout = LocalMemoryLayout_t(local_extents(unit));
+      auto l_mem_layout = LocalMemoryLayout_t(initialize_local_extents(unit));
       return local_index_t { unit, l_mem_layout.at(l_coords) };
     }
   }
@@ -1084,7 +1122,7 @@ private:
   /**
    * Resolve extents of local memory layout for a specified unit.
    */
-  std::array<SizeType, NumDimensions> local_extents(
+  std::array<SizeType, NumDimensions> initialize_local_extents(
     dart_unit_t unit) const {
     if (_nunits == 0) {
       return ::std::array<SizeType, NumDimensions> {  };

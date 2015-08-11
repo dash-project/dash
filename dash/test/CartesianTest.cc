@@ -6,17 +6,20 @@
 #include "CartesianTest.h"
 
 TEST_F(CartesianTest, DefaultConstrutor) {
+  DASH_TEST_LOCAL_ONLY();
   // 1-dimensional:
   dash::CartesianIndexSpace<1> cartesian1d;
   EXPECT_EQ(cartesian1d.size(), 0);
   EXPECT_EQ(cartesian1d.rank(), 1);
   EXPECT_EQ(cartesian1d.extent(0), 0);
+#if defined(DASH_ENABLE_ASSERTIONS)
   EXPECT_THROW(
     cartesian1d.at(0),
     dash::exception::OutOfRange);
   EXPECT_THROW(
     cartesian1d.coords(0),
     dash::exception::OutOfRange);
+#endif
   // 4-dimensional:
   dash::CartesianIndexSpace<4> cartesian4d;
   EXPECT_EQ(cartesian4d.size(), 0);
@@ -25,15 +28,18 @@ TEST_F(CartesianTest, DefaultConstrutor) {
   EXPECT_EQ(cartesian4d.extent(1), 0);
   EXPECT_EQ(cartesian4d.extent(2), 0);
   EXPECT_EQ(cartesian4d.extent(3), 0);
+#if defined(DASH_ENABLE_ASSERTIONS)
   EXPECT_THROW(
     cartesian4d.at(0, 0, 0, 0),
     dash::exception::OutOfRange);
   EXPECT_THROW(
     cartesian4d.coords(0),
     dash::exception::OutOfRange);
+#endif
 }
 
 TEST_F(CartesianTest, Conversion1Dim) {
+  DASH_TEST_LOCAL_ONLY();
   int extent = 42;
   dash::CartesianIndexSpace<1> cartesian1d(extent);
   EXPECT_EQ(cartesian1d.rank(), 1);
@@ -46,6 +52,7 @@ TEST_F(CartesianTest, Conversion1Dim) {
 }
 
 TEST_F(CartesianTest, Conversion2Dim) {
+  DASH_TEST_LOCAL_ONLY();
   int extent_x = 3;
   int extent_y = 5;
   dash::CartesianIndexSpace<2, dash::ROW_MAJOR, size_t> cartesian2dR(
@@ -75,6 +82,7 @@ TEST_F(CartesianTest, Conversion2Dim) {
 }
 
 TEST_F(CartesianTest, Conversion3Dim) {
+  DASH_TEST_LOCAL_ONLY();
   int extent_x = 5;
   int extent_y = 7;
   int extent_z = 11;
@@ -112,6 +120,7 @@ TEST_F(CartesianTest, Conversion3Dim) {
 }
 
 TEST_F(CartesianTest, Conversion10Dim) {
+  DASH_TEST_LOCAL_ONLY();
   const size_t Dimensions = 10;
   ::std::array<size_t, Dimensions> extents =
     { 3, 13, 17, 23, 2, 3, 1, 1, 2, 2 };
