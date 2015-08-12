@@ -3,6 +3,7 @@
 
 #include <dash/BlockPattern.h>
 #include <dash/TilePattern.h>
+#include <dash/PatternIterator.h>
 
 namespace dash {
 

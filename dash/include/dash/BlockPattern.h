@@ -1,9 +1,7 @@
 #ifndef DASH__BLOCK_PATTERN_H_
 #define DASH__BLOCK_PATTERN_H_
 
-#include <assert.h>
 #include <functional>
-#include <cstring>
 #include <array>
 #include <type_traits>
 
