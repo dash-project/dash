@@ -44,7 +44,8 @@ class LocalRef;
 template <
   typename T,
   dim_t NumDimensions,
-  class PatternT = Pattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
+  class PatternT =
+    TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
 class MatrixRefProxy {
  public:
   typedef typename PatternT::index_type             index_type;
@@ -92,7 +93,8 @@ template <
   typename T,
   dim_t NumDimensions,
   dim_t CUR = NumDimensions,
-  class PatternT = Pattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
+  class PatternT =
+    TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
 class LocalRef {
  public:
   template<
@@ -213,7 +215,8 @@ template <
   typename ElementT,
   dim_t NumDimensions,
   dim_t CUR = NumDimensions,
-  class PatternT = Pattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
+  class PatternT =
+    TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
 class MatrixRef {
  private:
   typedef MatrixRef<ElementT, NumDimensions, CUR, PatternT>

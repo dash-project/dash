@@ -90,14 +90,6 @@ TEST_F(MatrixTest, DistributeTile) {
   size_t extent_cols = tilesize_x * num_units * 2;
   size_t extent_rows = tilesize_y * num_units * 2;
   typedef dash::TilePattern<2> tile_pattern_t;
-  tile_pattern_t p(dash::SizeSpec<2>(
-                     extent_cols,
-                     extent_rows),
-                   dash::DistributionSpec<2>(
-                     dash::TILE(tilesize_x),
-                     dash::TILE(tilesize_y)),
-                   dash::Team::All());
-  return;
   LOG_MESSAGE("Initialize matrix ...");
   dash::Matrix<int, 2, int, tile_pattern_t> matrix(
                          dash::SizeSpec<2>(
@@ -130,15 +122,15 @@ TEST_F(MatrixTest, DistributeTile) {
   dash::Team::All().barrier();
   LOG_MESSAGE("Team barrier passed");
 
-  if(_dash_id == 0) {
-    // Read and assert values in matrix
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
-        LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
-        int value    = matrix[i][k];
-        int expected = (i * 11) + (k * 97);
-        ASSERT_EQ_U(expected, value);
-      }
+  if (myid != 0) return; 
+
+  // Read and assert values in matrix
+  for(int i = 0; i < matrix.extent(0); ++i) {
+    for(int k = 0; k < matrix.extent(1); ++k) {
+      LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
+      int value    = matrix[i][k];
+      int expected = (i * 11) + (k * 97);
+      ASSERT_EQ_U(expected, value);
     }
   }
 }

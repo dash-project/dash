@@ -49,9 +49,10 @@ MatrixRefProxy<T, NumDim, PatternT>::global_reference() const
   auto pattern       = _mat->pattern();
   auto memory_layout = pattern.memory_layout();
   auto global_index  = memory_layout.at(_coord, _viewspec);
-  DASH_LOG_TRACE_VAR("MatrixRefProxy.global_reference()", global_index);
+  DASH_LOG_TRACE_VAR("MatrixRefProxy.global_reference", global_index);
   auto global_begin  = _mat->begin();
   GlobRef<T> ref     = global_begin[global_index];
+  DASH_LOG_TRACE_VAR("MatrixRefProxy.global_reference >", (T)ref);
   return ref;
 }
 
