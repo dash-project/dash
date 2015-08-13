@@ -46,18 +46,20 @@ public:
   : m_globmem(nullptr),
     m_pattern(nullptr),
     m_idx(0) {
+    DASH_LOG_TRACE_VAR("GlobIter()", m_idx);
   }
 
   /**
    * Constructor.
    */
   GlobIter(
-    GlobMem<ElementType> * mem,
+    GlobMem<ElementType> * gmem,
 	  const PatternType    & pat,
 	  size_t                 idx = 0)
-  : m_globmem(mem), 
+  : m_globmem(gmem), 
     m_pattern(&pat),
     m_idx(idx) {
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", m_idx);
   }
 
   GlobIter(
@@ -65,6 +67,11 @@ public:
   GlobIter<ElementType, PatternType> & operator=(
       const self_t & other) = default;
 
+  /**
+   * Type conversion operator to \c GlobPtr.
+   *
+   * \return  A global reference to the element at the iterator's position
+   */
   operator GlobPtr<ElementType>() const {
     // Global index to local index and unit:
     auto glob_coords = m_pattern->coords(m_idx);

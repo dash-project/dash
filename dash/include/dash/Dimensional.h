@@ -163,6 +163,17 @@ public:
    * Default constructor, initializes default blocked distribution 
    * (BLOCKED, NONE*).
    */
+/* 
+  TODO:
+  Set defaults depending on pattern traits (e.g. tiled / blocked).
+  Sketch of implementation:
+
+  DistributionSpec(
+    const PatternTraits & traits)
+  : _traits(traits) {
+    this->_values = _traits.default_distribution(NumDimensions);
+  }
+*/
   DistributionSpec()
   : _is_tiled(false) {
     this->_values[0] = BLOCKED;
@@ -191,10 +202,6 @@ public:
         _is_tiled = true;
         break;
       }
-    }
-    if (NumDimensions == 1) {
-      // Tiles one dimension are equivalent to block-cyclic distribution
-      _is_tiled = false;
     }
   }
   

@@ -794,6 +794,174 @@ private:
   dim_t _rank;
 };
 
+/** 
+ * Specifies how local element indices are arranged in a specific number
+ * of dimensions.
+ * Behaves like CartesianIndexSpace if distribution is not tiled in any
+ * dimension.
+ *
+ * \tparam  NumDimensions  Number of dimensions
+ */
+template<
+  size_t NumDimensions,
+  MemArrange Arrangement = ROW_MAJOR,
+  typename IndexType = long long>
+class LocalMemoryLayout :
+  public CartesianIndexSpace<NumDimensions, Arrangement, IndexType> {
+private:
+  typedef typename std::make_unsigned<IndexType>::type
+    SizeType;
+  typedef LocalMemoryLayout<NumDimensions, Arrangement, IndexType>
+    self_t;
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
+    parent_t;
+public:
+  /**
+   * Constructor, creates an instance of LocalMemoryLayout from a SizeSpec
+   * and a DistributionSpec of \c NumDimensions dimensions.
+   */
+  LocalMemoryLayout(
+    const SizeSpec<NumDimensions> & sizespec,
+    const DistributionSpec<NumDimensions> & distspec)
+  : parent_t(sizespec),
+    _distspec(distspec) {
+  }
+
+  /**
+   * Constructor, creates an instance of LocalMemoryLayout with initial extents
+   * 0 and a DistributionSpec of \c NumDimensions dimensions.
+   */
+  LocalMemoryLayout(
+    const DistributionSpec<NumDimensions> & distspec)
+  : parent_t(SizeSpec<NumDimensions>()),
+    _distspec(distspec) {
+  }
+
+  /**
+   * Equality comparison operator.
+   */
+  bool operator==(const self_t & other) const {
+    if (!(parent_t::operator==(other))) {
+      return false;
+    }
+    return _distspec == other._distspec;
+  }
+
+  /**
+   * Inequality comparison operator.
+   */
+  bool operator!=(const self_t & other) const {
+    return !(*this == other);
+  }
+
+  /**
+   * Change the extent of the cartesian space in every dimension.
+   */
+  template<typename... Args>
+  void resize(SizeType arg, Args... args) {
+    static_assert(
+      sizeof...(Args) == NumDimensions-1,
+      "Invalid number of arguments");
+    std::array<SizeType, NumDimensions> extents =
+      { arg, (SizeType)(args)... };
+    resize(extents);
+  }
+
+  /**
+   * Change the extent of the cartesian space in every dimension.
+   */
+  template<typename SizeType_>
+  void resize(std::array<SizeType_, NumDimensions> extents) {
+    if (!_distspec.is_tiled()) {
+      parent_t::resize(extents);
+    }
+    // Tiles in at least one dimension
+    // TODO
+  }
+  
+  /**
+   * Convert the given coordinates to their respective linear index.
+   *
+   * \param  args  An argument list consisting of the coordinates, ordered
+   *               by dimension (x, y, z, ...)
+   */
+  template<
+    typename... Args,
+    MemArrange AtArrangement = Arrangement>
+  IndexType at(
+      IndexType arg, Args... args) const {
+    static_assert(
+      sizeof...(Args) == NumDimensions-1,
+      "Invalid number of arguments");
+    ::std::array<IndexType, NumDimensions> pos =
+      { arg, (IndexType)(args) ... };
+    return at<AtArrangement>(pos);
+  }
+  
+  /**
+   * Convert the given cartesian point to its respective linear index.
+   *
+   * \param  point  An array containing the coordinates, ordered by
+   *                dimension (x, y, z, ...)
+   */
+  template<
+    MemArrange AtArrangement = Arrangement,
+    typename OffsetType>
+  IndexType at(
+    const std::array<OffsetType, NumDimensions> & point) const {
+    if (!_distspec.is_tiled()) {
+      // Default case, no tiles
+      return parent_t::at(point);
+    }
+    // Tiles in at least one dimension
+    // TODO
+  }
+  
+  /**
+   * Convert the given cartesian point to a linear index, respective to
+   * the offsets specified in the given ViewSpec.
+   *
+   * \param  point     An array containing the coordinates, ordered by
+   *                   dimension (x, y, z, ...)
+   * \param  viewspec  An instance of ViewSpec to apply to the given
+   *                   point before resolving the linear index.
+   */
+  template<
+    MemArrange AtArrangement = Arrangement,
+    typename OffsetType>
+  IndexType at(
+    const std::array<OffsetType, NumDimensions> & point,
+    const ViewSpec<NumDimensions> & viewspec) const {
+    std::array<OffsetType, NumDimensions> coords;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      coords[d] = point[d] + viewspec[d].offset;
+    }
+    if (!_distspec.is_tiled()) {
+      // Default case, no tiles
+      return parent_t::at(coords);
+    }
+    // Tiles in at least one dimension
+    return at(coords);
+  }
+
+  /**
+   * Convert given linear offset (index) to cartesian coordinates.
+   * Inverse of \c at(...).
+   */
+  template<MemArrange CoordArrangement = Arrangement>
+  std::array<IndexType, NumDimensions> coords(IndexType index) const {
+    if (!_distspec.is_tiled()) {
+      // Default case, no tiles
+      return parent_t::coords(index);
+    }
+    // Tiles in at least one dimension
+    // TODO
+  }
+
+private:
+  DistributionSpec<NumDimensions> _distspec;
+};
+
 } // namespace dash
 
 #endif // DASH__CARTESIAN_H_

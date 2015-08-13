@@ -133,23 +133,25 @@ TEST_F(TilePatternTest, Distribute2DimTileXY)
                                 l_block_index_x;
       int l_block_index_col   = (block_index_x * num_l_blocks_y) +
                                 l_block_index_y;
+      int phase_x             = (x % block_size_x);
+      int phase_y             = (y % block_size_y);
       int phase_row           = (y % block_size_y) * block_size_x +
-                                (x % block_size_x);
+                                phase_x;
       int phase_col           = (x % block_size_x) * block_size_y +
                                 (y % block_size_y);
-      
+      int local_x             = l_block_index_x * block_size_x + phase_x;
+      int local_y             = l_block_index_y * block_size_y + phase_y;
       int local_index_row     = (l_block_index_row * block_size) +
                                 phase_row;
+      // Row major:
       auto local_coords_row   = pat_tile_row.coords_to_local(
                                   std::array<int, 2> { x, y });
-      // Row major:
-      LOG_MESSAGE("R %d,%d, u:%d, b:%d,%d, nlb:%d,%d, lbi:%d, p:%d",
+      LOG_MESSAGE("R %d,%d, u:%d, b:%d,%d, nlb:%d,%d, lc: %d,%d, lbi:%d, p:%d",
         x, y,
         unit_id,
-        block_index_x,
-        block_index_y,
-        num_l_blocks_x,
-        num_l_blocks_y,
+        block_index_x, block_index_y,
+        num_l_blocks_x, num_l_blocks_y,
+        local_coords_row[0], local_coords_row[1],
         l_block_index_row,
         phase_row);
       EXPECT_EQ(
@@ -158,6 +160,9 @@ TEST_F(TilePatternTest, Distribute2DimTileXY)
       EXPECT_EQ(
         local_index_row,
         pat_tile_row.at(std::array<int, 2> { x, y }));
+      EXPECT_EQ(
+        local_index_row,
+        pat_tile_row.local_at(local_coords_row));
       auto glob_coords_row = 
         pat_tile_row.coords_to_global(
           unit_id,

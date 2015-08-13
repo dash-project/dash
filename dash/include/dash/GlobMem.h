@@ -88,12 +88,13 @@ public:
     /// Number of local elements to allocate
     size_t nlelem
   ) {
-    DASH_LOG_TRACE("GlobMem(team, nelem)", team.size(), nlelem);
+    DASH_LOG_TRACE("GlobMem(nunits,nelem)", team.size(), nlelem);
     m_begptr     = DART_GPTR_NULL;
     m_teamid     = team.dart_id();
     m_nlelem     = nlelem;
     m_kind       = dash::internal::COLLECTIVE;
     size_t lsize = sizeof(TYPE) * m_nlelem;
+    DASH_LOG_TRACE_VAR("GlobMem(nunits, nelem)", lsize);
     dart_team_size(m_teamid, &m_nunits);
     dart_team_memalloc_aligned(
       m_teamid, 

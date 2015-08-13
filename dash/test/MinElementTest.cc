@@ -123,15 +123,20 @@ TEST_F(MinElementTest, TestFindArrayUnderfilled)
 TEST_F(MinElementTest, TestFindMatrixDefault)
 {
   Element_t min_value = 11;
-  size_t extent_cols  = 431;
-  size_t extent_rows  = 547;
-  int min_pos_x       = 234;
-  int min_pos_y       = 534;
+  size_t num_units    = dash::Team::All().size();
+  size_t tilesize_x   = 13;
+  size_t tilesize_y   = 17;
+  size_t extent_cols  = tilesize_x * 5 * num_units;
+  size_t extent_rows  = tilesize_y * 3 * num_units;
+  int min_pos_x       = extent_cols / 2;
+  int min_pos_y       = extent_rows / 2;
   dash::Matrix<Element_t, 2> matrix(
                          dash::SizeSpec<2>(
-                           extent_cols, extent_rows),
+                           extent_cols,
+                           extent_rows),
                          dash::DistributionSpec<2>(
-                           dash::NONE, dash::BLOCKCYCLIC(51)));
+                           dash::TILE(tilesize_x),
+                           dash::TILE(tilesize_y)));
   size_t matrix_size = extent_cols * extent_rows;
   ASSERT_EQ(matrix_size, matrix.size());
   ASSERT_EQ(extent_cols, matrix.extent(0));
