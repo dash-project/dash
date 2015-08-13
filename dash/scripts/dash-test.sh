@@ -36,10 +36,10 @@ fi
 
 function run_suite
 {
-  echo "===================================" >> $LOGFILE
-  echo "Running test suite with ${1} units" >> $LOGFILE
+  echo "===================================" | tee -a $LOGFILE
+  echo "Running test suite with ${1} units ..." | tee -a $LOGFILE
   $RUN_CMD -n $1 $TEST_BINARY 2>&1 | tee -a $LOGFILE | grep Failure
-  echo "===================================" >> $LOGFILE
+  echo "Done" | tee -a $LOGFILE
 }
 
 run_suite 1
@@ -48,6 +48,7 @@ run_suite 3
 run_suite 4
 run_suite 7
 run_suite 8
+run_suite 12
+run_suite 17
 run_suite 20
-run_suite 21
 
