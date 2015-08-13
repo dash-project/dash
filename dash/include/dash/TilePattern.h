@@ -493,6 +493,7 @@ public:
     const std::array<IndexType, NumDimensions> & local_coords,
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
+    DASH_LOG_DEBUG_VAR("TilePattern.local_at()", local_coords);
     IndexType l_index = 0;
     // Phase coordinates of element:
     std::array<IndexType, NumDimensions> phase_coords;
@@ -503,9 +504,11 @@ public:
       phase_coords[d]   = vs_coord_d % _blocksize_spec.extent(d);
       block_coords_l[d] = vs_coord_d / _blocksize_spec.extent(d);
     }
+    DASH_LOG_DEBUG_VAR("TilePattern.local_at", block_coords_l);
+    DASH_LOG_DEBUG_VAR("TilePattern.local_at", phase_coords);
+    DASH_LOG_DEBUG_VAR("TilePattern.local_at", _local_blockspec.extents());
     // Number of blocks preceeding the coordinates' block:
-    auto block_offset   = _local_blockspec.at(block_coords_l);
-    auto block_offset_l = block_offset / _nunits;
+    auto block_offset_l = _local_blockspec.at(block_coords_l);
     return block_offset_l * _blocksize_spec.size() + // preceeding blocks
            _blocksize_spec.at(phase_coords);         // element phase
   }
@@ -519,11 +522,6 @@ public:
     /// Point in local memory
     const std::array<IndexType, NumDimensions> & local_coords) const {
     return local_at(local_coords, _viewspec);
-    IndexType l_index = 0;
-    for (auto d = 0; d < NumDimensions; ++d) {
-      
-    }
-    return l_index;
   }
 
   /**
@@ -828,8 +826,7 @@ public:
    */
   bool is_local(
     IndexType index) const {
-    dart_unit_t unit = team().myid();
-    return is_local(index, unit);
+    return is_local(index, team().myid());
   }
 
   /**
@@ -864,7 +861,9 @@ public:
    * \see  DashPatternConcept
    */
   SizeType local_capacity() const {
-    return _local_capacity;
+    // Balanced pattern, local capacity identical for every unit and
+    // same as local size.
+    return local_size();
   }
 
   /**
