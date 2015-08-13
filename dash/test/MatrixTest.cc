@@ -90,8 +90,6 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY) {
   dash::Team::All().barrier();
   LOG_MESSAGE("Team barrier passed");
 
-  if (myid != 0) return; 
-
   // Read and assert values in matrix
   for(int i = 0; i < matrix.extent(0); ++i) {
     for(int k = 0; k < matrix.extent(1); ++k) {
@@ -147,16 +145,10 @@ TEST_F(MatrixTest, Distribute2DimTileXY) {
     }
   }
 
-  if (myid != 0) return; 
-  ASSERT_EQ_U(0, (int)matrix[0][0]);
-  return;
-
   // Units waiting for value initialization
   LOG_MESSAGE("Wait for team barrier ...");
   dash::Team::All().barrier();
   LOG_MESSAGE("Team barrier passed");
-
-  if (myid != 0) return; 
 
   // Read and assert values in matrix
   for(int i = 0; i < matrix.extent(0); ++i) {
@@ -212,11 +204,6 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY) {
       }
     }
   }
-
-  if (myid != 0) return; 
-  ASSERT_EQ_U(0, (int)matrix[0][0]);
-  return;
-
   // Units waiting for value initialization
   LOG_MESSAGE("Wait for team barrier ...");
   dash::Team::All().barrier();
