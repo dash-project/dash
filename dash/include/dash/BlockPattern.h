@@ -1,9 +1,7 @@
 #ifndef DASH__BLOCK_PATTERN_H_
 #define DASH__BLOCK_PATTERN_H_
 
-#include <assert.h>
 #include <functional>
-#include <cstring>
 #include <array>
 #include <type_traits>
 
@@ -542,13 +540,17 @@ public:
    */
   std::array<SizeType, NumDimensions> local_extents(
     dart_unit_t unit) const {
+    DASH_LOG_DEBUG_VAR("Pattern.local_extents()", unit);
+    std::array<SizeType, NumDimensions> l_extents;
     if (unit == _team.myid()) {
       // Local unit id, get extents from member instance:
-      return _local_memory_layout.extents();
+      l_extents = _local_memory_layout.extents();
+    } else {
+      // Remote unit id, initialize local memory layout for given unit:
+      l_extents = initialize_local_extents(unit);
     }
-    // Remote unit id, initialize local memory layout for given unit:
-    return LocalMemoryLayout_t(initialize_local_extents(unit))
-           .extents();
+    DASH_LOG_DEBUG_VAR("Pattern.local_extents >", l_extents);
+    return l_extents;
   }
 
   /**
@@ -724,18 +726,18 @@ public:
    * 
    * \see  DashPatternConcept
    */
-  local_index_t at_unit(
+  local_index_t local(
     std::array<IndexType, NumDimensions> & global_coords) const {
-    DASH_LOG_TRACE_VAR("Pattern.at_unit()", global_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local()", global_coords);
     // Local offset of the element within all of the unit's local
     // elements:
     SizeType local_elem_offset = 0;
     auto unit = unit_at(global_coords);
-    DASH_LOG_TRACE_VAR("Pattern.at_unit", unit);
+    DASH_LOG_TRACE_VAR("Pattern.local", unit);
     // Global coords to local coords:
     std::array<IndexType, NumDimensions> l_coords = 
       coords_to_local(global_coords);
-    DASH_LOG_TRACE_VAR("Pattern.at_unit", l_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local", l_coords);
     if (unit == _team.myid()) {
       // Coords are local to this unit, use pre-generated local memory 
       // layout
@@ -744,7 +746,8 @@ public:
       // Cannot use _local_memory_layout as it is only defined for the 
       // active unit but does not specify local memory of other units.
       // Generate local memory layout for unit assigned to coords:
-      auto l_mem_layout = LocalMemoryLayout_t(initialize_local_extents(unit));
+      auto l_mem_layout = 
+        LocalMemoryLayout_t(initialize_local_extents(unit));
       return local_index_t { unit, l_mem_layout.at(l_coords) };
     }
   }
@@ -1124,14 +1127,14 @@ private:
    */
   std::array<SizeType, NumDimensions> initialize_local_extents(
     dart_unit_t unit) const {
+    DASH_LOG_DEBUG_VAR("Pattern.init_local_extents()", unit);
+    DASH_LOG_DEBUG_VAR("Pattern.init_local_extents()", _nunits);
     if (_nunits == 0) {
       return ::std::array<SizeType, NumDimensions> {  };
     }
     // Coordinates of local unit id in team spec:
     auto unit_ts_coords = _teamspec.coords(unit);
-    DASH_LOG_DEBUG_VAR("Pattern.local_extents()", unit);
-    DASH_LOG_DEBUG_VAR("Pattern.local_extents()", _nunits);
-    DASH_LOG_TRACE_VAR("Pattern.local_extents", unit_ts_coords);
+    DASH_LOG_TRACE_VAR("Pattern.init_local_extents", unit_ts_coords);
     ::std::array<SizeType, NumDimensions> l_extents;
     for (auto d = 0; d < NumDimensions; ++d) {
       auto num_elem_d         = _memory_layout.extent(d);
@@ -1145,13 +1148,13 @@ private:
       auto min_local_blocks_d = num_blocks_d / num_units_d;
       // Coordinate of this unit id in teamspec in dimension:
       auto unit_ts_coord      = unit_ts_coords[d];
-      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", d);
-      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", unit_ts_coord);
-      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_elem_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_units_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_blocks_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", blocksize_d);
-      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", 
+      DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", d);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", unit_ts_coord);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", num_elem_d);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", num_units_d);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", num_blocks_d);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", blocksize_d);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", 
                          min_local_blocks_d);
       // Possibly there are more blocks than units in dimension and no
       // block left for this unit. Local extent in d then becomes 0.
@@ -1167,26 +1170,26 @@ private:
         auto last_block_unit_d = (num_blocks_d % num_units_d == 0)
                                  ? num_units_d - 1
                                  : (num_blocks_d % num_units_d) - 1;
-        DASH_LOG_TRACE_VAR("Pattern.local_extents.d", 
+        DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", 
                            last_block_unit_d);
-        DASH_LOG_TRACE_VAR("Pattern.local_extents.d", num_add_blocks);
+        DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", num_add_blocks);
         if (unit_ts_coord < num_add_blocks) {
           // Unit is assigned to an additional block:
           l_extents[d] += blocksize_d;
-          DASH_LOG_TRACE_VAR("Pattern.local_extents.d", l_extents[d]);
+          DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", l_extents[d]);
         } 
         if (unit_ts_coord == last_block_unit_d) {
           // If the last block in the dimension is underfilled and
           // assigned to the local unit, subtract the missing extent:
           SizeType undfill_blocksize_d = underfilled_blocksize(d);
-          DASH_LOG_TRACE_VAR("Pattern.local_extents", 
+          DASH_LOG_TRACE_VAR("Pattern.init_local_extents", 
                              undfill_blocksize_d);
           l_extents[d] -= undfill_blocksize_d;
         }
       }
-      DASH_LOG_TRACE_VAR("Pattern.local_extents.d", l_extents[d]);
+      DASH_LOG_TRACE_VAR("Pattern.init_local_extents.d", l_extents[d]);
     }
-    DASH_LOG_DEBUG_VAR("Pattern.local_extents >", l_extents);
+    DASH_LOG_DEBUG_VAR("Pattern.init_local_extents >", l_extents);
     return l_extents;
   }
 };
