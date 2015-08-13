@@ -307,12 +307,12 @@ TEST_F(MatrixTest, Sub2DimDefault) {
   // Check local range:
   ASSERT_EQ_U(matrix_size / num_units, matrix.local_capacity());
   ASSERT_EQ_U(matrix_size / num_units, matrix.local_size());
-  ASSERT_EQ_U(matrix.lend() - matrix.lbegin(),
-              matrix.local_size());
   element_t * lit  = matrix.lbegin();
   element_t * lend = matrix.lend();
   LOG_MESSAGE("Local range: lend(%p) - lbegin(%p) = %d",
               lend, lit, lend - lit);
+  ASSERT_EQ_U(matrix.lend() - matrix.lbegin(),
+              matrix.local_size());
   // Assign unit-specific values in local matrix range:
   for (int lidx = 0; lit != lend; ++lidx, ++lit) {
     ASSERT_LT_U(lidx, matrix.local_size());
@@ -323,6 +323,7 @@ TEST_F(MatrixTest, Sub2DimDefault) {
   }
   
   matrix.barrier();
+  LOG_MESSAGE("Testing values");
 
   // Test values by column:
   size_t num_visited_total = 0;
