@@ -100,8 +100,8 @@ public:
       m_teamid, 
       lsize,
       &m_begptr);
-    m_lbegin     = lbegin(m_teamid);
-    m_lend       = lend(m_teamid);
+    m_lbegin     = lbegin(dash::myid());
+    m_lend       = lend(dash::myid());
   }
 
   /**
@@ -121,8 +121,8 @@ public:
     dart_memalloc(
       lsize,
       &m_begptr);
-    m_lbegin     = lbegin(m_teamid);
-    m_lend       = lend(m_teamid);
+    m_lbegin     = lbegin(dash::myid());
+    m_lend       = lend(dash::myid());
   }
 
   /**
@@ -259,12 +259,21 @@ public:
   }
 
   template<typename T=TYPE>
-  void put_value(const T & newval, size_t idx) {
-    // idx to gptr
+  void put_value(
+    const T & newval,
+    size_t global_index) {
+    dart_gptr_t gptr = m_begptr;
+    dart_gptr_incaddr(&gptr, global_index * sizeof(TYPE));
+    dash::put_value(newval, GlobPtr<T>(gptr));
   }
 
   template<typename T=TYPE>
-  void get_value(T * ptr, size_t idx) {
+  void get_value(
+    T * ptr,
+    size_t global_index) {
+    dart_gptr_t gptr = m_begptr;
+    dart_gptr_incaddr(&gptr, global_index * sizeof(TYPE));
+    dash::get_value(ptr, GlobPtr<T>(gptr));
   }
 
   /**
