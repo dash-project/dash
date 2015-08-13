@@ -444,16 +444,31 @@ public:
   }
 
   /**
-   * Convert given point in pattern to its assigned unit id.
+   * Convert given global linear index to its assigned unit id.
+   *
+   * \see DashPatternConcept
    */
-  template<typename ... Values>
   dart_unit_t unit_at(
-    /// Absolute coordinates of the point
-    Values ... values
+    /// Global linear element offset
+    IndexType global_pos,
+    /// View to apply global position
+    const ViewSpec_t & viewspec
   ) const {
-    std::array<IndexType, NumDimensions> inputindex =
-      { (IndexType)values... };
-    return unit_at(inputindex, _viewspec);
+    auto global_coords = _memory_layout.coords(global_pos);
+    return unit_at(global_coords, viewspec);
+  }
+
+  /**
+   * Convert given global linear index to its assigned unit id.
+   *
+   * \see DashPatternConcept
+   */
+  dart_unit_t unit_at(
+    /// Global linear element offset
+    IndexType global_pos
+  ) const {
+    auto global_coords = _memory_layout.coords(global_pos);
+    return unit_at(global_coords, _viewspec);
   }
 
   /**
@@ -942,6 +957,8 @@ public:
   /**
    * Cartesian index space representing the underlying memory model of the
    * pattern.
+   *
+   * \see DashPatternConcept
    */
   const MemoryLayout_t & memory_layout() const {
     return _memory_layout;
@@ -950,6 +967,7 @@ public:
   /**
    * Cartesian index space representing the underlying local memory model
    * of this pattern for the calling unit.
+   * Not part of DASH Pattern concept.
    */
   const LocalMemoryLayout_t & local_memory_layout() const {
     return _local_memory_layout;
