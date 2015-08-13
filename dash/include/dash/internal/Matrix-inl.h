@@ -358,7 +358,7 @@ template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
 MatrixRef<T, NumDim, CUR, PatternT>::size() const noexcept
 {
-  return _proxy->_size;
+  return _proxy->_viewspec.size();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -519,21 +519,21 @@ MatrixRef<T, NumDim, CUR, PatternT>::pattern() const
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline bool
 MatrixRef<T, NumDim, CUR, PatternT>::is_local(
-  index_type pos)
+  index_type g_pos) const
 {
-  return (_proxy->_mat->_pattern.unit_at(pos, _proxy->_viewspec) ==
+  return (_proxy->_mat->_pattern.unit_at(g_pos, _proxy->_viewspec) ==
           _proxy->_mat->_myid);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+template <dim_t Dimension>
 inline bool
 MatrixRef<T, NumDim, CUR, PatternT>::is_local(
-  dim_t dim,
-  index_type pos)
+  index_type g_pos) const
 {
   return _proxy->_mat->_pattern.has_local_elements(
-           dim,
-           pos,
+           Dimension,
+           g_pos,
            _proxy->_mat->_myid,
            _proxy->_viewspec);
 }
@@ -647,8 +647,8 @@ Matrix<T, NumDim, IndexT, PatternT>::Matrix(
   _local         = LocalRef_t(this);
   DASH_LOG_TRACE("Matrix()", "_local initialized");
   // Local iterators:
-  _lbegin        = _glob_mem.lbegin(_myid);
-  _lend          = _glob_mem.lend(_myid);
+  _lbegin        = _glob_mem.lbegin();
+  _lend          = _glob_mem.lend();
   DASH_LOG_TRACE("Matrix()", "Initialized");
 }
 
@@ -669,6 +669,18 @@ template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline constexpr typename Matrix<T, NumDim, IndexT, PatternT>::size_type
 Matrix<T, NumDim, IndexT, PatternT>::size() const noexcept {
   return _size;
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline constexpr typename Matrix<T, NumDim, IndexT, PatternT>::size_type
+Matrix<T, NumDim, IndexT, PatternT>::local_size() const noexcept {
+  return _lsize;
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline constexpr typename Matrix<T, NumDim, IndexT, PatternT>::size_type
+Matrix<T, NumDim, IndexT, PatternT>::local_capacity() const noexcept {
+  return _lcapacity;
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -780,7 +792,7 @@ template<dim_t SubDimension>
 inline MatrixRef<T, NumDim, NumDim, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>::submat(
   size_type offset,
-  size_type exent) {
+  size_type extent) {
   return _ref.submat<SubDimension>(offset, extent);
 }
 
@@ -822,15 +834,15 @@ Matrix<T, NumDim, IndexT, PatternT>::pattern() const {
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline bool Matrix<T, NumDim, IndexT, PatternT>::is_local(
-  size_type offset) {
-  return _ref.is_local(offset);
+  size_type g_pos) const {
+  return _ref.is_local(g_pos);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+template <dim_t Dimension>
 inline bool Matrix<T, NumDim, IndexT, PatternT>::is_local(
-  dim_t dim,
-  size_type offset) {
-  return _ref.is_local(dim, offset);
+  size_type g_pos) const {
+  return _ref.is_local<Dimension>(g_pos);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>

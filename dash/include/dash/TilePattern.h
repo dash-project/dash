@@ -470,16 +470,31 @@ public:
   }
 
   /**
-   * Convert given point in pattern to its assigned unit id.
+   * Convert given global point in pattern to its assigned unit id.
    */
   template<typename ... Values>
   dart_unit_t unit_at(
     /// Absolute coordinates of the point
-    Values ... values
+    IndexType value, Values ... values
   ) const {
-    std::array<IndexType, NumDimensions> inputindex =
-      { (IndexType)values... };
-    return unit_at(inputindex, _viewspec);
+    std::array<IndexType, NumDimensions> global_coords =
+      { value, (IndexType)values... };
+    return unit_at(global_coords, _viewspec);
+  }
+
+  /**
+   * Convert given global linear index to its assigned unit id.
+   */
+  template<typename ... Values>
+  dart_unit_t unit_at(
+    /// Global linear element offset
+    IndexType global_pos,
+    /// View to apply global position
+    const ViewSpec_t & viewspec
+  ) const {
+    std::array<IndexType, NumDimensions> global_coords =
+      _memory_layout.coords(global_pos);
+    return unit_at(global_coords, viewspec);
   }
 
   /**

@@ -332,8 +332,9 @@ class MatrixRef {
   template<typename... Args>
   reference operator()(Args... args);
 
-  inline bool is_local(index_type n);
-  inline bool is_local(dim_t dim, index_type n);
+  inline bool is_local(index_type n) const;
+  template<dim_t Dimension>
+  inline bool is_local(index_type n) const;
 
   template <int level>
   dash::HView<Matrix<ElementT, NumDimensions, Index_t, PatternT>, level>
@@ -487,6 +488,8 @@ class Matrix {
 
   inline Team & team();
   inline constexpr size_type size() const noexcept;
+  inline constexpr size_type local_size() const noexcept;
+  inline constexpr size_type local_capacity() const noexcept;
   inline constexpr size_type extent(dim_t dim) const noexcept;
   inline constexpr bool empty() const noexcept;
   inline void barrier() const;
@@ -527,8 +530,9 @@ class Matrix {
   template<typename... Args>
   inline reference operator()(Args... args);
   inline const PatternT & pattern() const;
-  inline bool is_local(size_type n);
-  inline bool is_local(dim_t dim, size_type n);
+  inline bool is_local(size_type g_pos) const;
+  template<dim_t Dimension>
+  inline bool is_local(size_type g_pos) const;
 
   template <int level>
   inline dash::HView<self_t, level> hview();

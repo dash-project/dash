@@ -11,8 +11,12 @@ namespace internal {
 
 #define ASSERT_EQ_U(e,a) ASSERT_EQ(e,a) << "Unit " << dash::myid()
 #define ASSERT_NE_U(e,a) ASSERT_NE(e,a) << "Unit " << dash::myid()
+#define ASSERT_LT_U(e,a) ASSERT_LT(e,a) << "Unit " << dash::myid()
+#define ASSERT_GT_U(e,a) ASSERT_GT(e,a) << "Unit " << dash::myid()
 #define EXPECT_EQ_U(e,a) EXPECT_EQ(e,a) << "Unit " << dash::myid()
 #define EXPECT_NE_U(e,a) EXPECT_NE(e,a) << "Unit " << dash::myid()
+#define EXPECT_LT_U(e,a) EXPECT_LT(e,a) << "Unit " << dash::myid()
+#define EXPECT_GT_U(e,a) EXPECT_GT(e,a) << "Unit " << dash::myid()
 
 enum GTestColor {
     COLOR_DEFAULT,
