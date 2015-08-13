@@ -638,7 +638,6 @@ Matrix<T, NumDim, IndexT, PatternT>::Matrix(
       &_dart_gptr),
     DART_OK);
 #endif
-  _size          = _pattern.capacity();
   _myid          = _team.myid();
   DASH_LOG_TRACE_VAR("Matrix()", _myid);
   _begin         = GlobIter_t(&_glob_mem, _pattern);
