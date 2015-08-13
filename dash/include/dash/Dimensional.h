@@ -360,7 +360,7 @@ public:
     IndexType offset) {
     ViewPair_t vp { offset, extent };
     this->_values[dimension] = vp;
-    resize(this->_values);
+    update_size();
   }
 
   /**
@@ -397,8 +397,7 @@ private:
   void update_size() {
     _size = 1;
     for (dim_t i = 0; i < _rank; ++i) {
-      _size *= (this->_values[i].extent -
-                this->_values[i].offset);
+      _size *= this->_values[i].extent;
     }
   }
 };
