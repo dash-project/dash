@@ -249,18 +249,22 @@ TEST_F(MatrixTest, Submat2DimDefault) {
   ASSERT_EQ_U(extent_cols * extent_rows, matrix_size);
   
   // Columns 0 ... (J/2)
+  LOG_MESSAGE("Testing submat<0>(0, J/2)");
   auto submatrix_x_lower = matrix.submat<0>(0,
                                             extent_cols / 2);
   ASSERT_EQ_U(matrix_size/2, submatrix_x_lower.size());
   // Columns (J/2) ... (J-1)
+  LOG_MESSAGE("Testing submat<0>(J/2, J-1)");
   auto submatrix_x_upper = matrix.submat<0>(extent_cols / 2,
                                             extent_cols / 2);
   ASSERT_EQ_U(matrix_size/2, submatrix_x_upper.size());
   // Rows 0 ... (J/2)
+  LOG_MESSAGE("Testing submat<1>(0, I/2)");
   auto submatrix_y_lower = matrix.submat<1>(0,
                                             extent_rows / 2);
   ASSERT_EQ_U(matrix_size/2, submatrix_y_lower.size());
   // Rows (J/2) ... (J-1)
+  LOG_MESSAGE("Testing submat<1>(I/2, I-1)");
   auto submatrix_y_upper = matrix.submat<1>(extent_rows / 2,
                                             extent_rows / 2);
   ASSERT_EQ_U(matrix_size/2, submatrix_y_upper.size());
@@ -317,6 +321,9 @@ TEST_F(MatrixTest, Sub2DimDefault) {
                 lit, lidx, value);
     *lit = value;
   }
+  
+  matrix.barrier();
+
   // Test values by column:
   size_t num_visited_total = 0;
   size_t num_visited_local = 0;

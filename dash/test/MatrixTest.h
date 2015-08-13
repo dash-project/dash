@@ -15,18 +15,25 @@ protected:
   MatrixTest() 
   : _dash_id(0),
     _dash_size(0) {
+    LOG_MESSAGE(">>> Test suite: MatrixTest");
   }
 
   virtual ~MatrixTest() {
+    LOG_MESSAGE("<<< Closing test suite: MatrixTest");
   }
 
   virtual void SetUp() {
+    dash::Team::All().barrier();
     _dash_id   = dash::myid();
     _dash_size = dash::size();
+    LOG_MESSAGE("===> Running test case with %d units ...",
+                _dash_size);
   }
 
   virtual void TearDown() {
     dash::Team::All().barrier();
+    LOG_MESSAGE("<=== Finished test case with %d units",
+                _dash_size);
   }
 };
 

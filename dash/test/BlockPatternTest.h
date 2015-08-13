@@ -15,17 +15,23 @@ protected:
   BlockPatternTest()
   : _num_elem(0), 
     _dash_size(0) {
+    LOG_MESSAGE(">>> Test suite: BlockPatternTest");
   }
 
   virtual ~BlockPatternTest() {
+    LOG_MESSAGE("<<< Closing test suite: BlockPatternTest");
   }
 
   virtual void SetUp() {
     _num_elem  = 250;
     _dash_size = dash::size();
+    LOG_MESSAGE("===> Running test case with %d units ...",
+                _dash_size);
   }
 
   virtual void TearDown() {
+    LOG_MESSAGE("<=== Finished test case with %d units",
+                _dash_size);
   }
 };
 
