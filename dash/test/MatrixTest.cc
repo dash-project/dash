@@ -4,16 +4,19 @@
 #include "MatrixTest.h"
 
 TEST_F(MatrixTest, SingleWriteMultipleRead) {
-  dart_unit_t myid  = dash::myid();
-  size_t extent_cols = 43;
-  size_t extent_rows = 54;
+  dart_unit_t myid   = dash::myid();
+  size_t num_units   = dash::Team::All().size();
+  size_t tilesize_x  = 7;
+  size_t tilesize_y  = 3;
+  size_t extent_cols = tilesize_x * num_units * 2;
+  size_t extent_rows = tilesize_y * num_units * 2;
   dash::Matrix<int, 2> matrix(
                          dash::SizeSpec<2>(
                            extent_cols,
                            extent_rows),
                          dash::DistributionSpec<2>(
-                           dash::BLOCKED,
-                           dash::NONE));
+                           dash::TILE(tilesize_x),
+                           dash::TILE(tilesize_y)));
   size_t matrix_size = extent_cols * extent_rows;
   ASSERT_EQ(matrix_size, matrix.size());
   ASSERT_EQ(extent_cols, matrix.extent(0));
