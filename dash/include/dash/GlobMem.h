@@ -66,7 +66,7 @@ void get_value(
     DART_OK);
 }
 
-template<typename TYPE>
+template<typename ElementType>
 class GlobMem {
 private:
   dart_gptr_t             m_begptr;
@@ -74,8 +74,8 @@ private:
   size_t                  m_nunits;
   size_t                  m_nlelem;
   internal::GlobMemKind   m_kind;
-  TYPE                  * m_lbegin;
-  TYPE                  * m_lend;
+  ElementType           * m_lbegin;
+  ElementType           * m_lend;
 
 public:
   /**
@@ -93,7 +93,7 @@ public:
     m_teamid     = team.dart_id();
     m_nlelem     = nlelem;
     m_kind       = dash::internal::COLLECTIVE;
-    size_t lsize = sizeof(TYPE) * m_nlelem;
+    size_t lsize = sizeof(ElementType) * m_nlelem;
     DASH_LOG_TRACE_VAR("GlobMem(nunits, nelem)", lsize);
     dart_team_size(m_teamid, &m_nunits);
     dart_team_memalloc_aligned(
@@ -117,7 +117,7 @@ public:
     m_nlelem     = nlelem;
     m_nunits     = 1;
     m_kind       = dash::internal::LOCAL;
-    size_t lsize = sizeof(TYPE) * m_nlelem;
+    size_t lsize = sizeof(ElementType) * m_nlelem;
     dart_memalloc(
       lsize,
       &m_begptr);
@@ -141,22 +141,22 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  const GlobPtr<TYPE> begin() const {
-    return GlobPtr<TYPE>(m_begptr);
+  const GlobPtr<ElementType> begin() const {
+    return GlobPtr<ElementType>(m_begptr);
   }
 
   /**
    * Global pointer of the initial address of the global memory.
    */
-  GlobPtr<TYPE> begin() {
-    return GlobPtr<TYPE>(m_begptr);
+  GlobPtr<ElementType> begin() {
+    return GlobPtr<ElementType>(m_begptr);
   }
 
   /**
    * Native pointer of the initial address of the local memory of
    * a unit.
    */
-  const TYPE * lbegin(dart_unit_t unit_id) const {
+  const ElementType * lbegin(dart_unit_t unit_id) const {
     void *addr;
     dart_gptr_t gptr = begin().dartptr();
     DASH_ASSERT_RETURNS(
@@ -165,19 +165,19 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
       DART_OK);
-    return static_cast<const TYPE *>(addr);
+    return static_cast<const ElementType *>(addr);
   }
 
   /**
    * Native pointer of the initial address of the local memory of
    * a unit.
    */
-  TYPE * lbegin(dart_unit_t unit_id) {
+  ElementType * lbegin(dart_unit_t unit_id) {
     void *addr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin()", unit_id);
     dart_gptr_t gptr = begin().dartptr();
     DASH_LOG_TRACE_VAR("GlobMem.lbegin()", 
-                       GlobPtr<TYPE>((dart_gptr_t)gptr));
+                       GlobPtr<ElementType>((dart_gptr_t)gptr));
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
@@ -185,14 +185,14 @@ public:
       dart_gptr_getaddr(gptr, &addr),
       DART_OK);
     DASH_LOG_TRACE_VAR("GlobMem.lbegin()", addr);
-    return static_cast<TYPE *>(addr);
+    return static_cast<ElementType *>(addr);
   }
 
   /**
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  const TYPE * lbegin() const {
+  const ElementType * lbegin() const {
     return m_lbegin;
   }
 
@@ -200,7 +200,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  TYPE * lbegin() {
+  ElementType * lbegin() {
     return m_lbegin;
   }
 
@@ -208,45 +208,45 @@ public:
    * Native pointer of the final address of the local memory of
    * a unit.
    */
-  const TYPE * lend(dart_unit_t unit_id) const {
+  const ElementType * lend(dart_unit_t unit_id) const {
     void *addr;
     dart_gptr_t gptr = begin().dartptr();
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&gptr, m_nlelem * sizeof(TYPE)),
+      dart_gptr_incaddr(&gptr, m_nlelem * sizeof(ElementType)),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
       DART_OK);
-    return static_cast<const TYPE *>(addr);
+    return static_cast<const ElementType *>(addr);
   }
 
   /**
    * Native pointer of the final address of the local memory of
    * a unit.
    */
-  TYPE * lend(dart_unit_t unit_id) {
+  ElementType * lend(dart_unit_t unit_id) {
     void *addr;
     dart_gptr_t gptr = begin().dartptr();
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&gptr, m_nlelem * sizeof(TYPE)),
+      dart_gptr_incaddr(&gptr, m_nlelem * sizeof(ElementType)),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
       DART_OK);
-    return static_cast<TYPE *>(addr);
+    return static_cast<ElementType *>(addr);
   }
 
   /**
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  const TYPE * lend() const {
+  const ElementType * lend() const {
     return m_lend;
   }
 
@@ -254,26 +254,38 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  TYPE * lend() {
+  ElementType * lend() {
     return m_lend;
   }
 
-  template<typename T=TYPE>
+  /*
+   * Write value to global memory at given offset.
+   *
+   * \see  dash::put_value
+   */
+  template<typename ValueType = ElementType>
   void put_value(
-    const T & newval,
+    const ValueType & newval,
     size_t global_index) {
+    DASH_LOG_TRACE("GlobMem.put_value(newval, gidx = %d)", global_index);
     dart_gptr_t gptr = m_begptr;
-    dart_gptr_incaddr(&gptr, global_index * sizeof(TYPE));
-    dash::put_value(newval, GlobPtr<T>(gptr));
+    dart_gptr_incaddr(&gptr, global_index * sizeof(ValueType));
+    dash::put_value(newval, GlobPtr<ValueType>(gptr));
   }
 
-  template<typename T=TYPE>
+  /*
+   * Read value from global memory at given offset.
+   *
+   * \see  dash::get_value
+   */
+  template<typename ValueType = ElementType>
   void get_value(
-    T * ptr,
+    ValueType * ptr,
     size_t global_index) {
+    DASH_LOG_TRACE("GlobMem.get_value(newval, gidx = %d)", global_index);
     dart_gptr_t gptr = m_begptr;
-    dart_gptr_incaddr(&gptr, global_index * sizeof(TYPE));
-    dash::get_value(ptr, GlobPtr<T>(gptr));
+    dart_gptr_incaddr(&gptr, global_index * sizeof(ValueType));
+    dash::get_value(ptr, GlobPtr<ValueType>(gptr));
   }
 
   /**
@@ -283,29 +295,30 @@ public:
    * TODO: Clarify if dart-calls can be avoided if GlobRef is local.
    */
   template <typename IndexType>
-  GlobPtr<TYPE> index_to_gptr(
+  GlobPtr<ElementType> index_to_gptr(
     /// The unit id
     dart_unit_t unit,
     /// The unit's local address offset
     IndexType local_index) const {
-    // TODO: Why not like this:
-#if 0
-    GlobPtr<TYPE> gptr = begin();
-    gptr.set_unit(unit);
-    gptr += static_cast<long long>(local_index);
-    return gptr;
-#endif
+    DASH_LOG_DEBUG("GlobMem.index_to_gptr(unit,l_idx)", unit, local_index);
     // TODO: Clarify: what is lunit, gunit?
     dart_unit_t lunit, gunit; 
     dart_gptr_t gptr = m_begptr;
+    DASH_LOG_DEBUG("GlobMem.index_to_gptr (=g_begp)  ",
+                   GlobPtr<ElementType>(gptr));
+    DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", gptr.unitid);
     dart_team_unit_g2l(m_teamid, gptr.unitid, &lunit);
+    DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", lunit);
     lunit = (lunit + unit) % m_nunits;
+    DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", lunit);
     dart_team_unit_l2g(m_teamid, lunit, &gunit);
-    
+    DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", gunit);
+    // Apply global unit to global pointer:
     dart_gptr_setunit(&gptr, gunit);
-    dart_gptr_incaddr(&gptr, local_index * sizeof(TYPE));
-
-    return GlobPtr<TYPE>(gptr);
+    dart_gptr_incaddr(&gptr, local_index * sizeof(ElementType));
+    DASH_LOG_DEBUG("GlobMem.index_to_gptr (+g_unit) >",
+                   GlobPtr<ElementType>(gptr));
+    return GlobPtr<ElementType>(gptr);
   }
 };
 
