@@ -234,6 +234,9 @@ LocalRef<T, NumDim, CUR, PatternT>::submat(
   size_type offset,
   size_type extent)
 {
+  DASH_LOG_TRACE_VAR("LocalRef.submat()", offset);
+  DASH_LOG_TRACE_VAR("LocalRef.submat()", extent);
+  DASH_LOG_TRACE_VAR("LocalRef.submat()", SubDimension);
   static_assert(
       SubDimension < NumDim && SubDimension >= 0,
       "Wrong sub-dimension");
@@ -247,6 +250,8 @@ LocalRef<T, NumDim, CUR, PatternT>::submat(
                           SubDimension,
                           extent,
                           offset);
+  DASH_LOG_TRACE_VAR("LocalRef.submat >",
+                     ref._proxy->_viewspec.size());
   ref._proxy->_mat = _proxy->_mat;
   return ref;
 }
@@ -447,6 +452,9 @@ MatrixRef<T, NumDim, CUR, PatternT>::submat(
   size_type offset,
   size_type extent)
 {
+  DASH_LOG_TRACE_VAR("MatrixRef.submat()", offset);
+  DASH_LOG_TRACE_VAR("MatrixRef.submat()", extent);
+  DASH_LOG_TRACE_VAR("MatrixRef.submat()", SubDimension);
   static_assert(
     SubDimension < NumDim && SubDimension >= 0,
     "Wrong sub-dimension for submat()");
@@ -460,6 +468,8 @@ MatrixRef<T, NumDim, CUR, PatternT>::submat(
                           SubDimension,
                           extent,
                           offset);
+  DASH_LOG_TRACE_VAR("MatrixRef.submat >",
+                     ref._proxy->_viewspec.size());
   return ref;
 }
 
