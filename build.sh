@@ -1,14 +1,34 @@
 #!/bin/sh
 
+FORCE_BUILD=false
+if [ "$1" = "-f" ]; then
+  FORCE_BUILD=true
+fi
+
+function await_confirm
+{
+  if ! $FORCE_BUILD; then
+    echo ""
+    read -p "   To build using these settings, hit ENTER"
+  fi
+}
+
+function exit_message {
+  echo "----------------------------------------------------"
+  echo "Done. To install DASH, run  make install  in ./build"
+}
+
 mkdir -p build
 rm -Rf ./build/*
 (cd ./build && cmake -DCMAKE_BUILD_TYPE=Release \
-                     -DENABLE_ASSERTIONS=OFF \
+                     -DENABLE_ASSERTIONS=ON \
                      -DDART_IF_VERSION=3.1 \
                      -DINSTALL_PREFIX=$HOME/opt/ \
                      -DDART_IMPLEMENTATIONS=mpi,shmem \
                      -DBUILD_EXAMPLES=ON \
-                     -DENABLE_LOGGING=ON \
+                     -DENABLE_LOGGING=OFF \
                      -DENABLE_TRACE_LOGGING=OFF \
                      -DBUILD_TESTS=ON ../ && \
-make)
+ await_confirm && \
+ make -j) && \
+exit_message

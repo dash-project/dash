@@ -64,7 +64,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY) {
                  dash::Team::All(),
                  team_spec);
   
-  LOG_MESSAGE("Wait for team barrier ...");
+  LOG_MESSAGE("Matrix initialized, wait for barrier ...");
   dash::Team::All().barrier();
   LOG_MESSAGE("Team barrier passed");
 
@@ -86,7 +86,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY) {
     }
   }
   // Units waiting for value initialization
-  LOG_MESSAGE("Wait for team barrier ...");
+  LOG_MESSAGE("Values assigned, wait for barrier ...");
   dash::Team::All().barrier();
   LOG_MESSAGE("Team barrier passed");
 
