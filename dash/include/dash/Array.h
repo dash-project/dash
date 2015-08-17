@@ -367,6 +367,7 @@ public:
    * Destructor, deallocates array elements.
    */
   ~Array() {
+    DASH_LOG_TRACE_VAR("Array.~Array()", this);
     deallocate();
   }
 
@@ -601,13 +602,18 @@ public:
     return allocate(m_pattern);
   }
 
-  bool deallocate() {
-    if (m_size > 0) {
-      delete m_globmem;
-      m_size = 0;
-      return true;
+  void deallocate() {
+    if (m_size == 0) {
+      return;
     }
-    return false;
+    DASH_LOG_TRACE_VAR("Array.deallocate()", this);
+    // Remove this function from team deallocator list to avoid
+    // double-free:
+    m_team.unregister_deallocator(
+      this, std::bind(&Array::deallocate, this));
+    // Actual destruction of the array instance:
+    delete m_globmem;
+    m_size = 0;
   }
 
 private:
@@ -639,6 +645,10 @@ private:
     DASH_LOG_TRACE_VAR("Array.allocate", m_myid);
     DASH_LOG_TRACE_VAR("Array.allocate", m_size);
     DASH_LOG_TRACE_VAR("Array.allocate", m_lsize);
+    // Register deallocator of this array instance at the team
+    // instance that has been used to initialized it:
+    m_team.register_deallocator(
+      this, std::bind(&Array::deallocate, this));
     DASH_LOG_TRACE("Array.allocate() finished");
     return true;
   }

@@ -8,6 +8,7 @@
 #ifndef TEAM_H_INCLUDED
 #define TEAM_H_INCLUDED
 
+#include <list>
 #include <iostream>
 #include <memory>
 #include <type_traits>
@@ -19,6 +20,12 @@
 #include <dash/dart/if/dart.h>
 
 namespace dash {
+
+// Forward-declarations
+class Team;
+std::ostream & operator<<(
+  std::ostream & os,
+  const Team & team);
 
 /**
  * A Team instance specifies a subset of all available units.
@@ -35,6 +42,9 @@ class Team {
   template< class U> friend class Shared;
   template< class U, class Pattern > friend class GlobIter;
   template< class U> friend class GlobRef;
+  friend std::ostream & operator<<(
+    std::ostream & os,
+    const Team & team);
 
 public:
   typedef struct iterator {
@@ -67,79 +77,54 @@ public:
     return iterator(size());
   }
 
-private:
-  dart_team_t             m_dartid    = DART_TEAM_NULL;
-  Team                  * m_parent    = nullptr;
-  Team                  * m_child     = nullptr;
-  size_t                  m_position  = 0;
-  mutable bool            m_havegroup = false;
-  mutable dart_group_t  * m_group     = nullptr;
-
-  static Team _team_all;
-  static Team _team_null;
-
-  void free_team() {
-  }
-
-  void get_group() const {
-    size_t sz; dart_group_sizeof(&sz);
-    m_group = (dart_group_t*)malloc(sz);
-    dart_group_init(m_group);
-    
-    dart_team_get_group(m_dartid, m_group);
-    m_havegroup = true;
-  }
-
-/* 
-  TODO: Use operator<<(std::ostream & os, Team t)
 public:
-  void trace_parent() {
-    std::cout << "I'm " << m_dartid << "(" << this << ")" << " my parent "
-         << (m_parent ? m_parent->m_dartid
-                      : DART_TEAM_NULL)
-         << std::endl;
-    if (m_parent) m_parent->trace_parent();
-  }
-  void trace_child() {
-    std::cout << "I'm " << m_dartid << "(" << this << ")" << " my child " 
-         << (m_child ? m_child->m_dartid
-                     : DART_TEAM_NULL) 
-         << std::endl;
-    if (m_child) m_child->trace_child();
-  }
-*/
+  typedef struct Deallocator {
+    typedef std::function<void(void)> dealloc_function;
+    void             * object;
+    dealloc_function   deallocator;
+  } Deallocator;
 
 private:
   /**
    * Constructor, allows to specify the instance's parent team and its
    * position within the team group.
    */
-  Team(dart_team_t id, 
-       Team * parent = nullptr, 
+  Team(dart_team_t id,
+       /// Parent team, or \c nullptr for none
+       Team * parent = nullptr,
+       /// Position within the team's group
        size_t pos = 0)
-  : m_parent(parent) { 
-    m_dartid   = id; 
-    m_position = pos;
+  : _parent(parent) { 
+    _dartid   = id; 
+    _position = pos;
   /*
-    if( m_dartid!=DART_TEAM_NULL ) {
+    if (_dartid != DART_TEAM_NULL) {
       // get the group for the team
       size_t sz; dart_group_sizeof(&sz);
-      m_group = (dart_group_t*)malloc(sz);
-      dart_group_init(m_group);
-      
-      dart_team_get_group(m_dartid, m_group);
+      _group = (dart_group_t*)malloc(sz);
+      dart_group_init(_group);
+      dart_team_get_group(_dartid, _group);
     }
   */
     if (parent) {
-      if (parent->m_child) {
+      if (parent->_child) {
         DASH_THROW(
           dash::exception::InvalidArgument,
           "Child already set for " << parent 
           << ", not setting to " << this); 
       } else {
-        parent->m_child = this;
+        parent->_child = this;
       }
     }
+  }
+
+  void get_group() const {
+    size_t sz; dart_group_sizeof(&sz);
+    _group = (dart_group_t*)malloc(sz);
+    dart_group_init(_group);
+    
+    dart_team_get_group(_dartid, _group);
+    _has_group = true;
   }
 
 protected:
@@ -157,17 +142,17 @@ public:
    * Move-constructor.
    */
   Team(Team && t) { 
-    m_dartid   = t.m_dartid;
-    t.m_dartid = DART_TEAM_NULL; 
+    _dartid   = t._dartid;
+    t._dartid = DART_TEAM_NULL; 
   }
 
   /**
    * Move-assignment operator.
    */
   Team & operator=(Team && t) {
-    free_team();
-    m_dartid   = t.m_dartid;
-    t.m_dartid = DART_TEAM_NULL; 
+    free();
+    _dartid   = t._dartid;
+    t._dartid = DART_TEAM_NULL; 
     return *this;
   }
 
@@ -175,13 +160,42 @@ public:
    * Destructor. Recursively frees this Team instance's child teams.
    */
   ~Team() {
-    if (m_child) {
-      delete(m_child);
+    if (_child) {
+      delete(_child);
     }
     barrier();
-    free_team();
-    if (m_dartid == DART_TEAM_ALL) {
+    free();
+    if (_dartid == DART_TEAM_ALL) {
       dart_exit();
+    }
+  }
+
+  void register_deallocator(
+    /// Object to deallocate
+    void * object,
+    /// Function deallocating the object
+    Deallocator::dealloc_function dealloc) {
+    DASH_LOG_DEBUG_VAR("Team.register_deallocator()", object);
+    _deallocs.push_back({ object, dealloc });
+  }
+
+  void unregister_deallocator(
+    /// Object to deallocate
+    void * object,
+    /// Function deallocating the object
+    Deallocator::dealloc_function dealloc) {
+    DASH_LOG_DEBUG_VAR("Team.unregister_deallocator()", object);
+    _deallocs.remove({ object, dealloc });
+  }
+
+  void free() {
+    DASH_LOG_DEBUG_VAR("Team.free()", _dartid);
+    for (auto dealloc = _deallocs.rbegin();
+         dealloc != _deallocs.rend();
+         ++dealloc) {
+      // List changes in iterations
+      DASH_LOG_DEBUG_VAR("Team.free", dealloc->object);
+      (dealloc->deallocator)();
     }
   }
   
@@ -233,12 +247,12 @@ public:
       dart_group_init(group),
       DART_OK);
     DASH_ASSERT_RETURNS(
-      dart_team_get_group(m_dartid, group),
+      dart_team_get_group(_dartid, group),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_group_split(group, nParts, sub_groups),
       DART_OK);
-    dart_team_t oldteam = m_dartid;
+    dart_team_t oldteam = _dartid;
     // Create a child Team for every part with parent set to
     // this instance:
     for(auto i = 0; i < nParts; i++) {
@@ -259,20 +273,20 @@ public:
   /**
    * Equality comparison operator.
    *
-   * \param   rhs  The Team instance to compare
-   * \return  True if and only if the given Team instance and this Team
-   *          share the same DART id
+   * \param    rhs   The Team instance to compare
+   * \returns  True if and only if the given Team instance and this Team
+   *           share the same DART id
    */
   bool operator==(const Team & rhs) const {
-    return m_dartid == rhs.m_dartid;
+    return _dartid == rhs._dartid;
   }
 
   /**
    * Inequality comparison operator.
    *
-   * \param   rhs  The Team instance to compare
-   * \return  True if and only if the given Team instance and this Team 
-   *          do not share the same DART id
+   * \param    rhs  The Team instance to compare
+   * \returns  True if and only if the given Team instance and this Team 
+   *           do not share the same DART id
    */
   bool operator!=(const Team & rhs) const {
     return !(operator == (rhs));
@@ -297,7 +311,7 @@ public:
    * have any child Teams assigned.
    */
   bool is_leaf() const {
-    return m_child == nullptr;
+    return _child == nullptr;
   }
 
   /**
@@ -305,7 +319,7 @@ public:
    * have a parent Team assigned.
    */
   bool is_root() const {
-    return m_parent == nullptr;
+    return _parent == nullptr;
   }
 
   /**
@@ -318,12 +332,12 @@ public:
    */
   bool is_member(size_t groupId) const {
     int32_t ismember;
-    if(!m_havegroup) { 
+    if(!_has_group) { 
       get_group();
     }
     DASH_ASSERT_RETURNS(
       dart_group_ismember(
-        m_group,
+        _group,
         groupId,
         &ismember),
       DART_OK);
@@ -331,14 +345,14 @@ public:
   }
 
   Team & parent() {
-    if(m_parent) { return *m_parent; }
+    if(_parent) { return *_parent; }
     else { return Null(); } 
   }
 
   Team & sub(size_t level = 1) {
     Team * t = this;
     while (t && level > 0 && !(t->is_leaf())) {
-      t = t->m_child;
+      t = t->_child;
       level--;
     }
     return *t;
@@ -347,7 +361,7 @@ public:
   Team & bottom() {
     Team *t = this;
     while (t && !(t->is_leaf())) {
-      t = t->m_child;
+      t = t->_child;
     }
     return *t;
   }
@@ -355,16 +369,16 @@ public:
   void barrier() const {
     if (!is_null()) {
       DASH_ASSERT_RETURNS(
-        dart_barrier(m_dartid),
+        dart_barrier(_dartid),
         DART_OK);
     }
   }
 
   size_t myid() const {
     dart_unit_t res = 0;
-    if (dash::is_initialized() && m_dartid != DART_TEAM_NULL) {
+    if (dash::is_initialized() && _dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
-        dart_team_myid(m_dartid, &res),
+        dart_team_myid(_dartid, &res),
         DART_OK);
     }
     return res;
@@ -377,50 +391,56 @@ public:
    */
   size_t size() const {
     size_t size = 0;
-    if (dash::is_initialized() && m_dartid != DART_TEAM_NULL) {
+    if (dash::is_initialized() && _dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
-        dart_team_size(m_dartid, &size),
+        dart_team_size(_dartid, &size),
         DART_OK);
     }
     return size;
   }
 
   size_t position() const {
-    return m_position;
+    return _position;
   }
 
   dart_team_t dart_id() const {
-    return m_dartid;
+    return _dartid;
   }
 
-  size_t global_id(size_t localId) {
+  size_t global_id(size_t local_id) {
     dart_unit_t g_id;
     DASH_ASSERT_RETURNS(
       dart_team_unit_l2g(
-        m_dartid,
-        localId,
+        _dartid,
+        local_id,
         &g_id),
       DART_OK);
     return g_id;
   }
-};
 
-#if 0
-// TODO: Solve dependendy circle
-template<int DIM>
-class CartView<Team::iterator, DIM> : 
-  public CartViewBase<Team::iterator, DIM> {
-public:
-  template<typename Cont, typename... Args>
-  CartView(Cont & cont, Args... args) : 
-    CartViewBase<Team::iterator, DIM>(cont,args...) {}
-};
+private:
+  dart_team_t             _dartid    = DART_TEAM_NULL;
+  Team                  * _parent    = nullptr;
+  Team                  * _child     = nullptr;
+  size_t                  _position  = 0;
 
-template<int DIM>
-using TeamView = CartView<Team::iterator, DIM>;
-#endif
+  mutable bool            _has_group = false;
+  mutable dart_group_t  * _group     = nullptr;
 
-} // namespace dash
+  /// Deallocation list for freeing memory acquired via
+  /// team-aligned allocation
+  std::list<Deallocator>  _deallocs;
+
+  static Team _team_all;
+  static Team _team_null;
+
+}; // class Team
+
+bool operator==(
+  const Team::Deallocator & lhs,
+  const Team::Deallocator & rhs);
+
+}  // namespace dash
 
 namespace std {
 
@@ -433,6 +453,6 @@ public:
   typedef random_access_iterator_tag iterator_category;
 };
 
-} // namespace std
+}  // namespace std
 
 #endif /* TEAM_H_INCLUDED */

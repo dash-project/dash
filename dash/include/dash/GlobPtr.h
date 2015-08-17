@@ -9,15 +9,19 @@
 #define DASH__GLOB_PTR_H_
 
 #include <cstddef>
+#include <iostream>
+
 #include <dash/dart/if/dart.h>
 
 namespace dash {
 
-// Forward-declaration
+// Forward-declarations
 template<typename T> class GlobRef;
 template<typename T> class GlobPtr;
 template<typename U>
-std::ostream& operator<<(std::ostream& os, const GlobPtr<U>& it);
+std::ostream & operator<<(
+  std::ostream & os,
+  const GlobPtr<U> & it);
 
 template<typename T>
 class GlobPtr {
@@ -255,7 +259,7 @@ std::ostream & operator<<(
           it.m_dartptr.segid,
           it.m_dartptr.flags,
           it.m_dartptr.addr_or_offs.offset);
-  os << "dash::GlobPtr<" << typeid(T).name() << ">: " << buf;
+  os << "dash::GlobPtr[" << typeid(T).name() << "]: " << buf;
   return os;
 }
 
