@@ -214,10 +214,10 @@ double test_dash_pattern(
   const PatternType & pattern = a.pattern();
   double tstart, tend;
 
-  TIMESTAMP(tstart);
   typename ArrayType::local_type loc = a.local;
+  TIMESTAMP(tstart);
   for (auto i = 0; i < REPEAT; ++i) {
-    for (auto g_idx = 0; g_idx < ELEM_PER_UNIT; ++g_idx) {
+    for (auto g_idx = 0; g_idx < a.size(); ++g_idx) {
       auto g_coords  = std::array<index_t, 1> { g_idx };
       auto local_pos = pattern.local(g_coords);
       auto unit_id   = local_pos.unit;
