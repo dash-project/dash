@@ -142,17 +142,32 @@ public:
    * Move-constructor.
    */
   Team(Team && t) { 
-    _dartid   = t._dartid;
-    t._dartid = DART_TEAM_NULL; 
+    if (this != &t) {
+      // Free existing resources
+      free();
+      // Take ownership of data from source
+      _dartid   = t._dartid;
+      _deallocs = t._deallocs;
+      // Release data from source
+      t._deallocs.clear();
+      t._dartid = DART_TEAM_NULL; 
+    }
   }
 
   /**
    * Move-assignment operator.
    */
   Team & operator=(Team && t) {
-    free();
-    _dartid   = t._dartid;
-    t._dartid = DART_TEAM_NULL; 
+    if (this != &t) {
+      // Free existing resources
+      free();
+      // Take ownership of data from source
+      _dartid   = t._dartid;
+      _deallocs = t._deallocs;
+      // Release data from source
+      t._deallocs.clear();
+      t._dartid = DART_TEAM_NULL; 
+    }
     return *this;
   }
 
