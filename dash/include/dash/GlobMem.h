@@ -95,11 +95,16 @@ public:
     m_kind       = dash::internal::COLLECTIVE;
     size_t lsize = sizeof(ElementType) * m_nlelem;
     DASH_LOG_TRACE_VAR("GlobMem(nunits, nelem)", lsize);
-    dart_team_size(m_teamid, &m_nunits);
-    dart_team_memalloc_aligned(
-      m_teamid, 
-      lsize,
-      &m_begptr);
+    DASH_LOG_TRACE_VAR("GlobMem(nunits, nelem)", m_teamid);
+    DASH_ASSERT_RETURNS(
+      dart_team_size(m_teamid, &m_nunits),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_team_memalloc_aligned(
+        m_teamid, 
+        lsize,
+        &m_begptr),
+      DART_OK);
     m_lbegin     = lbegin(dash::myid());
     m_lend       = lend(dash::myid());
   }
@@ -118,9 +123,9 @@ public:
     m_nunits     = 1;
     m_kind       = dash::internal::LOCAL;
     size_t lsize = sizeof(ElementType) * m_nlelem;
-    dart_memalloc(
-      lsize,
-      &m_begptr);
+    DASH_ASSERT_RETURNS(
+      dart_memalloc(lsize, &m_begptr),
+      DART_OK);
     m_lbegin     = lbegin(dash::myid());
     m_lend       = lend(dash::myid());
   }
@@ -131,9 +136,13 @@ public:
   ~GlobMem() {
     if (!DART_GPTR_ISNULL(m_begptr)) {
       if (m_kind == dash::internal::COLLECTIVE) {
-        dart_team_memfree(m_teamid, m_begptr);
+        DASH_ASSERT_RETURNS(
+          dart_team_memfree(m_teamid, m_begptr),
+          DART_OK);
       } else {
-        dart_memfree(m_begptr);
+        DASH_ASSERT_RETURNS(
+          dart_memfree(m_begptr),
+          DART_OK);
       } 
     }
   }
@@ -271,7 +280,11 @@ public:
     size_t global_index) {
     DASH_LOG_TRACE("GlobMem.put_value(newval, gidx = %d)", global_index);
     dart_gptr_t gptr = m_begptr;
-    dart_gptr_incaddr(&gptr, global_index * sizeof(ValueType));
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(
+        &gptr,
+        global_index * sizeof(ValueType)),
+      DART_OK);
     dash::put_value(newval, GlobPtr<ValueType>(gptr));
   }
 
