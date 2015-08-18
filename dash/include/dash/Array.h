@@ -335,7 +335,7 @@ public:
     local(this) {
     DASH_LOG_TRACE("Array()", nelem);
     allocate(m_pattern);
-  }  
+  }
 
   /**
    * Constructor, specifies distribution pattern explicitly.
@@ -583,6 +583,8 @@ public:
     dash::DistributionSpec<1> distribution,
     dash::Team & team = dash::Team::All()) {
     DASH_LOG_TRACE("Array.allocate()", nelem);
+    DASH_LOG_TRACE_VAR("Array.allocate", m_team.dart_id());
+    DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
     // Check requested capacity:
     if (nelem == 0) {
       DASH_THROW(
@@ -593,6 +595,8 @@ public:
       DASH_LOG_TRACE("Array.allocate",
                      "initializing pattern with Team::All()");
       m_pattern = PatternType(nelem, distribution, team);
+      DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
+      DASH_LOG_TRACE_VAR("Array.allocate", m_pattern.team().dart_id());
     } else {
       DASH_LOG_TRACE("Array.allocate",
                      "initializing pattern with initial team");
@@ -608,7 +612,7 @@ public:
     DASH_LOG_TRACE_VAR("Array.deallocate()", this);
     // Remove this function from team deallocator list to avoid
     // double-free:
-    m_team.unregister_deallocator(
+    m_pattern.team().unregister_deallocator(
       this, std::bind(&Array::deallocate, this));
     // Actual destruction of the array instance:
     delete m_globmem;
@@ -618,7 +622,7 @@ public:
 private:
   bool allocate(
     const PatternType & pattern) {
-    DASH_LOG_TRACE("Array.allocate()", "pattern", 
+    DASH_LOG_TRACE("Array._allocate()", "pattern", 
                    pattern.memory_layout().extents());
     // Check requested capacity:
     m_size      = pattern.capacity();
@@ -630,25 +634,25 @@ private:
     // Initialize members:
     m_lsize     = pattern.local_size();
     m_lcapacity = pattern.local_capacity();
-    m_myid      = m_team.myid();
+    m_myid      = pattern.team().myid();
     // Allocate local memory of identical size on every unit:
-    DASH_LOG_TRACE_VAR("Array.allocate", m_lcapacity);
-    DASH_LOG_TRACE_VAR("Array.allocate", m_lsize);
-    m_globmem   = new GlobMem_t(m_team, m_lcapacity);
+    DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
+    DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
+    m_globmem   = new GlobMem_t(pattern.team(), m_lcapacity);
     // Global iterators:
     m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
     m_lbegin    = m_globmem->lbegin(m_myid);
     m_lend      = m_globmem->lend(m_myid);
-    DASH_LOG_TRACE_VAR("Array.allocate", m_myid);
-    DASH_LOG_TRACE_VAR("Array.allocate", m_size);
-    DASH_LOG_TRACE_VAR("Array.allocate", m_lsize);
+    DASH_LOG_TRACE_VAR("Array._allocate", m_myid);
+    DASH_LOG_TRACE_VAR("Array._allocate", m_size);
+    DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
     // Register deallocator of this array instance at the team
     // instance that has been used to initialized it:
-    m_team.register_deallocator(
+    pattern.team().register_deallocator(
       this, std::bind(&Array::deallocate, this));
-    DASH_LOG_TRACE("Array.allocate() finished");
+    DASH_LOG_TRACE("Array._allocate() finished");
     return true;
   }
 };

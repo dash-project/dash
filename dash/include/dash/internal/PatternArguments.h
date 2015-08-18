@@ -40,21 +40,23 @@ private:
 
 private:
   /// The extents of the pattern space in every dimension
-  SizeSpec_t         _sizespec;
+  SizeSpec_t           _sizespec;
   /// The distribution type for every pattern dimension
-  DistributionSpec_t _distspec;
+  DistributionSpec_t   _distspec;
   /// The cartesian arrangement of the units in the team to which the
   /// patterns element are mapped
-  TeamSpec_t         _teamspec;
+  TeamSpec_t           _teamspec;
   /// The view specification of the pattern, consisting of offset and
   /// extent in every dimension
-  ViewSpec_t         _viewspec;
+  ViewSpec_t           _viewspec;
+  /// Team containing all units to which pattern elements are mapped
+  Team               * _team      = nullptr;
   /// Number of distribution specifying arguments in varargs
-  int                _argc_dist = 0;
+  int                  _argc_dist = 0;
   /// Number of size/extent specifying arguments in varargs
-  int                _argc_size = 0;
+  int                  _argc_size = 0;
   /// Number of team specifying arguments in varargs
-  int                _argc_team = 0;
+  int                  _argc_team = 0;
 
 public:
   /**
@@ -111,6 +113,12 @@ public:
   const ViewSpec_t & viewspec() const {
     return _viewspec;
   }
+  Team & team() const {
+    if (_team == nullptr) {
+      return dash::Team::All();
+    }
+    return *_team;
+  }
 
 private:
   /// BlockPattern matching for extent value of type IndexType.
@@ -134,6 +142,7 @@ private:
   void check(dash::Team & team) {
     DASH_LOG_TRACE("PatternArguments.check(team)");
     if (_argc_team == 0) {
+      _team     = &team;
       _teamspec = TeamSpec_t(_distspec, team);
     }
   }

@@ -77,7 +77,7 @@ private:
   /// dimensions
   DistributionSpec_t          _distspec;
   /// Team containing the units to which the patterns element are mapped
-  dash::Team &                _team            = dash::Team::All();
+  dash::Team *                _team            = nullptr;
   /// Cartesian arrangement of units within the team
   TeamSpec_t                  _teamspec;
   /// Total amount of units to which this pattern's elements are mapped
@@ -153,8 +153,9 @@ public:
     Args && ... args)
   : _arguments(arg, args...),
     _distspec(_arguments.distspec()), 
+    _team(&_arguments.team()),
     _teamspec(_arguments.teamspec()), 
-    _nunits(_team.size()),
+    _nunits(_team->size()),
     _memory_layout(_arguments.sizespec().extents()),
     _viewspec(_arguments.viewspec()),
     _blocksize_spec(initialize_blocksizespec(
@@ -167,10 +168,11 @@ public:
         _blocksize_spec,
         _teamspec)),
     _local_memory_layout(
-        initialize_local_extents(_team.myid())),
+        initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("Pattern()", "Constructor with argument list");
     initialize_local_range();
+    DASH_LOG_TRACE("Pattern()", "Pattern initialized");
   }
 
   /**
@@ -213,12 +215,12 @@ public:
     /// Team containing units to which this pattern maps its elements
     dash::Team &               team     = dash::Team::All()) 
   : _distspec(dist),
-    _team(team),
+    _team(&team),
     _teamspec(
       teamspec,
       _distspec,
-      _team),
-    _nunits(_team.size()),
+      *_team),
+    _nunits(_team->size()),
     _memory_layout(sizespec.extents()),
     _viewspec(_memory_layout.extents()),
     _blocksize_spec(initialize_blocksizespec(
@@ -231,10 +233,11 @@ public:
         _blocksize_spec,
         _teamspec)),
     _local_memory_layout(
-        initialize_local_extents(_team.myid())),
+        initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("Pattern()", "(sizespec, dist, teamspec, team)");
     initialize_local_range();
+    DASH_LOG_TRACE("Pattern()", "Pattern initialized");
   }
 
   /**
@@ -281,9 +284,9 @@ public:
     /// Team containing units to which this pattern maps its elements
     Team &                     team = dash::Team::All())
   : _distspec(dist),
-    _team(team),
-    _teamspec(_distspec, _team),
-    _nunits(_team.size()),
+    _team(&team),
+    _teamspec(_distspec, *_team),
+    _nunits(_team->size()),
     _memory_layout(sizespec.extents()),
     _viewspec(_memory_layout.extents()),
     _blocksize_spec(initialize_blocksizespec(
@@ -296,10 +299,11 @@ public:
         _blocksize_spec,
         _teamspec)),
     _local_memory_layout(
-        initialize_local_extents(_team.myid())),
+        initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("Pattern()", "(sizespec, dist, team)");
     initialize_local_range();
+    DASH_LOG_TRACE("Pattern()", "Pattern initialized");
   }
 
   /**
@@ -320,6 +324,7 @@ public:
     _lend(other._lend) {
     // No need to copy _arguments as it is just used to
     // initialize other members.
+    DASH_LOG_TRACE("Pattern(other)", "Pattern copied");
   }
 
   /**
@@ -372,7 +377,29 @@ public:
    */
   Pattern & operator=(const Pattern & other) {
     if (this != &other) {
+      DASH_LOG_TRACE("Pattern.=()");
       _distspec            = other._distspec;
+      _team                = other._team;
+      _teamspec            = other._teamspec;
+      _memory_layout       = other._memory_layout;
+      _local_memory_layout = other._local_memory_layout;
+      _blocksize_spec      = other._blocksize_spec;
+      _blockspec           = other._blockspec;
+      _local_capacity      = other._local_capacity;
+      _viewspec            = other._viewspec;
+      _nunits              = other._nunits;
+    }
+    return *this;
+  }
+
+  /**
+   * Move-assignment operator.
+   */
+  Pattern & operator=(const Pattern && other) {
+    if (this != &other) {
+      DASH_LOG_TRACE("Pattern.move=()");
+      _distspec            = other._distspec;
+      _team                = other._team;
       _teamspec            = other._teamspec;
       _memory_layout       = other._memory_layout;
       _local_memory_layout = other._local_memory_layout;
@@ -557,7 +584,7 @@ public:
     dart_unit_t unit) const {
     DASH_LOG_DEBUG_VAR("Pattern.local_extents()", unit);
     std::array<SizeType, NumDimensions> l_extents;
-    if (unit == _team.myid()) {
+    if (unit == _team->myid()) {
       // Local unit id, get extents from member instance:
       l_extents = _local_memory_layout.extents();
     } else {
@@ -680,7 +707,7 @@ public:
       _local_memory_layout.coords(local_index);
     DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx()", local_coords);
     std::array<IndexType, NumDimensions> global_coords =
-      coords_to_global(_team.myid(), local_coords);
+      coords_to_global(_team->myid(), local_coords);
     DASH_LOG_TRACE_VAR("Pattern.local_to_global_idx >", global_coords);
     return _memory_layout.at(global_coords);
   }
@@ -722,7 +749,7 @@ public:
     std::array<IndexType, NumDimensions> l_coords = 
       coords_to_local(global_coords);
     DASH_LOG_TRACE_VAR("Pattern.at", l_coords);
-    if (unit == _team.myid()) {
+    if (unit == _team->myid()) {
       // Coords are local to this unit, use pre-generated local memory 
       // layout
       return _local_memory_layout.at(l_coords);
@@ -753,7 +780,7 @@ public:
     std::array<IndexType, NumDimensions> l_coords = 
       coords_to_local(global_coords);
     DASH_LOG_TRACE_VAR("Pattern.local", l_coords);
-    if (unit == _team.myid()) {
+    if (unit == _team->myid()) {
       // Coords are local to this unit, use pre-generated local memory 
       // layout
       return local_index_t { unit, _local_memory_layout.at(l_coords) };
@@ -926,7 +953,7 @@ public:
    * mapped.
    */
   constexpr dash::Team & team() const {
-    return _team;
+    return *_team;
   }
 
   /**

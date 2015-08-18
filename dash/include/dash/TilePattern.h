@@ -81,7 +81,7 @@ private:
   /// dimensions
   DistributionSpec_t          _distspec;
   /// Team containing the units to which the patterns element are mapped
-  dash::Team &                _team            = dash::Team::All();
+  dash::Team                * _team            = nullptr;
   /// Cartesian arrangement of units within the team
   TeamSpec_t                  _teamspec;
   /// The global layout of the pattern's elements in memory respective to
@@ -162,6 +162,7 @@ public:
     Args && ... args)
   : _arguments(arg, args...),
     _distspec(_arguments.distspec()), 
+    _team(&_arguments.team()),
     _teamspec(_arguments.teamspec()), 
     _memory_layout(_arguments.sizespec().extents()),
     _nunits(_teamspec.size()),
@@ -180,7 +181,7 @@ public:
         _blockspec,
         _major_tiled_dim)),
     _local_memory_layout(
-        initialize_local_extents(_team.myid())),
+        initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()),
     _viewspec(_arguments.viewspec()) {
     DASH_LOG_TRACE("TilePattern()", "Constructor with Argument list");
@@ -232,11 +233,11 @@ public:
     /// Team containing units to which this pattern maps its elements
     dash::Team &               team     = dash::Team::All()) 
   : _distspec(dist),
-    _team(team),
+    _team(&team),
     _teamspec(
       teamspec,
       _distspec,
-      _team),
+      *_team),
     _memory_layout(sizespec.extents()),
     _nunits(_teamspec.size()),
     _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
@@ -254,7 +255,7 @@ public:
         _blockspec,
         _major_tiled_dim)),
     _local_memory_layout(
-        initialize_local_extents(_team.myid())),
+        initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()),
     _viewspec(_memory_layout.extents()) {
     DASH_LOG_TRACE("TilePattern()", "(sizespec, dist, teamspec, team)");
@@ -304,8 +305,8 @@ public:
     /// Team containing units to which this pattern maps its elements
     Team &                     team = dash::Team::All())
   : _distspec(dist),
-    _team(team),
-    _teamspec(_distspec, _team),
+    _team(&team),
+    _teamspec(_distspec, *_team),
     _memory_layout(sizespec.extents()),
     _nunits(_teamspec.size()),
     _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
@@ -323,7 +324,7 @@ public:
         _blockspec,
         _major_tiled_dim)),
     _local_memory_layout(
-        initialize_local_extents(_team.myid())),
+        initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()),
     _viewspec(_memory_layout.extents()) {
     DASH_LOG_TRACE("TilePattern()", "(sizespec, dist, team)");
@@ -400,6 +401,7 @@ public:
   TilePattern & operator=(const TilePattern & other) {
     if (this != &other) {
       _distspec            = other._distspec;
+      _team                = other._team;
       _teamspec            = other._teamspec;
       _memory_layout       = other._memory_layout;
       _local_memory_layout = other._local_memory_layout;
@@ -927,7 +929,7 @@ public:
    * mapped.
    */
   dash::Team & team() const {
-    return _team;
+    return *_team;
   }
 
   /**
