@@ -34,6 +34,7 @@ else
   usage
 fi
 
+TESTS_PASSED=true
 function run_suite
 {
   echo "===================================" | tee -a $LOGFILE
@@ -42,6 +43,10 @@ function run_suite
   $RUN_CMD -n $1 $TEST_BINARY 2>&1 | tee -a $LOGFILE | \
     sed 's/\x1b\[[0-9;]*m//g' | grep 'FAIL'
   echo "Done" | tee -a $LOGFILE
+  if [ `grep --count 'FAILED' $LOGFILE` != 0 ]; then
+    TESTS_PASSED=false
+    echo "-----> Failed tests"
+  fi
 }
 
 run_suite 1
@@ -50,7 +55,12 @@ run_suite 3
 run_suite 4
 run_suite 7
 run_suite 8
+run_suite 11
 run_suite 12
-run_suite 17
-run_suite 20
+
+if $TESTS_PASSED; then
+  exit 0
+else
+  exit -1
+fi
 
