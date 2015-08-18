@@ -97,15 +97,13 @@ private:
   : _parent(parent) { 
     _dartid   = id; 
     _position = pos;
-  /*
-    if (_dartid != DART_TEAM_NULL) {
-      // get the group for the team
-      size_t sz; dart_group_sizeof(&sz);
-      _group = (dart_group_t*)malloc(sz);
-      dart_group_init(_group);
-      dart_team_get_group(_dartid, _group);
-    }
-  */
+    // if (_dartid != DART_TEAM_NULL) {
+    //   // get the group for the team
+    //   size_t sz; dart_group_sizeof(&sz);
+    //   _group = (dart_group_t*)malloc(sz);
+    //   dart_group_init(_group);
+    //   dart_team_get_group(_dartid, _group);
+    // }
     if (parent) {
       if (parent->_child) {
         DASH_THROW(
@@ -142,17 +140,32 @@ public:
    * Move-constructor.
    */
   Team(Team && t) { 
-    _dartid   = t._dartid;
-    t._dartid = DART_TEAM_NULL; 
+    if (this != &t) {
+      // Free existing resources
+      free();
+      // Take ownership of data from source
+      _dartid   = t._dartid;
+      _deallocs = t._deallocs;
+      // Release data from source
+      t._deallocs.clear();
+      t._dartid = DART_TEAM_NULL; 
+    }
   }
 
   /**
    * Move-assignment operator.
    */
   Team & operator=(Team && t) {
-    free();
-    _dartid   = t._dartid;
-    t._dartid = DART_TEAM_NULL; 
+    if (this != &t) {
+      // Free existing resources
+      free();
+      // Take ownership of data from source
+      _dartid   = t._dartid;
+      _deallocs = t._deallocs;
+      // Release data from source
+      t._deallocs.clear();
+      t._dartid = DART_TEAM_NULL; 
+    }
     return *this;
   }
 
@@ -160,6 +173,7 @@ public:
    * Destructor. Recursively frees this Team instance's child teams.
    */
   ~Team() {
+    DASH_LOG_DEBUG_VAR("Team.~Team()", this);
     if (_child) {
       delete(_child);
     }
@@ -201,15 +215,16 @@ public:
    * Call registered deallocator functions for all team-allocated objects.
    */
   void free() {
-    DASH_LOG_DEBUG_VAR("Team.free()", _dartid);
-    barrier();
+    DASH_LOG_DEBUG("Team.free()");
     for (auto dealloc = _deallocs.rbegin();
          dealloc != _deallocs.rend();
          ++dealloc) {
+      barrier();
       // List changes in iterations
       DASH_LOG_DEBUG_VAR("Team.free", dealloc->object);
       (dealloc->deallocator)();
     }
+    _deallocs.clear();
   }
   
   /**

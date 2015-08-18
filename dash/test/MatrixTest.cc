@@ -171,6 +171,8 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY) {
   typedef dash::Pattern<2> pattern_t;
   LOG_MESSAGE("Initialize matrix ...");
   dash::TeamSpec<2> team_spec(num_units, 1);
+  EXPECT_EQ_U(team_spec.size(), num_units);
+  EXPECT_EQ_U(team_spec.rank(), 1);
   dash::Matrix<int, 2,
                pattern_t::index_type,
                pattern_t> matrix(

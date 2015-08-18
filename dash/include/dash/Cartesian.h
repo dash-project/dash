@@ -596,7 +596,8 @@ public:
    * dimension.
    */
   TeamSpec(
-    Team & team = dash::Team::All()) {
+    Team & team = dash::Team::All())
+  : _is_linear(true) {
     DASH_LOG_TRACE_VAR("TeamSpec(t)", team.is_null());
     auto team_size = team.is_null() ? 0 : team.size();
     _rank = 1;
@@ -643,8 +644,9 @@ public:
         "Size of team " << team.size() << " differs from " <<
         "size of teamspec " << this->size() << " in TeamSpec()");
     }
-    // Test if other teamspec has been default-constructed:
-    if (other.rank() == 1 && distribution.rank() > 1) {
+    // Test if other teamspec has been default-constructed and has
+    // to be rearranged for a distribution with higher rank:
+    if (other._is_linear && distribution.rank() > 1) {
       // Set extent of teamspec in the dimension the distribution is
       // different from NONE:
       if (distribution.is_tiled()) {
@@ -669,11 +671,7 @@ public:
         }
       }
     } 
-    for (auto d = 0; d < MaxDimensions; ++d) {
-      if (distribution[d].type != dash::internal::DIST_NONE) {
-        _rank++;
-      }
-    }
+    update_rank();
     DASH_LOG_TRACE_VAR("TeamSpec(ts, dist, t)", this->_extents);
     this->resize(this->_extents);
     DASH_LOG_TRACE_VAR("TeamSpec(ts, dist, t)", this->size());
@@ -688,7 +686,6 @@ public:
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All()) {
     DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", team.is_null());
-    _rank = 1;
     bool distrib_dim_set = false;
     if (distribution.is_tiled()) {
       bool major_tiled_dim_set = false;
@@ -716,6 +713,7 @@ public:
         }
       }
     }
+    update_rank();
     DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", this->_extents);
     this->resize(this->_extents);
     DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", this->size());
@@ -735,6 +733,8 @@ public:
   TeamSpec(SizeType value, Types ... values)
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
       CartesianIndexSpace(value, values...) {
+    DASH_LOG_TRACE_VAR("TeamSpec(size,...)", this->_extents);
+    update_rank();
   }
 
   /**
@@ -790,8 +790,20 @@ public:
   }
 
 private:
+  void update_rank() {
+    for (auto d = 0; d < MaxDimensions; ++d) {
+      if (this->_extents[d] > 1) {
+        ++_rank;
+      }
+    }
+    if (_rank == 0) _rank = 1;
+  }
+
+private:
   /// Actual number of dimensions of the team layout specification.
-  dim_t _rank;
+  dim_t _rank      = 0;
+  /// Whether the team spec is linear
+  bool  _is_linear = false;
 };
 
 /** 

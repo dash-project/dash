@@ -34,22 +34,33 @@ else
   usage
 fi
 
-FILTER_COLORS=sed 's/\x1b\[[0-9;]*m//g'
+TESTS_PASSED=true
 function run_suite
 {
   echo "===================================" | tee -a $LOGFILE
   echo "Running test suite with ${1} units ..." | tee -a $LOGFILE
-  $RUN_CMD -n $1 $TEST_BINARY 2>&1 | $FILTER_COLORS | tee -a $LOGFILE | grep Failure
+  echo "  ${RUN_CMD} -n ${1} ${TEST_BINARY}" | tee -a $LOGFILE
+  $RUN_CMD -n $1 $TEST_BINARY 2>&1 | tee -a $LOGFILE | \
+    sed 's/\x1b\[[0-9;]*m//g' | grep 'FAIL'
   echo "Done" | tee -a $LOGFILE
+  if [ `grep --count 'FAILED' $LOGFILE` != 0 ]; then
+    TESTS_PASSED=false
+    echo "-----> Failed tests"
+  fi
 }
 
 run_suite 1
-run_suite 2
-run_suite 3
-run_suite 4
-run_suite 7
-run_suite 8
-run_suite 12
-run_suite 17
-run_suite 20
+# run_suite 2
+# run_suite 3
+# run_suite 4
+# run_suite 7
+# run_suite 8
+# run_suite 11
+# run_suite 12
+
+if $TESTS_PASSED; then
+  exit 0
+else
+  exit -1
+fi
 

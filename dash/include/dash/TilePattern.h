@@ -81,7 +81,7 @@ private:
   /// dimensions
   DistributionSpec_t          _distspec;
   /// Team containing the units to which the patterns element are mapped
-  dash::Team &                _team            = dash::Team::All();
+  dash::Team                * _team            = nullptr;
   /// Cartesian arrangement of units within the team
   TeamSpec_t                  _teamspec;
   /// The global layout of the pattern's elements in memory respective to
@@ -162,6 +162,7 @@ public:
     Args && ... args)
   : _arguments(arg, args...),
     _distspec(_arguments.distspec()), 
+    _team(&_arguments.team()),
     _teamspec(_arguments.teamspec()), 
     _memory_layout(_arguments.sizespec().extents()),
     _nunits(_teamspec.size()),
@@ -180,7 +181,7 @@ public:
         _blockspec,
         _major_tiled_dim)),
     _local_memory_layout(
-        initialize_local_extents(_team.myid())),
+        initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()),
     _viewspec(_arguments.viewspec()) {
     DASH_LOG_TRACE("TilePattern()", "Constructor with Argument list");
@@ -232,11 +233,11 @@ public:
     /// Team containing units to which this pattern maps its elements
     dash::Team &               team     = dash::Team::All()) 
   : _distspec(dist),
-    _team(team),
+    _team(&team),
     _teamspec(
       teamspec,
       _distspec,
-      _team),
+      *_team),
     _memory_layout(sizespec.extents()),
     _nunits(_teamspec.size()),
     _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
@@ -254,7 +255,7 @@ public:
         _blockspec,
         _major_tiled_dim)),
     _local_memory_layout(
-        initialize_local_extents(_team.myid())),
+        initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()),
     _viewspec(_memory_layout.extents()) {
     DASH_LOG_TRACE("TilePattern()", "(sizespec, dist, teamspec, team)");
@@ -304,8 +305,8 @@ public:
     /// Team containing units to which this pattern maps its elements
     Team &                     team = dash::Team::All())
   : _distspec(dist),
-    _team(team),
-    _teamspec(_distspec, _team),
+    _team(&team),
+    _teamspec(_distspec, *_team),
     _memory_layout(sizespec.extents()),
     _nunits(_teamspec.size()),
     _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
@@ -323,7 +324,7 @@ public:
         _blockspec,
         _major_tiled_dim)),
     _local_memory_layout(
-        initialize_local_extents(_team.myid())),
+        initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()),
     _viewspec(_memory_layout.extents()) {
     DASH_LOG_TRACE("TilePattern()", "(sizespec, dist, team)");
@@ -400,6 +401,7 @@ public:
   TilePattern & operator=(const TilePattern & other) {
     if (this != &other) {
       _distspec            = other._distspec;
+      _team                = other._team;
       _teamspec            = other._teamspec;
       _memory_layout       = other._memory_layout;
       _local_memory_layout = other._local_memory_layout;
@@ -927,7 +929,7 @@ public:
    * mapped.
    */
   dash::Team & team() const {
-    return _team;
+    return *_team;
   }
 
   /**
@@ -1071,31 +1073,11 @@ private:
    * Currently calculated as (num_local_blocks * block_size), thus
    * ignoring underfilled blocks.
    */
-  SizeType initialize_local_capacity() {
-    SizeType l_capacity = 1;
-    for (auto d = 0; d < NumDimensions; ++d) {
-      SizeType num_units_d      = _teamspec.extent(d);
-      const Distribution & dist = _distspec[d];
-      // Block size in given dimension:
-      auto dim_max_blocksize    = _blocksize_spec.extent(d);
-      // Maximum number of occurrences of a single unit in given
-      // dimension:
-      // TODO: Should be dist.max_local_elements_in_range for later
-      //       support of dash::BALANCED_*
-      SizeType dim_num_blocks   = dist.max_local_blocks_in_range(
-                                    // size of range:
-                                    _memory_layout.extent(d),
-                                    // number of units:
-                                    num_units_d
-                                  );
-      l_capacity *= dim_max_blocksize * dim_num_blocks;
-      DASH_LOG_TRACE_VAR("TilePattern.init_lcapacity.d", d);
-      DASH_LOG_TRACE_VAR("TilePattern.init_lcapacity.d", num_units_d);
-      DASH_LOG_TRACE_VAR("TilePattern.init_lcapacity.d", 
-                         dim_max_blocksize);
-      DASH_LOG_TRACE_VAR("TilePattern.init_lcapacity.d", dim_num_blocks);
-    }
-    DASH_LOG_DEBUG_VAR("TilePattern.init_lcapacity >", l_capacity);
+  SizeType initialize_local_capacity() const {
+    // Assumes balanced distribution property, i.e.
+    // range = k * blocksz * nunits
+    auto l_capacity = size() / _nunits;
+    DASH_LOG_TRACE_VAR("TilePattern.init_local_capacity >", l_capacity);
     return l_capacity;
   }
 
