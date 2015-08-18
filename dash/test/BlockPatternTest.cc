@@ -565,8 +565,8 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
                 "number of units must be multiple of 2");
     return;
   }
-  size_t extent_x     = 11;
-  size_t extent_y     = 13;
+  size_t extent_x     = 5 + team_size;
+  size_t extent_y     = 3 + team_size;
   size_t size         = extent_x * extent_y;
   // Ceil division
   size_t block_size_x = 3;
@@ -579,6 +579,9 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
   size_t max_per_unit = dash::math::div_ceil(num_blocks_x, num_units_x) *
                         dash::math::div_ceil(num_blocks_y, num_units_y) *
                         block_size;
+  dash::TeamSpec<2> ts(num_units_x, num_units_y);
+  EXPECT_EQ_U(ts.size(), team_size);
+  EXPECT_EQ_U(ts.rank(), 2);
   dash::Pattern<2, dash::ROW_MAJOR> pat_row(
       dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(
@@ -593,14 +596,18 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
         dash::BLOCKCYCLIC(block_size_y)),
       dash::TeamSpec<2>(num_units_x, num_units_y),
       dash::Team::All());
-  EXPECT_EQ(pat_row.capacity(), size);
-  EXPECT_EQ(pat_row.local_capacity(), max_per_unit);
-  EXPECT_EQ(pat_row.blocksize(0), block_size_x);
-  EXPECT_EQ(pat_row.blocksize(1), block_size_y);
-  EXPECT_EQ(pat_col.capacity(), size);
-  EXPECT_EQ(pat_col.local_capacity(), max_per_unit);
-  EXPECT_EQ(pat_col.blocksize(0), block_size_x);
-  EXPECT_EQ(pat_col.blocksize(1), block_size_y);
+  EXPECT_EQ_U(pat_row.team().size(), team_size);
+  EXPECT_EQ_U(pat_row.teamspec().size(), team_size);
+  EXPECT_EQ_U(pat_row.capacity(), size);
+  EXPECT_EQ_U(pat_row.local_capacity(), max_per_unit);
+  EXPECT_EQ_U(pat_row.blocksize(0), block_size_x);
+  EXPECT_EQ_U(pat_row.blocksize(1), block_size_y);
+  EXPECT_EQ_U(pat_col.team().size(), team_size);
+  EXPECT_EQ_U(pat_col.teamspec().size(), team_size);
+  EXPECT_EQ_U(pat_col.capacity(), size);
+  EXPECT_EQ_U(pat_col.local_capacity(), max_per_unit);
+  EXPECT_EQ_U(pat_col.blocksize(0), block_size_x);
+  EXPECT_EQ_U(pat_col.blocksize(1), block_size_y);
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
       // Units might have empty local range, e.g. when distributing 41 
