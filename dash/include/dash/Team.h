@@ -97,15 +97,13 @@ private:
   : _parent(parent) { 
     _dartid   = id; 
     _position = pos;
-  /*
-    if (_dartid != DART_TEAM_NULL) {
-      // get the group for the team
-      size_t sz; dart_group_sizeof(&sz);
-      _group = (dart_group_t*)malloc(sz);
-      dart_group_init(_group);
-      dart_team_get_group(_dartid, _group);
-    }
-  */
+    // if (_dartid != DART_TEAM_NULL) {
+    //   // get the group for the team
+    //   size_t sz; dart_group_sizeof(&sz);
+    //   _group = (dart_group_t*)malloc(sz);
+    //   dart_group_init(_group);
+    //   dart_team_get_group(_dartid, _group);
+    // }
     if (parent) {
       if (parent->_child) {
         DASH_THROW(
