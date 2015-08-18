@@ -8,6 +8,7 @@
 
 #include <dash/Team.h>
 #include <dash/Pattern.h>
+#include <dash/GlobMem.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
@@ -614,60 +615,123 @@ MatrixRef<T, NumDim, 0, PatternT>::operator=(
 ////////////////////////////////////////////////////////////////////////
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline LocalRef<T, NumDim, NumDim, PatternT>
-Matrix<T, NumDim, IndexT, PatternT>::local() const
+inline Matrix<T, NumDim, IndexT, PatternT>::Matrix(
+  Team & t)
+: _team(t),
+  _size(0),
+  _lsize(0),
+  _lcapacity(0)
 {
-  return _local;
+  DASH_LOG_TRACE("Matrix()", "default constructor");
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-Matrix<T, NumDim, IndexT, PatternT>::Matrix(
-  const dash::SizeSpec<NumDim, typename PatternT::size_type> & ss,
-  const dash::DistributionSpec<NumDim> & ds,
+inline Matrix<T, NumDim, IndexT, PatternT>::Matrix(
+  const SizeSpec_t & ss,
+  const DistributionSpec_t & ds,
   Team & t,
-  const TeamSpec<NumDim, typename PatternT::index_type> & ts)
+  const TeamSpec_t & ts)
 : _team(t),
-  _pattern(ss, ds, ts, t),
-  _size(_pattern.size()),
-  _lsize(_pattern.local_size()),
-  _lcapacity(_pattern.local_capacity()),
-  _local_mem_size(_lcapacity * sizeof(T)),
-  _glob_mem(_team, _lcapacity)
+  _myid(_team.myid()),
+  _size(0),
+  _lsize(0),
+  _lcapacity(0),
+  _pattern(ss, ds, ts, t)
 {
-  DASH_LOG_TRACE_VAR("Matrix()", _size);
-  DASH_LOG_TRACE_VAR("Matrix()", _lsize);
-  DASH_LOG_TRACE_VAR("Matrix()", _lcapacity);
-#if OLD_IMPL
-  dart_team_t teamid = _team.dart_id();
-  DASH_LOG_TRACE_VAR("Matrix()", teamid);
-  _dart_gptr         = DART_GPTR_NULL;
-  DASH_ASSERT_RETURNS(
-    dart_team_memalloc_aligned(
-      teamid,
-      _local_mem_size,
-      &_dart_gptr),
-    DART_OK);
-#endif
-  _myid          = _team.myid();
   DASH_LOG_TRACE_VAR("Matrix()", _myid);
-  _begin         = GlobIter_t(&_glob_mem, _pattern);
-  DASH_LOG_TRACE("Matrix()", "_begin initialized");
-  _ref._proxy    = new MatrixRefProxy_t(this);
-  DASH_LOG_TRACE("Matrix()", "_ref._proxy initialized");
-  _local         = LocalRef_t(this);
-  DASH_LOG_TRACE("Matrix()", "_local initialized");
-  // Local iterators:
-  _lbegin        = _glob_mem.lbegin();
-  _lend          = _glob_mem.lend();
+  allocate(_pattern);
   DASH_LOG_TRACE("Matrix()", "Initialized");
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-inline Matrix<T, NumDim, IndexT, PatternT>::~Matrix() {
-#if OLD_IMPL
-  dart_team_t teamid = _team.dart_id();
-  dart_team_memfree(teamid, _dart_gptr);
-#endif
+inline Matrix<T, NumDim, IndexT, PatternT>::Matrix(
+  const PatternT & pattern)
+: _team(pattern.team()),
+  _myid(_team.myid()),
+  _size(0),
+  _lsize(0),
+  _lcapacity(0),
+  _pattern(pattern)
+{
+  DASH_LOG_TRACE("Matrix()", "pattern instance constructor");
+  allocate(_pattern);
+  DASH_LOG_TRACE("Matrix()", "Initialized");
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline Matrix<T, NumDim, IndexT, PatternT>::~Matrix()
+{
+  DASH_LOG_TRACE_VAR("Array.~Matrix()", this);
+  deallocate();
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+bool Matrix<T, NumDim, IndexT, PatternT>::allocate(
+  const PatternT & pattern)
+{
+  DASH_LOG_TRACE("Matrix.allocate()", "pattern", 
+                 pattern.memory_layout().extents());
+  // Copy sizes from pattern:
+  _size            = _pattern.size();
+  _lsize           = _pattern.local_size();
+  _lcapacity       = _pattern.local_capacity();
+  DASH_LOG_TRACE_VAR("Matrix.allocate", _size);
+  DASH_LOG_TRACE_VAR("Matrix.allocate", _lsize);
+  DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
+  // Allocate and initialize memory ranges:
+  _ref._proxy      = new MatrixRefProxy_t(this);
+  _glob_mem        = new GlobMem_t(_team, _lcapacity);
+  _begin           = GlobIter_t(_glob_mem, _pattern);
+  _lbegin          = _glob_mem->lbegin();
+  _lend            = _glob_mem->lend();
+  // Register team deallocator:
+  _team.register_deallocator(
+    this, std::bind(&Matrix::deallocate, this));
+  // Initialize local proxy object:
+  local            = local_type(this);
+  DASH_LOG_TRACE("Matrix.allocate() finished");
+  return true;
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+bool Matrix<T, NumDim, IndexT, PatternT>::allocate(
+  size_type nelem,
+  dash::DistributionSpec<1> distribution,
+  dash::Team & team)
+{
+  DASH_LOG_TRACE("Matrix.allocate()", nelem);
+  // Check requested capacity:
+  if (nelem == 0) {
+    DASH_THROW(
+      dash::exception::InvalidArgument,
+      "Tried to allocate dash::Matrix with size 0");
+  }
+  if (_team == dash::Team::Null()) {
+    DASH_LOG_TRACE("Matrix.allocate",
+                   "initializing pattern with Team::All()");
+    _pattern = PatternT(nelem, distribution, team);
+  } else {
+    DASH_LOG_TRACE("Matrix.allocate",
+                   "initializing pattern with initial team");
+    _pattern = PatternT(nelem, distribution, _team);
+  }
+  return allocate(_pattern);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+void Matrix<T, NumDim, IndexT, PatternT>::deallocate()
+{
+  if (_size == 0) {
+    return;
+  }
+  DASH_LOG_TRACE_VAR("Matrix.deallocate()", this);
+  // Remove this function from team deallocator list to avoid
+  // double-free:
+  _team.unregister_deallocator(
+    this, std::bind(&Matrix::deallocate, this));
+  // Actual destruction of the array instance:
+  delete _glob_mem;
+  _size = 0;
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -744,27 +808,12 @@ Matrix<T, NumDim, IndexT, PatternT>::end() noexcept {
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline T *
 Matrix<T, NumDim, IndexT, PatternT>::lbegin() noexcept {
-#if OLD_IMPL
-  void * addr;
-  dart_gptr_t gptr = _dart_gptr;
-  dart_gptr_setunit(&gptr, _myid);
-  dart_gptr_getaddr(gptr, &addr);
-  return (T *)(addr);
-#endif
   return _lbegin;
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline T *
 Matrix<T, NumDim, IndexT, PatternT>::lend() noexcept {
-#if OLD_IMPL
-  void * addr;
-  dart_gptr_t gptr = _dart_gptr;
-  dart_gptr_setunit(&gptr, _myid);
-  dart_gptr_incaddr(&gptr, _local_mem_size * sizeof(T));
-  dart_gptr_getaddr(gptr, &addr);
-  return (T *)(addr);
-#endif
   return _lend;
 }
 

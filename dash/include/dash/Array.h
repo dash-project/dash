@@ -281,8 +281,7 @@ private:
   ElementType        * m_lend;
 
 public:
-  /// Local proxy object enables arr.local to be used in range-based for
-  /// loops.
+  /// Local proxy object, allows use in range-based for loops.
   local_type           local;
   
 public:

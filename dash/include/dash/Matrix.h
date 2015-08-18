@@ -40,6 +40,8 @@ class LocalRef;
  * Stores information needed by subscripting and subdim selection.
  * A new RefProxy instance is created once for every dimension in
  * multi-subscripting.
+ *
+ * \ingroup Matrix
  */
 template <
   typename T,
@@ -88,6 +90,8 @@ class MatrixRefProxy {
 /**
  * Local part of a Matrix, provides local operations.
  * Wrapper class for RefProxy. 
+ *
+ * \ingroup Matrix
  */
 template <
   typename T,
@@ -112,11 +116,6 @@ class LocalRef {
   typedef PatternT                       pattern_type;
   typedef typename PatternT::index_type  index_type;
 
-#if OLD
-  // NO allocator_type!
-  typedef size_t                         size_type;
-  typedef size_t                         difference_type;
-#endif
   typedef typename PatternT::size_type   size_type;
   typedef typename PatternT::index_type  difference_type;
 
@@ -178,7 +177,11 @@ class LocalRef {
     size_type range);
 };
 
-// Partial Specialization for value deferencing.
+/**
+ * Partial Specialization for value deferencing.
+ *
+ * \ingroup Matrix
+ */
 template <
   typename T,
   dim_t NumDimensions,
@@ -210,6 +213,8 @@ class LocalRef<T, NumDimensions, 0, PatternT> {
 /**
  * Wrapper class for RefProxy, represents Matrix and submatrix of a
  * Matrix and provides global operations.
+ *
+ * \ingroup Matrix
  */
 template <
   typename ElementT,
@@ -239,10 +244,6 @@ class MatrixRef {
 
   typedef typename PatternT::size_type   size_type;
   typedef typename PatternT::index_type  difference_type;
-#if OLD
-  typedef size_t size_type;
-  typedef size_t difference_type;
-#endif
 
   typedef GlobIter_t                                          iterator;
   typedef const GlobIter_t                              const_iterator;
@@ -344,7 +345,11 @@ class MatrixRef {
   MatrixRefProxy<ElementT, NumDimensions, PatternT> * _proxy;
 };
 
-// Partial Specialization for value deferencing.
+/**
+ * Partial Specialization for value deferencing.
+ *
+ * \ingroup Matrix
+ */
 template <
   typename ElementT,
   dim_t NumDimensions,
@@ -392,6 +397,15 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT > {
   ElementT operator=(const ElementT & value);
 };
 
+/**
+ * An n-dimensional array supporting subranges and sub-dimensional 
+ * projection.
+ *
+ * \see  DashContainerConcept
+ * \see  DashMatrixConcept
+ *
+ * \ingroup Matrix
+ */
 template<
   typename ElementT,
   dim_t NumDimensions,
@@ -416,15 +430,19 @@ class Matrix {
     Pattern_t;
   typedef GlobIter<ElementT, Pattern_t>
     GlobIter_t;
+  typedef GlobMem<ElementT>
+    GlobMem_t;
+  typedef DistributionSpec<NumDimensions>
+    DistributionSpec_t;
+  typedef SizeSpec<NumDimensions, typename PatternT::size_type>
+    SizeSpec_t;
+  typedef TeamSpec<NumDimensions, typename PatternT::index_type>
+    TeamSpec_t;
 
  public:
   typedef ElementT                                            value_type;
   typedef typename PatternT::size_type                         size_type;
   typedef typename PatternT::index_type                  difference_type;
-#if OLD
-  typedef size_t                                               size_type;
-  typedef size_t                                         difference_type;
-#endif
 
   typedef GlobIter_t                                            iterator;
   typedef const GlobIter_t                                const_iterator;
@@ -437,8 +455,8 @@ class Matrix {
   typedef GlobIter_t                                             pointer;
   typedef const GlobIter_t                                 const_pointer;
 
-  typedef LocalRef_t                                      local_ref_type;
-  typedef const LocalRef_t                          const_local_ref_type;
+  typedef LocalRef_t                                          local_type;
+  typedef const LocalRef_t                              const_local_type;
   typedef LocalRef_t                                local_reference_type;
   typedef const LocalRef_t                    const_local_reference_type;
 
@@ -457,34 +475,63 @@ class Matrix {
   friend class LocalRef;
 
  public:
-  LocalRef<ElementT, NumDimensions, NumDimensions, PatternT>
-    _local;
+  /// Local proxy object, allows use in range-based for loops.
+  local_type local;
 
  public:
-  inline LocalRef_t local() const;
+  /**
+   * Default constructor, for delayed allocation.
+   *
+   * Sets the associated team to DART_TEAM_NULL for global matrix instances
+   * that are declared before \c dash::Init().
+   */
+  inline Matrix(
+    Team & team = dash::Team::Null());
 
-  // Proxy, MatrixRef and LocalRef are created at initialization.
-  Matrix(
-    const dash::SizeSpec<NumDimensions, typename PatternT::size_type> & ss,
-    const dash::DistributionSpec<NumDimensions> & ds =
-      dash::DistributionSpec<NumDimensions>(),
-    Team & t =
-      dash::Team::All(),
-    const TeamSpec<NumDimensions, typename PatternT::index_type> & ts =
-      TeamSpec<NumDimensions, typename PatternT::index_type>());
+  /**
+   * Constructor, creates a new instance of Matrix.
+   */
+  inline Matrix(
+    const SizeSpec_t & ss,
+    const DistributionSpec_t & ds = DistributionSpec_t(),
+    Team & t                      = dash::Team::All(),
+    const TeamSpec_t & ts         = TeamSpec_t());
 
-  // delegating constructor
-  inline Matrix(const PatternT & pat)
-    : Matrix(pat.sizespec(),
-             pat.distspec(),
-             pat.team(),
-             pat.teamspec()) { }
-  // delegating constructor
-  inline Matrix(size_t nelem,
-                Team & t = dash::Team::All())
-    : Matrix(PatternT(nelem, t)) { }
+  /**
+   * Constructor, creates a new instance of Matrix from a pattern instance.
+   */
+  inline Matrix(
+    const PatternT & pat);
 
+  /**
+   * Constructor, creates a new instance of Matrix.
+   */
+  inline Matrix(
+    /// Number of elements
+    size_t nelem,
+    /// Team containing all units operating on the Matrix instance
+    Team & t = dash::Team::All())
+  : Matrix(PatternT(nelem, t)) { }
+
+  /**
+   * Destructor, frees underlying memory.
+   */
   inline ~Matrix();
+
+  /**
+   * Explicit allocation of matrix elements, used for delayed allocation
+   * of default-constructed Matrix instance.
+   */
+  bool allocate(
+    size_type nelem,
+    dash::DistributionSpec<1> distribution,
+    dash::Team & team = dash::Team::All());
+
+  /**
+   * Explicit deallocation of matrix elements, called implicitly in
+   * destructor and team deallocation.
+   */
+  void deallocate();
 
   inline Team & team();
   inline constexpr size_type size() const noexcept;
@@ -501,16 +548,39 @@ class Matrix {
   inline ElementT * lbegin() noexcept;
   inline ElementT * lend() noexcept;
 
+  /**
+   * Subscript operator.
+   */
   inline MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
   operator[](size_type n);
 
+  /**
+   * Projection to given offset in a sub-dimension.
+   *
+   * \see  row
+   * \see  col
+   */
   template<dim_t NumSubDimensions>
   inline MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT> 
   sub(size_type n);
   
+  /**
+   * Projection to given offset in first sub-dimension (column), same as
+   * \c sub<0>(n).
+   *
+   * \see  sub
+   * \see  row
+   */
   inline MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT> 
   col(size_type n);
   
+  /**
+   * Projection to given offset in second sub-dimension (rows), same as
+   * \c sub<1>(n).
+   *
+   * \see  sub
+   * \see  col
+   */
   inline MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT> 
   row(size_type n);
 
@@ -536,33 +606,41 @@ class Matrix {
 
   template <int level>
   inline dash::HView<self_t, level> hview();
+
+  /**
+   * Conversion operator to type \c MatrixRef.
+   */
   inline operator
     MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> ();
+
+ private:
+  /**
+   * Actual implementation of memory acquisition.
+   */
+  bool allocate(const PatternT & pattern);
 
  private:
   dash::Team           & _team;
   /// DART id of the unit that owns this matrix instance
   dart_unit_t            _myid;
-  /// The matrix elements' distribution pattern
-  Pattern_t              _pattern;
   /// Capacity (total number of elements) of the matrix
   size_type              _size;
   /// Number of local elements in the array
   size_type              _lsize;
   /// Number allocated local elements in the array
   size_type              _lcapacity;
-  /// Number of elements in the matrix local to this unit
-  size_type              _local_mem_size;
   /// Global pointer to initial element in the array
   pointer                _begin;
-  dart_gptr_t            _dart_gptr;
+  /// The matrix elements' distribution pattern
+  Pattern_t              _pattern;
   /// Global memory allocation and -access
-  GlobMem<ElementT>      _glob_mem;
-  MatrixRef_t            _ref;
+  GlobMem<ElementT>    * _glob_mem;
   /// Native pointer to first local element in the array
   ElementT             * _lbegin;
   /// Native pointer past last local element in the array
   ElementT             * _lend;
+  /// Proxy instance for applying a view, e.g. in subscript operator
+  MatrixRef_t            _ref;
 };
 
 }  // namespace dash

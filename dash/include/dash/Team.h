@@ -163,13 +163,17 @@ public:
     if (_child) {
       delete(_child);
     }
-    barrier();
     free();
     if (_dartid == DART_TEAM_ALL) {
       dart_exit();
     }
   }
 
+  /**
+   * Register a deallocator function for a team-allocated object.
+   * All registered deallocators will be called in ~Team(), or explicitly
+   * using Team::free().
+   */
   void register_deallocator(
     /// Object to deallocate
     void * object,
@@ -179,6 +183,11 @@ public:
     _deallocs.push_back({ object, dealloc });
   }
 
+  /**
+   * Unregister a deallocator function for a team-allocated object.
+   * All registered deallocators will be called in ~Team(), or explicitly
+   * using Team::free().
+   */
   void unregister_deallocator(
     /// Object to deallocate
     void * object,
@@ -188,8 +197,12 @@ public:
     _deallocs.remove({ object, dealloc });
   }
 
+  /**
+   * Call registered deallocator functions for all team-allocated objects.
+   */
   void free() {
     DASH_LOG_DEBUG_VAR("Team.free()", _dartid);
+    barrier();
     for (auto dealloc = _deallocs.rbegin();
          dealloc != _deallocs.rend();
          ++dealloc) {
