@@ -15,6 +15,7 @@
 extern MPI_Win dart_win_local_alloc; 
 #ifdef SHAREDMEM_ENABLE
 extern MPI_Win dart_sharedmem_win_local_alloc;
+#endif
 /** @brief Definition of translation table.
  * 
  *  This global translation table is created for dart collective memory allocation.
@@ -32,11 +33,12 @@ typedef struct
 {
 	int16_t seg_id; /* seg_id determines a global pointer uniquely */
 	size_t size;
-	MPI_Aint* disp; /* the address set of the memory location of all the units in certain team. */
-	char**baseptr;
+	MPI_Aint *disp; /* the address set of the memory location of all units in certain team. */
+	char **baseptr;
+	char *selfbaseptr;
 	MPI_Win win;
 }info_t;
-#else
+#if 0
 typedef struct
 {
 	int16_t seg_id;
@@ -110,9 +112,9 @@ int dart_adapt_transtable_get_disp (int16_t seg_id, int rel_unit, MPI_Aint *disp
  */
 #ifdef SHAREDMEM_ENABLE
 int dart_adapt_transtable_get_baseptr (int16_t seg_id, int rel_unit, char**baseptr);
-#else
-int dart_adapt_transtable_get_selfbaseptr (int16_t seg_id, char**selfbaseptr);
 #endif
+
+int dart_adapt_transtable_get_selfbaseptr (int16_t seg_id, char**selfbaseptr);
 
 int dart_adapt_transtable_get_size (int16_t seg_id, size_t* size);
 
