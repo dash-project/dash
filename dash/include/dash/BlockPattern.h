@@ -393,26 +393,6 @@ public:
   }
 
   /**
-   * Move-assignment operator.
-   */
-  Pattern & operator=(const Pattern && other) {
-    if (this != &other) {
-      DASH_LOG_TRACE("Pattern.move=()");
-      _distspec            = other._distspec;
-      _team                = other._team;
-      _teamspec            = other._teamspec;
-      _memory_layout       = other._memory_layout;
-      _local_memory_layout = other._local_memory_layout;
-      _blocksize_spec      = other._blocksize_spec;
-      _blockspec           = other._blockspec;
-      _local_capacity      = other._local_capacity;
-      _viewspec            = other._viewspec;
-      _nunits              = other._nunits;
-    }
-    return *this;
-  }
-
-  /**
    * Resolves the global index of the first local element in the pattern.
    *
    * \see DashPatternConcept

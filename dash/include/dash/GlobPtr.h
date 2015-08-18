@@ -12,6 +12,8 @@
 #include <iostream>
 
 #include <dash/dart/if/dart.h>
+#include <dash/Exception.h>
+#include <dash/Init.h>
 
 namespace dash {
 
@@ -264,5 +266,9 @@ std::ostream & operator<<(
 }
 
 } // namespace dash
+
+std::ostream & operator<<(
+  std::ostream & os,
+  const dart_gptr_t & dartptr);
 
 #endif // DASH__GLOB_PTR_H_

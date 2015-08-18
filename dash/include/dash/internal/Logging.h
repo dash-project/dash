@@ -64,7 +64,8 @@ static void Log_Recursive(
             << line << " | "
             << std::left << std::setw(35)
             << context_tag
-            << msg.str() << std::endl;
+            << msg.str() 
+            << std::endl;
 }
 
 // "Recursive" variadic function

@@ -110,14 +110,14 @@ template<
   typename T,
   typename IndexType,
   class PatternType>
-class LocalProxyArray {
+class LocalArrayRef {
 private:
-  typedef LocalProxyArray<T, IndexType, PatternType>
+  typedef LocalArrayRef<T, IndexType, PatternType>
     self_t;
 
 public:
   template <typename T_, typename I_, typename P_>
-    friend class LocalProxyArray;
+    friend class LocalArrayRef;
 
 public: 
   typedef T                                                  value_type;
@@ -137,7 +137,7 @@ public:
   /**
    * Constructor, creates a local access proxy for the given array.
    */
-  LocalProxyArray(
+  LocalArrayRef(
     Array<T, IndexType, PatternType> * const array)
   : m_array(array) {
   }
@@ -176,22 +176,6 @@ public:
   reference operator[](const size_t n) {
     return (m_array->m_lbegin)[n];
   }
- 
-#if 0
-  /**
-   * Resolve the global pointer for a local pointer.
-   */
-  GlobPtr<T> globptr(T * lptr) {
-    // Get global begin pointer depending on unit
-    GlobPtr<T> gptr = m_array->begin();
-    gptr.set_unit(m_array->team().myid());
-    // Get local offset
-    auto lptrdiff = lptr - begin();
-    // Add local offset to global begin pointer
-    gptr += static_cast<dash::gptr_diff_t>(lptrdiff);
-    return gptr;
-  }
-#endif
 };
 
 /**
@@ -239,14 +223,14 @@ public:
     typename T_,
     typename I_,
     class P_>
-  friend class LocalProxyArray;
+  friend class LocalArrayRef;
 
 /// Public types as required by dash container concept
 public:
   /// The type of the pattern used to distribute array elements to units
   typedef PatternType
     pattern_type;
-  typedef LocalProxyArray<value_type, IndexType, PatternType>
+  typedef LocalArrayRef<value_type, IndexType, PatternType>
     local_type;
 
 private:
@@ -258,7 +242,7 @@ private:
 private:
   typedef dash::GlobMem<value_type> GlobMem_t;
   /// Team containing all units interacting with the array
-  dash::Team         & m_team;
+  dash::Team         * m_team      = nullptr;
   /// DART id of the unit that created the array
   dart_unit_t          m_myid;
   /// Element distribution pattern
@@ -305,7 +289,7 @@ public:
    */
   Array(
     Team & team = dash::Team::Null())
-  : m_team(team),
+  : m_team(&team),
     m_pattern(
       SizeSpec_t(0),
       DistributionSpec_t(dash::BLOCKED),
@@ -324,7 +308,7 @@ public:
     size_type nelem,
     const DistributionSpec_t & distribution,
     Team & team = dash::Team::All())
-  : m_team(team),
+  : m_team(&team),
     m_pattern(
       SizeSpec_t(nelem),
       distribution,
@@ -342,7 +326,7 @@ public:
    */
   Array(
     const PatternType & pattern)
-  : m_team(pattern.team()),
+  : m_team(&pattern.team()),
     m_pattern(pattern),
     m_size(0),
     m_lsize(0),
@@ -515,7 +499,7 @@ public:
    *          with
    */
   const Team & team() const noexcept {
-    return m_team;
+    return *m_team;
   }
 
   /**
@@ -563,7 +547,7 @@ public:
    * Establish a barrier for all units operating on the array.
    */
   void barrier() const {
-    m_team.barrier();
+    m_team->barrier();
   }
 
   /**
@@ -583,7 +567,7 @@ public:
     dash::DistributionSpec<1> distribution,
     dash::Team & team = dash::Team::All()) {
     DASH_LOG_TRACE("Array.allocate()", nelem);
-    DASH_LOG_TRACE_VAR("Array.allocate", m_team.dart_id());
+    DASH_LOG_TRACE_VAR("Array.allocate", m_team->dart_id());
     DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
     // Check requested capacity:
     if (nelem == 0) {
@@ -591,7 +575,7 @@ public:
         dash::exception::InvalidArgument,
         "Tried to allocate dash::Array with size 0");
     }
-    if (m_team == dash::Team::Null()) {
+    if (*m_team == dash::Team::Null()) {
       DASH_LOG_TRACE("Array.allocate",
                      "initializing pattern with Team::All()");
       m_pattern = PatternType(nelem, distribution, team);
@@ -600,23 +584,25 @@ public:
     } else {
       DASH_LOG_TRACE("Array.allocate",
                      "initializing pattern with initial team");
-      m_pattern = PatternType(nelem, distribution, m_team);
+      m_pattern = PatternType(nelem, distribution, *m_team);
     }
     return allocate(m_pattern);
   }
 
   void deallocate() {
-    if (m_size == 0) {
-      return;
-    }
     DASH_LOG_TRACE_VAR("Array.deallocate()", this);
+    DASH_LOG_TRACE_VAR("Array.deallocate()", m_size);
     // Remove this function from team deallocator list to avoid
     // double-free:
     m_pattern.team().unregister_deallocator(
       this, std::bind(&Array::deallocate, this));
     // Actual destruction of the array instance:
-    delete m_globmem;
+    if (m_globmem != nullptr) {
+      delete m_globmem;
+      m_globmem = nullptr;
+    }
     m_size = 0;
+    DASH_LOG_TRACE_VAR("Array.deallocate >", this);
   }
 
 private:

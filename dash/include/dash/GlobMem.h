@@ -134,8 +134,10 @@ public:
    * Destructor, collectively frees underlying global memory.
    */
   ~GlobMem() {
+    DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", m_begptr);
     if (!DART_GPTR_ISNULL(m_begptr)) {
       if (m_kind == dash::internal::COLLECTIVE) {
+        DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", m_teamid);
         DASH_ASSERT_RETURNS(
           dart_team_memfree(m_teamid, m_begptr),
           DART_OK);
@@ -145,6 +147,7 @@ public:
           DART_OK);
       } 
     }
+    DASH_LOG_TRACE("GlobMem.~GlobMem >");
   }
 
   /**

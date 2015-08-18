@@ -175,6 +175,7 @@ public:
    * Destructor. Recursively frees this Team instance's child teams.
    */
   ~Team() {
+    DASH_LOG_DEBUG_VAR("Team.~Team()", this);
     if (_child) {
       delete(_child);
     }
@@ -216,15 +217,16 @@ public:
    * Call registered deallocator functions for all team-allocated objects.
    */
   void free() {
-    DASH_LOG_DEBUG_VAR("Team.free()", _dartid);
-    barrier();
+    DASH_LOG_DEBUG("Team.free()");
     for (auto dealloc = _deallocs.rbegin();
          dealloc != _deallocs.rend();
          ++dealloc) {
+      barrier();
       // List changes in iterations
       DASH_LOG_DEBUG_VAR("Team.free", dealloc->object);
       (dealloc->deallocator)();
     }
+    _deallocs.clear();
   }
   
   /**

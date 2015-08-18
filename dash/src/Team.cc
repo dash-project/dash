@@ -9,7 +9,7 @@
 
 namespace dash {
 
-Team Team::_team_all  { DART_TEAM_ALL, nullptr };
+Team Team::_team_all  { DART_TEAM_ALL,  nullptr };
 Team Team::_team_null { DART_TEAM_NULL, nullptr };
 
 std::ostream & operator<<(
