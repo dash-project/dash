@@ -34,12 +34,13 @@ else
   usage
 fi
 
-FILTER_COLORS=sed 's/\x1b\[[0-9;]*m//g'
 function run_suite
 {
   echo "===================================" | tee -a $LOGFILE
   echo "Running test suite with ${1} units ..." | tee -a $LOGFILE
-  $RUN_CMD -n $1 $TEST_BINARY 2>&1 | $FILTER_COLORS | tee -a $LOGFILE | grep Failure
+  echo "  ${RUN_CMD} -n ${1} ${TEST_BINARY}" | tee -a $LOGFILE
+  $RUN_CMD -n $1 $TEST_BINARY 2>&1 | tee -a $LOGFILE | \
+    sed 's/\x1b\[[0-9;]*m//g' | grep 'FAIL'
   echo "Done" | tee -a $LOGFILE
 }
 
