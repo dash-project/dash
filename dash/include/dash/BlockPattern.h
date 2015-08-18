@@ -1093,36 +1093,30 @@ private:
    * Max. elements per unit (local capacity)
    *
    * Note:
-   * Currently calculated as (num_local_blocks * block_size), thus
-   * ignoring underfilled blocks.
+   * Currently calculated as a multiple of full blocks, thus ignoring
+   * underfilled blocks.
    */
-  SizeType initialize_local_capacity() {
+  SizeType initialize_local_capacity() const {
     SizeType l_capacity = 1;
     if (_teamspec.size() == 0) {
       return 0;
     }
     for (auto d = 0; d < NumDimensions; ++d) {
-      SizeType num_units_d      = _teamspec.extent(d);
-      const Distribution & dist = _distspec[d];
-      // Block size in given dimension:
-      auto dim_max_blocksize    = _blocksize_spec.extent(d);
+      auto num_units_d    = _teamspec.extent(d);
       // Maximum number of occurrences of a single unit in given
       // dimension:
-      // TODO: Should be dist.max_local_elements_in_range for later
-      //       support of dash::BALANCED_*
-      SizeType dim_num_blocks   = dist.max_local_blocks_in_range(
-                                    // size of range:
-                                    _memory_layout.extent(d),
-                                    // number of units:
-                                    num_units_d
-                                  );
-      l_capacity *= dim_max_blocksize * dim_num_blocks;
+      auto num_blocks_d   = dash::math::div_ceil(
+                              _memory_layout.extent(d),
+                              _blocksize_spec.extent(d));
+      auto max_l_blocks_d = dash::math::div_ceil(
+                              num_blocks_d,
+                              num_units_d);
       DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", d);
       DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", num_units_d);
-      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", 
-                         dim_max_blocksize);
-      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", dim_num_blocks);
+      DASH_LOG_TRACE_VAR("Pattern.init_lcapacity.d", max_l_blocks_d);
+      l_capacity *= max_l_blocks_d;
     }
+    l_capacity *= _blocksize_spec.size();;
     DASH_LOG_DEBUG_VAR("Pattern.init_lcapacity >", l_capacity);
     return l_capacity;
   }

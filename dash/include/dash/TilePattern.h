@@ -1073,31 +1073,11 @@ private:
    * Currently calculated as (num_local_blocks * block_size), thus
    * ignoring underfilled blocks.
    */
-  SizeType initialize_local_capacity() {
-    SizeType l_capacity = 1;
-    for (auto d = 0; d < NumDimensions; ++d) {
-      SizeType num_units_d      = _teamspec.extent(d);
-      const Distribution & dist = _distspec[d];
-      // Block size in given dimension:
-      auto dim_max_blocksize    = _blocksize_spec.extent(d);
-      // Maximum number of occurrences of a single unit in given
-      // dimension:
-      // TODO: Should be dist.max_local_elements_in_range for later
-      //       support of dash::BALANCED_*
-      SizeType dim_num_blocks   = dist.max_local_blocks_in_range(
-                                    // size of range:
-                                    _memory_layout.extent(d),
-                                    // number of units:
-                                    num_units_d
-                                  );
-      l_capacity *= dim_max_blocksize * dim_num_blocks;
-      DASH_LOG_TRACE_VAR("TilePattern.init_lcapacity.d", d);
-      DASH_LOG_TRACE_VAR("TilePattern.init_lcapacity.d", num_units_d);
-      DASH_LOG_TRACE_VAR("TilePattern.init_lcapacity.d", 
-                         dim_max_blocksize);
-      DASH_LOG_TRACE_VAR("TilePattern.init_lcapacity.d", dim_num_blocks);
-    }
-    DASH_LOG_DEBUG_VAR("TilePattern.init_lcapacity >", l_capacity);
+  SizeType initialize_local_capacity() const {
+    // Assumes balanced distribution property, i.e.
+    // range = k * blocksz * nunits
+    auto l_capacity = size() / _nunits;
+    DASH_LOG_TRACE_VAR("TilePattern.init_local_capacity >", l_capacity);
     return l_capacity;
   }
 
