@@ -102,41 +102,6 @@ public:
   }
 
   /**
-   * The maximum number of blocks local to a single unit within an
-   * extent for a given total number of units.
-   */
-  template <typename SizeType>
-  constexpr SizeType max_local_blocks_in_range(
-    /// Number of elements to distribute
-    SizeType range,
-    /// Number of units to which elements are distributed
-    SizeType num_units) const {
-    SizeType num_blocks;
-    switch (type) {
-      case dash::internal::DIST_NONE:
-        return 1;
-      case dash::internal::DIST_BLOCKED:
-        return 1;
-      case dash::internal::DIST_CYCLIC:
-        // same as block cyclic with blocksz = 1
-        return dash::math::div_ceil(range, num_units);
-      case dash::internal::DIST_BLOCKCYCLIC:
-        // extent to blocks:
-        num_blocks = dash::math::div_ceil(range, blocksz);
-        // blocks to units:
-        return dash::math::div_ceil(num_blocks, num_units);
-      case dash::internal::DIST_TILE:
-        // same as block cyclic
-        num_blocks = dash::math::div_ceil(range, blocksz);
-        return dash::math::div_ceil(num_blocks, num_units);
-      default:
-        DASH_THROW(
-          dash::exception::InvalidArgument,
-          "Distribution type undefined in max_local_blocks_in_range");
-    }
-  }
-
-  /**
    * The maximum size of a single block within an extent for
    * a given total number of units.
    */
