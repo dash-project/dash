@@ -28,6 +28,8 @@ TEST_F(STLAlgorithmTest, Copy) {
   for (auto l_it = array.lbegin(); l_it != array.lend(); ++l_it, ++l_off) {
     *l_it = std::make_pair(_dash_id, l_off);
   }
+  // Wait for all units to initialize their assigned range
+  array.barrier();
   // Global ranges to copy are dealt to units from the back
   // to ensure most ranges are copied global-to-local.
   auto global_offset      = array.size() - 
