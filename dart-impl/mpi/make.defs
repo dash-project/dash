@@ -4,7 +4,7 @@
 #
 
 # where the DART interface is located
-DART_IF = ../../dart-if/v3.1
+DART_IF = ../../dart-if/v3.2
 
 ifeq ($(CRAYOS_VERSION),) 
 CC      = mpicc $(OPT_FLAGS) -std=c99

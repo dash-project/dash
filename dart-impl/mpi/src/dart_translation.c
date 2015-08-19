@@ -28,15 +28,15 @@ int dart_adapt_transtable_add (info_t item)
 {
 	node_t pre, q;
 	node_t p = (node_t) malloc (sizeof (node_info_t));
+//	printf ("item.seg_id is %d\n", item.seg_id);
 	p -> trans.seg_id = item.seg_id;
 	p -> trans.size = item.size;
 	p -> trans.disp = item.disp;
 #ifdef SHAREDMEM_ENABLE
 	p -> trans.win = item.win;
 	p -> trans.baseptr = item.baseptr;
-#else
-	p -> trans.selfbaseptr = item.selfbaseptr;
 #endif
+	p -> trans.selfbaseptr = item.selfbaseptr;
 	p -> next = NULL;
 
 	/* The translation table is empty. */
@@ -84,7 +84,8 @@ int dart_adapt_transtable_remove (int16_t seg_id)
 
 	free (p->trans.disp);
 #ifdef SHAREDMEM_ENABLE
-	free (p->trans.baseptr);
+	if (p->trans.baseptr)
+		free (p->trans.baseptr);
 #endif
 	free (p);
 	return 0;
@@ -96,11 +97,11 @@ int dart_adapt_transtable_get_win (int16_t seg_id, MPI_Win* win)
 	node_t p;
 	p = dart_transtable_globalalloc;
 
-	while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+	while ((p != NULL) && (seg_id != ((p -> trans).seg_id)))
 	{
 		p = p -> next;
 	}
-	if ((!p) || (seg_id != ((p -> trans).seg_id)))
+	if (!p)
 	{
 		
 		ERROR ("Invalid seg_id: %d, can not get the related window object", seg_id);
@@ -141,12 +142,12 @@ int dart_adapt_transtable_get_disp (int16_t seg_id, int rel_unitid, MPI_Aint *di
 	node_t p;
 	p = dart_transtable_globalalloc;
 
-	while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+	while ((p != NULL) && (seg_id != ((p -> trans).seg_id)))
 	{
 		p = p -> next;
 	}
 
-	if ((!p) || (seg_id != (p -> trans).seg_id))
+	if (!p)
 	{
 		ERROR ("Invalid seg_id: %d, can not get the related displacement", seg_id);
 		return -1;
@@ -161,12 +162,12 @@ int dart_adapt_transtable_get_baseptr (int16_t seg_id, int rel_unitid, char**bas
 	node_t p;
 	p = dart_transtable_globalalloc;
 
-	while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+	while ((p != NULL) && (seg_id != ((p -> trans).seg_id)))
 	{
 		p = p -> next;
 	}
 
-	if ( (!p) || ((seg_id) != (p -> trans).seg_id))
+	if (!p)
 	{
 		ERROR ("Invalid seg_id: %d, can not get the related baseptr", seg_id);
 		return -1;
@@ -175,17 +176,18 @@ int dart_adapt_transtable_get_baseptr (int16_t seg_id, int rel_unitid, char**bas
 	*baseptr_s = (p -> trans).baseptr[rel_unitid];
 	return 0;
 }
-#else
+#endif
+//#else
 int dart_adapt_transtable_get_selfbaseptr (int16_t seg_id, char**baseptr)
 {
 	node_t p;
 	p = dart_transtable_globalalloc;
 
-	while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+	while ((p != NULL) && (seg_id != ((p -> trans).seg_id)))
 	{
 		p = p -> next;
 	}
-	if ((!p) || ((seg_id) != (p -> trans).seg_id))
+	if (!p)
 	{
 		ERROR ("Invalid seg_id: %d, can not get the related baseptr", seg_id);
 		return -1;
@@ -193,19 +195,19 @@ int dart_adapt_transtable_get_selfbaseptr (int16_t seg_id, char**baseptr)
 	*baseptr = (p -> trans).selfbaseptr;
 	return 0;
 }
-#endif
+//#endif
 
 int dart_adapt_transtable_get_size (int16_t seg_id, size_t *size)
 {
 	node_t p;
 	p = dart_transtable_globalalloc;
 
-	while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+	while ((p != NULL) && (seg_id != ((p -> trans).seg_id)))
 	{
 		p = p -> next;
 	}
 
-	if ((!p) || (seg_id) != (p -> trans).seg_id)
+	if (!p)
 	{
 		ERROR ("Invalid seg_id: %d, can not get the related memory size", seg_id);
 		return -1;
@@ -229,7 +231,8 @@ int dart_adapt_transtable_destroy ()
 
 		free (pre->trans.disp);
 #ifdef SHAREDMEM_ENABLE
-		free (pre->trans.baseptr);
+		if (pre->trans.baseptr)
+			free (pre->trans.baseptr);
 #endif
 		free (pre);
 	}
