@@ -27,7 +27,7 @@ if [ "$LOGFILE" = "" ]; then
   LOGFILE="dash-test-${TIMESTAMP}.log"
   trap "rm $LOGFILE; exit" SIGHUP SIGINT SIGTERM
 else
-  echo "[        ] Writing output to $LOGFILE"
+  echo "[[        ]] Writing output to $LOGFILE"
 fi
 
 if [ $DART_IMPL = "shmem" ]; then
@@ -40,18 +40,24 @@ else
   usage
 fi
 
+# Number of failed tests in total
+TOTAL_FAIL_COUNT=0
 TESTS_PASSED=true
 function run_suite
 {
-  echo "[ RUN    ] ${RUN_CMD} -n ${1} ${TEST_BINARY}" | tee -a $LOGFILE
+  echo "[[ RUN    ]] ${RUN_CMD} -n ${1} ${TEST_BINARY}" | tee -a $LOGFILE
   $RUN_CMD -n $1 $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
-    tee -a $LOGFILE | grep 'FAIL'
-  if [ "$?" = "0" ]; then
-    echo "[ OK     ] Test run passed" | tee -a $LOGFILE
+    tee -a $LOGFILE
+  # Cannot use exit code as dartrun-shmem seems to always return 0
+  NEW_FAIL_COUNT=`grep --count 'FAILED TEST' $LOGFILE`
+  # Number of failed tests in this run
+  THIS_FAIL_COUNT=$(($NEW_FAIL_COUNT-$TOTAL_FAIL_COUNT))
+  TOTAL_FAIL_COUNT=$NEW_FAIL_COUNT
+  if [ "$THIS_FAIL_COUNT" = "0" ]; then
+    echo "[[ OK     ]] Test run passed" | tee -a $LOGFILE
   else
-    FAIL_COUNT=`grep --count 'FAIL' $LOGFILE`
     TESTS_PASSED=false
-    echo "[ FAIL   ] $FAIL_COUNT failed tests" | tee -a $LOGFILE
+    echo "[[ FAIL   ]] $THIS_FAIL_COUNT failed tests" | tee -a $LOGFILE
   fi
 }
 
