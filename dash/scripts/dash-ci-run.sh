@@ -4,11 +4,11 @@ BASEPATH=`git rev-parse --show-toplevel`
 CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
 CMD_TEST=$BASEPATH/dash/scripts/dash-test.sh
 FAILED=false
+TIMESTAMP=`date +%Y%m%d-%H%M%S`
 
 function run_ci
 {
   BUILD_TYPE=${1}
-  TIMESTAMP=`date +%Y%m%d-%H%M%S`
   DEPLOY_PATH=$BASEPATH/build-ci/$TIMESTAMP/${BUILD_TYPE}
   mkdir -p $DEPLOY_PATH && \
   cd $DEPLOY_PATH

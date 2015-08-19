@@ -50,13 +50,13 @@ function run_suite
 }
 
 run_suite 1
-# run_suite 2
-# run_suite 3
-# run_suite 4
-# run_suite 7
-# run_suite 8
-# run_suite 11
-# run_suite 12
+run_suite 2
+run_suite 3
+run_suite 4
+run_suite 7
+run_suite 8
+run_suite 11
+run_suite 12
 
 if $TESTS_PASSED; then
   exit 0

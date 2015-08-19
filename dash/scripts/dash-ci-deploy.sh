@@ -5,16 +5,14 @@ BASEPATH=`git rev-parse --show-toplevel`
 FORCE_BUILD=false
 DO_INSTALL=false
 INSTALL_PATH=""
-BUILD_TYPE="Debug"
+BUILD_TYPE="Release"
 MAKE_TARGET=""
 MAKE_PROCS=`cat /proc/cpuinfo | grep --count 'processor'`
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -f)    FORCE_BUILD=true;
            shift 1;;
-    -r)    BUILD_TYPE="Release";
-           shift 1;;
-    -d)    BUILD_TYPE="Debug";
+    --b=*) BUILD_TYPE="${1#*=}";
            shift 1;;
     --j=*) MAKE_PROCS="${1#*=}";
            shift 1;;
@@ -60,6 +58,17 @@ if [ "$BUILD_TYPE" = "Release" ]; then
   -DENABLE_TRACE_LOGGING=OFF
   -DBUILD_TESTS=ON"
 elif [ "$BUILD_TYPE" = "Debug" ]; then
+  BUILD_SETTINGS="
+  -DCMAKE_BUILD_TYPE=Debug
+  -DENABLE_ASSERTIONS=ON
+  -DDART_IF_VERSION=3.2
+  -DINSTALL_PREFIX=$INSTALL_PATH
+  -DDART_IMPLEMENTATIONS=mpi,shmem
+  -DBUILD_EXAMPLES=ON
+  -DENABLE_LOGGING=OFF
+  -DENABLE_TRACE_LOGGING=OFF
+  -DBUILD_TESTS=ON"
+elif [ "$BUILD_TYPE" = "Development" ]; then
   BUILD_SETTINGS="
   -DCMAKE_BUILD_TYPE=Debug
   -DENABLE_ASSERTIONS=ON
