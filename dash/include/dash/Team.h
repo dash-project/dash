@@ -97,13 +97,6 @@ private:
   : _parent(parent) { 
     _dartid   = id; 
     _position = pos;
-    // if (_dartid != DART_TEAM_NULL) {
-    //   // get the group for the team
-    //   size_t sz; dart_group_sizeof(&sz);
-    //   _group = (dart_group_t*)malloc(sz);
-    //   dart_group_init(_group);
-    //   dart_team_get_group(_dartid, _group);
-    // }
     if (parent) {
       if (parent->_child) {
         DASH_THROW(
@@ -116,13 +109,16 @@ private:
     }
   }
 
-  void get_group() const {
-    size_t sz; dart_group_sizeof(&sz);
-    _group = (dart_group_t*)malloc(sz);
-    dart_group_init(_group);
-    
-    dart_team_get_group(_dartid, _group);
-    _has_group = true;
+  bool get_group() const {
+    if (dash::is_initialized() && !_has_group) {
+      size_t sz;
+      dart_group_sizeof(&sz);
+      _group = (dart_group_t*)malloc(sz);
+      dart_group_init(_group);
+      dart_team_get_group(_dartid, _group);
+      _has_group = true;
+    }
+    return _has_group;
   }
 
 protected:
@@ -182,6 +178,22 @@ public:
       dart_exit();
     }
   }
+  
+  /**
+   * The invariant Team instance containing all available units.
+   */
+  static Team & All() {
+    DASH_LOG_TRACE_VAR("Team::All()", Team::_team_all.size());
+    return Team::_team_all;
+  }
+
+  /**
+   * The invariant Team instance representing an undefined team.
+   */
+  static Team & Null() {
+    DASH_LOG_TRACE_VAR("Team::Null()", Team::_team_null.size());
+    return Team::_team_null;
+  }
 
   /**
    * Register a deallocator function for a team-allocated object.
@@ -225,22 +237,6 @@ public:
       (dealloc->deallocator)();
     }
     _deallocs.clear();
-  }
-  
-  /**
-   * The invariant Team instance containing all available units.
-   */
-  static Team & All() {
-    DASH_LOG_TRACE_VAR("Team::All()", Team::_team_all.size());
-    return Team::_team_all;
-  }
-
-  /**
-   * The invariant Team instance representing an undefined team.
-   */
-  static Team & Null() {
-    DASH_LOG_TRACE_VAR("Team::Null()", Team::_team_null.size());
-    return Team::_team_null;
   }
   
   /**
@@ -359,10 +355,10 @@ public:
    *          with given id
    */
   bool is_member(size_t groupId) const {
-    int32_t ismember;
-    if(!_has_group) { 
-      get_group();
+    if(!get_group()) {
+      return false;
     }
+    int32_t ismember;
     DASH_ASSERT_RETURNS(
       dart_group_ismember(
         _group,

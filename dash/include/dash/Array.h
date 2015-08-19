@@ -1,10 +1,3 @@
-/* 
- * dash-lib/Array.h
- *
- * author(s): Karl Fuerlinger, LMU Munich 
- */
-/* @DASH_HEADER@ */
-
 #ifndef ARRAY_H_INCLUDED
 #define ARRAY_H_INCLUDED
 
