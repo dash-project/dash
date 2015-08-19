@@ -4,11 +4,19 @@
 #include <libdash.h>
 #include <iostream>
 
-#include "ArrayTest.h"
 #include "BlockPatternTest.h"
 #include "TilePatternTest.h"
 #include "CartesianTest.h"
+#include "TeamTest.h"
 #include "TeamSpecTest.h"
+
+#include "ArrayTest.h"
+#include "MatrixTest.h"
+
+#include "ForEachTest.h"
+#include "MinElementTest.h"
+#include "MaxElementTest.h"
+#include "STLAlgorithmTest.h"
 
 int main(int argc, char * argv[]) {
   // Init GoogleTest (strips gtest arguments from argv)
