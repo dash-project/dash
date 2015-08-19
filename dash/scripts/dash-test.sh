@@ -2,7 +2,10 @@
 
 function usage
 {
-  echo "Usage: dash-test.sh <mpi|shmem> <bin path>"
+  echo "Run unit tests with varying number of proceses on a"
+  echo "DASH installation"
+  echo ""
+  echo "Usage: dash-test.sh <mpi|shmem> <bin path> [log file]"
   echo ""
   echo "... with <bin path> pointing to the directory where the"
   echo "DASH binaries have been installed, e.g. ~/opt/dash/bin"
@@ -15,14 +18,17 @@ fi
 
 DART_IMPL="$1"
 BIN_PATH="$2"
+LOGFILE="$3"
 RUN_CMD=""
 TEST_BINARY=""
 
-TIMESTAMP=$(date +%Y-%m-%d--%H%M%S)
-LOGFILE="dash-test-$DART_IMPL--$TIMESTAMP.log"
-
-echo "Writing output to $LOGFILE"
-sleep 3
+if [ "$LOGFILE" = "" ]; then
+  # Use temporary log file
+  LOGFILE="dash-test-${TIMESTAMP}.log"
+  trap "rm $LOGFILE; exit" SIGHUP SIGINT SIGTERM
+else
+  echo "[        ] Writing output to $LOGFILE"
+fi
 
 if [ $DART_IMPL = "shmem" ]; then
   RUN_CMD="$BIN_PATH/dartrun-shmem"
@@ -37,15 +43,15 @@ fi
 TESTS_PASSED=true
 function run_suite
 {
-  echo "===================================" | tee -a $LOGFILE
-  echo "Running test suite with ${1} units ..." | tee -a $LOGFILE
-  echo "  ${RUN_CMD} -n ${1} ${TEST_BINARY}" | tee -a $LOGFILE
-  $RUN_CMD -n $1 $TEST_BINARY 2>&1 | tee -a $LOGFILE | \
-    sed 's/\x1b\[[0-9;]*m//g' | grep 'FAIL'
-  echo "Done" | tee -a $LOGFILE
-  if [ `grep --count 'FAILED' $LOGFILE` != 0 ]; then
+  echo "[ RUN    ] ${RUN_CMD} -n ${1} ${TEST_BINARY}" | tee -a $LOGFILE
+  $RUN_CMD -n $1 $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
+    tee -a $LOGFILE | grep 'FAIL'
+  if [ "$?" = "0" ]; then
+    echo "[ OK     ] Test run passed" | tee -a $LOGFILE
+  else
+    FAIL_COUNT=`grep --count 'FAIL' $LOGFILE`
     TESTS_PASSED=false
-    echo "-----> Failed tests"
+    echo "[ FAIL   ] $FAIL_COUNT failed tests" | tee -a $LOGFILE
   fi
 }
 
