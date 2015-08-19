@@ -1,5 +1,6 @@
 #!/bin/sh
 
+TIMESTAMP=`date +%Y%m%d-%H%M%S`
 BASEPATH=`git rev-parse --show-toplevel`
 CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
 CMD_TEST=$BASEPATH/dash/scripts/dash-test.sh
@@ -8,36 +9,39 @@ FAILED=false
 function run_ci
 {
   BUILD_TYPE=${1}
-  TIMESTAMP=`date +%Y%m%d-%H%M%S`
   DEPLOY_PATH=$BASEPATH/build-ci/$TIMESTAMP/${BUILD_TYPE}
+  
   mkdir -p $DEPLOY_PATH && \
-  cd $DEPLOY_PATH
-    echo "[ BUILD  ] Deploying build $BUILD_TYPE to $DEPLOY_PATH ..."
-    $CMD_DEPLOY "--b=$BUILD_TYPE" -f "--i=$DEPLOY_PATH" >> build.log 2>&1
+    cd $DEPLOY_PATH
+  
+  echo "[ BUILD  ] Deploying build $BUILD_TYPE to $DEPLOY_PATH ..."
+  $CMD_DEPLOY "--b=$BUILD_TYPE" -f "--i=$DEPLOY_PATH" >> $DEPLOY_PATH/build.log 2>&1
+  
+  if [ "$?" = "0" ]; then
+    echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (SHMEM) ..."
+    $CMD_TEST shmem $DEPLOY_PATH/bin $DEPLOY_PATH/test_shmem.log > /dev/null 2>&1
     if [ "$?" = "0" ]; then
-      echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (SHMEM) ..."
-      $CMD_TEST shmem $DEPLOY_PATH/bin > test_shmem.log 2>&1
-      if [ "$?" = "0" ]; then
-        echo " OK"
-      else
-        echo " FAILED"
-      fi
-      echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
-      $CMD_TEST mpi   $DEPLOY_PATH/bin > test_mpi.log 2>&1
-      if [ "$?" = "0" ]; then
-        echo " OK"
-      else
-        echo " FAILED"
-      fi
+      echo " OK"
     else
-      echo "[ FAIL   ] Build failed, see $DEPLOY_PATH/build.log for details"
+      echo " FAILED"
       FAILED=true
     fi
-  if [ `find $DEPLOY_PATH -name 'dash-test*.log' | xargs cat | grep --count 'FAIL'` -gt 0 ]; then
-    echo "[ FAIL   ] Failed tests!"
+    echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
+    $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
+    if [ "$?" = "0" ]; then
+      echo " OK"
+    else
+      echo " FAILED"
+      FAILED=true
+    fi
+  else
+    echo "[ FAIL   ] Build failed, see $DEPLOY_PATH/build.log for details"
     FAILED=true
   fi
-  if ! $FAILED; then
+
+  if $FAILED; then
+    echo "[ FAIL   ] Integration test on $BUILD_TYPE failed"
+  else
     echo "[ PASSED ] Build and test suite passed"
   fi
 }

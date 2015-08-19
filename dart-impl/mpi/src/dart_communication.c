@@ -334,7 +334,6 @@ dart_ret_t dart_put_blocking(
   dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
 
 #ifdef SHAREDMEM_ENABLE
-if (seg_id >= 0){
   int i, is_sharedmem = 0;
   MPI_Aint maximum_size;
   int disp_unit;
@@ -368,7 +367,6 @@ if (seg_id >= 0){
     baseptr = baseptr + disp_rel;
     
     memcpy (baseptr, ((char*)src), nbytes);
-    return DART_OK;}}
    
 #if 0
     if (unitid == target_unitid_abs) {
@@ -395,9 +393,9 @@ if (seg_id >= 0){
     }
     memcpy (baseptr, ((char*)src), nbytes);
 #endif
+  } else 
 #endif
   {
-	
     /* The traditional remote access method */
     if (seg_id)  {  
       win = dart_win_lists[index];
@@ -423,7 +421,6 @@ if (seg_id >= 0){
       nbytes,
       MPI_BYTE,
       win);
-   
 //  MPI_Rput(
 //    src,
 //    nbytes,
@@ -440,6 +437,7 @@ if (seg_id >= 0){
      * request handle
      */
 //  MPI_Wait(&mpi_req, &mpi_sta);
+  } 
   if (seg_id) {
     DEBUG("PUT_BLOCKING  - %d bytes "
            "(allocated with collective allocation) to %d at the offset %d", 
@@ -449,7 +447,7 @@ if (seg_id >= 0){
           "(allocated with local allocation) to %d at the offset %d",
           nbytes, target_unitid_abs, offset);
   }
-  return DART_OK;}
+  return DART_OK;
 }
 
 /** 
@@ -470,8 +468,7 @@ dart_ret_t dart_get_blocking(
   uint16_t index  = gptr.flags;
   dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
 
-#ifdef SHAREDMEM_ENABLE 
-  if (seg_id >= 0){
+#ifdef SHAREDMEM_ENABLE
   int i, is_sharedmem = 0;
   MPI_Aint maximum_size;
   int disp_unit;
@@ -500,8 +497,6 @@ dart_ret_t dart_get_blocking(
     disp_rel = offset;
     baseptr += disp_rel;
     memcpy ((char*)dest, baseptr, nbytes);
-    return DART_OK;
-    }}
 
 #if 0
     if (unitid == target_unitid_abs) {
@@ -519,9 +514,9 @@ dart_ret_t dart_get_blocking(
       baseptr += disp_rel;
     }
     memcpy((char*)dest, baseptr, nbytes); 
-#endif  
+#endif 
+  } else 
 #endif
-  
   {
     if (seg_id) {
       win = dart_win_lists[index];
@@ -558,7 +553,7 @@ dart_ret_t dart_get_blocking(
       win,
       &mpi_req);
     MPI_Wait(&mpi_req, &mpi_sta);
-  
+  }
   if (seg_id) {
     DEBUG("GET_BLOCKING  - %d bytes "
           "(allocated with collective allocation) from %d "        
@@ -569,7 +564,7 @@ dart_ret_t dart_get_blocking(
           "(allocated with local allocation) from %d at the offset %d", 
            nbytes, target_unitid_abs, offset);
   }
-  return DART_OK;}
+  return DART_OK;
 }
 
 /* -- Dart RMA Synchronization Operations -- */
