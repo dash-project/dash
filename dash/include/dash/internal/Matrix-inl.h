@@ -118,7 +118,7 @@ LocalRef<T, NumDim, CUR, PatternT>::size() const
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-T & LocalRef<T, NumDim, CUR, PatternT>::at_(
+T & LocalRef<T, NumDim, CUR, PatternT>::local_at(
   size_type pos)
 {
   if (!(pos < _proxy->_viewspec.size())) {
@@ -143,7 +143,7 @@ T & LocalRef<T, NumDim, CUR, PatternT>::at(
   for(auto i = _proxy->_dim; i < NumDim; ++i) {
     _proxy->_coord[i] = coord[i-_proxy->_dim];
   }
-  return at_(
+  return local_at(
       _proxy->_mat->_pattern.local_at(
         _proxy->_coord,
         _proxy->_viewspec));
@@ -280,20 +280,20 @@ LocalRef<T, NumDim, CUR, PatternT>::cols(
 
 template <typename T, dim_t NumDim, class PatternT>
 inline T *
-LocalRef<T, NumDim, 0, PatternT>::at_(
+LocalRef<T, NumDim, 0, PatternT>::local_at(
   index_type pos)
 {
   if (!(pos < _proxy->_mat->size())) {
     DASH_THROW(
       dash::exception::OutOfRange,
-      "Position for LocalRef<0>.at_ out of range");
+      "Position for LocalRef<0>.local_at out of range");
   }
   return &(_proxy->_mat->lbegin()[pos]);
 }
 
 template <typename T, dim_t NumDim, class PatternT>
 inline LocalRef<T, NumDim, 0, PatternT>::operator T() {
-  T ret = *at_(_proxy->_mat->_pattern.local_at(
+  T ret = *local_at(_proxy->_mat->_pattern.local_at(
                  _proxy->_coord,
                  _proxy->_viewspec));
   DASH_LOG_TRACE("LocalRef<0>.T()", "delete _proxy");
@@ -306,7 +306,7 @@ inline T
 LocalRef<T, NumDim, 0, PatternT>::operator=(
   const T & value)
 {
-  T* ref = at_(_proxy->_mat->_pattern.local_at(
+  T* ref = local_at(_proxy->_mat->_pattern.local_at(
                  _proxy->_coord,
                  _proxy->_viewspec));
   *ref = value;

@@ -11,6 +11,159 @@
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
+#include <dash/Container.h>
+
+/**
+ * \defgroup  DashMatrixConcept  Matrix Concept
+ * Concept for a distributed n-dimensional matrix.
+ * Extends concepts Container and Array.
+ *
+ * \see DashArrayConcept
+ * \see DashContainerConcept
+ *
+ * \ingroup DashConcept
+ * \{
+ * \par Description
+ *
+ * The Matrix concept extends the n-dimensional Array by
+ * operations that are prevalent in linear algebra, such
+ * as projection to lower dimensions (e.g. rows and columns)
+ * or slices.
+ *
+ * \par Types
+ *
+ * <table>
+ *   <tr>
+ *     <th>Type name</th>
+ *     <th>Description</th>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \code
+ *         Container::index_type
+ *       \endcode
+ *     </td>
+ *     <td>
+ *       Integer denoting an offset/coordinate in cartesian index space
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \code
+ *         Container::size_type
+ *       \endcode
+ *     </td>
+ *     <td>
+ *       Integer denoting an extent in cartesian index space
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \code
+ *         Container::pattern_type
+ *       \endcode
+ *     </td>
+ *     <td>
+ *       Concrete type implementing the Pattern concept that is used to
+ *       distribute elements to units in a team.
+ *     </td>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \code
+ *         Container::local_type
+ *       \endcode
+ *     </td>
+ *     <td>
+ *       Reference to local element range, allows range-based
+ *       iteration
+ *     </td>
+ *   </tr>
+ *
+ * </table>
+ *
+ * \par Methods
+ *
+ * <table>
+ *   <tr>
+ *     <th>Method Signature</th>
+ *     <th>Semantics</th>
+ *   </tr>
+ *
+ *   <tr>
+ *     <td>
+ *       \code
+ *       const pattern_type & pattern()
+ *       \endcode
+ *     </td>
+ *     <td>
+ *       Pattern used to distribute container elements
+ *     </td>
+ *   </tr>
+ *   
+ *   <tr>
+ *     <td>
+ *       \code
+ *        local_type local
+ *       \endcode
+ *     </td>
+ *     <td>
+ *       Local range of the container, allows range-based
+ *       iteration
+ *     </td>
+ *   </tr>
+ *   
+ *   <tr>
+ *     <td>
+ *       \code
+ *         GlobIter<Value> begin()
+ *       \endcode
+ *     </td>
+ *     <td>
+ *       Global iterator referencing the initial element
+ *     </td>
+ *   </tr>
+ *   
+ *   <tr>
+ *     <td>
+ *       \code
+ *         GlobIter<Value> end()
+ *       \endcode
+ *     </td>
+ *     <td>
+ *       Global iterator referencing past the final element
+ *     </td>
+ *   </tr>
+ *   
+ *   <tr>
+ *     <td>
+ *       \code
+ *         Value * lbegin()
+ *       \endcode
+ *     </td>
+ *     <td>
+ *       Native pointer to the initial local matrix element
+ *     </td>
+ *   </tr>
+ *   
+ *   <tr>
+ *     <td>
+ *       \code
+ *         Value * lend()
+ *       \endcode
+ *     </td>
+ *     <td>
+ *       Native pointer past the final local matrix element
+ *     </td>
+ *   </tr>
+ *
+ * </table>
+ * \}
+ */
 
 namespace dash {
 
@@ -109,9 +262,6 @@ class LocalRef {
   friend class Matrix;
 
  public:
-  MatrixRefProxy<T, NumDimensions, PatternT> * _proxy;
-
- public:
   typedef T                              value_type;
   typedef PatternT                       pattern_type;
   typedef typename PatternT::index_type  index_type;
@@ -133,6 +283,9 @@ class LocalRef {
  public:
   LocalRef<T, NumDimensions, CUR, PatternT>() = default;
 
+  /**
+   * Constructor, creates a local reference to a Matrix instance.
+   */
   LocalRef<T, NumDimensions, CUR, PatternT>(
     Matrix<T, NumDimensions, index_type, PatternT> * mat);
 
@@ -142,16 +295,46 @@ class LocalRef {
   inline operator MatrixRef<T, NumDimensions, CUR, PatternT> ();
   inline size_type extent(dim_t dim) const;
   inline size_type size() const;
-  inline T & at_(size_type pos);
+  inline T & local_at(size_type pos);
 
+  /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
   template<typename ... Args>
-  T & at(Args... args);
+  T & at(
+    /// Global coordinates
+    Args... args);
 
+  /**
+   * Fortran-style subscript operator, alias for \c at().
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   * \see  at
+   */
   template<typename... Args>
-  T & operator()(Args... args);
+  T & operator()(
+    /// Global coordinates
+    Args... args);
 
+  /**
+   * Subscript assignment operator, access element at given offset
+   * in global element range.
+   */
   LocalRef<T, NumDimensions, CUR-1, PatternT> &&
     operator[](index_type n);
+
+  /**
+   * Subscript operator, access element at given offset in
+   * global element range.
+   */
   LocalRef<T, NumDimensions, CUR-1, PatternT>
     operator[](index_type n) const;
 
@@ -163,21 +346,48 @@ class LocalRef {
   inline LocalRef<T, NumDimensions, NumDimensions-1, PatternT> 
     row(size_type n);
 
-  template<dim_t NumSubDimensions>
+  template<dim_t SubDimension>
   LocalRef<T, NumDimensions, NumDimensions, PatternT> submat(
     size_type n,
     size_type range);
 
+  /**
+   * Create a view representing the matrix slice within a row
+   * range.
+   * Same as \c submat<0>(offset, extent).
+   *
+   * \returns  A matrix view
+   *
+   * \see  submat
+   */
   inline LocalRef<T, NumDimensions, NumDimensions, PatternT> rows(
-    size_type n,
+    /// Offset of first row in range
+    size_type offset,
+    /// Number of rows in the range
     size_type range);
 
+  /**
+   * Create a view representing the matrix slice within a column
+   * range.
+   * Same as \c submat<1>(offset, extent).
+   *
+   * \returns  A matrix view
+   *
+   * \see  submat
+   */
   inline LocalRef<T, NumDimensions, NumDimensions, PatternT> cols(
-    size_type n,
-    size_type range);
+    /// Offset of first column in range
+    size_type offset,
+    /// Number of columns in the range
+    size_type extent);
+
+ private:
+  MatrixRefProxy<T, NumDimensions, PatternT> * _proxy;
 };
 
 /**
+ * Local part of a Matrix, provides local operations.
+ * Wrapper class for RefProxy. 
  * Partial Specialization for value deferencing.
  *
  * \ingroup Matrix
@@ -200,19 +410,19 @@ class LocalRef<T, NumDimensions, 0, PatternT> {
   typedef typename PatternT::size_type   size_type;
 
  public:
-  MatrixRefProxy<T, NumDimensions, PatternT> * _proxy;
-
- public:
   LocalRef<T, NumDimensions, 0, PatternT>() = default;
 
-  inline T * at_(index_type pos);
+  inline T * local_at(index_type pos);
   inline operator T();
   inline T operator=(const T & value);
+
+ private:
+  MatrixRefProxy<T, NumDimensions, PatternT> * _proxy;
 };
 
 /**
- * Wrapper class for RefProxy, represents Matrix and submatrix of a
- * Matrix and provides global operations.
+ * A view on a referenced \c Matrix object, such as a dimensional
+ * projection returned by \c Matrix::sub.
  *
  * \ingroup Matrix
  */
@@ -298,6 +508,10 @@ class MatrixRef {
   inline void barrier() const;
   inline Pattern_t pattern() const;
 
+  /**
+   * Subscript operator, returns a submatrix reference at given offset
+   * in global element range.
+   */
   MatrixRef<ElementT, NumDimensions, CUR-1, PatternT>
     operator[](index_type n) const;
 
@@ -311,27 +525,70 @@ class MatrixRef {
   MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
   row(size_type n);
 
-  template<dim_t NumSubDimensions>
+  template<dim_t SubDimension>
   MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
   submat(
     size_type n,
     size_type range);
 
+  /**
+   * Create a view representing the matrix slice within a row
+   * range.
+   * Same as \c submat<0>(offset, extent).
+   *
+   * \returns  A matrix view
+   *
+   * \see  submat
+   */
   MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
   rows(
+    /// Offset of first row in range
     size_type n,
+    /// Number of rows in the range
     size_type range);
   
+  /**
+   * Create a view representing the matrix slice within a column
+   * range.
+   * Same as \c submat<1>(offset, extent).
+   *
+   * \returns  A matrix view
+   *
+   * \see  submat
+   */
   MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
   cols(
-    size_type n,
+    /// Offset of first column in range
+    size_type offset,
+    /// Number of columns in the range
     size_type range);
 
+  /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
   template<typename ... Args>
-  reference at(Args... args);
+  reference at(
+    /// Global coordinates
+    Args... args);
 
+  /**
+   * Fortran-style subscript operator, alias for \c at().
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   * \see  at
+   */
   template<typename... Args>
-  reference operator()(Args... args);
+  reference operator()(
+    /// Global coordinates
+    Args... args);
 
   inline bool is_local(index_type n) const;
   template<dim_t Dimension>
@@ -346,6 +603,8 @@ class MatrixRef {
 };
 
 /**
+ * A view on a referenced \c Matrix object, such as a dimensional
+ * projection returned by \c Matrix::sub.
  * Partial Specialization for value deferencing.
  *
  * \ingroup Matrix
@@ -373,20 +632,18 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT > {
   typedef PatternT                       pattern_type;
   typedef typename PatternT::index_type  index_type;
   typedef ElementT                       value_type;
-
-  MatrixRefProxy<ElementT, NumDimensions, PatternT> * _proxy;
   
-  inline const GlobRef<ElementT> at_(
+  inline const GlobRef<ElementT> local_at(
     dart_unit_t unit,
     index_type elem) const;
 
-  inline GlobRef<ElementT> at_(
+  inline GlobRef<ElementT> local_at(
     dart_unit_t unit,
     index_type elem);
 
   MatrixRef<ElementT, NumDimensions, 0, PatternT>()
   : _proxy(nullptr) {
-    DASH_LOG_TRACE_VAR("MatrixRef<T, D, 0>()", NumDimensions);
+    DASH_LOG_TRACE_VAR("MatrixRef<T,D,0>()", NumDimensions);
   }
 
   MatrixRef<ElementT, NumDimensions, 0, PatternT>(
@@ -395,11 +652,18 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT > {
 
   operator ElementT();
   ElementT operator=(const ElementT & value);
+
+ private:
+  MatrixRefProxy<ElementT, NumDimensions, PatternT> * _proxy;
 };
 
 /**
  * An n-dimensional array supporting subranges and sub-dimensional 
  * projection.
+ *
+ * Roughly follows the design presented in
+ *   "The C++ Programming Language" (Bjarne Stroustrup)
+ *   Chapter 29: A Matrix Design
  *
  * \see  DashContainerConcept
  * \see  DashMatrixConcept
@@ -549,10 +813,12 @@ class Matrix {
   inline ElementT * lend() noexcept;
 
   /**
-   * Subscript operator.
+   * Subscript operator, returns a submatrix reference at given offset
+   * in global element range.
    */
   inline MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
-  operator[](size_type n);
+  operator[](
+    size_type n);
 
   /**
    * Projection to given offset in a sub-dimension.
@@ -562,47 +828,120 @@ class Matrix {
    */
   template<dim_t NumSubDimensions>
   inline MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT> 
-  sub(size_type n);
+  sub(
+    size_type n);
   
   /**
    * Projection to given offset in first sub-dimension (column), same as
    * \c sub<0>(n).
    *
+   * \returns  A \c MatrixRef object representing the nth column
+   *
    * \see  sub
    * \see  row
    */
   inline MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT> 
-  col(size_type n);
+  col(
+    size_type n);
   
   /**
    * Projection to given offset in second sub-dimension (rows), same as
    * \c sub<1>(n).
    *
+   * \returns  A \c MatrixRef object representing the nth row
+   *
    * \see  sub
    * \see  col
    */
   inline MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT> 
-  row(size_type n);
+  row(
+    size_type n);
 
-  template<dim_t NumSubDimensions>
+  template<dim_t SubDimension>
   inline MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> 
-  submat(size_type n, size_type range);
+  submat(
+    size_type n,
+    size_type range);
 
+  /**
+   * Create a view representing the matrix slice within a row
+   * range.
+   * Same as \c submat<0>(offset, extent).
+   *
+   * \returns  A matrix view
+   *
+   * \see  submat
+   */
   inline MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> 
-  rows(size_type n, size_type range);
+  rows(
+    /// Offset of first row in range
+    size_type n,
+    /// Number of rows in the range
+    size_type range);
   
+  /**
+   * Create a view representing the matrix slice within a column
+   * range.
+   * Same as \c submat<1>(offset, extent).
+   *
+   * \returns  A matrix view
+   *
+   * \see  submat
+   */
   inline MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
-  cols(size_type n, size_type range);
+  cols(
+    /// Offset of first column in range
+    size_type offset,
+    /// Number of columns in the range
+    size_type range);
   
+  /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
   template<typename ... Args>
-  inline reference at(Args... args);
+  inline reference at(
+    /// Global coordinates
+    Args... args);
 
+  /**
+   * Fortran-style subscript operator, alias for \c at().
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   * \see  at
+   */
   template<typename... Args>
-  inline reference operator()(Args... args);
+  inline reference operator()(
+    /// Global coordinates
+    Args... args);
+
+  /**
+   * The pattern used to distribute matrix elements to units in its
+   * associated team.
+   */
   inline const PatternT & pattern() const;
-  inline bool is_local(size_type g_pos) const;
+
+  /**
+   * Whether the element at a global, canonical offset in the matrix
+   * is local to the active unit.
+   */
+  inline bool is_local(
+    size_type g_pos) const;
+
+  /**
+   * Whether the element at a global, canonical offset in a specific
+   * dimension of the matrix is local to the active unit.
+   */
   template<dim_t Dimension>
-  inline bool is_local(size_type g_pos) const;
+  inline bool is_local(
+    size_type g_pos) const;
 
   template <int level>
   inline dash::HView<self_t, level> hview();
@@ -620,6 +959,8 @@ class Matrix {
   bool allocate(const PatternT & pattern);
 
  private:
+  /// Team containing all units that collectively instantiated the
+  /// Matrix instance
   dash::Team           & _team;
   /// DART id of the unit that owns this matrix instance
   dart_unit_t            _myid;
