@@ -85,9 +85,6 @@ private:
   /// The global layout of the pattern's elements in memory respective to
   /// memory order. Also specifies the extents of the pattern space.
   MemoryLayout_t              _memory_layout;
-  /// The view specification of the pattern, consisting of offset and
-  /// extent in every dimension
-  ViewSpec_t                  _viewspec;
   /// Maximum extents of a block in this pattern
   BlockSizeSpec_t             _blocksize_spec;
   /// Number of blocks in all dimensions
@@ -157,7 +154,6 @@ public:
     _teamspec(_arguments.teamspec()), 
     _nunits(_team->size()),
     _memory_layout(_arguments.sizespec().extents()),
-    _viewspec(_arguments.viewspec()),
     _blocksize_spec(initialize_blocksizespec(
         _arguments.sizespec(),
         _distspec,
@@ -222,7 +218,6 @@ public:
       *_team),
     _nunits(_team->size()),
     _memory_layout(sizespec.extents()),
-    _viewspec(_memory_layout.extents()),
     _blocksize_spec(initialize_blocksizespec(
         sizespec,
         _distspec,
@@ -288,7 +283,6 @@ public:
     _teamspec(_distspec, *_team),
     _nunits(_team->size()),
     _memory_layout(sizespec.extents()),
-    _viewspec(_memory_layout.extents()),
     _blocksize_spec(initialize_blocksizespec(
         sizespec,
         _distspec,
@@ -319,7 +313,6 @@ public:
     _blockspec(other._blockspec),
     _local_memory_layout(other._local_memory_layout),
     _local_capacity(other._local_capacity),
-    _viewspec(other._viewspec),
     _lbegin(other._lbegin),
     _lend(other._lend) {
     // No need to copy _arguments as it is just used to
@@ -355,7 +348,6 @@ public:
       _distspec       == other._distspec &&
       _teamspec       == other._teamspec &&
       _memory_layout  == other._memory_layout &&
-      _viewspec       == other._viewspec &&
       _blockspec      == other._blockspec &&
       _blocksize_spec == other._blocksize_spec &&
       _nunits         == other._nunits
@@ -386,7 +378,6 @@ public:
       _blocksize_spec      = other._blocksize_spec;
       _blockspec           = other._blockspec;
       _local_capacity      = other._local_capacity;
-      _viewspec            = other._viewspec;
       _nunits              = other._nunits;
     }
     return *this;
@@ -475,7 +466,7 @@ public:
     IndexType global_pos
   ) const {
     auto global_coords = _memory_layout.coords(global_pos);
-    return unit_at(global_coords, _viewspec);
+    return unit_at(global_coords);
   }
 
   /**
@@ -988,16 +979,6 @@ public:
    */
   const TeamSpec_t & teamspec() const {
     return _teamspec;
-  }
-
-  /**
-   * View specification of this pattern as offset and extent in every
-   * dimension.
-   *
-   * \see DashPatternConcept
-   */
-  const ViewSpec_t & viewspec() const {
-    return _viewspec;
   }
 
   /**

@@ -107,9 +107,6 @@ private:
   LocalMemoryLayout_t         _local_memory_layout;
   /// Maximum number of elements assigned to a single unit
   SizeType                    _local_capacity;
-  /// The view specification of the pattern, consisting of offset and
-  /// extent in every dimension
-  ViewSpec_t                  _viewspec;
   /// Corresponding global index to first local index of the active unit
   IndexType                   _lbegin;
   /// Corresponding global index past last local index of the active unit
@@ -182,8 +179,7 @@ public:
         _major_tiled_dim)),
     _local_memory_layout(
         initialize_local_extents(_team->myid())),
-    _local_capacity(initialize_local_capacity()),
-    _viewspec(_arguments.viewspec()) {
+    _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("TilePattern()", "Constructor with Argument list");
     initialize_local_range();
   }
@@ -256,8 +252,7 @@ public:
         _major_tiled_dim)),
     _local_memory_layout(
         initialize_local_extents(_team->myid())),
-    _local_capacity(initialize_local_capacity()),
-    _viewspec(_memory_layout.extents()) {
+    _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("TilePattern()", "(sizespec, dist, teamspec, team)");
     initialize_local_range();
   }
@@ -325,8 +320,7 @@ public:
         _major_tiled_dim)),
     _local_memory_layout(
         initialize_local_extents(_team->myid())),
-    _local_capacity(initialize_local_capacity()),
-    _viewspec(_memory_layout.extents()) {
+    _local_capacity(initialize_local_capacity()) {
     DASH_LOG_TRACE("TilePattern()", "(sizespec, dist, team)");
     initialize_local_range();
   }
@@ -347,7 +341,6 @@ public:
     _local_blockspec(other._local_blockspec),
     _local_memory_layout(other._local_memory_layout),
     _local_capacity(other._local_capacity),
-    _viewspec(other._viewspec),
     _lbegin(other._lbegin),
     _lend(other._lend) {
   }
@@ -378,7 +371,6 @@ public:
       _distspec       == other._distspec &&
       _teamspec       == other._teamspec &&
       _memory_layout  == other._memory_layout &&
-      _viewspec       == other._viewspec &&
       _blockspec      == other._blockspec &&
       _blocksize_spec == other._blocksize_spec &&
       _nunits         == other._nunits
@@ -409,7 +401,6 @@ public:
       _blockspec           = other._blockspec;
       _local_blockspec     = other._local_blockspec;
       _local_capacity      = other._local_capacity;
-      _viewspec            = other._viewspec;
       _nunits              = other._nunits;
       _minor_tiled_dim     = other._minor_tiled_dim;
       _major_tiled_dim     = other._major_tiled_dim;
@@ -468,7 +459,17 @@ public:
    */
   dart_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & coords) const {
-    return unit_at(coords, _viewspec);
+    // Unit id from diagonals in cartesian index space,
+    // e.g (x + y + z) % nunits
+    dart_unit_t unit_id = 0;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      // Global block coordinate:
+      auto block_coord  = coords[d] / _blocksize_spec.extent(d);
+      unit_id          += block_coord;
+    }
+    unit_id %= _nunits;
+    DASH_LOG_TRACE("TilePattern.unit_at", "> unit id", unit_id);
+    return unit_id;
   }
 
   /**
@@ -496,7 +497,7 @@ public:
     IndexType global_pos
   ) const {
     auto global_coords = _memory_layout.coords(global_pos);
-    return unit_at(global_coords, _viewspec);
+    return unit_at(global_coords);
   }
 
   /**
@@ -511,6 +512,7 @@ public:
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
     DASH_LOG_DEBUG_VAR("TilePattern.local_at()", local_coords);
+    DASH_LOG_DEBUG_VAR("TilePattern.local_at()", viewspec);
     IndexType l_index = 0;
     // Phase coordinates of element:
     std::array<IndexType, NumDimensions> phase_coords;
@@ -538,7 +540,24 @@ public:
   IndexType local_at(
     /// Point in local memory
     const std::array<IndexType, NumDimensions> & local_coords) const {
-    return local_at(local_coords, _viewspec);
+    DASH_LOG_DEBUG_VAR("TilePattern.local_at()", local_coords);
+    IndexType l_index = 0;
+    // Phase coordinates of element:
+    std::array<IndexType, NumDimensions> phase_coords;
+    // Coordinates of the local block containing the element:
+    std::array<IndexType, NumDimensions> block_coords_l;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      auto vs_coord_d   = local_coords[d];
+      phase_coords[d]   = vs_coord_d % _blocksize_spec.extent(d);
+      block_coords_l[d] = vs_coord_d / _blocksize_spec.extent(d);
+    }
+    DASH_LOG_DEBUG_VAR("TilePattern.local_at", block_coords_l);
+    DASH_LOG_DEBUG_VAR("TilePattern.local_at", phase_coords);
+    DASH_LOG_DEBUG_VAR("TilePattern.local_at", _local_blockspec.extents());
+    // Number of blocks preceeding the coordinates' block:
+    auto block_offset_l = _local_blockspec.at(block_coords_l);
+    return block_offset_l * _blocksize_spec.size() + // preceeding blocks
+           _blocksize_spec.at(phase_coords);         // element phase
   }
 
   /**
@@ -711,7 +730,8 @@ public:
     // Note:
     // Expects extent[d] to be a multiple of blocksize[d] * nunits[d]
     // to ensure the balanced property.
-
+    DASH_LOG_TRACE_VAR("TilePattern.at()", coords);
+    DASH_LOG_TRACE_VAR("TilePattern.at()", viewspec);
     // Phase coordinates of element:
     std::array<IndexType, NumDimensions> phase_coords;
     // Coordinates of the block containing the element:
@@ -721,17 +741,16 @@ public:
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
       block_coords[d]   = vs_coord / _blocksize_spec.extent(d);
     }
-    DASH_LOG_TRACE_VAR("TilePattern.at()", coords);
-    DASH_LOG_TRACE_VAR("TilePattern.at()", block_coords);
-    DASH_LOG_TRACE_VAR("TilePattern.at()", phase_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.at", block_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.at", phase_coords);
     // Number of blocks preceeding the coordinates' block, equivalent
     // to linear global block offset divided by team size:
-    DASH_LOG_TRACE_VAR("TilePattern.at()", _blockspec.extents());
+    DASH_LOG_TRACE_VAR("TilePattern.at", _blockspec.extents());
     auto block_offset   = _blockspec.at(block_coords);
     auto block_offset_l = block_offset / _nunits;
-    DASH_LOG_TRACE_VAR("TilePattern.at()", block_offset);
-    DASH_LOG_TRACE_VAR("TilePattern.at()", _nunits);
-    DASH_LOG_TRACE_VAR("TilePattern.at()", block_offset_l);
+    DASH_LOG_TRACE_VAR("TilePattern.at", block_offset);
+    DASH_LOG_TRACE_VAR("TilePattern.at", _nunits);
+    DASH_LOG_TRACE_VAR("TilePattern.at", block_offset_l);
     return block_offset_l * _blocksize_spec.size() + // preceeding blocks
            _blocksize_spec.at(phase_coords);         // element phase
   }
@@ -746,7 +765,31 @@ public:
    */
   IndexType at(
     std::array<IndexType, NumDimensions> global_coords) const {
-    return at(global_coords, _viewspec);
+    // Note:
+    // Expects extent[d] to be a multiple of blocksize[d] * nunits[d]
+    // to ensure the balanced property.
+    DASH_LOG_TRACE_VAR("TilePattern.at()", global_coords);
+    // Phase coordinates of element:
+    std::array<IndexType, NumDimensions> phase_coords;
+    // Coordinates of the block containing the element:
+    std::array<IndexType, NumDimensions> block_coords;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      auto coord      = global_coords[d];
+      phase_coords[d] = coord % _blocksize_spec.extent(d);
+      block_coords[d] = coord / _blocksize_spec.extent(d);
+    }
+    DASH_LOG_TRACE_VAR("TilePattern.at", block_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.at", phase_coords);
+    // Number of blocks preceeding the coordinates' block, equivalent
+    // to linear global block offset divided by team size:
+    DASH_LOG_TRACE_VAR("TilePattern.at", _blockspec.extents());
+    auto block_offset   = _blockspec.at(block_coords);
+    auto block_offset_l = block_offset / _nunits;
+    DASH_LOG_TRACE_VAR("TilePattern.at", block_offset);
+    DASH_LOG_TRACE_VAR("TilePattern.at", _nunits);
+    DASH_LOG_TRACE_VAR("TilePattern.at", block_offset_l);
+    return block_offset_l * _blocksize_spec.size() + // preceeding blocks
+           _blocksize_spec.at(phase_coords);         // element phase
   }
 
   /**
@@ -764,7 +807,7 @@ public:
     std::array<IndexType, NumDimensions> inputindex = { 
       (IndexType)values...
     };
-    return at(inputindex, _viewspec);
+    return at(inputindex);
   }
 
   /**
@@ -805,6 +848,7 @@ public:
     DASH_LOG_TRACE_VAR("TilePattern.has_local_elements()", dim);
     DASH_LOG_TRACE_VAR("TilePattern.has_local_elements()", dim_offset);
     DASH_LOG_TRACE_VAR("TilePattern.has_local_elements()", unit);
+    DASH_LOG_TRACE_VAR("TilePattern.has_local_elements()", viewspec);
     // Apply viewspec offset in dimension to given position
     dim_offset += viewspec[dim].offset;
     // Offset to block offset
@@ -812,7 +856,7 @@ public:
     DASH_LOG_TRACE_VAR("TilePattern.has_local_elements", block_coord_d);
     // Coordinate of unit in team spec in given dimension
     IndexType teamspec_coord_d = block_coord_d % _teamspec.extent(dim);
-    DASH_LOG_TRACE_VAR("TilePattern.has_local_elements()",  
+    DASH_LOG_TRACE_VAR("TilePattern.has_local_elements",
                        teamspec_coord_d);
     // Check if unit id lies in cartesian sub-space of team spec
     return _teamspec.includes_index(
@@ -984,16 +1028,6 @@ public:
    */
   const TeamSpec_t & teamspec() const {
     return _teamspec;
-  }
-
-  /**
-   * View specification of this pattern as offset and extent in every
-   * dimension.
-   *
-   * \see DashPatternConcept
-   */
-  const ViewSpec_t & viewspec() const {
-    return _viewspec;
   }
 
   /**

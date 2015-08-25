@@ -34,9 +34,9 @@ private:
   dart_gptr_t m_dartptr;
 
   template<typename U>
-  friend std::ostream& operator<<(
-    std::ostream& os,
-    const GlobPtr<U>& it);
+  friend std::ostream & operator<<(
+    std::ostream & os,
+    const GlobPtr<U> & it);
 
 public:
   /**
@@ -256,12 +256,12 @@ std::ostream & operator<<(
   const GlobPtr<T> & it) {
   char buf[100];
   sprintf(buf,
-          "<%08X|%04X|%04X|%016X>",
+          "(%08X|%04X|%04X|%016X)",
           it.m_dartptr.unitid,
           it.m_dartptr.segid,
           it.m_dartptr.flags,
           it.m_dartptr.addr_or_offs.offset);
-  os << "dash::GlobPtr[" << typeid(T).name() << "]: " << buf;
+  os << "dash::GlobPtr<" << typeid(T).name() << ">" << buf;
   return os;
 }
 

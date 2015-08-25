@@ -191,7 +191,7 @@ class LocalRef;
 
 /**
  * Stores information needed by subscripting and subdim selection.
- * A new RefProxy instance is created once for every dimension in
+ * A new \c MatrixRefProxy instance is created once for every dimension in
  * multi-subscripting.
  *
  * \ingroup Matrix
@@ -242,7 +242,8 @@ class MatrixRefProxy {
 
 /**
  * Local part of a Matrix, provides local operations.
- * Wrapper class for RefProxy. 
+ *
+ * \see DashMatrixConcept
  *
  * \ingroup Matrix
  */
@@ -294,6 +295,7 @@ class LocalRef {
   // Different operation semantics.
   inline operator MatrixRef<T, NumDimensions, CUR, PatternT> ();
   inline size_type extent(dim_t dim) const;
+  inline std::array<size_type, NumDimensions> extents() const noexcept;
   inline size_type size() const;
   inline T & local_at(size_type pos);
 
@@ -386,8 +388,7 @@ class LocalRef {
 };
 
 /**
- * Local part of a Matrix, provides local operations.
- * Wrapper class for RefProxy. 
+ * Local reference to a Matrix element, provides local operations.
  * Partial Specialization for value deferencing.
  *
  * \ingroup Matrix
@@ -423,6 +424,8 @@ class LocalRef<T, NumDimensions, 0, PatternT> {
 /**
  * A view on a referenced \c Matrix object, such as a dimensional
  * projection returned by \c Matrix::sub.
+ *
+ * \see DashMatrixConcept
  *
  * \ingroup Matrix
  */
@@ -492,7 +495,7 @@ class MatrixRef {
  public:
   MatrixRef<ElementT, NumDimensions, CUR, PatternT>()
   : _proxy(nullptr) { // = default;
-    DASH_LOG_TRACE_VAR("MatrixRef<T, D, C>()", NumDimensions);
+    DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumDimensions);
   }
   MatrixRef<ElementT, NumDimensions, CUR, PatternT>(
     const MatrixRef<ElementT, NumDimensions, CUR+1, PatternT> & previous,
@@ -504,6 +507,7 @@ class MatrixRef {
 
   inline constexpr size_type size() const noexcept;
   inline size_type extent(size_type dim) const noexcept;
+  inline std::array<size_type, NumDimensions> extents() const noexcept;
   inline constexpr bool empty() const noexcept;
   inline void barrier() const;
   inline Pattern_t pattern() const;
@@ -802,6 +806,7 @@ class Matrix {
   inline constexpr size_type local_size() const noexcept;
   inline constexpr size_type local_capacity() const noexcept;
   inline constexpr size_type extent(dim_t dim) const noexcept;
+  inline constexpr std::array<size_type, NumDimensions> extents() const noexcept;
   inline constexpr bool empty() const noexcept;
   inline void barrier() const;
   inline const_pointer data() const noexcept;

@@ -40,6 +40,12 @@ protected:
   std::array<ElementType, NumDimensions> _values;
 
 public:
+  template<typename E_, dim_t ND_>
+  friend std::ostream& operator<<(
+    std::ostream & os,
+    const Dimensional<E_, ND_> & dimensional);
+
+public:
   /**
    * Constructor, expects one value for every dimension.
    */
@@ -260,6 +266,16 @@ static bool operator!=(
   return !(lhs == rhs);
 }
 
+template<typename IndexType>
+std::ostream & operator<<(
+  std::ostream & os,
+  const ViewPair<IndexType> & viewpair) {
+  os << "dash::ViewPair<" << typeid(IndexType).name() << ">(offset:"
+     << viewpair.offset << " extent:"
+     << viewpair.extent << ")";
+  return os;
+}
+
 /**
  * Specifies view parameters for implementing submat, rows and cols
  *
@@ -401,6 +417,20 @@ private:
     }
   }
 };
+
+template<typename ElementType, dim_t NumDimensions>
+std::ostream & operator<<(
+  std::ostream & os,
+  const Dimensional<ElementType, NumDimensions> & dimensional) {
+  os << "dash::Dimensional<"
+     << typeid(ElementType).name() << ","
+     << NumDimensions << ">(";
+  for (auto d = 0; d < NumDimensions; ++d) {
+    os << dimensional._values[d] << ((d < NumDimensions-1) ? "," : "");
+  }
+  os << ")";
+  return os;
+}
 
 } // namespace dash
 

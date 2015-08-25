@@ -21,6 +21,7 @@ template<typename T, dim_t NumDim, class PatternT>
 MatrixRefProxy<T, NumDim, PatternT>::MatrixRefProxy()
 : _dim(0)
 {
+  DASH_LOG_TRACE("MatrixRefProxy()");
 }
 
 template<typename T, dim_t NumDim, class PatternT>
@@ -28,8 +29,9 @@ MatrixRefProxy<T, NumDim, PatternT>::MatrixRefProxy(
   Matrix<T, NumDim, index_type, PatternT> * matrix)
 : _dim(0),
   _mat(matrix),
-  _viewspec(matrix->pattern().viewspec()) 
+  _viewspec(matrix->extents())
 {
+  DASH_LOG_TRACE_VAR("MatrixRefProxy(matrix)", matrix);
 }
 
 template<typename T, dim_t NumDim, class PatternT>
@@ -40,6 +42,9 @@ MatrixRefProxy<T, NumDim, PatternT>::MatrixRefProxy(
   _coord(other._coord),
   _viewspec(other._viewspec)
 {
+  DASH_LOG_TRACE_VAR("MatrixRefProxy()", other._mat);
+  DASH_LOG_TRACE_VAR("MatrixRefProxy()", other._coord);
+  DASH_LOG_TRACE_VAR("MatrixRefProxy()", other._viewspec);
 }
 
 template<typename T, dim_t NumDim, class PatternT>
@@ -111,6 +116,16 @@ LocalRef<T, NumDim, CUR, PatternT>::extent(
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+inline
+  std::array<
+    typename LocalRef<T, NumDim, CUR, PatternT>::size_type,
+    NumDim>
+LocalRef<T, NumDim, CUR, PatternT>::extents() const noexcept
+{
+  return _proxy->_mat->_pattern.local_extents();
+}
+
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 typename LocalRef<T, NumDim, CUR, PatternT>::size_type
 LocalRef<T, NumDim, CUR, PatternT>::size() const
 {
@@ -144,9 +159,9 @@ T & LocalRef<T, NumDim, CUR, PatternT>::at(
     _proxy->_coord[i] = coord[i-_proxy->_dim];
   }
   return local_at(
-      _proxy->_mat->_pattern.local_at(
-        _proxy->_coord,
-        _proxy->_viewspec));
+           _proxy->_mat->_pattern.local_at(
+             _proxy->_coord,
+             _proxy->_viewspec));
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -235,9 +250,9 @@ LocalRef<T, NumDim, CUR, PatternT>::submat(
   size_type offset,
   size_type extent)
 {
+  DASH_LOG_TRACE_VAR("LocalRef.submat()", SubDimension);
   DASH_LOG_TRACE_VAR("LocalRef.submat()", offset);
   DASH_LOG_TRACE_VAR("LocalRef.submat()", extent);
-  DASH_LOG_TRACE_VAR("LocalRef.submat()", SubDimension);
   static_assert(
       SubDimension < NumDim && SubDimension >= 0,
       "Wrong sub-dimension");
@@ -294,8 +309,8 @@ LocalRef<T, NumDim, 0, PatternT>::local_at(
 template <typename T, dim_t NumDim, class PatternT>
 inline LocalRef<T, NumDim, 0, PatternT>::operator T() {
   T ret = *local_at(_proxy->_mat->_pattern.local_at(
-                 _proxy->_coord,
-                 _proxy->_viewspec));
+                      _proxy->_coord,
+                      _proxy->_viewspec));
   DASH_LOG_TRACE("LocalRef<0>.T()", "delete _proxy");
   delete _proxy;
   return ret;
@@ -307,8 +322,8 @@ LocalRef<T, NumDim, 0, PatternT>::operator=(
   const T & value)
 {
   T* ref = local_at(_proxy->_mat->_pattern.local_at(
-                 _proxy->_coord,
-                 _proxy->_viewspec));
+                      _proxy->_coord,
+                      _proxy->_viewspec));
   *ref = value;
   DASH_LOG_TRACE("LocalRef<0>.=", "delete _proxy");
   delete _proxy;
@@ -373,6 +388,15 @@ MatrixRef<T, NumDim, CUR, PatternT>::extent(
   size_type dim) const noexcept
 {
   return _proxy->_viewspec.range[dim];
+}
+
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+std::array<
+  typename MatrixRef<T, NumDim, CUR, PatternT>::size_type,
+  NumDim>
+MatrixRef<T, NumDim, CUR, PatternT>::extents() const noexcept
+{
+  return _proxy->_viewspec.range;
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -453,9 +477,9 @@ MatrixRef<T, NumDim, CUR, PatternT>::submat(
   size_type offset,
   size_type extent)
 {
+  DASH_LOG_TRACE_VAR("MatrixRef.submat()", SubDimension);
   DASH_LOG_TRACE_VAR("MatrixRef.submat()", offset);
   DASH_LOG_TRACE_VAR("MatrixRef.submat()", extent);
-  DASH_LOG_TRACE_VAR("MatrixRef.submat()", SubDimension);
   static_assert(
     SubDimension < NumDim && SubDimension >= 0,
     "Wrong sub-dimension for submat()");
@@ -761,6 +785,15 @@ template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline constexpr typename Matrix<T, NumDim, IndexT, PatternT>::size_type
 Matrix<T, NumDim, IndexT, PatternT>::extent(dim_t dim) const noexcept {
   return _pattern.extent(dim);
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline constexpr
+  std::array<
+    typename Matrix<T, NumDim, IndexT, PatternT>::size_type,
+    NumDim>
+Matrix<T, NumDim, IndexT, PatternT>::extents() const noexcept {
+  return _pattern.extents();
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
