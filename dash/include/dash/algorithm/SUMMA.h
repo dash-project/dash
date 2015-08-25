@@ -11,7 +11,7 @@ namespace internal {
  * Naive matrix multiplication for local multiplication of matrix blocks,
  * used only for tests and where BLAS is not available.
  */
-template<typename ValueType, typename MatrixType>
+template<typename MatrixType>
 void MultiplyNaive(
   /// Matrix to multiply, extents n x m
   const MatrixType & A,
@@ -35,11 +35,11 @@ void MultiplyNaive(
   DASH_ASSERT_EQ(
     pattern_c.extents(1),
     pattern_b.extents(1));
-  for (auto i = 0; i < pattern_a.extents(0); ++i) {
+  for (auto i = 0; i < n; ++i) {
     // i = 0...n
-    for (auto j = 0; j < pattern_b.extents(1); ++j) {
+    for (auto j = 0; j < p; ++j) {
       // j = 0...p
-      for (auto k = 0; k < pattern_a.extents(1); ++k) {
+      for (auto k = 0; k < m; ++k) {
         // k = 0...m
         C[i][j] += A[i][k] + B[k][j];
       }
@@ -61,7 +61,7 @@ void MultiplyNaive(
  *                              // b x p matrix from B
  *   }
  */
-template<typename ValueType, typename MatrixType>
+template<typename MatrixType>
 void MultiplySUMMA(
   /// Matrix to multiply, extents n x m
   const MatrixType & A,
@@ -70,7 +70,21 @@ void MultiplySUMMA(
   /// Matrix to contain the multiplication result, extents n x p,
   /// initialized with zeros
   MatrixType & C) {
-  auto pattern = C.pattern();
+  auto pattern_a = A.pattern();
+  auto pattern_b = B.pattern();
+  auto pattern_c = C.pattern();
+  auto n = pattern_a.extents(1); // number of rows in A
+  auto m = pattern_a.extents(0); // number of columns in A, rows in B
+  auto p = pattern_b.extents(0); // number of columns in A
+  DASH_ASSERT_EQ(
+    pattern_a.extents(1),
+    pattern_b.extents(0));
+  DASH_ASSERT_EQ(
+    pattern_c.extents(0),
+    pattern_a.extents(0));
+  DASH_ASSERT_EQ(
+    pattern_c.extents(1),
+    pattern_b.extents(1));
 }
 
 } // namespace dash
