@@ -513,7 +513,6 @@ public:
     const ViewSpec_t & viewspec) const {
     DASH_LOG_DEBUG_VAR("TilePattern.local_at()", local_coords);
     DASH_LOG_DEBUG_VAR("TilePattern.local_at()", viewspec);
-    IndexType l_index = 0;
     // Phase coordinates of element:
     std::array<IndexType, NumDimensions> phase_coords;
     // Coordinates of the local block containing the element:
@@ -541,7 +540,6 @@ public:
     /// Point in local memory
     const std::array<IndexType, NumDimensions> & local_coords) const {
     DASH_LOG_DEBUG_VAR("TilePattern.local_at()", local_coords);
-    IndexType l_index = 0;
     // Phase coordinates of element:
     std::array<IndexType, NumDimensions> phase_coords;
     // Coordinates of the local block containing the element:
@@ -820,7 +818,6 @@ public:
     DASH_LOG_TRACE_VAR("Pattern.local()", global_coords);
     // Local offset of the element within all of the unit's local
     // elements:
-    SizeType local_elem_offset = 0;
     auto unit = unit_at(global_coords);
     DASH_LOG_TRACE_VAR("Pattern.local >", unit);
     // Global coords to local coords:

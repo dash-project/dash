@@ -266,8 +266,7 @@ double test_dash_local_iter(
   TIMESTAMP(tstart);
   auto lend = a.lend();
   for (auto i = 0; i < REPEAT; ++i) {
-    int x = 0;
-    for (auto it = a.lbegin(); it != lend; ++it, ++x) {
+    for (auto it = a.lbegin(); it != lend; ++it) {
       ++(*it);
     }
   }
