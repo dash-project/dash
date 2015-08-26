@@ -574,6 +574,27 @@ dart_ret_t dart_get_blocking(
 
 /* -- Dart RMA Synchronization Operations -- */
 
+dart_ret_t dart_fence_local(
+  dart_gptr_t gptr)
+{
+  dart_unit_t target_unitid_abs;
+  int16_t seg_id = gptr.segid;
+  MPI_Win win;
+  target_unitid_abs = gptr.unitid;
+  if (seg_id){
+    uint16_t index = gptr.flags;
+    dart_unit_t target_unitid_rel;
+    win = dart_win_lists[index];
+    unit_g2l (index, target_unitid_abs, &target_unitid_rel);    
+    MPI_Win_flush_local(target_unitid_rel, win);
+  } else {
+    win = dart_win_local_alloc;
+    MPI_Win_flush_local(target_unitid_abs, win);
+  }
+  LOG("FENCE LOCAL - finished");
+  return DART_OK;
+}
+
 dart_ret_t dart_fence(
   dart_gptr_t gptr)
 {

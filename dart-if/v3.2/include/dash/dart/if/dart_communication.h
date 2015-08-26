@@ -144,6 +144,16 @@ dart_ret_t dart_put_blocking(
   size_t nbytes);
 
 /**
+ * Guarantees local completion of all pending puts and
+ * gets on a certain memory allocation / window / segment for the
+ * target unit specified in gptr. -> MPI_Win_flushlocal() 
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_fence_local(
+  dart_gptr_t gptr);
+
+/**
  * Guarantees local and remote completion of all pending puts and
  * gets on a certain memory allocation / window / segment for the
  * target unit specified in gptr. -> MPI_Win_flush() 
