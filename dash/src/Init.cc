@@ -9,17 +9,19 @@ namespace dash {
 
 void dash::init(int *argc, char ***argv)
 {
+  DASH_LOG_DEBUG("dash::init()");
   dart_init(argc,argv);
-
-  dash::Team& t = dash::Team::All();
-
   dash::_initialized = true;
+  DASH_LOG_DEBUG("dash::init >");
 }
 
 void dash::finalize()
 {
+  DASH_LOG_DEBUG("dash::finalize()");
+  dash::_initialized = false;
   dash::barrier();
-//dart_exit();
+  dart_exit();
+  DASH_LOG_DEBUG("dash::finalize >");
 }
 
 bool dash::is_initialized() {

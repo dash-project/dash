@@ -14,6 +14,8 @@ set(ENABLE_LOGGING ${ENABLE_LOGGING}
 set(ENABLE_TRACE_LOGGING ${ENABLE_TRACE_LOGGING}
     PARENT_SCOPE)
 
+include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
+
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
      "src/*.c" "src/*.h" "src/*.cc" "src/*.cpp" )
@@ -41,16 +43,6 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set(DASH_LIBRARY "dash-${dart_variant}")
   message("-- Building DASH library " ${DASH_LIBRARY})
 
-  if (${dart_variant} STREQUAL "mpi")
-    set(ADD_INCLUDES ${MPI_INCLUDE_PATH})
-    set(ADD_LIBS ${MPI_CXX_LIBRARIES})
-  else()
-    set(ADD_INCLUDES "")
-    set(ADD_LIBS "")
-  endif()
-
-  include_directories(${ADD_INCLUDES})
-
   # Library compilation sources
   add_library(
     ${DASH_LIBRARY}         # library name
@@ -60,8 +52,14 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   target_link_libraries(
     ${DASH_LIBRARY}           # library name
     ${DASH_LINK_DART_LIBRARY} # dep
-    ${ADD_LIBS}               # dep
   )
+  if (${dart_variant} STREQUAL "mpi")
+    include_directories(
+      ${MPI_INCLUDE_PATH})
+    target_link_libraries(
+      ${DASH_LIBRARY}
+      ${MPI_C_LIBRARIES})
+  endif()
   DeployLibrary(${DASH_LIBRARY})
 
   # Install library
@@ -82,14 +80,20 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
         )
         include_directories(
           ${CMAKE_SOURCE_DIR}/dash/include
-          ${ADD_INCLUDES}
         )
         target_link_libraries(
           ${exampletarget}
           ${DASH_LIBRARY}
           ${DART_LIBRARY}
-          ${ADD_LIBS}
         )
+        if (${dart_variant} STREQUAL "mpi")
+          include_directories(
+            ${MPI_INCLUDE_PATH})
+          target_link_libraries(
+            ${exampletarget}
+            ${MPI_C_LIBRARIES}
+            ${MPI_CXX_LIBRARIES})
+        endif()
         DeployBinary(${exampletarget})
         install(
           TARGETS ${exampletarget}
