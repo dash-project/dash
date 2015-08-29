@@ -1,3 +1,5 @@
+#ifdef DASH_DART_MPI
+
 #define DASH_ENABLE_LOGGING 1
 #define DASH_ENABLE_TRACE_LOGGING 1
 
@@ -21,3 +23,13 @@ int main(int argc, char * argv[])
 //  DASH_LOG_DEBUG("Exit");
   return 0;
 }
+
+#else
+
+int main(int argc, char * argv[])
+{
+  // Need MPI for this example
+  return -1;
+}
+
+#endif
