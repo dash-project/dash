@@ -35,7 +35,7 @@ dart_ret_t dart_init(
     ERROR("dart_init(): DART is already initialized");
     return DART_ERR_OTHER;
   }
-  DEBUG("dart_init()");
+  LOG("dart_init()");
   dart_initialized = 1;
 
 	int initialized;
@@ -225,7 +225,7 @@ dart_ret_t dart_init(
 #ifdef SHAREDMEM_ENABLE
 	MPI_Info_free(&win_info);
 #endif
-	LOG("%2d: dart_init: Initialization finished", rank);
+	DEBUG("%2d: dart_init: Initialization finished", rank);
 
 	return DART_OK;
 }
@@ -274,10 +274,10 @@ dart_ret_t dart_exit()
 	dart_adapt_teamlist_destroy ();
 
 	if (init_by_dart) {
-    LOG("%2d: dart_exit: MPI_Finalize", unitid);
+    DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();
   }
-	LOG("%2d: dart_exit: Finalization finished", unitid);
+	DEBUG("%2d: dart_exit: Finalization finished", unitid);
 	return DART_OK;
 }
 
