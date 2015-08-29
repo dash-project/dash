@@ -8,34 +8,62 @@
 dart_ret_t dart_get(
   void *dest,
   dart_gptr_t ptr, 
-	size_t nbytes,
-  dart_handle_t *handle)
-{}
+  size_t nbytes)
+{
+  return dart_get_blocking(dest, ptr, nbytes);
+}
 
 dart_ret_t dart_put(
   dart_gptr_t ptr,
   void *src, 
+  size_t nbytes)
+{
+  return dart_put_blocking(ptr, src, nbytes);
+}
+
+dart_ret_t dart_get_handle(
+  void *dest,
+  dart_gptr_t ptr, 
 	size_t nbytes,
   dart_handle_t *handle)
-{}
+{
+  return DART_ERR_OTHER;
+}
+
+dart_ret_t dart_put_handle(
+  dart_gptr_t ptr,
+  void *src, 
+	size_t nbytes,
+  dart_handle_t *handle)
+{
+  return DART_ERR_OTHER;
+}
   
 dart_ret_t dart_wait(
   dart_handle_t handle)
-{}
+{
+  return DART_ERR_OTHER;
+}
 
 dart_ret_t dart_test(
   dart_handle_t handle)
-{}
+{
+  return DART_ERR_OTHER;
+}
 
 dart_ret_t dart_waitall(
   dart_handle_t *handle,
   size_t n)
-{}
+{
+  return DART_ERR_OTHER;
+}
 
 dart_ret_t dart_testall(
   dart_handle_t *handle,
   size_t n) 
-{}
+{
+  return DART_ERR_OTHER;
+}
 
 dart_ret_t dart_get_blocking(
   void *dest, 
