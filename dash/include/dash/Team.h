@@ -97,6 +97,8 @@ private:
   : _parent(parent) { 
     _dartid   = id; 
     _position = pos;
+    DASH_LOG_DEBUG_VAR("Team()", id);
+    DASH_LOG_DEBUG_VAR("Team()", pos);
     if (parent) {
       if (parent->_child) {
         DASH_THROW(
@@ -111,6 +113,7 @@ private:
 
   bool get_group() const {
     if (dash::is_initialized() && !_has_group) {
+      DASH_LOG_DEBUG("Team.get_group()");
       size_t sz;
       dart_group_sizeof(&sz);
       _group = (dart_group_t*)malloc(sz);
@@ -211,8 +214,8 @@ public:
 
   /**
    * Unregister a deallocator function for a team-allocated object.
-   * All registered deallocators will be called in ~Team(), or explicitly
-   * using Team::free().
+   * All registered deallocators will be called in ~Team(), or
+   * explicitly using Team::free().
    */
   void unregister_deallocator(
     /// Object to deallocate
@@ -224,7 +227,8 @@ public:
   }
 
   /**
-   * Call registered deallocator functions for all team-allocated objects.
+   * Call registered deallocator functions for all team-allocated 
+   * objects.
    */
   void free() {
     DASH_LOG_DEBUG("Team.free()");
@@ -248,6 +252,7 @@ public:
     /// Number of parts to split this team's units into
     unsigned nParts
   ) {
+    DASH_LOG_DEBUG_VAR("Team.split()", nParts);
     dart_group_t *group;
     dart_group_t *sub_groups[nParts];
     size_t size;
@@ -358,6 +363,7 @@ public:
     if(!get_group()) {
       return false;
     }
+    DASH_LOG_DEBUG_VAR("Team.is_member()", groupId);
     int32_t ismember;
     DASH_ASSERT_RETURNS(
       dart_group_ismember(
