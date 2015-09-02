@@ -9,8 +9,8 @@
  */
 class NonblockingTest : public ::testing::Test {
 protected:
-  size_t _dash_id;
-  size_t _dash_size;
+  dart_unit_t _dash_id;
+  size_t      _dash_size;
 
   NonblockingTest() 
   : _dash_id(0),

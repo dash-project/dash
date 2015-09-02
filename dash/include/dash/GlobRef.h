@@ -109,10 +109,14 @@ public:
   }
 
 #if 0
+  // Might lead to unintended behaviour
   GlobPtr<T> operator &() {
     return m_gptr;
   }
 #endif
+  GlobPtr<T> & gptr() {
+    return m_gptr;
+  }
 
 #if 0
   template<

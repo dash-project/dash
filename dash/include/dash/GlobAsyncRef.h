@@ -66,12 +66,22 @@ public:
     /// Pointer to referenced object in global memory
     GlobPtr<T> & gptr)
   : _gptr(gptr),
-    _is_local(gptr.is_local()) {
+    _is_local(_gptr.is_local()) {
     if (_is_local) {
       _value     = *gptr;
       _lptr      = (T*)(gptr);
       _has_value = true;
     }
+  }
+
+  /**
+   * Conctructor, creates an GlobRefAsync object referencing an element in
+   * global memory.
+   */
+  GlobAsyncRef(
+    /// Pointer to referenced object in global memory
+    GlobRef<T> & gref)
+  : GlobAsyncRef(gref.gptr()) {
   }
 
   /**

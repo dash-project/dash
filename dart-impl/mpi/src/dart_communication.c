@@ -56,7 +56,7 @@ dart_ret_t dart_get(
   if (seg_id) {
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
-                                        
+                               
     win = dart_win_lists[index];
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);      
     if (dart_adapt_transtable_get_disp(
@@ -75,12 +75,20 @@ dart_ret_t dart_get(
       nbytes,
       MPI_BYTE,
       win);
-    DEBUG ("GET  - %d bytes (allocated with collective allocation) "
-           "from %d at the offset %d",
-           nbytes, target_unitid_abs, offset);
+    DEBUG("GET  - %d bytes (allocated with collective allocation) "
+          "from %d at the offset %d",
+          nbytes, target_unitid_abs, offset);
   } else {
     win = dart_win_local_alloc;
-    MPI_Get (dest, nbytes, MPI_BYTE, target_unitid_abs, offset, nbytes, MPI_BYTE, win);
+    MPI_Get(
+      dest,
+      nbytes,
+      MPI_BYTE,
+      target_unitid_abs,
+      offset,
+      nbytes,
+      MPI_BYTE,
+      win);
     DEBUG ("GET  - %d bytes (allocated with local allocation) "
            "from %d at the offset %d",
            nbytes, target_unitid_abs, offset);
@@ -95,9 +103,9 @@ dart_ret_t dart_put(
 {
   MPI_Aint disp_s, disp_rel;
   dart_unit_t target_unitid_abs;
-  uint64_t offset = gptr.addr_or_offs.offset;
-  int16_t seg_id = gptr.segid;
-  MPI_Win win;
+  uint64_t offset   = gptr.addr_or_offs.offset;
+  int16_t  seg_id   = gptr.segid;
+  MPI_Win  win;
   target_unitid_abs = gptr.unitid;
   if (seg_id) {
     uint16_t index = gptr.flags;
@@ -325,7 +333,6 @@ dart_ret_t dart_put_blocking(
   size_t nbytes)
 {
   MPI_Win win;
-//  MPI_Aint *baseptr_set;
   MPI_Aint disp_s, disp_rel;
 
   uint64_t offset = gptr.addr_or_offs.offset;
@@ -359,15 +366,15 @@ if (seg_id >= 0){
   }
   if (is_sharedmem) {
     if (seg_id) {
-       if (dart_adapt_transtable_get_baseptr (seg_id, i, &baseptr) == -1)
-	return DART_ERR_INVAL;
+      if (dart_adapt_transtable_get_baseptr (seg_id, i, &baseptr) == -1) {
+        return DART_ERR_INVAL;
+      }
     } else {
-       baseptr = dart_sharedmem_local_baseptr_set[i];
+      baseptr = dart_sharedmem_local_baseptr_set[i];
     }
     disp_rel = offset;
-    baseptr = baseptr + disp_rel;
-    
-    memcpy (baseptr, ((char*)src), nbytes);
+    baseptr  = baseptr + disp_rel;
+    memcpy(baseptr, ((char*)src), nbytes);
     return DART_OK;}}
    
 #if 0
@@ -397,7 +404,6 @@ if (seg_id >= 0){
 #endif
 #endif
   {
-	
     /* The traditional remote access method */
     if (seg_id)  {  
       win = dart_win_lists[index];
@@ -423,23 +429,11 @@ if (seg_id >= 0){
       nbytes,
       MPI_BYTE,
       win);
-   
-//  MPI_Rput(
-//    src,
-//    nbytes,
-//    MPI_BYTE,
-//    target_unitid_rel,
-//    disp_rel,
-//    nbytes,
-//    MPI_BYTE,
-//    win,
-//    &mpi_req);
     /* Make sure the access is completed remotedly */
     MPI_Win_flush(target_unitid_rel, win);
     /* MPI_Wait is invoked to release the resource brought by the mpi
      * request handle
      */
-//  MPI_Wait(&mpi_req, &mpi_sta);
   if (seg_id) {
     DEBUG("PUT_BLOCKING  - %d bytes "
            "(allocated with collective allocation) to %d at the offset %d", 
@@ -471,11 +465,12 @@ dart_ret_t dart_get_blocking(
   dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
 
 #ifdef SHAREDMEM_ENABLE 
-  if (seg_id >= 0){
-  int i, is_sharedmem = 0;
-  MPI_Aint maximum_size;
-  int disp_unit;
-  char* baseptr;
+  if (seg_id >= 0) {
+    int       i,
+              is_sharedmem = 0;
+    MPI_Aint  maximum_size;
+    int       disp_unit;
+    char*     baseptr;
 
 //  i = binary_search(
 //        dart_unit_mapping[j],
@@ -483,25 +478,26 @@ dart_ret_t dart_get_blocking(
 //        0,
 //        dart_sharedmem_size[j] - 1);
 
-  /* Check whether the target is in the same node as the calling unit 
-   * or not.
-   */
-  i = dart_sharedmem_table[index][gptr.unitid];
-  if (i >= 0) {
-    is_sharedmem = 1;
-  }
-  if (is_sharedmem) {
-    if (seg_id) {
-  	if (dart_adapt_transtable_get_baseptr (seg_id, i, &baseptr)!=-1)
-		return DART_ERR_INVAL;
-    } else {
-      	baseptr = dart_sharedmem_local_baseptr_set[i];
+    /* Check whether the target is in the same node as the calling unit 
+     * or not.
+     */
+    i = dart_sharedmem_table[index][gptr.unitid];
+    if (i >= 0) {
+      is_sharedmem = 1;
     }
-    disp_rel = offset;
-    baseptr += disp_rel;
-    memcpy ((char*)dest, baseptr, nbytes);
-    return DART_OK;
-    }}
+    if (is_sharedmem) {
+      if (seg_id) {
+      if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr)!=-1)
+      return DART_ERR_INVAL;
+      } else {
+        baseptr = dart_sharedmem_local_baseptr_set[i];
+      }
+      disp_rel = offset;
+      baseptr += disp_rel;
+      memcpy ((char*)dest, baseptr, nbytes);
+      return DART_OK;
+    }
+  }
 
 #if 0
     if (unitid == target_unitid_abs) {
@@ -520,7 +516,7 @@ dart_ret_t dart_get_blocking(
     }
     memcpy((char*)dest, baseptr, nbytes); 
 #endif  
-#endif
+#endif // SHAREDMEM_ENABLE
   
   {
     if (seg_id) {
@@ -538,15 +534,6 @@ dart_ret_t dart_get_blocking(
       disp_rel = offset;
       target_unitid_rel = target_unitid_abs;
     }
-//  MPI_Get(
-//    dest,
-//    nbytes,
-//    MPI_BYTE,
-//    target_unitid,
-//    offset,
-//    nbytes,
-//    MPI_BYTE,
-//    win);
     MPI_Rget(
       dest,
       nbytes,
@@ -559,17 +546,18 @@ dart_ret_t dart_get_blocking(
       &mpi_req);
     MPI_Wait(&mpi_req, &mpi_sta);
   
-  if (seg_id) {
-    DEBUG("GET_BLOCKING  - %d bytes "
-          "(allocated with collective allocation) from %d "        
-          "at the offset %d", 
-          nbytes, target_unitid_abs, offset);
-  } else {  
-    DEBUG("GET_BLOCKING - %d bytes "
-          "(allocated with local allocation) from %d at the offset %d", 
-           nbytes, target_unitid_abs, offset);
+    if (seg_id) {
+      DEBUG("GET_BLOCKING  - %d bytes "
+            "(allocated with collective allocation) from %d "        
+            "at the offset %d", 
+            nbytes, target_unitid_abs, offset);
+    } else {  
+      DEBUG("GET_BLOCKING - %d bytes "
+            "(allocated with local allocation) from %d at the offset %d", 
+             nbytes, target_unitid_abs, offset);
+    }
+    return DART_OK;
   }
-  return DART_OK;}
 }
 
 /* -- Dart RMA Synchronization Operations -- */
@@ -585,7 +573,7 @@ dart_ret_t dart_fence_local(
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
     win = dart_win_lists[index];
-    unit_g2l (index, target_unitid_abs, &target_unitid_rel);    
+    unit_g2l(index, target_unitid_abs, &target_unitid_rel);    
     MPI_Win_flush_local(target_unitid_rel, win);
   } else {
     win = dart_win_local_alloc;
@@ -610,7 +598,7 @@ dart_ret_t dart_fence(
     MPI_Win_flush (target_unitid_rel, win);
   } else {
     win = dart_win_local_alloc;
-    MPI_Win_flush (target_unitid_abs, win);
+    MPI_Win_flush(target_unitid_abs, win);
   }
   LOG("FENCE  - finished");
   return DART_OK;
@@ -632,7 +620,8 @@ dart_ret_t dart_fence_all(
   return DART_OK;
 }
 
-dart_ret_t dart_wait_local (dart_handle_t handle)
+dart_ret_t dart_wait_local(
+  dart_handle_t handle)
 {
   if (handle) {
     MPI_Status mpi_sta;
@@ -642,7 +631,8 @@ dart_ret_t dart_wait_local (dart_handle_t handle)
   return DART_OK;
 }
 
-dart_ret_t dart_wait (dart_handle_t handle)
+dart_ret_t dart_wait(
+  dart_handle_t handle)
 {
   if (handle) {
     MPI_Status mpi_sta;
