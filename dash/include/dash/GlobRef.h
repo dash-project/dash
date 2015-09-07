@@ -78,6 +78,13 @@ public:
     return *this;
   }
 
+  GlobRef<T> & operator-=(const T& ref) {
+    T val = operator T();
+    val -= ref;
+    operator=(val);
+    return *this;
+  }
+
   GlobRef<T> & operator++() {
     T val = operator T();
     ++val;

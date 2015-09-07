@@ -47,6 +47,21 @@ private:
 public:
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in
+   * global memory.
+   */
+  GlobAsyncRef(
+    /// Instance of GlobMem that issued this global reference
+    GlobMem<T> * globmem,
+    /// Pointer to referenced object in global memory
+    T * lptr)
+  : _value(*lptr),
+    _lptr(lptr),
+    _is_local(true),
+    _has_value(true) {
+  }
+
+  /**
+   * Conctructor, creates an GlobRefAsync object referencing an element in
    * local memory.
    */
   GlobAsyncRef(
@@ -56,6 +71,24 @@ public:
     _lptr(lptr),
     _is_local(true),
     _has_value(true) {
+  }
+
+  /**
+   * Conctructor, creates an GlobRefAsync object referencing an element in
+   * global memory.
+   */
+  GlobAsyncRef(
+    /// Instance of GlobMem that issued this global reference
+    GlobMem<T> * globmem,
+    /// Pointer to referenced object in global memory
+    GlobPtr<T> & gptr)
+  : _gptr(gptr),
+    _is_local(_gptr.is_local()) {
+    if (_is_local) {
+      _value     = *gptr;
+      _lptr      = (T*)(gptr);
+      _has_value = true;
+    }
   }
 
   /**
@@ -79,14 +112,26 @@ public:
    * global memory.
    */
   GlobAsyncRef(
+    /// Instance of GlobMem that issued this global reference
+    GlobMem<T> * globmem,
+    /// Pointer to referenced object in global memory
+    GlobRef<T> & gref)
+  : GlobAsyncRef(globmem, gref.gptr()) {
+  }
+
+  /**
+   * Conctructor, creates an GlobRefAsync object referencing an element in
+   * global memory.
+   */
+  GlobAsyncRef(
     /// Pointer to referenced object in global memory
     GlobRef<T> & gref)
   : GlobAsyncRef(gref.gptr()) {
   }
 
   /**
-   * Publish change on referenced object to all units if its value has been
-   * changed.
+   * Publish change on referenced object its value has been changed, blocks
+   * until change has published to all units.
    */
   void flush() {
     if (_has_changed) {
@@ -142,19 +187,83 @@ public:
     return *this = T(other);
   }
 
+  /**
+   * Value increment operator.
+   */
+  self_t & operator+=(const T & ref) {
+    T val = operator T();
+    val += ref;
+    operator=(val);
+    return *this;
+  }
+
+  /**
+   * Prefix increment operator.
+   */
+  self_t & operator++() {
+    T val = operator T();
+    ++val;
+    operator=(val);
+    return *this;
+  }
+
+  /**
+   * Postfix increment operator.
+   */
+  self_t operator++(int) {
+    self_t result = *this;
+    T val = operator T();
+    ++val;
+    operator=(val);
+    return result;
+  }
+
+  /**
+   * Value decrement operator.
+   */
+  self_t & operator-=(const T & ref) {
+    T val = operator T();
+    val  -= ref;
+    operator=(val);
+    return *this;
+  }
+
+  /**
+   * Prefix decrement operator.
+   */
+  self_t & operator--() {
+    T val = operator T();
+    --val;
+    operator=(val);
+    return *this;
+  }
+
+  /**
+   * Postfix decrement operator.
+   */
+  self_t operator--(int) {
+    self_t result = *this;
+    T val = operator T();
+    --val;
+    operator=(val);
+    return result;
+  }
+
 private:
+  /// Instance of GlobMem that issued this global reference
+  GlobMem<T> * _globmem;
   /// Value of the referenced element, initially not loaded
-  T          _value;
+  mutable T    _value;
   /// Pointer to referenced element in global memory
-  GlobPtr<T> _gptr;
+  GlobPtr<T>   _gptr;
   /// Pointer to referenced element in local memory
-  T *        _lptr        = nullptr;
+  T *          _lptr        = nullptr;
   /// Whether the value of the reference has been changed
-  bool       _has_changed = false;
+  bool         _has_changed = false;
   /// Whether the referenced element is located local memory
-  bool       _is_local    = false;
+  bool         _is_local    = false;
   /// Whether the value of the referenced element is known
-  bool       _has_value   = false;
+  bool         _has_value   = false;
 
 }; // class GlobAsyncRef
 

@@ -73,7 +73,7 @@ typedef struct dart_handle_struct *dart_handle_t;
 /**
  * 'REGULAR' variant of dart_get.
  * When this functions returns, neither local nor remote completion
- * is guaranteed. A later fence operation is needed to guarantee
+ * is guaranteed. A later fence/flush operation is needed to guarantee
  * local and remote completion.
  *
  * \ingroup DartCommuncation
@@ -85,7 +85,7 @@ dart_ret_t dart_get(
 /**
  * 'REGULAR' variant of dart_put.
  * When this functions returns, neither local nor remote completion
- * is guaranteed. A later fence operation is needed to guarantee
+ * is guaranteed. A later fence/flush operation is needed to guarantee
  * local and remote completion.
  *
  * \ingroup DartCommuncation
@@ -98,7 +98,7 @@ dart_ret_t dart_put(
 /**
  * 'HANDLE' variant of dart_get.
  * Neither local nor remote completion is guaranteed. A later
- * dart_wait*() call or a fence operation is needed to guarantee
+ * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
  * \ingroup DartCommuncation
@@ -111,7 +111,7 @@ dart_ret_t dart_get_handle(
 /**
  * 'HANDLE' variant of dart_put.
  * Neither local nor remote completion is guaranteed. A later
- * dart_wait*() call or a fence operation is needed to guarantee
+ * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
  * \ingroup DartCommuncation
@@ -144,23 +144,13 @@ dart_ret_t dart_put_blocking(
   size_t nbytes);
 
 /**
- * Guarantees local completion of all pending puts and
- * gets on a certain memory allocation / window / segment for the
- * target unit specified in gptr. -> MPI_Win_flushlocal() 
- *
- * \ingroup DartCommuncation
- */
-dart_ret_t dart_fence_local(
-  dart_gptr_t gptr);
-
-/**
  * Guarantees local and remote completion of all pending puts and
  * gets on a certain memory allocation / window / segment for the
  * target unit specified in gptr. -> MPI_Win_flush() 
  *
  * \ingroup DartCommuncation
  */
-dart_ret_t dart_fence(
+dart_ret_t dart_flush(
   dart_gptr_t gptr);
 
 /**
@@ -170,7 +160,27 @@ dart_ret_t dart_fence(
  *
  * \ingroup DartCommuncation
  */
-dart_ret_t dart_fence_all(
+dart_ret_t dart_flush_all(
+  dart_gptr_t gptr);
+
+/**
+ * Guarantees local completion of all pending puts and
+ * gets on a certain memory allocation / window / segment for the
+ * target unit specified in gptr. -> MPI_Win_flush_local() 
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_flush_local(
+  dart_gptr_t gptr);
+
+/**
+ * Guarantees local completion of all pending puts and
+ * gets on a certain memory allocation / window / segment for the
+ * all units. -> MPI_Win_flush_local_all() 
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_flush_local_all(
   dart_gptr_t gptr);
 
 /**

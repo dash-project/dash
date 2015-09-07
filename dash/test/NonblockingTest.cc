@@ -21,3 +21,19 @@ TEST_F(NonblockingTest, GlobAsyncRef) {
   dash::GlobAsyncRef<int> gar_local_g(gref);
   ASSERT_EQ_U(true, gar_local_g.is_local());
 }
+
+TEST_F(NonblockingTest, ArrayBulkWrite) {
+  int num_elem_per_unit = 20;
+  // Initialize values:
+  dash::Array<int> array(_dash_size * num_elem_per_unit);
+  for (auto li = 0; li < array.lcapacity(); ++li) {
+    array.local[li] = _dash_id;
+  }
+  array.barrier();
+  // Assign values asynchronously:
+  for (auto gi = 0; gi < array.size(); ++gi) {
+    array.async[gi]++;
+  }
+  // Flush window:
+  array.flush_local();
+}

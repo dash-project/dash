@@ -371,6 +371,22 @@ public:
     dash::get_value(ptr, GlobPtr<ValueType>(gptr));
   }
 
+  void flush() {
+    dart_flush(m_begptr);
+  }
+
+  void flush_all() {
+    dart_flush_all(m_begptr);
+  }
+
+  void flush_local() {
+    dart_flush_local(m_begptr);
+  }
+
+  void flush_local_all() {
+    dart_flush_local_all(m_begptr);
+  }
+
   /**
    * Resolve the global pointer from an element position in a unit's
    * local memory.
