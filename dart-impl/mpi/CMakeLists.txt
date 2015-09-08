@@ -39,6 +39,11 @@ target_link_libraries(
   ${MPI_C_LIBRARIES}
 )
 
+set_target_properties(
+  ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
+  COMPILE_FLAGS "-DDASH_ENABLE_LOGGING -DDASH_ENABLE_TRACE_LOGGING"
+)
+
 if(MPI_COMPILE_FLAGS)
   set_target_properties(
     ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
