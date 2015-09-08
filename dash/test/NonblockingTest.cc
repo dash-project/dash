@@ -32,8 +32,17 @@ TEST_F(NonblockingTest, ArrayBulkWrite) {
   array.barrier();
   // Assign values asynchronously:
   for (auto gi = 0; gi < array.size(); ++gi) {
-    array.async[gi]++;
+    if (array[gi].is_local()) {
+      array.async[gi]++;
+    }
   }
-  // Flush window:
-  array.flush_local();
+  // Flush local window:
+  array.async.flush_local_all();
+// array.barrier();
+  // Test values in local window. Changes by all units should be visible:
+  for (auto li = 0; li < array.lcapacity(); ++li) {
+    // All local values incremented once by all units
+    ASSERT_EQ_U(_dash_id + 1,
+                array.local[li]);
+  }
 }

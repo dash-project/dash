@@ -115,7 +115,10 @@ public:
 
 public: 
   typedef T                                                  value_type;
+
   typedef typename std::make_unsigned<IndexType>::type        size_type;
+  typedef IndexType                                          index_type;
+
   typedef IndexType                                     difference_type;
 
   typedef T &                                                 reference;
@@ -169,6 +172,17 @@ public:
    */
   reference operator[](const size_t n) {
     return (_array->m_lbegin)[n];
+  }
+
+  /**
+   * Checks whether the given global index is local to the calling unit.
+   *
+   * \return  True
+   */
+  bool is_local(
+    /// A global array index
+    index_type global_index) const {
+    return true;
   }
 };
 
@@ -254,17 +268,24 @@ public:
              (*(_array->begin() + n)).gptr());
   }
 
+  /**
+   * Complete all outstanding asynchronous operations on the referenced array
+   * on all units.
+   */
   void flush() {
+    DASH_LOG_TRACE("AsyncArrayRef.flush()");
     // could also call _array->flush();
     _array->m_globmem->flush();
   }
 
   void flush_local() {
+    DASH_LOG_TRACE("AsyncArrayRef.flush_local()");
     // could also call _array->flush_local();
     _array->m_globmem->flush_local();
   }
 
   void flush_local_all() {
+    DASH_LOG_TRACE("AsyncArrayRef.flush_local_all()");
     // could also call _array->flush_local_all();
     _array->m_globmem->flush_local_all();
   }

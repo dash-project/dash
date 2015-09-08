@@ -28,7 +28,8 @@ constexpr GlobMemKind LOCAL      { GlobMemKind::LOCAL };
 } // namespace internal
 
 /**
- * Block until completion of local and global operations on a global address.
+ * Block until completion of local and global operations on a global 
+ * address.
  */
 template<typename T>
 void fence(
@@ -371,10 +372,18 @@ public:
     dash::get_value(ptr, GlobPtr<ValueType>(gptr));
   }
 
+  /**
+   * Complete all outstanding asynchronous operations on the referenced 
+   * global memory on all units.
+   */
   void flush() {
     dart_flush(m_begptr);
   }
 
+  /**
+   * Complete all outstanding asynchronous operations on the referenced 
+   * global memory on all units.
+   */
   void flush_all() {
     dart_flush_all(m_begptr);
   }

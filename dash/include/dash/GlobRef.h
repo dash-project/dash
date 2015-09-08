@@ -128,8 +128,8 @@ public:
 #if 0
   template<
     typename X=T, 
-	  typename std::enable_if<has_subscript_operator<X>::value, int>::type *ptr =
-      nullptr>
+	  typename std::enable_if<has_subscript_operator<X>::value, int>::type
+      * ptr = nullptr>
   auto operator[](size_t pos) -> 
     typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
   {
