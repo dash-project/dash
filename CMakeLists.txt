@@ -55,6 +55,9 @@ option(ENABLE_TRACE_LOGGING
        "Specify whether trace messages should be logged" off)
 option(ENABLE_ASSERTIONS
        "Specify whether runtime assertions should be checked" off)
+option(MEMORY_MODEL_UNIFIED
+       "Specify whether to assume unified memory model" off)
+message("-- Unified RMA memory model " ${MEMORY_MODEL_UNIFIED})
 
 set(DART_IF_VERSION "3.1" CACHE STRING
     "Version of the DART interface")

@@ -27,6 +27,7 @@ rm -Rf ./build/*
                      -DBUILD_EXAMPLES=ON \
                      -DENABLE_LOGGING=OFF \
                      -DENABLE_TRACE_LOGGING=OFF \
+                     -DMEMORY_MODEL_UNIFIED=ON \
                      -DBUILD_TESTS=ON ../ && \
  await_confirm && \
  make -j) && \
