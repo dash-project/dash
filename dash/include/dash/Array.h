@@ -284,6 +284,12 @@ public:
     _array->m_globmem->flush_local();
   }
 
+  void flush_all() {
+    DASH_LOG_TRACE("AsyncArrayRef.flush()");
+    // could also call _array->flush();
+    _array->m_globmem->flush_all();
+  }
+
   void flush_local_all() {
     DASH_LOG_TRACE("AsyncArrayRef.flush_local_all()");
     // could also call _array->flush_local_all();

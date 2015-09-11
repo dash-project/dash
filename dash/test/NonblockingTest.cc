@@ -38,7 +38,7 @@ TEST_F(NonblockingTest, ArrayBulkWrite) {
   }
   // Flush local window:
   array.async.flush_local_all();
-// array.barrier();
+  array.barrier();
   // Test values in local window. Changes by all units should be visible:
   for (auto li = 0; li < array.lcapacity(); ++li) {
     // All local values incremented once by all units

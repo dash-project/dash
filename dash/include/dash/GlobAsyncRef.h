@@ -141,8 +141,9 @@ public:
    */
   operator T() const {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
-    dash::get_value(&_value, _gptr);
-    _has_value = true;
+    if (!_is_local) {
+      dash::get_value(&_value, _gptr);
+    }
     return _value;
   }
 

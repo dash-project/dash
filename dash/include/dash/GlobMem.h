@@ -399,8 +399,6 @@ public:
   /**
    * Resolve the global pointer from an element position in a unit's
    * local memory.
-   *
-   * TODO: Clarify if dart-calls can be avoided if address is local.
    */
   template <typename IndexType>
   GlobPtr<ElementType> index_to_gptr(
