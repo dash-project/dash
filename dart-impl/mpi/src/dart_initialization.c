@@ -236,7 +236,7 @@ dart_ret_t dart_exit()
     ERROR("dart_exit(): DART has not been initialized");
     return DART_ERR_OTHER;
   }
-  dart_initialized = 1;
+  dart_initialized = 0;
 
 	int finalized;
 	uint16_t index;
