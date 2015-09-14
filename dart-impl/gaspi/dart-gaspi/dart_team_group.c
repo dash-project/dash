@@ -123,6 +123,27 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
     return DART_OK;
 }
 
+/**
+ * @param myid returns relative unit id
+ */
+dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
+{
+    uint16_t index;
+
+    int result = dart_adapt_teamlist_convert (teamid, &index);
+
+    if (result == -1)
+    {
+        return DART_ERR_INVAL;
+    }
+
+    dart_unit_t uid;
+    dart_myid(&uid);
+    *myid = dart_teams[index].group.g2l[uid];
+
+    return DART_OK;
+}
+
 dart_ret_t dart_myid(dart_unit_t *myid)
 {
     gaspi_rank_t r;
