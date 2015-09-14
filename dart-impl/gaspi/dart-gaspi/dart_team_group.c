@@ -127,22 +127,10 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
  */
 dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
 {
-    uint16_t index;
-
-    if(teamid == DART_TEAM_ALL)
-    {
-        return dart_myid(myid);
-    }
-    int result = dart_adapt_teamlist_convert (teamid, &index);
-    if (result == -1)
-    {
-        return DART_ERR_INVAL;
-    }
-    dart_unit_t uid;
-    dart_myid(&uid);
-    *myid = dart_teams[index].group.g2l[uid];
-
-    return DART_OK;
+    dart_unit_t global_myid;
+    dart_myid(&global_myid);
+    dart_ret_t ret = dart_team_unit_g2l(teamid, global_myid, myid);
+    return ret;
 }
 /**
  *  returns the size of given team
@@ -163,6 +151,48 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
     }
 
     *size = dart_teams[index].group.nmem;
+
+    return DART_OK;
+}
+
+/* convert between local and global unit IDs
+
+   local means the ID with respect to the specified team
+   global means the ID with respect to DART_TEAM_ALL
+
+   these calls are *not* collective calls on the specified teams
+*/
+
+dart_ret_t dart_team_unit_l2g(dart_team_t teamid, dart_unit_t localid, dart_unit_t *globalid)
+{
+    uint16_t index;
+
+    int result = dart_adapt_teamlist_convert(teamid, &index);
+    if (result == -1)
+    {
+        return DART_ERR_INVAL;
+    }
+    *globalid = dart_teams[index].group.l2g[localid];
+
+    return DART_OK;
+}
+
+
+dart_ret_t dart_team_unit_g2l(dart_team_t teamid, dart_unit_t globalid, dart_unit_t *localid)
+{
+    uint16_t index;
+
+    if(teamid == DART_TEAM_ALL)
+    {
+        return dart_myid(localid);
+    }
+
+    int result = dart_adapt_teamlist_convert(teamid, &index);
+    if (result == -1)
+    {
+        return DART_ERR_INVAL;
+    }
+    *localid = dart_teams[index].group.g2l[globalid];
 
     return DART_OK;
 }
