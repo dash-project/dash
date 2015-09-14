@@ -18,8 +18,8 @@ dart_ret_t dart_team_get_group (dart_team_t teamid, dart_group_t *group)
 }
 
 /**
- * TODO:
- *  what happens if rank isn't a part of a group ???
+ * TODO what happens if rank isn't a part of a group ???
+ * TODO use return values of gaspi operations
  */
 dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart_team_t *newteam)
 {
@@ -84,10 +84,11 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
     *newteam = max_teamid;
     dart_teams[index].id = new_gaspi_group;
     memcpy(&(dart_teams[index].group), group, sizeof(dart_group_t));
-    //~ group->gaspi_group_id = new_gaspi_group;
-        //~ MPI_Win_create_dynamic (MPI_INFO_NULL, subcomm, &win);
-        //~ dart_win_lists[index] = win;
-    //~ }
+
+    dart_seg_lists[index].seg_id = dart_gaspi_segment_cnt;
+    dart_seg_lists[index].state  = DART_GASPI_SEG_NULL;
+    dart_gaspi_segment_cnt++;
+
     free(group_members);
     return DART_OK;
 }

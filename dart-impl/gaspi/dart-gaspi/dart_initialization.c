@@ -4,7 +4,7 @@
 gaspi_rank_t dart_gaspi_rank_num;
 gaspi_rank_t dart_gaspi_rank;
 
-gaspi_segment_id_t dart_gaspi_buffer_id = 1;
+gaspi_segment_id_t dart_gaspi_buffer_id = 0;
 gaspi_pointer_t dart_gaspi_buffer_ptr;
 
 dart_ret_t dart_init(int *argc, char ***argv)
@@ -34,10 +34,17 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
     dart_next_availteamid++;
     /*
-     * private segement per process
+     * private transfer segement per process
      */
     DART_CHECK_ERROR(gaspi_segment_alloc(dart_gaspi_buffer_id, DART_GASPI_BUFFER_SIZE, GASPI_MEM_INITIALIZED));
     DART_CHECK_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &dart_gaspi_buffer_ptr));
+    /**
+     * TODO use a list to manage free segement ids
+     */
+    dart_gaspi_segment_cnt = dart_gaspi_buffer_id + 1;
+    dart_seg_lists[index].seg_id = dart_gaspi_segment_cnt;
+    dart_seg_lists[index].state  = DART_GASPI_SEG_NULL;
+    dart_gaspi_segment_cnt++;
 
     return DART_OK;
 }
@@ -45,6 +52,16 @@ dart_ret_t dart_init(int *argc, char ***argv)
 dart_ret_t dart_exit()
 {
     DART_CHECK_ERROR(gaspi_segment_delete(dart_gaspi_buffer_id));
+    /**
+     * TODO use segment lists to free memory
+     */
+    for(gaspi_segment_id_t i = dart_gaspi_buffer_id + 1; i < dart_gaspi_segment_cnt; ++i)
+    {
+        if(dart_seg_lists[i].state == DART_GASPI_SEG_ALLOCATED)
+        {
+            DART_CHECK_ERROR(gaspi_segment_delete(i));
+        }
+    }
 
     uint16_t index;
     int result = dart_adapt_teamlist_convert(DART_TEAM_ALL, &index);

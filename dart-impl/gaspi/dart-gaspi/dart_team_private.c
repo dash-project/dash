@@ -2,7 +2,7 @@
  *  @date 25 Aug 2014
  *  @brief Implementations for the operations on teamlist.
  */
-#include<stdio.h>
+#include <stdio.h>
 #include "dart_types.h"
 #include "dart_team_private.h"
 #include "dart_team_group.h"
@@ -10,6 +10,8 @@
 dart_team_t dart_next_availteamid;
 
 dart_team_struct_t dart_teams[DART_MAX_TEAM_NUMBER];
+dart_gaspi_segment_t dart_seg_lists[DART_MAX_TEAM_NUMBER];
+gaspi_segment_id_t dart_gaspi_segment_cnt;
 //~ gaspi_group_t dart_teams[DART_MAX_TEAM_NUMBER];
 
 //~ MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];

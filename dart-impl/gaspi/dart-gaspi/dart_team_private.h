@@ -138,13 +138,28 @@
 #include <dart_team_group.h>
 
 
+typedef enum dart_gaspi_segment_state
+{
+    DART_GASPI_SEG_NULL,
+    DART_GASPI_SEG_ALLOCATED
+}dart_gaspi_segment_state_t;
+
+typedef struct dart_gaspi_segment
+{
+    gaspi_segment_id_t seg_id;
+    dart_gaspi_segment_state_t state;
+
+}dart_gaspi_segment_t;
+
+
 typedef struct dart_team_struct{
     gaspi_group_t id;
     dart_group_t group;
 }dart_team_struct_t;
 
+extern gaspi_segment_id_t dart_gaspi_segment_cnt;
 extern dart_team_t dart_next_availteamid;
-
+extern dart_gaspi_segment_t dart_seg_lists[DART_MAX_TEAM_NUMBER];
 /* @brief Translate the given teamid (indicated uniquely by the index) into its corresponding communicator.
  *
  * After locating the given teamid in the teamlist,
@@ -220,6 +235,7 @@ int dart_adapt_teamlist_recycle(uint16_t index, int pos);
 /* @brief Locate the given teamid in the alloated-team-list-array.
  */
 int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index);
+
 
 #endif /*DART_ADAPT_TEAMNODE_H_INCLUDED*/
 
