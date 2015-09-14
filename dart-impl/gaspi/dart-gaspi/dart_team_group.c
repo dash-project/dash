@@ -34,7 +34,6 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 
     dart_myid(&unit);
     dart_size(&size);
-    //~ dart_team_myid (teamid, &sub_unit);
 
     /*
      * index to dart team
@@ -62,8 +61,6 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 
     DART_CHECK_ERROR(gaspi_group_commit(new_gaspi_group, GASPI_BLOCK));
 
-    //~ MPI_Comm_create (comm, group -> mpi_group, &subcomm);
-
     *newteam = DART_TEAM_NULL;
 
     /* Get the maximum next_availteamid among all the units belonging to the parent team specified by 'teamid'. */
@@ -71,10 +68,8 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
                                      &max_teamid,
                                      1, GASPI_OP_MAX, GASPI_TYPE_INT, parent_gaspi_group, GASPI_BLOCK));
 
-    //~ MPI_Allreduce (&dart_next_availteamid, &max_teamid, 1, MPI_INT32_T, MPI_MAX, comm);
     dart_next_availteamid = max_teamid + 1;
-    //~ if (subcomm != MPI_COMM_NULL)
-    //~ {
+
     result = dart_adapt_teamlist_alloc (max_teamid, &index);
     if (result == -1)
     {
@@ -90,6 +85,41 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
     dart_gaspi_segment_cnt++;
 
     free(group_members);
+    return DART_OK;
+}
+/**
+ * TODO guarantee that all RMA-Opartions on the segment are finished
+ *
+ * local completion can realized with queues -> data structure to save used
+ *
+ * blocking team collective call
+ */
+dart_ret_t dart_team_destroy (dart_team_t teamid)
+{
+    gaspi_group_t gaspi_group;
+    gaspi_segment_id_t seg_id;
+    uint16_t index;
+
+    int result = dart_adapt_teamlist_convert (teamid, &index);
+
+    if (result == -1)
+    {
+        return DART_ERR_INVAL;
+    }
+    gaspi_group = dart_teams[index].id;
+
+    if(dart_seg_lists[index].state != DART_GASPI_SEG_NULL)
+    {
+        /**
+        * TODO for segment list: release seg_id
+        */
+        seg_id = dart_seg_lists[index].seg_id;
+        DART_CHECK_ERROR(gaspi_segment_delete(seg_id));
+    }
+    dart_adapt_teamlist_recycle (index, result);
+
+    DART_CHECK_ERROR(gaspi_group_delete(gaspi_group));
+
     return DART_OK;
 }
 
