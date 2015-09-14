@@ -122,14 +122,39 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 
     return DART_OK;
 }
-
 /**
- * @param myid returns relative unit id
+ * myid returns relative unit id of given team
  */
 dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
 {
     uint16_t index;
 
+    if(teamid == DART_TEAM_ALL)
+    {
+        return dart_myid(myid);
+    }
+    int result = dart_adapt_teamlist_convert (teamid, &index);
+    if (result == -1)
+    {
+        return DART_ERR_INVAL;
+    }
+    dart_unit_t uid;
+    dart_myid(&uid);
+    *myid = dart_teams[index].group.g2l[uid];
+
+    return DART_OK;
+}
+/**
+ *  returns the size of given team
+ */
+dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
+{
+    uint16_t index;
+
+    if(teamid == DART_TEAM_ALL)
+    {
+        return dart_size(size);
+    }
     int result = dart_adapt_teamlist_convert (teamid, &index);
 
     if (result == -1)
@@ -137,9 +162,7 @@ dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
         return DART_ERR_INVAL;
     }
 
-    dart_unit_t uid;
-    dart_myid(&uid);
-    *myid = dart_teams[index].group.g2l[uid];
+    *size = dart_teams[index].group.nmem;
 
     return DART_OK;
 }
