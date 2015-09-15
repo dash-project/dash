@@ -10,7 +10,8 @@ FILES = dart_initialization \
 	dart_team_group \
 	dart_group_impl \
 	dart_communication \
-	dart_team_private
+	dart_team_private \
+	dart_seg_stack
 
 OBJS = $(addsuffix .o, $(FILES))
 
