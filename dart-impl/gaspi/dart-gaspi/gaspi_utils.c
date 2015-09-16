@@ -1,5 +1,8 @@
 #include "gaspi_utils.h"
+#include <stdio.h>
 #include <string.h>
+#include <assert.h>
+#include <unistd.h>
 
 static gaspi_segment_id_t gaspi_utils_seg_counter;
 
@@ -191,10 +194,10 @@ gaspi_return_t gaspi_bcast(gaspi_segment_id_t seg_id, gaspi_offset_t offset,
   int parent;
   int *children = NULL;
 
-  DART_CHECK_ERROR(retval, gaspi_proc_rank(&rank));
-  DART_CHECK_ERROR(retval, gaspi_proc_num(&rankcount));
+  DART_CHECK_ERROR_RET(retval, gaspi_proc_rank(&rank));
+  DART_CHECK_ERROR_RET(retval, gaspi_proc_num(&rankcount));
 
-  DART_CHECK_ERROR(retval, gaspi_segment_ptr(seg_id, &p_segment));
+  DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(seg_id, &p_segment));
   p_segment = p_segment + offset;
 
   children_count = gaspi_utils_compute_comms(&parent, &children, rank, root);
@@ -254,4 +257,103 @@ gaspi_return_t gaspi_bcast_asym(gaspi_segment_id_t seg_id,
   DART_CHECK_ERROR_RET(retval, gaspi_segment_delete(transfer_seg_id));
 
   return retval;
+}
+/**
+ * TODO rename
+ */
+int cmp_ranks(const void * a, const void * b)
+{
+    const int c = *((gaspi_rank_t *) a);
+    const int d = *((gaspi_rank_t *) b);
+    return c - d;
+}
+
+gaspi_return_t
+gaspi_allgather(const gaspi_segment_id_t send_segid,
+                const gaspi_offset_t     send_offset,
+                const gaspi_segment_id_t recv_segid,
+                const gaspi_offset_t     recv_offset,
+                const gaspi_size_t       byte_size,
+                const gaspi_group_t      group)
+{
+    gaspi_rank_t            rank;
+    gaspi_return_t          retval    = GASPI_SUCCESS;
+    gaspi_queue_id_t        queue     = 0;
+
+    DART_CHECK_ERROR_RET(retval, gaspi_barrier(group, GASPI_BLOCK));
+
+    gaspi_proc_rank(&rank);
+
+    gaspi_number_t group_size;
+
+    DART_CHECK_ERROR_RET(retval, gaspi_group_size(group, &group_size));
+
+    gaspi_rank_t * ranks = (gaspi_rank_t *) malloc(sizeof(gaspi_rank_t) * group_size);
+    assert(ranks);
+    DART_CHECK_ERROR_RET(retval, gaspi_group_ranks(group, ranks));
+
+    qsort(ranks, group_size, sizeof(gaspi_rank_t), cmp_ranks);
+
+    int rel_rank = -1;
+    for(unsigned int i = 0; i < group_size; ++i)
+    {
+        if ( ranks[i] == rank )
+        {
+            rel_rank = i;
+            break;
+        }
+    }
+
+    if(rel_rank == -1)
+    {
+        fprintf(stderr, "Error: rank %d is no member of group %d", rank, group);
+    }
+
+    for (unsigned int i = 0; i < group_size; i++)
+    {
+        if ( ranks[i] == rank )
+        {
+            continue;
+        }
+
+        check_queue_size(queue);
+
+        DART_CHECK_ERROR_RET(retval, gaspi_write_notify(send_segid,
+                                                        send_offset,
+                                                        ranks[i],
+                                                        recv_segid,
+                                                        recv_offset + (rel_rank * byte_size),
+                                                        byte_size,
+                                                        (gaspi_notification_id_t) rel_rank,
+                                                        42,
+                                                        queue,
+                                                        GASPI_BLOCK));
+        gaspi_wait(queue, GASPI_BLOCK);
+    }
+    int missing = group_size - 1;
+    gaspi_notification_id_t id_available;
+    gaspi_notification_t    id_val;
+    gaspi_pointer_t recv_ptr;
+    gaspi_pointer_t send_ptr;
+
+    DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(send_segid, &send_ptr));
+    DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(recv_segid, &recv_ptr));
+
+    recv_ptr = (void *) ((char *) recv_ptr + recv_offset + (rel_rank * byte_size));
+    memcpy(recv_ptr, send_ptr, byte_size);
+
+    while(missing-- > 0)
+    {
+        blocking_waitsome(0, group_size, &id_available, &id_val, recv_segid);
+        if(id_val != 42)
+        {
+            fprintf(stderr, "Error: Get wrong notify in allgather on rank %d\n", rank);
+        }
+    }
+
+    free(ranks);
+
+    DART_CHECK_ERROR_RET(retval, gaspi_barrier(group, GASPI_BLOCK));
+
+    return retval;
 }

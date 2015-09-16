@@ -4,6 +4,14 @@
 #include <stdlib.h>
 #include <GASPI.h>
 
+gaspi_return_t
+gaspi_allgather(const gaspi_segment_id_t send_segid,
+                const gaspi_offset_t     send_offset,
+                const gaspi_segment_id_t recv_segid,
+                const gaspi_offset_t     recv_offset,
+                const gaspi_size_t       byte_size,
+                const gaspi_group_t      group );
+
 gaspi_return_t gaspi_bcast(gaspi_segment_id_t seg_id, gaspi_offset_t offset,
                            gaspi_size_t bytesize, gaspi_rank_t root);
 
