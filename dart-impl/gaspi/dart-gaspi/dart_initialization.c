@@ -1,3 +1,4 @@
+#include "dart_globmem_priv.h"
 #include "dart_team_private.h"
 #include "dart_gaspi.h"
 #include "dart_translation.h"
@@ -6,6 +7,10 @@ gaspi_rank_t dart_gaspi_rank_num;
 gaspi_rank_t dart_gaspi_rank;
 
 gaspi_segment_id_t dart_gaspi_buffer_id = 0;
+
+gaspi_segment_id_t dart_coll_seg_id_begin = 1;
+size_t dart_coll_seg_count = 30;
+
 gaspi_pointer_t dart_gaspi_buffer_ptr;
 
 dart_ret_t dart_init(int *argc, char ***argv)
@@ -17,6 +22,10 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
     /* Initialize the teamlist. */
     dart_adapt_teamlist_init();
+
+    /* Create a global translation table for all the collective global memory */
+    dart_adapt_transtable_create ();
+    dart_memid = 1;
 
     dart_next_availteamid = DART_TEAM_ALL;
     uint16_t index;
@@ -64,17 +73,9 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
 dart_ret_t dart_exit()
 {
+    DART_CHECK_ERROR(gaspi_barrier(GASPI_GROUP_ALL, GASPI_BLOCK));
+
     DART_CHECK_ERROR(gaspi_segment_delete(dart_gaspi_buffer_id));
-    /**
-     * TODO use segment lists to free memory
-     */
-    for(gaspi_segment_id_t i = dart_gaspi_buffer_id + 1; i < dart_gaspi_segment_cnt; ++i)
-    {
-        if(dart_seg_lists[i].state == DART_GASPI_SEG_ALLOCATED)
-        {
-            DART_CHECK_ERROR(gaspi_segment_delete(i));
-        }
-    }
 
     uint16_t index;
     int result = dart_adapt_teamlist_convert(DART_TEAM_ALL, &index);
