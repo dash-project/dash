@@ -136,7 +136,7 @@
 #include "dart_gaspi.h"
 #include "dart_group_impl.h"
 #include <dart_team_group.h>
-
+#include "dart_seg_stack.h"
 
 typedef enum dart_gaspi_segment_state
 {
@@ -157,6 +157,7 @@ typedef struct dart_team_struct{
     dart_group_t group;
 }dart_team_struct_t;
 
+extern seg_stack_t dart_free_coll_seg_ids;
 extern gaspi_segment_id_t dart_gaspi_segment_cnt;
 extern dart_team_t dart_next_availteamid;
 extern dart_gaspi_segment_t dart_seg_lists[DART_MAX_TEAM_NUMBER];

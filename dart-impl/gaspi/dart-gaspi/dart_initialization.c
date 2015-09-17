@@ -1,5 +1,6 @@
 #include "dart_team_private.h"
 #include "dart_gaspi.h"
+#include "dart_translation.h"
 
 gaspi_rank_t dart_gaspi_rank_num;
 gaspi_rank_t dart_gaspi_rank;
@@ -41,9 +42,16 @@ dart_ret_t dart_init(int *argc, char ***argv)
     /**
      * TODO use a list to manage free segement ids
      */
+    seg_stack_init(&dart_free_coll_seg_ids, dart_coll_seg_count);
+    seg_stack_fill(&dart_free_coll_seg_ids, dart_coll_seg_id_begin, dart_coll_seg_count);
+
     dart_gaspi_segment_cnt = dart_gaspi_buffer_id + 1;
-    dart_seg_lists[index].seg_id = dart_gaspi_segment_cnt;
+
+    seg_stack_pop(&dart_free_coll_seg_ids, &(dart_seg_lists[index].seg_id));
+
     dart_seg_lists[index].state  = DART_GASPI_SEG_NULL;
+
+
     dart_gaspi_segment_cnt++;
 
     return DART_OK;
@@ -73,6 +81,9 @@ dart_ret_t dart_exit()
     dart_group_fini(&(dart_teams[index].group));
 
     dart_adapt_teamlist_destroy();
+    dart_adapt_transtable_destroy();
+
+    seg_stack_finish(&dart_free_coll_seg_ids);
 
     DART_CHECK_ERROR(gaspi_proc_term(GASPI_BLOCK));
 
