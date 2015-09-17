@@ -74,7 +74,6 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
                                                  sizeof(gaspi_segment_id_t),
                                                  gaspi_group));
 
-    gaspi_printf("allgather finished\n");
     // Get the pointer to the recv buffer in the segment
     gaspi_pointer_t recv_buffer_ptr = dart_gaspi_buffer_ptr + recv_buffer_offset;
     /**
@@ -102,7 +101,7 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
     item.seg_id = dart_memid;
     item.size = nbytes;
     item.gaspi_seg_ids = gaspi_seg_ids;
-
+    item.own_gaspi_seg_id = gaspi_seg_id;
     /* Add this newly generated correspondence relationship record into the translation table. */
     dart_adapt_transtable_add (item);
     dart_memid++;
@@ -118,7 +117,7 @@ dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr)
     int16_t seg_id = gptr.segid;
     gaspi_segment_id_t gaspi_seg_id;
 
-    if(dart_adapt_transtable_get_gaspi_seg_id(seg_id, unitid, &gaspi_seg_id) == -1)
+    if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &gaspi_seg_id) == -1)
     {
         return DART_ERR_INVAL;
     }
@@ -134,4 +133,79 @@ dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr)
     }
 
     return retval;
+}
+
+dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
+{
+    gaspi_return_t retval = GASPI_SUCCESS;
+    int16_t seg_id = gptr.segid;
+    uint64_t offset = gptr.addr_or_offs.offset;
+    dart_unit_t myid;
+    dart_myid (&myid);
+
+    if (myid == gptr.unitid)
+    {
+        if (seg_id)
+        {
+            gaspi_segment_id_t local_seg;
+            gaspi_pointer_t seg_ptr;
+            if (dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &local_seg) == -1)
+            {
+                return DART_ERR_INVAL;
+            }
+            DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(local_seg, addr));
+            *addr = offset + (char *)(*addr);
+        }
+        //~ else
+        //~ {
+            //~ if (myid == gptr.unitid)
+            //~ {
+                //~ *addr = offset + dart_mempool_localalloc;
+            //~ }
+
+        //~ }
+    }
+    else
+    {
+        *addr = NULL;
+    }
+
+    return retval;
+}
+
+dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
+{
+    gaspi_return_t retval = GASPI_SUCCESS;
+    int16_t seg_id = gptr->segid;
+
+    /* The modification to addr is reflected in the fact that modifying the offset. */
+    if (seg_id)
+    {
+        gaspi_segment_id_t local_seg;
+        gaspi_pointer_t local_seg_addr;
+        if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &local_seg) == -1)
+        {
+            return DART_ERR_INVAL;
+        }
+        DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(local_seg, &local_seg_addr));
+        gptr->addr_or_offs.offset = (char *)addr - (char *)local_seg_addr;
+    }
+    //~ else
+    //~ {
+        //~ gptr->addr_or_offs.offset = (char *)addr - dart_mempool_localalloc;
+    //~ }
+    return retval;
+}
+
+dart_ret_t dart_gptr_incaddr (dart_gptr_t* gptr, int offs)
+{
+    gptr->addr_or_offs.offset += offs;
+    return DART_OK;
+}
+
+
+dart_ret_t dart_gptr_setunit (dart_gptr_t* gptr, dart_unit_t unit_id)
+{
+    gptr->unitid = unit_id;
+    return DART_OK;
 }

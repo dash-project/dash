@@ -34,6 +34,7 @@ typedef struct
     size_t size;
     /* the gaspi segment id set of the memory location of all the units in certain team. */
     gaspi_segment_id_t * gaspi_seg_ids;
+    gaspi_segment_id_t own_gaspi_seg_id;
 }info_t;
 
 struct node
@@ -71,25 +72,7 @@ int dart_adapt_transtable_add (info_t item);
  */
 int dart_adapt_transtable_remove (int16_t seg_id);
 
-/** @brief Query the shared memory window object associated with the specified seg_id.
- *
- *  @param[in] seg_id
- *  @param[out] win A MPI window object.
- *
- *  @retval non-negative integer Search successfully.
- *  @retval negative integer Failure.
- */
-
-//~ int dart_adapt_transtable_get_win (int16_t seg_id, MPI_Win *win);
-
-/** @brief Query the address of the memory location of the specified rel_unit in specified team.
- *
- *  The output disp_s information targets for the dart inter-node communication, which means
- *  the one-sided communication proceed within the dynamic window object instead of the
- *  shared memory window object.
- *
- *  @retval ditto
- */
+int dart_adapt_transtable_get_local_gaspi_seg_id(int16_t seg_id, gaspi_segment_id_t * own_segid);
 
 int dart_adapt_transtable_get_gaspi_seg_id (int16_t seg_id, dart_unit_t rel_unit, gaspi_segment_id_t * segid);
 

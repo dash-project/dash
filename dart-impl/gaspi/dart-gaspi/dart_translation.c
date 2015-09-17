@@ -25,6 +25,7 @@ int dart_adapt_transtable_add (info_t item)
     p->trans.seg_id = item.seg_id;
     p->trans.size = item.size;
     p->trans.gaspi_seg_ids = item.gaspi_seg_ids;
+    p->trans.own_gaspi_seg_id = item.own_gaspi_seg_id;
     p->next = NULL;
 
     /* The translation table is empty. */
@@ -75,25 +76,25 @@ int dart_adapt_transtable_remove (int16_t seg_id)
     return 0;
 }
 
-//~ int dart_adapt_transtable_get_win (int16_t seg_id, MPI_Win* win)
-//~ {
-    //~ node_t p;
-    //~ p = dart_transtable_globalalloc;
+int dart_adapt_transtable_get_local_gaspi_seg_id(int16_t seg_id, gaspi_segment_id_t * own_segid)
+{
+    node_t p;
+    p = dart_transtable_globalalloc;
 
-    //~ while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
-    //~ {
-        //~ p = p -> next;
-    //~ }
-    //~ if ((!p) || (seg_id != ((p -> trans).seg_id)))
-    //~ {
+    while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+    {
+        p = p -> next;
+    }
+    if ((!p) || (seg_id != ((p -> trans).seg_id)))
+    {
 
-        //~ fprintf(stderr,"Invalid seg_id: %d, can not get the related window object", seg_id);
-        //~ return -1;
-    //~ }
+        fprintf(stderr,"Invalid seg_id: %d, can not get the related window object", seg_id);
+        return -1;
+    }
 
-    //~ *win = (p -> trans).win;
-    //~ return 0;
-//~ }
+    *own_segid = (p -> trans).own_gaspi_seg_id;
+    return 0;
+}
 
 int dart_adapt_transtable_get_gaspi_seg_id(int16_t seg_id, dart_unit_t rel_unitid, gaspi_segment_id_t * segid)
 {
