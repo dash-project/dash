@@ -47,12 +47,12 @@ void flush_queues(gaspi_queue_id_t queue_begin, gaspi_queue_id_t queue_count);
     }                                                                          \
   }while (0)
 
-#define DART_CHECK_ERROR_RET(ret, func...)                                      \
+#define DART_CHECK_ERROR_RET(ret, func...)                                       \
     do {                                                                         \
       ret = func;                                                                \
-      if (retval != GASPI_SUCCESS) {                                             \
+      if (ret != GASPI_SUCCESS) {                                                \
         gaspi_printf("ERROR in %s : %s on line %i return value %i\n", #func,     \
-                     __FILE__, __LINE__, retval);                                \
+                     __FILE__, __LINE__, ret);                                   \
       }                                                                          \
     }while (0)
 
