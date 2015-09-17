@@ -160,7 +160,6 @@ typedef struct dart_team_struct{
 extern seg_stack_t dart_free_coll_seg_ids;
 extern gaspi_segment_id_t dart_gaspi_segment_cnt;
 extern dart_team_t dart_next_availteamid;
-extern dart_gaspi_segment_t dart_seg_lists[DART_MAX_TEAM_NUMBER];
 /* @brief Translate the given teamid (indicated uniquely by the index) into its corresponding communicator.
  *
  * After locating the given teamid in the teamlist,

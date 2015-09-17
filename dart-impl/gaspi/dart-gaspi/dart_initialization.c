@@ -54,19 +54,15 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
     DART_CHECK_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &dart_gaspi_buffer_ptr));
     /**
-     * TODO use a list to manage free segement ids
+     * Create the segment id stack
      */
     seg_stack_init(&dart_free_coll_seg_ids, dart_coll_seg_count);
+    /**
+     * Set free segment ids in the stack
+     */
     seg_stack_fill(&dart_free_coll_seg_ids, dart_coll_seg_id_begin, dart_coll_seg_count);
 
     dart_gaspi_segment_cnt = dart_gaspi_buffer_id + 1;
-
-    seg_stack_pop(&dart_free_coll_seg_ids, &(dart_seg_lists[index].seg_id));
-
-    dart_seg_lists[index].state  = DART_GASPI_SEG_NULL;
-
-
-    dart_gaspi_segment_cnt++;
 
     return DART_OK;
 }

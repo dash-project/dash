@@ -80,10 +80,6 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
     dart_teams[index].id = new_gaspi_group;
     memcpy(&(dart_teams[index].group), group, sizeof(dart_group_t));
 
-    dart_seg_lists[index].seg_id = dart_gaspi_segment_cnt;
-    dart_seg_lists[index].state  = DART_GASPI_SEG_NULL;
-    dart_gaspi_segment_cnt++;
-
     free(group_members);
     return DART_OK;
 }
@@ -106,16 +102,9 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
     {
         return DART_ERR_INVAL;
     }
+
     gaspi_group = dart_teams[index].id;
 
-    if(dart_seg_lists[index].state != DART_GASPI_SEG_NULL)
-    {
-        /**
-        * TODO for segment list: release seg_id
-        */
-        seg_id = dart_seg_lists[index].seg_id;
-        DART_CHECK_ERROR(gaspi_segment_delete(seg_id));
-    }
     dart_adapt_teamlist_recycle (index, result);
 
     DART_CHECK_ERROR(gaspi_group_delete(gaspi_group));
@@ -204,7 +193,6 @@ dart_ret_t dart_myid(dart_unit_t *myid)
     *myid = r;
     return DART_OK;
 }
-
 
 dart_ret_t dart_size(size_t *size)
 {
