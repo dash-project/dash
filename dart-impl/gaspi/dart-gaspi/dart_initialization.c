@@ -35,9 +35,14 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
     dart_next_availteamid++;
     /*
-     * private transfer segement per process
+     * global transfer segement per process
      */
-    DART_CHECK_ERROR(gaspi_segment_alloc(dart_gaspi_buffer_id, DART_GASPI_BUFFER_SIZE, GASPI_MEM_INITIALIZED));
+    DART_CHECK_ERROR(gaspi_segment_create(dart_gaspi_buffer_id,
+                                          DART_GASPI_BUFFER_SIZE,
+                                          GASPI_GROUP_ALL,
+                                          GASPI_BLOCK,
+                                          GASPI_MEM_INITIALIZED));
+
     DART_CHECK_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &dart_gaspi_buffer_ptr));
     /**
      * TODO use a list to manage free segement ids
