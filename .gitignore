@@ -31,7 +31,8 @@
 # Debug files
 *.dSYM/
 
-*.core
+core.*
+main
 
 # Geany config
 geany-dart.conf
