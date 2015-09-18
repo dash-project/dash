@@ -1,14 +1,23 @@
 #include <iostream>
 #include <libdash.h>
 
-using std::cout; using std::endl;
+#include "../bench.h"
 
-#define NUM_KEYS     (1<<18)
+using std::cout; 
+using std::endl;
+
+#define NUM_KEYS     (1<<23)
 #define MAX_KEY      (1<<13)
 
+/*
+#define NUM_KEYS     32
+#define MAX_KEY      8
+#define DBGOUT
+*/
 
 int main(int argc, char **argv)
 {
+  double tstart, tstop;
   srand(31337);
   
   dash::init(&argc, &argv);
@@ -27,16 +36,22 @@ int main(int argc, char **argv)
   int* work_buf = (int*) gptr;
   
   if(myid==0) {
-    cout<<"key_array:"<<endl;
     for(int i=0; i<key_array.size(); i++ ) {
       key_array[i]=rand() % MAX_KEY;
+    }
+
+#ifdef DBGOUT
+    cout<<"key_array:"<<endl;
+    for(int i=0; i<key_array.size(); i++ ) {
       cout<<key_array[i]<<" ";
     }
     cout<<endl;
+#endif
   }
   
   dash::barrier();
-  
+  TIMESTAMP(tstart);
+
   // compute the histogram for the local keys
   for(int i=0; i<key_array.lsize(); i++) {
     work_buf[ key_array.local[i] ]++; 
@@ -63,11 +78,17 @@ int main(int argc, char **argv)
       key_histo.local[i] += remote[goffs+i];
     }
   }
-
   dash::barrier();
+  TIMESTAMP(tstop);
 
-  cout<<"key_histo:"<<endl;
   if(myid==0) {
+    cout<<"MKeys/sec: "<<(NUM_KEYS*1.0e-6)/(tstop-tstart)<<endl;
+  }
+
+#ifdef DBGOUT
+  dash::barrier();
+  if(myid==0) {
+    cout<<"key_histo:"<<endl;
     for(int i=0; i<key_histo.size(); i++ ) {
       cout<<key_histo[i]<<" ";
     }
@@ -75,19 +96,9 @@ int main(int argc, char **argv)
   }
 
   dash::barrier();
+#endif
 
-  /*
-  cout<<myid<<": ";
-  for(int i=0; i<MAX_KEY; i++ ) {
-    cout<<work_buf[i]<<" ";
-  }
-  cout<<endl;
-  */
-
-
-
-  //dash::barrier();
-  //dash::finalize();
+  dash::finalize();
 
   return 0;
 }
