@@ -40,7 +40,7 @@ dart_ret_t dart_init(int *argc, char ***argv);
 /**
  * possible for GASPI
  *
- * function free all allocate memory
+ * function free all allocated memory
  * delete groups
  * finish communication library
  */

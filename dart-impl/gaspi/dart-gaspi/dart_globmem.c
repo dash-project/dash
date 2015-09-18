@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <GASPI.h>
 
+#include "dart_mem.h"
 #include "dart_types.h"
 #include "dart_translation.h"
 #include "dart_team_private.h"
@@ -10,6 +11,33 @@
 #include "dart_team_group.h"
 
 int16_t dart_memid;
+
+dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
+{
+    dart_unit_t unitid;
+    dart_myid (&unitid);
+    gptr->unitid = unitid;
+    gptr->segid = 0; /* For local allocation, the segid is marked as '0'. */
+    gptr->flags = 0; /* For local allocation, the flag is marked as '0'. */
+    gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
+    if (gptr->addr_or_offs.offset == -1)
+    {
+        fprintf(stderr, "Out of bound: the global memory is exhausted");
+        return DART_ERR_OTHER;
+    }
+    return DART_OK;
+}
+
+dart_ret_t dart_memfree (dart_gptr_t gptr)
+{
+    if (dart_buddy_free (dart_localpool, gptr.addr_or_offs.offset) == -1)
+    {
+        fprintf(stderr, "Free invalid local global pointer: invalid offset = %llu\n", gptr.addr_or_offs.offset);
+        return DART_ERR_INVAL;
+    }
+
+    return DART_OK;
+}
 
 dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gptr_t *gptr)
 {
@@ -156,14 +184,14 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
             DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(local_seg, addr));
             *addr = offset + (char *)(*addr);
         }
-        //~ else
-        //~ {
-            //~ if (myid == gptr.unitid)
-            //~ {
-                //~ *addr = offset + dart_mempool_localalloc;
-            //~ }
+        else
+        {
+            if (myid == gptr.unitid)
+            {
+                *addr = offset + dart_mempool_localalloc;
+            }
 
-        //~ }
+        }
     }
     else
     {
@@ -190,10 +218,10 @@ dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
         DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(local_seg, &local_seg_addr));
         gptr->addr_or_offs.offset = (char *)addr - (char *)local_seg_addr;
     }
-    //~ else
-    //~ {
-        //~ gptr->addr_or_offs.offset = (char *)addr - dart_mempool_localalloc;
-    //~ }
+    else
+    {
+        gptr->addr_or_offs.offset = (char *)addr - dart_mempool_localalloc;
+    }
     return retval;
 }
 

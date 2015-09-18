@@ -1,4 +1,5 @@
 #include "dart_globmem_priv.h"
+#include "dart_mem.h"
 #include "dart_team_private.h"
 #include "dart_gaspi.h"
 #include "dart_translation.h"
@@ -6,12 +7,21 @@
 gaspi_rank_t dart_gaspi_rank_num;
 gaspi_rank_t dart_gaspi_rank;
 
-gaspi_segment_id_t dart_gaspi_buffer_id = 0;
-
-gaspi_segment_id_t dart_coll_seg_id_begin = 1;
-size_t dart_coll_seg_count = 30;
-
+/**************** global auxiliary memory ****************/
 gaspi_pointer_t dart_gaspi_buffer_ptr;
+const gaspi_segment_id_t dart_gaspi_buffer_id = 0;
+/***************** non-collective memory *****************/
+#define DART_BUDDY_ORDER 24
+/* Gaspi segment number for non-collective memory */
+const gaspi_segment_id_t dart_mempool_seg_localalloc = 1;
+/* Point to the base address of memory region for local allocation. */
+char * dart_mempool_localalloc;
+/* Help to do memory management work for local allocation/free */
+struct dart_buddy* dart_localpool;
+/******************* collective memory *******************/
+const gaspi_segment_id_t dart_coll_seg_id_begin = 2;
+const size_t dart_coll_seg_count = 30;
+/*********************************************************/
 
 dart_ret_t dart_init(int *argc, char ***argv)
 {
@@ -44,7 +54,19 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
     dart_next_availteamid++;
     /*
-     * global transfer segement per process
+     * non-collective memory initialization
+     */
+    dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
+    DART_CHECK_ERROR(gaspi_segment_create(dart_mempool_seg_localalloc,
+                                          DART_MAX_LENGTH,
+                                          GASPI_GROUP_ALL,
+                                          GASPI_BLOCK,
+                                          GASPI_MEM_INITIALIZED));
+    gaspi_pointer_t seg_ptr;
+    DART_CHECK_ERROR(gaspi_segment_ptr(dart_mempool_seg_localalloc, &seg_ptr));
+    dart_mempool_localalloc = (char *) seg_ptr;
+    /*
+     * global auxiliary memory segement per process
      */
     DART_CHECK_ERROR(gaspi_segment_create(dart_gaspi_buffer_id,
                                           DART_GASPI_BUFFER_SIZE,
@@ -53,16 +75,14 @@ dart_ret_t dart_init(int *argc, char ***argv)
                                           GASPI_MEM_INITIALIZED));
 
     DART_CHECK_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &dart_gaspi_buffer_ptr));
-    /**
+    /*
      * Create the segment id stack
      */
     seg_stack_init(&dart_free_coll_seg_ids, dart_coll_seg_count);
-    /**
+    /*
      * Set free segment ids in the stack
      */
     seg_stack_fill(&dart_free_coll_seg_ids, dart_coll_seg_id_begin, dart_coll_seg_count);
-
-    dart_gaspi_segment_cnt = dart_gaspi_buffer_id + 1;
 
     return DART_OK;
 }
@@ -73,6 +93,8 @@ dart_ret_t dart_exit()
 
     DART_CHECK_ERROR(gaspi_segment_delete(dart_gaspi_buffer_id));
 
+    DART_CHECK_ERROR(gaspi_segment_delete(dart_mempool_seg_localalloc));
+
     uint16_t index;
     int result = dart_adapt_teamlist_convert(DART_TEAM_ALL, &index);
     if (result == -1)
@@ -82,8 +104,11 @@ dart_ret_t dart_exit()
 
     dart_group_fini(&(dart_teams[index].group));
 
-    dart_adapt_teamlist_destroy();
+    dart_buddy_delete(dart_localpool);
+
     dart_adapt_transtable_destroy();
+
+    dart_adapt_teamlist_destroy();
 
     seg_stack_finish(&dart_free_coll_seg_ids);
 
