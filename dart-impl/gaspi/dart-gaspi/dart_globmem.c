@@ -201,7 +201,7 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
     return retval;
 }
 
-dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
+dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
 {
     gaspi_return_t retval = GASPI_SUCCESS;
     int16_t seg_id = gptr->segid;
@@ -225,14 +225,14 @@ dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
     return retval;
 }
 
-dart_ret_t dart_gptr_incaddr (dart_gptr_t* gptr, int offs)
+dart_ret_t dart_gptr_incaddr(dart_gptr_t* gptr, int offs)
 {
     gptr->addr_or_offs.offset += offs;
     return DART_OK;
 }
 
 
-dart_ret_t dart_gptr_setunit (dart_gptr_t* gptr, dart_unit_t unit_id)
+dart_ret_t dart_gptr_setunit(dart_gptr_t* gptr, dart_unit_t unit_id)
 {
     gptr->unitid = unit_id;
     return DART_OK;

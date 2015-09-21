@@ -18,7 +18,7 @@ extern gaspi_rank_t dart_gaspi_rank_num;
 extern gaspi_rank_t dart_gaspi_rank;
 extern const gaspi_segment_id_t dart_gaspi_buffer_id;
 extern gaspi_pointer_t dart_gaspi_buffer_ptr;
-extern const gaspi_segment_id_t dart_gaspi_seg_local_alloc;
+extern const gaspi_segment_id_t dart_mempool_seg_localalloc;
 
 #define DART_INTERFACE_OFF
 
