@@ -1,9 +1,13 @@
+#
+# In-place makefile for use side-by-side with the 
+# CMake build system
+#
 
 # where the DART interface is located
 DART_IF = ../../dart-if/v3
 
-LIBDART_EXTRA = -lpthread
+CC      = gcc -std=c99 $(OPT_FLAGS)
+CXX     = g++ -std=c++0x $(OPT_FLAGS)
+#CXX     = clang -std=c++11 $(OPT_FLAGS)
 
-CC      = gcc -std=c99
-CXX     = g++ -std=c++0x
-#CXX     = clang -std=c++11
+LIBDART_EXTRA = -lpthread

@@ -1,1 +1,10 @@
 config.defs
+build
+build-ci
+*.o
+*.a
+*~
+*.swp
+*.swo
+*#
+*.log

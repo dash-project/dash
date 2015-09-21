@@ -1,8 +1,13 @@
+#
+# In-place makefile for use side-by-side with the 
+# CMake build system
+#
+
 all :
-	make -C dash-test/
-	make -C dash-lib/ 
+	make -C src/
+	make -C examples/
 
 clean :
-	rm -f *~
-	make -C dash-test/ clean
-	make -C dash-lib/ clean
+	make -C src/ clean
+	make -C examples/ clean
+	rm -rf *~

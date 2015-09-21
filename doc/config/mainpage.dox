@@ -1,0 +1,43 @@
+/*! \mainpage DASH
+ * 
+ * DASH is a C++ Template Library for Distributed Data Structures with 
+ * Support for Hierarchical Locality for HPC and Data-Driven Science. 
+ * The DASH library is cur rently unter develpment and a first version 
+ * should be available later this year
+ * 
+ * \section Funding
+ * 
+ * DASH is funded by the German Research Foundation (DFG) under the 
+ * priority programme "Software for Exascale Computing - SPPEXA" 
+ * (2013-2015).
+ * 
+ * \section Project Summary
+ * 
+ * Exascale systems are scheduled to become available in 2018-2020 and
+ * will be characterized by extreme scale and a multilevel hierarchical
+ * organization. Efficient and productive programming of these systems
+ * will be a challenge, especially in the context of data-intensive
+ * applications. Adopting the promising notion of Partitioned Global
+ * Address Space (PGAS) programming the DASH project develops a data-
+ * structure oriented C++ template library that provides hierarchical
+ * PGAS-like abstractions for important data containers (multidimensional
+ * arrays, lists, hash tables, etc.) and allows a developer to control
+ * (and explicitly take advantage of) the hierarchical data layout of
+ * global data structures. In contrast to other PGAS approaches such as
+ * UPC, DASH does not propose a new language or require compiler support
+ * to realize global address space semantics. Instead, operator
+ * overloading and other advanced C++ features are used to provide the
+ * semantics of data residing in a global and hierarchically partitioned
+ * address space based on a runtime system with one-sided messaging
+ * primitives provided by MPI or GASNet. As such, DASH can co-exist with
+ * parallel programming models already in widespread use (like MPI) and
+ * developers can take advantage of DASH by incrementally replacing
+ * existing data structures with the implementation provided by DASH.  
+ * 
+ * Efficient I/O directly to and from the hierarchical structures and
+ * DASH-optimized algorithms such as map-reduce are also part of the
+ * project. Two applications from molecular dynamics and geoscience are
+ * driving the project and are adapted to use DASH in the course of the
+ * project.
+ * 
+ */

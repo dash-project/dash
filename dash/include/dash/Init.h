@@ -1,0 +1,23 @@
+/* 
+ * dash-lib/Init.h
+ *
+ * author(s): Karl Fuerlinger, LMU Munich 
+ */
+/* @DASH_HEADER@ */
+
+#ifndef DASH__INIT_H_
+#define DASH__INIT_H_
+
+#include <dash/dart/if/dart.h>
+
+namespace dash
+{
+  void   init(int *argc, char ***argv);
+  void   finalize();
+  bool   is_initialized();
+  int    myid();
+  size_t size();
+  void   barrier();
+}
+
+#endif // DASH__INIT_H_
