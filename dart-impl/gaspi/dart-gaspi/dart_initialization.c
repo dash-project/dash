@@ -8,6 +8,9 @@ gaspi_rank_t dart_gaspi_rank_num;
 gaspi_rank_t dart_gaspi_rank;
 
 /**************** global auxiliary memory ****************/
+/**
+ * for internal communication
+ */
 gaspi_pointer_t dart_gaspi_buffer_ptr;
 const gaspi_segment_id_t dart_gaspi_buffer_id = 0;
 /***************** non-collective memory *****************/
@@ -18,9 +21,16 @@ const gaspi_segment_id_t dart_mempool_seg_localalloc = 1;
 char * dart_mempool_localalloc;
 /* Help to do memory management work for local allocation/free */
 struct dart_buddy* dart_localpool;
+/******************** transfer memory ********************/
+/**
+ * transfer buffer for non-blocking rma-operations
+ */
+const gaspi_segment_id_t dart_transferpool_seg = 2;
+const gaspi_size_t dart_transferpool_size = 1 << DART_BUDDY_ORDER;
+struct dart_buddy* dart_transferpool;
 /******************* collective memory *******************/
-const gaspi_segment_id_t dart_coll_seg_id_begin = 2;
-const size_t dart_coll_seg_count = 30;
+const gaspi_segment_id_t dart_coll_seg_id_begin = 3;
+const size_t dart_coll_seg_count = 28;
 /*********************************************************/
 
 dart_ret_t dart_init(int *argc, char ***argv)
@@ -75,6 +85,12 @@ dart_ret_t dart_init(int *argc, char ***argv)
                                           GASPI_MEM_INITIALIZED));
 
     DART_CHECK_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &dart_gaspi_buffer_ptr));
+
+    /*
+     * local transfer segment for non-blocking rma-operations
+     */
+    DART_CHECK_ERROR(gaspi_segment_alloc(dart_transferpool_seg, dart_transferpool_size, GASPI_MEM_INITIALIZED));
+    dart_transferpool = dart_buddy_new(DART_BUDDY_ORDER);
     /*
      * Create the segment id stack
      */
@@ -95,6 +111,8 @@ dart_ret_t dart_exit()
 
     DART_CHECK_ERROR(gaspi_segment_delete(dart_mempool_seg_localalloc));
 
+    DART_CHECK_ERROR(gaspi_segment_delete(dart_transferpool_seg));
+
     uint16_t index;
     int result = dart_adapt_teamlist_convert(DART_TEAM_ALL, &index);
     if (result == -1)
@@ -105,6 +123,8 @@ dart_ret_t dart_exit()
     dart_group_fini(&(dart_teams[index].group));
 
     dart_buddy_delete(dart_localpool);
+
+    dart_buddy_delete(dart_transferpool);
 
     dart_adapt_transtable_destroy();
 

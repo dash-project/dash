@@ -80,7 +80,7 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
                                                       nbytes,
                                                       gaspi_group,
                                                       GASPI_BLOCK,
-                                                      GASPI_MEM_UNINITIALIZED));
+                                                      GASPI_MEM_INITIALIZED));
 
     *((gaspi_segment_id_t *) dart_gaspi_buffer_ptr) = gaspi_seg_id;
     /**
