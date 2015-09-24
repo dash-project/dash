@@ -6,6 +6,11 @@
 #include "dart_communication_priv.h"
 #include <string.h>
 
+gaspi_queue_id_t dart_handle_get_queue(dart_handle_t handle)
+{
+    return handle->queue;
+}
+
 dart_ret_t dart_barrier (dart_team_t teamid)
 {
     gaspi_group_t gaspi_group_id;

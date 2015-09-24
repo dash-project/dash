@@ -14,4 +14,6 @@ struct dart_handle_struct
     size_t nbytes;
 };
 
+gaspi_queue_id_t dart_handle_get_queue(dart_handle_t handle);
+
 #endif /* DART_COMMUNICATION_PRIV_H */
