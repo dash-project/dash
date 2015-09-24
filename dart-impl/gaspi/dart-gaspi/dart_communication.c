@@ -136,6 +136,7 @@ dart_ret_t dart_get_handle(void *dest, dart_gptr_t gptr, size_t nbytes, dart_han
     dart_unit_t remote_rank = gptr.unitid;
 
     *handle = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
+    assert(*handle);
 
     (*handle)->local_offset = dart_buddy_alloc(dart_transferpool, nbytes);
     if((*handle)->local_offset == -1)
@@ -174,6 +175,64 @@ dart_ret_t dart_get_handle(void *dest, dart_gptr_t gptr, size_t nbytes, dart_han
     return retval;
 }
 
+dart_ret_t dart_put_handle(dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *handle)
+{
+    gaspi_return_t retval = GASPI_SUCCESS;
+    gaspi_queue_id_t queue;
+    gaspi_pointer_t local_seg_ptr = NULL;
+    gaspi_segment_id_t remote_seg;
+    uint64_t remote_offset = gptr.addr_or_offs.offset;
+    int16_t seg_id = gptr.segid;
+    uint16_t index  = gptr.flags;
+    dart_unit_t remote_rank = gptr.unitid;
+
+    *handle = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
+    assert(*handle);
+
+    (*handle)->local_offset = dart_buddy_alloc(dart_transferpool, nbytes);
+    if((*handle)->local_offset == -1)
+    {
+        fprintf(stderr, "Out of bound: the global memory is exhausted");
+        return DART_ERR_OTHER;
+    }
+
+    DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(dart_transferpool_seg, &local_seg_ptr));
+    local_seg_ptr = (void *) ((char *) local_seg_ptr + ((*handle)->local_offset));
+
+    memcpy(local_seg_ptr, src, nbytes);
+
+    // TODO function must ensure that the returned queue has the size for a later notify
+    // to signal the availability of the data for the target rank
+    DART_CHECK_ERROR_RET(retval, get_minimal_queue(&queue));
+
+    (*handle)->local_seg = dart_transferpool_seg;
+    // to indicate the put operation in wait or test
+    (*handle)->dest_buffer = NULL;
+    (*handle)->queue = queue;
+    (*handle)->nbytes = nbytes;
+
+    if(seg_id)
+    {
+        dart_unit_t rel_remote_rank;
+        unit_g2l(index, remote_rank, &rel_remote_rank);
+        dart_adapt_transtable_get_gaspi_seg_id(seg_id, rel_remote_rank, &remote_seg);
+    }
+    else
+    {
+        remote_seg = dart_mempool_seg_localalloc;
+    }
+
+    DART_CHECK_ERROR_RET(retval, gaspi_write(dart_transferpool_seg,
+                                             (*handle)->local_offset,
+                                             remote_rank,
+                                             remote_seg,
+                                             remote_offset,
+                                             nbytes,
+                                             queue,
+                                             GASPI_BLOCK));
+    return retval;
+}
+
 dart_ret_t dart_wait_local (dart_handle_t handle)
 {
     gaspi_return_t retval = GASPI_SUCCESS;
@@ -202,4 +261,41 @@ dart_ret_t dart_wait_local (dart_handle_t handle)
     }
 
     return retval;
+}
+
+dart_ret_t dart_test_local (dart_handle_t handle, int32_t* is_finished)
+{
+    gaspi_return_t retval = GASPI_SUCCESS;
+    if(handle == NULL)
+    {
+        DART_ERR_INVAL;
+    }
+
+    DART_CHECK_ERROR_RET(retval, gaspi_wait(handle->queue, GASPI_TEST));
+    if(retval == GASPI_SUCCESS)
+    {
+        /**
+        * Indicates a get operation otherwise a put operation
+        * TODO: may be better a enum to identify the kind of operation
+        */
+        if(handle->dest_buffer != NULL)
+        {
+            gaspi_pointer_t seg_ptr;
+            DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(handle->local_seg, &seg_ptr));
+            seg_ptr = (gaspi_pointer_t) ((char *) seg_ptr + handle->local_offset);
+            memcpy(handle->dest_buffer, seg_ptr, handle->nbytes);
+        }
+
+        if (dart_buddy_free(dart_transferpool, handle->local_offset) == -1)
+        {
+            fprintf(stderr, "Free invalid local invalid offset = %llu\n", handle->local_offset);
+            return DART_ERR_INVAL;
+        }
+
+        *is_finished = 1;
+        return retval;
+    }
+
+    *is_finished = 0;
+    return DART_OK;
 }
