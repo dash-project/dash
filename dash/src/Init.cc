@@ -20,6 +20,8 @@ void dash::finalize()
   DASH_LOG_DEBUG("dash::finalize()");
   dash::_initialized = false;
   dash::barrier();
+  // Deallocate global memory allocated by this team:
+  dash::Team::All().free();
   dart_exit();
   DASH_LOG_DEBUG("dash::finalize >");
 }
