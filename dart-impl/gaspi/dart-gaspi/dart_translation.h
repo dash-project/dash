@@ -9,11 +9,8 @@
 #include <stdio.h>
 #include <GASPI.h>
 #include "dart_types.h"
-//~ #include "dart_deb_log.h"
+#include "handle_queue.h"
 
-/* Global object for one-sided communication on memory region allocated with 'local allocation'. */
-//~ extern MPI_Win dart_win_local_alloc;
-//~ extern MPI_Win dart_sharedmem_win_local_alloc;
 /** @brief Definition of translation table.
  *
  *  This global translation table is created for dart collective memory allocation.
@@ -35,6 +32,11 @@ typedef struct
     /* the gaspi segment id set of the memory location of all the units in certain team. */
     gaspi_segment_id_t * gaspi_seg_ids;
     gaspi_segment_id_t own_gaspi_seg_id;
+    /*
+     * TODO use a red-black tree instead of an array -> fast access and low memory consumption
+     */
+    queue_t * requests_per_unit;
+    size_t unit_count;
 }info_t;
 
 struct node

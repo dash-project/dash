@@ -1,6 +1,6 @@
 include ../make.defs
 
-CFLAGS+=-I.. -I../$(DART_IF)
+CFLAGS+=-I.. -I../$(DART_IF) -g3
 
 #CFLAGS+=-DDART_DEBUG
 
@@ -15,7 +15,8 @@ FILES = gaspi_utils     \
 	dart_seg_stack      \
 	dart_translation    \
 	dart_globmem        \
-	dart_mem
+	dart_mem			\
+	handle_queue
 
 OBJS = $(addsuffix .o, $(FILES))
 

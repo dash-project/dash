@@ -130,6 +130,15 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
     item.size = nbytes;
     item.gaspi_seg_ids = gaspi_seg_ids;
     item.own_gaspi_seg_id = gaspi_seg_id;
+    item.unit_count = teamsize;
+    // relative unit
+    item.requests_per_unit = (queue_t *) malloc(sizeof(queue_t) * teamsize);
+    assert(item.requests_per_unit);
+    for(int i = 0 ; i < item.unit_count ; ++i)
+    {
+        init_handle_queue( &(item.requests_per_unit[i]) );
+    }
+
     /* Add this newly generated correspondence relationship record into the translation table. */
     dart_adapt_transtable_add (item);
     dart_memid++;

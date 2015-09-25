@@ -3,7 +3,6 @@
  *  @brief Implementation for the operations on translation table.
  */
 #include "dart_translation.h"
-//~ #include "dart_mem.h"
 
 /* Global array: the header for the global translation table. */
 node_t dart_transtable_globalalloc;
@@ -26,6 +25,8 @@ int dart_adapt_transtable_add (info_t item)
     p->trans.size = item.size;
     p->trans.gaspi_seg_ids = item.gaspi_seg_ids;
     p->trans.own_gaspi_seg_id = item.own_gaspi_seg_id;
+    p->trans.unit_count = item.unit_count;
+    p->trans.requests_per_unit = item.requests_per_unit;
     p->next = NULL;
 
     /* The translation table is empty. */
@@ -71,6 +72,12 @@ int dart_adapt_transtable_remove (int16_t seg_id)
         pre -> next = p -> next;
     }
 
+    for(int i = 0 ; i < p->trans.unit_count ; ++i)
+    {
+        destroy_handle_queue( &(p->trans.requests_per_unit[i]) );
+    }
+
+    free(p->trans.requests_per_unit);
     free(p->trans.gaspi_seg_ids);
     free(p);
     return 0;
