@@ -152,7 +152,7 @@ public:
    */
   template<typename MEMTYPE>
   GlobRef<MEMTYPE> member(size_t offs) {
-    dart_gptr_t dartptr = m_gptr.dartptr();    
+    dart_gptr_t dartptr = m_gptr.dart_gptr();    
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&dartptr, offs),
       DART_OK);

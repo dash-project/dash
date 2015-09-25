@@ -23,6 +23,16 @@ dart_ret_t dart_put(
   return dart_put_blocking(ptr, src, nbytes);
 }
 
+dart_ret_t dart_accumulate_int(
+  dart_gptr_t dest,
+  int *values,
+  size_t nvalues,
+  dart_operation_t op,
+  dart_team_t team) {
+  // TODO
+  return DART_OK;
+}
+
 dart_ret_t dart_get_handle(
   void *dest,
   dart_gptr_t ptr, 

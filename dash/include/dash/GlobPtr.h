@@ -78,7 +78,7 @@ public:
   /**
    * The pointer's underlying global address.
    */
-  dart_gptr_t dartptr() const {
+  dart_gptr_t dart_gptr() const {
     return m_dartptr;
   }
   

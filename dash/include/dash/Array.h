@@ -104,14 +104,14 @@ template<
   typename T,
   typename IndexType,
   class PatternType>
-class LocalArrayRef {
+class LocalArrayProxy {
 private:
-  typedef LocalArrayRef<T, IndexType, PatternType>
+  typedef LocalArrayProxy<T, IndexType, PatternType>
     self_t;
 
 public:
   template <typename T_, typename I_, typename P_>
-    friend class LocalArrayRef;
+    friend class LocalArrayProxy;
 
 public: 
   typedef T                                                  value_type;
@@ -134,7 +134,7 @@ public:
   /**
    * Constructor, creates a local access proxy for the given array.
    */
-  LocalArrayRef(
+  LocalArrayProxy(
     Array<T, IndexType, PatternType> * const array)
   : _array(array) {
   }
@@ -190,14 +190,14 @@ template<
   typename T,
   typename IndexType,
   class PatternType>
-class AsyncArrayRef {
+class AsyncArrayProxy {
 private:
-  typedef AsyncArrayRef<T, IndexType, PatternType>
+  typedef AsyncArrayProxy<T, IndexType, PatternType>
     self_t;
 
 public:
   template <typename T_, typename I_, typename P_>
-    friend class AsyncArrayRef;
+    friend class AsyncArrayProxy;
 
 public: 
   typedef T                                                  value_type;
@@ -220,7 +220,7 @@ public:
   /**
    * Constructor, creates a local access proxy for the given array.
    */
-  AsyncArrayRef(
+  AsyncArrayProxy(
     Array<T, IndexType, PatternType> * const array)
   : _array(array) {
   }
@@ -273,27 +273,47 @@ public:
    * on all units.
    */
   void flush() {
-    DASH_LOG_TRACE("AsyncArrayRef.flush()");
+    DASH_LOG_TRACE("AsyncArrayProxy.flush()");
     // could also call _array->flush();
     _array->m_globmem->flush();
   }
 
   void flush_local() {
-    DASH_LOG_TRACE("AsyncArrayRef.flush_local()");
+    DASH_LOG_TRACE("AsyncArrayProxy.flush_local()");
     // could also call _array->flush_local();
     _array->m_globmem->flush_local();
   }
 
   void flush_all() {
-    DASH_LOG_TRACE("AsyncArrayRef.flush()");
+    DASH_LOG_TRACE("AsyncArrayProxy.flush()");
     // could also call _array->flush();
     _array->m_globmem->flush_all();
   }
 
   void flush_local_all() {
-    DASH_LOG_TRACE("AsyncArrayRef.flush_local_all()");
+    DASH_LOG_TRACE("AsyncArrayProxy.flush_local_all()");
     // could also call _array->flush_local_all();
     _array->m_globmem->flush_local_all();
+  }
+
+  /**
+   * Block until all locally invoked operations on global memory have been
+   * communicated.
+   *
+   * \see DashAsyncProxyConcept
+   */
+  void push() {
+    flush_local_all();
+  }
+
+  /**
+   * Block until all remote operations on this unit's local memory have been
+   * completed.
+   *
+   * \see DashAsyncProxyConcept
+   */
+  void fetch() {
+    flush_all();
   }
 };
 
@@ -342,21 +362,21 @@ public:
     typename T_,
     typename I_,
     class P_>
-  friend class LocalArrayRef;
+  friend class LocalArrayProxy;
   template<
     typename T_,
     typename I_,
     class P_>
-  friend class AsyncArrayRef;
+  friend class AsyncArrayProxy;
 
 /// Public types as required by dash container concept
 public:
   /// The type of the pattern used to distribute array elements to units
   typedef PatternType
     pattern_type;
-  typedef LocalArrayRef<value_type, IndexType, PatternType>
+  typedef LocalArrayProxy<value_type, IndexType, PatternType>
     local_type;
-  typedef AsyncArrayRef<value_type, IndexType, PatternType>
+  typedef AsyncArrayProxy<value_type, IndexType, PatternType>
     async_type;
 
 private:
@@ -681,13 +701,6 @@ public:
   void barrier() const {
     m_globmem->flush();
     m_team->barrier();
-  }
-  
-  /**
-   * Apply all RMA operations by any unit on local memory.
-   */
-  void flush_local() const {
-    m_globmem->flush_local_all();
   }
 
   /**

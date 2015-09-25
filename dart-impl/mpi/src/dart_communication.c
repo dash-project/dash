@@ -149,6 +149,16 @@ dart_ret_t dart_put(
   return DART_OK;
 }
 
+dart_ret_t dart_accumulate_int(
+  dart_gptr_t dest,
+  int *values,
+  size_t nvalues,
+  dart_operation_t op,
+  dart_team_t team) {
+  // TODO
+  return DART_OK;
+}
+
 /* -- Non-blocking dart one-sided operations -- */
 
 dart_ret_t dart_get_handle(
@@ -875,7 +885,7 @@ dart_ret_t dart_allgather(
            comm);
 }
 
-dart_ret_t dart_reduce(
+dart_ret_t dart_reduce_double(
   double *sendbuf,
   double *recvbuf,
   dart_team_t teamid)

@@ -68,6 +68,16 @@ dart_ret_t dart_allgather(
   size_t nbytes, 
 	dart_team_t team);
 
+/**
+ * DART Equivalent to MPI reduce.
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_reduce_double(
+  double *sendbuf,
+  double *recvbuf,
+  dart_team_t team);
+
 typedef struct dart_handle_struct *dart_handle_t;
 
 /**
@@ -96,6 +106,18 @@ dart_ret_t dart_put(
   size_t nbytes);
 
 /**
+ * DART Equivalent to MPI accumulate for values of type \c int.
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_accumulate_int(
+  dart_gptr_t dest,
+  int *values,
+  size_t nvalues,
+  dart_operation_t op,
+  dart_team_t team);
+
+/**
  * 'HANDLE' variant of dart_get.
  * Neither local nor remote completion is guaranteed. A later
  * dart_wait*() call or a fence/flush operation is needed to guarantee
@@ -107,6 +129,8 @@ dart_ret_t dart_get_handle(
   void *dest,
   dart_gptr_t ptr, 
   size_t nbytes,
+  /// [OUT] Pointer to DART handle to instantiate for later use with
+  ///       \c dart_wait, \c dart_wait_all etc.
   dart_handle_t *handle);
 /**
  * 'HANDLE' variant of dart_put.
@@ -120,6 +144,8 @@ dart_ret_t dart_put_handle(
   dart_gptr_t ptr,
   void *src, 
   size_t nbytes,
+  /// [OUT] Pointer to DART handle to instantiate for later use with
+  ///       \c dart_wait, \c dart_wait_all etc.
   dart_handle_t *handle);
 
 /**
@@ -232,7 +258,8 @@ dart_ret_t dart_testall_local(
   dart_handle_t *handle, 
   size_t n,
   int32_t *result);
-  
+
+
 #define DART_INTERFACE_OFF
 
 #ifdef __cplusplus

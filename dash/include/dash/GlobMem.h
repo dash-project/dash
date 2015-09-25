@@ -36,7 +36,7 @@ void fence(
   const GlobPtr<T> & gptr
 ) {
   DASH_ASSERT_RETURNS(
-    dart_fence(gptr.dartptr()),
+    dart_fence(gptr.dart_gptr()),
     DART_OK);
 }
 
@@ -48,7 +48,7 @@ void fence_local(
   const GlobPtr<T> & gptr
 ) {
   DASH_ASSERT_RETURNS(
-    dart_fence_local(gptr.dartptr()),
+    dart_fence_local(gptr.dart_gptr()),
     DART_OK);
 }
 
@@ -66,7 +66,7 @@ void put_value_nonblock(
   const GlobPtr<T> & gptr
 ) {
   DASH_ASSERT_RETURNS(
-    dart_put(gptr.dartptr(),
+    dart_put(gptr.dart_gptr(),
              (void *)(&newval),
              sizeof(T)),
     DART_OK);
@@ -88,7 +88,7 @@ void get_value_nonblock(
 ) {
   DASH_ASSERT_RETURNS(
     dart_get(ptr,
-             gptr.dartptr(),
+             gptr.dart_gptr(),
              sizeof(T)),
     DART_OK);
 }
@@ -106,7 +106,7 @@ void put_value(
   const GlobPtr<T> & gptr
 ) {
   DASH_ASSERT_RETURNS(
-    dart_put_blocking(gptr.dartptr(),
+    dart_put_blocking(gptr.dart_gptr(),
                       (void *)(&newval),
                       sizeof(T)),
     DART_OK);
@@ -127,7 +127,7 @@ void get_value(
 ) {
   DASH_ASSERT_RETURNS(
     dart_get_blocking(ptr,
-                      gptr.dartptr(),
+                      gptr.dart_gptr(),
                       sizeof(T)),
     DART_OK);
 }
@@ -237,7 +237,7 @@ public:
   const ElementType * lbegin(dart_unit_t unit_id) const {
     void *addr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", unit_id);
-    dart_gptr_t gptr = begin().dartptr();
+    dart_gptr_t gptr = begin().dart_gptr();
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
@@ -255,7 +255,7 @@ public:
   ElementType * lbegin(dart_unit_t unit_id) {
     void *addr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin()", unit_id);
-    dart_gptr_t gptr = begin().dartptr();
+    dart_gptr_t gptr = begin().dart_gptr();
     DASH_LOG_TRACE_VAR("GlobMem.lbegin", 
                        GlobPtr<ElementType>((dart_gptr_t)gptr));
     DASH_ASSERT_RETURNS(
@@ -290,7 +290,7 @@ public:
    */
   const ElementType * lend(dart_unit_t unit_id) const {
     void *addr;
-    dart_gptr_t gptr = begin().dartptr();
+    dart_gptr_t gptr = begin().dart_gptr();
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
@@ -309,7 +309,7 @@ public:
    */
   ElementType * lend(dart_unit_t unit_id) {
     void *addr;
-    dart_gptr_t gptr = begin().dartptr();
+    dart_gptr_t gptr = begin().dart_gptr();
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
