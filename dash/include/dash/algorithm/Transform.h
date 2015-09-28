@@ -36,6 +36,33 @@ inline dart_ret_t accumulate_blocking_impl<int>(
   return result;
 }
 
+/**
+ * Generic interface of the non-blocking DART accumulate operation.
+ */
+template< typename ValueType >
+dart_ret_t accumulate_impl(
+  dart_gptr_t        dest,
+  ValueType        * values,
+  size_t             nvalues,
+  dart_operation_t   op,
+  dart_team_t        team);
+
+/**
+ * Specialization of the non-blocking DART accumulate operation for value type
+ * \c int.
+ */
+template<>
+inline dart_ret_t accumulate_impl<int>(
+  dart_gptr_t        dest,
+  int              * values,
+  size_t             nvalues,
+  dart_operation_t   op,
+  dart_team_t        team) {
+  dart_ret_t result = dart_accumulate_int(dest, values, nvalues, op, team);
+  dart_flush_local(dest);
+  return result;
+}
+
 } // namespace internal
 
 /**
@@ -94,41 +121,53 @@ GlobOutputIt transform(
  * \code
  *   gptr_diff_t num_transformed_elements =
  *                 dash::distance(
- *                   dash::transform(in.begin(), in.end(),
- *                                   out.begin(),
- *                                   dash::plus<int>()),
+ *                   dash::transform(in.begin(), in.end(),  // A
+ *                                   out.begin(),           // B
+ *                                   out.begin(),           // C = op(A, B)
+ *                                   dash::plus<int>()),    // op
  *                   out.end());
  *
  * \endcode
  *
  * \returns  Output iterator to the element past the last element transformed.
  * \see      dash::accumulate
+ * \see      DashReduceOperations
+ *
+ * \tparam   InputIt         Iterator on first (typically local) input range
+ * \tparam   GlobInputIt     Iterator on second (typically global) input range
+ * \tparam   GlobOutputIt    Iterator on global result range
+ * \tparam   BinaryOperation Reduce operation type
  *
  * \ingroup  DashAlgorithms
  */
 template<
   typename ValueType,
+  class InputIt,
   class GlobInputIt,
   class GlobOutputIt,
   class BinaryOperation >
 GlobOutputIt transform(
-  GlobInputIt     in_a_first,
-  GlobInputIt     in_a_last,
+  InputIt         in_a_first,
+  InputIt         in_a_last,
   GlobInputIt     in_b_first,
   GlobOutputIt    out_first,
   BinaryOperation binary_op     = dash::plus<ValueType>()) {
-  // Resolve team from input iterator:
-  dash::Team & team             = in_a_first.team().dart_team();
+  // Outut range different from rhs input range is not supported yet
+  DASH_ASSERT(in_b_first == out_first);
+  // Resolve team from global iterator:
+  dash::Team & team             = out_first.pattern().team();
   // Resolve local range from global range:
-  LocalRange<ValueType> l_range = local_range(in_a_first, in_a_last);
+//LocalRange<ValueType> l_range = local_range(in_a_first, in_a_last);
   // Number of elements in local range:
-  size_t num_local_elements     = std::distance(l_range.begin, l_range.end);
+//size_t num_local_elements     = std::distance(l_range.begin, l_range.end);
+  size_t num_local_elements     = std::distance(in_a_first, in_a_last);
   // Global iterator to dart_gptr_t:
-  dart_gptr_t dest_gptr         = (GlobPtr<ValueType>)(out_first).dart_gptr();
+  dart_gptr_t dest_gptr         = ((GlobPtr<ValueType>) out_first).dart_gptr();
   // Send accumulate message:
   dash::internal::accumulate_blocking_impl(
       dest_gptr,
-      l_range.begin,
+//    l_range.begin,
+      in_a_first,
       num_local_elements,
       binary_op.dart_operation(),
       team.dart_id());
@@ -152,14 +191,20 @@ GlobOutputIt transform(
 
 /**
  * Specialization of \c dash::transform as non-blocking operation.
+ *
+ * \tparam   InputIt         Iterator on first (typically local) input range
+ * \tparam   GlobInputIt     Iterator on second (typically global) input range
+ * \tparam   GlobOutputIt    Iterator on global result range
+ * \tparam   BinaryOperation Reduce operation type
  */
 template<
   typename ValueType,
+  class InputIt,
   class GlobInputIt,
   class BinaryOperation >
 GlobAsyncRef<ValueType> transform(
-  GlobInputIt             in_a_first,
-  GlobInputIt             in_a_last,
+  InputIt                 in_a_first,
+  InputIt                 in_a_last,
   GlobInputIt             in_b_first,
   GlobAsyncRef<ValueType> out_first,
   BinaryOperation         binary_op   = dash::plus<ValueType>()) {

@@ -4,8 +4,21 @@
 #include <dash/dart/if/dart_types.h>
 #include <functional>
 
+/**
+ * \defgroup DashReduceOperations
+ * 
+ * Distributed reduce operations.
+ *
+ */
+
 namespace dash {
 
+/**
+ * Base type of all reduce operations, primarily acts as a container of a
+ * \c dart_operation_t.
+ *
+ * \ingroup  DashReduceOperations
+ */
 template< typename ValueType >
 class ReduceOperation {
 
@@ -26,6 +39,11 @@ private:
 
 };
 
+/**
+ * Reduce operands to their sum.
+ *
+ * \ingroup  DashReduceOperations
+ */
 template< typename ValueType >
 struct plus : public ReduceOperation<ValueType> {
 
