@@ -11,6 +11,7 @@
 #include <inttypes.h>
 
 #include <GASPI.h>
+#include "handle_queue.h"
 
 #define DART_MAX_TEAM_NUMBER (256)
 #define DART_MAX_LENGTH (1024*1024*16)

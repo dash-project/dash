@@ -6,11 +6,12 @@
 #include "dart_communication_priv.h"
 #include <string.h>
 
+/********************** Only for testing *********************/
 gaspi_queue_id_t dart_handle_get_queue(dart_handle_t handle)
 {
     return handle->queue;
 }
-
+/*************************************************************/
 /**
  * TODO dart_bcast not implemented yet
  */
@@ -168,8 +169,62 @@ dart_ret_t dart_get(void *dest, dart_gptr_t gptr, size_t nbytes)
  */
 dart_ret_t dart_put(dart_gptr_t gptr, void *src, size_t nbytes)
 {
-    return DART_ERR_OTHER;
+    gaspi_return_t retval = GASPI_SUCCESS;
+    gaspi_queue_id_t queue;
+    gaspi_pointer_t local_seg_ptr = NULL;
+    gaspi_segment_id_t remote_seg;
+    uint64_t remote_offset = gptr.addr_or_offs.offset;
+    int16_t seg_id = gptr.segid;
+    uint16_t index  = gptr.flags;
+    dart_unit_t remote_rank = gptr.unitid;
+    struct dart_handle_struct handle;
+
+    handle.local_offset = dart_buddy_alloc(dart_transferpool, nbytes);
+    if(handle.local_offset == -1)
+    {
+        fprintf(stderr, "Out of bound: the global memory is exhausted");
+        return DART_ERR_OTHER;
+    }
+
+    DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(dart_transferpool_seg, &local_seg_ptr));
+    local_seg_ptr = (void *) ((char *) local_seg_ptr + handle.local_offset);
+
+    memcpy(local_seg_ptr, src, nbytes);
+
+    // TODO function must ensure that the returned queue has the size for a later notify
+    // to signal the availability of the data for the target rank
+    DART_CHECK_ERROR_RET(retval, dart_get_minimal_queue(&queue));
+
+    handle.local_seg = dart_transferpool_seg;
+    // to indicate the put operation in wait or test
+    handle.dest_buffer = NULL;
+    handle.queue = queue;
+    handle.nbytes = nbytes;
+
+    if(seg_id)
+    {
+        dart_unit_t rel_remote_rank;
+        unit_g2l(index, remote_rank, &rel_remote_rank);
+        dart_adapt_transtable_get_gaspi_seg_id(seg_id, rel_remote_rank, &remote_seg);
+        dart_adapt_transtable_add_handle(seg_id, rel_remote_rank, &handle);
+    }
+    else
+    {
+        remote_seg = dart_mempool_seg_localalloc;
+        DART_CHECK_ERROR_RET(retval, enqueue_handle(&(dart_non_collective_rma_request[remote_rank]), &handle));
+    }
+
+    DART_CHECK_ERROR_RET(retval, gaspi_write(dart_transferpool_seg,
+                                             handle.local_offset,
+                                             remote_rank,
+                                             remote_seg,
+                                             remote_offset,
+                                             nbytes,
+                                             queue,
+                                             GASPI_BLOCK));
+    return retval;
 }
+
 /*
  * access local elements ??
  * TODO use dart_transferpool
