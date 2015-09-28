@@ -25,6 +25,9 @@ struct dart_buddy* dart_localpool;
 /**
  * transfer buffer for non-blocking rma-operations
  */
+// for non-blocking rma operations
+// TODO is better to use a red black tree or a heap
+queue_t * dart_non_collective_rma_request;
 const gaspi_segment_id_t dart_transferpool_seg = 2;
 const gaspi_size_t dart_transferpool_size = 1 << DART_BUDDY_ORDER;
 struct dart_buddy* dart_transferpool;
@@ -75,6 +78,13 @@ dart_ret_t dart_init(int *argc, char ***argv)
     gaspi_pointer_t seg_ptr;
     DART_CHECK_ERROR(gaspi_segment_ptr(dart_mempool_seg_localalloc, &seg_ptr));
     dart_mempool_localalloc = (char *) seg_ptr;
+
+    dart_non_collective_rma_request = (queue_t *) malloc(sizeof(queue_t) * dart_gaspi_rank_num);
+    assert(dart_non_collective_rma_request);
+    for(int i = 0 ; i < dart_gaspi_rank_num ; ++i)
+    {
+        DART_CHECK_ERROR(init_handle_queue( &(dart_non_collective_rma_request[i])));
+    }
     /*
      * global auxiliary memory segement per process
      */
@@ -110,6 +120,13 @@ dart_ret_t dart_exit()
     DART_CHECK_ERROR(gaspi_segment_delete(dart_gaspi_buffer_id));
 
     DART_CHECK_ERROR(gaspi_segment_delete(dart_mempool_seg_localalloc));
+
+    // destroy queues
+    for(int i = 0 ; i < dart_gaspi_rank_num ; ++i)
+    {
+        DART_CHECK_ERROR(destroy_handle_queue( &(dart_non_collective_rma_request[i])));
+    }
+    free(dart_non_collective_rma_request);
 
     DART_CHECK_ERROR(gaspi_segment_delete(dart_transferpool_seg));
 

@@ -20,6 +20,7 @@ struct dart_buddy {
     uint8_t tree[1];
 };
 
+extern queue_t * dart_non_collective_rma_request;
 extern char* dart_mempool_localalloc;
 extern struct dart_buddy* dart_localpool;
 

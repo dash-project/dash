@@ -20,7 +20,7 @@ typedef struct queue{
 
 dart_ret_t init_handle_queue(queue_t * q);
 dart_ret_t destroy_handle_queue(queue_t * q);
-dart_ret_t enqueue_handle(queue_t * q, struct dart_handle_struct handle);
+dart_ret_t enqueue_handle(queue_t * q, struct dart_handle_struct * handle);
 dart_ret_t dequeue_handle(queue_t * q);
 dart_ret_t front_handle(queue_t * q, struct dart_handle_struct * handle);
 

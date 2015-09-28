@@ -30,7 +30,7 @@ dart_ret_t destroy_handle_queue(queue_t * q)
     return ret;
 }
 
-dart_ret_t enqueue_handle(queue_t * q, struct dart_handle_struct handle)
+dart_ret_t enqueue_handle(queue_t * q, struct dart_handle_struct * handle)
 {
     struct queue_node * node = (struct queue_node *) malloc(sizeof(struct queue_node));
     assert(node);
@@ -38,11 +38,11 @@ dart_ret_t enqueue_handle(queue_t * q, struct dart_handle_struct handle)
     struct dart_handle_struct * tmp_handle = (struct dart_handle_struct *) malloc(sizeof(struct dart_handle_struct));
     assert(tmp_handle);
 
-    tmp_handle->local_seg = handle.local_seg;
-    tmp_handle->local_offset = handle.local_offset;
-    tmp_handle->dest_buffer = handle.dest_buffer;
-    tmp_handle->nbytes = handle.nbytes;
-    tmp_handle->queue = handle.queue;
+    tmp_handle->local_seg = handle->local_seg;
+    tmp_handle->local_offset = handle->local_offset;
+    tmp_handle->dest_buffer = handle->dest_buffer;
+    tmp_handle->nbytes = handle->nbytes;
+    tmp_handle->queue = handle->queue;
 
 
     node->handle = tmp_handle;

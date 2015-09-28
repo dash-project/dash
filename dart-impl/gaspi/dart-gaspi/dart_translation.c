@@ -123,6 +123,46 @@ int dart_adapt_transtable_get_gaspi_seg_id(int16_t seg_id, dart_unit_t rel_uniti
     return 0;
 }
 
+int dart_adapt_transtable_add_handle(int16_t seg_id, dart_unit_t rel_unit, struct dart_handle_struct * handle)
+{
+    node_t p;
+    p = dart_transtable_globalalloc;
+
+    while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+    {
+        p = p -> next;
+    }
+
+    if ((!p) || (seg_id != (p -> trans).seg_id))
+    {
+        fprintf(stderr,"Invalid seg_id: %d, can not get the related displacement", seg_id);
+        return -1;
+    }
+
+    enqueue_handle( &(p->trans.requests_per_unit[rel_unit]), handle);
+    return 0;
+}
+
+int dart_adapt_transtable_get_handle_queue(int16_t seg_id, dart_unit_t rel_unit, queue_t ** queue)
+{
+    node_t p;
+    p = dart_transtable_globalalloc;
+
+    while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+    {
+        p = p -> next;
+    }
+
+    if ((!p) || (seg_id != (p -> trans).seg_id))
+    {
+        fprintf(stderr,"Invalid seg_id: %d, can not get the related displacement", seg_id);
+        return -1;
+    }
+
+    *queue = &(p->trans.requests_per_unit[rel_unit]);
+    return 0;
+}
+
 int dart_adapt_transtable_get_size (int16_t seg_id, size_t *size)
 {
     node_t p;
@@ -151,6 +191,7 @@ int dart_adapt_transtable_destroy ()
     {
         pre = p;
         p = p -> next;
+
         free(pre->trans.gaspi_seg_ids);
         free(pre);
     }

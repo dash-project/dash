@@ -78,6 +78,10 @@ int dart_adapt_transtable_get_local_gaspi_seg_id(int16_t seg_id, gaspi_segment_i
 
 int dart_adapt_transtable_get_gaspi_seg_id (int16_t seg_id, dart_unit_t rel_unit, gaspi_segment_id_t * segid);
 
+int dart_adapt_transtable_add_handle(int16_t seg_id, dart_unit_t rel_unit, struct dart_handle_struct * handle);
+
+int dart_adapt_transtable_get_handle_queue(int16_t seg_id, dart_unit_t rel_unit, queue_t ** queue);
+
 /** @brief Query the length of the global memory block indicated by the specified seg_id.
  *
  *  @retval ditto
