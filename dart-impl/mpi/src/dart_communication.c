@@ -101,11 +101,12 @@ dart_ret_t dart_put(
   void *src,
   size_t nbytes)
 {
-  MPI_Aint disp_s, disp_rel;
+  MPI_Aint    disp_s,
+              disp_rel;
+  MPI_Win     win;
   dart_unit_t target_unitid_abs;
   uint64_t offset   = gptr.addr_or_offs.offset;
   int16_t  seg_id   = gptr.segid;
-  MPI_Win  win;
   target_unitid_abs = gptr.unitid;
   if (seg_id) {
     uint16_t index = gptr.flags;
@@ -149,13 +150,68 @@ dart_ret_t dart_put(
   return DART_OK;
 }
 
+/*
+ * TODO: Define and use macro DART__DEFINE__ACCUMULATE(int)
+ */
 dart_ret_t dart_accumulate_int(
-  dart_gptr_t dest,
+  dart_gptr_t gptr,
   int *values,
-  size_t nvalues,
+  size_t nelem,
   dart_operation_t op,
-  dart_team_t team) {
-  // TODO
+  dart_team_t team)
+{
+  MPI_Aint    disp_s,
+              disp_rel;
+  MPI_Win     win;
+  dart_unit_t target_unitid_abs;
+  uint64_t offset   = gptr.addr_or_offs.offset;
+  int16_t  seg_id   = gptr.segid;
+  target_unitid_abs = gptr.unitid;
+  if (seg_id) {
+    dart_unit_t target_unitid_rel;
+    uint16_t index = gptr.flags;
+    win            = dart_win_lists[index];    
+    unit_g2l(index,
+             target_unitid_abs,
+             &target_unitid_rel);
+    if (dart_adapt_transtable_get_disp(
+          seg_id,
+          target_unitid_rel,
+          &disp_s) == -1) {
+      return DART_ERR_INVAL;
+    }
+    disp_rel = disp_s + offset;
+    MPI_Accumulate(
+      values,            // Origin address
+      nelem,             // Number of entries in buffer
+      MPI_INT,           // Data type of each buffer entry
+      target_unitid_rel, // Rank of target
+      disp_rel,          // Displacement from start of window to beginning of
+                         // target buffer
+      nelem,             // Number of entries in target buffer
+      MPI_INT,           // Data type of each entry in target buffer
+      dart_mpi_op(op),   // Reduce operation
+      win);
+    DEBUG ("ACC  -%d bytes (allocated with collective allocation) "
+           "to %d at offset %d",
+           nbytes, target_unitid_abs, offset);
+  } else {
+    win = dart_win_local_alloc;
+    MPI_Accumulate(
+      values,            // Origin address
+      nelem,             // Number of entries in buffer
+      MPI_INT,           // Data type of each buffer entry
+      target_unitid_abs, // Rank of target
+      offset,            // Displacement from start of window to beginning of
+                         // target buffer
+      nelem,             // Number of entries in target buffer
+      MPI_INT,           // Data type of each entry in target buffer
+      dart_mpi_op(op),   // Reduce operation
+      win);
+    DEBUG ("ACC  - %d bytes (allocated with local allocation) "
+           "to %d at offset %d", 
+           nbytes, target_unitid_abs, offset);
+  }
   return DART_OK;
 }
 

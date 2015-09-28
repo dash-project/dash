@@ -2,7 +2,7 @@
 #define DASH__ALGORITHM_H_
 
 /**
- * \defgroup  Algorithms  Algorithms operating on DASH containers.
+ * \defgroup  DashAlgorithms  Algorithms operating on DASH containers.
  */
 
 #include <dash/algorithm/Operation.h>

@@ -18,7 +18,7 @@ namespace dash {
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
  *
- * \ingroup     Algorithms
+ * \ingroup     DashAlgorithms
  */
 template<
   typename ElementType,
@@ -61,7 +61,7 @@ void for_each(
  * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
  *              pattern and \c nl local elements within the global range
  *
- * \ingroup     Algorithms
+ * \ingroup     DashAlgorithms
  */
 template<
   typename ElementType,

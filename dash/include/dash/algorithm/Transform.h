@@ -10,7 +10,7 @@ namespace dash {
 namespace internal {
 
 /**
- * Generic interface of the DART accumulate operation.
+ * Generic interface of the blocking DART accumulate operation.
  */
 template< typename ValueType >
 dart_ret_t accumulate_blocking_impl(
@@ -21,7 +21,8 @@ dart_ret_t accumulate_blocking_impl(
   dart_team_t        team);
 
 /**
- * Specialization of DART accumulate operation for value type \c int.
+ * Specialization of the blocking DART accumulate operation for value type
+ * \c int.
  */
 template<>
 inline dart_ret_t accumulate_blocking_impl<int>(
@@ -30,7 +31,9 @@ inline dart_ret_t accumulate_blocking_impl<int>(
   size_t             nvalues,
   dart_operation_t   op,
   dart_team_t        team) {
-  return dart_accumulate_int(dest, values, nvalues, op, team);
+  dart_ret_t result = dart_accumulate_int(dest, values, nvalues, op, team);
+  dart_flush(dest);
+  return result;
 }
 
 } // namespace internal
@@ -51,6 +54,8 @@ inline dart_ret_t accumulate_blocking_impl<int>(
  *   unary_op(in_first[0]), unary_op(in_first[1]), ..., unary_op(in_first[n])
  *
  * \returns  Output iterator to the element past the last element transformed.
+ *
+ * \ingroup  DashAlgorithms
  */
 template<
   typename ValueType,
@@ -87,7 +92,7 @@ GlobOutputIt transform(
  *
  * Example:
  * \code
- *   gptr_diff_t num_transformed_values =
+ *   gptr_diff_t num_transformed_elements =
  *                 dash::distance(
  *                   dash::transform(in.begin(), in.end(),
  *                                   out.begin(),
@@ -98,6 +103,8 @@ GlobOutputIt transform(
  *
  * \returns  Output iterator to the element past the last element transformed.
  * \see      dash::accumulate
+ *
+ * \ingroup  DashAlgorithms
  */
 template<
   typename ValueType,
@@ -141,6 +148,21 @@ GlobOutputIt transform(
   // position past the last element transformed from the iterator's pattern
   // (see dash::PatternIterator).
   return out_first + num_local_elements;
+}
+
+/**
+ * Specialization of \c dash::transform as non-blocking operation.
+ */
+template<
+  typename ValueType,
+  class GlobInputIt,
+  class BinaryOperation >
+GlobAsyncRef<ValueType> transform(
+  GlobInputIt             in_a_first,
+  GlobInputIt             in_a_last,
+  GlobInputIt             in_b_first,
+  GlobAsyncRef<ValueType> out_first,
+  BinaryOperation         binary_op   = dash::plus<ValueType>()) {
 }
 
 } // namespace dash

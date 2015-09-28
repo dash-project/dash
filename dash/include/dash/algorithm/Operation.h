@@ -31,7 +31,7 @@ struct plus : public ReduceOperation<ValueType> {
 
 public:
   plus()
-  : ReduceOperation<ValueType>(DART_OP_ADD) {
+  : ReduceOperation<ValueType>(DART_OP_SUM) {
   }
 
   ValueType operator()(

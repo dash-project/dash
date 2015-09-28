@@ -40,7 +40,7 @@ struct LocalIndexRange {
  * \complexity  O(d), with \c d dimensions in the global iterators'
  *              pattern
  *
- * \ingroup     Algorithms
+ * \ingroup     DashAlgorithms
  */
 template<
   typename ElementType,
@@ -110,7 +110,7 @@ local_index_range(
  *                           implementation
  * \complexity  O(d), with \c d dimensions in the global iterators' pattern
  *
- * \ingroup     Algorithms
+ * \ingroup     DashAlgorithms
  */
 template<
   typename ElementType,

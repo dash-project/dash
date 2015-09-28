@@ -19,7 +19,9 @@ namespace dash {
  * 
  *     acc = init (+) in[0] (+) in[1] (+) ... (+) in[n]
  *
- * \see  dash::transform
+ * \see      dash::transform
+ *
+ * \ingroup  DashAlgorithms
  */
 template<
   class GlobInputIt,

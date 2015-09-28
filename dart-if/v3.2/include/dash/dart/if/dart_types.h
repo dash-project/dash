@@ -31,14 +31,8 @@ typedef enum
     DART_OP_UNDEFINED = 0,
     DART_OP_MIN,
     DART_OP_MAX,
-    /** Corresponds to MPI_SUM with rhs operand value >= 0 */
-    DART_OP_ADD,
-    /** Corresponds to MPI_SUM with rhs operand value < 0 */
-    DART_OP_SUB,
-    /** Corresponds to MPI_PROD with rhs operand value >= 0 */
-    DART_OP_MUL,
-    /** Corresponds to MPI_PROD with rhs operand value < 0 */
-    DART_OP_DIV,
+    DART_OP_SUM,
+    DART_OP_PROD,
     DART_OP_BAND,
     DART_OP_LAND,
     DART_OP_BOR,
