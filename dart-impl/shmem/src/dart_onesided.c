@@ -24,12 +24,52 @@ dart_ret_t dart_put(
 }
 
 dart_ret_t dart_accumulate_int(
-  dart_gptr_t dest,
+  dart_gptr_t ptr_dest,
   int *values,
   size_t nvalues,
   dart_operation_t op,
-  dart_team_t team) {
-  // TODO
+  dart_team_t team)
+{
+  int             * addr;
+  int               poolid;
+  dart_unit_t       myid;
+  dart_mempoolptr   pool;
+
+  poolid = ptr_dest.segid;
+  pool   = dart_memarea_get_mempool_by_id(poolid);
+  if(!pool) {
+    return DART_ERR_OTHER;
+  }
+
+  dart_myid(&myid);
+  
+  addr = ((int*)pool->localbase_addr) +
+         ((ptr_dest.unitid-myid) * (pool->localsz)) +
+         ptr_dest.addr_or_offs.offset;
+
+  // TODO: Interpret 'op' for requested operation, using addition
+  //       for now.
+  for (size_t i = 0; i < nvalues; i++) {
+    int * ptr_dest = addr + i;
+    int * ptr_src  = values + i;
+    int exp_value  = *(ptr_dest);
+    int new_value  = exp_value + *(ptr_src);
+    int old_value;
+    // Compare-and-Swap single elements.
+    for(;;) {
+      old_value = __sync_val_compare_and_swap(
+        ptr_dest,
+        exp_value,
+        new_value);
+      if (old_value == exp_value) {
+        // Assume success, disregarding ABA for now
+        break;
+      }
+      exp_value = old_value;
+      new_value = exp_value + *(ptr_src);
+    }
+  }
+
   return DART_OK;
 }
 

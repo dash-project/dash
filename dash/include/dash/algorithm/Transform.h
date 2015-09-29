@@ -230,7 +230,7 @@ GlobOutputIt transform(
       num_local_elements,
       binary_op.dart_operation(),
       team.dart_id());
-  return out_first + num_local_elements;
+  return out_first + global_offset + num_local_elements;
 }
 
 /**

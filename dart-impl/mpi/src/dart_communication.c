@@ -186,8 +186,8 @@ dart_ret_t dart_accumulate_int(
       nelem,             // Number of entries in buffer
       MPI_INT,           // Data type of each buffer entry
       target_unitid_rel, // Rank of target
-      disp_rel,          // Displacement from start of window to beginning of
-                         // target buffer
+      disp_rel,          // Displacement from start of window to beginning
+                         // of target buffer
       nelem,             // Number of entries in target buffer
       MPI_INT,           // Data type of each entry in target buffer
       dart_mpi_op(op),   // Reduce operation
@@ -202,8 +202,8 @@ dart_ret_t dart_accumulate_int(
       nelem,             // Number of entries in buffer
       MPI_INT,           // Data type of each buffer entry
       target_unitid_abs, // Rank of target
-      offset,            // Displacement from start of window to beginning of
-                         // target buffer
+      offset,            // Displacement from start of window to beginning
+                         // of target buffer
       nelem,             // Number of entries in target buffer
       MPI_INT,           // Data type of each entry in target buffer
       dart_mpi_op(op),   // Reduce operation
