@@ -157,16 +157,13 @@ GlobOutputIt transform(
   // Resolve team from global iterator:
   dash::Team & team             = out_first.pattern().team();
   // Resolve local range from global range:
-//LocalRange<ValueType> l_range = local_range(in_a_first, in_a_last);
   // Number of elements in local range:
-//size_t num_local_elements     = std::distance(l_range.begin, l_range.end);
   size_t num_local_elements     = std::distance(in_a_first, in_a_last);
   // Global iterator to dart_gptr_t:
   dart_gptr_t dest_gptr         = ((GlobPtr<ValueType>) out_first).dart_gptr();
   // Send accumulate message:
   dash::internal::accumulate_blocking_impl(
       dest_gptr,
-//    l_range.begin,
       in_a_first,
       num_local_elements,
       binary_op.dart_operation(),
@@ -186,6 +183,53 @@ GlobOutputIt transform(
   // For ranges over block borders, we would have to resolve the global
   // position past the last element transformed from the iterator's pattern
   // (see dash::PatternIterator).
+  return out_first + num_local_elements;
+}
+
+/**
+ * Specialization of \c dash::transform for global lhs input range.
+ */
+template<
+  typename ValueType,
+  class GlobInputIt,
+  class GlobOutputIt,
+  class BinaryOperation >
+GlobOutputIt transform(
+  GlobIter<ValueType> in_a_first,
+  GlobIter<ValueType> in_a_last,
+  GlobInputIt         in_b_first,
+  GlobOutputIt        out_first,
+  BinaryOperation     binary_op = dash::plus<ValueType>()) {
+  // Outut range different from rhs input range is not supported yet
+  DASH_ASSERT(in_b_first == out_first);
+  // Pattern from global iterator, assume identical pattern in all ranges:
+  auto pattern                  = out_first.pattern();
+  // Resolve team from global iterator:
+  dash::Team & team             = pattern.team();
+  // Resolve local range from global range:
+  auto l_index_range            = local_index_range(in_a_first, in_a_last);
+  DASH_LOG_TRACE_VAR("dash::transform", l_index_range.begin);
+  DASH_LOG_TRACE_VAR("dash::transform", l_index_range.end);
+  // Local range to global offset:
+  auto global_offset            = pattern.local_to_global_index(
+                                    l_index_range.begin);
+  DASH_LOG_TRACE_VAR("dash::transform", global_offset);
+  // Number of elements in local range:
+  size_t num_local_elements     = l_index_range.end - l_index_range.begin;
+  DASH_LOG_TRACE_VAR("dash::transform", num_local_elements);
+  // Global iterator to dart_gptr_t:
+  dart_gptr_t dest_gptr         = ((GlobPtr<ValueType>)
+                                   (out_first + global_offset)).dart_gptr();
+  // Native pointer to local sub-range:
+  ValueType * l_values          = ((GlobPtr<ValueType>)
+                                   (in_a_first + global_offset));
+  // Send accumulate message:
+  dash::internal::accumulate_blocking_impl(
+      dest_gptr,
+      l_values,
+      num_local_elements,
+      binary_op.dart_operation(),
+      team.dart_id());
   return out_first + num_local_elements;
 }
 
