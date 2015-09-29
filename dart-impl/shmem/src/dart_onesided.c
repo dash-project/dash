@@ -1,7 +1,9 @@
 
 #include <string.h>
 
+#include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart.h>
+#include <dash/dart/if/dart_types.h>
 #include <dash/dart/shmem/dart_mempool.h>
 #include <dash/dart/shmem/dart_memarea.h>
 
@@ -49,6 +51,7 @@ dart_ret_t dart_accumulate_int(
 
   // TODO: Interpret 'op' for requested operation, using addition
   //       for now.
+  DEBUG("ACC  - %d elements - ");
   for (size_t i = 0; i < nvalues; i++) {
     int * ptr_dest = addr + i;
     int * ptr_src  = values + i;

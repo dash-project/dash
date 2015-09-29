@@ -3,6 +3,8 @@ project(project_dash_dart_impl_mpi)
 # Library name
 set(DASH_DART_IMPL_MPI_LIBRARY dart-mpi)
 
+set(DASH_DART_BASE_LIBRARY dart-base)
+
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 
 # Source- and header files to be compiled (OBJ):
@@ -30,6 +32,7 @@ include_directories(
   ${DASH_DART_IMPL_MPI_INCLUDE_DIRS}
   ${MPI_INCLUDE_PATH}
   ${DASH_DART_IF_INCLUDE_DIR}
+  ${DASH_DART_BASE_INCLUDE_DIR}
 )
 # Library compilation sources
 add_library(
@@ -41,6 +44,7 @@ add_library(
 target_link_libraries(
   ${DASH_DART_IMPL_MPI_LIBRARY}
   ${MPI_C_LIBRARIES}
+  ${DASH_DART_BASE_LIBRARY}
 )
 
 if (ENABLE_TRACE_LOGGING)

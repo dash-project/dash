@@ -70,6 +70,10 @@ set(DASH_DART_IF_INCLUDE_DIR
 message("-- DART interface include path: "
         ${DASH_DART_IF_INCLUDE_DIR})
 
+set(DASH_DART_BASE_INCLUDE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/dart-impl/base/include
+    CACHE PATH INTERNAL FORCE)
+
 ## Set compiler flags (depend on CMake options)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/CompilerFlags.cmake)
 
@@ -92,6 +96,9 @@ string(REPLACE "," ";"
 
 # DART interface:
 add_subdirectory(dart-if)
+
+# DART base:
+add_subdirectory(dart-impl/base)
 
 # DART implementation of every enabled DART variant:
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")

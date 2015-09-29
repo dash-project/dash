@@ -6,7 +6,7 @@
 #ifndef ENABLE_LOG
 #define ENABLE_LOG
 #endif
-#include <dash/dart/mpi/dart_deb_log.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_mem.h>
 

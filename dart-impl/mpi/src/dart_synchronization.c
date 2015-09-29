@@ -7,12 +7,12 @@
 #define ENABLE_DEBUG
 #endif
 */
-#include <dash/dart/mpi/dart_deb_log.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <malloc.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_team_group.h>

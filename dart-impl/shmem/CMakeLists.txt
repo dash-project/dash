@@ -1,13 +1,20 @@
 project(project_dash_dart_impl_shmem)
 
 # Extra flags
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUSE_HELPER_THREAD=1 -DUSE_EVENTFD -D_SVID_SOURCE -pthread")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_HELPER_THREAD=1 -DUSE_EVENTFD -D_SVID_SOURCE -pthread")
+set(CMAKE_C_FLAGS
+    "${CMAKE_C_FLAGS} -DUSE_HELPER_THREAD=1 -DUSE_EVENTFD -D_SVID_SOURCE -pthread")
+set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} -DUSE_HELPER_THREAD=1 -DUSE_EVENTFD -D_SVID_SOURCE -pthread")
+set(ENABLE_LOGGING ${ENABLE_LOGGING}
+    PARENT_SCOPE)
+set(ENABLE_TRACE_LOGGING ${ENABLE_TRACE_LOGGING}
+    PARENT_SCOPE)
 
 # Library name
 set(DASH_LIBRARY ${DASH_LIBRARY} PARENT_SCOPE)
 set(DASH_DART_IMPL_SHMEM_LIBRARY dart-shmem)
 set(DARTRUN_BINARY dartrun-shmem)
+set(DASH_DART_BASE_LIBRARY dart-base)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_DART_IMPL_SHMEM_SOURCES
@@ -30,6 +37,7 @@ set(DASH_DART_IMPL_SHMEM_INCLUDE_DIRS
 include_directories(
   ${DASH_DART_IMPL_SHMEM_INCLUDE_DIRS}
   ${DASH_DART_IF_INCLUDE_DIR}
+  ${DASH_DART_BASE_INCLUDE_DIR}
 )
 
 # Library compilation sources
@@ -41,8 +49,17 @@ add_library(
 )
 target_link_libraries(
   ${DASH_DART_IMPL_SHMEM_LIBRARY} # library name
+  ${DASH_DART_BASE_LIBRARY}
   pthread
 )
+
+if (ENABLE_TRACE_LOGGING)
+  set_target_properties(
+    ${DASH_DART_IMPL_SHMEM_LIBRARY} PROPERTIES
+    COMPILE_FLAGS "-DDASH_ENABLE_LOGGING -DDASH_ENABLE_TRACE_LOGGING"
+  )
+endif()
+
 DeployLibrary(${DASH_DART_IMPL_SHMEM_LIBRARY})
 
 add_executable(

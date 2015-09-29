@@ -6,9 +6,9 @@
  *  one-sided runtime system.
  */
 
-#include <dash/dart/mpi/dart_deb_log.h>
 #include <stdio.h>
 #include <mpi.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_translation.h>

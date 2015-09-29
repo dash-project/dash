@@ -8,10 +8,10 @@
  */
 
 
-#include <dash/dart/mpi/dart_deb_log.h>
 #include <stdio.h>
 #include <mpi.h>
 #include <string.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -192,9 +192,9 @@ dart_ret_t dart_accumulate_int(
       MPI_INT,           // Data type of each entry in target buffer
       dart_mpi_op(op),   // Reduce operation
       win);
-    DEBUG ("ACC  -%d bytes (allocated with collective allocation) "
+    DEBUG ("ACC  - %d elements (allocated with collective allocation) "
            "to %d at offset %d",
-           nbytes, target_unitid_abs, offset);
+           nelem, target_unitid_abs, offset);
   } else {
     win = dart_win_local_alloc;
     MPI_Accumulate(
@@ -208,9 +208,9 @@ dart_ret_t dart_accumulate_int(
       MPI_INT,           // Data type of each entry in target buffer
       dart_mpi_op(op),   // Reduce operation
       win);
-    DEBUG ("ACC  - %d bytes (allocated with local allocation) "
+    DEBUG ("ACC  - %d elements (allocated with local allocation) "
            "to %d at offset %d", 
-           nbytes, target_unitid_abs, offset);
+           nelem, target_unitid_abs, offset);
   }
   return DART_OK;
 }
