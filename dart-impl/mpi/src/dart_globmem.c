@@ -98,10 +98,10 @@ dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 	gptr->flags = 0; /* For local allocation, the flag is marked as '0'. */
 	gptr->addr_or_offs.offset = dart_buddy_alloc (dart_localpool, nbytes);
 	if (gptr->addr_or_offs.offset == -1) {
-		ERROR ("Out of bound: the global memory is exhausted");
+		DART_LOG_ERROR ("Out of bound: the global memory is exhausted");
 		return DART_ERR_OTHER;
 	}
-	DEBUG("%2d: LOCALALLOC - %d bytes, offset = %d",
+	DART_LOG_DEBUG("%2d: LOCALALLOC - %d bytes, offset = %d",
         unitid, nbytes, gptr->addr_or_offs.offset);
 	return DART_OK;
 }
@@ -109,11 +109,11 @@ dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 dart_ret_t dart_memfree (dart_gptr_t gptr)
 {	
   if (dart_buddy_free (dart_localpool, gptr.addr_or_offs.offset) == -1) {
-    ERROR("Free invalid local global pointer: "
+    DART_LOG_ERROR("Free invalid local global pointer: "
           "invalid offset = %"PRIu64"\n", gptr.addr_or_offs.offset);
 		return DART_ERR_INVAL;
 	}
-	DEBUG("%2d: LOCALFREE - offset = %llu",
+	DART_LOG_DEBUG("%2d: LOCALFREE - offset = %llu",
         gptr.unitid, gptr.addr_or_offs.offset);
 	return DART_OK;
 }
@@ -234,7 +234,7 @@ dart_team_memalloc_aligned(
 	MPI_Info_free (&win_info);
 #endif
 	dart_memid ++;
-  DEBUG("%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d "
+  DART_LOG_DEBUG("%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d "
         "across team %d",
 			  unitid, nbytes, 0, gptr_unitid, teamid);
 	return DART_OK;
@@ -269,7 +269,7 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 		return DART_ERR_INVAL;
 	MPI_Win_free (&sharedmem_win); 
 #endif
-  DEBUG("%2d: COLLECTIVEFREE - offset = %d, gptr_unitid = %d "
+  DART_LOG_DEBUG("%2d: COLLECTIVEFREE - offset = %d, gptr_unitid = %d "
         "across team %d", 
         unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 	/* Remove the related correspondence relation record from the related 
@@ -331,7 +331,7 @@ dart_team_memregister_aligned (
 	item.selfbaseptr = (char*)addr;
 	dart_adapt_transtable_add (item);
 	dart_registermemid --;
-	DEBUG("%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d"
+	DART_LOG_DEBUG("%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d"
 			"across team %d",
 			unitid, nbytes, 0, gptr_unitid, teamid);
 	return DART_OK;
@@ -360,7 +360,7 @@ dart_team_memderegister(
 	if (dart_adapt_transtable_remove (seg_id) == -1){
 		return DART_ERR_INVAL;
 	}
-        DEBUG("%2D: COLLECTIVEFREE - offset = %d, gptr_unitid = %d"
+        DART_LOG_DEBUG("%2D: COLLECTIVEFREE - offset = %d, gptr_unitid = %d"
 			"across team %d",
 			unitid, gptr.addr_or_offs.offset, gptr.unitid,
 			teamid);

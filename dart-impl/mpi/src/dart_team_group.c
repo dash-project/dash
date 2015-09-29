@@ -1,6 +1,7 @@
-/** @file dart_team_group.c
- *  @date 25 Aug 2014
- *  @brief implementation of dart operations on team&group.
+/** 
+ *  \file dart_team_group.c
+ *  
+ *  Implementation of dart operations on team_group.
  */
 
 
@@ -263,7 +264,7 @@ dart_ret_t dart_group_ismember(
 		}
 	}
 	*ismember = (i!=size);
-	LOG("%2d: GROUP_ISMEMBER - %s", unitid, (*ismember) ? "yes" : "no");
+	DART_LOG_DEBUG("%2d: GROUP_ISMEMBER - %s", unitid, (*ismember) ? "yes" : "no");
 	return DART_OK;
 }
 
@@ -451,7 +452,7 @@ dart_ret_t dart_team_create(
 
 #endif
 		MPI_Win_lock_all(0, win);
-		DEBUG ("%2d: TEAMCREATE	- create team %d out of parent team %d", 
+		DART_LOG_DEBUG ("%2d: TEAMCREATE	- create team %d out of parent team %d", 
            unit, *newteam, teamid);
 	}
 	return DART_OK;
@@ -487,7 +488,7 @@ dart_ret_t dart_team_destroy(
 	/* -- Release the communicator associated with teamid -- */
 	MPI_Comm_free (&comm);
 
-	DEBUG("%2d: TEAMDESTROY	- destroy team %d", id, teamid);
+	DART_LOG_DEBUG("%2d: TEAMDESTROY	- destroy team %d", id, teamid);
 	return DART_OK;
 }
 
@@ -557,7 +558,7 @@ dart_ret_t dart_team_unit_l2g(
 	MPI_Group_size (group.mpi_group, &size);
 	if (localid >= size)
 	{
-		ERROR ("Invalid localid input");
+		DART_LOG_ERROR ("Invalid localid input");
 		return DART_ERR_INVAL;
 	}
 	unitids = (dart_unit_t*)malloc (sizeof(dart_unit_t) * size);
@@ -575,7 +576,7 @@ dart_ret_t dart_team_unit_l2g(
 	MPI_Group_size (group.mpi_group, &size);
 
 	if (localid >= size) {
-		ERROR ("Invalid localid input: %d", localid);
+		DART_LOG_ERROR ("Invalid localid input: %d", localid);
 		return DART_ERR_INVAL;
 	}
 	if (teamid == DART_TEAM_ALL) {

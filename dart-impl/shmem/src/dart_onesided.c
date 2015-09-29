@@ -51,21 +51,23 @@ dart_ret_t dart_accumulate_int(
 
   // TODO: Interpret 'op' for requested operation, using addition
   //       for now.
-  DEBUG("ACC  - %d elements - ");
+  DART_LOG_DEBUG("ACC  - %d elements, addr: %p", nvalues, addr);
   for (size_t i = 0; i < nvalues; i++) {
     int * ptr_dest = addr + i;
-    int * ptr_src  = values + i;
+    int * ptr_src  = &values[i];
     int exp_value  = *(ptr_dest);
     int new_value  = exp_value + *(ptr_src);
     int old_value;
     // Compare-and-Swap single elements.
     for(;;) {
+      DART_LOG_DEBUG("ACC  - CAS on element %d to %d", i, new_value);
       old_value = __sync_val_compare_and_swap(
         ptr_dest,
         exp_value,
         new_value);
       if (old_value == exp_value) {
         // Assume success, disregarding ABA for now
+        DART_LOG_DEBUG("ACC  - CAS succeeded on element %d ", i);
         break;
       }
       exp_value = old_value;

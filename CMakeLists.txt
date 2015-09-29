@@ -53,6 +53,8 @@ option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
 option(ENABLE_TRACE_LOGGING
        "Specify whether trace messages should be logged" off)
+option(ENABLE_DART_LOGGING
+       "Specify whether messages from DART should be logged" off)
 option(ENABLE_ASSERTIONS
        "Specify whether runtime assertions should be checked" off)
 option(MEMORY_MODEL_UNIFIED
