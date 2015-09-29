@@ -87,6 +87,7 @@ dart_ret_t dart_init(int *argc, char ***argv)
     }
     /*
      * global auxiliary memory segement per process
+     * for internal communication and dart collective operations
      */
     DART_CHECK_ERROR(gaspi_segment_create(dart_gaspi_buffer_id,
                                           DART_GASPI_BUFFER_SIZE,
@@ -95,7 +96,6 @@ dart_ret_t dart_init(int *argc, char ***argv)
                                           GASPI_MEM_INITIALIZED));
 
     DART_CHECK_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &dart_gaspi_buffer_ptr));
-
     /*
      * local transfer segment for non-blocking rma-operations
      */

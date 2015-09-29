@@ -33,12 +33,45 @@ dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t 
 {
     return DART_ERR_OTHER;
 }
-/**
- * TODO dart_allgather not implemented yet
- */
+
 dart_ret_t dart_allgather(void *sendbuf, void *recvbuf, size_t nbytes, dart_team_t team)
 {
-    return DART_ERR_OTHER;
+    gaspi_return_t  retval = GASPI_SUCCESS;
+    gaspi_pointer_t send_ptr = NULL;
+    gaspi_pointer_t recv_ptr = NULL;
+    gaspi_offset_t  recv_offset = nbytes;
+    size_t          teamsize;
+    int16_t         index;
+
+    DART_CHECK_ERROR_RET(retval, dart_team_size(team, &teamsize));
+
+    if(((teamsize * nbytes) + nbytes) > DART_GASPI_BUFFER_SIZE)
+    {
+        fprintf(stderr, "Memory for collective operation is exhausted\n");
+        return DART_ERR_OTHER;
+    }
+
+    DART_CHECK_ERROR_RET(retval, gaspi_segment_ptr(dart_gaspi_buffer_id, &send_ptr));
+    recv_ptr = (gaspi_pointer_t) ((char *) send_ptr + recv_offset);
+
+    memcpy(send_ptr, sendbuf, nbytes);
+
+    int result = dart_adapt_teamlist_convert (team, &index);
+    if (result == -1)
+    {
+        return DART_ERR_INVAL;
+    }
+
+    DART_CHECK_ERROR_RET(retval, gaspi_allgather(dart_gaspi_buffer_id,
+                                                 0UL,
+                                                 dart_gaspi_buffer_id,
+                                                 recv_offset,
+                                                 nbytes,
+                                                 dart_teams[index].id));
+
+    memcpy(recvbuf, recv_ptr, nbytes * teamsize);
+
+    return retval;
 }
 
 dart_ret_t dart_barrier (dart_team_t teamid)

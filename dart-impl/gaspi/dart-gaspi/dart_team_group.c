@@ -122,7 +122,7 @@ dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
     return ret;
 }
 /**
- *  returns the size of given team
+ *  returns the size of a given team
  */
 dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
 {
