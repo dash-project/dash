@@ -1,8 +1,0 @@
-The following tests fail:
-
-    integration_test_multicast_01_45
-    integration_test_myid
-    integration_test_size
-
-i don't know why: 
- - it seems like all of these tests expect some output in the log-file that can not be found in the log file.
