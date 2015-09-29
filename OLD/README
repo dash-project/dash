@@ -1,0 +1,18 @@
+Build instructions:
+
+1. Set shell environment:  DASH_INCLUDES, DASH_LIBS
+2. create gtest-lib (unzip gtest-1.6.0.zip -> cd gtest-1.6.0 -> ./configure -> make)
+3. cp include/gtest $DASH_INCLUDES 
+4. cp lib/.libs/libgtest.a $DASH_LIBS
+5. cp __config.defs__ config.defs
+6. edit config.defs
+7. Call make in the dash root directory.
+8. execute tests: cd dash/dash-lib-test/Generic/ -> exec tests 
+
+
+
+or just use the script (in order to do steps 1-4):
+
+> . set_env.sh path_to_include_lib_parent_dir
+e.g.
+> . set_env.sh `pwd`/..

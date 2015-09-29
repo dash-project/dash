@@ -1,0 +1,63 @@
+
+#include "dart.h"
+
+#include "dart_membucket.h"
+#include "dart_mempool.h"
+#include "shmem_mm_if.h"
+#include "shmem_logger.h"
+
+void dart_mempool_init(dart_mempoolptr pool)
+{
+  if( !pool) return;
+
+  pool->state     = MEMPOOL_NULL;
+  pool->base_addr = 0;
+  pool->localbase_addr = 0;
+  pool->shmem_key = -1;
+  pool->teamid    = -1;
+  pool->bucket    = DART_MEMBUCKET_NULL;
+}
+
+dart_ret_t dart_mempool_create(dart_mempoolptr pool,
+			       dart_team_t teamid,
+			       size_t teamsize,
+			       dart_unit_t myid,
+			       size_t localsz)
+{
+  if( !pool ) return DART_ERR_INVAL;
+
+  size_t totalsz = teamsize * localsz;
+  int   attach_key;
+  void *attach_addr;
+
+  // TODO: maybe a barrier here...
+
+  if( myid==0 ) {
+    attach_key = shmem_mm_create(totalsz);
+  }
+  
+  dart_bcast(&attach_key, sizeof(int), 0, teamid );
+
+  attach_addr = shmem_mm_attach(attach_key);
+
+  dart_membucket membucket;
+  int myoffset = myid * localsz;
+
+  membucket = 
+    dart_membucket_create( ((char*)attach_addr)+myoffset, 
+			   localsz );
+
+  // todo: check if everything is ok
+    
+  pool->bucket    = membucket;
+  pool->base_addr = attach_addr;
+  pool->localbase_addr = ((char*)attach_addr)+myoffset;
+  pool->localsz   = localsz;
+  pool->shmem_key = attach_key;
+
+  //pool->state = ...
+  
+  // TODO: maybe a barrier here...
+
+  return DART_OK;
+}

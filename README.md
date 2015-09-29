@@ -102,15 +102,15 @@ Running DASH Applications
 
 With the MPI variant, applications are spawn by MPI:
 
-  $ mpirun the_dash_application
+  $ mpirun <app>-mpi
 
 For CUDA and SHMEM, use
 
-  $ dartrun-cuda the_dash_application
+  $ dartrun-cuda <app>-cuda
 
 and respectively
 
-  $ dartrun-shmem the_dash_application
+  $ dartrun-shmem <app>-shmem
 
 Links
 -----
@@ -123,19 +123,84 @@ Developer Notes
 
 This section is relevant if you intend to contribute code to the DASH project.
 
-We follow the Google C++ Style Guide which is widely accepted in prevalent open source projects:
+Code Style
+----------
+
+We follow the Google C++ Style Guide which is widely accepted in prevalent
+open source projects:
+
 http://google.github.io/styleguide/cppguide.html
 
 The standards defined by the LLVM team are worth mentioning, too:
+
 http://llvm.org/docs/CodingStandards.html
 
-The Chrome project maintains a best practice guide for the use of C++11 features:
-Chrome (C++11 features): http://chromium-cpp.appspot.com
+Contributing Code
+-----------------
+
+1. Create a new, dedicated branch for any task. We follow the naming
+   convention:
+
+    - *feat-<shortname>* for implementing and testing features
+    - *bug-<shortname>* for bugfix branches
+    - *sup-<shortname>* for support tasks (e.g. build system, documentation)
+
+   For example, when fixing a bug in team allocation, you could name your
+   branch *bug-team-alloc*.
+
+2. Create a ticket in Redmine
+
+    - State the name of your branch in the ticket description.
+    - Set the ticket type (Support, Bug, or Feature)
+    - Assign the ticket to yourself
+
+   There is no need for time tracking, we use Redmine to maintain an overview
+   of who is working on which component, and what branches are active.
+
+3. For features and bugfixes, implement unit tests
+
+4. Once you are finished with your implementation and unit tests:
+
+    - Clone branch master into a new working copy:
+
+          $ git clone git@git.dash-project.org:dash -b master ./dash-master
+
+    - In the master working copy, pull from your branch:
+
+          (dash-master)$ git pull origin feat-myfeature
+
+    - Run continuous integration suite in the updated master working copy:
+
+          (dash-master)$ ./dash/scripts/dash-ci.sh
+
+    - If continuous integration passed, push to master:
+
+          (dash-master)$ git push origin master
+
+5. Reviewing
+
+   After you merged your changes to master, choose a reviewer:
+
+    - Edit the ticket in Redmine
+    - Set state to "Resolved"
+    - Set "Assigned to" to the team member that will review your code
+
+   For now, we chose to merge to master before reviewing so everyone can
+   contribute to master without depending on other team members.
+
+6. Closing a ticket
+
+   Tickets are closed by reviewers once the code changes in the ticket's
+   branch passed review.
+
+   Branches only be deleted when their ticket is closed.
+
 
 Running Tests
 -------------
 
-Launch the DASH unit test suite using <code>dash-test-shmem</code> or <code>dash-test-mpi</code>:
+Launch the DASH unit test suite using <code>dash-test-shmem</code> or
+<code>dash-test-mpi</code>:
 
   (bin/dash/test/shmem)$ dartrun-shmem <dartrun options> dash-test-shmem <gtest options>
 
@@ -143,8 +208,8 @@ or
 
   (bin/dash/test/mpi)$ mpirun <MPI options> dash-test-mpi <gtest options>
 
-For example, you would all unit tests of matrix data structures on 4 units using the SHMEM runtime
-with:
+For example, you would all unit tests of matrix data structures on 4 units
+using the SHMEM runtime with:
 
   (bin/dash/test/shmem)$ dartrun-shmem -n 4 dash-test-shmem --gtest_filter=Matrix*
 
