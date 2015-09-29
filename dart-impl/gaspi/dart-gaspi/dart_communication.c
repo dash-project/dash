@@ -554,3 +554,49 @@ dart_ret_t dart_flush_local(dart_gptr_t gptr)
 
     return retval;
 }
+/**
+ * TODO unefficient method cause of data structure(array)
+ */
+dart_ret_t dart_flush_local_all(dart_gptr_t gptr)
+{
+    dart_ret_t retval = DART_OK;
+    int16_t seg_id = gptr.segid;
+    uint16_t index  = gptr.flags;
+    queue_t * queue;
+    if(seg_id)
+    {
+        size_t teamsize;
+        dart_team_size(index, &teamsize);
+        for(dart_unit_t rel_rank = 0; rel_rank < teamsize ; ++rel_rank)
+        {
+            dart_adapt_transtable_get_handle_queue(seg_id, rel_rank, &queue);
+            struct dart_handle_struct handle;
+            size_t queue_size = queue->size;
+
+            for(int i = 0 ; i < queue_size ; ++i)
+            {
+                DART_CHECK_ERROR_RET(retval, front_handle(queue, &handle));
+                DART_CHECK_ERROR_RET(retval, dart_wait_local(&handle));
+                DART_CHECK_ERROR_RET(retval, dequeue_handle(queue));
+            }
+        }
+    }
+    else
+    {
+        for(int rank = 0 ; rank < dart_gaspi_rank_num ; ++rank)
+        {
+            struct dart_handle_struct handle;
+            queue = &(dart_non_collective_rma_request[rank]);
+            size_t queue_size = queue->size;
+
+            for(int i = 0 ; i < queue_size ; ++i)
+            {
+                DART_CHECK_ERROR_RET(retval, front_handle(queue, &handle));
+                DART_CHECK_ERROR_RET(retval, dart_wait_local(&handle));
+                DART_CHECK_ERROR_RET(retval, dequeue_handle(queue));
+            }
+        }
+    }
+
+    return retval;
+}
