@@ -1,15 +1,9 @@
-/** @file dart_translation.c
- *  @date 25 Aug 2014
- *  @brief Implementation for the operations on translation table.
- */
+#include <assert.h>
+#include "dart_gaspi.h"
 #include "dart_translation.h"
 
 /* Global array: the header for the global translation table. */
 node_t dart_transtable_globalalloc;
-
-//~ MPI_Win dart_win_local_alloc;
-//~ MPI_Win dart_sharedmem_win_local_alloc;
-
 
 int dart_adapt_transtable_create ()
 {
@@ -20,21 +14,22 @@ int dart_adapt_transtable_create ()
 int dart_adapt_transtable_add (info_t item)
 {
     node_t pre, q;
-    node_t p = (node_t) malloc (sizeof (node_info_t));
-    p->trans.seg_id = item.seg_id;
-    p->trans.size = item.size;
-    p->trans.gaspi_seg_ids = item.gaspi_seg_ids;
-    p->trans.own_gaspi_seg_id = item.own_gaspi_seg_id;
-    p->trans.unit_count = item.unit_count;
+    node_t p = (node_t) malloc (sizeof(node_info_t));
+    assert(p);
+
+    p->trans.seg_id            = item.seg_id;
+    p->trans.size              = item.size;
+    p->trans.gaspi_seg_ids     = item.gaspi_seg_ids;
+    p->trans.own_gaspi_seg_id  = item.own_gaspi_seg_id;
+    p->trans.unit_count        = item.unit_count;
     p->trans.requests_per_unit = item.requests_per_unit;
-    p->next = NULL;
+    p->next                    = NULL;
 
     /* The translation table is empty. */
     if (dart_transtable_globalalloc == NULL)
     {
         dart_transtable_globalalloc = p;
     }
-
     /* Otherwise, insert the added item into the translation table. */
     else
     {
@@ -53,28 +48,28 @@ int dart_adapt_transtable_remove (int16_t seg_id)
 {
     node_t pre, p;
     p = dart_transtable_globalalloc;
-    if (seg_id == (p -> trans.seg_id))
+    if (seg_id == (p->trans.seg_id))
     {
-        dart_transtable_globalalloc = p -> next;
+        dart_transtable_globalalloc = p->next;
     }
-        else
+    else
     {
         while ((p != NULL ) && (seg_id != (p->trans.seg_id)))
         {
             pre = p;
-            p = p -> next;
+            p = p->next;
         }
         if (!p)
         {
             fprintf(stderr,"Invalid seg_id: %d,can't remove the record from translation table", seg_id);
             return -1;
         }
-        pre -> next = p -> next;
+        pre->next = p->next;
     }
 
     for(int i = 0 ; i < p->trans.unit_count ; ++i)
     {
-        destroy_handle_queue( &(p->trans.requests_per_unit[i]) );
+        DART_CHECK_ERROR(destroy_handle_queue( &(p->trans.requests_per_unit[i]) ));
     }
 
     free(p->trans.requests_per_unit);
@@ -88,18 +83,18 @@ int dart_adapt_transtable_get_local_gaspi_seg_id(int16_t seg_id, gaspi_segment_i
     node_t p;
     p = dart_transtable_globalalloc;
 
-    while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+    while ((p != NULL) && (seg_id > ((p->trans).seg_id)))
     {
-        p = p -> next;
+        p = p->next;
     }
-    if ((!p) || (seg_id != ((p -> trans).seg_id)))
+    if ((!p) || (seg_id != ((p->trans).seg_id)))
     {
 
         fprintf(stderr,"Invalid seg_id: %d, can not get the related window object", seg_id);
         return -1;
     }
 
-    *own_segid = (p -> trans).own_gaspi_seg_id;
+    *own_segid = (p->trans).own_gaspi_seg_id;
     return 0;
 }
 
@@ -108,12 +103,12 @@ int dart_adapt_transtable_get_gaspi_seg_id(int16_t seg_id, dart_unit_t rel_uniti
     node_t p;
     p = dart_transtable_globalalloc;
 
-    while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+    while ((p != NULL) && (seg_id > ((p->trans).seg_id)))
     {
-        p = p -> next;
+        p = p->next;
     }
 
-    if ((!p) || (seg_id != (p -> trans).seg_id))
+    if ((!p) || (seg_id != (p->trans).seg_id))
     {
         fprintf(stderr,"Invalid seg_id: %d, can not get the related displacement", seg_id);
         return -1;
@@ -128,18 +123,18 @@ int dart_adapt_transtable_add_handle(int16_t seg_id, dart_unit_t rel_unit, struc
     node_t p;
     p = dart_transtable_globalalloc;
 
-    while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+    while ((p != NULL) && (seg_id > ((p->trans).seg_id)))
     {
-        p = p -> next;
+        p = p->next;
     }
 
-    if ((!p) || (seg_id != (p -> trans).seg_id))
+    if ((!p) || (seg_id != (p->trans).seg_id))
     {
         fprintf(stderr,"Invalid seg_id: %d, can not get the related displacement", seg_id);
         return -1;
     }
 
-    enqueue_handle( &(p->trans.requests_per_unit[rel_unit]), handle);
+    DART_CHECK_ERROR(enqueue_handle( &(p->trans.requests_per_unit[rel_unit]), handle));
     return 0;
 }
 
@@ -148,12 +143,12 @@ int dart_adapt_transtable_get_handle_queue(int16_t seg_id, dart_unit_t rel_unit,
     node_t p;
     p = dart_transtable_globalalloc;
 
-    while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+    while ((p != NULL) && (seg_id > ((p->trans).seg_id)))
     {
-        p = p -> next;
+        p = p->next;
     }
 
-    if ((!p) || (seg_id != (p -> trans).seg_id))
+    if ((!p) || (seg_id != (p->trans).seg_id))
     {
         fprintf(stderr,"Invalid seg_id: %d, can not get the related displacement", seg_id);
         return -1;
@@ -168,12 +163,12 @@ int dart_adapt_transtable_get_size (int16_t seg_id, size_t *size)
     node_t p;
     p = dart_transtable_globalalloc;
 
-    while ((p != NULL) && (seg_id > ((p -> trans).seg_id)))
+    while ((p != NULL) && (seg_id > ((p->trans).seg_id)))
     {
-        p = p -> next;
+        p = p->next;
     }
 
-    if ((!p) || (seg_id) != (p -> trans).seg_id)
+    if ((!p) || (seg_id) != (p->trans).seg_id)
     {
         fprintf(stderr,"Invalid seg_id: %d, can not get the related memory size", seg_id);
         return -1;
@@ -190,7 +185,7 @@ int dart_adapt_transtable_destroy ()
     while (p != NULL)
     {
         pre = p;
-        p = p -> next;
+        p = p->next;
 
         free(pre->trans.gaspi_seg_ids);
         free(pre);

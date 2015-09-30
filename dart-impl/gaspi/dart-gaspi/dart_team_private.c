@@ -1,8 +1,5 @@
-/** @file dart_team_private.c
- *  @date 25 Aug 2014
- *  @brief Implementations for the operations on teamlist.
- */
 #include <stdio.h>
+#include <assert.h>
 #include "dart_types.h"
 #include "dart_team_private.h"
 #include "dart_team_group.h"
@@ -58,17 +55,17 @@ int dart_allocated_teamlist_size;
  */
 int dart_adapt_teamlist_init ()
 {
-    int i;
     dart_free_teamlist_ptr pre = NULL;
     dart_free_teamlist_ptr newAllocateEntry;
-    for (i = 0; i < DART_MAX_TEAM_NUMBER; i++)
+    for(int i = 0; i < DART_MAX_TEAM_NUMBER; i++)
     {
-        newAllocateEntry = (dart_free_teamlist_ptr)malloc(sizeof (dart_free_entry));
-        newAllocateEntry -> index = i;
+        newAllocateEntry = (dart_free_teamlist_ptr) malloc(sizeof (dart_free_entry));
+        assert(newAllocateEntry);
 
+        newAllocateEntry->index = i;
         if (pre != NULL)
         {
-            pre -> next = newAllocateEntry;
+            pre->next = newAllocateEntry;
         }
         else
         {
@@ -76,7 +73,7 @@ int dart_adapt_teamlist_init ()
         }
         pre = newAllocateEntry;
     }
-    newAllocateEntry -> next = NULL;
+    newAllocateEntry->next = NULL;
 
     dart_allocated_teamlist_size = 0;
     return 0;
@@ -84,12 +81,11 @@ int dart_adapt_teamlist_init ()
 
 int dart_adapt_teamlist_destroy ()
 {
-    int i;
     dart_free_teamlist_ptr pre, p = dart_free_teamlist_header;
     while (p)
     {
         pre = p;
-        p = p -> next;
+        p = p->next;
         free (pre);
     }
     dart_allocated_teamlist_size = 0;
@@ -101,11 +97,11 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, uint16_t* index)
     dart_free_teamlist_ptr p;
     if (dart_free_teamlist_header != NULL)
     {
-        *index = dart_free_teamlist_header -> index;
+        *index = dart_free_teamlist_header->index;
         p = dart_free_teamlist_header;
 
-        dart_free_teamlist_header = dart_free_teamlist_header -> next;
-        free (p);
+        dart_free_teamlist_header = dart_free_teamlist_header->next;
+        free(p);
         /* The allocated teamlist array should be arranged in an increasing order based on
          * the member of allocated_teamid.
          *
@@ -131,16 +127,17 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, uint16_t* index)
 
 int dart_adapt_teamlist_recycle (uint16_t index, int pos)
 {
-    int i;
+    dart_free_teamlist_ptr newAllocateEntry = (dart_free_teamlist_ptr) malloc (sizeof (dart_free_entry));
+    assert(newAllocateEntry);
 
-    dart_free_teamlist_ptr newAllocateEntry = (dart_free_teamlist_ptr)malloc (sizeof (dart_free_entry));
-    newAllocateEntry -> index = index;
-    newAllocateEntry -> next = dart_free_teamlist_header;
+    newAllocateEntry->index   = index;
+    newAllocateEntry->next    = dart_free_teamlist_header;
     dart_free_teamlist_header = newAllocateEntry;
-    /* The allocated teamlist array should be keep as an ordered array
+    /*
+     * The allocated teamlist array should be keep as an ordered array
      * after deleting the given element.
      */
-    for (i = pos; i < dart_allocated_teamlist_size - 1; i ++)
+    for (int i = pos; i < dart_allocated_teamlist_size - 1; i ++)
     {
         dart_allocated_teamlist_array[i].allocated_teamid = dart_allocated_teamlist_array[i + 1].allocated_teamid;
         dart_allocated_teamlist_array[i].index = dart_allocated_teamlist_array[i + 1].index;
@@ -157,7 +154,7 @@ int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index)
         return 0;
     }
     /* Locate the teamid in the allocated teamlist array by using the binary-search approach. */
-    int i, imin, imax;
+    int imin, imax;
     imin = 0;
     imax = dart_allocated_teamlist_size - 1;
     while (imin < imax)

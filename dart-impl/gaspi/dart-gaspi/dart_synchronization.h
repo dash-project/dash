@@ -7,9 +7,6 @@ extern "C" {
 
 #define DART_INTERFACE_ON
 
-/**
- * no usage in dash-lib
- */
 typedef struct dart_lock_struct *dart_lock_t;
 
 

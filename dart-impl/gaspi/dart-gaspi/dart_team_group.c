@@ -25,16 +25,13 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 {
     gaspi_group_t parent_gaspi_group;
     gaspi_group_t new_gaspi_group;
-    int root = -1;
-    uint16_t index, unique_id;
-    dart_unit_t rank;
-    size_t size;
-    dart_team_t max_teamid = -1;
-    dart_unit_t sub_unit, unit;
+    uint16_t      index, unique_id;
+    dart_unit_t   unit;
+    size_t        size;
+    dart_team_t   max_teamid = -1;
 
-    dart_myid(&unit);
-    dart_size(&size);
-
+    DART_CHECK_ERROR(dart_myid(&unit));
+    DART_CHECK_ERROR(dart_size(&size));
     /*
      * index to dart team
      */
@@ -52,9 +49,8 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
     dart_unit_t * group_members = malloc(sizeof(dart_unit_t) * gsize);
     assert(group_members);
 
-    dart_group_getmembers(group, group_members);
-
-    for(size_t i = 0; i < gsize ; ++i)
+    DART_CHECK_ERROR(dart_group_getmembers(group, group_members));
+    for(size_t i = 0 ; i < gsize ; ++i)
     {
         DART_CHECK_ERROR(gaspi_group_add(new_gaspi_group, group_members[i]));
     }
@@ -93,8 +89,7 @@ dart_ret_t dart_team_create (dart_team_t teamid, const dart_group_t* group, dart
 dart_ret_t dart_team_destroy (dart_team_t teamid)
 {
     gaspi_group_t gaspi_group;
-    gaspi_segment_id_t seg_id;
-    uint16_t index;
+    uint16_t      index;
 
     int result = dart_adapt_teamlist_convert (teamid, &index);
 
@@ -105,7 +100,7 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 
     gaspi_group = dart_teams[index].id;
 
-    dart_adapt_teamlist_recycle (index, result);
+    dart_adapt_teamlist_recycle(index, result);
 
     DART_CHECK_ERROR(gaspi_group_delete(gaspi_group));
 
@@ -117,9 +112,10 @@ dart_ret_t dart_team_destroy (dart_team_t teamid)
 dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid)
 {
     dart_unit_t global_myid;
-    dart_myid(&global_myid);
-    dart_ret_t ret = dart_team_unit_g2l(teamid, global_myid, myid);
-    return ret;
+    DART_CHECK_ERROR(dart_myid(&global_myid));
+    DART_CHECK_ERROR(dart_team_unit_g2l(teamid, global_myid, myid));
+
+    return DART_OK;
 }
 /**
  *  returns the size of a given team
@@ -130,7 +126,8 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size)
 
     if(teamid == DART_TEAM_ALL)
     {
-        return dart_size(size);
+        DART_CHECK_ERROR(dart_size(size));
+        return DART_OK;
     }
     int result = dart_adapt_teamlist_convert (teamid, &index);
 
