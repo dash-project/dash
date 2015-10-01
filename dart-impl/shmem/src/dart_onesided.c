@@ -12,7 +12,6 @@ dart_ret_t dart_get(
   dart_gptr_t ptr, 
   size_t nbytes)
 {
-  // TODO: Blocking dummy implementation
   return dart_get_blocking(dest, ptr, nbytes);
 }
 
@@ -21,8 +20,30 @@ dart_ret_t dart_put(
   void *src, 
   size_t nbytes)
 {
-  // TODO: Blocking dummy implementation
   return dart_put_blocking(ptr, src, nbytes);
+}
+
+/* 
+ * dart_accumulate_* implementation, to be defined as macro
+ * DART_SHMEM_DEFINE_ACCUMULATE(type)
+ */
+
+inline int dart_shmem_reduce_int(int a, int b, dart_operation_t op) {
+  switch (op) {
+    case DART_OP_MIN  : return (a < b) ? a : b;
+    case DART_OP_MAX  : return (a > b) ? a : b;
+    case DART_OP_SUM  : return a + b;
+    case DART_OP_PROD : return a * b;
+    case DART_OP_BAND : return a & b;
+    case DART_OP_LAND : return a && b;
+    case DART_OP_BOR  : return a | b;
+    case DART_OP_LOR  : return a || b;
+    case DART_OP_BXOR : return a ^ b;
+    case DART_OP_LXOR : return (!a) ? b : !b;
+    default           : DART_LOG_ERROR("Unknown reduce operation (%d)",
+                                       (int)op);
+                        return 0;
+  }
 }
 
 dart_ret_t dart_accumulate_int(
@@ -37,44 +58,46 @@ dart_ret_t dart_accumulate_int(
   dart_unit_t       myid;
   dart_mempoolptr   pool;
 
+  dart_myid(&myid);
   poolid = ptr_dest.segid;
   pool   = dart_memarea_get_mempool_by_id(poolid);
   if(!pool) {
     return DART_ERR_OTHER;
   }
-
-  dart_myid(&myid);
-  
-  addr = ((int*)pool->localbase_addr) +
-         ((ptr_dest.unitid-myid) * (pool->localsz)) +
-         ptr_dest.addr_or_offs.offset;
-
-  // TODO: Interpret 'op' for requested operation, using addition
-  //       for now.
+  addr   = ((int*)(pool->localbase_addr)) +               /* pool base addr */
+           ((ptr_dest.unitid - myid) * (pool->localsz)) + /* unit offset    */
+           ptr_dest.addr_or_offs.offset;                  /* element offset */
+  DART_LOG_DEBUG("ACC  - t:%d o:%d, pool:%d lbase:%p lsz:%d offs:%d",
+                  ptr_dest.unitid,
+                  myid,
+                  poolid,
+                  (int*)(pool->localbase_addr),
+                  pool->localsz,
+                  ptr_dest.addr_or_offs.offset);
   DART_LOG_DEBUG("ACC  - %d elements, addr: %p", nvalues, addr);
   for (size_t i = 0; i < nvalues; i++) {
-    int * ptr_dest = addr + i;
     int * ptr_src  = &values[i];
+    int * ptr_dest = &addr[i];
     int exp_value  = *(ptr_dest);
-    int new_value  = exp_value + *(ptr_src);
+    int new_value;
+    DART_LOG_DEBUG("ACC  - CAS on element %d (%p) to %d",
+                   i, ptr_dest, new_value);
     int old_value;
-    // Compare-and-Swap single elements.
+    /* Compare-and-Swap single elements */
     for(;;) {
-      DART_LOG_DEBUG("ACC  - CAS on element %d to %d", i, new_value);
+      new_value = dart_shmem_reduce_int(exp_value, *(ptr_src), op);
       old_value = __sync_val_compare_and_swap(
         ptr_dest,
         exp_value,
         new_value);
       if (old_value == exp_value) {
-        // Assume success, disregarding ABA for now
+        /* Assume success, disregarding ABA for now */
         DART_LOG_DEBUG("ACC  - CAS succeeded on element %d ", i);
         break;
       }
       exp_value = old_value;
-      new_value = exp_value + *(ptr_src);
     }
   }
-
   return DART_OK;
 }
 
