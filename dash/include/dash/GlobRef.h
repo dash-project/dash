@@ -1,10 +1,3 @@
-/* 
- * dash-lib/GlobRef.h
- *
- * author(s): Karl Fuerlinger, LMU Munich 
- */
-/* @DASH_HEADER@ */
-
 #ifndef DASH__GLOBREF_H_
 #define DASH__GLOBREF_H_
 
@@ -43,7 +36,13 @@ private:
   GlobPtr<T> m_gptr;
   
 public:
-  GlobRef(GlobPtr<T>& gptr)
+  /**
+   * Conctructor, creates an GlobRef object referencing an element in
+   * global memory.
+   */
+  GlobRef(
+    /// Pointer to referenced object in global memory
+    GlobPtr<T> & gptr)
   : m_gptr(gptr) {
   }
 
@@ -79,6 +78,13 @@ public:
     return *this;
   }
 
+  GlobRef<T> & operator-=(const T& ref) {
+    T val = operator T();
+    val -= ref;
+    operator=(val);
+    return *this;
+  }
+
   GlobRef<T> & operator++() {
     T val = operator T();
     ++val;
@@ -110,15 +116,20 @@ public:
   }
 
 #if 0
+  // Might lead to unintended behaviour
   GlobPtr<T> operator &() {
     return m_gptr;
   }
 #endif
+  GlobPtr<T> & gptr() {
+    return m_gptr;
+  }
 
 #if 0
   template<
     typename X=T, 
-	  typename std::enable_if<has_subscript_operator<X>::value, int>::type *ptr = nullptr>
+	  typename std::enable_if<has_subscript_operator<X>::value, int>::type *ptr =
+      nullptr>
   auto operator[](size_t pos) -> 
     typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
   {

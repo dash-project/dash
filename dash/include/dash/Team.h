@@ -177,9 +177,6 @@ public:
       delete(_child);
     }
     free();
-    if (_dartid == DART_TEAM_ALL) {
-      dart_exit();
-    }
   }
   
   /**

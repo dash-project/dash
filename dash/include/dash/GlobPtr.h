@@ -36,7 +36,7 @@ private:
   template<typename U>
   friend std::ostream & operator<<(
     std::ostream & os,
-    const GlobPtr<U> & it);
+    const GlobPtr<U> & gptr);
 
 public:
   /**
@@ -216,7 +216,7 @@ public:
   }
   
   /**
-   * Dereference operator.
+   * Conversion operator to local pointer.
    * 
    * \returns  A native pointer to the local element referenced by this
    *           GlobPtr instance, or \c nullptr if the referenced element
@@ -253,14 +253,14 @@ public:
 template<typename T>
 std::ostream & operator<<(
   std::ostream & os,
-  const GlobPtr<T> & it) {
+  const GlobPtr<T> & gptr) {
   char buf[100];
   sprintf(buf,
           "(%08X|%04X|%04X|%016X)",
-          it.m_dartptr.unitid,
-          it.m_dartptr.segid,
-          it.m_dartptr.flags,
-          it.m_dartptr.addr_or_offs.offset);
+          gptr.m_dartptr.unitid,
+          gptr.m_dartptr.segid,
+          gptr.m_dartptr.flags,
+          gptr.m_dartptr.addr_or_offs.offset);
   os << "dash::GlobPtr<" << typeid(T).name() << ">" << buf;
   return os;
 }

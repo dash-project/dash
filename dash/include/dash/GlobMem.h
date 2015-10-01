@@ -28,7 +28,72 @@ constexpr GlobMemKind LOCAL      { GlobMemKind::LOCAL };
 } // namespace internal
 
 /**
- * Write a value to a global pointer.
+ * Block until completion of local and global operations on a global address.
+ */
+template<typename T>
+void fence(
+  const GlobPtr<T> & gptr
+) {
+  DASH_ASSERT_RETURNS(
+    dart_fence(gptr.dartptr()),
+    DART_OK);
+}
+
+/**
+ * Block until completion of local operations on a global address.
+ */
+template<typename T>
+void fence_local(
+  const GlobPtr<T> & gptr
+) {
+  DASH_ASSERT_RETURNS(
+    dart_fence_local(gptr.dartptr()),
+    DART_OK);
+}
+
+/**
+ * Write a value to a global pointer, non-blocking. Requires a later
+ * fence operation to guarantee local and/or remote completion.
+ *
+ * \nonblocking
+ */
+template<typename T>
+void put_value_nonblock(
+  /// [IN]  Value to set
+  const T & newval,
+  /// [IN]  Global pointer referencing target address of value
+  const GlobPtr<T> & gptr
+) {
+  DASH_ASSERT_RETURNS(
+    dart_put(gptr.dartptr(),
+             (void *)(&newval),
+             sizeof(T)),
+    DART_OK);
+}
+
+/**
+ * Read a value fom a global pointer, non-blocking. Requires a later
+ * fence operation to guarantee local and/or remote completion.
+ *
+ * \nonblocking
+ */
+template<typename T>
+void get_value_nonblock(
+  /// [OUT] Local pointer that will contain the value of the 
+  //        global address
+  T * ptr,
+  /// [IN]  Global pointer to read
+  const GlobPtr<T> & gptr
+) {
+  DASH_ASSERT_RETURNS(
+    dart_get(ptr,
+             gptr.dartptr(),
+             sizeof(T)),
+    DART_OK);
+}
+
+/**
+ * Write a value to a global pointer
  *
  * \blocking
  */
@@ -304,6 +369,22 @@ public:
     dart_gptr_t gptr = m_begptr;
     dart_gptr_incaddr(&gptr, global_index * sizeof(ValueType));
     dash::get_value(ptr, GlobPtr<ValueType>(gptr));
+  }
+
+  void flush() {
+    dart_flush(m_begptr);
+  }
+
+  void flush_all() {
+    dart_flush_all(m_begptr);
+  }
+
+  void flush_local() {
+    dart_flush_local(m_begptr);
+  }
+
+  void flush_local_all() {
+    dart_flush_local_all(m_begptr);
   }
 
   /**

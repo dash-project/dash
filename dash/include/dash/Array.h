@@ -5,6 +5,7 @@
 #include <dash/GlobMem.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
+#include <dash/GlobAsyncRef.h>
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/HView.h>
@@ -124,7 +125,7 @@ public:
   typedef const pointer                                   const_pointer;
 
 private:
-  Array<T, IndexType, PatternType> * const m_array;
+  Array<T, IndexType, PatternType> * const _array;
   
 public:
   /**
@@ -132,21 +133,21 @@ public:
    */
   LocalArrayRef(
     Array<T, IndexType, PatternType> * const array)
-  : m_array(array) {
+  : _array(array) {
   }
 
   /**
    * Pointer to initial local element in the array.
    */
   constexpr const_pointer begin() const noexcept {
-    return m_array->m_lbegin;
+    return _array->m_lbegin;
   }
 
   /**
    * Pointer past final local element in the array.
    */
   constexpr const_pointer end() const noexcept {
-    return m_array->m_lend;
+    return _array->m_lend;
   }
   
   /**
@@ -160,14 +161,112 @@ public:
    * Subscript operator, access to local array element at given position.
    */
   constexpr value_type operator[](const size_t n) const  {
-    return (m_array->m_lbegin)[n];
+    return (_array->m_lbegin)[n];
   }
   
   /**
    * Subscript operator, access to local array element at given position.
    */
   reference operator[](const size_t n) {
-    return (m_array->m_lbegin)[n];
+    return (_array->m_lbegin)[n];
+  }
+};
+
+template<
+  typename T,
+  typename IndexType,
+  class PatternType>
+class AsyncArrayRef {
+private:
+  typedef AsyncArrayRef<T, IndexType, PatternType>
+    self_t;
+
+public:
+  template <typename T_, typename I_, typename P_>
+    friend class AsyncArrayRef;
+
+public: 
+  typedef T                                                  value_type;
+  typedef typename std::make_unsigned<IndexType>::type        size_type;
+  typedef IndexType                                     difference_type;
+
+  typedef T &                                                 reference;
+  typedef const reference                               const_reference;
+
+  typedef T *                                                   pointer;
+  typedef const pointer                                   const_pointer;
+
+  typedef GlobAsyncRef<T>                               async_reference;
+  typedef const GlobAsyncRef<T>                   const_async_reference;
+
+private:
+  Array<T, IndexType, PatternType> * const _array;
+  
+public:
+  /**
+   * Constructor, creates a local access proxy for the given array.
+   */
+  AsyncArrayRef(
+    Array<T, IndexType, PatternType> * const array)
+  : _array(array) {
+  }
+
+  /**
+   * Pointer to initial local element in the array.
+   *
+   * TODO: Should return GlobAsyncPtr<...>(_array->begin())
+   */
+  constexpr const_pointer begin() const noexcept {
+    return _array->m_begin;
+  }
+
+  /**
+   * Pointer past final local element in the array.
+   *
+   * TODO: Should return GlobAsyncPtr<...>(_array->end())
+   */
+  constexpr const_pointer end() const noexcept {
+    return _array->m_end;
+  }
+  
+  /**
+   * Number of array elements in local memory.
+   */
+  constexpr size_type size() const noexcept {
+    return _array->size();
+  }
+  
+  /**
+   * Subscript operator, access to local array element at given position.
+   */
+  constexpr const_async_reference operator[](const size_t n) const  {
+    return async_reference(
+             _array->m_globmem,
+             (*(_array->begin() + n)).gptr());
+  }
+  
+  /**
+   * Subscript operator, access to local array element at given position.
+   */
+  async_reference operator[](const size_t n) {
+    return async_reference(
+             _array->m_globmem,
+             (*(_array->begin() + n)).gptr());
+  }
+
+  void flush() {
+    // could also call _array->flush();
+    _array->m_globmem->flush();
+  }
+
+  void flush_local() {
+    // could also call _array->flush_local();
+    _array->m_globmem->flush_local();
+  }
+
+  void flush_local_all() {
+    // could also call _array->flush_local_all();
+    _array->m_globmem->flush_local_all();
   }
 };
 
@@ -217,6 +316,11 @@ public:
     typename I_,
     class P_>
   friend class LocalArrayRef;
+  template<
+    typename T_,
+    typename I_,
+    class P_>
+  friend class AsyncArrayRef;
 
 /// Public types as required by dash container concept
 public:
@@ -225,6 +329,8 @@ public:
     pattern_type;
   typedef LocalArrayRef<value_type, IndexType, PatternType>
     local_type;
+  typedef AsyncArrayRef<value_type, IndexType, PatternType>
+    async_type;
 
 private:
   typedef DistributionSpec<1>
@@ -260,6 +366,8 @@ private:
 public:
   /// Local proxy object, allows use in range-based for loops.
   local_type           local;
+  /// Proxy object, provides non-blocking operations on array.
+  async_type           async;
   
 public:
 /* 
@@ -290,7 +398,8 @@ public:
     m_size(0),
     m_lsize(0),
     m_lcapacity(0),
-    local(this) {
+    local(this),
+    async(this) {
     DASH_LOG_TRACE("Array()", "default constructor");
   }
 
@@ -309,7 +418,8 @@ public:
     m_size(0),
     m_lsize(0),
     m_lcapacity(0),
-    local(this) {
+    local(this),
+    async(this) {
     DASH_LOG_TRACE("Array()", nelem);
     allocate(m_pattern);
   }
@@ -324,7 +434,8 @@ public:
     m_size(0),
     m_lsize(0),
     m_lcapacity(0),
-    local(this) {
+    local(this),
+    async(this) {
     DASH_LOG_TRACE("Array()", "pattern instance constructor");
     allocate(m_pattern);
   }
@@ -537,10 +648,19 @@ public:
   }
   
   /**
-   * Establish a barrier for all units operating on the array.
+   * Establish a barrier for all units operating on the array, publishing all
+   * changes to all units.
    */
   void barrier() const {
+    m_globmem->flush();
     m_team->barrier();
+  }
+  
+  /**
+   * Apply all RMA operations by any unit on local memory.
+   */
+  void flush_local() const {
+    m_globmem->flush_local_all();
   }
 
   /**

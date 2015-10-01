@@ -16,6 +16,7 @@
 #include <dash/GlobPtr.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
+#include <dash/GlobAsyncRef.h>
 
 #include <dash/Enums.h>
 #include <dash/Container.h>

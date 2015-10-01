@@ -39,9 +39,15 @@ dart_ret_t dart_group_copy(
 }
 
 #if 0
-dart_ret_t dart_adapt_group_union (const dart_group_t *g1, const dart_group_t *g2, dart_group_t *gout)
+dart_ret_t dart_adapt_group_union(
+  const dart_group_t *g1,
+  const dart_group_t *g2,
+  dart_group_t *gout)
 {
-	return MPI_Group_union (g1 -> mpi_group, g2 -> mpi_group, &(gout -> mpi_group));
+	return MPI_Group_union(
+    g1 -> mpi_group,
+    g2 -> mpi_group,
+    &(gout -> mpi_group));
 }
 #endif 
 
@@ -100,25 +106,32 @@ dart_ret_t dart_group_union(
 	return ret;
 }
 
-dart_ret_t dart_group_intersect (const dart_group_t *g1, const dart_group_t *g2, dart_group_t *gout)
+dart_ret_t dart_group_intersect(
+  const dart_group_t *g1,
+  const dart_group_t *g2,
+  dart_group_t *gout)
 {
 	return MPI_Group_intersection(
-           g1 -> mpi_group, g2 -> mpi_group, &(gout -> mpi_group));
+           g1 -> mpi_group,
+           g2 -> mpi_group,
+           &(gout -> mpi_group));
 }
 
-dart_ret_t dart_group_addmember (dart_group_t *g, dart_unit_t unitid)
+dart_ret_t dart_group_addmember(
+  dart_group_t *g,
+  dart_unit_t unitid)
 {
 	int array[1];
 	dart_group_t* group_copy, *group;
 	MPI_Group     newgroup, group_all;
 	/* Group_all comprises all the running units. */
 	MPI_Comm_group(MPI_COMM_WORLD, &group_all);
-	group_copy = (dart_group_t*)malloc (sizeof (dart_group_t));
-	group      = (dart_group_t*)malloc (sizeof (dart_group_t));
-	dart_group_copy (g, group_copy);
+	group_copy = (dart_group_t*)malloc(sizeof(dart_group_t));
+	group      = (dart_group_t*)malloc(sizeof(dart_group_t));
+	dart_group_copy(g, group_copy);
 	array[0]   = unitid;
 	MPI_Group_incl(group_all, 1, array, &newgroup);
-	group -> mpi_group = newgroup;
+	group->mpi_group = newgroup;
 	/* Make the new group being an ordered group. */
 	dart_group_union (group_copy, group, g);
 	free (group_copy);
@@ -135,9 +148,14 @@ dart_ret_t dart_group_delmember(
 	MPI_Comm_group(MPI_COMM_WORLD, &group_all);
 	array[0] = unitid;
 	MPI_Group_incl(
-    group_all, 1, array, &newgroup);
+    group_all,
+    1,
+    array,
+    &newgroup);
 	MPI_Group_difference(
-    g -> mpi_group, newgroup, &(g -> mpi_group));
+    g -> mpi_group,
+    newgroup,
+    &(g -> mpi_group));
 	return DART_OK;
 }
 
@@ -158,19 +176,26 @@ dart_ret_t dart_group_getmembers(
 	int size, i;
 	int *array;
 	MPI_Group group_all;
-	MPI_Group_size (g -> mpi_group, &size);
-	MPI_Comm_group (MPI_COMM_WORLD, &group_all);
+	MPI_Group_size(g -> mpi_group, &size);
+	MPI_Comm_group(MPI_COMM_WORLD, &group_all);
 	array = (int*) malloc (sizeof (int) * size);
 	for (i = 0; i < size; i++) {
 		array[i] = i;
 	}
 	MPI_Group_translate_ranks(
-    g -> mpi_group, size, array, group_all, unitids);
+    g->mpi_group,
+    size,
+    array,
+    group_all,
+    unitids);
 	free (array);
 	return DART_OK;
 }
 
-dart_ret_t dart_group_split (const dart_group_t *g, size_t n, dart_group_t **gout)
+dart_ret_t dart_group_split(
+  const dart_group_t *g,
+  size_t n,
+  dart_group_t **gout)
 {
 	MPI_Group grouptem;
 	int size, length, i, ranges[1][3];
@@ -197,12 +222,16 @@ dart_ret_t dart_group_split (const dart_group_t *g, size_t n, dart_group_t **gou
 			}
 
 			ranges[0][2] = 1;
-			MPI_Group_range_incl (g -> mpi_group, 1, ranges, &grouptem);
-			(*(gout + i)) -> mpi_group = grouptem;
+			MPI_Group_range_incl(
+        g -> mpi_group,
+        1,
+        ranges,
+        &grouptem);
+			(*(gout + i))->mpi_group = grouptem;
 		}
 		else 
 		{
-			(*(gout + i)) -> mpi_group = MPI_GROUP_EMPTY;
+			(*(gout + i))->mpi_group = MPI_GROUP_EMPTY;
 		}
 	}
 	return DART_OK;
@@ -214,16 +243,19 @@ dart_ret_t dart_group_sizeof (size_t *size)
 	return DART_OK;
 }
 
-dart_ret_t dart_group_ismember (const dart_group_t *g, dart_unit_t unitid, int32_t *ismember)
+dart_ret_t dart_group_ismember(
+  const dart_group_t *g,
+  dart_unit_t unitid,
+  int32_t *ismember)
 {
 	dart_unit_t id;
 	dart_myid (&id);
 
-	int i, size;
-        dart_unit_t *ranks;
+	int           i, size;
+  dart_unit_t*  ranks;
 	
-	MPI_Group_size (g -> mpi_group, &size);
-	ranks = (dart_unit_t *)malloc (size * sizeof (dart_unit_t));
+	MPI_Group_size(g->mpi_group, &size);
+	ranks = (dart_unit_t *)malloc(size * sizeof(dart_unit_t));
 	dart_group_getmembers (g, ranks);
 	for (i = 0; i < size; i++) {
 		if (ranks[i] == unitid) {
@@ -235,7 +267,6 @@ dart_ret_t dart_group_ismember (const dart_group_t *g, dart_unit_t unitid, int32
 	return DART_OK;
 }
 
-
 dart_ret_t dart_team_get_group(
   dart_team_t teamid,
   dart_group_t *group)
@@ -243,7 +274,7 @@ dart_ret_t dart_team_get_group(
 	MPI_Comm comm;
 	uint16_t index;
 	
-	int result = dart_adapt_teamlist_convert (teamid, &index);
+	int result = dart_adapt_teamlist_convert(teamid, &index);
 	if (result == -1) {
 		return DART_ERR_INVAL;
 	}
@@ -315,7 +346,8 @@ dart_ret_t dart_team_create(
 	/* Another way of generating the available teamID for the newly crated team. */
 	if (subcomm != MPI_COMM_NULL)
 	{
-		/* Get the maximum next_availteamid among all the units belonging to the created sub-communicator. */
+		/* Get the maximum next_availteamid among all the units belonging to the 
+     * created sub-communicator. */
 		MPI_Allreduce (&next_availteamid, &max_teamid, 1, MPI_INT, MPI_MAX, subcomm);
 		int result = dart_adapt_teamlist_alloc (max_teamid, &index);
 
@@ -350,7 +382,8 @@ dart_ret_t dart_team_create(
 
 	MPI_Bcast (&root, 1, MPI_INT, 0, comm);
 	
-	/* Broadcast the calculated max_teamid to all the units not belonging to the sub-communicator. */
+	/* Broadcast the calculated max_teamid to all the units not belonging to the
+   * sub-communicator. */
 	MPI_Bcast (&max_teamid, 1, MPI_INT, root, comm);
 	if (subcomm == MPI_COMM_NULL)
 	{
@@ -432,7 +465,7 @@ dart_ret_t dart_team_destroy(
 	uint16_t index;
 	dart_unit_t id;
 
-	int result = dart_adapt_teamlist_convert (teamid, &index);
+	int result = dart_adapt_teamlist_convert(teamid, &index);
 	if (result == -1) {
 		return DART_ERR_INVAL;
 	}
@@ -498,7 +531,7 @@ dart_ret_t dart_team_size(
 	if (teamid == DART_TEAM_NULL) {
 		return DART_ERR_INVAL;
 	}
-  int result = dart_adapt_teamlist_convert (teamid, &index);
+  int result = dart_adapt_teamlist_convert(teamid, &index);
 	if (result == -1) {
 		return DART_ERR_INVAL;
 	}

@@ -28,7 +28,6 @@ dart_ret_t dart_barrier(dart_team_t teamid)
   return ret;
 }
 
-
 dart_ret_t dart_bcast(void *buf, size_t nbytes, 
 		      dart_unit_t root, dart_team_t team)
 {
