@@ -516,9 +516,9 @@ if (seg_id >= 0){
  * TODO: Check if MPI_Accumulate (REPLACE) can bring better performance? 
  */
 dart_ret_t dart_get_blocking(
-  void *dest,
-  dart_gptr_t gptr,
-  size_t nbytes)
+  void        * dest,
+  dart_gptr_t   gptr,
+  size_t        nbytes)
 {
   MPI_Win win;
   MPI_Status mpi_sta;
@@ -526,9 +526,11 @@ dart_ret_t dart_get_blocking(
   MPI_Aint disp_s, disp_rel;
   
   uint64_t offset = gptr.addr_or_offs.offset;
-  int16_t seg_id = gptr.segid;
+  int16_t seg_id  = gptr.segid;
   uint16_t index  = gptr.flags;
-  dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
+  dart_unit_t unitid,
+              target_unitid_rel,
+              target_unitid_abs = gptr.unitid;
 
 #ifdef SHAREDMEM_ENABLE 
   if (seg_id >= 0) {
@@ -614,13 +616,13 @@ dart_ret_t dart_get_blocking(
   
     if (seg_id) {
       DART_LOG_DEBUG("GET_BLOCKING  - %d bytes "
-            "(allocated with collective allocation) from %d "        
-            "at the offset %d", 
-            nbytes, target_unitid_abs, offset);
+                     "(allocated with collective allocation) from %d "        
+                     "at offset %d", 
+                     nbytes, target_unitid_abs, offset);
     } else {  
       DART_LOG_DEBUG("GET_BLOCKING - %d bytes "
-            "(allocated with local allocation) from %d at the offset %d", 
-             nbytes, target_unitid_abs, offset);
+                     "(allocated with local allocation) from %d at offset %d", 
+                      nbytes, target_unitid_abs, offset);
     }
     return DART_OK;
   }

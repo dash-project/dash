@@ -32,6 +32,7 @@ protected:
   GlobMem<ElementType> * m_globmem;
   const PatternType    * m_pattern;
   size_t                 m_idx;
+  size_t                 m_max_idx;
 
   // For ostream output
   template<typename T_, class P_>
@@ -45,8 +46,10 @@ public:
   GlobIter()
   : m_globmem(nullptr),
     m_pattern(nullptr),
-    m_idx(0) {
+    m_idx(0),
+    m_max_idx(0) {
     DASH_LOG_TRACE_VAR("GlobIter()", m_idx);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", m_max_idx);
   }
 
   /**
@@ -58,8 +61,10 @@ public:
 	  size_t                 idx = 0)
   : m_globmem(gmem), 
     m_pattern(&pat),
-    m_idx(idx) {
+    m_idx(idx),
+    m_max_idx(pat.size() - 1) {
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", m_idx);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", m_max_idx);
   }
 
   GlobIter(
@@ -73,6 +78,16 @@ public:
    * \return  A global reference to the element at the iterator's position
    */
   operator GlobPtr<ElementType>() const {
+    size_t pos     = m_idx;
+    size_t offset  = 0;
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", m_idx);
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", m_max_idx);
+    if (m_idx > m_max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      pos    = m_max_idx;
+      offset = m_idx - m_max_idx;
+    }
     // Global index to local index and unit:
     auto glob_coords = m_pattern->coords(m_idx);
     auto local_pos   = m_pattern->local(glob_coords);
@@ -81,7 +96,16 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", local_pos.index);
     GlobPtr<ElementType> gptr =
       m_globmem->index_to_gptr(local_pos.unit, local_pos.index);
-    return gptr;
+    return gptr + offset;
+  }
+
+  /**
+   * Explicit conversion to \c dart_gptr_t.
+   *
+   * \return  A DART global pointer to the element at the iterator's position
+   */
+  dart_gptr_t dart_gptr() const {
+    return ((GlobPtr<ElementType>)(*this)).dart_gptr();
   }
 
   /**

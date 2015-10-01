@@ -1,9 +1,9 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
 #include "TestBase.h"
-#include "NonblockingTest.h"
+#include "GlobAsyncRefTest.h"
 
-TEST_F(NonblockingTest, GlobAsyncRef) {
+TEST_F(GlobAsyncRefTest, IsLocal) {
   int num_elem_per_unit = 20;
   // Initialize values:
   dash::Array<int> array(_dash_size * num_elem_per_unit);
@@ -25,7 +25,7 @@ TEST_F(NonblockingTest, GlobAsyncRef) {
 /**
  * Non-blocking writes to distributed array with push semantics.
  */
-TEST_F(NonblockingTest, ArrayBulkWrite) {
+TEST_F(GlobAsyncRefTest, Push) {
   int num_elem_per_unit = 20;
   // Initialize values:
   dash::Array<int> array(_dash_size * num_elem_per_unit);
@@ -50,6 +50,3 @@ TEST_F(NonblockingTest, ArrayBulkWrite) {
   }
 }
 
-TEST_F(NonblockingTest, ArrayAccumulate) {
-  
-}
