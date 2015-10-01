@@ -7,7 +7,7 @@
 
 TEST_F(TransformTest, GlobalPlusLocalIntBlocking) {
   // Add local range to every block in global range
-  const size_t num_elem_local = 100;
+  const size_t num_elem_local = 5;
   size_t num_elem_total = _dash_size * num_elem_local;
   dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
   std::array<int, num_elem_local> local;
@@ -40,9 +40,10 @@ TEST_F(TransformTest, GlobalPlusLocalIntBlocking) {
   
   // Gaussian sum of all local values accumulated = 1100 + 1200 + ...
   int global_acc = ((dash::myid() + 1) * 100) +
-                   ((_dash_size + 1) * 1000) * (_dash_size / 2);
+                   ((_dash_size + 1) * _dash_size * 1000) / 2;
   for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     int expected = global_acc + ((l_idx + 1) * _dash_size);
+    LOG_MESSAGE("array_dest.local[%d]: %p", l_idx, &array_dest.local[l_idx]);
     ASSERT_EQ_U(expected, array_dest.local[l_idx]);
   }
 }
@@ -77,9 +78,6 @@ TEST_F(TransformTest, GlobalPlusGlobalIntBlocking) {
   
   // Verify values in local partition of array:
   
-  // Gaussian sum of all local values accumulated = 1100 + 1200 + ...
-  int global_acc = ((dash::myid() + 1) * 100) +
-                   ((_dash_size + 1) * 1000) * (_dash_size / 2);
   for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     int expected = (dash::myid() + 1) * 100 +               // initial value
                    (dash::myid() + 1) * 1000 + (l_idx + 1); // added value
