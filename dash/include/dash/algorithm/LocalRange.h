@@ -30,9 +30,9 @@ struct LocalIndexRange {
  *   Local elements   | (local index:value) <tt>0:2 1:3 2:6 3:7</tt>
  *   Result           | (local indices) <tt>2 3</tt>
  *
- * \return      A local range consisting of native pointers to the first
- *              and last local element within the sequence limited by the
- *              given global iterators.
+ * \return      A local index range consisting of offsets of the first and
+ *              last element in local memory within the sequence limited by
+ *              the given global iterators.
  *
  * \tparam      ElementType  Type of the elements in the sequence
  * \tparam      PatternType  Type of the global iterators' pattern 
@@ -62,7 +62,7 @@ local_index_range(
   DASH_LOG_TRACE_VAR("local_index_range", pattern.local_size());
   if (pattern.local_size() == 0) {
     // Local index range is empty
-    DASH_LOG_TRACE("local_index_range ->", 0, 0);
+    DASH_LOG_TRACE("local_index_range (lsize:0) ->", 0, 0);
     return LocalIndexRange<idx_t> { 0, 0 };
   }
   // Global index of first element in pattern, O(1):
@@ -71,6 +71,12 @@ local_index_range(
   idx_t lend_gindex   = pattern.lend();
   DASH_LOG_TRACE_VAR("local_index_range", lbegin_gindex);
   DASH_LOG_TRACE_VAR("local_index_range", lend_gindex);
+  if (lend_gindex   <= begin_gindex ||  // local end before global begin
+      lbegin_gindex >= end_gindex) {    // local begin after global end
+    // No overlap, intersection is empty
+    DASH_LOG_TRACE("local_index_range (intersect:0)->", 0, 0);
+    return LocalIndexRange<idx_t> { 0, 0 };
+  }
   // Intersect local range and global range, in global index domain:
   auto goffset_lbegin = std::max<idx_t>(lbegin_gindex, begin_gindex);
   auto goffset_lend   = std::min<idx_t>(lend_gindex, end_gindex);

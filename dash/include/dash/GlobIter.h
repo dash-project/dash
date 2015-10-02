@@ -89,9 +89,10 @@ public:
       offset = m_idx - m_max_idx;
     }
     // Global index to local index and unit:
-    auto glob_coords = m_pattern->coords(m_idx);
+    auto glob_coords = m_pattern->coords(pos);
     auto local_pos   = m_pattern->local(glob_coords);
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", m_idx);
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", pos);
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", offset);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", local_pos.index);
     GlobPtr<ElementType> gptr =
