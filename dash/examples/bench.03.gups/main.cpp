@@ -2,7 +2,7 @@
  *
  * Random Access (GUPS) benchmark
  *
- * Sequential version based on UPC version
+ * Based on the UPC++ version of the same bechmark
  *
  */
 
@@ -13,9 +13,10 @@
 #include <sys/time.h>
 #include <stdint.h> // for int64_t and uint64_t
 #include <libdash.h>
+#include <iostream>
 
 #ifndef N
-#define N (20)
+#define N (12)
 #endif
 
 #define TableSize (1ULL<<N)
@@ -24,7 +25,7 @@
 #define POLY      0x0000000000000007ULL
 #define PERIOD    1317624576693539401LL
 
-dash::Array<uint64_t> *Table;
+dash::Array<uint64_t> Table;
 
 double get_time()
 {
@@ -33,16 +34,23 @@ double get_time()
   return tv.tv_sec + ((double) tv.tv_usec / 1000000);
 }
 
+template<typename T> 
+void print(dash::Array<T>& arr) {
+  for( auto el: arr ) std::cout<<el<<" ";
+  std::cout<<std::endl;
+}
+
 uint64_t starts(int64_t n)
 {
   int i;
   uint64_t m2[64];
   uint64_t temp, ran;
 
-  while (n < 0)         n += PERIOD;
-  while (n > PERIOD)    n -= PERIOD;
+  while (n < 0)       n += PERIOD;
+  while (n > PERIOD)  n -= PERIOD;
 
-  if (n == 0)           return 0x1;
+  if (n == 0)           
+    return 0x1;
 
   temp = 0x1;
   for (i=0; i<64; i++) {
@@ -72,7 +80,7 @@ void RandomAccessUpdate()
 
   for (i = dash::myid(); i < NUPDATE; i += dash::size()) {
     ran = (ran << 1) ^ (((int64_t) ran < 0) ? POLY : 0);
-    (*Table)[ran & (TableSize-1)] = (*Table)[ran & (TableSize-1)] ^ ran;
+    Table[ran & (TableSize-1)] = Table[ran & (TableSize-1)] ^ ran;
     //Table[ran & (TableSize-1)] ^= ran;
   }
 }
@@ -82,7 +90,7 @@ uint64_t RandomAccessVerify()
   uint64_t i, localerrors, errors;
   localerrors = 0;
   for (i = dash::myid(); i < TableSize; i += dash::size()) {
-    if ((*Table)[i] != i) {
+    if (Table[i] != i) {
       localerrors++;
     }
   }
@@ -99,10 +107,10 @@ int main(int argc, char **argv)
 
   dash::init(&argc, &argv);
 
-  Table = new dash::Array<uint64_t>(TableSize);
+  Table.allocate(TableSize, dash::BLOCKED);
 
   if(dash::myid() == 0) {
-    printf("\nTable size = %g MBytes/CPU, %g MB/total on %d units\n",
+    printf("\nTable size = %g MB/unit, %g MB/total on %d units\n",
            (double)TableSize*8/1024/1024/dash::size(),
            (double)TableSize*8/1024/1024,
            dash::size());
@@ -113,13 +121,17 @@ int main(int argc, char **argv)
 
   if(dash::myid() == 0) {
     for( uint64_t i = dash::myid(); i < TableSize; i++ ) {
-      (*Table)[i]=i;
+      Table[i]=i;
     }
   }
 
   dash::barrier(); 
+
   RandomAccessUpdate();
   dash::barrier(); 
+
+  //if( dash::myid()==0 ) print(Table);
+
   /*
   uint64_t * lt = (uint64_t *) &(*Table)[dash::myid()];
   for (uint64_t i = dash::myid(); i < TableSize; i += dash::size()) {
@@ -154,7 +166,6 @@ int main(int argc, char **argv)
 #endif
   
   dash::barrier();
-  delete Table;
   dash::finalize();
   
   return 0;
