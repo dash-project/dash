@@ -52,9 +52,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY) {
   typedef dash::Pattern<2> pattern_t;
   LOG_MESSAGE("Initialize matrix ...");
   dash::TeamSpec<2> team_spec(num_units, 1);
-  dash::Matrix<int, 2,
-               pattern_t::index_type, 
-               pattern_t> matrix(
+  dash::Matrix<int, 2, pattern_t::index_type, pattern_t> matrix(
                  dash::SizeSpec<2>(
                    extent_cols,
                    extent_rows),
@@ -111,9 +109,7 @@ TEST_F(MatrixTest, Distribute2DimTileXY) {
   typedef dash::TilePattern<2> pattern_t;
   LOG_MESSAGE("Initialize matrix ...");
   dash::TeamSpec<2> team_spec(num_units, 1);
-  dash::Matrix<int, 2,
-               pattern_t::index_type,
-               pattern_t> matrix(
+  dash::Matrix<int, 2, pattern_t::index_type, pattern_t> matrix(
                  dash::SizeSpec<2>(
                    extent_cols,
                    extent_rows),
@@ -173,9 +169,7 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY) {
   dash::TeamSpec<2> team_spec(num_units, 1);
   EXPECT_EQ_U(team_spec.size(), num_units);
   EXPECT_EQ_U(team_spec.rank(), 1);
-  dash::Matrix<int, 2,
-               pattern_t::index_type,
-               pattern_t> matrix(
+  dash::Matrix<int, 2, pattern_t::index_type, pattern_t> matrix(
                  dash::SizeSpec<2>(
                    extent_cols,
                    extent_rows),
@@ -232,9 +226,7 @@ TEST_F(MatrixTest, Submat2DimDefault) {
   typedef dash::Pattern<2> pattern_t;
   LOG_MESSAGE("Initialize matrix ...");
   dash::TeamSpec<2> team_spec(num_units, 1);
-  dash::Matrix<int, 2,
-               pattern_t::index_type,
-               pattern_t> matrix(
+  dash::Matrix<int, 2, pattern_t::index_type, pattern_t> matrix(
                  dash::SizeSpec<2>(
                    extent_cols,
                    extent_rows),
@@ -283,9 +275,7 @@ TEST_F(MatrixTest, Sub2DimDefault) {
   typedef dash::TilePattern<2> pattern_t;
   LOG_MESSAGE("Initialize matrix ...");
   dash::TeamSpec<2> team_spec(num_units, 1);
-  dash::Matrix<element_t, 2,
-               pattern_t::index_type,
-               pattern_t> matrix(
+  dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t> matrix(
                  dash::SizeSpec<2>(
                    extent_cols,
                    extent_rows),
@@ -360,3 +350,94 @@ TEST_F(MatrixTest, Sub2DimDefault) {
   ASSERT_EQ_U(matrix.local_size(), num_visited_local);
 }
 
+TEST_F(MatrixTest, SubBlocks) {
+  typedef int element_t;
+  dart_unit_t myid   = dash::myid();
+  size_t num_units   = dash::Team::All().size();
+  size_t tilesize_x  = 3;
+  size_t tilesize_y  = 2;
+  size_t extent_cols = tilesize_x * num_units * 4;
+  size_t extent_rows = tilesize_y * num_units * 4;
+  typedef dash::TilePattern<2> pattern_t;
+  LOG_MESSAGE("Initialize matrix ...");
+  dash::TeamSpec<2> team_spec(num_units, 1);
+  dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t> matrix(
+                 dash::SizeSpec<2>(
+                   extent_cols,
+                   extent_rows),
+                 dash::DistributionSpec<2>(
+                   dash::TILE(tilesize_x),
+                   dash::TILE(tilesize_y)),
+                 dash::Team::All(),
+                 team_spec);
+  // Fill matrix
+  if(myid == 0) {
+    LOG_MESSAGE("Assigning matrix values");
+    for(int i = 0; i < matrix.extent(0); ++i) {
+      for(int k = 0; k < matrix.extent(1); ++k) {
+        auto value = (i * 1000) + (k * 1);
+        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
+                    i, k, value);
+        matrix[i][k] = value;
+      }
+    }
+  }
+  LOG_MESSAGE("Wait for team barrier ...");
+  dash::Team::All().barrier();
+  LOG_MESSAGE("Team barrier passed");
+
+  // Partition matrix into 4 blocks (upper/lower left/right):
+  
+  auto left        = matrix.submat<0>(0,               extent_cols / 2);
+  auto right       = matrix.submat<0>(extent_cols / 2, extent_cols / 2);
+
+  auto topleft     = left.submat<1>(0,               extent_rows / 2);
+  auto bottomleft  = left.submat<1>(extent_rows / 2, extent_rows / 2);
+
+  auto topright    = right.submat<1>(0,               extent_rows / 2);
+  auto bottomright = right.submat<1>(extent_rows / 2, extent_rows / 2);
+
+  auto g_br_x      = extent_cols / 2;
+  auto g_br_y      = extent_rows / 2;
+
+  ASSERT_EQ_U((int)bottomright[0][0],
+              (int)matrix[g_br_x][g_br_y]);
+}
+
+#if _TODO_
+
+TEST_F(MatrixTest, IterateSub) {
+  typedef int element_t;
+  dart_unit_t myid   = dash::myid();
+  size_t num_units   = dash::Team::All().size();
+  size_t tilesize_x  = 3;
+  size_t tilesize_y  = 2;
+  size_t extent_cols = tilesize_x * num_units * 4;
+  size_t extent_rows = tilesize_y * num_units * 4;
+  typedef dash::TilePattern<2> pattern_t;
+  LOG_MESSAGE("Initialize matrix ...");
+  dash::TeamSpec<2> team_spec(num_units, 1);
+  dash::Matrix<element_t, 2,
+               pattern_t::index_type,
+               pattern_t> matrix(
+                 dash::SizeSpec<2>(
+                   extent_cols,
+                   extent_rows),
+                 dash::DistributionSpec<2>(
+                   dash::TILE(tilesize_x),
+                   dash::TILE(tilesize_y)),
+                 dash::Team::All(),
+                 team_spec);
+  LOG_MESSAGE("Wait for team barrier ...");
+  dash::Team::All().barrier();
+  LOG_MESSAGE("Team barrier passed");
+
+  auto matrix_size = matrix.size();
+
+  auto rows = matrix.rows();
+  for (auto row_it = rows.begin(); row_it != rows.end(); ++row_it) {
+
+  }
+}
+
+#endif
