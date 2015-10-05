@@ -1,5 +1,4 @@
-
-DART_VER   = v2.1
+DART_VER   = v2.2
 DART_IF    = ../../dart-if/$(DART_VER)
 ONEHEADER  = ./oneheader.pl
 

@@ -11,4 +11,3 @@ clean :
 	make -C src/ clean
 	make -C examples/ clean
 	rm -rf *~
-

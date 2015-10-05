@@ -1,25 +1,25 @@
-#ifndef DASH__TEST__NONBLOCKING_TEST_H_
-#define DASH__TEST__NONBLOCKING_TEST_H_
+#ifndef DASH__TEST__GLOB_ASYNC_REF_TEST_H_
+#define DASH__TEST__GLOB_ASYNC_REF_TEST_H_
 
 #include <gtest/gtest.h>
 #include <libdash.h>
 
 /**
- * Test fixture for non-blocking operations.
+ * Test fixture for non-blocking operations using \c dash::GlobAsyncRef.
  */
-class NonblockingTest : public ::testing::Test {
+class GlobAsyncRefTest : public ::testing::Test {
 protected:
   dart_unit_t _dash_id;
   size_t      _dash_size;
 
-  NonblockingTest() 
+  GlobAsyncRefTest()
   : _dash_id(0),
     _dash_size(0) {
-    LOG_MESSAGE(">>> Test suite: NonblockingTest");
+    LOG_MESSAGE(">>> Test suite: GlobAsyncRefTest");
   }
 
-  virtual ~NonblockingTest() {
-    LOG_MESSAGE("<<< Closing test suite: NonblockingTest");
+  virtual ~GlobAsyncRefTest() {
+    LOG_MESSAGE("<<< Closing test suite: GlobAsyncRefTest");
   }
 
   virtual void SetUp() {
@@ -36,4 +36,4 @@ protected:
   }
 };
 
-#endif // DASH__TEST__NONBLOCKING_TEST_H_
+#endif // DASH__TEST__GLOB_ASYNC_REF_TEST_H_

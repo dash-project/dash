@@ -62,7 +62,7 @@ void MultiplyNaive(
  *   }
  */
 template<typename MatrixType>
-void MultiplySUMMA(
+void SUMMA(
   /// Matrix to multiply, extents n x m
   const MatrixType & A,
   /// Matrix to multiply, extents m x p

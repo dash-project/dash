@@ -1,9 +1,9 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
 #include "TestBase.h"
-#include "NonblockingTest.h"
+#include "GlobAsyncRefTest.h"
 
-TEST_F(NonblockingTest, GlobAsyncRef) {
+TEST_F(GlobAsyncRefTest, IsLocal) {
   int num_elem_per_unit = 20;
   // Initialize values:
   dash::Array<int> array(_dash_size * num_elem_per_unit);
@@ -22,7 +22,10 @@ TEST_F(NonblockingTest, GlobAsyncRef) {
   ASSERT_EQ_U(true, gar_local_g.is_local());
 }
 
-TEST_F(NonblockingTest, ArrayBulkWrite) {
+/**
+ * Non-blocking writes to distributed array with push semantics.
+ */
+TEST_F(GlobAsyncRefTest, Push) {
   int num_elem_per_unit = 20;
   // Initialize values:
   dash::Array<int> array(_dash_size * num_elem_per_unit);
@@ -32,8 +35,18 @@ TEST_F(NonblockingTest, ArrayBulkWrite) {
   array.barrier();
   // Assign values asynchronously:
   for (auto gi = 0; gi < array.size(); ++gi) {
-    array.async[gi]++;
+    if (array[gi].is_local()) {
+      // Changes local value only
+      array.async[gi]++;
+    }
   }
-  // Flush window:
-  array.flush_local();
+  // Flush local window:
+  array.async.push();
+  // Test values in local window. Changes by all units should be visible:
+  for (auto li = 0; li < array.lcapacity(); ++li) {
+    // All local values incremented once by all units
+    ASSERT_EQ_U(_dash_id + 1,
+                array.local[li]);
+  }
 }
+

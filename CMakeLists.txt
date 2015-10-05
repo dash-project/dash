@@ -53,8 +53,13 @@ option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
 option(ENABLE_TRACE_LOGGING
        "Specify whether trace messages should be logged" off)
+option(ENABLE_DART_LOGGING
+       "Specify whether messages from DART should be logged" off)
 option(ENABLE_ASSERTIONS
        "Specify whether runtime assertions should be checked" off)
+option(MEMORY_MODEL_UNIFIED
+       "Specify whether to assume unified memory model" off)
+message("-- Unified RMA memory model " ${MEMORY_MODEL_UNIFIED})
 
 set(DART_IF_VERSION "3.1" CACHE STRING
     "Version of the DART interface")
@@ -66,6 +71,10 @@ set(DASH_DART_IF_INCLUDE_DIR
     CACHE PATH INTERNAL FORCE)
 message("-- DART interface include path: "
         ${DASH_DART_IF_INCLUDE_DIR})
+
+set(DASH_DART_BASE_INCLUDE_DIR
+    ${CMAKE_CURRENT_SOURCE_DIR}/dart-impl/base/include
+    CACHE PATH INTERNAL FORCE)
 
 ## Set compiler flags (depend on CMake options)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/CompilerFlags.cmake)
@@ -89,6 +98,9 @@ string(REPLACE "," ";"
 
 # DART interface:
 add_subdirectory(dart-if)
+
+# DART base:
+add_subdirectory(dart-impl/base)
 
 # DART implementation of every enabled DART variant:
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")

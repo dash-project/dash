@@ -1,3 +1,4 @@
+config.defs
 build
 build-ci
 *.o

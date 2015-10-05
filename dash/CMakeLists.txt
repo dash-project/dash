@@ -60,6 +60,12 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
       ${DASH_LIBRARY}
       ${MPI_C_LIBRARIES})
   endif()
+  if (MEMORY_MODEL_UNIFIED)
+    set_target_properties(
+      ${DASH_LIBRARY} PROPERTIES
+      COMPILE_FLAGS "-DDASH_UNIFIED_MEMORY_MODEL"
+    )
+  endif()
   DeployLibrary(${DASH_LIBRARY})
 
   # Install library
