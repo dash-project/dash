@@ -5,7 +5,7 @@
 #include "CopyTest.h"
 
 TEST_F(CopyTest, BlockingGlobalToLocalBlock) {
-  // Copy range of elements contained in a single, continuous block.
+  // Copy all elements contained in a single, continuous block.
   const int num_elem_per_unit = 20;
   size_t num_elem_total       = _dash_size * num_elem_per_unit;
 
@@ -32,7 +32,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalBlock) {
 }
 
 TEST_F(CopyTest, BlockingLocalToGlobalBlock) {
-  // Copy range of elements contained in a single, continuous block.
+  // Copy all elements contained in a single, continuous block.
   const int num_elem_per_unit = 20;
   size_t num_elem_total       = _dash_size * num_elem_per_unit;
 
@@ -62,12 +62,10 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlock) {
   }
 }
 
-#if 0
-TEST_F(CopyTest, GlobalToLocalBlockNonblocking) {
+TEST_F(CopyTest, BlockingGlobalToLocalSubBlock) {
   // Copy range of elements contained in a single, continuous block.
 }
 
-TEST_F(CopyTest, LocalToGlobalBlockNonblocking) {
+TEST_F(CopyTest, BlockingLocalToGlobalSubBlock) {
   // Copy range of elements contained in a single, continuous block.
 }
-#endif

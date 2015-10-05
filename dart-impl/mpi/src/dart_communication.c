@@ -500,16 +500,17 @@ if (seg_id >= 0){
     /* MPI_Wait is invoked to release the resource brought by the mpi
      * request handle
      */
-  if (seg_id) {
-    DART_LOG_DEBUG("PUT_BLOCKING  - %d bytes "
-           "(allocated with collective allocation) to %d at the offset %d", 
-           nbytes, target_unitid_abs, offset);
-  } else {
-    DART_LOG_DEBUG("PUT_BLOCKING - %d bytes "
-          "(allocated with local allocation) to %d at the offset %d",
-          nbytes, target_unitid_abs, offset);
+    if (seg_id) {
+      DART_LOG_DEBUG("PUT_BLOCKING  - %d bytes "
+             "(allocated with collective allocation) to %d at the offset %d", 
+             nbytes, target_unitid_abs, offset);
+    } else {
+      DART_LOG_DEBUG("PUT_BLOCKING - %d bytes "
+            "(allocated with local allocation) to %d at the offset %d",
+            nbytes, target_unitid_abs, offset);
+    }
+    return DART_OK;
   }
-  return DART_OK;}
 }
 
 /** 

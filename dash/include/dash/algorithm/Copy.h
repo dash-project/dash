@@ -4,6 +4,7 @@
 #include <dash/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/dart/if/dart_communication.h>
+
 #include <algorithm>
 
 namespace dash {
