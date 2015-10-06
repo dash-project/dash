@@ -6,17 +6,18 @@ CFLAGS+=-I.. -I../$(DART_IF) -g3
 
 LIBDART  = libdart.a
 
-FILES = gaspi_utils     \
-	dart_initialization \
-	dart_team_group     \
-	dart_group_impl     \
-	dart_communication  \
-	dart_team_private   \
-	dart_seg_stack      \
-	dart_translation    \
-	dart_globmem        \
-	dart_mem			\
-	handle_queue
+FILES = gaspi_utils         \
+	dart_initialization     \
+	dart_team_group         \
+	dart_group_impl         \
+	dart_communication      \
+	dart_team_private       \
+	dart_seg_stack          \
+	dart_translation        \
+	dart_globmem            \
+	dart_mem			    \
+	handle_queue            \
+	dart_communication_priv
 
 OBJS = $(addsuffix .o, $(FILES))
 

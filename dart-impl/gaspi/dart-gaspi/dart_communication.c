@@ -13,13 +13,6 @@ gaspi_queue_id_t dart_handle_get_queue(dart_handle_t handle)
 }
 /*************************************************************/
 /**
- * TODO dart_bcast not implemented yet
- */
-dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t team)
-{
-    return DART_ERR_OTHER;
-}
-/**
  * TODO dart_scatter not implemented yet
  */
 dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t root, dart_team_t team)
@@ -32,6 +25,44 @@ dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t
 dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t root, dart_team_t team)
 {
     return DART_ERR_OTHER;
+}
+
+dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t team)
+{
+    uint16_t        index;
+    dart_unit_t     myid;
+    gaspi_pointer_t seg_ptr = NULL;
+
+    if(nbytes > DART_GASPI_BUFFER_SIZE)
+    {
+        fprintf(stderr, "Memory for collective operation is exhausted\n");
+        return DART_ERR_OTHER;
+    }
+
+    DART_CHECK_ERROR(dart_myid(&myid));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &seg_ptr));
+
+    if(myid == root)
+    {
+        memcpy(seg_ptr, buf, nbytes);
+    }
+    int result = dart_adapt_teamlist_convert(team, &index);
+    if(result == -1)
+    {
+        return DART_ERR_INVAL;
+    }
+    DART_CHECK_GASPI_ERROR(gaspi_bcast(dart_gaspi_buffer_id,
+                                       0UL,
+                                       nbytes,
+                                       root,
+                                       dart_teams[index].id));
+
+    if(myid != root)
+    {
+        memcpy(buf, seg_ptr, nbytes);
+    }
+
+    return DART_OK;
 }
 
 dart_ret_t dart_allgather(void *sendbuf, void *recvbuf, size_t nbytes, dart_team_t team)
@@ -85,57 +116,6 @@ dart_ret_t dart_barrier (dart_team_t teamid)
     }
     gaspi_group_id = dart_teams[index].id;
     DART_CHECK_ERROR(gaspi_barrier(gaspi_group_id, GASPI_BLOCK));
-
-    return DART_OK;
-}
-
-dart_ret_t unit_g2l (uint16_t index, dart_unit_t abs_id, dart_unit_t *rel_id)
-{
-    if (index == 0)
-    {
-        *rel_id = abs_id;
-    }
-    else
-    {
-        *rel_id = dart_teams[index].group.g2l[abs_id];
-    }
-
-    return DART_OK;
-}
-
-dart_ret_t dart_get_minimal_queue(gaspi_queue_id_t * qid)
-{
-    gaspi_number_t qsize;
-    gaspi_number_t queue_num_max;
-    gaspi_number_t min_queue_size;
-    gaspi_number_t queue_size_max;
-
-    DART_CHECK_ERROR(gaspi_queue_size_max(&queue_size_max));
-    DART_CHECK_ERROR(gaspi_queue_num(&queue_num_max));
-
-    min_queue_size = queue_size_max;
-
-    for(gaspi_queue_id_t q = 0 ; q < queue_num_max ; ++q)
-    {
-        DART_CHECK_ERROR(gaspi_queue_size(q, &qsize));
-        if(qsize == 0)
-        {
-            *qid = q;
-            return DART_OK;
-        }
-        if(min_queue_size > qsize)
-        {
-            min_queue_size = qsize;
-            *qid = q;
-        }
-    }
-    /*
-     * If there is no empty queue -> perform wait operation to empty one queue
-     */
-    if(min_queue_size == queue_size_max)
-    {
-        DART_CHECK_ERROR(gaspi_wait(*qid, GASPI_BLOCK));
-    }
 
     return DART_OK;
 }

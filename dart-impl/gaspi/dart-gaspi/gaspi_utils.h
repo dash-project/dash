@@ -5,22 +5,6 @@
 #include <stdlib.h>
 #include <GASPI.h>
 
-gaspi_return_t
-gaspi_allgather(const gaspi_segment_id_t send_segid,
-                const gaspi_offset_t     send_offset,
-                const gaspi_segment_id_t recv_segid,
-                const gaspi_offset_t     recv_offset,
-                const gaspi_size_t       byte_size,
-                const gaspi_group_t      group );
-
-gaspi_return_t gaspi_bcast(gaspi_segment_id_t seg_id, gaspi_offset_t offset,
-                           gaspi_size_t bytesize, gaspi_rank_t root);
-
-gaspi_return_t gaspi_bcast_asym(gaspi_segment_id_t seg_id,
-                                gaspi_offset_t offset, gaspi_size_t bytesize,
-                                gaspi_segment_id_t transfer_seg_id,
-                                gaspi_rank_t root);
-
 gaspi_return_t create_segment(const gaspi_size_t size,
                               gaspi_segment_id_t *seg_id);
 
@@ -39,6 +23,7 @@ gaspi_return_t blocking_waitsome(gaspi_notification_id_t id_begin,
 
 gaspi_return_t flush_queues(gaspi_queue_id_t queue_begin, gaspi_queue_id_t queue_count);
 
+int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gaspi_rank_t size);
 
 #define DART_CHECK_ERROR_TEMPL(expected, error_code, ret_type, func...)          \
   do {                                                                           \
