@@ -26,6 +26,21 @@ typedef enum
     /* add error codes as needed */
   } dart_ret_t;
 
+typedef enum
+  {
+    DART_OP_UNDEFINED = 0,
+    DART_OP_MIN,
+    DART_OP_MAX,
+    DART_OP_SUM,
+    DART_OP_PROD,
+    DART_OP_BAND,
+    DART_OP_LAND,
+    DART_OP_BOR,
+    DART_OP_LOR,
+    DART_OP_BXOR,
+    DART_OP_LXOR
+  } dart_operation_t;
+
 typedef int32_t dart_unit_t;
 typedef int32_t dart_team_t;
 

@@ -8,10 +8,10 @@
  */
 
 
-#include <dash/dart/mpi/dart_deb_log.h>
 #include <stdio.h>
 #include <mpi.h>
 #include <string.h>
+#include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -75,7 +75,7 @@ dart_ret_t dart_get(
       nbytes,
       MPI_BYTE,
       win);
-    DEBUG("GET  - %d bytes (allocated with collective allocation) "
+    DART_LOG_DEBUG("GET  - %d bytes (allocated with collective allocation) "
           "from %d at the offset %d",
           nbytes, target_unitid_abs, offset);
   } else {
@@ -89,7 +89,7 @@ dart_ret_t dart_get(
       nbytes,
       MPI_BYTE,
       win);
-    DEBUG ("GET  - %d bytes (allocated with local allocation) "
+    DART_LOG_DEBUG ("GET  - %d bytes (allocated with local allocation) "
            "from %d at the offset %d",
            nbytes, target_unitid_abs, offset);
   }                
@@ -101,11 +101,12 @@ dart_ret_t dart_put(
   void *src,
   size_t nbytes)
 {
-  MPI_Aint disp_s, disp_rel;
+  MPI_Aint    disp_s,
+              disp_rel;
+  MPI_Win     win;
   dart_unit_t target_unitid_abs;
   uint64_t offset   = gptr.addr_or_offs.offset;
   int16_t  seg_id   = gptr.segid;
-  MPI_Win  win;
   target_unitid_abs = gptr.unitid;
   if (seg_id) {
     uint16_t index = gptr.flags;
@@ -128,7 +129,7 @@ dart_ret_t dart_put(
       nbytes,
       MPI_BYTE,
       win);
-    DEBUG ("PUT  -%d bytes (allocated with collective allocation) "
+    DART_LOG_DEBUG ("PUT  -%d bytes (allocated with collective allocation) "
            "to %d at the offset %d",
            nbytes, target_unitid_abs, offset);
   } else {
@@ -142,9 +143,74 @@ dart_ret_t dart_put(
       nbytes,
       MPI_BYTE,
       win);
-    DEBUG ("PUT  - %d bytes (allocated with local allocation) "
+    DART_LOG_DEBUG ("PUT  - %d bytes (allocated with local allocation) "
            "to %d at the offset %d", 
            nbytes, target_unitid_abs, offset);
+  }
+  return DART_OK;
+}
+
+/*
+ * TODO: Define and use macro DART__DEFINE__ACCUMULATE(int)
+ */
+dart_ret_t dart_accumulate_int(
+  dart_gptr_t gptr,
+  int *values,
+  size_t nelem,
+  dart_operation_t op,
+  dart_team_t team)
+{
+  MPI_Aint    disp_s,
+              disp_rel;
+  MPI_Win     win;
+  dart_unit_t target_unitid_abs;
+  uint64_t offset   = gptr.addr_or_offs.offset;
+  int16_t  seg_id   = gptr.segid;
+  target_unitid_abs = gptr.unitid;
+  if (seg_id) {
+    dart_unit_t target_unitid_rel;
+    uint16_t index = gptr.flags;
+    win            = dart_win_lists[index];    
+    unit_g2l(index,
+             target_unitid_abs,
+             &target_unitid_rel);
+    if (dart_adapt_transtable_get_disp(
+          seg_id,
+          target_unitid_rel,
+          &disp_s) == -1) {
+      return DART_ERR_INVAL;
+    }
+    disp_rel = disp_s + offset;
+    MPI_Accumulate(
+      values,            // Origin address
+      nelem,             // Number of entries in buffer
+      MPI_INT,           // Data type of each buffer entry
+      target_unitid_rel, // Rank of target
+      disp_rel,          // Displacement from start of window to beginning
+                         // of target buffer
+      nelem,             // Number of entries in target buffer
+      MPI_INT,           // Data type of each entry in target buffer
+      dart_mpi_op(op),   // Reduce operation
+      win);
+    DART_LOG_DEBUG ("ACC  - %d elements (allocated with collective allocation) "
+           "to %d at offset %d",
+           nelem, target_unitid_abs, offset);
+  } else {
+    win = dart_win_local_alloc;
+    MPI_Accumulate(
+      values,            // Origin address
+      nelem,             // Number of entries in buffer
+      MPI_INT,           // Data type of each buffer entry
+      target_unitid_abs, // Rank of target
+      offset,            // Displacement from start of window to beginning
+                         // of target buffer
+      nelem,             // Number of entries in target buffer
+      MPI_INT,           // Data type of each entry in target buffer
+      dart_mpi_op(op),   // Reduce operation
+      win);
+    DART_LOG_DEBUG ("ACC  - %d elements (allocated with local allocation) "
+           "to %d at offset %d", 
+           nelem, target_unitid_abs, offset);
   }
   return DART_OK;
 }
@@ -174,7 +240,7 @@ dart_ret_t dart_get_handle(
 /*
     if (dart_adapt_transtable_get_win (index, offset, &begin, &win) == -1)
     {
-      ERROR ("Invalid accessing operation");
+      DART_LOG_ERROR ("Invalid accessing operation");
       return DART_ERR_INVAL;
     }
 */
@@ -216,7 +282,7 @@ dart_ret_t dart_get_handle(
       win,
       &mpi_req);
     (*handle) -> dest = target_unitid_rel;
-    DEBUG ("GET  - %d bytes (allocated with collective allocation) "  
+    DART_LOG_DEBUG ("GET  - %d bytes (allocated with collective allocation) "  
            "from %d at the offset %d", 
            nbytes, target_unitid_abs, offset);
   } else {
@@ -233,7 +299,7 @@ dart_ret_t dart_get_handle(
       win,
       &mpi_req);
     (*handle) -> dest = target_unitid_abs;
-    DEBUG ("GET  - %d bytes (allocated with local allocation) "
+    DART_LOG_DEBUG ("GET  - %d bytes (allocated with local allocation) "
            "from %d at the offset %d",
            nbytes, target_unitid_abs, offset);
   }
@@ -263,7 +329,7 @@ dart_ret_t dart_put_handle(
     dart_unit_t target_unitid_rel;
 /*
     if (dart_adapt_transtable_get_win(index, offset, &begin, &win) == -1) {
-      ERROR ("Invalid accessing operation");
+      DART_LOG_ERROR ("Invalid accessing operation");
       return DART_ERR_INVAL;
     }
 */
@@ -295,7 +361,7 @@ dart_ret_t dart_put_handle(
       win,
       &mpi_req);
     (*handle) -> dest = target_unitid_rel;
-    DEBUG("PUT  -%d bytes (allocated with collective allocation) "
+    DART_LOG_DEBUG("PUT  -%d bytes (allocated with collective allocation) "
           "to %d at the offset %d",
           nbytes, target_unitid_abs, offset);
   } else {
@@ -310,7 +376,7 @@ dart_ret_t dart_put_handle(
       MPI_BYTE,
       win,
       &mpi_req);
-    DEBUG("PUT  - %d bytes (allocated with local allocation) "
+    DART_LOG_DEBUG("PUT  - %d bytes (allocated with local allocation) "
           "to %d at the offset %d", 
           nbytes, target_unitid_abs, offset);
     (*handle) -> dest = target_unitid_abs;
@@ -434,25 +500,26 @@ if (seg_id >= 0){
     /* MPI_Wait is invoked to release the resource brought by the mpi
      * request handle
      */
-  if (seg_id) {
-    DEBUG("PUT_BLOCKING  - %d bytes "
-           "(allocated with collective allocation) to %d at the offset %d", 
-           nbytes, target_unitid_abs, offset);
-  } else {
-    DEBUG("PUT_BLOCKING - %d bytes "
-          "(allocated with local allocation) to %d at the offset %d",
-          nbytes, target_unitid_abs, offset);
+    if (seg_id) {
+      DART_LOG_DEBUG("PUT_BLOCKING  - %d bytes "
+             "(allocated with collective allocation) to %d at the offset %d", 
+             nbytes, target_unitid_abs, offset);
+    } else {
+      DART_LOG_DEBUG("PUT_BLOCKING - %d bytes "
+            "(allocated with local allocation) to %d at the offset %d",
+            nbytes, target_unitid_abs, offset);
+    }
+    return DART_OK;
   }
-  return DART_OK;}
 }
 
 /** 
  * TODO: Check if MPI_Accumulate (REPLACE) can bring better performance? 
  */
 dart_ret_t dart_get_blocking(
-  void *dest,
-  dart_gptr_t gptr,
-  size_t nbytes)
+  void        * dest,
+  dart_gptr_t   gptr,
+  size_t        nbytes)
 {
   MPI_Win win;
   MPI_Status mpi_sta;
@@ -460,9 +527,11 @@ dart_ret_t dart_get_blocking(
   MPI_Aint disp_s, disp_rel;
   
   uint64_t offset = gptr.addr_or_offs.offset;
-  int16_t seg_id = gptr.segid;
+  int16_t seg_id  = gptr.segid;
   uint16_t index  = gptr.flags;
-  dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
+  dart_unit_t unitid,
+              target_unitid_rel,
+              target_unitid_abs = gptr.unitid;
 
 #ifdef SHAREDMEM_ENABLE 
   if (seg_id >= 0) {
@@ -547,14 +616,14 @@ dart_ret_t dart_get_blocking(
     MPI_Wait(&mpi_req, &mpi_sta);
   
     if (seg_id) {
-      DEBUG("GET_BLOCKING  - %d bytes "
-            "(allocated with collective allocation) from %d "        
-            "at the offset %d", 
-            nbytes, target_unitid_abs, offset);
+      DART_LOG_DEBUG("GET_BLOCKING  - %d bytes "
+                     "(allocated with collective allocation) from %d "        
+                     "at offset %d", 
+                     nbytes, target_unitid_abs, offset);
     } else {  
-      DEBUG("GET_BLOCKING - %d bytes "
-            "(allocated with local allocation) from %d at the offset %d", 
-             nbytes, target_unitid_abs, offset);
+      DART_LOG_DEBUG("GET_BLOCKING - %d bytes "
+                     "(allocated with local allocation) from %d at offset %d", 
+                      nbytes, target_unitid_abs, offset);
     }
     return DART_OK;
   }
@@ -579,7 +648,7 @@ dart_ret_t dart_flush(
     win = dart_win_local_alloc;
     MPI_Win_flush(target_unitid_abs, win);
   }
-  LOG("FLUSH  - finished");
+  DART_LOG_DEBUG("FLUSH  - finished");
   return DART_OK;
 }
 
@@ -595,7 +664,7 @@ dart_ret_t dart_flush_all(
     win = dart_win_local_alloc;
   }
   MPI_Win_flush_all(win);
-  LOG("FLUSH_ALL  - finished");
+  DART_LOG_DEBUG("FLUSH_ALL  - finished");
   return DART_OK;
 }
 
@@ -616,7 +685,7 @@ dart_ret_t dart_flush_local(
     win = dart_win_local_alloc;
     MPI_Win_flush_local(target_unitid_abs, win);
   }
-  LOG("FLUSH_LOCAL - finished");
+  DART_LOG_DEBUG("FLUSH_LOCAL - finished");
   return DART_OK;
 }
 
@@ -632,7 +701,7 @@ dart_ret_t dart_flush_local_all(
     win = dart_win_local_alloc;
   }
   MPI_Win_flush_local_all(win);
-  LOG("FLUSH_LOCAL_ALL  - finished");
+  DART_LOG_DEBUG("FLUSH_LOCAL_ALL  - finished");
   return DART_OK;
 }
 
@@ -643,7 +712,7 @@ dart_ret_t dart_wait_local(
     MPI_Status mpi_sta;
     MPI_Wait (&(handle->request), &mpi_sta);
   }
-  LOG("WAIT_LOCAL  - finished");
+  DART_LOG_DEBUG("WAIT_LOCAL  - finished");
   return DART_OK;
 }
 
@@ -658,7 +727,7 @@ dart_ret_t dart_wait(
     handle = NULL;
     free (handle);
   }
-  LOG("WAIT  - finished");
+  DART_LOG_DEBUG("WAIT  - finished");
   return DART_OK;
 }
 
@@ -672,7 +741,7 @@ dart_ret_t dart_test_local(
   }
   MPI_Status mpi_sta;
   MPI_Test (&(handle->request), is_finished, &mpi_sta);
-  LOG("TEST_LOCAL  - finished");
+  DART_LOG_DEBUG("TEST_LOCAL  - finished");
   return DART_OK;
 }
 
@@ -701,7 +770,7 @@ dart_ret_t dart_waitall_local(
     free (mpi_req);
     free (mpi_sta);
   }
-  LOG ("WAITALL_LOCAL  - finished");
+  DART_LOG_DEBUG("WAITALL_LOCAL  - finished");
   return DART_OK;
 }
 
@@ -738,7 +807,7 @@ dart_ret_t dart_waitall(
       }
     }
   }
-  LOG ("WAITALL  - finished");
+  DART_LOG_DEBUG("WAITALL  - finished");
   return DART_OK;
 }
 
@@ -766,7 +835,7 @@ dart_ret_t dart_testall_local(
   }
   free(mpi_req);
   free(mpi_sta);
-  LOG("TESTALL_LOCAL  - finished");
+  DART_LOG_DEBUG("TESTALL_LOCAL  - finished");
   return DART_OK;
 }
 
@@ -875,7 +944,7 @@ dart_ret_t dart_allgather(
            comm);
 }
 
-dart_ret_t dart_reduce(
+dart_ret_t dart_reduce_double(
   double *sendbuf,
   double *recvbuf,
   dart_team_t teamid)

@@ -18,6 +18,8 @@
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 
+#include <dash/Onesided.h>
+
 #include <dash/Enums.h>
 #include <dash/Container.h>
 #include <dash/Shared.h>

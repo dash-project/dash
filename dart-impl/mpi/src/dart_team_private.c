@@ -110,7 +110,7 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, uint16_t* index)
 		return (dart_allocated_teamlist_size - 1);
 
 	} else {
-		ERROR ("Out of bound: exceed the MAX_TEAM_NUMBER limit");
+		DART_LOG_ERROR ("Out of bound: exceed the MAX_TEAM_NUMBER limit");
 		return -1;
 	}
 }
@@ -159,7 +159,7 @@ int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index)
 		/* If search successfully, the position of the teamid in array is returned. */
 		return imin;
 	} else {
-		ERROR ("Invalid teamid input: %d", teamid);
+		DART_LOG_ERROR ("Invalid teamid input: %d", teamid);
 		return -1;	
 	}
 }

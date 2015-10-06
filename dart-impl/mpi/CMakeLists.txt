@@ -3,6 +3,8 @@ project(project_dash_dart_impl_mpi)
 # Library name
 set(DASH_DART_IMPL_MPI_LIBRARY dart-mpi)
 
+set(DASH_DART_BASE_LIBRARY dart-base)
+
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 
 # Source- and header files to be compiled (OBJ):
@@ -10,6 +12,10 @@ file(GLOB_RECURSE DASH_DART_IMPL_MPI_SOURCES "src/*.c" "src/*.h" "src/*.cc")
 file(GLOB_RECURSE DASH_DART_IMPL_MPI_HEADERS "include/*.h")
 
 set(DASH_DART_IF_INCLUDE_DIR ${DASH_DART_IF_INCLUDE_DIR} 
+    PARENT_SCOPE)
+set(ENABLE_DART_LOGGING ${ENABLE_DART_LOGGING}
+    PARENT_SCOPE)
+set(MEMORY_MODEL_UNIFIED ${MEMORY_MODEL_UNIFIED}
     PARENT_SCOPE)
 
 message("-- MPI include path: " "${MPI_INCLUDE_PATH}")
@@ -26,6 +32,7 @@ include_directories(
   ${DASH_DART_IMPL_MPI_INCLUDE_DIRS}
   ${MPI_INCLUDE_PATH}
   ${DASH_DART_IF_INCLUDE_DIR}
+  ${DASH_DART_BASE_INCLUDE_DIR}
 )
 # Library compilation sources
 add_library(
@@ -37,7 +44,21 @@ add_library(
 target_link_libraries(
   ${DASH_DART_IMPL_MPI_LIBRARY}
   ${MPI_C_LIBRARIES}
+  ${DASH_DART_BASE_LIBRARY}
 )
+
+if (ENABLE_DART_LOGGING)
+  set_target_properties(
+    ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
+    COMPILE_FLAGS "-DDASH_ENABLE_LOGGING -DDASH_ENABLE_DART_LOGGING"
+  )
+endif()
+if (MEMORY_MODEL_UNIFIED)
+  set_target_properties(
+    ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
+    COMPILE_FLAGS "-DDASH_UNIFIED_MEMORY_MODEL"
+  )
+endif()
 
 if(MPI_COMPILE_FLAGS)
   set_target_properties(

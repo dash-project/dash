@@ -39,9 +39,12 @@ std::ostream & operator<<(
  * - move-assignment
  */
 class Team {
-  template< class U> friend class Shared;
-  template< class U, class Pattern > friend class GlobIter;
-  template< class U> friend class GlobRef;
+  template< class U>
+    friend class Shared;
+  template< class U, class Pattern, class Ptr, class Ref >
+    friend class GlobIter;
+  template< class U>
+    friend class GlobRef;
   friend std::ostream & operator<<(
     std::ostream & os,
     const Team & team);

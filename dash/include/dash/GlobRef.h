@@ -128,8 +128,8 @@ public:
 #if 0
   template<
     typename X=T, 
-	  typename std::enable_if<has_subscript_operator<X>::value, int>::type *ptr =
-      nullptr>
+	  typename std::enable_if<has_subscript_operator<X>::value, int>::type
+      * ptr = nullptr>
   auto operator[](size_t pos) -> 
     typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
   {
@@ -152,7 +152,7 @@ public:
    */
   template<typename MEMTYPE>
   GlobRef<MEMTYPE> member(size_t offs) {
-    dart_gptr_t dartptr = m_gptr.dartptr();    
+    dart_gptr_t dartptr = m_gptr.dart_gptr();    
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&dartptr, offs),
       DART_OK);

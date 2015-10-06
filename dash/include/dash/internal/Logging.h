@@ -57,15 +57,17 @@ static void Log_Recursive(
   int line,
   const char* context_tag,
   std::ostringstream & msg) {
-  std::cout << "[ " << dash::myid() << "  " << level << " ] "
-            << std::left << std::setw(20)
-            << file << ":" 
-            << std::left << std::setw(4)
-            << line << " | "
-            << std::left << std::setw(35)
-            << context_tag
-            << msg.str() 
-            << std::endl;
+  std::stringstream buf;
+  buf << "[ " << dash::myid() << "  " << level << " ] "
+      << std::left << std::setw(20)
+      << file << ":" 
+      << std::left << std::setw(4)
+      << line << " | "
+      << std::left << std::setw(35)
+      << context_tag
+      << msg.str() 
+      << std::endl;
+  std::cout << buf.str();
 }
 
 // "Recursive" variadic function

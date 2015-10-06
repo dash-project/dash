@@ -11,6 +11,7 @@
 #include <dash/dart/if/dart.h>
 #include <dash/GlobPtr.h>
 #include <dash/Team.h>
+#include <dash/Onesided.h>
 
 namespace dash {
 
@@ -26,110 +27,6 @@ constexpr GlobMemKind COLL       { GlobMemKind::COLLECTIVE };
 constexpr GlobMemKind LOCAL      { GlobMemKind::LOCAL };
 
 } // namespace internal
-
-/**
- * Block until completion of local and global operations on a global address.
- */
-template<typename T>
-void fence(
-  const GlobPtr<T> & gptr
-) {
-  DASH_ASSERT_RETURNS(
-    dart_fence(gptr.dartptr()),
-    DART_OK);
-}
-
-/**
- * Block until completion of local operations on a global address.
- */
-template<typename T>
-void fence_local(
-  const GlobPtr<T> & gptr
-) {
-  DASH_ASSERT_RETURNS(
-    dart_fence_local(gptr.dartptr()),
-    DART_OK);
-}
-
-/**
- * Write a value to a global pointer, non-blocking. Requires a later
- * fence operation to guarantee local and/or remote completion.
- *
- * \nonblocking
- */
-template<typename T>
-void put_value_nonblock(
-  /// [IN]  Value to set
-  const T & newval,
-  /// [IN]  Global pointer referencing target address of value
-  const GlobPtr<T> & gptr
-) {
-  DASH_ASSERT_RETURNS(
-    dart_put(gptr.dartptr(),
-             (void *)(&newval),
-             sizeof(T)),
-    DART_OK);
-}
-
-/**
- * Read a value fom a global pointer, non-blocking. Requires a later
- * fence operation to guarantee local and/or remote completion.
- *
- * \nonblocking
- */
-template<typename T>
-void get_value_nonblock(
-  /// [OUT] Local pointer that will contain the value of the 
-  //        global address
-  T * ptr,
-  /// [IN]  Global pointer to read
-  const GlobPtr<T> & gptr
-) {
-  DASH_ASSERT_RETURNS(
-    dart_get(ptr,
-             gptr.dartptr(),
-             sizeof(T)),
-    DART_OK);
-}
-
-/**
- * Write a value to a global pointer
- *
- * \blocking
- */
-template<typename T>
-void put_value(
-  /// [IN]  Value to set
-  const T & newval,
-  /// [IN]  Global pointer referencing target address of value
-  const GlobPtr<T> & gptr
-) {
-  DASH_ASSERT_RETURNS(
-    dart_put_blocking(gptr.dartptr(),
-                      (void *)(&newval),
-                      sizeof(T)),
-    DART_OK);
-}
-
-/**
- * Read a value fom a global pointer.
- *
- * \blocking
- */
-template<typename T>
-void get_value(
-  /// [OUT] Local pointer that will contain the value of the 
-  //        global address
-  T * ptr,
-  /// [IN]  Global pointer to read
-  const GlobPtr<T> & gptr
-) {
-  DASH_ASSERT_RETURNS(
-    dart_get_blocking(ptr,
-                      gptr.dartptr(),
-                      sizeof(T)),
-    DART_OK);
-}
 
 template<typename ElementType>
 class GlobMem {
@@ -236,7 +133,7 @@ public:
   const ElementType * lbegin(dart_unit_t unit_id) const {
     void *addr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", unit_id);
-    dart_gptr_t gptr = begin().dartptr();
+    dart_gptr_t gptr = begin().dart_gptr();
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
@@ -254,7 +151,7 @@ public:
   ElementType * lbegin(dart_unit_t unit_id) {
     void *addr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin()", unit_id);
-    dart_gptr_t gptr = begin().dartptr();
+    dart_gptr_t gptr = begin().dart_gptr();
     DASH_LOG_TRACE_VAR("GlobMem.lbegin", 
                        GlobPtr<ElementType>((dart_gptr_t)gptr));
     DASH_ASSERT_RETURNS(
@@ -289,7 +186,7 @@ public:
    */
   const ElementType * lend(dart_unit_t unit_id) const {
     void *addr;
-    dart_gptr_t gptr = begin().dartptr();
+    dart_gptr_t gptr = begin().dart_gptr();
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
@@ -308,7 +205,7 @@ public:
    */
   ElementType * lend(dart_unit_t unit_id) {
     void *addr;
-    dart_gptr_t gptr = begin().dartptr();
+    dart_gptr_t gptr = begin().dart_gptr();
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
@@ -371,10 +268,18 @@ public:
     dash::get_value(ptr, GlobPtr<ValueType>(gptr));
   }
 
+  /**
+   * Complete all outstanding asynchronous operations on the referenced 
+   * global memory on all units.
+   */
   void flush() {
     dart_flush(m_begptr);
   }
 
+  /**
+   * Complete all outstanding asynchronous operations on the referenced 
+   * global memory on all units.
+   */
   void flush_all() {
     dart_flush_all(m_begptr);
   }
@@ -390,8 +295,6 @@ public:
   /**
    * Resolve the global pointer from an element position in a unit's
    * local memory.
-   *
-   * TODO: Clarify if dart-calls can be avoided if address is local.
    */
   template <typename IndexType>
   GlobPtr<ElementType> index_to_gptr(

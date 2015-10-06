@@ -130,18 +130,6 @@ public:
   }
 
   /**
-   * Publish change on referenced object its value has been changed, blocks
-   * until change has published to all units.
-   */
-  void flush() {
-    if (_has_changed) {
-      DASH_LOG_TRACE_VAR("GlobAsyncRef.flush()", _gptr);
-      DASH_LOG_TRACE_VAR("GlobAsyncRef.flush", _value);
-      dash::put_value(_value, _gptr);
-    }
-  }
-
-  /**
    * Whether the referenced element is located in local memory.
    */
   bool is_local() const {
@@ -152,8 +140,8 @@ public:
    * Conversion operator to referenced element value.
    */
   operator T() const {
-    if (!_has_value) {
-      // Get value from global memory:
+    DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
+    if (!_is_local) {
       dash::get_value(&_value, _gptr);
     }
     return _value;
@@ -169,14 +157,23 @@ public:
   }
 
   /**
-   * Value assignment operator, sets new value in local memory.
+   * Value assignment operator, sets new value in local memory or calls
+   * non-blocking put on remote memory.
    */
   self_t & operator=(const T & new_value) {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
-    _value       = new_value;
-    _has_changed = true;
-    _has_value   = true;
+    // TODO: Comparison with current value could be inconsistent
+    if (!_has_value || _value != new_value) {
+      _value       = new_value;
+      _has_changed = true;
+      _has_value   = true;
+      if (_is_local) {
+        *_lptr = _value;
+      } else {
+        dash::put_value_nonblock(_value, _gptr);
+      }
+    }
     return *this;
   }
 
@@ -263,7 +260,7 @@ private:
   /// Whether the referenced element is located local memory
   bool         _is_local    = false;
   /// Whether the value of the referenced element is known
-  bool         _has_value   = false;
+  mutable bool _has_value   = false;
 
 }; // class GlobAsyncRef
 
