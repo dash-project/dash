@@ -446,17 +446,21 @@ class MatrixRef {
   typedef MatrixRefView<ElementT, NumDimensions, PatternT>
     MatrixRefView_t;
   typedef LocalMatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
-    LocalMatrixRef_t;
+    LocalRef_t;
   typedef GlobIter<ElementT, PatternT>
     GlobIter_t;
+  typedef CartesianIndexSpace<
+            CUR, PatternT::memory_order(), typename PatternT::index_type >
+    IndexSpace_t;
 
  public:
-  typedef PatternT                       pattern_type;
-  typedef typename PatternT::index_type  index_type;
-  typedef ElementT                       value_type;
+  typedef PatternT                                        pattern_type;
+  typedef typename PatternT::index_type                     index_type;
+  typedef ElementT                                          value_type;
+  typedef IndexSpaceT                                 index_space_type;
 
-  typedef typename PatternT::size_type   size_type;
-  typedef typename PatternT::index_type  difference_type;
+  typedef typename PatternT::size_type                       size_type;
+  typedef typename PatternT::index_type                difference_type;
 
   typedef GlobIter_t                                          iterator;
   typedef const GlobIter_t                              const_iterator;
@@ -469,6 +473,11 @@ class MatrixRef {
   typedef GlobIter_t                                           pointer;
   typedef const GlobIter_t                               const_pointer;
   
+  typedef LocalRef_t                                        local_type;
+  typedef const LocalRef_t                            const_local_type;
+  typedef LocalRef_t                              local_reference_type;
+  typedef const LocalRef_t                  const_local_reference_type;
+
  public:
   template<
     typename T_,
@@ -493,6 +502,10 @@ class MatrixRef {
     MatrixRef<ElementT, NumDimensions, CUR-1, PatternT> && ();
 
  public:
+  /// Local proxy object, allows use in range-based for loops.
+  local_type local;
+
+ public:
   MatrixRef<ElementT, NumDimensions, CUR, PatternT>()
   : _refview(nullptr) { // = default;
     DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumDimensions);
@@ -506,11 +519,21 @@ class MatrixRef {
   Team & team();
 
   inline constexpr size_type size() const noexcept;
+  inline constexpr size_type local_size() const noexcept;
+  inline constexpr size_type local_capacity() const noexcept;
   inline size_type extent(size_type dim) const noexcept;
   inline std::array<size_type, NumDimensions> extents() const noexcept;
   inline constexpr bool empty() const noexcept;
   inline void barrier() const;
   inline Pattern_t pattern() const;
+
+  inline const_pointer data() const noexcept;
+  inline iterator begin() noexcept;
+  inline const_iterator begin() const noexcept;
+  inline iterator end() noexcept;
+  inline const_iterator end() const noexcept;
+  inline ElementT * lbegin() noexcept;
+  inline ElementT * lend() noexcept;
 
   /**
    * Subscript operator, returns a submatrix reference at given offset

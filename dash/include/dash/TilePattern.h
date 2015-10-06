@@ -67,8 +67,9 @@ private:
     PatternArguments_t;
 
 public:
-  typedef IndexType index_type;
-  typedef SizeType  size_type;
+  typedef IndexType   index_type;
+  typedef SizeType    size_type;
+  typedef ViewSpec_t  viewspec_type;
   typedef struct {
     dart_unit_t unit;
     IndexType   index;
@@ -1036,6 +1037,13 @@ public:
   std::array<IndexType, NumDimensions> coords(
     IndexType index) const {
     return _memory_layout.coords(index);
+  }
+
+  /**
+   * Memory order followed by the pattern.
+   */
+  inline static MemArrange memory_order() const {
+    return Arrangement;
   }
 
 private:

@@ -371,9 +371,9 @@ public:
    * given dimension.
    */
   void resize_dim(
-    dim_t dimension,
-    SizeType extent,
-    IndexType offset) {
+    dim_t     dimension,
+    IndexType offset,
+    SizeType  extent) {
     ViewPair_t vp { offset, extent };
     this->_values[dimension] = vp;
     update_size();

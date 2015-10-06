@@ -25,10 +25,13 @@ class GlobIter
 private:
   typedef GlobIter<ElementType, PatternType, PointerType, ReferenceType>
     self_t;
+  
+  typedef typename PatternType::viewspec_type ViewSpecType;
 
 protected:
   GlobMem<ElementType> * _globmem;
   const PatternType    * _pattern;
+  const ViewSpecType   * _viewspec;
   size_t                 _idx;
   size_t                 _max_idx;
 
@@ -44,6 +47,7 @@ public:
   GlobIter()
   : _globmem(nullptr),
     _pattern(nullptr),
+    _viewspec(nullptr),
     _idx(0),
     _max_idx(0) {
     DASH_LOG_TRACE_VAR("GlobIter()", _idx);
@@ -51,7 +55,8 @@ public:
   }
 
   /**
-   * Constructor.
+   * Constructor, creates a global iterator on global memory following
+   * the element order specified by the given pattern.
    */
   GlobIter(
     GlobMem<ElementType> * gmem,
@@ -59,6 +64,25 @@ public:
 	  size_t                 idx = 0)
   : _globmem(gmem), 
     _pattern(&pat),
+    _viewspec(nullptr),
+    _idx(idx),
+    _max_idx(pat.size() - 1) {
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", _idx);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", _max_idx);
+  }
+
+  /**
+   * Constructor, creates a global iterator on global memory following
+   * the element order specified by the given pattern and view spec.
+   */
+  GlobIter(
+    GlobMem<ElementType> * gmem,
+	  const PatternType    & pat,
+    const ViewSpecType   & viewspec,
+	  size_t                 idx = 0)
+  : _globmem(gmem), 
+    _pattern(&pat),
+    _viewspec(&viewspec),
     _idx(idx),
     _max_idx(pat.size() - 1) {
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", _idx);
@@ -94,7 +118,12 @@ public:
       offset = _idx - _max_idx;
     }
     // Global index to local index and unit:
-    auto glob_coords = _pattern->coords(pos);
+    auto glob_coords = _pattern->memory_layout->coords(pos);
+    if (_viewspec != nullptr) {
+      for (dim_t d = 0; d < _viewspec->rank(); ++d) {
+        global_coords[d] += (*viewspec)[d].offset;
+      }
+    }
     auto local_pos   = _pattern->local(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", pos);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", offset);

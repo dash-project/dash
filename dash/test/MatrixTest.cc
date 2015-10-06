@@ -402,6 +402,10 @@ TEST_F(MatrixTest, SubBlocks) {
 
   ASSERT_EQ_U((int)bottomright[0][0],
               (int)matrix[g_br_x][g_br_y]);
+
+  for (auto b_it = bottomright.begin(); b_it != bottomright.end(); ++b_it) {
+    
+  }
 }
 
 #if _TODO_
