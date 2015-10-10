@@ -431,28 +431,15 @@ TEST_F(MatrixTest, SubBlockIteration) {
                 gcoord_x, gcoord_y);
     ASSERT_EQ_U(phase, b_it.pos());
     // Apply view projection by converting to GlobPtr:
-    LOG_MESSAGE("block_elem_gptr");
     dash::GlobPtr<int> block_elem_gptr = (dash::GlobPtr<int>)(b_it);
     // Compare with GlobPtr from global iterator without view projection:
-    usleep(1000);
-    LOG_MESSAGE("glob_elem_gptr");
     dash::GlobPtr<int> glob_elem_gptr  = (dash::GlobPtr<int>)(
                                           matrix[gcoord_x][gcoord_y]);
-    usleep(1000);
-    LOG_MESSAGE("Dereference block element");
     int block_value = *block_elem_gptr;
-    usleep(1000);
-    LOG_MESSAGE("Dereference global element");
     int glob_value  = *glob_elem_gptr;
-    usleep(1000);
-    LOG_MESSAGE("compare values");
     ASSERT_EQ_U(glob_value,
                 block_value);
-    usleep(1000);
-    LOG_MESSAGE("compare global pointers");
-    ASSERT_TRUE(glob_elem_gptr == block_elem_gptr);
-    LOG_MESSAGE("next");
-    usleep(100000);
+    ASSERT_EQ_U(glob_elem_gptr, block_elem_gptr);
   }
 }
 
