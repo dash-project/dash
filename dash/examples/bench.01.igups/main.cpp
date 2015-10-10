@@ -219,7 +219,7 @@ double test_dash_pattern(
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto g_idx = 0; g_idx < a.size(); ++g_idx) {
       auto g_coords  = std::array<index_t, 1> { g_idx };
-      auto local_pos = pattern.local(g_coords);
+      auto local_pos = pattern.local_index(g_coords);
       auto unit_id   = local_pos.unit;
       auto l_index   = local_pos.index;
       if (unit_id == dash::myid()) {

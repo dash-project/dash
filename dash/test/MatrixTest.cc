@@ -3,7 +3,8 @@
 #include "TestBase.h"
 #include "MatrixTest.h"
 
-TEST_F(MatrixTest, SingleWriteMultipleRead) {
+TEST_F(MatrixTest, SingleWriteMultipleRead)
+{
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 7;
@@ -44,7 +45,8 @@ TEST_F(MatrixTest, SingleWriteMultipleRead) {
   }
 }
 
-TEST_F(MatrixTest, Distribute1DimBlockcyclicY) {
+TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
+{
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t extent_cols = 43;
@@ -99,7 +101,8 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY) {
   }
 }
 
-TEST_F(MatrixTest, Distribute2DimTileXY) {
+TEST_F(MatrixTest, Distribute2DimTileXY)
+{
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
@@ -157,7 +160,8 @@ TEST_F(MatrixTest, Distribute2DimTileXY) {
   }
 }
 
-TEST_F(MatrixTest, Distribute2DimBlockcyclicXY) {
+TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
+{
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t blocksize_x = 3;
@@ -216,7 +220,8 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY) {
   }
 }
 
-TEST_F(MatrixTest, Submat2DimDefault) {
+TEST_F(MatrixTest, Submat2DimDefault)
+{
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
@@ -264,7 +269,8 @@ TEST_F(MatrixTest, Submat2DimDefault) {
   ASSERT_EQ_U(matrix_size/2, submatrix_y_upper.size());
 }
 
-TEST_F(MatrixTest, Sub2DimDefault) {
+TEST_F(MatrixTest, Sub2DimDefault)
+{
   typedef int element_t;
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
@@ -324,7 +330,7 @@ TEST_F(MatrixTest, Sub2DimDefault) {
     auto column = matrix.sub<0>(col);
     for (auto row = 0; row < extent_rows; ++row) {
       auto g_coords   = std::array<int, 2> { col, row };
-      auto l_coords   = pattern.coords_to_local(g_coords);
+      auto l_coords   = pattern.local_coords(g_coords);
       auto unit_id    = pattern.unit_at(g_coords);
       auto local_idx  = pattern.local_at(l_coords);
       auto global_idx = pattern.memory_layout().at(g_coords);
@@ -350,7 +356,8 @@ TEST_F(MatrixTest, Sub2DimDefault) {
   ASSERT_EQ_U(matrix.local_size(), num_visited_local);
 }
 
-TEST_F(MatrixTest, SubBlockIteration) {
+TEST_F(MatrixTest, SubBlockIteration)
+{
   typedef int element_t;
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
@@ -388,21 +395,21 @@ TEST_F(MatrixTest, SubBlockIteration) {
 
   // Partition matrix into 4 blocks (upper/lower left/right):
   
+  // First create two views for left and right half:
   auto left        = matrix.submat<0>(0,               extent_cols / 2);
   auto right       = matrix.submat<0>(extent_cols / 2, extent_cols / 2);
 
+  // Refine views on left and right half into top/bottom:
   auto topleft     = left.submat<1>(0,               extent_rows / 2);
   auto bottomleft  = left.submat<1>(extent_rows / 2, extent_rows / 2);
-
-  auto topright    = matrix.submat<0>(extent_cols / 2, extent_cols / 2)
-                           .submat<1>(0,               extent_rows / 2);
-
-  auto bottomright = matrix.submat<0>(extent_cols / 2, extent_cols / 2)
-                           .submat<1>(extent_rows / 2, extent_rows / 2);
+  auto topright    = right.submat<1>(0,               extent_rows / 2);
+  auto bottomright = right.submat<1>(extent_rows / 2, extent_rows / 2);
 
   auto g_br_x      = extent_cols / 2;
   auto g_br_y      = extent_rows / 2;
 
+  // Initial plausibility check: Access same element by global- and view
+  // coordinates:
   ASSERT_EQ_U((int)bottomright[0][0],
               (int)matrix[g_br_x][g_br_y]);
 
@@ -417,9 +424,6 @@ TEST_F(MatrixTest, SubBlockIteration) {
   auto b_it  = bottomright.begin();
   auto b_end = bottomright.end();
   for (; b_it != b_end; ++b_it, ++phase) {
-    if (b_it == b_end) {
-      break;
-    }
     int phase_x  = phase % view_size_x;
     int phase_y  = phase / view_size_x;
     int gcoord_x = block_base_coord_x + phase_x;
@@ -443,40 +447,3 @@ TEST_F(MatrixTest, SubBlockIteration) {
   }
 }
 
-#if _TODO_
-
-TEST_F(MatrixTest, IterateSub) {
-  typedef int element_t;
-  dart_unit_t myid   = dash::myid();
-  size_t num_units   = dash::Team::All().size();
-  size_t tilesize_x  = 3;
-  size_t tilesize_y  = 2;
-  size_t extent_cols = tilesize_x * num_units * 4;
-  size_t extent_rows = tilesize_y * num_units * 4;
-  typedef dash::TilePattern<2> pattern_t;
-  LOG_MESSAGE("Initialize matrix ...");
-  dash::TeamSpec<2> team_spec(num_units, 1);
-  dash::Matrix<element_t, 2,
-               pattern_t::index_type,
-               pattern_t> matrix(
-                 dash::SizeSpec<2>(
-                   extent_cols,
-                   extent_rows),
-                 dash::DistributionSpec<2>(
-                   dash::TILE(tilesize_x),
-                   dash::TILE(tilesize_y)),
-                 dash::Team::All(),
-                 team_spec);
-  LOG_MESSAGE("Wait for team barrier ...");
-  dash::Team::All().barrier();
-  LOG_MESSAGE("Team barrier passed");
-
-  auto matrix_size = matrix.size();
-
-  auto rows = matrix.rows();
-  for (auto row_it = rows.begin(); row_it != rows.end(); ++row_it) {
-
-  }
-}
-
-#endif

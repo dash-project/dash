@@ -157,7 +157,7 @@ public:
     }
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", glob_coords);
     // Convert global coords to unit and local offset:
-    auto local_pos   = _pattern->local(glob_coords);
+    auto local_pos   = _pattern->local_index(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.index);
     // Create global pointer from unit and local offset:
@@ -185,7 +185,7 @@ public:
   ReferenceType operator*() const {
     // Global index to local index and unit:
     auto glob_coords = _pattern->coords(_idx);
-    auto local_pos   = _pattern->local(glob_coords);
+    auto local_pos   = _pattern->local_index(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.*", _idx);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
@@ -208,7 +208,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.[]", global_index);
     auto glob_coords = _pattern->coords(global_index);
     DASH_LOG_TRACE_VAR("GlobIter.[]", glob_coords);
-    auto local_pos   = _pattern->local(glob_coords);
+    auto local_pos   = _pattern->local_index(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.index);
     // Global pointer to element at given position:

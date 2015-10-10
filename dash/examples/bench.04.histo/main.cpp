@@ -65,7 +65,7 @@ int main(int argc, char **argv)
   // compute the offset of this unit's local part in 
   // the global key_histo array
   auto& pat = key_histo.pattern();
-  int goffs = pat.local_to_global_index(0);
+  int goffs = pat.global(0);
 
   for(int i=0; i<key_histo.lsize(); i++ ) { 
     key_histo.local[i] = work_buf[goffs+i];

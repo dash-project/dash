@@ -121,9 +121,9 @@ ValueType * copy(
     DASH_LOG_TRACE("dash::copy", "resolving local subrange");
     DASH_LOG_TRACE_VAR("dash::copy", l_range_size);
     // Local index range to global input index range:
-    auto l_g_offset_begin  = pattern.local_to_global_index(li_range_in.begin);
+    auto l_g_offset_begin  = pattern.global(li_range_in.begin);
     DASH_LOG_TRACE_VAR("dash::copy", l_g_offset_begin);
-    auto l_g_offset_end    = pattern.local_to_global_index(li_range_in.end-1)
+    auto l_g_offset_end    = pattern.global(li_range_in.end-1)
                              + 1; // pat.global(l_end) would be out of range
     DASH_LOG_TRACE_VAR("dash::copy", l_g_offset_end);
     // Convert local subrange of global input to native pointers:
@@ -208,9 +208,9 @@ GlobOutputIt copy(
     DASH_LOG_TRACE("dash::copy", "resolving local subrange");
     DASH_LOG_TRACE_VAR("dash::copy", l_range_size);
     // Local index range to global output index range:
-    auto l_g_offset_begin   = pattern.local_to_global_index(li_range_out.begin);
+    auto l_g_offset_begin   = pattern.global(li_range_out.begin);
     DASH_LOG_TRACE_VAR("dash::copy", l_g_offset_begin);
-    auto l_g_offset_end     = pattern.local_to_global_index(li_range_out.end-1)
+    auto l_g_offset_end     = pattern.global(li_range_out.end-1)
                               + 1; // pat.global(l_end) would be out of range
     DASH_LOG_TRACE_VAR("dash::copy", l_g_offset_end);
     // Offset of local subrange in output range

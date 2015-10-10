@@ -102,6 +102,25 @@ public:
   }
 
   /**
+   * Resolve the global block coordinate for a given local block index
+   * in the distribution's dimension.
+   */
+  template <typename IndexType, typename SizeType>
+  constexpr IndexType local_to_global_block_coord(
+    // The unit's offset in the distribution's dimension
+    // within the global team specification
+    IndexType unit_teamspec_coord,
+    // Local index of the block
+    IndexType local_block_index,
+    // Number of units in the distribution's dimension
+    SizeType num_units_in_dim,
+    // Number of blocks in the distribution's dimension
+    SizeType num_blocks_in_dim,
+    // Number of elements in the distribution's dimension in a single block
+    SizeType blocksize) const {
+  }
+
+  /**
    * The maximum size of a single block within an extent for
    * a given total number of units.
    */

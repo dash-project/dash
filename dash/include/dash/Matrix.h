@@ -769,6 +769,7 @@ class Matrix {
   typedef ElementT                                            value_type;
   typedef typename PatternT::size_type                         size_type;
   typedef typename PatternT::index_type                  difference_type;
+  typedef typename PatternT::index_type                       index_type;
 
   typedef GlobIter_t                                            iterator;
   typedef const GlobIter_t                                const_iterator;

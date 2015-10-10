@@ -419,15 +419,15 @@ public:
     return _extents;
   }
 
-  std::array<SizeType, NumDimensions> offsets() const {
+  std::array<IndexType, NumDimensions> offsets() const {
     return _offsets;
   }
 
 private:
-  SizeType                            _size;
-  SizeType                            _rank;
-  std::array<SizeType, NumDimensions> _extents;
-  std::array<SizeType, NumDimensions> _offsets;
+  SizeType                             _size;
+  SizeType                             _rank;
+  std::array<SizeType, NumDimensions>  _extents;
+  std::array<IndexType, NumDimensions> _offsets;
 
   void update_size() {
     _size = 1;

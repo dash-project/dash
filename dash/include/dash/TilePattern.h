@@ -74,6 +74,10 @@ public:
     dart_unit_t unit;
     IndexType   index;
   } local_index_t;
+  typedef struct {
+    dart_unit_t unit;
+    std::array<index_type, NumDimensions> coords;
+  } local_coords_t;
 
 private:
   PatternArguments_t          _arguments;
@@ -619,12 +623,28 @@ public:
   }
 
   /**
+   * Converts global coordinates to their associated unit and its respective 
+   * local coordinates.
+   *
+   * TODO: Unoptimized
+   *
+   * \see  DashPatternConcept
+   */
+  local_coords_t local(
+    const std::array<IndexType, NumDimensions> & global_coords) const {
+    local_coords_t l_coords;
+    l_coords.coords = local_coords(global_coords);
+    l_coords.unit   = unit_at(global_coords);
+    return l_coords;
+  }
+
+  /**
    * Converts global coordinates to their associated unit's respective 
    * local coordinates.
    *
    * \see  DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> coords_to_local(
+  std::array<IndexType, NumDimensions> local_coords(
     const std::array<IndexType, NumDimensions> & global_coords) const {
     std::array<IndexType, NumDimensions> local_coords = global_coords;
     auto blocksize_d = _blocksize_spec.extent(_major_tiled_dim);
@@ -642,7 +662,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> coords_to_global(
+  std::array<IndexType, NumDimensions> global(
     dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
     DASH_LOG_DEBUG_VAR("TilePattern.local_to_global()", local_coords);
@@ -677,33 +697,24 @@ public:
   }
 
   /**
-   * Resolve an element's linear global index from a given unit's local
-   * coordinates of that element.
-   *
-   * \see  at
+   * Converts local coordinates of a active unit to global coordinates.
    *
    * \see  DashPatternConcept
    */
-  IndexType local_to_global_index(
-    dart_unit_t unit,
+  std::array<IndexType, NumDimensions> global(
     const std::array<IndexType, NumDimensions> & local_coords) const {
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", local_coords);
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", unit);
-    std::array<IndexType, NumDimensions> global_coords =
-      coords_to_global(unit, local_coords);
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx", global_coords);
-    return _memory_layout.at(global_coords);
+    return global(_team->myid(), local_coords);
   }
 
   /**
    * Resolve an element's linear global index from the calling unit's local
    * index of that element.
    *
-   * \see  at  Inverse of local_to_global_index
+   * \see  at  Inverse of global()
    *
    * \see  DashPatternConcept
    */
-  IndexType local_to_global_index(
+  IndexType global(
     IndexType local_index) const {
     DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", local_index);
     DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", dash::myid());
@@ -711,9 +722,51 @@ public:
       _local_memory_layout.coords(local_index);
     DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx", local_coords);
     std::array<IndexType, NumDimensions> global_coords =
-      coords_to_global(dash::myid(), local_coords);
+      global(dash::myid(), local_coords);
     DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx", global_coords);
     return _memory_layout.at(global_coords);
+  }
+
+  /**
+   * Resolve an element's linear global index from a given unit's local
+   * coordinates of that element.
+   *
+   * \see  at
+   *
+   * \see  DashPatternConcept
+   */
+  IndexType global_index(
+    dart_unit_t unit,
+    const std::array<IndexType, NumDimensions> & local_coords) const {
+    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", local_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", unit);
+    std::array<IndexType, NumDimensions> global_coords =
+      global(unit, local_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx", global_coords);
+    return _memory_layout.at(global_coords);
+  }
+
+  /**
+   * Resolves the unit and the local index from global coordinates.
+   * 
+   * \see  DashPatternConcept
+   */
+  local_index_t local_index(
+    std::array<IndexType, NumDimensions> & global_coords) const {
+    DASH_LOG_TRACE_VAR("Pattern.local_index()", global_coords);
+    // Local offset of the element within all of the unit's local
+    // elements:
+    auto unit = unit_at(global_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local_index >", unit);
+    // Global coords to local coords:
+    std::array<IndexType, NumDimensions> l_coords = 
+      local_coords(global_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local_index >", l_coords);
+    // Local coords to local offset:
+    auto l_index = local_at(l_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local_index >", l_index);
+
+    return local_index_t { unit, l_index };
   }
 
   /**
@@ -807,29 +860,6 @@ public:
       (IndexType)values...
     };
     return at(inputindex);
-  }
-
-  /**
-   * Resolves the unit and the local index from global coordinates.
-   * 
-   * \see  DashPatternConcept
-   */
-  local_index_t local(
-    std::array<IndexType, NumDimensions> & global_coords) const {
-    DASH_LOG_TRACE_VAR("Pattern.local()", global_coords);
-    // Local offset of the element within all of the unit's local
-    // elements:
-    auto unit = unit_at(global_coords);
-    DASH_LOG_TRACE_VAR("Pattern.local >", unit);
-    // Global coords to local coords:
-    std::array<IndexType, NumDimensions> l_coords = 
-      coords_to_local(global_coords);
-    DASH_LOG_TRACE_VAR("Pattern.local >", l_coords);
-    // Local coords to local offset:
-    auto l_index = local_at(l_coords);
-    DASH_LOG_TRACE_VAR("Pattern.local >", l_index);
-
-    return local_index_t { unit, l_index };
   }
 
   /**
@@ -1044,6 +1074,81 @@ public:
   }
 
   /**
+   * View spec (offset and extents) of block at global linear block index in
+   * global cartesian element space.
+   */
+  ViewSpec_t block(
+    index_type global_block_index) const {
+    // block index -> block coords -> offset
+    auto block_coords = _blockspec.coords(global_block_index);
+    ViewSpec_t block_vs(_blocksize_spec.extents());
+    for (auto d = 0; d < NumDimensions; ++d) {
+      block_vs[d].offset = block_coords[d] * block_vs[d].extent;
+    }
+    return block_vs;
+  }
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * global cartesian element space.
+   */
+  ViewSpec_t local_block(
+    index_type local_block_index) const {
+    // Initialize viewspec result with block extents:
+    ViewSpec_t block_vs(_blocksize_spec.extents());
+    // Local block index to local block coords:
+    auto l_block_coords = _local_blockspec.coords(local_block_index);
+    std::array<index_type, NumDimensions> l_elem_coords;
+    // TODO: This is convenient but less efficient:
+    // Translate local coordinates of first element in local block to global 
+    // coordinates:
+    for (auto d = 0; d < NumDimensions; ++d) {
+      auto blocksize_d = block_vs[d].extent;
+      l_elem_coords[d] = static_cast<index_type>(
+                           l_block_coords[d] * blocksize_d);
+    }
+    // Global coordinates of first element in block:
+    auto g_elem_coords = global(l_elem_coords);
+    for (auto d = 0; d < NumDimensions; ++d) {
+      block_vs[d].offset = g_elem_coords[d];
+    }
+#ifdef __TODO__
+    // Coordinates of the unit within the team spec:
+    std::array<IndexType, NumDimensions> unit_ts_coord =
+      _teamspec.coords(unit);
+    for (auto d = 0; d < NumDimensions; ++d) {
+      const Distribution & dist = _distspec[d];
+      auto blocksize_d          = block_vs[d].extent;
+      auto num_units_d          = _teamspec.extent(d); 
+      auto num_blocks_d         = _blockspec.extent(d);
+      // Local to global block coords:
+      auto g_block_coord_d      = (l_block_coords[d] + _myid) *
+                                  _teamspec.extent(d);
+      block_vs[d].offset        = g_block_coord_d * blocksize_d;
+    }
+#endif
+    return block_vs;
+  }
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * local cartesian element space.
+   */
+  ViewSpec_t local_block_local(
+    index_type local_block_index) const {
+    // Initialize viewspec result with block extents:
+    ViewSpec_t block_vs(_blocksize_spec.extents());
+    // Local block index to local block coords:
+    auto l_block_coords = _local_blockspec.coords(local_block_index);
+    // Local block coords to local element offset:
+    for (auto d = 0; d < NumDimensions; ++d) {
+      auto blocksize_d   = block_vs[d].extent;
+      block_vs[d].offset = l_block_coords[d] * blocksize_d;
+    }
+    return block_vs;
+  }
+
+  /**
    * Memory order followed by the pattern.
    */
   constexpr static MemArrange memory_order() {
@@ -1143,9 +1248,9 @@ private:
       _lend   = 0;
     } else {
       // First local index transformed to global index
-      _lbegin = local_to_global_index(0);
+      _lbegin = global(0);
       // Index past last local index transformed to global index
-      _lend   = local_to_global_index(local_size - 1) + 1;
+      _lend   = global(local_size - 1) + 1;
     }
     DASH_LOG_DEBUG_VAR("TilePattern.initialize_local_range >", 
                        _local_memory_layout.extents());
