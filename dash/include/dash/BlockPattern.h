@@ -1051,9 +1051,11 @@ public:
     index_type global_block_index) const {
     // block index -> block coords -> offset
     auto block_coords = _blockspec.coords(global_block_index);
-    ViewSpec_t block_vs(_blocksize_spec.extents());
+    ViewSpec_t block_vs;
     for (auto d = 0; d < NumDimensions; ++d) {
-      block_vs[d].offset = block_coords[d] * block_vs[d].extent;
+      auto offset_d = block_coords[d] * block_vs[d].extent;
+      auto extent_d = _blocksize_spec.extent(d);
+      block_vs.resize_dim(d, offset_d, extent_d);
     }
     return block_vs;
   }

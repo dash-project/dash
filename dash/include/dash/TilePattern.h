@@ -1079,12 +1079,19 @@ public:
    */
   ViewSpec_t block(
     index_type global_block_index) const {
+    DASH_LOG_TRACE_VAR("TilePattern.block()", global_block_index);
     // block index -> block coords -> offset
     auto block_coords = _blockspec.coords(global_block_index);
-    ViewSpec_t block_vs(_blocksize_spec.extents());
+    DASH_LOG_TRACE_VAR("TilePattern.block", block_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.block", _blocksize_spec.extents());
+    ViewSpec_t block_vs;
     for (auto d = 0; d < NumDimensions; ++d) {
-      block_vs[d].offset = block_coords[d] * block_vs[d].extent;
+      auto offset_d = block_coords[d] * block_vs[d].extent;
+      auto extent_d = _blocksize_spec.extent(d);
+      block_vs.resize_dim(d, offset_d, extent_d);
     }
+    DASH_LOG_TRACE_VAR("TilePattern.block >", block_vs.extents());
+    DASH_LOG_TRACE_VAR("TilePattern.block >", block_vs.offsets());
     return block_vs;
   }
 
@@ -1094,24 +1101,31 @@ public:
    */
   ViewSpec_t local_block(
     index_type local_block_index) const {
+    DASH_LOG_TRACE_VAR("TilePattern.local_block()", local_block_index);
     // Initialize viewspec result with block extents:
-    ViewSpec_t block_vs(_blocksize_spec.extents());
+    ViewSpec_t block_vs;
     // Local block index to local block coords:
     auto l_block_coords = _local_blockspec.coords(local_block_index);
+    DASH_LOG_TRACE_VAR("TilePattern.local_block()", l_block_coords);
     std::array<index_type, NumDimensions> l_elem_coords;
     // TODO: This is convenient but less efficient:
     // Translate local coordinates of first element in local block to global 
     // coordinates:
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto blocksize_d = block_vs[d].extent;
+      auto blocksize_d = _blocksize_spec.extent(d);
       l_elem_coords[d] = static_cast<index_type>(
                            l_block_coords[d] * blocksize_d);
     }
     // Global coordinates of first element in block:
     auto g_elem_coords = global(l_elem_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.local_block()", g_elem_coords);
     for (auto d = 0; d < NumDimensions; ++d) {
-      block_vs[d].offset = g_elem_coords[d];
+      auto offset_d = g_elem_coords[d];
+      auto extent_d = _blocksize_spec.extent(d);
+      block_vs.resize_dim(d, offset_d, extent_d);
     }
+    DASH_LOG_TRACE_VAR("TilePattern.local_block >", block_vs.extents());
+    DASH_LOG_TRACE_VAR("TilePattern.local_block >", block_vs.offsets());
 #ifdef __TODO__
     // Coordinates of the unit within the team spec:
     std::array<IndexType, NumDimensions> unit_ts_coord =

@@ -433,7 +433,7 @@ private:
     _size = 1;
     for (dim_t i = 0; i < _rank; ++i) {
       auto extent  = this->_values[i].extent;
-      auto offset  = this->_values[i].extent;
+      auto offset  = this->_values[i].offset;
       _size       *= extent;
       _extents[i]  = extent;
       _offsets[i]  = offset;

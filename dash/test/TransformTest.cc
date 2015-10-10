@@ -89,7 +89,6 @@ TEST_F(TransformTest, ArrayGlobalPlusGlobalBlocking)
 
 TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
 {
-  LOG_MESSAGE("START");
   // Block-wise addition (a += b) of two matrices
   typedef typename dash::Matrix<int, 2>::index_type index_t;
   dart_unit_t myid   = dash::myid();
@@ -136,6 +135,7 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   dash::Team::All().barrier();
   LOG_MESSAGE("Team barrier passed");
 
+  LOG_MESSAGE("Test first global block");
   // Offset and extents of first block in global cartesian space:
   auto first_g_block_a = matrix_a.pattern().block(0);
   // Global coordinates of first element in first global block:
@@ -144,6 +144,7 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   ASSERT_EQ_U(first_g_block_a_begin,
               first_g_block_a.offsets());
 
+  LOG_MESSAGE("Test first local block");
   // Offset and extents of first block in local cartesian space:
   auto first_l_block_a = matrix_a.pattern().local_block(0);
   // Global coordinates of first element in first local block:
@@ -152,4 +153,7 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   std::array<index_t, 2> first_l_block_a_offsets = first_l_block_a.offsets();
   ASSERT_EQ_U(first_l_block_a_begin,
               first_l_block_a_offsets);
+
+  
+
 }
