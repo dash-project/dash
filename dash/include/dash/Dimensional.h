@@ -163,7 +163,8 @@ protected:
  * \see dash::Distribution.
  */
 template<dim_t NumDimensions>
-class DistributionSpec : public Dimensional<Distribution, NumDimensions> {
+class DistributionSpec
+: public Dimensional<Distribution, NumDimensions> {
 public:
   /**
    * Default constructor, initializes default blocked distribution 
@@ -237,8 +238,10 @@ private:
 template<typename IndexType = int>
 struct ViewPair {
   typedef typename std::make_unsigned<IndexType>::type SizeType;
+  /// Offset in dimension
   IndexType offset;
-  SizeType extent;
+  /// Extent in dimension
+  SizeType  extent;
 };
 
 /**
@@ -304,6 +307,8 @@ public:
     for (dim_t i = 0; i < NumDimensions; i++) {
       ViewPair_t vp { 0, 0 };
       this->_values[i] = vp;
+      _extents[i]      = 0;
+      _offsets[i]      = 0;
     }
   }
 
@@ -311,14 +316,16 @@ public:
    * Constructor, initialize with given extents and offset 0 in all
    * dimensions.
    */
-  ViewSpec(const std::array<SizeType, NumDimensions> & extents)
+  ViewSpec(
+    const std::array<SizeType, NumDimensions> & extents)
   : Dimensional<ViewPair_t, NumDimensions>(),
     _size(1),
-    _rank(NumDimensions) {
+    _rank(NumDimensions),
+    _extents(extents) {
     for (auto i = 0; i < NumDimensions; ++i) {
       ViewPair_t vp { 0, extents[i] };
-      this->_values[i] = vp;
-      _size *= extents[i];
+      this->_values[i]  = vp;
+      _size            *= extents[i];
     }
   }
 
@@ -329,7 +336,9 @@ public:
   : Dimensional<ViewPair_t, NumDimensions>(
       static_cast< const Dimensional<ViewPair_t, NumDimensions> & >(other)),
     _size(other._size),
-    _rank(other._rank) {
+    _rank(other._rank),
+    _extents(other._extents) {
+    _offsets = { };
   }
 
   /**
@@ -406,14 +415,28 @@ public:
     return this->_values[dimension].extent;
   }
 
+  std::array<SizeType, NumDimensions> extents() const {
+    return _extents;
+  }
+
+  std::array<SizeType, NumDimensions> offsets() const {
+    return _offsets;
+  }
+
 private:
-  SizeType _size;
-  SizeType _rank;
+  SizeType                            _size;
+  SizeType                            _rank;
+  std::array<SizeType, NumDimensions> _extents;
+  std::array<SizeType, NumDimensions> _offsets;
 
   void update_size() {
     _size = 1;
     for (dim_t i = 0; i < _rank; ++i) {
-      _size *= this->_values[i].extent;
+      auto extent  = this->_values[i].extent;
+      auto offset  = this->_values[i].extent;
+      _size       *= extent;
+      _extents[i]  = extent;
+      _offsets[i]  = offset;
     }
   }
 };

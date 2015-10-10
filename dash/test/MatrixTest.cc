@@ -350,7 +350,7 @@ TEST_F(MatrixTest, Sub2DimDefault) {
   ASSERT_EQ_U(matrix.local_size(), num_visited_local);
 }
 
-TEST_F(MatrixTest, SubBlocks) {
+TEST_F(MatrixTest, SubBlockIteration) {
   typedef int element_t;
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
@@ -394,8 +394,11 @@ TEST_F(MatrixTest, SubBlocks) {
   auto topleft     = left.submat<1>(0,               extent_rows / 2);
   auto bottomleft  = left.submat<1>(extent_rows / 2, extent_rows / 2);
 
-  auto topright    = right.submat<1>(0,               extent_rows / 2);
-  auto bottomright = right.submat<1>(extent_rows / 2, extent_rows / 2);
+  auto topright    = matrix.submat<0>(extent_cols / 2, extent_cols / 2)
+                           .submat<1>(0,               extent_rows / 2);
+
+  auto bottomright = matrix.submat<0>(extent_cols / 2, extent_cols / 2)
+                           .submat<1>(extent_rows / 2, extent_rows / 2);
 
   auto g_br_x      = extent_cols / 2;
   auto g_br_y      = extent_rows / 2;
@@ -403,8 +406,53 @@ TEST_F(MatrixTest, SubBlocks) {
   ASSERT_EQ_U((int)bottomright[0][0],
               (int)matrix[g_br_x][g_br_y]);
 
-  for (auto b_it = bottomright.begin(); b_it != bottomright.end(); ++b_it) {
-    
+  int phase              = 0;
+  // Extents of the view projection:
+  int view_size_x        = extent_cols / 2;
+  int view_size_y        = extent_rows / 2;
+  int view_size          = view_size_x * view_size_y;
+  // Global coordinates of first element in bottom right block:
+  int block_base_coord_x = extent_cols / 2;
+  int block_base_coord_y = extent_rows / 2;
+  auto b_it  = bottomright.begin();
+  auto b_end = bottomright.end();
+  for (; b_it != b_end; ++b_it, ++phase) {
+    if (b_it == b_end) {
+      break;
+    }
+    int phase_x  = phase % view_size_x;
+    int phase_y  = phase / view_size_x;
+    int gcoord_x = block_base_coord_x + phase_x;
+    int gcoord_y = block_base_coord_y + phase_y;
+    LOG_MESSAGE("phase:%d = %d,%d pos:%d gcoord:%d,%d",
+                phase,
+                phase_x, phase_y,
+                b_it.pos(),
+                gcoord_x, gcoord_y);
+    ASSERT_EQ_U(phase, b_it.pos());
+    // Apply view projection by converting to GlobPtr:
+    LOG_MESSAGE("block_elem_gptr");
+    dash::GlobPtr<int> block_elem_gptr = (dash::GlobPtr<int>)(b_it);
+    // Compare with GlobPtr from global iterator without view projection:
+    usleep(1000);
+    LOG_MESSAGE("glob_elem_gptr");
+    dash::GlobPtr<int> glob_elem_gptr  = (dash::GlobPtr<int>)(
+                                          matrix[gcoord_x][gcoord_y]);
+    usleep(1000);
+    LOG_MESSAGE("Dereference block element");
+    int block_value = *block_elem_gptr;
+    usleep(1000);
+    LOG_MESSAGE("Dereference global element");
+    int glob_value  = *glob_elem_gptr;
+    usleep(1000);
+    LOG_MESSAGE("compare values");
+    ASSERT_EQ_U(glob_value,
+                block_value);
+    usleep(1000);
+    LOG_MESSAGE("compare global pointers");
+    ASSERT_TRUE(glob_elem_gptr == block_elem_gptr);
+    LOG_MESSAGE("next");
+    usleep(100000);
   }
 }
 

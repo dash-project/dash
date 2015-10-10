@@ -201,7 +201,8 @@ template <
   dim_t NumDimensions,
   class PatternT =
     TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
-class MatrixRefView {
+class MatrixRefView
+{
  public:
   typedef typename PatternT::index_type             index_type;
 
@@ -253,7 +254,8 @@ template <
   dim_t CUR = NumDimensions,
   class PatternT =
     TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
-class LocalMatrixRef {
+class LocalMatrixRef
+{
  public:
   template<
     typename T_,
@@ -263,41 +265,51 @@ class LocalMatrixRef {
   friend class Matrix;
 
  public:
-  typedef T                              value_type;
-  typedef PatternT                       pattern_type;
-  typedef typename PatternT::index_type  index_type;
+  typedef T                                                   value_type;
+  typedef PatternT                                          pattern_type;
+  typedef typename PatternT::index_type                       index_type;
 
-  typedef typename PatternT::size_type   size_type;
-  typedef typename PatternT::index_type  difference_type;
+  typedef typename PatternT::size_type                         size_type;
+  typedef typename PatternT::index_type                  difference_type;
 
-  typedef GlobIter<value_type, PatternT> iterator;
-  typedef const GlobIter<value_type, PatternT> const_iterator;
-  typedef std::reverse_iterator<iterator> reverse_iterator;
-  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+  typedef       GlobIter<value_type, PatternT>                  iterator;
+  typedef const GlobIter<value_type, PatternT>            const_iterator;
+  typedef std::reverse_iterator<iterator>               reverse_iterator;
+  typedef std::reverse_iterator<const_iterator>   const_reverse_iterator;
 
-  typedef GlobRef<value_type> reference;
-  typedef const GlobRef<value_type> const_reference;
+  typedef       GlobRef<value_type>                            reference;
+  typedef const GlobRef<value_type>                      const_reference;
 
-  typedef GlobIter<value_type, PatternT> pointer;
-  typedef const GlobIter<value_type, PatternT> const_pointer;
+  typedef       GlobIter<value_type, PatternT>                   pointer;
+  typedef const GlobIter<value_type, PatternT>             const_pointer;
 
  public:
-  LocalMatrixRef<T, NumDimensions, CUR, PatternT>() = default;
+  /**
+   * Default constructor.
+   */
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT>()
+    = default;
 
   /**
-   * Constructor, creates a local reference to a Matrix instance.
+   * Constructor, creates a local view reference to a Matrix.
+   */
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
+    MatrixRef<T, NumDimensions, CUR, PatternT> * matref);
+
+  /**
+   * Constructor, creates a local view reference to a Matrix view.
    */
   LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
     Matrix<T, NumDimensions, index_type, PatternT> * mat);
 
-  inline operator LocalMatrixRef<T, NumDimensions, CUR-1, PatternT> && ();
+  inline    operator LocalMatrixRef<T, NumDimensions, CUR-1, PatternT> && ();
   // SHOULD avoid cast from MatrixRef to LocalMatrixRef.
   // Different operation semantics.
-  inline operator MatrixRef<T, NumDimensions, CUR, PatternT> ();
-  inline size_type extent(dim_t dim) const;
-  inline std::array<size_type, NumDimensions> extents() const noexcept;
-  inline size_type size() const;
-  inline T & local_at(size_type pos);
+  inline    operator MatrixRef<T, NumDimensions, CUR, PatternT> ();
+  constexpr size_type extent(dim_t dim) const;
+  constexpr std::array<size_type, NumDimensions> extents() const noexcept;
+  inline    size_type size() const;
+  inline    T & local_at(size_type pos);
 
   /**
    * Fortran-style subscript operator.
@@ -397,7 +409,8 @@ template <
   typename T,
   dim_t NumDimensions,
   class PatternT >
-class LocalMatrixRef<T, NumDimensions, 0, PatternT> {
+class LocalMatrixRef<T, NumDimensions, 0, PatternT>
+{
  public:
   template<
     typename T_,
@@ -435,7 +448,8 @@ template <
   dim_t CUR = NumDimensions,
   class PatternT =
     TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
-class MatrixRef {
+class MatrixRef
+{
  private:
   typedef MatrixRef<ElementT, NumDimensions, CUR, PatternT>
     self_t;
@@ -443,6 +457,8 @@ class MatrixRef {
     Pattern_t;
   typedef typename PatternT::index_type
     Index_t;
+  typedef typename PatternT::size_type
+    Size_t;
   typedef MatrixRefView<ElementT, NumDimensions, PatternT>
     MatrixRefView_t;
   typedef LocalMatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
@@ -452,12 +468,14 @@ class MatrixRef {
   typedef CartesianIndexSpace<
             CUR, PatternT::memory_order(), typename PatternT::index_type >
     IndexSpace_t;
+  typedef std::array<typename PatternT::size_type, NumDimensions>
+    Extents_t;
 
  public:
   typedef PatternT                                        pattern_type;
   typedef typename PatternT::index_type                     index_type;
   typedef ElementT                                          value_type;
-  typedef IndexSpaceT                                 index_space_type;
+  typedef IndexSpace_t                                index_space_type;
 
   typedef typename PatternT::size_type                       size_type;
   typedef typename PatternT::index_type                difference_type;
@@ -502,38 +520,50 @@ class MatrixRef {
     MatrixRef<ElementT, NumDimensions, CUR-1, PatternT> && ();
 
  public:
-  /// Local proxy object, allows use in range-based for loops.
-  local_type local;
-
- public:
   MatrixRef<ElementT, NumDimensions, CUR, PatternT>()
-  : _refview(nullptr) { // = default;
+  : _refview(nullptr) {
     DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumDimensions);
   }
+
   MatrixRef<ElementT, NumDimensions, CUR, PatternT>(
     const MatrixRef<ElementT, NumDimensions, CUR+1, PatternT> & previous,
     index_type coord);
 
-  PatternT & pattern();
+  inline    Team            & team();
 
-  Team & team();
+  constexpr size_type         size()                const noexcept;
+  constexpr size_type         local_size()          const noexcept;
+  constexpr size_type         local_capacity()      const noexcept;
+  constexpr size_type         extent(dim_t dim)     const noexcept;
+  constexpr Extents_t         extents()             const noexcept;
+  constexpr bool              empty()               const noexcept;
 
-  inline constexpr size_type size() const noexcept;
-  inline constexpr size_type local_size() const noexcept;
-  inline constexpr size_type local_capacity() const noexcept;
-  inline size_type extent(size_type dim) const noexcept;
-  inline std::array<size_type, NumDimensions> extents() const noexcept;
-  inline constexpr bool empty() const noexcept;
-  inline void barrier() const;
-  inline Pattern_t pattern() const;
+  inline    void              barrier()             const;
 
-  inline const_pointer data() const noexcept;
-  inline iterator begin() noexcept;
-  inline const_iterator begin() const noexcept;
-  inline iterator end() noexcept;
-  inline const_iterator end() const noexcept;
-  inline ElementT * lbegin() noexcept;
-  inline ElementT * lend() noexcept;
+  /**
+   * The pattern used to distribute matrix elements to units in its
+   * associated team.
+   */
+  inline    const PatternT  & pattern()             const;
+
+  inline    const_pointer     data()                const noexcept;
+  inline    iterator          begin()                     noexcept;
+  inline    const_iterator    begin()               const noexcept;
+  inline    iterator          end()                       noexcept;
+  inline    const_iterator    end()                 const noexcept;
+
+  /* TODO:
+   * Projection order matrix.sub().local() is not fully implemented yet.
+   * Currently only matrix.local().sub() is supported.
+   */
+
+  /// Local proxy object representing a view consisting of matrix elements
+  /// that are located in the active unit's local memory.
+  inline    local_type        sub_local()                 noexcept;
+  /// Pointer to first element in local range.
+  inline    ElementT        * lbegin()                    noexcept;
+  /// Pointer past final element in local range.
+  inline    ElementT        * lend()                      noexcept;
 
   /**
    * Subscript operator, returns a submatrix reference at given offset
@@ -618,6 +648,7 @@ class MatrixRef {
     Args... args);
 
   inline bool is_local(index_type n) const;
+  
   template<dim_t Dimension>
   inline bool is_local(index_type n) const;
 
@@ -640,7 +671,8 @@ template <
   typename ElementT,
   dim_t NumDimensions,
   class PatternT >
-class MatrixRef< ElementT, NumDimensions, 0, PatternT > {
+class MatrixRef< ElementT, NumDimensions, 0, PatternT >
+{
  public:
   template<
     typename T_,
@@ -678,6 +710,7 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT > {
     index_type coord);
 
   operator ElementT();
+  operator GlobPtr<ElementT>();
   ElementT operator=(const ElementT & value);
 
  private:
@@ -729,6 +762,8 @@ class Matrix {
     SizeSpec_t;
   typedef TeamSpec<NumDimensions, typename PatternT::index_type>
     TeamSpec_t;
+  typedef std::array<typename PatternT::size_type, NumDimensions>
+    Extents_t;
 
  public:
   typedef ElementT                                            value_type;
@@ -824,21 +859,41 @@ class Matrix {
    */
   void deallocate();
 
-  inline Team & team();
-  inline constexpr size_type size() const noexcept;
-  inline constexpr size_type local_size() const noexcept;
-  inline constexpr size_type local_capacity() const noexcept;
-  inline constexpr size_type extent(dim_t dim) const noexcept;
-  inline constexpr std::array<size_type, NumDimensions> extents() const noexcept;
-  inline constexpr bool empty() const noexcept;
-  inline void barrier() const;
-  inline const_pointer data() const noexcept;
-  inline iterator begin() noexcept;
-  inline const_iterator begin() const noexcept;
-  inline iterator end() noexcept;
-  inline const_iterator end() const noexcept;
-  inline ElementT * lbegin() noexcept;
-  inline ElementT * lend() noexcept;
+  inline    Team            & team();
+
+  constexpr size_type         size()                const noexcept;
+  constexpr size_type         local_size()          const noexcept;
+  constexpr size_type         local_capacity()      const noexcept;
+  constexpr size_type         extent(dim_t dim)     const noexcept;
+  constexpr Extents_t         extents()             const noexcept;
+  constexpr bool              empty()               const noexcept;
+
+  inline    void              barrier()             const;
+
+  /**
+   * The pattern used to distribute matrix elements to units in its
+   * associated team.
+   */
+  inline    const Pattern_t & pattern()             const;
+
+  inline    const_pointer     data()                const noexcept;
+  inline    iterator          begin()                     noexcept;
+  inline    const_iterator    begin()               const noexcept;
+  inline    iterator          end()                       noexcept;
+  inline    const_iterator    end()                 const noexcept;
+
+  /* TODO:
+   * Projection order matrix.sub().local() is not fully implemented yet.
+   * Currently only matrix.local().sub() is supported.
+   */
+
+  /// Local proxy object representing a view consisting of matrix elements
+  /// that are located in the active unit's local memory.
+  inline    local_type        sub_local()                 noexcept;
+  /// Pointer to first element in local range.
+  inline    ElementT        * lbegin()                    noexcept;
+  /// Pointer past final element in local range.
+  inline    ElementT        * lend()                      noexcept;
 
   /**
    * Subscript operator, returns a submatrix reference at given offset
@@ -951,12 +1006,6 @@ class Matrix {
     Args... args);
 
   /**
-   * The pattern used to distribute matrix elements to units in its
-   * associated team.
-   */
-  inline const PatternT & pattern() const;
-
-  /**
    * Whether the element at a global, canonical offset in the matrix
    * is local to the active unit.
    */
@@ -984,7 +1033,8 @@ class Matrix {
   /**
    * Actual implementation of memory acquisition.
    */
-  bool allocate(const PatternT & pattern);
+  bool allocate(
+    const PatternT & pattern);
 
  private:
   /// Team containing all units that collectively instantiated the

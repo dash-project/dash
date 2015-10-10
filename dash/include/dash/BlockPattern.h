@@ -996,8 +996,15 @@ public:
   /**
    * Memory order followed by the pattern.
    */
-  inline static MemArrange memory_order() const {
+  constexpr static MemArrange memory_order() {
     return Arrangement;
+  }
+
+  /**
+   * Number of dimensions of the cartesian space partitioned by the pattern.
+   */
+  constexpr static dim_t ndim() {
+    return NumDimensions;
   }
 
   /**

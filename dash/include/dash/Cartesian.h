@@ -529,7 +529,7 @@ public:
     const ViewSpec_t & viewspec) const {
     ::std::array<IndexType, NumDimensions> pos = coords(index);
     for(auto i = 0; i < NumDimensions; ++i) {
-      pos[i] += viewpec.dim(i).offset;
+      pos[i] += viewspec.dim(i).offset;
     }
     return pos;
   }

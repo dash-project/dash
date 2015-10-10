@@ -825,7 +825,11 @@ public:
     std::array<IndexType, NumDimensions> l_coords = 
       coords_to_local(global_coords);
     DASH_LOG_TRACE_VAR("Pattern.local >", l_coords);
-    return local_index_t { unit, local_at(l_coords) };
+    // Local coords to local offset:
+    auto l_index = local_at(l_coords);
+    DASH_LOG_TRACE_VAR("Pattern.local >", l_index);
+
+    return local_index_t { unit, l_index };
   }
 
   /**
@@ -1042,8 +1046,15 @@ public:
   /**
    * Memory order followed by the pattern.
    */
-  inline static MemArrange memory_order() const {
+  constexpr static MemArrange memory_order() {
     return Arrangement;
+  }
+
+  /**
+   * Number of dimensions of the cartesian space partitioned by the pattern.
+   */
+  constexpr static dim_t ndim() {
+    return NumDimensions;
   }
 
 private:
