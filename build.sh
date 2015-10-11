@@ -29,5 +29,5 @@ rm -Rf ./build/*
                      -DENABLE_TRACE_LOGGING=OFF \
                      -DBUILD_TESTS=ON ../ && \
  await_confirm && \
- make -j) && \
+ make) && \
 exit_message
