@@ -31,5 +31,5 @@ rm -Rf ./build/*
                      -DMEMORY_MODEL_UNIFIED=ON \
                      -DBUILD_TESTS=ON ../ && \
  await_confirm && \
- make -j) && \
+ make) && \
 exit_message
