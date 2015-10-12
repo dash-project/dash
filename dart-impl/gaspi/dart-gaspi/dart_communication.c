@@ -245,26 +245,28 @@ dart_ret_t dart_put(dart_gptr_t gptr, void *src, size_t nbytes)
 
 /*
  * access local elements ??
- * TODO use dart_transferpool
  */
 dart_ret_t dart_get_blocking(void *dest, dart_gptr_t gptr, size_t nbytes)
 {
     gaspi_segment_id_t remote_seg;
     gaspi_queue_id_t   queue;
-    gaspi_segment_id_t local_seg   = dart_gaspi_buffer_id;
-    gaspi_pointer_t    seg_ptr     = NULL;
-    uint64_t           offset      = gptr.addr_or_offs.offset;
-    int16_t            seg_id      = gptr.segid;
-    uint16_t           index       = gptr.flags;
-    dart_unit_t        remote_rank = gptr.unitid;
+    gaspi_offset_t     local_offset;
+    gaspi_segment_id_t local_seg    = dart_transferpool_seg;
+    gaspi_pointer_t    seg_ptr      = NULL;
+    uint64_t           offset       = gptr.addr_or_offs.offset;
+    int16_t            seg_id       = gptr.segid;
+    uint16_t           index        = gptr.flags;
+    dart_unit_t        remote_rank  = gptr.unitid;
 
-    if(nbytes > DART_GASPI_BUFFER_SIZE)
+    local_offset = dart_buddy_alloc(dart_transferpool, nbytes);
+    if(local_offset == -1)
     {
-        DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &local_seg));
-        DART_CHECK_ERROR(gaspi_segment_alloc(local_seg, nbytes, GASPI_MEM_INITIALIZED));
+        fprintf(stderr, "Out of bound: the global memory is exhausted");
+        return DART_ERR_OTHER;
     }
 
     DART_CHECK_ERROR(gaspi_segment_ptr(local_seg, &seg_ptr));
+    seg_ptr = (void *) ((char *) seg_ptr + local_offset);
 
     if(seg_id)
     {
@@ -284,7 +286,7 @@ dart_ret_t dart_get_blocking(void *dest, dart_gptr_t gptr, size_t nbytes)
     DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
 
     DART_CHECK_ERROR(gaspi_read(local_seg,
-                                0UL,
+                                local_offset,
                                 remote_rank,
                                 remote_seg,
                                 offset,
@@ -296,10 +298,7 @@ dart_ret_t dart_get_blocking(void *dest, dart_gptr_t gptr, size_t nbytes)
 
     memcpy(dest, seg_ptr, nbytes);
 
-    if(nbytes > DART_GASPI_BUFFER_SIZE)
-    {
-        DART_CHECK_ERROR(gaspi_segment_delete(local_seg));
-    }
+    DART_CHECK_ERROR(dart_buddy_free(dart_transferpool, local_offset));
 
     return DART_OK;
 }
