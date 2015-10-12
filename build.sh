@@ -27,7 +27,8 @@ rm -Rf ./build/*
                      -DBUILD_EXAMPLES=ON \
                      -DENABLE_LOGGING=OFF \
                      -DENABLE_TRACE_LOGGING=OFF \
-                     -DBUILD_TESTS=ON ../ && \
+                     -DBUILD_TESTS=ON ../ \
+                     -DPAPI_PREFIX=${PAPI_HOME} && \
  await_confirm && \
  make) && \
 exit_message
