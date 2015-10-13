@@ -387,7 +387,7 @@ typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
 MatrixRef<T, NumDim, CUR, PatternT>::extent(
   size_type dim) const noexcept
 {
-  return _proxy->_viewspec.range[dim];
+  return _proxy->_viewspec.size(dim);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -396,7 +396,13 @@ std::array<
   NumDim>
 MatrixRef<T, NumDim, CUR, PatternT>::extents() const noexcept
 {
-  return _proxy->_viewspec.range;
+  std::array<typename MatrixRef<T, NumDim, CUR, PatternT>::size_type,
+  NumDim> ret;
+  auto values = _proxy->_viewspec.values();
+  for (int dim = 0; dim < NumDim; ++dim) {
+      ret[dim] = values[dim].extent;
+  }
+  return ret;
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
