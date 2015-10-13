@@ -1,0 +1,7 @@
+
+# where the DART interface is located
+DART_IF = ../../dart-if/v3.1
+
+CFLAGS  += -I$(GPI2_ROOT)/include
+CC      = gcc -std=c99 -Wall
+CXX     = gcc -std=c++0x
