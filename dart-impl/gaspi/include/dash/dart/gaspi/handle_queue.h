@@ -1,9 +1,10 @@
 #ifndef HANDLE_QUEUE_H
 #define HANDLE_QUEUE_H
 #include <stdlib.h>
-#include "dart.h"
-#include "dart_types.h"
-#include "dart_communication.h"
+#include <dash/dart/if/dart.h>
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_communication.h>
+
 #include "dart_communication_priv.h"
 
 struct queue_node{

@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include "dart_types.h"
+#include <dash/dart/if/dart_types.h>
 
 #define DART_INTERFACE_ON
 

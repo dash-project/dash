@@ -5,8 +5,8 @@
 extern "C" {
 #endif
 
-#include "dart_types.h"
-#include "dart_team_group.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
 
 #define MAXSIZE_GROUP 256
 #define INVALID_GASPI_GROUP -1

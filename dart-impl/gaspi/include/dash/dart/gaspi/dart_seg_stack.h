@@ -1,6 +1,6 @@
 #ifndef DART_SEG_STACK_H
 #define DART_SEG_STACK_H
-#include "dart_types.h"
+#include <dash/dart/if/dart_types.h>
 #include <GASPI.h>
 #include <stdlib.h>
 #include <stdbool.h>

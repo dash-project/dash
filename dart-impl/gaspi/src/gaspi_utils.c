@@ -1,4 +1,5 @@
-#include "gaspi_utils.h"
+#include <dash/dart/gaspi/gaspi_utils.h>
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>

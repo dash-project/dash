@@ -4,16 +4,17 @@
 #include <malloc.h>
 #include <limits.h>
 
-#include "dart_types.h"
-#include "dart_translation.h"
-#include "dart_team_private.h"
-#include "dart_mem.h"
-#include "dart_globmem_priv.h"
-#include "dart_globmem.h"
-#include "dart_team_group.h"
-#include "dart_communication.h"
-#include "dart_synchronization.h"
-#include "dart_synchronization_priv.h"
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_communication.h>
+#include <dash/dart/if/dart_synchronization.h>
+#include <dash/dart/if/dart_team_group.h>
+
+#include <dash/dart/gaspi/dart_translation.h>
+#include <dash/dart/gaspi/dart_team_private.h>
+#include <dash/dart/gaspi/dart_mem.h>
+#include <dash/dart/gaspi/dart_globmem_priv.h>
+#include <dash/dart/gaspi/dart_synchronization_priv.h>
 
 dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
 {
@@ -202,84 +203,84 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
     //~ return DART_OK;
 //~ }
 
-dart_ret_t dart_lock_release (dart_lock_t lock)
-{
-    dart_unit_t unitid;
-    dart_team_myid(lock->teamid, &unitid);
-    if (lock -> is_acquired == 0)
-    {
-        printf ("Warning: RELEASE   - %2d has not yet required the lock\n", unitid);
-        return DART_OK;
-    }
-    dart_gptr_t gptr_tail;
-    dart_gptr_t gptr_list;
+//~ dart_ret_t dart_lock_release (dart_lock_t lock)
+//~ {
+    //~ dart_unit_t unitid;
+    //~ dart_team_myid(lock->teamid, &unitid);
+    //~ if (lock -> is_acquired == 0)
+    //~ {
+        //~ printf ("Warning: RELEASE   - %2d has not yet required the lock\n", unitid);
+        //~ return DART_OK;
+    //~ }
+    //~ dart_gptr_t gptr_tail;
+    //~ dart_gptr_t gptr_list;
     //~ MPI_Status mpi_status;
     //~ MPI_Win win;
-    int32_t successor, *addr2, next, result[1];
+    //~ int32_t successor, *addr2, next, result[1];
 
     //~ MPI_Aint disp_list;
-    int32_t origin[1] = {INT32_MAX};
+    //~ int32_t origin[1] = {INT32_MAX};
 
-    DART_GPTR_COPY(gptr_tail, lock->gptr_tail);
-    DART_GPTR_COPY(gptr_list, lock->gptr_list);
+    //~ DART_GPTR_COPY(gptr_tail, lock->gptr_tail);
+    //~ DART_GPTR_COPY(gptr_list, lock->gptr_list);
 
-    uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
-    uint64_t offset_list = gptr_list.addr_or_offs.offset;
-    int16_t seg_id = gptr_list.segid;
-    dart_unit_t tail = gptr_tail.unitid;
-    uint16_t index = gptr_list.flags;
-    dart_gptr_getaddr (gptr_list, (void*)&addr2);
+    //~ uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
+    //~ uint64_t offset_list = gptr_list.addr_or_offs.offset;
+    //~ int16_t seg_id = gptr_list.segid;
+    //~ dart_unit_t tail = gptr_tail.unitid;
+    //~ uint16_t index = gptr_list.flags;
+    //~ dart_gptr_getaddr (gptr_list, (void*)&addr2);
 
     //~ win = dart_win_lists[index];
-    gaspi_segment_id_t gaspi_seg;
-    if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &gaspi_seg) == -1)
-    {
-        return DART_ERR_OTHER;
-    }
+    //~ gaspi_segment_id_t gaspi_seg;
+    //~ if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &gaspi_seg) == -1)
+    //~ {
+        //~ return DART_ERR_OTHER;
+    //~ }
 
-    /* Atomicity: Check if we are at the tail of this lock queue, if so, we are done.
-     * Otherwise, we still need to send notification. */
-    DART_CHECK_GASPI_ERROR(gaspi_atomic_compare_swap(gaspi_seg,
-                                                     0UL,
-                                                     tail,
-                                                     (gaspi_atomic_value_t) unitid,
-                                                     (gaspi_atomic_value_t) origin,
-                                                     (gaspi_atomic_value_t *) result,
-                                                     GASPI_BLOCK));
+    //~ /* Atomicity: Check if we are at the tail of this lock queue, if so, we are done.
+     //~ * Otherwise, we still need to send notification. */
+    //~ DART_CHECK_GASPI_ERROR(gaspi_atomic_compare_swap(gaspi_seg,
+                                                     //~ 0UL,
+                                                     //~ tail,
+                                                     //~ (gaspi_atomic_value_t) unitid,
+                                                     //~ (gaspi_atomic_value_t) origin,
+                                                     //~ (gaspi_atomic_value_t *) result,
+                                                     //~ GASPI_BLOCK));
     //~ MPI_Compare_and_swap (origin, &unitid, result, MPI_INT32_T, tail, offset_tail, dart_win_local_alloc);
     //~ MPI_Win_flush (tail, dart_win_local_alloc);
 
-    /* We are not at the tail of this lock queue. */
-    if (*result != unitid)
-    {
-        DEBUG ("%2d: UNLOCK - waiting for next pointer (tail = %d) in team %d",
-               unitid, *result, (lock->teamid));
+    //~ /* We are not at the tail of this lock queue. */
+    //~ if (*result != unitid)
+    //~ {
+        //~ DEBUG ("%2d: UNLOCK - waiting for next pointer (tail = %d) in team %d",
+               //~ unitid, *result, (lock->teamid));
 
         //~ if (dart_adapt_transtable_get_disp (seg_id, unitid, &disp_list) == -1)
-        if(dart_adapt_transtable_get_gaspi_seg_id(seg_id, unitid, &gaspi_seg) == -1)
-        {
-            return DART_ERR_INVAL;
-        }
+        //~ if(dart_adapt_transtable_get_gaspi_seg_id(seg_id, unitid, &gaspi_seg) == -1)
+        //~ {
+            //~ return DART_ERR_INVAL;
+        //~ }
 
-        /* Waiting for the update of my next pointer finished. */
-        while (1)
-        {
-            // May be gaspi_read ??
-            MPI_Fetch_and_op (NULL, &next, MPI_INT, unitid, disp_list, MPI_NO_OP, win);
+        //~ /* Waiting for the update of my next pointer finished. */
+        //~ while (1)
+        //~ {
+            //~ // May be gaspi_read ??
+            //~ MPI_Fetch_and_op (NULL, &next, MPI_INT, unitid, disp_list, MPI_NO_OP, win);
             //~ MPI_Win_flush (unitid, win);
 
-            if (next != INT32_MAX) break;
-        }
+            //~ if (next != INT32_MAX) break;
+        //~ }
 
         //~ DEBUG ("%2d: UNLOCK - notifying %d in team %d", unitid, next, (lock -> teamid));
 
-        /* Notifying the next unit waiting on the lock queue. */
+        //~ /* Notifying the next unit waiting on the lock queue. */
 
-        MPI_Send (NULL, 0, MPI_INT, next, 0, dart_teams[index]);
-        *addr2 = -1;
-        MPI_Win_sync (win);
-    }
-    lock -> is_acquired = 0;
-    DEBUG ("%2d: UNLOCK - release lock in team %d", unitid, (lock -> teamid));
-    return DART_OK;
-}
+        //~ MPI_Send (NULL, 0, MPI_INT, next, 0, dart_teams[index]);
+        //~ *addr2 = -1;
+        //~ MPI_Win_sync (win);
+    //~ }
+    //~ lock -> is_acquired = 0;
+    //~ DEBUG ("%2d: UNLOCK - release lock in team %d", unitid, (lock -> teamid));
+    //~ return DART_OK;
+//~ }

@@ -1,4 +1,4 @@
-#include "handle_queue.h"
+#include <dash/dart/gaspi/handle_queue.h>
 
 #include <assert.h>
 #include <stdio.h>

@@ -8,7 +8,7 @@
 
 #include <stdio.h>
 #include <GASPI.h>
-#include "dart_types.h"
+#include <dash/dart/if/dart_types.h>
 #include "handle_queue.h"
 
 /** @brief Definition of translation table.

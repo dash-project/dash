@@ -2,9 +2,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include "gaspi_utils.h"
-#include "dart_communication_priv.h"
-#include "gaspi_utils.h"
+#include <dash/dart/gaspi/gaspi_utils.h>
+#include <dash/dart/gaspi/dart_communication_priv.h>
 
 dart_ret_t unit_l2g (uint16_t index, dart_unit_t *abs_id, dart_unit_t rel_id)
 {

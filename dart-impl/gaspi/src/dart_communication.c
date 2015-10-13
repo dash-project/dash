@@ -1,9 +1,11 @@
-#include "dart_team_private.h"
-#include "dart_translation.h"
-#include "dart_gaspi.h"
-#include "dart_mem.h"
-#include "dart_communication.h"
-#include "dart_communication_priv.h"
+
+#include <dash/dart/gaspi/dart_gaspi.h>
+
+#include <dash/dart/if/dart_communication.h>
+#include <dash/dart/gaspi/dart_team_private.h>
+#include <dash/dart/gaspi/dart_translation.h>
+#include <dash/dart/gaspi/dart_mem.h>
+#include <dash/dart/gaspi/dart_communication_priv.h>
 #include <string.h>
 
 /********************** Only for testing *********************/

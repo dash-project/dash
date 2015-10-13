@@ -6,8 +6,8 @@ extern "C" {
 #endif
 #include <stdint.h>
 #include <GASPI.h>
-#include "dart.h"
-#include "dart_types.h"
+#include <dash/dart/if/dart.h>
+#include <dash/dart/if/dart_types.h>
 #include "gaspi_utils.h"
 
 #define DART_MAX_TEAM_NUMBER (256)

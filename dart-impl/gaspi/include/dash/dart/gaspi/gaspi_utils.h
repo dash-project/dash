@@ -1,7 +1,7 @@
 #ifndef GASPI_UTILS_H
 #define GASPI_UTILS_H
 
-#include "dart_types.h"
+#include <dash/dart/if/dart_types.h>
 #include <stdlib.h>
 #include <GASPI.h>
 

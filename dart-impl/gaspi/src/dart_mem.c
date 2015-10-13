@@ -1,6 +1,6 @@
 //https://github.com/cloudwu/buddy
 #include <assert.h>
-#include "dart_mem.h"
+#include <dash/dart/gaspi/dart_mem.h>
 
 #define NODE_UNUSED 0
 #define NODE_USED 1

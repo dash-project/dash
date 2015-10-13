@@ -8,8 +8,8 @@
 
 #include <stdio.h>
 #include <GASPI.h>
-#include "dart_globmem.h"
-#include "dart_synchronization.h"
+#include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_synchronization.h>
 
 /** @brief Dart lock type.
  *  */

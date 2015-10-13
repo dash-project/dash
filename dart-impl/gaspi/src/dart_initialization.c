@@ -1,8 +1,8 @@
-#include "dart_globmem_priv.h"
-#include "dart_mem.h"
-#include "dart_team_private.h"
-#include "dart_gaspi.h"
-#include "dart_translation.h"
+#include <dash/dart/gaspi/dart_globmem_priv.h>
+#include <dash/dart/gaspi/dart_mem.h>
+#include <dash/dart/gaspi/dart_team_private.h>
+#include <dash/dart/gaspi/dart_gaspi.h>
+#include <dash/dart/gaspi/dart_translation.h>
 
 gaspi_rank_t dart_gaspi_rank_num;
 gaspi_rank_t dart_gaspi_rank;

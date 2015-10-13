@@ -1,4 +1,4 @@
-#include "dart_seg_stack.h"
+#include <dash/dart/gaspi/dart_seg_stack.h>
 #include <assert.h>
 
 dart_ret_t seg_stack_init(seg_stack_t * stack, size_t count)

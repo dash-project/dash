@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include <GASPI.h>
-#include "dart.h"
+#include <dash/dart/if/dart.h>
 #include "dart_team_private.h"
 
 struct dart_handle_struct

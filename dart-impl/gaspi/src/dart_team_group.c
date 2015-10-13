@@ -1,7 +1,7 @@
-#include <dart.h>
-#include "dart_team_private.h"
 #include <assert.h>
 #include <string.h>
+#include <dash/dart/if/dart.h>
+#include <dash/dart/gaspi/dart_team_private.h>
 
 dart_ret_t dart_team_get_group (dart_team_t teamid, dart_group_t *group)
 {

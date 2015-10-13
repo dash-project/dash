@@ -1,6 +1,6 @@
 #include <assert.h>
-#include "dart_gaspi.h"
-#include "dart_translation.h"
+#include <dash/dart/gaspi/dart_gaspi.h>
+#include <dash/dart/gaspi/dart_translation.h>
 
 /* Global array: the header for the global translation table. */
 node_t dart_transtable_globalalloc;

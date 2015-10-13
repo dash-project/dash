@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <assert.h>
-#include "dart_types.h"
-#include "dart_team_private.h"
-#include "dart_team_group.h"
+
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/gaspi/dart_team_private.h>
 
 dart_team_t dart_next_availteamid;
 

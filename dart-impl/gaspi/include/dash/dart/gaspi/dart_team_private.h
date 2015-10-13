@@ -132,10 +132,10 @@
 #define DART_ADAPT_TEAM_PRIVATE_H_INCLUDED
 
 #include <GASPI.h>
-#include <dart_types.h>
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_team_group.h>
 #include "dart_gaspi.h"
 #include "dart_group_impl.h"
-#include <dart_team_group.h>
 #include "dart_seg_stack.h"
 
 typedef enum dart_gaspi_segment_state

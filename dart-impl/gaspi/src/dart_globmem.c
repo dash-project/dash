@@ -3,12 +3,16 @@
 #include <assert.h>
 #include <GASPI.h>
 
-#include "dart_mem.h"
-#include "dart_types.h"
-#include "dart_translation.h"
-#include "dart_team_private.h"
-#include "dart_globmem.h"
-#include "dart_team_group.h"
+
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_globmem.h>
+#include <dash/dart/if/dart_team_group.h>
+
+#include <dash/dart/gaspi/dart_mem.h>
+#include <dash/dart/gaspi/dart_translation.h>
+#include <dash/dart/gaspi/dart_team_private.h>
+
+
 
 int16_t dart_memid;
 
