@@ -114,6 +114,11 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
             ${exampletarget} PROPERTIES
             COMPILE_FLAGS "-DDASH_ENABLE_PAPI"
           )
+        else()
+          target_link_libraries(
+            ${exampletarget}
+            rt
+          )
         endif()
         DeployBinary(${exampletarget})
         install(
@@ -157,6 +162,11 @@ if (BUILD_TESTS)
       set_target_properties(
         ${DASH_TEST} PROPERTIES
         COMPILE_FLAGS "-DDASH_ENABLE_PAPI"
+      )
+    else()
+      target_link_libraries(
+        ${DASH_TEST}
+        rt
       )
     endif()
     if (ENABLE_LOGGING)
