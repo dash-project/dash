@@ -6,6 +6,8 @@
  * Concepts for C++ components in DASH
  */
 
+#include <dash/internal/Config.h>
+
 #include <dash/Types.h>
 #include <dash/Init.h>
 #include <dash/Team.h>
@@ -27,5 +29,7 @@
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
+
+#include <dash/util/Timer.h>
 
 #endif // DASH__LIBDASH_H_

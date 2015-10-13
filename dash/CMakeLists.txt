@@ -106,7 +106,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
           )
           set_target_properties(
             ${exampletarget} PROPERTIES
-            COMPILE_FLAGS "-DENABLE_PAPI"
+            COMPILE_FLAGS "-DDASH_ENABLE_PAPI"
           )
         endif()
         DeployBinary(${exampletarget})
@@ -140,18 +140,6 @@ if (BUILD_TESTS)
       ${DASH_LIBRARY}
       ${DART_LIBRARY}
     )
-    if (ENABLE_LOGGING)
-      set_target_properties(
-        ${DASH_TEST} PROPERTIES
-        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_LOGGING"
-      )
-    endif()
-    if (ENABLE_TRACE_LOGGING)
-      set_target_properties(
-        ${DASH_TEST} PROPERTIES
-        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_TRACE_LOGGING"
-      )
-    endif()
     if (PAPI_FOUND)
       include_directories(
         ${PAPI_INCLUDE_DIRS}
@@ -162,7 +150,19 @@ if (BUILD_TESTS)
       )
       set_target_properties(
         ${DASH_TEST} PROPERTIES
-        COMPILE_FLAGS "-DENABLE_PAPI"
+        COMPILE_FLAGS "-DDASH_ENABLE_PAPI"
+      )
+    endif()
+    if (ENABLE_LOGGING)
+      set_target_properties(
+        ${DASH_TEST} PROPERTIES
+        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_LOGGING"
+      )
+    endif()
+    if (ENABLE_TRACE_LOGGING)
+      set_target_properties(
+        ${DASH_TEST} PROPERTIES
+        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_TRACE_LOGGING"
       )
     endif()
     DeployBinary(${DASH_TEST})
