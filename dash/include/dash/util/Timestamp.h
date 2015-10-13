@@ -13,7 +13,7 @@
 #define DASH__UTIL__TIMER_UX
 #endif
 // POSIX
-#if defined(EMBB_THREADING_POSIXTHREADS)
+#if defined(DASH__PLATFORM__POSIX)
 #define DASH__UTIL__TIMER_POSIX
 #endif
 // Linux
@@ -25,7 +25,7 @@
 #define DASH__UTIL__TIMER_FREEBSD
 #endif
 
-#if defined(__PAPI__)
+#if defined(DASH_ENABLE_PAPI)
 #define DASH__UTIL__TIMER_PAPI
 #endif
 

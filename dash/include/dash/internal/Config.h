@@ -71,10 +71,12 @@
 // Linux
 #if defined(__linux__)
 #  define DASH__PLATFORM__LINUX
+#  define DASH__PLATFORM__POSIX
 #endif
 // FreeBSD
 #if defined(__FreeBSD__)
 #  define DASH__PLATFORM__FREEBSD
+#  define DASH__PLATFORM__POSIX
 #endif
 
 #endif // DASH__INTERNAL__CONFIG_H_

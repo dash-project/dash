@@ -1,23 +1,21 @@
 #ifndef DASH__UTIL__TIMER_H_
 #define DASH__UTIL__TIMER_H_
 
-#if defined(DASH_ENABLE_PAPI) && \
-    defined(DASH__UTIL__TIMER_PAPI)
-#define DASH__UTIL__TIMER_PAPI
-#endif
-
 #include <dash/internal/Config.h>
+
+// Timestamp interfaces:
 #include <dash/util/Timestamp.h>
 #include <dash/util/TimeMeasure.h>
 
 #include <climits>
 
+// Timestamp implementations:
 #if defined(DASH__UTIL__TIMER_PAPI)
-#include <dash/internal/util/TimestampPAPI.h>
+#  include <dash/util/internal/TimestampPAPI.h>
+#else
+#  include <dash/util/internal/TimestampCounterPosix.h>
+#  include <dash/util/internal/TimestampClockPosix.h>
 #endif
-
-#include <dash/internal/util/TimestampCounterPosix.h>
-#include <dash/internal/util/TimestampClockPosix.h>
 
 namespace dash {
 namespace util {
@@ -33,22 +31,21 @@ class Timer {
 
  private: 
 #if defined(DASH__UTIL__TIMER_PAPI)
-// PAPI support, use optimized performance measurements from PAPI 
-  typedef dash::internal::util::TimestampPAPI<TimeMeasure::Clock>
+// PAPI support, use measurements from PAPI 
+  typedef dash::util::internal::TimestampPAPI<TimeMeasure::Clock>
     TimestampClockBased;
-  typedef dash::internal::util::TimestampPAPI<TimeMeasure::Counter>
+  typedef dash::util::internal::TimestampPAPI<TimeMeasure::Counter>
     TimestampCounterBased;
-#else
-// No PAPI
-# if defined(DASH__PLATFORM__POSIX)
-  // POSIX: 
-  typedef dash::internal::util::TimestampCounterPosix 
+#elif defined(DASH__UTIL__TIMER_POSIX)
+// POSIX platform
+  typedef dash::util::internal::TimestampCounterPosix 
     TimestampCounterBased;
-  typedef dash::internal::util::TimestampClockPosix 
+  typedef dash::util::internal::TimestampClockPosix 
     TimestampClockBased;
-# else 
-# endif // POSIX
-#endif // No PAPI
+# else
+// No PAPI, no POSIX
+#  pragma error "dash::util::Timer requires POSIX platform or PAPI"
+#endif
 
  public:
   inline Timer() {
@@ -66,7 +63,7 @@ class Timer {
   }
 
   /**
-   * Microeconds elapsed since instantiation of this Timer object.
+   * Microseconds elapsed since instantiation of this Timer object.
    */
   inline double Elapsed() const {
     timestamp_t now;

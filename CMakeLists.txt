@@ -3,6 +3,7 @@ project(project_dash)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 
 cmake_minimum_required (VERSION 2.8)
 
@@ -10,7 +11,10 @@ cmake_minimum_required (VERSION 2.8)
 set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
 set(DASH_VERSION_MINOR 1 CACHE STRING "DASH minor version number.")
 set(DASH_VERSION_PATCH 0 CACHE STRING "DASH patch version number.")
-mark_as_advanced(DASH_VERSION_MAJOR DASH_VERSION_MINOR DASH_VERSION_PATCH)
+mark_as_advanced(
+  DASH_VERSION_MAJOR
+  DASH_VERSION_MINOR
+  DASH_VERSION_PATCH)
 
 set(DASH_VERSIONED_PROJECT_NAME
     "dash-${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
@@ -26,6 +30,9 @@ endif(POLICY CMP0054)
 if(POLICY CMP0053)
   cmake_policy(SET CMP0053 OLD)
 endif(POLICY CMP0053)
+
+message("-- Platform: " ${DASH_PLATFORM_NAME})
+message("-- Platform is POSIX: " ${DASH_PLATFORM_IS_POSIX})
 
 ## Install path
 if (INSTALL_PREFIX)
