@@ -243,9 +243,6 @@ dart_ret_t dart_put(dart_gptr_t gptr, void *src, size_t nbytes)
     return DART_OK;
 }
 
-/*
- * access local elements ??
- */
 dart_ret_t dart_get_blocking(void *dest, dart_gptr_t gptr, size_t nbytes)
 {
     gaspi_segment_id_t remote_seg;
@@ -257,16 +254,6 @@ dart_ret_t dart_get_blocking(void *dest, dart_gptr_t gptr, size_t nbytes)
     int16_t            seg_id       = gptr.segid;
     uint16_t           index        = gptr.flags;
     dart_unit_t        remote_rank  = gptr.unitid;
-
-    local_offset = dart_buddy_alloc(dart_transferpool, nbytes);
-    if(local_offset == -1)
-    {
-        fprintf(stderr, "Out of bound: the global memory is exhausted");
-        return DART_ERR_OTHER;
-    }
-
-    DART_CHECK_ERROR(gaspi_segment_ptr(local_seg, &seg_ptr));
-    seg_ptr = (void *) ((char *) seg_ptr + local_offset);
 
     if(seg_id)
     {
@@ -283,6 +270,27 @@ dart_ret_t dart_get_blocking(void *dest, dart_gptr_t gptr, size_t nbytes)
         remote_seg = dart_mempool_seg_localalloc;
     }
 
+    dart_unit_t myid;
+    DART_CHECK_ERROR(dart_myid(&myid));
+    if(myid == remote_rank)
+    {
+        /*
+         * local access
+         */
+        DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(remote_seg, &seg_ptr));
+        seg_ptr = (void *)((char *) seg_ptr + offset);
+        memcpy(dest, seg_ptr, nbytes);
+
+        return DART_OK;
+    }
+
+    local_offset = dart_buddy_alloc(dart_transferpool, nbytes);
+    if(local_offset == -1)
+    {
+        fprintf(stderr, "Out of bound: the global memory is exhausted");
+        return DART_ERR_OTHER;
+    }
+
     DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
 
     DART_CHECK_ERROR(gaspi_read(local_seg,
@@ -295,6 +303,9 @@ dart_ret_t dart_get_blocking(void *dest, dart_gptr_t gptr, size_t nbytes)
                                 GASPI_BLOCK));
 
     DART_CHECK_ERROR(gaspi_wait(queue, GASPI_BLOCK));
+
+    DART_CHECK_ERROR(gaspi_segment_ptr(local_seg, &seg_ptr));
+    seg_ptr = (void *) ((char *) seg_ptr + local_offset);
 
     memcpy(dest, seg_ptr, nbytes);
 

@@ -54,8 +54,17 @@ int main(int argc, char* argv[])
 
         CHECK(dart_gptr_getaddr(g2, &g2_ptr));
 
-        *((int *) g2_ptr) = 1337;
+        ((int *) g2_ptr)[0] = 1337;
+        ((int *) g2_ptr)[1] = 1338;
+        ((int *) g2_ptr)[2] = 1339;
+
+        int k[3];
+        CHECK(dart_get_blocking(k, g2, sizeof(int) * 3));
+        gaspi_printf("k val %d\n",k[0]);
+        gaspi_printf("k val %d\n",k[1]);
+        gaspi_printf("k val %d\n",k[2]);
     }
+
 
     CHECK(dart_barrier(DART_TEAM_ALL));
 
