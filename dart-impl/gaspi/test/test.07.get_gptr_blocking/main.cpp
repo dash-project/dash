@@ -109,9 +109,44 @@ TEST(Get_Blocking, same_segment)
 }
 
 
+class MinimalistPrinter : public ::testing::EmptyTestEventListener {
+        // Called before a test starts.
+        virtual void OnTestStart(const ::testing::TestInfo& test_info) {
+            gaspi_printf("*** Test %s.%s starting.\n",
+                   test_info.test_case_name(), test_info.name());
+        }
+
+        // Called after a failed assertion or a SUCCEED() invocation.
+        virtual void OnTestPartResult(const ::testing::TestPartResult& test_part_result)
+        {
+            gaspi_printf("%s in %s:%d\n%s\n",
+                   test_part_result.failed() ? "*** Failure" : "Success",
+                   test_part_result.file_name(),
+                   test_part_result.line_number(),
+                   test_part_result.summary());
+        }
+
+        // Called after a test ends.
+        virtual void OnTestEnd(const ::testing::TestInfo& test_info) {
+            const ::testing::TestResult * result = test_info.result();
+
+            gaspi_printf("*** Test %s.%s -> %s.\n",
+                   test_info.test_case_name(), test_info.name(), (result->Passed()) ? "SUCCESS" : "FAIL");
+        }
+};
+
+
 int main(int argc, char* argv[])
 {
     ::testing::InitGoogleTest(&argc, argv);
+
+    // Gets hold of the event listener list.
+    ::testing::TestEventListeners& listeners = ::testing::UnitTest::GetInstance()->listeners();
+    // Delete default event listener
+    delete listeners.Release(listeners.default_result_printer());
+    // Append own listener
+    listeners.Append(new MinimalistPrinter);
+
     dart_init(&argc, &argv);
     int ret = RUN_ALL_TESTS();
     dart_exit();
