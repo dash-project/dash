@@ -158,6 +158,25 @@ int dart_adapt_transtable_get_handle_queue(int16_t seg_id, dart_unit_t rel_unit,
     return 0;
 }
 
+int dart_adapt_transtable_get_entry(int16_t seg_id, node_t * entry)
+{
+    node_t p;
+    p = dart_transtable_globalalloc;
+
+    while ((p != NULL) && (seg_id > ((p->trans).seg_id)))
+    {
+        p = p->next;
+    }
+
+    if ((!p) || (seg_id) != (p->trans).seg_id)
+    {
+        fprintf(stderr,"Invalid seg_id: %d, can not get the related memory size", seg_id);
+        return -1;
+    }
+    *entry = p;
+    return 0;
+}
+
 int dart_adapt_transtable_get_size (int16_t seg_id, size_t *size)
 {
     node_t p;
