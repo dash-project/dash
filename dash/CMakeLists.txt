@@ -15,6 +15,7 @@ set(ENABLE_TRACE_LOGGING ${ENABLE_TRACE_LOGGING}
     PARENT_SCOPE)
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
@@ -51,7 +52,8 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
   target_link_libraries(
     ${DASH_LIBRARY}           # library name
-    ${DASH_LINK_DART_LIBRARY} # dep
+    ${DASH_LINK_DART_LIBRARY} # dependency: DART lib
+    ${DASH_LINK_DART_LIBRARY} # dependency: PAPI lib (optional)
   )
   if (${dart_variant} STREQUAL "mpi")
     include_directories(
@@ -100,6 +102,19 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
             ${MPI_C_LIBRARIES}
             ${MPI_CXX_LIBRARIES})
         endif()
+        if (PAPI_FOUND)
+          include_directories(
+            ${PAPI_INCLUDE_DIRS}
+          )
+          target_link_libraries(
+            ${exampletarget}
+            ${PAPI_LIBRARIES}
+          )
+          set_target_properties(
+            ${exampletarget} PROPERTIES
+            COMPILE_FLAGS "-DDASH_ENABLE_PAPI"
+          )
+        endif()
         DeployBinary(${exampletarget})
         install(
           TARGETS ${exampletarget}
@@ -131,6 +146,19 @@ if (BUILD_TESTS)
       ${DASH_LIBRARY}
       ${DART_LIBRARY}
     )
+    if (PAPI_FOUND)
+      include_directories(
+        ${PAPI_INCLUDE_DIRS}
+      )
+      target_link_libraries(
+        ${DASH_TEST}
+        ${PAPI_LIBRARIES}
+      )
+      set_target_properties(
+        ${DASH_TEST} PROPERTIES
+        COMPILE_FLAGS "-DDASH_ENABLE_PAPI"
+      )
+    endif()
     if (ENABLE_LOGGING)
       set_target_properties(
         ${DASH_TEST} PROPERTIES
@@ -140,7 +168,7 @@ if (BUILD_TESTS)
     if (ENABLE_TRACE_LOGGING)
       set_target_properties(
         ${DASH_TEST} PROPERTIES
-        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_LOGGING -DDASH_ENABLE_TRACE_LOGGING"
+        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_TRACE_LOGGING"
       )
     endif()
     DeployBinary(${DASH_TEST})
