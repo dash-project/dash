@@ -18,14 +18,14 @@ function run_ci
   $CMD_DEPLOY "--b=$BUILD_TYPE" -f "--i=$DEPLOY_PATH" >> $DEPLOY_PATH/build.log 2>&1
   
   if [ "$?" = "0" ]; then
-    echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (SHMEM) ..."
-    $CMD_TEST shmem $DEPLOY_PATH/bin $DEPLOY_PATH/test_shmem.log > /dev/null 2>&1
-    if [ "$?" = "0" ]; then
-      echo " OK"
-    else
-      echo " FAILED"
-      FAILED=true
-    fi
+#   echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (SHMEM) ..."
+#   $CMD_TEST shmem $DEPLOY_PATH/bin $DEPLOY_PATH/test_shmem.log > /dev/null 2>&1
+#   if [ "$?" = "0" ]; then
+#     echo " OK"
+#   else
+#     echo " FAILED"
+#     FAILED=true
+#   fi
     echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
     $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
     if [ "$?" = "0" ]; then

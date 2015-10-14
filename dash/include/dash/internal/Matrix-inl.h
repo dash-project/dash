@@ -455,7 +455,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::extent(
   dim_t dim) const noexcept
 {
-  return _refview->_viewspec.range[dim];
+  return _refview->_viewspec[dim].extent;
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -465,7 +465,7 @@ constexpr std::array<
 MatrixRef<T, NumDim, CUR, PatternT>
 ::extents() const noexcept
 {
-  return _refview->_viewspec.range;
+  return _refview->_viewspec.extents();
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -489,7 +489,7 @@ inline const typename MatrixRef<T, NumDim, CUR, PatternT>::pattern_type &
 MatrixRef<T, NumDim, CUR, PatternT>
 ::pattern() const
 {
-  // TODO:
+  // TODO;
   // Should return pattern projected to cartesian space of this view?
   return _refview->_mat->_pattern;
 }
