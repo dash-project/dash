@@ -5,8 +5,10 @@
 #   GASPI_LINK_FLAGS             Linking flags for GASPI programs
 #   GASPI_LIBRARY                First GASPI library to link against (cached)
 
-set(GASPI_INCLUDE_PATH "/home/cherold/procs/gpi2/include")
-set(GASPI_C_LIBRARIES  "/home/cherold/procs/gpi2/lib/libGPI2.a")
+find_library(GASPI_C_LIBRARIES
+             NAMES GPI2 libGPI2)
+
+find_path(GASPI_INCLUDE_PATH GASPI.h)
+
 set(GASPI_COMPILE_FLAGS "-Wall")
 set(GASPI_LINK_FLAGS "-libverbs" "-lpthread")
-
