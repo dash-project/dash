@@ -248,44 +248,52 @@ dart_ret_t dart_put(dart_gptr_t gptr, void *src, size_t nbytes)
 dart_ret_t dart_get_gptr_blocking(dart_gptr_t dest, dart_gptr_t src, size_t nbytes)
 {
     gaspi_queue_id_t   queue;
-    gaspi_segment_id_t src_gaspi_seg  = dart_mempool_seg_localalloc;
-    gaspi_segment_id_t src_offset     = src.addr_or_offs.offset;
-    int16_t            src_seg_id     = src.segid;
-    gaspi_segment_id_t dest_gaspi_seg = dart_mempool_seg_localalloc;
-    gaspi_segment_id_t dest_offset    = dest.addr_or_offs.offset;
-    uint16_t           dest_index     = dest.flags;
-    int16_t            dest_seg_id    = dest.segid;
-    dart_unit_t        target_unit    = dest.unitid;
     /*
      * local site
      */
-    if(src_seg_id)
+    gaspi_segment_id_t dest_gaspi_seg = dart_mempool_seg_localalloc;
+    gaspi_offset_t     dest_offset    = dest.addr_or_offs.offset;
+    uint16_t           dest_index     = dest.flags;
+    int16_t            dest_seg_id    = dest.segid;
+    dart_unit_t        my_unit        = dest.unitid;
+    /*
+     * remote site
+     */
+    gaspi_segment_id_t src_gaspi_seg  = dart_mempool_seg_localalloc;
+    gaspi_offset_t     src_offset     = src.addr_or_offs.offset;
+    int16_t            src_seg_id     = src.segid;
+    uint16_t           src_index      = src.flags;
+    dart_unit_t        target_unit    = src.unitid;
+    /*
+     * local site
+     */
+    if(dest_seg_id)
     {
-        if(dart_adapt_transtable_get_local_gaspi_seg_id(src_seg_id, &src_gaspi_seg) == -1)
+        dart_unit_t rel_my_unit;
+        DART_CHECK_ERROR(unit_g2l(dest_index, my_unit, &rel_my_unit));
+        if(dart_adapt_transtable_get_gaspi_seg_id(dest_seg_id, rel_my_unit, &dest_gaspi_seg) == -1)
         {
-            fprintf(stderr, "Can't find given local segment id in dart_get_blocking\n");
+            fprintf(stderr, "Can't find given destination segment id in dart_get_blocking\n");
             return DART_ERR_NOTFOUND;
         }
     }
     /*
      * remote site
      */
-    if(dest_seg_id)
+    if(src_seg_id)
     {
         dart_unit_t rel_target_unit;
-        DART_CHECK_ERROR(unit_g2l(dest_index, target_unit, &rel_target_unit));
-        if(dart_adapt_transtable_get_gaspi_seg_id(dest_seg_id, rel_target_unit, &dest_gaspi_seg) == -1)
+        DART_CHECK_ERROR(unit_g2l(src_index, target_unit, &rel_target_unit));
+        if(dart_adapt_transtable_get_gaspi_seg_id(src_seg_id, rel_target_unit, &src_gaspi_seg) == -1)
         {
-            fprintf(stderr, "Can't find given remote segment id in dart_get_blocking\n");
+            fprintf(stderr, "Can't find given source segment id in dart_get_blocking\n");
             return DART_ERR_NOTFOUND;
         }
     }
     /*
      * target is own unit
      */
-    dart_unit_t myid;
-    DART_CHECK_ERROR(dart_myid(&myid));
-    if(myid == target_unit)
+    if(my_unit == target_unit)
     {
         gaspi_pointer_t src_seg_ptr = NULL;
         gaspi_pointer_t dest_seg_ptr = NULL;
@@ -293,7 +301,7 @@ dart_ret_t dart_get_gptr_blocking(dart_gptr_t dest, dart_gptr_t src, size_t nbyt
         DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(src_gaspi_seg, &src_seg_ptr));
         DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(dest_gaspi_seg, &dest_seg_ptr));
 
-        src_seg_ptr  = (void *)((char *) src_seg_ptr + src_offset);
+        src_seg_ptr  = (void *)((char *) src_seg_ptr  + src_offset);
         dest_seg_ptr = (void *)((char *) dest_seg_ptr + dest_offset);
 
         memcpy(dest_seg_ptr, src_seg_ptr, nbytes);
@@ -303,11 +311,11 @@ dart_ret_t dart_get_gptr_blocking(dart_gptr_t dest, dart_gptr_t src, size_t nbyt
 
     DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
 
-    DART_CHECK_ERROR(gaspi_read(src_gaspi_seg,
-                                src_offset,
-                                target_unit,
-                                dest_gaspi_seg,
+    DART_CHECK_ERROR(gaspi_read(dest_gaspi_seg,
                                 dest_offset,
+                                target_unit,
+                                src_gaspi_seg,
+                                src_offset,
                                 nbytes,
                                 queue,
                                 GASPI_BLOCK));
