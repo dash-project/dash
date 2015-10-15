@@ -239,6 +239,21 @@ dart_ret_t dart_testall_local(
  * \ingroup DartCommuncation
  */
 dart_ret_t dart_get_gptr_blocking(dart_gptr_t dest, dart_gptr_t src, size_t nbytes);
+/**
+ * Allocates a handle structure on the heap
+ */
+dart_ret_t dart_create_handle(dart_handle_t * handle);
+/**
+ * Frees a handle structure
+ */
+dart_ret_t dart_delete_handle(dart_handle_t * handle);
+/**
+ * 'HANDLE' variant of dart_get.
+ * Neither local nor remote completion is guaranteed.
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_get_gptr_handle(dart_gptr_t dest, dart_gptr_t src, size_t nbytes, dart_handle_t handle);
 
 #define DART_INTERFACE_OFF
 

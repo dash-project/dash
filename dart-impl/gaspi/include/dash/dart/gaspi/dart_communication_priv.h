@@ -8,11 +8,9 @@
 
 struct dart_handle_struct
 {
-    gaspi_offset_t local_offset;
     gaspi_segment_id_t local_seg;
+    gaspi_segment_id_t remote_seg;
     gaspi_queue_id_t queue;
-    void * dest_buffer;
-    size_t nbytes;
 };
 
 

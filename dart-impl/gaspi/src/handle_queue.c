@@ -38,12 +38,9 @@ dart_ret_t enqueue_handle(queue_t * q, struct dart_handle_struct * handle)
     struct dart_handle_struct * tmp_handle = (struct dart_handle_struct *) malloc(sizeof(struct dart_handle_struct));
     assert(tmp_handle);
 
-    tmp_handle->local_seg = handle->local_seg;
-    tmp_handle->local_offset = handle->local_offset;
-    tmp_handle->dest_buffer = handle->dest_buffer;
-    tmp_handle->nbytes = handle->nbytes;
-    tmp_handle->queue = handle->queue;
-
+    tmp_handle->local_seg  = handle->local_seg;
+    tmp_handle->remote_seg = handle->remote_seg;
+    tmp_handle->queue      = handle->queue;
 
     node->handle = tmp_handle;
     node->next = NULL;
@@ -75,11 +72,9 @@ dart_ret_t front_handle(queue_t * q, struct dart_handle_struct * handle)
         return DART_ERR_NOTINIT;
     }
 
-    handle->local_offset = q->front->handle->local_offset;
-    handle->local_seg = q->front->handle->local_seg;
-    handle->dest_buffer = q->front->handle->dest_buffer;
-    handle->nbytes = q->front->handle->nbytes;
-    handle->queue = q->front->handle->queue;
+    handle->local_seg  = q->front->handle->local_seg;
+    handle->remote_seg = q->front->handle->remote_seg;
+    handle->queue      = q->front->handle->queue;
 
     return DART_OK;
 }

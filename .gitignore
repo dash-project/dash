@@ -41,6 +41,7 @@ build-ci
 
 core.*
 main
+gtest
 
 # Geany config
 geany-dart.conf
