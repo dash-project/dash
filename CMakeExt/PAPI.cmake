@@ -55,3 +55,9 @@ mark_as_advanced(
   PAPI_INCLUDE_DIRS
 )
 
+if (PAPI_FOUND)
+  message("-- PAPI includes:  " ${PAPI_INCLUDE_DIRS})
+  message("-- PAPI libraries: " ${PAPI_LIBRARIES})
+else()
+  message("-- PAPI not found")
+endif()
