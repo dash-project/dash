@@ -61,3 +61,4 @@ if (PAPI_FOUND)
 else()
   message("-- PAPI not found")
 endif()
+
