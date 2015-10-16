@@ -49,6 +49,17 @@
   }\
 } while(0)
 
+#define DASH_ASSERT_EQ(val_a, val_b, message) do { \
+  if (val_a != val_b) { \
+    DASH_THROW(dash::exception::AssertionFailed, \
+               "Assertion " \
+               << val_a << " == " << val_b \
+               << " failed: " \
+               << message << " " \
+               << __FILE__ << ":" << __LINE__); \
+  } \
+} while(0)
+
 #define DASH_ASSERT_GT(value, min, message) do { \
   if (value <= min) { \
     DASH_THROW(dash::exception::OutOfRange, \
