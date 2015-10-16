@@ -51,7 +51,7 @@ TEST_F(TilePatternTest, Distribute1DimTile)
       pat_tile_row.at(x));
     EXPECT_EQ(
       (std::array<int, 1> { x }),
-      pat_tile_row.coords_to_global(
+      pat_tile_row.global(
         expected_unit_id, (std::array<int, 1> { expected_offset })));
     // Column major:
     EXPECT_EQ(
@@ -65,7 +65,7 @@ TEST_F(TilePatternTest, Distribute1DimTile)
       pat_tile_col.at(x));
     EXPECT_EQ(
       (std::array<int, 1> { x }),
-      pat_tile_col.coords_to_global(
+      pat_tile_col.global(
         expected_unit_id, (std::array<int, 1> { expected_offset })));
   }
 }
@@ -144,7 +144,7 @@ TEST_F(TilePatternTest, Distribute2DimTileXY)
       int local_index_row     = (l_block_index_row * block_size) +
                                 phase_row;
       // Row major:
-      auto local_coords_row   = pat_tile_row.coords_to_local(
+      auto local_coords_row   = pat_tile_row.local_coords(
                                   std::array<int, 2> { x, y });
       LOG_MESSAGE("R %d,%d, u:%d, b:%d,%d, nlb:%d,%d, lc: %d,%d, lbi:%d, p:%d",
         x, y,
@@ -164,7 +164,7 @@ TEST_F(TilePatternTest, Distribute2DimTileXY)
         local_index_row,
         pat_tile_row.local_at(local_coords_row));
       auto glob_coords_row = 
-        pat_tile_row.coords_to_global(
+        pat_tile_row.global(
           unit_id,
           std::array<int, 2> { local_coords_row[0], local_coords_row[1] });
       EXPECT_EQ(

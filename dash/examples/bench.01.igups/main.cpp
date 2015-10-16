@@ -12,6 +12,7 @@
 #include <deque>
 #include <iostream>
 #include <iomanip>
+#include <unistd.h>
 
 using namespace std;
 
@@ -49,18 +50,24 @@ double test_raw_array(unsigned, unsigned);
 void perform_test(unsigned ELEM_PER_UNIT, unsigned REPEAT);
 
 double gups(
+  /// Number of units
   unsigned N,
-  double   dur, 
-  unsigned ELEM_PER_UNIT, 
+  /// Duration in microseconds
+  double   useconds,
+  /// Elements per unit
+  unsigned ELEM_PER_UNIT,
+  /// Number of iterations
   unsigned REPEAT) {
-  double res = static_cast<double>(N * ELEM_PER_UNIT * REPEAT);
-  res *= 1.0e-9; 
-  res /= dur;
-  return res;
+  double num_updates = static_cast<double>(N * ELEM_PER_UNIT * REPEAT);
+  // kilo-updates / usecs = giga-updates / sec
+  return (num_updates / 1000.0f) / useconds;
 }
 
 int main(int argc, char* argv[]) {
   dash::init(&argc, &argv);
+
+  dash::util::Timer::Calibrate(
+    dash::util::TimeMeasure::Clock, 0);
 
   std::deque<std::pair<int, int>> tests;
 
@@ -80,6 +87,8 @@ int main(int argc, char* argv[]) {
   }
 
   dash::finalize();
+
+  return 0;
 }
 
 
@@ -212,14 +221,13 @@ double test_dash_pattern(
   typedef typename ArrayType::index_type index_t;
   init_values(a, ELEM_PER_UNIT);
   const PatternType & pattern = a.pattern();
-  double tstart, tend;
 
   typename ArrayType::local_type loc = a.local;
-  TIMESTAMP(tstart);
+  dash::util::Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto g_idx = 0; g_idx < a.size(); ++g_idx) {
       auto g_coords  = std::array<index_t, 1> { g_idx };
-      auto local_pos = pattern.local(g_coords);
+      auto local_pos = pattern.local_index(g_coords);
       auto unit_id   = local_pos.unit;
       auto l_index   = local_pos.index;
       if (unit_id == dash::myid()) {
@@ -227,11 +235,11 @@ double test_dash_pattern(
       }
     }
   }
-  TIMESTAMP(tend);
+  auto time_elapsed = timer.Elapsed();
   
   validate(
     a, ELEM_PER_UNIT, REPEAT);
-  return tend - tstart;
+  return time_elapsed;
 }
 
 double test_dash_global_iter(
@@ -240,8 +248,7 @@ double test_dash_global_iter(
   unsigned REPEAT) {
   init_values(a, ELEM_PER_UNIT);
 
-  double tstart, tend;
-  TIMESTAMP(tstart);
+  dash::util::Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto it = a.begin(); it != a.end(); ++it) {
       if (it.is_local()) {
@@ -249,11 +256,11 @@ double test_dash_global_iter(
       }
     }
   }
-  TIMESTAMP(tend);
+  auto time_elapsed = timer.Elapsed();
   
   validate(
     a, ELEM_PER_UNIT, REPEAT);
-  return tend - tstart;
+  return time_elapsed;
 }
 
 double test_dash_local_iter(
@@ -261,20 +268,19 @@ double test_dash_local_iter(
   unsigned ELEM_PER_UNIT,
   unsigned REPEAT) {
   init_values(a, ELEM_PER_UNIT);
-  double tstart, tend;
 
-  TIMESTAMP(tstart);
+  dash::util::Timer timer;
   auto lend = a.lend();
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto it = a.lbegin(); it != lend; ++it) {
       ++(*it);
     }
   }
-  TIMESTAMP(tend);
+  auto time_elapsed = timer.Elapsed();
 
   validate(
     a, ELEM_PER_UNIT, REPEAT);
-  return tend - tstart;
+  return time_elapsed;
 }
 
 double test_dash_local_subscript(
@@ -282,20 +288,19 @@ double test_dash_local_subscript(
   unsigned ELEM_PER_UNIT,
   unsigned REPEAT) {
   init_values(a, ELEM_PER_UNIT);
-  double tstart, tend;
 
-  TIMESTAMP(tstart);
+  dash::util::Timer timer;
   typename ArrayType::local_type loc = a.local;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto j = 0; j < ELEM_PER_UNIT; ++j) {
       ++loc[j];
     }
   }
-  TIMESTAMP(tend);  
+  auto time_elapsed = timer.Elapsed();
 
   validate(
     a, ELEM_PER_UNIT, REPEAT);
-  return tend - tstart;
+  return time_elapsed;
 }
 
 double test_dash_local_pointer(
@@ -303,9 +308,8 @@ double test_dash_local_pointer(
   unsigned ELEM_PER_UNIT,
   unsigned REPEAT) {
   init_values(a, ELEM_PER_UNIT);
-  double tstart, tend;
 
-  TIMESTAMP(tstart);
+  dash::util::Timer timer;
   auto lbegin = a.lbegin();
   auto lend   = a.lend();
 
@@ -314,75 +318,72 @@ double test_dash_local_pointer(
       ++(*j);
     }
   }  
-  TIMESTAMP(tend);  
+  auto time_elapsed = timer.Elapsed();
 
   validate(
     a, ELEM_PER_UNIT, REPEAT);
-  return tend - tstart;
+  return time_elapsed;
 }
 
 double test_stl_vector(
   unsigned ELEM_PER_UNIT,
   unsigned REPEAT) {
-  double tstart, tend;
   std::vector<TYPE> arr(ELEM_PER_UNIT);
   init_values(arr.begin(), arr.end(), ELEM_PER_UNIT);
   
-  TIMESTAMP(tstart);
+  dash::util::Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto j = 0; j < ELEM_PER_UNIT; ++j) {
       arr[j]++;
     }
   }
-  TIMESTAMP(tend);  
+  auto time_elapsed = timer.Elapsed();
 
   validate(
     arr.begin(), arr.end(),
     ELEM_PER_UNIT, REPEAT );
-  return tend - tstart;
+  return time_elapsed;
 }
 
 double test_stl_deque(
   unsigned ELEM_PER_UNIT,
   unsigned REPEAT) {
-  double tstart, tend;
   std::deque<TYPE> arr(ELEM_PER_UNIT);
   init_values(arr.begin(), arr.end(), ELEM_PER_UNIT);
   
-  TIMESTAMP(tstart);
+  dash::util::Timer timer;
   for(auto i = 0; i < REPEAT; ++i) {
     for(auto j = 0; j < ELEM_PER_UNIT; ++j) {
       arr[j]++;
     }
   }
-  TIMESTAMP(tend);  
+  auto time_elapsed = timer.Elapsed();
   
   validate(
     arr.begin(), arr.end(),
     ELEM_PER_UNIT, REPEAT);
-  return tend - tstart;
+  return time_elapsed;
 }
 
 double test_raw_array(
   unsigned ELEM_PER_UNIT,
   unsigned REPEAT) {
-  double tstart, tend;
   TYPE arr[ELEM_PER_UNIT];
   init_values(
     arr, arr + ELEM_PER_UNIT,
     ELEM_PER_UNIT);
   
-  TIMESTAMP(tstart);
+  dash::util::Timer timer;
   for(auto i = 0; i < REPEAT; i++) {
     for(auto j = 0; j < ELEM_PER_UNIT; j++) {
       arr[j]++;
     }
   }
-  TIMESTAMP(tend);  
+  auto time_elapsed = timer.Elapsed();
 
   validate(
     arr, arr + ELEM_PER_UNIT, 
     ELEM_PER_UNIT, REPEAT);
-  return tend - tstart;
+  return time_elapsed;
 }
 

@@ -29,7 +29,8 @@ rm -Rf ./build/*
                      -DENABLE_TRACE_LOGGING=OFF \
                      -DENABLE_DART_LOGGING=OFF \
                      -DMEMORY_MODEL_UNIFIED=ON \
-                     -DBUILD_TESTS=ON ../ && \
+                     -DBUILD_TESTS=ON ../ \
+                     -DPAPI_PREFIX=${PAPI_HOME} && \
  await_confirm && \
- make -j) && \
+ make) && \
 exit_message

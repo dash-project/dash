@@ -211,7 +211,7 @@ GlobOutputIt transform(
   DASH_LOG_TRACE_VAR("dash::transform", l_index_range.begin);
   DASH_LOG_TRACE_VAR("dash::transform", l_index_range.end);
   // Local range to global offset:
-  auto global_offset            = pattern.local_to_global_index(
+  auto global_offset            = pattern.global(
                                     l_index_range.begin);
   DASH_LOG_TRACE_VAR("dash::transform", global_offset);
   // Number of elements in local range:

@@ -12,6 +12,7 @@
 #include <iostream>
 
 #include <dash/dart/if/dart.h>
+#include <dash/internal/Logging.h>
 #include <dash/Exception.h>
 #include <dash/Init.h>
 

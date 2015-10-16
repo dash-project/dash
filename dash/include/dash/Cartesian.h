@@ -28,7 +28,8 @@ namespace dash {
 template<
   dim_t NumDimensions,
   typename SizeType = unsigned int >
-class CartesianSpace {
+class CartesianSpace
+{
 private:
   typedef typename std::make_signed<SizeType>::type
     IndexType;
@@ -197,7 +198,8 @@ public:
 template<
   dim_t NumDimensions,
   typename SizeType = unsigned int>
-class SizeSpec : public CartesianSpace<NumDimensions, SizeType> {
+class SizeSpec : public CartesianSpace<NumDimensions, SizeType>
+{
 private:
   typedef CartesianSpace<NumDimensions, SizeType>
     parent_t;
@@ -235,7 +237,8 @@ template<
   dim_t NumDimensions,
   MemArrange Arrangement = ROW_MAJOR,
   typename IndexType     = int >
-class CartesianIndexSpace {
+class CartesianIndexSpace
+{
 private:
   typedef typename std::make_unsigned<IndexType>::type
     SizeType;
@@ -494,7 +497,8 @@ public:
    * Inverse of \c at(...).
    */
   template<MemArrange CoordArrangement = Arrangement>
-  std::array<IndexType, NumDimensions> coords(IndexType index) const {
+  std::array<IndexType, NumDimensions> coords(
+    IndexType index) const {
     DASH_ASSERT_GT(_size, 0, "CartesianIndexSpace has size 0");
     DASH_ASSERT_RANGE(
       0, static_cast<SizeType>(index), _size-1,
@@ -510,6 +514,22 @@ public:
         pos[i] = index / _offset_row_major[i];
         index  = index % _offset_row_major[i];
       }
+    }
+    return pos;
+  }
+
+  /**
+   * Convert given linear offset (index) to cartesian coordinates with
+   * respect to a given viewspec.
+   * Inverse of \c at(...).
+   */
+  template<MemArrange CoordArrangement = Arrangement>
+  std::array<IndexType, NumDimensions> coords(
+    IndexType          index,
+    const ViewSpec_t & viewspec) const {
+    ::std::array<IndexType, NumDimensions> pos = coords(index);
+    for(auto i = 0; i < NumDimensions; ++i) {
+      pos[i] += viewspec.dim(i).offset;
     }
     return pos;
   }

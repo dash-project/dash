@@ -1,6 +1,8 @@
 # Copyright (c) 2012-2013 Fabien Delalondre <fabien.delalondre@epfl.ch>
 # Extension to support setting mpiwrappers as compilers
-# If not, relies on the findMPI.cmake script to set libs, includes and compile flags
+# If not, relies on the findMPI.cmake script to set libs, includes and compile
+# flags.
+# 
 # Note: Improvement/evaluation must be made by comparing this script with:
 # 1) http://www.na-mic.org/svn/Slicer3-lib-mirrors/trunk/CMake/Modules/FindMPI.cmake
 # 2) http://www.openflipper.org/svnrepo/CoMISo/trunk/CoMISo/cmake/FindMPI.cmake
@@ -18,6 +20,7 @@
 
 # Start with the list of MPI wrappers. Acknowledgement to 
 # http://www.openflipper.org/svnrepo/CoMISo/trunk/CoMISo/cmake/FindMPI.cmake
+
 # Generic MPI compilers
 set(_MPI_C_COMPILER_NAMES                  "mpicc|mpcc|mpicc_r|mpcc_r")
 set(_MPI_CXX_COMPILER_NAMES                "mpicxx|mpiCC|mpcxx|mpCC|mpic[++]|mpc[++]")

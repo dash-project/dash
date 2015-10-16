@@ -45,7 +45,7 @@ void for_each(
   for (IndexType lindex = lbegin_index;
        lindex != lend_index;
        ++lindex) {
-    IndexType gindex = pattern.local_to_global_index(lindex);
+    IndexType gindex = pattern.global(lindex);
     func(gindex);
   }
 }
@@ -88,7 +88,7 @@ void for_each_with_index(
   for (IndexType lindex = lbegin_index;
        lindex != lend_index;
        ++lindex) {
-    IndexType gindex  = pattern.local_to_global_index(lindex);
+    IndexType gindex  = pattern.global(lindex);
     auto first_offset = first.pos();
     auto element_it   = first + (gindex - first_offset);
     func(*element_it, gindex);
