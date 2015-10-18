@@ -35,6 +35,10 @@ include_directories(
   ${DASH_DART_IF_INCLUDE_DIR}
 )
 
+if (ENABLE_LOGGING)
+  message("-- Debug logging enabled")
+endif()
+
 ## Build targets
 
 # DASH library for every enabled DART variant:
@@ -151,6 +155,11 @@ if (BUILD_TESTS)
       ${DASH_LIBRARY}
       ${DART_LIBRARY}
     )
+    set_property(
+      TARGET ${DASH_TEST} APPEND_STRING PROPERTY
+      COMPILE_FLAGS " -DDASH_TEST "
+    )
+
     if (PAPI_FOUND)
       include_directories(
         ${PAPI_INCLUDE_DIRS}
@@ -159,9 +168,9 @@ if (BUILD_TESTS)
         ${DASH_TEST}
         ${PAPI_LIBRARIES}
       )
-      set_target_properties(
-        ${DASH_TEST} PROPERTIES
-        COMPILE_FLAGS "-DDASH_ENABLE_PAPI"
+      set_property(
+        TARGET ${DASH_TEST} APPEND_STRING PROPERTY
+        COMPILE_FLAGS " -DDASH_ENABLE_PAPI "
       )
     else()
       target_link_libraries(
@@ -169,18 +178,21 @@ if (BUILD_TESTS)
         rt
       )
     endif()
+
     if (ENABLE_LOGGING)
-      set_target_properties(
-        ${DASH_TEST} PROPERTIES
-        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_LOGGING"
+      set_property(
+        TARGET ${DASH_TEST} APPEND_STRING PROPERTY
+        COMPILE_FLAGS " -DDASH_ENABLE_LOGGING "
       )
     endif()
     if (ENABLE_TRACE_LOGGING)
-      set_target_properties(
-        ${DASH_TEST} PROPERTIES
-        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_TRACE_LOGGING"
+      set_property(
+        TARGET ${DASH_TEST} APPEND_STRING PROPERTY
+        COMPILE_FLAGS " -DDASH_ENABLE_TRACE_LOGGING "
       )
     endif()
+    
+    # Installation
     DeployBinary(${DASH_TEST})
     install(
       TARGETS ${DASH_TEST}
