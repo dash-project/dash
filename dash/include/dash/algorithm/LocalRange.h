@@ -8,8 +8,8 @@ namespace dash {
 
 template<typename ElementType>
 struct LocalRange {
-  const ElementType * begin;
-  const ElementType * end;
+  ElementType * begin;
+  ElementType * end;
 };
 
 template<typename IndexType>
@@ -50,7 +50,8 @@ local_index_range(
   /// Iterator to the initial position in the global sequence
   const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the global sequence
-  const GlobIter<ElementType, PatternType> & last) {
+  const GlobIter<ElementType, PatternType> & last)
+{
   typedef typename PatternType::index_type idx_t;
   // Get pattern from global iterators, O(1):
   auto pattern        = first.pattern();
@@ -121,11 +122,46 @@ local_index_range(
 template<
   typename ElementType,
   class PatternType>
-LocalRange<ElementType> local_range(
+LocalRange<const ElementType> local_range(
   /// Iterator to the initial position in the global sequence
   const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the global sequence
-  const GlobIter<ElementType, PatternType> & last) {
+  const GlobIter<ElementType, PatternType> & last)
+{
+  typedef typename PatternType::index_type idx_t;
+  /// Global iterators to local index range, O(d):
+  auto index_range   = dash::local_index_range(first, last);
+  idx_t lbegin_index = index_range.begin;
+  idx_t lend_index   = index_range.end;
+  if (lbegin_index == lend_index) {
+    // Local range is empty
+    DASH_LOG_TRACE("local_range", "empty local range",
+                   lbegin_index, lend_index);
+    return LocalRange<const ElementType> { nullptr, nullptr };
+  }
+  // Local start address from global memory:
+  auto pattern = first.pattern();
+  auto lbegin  = first.globmem().lbegin(
+                   pattern.team().myid());
+  // Add local offsets to local start address:
+  if (lbegin == nullptr) {
+    DASH_LOG_TRACE("local_range", "lbegin null");
+    return LocalRange<const ElementType> { nullptr, nullptr };
+  }
+  return LocalRange<const ElementType> {
+           lbegin + lbegin_index,
+           lbegin + lend_index };
+}
+
+template<
+  typename ElementType,
+  class PatternType>
+LocalRange<ElementType> local_range(
+  /// Iterator to the initial position in the global sequence
+  GlobIter<ElementType, PatternType> & first,
+  /// Iterator to the final position in the global sequence
+  GlobIter<ElementType, PatternType> & last)
+{
   typedef typename PatternType::index_type idx_t;
   /// Global iterators to local index range, O(d):
   auto index_range   = dash::local_index_range(first, last);
@@ -138,16 +174,40 @@ LocalRange<ElementType> local_range(
     return LocalRange<ElementType> { nullptr, nullptr };
   }
   // Local start address from global memory:
-  auto pattern       = first.pattern();
-  auto lbegin        = first.globmem().lbegin(
-                         pattern.team().myid());
+  auto pattern = first.pattern();
+  auto lbegin  = first.globmem().lbegin(
+                   pattern.team().myid());
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
     DASH_LOG_TRACE("local_range", "lbegin null");
     return LocalRange<ElementType> { nullptr, nullptr };
   }
-  return LocalRange<ElementType> { lbegin + lbegin_index,
-                                   lbegin + lend_index };
+  return LocalRange<ElementType> {
+           lbegin + lbegin_index,
+           lbegin + lend_index };
+}
+
+/**
+ * Convert global iterator referencing an element the active unit's memory to
+ * a corresponding native pointer referencing the element.
+ *
+ * Precondition:  \c g_it  is local
+ *
+ */
+template<
+  typename ElementType,
+  class PatternType>
+ElementType * local(
+  /// Global iterator referencing element in local memory
+  const GlobIter<ElementType, PatternType> & g_it)
+{
+  DASH_ASSERT_MSG(
+    g_it.is_local(),
+    "dash::local: global iterator does not reference local element");
+  // Global iterator to global pointer:
+  GlobPtr<ElementType> g_ptr = static_cast< GlobPtr<ElementType> >(g_it);
+  // Global pointer to native pointer:
+  return static_cast<ElementType*>(g_ptr);
 }
 
 } // namespace dash
