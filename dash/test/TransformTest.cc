@@ -16,15 +16,6 @@ TEST_F(TransformTest, ArrayLocalPlusLocal)
   dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
 
   // Fill ranges with initial values:
-#if 0
-  dash::fill<int>(
-      array_dest.begin(), array_dest().end(),
-      1);
-  int n = 0;
-  dash::generate<int>(
-      array_in_a.begin, array_in_a.end(),
-      [&n] { return n++; });
-#endif
   for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     array_dest.local[l_idx] = 1;
     array_in_a.local[l_idx] = l_idx;
