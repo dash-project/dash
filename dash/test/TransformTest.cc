@@ -5,6 +5,51 @@
 
 #include <array>
 
+TEST_F(TransformTest, ArrayLocalPlusLocal)
+{
+  // Local input and output ranges, does not require communication
+  const size_t num_elem_local = 5;
+  size_t num_elem_total       = _dash_size * num_elem_local;
+  // Identical distribution in all ranges:
+  dash::Array<int> array_in_a(num_elem_total, dash::BLOCKED);
+  dash::Array<int> array_in_b(num_elem_total, dash::BLOCKED);
+  dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
+
+  // Fill ranges with initial values:
+#if 0
+  dash::fill<int>(
+      array_dest.begin(), array_dest().end(),
+      1);
+  int n = 0;
+  dash::generate<int>(
+      array_in_a.begin, array_in_a.end(),
+      [&n] { return n++; });
+#endif
+  for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
+    array_dest.local[l_idx] = 1;
+    array_in_a.local[l_idx] = l_idx;
+    array_in_b.local[l_idx] = 2 * l_idx;
+  }
+
+  dash::barrier();
+
+  // Identical start offsets in all ranges (begin() = 0):
+  dash::transform<int>(
+      array_in_a.begin(), array_in_a.end(), // A
+      array_in_b.begin(),                   // B
+      array_dest.begin(),                   // C = op(A,B)
+      dash::plus<int>());                   // op
+
+  dash::barrier();
+
+  for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
+    ASSERT_EQ_U(array_in_a.local[l_idx], l_idx);
+    ASSERT_EQ_U(array_in_b.local[l_idx], 2 * l_idx);
+    ASSERT_EQ_U(array_dest.local[l_idx], 3 * l_idx);
+  }
+
+}
+
 TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
 {
   // Add local range to every block in global range
