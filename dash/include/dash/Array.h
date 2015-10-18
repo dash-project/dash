@@ -170,7 +170,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  reference operator[](const size_t n) {
+  inline reference operator[](const size_t n) {
     return (_array->m_lbegin)[n];
   }
 
@@ -179,7 +179,7 @@ public:
    *
    * \return  True
    */
-  bool is_local(
+  constexpr bool is_local(
     /// A global array index
     index_type global_index) const {
     return true;

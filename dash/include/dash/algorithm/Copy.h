@@ -194,7 +194,7 @@ GlobOutputIt copy(
   GlobOutputIt out_h_last = out_first + num_elements;
   DASH_LOG_TRACE_VAR("dash::copy", out_first.pos());
   DASH_LOG_TRACE_VAR("dash::copy", out_h_last.pos());
-  // Test if subrange of global output range is local:
+  // Test if a subrange of global output range is local:
   auto li_range_out       = local_index_range(out_first, out_h_last);
   DASH_LOG_TRACE_VAR("dash::copy", li_range_out.begin);
   DASH_LOG_TRACE_VAR("dash::copy", li_range_out.end);
