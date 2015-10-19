@@ -557,8 +557,7 @@ class MatrixRef
    * Currently only matrix.local().sub() is supported.
    */
 
-  /// Local proxy object representing a view consisting of matrix elements
-  /// that are located in the active unit's local memory.
+  /// View representing elements in the active unit's local memory.
   inline    local_type        sub_local()                 noexcept;
   /// Pointer to first element in local range.
   inline    ElementT        * lbegin()                    noexcept;

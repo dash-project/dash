@@ -36,14 +36,13 @@ dart_ret_t dart_init(
     return DART_ERR_OTHER;
   }
   DART_LOG_DEBUG("dart_init()");
-  _dart_initialized = 1;
 
-	int initialized;
-	if (MPI_Initialized(&initialized) != MPI_SUCCESS) {
+	int mpi_initialized;
+	if (MPI_Initialized(&mpi_initialized) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_init(): MPI_Initialized failed");
     return DART_ERR_OTHER;
   }
-	if (!initialized) {
+	if (!mpi_initialized) {
 		_init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
 		MPI_Init(argc, argv);
@@ -227,6 +226,8 @@ dart_ret_t dart_init(
 #endif
 	DART_LOG_DEBUG("%2d: dart_init: Initialization finished", rank);
 
+  _dart_initialized = 1;
+
 	return DART_OK;
 }
 
@@ -278,6 +279,7 @@ dart_ret_t dart_exit()
 		MPI_Finalize();
   }
 	DART_LOG_DEBUG("%2d: dart_exit: Finalization finished", unitid);
+
 	return DART_OK;
 }
 

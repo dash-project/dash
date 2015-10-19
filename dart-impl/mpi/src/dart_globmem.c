@@ -233,10 +233,13 @@ dart_team_memalloc_aligned(
 #ifdef SHAREDMEM_ENABLE
 	MPI_Info_free (&win_info);
 #endif
-	dart_memid ++;
-  DART_LOG_DEBUG("%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d "
-        "across team %d",
-			  unitid, nbytes, 0, gptr_unitid, teamid);
+	dart_memid++;
+
+  DART_LOG_DEBUG(
+    "%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d "
+    "across team %d",
+		unitid, nbytes, 0, gptr_unitid, teamid);
+
 	return DART_OK;
 }
 

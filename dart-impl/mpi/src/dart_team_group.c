@@ -8,6 +8,7 @@
 #include <mpi.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_translation.h>

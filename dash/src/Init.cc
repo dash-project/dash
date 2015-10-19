@@ -58,9 +58,13 @@ void dash::barrier()
 int dash::myid()
 {
   if (dash::_myid < 0 && dash::is_initialized()) {
+    // First call of dash::myid() after dash::init():
     dart_unit_t myid;
     dart_myid(&myid);
     dash::_myid = myid;
+  } else if (!dash::is_initialized()) {
+    // First call of dash::myid() after dash::finalize():
+    dash::_myid = -1;
   }
   return dash::_myid;
 }
