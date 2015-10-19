@@ -543,31 +543,6 @@ private:
   typedef SizeSpec<1, size_type>
     SizeSpec_t;
   
-private:
-  typedef dash::GlobMem<value_type> GlobMem_t;
-  /// Team containing all units interacting with the array
-  dash::Team         * m_team      = nullptr;
-  /// DART id of the unit that created the array
-  dart_unit_t          m_myid;
-  /// Element distribution pattern
-  PatternType          m_pattern;
-  /// Global memory allocation and -access
-  GlobMem_t          * m_globmem; 
-  /// Iterator to initial element in the array
-  iterator             m_begin;
-  /// Iterator to final element in the array
-  iterator             m_end;
-  /// Total number of elements in the array
-  size_type            m_size;
-  /// Number of local elements in the array
-  size_type            m_lsize;
-  /// Number allocated local elements in the array
-  size_type            m_lcapacity;
-  /// Native pointer to first local element in the array
-  ElementType        * m_lbegin;
-  /// Native pointer past last local element in the array
-  ElementType        * m_lend;
-
 public:
   /// Local proxy object, allows use in range-based for loops.
   local_type           local;
@@ -665,7 +640,9 @@ public:
 
   View block(index_type block_gindex)
   {
+    DASH_LOG_TRACE("Array.block()", block_gindex);
     ViewSpec<1> block_view = pattern().block(block_gindex);
+    DASH_LOG_TRACE("Array.block >", block_view);
     return View(this, block_view);
   }
 
@@ -914,6 +891,7 @@ public:
     m_pattern.team().unregister_deallocator(
       this, std::bind(&Array::deallocate, this));
     // Actual destruction of the array instance:
+    DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem);
     if (m_globmem != nullptr) {
       delete m_globmem;
       m_globmem = nullptr;
@@ -958,6 +936,32 @@ private:
     DASH_LOG_TRACE("Array._allocate() finished");
     return true;
   }
+
+private:
+  typedef dash::GlobMem<value_type> GlobMem_t;
+  /// Team containing all units interacting with the array
+  dash::Team         * m_team      = nullptr;
+  /// DART id of the unit that created the array
+  dart_unit_t          m_myid;
+  /// Element distribution pattern
+  PatternType          m_pattern;
+  /// Global memory allocation and -access
+  GlobMem_t          * m_globmem; 
+  /// Iterator to initial element in the array
+  iterator             m_begin;
+  /// Iterator to final element in the array
+  iterator             m_end;
+  /// Total number of elements in the array
+  size_type            m_size;
+  /// Number of local elements in the array
+  size_type            m_lsize;
+  /// Number allocated local elements in the array
+  size_type            m_lcapacity;
+  /// Native pointer to first local element in the array
+  ElementType        * m_lbegin;
+  /// Native pointer past last local element in the array
+  ElementType        * m_lend;
+
 };
 
 } // namespace dash
