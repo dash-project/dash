@@ -168,11 +168,11 @@ dart_ret_t dart_get_gptr(dart_gptr_t dest, dart_gptr_t src, size_t nbytes)
         }
     }
     int32_t found = 0;
-    DART_CHECK_ERROR(find_rma_request(target_unit, src_gaspi_seg, &queue, &found));
+    DART_CHECK_ERROR(find_rma_request(target_unit, src_seg_id, &queue, &found));
     if(!found)
     {
         DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
-        DART_CHECK_ERROR(add_rma_request_entry(target_unit, src_gaspi_seg, queue));
+        DART_CHECK_ERROR(add_rma_request_entry(target_unit, src_seg_id, queue));
     }
     else
     {
@@ -190,61 +190,6 @@ dart_ret_t dart_get_gptr(dart_gptr_t dest, dart_gptr_t src, size_t nbytes)
     return DART_OK;
 }
 
-//~ dart_ret_t dart_get(void *dest, dart_gptr_t gptr, size_t nbytes)
-//~ {
-    //~ gaspi_queue_id_t          queue;
-    //~ gaspi_segment_id_t        remote_seg;
-    //~ uint64_t                  remote_offset = gptr.addr_or_offs.offset;
-    //~ int16_t                   seg_id        = gptr.segid;
-    //~ uint16_t                  index         = gptr.flags;
-    //~ dart_unit_t               remote_rank   = gptr.unitid;
-    //~ struct dart_handle_struct handle;
-
-    //~ handle.local_offset = dart_buddy_alloc(dart_transferpool, nbytes);
-    //~ if(handle.local_offset == -1)
-    //~ {
-        //~ fprintf(stderr, "Out of bound: the global memory is exhausted");
-        //~ return DART_ERR_OTHER;
-    //~ }
-
-    //~ DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
-
-    //~ handle.local_seg   = dart_transferpool_seg;
-    //~ handle.dest_buffer = dest;
-    //~ handle.queue       = queue;
-    //~ handle.nbytes      = nbytes;
-
-    //~ if(seg_id)
-    //~ {
-        //~ dart_unit_t rel_remote_rank;
-        //~ DART_CHECK_ERROR(unit_g2l(index, remote_rank, &rel_remote_rank));
-        //~ if(dart_adapt_transtable_get_gaspi_seg_id(seg_id, rel_remote_rank, &remote_seg) == -1)
-        //~ {
-            //~ fprintf(stderr, "Can't find given segment id in dart_get\n");
-            //~ return DART_ERR_NOTFOUND;
-        //~ }
-        //~ if(dart_adapt_transtable_add_handle(seg_id, rel_remote_rank, &handle) == -1)
-        //~ {
-            //~ fprintf(stderr, "Can't save rma handle in dart_put\n");
-            //~ return DART_ERR_OTHER;
-        //~ }
-    //~ }
-    //~ else
-    //~ {
-        //~ remote_seg = dart_mempool_seg_localalloc;
-        //~ DART_CHECK_ERROR(enqueue_handle(&(dart_non_collective_rma_request[remote_rank]), &handle));
-    //~ }
-
-    //~ DART_CHECK_ERROR(gaspi_read(handle.local_seg,
-                                //~ handle.local_offset,
-                                //~ remote_rank,
-                                //~ remote_seg,
-                                //~ remote_offset,
-                                //~ nbytes,
-                                //~ queue,
-                                //~ GASPI_BLOCK));
-    //~ return DART_OK;
-//~ }
 //~ /**
  //~ * TODO dart_put not implemented yet
  //~ */
@@ -618,102 +563,61 @@ dart_ret_t dart_fence(dart_gptr_t gptr)
 {
     return DART_ERR_OTHER;
 }
-/**
- * Guarantees local and remote completion of all outstanding puts and
- * gets on a certain memory allocation / window / segment for the
- * target unit specified in gptr. -> MPI_Win_flush()
- *
- * For GASPI its impossible to guarantee a remote completion for an
- * outstanding put operation without communicating with the target rank.
- *
- */
+
 dart_ret_t dart_fence_all(dart_gptr_t gptr)
 {
     return DART_ERR_OTHER;
 }
 
-//~ dart_ret_t dart_flush_local(dart_gptr_t gptr)
-//~ {
-    //~ queue_t   * queue       = NULL;
-    //~ int16_t     seg_id      = gptr.segid;
-    //~ uint16_t    index       = gptr.flags;
-    //~ dart_unit_t remote_rank = gptr.unitid;
+dart_ret_t _dart_flush_local(dart_gptr_t gptr, gaspi_timeout_t timeout, gaspi_return_t * ret)
+{
+    int16_t          seg_id      = gptr.segid;
+    dart_unit_t      remote_rank = gptr.unitid;
+    int32_t          found       = 0;
+    gaspi_queue_id_t qid;
 
-    //~ if(seg_id)
-    //~ {
-        //~ dart_unit_t rel_remote_rank;
-        //~ DART_CHECK_ERROR(unit_g2l(index, remote_rank, &rel_remote_rank));
-        //~ if(dart_adapt_transtable_get_handle_queue(seg_id, rel_remote_rank, &queue) == -1)
-        //~ {
-            //~ fprintf(stderr, "Can't find queue for a given segment in dart_flush_local\n");
-            //~ return DART_ERR_OTHER;
-        //~ }
-    //~ }
-    //~ else
-    //~ {
-        //~ queue = &(dart_non_collective_rma_request[remote_rank]);
-    //~ }
 
-    //~ struct dart_handle_struct handle;
-    //~ size_t queue_size = queue->size;
+    DART_CHECK_ERROR(find_rma_request(remote_rank, seg_id, &qid, &found));
+    if(found)
+    {
+        *ret = gaspi_wait(qid, timeout);
+    }
+    else
+    {
+        gaspi_printf("No queue found\n");
+    }
 
-    //~ for(int i = 0 ; i < queue_size ; ++i)
-    //~ {
-        //~ DART_CHECK_ERROR(front_handle(queue, &handle));
-        //~ DART_CHECK_ERROR(dart_wait_local(&handle));
-        //~ DART_CHECK_ERROR(dequeue_handle(queue));
-    //~ }
+    return DART_OK;
+}
 
-    //~ return DART_OK;
-//~ }
-//~ /**
- //~ * TODO unefficient method cause of data structure(array)
- //~ */
-//~ dart_ret_t dart_flush_local_all(dart_gptr_t gptr)
-//~ {
-    //~ queue_t * queue  = NULL;
-    //~ int16_t   seg_id = gptr.segid;
-    //~ uint16_t  index  = gptr.flags;
+dart_ret_t dart_flush_local(dart_gptr_t gptr)
+{
+    gaspi_return_t ret = GASPI_SUCCESS;
+    DART_CHECK_ERROR(_dart_flush_local(gptr, GASPI_BLOCK, &ret));
+    if(ret != GASPI_SUCCESS)
+    {
+        gaspi_printf("ERROR in %s at line %d in file %s\n","_dart_flush_local", __LINE__, __FILE__);
+        return DART_ERR_OTHER;
+    }
+    return DART_OK;
+}
 
-    //~ if(seg_id)
-    //~ {
-        //~ size_t teamsize;
-        //~ DART_CHECK_ERROR(dart_team_size(index, &teamsize));
-        //~ for(dart_unit_t rel_rank = 0; rel_rank < teamsize ; ++rel_rank)
-        //~ {
-            //~ if(dart_adapt_transtable_get_handle_queue(seg_id, rel_rank, &queue) == -1)
-            //~ {
-                //~ fprintf(stderr, "Can't find queue for a given segment in dart_flush_local_all\n");
-                //~ return DART_ERR_OTHER;
-            //~ }
+dart_ret_t dart_flush_local_all(dart_gptr_t gptr)
+{
+    int16_t seg_id      = gptr.segid;
 
-            //~ struct dart_handle_struct handle;
-            //~ size_t queue_size = queue->size;
+    request_iterator_t iter = new_request_iter(seg_id);
 
-            //~ for(int i = 0 ; i < queue_size ; ++i)
-            //~ {
-                //~ DART_CHECK_ERROR(front_handle(queue, &handle));
-                //~ DART_CHECK_ERROR(dart_wait_local(&handle));
-                //~ DART_CHECK_ERROR(dequeue_handle(queue));
-            //~ }
-        //~ }
-    //~ }
-    //~ else
-    //~ {
-        //~ for(int rank = 0 ; rank < dart_gaspi_rank_num ; ++rank)
-        //~ {
-            //~ struct dart_handle_struct handle;
-            //~ queue = &(dart_non_collective_rma_request[rank]);
-            //~ size_t queue_size = queue->size;
+    while(request_iter_is_vaild(iter))
+    {
+        gaspi_queue_id_t qid;
+        DART_CHECK_ERROR(request_iter_get_queue(iter, &qid));
 
-            //~ for(int i = 0 ; i < queue_size ; ++i)
-            //~ {
-                //~ DART_CHECK_ERROR(front_handle(queue, &handle));
-                //~ DART_CHECK_ERROR(dart_wait_local(&handle));
-                //~ DART_CHECK_ERROR(dequeue_handle(queue));
-            //~ }
-        //~ }
-    //~ }
+        DART_CHECK_GASPI_ERROR(gaspi_wait(qid, GASPI_BLOCK));
 
-    //~ return DART_OK;
-//~ }
+        DART_CHECK_ERROR(request_iter_next(iter));
+    }
+
+    DART_CHECK_ERROR(destroy_request_iter(iter));
+    return DART_OK;
+}
