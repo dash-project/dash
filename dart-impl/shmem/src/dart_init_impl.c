@@ -6,6 +6,11 @@
 
 dart_ret_t dart_init(int *argc, char ***argv)
 {
+  if (dart_initialized()) {
+    /* Multiple subsequent calls of dart_init, ignore: */
+    return DART_OK;
+  }
+
   dart_ret_t ret;
 
   if( !argc || !argv ) {
@@ -24,6 +29,11 @@ dart_ret_t dart_init(int *argc, char ***argv)
 
 dart_ret_t dart_exit()
 {
+  if (!dart_initialized()) {
+    /* DART not initialized or multiple calls of dart_exit, ignore: */
+    return DART_OK;
+  }
+
   dart_ret_t ret;
 
   if( _glob_state!=DART_STATE_INITIALIZED ) {
@@ -36,4 +46,9 @@ dart_ret_t dart_exit()
 
   _glob_state = DART_STATE_FINALIZED;
   return ret;
+}
+
+char dart_initialized()
+{
+  return _glob_state == DART_STATE_INITIALIZED;
 }
