@@ -31,7 +31,7 @@ find_path(
 find_library(
   PAPI_LIBRARIES
   # Pick the static library first for easier run-time linking.
-  NAMES libpapi.a papi
+  NAMES papi
   HINTS ${PAPI_PREFIX}/lib ${HILTIDEPS}/lib
 )
 
@@ -54,4 +54,11 @@ mark_as_advanced(
   PAPI_LIBRARIES
   PAPI_INCLUDE_DIRS
 )
+
+if (PAPI_FOUND)
+  message("-- PAPI includes:  " ${PAPI_INCLUDE_DIRS})
+  message("-- PAPI libraries: " ${PAPI_LIBRARIES})
+else()
+  message("-- PAPI not found")
+endif()
 

@@ -243,6 +243,14 @@ public:
   }
 
   /**
+   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * in global memory.
+   */
+  GlobMem<ElementType> & globmem() {
+    return *_globmem;
+  }
+
+  /**
    * Prefix increment operator.
    */
   self_t & operator++() {
