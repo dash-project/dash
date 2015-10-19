@@ -97,21 +97,22 @@ const_reverse_iterator  Behaves like const value_type*
 template<
   typename ElementType,
   typename IndexType,
-  class PatternType >
+  class    PatternType >
 class Array;
 
 template<
   typename T,
   typename IndexType,
-  class PatternType>
-class LocalArrayProxy {
+  class    PatternType >
+class LocalArrayRef
+{
 private:
-  typedef LocalArrayProxy<T, IndexType, PatternType>
+  typedef LocalArrayRef<T, IndexType, PatternType>
     self_t;
 
 public:
   template <typename T_, typename I_, typename P_>
-    friend class LocalArrayProxy;
+    friend class LocalArrayRef;
 
 public: 
   typedef T                                                  value_type;
@@ -134,7 +135,7 @@ public:
   /**
    * Constructor, creates a local access proxy for the given array.
    */
-  LocalArrayProxy(
+  LocalArrayRef(
     Array<T, IndexType, PatternType> * const array)
   : _array(array) {
   }
@@ -189,15 +190,16 @@ public:
 template<
   typename T,
   typename IndexType,
-  class PatternType>
-class AsyncArrayProxy {
+  class    PatternType >
+class AsyncArrayRef
+{
 private:
-  typedef AsyncArrayProxy<T, IndexType, PatternType>
+  typedef AsyncArrayRef<T, IndexType, PatternType>
     self_t;
 
 public:
   template <typename T_, typename I_, typename P_>
-    friend class AsyncArrayProxy;
+    friend class AsyncArrayRef;
 
 public: 
   typedef T                                                  value_type;
@@ -220,7 +222,7 @@ public:
   /**
    * Constructor, creates a local access proxy for the given array.
    */
-  AsyncArrayProxy(
+  AsyncArrayRef(
     Array<T, IndexType, PatternType> * const array)
   : _array(array) {
   }
@@ -273,25 +275,25 @@ public:
    * on all units.
    */
   void flush() {
-    DASH_LOG_TRACE("AsyncArrayProxy.flush()");
+    DASH_LOG_TRACE("AsyncArrayRef.flush()");
     // could also call _array->flush();
     _array->m_globmem->flush();
   }
 
   void flush_local() {
-    DASH_LOG_TRACE("AsyncArrayProxy.flush_local()");
+    DASH_LOG_TRACE("AsyncArrayRef.flush_local()");
     // could also call _array->flush_local();
     _array->m_globmem->flush_local();
   }
 
   void flush_all() {
-    DASH_LOG_TRACE("AsyncArrayProxy.flush()");
+    DASH_LOG_TRACE("AsyncArrayRef.flush()");
     // could also call _array->flush();
     _array->m_globmem->flush_all();
   }
 
   void flush_local_all() {
-    DASH_LOG_TRACE("AsyncArrayProxy.flush_local_all()");
+    DASH_LOG_TRACE("AsyncArrayRef.flush_local_all()");
     // could also call _array->flush_local_all();
     _array->m_globmem->flush_local_all();
   }
@@ -317,6 +319,158 @@ public:
   }
 };
 
+template<
+  typename T,
+  class    PatternT >
+class ArrayRefView
+{
+ public:
+  typedef typename PatternT::index_type             index_type;
+
+ private:
+  Array<T, index_type, PatternT>                  * _arr;
+  ViewSpec<1, index_type>                           _viewspec;
+};
+
+template<
+  typename ElementType,
+  typename IndexType,
+  class    PatternType>
+class ArrayRef
+{
+private:
+  static const dim_t NumDimensions = 1;
+
+  typedef ArrayRef<ElementType, IndexType, PatternType>
+    self_t;
+  typedef Array<ElementType, IndexType, PatternType>
+    Array_t;
+  typedef ViewSpec<NumDimensions, IndexType>
+    ViewSpec_t;
+  typedef std::array<typename PatternType::size_type, NumDimensions>
+    Extents_t;
+
+/// Public types as required by iterator concept
+public: 
+  typedef ElementType                                              value_type;
+  typedef IndexType                                                index_type;
+  typedef typename std::make_unsigned<IndexType>::type              size_type;
+  typedef typename std::make_unsigned<IndexType>::type        difference_type;
+
+  typedef       GlobIter<value_type, PatternType>                    iterator;
+  typedef const GlobIter<value_type, PatternType>              const_iterator;
+  typedef       std::reverse_iterator<      iterator>        reverse_iterator;
+  typedef       std::reverse_iterator<const_iterator>  const_reverse_iterator;
+  
+  typedef       GlobRef<value_type>                                 reference;
+  typedef const GlobRef<value_type>                           const_reference;
+  
+  typedef       GlobIter<value_type, PatternType>                     pointer;
+  typedef const GlobIter<value_type, PatternType>               const_pointer;
+
+/// Public types as required by dash container concept
+public:
+  /// The type of the pattern used to distribute array elements to units
+  typedef PatternType
+    pattern_type;
+  typedef ArrayRef<ElementType, IndexType, PatternType>
+    view_type;
+  typedef LocalArrayRef<value_type, IndexType, PatternType>
+    local_type;
+  typedef AsyncArrayRef<value_type, IndexType, PatternType>
+    async_type;
+  /// Type alias for Array<T,I,P>::local_type
+  typedef LocalArrayRef<value_type, IndexType, PatternType>
+    Local;
+  /// Type alias for Array<T,I,P>::view_type
+  typedef ArrayRef<ElementType, IndexType, PatternType>
+    View;
+
+public:
+  ArrayRef(
+    /// Pointer to array instance referenced by this view.
+    Array_t          * array,
+    /// The view's offset and extent within the referenced array.
+    const ViewSpec_t & viewspec)
+  : _arr(array),
+    _viewspec(viewspec)
+  { }
+
+public:
+  inline    Team            & team();
+
+  constexpr size_type         size()                const noexcept;
+  constexpr size_type         local_size()          const noexcept;
+  constexpr size_type         local_capacity()      const noexcept;
+  constexpr size_type         extent(dim_t dim)     const noexcept;
+  constexpr Extents_t         extents()             const noexcept;
+  constexpr bool              empty()               const noexcept;
+
+  inline    void              barrier()             const;
+
+  inline    const_pointer     data()                const noexcept;
+  inline    iterator          begin()                     noexcept;
+  inline    const_iterator    begin()               const noexcept;
+  inline    iterator          end()                       noexcept;
+  inline    const_iterator    end()                 const noexcept;
+  /// View representing elements in the active unit's local memory.
+  inline    local_type        sub_local()                 noexcept;
+  /// Pointer to first element in local range.
+  inline    ElementType     * lbegin()                    noexcept;
+  /// Pointer past final element in local range.
+  inline    ElementType     * lend()                      noexcept;
+
+  reference operator[](
+    /// The position of the element to return
+    size_type global_index)
+  {
+    DASH_LOG_TRACE("ArrayRef.[]=", global_index);
+    return _arr->_begin[global_index];
+  }
+
+  const_reference operator[](
+    /// The position of the element to return
+    size_type global_index) const
+  {
+    DASH_LOG_TRACE("ArrayRef.[]", global_index);
+    return _arr->_begin[global_index];
+  }
+
+  reference at(
+    /// The position of the element to return
+    size_type global_pos)
+  {
+    if (global_pos >= size()) {
+      DASH_THROW(
+          dash::exception::OutOfRange,
+          "Position " << global_pos 
+          << " is out of range " << size() 
+          << " in ArrayRef.at()" );
+    }
+    return _arr->_begin[global_pos];
+  }
+
+  const_reference at(
+    /// The position of the element to return
+    size_type global_pos) const
+  {
+    if (global_pos >= size()) {
+      DASH_THROW(
+          dash::exception::OutOfRange,
+          "Position " << global_pos 
+          << " is out of range " << size() 
+          << " in ArrayRef.at()" );
+    }
+    return _arr->_begin[global_pos];
+  }
+
+private:
+  /// Pointer to array instance referenced by this view.
+  Array_t    * _arr;
+  /// The view's offset and extent within the referenced array.
+  ViewSpec_t   _viewspec;
+};
+
 /**
  * A distributed array.
  *
@@ -333,51 +487,55 @@ template<
   typename ElementType,
   typename IndexType   = dash::default_index_t,
   class PatternType    = Pattern<1, ROW_MAJOR, IndexType> >
-class Array {
+class Array
+{
 private:
   typedef Array<ElementType, IndexType, PatternType> self_t;
 
 /// Public types as required by iterator concept
 public: 
-  typedef ElementType  value_type;
-  typedef IndexType    index_type;
-  /// Derive size type from given signed index / gptrdiff type
-  typedef typename std::make_unsigned<IndexType>::type size_type;
-  /// Derive size type from given signed index / gptrdiff type
-  typedef typename std::make_unsigned<IndexType>::type difference_type;
+  typedef ElementType                                              value_type;
+  typedef IndexType                                                index_type;
+  typedef typename std::make_unsigned<IndexType>::type              size_type;
+  typedef typename std::make_unsigned<IndexType>::type        difference_type;
 
-  typedef       GlobIter<value_type, PatternType>             iterator;
-  typedef const GlobIter<value_type, PatternType>       const_iterator;
-  typedef std::reverse_iterator<      iterator>       reverse_iterator;
-  typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
+  typedef       GlobIter<value_type, PatternType>                    iterator;
+  typedef const GlobIter<value_type, PatternType>              const_iterator;
+  typedef       std::reverse_iterator<      iterator>        reverse_iterator;
+  typedef       std::reverse_iterator<const_iterator>  const_reverse_iterator;
   
-  typedef       GlobRef<value_type>                          reference;
-  typedef const GlobRef<value_type>                    const_reference;
+  typedef       GlobRef<value_type>                                 reference;
+  typedef const GlobRef<value_type>                           const_reference;
   
-  typedef       GlobIter<value_type, PatternType>              pointer;
-  typedef const GlobIter<value_type, PatternType>        const_pointer;
+  typedef       GlobIter<value_type, PatternType>                     pointer;
+  typedef const GlobIter<value_type, PatternType>               const_pointer;
 
 public:
   template<
     typename T_,
     typename I_,
     class P_>
-  friend class LocalArrayProxy;
+  friend class LocalArrayRef;
   template<
     typename T_,
     typename I_,
     class P_>
-  friend class AsyncArrayProxy;
+  friend class AsyncArrayRef;
 
 /// Public types as required by dash container concept
 public:
   /// The type of the pattern used to distribute array elements to units
   typedef PatternType
     pattern_type;
-  typedef LocalArrayProxy<value_type, IndexType, PatternType>
+  typedef LocalArrayRef<value_type, IndexType, PatternType>
     local_type;
-  typedef AsyncArrayProxy<value_type, IndexType, PatternType>
+  typedef AsyncArrayRef<value_type, IndexType, PatternType>
     async_type;
+
+  typedef LocalArrayRef<value_type, IndexType, PatternType>
+    Local;
+  typedef ArrayRef<ElementType, IndexType, PatternType>
+    View;
 
 private:
   typedef DistributionSpec<1>
@@ -503,6 +661,12 @@ public:
   ~Array() {
     DASH_LOG_TRACE_VAR("Array.~Array()", this);
     deallocate();
+  }
+
+  View block(index_type block_gindex)
+  {
+    ViewSpec<1> block_view = pattern().block(block_gindex);
+    return View(this, block_view);
   }
 
   /**
@@ -649,7 +813,7 @@ public:
    * \return  The instance of Team that this array has been instantiated
    *          with
    */
-  const Team & team() const noexcept {
+  constexpr const Team & team() const noexcept {
     return *m_team;
   }
 
