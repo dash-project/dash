@@ -6,6 +6,7 @@
 
 #if defined(DASH_ENABLE_LOGGING)
 
+#include <array>
 #include <sstream>
 #include <iostream>
 #include <iomanip>

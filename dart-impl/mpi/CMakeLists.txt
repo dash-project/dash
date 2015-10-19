@@ -20,6 +20,27 @@ set(MEMORY_MODEL_UNIFIED ${MEMORY_MODEL_UNIFIED}
 
 message("-- MPI include path: " "${MPI_INCLUDE_PATH}")
 
+## Configure compile flags
+
+set (ADDITIONAL_COMPILE_FLAGS "-DDART")
+
+if (ENABLE_DART_LOGGING)
+  set (ADDITIONAL_COMPILE_FLAGS
+    "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_LOGGING")
+  set (ADDITIONAL_COMPILE_FLAGS
+    "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_DART_LOGGING")
+endif()
+
+if (MEMORY_MODEL_UNIFIED)
+  set (ADDITIONAL_COMPILE_FLAGS
+    "${ADDITIONAL_COMPILE_FLAGS} -DDASH_UNIFIED_MEMORY_MODEL")
+endif()
+
+if(MPI_COMPILE_FLAGS)
+  set (ADDITIONAL_COMPILE_FLAGS
+    "${ADDITIONAL_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS}")
+endif()
+
 ## Build targets
 
 # Directories containing the implementation of the library (-I):
@@ -27,7 +48,7 @@ set(DASH_DART_IMPL_MPI_INCLUDE_DIRS
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
-
+# Includes
 include_directories(
   ${DASH_DART_IMPL_MPI_INCLUDE_DIRS}
   ${MPI_INCLUDE_PATH}
@@ -47,30 +68,17 @@ target_link_libraries(
   ${DASH_DART_BASE_LIBRARY}
 )
 
-if (ENABLE_DART_LOGGING)
-  set_target_properties(
-    ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
-    COMPILE_FLAGS "-DDASH_ENABLE_LOGGING -DDASH_ENABLE_DART_LOGGING"
-  )
-endif()
-if (MEMORY_MODEL_UNIFIED)
-  set_target_properties(
-    ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
-    COMPILE_FLAGS "-DDASH_UNIFIED_MEMORY_MODEL"
-  )
-endif()
-
-if(MPI_COMPILE_FLAGS)
-  set_target_properties(
-    ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
-    COMPILE_FLAGS "${MPI_COMPILE_FLAGS}")
-endif()
-
 if(MPI_LINK_FLAGS)
   set_target_properties(
     ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
     LINK_FLAGS "${MPI_LINK_FLAGS}")
 endif()
+
+# Compile flags
+set_target_properties(
+  ${DASH_DART_IMPL_MPI_LIBRARY} PROPERTIES
+  COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+)
 
 ## Installation
 
