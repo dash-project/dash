@@ -494,7 +494,11 @@ dart_ret_t dart_team_destroy(
 
 dart_ret_t dart_myid(dart_unit_t *unitid)
 {
-	MPI_Comm_rank (MPI_COMM_WORLD, unitid);
+  if (dart_initialized()) {
+    MPI_Comm_rank(MPI_COMM_WORLD, unitid);
+  } else {
+    *unitid = -1;
+  }
 	return DART_OK;
 }
 

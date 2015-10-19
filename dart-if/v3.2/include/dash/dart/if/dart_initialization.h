@@ -9,17 +9,23 @@ extern "C" {
 
 #define DART_INTERFACE_ON
 
-/* 
-   Initialize the DART runtime 
-   
-   A correct DASH/DART program must have exactly one pair of dart_init
-   / dart_exit calls.
-   
-   It is an error to call any other DART functions before dart_init()
-   or after dart_exit().
+/** 
+ * Initialize the DART runtime 
+ *  
+ * No other DART function may be called before dart_init() or after
+ * dart_exit().
 */
 dart_ret_t dart_init(int *argc, char ***argv);
+
+/**
+ * Finalize the DASH runtime.
+ */
 dart_ret_t dart_exit();
+
+/**
+ * Whether the DASH runtime has been initialized.
+ */
+char       dart_initialized();
 
 #define DART_INTERFACE_OFF
 
