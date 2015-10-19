@@ -199,6 +199,15 @@ public:
   }
 
   /**
+   * Finalize all teams.
+   * Frees global memory allocated by \c dash::Team::All().
+   */
+  static void finalize() {
+    DASH_LOG_TRACE("Team::finalize()");
+    Team::All().free();
+  }
+
+  /**
    * Register a deallocator function for a team-allocated object.
    * All registered deallocators will be called in ~Team(), or explicitly
    * using Team::free().
