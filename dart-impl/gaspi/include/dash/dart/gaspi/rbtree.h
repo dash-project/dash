@@ -11,7 +11,7 @@ typedef struct stree_node{
   void* node;
 
   uint8_t color;
-  
+
   struct stree_node* parent;
   struct stree_node* left;
   struct stree_node* right;
@@ -37,6 +37,7 @@ extern void destroy_rbtree(tree_root* root);
 
 extern tree_iterator* new_tree_iterator(tree_root* root);
 extern uint8_t tree_iterator_has_next(tree_iterator* it);
-extern void* tree_iterator_next(tree_iterator* it);
+extern void tree_iterator_next(tree_iterator* it);
+extern void* tree_iterator_value(tree_iterator* it);
 extern void destroy_iterator(tree_iterator* it);
 #endif

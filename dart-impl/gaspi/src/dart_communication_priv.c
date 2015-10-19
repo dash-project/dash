@@ -3,7 +3,6 @@
 #include <assert.h>
 
 #include <dash/dart/gaspi/gaspi_utils.h>
-#include <dash/dart/gaspi/rbtree.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
 
 tree_root * rma_request_table[GASPI_MAX_MSEGS];
@@ -52,7 +51,7 @@ dart_ret_t destroy_rma_request_table()
  * exists ->  returns the queue-id and set found to 1
  * Otherwise -> set found to 0
  */
-dart_ret_t find_rma_request(dart_unit_t target_unit, gaspi_segment_id_t seg_id, gaspi_queue_id_t * qid, int32_t * found)
+dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, int32_t * found)
 {
     if(rma_request_table[seg_id] != NULL)
     {
@@ -72,7 +71,7 @@ dart_ret_t find_rma_request(dart_unit_t target_unit, gaspi_segment_id_t seg_id, 
  * Before add an entry, check if the entry exists
  * because exisiting entries will be replaced
  */
-dart_ret_t add_rma_request_entry(dart_unit_t target_unit, gaspi_segment_id_t seg_id, gaspi_queue_id_t qid)
+dart_ret_t add_rma_request_entry(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t qid)
 {
     if(rma_request_table[seg_id] == NULL)
     {
@@ -94,6 +93,56 @@ dart_ret_t add_rma_request_entry(dart_unit_t target_unit, gaspi_segment_id_t seg
     }
 
     return DART_OK;
+}
+
+request_iterator_t new_request_iter(int16_t seg_id)
+{
+    if(rma_request_table[seg_id] != NULL)
+    {
+        return new_tree_iterator(rma_request_table[seg_id]);
+    }
+    return NULL;
+}
+
+dart_ret_t destroy_request_iter(request_iterator_t iter)
+{
+    if(iter != NULL)
+    {
+        destroy_iterator(iter);
+        return DART_OK;
+    }
+
+    return DART_ERR_INVAL;
+}
+
+uint8_t request_iter_is_vaild(request_iterator_t iter)
+{
+    if(iter != NULL)
+    {
+        return tree_iterator_has_next(iter);
+    }
+    return 0;
+}
+
+dart_ret_t request_iter_next(request_iterator_t iter)
+{
+    if(iter != NULL)
+    {
+        tree_iterator_next(iter);
+        return DART_OK;
+    }
+    return DART_ERR_INVAL;
+}
+
+dart_ret_t request_iter_get_queue(request_iterator_t iter, gaspi_queue_id_t * qid)
+{
+    if(iter != NULL)
+    {
+        request_table_entry_t * entry = (request_table_entry_t *) tree_iterator_value(iter);
+        *qid = entry->queue;
+        return DART_OK;
+    }
+    return DART_ERR_INVAL;
 }
 
 dart_ret_t unit_l2g (uint16_t index, dart_unit_t *abs_id, dart_unit_t rel_id)

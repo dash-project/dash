@@ -4,12 +4,20 @@
 #include <stdio.h>
 #include <GASPI.h>
 #include <dash/dart/if/dart.h>
+#include <dash/dart/gaspi/rbtree.h>
 #include "dart_team_private.h"
+
+typedef tree_iterator* request_iterator_t;
+request_iterator_t new_request_iter(int16_t gaspi_seg);
+dart_ret_t destroy_request_iter(request_iterator_t iter);
+uint8_t request_iter_is_vaild(request_iterator_t iter);
+dart_ret_t request_iter_get_queue(request_iterator_t iter, gaspi_queue_id_t * qid);
+dart_ret_t request_iter_next(request_iterator_t iter);
 
 dart_ret_t inital_rma_request_table();
 dart_ret_t destroy_rma_request_table();
-dart_ret_t find_rma_request(dart_unit_t target_unit, gaspi_segment_id_t seg_id, gaspi_queue_id_t * qid, int32_t * found);
-dart_ret_t add_rma_request_entry(dart_unit_t target_unit, gaspi_segment_id_t seg_id, gaspi_queue_id_t qid);
+dart_ret_t find_rma_request(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t * qid, int32_t * found);
+dart_ret_t add_rma_request_entry(dart_unit_t target_unit, int16_t seg_id, gaspi_queue_id_t qid);
 
 struct dart_handle_struct
 {
