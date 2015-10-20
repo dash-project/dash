@@ -207,9 +207,14 @@ class MatrixRefView
   typedef typename PatternT::index_type             index_type;
 
  private:
+  /// The view's next unspecified dimension, initialized with 0.
   dim_t                                             _dim;
+  /// The matrix referenced by the view.
   Matrix<T, NumDimensions, index_type, PatternT>  * _mat;
+  /// Coordinates of a single referenced element if view references fully
+  /// specified coordinates.
   ::std::array<index_type, NumDimensions>           _coord     = {  };
+  /// View offset and extents.
   ViewSpec<NumDimensions, index_type>               _viewspec;
 
  public:
@@ -361,18 +366,18 @@ class LocalMatrixRef
     row(size_type n);
 
   template<dim_t SubDimension>
-  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> submat(
+  LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> sub(
     size_type n,
     size_type range);
 
   /**
    * Create a view representing the matrix slice within a row
    * range.
-   * Same as \c submat<0>(offset, extent).
+   * Same as \c sub<0>(offset, extent).
    *
    * \returns  A matrix view
    *
-   * \see  submat
+   * \see  sub
    */
   inline LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> rows(
     /// Offset of first row in range
@@ -383,11 +388,11 @@ class LocalMatrixRef
   /**
    * Create a view representing the matrix slice within a column
    * range.
-   * Same as \c submat<1>(offset, extent).
+   * Same as \c sub<1>(offset, extent).
    *
    * \returns  A matrix view
    *
-   * \see  submat
+   * \see  sub
    */
   inline LocalMatrixRef<T, NumDimensions, NumDimensions, PatternT> cols(
     /// Offset of first column in range
@@ -583,18 +588,18 @@ class MatrixRef
 
   template<dim_t SubDimension>
   MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
-  submat(
+  sub(
     size_type n,
     size_type range);
 
   /**
    * Create a view representing the matrix slice within a row
    * range.
-   * Same as \c submat<0>(offset, extent).
+   * Same as \c sub<0>(offset, extent).
    *
    * \returns  A matrix view
    *
-   * \see  submat
+   * \see  sub
    */
   MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
   rows(
@@ -606,11 +611,11 @@ class MatrixRef
   /**
    * Create a view representing the matrix slice within a column
    * range.
-   * Same as \c submat<1>(offset, extent).
+   * Same as \c sub<1>(offset, extent).
    *
    * \returns  A matrix view
    *
-   * \see  submat
+   * \see  sub
    */
   MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
   cols(
@@ -781,11 +786,6 @@ class Matrix {
   typedef GlobIter_t                                             pointer;
   typedef const GlobIter_t                                 const_pointer;
 
-  typedef LocalRef_t                                          local_type;
-  typedef const LocalRef_t                              const_local_type;
-  typedef LocalRef_t                                local_reference_type;
-  typedef const LocalRef_t                    const_local_reference_type;
-
  public:
   template<
     typename T_,
@@ -799,6 +799,21 @@ class Matrix {
     dim_t NumDimensions2,
     class PatternT_ >
   friend class LocalMatrixRef;
+
+/// Public types as required by dash container concept
+public:
+  typedef LocalRef_t                                          local_type;
+  typedef const LocalRef_t                              const_local_type;
+  typedef LocalRef_t                                local_reference_type;
+  typedef const LocalRef_t                    const_local_reference_type;
+  /// The type of the pattern used to distribute array elements to units
+  typedef PatternT                                          pattern_type;
+//typedef AsyncMatrixRef<value_type, IndexT, PatternT>        async_type;
+
+  typedef LocalRef_t
+    Local;  
+  template <dim_t NumViewDim>
+    using View = MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>;
 
  public:
   /// Local proxy object, allows use in range-based for loops.
@@ -843,6 +858,27 @@ class Matrix {
    * Destructor, frees underlying memory.
    */
   inline ~Matrix();
+
+  /**
+   * View at block at given global block offset.
+   */
+  View<NumDimensions> block(index_type block_gindex)
+  {
+    // Note: This is equivalent to
+    //   foreach (d in 0 ... NumDimensions):
+    //     view = view.sub<d>(block_view.offset(d),
+    //                        block_view.extent(d));
+    //
+    DASH_LOG_TRACE("Matrix.block()", block_gindex);
+    // Resolve the block's viewspec:
+    ViewSpec<NumDimensions> block_view = pattern().block(block_gindex);
+    // Return a view specified by the block's viewspec:
+    View<NumDimensions> view;
+    view._refview            = new MatrixRefView_t(this);
+    view._refview->_viewspec = block_view;
+    DASH_LOG_TRACE("Matrix.block >", block_view);
+    return view;
+  }
 
   /**
    * Explicit allocation of matrix elements, used for delayed allocation
@@ -942,18 +978,18 @@ class Matrix {
 
   template<dim_t SubDimension>
   inline MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> 
-  submat(
+  sub(
     size_type n,
     size_type range);
 
   /**
    * Create a view representing the matrix slice within a row
    * range.
-   * Same as \c submat<0>(offset, extent).
+   * Same as \c sub<0>(offset, extent).
    *
    * \returns  A matrix view
    *
-   * \see  submat
+   * \see  sub
    */
   inline MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> 
   rows(
@@ -965,11 +1001,11 @@ class Matrix {
   /**
    * Create a view representing the matrix slice within a column
    * range.
-   * Same as \c submat<1>(offset, extent).
+   * Same as \c sub<1>(offset, extent).
    *
    * \returns  A matrix view
    *
-   * \see  submat
+   * \see  sub
    */
   inline MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT>
   cols(

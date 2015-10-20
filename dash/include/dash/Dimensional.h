@@ -330,6 +330,24 @@ public:
   }
 
   /**
+   * Constructor, initialize with given extents and offsets.
+   */
+  ViewSpec(
+    const std::array<IndexType, NumDimensions> & offsets,
+    const std::array<SizeType, NumDimensions>  & extents)
+  : Dimensional<ViewPair_t, NumDimensions>(),
+    _size(1),
+    _rank(NumDimensions),
+    _extents(extents),
+    _offsets(offsets) {
+    for (auto i = 0; i < NumDimensions; ++i) {
+      ViewPair_t vp { offsets[i], extents[i] };
+      this->_values[i]  = vp;
+      _size            *= extents[i];
+    }
+  }
+
+  /**
    * Copy constructor.
    */
   ViewSpec(const self_t & other)

@@ -248,23 +248,23 @@ TEST_F(MatrixTest, Submat2DimDefault)
   ASSERT_EQ_U(extent_cols * extent_rows, matrix_size);
   
   // Columns 0 ... (J/2)
-  LOG_MESSAGE("Testing submat<0>(0, J/2)");
-  auto submatrix_x_lower = matrix.submat<0>(0,
+  LOG_MESSAGE("Testing sub<0>(0, J/2)");
+  auto submatrix_x_lower = matrix.sub<0>(0,
                                             extent_cols / 2);
   ASSERT_EQ_U(matrix_size/2, submatrix_x_lower.size());
   // Columns (J/2) ... (J-1)
-  LOG_MESSAGE("Testing submat<0>(J/2, J-1)");
-  auto submatrix_x_upper = matrix.submat<0>(extent_cols / 2,
+  LOG_MESSAGE("Testing sub<0>(J/2, J-1)");
+  auto submatrix_x_upper = matrix.sub<0>(extent_cols / 2,
                                             extent_cols / 2);
   ASSERT_EQ_U(matrix_size/2, submatrix_x_upper.size());
   // Rows 0 ... (J/2)
-  LOG_MESSAGE("Testing submat<1>(0, I/2)");
-  auto submatrix_y_lower = matrix.submat<1>(0,
+  LOG_MESSAGE("Testing sub<1>(0, I/2)");
+  auto submatrix_y_lower = matrix.sub<1>(0,
                                             extent_rows / 2);
   ASSERT_EQ_U(matrix_size/2, submatrix_y_lower.size());
   // Rows (J/2) ... (J-1)
-  LOG_MESSAGE("Testing submat<1>(I/2, I-1)");
-  auto submatrix_y_upper = matrix.submat<1>(extent_rows / 2,
+  LOG_MESSAGE("Testing sub<1>(I/2, I-1)");
+  auto submatrix_y_upper = matrix.sub<1>(extent_rows / 2,
                                             extent_rows / 2);
   ASSERT_EQ_U(matrix_size/2, submatrix_y_upper.size());
 }
@@ -356,6 +356,80 @@ TEST_F(MatrixTest, Sub2DimDefault)
   ASSERT_EQ_U(matrix.local_size(), num_visited_local);
 }
 
+TEST_F(MatrixTest, BlockViews)
+{
+  typedef int element_t;
+  dart_unit_t myid   = dash::myid();
+  size_t num_units   = dash::Team::All().size();
+  size_t tilesize_x  = 3;
+  size_t tilesize_y  = 2;
+  size_t tilesize    = tilesize_x * tilesize_y;
+  size_t extent_cols = tilesize_x * num_units * 4;
+  size_t extent_rows = tilesize_y * num_units * 4;
+  typedef dash::TilePattern<2> pattern_t;
+  LOG_MESSAGE("Initialize matrix ...");
+  dash::TeamSpec<2> team_spec(num_units, 1);
+  dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t> matrix(
+                 dash::SizeSpec<2>(
+                   extent_cols,
+                   extent_rows),
+                 dash::DistributionSpec<2>(
+                   dash::TILE(tilesize_x),
+                   dash::TILE(tilesize_y)),
+                 dash::Team::All(),
+                 team_spec);
+  // Fill matrix
+  if(myid == 0) {
+    LOG_MESSAGE("Assigning matrix values");
+    for(int col = 0; col < matrix.extent(0); ++col) {
+      for(int row = 0; row < matrix.extent(1); ++row) {
+        auto value = (row * matrix.extent(0)) + col;
+        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
+                    col, row, value);
+        matrix[col][row] = value;
+      }
+    }
+  }
+  LOG_MESSAGE("Wait for team barrier ...");
+  dash::Team::All().barrier();
+  LOG_MESSAGE("Team barrier passed");
+
+  element_t exp_val;
+
+  // View at block at global block offset 0 (first global block):
+  auto block_gi_0 = matrix.block(0);
+  ASSERT_EQ_U(tilesize, block_gi_0.size());
+
+  // Test first element in block at global block index 0:
+  exp_val = matrix[0][0];
+  ASSERT_EQ_U(exp_val,
+              *(block_gi_0.begin()));
+  // Test last element in block at global block index 0:
+  exp_val = matrix[tilesize_x-1][tilesize_y-1];
+  ASSERT_EQ_U(exp_val, 
+              *(block_gi_0.begin() + (tilesize-1)));
+
+  // View at block at global block offset 6
+  // (first global block of lower right matrix quarter):
+  auto nblocks_x  = matrix.extents()[0] / tilesize_x;
+  auto nblocks_y  = matrix.extents()[1] / tilesize_y;
+  // Block index of first block in lower right quarter of the matrix:
+  auto block_q_gi = ((nblocks_x * nblocks_y) / 2) + (nblocks_x / 2);
+  auto block_gi_q = matrix.block(block_q_gi);
+  ASSERT_EQ_U(tilesize, block_gi_q.size());
+
+  // Test first element in first block at lower right quarter of the matrix:
+  auto block_6_x = matrix.extents()[0] / 2;
+  auto block_6_y = matrix.extents()[1] / 2;
+  exp_val = matrix[block_6_x][block_6_y];
+  ASSERT_EQ_U(exp_val,
+              *(block_gi_q.begin()));
+  // Test last element in first block at lower right quarter of the matrix:
+  exp_val = matrix[block_6_x+tilesize_x-1][block_6_y+tilesize_y-1];
+  ASSERT_EQ_U(exp_val, 
+              *(block_gi_q.begin() + (tilesize-1)));
+}
+
 TEST_F(MatrixTest, SubBlockIteration)
 {
   typedef int element_t;
@@ -396,14 +470,14 @@ TEST_F(MatrixTest, SubBlockIteration)
   // Partition matrix into 4 blocks (upper/lower left/right):
   
   // First create two views for left and right half:
-  auto left        = matrix.submat<0>(0,               extent_cols / 2);
-  auto right       = matrix.submat<0>(extent_cols / 2, extent_cols / 2);
+  auto left        = matrix.sub<0>(0,               extent_cols / 2);
+  auto right       = matrix.sub<0>(extent_cols / 2, extent_cols / 2);
 
   // Refine views on left and right half into top/bottom:
-  auto topleft     = left.submat<1>(0,               extent_rows / 2);
-  auto bottomleft  = left.submat<1>(extent_rows / 2, extent_rows / 2);
-  auto topright    = right.submat<1>(0,               extent_rows / 2);
-  auto bottomright = right.submat<1>(extent_rows / 2, extent_rows / 2);
+  auto topleft     = left.sub<1>(0,               extent_rows / 2);
+  auto bottomleft  = left.sub<1>(extent_rows / 2, extent_rows / 2);
+  auto topright    = right.sub<1>(0,               extent_rows / 2);
+  auto bottomright = right.sub<1>(extent_rows / 2, extent_rows / 2);
 
   auto g_br_x      = extent_cols / 2;
   auto g_br_y      = extent_rows / 2;

@@ -284,13 +284,13 @@ template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template<dim_t SubDimension>
 LocalMatrixRef<T, NumDim, NumDim, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
-::submat(
+::sub(
   size_type offset,
   size_type extent)
 {
-  DASH_LOG_TRACE_VAR("LocalMatrixRef.submat()", SubDimension);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef.submat()", offset);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef.submat()", extent);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.sub()", SubDimension);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.sub()", offset);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.sub()", extent);
   static_assert(
       SubDimension < NumDim && SubDimension >= 0,
       "Wrong sub-dimension");
@@ -304,7 +304,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
                             SubDimension,
                             offset,
                             extent);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef.submat >",
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.sub >",
                      ref._refview->_viewspec.size());
   ref._refview->_mat = _refview->_mat;
   return ref;
@@ -317,7 +317,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return submat<0>(offset, extent);
+  return sub<0>(offset, extent);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -326,7 +326,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>::cols(
   size_type offset,
   size_type extent)
 {
-  return submat<1>(offset, extent);
+  return sub<1>(offset, extent);
 }
 
 // LocalMatrixRef<T, NumDim, 0>
@@ -500,6 +500,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::data() const noexcept
 {
   DASH_LOG_TRACE_VAR("MatrixRef.data()", _refview->_viewspec.extents());
+  DASH_LOG_TRACE_VAR("MatrixRef.data()", _refview->_viewspec.offsets());
   return GlobIter_t(
            _refview->_mat->_glob_mem,
            _refview->_mat->_pattern,
@@ -643,16 +644,16 @@ template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template <dim_t SubDimension>
 MatrixRef<T, NumDim, NumDim, PatternT>
 MatrixRef<T, NumDim, CUR, PatternT>
-::submat(
+::sub(
   size_type offset,
   size_type extent)
 {
-  DASH_LOG_TRACE_VAR("MatrixRef.submat()", SubDimension);
-  DASH_LOG_TRACE_VAR("MatrixRef.submat()", offset);
-  DASH_LOG_TRACE_VAR("MatrixRef.submat()", extent);
+  DASH_LOG_TRACE_VAR("MatrixRef.sub()", SubDimension);
+  DASH_LOG_TRACE_VAR("MatrixRef.sub()", offset);
+  DASH_LOG_TRACE_VAR("MatrixRef.sub()", extent);
   static_assert(
     SubDimension < NumDim && SubDimension >= 0,
-    "Wrong sub-dimension for submat()");
+    "Wrong sub-dimension for sub()");
   MatrixRef<T, NumDim, NumDim, PatternT> ref;
   MatrixRefView<T, NumDim, PatternT> * proxy =
     new MatrixRefView<T, NumDim, PatternT>();
@@ -663,7 +664,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
                             SubDimension,
                             offset,
                             extent);
-  DASH_LOG_TRACE_VAR("MatrixRef.submat >",
+  DASH_LOG_TRACE_VAR("MatrixRef.sub >",
                      ref._refview->_viewspec.size());
   return ref;
 }
@@ -675,7 +676,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return submat<0>(offset, extent);
+  return sub<0>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -685,7 +686,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return submat<1>(offset, extent);
+  return sub<1>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -1116,11 +1117,11 @@ template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 template<dim_t SubDimension>
 inline MatrixRef<T, NumDim, NumDim, PatternT>
 Matrix<T, NumDim, IndexT, PatternT>
-::submat(
+::sub(
   size_type offset,
   size_type extent)
 {
-  return _ref.submat<SubDimension>(offset, extent);
+  return _ref.sub<SubDimension>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -1130,7 +1131,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   size_type offset,
   size_type extent)
 {
-  return _ref.submat<0>(offset, extent);
+  return _ref.sub<0>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -1140,7 +1141,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   size_type offset,
   size_type extent)
 {
-  return _ref.submat<1>(offset, extent);
+  return _ref.sub<1>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>

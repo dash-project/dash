@@ -99,6 +99,8 @@ public:
     _max_idx(viewspec.size() - 1) {
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _idx);
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _viewspec->offsets());
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _viewspec->extents());
   }
 
   /**
@@ -119,7 +121,7 @@ public:
    * \return  A global reference to the element at the iterator's position
    */
   operator PointerType() const {
-    size_t pos     = _idx;
+    size_t idx     = _idx;
     size_t offset  = 0;
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _max_idx);
@@ -127,34 +129,13 @@ public:
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
       // which is the case for .end() iterators.
-      pos    = _max_idx;
+      idx    = _max_idx;
       offset = _idx - _max_idx;
     }
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", pos);
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", idx);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", offset);
     // Global cartesian coords of current iterator position:
-    std::array<IndexType, NumDimensions> glob_coords;
-    if (_viewspec != nullptr) {
-      DASH_LOG_TRACE_VAR("GlobIter.GlobPtr v", _viewspec->extents());
-      DASH_LOG_TRACE_VAR("GlobIter.GlobPtr v", _viewspec->offsets());
-      DASH_LOG_TRACE_VAR("GlobIter.GlobPtr v", _viewspec->rank());
-      // Create cartesian index space from extents of view projection:
-      CartesianIndexSpace<NumDimensions, Arrangement, IndexType> index_space(
-        _viewspec->extents());
-      // Initialize global coords with view coords (coords of iterator
-      // position in view index space):
-      glob_coords = index_space.coords(pos);
-      DASH_LOG_TRACE_VAR("GlobIter.GlobPtr v", glob_coords);
-      // Apply offset of view projection to view coords:
-      for (dim_t d = 0; d < NumDimensions; ++d) {
-        auto dim_offset = _viewspec->offsets()[d];
-        DASH_LOG_TRACE_VAR("GlobIter.GlobPtr+o", dim_offset);
-        glob_coords[d] += dim_offset;
-        DASH_LOG_TRACE_VAR("GlobIter.GlobPtr+o", glob_coords);
-      }
-    } else {
-      glob_coords = _pattern->memory_layout().coords(pos);
-    }
+    std::array<IndexType, NumDimensions> glob_coords = coords(idx);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", glob_coords);
     // Convert global coords to unit and local offset:
     auto local_pos   = _pattern->local_index(glob_coords);
@@ -184,7 +165,7 @@ public:
    */
   ReferenceType operator*() const {
     // Global index to local index and unit:
-    auto glob_coords = _pattern->coords(_idx);
+    auto glob_coords = coords(_idx);
     auto local_pos   = _pattern->local_index(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.*", _idx);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
@@ -206,7 +187,7 @@ public:
     gptrdiff_t global_index) const {
     // Global index to local index and unit:
     DASH_LOG_TRACE_VAR("GlobIter.[]", global_index);
-    auto glob_coords = _pattern->coords(global_index);
+    auto glob_coords = coords(global_index);
     DASH_LOG_TRACE_VAR("GlobIter.[]", glob_coords);
     auto local_pos   = _pattern->local_index(glob_coords);
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.unit);
@@ -380,6 +361,40 @@ public:
   const PatternType & pattern() const {
     return *_pattern;
   }
+
+private:
+  /**
+   * Convert a global offset within the global iterator's range to
+   * corresponding global coordinates with respect to viewspec projection.
+   */
+  std::array<IndexType, NumDimensions> coords(
+    IndexType glob_index) const {
+    // Global cartesian coords of current iterator position:
+    std::array<IndexType, NumDimensions> glob_coords;
+    if (_viewspec != nullptr) {
+      DASH_LOG_TRACE_VAR("GlobIter.GlobPtr v", _viewspec->extents());
+      DASH_LOG_TRACE_VAR("GlobIter.GlobPtr v", _viewspec->offsets());
+      DASH_LOG_TRACE_VAR("GlobIter.GlobPtr v", _viewspec->rank());
+      // Create cartesian index space from extents of view projection:
+      CartesianIndexSpace<NumDimensions, Arrangement, IndexType> index_space(
+        _viewspec->extents());
+      // Initialize global coords with view coords (coords of iterator
+      // position in view index space):
+      glob_coords = index_space.coords(glob_index);
+      DASH_LOG_TRACE_VAR("GlobIter.GlobPtr v", glob_coords);
+      // Apply offset of view projection to view coords:
+      for (dim_t d = 0; d < NumDimensions; ++d) {
+        auto dim_offset = _viewspec->offsets()[d];
+        DASH_LOG_TRACE_VAR("GlobIter.GlobPtr+o", dim_offset);
+        glob_coords[d] += dim_offset;
+        DASH_LOG_TRACE_VAR("GlobIter.GlobPtr+o", glob_coords);
+      }
+    } else {
+      glob_coords = _pattern->memory_layout().coords(glob_index);
+    }
+    return glob_coords;
+  }
+
 };
 
 /**

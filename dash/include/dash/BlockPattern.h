@@ -1051,13 +1051,13 @@ public:
     index_type global_block_index) const {
     // block index -> block coords -> offset
     auto block_coords = _blockspec.coords(global_block_index);
-    ViewSpec_t block_vs;
+    std::array<index_type, NumDimensions> offsets;
+    std::array<size_type, NumDimensions>  extents;
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto offset_d = block_coords[d] * block_vs[d].extent;
-      auto extent_d = _blocksize_spec.extent(d);
-      block_vs.resize_dim(d, offset_d, extent_d);
+      extents[d] = _blocksize_spec.extent(d);
+      offsets[d] = block_coords[d] * extents[d];
     }
-    return block_vs;
+    return ViewSpec_t(offsets, extents);
   }
 
   /**
@@ -1107,16 +1107,17 @@ public:
    */
   ViewSpec_t local_block_local(
     index_type local_block_index) const {
-    // Initialize viewspec result with block extents:
-    ViewSpec_t block_vs(_blocksize_spec.extents());
     // Local block index to local block coords:
     auto l_block_coords = _local_blockspec.coords(local_block_index);
+    std::array<index_type, NumDimensions> offsets;
+    std::array<size_type, NumDimensions>  extents =
+      _blocksize_spec.extents();
     // Local block coords to local element offset:
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto blocksize_d   = block_vs[d].extent;
-      block_vs[d].offset = l_block_coords[d] * blocksize_d;
+      auto blocksize_d = extents[d];
+      offsets[d]       = l_block_coords[d] * blocksize_d;
     }
-    return block_vs;
+    return ViewSpec_t(offsets, extents);
   }
 
   /**

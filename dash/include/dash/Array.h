@@ -638,6 +638,9 @@ public:
     deallocate();
   }
 
+  /**
+   * View at block at given global block offset.
+   */
   View block(index_type block_gindex)
   {
     DASH_LOG_TRACE("Array.block()", block_gindex);
