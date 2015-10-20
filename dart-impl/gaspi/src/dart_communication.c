@@ -190,7 +190,29 @@ dart_ret_t dart_get_gptr(dart_gptr_t dest, dart_gptr_t src, size_t nbytes)
     return DART_OK;
 }
 
-//~ /**
+
+//~ dart_ret_t dart_put_gptr(dart_gptr_t dest, dart_gptr_t src, size_t nbytes)
+//~ {
+    //~ gaspi_queue_id_t   queue;
+    //~ /*
+     //~ * remote site
+     //~ */
+    //~ gaspi_segment_id_t dest_gaspi_seg = dart_mempool_seg_localalloc;
+    //~ gaspi_offset_t     dest_offset    = dest.addr_or_offs.offset;
+    //~ uint16_t           dest_index     = dest.flags;
+    //~ int16_t            dest_seg_id    = dest.segid;
+    //~ dart_unit_t        target_unit    = dest.unitid;
+    //~ /*
+     //~ * local site
+     //~ */
+    //~ gaspi_segment_id_t src_gaspi_seg  = dart_mempool_seg_localalloc;
+    //~ gaspi_offset_t     src_offset     = src.addr_or_offs.offset;
+    //~ int16_t            src_seg_id     = src.segid;
+    //~ uint16_t           src_index      = src.flags;
+    //~ dart_unit_t        my_unit        = src.unitid;
+
+//~ }
+/**
  //~ * TODO dart_put not implemented yet
  //~ */
 //~ dart_ret_t dart_put(dart_gptr_t gptr, void *src, size_t nbytes)
@@ -480,22 +502,6 @@ dart_ret_t dart_get_gptr_handle(dart_gptr_t dest, dart_gptr_t src, size_t nbytes
                                  //~ GASPI_BLOCK));
     //~ return DART_OK;
 //~ }
-/**
- * No guarantee for remote completion !
- * This function works only for get operations and
- * then you have the same semantic as dart_wait_local.
- *
- * Thats why this function is not implemented
- */
-dart_ret_t dart_wait (dart_handle_t handle)
-{
-    return DART_ERR_OTHER;
-}
-
-dart_ret_t dart_waitall(dart_handle_t *handle, size_t n)
-{
-    return DART_ERR_OTHER;
-}
 
 dart_ret_t dart_wait_local (dart_handle_t handle)
 {
@@ -557,16 +563,6 @@ dart_ret_t dart_testall_local (dart_handle_t *handle, size_t n, int32_t* is_fini
         }
     }
     return DART_OK;
-}
-
-dart_ret_t dart_fence(dart_gptr_t gptr)
-{
-    return DART_ERR_OTHER;
-}
-
-dart_ret_t dart_fence_all(dart_gptr_t gptr)
-{
-    return DART_ERR_OTHER;
 }
 
 dart_ret_t _dart_flush_local(dart_gptr_t gptr, gaspi_timeout_t timeout, gaspi_return_t * ret)
