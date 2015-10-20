@@ -55,7 +55,7 @@ public:
   ValueType operator()(
     const ValueType & lhs,
     const ValueType & rhs) const {
-    return std::plus<ValueType>(lhs, rhs);
+    return lhs + rhs;
   }
 };
 

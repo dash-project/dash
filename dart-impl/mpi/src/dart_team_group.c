@@ -8,6 +8,7 @@
 #include <mpi.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_translation.h>
@@ -494,7 +495,11 @@ dart_ret_t dart_team_destroy(
 
 dart_ret_t dart_myid(dart_unit_t *unitid)
 {
-	MPI_Comm_rank (MPI_COMM_WORLD, unitid);
+  if (dart_initialized()) {
+    MPI_Comm_rank(MPI_COMM_WORLD, unitid);
+  } else {
+    *unitid = -1;
+  }
 	return DART_OK;
 }
 

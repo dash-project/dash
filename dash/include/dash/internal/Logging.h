@@ -6,6 +6,7 @@
 
 #if defined(DASH_ENABLE_LOGGING)
 
+#include <array>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -58,8 +59,12 @@ static void Log_Recursive(
   const char* context_tag,
   std::ostringstream & msg) {
   std::stringstream buf;
-  buf << "[ " << dash::myid() << "  " << level << " ] "
-      << std::left << std::setw(20)
+  buf << "[ " 
+      << std::setw(4) << dash::myid()
+      << " "
+      << level
+      << " ] "
+      << std::left << std::setw(25)
       << file << ":" 
       << std::left << std::setw(4)
       << line << " | "

@@ -35,6 +35,34 @@ include_directories(
   ${DASH_DART_IF_INCLUDE_DIR}
 )
 
+set (ADDITIONAL_COMPILE_FLAGS "-DDASH")
+set (ADDITIONAL_INCLUDES      "")
+set (ADDITIONAL_LIBRARIES     "")
+
+if (MEMORY_MODEL_UNIFIED)
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_UNIFIED_MEMORY_MODEL")
+endif()
+if (ENABLE_LOGGING)
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_LOGGING")
+endif()
+if (ENABLE_TRACE_LOGGING)
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_TRACE_LOGGING")
+endif()
+if (PAPI_FOUND)
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_PAPI")
+  set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+       ${PAPI_INCLUDE_DIRS})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${PAPI_LIBRARIES})
+else()
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       rt)
+endif()
+
 ## Build targets
 
 # DASH library for every enabled DART variant:
@@ -53,7 +81,14 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   target_link_libraries(
     ${DASH_LIBRARY}           # library name
     ${DASH_LINK_DART_LIBRARY} # dependency: DART lib
-    ${DASH_LINK_DART_LIBRARY} # dependency: PAPI lib (optional)
+    ${ADDITIONAL_LIBRARIES}
+  )
+  set_target_properties(
+    ${DASH_LIBRARY} PROPERTIES
+    COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+  )
+  include_directories(
+    ${ADDITIONAL_INCLUDES}
   )
   if (${dart_variant} STREQUAL "mpi")
     include_directories(
@@ -62,12 +97,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
       ${DASH_LIBRARY}
       ${MPI_C_LIBRARIES})
   endif()
-  if (MEMORY_MODEL_UNIFIED)
-    set_target_properties(
-      ${DASH_LIBRARY} PROPERTIES
-      COMPILE_FLAGS "-DDASH_UNIFIED_MEMORY_MODEL"
-    )
-  endif()
+
   DeployLibrary(${DASH_LIBRARY})
 
   # Install library
@@ -82,17 +112,24 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
       set(exampletarget ${examplename}.${dart_variant})
       if (EXISTS
          ${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename}/main.cpp)
+        # Build example for single DART implementation
         add_executable(
           ${exampletarget}
           examples/${examplename}/main.cpp
         )
         include_directories(
           ${CMAKE_SOURCE_DIR}/dash/include
+          ${ADDITIONAL_INCLUDES}
         )
         target_link_libraries(
           ${exampletarget}
           ${DASH_LIBRARY}
           ${DART_LIBRARY}
+          ${ADDITIONAL_LIBRARIES}
+        )
+        set_target_properties(
+          ${exampletarget} PROPERTIES
+          COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
         )
         if (${dart_variant} STREQUAL "mpi")
           include_directories(
@@ -102,24 +139,8 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
             ${MPI_C_LIBRARIES}
             ${MPI_CXX_LIBRARIES})
         endif()
-        if (PAPI_FOUND)
-          include_directories(
-            ${PAPI_INCLUDE_DIRS}
-          )
-          target_link_libraries(
-            ${exampletarget}
-            ${PAPI_LIBRARIES}
-          )
-          set_target_properties(
-            ${exampletarget} PROPERTIES
-            COMPILE_FLAGS "-DDASH_ENABLE_PAPI"
-          )
-        else()
-          target_link_libraries(
-            ${exampletarget}
-            rt
-          )
-        endif()
+
+        # Installation
         DeployBinary(${exampletarget})
         install(
           TARGETS ${exampletarget}
@@ -140,6 +161,7 @@ if (BUILD_TESTS)
     include_directories(
       ${GTEST_INCLUDES}
       ${CMAKE_SOURCE_DIR}/dash/include
+      ${ADDITIONAL_INCLUDES}
     )
     add_executable(
       ${DASH_TEST}
@@ -150,37 +172,14 @@ if (BUILD_TESTS)
       GTest
       ${DASH_LIBRARY}
       ${DART_LIBRARY}
+      ${ADDITIONAL_LIBRARIES}
     )
-    if (PAPI_FOUND)
-      include_directories(
-        ${PAPI_INCLUDE_DIRS}
-      )
-      target_link_libraries(
-        ${DASH_TEST}
-        ${PAPI_LIBRARIES}
-      )
-      set_target_properties(
-        ${DASH_TEST} PROPERTIES
-        COMPILE_FLAGS "-DDASH_ENABLE_PAPI"
-      )
-    else()
-      target_link_libraries(
-        ${DASH_TEST}
-        rt
-      )
-    endif()
-    if (ENABLE_LOGGING)
-      set_target_properties(
-        ${DASH_TEST} PROPERTIES
-        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_LOGGING"
-      )
-    endif()
-    if (ENABLE_TRACE_LOGGING)
-      set_target_properties(
-        ${DASH_TEST} PROPERTIES
-        COMPILE_FLAGS "-DDASH_TEST -DDASH_ENABLE_TRACE_LOGGING"
-      )
-    endif()
+    set_target_properties(
+      ${DASH_TEST} PROPERTIES
+      COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+    )
+
+    # Installation
     DeployBinary(${DASH_TEST})
     install(
       TARGETS ${DASH_TEST}

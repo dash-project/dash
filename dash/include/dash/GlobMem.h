@@ -97,6 +97,13 @@ public:
    */
   ~GlobMem() {
     DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", m_begptr);
+    if (!dash::is_initialized()) {
+      // If a DASH container is deleted after dash::finalize(), global
+      // memory has already been freed by dart_exit() and must not be
+      // deallocated again.
+      DASH_LOG_DEBUG("GlobMem.~GlobMem >", "DASH not initialized, abort");
+      return;
+    }
     if (!DART_GPTR_ISNULL(m_begptr)) {
       if (m_kind == dash::internal::COLLECTIVE) {
         DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", m_teamid);

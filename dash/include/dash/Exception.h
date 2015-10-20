@@ -30,6 +30,14 @@
   }\
 } while(0)
 
+#define DASH_ASSERT_MSG(expr, msg) do { \
+  if (!(expr)) { \
+    DASH_THROW(dash::exception::AssertionFailed, \
+               "Assertion failed: " << msg \
+               << " " << __FILE__ << ":" << __LINE__); \
+  }\
+} while(0)
+
 #define DASH_ASSERT_RETURNS(expr, exp_value) do { \
   if ((expr) != (exp_value)) { \
     DASH_THROW(dash::exception::AssertionFailed, \
@@ -47,6 +55,17 @@
                << message << " "\
                << __FILE__ << ":" << __LINE__); \
   }\
+} while(0)
+
+#define DASH_ASSERT_EQ(val_a, val_b, message) do { \
+  if (val_a != val_b) { \
+    DASH_THROW(dash::exception::AssertionFailed, \
+               "Assertion " \
+               << val_a << " == " << val_b \
+               << " failed: " \
+               << message << " " \
+               << __FILE__ << ":" << __LINE__); \
+  } \
 } while(0)
 
 #define DASH_ASSERT_GT(value, min, message) do { \
@@ -74,6 +93,7 @@
 #else  // DASH_ENABLE_ASSERTIONS
 
 #define DASH_ASSERT(expr) do { } while (expr)
+#define DASH_ASSERT_MSG(expr, msg) do { } while (expr)
 #define DASH_ASSERT_RETURNS(expr, exp_value) (expr)
 #define DASH_ASSERT_RANGE(lower, value, upper, message) do { } while(0)
 #define DASH_ASSERT_GT(val, min, message) do { } while (0)

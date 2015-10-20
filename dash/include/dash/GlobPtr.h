@@ -225,11 +225,9 @@ public:
    */
   explicit operator T*() {
     void *addr = 0;
-    if(is_local()) {
-      DASH_ASSERT_RETURNS(
-        dart_gptr_getaddr(m_dartptr, &addr),
-        DART_OK);
-    }
+    DASH_ASSERT_RETURNS(
+      dart_gptr_getaddr(m_dartptr, &addr),
+      DART_OK);
     return static_cast<T*>(addr);
   }
 

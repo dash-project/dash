@@ -23,28 +23,27 @@ char* dart_mempool_localalloc;
 char**dart_sharedmem_local_baseptr_set;
 #endif
 /* Help to do memory management work for local allocation/free */
-struct dart_buddy* dart_localpool;
-int init_by_dart     = 0;
-int dart_initialized = 0;
+struct dart_buddy   * dart_localpool;
+int                   _init_by_dart     = 0;
+int                   _dart_initialized = 0;
 
 dart_ret_t dart_init(
   int*    argc,
   char*** argv)
 {
-  if (dart_initialized) {
+  if (_dart_initialized) {
     DART_LOG_ERROR("dart_init(): DART is already initialized");
     return DART_ERR_OTHER;
   }
   DART_LOG_DEBUG("dart_init()");
-  dart_initialized = 1;
 
-	int initialized;
-	if (MPI_Initialized(&initialized) != MPI_SUCCESS) {
+	int mpi_initialized;
+	if (MPI_Initialized(&mpi_initialized) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_init(): MPI_Initialized failed");
     return DART_ERR_OTHER;
   }
-	if (!initialized) {
-		init_by_dart = 1;
+	if (!mpi_initialized) {
+		_init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
 		MPI_Init(argc, argv);
 	}
@@ -227,16 +226,18 @@ dart_ret_t dart_init(
 #endif
 	DART_LOG_DEBUG("%2d: dart_init: Initialization finished", rank);
 
+  _dart_initialized = 1;
+
 	return DART_OK;
 }
 
 dart_ret_t dart_exit()
 {
-  if (!dart_initialized) {
+  if (!_dart_initialized) {
     DART_LOG_ERROR("dart_exit(): DART has not been initialized");
     return DART_ERR_OTHER;
   }
-  dart_initialized = 0;
+  _dart_initialized = 0;
 
 	int finalized;
 	uint16_t index;
@@ -273,12 +274,16 @@ dart_ret_t dart_exit()
 #endif
 	dart_adapt_teamlist_destroy ();
 
-	if (init_by_dart) {
+	if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();
   }
 	DART_LOG_DEBUG("%2d: dart_exit: Finalization finished", unitid);
+
 	return DART_OK;
 }
 
-
+char dart_initialized()
+{
+  return _dart_initialized;
+}

@@ -7,6 +7,7 @@
 #include <dash/dart/if/dart_communication.h>
 
 namespace dash {
+
 namespace internal {
 
 /**
@@ -86,17 +87,14 @@ inline dart_ret_t accumulate_impl<int>(
  */
 template<
   typename ValueType,
-  class GlobInputIt,
-  class GlobOutputIt,
+  class InputIt,
+  class OutputIt,
   class UnaryOperation >
-GlobOutputIt transform(
-  GlobInputIt    in_first,
-  GlobInputIt    in_last,
-  GlobOutputIt   out_first,
-  UnaryOperation unary_op) {
-  // TODO: Implement using user-defined reduce function
-  return in_last;
-}
+OutputIt transform(
+  InputIt        in_first,
+  InputIt        in_last,
+  OutputIt       out_first,
+  UnaryOperation unary_op);
 
 /**
  * Apply a given function to pairs of elements from two ranges and store the
@@ -142,6 +140,82 @@ GlobOutputIt transform(
  */
 template<
   typename ValueType,
+  class InputAIt,
+  class InputBIt,
+  class OutputIt,
+  class BinaryOperation >
+OutputIt transform(
+  InputAIt        in_a_first,
+  InputAIt        in_a_last,
+  InputBIt        in_b_first,
+  OutputIt        out_first,
+  BinaryOperation binary_op);
+
+/**
+ * Transform operation on ranges with identical distribution and start offset.
+ * In this case, no communication is needed as all output values can be
+ * obtained from input values in local memory:
+ *
+ *   input a: [ u0 | u1 | u2 | ... ]
+ *              op   op   op   ...
+ *   input b: [ u0 | u1 | u2 | ... ]
+ *              =    =    =    ...
+ *   output:  [ u0 | u1 | u2 | ... ]
+ *
+ */
+template<
+  typename ValueType,
+  class InputAIt,
+  class InputBIt,
+  class OutputIt,
+  class BinaryOperation >
+OutputIt transform_local(
+  InputAIt        in_a_first,
+  InputAIt        in_a_last,
+  InputBIt        in_b_first,
+  OutputIt        out_first,
+  BinaryOperation binary_op)
+{
+  DASH_LOG_DEBUG("dash::transform_local()");
+  DASH_ASSERT_MSG(in_a_first.pattern() == in_b_first.pattern(),
+                  "dash::transform_local: "
+                  "distributions of input ranges differ");
+  DASH_ASSERT_MSG(in_a_first.pattern() == out_first.pattern(),
+                  "dash::transform_local: "
+                  "distributions of input- and output ranges differ");
+  // Local subrange of input range a:
+  auto local_range_a   = dash::local_range(in_a_first, in_a_last);
+  ValueType * lbegin_a = local_range_a.begin;
+  ValueType * lend_a   = local_range_a.end;
+  if (lbegin_a == lend_a) {
+    // Local input range is empty, return initial output iterator to indicate
+    // that no values have been transformed:
+    DASH_LOG_DEBUG("dash::transform_local", "local range empty");
+    return out_first;
+  }
+  // Global offset of first local element:
+  auto g_offset_first    = in_a_first.pattern().global(0);
+  // Number of elements in global ranges:
+  auto num_gvalues       = dash::distance(in_a_first, in_b_first);
+  DASH_LOG_TRACE_VAR("dash::transform_local", num_gvalues);
+  // Number of local elements:
+  auto num_lvalues       = std::distance(lbegin_a, lend_a);
+  DASH_LOG_TRACE_VAR("dash::transform_local", num_lvalues);
+  // Local subrange of input range b:
+  ValueType * lbegin_b   = dash::local(in_b_first + g_offset_first);
+  ValueType * lend_b     = lbegin_b + num_lvalues;
+  // Local pointer of initial output element:
+  ValueType * lbegin_out = dash::local(out_first + g_offset_first);
+  // Generate output values:
+  for (; lbegin_a != lend_a; ++lbegin_a, ++lbegin_b, ++lbegin_out) {
+    *lbegin_out = binary_op(*lbegin_a, *lbegin_b);
+  }
+  // Return out_end iterator past final transformed element;
+  return out_first + num_gvalues;
+}
+
+template<
+  typename ValueType,
   class InputIt,
   class GlobInputIt,
   class GlobOutputIt,
@@ -151,7 +225,9 @@ GlobOutputIt transform(
   InputIt         in_a_last,
   GlobInputIt     in_b_first,
   GlobOutputIt    out_first,
-  BinaryOperation binary_op     = dash::plus<ValueType>()) {
+  BinaryOperation binary_op)
+{
+  DASH_LOG_DEBUG("dash::transform(af, al, bf, outf, binop)");
   // Outut range different from rhs input range is not supported yet
   DASH_ASSERT(in_b_first == out_first);
   // Resolve team from global iterator:
@@ -199,23 +275,49 @@ GlobOutputIt transform(
   GlobIter<ValueType> in_a_last,
   GlobInputIt         in_b_first,
   GlobOutputIt        out_first,
-  BinaryOperation     binary_op = dash::plus<ValueType>()) {
+  BinaryOperation     binary_op = dash::plus<ValueType>())
+{
+  DASH_LOG_DEBUG("dash::transform(gaf, gal, gbf, goutf, binop)");
   // Outut range different from rhs input range is not supported yet
   DASH_ASSERT(in_b_first == out_first);
-  // Pattern from global iterator, assume identical pattern in all ranges:
-  auto pattern                  = out_first.pattern();
-  // Resolve team from global iterator:
-  dash::Team & team             = pattern.team();
+  // Pattern of input ranges a and b, and output range:
+  auto pattern_in_a = in_a_first.pattern();
+  auto pattern_in_b = in_b_first.pattern();
+  auto pattern_out  = out_first.pattern();
+  // Fast path: check if transform operation is local-only:
+  if (pattern_in_a == pattern_in_b &&
+      pattern_in_a == pattern_out) {
+    // Identical pattern in all ranges
+    if (in_a_first.pos() == in_b_first.pos() &&
+        in_a_first.pos() == out_first.pos()) {
+      // All units operate on local ranges that have identical distribution:
+      return dash::transform_local<ValueType>(
+               in_a_first,
+               in_a_last,
+               in_b_first,
+               out_first,
+               binary_op);
+    }
+  }
+  // Resolve teams from global iterators:
+  dash::Team & team_in_a        = pattern_in_a.team();
+  DASH_ASSERT_MSG(
+    team_in_a == pattern_in_b.team(),
+    "dash::transform: Different teams in input ranges");
+  DASH_ASSERT_MSG(
+    team_in_a == pattern_out.team(),
+    "dash::transform: Different teams in input- and output ranges");
   // Resolve local range from global range:
-  auto l_index_range            = local_index_range(in_a_first, in_a_last);
-  DASH_LOG_TRACE_VAR("dash::transform", l_index_range.begin);
-  DASH_LOG_TRACE_VAR("dash::transform", l_index_range.end);
+  auto l_index_range_in_a       = local_index_range(in_a_first, in_a_last);
+  DASH_LOG_TRACE_VAR("dash::transform", l_index_range_in_a.begin);
+  DASH_LOG_TRACE_VAR("dash::transform", l_index_range_in_a.end);
   // Local range to global offset:
-  auto global_offset            = pattern.global(
-                                    l_index_range.begin);
+  auto global_offset            = pattern_in_a.global(
+                                    l_index_range_in_a.begin);
   DASH_LOG_TRACE_VAR("dash::transform", global_offset);
   // Number of elements in local range:
-  size_t num_local_elements     = l_index_range.end - l_index_range.begin;
+  size_t num_local_elements     = l_index_range_in_a.end -
+                                  l_index_range_in_a.begin;
   DASH_LOG_TRACE_VAR("dash::transform", num_local_elements);
   // Global iterator to dart_gptr_t:
   dart_gptr_t dest_gptr         = ((GlobPtr<ValueType>)
@@ -229,7 +331,7 @@ GlobOutputIt transform(
       l_values,
       num_local_elements,
       binary_op.dart_operation(),
-      team.dart_id());
+      team_in_a.dart_id());
   return out_first + global_offset + num_local_elements;
 }
 

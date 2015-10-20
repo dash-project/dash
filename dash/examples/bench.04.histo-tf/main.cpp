@@ -83,16 +83,10 @@ int main(int argc, char **argv)
     return -1;
   }
 
-  // global array of keys and histogram
+  // input, global array of keys
   dash::Array<int> key_array(TOTAL_KEYS, dash::BLOCKED);
-  dash::Array<int> key_histo(MAX_KEY,    dash::BLOCKED);
-  
-  // Global array of global pointers to local histogram buffer of all units:
-  dash::Array< dash::GlobPtr<int> > local_buffers(num_units, dash::CYCLIC);
-  // Allocate local histogram buffer for active unit:
-  local_buffers[myid]          = dash::memalloc<int>(MAX_KEY);
-  dash::GlobPtr<int> gptr      = local_buffers[myid];
-  int *              local_buf = (int*)(gptr);
+  // result histograms, one per unit
+  dash::Array<int> key_histo(MAX_KEY * num_units, dash::BLOCKED);
   
   // PROCEDURE STEP 1 --------------------------------------------------------
   // "In a scalar sequential manner and using the key generation algorithm
@@ -157,73 +151,32 @@ int main(int argc, char **argv)
   // "Compute the rank of each key."
   //
 
-#if 1
-  // Original implementation
-
   // Compute the histogram for the values in local range:
   for (int i = 0; i < key_array.lsize(); i++) {
     int value = key_array.local[i];
-    local_buf[value]++; 
-  }
-  auto & pat = key_histo.pattern();
-
-  // Copy local histogram values to global range:
-
-  // Global offset of local range in key_histo:
-  auto goffs = pat.global(0);
-  // Copy local histogram to local range of global histogram:
-  for(int l = 0; l < key_histo.lsize(); l++) { 
-    key_histo.local[l] = local_buf[goffs + l];
+    ++key_histo.local[value];
   }
 
-  // Copy remote histogram values to local range:
-
-  // NOTE:
-  // This is inefficient because, for a histogram size of H = MAX_KEY,
-  // every histogram entry (= key rank) is communicated in a single, blocking
-  // MPI_Get call from every remote unit (=> H * (nunits-1)) instead of e.g.
-  // MPI_Alltoallv.
-  for(int unit = 1; unit < num_units; unit++) {
-    auto remote_id                = (myid + unit) % num_units;
-    dash::GlobPtr<int> remote_buf = local_buffers[remote_id];
-    for(int i = 0; i < key_histo.lsize(); i++) {
-      // NOTE: MPI_Get for every value
-      key_histo.local[i] += remote_buf[goffs + i];
-    }
+  if (dash::myid() != 0) {
+    // Add local histogram values to result histogram at unit 0:
+    dash::transform<int>(key_histo.lbegin(),          // A begin
+                         key_histo.lend(),            // A end
+                         key_histo.begin(),  // B
+                         key_histo.begin(),  // C = plus(A,B)
+                         dash::plus<int>());
   }
-#endif
+  // Wait for all units to accumulate their local results to local histogram
+  // of unit 0:
+  dash::barrier();
 
-#if 0
-  // NOTE:
-  // More efficient implementation using dash::transform is disabled for now
-  // as it does not support optimization to MPI_Alltoall, yet.
+  if (dash::myid() != 0) {
+    // Overwrite local histogram result with result histogram from unit 0:
+    dash::copy(key_histo.begin(),           // Begin of block at unit 0
+               key_histo.begin() + MAX_KEY, // End of block at unit 0
+               key_histo.lbegin());
+  }
 
-  // Local range of key_histo to global range:
-  auto local_block_viewspec = key_histo.pattern().local_block(0);
-  // Global offset of first element in local range:
-  auto local_block_gbegin   = local_block_viewspec[0].offset;
-
-  DASH_ASSERT_EQ(
-      local_block_viewspec[0].extent,
-      MAX_KEY,
-      "Unexpected extent of local block");
-
-  DASH_LOG_DEBUG("Call dash::transform ...");
-  // key_histo[i] += local_buf[i]
-  dash::transform<int>(
-      // Input A begin
-      static_cast<int*>(local_buf),
-      // Input A end
-      static_cast<int*>(local_buf + MAX_KEY),
-      // Input B begin
-      key_histo.begin(),
-      // Output = ReduceOp(A,B)
-      key_histo.begin(),
-      // ReduceOp
-      dash::plus<int>());
-  DASH_LOG_DEBUG("Finished dash::transform");
-#endif
-
+  // Wait for all units to obtain the result histogram:
   dash::barrier();
   
   // PROCEDURE STEP 5 --------------------------------------------------------
@@ -233,14 +186,13 @@ int main(int argc, char **argv)
   auto time_elapsed_usec = Timer::ElapsedSince(ts_start);
   auto mkeys_per_sec     = static_cast<double>(TOTAL_KEYS) /
                              time_elapsed_usec;
-
   if (verbose && myid == 0) {
-    cout << "Histogram size: " << key_histo.size()
+    cout << "Histogram size: " << key_histo.local.size()
          << endl
          << "------------------------"
          << endl;
-    for(int i = 0; i < key_histo.size(); i++) {
-      cout << std::setw(5) << i << ": " << key_histo[i]
+    for(int i = 0; i < key_histo.local.size(); ++i) {
+      cout << std::setw(5) << i << ": " << key_histo.local[i]
            << endl;
     }
   }
