@@ -11,6 +11,7 @@
 #include <dash/dart/gaspi/dart_mem.h>
 #include <dash/dart/gaspi/dart_translation.h>
 #include <dash/dart/gaspi/dart_team_private.h>
+#include <dash/dart/gaspi/dart_communication_priv.h>
 
 
 
@@ -106,18 +107,7 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
 
     // Get the pointer to the recv buffer in the segment
     gaspi_pointer_t recv_buffer_ptr = dart_gaspi_buffer_ptr + recv_buffer_offset;
-    /**
-     * Actual Soultion:
-     *          -Copy data to heap memory for the translation table
-     * Problem:
-     *          -A memcpy must be executed
-     *
-     *  Other solution:
-     *          -save pointer to segment in the translation table
-     *  Problem:
-     *          -the dart_gaspi_buffer has a static size and can't be resized
-     *
-     */
+
     memcpy(gaspi_seg_ids, recv_buffer_ptr, sizeof(gaspi_segment_id_t) * teamsize);
 
     /* -- Updating infos on gptr -- */
@@ -133,17 +123,10 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
     item.gaspi_seg_ids = gaspi_seg_ids;
     item.own_gaspi_seg_id = gaspi_seg_id;
     item.unit_count = teamsize;
-    // relative unit
-    item.requests_per_unit = (queue_t *) malloc(sizeof(queue_t) * teamsize);
-    assert(item.requests_per_unit);
-
-    for(int i = 0 ; i < item.unit_count ; ++i)
-    {
-        DART_CHECK_ERROR(init_handle_queue( &(item.requests_per_unit[i]) ));
-    }
 
     /* Add this newly generated correspondence relationship record into the translation table. */
     dart_adapt_transtable_add (item);
+    DART_CHECK_ERROR(inital_rma_request_entry(item.seg_id));
     dart_memid++;
 
     return DART_OK;
@@ -151,19 +134,20 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
 
 dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr)
 {
-    dart_unit_t        unitid;
-    gaspi_segment_id_t gaspi_seg_id;
     int16_t            seg_id = gptr.segid;
-
-    DART_CHECK_ERROR(dart_team_myid (teamid, &unitid));
-    if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &gaspi_seg_id) == -1)
+    gaspi_segment_id_t segs;
+    /*
+     * TODO May be wait on local completion ??
+     */
+    DART_CHECK_ERROR(delete_rma_requests(seg_id));
+    if(dart_adapt_transtable_get_local_gaspi_seg_id(seg_id, &segs) == -1)
     {
         return DART_ERR_INVAL;
     }
 
-    DART_CHECK_ERROR(gaspi_segment_delete(gaspi_seg_id));
+    DART_CHECK_ERROR(gaspi_segment_delete(segs));
 
-    DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, gaspi_seg_id));
+    DART_CHECK_ERROR(seg_stack_push(&dart_free_coll_seg_ids, segs));
 
     /* Remove the related correspondence relation record from the related translation table. */
     if(dart_adapt_transtable_remove(seg_id) == -1)
