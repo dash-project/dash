@@ -35,6 +35,22 @@ dart_ret_t inital_rma_request_table()
     return DART_OK;
 }
 
+dart_ret_t inital_rma_request_entry(int16_t seg_id)
+{
+    rma_request_table[seg_id] = NULL;
+    return DART_OK;
+}
+
+dart_ret_t delete_rma_requests(int16_t seg_id)
+{
+    if(rma_request_table[seg_id] != NULL)
+    {
+        destroy_rbtree(rma_request_table[seg_id]);
+        rma_request_table[seg_id] = NULL;
+    }
+    return DART_OK;
+}
+
 dart_ret_t destroy_rma_request_table()
 {
     for(int i = 0; i < GASPI_MAX_MSEGS; ++i)
