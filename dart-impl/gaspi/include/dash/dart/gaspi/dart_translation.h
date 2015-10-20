@@ -9,8 +9,6 @@
 #include <stdio.h>
 #include <GASPI.h>
 #include <dash/dart/if/dart_types.h>
-#include "handle_queue.h"
-
 /** @brief Definition of translation table.
  *
  *  This global translation table is created for dart collective memory allocation.
@@ -32,10 +30,6 @@ typedef struct
     /* the gaspi segment id set of the memory location of all the units in certain team. */
     gaspi_segment_id_t * gaspi_seg_ids;
     gaspi_segment_id_t own_gaspi_seg_id;
-    /*
-     * TODO use a red-black tree instead of an array -> fast access and low memory consumption
-     */
-    queue_t * requests_per_unit;
     size_t unit_count;
 }info_t;
 
@@ -79,10 +73,6 @@ int dart_adapt_transtable_get_entry(int16_t seg_id, node_t * entry);
 int dart_adapt_transtable_get_local_gaspi_seg_id(int16_t seg_id, gaspi_segment_id_t * own_segid);
 
 int dart_adapt_transtable_get_gaspi_seg_id (int16_t seg_id, dart_unit_t rel_unit, gaspi_segment_id_t * segid);
-
-int dart_adapt_transtable_add_handle(int16_t seg_id, dart_unit_t rel_unit, struct dart_handle_struct * handle);
-
-int dart_adapt_transtable_get_handle_queue(int16_t seg_id, dart_unit_t rel_unit, queue_t ** queue);
 
 /** @brief Query the length of the global memory block indicated by the specified seg_id.
  *

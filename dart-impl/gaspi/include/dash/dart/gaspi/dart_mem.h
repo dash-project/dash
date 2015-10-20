@@ -11,7 +11,6 @@
 #include <inttypes.h>
 
 #include <GASPI.h>
-#include "handle_queue.h"
 
 #define DART_MAX_TEAM_NUMBER (256)
 #define DART_MAX_LENGTH (1024*1024*16)
@@ -21,13 +20,8 @@ struct dart_buddy {
     uint8_t tree[1];
 };
 
-extern queue_t * dart_non_collective_rma_request;
 extern char* dart_mempool_localalloc;
 extern struct dart_buddy* dart_localpool;
-
-extern const gaspi_segment_id_t dart_transferpool_seg;
-extern const gaspi_size_t dart_transferpool_size;
-extern struct dart_buddy* dart_transferpool;
 
 struct dart_buddy* dart_buddy_new(int level);
 void dart_buddy_delete(struct dart_buddy *);

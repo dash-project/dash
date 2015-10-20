@@ -22,7 +22,6 @@ int dart_adapt_transtable_add (info_t item)
     p->trans.gaspi_seg_ids     = item.gaspi_seg_ids;
     p->trans.own_gaspi_seg_id  = item.own_gaspi_seg_id;
     p->trans.unit_count        = item.unit_count;
-    p->trans.requests_per_unit = item.requests_per_unit;
     p->next                    = NULL;
 
     /* The translation table is empty. */
@@ -66,13 +65,6 @@ int dart_adapt_transtable_remove (int16_t seg_id)
         }
         pre->next = p->next;
     }
-
-    for(int i = 0 ; i < p->trans.unit_count ; ++i)
-    {
-        DART_CHECK_ERROR(destroy_handle_queue( &(p->trans.requests_per_unit[i]) ));
-    }
-
-    free(p->trans.requests_per_unit);
     free(p->trans.gaspi_seg_ids);
     free(p);
     return 0;
@@ -134,27 +126,6 @@ int dart_adapt_transtable_add_handle(int16_t seg_id, dart_unit_t rel_unit, struc
         return -1;
     }
 
-    DART_CHECK_ERROR(enqueue_handle( &(p->trans.requests_per_unit[rel_unit]), handle));
-    return 0;
-}
-
-int dart_adapt_transtable_get_handle_queue(int16_t seg_id, dart_unit_t rel_unit, queue_t ** queue)
-{
-    node_t p;
-    p = dart_transtable_globalalloc;
-
-    while ((p != NULL) && (seg_id > ((p->trans).seg_id)))
-    {
-        p = p->next;
-    }
-
-    if ((!p) || (seg_id != (p->trans).seg_id))
-    {
-        fprintf(stderr,"Invalid seg_id: %d, can not get the related displacement", seg_id);
-        return -1;
-    }
-
-    *queue = &(p->trans.requests_per_unit[rel_unit]);
     return 0;
 }
 
