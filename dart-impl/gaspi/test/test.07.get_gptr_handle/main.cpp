@@ -61,6 +61,7 @@ TEST(Get_Handle, different_segment)
     TEST_DART_CALL(dart_memfree(gptr_priv));
     TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
     TEST_DART_CALL(dart_team_memfree(DART_TEAM_ALL, gptr_team));
+    TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
 }
 
 TEST(Get_Handle, same_segment)
@@ -112,6 +113,7 @@ TEST(Get_Handle, same_segment)
     TEST_DART_CALL(dart_delete_handle(&handle));
     TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
     TEST_DART_CALL(dart_team_memfree(DART_TEAM_ALL, g));
+    TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
 }
 
 TEST(Get_Handle, local_access)
@@ -160,6 +162,7 @@ TEST(Get_Handle, local_access)
     TEST_DART_CALL(dart_memfree(gptr_priv));
     TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
     TEST_DART_CALL(dart_team_memfree(DART_TEAM_ALL, gptr_team));
+    TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
 }
 
 TEST(Get_Handle, Many_Gets)
@@ -172,6 +175,8 @@ TEST(Get_Handle, Many_Gets)
 
     TEST_DART_CALL(dart_myid(&myid));
     TEST_DART_CALL(dart_size(&team_size));
+
+    TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
 
     dart_unit_t     next_unit = (myid + 1 + team_size) % team_size;
     dart_handle_t * handles   = new dart_handle_t[number_of_gets];
@@ -236,6 +241,8 @@ TEST(Get_Handle, Many_Gets)
 
     TEST_DART_CALL(dart_team_memfree(DART_TEAM_ALL, src_seg));
     TEST_DART_CALL(dart_team_memfree(DART_TEAM_ALL, dest_seg));
+
+    TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
 }
 
 int main(int argc, char* argv[])
