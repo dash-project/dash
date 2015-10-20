@@ -44,7 +44,6 @@ using dash::util::TimeMeasure;
 #  define NUM_BUCKETS_LOG_2   3
 #  define I_MAX               1
 #  define SEED                314159265
-#  define DBGOUT
 #endif
 
 #define TOTAL_KEYS            (1 << TOTAL_KEYS_LOG_2)
@@ -62,6 +61,11 @@ double find_my_seed(int, int, long, double, double);
 int main(int argc, char **argv)
 {
   dash::init(&argc, &argv);
+
+  bool verbose = false;
+  if (argc > 1 && std::string(argv[1]) == "-v") {
+    verbose = true;
+  }
 
   Timer::Calibrate(TimeMeasure::Clock);
 
@@ -119,16 +123,19 @@ int main(int argc, char **argv)
   //  into the memory system."
   //
 
-#ifdef DBGOUT
   if (myid == 0) {
-    cout << "key_array (size: " << key_array.size() << "):"
+    cout << "Number of keys: " << key_array.size()
+         << endl
+         << "Max key:        " << MAX_KEY
          << endl;
-    for(int i=0; i < std::min<size_t>(200, key_array.size()); i++ ) {
-      cout << key_array[i] << " ";
+    if (verbose) {
+      for(int i=0; i < std::min<size_t>(200, key_array.size()); i++ ) {
+        cout << key_array[i] << " ";
+      }
+      cout << endl;
     }
-    cout << endl;
   }
-#endif
+
   // Wait for initialization of input values:
   dash::barrier();
 
@@ -222,25 +229,28 @@ int main(int argc, char **argv)
   // PROCEDURE STEP 5 --------------------------------------------------------
   // "End timing."
   //
-  if (myid == 0) {
-    auto time_elapsed_usec = Timer::ElapsedSince(ts_start);
-    auto mkeys_per_sec     = static_cast<double>(TOTAL_KEYS) /
-                               time_elapsed_usec;
-    cout << "MKeys/sec: " << mkeys_per_sec
-         << endl;
-  }
+  
+  auto time_elapsed_usec = Timer::ElapsedSince(ts_start);
+  auto mkeys_per_sec     = static_cast<double>(TOTAL_KEYS) /
+                             time_elapsed_usec;
 
-#ifdef DBGOUT
-  dash::barrier();
-  if (myid == 0) {
-    cout << "key_histo (size: " << key_histo.size() << "):"
+  if (verbose && myid == 0) {
+    cout << "Histogram size: " << key_histo.size()
+         << endl
+         << "------------------------"
          << endl;
     for(int i = 0; i < key_histo.size(); i++) {
       cout << std::setw(5) << i << ": " << key_histo[i]
            << endl;
     }
   }
-#endif
+
+  if (myid == 0) {
+    cout << "------------------------"
+         << endl
+         << "MKeys/sec:      " << mkeys_per_sec
+         << endl;
+  }
 
   dash::finalize();
 
