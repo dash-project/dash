@@ -261,7 +261,11 @@ template <
     TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
 class LocalMatrixRef
 {
- public:
+private:
+  typedef MatrixRefView<T, NumDimensions, PatternT>
+    MatrixRefView_t;
+
+public:
   template<
     typename T_,
     dim_t NumDimensions_,
@@ -269,7 +273,7 @@ class LocalMatrixRef
     class PatternT_ >
   friend class Matrix;
 
- public:
+public:
   typedef T                                                   value_type;
   typedef PatternT                                          pattern_type;
   typedef typename PatternT::index_type                       index_type;
@@ -288,7 +292,10 @@ class LocalMatrixRef
   typedef       GlobIter<value_type, PatternT>                   pointer;
   typedef const GlobIter<value_type, PatternT>             const_pointer;
 
- public:
+  template <dim_t NumViewDim>
+    using View = LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT>;
+
+public:
   /**
    * Default constructor.
    */
@@ -306,6 +313,29 @@ class LocalMatrixRef
    */
   LocalMatrixRef<T, NumDimensions, CUR, PatternT>(
     Matrix<T, NumDimensions, index_type, PatternT> * mat);
+
+  /**
+   * View at local block at given local block offset.
+   */
+  View<NumDimensions> block(
+    index_type block_lindex)
+  {
+    // Note: This is equivalent to
+    //   foreach (d in 0 ... NumDimensions):
+    //     view = view.sub<d>(block_view.offset(d),
+    //                        block_view.extent(d));
+    //
+    DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
+    auto pattern = _refview->_mat->_pattern;
+    // Resolve the block's viewspec:
+    ViewSpec<NumDimensions> block_view = pattern.local_block(block_lindex);
+    // Return a view specified by the block's viewspec:
+    View<NumDimensions> view;
+    view._refview            = new MatrixRefView_t(this);
+    view._refview->_viewspec = block_view;
+    DASH_LOG_TRACE("LocalMatrixRef.block >", block_view);
+    return view;
+  }
 
   inline    operator LocalMatrixRef<T, NumDimensions, CUR-1, PatternT> && ();
   // SHOULD avoid cast from MatrixRef to LocalMatrixRef.
@@ -400,8 +430,9 @@ class LocalMatrixRef
     /// Number of columns in the range
     size_type extent);
 
- private:
-  MatrixRefView<T, NumDimensions, PatternT> * _refview;
+private:
+  MatrixRefView_t * _refview;
+
 };
 
 /**
@@ -862,7 +893,8 @@ public:
   /**
    * View at block at given global block offset.
    */
-  View<NumDimensions> block(index_type block_gindex)
+  View<NumDimensions> block(
+    index_type block_gindex)
   {
     // Note: This is equivalent to
     //   foreach (d in 0 ... NumDimensions):

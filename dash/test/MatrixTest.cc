@@ -430,7 +430,7 @@ TEST_F(MatrixTest, BlockViews)
               *(block_gi_q.begin() + (tilesize-1)));
 }
 
-TEST_F(MatrixTest, SubBlockIteration)
+TEST_F(MatrixTest, ViewIteration)
 {
   typedef int element_t;
   dart_unit_t myid   = dash::myid();
