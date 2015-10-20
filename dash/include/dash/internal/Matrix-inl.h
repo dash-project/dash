@@ -127,10 +127,10 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline constexpr typename LocalMatrixRef<T, NumDim, CUR, PatternT>::size_type
+constexpr typename LocalMatrixRef<T, NumDim, CUR, PatternT>::size_type
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::extent(
-  dim_t dim) const
+  dim_t dim) const noexcept
 {
   if(dim >= NumDim || dim == 0) {
     DASH_THROW(
@@ -143,9 +143,9 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline constexpr
+constexpr
   std::array<
-    typename LocalMatrixRef<T, NumDim, CUR, PatternT>::size_type,
+    typename PatternT::size_type,
     NumDim>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::extents() const noexcept
@@ -155,8 +155,8 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 typename LocalMatrixRef<T, NumDim, CUR, PatternT>::size_type
-LocalMatrixRef<T, NumDim, CUR, PatternT>
-::size() const
+constexpr LocalMatrixRef<T, NumDim, CUR, PatternT>
+::size() const noexcept
 {
   return _refview->_viewspec.size();
 }

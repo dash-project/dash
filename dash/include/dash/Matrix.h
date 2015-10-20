@@ -264,6 +264,8 @@ class LocalMatrixRef
 private:
   typedef MatrixRefView<T, NumDimensions, PatternT>
     MatrixRefView_t;
+  typedef std::array<typename PatternT::size_type, NumDimensions>
+    Extents_t;
 
 public:
   template<
@@ -341,10 +343,31 @@ public:
   // SHOULD avoid cast from MatrixRef to LocalMatrixRef.
   // Different operation semantics.
   inline    operator MatrixRef<T, NumDimensions, CUR, PatternT> ();
-  constexpr size_type extent(dim_t dim) const;
-  constexpr std::array<size_type, NumDimensions> extents() const noexcept;
-  inline    size_type size() const;
+
   inline    T & local_at(size_type pos);
+
+  inline    Team            & team();
+
+  constexpr size_type         size()                const noexcept;
+  constexpr size_type         local_size()          const noexcept;
+  constexpr size_type         local_capacity()      const noexcept;
+  constexpr size_type         extent(dim_t dim)     const noexcept;
+  constexpr Extents_t         extents()             const noexcept;
+  constexpr bool              empty()               const noexcept;
+
+  inline    void              barrier()             const;
+
+  /**
+   * The pattern used to distribute matrix elements to units in its
+   * associated team.
+   */
+  inline    const PatternT  & pattern()             const;
+
+  inline    const_pointer     data()                const noexcept;
+  inline    iterator          begin()                     noexcept;
+  inline    const_iterator    begin()               const noexcept;
+  inline    iterator          end()                       noexcept;
+  inline    const_iterator    end()                 const noexcept;
 
   /**
    * Fortran-style subscript operator.

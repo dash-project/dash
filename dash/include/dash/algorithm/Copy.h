@@ -9,6 +9,8 @@
 
 namespace dash {
 
+#ifdef DOXYGEN
+
 /**
  * Copies the elements in the range, defined by \c [in_first, in_last), to
  * another range beginning at \c out_first.
@@ -42,6 +44,8 @@ OutputIt copy(
   InputIt  in_first,
   InputIt  in_last,
   OutputIt out_first);
+
+#endif // DOXYGEN
 
 namespace internal {
 
@@ -255,6 +259,26 @@ GlobOutputIt copy(
                                          out_first);
   }
   return out_last;
+}
+
+/**
+ * Specialization of \c dash::copy as global-to-global blocking copy
+ * operation.
+ */
+template <
+  typename ValueType,
+  class GlobInputIt,
+  class GlobOutputIt >
+ValueType * copy(
+  GlobInputIt   in_first,
+  GlobInputIt   in_last,
+  GlobOutputIt  out_first)
+{
+  DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
+  
+  // TODO:
+  // - Implement adapter for local-to-global dash::copy here
+  // - Return if global input range has no local sub-range
 }
 
 } // namespace dash

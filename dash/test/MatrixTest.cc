@@ -521,3 +521,62 @@ TEST_F(MatrixTest, ViewIteration)
   }
 }
 
+TEST_F(MatrixTest, BlockCopy)
+{
+  typedef int element_t;
+  dart_unit_t myid   = dash::myid();
+  size_t num_units   = dash::Team::All().size();
+  size_t tilesize_x  = 3;
+  size_t tilesize_y  = 2;
+  size_t tilesize    = tilesize_x * tilesize_y;
+  size_t extent_cols = tilesize_x * num_units * 4;
+  size_t extent_rows = tilesize_y * num_units * 4;
+  typedef dash::TilePattern<2> pattern_t;
+  LOG_MESSAGE("Initialize matrix ...");
+  dash::TeamSpec<2> team_spec(num_units, 1);
+  dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t>
+               matrix_a(
+                 dash::SizeSpec<2>(
+                   extent_cols,
+                   extent_rows),
+                 dash::DistributionSpec<2>(
+                   dash::TILE(tilesize_x),
+                   dash::TILE(tilesize_y)),
+                 dash::Team::All(),
+                 team_spec);
+  dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t>
+               matrix_b(
+                 dash::SizeSpec<2>(
+                   extent_cols,
+                   extent_rows),
+                 dash::DistributionSpec<2>(
+                   dash::TILE(tilesize_x),
+                   dash::TILE(tilesize_y)),
+                 dash::Team::All(),
+                 team_spec);
+  // Fill matrix
+  if(myid == 0) {
+    LOG_MESSAGE("Assigning matrix values");
+    for(int col = 0; col < matrix_a.extent(0); ++col) {
+      for(int row = 0; row < matrix_a.extent(1); ++row) {
+        auto value = (row * matrix_a.extent(0)) + col;
+        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
+                    col, row, value);
+        matrix_a[col][row] = value;
+        matrix_b[col][row] = value;
+      }
+    }
+  }
+  LOG_MESSAGE("Wait for team barrier ...");
+  dash::barrier();
+  LOG_MESSAGE("Team barrier passed");
+
+  // Copy block 1 of matrix_a to block 0 of matrix_b:
+  dash::copy<element_t>(matrix_a.block(1).begin(),
+                        matrix_a.block(1).end(),
+                        matrix_b.block(0).begin());
+
+  LOG_MESSAGE("Wait for team barrier ...");
+  dash::barrier();
+  LOG_MESSAGE("Team barrier passed");
+}
