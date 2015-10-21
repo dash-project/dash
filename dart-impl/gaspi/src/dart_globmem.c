@@ -125,7 +125,7 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
     item.unit_count = teamsize;
 
     /* Add this newly generated correspondence relationship record into the translation table. */
-    dart_adapt_transtable_add (item);
+    dart_adapt_transtable_add(item);
     DART_CHECK_ERROR(inital_rma_request_entry(item.seg_id));
     dart_memid++;
 
