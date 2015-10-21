@@ -5,7 +5,7 @@
 #include <dash/dart/gaspi/gaspi_utils.h>
 #include <dash/dart/gaspi/dart_communication_priv.h>
 
-tree_root * rma_request_table[GASPI_MAX_MSEGS];
+tree_root * rma_request_table[DART_MAX_SEGS];
 
 typedef struct{
     dart_unit_t key;
@@ -28,7 +28,7 @@ static int64_t compare_rma_requests(void* keyA, void* keyB)
 
 dart_ret_t inital_rma_request_table()
 {
-    for(int i = 0; i < GASPI_MAX_MSEGS; ++i)
+    for(int i = 0; i < DART_MAX_SEGS; ++i)
     {
         rma_request_table[i] = NULL;
     }
@@ -53,7 +53,7 @@ dart_ret_t delete_rma_requests(int16_t seg_id)
 
 dart_ret_t destroy_rma_request_table()
 {
-    for(int i = 0; i < GASPI_MAX_MSEGS; ++i)
+    for(int i = 0; i < DART_MAX_SEGS; ++i)
     {
         if(rma_request_table[i] != NULL)
         {
