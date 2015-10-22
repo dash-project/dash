@@ -8,7 +8,8 @@ fi
 await_confirm() {
   if ! $FORCE_BUILD; then
     echo ""
-    read -p "   To build using these settings, hit ENTER"
+    echo "   To build using these settings, hit ENTER"
+    read confirm
   fi
 }
 

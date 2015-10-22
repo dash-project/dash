@@ -1,4 +1,4 @@
-project(project_dash_libdash)
+project(project_dash_libdash CXX)
 
 # Load global build settings
 set(DASH_DART_IF_INCLUDE_DIR ${DASH_DART_IF_INCLUDE_DIR} 
@@ -87,6 +87,14 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${DASH_LIBRARY} PROPERTIES
     COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
   )
+  set_target_properties(
+    ${DASH_LIBRARY} PROPERTIES
+    CXX_STANDARD 11
+  )
+  set_target_properties(
+    ${DASH_LIBRARY} PROPERTIES
+    CXX_STANDARD_REQUIRED 11
+  )
   include_directories(
     ${ADDITIONAL_INCLUDES}
   )
@@ -130,6 +138,14 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
         set_target_properties(
           ${exampletarget} PROPERTIES
           COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+        )
+        set_target_properties(
+          ${exampletarget} PROPERTIES
+          CXX_STANDARD 11
+        )
+        set_target_properties(
+          ${exampletarget} PROPERTIES
+          CXX_STANDARD_REQUIRED 11
         )
         if (${dart_variant} STREQUAL "mpi")
           include_directories(
@@ -177,6 +193,14 @@ if (BUILD_TESTS)
     set_target_properties(
       ${DASH_TEST} PROPERTIES
       COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+    )
+    set_target_properties(
+      ${DASH_TEST} PROPERTIES
+      CXX_STANDARD 11
+    )
+    set_target_properties(
+      ${DASH_TEST} PROPERTIES
+      CXX_STANDARD_REQUIRED 11
     )
 
     # Installation
