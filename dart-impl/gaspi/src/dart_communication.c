@@ -275,8 +275,8 @@ dart_ret_t dart_put_gptr(dart_gptr_t dest, dart_gptr_t src, size_t nbytes)
      */
     gaspi_segment_id_t dest_gaspi_seg = dart_mempool_seg_localalloc;
     gaspi_offset_t     dest_offset    = dest.addr_or_offs.offset;
-    uint16_t           dest_index     = dest.flags;
     int16_t            dest_seg_id    = dest.segid;
+    uint16_t           dest_index     = dest.flags;
     dart_unit_t        target_unit    = dest.unitid;
     /*
      * local site
@@ -316,10 +316,10 @@ dart_ret_t dart_put_gptr(dart_gptr_t dest, dart_gptr_t src, size_t nbytes)
         DART_CHECK_GASPI_ERROR(check_queue_size(queue));
     }
 
-    DART_CHECK_GASPI_ERROR(gaspi_write(src_seg_id,
+    DART_CHECK_GASPI_ERROR(gaspi_write(src_gaspi_seg,
                                        src_offset,
                                        target_unit,
-                                       dest_seg_id,
+                                       dest_gaspi_seg,
                                        dest_offset,
                                        nbytes,
                                        queue,
