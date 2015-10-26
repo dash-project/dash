@@ -18,6 +18,10 @@ exit_message() {
   echo "Done. To install DASH, run  make install  in ./build"
 }
 
+if [ "${PAPI_HOME}" = "" ]; then
+  PAPI_HOME=$PAPI_BASE
+fi
+
 mkdir -p build
 rm -Rf ./build/*
 (cd ./build && cmake -DCMAKE_BUILD_TYPE=Release \
