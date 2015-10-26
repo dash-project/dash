@@ -42,7 +42,7 @@ public:
     __asm__ volatile ("rdtscp\n" : "=a" (rax), "=d" (rdx), "=c" (tsc_aux) : : );
     return (rdx << 32) + rax;
 #elif defined(DASH__ARCH__ARCH_X86_32)
-    int64 ret;
+    int64_t ret;
     __asm__ volatile ("rdtsc" : "=A" (ret) );
     return ret;
 #elif defined(DASH__ARCH__ARCH_ARMV6)
