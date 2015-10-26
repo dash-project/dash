@@ -51,7 +51,7 @@ public:
    * in the distribution's dimension.
    */
   template <typename IndexType, typename SizeType>
-  constexpr IndexType local_index_to_block_coord(
+  inline IndexType local_index_to_block_coord(
     // The unit's offset in the distribution's dimension
     // within the global team specification
     IndexType unit_teamspec_coord,
@@ -106,7 +106,7 @@ public:
    * in the distribution's dimension.
    */
   template <typename IndexType, typename SizeType>
-  constexpr IndexType local_to_global_block_coord(
+  inline IndexType local_to_global_block_coord(
     // The unit's offset in the distribution's dimension
     // within the global team specification
     IndexType unit_teamspec_coord,
@@ -125,7 +125,7 @@ public:
    * a given total number of units.
    */
   template <typename IndexType, typename SizeType>
-  constexpr IndexType max_blocksize_in_range(
+  inline IndexType max_blocksize_in_range(
     /// Number of elements to distribute
     IndexType range,
     /// Number of units to which elements are distributed

@@ -232,6 +232,36 @@ public:
   }
 
   /**
+   * Conversion to local pointer.
+   * 
+   * \returns  A native pointer to the local element referenced by this
+   *           GlobPtr instance, or \c nullptr if the referenced element
+   *           is not local to the calling unit.
+   */
+  T * local() {
+    void *addr = 0;
+    DASH_ASSERT_RETURNS(
+      dart_gptr_getaddr(m_dartptr, &addr),
+      DART_OK);
+    return static_cast<T*>(addr);
+  }
+
+  /**
+   * Conversion to local const pointer.
+   * 
+   * \returns  A native pointer to the local element referenced by this
+   *           GlobPtr instance, or \c nullptr if the referenced element
+   *           is not local to the calling unit.
+   */
+  const T * local() const {
+    void *addr = 0;
+    DASH_ASSERT_RETURNS(
+      dart_gptr_getaddr(m_dartptr, &addr),
+      DART_OK);
+    return static_cast<const T*>(addr);
+  }
+
+  /**
    * Set the global pointer's associated unit.
    */
   void set_unit(dart_unit_t unit_id) {

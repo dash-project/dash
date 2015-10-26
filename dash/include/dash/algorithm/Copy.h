@@ -128,10 +128,10 @@ ValueType * copy(
     DASH_LOG_TRACE_VAR("dash::copy", l_g_offset_end);
     // Convert local subrange of global input to native pointers:
     ValueType * l_in_first = ((GlobPtr<ValueType>)
-                              (in_first + l_g_offset_begin));
+                              (in_first + l_g_offset_begin)).local();
     DASH_LOG_TRACE_VAR("dash::copy", l_in_first);
     ValueType * l_in_last  = ((GlobPtr<ValueType>)
-                              (in_first + (l_g_offset_end - 1))) + 1;
+                              (in_first + (l_g_offset_end - 1))).local() + 1;
     DASH_LOG_TRACE_VAR("dash::copy", l_in_last);
     // ... [ ........ | --- l --- | ........ ]
     //     ^          ^           ^          ^

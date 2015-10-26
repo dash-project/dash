@@ -123,7 +123,7 @@ public:
   /**
    * Equality comparison operator.
    */
-  constexpr bool operator==(const self_t & other) const {
+  inline bool operator==(const self_t & other) const {
     for (dim_t d = 0; d < NumDimensions; ++d) {
       if (dim(d) != other.dim(d)) return false;
     }
