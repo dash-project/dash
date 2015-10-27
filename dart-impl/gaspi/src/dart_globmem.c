@@ -60,7 +60,7 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
     int result = dart_adapt_teamlist_convert(teamid, &index);
     if (result == -1)
     {
-        return DART_ERR_INVAL;
+        goto dart_error_label;
     }
 
     gaspi_group = dart_teams[index].id;
@@ -76,14 +76,14 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
     }
 
     /* get a free gaspi segment id */
-    DART_CHECK_ERROR(seg_stack_pop(&dart_free_coll_seg_ids, &gaspi_seg_id));
+    DART_CHECK_ERROR_GOTO(dart_error_label, seg_stack_pop(&dart_free_coll_seg_ids, &gaspi_seg_id));
 
     /* Create the gaspi-segment with memory allocation */
-    DART_CHECK_ERROR(gaspi_segment_create(gaspi_seg_id,
-                                          nbytes,
-                                          gaspi_group,
-                                          GASPI_BLOCK,
-                                          GASPI_MEM_INITIALIZED));
+    DART_CHECK_ERROR_GOTO(dart_error_label, gaspi_segment_create(gaspi_seg_id,
+                                                                 nbytes,
+                                                                 gaspi_group,
+                                                                 GASPI_BLOCK,
+                                                                 GASPI_MEM_INITIALIZED));
 
     *((gaspi_segment_id_t *) dart_gaspi_buffer_ptr) = gaspi_seg_id;
     /**
@@ -98,12 +98,12 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
     /**
      * collect the other segment numbers of the team
      */
-    DART_CHECK_ERROR(gaspi_allgather(dart_gaspi_buffer_id,
-                                     0UL,
-                                     dart_gaspi_buffer_id,
-                                     recv_buffer_offset,
-                                     sizeof(gaspi_segment_id_t),
-                                     gaspi_group));
+    DART_CHECK_ERROR_GOTO(dart_error_label, gaspi_allgather(dart_gaspi_buffer_id,
+                                                            0UL,
+                                                            dart_gaspi_buffer_id,
+                                                            recv_buffer_offset,
+                                                            sizeof(gaspi_segment_id_t),
+                                                            gaspi_group));
 
     // Get the pointer to the recv buffer in the segment
     gaspi_pointer_t recv_buffer_ptr = dart_gaspi_buffer_ptr + recv_buffer_offset;
@@ -126,10 +126,15 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
 
     /* Add this newly generated correspondence relationship record into the translation table. */
     dart_adapt_transtable_add(item);
-    DART_CHECK_ERROR(inital_rma_request_entry(item.seg_id));
+    DART_CHECK_ERROR_GOTO(dart_error_label, inital_rma_request_entry(item.seg_id));
     dart_memid++;
 
     return DART_OK;
+
+dart_error_label:
+    free(gaspi_seg_ids);
+    return DART_ERR_INVAL;
+
 }
 
 dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr)

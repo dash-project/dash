@@ -25,6 +25,18 @@ gaspi_return_t flush_queues(gaspi_queue_id_t queue_begin, gaspi_queue_id_t queue
 
 int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gaspi_rank_t size);
 
+#define DART_CHECK_ERROR_GOTO_TEMPL(expected, error_code, ret_type, label, func...)          \
+  do {                                                                                       \
+    const ret_type retval = func;                                                            \
+    if (retval != expected) {                                                                \
+      gaspi_printf("ERROR in %s : %s on line %i return value %i\n", #func,                   \
+                   __FILE__, __LINE__, retval);                                              \
+      goto label;                                                                            \
+    }                                                                                        \
+  }while (0)
+
+#define DART_CHECK_ERROR_GOTO(label, func...) DART_CHECK_ERROR_GOTO_TEMPL(DART_OK, DART_ERR_OTHER, dart_ret_t, label, func)
+
 #define DART_CHECK_ERROR_TEMPL(expected, error_code, ret_type, func...)          \
   do {                                                                           \
     const ret_type retval = func;                                                \
@@ -35,6 +47,7 @@ int gaspi_utils_compute_comms(int *parent, int **children, int me, int root, gas
     }                                                                            \
   }while (0)
 
+#define DART_CHECK_ERROR(func...) DART_CHECK_ERROR_TEMPL(DART_OK, DART_ERR_OTHER, dart_ret_t, func)
 #define DART_CHECK_ERROR(func...) DART_CHECK_ERROR_TEMPL(DART_OK, DART_ERR_OTHER, dart_ret_t, func)
 
 #define DART_CHECK_GASPI_ERROR(func...) DART_CHECK_ERROR_TEMPL(GASPI_SUCCESS, GASPI_ERROR, gaspi_return_t, func)

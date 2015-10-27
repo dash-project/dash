@@ -19,6 +19,7 @@ file(GLOB_RECURSE DASH_DART_IMPL_GASPI_HEADERS "include/*.h")
 set(DASH_DART_IF_INCLUDE_DIR ${DASH_DART_IF_INCLUDE_DIR}
     PARENT_SCOPE)
 
+message("Use compiler: " "${CC}")
 message("-- GASPI include path: " "${GASPI_INCLUDE_PATH}")
 
 ## Build targets

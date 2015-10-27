@@ -32,5 +32,8 @@ struct dart_group_struct {
     int l2g[MAXSIZE_GROUP];
 };
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DART_GASPI_GROUP_IMPL_H */
