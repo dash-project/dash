@@ -660,8 +660,7 @@ public:
    * Global pointer to the beginning of the array.
    */
   iterator begin() noexcept {
-    iterator res = iterator(m_begin);
-    return res;
+    return m_begin;
   }
   
   /**
@@ -675,8 +674,7 @@ public:
    * Global pointer to the end of the array.
    */
   iterator end() noexcept {
-    iterator res = iterator(m_end);
-    return res;
+    return m_end;
   }
 
   /**

@@ -16,7 +16,8 @@ namespace std {
   }
 }
 
-TEST_F(STLAlgorithmTest, Copy) {
+TEST_F(STLAlgorithmTest, Copy)
+{
   typedef std::pair<dart_unit_t, int> element_t;
   typedef dash::Array<element_t>      array_t;
   typedef array_t::const_iterator     const_it_t;
@@ -70,4 +71,67 @@ TEST_F(STLAlgorithmTest, Copy) {
   }
   // Free local memory
   delete[] local_range;
+}
+
+TEST_F(STLAlgorithmTest, StableSort)
+{
+  typedef int                      element_t;
+  typedef dash::Array<element_t>   array_t;
+  typedef array_t::const_iterator  const_it_t;
+  typedef array_t::index_type      index_t;
+
+  size_t local_size = 50;
+  dash::Array<element_t> array(_dash_size * local_size);
+  // Initialize local elements
+  LOG_MESSAGE("Initializing values (unit %d)", dash::myid());
+  index_t l_off = 0;
+  for (auto l_it = array.lbegin(); l_it != array.lend(); ++l_it, ++l_off) {
+    *l_it = 10000 - ((1 + l_off) * 100);
+  }
+  // Wait for all units to initialize their assigned range
+  array.barrier();
+
+  if (dash::myid() == 0) {
+    // Sort on global range:
+    auto begin = array.begin();
+    auto end   = array.end();
+
+#if 0
+    LOG_MESSAGE("/// gref_a = *begin");
+    auto gref_a = *begin;
+    LOG_MESSAGE("/// gref_a = 100");
+    gref_a = 100;
+    LOG_MESSAGE("=== *gref_a = %d", (int)gref_a);
+    LOG_MESSAGE("/// begin++");
+    ++begin;
+    LOG_MESSAGE("/// gref_b = *begin");
+    auto gref_b = *begin;
+    LOG_MESSAGE("/// gref_b = 200");
+    gref_b = 200;
+    LOG_MESSAGE("=== *gref_a = %d", (int)array[0]);
+    LOG_MESSAGE("=== *gref_b = %d", (int)array[1]);
+
+    return;
+#endif
+
+    LOG_MESSAGE("Sorting values");
+    try {
+      std::stable_sort(
+        begin,
+        end);
+    } catch (dash::exception::OutOfRange & oor) {
+      DASH_STACK_TRACE();
+      return;
+    }
+    // Test value order:
+    LOG_MESSAGE("Testing values");
+    int last = array[0];
+    int idx  = 0;
+    for (auto it = array.begin(); it != array.end(); ++it, ++idx) {
+      LOG_MESSAGE("Testing value at %d", idx);
+      int cur = *it;
+      ASSERT_GE_U(cur, last);
+      last = *it;
+    }
+  }
 }

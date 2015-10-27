@@ -6,6 +6,8 @@
 #include <dash/GlobPtr.h>
 #include <iostream>
 
+#define DASH__USE_DREF_CACHE
+
 namespace dash {
 
 typedef long long gptrdiff_t;
@@ -31,6 +33,14 @@ private:
   typedef typename PatternType::index_type
     IndexType;
 
+  static const size_t InvalidIndex = 2000; // static_cast<size_t>(-1);
+
+public:
+  typedef       ReferenceType                      reference;
+  typedef const ReferenceType                const_reference;
+  typedef       PointerType                          pointer;
+  typedef const PointerType                    const_pointer;
+
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
   static const MemArrange Arrangement   = PatternType::memory_order();
@@ -39,8 +49,15 @@ protected:
   GlobMem<ElementType> * _globmem;
   const PatternType    * _pattern;
   const ViewSpecType   * _viewspec;
-  size_t                 _idx;
-  size_t                 _max_idx;
+  /// Current position of the iterator.
+  size_t                 _idx        = 0;
+  /// Maximum position allowed for this iterator.
+  size_t                 _max_idx    = 0;
+
+  /// Whether the currently cached dereferences of this iterator are valid.
+  mutable size_t         _dref_idx   = InvalidIndex;
+  mutable ReferenceType  _gref;
+  mutable PointerType    _gptr;
 
   // For ostream output
   template <
@@ -61,7 +78,9 @@ public:
     _pattern(nullptr),
     _viewspec(nullptr),
     _idx(0),
-    _max_idx(0) {
+    _max_idx(0),
+    _dref_idx(InvalidIndex)
+  {
     DASH_LOG_TRACE_VAR("GlobIter()", _idx);
     DASH_LOG_TRACE_VAR("GlobIter()", _max_idx);
   }
@@ -78,7 +97,9 @@ public:
     _pattern(&pat),
     _viewspec(nullptr),
     _idx(idx),
-    _max_idx(pat.size() - 1) {
+    _max_idx(pat.size() - 1),
+    _dref_idx(InvalidIndex)
+  {
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", _idx);
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", _max_idx);
   }
@@ -96,7 +117,9 @@ public:
     _pattern(&pat),
     _viewspec(&viewspec),
     _idx(idx),
-    _max_idx(viewspec.size() - 1) {
+    _max_idx(viewspec.size() - 1),
+    _dref_idx(InvalidIndex)
+  {
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _idx);
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _max_idx);
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _viewspec->offsets());
@@ -107,23 +130,54 @@ public:
    * Copy constructor.
    */
   GlobIter(
-    const self_t & other) = default;
+    const self_t & other)
+  : _globmem(other._globmem), 
+    _pattern(other._pattern),
+    _viewspec(other._viewspec),
+    _idx(other._idx),
+    _max_idx(other._max_idx),
+    _dref_idx(InvalidIndex)
+  { }
 
   /**
    * Assignment operator.
    */
   self_t & operator=(
-    const self_t & other) = default;
+    const self_t & other)
+  {
+    if (this != &other) {
+      _globmem   = other._globmem;
+      _pattern   = other._pattern;
+      _viewspec  = other._viewspec;
+      _idx       = other._idx;
+      _max_idx   = other._max_idx;
+      _dref_idx  = InvalidIndex;
+    }
+    return *this;
+  }
 
   /**
    * Type conversion operator to \c GlobPtr.
    *
    * \return  A global reference to the element at the iterator's position
    */
-  operator PointerType() const {
+  operator PointerType() const
+  {
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
+#ifdef DASH__USE_DREF_CACHE
+    // Test if current position has cached dereferenced value:
+    if (_dref_idx == _idx) {
+      DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _dref_idx);
+      return _gptr;
+    }
+#endif
+    // Creating a pointer from an iterator past the last element of its range
+    // is allowed, however the cartesian position has to be limited by the
+    // highest valid value (_max_idx) to resolve the (theoretical) global
+    // memory position. The additional offset (_idx - _max_idx) is finally
+    // added to the resulting global pointer.
     size_t idx     = _idx;
     size_t offset  = 0;
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
@@ -145,29 +199,43 @@ public:
     PointerType gptr(
       _globmem->index_to_gptr(local_pos.unit, local_pos.index)
     );
+#ifndef DASH__USE_DREF_CACHE
     return gptr + offset;
-  }
-
-  /**
-   * Explicit conversion to \c dart_gptr_t.
-   *
-   * \return  A DART global pointer to the element at the iterator's 
-   *          position
-   */
-  dart_gptr_t dart_gptr() const {
-    return ((GlobPtr<ElementType>)(*this)).dart_gptr();
+#else
+    _gptr     = (gptr + offset);
+    _gref     = ReferenceType(gptr + offset);
+    _dref_idx = _idx;
+    return _gptr;
+#endif
   }
 
   /**
    * Dereference operator.
    *
-   * \return  A global reference to the element at the iterator's position
+   * \return  A global reference to the element at the iterator's position.
    */
-  ReferenceType operator*() const {
+#ifdef DASH__USE_DREF_CACHE
+  ReferenceType & operator*() const
+#else
+  ReferenceType operator*() const
+#endif
+  {
+    DASH_LOG_TRACE_VAR("GlobIter.*()", _idx);
+    // Index range check.
+    // Dereferencing an iterator past the last element of its range is
+    // illegal:
+    DASH_ASSERT_LT(_idx, _max_idx+1,
+                   "GlobIter.*: index out of bounds");
+#ifdef DASH__USE_DREF_CACHE
+    // Test if current position has cached dereferenced value:
+    if (_dref_idx == _idx) {
+      DASH_LOG_TRACE_VAR("GlobIter.*", _dref_idx);
+      return _gref;
+    }
+#endif
     // Global index to local index and unit:
     auto glob_coords = coords(_idx);
     auto local_pos   = _pattern->local_index(glob_coords);
-    DASH_LOG_TRACE_VAR("GlobIter.*", _idx);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
     // Global pointer to element at given position:
@@ -175,7 +243,17 @@ public:
       _globmem->index_to_gptr(local_pos.unit, local_pos.index)
     );
     // Global reference to element at given position:
+#ifndef DASH__USE_DREF_CACHE
     return ReferenceType(gptr);
+#else
+    // Call copy constructor and assignment operator explicitly to avoid
+    // dart_put as it would occur in GlobRef(GlobPtr):
+    _gptr     = gptr;
+    _gref     = ReferenceType(gptr);
+    _dref_idx = _idx;
+    DASH_LOG_TRACE_VAR("GlobIter.* >", _dref_idx);
+    return _gref;
+#endif
   }  
 
   /**
@@ -184,9 +262,15 @@ public:
    */
   ReferenceType operator[](
     /// The global position of the element
-    gptrdiff_t global_index) const {
-    // Global index to local index and unit:
+    gptrdiff_t global_index) const
+  {
     DASH_LOG_TRACE_VAR("GlobIter.[]", global_index);
+    // Index range check.
+    // Dereferencing an iterator past the last element of its range is
+    // illegal:
+    DASH_ASSERT_LT(global_index, _max_idx+1,
+                   "GlobIter.[]: index out of bounds");
+    // Global index to local index and unit:
     auto glob_coords = coords(global_index);
     DASH_LOG_TRACE_VAR("GlobIter.[]", glob_coords);
     auto local_pos   = _pattern->local_index(glob_coords);
@@ -201,17 +285,30 @@ public:
   }
 
   /**
+   * Explicit conversion to \c dart_gptr_t.
+   *
+   * \return  A DART global pointer to the element at the iterator's 
+   *          position
+   */
+  dart_gptr_t dart_gptr() const
+  {
+    return ((GlobPtr<ElementType>)(*this)).dart_gptr();
+  }
+
+  /**
    * Checks whether the element referenced by this global iterator is in
    * the calling unit's local memory.
    */
-  bool is_local() const {
+  bool is_local() const
+  {
     return _pattern->is_local(_idx);
   }
 
   /**
    * Global offset of the iterator within overall element range.
    */
-  gptrdiff_t pos() const {
+  gptrdiff_t pos() const
+  {
     return _idx;
   }
 
@@ -219,7 +316,8 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  const GlobMem<ElementType> & globmem() const {
+  const GlobMem<ElementType> & globmem() const
+  {
     return *_globmem;
   }
 
@@ -227,14 +325,16 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  GlobMem<ElementType> & globmem() {
+  GlobMem<ElementType> & globmem()
+  {
     return *_globmem;
   }
 
   /**
    * Prefix increment operator.
    */
-  self_t & operator++() {
+  self_t & operator++()
+  {
     ++_idx;
     return *this;
   }
@@ -242,7 +342,8 @@ public:
   /**
    * Postfix increment operator.
    */
-  self_t operator++(int) {
+  self_t operator++(int)
+  {
     self_t result = *this;
     ++_idx;
     return result;
@@ -251,7 +352,8 @@ public:
   /**
    * Prefix decrement operator.
    */
-  self_t & operator--() {
+  self_t & operator--()
+  {
     --_idx;
     return *this;
   }
@@ -259,23 +361,30 @@ public:
   /**
    * Postfix decrement operator.
    */
-  self_t operator--(int) {
+  self_t operator--(int)
+  {
     self_t result = *this;
     --_idx;
     return result;
   }
   
-  self_t & operator+=(gptrdiff_t n) {
+  self_t & operator+=(
+    gptrdiff_t n)
+  {
     _idx += n;
     return *this;
   }
   
-  self_t & operator-=(gptrdiff_t n) {
+  self_t & operator-=(
+    gptrdiff_t n)
+  {
     _idx -= n;
     return *this;
   }
 
-  self_t operator+(gptrdiff_t n) const {
+  self_t operator+(
+    gptrdiff_t n) const
+  {
     if (_viewspec == nullptr) {
       self_t res(
         _globmem,
@@ -291,7 +400,9 @@ public:
     return res;
   }
 
-  self_t operator-(gptrdiff_t n) const {
+  self_t operator-(
+    gptrdiff_t n) const
+  {
     if (_viewspec == nullptr) {
       self_t res(
         _globmem,
@@ -308,32 +419,44 @@ public:
   }
 
   gptrdiff_t operator+(
-    const self_t & other) const {
+    const self_t & other) const
+  {
     return _idx + other._idx;
   }
 
   gptrdiff_t operator-(
-    const self_t & other) const {
+    const self_t & other) const
+  {
     return _idx - other._idx;
   }
 
-  bool operator<(const self_t & other) const {
+  bool operator<(
+    const self_t & other) const
+  {
     return _idx < other._idx;
   }
 
-  bool operator<=(const self_t & other) const {
+  bool operator<=(
+    const self_t & other) const
+  {
     return _idx <= other._idx;
   }
 
-  bool operator>(const self_t & other) const {
+  bool operator>(
+    const self_t & other) const
+  {
     return _idx > other._idx;
   }
 
-  bool operator>=(const self_t & other) const {
+  bool operator>=(
+    const self_t & other) const
+  {
     return _idx >= other._idx;
   }
 
-  bool operator==(const self_t & other) const {
+  bool operator==(
+    const self_t & other) const
+  {
     if (_idx == other._idx) {
       // Same global index
       if (_viewspec  == other._viewspec) {
@@ -354,11 +477,14 @@ public:
            
   }
 
-  bool operator!=(const self_t & other) const {
+  bool operator!=(
+    const self_t & other) const
+  {
     return !(*this == other);
   }
 
-  const PatternType & pattern() const {
+  const PatternType & pattern() const
+  {
     return *_pattern;
   }
 
@@ -368,7 +494,8 @@ private:
    * corresponding global coordinates with respect to viewspec projection.
    */
   std::array<IndexType, NumDimensions> coords(
-    IndexType glob_index) const {
+    IndexType glob_index) const
+  {
     // Global cartesian coords of current iterator position:
     std::array<IndexType, NumDimensions> glob_coords;
     if (_viewspec != nullptr) {
@@ -422,7 +549,8 @@ gptrdiff_t distance(
   /// Global iterator to the initial position in the global sequence
   const GlobIter<ElementType> & first,
   /// Global iterator to the final position in the global sequence
-  const GlobIter<ElementType> & last) {
+  const GlobIter<ElementType> & last)
+{
   return last - first;
 }
 
@@ -450,7 +578,8 @@ gptrdiff_t distance(
   /// Global pointer to the initial position in the global sequence
   dart_gptr_t first,
   /// Global pointer to the final position in the global sequence
-  dart_gptr_t last) {
+  dart_gptr_t last)
+{
   GlobPtr<ElementType> & gptr_first(dart_gptr_t(first));
   GlobPtr<ElementType> & gptr_last(dart_gptr_t(last));
   return gptr_last - gptr_first;
@@ -465,7 +594,8 @@ template <
   class Reference_ >
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::GlobIter<ElementType_, Pattern_, Pointer_, Reference_> & it) {
+  const dash::GlobIter<ElementType_, Pattern_, Pointer_, Reference_> & it)
+{
   dash::GlobPtr<ElementType_> ptr(it); 
   os << "dash::GlobIter<ElementType, PatternType>: ";
   os << "idx=" << it._idx << std::endl;
