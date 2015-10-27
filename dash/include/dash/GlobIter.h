@@ -31,6 +31,12 @@ private:
   typedef typename PatternType::index_type
     IndexType;
 
+public:
+  typedef       ReferenceType                      reference;
+  typedef const ReferenceType                const_reference;
+  typedef       PointerType                          pointer;
+  typedef const PointerType                    const_pointer;
+
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
   static const MemArrange Arrangement   = PatternType::memory_order();
@@ -39,8 +45,10 @@ protected:
   GlobMem<ElementType> * _globmem;
   const PatternType    * _pattern;
   const ViewSpecType   * _viewspec;
-  size_t                 _idx;
-  size_t                 _max_idx;
+  /// Current position of the iterator.
+  size_t                 _idx        = 0;
+  /// Maximum position allowed for this iterator.
+  size_t                 _max_idx    = 0;
 
   // For ostream output
   template <
@@ -121,9 +129,9 @@ public:
    * \return  A global reference to the element at the iterator's position
    */
   operator PointerType() const {
+    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
     size_t idx     = _idx;
     size_t offset  = 0;
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
@@ -161,13 +169,13 @@ public:
   /**
    * Dereference operator.
    *
-   * \return  A global reference to the element at the iterator's position
+   * \return  A global reference to the element at the iterator's position.
    */
   ReferenceType operator*() const {
+    DASH_LOG_TRACE_VAR("GlobIter.*", _idx);
     // Global index to local index and unit:
     auto glob_coords = coords(_idx);
     auto local_pos   = _pattern->local_index(glob_coords);
-    DASH_LOG_TRACE_VAR("GlobIter.*", _idx);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
     // Global pointer to element at given position:
@@ -185,8 +193,8 @@ public:
   ReferenceType operator[](
     /// The global position of the element
     gptrdiff_t global_index) const {
-    // Global index to local index and unit:
     DASH_LOG_TRACE_VAR("GlobIter.[]", global_index);
+    // Global index to local index and unit:
     auto glob_coords = coords(global_index);
     DASH_LOG_TRACE_VAR("GlobIter.[]", glob_coords);
     auto local_pos   = _pattern->local_index(glob_coords);
