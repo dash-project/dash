@@ -234,11 +234,36 @@ dart_ret_t dart_testall_local(
   int32_t *result);
 
 /**
- * New dart communication functions for GASPI
+ * New dart one-sided communication functions for GASPI
  *
  * \ingroup DartCommuncation
  */
+dart_ret_t dart_get_gptr(dart_gptr_t dest, dart_gptr_t src, size_t nbytes);
+
+dart_ret_t dart_put_gptr(dart_gptr_t dest, dart_gptr_t src, size_t nbytes);
+
 dart_ret_t dart_get_gptr_blocking(dart_gptr_t dest, dart_gptr_t src, size_t nbytes);
+/**
+ * First concept of unit synchronization:
+ *
+ * Needed to test dart_put_* functions
+ *
+ * Dart unit synchronization functions which ensure the completion(local and remote) of previous
+ * posted put operations before the target unit gets the synchronization.
+ *
+ * That means, one process posts put operations and finally sends a synchronisation to the same target unit and segment.
+ * The other unit can test/wait on this synchronization and after a successful wait/test knows the calling
+ * unit that the data is avialable.
+ *
+ * Restriction:
+ * Puts and Syncs has to target the same segment and target
+ */
+dart_ret_t dart_notify(dart_gptr_t gptr     , unsigned int   tag);
+dart_ret_t dart_notify_waitsome(dart_gptr_t gptr, unsigned int * tag);
+/**
+ * For dart_put_gptr_handle
+ */
+dart_ret_t dart_notify_handle(dart_handle_t handle, unsigned int tag);
 /**
  * Allocates a handle structure on the heap
  */
@@ -254,6 +279,7 @@ dart_ret_t dart_delete_handle(dart_handle_t * handle);
  * \ingroup DartCommuncation
  */
 dart_ret_t dart_get_gptr_handle(dart_gptr_t dest, dart_gptr_t src, size_t nbytes, dart_handle_t handle);
+dart_ret_t dart_put_gptr_handle(dart_gptr_t dest, dart_gptr_t src, size_t nbytes, dart_handle_t handle);
 
 #define DART_INTERFACE_OFF
 
