@@ -23,7 +23,8 @@ dart_ret_t delete_rma_requests(int16_t seg_id);
 
 struct dart_handle_struct
 {
-    gaspi_segment_id_t local_seg;
+    dart_unit_t target_unit;
+    uint16_t index;
     gaspi_segment_id_t remote_seg;
     gaspi_queue_id_t queue;
 };

@@ -33,7 +33,7 @@ TEST(Notify, Notify_Next)
     TEST_DART_CALL(dart_notify(gptr_next, send_tag));
 
     unsigned int tag = 1337;
-    TEST_DART_CALL(dart_notify_wait(gptr_team, &tag));
+    TEST_DART_CALL(dart_notify_waitsome(gptr_team, &tag));
 
     ASSERT_TRUE(tag == ((unsigned int) prev_unit + 42));
 
@@ -77,7 +77,7 @@ TEST(Notify, Put)
     TEST_DART_CALL(dart_put_gptr(gptr_dest, my_gptr_a, sizeof(int) * transfer_count));
     TEST_DART_CALL(dart_notify(gptr_dest, 42 + myid));
     unsigned int tag = 0;
-    TEST_DART_CALL(dart_notify_wait(gptr_dest, &tag));
+    TEST_DART_CALL(dart_notify_waitsome(gptr_dest, &tag));
     EXPECT_EQ(42 + prev_unit, tag);
 
     dart_gptr_t gptr_my_dest = gptr_b;
@@ -139,10 +139,10 @@ TEST(Notify, PutMoreTargets)
     TEST_DART_CALL(dart_notify(gptr_dest_prev, 42 + myid));
 
     unsigned int tag = 0;
-    TEST_DART_CALL(dart_notify_wait(gptr_dest_next, &tag));
+    TEST_DART_CALL(dart_notify_waitsome(gptr_dest_next, &tag));
     EXPECT_EQ(42 + prev_unit, tag);
 
-    TEST_DART_CALL(dart_notify_wait(gptr_dest_prev, &tag));
+    TEST_DART_CALL(dart_notify_waitsome(gptr_dest_prev, &tag));
     EXPECT_EQ(42 + next_unit, tag);
 
     dart_gptr_t gptr_my_dest_next = gptr_b;
@@ -217,7 +217,7 @@ TEST(Notify, MorePuts)
     }
     TEST_DART_CALL(dart_notify(gptr_dest, 42 + myid));
     unsigned int tag = 0;
-    TEST_DART_CALL(dart_notify_wait(gptr_dest, &tag));
+    TEST_DART_CALL(dart_notify_waitsome(gptr_dest, &tag));
     EXPECT_EQ(42 + prev_unit, tag);
 
     dart_gptr_t gptr_my_dest = gptr_b;

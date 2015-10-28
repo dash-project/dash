@@ -124,12 +124,47 @@ dart_ret_t dart_barrier (dart_team_t teamid)
 
     return DART_OK;
 }
-
-dart_ret_t dart_handle_notify(dart_handle_t handle, unsigned int tag)
+/**
+ * This operation sends a notification to a target specified in handle.
+ * The notification reaches the target if the datatransfer(of the dart_put_gptr_handle)
+ * is completed(remote and local).
+ *
+ * This function can be used with dart_put_gptr_handle to indicate the target unit the
+ * availability of the data.
+ *
+ * @param handle: is the returned handle of the dart_put_gptr_handle
+ * @param tag: must be not null and can be used to differentiate between notifies
+ *
+ * @return DART_OK => success
+ * @return DART_ERR_* => failed
+ */
+dart_ret_t dart_notify_handle(dart_handle_t handle, unsigned int tag)
 {
-    return DART_ERR_NOTFOUND;
-}
+    dart_unit_t myid, rel_myid;
+    if(handle == NULL)
+    {
+        fprintf(stderr, "dart_notify_handle : Handle structure not initialized\n");
+        return DART_ERR_OTHER;
+    }
 
+    DART_CHECK_ERROR(dart_myid(&myid));
+    DART_CHECK_ERROR(unit_g2l(handle->index, myid, &rel_myid));
+    DART_CHECK_GASPI_ERROR(gaspi_notify(handle->remote_seg, handle->target_unit, rel_myid, tag, handle->queue, GASPI_BLOCK));
+
+    return DART_OK;
+}
+/**
+ * This operation sends a notification to specified target and can be combined with a dart_put_gptr operation to
+ * indicate the completion(remote+local) of the put operation to the target unit.
+ *
+ *  See also dart_notify_waitsome.
+ *
+ * @param gptr specifies the target(remote), is the same pointer which was used as destination in dart_put_gptr
+ * @param tag must be not null and can be used to differentiate between notifies
+ *
+ * @return DART_OK => success
+ * @return DART_ERR_* => failed
+ */
 dart_ret_t dart_notify(dart_gptr_t gptr, unsigned int tag)
 {
     dart_unit_t        myid;
@@ -168,7 +203,16 @@ dart_ret_t dart_notify(dart_gptr_t gptr, unsigned int tag)
     return DART_OK;
 }
 
-dart_ret_t dart_notify_wait(dart_gptr_t gptr, unsigned int * tag)
+/**
+ * This operation waits on an incomming notification on a given global pointer.
+ *
+ * @param gptr specifies the data portion(segment)
+ * @param tag returns the received tag of the transfered notification
+ *
+ * @return DART_OK => success
+ * @return DART_ERR_* => failed
+ */
+dart_ret_t dart_notify_waitsome(dart_gptr_t gptr, unsigned int * tag)
 {
     gaspi_notification_id_t notify_received;
     gaspi_segment_id_t      gaspi_seg_id = dart_mempool_seg_localalloc;
@@ -455,7 +499,7 @@ dart_ret_t dart_get_gptr_handle(dart_gptr_t dest, dart_gptr_t src, size_t nbytes
         DART_CHECK_ERROR(unit_g2l(dest_index, my_unit, &rel_my_unit));
         if(dart_adapt_transtable_get_gaspi_seg_id(dest_seg_id, rel_my_unit, &dest_gaspi_seg) == -1)
         {
-            fprintf(stderr, "Can't find given destination segment id in dart_get_blocking\n");
+            fprintf(stderr, "Can't find given destination segment id in dart_get_gptr_handle\n");
             return DART_ERR_NOTFOUND;
         }
     }
@@ -468,16 +512,16 @@ dart_ret_t dart_get_gptr_handle(dart_gptr_t dest, dart_gptr_t src, size_t nbytes
         DART_CHECK_ERROR(unit_g2l(src_index, target_unit, &rel_target_unit));
         if(dart_adapt_transtable_get_gaspi_seg_id(src_seg_id, rel_target_unit, &src_gaspi_seg) == -1)
         {
-            fprintf(stderr, "Can't find given source segment id in dart_get_blocking\n");
+            fprintf(stderr, "Can't find given source segment id in dart_get_gptr_handle\n");
             return DART_ERR_NOTFOUND;
         }
     }
 
     DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
 
-    handle->queue      = queue;
-    handle->local_seg  = src_gaspi_seg;
-    handle->remote_seg = dest_gaspi_seg;
+    handle->queue       = queue;
+    handle->remote_seg  = src_gaspi_seg;
+    handle->target_unit = target_unit;
 
     DART_CHECK_GASPI_ERROR(gaspi_read(dest_gaspi_seg,
                                       dest_offset,
@@ -490,65 +534,77 @@ dart_ret_t dart_get_gptr_handle(dart_gptr_t dest, dart_gptr_t src, size_t nbytes
 
     return DART_OK;
 }
-//~ dart_ret_t dart_put_handle(dart_gptr_t gptr, void *src, size_t nbytes, dart_handle_t *handle)
-//~ {
-    //~ gaspi_queue_id_t   queue;
-    //~ gaspi_segment_id_t remote_seg;
-    //~ gaspi_pointer_t    local_seg_ptr = NULL;
-    //~ uint64_t           remote_offset = gptr.addr_or_offs.offset;
-    //~ int16_t            seg_id        = gptr.segid;
-    //~ uint16_t           index         = gptr.flags;
-    //~ dart_unit_t        remote_rank   = gptr.unitid;
 
-    //~ *handle = (dart_handle_t) malloc (sizeof (struct dart_handle_struct));
-    //~ assert(*handle);
+dart_ret_t dart_put_gptr_handle(dart_gptr_t dest, dart_gptr_t src, size_t nbytes, dart_handle_t handle)
+{
+    gaspi_queue_id_t   queue;
+    /*
+     * local site
+     */
+    gaspi_segment_id_t src_gaspi_seg  = dart_mempool_seg_localalloc;
+    gaspi_offset_t     src_offset     = src.addr_or_offs.offset;
+    int16_t            src_seg_id     = src.segid;
+    uint16_t           src_index      = src.flags;
+    dart_unit_t        my_unit        = src.unitid;
+    /*
+     * remote site
+     */
+    gaspi_segment_id_t dest_gaspi_seg = dart_mempool_seg_localalloc;
+    gaspi_offset_t     dest_offset    = dest.addr_or_offs.offset;
+    uint16_t           dest_index     = dest.flags;
+    int16_t            dest_seg_id    = dest.segid;
+    dart_unit_t        target_unit    = dest.unitid;
 
-    //~ (*handle)->local_offset = dart_buddy_alloc(dart_transferpool, nbytes);
-    //~ if((*handle)->local_offset == -1)
-    //~ {
-        //~ fprintf(stderr, "Out of bound: the global memory is exhausted");
-        //~ return DART_ERR_OTHER;
-    //~ }
+    if(handle == NULL)
+    {
+        fprintf(stderr, "dart_put_gptr_handle : Handle structure not initialized\n");
+        return DART_ERR_OTHER;
+    }
+    /*
+     * local site
+     */
+    if(src_seg_id)
+    {
+        dart_unit_t rel_my_unit;
+        DART_CHECK_ERROR(unit_g2l(src_index, my_unit, &rel_my_unit));
+        if(dart_adapt_transtable_get_gaspi_seg_id(src_seg_id, rel_my_unit, &src_gaspi_seg) == -1)
+        {
+            fprintf(stderr, "Can't find given source segment id in dart_get_gptr_handle\n");
+            return DART_ERR_NOTFOUND;
+        }
+    }
+    /*
+     * remote site
+     */
+    if(dest_seg_id)
+    {
+        dart_unit_t rel_target_unit;
+        DART_CHECK_ERROR(unit_g2l(dest_index, target_unit, &rel_target_unit));
+        if(dart_adapt_transtable_get_gaspi_seg_id(dest_seg_id, rel_target_unit, &dest_gaspi_seg) == -1)
+        {
+            fprintf(stderr, "Can't find given destination segment id in dart_put_gptr\n");
+            return DART_ERR_NOTFOUND;
+        }
+    }
 
-    //~ DART_CHECK_ERROR(gaspi_segment_ptr(dart_transferpool_seg, &local_seg_ptr));
-    //~ local_seg_ptr = (void *) ((char *) local_seg_ptr + ((*handle)->local_offset));
+    DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
 
-    //~ memcpy(local_seg_ptr, src, nbytes);
+    DART_CHECK_GASPI_ERROR(gaspi_write(src_gaspi_seg,
+                                       src_offset,
+                                       target_unit,
+                                       dest_gaspi_seg,
+                                       dest_offset,
+                                       nbytes,
+                                       queue,
+                                       GASPI_BLOCK));
 
-    //~ // TODO function must ensure that the returned queue has the size for a later notify
-    //~ // to signal the availability of the data for the target rank
-    //~ DART_CHECK_ERROR(dart_get_minimal_queue(&queue));
+    handle->index       = src_index;
+    handle->queue       = queue;
+    handle->remote_seg  = dest_gaspi_seg;
+    handle->target_unit = target_unit;
 
-    //~ (*handle)->local_seg   = dart_transferpool_seg;
-    //~ (*handle)->dest_buffer = NULL; // to indicate the put operation in wait or test
-    //~ (*handle)->queue       = queue;
-    //~ (*handle)->nbytes      = nbytes;
-
-    //~ if(seg_id)
-    //~ {
-        //~ dart_unit_t rel_remote_rank;
-        //~ DART_CHECK_ERROR(unit_g2l(index, remote_rank, &rel_remote_rank));
-        //~ if(dart_adapt_transtable_get_gaspi_seg_id(seg_id, rel_remote_rank, &remote_seg) == -1)
-        //~ {
-            //~ fprintf(stderr, "Can't find given segment id in dart_put_handle\n");
-            //~ return DART_ERR_NOTFOUND;
-        //~ }
-    //~ }
-    //~ else
-    //~ {
-        //~ remote_seg = dart_mempool_seg_localalloc;
-    //~ }
-
-    //~ DART_CHECK_ERROR(gaspi_write(dart_transferpool_seg,
-                                 //~ (*handle)->local_offset,
-                                 //~ remote_rank,
-                                 //~ remote_seg,
-                                 //~ remote_offset,
-                                 //~ nbytes,
-                                 //~ queue,
-                                 //~ GASPI_BLOCK));
-    //~ return DART_OK;
-//~ }
+    return DART_OK;
+}
 
 dart_ret_t dart_wait_local (dart_handle_t handle)
 {
