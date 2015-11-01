@@ -35,6 +35,10 @@ struct pattern_linearization_traits<
 // Pattern mapping properties
 //////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Container type for mapping properties of models satisfying the Pattern
+ * concept.
+ */
 struct pattern_mapping_tag
 {
   typedef enum {
@@ -42,25 +46,87 @@ struct pattern_mapping_tag
     /// Same number of blocks for every process
     balanced,
     /// Every process mapped in every row and column
-    diagonal
+    diagonal,
+    /// Unit mapped to block different from units mapped to adjacent blocks
+    remote_neighbors
   } type;
 };
 
-template< pattern_mapping_tag::type >
+/**
+ * Generic type of mapping properties of a model satisfying the Pattern
+ * concept.
+ *
+ * Example: 
+ *
+ * \code
+ *   typedef dash::pattern_mapping_traits<
+ *             dash::pattern_mapping_tag::balanced,
+ *             dash::pattern_mapping_tag::diagonal
+ *           > my_pattern_mapping_traits;
+ *
+ *   auto pattern = dash::make_pattern<
+ *                    // ...
+ *                    my_pattern_mapping_traits
+ *                    // ...
+ *                  >(sizespec, teamspec);
+ * \endcode
+ *
+ * Template parameter list is processed recursively by specializations of
+ * \c dash::pattern_mapping_traits.
+ */
+template<
+  pattern_mapping_tag::type ... Tags >
 struct pattern_mapping_traits
 {
   static const bool balanced = false;
-  static const bool diagnoal = false;
+  static const bool diagonal = false;
+  static const bool neighbor = false;
 };
 
-template<>
+/**
+ * Specialization of \c dash::pattern_mapping_traits to process tag
+ * \c dash::pattern_mapping_tag::type::balanced in template parameter list.
+ */
+template<
+  pattern_mapping_tag::type ... Tags >
 struct pattern_mapping_traits<
-  pattern_mapping_tag::balanced >
+    pattern_mapping_tag::type::balanced,
+    Tags ...>
+: public pattern_mapping_traits<
+    Tags ...>
 {
   static const bool balanced = true;
-  static const bool diagnoal = false;
 };
 
+/**
+ * Specialization of \c dash::pattern_mapping_traits to process tag
+ * \c dash::pattern_mapping_tag::type::diagonal in template parameter list.
+ */
+template<
+  pattern_mapping_tag::type ... Tags >
+struct pattern_mapping_traits<
+    pattern_mapping_tag::type::diagonal,
+    Tags ...>
+: public pattern_mapping_traits<
+    Tags ...>
+{
+  static const bool diagonal = true;
+};
+
+/**
+ * Specialization of \c dash::pattern_mapping_traits to process tag
+ * \c dash::pattern_mapping_tag::type::neighbor in template parameter list.
+ */
+template<
+  pattern_mapping_tag::type ... Tags >
+struct pattern_mapping_traits<
+    pattern_mapping_tag::type::remote_neighbors,
+    Tags ...>
+: public pattern_mapping_traits<
+    Tags ...>
+{
+  static const bool neighbor = true;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 // Pattern blocking properties
@@ -70,30 +136,63 @@ struct pattern_blocking_tag
 {
   typedef enum {
     any,
-    balanced
+    balanced,
+    cache_sized
   } type;
 };
 
-template< pattern_blocking_tag::type >
+template<
+  pattern_blocking_tag::type ... Tags >
 struct pattern_blocking_traits
 {
-  static const bool balanced = false;
+  static const bool balanced    = false;
+  static const bool cache_sized = false;
 };
 
-template<>
+template<
+  pattern_blocking_tag::type ... Tags >
 struct pattern_blocking_traits<
-  pattern_blocking_tag::balanced >
+    pattern_blocking_tag::type::balanced,
+    Tags ...>
+: public pattern_blocking_traits<
+    Tags ...>
 {
   static const bool balanced = true;
 };
 
+template<
+  pattern_blocking_tag::type ... Tags >
+struct pattern_blocking_traits<
+    pattern_blocking_tag::type::cache_sized,
+    Tags ...>
+: public pattern_blocking_traits<
+    Tags ...>
+{
+  static const bool cache_sized = true;
+};
+
+//////////////////////////////////////////////////////////////////////////////
+// Default Pattern Traits Definitions
+//////////////////////////////////////////////////////////////////////////////
+
+typedef dash::pattern_blocking_traits<
+          pattern_blocking_tag::any >
+  pattern_blocking_default_traits;
+
+typedef dash::pattern_mapping_traits<
+          pattern_mapping_tag::any >
+  pattern_mapping_default_traits;
+
+typedef dash::pattern_linearization_traits<
+          pattern_linearization_tag::any >
+  pattern_linearization_default_traits;
 
 //////////////////////////////////////////////////////////////////////////////
 // Generic Abstract Pattern Factories (dash::make_pattern)
 //////////////////////////////////////////////////////////////////////////////
 
 /**
- * Generic Abstract Factory for instances of dash::DistributionSpec.
+ * Generic Abstract Factory for instances of \c dash::DistributionSpec.
  * Creates a DistributionSpec object from given pattern traits.
  */
 template<
@@ -162,9 +261,9 @@ make_distribution_spec(
  * linearization property from given pattern traits.
  */
 template<
-  typename BlockingTraits,
-  typename MappingTraits,
-  typename LinearizationTraits,
+  typename BlockingTraits      = dash::pattern_blocking_default_traits,
+  typename MappingTraits       = dash::pattern_mapping_default_traits,
+  typename LinearizationTraits = dash::pattern_linearization_default_traits,
   class SizeSpecType,
   class TeamSpecType
 >
@@ -178,7 +277,33 @@ make_pattern(
   /// Team spec containing layout of units mapped by the pattern.
   const TeamSpecType & teamspec)
 {
-  DASH_LOG_TRACE("dash::make_pattern", "-> contiguous");
+  // Tags in pattern property category 'Linearization'
+  DASH_LOG_TRACE("dash::make_pattern", "-> Linearization properties:");
+  DASH_LOG_TRACE("dash::make_pattern", "   - contiguous");
+  DASH_LOG_TRACE("dash::make_pattern", "-> Blocking properties:");
+
+  // Tags in pattern property category 'Blocking'
+  if (BlockingTraits::balanced) {
+    DASH_LOG_TRACE("dash::make_pattern", "   - balanced blocks");
+  }
+  if (BlockingTraits::cache_sized) {
+    DASH_LOG_TRACE("dash::make_pattern", "   - cache sized blocks");
+  }
+
+  // Tags in pattern property category 'Mapping'
+  static_assert(!MappingTraits::neighbor || !MappingTraits::diagonal,
+                "Pattern mapping properties 'diagonal' contradicts "
+                "mapping property 'remote_neighbors'");
+  DASH_LOG_TRACE("dash::make_pattern", "-> Mapping properties:");
+  if (MappingTraits::balanced) {
+    DASH_LOG_TRACE("dash::make_pattern", "   - balanced mapping");
+  }
+  if (MappingTraits::diagonal) {
+    DASH_LOG_TRACE("dash::make_pattern", "   - diagonal mapping");
+  }
+  if (MappingTraits::neighbor) {
+    DASH_LOG_TRACE("dash::make_pattern", "   - remote neighbors");
+  }
   // Deduce number of dimensions from size spec:
   const dim_t ndim = SizeSpecType::ndim();
   // Make distribution spec from template- and run time parameters:
@@ -208,9 +333,9 @@ make_pattern(
  * linearization property from given pattern traits.
  */
 template<
-  typename BlockingTraits,
-  typename MappingTraits,
-  typename LinearizationTraits,
+  typename BlockingTraits      = dash::pattern_blocking_default_traits,
+  typename MappingTraits       = dash::pattern_mapping_default_traits,
+  typename LinearizationTraits = dash::pattern_linearization_default_traits,
   class SizeSpecType,
   class TeamSpecType
 >
@@ -224,7 +349,33 @@ make_pattern(
   /// Team spec containing layout of units mapped by the pattern.
   const TeamSpecType & teamspec)
 {
-  DASH_LOG_TRACE("dash::make_pattern", "-> not contiguous");
+  // Tags in pattern property category 'Linearization'
+  DASH_LOG_TRACE("dash::make_pattern", "-> Linearization properties:");
+  DASH_LOG_TRACE("dash::make_pattern", "   - not contiguous");
+
+  // Tags in pattern property category 'Blocking'
+  DASH_LOG_TRACE("dash::make_pattern", "-> Blocking properties:");
+  if (BlockingTraits::balanced) {
+    DASH_LOG_TRACE("dash::make_pattern", "   - balanced blocks");
+  }
+  if (BlockingTraits::cache_sized) {
+    DASH_LOG_TRACE("dash::make_pattern", "   - cache sized blocks");
+  }
+
+  // Tags in pattern property category 'Mapping'
+  static_assert(!MappingTraits::neighbor || !MappingTraits::diagonal,
+                "Pattern mapping properties 'diagonal' contradicts "
+                "mapping property 'remote_neighbors'");
+  DASH_LOG_TRACE("dash::make_pattern", "-> Mapping properties:");
+  if (MappingTraits::balanced) {
+    DASH_LOG_TRACE("dash::make_pattern", "   - balanced mapping");
+  }
+  if (MappingTraits::diagonal) {
+    DASH_LOG_TRACE("dash::make_pattern", "   - diagonal mapping");
+  }
+  if (MappingTraits::neighbor) {
+    DASH_LOG_TRACE("dash::make_pattern", "   - remote neighbors");
+  }
   // Deduce number of dimensions from size spec:
   const dim_t ndim = SizeSpecType::ndim();
   // Make distribution spec from template- and run time parameters:
