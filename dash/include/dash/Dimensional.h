@@ -50,7 +50,8 @@ public:
    * Constructor, expects one value for every dimension.
    */
   template<typename ... Values>
-  Dimensional(ElementType & value, Values ... values)
+  Dimensional(
+    ElementType & value, Values ... values)
   : _values {{ value, (ElementType)values... }} {
     static_assert(
       sizeof...(values) == NumDimensions-1,
@@ -60,7 +61,8 @@ public:
   /**
    * Constructor, expects array containing values for every dimension.
    */
-  Dimensional(const std::array<ElementType, NumDimensions> & values)
+  Dimensional(
+    const std::array<ElementType, NumDimensions> & values)
   : _values(values) {
   }
 
@@ -163,8 +165,11 @@ protected:
  * \see dash::Distribution.
  */
 template<dim_t NumDimensions>
-class DistributionSpec
-: public Dimensional<Distribution, NumDimensions> {
+class DistributionSpec : public Dimensional<Distribution, NumDimensions> 
+{
+private:
+  typedef Dimensional<Distribution, NumDimensions> base_t;
+
 public:
   /**
    * Default constructor, initializes default blocked distribution 
@@ -201,9 +206,35 @@ public:
    * \endcode
    */
   template<typename ... Values>
-  DistributionSpec(Distribution value, Values ... values)
+  DistributionSpec(
+    Distribution value, Values ... values)
   : Dimensional<Distribution, NumDimensions>::Dimensional(value, values...),
-    _is_tiled(false) {
+    _is_tiled(false)
+  {
+    for (dim_t i = 1; i < NumDimensions; ++i) {
+      if (this->_values[i].type == dash::internal::DIST_TILE) {
+        _is_tiled = true;
+        break;
+      }
+    }
+  }
+  
+  /**
+   * Constructor, initializes distribution with given distribution types
+   * for every dimension.
+   *
+   * \b Example: 
+   * \code
+   *   // Blocked distribution in second dimension (y), cyclic distribution
+   *   // in third dimension (z)
+   *   DistributionSpec<3> ds(NONE, BLOCKED, CYCLIC);
+   * \endcode
+   */
+  DistributionSpec(
+    const std::array<Distribution, NumDimensions> & values)
+  : Dimensional<Distribution, NumDimensions>::Dimensional(values),
+    _is_tiled(false)
+  {
     for (dim_t i = 1; i < NumDimensions; ++i) {
       if (this->_values[i].type == dash::internal::DIST_TILE) {
         _is_tiled = true;

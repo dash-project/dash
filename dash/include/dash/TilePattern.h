@@ -1178,6 +1178,10 @@ public:
     return NumDimensions;
   }
 
+  constexpr static bool is_strided() {
+    return false;
+  }
+
 private:
   /**
    * Initialize block size specs from memory layout, team spec and

@@ -1134,6 +1134,10 @@ public:
     return NumDimensions;
   }
 
+  constexpr static bool is_strided() {
+    return true;
+  }
+
   /**
    * Number of elements in the overflow block of given dimension, with
    * 0 <= \c overflow_blocksize(d) < blocksize(d).

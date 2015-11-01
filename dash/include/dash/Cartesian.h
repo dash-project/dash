@@ -80,6 +80,13 @@ public:
   }
 
   /**
+   * Number of dimensions of the cartesian space.
+   */
+  constexpr static dim_t ndim() {
+    return NumDimensions;
+  }
+
+  /**
    * Equality comparison operator.
    */
   bool operator==(const self_t & other) const {
