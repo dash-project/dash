@@ -54,9 +54,25 @@ TEST_F(MakePatternTest, VarArgTags)
                         >(sizespec, teamspec);
   // Test pattern type traits:
   ASSERT_FALSE_U(
-    dash::pattern_indexing_traits<
+    dash::pattern_indexing_traits <
       decltype(tile_pattern)
     >::type::local_strided);
+  ASSERT_TRUE_U(
+    dash::pattern_indexing_traits<
+      decltype(tile_pattern)
+    >::type::local_phase);
+  ASSERT_TRUE_U(
+    dash::pattern_blocking_traits <
+      decltype(tile_pattern)
+    >::type::balanced);
+  ASSERT_TRUE_U(
+    dash::pattern_topology_traits <
+      decltype(tile_pattern)
+    >::type::diagonal);
+  ASSERT_TRUE_U(
+    dash::pattern_topology_traits <
+      decltype(tile_pattern)
+    >::type::balanced);
 
   // Strided pattern with two tags in blocking property category and one tag
   // in mapping property category:
@@ -86,4 +102,8 @@ TEST_F(MakePatternTest, VarArgTags)
     dash::pattern_indexing_traits<
       decltype(stride_pattern)
     >::type::local_strided);
+  ASSERT_FALSE_U(
+    dash::pattern_indexing_traits<
+      decltype(stride_pattern)
+    >::type::local_phase);
 }

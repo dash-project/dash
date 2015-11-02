@@ -13,4 +13,6 @@
 #include <dash/algorithm/Accumulate.h>
 #include <dash/algorithm/Copy.h>
 
+#include <dash/algorithm/SUMMA.h>
+
 #endif // DASH__ALGORITHM_H_
