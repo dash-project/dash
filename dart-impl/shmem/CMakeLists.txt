@@ -1,4 +1,4 @@
-project(project_dash_dart_impl_shmem)
+project(project_dash_dart_impl_shmem C)
 
 # Extra flags
 set(CMAKE_C_FLAGS

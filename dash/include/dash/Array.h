@@ -660,8 +660,7 @@ public:
    * Global pointer to the beginning of the array.
    */
   iterator begin() noexcept {
-    iterator res = iterator(m_begin);
-    return res;
+    return m_begin;
   }
   
   /**
@@ -675,8 +674,7 @@ public:
    * Global pointer to the end of the array.
    */
   iterator end() noexcept {
-    iterator res = iterator(m_end);
-    return res;
+    return m_end;
   }
 
   /**
@@ -689,14 +687,14 @@ public:
   /**
    * Native pointer to the first local element in the array.
    */
-  ElementType * const lbegin() const noexcept {
+  ElementType * lbegin() const noexcept {
     return m_lbegin;
   }
 
   /**
    * Native pointer to the end of the array.
    */
-  ElementType * const lend() const noexcept {
+  ElementType * lend() const noexcept {
     return m_lend;
   }
 

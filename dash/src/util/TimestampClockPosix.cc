@@ -13,6 +13,11 @@
 #include <time.h>     // clock_gettime(), time(), needs librt.a
 #include <sys/time.h> // gethrtime(), gettimeofday() fallbacks
 
+#ifndef CLOCK_MONOTONIC_RAW
+// Fallback
+#  define CLOCK_MONOTONIC_RAW 4
+#endif
+
 #if defined(__MACH__) && defined(__APPLE__)
 // OS X / Mach 
 #include <mach/mach.h>

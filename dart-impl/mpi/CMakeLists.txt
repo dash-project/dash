@@ -1,4 +1,4 @@
-project(project_dash_dart_impl_mpi)
+project(project_dash_dart_impl_mpi C)
 
 # Library name
 set(DASH_DART_IMPL_MPI_LIBRARY dart-mpi)
@@ -19,6 +19,8 @@ set(MEMORY_MODEL_UNIFIED ${MEMORY_MODEL_UNIFIED}
     PARENT_SCOPE)
 
 message("-- MPI include path: " "${MPI_INCLUDE_PATH}")
+message("-- MPI libraries:    " "${MPI_C_LIBRARIES}")
+message("-- MPI link flags:   " "${MPI_LINK_FLAGS}")
 
 ## Configure compile flags
 

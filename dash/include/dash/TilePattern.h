@@ -14,6 +14,8 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
+#include <dash/Pattern.h>
+
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 #include <dash/internal/PatternArguments.h>
@@ -39,7 +41,27 @@ template<
   dim_t NumDimensions,
   MemArrange Arrangement = ROW_MAJOR,
   typename IndexType     = dash::default_index_t>
-class TilePattern {
+class TilePattern
+{
+public:
+  /// Properties guaranteed in pattern property category Blocking
+  typedef dash::pattern_blocking_properties<
+            // identical number of elements in every block
+            dash::pattern_blocking_tag::balanced >
+          blocking_properties;
+  /// Properties guaranteed in pattern property category Topology
+  typedef dash::pattern_topology_properties<
+            // number of blocks assigned to a unit may differ
+            dash::pattern_topology_tag::unbalanced,
+            // every unit mapped in any single slice in every dimension
+            dash::pattern_topology_tag::diagonal >
+          topology_properties;
+  /// Properties guaranteed in pattern property category Indexing
+  typedef dash::pattern_indexing_properties<
+            // local indices iterate within block boundaries
+            dash::pattern_indexing_tag::local_phase >
+          indexing_properties;
+
 private:
   /// Derive size type from given signed index / ptrdiff type
   typedef typename std::make_unsigned<IndexType>::type

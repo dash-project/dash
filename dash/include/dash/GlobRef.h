@@ -37,13 +37,40 @@ private:
   
 public:
   /**
-   * Conctructor, creates an GlobRef object referencing an element in
+   * Default constructor, creates an GlobRef object referencing an element in
    * global memory.
+   */
+  GlobRef()
+  : m_gptr(DART_GPTR_NULL) {
+  }
+
+  /**
+   * Constructor, creates an GlobRef object referencing an element in global
+   * memory.
    */
   GlobRef(
     /// Pointer to referenced object in global memory
     GlobPtr<T> & gptr)
   : m_gptr(gptr) {
+  }
+
+  /**
+   * Copy constructor.
+   */
+  GlobRef(
+    /// GlobRef instance to copy.
+    const GlobRef<T> & other)
+  : m_gptr(other.m_gptr) {
+  }
+
+  /**
+   * Assignment operator.
+   */
+  GlobRef<T> & operator=(const GlobRef<T> & other) {
+    // This would result in a dart_put:
+//  return *this = T(other);
+    m_gptr = other.m_gptr;
+    return *this;
   }
 
   friend void swap(GlobRef<T> a, GlobRef<T> b) {
@@ -65,10 +92,6 @@ public:
     //       m_gptr->is_local()
     dash::put_value(val, m_gptr);
     return *this;
-  }
-
-  GlobRef<T> & operator=(const GlobRef<T>& ref) {
-    return *this = T(ref);
   }
 
   GlobRef<T> & operator+=(const T& ref) {

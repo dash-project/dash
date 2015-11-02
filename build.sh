@@ -8,7 +8,8 @@ fi
 await_confirm() {
   if ! $FORCE_BUILD; then
     echo ""
-    read -p "   To build using these settings, hit ENTER"
+    echo "   To build using these settings, hit ENTER"
+    read confirm
   fi
 }
 
@@ -16,6 +17,10 @@ exit_message() {
   echo "----------------------------------------------------"
   echo "Done. To install DASH, run  make install  in ./build"
 }
+
+if [ "${PAPI_HOME}" = "" ]; then
+  PAPI_HOME=$PAPI_BASE
+fi
 
 mkdir -p build
 rm -Rf ./build/*

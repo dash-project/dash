@@ -13,7 +13,9 @@ CXXFLAGS+=-I$(DART_INC) -I$(DASH_INC)
 
 LIBDASH = libdash.a
 
-FILES = Init Team Distribution Math
+FILES = Init Team Distribution Math \
+	util/Timer util/TimestampClockPosix \
+	util/TimestampCounterPosix
 
 OBJS = $(addsuffix .o, $(FILES))
 
