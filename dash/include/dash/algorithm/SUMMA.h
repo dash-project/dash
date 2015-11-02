@@ -69,7 +69,49 @@ void SUMMA(
   const MatrixType & B,
   /// Matrix to contain the multiplication result, extents n x p,
   /// initialized with zeros
-  MatrixType & C) {
+  MatrixType & C)
+{
+  // Define constraints on matrix patterns required for SUMMA
+  
+  // Blocking constraints:
+  typedef dash::pattern_blocking_properties<
+            // same number of elements in every block
+            pattern_blocking_tag::balanced >
+          pattern_blocking_constraints;
+  // Topology constraints:
+  typedef dash::pattern_topology_properties<
+            // same amount of blocks for every process
+            pattern_topology_tag::balanced,
+            // every process mapped in every row/column
+            pattern_topology_tag::diagonal >
+          pattern_topology_constraints;
+  // Linearization constraints:
+  typedef dash::pattern_indexing_properties<
+            // elements contiguous within block
+            pattern_indexing_tag::local_phase >
+          pattern_indexing_constraints;
+
+  // Verify that matrix pattern type satisfies pattern constraints:
+  if (!dash::check_pattern_constraints<
+         pattern_blocking_constraints,
+         pattern_topology_constraints,
+         pattern_indexing_constraints
+       >(A.pattern())) {
+    DASH_THROW(
+      dash::exception::InvalidArgument,
+      "SUMMA: Pattern of first matrix argument does not match constraints");
+  }
+  if (!dash::check_pattern_constraints<
+         pattern_blocking_constraints,
+         pattern_topology_constraints,
+         pattern_indexing_constraints
+       >(B.pattern())) {
+    DASH_THROW(
+      dash::exception::InvalidArgument,
+      "SUMMA: Pattern of second matrix argument does not match constraints");
+  }
+
+  // Check run-time invariants on pattern instances:
   auto pattern_a = A.pattern();
   auto pattern_b = B.pattern();
   auto pattern_c = C.pattern();

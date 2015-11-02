@@ -12,6 +12,8 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
+#include <dash/Pattern.h>
+
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 #include <dash/internal/PatternArguments.h>
@@ -35,7 +37,25 @@ template<
   dim_t NumDimensions,
   MemArrange Arrangement = ROW_MAJOR,
   typename IndexType     = dash::default_index_t>
-class Pattern {
+class Pattern
+{
+public:
+  /// Properties guaranteed in pattern property category Blocking
+  typedef dash::pattern_blocking_properties<
+            // number of elements may differ in blocks
+            dash::pattern_blocking_tag::unbalanced >
+          blocking_properties;
+  /// Properties guaranteed in pattern property category Topology
+  typedef dash::pattern_topology_properties<
+            // number of blocks assigned to a unit may differ
+            dash::pattern_topology_tag::unbalanced >
+          topology_properties;
+  /// Properties guaranteed in pattern property category Indexing
+  typedef dash::pattern_indexing_properties<
+            // local indices iterate over block boundaries
+            dash::pattern_indexing_tag::local_strided >
+          indexing_properties;
+
 private:
   /// Derive size type from given signed index / ptrdiff type
   typedef typename std::make_unsigned<IndexType>::type
@@ -1132,10 +1152,6 @@ public:
    */
   constexpr static dim_t ndim() {
     return NumDimensions;
-  }
-
-  constexpr static bool is_strided() {
-    return true;
   }
 
   /**
