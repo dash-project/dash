@@ -153,6 +153,11 @@ extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
  * The values of dart_sharedmem_comm_list[i] are different for the units belonging to different nodes. 
  */
 #ifdef SHAREDMEM_ENABLE
+
+#ifdef PROGRESS_ENABLE
+extern MPI_Comm dart_realteams[DART_MAX_TEAM_NUMER];
+#endif
+
 extern MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 
 /* @brief Sets of units who are located in the same node for each unit in MAX_TEAM_NUMBER teams.

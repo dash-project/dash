@@ -20,7 +20,10 @@
 /* Point to the base address of memory region for local allocation. */
 char* dart_mempool_localalloc;
 #ifdef SHAREDMEM_ENABLE
-char**dart_sharedmem_local_baseptr_set;
+char**        dart_sharedmem_local_baseptr_set;
+MPI_Datatype  data_info_type;
+MPI_Comm      user_comm_world;
+int           top;
 #endif
 /* Help to do memory management work for local allocation/free */
 struct dart_buddy   * dart_localpool;
@@ -57,6 +60,7 @@ dart_ret_t dart_init(
 	MPI_Info win_info;
 	MPI_Info_create (&win_info);
 	MPI_Info_set (win_info, "alloc_shared_noncontig", "true");
+
 #endif
 	
 	/* Initialize the teamlist. */
@@ -73,7 +77,13 @@ dart_ret_t dart_init(
     DART_LOG_ERROR("dart_adapt_teamlist_alloc failed");
 		return DART_ERR_OTHER;
 	}
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	dart_realteams[index] = MPI_COMM_WORLD;
+#endif
+#else
 	dart_teams[index] = MPI_COMM_WORLD;
+#endif
 	
 	dart_next_availteamid++;
 
