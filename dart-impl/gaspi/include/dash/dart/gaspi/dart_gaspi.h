@@ -12,7 +12,7 @@ extern "C" {
 
 #define DART_MAX_TEAM_NUMBER (256)
 #define DART_INTERFACE_ON
-#define DART_GASPI_BUFFER_SIZE 1 << 24
+#define DART_GASPI_BUFFER_SIZE 1 << 13
 
 extern gaspi_rank_t dart_gaspi_rank_num;
 extern gaspi_rank_t dart_gaspi_rank;
