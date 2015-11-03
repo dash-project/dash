@@ -10,5 +10,6 @@ find_library(GASPI_C_LIBRARIES
 
 find_path(GASPI_INCLUDE_PATH GASPI.h)
 
-set(GASPI_COMPILE_FLAGS "-Wall -ggdb")
+set(CC "clang")
+set(GASPI_COMPILE_FLAGS "-Wall -ggdb -O3")
 set(GASPI_LINK_FLAGS "-libverbs" "-lpthread")
