@@ -46,17 +46,30 @@ void bench_blocking_get(size_t transfer_val_count)
 int main (int argc, char ** argv)
 {
     dart_unit_t myid;
-    double s = get_wtime();
+    const unsigned long count = strtoul(argv[1], NULL, 0);
+    const double time_all_start = get_wtime();
     dart_init(&argc, &argv);
-
+    const double time_init_end = get_wtime();
+    
     dart_myid(&myid);
-    bench_blocking_get(8192);
-
+    const double time_get_start = get_wtime();
+    bench_blocking_get(count);
+    const double time_get_end = get_wtime();
+    
     dart_exit();
     if(myid == 0)
     {
-        double e = get_wtime();
-        fprintf(stderr, "duration: %lf sec\n", e - s);
+        double time_all_end = get_wtime();
+        // Getting ownership of file descriptor
+        FILE * out = get_file_handle(argv[2]);
+	fprintf(out, "all, get_blocking, init\n");
+        fprintf(out, "%lf, %lf, %lf\n",
+                time_all_end - time_all_start,
+                time_get_end - time_get_start,
+                time_init_end - time_all_start);
+
+        fclose(out);
+        
     }
     return 0;
 }
