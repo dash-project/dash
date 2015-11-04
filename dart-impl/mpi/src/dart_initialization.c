@@ -93,7 +93,7 @@ dart_ret_t dart_init(
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);	
-	dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
+//	dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
 #ifdef SHAREDMEM_ENABLE
 	int i;
 
@@ -225,10 +225,19 @@ dart_ret_t dart_init(
         dart_mempool_localalloc;
       }
 		}
+		
 #ifdef PROGRESS_EANBLE
 		if (user_comm_world != MPI_COMM_NULL)
 		{
 #endif
+		int *dart_unit_mapping, *sharedmem_ranks;
+#ifdef PROGRESS_ENABLE
+		int user_size;
+		MPI_Comm_size (user_comm_world, &user_size);
+		dart_sharedmem_table[index] = (int) malloc (sizeof(int) * user_size);
+		dart_unit_mapping = (int*)malloc (sizeof(int) * (dart_sharedmemnode_size[index]-PROGRESS_NUM));
+		sharedmem_ranks = (int*)malloc (sizeof(int) * (dart_sharedmemnode_size[index]-PROGRESS_NUM));
+#else
 		MPI_Comm_group(sharedmem_comm, &sharedmem_group);
 		MPI_Comm_group(MPI_COMM_WORLD, &group_all);
 
@@ -236,21 +245,40 @@ dart_ret_t dart_init(
      * of DART_TEAM_ALL. */
 		dart_sharedmem_table[index] = (int *)malloc (sizeof (int) * size);
 
-		int* dart_unit_mapping = (int *)malloc(
+		dart_unit_mapping = (int *)malloc(
       sizeof (int) * dart_sharedmemnode_size[index]);
-		int* sharedmem_ranks   = (int *)malloc(
+		sharedmem_ranks   = (int *)malloc(
       sizeof (int) * dart_sharedmemnode_size[index]);
-
+#endif
+#ifdef PROGRESS_ENABLE
+		for (i = 0; i < dart_sharedmemnode_size[index] - PROGRESS_NUM; i++)
+		{
+			sharedmem_ranks[i] = i+PROGRESS_NUM;
+		}
+#else
 		for (i = 0; i < dart_sharedmemnode_size[index]; i++) {
 			sharedmem_ranks[i] = i;
 		}
-		for (i = 0; i < size; i++) {
+#endif
+#ifdef PROGRESS_ENABLE
+		for (i = 0; i < user_size; i++)
+#else
+		for (i = 0; i < size; i++) 
+#endif
+		{
 			dart_sharedmem_table[index][i] = -1;
 		}
 
 		/* Generate the set (dart_unit_mapping) of units with absolute IDs, 
 		 * which are located in the same node 
 		 */
+#ifdef PROGRESS_ENABLE
+		MPI_Group_translate_ranks (sharedmem_group, dart_sharedmemnode_size[index]-PROGRESS_NUM, sharedmem_ranks, user_group, dart_unit_mapping);
+		for (i = 0; i < dart_sharedmemnode_size[index] - PROGRESS_NUM; i++)
+		{
+			dart_sharedmem_table[index][dart_unit_mapping[i]] = i+PROGRESS_NUM;
+		}
+#else
 		MPI_Group_translate_ranks(
       sharedmem_group,
       dart_sharedmemnode_size[index],
@@ -267,8 +295,12 @@ dart_ret_t dart_init(
 		for (i = 0; i < dart_sharedmemnode_size[index]; i++) {
 			dart_sharedmem_table[index][dart_unit_mapping[i]] = i;
 		}
+#endif
 		free(sharedmem_ranks);
-		free(dart_unit_mapping);}
+		free(dart_unit_mapping);
+#ifdef PROGRESS_ENABLE
+		}
+#endif
 	
 #else
 	MPI_Alloc_mem(
@@ -293,11 +325,20 @@ dart_ret_t dart_init(
 	MPI_Win_create_dynamic(
     MPI_INFO_NULL, MPI_COMM_WORLD, &win);
 	dart_win_lists[index] = win;
+#ifdef SHAREDMEM_EANBLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULl)
+		dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
+#endif
+#else
+	dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
+#endif
 
 	/* Start an access epoch on dart_win_local_alloc, and later
    * on all the units can access the memory region allocated
    * by the local allocation function through
    * dart_win_local_alloc. */	
+	MPI_Win_lock_all(0, dart_sharedmem_win_local_alloc);
 	MPI_Win_lock_all(0, dart_win_local_alloc);
 
 	/* Start an access epoch on win, and later on all the units
