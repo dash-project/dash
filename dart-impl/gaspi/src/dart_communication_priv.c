@@ -257,8 +257,6 @@ gaspi_allgather(const gaspi_segment_id_t send_segid,
     assert(ranks);
     DART_CHECK_ERROR_RET(retval, gaspi_group_ranks(group, ranks));
 
-    qsort(ranks, group_size, sizeof(gaspi_rank_t), dart_gaspi_cmp_ranks);
-
     int rel_rank = -1;
     for(unsigned int i = 0; i < group_size; ++i)
     {
@@ -393,8 +391,6 @@ gaspi_return_t gaspi_bcast(const gaspi_segment_id_t seg_id,
     assert(group_ranks);
 
     DART_CHECK_GASPI_ERROR(gaspi_group_ranks(group, group_ranks));
-    qsort(group_ranks, rankcount, sizeof(gaspi_rank_t), dart_gaspi_cmp_ranks);
-
 
     DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(seg_id, &p_segment));
     p_segment = p_segment + offset;
