@@ -54,7 +54,7 @@ double bench_blocking_get(size_t transfer_val_count, int repeat_count)
                 sum += ((int *) recv)[i];
                 if(((int *) recv)[i] != (i + unit))
                 {
-                    printf("Wrong value\n");
+                    fprintf(stderr, "Wrong value\n");
                 }
             }
         }
