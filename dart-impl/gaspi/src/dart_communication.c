@@ -40,6 +40,7 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t te
     uint16_t        index;
     dart_unit_t     myid;
     gaspi_pointer_t seg_ptr = NULL;
+    dart_unit_t     root_abs;
 
     if(nbytes > DART_GASPI_BUFFER_SIZE)
     {
@@ -47,25 +48,29 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t te
         return DART_ERR_OTHER;
     }
 
-    DART_CHECK_ERROR(dart_myid(&myid));
-    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &seg_ptr));
-
-    if(myid == root)
-    {
-        memcpy(seg_ptr, buf, nbytes);
-    }
     int result = dart_adapt_teamlist_convert(team, &index);
     if(result == -1)
     {
         return DART_ERR_INVAL;
     }
+
+    DART_CHECK_ERROR(unit_l2g(index, &root_abs, root));
+
+    DART_CHECK_ERROR(dart_myid(&myid));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &seg_ptr));
+
+    if(myid == root_abs)
+    {
+        memcpy(seg_ptr, buf, nbytes);
+    }
+
     DART_CHECK_GASPI_ERROR(gaspi_bcast(dart_gaspi_buffer_id,
                                        0UL,
                                        nbytes,
-                                       root,
+                                       root_abs,
                                        dart_teams[index].id));
 
-    if(myid != root)
+    if(myid != root_abs)
     {
         memcpy(buf, seg_ptr, nbytes);
     }
