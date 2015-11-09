@@ -9,8 +9,9 @@ extern "C" {
 
 typedef struct dart_lock_struct *dart_lock_t;
 
+dart_ret_t dart_lock_get_gptr(dart_lock_t lock, dart_gptr_t * gptr);
 
-dart_ret_t dart_team_lock_init(dart_team_t teamid, 
+dart_ret_t dart_team_lock_init(dart_team_t teamid,
 			       dart_lock_t* lock);
 
 dart_ret_t dart_team_lock_free(dart_team_t teamid,

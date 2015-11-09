@@ -32,6 +32,9 @@ dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t 
     return DART_ERR_OTHER;
 }
 
+/**
+ * TODO root is a relative unit id
+ */
 dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t team)
 {
     uint16_t        index;
