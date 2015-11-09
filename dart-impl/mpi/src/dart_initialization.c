@@ -347,6 +347,32 @@ dart_ret_t dart_init(
 	MPI_Win_lock_all(0, win);
 
 #ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	struct datastruct data_info;
+	MPI_Datatype type[7] = {MPI_INT32_T, MPI_UINT16_T, MPI_AINT, MPI_AINT, MPI_INT, MPI_INT16_T, MPI_SHORT};
+	int blocklen[7] = {1, 1, 1, 1, 1, 1, 1};
+	MPI_Aint member_disp[7];
+	MPI_Aint data_info_addr, dest_addr, index_addr, origin_offset_addr, target_offset_addr, data_size_addr, segid_addr, is_sharedmem_addr;
+
+	MPI_Get_address (&data_info, &data_info_addr);
+	MPI_Get_address (&data_info.dest, &dest_addr);
+	MPI_Get_address (&data_info.index, &index_addr);
+	MPI_Get_address (&data_info.origin_offset, &origin_offset_addr);
+	MPI_Get_address (&data_info.target_offset, &target_offset_addr);
+	MPI_Get_address (&data_info.data_size, &data_size_addr);
+	MPI_Get_address (&data_info.segid, &segid_addr);
+	MPI_Get_address (&data_info.is_sharedmem, &is_sharedmem_addr);
+
+	member_disp[0] = dest_addr - data_info_addr;
+	member_disp[1] = index_addr - data_info_addr;
+	member_disp[2] = origin_offset_addr - data_info_addr;
+	member_disp[3] = target_offset_addr - data_info_addr;
+	member_disp[4] = data_size_addr - data_info_addr;
+	member_disp[5] = segid_addr - data_info_addr;
+	member_disp[6] = is_sharedmem_addr - data_info_addr;
+
+	MPI_Type_create_struct (7, blocklen, member_disp, type, &data_info_type);
+	MPI_Type_commit (&data_info_type);
 	MPI_Info_free(&win_info);
 #endif
 	DART_LOG_DEBUG("%2d: dart_init: Initialization finished", rank);
