@@ -114,6 +114,69 @@ TEST(Lock, more_locks)
     TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
 }
 
+TEST(Lock, teams)
+{
+    dart_unit_t myid;
+    size_t size;
+
+    TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
+
+    size_t gsize;
+    dart_group_t * g;
+
+    TEST_DART_CALL(dart_myid(&myid));
+    TEST_DART_CALL(dart_size(&size));
+
+    TEST_DART_CALL(dart_group_sizeof(&gsize));
+
+    g = (dart_group_t *) malloc(gsize);
+    ASSERT_TRUE(g);
+
+    TEST_DART_CALL(dart_group_init(g));
+
+    if(myid < (size / 2))
+    {
+        for(dart_unit_t i = 0 ; i < (size / 2) ; ++i)
+        {
+            TEST_DART_CALL(dart_group_addmember(g, i));
+        }
+    }
+    else
+    {
+        for(dart_unit_t i = (size / 2) ; i < size ; ++i)
+        {
+            TEST_DART_CALL(dart_group_addmember(g, i));
+        }
+    }
+
+    dart_team_t new_team = DART_TEAM_NULL;
+    TEST_DART_CALL(dart_team_create(DART_TEAM_ALL, g, &new_team));
+
+    dart_lock_t lock;
+    TEST_DART_CALL(dart_team_lock_init(new_team, &lock));
+
+    TEST_DART_CALL(dart_lock_acquire(lock));
+
+    gaspi_printf("Enter critical section\n");
+
+    sleep(1);
+
+    gaspi_printf("Leave critical section\n");
+
+    TEST_DART_CALL(dart_lock_release(lock));
+
+    TEST_DART_CALL(dart_team_lock_free(new_team, &lock));
+
+
+    TEST_DART_CALL(dart_barrier(new_team));
+    TEST_DART_CALL(dart_team_destroy(new_team));
+
+    TEST_DART_CALL(dart_group_fini(g));
+    free(g);
+
+    TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
+}
+
 int main(int argc, char* argv[])
 {
     ::testing::InitGoogleTest(&argc, argv);
