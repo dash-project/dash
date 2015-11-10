@@ -16,25 +16,79 @@ gaspi_queue_id_t dart_handle_get_queue(dart_handle_t handle)
 {
     return handle->queue;
 }
-/*************************************************************/
-/**
- * TODO dart_scatter not implemented yet
- */
+
 dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t root, dart_team_t team)
 {
-    return DART_ERR_OTHER;
+    dart_unit_t             myid;
+    size_t                  team_size;
+    gaspi_notification_id_t first_id;
+    gaspi_notification_t    old_value;
+    gaspi_notification_id_t remote_id    = 0;
+    gaspi_pointer_t         seg_ptr      = NULL;
+    gaspi_queue_id_t        queue        = 0;
+    gaspi_offset_t          local_offset = 0;
+    uint16_t                index;
+
+    if(dart_adapt_teamlist_convert(team, &index) == -1)
+    {
+        gaspi_printf("dart_scatter: can't find index of given team\n");
+        return DART_ERR_OTHER;
+    }
+
+    DART_CHECK_ERROR(dart_team_myid(team, &myid));
+    DART_CHECK_ERROR(dart_team_size(team, &team_size));
+
+    DART_CHECK_ERROR(dart_barrier(team));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &seg_ptr));
+
+    if(myid == root)
+    {
+        memcpy( seg_ptr, sendbuf, nbytes * team_size );
+
+        for (dart_unit_t unit = 0; unit < team_size; ++unit)
+        {
+            if ( unit == myid )
+            {
+                continue;
+            }
+
+            local_offset = nbytes * unit;
+            dart_unit_t unit_abs;
+
+            DART_CHECK_ERROR(unit_l2g(index, &unit_abs, unit));
+            DART_CHECK_GASPI_ERROR(wait_for_queue_entries(&queue, 2));
+
+            DART_CHECK_GASPI_ERROR(gaspi_write_notify(dart_gaspi_buffer_id,
+                                                      local_offset,
+                                                      unit_abs,
+                                                      dart_gaspi_buffer_id,
+                                                      0UL,
+                                                      nbytes,
+                                                      remote_id,
+                                                      42,
+                                                      queue,
+                                                      GASPI_BLOCK));
+        }
+
+        memcpy(recvbuf, (void *) ((char *) seg_ptr + (myid * nbytes)), nbytes);
+    }
+    else
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_notify_waitsome(dart_gaspi_buffer_id, remote_id, 1, &first_id, GASPI_BLOCK));
+        DART_CHECK_GASPI_ERROR(gaspi_notify_reset(dart_gaspi_buffer_id, first_id, &old_value));
+
+        memcpy(recvbuf, seg_ptr, nbytes);
+    }
+
+    DART_CHECK_ERROR(dart_barrier(team));
+
+    return DART_OK;
 }
+
 /**
  * TODO dart_gather not implemented yet
  */
 dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t root, dart_team_t team)
-{
-    return DART_ERR_OTHER;
-}
-/**
- * TODO dart_allreduce not implemented yet
- */
-dart_ret_t dart_allreduce(void * sendbuf, void * recvbuf, size_t nbytes, dart_team_t team)
 {
     return DART_ERR_OTHER;
 }
