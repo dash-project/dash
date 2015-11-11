@@ -29,9 +29,15 @@ dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t
     gaspi_offset_t          local_offset = 0;
     uint16_t                index;
 
+    if(nbytes > DART_GASPI_BUFFER_SIZE)
+    {
+        fprintf(stderr, "dart_scatter: Memory for collective operation is exhausted\n");
+        return DART_ERR_OTHER;
+    }
+
     if(dart_adapt_teamlist_convert(team, &index) == -1)
     {
-        gaspi_printf("dart_scatter: can't find index of given team\n");
+        fprintf(stderr, "dart_scatter: can't find index of given team\n");
         return DART_ERR_OTHER;
     }
 
@@ -90,7 +96,77 @@ dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t
  */
 dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t root, dart_team_t team)
 {
-    return DART_ERR_OTHER;
+    uint16_t                index;
+    dart_unit_t             relative_id;
+    size_t                  team_size;
+    gaspi_notification_id_t first_id;
+    gaspi_notification_t    old_value;
+    gaspi_segment_id_t      gaspi_seg_id  = dart_gaspi_buffer_id;
+    gaspi_notification_t    notify_value  = 42;
+    gaspi_pointer_t         seg_ptr       = NULL;
+    gaspi_queue_id_t        queue         = 0;
+    gaspi_offset_t          remote_offset = 0;
+
+    if(nbytes > DART_GASPI_BUFFER_SIZE)
+    {
+        fprintf(stderr, "dart_gather: Memory for collective operation is exhausted\n");
+        return DART_ERR_OTHER;
+    }
+
+    if(dart_adapt_teamlist_convert(team, &index) == -1)
+    {
+        fprintf(stderr, "dart_gather: can't find index of given team\n");
+        return DART_ERR_OTHER;
+    }
+
+    DART_CHECK_ERROR(dart_team_myid(team, &relative_id));
+    DART_CHECK_ERROR(dart_team_size(team, &team_size));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
+
+    DART_CHECK_ERROR(dart_barrier(team));
+
+    if(relative_id != root)
+    {
+        dart_unit_t abs_root_id;
+        DART_CHECK_ERROR(unit_l2g(index, &abs_root_id, root));
+
+        memcpy(seg_ptr, sendbuf, nbytes);
+        remote_offset = relative_id * nbytes;
+
+        DART_CHECK_GASPI_ERROR(wait_for_queue_entries(&queue, 2));
+        DART_CHECK_GASPI_ERROR(gaspi_write_notify(gaspi_seg_id,
+                                                  0UL,
+                                                  abs_root_id,
+                                                  gaspi_seg_id,
+                                                  remote_offset,
+                                                  nbytes,
+                                                  relative_id,
+                                                  notify_value,
+                                                  queue,
+                                                  GASPI_BLOCK));
+    }
+    else
+    {
+        gaspi_offset_t recv_buffer_offset = relative_id * nbytes;
+        void         * recv_buffer_ptr    = (void *)((char *) seg_ptr + recv_buffer_offset);
+        memcpy(recv_buffer_ptr, sendbuf, nbytes);
+
+        int missing = team_size - 1;
+        while(missing-- > 0)
+        {
+            DART_CHECK_GASPI_ERROR(blocking_waitsome(0, team_size, &first_id, &old_value, gaspi_seg_id));
+            if(old_value != notify_value)
+            {
+                fprintf(stderr, "dart_gather: Error in process synchronization\n");
+                break;
+            }
+        }
+        memcpy(recvbuf, seg_ptr, team_size * nbytes);
+    }
+
+    DART_CHECK_ERROR(dart_barrier(team));
+
+    return DART_OK;
 }
 /**
  * @param root relative unit of root
@@ -104,13 +180,14 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t te
 
     if(nbytes > DART_GASPI_BUFFER_SIZE)
     {
-        fprintf(stderr, "Memory for collective operation is exhausted\n");
+        fprintf(stderr, "dart_bcast: Memory for collective operation is exhausted\n");
         return DART_ERR_OTHER;
     }
 
     int result = dart_adapt_teamlist_convert(team, &index);
     if(result == -1)
     {
+        fprintf(stderr, "dart_bcast: can't find index of given team\n");
         return DART_ERR_INVAL;
     }
 

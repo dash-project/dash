@@ -4,20 +4,22 @@ GTEST_ROOT = $(TEST_ROOT)/gtest
 GTEST_INC  = $(GTEST_ROOT)/include
 GTEST_LIB  = $(GTEST_ROOT)/make/gtest.a
 
-CFLAGS    = -Wall --std=c++11 -c -ggdb
+CFLAGS    = -Wall --std=c++11 -c -ggdb -g3 -O0
 LIB_DART  = -L$(DART_ROOT)/lib -ldart-gaspi
 LIB_GASPI = -L$(GPI2_ROOT)/lib -libverbs -lpthread -lGPI2 -Wl,-rpath=$(GPI2_ROOT)/lib:
 INCLUDE   = -I$(GPI2_ROOT)/include -I$(DART_ROOT)/include -I$(TEST_ROOT) -I$(GTEST_INC)
 
-CC = g++
+FLAGS = -fsanitize=address -fno-omit-frame-pointer
+
+CC = clang++
 
 PROG = main
 
 $(PROG):main.o
-	$(CC) -o $@ main.o $(LIB_DART) $(LIB_GASPI) $(GTEST_LIB)
+	$(CC) $(FLAGS) -o $@ main.o $(LIB_DART) $(LIB_GASPI) $(GTEST_LIB)
 
 %.o:%.cpp
-	$(CC) $(CFLAGS) $(INCLUDE) $<
+	$(CC) $(FLAGS) $(CFLAGS) $(INCLUDE) $<
 
 clean:
 	rm -rf *~ \#_* *.o
