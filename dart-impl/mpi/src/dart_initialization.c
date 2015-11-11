@@ -499,7 +499,299 @@ dart_ret_t dart_exit()
 					MPI_Type_free (&data_info_type);
 					break;
 				}
+if (mpi_status.MPI_TAG == TEAMCREATE){
+
+			//	printf ("inside the TEAMCREATE\n");
+
+				int count, size;
+				int i, j;
+				MPI_Comm newcomm;
+				
+				MPI_Comm_size (MPI_COMM_WORLD, &size);
+				MPI_Get_count (&mpi_status, MPI_INT32_T, &count);
+				dart_unit_t* unitids = (dart_unit_t*)malloc (sizeof (dart_unit_t) * count);
+				MPI_Recv (unitids, count, MPI_INT32_T, mpi_status.MPI_SOURCE,
+						TEAMCREATE, dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
+
+				result = dart_adapt_teamlist_convert (unitids[count-2], &index);
+				if (result == -1)
+					return DART_ERR_INVAL;
+
+				int progress, success = 0, mark = -1;
+				int *progress_recv= (int*)malloc (sizeof (int) * size);
+				for (i = 0; i < count - 2; i++)
+				{
+					for (j = 0; j <= unitids[i]; j++)
+					{
+						if (dart_sharedmem_table[index][j] != -1){
+							if (mark == -1) mark = j;
+								progress = j;}
+					}
+					if (progress == unitids[i]) 
+					{
+						success = 1;
+						break;
+					}
+					else mark = -1;	
 				}
+				if (success)
+				{
+					progress = mark;
+				}
+				else
+				{
+					progress = -1;
+				}
+				MPI_Allgather (&progress, 1, MPI_INT, progress_recv, 1, MPI_INT, dart_realteams[index]);
+				
+				int* progresshead_node, progress_count, *progress_node;
+				progresshead_node = (int*)malloc (sizeof (int) * size);
+				progress_node = (int *)malloc (sizeof (int) * size);
+
+				for(i=0;i<size;i++) progresshead_node[i]=0;
+				for(i=0;i<size;i++){
+					int pp;
+					pp = progress_recv[i];
+					if (pp != -1){
+						for (j = 0; j <= i; j++){
+							if (pp == progress_recv[j]) break;}
+						progresshead_node[j] = 1;}
+				}
+				progress_count = 0;
+				for(i=0;i<size;i++){
+					if (progresshead_node[i]){
+						progress_node[progress_count] = i;
+						progress_count ++;}
+				}
+				MPI_Group recvgroup, newgroup, progress_group, group_all;
+
+							MPI_Comm_group (MPI_COMM_WORLD, &group_all);
+				MPI_Group_incl (group_all, progress_count, progress_node, &progress_group);
+				MPI_Group_incl (group_all, count - 2, unitids, &recvgroup);
+				MPI_Group_union (progress_group, recvgroup, &newgroup);
+				free (progress_node);
+				free (progresshead_node);
+				free (progress_recv);
+/*
+				for (i = 0; i < count; i++)
+				{
+					printf ("unitids[%d] = %d\n", i, unitids[i]);
+				}
+*/
+
+			//	if (dart_realteams[index] == MPI_COMM_NULL) printf ("yesyesyesyes\n");
+				MPI_Comm_create (dart_realteams[index], newgroup, &newcomm);
+
+				if (newcomm != MPI_COMM_NULL){		
+				MPI_Win_create_dynamic (MPI_INFO_NULL, newcomm, &win);
+			
+
+				result = dart_adapt_teamlist_alloc (unitids[count-1], &index);
+				if (result == -1)
+				{
+					return DART_ERR_OTHER;
+				}
+		//		printf ("unitids[count-1] = %d, index is %d\n", unitids[count-1], index);
+				dart_win_lists[index] = win;
+				dart_realteams[index] = newcomm;
+
+				MPI_Comm sharedmem_comm;
+				MPI_Group sharedmem_group;
+				MPI_Comm_split_type (newcomm, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &sharedmem_comm);
+				dart_sharedmem_comm_list[index] = sharedmem_comm;
+
+				MPI_Comm_size (sharedmem_comm, &(dart_sharedmemnode_size[index]));
+				MPI_Comm_group (sharedmem_comm, &sharedmem_group);
+				
+				int* dart_unit_mapping = (int*)malloc (dart_sharedmemnode_size[index] * sizeof(int));
+				int* sharedmem_ranks = (int*)malloc (dart_sharedmemnode_size[index] * sizeof(int));
+
+				dart_sharedmem_table[index] = (int*)malloc (size * sizeof (int));
+				for (i = 0; i < dart_sharedmemnode_size[index]; i++)
+				{
+					sharedmem_ranks[i] = i;
+				}	
+				MPI_Group_translate_ranks (sharedmem_group, dart_sharedmemnode_size[index], 
+						sharedmem_ranks, group_all, dart_unit_mapping);
+
+				for (i = 0; i < size; i++)
+				{
+					dart_sharedmem_table[index][i] = -1;
+				}
+				for (i = 0; i < dart_sharedmemnode_size[index]; i++)
+				{
+					dart_sharedmem_table[index][dart_unit_mapping[i]] = i;
+				}
+
+				free (sharedmem_ranks);
+				free (dart_unit_mapping);
+				free (unitids);
+				MPI_Win_lock_all (0, win);}
+			}
+			if (mpi_status.MPI_TAG == TEAMDESTROY){
+				MPI_Recv (&teamid, 1, MPI_INT32_T, mpi_status.MPI_SOURCE, TEAMDESTROY, 
+						dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
+
+				result = dart_adapt_teamlist_convert (teamid, &index);
+				if (result == -1) return DART_ERR_INVAL;
+
+				free (dart_sharedmem_table[index]);
+				win = dart_win_lists[index];
+				MPI_Win_unlock_all (win);
+				MPI_Win_free (&win);
+				MPI_Comm_free (&dart_realteams[index]);
+				dart_adapt_teamlist_recycle (index, result);
+			}
+			if (mpi_status.MPI_TAG == PUT){
+				MPI_Recv (&recv_data, 1, data_info_type, mpi_status.MPI_SOURCE, PUT, 
+						dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
+				dest = recv_data.dest;
+				index = recv_data.index;
+				origin_offset = recv_data.origin_offset;
+				target_offset = recv_data.target_offset;
+				nbytes = recv_data.data_size;
+				segid = recv_data.segid;
+				is_sharedmem = recv_data.is_sharedmem;
+
+			
+
+				if (segid){
+					if (is_sharedmem)
+						dart_adapt_transtable_get_win (segid, &win);
+					else win = dart_win_lists[index];
+					if (index != 0){
+						MPI_Group sharedmem_group_all, sharedmem_group;
+						MPI_Comm_group (dart_sharedmem_comm_list[0], &sharedmem_group_all);
+						MPI_Comm_group (dart_sharedmem_comm_list[index], &sharedmem_group);
+						MPI_Group_translate_ranks (sharedmem_group_all, 1, &mpi_status.MPI_SOURCE,
+								sharedmem_group, &src);}
+					else src = mpi_status.MPI_SOURCE;
+				//	dart_adapt_transtable_get_win (segid, &sharedmem_win);
+				//	MPI_Win_shared_query (sharedmem_win, src, &maximum_size, &disp_unit, &baseptr);
+					if (dart_adapt_transtable_get_baseptr (segid, src, &baseptr) == -1)
+							return DART_ERR_INVAL;
+					
+					}else{
+						if (is_sharedmem) win = dart_sharedmem_win_local_alloc;
+						else win = dart_win_local_alloc;
+					baseptr = dart_sharedmem_local_baseptr_set[mpi_status.MPI_SOURCE];}
+
+				{
+					MPI_Put (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win);
+				//	MPI_Rput (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win, &mpi_req);
+					if (nbytes >= PUT_THRESH){
+						MPI_Win_flush (dest, win);
+						MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, PUT, dart_sharedmem_comm_list[0]);
+					}else{
+					struct rmareq_node* p = (struct rmareq_node*)malloc (sizeof(struct rmareq_node));
+					p -> dest = dest;
+					p -> source = mpi_status.MPI_SOURCE;
+					p -> direction = PUT;
+					p -> win = win;
+					p -> next = NULL;
+					
+					if(!header) {header = p; tail = header;}
+					else {tail -> next = p; tail=p;}}
+/*
+					if (rmareq_num >= 128){
+						while(header){
+							MPI_Win_flush (header -> dest, header -> win);
+							MPI_Send (NULL, 0, MPI_INT, header->source, header->direction, 
+									dart_sharedmem_comm_list[0]);
+							struct rmareq_node* p;
+							p = header;
+							header = header -> next;
+							free (p);}
+						rmareq_num = 0;
+					}*/
+
+					//	MPI_Wait (&mpi_req, &mpi_sta);
+				}
+
+			//	MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, PUT, dart_sharedmem_comm_list[0]);
+			}
+			if (mpi_status.MPI_TAG == GET){
+			
+				MPI_Recv (&recv_data, 1, data_info_type, mpi_status.MPI_SOURCE, GET, 
+						dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
+			
+				dest = recv_data.dest;
+				index = recv_data.index;
+				origin_offset = recv_data.origin_offset;
+				target_offset = recv_data.target_offset;
+				nbytes = recv_data.data_size;
+				segid = recv_data.segid;
+				is_sharedmem = recv_data.is_sharedmem;
+			//	MPI_Aint maximum_size;
+			//	int disp_unit;
+			        if (segid){
+					if (is_sharedmem) dart_adapt_transtable_get_win (segid, &win);
+					else win = dart_win_lists[index];
+					if (index != 0){
+						MPI_Group sharedmem_group_all, sharedmem_group;
+						MPI_Comm_group (dart_sharedmem_comm_list[0], &sharedmem_group_all);
+						MPI_Comm_group (dart_sharedmem_comm_list[index], &sharedmem_group);
+						MPI_Group_translate_ranks (sharedmem_group_all, 1, &mpi_status.MPI_SOURCE,
+								sharedmem_group, &src);}
+					else src = mpi_status.MPI_SOURCE;
+					if (dart_adapt_transtable_get_baseptr (segid, src, &baseptr) == -1)
+						return DART_ERR_INVAL;
+				}else{
+					if (is_sharedmem) win = dart_sharedmem_win_local_alloc;
+					else win = dart_win_local_alloc;
+					baseptr = dart_sharedmem_local_baseptr_set[src];
+				}
+
+			
+				{
+
+				MPI_Get (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win);
+			//	MPI_Rget (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win, &mpi_req);
+
+				if (nbytes >= GET_THRESH){
+					MPI_Win_flush (dest, win);
+					MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, GET, dart_sharedmem_comm_list[0]);
+				}else{
+			        struct rmareq_node* p = (struct rmareq_node*) malloc (sizeof(struct rmareq_node));
+				p -> dest = dest;
+				p -> source = mpi_status.MPI_SOURCE;
+				p -> direction = GET;
+				p -> win = win;
+				p -> next = NULL;
+				if(!header) {header= p; tail=header;}
+				else	{tail-> next = p; tail = p;}}
+			        }
+			
+			//	MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, GET, dart_sharedmem_comm_list[0]);
+			}
+			if (mpi_status.MPI_TAG == WAIT)
+			{
+				MPI_Recv (NULL, 0, MPI_UINT16_T, mpi_status.MPI_SOURCE, WAIT,
+						dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
+				
+				while (header){
+					MPI_Win_flush (header -> dest, header -> win);	
+					MPI_Send (NULL, 0, MPI_INT, header -> source, header -> direction, 
+							dart_sharedmem_comm_list[0]);
+					struct rmareq_node* p;
+					p = header;
+					header = header -> next;
+					free (p);	
+				        }
+			}}
+			else{
+		
+				while (header){
+					MPI_Win_flush (header->dest, header->win);
+					MPI_Send (NULL, 0, MPI_INT, header->source, header->direction,
+						       	dart_sharedmem_comm_list[0]);
+					
+					struct rmareq_node* p;
+					p = header;
+					header = header -> next;
+					free (p);}
+			}
+
 		}
 
 	}
