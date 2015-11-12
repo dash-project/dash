@@ -92,7 +92,6 @@ dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t
     return DART_OK;
 }
 
-
 dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t root, dart_team_t team)
 {
     uint16_t                index;
@@ -168,14 +167,27 @@ dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t 
     return DART_OK;
 }
 /**
- * @param root relative unit of root
+ * Implemented a binominal tree to broadcast the data
+ *
+ * TODO : In error case memory of children will leak
  */
 dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t team)
 {
-    uint16_t        index;
-    dart_unit_t     myid;
-    gaspi_pointer_t seg_ptr = NULL;
-    dart_unit_t     root_abs;
+    const gaspi_notification_id_t notify_id    = 0;
+    gaspi_queue_id_t              queue        = 0;
+    gaspi_pointer_t               seg_ptr      = NULL;
+    const gaspi_notification_t    notify_val   = 42;
+    gaspi_segment_id_t            gaspi_seg_id = dart_gaspi_buffer_id;
+    gaspi_notification_id_t       first_id;
+    gaspi_notification_t          old_value;
+    uint16_t                      index;
+    dart_unit_t                   myid;
+    dart_unit_t                   root_abs;
+    dart_unit_t                   team_myid;
+    size_t                        team_size;
+    int                           parent;
+    int                         * children = NULL;
+    int                           children_count;
 
     if(nbytes > DART_GASPI_BUFFER_SIZE)
     {
@@ -193,19 +205,55 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t te
     DART_CHECK_ERROR(unit_l2g(index, &root_abs, root));
 
     DART_CHECK_ERROR(dart_myid(&myid));
-    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(dart_gaspi_buffer_id, &seg_ptr));
+    DART_CHECK_ERROR(dart_team_myid(team, &team_myid));
+    DART_CHECK_ERROR(dart_team_size(team, &team_size));
+    DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
 
     if(myid == root_abs)
     {
         memcpy(seg_ptr, buf, nbytes);
     }
 
-    DART_CHECK_GASPI_ERROR(gaspi_bcast(dart_gaspi_buffer_id,
-                                       0UL,
-                                       nbytes,
-                                       root_abs,
-                                       dart_teams[index].id));
+    children_count = gaspi_utils_compute_comms(&parent, &children, team_myid, root, team_size);
 
+    DART_CHECK_ERROR(dart_barrier(team));
+
+    dart_unit_t abs_parent;
+    DART_CHECK_ERROR(unit_l2g(index, &abs_parent, parent));
+    /*
+     * parents + children wait for upper parents data
+     */
+    if (myid != abs_parent)
+    {
+        blocking_waitsome(notify_id, 1, &first_id, &old_value, gaspi_seg_id);
+        if(old_value != notify_val)
+        {
+            fprintf(stderr, "dart_bcast : Got wrong notify value -> data transfer error\n");
+        }
+    }
+    /*
+     * write to all childs
+     */
+    for (int child = 0; child < children_count; child++)
+    {
+        dart_unit_t abs_child;
+        DART_CHECK_ERROR(unit_l2g(index, &abs_child, children[child]));
+
+        DART_CHECK_GASPI_ERROR(wait_for_queue_entries(&queue, 2));
+        DART_CHECK_GASPI_ERROR(gaspi_write_notify(gaspi_seg_id,
+                                                  0UL,
+                                                  abs_child,
+                                                  gaspi_seg_id,
+                                                  0UL,
+                                                  nbytes,
+                                                  notify_id,
+                                                  notify_val,
+                                                  queue,
+                                                  GASPI_BLOCK));
+    }
+
+    free(children);
+    DART_CHECK_ERROR(dart_barrier(team));
     if(myid != root_abs)
     {
         memcpy(buf, seg_ptr, nbytes);
