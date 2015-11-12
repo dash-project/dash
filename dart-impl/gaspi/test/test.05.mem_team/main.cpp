@@ -8,7 +8,7 @@
 
 
 #include <test.h>
-#include <dart_translation.h>
+#include <dash/dart/gaspi/dart_translation.h>
 
 void test_global_ptr(gaspi_segment_id_t seg, dart_gptr_t * gptr)
 {

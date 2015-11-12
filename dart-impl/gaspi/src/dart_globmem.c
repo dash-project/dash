@@ -37,7 +37,7 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
 {
     if (dart_buddy_free (dart_localpool, gptr.addr_or_offs.offset) == -1)
     {
-        fprintf(stderr, "Free invalid local global pointer: invalid offset = %llu\n", gptr.addr_or_offs.offset);
+        fprintf(stderr, "Free invalid local global pointer: invalid offset = %lu\n", gptr.addr_or_offs.offset);
         return DART_ERR_INVAL;
     }
 
@@ -84,32 +84,13 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
                                                                  gaspi_group,
                                                                  GASPI_BLOCK,
                                                                  GASPI_MEM_INITIALIZED));
-
-    *((gaspi_segment_id_t *) dart_gaspi_buffer_ptr) = gaspi_seg_id;
-    /**
-     * Allgather for gaspi
-     *
-     * using the same segment in allgather
-     *  _____________ _____________
-     * | send_buffer | recv_buffer |
-     * -----------------------------
-     */
-    gaspi_offset_t recv_buffer_offset = sizeof(gaspi_segment_id_t);
     /**
      * collect the other segment numbers of the team
      */
-    DART_CHECK_ERROR_GOTO(dart_error_label, gaspi_allgather(dart_gaspi_buffer_id,
-                                                            0UL,
-                                                            dart_gaspi_buffer_id,
-                                                            recv_buffer_offset,
-                                                            sizeof(gaspi_segment_id_t),
-                                                            gaspi_group));
-
-    // Get the pointer to the recv buffer in the segment
-    gaspi_pointer_t recv_buffer_ptr = dart_gaspi_buffer_ptr + recv_buffer_offset;
-
-    memcpy(gaspi_seg_ids, recv_buffer_ptr, sizeof(gaspi_segment_id_t) * teamsize);
-
+    DART_CHECK_ERROR_GOTO(dart_error_label, dart_allgather(&gaspi_seg_id,
+                                                           gaspi_seg_ids,
+                                                           sizeof(gaspi_segment_id_t),
+                                                           teamid));
     /* -- Updating infos on gptr -- */
     gptr->unitid = gptr_unitid;
     gptr->segid = dart_memid; /* Segid equals to dart_memid (always a positive integer), identifies an unique collective global memory. */
@@ -118,11 +99,11 @@ dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, size_t nbytes, dart_gp
 
     /* -- Updating the translation table of teamid with the created (segment) infos -- */
     info_t item;
-    item.seg_id = dart_memid;
-    item.size = nbytes;
-    item.gaspi_seg_ids = gaspi_seg_ids;
+    item.seg_id           = dart_memid;
+    item.size             = nbytes;
+    item.gaspi_seg_ids    = gaspi_seg_ids;
     item.own_gaspi_seg_id = gaspi_seg_id;
-    item.unit_count = teamsize;
+    item.unit_count       = teamsize;
 
     /* Add this newly generated correspondence relationship record into the translation table. */
     dart_adapt_transtable_add(item);
