@@ -30,11 +30,8 @@ dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t
     gaspi_offset_t          local_offset = 0;
     uint16_t                index;
 
-    if(nbytes > DART_GASPI_BUFFER_SIZE)
-    {
-        fprintf(stderr, "dart_scatter: Memory for collective operation is exhausted\n");
-        return DART_ERR_OTHER;
-    }
+    DART_CHECK_ERROR(dart_team_myid(team, &myid));
+    DART_CHECK_ERROR(dart_team_size(team, &team_size));
 
     if(dart_adapt_teamlist_convert(team, &index) == -1)
     {
@@ -42,8 +39,16 @@ dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t
         return DART_ERR_OTHER;
     }
 
-    DART_CHECK_ERROR(dart_team_myid(team, &myid));
-    DART_CHECK_ERROR(dart_team_size(team, &team_size));
+    if((nbytes * team_size) > DART_GASPI_BUFFER_SIZE)
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_fallback_seg,
+                                                    nbytes * team_size,
+                                                    dart_teams[index].id,
+                                                    GASPI_BLOCK,
+                                                    GASPI_MEM_UNINITIALIZED));
+        gaspi_seg_id = dart_fallback_seg;
+        dart_fallback_seg_is_allocated = true;
+    }
 
     DART_CHECK_ERROR(dart_barrier(team));
     DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
@@ -89,6 +94,13 @@ dart_ret_t dart_scatter(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t
 
     DART_CHECK_ERROR(dart_barrier(team));
 
+    if((nbytes * team_size) > DART_GASPI_BUFFER_SIZE)
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));
+        dart_fallback_seg_is_allocated = false;
+    }
+
+
     return DART_OK;
 }
 
@@ -105,12 +117,6 @@ dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t 
     gaspi_queue_id_t        queue         = 0;
     gaspi_offset_t          remote_offset = 0;
 
-    if(nbytes > DART_GASPI_BUFFER_SIZE)
-    {
-        fprintf(stderr, "dart_gather: Memory for collective operation is exhausted\n");
-        return DART_ERR_OTHER;
-    }
-
     if(dart_adapt_teamlist_convert(team, &index) == -1)
     {
         fprintf(stderr, "dart_gather: can't find index of given team\n");
@@ -119,6 +125,18 @@ dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t 
 
     DART_CHECK_ERROR(dart_team_myid(team, &relative_id));
     DART_CHECK_ERROR(dart_team_size(team, &team_size));
+
+    if((nbytes * team_size) > DART_GASPI_BUFFER_SIZE)
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_fallback_seg,
+                                                    nbytes * team_size,
+                                                    dart_teams[index].id,
+                                                    GASPI_BLOCK,
+                                                    GASPI_MEM_UNINITIALIZED));
+        gaspi_seg_id = dart_fallback_seg;
+        dart_fallback_seg_is_allocated = true;
+    }
+
     DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
 
     DART_CHECK_ERROR(dart_barrier(team));
@@ -164,6 +182,12 @@ dart_ret_t dart_gather(void *sendbuf, void *recvbuf, size_t nbytes, dart_unit_t 
 
     DART_CHECK_ERROR(dart_barrier(team));
 
+    if((nbytes * team_size) > DART_GASPI_BUFFER_SIZE)
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));
+        dart_fallback_seg_is_allocated = false;
+    }
+
     return DART_OK;
 }
 /**
@@ -189,12 +213,6 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t te
     int                         * children = NULL;
     int                           children_count;
 
-    if(nbytes > DART_GASPI_BUFFER_SIZE)
-    {
-        fprintf(stderr, "dart_bcast: Memory for collective operation is exhausted\n");
-        return DART_ERR_OTHER;
-    }
-
     int result = dart_adapt_teamlist_convert(team, &index);
     if(result == -1)
     {
@@ -203,11 +221,21 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t te
     }
 
     DART_CHECK_ERROR(unit_l2g(index, &root_abs, root));
-
     DART_CHECK_ERROR(dart_myid(&myid));
     DART_CHECK_ERROR(dart_team_myid(team, &team_myid));
     DART_CHECK_ERROR(dart_team_size(team, &team_size));
     DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
+
+    if(nbytes > DART_GASPI_BUFFER_SIZE)
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_fallback_seg,
+                                                    nbytes,
+                                                    dart_teams[index].id,
+                                                    GASPI_BLOCK,
+                                                    GASPI_MEM_UNINITIALIZED));
+        gaspi_seg_id = dart_fallback_seg;
+        dart_fallback_seg_is_allocated = true;
+    }
 
     if(myid == root_abs)
     {
@@ -254,9 +282,16 @@ dart_ret_t dart_bcast(void *buf, size_t nbytes, dart_unit_t root, dart_team_t te
 
     free(children);
     DART_CHECK_ERROR(dart_barrier(team));
+
     if(myid != root_abs)
     {
         memcpy(buf, seg_ptr, nbytes);
+    }
+
+    if(nbytes > DART_GASPI_BUFFER_SIZE)
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));
+        dart_fallback_seg_is_allocated = false;
     }
 
     return DART_OK;
@@ -277,23 +312,29 @@ dart_ret_t dart_allgather(void *sendbuf, void *recvbuf, size_t nbytes, dart_team
     DART_CHECK_ERROR(dart_team_size(team, &teamsize));
     DART_CHECK_ERROR(dart_barrier(team));
 
-    if(((teamsize * nbytes) + nbytes) > DART_GASPI_BUFFER_SIZE)
+    int result = dart_adapt_teamlist_convert(team, &index);
+    if (result == -1)
     {
-        fprintf(stderr, "Memory for collective operation is exhausted\n");
-        return DART_ERR_OTHER;
+        return DART_ERR_INVAL;
     }
+
+    if((nbytes * teamsize) > DART_GASPI_BUFFER_SIZE)
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_segment_create(dart_fallback_seg,
+                                                    nbytes * teamsize,
+                                                    dart_teams[index].id,
+                                                    GASPI_BLOCK,
+                                                    GASPI_MEM_UNINITIALIZED));
+        gaspi_seg_id = dart_fallback_seg;
+        dart_fallback_seg_is_allocated = true;
+    }
+
 
     offset = nbytes * relative_id;
 
     DART_CHECK_GASPI_ERROR(gaspi_segment_ptr(gaspi_seg_id, &seg_ptr));
 
     memcpy((void *) ((char *)seg_ptr + offset), sendbuf, nbytes);
-
-    int result = dart_adapt_teamlist_convert(team, &index);
-    if (result == -1)
-    {
-        return DART_ERR_INVAL;
-    }
 
     for (dart_unit_t unit = 0; unit < teamsize; unit++)
     {
@@ -330,6 +371,12 @@ dart_ret_t dart_allgather(void *sendbuf, void *recvbuf, size_t nbytes, dart_team
 
     memcpy(recvbuf, seg_ptr, nbytes * teamsize);
     DART_CHECK_ERROR(dart_barrier(team));
+
+    if((nbytes * teamsize) > DART_GASPI_BUFFER_SIZE)
+    {
+        DART_CHECK_GASPI_ERROR(gaspi_segment_delete(gaspi_seg_id));
+        dart_fallback_seg_is_allocated = false;
+    }
 
     return DART_OK;
 }

@@ -13,6 +13,9 @@ gaspi_rank_t dart_gaspi_rank;
  */
 gaspi_pointer_t dart_gaspi_buffer_ptr;
 const gaspi_segment_id_t dart_gaspi_buffer_id = 0;
+/*********************************************************/
+const gaspi_segment_id_t dart_fallback_seg = 2;
+bool dart_fallback_seg_is_allocated;
 /***************** non-collective memory *****************/
 #define DART_BUDDY_ORDER 24
 /* Gaspi segment number for non-collective memory */
@@ -25,6 +28,7 @@ struct dart_buddy* dart_localpool;
 const gaspi_segment_id_t dart_coll_seg_id_begin = 3;
 const size_t dart_coll_seg_count = 28;
 /*********************************************************/
+
 
 dart_ret_t dart_init(int *argc, char ***argv)
 {
@@ -91,6 +95,10 @@ dart_ret_t dart_init(int *argc, char ***argv)
      * Set free segment ids in the stack
      */
     DART_CHECK_ERROR(seg_stack_fill(&dart_free_coll_seg_ids, dart_coll_seg_id_begin, dart_coll_seg_count));
+    /*
+     * dart fallback segment is not allocated at default
+     */
+    dart_fallback_seg_is_allocated = false;
 
     return DART_OK;
 }
