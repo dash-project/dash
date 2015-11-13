@@ -793,8 +793,40 @@ if (mpi_status.MPI_TAG == TEAMCREATE){
 			}
 
 		}
+		MPI_Info_free (&win_info);
+		return MPI_Finalize();
 
 	}
+	dart_unit_t unitid;
+	MPI_Comm_rank (dart_sharedmem_comm_list[0], &unitid);
+
+	if (unitid == 2)
+	{
+		MPI_Send (NULL, 0, MPI_UNIT16_T, PROGRESS_UNIT, EXIT, dart_sharedmem_comm_list[0]);
+		MPI_Send (NULL, 0, MPI_UINT16_T, PROGRESS_UNIT+1, EXIT, dart_sharedmem_comm_list[0];
+	}
+	int result = dart_adapt_teamlist_convert (DART_TEAM_ALL, &index);
+
+	MPI_Win_unlock_all (dart_sharedmem_win_local_alloc);
+	MPI_Win_unlock_all (dart_win_lists[index]);
+	MPI_Win_unlock_all (dart_win_local_alloc);
+	MPI_Win_free (&dart_win_lists[index]);
+	MPI_Win_free (&dart_win_local_alloc);
+	MPI_Win_free (&dart_sharedmem_win_local_alloc);
+
+	dart_adapt_transtable_destroy ();
+	buddy_delete (dart_localpool);
+
+	free (dart_sharedmem_table[index]);
+	free (dart_sharedmem_local_baseptr_set);
+
+	dart_adapt_teamlist_destroy ();
+
+	MPI_Comm_free (&user_comm_world);
+	MPI_Type_free (&data_info_type);
+#endif
+#endif
+#ifndef PROGRESS_ENABLE
 	dart_unit_t unitid;
 	dart_myid(&unitid);
  	
@@ -827,7 +859,7 @@ if (mpi_status.MPI_TAG == TEAMCREATE){
 	free(dart_sharedmem_local_baseptr_set);
 #endif
 	dart_adapt_teamlist_destroy ();
-
+#endif
 	if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();
