@@ -58,15 +58,22 @@ option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
+message("-- Enable log messages:      " ${ENABLE_LOGGING})
 option(ENABLE_TRACE_LOGGING
        "Specify whether trace messages should be logged" off)
+message("-- Trace log messages:       " ${ENABLE_TRACE_LOGGING})
 option(ENABLE_DART_LOGGING
        "Specify whether messages from DART should be logged" off)
+message("-- DART log messages:        " ${ENABLE_DART_LOGGING})
 option(ENABLE_ASSERTIONS
        "Specify whether runtime assertions should be checked" off)
+message("-- Runtime assertions:       " ${ENABLE_ASSERTIONS})
 option(MEMORY_MODEL_UNIFIED
        "Specify whether to assume unified memory model" off)
-message("-- Unified RMA memory model " ${MEMORY_MODEL_UNIFIED})
+message("-- Unified RMA memory model: " ${MEMORY_MODEL_UNIFIED})
+option(ENABLE_SHARED_MEMORY
+       "Specify whether shared memory features are enabled" on)
+message("-- Shared memory features:   " ${ENABLE_SHARED_MEMORY})
 
 set(DART_IF_VERSION "3.1" CACHE STRING
     "Version of the DART interface")

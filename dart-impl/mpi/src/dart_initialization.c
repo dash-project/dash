@@ -19,7 +19,7 @@
 
 /* Point to the base address of memory region for local allocation. */
 char* dart_mempool_localalloc;
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 char**dart_sharedmem_local_baseptr_set;
 #endif
 /* Help to do memory management work for local allocation/free */
@@ -52,7 +52,7 @@ dart_ret_t dart_init(
 	uint16_t index;
 	MPI_Win win;
 	
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
   DART_LOG_DEBUG("dart_init: Shared memory enabled");
 	MPI_Info win_info;
 	MPI_Info_create (&win_info);
@@ -84,7 +84,7 @@ dart_ret_t dart_init(
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);	
 	dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 	int i;
 
 	/* Generate separated intra-node communicators and
@@ -221,7 +221,7 @@ dart_ret_t dart_init(
    * collective allocation function through win. */
 	MPI_Win_lock_all(0, win);
 
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 	MPI_Info_free(&win_info);
 #endif
 	DART_LOG_DEBUG("%2d: dart_init: Initialization finished", rank);
@@ -261,14 +261,14 @@ dart_ret_t dart_exit()
   }
 	/* -- Free up all the resources for dart programme -- */
 	MPI_Win_free(&dart_win_local_alloc);
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 	MPI_Win_free(&dart_sharedmem_win_local_alloc);
 #endif
 	MPI_Win_free(&dart_win_lists[index]);
 	
 	dart_adapt_transtable_destroy();
 	dart_buddy_delete(dart_localpool);
-#ifdef SHAREDMEM_ENABLE	
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY	
 	free(dart_sharedmem_table[index]);
 	free(dart_sharedmem_local_baseptr_set);
 #endif

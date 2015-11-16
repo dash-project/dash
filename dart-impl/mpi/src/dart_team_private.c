@@ -10,12 +10,12 @@
 
 dart_team_t dart_next_availteamid;
 MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 #endif
 
 MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
 int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 #endif

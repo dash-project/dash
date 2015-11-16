@@ -146,7 +146,7 @@ dart_team_memalloc_aligned(
 		return DART_ERR_INVAL;
 	}
 	comm = dart_teams[index];
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 	MPI_Win sharedmem_win;
 	MPI_Comm sharedmem_comm;
 	sharedmem_comm = dart_sharedmem_comm_list[index];
@@ -161,7 +161,7 @@ dart_team_memalloc_aligned(
 		MPI_Comm_group (MPI_COMM_WORLD, &group_all);
 		MPI_Group_translate_ranks (group, 1, &localid, group_all, &gptr_unitid);
 	}
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 	MPI_Info win_info;
 	MPI_Info_create (&win_info);
 	MPI_Info_set (win_info, "alloc_shared_noncontig", "true");
@@ -219,7 +219,7 @@ dart_team_memalloc_aligned(
 	item.seg_id = dart_memid;
 	item.size   = nbytes;
   	item.disp   = disp_set;
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 	item.win    = sharedmem_win;
 	item.baseptr = baseptr_set;
 #else
@@ -230,7 +230,7 @@ dart_team_memalloc_aligned(
 	/* Add this newly generated correspondence relationship record into the 
    * translation table. */
 	dart_adapt_transtable_add (item);
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 	MPI_Info_free (&win_info);
 #endif
 	dart_memid++;
@@ -266,7 +266,7 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 	/* Release the shared memory win object related to the freed shared 
    * memory */
 
-#ifdef SHAREDMEM_ENABLE
+#ifdef DASH_DART_ENABLE_SHARED_MEMORY
 	MPI_Win sharedmem_win;
 	if (dart_adapt_transtable_get_win (seg_id, &sharedmem_win) == -1)
 		return DART_ERR_INVAL;

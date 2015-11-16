@@ -14,9 +14,13 @@ await_confirm() {
 }
 
 exit_message() {
-  echo "----------------------------------------------------"
-  echo "Done. To install DASH, run  make install  in ./build"
+  echo "--------------------------------------------------------"
+  echo "Done. To install DASH, run    make install    in ./build"
 }
+
+if [ "${PAPI_HOME}" = "" ]; then
+  PAPI_HOME=$PAPI_BASE
+fi
 
 mkdir -p build
 rm -Rf ./build/*
@@ -29,6 +33,7 @@ rm -Rf ./build/*
                      -DENABLE_LOGGING=ON \
                      -DENABLE_TRACE_LOGGING=ON \
                      -DENABLE_DART_LOGGING=ON \
+                     -DENABLE_SHARED_MEMORY=ON \
                      -DMEMORY_MODEL_UNIFIED=ON \
                      -DBUILD_TESTS=ON \
                      -DPAPI_PREFIX=${PAPI_HOME} \
