@@ -163,14 +163,14 @@ dart_ret_t dart_team_unit_l2g(dart_team_t teamid, dart_unit_t localid, dart_unit
     return DART_OK;
 }
 
-
 dart_ret_t dart_team_unit_g2l(dart_team_t teamid, dart_unit_t globalid, dart_unit_t *localid)
 {
     uint16_t index;
 
     if(teamid == DART_TEAM_ALL)
     {
-        return dart_myid(localid);
+        *localid = globalid;
+        return DART_OK;
     }
 
     int result = dart_adapt_teamlist_convert(teamid, &index);
