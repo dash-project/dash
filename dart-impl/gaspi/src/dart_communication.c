@@ -1,6 +1,4 @@
-
 #include <dash/dart/gaspi/dart_gaspi.h>
-
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/gaspi/dart_team_private.h>
 #include <dash/dart/gaspi/dart_translation.h>
@@ -508,7 +506,7 @@ dart_ret_t dart_notify_waitsome(dart_gptr_t gptr, unsigned int * tag)
 
 dart_ret_t dart_get_blocking(void *dest, dart_gptr_t src, size_t nbytes)
 {
-    gaspi_queue_id_t   queue;
+    gaspi_queue_id_t   queue = 0;
     dart_unit_t        my_unit;
     /*
      * local site
@@ -1067,4 +1065,77 @@ dart_ret_t dart_flush_local_all(dart_gptr_t gptr)
 
     DART_CHECK_ERROR(destroy_request_iter(iter));
     return DART_OK;
+}
+/**
+ * Not supported interface functions
+ */
+dart_ret_t dart_get(void *dest, dart_gptr_t ptr, size_t nbytes)
+{
+    fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
+    return DART_ERR_NOTFOUND;
+}
+dart_ret_t dart_put(dart_gptr_t ptr, void *src, size_t nbytes)
+{
+    dart_unit_t myid;
+    dart_myid(&myid);
+
+    dart_unit_t target_id = ptr.unitid;
+    if(target_id == myid)
+    {
+        gaspi_printf("Access own segment\n");
+    }
+
+    gaspi_printf("dart-gaspi: %s function not supported\n", __func__);
+    return DART_ERR_NOTFOUND;
+}
+dart_ret_t dart_get_handle(void *dest, dart_gptr_t ptr, size_t nbytes, dart_handle_t *handle)
+{
+    fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
+    return DART_ERR_NOTFOUND;
+}
+dart_ret_t dart_put_handle(dart_gptr_t ptr, void *src, size_t nbytes, dart_handle_t *handle)
+{
+    fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
+    return DART_ERR_NOTFOUND;
+}
+dart_ret_t dart_put_blocking(dart_gptr_t dest_gptr, void *src, size_t nbytes)
+{
+    dart_unit_t myid;
+    dart_unit_t target_unitid_abs = dest_gptr.unitid;
+    dart_myid(&myid);
+    if(myid != target_unitid_abs)
+    {
+        gaspi_printf("[%d] : blocking put to remote %d\n", myid, target_unitid_abs);
+    }
+    dart_unit_t target_id = dest_gptr.unitid;
+    if(target_id == myid)
+    {
+        void * dest = NULL;
+        DART_CHECK_ERROR(dart_gptr_getaddr(dest_gptr, &dest));
+        memcpy(dest, src, nbytes);
+        return DART_OK;
+    }
+
+    //~ gaspi_printf("dart-gaspi: %s function not supported\n", __func__);
+    return DART_ERR_NOTFOUND;
+}
+dart_ret_t dart_flush(dart_gptr_t gptr)
+{
+    fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
+    return DART_ERR_NOTFOUND;
+}
+dart_ret_t dart_flush_all(dart_gptr_t gptr)
+{
+    fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
+    return DART_ERR_NOTFOUND;
+}
+dart_ret_t dart_wait(dart_handle_t handle)
+{
+    fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
+    return DART_ERR_NOTFOUND;
+}
+dart_ret_t dart_waitall(dart_handle_t *handle, size_t n)
+{
+    fprintf(stderr, "dart-gaspi: %s function not supported\n", __func__);
+    return DART_ERR_NOTFOUND;
 }
