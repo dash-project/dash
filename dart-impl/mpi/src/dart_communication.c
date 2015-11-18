@@ -46,6 +46,12 @@ dart_ret_t dart_get(
   dart_gptr_t gptr,
   size_t nbytes)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+  if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
+
   MPI_Aint disp_s, disp_rel;
   dart_unit_t target_unitid_abs;
   uint64_t offset = gptr.addr_or_offs.offset;
@@ -53,6 +59,89 @@ dart_ret_t dart_get(
   target_unitid_abs = gptr.unitid;
   MPI_Win win;
 
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+  int i = dart_sharedmem_table[index][target_unitid_abs];
+  if(i >= 0) is_sharedmem = 1;
+  MPI_Aint origin_offset;
+  struct datastruct send_data;
+
+  int sharedmem_rank;
+  dart_unit_t progress_target;
+  MPI_Comm_rank (dart_sharedmem_comm_list[index], &sharedmem_rank);
+
+  if (seg_id){
+	  if (dart_adapt_transtable_get_baseptr (seg_id, sharedmem_rank, &addr) == -1)
+		  return DART_ERR_INVAL;}
+  else addr = dart_sharedmem_local_baseptr_set[sharedmem_rank];
+
+  if (nbytes <= PROGRESS_SMG_SHAREDMEM)
+  {
+	  MPI_Win win;
+	  if (seg_id){
+		  if (is_sharemem){
+			  dart_adapt_transtable_get_win (seg_id, &win);
+			  target_unitid_rel = i;
+			  disp_rel = target_offset;
+		  }
+		  else{
+			  win = dart_win_lists[index];
+			  unit_g2l (index, target_unitid_abs, &target_unitid_rel);
+
+			  if (dart_adapt_transtable_get_disp (seg_id, target_unitid_rel, &disp_s) == -1)
+			  {
+				  return DART_ERR_INVAL;
+			  }
+			  unit_g2p (index, target_unitid_abs, &target_unitid_rel);
+		  	  disp_rel = disp_s + target_offset;
+		  }
+		  MPI_Get (dest, nbytes, MPI_BYTE, target_unitid_rel, disp_rel, nbytes, MPI_BYTE, win);
+		  (*handle) -> target = target_unitid_rel;
+
+  	}
+	else{
+		if (is_sharedmem){
+			win = dart_sharedmem_win_local_alloc;
+			target_unitid_abs = i;
+		}
+		else win = dart_win_local_alloc;
+		MPI_Get (dest, nbytes, MPI_BYTE, target_unitid_abs, target_offset, nbytes, MPI_BYTE, win);
+		(*handle) -> target = target_unitid_abs;
+	}
+	(*handle) -> win =win;
+  }
+  else{
+	  if (is_sharedmem){
+		  disp_rel = target_offset;
+		  send_data.dest = i;
+	  }
+	  else{
+		  if (seg_id){
+			  unit_g2l (index, target_unitid_abs, &target_unitid_rel);
+			  if (dart_adapt_transtable_get_disp (seg_id, target_unitid_rel, &disp_s) == -1)
+				  return DART_ERR_INVAL;
+			  disp_rel = disp_s + target_offset;
+		  }else disp_rel = target_offset;
+		  unit_g2p (index, target_unitid_abs, &progress_target);
+		  send_data.dest = progress_target;
+	  }
+	  origin_offset = (char*)dest - addr;
+	  send_data.is_sharedmem = is_sharedmem;
+	  send_data.index = index;
+	  send_data.origin_offset = origin_offset;
+	  send_data.target_offset = disp_rel;
+	  send_data.data_size = nbytes;
+	  send_data.segid = seg_id;
+
+	  MPI_Send (&send_data, 1, data_info_type, top, GET, dart_sharedmem_comm_list[0]);
+	  MPI_Irecv (NULL, 0, MPI_INT, top, GET, dart_sharedmem_comm_list[0], &mpi_req);
+	  top = (top + 1)%PROGRESS_NUM;
+	  (*handle) -> target = -1;
+	  (*handle) -> request = mpi_req;}
+  }
+
+#endif
+#else
   if (seg_id) {
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
@@ -92,7 +181,9 @@ dart_ret_t dart_get(
     DART_LOG_DEBUG ("GET  - %d bytes (allocated with local allocation) "
            "from %d at the offset %d",
            nbytes, target_unitid_abs, offset);
-  }                
+  }  
+  (*handle) -> win = win;
+#endif  
   return DART_OK;
 }
 
