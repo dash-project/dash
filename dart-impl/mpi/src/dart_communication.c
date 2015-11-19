@@ -134,10 +134,10 @@ dart_ret_t dart_get(
 	  send_data.segid = seg_id;
 
 	  MPI_Send (&send_data, 1, data_info_type, top, GET, dart_sharedmem_comm_list[0]);
-	  MPI_Irecv (NULL, 0, MPI_INT, top, GET, dart_sharedmem_comm_list[0], &mpi_req);
+//	  MPI_Irecv (NULL, 0, MPI_INT, top, GET, dart_sharedmem_comm_list[0], &mpi_req);
 	  top = (top + 1)%PROGRESS_NUM;
-	  (*handle) -> target = -1;
-	  (*handle) -> request = mpi_req;}
+//	  (*handle) -> target = -1;
+//	  (*handle) -> request = mpi_req;}
   }
 
 #endif
@@ -182,7 +182,6 @@ dart_ret_t dart_get(
            "from %d at the offset %d",
            nbytes, target_unitid_abs, offset);
   }  
-  (*handle) -> win = win;
 #endif  
   return DART_OK;
 }
@@ -729,6 +728,7 @@ dart_ret_t dart_flush(
   int16_t seg_id = gptr.segid;
   MPI_Win win;
   target_unitid_abs = gptr.unitid;
+
   if (seg_id) {
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
@@ -748,6 +748,21 @@ dart_ret_t dart_flush_all(
 {
   int16_t seg_id = gptr.segid;
   MPI_Win win;
+
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+  MPI_Request *mpi_req = (MPI_Request*)malloc (sizeof(MPI_Request) * PROGRESS_NUM);
+  MPI_Status mpi_sta;
+  int i;
+  for (i = 0; i < PROGRESS_NUM; i++){
+	  MPI_Irecv (NULL, 0, MPI_INT, i, WAIT, dart_sharedmem_comm_list[0], &mpi_req[i]);
+	  MPI_Send (NULL, 0, MPI_UINT16_T, i, WAIT, dart_sharedmem_comm_list[0]);
+  }
+  for (i = 0; i < PROGRESS_NUM; i++)
+	  MPI_Wait (&mpi_req[i], &mpi_sta);
+  free (mpi_req);
+#endif
+#endif
   if (seg_id) {
     uint16_t index = gptr.flags;
     win = dart_win_lists[index];
