@@ -152,7 +152,17 @@ dart_ret_t dart_init(
 			}
 			MPI_Group_incl (group_all, progress_count, progress_node, &new_group[iter]);
 		}
-		MPI_Group_union (new_group[PROGRESS_UNIT], new_group[PROGRESS_UNIT + 1], &progress_group);
+
+	        for (i = 0; i < PROGRESS_NUM;){
+			if (i == 0){
+				MPI_Group_union (new_group[i], new_group[i+1], &progress_group);
+				i += 2;
+			}else{
+				MPI_Group_union (progress_group, new_group[i], &progress_group);
+				i++;
+			}
+		}
+	//	MPI_Group_union (new_group[PROGRESS_UNIT], new_group[PROGRESS_UNIT + 1], &progress_group);
 		int subgroup_size;
 		MPI_Group_size (progress_group, &subgroup_size);
 		MPI_Group_difference (group_all, progress_group, &user_group);
@@ -804,10 +814,10 @@ if (mpi_status.MPI_TAG == TEAMCREATE){
 	dart_unit_t unitid;
 	MPI_Comm_rank (dart_sharedmem_comm_list[0], &unitid);
 
-	if (unitid == 2)
-	{
-		MPI_Send (NULL, 0, MPI_UNIT16_T, PROGRESS_UNIT, EXIT, dart_sharedmem_comm_list[0]);
-		MPI_Send (NULL, 0, MPI_UINT16_T, PROGRESS_UNIT+1, EXIT, dart_sharedmem_comm_list[0];
+	int i;
+	if (unitid == PROGRESS_NUM){
+		for (i = 0; i < PROGRESS_NUMM; i++){
+		MPI_Send (NULL, 0, MPI_UNIT16_T, PROGRESS_UNIT+i, EXIT, dart_sharedmem_comm_list[0]);}
 	}
 	int result = dart_adapt_teamlist_convert (DART_TEAM_ALL, &index);
 

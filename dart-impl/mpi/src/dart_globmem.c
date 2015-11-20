@@ -362,9 +362,11 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
-	if (unitid == 2){
-		MPI_Send (&seg_id, 1, MPI_INT16_T, PROGRESS_UNIT, MEMFREE, dart_sharedmem_comm_list[0]);
-		MPI_Send (&seg_id, 1, MPI_INT16_T, PROGRESS_UNIT+1, MEMFREE, dart_sharedmem_comm_list[0]);
+	int i;
+	if (unitid == PROGRESS_NUM){
+		for (i = 0; i < PROGRESS_NUM; i++){
+			MPI_Send (&seg_id, 1, MPI_INT16_T, PROGRESS_UNIT+i, MEMFREE, dart_sharedmem_comm_list[0]);
+		}
 	}
 #endif
 	MPI_Win sharedmem_win;
