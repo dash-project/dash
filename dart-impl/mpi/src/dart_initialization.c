@@ -679,10 +679,11 @@ if (mpi_status.MPI_TAG == TEAMCREATE){
 				{
 					MPI_Put (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win);
 				//	MPI_Rput (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win, &mpi_req);
-					if (nbytes >= PUT_THRESH){
-						MPI_Win_flush (dest, win);
-						MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, PUT, dart_sharedmem_comm_list[0]);
-					}else{
+				//	if (nbytes >= PUT_THRESH){
+				//		MPI_Win_flush (dest, win);
+				//		MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, PUT, dart_sharedmem_comm_list[0]);
+				//	}else
+					{
 					struct rmareq_node* p = (struct rmareq_node*)malloc (sizeof(struct rmareq_node));
 					p -> dest = dest;
 					p -> source = mpi_status.MPI_SOURCE;
@@ -748,10 +749,11 @@ if (mpi_status.MPI_TAG == TEAMCREATE){
 				MPI_Get (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win);
 			//	MPI_Rget (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win, &mpi_req);
 
-				if (nbytes >= GET_THRESH){
-					MPI_Win_flush (dest, win);
+			//	if (nbytes >= GET_THRESH){
+			////		MPI_Win_flush (dest, win);
 					MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, GET, dart_sharedmem_comm_list[0]);
-				}else{
+			//	}else
+				{
 			        struct rmareq_node* p = (struct rmareq_node*) malloc (sizeof(struct rmareq_node));
 				p -> dest = dest;
 				p -> source = mpi_status.MPI_SOURCE;
@@ -771,20 +773,22 @@ if (mpi_status.MPI_TAG == TEAMCREATE){
 				
 				while (header){
 					MPI_Win_flush (header -> dest, header -> win);	
-					MPI_Send (NULL, 0, MPI_INT, header -> source, header -> direction, 
-							dart_sharedmem_comm_list[0]);
+			//		MPI_Send (NULL, 0, MPI_INT, header -> source, header -> direction, 
+			//				dart_sharedmem_comm_list[0]);
 					struct rmareq_node* p;
 					p = header;
 					header = header -> next;
 					free (p);	
 				        }
+				MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, WAIT, 
+						dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
 			}}
 			else{
 		
 				while (header){
 					MPI_Win_flush (header->dest, header->win);
-					MPI_Send (NULL, 0, MPI_INT, header->source, header->direction,
-						       	dart_sharedmem_comm_list[0]);
+			//		MPI_Send (NULL, 0, MPI_INT, header->source, header->direction,
+			//			       	dart_sharedmem_comm_list[0]);
 					
 					struct rmareq_node* p;
 					p = header;

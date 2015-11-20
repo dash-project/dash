@@ -763,6 +763,7 @@ dart_ret_t dart_flush_all(
   free (mpi_req);
 #endif
 #endif
+#ifdef PROGRESS_ENABLE
   if (seg_id) {
     uint16_t index = gptr.flags;
     win = dart_win_lists[index];
@@ -770,6 +771,7 @@ dart_ret_t dart_flush_all(
     win = dart_win_local_alloc;
   }
   MPI_Win_flush_all(win);
+#endif
   DART_LOG_DEBUG("FLUSH_ALL  - finished");
   return DART_OK;
 }
