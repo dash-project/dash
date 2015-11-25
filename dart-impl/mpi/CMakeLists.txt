@@ -23,7 +23,6 @@ set(ENABLE_SHARED_MEMORY ${ENABLE_SHARED_MEMORY}
 message("-- MPI include path: " "${MPI_INCLUDE_PATH}")
 message("-- MPI libraries:    " "${MPI_C_LIBRARIES}")
 message("-- MPI link flags:   " "${MPI_LINK_FLAGS}")
-message("-- IBM MPI           " "${MPI_IBM}")
 
 ## Configure compile flags
 
@@ -41,9 +40,14 @@ if (MEMORY_MODEL_UNIFIED)
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_UNIFIED_MEMORY_MODEL")
 endif()
 
-if (ENABLE_SHARED_MEMORY AND NOT MPI_IBM)
-  set (ADDITIONAL_COMPILE_FLAGS
-       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_DART_ENABLE_SHARED_MEMORY")
+if (ENABLE_SHARED_MEMORY)
+  if (MPI_IMPL_IS_MPICH OR MPI_IMPL_IS_MVAPICH)
+    message(WARNING "Shared memory features not supported for MPICH and "
+                    "MVAPICH, disabling shared memory features for build")
+  else()
+    set (ADDITIONAL_COMPILE_FLAGS
+         "${ADDITIONAL_COMPILE_FLAGS} -DDASH_DART_ENABLE_SHARED_MEMORY")
+  endif()
 endif()
 
 if(MPI_COMPILE_FLAGS)
