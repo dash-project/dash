@@ -83,8 +83,9 @@ void put_value(
   /// [IN]  Value to set
   const T & newval,
   /// [IN]  Global pointer referencing target address of value
-  const GlobPtr<T> & gptr
-) {
+  const GlobPtr<T> & gptr)
+{
+  DASH_LOG_TRACE_VAR("dash::put_value()", gptr);
   DASH_ASSERT_RETURNS(
     dart_put_blocking(gptr.dart_gptr(),
                       (void *)(&newval),
@@ -103,8 +104,9 @@ void get_value(
   ///       global address
   T * ptr,
   /// [IN]  Global pointer to read
-  const GlobPtr<T> & gptr
-) {
+  const GlobPtr<T> & gptr)
+{
+  DASH_LOG_TRACE_VAR("dash::get_value()", gptr);
   DASH_ASSERT_RETURNS(
     dart_get_blocking(ptr,
                       gptr.dart_gptr(),
