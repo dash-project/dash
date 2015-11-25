@@ -431,6 +431,8 @@ public:
       _nunits              = other._nunits;
       _minor_tiled_dim     = other._minor_tiled_dim;
       _major_tiled_dim     = other._major_tiled_dim;
+      _lbegin              = other._lbegin;
+      _lend                = other._lend;
     }
     return *this;
   }

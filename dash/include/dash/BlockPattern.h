@@ -412,8 +412,8 @@ public:
    * Assignment operator.
    */
   Pattern & operator=(const Pattern & other) {
+    DASH_LOG_TRACE("BlockPattern.=(other)");
     if (this != &other) {
-      DASH_LOG_TRACE("BlockPattern.=()");
       _distspec            = other._distspec;
       _team                = other._team;
       _teamspec            = other._teamspec;
@@ -424,6 +424,9 @@ public:
       _local_blockspec     = other._local_blockspec;
       _local_capacity      = other._local_capacity;
       _nunits              = other._nunits;
+      _lbegin              = other._lbegin;
+      _lend                = other._lend;
+      DASH_LOG_TRACE("BlockPattern.=(other)", "BlockPattern assigned");
     }
     return *this;
   }
