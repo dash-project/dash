@@ -534,6 +534,7 @@ dart_ret_t dart_get_blocking(
               target_unitid_abs = gptr.unitid;
 
 #ifdef DASH_DART_ENABLE_SHARED_MEMORY 
+  DART_LOG_DEBUG("GET_BLOCKING - Shared memory enabled");
   if (seg_id >= 0) {
     int       i,
               is_sharedmem = 0;
@@ -584,7 +585,9 @@ dart_ret_t dart_get_blocking(
       baseptr += disp_rel;
     }
     memcpy((char*)dest, baseptr, nbytes); 
-#endif  
+#endif
+#else
+  DART_LOG_DEBUG("GET_BLOCKING - Shared memory disabled");
 #endif // DASH_DART_ENABLE_SHARED_MEMORY
   
   {

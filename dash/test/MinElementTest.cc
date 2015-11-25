@@ -1,6 +1,8 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
 
+#include <limits>
+
 #include "TestBase.h"
 #include "MinElementTest.h"
 
@@ -36,6 +38,42 @@ TEST_F(MinElementTest, TestFindArrayDefault)
   LOG_MESSAGE("Expected min value: %d, found minimum value %d",
               min_value, found_min);
   EXPECT_EQ(min_value, found_min);
+}
+
+TEST_F(MinElementTest, TestArrayDelayedAlloc)
+{
+  typedef long value_t;
+
+  dash::Array<value_t> array;
+  // Delayed allocation:
+  array.allocate(10 * dash::Team::All().size(), dash::BLOCKED);
+  // Initialize values:
+  value_t l_min_exp = std::numeric_limits<value_t>::max();
+  auto l_size = array.local.size();
+  for (auto li = 0; li < l_size; ++li) {
+    value_t value = ((dash::myid() + 1) * 17) + ((l_size - li) * 3);
+    if (value % 2 == 0) {
+      value = -value;
+    }
+    array.local[li] = value;
+    if (value < l_min_exp) {
+      l_min_exp = value;
+    }
+    LOG_MESSAGE("array.local[%d] = %d", li, value);
+  }
+  // Wait for all units to initialize values:
+  array.barrier();
+  // Find local minimum:
+  auto lptr_min = dash::min_element(array.local.begin(),
+                                    array.local.end());
+  LOG_MESSAGE("l_min:%d expected:%d", *lptr_min, l_min_exp);
+  ASSERT_EQ_U(l_min_exp, *lptr_min);
+  // Find global minimum:
+  auto gptr_min = dash::min_element(array.begin(),
+                                    array.end());
+  value_t g_min = *gptr_min;
+  ASSERT_LE_U(g_min, *lptr_min);
+  LOG_MESSAGE("g_min: %d", g_min);
 }
 
 TEST_F(MinElementTest, TestFindArrayDistributeBlockcyclic)

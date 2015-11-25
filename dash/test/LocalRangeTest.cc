@@ -5,8 +5,8 @@
 
 TEST_F(LocalRangeTest, ArrayBlockcyclic)
 {
-  const size_t blocksize        = 2;
-  const size_t num_blocks_local = 3;
+  const size_t blocksize        = 3;
+  const size_t num_blocks_local = 2;
   const size_t num_elem_local   = num_blocks_local * blocksize;
   size_t num_elem_total         = _dash_size * num_elem_local;
   // Identical distribution in all ranges:
@@ -21,8 +21,9 @@ TEST_F(LocalRangeTest, ArrayBlockcyclic)
   ASSERT_EQ_U(l_idx_range_full.end, 6);
   // Local index range from second half of global range, so every unit should
   // start its local range from the second block:
+  LOG_MESSAGE("array.size: %d", array.size());
   auto l_idx_range_half = dash::local_index_range(
-                            array.begin() + ((array.size() / 2) + 1),
+                            array.begin() + (array.size() / 2),
                             array.end());
   LOG_MESSAGE("Local index range: lbegin:%d lend:%d",
               l_idx_range_half.begin,

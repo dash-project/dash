@@ -47,7 +47,8 @@ string(REGEX MATCH "${_MPI_CXX_COMPILER_NAMES}|${_MPI_GNU_CXX_COMPILER_NAMES}|${
 # If one did not set up mpi wrappers as default compilers,
 # trying to link to MPI libs
 if("${MPICC_COMPILER}" STREQUAL "" AND "${MPICXX_COMPILER}" STREQUAL "")
-  message(STATUS "Could not find mpi wrappers in CMAKE_C_COMPILER or CMAKE_CXX_COMPILER. Trying to load mpi libs by default")
+  message(STATUS "No MPI wrappers in CMAKE_C_COMPILER or CMAKE_CXX_COMPILER, "
+                 "trying to load MPI libraries by default")
   set(MPI_WRAPPER_FOUND FALSE CACHE BOOL "Did not find the MPI Wrappers")
   find_package(MPI REQUIRED)
   # Add mpi linking flags
@@ -71,6 +72,16 @@ endif()
 
 if (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   set(MPI_FOUND TRUE CACHE BOOL "Found the MPI library")
+  if ("${MPI_INCLUDE_PATH}" MATCHES "mpich")
+    message(STATUS "MPI implementation: MPICH")
+    set(MPI_IMPL_IS_MPICH TRUE CACHE BOOL "MPICH detected")
+  elseif ("${MPI_INCLUDE_PATH}" MATCHES "mvapich")
+    message(STATUS "MPI implementation: MVAPICH")
+    set(MPI_IMPL_IS_MVAPICH TRUE CACHE BOOL "MVAPICH detected")
+  elseif ("${MPI_INCLUDE_PATH}" MATCHES "openmpi")
+    message(STATUS "MPI implementation: OpenMPI")
+    set(MPI_IMPL_IS_OPENMPI TRUE CACHE BOOL "OpenMPI detected")
+  endif()
 else (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   set(MPI_FOUND FALSE CACHE BOOL "Did not find the MPI library")
 endif (MPI_INCLUDE_PATH AND MPI_LIBRARY)

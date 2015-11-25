@@ -707,8 +707,10 @@ public:
   reference operator[](
     /// The position of the element to return
     size_type global_index) {
-    DASH_LOG_TRACE("Array.[]=", global_index);
-    return m_begin[global_index];
+    DASH_LOG_TRACE_VAR("Array.[]=()", global_index);
+    auto global_ref = m_begin[global_index];
+    DASH_LOG_TRACE_VAR("Array.[]= >", global_ref);
+    return global_ref;
   }
 
   /**
@@ -720,8 +722,10 @@ public:
   const_reference operator[](
     /// The position of the element to return
     size_type global_index) const {
-    DASH_LOG_TRACE("Array.[]", global_index);
-    return m_begin[global_index];
+    DASH_LOG_TRACE_VAR("Array.[]()", global_index);
+    auto global_ref = m_begin[global_index];
+    DASH_LOG_TRACE_VAR("Array.[] >", global_ref);
+    return global_ref;
   }
 
   /**
@@ -841,7 +845,7 @@ public:
    * changes to all units.
    */
   void barrier() const {
-    m_globmem->flush();
+//  m_globmem->flush();
     m_team->barrier();
   }
 
