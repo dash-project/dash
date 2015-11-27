@@ -152,7 +152,7 @@ extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
  * according to the specified team.
  * The values of dart_sharedmem_comm_list[i] are different for the units belonging to different nodes. 
  */
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 extern MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 
 /* @brief Sets of units who are located in the same node for each unit in MAX_TEAM_NUMBER teams.
@@ -179,7 +179,7 @@ extern int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 /* @brief Set of MPI dynamic window objects corresponding to MAX_TEAM_NUMBER teams. */
 extern MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
 
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
 extern char* *dart_sharedmem_local_baseptr_set;
 #endif

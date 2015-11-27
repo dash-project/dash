@@ -406,7 +406,7 @@ dart_ret_t dart_put_blocking(
   uint16_t index = gptr.flags;
   dart_unit_t unitid, target_unitid_rel, target_unitid_abs = gptr.unitid;
 
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 if (seg_id >= 0){
   int i, is_sharedmem = 0;
   MPI_Aint maximum_size;
@@ -533,7 +533,7 @@ dart_ret_t dart_get_blocking(
               target_unitid_rel,
               target_unitid_abs = gptr.unitid;
 
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY 
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("GET_BLOCKING - Shared memory enabled");
   if (seg_id >= 0) {
     int       i,
@@ -588,7 +588,7 @@ dart_ret_t dart_get_blocking(
 #endif
 #else
   DART_LOG_DEBUG("GET_BLOCKING - Shared memory disabled");
-#endif // DASH_DART_ENABLE_SHARED_MEMORY
+#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   
   {
     if (seg_id) {

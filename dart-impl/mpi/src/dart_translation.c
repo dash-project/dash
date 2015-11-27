@@ -12,7 +12,7 @@
 node_t dart_transtable_globalalloc;
 
 MPI_Win dart_win_local_alloc;
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 MPI_Win dart_sharedmem_win_local_alloc;
 #endif
 
@@ -30,7 +30,7 @@ int dart_adapt_transtable_add (info_t item)
 	p -> trans.seg_id = item.seg_id;
 	p -> trans.size = item.size;
 	p -> trans.disp = item.disp;
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	p -> trans.win = item.win;
 	p -> trans.baseptr = item.baseptr;
 #endif
@@ -81,7 +81,7 @@ int dart_adapt_transtable_remove (int16_t seg_id)
 	}
 
 	free (p->trans.disp);
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	if (p->trans.baseptr)
 		free (p->trans.baseptr);
 #endif
@@ -89,7 +89,7 @@ int dart_adapt_transtable_remove (int16_t seg_id)
 	return 0;
 }
 
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 int dart_adapt_transtable_get_win (int16_t seg_id, MPI_Win* win)
 {
 	node_t p;
@@ -155,7 +155,7 @@ int dart_adapt_transtable_get_disp (int16_t seg_id, int rel_unitid, MPI_Aint *di
 	*disp_s = (p -> trans).disp[rel_unitid];
 	return 0;
 }
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 int dart_adapt_transtable_get_baseptr(
   int16_t    seg_id,
   int        rel_unitid,
@@ -238,7 +238,7 @@ int dart_adapt_transtable_destroy ()
 		p = p -> next;
 
 		free (pre->trans.disp);
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 		if (pre->trans.baseptr)
 			free (pre->trans.baseptr);
 #endif

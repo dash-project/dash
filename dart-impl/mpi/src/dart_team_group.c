@@ -393,7 +393,7 @@ dart_ret_t dart_team_create(
 #endif	
 
 	if (subcomm != MPI_COMM_NULL) {
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 		int i;
 
 		MPI_Comm sharedmem_comm;
@@ -473,7 +473,7 @@ dart_ret_t dart_team_destroy(
 //	free (dart_unit_mapping[index]);
 
 //	MPI_Win_free (&(sharedmem_win_list[index]));
-#ifdef DASH_DART_ENABLE_SHARED_MEMORY
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	free(dart_sharedmem_table[index]);
 #endif
 	win = dart_win_lists[index];
