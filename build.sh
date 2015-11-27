@@ -22,9 +22,26 @@ if [ "${PAPI_HOME}" = "" ]; then
   PAPI_HOME=$PAPI_BASE
 fi
 
+# To use an existing installation of gtest instead of downloading the sources
+# from the google test subversion repository, use:
+#
+#                    -DGTEST_LIBRARY_PATH=${HOME}/gtest \
+#                    -DGTEST_INCLUDE_PATH=${HOME}/gtest/include \
+
+# To specify a build configuration for a specific system, use:
+#
+#                    -DENVIRONMENT_TYPE=<type> \
+#
+# For available types, see the files in folder ./config.
+# To specify a custom build configuration, use:
+#
+#                    -DENVIRONMENT_CONFIG_PATH=<path to cmake file> \
+
+# Configure with default release build settings:
 mkdir -p build
 rm -Rf ./build/*
 (cd ./build && cmake -DCMAKE_BUILD_TYPE=Release \
+                     -DENVIRONMENT_TYPE=default \
                      -DENABLE_ASSERTIONS=ON \
                      -DDART_IF_VERSION=3.2 \
                      -DINSTALL_PREFIX=$HOME/opt/ \

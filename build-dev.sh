@@ -28,9 +28,20 @@ fi
 #                    -DGTEST_LIBRARY_PATH=${HOME}/gtest \
 #                    -DGTEST_INCLUDE_PATH=${HOME}/gtest/include \
 
+# To specify a build configuration for a specific system, use:
+#
+#                    -DENVIRONMENT_TYPE=<type> \
+#
+# For available types, see the files in folder ./config.
+# To specify a custom build configuration, use:
+#
+#                    -DENVIRONMENT_CONFIG_PATH=<path to cmake file> \
+
+# Configure with default developer build settings:
 mkdir -p build
 rm -Rf ./build/*
 (cd ./build && cmake -DCMAKE_BUILD_TYPE=Debug \
+                     -DENVIRONMENT_TYPE=default \
                      -DENABLE_ASSERTIONS=ON \
                      -DDART_IF_VERSION=3.2 \
                      -DINSTALL_PREFIX=$HOME/opt/ \
