@@ -33,7 +33,7 @@ rm -Rf ./build/*
                      -DENABLE_LOGGING=OFF \
                      -DENABLE_TRACE_LOGGING=OFF \
                      -DENABLE_DART_LOGGING=OFF \
-                     -DENABLE_SHARED_MEMORY=ON \
+                     -DENABLE_SHARED_MEMORY=OFF \
                      -DMEMORY_MODEL_UNIFIED=ON \
                      -DBUILD_TESTS=ON \
                      -DPAPI_PREFIX=${PAPI_HOME} \
