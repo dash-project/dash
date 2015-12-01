@@ -19,6 +19,7 @@
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
+#include <dash/LocalCopy.h>
 
 #include <dash/Onesided.h>
 
