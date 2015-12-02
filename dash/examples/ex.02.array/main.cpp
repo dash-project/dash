@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
   arr.barrier();
   if( myid==size-1 ) {
     for( auto el: arr ) 
-      cout<<el<<" ";
+      cout<<(int)el<<" ";
     cout<<endl;
   }
   
