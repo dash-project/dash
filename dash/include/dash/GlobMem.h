@@ -343,6 +343,11 @@ GlobPtr<T> memalloc(size_t nelem) {
   return GlobPtr<T>(gptr);
 }
 
+template<typename T>
+void memfree(GlobPtr<T>& gptr) {
+  dart_memfree(gptr.dart_gptr());
+}
+
 } // namespace dash
 
 #endif // DASH__GLOBMEM_H_
