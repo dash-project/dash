@@ -34,13 +34,16 @@ int main(int argc, char **argv)
   
   dash::init(&argc, &argv);
 
-  perform_test<int>( 1<<8, 1<<5 );
-  perform_test<int>( 1<<10, 1<<7 );
-  perform_test<int>( 1<<12, 1<<9 );
-  perform_test<int>( 1<<15, 1<<13 );
-  perform_test<int>( 1<<19, 1<<14 );
-  perform_test<int>( 1<<21, 1<<15 );
-  perform_test<int>( 1<<23, 1<<17 );
+  //  perform_test<int>( 1<<8, 1<<5 );
+  //  perform_test<int>( 1<<10, 1<<7 );
+  //  perform_test<int>( 1<<12, 1<<9 );
+
+  for( int i=0; i<100; i++ ) {
+    perform_test<int>( 1<<20, 1<<16 );
+  }
+  //  perform_test<int>( 1<<19, 1<<14 );
+  //  perform_test<int>( 1<<21, 1<<15 );
+  //  perform_test<int>( 1<<23, 1<<17 );
    
   dash::finalize();
   
@@ -113,13 +116,13 @@ double test_owner_computes(const dash::Array<T>& keys,
   int myid = dash::myid();
   int size = dash::size();
   
-  // use a dash::Directory instead once its implemented...
+  // TODO: use a dash::Directory instead, once its implemented...
   dash::Array<dash::GlobPtr<int>> work_buffers(size, dash::CYCLIC);
   work_buffers[myid] = dash::memalloc<int>(histo.size());
   
   dash::GlobPtr<int> gptr = work_buffers[myid];
   int* work_buf = (int*) gptr;
-
+  
   for(int i=0; i<histo.size(); i++) {
     work_buf[i]=0;
   }
@@ -157,6 +160,9 @@ double test_owner_computes(const dash::Array<T>& keys,
   dash::barrier();
   TIMESTAMP(tstop);
 
+  dash::GlobPtr<int> gp=work_buffers[myid];
+  dash::memfree<int>(gp);
+  
   return (tstop-tstart);
 }
 
