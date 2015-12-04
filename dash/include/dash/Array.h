@@ -486,7 +486,7 @@ private:
 template<
   typename ElementType,
   typename IndexType   = dash::default_index_t,
-  class PatternType    = LinearPattern<IndexType> >
+  class PatternType    = Pattern<1, ROW_MAJOR, IndexType> >
 class Array
 {
 private:
