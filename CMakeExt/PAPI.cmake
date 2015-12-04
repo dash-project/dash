@@ -21,7 +21,7 @@
 #  PAPI_LIBRARIES          The PAPI library
 #  PAPI_INCLUDE_DIRS       The location of PAPI headers
 
-message("-- Searching for PAPI in path " ${PAPI_PREFIX})
+message(STATUS "Searching for PAPI in path " ${PAPI_PREFIX})
 
 find_path(
   PAPI_PREFIX
@@ -56,8 +56,9 @@ mark_as_advanced(
 )
 
 if (PAPI_FOUND)
-  message("-- PAPI includes:  " ${PAPI_INCLUDE_DIRS})
-  message("-- PAPI libraries: " ${PAPI_LIBRARIES})
+  message(INFO "PAPI found")
+  message(STATUS "PAPI includes:  " ${PAPI_INCLUDE_DIRS})
+  message(STATUS "PAPI libraries: " ${PAPI_LIBRARIES})
 else()
-  message("-- PAPI not found")
+  message(INFO "PAPI not found")
 endif()

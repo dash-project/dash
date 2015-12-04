@@ -14,7 +14,6 @@ set(ENABLE_LOGGING ${ENABLE_LOGGING}
 set(ENABLE_TRACE_LOGGING ${ENABLE_TRACE_LOGGING}
     PARENT_SCOPE)
 
-include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 
 # Source- and header files to be compiled (OBJ):
@@ -70,7 +69,7 @@ endif()
 foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set(DART_LIBRARY "dart-${dart_variant}")
   set(DASH_LIBRARY "dash-${dart_variant}")
-  message("-- Building DASH library " ${DASH_LIBRARY})
+  message(INFO "Building DASH library " ${DASH_LIBRARY})
 
   # Library compilation sources
   add_library(
