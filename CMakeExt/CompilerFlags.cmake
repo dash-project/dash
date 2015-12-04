@@ -5,8 +5,11 @@
 # -rdynamic   Instructs the linker to add all symbols, not only used ones,
 #             to the dynamic symbol table
 
+message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
+message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
+
 # Set C++ compiler flags:
-if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*clang")
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CXX_STD_FLAG "--std=c++11"
        CACHE STRING "C++ compiler std flag")
@@ -28,7 +31,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
 endif()
 
 # Set C compiler flags:
-if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*clang")
+if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CC_STD_FLAG "--std=c99"
        CACHE STRING "C compiler std flag")
