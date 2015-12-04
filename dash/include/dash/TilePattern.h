@@ -44,6 +44,9 @@ template<
 class TilePattern
 {
 public:
+  static constexpr char const * PatternName = "BalancedRegularPattern<N>";
+
+public:
   /// Properties guaranteed in pattern property category Blocking
   typedef dash::pattern_blocking_properties<
             // identical number of elements in every block
@@ -1352,5 +1355,7 @@ private:
 };
 
 } // namespace dash
+
+#include <dash/TilePattern1D.h>
 
 #endif // DASH__TILE_PATTERN_H_

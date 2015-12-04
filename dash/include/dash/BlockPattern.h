@@ -41,6 +41,9 @@ template<
 class Pattern
 {
 public:
+  static constexpr char const * PatternName = "RegularPattern<N>";
+
+public:
   /// Properties guaranteed in pattern property category Blocking
   typedef dash::pattern_blocking_properties<
             // number of elements may differ in blocks
@@ -1385,5 +1388,7 @@ private:
 };
 
 } // namespace dash
+
+#include <dash/BlockPattern1D.h>
 
 #endif // DASH__BLOCK_PATTERN_H_

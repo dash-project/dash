@@ -69,6 +69,11 @@ int main(int argc, char* argv[]) {
   dash::util::Timer::Calibrate(
     dash::util::TimeMeasure::Clock, 0);
 
+  if (dash::myid() == 0) {
+    std::cout << "pattern type: " << PatternType::PatternName
+              << std::endl;
+  }
+
   std::deque<std::pair<int, int>> tests;
 
   tests.push_back({0          , 0}); // this prints the header
@@ -100,14 +105,14 @@ void perform_test(
     if (dash::myid() == 0) {
       cout << std::setw(10) << "elem/unit";
       cout << "," << std::setw(10) << "iterations";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash pat";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash g_it";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash l_it";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash l[]";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash l*";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "stl vector";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "stl deque";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "raw array";
+      cout << "," << std::setw(11) << "dash pat";
+      cout << "," << std::setw(11) << "dash g_it";
+      cout << "," << std::setw(11) << "dash l_it";
+      cout << "," << std::setw(11) << "dash l[]";
+      cout << "," << std::setw(11) << "dash l*";
+      cout << "," << std::setw(11) << "stl vector";
+      cout << "," << std::setw(11) << "stl deque";
+      cout << "," << std::setw(11) << "raw array";
       cout << endl;
     }
     return;
