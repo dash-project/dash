@@ -50,7 +50,7 @@ rm -Rf ./build/*
                      -DENABLE_LOGGING=ON \
                      -DENABLE_TRACE_LOGGING=ON \
                      -DENABLE_DART_LOGGING=ON \
-                     -DENABLE_SHARED_WINDOW=ON \
+                     -DENABLE_SHARED_WINDOWS=ON \
                      -DMEMORY_MODEL_UNIFIED=ON \
                      -DBUILD_TESTS=ON \
                      -DPAPI_PREFIX=${PAPI_HOME} \

@@ -42,12 +42,14 @@ endif()
 
 if (ENABLE_SHARED_WINDOWS)
   if (MPI_IMPL_IS_MPICH OR MPI_IMPL_IS_MVAPICH)
-    message(WARNING "Shared memory features not supported for MPICH and "
-                    "MVAPICH, disabling shared memory features for build")
-  else()
+    message(WARNING "Shared window features not supported for MPICH and "
+                    "MVAPICH, disabling shared windows for this build")
     set (ADDITIONAL_COMPILE_FLAGS
       "${ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
   endif()
+else()
+  set (ADDITIONAL_COMPILE_FLAGS
+    "${ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
 endif()
 
 if(MPI_COMPILE_FLAGS)

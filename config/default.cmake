@@ -1,4 +1,3 @@
 
-set (CC_STD_FLAG "--std=c99")
-set (CXX_STD_FLAG "--std=c++11")
+# Define overrides for options and config flags here
 

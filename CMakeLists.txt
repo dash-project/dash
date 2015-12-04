@@ -72,9 +72,9 @@ message("-- Runtime assertions:       " ${ENABLE_ASSERTIONS})
 option(MEMORY_MODEL_UNIFIED
        "Specify whether to assume unified memory model" off)
 message("-- Unified RMA memory model: " ${MEMORY_MODEL_UNIFIED})
-option(ENABLE_SHARED_MEMORY
+option(ENABLE_SHARED_WINDOWS
        "Specify whether shared memory features are enabled" on)
-message("-- Shared memory features:   " ${ENABLE_SHARED_MEMORY})
+message("-- Shared memory features:   " ${ENABLE_SHARED_WINDOWS})
 
 set(DART_IF_VERSION "3.1" CACHE STRING
     "Version of the DART interface")
