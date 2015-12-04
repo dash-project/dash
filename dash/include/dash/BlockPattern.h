@@ -34,9 +34,10 @@ namespace dash {
  * \concept{DashPatternConcept}
  */
 template<
-  dim_t NumDimensions,
-  MemArrange Arrangement = ROW_MAJOR,
-  typename IndexType     = dash::default_index_t>
+  dim_t      NumDimensions,
+  MemArrange Arrangement   = ROW_MAJOR,
+  typename   IndexType     = dash::default_index_t
+>
 class Pattern
 {
 public:
@@ -1227,8 +1228,8 @@ private:
       DASH_LOG_TRACE_VAR("BlockPattern.init_blockspec", dist.type);
       SizeType max_blocksize_d  = blocksizespec.extent(d);
       SizeType max_blocks_d     = dash::math::div_ceil(
-        sizespec.extent(d),
-        max_blocksize_d);
+                                    sizespec.extent(d),
+                                    max_blocksize_d);
       n_blocks[d] = max_blocks_d;
     }
     DASH_LOG_TRACE_VAR("BlockPattern.init_blockspec", n_blocks);
@@ -1248,7 +1249,9 @@ private:
     for (auto d = 0; d < NumDimensions; ++d) {
       auto blocksize_d = blocksizespec.extent(d);
       if (blocksize_d > 0) {
-        num_l_blocks[d] /= blocksizespec.extent(d);
+        num_l_blocks[d] = dash::math::div_ceil(
+                            num_l_blocks[d],
+                            blocksizespec.extent(d));
       } else {
         num_l_blocks[d] = 0;
       }
