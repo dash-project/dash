@@ -468,6 +468,7 @@ typedef dash::pattern_indexing_properties<
 
 } // namespace dash
 
+#include <dash/LinearPattern.h>
 #include <dash/BlockPattern.h>
 #include <dash/TilePattern.h>
 #include <dash/PatternIterator.h>
