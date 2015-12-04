@@ -96,6 +96,7 @@
 #define DASH_ASSERT_MSG(expr, msg) do { } while (expr)
 #define DASH_ASSERT_RETURNS(expr, exp_value) (expr)
 #define DASH_ASSERT_RANGE(lower, value, upper, message) do { } while(0)
+#define DASH_ASSERT_EQ(val, min, message) do { } while (0)
 #define DASH_ASSERT_GT(val, min, message) do { } while (0)
 #define DASH_ASSERT_LT(val, max, message) do { } while (0)
 
