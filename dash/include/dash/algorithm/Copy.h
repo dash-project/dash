@@ -131,12 +131,30 @@ ValueType * copy(
     auto l_g_offset_end    = pattern.global(li_range_in.end-1)
                              + 1; // pat.global(l_end) would be out of range
     DASH_LOG_TRACE_VAR("dash::copy", l_g_offset_end);
-    // Convert local subrange of global input to native pointers:
+    // Convert local subrange to global iterators:
     auto git_l_in_first    = in_first + (l_g_offset_begin - in_first.pos());
     DASH_LOG_TRACE_VAR("dash::copy", git_l_in_first.pos());
     auto git_l_in_last     = in_first + (l_g_offset_end - in_first.pos());
     DASH_LOG_TRACE_VAR("dash::copy", git_l_in_last.pos());
-
+    // -----------------------------------------------------------------------
+    // Copy remote elements preceding the local subrange:
+    //
+    if (l_g_offset_begin > in_first.pos()) {
+      DASH_LOG_TRACE("dash::copy",
+                     "copy global range preceding local subrange",
+                     "in_first:", in_first.pos(),
+                     "in_last:", git_l_in_first.pos());
+      // ... [ --- copy --- | ... l ... | ........ ]
+      //     ^              ^           ^          ^
+      //     in_first       l_in_first  l_in_last  in_last
+      out_last = dash::internal::copy_impl(in_first,
+                                           git_l_in_first,
+                                           out_last);
+    }
+    // -----------------------------------------------------------------------
+    // Copy local subrange:
+    //
+    // Convert local subrange of global input to native pointers:
     ValueType * l_in_first = ((GlobPtr<ValueType>)(
                                 git_l_in_first)
                              ).local();
@@ -148,32 +166,27 @@ ValueType * copy(
     // ... [ ........ | --- l --- | ........ ]
     //     ^          ^           ^          ^
     //     in_first   l_in_first  l_in_last  in_last
-    DASH_LOG_TRACE("dash::copy", "copying local subrange");
+    DASH_LOG_TRACE("dash::copy", "copy local subrange");
     out_last = std::copy(l_in_first,
                          l_in_last,
                          out_first); // + l_g_offset_begin);
     // Assert that all elements in local range have been copied:
     DASH_ASSERT_EQ(out_last, out_first + l_range_size,
                    "Expected to copy " << l_range_size << " local elements");
-    // Copy remote elements preceding the local subrange:
-    if (l_g_offset_begin > in_first.pos()) {
-      DASH_LOG_TRACE("dash::copy", "copy global preceding local subrange");
-      // ... [ --- copy --- | ... l ... | ........ ]
-      //     ^              ^           ^          ^
-      //     in_first       l_in_first  l_in_last  in_last
-      out_last = dash::internal::copy_impl(in_first,
-                                           in_first + l_g_offset_begin,
-                                           out_first);
-    }
+    // -----------------------------------------------------------------------
     // Copy remote elements succeeding the local subrange:
+    // 
     if (l_g_offset_end < in_last.pos()) {
-      DASH_LOG_TRACE("dash::copy", "copy global succeeding local subrange");
+      DASH_LOG_TRACE("dash::copy",
+                     "copy global range succeeding local subrange",
+                     "in_first:", git_l_in_last.pos(),
+                     "in_last:", in_last.pos());
       // ... [ ........ | ... l ... | --- copy --- ]
       //     ^          ^           ^              ^
       //     in_first   l_in_first  l_in_last      in_last
       out_last = dash::internal::copy_impl(git_l_in_last,
                                            in_last,
-                                           out_first + l_range_size);
+                                           out_last);
     }
   } else {
     DASH_LOG_TRACE("dash::copy", "no local subrange");

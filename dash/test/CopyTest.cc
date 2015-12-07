@@ -126,6 +126,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockTwoUnits) {
              array.begin() + start_index + num_elems_copy,
              local_array);
   for (int l = 0; l < num_elems_copy; ++l) {
+    LOG_MESSAGE("Testing local element %d = %d", l, local_array[l]);
     ASSERT_EQ_U(static_cast<int>(array[l+start_index]), local_array[l]);
   }
 }
@@ -162,6 +163,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockThreeUnits) {
              array.begin() + start_index + num_elems_copy,
              local_array);
   for (int l = 0; l < num_elems_copy; ++l) {
+    LOG_MESSAGE("Testing local element %d = %d", l, local_array[l]);
     ASSERT_EQ_U(static_cast<int>(array[l+start_index]), local_array[l]);
   }
 }
