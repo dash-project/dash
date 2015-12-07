@@ -473,7 +473,8 @@ template <
   class Reference_ >
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::GlobIter<ElementType_, Pattern_, Pointer_, Reference_> & it) {
+  const dash::GlobIter<ElementType_, Pattern_, Pointer_, Reference_> & it)
+{
   dash::GlobPtr<ElementType_> ptr(it); 
   os << "dash::GlobIter<ElementType, PatternType>: ";
   os << "idx=" << it._idx << std::endl;

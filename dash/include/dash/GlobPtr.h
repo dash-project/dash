@@ -303,7 +303,8 @@ public:
 template<typename T>
 std::ostream & operator<<(
   std::ostream & os,
-  const GlobPtr<T> & gptr) {
+  const GlobPtr<T> & gptr)
+{
   char buf[100];
   sprintf(buf,
           "(%08X|%04X|%04X|%016X)",
