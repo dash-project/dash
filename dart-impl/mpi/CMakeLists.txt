@@ -40,14 +40,7 @@ if (MEMORY_MODEL_UNIFIED)
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_UNIFIED_MEMORY_MODEL")
 endif()
 
-if (ENABLE_SHARED_WINDOWS)
-  if (MPI_IMPL_IS_MPICH OR MPI_IMPL_IS_MVAPICH)
-    message(WARNING "Shared window features not supported for MPICH and "
-                    "MVAPICH, disabling shared windows for this build")
-    set (ADDITIONAL_COMPILE_FLAGS
-      "${ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
-  endif()
-else()
+if (NOT ENABLE_SHARED_WINDOWS)
   set (ADDITIONAL_COMPILE_FLAGS
     "${ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
 endif()
