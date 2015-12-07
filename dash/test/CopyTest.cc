@@ -84,7 +84,8 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlock) {
   int local_array[num_elems_copy];
 
   // Copy values from global range to local memory.
-  // All units copy a part of the first block, so unit 0 tests local-to-local copying.
+  // All units copy a part of the first block, so unit 0 tests local-to-local
+  // copying.
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
@@ -93,7 +94,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlock) {
   }
 }
 
-/*TEST_F(CopyTest, BlockingGlobalToLocalSubBlockTwoUnits) {
+TEST_F(CopyTest, BlockingGlobalToLocalSubBlockTwoUnits) {
   // Copy all elements contained in a single, continuous block, 
   // starting from an index unequal 0.
   
@@ -119,7 +120,8 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlock) {
   int local_array[num_elems_copy];
 
   // Copy values from global range to local memory.
-  // All units copy a part of the first block, so unit 0 tests local-to-local copying.
+  // All units copy a part of the first block, so unit 0 tests local-to-local
+  // copying.
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
@@ -154,14 +156,15 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockThreeUnits) {
   int local_array[num_elems_copy];
 
   // Copy values from global range to local memory.
-  // All units copy a part of the first block, so unit 0 tests local-to-local copying.
+  // All units copy a part of the first block, so unit 0 tests local-to-local
+  // copying.
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
   for (int l = 0; l < num_elems_copy; ++l) {
     ASSERT_EQ_U(static_cast<int>(array[l+start_index]), local_array[l]);
   }
-}*/
+}
 
 TEST_F(CopyTest, BlockingLocalToGlobalSubBlock) {
   // Copy range of elements contained in a single, continuous block.
