@@ -57,8 +57,13 @@ ValueType * copy_impl(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
+  DASH_LOG_TRACE("dash::copy_impl()",
+                 "in_first:", in_first.pos(),
+                 "in_last:",  in_last.pos());
   auto num_elements = dash::distance(in_first, in_last);
+  DASH_LOG_TRACE_VAR("dash::copy_impl", num_elements);
   auto num_bytes    = num_elements * sizeof(ValueType);
+  DASH_LOG_TRACE_VAR("dash::copy_impl", num_bytes);
   DASH_ASSERT_RETURNS(
     dart_get_blocking(
       out_first,

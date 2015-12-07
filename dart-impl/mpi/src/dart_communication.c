@@ -534,7 +534,7 @@ dart_ret_t dart_get_blocking(
               target_unitid_abs = gptr.unitid;
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  DART_LOG_DEBUG("GET_BLOCKING - Shared memory enabled");
+  DART_LOG_DEBUG("dart_get_blocking: shared windows enabled");
   if (seg_id >= 0) {
     int       i,
               is_sharedmem = 0;
@@ -556,6 +556,8 @@ dart_ret_t dart_get_blocking(
       is_sharedmem = 1;
     }
     if (is_sharedmem) {
+      DART_LOG_DEBUG("dart_get_blocking: shared memory segment, seg_id:%d",
+                     seg_id);
       if (seg_id) {
         if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr) == -1) {
           return DART_ERR_INVAL;
@@ -565,6 +567,7 @@ dart_ret_t dart_get_blocking(
       }
       disp_rel = offset;
       baseptr += disp_rel;
+      DART_LOG_DEBUG("dart_get_blocking: memcpy %d bytes", nbytes);
       memcpy ((char*)dest, baseptr, nbytes);
       return DART_OK;
     }
@@ -588,9 +591,8 @@ dart_ret_t dart_get_blocking(
     memcpy((char*)dest, baseptr, nbytes); 
 #endif
 #else
-  DART_LOG_DEBUG("GET_BLOCKING - Shared memory disabled");
+  DART_LOG_DEBUG("dart_get_blocking: shared windows disabled");
 #endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  
   {
     if (seg_id) {
       win = dart_win_lists[index];
@@ -620,14 +622,15 @@ dart_ret_t dart_get_blocking(
     MPI_Wait(&mpi_req, &mpi_sta);
   
     if (seg_id) {
-      DART_LOG_DEBUG("GET_BLOCKING  - %d bytes "
+      DART_LOG_DEBUG("dart_get_blocking: %d bytes "
                      "(allocated with collective allocation) from %d "        
                      "at offset %d", 
                      nbytes, target_unitid_abs, offset);
     } else {  
-      DART_LOG_DEBUG("GET_BLOCKING - %d bytes "
-                     "(allocated with local allocation) from %d at offset %d", 
-                      nbytes, target_unitid_abs, offset);
+      DART_LOG_DEBUG("dart_get_blocking: d bytes "
+                     "(allocated with local allocation) from %d "
+                     "at offset %d", 
+                     nbytes, target_unitid_abs, offset);
     }
     return DART_OK;
   }
