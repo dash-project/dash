@@ -557,8 +557,9 @@ dart_ret_t dart_get_blocking(
     }
     if (is_sharedmem) {
       if (seg_id) {
-      if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr)!=-1)
-      return DART_ERR_INVAL;
+        if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr) == -1) {
+          return DART_ERR_INVAL;
+        }
       } else {
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
