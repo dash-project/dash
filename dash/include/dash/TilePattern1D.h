@@ -84,11 +84,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    dart_unit_t unit;
-    IndexType   index;
+    dart_unit_t                           unit;
+    IndexType                             index;
   } local_index_t;
   typedef struct {
-    dart_unit_t unit;
+    dart_unit_t                           unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -422,6 +422,10 @@ public:
     return _lend;
   }
 
+  ////////////////////////////////////////////////////////////////////////////
+  /// unit_at
+  ////////////////////////////////////////////////////////////////////////////
+
   /**
    * Convert given point in pattern to its assigned unit id.
    *
@@ -487,31 +491,10 @@ public:
     return unit_id;
   }
 
-  /**
-   * Convert given local coordinates and viewspec to linear local offset
-   * (index).
-   *
-   * \see DashPatternConcept
-   */
-  IndexType local_at(
-    /// Point in local memory
-    const std::array<IndexType, NumDimensions> & local_coords,
-    /// View specification (offsets) to apply on \c coords
-    const ViewSpec_t & viewspec) const {
-    return local_coords[0] + viewspec[0].offset;
-  }
-
-  /**
-   * Convert given local coordinates to linear local offset (index).
-   *
-   * \see DashPatternConcept
-   */
-  IndexType local_at(
-    /// Point in local memory
-    const std::array<IndexType, NumDimensions> & local_coords) const {
-    return local_coords[0];
-  }
-
+  ////////////////////////////////////////////////////////////////////////////
+  /// extent
+  ////////////////////////////////////////////////////////////////////////////
+  
   /**
    * The number of elements in this pattern in the given dimension.
    *
@@ -566,6 +549,35 @@ public:
     return std::array<SizeType, 1> { _local_size };
   }
 
+  ////////////////////////////////////////////////////////////////////////////
+  /// local
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Convert given local coordinates and viewspec to linear local offset
+   * (index).
+   *
+   * \see DashPatternConcept
+   */
+  IndexType local_at(
+    /// Point in local memory
+    const std::array<IndexType, NumDimensions> & local_coords,
+    /// View specification (offsets) to apply on \c coords
+    const ViewSpec_t & viewspec) const {
+    return local_coords[0] + viewspec[0].offset;
+  }
+
+  /**
+   * Convert given local coordinates to linear local offset (index).
+   *
+   * \see DashPatternConcept
+   */
+  IndexType local_at(
+    /// Point in local memory
+    const std::array<IndexType, NumDimensions> & local_coords) const {
+    return local_coords[0];
+  }
+
   /**
    * Converts global coordinates to their associated unit and its respective 
    * local coordinates.
@@ -580,6 +592,26 @@ public:
     l_coords.coords = local_coords(global_coords);
     l_coords.unit   = unit_at(global_coords);
     return l_coords;
+  }
+
+  /**
+   * Converts global index to its associated unit and respective local index.
+   *
+   * TODO: Unoptimized
+   *
+   * \see  DashPatternConcept
+   */
+  local_index_t local(
+    IndexType g_index) const {
+    DASH_LOG_TRACE_VAR("TilePattern.local()", g_index);
+    index_type  g_block_index = g_index / _blocksize;
+    index_type  l_phase       = g_index % _blocksize;
+    index_type  l_block_index = g_block_index / _nunits;
+    dart_unit_t unit          = g_block_index % _nunits;
+    DASH_LOG_TRACE_VAR("TilePattern.local >", unit);
+    index_type  l_index       = (l_block_index * _blocksize) + l_phase;
+    DASH_LOG_TRACE_VAR("TilePattern.local >", l_index);
+    return local_index_t { unit, l_index };
   }
 
   /**
@@ -598,6 +630,30 @@ public:
     local_coord         = (l_block_offset * _blocksize) + elem_phase;
     return std::array<IndexType, 1> { local_coord };
   }
+
+  /**
+   * Converts global coordinates to their associated unit and their respective 
+   * local index.
+   * 
+   * \see  DashPatternConcept
+   */
+  local_index_t local_index(
+    const std::array<IndexType, NumDimensions> & g_coords) const {
+    DASH_LOG_TRACE_VAR("TilePattern.local_index()", g_coords);
+    index_type  g_block_index = g_coords[0] / _blocksize;
+    index_type  l_phase       = g_coords[0] % _blocksize;
+    index_type  l_block_index = g_block_index / _nunits;
+    dart_unit_t unit          = g_block_index % _nunits;
+    DASH_LOG_TRACE_VAR("TilePattern.local_index >", unit);
+    // Global coords to local coords:
+    index_type  l_index       = (l_block_index * _blocksize) + l_phase;
+    DASH_LOG_TRACE_VAR("TilePattern.local_index >", l_index);
+    return local_index_t { unit, l_index };
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// global
+  ////////////////////////////////////////////////////////////////////////////
 
   /**
    * Converts local coordinates of a given unit to global coordinates.
@@ -644,10 +700,24 @@ public:
   }
 
   /**
+   * Resolve an element's linear global index from the given unit's local
+   * index of that element.
+   *
+   * \see  at  Inverse of local()
+   *
+   * \see  DashPatternConcept
+   */
+  IndexType global(
+    dart_unit_t unit,
+    IndexType l_index) const {
+    return global(unit, std::array<IndexType, 1> { l_index })[0];
+  }
+
+  /**
    * Resolve an element's linear global index from the calling unit's local
    * index of that element.
    *
-   * \see  at  Inverse of global()
+   * \see  at  Inverse of local()
    *
    * \see  DashPatternConcept
    */
@@ -671,24 +741,9 @@ public:
     return g_index;
   }
 
-  /**
-   * Resolves the unit and the local index from global coordinates.
-   * 
-   * \see  DashPatternConcept
-   */
-  local_index_t local_index(
-    std::array<IndexType, NumDimensions> & g_coords) const {
-    DASH_LOG_TRACE_VAR("TilePattern.local_index()", g_coords);
-    index_type  g_block_index = g_coords[0] / _blocksize;
-    index_type  l_phase       = g_coords[0] % _blocksize;
-    index_type  l_block_index = g_block_index / _nunits;
-    dart_unit_t unit          = g_block_index % _nunits;
-    DASH_LOG_TRACE_VAR("TilePattern.local_index >", unit);
-    // Global coords to local coords:
-    index_type  l_index       = (l_block_index * _blocksize) + l_phase;
-    DASH_LOG_TRACE_VAR("TilePattern.local_index >", l_index);
-    return local_index_t { unit, l_index };
-  }
+  ////////////////////////////////////////////////////////////////////////////
+  /// at
+  ////////////////////////////////////////////////////////////////////////////
 
   /**
    * Global coordinates to local index.

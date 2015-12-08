@@ -60,17 +60,73 @@ ValueType * copy_impl(
   DASH_LOG_TRACE("dash::copy_impl()",
                  "in_first:", in_first.pos(),
                  "in_last:",  in_last.pos());
-  auto num_elements = dash::distance(in_first, in_last);
-  DASH_LOG_TRACE_VAR("dash::copy_impl", num_elements);
-  auto num_bytes    = num_elements * sizeof(ValueType);
-  DASH_LOG_TRACE_VAR("dash::copy_impl", num_bytes);
-  DASH_ASSERT_RETURNS(
-    dart_get_blocking(
-      out_first,
-      in_first.dart_gptr(),
-      num_bytes),
-    DART_OK);
-  return out_first + num_elements;
+  auto num_elem_total  = dash::distance(in_first, in_last);
+  DASH_LOG_TRACE_VAR("dash::copy_impl", num_elem_total);
+  auto num_bytes_total = num_elem_total * sizeof(ValueType);
+  DASH_LOG_TRACE_VAR("dash::copy_impl", num_bytes_total);
+  auto pattern         = in_first.pattern();
+  auto unit_first      = pattern.unit_at(in_first.pos());
+  auto unit_last       = pattern.unit_at(in_last.pos());
+  if (unit_first == unit_last) {
+    // Input range is located at a single remote unit:
+    DASH_LOG_TRACE("dash::copy_impl", "input range at single unit");
+    DASH_ASSERT_RETURNS(
+      dart_get_blocking(
+        out_first,
+        in_first.dart_gptr(),
+        num_bytes_total),
+      DART_OK);
+  } else {
+    // Input range is spread over several remote units:
+    DASH_LOG_TRACE("dash::copy_impl", "input range spans multiple units");
+    typedef typename decltype(pattern)::index_type index_type;
+    typedef typename decltype(pattern)::size_type  size_type;
+    //
+    // Copy elements from every unit:
+    //
+    // Number of elements located at a single unit:
+    auto max_elem_per_unit    = pattern.local_capacity();
+    size_type num_elem_copied = 0;
+    int unit_range_idx        = 0;
+    DASH_LOG_TRACE_VAR("dash::copy_impl", max_elem_per_unit);
+    // Global iterator pointing at begin of current unit's input range:
+    auto cur_in_first         = in_first;
+    do {
+      DASH_LOG_TRACE("dash::copy_impl",
+                     "copy from unit input range, unit range index:",
+                     unit_range_idx);
+      // unit and local index of first element in current range segment:
+      auto local_pos      = pattern.local(static_cast<index_type>(
+                                            cur_in_first.pos()));
+      // Unit id owning current segment:
+      auto cur_unit       = local_pos.unit;
+      // Local offset of first element in input range at current unit:
+      auto l_in_first_idx = local_pos.index;
+      // Number of elements to copy from current unit:
+      auto num_elem_unit  = max_elem_per_unit - l_in_first_idx;
+      DASH_LOG_TRACE("dash::copy_impl",
+                     "current g_idx:",         cur_in_first.pos(),
+                     "->",
+                     "unit:",                  cur_unit,
+                     "l_idx:",                 l_in_first_idx,
+                     "->",
+                     "elements:",              num_elem_unit);
+      DASH_LOG_TRACE("dash::copy_impl",
+                     "total elements copied:", num_elem_copied,
+                     "copy from global index", cur_in_first.pos());
+      // TODO: Should use non-blocking dart_get
+      DASH_ASSERT_RETURNS(
+        dart_get_blocking(
+          out_first + num_elem_copied,
+          cur_in_first.dart_gptr(),
+          num_elem_unit * sizeof(ValueType)),
+        DART_OK);
+      num_elem_copied += num_elem_unit;
+      cur_in_first    += num_elem_unit;
+      ++unit_range_idx;
+    } while (num_elem_copied < num_elem_total);
+  }
+  return out_first + num_elem_total;
 }
 
 /**
@@ -141,10 +197,12 @@ ValueType * copy(
     DASH_LOG_TRACE_VAR("dash::copy", git_l_in_first.pos());
     auto git_l_in_last     = in_first + (l_g_offset_end - in_first.pos());
     DASH_LOG_TRACE_VAR("dash::copy", git_l_in_last.pos());
+    //
     // -----------------------------------------------------------------------
     // Copy remote elements preceding the local subrange:
     //
-    if (l_g_offset_begin > in_first.pos()) {
+    auto num_prelocal_elem = l_g_offset_begin - in_first.pos();
+    if (num_prelocal_elem > 0) {
       DASH_LOG_TRACE("dash::copy",
                      "copy global range preceding local subrange",
                      "in_first:", in_first.pos(),
@@ -152,10 +210,16 @@ ValueType * copy(
       // ... [ --- copy --- | ... l ... | ........ ]
       //     ^              ^           ^          ^
       //     in_first       l_in_first  l_in_last  in_last
-      out_last = dash::internal::copy_impl(in_first,
-                                           git_l_in_first,
-                                           out_last);
+      out_last  = dash::internal::copy_impl(in_first,
+                                            git_l_in_first,
+                                            out_first);
+      // Assert that all elements in range have been copied:
+      DASH_ASSERT_EQ(out_last, out_first + num_prelocal_elem,
+                     "Expected to copy " << num_prelocal_elem << " elements");
+      // Advance output pointer:
+      out_first = out_last;
     }
+    //
     // -----------------------------------------------------------------------
     // Copy local subrange:
     //
@@ -172,16 +236,20 @@ ValueType * copy(
     //     ^          ^           ^          ^
     //     in_first   l_in_first  l_in_last  in_last
     DASH_LOG_TRACE("dash::copy", "copy local subrange");
-    out_last = std::copy(l_in_first,
-                         l_in_last,
-                         out_first); // + l_g_offset_begin);
+    out_last  = std::copy(l_in_first,
+                          l_in_last,
+                          out_first);
     // Assert that all elements in local range have been copied:
     DASH_ASSERT_EQ(out_last, out_first + l_range_size,
                    "Expected to copy " << l_range_size << " local elements");
+    // Advance output pointer:
+    out_first = out_last;
+    //
     // -----------------------------------------------------------------------
     // Copy remote elements succeeding the local subrange:
     // 
-    if (l_g_offset_end < in_last.pos()) {
+    auto num_postlocal_elem = in_last.pos() - l_g_offset_end;
+    if (num_postlocal_elem) {
       DASH_LOG_TRACE("dash::copy",
                      "copy global range succeeding local subrange",
                      "in_first:", git_l_in_last.pos(),
@@ -191,7 +259,10 @@ ValueType * copy(
       //     in_first   l_in_first  l_in_last      in_last
       out_last = dash::internal::copy_impl(git_l_in_last,
                                            in_last,
-                                           out_last);
+                                           out_first);
+      // Assert that all elements in range have been copied:
+      DASH_ASSERT_EQ(out_last, out_first + num_postlocal_elem,
+                     "Expected to copy " << num_postlocal_elem << " elements");
     }
   } else {
     DASH_LOG_TRACE("dash::copy", "no local subrange");
