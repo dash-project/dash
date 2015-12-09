@@ -32,6 +32,43 @@ TEST_F(CopyTest, BlockingGlobalToLocalBlock)
   }
 }
 
+TEST_F(CopyTest, BlockingGlobalToLocalBarrierUnaligned)
+{
+  dart_unit_t myid       = dash::myid();
+  size_t num_units       = dash::Team::All().size();
+  size_t num_elems_unit  = 20;
+  size_t start_index     = 7;
+  size_t num_elems_copy  = 20;
+  size_t num_elems_total = num_elems_unit * num_units;
+
+  int    local_array[num_elems_copy];
+  dash::Array<int> array(num_elems_total);
+
+  LOG_MESSAGE("Elements per unit: %d", num_elems_unit);
+  LOG_MESSAGE("Start index:       %d", start_index);
+  LOG_MESSAGE("Elements to copy:  %d", num_elems_copy);
+  LOG_MESSAGE("Array size:        %d", array.size());
+
+  std::fill(array.lbegin(), array.lend(), myid);
+
+  array.barrier();
+
+  dash::copy(array.begin() + start_index,
+             array.begin() + start_index + num_elems_copy,
+             local_array);
+
+  for(int i = 0; i < num_elems_copy; ++i) {
+    LOG_MESSAGE("Testing local element %d = %d", i, local_array[i]);
+  }
+
+  array.barrier();
+
+  for (auto l = 0; l < num_elems_unit; ++l) {
+    ASSERT_EQ_U(local_array[l],
+                static_cast<int>(array[start_index + l]));
+  }
+}
+
 TEST_F(CopyTest, BlockingLocalToGlobalBlock)
 {
   // Copy all elements contained in a single, continuous block.
@@ -58,6 +95,9 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlock)
   dash::copy(local_range,
              local_range + num_elem_per_unit,
              array.begin() + global_offset);
+
+  array.barrier();
+
   for (auto l = 0; l < num_elem_per_unit; ++l) {
     ASSERT_EQ_U(local_range[l],
                 static_cast<int>(array[global_offset + l]));
@@ -92,6 +132,9 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlock)
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
+
+  array.barrier();
+
   for (int l = 0; l < num_elems_copy; ++l) {
     ASSERT_EQ_U(static_cast<int>(array[l+start_index]), local_array[l]);
   }

@@ -6,6 +6,7 @@
 #include <dash/dart/if/dart_communication.h>
 
 #include <algorithm>
+#include <vector>
 
 namespace dash {
 
@@ -91,6 +92,8 @@ ValueType * copy_impl(
     DASH_LOG_TRACE_VAR("dash::copy_impl", max_elem_per_unit);
     // Global iterator pointing at begin of current unit's input range:
     auto cur_in_first         = in_first;
+    // Handles for non-blocking get operations:
+    std::vector<dart_handle_t> get_handles;
     do {
       DASH_LOG_TRACE("dash::copy_impl",
                      "copy from unit input range, unit range index:",
@@ -114,17 +117,25 @@ ValueType * copy_impl(
       DASH_LOG_TRACE("dash::copy_impl",
                      "total elements copied:", num_elem_copied,
                      "copy from global index", cur_in_first.pos());
-      // TODO: Should use non-blocking dart_get
+      dart_handle_t handle;
       DASH_ASSERT_RETURNS(
-        dart_get_blocking(
+        dart_get_handle(
           out_first + num_elem_copied,
           cur_in_first.dart_gptr(),
-          num_elem_unit * sizeof(ValueType)),
+          num_elem_unit * sizeof(ValueType),
+          &handle),
         DART_OK);
+      get_handles.push_back(handle);
       num_elem_copied += num_elem_unit;
       cur_in_first    += num_elem_unit;
       ++unit_range_idx;
     } while (num_elem_copied < num_elem_total);
+    // Wait for all get requests to complete:
+    DASH_ASSERT_RETURNS(
+      dart_waitall(
+        &get_handles[0],
+        get_handles.size()),
+      DART_OK);
   }
   return out_first + num_elem_total;
 }
