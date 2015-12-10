@@ -31,164 +31,38 @@ namespace dash {
  *
  * \par Methods
  *
- * <table>
- *   <tr>
- *     <th>Method Signature</th>
- *     <th>Semantics</th>
- *   </tr>
+ * Return Type              | Method                     | Parameters                      | Description
+ * ------------------------ | -------------------------- | ------------------------------- | -------------------------------------------------------------
+ * <tt>index_type</tt>      | <tt>at</tt>                | <tt>index[d] gp</tt>            | Linear offset of the global point $gp$ in local memory
+ * <tt>index_type</tt>      | <tt>local_at</tt>          | <tt>index[d] lp</tt>            | Linear local offset of the local point $gp$ in local memory
+ * <tt>dart_unit_t</tt>     | <tt>unit_at</tt>           | <tt>index[d] gp</tt>            | Unit id mapped to the element at global point $p$
+ * **global to local**      |                            |                                 | 
+ * <tt>{unit,index}</tt>    | <tt>local</tt>             | <tt>index gi</tt>               | Unit and linear local offset at the global index $gi$
+ * <tt>{unit,index[d]}</tt> | <tt>local</tt>             | <tt>index[d] gp</tt>            | Unit and local coordinates at the global point $gp$
+ * <tt>{unit,index}</tt>    | <tt>local_index</tt>       | <tt>index[d] gp</tt>            | Unit and local linear offset at the global point $gp$
+ * <tt>point[d]</tt>        | <tt>local_coords</tt>      | <tt>index[d] gp</tt>            | Local coordinates at the global point $gp$
+ * **local to global**      |                            |                                 | 
+ * <tt>index[d]</tt>        | <tt>global</tt>            | <tt>unit u, index[d] lp</tt>    | Local coordinates $lp$ of unit $u$ to global coordinates
+ * <tt>index</tt>           | <tt>global_index</tt>      | <tt>unit u, index[d] lp</tt>    | Local coordinates $lp$ of unit $u$ to global index
+ * <tt>index[d]</tt>        | <tt>global</tt>            | <tt>index[d] lp</tt>            | Local coordinates $lp$ of active unit to global coordinates
+ * <tt>index</tt>           | <tt>global</tt>            | <tt>unit u, index li</tt>       | Local offset $li$ of unit $u$ to global index
+ * <tt>index</tt>           | <tt>global</tt>            | <tt>index li</tt>               | Local offset $li$ of active unit to global index
+ * **blocks**               |                            |                                 | 
+ * <tt>viewspec</tt>        | <tt>block</tt>             | <tt>index gbi</tt>              | Offset and extent in global cartesian space of block at global block index $gbi$
+ * <tt>viewspec</tt>        | <tt>local_block</tt>       | <tt>index lbi</tt>              | Offset and extent in global cartesian space of block at local block index $lbi$
+ * <tt>viewspec</tt>        | <tt>local_block_local</tt> | <tt>index lbi</tt>              | Offset and extent in local cartesian space of block at local block index $lbi$
+ * **locality test**        |                            |                                 | 
+ * <tt>bool</tt>            | <tt>is_local</tt>          | <tt>index gi, unit u</tt>       | Whether the global index $gi$ is mapped to unit $u$
+ * <tt>bool</tt>            | <tt>is_local</tt>          | <tt>dim d, index o, unit u</tt> | [proposed] Whether any element in dimension $d$ at global offset $o$ is local to unit $u$
+ * **size**                 |                            |                                 | 
+ * <tt>size</tt>            | <tt>capacity</tt>          |                                 | Maximum number of elements in the pattern in total
+ * <tt>size</tt>            | <tt>local_capacity</tt>    |                                 | Maximum number of elements assigned to a single unit
+ * <tt>size</tt>            | <tt>size</tt>              |                                 | Number of elements indexed in the pattern
+ * <tt>size</tt>            | <tt>local_size</tt>        |                                 | Number of elements local to the calling unit
+ * <tt>size</tt>            | <tt>extent</tt>            | <tt>dim d</tt>                  | Number of elements in the pattern in dimension $d$
+ * <tt>size[d]</tt>         | <tt>local_extents</tt>     | <tt>unit u</tt>                 | Number of elements local to the given unit, by dimension
+ * <tt>size</tt>            | <tt>local_extent</tt>      | <tt>dim d)</tt>                 | Number of elements local to the calling unit in dimension $d$ 
  *
- *   <tr>
- *     <td>
- *       \code
- *       Index[D] coords(Index gi)
- *       \endcode
- *     </td>
- *     <td>
- *       Global linear offset to global cartesian coordinates
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       Index at(Index[D] gp)
- *       \endcode
- *     </td>
- *     <td>
- *       Global point to local linear offset
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       Index local_at(Index[D] lp)
- *       \endcode
- *     </td>
- *     <td>
- *       Lobal point to local linear offset
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       { dart_unit_t u, Index li } local(Index[D] gp)
- *       \endcode
- *     </td>
- *     <td>
- *       Global point to unit and local linear offset, inverse of
- *       \c global
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       Index[D] global(dart_unit_t u, Index gi)
- *       \endcode
- *     </td>
- *     <td>
- *       Unit and lobal linear offset to global cartesian coordinates,
- *       inverse of \c local.
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       bool is_local(Index gi, dart_unit_t u)
- *       \endcode
- *     </td>
- *     <td>
- *       Whether element at global index \gi is local to unit \c u
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       bool is_local(dim_t d, Index go, dart_unit_t u)
- *       \endcode
- *     </td>
- *     <td>
- *       Whether any element in dimension \c d at global offset \go (such
- *       as a matrix row) is local to unit \c u
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       Size capacity()
- *       \endcode
- *     </td>
- *     <td>
- *       Size of the cartesian index space, total number of elements in
- *       the pattern, alias of \c size()
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       Size local_capacity()
- *       \endcode
- *     </td>
- *     <td>
- *       Maximum size of the local cartesian index space for any unit, i.e.
- *       maximum number of elements assigned to a single unit
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       Size size()
- *       \endcode
- *     </td>
- *     <td>
- *       Maximum size of the local cartesian index space for any unit, i.e.
- *       maximum number of elements assigned to a single unit, alias of
- *       \c capacity().
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       Size local_size()
- *       \endcode
- *     </td>
- *     <td>
- *       Actual number of elements assigned to the active unit
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       Size extent(dim_t d)
- *       \endcode
- *     </td>
- *     <td>
- *       Number of elements in the pattern in dimension \c d
- *     </td>
- *   </tr>
- *
- *   <tr>
- *     <td>
- *       \code
- *       Size local_extent(dim_t d)
- *       \endcode
- *     </td>
- *     <td>
- *       Number of elements in the pattern in dimension \c d that are local
- *       to the active unit
- *     </td>
- *   </tr>
- *
- * </table>
  * \}
  */
 
