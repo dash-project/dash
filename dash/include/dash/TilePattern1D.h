@@ -969,7 +969,7 @@ public:
    * Not part of DASH Pattern concept.
    */
   const LocalMemoryLayout_t & local_memory_layout() const {
-    return LocalMemoryLayout_t(_local_size);
+    return _local_memory_layout;
   }
 
   /**
