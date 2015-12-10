@@ -28,11 +28,10 @@ namespace dash {
  */
 template<
   dim_t      NumDimensions,
-  MemArrange Arrangement,
-  typename   IndexType
+  MemArrange Arrangement  = dash::ROW_MAJOR,
+  typename   IndexType    = dash::default_index_t
 >
-class CSRPattern<NumDimensions, Arrangement, IndexType>;
-
+class CSRPattern;
 
 /**
  * Irregular Pattern for Compressed Sparse Row Storage.
@@ -56,14 +55,12 @@ public:
   /// Properties guaranteed in pattern property category Blocking
   typedef dash::pattern_blocking_properties<
             // identical number of elements in every block
-            dash::pattern_blocking_tag::balanced >
+            dash::pattern_blocking_tag::unbalanced >
           blocking_properties;
   /// Properties guaranteed in pattern property category Topology
   typedef dash::pattern_topology_properties<
-            // number of blocks assigned to a unit may differ
-            dash::pattern_topology_tag::unbalanced,
-            // every unit mapped in any single slice in every dimension
-            dash::pattern_topology_tag::diagonal >
+            // number of blocks assigned to a unit is constant
+            dash::pattern_topology_tag::balanced >
           topology_properties;
   /// Properties guaranteed in pattern property category Indexing
   typedef dash::pattern_indexing_properties<
@@ -146,22 +143,8 @@ public:
    * of the pattern size (extent, number of elements) followed by an optional
    * distribution type.
    *
-   * Examples:
-   *
-   * \code
-   *   // 500 elements with blocked distribution:
-   *   Pattern p1(500, BLOCKED);
-   *   // Same as
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<2>(BLOCKED),
-   *              TeamSpec<1>(dash::Team::All()),
-   *              // The team containing the units to which the pattern 
-   *              // maps the global indices. Defaults to all all units:
-   *              dash::Team::All());
-   * \endcode
    */
-  template<
-    typename ... Args>
+  template<typename ... Args>
   CSRPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type> & local_sizes,
@@ -191,11 +174,12 @@ public:
     _local_size(
         initialize_local_extent(_team->myid())),
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
-    _local_capacity(initialize_local_capacity()) {
+    _local_capacity(initialize_local_capacity())
+  {
     DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
-      "Number of given local sizes " << _local_sizes.size() << " " <<
+      "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
     DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
@@ -205,44 +189,21 @@ public:
    * Constructor, initializes a pattern from explicit instances of
    * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
    *
-   * Examples:
-   *
-   * \code
-   *   // 500 elements with blocked distribution:
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED),
-   *              TeamSpec<1>(dash::Team::All()),
-   *              // The team containing the units to which the pattern 
-   *              // maps the global indices. Defaults to all all units:
-   *              dash::Team::All());
-   *   // Same as
-   *   Pattern p1(500, BLOCKED);
-   *   // Same as
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED));
-   *   // Same as
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED),
-   *              TeamSpec<1>(dash::Team::All()));
-   * \endcode
    */
   CSRPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type>          & local_sizes,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE).
-    /// Defaults to BLOCKED.
-    const DistributionSpec_t              & dist     = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t                      & teamspec = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t                      & teamspec,
     /// Team containing units to which this pattern maps its elements
     dash::Team                            & team     = dash::Team::All()) 
   : _size(initialize_size(
-        local_sizes),
+        local_sizes)),
     _local_sizes(local_sizes),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> { _size }),
-    _distspec(dist),
+    _distspec(DistributionSpec_t()),
     _team(&team),
     _teamspec(
         teamspec,
@@ -257,11 +218,12 @@ public:
     _local_size(
         initialize_local_extent(_team->myid())),
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
-    _local_capacity(initialize_local_capacity()) {
+    _local_capacity(initialize_local_capacity())
+  {
     DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, teamspec, team)");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
-      "Number of given local sizes " << _local_sizes.size() << " " <<
+      "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
     DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
@@ -271,43 +233,19 @@ public:
    * Constructor, initializes a pattern from explicit instances of
    * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
    *
-   * Examples:
-   *
-   * \code
-   *   // 500 elements with blocked distribution:
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED),
-   *              TeamSpec<1>(dash::Team::All()),
-   *              // The team containing the units to which the pattern 
-   *              // maps the global indices. Defaults to all all units:
-   *              dash::Team::All());
-   *   // Same as
-   *   Pattern p1(500, BLOCKED);
-   *   // Same as
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED));
-   *   // Same as
-   *   Pattern p1(SizeSpec<1>(500),
-   *              DistributionSpec<1>(BLOCKED),
-   *              TeamSpec<1>(dash::Team::All()));
-   * \endcode
    */
   CSRPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type> & local_sizes,
-    /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
-    /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
-    /// dimensions
-    const DistributionSpec_t     & dist = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
     Team                         & team = dash::Team::All())
   : _size(initialize_size(
-        local_sizes),
+        local_sizes)),
     _local_sizes(local_sizes),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> { _size }),
-    _distspec(dist),
+    _distspec(DistributionSpec_t()),
     _team(&team),
     _teamspec(_distspec, *_team),
     _nunits(_team->size()),
@@ -319,11 +257,12 @@ public:
     _local_size(
         initialize_local_extent(_team->myid())),
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
-    _local_capacity(initialize_local_capacity()) {
+    _local_capacity(initialize_local_capacity())
+  {
     DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, team)");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
-      "Number of given local sizes " << _local_sizes.size() << " " <<
+      "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
     DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
@@ -334,7 +273,7 @@ public:
    */
   CSRPattern(const self_t & other)
   : _size(other._size),
-    _local_sizes(other.local_sizes),
+    _local_sizes(other._local_sizes),
     _block_offsets(other._block_offsets),
     _memory_layout(other._memory_layout),
     _distspec(other._distspec), 
@@ -491,13 +430,12 @@ public:
     /// Global linear element offset
     IndexType global_pos,
     /// View to apply global position
-    const ViewSpec_t & viewspec
-  ) const {
+    const ViewSpec_t & viewspec) const {
     DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", global_pos);
     DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", viewspec);
     dart_unit_t unit_idx = 0;
     // Apply viewspec offsets to coordinates:
-    auto g_coord         = g_coords[0] + viewspec[0].offset;
+    auto g_coord         = global_pos + viewspec[0].offset;
     for (; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] >= g_coord) {
         DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
@@ -515,8 +453,7 @@ public:
    */
   dart_unit_t unit_at(
     /// Global linear element offset
-    IndexType g_index
-  ) const {
+    IndexType g_index) const {
     DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", g_index);
     dart_unit_t unit_idx = 0;
     for (; unit_idx < _nunits - 1; ++unit_idx) {
@@ -1113,14 +1050,12 @@ public:
    */
   SizeType initialize_size(
     const std::vector<size_type> & local_sizes) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.init_size", local_sizes);
+    DASH_LOG_TRACE_VAR("CSRPattern.init_size()", local_sizes);
     size_type size = 0;
-    if (nunits == 0) {
-      return size;
-    }
-    for (auto unit_idx = 0; unit_idx < local_sizes.size() - 1; ++unit_idx) {
+    for (auto unit_idx = 0; unit_idx < local_sizes.size(); ++unit_idx) {
       size += local_sizes[unit_idx];
     }
+    DASH_LOG_TRACE_VAR("CSRPattern.init_size >", size);
     return size;
   }
 
@@ -1132,9 +1067,6 @@ public:
     const std::vector<size_type> & local_sizes) const {
     DASH_LOG_TRACE_VAR("CSRPattern.init_block_offsets", local_sizes);
     std::vector<size_type> block_offsets;
-    if (nunits == 0) {
-      return block_offsets;
-    }
     // NOTE: Assuming 1 block for every unit.
     block_offsets.push_back(0);
     for (auto unit_idx = 0; unit_idx < local_sizes.size() - 1; ++unit_idx) {
@@ -1235,6 +1167,7 @@ public:
     DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent >", l_extent);
     return l_extent;
   }
+
 };
 
 } // namespace dash

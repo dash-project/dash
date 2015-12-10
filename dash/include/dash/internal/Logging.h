@@ -7,6 +7,7 @@
 #if defined(DASH_ENABLE_LOGGING)
 
 #include <array>
+#include <vector>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -42,10 +43,19 @@ namespace internal {
 namespace logging {
 
 // To print std::array to ostream
-template <class T, std::size_t N>
+template <typename T, std::size_t N>
 std::ostream & operator<<(
   std::ostream & o,
   const std::array<T, N> & arr) {
+  std::copy(arr.cbegin(), arr.cend(),
+            std::ostream_iterator<T>(o, ","));
+  return o;
+}
+// To print std::vector to ostream
+template <typename T>
+std::ostream & operator<<(
+  std::ostream & o,
+  const std::vector<T> & arr) {
   std::copy(arr.cbegin(), arr.cend(),
             std::ostream_iterator<T>(o, ","));
   return o;
