@@ -4,7 +4,7 @@
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <iostream>
+#include <functional>
 
 namespace dash {
 
@@ -38,6 +38,7 @@ public:
   typedef const PointerType                    const_pointer;
 
   typedef       PatternType                     pattern_type;
+  typedef       IndexType                         index_type;
 
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
@@ -413,52 +414,125 @@ public:
     return _idx - other._idx;
   }
 
-  bool operator<(const self_t & other) const {
-    return _idx < other._idx;
+  inline bool operator<(const self_t & other) const {
+    // NOTE:
+    // This function call is significantly slower than the explicit
+    // implementation in operator== and operator!=.
+    return compare(other,
+                   std::less<index_type>(),
+                   std::less<pointer>());
   }
 
-  bool operator<=(const self_t & other) const {
-    return _idx <= other._idx;
+  inline bool operator<=(const self_t & other) const {
+    // NOTE:
+    // This function call is significantly slower than the explicit
+    // implementation in operator== and operator!=.
+    return compare(other,
+                   std::less_equal<index_type>(),
+                   std::less_equal<pointer>());
   }
 
-  bool operator>(const self_t & other) const {
-    return _idx > other._idx;
+  inline bool operator>(const self_t & other) const {
+    // NOTE:
+    // This function call is significantly slower than the explicit
+    // implementation in operator== and operator!=.
+    return compare(other,
+                   std::greater<index_type>(),
+                   std::greater<pointer>());
   }
 
-  bool operator>=(const self_t & other) const {
-    return _idx >= other._idx;
+  inline bool operator>=(const self_t & other) const {
+    // NOTE:
+    // This function call is significantly slower than the explicit
+    // implementation in operator== and operator!=.
+    return compare(other,
+                   std::greater_equal<index_type>(),
+                   std::greater_equal<pointer>());
   }
 
-  bool operator==(const self_t & other) const {
-    if (_idx == other._idx) {
-      // Same global index
-      if (_viewspec  == other._viewspec) {
-        // Same viewspec instance
-        return true;
-      }
-      if ((_viewspec != nullptr && other._viewspec != nullptr) && 
-          (*_viewspec) == *(other._viewspec)) {
-        // Same global index and same viewspec
-        return true;
-      }
+  inline bool operator==(const self_t & other) const {
+    // NOTE: See comments in method compare().
+    if (_viewspec == other._viewspec) {
+      // Same viewspec pointer
+      return _idx == other._idx;
     }
-    // View projection at lhs and/or rhs set.
-    // Convert both to GlobPtr (i.e. apply view projection) and compare:
-    auto lhs_dart_gptr = GlobPtr<ElementType>(dart_gptr());
-    auto rhs_dart_gptr = GlobPtr<ElementType>(other.dart_gptr());
-    return lhs_dart_gptr == rhs_dart_gptr;
-           
+    if ((_viewspec != nullptr && other._viewspec != nullptr) && 
+        (*_viewspec) == *(other._viewspec)) {
+      // Viewspec instances are equal
+      return _idx == other._idx;
+    }
+    const pointer lhs_dart_gptr(dart_gptr());
+    const pointer rhs_dart_gptr(other.dart_gptr());
+    return (lhs_dart_gptr == rhs_dart_gptr);
   }
 
-  bool operator!=(const self_t & other) const {
-    return !(*this == other);
+  inline bool operator!=(const self_t & other) const {
+    // NOTE: See comments in method compare().
+    if (_viewspec == other._viewspec) {
+      // Same viewspec pointer
+      return _idx != other._idx;
+    }
+    if ((_viewspec != nullptr && other._viewspec != nullptr) && 
+        (*_viewspec) == *(other._viewspec)) {
+      // Viewspec instances are equal
+      return _idx != other._idx;
+    }
+    const pointer lhs_dart_gptr(dart_gptr());
+    const pointer rhs_dart_gptr(other.dart_gptr());
+    return (lhs_dart_gptr != rhs_dart_gptr);
   }
 
-  const PatternType & pattern() const {
+  inline const PatternType & pattern() const {
     return *_pattern;
   }
 
 private:
+  /**
+   * Compare position of this global iterator to the position of another
+   * global iterator with respect to viewspec projection.
+   */
+  template<
+    class GlobIndexCmpFun,
+    class GlobPtrCmpFun >
+  bool compare(
+    const self_t & other,
+    const GlobIndexCmpFun & gidx_cmp,
+    const GlobPtrCmpFun   & gptr_cmp) const {
+#if __REMARK__
+    // Usually this is a best practice check, but it's an infrequent case
+    // so we rather avoid this comparison:
+    if (this == &other) {
+      return true;
+    }
+#endif
+    // NOTE:
+    // Do not check _idx first, as it would never match for comparison with an
+    // end iterator.
+    if (_viewspec == other._viewspec) {
+      // Same viewspec pointer
+      return gidx_cmp(_idx, other._idx);
+    }
+    if ((_viewspec != nullptr && other._viewspec != nullptr) && 
+        (*_viewspec) == *(other._viewspec)) {
+      // Viewspec instances are equal
+      return gidx_cmp(_idx, other._idx);
+    }
+    // View projection at lhs and/or rhs set.
+    // Convert both to GlobPtr (i.e. apply view projection) and compare.
+    //
+    // NOTE:
+    // This conversion is quite expensive but will never be necessary
+    // if both iterators have been created from the same range.
+    // Example:
+    //   a.block(1).begin() == a.block(1).end().
+    // does not require viewspace projection while
+    //   a.block(1).begin() == a.end()
+    // does. The latter case should be avoided for this reason.
+    const pointer lhs_dart_gptr(dart_gptr());
+    const pointer rhs_dart_gptr(other.dart_gptr());
+    return gptr_cmp(lhs_dart_gptr, rhs_dart_gptr);
+  }
+
   /**
    * Convert a global offset within the global iterator's range to
    * corresponding global coordinates with respect to viewspec projection.

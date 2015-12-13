@@ -215,6 +215,78 @@ public:
   }
   
   /**
+   * Less comparison operator.
+   */
+  bool operator<(const GlobPtr<T>& other) const {
+    return (
+      ( _dart_gptr.unitid <  other._dart_gptr.unitid )
+        ||
+      ( _dart_gptr.unitid == other._dart_gptr.unitid
+        &&
+        ( _dart_gptr.segid <  other._dart_gptr.segid
+          ||
+        ( _dart_gptr.segid == other._dart_gptr.segid
+          &&
+          _dart_gptr.addr_or_offs < other._dart_gptr.addr_or_offs ) )
+      )
+    );
+  }
+  
+  /**
+   * Less-equal comparison operator.
+   */
+  bool operator<=(const GlobPtr<T>& other) const {
+    return (
+      ( _dart_gptr.unitid <  other._dart_gptr.unitid )
+        ||
+      ( _dart_gptr.unitid == other._dart_gptr.unitid
+        &&
+        ( _dart_gptr.segid <  other._dart_gptr.segid
+          ||
+        ( _dart_gptr.segid == other._dart_gptr.segid
+          &&
+          _dart_gptr.addr_or_offs <= other._dart_gptr.addr_or_offs ) )
+      )
+    );
+  }
+  
+  /**
+   * Greater comparison operator.
+   */
+  bool operator>(const GlobPtr<T>& other) const {
+    return (
+      ( _dart_gptr.unitid >  other._dart_gptr.unitid )
+        ||
+      ( _dart_gptr.unitid == other._dart_gptr.unitid
+        &&
+        ( _dart_gptr.segid >  other._dart_gptr.segid
+          ||
+        ( _dart_gptr.segid == other._dart_gptr.segid
+          &&
+          _dart_gptr.addr_or_offs > other._dart_gptr.addr_or_offs ) )
+      )
+    );
+  }
+  
+  /**
+   * Greater-equal comparison operator.
+   */
+  bool operator>=(const GlobPtr<T>& other) const {
+    return (
+      ( _dart_gptr.unitid >  other._dart_gptr.unitid )
+        ||
+      ( _dart_gptr.unitid == other._dart_gptr.unitid
+        &&
+        ( _dart_gptr.segid >  other._dart_gptr.segid
+          ||
+        ( _dart_gptr.segid == other._dart_gptr.segid
+          &&
+          _dart_gptr.addr_or_offs >= other._dart_gptr.addr_or_offs ) )
+      )
+    );
+  }
+  
+  /**
    * Subscript operator.
    */
   const GlobRef<T> operator[](gptrdiff_t n) const {
