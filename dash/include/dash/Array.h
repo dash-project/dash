@@ -143,28 +143,28 @@ public:
   /**
    * Pointer to initial local element in the array.
    */
-  constexpr const_pointer begin() const noexcept {
+  inline const_pointer begin() const noexcept {
     return _array->m_lbegin;
   }
 
   /**
    * Pointer past final local element in the array.
    */
-  constexpr const_pointer end() const noexcept {
+  inline const_pointer end() const noexcept {
     return _array->m_lend;
   }
   
   /**
    * Number of array elements in local memory.
    */
-  constexpr size_type size() const noexcept {
+  inline size_type size() const noexcept {
     return end() - begin();
   }
   
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr value_type operator[](const size_t n) const  {
+  inline value_type operator[](const size_t n) const  {
     return (_array->m_lbegin)[n];
   }
   
@@ -255,7 +255,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr const_async_reference operator[](const size_t n) const  {
+  inline const_async_reference operator[](const size_t n) const  {
     return async_reference(
              _array->m_globmem,
              (*(_array->begin() + n)).gptr());
@@ -852,7 +852,7 @@ public:
   /**
    * The pattern used to distribute array elements to units.
    */
-  const PatternType & pattern() const {
+  inline const PatternType & pattern() const {
     return m_pattern;
   }
 

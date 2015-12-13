@@ -1,5 +1,5 @@
-#ifndef DASH__CSR_PATTERN_1D_H_
-#define DASH__CSR_PATTERN_1D_H_
+#ifndef DASH__MOCK_PATTERN_H_
+#define DASH__MOCK_PATTERN_H_
 
 #include <functional>
 #include <array>
@@ -31,7 +31,7 @@ template<
   MemArrange Arrangement  = dash::ROW_MAJOR,
   typename   IndexType    = dash::default_index_t
 >
-class CSRPattern;
+class MockPattern;
 
 /**
  * Irregular Pattern for Compressed Sparse Row Storage.
@@ -43,13 +43,13 @@ template<
   MemArrange Arrangement,
   typename   IndexType
 >
-class CSRPattern<1, Arrangement, IndexType>
+class MockPattern<1, Arrangement, IndexType>
 {
 private:
   static const dim_t NumDimensions = 1;
 
 public:
-  static constexpr char const * PatternName = "CSRPattern<1>";
+  static constexpr char const * PatternName = "MockPattern<1>";
 
 public:
   /// Properties guaranteed in pattern property category Blocking
@@ -73,7 +73,7 @@ private:
   typedef typename std::make_unsigned<IndexType>::type
     SizeType;
   /// Fully specified type definition of self
-  typedef CSRPattern<NumDimensions, Arrangement, IndexType>
+  typedef MockPattern<NumDimensions, Arrangement, IndexType>
     self_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     MemoryLayout_t;
@@ -145,7 +145,7 @@ public:
    *
    */
   template<typename ... Args>
-  CSRPattern(
+  MockPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type> & local_sizes,
     /// Argument list consisting of the pattern size (extent, number of 
@@ -176,13 +176,13 @@ public:
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
     _local_capacity(initialize_local_capacity())
   {
-    DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
+    DASH_LOG_TRACE("MockPattern()", "Constructor with argument list");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
+    DASH_LOG_TRACE("MockPattern()", "MockPattern initialized");
   }
 
   /**
@@ -190,7 +190,7 @@ public:
    * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
    *
    */
-  CSRPattern(
+  MockPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type>          & local_sizes,
     /// Cartesian arrangement of units within the team
@@ -220,13 +220,13 @@ public:
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
     _local_capacity(initialize_local_capacity())
   {
-    DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, teamspec, team)");
+    DASH_LOG_TRACE("MockPattern()", "(sizespec, dist, teamspec, team)");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
+    DASH_LOG_TRACE("MockPattern()", "MockPattern initialized");
   }
 
   /**
@@ -234,7 +234,7 @@ public:
    * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
    *
    */
-  CSRPattern(
+  MockPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type> & local_sizes,
     /// Team containing units to which this pattern maps its elements
@@ -259,19 +259,19 @@ public:
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
     _local_capacity(initialize_local_capacity())
   {
-    DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, team)");
+    DASH_LOG_TRACE("MockPattern()", "(sizespec, dist, team)");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
+    DASH_LOG_TRACE("MockPattern()", "MockPattern initialized");
   }
 
   /**
    * Copy constructor.
    */
-  CSRPattern(const self_t & other)
+  MockPattern(const self_t & other)
   : _size(other._size),
     _local_sizes(other._local_sizes),
     _block_offsets(other._block_offsets),
@@ -289,7 +289,7 @@ public:
     _lend(other._lend) {
     // No need to copy _arguments as it is just used to
     // initialize other members.
-    DASH_LOG_TRACE("CSRPattern(other)", "CSRPattern copied");
+    DASH_LOG_TRACE("MockPattern(other)", "MockPattern copied");
   }
 
   /**
@@ -298,8 +298,8 @@ public:
    * Introduced so variadic constructor is not a better match for
    * copy-construction.
    */
-  CSRPattern(self_t & other)
-  : CSRPattern(static_cast<const self_t &>(other)) {
+  MockPattern(self_t & other)
+  : MockPattern(static_cast<const self_t &>(other)) {
   }
 
   /**
@@ -339,7 +339,7 @@ public:
    * Assignment operator.
    */
   self_t & operator=(const self_t & other) {
-    DASH_LOG_TRACE("CSRPattern.=(other)");
+    DASH_LOG_TRACE("MockPattern.=(other)");
     if (this != &other) {
       _size                = other._size;
       _local_sizes         = other._local_sizes;
@@ -356,7 +356,7 @@ public:
       _nunits              = other._nunits;
       _lbegin              = other._lbegin;
       _lend                = other._lend;
-      DASH_LOG_TRACE("CSRPattern.=(other)", "CSRPattern assigned");
+      DASH_LOG_TRACE("MockPattern.=(other)", "MockPattern assigned");
     }
     return *this;
   }
@@ -393,11 +393,11 @@ public:
     const std::array<IndexType, NumDimensions> & coords,
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", coords);
+    DASH_LOG_TRACE_VAR("MockPattern.unit_at()", coords);
     // Apply viewspec offsets to coordinates:
     dart_unit_t unit_id = ((coords[0] + viewspec[0].offset) / _blocksize)
                           % _nunits;
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_id);
+    DASH_LOG_TRACE_VAR("MockPattern.unit_at >", unit_id);
     return unit_id;
   }
 
@@ -408,16 +408,16 @@ public:
    */
   dart_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & g_coords) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", g_coords);
+    DASH_LOG_TRACE_VAR("MockPattern.unit_at()", g_coords);
     dart_unit_t unit_idx = 0;
     auto g_coord         = g_coords[0];
     for (; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] >= g_coord) {
-        DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
+        DASH_LOG_TRACE_VAR("MockPattern.unit_at >", unit_idx);
         return unit_idx;
       }
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", _nunits-1);
+    DASH_LOG_TRACE_VAR("MockPattern.unit_at >", _nunits-1);
     return _nunits-1;
   }
 
@@ -431,18 +431,18 @@ public:
     IndexType global_pos,
     /// View to apply global position
     const ViewSpec_t & viewspec) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", global_pos);
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", viewspec);
+    DASH_LOG_TRACE_VAR("MockPattern.unit_at()", global_pos);
+    DASH_LOG_TRACE_VAR("MockPattern.unit_at()", viewspec);
     dart_unit_t unit_idx = 0;
     // Apply viewspec offsets to coordinates:
     auto g_coord         = global_pos + viewspec[0].offset;
     for (; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] >= g_coord) {
-        DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
+        DASH_LOG_TRACE_VAR("MockPattern.unit_at >", unit_idx);
         return unit_idx;
       }
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", _nunits-1);
+    DASH_LOG_TRACE_VAR("MockPattern.unit_at >", _nunits-1);
     return _nunits-1;
   }
 
@@ -454,15 +454,15 @@ public:
   dart_unit_t unit_at(
     /// Global linear element offset
     IndexType g_index) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", g_index);
+    DASH_LOG_TRACE_VAR("MockPattern.unit_at()", g_index);
     dart_unit_t unit_idx = 0;
     for (; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] >= g_index) {
-        DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
+        DASH_LOG_TRACE_VAR("MockPattern.unit_at >", unit_idx);
         return unit_idx;
       }
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", _nunits-1);
+    DASH_LOG_TRACE_VAR("MockPattern.unit_at >", _nunits-1);
     return _nunits-1;
   }
 
@@ -519,8 +519,8 @@ public:
    */
   std::array<SizeType, NumDimensions> local_extents(
     dart_unit_t unit) const {
-    DASH_LOG_DEBUG_VAR("CSRPattern.local_extents()", unit);
-    DASH_LOG_DEBUG_VAR("CSRPattern.local_extents >", _local_size);
+    DASH_LOG_DEBUG_VAR("MockPattern.local_extents()", unit);
+    DASH_LOG_DEBUG_VAR("MockPattern.local_extents >", _local_size);
     return std::array<SizeType, 1> { _local_size };
   }
 
@@ -562,49 +562,43 @@ public:
    * \see  DashPatternConcept
    */
   local_coords_t local(
-    const std::array<IndexType, NumDimensions> & g_coords) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.local()", g_coords);
-    IndexType g_index = g_coords[0];
-    local_index_t l_index;
-    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
-      index_type block_offset = _block_offsets[unit_idx];
-      if (block_offset <= g_index) {
-        l_index.unit  = unit_idx;
-        l_index.index = g_index - block_offset;
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.unit);
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.index);
-        return l_index;
+    const std::array<IndexType, NumDimensions> & global_coords) const {
+    DASH_LOG_TRACE_VAR("MockPattern.local()", global_coords);
+    IndexType local_coord = global_coords[0];
+    local_coords_t l_coords;
+    l_coords.unit      = static_cast<dart_unit_t>(-1);
+    l_coords.coords[0] = -1;
+    // NOTE: Naive implementation
+    for (auto unit_idx = 0; unit_idx < _local_sizes.size(); ++unit_idx) {
+      size_type block_size = _local_sizes[unit_idx];
+      if (static_cast<size_type>(local_coord) < block_size) {
+        l_coords.unit      = unit_idx;
+        l_coords.coords[0] = local_coord;
+        DASH_LOG_TRACE_VAR("MockPattern.local >", l_coords.unit);
+        DASH_LOG_TRACE_VAR("MockPattern.local >", l_coords.coords);
+        return l_coords;
       }
+      local_coord -= static_cast<index_type>(block_size);
     }
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "CSRPattern.local: global coord " << g_index < " is out of bounds");
+    DASH_LOG_TRACE_VAR("MockPattern.local !", l_coords.unit);
+    DASH_LOG_TRACE_VAR("MockPattern.local !", l_coords.coords);
+    return l_coords;
   }
 
   /**
    * Converts global index to its associated unit and respective local index.
    *
-   * NOTE: Same as \c local_index.
-   *
    * \see  DashPatternConcept
    */
   local_index_t local(
     IndexType g_index) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.local()", g_index);
+    DASH_LOG_TRACE_VAR("MockPattern.local()", g_index);
     local_index_t l_index;
-    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
-      index_type block_offset = _block_offsets[unit_idx];
-      if (block_offset <= g_index) {
-        l_index.unit  = unit_idx;
-        l_index.index = g_index - block_offset;
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.unit);
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.index);
-        return l_index;
-      }
-    }
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "CSRPattern.local: global index " << g_index < " is out of bounds");
+    l_index.unit  = static_cast<dart_unit_t>(g_index / _nunits);
+    l_index.index = 0;
+    DASH_LOG_TRACE_VAR("MockPattern.local !", l_index.unit);
+    DASH_LOG_TRACE_VAR("MockPattern.local !", l_index.index);
+    return l_index;
   }
 
   /**
@@ -614,21 +608,18 @@ public:
    * \see  DashPatternConcept
    */
   std::array<IndexType, NumDimensions> local_coords(
-    const std::array<IndexType, NumDimensions> & g_coords) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.local_coords()", g_coords);
-    IndexType g_index = g_coords[0];
-    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
-      index_type block_offset = _block_offsets[unit_idx];
-      if (block_offset <= g_index) {
-        auto l_coord = g_index - block_offset;
-        DASH_LOG_TRACE_VAR("CSRPattern.local_coords >", l_coord);
-        return std::array<IndexType, 1> { l_coord };
+    const std::array<IndexType, NumDimensions> & global_coords) const {
+    IndexType local_coord = global_coords[0];
+    DASH_LOG_TRACE_VAR("MockPattern.local_coords()", global_coords);
+    // NOTE: Naive implementation
+    for (auto unit_idx = 0; unit_idx < _local_sizes.size(); ++unit_idx) {
+      size_type block_size = _local_sizes[unit_idx];
+      if (static_cast<size_type>(local_coord) < block_size) {
+        DASH_LOG_TRACE_VAR("MockPattern.local_coords >", local_coord);
+        return std::array<IndexType, 1> { local_coord };
       }
+      local_coord -= static_cast<index_type>(block_size);
     }
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "CSRPattern.local_coords: global index " << g_index <<
-      " is out of bounds");
   }
 
   /**
@@ -639,22 +630,26 @@ public:
    */
   local_index_t local_index(
     const std::array<IndexType, NumDimensions> & g_coords) const {
-    IndexType g_index = g_coords[0];
-    DASH_LOG_TRACE_VAR("CSRPattern.local_index()", g_coords);
+    IndexType local_index = g_coords[0];
+    DASH_LOG_TRACE_VAR("MockPattern.local_index()", g_coords);
     local_index_t l_index;
-    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
-      index_type block_offset = _block_offsets[unit_idx];
-      if (block_offset <= g_index) {
+    l_index.unit  = static_cast<dart_unit_t>(-1);
+    l_index.index = -1;
+    // NOTE: Naive implementation
+    for (auto unit_idx = 0; unit_idx < _local_sizes.size(); ++unit_idx) {
+      size_type block_size = _local_sizes[unit_idx];
+      if (static_cast<size_type>(local_index) < block_size) {
         l_index.unit  = unit_idx;
-        l_index.index = g_index - block_offset;
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.unit);
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.index);
+        l_index.index = local_index;
+        DASH_LOG_TRACE_VAR("MockPattern.local_index >", l_index.unit);
+        DASH_LOG_TRACE_VAR("MockPattern.local_index >", l_index.index);
         return l_index;
       }
+      local_index -= static_cast<index_type>(block_size);
     }
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "CSRPattern.local: global index " << g_index < " is out of bounds");
+    DASH_LOG_TRACE_VAR("MockPattern.local_index !", l_index.unit);
+    DASH_LOG_TRACE_VAR("MockPattern.local_index !", l_index.index);
+    return l_index;
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -669,15 +664,15 @@ public:
   std::array<IndexType, NumDimensions> global(
     dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
-    DASH_LOG_DEBUG_VAR("CSRPattern.global()", unit);
-    DASH_LOG_DEBUG_VAR("CSRPattern.global()", local_coords);
-    DASH_LOG_TRACE_VAR("CSRPattern.global", _nunits);
+    DASH_LOG_DEBUG_VAR("MockPattern.global()", unit);
+    DASH_LOG_DEBUG_VAR("MockPattern.global()", local_coords);
+    DASH_LOG_TRACE_VAR("MockPattern.global", _nunits);
     if (_nunits < 2) {
       return local_coords;
     }
     // Initialize global index with element phase (= local coords):
     index_type glob_index = _block_offsets[unit] + local_coords[0];
-    DASH_LOG_TRACE_VAR("CSRPattern.global >", glob_index);
+    DASH_LOG_TRACE_VAR("MockPattern.global >", glob_index);
     return std::array<IndexType, 1> { glob_index };
   }
 
@@ -802,12 +797,12 @@ public:
       0, dim, 
       "Wrong dimension for Pattern::has_local_elements. " <<
       "Expected dimension = 0, got " << dim);
-    DASH_LOG_TRACE_VAR("CSRPattern.has_local_elements()", dim_offset);
-    DASH_LOG_TRACE_VAR("CSRPattern.has_local_elements()", unit);
-    DASH_LOG_TRACE_VAR("CSRPattern.has_local_elements()", viewspec);
+    DASH_LOG_TRACE_VAR("MockPattern.has_local_elements()", dim_offset);
+    DASH_LOG_TRACE_VAR("MockPattern.has_local_elements()", unit);
+    DASH_LOG_TRACE_VAR("MockPattern.has_local_elements()", viewspec);
     DASH_THROW(
       dash::exception::NotImplemented,
-      "CSRPattern.has_local_elements is not implemented");
+      "MockPattern.has_local_elements is not implemented");
   }
 
   /**
@@ -815,16 +810,12 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline bool is_local(
+  bool is_local(
     IndexType index,
     dart_unit_t unit) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local()", index);
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local()", unit);
-    bool is_loc = index >= _block_offsets[unit] &&
-                  (unit == _nunits-1 ||
-                   index <  _block_offsets[unit+1]);
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local >", is_loc);
-    return is_loc;
+    auto coords_unit = unit_at(index);
+    DASH_LOG_TRACE_VAR("MockPattern.is_local >", (coords_unit == unit));
+    return coords_unit == unit;
   }
 
   /**
@@ -833,16 +824,9 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline bool is_local(
+  bool is_local(
     IndexType index) const {
-    auto unit = team().myid();
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local()", index);
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local", unit);
-    bool is_loc = index >= _block_offsets[unit] &&
-                  (unit == _nunits-1 ||
-                   index <  _block_offsets[unit+1]);
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local >", is_loc);
-    return is_loc;
+    return is_local(index, team().myid());
   }
 
   /**
@@ -1011,14 +995,14 @@ public:
    */
   ViewSpec_t local_block(
     index_type l_block_index) const {
-    DASH_LOG_DEBUG_VAR("CSRPattern.local_block()", l_block_index);
+    DASH_LOG_DEBUG_VAR("MockPattern.local_block()", l_block_index);
     DASH_ASSERT_EQ(
       0, l_block_index,
-      "CSRPattern always assigns exactly 1 block to a single unit");
+      "MockPattern always assigns exactly 1 block to a single unit");
     index_type block_offset = _block_offsets[_team->myid()];
     size_type  block_size   = _local_sizes[_team->myid()];
     ViewSpec_t block_vs({ block_offset }, { block_size });
-    DASH_LOG_DEBUG_VAR("CSRPattern.local_block >", block_vs);
+    DASH_LOG_DEBUG_VAR("MockPattern.local_block >", block_vs);
     return block_vs;
   }
 
@@ -1051,12 +1035,12 @@ public:
    */
   SizeType initialize_size(
     const std::vector<size_type> & local_sizes) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.init_size()", local_sizes);
+    DASH_LOG_TRACE_VAR("MockPattern.init_size()", local_sizes);
     size_type size = 0;
     for (auto unit_idx = 0; unit_idx < local_sizes.size(); ++unit_idx) {
       size += local_sizes[unit_idx];
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.init_size >", size);
+    DASH_LOG_TRACE_VAR("MockPattern.init_size >", size);
     return size;
   }
 
@@ -1066,7 +1050,7 @@ public:
    */
   std::vector<size_type> initialize_block_offsets(
     const std::vector<size_type> & local_sizes) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.init_block_offsets", local_sizes);
+    DASH_LOG_TRACE_VAR("MockPattern.init_block_offsets", local_sizes);
     std::vector<size_type> block_offsets;
     // NOTE: Assuming 1 block for every unit.
     block_offsets.push_back(0);
@@ -1086,7 +1070,7 @@ public:
     SizeType                   size,
     const DistributionSpec_t & distspec,
     SizeType                   nunits) const {
-    DASH_LOG_TRACE_VAR("CSRPattern.init_blocksize", nunits);
+    DASH_LOG_TRACE_VAR("MockPattern.init_blocksize", nunits);
     if (nunits == 0) {
       return 0;
     }
@@ -1111,7 +1095,7 @@ public:
     } else {
       num_l_blocks = 0;
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.init_num_local_blocks", num_l_blocks);
+    DASH_LOG_TRACE_VAR("MockPattern.init_num_local_blocks", num_l_blocks);
     return num_l_blocks;
   }
 
@@ -1123,11 +1107,11 @@ public:
     if (_nunits == 0) {
       return 0;
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.init_lcapacity", _nunits);
+    DASH_LOG_TRACE_VAR("MockPattern.init_lcapacity", _nunits);
     // Local capacity is maximum number of elements assigned to a single unit,
     // i.e. the maximum local size:
     l_capacity = *(std::max_element(_local_sizes.begin(), _local_sizes.end()));
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_lcapacity >", l_capacity);
+    DASH_LOG_DEBUG_VAR("MockPattern.init_lcapacity >", l_capacity);
     return l_capacity;
   }
 
@@ -1137,7 +1121,7 @@ public:
    */
   void initialize_local_range() {
     auto l_size = _local_size; 
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_range()", l_size);
+    DASH_LOG_DEBUG_VAR("MockPattern.init_local_range()", l_size);
     if (l_size == 0) {
       _lbegin = 0;
       _lend   = 0;
@@ -1149,8 +1133,8 @@ public:
       // to the last element and increment by 1:
       _lend   = global(l_size - 1) + 1;
     }
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_range >", _lbegin);
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_range >", _lend);
+    DASH_LOG_DEBUG_VAR("MockPattern.init_local_range >", _lbegin);
+    DASH_LOG_DEBUG_VAR("MockPattern.init_local_range >", _lend);
   }
 
   /**
@@ -1158,14 +1142,14 @@ public:
    */
   SizeType initialize_local_extent(
     dart_unit_t unit) const {
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent()", unit);
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent()", _nunits);
+    DASH_LOG_DEBUG_VAR("MockPattern.init_local_extent()", unit);
+    DASH_LOG_DEBUG_VAR("MockPattern.init_local_extent()", _nunits);
     if (_nunits == 0) {
       return 0;
     }
     // Local size of given unit:
     SizeType l_extent = _local_sizes[static_cast<int>(unit)];
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent >", l_extent);
+    DASH_LOG_DEBUG_VAR("MockPattern.init_local_extent >", l_extent);
     return l_extent;
   }
 
@@ -1173,4 +1157,4 @@ public:
 
 } // namespace dash
 
-#endif // DASH__CSR_PATTERN_1D_H_
+#endif // DASH__MOCK_PATTERN_H_

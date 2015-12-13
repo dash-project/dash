@@ -20,7 +20,7 @@ using namespace std;
 #define TYPE int
 #endif 
 
-typedef dash::TilePattern<
+typedef dash::CSRPattern<
   1,
   dash::ROW_MAJOR,
   int
@@ -118,12 +118,14 @@ void perform_test(
     return;
   }
   
+  std::vector<unsigned> local_sizes;
+  for (auto u = 0; u < num_units; ++u) {
+    local_sizes.push_back(ELEM_PER_UNIT);
+  }
+  
+  PatternType pat(local_sizes);
   ArrayType arr(
-    // Total number of elements
-    ELEM_PER_UNIT * num_units,
-    // 1-dimensional distribution
-    dash::DistributionSpec<1>(
-      dash::TILE(ELEM_PER_UNIT))
+    pat
   );
   
   double t0 = test_dash_pattern(arr, ELEM_PER_UNIT, REPEAT);
@@ -231,8 +233,7 @@ double test_dash_pattern(
   dash::util::Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto g_idx = 0; g_idx < a.size(); ++g_idx) {
-      auto g_coords  = std::array<index_t, 1> { g_idx };
-      auto local_pos = pattern.local_index(g_coords);
+      auto local_pos = pattern.local(g_idx);
       auto unit_id   = local_pos.unit;
       auto l_index   = local_pos.index;
       if (unit_id == dash::myid()) {
@@ -251,13 +252,16 @@ double test_dash_global_iter(
   ArrayType & a,
   unsigned ELEM_PER_UNIT, 
   unsigned REPEAT) {
+  typedef typename ArrayType::value_type value_t;
   init_values(a, ELEM_PER_UNIT);
 
+  auto a_end = a.end();
   dash::util::Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
-    for (auto it = a.begin(); it != a.end(); ++it) {
-      if (it.is_local()) {
-        ++(*it);
+    for (auto it = a.begin(); it != a_end; ++it) {
+      value_t * local_ptr = it.local();
+      if (local_ptr != nullptr) {
+        ++(*local_ptr);
       }
     }
   }

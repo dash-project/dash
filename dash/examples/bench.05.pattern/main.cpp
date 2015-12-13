@@ -6,6 +6,7 @@
 
 #include "../bench.h"
 #include <libdash.h>
+#include "MockPattern.h"
 
 #include <array>
 #include <vector>
@@ -20,20 +21,42 @@ using namespace std;
 #define TYPE int
 #endif 
 
+typedef dash::MockPattern<
+  1,
+  dash::ROW_MAJOR,
+  int
+> MockPattern_t;
+typedef dash::CSRPattern<
+  1,
+  dash::ROW_MAJOR,
+  int
+> IrregPattern_t;
 typedef dash::TilePattern<
   1,
   dash::ROW_MAJOR,
   int
-> PatternType;
+> TilePattern_t;
+
 typedef dash::Array<
   TYPE,
   int,
-  PatternType
-> ArrayType;
+  MockPattern_t
+> ArrayMockDist_t;
+typedef dash::Array<
+  TYPE,
+  int,
+  IrregPattern_t
+> ArrayIrregDist_t;
+typedef dash::Array<
+  TYPE,
+  int,
+  TilePattern_t
+> ArrayTiledDist_t;
 
 template<typename Iter>
 void init_values(Iter begin, Iter end, unsigned);
 
+template<class ArrayType>
 double test_pattern_gups(ArrayType & a, unsigned, unsigned);
 
 void perform_test(unsigned ELEM_PER_UNIT, unsigned REPEAT);
@@ -46,7 +69,8 @@ double gups(
   /// Elements per unit
   unsigned ELEM_PER_UNIT,
   /// Number of iterations
-  unsigned REPEAT) {
+  unsigned REPEAT)
+{
   double num_updates = static_cast<double>(N * ELEM_PER_UNIT * REPEAT);
   // kilo-updates / usecs = giga-updates / sec
   return (num_updates / 1000.0f) / useconds;
@@ -57,11 +81,6 @@ int main(int argc, char* argv[]) {
 
   dash::util::Timer::Calibrate(
     dash::util::TimeMeasure::Clock, 0);
-
-  if (dash::myid() == 0) {
-    std::cout << "pattern type: " << PatternType::PatternName
-              << std::endl;
-  }
 
   std::deque<std::pair<int, int>> tests;
 
@@ -92,19 +111,47 @@ void perform_test(
   if (ELEM_PER_UNIT == 0) {
     if (dash::myid() == 0) {
       cout << std::setw(10)
+           << "units"
+           << ", "
+           << std::setw(10)
            << "elem/unit"
            << ", "
            << std::setw(10)
            << "iterations"
            << ", "
            << std::setw(11)
-           << "reg.bal"
+           << "mock"
+           << ", "
+           << std::setw(11)
+           << "irreg"
+           << ", "
+           << std::setw(11)
+           << "tiled"
            << endl;
     }
     return;
   }
+
+  std::vector<unsigned> local_sizes;
+  for (auto u = 0; u < num_units; ++u) {
+    local_sizes.push_back(ELEM_PER_UNIT);
+  }
   
-  ArrayType arr_reg_bal(
+  MockPattern_t mock_pat(
+    // Local sizes
+    local_sizes
+  );
+  ArrayMockDist_t arr_mock_dist(
+    mock_pat
+  );
+  IrregPattern_t irreg_pat(
+    // Local sizes
+    local_sizes
+  );
+  ArrayIrregDist_t arr_irreg_dist(
+    irreg_pat
+  );
+  ArrayTiledDist_t arr_tiled_dist(
     // Total number of elements
     ELEM_PER_UNIT * num_units,
     // 1-dimensional distribution
@@ -112,21 +159,34 @@ void perform_test(
       dash::TILE(ELEM_PER_UNIT))
   );
   
-  double t_bal_reg = test_pattern_gups(arr_reg_bal, ELEM_PER_UNIT, REPEAT);
+  double t_mock  = test_pattern_gups(arr_mock_dist,  ELEM_PER_UNIT, REPEAT);
+  double t_irreg = test_pattern_gups(arr_irreg_dist, ELEM_PER_UNIT, REPEAT);
+  double t_tiled = test_pattern_gups(arr_tiled_dist, ELEM_PER_UNIT, REPEAT);
 
   dash::barrier();
   
   if (dash::myid() == 0) {
-    double gups_reg_bal = gups(num_units, t_bal_reg, ELEM_PER_UNIT, REPEAT);
+    double gups_mock  = gups(num_units, t_mock,  ELEM_PER_UNIT, REPEAT);
+    double gups_irreg = gups(num_units, t_irreg, ELEM_PER_UNIT, REPEAT);
+    double gups_tiled = gups(num_units, t_tiled, ELEM_PER_UNIT, REPEAT);
 
     cout << std::setw(10)
+         << num_units
+         << ", "
+         << std::setw(10)
          << ELEM_PER_UNIT
          << ", "
          << std::setw(10) 
          << REPEAT
          << ", "
          << std::setw(11) << std::fixed << std::setprecision(4)
-         << gups_reg_bal
+         << gups_mock
+         << ", "
+         << std::setw(11) << std::fixed << std::setprecision(4)
+         << gups_irreg
+         << ", "
+         << std::setw(11) << std::fixed << std::setprecision(4)
+         << gups_tiled
          << endl;
   }
 }
@@ -142,22 +202,26 @@ void init_values(
   }
 }
 
+template<
+  class ArrayType
+>
 double test_pattern_gups(
   ArrayType & a,
   unsigned ELEM_PER_UNIT, 
   unsigned REPEAT)
 {
+  typedef typename ArrayType::pattern_type pattern_t;
   typedef typename ArrayType::index_type index_t;
-  typename ArrayType::local_type loc = a.local;
-  const PatternType & pattern = a.pattern();
+  typedef typename ArrayType::local_type local_t;
+  local_t loc               = a.local;
+  const pattern_t & pattern = a.pattern();
 
   init_values(a.lbegin(), a.lend(), ELEM_PER_UNIT);
 
   auto ts_start = dash::util::Timer::Now();
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto g_idx = 0; g_idx < a.size(); ++g_idx) {
-      auto g_coords  = std::array<index_t, 1> { g_idx };
-      auto local_pos = pattern.local_index(g_coords);
+      auto local_pos = pattern.local(g_idx);
       auto unit_id   = local_pos.unit;
       auto l_index   = local_pos.index;
       if (unit_id == dash::myid()) {

@@ -37,6 +37,8 @@ public:
   typedef       PointerType                          pointer;
   typedef const PointerType                    const_pointer;
 
+  typedef       PatternType                     pattern_type;
+
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
   static const MemArrange Arrangement   = PatternType::memory_order();
@@ -49,6 +51,10 @@ protected:
   size_t                 _idx        = 0;
   /// Maximum position allowed for this iterator.
   size_t                 _max_idx    = 0;
+  /// Unit id of the active unit
+  dart_unit_t            _myid;
+  /// Pointer to first element in local memory
+  ElementType          * _lbegin     = nullptr;
 
   // For ostream output
   template <
@@ -69,7 +75,9 @@ public:
     _pattern(nullptr),
     _viewspec(nullptr),
     _idx(0),
-    _max_idx(0) {
+    _max_idx(0),
+    _myid(dash::myid()),
+    _lbegin(nullptr) {
     DASH_LOG_TRACE_VAR("GlobIter()", _idx);
     DASH_LOG_TRACE_VAR("GlobIter()", _max_idx);
   }
@@ -86,7 +94,9 @@ public:
     _pattern(&pat),
     _viewspec(nullptr),
     _idx(idx),
-    _max_idx(pat.size() - 1) {
+    _max_idx(pat.size() - 1),
+    _myid(dash::myid()),
+    _lbegin(_globmem->lbegin()) {
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", _idx);
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", _max_idx);
   }
@@ -104,7 +114,9 @@ public:
     _pattern(&pat),
     _viewspec(&viewspec),
     _idx(idx),
-    _max_idx(viewspec.size() - 1) {
+    _max_idx(viewspec.size() - 1),
+    _myid(dash::myid()),
+    _lbegin(_globmem->lbegin()) {
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _idx);
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _max_idx);
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _viewspec->offsets());
@@ -130,6 +142,8 @@ public:
    */
   operator PointerType() const {
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
     size_t idx     = _idx;
     size_t offset  = 0;
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _max_idx);
@@ -142,11 +156,16 @@ public:
     }
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", idx);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", offset);
-    // Global cartesian coords of current iterator position:
-    std::array<IndexType, NumDimensions> glob_coords = coords(idx);
-    DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", glob_coords);
-    // Convert global coords to unit and local offset:
-    auto local_pos   = _pattern->local_index(glob_coords);
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(idx);
+    } else {
+      // Viewspec projection required:
+      auto glob_coords = coords(idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.index);
     // Create global pointer from unit and local offset:
@@ -173,9 +192,18 @@ public:
    */
   ReferenceType operator*() const {
     DASH_LOG_TRACE_VAR("GlobIter.*", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
     // Global index to local index and unit:
-    auto glob_coords = coords(_idx);
-    auto local_pos   = _pattern->local_index(glob_coords);
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(_idx);
+    } else {
+      // Viewspec projection required:
+      auto glob_coords = coords(_idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
     // Global pointer to element at given position:
@@ -192,12 +220,20 @@ public:
    */
   ReferenceType operator[](
     /// The global position of the element
-    gptrdiff_t global_index) const {
-    DASH_LOG_TRACE_VAR("GlobIter.[]", global_index);
+    gptrdiff_t g_index) const {
+    DASH_LOG_TRACE_VAR("GlobIter.[]", g_index);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
     // Global index to local index and unit:
-    auto glob_coords = coords(global_index);
-    DASH_LOG_TRACE_VAR("GlobIter.[]", glob_coords);
-    auto local_pos   = _pattern->local_index(glob_coords);
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(g_index);
+    } else {
+      // Viewspec projection required:
+      auto glob_coords = coords(g_index);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.index);
     // Global pointer to element at given position:
@@ -212,14 +248,66 @@ public:
    * Checks whether the element referenced by this global iterator is in
    * the calling unit's local memory.
    */
-  bool is_local() const {
+  inline bool is_local() const {
     return _pattern->is_local(_idx);
+  }
+
+  /**
+   * Convert global iterator to native pointer.
+   */
+  ElementType * local() {
+    DASH_LOG_TRACE_VAR("GlobIter.local()=", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(_idx);
+    } else {
+      // Viewspec projection required:
+      auto glob_coords = coords(_idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE_VAR("GlobIter.local=", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.local=", local_pos.index);
+    if (_myid != local_pos.unit) {
+      // Iterator position does not point to local element
+      return nullptr;
+    }
+    return (_lbegin + local_pos.index);
+  }
+
+  /**
+   * Convert global iterator to native pointer.
+   */
+  const ElementType * local() const {
+    DASH_LOG_TRACE_VAR("GlobIter.local()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(_idx);
+    } else {
+      // Viewspec projection required:
+      auto glob_coords = coords(_idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE_VAR("GlobIter.local", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.local", local_pos.index);
+    if (_myid != local_pos.unit) {
+      // Iterator position does not point to local element
+      return nullptr;
+    }
+    return (_lbegin + local_pos.index);
   }
 
   /**
    * Global offset of the iterator within overall element range.
    */
-  gptrdiff_t pos() const {
+  inline gptrdiff_t pos() const {
     return _idx;
   }
 
