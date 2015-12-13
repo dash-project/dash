@@ -536,6 +536,10 @@ private:
   /**
    * Convert a global offset within the global iterator's range to
    * corresponding global coordinates with respect to viewspec projection.
+   *
+   * NOTE:
+   * This method could be specialized for NumDimensions = 1 for performance
+   * tuning.
    */
   std::array<IndexType, NumDimensions> coords(
     IndexType glob_index) const {

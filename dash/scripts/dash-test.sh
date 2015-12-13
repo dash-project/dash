@@ -1,6 +1,6 @@
 #!/bin/sh
 
-function usage
+usage()
 {
   echo "Run unit tests with varying number of proceses on a"
   echo "DASH installation"
@@ -43,7 +43,7 @@ fi
 # Number of failed tests in total
 TOTAL_FAIL_COUNT=0
 TESTS_PASSED=true
-function run_suite
+run_suite()
 {
   echo "[[ RUN    ]] ${RUN_CMD} -n ${1} ${TEST_BINARY}" | tee -a $LOGFILE
   $RUN_CMD -n $1 $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
