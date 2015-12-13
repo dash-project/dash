@@ -137,6 +137,9 @@ private:
   /// Corresponding global index past last local index of the active unit
   IndexType                   _lend;
 
+  /// Mock position, incremented in every call of local()
+  mutable IndexType           _mock_idx        = 0;
+
 public:
   /**
    * Constructor, initializes a pattern from an argument list consisting
@@ -562,31 +565,21 @@ public:
    * \see  DashPatternConcept
    */
   local_coords_t local(
-    const std::array<IndexType, NumDimensions> & global_coords) const {
-    DASH_LOG_TRACE_VAR("MockPattern.local()", global_coords);
-    IndexType local_coord = global_coords[0];
-    local_coords_t l_coords;
-    l_coords.unit      = static_cast<dart_unit_t>(-1);
-    l_coords.coords[0] = -1;
-    // NOTE: Naive implementation
-    for (auto unit_idx = 0; unit_idx < _local_sizes.size(); ++unit_idx) {
-      size_type block_size = _local_sizes[unit_idx];
-      if (static_cast<size_type>(local_coord) < block_size) {
-        l_coords.unit      = unit_idx;
-        l_coords.coords[0] = local_coord;
-        DASH_LOG_TRACE_VAR("MockPattern.local >", l_coords.unit);
-        DASH_LOG_TRACE_VAR("MockPattern.local >", l_coords.coords);
-        return l_coords;
-      }
-      local_coord -= static_cast<index_type>(block_size);
-    }
-    DASH_LOG_TRACE_VAR("MockPattern.local !", l_coords.unit);
-    DASH_LOG_TRACE_VAR("MockPattern.local !", l_coords.coords);
-    return l_coords;
+    const std::array<IndexType, NumDimensions> & g_coords) const {
+    DASH_LOG_TRACE_VAR("MockPattern.local()", g_coords);
+    IndexType g_index = g_coords[0];
+    local_index_t l_index;
+    l_index.unit  = g_index / _nunits;
+//  l_index.index = 0;
+    l_index.index = _mock_idx % _local_size;
+    ++_mock_idx;
+    return l_index;
   }
 
   /**
    * Converts global index to its associated unit and respective local index.
+   *
+   * NOTE: Same as \c local_index.
    *
    * \see  DashPatternConcept
    */
@@ -594,10 +587,10 @@ public:
     IndexType g_index) const {
     DASH_LOG_TRACE_VAR("MockPattern.local()", g_index);
     local_index_t l_index;
-    l_index.unit  = static_cast<dart_unit_t>(g_index / _nunits);
-    l_index.index = 0;
-    DASH_LOG_TRACE_VAR("MockPattern.local !", l_index.unit);
-    DASH_LOG_TRACE_VAR("MockPattern.local !", l_index.index);
+    l_index.unit  = g_index / _nunits;
+//  l_index.index = 0;
+    l_index.index = _mock_idx % _local_size;
+    ++_mock_idx;
     return l_index;
   }
 
@@ -608,18 +601,21 @@ public:
    * \see  DashPatternConcept
    */
   std::array<IndexType, NumDimensions> local_coords(
-    const std::array<IndexType, NumDimensions> & global_coords) const {
-    IndexType local_coord = global_coords[0];
-    DASH_LOG_TRACE_VAR("MockPattern.local_coords()", global_coords);
-    // NOTE: Naive implementation
-    for (auto unit_idx = 0; unit_idx < _local_sizes.size(); ++unit_idx) {
-      size_type block_size = _local_sizes[unit_idx];
-      if (static_cast<size_type>(local_coord) < block_size) {
-        DASH_LOG_TRACE_VAR("MockPattern.local_coords >", local_coord);
-        return std::array<IndexType, 1> { local_coord };
+    const std::array<IndexType, NumDimensions> & g_coords) const {
+    DASH_LOG_TRACE_VAR("MockPattern.local_coords()", g_coords);
+    IndexType g_index = g_coords[0];
+    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
+      index_type block_offset = _block_offsets[unit_idx];
+      if (block_offset <= g_index) {
+        auto l_coord = g_index - block_offset;
+        DASH_LOG_TRACE_VAR("MockPattern.local_coords >", l_coord);
+        return std::array<IndexType, 1> { l_coord };
       }
-      local_coord -= static_cast<index_type>(block_size);
     }
+    DASH_THROW(
+      dash::exception::InvalidArgument,
+      "MockPattern.local_coords: global index " << g_index <<
+      " is out of bounds");
   }
 
   /**
@@ -630,26 +626,22 @@ public:
    */
   local_index_t local_index(
     const std::array<IndexType, NumDimensions> & g_coords) const {
-    IndexType local_index = g_coords[0];
+    IndexType g_index = g_coords[0];
     DASH_LOG_TRACE_VAR("MockPattern.local_index()", g_coords);
     local_index_t l_index;
-    l_index.unit  = static_cast<dart_unit_t>(-1);
-    l_index.index = -1;
-    // NOTE: Naive implementation
-    for (auto unit_idx = 0; unit_idx < _local_sizes.size(); ++unit_idx) {
-      size_type block_size = _local_sizes[unit_idx];
-      if (static_cast<size_type>(local_index) < block_size) {
+    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
+      index_type block_offset = _block_offsets[unit_idx];
+      if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
-        l_index.index = local_index;
-        DASH_LOG_TRACE_VAR("MockPattern.local_index >", l_index.unit);
-        DASH_LOG_TRACE_VAR("MockPattern.local_index >", l_index.index);
+        l_index.index = g_index - block_offset;
+        DASH_LOG_TRACE_VAR("MockPattern.local >", l_index.unit);
+        DASH_LOG_TRACE_VAR("MockPattern.local >", l_index.index);
         return l_index;
       }
-      local_index -= static_cast<index_type>(block_size);
     }
-    DASH_LOG_TRACE_VAR("MockPattern.local_index !", l_index.unit);
-    DASH_LOG_TRACE_VAR("MockPattern.local_index !", l_index.index);
-    return l_index;
+    DASH_THROW(
+      dash::exception::InvalidArgument,
+      "MockPattern.local: global index " << g_index < " is out of bounds");
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -810,12 +802,16 @@ public:
    *
    * \see  DashPatternConcept
    */
-  bool is_local(
+  inline bool is_local(
     IndexType index,
     dart_unit_t unit) const {
-    auto coords_unit = unit_at(index);
-    DASH_LOG_TRACE_VAR("MockPattern.is_local >", (coords_unit == unit));
-    return coords_unit == unit;
+    DASH_LOG_TRACE_VAR("MockPattern.is_local()", index);
+    DASH_LOG_TRACE_VAR("MockPattern.is_local()", unit);
+    bool is_loc = index >= _block_offsets[unit] &&
+                  (unit == _nunits-1 ||
+                   index <  _block_offsets[unit+1]);
+    DASH_LOG_TRACE_VAR("MockPattern.is_local >", is_loc);
+    return is_loc;
   }
 
   /**
@@ -824,9 +820,16 @@ public:
    *
    * \see  DashPatternConcept
    */
-  bool is_local(
+  inline bool is_local(
     IndexType index) const {
-    return is_local(index, team().myid());
+    auto unit = team().myid();
+    DASH_LOG_TRACE_VAR("MockPattern.is_local()", index);
+    DASH_LOG_TRACE_VAR("MockPattern.is_local", unit);
+    bool is_loc = index >= _block_offsets[unit] &&
+                  (unit == _nunits-1 ||
+                   index <  _block_offsets[unit+1]);
+    DASH_LOG_TRACE_VAR("MockPattern.is_local >", is_loc);
+    return is_loc;
   }
 
   /**

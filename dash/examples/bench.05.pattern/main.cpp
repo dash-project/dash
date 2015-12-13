@@ -1,7 +1,7 @@
 /* 
- * Sequential GUPS benchmark for various containers
+ * Sequential GUPS benchmark for various pattern types.
  *
- * author(s): Karl Fuerlinger, LMU Munich */
+ */
 /* @DASH_HEADER@ */
 
 #include "../bench.h"
@@ -71,9 +71,10 @@ double gups(
   /// Number of iterations
   unsigned REPEAT)
 {
-  double num_updates = static_cast<double>(N * ELEM_PER_UNIT * REPEAT);
+  double num_derefs_per_unit =
+    static_cast<double>(N * ELEM_PER_UNIT * REPEAT);
   // kilo-updates / usecs = giga-updates / sec
-  return (num_updates / 1000.0f) / useconds;
+  return N * (num_derefs_per_unit / 1000.0f) / useconds;
 }
 
 int main(int argc, char* argv[]) {
@@ -85,13 +86,13 @@ int main(int argc, char* argv[]) {
   std::deque<std::pair<int, int>> tests;
 
   tests.push_back({0          , 0}); // this prints the header
-  tests.push_back({4          , 10000000});
-  tests.push_back({16         , 1000000});
-  tests.push_back({64         , 1000000});
-  tests.push_back({256        , 100000});
-  tests.push_back({1024       , 100000});
-  tests.push_back({4096       , 10000});
-  tests.push_back({4*4096     , 1000});
+  tests.push_back({4          , 1000000});
+  tests.push_back({16         , 100000});
+  tests.push_back({64         , 100000});
+  tests.push_back({256        , 10000});
+  tests.push_back({1024       , 10000});
+  tests.push_back({4096       , 1000});
+  tests.push_back({4*4096     , 500});
   tests.push_back({16*4096    , 100});
   tests.push_back({64*4096    , 50});
 
@@ -218,9 +219,10 @@ double test_pattern_gups(
 
   init_values(a.lbegin(), a.lend(), ELEM_PER_UNIT);
 
+  auto a_size   = a.size();
   auto ts_start = dash::util::Timer::Now();
   for (auto i = 0; i < REPEAT; ++i) {
-    for (auto g_idx = 0; g_idx < a.size(); ++g_idx) {
+    for (auto g_idx = 0; g_idx < a_size; ++g_idx) {
       auto local_pos = pattern.local(g_idx);
       auto unit_id   = local_pos.unit;
       auto l_index   = local_pos.index;
