@@ -845,8 +845,9 @@ public:
    * changes to all units.
    */
   void barrier() const {
-//  m_globmem->flush();
+    DASH_LOG_TRACE_VAR("Array.barrier()", m_team);
     m_team->barrier();
+    DASH_LOG_TRACE("Array.barrier()", "passed barrier");
   }
 
   /**
@@ -892,6 +893,9 @@ public:
   void deallocate() {
     DASH_LOG_TRACE_VAR("Array.deallocate()", this);
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_size);
+    // Assure all units are synchronized before deallocation, otherwise
+    // other units might still be working on the array:
+    barrier();
     // Remove this function from team deallocator list to avoid
     // double-free:
     m_pattern.team().unregister_deallocator(
