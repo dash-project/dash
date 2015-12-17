@@ -6,6 +6,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 
 cmake_minimum_required (VERSION 2.8)
 

@@ -13,8 +13,12 @@ set(ENABLE_LOGGING ${ENABLE_LOGGING}
     PARENT_SCOPE)
 set(ENABLE_TRACE_LOGGING ${ENABLE_TRACE_LOGGING}
     PARENT_SCOPE)
-
-include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
+set(PAPI_FOUND ${PAPI_FOUND}
+    PARENT_SCOPE)
+set(PAPI_INCLUDE_DIRS ${PAPI_INCLUDE_DIRS}
+    PARENT_SCOPE)
+set(PAPI_LIBRARIES ${PAPI_LIBRARIES}
+    PARENT_SCOPE)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
@@ -69,7 +73,11 @@ endif()
 foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set(DART_LIBRARY "dart-${dart_variant}")
   set(DASH_LIBRARY "dash-${dart_variant}")
+  string(TOUPPER ${dart_variant} dart_variant_caps)
   message(INFO "Building DASH library " ${DASH_LIBRARY})
+
+  set (VARIANT_ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDART_IMPL_${dart_variant_caps}")
 
   # Library compilation sources
   add_library(
@@ -84,7 +92,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
-    COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+    COMPILE_FLAGS ${VARIANT_ADDITIONAL_COMPILE_FLAGS}
   )
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
@@ -110,105 +118,19 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # Install library
   install(TARGETS ${DASH_LIBRARY} DESTINATION lib)
 
-  # Examples
-  if (BUILD_EXAMPLES)
-    SubDirList(
-      DASH_TEST_DIRECTORIES
-      ${CMAKE_CURRENT_SOURCE_DIR}/examples)
-    foreach(examplename ${DASH_TEST_DIRECTORIES})
-      set(exampletarget ${examplename}.${dart_variant})
-      if (EXISTS
-         ${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename}/main.cpp)
-        # Build example for single DART implementation
-        add_executable(
-          ${exampletarget}
-          examples/${examplename}/main.cpp
-        )
-        include_directories(
-          ${CMAKE_SOURCE_DIR}/dash/include
-          ${ADDITIONAL_INCLUDES}
-        )
-        target_link_libraries(
-          ${exampletarget}
-          ${DASH_LIBRARY}
-          ${DART_LIBRARY}
-          ${ADDITIONAL_LIBRARIES}
-        )
-        set_target_properties(
-          ${exampletarget} PROPERTIES
-          COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
-        )
-        set_target_properties(
-          ${exampletarget} PROPERTIES
-          CXX_STANDARD 11
-        )
-        set_target_properties(
-          ${exampletarget} PROPERTIES
-          CXX_STANDARD_REQUIRED 11
-        )
-        if (${dart_variant} STREQUAL "mpi")
-          include_directories(
-            ${MPI_INCLUDE_PATH})
-          target_link_libraries(
-            ${exampletarget}
-            ${MPI_C_LIBRARIES}
-            ${MPI_CXX_LIBRARIES})
-        endif()
-
-        # Installation
-        DeployBinary(${exampletarget})
-        install(
-          TARGETS ${exampletarget}
-          DESTINATION bin/dash/examples/${dart_variant})
-      endif()
-    endforeach(examplename ${DASH_TEST_DIRECTORIES})
-  endif()
 endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
 
 ## Tests
 #
 if (BUILD_TESTS)
-  include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
-  foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
-    set(DASH_LIBRARY "dash-${dart_variant}")
-    set(DART_LIBRARY "dart-${dart_variant}")
-    set(DASH_TEST "dash-test-${dart_variant}")
-    include_directories(
-      ${GTEST_INCLUDES}
-      ${CMAKE_SOURCE_DIR}/dash/include
-      ${ADDITIONAL_INCLUDES}
-    )
-    add_executable(
-      ${DASH_TEST}
-      ${DASH_TEST_SOURCES}
-    )
-    target_link_libraries(
-      ${DASH_TEST}
-      GTest
-      ${DASH_LIBRARY}
-      ${DART_LIBRARY}
-      ${ADDITIONAL_LIBRARIES}
-    )
-    set_target_properties(
-      ${DASH_TEST} PROPERTIES
-      COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
-    )
-    set_target_properties(
-      ${DASH_TEST} PROPERTIES
-      CXX_STANDARD 11
-    )
-    set_target_properties(
-      ${DASH_TEST} PROPERTIES
-      CXX_STANDARD_REQUIRED 11
-    )
-
-    # Installation
-    DeployBinary(${DASH_TEST})
-    install(
-      TARGETS ${DASH_TEST}
-      DESTINATION bin/dash/test/${dart_variant})
-  endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+  add_subdirectory(test)
 endif()
+
+## Examples
+#
+if (BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif(BUILD_EXAMPLES)
 
 ## Installation
 
