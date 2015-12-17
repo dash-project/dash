@@ -877,6 +877,7 @@ public:
     if (*m_team == dash::Team::Null()) {
       DASH_LOG_TRACE("Array.allocate",
                      "initializing pattern with Team::All()");
+      m_team    = &team;
       m_pattern = PatternType(nelem, distribution, team);
       DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
       DASH_LOG_TRACE_VAR("Array.allocate", m_pattern.team().dart_id());
@@ -912,6 +913,7 @@ private:
                    pattern.memory_layout().extents());
     // Check requested capacity:
     m_size      = pattern.capacity();
+    m_team      = &pattern.team();
     if (m_size == 0) {
       DASH_THROW(
         dash::exception::InvalidArgument,
