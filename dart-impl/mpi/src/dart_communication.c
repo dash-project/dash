@@ -11,7 +11,10 @@
 #include <stdio.h>
 #include <mpi.h>
 #include <string.h>
+#include <limits.h>
+#include <math.h>
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/math.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -224,11 +227,15 @@ dart_ret_t dart_get_handle(
   dart_handle_t *handle)
 {
   MPI_Request mpi_req;
-  MPI_Aint disp_s, disp_rel;
+  MPI_Aint    disp_s, disp_rel;
   dart_unit_t target_unitid_abs;
-  uint64_t offset = gptr.addr_or_offs.offset;
-  int16_t seg_id = gptr.segid;
-  MPI_Win win;
+  MPI_Win     win;
+  uint64_t    offset = gptr.addr_or_offs.offset;
+  int16_t     seg_id = gptr.segid;
+  DART_LOG_DEBUG("dart_get_handle(): offset:%lld seg_id:%lld",
+                 offset, seg_id);
+  /* MPI uses offset type int, do not copy more than INT_MAX elements: */
+  int n_count = (int)(DART_MIN(INT_MAX, nbytes));
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;
@@ -236,6 +243,7 @@ dart_ret_t dart_get_handle(
   /* The memory accessed is allocated with collective allocation. */
   if (seg_id) {
     uint16_t index = gptr.flags;
+    DART_LOG_DEBUG("dart_get_handle(): index:%lld", index);
     dart_unit_t target_unitid_rel;      
 /*
     if (dart_adapt_transtable_get_win (index, offset, &begin, &win) == -1)
@@ -271,22 +279,27 @@ dart_ret_t dart_get_handle(
      *      &mpi_req)
      *  ... could be an better alternative? 
      */
+    DART_LOG_DEBUG("dart_get_handle: %d bytes "
+                   "(allocated with collective allocation) "  
+                   "from %d at offset %d", 
+                   n_count, target_unitid_abs, offset);
     MPI_Rget(
       dest,
-      nbytes,
+      n_count,
       MPI_BYTE,
       target_unitid_rel,
       disp_rel,
-      nbytes,
+      n_count,
       MPI_BYTE,
       win,
       &mpi_req);
-    (*handle) -> dest = target_unitid_rel;
-    DART_LOG_DEBUG ("GET  - %d bytes (allocated with collective allocation) "  
-           "from %d at the offset %d", 
-           nbytes, target_unitid_abs, offset);
+    (*handle)->dest = target_unitid_rel;
   } else {
     /* The memory accessed is allocated with local allocation. */
+    DART_LOG_DEBUG("dart_get_handle: %d bytes "
+                   "(allocated with local allocation) "
+                   "from %d at offset %d",
+                   nbytes, target_unitid_abs, offset);
     win = dart_win_local_alloc;
     MPI_Rget(
       dest,
@@ -299,9 +312,6 @@ dart_ret_t dart_get_handle(
       win,
       &mpi_req);
     (*handle) -> dest = target_unitid_abs;
-    DART_LOG_DEBUG ("GET  - %d bytes (allocated with local allocation) "
-           "from %d at the offset %d",
-           nbytes, target_unitid_abs, offset);
   }
   (*handle) -> request = mpi_req;
   (*handle) -> win     = win;

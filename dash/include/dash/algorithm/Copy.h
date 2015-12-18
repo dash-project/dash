@@ -106,14 +106,21 @@ ValueType * copy_impl(
       // Local offset of first element in input range at current unit:
       auto l_in_first_idx = local_pos.index;
       // Number of elements to copy from current unit:
-      auto num_elem_unit  = max_elem_per_unit - l_in_first_idx;
+      auto num_unit_elem  = max_elem_per_unit - l_in_first_idx;
+      // Number of elements to copy in this iteration.
+      // MPI uses offset type int, do not copy more than INT_MAX elements:
+      int  num_copy_elem  = std::min<int>(
+                               num_unit_elem,
+                               std::numeric_limits<int>::max());
       DASH_LOG_TRACE("dash::copy_impl",
                      "current g_idx:",         cur_in_first.pos(),
                      "->",
                      "unit:",                  cur_unit,
                      "l_idx:",                 l_in_first_idx,
                      "->",
-                     "elements:",              num_elem_unit);
+                     "unit elements:",         num_unit_elem,
+                     "copy elements max:",     std::numeric_limits<int>::max(),
+                     "copy elements:",         num_copy_elem);
       DASH_LOG_TRACE("dash::copy_impl",
                      "total elements copied:", num_elem_copied,
                      "copy from global index", cur_in_first.pos());
@@ -122,12 +129,12 @@ ValueType * copy_impl(
         dart_get_handle(
           out_first + num_elem_copied,
           cur_in_first.dart_gptr(),
-          num_elem_unit * sizeof(ValueType),
+          num_copy_elem * sizeof(ValueType),
           &handle),
         DART_OK);
       get_handles.push_back(handle);
-      num_elem_copied += num_elem_unit;
-      cur_in_first    += num_elem_unit;
+      num_elem_copied += num_copy_elem;
+      cur_in_first    += num_copy_elem;
       ++unit_range_idx;
     } while (num_elem_copied < num_elem_total);
     // Wait for all get requests to complete:
