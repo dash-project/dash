@@ -109,9 +109,11 @@ ValueType * copy_impl(
       auto num_unit_elem  = max_elem_per_unit - l_in_first_idx;
       // Number of elements to copy in this iteration.
       // MPI uses offset type int, do not copy more than INT_MAX elements:
-      int  num_copy_elem  = std::min<int>(
-                               num_unit_elem,
-                               std::numeric_limits<int>::max());
+      int  max_copy_elem  = std::numeric_limits<int>::max();
+      int  num_copy_elem  = (num_unit_elem < 
+                               static_cast<size_type>(max_copy_elem))
+                            ? num_unit_elem
+                            : max_copy_elem;
       DASH_LOG_TRACE("dash::copy_impl",
                      "current g_idx:",         cur_in_first.pos(),
                      "->",
