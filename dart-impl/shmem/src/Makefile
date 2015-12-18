@@ -5,7 +5,7 @@
 
 include ../make.defs
 
-CFLAGS+=-I.. -I../$(DART_IF)/include -I../include 
+CFLAGS+=-I.. -I../$(DART_IF)/include -I../include -I../../base/include
 #OPT_FLAGS=-O3
 
 #CFLAGS+=-DDART_DEBUG
