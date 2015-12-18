@@ -244,21 +244,24 @@ ValueType * copy(
     // Copy local subrange:
     //
     // Convert local subrange of global input to native pointers:
-    ValueType * l_in_first = ((GlobPtr<ValueType>)(
-                                git_l_in_first)
-                             ).local();
+    ValueType * l_in_first = git_l_in_first.local();
     DASH_LOG_TRACE_VAR("dash::copy", l_in_first);
-    ValueType * l_in_last  = ((GlobPtr<ValueType>)(
-                                git_l_in_last - 1)
-                             ).local() + 1;
+    ValueType * l_in_last  = (git_l_in_last - 1).local() + 1;
     DASH_LOG_TRACE_VAR("dash::copy", l_in_last);
+    size_t num_copy_elem = l_in_last - l_in_first;
     // ... [ ........ | --- l --- | ........ ]
     //     ^          ^           ^          ^
     //     in_first   l_in_first  l_in_last  in_last
-    DASH_LOG_TRACE("dash::copy", "copy local subrange");
+    DASH_LOG_TRACE("dash::copy", "copy local subrange",
+                   "num_copy_elem:", num_copy_elem);
+#if 0
     out_last  = std::copy(l_in_first,
                           l_in_last,
                           out_first);
+#else
+    memcpy(out_first, l_in_first, num_copy_elem * sizeof(ValueType));
+    out_last = out_first + num_copy_elem;
+#endif
     // Assert that all elements in local range have been copied:
     DASH_ASSERT_EQ(out_last, out_first + l_range_size,
                    "Expected to copy " << l_range_size << " local elements");

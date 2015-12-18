@@ -55,41 +55,34 @@ int main(int argc, char** argv)
          << endl;
   }
 
-  for (int i=3; i<11; i++)
+  for (int i=3; i<10; i++)
   {
     size      = (unsigned long) std::pow((double) 10,(double) i);
-    DASH_PRINT_MASTER("problem size: " << size);
-#if 0
 
-    DASH_PRINT_MASTER("running copy_all_local ...");
     dash::barrier();
     kps_al    = copy_all_local(size,false);
 
-    DASH_PRINT_MASTER("running copy_partially_local ...");
     dash::barrier();
     kps_pl    = copy_partially_local(size,false);
-#endif
-    DASH_PRINT_MASTER("running copy_no_local ...");
+
     dash::barrier();
     kps_nl    = copy_no_local(size,false);
 
     mem_glob  = ((sizeof(TYPE) * size) / 1024) / 1024;
     mem_rank  = mem_glob / dash::size();
 
-    if(dash::myid() == 0){
-      cout << "10^" << i << "\t"
-           << std::setprecision(5) << std::setw(5)
-           << kps_al << "\t\t"
-           << std::setprecision(5) << std::setw(5)
-           << kps_pl << "\t\t"
-           << std::setprecision(5) << std::setw(5)
-           << kps_nl << "\t\t"
-           << "MKeys/s\t"
-           << std::setw(5)
-           << mem_rank << " MiB\t"
-           << std::setw(5)
-           << mem_glob << " MiB\t" << endl;
-    }
+    DASH_PRINT_MASTER("10^" << i << "\t"
+                      << std::setprecision(5) << std::setw(5)
+                      << kps_al << "\t\t"
+                      << std::setprecision(5) << std::setw(5)
+                      << kps_pl << "\t\t"
+                      << std::setprecision(5) << std::setw(5)
+                      << kps_nl << "\t\t"
+                      << "MKeys/s\t"
+                      << std::setw(5)
+                      << mem_rank << " MiB\t"
+                      << std::setw(5)
+                      << mem_glob << " MiB\t");
   }
 
   DASH_PRINT_MASTER("Benchmark finished");
@@ -109,6 +102,11 @@ double copy_all_local(unsigned long size, bool parallel)
 
   auto timer_start  = dash::util::Timer::Now();
   double elapsed;  
+
+  DASH_LOG_DEBUG("copy_all_local()"
+                 "size:", size,
+                 "l_idcs:", l_start_idx, "-", l_end_idx,
+                 "l_size:", local_size);
 
   if(dash::myid() == 0 && !parallel){
     local_array = (TYPE*) malloc(sizeof(TYPE)*local_size*2);
@@ -137,6 +135,9 @@ double copy_partially_local(unsigned long size, bool parallel)
   TYPE *local_array = nullptr;
   auto timer_start  = dash::util::Timer::Now();
   double elapsed;  
+
+  DASH_LOG_DEBUG("copy_partially_local()"
+                 "size:", size);
 
   if(dash::myid() == 0 && !parallel){
     local_array = (TYPE*) malloc(sizeof(TYPE)*size*2);
@@ -171,10 +172,11 @@ double copy_no_local(unsigned long size, bool parallel)
   auto timer_start      = dash::util::Timer::Now();
   double elapsed;
 
-  DASH_PRINT_MASTER("copy_no_local(" << size << "): " <<
-                    " l_idcs: " << l_start_idx << "-" << l_end_idx <<
-                    " l_size: " << local_size <<
-                    " n_copy: " << num_copy_elem);
+  DASH_LOG_DEBUG("copy_no_local()"
+                 "size:", size,
+                 "l_idcs:", l_start_idx, "-", l_end_idx,
+                 "l_size:", local_size,
+                 "n_copy:", num_copy_elem);
 
   if(dash::myid() == 0 && !parallel){
     local_array = (TYPE*) malloc(sizeof(TYPE)*local_size*2);
