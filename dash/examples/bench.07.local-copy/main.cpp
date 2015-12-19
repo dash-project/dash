@@ -16,6 +16,10 @@ using std::vector;
 
 typedef int64_t index_t;
 
+typedef dash::util::Timer<
+          dash::util::TimeMeasure::Clock
+        > Timer;
+
 #ifndef TYPE
 #define TYPE int
 #endif
@@ -43,9 +47,7 @@ int main(int argc, char** argv)
   long   size;
 
   dash::init(&argc, &argv);
-  dash::util::Timer::Calibrate(
-    dash::util::TimeMeasure::Counter,
-    CPU_FREQ);
+//Timer::Calibrate(CPU_FREQ);
 
   if (dash::myid() == 0) {
     cout << "Local copy benchmark"
@@ -100,7 +102,7 @@ double copy_all_local(unsigned long size, bool parallel)
   auto l_end_idx    = global_array.pattern().lend();
   size_t local_size = l_end_idx - l_start_idx;
 
-  auto timer_start  = dash::util::Timer::Now();
+  auto timer_start  = Timer::Now();
   double elapsed;  
 
   DASH_LOG_DEBUG("copy_all_local()"
@@ -115,11 +117,11 @@ double copy_all_local(unsigned long size, bool parallel)
   dash::barrier();
 
   if(dash::myid() == 0 && !parallel){
-    timer_start = dash::util::Timer::Now();
+    timer_start = Timer::Now();
     dash::copy(global_array.begin() + l_start_idx,
                global_array.begin() + l_end_idx,
                local_array);
-    elapsed = dash::util::Timer::ElapsedSince(timer_start);
+    elapsed = Timer::ElapsedSince(timer_start);
     if (local_array != nullptr) {
       free(local_array);
     }
@@ -133,7 +135,7 @@ double copy_partially_local(unsigned long size, bool parallel)
 {
   dash::Array<TYPE, index_t> global_array(size, dash::BLOCKED);
   TYPE *local_array = nullptr;
-  auto timer_start  = dash::util::Timer::Now();
+  auto timer_start  = Timer::Now();
   double elapsed;  
 
   DASH_LOG_DEBUG("copy_partially_local()"
@@ -146,11 +148,11 @@ double copy_partially_local(unsigned long size, bool parallel)
   dash::barrier();
 
   if(dash::myid() == 0 && !parallel){
-    timer_start = dash::util::Timer::Now();
+    timer_start = Timer::Now();
     dash::copy(global_array.begin(),
                global_array.end(),
                local_array);
-    elapsed = dash::util::Timer::ElapsedSince(timer_start);
+    elapsed = Timer::ElapsedSince(timer_start);
     if (local_array != nullptr) {
       free(local_array);
     }
@@ -169,7 +171,7 @@ double copy_no_local(unsigned long size, bool parallel)
   size_t local_size     = l_end_idx - l_start_idx;
 
   size_t num_copy_elem  = size - local_size;
-  auto timer_start      = dash::util::Timer::Now();
+  auto timer_start      = Timer::Now();
   double elapsed;
 
   DASH_LOG_DEBUG("copy_no_local()"
@@ -185,12 +187,12 @@ double copy_no_local(unsigned long size, bool parallel)
   dash::barrier();
 
   if(dash::myid() == 0 && !parallel){
-    timer_start = dash::util::Timer::Now();
+    timer_start = Timer::Now();
     // Does not work
     dash::copy(global_array.begin() + l_end_idx,
                global_array.end(),
                local_array);
-    elapsed = dash::util::Timer::ElapsedSince(timer_start);
+    elapsed = Timer::ElapsedSince(timer_start);
 
     if (local_array != nullptr) {
       free(local_array);

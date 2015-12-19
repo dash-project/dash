@@ -10,8 +10,9 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-using dash::util::Timer;
-using dash::util::TimeMeasure;
+typedef dash::util::Timer<
+          dash::util::TimeMeasure::Clock
+        > Timer;
 
 // Benchmark specification:
 //   NAS Parallel Benchmark, Kernel IS
@@ -67,7 +68,7 @@ int main(int argc, char **argv)
     verbose = true;
   }
 
-  Timer::Calibrate(TimeMeasure::Clock);
+  Timer::Calibrate(0);
 
   int    myid       = dash::myid();
   size_t num_units  = dash::size();

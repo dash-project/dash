@@ -4,7 +4,5 @@
 namespace dash {
 namespace util {
 
-TimeMeasure::MeasureMode Timer::Type = TimeMeasure::Counter; 
-
 } // namespace util
 } // namespace dash
