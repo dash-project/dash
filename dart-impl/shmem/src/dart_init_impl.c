@@ -4,6 +4,8 @@
 #include <dash/dart/shmem/dart_shmem.h>
 #include <dash/dart/shmem/dart_init_shmem.h>
 
+char dart_initialized();
+
 dart_ret_t dart_init(int *argc, char ***argv)
 {
   if (dart_initialized()) {

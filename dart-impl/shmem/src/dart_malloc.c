@@ -115,14 +115,14 @@ dart_ret_t dart_memalloc(
   void *addr;
   addr = dart_membucket_alloc(bucket, nbytes);
   if (addr == ((void*)0)) {
-    ERROR("Could not alloc memory in mempool%s", "");
+    ERROR("Could not alloc memory in mempool %d", 0);
     return DART_ERR_OTHER;
   }
   dart_myid(&myid);
   gptr->unitid  = myid;
   gptr->segid   = poolid;
-  gptr->addr_or_offs.offset = 
-    ((char*)addr)-((char*)pool->base_addr);
+  gptr->addr_or_offs.offset =
+    ((char*)addr)-((char*)pool->localbase_addr);
   return DART_OK;
 }
 
