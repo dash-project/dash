@@ -216,6 +216,9 @@ public:
   
   /**
    * Less comparison operator.
+   * 
+   * TODO: Distance between two global pointers is not well-defined yet.
+   *       This method is only provided to comply to the pointer concept.
    */
   bool operator<(const GlobPtr<T>& other) const {
     return (
@@ -227,13 +230,17 @@ public:
           ||
         ( _dart_gptr.segid == other._dart_gptr.segid
           &&
-          _dart_gptr.addr_or_offs < other._dart_gptr.addr_or_offs ) )
+          _dart_gptr.addr_or_offs.offset <
+          other._dart_gptr.addr_or_offs.offset ) )
       )
     );
   }
   
   /**
    * Less-equal comparison operator.
+   * 
+   * TODO: Distance between two global pointers is not well-defined yet.
+   *       This method is only provided to comply to the pointer concept.
    */
   bool operator<=(const GlobPtr<T>& other) const {
     return (
@@ -245,13 +252,17 @@ public:
           ||
         ( _dart_gptr.segid == other._dart_gptr.segid
           &&
-          _dart_gptr.addr_or_offs <= other._dart_gptr.addr_or_offs ) )
+          _dart_gptr.addr_or_offs.offset <=
+          other._dart_gptr.addr_or_offs.offset ) )
       )
     );
   }
   
   /**
    * Greater comparison operator.
+   * 
+   * TODO: Distance between two global pointers is not well-defined yet.
+   *       This method is only provided to comply to the pointer concept.
    */
   bool operator>(const GlobPtr<T>& other) const {
     return (
@@ -263,13 +274,17 @@ public:
           ||
         ( _dart_gptr.segid == other._dart_gptr.segid
           &&
-          _dart_gptr.addr_or_offs > other._dart_gptr.addr_or_offs ) )
+          _dart_gptr.addr_or_offs.offset >
+          other._dart_gptr.addr_or_offs.offset ) )
       )
     );
   }
   
   /**
    * Greater-equal comparison operator.
+   * 
+   * TODO: Distance between two global pointers is not well-defined yet.
+   *       This method is only provided to comply to the pointer concept.
    */
   bool operator>=(const GlobPtr<T>& other) const {
     return (
@@ -281,7 +296,8 @@ public:
           ||
         ( _dart_gptr.segid == other._dart_gptr.segid
           &&
-          _dart_gptr.addr_or_offs >= other._dart_gptr.addr_or_offs ) )
+          _dart_gptr.addr_or_offs.offset >=
+          other._dart_gptr.addr_or_offs.offset ) )
       )
     );
   }
