@@ -895,7 +895,9 @@ public:
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_size);
     // Assure all units are synchronized before deallocation, otherwise
     // other units might still be working on the array:
-    barrier();
+    if( dash::is_initialized() ) {
+      barrier();
+    }
     // Remove this function from team deallocator list to avoid
     // double-free:
     m_pattern.team().unregister_deallocator(
