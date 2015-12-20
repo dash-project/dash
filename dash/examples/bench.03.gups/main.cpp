@@ -25,8 +25,8 @@
 #define POLY      0x0000000000000007ULL
 #define PERIOD    1317624576693539401LL
 
+typedef dash::util::Timer<dash::util::TimeMeasure::Clock> Timer;
 typedef dash::CSRPattern<1, dash::ROW_MAJOR, int64_t> pattern_t;
-// typedef dash::TilePattern<1, dash::ROW_MAJOR, int64_t> pattern_t;
 
 dash::Array<uint64_t, int64_t, pattern_t> Table;
 
@@ -100,7 +100,7 @@ uint64_t RandomAccessVerify()
 
 int main(int argc, char **argv)
 {
-  dash::util::Timer::timestamp_t ts_start;
+  Timer::timestamp_t ts_start;
   double duration_us;
   double GUPs;
   double latency;
@@ -109,8 +109,7 @@ int main(int argc, char **argv)
 
   dash::init(&argc, &argv);
 
-  dash::util::Timer::Calibrate(
-    dash::util::TimeMeasure::Clock, 0);
+  Timer::Calibrate(0);
 
   DASH_LOG_DEBUG("bench.gups", "Table.allocate()");
 
@@ -132,10 +131,10 @@ int main(int argc, char **argv)
 
   dash::barrier(); 
 
-  ts_start    = dash::util::Timer::Now();
+  ts_start    = Timer::Now();
   RandomAccessUpdate();
   dash::barrier(); 
-  duration_us = dash::util::Timer::ElapsedSince(ts_start);
+  duration_us = Timer::ElapsedSince(ts_start);
 
 #if 0
   if (dash::myid() == 0) {
