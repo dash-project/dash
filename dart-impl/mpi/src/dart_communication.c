@@ -692,7 +692,9 @@ dart_ret_t dart_flush(
 dart_ret_t dart_flush_all(
   dart_gptr_t gptr)
 {
-  int16_t seg_id = gptr.segid;
+  int16_t seg_id;
+  DART_LOG_DEBUG("dart_flush_all()");
+  seg_id = gptr.segid;
   MPI_Win win;
   if (seg_id) {
     uint16_t index = gptr.flags;
@@ -701,7 +703,7 @@ dart_ret_t dart_flush_all(
     win = dart_win_local_alloc;
   }
   MPI_Win_flush_all(win);
-  DART_LOG_DEBUG("FLUSH_ALL  - finished");
+  DART_LOG_DEBUG("dart_flush_all > finished");
   return DART_OK;
 }
 
@@ -722,7 +724,7 @@ dart_ret_t dart_flush_local(
     win = dart_win_local_alloc;
     MPI_Win_flush_local(target_unitid_abs, win);
   }
-  DART_LOG_DEBUG("FLUSH_LOCAL - finished");
+  DART_LOG_DEBUG("dart_flush_local > finished");
   return DART_OK;
 }
 
@@ -738,33 +740,38 @@ dart_ret_t dart_flush_local_all(
     win = dart_win_local_alloc;
   }
   MPI_Win_flush_local_all(win);
-  DART_LOG_DEBUG("FLUSH_LOCAL_ALL  - finished");
+  DART_LOG_DEBUG("dart_flush_local_all > finished");
   return DART_OK;
 }
 
 dart_ret_t dart_wait_local(
   dart_handle_t handle)
 {
+  DART_LOG_DEBUG("dart_wait_local()");
   if (handle) {
     MPI_Status mpi_sta;
     MPI_Wait (&(handle->request), &mpi_sta);
   }
-  DART_LOG_DEBUG("WAIT_LOCAL  - finished");
+  DART_LOG_DEBUG("dart_wait_local > finished");
   return DART_OK;
 }
 
 dart_ret_t dart_wait(
   dart_handle_t handle)
 {
-  if (handle) {
+  DART_LOG_DEBUG("dart_wait()");
+  if (handle != NULL) {
     MPI_Status mpi_sta;
+    DART_LOG_DEBUG("dart_wait: MPI_Wait");
     MPI_Wait (&(handle -> request), &mpi_sta);  
+    DART_LOG_DEBUG("dart_wait: MPI_Win_flush");
     MPI_Win_flush(handle->dest, handle->win);   
     /* Free handle resource */
+    DART_LOG_DEBUG("dart_wait: free(handle)");
+    free(handle);
     handle = NULL;
-    free (handle);
   }
-  DART_LOG_DEBUG("WAIT  - finished");
+  DART_LOG_DEBUG("dart_wait > finished");
   return DART_OK;
 }
 
@@ -772,13 +779,14 @@ dart_ret_t dart_test_local(
   dart_handle_t handle,
   int32_t* is_finished)
 {
+  DART_LOG_DEBUG("dart_test_local()");
   if (!handle) {
     *is_finished = 1;
     return DART_OK;
   }
   MPI_Status mpi_sta;
   MPI_Test (&(handle->request), is_finished, &mpi_sta);
-  DART_LOG_DEBUG("TEST_LOCAL  - finished");
+  DART_LOG_DEBUG("dart_test_local > finished");
   return DART_OK;
 }
 
@@ -787,6 +795,7 @@ dart_ret_t dart_waitall_local(
   size_t n)
 {
   int i, r_n = 0;
+  DART_LOG_DEBUG("dart_waitall_local()");
   if (*handle) {
     MPI_Status  *mpi_sta;
     MPI_Request *mpi_req;
@@ -796,18 +805,18 @@ dart_ret_t dart_waitall_local(
       if (handle[i]) {
         mpi_req[r_n++] = handle[i] -> request;
       } 
-    }  
+    }
     MPI_Waitall(r_n, mpi_req, mpi_sta);
-    r_n=0;
+    r_n = 0;
     for (i = 0; i < n; i++) {
       if (handle[i]) {
         handle[r_n++] -> request = mpi_req[i++];
       }
     }
-    free (mpi_req);
-    free (mpi_sta);
+    free(mpi_req);
+    free(mpi_sta);
   }
-  DART_LOG_DEBUG("WAITALL_LOCAL  - finished");
+  DART_LOG_DEBUG("dart_waitall_local > finished");
   return DART_OK;
 }
 
@@ -816,6 +825,7 @@ dart_ret_t dart_waitall(
   size_t n)
 {
   int i, n_r = 0;
+  DART_LOG_DEBUG("dart_waitall()");
   if (*handle) {
     MPI_Status  *mpi_sta;
     MPI_Request *mpi_req;
@@ -839,12 +849,12 @@ dart_ret_t dart_waitall(
       if (handle[i]) {
         MPI_Win_flush (handle[i]->dest, handle[i]->win);
         /* Free handle resource */
+        free(handle[i]);
         handle[i] = NULL;
-        free (handle[i]);
       }
     }
   }
-  DART_LOG_DEBUG("WAITALL  - finished");
+  DART_LOG_DEBUG("dart_waitall > finished");
   return DART_OK;
 }
 
@@ -854,6 +864,7 @@ dart_ret_t dart_testall_local(
   int32_t* is_finished)
 {
   int i, r_n = 0;
+  DART_LOG_DEBUG("dart_testall_local()");
   MPI_Status *mpi_sta;
   MPI_Request *mpi_req;
   mpi_req = (MPI_Request *)malloc(n * sizeof (MPI_Request));
@@ -863,7 +874,7 @@ dart_ret_t dart_testall_local(
       mpi_req[r_n++] = handle[i] -> request;
     }
   }
-  MPI_Testall (r_n, mpi_req, is_finished, mpi_sta);
+  MPI_Testall(r_n, mpi_req, is_finished, mpi_sta);
   r_n = 0;
   for (i = 0; i < n; i++) {
     if (handle[i]) {
@@ -872,7 +883,7 @@ dart_ret_t dart_testall_local(
   }
   free(mpi_req);
   free(mpi_sta);
-  DART_LOG_DEBUG("TESTALL_LOCAL  - finished");
+  DART_LOG_DEBUG("dart_testall_local > finished");
   return DART_OK;
 }
 
@@ -883,13 +894,20 @@ dart_ret_t dart_barrier(
 {
   MPI_Comm comm;  
   uint16_t index;
-  int result = dart_adapt_teamlist_convert(teamid, &index);
+  int      result;
+  DART_LOG_DEBUG("dart_barrier()");
+  result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
     return DART_ERR_INVAL;
   }
   /* Fetch proper communicator from teams. */
   comm = dart_teams[index];  
-  return MPI_Barrier (comm);
+  if (MPI_Barrier(comm) == MPI_SUCCESS) {
+    DART_LOG_DEBUG("dart_barrier > finished");
+    return DART_OK;
+  }
+  DART_LOG_DEBUG("dart_barrier ! MPI_Barrier failed");
+  return DART_ERR_INVAL;
 }
 
 dart_ret_t dart_bcast(
