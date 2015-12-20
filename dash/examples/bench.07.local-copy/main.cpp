@@ -47,9 +47,11 @@ int main(int argc, char** argv)
   long   size;
 
   dash::init(&argc, &argv);
-//Timer::Calibrate(CPU_FREQ);
+  Timer::Calibrate(0);
 
   if (dash::myid() == 0) {
+    cout << "Timer: " << Timer::TimerName()
+         << endl;
     cout << "Local copy benchmark"
          << endl
          << "size\t all local\t part. loc.\t no local\t "
@@ -61,14 +63,20 @@ int main(int argc, char** argv)
   {
     size      = (unsigned long) std::pow((double) 10,(double) i);
 
-    dash::barrier();
+    DASH_LOG_DEBUG("==== START: i:", i, "copy_all_local");
     kps_al    = copy_all_local(size,false);
-
     dash::barrier();
+    DASH_LOG_DEBUG("==== FINISHED: i:", i, "copy_all_local");
+
+    DASH_LOG_DEBUG("==== START: i:", i, "copy_partially_local");
     kps_pl    = copy_partially_local(size,false);
-
     dash::barrier();
+    DASH_LOG_DEBUG("==== FINISHED: i:", i, "copy_partially_local");
+
+    DASH_LOG_DEBUG("==== START: i:", i, "copy_partially_local");
     kps_nl    = copy_no_local(size,false);
+    dash::barrier();
+    DASH_LOG_DEBUG("==== FINISHED: i:", i, "copy_partially_local");
 
     mem_glob  = ((sizeof(TYPE) * size) / 1024) / 1024;
     mem_rank  = mem_glob / dash::size();
@@ -105,8 +113,8 @@ double copy_all_local(unsigned long size, bool parallel)
   auto timer_start  = Timer::Now();
   double elapsed;  
 
-  DASH_LOG_DEBUG("copy_all_local()"
-                 "size:", size,
+  DASH_LOG_DEBUG("copy_all_local()",
+                 "size:",   size,
                  "l_idcs:", l_start_idx, "-", l_end_idx,
                  "l_size:", local_size);
 
@@ -138,7 +146,7 @@ double copy_partially_local(unsigned long size, bool parallel)
   auto timer_start  = Timer::Now();
   double elapsed;  
 
-  DASH_LOG_DEBUG("copy_partially_local()"
+  DASH_LOG_DEBUG("copy_partially_local()",
                  "size:", size);
 
   if(dash::myid() == 0 && !parallel){
@@ -174,8 +182,8 @@ double copy_no_local(unsigned long size, bool parallel)
   auto timer_start      = Timer::Now();
   double elapsed;
 
-  DASH_LOG_DEBUG("copy_no_local()"
-                 "size:", size,
+  DASH_LOG_DEBUG("copy_no_local()",
+                 "size:",   size,
                  "l_idcs:", l_start_idx, "-", l_end_idx,
                  "l_size:", local_size,
                  "n_copy:", num_copy_elem);

@@ -840,8 +840,8 @@ dart_ret_t dart_waitall(
   if (*handle) {
     MPI_Status  *mpi_sta;
     MPI_Request *mpi_req;
-    mpi_req = (MPI_Request *)malloc(n * sizeof(MPI_Request));
-    mpi_sta = (MPI_Status *)malloc(n * sizeof(MPI_Status));
+    mpi_req = (MPI_Request *) malloc(num_handles * sizeof(MPI_Request));
+    mpi_sta = (MPI_Status *)  malloc(num_handles * sizeof(MPI_Status));
     /*
      * copy requests from DART handles to MPI request array:
      */
@@ -873,7 +873,6 @@ dart_ret_t dart_waitall(
       DART_LOG_ERROR("dart_waitall: MPI_Waitall failed");
       return DART_ERR_INVAL;
     }
-
     /*
      * copy MPI requests back to DART handles:
      */
@@ -883,9 +882,10 @@ dart_ret_t dart_waitall(
         if (mpi_req[r_n] == MPI_REQUEST_NULL) {
           DART_LOG_TRACE("dart_waitall: mpi_req[%d] = MPI_REQUEST_NULL",
                          r_n);
+        } else {
+          DART_LOG_TRACE("dart_waitall: mpi_req[%d] = %d",
+                         r_n, mpi_req[r_n]);
         }
-        DART_LOG_TRACE("dart_waitall: mpi_req[%d] = %d",
-                       r_n, mpi_req[r_n]);
         DART_LOG_TRACE("dart_waitall: mpi_sta[%d].MPI_SOURCE = %d",
                        r_n, mpi_sta[r_n].MPI_SOURCE);
         DART_LOG_TRACE("dart_waitall: mpi_sta[%d].MPI_ERROR  = %d",
@@ -916,6 +916,11 @@ dart_ret_t dart_waitall(
             DART_LOG_ERROR("dart_waitall: MPI_Win_flush failed");
             return DART_ERR_INVAL;
           }
+          DART_LOG_TRACE("dart_waitall: MPI_Request_free");
+          if (MPI_Request_free(&handle[i]->request) != MPI_SUCCESS) {
+            DART_LOG_ERROR("dart_waitall: MPI_Request_free failed");
+            return DART_ERR_INVAL;
+          }
         }
       }
     }
@@ -926,19 +931,16 @@ dart_ret_t dart_waitall(
     for (i = 0; i < n; i++) {
       if (handle[i]) {
         /* Free handle resource */
-//      free(handle[i]);
-//      handle[i] = NULL;
+        DART_LOG_TRACE("dart_waitall: free handle %d", i);
+        free(handle[i]);
+        handle[i] = NULL;
       }
     }
 
-    // TODO:
-    // Free of MPI request objects via:
-    //   MPI_Request_free(mpi_req[i])
-    // is missing!
-
-    DART_LOG_DEBUG("dart_waitall: free MPI temporaries");
-//  free(mpi_req);
-//  free(mpi_sta);
+    DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
+    free(mpi_req);
+    DART_LOG_TRACE("dart_waitall: free MPI_Status temporaries");
+    free(mpi_sta);
   }
   DART_LOG_DEBUG("dart_waitall > finished");
   return DART_OK;

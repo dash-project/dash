@@ -92,18 +92,17 @@ ValueType * copy_impl(
     // MPI uses offset type int, do not copy more than INT_MAX bytes:
     int  max_copy_elem        = std::numeric_limits<int>::max() /
                                   sizeof(ValueType);
-    // TODO: Temporary hack:
-    int  num_copy_reqs        = (num_elem_total / max_elem_per_unit) * 100;
+//  int  num_copy_reqs        = (num_elem_total / max_elem_per_unit) * 100;
     DASH_LOG_TRACE_VAR("dash::copy_impl", max_elem_per_unit);
     // Global iterator pointing at begin of current unit's input range:
     auto cur_in_first         = in_first;
     // Handles for non-blocking get operations:
-//  std::vector<dart_handle_t> get_handles;
-    dart_handle_t * get_handles = new dart_handle_t[num_copy_reqs];
-    for (auto handle_idx = 0; handle_idx < num_copy_reqs; ++handle_idx) {
-      get_handles[handle_idx] = static_cast<dart_handle_t>(nullptr);
-    }
-    int  copy_req_idx         = 0;
+    std::vector<dart_handle_t> get_handles;
+//  dart_handle_t * get_handles = new dart_handle_t[num_copy_reqs];
+//  for (auto handle_idx = 0; handle_idx < num_copy_reqs; ++handle_idx) {
+//    get_handles[handle_idx] = static_cast<dart_handle_t>(nullptr);
+//  }
+//  int  copy_req_idx         = 0;
     while (num_elem_copied < num_elem_total) {
       DASH_LOG_TRACE("dash::copy_impl",
                      "copy from unit input range, unit range index:",
@@ -115,14 +114,15 @@ ValueType * copy_impl(
       auto cur_unit       = local_pos.unit;
       // Local offset of first element in input range at current unit:
       auto l_in_first_idx = local_pos.index;
-      // Number of elements to copy from current unit:
+      // Maximum number of elements to copy from current unit:
       auto num_unit_elem  = max_elem_per_unit - l_in_first_idx;
+      // Number of elements left to copy:
+      int  n_elem_to_copy = num_elem_total - num_elem_copied;
       // Number of elements to copy in this iteration.
       int  num_copy_elem  = (num_unit_elem < 
                                static_cast<size_type>(max_copy_elem))
                             ? num_unit_elem
                             : max_copy_elem;
-      int n_elem_to_copy  = num_elem_total - num_elem_copied;
       if (num_copy_elem > n_elem_to_copy) {
         num_copy_elem = n_elem_to_copy;
       }
@@ -133,7 +133,7 @@ ValueType * copy_impl(
                      "l_idx:",                 l_in_first_idx,
                      "->",
                      "unit elements:",         num_unit_elem,
-                     "copy elements max:",     std::numeric_limits<int>::max(),
+                     "copy elements max:",     max_copy_elem,
                      "copy elements:",         num_copy_elem);
       DASH_LOG_TRACE("dash::copy_impl",
                      "total elements copied:", num_elem_copied,
@@ -147,27 +147,27 @@ ValueType * copy_impl(
           num_copy_elem * sizeof(ValueType),
           &handle),
         DART_OK);
-//    get_handles.push_back(handle);
-      get_handles[copy_req_idx] = handle;
+      get_handles.push_back(handle);
+//    get_handles[copy_req_idx] = handle;
       num_elem_copied += num_copy_elem;
       cur_in_first    += num_copy_elem;
       ++unit_range_idx;
-      ++copy_req_idx;
+//    ++copy_req_idx;
     }
     // Wait for all get requests to complete:
     DASH_LOG_TRACE("dash::copy_impl",
 //                 "wait for", get_handles.size(), " async get request");
-                   "wait for", copy_req_idx, "async get request",
-                   "on", unit_range_idx, "ranges");
+                   "wait for async get request on", unit_range_idx, "ranges");
     DASH_ASSERT_RETURNS(
       dart_waitall(
-//      &get_handles[0],
-//      get_handles.size()),
-        get_handles,
-        copy_req_idx),
+        &get_handles[0],
+        get_handles.size()),
+//      get_handles,
+//      copy_req_idx),
       DART_OK);
+    DASH_LOG_TRACE("dash::copy_impl", "async get requests completed");
 
-    delete[] get_handles;
+//  delete[] get_handles;
   }
   return out_first + num_elem_total;
 }
