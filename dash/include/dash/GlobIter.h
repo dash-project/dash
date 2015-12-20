@@ -591,12 +591,12 @@ private:
  *
  * \ingroup     Algorithms
  */
-template<typename ElementType>
+template<typename ElementType, typename PatternType>
 gptrdiff_t distance(
   /// Global iterator to the initial position in the global sequence
-  const GlobIter<ElementType> & first,
+  const GlobIter<ElementType, PatternType> & first,
   /// Global iterator to the final position in the global sequence
-  const GlobIter<ElementType> & last) {
+  const GlobIter<ElementType, PatternType> & last) {
   return last - first;
 }
 

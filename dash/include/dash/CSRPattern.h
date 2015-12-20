@@ -669,7 +669,7 @@ public:
     }
     DASH_THROW(
       dash::exception::InvalidArgument,
-      "CSRPattern.local: global coord " << g_index < " is out of bounds");
+      "CSRPattern.local: global coord " << g_index << " is out of bounds");
   }
 
   /**
@@ -695,7 +695,7 @@ public:
     }
     DASH_THROW(
       dash::exception::InvalidArgument,
-      "CSRPattern.local: global index " << g_index < " is out of bounds");
+      "CSRPattern.local: global index " << g_index << " is out of bounds");
   }
 
   /**
@@ -745,7 +745,7 @@ public:
     }
     DASH_THROW(
       dash::exception::InvalidArgument,
-      "CSRPattern.local: global index " << g_index < " is out of bounds");
+      "CSRPattern.local: global index " << g_index << " is out of bounds");
   }
 
   ////////////////////////////////////////////////////////////////////////////

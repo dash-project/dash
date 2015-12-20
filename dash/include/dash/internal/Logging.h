@@ -2,9 +2,15 @@
 #define DASH__INTERNAL__LOGGING_H_
 
 #include <dash/internal/Macro.h>
-#include <dash/Init.h>
+// #include <dash/Init.h>
+
+namespace dash {
+  // forward-declaration
+  int myid();
+}
 
 #if defined(DASH_ENABLE_LOGGING)
+// {
 
 #include <array>
 #include <vector>
@@ -146,6 +152,7 @@ static void LogVarWrapper(
 } // namespace internal
 } // namespace dash
 
+// }
 #else  // DASH_ENABLE_LOGGING
 
 #  define DASH_LOG_TRACE(...) do {  } while(0)

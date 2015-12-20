@@ -5,6 +5,7 @@
     defined(DASH__UTIL__TIMER_UX)
 
 #include <dash/util/internal/TimestampClockPosix.h>
+#include <dash/internal/Logging.h>
 
 #include <stdexcept>
 
@@ -144,31 +145,34 @@ void TimestampClockPosix::Calibrate(
   // is the first and preferred clock type
   unsigned int selectedModeIndex  = 1; 
   // Iterate over all available clock types: 
-  std::cout << "Available modes: "; 
+  DASH_LOG_DEBUG("TimestampClockPosix::Calibrate(mode)", mode);
+  DASH_LOG_TRACE("TimestampClockPosix::Calibrate", "Available modes:");
   for (unsigned int avModeIdx = 1; 
       TimestampClockPosix::availableModes[avModeIdx].first != lastAvMode; 
        ++avModeIdx) {
-    unsigned int modeNum = TimestampClockPosix::availableModes[avModeIdx].first; 
+    unsigned int modeNum =
+      TimestampClockPosix::availableModes[avModeIdx].first; 
     if (modeNum == mode) { 
       // Selected mode id is contained in available modes
       selectedModeIndex = avModeIdx; 
     }
-    std::cout << TimestampClockPosix::clockModeNames[modeNum] 
-              << "(" << modeNum << ") "; 
+    DASH_LOG_TRACE("TimestampClockPosix::Calibrate",
+                   "mode:",    TimestampClockPosix::clockModeNames[modeNum],
+                   "mode id:", modeNum);
   }
-  std::cout << std::endl; 
   
   clockMode = TimestampClockPosix::availableModes[selectedModeIndex].first;
   clockId   = TimestampClockPosix::availableModes[selectedModeIndex].second;
   // Print mode that finally has been activated: 
   unsigned int modeNum = static_cast<unsigned int>(clockMode);
-  std::cout << "Active mode:     " 
-            << TimestampClockPosix::clockModeNames[modeNum] 
-            << "(" << modeNum << ")" << std::endl; 
+  DASH_LOG_DEBUG("TimestampClockPosix::Calibrate",
+                 "active mode:", TimestampClockPosix::clockModeNames[modeNum],
+                 "mode id:",     modeNum);
   // Print resolution of the active clock: 
   struct timespec res; 
   if (clock_getres(clockId, &res) == 0) {
-    std::cout << "Resolution:      " << res.tv_nsec << "ns" << std::endl;
+    DASH_LOG_DEBUG("TimestampClockPosix::Calibrate",
+                   "resolution:", res.tv_nsec);
   }
 }
 

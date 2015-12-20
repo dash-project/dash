@@ -18,7 +18,11 @@ using namespace std;
 
 #ifndef TYPE
 #define TYPE int
-#endif 
+#endif
+
+typedef dash::util::Timer<
+          dash::util::TimeMeasure::Clock
+        > Timer;
 
 typedef dash::CSRPattern<
   1,
@@ -67,8 +71,7 @@ double gups(
 int main(int argc, char* argv[]) {
   dash::init(&argc, &argv);
 
-  dash::util::Timer::Calibrate(
-    dash::util::TimeMeasure::Clock, 0);
+  Timer::Calibrate(0);
 
   if (dash::myid() == 0) {
     std::cout << "pattern type: " << PatternType::PatternName
@@ -235,7 +238,7 @@ double test_dash_pattern(
   const PatternType & pattern = a.pattern();
 
   typename ArrayType::local_type loc = a.local;
-  dash::util::Timer timer;
+  Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto g_idx = 0; g_idx < a.size(); ++g_idx) {
       auto local_pos = pattern.local(g_idx);
@@ -261,7 +264,7 @@ double test_dash_global_iter(
   typedef typename ArrayType::pattern_type pattern_t;
   init_values(a, ELEM_PER_UNIT);
 
-  dash::util::Timer timer;
+  Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto it = a.begin(); it != a.end(); ++it) {
       value_t * local_ptr = it.local();
@@ -294,7 +297,7 @@ double test_dash_local_global_iter(
 
   // Iterate over local elements but use global iterator to dereference
   // elements.
-  dash::util::Timer timer;
+  Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto it = l_git; it != l_gend; ++it) {
       value_t * local_ptr = it.local();
@@ -316,7 +319,7 @@ double test_dash_local_iter(
   unsigned REPEAT) {
   init_values(a, ELEM_PER_UNIT);
 
-  dash::util::Timer timer;
+  Timer timer;
   auto lend = a.lend();
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto it = a.lbegin(); it != lend; ++it) {
@@ -336,7 +339,7 @@ double test_dash_local_subscript(
   unsigned REPEAT) {
   init_values(a, ELEM_PER_UNIT);
 
-  dash::util::Timer timer;
+  Timer timer;
   typename ArrayType::local_type loc = a.local;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto j = 0; j < ELEM_PER_UNIT; ++j) {
@@ -356,7 +359,7 @@ double test_dash_local_pointer(
   unsigned REPEAT) {
   init_values(a, ELEM_PER_UNIT);
 
-  dash::util::Timer timer;
+  Timer timer;
   auto lbegin = a.lbegin();
   auto lend   = a.lend();
 
@@ -378,7 +381,7 @@ double test_stl_vector(
   std::vector<TYPE> arr(ELEM_PER_UNIT);
   init_values(arr.begin(), arr.end(), ELEM_PER_UNIT);
   
-  dash::util::Timer timer;
+  Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto j = 0; j < ELEM_PER_UNIT; ++j) {
       arr[j]++;
@@ -398,7 +401,7 @@ double test_stl_deque(
   std::deque<TYPE> arr(ELEM_PER_UNIT);
   init_values(arr.begin(), arr.end(), ELEM_PER_UNIT);
   
-  dash::util::Timer timer;
+  Timer timer;
   for(auto i = 0; i < REPEAT; ++i) {
     for(auto j = 0; j < ELEM_PER_UNIT; ++j) {
       arr[j]++;
@@ -420,7 +423,7 @@ double test_raw_array(
     arr, arr + ELEM_PER_UNIT,
     ELEM_PER_UNIT);
   
-  dash::util::Timer timer;
+  Timer timer;
   for(auto i = 0; i < REPEAT; i++) {
     for(auto j = 0; j < ELEM_PER_UNIT; j++) {
       arr[j]++;

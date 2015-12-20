@@ -15,7 +15,12 @@
 #include <iomanip>
 #include <unistd.h>
 
-using namespace std;
+using std::cout;
+using std::endl;
+
+typedef dash::util::Timer<
+          dash::util::TimeMeasure::Clock
+        > Timer;
 
 #ifndef TYPE
 #define TYPE int
@@ -80,8 +85,7 @@ double gups(
 int main(int argc, char* argv[]) {
   dash::init(&argc, &argv);
 
-  dash::util::Timer::Calibrate(
-    dash::util::TimeMeasure::Clock, 0);
+  Timer::Calibrate(0);
 
   std::deque<std::pair<int, int>> tests;
 
@@ -220,7 +224,7 @@ double test_pattern_gups(
   init_values(a.lbegin(), a.lend(), ELEM_PER_UNIT);
 
   auto a_size   = a.size();
-  auto ts_start = dash::util::Timer::Now();
+  auto ts_start = Timer::Now();
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto g_idx = 0; g_idx < a_size; ++g_idx) {
       auto local_pos = pattern.local(g_idx);
@@ -231,7 +235,7 @@ double test_pattern_gups(
       }
     }
   }
-  return dash::util::Timer::ElapsedSince(ts_start);
+  return Timer::ElapsedSince(ts_start);
 }
 
 
