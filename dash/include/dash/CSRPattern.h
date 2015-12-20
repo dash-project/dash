@@ -146,6 +146,97 @@ public:
    */
   template<typename ... Args>
   CSRPattern(
+    /// Argument list consisting of the pattern size (extent, number of 
+    /// elements) in every dimension followed by optional distribution     
+    /// types.
+    SizeType arg,
+    /// Argument list consisting of the pattern size (extent, number of 
+    /// elements) in every dimension followed by optional distribution     
+    /// types.
+    Args && ... args)
+  : _arguments(arg, args...),
+    _size(_arguments.sizespec().size()),
+    _local_sizes(initialize_local_sizes(
+        _size,
+        _arguments.distspec(),
+        _arguments.team())),
+    _block_offsets(initialize_block_offsets(
+        _local_sizes)),
+    _memory_layout(std::array<SizeType, 1> { _size }),
+    _distspec(_arguments.distspec()), 
+    _team(&_arguments.team()),
+    _teamspec(_arguments.teamspec()), 
+    _nunits(_team->size()),
+    _blocksize(initialize_blocksize(
+        _size,
+        _distspec,
+        _nunits)),
+    _nblocks(_nunits),
+    _local_size(
+        initialize_local_extent(_team->myid())),
+    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_capacity(initialize_local_capacity())
+  {
+    DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
+    DASH_ASSERT_EQ(
+      _local_sizes.size(), _nunits,
+      "Number of given local sizes "   << _local_sizes.size() << " " <<
+      "does not match number of units" << _nunits);
+    initialize_local_range();
+    DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
+  }
+
+  /**
+   * Constructor, initializes a pattern from explicit instances of
+   * \c SizeSpec, \c DistributionSpec and \c Team.
+   *
+   */
+  CSRPattern(
+    /// Size spec of the pattern.
+    const SizeSpec_t         & sizespec,
+    /// Distribution spec.
+    const DistributionSpec_t & distspec,
+    /// Team containing units to which this pattern maps its elements.
+    Team                     & team = dash::Team::All())
+  : _size(sizespec.size()),
+    _local_sizes(initialize_local_sizes(
+        _size,
+        distspec,
+        team)),
+    _block_offsets(initialize_block_offsets(
+        _local_sizes)),
+    _memory_layout(std::array<SizeType, 1> { _size }),
+    _distspec(DistributionSpec_t()),
+    _team(&team),
+    _teamspec(_distspec, *_team),
+    _nunits(_team->size()),
+    _blocksize(initialize_blocksize(
+        _size,
+        _distspec,
+        _nunits)),
+    _nblocks(_nunits),
+    _local_size(
+        initialize_local_extent(_team->myid())),
+    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_capacity(initialize_local_capacity())
+  {
+    DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, team)");
+    DASH_ASSERT_EQ(
+      _local_sizes.size(), _nunits,
+      "Number of given local sizes "   << _local_sizes.size() << " " <<
+      "does not match number of units" << _nunits);
+    initialize_local_range();
+    DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
+  }
+
+  /**
+   * Constructor, initializes a pattern from an argument list consisting
+   * of the pattern size (extent, number of elements) followed by an optional
+   * distribution type.
+   *
+   */
+  template<typename ... Args>
+  CSRPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type> & local_sizes,
     /// Argument list consisting of the pattern size (extent, number of 
@@ -1061,6 +1152,54 @@ public:
   }
 
   /**
+   * Initialize local sizes from pattern size, distribution spec and team
+   * spec.
+   */
+  std::vector<size_type> initialize_local_sizes(
+    size_type                  total_size,
+    const DistributionSpec_t & distspec,
+    const dash::Team         & team) const {
+    DASH_LOG_TRACE_VAR("CSRPattern.init_local_sizes()", total_size);
+    std::vector<size_type> l_sizes;
+    auto nunits = team.size();
+    DASH_LOG_TRACE_VAR("CSRPattern.init_local_sizes()", nunits);
+    if (nunits < 1) {
+      return l_sizes;
+    }
+    auto dist_type = distspec[0].type;
+    DASH_LOG_TRACE_VAR("CSRPattern.init_local_sizes()", dist_type);
+    // Tiled and blocked distribution:
+    if (dist_type == dash::internal::DIST_BLOCKED ||
+        dist_type == dash::internal::DIST_TILE) {
+      auto blocksize = total_size / nunits;
+      for (auto u = 0; u < nunits; ++u) {
+        l_sizes.push_back(blocksize);
+      }
+    // Unspecified distribution (default-constructed pattern instance),
+    // set all local sizes to 0:
+    } else if (dist_type == dash::internal::DIST_UNDEFINED) {
+      for (auto u = 0; u < nunits; ++u) {
+        l_sizes.push_back(0);
+      }
+    // No distribution, assign all indices to unit 0:
+    } else if (dist_type == dash::internal::DIST_NONE) {
+      l_sizes.push_back(total_size);
+      for (auto u = 0; u < nunits-1; ++u) {
+        l_sizes.push_back(0);
+      }
+    // Incompatible distribution type:
+    } else {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "CSRPattern expects TILE (" << dash::internal::DIST_TILE << ") " <<
+        "or BLOCKED (" << dash::internal::DIST_BLOCKED << ") " <<
+        "distribution, got " << dist_type);
+    }
+    DASH_LOG_TRACE_VAR("CSRPattern.init_local_sizes >", l_sizes);
+    return l_sizes;
+  }
+
+  /**
    * Initialize block size specs from memory layout, team spec and
    * distribution spec.
    */
@@ -1068,13 +1207,16 @@ public:
     const std::vector<size_type> & local_sizes) const {
     DASH_LOG_TRACE_VAR("CSRPattern.init_block_offsets", local_sizes);
     std::vector<size_type> block_offsets;
-    // NOTE: Assuming 1 block for every unit.
-    block_offsets.push_back(0);
-    for (auto unit_idx = 0; unit_idx < local_sizes.size() - 1; ++unit_idx) {
-      auto block_offset = block_offsets[unit_idx] +
-                          local_sizes[unit_idx];
-      block_offsets.push_back(block_offset);
+    if (local_sizes.size() > 0) {
+      // NOTE: Assuming 1 block for every unit.
+      block_offsets.push_back(0);
+      for (auto unit_idx = 0; unit_idx < local_sizes.size() - 1; ++unit_idx) {
+        auto block_offset = block_offsets[unit_idx] +
+                            local_sizes[unit_idx];
+        block_offsets.push_back(block_offset);
+      }
     }
+    DASH_LOG_TRACE_VAR("CSRPattern.init_block_offsets >", block_offsets);
     return block_offsets;
   }
 
