@@ -92,7 +92,7 @@ ValueType * copy_impl(
     // MPI uses offset type int, do not copy more than INT_MAX bytes:
     int  max_copy_elem        = std::numeric_limits<int>::max() /
                                   sizeof(ValueType);
-//  int  num_copy_reqs        = (num_elem_total / max_elem_per_unit) * 100;
+    int  num_copy_reqs        = (num_elem_total / max_elem_per_unit) * 100;
     DASH_LOG_TRACE_VAR("dash::copy_impl", max_elem_per_unit);
     // Global iterator pointing at begin of current unit's input range:
     auto cur_in_first         = in_first;
@@ -102,7 +102,6 @@ ValueType * copy_impl(
 //  for (auto handle_idx = 0; handle_idx < num_copy_reqs; ++handle_idx) {
 //    get_handles[handle_idx] = static_cast<dart_handle_t>(nullptr);
 //  }
-//  int  copy_req_idx         = 0;
     while (num_elem_copied < num_elem_total) {
       DASH_LOG_TRACE("dash::copy_impl",
                      "copy from unit input range, unit range index:",
@@ -132,13 +131,12 @@ ValueType * copy_impl(
                      "unit:",                  cur_unit,
                      "l_idx:",                 l_in_first_idx,
                      "->",
-                     "unit elements:",         num_unit_elem,
-                     "copy elements max:",     max_copy_elem,
                      "copy elements:",         num_copy_elem);
       DASH_LOG_TRACE("dash::copy_impl",
                      "total elements copied:", num_elem_copied,
                      "elements left:",         n_elem_to_copy,
-                     "copy from global index", cur_in_first.pos());
+                     "copy start g_index",     cur_in_first.pos());
+      DASH_LOG_TRACE_VAR("dash::copy_impl", cur_in_first.dart_gptr());
       dart_handle_t handle;
       DASH_ASSERT_RETURNS(
         dart_get_handle(
@@ -147,24 +145,25 @@ ValueType * copy_impl(
           num_copy_elem * sizeof(ValueType),
           &handle),
         DART_OK);
+      DASH_LOG_TRACE("dash::copy_impl", "handle:", handle);
       get_handles.push_back(handle);
-//    get_handles[copy_req_idx] = handle;
+//    get_handles[unit_range_idx] = handle;
       num_elem_copied += num_copy_elem;
       cur_in_first    += num_copy_elem;
       ++unit_range_idx;
-//    ++copy_req_idx;
     }
     // Wait for all get requests to complete:
     DASH_LOG_TRACE("dash::copy_impl",
-//                 "wait for", get_handles.size(), " async get request");
                    "wait for async get request on", unit_range_idx, "ranges");
-    DASH_ASSERT_RETURNS(
-      dart_waitall(
-        &get_handles[0],
-        get_handles.size()),
-//      get_handles,
-//      copy_req_idx),
-      DART_OK);
+    for (int req = get_handles.size() - 1; req >= 0; --req) {
+      DASH_LOG_TRACE("dash::copy_impl", "wait for request", req);
+      DASH_ASSERT_RETURNS(
+        dart_waitall(
+          &get_handles[req],
+//        get_handles.size()),
+          1),
+        DART_OK);
+    }
     DASH_LOG_TRACE("dash::copy_impl", "async get requests completed");
 
 //  delete[] get_handles;

@@ -3,7 +3,6 @@
 
 #include <dash/internal/Config.h>
 
-#include <dash/util/Timer.h>
 #include <dash/util/TimeMeasure.h>
 #include <dash/util/Timestamp.h>
 

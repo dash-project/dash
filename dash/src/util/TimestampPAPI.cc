@@ -1,4 +1,5 @@
-#if defined(DASH__UTIL__TIMER_PAPI)
+
+#if defined(DASH_ENABLE_PAPI)
 
 #include <dash/util/internal/TimestampPAPI.h>
 
@@ -13,4 +14,4 @@ int TimestampPAPI<TimeMeasure::Counter>::timer_mode = 0;
 } // namespace util
 } // namespace dash
 
-#endif // DASH__UTIL__TIMER_PAPI
+#endif // DASH_ENABLE_PAPI
