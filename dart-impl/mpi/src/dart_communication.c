@@ -239,11 +239,12 @@ dart_ret_t dart_get_handle(
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;
+  DART_LOG_TRACE("dart_get_handle(): handle:%p", *handle);
   
   /* The memory accessed is allocated with collective allocation. */
   if (seg_id) {
     uint16_t index = gptr.flags;
-    DART_LOG_DEBUG("dart_get_handle(): index:%lld", index);
+    DART_LOG_TRACE("dart_get_handle(): index:%lld", index);
     dart_unit_t target_unitid_rel;      
 /*
     if (dart_adapt_transtable_get_win (index, offset, &begin, &win) == -1)
@@ -311,10 +312,10 @@ dart_ret_t dart_get_handle(
       MPI_BYTE,
       win,
       &mpi_req);
-    (*handle) -> dest = target_unitid_abs;
+    (*handle)->dest = target_unitid_abs;
   }
-  (*handle) -> request = mpi_req;
-  (*handle) -> win     = win;
+  (*handle)->request = mpi_req;
+  (*handle)->win     = win;
   return DART_OK;
 }
 
@@ -821,64 +822,152 @@ dart_ret_t dart_waitall_local(
 }
 
 dart_ret_t dart_waitall(
-  dart_handle_t *handle,
-  size_t n)
+  dart_handle_t * handle,
+  size_t          n)
 {
-  int i, n_r = 0;
+  int i, r_n;
+  int num_handles = (int)n;
   DART_LOG_DEBUG("dart_waitall()");
+  if (n < 1) {
+    DART_LOG_ERROR("dart_waitall: number of handles = 0");
+    return DART_ERR_INVAL;
+  }
+  if (n > INT_MAX) {
+    DART_LOG_ERROR("dart_waitall: number of handles > INT_MAX 0");
+    return DART_ERR_INVAL;
+  }
+  DART_LOG_DEBUG("dart_waitall: %d handles", num_handles);
   if (*handle) {
     MPI_Status  *mpi_sta;
     MPI_Request *mpi_req;
-    mpi_req = (MPI_Request *)malloc(n * sizeof (MPI_Request));
-    mpi_sta = (MPI_Status *)malloc(n * sizeof (MPI_Status));
-    for (i = 0; i < n; i++) {
-      if (handle[i]){
-        mpi_req [n_r++] = handle[i] -> request;
+    mpi_req = (MPI_Request *)malloc(n * sizeof(MPI_Request));
+    mpi_sta = (MPI_Status *)malloc(n * sizeof(MPI_Status));
+    /*
+     * copy requests from DART handles to MPI request array:
+     */
+    r_n = 0;
+    for (i = 0; i < num_handles; i++) {
+      if (handle[i]) {
+        mpi_req[r_n] = handle[i]->request;
+        r_n++;
       }
     }
-    MPI_Waitall (n_r, mpi_req, mpi_sta);
-    n_r = 0;
-    for (i = 0; i < n; i++) {
+    /*
+     * wait for communication of MPI requests:
+     */
+    DART_LOG_DEBUG("dart_waitall: MPI_Waitall, %d requests", r_n);
+    /* From the MPI 3.1 standard:
+     *
+     * The i-th entry in array_of_statuses is set to the return
+     * status of the i-th operation. Active persistent requests
+     * are marked inactive.
+     * Requests of any other type are deallocated and the
+     * corresponding handles in the array are set to
+     * MPI_REQUEST_NULL.
+     * The list may contain null or inactive handles.
+     * The call sets to empty the status of each such entry.
+     */
+    if (MPI_Waitall(r_n, mpi_req, mpi_sta) == MPI_SUCCESS) {
+      DART_LOG_DEBUG("dart_waitall: MPI_Waitall completed");
+    } else {
+      DART_LOG_ERROR("dart_waitall: MPI_Waitall failed");
+      return DART_ERR_INVAL;
+    }
+
+    /*
+     * copy MPI requests back to DART handles:
+     */
+    r_n = 0;
+    for (i = 0; i < num_handles; i++) {
       if (handle[i]) {
-        handle[i] -> request = mpi_req[n_r++];
+        if (mpi_req[r_n] == MPI_REQUEST_NULL) {
+          DART_LOG_TRACE("dart_waitall: mpi_req[%d] = MPI_REQUEST_NULL",
+                         r_n);
+        }
+        DART_LOG_TRACE("dart_waitall: mpi_req[%d] = %d",
+                       r_n, mpi_req[r_n]);
+        DART_LOG_TRACE("dart_waitall: mpi_sta[%d].MPI_SOURCE = %d",
+                       r_n, mpi_sta[r_n].MPI_SOURCE);
+        DART_LOG_TRACE("dart_waitall: mpi_sta[%d].MPI_ERROR  = %d",
+                       r_n, mpi_sta[r_n].MPI_ERROR);
+        handle[i]->request = mpi_req[r_n];
+        r_n++;
       }
     }
-    free(mpi_req);
-    free(mpi_sta);
+    /*
+     * wait for completion of MPI requests at origins and targets:
+     */
+    DART_LOG_DEBUG("dart_waitall: waiting for remote completion");
+    for (i = 0; i < num_handles; i++) {
+      if (handle[i]) {
+        if (handle[i]->request == MPI_REQUEST_NULL) {
+          DART_LOG_TRACE("dart_waitall: handle[%d] = MPI_REQUEST_NULL",
+                         i);
+        } else {
+          DART_LOG_TRACE("dart_waitall: MPI_Win_flush(handle[%d]: %p)",
+                         i, handle[i]);
+          DART_LOG_TRACE("dart_waitall: handle[%d]->dest: %d",
+                         i, handle[i]->dest);
+          DART_LOG_TRACE("dart_waitall: handle[%d]->win: %d",
+                         i, handle[i]->win);
+          if(MPI_Win_flush(handle[i]->dest, handle[i]->win) !=
+              MPI_SUCCESS)
+          {
+            DART_LOG_ERROR("dart_waitall: MPI_Win_flush failed");
+            return DART_ERR_INVAL;
+          }
+        }
+      }
+    }
+    /*
+     * free memory:
+     */
+    DART_LOG_DEBUG("dart_waitall: free handles");
     for (i = 0; i < n; i++) {
       if (handle[i]) {
-        MPI_Win_flush (handle[i]->dest, handle[i]->win);
         /* Free handle resource */
-        free(handle[i]);
-        handle[i] = NULL;
+//      free(handle[i]);
+//      handle[i] = NULL;
       }
     }
+
+    // TODO:
+    // Free of MPI request objects via:
+    //   MPI_Request_free(mpi_req[i])
+    // is missing!
+
+    DART_LOG_DEBUG("dart_waitall: free MPI temporaries");
+//  free(mpi_req);
+//  free(mpi_sta);
   }
   DART_LOG_DEBUG("dart_waitall > finished");
   return DART_OK;
 }
 
 dart_ret_t dart_testall_local(
-  dart_handle_t *handle,
-  size_t n,
-  int32_t* is_finished)
+  dart_handle_t * handle,
+  size_t          n,
+  int32_t       * is_finished)
 {
-  int i, r_n = 0;
+  int i, r_n;
   DART_LOG_DEBUG("dart_testall_local()");
   MPI_Status *mpi_sta;
   MPI_Request *mpi_req;
   mpi_req = (MPI_Request *)malloc(n * sizeof (MPI_Request));
   mpi_sta = (MPI_Status *)malloc(n * sizeof (MPI_Status));
+  r_n = 0;
   for (i = 0; i < n; i++) {
     if (handle[i]){
-      mpi_req[r_n++] = handle[i] -> request;
+      mpi_req[r_n] = handle[i] -> request;
+      r_n++;
     }
   }
   MPI_Testall(r_n, mpi_req, is_finished, mpi_sta);
   r_n = 0;
   for (i = 0; i < n; i++) {
     if (handle[i]) {
-      handle[i] -> request = mpi_req[r_n++];
+      handle[i] -> request = mpi_req[r_n];
+      r_n++;
     }
   }
   free(mpi_req);

@@ -88,13 +88,23 @@ ValueType * copy_impl(
     // Number of elements located at a single unit:
     auto max_elem_per_unit    = pattern.local_capacity();
     size_type num_elem_copied = 0;
-    int unit_range_idx        = 0;
+    int  unit_range_idx       = 0;
+    // MPI uses offset type int, do not copy more than INT_MAX bytes:
+    int  max_copy_elem        = std::numeric_limits<int>::max() /
+                                  sizeof(ValueType);
+    // TODO: Temporary hack:
+    int  num_copy_reqs        = (num_elem_total / max_elem_per_unit) * 100;
     DASH_LOG_TRACE_VAR("dash::copy_impl", max_elem_per_unit);
     // Global iterator pointing at begin of current unit's input range:
     auto cur_in_first         = in_first;
     // Handles for non-blocking get operations:
-    std::vector<dart_handle_t> get_handles;
-    do {
+//  std::vector<dart_handle_t> get_handles;
+    dart_handle_t * get_handles = new dart_handle_t[num_copy_reqs];
+    for (auto handle_idx = 0; handle_idx < num_copy_reqs; ++handle_idx) {
+      get_handles[handle_idx] = static_cast<dart_handle_t>(nullptr);
+    }
+    int  copy_req_idx         = 0;
+    while (num_elem_copied < num_elem_total) {
       DASH_LOG_TRACE("dash::copy_impl",
                      "copy from unit input range, unit range index:",
                      unit_range_idx);
@@ -108,12 +118,14 @@ ValueType * copy_impl(
       // Number of elements to copy from current unit:
       auto num_unit_elem  = max_elem_per_unit - l_in_first_idx;
       // Number of elements to copy in this iteration.
-      // MPI uses offset type int, do not copy more than INT_MAX elements:
-      int  max_copy_elem  = std::numeric_limits<int>::max();
       int  num_copy_elem  = (num_unit_elem < 
                                static_cast<size_type>(max_copy_elem))
                             ? num_unit_elem
                             : max_copy_elem;
+      int n_elem_to_copy  = num_elem_total - num_elem_copied;
+      if (num_copy_elem > n_elem_to_copy) {
+        num_copy_elem = n_elem_to_copy;
+      }
       DASH_LOG_TRACE("dash::copy_impl",
                      "current g_idx:",         cur_in_first.pos(),
                      "->",
@@ -125,6 +137,7 @@ ValueType * copy_impl(
                      "copy elements:",         num_copy_elem);
       DASH_LOG_TRACE("dash::copy_impl",
                      "total elements copied:", num_elem_copied,
+                     "elements left:",         n_elem_to_copy,
                      "copy from global index", cur_in_first.pos());
       dart_handle_t handle;
       DASH_ASSERT_RETURNS(
@@ -134,17 +147,27 @@ ValueType * copy_impl(
           num_copy_elem * sizeof(ValueType),
           &handle),
         DART_OK);
-      get_handles.push_back(handle);
+//    get_handles.push_back(handle);
+      get_handles[copy_req_idx] = handle;
       num_elem_copied += num_copy_elem;
       cur_in_first    += num_copy_elem;
       ++unit_range_idx;
-    } while (num_elem_copied < num_elem_total);
+      ++copy_req_idx;
+    }
     // Wait for all get requests to complete:
+    DASH_LOG_TRACE("dash::copy_impl",
+//                 "wait for", get_handles.size(), " async get request");
+                   "wait for", copy_req_idx, "async get request",
+                   "on", unit_range_idx, "ranges");
     DASH_ASSERT_RETURNS(
       dart_waitall(
-        &get_handles[0],
-        get_handles.size()),
+//      &get_handles[0],
+//      get_handles.size()),
+        get_handles,
+        copy_req_idx),
       DART_OK);
+
+    delete[] get_handles;
   }
   return out_first + num_elem_total;
 }
@@ -259,7 +282,15 @@ ValueType * copy(
                           l_in_last,
                           out_first);
 #else
-    memcpy(out_first, l_in_first, num_copy_elem * sizeof(ValueType));
+    size_t max_memcpy_elem  = std::numeric_limits<size_t>::max() /
+                                 sizeof(ValueType);
+    size_t num_memcpy_bytes = num_copy_elem * sizeof(ValueType);
+    DASH_LOG_TRACE_VAR("dash::copy", max_memcpy_elem);
+    DASH_LOG_TRACE_VAR("dash::copy", num_memcpy_bytes);
+    DASH_ASSERT_LT(
+      num_copy_elem, max_memcpy_elem,
+      "Cannot memcpy more than " << max_memcpy_elem << " elements");
+    memcpy(out_first, l_in_first, num_memcpy_bytes);
     out_last = out_first + num_copy_elem;
 #endif
     // Assert that all elements in local range have been copied:
