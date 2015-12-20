@@ -227,27 +227,28 @@ dart_ret_t dart_get_handle(
   dart_handle_t *handle)
 {
   MPI_Request mpi_req;
-  MPI_Aint    disp_s, disp_rel;
-  dart_unit_t target_unitid_abs;
+  MPI_Aint    disp_s,
+              disp_rel;
+  dart_unit_t target_unitid_abs,
+              target_unitid_rel;      
   MPI_Win     win;
   int         mpi_ret;
   uint64_t    offset = gptr.addr_or_offs.offset;
+  uint16_t    index  = gptr.flags;
   int16_t     seg_id = gptr.segid;
-  DART_LOG_DEBUG("dart_get_handle(): offset:%lld seg_id:%lld",
-                 offset, seg_id);
   /* MPI uses offset type int, do not copy more than INT_MAX elements: */
   int n_count = (int)(DART_MIN(INT_MAX, nbytes));
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;
-  DART_LOG_TRACE("dart_get_handle(): handle:%p", *handle);
+
+  DART_LOG_DEBUG("dart_get_handle(): target_uid_abs:%d o:%lld s:%lld i:%lld",
+                 target_unitid_abs, offset, seg_id, index);
+//DART_LOG_TRACE("dart_get_handle(): handle:%p", *handle);
   
   /* The memory accessed is allocated with collective allocation. */
   if (seg_id) {
-    uint16_t index = gptr.flags;
-    DART_LOG_TRACE("dart_get_handle: collective, segment: %lld", seg_id);
-    DART_LOG_TRACE("dart_get_handle: index:%lld", index);
-    dart_unit_t target_unitid_rel;      
+    DART_LOG_TRACE("dart_get_handle: collective");
 /*
     if (dart_adapt_transtable_get_win (index, offset, &begin, &win) == -1)
     {
@@ -264,17 +265,22 @@ dart_ret_t dart_get_handle(
      * object.
      */
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
+    DART_LOG_DEBUG("dart_get_handle: tgt_uid_rel:%d", target_unitid_rel);
 
     if (dart_adapt_transtable_get_disp(
           seg_id,
           target_unitid_rel,
-          &disp_s)== -1) {
-      DART_LOG_ERROR("dart_get_handle: dart_adapt_transtable_get_disp failed");
+          &disp_s) == -1)
+    {
+      DART_LOG_ERROR(
+        "dart_get_handle: dart_adapt_transtable_get_disp failed");
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;   
-    /* MPI-3 newly added feature: request version of get call. */
+    DART_LOG_TRACE("dart_get_handle: disp_s:%lld disp_rel:%lld",
+                   disp_s, disp_rel);
 
+    /* MPI-3 newly added feature: request version of get call. */
     /** 
      * TODO: Check if 
      *    MPI_Rget_accumulate(
@@ -303,7 +309,7 @@ dart_ret_t dart_get_handle(
     (*handle)->dest = target_unitid_rel;
   } else {
     /* The memory accessed is allocated with local allocation. */
-    DART_LOG_TRACE("dart_get_handle: local, segment: %lld", seg_id);
+    DART_LOG_TRACE("dart_get_handle: local, segment:%lld", seg_id);
     DART_LOG_DEBUG("dart_get_handle: %d bytes (local allocation) "
                    "from %d at offset %d",
                    nbytes, target_unitid_abs, offset);
@@ -327,7 +333,7 @@ dart_ret_t dart_get_handle(
   (*handle)->request = mpi_req;
   (*handle)->win     = win;
   DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%lld req:%lld",
-                 *handle, (*handle)->dest, (*handle)->win, (*handle)->request);
+                 *handle, (*handle)->dest, win, mpi_req);
   return DART_OK;
 }
 
@@ -781,8 +787,8 @@ dart_ret_t dart_wait(
     MPI_Win_flush(handle->dest, handle->win);   
     /* Free handle resource */
     DART_LOG_DEBUG("dart_wait: free(handle)");
-    free(handle);
-    handle = NULL;
+//  free(handle);
+//  handle = NULL;
   }
   DART_LOG_DEBUG("dart_wait > finished");
   return DART_OK;
@@ -860,10 +866,10 @@ dart_ret_t dart_waitall(
     r_n = 0;
     for (i = 0; i < num_handles; i++) {
       if (handle[i]) {
-        DART_LOG_DEBUG("dart_waitall:"
-                       "handle[%d](%p): win:%lld dest:%d req:%lld",
+        DART_LOG_DEBUG("dart_waitall: "
+                       "  handle[%d](%p): dest:%d win:%lld req:%lld",
                        i, handle[i],
-                       handle[i]->win, handle[i]->dest, handle[i]->request);
+                       handle[i]->dest, handle[i]->win, handle[i]->request);
         mpi_req[r_n] = handle[i]->request;
         r_n++;
       }
@@ -949,8 +955,8 @@ dart_ret_t dart_waitall(
       if (handle[i]) {
         /* Free handle resource */
         DART_LOG_TRACE("dart_waitall: free handle %d", i);
-        free(handle[i]);
-        handle[i] = NULL;
+//      free(handle[i]);
+//      handle[i] = NULL;
       }
     }
     DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");

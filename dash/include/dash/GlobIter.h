@@ -183,7 +183,26 @@ public:
    *          position
    */
   dart_gptr_t dart_gptr() const {
-    return ((GlobPtr<ElementType>)(*this)).dart_gptr();
+    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(_idx);
+    } else {
+      // Viewspec projection required:
+      auto glob_coords = coords(_idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", local_pos.index);
+    // Global pointer to element at given position:
+    return _globmem->index_to_gptr(
+             local_pos.unit,
+             local_pos.index
+           ).dart_gptr();
   }
 
   /**

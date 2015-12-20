@@ -216,14 +216,14 @@ dart_team_memalloc_aligned(
 	/* Updating the translation table of teamid with the created
    * (offset, win) infos */
 	info_t item;
-	item.seg_id = dart_memid;
-	item.size   = nbytes;
-  	item.disp   = disp_set;
+	item.seg_id  = dart_memid;
+	item.size    = nbytes;
+	item.disp    = disp_set;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-	item.win    = sharedmem_win;
+	item.win     = sharedmem_win;
 	item.baseptr = baseptr_set;
 #else
-	item.win   = MPI_WIN_NULL;
+	item.win     = MPI_WIN_NULL;
 	item.baseptr = NULL;
 #endif
 	item.selfbaseptr = sub_mem;

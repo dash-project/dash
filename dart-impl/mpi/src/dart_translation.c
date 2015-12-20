@@ -26,12 +26,16 @@ int dart_adapt_transtable_add (info_t item)
 {
   node_t pre, q;
   node_t p = (node_t) malloc (sizeof (node_info_t));
+  DART_LOG_TRACE(
+      "dart_adapt_transtable_add() item: "
+      "seg_id:%d size:%lld disp:%lld win:%lld",
+      item.seg_id, item.size, item.disp, item.win);
   //	printf ("item.seg_id is %d\n", item.seg_id);
-  p -> trans.seg_id = item.seg_id;
-  p -> trans.size = item.size;
-  p -> trans.disp = item.disp;
+  p -> trans.seg_id  = item.seg_id;
+  p -> trans.size    = item.size;
+  p -> trans.disp    = item.disp;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  p -> trans.win = item.win;
+  p -> trans.win     = item.win;
   p -> trans.baseptr = item.baseptr;
 #endif
   p -> trans.selfbaseptr = item.selfbaseptr;
@@ -66,8 +70,9 @@ int dart_adapt_transtable_remove(int16_t seg_id)
       p = p -> next;
     }
     if (!p) {
-      DART_LOG_ERROR ("Invalid seg_id: %d,can't remove the record from translation table",
-                      seg_id);
+      DART_LOG_ERROR(
+        "Invalid seg_id: %d, can't remove the record from translation table",
+        seg_id);
       return -1;
     }
     pre -> next = p -> next;
@@ -132,20 +137,29 @@ int dart_adapt_transtable_get_disp(int16_t seg_id,
                                    int rel_unitid,
                                    MPI_Aint * disp_s)
 {
-  node_t p;
-  p = dart_transtable_globalalloc;
+  MPI_Aint trans_disp = 0;
+  node_t p = dart_transtable_globalalloc;
+  *disp_s  = 0;
 
-  while ((p != NULL) && (seg_id != ((p -> trans).seg_id))) {
-    p = p -> next;
+  DART_LOG_TRACE("dart_adapt_transtable_get_disp() "
+                 "seq_id:%d rel_unitid:%d", seg_id, rel_unitid);
+  while (p != NULL) {
+    int16_t trans_seg_id = (p->trans).seg_id;
+    DART_LOG_TRACE("dart_adapt_transtable_get_disp: p.trans.seq_id:%d",
+                   trans_seg_id);
+    if (seg_id == trans_seg_id) {
+      break;
+    }
+    p = p->next;
   }
-
-  if (!p) {
-    DART_LOG_ERROR("Invalid seg_id: %d, can not get the related displacement",
-                   seg_id);
+  if (p == NULL) {
+    DART_LOG_ERROR(
+      "Invalid seg_id: %d, can not get the related displacement", seg_id);
     return -1;
   }
-
-  *disp_s = (p -> trans).disp[rel_unitid];
+  trans_disp = (p->trans).disp[rel_unitid];
+  *disp_s    = trans_disp;
+  DART_LOG_TRACE("dart_adapt_transtable_get_disp > dist:%lld", trans_disp);
   return 0;
 }
 
