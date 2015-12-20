@@ -9,7 +9,7 @@
 namespace dash {
 
 typedef enum MemArrange {
-  Undefined = 0,
+  MEM_ARRANGE_UNDEFINED = 0,
   ROW_MAJOR,
   COL_MAJOR
 } MemArrange;
@@ -17,7 +17,7 @@ typedef enum MemArrange {
 namespace internal {
 
 typedef enum DistributionType {
-  Undefined = 0,
+  DIST_UNDEFINED = 0,
   DIST_NONE,
   DIST_BLOCKED,      // = BLOCKCYCLIC(ceil(nelem/nunits))
   DIST_CYCLIC,       // = BLOCKCYCLIC(1) Will be removed
