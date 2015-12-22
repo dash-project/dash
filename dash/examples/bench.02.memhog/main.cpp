@@ -49,7 +49,7 @@ void test_array_alloc(size_t lelem)
     cout.flush();
   }
   
-  dash::Array<T, long long> arr(lelem);
+  dash::Array<T, long long> arr(nelem);
   
   for( int i=0; i<arr.lsize(); i++ ) {
     arr.local[i] = myid;
