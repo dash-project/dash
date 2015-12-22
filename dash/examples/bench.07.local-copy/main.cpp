@@ -52,58 +52,52 @@ int main(int argc, char** argv)
   Timer::Calibrate(0);
 
   if (dash::myid() == 0) {
+    cout << "Local copy benchmark"
+         << endl;
     cout << "Timer: " << Timer::TimerName()
          << endl;
-    cout << "Local copy benchmark"
-         << endl
-         << "size\t all local\t part. loc.\t no local\t "
-            "unit\t mem/rank\t mem/glob"
-         << endl;
+    cout << std::setw(8)  << "size";
+    cout << std::setw(14) << "all local";
+    cout << std::setw(14) << "part. loc.";
+    cout << std::setw(14) << "no local";
+    cout << std::setw(8)  << " ";
+    cout << std::setw(14) << "mem/rank";
+    cout << std::setw(14) << "mem/glob";
+    cout << endl;
   }
 
   for (int size_exp = 3; size_exp < 10; ++size_exp)
   {
     size      = (size_t)std::pow((double)10, (double)size_exp);
 
-#if 1
     DASH_LOG_DEBUG("main", "START copy_all_local", "size: 10^", size_exp);
     kps_al    = copy_all_local(size, false);
     dash::barrier();
     sleep(1);
     DASH_LOG_DEBUG("main", "DONE  copy_all_local", "size: 10^", size_exp);
-#endif
 
-#if 1
     DASH_LOG_DEBUG("main", "START copy_partially_local", "size: 10^", size_exp);
     kps_pl    = copy_partially_local(size, false);
     dash::barrier();
     sleep(1);
     DASH_LOG_DEBUG("main", "DONE  copy_partially_local", "size: 10^", size_exp);
-#endif
 
-#if 1
     DASH_LOG_DEBUG("main", "START copy_no_local", "size: 10^", size_exp);
     kps_nl    = copy_no_local(size,false);
     dash::barrier();
     sleep(1);
     DASH_LOG_DEBUG("main", "DONE  copy_no_local", "size: 10^", size_exp);
-#endif
 
     mem_glob  = ((sizeof(ElementType) * size) / 1024) / 1024;
     mem_rank  = mem_glob / dash::size();
 
-    DASH_PRINT_MASTER("10^" << size_exp << "\t"
-                      << std::setprecision(5) << std::setw(5)
-                      << kps_al << "\t\t"
-                      << std::setprecision(5) << std::setw(5)
-                      << kps_pl << "\t\t"
-                      << std::setprecision(5) << std::setw(5)
-                      << kps_nl << "\t\t"
-                      << "MKeys/s\t"
-                      << std::setw(5)
-                      << mem_rank << " MiB\t"
-                      << std::setw(5)
-                      << mem_glob << " MiB\t");
+    DASH_PRINT_MASTER("10^" << std::setw(5) << size_exp
+                      << std::setprecision(5) << std::setw(14) << kps_al
+                      << std::setprecision(5) << std::setw(14) << kps_pl
+                      << std::setprecision(5) << std::setw(14) << kps_nl
+                      << std::setw(8)  << "MKeys/s"
+                      << std::setw(10) << mem_rank << " MiB"
+                      << std::setw(10) << mem_glob << " MiB");
   }
 
   DASH_PRINT_MASTER("Benchmark finished");
