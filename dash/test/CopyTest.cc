@@ -32,6 +32,68 @@ TEST_F(CopyTest, BlockingGlobalToLocalBlock)
   }
 }
 
+TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
+{
+  typedef int64_t index_t;
+  typedef dash::Array<
+            int,
+            index_t,
+            dash::CSRPattern<1, dash::ROW_MAJOR, index_t>
+          > Array_t;
+  if (_dash_size < 2) {
+    return;
+  }
+  // Copy all elements contained in a single, continuous block.
+  const int num_elem_per_unit = 250;
+  size_t    num_elem_total    = _dash_size * num_elem_per_unit;
+  size_t    num_copy_elem     = (_dash_size - 1) * num_elem_per_unit;
+
+  Array_t   array(num_elem_total, dash::BLOCKED);
+  auto      l_start_idx       = array.pattern().lbegin();
+  auto      l_end_idx         = array.pattern().lend();
+
+  LOG_MESSAGE("lstart:%d lend:%d ncopy:%d",
+              l_start_idx, l_end_idx, num_copy_elem);
+
+  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+  for (auto l = 0; l < num_elem_per_unit; ++l) {
+    array.local[l] = ((dash::myid() + 1) * 1000) + l;
+  }
+  array.barrier();
+  
+  // Local range to store copy:
+  int   local_copy[num_copy_elem];
+  int * dest_first = local_copy;
+  int * dest_last  = local_copy;
+  if (dash::myid() == 0) {
+    // Copy elements in front of local range:
+    LOG_MESSAGE("Copying from global range (%d-%d]",
+                0, l_start_idx);
+    dest_first = dash::copy(
+                   array.begin(),
+                   array.begin() + l_start_idx,
+                   dest_first);
+    // Copy elements after local range:
+    LOG_MESSAGE("Copying from global range (%d-%d]",
+                l_end_idx, array.size());
+    dest_last  = dash::copy(
+                   array.begin() + l_end_idx,
+                   array.end(),
+                   dest_first);
+    LOG_MESSAGE("Validating elements");
+    int l = 0;
+    for (auto g = 0; g < array.size(); ++g) {
+      if (array.pattern().unit_at(g) != dash::myid()) {
+        int expected = array[g];
+        LOG_MESSAGE("Validating value at global index %d (local: %d) = %d",
+                    g, l, expected);
+        ASSERT_EQ_U(expected, local_copy[l]);
+        ++l;
+      }
+    }
+  }
+}
+
 TEST_F(CopyTest, BlockingGlobalToLocalBarrierUnaligned)
 {
   dart_unit_t myid       = dash::myid();

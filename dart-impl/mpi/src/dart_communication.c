@@ -45,30 +45,41 @@ int unit_g2l(
 }
 
 dart_ret_t dart_get(
-  void *dest,
-  dart_gptr_t gptr,
-  size_t nbytes)
+  void        * dest,
+  dart_gptr_t   gptr,
+  size_t        nbytes)
 {
-  MPI_Aint disp_s, disp_rel;
-  dart_unit_t target_unitid_abs;
-  uint64_t offset = gptr.addr_or_offs.offset;
-  int16_t seg_id = gptr.segid;
-  target_unitid_abs = gptr.unitid;
-  MPI_Win win;
+  MPI_Aint    disp_s,
+              disp_rel;
+  MPI_Win     win;
+  dart_unit_t target_unitid_abs = gptr.unitid;
+  uint64_t    offset            = gptr.addr_or_offs.offset;
+  int16_t     seg_id            = gptr.segid;
 
+  DART_LOG_DEBUG("dart_get() nbytes:%lld s:%d o:%lld u:%d",
+                 nbytes, seg_id, offset, target_unitid_abs);
   if (seg_id) {
-    uint16_t index = gptr.flags;
+    uint16_t    index = gptr.flags;
+    win               = dart_win_lists[index];
     dart_unit_t target_unitid_rel;
-                               
-    win = dart_win_lists[index];
-    unit_g2l(index, target_unitid_abs, &target_unitid_rel);      
+
+    DART_LOG_TRACE("dart_get() index:%d win:%lld",
+                   index, win);
+    unit_g2l(index,
+             target_unitid_abs,
+             &target_unitid_rel);
+    DART_LOG_TRACE("dart_get() relative unit id: %d",
+                   target_unitid_rel);
     if (dart_adapt_transtable_get_disp(
           seg_id,
           target_unitid_rel,
-          &disp_s)== -1) {
+          &disp_s) == -1) {
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
+    DART_LOG_TRACE("dart_get: nbytes:%lld "
+                   "source (collect.): win:%lld unit:%d disp:%lld -> dest: %p",
+                   nbytes, win, target_unitid_rel, disp_rel, dest);
     MPI_Get(
       dest,
       nbytes,
@@ -78,11 +89,11 @@ dart_ret_t dart_get(
       nbytes,
       MPI_BYTE,
       win);
-    DART_LOG_DEBUG("GET  - %d bytes (allocated with collective allocation) "
-          "from %d at the offset %d",
-          nbytes, target_unitid_abs, offset);
   } else {
     win = dart_win_local_alloc;
+    DART_LOG_TRACE("dart_get: nbytes:%lld "
+                   "source (local): win:%lld unit:%d offset:%lld -> dest: %p",
+                   nbytes, win, target_unitid_abs, offset, dest);
     MPI_Get(
       dest,
       nbytes,
@@ -92,10 +103,8 @@ dart_ret_t dart_get(
       nbytes,
       MPI_BYTE,
       win);
-    DART_LOG_DEBUG ("GET  - %d bytes (allocated with local allocation) "
-           "from %d at the offset %d",
-           nbytes, target_unitid_abs, offset);
-  }                
+  }
+  DART_LOG_DEBUG("dart_get > finished");
   return DART_OK;
 }
 
@@ -690,21 +699,25 @@ dart_ret_t dart_get_blocking(
 dart_ret_t dart_flush(
   dart_gptr_t gptr)
 {
+  MPI_Win     win;
   dart_unit_t target_unitid_abs;
-  int16_t seg_id = gptr.segid;
-  MPI_Win win;
-  target_unitid_abs = gptr.unitid;
+  int16_t     seg_id = gptr.segid;
+  target_unitid_abs  = gptr.unitid;
   if (seg_id) {
-    uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
-    win = dart_win_lists[index];
-    unit_g2l (index, target_unitid_abs, &target_unitid_rel);    
+    uint16_t    index = gptr.flags;
+    win               = dart_win_lists[index];
+    DART_LOG_DEBUG("dart_flush() win:%lld seg:%d unit:%d",
+                   win, seg_id, target_unitid_abs);
+    unit_g2l(index, target_unitid_abs, &target_unitid_rel);    
     MPI_Win_flush(target_unitid_rel, win);
   } else {
     win = dart_win_local_alloc;
+    DART_LOG_DEBUG("dart_flush() lwin:%p seg:%d unit:%d",
+                   win, seg_id, target_unitid_abs);
     MPI_Win_flush(target_unitid_abs, win);
   }
-  DART_LOG_DEBUG("FLUSH  - finished");
+  DART_LOG_DEBUG("dart_flush > finished");
   return DART_OK;
 }
 
@@ -712,9 +725,9 @@ dart_ret_t dart_flush_all(
   dart_gptr_t gptr)
 {
   int16_t seg_id;
-  DART_LOG_DEBUG("dart_flush_all()");
   seg_id = gptr.segid;
   MPI_Win win;
+  DART_LOG_DEBUG("dart_flush_all() win:%lld", win);
   if (seg_id) {
     uint16_t index = gptr.flags;
     win = dart_win_lists[index];

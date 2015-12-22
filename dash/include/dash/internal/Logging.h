@@ -44,6 +44,14 @@ namespace dash {
   dash::internal::logging::LogVarWrapper(\
     "DEBUG", __FILE__, __LINE__, context, #var, (var))
 
+#define DASH_LOG_ERROR(...) \
+  dash::internal::logging::LogWrapper(\
+    "ERROR", __FILE__, __LINE__, __VA_ARGS__)
+
+#define DASH_LOG_ERROR_VAR(context, var) \
+  dash::internal::logging::LogVarWrapper(\
+    "ERROR", __FILE__, __LINE__, context, #var, (var))
+
 namespace dash {
 namespace internal {
 namespace logging {
@@ -160,6 +168,8 @@ static void LogVarWrapper(
 #  define DASH_LOG_TRACE_VAR(...) do {  } while(0)
 #  define DASH_LOG_DEBUG(...) do {  } while(0)
 #  define DASH_LOG_DEBUG_VAR(...) do {  } while(0)
+#  define DASH_LOG_ERROR(...) do {  } while(0)
+#  define DASH_LOG_ERROR_VAR(...) do {  } while(0)
 
 #endif // DASH_ENABLE_LOGGING
 

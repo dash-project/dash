@@ -548,7 +548,7 @@ public:
     DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", g_index);
     dart_unit_t unit_idx = 0;
     for (; unit_idx < _nunits - 1; ++unit_idx) {
-      if (_block_offsets[unit_idx+1] >= g_index) {
+      if (_block_offsets[unit_idx+1] > g_index) {
         DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
         return unit_idx;
       }
@@ -1171,7 +1171,7 @@ public:
     // Tiled and blocked distribution:
     if (dist_type == dash::internal::DIST_BLOCKED ||
         dist_type == dash::internal::DIST_TILE) {
-      auto blocksize = total_size / nunits;
+      auto blocksize = dash::math::div_ceil(total_size, nunits);
       for (auto u = 0; u < nunits; ++u) {
         l_sizes.push_back(blocksize);
       }

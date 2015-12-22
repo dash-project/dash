@@ -9,20 +9,22 @@
 #include <iomanip>
 #include <vector>
 #include <math.h>
+#include <unistd.h>
 
 using std::cout;
 using std::endl;
 using std::vector;
 
+typedef int     ElementType;
 typedef int64_t index_t;
-
+typedef dash::Array<
+          ElementType,
+          index_t,
+          dash::CSRPattern<1, dash::ROW_MAJOR, index_t>
+        > Array_t;
 typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
-
-#ifndef TYPE
-#define TYPE int
-#endif
 
 #define CPU_FREQ 2501
 
@@ -33,9 +35,9 @@ typedef dash::util::Timer<
     } \
   } while(0)
 
-double copy_all_local(unsigned long size, bool parallel);
-double copy_partially_local(unsigned long size, bool parallel);
-double copy_no_local(unsigned long size, bool parallel);
+double copy_all_local(size_t size, bool parallel);
+double copy_partially_local(size_t size, bool parallel);
+double copy_no_local(size_t size, bool parallel);
 
 int main(int argc, char** argv)
 {
@@ -44,7 +46,7 @@ int main(int argc, char** argv)
   double kps_nl;
   double mem_rank;
   double mem_glob;
-  long   size;
+  size_t size;
 
   dash::init(&argc, &argv);
   Timer::Calibrate(0);
@@ -59,29 +61,38 @@ int main(int argc, char** argv)
          << endl;
   }
 
-  for (int i=3; i<10; i++)
+  for (int size_exp = 3; size_exp < 10; ++size_exp)
   {
-    size      = (unsigned long) std::pow((double) 10,(double) i);
+    size      = (size_t)std::pow((double)10, (double)size_exp);
 
-    DASH_LOG_DEBUG("==== START: i:", i, "copy_all_local");
-    kps_al    = copy_all_local(size,false);
+#if 1
+    DASH_LOG_DEBUG("main", "START copy_all_local", "size: 10^", size_exp);
+    kps_al    = copy_all_local(size, false);
     dash::barrier();
-    DASH_LOG_DEBUG("==== FINISHED: i:", i, "copy_all_local");
+    sleep(1);
+    DASH_LOG_DEBUG("main", "DONE  copy_all_local", "size: 10^", size_exp);
+#endif
 
-    DASH_LOG_DEBUG("==== START: i:", i, "copy_partially_local");
-    kps_pl    = copy_partially_local(size,false);
+#if 1
+    DASH_LOG_DEBUG("main", "START copy_partially_local", "size: 10^", size_exp);
+    kps_pl    = copy_partially_local(size, false);
     dash::barrier();
-    DASH_LOG_DEBUG("==== FINISHED: i:", i, "copy_partially_local");
+    sleep(1);
+    DASH_LOG_DEBUG("main", "DONE  copy_partially_local", "size: 10^", size_exp);
+#endif
 
-    DASH_LOG_DEBUG("==== START: i:", i, "copy_partially_local");
+#if 1
+    DASH_LOG_DEBUG("main", "START copy_no_local", "size: 10^", size_exp);
     kps_nl    = copy_no_local(size,false);
     dash::barrier();
-    DASH_LOG_DEBUG("==== FINISHED: i:", i, "copy_partially_local");
+    sleep(1);
+    DASH_LOG_DEBUG("main", "DONE  copy_no_local", "size: 10^", size_exp);
+#endif
 
-    mem_glob  = ((sizeof(TYPE) * size) / 1024) / 1024;
+    mem_glob  = ((sizeof(ElementType) * size) / 1024) / 1024;
     mem_rank  = mem_glob / dash::size();
 
-    DASH_PRINT_MASTER("10^" << i << "\t"
+    DASH_PRINT_MASTER("10^" << size_exp << "\t"
                       << std::setprecision(5) << std::setw(5)
                       << kps_al << "\t\t"
                       << std::setprecision(5) << std::setw(5)
@@ -101,10 +112,10 @@ int main(int argc, char** argv)
   return 0;
 }
 
-double copy_all_local(unsigned long size, bool parallel)
+double copy_all_local(size_t size, bool parallel)
 {
-  dash::Array<TYPE, index_t> global_array(size, dash::BLOCKED);
-  TYPE *local_array = nullptr;
+  Array_t global_array(size, dash::BLOCKED);
+  ElementType *local_array = nullptr;
 
   auto l_start_idx  = global_array.pattern().lbegin();
   auto l_end_idx    = global_array.pattern().lend();
@@ -119,7 +130,7 @@ double copy_all_local(unsigned long size, bool parallel)
                  "l_size:", local_size);
 
   if(dash::myid() == 0 && !parallel){
-    local_array = (TYPE*) malloc(sizeof(TYPE)*local_size*2);
+    local_array = (ElementType*) malloc(sizeof(ElementType)*local_size*2);
   }
 
   dash::barrier();
@@ -139,10 +150,10 @@ double copy_all_local(unsigned long size, bool parallel)
   return (1.0e-6 * (local_size / elapsed));
 }
 
-double copy_partially_local(unsigned long size, bool parallel)
+double copy_partially_local(size_t size, bool parallel)
 {
-  dash::Array<TYPE, index_t> global_array(size, dash::BLOCKED);
-  TYPE *local_array = nullptr;
+  Array_t global_array(size, dash::BLOCKED);
+  ElementType *local_array = nullptr;
   auto timer_start  = Timer::Now();
   double elapsed;  
 
@@ -150,7 +161,7 @@ double copy_partially_local(unsigned long size, bool parallel)
                  "size:", size);
 
   if(dash::myid() == 0 && !parallel){
-    local_array = (TYPE*) malloc(sizeof(TYPE)*size*2);
+    local_array = (ElementType*) malloc(sizeof(ElementType)*size*2);
   }
 
   dash::barrier();
@@ -170,17 +181,16 @@ double copy_partially_local(unsigned long size, bool parallel)
   return (1.0e-6 * (size / elapsed));
 }
 
-double copy_no_local(unsigned long size, bool parallel)
+double copy_no_local(size_t size, bool parallel)
 {
-  dash::Array<TYPE, index_t> global_array(size, dash::BLOCKED);
-  TYPE *local_array     = nullptr;
-  auto l_start_idx      = global_array.pattern().lbegin();
-  auto l_end_idx        = global_array.pattern().lend();
-  size_t local_size     = l_end_idx - l_start_idx;
+  Array_t global_array(size, dash::BLOCKED);
+  auto    l_start_idx    = global_array.pattern().lbegin();
+  auto    l_end_idx      = global_array.pattern().lend();
+  size_t  local_size     = l_end_idx - l_start_idx;
 
-  size_t num_copy_elem  = size - local_size;
-  auto timer_start      = Timer::Now();
-  double elapsed;
+  size_t  num_copy_elem  = size - local_size;
+  auto    timer_start    = Timer::Now();
+  double  elapsed;
 
   DASH_LOG_DEBUG("copy_no_local()",
                  "size:",   size,
@@ -188,25 +198,53 @@ double copy_no_local(unsigned long size, bool parallel)
                  "l_size:", local_size,
                  "n_copy:", num_copy_elem);
 
-  if(dash::myid() == 0 && !parallel){
-    local_array = (TYPE*) malloc(sizeof(TYPE)*local_size*2);
+  for (auto l = 0; l < global_array.lsize(); ++l) {
+    global_array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
-
   dash::barrier();
 
-  if(dash::myid() == 0 && !parallel){
+  if(dash::myid() == 0 && !parallel) {
+    // Allocate target array on heap as it might get too large for the stack:
+    ElementType * local_array = new ElementType[num_copy_elem];
+    // Pointer to first element in destination range:
+    auto dest_first = local_array;
+    // Pointer past last element in destination range:
+    auto dest_last  = local_array;
+    // Start timer:
     timer_start = Timer::Now();
-    // Does not work
-    dash::copy(global_array.begin() + l_end_idx,
-               global_array.end(),
-               local_array);
+    // Copy elements in front of local range:
+    DASH_LOG_DEBUG(
+      "copy_no_local",
+      "Copying from global range",
+      0, "-", l_start_idx);
+    dest_first = dash::copy(
+                   global_array.begin(),
+                   global_array.begin() + l_start_idx,
+                   dest_first);
+    // Copy elements after local range:
+    DASH_LOG_DEBUG(
+      "copy_no_local",
+      "Copying from global range",
+      l_end_idx, "-", global_array.size());
+    dest_last  = dash::copy(
+                   global_array.begin() + l_end_idx,
+                   global_array.end(),
+                   dest_first);
     elapsed = Timer::ElapsedSince(timer_start);
 
+    DASH_ASSERT_EQ(
+      local_array + num_copy_elem,
+      dest_last,
+      "Unexpected output pointer from dash::copy");
     if (local_array != nullptr) {
-      free(local_array);
+      delete[] local_array;
     }
   }
 
+  DASH_LOG_DEBUG(
+      "copy_no_local",
+      "Waiting for completion of copy operation");
   dash::barrier();
+
   return (1.0e-6 * (num_copy_elem / elapsed));
 }
