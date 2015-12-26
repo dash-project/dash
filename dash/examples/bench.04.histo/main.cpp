@@ -5,11 +5,9 @@
 #include "../bench.h"
 
 //#define DBGOUT
-
 //#define CUMULATIVE
 
 #define COLLECTIVE_ALLOCATION
-
 
 using std::cout; 
 using std::endl;
@@ -41,11 +39,14 @@ int main(int argc, char **argv)
   std::srand(31337);
     
   perform_test<int>( 1<<5 , 1<<3 );
+
+  /*
   perform_test<int>( 1<<16, 1<<11 ); // NAS class S
   perform_test<int>( 1<<20, 1<<16 ); // NAS class W
   perform_test<int>( 1<<23, 1<<19 ); // NAS class A
   perform_test<int>( 1<<25, 1<<21 ); // NAS class B
   perform_test<int>( 1<<27, 1<<23 ); // NAS class C
+  */
       
   dash::finalize();
   
@@ -86,17 +87,18 @@ void perform_test(unsigned NUM_KEYS, unsigned MAX_KEY)
   double t2 = test_local_copy(key_array, key_histo);
   
   if(myid==0) {
-    cout<<"NUM_KEYS: "<<NUM_KEYS<<" -- "<<"MAX_KEY: "<<MAX_KEY<<endl;
-    cout<<"Owner computes : MKeys/sec: "<<(NUM_KEYS*1.0e-6)/t1<<endl;
-    cout<<"Local copy     : MKeys/sec: "<<(NUM_KEYS*1.0e-6)/t2<<endl;
+    cout<<"NUM_KEYS                 : "<<NUM_KEYS<<endl;
+    cout<<"MAX_KEY                  : "<<MAX_KEY<<endl;
+    cout<<"Owner computes MKeys/sec : "<<(NUM_KEYS*1.0e-6)/t1<<endl;
+    cout<<"Local copy     MKeys/sec : "<<(NUM_KEYS*1.0e-6)/t2<<endl;
     cout<<"---------------------------"<<endl;
   }
-  
+
 #ifdef DBGOUT
   dash::barrier();
   if(myid==0) {
     cout<<"key_histo:"<<endl;
-    for(auto i=0; i<key_histo.size(); i++ ) {
+    for(int i=0; i<key_histo.size(); i++ ) {
       cout<<(int)key_histo[i]<<" ";
     }
     cout<<endl;
