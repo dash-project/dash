@@ -19,9 +19,9 @@ template<
 >
 void multiply_naive(
   /// Matrix to multiply, extents n x m
-  const MatrixTypeA & A,
+  MatrixTypeA & A,
   /// Matrix to multiply, extents m x p
-  const MatrixTypeB & B,
+  MatrixTypeB & B,
   /// Matrix to contain the multiplication result, extents n x p,
   /// initialized with zeros
   MatrixTypeC      & C,
@@ -29,13 +29,15 @@ void multiply_naive(
   size_t             n,
   size_t             p)
 {
+  typedef typename MatrixTypeC::pattern_type pattern_c_type;
+  typedef typename MatrixTypeC::value_type   value_type;
   for (auto i = 0; i < n; ++i) {
     // i = 0...n
     for (auto j = 0; j < p; ++j) {
       // j = 0...p
       for (auto k = 0; k < m; ++k) {
         // k = 0...m
-        C[i][j] += A[i][k] + B[k][j];
+        C[i][j] += A[i * m + k] * B[k * m + j];
       }
     }
   }
@@ -83,16 +85,19 @@ template<
 >
 void summa(
   /// Matrix to multiply, extents n x m
-  const MatrixTypeA & A,
+  MatrixTypeA & A,
   /// Matrix to multiply, extents m x p
-  const MatrixTypeB & B,
+  MatrixTypeB & B,
   /// Matrix to contain the multiplication result, extents n x p,
   /// initialized with zeros
   MatrixTypeC & C)
 {
-  typedef typename MatrixTypeA::value_type value_type;
-  typedef typename MatrixTypeA::index_type index_type;
-  typedef std::array<index_type, 2>        coords_type;
+  typedef typename MatrixTypeA::value_type   value_type;
+  typedef typename MatrixTypeA::index_type   index_type;
+  typedef typename MatrixTypeA::pattern_type pattern_a_type;
+  typedef typename MatrixTypeB::pattern_type pattern_b_type;
+  typedef typename MatrixTypeC::pattern_type pattern_c_type;
+  typedef std::array<index_type, 2>          coords_type;
 
   DASH_LOG_DEBUG("dash::summa()");
   // Verify that matrix patterns satisfy pattern constraints:
@@ -238,8 +243,9 @@ void summa(
                        "k:",   block_k,
                        "j+u:", block_j + block_col_u,
                        "to C.block[i+ru][j+cu]");
-        auto block_c = C.block(coords_type { block_i + block_row_u,
-                                             block_j + block_col_u });
+        dash::MatrixRef<value_type, 2, 2, pattern_c_type> block_c =
+          C.block(coords_type { block_i + block_row_u,
+                                block_j + block_col_u });
         // Plausibility check: first element in block expected to be local.
         DASH_ASSERT(block_c.is_local(0));
         // Local matrix multiplication:
@@ -270,6 +276,7 @@ template<
   typename MatrixTypeB,
   typename MatrixTypeC
 >
+#if 0
 typename std::enable_if<
   dash::pattern_constraints<
     dash::summa_pattern_blocking_constraints,
@@ -291,11 +298,14 @@ typename std::enable_if<
   >::satisfied::value,
   void
 >::type
+#else
+void
+#endif
 multiply(
   /// Matrix to multiply, extents n x m
-  const MatrixTypeA & A,
+  MatrixTypeA & A,
   /// Matrix to multiply, extents m x p
-  const MatrixTypeB & B,
+  MatrixTypeB & B,
   /// Matrix to contain the multiplication result, extents n x p,
   /// initialized with zeros
   MatrixTypeC & C)

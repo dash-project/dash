@@ -1,9 +1,6 @@
 #ifndef DASH_MATRIX_H_INCLUDED
 #define DASH_MATRIX_H_INCLUDED
 
-#include <type_traits>
-#include <stdexcept>
-
 #include <dash/dart/if/dart.h>
 
 #include <dash/Team.h>
@@ -12,6 +9,9 @@
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
 #include <dash/Container.h>
+
+#include <type_traits>
+#include <stdexcept>
 
 /**
  * \defgroup  DashMatrixConcept  Matrix Concept
@@ -317,6 +317,31 @@ public:
     Matrix<T, NumDimensions, index_type, PatternT> * mat);
 
   /**
+   * View at local block at given local block coordinates.
+   */
+  View<NumDimensions> block(
+    const std::array<index_type, NumDimensions> & block_lcoords)
+  {
+    // Note: This is equivalent to
+    //   foreach (d in 0 ... NumDimensions):
+    //     view = view.sub<d>(block_view.offset(d),
+    //                        block_view.extent(d));
+    //
+    DASH_LOG_TRACE("LocalMatrixRef.block()", block_lcoords);
+    auto pattern      = _refview->_mat->_pattern;
+    auto block_lindex = pattern.blockspec().at(block_lcoords);
+    DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
+    // Resolve the block's viewspec:
+    ViewSpec<NumDimensions> block_view = pattern.local_block(block_lindex);
+    // Return a view specified by the block's viewspec:
+    View<NumDimensions> view;
+    view._refview            = new MatrixRefView_t(this);
+    view._refview->_viewspec = block_view;
+    DASH_LOG_TRACE("LocalMatrixRef.block >", block_view);
+    return view;
+  }
+
+  /**
    * View at local block at given local block offset.
    */
   View<NumDimensions> block(
@@ -407,7 +432,7 @@ public:
    * Subscript operator, access element at given offset in
    * global element range.
    */
-  LocalMatrixRef<T, NumDimensions, CUR-1, PatternT>
+  const LocalMatrixRef<T, NumDimensions, CUR-1, PatternT>
     operator[](index_type n) const;
 
   template<dim_t NumSubDimensions>
@@ -455,7 +480,6 @@ public:
 
 private:
   MatrixRefView_t * _refview;
-
 };
 
 /**
@@ -470,6 +494,9 @@ template <
   class PatternT >
 class LocalMatrixRef<T, NumDimensions, 0, PatternT>
 {
+ private:
+   typedef LocalMatrixRef<T, NumDimensions, 0, PatternT> self_t;
+
  public:
   template<
     typename T_,
@@ -483,7 +510,8 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
   typedef typename PatternT::size_type   size_type;
 
  public:
-  LocalMatrixRef<T, NumDimensions, 0, PatternT>() = default;
+  LocalMatrixRef<T, NumDimensions, 0, PatternT>()               = default;
+  LocalMatrixRef<T, NumDimensions, 0, PatternT>(const self_t &) = default;
 
   inline T * local_at(index_type pos);
   inline operator T();
@@ -628,6 +656,13 @@ class MatrixRef
    * in global element range.
    */
   MatrixRef<ElementT, NumDimensions, CUR-1, PatternT>
+    operator[](index_type n);
+
+  /**
+   * Subscript operator, returns a submatrix reference at given offset
+   * in global element range.
+   */
+  const MatrixRef<ElementT, NumDimensions, CUR-1, PatternT>
     operator[](index_type n) const;
 
   template<dim_t NumSubDimensions>
@@ -731,6 +766,9 @@ template <
   class PatternT >
 class MatrixRef< ElementT, NumDimensions, 0, PatternT >
 {
+ private:
+   typedef MatrixRef<ElementT, NumDimensions, 0, PatternT> self_t;
+
  public:
   template<
     typename T_,
@@ -749,6 +787,27 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
   typedef PatternT                       pattern_type;
   typedef typename PatternT::index_type  index_type;
   typedef ElementT                       value_type;
+
+  /**
+   * Default constructor.
+   */
+  MatrixRef<ElementT, NumDimensions, 0, PatternT>()
+  : _refview(nullptr) {
+    DASH_LOG_TRACE_VAR("MatrixRef<T,D,0>()", NumDimensions);
+  }
+
+  /**
+   * Copy constructor.
+   */
+  MatrixRef<ElementT, NumDimensions, 0, PatternT>(
+    const self_t & other)
+  : _refview(other._refview) {
+    DASH_LOG_TRACE_VAR("MatrixRef<T,D,0>(other)", NumDimensions);
+  }
+
+  MatrixRef<ElementT, NumDimensions, 0, PatternT>(
+    const MatrixRef<ElementT, NumDimensions, 1, PatternT> & previous,
+    index_type coord);
   
   inline const GlobRef<ElementT> local_at(
     dart_unit_t unit,
@@ -758,18 +817,21 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
     dart_unit_t unit,
     index_type elem);
 
-  MatrixRef<ElementT, NumDimensions, 0, PatternT>()
-  : _refview(nullptr) {
-    DASH_LOG_TRACE_VAR("MatrixRef<T,D,0>()", NumDimensions);
-  }
-
-  MatrixRef<ElementT, NumDimensions, 0, PatternT>(
-    const MatrixRef<ElementT, NumDimensions, 1, PatternT> & previous,
-    index_type coord);
-
   operator ElementT();
   operator GlobPtr<ElementT>();
-  ElementT operator=(const ElementT & value);
+
+  /**
+   * Assignment operator.
+   */
+  ElementT operator= (const ElementT & value);
+  ElementT operator+=(const ElementT & value);
+  ElementT operator+ (const ElementT & value);
+  ElementT operator-=(const ElementT & value);
+  ElementT operator- (const ElementT & value);
+  ElementT operator*=(const ElementT & value);
+  ElementT operator* (const ElementT & value);
+  ElementT operator/=(const ElementT & value);
+  ElementT operator/ (const ElementT & value);
 
  private:
   MatrixRefView<ElementT, NumDimensions, PatternT> * _refview;
@@ -914,6 +976,30 @@ public:
   inline ~Matrix();
 
   /**
+   * View at block at given global block coordinates.
+   */
+  View<NumDimensions> block(
+    const std::array<index_type, NumDimensions> & block_gcoords)
+  {
+    // Note: This is equivalent to
+    //   foreach (d in 0 ... NumDimensions):
+    //     view = view.sub<d>(block_view.offset(d),
+    //                        block_view.extent(d));
+    //
+    DASH_LOG_TRACE("Matrix.block()", block_gcoords);
+    auto block_gindex = pattern().blockspec().at(block_gcoords);
+    DASH_LOG_TRACE("Matrix.block()", block_gindex);
+    // Resolve the block's viewspec:
+    ViewSpec<NumDimensions> block_view = pattern().block(block_gindex);
+    // Return a view specified by the block's viewspec:
+    View<NumDimensions> view;
+    view._refview            = new MatrixRefView_t(this);
+    view._refview->_viewspec = block_view;
+    DASH_LOG_TRACE("Matrix.block >", block_view);
+    return view;
+  }
+
+  /**
    * View at block at given global block offset.
    */
   View<NumDimensions> block(
@@ -985,6 +1071,14 @@ public:
   inline    ElementT        * lbegin()                    noexcept;
   /// Pointer past final element in local range.
   inline    ElementT        * lend()                      noexcept;
+
+  /**
+   * Subscript operator, returns a submatrix reference at given offset
+   * in global element range.
+   */
+  inline const MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
+  operator[](
+    size_type n) const;
 
   /**
    * Subscript operator, returns a submatrix reference at given offset

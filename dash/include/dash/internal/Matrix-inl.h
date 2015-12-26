@@ -221,7 +221,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 LocalMatrixRef<T, NumDim, CUR-1, PatternT>
-LocalMatrixRef<T, NumDim, CUR, PatternT>
+const LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
   index_type pos) const
 {
@@ -583,6 +583,18 @@ template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 MatrixRef<T, NumDim, CUR-1, PatternT>
 MatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
+  index_type pos)
+{
+  DASH_LOG_TRACE_VAR("MatrixRef.[]=()", pos);
+  DASH_LOG_TRACE_VAR("MatrixRef.[]=", CUR);
+  MatrixRef<T, NumDim, CUR-1, PatternT> ref(*this, pos);
+  return ref;
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+const MatrixRef<T, NumDim, CUR-1, PatternT>
+MatrixRef<T, NumDim, CUR, PatternT>
+::operator[](
   index_type pos) const
 {
   DASH_LOG_TRACE_VAR("MatrixRef.[]()", pos);
@@ -783,8 +795,7 @@ inline MatrixRef<T, NumDim, 0, PatternT>
 {
   DASH_LOG_TRACE_VAR("MatrixRef<0>.T()", _refview->_coord);
   GlobRef<T> ref = _refview->global_reference();
-  DASH_LOG_TRACE("MatrixRef<0>.T()", "delete _refview");
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.T() delete", _refview);
+  DASH_LOG_TRACE("MatrixRef<0>.T()", "delete _refview", _refview);
   delete _refview;
   DASH_LOG_TRACE_VAR("MatrixRef<0>.T() >", (T)ref);
   return ref;
@@ -809,10 +820,113 @@ MatrixRef<T, NumDim, 0, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRef<0>.=", _refview->_coord);
   GlobRef<T> ref = _refview->global_reference();
   ref = value;
-  DASH_LOG_TRACE("MatrixRef<0>.=", "delete _refview");
-  DASH_LOG_TRACE_VAR("MatrixRef<0>.= delete", _refview);
+  DASH_LOG_TRACE("MatrixRef<0>.=", "delete _refview", _refview);
   delete _refview;
   return value;
+}
+
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+MatrixRef<T, NumDim, 0, PatternT>
+::operator+=(
+  const T & value)
+{
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.+=()", value);
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.+=", _refview->_coord);
+  GlobRef<T> ref = _refview->global_reference();
+  ref += value;
+  DASH_LOG_TRACE("MatrixRef<0>.+=", "delete _refview", _refview);
+  delete _refview;
+  return value;
+}
+
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+MatrixRef<T, NumDim, 0, PatternT>
+::operator+(
+  const T & value)
+{
+  auto res  = self_t(*this);
+  res      += value;
+  return res;
+}
+
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+MatrixRef<T, NumDim, 0, PatternT>
+::operator-=(
+  const T & value)
+{
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.-=()", value);
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.-=", _refview->_coord);
+  GlobRef<T> ref = _refview->global_reference();
+  ref -= value;
+  DASH_LOG_TRACE("MatrixRef<0>.-=", "delete _refview", _refview);
+  delete _refview;
+  return value;
+}
+
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+MatrixRef<T, NumDim, 0, PatternT>
+::operator-(
+  const T & value)
+{
+  auto res  = self_t(*this);
+  res      -= value;
+  return res;
+}
+
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+MatrixRef<T, NumDim, 0, PatternT>
+::operator*=(
+  const T & value)
+{
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.*=()", value);
+  DASH_LOG_TRACE_VAR("MatrixRef<0>.*=", _refview->_coord);
+  GlobRef<T> ref = _refview->global_reference();
+  ref *= value;
+  DASH_LOG_TRACE("MatrixRef<0>.*=", "delete _refview", _refview);
+  delete _refview;
+  return value;
+}
+
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+MatrixRef<T, NumDim, 0, PatternT>
+::operator*(
+  const T & value)
+{
+  auto res  = self_t(*this);
+  res      *= value;
+  return res;
+}
+
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+MatrixRef<T, NumDim, 0, PatternT>
+::operator/=(
+  const T & value)
+{
+  DASH_LOG_TRACE_VAR("MatrixRef<0>./=()", value);
+  DASH_LOG_TRACE_VAR("MatrixRef<0>./=", _refview->_coord);
+  GlobRef<T> ref = _refview->global_reference();
+  ref /= value;
+  DASH_LOG_TRACE("MatrixRef<0>./=", "delete _refview", _refview);
+  delete _refview;
+  return value;
+}
+
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+MatrixRef<T, NumDim, 0, PatternT>
+::operator/(
+  const T & value)
+{
+  auto res  = self_t(*this);
+  res      /= value;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1074,6 +1188,15 @@ Matrix<T, NumDim, IndexT, PatternT>
 ::lend() noexcept
 {
   return _lend;
+}
+
+template <typename T, dim_t NumDim, typename IndexT, class PatternT>
+inline const MatrixRef<T, NumDim, NumDim-1, PatternT>
+Matrix<T, NumDim, IndexT, PatternT>
+::operator[](size_type pos) const
+{
+  DASH_LOG_TRACE_VAR("Matrix.[]()", pos);
+  return _ref.operator[](pos);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
