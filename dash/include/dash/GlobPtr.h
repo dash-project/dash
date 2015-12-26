@@ -393,15 +393,16 @@ std::ostream & operator<<(
   std::ostream & os,
   const GlobPtr<T> & gptr)
 {
+  std::ostringstream ss;
   char buf[100];
   sprintf(buf,
-          "(%08X|%04X|%04X|%016X)",
+          "%08X|%04X|%04X|%016X",
           gptr._dart_gptr.unitid,
           gptr._dart_gptr.segid,
           gptr._dart_gptr.flags,
           gptr._dart_gptr.addr_or_offs.offset);
-  os << "dash::GlobPtr<" << typeid(T).name() << ">" << buf;
-  return os;
+  ss << "dash::GlobPtr<" << typeid(T).name() << ">(" << buf << ")";
+  return operator<<(os, ss.str());
 }
 
 } // namespace dash

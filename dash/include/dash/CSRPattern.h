@@ -1262,7 +1262,9 @@ public:
     const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec", local_sizes);
-    BlockSpec_t blockspec({ local_sizes.size() });
+    BlockSpec_t blockspec({ 
+                  static_cast<size_type>(local_sizes.size())
+                });
     DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec >", blockspec);
     return blockspec;
   }

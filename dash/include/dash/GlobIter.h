@@ -4,7 +4,9 @@
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
+
 #include <functional>
+#include <sstream>
 
 namespace dash {
 
@@ -653,18 +655,19 @@ gptrdiff_t distance(
 
 template <
   typename ElementType_,
-  class Pattern_,
-  class Pointer_,
-  class Reference_ >
+  class    Pattern_,
+  class    Pointer_,
+  class    Reference_ >
 std::ostream & operator<<(
   std::ostream & os,
   const dash::GlobIter<ElementType_, Pattern_, Pointer_, Reference_> & it)
 {
+  std::ostringstream ss;
   dash::GlobPtr<ElementType_> ptr(it); 
-  os << "dash::GlobIter<ElementType, PatternType>: ";
-  os << "idx=" << it._idx << std::endl;
-  os << "--> " << ptr;
-  return operator<<(os, ptr);
+  ss << "dash::GlobIter<ElementType, PatternType>:"
+     << "idx(" << it._idx << ")"
+     << "->(" << ptr << ")";
+  return operator<<(os, ss.str());
 }
 
 #endif // DASH__GLOB_ITER_H_
