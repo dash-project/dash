@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if [ "${PAPI_HOME}" = "" ]; then
+  PAPI_HOME=$PAPI_BASE
+fi
+
 # Parse args:
 BASEPATH=`git rev-parse --show-toplevel`
 FORCE_BUILD=false
@@ -28,8 +32,7 @@ if [ "$INSTALL_PATH" = "" ]; then
   exit -1
 fi
 
-function await_confirm
-{
+await_confirm() {
   if ! $FORCE_BUILD; then
     echo    "$BUILD_SETTINGS"
     echo    ""
@@ -37,7 +40,7 @@ function await_confirm
   fi
 }
 
-function exit_message {
+exit_message() {
   echo "----------------------------------------------------"
   if $DO_INSTALL; then
     echo "Done. DASH has been installed to $INSTALL_PATH"
@@ -54,9 +57,12 @@ if [ "$BUILD_TYPE" = "Release" ]; then
   -DINSTALL_PREFIX=$INSTALL_PATH
   -DDART_IMPLEMENTATIONS=mpi,shmem
   -DBUILD_EXAMPLES=ON
+  -DBUILD_TESTS=ON
   -DENABLE_LOGGING=OFF
   -DENABLE_TRACE_LOGGING=OFF
-  -DBUILD_TESTS=ON"
+  -DENABLE_DART_LOGGING=OFF
+  -DENABLE_SHARED_WINDOWS=ON
+  -DPAPI_PREFIX=${PAPI_HOME}"
 elif [ "$BUILD_TYPE" = "Debug" ]; then
   BUILD_SETTINGS="
   -DCMAKE_BUILD_TYPE=Debug
@@ -65,9 +71,12 @@ elif [ "$BUILD_TYPE" = "Debug" ]; then
   -DINSTALL_PREFIX=$INSTALL_PATH
   -DDART_IMPLEMENTATIONS=mpi,shmem
   -DBUILD_EXAMPLES=ON
+  -DBUILD_TESTS=ON
   -DENABLE_LOGGING=OFF
   -DENABLE_TRACE_LOGGING=OFF
-  -DBUILD_TESTS=ON"
+  -DENABLE_DART_LOGGING=OFF
+  -DENABLE_SHARED_WINDOWS=ON
+  -DPAPI_PREFIX=${PAPI_HOME}"
 elif [ "$BUILD_TYPE" = "Development" ]; then
   BUILD_SETTINGS="
   -DCMAKE_BUILD_TYPE=Debug
@@ -76,14 +85,19 @@ elif [ "$BUILD_TYPE" = "Development" ]; then
   -DINSTALL_PREFIX=$INSTALL_PATH
   -DDART_IMPLEMENTATIONS=mpi,shmem
   -DBUILD_EXAMPLES=ON
+  -DBUILD_TESTS=ON
   -DENABLE_LOGGING=ON
   -DENABLE_TRACE_LOGGING=ON
-  -DBUILD_TESTS=ON"
+  -DENABLE_DART_LOGGING=OFF
+  -DENABLE_SHARED_WINDOWS=ON
+  -DPAPI_PREFIX=${PAPI_HOME}"
 fi
+
+alias nocolor="sed 's/\x1b\[[0-9;]*m//g'"
 
 mkdir -p build
 rm -Rf ./build/*
-(cd ./build && cmake $BASEPATH $BUILD_SETTINGS && \
+(cd ./build && cmake $BASEPATH $BUILD_SETTINGS | nocolor && \
  await_confirm && \
  make -j $MAKE_PROCS $MAKE_TARGET) && \
 exit_message

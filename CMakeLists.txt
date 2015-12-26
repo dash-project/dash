@@ -1,9 +1,22 @@
 project(project_dash)
 
+if(POLICY CMP0054)
+  cmake_policy(SET CMP0054 OLD)
+endif(POLICY CMP0054)
+if(POLICY CMP0053)
+  cmake_policy(SET CMP0053 OLD)
+endif(POLICY CMP0053)
+if(POLICY CMP0007)
+  cmake_policy(SET CMP0007 OLD)
+endif(POLICY CMP0007)
+
+include(${CMAKE_SOURCE_DIR}/CMakeExt/MessageColor.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 
 cmake_minimum_required (VERSION 2.8)
 
@@ -24,15 +37,8 @@ set(CMAKE_RULE_MESSAGES ON)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_COLOR_MAKEFILE ON)
 
-if(POLICY CMP0054)
-  cmake_policy(SET CMP0054 OLD)
-endif(POLICY CMP0054)
-if(POLICY CMP0053)
-  cmake_policy(SET CMP0053 OLD)
-endif(POLICY CMP0053)
-
-message("-- Platform: " ${DASH_PLATFORM_NAME})
-message("-- Platform is POSIX: " ${DASH_PLATFORM_IS_POSIX})
+message(STATUS "Platform:                 " ${DASH_PLATFORM_NAME})
+message(STATUS "Platform is POSIX:        " ${DASH_PLATFORM_IS_POSIX})
 
 ## Install path
 if (INSTALL_PREFIX)
@@ -40,12 +46,12 @@ if (INSTALL_PREFIX)
 else()
   set(CMAKE_INSTALL_PREFIX "/usr/local")
 endif()
-message("-- Install prefix: " ${CMAKE_INSTALL_PREFIX})
+message(INFO "Install prefix:           " ${CMAKE_INSTALL_PREFIX})
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif()
-message("-- Build type: " ${CMAKE_BUILD_TYPE})
+message(INFO "Build type:               " ${CMAKE_BUILD_TYPE})
 
 ## Build options
 option(BUILD_TESTS
@@ -58,25 +64,32 @@ option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
+message(INFO "Enable log messages:      " ${ENABLE_LOGGING})
 option(ENABLE_TRACE_LOGGING
        "Specify whether trace messages should be logged" off)
+message(INFO "Trace log messages:       " ${ENABLE_TRACE_LOGGING})
 option(ENABLE_DART_LOGGING
        "Specify whether messages from DART should be logged" off)
+message(INFO "DART log messages:        " ${ENABLE_DART_LOGGING})
 option(ENABLE_ASSERTIONS
        "Specify whether runtime assertions should be checked" off)
+message(INFO "Runtime assertions:       " ${ENABLE_ASSERTIONS})
 option(MEMORY_MODEL_UNIFIED
        "Specify whether to assume unified memory model" off)
-message("-- Unified RMA memory model " ${MEMORY_MODEL_UNIFIED})
+message(INFO "Unified RMA memory model: " ${MEMORY_MODEL_UNIFIED})
+option(ENABLE_SHARED_WINDOWS
+       "Specify whether shared memory features are enabled" on)
+message(INFO "Shared memory features:   " ${ENABLE_SHARED_WINDOWS})
 
 set(DART_IF_VERSION "3.1" CACHE STRING
     "Version of the DART interface")
-message("-- Using DART interface v" ${DART_IF_VERSION})
+message(INFO "DART interface version:   " ${DART_IF_VERSION})
 
 ## Include path of selected DART interface:
 set(DASH_DART_IF_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/dart-if/v${DART_IF_VERSION}/include
     CACHE PATH INTERNAL FORCE)
-message("-- DART interface include path: "
+message(STATUS "DART interface path:      "
         ${DASH_DART_IF_INCLUDE_DIR})
 
 set(DASH_DART_BASE_INCLUDE_DIR
@@ -113,16 +126,19 @@ add_subdirectory(dart-impl/base)
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
   set(DART_IMPLEMENTATION_MPI_ENABLED ON 
       CACHE BOOL INTERNAL FORCE)
+  message(INFO "Building DART MPI backend")
   add_subdirectory(dart-impl/mpi)
 endif()
 
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
   set(DART_IMPLEMENTATION_SHMEM_ENABLED ON 
       CACHE BOOL INTERNAL FORCE)
+  message(INFO "Building DART SHMEM backend")
   add_subdirectory(dart-impl/shmem)
 endif()
 
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";cuda;")
+  message(INFO "Building DART CUDA backend")
   set(DART_IMPLEMENTATION_CUDA_ENABLED ON 
       CACHE BOOL INTERNAL FORCE)
   add_subdirectory(dart-impl/cuda)

@@ -18,9 +18,13 @@ using namespace std;
 
 #ifndef TYPE
 #define TYPE int
-#endif 
+#endif
 
-typedef dash::TilePattern<
+typedef dash::util::Timer<
+          dash::util::TimeMeasure::Clock
+        > Timer;
+
+typedef dash::CSRPattern<
   1,
   dash::ROW_MAJOR,
   int
@@ -40,6 +44,7 @@ bool validate(ArrayType & a, unsigned, unsigned);
 
 double test_dash_pattern(ArrayType & a, unsigned, unsigned);
 double test_dash_global_iter(ArrayType & a, unsigned, unsigned);
+double test_dash_local_global_iter(ArrayType & a, unsigned, unsigned);
 double test_dash_local_iter(ArrayType & a, unsigned, unsigned);
 double test_dash_local_subscript(ArrayType & a, unsigned, unsigned);
 double test_dash_local_pointer(ArrayType & a, unsigned, unsigned);
@@ -66,8 +71,12 @@ double gups(
 int main(int argc, char* argv[]) {
   dash::init(&argc, &argv);
 
-  dash::util::Timer::Calibrate(
-    dash::util::TimeMeasure::Clock, 0);
+  Timer::Calibrate(0);
+
+  if (dash::myid() == 0) {
+    std::cout << "pattern type: " << PatternType::PatternName
+              << std::endl;
+  }
 
   std::deque<std::pair<int, int>> tests;
 
@@ -100,35 +109,39 @@ void perform_test(
     if (dash::myid() == 0) {
       cout << std::setw(10) << "elem/unit";
       cout << "," << std::setw(10) << "iterations";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash pat";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash g_it";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash l_it";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash l[]";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "dash l*";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "stl vector";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "stl deque";
-      cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << "raw array";
+      cout << "," << std::setw(11) << "pat";
+      cout << "," << std::setw(11) << "g_it";
+      cout << "," << std::setw(11) << "l_g_it";
+      cout << "," << std::setw(11) << "l_it";
+      cout << "," << std::setw(11) << "l[]";
+      cout << "," << std::setw(11) << "l*";
+      cout << "," << std::setw(11) << "stl vector";
+      cout << "," << std::setw(11) << "stl deque";
+      cout << "," << std::setw(11) << "raw array";
       cout << endl;
     }
     return;
   }
   
+  std::vector<unsigned> local_sizes;
+  for (auto u = 0; u < num_units; ++u) {
+    local_sizes.push_back(ELEM_PER_UNIT);
+  }
+  
+  PatternType pat(local_sizes);
   ArrayType arr(
-    // Total number of elements
-    ELEM_PER_UNIT * num_units,
-    // 1-dimensional distribution
-    dash::DistributionSpec<1>(
-      dash::TILE(ELEM_PER_UNIT))
+    pat
   );
   
   double t0 = test_dash_pattern(arr, ELEM_PER_UNIT, REPEAT);
   double t1 = test_dash_global_iter(arr, ELEM_PER_UNIT, REPEAT);
-  double t2 = test_dash_local_iter(arr, ELEM_PER_UNIT, REPEAT);
-  double t3 = test_dash_local_subscript(arr, ELEM_PER_UNIT, REPEAT);
-  double t4 = test_dash_local_pointer(arr, ELEM_PER_UNIT, REPEAT);
-  double t5 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
-  double t6 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
-  double t7 = test_raw_array(ELEM_PER_UNIT, REPEAT);
+  double t2 = test_dash_local_global_iter(arr, ELEM_PER_UNIT, REPEAT);
+  double t3 = test_dash_local_iter(arr, ELEM_PER_UNIT, REPEAT);
+  double t4 = test_dash_local_subscript(arr, ELEM_PER_UNIT, REPEAT);
+  double t5 = test_dash_local_pointer(arr, ELEM_PER_UNIT, REPEAT);
+  double t6 = test_stl_vector(ELEM_PER_UNIT, REPEAT);
+  double t7 = test_stl_deque(ELEM_PER_UNIT, REPEAT);
+  double t8 = test_raw_array(ELEM_PER_UNIT, REPEAT);
 
   dash::barrier();
   
@@ -141,6 +154,7 @@ void perform_test(
     double gups5 = gups(num_units, t5, ELEM_PER_UNIT, REPEAT);
     double gups6 = gups(num_units, t6, ELEM_PER_UNIT, REPEAT);
     double gups7 = gups(num_units, t7, ELEM_PER_UNIT, REPEAT);
+    double gups8 = gups(num_units, t8, ELEM_PER_UNIT, REPEAT);
 
     cout << std::setw(10) << ELEM_PER_UNIT;
     cout << "," << std::setw(10) << REPEAT;
@@ -152,6 +166,7 @@ void perform_test(
     cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups5;
     cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups6;
     cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups7;
+    cout << "," << std::setw(11) << std::fixed << std::setprecision(4) << gups8;
     cout << endl;
   }
 }
@@ -223,11 +238,10 @@ double test_dash_pattern(
   const PatternType & pattern = a.pattern();
 
   typename ArrayType::local_type loc = a.local;
-  dash::util::Timer timer;
+  Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto g_idx = 0; g_idx < a.size(); ++g_idx) {
-      auto g_coords  = std::array<index_t, 1> { g_idx };
-      auto local_pos = pattern.local_index(g_coords);
+      auto local_pos = pattern.local(g_idx);
       auto unit_id   = local_pos.unit;
       auto l_index   = local_pos.index;
       if (unit_id == dash::myid()) {
@@ -246,18 +260,54 @@ double test_dash_global_iter(
   ArrayType & a,
   unsigned ELEM_PER_UNIT, 
   unsigned REPEAT) {
+  typedef typename ArrayType::value_type   value_t;
+  typedef typename ArrayType::pattern_type pattern_t;
   init_values(a, ELEM_PER_UNIT);
 
-  dash::util::Timer timer;
+  Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto it = a.begin(); it != a.end(); ++it) {
-      if (it.is_local()) {
-        ++(*it);
+      value_t * local_ptr = it.local();
+      if (local_ptr != nullptr) {
+        ++(*local_ptr);
       }
     }
   }
   auto time_elapsed = timer.Elapsed();
-  
+
+  validate(
+    a, ELEM_PER_UNIT, REPEAT);
+  return time_elapsed;
+}
+
+double test_dash_local_global_iter(
+  ArrayType & a,
+  unsigned ELEM_PER_UNIT, 
+  unsigned REPEAT) {
+  typedef typename ArrayType::value_type   value_t;
+  typedef typename ArrayType::pattern_type pattern_t;
+  init_values(a, ELEM_PER_UNIT);
+
+  // Global offset of first local element:
+  auto l_begin_gidx = a.pattern().lbegin();
+  auto l_end_gidx   = a.pattern().lend();
+
+        dash::GlobIter<value_t, pattern_t> l_git  = a.begin() + l_begin_gidx;
+  const dash::GlobIter<value_t, pattern_t> l_gend = l_git + ELEM_PER_UNIT;
+
+  // Iterate over local elements but use global iterator to dereference
+  // elements.
+  Timer timer;
+  for (auto i = 0; i < REPEAT; ++i) {
+    for (auto it = l_git; it != l_gend; ++it) {
+      value_t * local_ptr = it.local();
+      if (local_ptr != nullptr) {
+        ++(*local_ptr);
+      }
+    }
+  }
+  auto time_elapsed = timer.Elapsed();
+
   validate(
     a, ELEM_PER_UNIT, REPEAT);
   return time_elapsed;
@@ -269,7 +319,7 @@ double test_dash_local_iter(
   unsigned REPEAT) {
   init_values(a, ELEM_PER_UNIT);
 
-  dash::util::Timer timer;
+  Timer timer;
   auto lend = a.lend();
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto it = a.lbegin(); it != lend; ++it) {
@@ -289,7 +339,7 @@ double test_dash_local_subscript(
   unsigned REPEAT) {
   init_values(a, ELEM_PER_UNIT);
 
-  dash::util::Timer timer;
+  Timer timer;
   typename ArrayType::local_type loc = a.local;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto j = 0; j < ELEM_PER_UNIT; ++j) {
@@ -309,7 +359,7 @@ double test_dash_local_pointer(
   unsigned REPEAT) {
   init_values(a, ELEM_PER_UNIT);
 
-  dash::util::Timer timer;
+  Timer timer;
   auto lbegin = a.lbegin();
   auto lend   = a.lend();
 
@@ -331,7 +381,7 @@ double test_stl_vector(
   std::vector<TYPE> arr(ELEM_PER_UNIT);
   init_values(arr.begin(), arr.end(), ELEM_PER_UNIT);
   
-  dash::util::Timer timer;
+  Timer timer;
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto j = 0; j < ELEM_PER_UNIT; ++j) {
       arr[j]++;
@@ -351,7 +401,7 @@ double test_stl_deque(
   std::deque<TYPE> arr(ELEM_PER_UNIT);
   init_values(arr.begin(), arr.end(), ELEM_PER_UNIT);
   
-  dash::util::Timer timer;
+  Timer timer;
   for(auto i = 0; i < REPEAT; ++i) {
     for(auto j = 0; j < ELEM_PER_UNIT; ++j) {
       arr[j]++;
@@ -373,7 +423,7 @@ double test_raw_array(
     arr, arr + ELEM_PER_UNIT,
     ELEM_PER_UNIT);
   
-  dash::util::Timer timer;
+  Timer timer;
   for(auto i = 0; i < REPEAT; i++) {
     for(auto j = 0; j < ELEM_PER_UNIT; j++) {
       arr[j]++;

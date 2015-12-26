@@ -7,7 +7,7 @@ EXTERN_C_BEGIN
 #include <dash/dart/if/dart.h>
 #include <dash/dart/shmem/dart_membucket.h>
 
-#define MAXNUM_MEMPOOLS     64
+#define MAXNUM_MEMPOOLS     1024
 
 #define MEMPOOL_NULL        0
 #define MEMPOOL_ALIGNED     1

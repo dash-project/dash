@@ -6,7 +6,14 @@ CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
 CMD_TEST=$BASEPATH/dash/scripts/dash-test.sh
 FAILED=false
 
-function run_ci
+if [ -f /etc/profile.d/modules.sh ]
+then
+  . /etc/profile.d/modules.sh
+  module unload openmpi
+  module load mpich || module load openmpi || module load mvapich2
+fi
+
+run_ci()
 {
   BUILD_TYPE=${1}
   DEPLOY_PATH=$BASEPATH/build-ci/$TIMESTAMP/${BUILD_TYPE}
@@ -18,6 +25,8 @@ function run_ci
   $CMD_DEPLOY "--b=$BUILD_TYPE" -f "--i=$DEPLOY_PATH" >> $DEPLOY_PATH/build.log 2>&1
   
   if [ "$?" = "0" ]; then
+
+### Test DASH using DART SHMEM backend:
 #   echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (SHMEM) ..."
 #   $CMD_TEST shmem $DEPLOY_PATH/bin $DEPLOY_PATH/test_shmem.log > /dev/null 2>&1
 #   if [ "$?" = "0" ]; then
@@ -26,6 +35,10 @@ function run_ci
 #     echo " FAILED"
 #     FAILED=true
 #   fi
+#   echo "[ <!>    ] Review the test log:"
+#   echo "[ <!>    ]   $DEPLOY_PATH/test_shmem.log"
+
+### Test DASH using DART MPI backend:
     echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
     $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
     if [ "$?" = "0" ]; then
@@ -34,6 +47,8 @@ function run_ci
       echo " FAILED"
       FAILED=true
     fi
+    echo "[ <!>    ] Review the test log:"
+    echo "[ <!>    ]   $DEPLOY_PATH/test_mpi.log"
   else
     echo "[ FAIL   ] Build failed, see $DEPLOY_PATH/build.log for details"
     FAILED=true

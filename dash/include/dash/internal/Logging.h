@@ -2,11 +2,18 @@
 #define DASH__INTERNAL__LOGGING_H_
 
 #include <dash/internal/Macro.h>
-#include <dash/Init.h>
+// #include <dash/Init.h>
+
+namespace dash {
+  // forward-declaration
+  int myid();
+}
 
 #if defined(DASH_ENABLE_LOGGING)
+// {
 
 #include <array>
+#include <vector>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -37,15 +44,32 @@
   dash::internal::logging::LogVarWrapper(\
     "DEBUG", __FILE__, __LINE__, context, #var, (var))
 
+#define DASH_LOG_ERROR(...) \
+  dash::internal::logging::LogWrapper(\
+    "ERROR", __FILE__, __LINE__, __VA_ARGS__)
+
+#define DASH_LOG_ERROR_VAR(context, var) \
+  dash::internal::logging::LogVarWrapper(\
+    "ERROR", __FILE__, __LINE__, context, #var, (var))
+
 namespace dash {
 namespace internal {
 namespace logging {
 
 // To print std::array to ostream
-template <class T, std::size_t N>
+template <typename T, std::size_t N>
 std::ostream & operator<<(
   std::ostream & o,
   const std::array<T, N> & arr) {
+  std::copy(arr.cbegin(), arr.cend(),
+            std::ostream_iterator<T>(o, ","));
+  return o;
+}
+// To print std::vector to ostream
+template <typename T>
+std::ostream & operator<<(
+  std::ostream & o,
+  const std::vector<T> & arr) {
   std::copy(arr.cbegin(), arr.cend(),
             std::ostream_iterator<T>(o, ","));
   return o;
@@ -98,6 +122,7 @@ static void LogWrapper(
   const char* context_tag,
   const Args & ... args) {
   std::ostringstream msg;
+  msg << "|  ";
   // Extract file name from path
   std::string filename(filepath);
   std::size_t offset = filename.find_last_of("/\\");
@@ -120,7 +145,7 @@ static void LogVarWrapper(
   const T & var_value,
   const Args & ... args) {
   std::ostringstream msg;
-  msg << "| " << var_name << "(" << var_value << ")";
+  msg << "|= " << var_name << "(" << var_value << ")";
   // Extract file name from path
   std::string filename(filepath);
   std::size_t offset = filename.find_last_of("/\\");
@@ -136,12 +161,15 @@ static void LogVarWrapper(
 } // namespace internal
 } // namespace dash
 
+// }
 #else  // DASH_ENABLE_LOGGING
 
 #  define DASH_LOG_TRACE(...) do {  } while(0)
 #  define DASH_LOG_TRACE_VAR(...) do {  } while(0)
 #  define DASH_LOG_DEBUG(...) do {  } while(0)
 #  define DASH_LOG_DEBUG_VAR(...) do {  } while(0)
+#  define DASH_LOG_ERROR(...) do {  } while(0)
+#  define DASH_LOG_ERROR_VAR(...) do {  } while(0)
 
 #endif // DASH_ENABLE_LOGGING
 

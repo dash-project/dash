@@ -13,7 +13,7 @@
 
 /* Global object for one-sided communication on memory region allocated with 'local allocation'. */
 extern MPI_Win dart_win_local_alloc; 
-#ifdef SHAREDMEM_ENABLE
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 extern MPI_Win dart_sharedmem_win_local_alloc;
 #endif
 /** @brief Definition of translation table.
@@ -92,7 +92,7 @@ int dart_adapt_transtable_remove (int16_t seg_id);
  *  @retval non-negative integer Search successfully.
  *  @retval negative integer Failure.
  */
-#ifdef SHAREDMEM_ENABLE
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 int dart_adapt_transtable_get_win (int16_t seg_id, MPI_Win *win);
 #endif
 /** @brief Query the address of the memory location of the specified rel_unit in specified team.
@@ -110,7 +110,7 @@ int dart_adapt_transtable_get_disp (int16_t seg_id, int rel_unit, MPI_Aint *disp
  *
  *  @retval ditto
  */
-#ifdef SHAREDMEM_ENABLE
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 int dart_adapt_transtable_get_baseptr (int16_t seg_id, int rel_unit, char**baseptr);
 #endif
 

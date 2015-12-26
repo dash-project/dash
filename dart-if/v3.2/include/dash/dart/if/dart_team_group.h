@@ -1,7 +1,7 @@
 #ifndef DART_TEAM_GROUP_H_INCLUDED
 #define DART_TEAM_GROUP_H_INCLUDED
 
-#include <dash/dart/if/dart_types.h>
+#include "dart_types.h"
 
 #ifdef __cplusplus
 extern "C" {

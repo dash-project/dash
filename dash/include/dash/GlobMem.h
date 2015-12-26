@@ -175,7 +175,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  const ElementType * lbegin() const {
+  inline const ElementType * lbegin() const {
     return m_lbegin;
   }
 
@@ -183,7 +183,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  ElementType * lbegin() {
+  inline ElementType * lbegin() {
     return m_lbegin;
   }
 

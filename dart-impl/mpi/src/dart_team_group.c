@@ -4,7 +4,6 @@
  *  Implementation of dart operations on team_group.
  */
 
-
 #include <mpi.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_team_group.h>
@@ -13,11 +12,7 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_group_priv.h>
-/*
-#ifndef SHAREDMEM_ENABLE
-#define SHAREDMEM_ENABLE
-#endif
-*/
+
 dart_ret_t dart_group_init(
   dart_group_t *group)
 {
@@ -398,7 +393,7 @@ dart_ret_t dart_team_create(
 #endif	
 
 	if (subcomm != MPI_COMM_NULL) {
-#ifdef SHAREDMEM_ENABLE
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 		int i;
 
 		MPI_Comm sharedmem_comm;
@@ -478,7 +473,7 @@ dart_ret_t dart_team_destroy(
 //	free (dart_unit_mapping[index]);
 
 //	MPI_Win_free (&(sharedmem_win_list[index]));
-#ifdef SHAREDMEM_ENABLE
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	free(dart_sharedmem_table[index]);
 #endif
 	win = dart_win_lists[index];

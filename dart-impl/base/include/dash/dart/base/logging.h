@@ -22,7 +22,7 @@ inline char * dart_base_logging_basename(char *path) {
 /* Width of file name field in log messages in number of characters */
 #define DASH__DART_LOGGING__FILE__WIDTH 25
 
-#ifdef DASH_ENABLE_DART_LOGGING
+#ifdef DART_ENABLE_LOGGING
 
 #define DART_LOG_TRACE(format, ...) \
   do { \
@@ -54,13 +54,13 @@ inline char * dart_base_logging_basename(char *path) {
            dart_base_logging_basename(__FILE__), __LINE__, ##__VA_ARGS__); \
   } while (0)
 
-#else /* DASH_ENABLE_DART_LOGGING */
+#else /* DART_ENABLE_LOGGING */
 
 #define DART_LOG_TRACE(format, ...)
 #define DART_LOG_DEBUG(format, ...)
 #define DART_LOG_INFO(format, ...)
 
-#endif /* DASH_ENABLE_DART_LOGGING */
+#endif /* DART_ENABLE_LOGGING */
 
 #define DART_LOG_ERROR(format, ...) \
   do { \

@@ -1,9 +1,9 @@
-#include <dash/util/Timer.h>
-
 #if defined(DASH__UTIL__TIMER_POSIX) || \
     defined(DASH__UTIL__TIMER_UX)
 
+#include <dash/util/Timer.h>
 #include <dash/util/internal/TimestampCounterPosix.h>
+#include <dash/internal/Logging.h>
 
 namespace dash {
 namespace util {
@@ -13,9 +13,11 @@ void TimestampCounterPosix::Calibrate(unsigned int freq) {
   frequencyScaling = freq == 0
                      ? 1900.0f 
                      : static_cast<double>(freq); 
-
-  ::std::cout << "   RDTSC timer | " << TimerName() << std::endl;
-  ::std::cout << "   RDTSC scale | F:" << frequencyScaling << std::endl;
+  DASH_LOG_DEBUG("TimestampCounterPosix::Calibrate(freq)", freq);
+  DASH_LOG_DEBUG("TimestampCounterPosix::Calibrate",
+                 "timer:", TimerName());
+  DASH_LOG_DEBUG("TimestampCounterPosix::Calibrate",
+                 "fscale:", frequencyScaling);
 }
 
 Timestamp::counter_t TimestampCounterPosix::frequencyScaling = 1; 

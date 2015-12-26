@@ -32,7 +32,7 @@ public:
   typedef long long gptrdiff_t;
 
 private:
-  dart_gptr_t m_dartptr;
+  dart_gptr_t _dart_gptr;
 
   template<typename U>
   friend std::ostream & operator<<(
@@ -49,38 +49,59 @@ public:
    * Constructor, specifies underlying global address.
    */
   explicit GlobPtr(dart_gptr_t p) { 
-    m_dartptr = p; 
+    _dart_gptr = p; 
   }
   
   /**
    * Constructor for conversion of std::nullptr_t.
    */
   GlobPtr(std::nullptr_t p) {
-    m_dartptr = DART_GPTR_NULL;
+    DASH_LOG_TRACE("GlobPtr()", "nullptr");
+    _dart_gptr = DART_GPTR_NULL;
+  }
+
+  /**
+   * Constructor, creates a new instance of dash::GlobPtr from a global
+   * reference.
+   */
+  GlobPtr(dash::GlobRef<T> & globref)
+  : _dart_gptr(globref.gptr().dart_gptr()) {
+    DASH_LOG_TRACE("GlobPtr()", "GlobRef<T> globref");
   }
 
   /**
    * Copy constructor.
    */
-  GlobPtr(const GlobPtr & other) = default;
+  GlobPtr(const GlobPtr & other)
+  : _dart_gptr(other._dart_gptr) {
+    DASH_LOG_TRACE("GlobPtr()", "GlobPtr<T> other");
+  }
 
   /**
    * Assignment operator.
    */
-  GlobPtr<T>& operator=(const GlobPtr & other) = default;
+  GlobPtr<T> & operator=(const GlobPtr & rhs) {
+    DASH_LOG_TRACE("GlobPtr.=()", "GlobPtr<T> rhs");
+    DASH_LOG_TRACE_VAR("GlobPtr.=", rhs);
+    if (this != &rhs) {
+      _dart_gptr = rhs._dart_gptr;
+    }
+    DASH_LOG_TRACE("GlobPtr.= >");
+    return *this;
+  }
 
   /**
    * Converts pointer to its underlying global address.
    */
   explicit operator dart_gptr_t() const {
-    return m_dartptr;
+    return _dart_gptr;
   }
 
   /**
    * The pointer's underlying global address.
    */
   dart_gptr_t dart_gptr() const {
-    return m_dartptr;
+    return _dart_gptr;
   }
   
   /**
@@ -88,7 +109,7 @@ public:
    */
   GlobPtr<T> & operator++() {
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&m_dartptr, sizeof(T)),
+      dart_gptr_incaddr(&_dart_gptr, sizeof(T)),
       DART_OK);
     return *this;
   }
@@ -99,7 +120,7 @@ public:
   GlobPtr<T> operator++(int) {
     GlobPtr<T> result = *this;
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&m_dartptr, sizeof(T)),
+      dart_gptr_incaddr(&_dart_gptr, sizeof(T)),
       DART_OK);
     return result;
   }
@@ -108,7 +129,7 @@ public:
    * Pointer increment operator.
    */
   GlobPtr<T> operator+(gptrdiff_t n) const {
-    dart_gptr_t gptr = m_dartptr;
+    dart_gptr_t gptr = _dart_gptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&gptr, n * sizeof(T)),
       DART_OK);
@@ -121,7 +142,7 @@ public:
   GlobPtr<T> operator+=(gptrdiff_t n) {
     GlobPtr<T> result = *this;
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&m_dartptr, n * sizeof(T)),
+      dart_gptr_incaddr(&_dart_gptr, n * sizeof(T)),
       DART_OK);
     return result;
   }
@@ -131,7 +152,7 @@ public:
    */
   GlobPtr<T> & operator--() {
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&m_dartptr, -sizeof(T)),
+      dart_gptr_incaddr(&_dart_gptr, -sizeof(T)),
       DART_OK);
     return *this;
   }
@@ -142,7 +163,7 @@ public:
   GlobPtr<T> operator--(int) {
     GlobPtr<T> result = *this;
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&m_dartptr, -sizeof(T)),
+      dart_gptr_incaddr(&_dart_gptr, -sizeof(T)),
       DART_OK);
     return result;
   }
@@ -154,14 +175,14 @@ public:
    *       This method is only provided to comply to the pointer concept.
    */
   gptrdiff_t operator-(const GlobPtr<T> & rhs) {
-    return m_dartptr - rhs.m_dart_ptr;
+    return _dart_gptr - rhs.m_dart_ptr;
   }
 
   /**
    * Pointer decrement operator.
    */
   GlobPtr<T> operator-(gptrdiff_t n) const {
-    dart_gptr_t gptr = m_dartptr;
+    dart_gptr_t gptr = _dart_gptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&gptr, -(n * sizeof(T))),
       DART_OK);
@@ -174,7 +195,7 @@ public:
   GlobPtr<T> operator-=(gptrdiff_t n) {
     GlobPtr<T> result = *this;
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&m_dartptr, -(n * sizeof(T))),
+      dart_gptr_incaddr(&_dart_gptr, -(n * sizeof(T))),
       DART_OK);
     return result;
   }
@@ -183,14 +204,102 @@ public:
    * Equality comparison operator.
    */
   bool operator==(const GlobPtr<T>& other) const { 
-    return DART_GPTR_EQUAL(m_dartptr, other.m_dartptr);
+    return DART_GPTR_EQUAL(_dart_gptr, other._dart_gptr);
   }
   
   /**
    * Inequality comparison operator.
    */
   bool operator!=(const GlobPtr<T>& other) const {
-    return !DART_GPTR_EQUAL(m_dartptr, other.m_dartptr);
+    return !DART_GPTR_EQUAL(_dart_gptr, other._dart_gptr);
+  }
+  
+  /**
+   * Less comparison operator.
+   * 
+   * TODO: Distance between two global pointers is not well-defined yet.
+   *       This method is only provided to comply to the pointer concept.
+   */
+  bool operator<(const GlobPtr<T>& other) const {
+    return (
+      ( _dart_gptr.unitid <  other._dart_gptr.unitid )
+        ||
+      ( _dart_gptr.unitid == other._dart_gptr.unitid
+        &&
+        ( _dart_gptr.segid <  other._dart_gptr.segid
+          ||
+        ( _dart_gptr.segid == other._dart_gptr.segid
+          &&
+          _dart_gptr.addr_or_offs.offset <
+          other._dart_gptr.addr_or_offs.offset ) )
+      )
+    );
+  }
+  
+  /**
+   * Less-equal comparison operator.
+   * 
+   * TODO: Distance between two global pointers is not well-defined yet.
+   *       This method is only provided to comply to the pointer concept.
+   */
+  bool operator<=(const GlobPtr<T>& other) const {
+    return (
+      ( _dart_gptr.unitid <  other._dart_gptr.unitid )
+        ||
+      ( _dart_gptr.unitid == other._dart_gptr.unitid
+        &&
+        ( _dart_gptr.segid <  other._dart_gptr.segid
+          ||
+        ( _dart_gptr.segid == other._dart_gptr.segid
+          &&
+          _dart_gptr.addr_or_offs.offset <=
+          other._dart_gptr.addr_or_offs.offset ) )
+      )
+    );
+  }
+  
+  /**
+   * Greater comparison operator.
+   * 
+   * TODO: Distance between two global pointers is not well-defined yet.
+   *       This method is only provided to comply to the pointer concept.
+   */
+  bool operator>(const GlobPtr<T>& other) const {
+    return (
+      ( _dart_gptr.unitid >  other._dart_gptr.unitid )
+        ||
+      ( _dart_gptr.unitid == other._dart_gptr.unitid
+        &&
+        ( _dart_gptr.segid >  other._dart_gptr.segid
+          ||
+        ( _dart_gptr.segid == other._dart_gptr.segid
+          &&
+          _dart_gptr.addr_or_offs.offset >
+          other._dart_gptr.addr_or_offs.offset ) )
+      )
+    );
+  }
+  
+  /**
+   * Greater-equal comparison operator.
+   * 
+   * TODO: Distance between two global pointers is not well-defined yet.
+   *       This method is only provided to comply to the pointer concept.
+   */
+  bool operator>=(const GlobPtr<T>& other) const {
+    return (
+      ( _dart_gptr.unitid >  other._dart_gptr.unitid )
+        ||
+      ( _dart_gptr.unitid == other._dart_gptr.unitid
+        &&
+        ( _dart_gptr.segid >  other._dart_gptr.segid
+          ||
+        ( _dart_gptr.segid == other._dart_gptr.segid
+          &&
+          _dart_gptr.addr_or_offs.offset >=
+          other._dart_gptr.addr_or_offs.offset ) )
+      )
+    );
   }
   
   /**
@@ -226,7 +335,7 @@ public:
   explicit operator T*() {
     void *addr = 0;
     DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(m_dartptr, &addr),
+      dart_gptr_getaddr(_dart_gptr, &addr),
       DART_OK);
     return static_cast<T*>(addr);
   }
@@ -241,7 +350,7 @@ public:
   T * local() {
     void *addr = 0;
     DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(m_dartptr, &addr),
+      dart_gptr_getaddr(_dart_gptr, &addr),
       DART_OK);
     return static_cast<T*>(addr);
   }
@@ -256,7 +365,7 @@ public:
   const T * local() const {
     void *addr = 0;
     DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(m_dartptr, &addr),
+      dart_gptr_getaddr(_dart_gptr, &addr),
       DART_OK);
     return static_cast<const T*>(addr);
   }
@@ -266,7 +375,7 @@ public:
    */
   void set_unit(dart_unit_t unit_id) {
     DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&m_dartptr, unit_id),
+      dart_gptr_setunit(&_dart_gptr, unit_id),
       DART_OK);
   }
 
@@ -275,21 +384,22 @@ public:
    * address space the pointer's associated unit.
    */
   bool is_local() const {
-    return m_dartptr.unitid == dash::myid();
+    return _dart_gptr.unitid == dash::myid();
   }
 };
 
 template<typename T>
 std::ostream & operator<<(
   std::ostream & os,
-  const GlobPtr<T> & gptr) {
+  const GlobPtr<T> & gptr)
+{
   char buf[100];
   sprintf(buf,
           "(%08X|%04X|%04X|%016X)",
-          gptr.m_dartptr.unitid,
-          gptr.m_dartptr.segid,
-          gptr.m_dartptr.flags,
-          gptr.m_dartptr.addr_or_offs.offset);
+          gptr._dart_gptr.unitid,
+          gptr._dart_gptr.segid,
+          gptr._dart_gptr.flags,
+          gptr._dart_gptr.addr_or_offs.offset);
   os << "dash::GlobPtr<" << typeid(T).name() << ">" << buf;
   return os;
 }

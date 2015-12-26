@@ -9,14 +9,14 @@
 #include <math.h>
 #include <stdio.h>
 #include <assert.h>
-#include <time.h>
-#include <sys/time.h>
 #include <stdint.h> // for int64_t and uint64_t
-#include <libdash.h>
+
 #include <iostream>
 
+#include <libdash.h>
+
 #ifndef N
-#define N (12)
+#define N (25)
 #endif
 
 #define TableSize (1ULL<<N)
@@ -25,19 +25,19 @@
 #define POLY      0x0000000000000007ULL
 #define PERIOD    1317624576693539401LL
 
-dash::Array<uint64_t> Table;
+typedef dash::util::Timer<dash::util::TimeMeasure::Clock> Timer;
+typedef dash::CSRPattern<1, dash::ROW_MAJOR, int64_t> pattern_t;
 
-double get_time()
-{
-  struct timeval tv;
-  gettimeofday(&tv, 0);
-  return tv.tv_sec + ((double) tv.tv_usec / 1000000);
-}
+dash::Array<uint64_t, int64_t, pattern_t> Table;
+
 
 template<typename T> 
-void print(dash::Array<T>& arr) {
-  for( auto el: arr ) std::cout<<el<<" ";
-  std::cout<<std::endl;
+void print(dash::Array<T>& arr)
+{
+  for (auto el: arr) {
+    std::cout << el << " ";
+  }
+  std::cout << std::endl;
 }
 
 uint64_t starts(int64_t n)
@@ -79,9 +79,9 @@ void RandomAccessUpdate()
   uint64_t ran = starts(NUPDATE / dash::size() * dash::myid());
 
   for (i = dash::myid(); i < NUPDATE; i += dash::size()) {
-    ran = (ran << 1) ^ (((int64_t) ran < 0) ? POLY : 0);
-    Table[ran & (TableSize-1)] = Table[ran & (TableSize-1)] ^ ran;
-    //Table[ran & (TableSize-1)] ^= ran;
+    ran           = (ran << 1) ^ (((int64_t) ran < 0) ? POLY : 0);
+    int64_t g_idx = static_cast<int64_t>(ran & (TableSize-1));
+    Table[g_idx]  = Table[g_idx] ^ ran;
   }
 }
 
@@ -94,18 +94,24 @@ uint64_t RandomAccessVerify()
       localerrors++;
     }
   }
-  //upcxx_reduce(&localerrors, &errors, 1, 0, UPCXX_SUM, UPCXX_ULONG_LONG);
-  errors=localerrors;
+  errors = localerrors;
   return errors;
 }
 
 int main(int argc, char **argv)
 {
-  double time;
+  Timer::timestamp_t ts_start;
+  double duration_us;
   double GUPs;
   double latency;
 
+  DASH_LOG_DEBUG("bench.gups", "main()");
+
   dash::init(&argc, &argv);
+
+  Timer::Calibrate(0);
+
+  DASH_LOG_DEBUG("bench.gups", "Table.allocate()");
 
   Table.allocate(TableSize, dash::BLOCKED);
 
@@ -117,39 +123,42 @@ int main(int argc, char **argv)
     printf("\nExecuting random updates...\n\n");
   }
 
-  time = get_time();
-
   if(dash::myid() == 0) {
-    for( uint64_t i = dash::myid(); i < TableSize; i++ ) {
-      Table[i]=i;
+    for (uint64_t i = dash::myid(); i < TableSize; ++i) {
+      Table[i] = i;
     }
   }
 
   dash::barrier(); 
 
+  ts_start    = Timer::Now();
   RandomAccessUpdate();
   dash::barrier(); 
+  duration_us = Timer::ElapsedSince(ts_start);
 
-  //if( dash::myid()==0 ) print(Table);
+#if 0
+  if (dash::myid() == 0) {
+    print(Table);
+  }
 
-  /*
   uint64_t * lt = (uint64_t *) &(*Table)[dash::myid()];
   for (uint64_t i = dash::myid(); i < TableSize; i += dash::size()) {
     *lt++ = i;
-    }*/
+  }
+#endif
 
-  time = get_time() - time;
-  GUPs = (double)NUPDATE * 1e-9 / time;
-  latency = time * dash::size() / NUPDATE * 1e6;
+  GUPs        = ((double)(NUPDATE) / 1000.0f) / duration_us;
+  latency     = duration_us * dash::size() / NUPDATE;
 
   if(dash::myid() == 0) {
-    printf("Number of updates = %llu\n", NUPDATE);
-    printf("Real time used = %.6f seconds\n", time );
-    printf("%.9f Billion(10^9) Updates per second [GUP/s]\n", GUPs);
-    printf("Update latency = %6.2f usecs\n", latency);
+    printf("Number of updates: %llu\n", NUPDATE);
+    printf("Real time used:    %.6f seconds\n", 1.0e-6 * duration_us);
+    printf("Update latency:    %.6f usecs\n", latency);
+    printf("GUP/s:             %.6f Billion upates / second\n", GUPs);
   }
 
-#if 1 // VERIFY  
+#if 1
+  // Verify
   if (dash::myid() == 0) printf ("\nVerifying...\n");
   RandomAccessUpdate();  // do it again
   dash::barrier(); 
@@ -165,7 +174,6 @@ int main(int argc, char **argv)
   }
 #endif
   
-  dash::barrier();
   dash::finalize();
   
   return 0;

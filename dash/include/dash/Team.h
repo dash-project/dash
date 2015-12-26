@@ -185,16 +185,14 @@ public:
   /**
    * The invariant Team instance containing all available units.
    */
-  static Team & All() {
-    DASH_LOG_TRACE_VAR("Team::All()", Team::_team_all.size());
+  inline static Team & All() {
     return Team::_team_all;
   }
 
   /**
    * The invariant Team instance representing an undefined team.
    */
-  static Team & Null() {
-    DASH_LOG_TRACE_VAR("Team::Null()", Team::_team_null.size());
+  inline static Team & Null() {
     return Team::_team_null;
   }
 

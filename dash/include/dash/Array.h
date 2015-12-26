@@ -143,28 +143,28 @@ public:
   /**
    * Pointer to initial local element in the array.
    */
-  constexpr const_pointer begin() const noexcept {
+  inline const_pointer begin() const noexcept {
     return _array->m_lbegin;
   }
 
   /**
    * Pointer past final local element in the array.
    */
-  constexpr const_pointer end() const noexcept {
+  inline const_pointer end() const noexcept {
     return _array->m_lend;
   }
   
   /**
    * Number of array elements in local memory.
    */
-  constexpr size_type size() const noexcept {
+  inline size_type size() const noexcept {
     return end() - begin();
   }
   
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr value_type operator[](const size_t n) const  {
+  inline value_type operator[](const size_t n) const  {
     return (_array->m_lbegin)[n];
   }
   
@@ -255,7 +255,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  constexpr const_async_reference operator[](const size_t n) const  {
+  inline const_async_reference operator[](const size_t n) const  {
     return async_reference(
              _array->m_globmem,
              (*(_array->begin() + n)).gptr());
@@ -707,8 +707,10 @@ public:
   reference operator[](
     /// The position of the element to return
     size_type global_index) {
-    DASH_LOG_TRACE("Array.[]=", global_index);
-    return m_begin[global_index];
+    DASH_LOG_TRACE_VAR("Array.[]=()", global_index);
+    auto global_ref = m_begin[global_index];
+    DASH_LOG_TRACE_VAR("Array.[]= >", global_ref);
+    return global_ref;
   }
 
   /**
@@ -720,8 +722,10 @@ public:
   const_reference operator[](
     /// The position of the element to return
     size_type global_index) const {
-    DASH_LOG_TRACE("Array.[]", global_index);
-    return m_begin[global_index];
+    DASH_LOG_TRACE_VAR("Array.[]()", global_index);
+    auto global_ref = m_begin[global_index];
+    DASH_LOG_TRACE_VAR("Array.[] >", global_ref);
+    return global_ref;
   }
 
   /**
@@ -841,14 +845,15 @@ public:
    * changes to all units.
    */
   void barrier() const {
-    m_globmem->flush();
+    DASH_LOG_TRACE_VAR("Array.barrier()", m_team);
     m_team->barrier();
+    DASH_LOG_TRACE("Array.barrier()", "passed barrier");
   }
 
   /**
    * The pattern used to distribute array elements to units.
    */
-  const PatternType & pattern() const {
+  inline const PatternType & pattern() const {
     return m_pattern;
   }
 
@@ -873,6 +878,7 @@ public:
     if (*m_team == dash::Team::Null()) {
       DASH_LOG_TRACE("Array.allocate",
                      "initializing pattern with Team::All()");
+      m_team    = &team;
       m_pattern = PatternType(nelem, distribution, team);
       DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
       DASH_LOG_TRACE_VAR("Array.allocate", m_pattern.team().dart_id());
@@ -887,6 +893,11 @@ public:
   void deallocate() {
     DASH_LOG_TRACE_VAR("Array.deallocate()", this);
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_size);
+    // Assure all units are synchronized before deallocation, otherwise
+    // other units might still be working on the array:
+    if( dash::is_initialized() ) {
+      barrier();
+    }
     // Remove this function from team deallocator list to avoid
     // double-free:
     m_pattern.team().unregister_deallocator(
@@ -908,6 +919,7 @@ private:
                    pattern.memory_layout().extents());
     // Check requested capacity:
     m_size      = pattern.capacity();
+    m_team      = &pattern.team();
     if (m_size == 0) {
       DASH_THROW(
         dash::exception::InvalidArgument,
