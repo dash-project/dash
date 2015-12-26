@@ -79,7 +79,8 @@ TEST_F(SUMMATest, Deduction)
   // Verify multiplication result (id x id = id):
   if (_dash_id == 0) {
     for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
-      ASSERT_EQ_U(1, matrix_c[diag_idx][diag_idx]);
+      int actual = matrix_c[diag_idx][diag_idx];
+      ASSERT_EQ_U(1, actual);
     }
   }
 }

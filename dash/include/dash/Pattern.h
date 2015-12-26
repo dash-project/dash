@@ -33,8 +33,8 @@ namespace dash {
  *
  * Return Type              | Method                     | Parameters                      | Description                                                                                                |
  * ------------------------ | -------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
- * <tt>index_type</tt>      | <tt>at</tt>                | <tt>index[d] gp</tt>            | Linear offset of the global point <i>gp</i> in local memory                                                |
- * <tt>index_type</tt>      | <tt>local_at</tt>          | <tt>index[d] lp</tt>            | Linear local offset of the local point <i>gp</i> in local memory                                           |
+ * <tt>index</tt>           | <tt>at</tt>                | <tt>index[d] gp</tt>            | Linear offset of the global point <i>gp</i> in local memory                                                |
+ * <tt>index</tt>           | <tt>local_at</tt>          | <tt>index[d] lp</tt>            | Linear local offset of the local point <i>gp</i> in local memory                                           |
  * <tt>dart_unit_t</tt>     | <tt>unit_at</tt>           | <tt>index[d] gp</tt>            | Unit id mapped to the element at global point <i>p</i>                                                     |
  * <b>global to local</b>   | &nbsp;                     | &nbsp;                          | &nbsp;                                                                                                     |
  * <tt>{unit,index}</tt>    | <tt>local</tt>             | <tt>index gi</tt>               | Unit and linear local offset at the global index <i>gi</i>                                                 |
@@ -48,6 +48,8 @@ namespace dash {
  * <tt>index</tt>           | <tt>global</tt>            | <tt>unit u, index li</tt>       | Local offset <i>li</i> of unit <i>u</i> to global index                                                    |
  * <tt>index</tt>           | <tt>global</tt>            | <tt>index li</tt>               | Local offset <i>li</i> of active unit to global index                                                      |
  * <b>blocks<b>             | &nbsp;                     | &nbsp;                          | &nbsp;                                                                                                     |
+ * <tt>size[d]</tt>         | <tt>blockspec</tt>         | &nbsp;                          | Number of blocks in all dimensions.                                                                        |
+ * <tt>index</tt>           | <tt>block_at</tt>          | <tt>index[d] gp</tt>            | Global index of block at global coordinates <i>gp</i>                                                      |
  * <tt>viewspec</tt>        | <tt>block</tt>             | <tt>index gbi</tt>              | Offset and extent in global cartesian space of block at global block index <i>gbi</i>                      |
  * <tt>viewspec</tt>        | <tt>local_block</tt>       | <tt>index lbi</tt>              | Offset and extent in global cartesian space of block at local block index <i>lbi</i>                       |
  * <tt>viewspec</tt>        | <tt>local_block_local</tt> | <tt>index lbi</tt>              | Offset and extent in local cartesian space of block at local block index <i>lbi</i>                        |

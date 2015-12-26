@@ -12,36 +12,23 @@ namespace internal {
  * Naive matrix multiplication for local multiplication of matrix blocks,
  * used only for tests and where BLAS is not available.
  */
-template<typename MatrixType>
+template<
+  typename MatrixTypeA,
+  typename MatrixTypeB,
+  typename MatrixTypeC
+>
 void multiply_naive(
   /// Matrix to multiply, extents n x m
-  const MatrixType & A,
+  const MatrixTypeA & A,
   /// Matrix to multiply, extents m x p
-  const MatrixType & B,
+  const MatrixTypeB & B,
   /// Matrix to contain the multiplication result, extents n x p,
   /// initialized with zeros
-  MatrixType & C) {
-  auto pattern_a = A.pattern();
-  auto pattern_b = B.pattern();
-  auto pattern_c = C.pattern();
-  auto n = pattern_a.extent(1); // number of rows in A
-  auto m = pattern_a.extent(0); // number of columns in A, rows in B
-  auto p = pattern_b.extent(0); // number of columns in A
-  DASH_ASSERT_EQ(
-    pattern_a.extent(1),
-    pattern_b.extent(0),
-    "Extents of first operand in dimension 1 do not match extents of"
-    "second operand in dimension 0");
-  DASH_ASSERT_EQ(
-    pattern_c.extent(0),
-    pattern_a.extent(0),
-    "Extents of result matrix in dimension 0 do not match extents of"
-    "first operand in dimension 0");
-  DASH_ASSERT_EQ(
-    pattern_c.extent(1),
-    pattern_b.extent(1),
-    "Extents of result matrix in dimension 1 do not match extents of"
-    "second operand in dimension 1");
+  MatrixTypeC      & C,
+  size_t             m,
+  size_t             n,
+  size_t             p)
+{
   for (auto i = 0; i < n; ++i) {
     // i = 0...n
     for (auto j = 0; j < p; ++j) {
@@ -103,7 +90,11 @@ void summa(
   /// initialized with zeros
   MatrixTypeC & C)
 {
-  DASH_LOG_TRACE("dash::summa()");
+  typedef typename MatrixTypeA::value_type value_type;
+  typedef typename MatrixTypeA::index_type index_type;
+  typedef std::array<index_type, 2>        coords_type;
+
+  DASH_LOG_DEBUG("dash::summa()");
   // Verify that matrix patterns satisfy pattern constraints:
   if (!dash::check_pattern_constraints<
          summa_pattern_blocking_constraints,
@@ -137,13 +128,21 @@ void summa(
   }
   DASH_LOG_TRACE("dash::summa", "matrix pattern properties valid");
 
+  //    A         B         C
+  //  _____     _____     _____
+  // |     |   |     |   |     |
+  // n     | x m     | = n     |
+  // |_ m _|   |_ p _|   |_ p _|
+  //
+  dash::Team & team = C.team();
+  auto unit_id      = team.myid();
   // Check run-time invariants on pattern instances:
-  auto pattern_a = A.pattern();
-  auto pattern_b = B.pattern();
-  auto pattern_c = C.pattern();
-  auto n = pattern_a.extent(1); // number of rows in A
+  auto pattern_a    = A.pattern();
+  auto pattern_b    = B.pattern();
+  auto pattern_c    = C.pattern();
   auto m = pattern_a.extent(0); // number of columns in A, rows in B
-  auto p = pattern_b.extent(0); // number of columns in A
+  auto n = pattern_a.extent(1); // number of rows in A and C
+  auto p = pattern_b.extent(0); // number of columns in B and C
 
   DASH_ASSERT_EQ(
     pattern_a.extent(1),
@@ -166,42 +165,95 @@ void summa(
 
   DASH_LOG_TRACE("dash::summa", "matrix pattern extents valid");
 
-  auto num_blocks_l = 0;
-  auto num_blocks_m = 0;
-  auto num_blocks_n = 0;
+  // Patterns are balanced, all blocks have identical size:
+  auto block_size_m  = pattern_a.block(0)[0].extent;
+  auto block_size_n  = pattern_b.block(0)[1].extent;
+  auto block_size_p  = pattern_b.block(0)[0].extent;
+  auto num_blocks_l  = n / block_size_n;
+  auto num_blocks_m  = m / block_size_m;
+  auto num_blocks_n  = n / block_size_n;
+  // Size of temporary local blocks
+  auto block_a_size  = block_size_n * block_size_m;
+  auto block_b_size  = block_size_m * block_size_p;
+  // Number of units in rows and columns:
+  auto teamspec      = C.pattern().teamspec();
+  auto num_units_x   = teamspec.extent(0);
+  auto num_units_y   = teamspec.extent(1);
+  // Coordinates of active unit in team spec (process grid):
+  auto team_coords_u = teamspec.coords(unit_id);
+  // Block row and column in C assigned to active unit:
+  auto block_col_u   = team_coords_u[0];
+  auto block_row_u   = team_coords_u[1];
 
-  auto block_size_x = pattern_a.blocksizespec().extent(0);
-  auto block_size_y = pattern_a.blocksizespec().extent(1);
-  auto block_size   = block_size_x * block_size_y;
+  DASH_LOG_TRACE("dash::summa", "number of blocks:",
+                 "l:", num_blocks_l,
+                 "m:", num_blocks_m,
+                 "n:", num_blocks_n);
+  DASH_LOG_TRACE("dash::summa", "number of units:",
+                 "cols:", num_units_x,
+                 "rows:", num_units_y);
+  DASH_LOG_TRACE("dash::summa", "allocating local temporary blocks",
+                 "A block size:", block_a_size,
+                 "B block size:", block_b_size);
+  value_type * local_block_a = new value_type[block_a_size];
+  value_type * local_block_b = new value_type[block_b_size];
 
-  Element * local_block_a = new Element[block_size];
-  Element * local_block_b = new Element[block_size];
-
-  for (int k = 0; k < num_blocks_l; k++) {
-    for (int i = 0; i < num_blocks_m; i += pgrid_nrow) {
-      // Local copy of block A[i + myrow][k]:
-      auto block_a = A.block({ i + myrow, k });
+  // Perform block matrix multiplication:
+  //
+  //   C_ij = sum_(k:1..np) { A_ik x B_kj }
+  //
+  for (int block_k = 0; block_k < num_blocks_l; ++block_k) 
+  {
+    for (int block_i = 0; block_i < num_blocks_m; block_i += num_units_y) 
+    {
+      // Local copy of block A[i+u][k]:
+      DASH_LOG_TRACE("dash::summa", "local copy of A.block[i+ru][k]",
+                     "i:",   block_i,
+                     "i+u:", block_i + block_row_u,
+                     "k:",   block_k);
+      auto block_a = A.block(coords_type { block_i + block_row_u,
+                                           block_k });
       dash::copy(block_a.begin(),
                  block_a.end(),
                  local_block_a);
-
-      for (int j = 0; j < num_blocks_n; j += pgrid_ncol) {
-        // Local copy of block B[k][j + mycol]:
-        auto block_b = B.block({ k, j + myrow });
+      // Multiply block A[i][k] with blocks B[k][*]
+      for (int block_j = 0; block_j < num_blocks_n; block_j += num_units_x) 
+      {
+        // Local copy of block B[k][j+u]:
+        DASH_LOG_TRACE("dash::summa", "local copy of B.block[k][j+cu]",
+                       "j:",   block_j,
+                       "k:",   block_k,
+                       "j+u:", block_j + block_col_u);
+        auto block_b = B.block(coords_type { block_k,
+                                             block_j + block_col_u });
         dash::copy(block_b.begin(),
                    block_b.end(),
                    local_block_b);
-        // Result block, in local memory:
-        auto block_c = C.block({ i + myrow, j + mycol });
-        DASH_ASSERT(block_c.is_local());
+        // Local result block:
+        DASH_LOG_TRACE("dash::summa",
+                       "multiplying A.block[i+ru][k] and B.block[k][j+cu]",
+                       "i:",   block_i,
+                       "j:",   block_j,
+                       "i+u:", block_i + block_row_u,
+                       "k:",   block_k,
+                       "j+u:", block_j + block_col_u,
+                       "to C.block[i+ru][j+cu]");
+        auto block_c = C.block(coords_type { block_i + block_row_u,
+                                             block_j + block_col_u });
+        // Plausibility check: first element in block expected to be local.
+        DASH_ASSERT(block_c.is_local(0));
         // Local matrix multiplication:
-        dash::multiply_naive(
+        dash::internal::multiply_naive(
             local_block_a,
             local_block_b,
-            block_c.begin());
-      } // close of the j loop
-    } // close of the i loop
-  } // close of the k loop 
+            block_c,
+            m, n, p);
+      } // for j
+    } // for i
+  } // for k
+
+  delete[] local_block_a;
+  delete[] local_block_b;
 }
 
 /**
