@@ -38,7 +38,7 @@ std::ostream& operator<<(std::ostream& os, const node_t& n)
   os<<"elim_step="<<n.elim_step<<" ";
   os<<"adj=";
   for( int i=0; i<n.adj_sz; i++ ) {
-    os<<(i==0?"":",")<<n.adj[i];
+    os<<(i==0?"":",")<<(int)n.adj[i];
   }
   
   return os;
@@ -51,9 +51,8 @@ int read_adj(
 	std::deque<int>& local_adj);
 
 // read file in mtx format
-int read_mtx(
-  const std::string& fname,
-	nodearray_t & nodes);
+int read_mtx(const std::string& fname,
+	     nodearray_t & nodes);
 
 int init_nodes(
   nodearray_t& nodes,
@@ -99,7 +98,7 @@ int main(int argc, char* argv[])
 #endif
     ret=-1;
   }
-  
+
   dash::barrier();
 
   if (ret < 0) { 
@@ -112,26 +111,39 @@ int main(int argc, char* argv[])
     return ret;
   }
 
+#if 0
+  if( dash::myid()==0 ) {
+    for( auto el: nodes ) {
+      cout<<(node_t)el<<endl;
+    }
+  }
+#endif
+
+  
   for(auto step = 1; step <= nodes.size(); ++step) {
     dash::barrier();
     int min_id = find_min_degree_node(nodes);
 
     assert(1 <= min_id && min_id <= nodes.size());
     if (dash::myid() == 0) {
-      cout << min_id << endl;
+      cout << "Step "<< step << "/" <<nodes.size()<< ": min="<< min_id << endl;
     }
- 
-    node_t min_node = nodes[min_id-1];
-    min_node.elim_step=step;
-    min_node.degree += 10*nodes.size();
 
-    nodes[min_id-1] = min_node;
-
+    if( dash::myid()==0 ) {
+      node_t min_node = nodes[min_id-1];
+      
+      min_node.elim_step=step;
+      min_node.degree += 10*nodes.size();
+      nodes[min_id-1] = min_node;
+    }
+    
+    dash::barrier();
     std::vector<int> reach;
     get_reach(nodes, min_id, step, reach);
-    
+
     for (auto it = reach.begin(); it != reach.end(); ++it) {
       int nghb_id = *it;
+
       if (!nodes[nghb_id-1].is_local()) {
         continue;
       }
@@ -182,7 +194,7 @@ int read_adj(
   if(getline(infile, line)) {
     std::istringstream iss(line);
     int i;
-    while( iss>>i ) { 
+   while( iss>>i ) { 
       local_adj.push_back(i); 
     }
   } else {
@@ -193,43 +205,66 @@ int read_adj(
   return 0;
 }
 
-int read_mtx(
-  const std::string & fname,
-	nodearray_t & nodes) {
-  int M, N, L;
+// read file in mtx format
+int read_mtx(const std::string & fname,
+	     nodearray_t & nodes)
+{
+  std::string line;
   std::ifstream infile;
   dash::Shared<int> nnodes;
   dash::Shared<int> ret;
-  
-  if (dash::myid() == 0) {
+  int M, N, L;
+
+  if( dash::myid()==0 ) {
     infile.open(fname.c_str());
     if(!infile) { 
       ret.set(-2);
     }
-    while (infile.peek() == '%') {
-      infile.ignore(2048, '\n');
-    }
-    infile >> M >> N >> L;
-    // Restrict to square matrices
-    assert(M == N);
-    nnodes.set(N);   
-  }
+    else  {
+      while (infile.peek() == '%') {
+	infile.ignore(2048, '\n');
+      }
 
+      if(getline(infile, line)) {
+	std::istringstream iss(line);
+	iss >> M >> N >> L;
+      }
+
+      // restrict to square matrices
+      assert(M == N);
+      nnodes.set(N);
+    }  
+  }
+  
   dash::barrier();
+  if( ret.get()<0 ) {
+    return ret.get();
+  }
+  
   nodes.allocate(nnodes.get(), dash::BLOCKED);
+
+  // ladj holds the adjacency information on unit 0
+  std::vector< std::deque<int> > ladj;
   
   if (dash::myid() == 0) {
-    std::vector< std::deque<int> > ladj;
-    ladj.resize(nnodes.get());
+    ladj.resize( nnodes.get() );
+    
     for (int i = 0; i < L; ++i) {
       int m, n;
       double data;
-      infile >> m >> n >> data;
+
+      getline(infile, line);
+      std::istringstream iss(line);
+      iss >> m >> n >> data;
+      
       if (m != n) {
         ladj[m-1].push_back(n);
         ladj[n-1].push_back(m);
       }
     }
+    infile.close();
+
+    // initialize nodes, except adjacency list
     for (auto i = 0; i < ladj.size(); i++) {
       node_t tmp;
       
@@ -237,17 +272,33 @@ int read_mtx(
       tmp.elim_step = -1;
       tmp.degree    = ladj[i].size();
       tmp.adj_sz    = tmp.degree;
-      tmp.adj       = dash::memalloc<int>(tmp.adj_sz);
 
-      for( auto j=0; j<tmp.adj_sz; j++ ) {
-        tmp.adj[j]=ladj[i][j];
-      }
       nodes[i] = tmp;
     }
-    infile.close();
   }
+
+  nodes.barrier();
+
+  // allocate memory of adjacency list in parallel
+  for( auto i=0; i<nodes.lsize(); ++i ) {
+    nodes.local[i].adj = dash::memalloc<int>(nodes.local[i].adj_sz);
+  }
+  
+  nodes.barrier();
+
+  // initialize adjacency list
+  if( dash::myid()==0 ) {
+    for( auto i=0; i<ladj.size(); i++ ) {
+      for( auto j=0; j<ladj[i].size(); j++ ) {
+	node_t node = nodes[i];
+	node.adj[j] = node.adj[j]=ladj[i][j];
+      }  
+    }
+  }
+
   return ret.get();
 }
+
 
 #if 0
 int init_nodes(nodearray_t& nodes,
@@ -272,6 +323,7 @@ int init_nodes(nodearray_t& nodes,
   return 0;
 }
 #endif 
+
 
 int find_min_degree_node(nodearray_t & nodes) {
   auto min = dash::min_element(
