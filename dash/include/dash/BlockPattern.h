@@ -1053,6 +1053,20 @@ public:
   }
 
   /**
+   * Extent of a single block in all dimensions.
+   */
+  const BlockSizeSpec_t & blocksizespec() const {
+    return _blocksize_spec;
+  }
+
+  /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  const BlockSpec_t & blockspec() const {
+    return _blockspec;
+  }
+
+  /**
    * Convert given global linear offset (index) to global cartesian
    * coordinates.
    *
