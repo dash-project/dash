@@ -2,6 +2,7 @@
 #define DASH__ALGORITHM__SUMMA_H_
 
 #include <dash/Exception.h>
+#include <dash/bindings/LAPACK.h>
 
 namespace dash {
 
@@ -12,7 +13,7 @@ namespace internal {
  * used only for tests and where BLAS is not available.
  */
 template<typename MatrixType>
-void MultiplyNaive(
+void multiply_naive(
   /// Matrix to multiply, extents n x m
   const MatrixType & A,
   /// Matrix to multiply, extents m x p
@@ -164,15 +165,52 @@ void summa(
     "second operand in dimension 1");
 
   DASH_LOG_TRACE("dash::summa", "matrix pattern extents valid");
+
+  auto num_blocks_l = 0;
+  auto num_blocks_m = 0;
+  auto num_blocks_n = 0;
+
+  auto block_size_x = pattern_a.blocksizespec().extent(0);
+  auto block_size_y = pattern_a.blocksizespec().extent(1);
+  auto block_size   = block_size_x * block_size_y;
+
+  Element * local_block_a = new Element[block_size];
+  Element * local_block_b = new Element[block_size];
+
+  for (int k = 0; k < num_blocks_l; k++) {
+    for (int i = 0; i < num_blocks_m; i += pgrid_nrow) {
+      // Local copy of block A[i + myrow][k]:
+      auto block_a = A.block({ i + myrow, k });
+      dash::copy(block_a.begin(),
+                 block_a.end(),
+                 local_block_a);
+
+      for (int j = 0; j < num_blocks_n; j += pgrid_ncol) {
+        // Local copy of block B[k][j + mycol]:
+        auto block_b = B.block({ k, j + myrow });
+        dash::copy(block_b.begin(),
+                   block_b.end(),
+                   local_block_b);
+        // Result block, in local memory:
+        auto block_c = C.block({ i + myrow, j + mycol });
+        DASH_ASSERT(block_c.is_local());
+        // Local matrix multiplication:
+        dash::multiply_naive(
+            local_block_a,
+            local_block_b,
+            block_c.begin());
+      } // close of the j loop
+    } // close of the i loop
+  } // close of the k loop 
 }
 
 /**
- * Adapter function for matrix-matrix multiplication (xDGEMM) for the SUMMA
- * algorithm.
+ * Registration of \c dash::summa as an implementation of matrix-matrix
+ * multiplication (xDGEMM).
  *
- * Automatically delegates  \c dash::multiply<MatrixType>
- * to                       \c dash::summa<MatrixType>
- * if                       \c MatrixType::pattern_type
+ * Delegates  \c dash::multiply<MatrixType>
+ * to         \c dash::summa<MatrixType>
+ * if         \c MatrixType::pattern_type
  * satisfies the pattern property constraints of the SUMMA implementation.
  */
 template<

@@ -8,8 +8,8 @@ TEST_F(SUMMATest, Deduction)
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   // Use square matrices for operands and result:
-  size_t tilesize_x  = 3;
-  size_t tilesize_y  = 3;
+  size_t tilesize_x  = 30;
+  size_t tilesize_y  = 30;
   size_t extent_cols = tilesize_x * num_units * 2;
   size_t extent_rows = tilesize_y * num_units * 2;
 
@@ -62,9 +62,24 @@ TEST_F(SUMMATest, Deduction)
   dash::Matrix<int, 2> matrix_b(pattern);
   dash::Matrix<int, 2> matrix_c(pattern);
 
+  // Initialize operands with identity matrix:
+  if (_dash_id == 0) {
+    for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
+      matrix_a[diag_idx][diag_idx] = 1;
+      matrix_b[diag_idx][diag_idx] = 1;
+    }
+  }
+
   // Expected to be resolved to SUMMA version of dash::multiply:
   LOG_MESSAGE("Calling dash::multiply ...");
   dash::multiply(matrix_a,
                  matrix_b,
                  matrix_c);
+
+  // Verify multiplication result (id x id = id):
+  if (_dash_id == 0) {
+    for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
+      ASSERT_EQ_U(1, matrix_c[diag_idx][diag_idx]);
+    }
+  }
 }
