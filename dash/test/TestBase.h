@@ -49,8 +49,8 @@ extern void ColoredPrintf(
   sprintf(buffer, __VA_ARGS__); \
   testing::internal::ColoredPrintf( \
     testing::internal::COLOR_YELLOW, \
-    "[ %d LOG    ] %s \n", \
-    dash::myid(),\
+    "[ %*d   LOG ] %s \n", \
+    4, dash::myid(),\
     buffer); \
 } while(0)
 

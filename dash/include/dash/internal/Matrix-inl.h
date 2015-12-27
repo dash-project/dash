@@ -18,14 +18,16 @@
 namespace dash {
 
 template<typename T, dim_t NumDim, class PatternT>
-MatrixRefView<T, NumDim, PatternT>::MatrixRefView()
+MatrixRefView<T, NumDim, PatternT>
+::MatrixRefView()
 : _dim(0)
 {
   DASH_LOG_TRACE("MatrixRefView()");
 }
 
 template<typename T, dim_t NumDim, class PatternT>
-MatrixRefView<T, NumDim, PatternT>::MatrixRefView(
+MatrixRefView<T, NumDim, PatternT>
+::MatrixRefView(
   Matrix<T, NumDim, index_type, PatternT> * matrix)
 : _dim(0),
   _mat(matrix),
@@ -35,21 +37,24 @@ MatrixRefView<T, NumDim, PatternT>::MatrixRefView(
 }
 
 template<typename T, dim_t NumDim, class PatternT>
-MatrixRefView<T, NumDim, PatternT>::MatrixRefView(
+MatrixRefView<T, NumDim, PatternT>
+::MatrixRefView(
   const MatrixRefView<T, NumDim, PatternT> & other)
 : _dim(other._dim),
   _mat(other._mat),
   _coord(other._coord),
   _viewspec(other._viewspec)
 {
-  DASH_LOG_TRACE_VAR("MatrixRefView()", other._mat);
-  DASH_LOG_TRACE_VAR("MatrixRefView()", other._coord);
-  DASH_LOG_TRACE_VAR("MatrixRefView()", other._viewspec);
+  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _mat);
+  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _dim);
+  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _coord);
+  DASH_LOG_TRACE_VAR("MatrixRefView(other)", _viewspec);
 }
 
 template<typename T, dim_t NumDim, class PatternT>
 GlobRef<T>
-MatrixRefView<T, NumDim, PatternT>::global_reference() const
+MatrixRefView<T, NumDim, PatternT>
+::global_reference() const
 {
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference()", _coord);
   auto pattern       = _mat->pattern();
@@ -68,21 +73,37 @@ MatrixRefView<T, NumDim, PatternT>::global_reference() const
 // LocalMatrixRef
 ////////////////////////////////////////////////////////////////////////
 
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+LocalMatrixRef<T, NumDim, CUR, PatternT>
+::LocalMatrixRef(
+  const LocalMatrixRef<T, NumDim, CUR+1, PatternT> & previous,
+  index_type coord)
+{
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.(prev)", CUR);
+  // Copy proxy of MatrixRef from last dimension:
+  _refview = new MatrixRefView<T, NumDim, PatternT>(
+                   *(previous._refview));
+  _refview->_coord[_refview->_dim] = coord;
+  _refview->_dim++;
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.(prev)", _refview->_dim);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.(prev)", _refview->_coord);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef.(prev)", _refview->_viewspec);
+}
+
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::LocalMatrixRef(
   Matrix<T, NumDim, index_type, PatternT> * mat)
 {
   _refview = new MatrixRefView<T, NumDim, PatternT>(
-             *(mat->_ref._refview));
-  std::array<size_t, NumDim> local_extents;
-  for (int d = 0; d < NumDim; ++d) {
-    local_extents[d] = mat->_pattern.local_extent(d);
-  }
+                   *(mat->_ref._refview));
+  auto local_extents = mat->_pattern.local_extents();
   DASH_LOG_TRACE_VAR("LocalMatrixRef(mat)", local_extents);
   _refview->_viewspec.resize(local_extents);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef(mat)", _refview->_viewspec);
 }
 
+#if 0
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::LocalMatrixRef(
@@ -103,6 +124,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   DASH_LOG_TRACE_VAR("LocalMatrixRef(matref)", local_extents);
   _refview->_viewspec.resize(local_extents);
 }
+#endif
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline LocalMatrixRef<T, NumDim, CUR, PatternT>
@@ -150,7 +172,8 @@ constexpr
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::extents() const noexcept
 {
-  return _refview->_mat->_pattern.local_extents();
+//return _refview->_mat->_pattern.local_extents();
+  return _refview->_viewspec.extents();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -205,18 +228,33 @@ T & LocalMatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-LocalMatrixRef<T, NumDim, CUR-1, PatternT> &&
+LocalMatrixRef<T, NumDim, CUR-1, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
-  index_type n)
+  index_type pos)
 {
-  DASH_LOG_TRACE_VAR("LocalMatrixRef.[]()", n);
+  DASH_LOG_TRACE("LocalMatrixRef.[]=()",
+                 "curdim:",   CUR,
+                 "index:",    pos,
+                 "viewspec:", _refview->_viewspec);
+  LocalMatrixRef<T, NumDim, CUR-1, PatternT> ref(*this, pos);
+  return ref;
+#if 0
+  DASH_LOG_TRACE("LocalMatrixRef.[]=",
+                 "current refview:",
+                 "refview.coord:",         _refview->_coord,
+                 "refview.dim:",           _refview->_dim,
+                 "refview.viewspec.rank:", _refview->_viewspec.rank());
   LocalMatrixRef<T, NumDim, CUR-1, PatternT> ref;
+  // Transfer ownership of _refview:
   ref._refview = _refview;
-  _refview->_coord[_refview->_dim] = n;
-  _refview->_dim++;
-  DASH_LOG_TRACE("LocalMatrixRef.[]", "move");
-  return std::move(ref);
+  ref._refview->_coord[_refview->_dim] = n;
+  ref._refview->_dim++;
+  ref._refview->_viewspec.set_rank(ref._refview->_dim);
+  DASH_LOG_TRACE("LocalMatrixRef.[]= >",
+                 "refview coords:", ref._refview->_coord);
+  return ref;
+#endif
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -225,13 +263,22 @@ const LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator[](
   index_type pos) const
 {
-  DASH_LOG_TRACE_VAR("LocalMatrixRef.[]()", pos);
+  DASH_LOG_TRACE("LocalMatrixRef.[]()",
+                 "curdim:",   CUR,
+                 "index:",    pos,
+                 "viewspec:", _refview->_viewspec);
+  LocalMatrixRef<T, NumDim, CUR-1, PatternT> ref(*this, pos);
+  return ref;
+#if 0
   LocalMatrixRef<T, NumDim, CUR-1, PatternT> ref;
   ref._refview = new MatrixRefView<T, NumDim, PatternT>(*_refview);
-  ref._refview->_coord[_refview->_dim] = pos;
+  ref._refview->_coord[_refview->_dim] = n;
   ref._refview->_dim++;
-  ref._refview->_viewspec.set_rank(CUR);
+  ref._refview->_viewspec.set_rank(ref._refview->_dim);
+  DASH_LOG_TRACE("LocalMatrixRef.[] >",
+                 "refview coords:", ref._refview->_coord);
   return ref;
+#endif
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -333,6 +380,23 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>::cols(
 // Partial Specialization for value deferencing.
 
 template <typename T, dim_t NumDim, class PatternT>
+LocalMatrixRef<T, NumDim, 0, PatternT>
+::LocalMatrixRef(
+  const LocalMatrixRef<T, NumDim, 1, PatternT> & previous,
+  typename PatternT::index_type                  coord)
+{
+  DASH_LOG_TRACE("LocalMatrixRef<0>.(prev)");
+  // Copy proxy of MatrixRef from last dimension:
+  _refview = new MatrixRefView<T, NumDim, PatternT>(
+                   *(previous._refview));
+  _refview->_coord[_refview->_dim] = coord;
+  _refview->_dim++;
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.(prev)", _refview->_coord);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.(prev)", _refview->_dim);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.(prev)", _refview->_viewspec);
+}
+
+template <typename T, dim_t NumDim, class PatternT>
 inline T *
 LocalMatrixRef<T, NumDim, 0, PatternT>
 ::local_at(
@@ -350,9 +414,17 @@ template <typename T, dim_t NumDim, class PatternT>
 inline LocalMatrixRef<T, NumDim, 0, PatternT>
 ::operator T()
 {
-  T ret = *local_at(_refview->_mat->_pattern.local_at(
-                      _refview->_coord,
-                      _refview->_viewspec));
+  auto coords   = _refview->_coord;
+  auto viewspec = _refview->_viewspec;
+  auto pattern  = _refview->_mat->_pattern;
+  DASH_LOG_TRACE("LocalMatrixRef<0>.T()",
+                 "coords:",         coords,
+                 "local viewspec:", viewspec.extents());
+  auto local_index = pattern.local_at(
+                       coords,
+                       viewspec);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.T()", local_index);
+  T ret = *local_at(local_index);
   DASH_LOG_TRACE("LocalMatrixRef<0>.T()", "delete _refview");
   delete _refview;
   return ret;
@@ -364,10 +436,20 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
 ::operator=(
   const T & value)
 {
-  T* ref = local_at(_refview->_mat->_pattern.local_at(
-                      _refview->_coord,
-                      _refview->_viewspec));
-  *ref = value;
+  auto coords   = _refview->_coord;
+  auto viewspec = _refview->_viewspec;
+  auto pattern  = _refview->_mat->_pattern;
+  DASH_LOG_TRACE("LocalMatrixRef<0>.=()",
+                 "coords:",         coords,
+                 "local viewspec:", viewspec,
+                 "value:",          value);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.=()", viewspec);
+  auto local_index = pattern.local_at(
+                       coords,
+                       viewspec);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.=", local_index);
+  T* ref = local_at(local_index);
+  *ref   = value;
   DASH_LOG_TRACE("LocalMatrixRef<0>.=", "delete _refview");
   delete _refview;
   return value;
@@ -388,7 +470,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   _refview = new MatrixRefView<T, NumDim, PatternT>(*(previous._refview));
   _refview->_coord[_refview->_dim] = coord;
   _refview->_dim++;
-  _refview->_viewspec.set_rank(CUR+1);
+  _refview->_viewspec.set_rank(_refview->_dim);
   DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", _refview->_dim);
   DASH_LOG_TRACE_VAR("MatrixRef.(MatrixRef prev)", _refview->_coord);
 }

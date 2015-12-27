@@ -65,13 +65,17 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
 
   // Assign initial values:
   for (auto lb = 0; lb < num_blocks_per_unit; ++lb) {
+    LOG_MESSAGE("initialize values in local block %d", lb);
     auto lblock         = matrix.local.block(lb);
     auto lblock_extents = lblock.extents();
-    LOG_MESSAGE("initialize values in local block %d (size: %d x %d)",
-                lb, lblock_extents[0], lblock_extents[1]);
+    LOG_MESSAGE("local block %d extents: (%d,%d)",
+                lb,
+                lblock_extents[0], lblock_extents[1]);
     for (auto by = 0; by < lblock_extents[1]; ++by) {
       for (auto bx = 0; bx < lblock_extents[0]; ++bx) {
-        lblock[by][bx] = ((dash::myid() + 1) * 10000) + (by * 100) + bx;
+        LOG_MESSAGE("set value in local block %d at block coord (%d,%d)",
+                    lb, bx, by);
+        lblock[bx][by] = ((dash::myid() + 1) * 10000) + (by * 100) + bx;
       }
     }
   }

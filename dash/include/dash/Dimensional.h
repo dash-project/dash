@@ -1,13 +1,14 @@
 #ifndef DASH__DIMENSIONAL_H_
 #define DASH__DIMENSIONAL_H_
 
-#include <assert.h>
-#include <array>
-
 #include <dash/Types.h>
 #include <dash/Distribution.h>
 #include <dash/Team.h>
 #include <dash/Exception.h>
+
+#include <assert.h>
+#include <array>
+#include <sstream>
 
 namespace dash {
 
@@ -316,9 +317,10 @@ std::ostream & operator<<(
  * \concept(DashCartesianSpaceConcept)
  */
 template<
-  dim_t NumDimensions,
-  typename IndexType = int>
-class ViewSpec : public Dimensional<ViewPair<IndexType>, NumDimensions> {
+  dim_t    NumDimensions,
+  typename IndexType = dash::default_index_t >
+class ViewSpec : public Dimensional<ViewPair<IndexType>, NumDimensions>
+{
 private:
   typedef ViewSpec<NumDimensions, IndexType>
     self_t;
@@ -326,6 +328,12 @@ private:
     SizeType;
   typedef ViewPair<IndexType>
     ViewPair_t;
+
+public:
+  template<dim_t NDim_, typename IndexType_>
+  friend std::ostream& operator<<(
+    std::ostream & os,
+    const ViewSpec<NDim_, IndexType_> & viewspec);
 
 public:
   /**
@@ -352,7 +360,8 @@ public:
   : Dimensional<ViewPair_t, NumDimensions>(),
     _size(1),
     _rank(NumDimensions),
-    _extents(extents) {
+    _extents(extents)
+  {
     for (auto i = 0; i < NumDimensions; ++i) {
       ViewPair_t vp { 0, extents[i] };
       this->_values[i]  = vp;
@@ -370,7 +379,8 @@ public:
     _size(1),
     _rank(NumDimensions),
     _extents(extents),
-    _offsets(offsets) {
+    _offsets(offsets)
+  {
     for (auto i = 0; i < NumDimensions; ++i) {
       ViewPair_t vp { offsets[i], extents[i] };
       this->_values[i]  = vp;
@@ -386,9 +396,9 @@ public:
       static_cast< const Dimensional<ViewPair_t, NumDimensions> & >(other)),
     _size(other._size),
     _rank(other._rank),
-    _extents(other._extents) {
-    _offsets = { };
-  }
+    _extents(other._extents),
+    _offsets(other._offsets)
+  { }
 
   /**
    * Change the view specification's extent in every dimension.
@@ -493,15 +503,42 @@ private:
 template<typename ElementType, dim_t NumDimensions>
 std::ostream & operator<<(
   std::ostream & os,
-  const Dimensional<ElementType, NumDimensions> & dimensional) {
-  os << "dash::Dimensional<"
+  const Dimensional<ElementType, NumDimensions> & dimensional)
+{
+  std::ostringstream ss;
+  ss << "dash::Dimensional<"
      << typeid(ElementType).name() << ","
      << NumDimensions << ">(";
   for (auto d = 0; d < NumDimensions; ++d) {
-    os << dimensional._values[d] << ((d < NumDimensions-1) ? "," : "");
+    ss << dimensional._values[d] << ((d < NumDimensions-1) ? "," : "");
   }
-  os << ")";
-  return os;
+  ss << ")";
+  return operator<<(os, ss.str());
+}
+
+template<dim_t NumDimensions, typename IndexType>
+std::ostream& operator<<(
+    std::ostream & os,
+    const ViewSpec<NumDimensions, IndexType> & viewspec)
+{
+  std::ostringstream ss;
+  ss << "dash::ViewSpec<" << NumDimensions << ">"
+     << "(offsets:";
+  for (auto d = 0; d < NumDimensions; ++d) {
+    if (d > 0) {
+      ss << ",";
+    }
+    ss << viewspec.offsets()[d];
+  }
+  ss << " extents:";
+  for (auto d = 0; d < NumDimensions; ++d) {
+    if (d > 0) {
+      ss << ",";
+    }
+    ss << viewspec.extents()[d];
+  }
+  ss << ")";
+  return operator<<(os, ss.str());
 }
 
 } // namespace dash

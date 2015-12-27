@@ -867,6 +867,8 @@ private:
     self_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     parent_t;
+  typedef ViewSpec<NumDimensions, IndexType>
+    ViewSpec_t;
 public:
   /**
    * Constructor, creates an instance of LocalMemoryLayout from a SizeSpec
@@ -983,7 +985,7 @@ public:
     typename OffsetType>
   IndexType at(
     const std::array<OffsetType, NumDimensions> & point,
-    const ViewSpec<NumDimensions> & viewspec) const {
+    const ViewSpec_t & viewspec) const {
     std::array<OffsetType, NumDimensions> coords;
     for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] = point[d] + viewspec[d].offset;

@@ -579,6 +579,27 @@ public:
 
   /**
    * The actual number of elements in this pattern that are local to the
+   * active unit, by dimension.
+   *
+   * \see  local_extent()
+   * \see  blocksize()
+   * \see  local_size()
+   * \see  extent()
+   *
+   * \see  DashPatternConcept
+   */
+  std::array<SizeType, NumDimensions> local_extents() const
+  {
+    DASH_LOG_DEBUG_VAR("BlockPattern.local_extents()", _team->myid());
+    std::array<SizeType, NumDimensions> l_extents;
+    // Local unit id, get extents from member instance:
+    l_extents = _local_memory_layout.extents();
+    DASH_LOG_DEBUG_VAR("BlockPattern.local_extents >", l_extents);
+    return l_extents;
+  }
+
+  /**
+   * The actual number of elements in this pattern that are local to the
    * given unit, by dimension.
    *
    * \see  local_extent()
