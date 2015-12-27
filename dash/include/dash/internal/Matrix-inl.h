@@ -581,8 +581,7 @@ inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_pointer
 MatrixRef<T, NumDim, CUR, PatternT>
 ::data() const noexcept
 {
-  DASH_LOG_TRACE_VAR("MatrixRef.data()", _refview->_viewspec.extents());
-  DASH_LOG_TRACE_VAR("MatrixRef.data()", _refview->_viewspec.offsets());
+  DASH_LOG_TRACE_VAR("MatrixRef.data()", _refview->_viewspec);
   return GlobIter_t(
            _refview->_mat->_glob_mem,
            _refview->_mat->_pattern,

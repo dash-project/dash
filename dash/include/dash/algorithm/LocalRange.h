@@ -53,13 +53,13 @@ local_index_range(
   const GlobIter<ElementType, PatternType> & last)
 {
   typedef typename PatternType::index_type idx_t;
-  // Get pattern from global iterators, O(1):
-  auto pattern        = first.pattern();
   // Get offsets of iterators within global memory, O(1):
   idx_t begin_gindex  = static_cast<idx_t>(first.pos());
   idx_t end_gindex    = static_cast<idx_t>(last.pos());
-  DASH_LOG_TRACE_VAR("local_index_range", begin_gindex);
-  DASH_LOG_TRACE_VAR("local_index_range", end_gindex);
+  DASH_LOG_TRACE_VAR("local_index_range()", begin_gindex);
+  DASH_LOG_TRACE_VAR("local_index_range()", end_gindex);
+  // Get pattern from global iterators, O(1):
+  auto pattern        = first.pattern();
   DASH_LOG_TRACE_VAR("local_index_range", pattern.local_size());
   if (pattern.local_size() == 0) {
     // Local index range is empty

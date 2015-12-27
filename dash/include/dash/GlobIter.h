@@ -122,8 +122,7 @@ public:
     _lbegin(_globmem->lbegin()) {
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _idx);
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _max_idx);
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _viewspec->offsets());
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _viewspec->extents());
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _viewspec);
   }
 
   /**
@@ -371,10 +370,43 @@ public:
   }
 
   /**
-   * Global offset of the iterator within overall element range.
+   * Offset of the iterator in the index range relative to its view spec.
    */
   inline gptrdiff_t pos() const {
     return _idx;
+  }
+
+  /**
+   * Offset of the iterator in global index range.
+   * Projects iterator position from its view spec to global index domain.
+   */
+  inline gptrdiff_t gpos() const {
+    DASH_LOG_TRACE_VAR("GlobIter.gpos()", _idx);
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      DASH_LOG_TRACE_VAR("GlobIter.gpos >", _idx);
+      return _idx;
+    } else {
+      size_t idx     = _idx;
+      size_t offset  = 0;
+      DASH_LOG_TRACE_VAR("GlobIter.gpos", _max_idx);
+      // Convert iterator position (_idx) to local index and unit.
+      if (_idx > _max_idx) {
+        // Global iterator pointing past the range indexed by the pattern
+        // which is the case for .end() iterators.
+        idx    = _max_idx;
+        offset = _idx - _max_idx;
+      }
+      // Viewspec projection required:
+      auto g_coords = coords(idx);
+      DASH_LOG_TRACE_VAR("GlobIter.gpos", _idx);
+      DASH_LOG_TRACE_VAR("GlobIter.gpos", g_coords);
+      auto g_idx    = _pattern->memory_layout().at(g_coords);
+      DASH_LOG_TRACE_VAR("GlobIter.gpos", g_idx);
+      g_idx += offset;
+      DASH_LOG_TRACE("GlobIter.gpos", "> g_idx + offset:", g_idx);
+      return g_idx;
+    }
   }
 
   /**
