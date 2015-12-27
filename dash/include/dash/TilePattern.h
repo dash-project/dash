@@ -36,6 +36,8 @@ namespace dash {
  *                         \see MemArrange
  * 
  * \concept{DashPatternConcept}
+ *
+ * TODO: Rename to DiagonalTilePattern.
  */
 template<
   dim_t NumDimensions,
@@ -253,9 +255,9 @@ public:
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist     = DistributionSpec_t(),
+    const DistributionSpec_t & dist,
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t &         teamspec = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t &         teamspec,
     /// Team containing units to which this pattern maps its elements
     dash::Team &               team     = dash::Team::All()) 
   : _distspec(dist),
@@ -594,7 +596,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<SizeType, NumDimensions> local_extents(
-    dart_unit_t unit) const {
+    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const {
     // Same local memory layout for all units:
     return _local_memory_layout.extents();
   }
@@ -747,8 +749,8 @@ public:
   std::array<IndexType, NumDimensions> global(
     dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
-    DASH_LOG_DEBUG_VAR("TilePattern.local_to_global()", local_coords);
-    DASH_LOG_DEBUG_VAR("TilePattern.local_to_global()", unit);
+    DASH_LOG_DEBUG_VAR("TilePattern.global()", local_coords);
+    DASH_LOG_DEBUG_VAR("TilePattern.global()", unit);
     // Global coordinate of local element:
     std::array<IndexType, NumDimensions> global_coords = local_coords;
     // Local block coordinate of local element:
@@ -760,21 +762,21 @@ public:
                              ? local_coords[_minor_tiled_dim] / 
                                blocksize_min
                              : 0;
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global", _major_tiled_dim);
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global", _minor_tiled_dim);
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global", l_block_coord_min);
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global", l_block_coord_maj);
+    DASH_LOG_TRACE_VAR("TilePattern.global", _major_tiled_dim);
+    DASH_LOG_TRACE_VAR("TilePattern.global", _minor_tiled_dim);
+    DASH_LOG_TRACE_VAR("TilePattern.global", l_block_coord_min);
+    DASH_LOG_TRACE_VAR("TilePattern.global", l_block_coord_maj);
     // Apply diagonal shift in major tiled dimension:
     auto num_shift_blocks = (_nunits + unit -
                               (l_block_coord_min % _nunits))
                             % _nunits;
     num_shift_blocks     += _nunits * l_block_coord_maj;
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global", num_shift_blocks);
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global", blocksize_maj);
+    DASH_LOG_TRACE_VAR("TilePattern.global", num_shift_blocks);
+    DASH_LOG_TRACE_VAR("TilePattern.global", blocksize_maj);
     global_coords[_major_tiled_dim] =
       (num_shift_blocks * blocksize_maj) +
       local_coords[_major_tiled_dim] % blocksize_maj;
-    DASH_LOG_DEBUG_VAR("TilePattern.local_to_global >", global_coords);
+    DASH_LOG_DEBUG_VAR("TilePattern.global >", global_coords);
     return global_coords;
   }
 
@@ -798,14 +800,14 @@ public:
    */
   IndexType global(
     IndexType local_index) const {
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", local_index);
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx()", dash::myid());
+    DASH_LOG_TRACE_VAR("TilePattern.global()", local_index);
+    DASH_LOG_TRACE_VAR("TilePattern.global()", dash::myid());
     std::array<IndexType, NumDimensions> local_coords =
       _local_memory_layout.coords(local_index);
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx", local_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.global", local_coords);
     std::array<IndexType, NumDimensions> global_coords =
       global(dash::myid(), local_coords);
-    DASH_LOG_TRACE_VAR("TilePattern.local_to_global_idx", global_coords);
+    DASH_LOG_TRACE_VAR("TilePattern.global >", global_coords);
     return _memory_layout.at(global_coords);
   }
 
@@ -1358,7 +1360,7 @@ private:
    */
   void initialize_local_range() {
     auto local_size = _local_memory_layout.size();
-    DASH_LOG_DEBUG_VAR("TilePattern.initialize_local_range()", local_size);
+    DASH_LOG_DEBUG_VAR("TilePattern.init_local_range()", local_size);
     if (local_size == 0) {
       _lbegin = 0;
       _lend   = 0;
@@ -1368,10 +1370,10 @@ private:
       // Index past last local index transformed to global index
       _lend   = global(local_size - 1) + 1;
     }
-    DASH_LOG_DEBUG_VAR("TilePattern.initialize_local_range >", 
+    DASH_LOG_DEBUG_VAR("TilePattern.init_local_range >", 
                        _local_memory_layout.extents());
-    DASH_LOG_DEBUG_VAR("TilePattern.initialize_local_range >", _lbegin);
-    DASH_LOG_DEBUG_VAR("TilePattern.initialize_local_range >", _lend);
+    DASH_LOG_DEBUG_VAR("TilePattern.init_local_range >", _lbegin);
+    DASH_LOG_DEBUG_VAR("TilePattern.init_local_range >", _lend);
   }
 
   /**

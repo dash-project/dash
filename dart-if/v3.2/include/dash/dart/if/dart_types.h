@@ -44,6 +44,8 @@ typedef enum
 typedef int32_t dart_unit_t;
 typedef int32_t dart_team_t;
 
+#define DART_UNDEFINED_UNIT_ID ((dart_unit_t)(-1))
+
 #define DART_INTERFACE_OFF
 
 #ifdef __cplusplus

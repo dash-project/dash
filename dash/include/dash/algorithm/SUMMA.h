@@ -221,6 +221,7 @@ void summa(
       dash::copy(block_a.begin(),
                  block_a.end(),
                  local_block_a);
+      DASH_LOG_TRACE("dash::summa", "created local copy of A.block");
       // Multiply block A[i][k] with blocks B[k][*]
       for (int block_j = 0; block_j < num_blocks_n; block_j += num_units_x) 
       {
@@ -229,6 +230,7 @@ void summa(
                        "j:",   block_j,
                        "k:",   block_k,
                        "j+u:", block_j + block_col_u);
+        DASH_LOG_TRACE("dash::summa", "created local copy of B.block");
         auto block_b = B.block(coords_type { block_k,
                                              block_j + block_col_u });
         dash::copy(block_b.begin(),
@@ -248,6 +250,9 @@ void summa(
                                 block_j + block_col_u });
         // Plausibility check: first element in block expected to be local.
         DASH_ASSERT(block_c.is_local(0));
+        DASH_LOG_TRACE("dash::summa",
+                       "calculating block matrix product "
+                       "C.block = A.block x B.block");
         // Local matrix multiplication:
         dash::internal::multiply_naive(
             local_block_a,
@@ -260,6 +265,8 @@ void summa(
 
   delete[] local_block_a;
   delete[] local_block_b;
+
+  dash::barrier();
 }
 
 /**
@@ -276,7 +283,6 @@ template<
   typename MatrixTypeB,
   typename MatrixTypeC
 >
-#if 0
 typename std::enable_if<
   dash::pattern_constraints<
     dash::summa_pattern_blocking_constraints,
@@ -298,9 +304,6 @@ typename std::enable_if<
   >::satisfied::value,
   void
 >::type
-#else
-void
-#endif
 multiply(
   /// Matrix to multiply, extents n x m
   MatrixTypeA & A,

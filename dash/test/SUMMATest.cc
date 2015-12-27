@@ -8,10 +8,15 @@ TEST_F(SUMMATest, Deduction)
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   // Use square matrices for operands and result:
-  size_t tilesize_x  = 30;
-  size_t tilesize_y  = 30;
+  size_t tilesize_x  = 3;
+  size_t tilesize_y  = 3;
   size_t extent_cols = tilesize_x * num_units * 2;
   size_t extent_rows = tilesize_y * num_units * 2;
+
+  if (num_units % 2 > 0) {
+    LOG_MESSAGE("Team size must be multiple of 2 for SUMMATest.Deduction");
+    return;
+  }
 
   dash::SizeSpec<2> size_spec(extent_cols, extent_rows);
   dash::TeamSpec<2> team_spec(num_units, 1);
@@ -69,6 +74,9 @@ TEST_F(SUMMATest, Deduction)
       matrix_b[diag_idx][diag_idx] = 1;
     }
   }
+
+  LOG_MESSAGE("Waiting for barrier ...");
+  dash::barrier();
 
   // Expected to be resolved to SUMMA version of dash::multiply:
   LOG_MESSAGE("Calling dash::multiply ...");

@@ -1,6 +1,7 @@
 
 #include <libdash.h>
 #include <gtest/gtest.h>
+
 #include "TestBase.h"
 #include "CopyTest.h"
 
@@ -30,6 +31,56 @@ TEST_F(CopyTest, BlockingGlobalToLocalBlock)
     ASSERT_EQ_U(static_cast<int>(array[l]),
                 local_copy[l]);
   }
+}
+
+TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
+{
+  // Copy all elements contained in a single, continuous, 2-dimensional block.
+  const size_t block_size_x  = 3;
+  const size_t block_size_y  = 2;
+  const size_t block_size    = block_size_x * block_size_y;
+  size_t extent_x            = block_size_x * _dash_size * 2;
+  size_t extent_y            = block_size_y * _dash_size * 2;
+  size_t num_elem_total      = extent_x * extent_y;
+  // Assuming balanced mapping:
+  size_t num_elem_per_unit   = num_elem_total / _dash_size;
+  size_t num_blocks_per_unit = num_elem_per_unit / block_size;
+
+  LOG_MESSAGE("nunits:%d elem_total:%d elem_per_unit:%d blocks_per_unit:d%",
+              _dash_size, num_elem_total,
+              num_elem_per_unit, num_blocks_per_unit);
+
+  typedef dash::TilePattern<2> pattern_t;
+
+  pattern_t pattern(
+    dash::SizeSpec<2>(
+      extent_x,
+      extent_y),
+    dash::DistributionSpec<2>(
+      dash::TILE(block_size_x),
+      dash::TILE(block_size_y))
+  );
+
+  dash::Matrix<int, 2> matrix(pattern);
+
+  // Assign initial values:
+  for (auto lb = 0; lb < num_blocks_per_unit; ++lb) {
+    auto lblock         = matrix.local.block(lb);
+    auto lblock_extents = lblock.extents();
+    LOG_MESSAGE("initialize values in local block %d (size: %d x %d)",
+                lb, lblock_extents[0], lblock_extents[1]);
+    for (auto by = 0; by < lblock_extents[1]; ++by) {
+      for (auto bx = 0; bx < lblock_extents[0]; ++bx) {
+        lblock[by][bx] = ((dash::myid() + 1) * 10000) + (by * 100) + bx;
+      }
+    }
+  }
+
+  matrix.barrier();
+  
+  // Local range to store copy:
+  int local_copy[num_elem_per_unit];
+
 }
 
 TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)

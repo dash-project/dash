@@ -264,8 +264,22 @@ ValueType * copy(
     // Convert local subrange of global input to native pointers:
     ValueType * l_in_first = git_l_in_first.local();
     DASH_LOG_TRACE_VAR("dash::copy", l_in_first);
-    ValueType * l_in_last  = (git_l_in_last - 1).local() + 1;
+    ValueType * l_in_last  = (git_l_in_last - 1).local();
     DASH_LOG_TRACE_VAR("dash::copy", l_in_last);
+    // Verify conversion of global input iterators to local pointers:
+    if (l_in_first == nullptr) {
+      DASH_LOG_ERROR("dash::copy", "global input start index",
+                     git_l_in_first.pos(), "is not local");
+      return out_first;
+    }
+    if (l_in_last == nullptr) {
+      DASH_LOG_ERROR("dash::copy", "global input end index",
+                     git_l_in_last.pos(), "is not local");
+      return out_first;
+    }
+    // Advance input end iterator past last element:
+    ++l_in_last;
+
     size_t num_copy_elem = l_in_last - l_in_first;
     // ... [ ........ | --- l --- | ........ ]
     //     ^          ^           ^          ^
@@ -280,7 +294,6 @@ ValueType * copy(
     size_t max_memcpy_elem  = std::numeric_limits<size_t>::max() /
                                  sizeof(ValueType);
     size_t num_memcpy_bytes = num_copy_elem * sizeof(ValueType);
-    DASH_LOG_TRACE_VAR("dash::copy", max_memcpy_elem);
     DASH_LOG_TRACE_VAR("dash::copy", num_memcpy_bytes);
     DASH_ASSERT_LT(
       num_copy_elem, max_memcpy_elem,
@@ -290,7 +303,8 @@ ValueType * copy(
 #endif
     // Assert that all elements in local range have been copied:
     DASH_ASSERT_EQ(out_last, out_first + l_range_size,
-                   "Expected to copy " << l_range_size << " local elements");
+                   "Expected to copy " << l_range_size << " local elements "
+                   "but copied " << (out_last - out_first));
     // Advance output pointer:
     out_first = out_last;
     //

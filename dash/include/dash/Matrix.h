@@ -274,6 +274,12 @@ public:
     typename IndexT_,
     class PatternT_ >
   friend class Matrix;
+  template<
+    typename T_,
+    dim_t NumDimensions1,
+    dim_t NumDimensions2,
+    class PatternT_ >
+  friend class LocalMatrixRef;
 
 public:
   typedef T                                                   value_type;
@@ -335,7 +341,7 @@ public:
     ViewSpec<NumDimensions> block_view = pattern.local_block(block_lindex);
     // Return a view specified by the block's viewspec:
     View<NumDimensions> view;
-    view._refview            = new MatrixRefView_t(this);
+    view._refview            = new MatrixRefView_t(_refview->_mat);
     view._refview->_viewspec = block_view;
     DASH_LOG_TRACE("LocalMatrixRef.block >", block_view);
     return view;
@@ -358,7 +364,7 @@ public:
     ViewSpec<NumDimensions> block_view = pattern.local_block(block_lindex);
     // Return a view specified by the block's viewspec:
     View<NumDimensions> view;
-    view._refview            = new MatrixRefView_t(this);
+    view._refview            = new MatrixRefView_t(_refview->_mat);
     view._refview->_viewspec = block_view;
     DASH_LOG_TRACE("LocalMatrixRef.block >", block_view);
     return view;
@@ -504,6 +510,12 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
     typename IndexT_,
     class PatternT_ >
   friend class Matrix;
+  template<
+    typename T_,
+    dim_t NumDimensions1,
+    dim_t NumDimensions2,
+    class PatternT_ > 
+  friend class LocalMatrixRef;
 
  public:
   typedef typename PatternT::index_type  index_type;
