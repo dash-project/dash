@@ -575,7 +575,15 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
 
   inline T * local_at(index_type pos);
   inline operator T();
-  inline T operator=(const T & value);
+  inline T operator =(const T & value);
+  inline T operator+=(const T & value);
+  inline T operator+ (const T & value);
+  inline T operator-=(const T & value);
+  inline T operator- (const T & value);
+  inline T operator*=(const T & value);
+  inline T operator* (const T & value);
+  inline T operator/=(const T & value);
+  inline T operator/ (const T & value);
 
  private:
   MatrixRefView<T, NumDimensions, PatternT> * _refview;

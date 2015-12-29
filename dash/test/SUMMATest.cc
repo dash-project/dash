@@ -5,13 +5,18 @@
 
 TEST_F(SUMMATest, Deduction)
 {
+  typedef int                  value_t;
+  typedef dash::TilePattern<2> pattern_t;
+
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   // Use square matrices for operands and result:
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 3;
-  size_t extent_cols = tilesize_x * num_units * 2;
-  size_t extent_rows = tilesize_y * num_units * 2;
+  size_t num_local_blocks_x = 1;
+  size_t num_local_blocks_y = 1;
+  size_t extent_cols = tilesize_x * num_units * num_local_blocks_x;
+  size_t extent_rows = tilesize_y * num_units * num_local_blocks_y;
 
   if (num_units % 2 > 0) {
     LOG_MESSAGE("Team size must be multiple of 2 for SUMMATest.Deduction");
@@ -21,6 +26,16 @@ TEST_F(SUMMATest, Deduction)
   dash::SizeSpec<2> size_spec(extent_cols, extent_rows);
   dash::TeamSpec<2> team_spec(num_units, 1);
 
+  pattern_t pattern(
+    dash::SizeSpec<2>(
+      extent_cols,
+      extent_rows),
+    dash::DistributionSpec<2>(
+      dash::TILE(tilesize_x),
+      dash::TILE(tilesize_y))
+  );
+
+#if DEFUNCT
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:
   LOG_MESSAGE("Initialize matrix pattern ...");
@@ -30,6 +45,7 @@ TEST_F(SUMMATest, Deduction)
                  dash::summa_pattern_indexing_constraints > (
                    size_spec,
                    team_spec);
+#endif
   // Plausibility check of single pattern traits:
   ASSERT_FALSE_U(
     dash::pattern_indexing_traits <
@@ -63,9 +79,9 @@ TEST_F(SUMMATest, Deduction)
 
   // Create operands and result matrices with identical distribution pattern:
   LOG_MESSAGE("Initialize matrix instances ...");
-  dash::Matrix<int, 2> matrix_a(pattern);
-  dash::Matrix<int, 2> matrix_b(pattern);
-  dash::Matrix<int, 2> matrix_c(pattern);
+  dash::Matrix<value_t, 2> matrix_a(pattern);
+  dash::Matrix<value_t, 2> matrix_b(pattern);
+  dash::Matrix<value_t, 2> matrix_c(pattern);
 
   // Initialize operands with identity matrix:
   if (_dash_id == 0) {
@@ -87,7 +103,7 @@ TEST_F(SUMMATest, Deduction)
   // Verify multiplication result (id x id = id):
   if (_dash_id == 0) {
     for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
-      int actual = matrix_c[diag_idx][diag_idx];
+      value_t actual = matrix_c[diag_idx][diag_idx];
       ASSERT_EQ_U(1, actual);
     }
   }

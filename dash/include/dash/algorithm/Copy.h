@@ -71,7 +71,7 @@ ValueType * copy_impl(
   DASH_LOG_TRACE_VAR("dash::copy_impl", num_bytes_total);
   auto pattern         = in_first.pattern();
   auto unit_first      = pattern.unit_at(in_first.pos());
-  auto unit_last       = pattern.unit_at(in_last.pos());
+  auto unit_last       = pattern.unit_at(in_last.pos() - 1);
   typedef typename decltype(pattern)::index_type index_type;
   typedef typename decltype(pattern)::size_type  size_type;
   size_type num_elem_copied = 0;
@@ -322,12 +322,12 @@ ValueType * copy(
       DASH_LOG_TRACE("dash::copy",
                      "copy global range succeeding local subrange",
                      "in_first:", g_l_in_last.pos(),
-                     "in_last:", in_last.pos());
+                     "in_last:",  g_in_last.pos());
       // ... [ ........ | ... l ... | --- copy --- ]
       //     ^          ^           ^              ^
       //     in_first   l_in_first  l_in_last      in_last
       out_last = dash::internal::copy_impl(g_l_in_last,
-                                           in_last,
+                                           g_in_last,
                                            out_first);
       // Assert that all elements in range have been copied:
       DASH_ASSERT_EQ(out_last, out_first + num_postlocal_elem,

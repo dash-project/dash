@@ -529,6 +529,32 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
   return value;
 }
 
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+LocalMatrixRef<T, NumDim, 0, PatternT>
+::operator+=(
+  const T & value)
+{
+  auto l_coords   = _refview->_coord;
+  auto l_viewspec = _refview->_l_viewspec;
+  auto pattern    = _refview->_mat->_pattern;
+  DASH_LOG_TRACE("LocalMatrixRef<0>.+=()",
+                 "coords:",         l_coords,
+                 "local viewspec:", l_viewspec,
+                 "value:",          value);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.+=()", l_viewspec);
+  // Local coordinates and local viewspec to local index:
+  auto local_index = pattern.local_at(
+                       l_coords,
+                       l_viewspec);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.=", local_index);
+  T* ref  = local_at(local_index);
+  *ref   += value;
+  DASH_LOG_TRACE("LocalMatrixRef<0>.+=", "delete _refview");
+  delete _refview;
+  return value;
+}
+
 ////////////////////////////////////////////////////////////////////////
 // MatrixRef
 ////////////////////////////////////////////////////////////////////////

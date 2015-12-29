@@ -1062,9 +1062,9 @@ public:
       extents[d] = _blocksize_spec.extent(d);
       offsets[d] = block_coords[d] * extents[d];
     }
-    DASH_LOG_TRACE_VAR("TilePattern.block >", offsets);
-    DASH_LOG_TRACE_VAR("TilePattern.block >", extents);
-    return ViewSpec_t(offsets, extents);
+    auto block_vs = ViewSpec_t(offsets, extents);
+    DASH_LOG_TRACE_VAR("TilePattern.block >", block_vs);
+    return block_vs;
   }
 
   /**
@@ -1096,8 +1096,7 @@ public:
       extents[d] = _blocksize_spec.extent(d);
     }
     ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_TRACE_VAR("TilePattern.local_block >", block_vs.extents());
-    DASH_LOG_TRACE_VAR("TilePattern.local_block >", block_vs.offsets());
+    DASH_LOG_TRACE_VAR("TilePattern.local_block >", block_vs);
 #ifdef __TODO__
     // Coordinates of the unit within the team spec:
     std::array<IndexType, NumDimensions> unit_ts_coord =
@@ -1135,8 +1134,7 @@ public:
       offsets[d]        = l_block_coords[d] * blocksize_d;
     }
     ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_TRACE_VAR("TilePattern.local_block >", block_vs.extents());
-    DASH_LOG_TRACE_VAR("TilePattern.local_block >", block_vs.offsets());
+    DASH_LOG_TRACE_VAR("TilePattern.local_block >", block_vs);
     return block_vs;
   }
 
@@ -1314,17 +1312,20 @@ private:
     const SizeSpec_t         & sizespec,
     const DistributionSpec_t & distspec,
     const TeamSpec_t         & teamspec) const {
-    // Number of blocks in all dimensions:
-    std::array<SizeType, NumDimensions> n_blocks;
+    DASH_LOG_TRACE("TilePattern.init_blocksizespec()");
     // Extents of a single block:
     std::array<SizeType, NumDimensions> s_blocks;
     for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = distspec[d];
+      DASH_LOG_TRACE("TilePattern.init_blocksizespec d",
+                     "sizespec extent[d]:", sizespec.extent(d),
+                     "teamspec extent[d]:", teamspec.extent(d));
       SizeType max_blocksize_d  = dist.max_blocksize_in_range(
         sizespec.extent(d),  // size of range (extent)
         teamspec.extent(d)); // number of blocks (units)
       s_blocks[d] = max_blocksize_d;
     }
+    DASH_LOG_TRACE_VAR("TilePattern.init_blocksizespec >", s_blocks);
     return BlockSizeSpec_t(s_blocks);
   }
 
