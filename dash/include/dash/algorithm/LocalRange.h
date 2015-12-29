@@ -66,9 +66,12 @@ local_index_range(
       DASH_LOG_TRACE("local_index_range", "input iterators in same view");
       bool first_is_local = first.is_local();
       DASH_LOG_TRACE_VAR("local_index_range", first_is_local);
-      bool last_is_local  = (last - 1).is_local();
-      DASH_LOG_TRACE_VAR("local_index_range", last_is_local);
-      if (first_is_local && last_is_local) {
+      // No need to check if last is local as both are relative to the same
+      // view.
+//    bool last_is_local  = (last - 1).is_local();
+//    DASH_LOG_TRACE_VAR("local_index_range", last_is_local);
+//    if (first_is_local && last_is_local) {
+      if (first_is_local) {
         DASH_LOG_TRACE("local_index_range >", first.pos(), last.pos());
         return LocalIndexRange<idx_t> { first.pos(), last.pos() };
       } else {
