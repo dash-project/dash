@@ -214,8 +214,10 @@ class MatrixRefView
   /// Coordinates of a single referenced element if view references fully
   /// specified coordinates.
   ::std::array<index_type, NumDimensions>           _coord     = {  };
-  /// View offset and extents.
+  /// View offset and extents in global index range.
   ViewSpec<NumDimensions, index_type>               _viewspec;
+  /// View offset and extents in local index range.
+  ViewSpec<NumDimensions, index_type>               _l_viewspec;
 
  public:
   template<
@@ -347,15 +349,22 @@ public:
     auto pattern      = _refview->_mat->_pattern;
     auto block_lindex = pattern.blockspec().at(block_lcoords);
     DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
-    // Resolve the block's viewspec:
-    auto l_block_view = pattern.local_block_local(block_lindex);
+    // Global view of local block:
+    auto l_block_g_view = pattern.local_block(block_lindex);
+    // Local view of local block:
+    auto l_block_l_view = pattern.local_block_local(block_lindex);
     // Return a view specified by the block's viewspec:
     View<NumDimensions> view;
-    view._refview            = new MatrixRefView_t(_refview->_mat);
-    view._refview->_viewspec = l_block_view;
+    view._refview              = new MatrixRefView_t(_refview->_mat);
+    view._refview->_viewspec   = l_block_g_view;
+    view._refview->_l_viewspec = l_block_l_view;
     DASH_LOG_TRACE("LocalMatrixRef.block >",
+                   "global:",
+                   "offsets:", view._refview->_viewspec.offsets(),
                    "extents:", view._refview->_viewspec.extents(),
-                   "offsets:", view._refview->_viewspec.offsets());
+                   "local:",
+                   "offsets:", view._refview->_l_viewspec.offsets(),
+                   "extents:", view._refview->_l_viewspec.extents());
     return view;
   }
 
@@ -372,15 +381,22 @@ public:
     //
     DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
     auto pattern      = _refview->_mat->_pattern;
-    // Resolve the block's viewspec:
-    auto l_block_view = pattern.local_block_local(block_lindex);
+    // Global view of local block:
+    auto l_block_g_view = pattern.local_block(block_lindex);
+    // Local view of local block:
+    auto l_block_l_view = pattern.local_block_local(block_lindex);
     // Return a view specified by the block's viewspec:
     View<NumDimensions> view;
-    view._refview            = new MatrixRefView_t(_refview->_mat);
-    view._refview->_viewspec = l_block_view;
+    view._refview              = new MatrixRefView_t(_refview->_mat);
+    view._refview->_viewspec   = l_block_g_view;
+    view._refview->_l_viewspec = l_block_l_view;
     DASH_LOG_TRACE("LocalMatrixRef.block >",
+                   "global:",
+                   "offsets:", view._refview->_viewspec.offsets(),
                    "extents:", view._refview->_viewspec.extents(),
-                   "offsets:", view._refview->_viewspec.offsets());
+                   "local:",
+                   "offsets:", view._refview->_l_viewspec.offsets(),
+                   "extents:", view._refview->_l_viewspec.extents());
     return view;
   }
 
@@ -393,12 +409,12 @@ public:
 
   inline    Team            & team();
 
-  constexpr size_type         size()                const noexcept;
-  constexpr size_type         local_size()          const noexcept;
-  constexpr size_type         local_capacity()      const noexcept;
-  constexpr size_type         extent(dim_t dim)     const noexcept;
-  constexpr Extents_t         extents()             const noexcept;
-  constexpr bool              empty()               const noexcept;
+  inline    size_type         size()                const noexcept;
+  inline    size_type         local_size()          const noexcept;
+  inline    size_type         local_capacity()      const noexcept;
+  inline    size_type         extent(dim_t dim)     const noexcept;
+  inline    Extents_t         extents()             const noexcept;
+  inline    bool              empty()               const noexcept;
 
   inline    void              barrier()             const;
 

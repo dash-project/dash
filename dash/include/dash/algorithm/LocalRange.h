@@ -58,6 +58,25 @@ local_index_range(
   idx_t end_gindex    = static_cast<idx_t>(last.pos());
   DASH_LOG_TRACE_VAR("local_index_range()", begin_gindex);
   DASH_LOG_TRACE_VAR("local_index_range()", end_gindex);
+  // Check if input range is relative to a view spec (e.g. a block):
+  if (first.is_relative() && last.is_relative()) {
+    DASH_LOG_TRACE("local_index_range", "input iterators are relative");
+    if (first.viewspec() == last.viewspec()) {
+      // TODO: Only all-local or all-nonlocal ranges supported for now.
+      DASH_LOG_TRACE("local_index_range", "input iterators in same view");
+      bool first_is_local = first.is_local();
+      DASH_LOG_TRACE_VAR("local_index_range", first_is_local);
+      bool last_is_local  = (last - 1).is_local();
+      DASH_LOG_TRACE_VAR("local_index_range", last_is_local);
+      if (first_is_local && last_is_local) {
+        DASH_LOG_TRACE("local_index_range >", first.pos(), last.pos());
+        return LocalIndexRange<idx_t> { first.pos(), last.pos() };
+      } else {
+        DASH_LOG_TRACE("local_index_range >", "not local -> (0,0)");
+        return LocalIndexRange<idx_t> { 0, 0 };
+      }
+    }
+  }
   // Get pattern from global iterators, O(1):
   auto pattern        = first.pattern();
   DASH_LOG_TRACE_VAR("local_index_range", pattern.local_size());

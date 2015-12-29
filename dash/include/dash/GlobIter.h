@@ -10,7 +10,7 @@
 
 namespace dash {
 
-typedef long long gptrdiff_t;
+typedef dash::default_index_t gptrdiff_t;
 
 template<
   typename ElementType,
@@ -47,8 +47,12 @@ private:
   static const MemArrange Arrangement   = PatternType::memory_order();
 
 protected:
+  /// Global memory used to dereference iterated values.
   GlobMem<ElementType> * _globmem;
+  /// Pattern that specifies the iteration order (access pattern).
   const PatternType    * _pattern;
+  /// View that specifies the iterator's index range relative to the global
+  /// index range of the iterator's pattern.
   const ViewSpecType   * _viewspec;
   /// Current position of the iterator.
   size_t                 _idx        = 0;
@@ -136,6 +140,13 @@ public:
    */
   self_t & operator=(
     const self_t & other) = default;
+
+  /**
+   * The number of dimensions of the iterator's underlying pattern.
+   */
+  static dim_t ndim() {
+    return NumDimensions;
+  }
 
   /**
    * Type conversion operator to \c GlobPtr.
@@ -286,14 +297,14 @@ public:
    * the calling unit's local memory.
    */
   inline bool is_local() const {
-    return _pattern->is_local(_idx);
+    return (local() != nullptr);
   }
 
   /**
    * Convert global iterator to native pointer.
    */
   ElementType * local() {
-    DASH_LOG_TRACE_VAR("GlobIter.local()=", _idx);
+    DASH_LOG_TRACE_VAR("GlobIter.local=()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     size_t idx     = _idx;
@@ -320,8 +331,8 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobIter.local=", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.local=", local_pos.index);
+    DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.index);
     if (_myid != local_pos.unit) {
       // Iterator position does not point to local element
       return nullptr;
@@ -360,8 +371,8 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobIter.local", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.local", local_pos.index);
+    DASH_LOG_TRACE_VAR("GlobIter.local >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobIter.local >", local_pos.index);
     if (_myid != local_pos.unit) {
       // Iterator position does not point to local element
       return nullptr;
@@ -410,10 +421,28 @@ public:
   }
 
   /**
+   * Whether the iterator's position is relative to a view.
+   */
+  inline bool is_relative() const noexcept {
+    return _viewspec != nullptr;
+  }
+
+  /**
+   * The view that specifies this iterator's index range.
+   */
+  inline ViewSpecType viewspec() const
+  {
+    if (_viewspec != nullptr) {
+      return *_viewspec;
+    }
+    return ViewSpecType(_pattern->memory_layout().extents());
+  }
+
+  /**
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  const GlobMem<ElementType> & globmem() const {
+  inline const GlobMem<ElementType> & globmem() const {
     return *_globmem;
   }
 
@@ -421,7 +450,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  GlobMem<ElementType> & globmem() {
+  inline GlobMem<ElementType> & globmem() {
     return *_globmem;
   }
 
@@ -502,12 +531,14 @@ public:
   }
 
   gptrdiff_t operator+(
-    const self_t & other) const {
+    const self_t & other) const
+  {
     return _idx + other._idx;
   }
 
   gptrdiff_t operator-(
-    const self_t & other) const {
+    const self_t & other) const
+  {
     return _idx - other._idx;
   }
 
@@ -594,7 +625,8 @@ private:
   bool compare(
     const self_t & other,
     const GlobIndexCmpFun & gidx_cmp,
-    const GlobPtrCmpFun   & gptr_cmp) const {
+    const GlobPtrCmpFun   & gptr_cmp) const
+  {
 #if __REMARK__
     // Usually this is a best practice check, but it's an infrequent case
     // so we rather avoid this comparison:
@@ -639,7 +671,8 @@ private:
    * tuning.
    */
   std::array<IndexType, NumDimensions> coords(
-    IndexType glob_index) const {
+    IndexType glob_index) const
+  {
     // Global cartesian coords of current iterator position:
     std::array<IndexType, NumDimensions> glob_coords;
     if (_viewspec != nullptr) {
@@ -655,7 +688,7 @@ private:
       DASH_LOG_TRACE_VAR("GlobIter.coords v", glob_coords);
       // Apply offset of view projection to view coords:
       for (dim_t d = 0; d < NumDimensions; ++d) {
-        auto dim_offset = _viewspec->offsets()[d];
+        auto dim_offset = _viewspec->offset(d);
         DASH_LOG_TRACE_VAR("GlobIter.coords+o", dim_offset);
         glob_coords[d] += dim_offset;
         DASH_LOG_TRACE_VAR("GlobIter.coords+o", glob_coords);

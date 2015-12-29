@@ -37,7 +37,7 @@ namespace dash {
  * 
  * \concept{DashPatternConcept}
  *
- * TODO: Rename to DiagonalTilePattern.
+ * TODO: Rename to BalancedDiagonalTilePattern.
  */
 template<
   dim_t NumDimensions,
@@ -46,7 +46,8 @@ template<
 class TilePattern
 {
 public:
-  static constexpr char const * PatternName = "BalancedRegularPattern<N>";
+  static constexpr char const * PatternName =
+    "BalancedDiagonalTilePattern<N>";
 
 public:
   /// Properties guaranteed in pattern property category Blocking
@@ -1121,6 +1122,7 @@ public:
    */
   ViewSpec_t local_block_local(
     index_type local_block_index) const {
+    DASH_LOG_TRACE_VAR("TilePattern.local_block_local()", local_block_index);
     // Initialize viewspec result with block extents:
     std::array<index_type, NumDimensions> offsets;
     std::array<size_type, NumDimensions>  extents =
@@ -1132,7 +1134,10 @@ public:
       auto blocksize_d  = extents[d];
       offsets[d]        = l_block_coords[d] * blocksize_d;
     }
-    return ViewSpec_t(offsets, extents);
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_TRACE_VAR("TilePattern.local_block >", block_vs.extents());
+    DASH_LOG_TRACE_VAR("TilePattern.local_block >", block_vs.offsets());
+    return block_vs;
   }
 
   /**
@@ -1431,18 +1436,9 @@ private:
       auto min_local_blocks_d = num_blocks_d / num_units_d;
       // Coordinate of this unit id in teamspec in dimension:
       auto unit_ts_coord      = unit_ts_coords[d];
-      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", d);
-      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", unit_ts_coord);
-      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", num_elem_d);
-      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", num_units_d);
-      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", num_blocks_d);
-      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", blocksize_d);
-      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", 
-                         min_local_blocks_d);
       // Possibly there are more blocks than units in dimension and no
       // block left for this unit. Local extent in d then becomes 0.
       l_extents[d] = min_local_blocks_d * blocksize_d;
-      DASH_LOG_TRACE_VAR("TilePattern._local_extents.d", l_extents[d]);
     }
     DASH_LOG_DEBUG_VAR("TilePattern._local_extents >", l_extents);
     return l_extents;

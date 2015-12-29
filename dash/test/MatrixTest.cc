@@ -3,6 +3,97 @@
 #include "TestBase.h"
 #include "MatrixTest.h"
 
+TEST_F(MatrixTest, Views)
+{
+  const size_t block_size_x  = 3;
+  const size_t block_size_y  = 2;
+  const size_t block_size    = block_size_x * block_size_y;
+  size_t num_local_blocks_x  = 3;
+  size_t num_local_blocks_y  = 2;
+  size_t num_blocks_x        = _dash_size * num_local_blocks_x;
+  size_t num_blocks_y        = _dash_size * num_local_blocks_y;
+  size_t num_blocks_total    = num_blocks_x * num_blocks_y;
+  size_t extent_x            = block_size_x * num_blocks_x;
+  size_t extent_y            = block_size_y * num_blocks_y;
+  size_t num_elem_total      = extent_x * extent_y;
+  // Assuming balanced mapping:
+  size_t num_elem_per_unit   = num_elem_total / _dash_size;
+  size_t num_blocks_per_unit = num_elem_per_unit / block_size;
+
+  LOG_MESSAGE("nunits:%d elem_total:%d elem_per_unit:%d blocks_per_unit:d%",
+              _dash_size, num_elem_total,
+              num_elem_per_unit, num_blocks_per_unit);
+
+  typedef dash::TilePattern<2>           pattern_t;
+  typedef typename pattern_t::index_type index_t;
+
+  pattern_t pattern(
+    dash::SizeSpec<2>(
+      extent_x,
+      extent_y),
+    dash::DistributionSpec<2>(
+      dash::TILE(block_size_x),
+      dash::TILE(block_size_y))
+  );
+
+  dash::Matrix<int, 2> matrix(pattern);
+
+  // Test viewspecs of blocks in global index domain:
+  if (dash::myid() == 0) {
+    LOG_MESSAGE("Testing viewspecs of blocks in global index domain");
+    for (auto b = 0; b < num_blocks_total; ++b) {
+      LOG_MESSAGE("Testing viewspec of block %d", b);
+      auto g_block       = matrix.block(b);
+      auto g_block_first = g_block.begin();
+      auto g_block_view  = g_block_first.viewspec();
+      LOG_MESSAGE("Block viewspec: offset:(%d,%d) extent:(%d,%d)",
+                  g_block_view.offset(0), g_block_view.offset(1),
+                  g_block_view.extent(0), g_block_view.extent(1));
+      // Global block coordinates:
+      auto g_block_x     = b % num_blocks_x;
+      auto g_block_y     = b / num_blocks_x;
+      // Global coordinates of first block element:
+      auto g_elem_x      = g_block_x * block_size_x;
+      auto g_elem_y      = g_block_y * block_size_y;
+      ASSERT_EQ_U(g_elem_x, g_block_view.offset(0));
+      ASSERT_EQ_U(g_elem_y, g_block_view.offset(1));
+      // Extent (block_size_x, block_size_y):
+      ASSERT_EQ_U(block_size_x, g_block_view.extent(0));
+      ASSERT_EQ_U(block_size_y, g_block_view.extent(1));
+    }
+  }
+
+  // To improve readability of log output:
+  dash::barrier();
+
+  // Test viewspecs of blocks in local index domain:
+  LOG_MESSAGE("Testing viewspecs of blocks in local index domain");
+  int lb = 0;
+  for (auto b = 0; b < num_blocks_total; ++b) {
+    auto g_block       = matrix.block(b);
+    auto g_block_first = g_block.begin();
+    auto g_block_view  = g_block_first.viewspec();
+    LOG_MESSAGE("Checking if block %d is local", b);
+    if (g_block_first.is_local()) {
+      LOG_MESSAGE("Testing viewspec of local block %d", lb);
+      auto l_block       = matrix.local.block(lb);
+      auto l_block_first = l_block.begin();
+      auto l_block_view  = l_block_first.viewspec();
+      LOG_MESSAGE("Global block viewspec: offset:(%d,%d) extent:(%d,%d)",
+                  g_block_view.offset(0), g_block_view.offset(1),
+                  g_block_view.extent(0), g_block_view.extent(1));
+      LOG_MESSAGE("Local block viewspec: offset:(%d,%d) extent:(%d,%d)",
+                  l_block_view.offset(0), l_block_view.offset(1),
+                  l_block_view.extent(0), l_block_view.extent(1));
+      // Verify matrix.block(b) == matrix.local.block(lb):
+      ASSERT_EQ_U(g_block_view, l_block_view);
+      ++lb;
+    }
+  }
+  // Validate number of local blocks found:
+  ASSERT_EQ_U(num_blocks_per_unit, lb);
+}
+
 TEST_F(MatrixTest, SingleWriteMultipleRead)
 {
   dart_unit_t myid   = dash::myid();

@@ -270,10 +270,24 @@ private:
 template<typename IndexType = int>
 struct ViewPair {
   typedef typename std::make_unsigned<IndexType>::type SizeType;
-  /// Offset in dimension
+  /// Offset in dimension.
   IndexType offset;
-  /// Extent in dimension
+  /// Extent in dimension.
   SizeType  extent;
+};
+
+/**
+ * Representation of a ViewPair as region specified by origin and end
+ * coordinates.
+ */
+template<
+  dim_t    NumDimensions,
+  typename IndexType = dash::default_index_t>
+struct ViewRegion {
+  // Region origin coordinates.
+  std::array<IndexType, NumDimensions> begin;
+  // Region end coordinates.
+  std::array<IndexType, NumDimensions> end;
 };
 
 /**
@@ -330,6 +344,9 @@ private:
     ViewPair_t;
 
 public:
+  typedef ViewRegion<NumDimensions, IndexType> region_type;
+
+public:
   template<dim_t NDim_, typename IndexType_>
   friend std::ostream& operator<<(
     std::ostream & os,
@@ -363,9 +380,10 @@ public:
     _extents(extents)
   {
     for (auto i = 0; i < NumDimensions; ++i) {
-      ViewPair_t vp { 0, extents[i] };
+      _offsets[i] = 0;
+      ViewPair_t vp { _offsets[i], _extents[i] };
       this->_values[i]  = vp;
-      _size            *= extents[i];
+      _size            *= _extents[i];
     }
   }
 
@@ -462,7 +480,7 @@ public:
     update_size();
   }
 
-  IndexType begin(unsigned int dimension) const {
+  IndexType begin(dim_t dimension) const {
     return this->_values[dimension].offset;
   }
 
@@ -470,7 +488,7 @@ public:
     return _size;
   }
 
-  IndexType size(unsigned int dimension) const {
+  IndexType size(dim_t dimension) const {
     return this->_values[dimension].extent;
   }
 
@@ -478,8 +496,26 @@ public:
     return _extents;
   }
 
+  SizeType extent(dim_t dim) const {
+    return _extents[dim];
+  }
+
   std::array<IndexType, NumDimensions> offsets() const {
     return _offsets;
+  }
+
+  IndexType offset(dim_t dim) const {
+    return _offsets[dim];
+  }
+
+  region_type region() const {
+    region_type reg;
+    reg.begin = _offsets;
+    reg.end   = _offsets;
+    for (dim_t d = 0; d < NumDimensions; ++d) {
+      reg.end[d] += static_cast<IndexType>(_extents[d]);
+    }
+    return reg;
   }
 
 private:
