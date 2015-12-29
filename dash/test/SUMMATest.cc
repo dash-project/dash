@@ -83,10 +83,15 @@ TEST_F(SUMMATest, Deduction)
   dash::Matrix<value_t, 2> matrix_b(pattern);
   dash::Matrix<value_t, 2> matrix_c(pattern);
 
-  // Initialize operands with identity matrix:
+  // Initialize operands:
   if (_dash_id == 0) {
+    for (auto col = 0; col < pattern.extent(0); ++col) {
+      for (auto row = 0; row < pattern.extent(1); ++row) {
+        matrix_a[col][row] = ((1 + col) * 1000) + (row + 1);
+      }
+    }
+    // Matrix B is identity matrix:
     for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
-      matrix_a[diag_idx][diag_idx] = 1;
       matrix_b[diag_idx][diag_idx] = 1;
     }
   }
@@ -100,11 +105,24 @@ TEST_F(SUMMATest, Deduction)
                  matrix_b,
                  matrix_c);
 
+  if (_dash_id == 0) {
+    print_matrix("matrix A", matrix_a);
+    print_matrix("matrix B", matrix_b);
+    print_matrix("matrix C", matrix_c);
+  }
+
+  dash::barrier();
+
   // Verify multiplication result (id x id = id):
   if (_dash_id == 0) {
-    for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
-      value_t actual = matrix_c[diag_idx][diag_idx];
-      ASSERT_EQ_U(1, actual);
+    // Multiplication of matrix A with identity matrix B should be identical
+    // to matrix A:
+    for (auto col = 0; col < pattern.extent(0); ++col) {
+      for (auto row = 0; row < pattern.extent(1); ++row) {
+        value_t expected = ((1 + col) * 1000) + (row + 1);
+        value_t actual   = matrix_c[col][row];
+        ASSERT_EQ_U(expected, actual);
+      }
     }
   }
 }

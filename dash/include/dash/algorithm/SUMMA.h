@@ -32,18 +32,22 @@ void multiply_naive(
   typedef typename MatrixTypeC::pattern_type pattern_c_type;
   typedef typename MatrixTypeC::value_type   value_type;
   for (auto i = 0; i < n; ++i) {
-    // i = 0...n
+    // row i = 0...n
     for (auto j = 0; j < p; ++j) {
-      // j = 0...p
+      // column j = 0...p
+      value_type c_sum = C[i][j];
       for (auto k = 0; k < m; ++k) {
         // k = 0...m
-        auto a_index = i * m + k;
-        auto b_index = k * m + j;
-        DASH_LOG_TRACE("dash::summa::multiply",
-                       "C(", i, ",", j, ") =",
-                       "A[", a_index, "] * B[", b_index, "]");
-        C[i][j] += A[a_index] * B[b_index];
+        auto ik    = i * m + k;
+        auto kj    = k * m + j;
+        auto value = A[ik] * B[kj];
+        DASH_LOG_TRACE("dash::internal::multiply_naive", "summa.multiply",
+                       "C(", i, ",", j, ") +=",
+                       "A[", ik, "] * B[", kj, "] = ",
+                       A[ik], "*", B[kj], "=", value);
+        c_sum += value;
       }
+      C[i][j] = c_sum;
     }
   }
 } 
@@ -217,116 +221,48 @@ void summa(
     // Block coordinate of current local block in matrix C:
     index_type l_block_c_row = l_block_c_view.offset(1) / block_size_n;
     index_type l_block_c_col = l_block_c_view.offset(0) / block_size_p;
-    DASH_LOG_TRACE("dash::summa", "local block in C:",
-                   "view:",      l_block_c_view,
-                   "block row:", l_block_c_row,
-                   "block col:", l_block_c_col);
-    // Iterate blocks in rows of B:
-    for (index_type block_row = 0; block_row < num_blocks_m; ++block_row) {
-      // Iterate blocks in columns of A:
-      for (index_type block_col = 0; block_col < num_blocks_p; ++block_col) {
-        // Create local copy of block in A:
-        //
-        auto block_a = A.block(coords_type { block_col, l_block_c_row });
-        DASH_LOG_TRACE("dash::summa", "creating local copy of A.block:",
-                       "col:",  block_col,
-                       "row:",  l_block_c_row,
-                       "view:", block_a.begin().viewspec());
-        dash::copy(block_a.begin(), block_a.end(), local_block_a);
-        // Create local copy of block in B:
-        //
-        auto block_b = B.block(coords_type { l_block_c_col, block_row });
-        DASH_LOG_TRACE("dash::summa", "creating local copy of B.block:",
-                       "col:",  l_block_c_col,
-                       "row:",  block_col,
-                       "view:", block_b.begin().viewspec());
-        dash::copy(block_b.begin(), block_b.end(), local_block_b);
-        // Multiply local block matrices:
-        //
-        DASH_LOG_TRACE("dash::summa",
-                       "multiplying local block matrices");
-        dash::internal::multiply_naive(
-            local_block_a,
-            local_block_b,
-            l_block_c,
-            block_size_m,
-            block_size_n,
-            block_size_p);
-        DASH_LOG_TRACE("dash::summa",
-                       "multiplication of local blocks finished");
-      }
+    DASH_LOG_TRACE("dash::summa", "summa.block", "local submatrix in C:",
+                   "row:",  l_block_c_row,
+                   "col:",  l_block_c_col,
+                   "view:", l_block_c_view);
+    // Iterate blocks in columns of A / rows of B:
+    for (index_type block_k = 0; block_k < num_blocks_m; ++block_k) {
+      // Create local copy of block in A:
+      //
+      auto block_a = A.block(coords_type { block_k, l_block_c_row });
+      DASH_LOG_TRACE("dash::summa", "summa.block",
+                     "creating local copy of A.block:",
+                     "col:",  block_k,
+                     "row:",  l_block_c_row,
+                     "view:", block_a.begin().viewspec());
+      dash::copy(block_a.begin(), block_a.end(), local_block_a);
+      // Create local copy of block in B:
+      //
+      auto block_b = B.block(coords_type { l_block_c_col, block_k });
+      DASH_LOG_TRACE("dash::summa", "summa.block",
+                     "creating local copy of B.block:",
+                     "col:",  l_block_c_col,
+                     "row:",  block_k,
+                     "view:", block_b.begin().viewspec());
+      dash::copy(block_b.begin(), block_b.end(), local_block_b);
+      // Multiply local block matrices:
+      //
+      DASH_LOG_TRACE("dash::summa",
+                     "multiplying local block matrices");
+      dash::internal::multiply_naive(
+          local_block_a,
+          local_block_b,
+          l_block_c,
+          block_size_m,
+          block_size_n,
+          block_size_p);
+      DASH_LOG_TRACE("dash::summa",
+                     "multiplication of local blocks finished");
     }
   } // for lb
 
-#if ORIGINAL_IMPL
-  // Perform block matrix multiplication:
-  //
-  //   C_ij = sum_(k:1..np) { A_ik x B_kj }
-  //
-  for (int block_k = 0; block_k < num_blocks_l; ++block_k) 
-  {
-    for (int block_i = 0; block_i < num_blocks_m; block_i += num_units_y) 
-    {
-      // Local copy of block A[i+u][k]:
-      DASH_LOG_TRACE("dash::summa", "local copy of A.block[i+ru][k]",
-                     "i:",    block_i,
-                     "i+ru:", block_i + block_row_u,
-                     "k:",    block_k);
-      auto block_a = A.block(coords_type { block_i + block_row_u,
-                                           block_k });
-      DASH_LOG_TRACE_VAR("dash::summa", block_a.begin().viewspec());
-      dash::copy(block_a.begin(),
-                 block_a.end(),
-                 local_block_a);
-      DASH_LOG_TRACE("dash::summa", "created local copy of A.block");
-      // Multiply block A[i][k] with blocks B[k][*]
-      for (int block_j = 0; block_j < num_blocks_n; block_j += num_units_x) 
-      {
-        // Local copy of block B[k][j+u]:
-        DASH_LOG_TRACE("dash::summa", "local copy of B.block[k][j+cu]",
-                       "j:",    block_j,
-                       "k:",    block_k,
-                       "j+cu:", block_j + block_col_u);
-        auto block_b = B.block(coords_type { block_k,
-                                             block_j + block_col_u });
-        DASH_LOG_TRACE_VAR("dash::summa", block_b.begin().viewspec());
-        dash::copy(block_b.begin(),
-                   block_b.end(),
-                   local_block_b);
-        DASH_LOG_TRACE("dash::summa", "created local copy of B.block");
-        // Local result block:
-        DASH_LOG_TRACE("dash::summa",
-                       "multiplying A.block[i+ru][k] and B.block[k][j+cu]",
-                       "i:",    block_i,
-                       "j:",    block_j,
-                       "i+ru:", block_i + block_row_u,
-                       "k:",    block_k,
-                       "j+cu:", block_j + block_col_u,
-                       "to C.block[i+ru][j+cu]");
-        auto block_c = C.block(coords_type { block_i + block_row_u,
-                                             block_j + block_col_u });
-        DASH_LOG_TRACE_VAR("dash::summa", block_c.begin().viewspec());
-        // Plausibility check: first element in block expected to be local.
-        DASH_ASSERT_MSG(block_c.is_local(0),
-                        "block in result matrix is not local");
-        DASH_LOG_TRACE("dash::summa",
-                       "calculating block matrix product "
-                       "C.block = A.block x B.block");
-        // Multiply local block matrices:
-        dash::internal::multiply_naive(
-            local_block_a,
-            local_block_b,
-            block_c,
-            m, n, p);
-      } // for j
-    } // for i
-  } // for k
-#endif
-
   delete[] local_block_a;
   delete[] local_block_b;
-
-  dash::barrier();
 }
 
 /**

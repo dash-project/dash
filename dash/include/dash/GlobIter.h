@@ -298,7 +298,7 @@ public:
    * the calling unit's local memory.
    */
   inline bool is_local() const {
-    return (local() != nullptr);
+    return (_myid == lpos().unit);
   }
 
   /**
@@ -460,6 +460,7 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
+    local_pos.index += offset;
     DASH_LOG_TRACE("GlobIter.lpos >",
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);

@@ -66,6 +66,9 @@ ValueType * copy_impl(
                  "in_first:", in_first.pos(),
                  "in_last:",  in_last.pos());
   auto num_elem_total  = dash::distance(in_first, in_last);
+  if (num_elem_total <= 0) {
+    return out_first;
+  }
   DASH_LOG_TRACE_VAR("dash::copy_impl", num_elem_total);
   auto num_bytes_total = num_elem_total * sizeof(ValueType);
   DASH_LOG_TRACE_VAR("dash::copy_impl", num_bytes_total);
@@ -248,7 +251,8 @@ ValueType * copy(
     // -----------------------------------------------------------------------
     // Copy remote elements preceding the local subrange:
     //
-    auto num_prelocal_elem = g_l_offset_begin - g_in_first.pos();
+//  auto num_prelocal_elem = g_l_offset_begin - in_first.pos();
+    auto num_prelocal_elem = g_l_in_first.pos() - g_in_first.pos();
     DASH_LOG_TRACE_VAR("dash::copy", num_prelocal_elem);
     if (num_prelocal_elem > 0) {
       DASH_LOG_TRACE("dash::copy",
@@ -316,7 +320,7 @@ ValueType * copy(
     // -----------------------------------------------------------------------
     // Copy remote elements succeeding the local subrange:
     // 
-    auto num_postlocal_elem = g_in_last.pos() - g_l_offset_end;
+    auto num_postlocal_elem = in_last.pos() - g_l_offset_end;
     DASH_LOG_TRACE_VAR("dash::copy", num_postlocal_elem);
     if (num_postlocal_elem > 0) {
       DASH_LOG_TRACE("dash::copy",

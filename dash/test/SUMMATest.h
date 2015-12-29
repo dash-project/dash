@@ -35,6 +35,25 @@ protected:
     LOG_MESSAGE("<=== Finished test case with %d units",
                 _dash_size);
   }
+
+  template<typename MatrixT>
+  void print_matrix(const std::string & name, MatrixT & matrix) const {
+    typedef typename MatrixT::value_type value_t;
+    typedef typename MatrixT::index_type index_t;
+    std::vector< std::vector<value_t> > values;
+    for (index_t row = 0; row < matrix.extent(1); ++row) {
+      std::vector<value_t> row_values;
+      for (index_t col = 0; col < matrix.extent(0); ++col) {
+        value_t value = matrix[col][row];
+        row_values.push_back(value);
+      }
+      values.push_back(row_values);
+    }
+    DASH_LOG_DEBUG("SUMMATest.print_matrix", name);
+    for (auto row : values) {
+      DASH_LOG_DEBUG_VAR("SUMMATest.print_matrix", row);
+    }
+  }
 };
 
 #endif // DASH__TEST__SUMMA_TEST_H_
