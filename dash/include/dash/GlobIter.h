@@ -55,9 +55,9 @@ protected:
   /// index range of the iterator's pattern.
   const ViewSpecType   * _viewspec;
   /// Current position of the iterator.
-  size_t                 _idx        = 0;
+  IndexType              _idx        = 0;
   /// Maximum position allowed for this iterator.
-  size_t                 _max_idx    = 0;
+  IndexType              _max_idx    = 0;
   /// Unit id of the active unit
   dart_unit_t            _myid;
   /// Pointer to first element in local memory
@@ -96,7 +96,7 @@ public:
   GlobIter(
     GlobMem<ElementType> * gmem,
 	  const PatternType    & pat,
-	  size_t                 idx = 0)
+	  IndexType              idx = 0)
   : _globmem(gmem), 
     _pattern(&pat),
     _viewspec(nullptr),
@@ -116,7 +116,7 @@ public:
     GlobMem<ElementType> * gmem,
 	  const PatternType    & pat,
     const ViewSpecType   & viewspec,
-	  size_t                 idx = 0)
+	  IndexType              idx = 0)
   : _globmem(gmem), 
     _pattern(&pat),
     _viewspec(&viewspec),
@@ -157,8 +157,8 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
-    size_t idx     = _idx;
-    size_t offset  = 0;
+    IndexType idx    = _idx;
+    IndexType offset = 0;
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
@@ -198,19 +198,18 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.dart_gptr()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
-    size_t idx     = _idx;
-    size_t offset  = 0;
-    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr()", _max_idx);
+    IndexType idx    = _idx;
+    IndexType offset = 0;
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
       // which is the case for .end() iterators.
       idx    = _max_idx;
       offset = _idx - _max_idx;
+      DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", _max_idx);
+      DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", idx);
+      DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", offset);
     }
-    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", idx);
-    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", offset);
-    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", _viewspec);
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
@@ -218,18 +217,20 @@ public:
       local_pos        = _pattern->local(idx);
     } else {
       // Viewspec projection required:
+      DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", _viewspec);
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", local_pos.index);
+    DASH_LOG_TRACE("GlobIter.dart_gptr",
+                   "unit:",        local_pos.unit,
+                   "local index:", local_pos.index);
     // Global pointer to element at given position:
     dash::GlobPtr<ElementType> gptr =
       _globmem->index_to_gptr(
         local_pos.unit,
         local_pos.index)
       + offset;
-    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", gptr);
+    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr >", gptr);
     return gptr.dart_gptr();
   }
 
@@ -307,8 +308,8 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.local=()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
-    size_t idx     = _idx;
-    size_t offset  = 0;
+    IndexType idx    = _idx;
+    IndexType offset = 0;
     DASH_LOG_TRACE_VAR("GlobIter.local=", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
@@ -347,8 +348,8 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.local()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
-    size_t idx     = _idx;
-    size_t offset  = 0;
+    IndexType idx    = _idx;
+    IndexType offset = 0;
     DASH_LOG_TRACE_VAR("GlobIter.local", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
@@ -381,6 +382,14 @@ public:
   }
 
   /**
+   * Map iterator to global index domain by projecting the iterator's view.
+   */
+  inline self_t global() const {
+    auto g_idx = gpos();
+    return self_t(_globmem, *_pattern, g_idx);
+  }
+
+  /**
    * Offset of the iterator in the index range relative to its view spec.
    */
   inline gptrdiff_t pos() const {
@@ -398,8 +407,8 @@ public:
       DASH_LOG_TRACE_VAR("GlobIter.gpos >", _idx);
       return _idx;
     } else {
-      size_t idx     = _idx;
-      size_t offset  = 0;
+      IndexType idx    = _idx;
+      IndexType offset = 0;
       DASH_LOG_TRACE_VAR("GlobIter.gpos", _max_idx);
       // Convert iterator position (_idx) to local index and unit.
       if (_idx > _max_idx) {
@@ -418,6 +427,43 @@ public:
       DASH_LOG_TRACE("GlobIter.gpos", "> g_idx + offset:", g_idx);
       return g_idx;
     }
+  }
+
+  /**
+   * Unit and local offset of the iterator's position.
+   * Projects iterator position from its view spec to global index domain.
+   */
+  inline typename pattern_type::local_index_t lpos() const {
+    DASH_LOG_TRACE_VAR("GlobIter.lpos()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    IndexType idx    = _idx;
+    IndexType offset = 0;
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx    = _max_idx;
+      offset = _idx - _max_idx;
+      DASH_LOG_TRACE_VAR("GlobIter.lpos", _max_idx);
+      DASH_LOG_TRACE_VAR("GlobIter.lpos", idx);
+      DASH_LOG_TRACE_VAR("GlobIter.lpos", offset);
+    }
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(idx);
+    } else {
+      // Viewspec projection required:
+      DASH_LOG_TRACE_VAR("GlobIter.lpos", _viewspec);
+      auto glob_coords = coords(idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE("GlobIter.lpos >",
+                   "unit:",        local_pos.unit,
+                   "local index:", local_pos.index);
+    return local_pos;
   }
 
   /**
@@ -503,14 +549,14 @@ public:
       self_t res(
         _globmem,
         *_pattern,
-        _idx + static_cast<size_t>(n));
+        _idx + static_cast<IndexType>(n));
       return res;
     }
     self_t res(
       _globmem,
       *_pattern,
       *_viewspec,
-      _idx + static_cast<size_t>(n));
+      _idx + static_cast<IndexType>(n));
     return res;
   }
 
@@ -519,14 +565,14 @@ public:
       self_t res(
         _globmem,
         *_pattern,
-        _idx - static_cast<size_t>(n));
+        _idx - static_cast<IndexType>(n));
       return res;
     }
     self_t res(
       _globmem,
       *_pattern,
       *_viewspec,
-      _idx - static_cast<size_t>(n));
+      _idx - static_cast<IndexType>(n));
     return res;
   }
 
@@ -589,9 +635,10 @@ public:
       // Viewspec instances are equal
       return _idx == other._idx;
     }
-    const pointer lhs_dart_gptr(dart_gptr());
-    const pointer rhs_dart_gptr(other.dart_gptr());
-    return (lhs_dart_gptr == rhs_dart_gptr);
+    auto lhs_local = lpos();
+    auto rhs_local = other.lpos();
+    return (lhs_local.unit  == rhs_local.unit &&
+            lhs_local.index == rhs_local.index);
   }
 
   inline bool operator!=(const self_t & other) const {
@@ -605,9 +652,10 @@ public:
       // Viewspec instances are equal
       return _idx != other._idx;
     }
-    const pointer lhs_dart_gptr(dart_gptr());
-    const pointer rhs_dart_gptr(other.dart_gptr());
-    return (lhs_dart_gptr != rhs_dart_gptr);
+    auto lhs_local = lpos();
+    auto rhs_local = other.lpos();
+    return (lhs_local.unit  != rhs_local.unit ||
+            lhs_local.index != rhs_local.index);
   }
 
   inline const PatternType & pattern() const {
