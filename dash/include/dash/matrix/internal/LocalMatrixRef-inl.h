@@ -207,7 +207,6 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
                           _refview->_coord,
                           _refview->_l_viewspec);
   DASH_LOG_TRACE("LocalMatrixRef.begin()=",
-                 "summa.block.begin",
                  "viewspec:",        _refview->_viewspec,
                  "iterator offset:", l_vs_begin_idx);
   return iterator(
@@ -229,7 +228,6 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
                           _refview->_coord,
                           _refview->_l_viewspec);
   DASH_LOG_TRACE("LocalMatrixRef.begin()",
-                 "summa.block.begin",
                  "viewspec:",        _refview->_viewspec,
                  "iterator offset:", l_vs_begin_idx);
   return const_iterator(

@@ -49,9 +49,9 @@ protected:
       }
       values.push_back(row_values);
     }
-    DASH_LOG_DEBUG("SUMMATest.print_matrix", name);
+    DASH_LOG_DEBUG("SUMMATest.print_matrix", "summa.matrix", name);
     for (auto row : values) {
-      DASH_LOG_DEBUG_VAR("SUMMATest.print_matrix", row);
+      DASH_LOG_DEBUG("SUMMATest.print_matrix", "summa.matrix", row);
     }
   }
 };

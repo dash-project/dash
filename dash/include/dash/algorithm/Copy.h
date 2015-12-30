@@ -63,7 +63,6 @@ ValueType * copy_impl(
   ValueType   * out_first)
 {
   DASH_LOG_TRACE("dash::copy_impl()",
-                 "summa.copy",
                  "in_first:", in_first.pos(),
                  "in_last:",  in_last.pos());
   auto num_elem_total  = dash::distance(in_first, in_last);
@@ -77,7 +76,6 @@ ValueType * copy_impl(
   auto g_in_first      = in_first.global();
   auto g_in_last       = g_in_first + num_elem_total;
   DASH_LOG_TRACE("dash::copy_impl()",
-                 "summa.copy",
                  "g_in_first:", g_in_first.pos(),
                  "g_in_last:",  g_in_last.pos());
   DASH_LOG_TRACE_VAR("dash::copy_impl", num_elem_total);
@@ -92,7 +90,7 @@ ValueType * copy_impl(
   size_type num_elem_copied = 0;
   if (unit_first == unit_last) {
     // Input range is located at a single remote unit:
-    DASH_LOG_TRACE("dash::copy_impl", "summa.copy", "input range at single unit");
+    DASH_LOG_TRACE("dash::copy_impl", "input range at single unit");
     DASH_ASSERT_RETURNS(
       dart_get_blocking(
         out_first,
@@ -102,7 +100,7 @@ ValueType * copy_impl(
     num_elem_copied = num_elem_total;
   } else {
     // Input range is spread over several remote units:
-    DASH_LOG_TRACE("dash::copy_impl", "summa.copy", "input range spans multiple units");
+    DASH_LOG_TRACE("dash::copy_impl", "input range spans multiple units");
     //
     // Copy elements from every unit:
     //
@@ -231,7 +229,7 @@ ValueType * copy(
   auto num_local_elem  = li_range_in.end - li_range_in.begin;
   // Total number of elements to be copied:
   auto total_copy_elem = in_last - in_first;
-  DASH_LOG_TRACE("dash::copy", "summa.copy", "local range:",
+  DASH_LOG_TRACE("dash::copy", "local range:",
                  li_range_in.begin,
                  li_range_in.end,
                  "in_first.is_local:", in_first.is_local());

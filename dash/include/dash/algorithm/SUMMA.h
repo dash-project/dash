@@ -35,19 +35,19 @@ void multiply_naive(
     // row i = 0...n
     for (auto j = 0; j < p; ++j) {
       // column j = 0...p
-      value_type c_sum = C[i][j];
+      value_type c_sum = C[j][i];
       for (auto k = 0; k < m; ++k) {
         // k = 0...m
         auto ik    = i * m + k;
         auto kj    = k * m + j;
         auto value = A[ik] * B[kj];
         DASH_LOG_TRACE("dash::internal::multiply_naive", "summa.multiply",
-                       "C(", i, ",", j, ") +=",
+                       "C(", j, ",", i, ") +=",
                        "A[", ik, "] * B[", kj, "] = ",
                        A[ik], "*", B[kj], "=", value);
         c_sum += value;
       }
-      C[i][j] = c_sum;
+      C[j][i] = c_sum;
     }
   }
 } 
