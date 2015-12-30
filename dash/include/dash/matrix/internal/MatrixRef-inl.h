@@ -128,11 +128,7 @@ inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_pointer
 MatrixRef<T, NumDim, CUR, PatternT>
 ::data() const noexcept
 {
-  DASH_LOG_TRACE_VAR("MatrixRef.data()", _refview->_viewspec);
-  return GlobIter_t(
-           _refview->_mat->_glob_mem,
-           _refview->_mat->_pattern,
-           _refview->_viewspec);
+  return begin();
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -140,7 +136,27 @@ inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_iterator
 MatrixRef<T, NumDim, CUR, PatternT>
 ::begin() const noexcept
 {
-  return data();
+  DASH_LOG_TRACE("MatrixRef.begin()",
+                 "summa.block.begin",
+                 "viewspec:", _refview->_viewspec);
+  // Offset of first element in viewspec, e.g. offset of first element in
+  // block:
+  auto g_vs_begin_idx = _refview->_mat->_pattern.at(
+                          _refview->_coord,
+                          _refview->_viewspec);
+  DASH_LOG_TRACE("MatrixRef.begin",
+                 "summa.block.begin",
+                 "iterator offset:", g_vs_begin_idx);
+  auto git_begin = GlobIter_t(
+                     _refview->_mat->_glob_mem,
+                     _refview->_mat->_pattern,
+                     _refview->_viewspec,
+                     0,               // relative iterator position
+                     g_vs_begin_idx); // view index offset 
+  DASH_LOG_TRACE("MatrixRef.begin= >",
+                 "summa.block.begin",
+                 git_begin);
+  return git_begin;
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -148,8 +164,24 @@ inline typename MatrixRef<T, NumDim, CUR, PatternT>::iterator
 MatrixRef<T, NumDim, CUR, PatternT>
 ::begin() noexcept
 {
-  // const to non-const
-  return iterator(data());
+  DASH_LOG_TRACE("MatrixRef.begin()=",
+                 "summa.block.begin",
+                 "viewspec:", _refview->_viewspec);
+  // Offset of first element in viewspec, e.g. offset of first element in
+  // block:
+  auto g_vs_begin_idx = _refview->_mat->_pattern.at(
+                          _refview->_coord,
+                          _refview->_viewspec);
+  auto git_begin = GlobIter_t(
+                     _refview->_mat->_glob_mem,
+                     _refview->_mat->_pattern,
+                     _refview->_viewspec,
+                     0,               // relative iterator position
+                     g_vs_begin_idx); // view index offset 
+  DASH_LOG_TRACE("MatrixRef.begin= >",
+                 "summa.block.begin",
+                 git_begin);
+  return git_begin;
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -157,7 +189,24 @@ inline typename MatrixRef<T, NumDim, CUR, PatternT>::const_iterator
 MatrixRef<T, NumDim, CUR, PatternT>
 ::end() const noexcept
 {
-  return data() + _refview->_viewspec.size();
+  DASH_LOG_TRACE("MatrixRef.end()",
+                 "summa.block.end",
+                 "viewspec:", _refview->_viewspec);
+  // Offset of first element in viewspec, e.g. offset of first element in
+  // block:
+  auto g_vs_begin_idx = _refview->_mat->_pattern.at(
+                          _refview->_coord,
+                          _refview->_viewspec);
+  auto git_end = GlobIter_t(
+                   _refview->_mat->_glob_mem,
+                   _refview->_mat->_pattern,
+                   _refview->_viewspec,
+                   _refview->_viewspec.size(), // relative iterator position
+                   g_vs_begin_idx);            // view index offset
+  DASH_LOG_TRACE("MatrixRef.end= >",
+                 "summa.block.end",
+                 git_end);
+  return git_end;
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -165,8 +214,24 @@ inline typename MatrixRef<T, NumDim, CUR, PatternT>::iterator
 MatrixRef<T, NumDim, CUR, PatternT>
 ::end() noexcept
 {
-  // const to non-const
-  return iterator(data() + _refview->_viewspec.size());
+  DASH_LOG_TRACE("MatrixRef.end()=",
+                 "summa.block.end",
+                 "viewspec:", _refview->_viewspec);
+  // Offset of first element in viewspec, e.g. offset of first element in
+  // block:
+  auto g_vs_begin_idx = _refview->_mat->_pattern.at(
+                          _refview->_coord,
+                          _refview->_viewspec);
+  auto git_end = GlobIter_t(
+                   _refview->_mat->_glob_mem,
+                   _refview->_mat->_pattern,
+                   _refview->_viewspec,
+                   _refview->_viewspec.size(), // relative iterator position
+                   g_vs_begin_idx);            // view index offset
+  DASH_LOG_TRACE("MatrixRef.end= >",
+                 "summa.block.end",
+                 git_end);
+  return git_end;
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>

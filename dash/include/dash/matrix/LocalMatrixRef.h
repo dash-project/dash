@@ -129,68 +129,13 @@ public:
   /**
    * View at local block at given local block coordinates.
    */
-  LocalMatrixRef_t<NumDimensions> block(
-    const std::array<index_type, NumDimensions> & block_lcoords)
-  {
-    // Note: This is equivalent to
-    //   foreach (d in 0 ... NumDimensions):
-    //     view = view.sub<d>(block_view.offset(d),
-    //                        block_view.extent(d));
-    //
-    DASH_LOG_TRACE("LocalMatrixRef.block()", block_lcoords);
-    auto pattern      = _refview->_mat->_pattern;
-    auto block_lindex = pattern.blockspec().at(block_lcoords);
-    DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
-    // Global view of local block:
-    auto l_block_g_view = pattern.local_block(block_lindex);
-    // Local view of local block:
-    auto l_block_l_view = pattern.local_block_local(block_lindex);
-    // Return a view specified by the block's viewspec:
-    LocalMatrixRef_t<NumDimensions> view;
-    view._refview              = new MatrixRefView_t(_refview->_mat);
-    view._refview->_viewspec   = l_block_g_view;
-    view._refview->_l_viewspec = l_block_l_view;
-    DASH_LOG_TRACE("LocalMatrixRef.block >",
-                   "global:",
-                   "offsets:", view._refview->_viewspec.offsets(),
-                   "extents:", view._refview->_viewspec.extents(),
-                   "local:",
-                   "offsets:", view._refview->_l_viewspec.offsets(),
-                   "extents:", view._refview->_l_viewspec.extents());
-    return view;
-  }
-
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT> block(
+    const std::array<index_type, NumDimensions> & block_lcoords);
   /**
    * View at local block at given local block offset.
    */
-  LocalMatrixRef_t<NumDimensions> block(
-    index_type block_lindex)
-  {
-    // Note: This is equivalent to
-    //   foreach (d in 0 ... NumDimensions):
-    //     view = view.sub<d>(block_view.offset(d),
-    //                        block_view.extent(d));
-    //
-    DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
-    auto pattern      = _refview->_mat->_pattern;
-    // Global view of local block:
-    auto l_block_g_view = pattern.local_block(block_lindex);
-    // Local view of local block:
-    auto l_block_l_view = pattern.local_block_local(block_lindex);
-    // Return a view specified by the block's viewspec:
-    LocalMatrixRef_t<NumDimensions> view;
-    view._refview              = new MatrixRefView_t(_refview->_mat);
-    view._refview->_viewspec   = l_block_g_view;
-    view._refview->_l_viewspec = l_block_l_view;
-    DASH_LOG_TRACE("LocalMatrixRef.block >",
-                   "global:",
-                   "offsets:", view._refview->_viewspec.offsets(),
-                   "extents:", view._refview->_viewspec.extents(),
-                   "local:",
-                   "offsets:", view._refview->_l_viewspec.offsets(),
-                   "extents:", view._refview->_l_viewspec.extents());
-    return view;
-  }
+  LocalMatrixRef<T, NumDimensions, CUR, PatternT> block(
+    index_type block_lindex);
 
   inline    operator LocalMatrixRef<T, NumDimensions, CUR-1, PatternT> && ();
   // SHOULD avoid cast from MatrixRef to LocalMatrixRef.
@@ -246,7 +191,7 @@ public:
    */
   template<typename... Args>
   T & operator()(
-    /// Global coordinates
+    /// Coordinates of element in global cartesian index space.
     Args... args);
 
   /**

@@ -42,6 +42,17 @@ public:
   typedef       PatternType                     pattern_type;
   typedef       IndexType                         index_type;
 
+public:
+  // For ostream output
+  template <
+    typename T_,
+    class P_,
+    class Ptr_,
+    class Ref_ >
+  friend std::ostream & operator<<(
+      std::ostream & os,
+      const GlobIter<T_, P_, Ptr_, Ref_> & it);
+
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
   static const MemArrange Arrangement   = PatternType::memory_order();
@@ -54,24 +65,16 @@ protected:
   /// View that specifies the iterator's index range relative to the global
   /// index range of the iterator's pattern.
   const ViewSpecType   * _viewspec;
-  /// Current position of the iterator.
-  IndexType              _idx        = 0;
-  /// Maximum position allowed for this iterator.
-  IndexType              _max_idx    = 0;
+  /// Current position of the iterator relative to the iterator's view.
+  IndexType              _idx             = 0;
+  /// Offset of the iterator position in the iterator's parent view.
+  IndexType              _view_idx_offset = 0;
+  /// Maximum position relative to the viewspec allowed for this iterator.
+  IndexType              _max_idx         = 0;
   /// Unit id of the active unit
   dart_unit_t            _myid;
   /// Pointer to first element in local memory
-  ElementType          * _lbegin     = nullptr;
-
-  // For ostream output
-  template <
-    typename T_,
-    class P_,
-    class Ptr_,
-    class Ref_ >
-  friend std::ostream & operator<<(
-      std::ostream & os,
-      const GlobIter<T_, P_, Ptr_, Ref_> & it);
+  ElementType          * _lbegin          = nullptr;
 
 public:
   /**
@@ -82,6 +85,7 @@ public:
     _pattern(nullptr),
     _viewspec(nullptr),
     _idx(0),
+    _view_idx_offset(0),
     _max_idx(0),
     _myid(dash::myid()),
     _lbegin(nullptr) {
@@ -96,16 +100,19 @@ public:
   GlobIter(
     GlobMem<ElementType> * gmem,
 	  const PatternType    & pat,
-	  IndexType              idx = 0)
+	  IndexType              position          = 0,
+	  IndexType              view_index_offset = 0)
   : _globmem(gmem), 
     _pattern(&pat),
     _viewspec(nullptr),
-    _idx(idx),
+    _idx(position),
+    _view_idx_offset(view_index_offset),
     _max_idx(pat.size() - 1),
     _myid(dash::myid()),
     _lbegin(_globmem->lbegin()) {
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", _idx);
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx,abs)", _idx);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx,abs)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx,abs)", _view_idx_offset);
   }
 
   /**
@@ -116,17 +123,20 @@ public:
     GlobMem<ElementType> * gmem,
 	  const PatternType    & pat,
     const ViewSpecType   & viewspec,
-	  IndexType              idx = 0)
+	  IndexType              position          = 0,
+	  IndexType              view_index_offset = 0)
   : _globmem(gmem), 
     _pattern(&pat),
     _viewspec(&viewspec),
-    _idx(idx),
+    _idx(position),
+    _view_idx_offset(view_index_offset),
     _max_idx(viewspec.size() - 1),
     _myid(dash::myid()),
     _lbegin(_globmem->lbegin()) {
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _idx);
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _max_idx);
-    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx)", _viewspec);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx,abs)", _idx);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx,abs)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx,abs)", _view_idx_offset);
+    DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,vs,idx,abs)", _viewspec);
   }
 
   /**
@@ -164,8 +174,8 @@ public:
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
       // which is the case for .end() iterators.
-      idx    = _max_idx;
-      offset = _idx - _max_idx;
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
     }
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", idx);
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr", offset);
@@ -204,8 +214,8 @@ public:
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
       // which is the case for .end() iterators.
-      idx    = _max_idx;
-      offset = _idx - _max_idx;
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
       DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", _max_idx);
       DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", idx);
       DASH_LOG_TRACE_VAR("GlobIter.dart_gptr", offset);
@@ -240,17 +250,18 @@ public:
    * \return  A global reference to the element at the iterator's position.
    */
   ReferenceType operator*() const {
-    DASH_LOG_TRACE_VAR("GlobIter.*", _idx);
+    DASH_LOG_TRACE("GlobIter.*", _idx, _view_idx_offset);
     typedef typename pattern_type::local_index_t
       local_pos_t;
+    IndexType idx = _idx;
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
       // No viewspec mapping required:
-      local_pos        = _pattern->local(_idx);
+      local_pos        = _pattern->local(idx);
     } else {
       // Viewspec projection required:
-      auto glob_coords = coords(_idx);
+      auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
@@ -270,17 +281,18 @@ public:
   ReferenceType operator[](
     /// The global position of the element
     gptrdiff_t g_index) const {
-    DASH_LOG_TRACE_VAR("GlobIter.[]", g_index);
+    DASH_LOG_TRACE("GlobIter.[]", g_index, _view_idx_offset);
+    IndexType idx = g_index;
     typedef typename pattern_type::local_index_t
       local_pos_t;
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
       // No viewspec mapping required:
-      local_pos        = _pattern->local(g_index);
+      local_pos        = _pattern->local(idx);
     } else {
       // Viewspec projection required:
-      auto glob_coords = coords(g_index);
+      auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.unit);
@@ -315,8 +327,8 @@ public:
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
       // which is the case for .end() iterators.
-      idx    = _max_idx;
-      offset = _idx - _max_idx;
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
     }
     DASH_LOG_TRACE_VAR("GlobIter.local=", idx);
     DASH_LOG_TRACE_VAR("GlobIter.local=", offset);
@@ -355,8 +367,8 @@ public:
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
       // which is the case for .end() iterators.
-      idx    = _max_idx;
-      offset = _idx - _max_idx;
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
     }
     DASH_LOG_TRACE_VAR("GlobIter.local", idx);
     DASH_LOG_TRACE_VAR("GlobIter.local", offset);
@@ -393,7 +405,9 @@ public:
    * Offset of the iterator in the index range relative to its view spec.
    */
   inline gptrdiff_t pos() const {
-    return _idx;
+    DASH_LOG_TRACE("GlobIter.pos()",
+                   "idx:", _idx, "vs_offset:", _view_idx_offset);
+    return _idx + _view_idx_offset;
   }
 
   /**
@@ -424,7 +438,7 @@ public:
       auto g_idx    = _pattern->memory_layout().at(g_coords);
       DASH_LOG_TRACE_VAR("GlobIter.gpos", g_idx);
       g_idx += offset;
-      DASH_LOG_TRACE("GlobIter.gpos", "> g_idx + offset:", g_idx);
+      DASH_LOG_TRACE_VAR("GlobIter.gpos >", g_idx);
       return g_idx;
     }
   }
@@ -722,29 +736,27 @@ private:
   std::array<IndexType, NumDimensions> coords(
     IndexType glob_index) const
   {
+    DASH_LOG_TRACE("GlobIter.coords()",
+                   "index:",    glob_index,
+                   "viewspec:", *_viewspec);
     // Global cartesian coords of current iterator position:
     std::array<IndexType, NumDimensions> glob_coords;
     if (_viewspec != nullptr) {
-      DASH_LOG_TRACE_VAR("GlobIter.coords v", _viewspec->extents());
-      DASH_LOG_TRACE_VAR("GlobIter.coords v", _viewspec->offsets());
-      DASH_LOG_TRACE_VAR("GlobIter.coords v", _viewspec->rank());
       // Create cartesian index space from extents of view projection:
       CartesianIndexSpace<NumDimensions, Arrangement, IndexType> index_space(
         _viewspec->extents());
       // Initialize global coords with view coords (coords of iterator
       // position in view index space):
       glob_coords = index_space.coords(glob_index);
-      DASH_LOG_TRACE_VAR("GlobIter.coords v", glob_coords);
       // Apply offset of view projection to view coords:
       for (dim_t d = 0; d < NumDimensions; ++d) {
-        auto dim_offset = _viewspec->offset(d);
-        DASH_LOG_TRACE_VAR("GlobIter.coords+o", dim_offset);
-        glob_coords[d] += dim_offset;
-        DASH_LOG_TRACE_VAR("GlobIter.coords+o", glob_coords);
+        auto dim_offset  = _viewspec->offset(d);
+        glob_coords[d]  += dim_offset;
       }
     } else {
       glob_coords = _pattern->memory_layout().coords(glob_index);
     }
+    DASH_LOG_TRACE_VAR("GlobIter.coords >", glob_coords);
     return glob_coords;
   }
 
@@ -809,8 +821,6 @@ gptrdiff_t distance(
   return gptr_last - gptr_first;
 }
 
-} // namespace dash
-
 template <
   typename ElementType_,
   class    Pattern_,
@@ -827,5 +837,7 @@ std::ostream & operator<<(
      << "->(" << ptr << ")";
   return operator<<(os, ss.str());
 }
+
+} // namespace dash
 
 #endif // DASH__GLOB_ITER_H_

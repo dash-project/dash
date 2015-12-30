@@ -216,14 +216,14 @@ public:
   MatrixRef_t<NumDimensions> block(
     const std::array<index_type, NumDimensions> & block_gcoords)
   {
+    DASH_LOG_TRACE("Matrix.block()", "gcoords:", block_gcoords);
     // Note: This is equivalent to
     //   foreach (d in 0 ... NumDimensions):
     //     view = view.sub<d>(block_view.offset(d),
     //                        block_view.extent(d));
     //
-    DASH_LOG_TRACE("Matrix.block()", block_gcoords);
     auto block_gindex = pattern().blockspec().at(block_gcoords);
-    DASH_LOG_TRACE("Matrix.block()", block_gindex);
+    DASH_LOG_TRACE_VAR("Matrix.block()",  block_gindex);
     // Resolve the block's viewspec:
     ViewSpec<NumDimensions> block_view = pattern().block(block_gindex);
     // Return a view specified by the block's viewspec:
@@ -245,7 +245,7 @@ public:
     //     view = view.sub<d>(block_view.offset(d),
     //                        block_view.extent(d));
     //
-    DASH_LOG_TRACE("Matrix.block()", block_gindex);
+    DASH_LOG_TRACE("Matrix.block()", "gindex:", block_gindex);
     // Resolve the block's viewspec:
     ViewSpec<NumDimensions> block_view = pattern().block(block_gindex);
     // Return a view specified by the block's viewspec:

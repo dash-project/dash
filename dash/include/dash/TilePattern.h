@@ -471,12 +471,14 @@ public:
    * \see DashPatternConcept
    */
   dart_unit_t unit_at(
-    /// Absolute coordinates of the point
+    /// Absolute coordinates of the point relative to the given view.
     const std::array<IndexType, NumDimensions> & coords,
-    /// View specification (offsets) to apply on \c coords
-    const ViewSpec_t & viewspec) const {
-    // Apply viewspec offsets to coordinates:
-    std::array<IndexType, NumDimensions> vs_coords;
+    /// View specification (offsets) of the coordinates.
+    const ViewSpec_t & viewspec) const
+  {
+    DASH_LOG_TRACE("TilePattern.unit_at()",
+                   "coords:",   coords,
+                   "viewspec:", viewspec);
     // Unit id from diagonals in cartesian index space,
     // e.g (x + y + z) % nunits
     dart_unit_t unit_id = 0;
@@ -487,7 +489,7 @@ public:
       unit_id          += block_coord;
     }
     unit_id %= _nunits;
-    DASH_LOG_TRACE("TilePattern.unit_at", "> unit id", unit_id);
+    DASH_LOG_TRACE_VAR("TilePattern.unit_at >", unit_id);
     return unit_id;
   }
 
@@ -497,7 +499,10 @@ public:
    * \see DashPatternConcept
    */
   dart_unit_t unit_at(
-    const std::array<IndexType, NumDimensions> & coords) const {
+    const std::array<IndexType, NumDimensions> & coords) const
+  {
+    DASH_LOG_TRACE("TilePattern.unit_at()",
+                   "coords:",   coords);
     // Unit id from diagonals in cartesian index space,
     // e.g (x + y + z) % nunits
     dart_unit_t unit_id = 0;
@@ -507,7 +512,7 @@ public:
       unit_id          += block_coord;
     }
     unit_id %= _nunits;
-    DASH_LOG_TRACE("TilePattern.unit_at", "> unit id", unit_id);
+    DASH_LOG_TRACE_VAR("TilePattern.unit_at >", unit_id);
     return unit_id;
   }
 
@@ -520,8 +525,8 @@ public:
     /// Global linear element offset
     IndexType global_pos,
     /// View to apply global position
-    const ViewSpec_t & viewspec
-  ) const {
+    const ViewSpec_t & viewspec) const
+  {
     auto global_coords = _memory_layout.coords(global_pos);
     return unit_at(global_coords, viewspec);
   }
@@ -533,8 +538,8 @@ public:
    */
   dart_unit_t unit_at(
     /// Global linear element offset
-    IndexType global_pos
-  ) const {
+    IndexType global_pos) const
+  {
     auto global_coords = _memory_layout.coords(global_pos);
     return unit_at(global_coords);
   }
@@ -864,7 +869,7 @@ public:
    */
   IndexType at(
     const std::array<IndexType, NumDimensions> & coords,
-    const ViewSpec_t & viewspec) const {
+    const ViewSpec_t                           & viewspec) const {
     // Note:
     // Expects extent[d] to be a multiple of blocksize[d] * nunits[d]
     // to ensure the balanced property.

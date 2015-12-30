@@ -63,24 +63,36 @@ ValueType * copy_impl(
   ValueType   * out_first)
 {
   DASH_LOG_TRACE("dash::copy_impl()",
+                 "summa.copy",
                  "in_first:", in_first.pos(),
                  "in_last:",  in_last.pos());
   auto num_elem_total  = dash::distance(in_first, in_last);
   if (num_elem_total <= 0) {
     return out_first;
   }
+  // Input iterators could be relative to a view. Map first input iterator to
+  // global index range and use it to resolve last input iterator.
+  // Do not use in_last.global() as this would span over the relative input
+  // range.
+  auto g_in_first      = in_first.global();
+  auto g_in_last       = g_in_first + num_elem_total;
+  DASH_LOG_TRACE("dash::copy_impl()",
+                 "summa.copy",
+                 "g_in_first:", g_in_first.pos(),
+                 "g_in_last:",  g_in_last.pos());
   DASH_LOG_TRACE_VAR("dash::copy_impl", num_elem_total);
   auto num_bytes_total = num_elem_total * sizeof(ValueType);
-  DASH_LOG_TRACE_VAR("dash::copy_impl", num_bytes_total);
   auto pattern         = in_first.pattern();
-  auto unit_first      = pattern.unit_at(in_first.pos());
-  auto unit_last       = pattern.unit_at(in_last.pos() - 1);
+  auto unit_first      = pattern.unit_at(g_in_first.pos());
+  DASH_LOG_TRACE_VAR("dash::copy_impl", unit_first);
+  auto unit_last       = pattern.unit_at(g_in_last.pos() - 1);
+  DASH_LOG_TRACE_VAR("dash::copy_impl", unit_last);
   typedef typename decltype(pattern)::index_type index_type;
   typedef typename decltype(pattern)::size_type  size_type;
   size_type num_elem_copied = 0;
   if (unit_first == unit_last) {
     // Input range is located at a single remote unit:
-    DASH_LOG_TRACE("dash::copy_impl", "input range at single unit");
+    DASH_LOG_TRACE("dash::copy_impl", "summa.copy", "input range at single unit");
     DASH_ASSERT_RETURNS(
       dart_get_blocking(
         out_first,
@@ -90,7 +102,7 @@ ValueType * copy_impl(
     num_elem_copied = num_elem_total;
   } else {
     // Input range is spread over several remote units:
-    DASH_LOG_TRACE("dash::copy_impl", "input range spans multiple units");
+    DASH_LOG_TRACE("dash::copy_impl", "summa.copy", "input range spans multiple units");
     //
     // Copy elements from every unit:
     //
@@ -105,7 +117,7 @@ ValueType * copy_impl(
     DASH_LOG_TRACE_VAR("dash::copy_impl", max_copy_elem);
     while (num_elem_copied < num_elem_total) {
       // Global iterator pointing at begin of current unit's input range:
-      GlobInputIt cur_in_first = in_first + num_elem_copied;
+      GlobInputIt cur_in_first = g_in_first + num_elem_copied;
       // unit and local index of first element in current range segment:
       auto local_pos       = pattern.local(static_cast<index_type>(
                                              cur_in_first.pos()));
@@ -219,8 +231,10 @@ ValueType * copy(
   auto num_local_elem  = li_range_in.end - li_range_in.begin;
   // Total number of elements to be copied:
   auto total_copy_elem = in_last - in_first;
-  DASH_LOG_TRACE_VAR("dash::copy", li_range_in.begin);
-  DASH_LOG_TRACE_VAR("dash::copy", li_range_in.end);
+  DASH_LOG_TRACE("dash::copy", "summa.copy", "local range:",
+                 li_range_in.begin,
+                 li_range_in.end,
+                 "in_first.is_local:", in_first.is_local());
   if (num_local_elem > 0) {
     // Part of the input range is local, copy local input subrange to local
     // output range directly.
