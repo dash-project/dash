@@ -236,6 +236,12 @@ void summa(
                      "row:",  l_block_c_row,
                      "view:", block_a.begin().viewspec());
       dash::copy(block_a.begin(), block_a.end(), local_block_a);
+      std::vector<value_type> local_block_a_vals;
+      for (auto v = 0; v < block_a_size; ++v) {
+        local_block_a_vals.push_back(local_block_a[v]);
+      }
+      DASH_LOG_TRACE("dash::summa", "summa.copy",
+                     "A.block:", local_block_a_vals);
       // Create local copy of block in B:
       //
       auto block_b = B.block(coords_type { l_block_c_col, block_k });
