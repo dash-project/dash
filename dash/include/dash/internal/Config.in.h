@@ -15,24 +15,23 @@
  *
  * \par{Architecture-specific Definitions}
  *
- * Definition                                | Defined for                                |
- * ----------------------------------------- | ------------------------------------------ |
- * <tt>DASH__ARCH__ARCH_32</tt>              | Any 32-bit architecture.                   |
- * <tt>DASH__ARCH__ARCH_64</tt>              | Any 64-bit architecture.                   |
- * <tt>DASH__ARCH__ARCH_X86_32</tt>          | Intel x86 compatible 32-bit architecture.  |
- * <tt>DASH__ARCH__ARCH_X86_64</tt>          | Intel x86 compatible 64-bit architecture.  |
- * <tt>DASH__ARCH__ARCH_ARM</tt>             | Any ARM architecture.                      |
- * <tt>DASH__ARCH__ARCH_ARMV<i>X</i></tt>    | ARM architecture version <i>X</i>.         |
- * <tt>DASH__ARCH__ARCH_UNKNOWN<i>X</i></tt> | Unknown architecture.                      |
- * &nbsp;                                    | e.g. <tt>DASH__ARCH__ARMV7</tt> for ARMv7. |
- * <tt>DASH__ARCH__CACHE_LINE_SIZE</tt>      | Width of a single cache line, in bytes.    |
- * <tt>DASH__ARCH__PAGE_SIZE</tt>            | Width of a single memory page, in bytes.   |
- * <tt>DASH__ARCH__HAS_CAS</tt>              | Atomic Compare-And-Swap supported.         |
- * <tt>DASH__ARCH__HAS_CAS_64</tt>           | CAS on 64-bit wide values supported.       |
- * <tt>DASH__ARCH__HAS_CAS_32</tt>           | CAS on 32-bit wide values supported.       |
- * <tt>DASH__ARCH__HAS_LLSC</tt>             | Load-Linked/Store-Conditional supported.   |
- * <tt>DASH__ARCH__HAS_LLSC_32</tt>          | LL/SC on 32-bit wide values supported.     |
- * <tt>DASH__ARCH__HAS_LLSC_64</tt>          | LL/SC on 64-bit wide values supported.     |
+ * Definition                             | Defined for                                |
+ * -------------------------------------- | ------------------------------------------ |
+ * <tt>DASH__ARCH__ARCH_32</tt>           | Any 32-bit architecture.                   |
+ * <tt>DASH__ARCH__ARCH_64</tt>           | Any 64-bit architecture.                   |
+ * <tt>DASH__ARCH__ARCH_X86_32</tt>       | Intel x86 compatible 32-bit architecture.  |
+ * <tt>DASH__ARCH__ARCH_X86_64</tt>       | Intel x86 compatible 64-bit architecture.  |
+ * <tt>DASH__ARCH__ARCH_ARM</tt>          | Any ARM architecture.                      |
+ * <tt>DASH__ARCH__ARCH_ARMV<i>X</i></tt> | ARM architecture version <i>X</i>          |
+ * &nbsp;                                 | e.g. <tt>DASH__ARCH__ARMV7</tt> for ARMv7. |
+ * <tt>DASH__ARCH__CACHE_LINE_SIZE</tt>   | Width of a single cache line, in bytes.    |
+ * <tt>DASH__ARCH__PAGE_SIZE</tt>         | Width of a single memory page, in bytes.   |
+ * <tt>DASH__ARCH__HAS_CAS</tt>           | Atomic Compare-And-Swap supported.         |
+ * <tt>DASH__ARCH__HAS_CAS_64</tt>        | CAS on 64-bit wide values supported.       |
+ * <tt>DASH__ARCH__HAS_CAS_32</tt>        | CAS on 32-bit wide values supported.       |
+ * <tt>DASH__ARCH__HAS_LLSC</tt>          | Load-Linked/Store-Conditional supported.   |
+ * <tt>DASH__ARCH__HAS_LLSC_32</tt>       | LL/SC on 32-bit wide values supported.     |
+ * <tt>DASH__ARCH__HAS_LLSC_64</tt>       | LL/SC on 64-bit wide values supported.     |
  *
  * \par{OS-specific Definitions}
  *

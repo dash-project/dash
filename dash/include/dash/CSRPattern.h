@@ -79,6 +79,8 @@ private:
     MemoryLayout_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     LocalMemoryLayout_t;
+  typedef CartesianSpace<NumDimensions, SizeType>
+    BlockSpec_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
   typedef TeamSpec<NumDimensions, IndexType>
@@ -113,6 +115,8 @@ private:
   std::vector<size_type>      _block_offsets;
   /// Global memory layout of the pattern.
   MemoryLayout_t              _memory_layout;
+  /// Number of blocks in all dimensions
+  BlockSpec_t                 _blockspec;
   /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE) of
   /// all dimensions. Defaults to BLOCKED.
   DistributionSpec_t          _distspec;
@@ -163,6 +167,9 @@ public:
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> { _size }),
+    _blockspec(initialize_blockspec(
+        _size,
+        _local_sizes)),
     _distspec(_arguments.distspec()), 
     _team(&_arguments.team()),
     _teamspec(_arguments.teamspec()), 
@@ -206,6 +213,9 @@ public:
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> { _size }),
+    _blockspec(initialize_blockspec(
+        _size,
+        _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
     _teamspec(_distspec, *_team),
@@ -253,6 +263,9 @@ public:
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> { _size }),
+    _blockspec(initialize_blockspec(
+        _size,
+        _local_sizes)),
     _distspec(_arguments.distspec()), 
     _team(&_arguments.team()),
     _teamspec(_arguments.teamspec()), 
@@ -294,6 +307,9 @@ public:
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> { _size }),
+    _blockspec(initialize_blockspec(
+        _size,
+        _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
     _teamspec(
@@ -336,6 +352,9 @@ public:
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> { _size }),
+    _blockspec(initialize_blockspec(
+        _size,
+        _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
     _teamspec(_distspec, *_team),
@@ -367,6 +386,7 @@ public:
     _local_sizes(other._local_sizes),
     _block_offsets(other._block_offsets),
     _memory_layout(other._memory_layout),
+    _blockspec(other._blockspec),
     _distspec(other._distspec), 
     _team(other._team),
     _teamspec(other._teamspec),
@@ -436,6 +456,7 @@ public:
       _local_sizes         = other._local_sizes;
       _block_offsets       = other._block_offsets;
       _memory_layout       = other._memory_layout;
+      _blockspec           = other._blockspec;
       _distspec            = other._distspec;
       _team                = other._team;
       _teamspec            = other._teamspec;
@@ -874,6 +895,10 @@ public:
     return at(inputindex);
   }
 
+  ////////////////////////////////////////////////////////////////////////////
+  /// is_local
+  ////////////////////////////////////////////////////////////////////////////
+
   /**
    * Whether there are local elements in a dimension at a given offset,
    * e.g. in a specific row or column.
@@ -934,6 +959,77 @@ public:
                    index <  _block_offsets[unit+1]);
     DASH_LOG_TRACE_VAR("CSRPattern.is_local >", is_loc);
     return is_loc;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// block
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  const BlockSpec_t & blockspec() const {
+    return _blockspec;
+  }
+
+  /**
+   * Index of block at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  index_type block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const
+  {
+    DASH_LOG_TRACE_VAR("CSRPattern.block_at()", g_coords);
+    dart_unit_t block_idx = 0;
+    auto g_coord         = g_coords[0];
+    for (; block_idx < _nunits - 1; ++block_idx) {
+      if (_block_offsets[block_idx+1] >= g_coord) {
+        DASH_LOG_TRACE_VAR("CSRPattern.block_at >", block_idx);
+        return block_idx;
+      }
+    }
+    DASH_LOG_TRACE_VAR("CSRPattern.block_at >", _nunits-1);
+    return _nunits-1;
+  }
+
+  /**
+   * View spec (offset and extents) of block at global linear block index in
+   * cartesian element space.
+   */
+  ViewSpec_t block(
+    index_type g_block_index) const {
+    index_type offset = _block_offsets[g_block_index];
+    auto blocksize    = _local_sizes[g_block_index];
+    return ViewSpec_t(offset, blocksize);
+  }
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * global cartesian element space.
+   */
+  ViewSpec_t local_block(
+    index_type l_block_index) const {
+    DASH_LOG_DEBUG_VAR("CSRPattern.local_block()", l_block_index);
+    DASH_ASSERT_EQ(
+      0, l_block_index,
+      "CSRPattern always assigns exactly 1 block to a single unit");
+    index_type block_offset = _block_offsets[_team->myid()];
+    size_type  block_size   = _local_sizes[_team->myid()];
+    ViewSpec_t block_vs({ block_offset }, { block_size });
+    DASH_LOG_DEBUG_VAR("CSRPattern.local_block >", block_vs);
+    return block_vs;
+  }
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * local cartesian element space.
+   */
+  ViewSpec_t local_block_local(
+    index_type local_block_index) const {
+    size_type block_size = _local_sizes[_team->myid()];
+    return ViewSpec_t({ 0 }, { block_size });
   }
 
   /**
@@ -1086,44 +1182,6 @@ public:
   }
 
   /**
-   * View spec (offset and extents) of block at global linear block index in
-   * cartesian element space.
-   */
-  ViewSpec_t block(
-    index_type g_block_index) const {
-    index_type offset = _block_offsets[g_block_index];
-    auto blocksize    = _local_sizes[g_block_index];
-    return ViewSpec_t(offset, blocksize);
-  }
-
-  /**
-   * View spec (offset and extents) of block at local linear block index in
-   * global cartesian element space.
-   */
-  ViewSpec_t local_block(
-    index_type l_block_index) const {
-    DASH_LOG_DEBUG_VAR("CSRPattern.local_block()", l_block_index);
-    DASH_ASSERT_EQ(
-      0, l_block_index,
-      "CSRPattern always assigns exactly 1 block to a single unit");
-    index_type block_offset = _block_offsets[_team->myid()];
-    size_type  block_size   = _local_sizes[_team->myid()];
-    ViewSpec_t block_vs({ block_offset }, { block_size });
-    DASH_LOG_DEBUG_VAR("CSRPattern.local_block >", block_vs);
-    return block_vs;
-  }
-
-  /**
-   * View spec (offset and extents) of block at local linear block index in
-   * local cartesian element space.
-   */
-  ViewSpec_t local_block_local(
-    index_type local_block_index) const {
-    size_type block_size = _local_sizes[_team->myid()];
-    return ViewSpec_t({ 0 }, { block_size });
-  }
-
-  /**
    * Memory order followed by the pattern.
    */
   constexpr static MemArrange memory_order() {
@@ -1199,12 +1257,25 @@ public:
     return l_sizes;
   }
 
+  BlockSpec_t initialize_blockspec(
+    size_type                      size,
+    const std::vector<size_type> & local_sizes) const
+  {
+    DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec", local_sizes);
+    BlockSpec_t blockspec({ 
+                  static_cast<size_type>(local_sizes.size())
+                });
+    DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec >", blockspec);
+    return blockspec;
+  }
+
   /**
    * Initialize block size specs from memory layout, team spec and
    * distribution spec.
    */
   std::vector<size_type> initialize_block_offsets(
-    const std::vector<size_type> & local_sizes) const {
+    const std::vector<size_type> & local_sizes) const
+  {
     DASH_LOG_TRACE_VAR("CSRPattern.init_block_offsets", local_sizes);
     std::vector<size_type> block_offsets;
     if (local_sizes.size() > 0) {

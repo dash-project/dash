@@ -33,8 +33,8 @@ namespace dash {
  *
  * Return Type              | Method                     | Parameters                      | Description                                                                                                |
  * ------------------------ | -------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
- * <tt>index_type</tt>      | <tt>at</tt>                | <tt>index[d] gp</tt>            | Linear offset of the global point <i>gp</i> in local memory                                                |
- * <tt>index_type</tt>      | <tt>local_at</tt>          | <tt>index[d] lp</tt>            | Linear local offset of the local point <i>gp</i> in local memory                                           |
+ * <tt>index</tt>           | <tt>at</tt>                | <tt>index[d] gp</tt>            | Linear offset of the global point <i>gp</i> in local memory                                                |
+ * <tt>index</tt>           | <tt>local_at</tt>          | <tt>index[d] lp</tt>            | Linear local offset of the local point <i>gp</i> in local memory                                           |
  * <tt>dart_unit_t</tt>     | <tt>unit_at</tt>           | <tt>index[d] gp</tt>            | Unit id mapped to the element at global point <i>p</i>                                                     |
  * <b>global to local</b>   | &nbsp;                     | &nbsp;                          | &nbsp;                                                                                                     |
  * <tt>{unit,index}</tt>    | <tt>local</tt>             | <tt>index gi</tt>               | Unit and linear local offset at the global index <i>gi</i>                                                 |
@@ -48,6 +48,8 @@ namespace dash {
  * <tt>index</tt>           | <tt>global</tt>            | <tt>unit u, index li</tt>       | Local offset <i>li</i> of unit <i>u</i> to global index                                                    |
  * <tt>index</tt>           | <tt>global</tt>            | <tt>index li</tt>               | Local offset <i>li</i> of active unit to global index                                                      |
  * <b>blocks<b>             | &nbsp;                     | &nbsp;                          | &nbsp;                                                                                                     |
+ * <tt>size[d]</tt>         | <tt>blockspec</tt>         | &nbsp;                          | Number of blocks in all dimensions.                                                                        |
+ * <tt>index</tt>           | <tt>block_at</tt>          | <tt>index[d] gp</tt>            | Global index of block at global coordinates <i>gp</i>                                                      |
  * <tt>viewspec</tt>        | <tt>block</tt>             | <tt>index gbi</tt>              | Offset and extent in global cartesian space of block at global block index <i>gbi</i>                      |
  * <tt>viewspec</tt>        | <tt>local_block</tt>       | <tt>index lbi</tt>              | Offset and extent in global cartesian space of block at local block index <i>lbi</i>                       |
  * <tt>viewspec</tt>        | <tt>local_block_local</tt> | <tt>index lbi</tt>              | Offset and extent in local cartesian space of block at local block index <i>lbi</i>                        |
@@ -93,6 +95,14 @@ struct pattern_indexing_properties<
 {
   static const bool local_phase   = true;
   static const bool local_strided = false;
+};
+
+template<>
+struct pattern_indexing_properties<
+  pattern_indexing_tag::local_strided >
+{
+  static const bool local_phase   = false;
+  static const bool local_strided = true;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -147,6 +157,7 @@ struct pattern_topology_properties
   // TODO: Should be
   //   typedef typename std::integral_constant<bool, false> the_property;
   static const bool balanced   = false;
+  static const bool unbalanced = false;
   static const bool diagonal   = false;
   static const bool neighbor   = false;
 };
@@ -159,6 +170,23 @@ template<
   pattern_topology_tag::type ... Tags >
 struct pattern_topology_properties<
     pattern_topology_tag::type::balanced,
+    Tags ...>
+: public pattern_topology_properties<
+    Tags ...>
+{
+  // TODO: Should be
+  //   typedef typename std::integral_constant<bool, false> the_property;
+  static const bool balanced   = true;
+};
+
+/**
+ * Specialization of \c dash::pattern_topology_properties to process tag
+ * \c dash::pattern_topology_tag::type::unbalanced in template parameter list.
+ */
+template<
+  pattern_topology_tag::type ... Tags >
+struct pattern_topology_properties<
+    pattern_topology_tag::type::unbalanced,
     Tags ...>
 : public pattern_topology_properties<
     Tags ...>
@@ -296,6 +324,11 @@ struct pattern_traits
 // Verifying Pattern Properties
 //////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Traits for compile- and run-time pattern constraints checking, suitable for
+ * property checks where detailed error reporting is desired.
+ * 
+ */
 template<
   typename BlockingConstraints,
   typename TopologyConstraints,
@@ -327,6 +360,43 @@ bool check_pattern_constraints(
   return true;
 }
 
+/**
+ * Traits for compile-time pattern constraints checking, suitable as a helper
+ * for template definitions employing SFINAE where no verbose error reporting
+ * is required.
+ * 
+ */
+template<
+  typename BlockingConstraints,
+  typename TopologyConstraints,
+  typename IndexingConstraints,
+  typename PatternType
+>
+struct pattern_constraints
+{
+  // Pattern property traits of category Blocking
+  typedef typename dash::pattern_traits< PatternType >::blocking
+          pattern_blocking_traits;
+  // Pattern property traits of category Topology
+  typedef typename dash::pattern_traits< PatternType >::topology
+          pattern_topology_traits;
+  // Pattern property traits of category Indexing
+  typedef typename dash::pattern_traits< PatternType >::indexing
+          pattern_indexing_traits;
+
+  typedef std::integral_constant<
+            bool,
+            ( !BlockingConstraints::balanced ||
+              pattern_blocking_traits::balanced )
+            &&
+            ( !IndexingConstraints::local_phase ||
+              pattern_indexing_traits::local_phase )
+            &&
+            ( !TopologyConstraints::diagonal ||
+              pattern_topology_traits::diagonal ) >
+          satisfied;
+};
+
 //////////////////////////////////////////////////////////////////////////////
 // Default Pattern Traits Definitions
 //////////////////////////////////////////////////////////////////////////////
@@ -349,5 +419,6 @@ typedef dash::pattern_indexing_properties<
 #include <dash/TilePattern.h>
 #include <dash/CSRPattern.h>
 #include <dash/PatternIterator.h>
+#include <dash/MakePattern.h>
 
 #endif // DASH__PATTERN_H_

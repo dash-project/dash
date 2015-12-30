@@ -21,6 +21,8 @@ struct LocalIndexRange {
 /**
  * Resolves the local index range between global iterators.
  *
+ * TODO: Only all-local or all-nonlocal ranges supported for now.
+ *
  * \b Example:
  *
  *   Total range      | <tt>0 1 2 3 4 5 6 7 8 9</tt>
@@ -53,13 +55,30 @@ local_index_range(
   const GlobIter<ElementType, PatternType> & last)
 {
   typedef typename PatternType::index_type idx_t;
-  // Get pattern from global iterators, O(1):
-  auto pattern        = first.pattern();
   // Get offsets of iterators within global memory, O(1):
   idx_t begin_gindex  = static_cast<idx_t>(first.pos());
   idx_t end_gindex    = static_cast<idx_t>(last.pos());
-  DASH_LOG_TRACE_VAR("local_index_range", begin_gindex);
-  DASH_LOG_TRACE_VAR("local_index_range", end_gindex);
+  DASH_LOG_TRACE_VAR("local_index_range()", begin_gindex);
+  DASH_LOG_TRACE_VAR("local_index_range()", end_gindex);
+  // Check if input range is relative to a view spec (e.g. a block):
+  if (first.is_relative() && last.is_relative()) {
+    DASH_LOG_TRACE("local_index_range", "input iterators are relative");
+    if (first.viewspec() == last.viewspec()) {
+      DASH_LOG_TRACE("local_index_range", "input iterators in same view");
+      bool first_is_local = first.is_local();
+      // No need to check if last is local as both are relative to the same
+      // view.
+      if (first_is_local) {
+        DASH_LOG_TRACE("local_index_range >", first.pos(), last.pos());
+        return LocalIndexRange<idx_t> { first.pos(), last.pos() };
+      } else {
+        DASH_LOG_TRACE("local_index_range >", "not local -> (0,0)");
+        return LocalIndexRange<idx_t> { 0, 0 };
+      }
+    }
+  }
+  // Get pattern from global iterators, O(1):
+  auto pattern        = first.pattern();
   DASH_LOG_TRACE_VAR("local_index_range", pattern.local_size());
   if (pattern.local_size() == 0) {
     // Local index range is empty

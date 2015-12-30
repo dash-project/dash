@@ -368,16 +368,12 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
   EXPECT_EQ(pat_blocked_row.local_capacity(), max_per_unit);
   EXPECT_EQ(pat_blocked_row.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_row.blocksize(1), block_size_y);
-  EXPECT_EQ(pat_blocked_row.overflow_blocksize(0), overflow_bs_x);
-  EXPECT_EQ(pat_blocked_row.overflow_blocksize(1), overflow_bs_y);
   EXPECT_EQ(pat_blocked_row.underfilled_blocksize(0), underfill_bs_x);
   EXPECT_EQ(pat_blocked_row.underfilled_blocksize(1), underfill_bs_y);
   EXPECT_EQ(pat_blocked_col.capacity(), size);
   EXPECT_EQ(pat_blocked_col.local_capacity(), max_per_unit);
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_x);
   EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
-  EXPECT_EQ(pat_blocked_col.overflow_blocksize(0), overflow_bs_x);
-  EXPECT_EQ(pat_blocked_col.overflow_blocksize(1), overflow_bs_y);
   EXPECT_EQ(pat_blocked_col.underfilled_blocksize(0), underfill_bs_x);
   EXPECT_EQ(pat_blocked_col.underfilled_blocksize(1), underfill_bs_y);
   LOG_MESSAGE("block size: x: %d, y: %d",
@@ -981,8 +977,6 @@ TEST_F(BlockPatternTest, LocalExtents2DimCyclicX)
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
   // Row major:
-  EXPECT_EQ(pat_cyclic_col.overflow_blocksize(0), overflow_bs_x);
-  EXPECT_EQ(pat_cyclic_col.overflow_blocksize(1), overflow_bs_y);
   EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(0), underfill_bs_x);
   EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(1), underfill_bs_y);
   ASSERT_EQ(pat_cyclic_row.local_extent(0), local_extent_x);
@@ -990,8 +984,6 @@ TEST_F(BlockPatternTest, LocalExtents2DimCyclicX)
   EXPECT_EQ(pat_cyclic_row.local_size(),
             local_extent_x * local_extent_y);
   // Col major:
-  EXPECT_EQ(pat_cyclic_col.overflow_blocksize(0), overflow_bs_x);
-  EXPECT_EQ(pat_cyclic_col.overflow_blocksize(1), overflow_bs_y);
   EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(0), underfill_bs_x);
   EXPECT_EQ(pat_cyclic_col.underfilled_blocksize(1), underfill_bs_y);
   ASSERT_EQ(pat_cyclic_col.local_extent(0), local_extent_x);
@@ -1070,8 +1062,6 @@ TEST_F(BlockPatternTest, LocalExtents2DimBlockcyclicY)
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
   // Row major:
-  EXPECT_EQ(pat_blockcyclic_col.overflow_blocksize(0), overflow_bs_x);
-  EXPECT_EQ(pat_blockcyclic_col.overflow_blocksize(1), overflow_bs_y);
   EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(0), underfill_bs_x);
   EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(1), underfill_bs_y);
   ASSERT_EQ(pat_blockcyclic_row.local_extent(0), local_extent_x);
@@ -1079,8 +1069,6 @@ TEST_F(BlockPatternTest, LocalExtents2DimBlockcyclicY)
   EXPECT_EQ(pat_blockcyclic_row.local_size(),
             local_extent_x * local_extent_y);
   // Col major:
-  EXPECT_EQ(pat_blockcyclic_col.overflow_blocksize(0), overflow_bs_x);
-  EXPECT_EQ(pat_blockcyclic_col.overflow_blocksize(1), overflow_bs_y);
   EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(0), underfill_bs_x);
   EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(1), underfill_bs_y);
   ASSERT_EQ(pat_blockcyclic_col.local_extent(0), local_extent_x);

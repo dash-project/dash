@@ -1,6 +1,7 @@
 
 #include <libdash.h>
 #include <gtest/gtest.h>
+
 #include "TestBase.h"
 #include "CopyTest.h"
 
@@ -30,6 +31,212 @@ TEST_F(CopyTest, BlockingGlobalToLocalBlock)
     ASSERT_EQ_U(static_cast<int>(array[l]),
                 local_copy[l]);
   }
+}
+
+TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
+{
+  // Copy all blocks from a single remote unit.
+  const size_t block_size_x  = 3;
+  const size_t block_size_y  = 2;
+  const size_t block_size    = block_size_x * block_size_y;
+  size_t num_local_blocks_x  = 2;
+  size_t num_local_blocks_y  = 2;
+  size_t num_blocks_x        = _dash_size * num_local_blocks_x;
+  size_t num_blocks_y        = _dash_size * num_local_blocks_y;
+  size_t num_blocks_total    = num_blocks_x * num_blocks_y;
+  size_t extent_x            = block_size_x * num_blocks_x;
+  size_t extent_y            = block_size_y * num_blocks_y;
+  size_t num_elem_total      = extent_x * extent_y;
+  // Assuming balanced mapping:
+  size_t num_elem_per_unit   = num_elem_total / _dash_size;
+  size_t num_blocks_per_unit = num_elem_per_unit / block_size;
+
+  if (_dash_size < 2) {
+    LOG_MESSAGE("CopyTest.Blocking2DimGlobalToLocalBlock requires > 1 units");
+    return;
+  }
+
+  LOG_MESSAGE("nunits:%d elem_total:%d elem_per_unit:%d blocks_per_unit:%d",
+              _dash_size, num_elem_total,
+              num_elem_per_unit, num_blocks_per_unit);
+
+  typedef dash::TilePattern<2>           pattern_t;
+  typedef typename pattern_t::index_type index_t;
+  typedef float                          value_t;
+
+  pattern_t pattern(
+    dash::SizeSpec<2>(
+      extent_x,
+      extent_y),
+    dash::DistributionSpec<2>(
+      dash::TILE(block_size_x),
+      dash::TILE(block_size_y))
+  );
+
+  dash::Matrix<value_t, 2> matrix(pattern);
+
+  // Assign initial values:
+  for (auto lb = 0; lb < num_blocks_per_unit; ++lb) {
+    LOG_MESSAGE("initialize values in local block %d", lb);
+    auto lblock         = matrix.local.block(lb);
+    auto lblock_view    = lblock.begin().viewspec();
+    auto lblock_extents = lblock_view.extents();
+    auto lblock_offsets = lblock_view.offsets();
+    ASSERT_EQ_U(block_size_x, lblock_extents[0]);
+    ASSERT_EQ_U(block_size_y, lblock_extents[1]);
+    LOG_MESSAGE("local block %d offset: (%d,%d) extent: (%d,%d)",
+                lb,
+                lblock_offsets[0], lblock_offsets[1],
+                lblock_extents[0], lblock_extents[1]);
+    for (auto by = 0; by < lblock_extents[1]; ++by) {
+      for (auto bx = 0; bx < lblock_extents[0]; ++bx) {
+        // Phase coordinates (bx,by) to global coordinates (gx,gy):
+        index_t gx       = lblock_view.offset(0) + bx;
+        index_t gy       = lblock_view.offset(1) + by;
+        value_t value    = static_cast<value_t>(dash::myid() + 1) +
+                           (0.00001 * (
+                             ((lb + 1) * 10000) +
+                             ((by + 1) * 100) +
+                             bx + 1
+                           ));
+        LOG_MESSAGE("set local block %d at phase:(%d,%d) g:(%d,%d) = %f",
+                    lb, bx, by, gx, gy, value);
+        lblock[bx][by]   = value;
+      }
+    }
+  }
+
+  matrix.barrier();
+
+  // Log matrix values:
+  if (dash::myid() == 0) {
+    std::vector< std::vector<value_t> > matrix_values;
+    for (auto x = 0; x < extent_x; ++x) {
+      std::vector<value_t> row;
+      for (auto y = 0; y < extent_y; ++y) {
+        DASH_LOG_DEBUG("CopyTest.Blocking2Dim", "get matrix value at",
+                       "x:", x,
+                       "y:", y);
+        value_t value = matrix[x][y];
+        row.push_back(value);
+      }
+      matrix_values.push_back(row);
+    }
+    for (auto row = 0; row < extent_x; ++row) {
+      DASH_LOG_DEBUG_VAR("CopyTest.Blocking2Dim", matrix_values[row]);
+    }
+  }
+
+  matrix.barrier();
+  
+  // Array to store local copy:
+  value_t local_copy[num_elem_per_unit];
+  // Pointer to first value in next copy destination range:
+  value_t * copy_dest_begin = local_copy;
+  value_t * copy_dest_last  = local_copy;
+
+  //
+  // Create local copy of all blocks from a single remote unit:
+  //
+  dart_unit_t remote_unit_id = (dash::myid() + 1) % _dash_size;
+  LOG_MESSAGE("Creating local copy of blocks at remote unit %d",
+              remote_unit_id);
+  int rb = 0;
+  for (auto gb = 0; gb < num_blocks_total; ++gb) {
+    // View of block at global block index gb:
+    auto g_block_view = pattern.block(gb);
+    // Unit assigned to block at global block index gb:
+    auto g_block_unit = pattern.unit_at(
+                          std::array<index_t, 2> {0,0},
+                          g_block_view);
+    LOG_MESSAGE("Block %d: assigned to unit %d", gb, g_block_unit);
+    if (g_block_unit == remote_unit_id) {
+      // Block is assigned to selecte remote unit, create local copy:
+      LOG_MESSAGE("Creating local copy of block %d", gb);
+      auto remote_block      = matrix.block(gb);
+      auto remote_block_view = remote_block.begin().viewspec();
+      LOG_MESSAGE("Block %d index range: (%d..%d] "
+                  "offset: (%d,%d) extent: (%d,%d)",
+                  gb, remote_block.begin().pos(), remote_block.end().pos(),
+                  remote_block_view.offset(0), remote_block_view.offset(1),
+                  remote_block_view.extent(0), remote_block_view.extent(1));
+      copy_dest_last = dash::copy(remote_block.begin(),
+                                  remote_block.end(),
+                                  copy_dest_begin);
+      // Validate number of copied elements:
+      auto num_copied = copy_dest_last - copy_dest_begin;
+      ASSERT_EQ_U(num_copied, block_size);
+      // Advance local copy destination pointer:
+      copy_dest_begin = copy_dest_last;
+      ++rb;
+    }
+  }
+  // Validate number of copied blocks:
+  ASSERT_EQ_U(num_blocks_per_unit, rb);
+
+  // Log values in local copy:
+  std::vector< std::vector<value_t> > local_block_values;
+  for (auto lb = 0; lb < num_blocks_per_unit; ++lb) {
+    for (auto by = 0; by < block_size_y; ++by) {
+      std::vector<value_t> row;
+      for (auto bx = 0; bx < block_size_x; ++bx) {
+        auto l_offset = (lb * block_size) + (by * block_size_x) + bx;
+        auto value    = local_copy[l_offset];
+        row.push_back(value);
+      }
+      local_block_values.push_back(row);
+    }
+  }
+  for (auto row : local_block_values) {
+    DASH_LOG_DEBUG_VAR("CopyTest.Blocking2Dim", row);
+  }
+
+  // Validate values:
+  for (auto lb = 0; lb < num_blocks_per_unit; ++lb) {
+    for (auto by = 0; by < block_size_y; ++by) {
+      for (auto bx = 0; bx < block_size_x; ++bx) {
+        auto    l_offset = (lb * block_size) + (by * block_size_x) + bx;
+        value_t expected = static_cast<value_t>(remote_unit_id + 1) +
+                           (0.00001 * (
+                             ((lb + 1) * 10000) +
+                             ((by + 1) * 100) +
+                             bx + 1
+                           ));
+        LOG_MESSAGE("Validating block %d at block coords (%d,%d), "
+                    "local offset: %d = %f",
+                    lb, bx, by, l_offset, expected);
+        ASSERT_EQ_U(expected, local_copy[l_offset]);
+      }
+    }
+  }
+
+  //
+  // Create local copy of first local block (local to local):
+  // 
+  value_t local_block_copy[block_size];
+  int  lb      = 0;
+  auto l_block = matrix.local.block(lb);
+  LOG_MESSAGE("Creating local copy of first local block");
+  value_t * local_block_copy_last =
+    dash::copy(l_block.begin(),
+               l_block.end(),
+               local_block_copy);
+  // Validate number of copied elements:
+  auto num_copied = local_block_copy_last - local_block_copy;
+  ASSERT_EQ_U(num_copied, block_size);
+  for (auto by = 0; by < block_size_y; ++by) {
+    for (auto bx = 0; bx < block_size_x; ++bx) {
+      auto    l_offset = (by * block_size_x) + bx;
+      value_t expected = static_cast<value_t>(dash::myid() + 1) +
+                         (0.00001 * (
+                           ((lb + 1) * 10000) +
+                           ((by + 1) * 100) +
+                           bx + 1
+                         ));
+      ASSERT_EQ_U(expected, local_block_copy[l_offset]);
+    }
+  }
+  
 }
 
 TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)

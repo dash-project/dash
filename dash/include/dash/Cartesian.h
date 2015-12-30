@@ -8,15 +8,17 @@
 #ifndef DASH__CARTESIAN_H_
 #define DASH__CARTESIAN_H_
 
-#include <array>
-#include <algorithm>
-#include <cstring>
-#include <type_traits>
-
 #include <dash/Enums.h>
 #include <dash/Dimensional.h>
 #include <dash/Exception.h>
 #include <dash/internal/Logging.h>
+
+#include <array>
+#include <algorithm>
+#include <sstream>
+#include <iostream>
+#include <cstring>
+#include <type_traits>
 
 namespace dash {
 
@@ -26,7 +28,7 @@ namespace dash {
  * \see DashCartesianSpaceConcept
  */
 template<
-  dim_t NumDimensions,
+  dim_t    NumDimensions,
   typename SizeType = unsigned int >
 class CartesianSpace
 {
@@ -39,6 +41,12 @@ private:
 public:
   typedef IndexType index_type;
   typedef SizeType  size_type;
+
+public:
+  template<dim_t NDim_, typename SizeType_>
+  friend std::ostream & operator<<(
+    std::ostream & os,
+    const CartesianSpace<NDim_, SizeType_> & cartesian_space);
 
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
@@ -592,7 +600,8 @@ public:
   z(SizeType offs) const {
     return coords(offs)[2];
   }
-};
+
+}; // class CartesianIndexSpace
 
 /** 
  * Specifies the arrangement of team units in a specified number
@@ -607,7 +616,8 @@ template<
   dim_t MaxDimensions,
   typename IndexType = int>
 class TeamSpec :
-  public CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType> {
+  public CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>
+{
 private:
   typedef typename std::make_unsigned<IndexType>::type
     SizeType;
@@ -817,7 +827,8 @@ public:
   }
 
 private:
-  void update_rank() {
+  void update_rank()
+  {
     for (auto d = 0; d < MaxDimensions; ++d) {
       if (this->_extents[d] > 1) {
         ++_rank;
@@ -831,7 +842,8 @@ private:
   dim_t _rank      = 0;
   /// Whether the team spec is linear
   bool  _is_linear = false;
-};
+
+}; // class TeamSpec
 
 /** 
  * Specifies how local element indices are arranged in a specific number
@@ -846,7 +858,8 @@ template<
   MemArrange Arrangement = ROW_MAJOR,
   typename IndexType = long long>
 class LocalMemoryLayout :
-  public CartesianIndexSpace<NumDimensions, Arrangement, IndexType> {
+  public CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
+{
 private:
   typedef typename std::make_unsigned<IndexType>::type
     SizeType;
@@ -854,6 +867,8 @@ private:
     self_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     parent_t;
+  typedef ViewSpec<NumDimensions, IndexType>
+    ViewSpec_t;
 public:
   /**
    * Constructor, creates an instance of LocalMemoryLayout from a SizeSpec
@@ -970,7 +985,7 @@ public:
     typename OffsetType>
   IndexType at(
     const std::array<OffsetType, NumDimensions> & point,
-    const ViewSpec<NumDimensions> & viewspec) const {
+    const ViewSpec_t & viewspec) const {
     std::array<OffsetType, NumDimensions> coords;
     for (auto d = 0; d < NumDimensions; ++d) {
       coords[d] = point[d] + viewspec[d].offset;
@@ -999,8 +1014,30 @@ public:
 
 private:
   DistributionSpec<NumDimensions> _distspec;
-};
+}; // class LocalMemoryLayout
 
-} // namespace dash
+template <
+  dash::dim_t NumDimensions,
+  typename    SizeType >
+std::ostream & operator<<(
+  std::ostream & os,
+  const dash::CartesianSpace<NumDimensions, SizeType> & cartesian_space)
+{
+  std::ostringstream ss;
+  ss << "dash::CartesianSpace"
+     << "< " << NumDimensions << ", " << typeid(SizeType).name() << ">"
+     << ": "
+     << "extents(";
+  for (auto dim = 0; dim < NumDimensions; ++dim) {
+    if (dim > 0) {
+      ss << ",";
+    }
+    ss << cartesian_space.extents()[dim];
+  }
+  ss << ")";
+  return operator<<(os, ss.str());
+}
+
+}  // namespace dash
 
 #endif // DASH__CARTESIAN_H_

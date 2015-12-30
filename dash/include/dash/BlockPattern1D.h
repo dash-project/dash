@@ -33,7 +33,7 @@ template<
 class Pattern<1, Arrangement, IndexType>
 {
 private:
-  static const dim_t      NumDimensions = 1;
+  static const dim_t NumDimensions = 1;
 
 public:
   static constexpr char const * PatternName = "RegularPattern<1>";
@@ -66,6 +66,8 @@ private:
     MemoryLayout_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     LocalMemoryLayout_t;
+  typedef CartesianSpace<NumDimensions, SizeType>
+    BlockSpec_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
   typedef TeamSpec<NumDimensions, IndexType>
@@ -783,6 +785,10 @@ public:
     return at(inputindex);
   }
 
+  ////////////////////////////////////////////////////////////////////////////
+  /// is_local
+  ////////////////////////////////////////////////////////////////////////////
+
   /**
    * Whether there are local elements in a dimension at a given offset,
    * e.g. in a specific row or column.
@@ -834,6 +840,69 @@ public:
   bool is_local(
     IndexType index) const {
     return is_local(index, team().myid());
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// block
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  BlockSpec_t blockspec() const {
+    DASH_LOG_TRACE("BlockPattern.blockspec()", "nblocks:", _nblocks);
+    return BlockSpec_t({ _nblocks });
+  }
+
+  /**
+   * Index of block at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  index_type block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const
+  {
+    index_type block_idx = g_coords[0] / _blocksize;
+    DASH_LOG_TRACE("BlockPattern<1>.block_at",
+                   "coords", g_coords,
+                   "> block index", block_idx);
+    return block_idx;
+  }
+
+  /**
+   * View spec (offset and extents) of block at global linear block index in
+   * cartesian element space.
+   */
+  ViewSpec_t block(
+    index_type g_block_index) const {
+    index_type offset = g_block_index * _size;
+    return ViewSpec_t(offset, _blocksize);
+  }
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * global cartesian element space.
+   */
+  ViewSpec_t local_block(
+    index_type l_block_index) const {
+    DASH_LOG_DEBUG_VAR("BlockPattern.local_block()", l_block_index);
+    // Local block index to local block coords:
+    auto l_elem_index = l_block_index * _blocksize;
+    auto g_elem_index = global(l_elem_index);
+    ViewSpec_t block_vs({ g_elem_index }, { _blocksize });
+    DASH_LOG_DEBUG_VAR("BlockPattern.local_block >", block_vs);
+    return block_vs;
+  }
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * local cartesian element space.
+   */
+  ViewSpec_t local_block_local(
+    index_type local_block_index) const {
+    index_type offset = local_block_index * _blocksize;
+    return ViewSpec_t({ offset }, { _blocksize });
   }
 
   /**
@@ -983,41 +1052,6 @@ public:
   std::array<IndexType, NumDimensions> coords(
     IndexType index) const {
     return std::array<IndexType, 1> { index };
-  }
-
-  /**
-   * View spec (offset and extents) of block at global linear block index in
-   * cartesian element space.
-   */
-  ViewSpec_t block(
-    index_type g_block_index) const {
-    index_type offset = g_block_index * _size;
-    return ViewSpec_t(offset, _blocksize);
-  }
-
-  /**
-   * View spec (offset and extents) of block at local linear block index in
-   * global cartesian element space.
-   */
-  ViewSpec_t local_block(
-    index_type l_block_index) const {
-    DASH_LOG_DEBUG_VAR("BlockPattern.local_block()", l_block_index);
-    // Local block index to local block coords:
-    auto l_elem_index = l_block_index * _blocksize;
-    auto g_elem_index = global(l_elem_index);
-    ViewSpec_t block_vs({ g_elem_index }, { _blocksize });
-    DASH_LOG_DEBUG_VAR("BlockPattern.local_block >", block_vs);
-    return block_vs;
-  }
-
-  /**
-   * View spec (offset and extents) of block at local linear block index in
-   * local cartesian element space.
-   */
-  ViewSpec_t local_block_local(
-    index_type local_block_index) const {
-    index_type offset = local_block_index * _blocksize;
-    return ViewSpec_t({ offset }, { _blocksize });
   }
 
   /**
