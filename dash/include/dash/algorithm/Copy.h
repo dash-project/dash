@@ -115,7 +115,7 @@ ValueType * copy_impl(
     DASH_LOG_TRACE_VAR("dash::copy_impl", max_copy_elem);
     while (num_elem_copied < num_elem_total) {
       // Global iterator pointing at begin of current unit's input range:
-      GlobInputIt cur_in_first = g_in_first + num_elem_copied;
+      auto cur_in_first    = g_in_first + num_elem_copied;
       // unit and local index of first element in current range segment:
       auto local_pos       = pattern.local(static_cast<index_type>(
                                              cur_in_first.pos()));

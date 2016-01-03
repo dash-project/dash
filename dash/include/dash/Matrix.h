@@ -159,9 +159,6 @@ private:
     TeamSpec_t;
   typedef std::array<typename PatternT::size_type, NumDimensions>
     Extents_t;
-  template <dim_t NumViewDim>
-    using MatrixRef_t =
-          MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>;
 
 public:
   template<
@@ -212,7 +209,8 @@ public:
   /// Type of views on matrix elements such as sub-matrices, row- and column
   /// vectors.
   template <dim_t NumViewDim>
-    using View = MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>;
+    using view_type =
+          MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>;
 
 public:
   /// Local view proxy object.
@@ -262,13 +260,13 @@ public:
   /**
    * View at block at given global block coordinates.
    */
-  View<NumDimensions> block(
+  view_type<NumDimensions> block(
     const std::array<index_type, NumDimensions> & block_gcoords);
 
   /**
    * View at block at given global block offset.
    */
-  View<NumDimensions> block(
+  view_type<NumDimensions> block(
     index_type block_gindex);
 
   /**
@@ -300,6 +298,11 @@ public:
   inline Extents_t         extents()             const noexcept;
   inline bool              empty()               const noexcept;
 
+  /**
+   * Synchronize units associated with the matrix.
+   *
+   * \see  DashContainerConcept
+   */
   inline void              barrier()             const;
 
   /**
@@ -370,7 +373,7 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  inline const View<NumDimensions-1> operator[](
+  inline const view_type<NumDimensions-1> operator[](
     size_type n       ///< Offset in highest matrix dimension.
   ) const;
 
@@ -378,12 +381,12 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  inline View<NumDimensions-1> operator[](
+  inline view_type<NumDimensions-1> operator[](
     size_type n       ///< Offset in highest matrix dimension.
   );
 
   template<dim_t SubDimension>
-  inline View<NumDimensions> sub(
+  inline view_type<NumDimensions> sub(
     size_type n,      ///< Offset of the sub-range.
     size_type range   ///< Width of the sub-range.
   );
@@ -395,7 +398,7 @@ public:
    * \see  col
    */
   template<dim_t SubDimension>
-  inline View<NumDimensions-1> sub(
+  inline view_type<NumDimensions-1> sub(
     size_type n       ///< Offset in selected dimension.
   );
 
@@ -414,7 +417,7 @@ public:
    * \see  sub
    * \see  row
    */
-  inline View<NumDimensions-1> col(
+  inline view_type<NumDimensions-1> col(
     size_type n       ///< Column offset.
   );
   
@@ -427,7 +430,7 @@ public:
    * \see  sub
    * \see  col
    */
-  inline View<NumDimensions-1> row(
+  inline view_type<NumDimensions-1> row(
     size_type n       ///< Row offset.
   );
   
@@ -440,7 +443,7 @@ public:
    *
    * \see  sub
    */
-  inline View<NumDimensions> cols(
+  inline view_type<NumDimensions> cols(
     size_type offset, ///< Offset of first column in range.
     size_type range   ///< Number of columns in the range.
   );
@@ -454,7 +457,7 @@ public:
    *
    * \see  sub
    */
-  inline View<NumDimensions> rows(
+  inline view_type<NumDimensions> rows(
     size_type n,      ///< Offset of first row in range.
     size_type range   ///< Number of rows in the range.
   );
@@ -546,7 +549,7 @@ private:
   /// Native pointer past last local element in the array
   ElementT                   * _lend;
   /// Proxy instance for applying a view, e.g. in subscript operator
-  MatrixRef_t<NumDimensions>   _ref;
+  view_type<NumDimensions>     _ref;
 };
 
 }  // namespace dash

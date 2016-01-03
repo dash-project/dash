@@ -89,7 +89,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   // Resolve the block's viewspec:
   ViewSpec<NumDim>    block_view = pattern().block(block_gindex);
   // Return a view specified by the block's viewspec:
-  MatrixRef_t<NumDim> view;
+  view_type<NumDim> view;
   view._refview            = new MatrixRefView_t(this);
   view._refview->_viewspec = block_view;
   DASH_LOG_TRACE("Matrix.block >", block_view);
@@ -111,7 +111,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   // Resolve the block's viewspec:
   ViewSpec<NumDim>    block_view = pattern().block(block_gindex);
   // Return a view specified by the block's viewspec:
-  MatrixRef_t<NumDim> view;
+  view_type<NumDim> view;
   view._refview            = new MatrixRefView_t(this);
   view._refview->_viewspec = block_view;
   DASH_LOG_TRACE("Matrix.block >", block_view);

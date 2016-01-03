@@ -118,8 +118,6 @@ inline const typename MatrixRef<T, NumDim, CUR, PatternT>::pattern_type &
 MatrixRef<T, NumDim, CUR, PatternT>
 ::pattern() const
 {
-  // TODO;
-  // Should return pattern projected to cartesian space of this view?
   return _refview->_mat->_pattern;
 }
 
@@ -145,14 +143,14 @@ MatrixRef<T, NumDim, CUR, PatternT>
                           _refview->_viewspec);
   DASH_LOG_TRACE("MatrixRef.begin",
                  "iterator offset:", g_vs_begin_idx);
-  auto git_begin = GlobIter_t(
+  auto git_begin = GlobViewIter_t(
                      _refview->_mat->_glob_mem,
                      _refview->_mat->_pattern,
                      _refview->_viewspec,
-                     0,               // relative iterator position
-                     g_vs_begin_idx); // view index offset 
-  DASH_LOG_TRACE("MatrixRef.begin= >",
-                 git_begin);
+                     0,                        // relative iterator position
+                     g_vs_begin_idx            // view index offset 
+                   );
+  DASH_LOG_TRACE("MatrixRef.begin= >", git_begin);
   return git_begin;
 }
 
@@ -168,14 +166,14 @@ MatrixRef<T, NumDim, CUR, PatternT>
   auto g_vs_begin_idx = _refview->_mat->_pattern.at(
                           _refview->_coord,
                           _refview->_viewspec);
-  auto git_begin = GlobIter_t(
+  auto git_begin = GlobViewIter_t(
                      _refview->_mat->_glob_mem,
                      _refview->_mat->_pattern,
                      _refview->_viewspec,
-                     0,               // relative iterator position
-                     g_vs_begin_idx); // view index offset 
-  DASH_LOG_TRACE("MatrixRef.begin= >",
-                 git_begin);
+                     0,                         // relative iterator position
+                     g_vs_begin_idx             // view index offset 
+                   );
+  DASH_LOG_TRACE("MatrixRef.begin= >", git_begin);
   return git_begin;
 }
 
@@ -191,14 +189,14 @@ MatrixRef<T, NumDim, CUR, PatternT>
   auto g_vs_begin_idx = _refview->_mat->_pattern.at(
                           _refview->_coord,
                           _refview->_viewspec);
-  auto git_end = GlobIter_t(
+  auto git_end = GlobViewIter_t(
                    _refview->_mat->_glob_mem,
                    _refview->_mat->_pattern,
                    _refview->_viewspec,
                    _refview->_viewspec.size(), // relative iterator position
-                   g_vs_begin_idx);            // view index offset
-  DASH_LOG_TRACE("MatrixRef.end= >",
-                 git_end);
+                   g_vs_begin_idx              // view index offset
+                 );
+  DASH_LOG_TRACE("MatrixRef.end= >", git_end);
   return git_end;
 }
 
@@ -214,14 +212,14 @@ MatrixRef<T, NumDim, CUR, PatternT>
   auto g_vs_begin_idx = _refview->_mat->_pattern.at(
                           _refview->_coord,
                           _refview->_viewspec);
-  auto git_end = GlobIter_t(
+  auto git_end = GlobViewIter_t(
                    _refview->_mat->_glob_mem,
                    _refview->_mat->_pattern,
                    _refview->_viewspec,
                    _refview->_viewspec.size(), // relative iterator position
-                   g_vs_begin_idx);            // view index offset
-  DASH_LOG_TRACE("MatrixRef.end= >",
-                 git_end);
+                   g_vs_begin_idx              // view index offset
+                 );
+  DASH_LOG_TRACE("MatrixRef.end= >", git_end);
   return git_end;
 }
 

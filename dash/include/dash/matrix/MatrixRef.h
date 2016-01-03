@@ -8,6 +8,7 @@
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/GlobIter.h>
+#include <dash/GlobViewIter.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
 #include <dash/Container.h>
@@ -41,6 +42,10 @@ class LocalMatrixRef;
  * A view on a referenced \c Matrix object, such as a dimensional
  * projection returned by \c Matrix::sub.
  *
+ * TODO:
+ * Projection order matrix.sub().local() is not fully implemented yet.
+ * Currently only matrix.local().sub() is supported.
+ *
  * \see DashMatrixConcept
  *
  * \ingroup Matrix
@@ -68,6 +73,8 @@ class MatrixRef
     LocalRef_t;
   typedef GlobIter<ElementT, PatternT>
     GlobIter_t;
+  typedef GlobViewIter<ElementT, PatternT>
+    GlobViewIter_t;
   typedef CartesianIndexSpace<
             CUR, PatternT::memory_order(), typename PatternT::index_type >
     IndexSpace_t;
@@ -83,16 +90,16 @@ class MatrixRef
   typedef typename PatternT::size_type                       size_type;
   typedef typename PatternT::index_type                difference_type;
 
-  typedef GlobIter_t                                          iterator;
-  typedef const GlobIter_t                              const_iterator;
+  typedef GlobViewIter_t                                      iterator;
+  typedef const GlobViewIter_t                          const_iterator;
   typedef std::reverse_iterator<iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
   typedef GlobRef<value_type>                                reference;
   typedef const GlobRef<value_type>                    const_reference;
 
-  typedef GlobIter_t                                           pointer;
-  typedef const GlobIter_t                               const_pointer;
+  typedef GlobViewIter_t                                       pointer;
+  typedef const GlobViewIter_t                           const_pointer;
   
   typedef LocalRef_t                                        local_type;
   typedef const LocalRef_t                            const_local_type;
@@ -156,11 +163,6 @@ public:
   inline    const_iterator    begin()               const noexcept;
   inline    iterator          end()                       noexcept;
   inline    const_iterator    end()                 const noexcept;
-
-  /* TODO:
-   * Projection order matrix.sub().local() is not fully implemented yet.
-   * Currently only matrix.local().sub() is supported.
-   */
 
   /// View representing elements in the active unit's local memory.
   inline    local_type        sub_local()                 noexcept;
