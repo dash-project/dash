@@ -1,12 +1,11 @@
-/* 
- * dash-lib/HView.h
+/**
+ * \file dash-lib/HView.h
  *
- * author(s): Karl Fuerlinger, LMU Munich 
  */
 /* @DASH_HEADER@ */
 
-#ifndef HVIEW_H_INCLUDED
-#define HVIEW_H_INCLUDED
+#ifndef DASH__HVIEW_H_INCLUDED
+#define DASH__HVIEW_H_INCLUDED
 
 #include <iostream>
 #include <dash/Team.h>
@@ -15,10 +14,11 @@
 namespace dash {
 
 template<class ContainerType, int LEVEL> 
-class HIter : public ContainerType::iterator {
+class HIter : public ContainerType::iterator
+{
 private:
   Pattern<1> & m_pattern;
-  Team&        m_subteam;
+  Team       & m_subteam;
 
 public:
   HIter<ContainerType,LEVEL>& advance() {
@@ -54,27 +54,38 @@ public:
 };
 
 template<class ContainerType, int LEVEL>
-class HView {
+class HView
+{
 public:
   typedef typename ContainerType::iterator    iterator;
   typedef typename ContainerType::value_type  value_type;
   
 private:
   ContainerType & m_container;
-  Team&           m_subteam;
-  Pattern<1> &    m_pat;
+  Team          & m_subteam;
+  Pattern<1>    & m_pat;
 
   HIter<ContainerType,LEVEL> m_begin;
   HIter<ContainerType,LEVEL> m_end;
 
-  HIter<ContainerType,LEVEL> find_begin() {
-    HIter<ContainerType, LEVEL> it = {m_container.begin(),m_pat,m_subteam};
+  HIter<ContainerType,LEVEL> find_begin()
+  {
+    HIter<ContainerType, LEVEL> it = {
+      m_container.begin(),
+      m_pat,
+      m_subteam
+    };
     it.advance();
     return it;
   }
 
-  HIter<ContainerType, LEVEL> find_end() {
-    return { m_container.end(), m_pat,m_subteam };
+  HIter<ContainerType, LEVEL> find_end()
+  {
+    return {
+      m_container.end(),
+      m_pat,
+      m_subteam
+    };
   }
   
 public:
@@ -83,18 +94,21 @@ public:
     m_subteam(cont.team().sub(LEVEL)),
     m_pat(cont.pattern()),
     m_begin(find_begin()),
-    m_end(find_end()) {
-  }
+    m_end(find_end())
+  { }
   
-  void print() {
+  void print()
+  {
     std::cout << "This team has size " << m_subteam.size() << std::endl;
   }
   
-  HIter<ContainerType, LEVEL> begin() { 
+  HIter<ContainerType, LEVEL> begin()
+  {
     return m_begin;
   }
   
-  HIter<ContainerType, LEVEL> end() { 
+  HIter<ContainerType, LEVEL> end()
+  {
     return m_end;
   }
 };
