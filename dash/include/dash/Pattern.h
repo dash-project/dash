@@ -73,7 +73,7 @@ namespace dash {
 // Pattern linearization properties
 //////////////////////////////////////////////////////////////////////////////
 
-struct pattern_indexing_tag
+struct pattern_layout_tag
 {
   typedef enum {
     any,
@@ -82,24 +82,24 @@ struct pattern_indexing_tag
   } type;
 };
 
-template< pattern_indexing_tag::type >
-struct pattern_indexing_properties
+template< pattern_layout_tag::type >
+struct pattern_layout_properties
 {
   static const bool local_phase   = false;
   static const bool local_strided = true;
 };
 
 template<>
-struct pattern_indexing_properties<
-  pattern_indexing_tag::local_phase >
+struct pattern_layout_properties<
+  pattern_layout_tag::local_phase >
 {
   static const bool local_phase   = true;
   static const bool local_strided = false;
 };
 
 template<>
-struct pattern_indexing_properties<
-  pattern_indexing_tag::local_strided >
+struct pattern_layout_properties<
+  pattern_layout_tag::local_strided >
 {
   static const bool local_phase   = false;
   static const bool local_strided = true;
@@ -113,7 +113,7 @@ struct pattern_indexing_properties<
  * Container type for mapping properties of models satisfying the Pattern
  * concept.
  */
-struct pattern_topology_tag
+struct pattern_mapping_tag
 {
   typedef enum {
     any,
@@ -135,24 +135,24 @@ struct pattern_topology_tag
  * Example: 
  *
  * \code
- *   typedef dash::pattern_topology_properties<
- *             dash::pattern_topology_tag::balanced,
- *             dash::pattern_topology_tag::diagonal
- *           > my_pattern_topology_properties;
+ *   typedef dash::pattern_mapping_properties<
+ *             dash::pattern_mapping_tag::balanced,
+ *             dash::pattern_mapping_tag::diagonal
+ *           > my_pattern_mapping_properties;
  *
  *   auto pattern = dash::make_pattern<
  *                    // ...
- *                    my_pattern_topology_properties
+ *                    my_pattern_mapping_properties
  *                    // ...
  *                  >(sizespec, teamspec);
  * \endcode
  *
  * Template parameter list is processed recursively by specializations of
- * \c dash::pattern_topology_properties.
+ * \c dash::pattern_mapping_properties.
  */
 template<
-  pattern_topology_tag::type ... Tags >
-struct pattern_topology_properties
+  pattern_mapping_tag::type ... Tags >
+struct pattern_mapping_properties
 {
   // TODO: Should be
   //   typedef typename std::integral_constant<bool, false> the_property;
@@ -163,15 +163,15 @@ struct pattern_topology_properties
 };
 
 /**
- * Specialization of \c dash::pattern_topology_properties to process tag
- * \c dash::pattern_topology_tag::type::balanced in template parameter list.
+ * Specialization of \c dash::pattern_mapping_properties to process tag
+ * \c dash::pattern_mapping_tag::type::balanced in template parameter list.
  */
 template<
-  pattern_topology_tag::type ... Tags >
-struct pattern_topology_properties<
-    pattern_topology_tag::type::balanced,
+  pattern_mapping_tag::type ... Tags >
+struct pattern_mapping_properties<
+    pattern_mapping_tag::type::balanced,
     Tags ...>
-: public pattern_topology_properties<
+: public pattern_mapping_properties<
     Tags ...>
 {
   // TODO: Should be
@@ -180,15 +180,15 @@ struct pattern_topology_properties<
 };
 
 /**
- * Specialization of \c dash::pattern_topology_properties to process tag
- * \c dash::pattern_topology_tag::type::unbalanced in template parameter list.
+ * Specialization of \c dash::pattern_mapping_properties to process tag
+ * \c dash::pattern_mapping_tag::type::unbalanced in template parameter list.
  */
 template<
-  pattern_topology_tag::type ... Tags >
-struct pattern_topology_properties<
-    pattern_topology_tag::type::unbalanced,
+  pattern_mapping_tag::type ... Tags >
+struct pattern_mapping_properties<
+    pattern_mapping_tag::type::unbalanced,
     Tags ...>
-: public pattern_topology_properties<
+: public pattern_mapping_properties<
     Tags ...>
 {
   // TODO: Should be
@@ -197,15 +197,15 @@ struct pattern_topology_properties<
 };
 
 /**
- * Specialization of \c dash::pattern_topology_properties to process tag
- * \c dash::pattern_topology_tag::type::diagonal in template parameter list.
+ * Specialization of \c dash::pattern_mapping_properties to process tag
+ * \c dash::pattern_mapping_tag::type::diagonal in template parameter list.
  */
 template<
-  pattern_topology_tag::type ... Tags >
-struct pattern_topology_properties<
-    pattern_topology_tag::type::diagonal,
+  pattern_mapping_tag::type ... Tags >
+struct pattern_mapping_properties<
+    pattern_mapping_tag::type::diagonal,
     Tags ...>
-: public pattern_topology_properties<
+: public pattern_mapping_properties<
     Tags ...>
 {
   // TODO: Should be
@@ -214,15 +214,15 @@ struct pattern_topology_properties<
 };
 
 /**
- * Specialization of \c dash::pattern_topology_properties to process tag
- * \c dash::pattern_topology_tag::type::neighbor in template parameter list.
+ * Specialization of \c dash::pattern_mapping_properties to process tag
+ * \c dash::pattern_mapping_tag::type::neighbor in template parameter list.
  */
 template<
-  pattern_topology_tag::type ... Tags >
-struct pattern_topology_properties<
-    pattern_topology_tag::type::remote_neighbors,
+  pattern_mapping_tag::type ... Tags >
+struct pattern_mapping_properties<
+    pattern_mapping_tag::type::remote_neighbors,
     Tags ...>
-: public pattern_topology_properties<
+: public pattern_mapping_properties<
     Tags ...>
 {
   // TODO: Should be
@@ -231,10 +231,10 @@ struct pattern_topology_properties<
 };
 
 //////////////////////////////////////////////////////////////////////////////
-// Pattern blocking properties
+// Pattern partitioning properties
 //////////////////////////////////////////////////////////////////////////////
 
-struct pattern_blocking_tag
+struct pattern_partitioning_tag
 {
   typedef enum {
     any,
@@ -245,8 +245,8 @@ struct pattern_blocking_tag
 };
 
 template<
-  pattern_blocking_tag::type ... Tags >
-struct pattern_blocking_properties
+  pattern_partitioning_tag::type ... Tags >
+struct pattern_partitioning_properties
 {
   // TODO: Should be
   //   typedef typename std::integral_constant<bool, false> the_property;
@@ -255,11 +255,11 @@ struct pattern_blocking_properties
 };
 
 template<
-  pattern_blocking_tag::type ... Tags >
-struct pattern_blocking_properties<
-    pattern_blocking_tag::type::balanced,
+  pattern_partitioning_tag::type ... Tags >
+struct pattern_partitioning_properties<
+    pattern_partitioning_tag::type::balanced,
     Tags ...>
-: public pattern_blocking_properties<
+: public pattern_partitioning_properties<
     Tags ...>
 {
   // TODO: Should be
@@ -268,11 +268,11 @@ struct pattern_blocking_properties<
 };
 
 template<
-  pattern_blocking_tag::type ... Tags >
-struct pattern_blocking_properties<
-    pattern_blocking_tag::type::cache_align,
+  pattern_partitioning_tag::type ... Tags >
+struct pattern_partitioning_properties<
+    pattern_partitioning_tag::type::cache_align,
     Tags ...>
-: public pattern_blocking_properties<
+: public pattern_partitioning_properties<
     Tags ...>
 {
   // TODO: Should be
@@ -285,23 +285,23 @@ struct pattern_blocking_properties<
 //////////////////////////////////////////////////////////////////////////////
 
 template<typename PatternType>
-struct pattern_blocking_traits
+struct pattern_partitioning_traits
 {
-  typedef typename PatternType::blocking_properties
+  typedef typename PatternType::partitioning_properties
           type;
 };
 
 template<typename PatternType>
-struct pattern_topology_traits
+struct pattern_mapping_traits
 {
-  typedef typename PatternType::topology_properties
+  typedef typename PatternType::mapping_properties
           type;
 };
 
 template<typename PatternType>
-struct pattern_indexing_traits
+struct pattern_layout_traits
 {
-  typedef typename PatternType::indexing_properties
+  typedef typename PatternType::layout_properties
           type;
 };
 
@@ -312,12 +312,12 @@ struct pattern_traits
           index_type;
   typedef typename PatternType::size_type
           size_type;
-  typedef typename dash::pattern_blocking_traits<PatternType>::type
-          blocking;
-  typedef typename dash::pattern_topology_traits<PatternType>::type
-          topology;
-  typedef typename dash::pattern_indexing_traits<PatternType>::type
-          indexing;
+  typedef typename dash::pattern_partitioning_traits<PatternType>::type
+          partitioning;
+  typedef typename dash::pattern_mapping_traits<PatternType>::type
+          mapping;
+  typedef typename dash::pattern_layout_traits<PatternType>::type
+          layout;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -339,24 +339,24 @@ bool check_pattern_constraints(
   const PatternType & pattern)
 {
   // Pattern property traits of category Blocking
-  typedef typename dash::pattern_traits< PatternType >::blocking
-          pattern_blocking_traits;
+  typedef typename dash::pattern_traits< PatternType >::partitioning
+          pattern_partitioning_traits;
   // Pattern property traits of category Topology
-  typedef typename dash::pattern_traits< PatternType >::topology
-          pattern_topology_traits;
+  typedef typename dash::pattern_traits< PatternType >::mapping
+          pattern_mapping_traits;
   // Pattern property traits of category Indexing
-  typedef typename dash::pattern_traits< PatternType >::indexing
-          pattern_indexing_traits;
+  typedef typename dash::pattern_traits< PatternType >::layout
+          pattern_layout_traits;
   // Check compile-time invariants:
   static_assert(!BlockingConstraints::balanced ||
-                pattern_blocking_traits::balanced,
-                "Pattern does not implement balanced blocking property");
+                pattern_partitioning_traits::balanced,
+                "Pattern does not implement balanced partitioning property");
   static_assert(!IndexingConstraints::local_phase ||
-                pattern_indexing_traits::local_phase,
-                "Pattern does not implement local phase indexing property");
+                pattern_layout_traits::local_phase,
+                "Pattern does not implement local phase layout property");
   static_assert(!TopologyConstraints::diagonal ||
-                pattern_topology_traits::diagonal,
-                "Pattern does not implement diagonal topology property");
+                pattern_mapping_traits::diagonal,
+                "Pattern does not implement diagonal mapping property");
   return true;
 }
 
@@ -375,25 +375,25 @@ template<
 struct pattern_constraints
 {
   // Pattern property traits of category Blocking
-  typedef typename dash::pattern_traits< PatternType >::blocking
-          pattern_blocking_traits;
+  typedef typename dash::pattern_traits< PatternType >::partitioning
+          pattern_partitioning_traits;
   // Pattern property traits of category Topology
-  typedef typename dash::pattern_traits< PatternType >::topology
-          pattern_topology_traits;
+  typedef typename dash::pattern_traits< PatternType >::mapping
+          pattern_mapping_traits;
   // Pattern property traits of category Indexing
-  typedef typename dash::pattern_traits< PatternType >::indexing
-          pattern_indexing_traits;
+  typedef typename dash::pattern_traits< PatternType >::layout
+          pattern_layout_traits;
 
   typedef std::integral_constant<
             bool,
             ( !BlockingConstraints::balanced ||
-              pattern_blocking_traits::balanced )
+              pattern_partitioning_traits::balanced )
             &&
             ( !IndexingConstraints::local_phase ||
-              pattern_indexing_traits::local_phase )
+              pattern_layout_traits::local_phase )
             &&
             ( !TopologyConstraints::diagonal ||
-              pattern_topology_traits::diagonal ) >
+              pattern_mapping_traits::diagonal ) >
           satisfied;
 };
 
@@ -401,17 +401,17 @@ struct pattern_constraints
 // Default Pattern Traits Definitions
 //////////////////////////////////////////////////////////////////////////////
 
-typedef dash::pattern_blocking_properties<
-          pattern_blocking_tag::any >
-  pattern_blocking_default_properties;
+typedef dash::pattern_partitioning_properties<
+          pattern_partitioning_tag::any >
+  pattern_partitioning_default_properties;
 
-typedef dash::pattern_topology_properties<
-          pattern_topology_tag::any >
-  pattern_topology_default_properties;
+typedef dash::pattern_mapping_properties<
+          pattern_mapping_tag::any >
+  pattern_mapping_default_properties;
 
-typedef dash::pattern_indexing_properties<
-          pattern_indexing_tag::any >
-  pattern_indexing_default_properties;
+typedef dash::pattern_layout_properties<
+          pattern_layout_tag::any >
+  pattern_layout_default_properties;
 
 } // namespace dash
 

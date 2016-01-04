@@ -40,22 +40,22 @@ public:
 
 public:
   /// Properties guaranteed in pattern property category Blocking
-  typedef dash::pattern_blocking_properties<
+  typedef dash::pattern_partitioning_properties<
             // identical number of elements in every block
-            dash::pattern_blocking_tag::balanced >
-          blocking_properties;
+            dash::pattern_partitioning_tag::balanced >
+          partitioning_properties;
   /// Properties guaranteed in pattern property category Topology
-  typedef dash::pattern_topology_properties<
+  typedef dash::pattern_mapping_properties<
             // number of blocks assigned to a unit may differ
-            dash::pattern_topology_tag::unbalanced,
+            dash::pattern_mapping_tag::unbalanced,
             // every unit mapped in any single slice in every dimension
-            dash::pattern_topology_tag::diagonal >
-          topology_properties;
+            dash::pattern_mapping_tag::diagonal >
+          mapping_properties;
   /// Properties guaranteed in pattern property category Indexing
-  typedef dash::pattern_indexing_properties<
+  typedef dash::pattern_layout_properties<
             // local indices iterate within block boundaries
-            dash::pattern_indexing_tag::local_phase >
-          indexing_properties;
+            dash::pattern_layout_tag::local_phase >
+          layout_properties;
 
 private:
   /// Derive size type from given signed index / ptrdiff type

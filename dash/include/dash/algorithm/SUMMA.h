@@ -2,7 +2,7 @@
 #define DASH__ALGORITHM__SUMMA_H_
 
 #include <dash/Exception.h>
-#include <dash/bindings/LAPACK.h>
+// #include <dash/bindings/LAPACK.h>
 
 namespace dash {
 
@@ -54,26 +54,26 @@ void multiply_naive(
 
 } // namespace internal
 
-/// Constraints on pattern blocking properties of matrix operands passed to
+/// Constraints on pattern partitioning properties of matrix operands passed to
 /// \c dash::summa.
-typedef dash::pattern_blocking_properties<
+typedef dash::pattern_partitioning_properties<
           // same number of elements in every block
-          pattern_blocking_tag::balanced >
-        summa_pattern_blocking_constraints;
-/// Constraints on pattern topology properties of matrix operands passed to
+          pattern_partitioning_tag::balanced >
+        summa_pattern_partitioning_constraints;
+/// Constraints on pattern mapping properties of matrix operands passed to
 /// \c dash::summa.
-typedef dash::pattern_topology_properties<
+typedef dash::pattern_mapping_properties<
           // same amount of blocks for every process
-          pattern_topology_tag::balanced,
+          pattern_mapping_tag::balanced,
           // every process mapped in every row/column
-          pattern_topology_tag::diagonal >
-        summa_pattern_topology_constraints;
-/// Constraints on pattern indexing properties of matrix operands passed to
+          pattern_mapping_tag::diagonal >
+        summa_pattern_mapping_constraints;
+/// Constraints on pattern layout properties of matrix operands passed to
 /// \c dash::summa.
-typedef dash::pattern_indexing_properties<
+typedef dash::pattern_layout_properties<
           // elements contiguous within block
-          pattern_indexing_tag::local_phase >
-        summa_pattern_indexing_constraints;
+          pattern_layout_tag::local_phase >
+        summa_pattern_layout_constraints;
 
 /**
  * Multiplies two matrices using the SUMMA algorithm.
@@ -111,9 +111,9 @@ void summa(
   DASH_LOG_DEBUG("dash::summa()");
   // Verify that matrix patterns satisfy pattern constraints:
   if (!dash::check_pattern_constraints<
-         summa_pattern_blocking_constraints,
-         summa_pattern_topology_constraints,
-         summa_pattern_indexing_constraints
+         summa_pattern_partitioning_constraints,
+         summa_pattern_mapping_constraints,
+         summa_pattern_layout_constraints
        >(A.pattern())) {
     DASH_THROW(
       dash::exception::InvalidArgument,
@@ -121,9 +121,9 @@ void summa(
       "pattern of first matrix argument does not match constraints");
   }
   if (!dash::check_pattern_constraints<
-         summa_pattern_blocking_constraints,
-         summa_pattern_topology_constraints,
-         summa_pattern_indexing_constraints
+         summa_pattern_partitioning_constraints,
+         summa_pattern_mapping_constraints,
+         summa_pattern_layout_constraints
        >(B.pattern())) {
     DASH_THROW(
       dash::exception::InvalidArgument,
@@ -131,9 +131,9 @@ void summa(
       "pattern of second matrix argument does not match constraints");
   }
   if (!dash::check_pattern_constraints<
-         summa_pattern_blocking_constraints,
-         summa_pattern_topology_constraints,
-         summa_pattern_indexing_constraints
+         summa_pattern_partitioning_constraints,
+         summa_pattern_mapping_constraints,
+         summa_pattern_layout_constraints
        >(C.pattern())) {
     DASH_THROW(
       dash::exception::InvalidArgument,
@@ -287,21 +287,21 @@ template<
 >
 typename std::enable_if<
   dash::pattern_constraints<
-    dash::summa_pattern_blocking_constraints,
-    dash::summa_pattern_topology_constraints,
-    dash::summa_pattern_indexing_constraints,
+    dash::summa_pattern_partitioning_constraints,
+    dash::summa_pattern_mapping_constraints,
+    dash::summa_pattern_layout_constraints,
     typename MatrixTypeA::pattern_type
   >::satisfied::value &&
   dash::pattern_constraints<
-    dash::summa_pattern_blocking_constraints,
-    dash::summa_pattern_topology_constraints,
-    dash::summa_pattern_indexing_constraints,
+    dash::summa_pattern_partitioning_constraints,
+    dash::summa_pattern_mapping_constraints,
+    dash::summa_pattern_layout_constraints,
     typename MatrixTypeB::pattern_type
   >::satisfied::value &&
   dash::pattern_constraints<
-    dash::summa_pattern_blocking_constraints,
-    dash::summa_pattern_topology_constraints,
-    dash::summa_pattern_indexing_constraints,
+    dash::summa_pattern_partitioning_constraints,
+    dash::summa_pattern_mapping_constraints,
+    dash::summa_pattern_layout_constraints,
     typename MatrixTypeC::pattern_type
   >::satisfied::value,
   void

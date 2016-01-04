@@ -248,7 +248,7 @@ public:
   /**
    * Convert global iterator to native pointer.
    */
-  ElementType * local() {
+  ElementType * local() const {
     DASH_LOG_TRACE_VAR("GlobIter.local=()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
@@ -268,36 +268,6 @@ public:
     local_pos_t local_pos = _pattern->local(idx);
     DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.local= >", local_pos.index);
-    if (_myid != local_pos.unit) {
-      // Iterator position does not point to local element
-      return nullptr;
-    }
-    return (_lbegin + local_pos.index + offset);
-  }
-
-  /**
-   * Convert global iterator to native pointer.
-   */
-  const ElementType * local() const {
-    DASH_LOG_TRACE_VAR("GlobIter.local()", _idx);
-    typedef typename pattern_type::local_index_t
-      local_pos_t;
-    IndexType idx    = _idx;
-    IndexType offset = 0;
-    DASH_LOG_TRACE_VAR("GlobIter.local", _max_idx);
-    // Convert iterator position (_idx) to local index and unit.
-    if (_idx > _max_idx) {
-      // Global iterator pointing past the range indexed by the pattern
-      // which is the case for .end() iterators.
-      idx     = _max_idx;
-      offset += _idx - _max_idx;
-    }
-    DASH_LOG_TRACE_VAR("GlobIter.local", idx);
-    DASH_LOG_TRACE_VAR("GlobIter.local", offset);
-    // Global index to local index and unit:
-    local_pos_t local_pos = _pattern->local(idx);
-    DASH_LOG_TRACE_VAR("GlobIter.local >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobIter.local >", local_pos.index);
     if (_myid != local_pos.unit) {
       // Iterator position does not point to local element
       return nullptr;

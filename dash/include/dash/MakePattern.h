@@ -14,9 +14,9 @@ namespace dash {
  * Creates a DistributionSpec object from given pattern traits.
  */
 template<
-  typename BlockingTraits,
-  typename TopologyTraits,
-  typename IndexingTraits,
+  typename PartitioningTraits,
+  typename MappingTraits,
+  typename LayoutTraits,
   class SizeSpecType,
   class TeamSpecType
 >
@@ -40,7 +40,7 @@ make_distribution_spec(
     auto nblocks_d   = nunits_d;
     auto tilesize_d  = extent_d / nblocks_d;
     DASH_LOG_TRACE_VAR("dash::make_distribution_spec", tilesize_d);
-    if (TopologyTraits::balanced) {
+    if (MappingTraits::balanced) {
       // Balanced mapping, i.e. same number of blocks for every unit
       if (nblocks_d % teamspec.extent(d) > 0) {
         // Extent in this dimension is not a multiple of number of units,
@@ -51,18 +51,18 @@ make_distribution_spec(
                    nunits_d  << " units in dimension " << d);
       }
     }
-    if (BlockingTraits::balanced) {
-      // Balanced blocking, i.e. same number of elements in every block
+    if (PartitioningTraits::balanced) {
+      // Balanced partitioning, i.e. same number of elements in every block
       if (extent_d % tilesize_d > 0) {
         // Extent in this dimension is not a multiple of tile size,
-        // balanced blocking property cannot be satisfied:
+        // balanced partitioning property cannot be satisfied:
         DASH_THROW(dash::exception::InvalidArgument,
                    "dash::make_pattern: cannot distribute " <<
                    extent_d   << " elements to " <<
                    nblocks_d  << " blocks in dimension " << d);
       }
     }
-    if (IndexingTraits::local_phase) {
+    if (LayoutTraits::local_phase) {
       distributions[d] = dash::TILE(tilesize_d);
     } else {
       distributions[d] = dash::BLOCKCYCLIC(tilesize_d);
@@ -81,16 +81,16 @@ make_distribution_spec(
  * Usage:
  *
  *    typedef dash::deduce_pattern_model<
- *              pattern_blocking_properties<...>,
- *              pattern_topology_properties<...>,
- *              pattern_indexing_properties<...>
+ *              pattern_partitioning_properties<...>,
+ *              pattern_mapping_properties<...>,
+ *              pattern_layout_properties<...>
  *            >::type
  *      pattern_class;
  */
 template<
-  typename BlockingTraits,
-  typename TopologyTraits,
-  typename IndexingTraits
+  typename PartitioningTraits,
+  typename MappingTraits,
+  typename LayoutTraits
 >
 struct deduce_pattern_model
 {
@@ -105,14 +105,14 @@ struct deduce_pattern_model
  * linearization property from given pattern traits.
  */
 template<
-  typename BlockingTraits = dash::pattern_blocking_default_properties,
-  typename TopologyTraits = dash::pattern_topology_default_properties,
-  typename IndexingTraits = dash::pattern_indexing_default_properties,
+  typename PartitioningTraits = dash::pattern_partitioning_default_properties,
+  typename MappingTraits = dash::pattern_mapping_default_properties,
+  typename LayoutTraits = dash::pattern_layout_default_properties,
   class SizeSpecType,
   class TeamSpecType
 >
 typename std::enable_if<
-  IndexingTraits::local_phase,
+  LayoutTraits::local_phase,
   TilePattern<SizeSpecType::ndim()>
 >::type
 make_pattern(
@@ -124,28 +124,28 @@ make_pattern(
   // Tags in pattern property category 'Linearization'
   DASH_LOG_TRACE("dash::make_pattern", "-> Linearization properties:");
   DASH_LOG_TRACE("dash::make_pattern", "   - local_phase");
-  DASH_LOG_TRACE("dash::make_pattern", "-> Blocking properties:");
+  DASH_LOG_TRACE("dash::make_pattern", "-> Partitioning properties:");
 
-  // Tags in pattern property category 'Blocking'
-  if (BlockingTraits::balanced) {
+  // Tags in pattern property category 'Partitioning'
+  if (PartitioningTraits::balanced) {
     DASH_LOG_TRACE("dash::make_pattern", "   - balanced blocks");
   }
-  if (BlockingTraits::cache_align) {
+  if (PartitioningTraits::cache_align) {
     DASH_LOG_TRACE("dash::make_pattern", "   - cache aligned blocks");
   }
 
-  // Tags in pattern property category 'Topology'
-  static_assert(!TopologyTraits::neighbor || !TopologyTraits::diagonal,
+  // Tags in pattern property category 'Mapping'
+  static_assert(!MappingTraits::neighbor || !MappingTraits::diagonal,
                 "Pattern mapping properties 'diagonal' contradicts "
                 "mapping property 'remote_neighbors'");
-  DASH_LOG_TRACE("dash::make_pattern", "-> Topology properties:");
-  if (TopologyTraits::balanced) {
+  DASH_LOG_TRACE("dash::make_pattern", "-> Mapping properties:");
+  if (MappingTraits::balanced) {
     DASH_LOG_TRACE("dash::make_pattern", "   - balanced mapping");
   }
-  if (TopologyTraits::diagonal) {
+  if (MappingTraits::diagonal) {
     DASH_LOG_TRACE("dash::make_pattern", "   - diagonal mapping");
   }
-  if (TopologyTraits::neighbor) {
+  if (MappingTraits::neighbor) {
     DASH_LOG_TRACE("dash::make_pattern", "   - remote neighbors");
   }
   // Deduce number of dimensions from size spec:
@@ -153,9 +153,9 @@ make_pattern(
   // Make distribution spec from template- and run time parameters:
   auto distspec =
     make_distribution_spec<
-      BlockingTraits,
-      TopologyTraits,
-      IndexingTraits,
+      PartitioningTraits,
+      MappingTraits,
+      LayoutTraits,
       SizeSpecType,
       TeamSpecType
     >(sizespec,
@@ -177,14 +177,14 @@ make_pattern(
  * linearization property from given pattern traits.
  */
 template<
-  typename BlockingTraits = dash::pattern_blocking_default_properties,
-  typename TopologyTraits = dash::pattern_topology_default_properties,
-  typename IndexingTraits = dash::pattern_indexing_default_properties,
+  typename PartitioningTraits = dash::pattern_partitioning_default_properties,
+  typename MappingTraits = dash::pattern_mapping_default_properties,
+  typename LayoutTraits = dash::pattern_layout_default_properties,
   class SizeSpecType,
   class TeamSpecType
 >
 typename std::enable_if<
-  !IndexingTraits::local_phase,
+  !LayoutTraits::local_phase,
   Pattern<SizeSpecType::ndim()>
 >::type
 make_pattern(
@@ -197,27 +197,27 @@ make_pattern(
   DASH_LOG_TRACE("dash::make_pattern", "-> Linearization properties:");
   DASH_LOG_TRACE("dash::make_pattern", "   - local_strided");
 
-  // Tags in pattern property category 'Blocking'
-  DASH_LOG_TRACE("dash::make_pattern", "-> Blocking properties:");
-  if (BlockingTraits::balanced) {
+  // Tags in pattern property category 'Partitioning'
+  DASH_LOG_TRACE("dash::make_pattern", "-> Partitioning properties:");
+  if (PartitioningTraits::balanced) {
     DASH_LOG_TRACE("dash::make_pattern", "   - balanced blocks");
   }
-  if (BlockingTraits::cache_align) {
+  if (PartitioningTraits::cache_align) {
     DASH_LOG_TRACE("dash::make_pattern", "   - cache aligned blocks");
   }
 
-  // Tags in pattern property category 'Topology'
-  static_assert(!TopologyTraits::neighbor || !TopologyTraits::diagonal,
+  // Tags in pattern property category 'Mapping'
+  static_assert(!MappingTraits::neighbor || !MappingTraits::diagonal,
                 "Pattern mapping properties 'diagonal' contradicts "
                 "mapping property 'remote_neighbors'");
-  DASH_LOG_TRACE("dash::make_pattern", "-> Topology properties:");
-  if (TopologyTraits::balanced) {
+  DASH_LOG_TRACE("dash::make_pattern", "-> Mapping properties:");
+  if (MappingTraits::balanced) {
     DASH_LOG_TRACE("dash::make_pattern", "   - balanced mapping");
   }
-  if (TopologyTraits::diagonal) {
+  if (MappingTraits::diagonal) {
     DASH_LOG_TRACE("dash::make_pattern", "   - diagonal mapping");
   }
-  if (TopologyTraits::neighbor) {
+  if (MappingTraits::neighbor) {
     DASH_LOG_TRACE("dash::make_pattern", "   - remote neighbors");
   }
   // Deduce number of dimensions from size spec:
@@ -225,9 +225,9 @@ make_pattern(
   // Make distribution spec from template- and run time parameters:
   auto distspec =
     make_distribution_spec<
-      BlockingTraits,
-      TopologyTraits,
-      IndexingTraits,
+      PartitioningTraits,
+      MappingTraits,
+      LayoutTraits,
       SizeSpecType,
       TeamSpecType
     >(sizespec,

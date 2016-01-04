@@ -42,17 +42,19 @@ struct LocalIndexRange {
  *
  * \ingroup     DashAlgorithms
  */
-template<
-  typename ElementType,
-  class PatternType>
-LocalIndexRange<typename PatternType::index_type>
+template<class GlobInputIter>
+typename std::enable_if<
+  !GlobInputIter::has_view::value,
+  LocalIndexRange<typename GlobInputIter::pattern_type::index_type>
+>::type
 local_index_range(
   /// Iterator to the initial position in the global sequence
-  const GlobIter<ElementType, PatternType> & first,
+  const GlobInputIter & first,
   /// Iterator to the final position in the global sequence
-  const GlobIter<ElementType, PatternType> & last)
+  const GlobInputIter & last)
 {
-  typedef typename PatternType::index_type idx_t;
+  typedef typename GlobInputIter::pattern_type pattern_t;
+  typedef typename pattern_t::index_type       idx_t;
   // Get offsets of iterators within global memory, O(1):
   idx_t begin_gindex  = static_cast<idx_t>(first.pos());
   idx_t end_gindex    = static_cast<idx_t>(last.pos());
@@ -122,17 +124,19 @@ local_index_range(
  *
  * \ingroup     DashAlgorithms
  */
-template<
-  typename ElementType,
-  class PatternType>
-LocalIndexRange<typename PatternType::index_type>
+template<class GlobInputIter>
+typename std::enable_if<
+  GlobInputIter::has_view::value,
+  LocalIndexRange<typename GlobInputIter::pattern_type::index_type>
+>::type
 local_index_range(
   /// Iterator to the initial position in the global sequence
-  const GlobViewIter<ElementType, PatternType> & first,
+  const GlobInputIter & first,
   /// Iterator to the final position in the global sequence
-  const GlobViewIter<ElementType, PatternType> & last)
+  const GlobInputIter & last)
 {
-  typedef typename PatternType::index_type idx_t;
+  typedef typename GlobInputIter::pattern_type pattern_t;
+  typedef typename pattern_t::index_type       idx_t;
   // Get offsets of iterators within global memory, O(1):
   idx_t begin_gindex  = static_cast<idx_t>(first.pos());
   idx_t end_gindex    = static_cast<idx_t>(last.pos());
@@ -304,6 +308,7 @@ ElementType * local(
   /// Global iterator referencing element in local memory
   const GlobIter<ElementType, PatternType> & g_it)
 {
+#if __OLD__
   DASH_ASSERT_MSG(
     g_it.is_local(),
     "dash::local: global iterator does not reference local element");
@@ -311,6 +316,8 @@ ElementType * local(
   GlobPtr<ElementType> g_ptr = static_cast< GlobPtr<ElementType> >(g_it);
   // Global pointer to native pointer:
   return static_cast<ElementType*>(g_ptr);
+#endif
+  return g_it.local();
 }
 
 } // namespace dash

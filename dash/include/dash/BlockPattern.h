@@ -45,20 +45,20 @@ public:
 
 public:
   /// Properties guaranteed in pattern property category Blocking
-  typedef dash::pattern_blocking_properties<
+  typedef dash::pattern_partitioning_properties<
             // number of elements may differ in blocks
-            dash::pattern_blocking_tag::unbalanced >
-          blocking_properties;
+            dash::pattern_partitioning_tag::unbalanced >
+          partitioning_properties;
   /// Properties guaranteed in pattern property category Topology
-  typedef dash::pattern_topology_properties<
+  typedef dash::pattern_mapping_properties<
             // number of blocks assigned to a unit may differ
-            dash::pattern_topology_tag::unbalanced >
-          topology_properties;
+            dash::pattern_mapping_tag::unbalanced >
+          mapping_properties;
   /// Properties guaranteed in pattern property category Indexing
-  typedef dash::pattern_indexing_properties<
+  typedef dash::pattern_layout_properties<
             // local indices iterate over block boundaries
-            dash::pattern_indexing_tag::local_strided >
-          indexing_properties;
+            dash::pattern_layout_tag::local_strided >
+          layout_properties;
 
 private:
   /// Derive size type from given signed index / ptrdiff type

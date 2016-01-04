@@ -19,7 +19,7 @@ TEST_F(MakePatternTest, DefaultTraits)
                         teamspec);
   // Test pattern type traits:
   ASSERT_TRUE_U(
-    dash::pattern_indexing_traits<
+    dash::pattern_layout_traits<
       decltype(dflt_pattern)
     >::type::local_strided);
 }
@@ -31,79 +31,79 @@ TEST_F(MakePatternTest, VarArgTags)
   auto sizespec     = dash::SizeSpec<2>(extent_x, extent_y);
   auto teamspec     = dash::TeamSpec<2>(_dash_size, 1);
 
-  // Tiled pattern with one tag in blocking property category and two tags
+  // Tiled pattern with one tag in partitioning property category and two tags
   // in mapping property category:
   auto tile_pattern   = dash::make_pattern<
                           // Blocking constraints:
-                          pattern_blocking_properties<
+                          pattern_partitioning_properties<
                             // same number of elements in every block
-                            pattern_blocking_tag::balanced
+                            pattern_partitioning_tag::balanced
                           >,
                           // Topology constraints:
-                          pattern_topology_properties<
+                          pattern_mapping_properties<
                             // same amount of blocks for every process
-                            pattern_topology_tag::balanced,
+                            pattern_mapping_tag::balanced,
                             // every process mapped in every row/column
-                            pattern_topology_tag::diagonal
+                            pattern_mapping_tag::diagonal
                           >,
                           // Linearization constraints:
-                          pattern_indexing_properties<
+                          pattern_layout_properties<
                             // elements contiguous within block
-                            pattern_indexing_tag::local_phase
+                            pattern_layout_tag::local_phase
                           >
                         >(sizespec, teamspec);
   // Test pattern type traits:
   ASSERT_FALSE_U(
-    dash::pattern_indexing_traits <
+    dash::pattern_layout_traits <
       decltype(tile_pattern)
     >::type::local_strided);
   ASSERT_TRUE_U(
-    dash::pattern_indexing_traits<
+    dash::pattern_layout_traits<
       decltype(tile_pattern)
     >::type::local_phase);
   ASSERT_TRUE_U(
-    dash::pattern_blocking_traits <
+    dash::pattern_partitioning_traits <
       decltype(tile_pattern)
     >::type::balanced);
   ASSERT_TRUE_U(
-    dash::pattern_topology_traits <
+    dash::pattern_mapping_traits <
       decltype(tile_pattern)
     >::type::diagonal);
   ASSERT_TRUE_U(
-    dash::pattern_topology_traits <
+    dash::pattern_mapping_traits <
       decltype(tile_pattern)
     >::type::balanced);
 
-  // Strided pattern with two tags in blocking property category and one tag
-  // in mapping property category:
+  // Strided pattern with two tags in partitioning property category and one
+  // tag in mapping property category:
   auto stride_pattern = dash::make_pattern<
                           // Blocking constraints:
-                          pattern_blocking_properties<
+                          pattern_partitioning_properties<
                             // same number of elements in every block
-                            pattern_blocking_tag::balanced,
+                            pattern_partitioning_tag::balanced,
                             // elements in block should fit into a cache line
-                            pattern_blocking_tag::cache_align
+                            pattern_partitioning_tag::cache_align
                           >,
                           // Topology constraints:
-                          pattern_topology_properties<
+                          pattern_mapping_properties<
                             // same amount of blocks for every process
-                            pattern_topology_tag::balanced,
+                            pattern_mapping_tag::balanced,
                             // Unit mapped to block differs from neighbors
-                            pattern_topology_tag::remote_neighbors
+                            pattern_mapping_tag::remote_neighbors
                           >,
                           // Linearization constraints:
-                          pattern_indexing_properties<
+                          pattern_layout_properties<
                             // elements contiguous within block
-                            pattern_indexing_tag::local_strided
+                            pattern_layout_tag::local_strided
                           >
                         >(sizespec, teamspec);
   // Test pattern type traits:
   ASSERT_TRUE_U(
-    dash::pattern_indexing_traits<
+    dash::pattern_layout_traits<
       decltype(stride_pattern)
     >::type::local_strided);
   ASSERT_FALSE_U(
-    dash::pattern_indexing_traits<
+    dash::pattern_layout_traits<
       decltype(stride_pattern)
     >::type::local_phase);
 }

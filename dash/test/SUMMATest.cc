@@ -40,31 +40,31 @@ TEST_F(SUMMATest, Deduction)
   // SUMMA implementation:
   LOG_MESSAGE("Initialize matrix pattern ...");
   auto pattern = dash::make_pattern <
-                 dash::summa_pattern_blocking_constraints,
-                 dash::summa_pattern_topology_constraints,
-                 dash::summa_pattern_indexing_constraints > (
+                 dash::summa_pattern_partitioning_constraints,
+                 dash::summa_pattern_mapping_constraints,
+                 dash::summa_pattern_layout_constraints > (
                    size_spec,
                    team_spec);
 #endif
   // Plausibility check of single pattern traits:
   ASSERT_FALSE_U(
-    dash::pattern_indexing_traits <
+    dash::pattern_layout_traits <
       decltype(pattern)
     >::type::local_strided);
   ASSERT_TRUE_U(
-    dash::pattern_indexing_traits <
+    dash::pattern_layout_traits <
       decltype(pattern)
     >::type::local_phase);
   ASSERT_TRUE_U(
-    dash::pattern_blocking_traits <
+    dash::pattern_partitioning_traits <
       decltype(pattern)
     >::type::balanced);
   ASSERT_TRUE_U(
-    dash::pattern_topology_traits <
+    dash::pattern_mapping_traits <
       decltype(pattern)
     >::type::diagonal);
   ASSERT_TRUE_U(
-    dash::pattern_topology_traits <
+    dash::pattern_mapping_traits <
       decltype(pattern)
     >::type::balanced);
 
@@ -72,9 +72,9 @@ TEST_F(SUMMATest, Deduction)
   // a set of constraints, so it is expected to satisfy these constraints:
   const bool constraints_matched =
     dash::check_pattern_constraints <
-        dash::summa_pattern_blocking_constraints,
-        dash::summa_pattern_topology_constraints,
-        dash::summa_pattern_indexing_constraints >(
+        dash::summa_pattern_partitioning_constraints,
+        dash::summa_pattern_mapping_constraints,
+        dash::summa_pattern_layout_constraints >(
       pattern);
 
   // Create operands and result matrices with identical distribution pattern:
