@@ -269,6 +269,8 @@ void summa(
 
   delete[] local_block_a;
   delete[] local_block_b;
+
+  C.barrier();
 }
 
 /**
