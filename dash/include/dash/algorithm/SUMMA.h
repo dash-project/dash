@@ -252,6 +252,9 @@ void summa(
   // Iterate local blocks in matrix C:
   //
   auto num_local_blocks_c = (num_blocks_n * num_blocks_p) / teamspec.size();
+  DASH_LOG_TRACE("dash::summa", "summa.block",
+                 "C.local.blocks:",  num_local_blocks_c,
+                 "C.column.blocks:", num_blocks_m);
   for (auto lb = 0; lb < num_local_blocks_c; ++lb) {
     // Block coordinates for next block multiplication result:
     l_block_c_comp      = C.local.block(lb);
@@ -269,9 +272,12 @@ void summa(
     // Iterate blocks in columns of A / rows of B:
     //
     for (index_t block_k = 0; block_k < num_blocks_m; ++block_k) {
-      // Do not prefetch blocks in last iteration:
+      // Prefetch local copy of blocks from A and B for multiplication in
+      // next iteration.
+      //
       bool last = (lb == num_local_blocks_c - 1) && 
                   (block_k == num_blocks_m - 1);
+      // Do not prefetch blocks in last iteration:
       if (!last) {
         auto block_get_k = block_k + 1;
         // Block coordinate of local block in matrix C to prefetch:
@@ -283,22 +289,22 @@ void summa(
           l_block_c_get_row  = l_block_c_get_view.offset(1) / block_size_n;
           l_block_c_get_col  = l_block_c_get_view.offset(0) / block_size_p;
         }
-        // Async request for local copy of blocks from A and B:
-        //
         block_a = A.block(coords_t { block_get_k, l_block_c_get_row });
         DASH_LOG_TRACE("dash::summa", "summa.block.a",
                        "requesting local copy of A.block:",
-                       "col:",  block_get_k,
-                       "row:",  l_block_c_get_row,
-                       "view:", block_a.begin().viewspec());
+                       "c.view:", l_block_c_get_view,
+                       "col:",    block_get_k,
+                       "row:",    l_block_c_get_row,
+                       "a.view:", block_a.begin().viewspec());
         get_a = dash::copy_async(block_a.begin(), block_a.end(),
                                  local_block_a_get);
         block_b = B.block(coords_t { l_block_c_get_col, block_get_k });
         DASH_LOG_TRACE("dash::summa", "summa.block.b",
                        "requesting local copy of B.block:",
-                       "col:",  l_block_c_get_col,
-                       "row:",  block_get_k,
-                       "view:", block_b.begin().viewspec());
+                       "c.view:", l_block_c_get_view,
+                       "col:",    l_block_c_get_col,
+                       "row:",    block_get_k,
+                       "b.view:", block_b.begin().viewspec());
         get_b = dash::copy_async(block_b.begin(), block_b.end(),
                                  local_block_b_get);
       } else {

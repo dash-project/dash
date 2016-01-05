@@ -25,8 +25,8 @@ TEST_F(CopyTest, BlockingGlobalToLocalBlock)
   // Copy values from global range to local memory.
   // All units copy first block, so unit 0 tests local-to-local copying.
   int * dest_end = dash::copy(array.begin(),
-                     array.begin() + num_elem_per_unit,
-                     local_copy);
+                              array.begin() + num_elem_per_unit,
+                              local_copy);
   ASSERT_EQ_U(local_copy + num_elem_per_unit, dest_end);
   for (auto l = 0; l < num_elem_per_unit; ++l) {
     ASSERT_EQ_U(static_cast<int>(array[l]),
@@ -493,7 +493,6 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockThreeUnits)
   }
 }
 
-#if __DEACT
 TEST_F(CopyTest, AsyncGlobalToLocalBlock)
 {
   // Copy all elements contained in a single, continuous block.
@@ -524,4 +523,3 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
                 local_copy[l]);
   }
 }
-#endif

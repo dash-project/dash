@@ -64,23 +64,25 @@ dash::Future<ValueType *> copy_impl(
   ValueType   * out_first)
 {
   DASH_LOG_TRACE("dash::copy_impl()",
-                 "in_first:", in_first.pos(),
-                 "in_last:",  in_last.pos());
+                 "in_first:",  in_first.pos(),
+                 "in_last:",   in_last.pos(),
+                 "out_first:", out_first);
   auto num_elem_total  = dash::distance(in_first, in_last);
   if (num_elem_total <= 0) {
     return out_first;
   }
+  DASH_LOG_TRACE("dash::copy_impl",
+                 "total elements:", num_elem_total,
+                 "expected out_last:", out_first + num_elem_total);
   // Input iterators could be relative to a view. Map first input iterator to
   // global index range and use it to resolve last input iterator.
   // Do not use in_last.global() as this would span over the relative input
   // range.
   auto g_in_first      = in_first.global();
   auto g_in_last       = g_in_first + num_elem_total;
-  DASH_LOG_TRACE("dash::copy_impl()",
+  DASH_LOG_TRACE("dash::copy_impl",
                  "g_in_first:", g_in_first.pos(),
                  "g_in_last:",  g_in_last.pos());
-  DASH_LOG_TRACE_VAR("dash::copy_impl", num_elem_total);
-  auto num_bytes_total = num_elem_total * sizeof(ValueType);
   auto pattern         = in_first.pattern();
   auto unit_first      = pattern.unit_at(g_in_first.pos());
   DASH_LOG_TRACE_VAR("dash::copy_impl", unit_first);
@@ -95,6 +97,7 @@ dash::Future<ValueType *> copy_impl(
   if (unit_first == unit_last) {
     // Input range is located at a single remote unit:
     DASH_LOG_TRACE("dash::copy_impl", "input range at single unit");
+    auto num_bytes_total = num_elem_total * sizeof(ValueType);
     DASH_ASSERT_RETURNS(
       dart_get(
         out_first,
@@ -217,7 +220,7 @@ dash::Future<ValueType *> copy_async(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  DASH_LOG_TRACE("dash::copy_async()", "blocking, global to local");
+  DASH_LOG_TRACE("dash::copy_async()", "async, global to local");
   if (in_first == in_last) {
     DASH_LOG_TRACE("dash::copy_async", "input range empty");
     return out_first;
@@ -265,7 +268,7 @@ dash::Future<ValueType *> copy_async(
     // Convert local subrange to global iterators:
     auto g_l_in_first     = g_in_first + (g_l_offset_begin - g_offset_begin);
     auto g_l_in_last      = g_in_first + (g_l_offset_end   - g_offset_begin);
-    DASH_LOG_TRACE("dash::copy_async", "global iterator range of local subrange:", 
+    DASH_LOG_TRACE("dash::copy_async", "global it. range of local subrange:", 
                    "begin:", g_l_in_first.pos(), "end:", g_l_in_last.pos());
     DASH_LOG_TRACE_VAR("dash::copy_async", g_l_in_last.pos());
     //
@@ -350,6 +353,7 @@ dash::Future<ValueType *> copy_async(
                                              in_last,
                                              dest_first);
     futures->push_back(fut_all);
+    out_last = out_first + total_copy_elem;
   }
   dash::Future<ValueType *> fut_result([=]() {
     DASH_LOG_TRACE("dash::copy_async [Future]", "waiting for async requests");
@@ -360,7 +364,7 @@ dash::Future<ValueType *> copy_async(
     delete futures;
     return out_last;
   });
-  DASH_LOG_TRACE("dash::copy_async >", "finished",
+  DASH_LOG_TRACE("dash::copy_async >", "finished,",
                  "expected out_last:", out_last);
   return fut_result;
 }
