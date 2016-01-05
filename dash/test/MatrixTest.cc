@@ -578,27 +578,29 @@ TEST_F(MatrixTest, ViewIteration)
   ASSERT_EQ_U((int)bottomright[0][0],
               (int)matrix[g_br_x][g_br_y]);
 
-  int phase              = 0;
+  int  phase              = 0;
   // Extents of the view projection:
-  int view_size_x        = extent_cols / 2;
-  int view_size_y        = extent_rows / 2;
-  int view_size          = view_size_x * view_size_y;
+  int  view_size_x        = extent_cols / 2;
+  int  view_size_y        = extent_rows / 2;
+  int  view_size          = view_size_x * view_size_y;
   // Global coordinates of first element in bottom right block:
-  int block_base_coord_x = extent_cols / 2;
-  int block_base_coord_y = extent_rows / 2;
+  int  block_base_coord_x = extent_cols / 2;
+  int  block_base_coord_y = extent_rows / 2;
   auto b_it  = bottomright.begin();
   auto b_end = bottomright.end();
+  int  block_index_offset = b_it.pos();
   for (; b_it != b_end; ++b_it, ++phase) {
     int phase_x  = phase % view_size_x;
     int phase_y  = phase / view_size_x;
     int gcoord_x = block_base_coord_x + phase_x;
     int gcoord_y = block_base_coord_y + phase_y;
-    LOG_MESSAGE("phase:%d = %d,%d pos:%d gcoord:%d,%d",
+    LOG_MESSAGE("phase:%d = %d,%d it_pos:%d end_pos:%d gcoord:%d,%d",
                 phase,
                 phase_x, phase_y,
                 b_it.pos(),
+                b_end.pos(),
                 gcoord_x, gcoord_y);
-    ASSERT_EQ_U(phase, b_it.pos());
+    ASSERT_EQ_U(phase, (b_it.pos() - block_index_offset));
     // Apply view projection by converting to GlobPtr:
     dash::GlobPtr<int> block_elem_gptr = (dash::GlobPtr<int>)(b_it);
     // Compare with GlobPtr from global iterator without view projection:

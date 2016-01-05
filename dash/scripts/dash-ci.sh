@@ -6,13 +6,6 @@ CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
 CMD_TEST=$BASEPATH/dash/scripts/dash-test.sh
 FAILED=false
 
-if [ -f /etc/profile.d/modules.sh ]
-then
-  . /etc/profile.d/modules.sh
-  module unload openmpi
-  module load mpich || module load openmpi || module load mvapich2
-fi
-
 run_ci()
 {
   BUILD_TYPE=${1}

@@ -49,17 +49,18 @@ run_suite()
   $RUN_CMD -n $1 $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
     tee -a $LOGFILE
   TEST_RET=$?
-  echo "[[ DONE   ]] Returned ${TEST_RET}"
   # Cannot use exit code as dartrun-shmem seems to always return 0
   NEW_FAIL_COUNT=`grep --count 'FAILED TEST' $LOGFILE`
   # Number of failed tests in this run
   THIS_FAIL_COUNT=$(($NEW_FAIL_COUNT-$TOTAL_FAIL_COUNT))
   TOTAL_FAIL_COUNT=$NEW_FAIL_COUNT
-  if [ "$THIS_FAIL_COUNT" = "0" ] && [ "$TEST_RET" = "0" ]; then
-    echo "[[ OK     ]] Test run passed" | tee -a $LOGFILE
+  if [ "$THIS_FAIL_COUNT" = "0" ]; then
+    echo "[[ OK     ]] Tests passed, returned ${TEST_RET}" | \
+      tee -a $LOGFILE
   else
     TESTS_PASSED=false
-    echo "[[ FAIL   ]] $THIS_FAIL_COUNT failed tests" | tee -a $LOGFILE
+    echo "[[ FAIL   ]] $THIS_FAIL_COUNT failed tests, returned ${TEST_RET}" | \
+      tee -a $LOGFILE
   fi
 }
 
