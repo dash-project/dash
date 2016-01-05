@@ -530,7 +530,7 @@ inline LocalMatrixRef<T, NumDim, 0, PatternT>
   DASH_LOG_TRACE_VAR("LocalMatrixRef<0>.T()", local_index);
   T ret = *local_at(local_index);
   DASH_LOG_TRACE("LocalMatrixRef<0>.T()", "delete _refview");
-  delete _refview;
+//delete _refview;
   return ret;
 }
 
@@ -556,7 +556,7 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
   T* ref = local_at(local_index);
   *ref   = value;
   DASH_LOG_TRACE("LocalMatrixRef<0>.=", "delete _refview");
-  delete _refview;
+//delete _refview;
   return value;
 }
 
@@ -582,7 +582,7 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
   T* ref  = local_at(local_index);
   *ref   += value;
   DASH_LOG_TRACE("LocalMatrixRef<0>.+=", "delete _refview");
-  delete _refview;
+//delete _refview;
   return value;
 }
 

@@ -483,7 +483,7 @@ public:
     // e.g (x + y + z) % nunits
     dart_unit_t unit_id = 0;
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto vs_coord     = coords[d] + viewspec[d].offset;
+      auto vs_coord     = coords[d] + viewspec.offset(d);
       // Global block coordinate:
       auto block_coord  = vs_coord / _blocksize_spec.extent(d);
       unit_id          += block_coord;
@@ -502,7 +502,8 @@ public:
     const std::array<IndexType, NumDimensions> & coords) const
   {
     DASH_LOG_TRACE("TilePattern.unit_at()",
-                   "coords:",   coords);
+                   "coords:",    coords,
+                   "blocksize:", _blocksize_spec.extents());
     // Unit id from diagonals in cartesian index space,
     // e.g (x + y + z) % nunits
     dart_unit_t unit_id = 0;
@@ -630,7 +631,7 @@ public:
     // Coordinates of the local block containing the element:
     std::array<IndexType, NumDimensions> block_coords_l;
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto vs_offset_d  = viewspec[d].offset;
+      auto vs_offset_d  = viewspec.offset(d);
       auto vs_coord_d   = local_coords[d] + vs_offset_d;
       auto block_size_d = _blocksize_spec.extent(d);
       DASH_LOG_DEBUG("TilePattern.local_at d",
@@ -880,7 +881,7 @@ public:
     // Coordinates of the block containing the element:
     std::array<IndexType, NumDimensions> block_coords;
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto vs_coord     = coords[d] + viewspec[d].offset;
+      auto vs_coord     = coords[d] + viewspec.offset(d);
       phase_coords[d]   = vs_coord % _blocksize_spec.extent(d);
       block_coords[d]   = vs_coord / _blocksize_spec.extent(d);
     }
@@ -1067,6 +1068,9 @@ public:
       extents[d] = _blocksize_spec.extent(d);
       offsets[d] = block_coords[d] * extents[d];
     }
+    DASH_LOG_TRACE("TilePattern.block",
+                   "offsets:", offsets,
+                   "extents:", extents);
     auto block_vs = ViewSpec_t(offsets, extents);
     DASH_LOG_TRACE_VAR("TilePattern.block >", block_vs);
     return block_vs;

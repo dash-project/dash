@@ -333,7 +333,7 @@ std::ostream & operator<<(
 template<
   dim_t    NumDimensions,
   typename IndexType = dash::default_index_t >
-class ViewSpec : public Dimensional<ViewPair<IndexType>, NumDimensions>
+class ViewSpec
 {
 private:
   typedef ViewSpec<NumDimensions, IndexType>
@@ -361,10 +361,8 @@ public:
   : _size(0),
     _rank(NumDimensions) {
     for (dim_t i = 0; i < NumDimensions; i++) {
-      ViewPair_t vp { 0, 0 };
-      this->_values[i] = vp;
-      _extents[i]      = 0;
-      _offsets[i]      = 0;
+      _extents[i] = 0;
+      _offsets[i] = 0;
     }
   }
 
@@ -374,16 +372,13 @@ public:
    */
   ViewSpec(
     const std::array<SizeType, NumDimensions> & extents)
-  : Dimensional<ViewPair_t, NumDimensions>(),
-    _size(1),
+  : _size(1),
     _rank(NumDimensions),
     _extents(extents)
   {
     for (auto i = 0; i < NumDimensions; ++i) {
       _offsets[i] = 0;
-      ViewPair_t vp { _offsets[i], _extents[i] };
-      this->_values[i]  = vp;
-      _size            *= _extents[i];
+      _size      *= _extents[i];
     }
   }
 
@@ -393,16 +388,13 @@ public:
   ViewSpec(
     const std::array<IndexType, NumDimensions> & offsets,
     const std::array<SizeType, NumDimensions>  & extents)
-  : Dimensional<ViewPair_t, NumDimensions>(),
-    _size(1),
+  : _size(1),
     _rank(NumDimensions),
     _extents(extents),
     _offsets(offsets)
   {
     for (auto i = 0; i < NumDimensions; ++i) {
-      ViewPair_t vp { offsets[i], extents[i] };
-      this->_values[i]  = vp;
-      _size            *= extents[i];
+      _size *= _extents[i];
     }
   }
 
@@ -410,13 +402,37 @@ public:
    * Copy constructor.
    */
   ViewSpec(const self_t & other)
-  : Dimensional<ViewPair_t, NumDimensions>(
-      static_cast< const Dimensional<ViewPair_t, NumDimensions> & >(other)),
-    _size(other._size),
+  : _size(other._size),
     _rank(other._rank),
     _extents(other._extents),
     _offsets(other._offsets)
   { }
+
+  /**
+   * Equality comparison operator.
+   */
+  inline bool operator==(const self_t & other) const {
+    return (_extents == other._extents &&
+            _offsets == other._offsets &&
+            _rank    == other._rank);
+  }
+
+  /**
+   * Equality comparison operator.
+   */
+  constexpr bool operator!=(const self_t & other) const {
+    return !(*this == other);
+  }
+
+  /**
+   * Assignment operator.
+   */
+  self_t & operator=(const self_t & other) {
+    _offsets = other._offsets;
+    _extents = other._extents;
+    _rank    = other._rank;
+    _size    = other._size;
+  }
 
   /**
    * Change the view specification's extent in every dimension.
@@ -436,7 +452,8 @@ public:
    */
   void resize(const std::array<ViewPair_t, NumDimensions> & view) {
     for (dim_t i = 0; i < NumDimensions; i++) {
-      this->_values[i] = view[i];
+      _offsets[i] = view[i].offset;
+      _extents[i] = view[i].extent;
     }
     update_size();
   }
@@ -445,9 +462,9 @@ public:
    * Change the view specification's extent in every dimension.
    */
   template<typename SizeType_>
-  void resize(const std::array<SizeType_, NumDimensions> & extent) {
+  void resize(const std::array<SizeType_, NumDimensions> & extents) {
     for (dim_t i = 0; i < NumDimensions; i++) {
-      this->_values[i].extent = extent[i];
+      _extents[i] = extents[i];
     }
     update_size();
   }
@@ -460,9 +477,8 @@ public:
     dim_t     dimension,
     IndexType offset,
     SizeType  extent) {
-    ViewPair_t vp { offset, extent };
-    this->_values[dimension] = vp;
-    update_size();
+    _offsets[dimension] = offset;
+    _extents[dimension] = extent;
   }
 
   /**
@@ -481,7 +497,7 @@ public:
   }
 
   IndexType begin(dim_t dimension) const {
-    return this->_values[dimension].offset;
+    return _offsets[dimension];
   }
 
   IndexType size() const {
@@ -489,7 +505,7 @@ public:
   }
 
   IndexType size(dim_t dimension) const {
-    return this->_values[dimension].extent;
+    return _extents[dimension];
   }
 
   std::array<SizeType, NumDimensions> extents() const {
@@ -527,11 +543,7 @@ private:
   void update_size() {
     _size = 1;
     for (dim_t i = 0; i < _rank; ++i) {
-      auto extent  = this->_values[i].extent;
-      auto offset  = this->_values[i].offset;
-      _size       *= extent;
-      _extents[i]  = extent;
-      _offsets[i]  = offset;
+      _size *= _extents[i];
     }
   }
 };

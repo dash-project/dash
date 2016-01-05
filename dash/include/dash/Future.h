@@ -16,38 +16,24 @@ private:
   func_t    _func;
   ResultT   _value;
   bool      _ready     = false;
-  bool      _has_value = false;
   bool      _has_func  = false;
+
+public:
+  // For ostream output
+  template<typename ResultT_>
+  friend std::ostream & operator<<(
+      std::ostream & os,
+      const Future<ResultT_> & future);
 
 public:
   Future()
   : _ready(false),
-    _has_value(false),
     _has_func(false)
   { }
 
   Future(const func_t & func)
   : _func(func),
     _ready(false),
-    _has_value(false),
-    _has_func(true)
-  { }
-
-  Future(
-    const func_t    func,
-    const ResultT & value)
-  : _func(func),
-    _value(value),
-    _ready(false),
-    _has_value(true),
-    _has_func(true)
-  { }
-
-  Future(
-    const ResultT & value)
-  : _value(value),
-    _ready(true),
-    _has_value(false),
     _has_func(true)
   { }
 
@@ -56,7 +42,6 @@ public:
   : _func(other._func),
     _value(other._value),
     _ready(other._ready),
-    _has_value(other._has_value),
     _has_func(other._has_func)
   { }
 
@@ -66,7 +51,6 @@ public:
       _func      = other._func;
       _value     = other._value;
       _ready     = other._ready;
-      _has_value = other._has_value;
       _has_func  = other._has_func;
     }
     return *this;
@@ -84,10 +68,7 @@ public:
         dash::exception::RuntimeError,
         "Future not initialized with function");
     }
-    ResultT result = _func();
-    if (!_has_value) {
-      _value = result;
-    }
+    _value = _func();
     _ready = true;
     DASH_LOG_TRACE_VAR("Future.wait >", _ready);
   }
@@ -107,6 +88,21 @@ public:
 
 }; // class Future
 
+template<typename ResultT>
+std::ostream & operator<<(
+  std::ostream & os,
+  const Future<ResultT> & future)
+{
+  std::ostringstream ss;
+  ss << "dash::Future<ResultT>(";
+  if (future._ready) {
+    ss << future._value;
+  } else {
+    ss << "not ready";
+  }
+  ss << ")";
+  return operator<<(os, ss.str());
+}
 
 }  // namespace dash
 

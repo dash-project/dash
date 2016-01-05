@@ -750,10 +750,14 @@ dart_ret_t dart_flush_local(
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
     win = dart_win_lists[index];
+    DART_LOG_DEBUG("dart_flush_local() win:%lld seg:%d unit:%d",
+                   win, seg_id, target_unitid_abs);
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);    
     MPI_Win_flush_local(target_unitid_rel, win);
   } else {
     win = dart_win_local_alloc;
+    DART_LOG_DEBUG("dart_flush_local() lwin:%p seg:%d unit:%d",
+                   win, seg_id, target_unitid_abs);
     MPI_Win_flush_local(target_unitid_abs, win);
   }
   DART_LOG_DEBUG("dart_flush_local > finished");

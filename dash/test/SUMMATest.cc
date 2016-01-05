@@ -112,7 +112,7 @@ TEST_F(SUMMATest, Deduction)
                  matrix_b,
                  matrix_c);
 
-#if 0
+#if 1
   if (_dash_id == 0) {
     print_matrix("matrix A", matrix_a);
     print_matrix("matrix B", matrix_b);

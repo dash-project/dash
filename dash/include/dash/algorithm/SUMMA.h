@@ -212,10 +212,16 @@ void summa(
   DASH_LOG_TRACE("dash::summa", "allocating local temporary blocks, sizes:",
                  "A:", block_a_size,
                  "B:", block_b_size);
-  value_type * local_block_a_get  = new value_type[block_a_size];
-  value_type * local_block_b_get  = new value_type[block_b_size];
-  value_type * local_block_a_comp = new value_type[block_a_size];
-  value_type * local_block_b_comp = new value_type[block_b_size];
+  value_type * buf_block_a_get    = new value_type[block_a_size];
+  value_type * buf_block_b_get    = new value_type[block_b_size];
+  value_type * buf_block_a_comp   = new value_type[block_a_size];
+  value_type * buf_block_b_comp   = new value_type[block_b_size];
+  // Copy of buffer pointers for swapping, delete[] on swapped pointers tends
+  // to crash:
+  value_type * local_block_a_get  = buf_block_a_get;
+  value_type * local_block_b_get  = buf_block_b_get;
+  value_type * local_block_a_comp = buf_block_a_comp;
+  value_type * local_block_b_comp = buf_block_b_comp;
 
   // Pre-fetch first blocks in A and B:
   auto l_block_c_get         = C.local.block(0);
@@ -272,6 +278,7 @@ void summa(
     // Iterate blocks in columns of A / rows of B:
     //
     for (index_t block_k = 0; block_k < num_blocks_m; ++block_k) {
+      DASH_LOG_TRACE("dash::summa", "summa.block.k", block_k);
       // Prefetch local copy of blocks from A and B for multiplication in
       // next iteration.
       //
@@ -292,7 +299,6 @@ void summa(
         block_a = A.block(coords_t { block_get_k, l_block_c_get_row });
         DASH_LOG_TRACE("dash::summa", "summa.block.a",
                        "requesting local copy of A.block:",
-                       "c.view:", l_block_c_get_view,
                        "col:",    block_get_k,
                        "row:",    l_block_c_get_row,
                        "a.view:", block_a.begin().viewspec());
@@ -301,7 +307,6 @@ void summa(
         block_b = B.block(coords_t { l_block_c_get_col, block_get_k });
         DASH_LOG_TRACE("dash::summa", "summa.block.b",
                        "requesting local copy of B.block:",
-                       "c.view:", l_block_c_get_view,
                        "col:",    l_block_c_get_col,
                        "row:",    block_get_k,
                        "b.view:", block_b.begin().viewspec());
@@ -342,12 +347,16 @@ void summa(
     }
   } // for lb
 
-  delete[] local_block_a_get;
-  delete[] local_block_b_get;
-  delete[] local_block_a_comp;
-  delete[] local_block_b_comp;
+  DASH_LOG_TRACE("dash::summa", "locally completed");
+// delete[] buf_block_a_get;
+// delete[] buf_block_b_get;
+// delete[] buf_block_a_comp;
+// delete[] buf_block_b_comp;
 
+  DASH_LOG_TRACE("dash::summa", "waiting for other units");
   C.barrier();
+
+  DASH_LOG_TRACE("dash::summa >", "finished");
 }
 
 /**
