@@ -105,11 +105,13 @@ TEST_F(SUMMATest, Deduction)
                  matrix_b,
                  matrix_c);
 
+#if 1
   if (_dash_id == 0) {
     print_matrix("matrix A", matrix_a);
     print_matrix("matrix B", matrix_b);
     print_matrix("matrix C", matrix_c);
   }
+#endif
 
   dash::barrier();
 
@@ -117,8 +119,8 @@ TEST_F(SUMMATest, Deduction)
   if (_dash_id == 0) {
     // Multiplication of matrix A with identity matrix B should be identical
     // to matrix A:
-    for (auto col = 0; col < pattern.extent(0); ++col) {
-      for (auto row = 0; row < pattern.extent(1); ++row) {
+    for (auto col = 0; col < extent_cols; ++col) {
+      for (auto row = 0; row < extent_rows; ++row) {
         value_t expected = ((1 + col) * 1000) + (row + 1);
         value_t actual   = matrix_c[col][row];
         ASSERT_EQ_U(expected, actual);
