@@ -855,6 +855,58 @@ public:
     return _memory_layout.at(global_coords);
   }
 
+  /**
+   * Global coordinates and viewspec to global position in the pattern's
+   * iteration order.
+   *
+   * \see  at
+   * \see  local_at
+   *
+   * \see  DashPatternConcept
+   */
+  IndexType global_at(
+    const std::array<IndexType, NumDimensions> & view_coords,
+    const ViewSpec_t                           & viewspec) const
+  {
+    DASH_LOG_TRACE("BlockPattern.global_at()",
+                   "view coords:",view_coords,
+                   "view:",       viewspec);
+    // Global coordinates of the element referenced in the view:
+    std::array<IndexType, NumDimensions> global_coords;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      global_coords[d] = view_coords[d] + viewspec.offset(d);
+    }
+    DASH_LOG_TRACE("BlockPattern.global_at",
+                   "global coords:", global_coords);
+    // Offset in iteration order is identical to offset in canonical order:
+    auto offset = _memory_layout.at(global_coords);
+    DASH_LOG_TRACE_VAR("BlockPattern.global_at >", offset);
+    return offset;
+  }
+
+  /**
+   * Global coordinates to global position in the pattern's iteration order.
+   *
+   * NOTE:
+   * Expects extent[d] to be a multiple of blocksize[d] * nunits[d]
+   * to ensure the balanced property.
+   *
+   * \see  at
+   * \see  local_at
+   *
+   * \see  DashPatternConcept
+   */
+  IndexType global_at(
+    const std::array<IndexType, NumDimensions> & global_coords) const
+  {
+    DASH_LOG_TRACE("BlockPattern.global_at()",
+                   "gcoords:",  global_coords);
+    // Offset in iteration order is identical to offset in canonical order:
+    auto offset = _memory_layout.at(global_coords);
+    DASH_LOG_TRACE_VAR("BlockPattern.global_at >", offset);
+    return offset;
+  }
+
   ////////////////////////////////////////////////////////////////////////////
   /// at
   ////////////////////////////////////////////////////////////////////////////

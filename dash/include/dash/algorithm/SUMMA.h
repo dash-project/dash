@@ -194,21 +194,14 @@ void summa(
   auto block_b_size  = block_size_m * block_size_p;
   // Number of units in rows and columns:
   auto teamspec      = C.pattern().teamspec();
-  auto num_units_x   = teamspec.extent(0);
-  auto num_units_y   = teamspec.extent(1);
-  // Coordinates of active unit in team spec (process grid):
-  auto team_coords_u = teamspec.coords(unit_id);
-  // Block row and column in C assigned to active unit:
-  auto block_col_u   = team_coords_u[0];
-  auto block_row_u   = team_coords_u[1];
 
   DASH_LOG_TRACE("dash::summa", "blocks:",
                  "m:", num_blocks_m, "*", block_size_m,
                  "n:", num_blocks_n, "*", block_size_n,
                  "p:", num_blocks_p, "*", block_size_p);
   DASH_LOG_TRACE("dash::summa", "number of units:",
-                 "cols:", num_units_x,
-                 "rows:", num_units_y);
+                 "cols:", teamspec.extent(0),
+                 "rows:", teamspec.extent(1));
   DASH_LOG_TRACE("dash::summa", "allocating local temporary blocks, sizes:",
                  "A:", block_a_size,
                  "B:", block_b_size);
@@ -242,6 +235,9 @@ void summa(
                  "view:", block_a.begin().viewspec());
   auto get_a = dash::copy_async(block_a.begin(), block_a.end(),
                                 local_block_a_comp);
+  get_a.wait();
+  DASH_LOG_TRACE("dash::summa", "summa.block",
+                 "waiting for prefetching of blocks");
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "prefetching local copy of B.block:",
                  "col:",  l_block_c_get_col,
@@ -251,7 +247,6 @@ void summa(
                                 local_block_b_comp);
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "waiting for prefetching of blocks");
-  get_a.wait();
   get_b.wait();
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "prefetching of blocks completed");

@@ -1,7 +1,10 @@
 #ifndef DASH__FUTURE_H__INCLUDED
 #define DASH__FUTURE_H__INCLUDED
 
+#include <cstddef>
 #include <functional>
+#include <sstream>
+#include <iostream>
 
 namespace dash {
 
@@ -94,7 +97,7 @@ std::ostream & operator<<(
   const Future<ResultT> & future)
 {
   std::ostringstream ss;
-  ss << "dash::Future<ResultT>(";
+  ss << "dash::Future<" << typeid(ResultT).name() << ">(";
   if (future._ready) {
     ss << future._value;
   } else {

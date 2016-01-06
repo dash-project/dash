@@ -9,6 +9,7 @@
 #define DASH__GLOB_PTR_H_
 
 #include <cstddef>
+#include <sstream>
 #include <iostream>
 
 #include <dash/dart/if/dart.h>

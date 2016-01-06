@@ -17,6 +17,7 @@ protected:
   : _dash_id(0),
     _dash_size(0) {
     LOG_MESSAGE(">>> Test suite: SUMMATest");
+    LOG_MESSAGE(">>> Hostname: %s PID: %d", _hostname().c_str(), _pid());
   }
 
   virtual ~SUMMATest() {
@@ -53,6 +54,17 @@ protected:
     for (auto row : values) {
       DASH_LOG_DEBUG("SUMMATest.print_matrix", "summa.matrix", row);
     }
+  }
+
+protected:
+  std::string _hostname() {
+    char hostname[100];
+    gethostname(hostname, 100);
+    return std::string(hostname);
+  }
+
+  int _pid() {
+    return static_cast<int>(getpid());
   }
 };
 

@@ -359,7 +359,8 @@ public:
    */
   ViewSpec()
   : _size(0),
-    _rank(NumDimensions) {
+    _rank(NumDimensions)
+  {
     for (dim_t i = 0; i < NumDimensions; i++) {
       _extents[i] = 0;
       _offsets[i] = 0;
@@ -411,7 +412,8 @@ public:
   /**
    * Equality comparison operator.
    */
-  inline bool operator==(const self_t & other) const {
+  inline bool operator==(const self_t & other) const
+  {
     return (_extents == other._extents &&
             _offsets == other._offsets &&
             _rank    == other._rank);
@@ -420,14 +422,16 @@ public:
   /**
    * Equality comparison operator.
    */
-  constexpr bool operator!=(const self_t & other) const {
+  constexpr bool operator!=(const self_t & other) const
+  {
     return !(*this == other);
   }
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & other) {
+  self_t & operator=(const self_t & other)
+  {
     _offsets = other._offsets;
     _extents = other._extents;
     _rank    = other._rank;
@@ -438,7 +442,8 @@ public:
    * Change the view specification's extent in every dimension.
    */
   template<typename ... Args>
-  void resize(SizeType arg, Args... args) {
+  void resize(SizeType arg, Args... args)
+  {
     static_assert(
       sizeof...(Args) == (NumDimensions-1),
       "Invalid number of arguments");
@@ -450,7 +455,9 @@ public:
   /**
    * Change the view specification's extent and offset in every dimension.
    */
-  void resize(const std::array<ViewPair_t, NumDimensions> & view) {
+  void resize(const std::array<ViewPair_t, NumDimensions> & view)
+  {
+    _rank = NumDimensions;
     for (dim_t i = 0; i < NumDimensions; i++) {
       _offsets[i] = view[i].offset;
       _extents[i] = view[i].extent;
@@ -462,7 +469,9 @@ public:
    * Change the view specification's extent in every dimension.
    */
   template<typename SizeType_>
-  void resize(const std::array<SizeType_, NumDimensions> & extents) {
+  void resize(const std::array<SizeType_, NumDimensions> & extents)
+  {
+    _rank = NumDimensions;
     for (dim_t i = 0; i < NumDimensions; i++) {
       _extents[i] = extents[i];
     }
@@ -476,39 +485,38 @@ public:
   void resize_dim(
     dim_t     dimension,
     IndexType offset,
-    SizeType  extent) {
+    SizeType  extent)
+  {
     _offsets[dimension] = offset;
     _extents[dimension] = extent;
+    update_size();
   }
 
   /**
    * Set rank of the view spec to a dimensionality between 1 and
    * \c NumDimensions.
    */
-  void set_rank(dim_t dimensions) {
-    if (dimensions > NumDimensions || dimensions < 1) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Dimension for ViewSpec::set_rank must be between 1 and "
-        << NumDimensions);
-    }
+  void set_rank(dim_t dimensions)
+  {
+    DASH_ASSERT_LT(
+      dimensions, NumDimensions,
+      "Dimension for ViewSpec::set_rank must be less than " << NumDimensions);
     _rank = dimensions;
     update_size();
   }
 
-  IndexType begin(dim_t dimension) const {
-    return _offsets[dimension];
-  }
-
-  IndexType size() const {
+  IndexType size() const
+  {
     return _size;
   }
 
-  IndexType size(dim_t dimension) const {
+  IndexType size(dim_t dimension) const
+  {
     return _extents[dimension];
   }
 
-  std::array<SizeType, NumDimensions> extents() const {
+  std::array<SizeType, NumDimensions> extents() const
+  {
     return _extents;
   }
 
@@ -516,15 +524,18 @@ public:
     return _extents[dim];
   }
 
-  std::array<IndexType, NumDimensions> offsets() const {
+  std::array<IndexType, NumDimensions> offsets() const
+  {
     return _offsets;
   }
 
-  IndexType offset(dim_t dim) const {
+  IndexType offset(dim_t dim) const
+  {
     return _offsets[dim];
   }
 
-  region_type region() const {
+  region_type region() const
+  {
     region_type reg;
     reg.begin = _offsets;
     reg.end   = _offsets;
@@ -540,7 +551,8 @@ private:
   std::array<SizeType, NumDimensions>  _extents;
   std::array<IndexType, NumDimensions> _offsets;
 
-  void update_size() {
+  void update_size()
+  {
     _size = 1;
     for (dim_t i = 0; i < _rank; ++i) {
       _size *= _extents[i];

@@ -542,19 +542,19 @@ gptrdiff_t distance(
 }
 
 template <
-  typename ElementType_,
-  class    Pattern_,
-  class    Pointer_,
-  class    Reference_ >
+  typename ElementType,
+  class    Pattern,
+  class    Pointer,
+  class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::GlobIter<ElementType_, Pattern_, Pointer_, Reference_> & it)
+  const dash::GlobIter<ElementType, Pattern, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType_> ptr(it); 
-  ss << "dash::GlobIter<ElementType, PatternType>:"
-     << "idx(" << it._idx << ")"
-     << "->(" << ptr << ")";
+  dash::GlobPtr<ElementType> ptr(it); 
+  ss << "dash::GlobIter<" << typeid(ElementType).name() << ">("
+     << "idx:"  << it._idx << ", "
+     << "gptr:" << ptr << ")";
   return operator<<(os, ss.str());
 }
 
