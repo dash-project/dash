@@ -14,8 +14,8 @@ TEST_F(SUMMATest, Deduction)
   // Use square matrices for operands and result:
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 3;
-  size_t num_local_blocks_x = 1;
-  size_t num_local_blocks_y = 1;
+  size_t num_local_blocks_x = 2;
+  size_t num_local_blocks_y = 2;
   size_t extent_cols = tilesize_x * num_units * num_local_blocks_x;
   size_t extent_rows = tilesize_y * num_units * num_local_blocks_y;
 
