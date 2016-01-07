@@ -418,7 +418,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::col(
   size_type n)
 {
-  return sub<1>(n);
+  return sub<0>(n);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -426,7 +426,7 @@ inline LocalMatrixRef<T, NumDim, NumDim-1, PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>::row(
   size_type n)
 {
-  return sub<0>(n);
+  return sub<1>(n);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -466,7 +466,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return sub<0>(offset, extent);
+  return sub<1>(offset, extent);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -475,7 +475,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>::cols(
   size_type offset,
   size_type extent)
 {
-  return sub<1>(offset, extent);
+  return sub<0>(offset, extent);
 }
 
 // LocalMatrixRef<T, NumDim, 0>
@@ -503,7 +503,7 @@ template <typename T, dim_t NumDim, class PatternT>
 inline T *
 LocalMatrixRef<T, NumDim, 0, PatternT>
 ::local_at(
-  index_type pos)
+  index_type pos) const
 {
   if (!(pos < _refview->_mat->size())) {
     DASH_THROW(
@@ -515,7 +515,7 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
 
 template <typename T, dim_t NumDim, class PatternT>
 inline LocalMatrixRef<T, NumDim, 0, PatternT>
-::operator T()
+::operator T() const
 {
   auto l_coords   = _refview->_coord;
   auto l_viewspec = _refview->_l_viewspec;

@@ -331,8 +331,9 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
     const LocalMatrixRef<T, NumDimensions, 1, PatternT> & previous,
     index_type coord);
 
-  inline T * local_at(index_type pos);
-  inline operator T();
+  inline T * local_at(index_type pos) const;
+  inline operator T() const;
+
   /**
    * Assignment operator.
    */

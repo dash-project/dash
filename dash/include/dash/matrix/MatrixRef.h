@@ -27,14 +27,14 @@ class Matrix;
 template <
   typename T,
   dim_t NumDimensions,
-  dim_t CUR,
+  dim_t NumViewDim,
   class PatternT >
 class MatrixRef;
 /// Forward-declaration
 template <
   typename T,
   dim_t NumDimensions,
-  dim_t CUR,
+  dim_t NumViewDim,
   class PatternT >
 class LocalMatrixRef;
 
@@ -53,13 +53,13 @@ class LocalMatrixRef;
 template <
   typename ElementT,
   dim_t NumDimensions,
-  dim_t CUR = NumDimensions,
+  dim_t NumViewDim = NumDimensions,
   class PatternT =
     TilePattern<NumDimensions, ROW_MAJOR, dash::default_index_t> >
 class MatrixRef
 {
  private:
-  typedef MatrixRef<ElementT, NumDimensions, CUR, PatternT>
+  typedef MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>
     self_t;
   typedef PatternT
     Pattern_t;
@@ -76,7 +76,9 @@ class MatrixRef
   typedef GlobViewIter<ElementT, PatternT>
     GlobViewIter_t;
   typedef CartesianIndexSpace<
-            CUR, PatternT::memory_order(), typename PatternT::index_type >
+            NumViewDim,
+            PatternT::memory_order(),
+            typename PatternT::index_type >
     IndexSpace_t;
   typedef std::array<typename PatternT::size_type, NumDimensions>
     Extents_t;
@@ -127,18 +129,18 @@ class MatrixRef
   friend class LocalMatrixRef;
 
   inline operator
-    MatrixRef<ElementT, NumDimensions, CUR-1, PatternT> && ();
+    MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT> && ();
 
 public:
-  MatrixRef<ElementT, NumDimensions, CUR, PatternT>()
+  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>()
   : _refview(nullptr)
   {
     DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumDimensions);
-    DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", CUR);
+    DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumViewDim);
   }
 
-  MatrixRef<ElementT, NumDimensions, CUR, PatternT>(
-    const MatrixRef<ElementT, NumDimensions, CUR+1, PatternT> & previous,
+  MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>(
+    const MatrixRef<ElementT, NumDimensions, NumViewDim+1, PatternT> & previous,
     index_type coord);
 
   inline    Team            & team();
@@ -175,14 +177,14 @@ public:
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  MatrixRef<ElementT, NumDimensions, CUR-1, PatternT>
+  MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT>
     operator[](index_type n);
 
   /**
    * Subscript operator, returns a submatrix reference at given offset
    * in global element range.
    */
-  const MatrixRef<ElementT, NumDimensions, CUR-1, PatternT>
+  const MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT>
     operator[](index_type n) const;
 
   template<dim_t NumSubDimensions>
@@ -337,8 +339,8 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
     dart_unit_t unit,
     index_type elem);
 
-  operator ElementT();
-  operator GlobPtr<ElementT>();
+  operator ElementT() const;
+  operator GlobPtr<ElementT>() const;
 
   /**
    * Assignment operator.
