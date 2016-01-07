@@ -7,6 +7,8 @@
 #include <sys/eventfd.h>
 #endif /* USE_EVENTFD */
 
+// barrier implementation using atomic counters
+#define USE_ATOMIC_CTR_BARRIER  
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/shmem/dart_teams_impl.h>
@@ -14,6 +16,14 @@
 #include <dash/dart/shmem/extern_c.h>
 EXTERN_C_BEGIN
 
+#ifdef USE_ATOMIC_CTR_BARRIER
+struct sysv_barrier
+{
+  int phase;
+  int num_procs;
+  int counter;
+};
+#else
 struct sysv_barrier
 {
   pthread_mutex_t  mutex;
@@ -21,7 +31,7 @@ struct sysv_barrier
   int num_waiting;
   int num_procs;
 };
-
+#endif // USE_ATOMIC_CTR_BARRIER
 
 typedef struct sysv_barrier* sysv_barrier_t;
 #define SYSV_BARRIER_NULL ((sysv_barrier_t)0)

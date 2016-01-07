@@ -49,7 +49,6 @@ int shmem_syncarea_init(int numprocs, void* shm_addr, int shmid)
   }
 
   PTHREAD_SAFE(pthread_mutexattr_destroy(&mutex_shared_attr));
-
   
   sysv_barrier_create( &((area->teams[0]).barr), numprocs );
   area->teams[0].teamid = DART_TEAM_ALL;
@@ -192,6 +191,11 @@ int shmem_syncarea_barrier_wait(int slot)
 
 int sysv_barrier_create(sysv_barrier_t barrier, int num_procs)
 {
+#ifdef USE_ATOMIC_CTR_BARRIER
+  __atomic_store_n( &(barrier->phase),     0, __ATOMIC_SEQ_CST);
+  __atomic_store_n( &(barrier->num_procs), num_procs, __ATOMIC_SEQ_CST);
+  __atomic_store_n( &(barrier->counter) ,  num_procs, __ATOMIC_SEQ_CST);
+#else
   pthread_mutexattr_t mutex_shared_attr;
   PTHREAD_SAFE(pthread_mutexattr_init(&mutex_shared_attr));
   PTHREAD_SAFE(pthread_mutexattr_setpshared(&mutex_shared_attr, 
@@ -208,12 +212,15 @@ int sysv_barrier_create(sysv_barrier_t barrier, int num_procs)
   
   barrier->num_procs = num_procs;
   barrier->num_waiting = 0;
+#endif // USE_ATOMIC_CTR_BARRIER
   
   return 0;
 }
 
 int sysv_barrier_destroy(sysv_barrier_t barrier)
 {
+#ifdef USE_ATOMIC_CTR_BARRIER
+#else
   PTHREAD_SAFE(pthread_cond_destroy(&(barrier->cond)));
   //
   // TODO: if the following call is checked with the 
@@ -223,11 +230,37 @@ int sysv_barrier_destroy(sysv_barrier_t barrier)
   // call for now (KF)
   //
   pthread_mutex_destroy(&(barrier->mutex));
+#endif // USE_ATOMIC_CTR_BARRIER
   return 0;
 }
 
 int sysv_barrier_await(sysv_barrier_t barrier)
 {
+#ifdef USE_ATOMIC_CTR_BARRIER
+  int lphase; // local phase
+  int oldctr;
+  
+  lphase = __atomic_load_n( &(barrier->phase), __ATOMIC_SEQ_CST );
+  lphase = !lphase;
+  
+  oldctr = __atomic_fetch_sub( &(barrier->counter), 1, __ATOMIC_SEQ_CST);
+  
+  if( oldctr==1 ) {
+    // if we're the last to arrive: reset counter 
+    __atomic_store_n( &(barrier->counter), barrier->num_procs,
+		      __ATOMIC_SEQ_CST );
+
+    // release the others
+    __atomic_store_n( &(barrier->phase), lphase, __ATOMIC_SEQ_CST );
+  }
+  else {
+    // else busy wait on phase
+    while( __atomic_load_n( &(barrier->phase),  __ATOMIC_SEQ_CST) != lphase) {
+      sched_yield();
+    }
+  }
+  
+#else
   PTHREAD_SAFE(pthread_mutex_lock(&(barrier->mutex)));
   (barrier->num_waiting)++;
   if (barrier->num_waiting < barrier->num_procs)
@@ -240,6 +273,7 @@ int sysv_barrier_await(sysv_barrier_t barrier)
       PTHREAD_SAFE(pthread_cond_broadcast(&(barrier->cond)));
     }
   PTHREAD_SAFE(pthread_mutex_unlock(&(barrier->mutex)));
+#endif // USE_ATOMIC_CTR_BARRIER
   return 0;
 }
 
