@@ -176,10 +176,12 @@ TEST_F(MinElementTest, TestShrinkRange)
     // Test if a minimum element has been found:
     int  min    = *it_min;
     LOG_MESSAGE("Begin at %d, minimum: %d", it.pos(), min);
-    ASSERT_NE_U(it_min, arr.end());
-    ASSERT_EQ_U(min_expected, min);
+    EXPECT_NE_U(it_min, arr.end());
+    EXPECT_EQ_U(min_expected, min);
     ++min_expected;
   }
+
+  arr.barrier();
 
   // Shrink from back:
   if (dash::myid() == 0) {
@@ -195,10 +197,11 @@ TEST_F(MinElementTest, TestShrinkRange)
     // Test if a minimum element has been found:
     int  min    = *it_min;
     LOG_MESSAGE("End at %d, minimum: %d", it.pos(), min);
-    ASSERT_NE_U(it_min, arr.end());
-    ASSERT_EQ_U(min_expected, min);
+    EXPECT_NE_U(it_min, arr.end());
+    EXPECT_EQ_U(min_expected, min);
     ++min_expected;
   }
+  arr.barrier();
 }
 
 TEST_F(MinElementTest, TestFindMatrixDefault)
