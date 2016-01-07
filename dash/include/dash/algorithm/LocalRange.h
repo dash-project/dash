@@ -58,7 +58,7 @@ local_index_range(
   // Get offsets of iterators within global memory, O(1):
   idx_t begin_gindex  = static_cast<idx_t>(first.pos());
   idx_t end_gindex    = static_cast<idx_t>(last.pos());
-  DASH_LOG_TRACE("local_index_range(GlobIter,GlobIter)",
+  DASH_LOG_TRACE("local_index_range(GlobIt,GlobIt)",
                  begin_gindex, end_gindex);
   // Get pattern from global iterators, O(1):
   auto pattern        = first.pattern();

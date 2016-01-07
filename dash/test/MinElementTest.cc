@@ -158,6 +158,49 @@ TEST_F(MinElementTest, TestFindArrayUnderfilled)
   EXPECT_EQ(min_value, found_min);
 }
 
+TEST_F(MinElementTest, TestShrinkRange)
+{
+  dash::Array<int> arr(100);
+
+  // Shrink from front:
+  if (dash::myid() == 0) {
+    for (auto i = 0; i < arr.size(); ++i) {
+      arr[i] = 100 + i;
+    }
+  }
+  arr.barrier();
+  auto min_expected = 100;
+  for (auto it = arr.begin(); it != arr.end(); ++it) {
+    LOG_MESSAGE("Begin at %d", it.pos());
+    auto it_min = dash::min_element(it, arr.end());
+    // Test if a minimum element has been found:
+    int  min    = *it_min;
+    LOG_MESSAGE("Begin at %d, minimum: %d", it.pos(), min);
+    ASSERT_NE_U(it_min, arr.end());
+    ASSERT_EQ_U(min_expected, min);
+    ++min_expected;
+  }
+
+  // Shrink from back:
+  if (dash::myid() == 0) {
+    for (auto i = 0; i < arr.size(); ++i) {
+      arr[i] = 100 + arr.size() - 1 - i;
+    }
+  }
+  arr.barrier();
+  min_expected = 100;
+  for (auto it = arr.end(); it != arr.begin(); --it) {
+    LOG_MESSAGE("End at %d", it.pos());
+    auto it_min = dash::min_element(arr.begin(), it);
+    // Test if a minimum element has been found:
+    int  min    = *it_min;
+    LOG_MESSAGE("End at %d, minimum: %d", it.pos(), min);
+    ASSERT_NE_U(it_min, arr.end());
+    ASSERT_EQ_U(min_expected, min);
+    ++min_expected;
+  }
+}
+
 TEST_F(MinElementTest, TestFindMatrixDefault)
 {
   Element_t min_value = 11;
