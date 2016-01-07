@@ -294,7 +294,7 @@ template <dim_t SubDimension>
 MatrixRef<T, NumDim, NumDim-1, PatternT>
 MatrixRef<T, NumDim, CUR, PatternT>
 ::sub(
-  size_type n)
+  size_type offset)
 {
   static_assert(
       NumDim - 1 > 0,
@@ -302,21 +302,26 @@ MatrixRef<T, NumDim, CUR, PatternT>
   static_assert(
       SubDimension < NumDim && SubDimension >= 0,
       "Wrong sub-dimension for sub()");
+  DASH_LOG_TRACE("MatrixRef.sub()",
+                 "dim:",    SubDimension,
+                 "offset:", offset);
   dim_t target_dim = SubDimension + _refview->_dim;
 
-  MatrixRef<T, NumDim, NumDim - 1, PatternT> ref;
+  MatrixRef<T, NumDim, NumDim-1, PatternT> ref;
   MatrixRefView<T, NumDim, PatternT> * proxy =
     new MatrixRefView<T, NumDim, PatternT>;
 
+  proxy->_coord[target_dim] = 0;
+
+  proxy->_viewspec = _refview->_viewspec;
+  proxy->_viewspec.resize_dim(target_dim, offset, 1);
+
+  proxy->_mat = _refview->_mat;
+  proxy->_dim = _refview->_dim + 1;
+
   ref._refview = proxy;
-  ref._refview->_coord[target_dim] = 0;
-
-  ref._refview->_viewspec = _refview->_viewspec;
-  ref._refview->_viewspec.resize_dim(target_dim, n, 1);
-  ref._refview->_viewspec.set_rank(NumDim-1);
-
-  ref._refview->_mat = _refview->_mat;
-  ref._refview->_dim = _refview->_dim + 1;
+  DASH_LOG_TRACE_VAR("MatrixRef.sub >",
+                     ref._refview->_viewspec);
   return ref;
 }
 
@@ -324,18 +329,18 @@ template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline MatrixRef<T, NumDim, NumDim-1, PatternT>
 MatrixRef<T, NumDim, CUR, PatternT>
 ::col(
-  size_type n)
+  size_type column_offset)
 {
-  return sub<1>(n);
+  return sub<0>(column_offset);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline MatrixRef<T, NumDim, NumDim-1, PatternT>
 MatrixRef<T, NumDim, CUR, PatternT>
 ::row(
-  size_type n)
+  size_type row_offset)
 {
-  return sub<0>(n);
+  return sub<1>(row_offset);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -346,9 +351,10 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  DASH_LOG_TRACE_VAR("MatrixRef.sub()", SubDimension);
-  DASH_LOG_TRACE_VAR("MatrixRef.sub()", offset);
-  DASH_LOG_TRACE_VAR("MatrixRef.sub()", extent);
+  DASH_LOG_TRACE("MatrixRef.sub()",
+                 "dim:",    SubDimension,
+                 "offset:", offset,
+                 "extent:", extent);
   static_assert(
     SubDimension < NumDim && SubDimension >= 0,
     "Wrong sub-dimension for sub()");
@@ -363,7 +369,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
                             offset,
                             extent);
   DASH_LOG_TRACE_VAR("MatrixRef.sub >",
-                     ref._refview->_viewspec.size());
+                     ref._refview->_viewspec);
   return ref;
 }
 
@@ -374,7 +380,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return sub<0>(offset, extent);
+  return sub<1>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -384,7 +390,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return sub<1>(offset, extent);
+  return sub<0>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -477,7 +483,7 @@ MatrixRef<T, NumDim, 0, PatternT>
 
 template <typename T, dim_t NumDim, class PatternT>
 inline MatrixRef<T, NumDim, 0, PatternT>
-::operator T()
+::operator T() const
 {
   DASH_LOG_TRACE_VAR("MatrixRef<0>.T()", _refview->_coord);
   GlobRef<T> ref = _refview->global_reference();
@@ -489,7 +495,7 @@ inline MatrixRef<T, NumDim, 0, PatternT>
 
 template <typename T, dim_t NumDim, class PatternT>
 inline MatrixRef<T, NumDim, 0, PatternT>
-::operator GlobPtr<T>()
+::operator GlobPtr<T>() const
 {
   DASH_LOG_TRACE_VAR("MatrixRef<0>.GlobPtr()", _refview->_coord);
   GlobRef<T> ref = _refview->global_reference();
