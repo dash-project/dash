@@ -144,12 +144,10 @@ make_pattern(
     >(sizespec,
       teamspec);
   // Make pattern from template- and run time parameters:
-  dash::TilePattern<
-    ndim
-  > pattern(
-      sizespec,
-      distspec,
-      teamspec);
+  dash::TilePattern<ndim> pattern(
+                            sizespec,
+                            distspec,
+                            teamspec);
   return pattern;
 }
 
@@ -193,12 +191,10 @@ make_pattern(
     >(sizespec,
       teamspec);
   // Make pattern from template- and run time parameters:
-  dash::Pattern<
-    ndim
-  > pattern(
-      sizespec,
-      distspec,
-      teamspec);
+  dash::Pattern<ndim> pattern(
+                        sizespec,
+                        distspec,
+                        teamspec);
   return pattern;
 }
 

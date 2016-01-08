@@ -118,8 +118,12 @@ TEST_F(MakePatternTest, VarArgTags)
     dash::pattern_layout_traits<
       decltype(stride_pattern)
     >::type::canonical);
-  ASSERT_FALSE_U(
+  ASSERT_TRUE_U(
     dash::pattern_layout_traits<
       decltype(stride_pattern)
     >::type::linear);
+  ASSERT_FALSE_U(
+    dash::pattern_layout_traits<
+      decltype(stride_pattern)
+    >::type::blocked);
 }

@@ -63,8 +63,6 @@ public:
           > mapping_properties;
   /// Satisfiable properties in pattern property category Layout:
   typedef pattern_layout_properties<
-              // Elements are contiguous in local memory within single block.
-              pattern_layout_tag::blocked,
               // Local indices iterate over block boundaries.
               pattern_layout_tag::canonical,
               // Local element order corresponds to canonical linearization
