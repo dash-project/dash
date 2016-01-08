@@ -22,8 +22,7 @@ build-ci
 *.la
 *.lo
 
-# Shared objects (inc. Windows DLLs)
-*.dll
+# Shared objects
 *.so
 *.so.*
 *.dylib
@@ -42,7 +41,3 @@ build-ci
 core.*
 main
 gtest
-
-# Geany config
-geany-dart.conf
-geany-dart.tags
