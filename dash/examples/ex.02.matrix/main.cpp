@@ -12,7 +12,32 @@
 
 #include <libdash.h>
 
-using namespace std;
+using std::cout;
+using std::endl;
+using std::setw;
+
+template<class MatrixT>
+void print_matrix(const MatrixT & matrix) {
+  typedef typename MatrixT::value_type value_t;
+  auto extent_cols = matrix.extent(0);
+  auto extent_rows = matrix.extent(1);
+
+  // Creating local copy for output to prevent interleaving with log
+  // messages:
+  value_t * matrix_copy = new value_t[matrix.size()];
+  auto copy_end = std::copy(matrix.begin(),
+                            matrix.end(),
+                            matrix_copy);
+  assert(copy_end == matrix_copy + matrix.size());
+  cout << "Matrix:" << endl;
+  for (auto r = 0; r < extent_rows; ++r) {
+    for (auto c = 0; c < extent_cols; ++c) {
+      cout << " " << setw(5) << matrix_copy[r * extent_cols + c];
+    }
+    cout << endl;
+  }
+  delete[] matrix_copy;
+}
 
 int main(int argc, char* argv[]) {
 
@@ -31,15 +56,20 @@ int main(int argc, char* argv[]) {
                            extent_cols,
                            extent_rows),
                          dash::DistributionSpec<2>(
-                           dash::TILE(tilesize_x*2),
-                           dash::TILE(tilesize_y*2)));
+                           dash::TILE(tilesize_x),
+                           dash::TILE(tilesize_y)));
   size_t matrix_size = extent_cols * extent_rows;
   assert(matrix_size == matrix.size());
   assert(extent_cols == matrix.extent(0));
   assert(extent_rows == matrix.extent(1));
-  cout << "Matrix size: " << extent_cols << " x " << extent_rows << " == " <<matrix_size << endl;
+
+  cout << "Matrix size: " << extent_cols
+       << " x " << extent_rows
+       << " == " << matrix_size
+       << endl;
+
   // Fill matrix
-  if( 0 == myid ) {
+  if (0 == myid) {
     cout << "Assigning matrix values" << endl;
     for(int i = 0; i < matrix.extent(0); ++i) {
       for(int k = 0; k < matrix.extent(1); ++k) {
@@ -52,75 +82,52 @@ int main(int argc, char* argv[]) {
   dash::Team::All().barrier();
 
   // Read and assert values in matrix
-  for(int i = 0; i < matrix.extent(0); ++i) {
-    for(int k = 0; k < matrix.extent(1); ++k) {
+  for (int i = 0; i < matrix.extent(0); ++i) {
+    for (int k = 0; k < matrix.extent(1); ++k) {
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
       assert(expected == value);
     }
   }
 
-  // print matrix
-  if( 0 == myid ) {
-    cout << "Show" << endl;
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
-        cout << " " << setw(5) << matrix[i][k];
-      }
-      cout << endl;
-    }
-  }
-
-  dash::Team::All().barrier();
-  matrix[2][2+myid]= 42;
-
-  std::fill( matrix.lbegin(), matrix.lend(), myid );
-
-  dash::Team::All().barrier();
-
-  matrix[2][2+myid]= 42;
-
   dash::Team::All().barrier();
 
   // print matrix
-  if( 0 == myid ) {
-    cout << "Show" << endl;
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
-        cout << " " << setw(5) << matrix[i][k];
-      }
-      cout << endl;
-    }
+  if (0 == myid) {
+    print_matrix(matrix);
   }
 
   dash::Team::All().barrier();
 
-  if( 0 == myid ) {
+  std::fill(matrix.lbegin(), matrix.lend(), myid);
 
-    auto mixedblock= matrix.rows(7,4).cols(0,9);
-    std::fill( mixedblock.begin(), mixedblock.end(), 8888 );
+  matrix[2][2 + myid] = 42;
 
-    auto localblock= matrix.rows(4,4).cols(12,6);
-    std::fill( localblock.begin(), localblock.end(), 1111 );
+  dash::Team::All().barrier();
 
-    auto fullblock= matrix.rows(1,2).cols(14,3);
-    std::fill( fullblock.begin(), fullblock.end(), 8888 );
+  // print matrix
+  if (0 == myid) {
+    print_matrix(matrix);
+  }
 
-    // async alternative ... tbd
-    // AsyncMatrixRef<int,2,1> a_col_1 = matrix.async.col(1);
+  dash::Team::All().barrier();
+
+  if (0 == myid) {
+    auto mixed_range = matrix.rows(7,4).cols(1,6);
+    std::fill(mixed_range.begin(), mixed_range.end(), 8888);
+
+    auto local_range = matrix.local.block(1);
+    std::fill(local_range.begin(), local_range.end(), 1111);
+
+    auto remote_range = matrix.block(dash::Team::All().size() - 1);
+    std::fill(remote_range.begin(), remote_range.end(), 4444);
   }
 
   dash::Team::All().barrier();
 
   // print matrix
-  if( 0 == myid ) {
-    cout << "Show" << endl;
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
-        cout << " " << setw(5) << matrix[i][k];
-      }
-      cout << endl;
-    }
+  if (0 == myid) {
+    print_matrix(matrix);
   }
 
   dash::finalize();

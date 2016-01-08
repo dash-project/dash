@@ -33,8 +33,8 @@ namespace dash {
  *
  * Return Type              | Method                     | Parameters                      | Description                                                                                                |
  * ------------------------ | -------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
- * <tt>index</tt>           | <tt>at</tt>                | <tt>index[d] gp</tt>            | Linear offset of the global point <i>gp</i> in local memory                                                |
- * <tt>index</tt>           | <tt>local_at</tt>          | <tt>index[d] lp</tt>            | Linear local offset of the local point <i>gp</i> in local memory                                           |
+ * <tt>index</tt>           | <tt>local_at</tt>          | <tt>index[d] lp</tt>            | Linear local offset of the local point <i>lp</i> in local memory.                                          |
+ * <tt>index</tt>           | <tt>global_at</tt>         | <tt>index[d] gp</tt>            | Global offset of the global point <i>gp</i> in the pattern's iteration order.                                 |
  * <tt>dart_unit_t</tt>     | <tt>unit_at</tt>           | <tt>index[d] gp</tt>            | Unit id mapped to the element at global point <i>p</i>                                                     |
  * <b>global to local</b>   | &nbsp;                     | &nbsp;                          | &nbsp;                                                                                                     |
  * <tt>{unit,index}</tt>    | <tt>local</tt>             | <tt>index gi</tt>               | Unit and linear local offset at the global index <i>gi</i>                                                 |

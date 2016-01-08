@@ -502,7 +502,7 @@ public:
     const ViewSpec_t & viewspec) const {
     std::array<OffsetType, NumDimensions> coords;
     for (auto d = 0; d < NumDimensions; ++d) {
-      coords[d] = point[d] + viewspec[d].offset;
+      coords[d] = point[d] + viewspec.offset(d);
     }
     return at(coords);
   }

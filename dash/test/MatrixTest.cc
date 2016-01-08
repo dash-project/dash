@@ -523,14 +523,16 @@ TEST_F(MatrixTest, BlockViews)
 
 TEST_F(MatrixTest, ViewIteration)
 {
-  typedef int element_t;
+  typedef int                  element_t;
+  typedef dash::TilePattern<2> pattern_t;
+
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
   size_t extent_cols = tilesize_x * num_units * 4;
   size_t extent_rows = tilesize_y * num_units * 4;
-  typedef dash::TilePattern<2> pattern_t;
+
   LOG_MESSAGE("Initialize matrix ...");
   dash::TeamSpec<2> team_spec(num_units, 1);
   dash::Matrix<element_t, 2, pattern_t::index_type, pattern_t> matrix(
@@ -586,9 +588,10 @@ TEST_F(MatrixTest, ViewIteration)
   // Global coordinates of first element in bottom right block:
   int  block_base_coord_x = extent_cols / 2;
   int  block_base_coord_y = extent_rows / 2;
-  auto b_it  = bottomright.begin();
-  auto b_end = bottomright.end();
+  auto b_it               = bottomright.begin();
+  auto b_end              = bottomright.end();
   int  block_index_offset = b_it.pos();
+  LOG_MESSAGE("Testing block values");
   for (; b_it != b_end; ++b_it, ++phase) {
     int phase_x  = phase % view_size_x;
     int phase_y  = phase / view_size_x;

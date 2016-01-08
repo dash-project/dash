@@ -5,8 +5,10 @@
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
 
+#include <cstddef>
 #include <functional>
 #include <sstream>
+#include <iostream>
 
 namespace dash {
 
@@ -118,8 +120,8 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", _idx);
     DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", *_viewspec);
     DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", _view_idx_offset);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", _viewspec);
   }
 
   /**
@@ -164,6 +166,8 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", _idx);
     DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", *_viewspec);
+    DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", _view_idx_offset);
   }
 
   /**
@@ -219,12 +223,13 @@ public:
       local_pos        = _pattern->local_index(glob_coords);
     }
     DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.index);
+    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.index + offset);
     // Create global pointer from unit and local offset:
     PointerType gptr(
       _globmem->index_to_gptr(local_pos.unit, local_pos.index)
     );
-    return gptr + offset;
+    gptr += offset;
+    return gptr;
   }
 
   /**
@@ -366,7 +371,6 @@ public:
     }
     DASH_LOG_TRACE_VAR("GlobViewIter.local=", idx);
     DASH_LOG_TRACE_VAR("GlobViewIter.local=", offset);
-    DASH_LOG_TRACE_VAR("GlobViewIter.local=", _viewspec);
 
     // Global index to local index and unit:
     local_pos_t local_pos;
@@ -374,6 +378,7 @@ public:
       // No viewspec mapping required:
       local_pos        = _pattern->local(idx);
     } else {
+      DASH_LOG_TRACE_VAR("GlobViewIter.local=", *_viewspec);
       // Viewspec projection required:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
@@ -425,6 +430,7 @@ public:
     } else {
       IndexType idx    = _idx;
       IndexType offset = 0;
+      DASH_LOG_TRACE_VAR("GlobViewIter.gpos", *_viewspec);
       DASH_LOG_TRACE_VAR("GlobViewIter.gpos", _max_idx);
       // Convert iterator position (_idx) to local index and unit.
       if (_idx > _max_idx) {
@@ -473,7 +479,7 @@ public:
       local_pos        = _pattern->local(idx);
     } else {
       // Viewspec projection required:
-      DASH_LOG_TRACE_VAR("GlobViewIter.lpos", _viewspec);
+      DASH_LOG_TRACE_VAR("GlobViewIter.lpos", *_viewspec);
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
@@ -761,12 +767,11 @@ private:
   std::array<IndexType, NumDimensions> coords(
     IndexType glob_index) const
   {
-    DASH_LOG_TRACE("GlobViewIter.coords()",
-                   "index:",    glob_index,
-                   "viewspec:", *_viewspec);
+    DASH_LOG_TRACE_VAR("GlobViewIter.coords()", glob_index);
     // Global cartesian coords of current iterator position:
     std::array<IndexType, NumDimensions> glob_coords;
     if (_viewspec != nullptr) {
+      DASH_LOG_TRACE_VAR("GlobViewIter.coords", *_viewspec);
       // Create cartesian index space from extents of view projection:
       CartesianIndexSpace<NumDimensions, Arrangement, IndexType> index_space(
         _viewspec->extents());
@@ -822,19 +827,19 @@ gptrdiff_t distance(
 }
 
 template <
-  typename ElementType_,
-  class    Pattern_,
-  class    Pointer_,
-  class    Reference_ >
+  typename ElementType,
+  class    Pattern,
+  class    Pointer,
+  class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::GlobViewIter<ElementType_, Pattern_, Pointer_, Reference_> & it)
+  const dash::GlobViewIter<ElementType, Pattern, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType_> ptr(it); 
-  ss << "dash::GlobViewIter<ElementType, PatternType>:"
-     << "idx(" << it._idx << ")"
-     << "->(" << ptr << ")";
+  dash::GlobPtr<ElementType> ptr(it); 
+  ss << "dash::GlobViewIter<" << typeid(ElementType).name() << ">("
+     << "idx:" << it._idx << ", "
+     << "gptr:" << ptr << ")";
   return operator<<(os, ss.str());
 }
 

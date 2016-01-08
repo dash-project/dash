@@ -58,7 +58,7 @@ local_index_range(
   // Get offsets of iterators within global memory, O(1):
   idx_t begin_gindex  = static_cast<idx_t>(first.pos());
   idx_t end_gindex    = static_cast<idx_t>(last.pos());
-  DASH_LOG_TRACE("local_index_range(GlobIter,GlobIter)",
+  DASH_LOG_TRACE("local_index_range(GlobIt,GlobIt)",
                  begin_gindex, end_gindex);
   // Get pattern from global iterators, O(1):
   auto pattern        = first.pattern();
@@ -140,19 +140,22 @@ local_index_range(
   // Get offsets of iterators within global memory, O(1):
   idx_t begin_gindex  = static_cast<idx_t>(first.pos());
   idx_t end_gindex    = static_cast<idx_t>(last.pos());
-  DASH_LOG_TRACE("local_index_range(GlobViewIter,GlobViewIter)",
+  DASH_LOG_TRACE("local_index_range(ViewIt,ViewIt)",
                  begin_gindex, end_gindex);
   // Check if input range is relative to a view spec (e.g. a block):
   if (first.is_relative() && last.is_relative()) {
     DASH_LOG_TRACE("local_index_range", "input iterators are relative");
     if (first.viewspec() == last.viewspec()) {
       DASH_LOG_TRACE("local_index_range", "input iterators in same view");
-      bool first_is_local = first.is_local();
+      auto l_first        = first.lpos();
+      bool first_is_local = l_first.unit == dash::myid();
       // No need to check if last is local as both are relative to the same
       // view.
       if (first_is_local) {
-        DASH_LOG_TRACE("local_index_range >", first.pos(), last.pos());
-        return LocalIndexRange<idx_t> { first.pos(), last.pos() };
+        auto l_last_idx  = last.lpos().index;
+        auto l_first_idx = l_first.index;
+        DASH_LOG_TRACE("local_index_range >", l_first_idx, l_last_idx);
+        return LocalIndexRange<idx_t> { l_first_idx, l_last_idx };
       } else {
         DASH_LOG_TRACE("local_index_range >", "not local -> (0,0)");
         return LocalIndexRange<idx_t> { 0, 0 };

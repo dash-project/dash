@@ -194,28 +194,27 @@ void summa(
   auto block_b_size  = block_size_m * block_size_p;
   // Number of units in rows and columns:
   auto teamspec      = C.pattern().teamspec();
-  auto num_units_x   = teamspec.extent(0);
-  auto num_units_y   = teamspec.extent(1);
-  // Coordinates of active unit in team spec (process grid):
-  auto team_coords_u = teamspec.coords(unit_id);
-  // Block row and column in C assigned to active unit:
-  auto block_col_u   = team_coords_u[0];
-  auto block_row_u   = team_coords_u[1];
 
   DASH_LOG_TRACE("dash::summa", "blocks:",
                  "m:", num_blocks_m, "*", block_size_m,
                  "n:", num_blocks_n, "*", block_size_n,
                  "p:", num_blocks_p, "*", block_size_p);
   DASH_LOG_TRACE("dash::summa", "number of units:",
-                 "cols:", num_units_x,
-                 "rows:", num_units_y);
+                 "cols:", teamspec.extent(0),
+                 "rows:", teamspec.extent(1));
   DASH_LOG_TRACE("dash::summa", "allocating local temporary blocks, sizes:",
                  "A:", block_a_size,
                  "B:", block_b_size);
-  value_type * local_block_a_get  = new value_type[block_a_size];
-  value_type * local_block_b_get  = new value_type[block_b_size];
-  value_type * local_block_a_comp = new value_type[block_a_size];
-  value_type * local_block_b_comp = new value_type[block_b_size];
+  value_type * buf_block_a_get    = new value_type[block_a_size];
+  value_type * buf_block_b_get    = new value_type[block_b_size];
+  value_type * buf_block_a_comp   = new value_type[block_a_size];
+  value_type * buf_block_b_comp   = new value_type[block_b_size];
+  // Copy of buffer pointers for swapping, delete[] on swapped pointers tends
+  // to crash:
+  value_type * local_block_a_get  = buf_block_a_get;
+  value_type * local_block_b_get  = buf_block_b_get;
+  value_type * local_block_a_comp = buf_block_a_comp;
+  value_type * local_block_b_comp = buf_block_b_comp;
 
   // Pre-fetch first blocks in A and B:
   auto l_block_c_get         = C.local.block(0);
@@ -236,6 +235,9 @@ void summa(
                  "view:", block_a.begin().viewspec());
   auto get_a = dash::copy_async(block_a.begin(), block_a.end(),
                                 local_block_a_comp);
+  get_a.wait();
+  DASH_LOG_TRACE("dash::summa", "summa.block",
+                 "waiting for prefetching of blocks");
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "prefetching local copy of B.block:",
                  "col:",  l_block_c_get_col,
@@ -245,7 +247,6 @@ void summa(
                                 local_block_b_comp);
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "waiting for prefetching of blocks");
-  get_a.wait();
   get_b.wait();
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "prefetching of blocks completed");
@@ -272,6 +273,7 @@ void summa(
     // Iterate blocks in columns of A / rows of B:
     //
     for (index_t block_k = 0; block_k < num_blocks_m; ++block_k) {
+      DASH_LOG_TRACE("dash::summa", "summa.block.k", block_k);
       // Prefetch local copy of blocks from A and B for multiplication in
       // next iteration.
       //
@@ -292,7 +294,6 @@ void summa(
         block_a = A.block(coords_t { block_get_k, l_block_c_get_row });
         DASH_LOG_TRACE("dash::summa", "summa.block.a",
                        "requesting local copy of A.block:",
-                       "c.view:", l_block_c_get_view,
                        "col:",    block_get_k,
                        "row:",    l_block_c_get_row,
                        "a.view:", block_a.begin().viewspec());
@@ -301,7 +302,6 @@ void summa(
         block_b = B.block(coords_t { l_block_c_get_col, block_get_k });
         DASH_LOG_TRACE("dash::summa", "summa.block.b",
                        "requesting local copy of B.block:",
-                       "c.view:", l_block_c_get_view,
                        "col:",    l_block_c_get_col,
                        "row:",    block_get_k,
                        "b.view:", block_b.begin().viewspec());
@@ -342,12 +342,16 @@ void summa(
     }
   } // for lb
 
-  delete[] local_block_a_get;
-  delete[] local_block_b_get;
-  delete[] local_block_a_comp;
-  delete[] local_block_b_comp;
+  DASH_LOG_TRACE("dash::summa", "locally completed");
+// delete[] buf_block_a_get;
+// delete[] buf_block_b_get;
+// delete[] buf_block_a_comp;
+// delete[] buf_block_b_comp;
 
+  DASH_LOG_TRACE("dash::summa", "waiting for other units");
   C.barrier();
+
+  DASH_LOG_TRACE("dash::summa >", "finished");
 }
 
 /**
