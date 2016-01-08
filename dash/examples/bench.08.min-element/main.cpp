@@ -11,7 +11,7 @@ using std::setw;
 typedef dash::util::Timer<dash::util::TimeMeasure::Clock> Timer;
 
 template<typename T>
-void perform_test(size_t NELEM, size_t REPEAT);
+void perform_test(long long NELEM, int REPEAT);
 
 int main(int argc, char **argv)
 {
@@ -23,11 +23,13 @@ int main(int argc, char **argv)
   auto myid = dash::myid();
   auto size = dash::size();
   
-  perform_test<int>(100000, 100);
-  perform_test<int>(1000000, 100);
-  perform_test<int>(10000000, 100);
-  perform_test<int>(100000000, 20);
-  perform_test<int>(200000000, 20);
+  perform_test<int>(100000ll,         1000);
+  perform_test<int>(1000000ll,        1000);
+  perform_test<int>(10000000ll,       1000);
+  perform_test<int>(100000000ll,      1000);
+  perform_test<int>(10000000000ll,    1000);
+  perform_test<int>(100000000000ll,   100);
+  perform_test<int>(200000000000ll,   50);
 
   dash::finalize();
   
@@ -35,12 +37,12 @@ int main(int argc, char **argv)
 }
 
 template<typename T>
-void perform_test(size_t NELEM, size_t REPEAT)
+void perform_test(long long NELEM, int REPEAT)
 {
   Timer::timestamp_t ts_start;
   double duration_us;
-
-  dash::Array<T> arr(NELEM);
+  
+  dash::Array<T, long long> arr(NELEM);
 
   for( auto& el: arr.local ) {
     el=rand();
@@ -54,9 +56,10 @@ void perform_test(size_t NELEM, size_t REPEAT)
   duration_us = Timer::ElapsedSince(ts_start);
 
   if(dash::myid()==0) {
-    cout<<"NELEM: "<<setw(16)<<NELEM;
+    cout<<"NUNIT: "<<setw(10)<<dash::size();
+    cout<<" NELEM: "<<setw(16)<<arr.size();
     cout<<" REPEAT: "<<setw(16)<<REPEAT;
-    cout<<" TIME [sec]: "<<setw(12)<<1.0e-6*duration_us<<endl;
+    cout<<" TIME [msec]: "<<setw(12)<<1.0e-3*duration_us<<endl;
   }
 }
 
