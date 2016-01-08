@@ -1,6 +1,6 @@
 TEST_ROOT  = $(PWD)/../
-DART_ROOT  = /home/cherold/procs/dash
-GTEST_ROOT = $(TEST_ROOT)/gtest
+DART_ROOT  = /home/cherold/dash-dart/dash-master-build
+GTEST_ROOT = /home/cherold/procs/gtest
 GTEST_INC  = $(GTEST_ROOT)/include
 GTEST_LIB  = $(GTEST_ROOT)/make/gtest.a
 
@@ -8,10 +8,6 @@ CFLAGS    = -Wall --std=c++11 -c -ggdb -g3 -O0
 LIB_DART  = -L$(DART_ROOT)/lib -ldart-gaspi
 LIB_GASPI = -L$(GPI2_ROOT)/lib -libverbs -lpthread -lGPI2 -Wl,-rpath=$(GPI2_ROOT)/lib:
 INCLUDE   = -I$(GPI2_ROOT)/include -I$(DART_ROOT)/include -I$(TEST_ROOT) -I$(GTEST_INC)
-
-#FLAGS = -fsanitize=address -fno-omit-frame-pointer
-FLAGS =
-CC = clang++
 
 PROG = main
 
