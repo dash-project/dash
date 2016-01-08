@@ -52,7 +52,9 @@ extern "C" {
 
   */
 
-// TODO interface standard definition
+/**
+ * Define the maximal number of concurrently segments per unit
+ */
 #define DART_MAX_SEGS 256
 
 typedef struct
