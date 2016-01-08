@@ -59,23 +59,29 @@ void multiply_naive(
 /// Constraints on pattern partitioning properties of matrix operands passed to
 /// \c dash::summa.
 typedef dash::pattern_partitioning_properties<
-          // same number of elements in every block
-          pattern_partitioning_tag::balanced >
-        summa_pattern_partitioning_constraints;
+            // Block extents are constant for every dimension.
+            dash::pattern_partitioning_tag::rectangular,
+            // Identical number of elements in every block.
+            dash::pattern_partitioning_tag::balanced
+        > summa_pattern_partitioning_constraints;
 /// Constraints on pattern mapping properties of matrix operands passed to
 /// \c dash::summa.
 typedef dash::pattern_mapping_properties<
-          // same amount of blocks for every process
-          pattern_mapping_tag::balanced,
-          // every process mapped in every row/column
-          pattern_mapping_tag::diagonal >
-        summa_pattern_mapping_constraints;
+            // Number of blocks assigned to a unit may differ.
+            dash::pattern_mapping_tag::unbalanced,
+            // Every unit mapped in any single slice in every dimension.
+            dash::pattern_mapping_tag::diagonal
+        > summa_pattern_mapping_constraints;
 /// Constraints on pattern layout properties of matrix operands passed to
 /// \c dash::summa.
 typedef dash::pattern_layout_properties<
-          // elements contiguous within block
-          pattern_layout_tag::local_phase >
-        summa_pattern_layout_constraints;
+            // Elements are contiguous in local memory within single block.
+            dash::pattern_layout_tag::blocked,
+            // Local element order corresponds to a logical linearization
+            // within single blocks.
+            // Required for cache-optimized block matrix multiplication.
+            dash::pattern_layout_tag::linear
+        > summa_pattern_layout_constraints;
 
 /**
  * Multiplies two matrices using the SUMMA algorithm.

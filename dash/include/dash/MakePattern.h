@@ -35,22 +35,28 @@ make_distribution_spec(
   std::array<dash::Distribution, ndim> distributions;
   // Resolve balanced tile extents from size spec and team spec:
   for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
-    auto extent_d    = sizespec.extent(d);
-    auto nunits_d    = teamspec.extent(d);
-    auto nblocks_d   = nunits_d;
-    auto tilesize_d  = extent_d / nblocks_d;
-    DASH_LOG_TRACE_VAR("dash::make_distribution_spec", tilesize_d);
-    if (MappingTraits::balanced) {
-      // Balanced mapping, i.e. same number of blocks for every unit
-      if (nblocks_d % teamspec.extent(d) > 0) {
-        // Extent in this dimension is not a multiple of number of units,
-        // balanced mapping property cannot be satisfied:
-        DASH_THROW(dash::exception::InvalidArgument,
-                   "dash::make_pattern: cannot distribute " <<
-                   nblocks_d << " blocks to " <<
-                   nunits_d  << " units in dimension " << d);
+    auto extent_d  = sizespec.extent(d);
+    auto nunits_d  = teamspec.extent(d);
+    auto nblocks_d = nunits_d;
+    if (MappingTraits::diagonal || MappingTraits::neighbor) {
+      // Diagonal and neighbor mapping properties require occurrence of every
+      // unit in any hyperplane. Use total number of units in every dimension:
+      nblocks_d = teamspec.size();
+    } else {
+      if (MappingTraits::balanced) {
+        // Balanced mapping, i.e. same number of blocks for every unit
+        if (nblocks_d % teamspec.extent(d) > 0) {
+          // Extent in this dimension is not a multiple of number of units,
+          // balanced mapping property cannot be satisfied:
+          DASH_THROW(dash::exception::InvalidArgument,
+                     "dash::make_pattern: cannot distribute " <<
+                     nblocks_d << " blocks to " <<
+                     nunits_d  << " units in dimension " << d);
+        }
       }
     }
+    auto tilesize_d = extent_d / nblocks_d;
+    DASH_LOG_TRACE_VAR("dash::make_distribution_spec", tilesize_d);
     if (PartitioningTraits::balanced) {
       // Balanced partitioning, i.e. same number of elements in every block
       if (extent_d % tilesize_d > 0) {
@@ -62,7 +68,7 @@ make_distribution_spec(
                    nblocks_d  << " blocks in dimension " << d);
       }
     }
-    if (LayoutTraits::local_phase) {
+    if (LayoutTraits::linear && LayoutTraits::blocked) {
       distributions[d] = dash::TILE(tilesize_d);
     } else {
       distributions[d] = dash::BLOCKCYCLIC(tilesize_d);
@@ -106,13 +112,13 @@ struct deduce_pattern_model
  */
 template<
   typename PartitioningTraits = dash::pattern_partitioning_default_properties,
-  typename MappingTraits = dash::pattern_mapping_default_properties,
-  typename LayoutTraits = dash::pattern_layout_default_properties,
+  typename MappingTraits      = dash::pattern_mapping_default_properties,
+  typename LayoutTraits       = dash::pattern_layout_default_properties,
   class SizeSpecType,
   class TeamSpecType
 >
 typename std::enable_if<
-  LayoutTraits::local_phase,
+  LayoutTraits::blocked,
   TilePattern<SizeSpecType::ndim()>
 >::type
 make_pattern(
@@ -121,33 +127,10 @@ make_pattern(
   /// Team spec containing layout of units mapped by the pattern.
   const TeamSpecType & teamspec)
 {
-  // Tags in pattern property category 'Linearization'
-  DASH_LOG_TRACE("dash::make_pattern", "-> Linearization properties:");
-  DASH_LOG_TRACE("dash::make_pattern", "   - local_phase");
-  DASH_LOG_TRACE("dash::make_pattern", "-> Partitioning properties:");
+  DASH_LOG_TRACE("dash::make_pattern", PartitioningTraits());
+  DASH_LOG_TRACE("dash::make_pattern", MappingTraits());
+  DASH_LOG_TRACE("dash::make_pattern", LayoutTraits());
 
-  // Tags in pattern property category 'Partitioning'
-  if (PartitioningTraits::balanced) {
-    DASH_LOG_TRACE("dash::make_pattern", "   - balanced blocks");
-  }
-  if (PartitioningTraits::cache_align) {
-    DASH_LOG_TRACE("dash::make_pattern", "   - cache aligned blocks");
-  }
-
-  // Tags in pattern property category 'Mapping'
-  static_assert(!MappingTraits::neighbor || !MappingTraits::diagonal,
-                "Pattern mapping properties 'diagonal' contradicts "
-                "mapping property 'remote_neighbors'");
-  DASH_LOG_TRACE("dash::make_pattern", "-> Mapping properties:");
-  if (MappingTraits::balanced) {
-    DASH_LOG_TRACE("dash::make_pattern", "   - balanced mapping");
-  }
-  if (MappingTraits::diagonal) {
-    DASH_LOG_TRACE("dash::make_pattern", "   - diagonal mapping");
-  }
-  if (MappingTraits::neighbor) {
-    DASH_LOG_TRACE("dash::make_pattern", "   - remote neighbors");
-  }
   // Deduce number of dimensions from size spec:
   const dim_t ndim = SizeSpecType::ndim();
   // Make distribution spec from template- and run time parameters:
@@ -173,18 +156,18 @@ make_pattern(
 /**
  * Generic Abstract Factory for models of the Pattern concept.
  *
- * Creates an instance of a Pattern model that satisfies the strided
- * linearization property from given pattern traits.
+ * Creates an instance of a Pattern model that satisfies the canonical
+ * (strided) layout property from given pattern traits.
  */
 template<
   typename PartitioningTraits = dash::pattern_partitioning_default_properties,
-  typename MappingTraits = dash::pattern_mapping_default_properties,
-  typename LayoutTraits = dash::pattern_layout_default_properties,
+  typename MappingTraits      = dash::pattern_mapping_default_properties,
+  typename LayoutTraits       = dash::pattern_layout_default_properties,
   class SizeSpecType,
   class TeamSpecType
 >
 typename std::enable_if<
-  !LayoutTraits::local_phase,
+  LayoutTraits::canonical,
   Pattern<SizeSpecType::ndim()>
 >::type
 make_pattern(
@@ -193,33 +176,10 @@ make_pattern(
   /// Team spec containing layout of units mapped by the pattern.
   const TeamSpecType & teamspec)
 {
-  // Tags in pattern property category 'Linearization'
-  DASH_LOG_TRACE("dash::make_pattern", "-> Linearization properties:");
-  DASH_LOG_TRACE("dash::make_pattern", "   - local_strided");
+  DASH_LOG_TRACE("dash::make_pattern", PartitioningTraits());
+  DASH_LOG_TRACE("dash::make_pattern", MappingTraits());
+  DASH_LOG_TRACE("dash::make_pattern", LayoutTraits());
 
-  // Tags in pattern property category 'Partitioning'
-  DASH_LOG_TRACE("dash::make_pattern", "-> Partitioning properties:");
-  if (PartitioningTraits::balanced) {
-    DASH_LOG_TRACE("dash::make_pattern", "   - balanced blocks");
-  }
-  if (PartitioningTraits::cache_align) {
-    DASH_LOG_TRACE("dash::make_pattern", "   - cache aligned blocks");
-  }
-
-  // Tags in pattern property category 'Mapping'
-  static_assert(!MappingTraits::neighbor || !MappingTraits::diagonal,
-                "Pattern mapping properties 'diagonal' contradicts "
-                "mapping property 'remote_neighbors'");
-  DASH_LOG_TRACE("dash::make_pattern", "-> Mapping properties:");
-  if (MappingTraits::balanced) {
-    DASH_LOG_TRACE("dash::make_pattern", "   - balanced mapping");
-  }
-  if (MappingTraits::diagonal) {
-    DASH_LOG_TRACE("dash::make_pattern", "   - diagonal mapping");
-  }
-  if (MappingTraits::neighbor) {
-    DASH_LOG_TRACE("dash::make_pattern", "   - remote neighbors");
-  }
   // Deduce number of dimensions from size spec:
   const dim_t ndim = SizeSpecType::ndim();
   // Make distribution spec from template- and run time parameters:

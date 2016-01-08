@@ -52,21 +52,31 @@ public:
   static constexpr char const * PatternName = "CSRPattern<1>";
 
 public:
-  /// Properties guaranteed in pattern property category Blocking
-  typedef dash::pattern_partitioning_properties<
-            // identical number of elements in every block
-            dash::pattern_partitioning_tag::unbalanced >
-          partitioning_properties;
-  /// Properties guaranteed in pattern property category Topology
-  typedef dash::pattern_mapping_properties<
-            // number of blocks assigned to a unit is constant
-            dash::pattern_mapping_tag::balanced >
-          mapping_properties;
-  /// Properties guaranteed in pattern property category Indexing
-  typedef dash::pattern_layout_properties<
-            // local indices iterate within block boundaries
-            dash::pattern_layout_tag::local_phase >
-          layout_properties;
+  /// Satisfiable properties in pattern property category Partitioning:
+  typedef pattern_partitioning_properties<
+              // Minimal number of blocks in every dimension, i.e. one block
+              // per unit.
+              pattern_partitioning_tag::minimal,
+              // Block extents are constant for every dimension.
+              pattern_partitioning_tag::rectangular,
+              // Identical number of elements in every block.
+              pattern_partitioning_tag::balanced,
+              // Size of blocks may differ.
+              pattern_partitioning_tag::unbalanced
+          > partitioning_properties;
+  /// Satisfiable properties in pattern property category Mapping:
+  typedef pattern_mapping_properties<
+              // Number of blocks assigned to a unit may differ.
+              pattern_mapping_tag::unbalanced
+          > mapping_properties;
+  /// Satisfiable properties in pattern property category Layout:
+  typedef pattern_layout_properties<
+              // Elements are contiguous in local memory within single block.
+              pattern_layout_tag::blocked,
+              // Local element order corresponds to a logical linearization
+              // within single blocks.
+              pattern_layout_tag::linear
+          > layout_properties;
 
 private:
   /// Derive size type from given signed index / ptrdiff type
