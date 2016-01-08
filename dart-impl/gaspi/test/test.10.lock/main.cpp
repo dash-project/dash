@@ -19,14 +19,7 @@ TEST(Lock, init_free)
     TEST_DART_CALL(dart_barrier(DART_TEAM_ALL));
 
     dart_lock_t lock;
-    dart_gptr_t gptr;
     TEST_DART_CALL(dart_team_lock_init(DART_TEAM_ALL, &lock));
-
-    TEST_DART_CALL(dart_lock_get_gptr(lock, &gptr));
-
-    EXPECT_EQ(gptr.segid, 0);
-    EXPECT_EQ(gptr.unitid, 0);
-    EXPECT_EQ(gptr.flags, 0);
 
     TEST_DART_CALL(dart_team_lock_free(DART_TEAM_ALL, &lock));
 
