@@ -1,0 +1,18 @@
+DART_ROOT = $(PWD)/../..
+
+CFLAGS    = -std=gnu99 -Wall -c -g3 -O0
+LIB_DART  = -L$(DART_ROOT)/dart-gaspi/ -ldart
+LIB_GASPI = -L$(GPI2_ROOT)/lib -libverbs -lpthread -lGPI2 -Wl,-rpath=$(GPI2_ROOT)/lib:
+INCLUDE   = -I$(GPI2_ROOT)/include -I$(DART_ROOT)/dart-gaspi -I$(DART_ROOT)/../../dart-if/v3.1
+
+PROG = main
+
+$(PROG):main.o
+	$(CC) -o $@ main.o $(LIB_DART) $(LIB_GASPI)
+
+%.o:%.c
+	$(CC) $(CFLAGS) $(INCLUDE) $<
+
+clean:
+	rm -rf *~ \#_* *.o
+	rm main

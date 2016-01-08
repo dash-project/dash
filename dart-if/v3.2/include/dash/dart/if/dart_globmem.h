@@ -9,10 +9,10 @@ extern "C" {
 
 /*
   --- DART global pointers ---
-  
+
   There are multiple options for representing the global
   pointer that come to mind:
-  
+
   1) struct with pre-defined members (say, unit id
     and local address)
   2) an opaque object that leaves the details to a specific
@@ -52,13 +52,15 @@ extern "C" {
 
   */
 
+// TODO interface standard definition
+#define DART_MAX_SEGS 256
 
 typedef struct
 {
   int32_t  unitid;
   int16_t  segid;
   uint16_t flags;
-  union 
+  union
   {
     uint64_t offset;
     void* addr;
@@ -66,18 +68,18 @@ typedef struct
 } dart_gptr_t;
 
 #define DART_GPTR_NULL ((dart_gptr_t){-1, 0, 0, 0})
-  
+
 #define DART_GPTR_ISNULL(gptr_)			\
   (gptr_.unitid<0 && gptr_.segid==0 &&		\
-   gptr_.flags==0 && gptr_.addr_or_offs.addr==0) 
-  
+   gptr_.flags==0 && gptr_.addr_or_offs.addr==0)
+
 #define DART_GPTR_EQUAL(gptr1_, gptr2_ )		\
   ((gptr1_.unitid == gptr2_.unitid) &&			\
    (gptr1_.segid == gptr2_.segid) &&			\
    (gptr1_.flags == gptr2_.flags) &&			\
    (gptr1_.addr_or_offs.offset ==			\
     gptr2_.addr_or_offs.offset) )
-  
+
 
 /* get the local memory address for the specified global pointer
    gptr. I.e., if the global pointer has affinity to the local unit,
@@ -86,8 +88,8 @@ typedef struct
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr);
 
 
-/* set the local memory address for the specified global pointer such 
-   the the specified address 
+/* set the local memory address for the specified global pointer such
+   the the specified address
 */
 dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
 
@@ -106,7 +108,7 @@ dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t);
 dart_ret_t dart_memalloc(size_t nbytes, dart_gptr_t *gptr);
 dart_ret_t dart_memfree(dart_gptr_t gptr);
 
-/* 
+/*
   Collective function on the specified team to allocate nbytes of
   memory in each unit's global address space.  The allocated memory is
   team-aligned (i.e., a global pointer to anywhere in the allocation
@@ -123,13 +125,13 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
   X may not be able to acces a memory location in M.
 
  */
-dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, 
+dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid,
 				      size_t nbytes, dart_gptr_t *gptr);
 dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr);
 
 
 
-/* 
+/*
   Collective functions similar to dart_team_memalloc_aligned() and
   dart_team_memfree() but dart_team_memregister_aligned() and
   dart_team_memderegister() work on previously externally allocated
@@ -138,10 +140,10 @@ dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr);
 */
 
 dart_ret_t dart_team_memregister_aligned(dart_team_t teamid,
-					 size_t nbytes, 
+					 size_t nbytes,
 					 void *addr, dart_gptr_t *gptr);
-  
-dart_ret_t dart_team_memderegister(dart_team_t teamid, dart_gptr_t gptr); 
+
+dart_ret_t dart_team_memderegister(dart_team_t teamid, dart_gptr_t gptr);
 
 
 #define DART_INTERFACE_OFF

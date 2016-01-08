@@ -108,7 +108,7 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/shared)
 ## Subprojects, one for each deliverable
 
 set(DART_IMPLEMENTATIONS
-    "mpi,shmem" CACHE STRING 
+    "mpi,shmem,gaspi" CACHE STRING
     "Comma-separated list of DASH runtime implementations to
      build, default is mpi,shmem")
 
@@ -142,6 +142,13 @@ if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";cuda;")
   set(DART_IMPLEMENTATION_CUDA_ENABLED ON 
       CACHE BOOL INTERNAL FORCE)
   add_subdirectory(dart-impl/cuda)
+endif()
+
+if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";gaspi;")
+  set(DART_IMPLEMENTATION_GASPI_ENABLED ON
+      CACHE BOOL INTERNAL FORCE)
+  message(INFO "Building DART GASPI backend") 
+  add_subdirectory(dart-impl/gaspi)
 endif()
 
 add_subdirectory(dash)

@@ -3,7 +3,7 @@
 
 /**
  * \file dart_communication.h
- * 
+ *
  * A set of basic collective communication routines in DART.
  * The semantics of the routines below are the same as with MPI. The only
  * difference is that DART doesn't specify data types and the operates on
@@ -29,7 +29,7 @@ dart_ret_t dart_barrier(
  */
 dart_ret_t dart_bcast(
   void *buf,
-  size_t nbytes, 
+  size_t nbytes,
 	dart_unit_t root,
   dart_team_t team);
 
@@ -41,7 +41,7 @@ dart_ret_t dart_bcast(
 dart_ret_t dart_scatter(
   void *sendbuf,
   void *recvbuf,
-  size_t nbytes, 
+  size_t nbytes,
 	dart_unit_t root,
   dart_team_t team);
 
@@ -53,10 +53,10 @@ dart_ret_t dart_scatter(
 dart_ret_t dart_gather(
   void *sendbuf,
   void *recvbuf,
-  size_t nbytes, 
+  size_t nbytes,
 	dart_unit_t root,
   dart_team_t team);
-  
+
 /**
  * DART Equivalent to MPI allgather.
  *
@@ -65,7 +65,7 @@ dart_ret_t dart_gather(
 dart_ret_t dart_allgather(
   void *sendbuf,
   void *recvbuf,
-  size_t nbytes, 
+  size_t nbytes,
 	dart_team_t team);
 
 /**
@@ -90,7 +90,7 @@ typedef struct dart_handle_struct *dart_handle_t;
  */
 dart_ret_t dart_get(
   void *dest,
-  dart_gptr_t ptr, 
+  dart_gptr_t ptr,
   size_t nbytes);
 /**
  * 'REGULAR' variant of dart_put.
@@ -102,7 +102,7 @@ dart_ret_t dart_get(
  */
 dart_ret_t dart_put(
   dart_gptr_t ptr,
-  void *src, 
+  void *src,
   size_t nbytes);
 
 /**
@@ -127,7 +127,7 @@ dart_ret_t dart_accumulate_int(
  */
 dart_ret_t dart_get_handle(
   void *dest,
-  dart_gptr_t ptr, 
+  dart_gptr_t ptr,
   size_t nbytes,
   /// [OUT] Pointer to DART handle to instantiate for later use with
   ///       \c dart_wait, \c dart_wait_all etc.
@@ -142,7 +142,7 @@ dart_ret_t dart_get_handle(
  */
 dart_ret_t dart_put_handle(
   dart_gptr_t ptr,
-  void *src, 
+  void *src,
   size_t nbytes,
   /// [OUT] Pointer to DART handle to instantiate for later use with
   ///       \c dart_wait, \c dart_wait_all etc.
@@ -156,7 +156,7 @@ dart_ret_t dart_put_handle(
  */
 dart_ret_t dart_get_blocking(
   void *dest,
-  dart_gptr_t ptr, 
+  dart_gptr_t ptr,
   size_t nbytes);
 /**
  * 'BLOCKING' variant of dart_put.
@@ -166,13 +166,13 @@ dart_ret_t dart_get_blocking(
  */
 dart_ret_t dart_put_blocking(
   dart_gptr_t ptr,
-  void *src, 
+  void *src,
   size_t nbytes);
 
 /**
  * Guarantees local and remote completion of all pending puts and
  * gets on a certain memory allocation / window / segment for the
- * target unit specified in gptr. -> MPI_Win_flush() 
+ * target unit specified in gptr. -> MPI_Win_flush()
  *
  * \ingroup DartCommuncation
  */
@@ -182,7 +182,7 @@ dart_ret_t dart_flush(
 /**
  * Guarantees local and remote completion of all pending puts and
  * gets on a certain memory allocation / window / segment for all
- * target units. -> MPI_Win_flush_all() 
+ * target units. -> MPI_Win_flush_all()
  *
  * \ingroup DartCommuncation
  */
@@ -192,7 +192,7 @@ dart_ret_t dart_flush_all(
 /**
  * Guarantees local completion of all pending puts and
  * gets on a certain memory allocation / window / segment for the
- * target unit specified in gptr. -> MPI_Win_flush_local() 
+ * target unit specified in gptr. -> MPI_Win_flush_local()
  *
  * \ingroup DartCommuncation
  */
@@ -202,7 +202,7 @@ dart_ret_t dart_flush_local(
 /**
  * Guarantees local completion of all pending puts and
  * gets on a certain memory allocation / window / segment for the
- * all units. -> MPI_Win_flush_local_all() 
+ * all units. -> MPI_Win_flush_local_all()
  *
  * \ingroup DartCommuncation
  */
@@ -247,7 +247,7 @@ dart_ret_t dart_waitall_local(
  * \ingroup DartCommuncation
  */
 dart_ret_t dart_test_local(
-  dart_handle_t handle, 
+  dart_handle_t handle,
   int32_t *result);
 /**
  * Wait for the local completion of operations.
@@ -255,10 +255,57 @@ dart_ret_t dart_test_local(
  * \ingroup DartCommuncation
  */
 dart_ret_t dart_testall_local(
-  dart_handle_t *handle, 
+  dart_handle_t *handle,
   size_t n,
   int32_t *result);
 
+/**
+ * New dart one-sided communication functions for GASPI
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_get_gptr(dart_gptr_t dest, dart_gptr_t src, size_t nbytes);
+
+dart_ret_t dart_put_gptr(dart_gptr_t dest, dart_gptr_t src, size_t nbytes);
+
+dart_ret_t dart_get_gptr_blocking(dart_gptr_t dest, dart_gptr_t src, size_t nbytes);
+/**
+ * First concept of unit synchronization:
+ *
+ * Needed to test dart_put_* functions
+ *
+ * Dart unit synchronization functions which ensure the completion(local and remote) of previous
+ * posted put operations before the target unit gets the synchronization.
+ *
+ * That means, one process posts put operations and finally sends a synchronisation to the same target unit and segment.
+ * The other unit can test/wait on this synchronization and after a successful wait/test knows the calling
+ * unit that the data is avialable.
+ *
+ * Restriction:
+ * Puts and Syncs has to target the same segment and target
+ */
+dart_ret_t dart_notify(dart_gptr_t gptr     , unsigned int   tag);
+dart_ret_t dart_notify_waitsome(dart_gptr_t gptr, unsigned int * tag);
+/**
+ * For dart_put_gptr_handle
+ */
+dart_ret_t dart_notify_handle(dart_handle_t handle, unsigned int tag);
+/**
+ * Allocates a handle structure on the heap
+ */
+dart_ret_t dart_create_handle(dart_handle_t * handle);
+/**
+ * Frees a handle structure
+ */
+dart_ret_t dart_delete_handle(dart_handle_t * handle);
+/**
+ * 'HANDLE' variant of dart_get.
+ * Neither local nor remote completion is guaranteed.
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_get_gptr_handle(dart_gptr_t dest, dart_gptr_t src, size_t nbytes, dart_handle_t handle);
+dart_ret_t dart_put_gptr_handle(dart_gptr_t dest, dart_gptr_t src, size_t nbytes, dart_handle_t handle);
 
 #define DART_INTERFACE_OFF
 
