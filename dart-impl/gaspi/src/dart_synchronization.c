@@ -20,19 +20,6 @@
 #define DART_UNLOCK_VAL 999999
 
 /**
- * Function for testing dart lock mechanism
- * @param gptr[OUT] returns the global pointer of the lock
- */
-dart_ret_t dart_lock_get_gptr(dart_lock_t lock, dart_gptr_t * gptr)
-{
-    gptr->segid  = lock->gptr.segid;
-    gptr->unitid = lock->gptr.unitid;
-    gptr->flags  = lock->gptr.flags;
-    gptr->addr_or_offs.offset  = lock->gptr.addr_or_offs.offset;
-
-    return DART_OK;
-}
-/**
  * team collective operation
  */
 dart_ret_t dart_team_lock_init(dart_team_t teamid, dart_lock_t* lock)
