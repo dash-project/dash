@@ -2,57 +2,111 @@
 #define DASH__ALGORITHM__SUMMA_H_
 
 #include <dash/Exception.h>
-// #include <dash/bindings/LAPACK.h>
 
 #include <utility>
+
+#ifdef DASH_ENABLE_MKL
+#include <mkl.h>
+#include <mkl_types.h>
+#include <mkl_cblas.h>
+#include <mkl_blas.h>
+#include <mkl_lapack.h>
+#endif
 
 namespace dash {
 
 namespace internal {
 
+#ifdef DASH_ENABLE_MKL
+/**
+ * Matrix multiplication for local multiplication of matrix blocks via MKL.
+ */
+template<typename ValueType>
+void multiply_local(
+  /// Matrix to multiply, extents n x m
+  const ValueType * A,
+  /// Matrix to multiply, extents m x p
+  const ValueType * B,
+  /// Matrix to contain the multiplication result, extents n x p
+  ValueType       * C,
+  size_t            m,
+  size_t            n,
+  size_t            p)
+{
+  mkl_set_num_threads(1);
+/*
+  void cblas_dgemm(const CBLAS_LAYOUT    Layout,
+                   const CBLAS_TRANSPOSE TransA,
+                   const CBLAS_TRANSPOSE TransB,
+                   const MKL_INT         M,
+                   const MKL_INT         N,
+                   const MKL_INT         K,
+                   const double          alpha,
+                   const double *        A,
+                   const MKL_INT         lda,
+                   const double *        B,
+                   const MKL_INT         ldb,
+                   const double          beta,
+                   double *              C,
+                   const MKL_INT         ldc);
+
+*/
+  cblas_dgemm(CblasRowMajor,
+              CblasNoTrans,
+              CblasNoTrans,
+              m,
+              n,
+              p,
+              1.0,
+              static_cast<const double *>(A),
+              p,
+              static_cast<const double *>(B),
+              n,
+              0.0,
+              static_cast<double *>(C),
+              n);
+}
+
+#else
 /**
  * Naive matrix multiplication for local multiplication of matrix blocks,
- * used only for tests and where BLAS is not available.
+ * used only for tests and where MKL is not available.
  */
-template<
-  typename MatrixTypeA,
-  typename MatrixTypeB,
-  typename MatrixTypeC
->
-void multiply_naive(
+template<typename ValueType>
+void multiply_local(
   /// Matrix to multiply, extents n x m
-  MatrixTypeA & A,
+  const ValueType * A,
   /// Matrix to multiply, extents m x p
-  MatrixTypeB & B,
-  /// Matrix to contain the multiplication result, extents n x p,
-  /// initialized with zeros
-  MatrixTypeC & C,
-  size_t        m,
-  size_t        n,
-  size_t        p)
+  const ValueType * B,
+  /// Matrix to contain the multiplication result, extents n x p
+  ValueType       * C,
+  size_t            m,
+  size_t            n,
+  size_t            p)
 {
-  typedef typename MatrixTypeC::pattern_type pattern_c_type;
-  typedef typename MatrixTypeC::value_type   value_type;
+  ValueType c_sum = 0;
   for (auto i = 0; i < n; ++i) {
     // row i = 0...n
     for (auto j = 0; j < p; ++j) {
       // column j = 0...p
-      value_type c_sum = C[j][i];
+      c_sum = C[i * p + j]; // = C[j][i]
       for (auto k = 0; k < m; ++k) {
         // k = 0...m
         auto ik    = i * m + k;
         auto kj    = k * m + j;
         auto value = A[ik] * B[kj];
-        DASH_LOG_TRACE("dash::internal::multiply_naive", "summa.multiply",
+        DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
                        "C(", j, ",", i, ") +=",
                        "A[", ik, "] * B[", kj, "] = ",
                        A[ik], "*", B[kj], "=", value);
         c_sum += value;
       }
-      C[j][i] = c_sum;
+      C[i * p + j] = c_sum; // C[j][i] = c_sum
     }
   }
-} 
+}
+
+#endif // ifdef DASH_ENABLE_MKL
 
 } // namespace internal
 
@@ -115,6 +169,10 @@ void summa(
   typedef typename MatrixTypeB::pattern_type pattern_b_type;
   typedef typename MatrixTypeC::pattern_type pattern_c_type;
   typedef std::array<index_t, 2>             coords_t;
+
+  static_assert(
+      std::is_same<value_type, double>::value,
+      "dash::summa expects matrix element type double");
 
   DASH_LOG_DEBUG("dash::summa()");
   // Verify that matrix patterns satisfy pattern constraints:
@@ -283,7 +341,7 @@ void summa(
       // Prefetch local copy of blocks from A and B for multiplication in
       // next iteration.
       //
-      bool last = (lb == num_local_blocks_c - 1) && 
+      bool last = (lb == num_local_blocks_c - 1) &&
                   (block_k == num_blocks_m - 1);
       // Do not prefetch blocks in last iteration:
       if (!last) {
@@ -324,10 +382,10 @@ void summa(
                      "multiplying local block matrices",
                      "C.local.block.comp:", lb,
                      "view:", l_block_c_comp.begin().viewspec());
-      dash::internal::multiply_naive(
+      dash::internal::multiply_local(
           local_block_a_comp,
           local_block_b_comp,
-          l_block_c_comp,
+          l_block_c_comp.begin().local(),
           block_size_m,
           block_size_n,
           block_size_p);
@@ -349,10 +407,10 @@ void summa(
   } // for lb
 
   DASH_LOG_TRACE("dash::summa", "locally completed");
-// delete[] buf_block_a_get;
-// delete[] buf_block_b_get;
-// delete[] buf_block_a_comp;
-// delete[] buf_block_b_comp;
+  delete[] buf_block_a_get;
+  delete[] buf_block_b_get;
+  delete[] buf_block_a_comp;
+  delete[] buf_block_b_comp;
 
   DASH_LOG_TRACE("dash::summa", "waiting for other units");
   C.barrier();

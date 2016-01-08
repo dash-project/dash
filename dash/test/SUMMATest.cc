@@ -6,7 +6,7 @@
 
 TEST_F(SUMMATest, Deduction)
 {
-  typedef int                  value_t;
+  typedef double               value_t;
   typedef dash::TilePattern<2> pattern_t;
 
   dart_unit_t myid   = dash::myid();

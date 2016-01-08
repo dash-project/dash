@@ -25,7 +25,7 @@ namespace dash {
  * <tt>[ unit 1 : unit 0 ]</tt> | <tt>[ 6  7  8  9 10 11 ]</tt> |
  *
  * This pattern would assign local indices to teams like this:
- * 
+ *
  * Team            | Local indices                 |
  * --------------- | ----------------------------- |
  * <tt>unit 0</tt> | <tt>[ 0  1  2  9 10 11 ]</tt> |
@@ -207,7 +207,7 @@ struct pattern_mapping_tag
 
     /// Adjacent blocks in any dimension are located at a remote unit.
     neighbor,
-    
+
     /// Units are mapped to blocks in diagonal chains in at least one
     /// hyperplane
     shifted,
@@ -226,7 +226,7 @@ struct pattern_mapping_tag
  * Generic type of mapping properties of a model satisfying the Pattern
  * concept.
  *
- * Example: 
+ * Example:
  *
  * \code
  *   typedef dash::pattern_mapping_properties<
@@ -259,7 +259,7 @@ struct pattern_mapping_properties
 
   /// Adjacent blocks in any dimension are located at a remote unit.
   static const bool neighbor   = false;
-  
+
   /// Units are mapped to blocks in diagonal chains in at least one
   /// hyperplane
   static const bool shifted    = false;
@@ -523,7 +523,7 @@ struct pattern_traits
 /**
  * Traits for compile- and run-time pattern constraints checking, suitable for
  * property checks where detailed error reporting is desired.
- * 
+ *
  */
 template<
   typename PartitioningConstraints,
@@ -600,7 +600,7 @@ bool check_pattern_constraints(
  * Traits for compile-time pattern constraints checking, suitable as a helper
  * for template definitions employing SFINAE where no verbose error reporting
  * is required.
- * 
+ *
  */
 template<
   typename PartitioningConstraints,
