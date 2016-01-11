@@ -117,7 +117,7 @@ struct pattern_layout_tag
   } type;
 };
 
-template< pattern_layout_tag::type ... Tags >
+template<pattern_layout_tag::type ... Tags>
 struct pattern_layout_properties
 {
   typedef pattern_layout_tag::type tag_type;
@@ -152,9 +152,21 @@ struct pattern_layout_properties<
 : public pattern_layout_properties<Tags ...>
 {
   /// Elements are contiguous in local memory within a single block.
-  static const bool blocked   = true;
-  static const bool canonical = false;
+  static const bool blocked;
+  static const bool canonical;
 };
+
+template<pattern_layout_tag::type ... Tags>
+const bool
+pattern_layout_properties<
+  pattern_layout_tag::type::blocked, Tags ...
+>::blocked = true;
+
+template<pattern_layout_tag::type ... Tags>
+const bool
+pattern_layout_properties<
+  pattern_layout_tag::type::blocked, Tags ...
+>::canonical = false;
 
 /**
  * Specialization of \c dash::pattern_layout_properties to process tag
@@ -166,9 +178,21 @@ struct pattern_layout_properties<
 : public pattern_layout_properties<Tags ...>
 {
   /// All local indices are mapped to a single logical index domain.
-  static const bool canonical = true;
-  static const bool blocked   = false;
+  static const bool canonical;
+  static const bool blocked;
 };
+
+template<pattern_layout_tag::type ... Tags>
+const bool
+pattern_layout_properties<
+  pattern_layout_tag::type::canonical, Tags ...
+>::blocked = false;
+
+template<pattern_layout_tag::type ... Tags>
+const bool
+pattern_layout_properties<
+  pattern_layout_tag::type::canonical, Tags ...
+>::canonical = true;
 
 /**
  * Specialization of \c dash::pattern_layout_properties to process tag
@@ -182,8 +206,14 @@ struct pattern_layout_properties<
   /// Local element order corresponds to a logical linearization
   /// within single blocks (blocked) or within entire local memory
   /// (canonical).
-  static const bool linear    = true;
+  static const bool linear;
 };
+
+template<pattern_layout_tag::type ... Tags>
+const bool
+pattern_layout_properties<
+  pattern_layout_tag::type::linear, Tags ...
+>::linear = true;
 
 //////////////////////////////////////////////////////////////////////////////
 // Pattern mapping properties
@@ -244,7 +274,7 @@ struct pattern_mapping_tag
  * Template parameter list is processed recursively by specializations of
  * \c dash::pattern_mapping_properties.
  */
-template< pattern_mapping_tag::type ... Tags >
+template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties
 {
   typedef pattern_mapping_tag::type tag_type;
@@ -282,8 +312,14 @@ struct pattern_mapping_properties<
 : public pattern_mapping_properties<Tags ...>
 {
   /// The number of assigned blocks is identical for every unit.
-  static const bool balanced   = true;
+  static const bool balanced;
 };
+
+template<pattern_mapping_tag::type ... Tags>
+const bool
+pattern_mapping_properties<
+  pattern_mapping_tag::type::balanced, Tags ...
+>::balanced = true;
 
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
@@ -295,8 +331,14 @@ struct pattern_mapping_properties<
 : public pattern_mapping_properties<Tags ...>
 {
   /// The number of blocks assigned to units may differ.
-  static const bool unbalanced = true;
+  static const bool unbalanced;
 };
+
+template<pattern_mapping_tag::type ... Tags>
+const bool
+pattern_mapping_properties<
+  pattern_mapping_tag::type::unbalanced, Tags ...
+>::unbalanced = true;
 
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
@@ -308,8 +350,14 @@ struct pattern_mapping_properties<
 : public pattern_mapping_properties<Tags ...>
 {
   /// Adjacent blocks in any dimension are located at a remote unit.
-  static const bool neighbor   = true;
+  static const bool neighbor;
 };
+
+template<pattern_mapping_tag::type ... Tags>
+const bool
+pattern_mapping_properties<
+  pattern_mapping_tag::type::neighbor, Tags ...
+>::neighbor = true;
 
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
@@ -322,8 +370,14 @@ struct pattern_mapping_properties<
 {
   /// Units are mapped to blocks in diagonal chains in at least one
   /// hyperplane
-  static const bool shifted    = true;
+  static const bool shifted;
 };
+
+template<pattern_mapping_tag::type ... Tags>
+const bool
+pattern_mapping_properties<
+  pattern_mapping_tag::type::shifted, Tags ...
+>::shifted = true;
 
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
@@ -335,8 +389,14 @@ struct pattern_mapping_properties<
 : public pattern_mapping_properties<Tags ...>
 {
   /// Units are mapped to blocks in diagonal chains in all hyperplanes.
-  static const bool diagonal   = true;
+  static const bool diagonal;
 };
+
+template<pattern_mapping_tag::type ... Tags>
+const bool
+pattern_mapping_properties<
+  pattern_mapping_tag::type::diagonal, Tags ...
+>::diagonal = true;
 
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
@@ -349,8 +409,14 @@ struct pattern_mapping_properties<
 {
   /// Blocks are assigned to processes like dealt from a deck of
   /// cards in every hyperplane, starting from first unit.
-  static const bool cyclic     = true;
+  static const bool cyclic;
 };
+
+template<pattern_mapping_tag::type ... Tags>
+const bool
+pattern_mapping_properties<
+  pattern_mapping_tag::type::cyclic, Tags ...
+>::cyclic = true;
 
 //////////////////////////////////////////////////////////////////////////////
 // Pattern partitioning properties
@@ -380,7 +446,7 @@ struct pattern_partitioning_tag
   } type;
 };
 
-template< pattern_partitioning_tag::type ... Tags >
+template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties
 {
   typedef pattern_partitioning_tag::type tag_type;
@@ -416,8 +482,14 @@ struct pattern_partitioning_properties<
 {
   /// Blocks are assigned to processes like dealt from a deck of
   /// cards in every hyperplane, starting from first unit.
-  static const bool rectangular = true;
+  static const bool rectangular;
 };
+
+template<pattern_partitioning_tag::type ... Tags>
+const bool
+pattern_partitioning_properties<
+  pattern_partitioning_tag::type::rectangular, Tags ...
+>::rectangular = true;
 
 /**
  * Specialization of \c dash::pattern_partitioning_properties to process tag
@@ -431,8 +503,14 @@ struct pattern_partitioning_properties<
 {
   /// Minimal number of blocks in every dimension, typically at most one
   /// block per unit.
-  static const bool minimal    = true;
+  static const bool minimal;
 };
+
+template<pattern_partitioning_tag::type ... Tags>
+const bool
+pattern_partitioning_properties<
+  pattern_partitioning_tag::type::minimal, Tags ...
+>::minimal = true;
 
 /**
  * Specialization of \c dash::pattern_partitioning_properties to process tag
@@ -445,8 +523,14 @@ struct pattern_partitioning_properties<
 : public pattern_partitioning_properties<Tags ...>
 {
   /// All blocks have identical extents.
-  static const bool regular    = true;
+  static const bool regular;
 };
+
+template<pattern_partitioning_tag::type ... Tags>
+const bool
+pattern_partitioning_properties<
+  pattern_partitioning_tag::type::regular, Tags ...
+>::regular = true;
 
 /**
  * Specialization of \c dash::pattern_partitioning_properties to process tag
@@ -459,8 +543,14 @@ struct pattern_partitioning_properties<
 : public pattern_partitioning_properties<Tags ...>
 {
   /// All blocks have identical size.
-  static const bool balanced   = true;
+  static const bool balanced;
 };
+
+template<pattern_partitioning_tag::type ... Tags>
+const bool
+pattern_partitioning_properties<
+  pattern_partitioning_tag::type::balanced, Tags ...
+>::balanced = true;
 
 /**
  * Specialization of \c dash::pattern_partitioning_properties to process tag
@@ -473,8 +563,14 @@ struct pattern_partitioning_properties<
 : public pattern_partitioning_properties<Tags ...>
 {
   /// All blocks have identical size.
-  static const bool unbalanced = true;
+  static const bool unbalanced;
 };
+
+template<pattern_partitioning_tag::type ... Tags>
+const bool
+pattern_partitioning_properties<
+  pattern_partitioning_tag::type::unbalanced, Tags ...
+>::unbalanced = true;
 
 //////////////////////////////////////////////////////////////////////////////
 // Pattern Traits Default Definitions

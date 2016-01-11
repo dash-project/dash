@@ -37,6 +37,8 @@ fi
 #
 #                    -DENVIRONMENT_CONFIG_PATH=<path to cmake file> \
 
+# To build with MKL support, set environment variables MKLROOT and INTELROOT.
+
 # Configure with default developer build settings:
 mkdir -p build
 rm -Rf ./build/*
@@ -53,6 +55,7 @@ rm -Rf ./build/*
                      -DENABLE_DART_LOGGING=ON \
                      -DBUILD_EXAMPLES=ON \
                      -DBUILD_TESTS=ON \
+                     -DBUILD_DOCS=ON \
                      -DPAPI_PREFIX=${PAPI_HOME} \
                      ../ && \
  await_confirm && \
