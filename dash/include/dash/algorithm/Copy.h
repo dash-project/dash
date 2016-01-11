@@ -445,8 +445,7 @@ GlobOutputIt copy(
     auto l_elem_offset      = g_l_offset_begin - out_first.pos();
     DASH_LOG_TRACE_VAR("dash::copy",l_elem_offset);
     // Convert local subrange of global output to native pointers:
-    ValueType * l_out_first = ((GlobPtr<ValueType>)
-                               (out_first + l_elem_offset));
+    ValueType * l_out_first = (out_first + l_elem_offset).local();
     DASH_LOG_TRACE_VAR("dash::copy", l_out_first);
     ValueType * l_out_last  = l_out_first + num_local_elem;
     DASH_LOG_TRACE_VAR("dash::copy", l_out_last);

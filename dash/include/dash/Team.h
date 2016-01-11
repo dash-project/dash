@@ -216,7 +216,7 @@ public:
     /// Function deallocating the object
     Deallocator::dealloc_function dealloc) {
     DASH_LOG_DEBUG_VAR("Team.register_deallocator()", object);
-    _deallocs.push_back({ object, dealloc });
+    _deallocs.push_back(Deallocator { object, dealloc });
   }
 
   /**
@@ -230,7 +230,7 @@ public:
     /// Function deallocating the object
     Deallocator::dealloc_function dealloc) {
     DASH_LOG_DEBUG_VAR("Team.unregister_deallocator()", object);
-    _deallocs.remove({ object, dealloc });
+    _deallocs.remove(Deallocator { object, dealloc });
   }
 
   /**

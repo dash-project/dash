@@ -236,7 +236,7 @@ GlobOutputIt transform(
   // Number of elements in local range:
   size_t num_local_elements     = std::distance(in_a_first, in_a_last);
   // Global iterator to dart_gptr_t:
-  dart_gptr_t dest_gptr         = ((GlobPtr<ValueType>) out_first).dart_gptr();
+  dart_gptr_t dest_gptr         = out_first.dart_gptr();
   // Send accumulate message:
   dash::internal::accumulate_blocking_impl(
       dest_gptr,
@@ -267,15 +267,16 @@ GlobOutputIt transform(
  */
 template<
   typename ValueType,
+  class PatternType,
   class GlobInputIt,
   class GlobOutputIt,
   class BinaryOperation >
 GlobOutputIt transform(
-  GlobIter<ValueType> in_a_first,
-  GlobIter<ValueType> in_a_last,
-  GlobInputIt         in_b_first,
-  GlobOutputIt        out_first,
-  BinaryOperation     binary_op = dash::plus<ValueType>())
+  GlobIter<ValueType, PatternType> in_a_first,
+  GlobIter<ValueType, PatternType> in_a_last,
+  GlobInputIt                      in_b_first,
+  GlobOutputIt                     out_first,
+  BinaryOperation                  binary_op = dash::plus<ValueType>())
 {
   DASH_LOG_DEBUG("dash::transform(gaf, gal, gbf, goutf, binop)");
   // Outut range different from rhs input range is not supported yet
@@ -320,11 +321,9 @@ GlobOutputIt transform(
                                   l_index_range_in_a.begin;
   DASH_LOG_TRACE_VAR("dash::transform", num_local_elements);
   // Global iterator to dart_gptr_t:
-  dart_gptr_t dest_gptr         = ((GlobPtr<ValueType>)
-                                   (out_first + global_offset)).dart_gptr();
+  dart_gptr_t dest_gptr         = (out_first + global_offset).dart_gptr();
   // Native pointer to local sub-range:
-  ValueType * l_values          = ((GlobPtr<ValueType>)
-                                   (in_a_first + global_offset));
+  ValueType * l_values          = (in_a_first + global_offset).local();
   // Send accumulate message:
   dash::internal::accumulate_blocking_impl(
       dest_gptr,

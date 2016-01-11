@@ -44,8 +44,8 @@ void perform_test(long long NELEM, int REPEAT)
   
   dash::Array<T, long long> arr(NELEM);
 
-  for( auto& el: arr.local ) {
-    el=rand();
+  for (auto & el: arr.local) {
+    el = rand();
   }
   arr.barrier();
 

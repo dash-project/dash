@@ -74,9 +74,9 @@ message(INFO "DART log messages:        " ${ENABLE_DART_LOGGING})
 option(ENABLE_ASSERTIONS
        "Specify whether runtime assertions should be checked" off)
 message(INFO "Runtime assertions:       " ${ENABLE_ASSERTIONS})
-option(MEMORY_MODEL_UNIFIED
-       "Specify whether to assume unified memory model" off)
-message(INFO "Unified RMA memory model: " ${MEMORY_MODEL_UNIFIED})
+option(ENABLE_UNIFIED_MEMORY_MODEL
+       "Specify whether to assume unified memory model" on)
+message(INFO "Unified RMA memory model: " ${ENABLE_UNIFIED_MEMORY_MODEL})
 option(ENABLE_SHARED_WINDOWS
        "Specify whether shared memory features are enabled" on)
 message(INFO "Shared memory features:   " ${ENABLE_SHARED_WINDOWS})

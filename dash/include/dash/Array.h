@@ -123,10 +123,10 @@ public:
   typedef IndexType                                     difference_type;
 
   typedef T &                                                 reference;
-  typedef const reference                               const_reference;
+  typedef const T &                                     const_reference;
 
   typedef T *                                                   pointer;
-  typedef const pointer                                   const_pointer;
+  typedef const T *                                       const_pointer;
 
 private:
   Array<T, IndexType, PatternType> * const _array;
@@ -148,9 +148,23 @@ public:
   }
 
   /**
+   * Pointer to initial local element in the array.
+   */
+  inline pointer begin() noexcept {
+    return _array->m_lbegin;
+  }
+
+  /**
    * Pointer past final local element in the array.
    */
   inline const_pointer end() const noexcept {
+    return _array->m_lend;
+  }
+
+  /**
+   * Pointer past final local element in the array.
+   */
+  inline pointer end() noexcept {
     return _array->m_lend;
   }
 
@@ -207,10 +221,10 @@ public:
   typedef IndexType                                     difference_type;
 
   typedef T &                                                 reference;
-  typedef const reference                               const_reference;
+  typedef const T &                                     const_reference;
 
   typedef T *                                                   pointer;
-  typedef const pointer                                   const_pointer;
+  typedef const T *                                       const_pointer;
 
   typedef GlobAsyncRef<T>                               async_reference;
   typedef const GlobAsyncRef<T>                   const_async_reference;
@@ -232,7 +246,16 @@ public:
    *
    * TODO: Should return GlobAsyncPtr<...>(_array->begin())
    */
-  constexpr const_pointer begin() const noexcept {
+  inline const_pointer begin() const noexcept {
+    return _array->m_begin;
+  }
+
+  /**
+   * Pointer to initial local element in the array.
+   *
+   * TODO: Should return GlobAsyncPtr<...>(_array->begin())
+   */
+  inline pointer begin() noexcept {
     return _array->m_begin;
   }
 
@@ -241,14 +264,23 @@ public:
    *
    * TODO: Should return GlobAsyncPtr<...>(_array->end())
    */
-  constexpr const_pointer end() const noexcept {
+  inline const_pointer end() const noexcept {
+    return _array->m_end;
+  }
+
+  /**
+   * Pointer past final local element in the array.
+   *
+   * TODO: Should return GlobAsyncPtr<...>(_array->end())
+   */
+  inline pointer end() noexcept {
     return _array->m_end;
   }
 
   /**
    * Number of array elements in local memory.
    */
-  constexpr size_type size() const noexcept {
+  inline size_type size() const noexcept {
     return _array->size();
   }
 
@@ -397,28 +429,28 @@ public:
   { }
 
 public:
-  inline    Team            & team();
+  inline    Team              & team();
 
-  constexpr size_type         size()                const noexcept;
-  constexpr size_type         local_size()          const noexcept;
-  constexpr size_type         local_capacity()      const noexcept;
-  constexpr size_type         extent(dim_t dim)     const noexcept;
-  constexpr Extents_t         extents()             const noexcept;
-  constexpr bool              empty()               const noexcept;
+  constexpr size_type           size()             const noexcept;
+  constexpr size_type           local_size()       const noexcept;
+  constexpr size_type           local_capacity()   const noexcept;
+  constexpr size_type           extent(dim_t dim)  const noexcept;
+  constexpr Extents_t           extents()          const noexcept;
+  constexpr bool                empty()            const noexcept;
 
-  inline    void              barrier()             const;
+  inline    void                barrier()          const;
 
-  inline    const_pointer     data()                const noexcept;
-  inline    iterator          begin()                     noexcept;
-  inline    const_iterator    begin()               const noexcept;
-  inline    iterator          end()                       noexcept;
-  inline    const_iterator    end()                 const noexcept;
+  inline    const_pointer       data()             const noexcept;
+  inline    iterator            begin()                  noexcept;
+  inline    const_iterator      begin()            const noexcept;
+  inline    iterator            end()                    noexcept;
+  inline    const_iterator      end()              const noexcept;
   /// View representing elements in the active unit's local memory.
-  inline    local_type        sub_local()                 noexcept;
+  inline    local_type          sub_local()              noexcept;
   /// Pointer to first element in local range.
-  inline    ElementType     * lbegin()                    noexcept;
+  inline    ElementType       * lbegin()           const noexcept;
   /// Pointer past final element in local range.
-  inline    ElementType     * lend()                      noexcept;
+  inline    ElementType       * lend()             const noexcept;
 
   reference operator[](
     /// The position of the element to return

@@ -111,6 +111,15 @@ public:
   }
 
   /**
+   * Converts pointer to its referenced native pointer or
+   * \c nullptr if the \c GlobPtr does not point to a local
+   * address.
+   */
+  explicit operator ElementType*() const {
+    return local();
+  }
+
+  /**
    * The pointer's underlying global address.
    */
   dart_gptr_t dart_gptr() const {
