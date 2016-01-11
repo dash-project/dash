@@ -3,13 +3,6 @@ project(project_dash_dart_impl_gaspi)
 # Library name
 set(DASH_DART_IMPL_GASPI_LIBRARY dart-gaspi)
 
-# TODO:
-# Implement routine to locate GASPI installation in GASPI.cmake to set
-# - GASPI_INCLUDE_PATH
-# - GASPI_C_LIBRARIES
-# - GASPI_COMPILE_FLAGS (if reqired)
-# - GASPI_LINK_FLAGS    (if required)
-#
 include(${CMAKE_SOURCE_DIR}/CMakeExt/GASPI.cmake)
 
 # Source- and header files to be compiled (OBJ):
@@ -57,6 +50,10 @@ if(GASPI_LINK_FLAGS)
   set_target_properties(
     ${DASH_DART_IMPL_GASPI_LIBRARY} PROPERTIES
     LINK_FLAGS "${GASPI_LINK_FLAGS}")
+endif()
+
+if(BUILD_DART_GASPI_TESTS)
+    add_subdirectory(test)
 endif()
 
 ## Installation
