@@ -35,7 +35,7 @@ struct LocalIndexRange {
  *              the given global iterators.
  *
  * \tparam      ElementType  Type of the elements in the sequence
- * \tparam      PatternType  Type of the global iterators' pattern 
+ * \tparam      PatternType  Type of the global iterators' pattern
  *                           implementation
  * \complexity  O(d), with \c d dimensions in the global iterators'
  *              pattern
@@ -77,7 +77,7 @@ local_index_range(
   if (lend_gindex   <= begin_gindex ||  // local end before global begin
       lbegin_gindex >= end_gindex) {    // local begin after global end
     // No overlap, intersection is empty
-    DASH_LOG_TRACE("local_index_range (intersect:0)->", 0, 0);
+    DASH_LOG_TRACE("local_index_range (intersect:0) ->", 0, 0);
     return LocalIndexRange<idx_t> { 0, 0 };
   }
   // Intersect local range and global range, in global index domain:
@@ -117,7 +117,7 @@ local_index_range(
  *              the given global iterators.
  *
  * \tparam      ElementType  Type of the elements in the sequence
- * \tparam      PatternType  Type of the global iterators' pattern 
+ * \tparam      PatternType  Type of the global iterators' pattern
  *                           implementation
  * \complexity  O(d), with \c d dimensions in the global iterators'
  *              pattern
@@ -221,7 +221,7 @@ local_index_range(
  *              given global iterators.
  *
  * \tparam      ElementType  Type of the elements in the sequence
- * \tparam      PatternType  Type of the global iterators' pattern 
+ * \tparam      PatternType  Type of the global iterators' pattern
  *                           implementation
  * \complexity  O(d), with \c d dimensions in the global iterators' pattern
  *

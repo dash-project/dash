@@ -71,12 +71,12 @@
 
 namespace dash {
 
-/* 
-   STANDARD TYPE DEFINITION CONVENTIONS FOR STL CONTAINERS 
-   
+/*
+   STANDARD TYPE DEFINITION CONVENTIONS FOR STL CONTAINERS
+
             value_type  Type of element
         allocator_type  Type of memory manager
-             size_type  Unsigned type of container 
+             size_type  Unsigned type of container
                         subscripts, element counts, etc.
        difference_type  Signed type of difference between
                         iterators
@@ -89,7 +89,7 @@ const_reverse_iterator  Behaves like const value_type*
              reference  value_type&
        const_reference  const value_type&
 
-               pointer  Behaves like value_type*         
+               pointer  Behaves like value_type*
          const_pointer  Behaves like const value_type*
 */
 
@@ -114,7 +114,7 @@ public:
   template <typename T_, typename I_, typename P_>
     friend class LocalArrayRef;
 
-public: 
+public:
   typedef T                                                  value_type;
 
   typedef typename std::make_unsigned<IndexType>::type        size_type;
@@ -130,7 +130,7 @@ public:
 
 private:
   Array<T, IndexType, PatternType> * const _array;
-  
+
 public:
   /**
    * Constructor, creates a local access proxy for the given array.
@@ -153,21 +153,21 @@ public:
   inline const_pointer end() const noexcept {
     return _array->m_lend;
   }
-  
+
   /**
    * Number of array elements in local memory.
    */
   inline size_type size() const noexcept {
     return end() - begin();
   }
-  
+
   /**
    * Subscript operator, access to local array element at given position.
    */
   inline value_type operator[](const size_t n) const  {
     return (_array->m_lbegin)[n];
   }
-  
+
   /**
    * Subscript operator, access to local array element at given position.
    */
@@ -201,7 +201,7 @@ public:
   template <typename T_, typename I_, typename P_>
     friend class AsyncArrayRef;
 
-public: 
+public:
   typedef T                                                  value_type;
   typedef typename std::make_unsigned<IndexType>::type        size_type;
   typedef IndexType                                     difference_type;
@@ -217,7 +217,7 @@ public:
 
 private:
   Array<T, IndexType, PatternType> * const _array;
-  
+
 public:
   /**
    * Constructor, creates a local access proxy for the given array.
@@ -244,14 +244,14 @@ public:
   constexpr const_pointer end() const noexcept {
     return _array->m_end;
   }
-  
+
   /**
    * Number of array elements in local memory.
    */
   constexpr size_type size() const noexcept {
     return _array->size();
   }
-  
+
   /**
    * Subscript operator, access to local array element at given position.
    */
@@ -260,7 +260,7 @@ public:
              _array->m_globmem,
              (*(_array->begin() + n)).gptr());
   }
-  
+
   /**
    * Subscript operator, access to local array element at given position.
    */
@@ -351,7 +351,7 @@ private:
     Extents_t;
 
 /// Public types as required by iterator concept
-public: 
+public:
   typedef ElementType                                              value_type;
   typedef IndexType                                                index_type;
   typedef typename std::make_unsigned<IndexType>::type              size_type;
@@ -361,10 +361,10 @@ public:
   typedef const GlobIter<value_type, PatternType>              const_iterator;
   typedef       std::reverse_iterator<      iterator>        reverse_iterator;
   typedef       std::reverse_iterator<const_iterator>  const_reverse_iterator;
-  
+
   typedef       GlobRef<value_type>                                 reference;
   typedef const GlobRef<value_type>                           const_reference;
-  
+
   typedef       GlobIter<value_type, PatternType>                     pointer;
   typedef const GlobIter<value_type, PatternType>               const_pointer;
 
@@ -443,8 +443,8 @@ public:
     if (global_pos >= size()) {
       DASH_THROW(
           dash::exception::OutOfRange,
-          "Position " << global_pos 
-          << " is out of range " << size() 
+          "Position " << global_pos
+          << " is out of range " << size()
           << " in ArrayRef.at()" );
     }
     return _arr->_begin[global_pos];
@@ -457,8 +457,8 @@ public:
     if (global_pos >= size()) {
       DASH_THROW(
           dash::exception::OutOfRange,
-          "Position " << global_pos 
-          << " is out of range " << size() 
+          "Position " << global_pos
+          << " is out of range " << size()
           << " in ArrayRef.at()" );
     }
     return _arr->_begin[global_pos];
@@ -493,7 +493,7 @@ private:
   typedef Array<ElementType, IndexType, PatternType> self_t;
 
 /// Public types as required by iterator concept
-public: 
+public:
   typedef ElementType                                              value_type;
   typedef IndexType                                                index_type;
   typedef typename std::make_unsigned<IndexType>::type              size_type;
@@ -503,10 +503,10 @@ public:
   typedef const GlobIter<value_type, PatternType>              const_iterator;
   typedef       std::reverse_iterator<      iterator>        reverse_iterator;
   typedef       std::reverse_iterator<const_iterator>  const_reverse_iterator;
-  
+
   typedef       GlobRef<value_type>                                 reference;
   typedef const GlobRef<value_type>                           const_reference;
-  
+
   typedef       GlobIter<value_type, PatternType>                     pointer;
   typedef const GlobIter<value_type, PatternType>               const_pointer;
 
@@ -542,16 +542,16 @@ private:
     DistributionSpec_t;
   typedef SizeSpec<1, size_type>
     SizeSpec_t;
-  
+
 public:
   /// Local proxy object, allows use in range-based for loops.
   local_type           local;
   /// Proxy object, provides non-blocking operations on array.
   async_type           async;
-  
+
 public:
-/* 
-   Check requirements on element type 
+/*
+   Check requirements on element type
    is_trivially_copyable is not implemented presently, and is_trivial
    is too strict (e.g. fails on std::pair).
 
@@ -619,7 +619,7 @@ public:
     DASH_LOG_TRACE("Array()", "pattern instance constructor");
     allocate(m_pattern);
   }
-  
+
   /**
    * Delegating constructor, specifies the size of the array.
    */
@@ -655,14 +655,14 @@ public:
   const_pointer data() const noexcept {
     return m_begin;
   }
-  
+
   /**
    * Global pointer to the beginning of the array.
    */
   iterator begin() noexcept {
     return m_begin;
   }
-  
+
   /**
    * Global pointer to the beginning of the array.
    */
@@ -742,8 +742,8 @@ public:
     if (global_pos >= size())  {
       DASH_THROW(
           dash::exception::OutOfRange,
-          "Position " << global_pos 
-          << " is out of range " << size() 
+          "Position " << global_pos
+          << " is out of range " << size()
           << " in Array.at()" );
     }
     return m_begin[global_pos];
@@ -763,8 +763,8 @@ public:
     if (global_pos >= size())  {
       DASH_THROW(
           dash::exception::OutOfRange,
-          "Position " << global_pos 
-          << " is out of range " << size() 
+          "Position " << global_pos
+          << " is out of range " << size()
           << " in Array.at()" );
     }
     return m_begin[global_pos];
@@ -818,7 +818,7 @@ public:
   constexpr size_type lcapacity() const noexcept {
     return m_lcapacity;
   }
-  
+
   /**
    * Checks whether the array is empty.
    *
@@ -839,7 +839,7 @@ public:
     index_type global_index) const {
     return m_pattern.is_local(global_index, m_myid);
   }
-  
+
   /**
    * Establish a barrier for all units operating on the array, publishing all
    * changes to all units.
@@ -915,7 +915,7 @@ public:
 private:
   bool allocate(
     const PatternType & pattern) {
-    DASH_LOG_TRACE("Array._allocate()", "pattern", 
+    DASH_LOG_TRACE("Array._allocate()", "pattern",
                    pattern.memory_layout().extents());
     // Check requested capacity:
     m_size      = pattern.capacity();
@@ -959,7 +959,7 @@ private:
   /// Element distribution pattern
   PatternType          m_pattern;
   /// Global memory allocation and -access
-  GlobMem_t          * m_globmem; 
+  GlobMem_t          * m_globmem;
   /// Iterator to initial element in the array
   iterator             m_begin;
   /// Iterator to final element in the array

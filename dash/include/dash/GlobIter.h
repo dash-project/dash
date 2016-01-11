@@ -95,7 +95,7 @@ public:
     GlobMem<ElementType> * gmem,
 	  const PatternType    & pat,
 	  IndexType              position = 0)
-  : _globmem(gmem), 
+  : _globmem(gmem),
     _pattern(&pat),
     _idx(position),
     _max_idx(pat.size() - 1),
@@ -159,7 +159,7 @@ public:
   /**
    * Explicit conversion to \c dart_gptr_t.
    *
-   * \return  A DART global pointer to the element at the iterator's 
+   * \return  A DART global pointer to the element at the iterator's
    *          position
    */
   dart_gptr_t dart_gptr() const {
@@ -213,7 +213,7 @@ public:
     );
     // Global reference to element at given position:
     return ReferenceType(gptr);
-  }  
+  }
 
   /**
    * Subscript operator, returns global reference to element at given
@@ -287,7 +287,7 @@ public:
   /**
    * Position of the iterator in global index space.
    */
-  inline gptrdiff_t pos() const
+  inline IndexType pos() const
   {
     return _idx;
   }
@@ -295,7 +295,7 @@ public:
   /**
    * Position of the iterator in global index range.
    */
-  inline gptrdiff_t gpos() const
+  inline IndexType gpos() const
   {
     return _idx;
   }
@@ -363,7 +363,7 @@ public:
     ++_idx;
     return *this;
   }
-  
+
   /**
    * Postfix increment operator.
    */
@@ -382,7 +382,7 @@ public:
     --_idx;
     return *this;
   }
-  
+
   /**
    * Postfix decrement operator.
    */
@@ -392,20 +392,20 @@ public:
     --_idx;
     return result;
   }
-  
-  self_t & operator+=(gptrdiff_t n)
+
+  self_t & operator+=(IndexType n)
   {
     _idx += n;
     return *this;
   }
-  
-  self_t & operator-=(gptrdiff_t n)
+
+  self_t & operator-=(IndexType n)
   {
     _idx -= n;
     return *this;
   }
 
-  self_t operator+(gptrdiff_t n) const
+  self_t operator+(IndexType n) const
   {
     self_t res(
       _globmem,
@@ -414,7 +414,7 @@ public:
     return res;
   }
 
-  self_t operator-(gptrdiff_t n) const
+  self_t operator-(IndexType n) const
   {
     self_t res(
       _globmem,
@@ -479,7 +479,7 @@ public:
  * spans over more than one block.
  * The corresponding invariant is:
  *   g_last == g_first + (l_last - l_first)
- * Example: 
+ * Example:
  *
  * \code
  *   unit:            0       1       0
@@ -516,7 +516,7 @@ gptrdiff_t distance(
  * \endcode
  *
  * \code
- * Example: 
+ * Example:
  *   unit:            0       1       0
  *   local offset:  | 0 1 2 | 0 1 2 | 3 4 5 | ...
  *   global offset: | 0 1 2   3 4 5   6 7 8   ...
@@ -552,7 +552,7 @@ std::ostream & operator<<(
   const dash::GlobIter<ElementType, Pattern, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType> ptr(it); 
+  dash::GlobPtr<ElementType> ptr(it);
   ss << "dash::GlobIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";

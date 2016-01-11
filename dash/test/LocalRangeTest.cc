@@ -158,3 +158,25 @@ TEST_F(LocalRangeTest, View2DimRange)
     }
   }
 }
+
+TEST_F(LocalRangeTest, LargeArray)
+{
+  auto num_units = dash::Team::All().size();
+
+  for (long long size = 2000000ll; size < 10000000000ll; size *= 2) {
+    dash::Array<int, long long> arr(size);
+
+    if (dash::myid() == 0) {
+      auto local_idx_range = dash::local_index_range(arr.begin(), arr.end());
+      auto local_idx_begin = local_idx_range.begin;
+      auto local_idx_end   = local_idx_range.end;
+
+      LOG_MESSAGE("Tot. size: %lld    Local begin: %lld    Local end: %lld",
+                  arr.size(), local_idx_begin, local_idx_end);
+
+      EXPECT_EQ_U(size, arr.size());
+      EXPECT_EQ_U(size / num_units, local_idx_end - local_idx_begin);
+    }
+  }
+}
+
