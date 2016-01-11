@@ -2,7 +2,7 @@
 #define TEST_H
 #include <dash/dart/if/dart.h>
 #include <GASPI.h>
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 #define TEST_DART_CALL(func) EXPECT_EQ(DART_OK, func)
 #define TEST_GASPI_CALL(func) EXPECT_EQ(GASPI_SUCCESS, func)
