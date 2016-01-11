@@ -18,7 +18,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalBlock)
     array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
   array.barrier();
-  
+
   // Local range to store copy:
   int local_copy[num_elem_per_unit];
 
@@ -129,7 +129,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   }
 
   matrix.barrier();
-  
+
   // Array to store local copy:
   value_t local_copy[num_elem_per_unit];
   // Pointer to first value in next copy destination range:
@@ -213,7 +213,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
 
   //
   // Create local copy of first local block (local to local):
-  // 
+  //
   value_t local_block_copy[block_size];
   int  lb      = 0;
   auto l_block = matrix.local.block(lb);
@@ -237,7 +237,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
       ASSERT_EQ_U(expected, local_block_copy[l_offset]);
     }
   }
-  
+
 }
 
 TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
@@ -268,7 +268,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
     array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
   array.barrier();
-  
+
   // Local range to store copy:
   int   local_copy[num_copy_elem];
   int * dest_first = local_copy;
@@ -356,7 +356,7 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlock)
     local_range[l] = ((dash::myid() + 1) * 1000) + l;
   }
   array.barrier();
-  
+
   // Copy values from local range to remote global range.
   // All units (u) copy into block (nblocks-1-u), so unit 0 copies into last
   // block.
@@ -376,7 +376,7 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlock)
 
 TEST_F(CopyTest, BlockingGlobalToLocalSubBlock)
 {
-  // Copy all elements contained in a single, continuous block, 
+  // Copy all elements contained in a single, continuous block,
   // starting from an index unequal 0.
   const size_t num_elems_per_unit = 20;
   const size_t num_elems_total    = _dash_size * num_elems_per_unit;
@@ -393,7 +393,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlock)
   }
   LOG_MESSAGE("Waiting for barrier");
   array.barrier();
-  
+
   // Local range to store copy:
   int local_array[num_elems_copy];
 
@@ -415,9 +415,9 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlock)
 
 TEST_F(CopyTest, BlockingGlobalToLocalSubBlockTwoUnits)
 {
-  // Copy all elements contained in a single, continuous block, 
+  // Copy all elements contained in a single, continuous block,
   // starting from an index unequal 0.
-  
+
   if(_dash_size < 2)
     return;
 
@@ -435,7 +435,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockTwoUnits)
     array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
   array.barrier();
-  
+
   // Local range to store copy:
   int local_array[num_elems_copy];
 
@@ -455,12 +455,12 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockTwoUnits)
 
 TEST_F(CopyTest, BlockingGlobalToLocalSubBlockThreeUnits)
 {
-  // Copy all elements contained in a single, continuous block, 
+  // Copy all elements contained in a single, continuous block,
   // starting from an index unequal 0.
-  
+
   if(_dash_size < 3)
     return;
-  
+
   const size_t num_elems_per_unit = 20;
   const size_t num_elems_total    = _dash_size * num_elems_per_unit;
   // Number of elements to copy
@@ -475,7 +475,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockThreeUnits)
     array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
   array.barrier();
-  
+
   // Local range to store copy:
   int local_array[num_elems_copy];
 
@@ -506,7 +506,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
     array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
   array.barrier();
-  
+
   // Local range to store copy:
   int local_copy[num_elem_per_unit];
 

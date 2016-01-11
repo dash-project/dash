@@ -51,8 +51,10 @@ set(_MKL_IA32 FALSE)
 set(_MKL_INTEL64 FALSE)
 if (CMAKE_SIZEOF_VOID_P EQUAL 4)
     set(_MKL_IA32 TRUE)
+    message(STATUS "Searching MKL Intel32")
 elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(_MKL_INTEL64 TRUE)
+    message(STATUS "Searching MKL Intel64")
 else()
     message(FATAL_ERROR "Unsupported 'void *' size (${SIZEOF_VOID_P})")
 endif()
@@ -67,6 +69,9 @@ set(_MKL_TEST_VERSIONS ${MKL_ADDITIONAL_VERSIONS}
 if (MKL_FIND_VERSION AND NOT MKL_FIND_QUIETLY)
     message(WARNING "Requesting a specific version of Intel(R) MKL is not supported")
 endif()
+
+message(STATUS "(ENV) $MKLROOT:   " $ENV{MKLROOT})
+message(STATUS "(ENV) $INTELROOT: " $ENV{INTELROOT})
 
 # Use environment variables from Intel build scripts, if available
 if (NOT MKL_ROOT AND NOT $ENV{MKLROOT} STREQUAL "")

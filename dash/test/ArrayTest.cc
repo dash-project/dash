@@ -8,7 +8,7 @@ dash::Array<int> array_global;
 
 TEST_F(ArrayTest, Allocation) {
   dash::Array<int> array_local;
-  
+
   DASH_LOG_DEBUG("Delayed allocate");
   array_global.allocate(19 * dash::size(), dash::BLOCKED);
   array_local.allocate(19 * dash::size(), dash::BLOCKED);
@@ -73,5 +73,35 @@ TEST_F(ArrayTest, SingleWriteMultipleRead) {
     LOG_MESSAGE("ERROR: %s", ia.what());
     ASSERT_FAIL();
   }
+}
+
+TEST_F(ArrayTest, TileSize)
+{
+  typedef int                                            value_t;
+  typedef long long                                      index_t;
+  typedef dash::TilePattern<1, dash::ROW_MAJOR, index_t> pattern_t;
+  typedef dash::Array<value_t, index_t, pattern_t>       array_t;
+
+  size_t nunits          = dash::Team::All().size();
+  size_t tilesize        = 1024;
+  size_t blocks_per_unit = 3;
+  size_t size            = nunits * tilesize * blocks_per_unit;
+
+  array_t arr(size, dash::TILE(tilesize));
+
+  ASSERT_EQ_U(arr.pattern().blocksize(0),
+              arr.pattern().block(0).extent(0));
+
+  auto block_0         = arr.pattern().local_block(0);
+  auto block_1         = arr.pattern().local_block(1);
+
+  auto block_0_gend    = block_0.offset(0) + block_0.extent(0);
+  auto block_1_gbegin  = block_1.offset(0);
+
+  auto block_glob_dist = block_1_gbegin - block_0_gend;
+
+  // Blocked distribution, expect (nunits-1) blocks between to local blocks.
+  EXPECT_EQ_U(tilesize * (nunits - 1),
+              block_glob_dist);
 }
 
