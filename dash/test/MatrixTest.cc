@@ -154,7 +154,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
                    dash::BLOCKCYCLIC(5)),
                  dash::Team::All(),
                  team_spec);
-  
+
   LOG_MESSAGE("Matrix initialized, wait for barrier ...");
   dash::Team::All().barrier();
   LOG_MESSAGE("Team barrier passed");
@@ -212,7 +212,7 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
                    dash::TILE(tilesize_y)),
                  dash::Team::All(),
                  team_spec);
-  
+
   LOG_MESSAGE("Wait for team barrier ...");
   dash::Team::All().barrier();
   LOG_MESSAGE("Team barrier passed");
@@ -273,7 +273,7 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
                    dash::BLOCKCYCLIC(blocksize_y)),
                  dash::Team::All(),
                  team_spec);
-  
+
   LOG_MESSAGE("Wait for team barrier ...");
   dash::Team::All().barrier();
   LOG_MESSAGE("Team barrier passed");
@@ -337,7 +337,7 @@ TEST_F(MatrixTest, Submat2DimDefault)
 
   auto matrix_size = matrix.size();
   ASSERT_EQ_U(extent_cols * extent_rows, matrix_size);
-  
+
   // Columns 0 ... (J/2)
   LOG_MESSAGE("Testing sub<0>(0, J/2)");
   auto submatrix_x_lower = matrix.sub<0>(0,
@@ -410,7 +410,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
                 lit, lidx, value);
     *lit = value;
   }
-  
+
   matrix.barrier();
   LOG_MESSAGE("Testing values");
 
@@ -497,7 +497,7 @@ TEST_F(MatrixTest, BlockViews)
               *(block_gi_0.begin()));
   // Test last element in block at global block index 0:
   exp_val = matrix[tilesize_x-1][tilesize_y-1];
-  ASSERT_EQ_U(exp_val, 
+  ASSERT_EQ_U(exp_val,
               *(block_gi_0.begin() + (tilesize-1)));
 
   // View at block at global block offset 6
@@ -517,7 +517,7 @@ TEST_F(MatrixTest, BlockViews)
               *(block_gi_q.begin()));
   // Test last element in first block at lower right quarter of the matrix:
   exp_val = matrix[block_6_x+tilesize_x-1][block_6_y+tilesize_y-1];
-  ASSERT_EQ_U(exp_val, 
+  ASSERT_EQ_U(exp_val,
               *(block_gi_q.begin() + (tilesize-1)));
 }
 
@@ -561,7 +561,7 @@ TEST_F(MatrixTest, ViewIteration)
   LOG_MESSAGE("Team barrier passed");
 
   // Partition matrix into 4 blocks (upper/lower left/right):
-  
+
   // First create two views for left and right half:
   auto left        = matrix.sub<0>(0,               extent_cols / 2);
   auto right       = matrix.sub<0>(extent_cols / 2, extent_cols / 2);
@@ -605,10 +605,11 @@ TEST_F(MatrixTest, ViewIteration)
                 gcoord_x, gcoord_y);
     ASSERT_EQ_U(phase, (b_it.pos() - block_index_offset));
     // Apply view projection by converting to GlobPtr:
-    dash::GlobPtr<int> block_elem_gptr = (dash::GlobPtr<int>)(b_it);
+    dash::GlobPtr<int, pattern_t> block_elem_gptr =
+      (dash::GlobPtr<int, pattern_t>)(b_it);
     // Compare with GlobPtr from global iterator without view projection:
-    dash::GlobPtr<int> glob_elem_gptr  = (dash::GlobPtr<int>)(
-                                          matrix[gcoord_x][gcoord_y]);
+    dash::GlobPtr<int, pattern_t> glob_elem_gptr  =
+      (dash::GlobPtr<int, pattern_t>)(matrix[gcoord_x][gcoord_y]);
     int block_value = *block_elem_gptr;
     int glob_value  = *glob_elem_gptr;
     ASSERT_EQ_U(glob_value,

@@ -9,13 +9,13 @@ namespace dash {
 // Forward declaration
 template<typename T> class GlobMem;
 // Forward declaration
-template<typename T> class GlobPtr;
+template<typename T, class PatternT> class GlobPtr;
 // Forward declaration
-template<typename T>
-void put_value(const T & newval, const GlobPtr<T> & gptr);
+template<typename T, class PatternT>
+void put_value(const T & newval, const GlobPtr<T, PatternT> & gptr);
 // Forward declaration
-template<typename T>
-void get_value(T* ptr, const GlobPtr<T> & gptr);
+template<typename T, class PatternT>
+void get_value(T* ptr, const GlobPtr<T, PatternT> & gptr);
 
 
 template<typename T>
@@ -23,18 +23,18 @@ struct has_subscript_operator
 {
   typedef char (& yes)[1];
   typedef char (& no)[2];
-  
+
   template <typename C> static yes check(decltype(&C::operator[]));
   template <typename> static no check(...);
-  
+
   static bool const value = sizeof(check<T>(0)) == sizeof(yes);
 };
 
 template<typename T>
 class GlobRef {
 private:
-  GlobPtr<T> _gptr;
-  
+  dart_gptr_t _gptr;
+
   template<typename U>
   friend std::ostream & operator<<(
     std::ostream & os,
@@ -53,10 +53,23 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
+  template<class PatternT>
   GlobRef(
     /// Pointer to referenced object in global memory
-    GlobPtr<T> & gptr)
-  : _gptr(gptr) {
+    GlobPtr<T, PatternT> & gptr)
+  : _gptr(gptr.dart_gptr())
+  {
+    DASH_LOG_TRACE_VAR("GlobRef(GlobPtr<T>)", gptr);
+  }
+
+  /**
+   * Constructor, creates an GlobRef object referencing an element in global
+   * memory.
+   */
+  explicit GlobRef(dart_gptr_t dart_gptr)
+  : _gptr(dart_gptr)
+  {
+    DASH_LOG_TRACE_VAR("GlobRef(dart_gptr_t)", dart_gptr);
   }
 
   /**
@@ -65,8 +78,8 @@ public:
   GlobRef(
     /// GlobRef instance to copy.
     const GlobRef<T> & other)
-  : _gptr(other._gptr) {
-  }
+  : _gptr(other._gptr)
+  { }
 
   /**
    * Assignment operator.
@@ -84,12 +97,12 @@ public:
     a = b;
     b = temp;
   }
-  
+
   operator T() const {
     DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     T t;
-    dash::get_value(&t, _gptr);
+    dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
     return t;
   }
 
@@ -104,20 +117,20 @@ public:
     DASH_LOG_TRACE_VAR("GlobRef.=", _gptr);
     // TODO: Clarify if dart-call can be avoided if
     //       _gptr->is_local()
-    dash::put_value(val, _gptr);
+    dart_put_blocking(_gptr, static_cast<const void *>(&val), sizeof(T));
     return *this;
   }
 
   GlobRef<T> & operator+=(const T& ref) {
-    T val = operator T();
-    val += ref;
+    T val  = operator T();
+    val   += ref;
     operator=(val);
     return *this;
   }
 
   GlobRef<T> & operator-=(const T& ref) {
-    T val = operator T();
-    val -= ref;
+    T val  = operator T();
+    val   -= ref;
     operator=(val);
     return *this;
   }
@@ -158,16 +171,16 @@ public:
     return _gptr;
   }
 #endif
-  GlobPtr<T> & gptr() {
+  dart_gptr_t dart_gptr() const {
     return _gptr;
   }
 
 #if 0
   template<
-    typename X=T, 
+    typename X=T,
 	  typename std::enable_if<has_subscript_operator<X>::value, int>::type
       * ptr = nullptr>
-  auto operator[](size_t pos) -> 
+  auto operator[](size_t pos) ->
     typename std::result_of<decltype(&T::operator[])(T, size_t)>::type
   {
     T val = operator T();
@@ -180,7 +193,7 @@ public:
    * the calling unit's local memory.
    */
   bool is_local() const {
-    return _gptr.is_local();
+    return GlobPtr<T>(_gptr).is_local();
   }
 
   /**
@@ -189,7 +202,7 @@ public:
    */
   template<typename MEMTYPE>
   GlobRef<MEMTYPE> member(size_t offs) {
-    dart_gptr_t dartptr = _gptr.dart_gptr();    
+    dart_gptr_t dartptr = _gptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&dartptr, offs),
       DART_OK);
@@ -216,10 +229,10 @@ std::ostream & operator<<(
   char buf[100];
   sprintf(buf,
           "(%08X|%04X|%04X|%016X)",
-          gref._gptr.dart_gptr().unitid,
-          gref._gptr.dart_gptr().segid,
-          gref._gptr.dart_gptr().flags,
-          gref._gptr.dart_gptr().addr_or_offs.offset);
+          gref._gptr.unitid,
+          gref._gptr.segid,
+          gref._gptr.flags,
+          gref._gptr.addr_or_offs.offset);
   os << "dash::GlobRef<" << typeid(T).name() << ">" << buf;
   return os;
 }

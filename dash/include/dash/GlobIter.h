@@ -11,18 +11,16 @@
 
 namespace dash {
 
-typedef dash::default_index_t gptrdiff_t;
-
 template<
   typename ElementType,
-  class PatternType   = Pattern<1>,
-  class PointerType   = GlobPtr<ElementType>,
-  class ReferenceType = GlobRef<ElementType> >
+  class    PatternType   = Pattern<1>,
+  class    PointerType   = GlobPtr<ElementType, PatternType>,
+  class    ReferenceType = GlobRef<ElementType> >
 class GlobIter
 : public std::iterator<
            std::random_access_iterator_tag,
            ElementType,
-           gptrdiff_t,
+           typename PatternType::index_type,
            PointerType,
            ReferenceType > {
 private:
@@ -184,13 +182,13 @@ public:
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
-    dash::GlobPtr<ElementType> gptr =
+    dash::GlobPtr<ElementType, PatternType> gptr(
       _globmem->index_to_gptr(
         local_pos.unit,
         local_pos.index)
-      + offset;
+    );
     DASH_LOG_TRACE_VAR("GlobIter.dart_gptr >", gptr);
-    return gptr.dart_gptr();
+    return (gptr + offset).dart_gptr();
   }
 
   /**
@@ -208,9 +206,9 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
     // Global pointer to element at given position:
-    PointerType gptr(
-      _globmem->index_to_gptr(local_pos.unit, local_pos.index)
-    );
+    dart_gptr_t gptr = _globmem->index_to_gptr(
+                                   local_pos.unit,
+                                   local_pos.index);
     // Global reference to element at given position:
     return ReferenceType(gptr);
   }
@@ -221,7 +219,7 @@ public:
    */
   ReferenceType operator[](
     /// The global position of the element
-    gptrdiff_t g_index) const {
+    IndexType g_index) const {
     DASH_LOG_TRACE("GlobIter.[]", g_index);
     IndexType idx = g_index;
     typedef typename pattern_type::local_index_t
@@ -231,9 +229,9 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.index);
     // Global pointer to element at given position:
-    PointerType gptr(
-      _globmem->index_to_gptr(local_pos.unit, local_pos.index)
-    );
+    dart_gptr_t gptr = _globmem->index_to_gptr(
+                                   local_pos.unit,
+                                   local_pos.index);
     // Global reference to element at given position:
     return ReferenceType(gptr);
   }
@@ -423,13 +421,13 @@ public:
     return res;
   }
 
-  gptrdiff_t operator+(
+  IndexType operator+(
     const self_t & other) const
   {
     return _idx + other._idx;
   }
 
-  gptrdiff_t operator-(
+  IndexType operator-(
     const self_t & other) const
   {
     return _idx - other._idx;
@@ -497,11 +495,13 @@ public:
  * \ingroup     Algorithms
  */
 template<typename ElementType, typename PatternType>
-gptrdiff_t distance(
+auto distance(
   /// Global iterator to the initial position in the global sequence
   const GlobIter<ElementType, PatternType> & first,
   /// Global iterator to the final position in the global sequence
-  const GlobIter<ElementType, PatternType> & last) {
+  const GlobIter<ElementType, PatternType> & last
+) -> typename PatternType::index_type
+{
   return last - first;
 }
 
@@ -532,7 +532,7 @@ gptrdiff_t distance(
  * \ingroup     Algorithms
  */
 template<typename ElementType>
-gptrdiff_t distance(
+dash::default_index_t distance(
   /// Global pointer to the initial position in the global sequence
   dart_gptr_t first,
   /// Global pointer to the final position in the global sequence
@@ -552,7 +552,7 @@ std::ostream & operator<<(
   const dash::GlobIter<ElementType, Pattern, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType> ptr(it);
+  dash::GlobPtr<ElementType, Pattern> ptr(it);
   ss << "dash::GlobIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";

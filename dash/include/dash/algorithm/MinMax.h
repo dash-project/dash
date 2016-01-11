@@ -13,7 +13,7 @@ namespace dash {
  * Finds an iterator pointing to the element with the smallest value in
  * the range [first,last).
  *
- * \return      An iterator to the first occurrence of the smallest value 
+ * \return      An iterator to the first occurrence of the smallest value
  *              in the range, or \c last if the range is empty.
  *
  * \tparam      ElementType  Type of the elements in the sequence
@@ -25,7 +25,7 @@ namespace dash {
 template<
   typename ElementType,
   class PatternType>
-GlobPtr<ElementType> min_element(
+GlobPtr<ElementType, PatternType> min_element(
   /// Iterator to the initial position in the sequence
   const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the sequence
@@ -35,7 +35,7 @@ GlobPtr<ElementType> min_element(
       bool(const ElementType &, const ElementType)
     > & compare
       = std::less<const ElementType &>()) {
-  typedef dash::GlobPtr<ElementType> globptr_t;
+  typedef dash::GlobPtr<ElementType, PatternType> globptr_t;
   auto pattern      = first.pattern();
   dash::Team & team = pattern.team();
   DASH_LOG_DEBUG("dash::min_element()",
@@ -59,16 +59,16 @@ GlobPtr<ElementType> min_element(
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
-      const ElementType * lmin = 
+      const ElementType * lmin =
       ::std::min_element(l_range_begin, l_range_end, compare);
     // Offset of local minimum in local memory:
     auto l_idx_lmin = lmin - lbegin;
     DASH_LOG_TRACE_VAR("dash::min_element", l_idx_lmin);
     DASH_LOG_TRACE_VAR("dash::min_element", *lmin);
     // Global pointer to local minimum:
-    auto gptr_lmin = first.globmem().index_to_gptr(
-                                       team.myid(),
-                                       l_idx_lmin);
+    globptr_t gptr_lmin(first.globmem().index_to_gptr(
+                                          team.myid(),
+                                          l_idx_lmin));
     DASH_LOG_DEBUG("dash::min_element", gptr_lmin,
                    "=", static_cast<ElementType>(*gptr_lmin));
     minarr[team.myid()] = gptr_lmin;
@@ -76,7 +76,7 @@ GlobPtr<ElementType> min_element(
   DASH_LOG_TRACE("dash::min_element", "waiting for local min of other units");
   team.barrier();
   // Shared global pointer referencing element with global minimum:
-  dash::Shared<globptr_t> shared_min; 
+  dash::Shared<globptr_t> shared_min;
   // Find the global min. element:
   if (team.myid() == 0) {
     DASH_LOG_TRACE("dash::min_element", "finding global min");
@@ -119,7 +119,7 @@ GlobPtr<ElementType> min_element(
  * the range [first,last).
  * Specialization for local range, delegates to std::min_element.
  *
- * \return      An iterator to the first occurrence of the smallest value 
+ * \return      An iterator to the first occurrence of the smallest value
  *              in the range, or \c last if the range is empty.
  *
  * \tparam      ElementType  Type of the elements in the sequence
@@ -128,7 +128,7 @@ GlobPtr<ElementType> min_element(
  *
  * \ingroup     DashAlgorithms
  */
-template< typename ElementType >
+template<typename ElementType>
 const ElementType * min_element(
   /// Iterator to the initial position in the sequence
   const ElementType * first,
@@ -147,7 +147,7 @@ const ElementType * min_element(
  * Finds an iterator pointing to the element with the greatest value in
  * the range [first,last).
  *
- * \return      An iterator to the first occurrence of the greatest value 
+ * \return      An iterator to the first occurrence of the greatest value
  *              in the range, or \c last if the range is empty.
  *
  * \tparam      ElementType  Type of the elements in the sequence
@@ -158,8 +158,8 @@ const ElementType * min_element(
  */
 template<
   typename ElementType,
-  class PatternType>
-GlobPtr<ElementType> max_element(
+  class    PatternType>
+GlobPtr<ElementType, PatternType> max_element(
   /// Iterator to the initial position in the sequence
   const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the sequence
@@ -178,7 +178,7 @@ GlobPtr<ElementType> max_element(
  * the range [first,last).
  * Specialization for local range, delegates to std::min_element.
  *
- * \return      An iterator to the first occurrence of the greatest value 
+ * \return      An iterator to the first occurrence of the greatest value
  *              in the range, or \c last if the range is empty.
  *
  * \tparam      ElementType  Type of the elements in the sequence

@@ -17,7 +17,7 @@ typedef dash::default_index_t gptrdiff_t;
 template<
   typename ElementType,
   class PatternType   = Pattern<1>,
-  class PointerType   = GlobPtr<ElementType>,
+  class PointerType   = GlobPtr<ElementType, PatternType>,
   class ReferenceType = GlobRef<ElementType> >
 class GlobViewIter
 : public std::iterator<
@@ -29,7 +29,7 @@ class GlobViewIter
 private:
   typedef GlobViewIter<ElementType, PatternType, PointerType, ReferenceType>
     self_t;
-  
+
   typedef typename PatternType::viewspec_type
     ViewSpecType;
   typedef typename PatternType::index_type
@@ -109,7 +109,7 @@ public:
     const ViewSpecType   & viewspec,
 	  IndexType              position          = 0,
     IndexType              view_index_offset = 0)
-  : _globmem(gmem), 
+  : _globmem(gmem),
     _pattern(&pat),
     _viewspec(&viewspec),
     _idx(position),
@@ -133,7 +133,7 @@ public:
 	  const PatternType    & pat,
 	  IndexType              position          = 0,
     IndexType              view_index_offset = 0)
-  : _globmem(gmem), 
+  : _globmem(gmem),
     _pattern(&pat),
     _viewspec(nullptr),
     _idx(position),
@@ -155,7 +155,7 @@ public:
     const GlobIter<ElementType, PatternType, PtrT, RefT> & other,
     const ViewSpecType                                   & viewspec,
     IndexType                                              view_idx_offset = 0)
-  : _globmem(other._globmem), 
+  : _globmem(other._globmem),
     _pattern(other._pattern),
     _viewspec(&viewspec),
     _idx(other._idx),
@@ -235,7 +235,7 @@ public:
   /**
    * Explicit conversion to \c dart_gptr_t.
    *
-   * \return  A DART global pointer to the element at the iterator's 
+   * \return  A DART global pointer to the element at the iterator's
    *          position
    */
   dart_gptr_t dart_gptr() const
@@ -270,13 +270,13 @@ public:
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
-    dash::GlobPtr<ElementType> gptr =
+    dash::GlobPtr<ElementType, PatternType> gptr(
       _globmem->index_to_gptr(
         local_pos.unit,
         local_pos.index)
-      + offset;
-    DASH_LOG_TRACE_VAR("GlobViewIter.dart_gptr >", gptr);
-    return gptr.dart_gptr();
+    );
+    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr >", gptr);
+    return (gptr + offset).dart_gptr();
   }
 
   /**
@@ -303,12 +303,12 @@ public:
     DASH_LOG_TRACE_VAR("GlobViewIter.*", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobViewIter.*", local_pos.index);
     // Global pointer to element at given position:
-    PointerType gptr(
-      _globmem->index_to_gptr(local_pos.unit, local_pos.index)
-    );
+    dart_gptr_t gptr = _globmem->index_to_gptr(
+                                   local_pos.unit,
+                                   local_pos.index);
     // Global reference to element at given position:
     return ReferenceType(gptr);
-  }  
+  }
 
   /**
    * Subscript operator, returns global reference to element at given
@@ -409,7 +409,7 @@ public:
    * Position of the iterator in the index range relative to its view spec.
    */
   inline gptrdiff_t pos() const
-  
+
   {
     DASH_LOG_TRACE("GlobViewIter.pos()",
                    "idx:", _idx, "vs_offset:", _view_idx_offset);
@@ -535,7 +535,7 @@ public:
     ++_idx;
     return *this;
   }
-  
+
   /**
    * Postfix increment operator.
    */
@@ -554,7 +554,7 @@ public:
     --_idx;
     return *this;
   }
-  
+
   /**
    * Postfix decrement operator.
    */
@@ -564,13 +564,13 @@ public:
     --_idx;
     return result;
   }
-  
+
   self_t & operator+=(gptrdiff_t n)
   {
     _idx += n;
     return *this;
   }
-  
+
   self_t & operator-=(gptrdiff_t n)
   {
     _idx -= n;
@@ -674,7 +674,7 @@ public:
       // Same viewspec pointer
       return _idx == other._idx;
     }
-    if ((_viewspec != nullptr && other._viewspec != nullptr) && 
+    if ((_viewspec != nullptr && other._viewspec != nullptr) &&
         (*_viewspec) == *(other._viewspec)) {
       // Viewspec instances are equal
       return _idx == other._idx;
@@ -692,7 +692,7 @@ public:
       // Same viewspec pointer
       return _idx != other._idx;
     }
-    if ((_viewspec != nullptr && other._viewspec != nullptr) && 
+    if ((_viewspec != nullptr && other._viewspec != nullptr) &&
         (*_viewspec) == *(other._viewspec)) {
       // Viewspec instances are equal
       return _idx != other._idx;
@@ -735,7 +735,7 @@ private:
       // Same viewspec pointer
       return gidx_cmp(_idx, other._idx);
     }
-    if ((_viewspec != nullptr && other._viewspec != nullptr) && 
+    if ((_viewspec != nullptr && other._viewspec != nullptr) &&
         (*_viewspec) == *(other._viewspec)) {
       // Viewspec instances are equal
       return gidx_cmp(_idx, other._idx);
@@ -799,7 +799,7 @@ private:
  * spans over more than one block.
  * The corresponding invariant is:
  *   g_last == g_first + (l_last - l_first)
- * Example: 
+ * Example:
  *
  * \code
  *   unit:            0       1       0
@@ -836,7 +836,7 @@ std::ostream & operator<<(
   const dash::GlobViewIter<ElementType, Pattern, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementType> ptr(it); 
+  dash::GlobPtr<ElementType, Pattern> ptr(it);
   ss << "dash::GlobViewIter<" << typeid(ElementType).name() << ">("
      << "idx:" << it._idx << ", "
      << "gptr:" << ptr << ")";

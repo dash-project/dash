@@ -241,7 +241,7 @@ TEST_F(MinElementTest, TestFindMatrixDefault)
   // Units waiting for value initialization
   dash::Team::All().barrier();
   // Run min_element on complete matrix
-  dash::GlobPtr<Element_t> found_gptr =
+  auto found_gptr =
     dash::min_element(
       matrix.begin(),
       matrix.end());

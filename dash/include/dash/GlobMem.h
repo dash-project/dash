@@ -1,7 +1,7 @@
-/* 
+/*
  * dash-lib/GlobMem.h
  *
- * author(s): Karl Fuerlinger, LMU Munich 
+ * author(s): Karl Fuerlinger, LMU Munich
  */
 /* @DASH_HEADER@ */
 
@@ -63,7 +63,7 @@ public:
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_team_memalloc_aligned(
-        m_teamid, 
+        m_teamid,
         lsize,
         &m_begptr),
       DART_OK);
@@ -114,7 +114,7 @@ public:
         DASH_ASSERT_RETURNS(
           dart_memfree(m_begptr),
           DART_OK);
-      } 
+      }
     }
     DASH_LOG_TRACE("GlobMem.~GlobMem >");
   }
@@ -159,7 +159,7 @@ public:
     void *addr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin()", unit_id);
     dart_gptr_t gptr = begin().dart_gptr();
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin", 
+    DASH_LOG_TRACE_VAR("GlobMem.lbegin",
                        GlobPtr<ElementType>((dart_gptr_t)gptr));
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, unit_id),
@@ -276,7 +276,7 @@ public:
   }
 
   /**
-   * Complete all outstanding asynchronous operations on the referenced 
+   * Complete all outstanding asynchronous operations on the referenced
    * global memory on all units.
    */
   void flush() {
@@ -284,7 +284,7 @@ public:
   }
 
   /**
-   * Complete all outstanding asynchronous operations on the referenced 
+   * Complete all outstanding asynchronous operations on the referenced
    * global memory on all units.
    */
   void flush_all() {
@@ -303,19 +303,19 @@ public:
    * Resolve the global pointer from an element position in a unit's
    * local memory.
    */
-  template <typename IndexType>
-  GlobPtr<ElementType> index_to_gptr(
+  template<typename IndexType>
+  dart_gptr_t index_to_gptr(
     /// The unit id
     dart_unit_t unit,
     /// The unit's local address offset
-    IndexType local_index) const {
+    IndexType local_index) const
+  {
     DASH_LOG_DEBUG("GlobMem.index_to_gptr(unit,l_idx)", unit, local_index);
     // Initialize with global pointer to start address:
     dart_gptr_t gptr = m_begptr;
     // Resolve global unit id
-    dart_unit_t lunit, gunit; 
-    DASH_LOG_DEBUG("GlobMem.index_to_gptr (=g_begp)  ",
-                   GlobPtr<ElementType>(gptr));
+    dart_unit_t lunit, gunit;
+    DASH_LOG_DEBUG("GlobMem.index_to_gptr (=g_begp)  ", gptr);
     DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", gptr.unitid);
     // Resolve local unit id from global unit id in global pointer:
     dart_team_unit_g2l(m_teamid, gptr.unitid, &lunit);
@@ -328,9 +328,8 @@ public:
     dart_gptr_setunit(&gptr, gunit);
     // Apply local offset to global pointer:
     dart_gptr_incaddr(&gptr, local_index * sizeof(ElementType));
-    DASH_LOG_DEBUG("GlobMem.index_to_gptr (+g_unit) >",
-                   GlobPtr<ElementType>(gptr));
-    return GlobPtr<ElementType>(gptr);
+    DASH_LOG_DEBUG("GlobMem.index_to_gptr (+g_unit) >", gptr);
+    return gptr;
   }
 };
 
@@ -338,7 +337,7 @@ template<typename T>
 GlobPtr<T> memalloc(size_t nelem) {
   dart_gptr_t gptr;
   size_t lsize = sizeof(T) * nelem;
-  
+
   dart_memalloc(lsize, &gptr);
   return GlobPtr<T>(gptr);
 }

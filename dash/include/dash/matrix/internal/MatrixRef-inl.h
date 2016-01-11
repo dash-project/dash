@@ -495,11 +495,11 @@ inline MatrixRef<T, NumDim, 0, PatternT>
 
 template <typename T, dim_t NumDim, class PatternT>
 inline MatrixRef<T, NumDim, 0, PatternT>
-::operator GlobPtr<T>() const
+::operator GlobPtr<T, PatternT>() const
 {
   DASH_LOG_TRACE_VAR("MatrixRef<0>.GlobPtr()", _refview->_coord);
   GlobRef<T> ref = _refview->global_reference();
-  return ref.gptr();
+  return GlobPtr<T, PatternT>(ref.dart_gptr());
 }
 
 template <typename T, dim_t NumDim, class PatternT>

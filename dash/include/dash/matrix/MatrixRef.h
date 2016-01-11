@@ -102,7 +102,7 @@ class MatrixRef
 
   typedef GlobViewIter_t                                       pointer;
   typedef const GlobViewIter_t                           const_pointer;
-  
+
   typedef LocalRef_t                                        local_type;
   typedef const LocalRef_t                            const_local_type;
   typedef LocalRef_t                              local_reference_type;
@@ -190,10 +190,10 @@ public:
   template<dim_t NumSubDimensions>
   MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
   sub(size_type n);
-  
+
   MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
   col(size_type n);
-  
+
   MatrixRef<ElementT, NumDimensions, NumDimensions-1, PatternT>
   row(size_type n);
 
@@ -218,7 +218,7 @@ public:
     size_type n,
     /// Number of rows in the range
     size_type range);
-  
+
   /**
    * Create a view representing the matrix slice within a column
    * range.
@@ -263,7 +263,7 @@ public:
     Args... args);
 
   inline bool is_local(index_type n) const;
-  
+
   template<dim_t Dimension>
   inline bool is_local(index_type n) const;
 
@@ -330,7 +330,7 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
   MatrixRef<ElementT, NumDimensions, 0, PatternT>(
     const MatrixRef<ElementT, NumDimensions, 1, PatternT> & previous,
     index_type coord);
-  
+
   inline const GlobRef<ElementT> local_at(
     dart_unit_t unit,
     index_type elem) const;
@@ -340,7 +340,7 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
     index_type elem);
 
   operator ElementT() const;
-  operator GlobPtr<ElementT>() const;
+  operator GlobPtr<ElementT, PatternT>() const;
 
   /**
    * Assignment operator.

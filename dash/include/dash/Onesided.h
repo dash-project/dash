@@ -8,7 +8,7 @@
 namespace dash {
 
 /**
- * Block until completion of local and global operations on a global 
+ * Block until completion of local and global operations on a global
  * address.
  */
 template<typename T>
@@ -60,7 +60,7 @@ void put_value_nonblock(
  */
 template<typename T>
 void get_value_nonblock(
-  /// [OUT] Local pointer that will contain the value of the 
+  /// [OUT] Local pointer that will contain the value of the
   ///       global address
   T * ptr,
   /// [IN]  Global pointer to read
@@ -100,7 +100,7 @@ void put_value(
  */
 template<typename T>
 void get_value(
-  /// [OUT] Local pointer that will contain the value of the 
+  /// [OUT] Local pointer that will contain the value of the
   ///       global address
   T * ptr,
   /// [IN]  Global pointer to read

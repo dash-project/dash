@@ -77,13 +77,51 @@ public:
    * Conctructor, creates an GlobRefAsync object referencing an element in
    * global memory.
    */
+  template<class PatternT>
   GlobAsyncRef(
     /// Instance of GlobMem that issued this global reference
-    GlobMem<T> * globmem,
+    GlobMem<T>           * globmem,
     /// Pointer to referenced object in global memory
-    GlobPtr<T> & gptr)
-  : _gptr(gptr),
-    _is_local(_gptr.is_local()) {
+    GlobPtr<T, PatternT> & gptr)
+  : _gptr(gptr.dart_gptr()),
+    _is_local(gptr.is_local()) {
+    if (_is_local) {
+      _value     = *gptr;
+      _lptr      = (T*)(gptr);
+      _has_value = true;
+    }
+  }
+
+  /**
+   * Conctructor, creates an GlobRefAsync object referencing an element in
+   * global memory.
+   */
+  template<class PatternT>
+  GlobAsyncRef(
+    /// Pointer to referenced object in global memory
+    GlobPtr<T, PatternT> & gptr)
+  : _gptr(gptr.dart_gptr()),
+    _is_local(gptr.is_local()) {
+    if (_is_local) {
+      _value     = *gptr;
+      _lptr      = (T*)(gptr);
+      _has_value = true;
+    }
+  }
+
+  /**
+   * Conctructor, creates an GlobRefAsync object referencing an element in
+   * global memory.
+   */
+  GlobAsyncRef(
+    /// Instance of GlobMem that issued this global reference
+    GlobMem<T>           * globmem,
+    /// Pointer to referenced object in global memory
+    dart_gptr_t dart_gptr)
+  : _gptr(dart_gptr)
+  {
+    GlobPtr<T> gptr(dart_gptr);
+    _is_local = gptr.is_local();
     if (_is_local) {
       _value     = *gptr;
       _lptr      = (T*)(gptr);
@@ -97,9 +135,11 @@ public:
    */
   GlobAsyncRef(
     /// Pointer to referenced object in global memory
-    GlobPtr<T> & gptr)
-  : _gptr(gptr),
-    _is_local(_gptr.is_local()) {
+    dart_gptr_t dart_gptr)
+  : _gptr(dart_gptr)
+  {
+    GlobPtr<T> gptr(dart_gptr);
+    _is_local = gptr.is_local();
     if (_is_local) {
       _value     = *gptr;
       _lptr      = (T*)(gptr);
@@ -126,7 +166,7 @@ public:
   GlobAsyncRef(
     /// Pointer to referenced object in global memory
     GlobRef<T> & gref)
-  : GlobAsyncRef(gref.gptr()) {
+  : GlobAsyncRef(gref.dart_gptr()) {
   }
 
   /**
@@ -135,14 +175,14 @@ public:
   bool is_local() const {
     return _is_local;
   }
-  
+
   /**
    * Conversion operator to referenced element value.
    */
   operator T() const {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
     if (!_is_local) {
-      dash::get_value(&_value, _gptr);
+      dart_get(static_cast<void *>(&_value), _gptr, sizeof(T));
     }
     return _value;
   }
@@ -152,7 +192,7 @@ public:
    * element in local / global memory.
    */
   bool operator==(const self_t & other) const {
-    return (_lptr == other._lptr && 
+    return (_lptr == other._lptr &&
             _gptr == other._gptr);
   }
 
@@ -171,7 +211,8 @@ public:
       if (_is_local) {
         *_lptr = _value;
       } else {
-        dash::put_value_nonblock(_value, _gptr);
+        dart_put_blocking(
+          _gptr, static_cast<const void *>(&_value), sizeof(T));
       }
     }
     return *this;
@@ -252,7 +293,7 @@ private:
   /// Value of the referenced element, initially not loaded
   mutable T    _value;
   /// Pointer to referenced element in global memory
-  GlobPtr<T>   _gptr;
+  dart_gptr_t  _gptr;
   /// Pointer to referenced element in local memory
   T *          _lptr        = nullptr;
   /// Whether the value of the reference has been changed

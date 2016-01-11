@@ -9,21 +9,21 @@
 
 dart_ret_t dart_get(
   void *dest,
-  dart_gptr_t ptr, 
+  dart_gptr_t ptr,
   size_t nbytes)
 {
   return dart_get_blocking(dest, ptr, nbytes);
 }
 
 dart_ret_t dart_put(
-  dart_gptr_t ptr,
-  void *src, 
-  size_t nbytes)
+  dart_gptr_t  ptr,
+  const void * src,
+  size_t       nbytes)
 {
   return dart_put_blocking(ptr, src, nbytes);
 }
 
-/* 
+/*
  * dart_accumulate_* implementation, to be defined as macro
  * DART_SHMEM_DEFINE_ACCUMULATE(type)
  */
@@ -103,7 +103,7 @@ dart_ret_t dart_accumulate_int(
 
 dart_ret_t dart_get_handle(
   void *dest,
-  dart_gptr_t ptr, 
+  dart_gptr_t ptr,
 	size_t nbytes,
   dart_handle_t *handle)
 {
@@ -111,10 +111,10 @@ dart_ret_t dart_get_handle(
 }
 
 dart_ret_t dart_put_handle(
-  dart_gptr_t ptr,
-  void *src, 
-	size_t nbytes,
-  dart_handle_t *handle)
+  dart_gptr_t     ptr,
+  const void    * src,
+	size_t          nbytes,
+  dart_handle_t * handle)
 {
   return DART_ERR_OTHER;
 }
@@ -170,17 +170,17 @@ dart_ret_t dart_waitall(
 
 dart_ret_t dart_testall(
   dart_handle_t *handle,
-  size_t n) 
+  size_t n)
 {
   // TODO: Not implemented
   return DART_ERR_OTHER;
 }
 
 dart_ret_t dart_get_blocking(
-  void *dest, 
+  void *dest,
 	dart_gptr_t ptr,
   size_t nbytes)
-{  
+{
   char *addr;
   int poolid;
   dart_unit_t myid;
@@ -188,8 +188,8 @@ dart_ret_t dart_get_blocking(
 
   poolid = ptr.segid;
   pool = dart_memarea_get_mempool_by_id(poolid);
-  
-  if(!pool) 
+
+  if(!pool)
     return DART_ERR_OTHER;
 
   dart_myid(&myid);
@@ -203,9 +203,9 @@ dart_ret_t dart_get_blocking(
 }
 
 dart_ret_t dart_put_blocking(
-  dart_gptr_t ptr, 
-  void *src,
-  size_t nbytes)
+  dart_gptr_t  ptr,
+  const void * src,
+  size_t       nbytes)
 {
   char *addr;
   int poolid;
@@ -214,12 +214,12 @@ dart_ret_t dart_put_blocking(
 
   poolid = ptr.segid;
   pool = dart_memarea_get_mempool_by_id(poolid);
-  
-  if(!pool) 
+
+  if(!pool)
     return DART_ERR_OTHER;
 
   dart_myid(&myid);
-  
+
   addr = ((char*)pool->localbase_addr) +
     ((ptr.unitid-myid)*(pool->localsz)) +
     ptr.addr_or_offs.offset;
