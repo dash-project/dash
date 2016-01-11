@@ -685,7 +685,7 @@ dart_ret_t dart_get_blocking(
                      "at offset %d",
                      nbytes, target_unitid_abs, offset);
     } else {
-      DART_LOG_DEBUG("dart_get_blocking: d bytes "
+      DART_LOG_DEBUG("dart_get_blocking: %d bytes "
                      "(allocated with local allocation) from %d "
                      "at offset %d",
                      nbytes, target_unitid_abs, offset);
