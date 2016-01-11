@@ -17,7 +17,7 @@ namespace dash {
  * n-dimensional value with identical type all dimensions.
  *
  * Different from a SizeSpec or cartesian space, a Dimensional
- * does not define metric/scalar extents or a size, but just a 
+ * does not define metric/scalar extents or a size, but just a
  * vector of possibly non-scalar attributes.
  *
  * \tparam  ElementType    The type of the contained values
@@ -28,7 +28,7 @@ namespace dash {
  */
 template<typename ElementType, dim_t NumDimensions>
 class Dimensional {
-/* 
+/*
  * Concept Dimensional:
  *   + Dimensional<T,D>::Dimensional(values[D]);
  *   + Dimensional<T,D>::dim(d | 0 < d < D);
@@ -112,7 +112,7 @@ public:
   }
 
   /**
-   * Subscript assignment operator, access to value in dimension given by 
+   * Subscript assignment operator, access to value in dimension given by
    * index.
    * Alias for \c dim.
    *
@@ -139,14 +139,14 @@ public:
   constexpr bool operator!=(const self_t & other) const {
     return !(*this == other);
   }
- 
+
   /**
    * The number of dimensions of the value.
    */
   dim_t rank() const {
     return NumDimensions;
   }
- 
+
   /**
    * The number of dimensions of the value.
    */
@@ -166,17 +166,17 @@ protected:
  * \see dash::Distribution.
  */
 template<dim_t NumDimensions>
-class DistributionSpec : public Dimensional<Distribution, NumDimensions> 
+class DistributionSpec : public Dimensional<Distribution, NumDimensions>
 {
 private:
   typedef Dimensional<Distribution, NumDimensions> base_t;
 
 public:
   /**
-   * Default constructor, initializes default blocked distribution 
+   * Default constructor, initializes default blocked distribution
    * (BLOCKED, NONE*).
    */
-/* 
+/*
   TODO:
   Set defaults depending on pattern traits (e.g. tiled / blocked).
   Sketch of implementation:
@@ -199,7 +199,7 @@ public:
    * Constructor, initializes distribution with given distribution types
    * for every dimension.
    *
-   * \b Example: 
+   * \b Example:
    * \code
    *   // Blocked distribution in second dimension (y), cyclic distribution
    *   // in third dimension (z)
@@ -219,12 +219,12 @@ public:
       }
     }
   }
-  
+
   /**
    * Constructor, initializes distribution with given distribution types
    * for every dimension.
    *
-   * \b Example: 
+   * \b Example:
    * \code
    *   // Blocked distribution in second dimension (y), cyclic distribution
    *   // in third dimension (z)
@@ -243,7 +243,7 @@ public:
       }
     }
   }
-  
+
   /**
    * Whether the distribution in the given dimension is tiled.
    */
@@ -252,7 +252,7 @@ public:
     return (_is_tiled &&
             this->_values[dimension].type == dash::internal::DIST_TILE);
   }
-  
+
   /**
    * Whether the distribution is tiled in any dimension.
    */
@@ -301,7 +301,7 @@ static bool operator==(
     return true;
   }
   return (
-    lhs.offset == rhs.offset && 
+    lhs.offset == rhs.offset &&
     lhs.extent == rhs.extent);
 }
 
@@ -447,7 +447,7 @@ public:
     static_assert(
       sizeof...(Args) == (NumDimensions-1),
       "Invalid number of arguments");
-    std::array<SizeType, NumDimensions> extents = 
+    std::array<SizeType, NumDimensions> extents =
       { arg, (SizeType)(args)... };
     resize(extents);
   }

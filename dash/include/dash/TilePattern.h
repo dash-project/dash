@@ -1184,7 +1184,8 @@ public:
    * global cartesian element space.
    */
   ViewSpec_t block(
-    index_type global_block_index) const {
+    index_type global_block_index) const
+  {
     DASH_LOG_TRACE_VAR("TilePattern.block()", global_block_index);
     // block index -> block coords -> offset
     auto block_coords = _blockspec.coords(global_block_index);

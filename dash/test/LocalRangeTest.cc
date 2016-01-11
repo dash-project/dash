@@ -163,7 +163,7 @@ TEST_F(LocalRangeTest, LargeArray)
 {
   auto num_units = dash::Team::All().size();
 
-  for (long long size = 2000000ll; size < 10000000000ll; size *= 2) {
+  for (long long size = 20000000l; size < 100000000000l; size *= 2) {
     dash::Array<int, long long> arr(size);
 
     if (dash::myid() == 0) {
@@ -175,7 +175,8 @@ TEST_F(LocalRangeTest, LargeArray)
                   arr.size(), local_idx_begin, local_idx_end);
 
       EXPECT_EQ_U(size, arr.size());
-      EXPECT_EQ_U(size / num_units, local_idx_end - local_idx_begin);
+      EXPECT_EQ_U(dash::math::div_ceil(size, num_units),
+                  local_idx_end - local_idx_begin);
     }
   }
 }

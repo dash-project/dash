@@ -107,8 +107,16 @@ template<
 class LocalArrayRef
 {
 private:
+  static const dim_t NumDimensions = 1;
+
   typedef LocalArrayRef<T, IndexType, PatternType>
     self_t;
+  typedef Array<T, IndexType, PatternType>
+    Array_t;
+  typedef ViewSpec<NumDimensions, IndexType>
+    ViewSpec_t;
+  typedef std::array<typename PatternType::size_type, NumDimensions>
+    Extents_t;
 
 public:
   template <typename T_, typename I_, typename P_>
@@ -128,17 +136,28 @@ public:
   typedef T *                                                   pointer;
   typedef const T *                                       const_pointer;
 
-private:
-  Array<T, IndexType, PatternType> * const _array;
+public:
+  /// Type alias for LocalArrayRef<T,I,P>::view_type
+  typedef LocalArrayRef<T, IndexType, PatternType>
+    View;
 
 public:
   /**
    * Constructor, creates a local access proxy for the given array.
    */
   LocalArrayRef(
-    Array<T, IndexType, PatternType> * const array)
-  : _array(array) {
-  }
+    Array<T, IndexType, PatternType> * array)
+  : _array(array)
+  { }
+
+  LocalArrayRef(
+    /// Pointer to array instance referenced by this view.
+    Array<T, IndexType, PatternType> * array,
+    /// The view's offset and extent within the referenced array.
+    const ViewSpec_t & viewspec)
+  : _array(array),
+    _viewspec(viewspec)
+  { }
 
   /**
    * Pointer to initial local element in the array.
@@ -178,7 +197,7 @@ public:
   /**
    * Subscript operator, access to local array element at given position.
    */
-  inline value_type operator[](const size_t n) const  {
+  inline value_type operator[](const size_t n) const {
     return (_array->m_lbegin)[n];
   }
 
@@ -199,6 +218,30 @@ public:
     index_type global_index) const {
     return true;
   }
+
+  /**
+   * View at block at given global block offset.
+   */
+  self_t block(index_type block_lindex)
+  {
+    DASH_LOG_TRACE("LocalArrayRef.block()", block_lindex);
+    ViewSpec<1> block_view = pattern().local_block(block_lindex);
+    DASH_LOG_TRACE("LocalArrayRef.block >", block_view);
+    return self_t(_array, block_view);
+  }
+
+  /**
+   * The pattern used to distribute array elements to units.
+   */
+  inline const PatternType & pattern() const {
+    return _array->pattern();
+  }
+
+private:
+  /// Pointer to array instance referenced by this view.
+  Array_t * const _array;
+  /// The view's offset and extent within the referenced array.
+  ViewSpec_t      _viewspec;
 };
 
 template<
@@ -494,6 +537,13 @@ public:
           << " in ArrayRef.at()" );
     }
     return _arr->_begin[global_pos];
+  }
+
+  /**
+   * The pattern used to distribute array elements to units.
+   */
+  inline const PatternType & pattern() const {
+    return _arr->pattern();
   }
 
 private:

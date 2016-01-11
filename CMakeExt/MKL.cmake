@@ -70,6 +70,9 @@ if (MKL_FIND_VERSION AND NOT MKL_FIND_QUIETLY)
     message(WARNING "Requesting a specific version of Intel(R) MKL is not supported")
 endif()
 
+message(STATUS "(ENV) $MKLROOT:   " $ENV{MKLROOT})
+message(STATUS "(ENV) $INTELROOT: " $ENV{INTELROOT})
+
 # Use environment variables from Intel build scripts, if available
 if (NOT MKL_ROOT AND NOT $ENV{MKLROOT} STREQUAL "")
   set(MKL_ROOT $ENV{MKLROOT})

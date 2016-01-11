@@ -23,7 +23,7 @@ namespace dash {
 /**
  * Defines how a list of global indices is mapped to single units
  * within a Team.
- * 
+ *
  * \concept{DashPatternConcept}
  */
 template<
@@ -151,27 +151,27 @@ public:
    *   Pattern p1(SizeSpec<1>(500),
    *              DistributionSpec<2>(BLOCKED),
    *              TeamSpec<1>(dash::Team::All()),
-   *              // The team containing the units to which the pattern 
+   *              // The team containing the units to which the pattern
    *              // maps the global indices. Defaults to all all units:
    *              dash::Team::All());
    * \endcode
    */
   template<typename ... Args>
   TilePattern(
-    /// Argument list consisting of the pattern size (extent, number of 
-    /// elements) in every dimension followed by optional distribution     
+    /// Argument list consisting of the pattern size (extent, number of
+    /// elements) in every dimension followed by optional distribution
     /// types.
     SizeType arg,
-    /// Argument list consisting of the pattern size (extent, number of 
-    /// elements) in every dimension followed by optional distribution     
+    /// Argument list consisting of the pattern size (extent, number of
+    /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
   : _arguments(arg, args...),
     _size(_arguments.sizespec().size()),
     _memory_layout(std::array<SizeType, 1> { _size }),
-    _distspec(_arguments.distspec()), 
+    _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()), 
+    _teamspec(_arguments.teamspec()),
     _nunits(_team->size()),
     _blocksize(initialize_blocksize(
         _size,
@@ -207,7 +207,7 @@ public:
    *   Pattern p1(SizeSpec<1>(500),
    *              DistributionSpec<1>(BLOCKED),
    *              TeamSpec<1>(dash::Team::All()),
-   *              // The team containing the units to which the pattern 
+   *              // The team containing the units to which the pattern
    *              // maps the global indices. Defaults to all all units:
    *              dash::Team::All());
    *   // Same as
@@ -222,7 +222,7 @@ public:
    * \endcode
    */
   TilePattern(
-    /// Pattern size (extent, number of elements) in every dimension 
+    /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t &         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE).
     /// Defaults to BLOCKED.
@@ -230,7 +230,7 @@ public:
     /// Cartesian arrangement of units within the team
     const TeamSpec_t &         teamspec = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
-    dash::Team &               team     = dash::Team::All()) 
+    dash::Team &               team     = dash::Team::All())
   : _size(sizespec.size()),
     _memory_layout(std::array<SizeType, 1> { _size }),
     _distspec(dist),
@@ -274,7 +274,7 @@ public:
    *   Pattern p1(SizeSpec<1>(500),
    *              DistributionSpec<1>(BLOCKED),
    *              TeamSpec<1>(dash::Team::All()),
-   *              // The team containing the units to which the pattern 
+   *              // The team containing the units to which the pattern
    *              // maps the global indices. Defaults to all all units:
    *              dash::Team::All());
    *   // Same as
@@ -289,7 +289,7 @@ public:
    * \endcode
    */
   TilePattern(
-    /// Pattern size (extent, number of elements) in every dimension 
+    /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t &         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
@@ -332,7 +332,7 @@ public:
   TilePattern(const self_t & other)
   : _size(other._size),
     _memory_layout(other._memory_layout),
-    _distspec(other._distspec), 
+    _distspec(other._distspec),
     _team(other._team),
     _teamspec(other._teamspec),
     _nunits(other._nunits),
@@ -506,7 +506,7 @@ public:
   ////////////////////////////////////////////////////////////////////////////
   /// extent
   ////////////////////////////////////////////////////////////////////////////
-  
+
   /**
    * The number of elements in this pattern in the given dimension.
    *
@@ -518,7 +518,7 @@ public:
    */
   IndexType extent(dim_t dim) const {
     DASH_ASSERT_EQ(
-      0, dim, 
+      0, dim,
       "Wrong dimension for TilePattern<1>::local_extent. " <<
       "Expected dimension = 0, got " << dim);
     return _size;
@@ -537,7 +537,7 @@ public:
    */
   IndexType local_extent(dim_t dim) const {
     DASH_ASSERT_EQ(
-      0, dim, 
+      0, dim,
       "Wrong dimension for TilePattern<1>::local_extent. " <<
       "Expected dimension = 0, got " << dim);
     return _local_size;
@@ -591,7 +591,7 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit and its respective 
+   * Converts global coordinates to their associated unit and its respective
    * local coordinates.
    *
    * TODO: Unoptimized
@@ -627,7 +627,7 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit's respective 
+   * Converts global coordinates to their associated unit's respective
    * local coordinates.
    *
    * \see  DashPatternConcept
@@ -644,9 +644,9 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit and their respective 
+   * Converts global coordinates to their associated unit and their respective
    * local index.
-   * 
+   *
    * \see  DashPatternConcept
    */
   local_index_t local_index(
@@ -762,7 +762,7 @@ public:
    *
    * Convert given global coordinates in pattern to their respective
    * linear local index.
-   * 
+   *
    * \see  DashPatternConcept
    */
   IndexType at(
@@ -797,7 +797,7 @@ public:
     static_assert(
       sizeof...(values) == NumDimensions-1,
       "Wrong parameter number");
-    std::array<IndexType, NumDimensions> inputindex = { 
+    std::array<IndexType, NumDimensions> inputindex = {
       value, (IndexType)values...
     };
     return at(inputindex);
@@ -823,7 +823,7 @@ public:
     /// Viewspec to apply
     const ViewSpec_t & viewspec) const {
     DASH_ASSERT_EQ(
-      0, dim, 
+      0, dim,
       "Wrong dimension for Pattern::has_local_elements. " <<
       "Expected dimension = 0, got " << dim);
     DASH_LOG_TRACE_VAR("TilePattern<1>.has_local_elements()", dim_offset);
@@ -895,7 +895,9 @@ public:
   ViewSpec_t block(
     index_type g_block_index) const {
     index_type offset = g_block_index * _size;
-    return ViewSpec_t(offset, _blocksize);
+    std::array<index_type, NumDimensions> offsets = { offset };
+    std::array<size_type, NumDimensions>  extents = { _blocksize };
+    return ViewSpec_t(offsets, extents);
   }
 
   /**
@@ -908,7 +910,9 @@ public:
     // Local block index to local block coords:
     auto l_elem_index = l_block_index * _blocksize;
     auto g_elem_index = global(l_elem_index);
-    ViewSpec_t block_vs({ g_elem_index }, { _blocksize });
+    std::array<index_type, NumDimensions> offsets = { g_elem_index };
+    std::array<size_type, NumDimensions>  extents = { _blocksize };
+    ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block >", block_vs);
     return block_vs;
   }
@@ -1168,7 +1172,7 @@ public:
    * and distribution spec.
    */
   void initialize_local_range() {
-    auto l_size = _local_size; 
+    auto l_size = _local_size;
     DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_range()", l_size);
     if (l_size == 0) {
       _lbegin = 0;
