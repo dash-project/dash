@@ -893,7 +893,8 @@ public:
    * cartesian element space.
    */
   ViewSpec_t block(
-    index_type g_block_index) const {
+    index_type g_block_index) const
+  {
     index_type offset = g_block_index * _size;
     std::array<index_type, NumDimensions> offsets = { offset };
     std::array<size_type, NumDimensions>  extents = { _blocksize };
@@ -905,7 +906,8 @@ public:
    * global cartesian element space.
    */
   ViewSpec_t local_block(
-    index_type l_block_index) const {
+    index_type l_block_index) const
+  {
     DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block()", l_block_index);
     // Local block index to local block coords:
     auto l_elem_index = l_block_index * _blocksize;
@@ -922,9 +924,15 @@ public:
    * local cartesian element space.
    */
   ViewSpec_t local_block_local(
-    index_type local_block_index) const {
-    index_type offset = local_block_index * _blocksize;
-    return ViewSpec_t({ offset }, { _blocksize });
+    index_type l_block_index) const
+  {
+    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block_local()", l_block_index);
+    index_type offset = l_block_index * _blocksize;
+    std::array<index_type, NumDimensions> offsets = { offset };
+    std::array<size_type, NumDimensions>  extents = { _blocksize };
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block_local >", block_vs);
+    return block_vs;
   }
 
   /**

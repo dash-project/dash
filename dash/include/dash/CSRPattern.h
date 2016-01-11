@@ -1009,10 +1009,16 @@ public:
    * cartesian element space.
    */
   ViewSpec_t block(
-    index_type g_block_index) const {
+    index_type g_block_index) const
+  {
+    DASH_LOG_DEBUG_VAR("CSRPattern<1>.block >", g_block_index);
     index_type offset = _block_offsets[g_block_index];
-    auto blocksize    = _local_sizes[g_block_index];
-    return ViewSpec_t(offset, blocksize);
+    auto block_size   = _local_sizes[g_block_index];
+    std::array<index_type, NumDimensions> offsets = { offset };
+    std::array<size_type, NumDimensions>  extents = { block_size };
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_DEBUG_VAR("CSRPattern<1>.block >", block_vs);
+    return block_vs;
   }
 
   /**
@@ -1020,15 +1026,18 @@ public:
    * global cartesian element space.
    */
   ViewSpec_t local_block(
-    index_type l_block_index) const {
-    DASH_LOG_DEBUG_VAR("CSRPattern.local_block()", l_block_index);
+    index_type l_block_index) const
+  {
+    DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block()", l_block_index);
     DASH_ASSERT_EQ(
       0, l_block_index,
       "CSRPattern always assigns exactly 1 block to a single unit");
     index_type block_offset = _block_offsets[_team->myid()];
     size_type  block_size   = _local_sizes[_team->myid()];
-    ViewSpec_t block_vs({ block_offset }, { block_size });
-    DASH_LOG_DEBUG_VAR("CSRPattern.local_block >", block_vs);
+    std::array<index_type, NumDimensions> offsets = { block_offset };
+    std::array<size_type, NumDimensions>  extents = { block_size };
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block >", block_vs);
     return block_vs;
   }
 
@@ -1037,9 +1046,15 @@ public:
    * local cartesian element space.
    */
   ViewSpec_t local_block_local(
-    index_type local_block_index) const {
+    index_type l_block_index) const
+  {
+    DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block_local >", l_block_index);
     size_type block_size = _local_sizes[_team->myid()];
-    return ViewSpec_t({ 0 }, { block_size });
+    std::array<index_type, NumDimensions> offsets = { 0 };
+    std::array<size_type, NumDimensions>  extents = { block_size };
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block_local >", block_vs);
+    return block_vs;
   }
 
   /**
