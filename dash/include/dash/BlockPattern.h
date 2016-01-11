@@ -44,21 +44,31 @@ public:
   static constexpr char const * PatternName = "RegularPattern<N>";
 
 public:
-  /// Properties guaranteed in pattern property category Blocking
-  typedef dash::pattern_partitioning_properties<
-            // number of elements may differ in blocks
-            dash::pattern_partitioning_tag::unbalanced >
-          partitioning_properties;
-  /// Properties guaranteed in pattern property category Topology
-  typedef dash::pattern_mapping_properties<
-            // number of blocks assigned to a unit may differ
-            dash::pattern_mapping_tag::unbalanced >
-          mapping_properties;
-  /// Properties guaranteed in pattern property category Indexing
-  typedef dash::pattern_layout_properties<
-            // local indices iterate over block boundaries
-            dash::pattern_layout_tag::local_strided >
-          layout_properties;
+  /// Satisfiable properties in pattern property category Partitioning:
+  typedef pattern_partitioning_properties<
+              // Minimal number of blocks in every dimension, i.e. one block
+              // per unit.
+              pattern_partitioning_tag::minimal,
+              // Block extents are constant for every dimension.
+              pattern_partitioning_tag::rectangular,
+              // Identical number of elements in every block.
+              pattern_partitioning_tag::balanced,
+              // Size of blocks may differ.
+              pattern_partitioning_tag::unbalanced
+          > partitioning_properties;
+  /// Satisfiable properties in pattern property category Mapping:
+  typedef pattern_mapping_properties<
+              // Number of blocks assigned to a unit may differ.
+              pattern_mapping_tag::unbalanced
+          > mapping_properties;
+  /// Satisfiable properties in pattern property category Layout:
+  typedef pattern_layout_properties<
+              // Local indices iterate over block boundaries.
+              pattern_layout_tag::canonical,
+              // Local element order corresponds to canonical linearization
+              // within entire local memory.
+              pattern_layout_tag::linear
+          > layout_properties;
 
 private:
   /// Derive size type from given signed index / ptrdiff type

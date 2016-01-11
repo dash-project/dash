@@ -634,7 +634,8 @@ public:
    */
   TeamSpec(
     Team & team = dash::Team::All())
-  : _is_linear(true) {
+  : _is_linear(true)
+  {
     DASH_LOG_TRACE_VAR("TeamSpec(t)", team.is_null());
     auto team_size = team.is_null() ? 0 : team.size();
     _rank = 1;
@@ -673,7 +674,8 @@ public:
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All()) 
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>(
-      other.extents()) {
+      other.extents())
+  {
     DASH_LOG_TRACE_VAR("TeamSpec(ts, dist, t)", team.is_null());
     if (this->size() != team.size()) {
       DASH_THROW(
@@ -721,7 +723,8 @@ public:
    */
   TeamSpec(
     const DistributionSpec<MaxDimensions> & distribution,
-    Team & team = dash::Team::All()) {
+    Team & team = dash::Team::All())
+  {
     DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", team.is_null());
     bool distrib_dim_set = false;
     if (distribution.is_tiled()) {
@@ -769,7 +772,8 @@ public:
   template<typename ... Types>
   TeamSpec(SizeType value, Types ... values)
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
-      CartesianIndexSpace(value, values...) {
+      CartesianIndexSpace(value, values...)
+  {
     DASH_LOG_TRACE_VAR("TeamSpec(size,...)", this->_extents);
     update_rank();
   }
@@ -782,8 +786,8 @@ public:
     const TeamSpec<MaxDimensions> & other)
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
       CartesianIndexSpace(other.extents()),
-    _rank(other._rank) {
-  }
+    _rank(other._rank)
+  { }
 
   /**
    * Whether the given index lies in the cartesian sub-space specified by a
@@ -792,7 +796,8 @@ public:
   bool includes_index(
     IndexType index,
     dim_t dimension,
-    IndexType dim_offset) const {
+    IndexType dim_offset) const
+  {
     if (_rank == 1) {
       // Shortcut for trivial case
       return (index >= 0 && index < size());
@@ -806,7 +811,8 @@ public:
    * \param    dimension  The dimension
    * \returns  The number of units in the given dimension
    */
-  SizeType num_units(dim_t dimension) const {
+  SizeType num_units(dim_t dimension) const
+  {
     return this->size();
   }
 
@@ -822,7 +828,8 @@ public:
    *   ts.rank(); // returns 2, as one dimension has extent 1
    * \endcode
    */
-  dim_t rank() const {
+  dim_t rank() const
+  {
     return _rank;
   }
 

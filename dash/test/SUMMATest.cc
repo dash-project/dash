@@ -6,12 +6,11 @@
 
 TEST_F(SUMMATest, Deduction)
 {
-  typedef int                  value_t;
+  typedef double               value_t;
   typedef dash::TilePattern<2> pattern_t;
 
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
-  // Use square matrices for operands and result:
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 3;
   size_t num_local_blocks_x = 2;
@@ -24,9 +23,9 @@ TEST_F(SUMMATest, Deduction)
     return;
   }
 
-  dash::SizeSpec<2> size_spec(extent_cols, extent_rows);
-  dash::TeamSpec<2> team_spec(num_units, 1);
-
+#if 0
+  // For explicit specification of data distribution:
+  //
   pattern_t pattern(
     dash::SizeSpec<2>(
       extent_cols,
@@ -35,39 +34,43 @@ TEST_F(SUMMATest, Deduction)
       dash::TILE(tilesize_x),
       dash::TILE(tilesize_y))
   );
+#endif
 
-#if DEFUNCT
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:
+  dash::SizeSpec<2> size_spec(extent_cols, extent_rows);
+  dash::TeamSpec<2> team_spec;
   LOG_MESSAGE("Initialize matrix pattern ...");
   auto pattern = dash::make_pattern <
                  dash::summa_pattern_partitioning_constraints,
                  dash::summa_pattern_mapping_constraints,
-                 dash::summa_pattern_layout_constraints > (
+                 dash::summa_pattern_layout_constraints >(
                    size_spec,
                    team_spec);
-#endif
+  LOG_MESSAGE("Deduced pattern: "
+              "size(%d,%d) tilesize(%d,%d) teamsize(%d,%d) disttype(%d,%d)",
+              pattern.extent(0),
+              pattern.extent(1),
+              pattern.block(0).extent(0),
+              pattern.block(0).extent(1),
+              pattern.teamspec().extent(0),
+              pattern.teamspec().extent(1),
+              pattern.distspec()[0].type,
+              pattern.distspec()[1].type);
+
   // Plausibility check of single pattern traits:
+  ASSERT_TRUE_U(
+    dash::pattern_partitioning_traits<decltype(pattern)>::type::balanced);
+  ASSERT_TRUE_U(
+    dash::pattern_mapping_traits<decltype(pattern)>::type::diagonal);
+  ASSERT_TRUE_U(
+    dash::pattern_mapping_traits<decltype(pattern)>::type::unbalanced);
+  ASSERT_TRUE_U(
+    dash::pattern_layout_traits<decltype(pattern)>::type::blocked);
+  ASSERT_TRUE_U(
+    dash::pattern_layout_traits<decltype(pattern)>::type::linear);
   ASSERT_FALSE_U(
-    dash::pattern_layout_traits <
-      decltype(pattern)
-    >::type::local_strided);
-  ASSERT_TRUE_U(
-    dash::pattern_layout_traits <
-      decltype(pattern)
-    >::type::local_phase);
-  ASSERT_TRUE_U(
-    dash::pattern_partitioning_traits <
-      decltype(pattern)
-    >::type::balanced);
-  ASSERT_TRUE_U(
-    dash::pattern_mapping_traits <
-      decltype(pattern)
-    >::type::diagonal);
-  ASSERT_TRUE_U(
-    dash::pattern_mapping_traits <
-      decltype(pattern)
-    >::type::balanced);
+    dash::pattern_layout_traits<decltype(pattern)>::type::canonical);
 
   // Test pattern constraints verification. Pattern has been deduced from
   // a set of constraints, so it is expected to satisfy these constraints:
@@ -106,13 +109,11 @@ TEST_F(SUMMATest, Deduction)
                  matrix_b,
                  matrix_c);
 
-#if 1
   if (_dash_id == 0) {
     print_matrix("matrix A", matrix_a);
     print_matrix("matrix B", matrix_b);
     print_matrix("matrix C", matrix_c);
   }
-#endif
 
   dash::barrier();
 
@@ -128,4 +129,6 @@ TEST_F(SUMMATest, Deduction)
       }
     }
   }
+
+  dash::barrier();
 }

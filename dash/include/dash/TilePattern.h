@@ -50,23 +50,33 @@ public:
     "BalancedDiagonalTilePattern<N>";
 
 public:
-  /// Properties guaranteed in pattern property category Blocking
-  typedef dash::pattern_partitioning_properties<
-            // identical number of elements in every block
-            dash::pattern_partitioning_tag::balanced >
-          partitioning_properties;
-  /// Properties guaranteed in pattern property category Topology
-  typedef dash::pattern_mapping_properties<
-            // number of blocks assigned to a unit may differ
-            dash::pattern_mapping_tag::unbalanced,
-            // every unit mapped in any single slice in every dimension
-            dash::pattern_mapping_tag::diagonal >
-          mapping_properties;
-  /// Properties guaranteed in pattern property category Indexing
-  typedef dash::pattern_layout_properties<
-            // local indices iterate within block boundaries
-            dash::pattern_layout_tag::local_phase >
-          layout_properties;
+  /// Satisfiable properties in pattern property category Partitioning:
+  typedef pattern_partitioning_properties<
+              // Minimal number of blocks in every dimension, i.e. one block
+              // per unit.
+              pattern_partitioning_tag::minimal,
+              // Block extents are constant for every dimension.
+              pattern_partitioning_tag::rectangular,
+              // Identical number of elements in every block.
+              pattern_partitioning_tag::balanced
+          > partitioning_properties;
+  /// Satisfiable properties in pattern property category Mapping:
+  typedef pattern_mapping_properties<
+              // Same number of blocks assigned to every unit.
+              pattern_mapping_tag::balanced,
+              // Number of blocks assigned to a unit may differ.
+              pattern_mapping_tag::unbalanced,
+              // Every unit mapped in any single slice in every dimension.
+              pattern_mapping_tag::diagonal
+          > mapping_properties;
+  /// Satisfiable properties in pattern property category Layout:
+  typedef pattern_layout_properties<
+              // Elements are contiguous in local memory within single block.
+              pattern_layout_tag::blocked,
+              // Local element order corresponds to a logical linearization
+              // within single blocks.
+              pattern_layout_tag::linear
+          > layout_properties;
 
 private:
   /// Derive size type from given signed index / ptrdiff type
@@ -193,7 +203,9 @@ public:
   : _arguments(arg, args...),
     _distspec(_arguments.distspec()), 
     _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()), 
+    // Degrading to 1-dimensional team spec for now:
+    _teamspec(_distspec, *_team),
+//  _teamspec(_arguments.teamspec()), 
     _memory_layout(_arguments.sizespec().extents()),
     _nunits(_teamspec.size()),
     _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
@@ -263,10 +275,12 @@ public:
     dash::Team &               team     = dash::Team::All()) 
   : _distspec(dist),
     _team(&team),
-    _teamspec(
-      teamspec,
-      _distspec,
-      *_team),
+    // Degrading to 1-dimensional team spec for now:
+    _teamspec(_distspec, *_team),
+//  _teamspec(
+//    teamspec,
+//    _distspec,
+//    *_team),
     _memory_layout(sizespec.extents()),
     _nunits(_teamspec.size()),
     _major_tiled_dim(initialize_major_tiled_dim(_distspec)),

@@ -41,6 +41,8 @@ protected:
   void print_matrix(const std::string & name, MatrixT & matrix) const {
     typedef typename MatrixT::value_type value_t;
     typedef typename MatrixT::index_type index_t;
+    // Print local copy of matrix to avoid interleaving of matrix values
+    // and log messages:
     std::vector< std::vector<value_t> > values;
     for (index_t row = 0; row < matrix.extent(1); ++row) {
       std::vector<value_t> row_values;

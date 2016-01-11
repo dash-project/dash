@@ -2,6 +2,8 @@
 #define DASH__PATTERN_H_
 
 #include <dash/Types.h>
+#include <sstream>
+#include <iostream>
 
 namespace dash {
 
@@ -23,7 +25,7 @@ namespace dash {
  * <tt>[ unit 1 : unit 0 ]</tt> | <tt>[ 6  7  8  9 10 11 ]</tt> |
  *
  * This pattern would assign local indices to teams like this:
- * 
+ *
  * Team            | Local indices                 |
  * --------------- | ----------------------------- |
  * <tt>unit 0</tt> | <tt>[ 0  1  2  9 10 11 ]</tt> |
@@ -69,6 +71,22 @@ namespace dash {
  * \}
  */
 
+
+/* TODO:
+ * Properties should not be specified as boolean (satisfiable: yes/no) but
+ * as one of the states:
+ *
+ * - unspecified
+ * - satisfiable
+ * - unsatisfiable
+ *
+ * And constraints as one of the states:
+ *
+ * - strong
+ * - weak
+ */
+
+
 //////////////////////////////////////////////////////////////////////////////
 // Pattern linearization properties
 //////////////////////////////////////////////////////////////////////////////
@@ -76,33 +94,95 @@ namespace dash {
 struct pattern_layout_tag
 {
   typedef enum {
+    /// Unspecified layout property.
     any,
-    local_phase,
-    local_strided
+
+    /// Row major storage order, used by default.
+    row_major,
+
+    /// Column major storage order.
+    col_major,
+
+    /// Elements are contiguous in local memory within a single block.
+    blocked,
+
+    /// All local indices are mapped to a single logical index domain.
+    canonical,
+
+    /// Local element order corresponds to a logical linearization
+    /// within single blocks (blocked) or within entire local memory
+    /// (canonical).
+    linear
+
   } type;
 };
 
-template< pattern_layout_tag::type >
+template< pattern_layout_tag::type ... Tags >
 struct pattern_layout_properties
 {
-  static const bool local_phase   = false;
-  static const bool local_strided = true;
+  typedef pattern_layout_tag::type tag_type;
+
+  /// Layout properties defaults:
+
+  /// Row major storage order.
+  static const bool row_major = true;
+
+  /// Column major storage order.
+  static const bool col_major = false;
+
+  /// Elements are contiguous in local memory within a single block.
+  static const bool blocked   = false;
+
+  /// All local indices are mapped to a single logical index domain.
+  static const bool canonical = true;
+
+  /// Local element order corresponds to a logical linearization
+  /// within single blocks (blocked) or within entire local memory
+  /// (canonical).
+  static const bool linear    = false;
 };
 
-template<>
+/**
+ * Specialization of \c dash::pattern_layout_properties to process tag
+ * \c dash::pattern_layout_tag::type::blocked in template parameter list.
+ */
+template<pattern_layout_tag::type ... Tags>
 struct pattern_layout_properties<
-  pattern_layout_tag::local_phase >
+         pattern_layout_tag::type::blocked, Tags ...>
+: public pattern_layout_properties<Tags ...>
 {
-  static const bool local_phase   = true;
-  static const bool local_strided = false;
+  /// Elements are contiguous in local memory within a single block.
+  static const bool blocked   = true;
+  static const bool canonical = false;
 };
 
-template<>
+/**
+ * Specialization of \c dash::pattern_layout_properties to process tag
+ * \c dash::pattern_layout_tag::type::canonical in template parameter list.
+ */
+template<pattern_layout_tag::type ... Tags>
 struct pattern_layout_properties<
-  pattern_layout_tag::local_strided >
+         pattern_layout_tag::type::canonical, Tags ...>
+: public pattern_layout_properties<Tags ...>
 {
-  static const bool local_phase   = false;
-  static const bool local_strided = true;
+  /// All local indices are mapped to a single logical index domain.
+  static const bool canonical = true;
+  static const bool blocked   = false;
+};
+
+/**
+ * Specialization of \c dash::pattern_layout_properties to process tag
+ * \c dash::pattern_layout_tag::type::linear in template parameter list.
+ */
+template<pattern_layout_tag::type ... Tags>
+struct pattern_layout_properties<
+         pattern_layout_tag::type::linear, Tags ...>
+: public pattern_layout_properties<Tags ...>
+{
+  /// Local element order corresponds to a logical linearization
+  /// within single blocks (blocked) or within entire local memory
+  /// (canonical).
+  static const bool linear    = true;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -116,15 +196,29 @@ struct pattern_layout_properties<
 struct pattern_mapping_tag
 {
   typedef enum {
+    /// Unspecified mapping property.
     any,
-    /// Same number of blocks mapped to every process
+
+    /// The number of assigned blocks is identical for every unit.
     balanced,
-    /// Varying number of blocks mapped to processes
+
+    /// The number of blocks assigned to units may differ.
     unbalanced,
-    /// Every process mapped in every row and column
+
+    /// Adjacent blocks in any dimension are located at a remote unit.
+    neighbor,
+
+    /// Units are mapped to blocks in diagonal chains in at least one
+    /// hyperplane
+    shifted,
+
+    /// Units are mapped to blocks in diagonal chains in all hyperplanes.
     diagonal,
-    /// Unit mapped to block different from units mapped to adjacent blocks
-    remote_neighbors
+
+    /// Blocks are assigned to processes like dealt from a deck of
+    /// cards in every hyperplane, starting from first unit.
+    cyclic
+
   } type;
 };
 
@@ -132,7 +226,7 @@ struct pattern_mapping_tag
  * Generic type of mapping properties of a model satisfying the Pattern
  * concept.
  *
- * Example: 
+ * Example:
  *
  * \code
  *   typedef dash::pattern_mapping_properties<
@@ -150,32 +244,44 @@ struct pattern_mapping_tag
  * Template parameter list is processed recursively by specializations of
  * \c dash::pattern_mapping_properties.
  */
-template<
-  pattern_mapping_tag::type ... Tags >
+template< pattern_mapping_tag::type ... Tags >
 struct pattern_mapping_properties
 {
-  // TODO: Should be
-  //   typedef typename std::integral_constant<bool, false> the_property;
+  typedef pattern_mapping_tag::type tag_type;
+
+  /// Mapping properties defaults:
+
+  /// The number of assigned blocks is identical for every unit.
   static const bool balanced   = false;
+
+  /// The number of blocks assigned to units may differ.
   static const bool unbalanced = false;
-  static const bool diagonal   = false;
+
+  /// Adjacent blocks in any dimension are located at a remote unit.
   static const bool neighbor   = false;
+
+  /// Units are mapped to blocks in diagonal chains in at least one
+  /// hyperplane
+  static const bool shifted    = false;
+
+  /// Units are mapped to blocks in diagonal chains in all hyperplanes.
+  static const bool diagonal   = false;
+
+  /// Blocks are assigned to processes like dealt from a deck of
+  /// cards in every hyperplane, starting from first unit.
+  static const bool cyclic     = false;
 };
 
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::balanced in template parameter list.
  */
-template<
-  pattern_mapping_tag::type ... Tags >
+template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties<
-    pattern_mapping_tag::type::balanced,
-    Tags ...>
-: public pattern_mapping_properties<
-    Tags ...>
+         pattern_mapping_tag::type::balanced, Tags ...>
+: public pattern_mapping_properties<Tags ...>
 {
-  // TODO: Should be
-  //   typedef typename std::integral_constant<bool, false> the_property;
+  /// The number of assigned blocks is identical for every unit.
   static const bool balanced   = true;
 };
 
@@ -183,51 +289,67 @@ struct pattern_mapping_properties<
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::unbalanced in template parameter list.
  */
-template<
-  pattern_mapping_tag::type ... Tags >
+template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties<
-    pattern_mapping_tag::type::unbalanced,
-    Tags ...>
-: public pattern_mapping_properties<
-    Tags ...>
+         pattern_mapping_tag::type::unbalanced, Tags ...>
+: public pattern_mapping_properties<Tags ...>
 {
-  // TODO: Should be
-  //   typedef typename std::integral_constant<bool, false> the_property;
-  static const bool balanced   = true;
-};
-
-/**
- * Specialization of \c dash::pattern_mapping_properties to process tag
- * \c dash::pattern_mapping_tag::type::diagonal in template parameter list.
- */
-template<
-  pattern_mapping_tag::type ... Tags >
-struct pattern_mapping_properties<
-    pattern_mapping_tag::type::diagonal,
-    Tags ...>
-: public pattern_mapping_properties<
-    Tags ...>
-{
-  // TODO: Should be
-  //   typedef typename std::integral_constant<bool, false> the_property;
-  static const bool diagonal = true;
+  /// The number of blocks assigned to units may differ.
+  static const bool unbalanced = true;
 };
 
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::neighbor in template parameter list.
  */
-template<
-  pattern_mapping_tag::type ... Tags >
+template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties<
-    pattern_mapping_tag::type::remote_neighbors,
-    Tags ...>
-: public pattern_mapping_properties<
-    Tags ...>
+         pattern_mapping_tag::type::neighbor, Tags ...>
+: public pattern_mapping_properties<Tags ...>
 {
-  // TODO: Should be
-  //   typedef typename std::integral_constant<bool, false> the_property;
-  static const bool neighbor = true;
+  /// Adjacent blocks in any dimension are located at a remote unit.
+  static const bool neighbor   = true;
+};
+
+/**
+ * Specialization of \c dash::pattern_mapping_properties to process tag
+ * \c dash::pattern_mapping_tag::type::shifted in template parameter list.
+ */
+template<pattern_mapping_tag::type ... Tags>
+struct pattern_mapping_properties<
+         pattern_mapping_tag::type::shifted, Tags ...>
+: public pattern_mapping_properties<Tags ...>
+{
+  /// Units are mapped to blocks in diagonal chains in at least one
+  /// hyperplane
+  static const bool shifted    = true;
+};
+
+/**
+ * Specialization of \c dash::pattern_mapping_properties to process tag
+ * \c dash::pattern_mapping_tag::type::diagonal in template parameter list.
+ */
+template<pattern_mapping_tag::type ... Tags>
+struct pattern_mapping_properties<
+         pattern_mapping_tag::type::diagonal, Tags ...>
+: public pattern_mapping_properties<Tags ...>
+{
+  /// Units are mapped to blocks in diagonal chains in all hyperplanes.
+  static const bool diagonal   = true;
+};
+
+/**
+ * Specialization of \c dash::pattern_mapping_properties to process tag
+ * \c dash::pattern_mapping_tag::type::cyclic in template parameter list.
+ */
+template<pattern_mapping_tag::type ... Tags>
+struct pattern_mapping_properties<
+         pattern_mapping_tag::type::cyclic, Tags ...>
+: public pattern_mapping_properties<Tags ...>
+{
+  /// Blocks are assigned to processes like dealt from a deck of
+  /// cards in every hyperplane, starting from first unit.
+  static const bool cyclic     = true;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -238,46 +360,120 @@ struct pattern_partitioning_tag
 {
   typedef enum {
     any,
+
+    /// Block extents are constant for every dimension.
+    rectangular,
+
+    /// Minimal number of blocks in every dimension, typically at most one
+    /// block per unit.
+    minimal,
+
+    /// All blocks have identical extents.
+    regular,
+
+    /// All blocks have identical size.
     balanced,
-    unbalanced,
-    cache_align
+
+    /// Size of blocks may differ.
+    unbalanced
+
   } type;
 };
 
-template<
-  pattern_partitioning_tag::type ... Tags >
+template< pattern_partitioning_tag::type ... Tags >
 struct pattern_partitioning_properties
 {
-  // TODO: Should be
-  //   typedef typename std::integral_constant<bool, false> the_property;
+  typedef pattern_partitioning_tag::type tag_type;
+
+  /// Partitioning properties defaults:
+
+  /// Block extents are constant for every dimension.
+  static const bool rectangular = false;
+
+  /// Minimal number of blocks in every dimension, typically at most one
+  /// block per unit.
+  static const bool minimal     = false;
+
+  /// All blocks have identical extents.
+  static const bool regular     = false;
+
+  /// All blocks have identical size.
   static const bool balanced    = false;
-  static const bool cache_align = false;
+
+  /// Size of blocks may differ.
+  static const bool unbalanced  = false;
 };
 
-template<
-  pattern_partitioning_tag::type ... Tags >
+/**
+ * Specialization of \c dash::pattern_partitioning_properties to process tag
+ * \c dash::pattern_partitioning_tag::type::rectangular in template parameter
+ * list.
+ */
+template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties<
-    pattern_partitioning_tag::type::balanced,
-    Tags ...>
-: public pattern_partitioning_properties<
-    Tags ...>
+         pattern_partitioning_tag::type::rectangular, Tags ...>
+: public pattern_partitioning_properties<Tags ...>
 {
-  // TODO: Should be
-  //   typedef typename std::integral_constant<bool, false> the_property;
-  static const bool balanced = true;
+  /// Blocks are assigned to processes like dealt from a deck of
+  /// cards in every hyperplane, starting from first unit.
+  static const bool rectangular = true;
 };
 
-template<
-  pattern_partitioning_tag::type ... Tags >
+/**
+ * Specialization of \c dash::pattern_partitioning_properties to process tag
+ * \c dash::pattern_partitioning_tag::type::minimal in template parameter
+ * list.
+ */
+template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties<
-    pattern_partitioning_tag::type::cache_align,
-    Tags ...>
-: public pattern_partitioning_properties<
-    Tags ...>
+         pattern_partitioning_tag::type::minimal, Tags ...>
+: public pattern_partitioning_properties<Tags ...>
 {
-  // TODO: Should be
-  //   typedef typename std::integral_constant<bool, false> the_property;
-  static const bool cache_align = true;
+  /// Minimal number of blocks in every dimension, typically at most one
+  /// block per unit.
+  static const bool minimal    = true;
+};
+
+/**
+ * Specialization of \c dash::pattern_partitioning_properties to process tag
+ * \c dash::pattern_partitioning_tag::type::regular in template parameter
+ * list.
+ */
+template<pattern_partitioning_tag::type ... Tags>
+struct pattern_partitioning_properties<
+         pattern_partitioning_tag::type::regular, Tags ...>
+: public pattern_partitioning_properties<Tags ...>
+{
+  /// All blocks have identical extents.
+  static const bool regular    = true;
+};
+
+/**
+ * Specialization of \c dash::pattern_partitioning_properties to process tag
+ * \c dash::pattern_partitioning_tag::type::balanced in template parameter
+ * list.
+ */
+template<pattern_partitioning_tag::type ... Tags>
+struct pattern_partitioning_properties<
+         pattern_partitioning_tag::type::balanced, Tags ...>
+: public pattern_partitioning_properties<Tags ...>
+{
+  /// All blocks have identical size.
+  static const bool balanced   = true;
+};
+
+/**
+ * Specialization of \c dash::pattern_partitioning_properties to process tag
+ * \c dash::pattern_partitioning_tag::type::unbalanced in template parameter
+ * list.
+ */
+template<pattern_partitioning_tag::type ... Tags>
+struct pattern_partitioning_properties<
+         pattern_partitioning_tag::type::unbalanced, Tags ...>
+: public pattern_partitioning_properties<Tags ...>
+{
+  /// All blocks have identical size.
+  static const bool unbalanced = true;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -327,36 +523,76 @@ struct pattern_traits
 /**
  * Traits for compile- and run-time pattern constraints checking, suitable for
  * property checks where detailed error reporting is desired.
- * 
+ *
  */
 template<
-  typename BlockingConstraints,
-  typename TopologyConstraints,
-  typename IndexingConstraints,
+  typename PartitioningConstraints,
+  typename MappingConstraints,
+  typename LayoutConstraints,
   typename PatternType
 >
 bool check_pattern_constraints(
   const PatternType & pattern)
 {
-  // Pattern property traits of category Blocking
+  // Pattern property traits of category Partitioning
   typedef typename dash::pattern_traits< PatternType >::partitioning
-          pattern_partitioning_traits;
-  // Pattern property traits of category Topology
+          partitioning_traits;
+  // Pattern property traits of category Mapping
   typedef typename dash::pattern_traits< PatternType >::mapping
-          pattern_mapping_traits;
-  // Pattern property traits of category Indexing
+          mapping_traits;
+  // Pattern property traits of category Layout
   typedef typename dash::pattern_traits< PatternType >::layout
-          pattern_layout_traits;
+          layout_traits;
   // Check compile-time invariants:
-  static_assert(!BlockingConstraints::balanced ||
-                pattern_partitioning_traits::balanced,
-                "Pattern does not implement balanced partitioning property");
-  static_assert(!IndexingConstraints::local_phase ||
-                pattern_layout_traits::local_phase,
-                "Pattern does not implement local phase layout property");
-  static_assert(!TopologyConstraints::diagonal ||
-                pattern_mapping_traits::diagonal,
-                "Pattern does not implement diagonal mapping property");
+
+  // Partitioning properties:
+  //
+  static_assert(!PartitioningConstraints::rectangular ||
+                partitioning_traits::rectangular,
+                "Pattern does not implement rectangular partitioning");
+  static_assert(!PartitioningConstraints::minimal ||
+                partitioning_traits::minimal,
+                "Pattern does not implement minimal partitioning");
+  static_assert(!PartitioningConstraints::regular ||
+                partitioning_traits::regular,
+                "Pattern does not implement regular partitioning");
+  static_assert(!PartitioningConstraints::balanced ||
+                partitioning_traits::balanced,
+                "Pattern does not implement balanced partitioning");
+  static_assert(!PartitioningConstraints::unbalanced ||
+                partitioning_traits::unbalanced,
+                "Pattern does not implement unbalanced partitioning");
+  // Mapping properties:
+  //
+  static_assert(!MappingConstraints::balanced ||
+                mapping_traits::balanced,
+                "Pattern does not implement balanced mapping");
+  static_assert(!MappingConstraints::unbalanced ||
+                mapping_traits::unbalanced,
+                "Pattern does not implement unbalanced mapping");
+  static_assert(!MappingConstraints::neighbor ||
+                mapping_traits::neighbor,
+                "Pattern does not implement neighbor mapping");
+  static_assert(!MappingConstraints::shifted ||
+                mapping_traits::shifted,
+                "Pattern does not implement shifted mapping");
+  static_assert(!MappingConstraints::diagonal ||
+                mapping_traits::diagonal,
+                "Pattern does not implement diagonal mapping");
+  static_assert(!MappingConstraints::cyclic ||
+                mapping_traits::cyclic,
+                "Pattern does not implement cyclic mapping");
+  // Layout properties:
+  //
+  static_assert(!LayoutConstraints::blocked ||
+                layout_traits::blocked,
+                "Pattern does not implement blocked layout");
+  static_assert(!LayoutConstraints::canonical ||
+                layout_traits::canonical,
+                "Pattern does not implement canonical layout");
+  static_assert(!LayoutConstraints::linear ||
+                layout_traits::linear,
+                "Pattern does not implement linear layout");
   return true;
 }
 
@@ -364,37 +600,79 @@ bool check_pattern_constraints(
  * Traits for compile-time pattern constraints checking, suitable as a helper
  * for template definitions employing SFINAE where no verbose error reporting
  * is required.
- * 
+ *
  */
 template<
-  typename BlockingConstraints,
-  typename TopologyConstraints,
-  typename IndexingConstraints,
+  typename PartitioningConstraints,
+  typename MappingConstraints,
+  typename LayoutConstraints,
   typename PatternType
 >
 struct pattern_constraints
 {
-  // Pattern property traits of category Blocking
+  // Pattern property traits of category Partitioning
   typedef typename dash::pattern_traits< PatternType >::partitioning
-          pattern_partitioning_traits;
-  // Pattern property traits of category Topology
+          partitioning_traits;
+  // Pattern property traits of category Mapping
   typedef typename dash::pattern_traits< PatternType >::mapping
-          pattern_mapping_traits;
-  // Pattern property traits of category Indexing
+          mapping_traits;
+  // Pattern property traits of category Layout
   typedef typename dash::pattern_traits< PatternType >::layout
-          pattern_layout_traits;
+          layout_traits;
 
   typedef std::integral_constant<
             bool,
-            ( !BlockingConstraints::balanced ||
-              pattern_partitioning_traits::balanced )
+            //
+            // Partitioning properties:
+            //
+            ( !PartitioningConstraints::rectangular ||
+              partitioning_traits::rectangular )
             &&
-            ( !IndexingConstraints::local_phase ||
-              pattern_layout_traits::local_phase )
+            ( !PartitioningConstraints::minimal ||
+              partitioning_traits::minimal )
             &&
-            ( !TopologyConstraints::diagonal ||
-              pattern_mapping_traits::diagonal ) >
-          satisfied;
+            ( !PartitioningConstraints::regular ||
+              partitioning_traits::regular )
+            &&
+            ( !PartitioningConstraints::balanced ||
+              partitioning_traits::balanced )
+            &&
+            ( !PartitioningConstraints::unbalanced ||
+              partitioning_traits::unbalanced )
+            &&
+            //
+            // Mapping properties:
+            //
+            ( !MappingConstraints::balanced ||
+              mapping_traits::balanced )
+            &&
+            ( !MappingConstraints::unbalanced ||
+              mapping_traits::unbalanced )
+            &&
+            ( !MappingConstraints::neighbor ||
+              mapping_traits::neighbor )
+            &&
+            ( !MappingConstraints::shifted ||
+              mapping_traits::shifted )
+            &&
+            ( !MappingConstraints::diagonal ||
+              mapping_traits::diagonal )
+            &&
+            ( !MappingConstraints::cyclic ||
+              mapping_traits::cyclic )
+            &&
+            //
+            // Layout properties:
+            //
+            ( !LayoutConstraints::blocked ||
+              layout_traits::blocked )
+            &&
+            ( !LayoutConstraints::canonical ||
+              layout_traits::canonical )
+            &&
+            ( !LayoutConstraints::linear ||
+              layout_traits::linear )
+          > satisfied;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -402,16 +680,101 @@ struct pattern_constraints
 //////////////////////////////////////////////////////////////////////////////
 
 typedef dash::pattern_partitioning_properties<
-          pattern_partitioning_tag::any >
-  pattern_partitioning_default_properties;
+            pattern_partitioning_tag::rectangular,
+            pattern_partitioning_tag::unbalanced >
+        pattern_partitioning_default_properties;
 
 typedef dash::pattern_mapping_properties<
-          pattern_mapping_tag::any >
-  pattern_mapping_default_properties;
+            pattern_mapping_tag::unbalanced >
+        pattern_mapping_default_properties;
 
 typedef dash::pattern_layout_properties<
-          pattern_layout_tag::any >
-  pattern_layout_default_properties;
+            pattern_layout_tag::row_major,
+            pattern_layout_tag::canonical,
+            pattern_layout_tag::linear >
+        pattern_layout_default_properties;
+
+
+template<pattern_layout_tag::type ... Tags>
+std::ostream & operator<<(
+    std::ostream & os,
+    const pattern_layout_properties<Tags ...> traits)
+{
+  std::ostringstream ss;
+  ss << "dash::pattern_layout_properties< ";
+  if (traits.row_major) {
+    ss << "row_major ";
+  }
+  if (traits.col_major) {
+    ss << "col_major ";
+  }
+  if (traits.blocked) {
+    ss << "blocked ";
+  }
+  if (traits.canonical) {
+    ss << "canonical ";
+  }
+  if (traits.linear) {
+    ss << "linear ";
+  }
+  ss << ">";
+  return operator<<(os, ss.str());
+}
+
+template<pattern_mapping_tag::type ... Tags>
+std::ostream & operator<<(
+    std::ostream & os,
+    const pattern_mapping_properties<Tags ...> traits)
+{
+  std::ostringstream ss;
+  ss << "dash::pattern_mapping_properties< ";
+  if (traits.balanced) {
+    ss << "balanced ";
+  }
+  if (traits.unbalanced) {
+    ss << "unbalanced ";
+  }
+  if (traits.neighbor) {
+    ss << "neighbor ";
+  }
+  if (traits.shifted) {
+    ss << "shifted ";
+  }
+  if (traits.diagonal) {
+    ss << "diagonal ";
+  }
+  if (traits.cyclic) {
+    ss << "cyclic ";
+  }
+  ss << ">";
+  return operator<<(os, ss.str());
+}
+
+template<pattern_partitioning_tag::type ... Tags>
+std::ostream & operator<<(
+    std::ostream & os,
+    const pattern_partitioning_properties<Tags ...> traits)
+{
+  std::ostringstream ss;
+  ss << "dash::pattern_partitioning_properties< ";
+  if (traits.rectangular) {
+    ss << "rectangular ";
+  }
+  if (traits.minimal) {
+    ss << "minimal ";
+  }
+  if (traits.regular) {
+    ss << "regular ";
+  }
+  if (traits.balanced) {
+    ss << "balanced ";
+  }
+  if (traits.unbalanced) {
+    ss << "unbalanced ";
+  }
+  ss << ">";
+  return operator<<(os, ss.str());
+}
 
 } // namespace dash
 
