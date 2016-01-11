@@ -23,7 +23,7 @@ namespace dash {
 
 /**
  * Irregular Pattern for Compressed Sparse Row Storage.
- * 
+ *
  * \concept{DashPatternConcept}
  */
 template<
@@ -36,7 +36,7 @@ class CSRPattern;
 /**
  * Irregular Pattern for Compressed Sparse Row Storage.
  * Specialization for 1-dimensional data.
- * 
+ *
  * \concept{DashPatternConcept}
  */
 template<
@@ -160,12 +160,12 @@ public:
    */
   template<typename ... Args>
   CSRPattern(
-    /// Argument list consisting of the pattern size (extent, number of 
-    /// elements) in every dimension followed by optional distribution     
+    /// Argument list consisting of the pattern size (extent, number of
+    /// elements) in every dimension followed by optional distribution
     /// types.
     SizeType arg,
-    /// Argument list consisting of the pattern size (extent, number of 
-    /// elements) in every dimension followed by optional distribution     
+    /// Argument list consisting of the pattern size (extent, number of
+    /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
   : _arguments(arg, args...),
@@ -180,9 +180,9 @@ public:
     _blockspec(initialize_blockspec(
         _size,
         _local_sizes)),
-    _distspec(_arguments.distspec()), 
+    _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()), 
+    _teamspec(_arguments.teamspec()),
     _nunits(_team->size()),
     _blocksize(initialize_blocksize(
         _size,
@@ -259,12 +259,12 @@ public:
   CSRPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type> & local_sizes,
-    /// Argument list consisting of the pattern size (extent, number of 
-    /// elements) in every dimension followed by optional distribution     
+    /// Argument list consisting of the pattern size (extent, number of
+    /// elements) in every dimension followed by optional distribution
     /// types.
     SizeType arg,
-    /// Argument list consisting of the pattern size (extent, number of 
-    /// elements) in every dimension followed by optional distribution     
+    /// Argument list consisting of the pattern size (extent, number of
+    /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
   : _arguments(arg, args...),
@@ -276,9 +276,9 @@ public:
     _blockspec(initialize_blockspec(
         _size,
         _local_sizes)),
-    _distspec(_arguments.distspec()), 
+    _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()), 
+    _teamspec(_arguments.teamspec()),
     _nunits(_team->size()),
     _blocksize(initialize_blocksize(
         _size,
@@ -310,7 +310,7 @@ public:
     /// Cartesian arrangement of units within the team
     const TeamSpec_t                      & teamspec,
     /// Team containing units to which this pattern maps its elements
-    dash::Team                            & team     = dash::Team::All()) 
+    dash::Team                            & team     = dash::Team::All())
   : _size(initialize_size(
         local_sizes)),
     _local_sizes(local_sizes),
@@ -397,7 +397,7 @@ public:
     _block_offsets(other._block_offsets),
     _memory_layout(other._memory_layout),
     _blockspec(other._blockspec),
-    _distspec(other._distspec), 
+    _distspec(other._distspec),
     _team(other._team),
     _teamspec(other._teamspec),
     _nunits(other._nunits),
@@ -591,7 +591,7 @@ public:
   ////////////////////////////////////////////////////////////////////////////
   /// extent
   ////////////////////////////////////////////////////////////////////////////
-  
+
   /**
    * The number of elements in this pattern in the given dimension.
    *
@@ -603,7 +603,7 @@ public:
    */
   IndexType extent(dim_t dim) const {
     DASH_ASSERT_EQ(
-      0, dim, 
+      0, dim,
       "Wrong dimension for Pattern::local_extent. " <<
       "Expected dimension = 0, got " << dim);
     return _size;
@@ -622,7 +622,7 @@ public:
    */
   IndexType local_extent(dim_t dim) const {
     DASH_ASSERT_EQ(
-      0, dim, 
+      0, dim,
       "Wrong dimension for Pattern::local_extent. " <<
       "Expected dimension = 0, got " << dim);
     return _local_size;
@@ -676,7 +676,7 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit and its respective 
+   * Converts global coordinates to their associated unit and its respective
    * local coordinates.
    *
    * NOTE: Same as \c local_index.
@@ -730,7 +730,7 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit's respective 
+   * Converts global coordinates to their associated unit's respective
    * local coordinates.
    *
    * \see  DashPatternConcept
@@ -754,9 +754,9 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit and their respective 
+   * Converts global coordinates to their associated unit and their respective
    * local index.
-   * 
+   *
    * \see  DashPatternConcept
    */
   local_index_t local_index(
@@ -864,7 +864,7 @@ public:
    *
    * Convert given global coordinates in pattern to their respective
    * linear local index.
-   * 
+   *
    * \see  DashPatternConcept
    */
   IndexType at(
@@ -899,7 +899,7 @@ public:
     static_assert(
       sizeof...(values) == NumDimensions-1,
       "Wrong parameter number");
-    std::array<IndexType, NumDimensions> inputindex = { 
+    std::array<IndexType, NumDimensions> inputindex = {
       value, (IndexType)values...
     };
     return at(inputindex);
@@ -925,7 +925,7 @@ public:
     /// Viewspec to apply
     const ViewSpec_t & viewspec) const {
     DASH_ASSERT_EQ(
-      0, dim, 
+      0, dim,
       "Wrong dimension for Pattern::has_local_elements. " <<
       "Expected dimension = 0, got " << dim);
     DASH_LOG_TRACE_VAR("CSRPattern.has_local_elements()", dim_offset);
@@ -1272,7 +1272,7 @@ public:
     const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec", local_sizes);
-    BlockSpec_t blockspec({ 
+    BlockSpec_t blockspec({
                   static_cast<size_type>(local_sizes.size())
                 });
     DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec >", blockspec);
@@ -1359,7 +1359,7 @@ public:
    * and distribution spec.
    */
   void initialize_local_range() {
-    auto l_size = _local_size; 
+    auto l_size = _local_size;
     DASH_LOG_DEBUG_VAR("CSRPattern.init_local_range()", l_size);
     if (l_size == 0) {
       _lbegin = 0;
@@ -1397,7 +1397,7 @@ public:
 /**
  * Irregular Pattern for Compressed Sparse Row Storage.
  * Specialization for 2-dimensional data.
- * 
+ *
  * \concept{DashPatternConcept}
  */
 template<
@@ -1521,12 +1521,12 @@ public:
    */
   template<typename ... Args>
   CSRPattern(
-    /// Argument list consisting of the pattern size (extent, number of 
-    /// elements) in every dimension followed by optional distribution     
+    /// Argument list consisting of the pattern size (extent, number of
+    /// elements) in every dimension followed by optional distribution
     /// types.
     SizeType arg,
-    /// Argument list consisting of the pattern size (extent, number of 
-    /// elements) in every dimension followed by optional distribution     
+    /// Argument list consisting of the pattern size (extent, number of
+    /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
   : _arguments(arg, args...),
@@ -1541,9 +1541,9 @@ public:
     _blockspec(initialize_blockspec(
         _size,
         _local_sizes)),
-    _distspec(_arguments.distspec()), 
+    _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()), 
+    _teamspec(_arguments.teamspec()),
     _nunits(_team->size()),
     _blocksize(initialize_blocksize(
         _size,
@@ -1620,12 +1620,12 @@ public:
   CSRPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type> & local_sizes,
-    /// Argument list consisting of the pattern size (extent, number of 
-    /// elements) in every dimension followed by optional distribution     
+    /// Argument list consisting of the pattern size (extent, number of
+    /// elements) in every dimension followed by optional distribution
     /// types.
     SizeType arg,
-    /// Argument list consisting of the pattern size (extent, number of 
-    /// elements) in every dimension followed by optional distribution     
+    /// Argument list consisting of the pattern size (extent, number of
+    /// elements) in every dimension followed by optional distribution
     /// types.
     Args && ... args)
   : _arguments(arg, args...),
@@ -1637,9 +1637,9 @@ public:
     _blockspec(initialize_blockspec(
         _size,
         _local_sizes)),
-    _distspec(_arguments.distspec()), 
+    _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
-    _teamspec(_arguments.teamspec()), 
+    _teamspec(_arguments.teamspec()),
     _nunits(_team->size()),
     _blocksize(initialize_blocksize(
         _size,
@@ -1671,7 +1671,7 @@ public:
     /// Cartesian arrangement of units within the team
     const TeamSpec_t                      & teamspec,
     /// Team containing units to which this pattern maps its elements
-    dash::Team                            & team     = dash::Team::All()) 
+    dash::Team                            & team     = dash::Team::All())
   : _size(initialize_size(
         local_sizes)),
     _local_sizes(local_sizes),
@@ -1758,7 +1758,7 @@ public:
     _block_offsets(other._block_offsets),
     _memory_layout(other._memory_layout),
     _blockspec(other._blockspec),
-    _distspec(other._distspec), 
+    _distspec(other._distspec),
     _team(other._team),
     _teamspec(other._teamspec),
     _nunits(other._nunits),
@@ -1952,7 +1952,7 @@ public:
   ////////////////////////////////////////////////////////////////////////////
   /// extent
   ////////////////////////////////////////////////////////////////////////////
-  
+
   /**
    * The number of elements in this pattern in the given dimension.
    *
@@ -1964,7 +1964,7 @@ public:
    */
   IndexType extent(dim_t dim) const {
     DASH_ASSERT_EQ(
-      0, dim, 
+      0, dim,
       "Wrong dimension for Pattern::local_extent. " <<
       "Expected dimension = 0, got " << dim);
     return _size;
@@ -1983,7 +1983,7 @@ public:
    */
   IndexType local_extent(dim_t dim) const {
     DASH_ASSERT_EQ(
-      0, dim, 
+      0, dim,
       "Wrong dimension for Pattern::local_extent. " <<
       "Expected dimension = 0, got " << dim);
     return _local_size;
@@ -2037,7 +2037,7 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit and its respective 
+   * Converts global coordinates to their associated unit and its respective
    * local coordinates.
    *
    * NOTE: Same as \c local_index.
@@ -2091,7 +2091,7 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit's respective 
+   * Converts global coordinates to their associated unit's respective
    * local coordinates.
    *
    * \see  DashPatternConcept
@@ -2115,9 +2115,9 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit and their respective 
+   * Converts global coordinates to their associated unit and their respective
    * local index.
-   * 
+   *
    * \see  DashPatternConcept
    */
   local_index_t local_index(
@@ -2225,7 +2225,7 @@ public:
    *
    * Convert given global coordinates in pattern to their respective
    * linear local index.
-   * 
+   *
    * \see  DashPatternConcept
    */
   IndexType at(
@@ -2260,7 +2260,7 @@ public:
     static_assert(
       sizeof...(values) == NumDimensions-1,
       "Wrong parameter number");
-    std::array<IndexType, NumDimensions> inputindex = { 
+    std::array<IndexType, NumDimensions> inputindex = {
       value, (IndexType)values...
     };
     return at(inputindex);
@@ -2286,7 +2286,7 @@ public:
     /// Viewspec to apply
     const ViewSpec_t & viewspec) const {
     DASH_ASSERT_EQ(
-      0, dim, 
+      0, dim,
       "Wrong dimension for Pattern::has_local_elements. " <<
       "Expected dimension = 0, got " << dim);
     DASH_LOG_TRACE_VAR("CSRPattern.has_local_elements()", dim_offset);
@@ -2633,7 +2633,7 @@ public:
     const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec", local_sizes);
-    BlockSpec_t blockspec({ 
+    BlockSpec_t blockspec({
                   static_cast<size_type>(local_sizes.size())
                 });
     DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec >", blockspec);
@@ -2720,7 +2720,7 @@ public:
    * and distribution spec.
    */
   void initialize_local_range() {
-    auto l_size = _local_size; 
+    auto l_size = _local_size;
     DASH_LOG_DEBUG_VAR("CSRPattern.init_local_range()", l_size);
     if (l_size == 0) {
       _lbegin = 0;
