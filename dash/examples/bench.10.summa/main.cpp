@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
   std::deque<std::pair<int, int>> tests;
 
   tests.push_back({0,      0}); // this prints the header
-#ifndef DASH_ENABLE_MKL
+#ifdef DASH_ENABLE_MKL
   tests.push_back({1024, 100});
   tests.push_back({2048,  50});
   tests.push_back({4096,   5});
@@ -157,16 +157,26 @@ void init_values(
   MatrixType & matrix_b,
   MatrixType & matrix_c)
 {
-  if (dash::myid() == 0) {
-    auto pattern = matrix_c.pattern();
-    for (auto col = 0; col < pattern.extent(0); ++col) {
-      for (auto row = 0; row < pattern.extent(1); ++row) {
-        matrix_a[col][row] = ((1 + col) * 1000) + (row + 1);
-      }
+  // Initialize local sections of matrix C:
+  auto unit_id          = dash::myid();
+  auto pattern          = matrix_c.pattern();
+  auto block_cols       = pattern.blocksize(1);
+  auto block_rows       = pattern.blocksize(1);
+  auto num_blocks_cols  = pattern.extent(0) / block_cols;
+  auto num_blocks_rows  = pattern.extent(1) / block_rows;
+  auto num_blocks       = num_blocks_rows * num_blocks_cols;
+  auto num_local_blocks = num_blocks / dash::Team::All().size();
+  for (auto l_block_idx = 0; l_block_idx < num_local_blocks; ++l_block_idx) {
+    auto l_block = matrix_a.local.block(l_block_idx);
+    for (auto elem : l_block) {
+      elem = 100000 * (unit_id + 1) + l_block_idx;
     }
-    // Matrix B is identity matrix:
-    for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
-      matrix_b[diag_idx][diag_idx] = 1;
+  }
+  // Matrix B is identity matrix:
+  for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
+    auto elem_ref = matrix_b[diag_idx][diag_idx];
+    if (elem_ref.is_local()) {
+      elem_ref = 1;
     }
   }
 }
