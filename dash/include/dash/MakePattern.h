@@ -109,17 +109,25 @@ struct deduce_pattern_model
  *
  * Creates an instance of a Pattern model that satisfies the contiguos
  * linearization property from given pattern traits.
+ *
+ * \returns  An instance of \c dash::TilePattern if the following constraints are
+ *           specified:
+ *           - Layout: blocked 
+ *           or
+ *           - Partitioning: balanced
+ *           - Dimensions:   1
  */
 template<
   typename PartitioningTraits = dash::pattern_partitioning_default_properties,
   typename MappingTraits      = dash::pattern_mapping_default_properties,
   typename LayoutTraits       = dash::pattern_layout_default_properties,
-  class SizeSpecType,
-  class TeamSpecType
+  class    SizeSpecType,
+  class    TeamSpecType
 >
 typename std::enable_if<
-  LayoutTraits::blocked,
-  TilePattern<SizeSpecType::ndim()>
+  (LayoutTraits::blocked) ||
+  (PartitioningTraits::balanced && SizeSpecType::ndim() == 1),
+  TilePattern<SizeSpecType::ndim(), dash::ROW_MAJOR, typename SizeSpecType::index_type>
 >::type
 make_pattern(
   /// Size spec of cartesian space to be distributed by the pattern.
@@ -127,12 +135,14 @@ make_pattern(
   /// Team spec containing layout of units mapped by the pattern.
   const TeamSpecType & teamspec)
 {
+  // Deduce number of dimensions from size spec:
+  const dim_t ndim = SizeSpecType::ndim();
+  // Deduce index type from size spec:
+  typedef typename SizeSpecType::index_type                 index_t;
+  typedef dash::TilePattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;
   DASH_LOG_TRACE("dash::make_pattern", PartitioningTraits());
   DASH_LOG_TRACE("dash::make_pattern", MappingTraits());
   DASH_LOG_TRACE("dash::make_pattern", LayoutTraits());
-
-  // Deduce number of dimensions from size spec:
-  const dim_t ndim = SizeSpecType::ndim();
   // Make distribution spec from template- and run time parameters:
   auto distspec =
     make_distribution_spec<
@@ -144,10 +154,9 @@ make_pattern(
     >(sizespec,
       teamspec);
   // Make pattern from template- and run time parameters:
-  dash::TilePattern<ndim> pattern(
-                            sizespec,
-                            distspec,
-                            teamspec);
+  pattern_t pattern(sizespec,
+		    distspec,
+		    teamspec);
   return pattern;
 }
 
@@ -156,17 +165,21 @@ make_pattern(
  *
  * Creates an instance of a Pattern model that satisfies the canonical
  * (strided) layout property from given pattern traits.
+ *
+ * \returns  An instance of \c dash::BlockPattern if the following constraints are
+ *           specified:
+ *           - Layout: canonical
  */
 template<
   typename PartitioningTraits = dash::pattern_partitioning_default_properties,
   typename MappingTraits      = dash::pattern_mapping_default_properties,
   typename LayoutTraits       = dash::pattern_layout_default_properties,
-  class SizeSpecType,
-  class TeamSpecType
+  class    SizeSpecType,
+  class    TeamSpecType
 >
 typename std::enable_if<
   LayoutTraits::canonical,
-  Pattern<SizeSpecType::ndim()>
+  Pattern<SizeSpecType::ndim(), dash::ROW_MAJOR, typename SizeSpecType::index_type>
 >::type
 make_pattern(
   /// Size spec of cartesian space to be distributed by the pattern.
@@ -174,12 +187,14 @@ make_pattern(
   /// Team spec containing layout of units mapped by the pattern.
   const TeamSpecType & teamspec)
 {
+  // Deduce number of dimensions from size spec:
+  const dim_t ndim = SizeSpecType::ndim();
+  // Deduce index type from size spec:
+  typedef typename SizeSpecType::index_type             index_t;
+  typedef dash::Pattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;
   DASH_LOG_TRACE("dash::make_pattern", PartitioningTraits());
   DASH_LOG_TRACE("dash::make_pattern", MappingTraits());
   DASH_LOG_TRACE("dash::make_pattern", LayoutTraits());
-
-  // Deduce number of dimensions from size spec:
-  const dim_t ndim = SizeSpecType::ndim();
   // Make distribution spec from template- and run time parameters:
   auto distspec =
     make_distribution_spec<
@@ -191,10 +206,9 @@ make_pattern(
     >(sizespec,
       teamspec);
   // Make pattern from template- and run time parameters:
-  dash::Pattern<ndim> pattern(
-                        sizespec,
-                        distspec,
-                        teamspec);
+  pattern_t pattern(sizespec,
+                    distspec,
+                    teamspec);
   return pattern;
 }
 

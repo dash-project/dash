@@ -87,7 +87,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   auto block_gindex = pattern().blockspec().at(block_gcoords);
   DASH_LOG_TRACE_VAR("Matrix.block()",  block_gindex);
   // Resolve the block's viewspec:
-  ViewSpec<NumDim>    block_view = pattern().block(block_gindex);
+  auto block_view = pattern().block(block_gindex);
   // Return a view specified by the block's viewspec:
   view_type<NumDim> view;
   view._refview            = new MatrixRefView_t(this);
@@ -109,7 +109,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   //
   DASH_LOG_TRACE("Matrix.block()", "gindex:", block_gindex);
   // Resolve the block's viewspec:
-  ViewSpec<NumDim>    block_view = pattern().block(block_gindex);
+  auto block_view = pattern().block(block_gindex);
   // Return a view specified by the block's viewspec:
   view_type<NumDim> view;
   view._refview            = new MatrixRefView_t(this);

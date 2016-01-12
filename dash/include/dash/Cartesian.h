@@ -29,7 +29,7 @@ namespace dash {
  */
 template<
   dim_t    NumDimensions,
-  typename SizeType = unsigned int >
+  typename SizeType = dash::default_size_t >
 class CartesianSpace
 {
 private:
@@ -211,8 +211,8 @@ public:
  * \concept(DashCartesianSpaceConcept)
  */
 template<
-  dim_t NumDimensions,
-  typename SizeType = unsigned int>
+  dim_t    NumDimensions,
+  typename SizeType = dash::default_size_t >
 class SizeSpec : public CartesianSpace<NumDimensions, SizeType>
 {
 private:
@@ -249,9 +249,9 @@ public:
  * indices to cartesian coordinates depending on memory order.
  */
 template<
-  dim_t NumDimensions,
-  MemArrange Arrangement = ROW_MAJOR,
-  typename IndexType     = int >
+  dim_t      NumDimensions,
+  MemArrange Arrangement    = ROW_MAJOR,
+  typename   IndexType      = dash::default_index_t >
 class CartesianIndexSpace
 {
 private:
@@ -613,8 +613,8 @@ public:
  * \tparam  NumDimensions  Number of dimensions
  */
 template<
-  dim_t MaxDimensions,
-  typename IndexType = int>
+  dim_t    MaxDimensions,
+  typename IndexType = dash::default_index_t>
 class TeamSpec :
   public CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>
 {
@@ -861,9 +861,9 @@ private:
  * \tparam  NumDimensions  Number of dimensions
  */
 template<
-  size_t NumDimensions,
-  MemArrange Arrangement = ROW_MAJOR,
-  typename IndexType = long long>
+  size_t     NumDimensions,
+  MemArrange Arrangement   = ROW_MAJOR,
+  typename   IndexType     = dash::default_index_t >
 class LocalMemoryLayout :
   public CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
 {
