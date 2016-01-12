@@ -332,6 +332,11 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
     index_type coord);
 
   inline T * local_at(index_type pos) const;
+
+  inline bool is_local() const {
+    return true;
+  }
+
   inline operator T() const;
 
   /**
