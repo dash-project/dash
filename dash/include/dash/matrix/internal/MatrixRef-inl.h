@@ -482,6 +482,17 @@ MatrixRef<T, NumDim, 0, PatternT>
 }
 
 template <typename T, dim_t NumDim, class PatternT>
+inline bool
+MatrixRef<T, NumDim, 0, PatternT>
+::is_local() const
+{
+  return (_refview->_mat->_pattern.unit_at(
+                                     _refview->_coord,
+                                     _refview->_viewspec) ==
+          _refview->_mat->_myid);
+}
+
+template <typename T, dim_t NumDim, class PatternT>
 inline MatrixRef<T, NumDim, 0, PatternT>
 ::operator T() const
 {

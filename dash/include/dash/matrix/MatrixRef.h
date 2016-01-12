@@ -339,6 +339,8 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
     dart_unit_t unit,
     index_type elem);
 
+  inline bool is_local() const;
+
   operator ElementT() const;
   operator GlobPtr<ElementT, PatternT>() const;
 
