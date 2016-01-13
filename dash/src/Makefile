@@ -30,7 +30,8 @@ LIBDASH = libdash.a
 
 FILES = Init Team Distribution Math \
 	util/Timer util/TimestampClockPosix \
-	util/TimestampCounterPosix
+	util/TimestampCounterPosix \
+	omp/Mutex omp/Sections
 
 OBJS = $(addsuffix .o, $(FILES))
 
@@ -43,6 +44,9 @@ clean :
 	rm -f *~
 	rm -f *.o
 	rm -f $(LIBDASH)
+	rm -f util/*.o
+	rm -f omp/*.o
+
 
 printenv : 
 	@echo "DART_IMPL   = $(DART_IMPL)"

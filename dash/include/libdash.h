@@ -34,4 +34,12 @@
 
 #include <dash/util/Timer.h>
 
+#include <dash/omp/Mutex.h>
+#include <dash/omp/MasterSingle.h>
+#include <dash/omp/Critical.h>
+#include <dash/omp/ParallelFor.h>
+#include <dash/omp/Sections.h>
+
+
+
 #endif // DASH__LIBDASH_H_
