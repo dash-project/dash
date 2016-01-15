@@ -101,7 +101,7 @@
 #define PAL_MASTER_BEGIN                                 dash::omp::master([&]{
 #define PAL_MASTER_END                                   }); dash::barrier();
 
-#define PAL_CRITICAL_INIT(name)                          dash::omp::mutex_init(#name);
+#define PAL_CRITICAL_INIT(name)                          dash::omp::Mutex::by_name(#name);
 #define PAL_CRITICAL_BEGIN(name)                         dash::omp::critical(#name, [&]{
 #define PAL_CRITICAL_END                                 });
 

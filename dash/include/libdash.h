@@ -39,6 +39,7 @@
 #include <dash/omp/Critical.h>
 #include <dash/omp/ParallelFor.h>
 #include <dash/omp/Sections.h>
+#include <dash/omp/Reduction.h>
 
 
 
