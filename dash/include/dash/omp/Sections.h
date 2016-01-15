@@ -51,23 +51,13 @@ public:
   
 };
 
-
 extern SectionsImpl *_current_sections;
 
+void sections(const std::function<void(void)>& f);
+void section(const std::function<void(void)>& f);
 
-void section(const std::function<void(void)>& f)
-{
-  _current_sections->section(f);
-}
 
-void sections(const std::function<void(void)>& f)
-{
-  SectionsImpl sectimpl;
-  _current_sections = &sectimpl;
-  f();
-  sectimpl.execute();
-  _current_sections = nullptr;
-}
+
 
 
 }  // namespace omp

@@ -31,7 +31,7 @@ LIBDASH = libdash.a
 FILES = Init Team Distribution Math \
 	util/Timer util/TimestampClockPosix \
 	util/TimestampCounterPosix \
-	omp/Mutex omp/Sections
+	omp/Mutex omp/MasterSingle omp/Sections omp/Critical
 
 OBJS = $(addsuffix .o, $(FILES))
 
