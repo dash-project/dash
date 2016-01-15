@@ -1,5 +1,4 @@
-#
-# In-place makefile for use side-by-side with the 
-# CMake build system
-#
+SOURCES = $(basename $(shell ls *.cpp))
+OBJECTS = $(addsuffix .o, $(SOURCES))
+
 include ../Makefile_cpp

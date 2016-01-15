@@ -36,15 +36,17 @@ regular : $(LIBDART) $(LIBDASH) $(PROG)
 with-ipm: $(LIBDART) $(LIBDASH) $(LIBIPM) $(PROG).ipm
 
 printenv : 
-	 @echo "CXX           = $(CXX)"
-	 @echo "CFLAGS        = $(CFLAGS)"
-	 @echo "LFLAGS        = $(LFLAGS)"
-	 @echo "DASH_ROOT     = $(DASH_ROOT)"
-	 @echo "LIBDASH       = $(LIBDASH)"
-	 @echo "DART_IMPL     = $(DART_IMPL)"
-	 @echo "LIBDART       = $(LIBDART)"
-	 @echo "LIBDART_EXTRA = $(LIBDART_EXTRA)"
-	 
+	@echo "CXX           = $(CXX)"
+	@echo "CFLAGS        = $(CFLAGS)"
+	@echo "LFLAGS        = $(LFLAGS)"
+	@echo "DASH_ROOT     = $(DASH_ROOT)"
+	@echo "LIBDASH       = $(LIBDASH)"
+	@echo "DART_IMPL     = $(DART_IMPL)"
+	@echo "LIBDART       = $(LIBDART)"
+	@echo "LIBDART_EXTRA = $(LIBDART_EXTRA)"
+	@echo "SOURCES       = $(SOURCES)"
+	@echo "OBJECTS       = $(OBJECTS)"	
+ 
 
 $(LIBDASH) :
 	make OPT_FLAGS="$(OPT_FLAGS)" -C $(DASH_ROOT)/src
@@ -55,8 +57,8 @@ $(LIBDART) :
 $(LIBIPM) : 
 	make OPT_FLAGS="$(OPT_FLAGS)" -C $(LIBIPM_DIR)
 
-$(PROG) : main.o
-	$(CXX) $(LFLAGS) -o $@ $+ $(LIBDASH) $(LIBDART) $(LIBDART_EXTRA)
+$(PROG) : $(OBJECTS)
+	$(CXX) $(LFLAGS) -o $(PROG) $+ $(LIBDASH) $(LIBDART) $(LIBDART_EXTRA)
 
 $(PROG).ipm : main.o
 	$(CXX) $(LFLAGS) -o $@ $+ $(LIBDASH) $(LIBDART) $(LIBDART_EXTRA) $(LIBIPM)
