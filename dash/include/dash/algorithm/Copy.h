@@ -502,7 +502,7 @@ ValueType * copy(
   GlobOutputIt  out_first)
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
-  
+
   // TODO:
   // - Implement adapter for local-to-global dash::copy here
   // - Return if global input range has no local sub-range

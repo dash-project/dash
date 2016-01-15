@@ -30,33 +30,33 @@ class TimestampPAPI;
 template<>
 class TimestampPAPI<TimeMeasure::Clock> : public Timestamp
 {
-private: 
-  Timestamp::counter_t         value; 
-  static int                   timer_mode; 
+private:
+  Timestamp::counter_t         value;
+  static int                   timer_mode;
 
-public: 
-  static Timestamp::counter_t  frequencyScaling; 
+public:
+  static Timestamp::counter_t  frequencyScaling;
 
-public: 
-  /** 
+public:
+  /**
    * Initializes the PAPI library.
    *
    * \param  arg  0 for real (usec), 1 for virt (usec)
    */
-  static void Calibrate(unsigned int arg = 0) { 
-    timer_mode = arg; 
-    int retval = PAPI_library_init(PAPI_VER_CURRENT); 
+  static void Calibrate(unsigned int arg = 0) {
+    timer_mode = arg;
+    int retval = PAPI_library_init(PAPI_VER_CURRENT);
     if (retval != PAPI_VER_CURRENT && retval > 0) {
       throw ::std::runtime_error("PAPI version mismatch");
     }
-    else if (retval < 0) { 
+    else if (retval < 0) {
       throw ::std::runtime_error("PAPI init failed");
     }
-  } 
+  }
 
 public:
   TimestampPAPI() {
-    if (timer_mode == 0) { 
+    if (timer_mode == 0) {
       value = static_cast<counter_t>(PAPI_get_real_usec());
     }
     else {
@@ -78,9 +78,9 @@ public:
     const TimestampPAPI rhs)
   {
     if (this != &rhs) {
-      value = rhs.value; 
+      value = rhs.value;
     }
-    return *this; 
+    return *this;
   }
 
   inline const counter_t & Value() const
@@ -90,7 +90,7 @@ public:
 
   inline static double FrequencyScaling()
   {
-    return 1.0f; 
+    return 1.0f;
   }
 
   inline static double FrequencyPrescale()
@@ -112,15 +112,15 @@ public:
 template<>
 class TimestampPAPI<TimeMeasure::Counter> : public Timestamp
 {
-private: 
-  Timestamp::counter_t         value; 
-  static int                   timer_mode; 
+private:
+  Timestamp::counter_t         value;
+  static int                   timer_mode;
 
-public: 
-  static Timestamp::counter_t  frequencyScaling; 
+public:
+  static Timestamp::counter_t  frequencyScaling;
 
-public: 
-  /** 
+public:
+  /**
    * Initializes the PAPI library.
    *
    * \param  arg  0 for real (usec), 1 for virt (usec)
@@ -130,18 +130,18 @@ public:
     double       fscale = 1.0f)
   {
     timer_mode = mode;
-    int retval = PAPI_library_init(PAPI_VER_CURRENT); 
+    int retval = PAPI_library_init(PAPI_VER_CURRENT);
     if (retval != PAPI_VER_CURRENT && retval > 0) {
       throw ::std::runtime_error("PAPI version mismatch");
     }
-    else if (retval < 0) { 
+    else if (retval < 0) {
       throw ::std::runtime_error("PAPI init failed");
     }
-  } 
+  }
 
 public:
   TimestampPAPI() {
-    if (timer_mode == 0) { 
+    if (timer_mode == 0) {
       value = static_cast<counter_t>(PAPI_get_real_cyc());
     }
     else {
@@ -163,9 +163,9 @@ public:
     const TimestampPAPI rhs)
   {
     if (this != &rhs) {
-      value = rhs.value; 
+      value = rhs.value;
     }
-    return *this; 
+    return *this;
   }
 
   inline const counter_t & Value() const

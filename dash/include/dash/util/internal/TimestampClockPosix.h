@@ -22,15 +22,15 @@ namespace internal {
  * Timestamp counter (TSC) for POSIX platforms.
  */
 class TimestampClockPosix : public Timestamp
-{ 
- private: 
+{
+ private:
   Timestamp::counter_t value;
 
- public: 
+ public:
   /**
-   * Clock modes, ordered by preference. 
+   * Clock modes, ordered by preference.
    */
-  typedef enum { 
+  typedef enum {
     UNDEFINED_CLOCK = 0, ///< Undefined (unresolved) mode
     GENERIC_CLOCK,       ///< Unknown (unresolvable) mode
 
@@ -48,33 +48,33 @@ class TimestampClockPosix : public Timestamp
     NUM_CLOCK_MODES      ///< Number of clock modes in total
   } ClockMode;
 
- private: 
+ private:
   typedef std::pair<ClockMode, clockid_t> ClockDef;
 
- private: 
-  /** 
-   * List of clock modes as readable strings. 
+ private:
+  /**
+   * List of clock modes as readable strings.
    */
   static const char * clockModeNames[];
-  /** 
+  /**
    * Mapping of clock modes to clockid types, only contains mappings for
-   * clock types available on the platform. 
+   * clock types available on the platform.
    */
   static TimestampClockPosix::ClockDef availableModes[];
   /**
-   * Currently selected clock mode. 
-   */ 
-  static ClockMode clockMode; 
+   * Currently selected clock mode.
+   */
+  static ClockMode clockMode;
   /**
-   * Currently selected clockid_t corresponding to clockMode. 
-   */ 
-  static clockid_t clockId; 
+   * Currently selected clockid_t corresponding to clockMode.
+   */
+  static clockid_t clockId;
 
  public:
   static Timestamp::counter_t frequencyScaling;
 
- public: 
-  static void Calibrate(unsigned int mode = 0); 
+ public:
+  static void Calibrate(unsigned int mode = 0);
 
   inline TimestampClockPosix(
     const Timestamp::counter_t & counterValue)
@@ -91,9 +91,9 @@ class TimestampClockPosix : public Timestamp
   inline TimestampClockPosix & operator=(
     const TimestampClockPosix & rhs) {
     if (this != &rhs) {
-      value = rhs.value; 
+      value = rhs.value;
     }
-    return *this; 
+    return *this;
   }
 
   inline const Timestamp::counter_t & Value() const {
@@ -101,15 +101,15 @@ class TimestampClockPosix : public Timestamp
   }
 
   inline static double FrequencyScaling() {
-    return 1.0f; 
+    return 1.0f;
   }
-  
+
   inline static double FrequencyPrescale() {
-    return 1.0f; 
+    return 1.0f;
   }
 
   inline static const char * TimerName() {
-    return clockModeNames[clockMode]; 
+    return clockModeNames[clockMode];
   }
 
 };
