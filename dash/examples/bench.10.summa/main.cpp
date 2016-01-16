@@ -28,6 +28,7 @@
 
 using std::cout;
 using std::endl;
+using std::setw;
 
 typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
@@ -65,44 +66,72 @@ void perform_test(
 typedef struct benchmark_params_t {
   std::string variant;
   extent_t    size_base;
+  extent_t    exp_max;
+  unsigned    rep_base;
+  unsigned    rep_max;
+  extent_t    units_max;
+  extent_t    units_inc;
 } benchmark_params;
 
 benchmark_params parse_args(int argc, char * argv[]);
 
 
 int main(int argc, char* argv[]) {
-#ifndef DASH_ENABLE_MKL
-  if (dash::myid() == 0) {
-    cout << "WARNING: MKL not available, "
-         << "falling back to naive local matrix multiplication"
-         << endl;
-  }
+#ifdef DASH_ENABLE_MKL
+  const bool mkl_available = true;
+#else
+  const bool mkl_available = false;
 #endif
+
   dash::init(&argc, &argv);
 
   Timer::Calibrate(0);
 
-  auto bench_params   = parse_args(argc, argv);
-  std::string variant = bench_params.variant;
-  extent_t size_first = bench_params.size_base * 4;
+  auto params = parse_args(argc, argv);
+  if (dash::myid() == 0) {
+    cout << "--------------------------------" << endl
+         << "-- DASH benchmark bench.10.summa" << endl
+         << "-- parameters:" << endl
+         << "--   -s    variant:   " << setw(5) << params.variant   << endl
+         << "--   -sb   size base: " << setw(5) << params.size_base << endl
+         << "--   -nmax units max: " << setw(5) << params.units_max << endl
+         << "--   -ninc units inc: " << setw(5) << params.units_inc << endl
+         << "--   -emax exp max:   " << setw(5) << params.exp_max   << endl
+         << "--   -rmax rep. max:  " << setw(5) << params.rep_max   << endl
+         << "--   -rb   rep. base: " << setw(5) << params.rep_base  << endl
+         << "-- environment:" << endl;
+    if (mkl_available) {
+      cout << "--   BLAS: found" << endl;
+    } else {
+      cout << "--   BLAS: not found" << endl
+           << "-- ! WARNING:"                      << endl
+           << "-- !   MKL not available,"          << endl
+           << "-- !   falling back to naive local" << endl
+           << "-- !   matrix multiplication"       << endl
+           << endl;
+    }
+    cout << "--------------------------------"
+         << endl;
+  }
+  std::string variant = params.variant;
+  extent_t size_first = params.size_base * 4;
+  extent_t exp_max    = params.exp_max;
+  unsigned repeats    = params.rep_max;
+  unsigned rep_base   = params.rep_base;
 
   std::deque<std::pair<extent_t, unsigned>> tests;
+  // Prints the header
+  tests.push_back({0, 0});
 
-  tests.push_back({0,      0}); // this prints the header
-#ifdef DASH_ENABLE_MKL
-  tests.push_back({size_first,      1000});
-  tests.push_back({size_first *= 2,  500});
-  tests.push_back({size_first *= 2,  100});
-  tests.push_back({size_first *= 2,   50});
-  tests.push_back({size_first *= 2,   10});
-  tests.push_back({size_first *= 2,    5});
-  tests.push_back({size_first *= 2,    1});
-#else
-  tests.push_back({64,   100});
-  tests.push_back({256,   50});
-  tests.push_back({1024,  10});
-  tests.push_back({2048,   1});
-#endif
+  // Balance overall number of gflop in test runs:
+  for (auto exp = 0; exp < exp_max; ++exp) {
+    extent_t size_run = pow(2, exp) * size_first;
+    if (repeats == 0) {
+      repeats = 1;
+    }
+    tests.push_back({ size_run, repeats });
+    repeats /= rep_base;
+  }
 
   for (auto test: tests) {
     perform_test(variant, test.first, test.second);
@@ -121,15 +150,15 @@ void perform_test(
   auto num_units = dash::size();
   if (n == 0) {
     if (dash::myid() == 0) {
-      cout << std::setw(10) << "units"   << ", "
-           << std::setw(10) << "n"       << ", "
-           << std::setw(10) << "size"    << ", "
-           << std::setw(5)  << "impl"    << ", "
-           << std::setw(10) << "gflop"   << ", "
-           << std::setw(10) << "gflop/s" << ", "
-           << std::setw(10) << "repeats" << ", "
-           << std::setw(11) << "init.s"  << ", "
-           << std::setw(11) << "mmult.s"
+      cout << setw(7)  << "units"   << ", "
+           << setw(10) << "n"       << ", "
+           << setw(10) << "size"    << ", "
+           << setw(5)  << "impl"    << ", "
+           << setw(10) << "gflop/r" << ", "
+           << setw(10) << "repeats" << ", "
+           << setw(10) << "gflop/s" << ", "
+           << setw(11) << "init.s"  << ", "
+           << setw(11) << "mmult.s"
            << endl;
     }
     return;
@@ -156,14 +185,15 @@ void perform_test(
   dash::Matrix<value_t, 2, index_t> matrix_b(pattern);
   dash::Matrix<value_t, 2, index_t> matrix_c(pattern);
 
-  double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9 * repeat;
+  double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9;
   if (dash::myid() == 0) {
-    cout << std::setw(10) << num_units << ", "
-         << std::setw(10) << n         << ", "
-         << std::setw(10) << (n*n)     << ", "
-         << std::setw(5)  << variant   << ", "
-         << std::setw(10) << std::fixed << std::setprecision(4)
-                          << gflop     << ", "
+    cout << setw(7)  << num_units << ", "
+         << setw(10) << n         << ", "
+         << setw(10) << (n*n)     << ", "
+         << setw(5)  << variant   << ", "
+         << setw(10) << std::fixed << std::setprecision(4)
+                     << gflop     << ", "
+         << setw(10) << repeat    << ", "
          << std::flush;
   }
 
@@ -179,22 +209,18 @@ void perform_test(
                         matrix_c,
                         repeat);
   }
-  double t_init     = t_mmult.first;
-  double t_multiply = t_mmult.second;
+  double t_init = t_mmult.first;
+  double t_mult = t_mmult.second;
 
   dash::barrier();
 
   if (dash::myid() == 0) {
-    double s_multiply = 1.0e-6 * t_multiply;
-    double s_init     = 1.0e-6 * t_init;
-    double gflops     = gflop / s_multiply;
-    cout << std::setw(10) << std::fixed << std::setprecision(4)
-                          << gflops    << ", "
-         << std::setw(10) << repeat    << ", "
-         << std::setw(11) << std::fixed << std::setprecision(4)
-                          << s_init    << ", "
-         << std::setw(11) << std::fixed << std::setprecision(4)
-                          << s_multiply
+    double s_mult = 1.0e-6 * t_mult;
+    double s_init = 1.0e-6 * t_init;
+    double gflops = (gflop * repeat) / s_mult;
+    cout << setw(10) << std::fixed << std::setprecision(4) << gflops << ", "
+         << setw(11) << std::fixed << std::setprecision(4) << s_init << ", "
+         << setw(11) << std::fixed << std::setprecision(4) << s_mult
          << endl;
   }
 }
@@ -229,21 +255,6 @@ void init_values(
       l_block_elem_b[phase] = value;
     }
   }
-
-#if 0
-  // Matrix B is identity matrix:
-  index_t diagonal_block_idx = 0;
-  for (auto block_row = 0; block_row < num_blocks_rows; ++block_row) {
-    auto diagonal_block = matrix_b.block(diagonal_block_idx);
-    if (diagonal_block.begin().is_local()) {
-      // Diagonal block is local, fill with identity submatrix:
-      for (auto diag_idx = 0; diag_idx < pattern.blocksize(0); ++diag_idx) {
-         diagonal_block[diag_idx][diag_idx] = 1;
-      }
-    }
-    diagonal_block_idx += (num_blocks_cols + 1);
-  }
-#endif
   dash::barrier();
 }
 
@@ -354,21 +365,38 @@ std::pair<double, double> test_blas(
 benchmark_params parse_args(int argc, char * argv[]) {
   benchmark_params params;
   params.size_base = 0;
+  params.rep_base  = 2;
+  params.rep_max   = 0;
   params.variant   = "dash";
+  params.units_max = 0;
+  params.units_inc = 0;
+#ifdef DASH_ENABLE_MKL
+  params.exp_max   = 7;
+#else
+  params.exp_max   = 4;
+#endif
   extent_t size_base     = 1;
   extent_t num_units_inc = 1;
   extent_t max_units     = 0;
   extent_t remainder     = 0;
   for (auto i = 1; i < argc; i += 2) {
     std::string flag = argv[i];
-    if (flag == "-b") {
-      size_base      = static_cast<extent_t>(atoi(argv[i+1]));
+    if (flag == "-sb") {
+      size_base       = static_cast<extent_t>(atoi(argv[i+1]));
     } else if (flag == "-ninc") {
-      num_units_inc  = static_cast<extent_t>(atoi(argv[i+1]));
+      num_units_inc    = static_cast<extent_t>(atoi(argv[i+1]));
+      params.units_inc = num_units_inc;
     } else if (flag == "-nmax") {
-      max_units      = static_cast<extent_t>(atoi(argv[i+1]));
+      max_units       = static_cast<extent_t>(atoi(argv[i+1]));
+      params.units_max = max_units;
     } else if (flag == "-s") {
-      params.variant = argv[i+1];
+      params.variant  = argv[i+1];
+    } else if (flag == "-emax") {
+      params.exp_max  = static_cast<extent_t>(atoi(argv[i+1]));
+    } else if (flag == "-rb") {
+      params.rep_base = static_cast<unsigned>(atoi(argv[i+1]));
+    } else if (flag == "-rmax") {
+      params.rep_max  = static_cast<unsigned>(atoi(argv[i+1]));
     }
   }
   if (max_units > 0) {
@@ -394,6 +422,9 @@ benchmark_params parse_args(int argc, char * argv[]) {
       if (r > 1 && size_base % r != 0) {
         size_base *= r;
       }
+    }
+    if (params.rep_max == 0) {
+      params.rep_max = pow(params.rep_base, params.exp_max - 1);
     }
     params.size_base = size_base;
   }
