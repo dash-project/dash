@@ -199,10 +199,12 @@ void perform_test(
 
   std::pair<double, double> t_mmult;
   if (variant == "mkl" || variant == "blas") {
+#ifdef DASH_ENABLE_MKL
     t_mmult = test_blas(matrix_a,
                         matrix_b,
                         matrix_c,
                         repeat);
+#endif
   } else {
     t_mmult = test_dash(matrix_a,
                         matrix_b,
@@ -290,6 +292,7 @@ std::pair<double, double> test_dash(
   return time;
 }
 
+#ifdef DASH_ENABLE_MKL
 /**
  * Returns pair of durations (init_secs, multiply_secs).
  *
@@ -361,6 +364,7 @@ std::pair<double, double> test_blas(
 
   return time;
 }
+#endif
 
 benchmark_params parse_args(int argc, char * argv[]) {
   benchmark_params params;
