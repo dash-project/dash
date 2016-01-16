@@ -62,47 +62,41 @@ void perform_test(
   extent_t            n,
   unsigned            repeat);
 
+typedef struct benchmark_params_t {
+  std::string variant;
+  extent_t    size_base;
+} benchmark_params;
+
+benchmark_params parse_args(int argc, char * argv[]);
+
+
 int main(int argc, char* argv[]) {
 #ifndef DASH_ENABLE_MKL
-  cout << "WARNING: MKL not available, "
-       << "falling back to naive local matrix multiplication"
-       << endl;
+  if (dash::myid() == 0) {
+    cout << "WARNING: MKL not available, "
+         << "falling back to naive local matrix multiplication"
+         << endl;
+  }
 #endif
   dash::init(&argc, &argv);
 
   Timer::Calibrate(0);
 
-  std::deque<std::pair<extent_t, unsigned>> tests;
+  auto bench_params   = parse_args(argc, argv);
+  std::string variant = bench_params.variant;
+  extent_t size_first = bench_params.size_base * 4;
 
-  extent_t size_base  = 12;
-  std::string variant = "dash";
-  if (argc > 2 && std::string(argv[1]) == "-b") {
-    // bench.10.summa -b <size base>
-    size_base = static_cast<extent_t>(atoi(argv[2]));
-    if (argc > 4 && std::string(argv[3]) == "-s") {
-      // bench.10.summa -b <size base> -s <variant>
-      variant = argv[4];
-    }
-  }
-  if (argc > 2 && std::string(argv[1]) == "-s") {
-    // bench.10.summa -s <variant>
-    variant = argv[2];
-    if (argc > 4 && std::string(argv[3]) == "-b") {
-      // bench.10.summa -s <variant> -b <size base>
-      size_base = static_cast<extent_t>(atoi(argv[4]));
-    }
-  }
-  extent_t size_first = pow(size_base, 2);
+  std::deque<std::pair<extent_t, unsigned>> tests;
 
   tests.push_back({0,      0}); // this prints the header
 #ifdef DASH_ENABLE_MKL
-  tests.push_back({size_first,      500});
-  tests.push_back({size_first *= 2, 100});
-  tests.push_back({size_first *= 2,  50});
-  tests.push_back({size_first *= 2,  10});
-  tests.push_back({size_first *= 2,   5});
-  tests.push_back({size_first *= 2,   1});
-  tests.push_back({size_first *= 2,   1});
+  tests.push_back({size_first,      1000});
+  tests.push_back({size_first *= 2,  500});
+  tests.push_back({size_first *= 2,  100});
+  tests.push_back({size_first *= 2,   50});
+  tests.push_back({size_first *= 2,   10});
+  tests.push_back({size_first *= 2,    5});
+  tests.push_back({size_first *= 2,    1});
 #else
   tests.push_back({64,   100});
   tests.push_back({256,   50});
@@ -162,6 +156,17 @@ void perform_test(
   dash::Matrix<value_t, 2, index_t> matrix_b(pattern);
   dash::Matrix<value_t, 2, index_t> matrix_c(pattern);
 
+  double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9 * repeat;
+  if (dash::myid() == 0) {
+    cout << std::setw(10) << num_units << ", "
+         << std::setw(10) << n         << ", "
+         << std::setw(10) << (n*n)     << ", "
+         << std::setw(5)  << variant   << ", "
+         << std::setw(10) << std::fixed << std::setprecision(4)
+                          << gflop     << ", "
+         << std::flush;
+  }
+
   std::pair<double, double> t_mmult;
   if (variant == "mkl" || variant == "blas") {
     t_mmult = test_blas(matrix_a,
@@ -180,17 +185,10 @@ void perform_test(
   dash::barrier();
 
   if (dash::myid() == 0) {
-    double gflop      = static_cast<double>(n * n * n * 2) * 1.0e-9 * repeat;
     double s_multiply = 1.0e-6 * t_multiply;
     double s_init     = 1.0e-6 * t_init;
     double gflops     = gflop / s_multiply;
-    cout << std::setw(10) << num_units << ", "
-         << std::setw(10) << n         << ", "
-         << std::setw(10) << (n*n)     << ", "
-         << std::setw(5)  << variant   << ", "
-         << std::setw(10) << std::fixed << std::setprecision(4)
-                          << gflop     << ", "
-         << std::setw(10) << std::fixed << std::setprecision(4)
+    cout << std::setw(10) << std::fixed << std::setprecision(4)
                           << gflops    << ", "
          << std::setw(10) << repeat    << ", "
          << std::setw(11) << std::fixed << std::setprecision(4)
@@ -352,3 +350,53 @@ std::pair<double, double> test_blas(
 
   return time;
 }
+
+benchmark_params parse_args(int argc, char * argv[]) {
+  benchmark_params params;
+  params.size_base = 0;
+  params.variant   = "dash";
+  extent_t size_base     = 1;
+  extent_t num_units_inc = 1;
+  extent_t max_units     = 0;
+  extent_t remainder     = 0;
+  for (auto i = 1; i < argc; i += 2) {
+    std::string flag = argv[i];
+    if (flag == "-b") {
+      size_base      = static_cast<extent_t>(atoi(argv[i+1]));
+    } else if (flag == "-ninc") {
+      num_units_inc  = static_cast<extent_t>(atoi(argv[i+1]));
+    } else if (flag == "-nmax") {
+      max_units      = static_cast<extent_t>(atoi(argv[i+1]));
+    } else if (flag == "-s") {
+      params.variant = argv[i+1];
+    }
+  }
+  if (max_units > 0) {
+    size_base = num_units_inc;
+    // Simple integer factorization by trial division:
+    for (remainder = max_units;
+         remainder > num_units_inc;
+         remainder -= num_units_inc) {
+      extent_t r       = remainder;
+      extent_t z       = 2;
+      extent_t z_last  = 1;
+      while (z * z <= r) {
+        if (r % z == 0) {
+          if (z != z_last && size_base % z != 0) {
+            size_base *= z;
+          }
+          r      /= z;
+          z_last  = z;
+        } else {
+          z++;
+        }
+      }
+      if (r > 1 && size_base % r != 0) {
+        size_base *= r;
+      }
+    }
+    params.size_base = size_base;
+  }
+  return params;
+}
+
