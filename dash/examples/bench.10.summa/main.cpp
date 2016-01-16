@@ -375,8 +375,8 @@ benchmark_params parse_args(int argc, char * argv[]) {
 #else
   params.exp_max   = 4;
 #endif
-  extent_t size_base     = 1;
-  extent_t num_units_inc = 1;
+  extent_t size_base     = 0;
+  extent_t num_units_inc = 0;
   extent_t max_units     = 0;
   extent_t remainder     = 0;
   for (auto i = 1; i < argc; i += 2) {
@@ -399,7 +399,7 @@ benchmark_params parse_args(int argc, char * argv[]) {
       params.rep_max  = static_cast<unsigned>(atoi(argv[i+1]));
     }
   }
-  if (max_units > 0) {
+  if (size_base == 0 && max_units > 0 && num_units_inc > 0) {
     size_base = num_units_inc;
     // Simple integer factorization by trial division:
     for (remainder = max_units;
@@ -426,8 +426,8 @@ benchmark_params parse_args(int argc, char * argv[]) {
     if (params.rep_max == 0) {
       params.rep_max = pow(params.rep_base, params.exp_max - 1);
     }
-    params.size_base = size_base;
   }
+  params.size_base = size_base;
   return params;
 }
 
