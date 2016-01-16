@@ -6,8 +6,9 @@
 
 TEST_F(SUMMATest, Deduction)
 {
-  typedef double               value_t;
-  typedef dash::TilePattern<2> pattern_t;
+  typedef double                value_t;
+  typedef dash::TilePattern<2>  pattern_t;
+  typedef pattern_t::index_type index_t;
 
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
@@ -17,11 +18,6 @@ TEST_F(SUMMATest, Deduction)
   size_t num_local_blocks_y = 2;
   size_t extent_cols = tilesize_x * num_units * num_local_blocks_x;
   size_t extent_rows = tilesize_y * num_units * num_local_blocks_y;
-
-  if (num_units % 2 > 0) {
-    LOG_MESSAGE("Team size must be multiple of 2 for SUMMATest.Deduction");
-    return;
-  }
 
 #if 0
   // For explicit specification of data distribution:
@@ -91,7 +87,10 @@ TEST_F(SUMMATest, Deduction)
   if (_dash_id == 0) {
     for (auto col = 0; col < pattern.extent(0); ++col) {
       for (auto row = 0; row < pattern.extent(1); ++row) {
-        matrix_a[col][row] = ((1 + col) * 1000) + (row + 1);
+        auto unit  = matrix_a.pattern()
+                             .unit_at(std::array<index_t, 2> { col, row });
+        auto value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
+        matrix_a[col][row] = value;
       }
     }
     // Matrix B is identity matrix:
@@ -117,15 +116,17 @@ TEST_F(SUMMATest, Deduction)
 
   dash::barrier();
 
-  // Verify multiplication result (id x id = id):
+  // Verify multiplication result (A x id = A):
   if (_dash_id == 0) {
     // Multiplication of matrix A with identity matrix B should be identical
     // to matrix A:
     for (auto col = 0; col < extent_cols; ++col) {
       for (auto row = 0; row < extent_rows; ++row) {
-        value_t expected = ((1 + col) * 1000) + (row + 1);
-        value_t actual   = matrix_c[col][row];
-        ASSERT_EQ_U(expected, actual);
+        auto unit = matrix_a.pattern()
+                            .unit_at(std::array<index_t, 2> { col, row });
+        value_t expect = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
+        value_t actual = matrix_c[col][row];
+        ASSERT_EQ_U(expect, actual);
       }
     }
   }

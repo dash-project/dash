@@ -13,6 +13,8 @@
 #include <mkl_lapack.h>
 #endif
 
+#define SUMMA_EXPERIMENTAL_
+
 namespace dash {
 
 namespace internal {
@@ -21,19 +23,43 @@ namespace internal {
 /**
  * Matrix multiplication for local multiplication of matrix blocks via MKL.
  */
-template<typename ValueType>
+template<
+  typename   ValueType,
+  MemArrange storage    = dash::ROW_MAJOR>
 void multiply_local(
-  /// Matrix to multiply, extents n x m
+  /// Matrix to multiply, m rows by k columns.
   const ValueType * A,
-  /// Matrix to multiply, extents m x p
+  /// Matrix to multiply, k rows by n columns.
   const ValueType * B,
-  /// Matrix to contain the multiplication result, extents n x p
+  /// Matrix to contain the multiplication result, m rows by n columns.
   ValueType       * C,
   size_t            m,
   size_t            n,
-  size_t            p)
+  size_t            k)
 {
   mkl_set_num_threads(1);
+  /// Memory storage order of A, B, C:
+  auto   strg  = (storage == dash::ROW_MAJOR)
+                 ? CblasRowMajor
+                 : CblasColMajor;
+  /// Matrices A and B should not be transposed or conjugate transposed before
+  /// multiplication.
+  auto   tp_a  = CblasNoTrans;
+  auto   tp_b  = CblasNoTrans;
+  /// Leading dimension of A, or the number of elements between successive
+  /// rows (for row major storage) in memory.
+  auto   lda   = k;
+  /// Leading dimension of B, or the number of elements between successive
+  /// rows (for row major storage) in memory.
+  auto   ldb   = n;
+  /// Leading dimension of B, or the number of elements between successive
+  /// rows (for row major storage) in memory.
+  auto   ldc   = n;
+  /// Real value used to scale the product of matrices A and B.
+  double alpha = 1.0;
+  /// Real value used to scale matrix C.
+  /// Using 1.0 to preserve existing values in C such that C += A x B.
+  double beta  = 1.0;
 /*
   void cblas_dgemm(const CBLAS_LAYOUT    Layout,
                    const CBLAS_TRANSPOSE TransA,
@@ -51,20 +77,14 @@ void multiply_local(
                    const MKL_INT         ldc);
 
 */
-  cblas_dgemm(CblasRowMajor,
-              CblasNoTrans,
-              CblasNoTrans,
-              m,
-              n,
-              p,
-              1.0,
-              static_cast<const double *>(A),
-              p,
-              static_cast<const double *>(B),
-              n,
-              0.0,
-              static_cast<double *>(C),
-              n);
+  cblas_dgemm(strg,
+              tp_a, tp_b,
+              m, n, k,
+              alpha,
+              A, lda,
+              B, ldb,
+              beta,
+              C, ldc);
 }
 
 #else
@@ -72,7 +92,9 @@ void multiply_local(
  * Naive matrix multiplication for local multiplication of matrix blocks,
  * used only for tests and where MKL is not available.
  */
-template<typename ValueType>
+template<
+  typename   ValueType,
+  MemArrange storage    = dash::ROW_MAJOR>
 void multiply_local(
   /// Matrix to multiply, extents n x m
   const ValueType * A,
@@ -92,14 +114,10 @@ void multiply_local(
       c_sum = C[i * p + j]; // = C[j][i]
       for (auto k = 0; k < m; ++k) {
         // k = 0...m
-        auto ik    = i * m + k;
-        auto kj    = k * m + j;
-        auto value = A[ik] * B[kj];
-        DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
-                       "C(", j, ",", i, ") +=",
-                       "A[", ik, "] * B[", kj, "] = ",
-                       A[ik], "*", B[kj], "=", value);
-        c_sum += value;
+        auto ik     = i * m + k;
+        auto kj     = k * m + j;
+        auto value  = A[ik] * B[kj];
+        c_sum      += value;
       }
       C[i * p + j] = c_sum; // C[j][i] = c_sum
     }
@@ -224,6 +242,8 @@ void summa(
   auto n = pattern_a.extent(1); // number of rows in A and C
   auto p = pattern_b.extent(0); // number of columns in B and C
 
+  const dash::MemArrange memory_order = pattern_a.memory_order();
+
   DASH_ASSERT_EQ(
     pattern_a.extent(1),
     pattern_b.extent(0),
@@ -279,127 +299,183 @@ void summa(
   value_type * local_block_b_get  = buf_block_b_get;
   value_type * local_block_a_comp = buf_block_a_comp;
   value_type * local_block_b_comp = buf_block_b_comp;
-
-  // Pre-fetch first blocks in A and B:
-  auto l_block_c_get         = C.local.block(0);
-  auto l_block_c_get_view    = l_block_c_get.begin().viewspec();
-  // Block coordinate of current local block in matrix C:
-  index_t l_block_c_get_row  = l_block_c_get_view.offset(1) / block_size_n;
-  index_t l_block_c_get_col  = l_block_c_get_view.offset(0) / block_size_p;
-  auto l_block_c_comp        = l_block_c_get;
-  auto l_block_c_comp_view   = l_block_c_comp.begin().viewspec();
-  index_t l_block_c_comp_row = l_block_c_comp_view.offset(1) / block_size_n;
-  index_t l_block_c_comp_col = l_block_c_comp_view.offset(0) / block_size_p;
-  auto block_a = A.block(coords_t { 0, l_block_c_get_row });
-  auto block_b = B.block(coords_t { l_block_c_get_col, 0 });
-  DASH_LOG_TRACE("dash::summa", "summa.block",
-                 "prefetching local copy of A.block:",
-                 "col:",  0,
-                 "row:",  l_block_c_get_row,
-                 "view:", block_a.begin().viewspec());
+  // -------------------------------------------------------------------------
+  // Prefetch blocks from A and B for first local multiplication:
+  // -------------------------------------------------------------------------
+  // Block coordinates of submatrices of A and B to be prefetched:
+  coords_t block_a_get_coords;
+  coords_t block_b_get_coords;
+  // Local block index of local submatrix of C for multiplication result of
+  // blocks to be prefetched:
+  auto     l_block_c_get       = C.local.block(0);
+  auto     l_block_c_get_view  = l_block_c_get.begin().viewspec();
+  index_t  l_block_c_get_row   = l_block_c_get_view.offset(1) / block_size_n;
+  index_t  l_block_c_get_col   = l_block_c_get_view.offset(0) / block_size_p;
+  // Block coordinates of blocks in A and B to prefetch:
+  block_a_get_coords = coords_t { static_cast<index_t>(unit_id),
+                                  l_block_c_get_row };
+  block_b_get_coords = coords_t { l_block_c_get_col,
+                                  static_cast<index_t>(unit_id) };
+  // Local block index of local submatrix of C for multiplication result of
+  // currently prefetched blocks:
+  auto     l_block_c_comp      = l_block_c_get;
+  auto     l_block_c_comp_view = l_block_c_comp.begin().viewspec();
+  index_t  l_block_c_comp_row  = l_block_c_comp_view.offset(1) / block_size_n;
+  index_t  l_block_c_comp_col  = l_block_c_comp_view.offset(0) / block_size_p;
+  // Prefetch blocks from A and B for computation in next iteration:
+  auto block_a = A.block(block_a_get_coords);
+  auto block_b = B.block(block_b_get_coords);
+  DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a",
+                 "block:", block_a_get_coords,
+                 "unit:",  block_a.begin().lpos().unit,
+                 "view:",  block_a.begin().viewspec());
   auto get_a = dash::copy_async(block_a.begin(), block_a.end(),
                                 local_block_a_comp);
-  get_a.wait();
-  DASH_LOG_TRACE("dash::summa", "summa.block",
-                 "waiting for prefetching of blocks");
-  DASH_LOG_TRACE("dash::summa", "summa.block",
-                 "prefetching local copy of B.block:",
-                 "col:",  l_block_c_get_col,
-                 "row:",  0,
-                 "view:", block_b.begin().viewspec());
+  DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b",
+                 "block:", block_b_get_coords,
+                 "unit:",  block_b.begin().lpos().unit,
+                 "view:",  block_b.begin().viewspec());
   auto get_b = dash::copy_async(block_b.begin(), block_b.end(),
                                 local_block_b_comp);
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "waiting for prefetching of blocks");
+  get_a.wait();
   get_b.wait();
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "prefetching of blocks completed");
+  // -------------------------------------------------------------------------
   // Iterate local blocks in matrix C:
-  //
+  // -------------------------------------------------------------------------
   auto num_local_blocks_c = (num_blocks_n * num_blocks_p) / teamspec.size();
-  DASH_LOG_TRACE("dash::summa", "summa.block",
-                 "C.local.blocks:",  num_local_blocks_c,
-                 "C.column.blocks:", num_blocks_m);
+  DASH_LOG_TRACE("dash::summa", "summa.block.C",
+                 "C.num.local.blocks:",  num_local_blocks_c,
+                 "C.num.column.blocks:", num_blocks_m);
   for (auto lb = 0; lb < num_local_blocks_c; ++lb) {
-    // Block coordinates for next block multiplication result:
+    // Block coordinates for current block multiplication result:
     l_block_c_comp      = C.local.block(lb);
     l_block_c_comp_view = l_block_c_comp.begin().viewspec();
     l_block_c_comp_row  = l_block_c_comp_view.offset(1) / block_size_n;
     l_block_c_comp_col  = l_block_c_comp_view.offset(0) / block_size_p;
+    // Block coordinates for next block multiplication result:
     l_block_c_get       = l_block_c_comp;
     l_block_c_get_view  = l_block_c_comp_view;
     l_block_c_get_row   = l_block_c_get_row;
     l_block_c_get_col   = l_block_c_get_col;
-    DASH_LOG_TRACE("dash::summa", "summa.block.c", "C.local.block.comp", lb,
-                   "row:",  l_block_c_comp_row,
-                   "col:",  l_block_c_comp_col,
-                   "view:", l_block_c_comp_view);
+    DASH_LOG_TRACE("dash::summa", "summa.block.comp", "C.local.block",
+                   "l_block_idx:", lb,
+                   "row:",         l_block_c_comp_row,
+                   "col:",         l_block_c_comp_col,
+                   "view:",        l_block_c_comp_view);
+    // -----------------------------------------------------------------------
     // Iterate blocks in columns of A / rows of B:
-    //
+    // -----------------------------------------------------------------------
     for (index_t block_k = 0; block_k < num_blocks_m; ++block_k) {
       DASH_LOG_TRACE("dash::summa", "summa.block.k", block_k);
+      // ---------------------------------------------------------------------
       // Prefetch local copy of blocks from A and B for multiplication in
       // next iteration.
-      //
+      // ---------------------------------------------------------------------
       bool last = (lb == num_local_blocks_c - 1) &&
                   (block_k == num_blocks_m - 1);
       // Do not prefetch blocks in last iteration:
       if (!last) {
         auto block_get_k = block_k + 1;
+        block_get_k = (block_get_k + unit_id) % num_blocks_m;
         // Block coordinate of local block in matrix C to prefetch:
         if (block_k == num_blocks_m - 1) {
           // Prefetch for next local block in matrix C:
-          block_get_k        = 0;
+          block_get_k        = unit_id;
           l_block_c_get      = C.local.block(lb + 1);
           l_block_c_get_view = l_block_c_get.begin().viewspec();
           l_block_c_get_row  = l_block_c_get_view.offset(1) / block_size_n;
           l_block_c_get_col  = l_block_c_get_view.offset(0) / block_size_p;
         }
-        block_a = A.block(coords_t { block_get_k, l_block_c_get_row });
-        DASH_LOG_TRACE("dash::summa", "summa.block.a",
-                       "requesting local copy of A.block:",
-                       "col:",    block_get_k,
-                       "row:",    l_block_c_get_row,
-                       "a.view:", block_a.begin().viewspec());
-        get_a = dash::copy_async(block_a.begin(), block_a.end(),
+        // Block coordinates of blocks in A and B to prefetch:
+        block_a_get_coords = coords_t { block_get_k,       l_block_c_get_row };
+        block_b_get_coords = coords_t { l_block_c_get_col, block_get_k       };
+
+        block_a = A.block(block_a_get_coords);
+        DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a",
+                       "block:", block_a_get_coords,
+                       "unit:",  block_a.begin().lpos().unit,
+                       "view:",  block_a.begin().viewspec());
+        get_a = dash::copy_async(block_a.begin(),
+                                 block_a.end(),
                                  local_block_a_get);
-        block_b = B.block(coords_t { l_block_c_get_col, block_get_k });
-        DASH_LOG_TRACE("dash::summa", "summa.block.b",
-                       "requesting local copy of B.block:",
-                       "col:",    l_block_c_get_col,
-                       "row:",    block_get_k,
-                       "b.view:", block_b.begin().viewspec());
-        get_b = dash::copy_async(block_b.begin(), block_b.end(),
+        block_b = B.block(block_b_get_coords);
+        DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b",
+                       "block:", block_b_get_coords,
+                       "unit:",  block_b.begin().lpos().unit,
+                       "view:",  block_b.begin().viewspec());
+        get_b = dash::copy_async(block_b.begin(),
+                                 block_b.end(),
                                  local_block_b_get);
       } else {
         DASH_LOG_TRACE("dash::summa", " ->",
                        "last block multiplication",
                        "lb:", lb, "bk:", block_k);
       }
+      // ---------------------------------------------------------------------
       // Computation of matrix product of local block matrices:
-      //
-      DASH_LOG_TRACE("dash::summa", " ->",
+      // ---------------------------------------------------------------------
+      DASH_LOG_TRACE("dash::summa", "summa.block.comp.multiply",
                      "multiplying local block matrices",
                      "C.local.block.comp:", lb,
                      "view:", l_block_c_comp.begin().viewspec());
-      dash::internal::multiply_local(
+      dash::internal::multiply_local<value_type, memory_order>(
           local_block_a_comp,
           local_block_b_comp,
           l_block_c_comp.begin().local(),
           block_size_m,
           block_size_n,
           block_size_p);
+#ifdef DASH_ENABLE_LOGGING
+      auto A = local_block_a_comp;
+      auto B = local_block_b_comp;
+      auto C = l_block_c_comp.begin().local();
+      std::vector< std::vector<value_type> > a_rows;
+      std::vector< std::vector<value_type> > b_rows;
+      std::vector< std::vector<value_type> > c_rows;
+      for (auto row = 0; row < block_size_n; ++row) {
+        std::vector<value_type> a_row;
+        std::vector<value_type> b_row;
+        std::vector<value_type> c_row;
+        for (auto col = 0; col < block_size_m; ++col) {
+          auto offset = row * block_size_n + col;
+          a_row.push_back(A[offset]);
+          b_row.push_back(B[offset]);
+          c_row.push_back(C[offset]);
+        }
+        a_rows.push_back(a_row);
+        b_rows.push_back(b_row);
+        c_rows.push_back(c_row);
+      }
+      for (auto row : a_rows) {
+        DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
+                       "  submatrix A:", row);
+      }
+      for (auto row : b_rows) {
+        DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
+                       "x submatrix B:", row);
+      }
+      for (auto row : c_rows) {
+        DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
+                       "= submatrix C:", row);
+      }
+#endif
       if (!last) {
+        // -------------------------------------------------------------------
         // Wait for local copies:
-        //
-        DASH_LOG_TRACE("dash::summa", " ->",
+        // -------------------------------------------------------------------
+        DASH_LOG_TRACE("dash::summa", "summa.prefetch.wait",
                        "waiting for local copies of next blocks");
         get_a.wait();
         get_b.wait();
-        DASH_LOG_TRACE("dash::summa", " ->",
+        DASH_LOG_TRACE("dash::summa", "summa.prefetch.completed",
                        "local copies of next blocks received");
+        // -------------------------------------------------------------------
         // Swap communication and computation buffers:
-        //
+        // -------------------------------------------------------------------
         std::swap(local_block_a_get, local_block_a_comp);
         std::swap(local_block_b_get, local_block_b_comp);
       }
