@@ -18,7 +18,7 @@ typedef dash::util::Timer<
 //   NAS Parallel Benchmark, Kernel IS
 //   https://www.nas.nasa.gov/assets/pdf/techreports/1994/rnr-94-007.pdf
 
-// NOTE: 
+// NOTE:
 //   In the NBP reference implementation, keys are first sorted to buckets to
 //   determine their coarse distribution.
 //   For example, for key range (0, 2^23) and buckset size s_b = 2^10, a
@@ -88,7 +88,7 @@ int main(int argc, char **argv)
   dash::Array<int> key_array(TOTAL_KEYS, dash::BLOCKED);
   // result histograms, one per unit
   dash::Array<int> key_histo(MAX_KEY * num_units, dash::BLOCKED);
-  
+
   // PROCEDURE STEP 1 --------------------------------------------------------
   // "In a scalar sequential manner and using the key generation algorithm
   //  described above, generate the sequence of N keys."
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
     x  = randlc(&seed, &a);
     x += randlc(&seed, &a);
     x += randlc(&seed, &a);
-    x += randlc(&seed, &a);  
+    x += randlc(&seed, &a);
     key_array.local[l] = k * x;
   }
 
@@ -179,11 +179,11 @@ int main(int argc, char **argv)
 
   // Wait for all units to obtain the result histogram:
   dash::barrier();
-  
+
   // PROCEDURE STEP 5 --------------------------------------------------------
   // "End timing."
   //
-  
+
   auto time_elapsed_usec = Timer::ElapsedSince(ts_start);
   auto mkeys_per_sec     = static_cast<double>(TOTAL_KEYS) /
                              time_elapsed_usec;
@@ -212,7 +212,7 @@ int main(int argc, char **argv)
 
 /**
  * Implementation from NAS Parallel Benchmark MPI implementation of Kernel IS.
- * 
+ *
  * See NBP3.3-MPI/IS/is.c
  */
 double randlc(double * X, double * A)
@@ -230,7 +230,7 @@ double randlc(double * X, double * A)
     R23 = 1.0;
     R46 = 1.0;
     T23 = 1.0;
-    T46 = 1.0;    
+    T46 = 1.0;
     for (i = 1; i <= 23; i++) {
       R23 = 0.50 * R23;
       T23 = 2.0  * T23;
@@ -241,14 +241,14 @@ double randlc(double * X, double * A)
     }
     KS = 1;
   }
-  /*  
+  /*
       Break A into two parts such that A = 2^23 * A1 + A2 and set X = N.
    */
   T1 = R23 * *A;
   j  = T1;
   A1 = j;
   A2 = *A - T23 * A1;
-  /*  
+  /*
       Break X into two parts such that X = 2^23 * X1 + X2, compute
       Z = A1 * X2 + A2 * X1  (mod 2^23), and then
       X = 2^23 * Z + A2 * X2  (mod 2^46).
@@ -270,12 +270,12 @@ double randlc(double * X, double * A)
 
 /**
  * Implementation from NAS Parallel Benchmark MPI implementation of Kernel IS.
- * 
+ *
  * See NBP3.3-MPI/IS/is.c
  *
  * Create a random number sequence of total length nn residing
- * on np number of processors.  Each processor will therefore have a 
- * subsequence of length nn/np.  This routine returns that random 
+ * on np number of processors.  Each processor will therefore have a
+ * subsequence of length nn/np.  This routine returns that random
  * number which is the first random number for the subsequence belonging
  * to processor rank kn, and which is used as seed for proc kn ran # gen.
  */
@@ -288,7 +288,7 @@ double find_my_seed(int    kn,     /* my processor rank, 0<=kn<=num procs */
   long   i;
   double t1,t2,t3,an;
   long   mq,nq,kk,ik;
-  
+
   nq = nn / np;
 
   for (mq = 0; nq > 1; mq++, nq /= 2);
