@@ -13,7 +13,7 @@ protected:
   size_t _dash_size;
   int _num_elem;
 
-  SUMMATest() 
+  SUMMATest()
   : _dash_id(0),
     _dash_size(0) {
     LOG_MESSAGE(">>> Test suite: SUMMATest");
