@@ -6,7 +6,8 @@
 // global var
 dash::Array<int> array_global;
 
-TEST_F(ArrayTest, Allocation) {
+TEST_F(ArrayTest, Allocation)
+{
   dash::Array<int> array_local;
 
   DASH_LOG_DEBUG("Delayed allocate");
@@ -14,7 +15,8 @@ TEST_F(ArrayTest, Allocation) {
   array_local.allocate(19 * dash::size(), dash::BLOCKED);
 }
 
-TEST_F(ArrayTest, SingleWriteMultipleRead) {
+TEST_F(ArrayTest, SingleWriteMultipleRead)
+{
   dart_unit_t myid  = dash::myid();
   size_t array_size = _num_elem * _dash_size;
   // Create array instances using varying constructor options
@@ -104,4 +106,3 @@ TEST_F(ArrayTest, TileSize)
   EXPECT_EQ_U(tilesize * (nunits - 1),
               block_glob_dist);
 }
-
