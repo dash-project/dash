@@ -59,18 +59,23 @@ GlobPtr<ElementType, PatternType> min_element(
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
-      const ElementType * lmin =
-      ::std::min_element(l_range_begin, l_range_end, compare);
+    const ElementType * lmin          = ::std::min_element(l_range_begin,
+                                                           l_range_end,
+                                                           compare);
     // Offset of local minimum in local memory:
     auto l_idx_lmin = lmin - lbegin;
     DASH_LOG_TRACE_VAR("dash::min_element", l_idx_lmin);
-    DASH_LOG_TRACE_VAR("dash::min_element", *lmin);
+    if (lmin != l_range_end) {
+      DASH_LOG_TRACE_VAR("dash::min_element", *lmin);
+    }
     // Global pointer to local minimum:
     globptr_t gptr_lmin(first.globmem().index_to_gptr(
                                           team.myid(),
                                           l_idx_lmin));
-    DASH_LOG_DEBUG("dash::min_element", gptr_lmin,
-                   "=", static_cast<ElementType>(*gptr_lmin));
+    if (lmin != l_range_end) {
+      DASH_LOG_DEBUG("dash::min_element", gptr_lmin,
+                     "=", static_cast<ElementType>(*gptr_lmin));
+    }
     minarr[team.myid()] = gptr_lmin;
   }
   DASH_LOG_TRACE("dash::min_element", "waiting for local min of other units");
