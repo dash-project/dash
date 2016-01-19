@@ -94,6 +94,10 @@ int main(int argc, char* argv[]) {
 
   auto params = parse_args(argc, argv);
 
+  dash::barrier();
+  DASH_LOG_DEBUG_VAR("bench.10.summa", getpid());
+  dash::barrier();
+
   // Print benchmark parameters:
   if (dash::myid() == 0) {
     cout << "--------------------------------" << endl
@@ -125,6 +129,9 @@ int main(int argc, char* argv[]) {
     cout << "--------------------------------"
          << endl;
   }
+
+  dash::barrier();
+
   std::string variant = params.variant;
   extent_t exp_max    = params.exp_max;
   unsigned repeats    = params.rep_max;

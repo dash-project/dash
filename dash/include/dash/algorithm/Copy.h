@@ -10,6 +10,8 @@
 #include <vector>
 #include <memory>
 
+//#define DASH__ALGORITHM__COPY__USE_FLUSH
+
 namespace dash {
 
 #ifdef DOXYGEN
@@ -94,14 +96,26 @@ dash::Future<ValueType *> copy_impl(
   typedef typename decltype(pattern)::size_type  size_type;
 
   // Accessed global pointers to be flushed:
-//std::vector<dart_gptr_t> flush_glob_ptrs;
+#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
+  std::vector<dart_gptr_t>   flush_glob_ptrs;
+#else
   std::vector<dart_handle_t> flush_glob_ptrs;
+#endif
 
   size_type num_elem_copied = 0;
   if (unit_first == unit_last) {
     // Input range is located at a single remote unit:
     DASH_LOG_TRACE("dash::copy_impl", "input range at single unit");
     auto num_bytes_total = num_elem_total * sizeof(ValueType);
+#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
+    DASH_ASSERT_RETURNS(
+      dart_get(
+        out_first,
+        in_first.dart_gptr(),
+        num_bytes_total),
+      DART_OK);
+    flush_glob_ptrs.push_back(in_first.dart_gptr());
+#else
     dart_handle_t get_handle;
     DASH_ASSERT_RETURNS(
       dart_get_handle(
@@ -110,8 +124,8 @@ dash::Future<ValueType *> copy_impl(
         num_bytes_total,
         &get_handle),
       DART_OK);
-//  flush_glob_ptrs.push_back(in_first.dart_gptr());
     flush_glob_ptrs.push_back(get_handle);
+#endif
     num_elem_copied = num_elem_total;
   } else {
     // Input range is spread over several remote units:
@@ -122,8 +136,8 @@ dash::Future<ValueType *> copy_impl(
     // Number of elements located at a single unit:
     auto max_elem_per_unit    = pattern.local_capacity();
     // MPI uses offset type int, do not copy more than INT_MAX bytes:
-    int  max_copy_elem        = std::numeric_limits<int>::max() /
-                                  sizeof(ValueType);
+    int  max_copy_elem        = (std::numeric_limits<int>::max() /
+                                 sizeof(ValueType));
     DASH_LOG_TRACE_VAR("dash::copy_impl", max_elem_per_unit);
     DASH_LOG_TRACE_VAR("dash::copy_impl", max_copy_elem);
     while (num_elem_copied < num_elem_total) {
@@ -162,6 +176,18 @@ dash::Future<ValueType *> copy_impl(
                      "left:",           total_elem_left);
       auto src_gptr = cur_in_first.dart_gptr();
       auto dest_ptr = out_first + num_elem_copied;
+#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
+      if (dart_get(
+            dest_ptr,
+            src_gptr,
+            num_copy_elem * sizeof(ValueType))
+          != DART_OK) {
+        DASH_LOG_ERROR("dash::copy_impl", "dart_get failed");
+        DASH_THROW(
+          dash::exception::RuntimeError, "dart_get failed");
+      }
+      flush_glob_ptrs.push_back(src_gptr);
+#else
       dart_handle_t get_handle;
       if (dart_get_handle(
             dest_ptr,
@@ -169,12 +195,12 @@ dash::Future<ValueType *> copy_impl(
             num_copy_elem * sizeof(ValueType),
             &get_handle)
           != DART_OK) {
-        DASH_LOG_ERROR("dash::copy_impl", "dart_get failed");
+        DASH_LOG_ERROR("dash::copy_impl", "dart_get_handle failed");
         DASH_THROW(
-          dash::exception::RuntimeError, "dart_get failed");
+          dash::exception::RuntimeError, "dart_get_handle failed");
       }
-//    flush_glob_ptrs.push_back(src_gptr);
       flush_glob_ptrs.push_back(get_handle);
+#endif
       num_elem_copied += num_copy_elem;
     }
   }
@@ -185,10 +211,13 @@ dash::Future<ValueType *> copy_impl(
                    "wait for", flush_glob_ptrs.size(), "async get request");
     DASH_LOG_TRACE("dash::copy_impl [Future]", "flush:", flush_glob_ptrs);
     DASH_LOG_TRACE("dash::copy_impl [Future]", "_out:", _out);
-//  for (auto gptr : flush_glob_ptrs) {
-//    dart_flush(gptr);
-//  }
+#ifdef DASH__ALGORITHM__COPY__USE_FLUSH
+    for (auto gptr : flush_glob_ptrs) {
+      dart_flush(gptr);
+    }
+#else
     dart_waitall(&flush_glob_ptrs[0], flush_glob_ptrs.size());
+#endif
     DASH_LOG_TRACE("dash::copy_impl [Future]", "async requests completed");
     DASH_LOG_TRACE("dash::copy_impl [Future]", "> _out:", _out);
     return _out;
