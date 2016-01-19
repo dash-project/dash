@@ -14,7 +14,8 @@ FILES = dart_communication    	\
 	dart_synchronization	\
 	dart_team_group		\
 	dart_team_private		\
-	dart_translation
+	dart_translation		\
+	dart_topology
 
 OBJS = $(addsuffix .o, $(FILES))
 

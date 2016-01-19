@@ -8,7 +8,7 @@ LIBDART = dart-mpi/libdart-mpi.a
 # components of the dart interface spec
 DART_COMP = dart.h dart_types.h dart_initialization.h \
 	dart_team_group.h dart_globmem.h \
-	dart_communication.h dart_synchronization.h
+	dart_communication.h dart_synchronization.h	dart_topology.h
 
 DART_FILES = $(addprefix $(DART_IF)/, $(DART_COMP))
 

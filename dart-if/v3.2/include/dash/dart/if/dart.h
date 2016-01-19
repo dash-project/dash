@@ -119,6 +119,10 @@ extern "C" {
 */
 #include "dart_synchronization.h"
 
+/*
+   --- DART Hardware Topology ---
+*/
+#include "dart_topology.h"
 
 #ifdef __cplusplus
 } // extern "C"

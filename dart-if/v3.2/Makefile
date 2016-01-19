@@ -6,7 +6,7 @@ DART_SPEC = dart_spec
 DART_H    = $(addprefix include/dash/dart/if/, dart.h)
 
 DART_FILES = dart_types.h dart_initialization.h dart_team_group.h \
-	dart_globmem.h dart_communication.h dart_synchronization.h
+	dart_globmem.h dart_communication.h dart_synchronization.h dart_topology.h
 
 all : html
 
