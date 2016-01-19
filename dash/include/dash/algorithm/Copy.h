@@ -137,9 +137,15 @@ dash::Future<ValueType *> copy_impl(
     auto max_elem_per_unit    = pattern.local_capacity();
     // MPI uses offset type int, do not copy more than INT_MAX bytes:
     int  max_copy_elem        = (std::numeric_limits<int>::max() /
-                                 sizeof(ValueType));
+                                 sizeof(ValueType))
+                                / 4;
     DASH_LOG_TRACE_VAR("dash::copy_impl", max_elem_per_unit);
     DASH_LOG_TRACE_VAR("dash::copy_impl", max_copy_elem);
+    if (max_copy_elem < num_elem_total) {
+      DASH_LOG_DEBUG("dash::copy_impl",
+                     "cannot copy", num_elem_total, "elements",
+                     "in a single dart_get operation");
+    }
     while (num_elem_copied < num_elem_total) {
       // Global iterator pointing at begin of current unit's input range:
       auto cur_in_first    = g_in_first + num_elem_copied;
@@ -169,8 +175,8 @@ dash::Future<ValueType *> copy_impl(
                      "l_idx:",          l_in_first_idx,
                      "->",
                      "unit elements:",  num_unit_elem,
-                     "get elements:",   num_copy_elem);
-      DASH_LOG_TRACE("dash::copy_impl",
+                     "copy max:",       max_copy_elem,
+                     "get elements:",   num_copy_elem,
                      "total:",          num_elem_total,
                      "copied:",         num_elem_copied,
                      "left:",           total_elem_left);
@@ -207,22 +213,29 @@ dash::Future<ValueType *> copy_impl(
   dash::Future<ValueType *> result([=]() mutable {
     // Wait for all get requests to complete:
     ValueType * _out = out_first + num_elem_copied;
-    DASH_LOG_TRACE("dash::copy_impl [Future]",
-                   "wait for", flush_glob_ptrs.size(), "async get request");
-    DASH_LOG_TRACE("dash::copy_impl [Future]", "flush:", flush_glob_ptrs);
-    DASH_LOG_TRACE("dash::copy_impl [Future]", "_out:", _out);
+    DASH_LOG_TRACE("dash::copy_impl [Future]()",
+                   "  wait for", flush_glob_ptrs.size(), "async get request");
+    DASH_LOG_TRACE("dash::copy_impl [Future]", "  flush:", flush_glob_ptrs);
+    DASH_LOG_TRACE("dash::copy_impl [Future]", "  _out:", _out);
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
     for (auto gptr : flush_glob_ptrs) {
       dart_flush(gptr);
     }
 #else
-    dart_waitall(&flush_glob_ptrs[0], flush_glob_ptrs.size());
+//  dart_waitall(&flush_glob_ptrs[0], flush_glob_ptrs.size());
+    for (auto handle : flush_glob_ptrs) {
+      if (dart_wait(handle) != DART_OK) {
+        DASH_LOG_ERROR("dash::copy_impl [Future]", "  dart_wait failed");
+        DASH_THROW(
+          dash::exception::RuntimeError, "dart_wait failed");
+      }
+    }
 #endif
-    DASH_LOG_TRACE("dash::copy_impl [Future]", "async requests completed");
-    DASH_LOG_TRACE("dash::copy_impl [Future]", "> _out:", _out);
+    DASH_LOG_TRACE("dash::copy_impl [Future] >",
+                   "  async requests completed, _out:", _out);
     return _out;
   });
-  DASH_LOG_TRACE("dash::copy_impl >", "returning future");
+  DASH_LOG_TRACE("dash::copy_impl >", "  returning future");
   return result;
 }
 
@@ -272,9 +285,9 @@ dash::Future<ValueType *> copy_async(
   // have been copied:
   ValueType * out_last = out_first;
   // Check if part of the input range is local:
-  DASH_LOG_TRACE_VAR("dash::copy_async()", in_first.dart_gptr());
-  DASH_LOG_TRACE_VAR("dash::copy_async()", in_last.dart_gptr());
-  DASH_LOG_TRACE_VAR("dash::copy_async()", out_first);
+  DASH_LOG_TRACE_VAR("dash::copy_async", in_first.dart_gptr());
+  DASH_LOG_TRACE_VAR("dash::copy_async", in_last.dart_gptr());
+  DASH_LOG_TRACE_VAR("dash::copy_async", out_first);
   auto li_range_in     = local_index_range(in_first, in_last);
   // Number of elements in the local subrange:
   auto num_local_elem  = li_range_in.end - li_range_in.begin;
@@ -400,16 +413,15 @@ dash::Future<ValueType *> copy_async(
   DASH_LOG_TRACE("dash::copy_async", "preparing future");
   dash::Future<ValueType *> fut_result([=]() mutable {
     ValueType * _out = out_last;
-    DASH_LOG_TRACE("dash::copy_async [Future]",
+    DASH_LOG_TRACE("dash::copy_async [Future]()",
                    "wait for", futures.size(), "async requests");
-    DASH_LOG_TRACE("dash::copy_async [Future]", "futures:", futures);
-    DASH_LOG_TRACE("dash::copy_async [Future]", "_out:", _out);
+    DASH_LOG_TRACE("dash::copy_async [Future]", "  futures:", futures);
+    DASH_LOG_TRACE("dash::copy_async [Future]", "  _out:", _out);
     for (auto f : futures) {
       f.wait();
     }
-    DASH_LOG_TRACE("dash::copy_async [Future]", "async requests completed");
-    DASH_LOG_TRACE("dash::copy_async [Future]", "> futures:", futures);
-    DASH_LOG_TRACE("dash::copy_async [Future]", "> _out:", _out);
+    DASH_LOG_TRACE("dash::copy_async [Future] >", "async requests completed",
+                   "futures:", futures, "_out:", _out);
     return _out;
   });
   DASH_LOG_TRACE("dash::copy_async >", "finished,",

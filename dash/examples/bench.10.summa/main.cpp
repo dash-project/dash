@@ -167,6 +167,9 @@ void perform_test(
 {
   auto num_units   = dash::size();
   auto num_threads = 1;
+
+  dash::barrier();
+
   if (n == 0) {
     if (dash::myid() == 0) {
       cout << setw(7)  << "units"   << ", "
@@ -183,6 +186,8 @@ void perform_test(
     }
     return;
   }
+
+  dash::barrier();
 
   if (variant == "mkl") {
 #ifdef DASH_ENABLE_MKL

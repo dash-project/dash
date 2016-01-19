@@ -339,9 +339,6 @@ void summa(
   if (block_a_lptr == nullptr) {
     get_a = dash::copy_async(block_a.begin(), block_a.end(),
                              local_block_a_comp);
-    DASH_LOG_TRACE("dash::summa", "summa.block",
-                   "waiting for prefetching of block A");
-    get_a.wait();
   } else {
     local_block_a_comp = block_a_lptr;
   }
@@ -353,11 +350,18 @@ void summa(
   if (block_b_lptr == nullptr) {
     get_b = dash::copy_async(block_b.begin(), block_b.end(),
                              local_block_b_comp);
+  } else {
+    local_block_b_comp = block_b_lptr;
+  }
+  if (block_a_lptr == nullptr) {
+    DASH_LOG_TRACE("dash::summa", "summa.block",
+                   "waiting for prefetching of block A");
+    get_a.wait();
+  }
+  if (block_b_lptr == nullptr) {
     DASH_LOG_TRACE("dash::summa", "summa.block",
                    "waiting for prefetching of block B");
     get_b.wait();
-  } else {
-    local_block_b_comp = block_b_lptr;
   }
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "prefetching of blocks completed");
