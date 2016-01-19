@@ -12,6 +12,7 @@ typedef dash::util::Timer<dash::util::TimeMeasure::Clock> Timer;
 
 template<typename T>
 void perform_test(size_t REPEAT);
+void print_header();
 
 int main(int argc, char **argv)
 {
@@ -19,12 +20,26 @@ int main(int argc, char **argv)
   
   dash::init(&argc, &argv);
   Timer::Calibrate(0);
-    
+  
+	print_header();
   perform_test<int>(100);
+	perform_test<int>(500);
 
   dash::finalize();
   
   return 0;
+}
+
+void print_header(){
+  if(dash::myid()==0) {
+    cout<<setw(8)  << "NUNITS; ";
+    cout<<setw(8)  << "REPEAT; ";
+    cout<<setw(14) << "unit0 [sec]; ";
+    cout<<setw(14) << "local [sec]; ";
+    cout<<setw(14) << "neigh [sec]";
+		cout<<endl;
+  }
+
 }
 
 template<typename T>
@@ -74,11 +89,11 @@ void perform_test(size_t REPEAT)
   
   
   if(dash::myid()==0) {
-    cout<<"NUNITS: "<<setw(8)<<size;
-    cout<<" REPEAT: "<<setw(8)<<REPEAT;
-    cout<<" unit0 [sec]: "<<setw(14)<<1.0e-6*duration_unit0;
-    cout<<" local [sec]: "<<setw(14)<<1.0e-6*duration_local;
-    cout<<" neigh [sec]: "<<setw(14)<<1.0e-6*duration_neigh<<endl;
+    cout<<setw(8)<<size << ";";
+    cout<<setw(8)<<REPEAT << ";";
+    cout<<setw(14)<<1.0e-6*duration_unit0 << ";";
+    cout<<setw(14)<<1.0e-6*duration_local << ";";
+    cout<<setw(14)<<1.0e-6*duration_neigh << endl;
   }
 }
 
