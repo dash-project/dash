@@ -104,7 +104,7 @@ dash::Future<ValueType *> copy_impl(
 
   // MPI uses offset type int, do not copy more than INT_MAX bytes:
   size_type max_copy_elem   = (std::numeric_limits<int>::max() /
-                               sizeof(ValueType)) / 8;
+                               sizeof(ValueType)) / 48;
   size_type num_elem_copied = 0;
   DASH_LOG_TRACE_VAR("dash::copy_impl", max_copy_elem);
   if (num_elem_total > max_copy_elem) {
@@ -238,14 +238,16 @@ dash::Future<ValueType *> copy_impl(
       dart_flush(gptr);
     }
 #else
-//  dart_waitall(&flush_glob_ptrs[0], flush_glob_ptrs.size());
+    dart_waitall_local(&flush_glob_ptrs[0], flush_glob_ptrs.size());
+/*
     for (auto handle : flush_glob_ptrs) {
-      if (dart_wait(handle) != DART_OK) {
+      if (dart_wait_local(handle) != DART_OK) {
         DASH_LOG_ERROR("dash::copy_impl [Future]", "  dart_wait failed");
         DASH_THROW(
           dash::exception::RuntimeError, "dart_wait failed");
       }
     }
+*/
 #endif
     DASH_LOG_TRACE("dash::copy_impl [Future] >",
                    "  async requests completed, _out:", _out);
@@ -430,7 +432,7 @@ dash::Future<ValueType *> copy_async(
   dash::Future<ValueType *> fut_result([=]() mutable {
     ValueType * _out = out_last;
     DASH_LOG_TRACE("dash::copy_async [Future]()",
-                   "wait for", futures.size(), "async requests");
+                   "wait for", futures.size(), "async copy requests");
     DASH_LOG_TRACE("dash::copy_async [Future]", "  futures:", futures);
     DASH_LOG_TRACE("dash::copy_async [Future]", "  _out:", _out);
     for (auto f : futures) {

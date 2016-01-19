@@ -15,7 +15,7 @@ extern "C" {
    --- DART Types ---
 */
 
-typedef enum 
+typedef enum
   {
     DART_OK           = 0,
     DART_PENDING      = 1,

@@ -354,13 +354,15 @@ void summa(
     local_block_b_comp = block_b_lptr;
   }
   if (prefetch_local_blocks || block_a_lptr == nullptr) {
-    DASH_LOG_TRACE("dash::summa", "summa.block",
-                   "waiting for prefetching of block A");
+    DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a.wait",
+                   "waiting for prefetching of block A from unit",
+                   block_a.begin().lpos().unit);
     get_a.wait();
   }
   if (prefetch_local_blocks || block_b_lptr == nullptr) {
-    DASH_LOG_TRACE("dash::summa", "summa.block",
-                   "waiting for prefetching of block B");
+    DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b.wait",
+                   "waiting for prefetching of block B from unit",
+                   block_b.begin().lpos().unit);
     get_b.wait();
   }
   DASH_LOG_TRACE("dash::summa", "summa.block",
@@ -501,12 +503,16 @@ void summa(
         // -------------------------------------------------------------------
         // Wait for local copies:
         // -------------------------------------------------------------------
-        DASH_LOG_TRACE("dash::summa", "summa.prefetch.wait",
-                       "waiting for local copies of next blocks");
         if (prefetch_local_blocks || block_a_lptr == nullptr) {
+          DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a.wait",
+                         "waiting for prefetching of block A from unit",
+                         block_a.begin().lpos().unit);
           get_a.wait();
         }
         if (prefetch_local_blocks || block_b_lptr == nullptr) {
+          DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b.wait",
+                         "waiting for prefetching of block B from unit",
+                         block_b.begin().lpos().unit);
           get_b.wait();
         }
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.completed",

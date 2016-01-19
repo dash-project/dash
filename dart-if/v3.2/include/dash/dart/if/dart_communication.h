@@ -78,7 +78,7 @@ dart_ret_t dart_reduce_double(
   double *recvbuf,
   dart_team_t team);
 
-typedef struct dart_handle_struct *dart_handle_t;
+typedef struct dart_handle_struct * dart_handle_t;
 
 /**
  * 'REGULAR' variant of dart_get.
