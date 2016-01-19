@@ -23,7 +23,7 @@ namespace dash {
  *
  * The operation performed is non-blocking if the output iterator is an
  * instance of a \c GlobAsyncIter type.
- * 
+ *
  * Example:
  *
  * \code
@@ -35,7 +35,7 @@ namespace dash {
  *     // Overlapping computation here
  *     // ...
  *     // Wait for completion of asynchronous copying:
- *     dest_last.fence(); 
+ *     dest_last.fence();
  * \endcode
  *
  */
@@ -92,22 +92,26 @@ dash::Future<ValueType *> copy_impl(
   DASH_LOG_TRACE_VAR("dash::copy_impl", unit_last);
   typedef typename decltype(pattern)::index_type index_type;
   typedef typename decltype(pattern)::size_type  size_type;
-  
+
   // Accessed global pointers to be flushed:
-  std::vector<dart_gptr_t> flush_glob_ptrs;
+//std::vector<dart_gptr_t> flush_glob_ptrs;
+  std::vector<dart_handle_t> flush_glob_ptrs;
 
   size_type num_elem_copied = 0;
   if (unit_first == unit_last) {
     // Input range is located at a single remote unit:
     DASH_LOG_TRACE("dash::copy_impl", "input range at single unit");
     auto num_bytes_total = num_elem_total * sizeof(ValueType);
+    dart_handle_t get_handle;
     DASH_ASSERT_RETURNS(
-      dart_get(
+      dart_get_handle(
         out_first,
         in_first.dart_gptr(),
-        num_bytes_total),
+        num_bytes_total,
+        &get_handle),
       DART_OK);
-    flush_glob_ptrs.push_back(in_first.dart_gptr());
+//  flush_glob_ptrs.push_back(in_first.dart_gptr());
+    flush_glob_ptrs.push_back(get_handle);
     num_elem_copied = num_elem_total;
   } else {
     // Input range is spread over several remote units:
@@ -137,7 +141,7 @@ dash::Future<ValueType *> copy_impl(
       // Number of elements left to copy:
       int  total_elem_left = num_elem_total - num_elem_copied;
       // Number of elements to copy in this iteration.
-      int  num_copy_elem   = (num_unit_elem < 
+      int  num_copy_elem   = (num_unit_elem <
                                 static_cast<size_type>(max_copy_elem))
                              ? num_unit_elem
                              : max_copy_elem;
@@ -158,16 +162,19 @@ dash::Future<ValueType *> copy_impl(
                      "left:",           total_elem_left);
       auto src_gptr = cur_in_first.dart_gptr();
       auto dest_ptr = out_first + num_elem_copied;
-      if (dart_get(
+      dart_handle_t get_handle;
+      if (dart_get_handle(
             dest_ptr,
             src_gptr,
-            num_copy_elem * sizeof(ValueType))
+            num_copy_elem * sizeof(ValueType),
+            &get_handle)
           != DART_OK) {
         DASH_LOG_ERROR("dash::copy_impl", "dart_get failed");
         DASH_THROW(
           dash::exception::RuntimeError, "dart_get failed");
       }
-      flush_glob_ptrs.push_back(src_gptr);
+//    flush_glob_ptrs.push_back(src_gptr);
+      flush_glob_ptrs.push_back(get_handle);
       num_elem_copied += num_copy_elem;
     }
   }
@@ -178,9 +185,10 @@ dash::Future<ValueType *> copy_impl(
                    "wait for", flush_glob_ptrs.size(), "async get request");
     DASH_LOG_TRACE("dash::copy_impl [Future]", "flush:", flush_glob_ptrs);
     DASH_LOG_TRACE("dash::copy_impl [Future]", "_out:", _out);
-    for (auto gptr : flush_glob_ptrs) {
-      dart_flush(gptr);
-    }
+//  for (auto gptr : flush_glob_ptrs) {
+//    dart_flush(gptr);
+//  }
+    dart_waitall(&flush_glob_ptrs[0], flush_glob_ptrs.size());
     DASH_LOG_TRACE("dash::copy_impl [Future]", "async requests completed");
     DASH_LOG_TRACE("dash::copy_impl [Future]", "> _out:", _out);
     return _out;
@@ -273,7 +281,7 @@ dash::Future<ValueType *> copy_async(
     // Convert local subrange to global iterators:
     auto g_l_in_first     = g_in_first + (g_l_offset_begin - g_offset_begin);
     auto g_l_in_last      = g_in_first + (g_l_offset_end   - g_offset_begin);
-    DASH_LOG_TRACE("dash::copy_async", "global it. range of local subrange:", 
+    DASH_LOG_TRACE("dash::copy_async", "global it. range of local subrange:",
                    "begin:", g_l_in_first.pos(), "end:", g_l_in_last.pos());
     DASH_LOG_TRACE_VAR("dash::copy_async", g_l_in_last.pos());
     //
@@ -314,7 +322,7 @@ dash::Future<ValueType *> copy_async(
     DASH_LOG_TRACE_VAR("dash::copy_async", l_in_last);
     // Verify conversion of global input iterators to local pointers:
     DASH_ASSERT_MSG(l_in_first != nullptr,
-                    "dash::copy_async: first index in global input (" << 
+                    "dash::copy_async: first index in global input (" <<
                     g_l_in_first.pos() << ") is not local");
 
     size_t num_copy_elem = l_in_last - l_in_first;
@@ -334,7 +342,7 @@ dash::Future<ValueType *> copy_async(
     //
     // -----------------------------------------------------------------------
     // Copy remote elements succeeding the local subrange:
-    // 
+    //
     auto num_postlocal_elem = in_last.pos() - g_l_offset_end;
     DASH_LOG_TRACE_VAR("dash::copy_async", num_postlocal_elem);
     if (num_postlocal_elem > 0) {
@@ -363,7 +371,7 @@ dash::Future<ValueType *> copy_async(
   DASH_LOG_TRACE("dash::copy_async", "preparing future");
   dash::Future<ValueType *> fut_result([=]() mutable {
     ValueType * _out = out_last;
-    DASH_LOG_TRACE("dash::copy_async [Future]", 
+    DASH_LOG_TRACE("dash::copy_async [Future]",
                    "wait for", futures.size(), "async requests");
     DASH_LOG_TRACE("dash::copy_async [Future]", "futures:", futures);
     DASH_LOG_TRACE("dash::copy_async [Future]", "_out:", _out);

@@ -157,6 +157,8 @@ typedef dash::pattern_layout_properties<
 
 /**
  * Multiplies two matrices using the SUMMA algorithm.
+ * Performs \c (2 * (nunits-1) * nunits^2) async copy operations of
+ * submatrices in \c A and \c B.
  *
  * Pseudocode:
  *
