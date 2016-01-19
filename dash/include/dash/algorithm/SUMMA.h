@@ -13,8 +13,6 @@
 #include <mkl_lapack.h>
 #endif
 
-#define SUMMA_EXPERIMENTAL_
-
 namespace dash {
 
 namespace internal {
@@ -190,6 +188,8 @@ void summa(
   typedef typename MatrixTypeC::pattern_type pattern_c_type;
   typedef std::array<index_t, 2>             coords_t;
 
+  const bool prefetch_local_blocks = false;
+
   static_assert(
       std::is_same<value_type, double>::value,
       "dash::summa expects matrix element type double");
@@ -336,7 +336,7 @@ void summa(
                  "local:", block_a_lptr != nullptr,
                  "unit:",  block_a.begin().lpos().unit,
                  "view:",  block_a.begin().viewspec());
-  if (block_a_lptr == nullptr) {
+  if (prefetch_local_blocks || block_a_lptr == nullptr) {
     get_a = dash::copy_async(block_a.begin(), block_a.end(),
                              local_block_a_comp);
   } else {
@@ -347,18 +347,18 @@ void summa(
                  "local:", block_b_lptr != nullptr,
                  "unit:",  block_b.begin().lpos().unit,
                  "view:",  block_b.begin().viewspec());
-  if (block_b_lptr == nullptr) {
+  if (prefetch_local_blocks || block_b_lptr == nullptr) {
     get_b = dash::copy_async(block_b.begin(), block_b.end(),
                              local_block_b_comp);
   } else {
     local_block_b_comp = block_b_lptr;
   }
-  if (block_a_lptr == nullptr) {
+  if (prefetch_local_blocks || block_a_lptr == nullptr) {
     DASH_LOG_TRACE("dash::summa", "summa.block",
                    "waiting for prefetching of block A");
     get_a.wait();
   }
-  if (block_b_lptr == nullptr) {
+  if (prefetch_local_blocks || block_b_lptr == nullptr) {
     DASH_LOG_TRACE("dash::summa", "summa.block",
                    "waiting for prefetching of block B");
     get_b.wait();
@@ -425,7 +425,7 @@ void summa(
                        "local:", block_a_lptr != nullptr,
                        "unit:",  block_a.begin().lpos().unit,
                        "view:",  block_a.begin().viewspec());
-        if (block_a_lptr == nullptr) {
+        if (prefetch_local_blocks || block_a_lptr == nullptr) {
           get_a = dash::copy_async(block_a.begin(),
                                    block_a.end(),
                                    local_block_a_get);
@@ -437,7 +437,7 @@ void summa(
                        "local:", block_b_lptr != nullptr,
                        "unit:",  block_b.begin().lpos().unit,
                        "view:",  block_b.begin().viewspec());
-        if (block_b_lptr == nullptr) {
+        if (prefetch_local_blocks || block_b_lptr == nullptr) {
           get_b = dash::copy_async(block_b.begin(),
                                    block_b.end(),
                                    local_block_b_get);
@@ -503,10 +503,10 @@ void summa(
         // -------------------------------------------------------------------
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.wait",
                        "waiting for local copies of next blocks");
-        if (block_a_lptr == nullptr) {
+        if (prefetch_local_blocks || block_a_lptr == nullptr) {
           get_a.wait();
         }
-        if (block_b_lptr == nullptr) {
+        if (prefetch_local_blocks || block_b_lptr == nullptr) {
           get_b.wait();
         }
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.completed",
@@ -515,11 +515,11 @@ void summa(
         // Swap communication and computation buffers:
         // -----------------------------------------------------------------
         std::swap(local_block_a_get, local_block_a_comp);
+        std::swap(local_block_b_get, local_block_b_comp);
         if (local_block_a_get != buf_block_a_get &&
             local_block_a_get != buf_block_a_comp) {
           local_block_a_get = buf_block_a_comp;
         }
-        std::swap(local_block_b_get, local_block_b_comp);
         if (local_block_b_get != buf_block_b_get &&
             local_block_b_get != buf_block_b_comp) {
           local_block_b_get = buf_block_b_comp;

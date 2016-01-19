@@ -122,7 +122,7 @@ static void LogWrapper(
   const char* context_tag,
   const Args & ... args) {
   std::ostringstream msg;
-  msg << "|  ";
+  msg << "| ";
   // Extract file name from path
   std::string filename(filepath);
   std::size_t offset = filename.find_last_of("/\\");
@@ -145,7 +145,7 @@ static void LogVarWrapper(
   const T & var_value,
   const Args & ... args) {
   std::ostringstream msg;
-  msg << "|= " << var_name << "(" << var_value << ")";
+  msg << "| = " << var_name << "(" << var_value << ")";
   // Extract file name from path
   std::string filename(filepath);
   std::size_t offset = filename.find_last_of("/\\");

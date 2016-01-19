@@ -289,6 +289,7 @@ dart_ret_t dart_get_handle(
     {
       DART_LOG_ERROR(
         "dart_get_handle > dart_adapt_transtable_get_disp failed");
+      free(*handle);
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
@@ -320,6 +321,7 @@ dart_ret_t dart_get_handle(
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_get_handle > MPI_Rget failed");
+      free(*handle);
       return DART_ERR_INVAL;
     }
     (*handle)->dest = target_unitid_rel;
@@ -343,6 +345,7 @@ dart_ret_t dart_get_handle(
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_get_handle > MPI_Rget failed");
+      free(*handle);
       return DART_ERR_INVAL;
     }
     (*handle)->dest = target_unitid_abs;
@@ -808,6 +811,7 @@ dart_ret_t dart_wait_local(
 dart_ret_t dart_wait(
   dart_handle_t handle)
 {
+  int mpi_ret;
   DART_LOG_DEBUG("dart_wait() handle:%p", (void*)(handle));
   if (handle != NULL) {
     DART_LOG_TRACE("dart_wait:     handle->dest:    %d", handle->dest);
@@ -816,9 +820,21 @@ dart_ret_t dart_wait(
     if (handle->request != MPI_REQUEST_NULL) {
       MPI_Status mpi_sta;
       DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");
-      MPI_Wait(&(handle->request), &mpi_sta);
+      mpi_ret = MPI_Wait(&(handle->request), &mpi_sta);
+      DART_LOG_TRACE("dart_wait:        -- mpi_sta.MPI_SOURCE = %d",
+                     mpi_sta.MPI_SOURCE);
+      DART_LOG_TRACE("dart_wait:        -- mpi_sta.MPI_ERROR  = %d",
+                     mpi_sta.MPI_ERROR);
+      if (mpi_ret != MPI_SUCCESS) {
+        DART_LOG_DEBUG("dart_wait > MPI_Wait failed");
+        return DART_ERR_INVAL;
+      }
       DART_LOG_DEBUG("dart_wait:     -- MPI_Win_flush");
-      MPI_Win_flush(handle->dest, handle->win);
+      mpi_ret = MPI_Win_flush(handle->dest, handle->win);
+      if (mpi_ret != MPI_SUCCESS) {
+        DART_LOG_DEBUG("dart_wait > MPI_Win_flush failed");
+        return DART_ERR_INVAL;
+      }
     } else {
       DART_LOG_TRACE("dart_wait:     handle->request: MPI_REQUEST_NULL");
     }
