@@ -25,10 +25,10 @@ int dart_adapt_transtable_create ()
 int dart_adapt_transtable_add (info_t item)
 {
   node_t pre, q;
-  node_t p = (node_t) malloc (sizeof (node_info_t));
+  node_t p = (node_t) malloc(sizeof(node_info_t));
   DART_LOG_TRACE(
       "dart_adapt_transtable_add() item: "
-      "seg_id:%d size:%lld disp:%lld win:%lld",
+      "seg_id:%d size:%lld disp:%lld win:%d",
       item.seg_id, item.size, item.disp, item.win);
   //	printf ("item.seg_id is %d\n", item.seg_id);
   p -> trans.seg_id  = item.seg_id;

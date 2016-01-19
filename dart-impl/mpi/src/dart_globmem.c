@@ -169,6 +169,33 @@ dart_team_memalloc_aligned(
 
 	/* Allocate shared memory on sharedmem_comm, and create the related
    * sharedmem_win */
+
+  /* NOTE:
+   * Windows should definitely be optimized for the concrete value type i.e.
+   * via MPI_Type_create_index_block as this greatly improves performance of
+   * MPI_Get, MPI_Put and other RMA friends.
+   *
+   * !!! BUG IN INTEL-MPI 5.0
+   * !!!
+   * !!! See:
+   * !!! https://software.intel.com/de-de/forums/intel-clusters-and-hpc-technology/topic/519995
+   * !!!
+   * !!! Quote:
+   * !!!  "[When allocating, e.g., an] integer*4-array of array dimension N,
+   * !!!   then use it by the MPI-processes (on the same node), and then
+   * !!!   repeats the same for the next shared allocation [...] the number of
+   * !!!   shared windows do accumulate in the run, because I do not free the
+   * !!!   shared windows allocated so far. This allocation of shared windows
+   * !!!   works, but only until the total number of allocated memory exceeds
+   * !!!   a limit of ~30 millions of Integer*4 numbers (~120 MB).
+   * !!!   When that limit is reached, the next call of
+   * !!!   MPI_WIN_ALLOCATE_SHARED, MPI_WIN_SHARED_QUERY to allocated one
+   * !!!   more shared window do not give an error message, but the 1st
+   * !!!   attempt to use that allocated shared array results in a bus error
+   * !!!   (because the shared array has not been allocated correctly)."
+   * !!!
+   * !!! Reproduced on SuperMUC and mpich3.1 on projekt03.
+   */
 	MPI_Win_allocate_shared(
     nbytes,
 //  sizeof (char),
@@ -188,12 +215,14 @@ dart_team_memalloc_aligned(
 
 	for (i = 0; i < dart_sharedmemnode_size[index]; i++)
 	{
-		if (sharedmem_unitid != i){
-			MPI_Win_shared_query (sharedmem_win, i, &winseg_size, &disp_unit, &baseptr);
+		if (sharedmem_unitid != i) {
+			MPI_Win_shared_query(sharedmem_win, i, &winseg_size, &disp_unit, &baseptr);
 			baseptr_set[i] = baseptr;
 		}
 		else
-		{baseptr_set[i] = sub_mem;}
+		{
+      baseptr_set[i] = sub_mem;
+    }
 	}
 #else
 	MPI_Alloc_mem(nbytes, MPI_INFO_NULL, &sub_mem);
@@ -232,16 +261,16 @@ dart_team_memalloc_aligned(
 	item.selfbaseptr = sub_mem;
 	/* Add this newly generated correspondence relationship record into the
    * translation table. */
-	dart_adapt_transtable_add (item);
+	dart_adapt_transtable_add(item);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-	MPI_Info_free (&win_info);
+	MPI_Info_free(&win_info);
 #endif
 	dart_memid++;
 
   DART_LOG_DEBUG(
-    "%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d "
+    "dart_team_memalloc_aligned: bytes:%lu offset:%lu gptr_unitid:%d "
     "across team %d",
-		unitid, nbytes, 0, gptr_unitid, teamid);
+		nbytes, 0, gptr_unitid, teamid);
 
 	return DART_OK;
 }

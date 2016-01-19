@@ -299,7 +299,7 @@ dart_ret_t dart_get_handle(
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
-    DART_LOG_TRACE("dart_get_handle:  -- disp_s:%lld disp_rel:%lld",
+    DART_LOG_TRACE("dart_get_handle:  -- disp_s:%ld disp_rel:%ld",
                    disp_s, disp_rel);
 
     /* MPI-3 newly added feature: request version of get call. */
@@ -316,14 +316,14 @@ dart_ret_t dart_get_handle(
                    n_count, target_unitid_rel, offset);
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
-                dest,
-                n_count,
-                MPI_BYTE,
-                target_unitid_rel,
-                disp_rel,
-                n_count,
-                MPI_BYTE,
-                win,
+                dest,              // origin address
+                n_count,           // origin count
+                MPI_BYTE,          // origin data type
+                target_unitid_rel, // target rank
+                disp_rel,          // target disp in window
+                n_count,           // target count
+                MPI_BYTE,          // target data type
+                win,               // window
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_get_handle > MPI_Rget failed");
@@ -340,14 +340,14 @@ dart_ret_t dart_get_handle(
     win     = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
-                dest,
-                n_count,
-                MPI_BYTE,
-                target_unitid_abs,
-                offset,
-                n_count,
-                MPI_BYTE,
-                win,
+                dest,              // origin address
+                n_count,           // origin count
+                MPI_BYTE,          // origin data type
+                target_unitid_abs, // target rank
+                offset,            // target disp in window
+                n_count,           // target count
+                MPI_BYTE,          // target data type
+                win,               // window
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_get_handle > MPI_Rget failed");
@@ -940,7 +940,7 @@ dart_ret_t dart_waitall_local(
         if (mpi_req[r_n] != MPI_REQUEST_NULL) {
           if (mpi_sta[r_n].MPI_ERROR == MPI_SUCCESS) {
             DART_LOG_TRACE("dart_waitall_local: -- MPI_Request_free");
-            if (MPI_Request_free(mpi_req[r_n]) != MPI_SUCCESS) {
+            if (MPI_Request_free(&mpi_req[r_n]) != MPI_SUCCESS) {
               DART_LOG_TRACE("dart_waitall_local > MPI_Request_free failed");
               free(mpi_req);
               free(mpi_sta);
