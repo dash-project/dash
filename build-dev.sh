@@ -50,6 +50,7 @@ rm -Rf ./build/*
                      -DENABLE_ASSERTIONS=ON \
                      -DENABLE_SHARED_WINDOWS=ON \
                      -DENABLE_UNIFIED_MEMORY_MODEL=ON \
+                     -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                      -DENABLE_LOGGING=ON \
                      -DENABLE_TRACE_LOGGING=ON \
                      -DENABLE_DART_LOGGING=ON \
