@@ -323,24 +323,40 @@ void summa(
   index_t  l_block_c_comp_row  = l_block_c_comp_view.offset(1) / block_size_n;
   index_t  l_block_c_comp_col  = l_block_c_comp_view.offset(0) / block_size_p;
   // Prefetch blocks from A and B for computation in next iteration:
-  auto block_a = A.block(block_a_get_coords);
-  auto block_b = B.block(block_b_get_coords);
+  dash::Future<value_type *> get_a;
+  dash::Future<value_type *> get_b;
+  auto block_a      = A.block(block_a_get_coords);
+  auto block_a_lptr = block_a.begin().local();
+  auto block_b      = B.block(block_b_get_coords);
+  auto block_b_lptr = block_b.begin().local();
   DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a",
                  "block:", block_a_get_coords,
+                 "local:", block_a_lptr != nullptr,
                  "unit:",  block_a.begin().lpos().unit,
                  "view:",  block_a.begin().viewspec());
-  auto get_a = dash::copy_async(block_a.begin(), block_a.end(),
-                                local_block_a_comp);
+  if (block_a_lptr == nullptr) {
+    get_a = dash::copy_async(block_a.begin(), block_a.end(),
+                             local_block_a_comp);
+    DASH_LOG_TRACE("dash::summa", "summa.block",
+                   "waiting for prefetching of block A");
+    get_a.wait();
+  } else {
+    local_block_a_comp = block_a_lptr;
+  }
   DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b",
                  "block:", block_b_get_coords,
+                 "local:", block_b_lptr != nullptr,
                  "unit:",  block_b.begin().lpos().unit,
                  "view:",  block_b.begin().viewspec());
-  auto get_b = dash::copy_async(block_b.begin(), block_b.end(),
-                                local_block_b_comp);
-  DASH_LOG_TRACE("dash::summa", "summa.block",
-                 "waiting for prefetching of blocks");
-  get_a.wait();
-  get_b.wait();
+  if (block_b_lptr == nullptr) {
+    get_b = dash::copy_async(block_b.begin(), block_b.end(),
+                             local_block_b_comp);
+    DASH_LOG_TRACE("dash::summa", "summa.block",
+                   "waiting for prefetching of block B");
+    get_b.wait();
+  } else {
+    local_block_b_comp = block_b_lptr;
+  }
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "prefetching of blocks completed");
   // -------------------------------------------------------------------------
@@ -394,22 +410,34 @@ void summa(
         block_a_get_coords = coords_t { block_get_k,       l_block_c_get_row };
         block_b_get_coords = coords_t { l_block_c_get_col, block_get_k       };
 
-        block_a = A.block(block_a_get_coords);
+        block_a      = A.block(block_a_get_coords);
+        block_a_lptr = block_a.begin().local();
+        block_b      = B.block(block_b_get_coords);
+        block_b_lptr = block_b.begin().local();
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a",
                        "block:", block_a_get_coords,
+                       "local:", block_a_lptr != nullptr,
                        "unit:",  block_a.begin().lpos().unit,
                        "view:",  block_a.begin().viewspec());
-        get_a = dash::copy_async(block_a.begin(),
-                                 block_a.end(),
-                                 local_block_a_get);
-        block_b = B.block(block_b_get_coords);
+        if (block_a_lptr == nullptr) {
+          get_a = dash::copy_async(block_a.begin(),
+                                   block_a.end(),
+                                   local_block_a_get);
+        } else {
+          local_block_a_get = block_a_lptr;
+        }
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b",
                        "block:", block_b_get_coords,
+                       "local:", block_b_lptr != nullptr,
                        "unit:",  block_b.begin().lpos().unit,
                        "view:",  block_b.begin().viewspec());
-        get_b = dash::copy_async(block_b.begin(),
-                                 block_b.end(),
-                                 local_block_b_get);
+        if (block_b_lptr == nullptr) {
+          get_b = dash::copy_async(block_b.begin(),
+                                   block_b.end(),
+                                   local_block_b_get);
+        } else {
+          local_block_b_get = block_b_lptr;
+        }
       } else {
         DASH_LOG_TRACE("dash::summa", " ->",
                        "last block multiplication",
@@ -469,15 +497,27 @@ void summa(
         // -------------------------------------------------------------------
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.wait",
                        "waiting for local copies of next blocks");
-        get_a.wait();
-        get_b.wait();
+        if (block_a_lptr == nullptr) {
+          get_a.wait();
+        }
+        if (block_b_lptr == nullptr) {
+          get_b.wait();
+        }
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.completed",
                        "local copies of next blocks received");
-        // -------------------------------------------------------------------
+        // -----------------------------------------------------------------
         // Swap communication and computation buffers:
-        // -------------------------------------------------------------------
+        // -----------------------------------------------------------------
         std::swap(local_block_a_get, local_block_a_comp);
+        if (local_block_a_get != buf_block_a_get &&
+            local_block_a_get != buf_block_a_comp) {
+          local_block_a_get = buf_block_a_comp;
+        }
         std::swap(local_block_b_get, local_block_b_comp);
+        if (local_block_b_get != buf_block_b_get &&
+            local_block_b_get != buf_block_b_comp) {
+          local_block_b_get = buf_block_b_comp;
+        }
       }
     }
   } // for lb
