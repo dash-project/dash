@@ -1,7 +1,7 @@
-/* 
+/*
  * dash-lib/Init.h
  *
- * author(s): Karl Fuerlinger, LMU Munich 
+ * author(s): Karl Fuerlinger, LMU Munich
  */
 /* @DASH_HEADER@ */
 

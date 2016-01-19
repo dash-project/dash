@@ -1,7 +1,7 @@
-/* 
+/*
  * dash-lib/Team.h
  *
- * author(s): Karl Fuerlinger, LMU Munich 
+ * author(s): Karl Fuerlinger, LMU Munich
  */
 /* @DASH_HEADER@ */
 
@@ -52,13 +52,13 @@ class Team {
 public:
   typedef struct iterator {
     int val;
-    
+
     iterator(int v) : val(v) {}
     iterator & operator+=(const iterator & rhs) {
       val += rhs.val;
       return *this;
     }
-    
+
     inline iterator & operator++() {
       return operator+=(1);
     }
@@ -66,7 +66,7 @@ public:
     inline int operator*() const {
       return val;
     }
-    
+
     inline operator int() const {
       return val;
     }
@@ -97,8 +97,8 @@ private:
        Team * parent = nullptr,
        /// Position within the team's group
        size_t pos = 0)
-  : _parent(parent) { 
-    _dartid   = id; 
+  : _parent(parent) {
+    _dartid   = id;
     _position = pos;
     DASH_LOG_DEBUG_VAR("Team()", id);
     DASH_LOG_DEBUG_VAR("Team()", pos);
@@ -106,8 +106,8 @@ private:
       if (parent->_child) {
         DASH_THROW(
           dash::exception::InvalidArgument,
-          "Child already set for " << parent 
-          << ", not setting to " << this); 
+          "Child already set for " << parent
+          << ", not setting to " << this);
       } else {
         parent->_child = this;
       }
@@ -141,7 +141,7 @@ public:
   /**
    * Move-constructor.
    */
-  Team(Team && t) { 
+  Team(Team && t) {
     if (this != &t) {
       // Free existing resources
       free();
@@ -150,7 +150,7 @@ public:
       _deallocs = t._deallocs;
       // Release data from source
       t._deallocs.clear();
-      t._dartid = DART_TEAM_NULL; 
+      t._dartid = DART_TEAM_NULL;
     }
   }
 
@@ -166,7 +166,7 @@ public:
       _deallocs = t._deallocs;
       // Release data from source
       t._deallocs.clear();
-      t._dartid = DART_TEAM_NULL; 
+      t._dartid = DART_TEAM_NULL;
     }
     return *this;
   }
@@ -181,7 +181,7 @@ public:
     }
     free();
   }
-  
+
   /**
    * The invariant Team instance containing all available units.
    */
@@ -234,7 +234,7 @@ public:
   }
 
   /**
-   * Call registered deallocator functions for all team-allocated 
+   * Call registered deallocator functions for all team-allocated
    * objects.
    */
   void free() {
@@ -249,7 +249,7 @@ public:
     }
     _deallocs.clear();
   }
-  
+
   /**
    * Split this Team's units into \c nParts child Team instances.
    *
@@ -263,9 +263,9 @@ public:
     dart_group_t *group;
     dart_group_t *sub_groups[nParts];
     size_t size;
-    
+
     dart_group_sizeof(&size);
-    
+
     group = static_cast<dart_group_t *>(malloc(size));
     for (auto i = 0; i < nParts; i++) {
       sub_groups[i] = static_cast<dart_group_t *>(malloc(size));
@@ -273,9 +273,9 @@ public:
         dart_group_init(sub_groups[i]),
         DART_OK);
     }
-    
+
     Team *result = &(dash::Team::Null());
-    
+
     if (this->size() <= 1) {
       return *result;
     }
@@ -305,7 +305,7 @@ public:
     }
     return *result;
   }
-  
+
   /**
    * Equality comparison operator.
    *
@@ -321,7 +321,7 @@ public:
    * Inequality comparison operator.
    *
    * \param    rhs  The Team instance to compare
-   * \returns  True if and only if the given Team instance and this Team 
+   * \returns  True if and only if the given Team instance and this Team
    *           do not share the same DART id
    */
   bool operator!=(const Team & rhs) const {
@@ -343,7 +343,7 @@ public:
   }
 
   /**
-   * Whether this Team is a leaf node in a Team hierarchy, i.e. does not 
+   * Whether this Team is a leaf node in a Team hierarchy, i.e. does not
    * have any child Teams assigned.
    */
   bool is_leaf() const {
@@ -351,7 +351,7 @@ public:
   }
 
   /**
-   * Whether this Team is a root node in a Team hierarchy, i.e. does not 
+   * Whether this Team is a root node in a Team hierarchy, i.e. does not
    * have a parent Team assigned.
    */
   bool is_root() const {
@@ -359,11 +359,11 @@ public:
   }
 
   /**
-   * Whether this Team instance is a member of the group with given group 
+   * Whether this Team instance is a member of the group with given group
    * id.
    *
    * \param   groupId   The id of the group to test for membership
-   * \return  True if and only if this Team instance is member of a group 
+   * \return  True if and only if this Team instance is member of a group
    *          with given id
    */
   bool is_member(size_t groupId) const {
@@ -383,7 +383,7 @@ public:
 
   Team & parent() {
     if(_parent) { return *_parent; }
-    else { return Null(); } 
+    else { return Null(); }
   }
 
   Team & sub(size_t level = 1) {
@@ -411,14 +411,15 @@ public:
     }
   }
 
-  size_t myid() const {
-    dart_unit_t res = 0;
-    if (dash::is_initialized() && _dartid != DART_TEAM_NULL) {
+  dart_unit_t myid() const {
+    if (_myid == -1 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
-        dart_team_myid(_dartid, &res),
+        dart_team_myid(_dartid, &_myid),
         DART_OK);
+    } else if (!dash::is_initialized()) {
+      _myid = -1;
     }
-    return res;
+    return _myid;
   }
 
   /**
@@ -427,13 +428,14 @@ public:
    * \return  The number of unit grouped in this Team instance
    */
   size_t size() const {
-    size_t size = 0;
-    if (dash::is_initialized() && _dartid != DART_TEAM_NULL) {
+    if (_size == 0 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
-        dart_team_size(_dartid, &size),
+        dart_team_size(_dartid, &_size),
         DART_OK);
+    } else if (!dash::is_initialized()) {
+      _size = 0;
     }
-    return size;
+    return _size;
   }
 
   size_t position() const {
@@ -444,7 +446,7 @@ public:
     return _dartid;
   }
 
-  size_t global_id(size_t local_id) {
+  dart_unit_t global_id(dart_unit_t local_id) {
     dart_unit_t g_id;
     DASH_ASSERT_RETURNS(
       dart_team_unit_l2g(
@@ -460,6 +462,8 @@ private:
   Team                  * _parent    = nullptr;
   Team                  * _child     = nullptr;
   size_t                  _position  = 0;
+  mutable size_t          _size      = 0;
+  mutable dart_unit_t     _myid      = -1;
 
   mutable bool            _has_group = false;
   mutable dart_group_t  * _group     = nullptr;

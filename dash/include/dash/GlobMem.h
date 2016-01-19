@@ -322,7 +322,14 @@ public:
     DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", lunit);
     lunit = (lunit + unit) % m_nunits;
     DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", lunit);
-    dart_team_unit_l2g(m_teamid, lunit, &gunit);
+    if (m_teamid != dash::Team::All().dart_id()) {
+      // Unit is member of a split team, resolve global unit id:
+      dart_team_unit_l2g(m_teamid, lunit, &gunit);
+    } else {
+      // Unit is member of top level team, no conversion to global unit id
+      // necessary:
+      gunit = lunit;
+    }
     DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", gunit);
     // Apply global unit to global pointer:
     dart_gptr_setunit(&gptr, gunit);

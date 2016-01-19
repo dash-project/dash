@@ -4,6 +4,7 @@
 
 namespace dash {
   static int  _myid        = -1;
+  static int  _size        = -1;
   static bool _initialized = false;
 }
 
@@ -71,8 +72,15 @@ int dash::myid()
 
 size_t dash::size()
 {
-  size_t size;
-  dart_size(&size);
-  return size;
+  if (dash::_size < 0 && dash::is_initialized()) {
+    // First call of dash::size() after dash::init():
+    size_t size;
+    dart_size(&size);
+    dash::_size = size;
+  } else if (!dash::is_initialized()) {
+    // First call of dash::size() after dash::finalize():
+    dash::_size = -1;
+  }
+  return dash::_size;
 }
 
