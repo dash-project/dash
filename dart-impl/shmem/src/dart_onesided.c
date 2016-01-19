@@ -161,6 +161,13 @@ dart_ret_t dart_test(
   return DART_ERR_OTHER;
 }
 
+dart_ret_t dart_waitall_local(
+  dart_handle_t * handle,
+  size_t          num_handles)
+{
+  return dart_waitall(handle, num_handles);
+}
+
 dart_ret_t dart_waitall(
   dart_handle_t *handle,
   size_t n)
