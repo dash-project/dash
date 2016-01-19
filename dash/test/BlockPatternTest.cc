@@ -21,7 +21,7 @@ TEST_F(BlockPatternTest, SimpleConstructor)
   dash::DistributionSpec<3> ds_blocked_z(
       dash::NONE, dash::NONE, dash::BLOCKED);
   dash::Pattern<3> pat_ds(
-      extent_x, extent_y, extent_z, 
+      extent_x, extent_y, extent_z,
       ds_blocked_z);
   EXPECT_EQ(ds_blocked_z, pat_ds.distspec());
   EXPECT_EQ(size, pat_ds.capacity());
@@ -30,7 +30,7 @@ TEST_F(BlockPatternTest, SimpleConstructor)
   // run are not supported for now:
   // dash::Team & team_split_2 = dash::Team::All().split(2);
   dash::Pattern<3> pat_ds_t(
-      extent_x, extent_y, extent_z, 
+      extent_x, extent_y, extent_z,
       ds_blocked_z,
       dash::Team::All());
   EXPECT_EQ(ds_blocked_z, pat_ds_t.distspec());
@@ -88,6 +88,8 @@ TEST_F(BlockPatternTest, CopyConstructorAndAssignment)
 TEST_F(BlockPatternTest, Distribute1DimBlocked)
 {
   DASH_TEST_LOCAL_ONLY();
+  typedef dash::default_index_t index_t;
+
   // Simple 1-dimensional blocked partitioning:
   //
   // [ .. team 0 .. | .. team 1 .. | ... | team n-1 ]
@@ -131,7 +133,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
     EXPECT_EQ(local_extent_x, pat_blocked_row.local_extents(u)[0]);
     EXPECT_EQ(local_extent_x, pat_blocked_col.local_extents(u)[0]);
   }
-  std::array<int, 1> expected_coords;
+  std::array<index_t, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
     int expected_unit_id = x / block_size;
     int expected_offset  = x % block_size;
@@ -145,15 +147,15 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
       pat_blocked_row.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_blocked_row.unit_at(std::array<int, 1> { x }));
+      pat_blocked_row.unit_at(std::array<index_t, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_blocked_row.at(std::array<int, 1> { x }));
-    auto glob_coords_row = 
+      pat_blocked_row.at(std::array<index_t, 1> { x }));
+    auto glob_coords_row =
       pat_blocked_row.global(
-        expected_unit_id, std::array<int, 1> { expected_offset });
+        expected_unit_id, std::array<index_t, 1> { expected_offset });
     EXPECT_EQ(
-      (std::array<int, 1> { expected_index }),
+      (std::array<index_t, 1> { expected_index }),
       glob_coords_row);
     // Column major:
     EXPECT_EQ(
@@ -161,15 +163,15 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
       pat_blocked_col.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_blocked_col.unit_at(std::array<int, 1> { x }));
+      pat_blocked_col.unit_at(std::array<index_t, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_blocked_col.at(std::array<int, 1> { x }));
-    auto glob_coords_col = 
+      pat_blocked_col.at(std::array<index_t, 1> { x }));
+    auto glob_coords_col =
       pat_blocked_col.global(
-        expected_unit_id, std::array<int, 1> { expected_offset });
+        expected_unit_id, std::array<index_t, 1> { expected_offset });
     EXPECT_EQ(
-      (std::array<int, 1> { expected_index }),
+      (std::array<index_t, 1> { expected_index }),
       glob_coords_col);
   }
 }
@@ -177,6 +179,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
 TEST_F(BlockPatternTest, Distribute1DimCyclic)
 {
   DASH_TEST_LOCAL_ONLY();
+  typedef dash::default_index_t index_t;
   // Simple 1-dimensional cyclic partitioning:
   //
   // [ team 0 | team 1 | team 0 | team 1 | ... ]
@@ -201,7 +204,7 @@ TEST_F(BlockPatternTest, Distribute1DimCyclic)
   EXPECT_EQ(pat_cyclic_col.blocksize(0), 1);
   EXPECT_EQ(pat_cyclic_col.local_capacity(), local_cap);
   size_t expected_unit_id;
-  std::array<int, 1> expected_coords;
+  std::array<index_t, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
     int expected_unit_id = x % team_size;
     int expected_offset  = x / team_size;
@@ -215,34 +218,35 @@ TEST_F(BlockPatternTest, Distribute1DimCyclic)
       pat_cyclic_row.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_cyclic_row.unit_at(std::array<int, 1> { x }));
+      pat_cyclic_row.unit_at(std::array<index_t, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_cyclic_row.at(std::array<int, 1> { x }));
+      pat_cyclic_row.at(std::array<index_t, 1> { x }));
     EXPECT_EQ(
-      (std::array<int, 1> { expected_index }),
+      (std::array<index_t, 1> { expected_index }),
       pat_cyclic_row.global(
-        expected_unit_id, (std::array<int, 1> { expected_offset })));
+        expected_unit_id, (std::array<index_t, 1> { expected_offset })));
     // Column major:
     EXPECT_EQ(
       expected_coords,
       pat_cyclic_col.coords(x));
     EXPECT_EQ(
       expected_unit_id,
-      pat_cyclic_col.unit_at(std::array<int, 1> { x }));
+      pat_cyclic_col.unit_at(std::array<index_t, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_cyclic_col.at(std::array<int, 1> { x }));
+      pat_cyclic_col.at(std::array<index_t, 1> { x }));
     EXPECT_EQ(
-      (std::array<int, 1> { expected_index }),
+      (std::array<index_t, 1> { expected_index }),
       pat_cyclic_col.global(
-        expected_unit_id, (std::array<int, 1> { expected_offset })));
+        expected_unit_id, (std::array<index_t, 1> { expected_offset })));
   }
 }
 
 TEST_F(BlockPatternTest, Distribute1DimBlockcyclic)
 {
   DASH_TEST_LOCAL_ONLY();
+  typedef dash::default_index_t index_t;
   // Simple 1-dimensional blocked partitioning:
   //
   // [ team 0 | team 1 | team 0 | team 1 | ... ]
@@ -271,7 +275,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlockcyclic)
   size_t expected_unit_id;
   LOG_MESSAGE("num elem: %d, block size: %d, num blocks: %d",
     _num_elem, block_size, num_blocks);
-  std::array<int, 1> expected_coords;
+  std::array<index_t, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
     int unit_id           = (x / block_size) % team_size;
     int block_index       = x / block_size;
@@ -291,14 +295,14 @@ TEST_F(BlockPatternTest, Distribute1DimBlockcyclic)
       pat_blockcyclic_row.is_local(x, unit_id));
     EXPECT_EQ(
       expected_unit_id,
-      pat_blockcyclic_row.unit_at(std::array<int, 1> { x }));
+      pat_blockcyclic_row.unit_at(std::array<index_t, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_blockcyclic_row.at(std::array<int, 1> { x }));
+      pat_blockcyclic_row.at(std::array<index_t, 1> { x }));
     EXPECT_EQ(
-      (std::array<int, 1> { expected_index }),
+      (std::array<index_t, 1> { expected_index }),
       pat_blockcyclic_row.global(
-        expected_unit_id, (std::array<int, 1> { expected_offset })));
+        expected_unit_id, (std::array<index_t, 1> { expected_offset })));
     // Column major:
     EXPECT_EQ(
       expected_coords,
@@ -307,20 +311,21 @@ TEST_F(BlockPatternTest, Distribute1DimBlockcyclic)
       pat_blockcyclic_col.is_local(x, unit_id));
     EXPECT_EQ(
       expected_unit_id,
-      pat_blockcyclic_col.unit_at(std::array<int, 1> { x }));
+      pat_blockcyclic_col.unit_at(std::array<index_t, 1> { x }));
     EXPECT_EQ(
       expected_offset,
-      pat_blockcyclic_col.at(std::array<int, 1> { x }));
+      pat_blockcyclic_col.at(std::array<index_t, 1> { x }));
     EXPECT_EQ(
-      (std::array<int, 1> { expected_index }),
+      (std::array<index_t, 1> { expected_index }),
       pat_blockcyclic_col.global(
-        expected_unit_id, (std::array<int, 1> { expected_offset })));
+        expected_unit_id, (std::array<index_t, 1> { expected_offset })));
   }
 }
 
 TEST_F(BlockPatternTest, Distribute2DimBlockedY)
 {
   DASH_TEST_LOCAL_ONLY();
+  typedef dash::default_index_t index_t;
   // 2-dimensional, blocked partitioning in second dimension:
   // Row major:
   // [ team 0[0] | team 0[1] | ... | team 0[2] ]
@@ -380,14 +385,14 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
     block_size_x, block_size_y);
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
-      // Units might have empty local range, e.g. when distributing 41 
+      // Units might have empty local range, e.g. when distributing 41
       // elements to 8 units.
       int num_blocks_y              = dash::math::div_ceil(
                                         extent_y, block_size_y);
       // Subtract missing elements in last block if any:
-      int underfill_y               = (y >= (num_blocks_y-1) * 
+      int underfill_y               = (y >= (num_blocks_y-1) *
                                             block_size_y)
-                                      ? (block_size_y * num_blocks_y) - 
+                                      ? (block_size_y * num_blocks_y) -
                                         extent_y
                                       : 0;
       // Actual extent of block, adjusted for underfilled extent:
@@ -396,7 +401,7 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
       int expected_index_col_order  = (x * extent_y) + y;
       int expected_offset_row_order =
         expected_index_row_order % max_per_unit;
-      int expected_offset_col_order = (y % block_size_y) + (x * 
+      int expected_offset_col_order = (y % block_size_y) + (x *
                                         block_size_y_adj);
       int expected_unit_id          = y / block_size_y;
       int local_x                   = x;
@@ -405,38 +410,38 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
       LOG_MESSAGE("R %d,%d, eo:%d, ao:%d, ei:%d, bx:%d, by:%d, bya:%d",
         x, y,
         expected_offset_row_order,
-        pat_blocked_row.at(std::array<int, 2> { x, y }),
+        pat_blocked_row.at(std::array<index_t, 2> { x, y }),
         expected_index_row_order,
         block_size_x, block_size_y, block_size_y_adj);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked_row.unit_at(std::array<int, 2> { x, y }));
+        pat_blocked_row.unit_at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_row_order,
-        pat_blocked_row.at(std::array<int, 2> { x, y }));
+        pat_blocked_row.at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
-        (std::array<int, 2> { x, y }),
+        (std::array<index_t, 2> { x, y }),
         pat_blocked_row.global(
-          expected_unit_id, 
-          (std::array<int, 2> { local_x, local_y  })));
+          expected_unit_id,
+          (std::array<index_t, 2> { local_x, local_y  })));
       // Col major:
       LOG_MESSAGE("C %d,%d, eo:%d, ao:%d, ei:%d, bx:%d, by:%d",
         x, y,
         expected_offset_col_order,
-        pat_blocked_col.at(std::array<int, 2> { x, y }),
+        pat_blocked_col.at(std::array<index_t, 2> { x, y }),
         expected_index_col_order,
         block_size_x, block_size_y);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked_col.unit_at(std::array<int, 2> { x, y }));
+        pat_blocked_col.unit_at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_col_order,
-        pat_blocked_col.at(std::array<int, 2> { x, y }));
+        pat_blocked_col.at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
-        (std::array<int, 2> { x, y }),
+        (std::array<index_t, 2> { x, y }),
         pat_blocked_col.global(
           expected_unit_id,
-          (std::array<int, 2> { local_x, local_y })));
+          (std::array<index_t, 2> { local_x, local_y })));
     }
   }
 }
@@ -444,8 +449,9 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
 TEST_F(BlockPatternTest, Distribute2DimBlockedX)
 {
   DASH_TEST_LOCAL_ONLY();
+  typedef dash::default_index_t index_t;
   // 2-dimensional, blocked partitioning in first dimension:
-  // 
+  //
   // [ team 0[0] | team 1[0] | team 2[0] | ... | team n-1 ]
   // [ team 0[1] | team 1[1] | team 2[1] | ... | team n-1 ]
   // [ team 0[2] | team 1[2] | team 2[2] | ... | team n-1 ]
@@ -479,12 +485,12 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedX)
   EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
-      // Units might have empty local range, e.g. when distributing 41 
+      // Units might have empty local range, e.g. when distributing 41
       // elements to 8 units.
       int num_blocks_x              = dash::math::div_ceil(
                                         extent_x, block_size_x);
       // Subtract missing elements in last block if any:
-      int underfill_x               = (x >= (num_blocks_x-1) *  
+      int underfill_x               = (x >= (num_blocks_x-1) *
                                         block_size_x)
                                       ? (block_size_x * num_blocks_x) -
                                         extent_x
@@ -495,7 +501,7 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedX)
       int expected_index_col_order  = (x * extent_y) + y;
       int expected_offset_row_order = (x % block_size_x) +
                                       (y * block_size_x_adj);
-      int expected_offset_col_order = expected_index_col_order % 
+      int expected_offset_col_order = expected_index_col_order %
                                         max_per_unit;
       int expected_unit_id          = x / block_size_x;
       int local_x                   = x % block_size_x;
@@ -504,38 +510,38 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedX)
       LOG_MESSAGE("R %d,%d, eo:%d, ao:%d, nbx:%d, bx:%d, by:%d, bxa:%d",
         x, y,
         expected_offset_row_order,
-        pat_blocked_row.at(std::array<int, 2> { x, y }),
+        pat_blocked_row.at(std::array<index_t, 2> { x, y }),
         num_blocks_x,
         block_size_x, block_size_y, block_size_x_adj);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked_row.unit_at(std::array<int, 2> { x, y }));
+        pat_blocked_row.unit_at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_row_order,
-        pat_blocked_row.at(std::array<int, 2> { x, y }));
+        pat_blocked_row.at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
-        (std::array<int, 2> { x, y }),
+        (std::array<index_t, 2> { x, y }),
         pat_blocked_row.global(
           expected_unit_id,
-          (std::array<int, 2> { local_x, local_y })));
+          (std::array<index_t, 2> { local_x, local_y })));
       // Col major:
       LOG_MESSAGE("C %d,%d, eo:%d, ao:%d, ei:%d, bx:%d, by:%d",
         x, y,
         expected_offset_col_order,
-        pat_blocked_col.at(std::array<int, 2> { x, y }),
+        pat_blocked_col.at(std::array<index_t, 2> { x, y }),
         expected_index_col_order,
         block_size_x, block_size_y);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked_col.unit_at(std::array<int, 2> { x, y }));
+        pat_blocked_col.unit_at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_col_order,
-        pat_blocked_col.at(std::array<int, 2> { x, y }));
+        pat_blocked_col.at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
-        (std::array<int, 2> { x, y }),
+        (std::array<index_t, 2> { x, y }),
         pat_blocked_col.global(
           expected_unit_id,
-          (std::array<int, 2> { local_x, local_y })));
+          (std::array<index_t, 2> { local_x, local_y })));
     }
   }
 }
@@ -543,8 +549,9 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedX)
 TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
 {
   DASH_TEST_LOCAL_ONLY();
+  typedef dash::default_index_t index_t;
   // 2-dimensional, blocked partitioning in two dimensions:
-  // 
+  //
   // [ team 0[0] | team 1[0] | team 0[1] | team 1[1] ]
   // [ team 0[2] | team 1[2] | team 0[3] | team 1[3] ]
   // [ team 2[0] | team 3[0] | team 2[1] | team 3[1] ]
@@ -606,12 +613,12 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
   EXPECT_EQ_U(pat_col.blocksize(1), block_size_y);
   for (int x = 0; x < extent_x; ++x) {
     for (int y = 0; y < extent_y; ++y) {
-      // Units might have empty local range, e.g. when distributing 41 
+      // Units might have empty local range, e.g. when distributing 41
       // elements to 8 units.
       // Subtract missing elements in last block if any:
-      int underfill_x               = (x >= (num_blocks_x-1) *   
+      int underfill_x               = (x >= (num_blocks_x-1) *
                                             block_size_x)
-                                      ? (block_size_x * num_blocks_x) - 
+                                      ? (block_size_x * num_blocks_x) -
                                         extent_x
                                       : 0;
       // Actual extent of block, adjusted for underfilled extent:
@@ -620,7 +627,7 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
       int expected_offset_col_order = 0;
       int block_coord_x             = (x / block_size_x) % num_units_x;
       int block_coord_y             = (y / block_size_y) % num_units_y;
-      int expected_unit_id          = block_coord_y * num_units_x + 
+      int expected_unit_id          = block_coord_y * num_units_x +
                                       block_coord_x;
       int local_x                   = x % block_size_x;
       int local_y                   = y;
@@ -628,40 +635,40 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
       LOG_MESSAGE("R %d,%d, eo:%d, ao:%d, nbx:%d, bx:%d, by:%d, bxa:%d",
         x, y,
         expected_offset_row_order,
-        pat_row.at(std::array<int, 2> { x, y }),
+        pat_row.at(std::array<index_t, 2> { x, y }),
         num_blocks_x,
         block_size_x, block_size_y, block_size_x_adj);
       EXPECT_EQ(
         expected_unit_id,
-        pat_row.unit_at(std::array<int, 2> { x, y }));
+        pat_row.unit_at(std::array<index_t, 2> { x, y }));
 #if DEACT
       EXPECT_EQ(
         expected_offset_row_order,
-        pat_row.at(std::array<int, 2> { x, y }));
+        pat_row.at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
-        (std::array<int, 2> { x, y }),
+        (std::array<index_t, 2> { x, y }),
         pat_row.global(
           expected_unit_id,
-          (std::array<int, 2> { local_x, local_y })));
+          (std::array<index_t, 2> { local_x, local_y })));
 #endif
       // Col major:
       LOG_MESSAGE("C %d,%d, eo:%d, ao:%d, ei:%d, bx:%d, by:%d",
         x, y,
         expected_offset_col_order,
-        pat_col.at(std::array<int, 2> { x, y }),
+        pat_col.at(std::array<index_t, 2> { x, y }),
         block_size_x, block_size_y);
       EXPECT_EQ(
         expected_unit_id,
-        pat_col.unit_at(std::array<int, 2> { x, y }));
+        pat_col.unit_at(std::array<index_t, 2> { x, y }));
 #if DEACT
       EXPECT_EQ(
         expected_offset_col_order,
-        pat_col.at(std::array<int, 2> { x, y }));
+        pat_col.at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
-        (std::array<int, 2> { x, y }),
+        (std::array<index_t, 2> { x, y }),
         pat_col.global(
           expected_unit_id,
-          (std::array<int, 2> { local_x, local_y })));
+          (std::array<index_t, 2> { local_x, local_y })));
 #endif
     }
   }
@@ -670,8 +677,9 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
 TEST_F(BlockPatternTest, Distribute2DimCyclicX)
 {
   DASH_TEST_LOCAL_ONLY();
+  typedef dash::default_index_t index_t;
   // 2-dimensional, blocked partitioning in first dimension:
-  // 
+  //
   // [ team 0[0] | team 1[0] | team 0[1] | team 1[1] | ... ]
   // [ team 0[2] | team 1[2] | team 0[3] | team 1[3] | ... ]
   // [ team 0[4] | team 1[4] | team 0[5] | team 1[5] | ... ]
@@ -727,44 +735,44 @@ TEST_F(BlockPatternTest, Distribute2DimCyclicX)
       int expected_offset_col_order = ((x / team_size) * extent_y) + y;
       int local_x                   = x / team_size;
       int local_y                   = y;
-      auto glob_coords_row = 
+      auto glob_coords_row =
         pat_cyclic_row.global(
           expected_unit_id,
-          std::array<int, 2> { local_x, local_y });
+          std::array<index_t, 2> { local_x, local_y });
       auto glob_coords_col =
         pat_cyclic_col.global(
           expected_unit_id,
-          std::array<int, 2> { local_x, local_y });
+          std::array<index_t, 2> { local_x, local_y });
       // Row major:
       LOG_MESSAGE("R x: %d, y: %d, eo: %d, ao: %d, of: %d, nbu: %d",
         x, y,
         expected_offset_row_order,
-        pat_cyclic_row.at(std::array<int, 2> { x, y }),
+        pat_cyclic_row.at(std::array<index_t, 2> { x, y }),
         num_overflow_blocks,
         num_blocks_unit_x);
       EXPECT_EQ(
         expected_unit_id,
-        pat_cyclic_row.unit_at(std::array<int, 2> { x, y }));
+        pat_cyclic_row.unit_at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_row_order,
-        pat_cyclic_row.at(std::array<int, 2> { x, y }));
+        pat_cyclic_row.at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
-        (std::array<int, 2> { x, y }),
+        (std::array<index_t, 2> { x, y }),
         glob_coords_row);
       // Col major:
       LOG_MESSAGE("C x: %d, y: %d, eo: %d, ao: %d, of: %d",
         x, y,
         expected_offset_col_order,
-        pat_cyclic_col.at(std::array<int, 2> { x, y }),
+        pat_cyclic_col.at(std::array<index_t, 2> { x, y }),
         num_overflow_blocks);
       EXPECT_EQ(
         expected_unit_id,
-        pat_cyclic_col.unit_at(std::array<int, 2> { x, y }));
+        pat_cyclic_col.unit_at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
         expected_offset_col_order,
-        pat_cyclic_col.at(std::array<int, 2> { x, y }));
+        pat_cyclic_col.at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
-        (std::array<int, 2> { x, y }),
+        (std::array<index_t, 2> { x, y }),
         glob_coords_col);
     }
   }
@@ -773,8 +781,9 @@ TEST_F(BlockPatternTest, Distribute2DimCyclicX)
 TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
 {
   DASH_TEST_LOCAL_ONLY();
+  typedef dash::default_index_t index_t;
   // 2-dimensional, blocked partitioning in first dimension:
-  // 
+  //
   // [ team 0[0] | team 1[0] | team 0[1] | team 1[1] | ... ]
   // [ team 0[2] | team 1[2] | team 0[3] | team 1[3] | ... ]
   // [ team 0[4] | team 1[4] | team 0[5] | team 1[5] | ... ]
@@ -845,11 +854,11 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
           num_add_elem_x += block_size_x;
         }
         if (unit_id == last_block_unit) {
-          if (overflow_block_size_x > 0) { 
+          if (overflow_block_size_x > 0) {
             num_add_elem_x -= block_size_x - overflow_block_size_x;
           }
         }
-        int local_extent_x            = (min_blocks_x * block_size_x) + 
+        int local_extent_x            = (min_blocks_x * block_size_x) +
                                         num_add_elem_x;
         int local_block_index_x       = block_offset_x / team_size;
         int expected_index_row_order  = (z * extent_y * extent_x) +
@@ -870,14 +879,14 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
         int local_x                   = local_index_x;
         int local_y                   = y;
         int local_z                   = z;
-        auto glob_coords_row = 
+        auto glob_coords_row =
           pat_blockcyclic_row.global(
             expected_unit_id,
-            std::array<int, 3> { local_x, local_y, local_z });
+            std::array<index_t, 3> { local_x, local_y, local_z });
         auto glob_coords_col =
           pat_blockcyclic_col.global(
             expected_unit_id,
-            std::array<int, 3> { local_x, local_y, local_z });
+            std::array<index_t, 3> { local_x, local_y, local_z });
         // Row major:
         LOG_MESSAGE("R %d,%d,%d, u:%d, nbu:%d, nbx:%d, box:%d, lbox:%d, "
                     "na:%d, lex:%d, lx:%d",
@@ -892,16 +901,16 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
           local_index_x);
         EXPECT_EQ(
           expected_unit_id,
-          pat_blockcyclic_row.unit_at(std::array<int, 3> { x,y,z }));
+          pat_blockcyclic_row.unit_at(std::array<index_t, 3> { x,y,z }));
         EXPECT_TRUE(
           pat_blockcyclic_row.is_local(
             expected_index_row_order,
             unit_id));
         EXPECT_EQ(
           expected_offset_row_order,
-          pat_blockcyclic_row.at(std::array<int, 3> { x,y,z }));
+          pat_blockcyclic_row.at(std::array<index_t, 3> { x,y,z }));
         EXPECT_EQ(
-          (std::array<int, 3> { x, y, z }),
+          (std::array<index_t, 3> { x, y, z }),
           glob_coords_row);
         // Col major:
         LOG_MESSAGE("C %d,%d,%d, u:%d, nbu:%d, nbx:%d, box:%d, lbox:%d, "
@@ -917,16 +926,16 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
           local_index_x);
         EXPECT_EQ(
           expected_unit_id,
-          pat_blockcyclic_col.unit_at(std::array<int, 3> { x,y,z }));
+          pat_blockcyclic_col.unit_at(std::array<index_t, 3> { x,y,z }));
         EXPECT_TRUE(
           pat_blockcyclic_col.is_local(
             expected_index_col_order,
             unit_id));
         EXPECT_EQ(
           expected_offset_col_order,
-          pat_blockcyclic_col.at(std::array<int, 3> { x,y,z }));
+          pat_blockcyclic_col.at(std::array<index_t, 3> { x,y,z }));
         EXPECT_EQ(
-          (std::array<int, 3> { x, y, z }),
+          (std::array<index_t, 3> { x, y, z }),
           glob_coords_col);
       }
     }
@@ -938,7 +947,7 @@ TEST_F(BlockPatternTest, LocalExtents2DimCyclicX)
   // Must be run on all units as local extents differ
 
   // 2-dimensional, cyclic partitioning in first dimension:
-  // 
+  //
   // [ team 0[0] | team 1[0] | team 0[1] | team 1[1] | ... ]
   // [ team 0[2] | team 1[2] | team 0[3] | team 1[3] | ... ]
   // [ team 0[4] | team 1[4] | team 0[5] | team 1[5] | ... ]
@@ -1010,7 +1019,7 @@ TEST_F(BlockPatternTest, LocalExtents2DimBlockcyclicY)
   // [ team 1[1] | team 1[3] | ... | team 1[5] ]
   // [                   ...                   ]
   //
-  // For units 0..n: 
+  // For units 0..n:
   // - unit n has no additional block
   // - unit n-1 has additional block with 1 extent smaller than
   //   regular block size

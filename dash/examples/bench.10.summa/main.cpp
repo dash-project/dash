@@ -162,7 +162,7 @@ void perform_test(
   auto num_threads = 1;
   if (n == 0) {
     if (dash::myid() == 0) {
-      cout << setw(7)  << "nodes"   << ", "
+      cout << setw(7)  << "units"   << ", "
            << setw(7)  << "threads" << ", "
            << setw(10) << "n"       << ", "
            << setw(10) << "size"    << ", "

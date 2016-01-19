@@ -12,8 +12,6 @@
 
 namespace dash {
 
-typedef dash::default_index_t gptrdiff_t;
-
 template<
   typename ElementType,
   class PatternType   = Pattern<1>,
@@ -23,7 +21,7 @@ class GlobViewIter
 : public std::iterator<
            std::random_access_iterator_tag,
            ElementType,
-           gptrdiff_t,
+           typename PatternType::index_type,
            PointerType,
            ReferenceType > {
 private:
@@ -316,7 +314,7 @@ public:
    */
   reference operator[](
     /// The global position of the element
-    gptrdiff_t g_index) const
+    index_type g_index) const
   {
     DASH_LOG_TRACE("GlobViewIter.[]", g_index, _view_idx_offset);
     IndexType idx = g_index;
@@ -408,7 +406,7 @@ public:
   /**
    * Position of the iterator in the index range relative to its view spec.
    */
-  inline gptrdiff_t pos() const
+  inline index_type pos() const
 
   {
     DASH_LOG_TRACE("GlobViewIter.pos()",
@@ -420,7 +418,7 @@ public:
    * Position of the iterator in global index range.
    * Projects iterator position from its view spec to global index domain.
    */
-  inline gptrdiff_t gpos() const
+  inline index_type gpos() const
   {
     DASH_LOG_TRACE_VAR("GlobViewIter.gpos()", _idx);
     if (_viewspec == nullptr) {
@@ -565,19 +563,19 @@ public:
     return result;
   }
 
-  self_t & operator+=(gptrdiff_t n)
+  self_t & operator+=(index_type n)
   {
     _idx += n;
     return *this;
   }
 
-  self_t & operator-=(gptrdiff_t n)
+  self_t & operator-=(index_type n)
   {
     _idx -= n;
     return *this;
   }
 
-  self_t operator+(gptrdiff_t n) const
+  self_t operator+(index_type n) const
   {
     if (_viewspec == nullptr) {
       self_t res(
@@ -596,7 +594,7 @@ public:
     return res;
   }
 
-  self_t operator-(gptrdiff_t n) const
+  self_t operator-(index_type n) const
   {
     if (_viewspec == nullptr) {
       self_t res(
@@ -615,13 +613,13 @@ public:
     return res;
   }
 
-  gptrdiff_t operator+(
+  index_type operator+(
     const self_t & other) const
   {
     return _idx + other._idx;
   }
 
-  gptrdiff_t operator-(
+  index_type operator-(
     const self_t & other) const
   {
     return _idx - other._idx;
@@ -817,11 +815,12 @@ private:
  * \ingroup     Algorithms
  */
 template<typename ElementType, typename PatternType>
-gptrdiff_t distance(
+auto distance(
   /// Global iterator to the initial position in the global sequence
   const GlobViewIter<ElementType, PatternType> & first,
   /// Global iterator to the final position in the global sequence
   const GlobViewIter<ElementType, PatternType> & last)
+-> typename PatternType::index_type
 {
   return last - first;
 }

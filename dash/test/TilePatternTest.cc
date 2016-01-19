@@ -8,6 +8,8 @@ TEST_F(TilePatternTest, Distribute1DimTile)
 {
   DASH_TEST_LOCAL_ONLY();
 
+  typedef dash::default_index_t index_t;
+
   size_t team_size  = dash::Team::All().size();
   size_t block_size = 3;
   size_t extent     = team_size * block_size * 2;
@@ -32,13 +34,13 @@ TEST_F(TilePatternTest, Distribute1DimTile)
   EXPECT_EQ(pat_tile_col.blocksize(0), block_size);
   EXPECT_EQ(pat_tile_col.local_capacity(), local_cap);
 
-  std::array<int, 1> expected_coord;
+  std::array<index_t, 1> expected_coord;
   for (int x = 0; x < extent; ++x) {
-    expected_coord[0]     = x;
-    int expected_unit_id  = (x / block_size) % team_size;
-    int block_index       = x / block_size;
-    int block_base_offset = block_size * (block_index / team_size);
-    int expected_offset   = (x % block_size) + block_base_offset;
+    expected_coord[0]         = x;
+    index_t expected_unit_id  = (x / block_size) % team_size;
+    index_t block_index       = x / block_size;
+    index_t block_base_offset = block_size * (block_index / team_size);
+    index_t expected_offset   = (x % block_size) + block_base_offset;
     // Row major:
     EXPECT_EQ(
       expected_coord,
@@ -50,9 +52,9 @@ TEST_F(TilePatternTest, Distribute1DimTile)
       expected_offset,
       pat_tile_row.at(x));
     EXPECT_EQ(
-      (std::array<int, 1> { x }),
+      (std::array<index_t, 1> { x }),
       pat_tile_row.global(
-        expected_unit_id, (std::array<int, 1> { expected_offset })));
+        expected_unit_id, (std::array<index_t, 1> { expected_offset })));
     // Column major:
     EXPECT_EQ(
       expected_coord,
@@ -64,17 +66,20 @@ TEST_F(TilePatternTest, Distribute1DimTile)
       expected_offset,
       pat_tile_col.at(x));
     EXPECT_EQ(
-      (std::array<int, 1> { x }),
+      (std::array<index_t, 1> { x }),
       pat_tile_col.global(
-        expected_unit_id, (std::array<int, 1> { expected_offset })));
+        expected_unit_id, (std::array<index_t, 1> { expected_offset })));
   }
 }
 
 TEST_F(TilePatternTest, Distribute2DimTileXY)
 {
   DASH_TEST_LOCAL_ONLY();
+
+  typedef dash::default_index_t index_t;
+
   // 2-dimensional, blocked partitioning in first dimension:
-  // 
+  //
   // [ team 0[0] | team 0[1] | ... | team 0[8]  | team 0[9]  | ... ]
   // [ team 0[2] | team 0[3] | ... | team 0[10] | team 0[11] | ... ]
   // [ team 0[4] | team 0[5] | ... | team 0[12] | team 0[13] | ... ]
@@ -145,7 +150,7 @@ TEST_F(TilePatternTest, Distribute2DimTileXY)
                                 phase_row;
       // Row major:
       auto local_coords_row   = pat_tile_row.local_coords(
-                                  std::array<int, 2> { x, y });
+                                  std::array<index_t, 2> { x, y });
       LOG_MESSAGE("R %d,%d, u:%d, b:%d,%d, nlb:%d,%d, lc: %d,%d, lbi:%d, p:%d",
         x, y,
         unit_id,
@@ -156,19 +161,19 @@ TEST_F(TilePatternTest, Distribute2DimTileXY)
         phase_row);
       EXPECT_EQ(
         unit_id,
-        pat_tile_row.unit_at(std::array<int, 2> { x, y }));
+        pat_tile_row.unit_at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
         local_index_row,
-        pat_tile_row.at(std::array<int, 2> { x, y }));
+        pat_tile_row.at(std::array<index_t, 2> { x, y }));
       EXPECT_EQ(
         local_index_row,
         pat_tile_row.local_at(local_coords_row));
-      auto glob_coords_row = 
+      auto glob_coords_row =
         pat_tile_row.global(
           unit_id,
-          std::array<int, 2> { local_coords_row[0], local_coords_row[1] });
+          std::array<index_t, 2> { local_coords_row[0], local_coords_row[1] });
       EXPECT_EQ(
-        (std::array<int, 2> { x, y }),
+        (std::array<index_t, 2> { x, y }),
         glob_coords_row);
       // Col major:
     }

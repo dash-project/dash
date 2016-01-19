@@ -142,6 +142,10 @@ local_index_range(
   idx_t end_gindex    = static_cast<idx_t>(last.pos());
   DASH_LOG_TRACE("local_index_range(ViewIt,ViewIt)",
                  begin_gindex, end_gindex);
+  DASH_ASSERT_GT(begin_gindex+1, 0,
+                 "local_index_range: begin.gidx must not be negative");
+  DASH_ASSERT_GT(end_gindex+1, 0,
+                 "local_index_range: end.gidx must not be negative");
   // Check if input range is relative to a view spec (e.g. a block):
   if (first.is_relative() && last.is_relative()) {
     DASH_LOG_TRACE("local_index_range", "input iterators are relative");

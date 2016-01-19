@@ -362,7 +362,8 @@ TEST_F(MatrixTest, Submat2DimDefault)
 
 TEST_F(MatrixTest, Sub2DimDefault)
 {
-  typedef int element_t;
+  typedef dash::default_index_t index_t;
+  typedef int                   element_t;
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
@@ -403,7 +404,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
   ASSERT_EQ_U(matrix.lend() - matrix.lbegin(),
               matrix.local_size());
   // Assign unit-specific values in local matrix range:
-  for (int lidx = 0; lit != lend; ++lidx, ++lit) {
+  for (index_t lidx = 0; lit != lend; ++lidx, ++lit) {
     ASSERT_LT_U(lidx, matrix.local_size());
     auto value = ((dash::myid() + 1) * 1000) + lidx;
     LOG_MESSAGE("Assigning local address (%p) %d = %d",
@@ -420,7 +421,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
   for (auto col = 0; col < extent_cols; ++col) {
     auto column = matrix.sub<0>(col);
     for (auto row = 0; row < extent_rows; ++row) {
-      auto g_coords   = std::array<int, 2> { col, row };
+      auto g_coords   = std::array<index_t, 2> { col, row };
       auto l_coords   = pattern.local_coords(g_coords);
       auto unit_id    = pattern.unit_at(g_coords);
       auto local_idx  = pattern.local_at(l_coords);

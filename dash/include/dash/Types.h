@@ -11,31 +11,46 @@ namespace dash {
  */
 typedef int dim_t;
 
+namespace internal {
+#ifdef DASH_ENABLE_DEFAULT_INDEX_TYPE_LONG
+  typedef int64_t   default_signed_index;
+  typedef uint64_t  default_unsigned_index;
+#else
+  typedef int32_t   default_signed_index;
+  typedef uint32_t  default_unsigned_index;
+#endif
+}
+
 /**
  * Signed integer type used as default for index values.
  */
-typedef int default_index_t;
+typedef internal::default_signed_index default_index_t;
 
 /**
- * Difference type for global pointers.
+ * Unsigned integer type used as default for extent values.
  */
-typedef long long gptr_diff_t;
+typedef internal::default_unsigned_index default_extent_t;
 
 /**
  * Unsigned integer type used as default for size values.
  */
-typedef typename std::make_unsigned<default_index_t>::type default_size_t;
+typedef internal::default_unsigned_index default_size_t;
+
+/**
+ * Difference type for global pointers.
+ */
+typedef internal::default_signed_index gptrdiff_t;
 
 template<
   dash::dim_t NumDimensions,
-  typename IndexType = int>
+  typename IndexType = dash::default_index_t>
 struct Point {
   ::std::array<IndexType, NumDimensions> coords;
 };
 
 template<
   dash::dim_t NumDimensions,
-  typename SizeType = unsigned int>
+  typename SizeType = dash::default_extent_t>
 struct Extent {
   ::std::array<SizeType, NumDimensions> sizes;
 };

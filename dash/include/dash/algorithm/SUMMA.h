@@ -459,7 +459,7 @@ void summa(
           block_size_m,
           block_size_n,
           block_size_p);
-#ifdef DASH_ENABLE_LOGGING
+#ifdef DASH_ENABLE_LOGGING___
       auto A = local_block_a_comp;
       auto B = local_block_b_comp;
       auto C = l_block_c_comp.begin().local();

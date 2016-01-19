@@ -80,8 +80,11 @@ message(INFO "Unified RMA memory model: " ${ENABLE_UNIFIED_MEMORY_MODEL})
 option(ENABLE_SHARED_WINDOWS
        "Specify whether shared memory features are enabled" on)
 message(INFO "Shared memory features:   " ${ENABLE_SHARED_WINDOWS})
+option(ENABLE_DEFAULT_INDEX_TYPE_LONG
+       "Specify whether to use int64_t as default index type" off)
+message(INFO "Default index type long:  " ${ENABLE_DEFAULT_INDEX_TYPE_LONG})
 
-set(DART_IF_VERSION "3.1" CACHE STRING
+set(DART_IF_VERSION "3.2" CACHE STRING
     "Version of the DART interface")
 message(INFO "DART interface version:   " ${DART_IF_VERSION})
 
@@ -108,7 +111,7 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/shared)
 ## Subprojects, one for each deliverable
 
 set(DART_IMPLEMENTATIONS
-    "mpi,shmem" CACHE STRING 
+    "mpi,shmem" CACHE STRING
     "Comma-separated list of DASH runtime implementations to
      build, default is mpi,shmem")
 
@@ -124,14 +127,14 @@ add_subdirectory(dart-impl/base)
 
 # DART implementation of every enabled DART variant:
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
-  set(DART_IMPLEMENTATION_MPI_ENABLED ON 
+  set(DART_IMPLEMENTATION_MPI_ENABLED ON
       CACHE BOOL INTERNAL FORCE)
   message(INFO "Building DART MPI backend")
   add_subdirectory(dart-impl/mpi)
 endif()
 
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
-  set(DART_IMPLEMENTATION_SHMEM_ENABLED ON 
+  set(DART_IMPLEMENTATION_SHMEM_ENABLED ON
       CACHE BOOL INTERNAL FORCE)
   message(INFO "Building DART SHMEM backend")
   add_subdirectory(dart-impl/shmem)
@@ -139,7 +142,7 @@ endif()
 
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";cuda;")
   message(INFO "Building DART CUDA backend")
-  set(DART_IMPLEMENTATION_CUDA_ENABLED ON 
+  set(DART_IMPLEMENTATION_CUDA_ENABLED ON
       CACHE BOOL INTERNAL FORCE)
   add_subdirectory(dart-impl/cuda)
 endif()
