@@ -61,7 +61,8 @@ std::pair<double, double> test_blas(
 void perform_test(
   const std::string & variant,
   extent_t            n,
-  unsigned            repeat);
+  unsigned            repeat,
+  unsigned            num_repeats);
 
 typedef struct benchmark_params_t {
   std::string variant;
@@ -71,88 +72,62 @@ typedef struct benchmark_params_t {
   unsigned    rep_max;
   extent_t    units_max;
   extent_t    units_inc;
+  extent_t    threads;
+  bool        env_mkl;
+  bool        env_mpi_shared_win;
 } benchmark_params;
 
 benchmark_params parse_args(int argc, char * argv[]);
 
+void print_params(const benchmark_params & params);
 
-int main(int argc, char* argv[]) {
-#ifdef DASH_ENABLE_MKL
-  const bool env_mkl_enabled = true;
-#else
-  const bool env_mkl_enabled = false;
-#endif
-#ifdef DART_MPI_DISABLE_SHARED_WINDOWS
-  const bool env_shared_win_enabled = false;
-#else
-  const bool env_shared_win_enabled = true;
-#endif
 
+int main(int argc, char* argv[])
+{
   dash::init(&argc, &argv);
 
   Timer::Calibrate(0);
-
-  auto params = parse_args(argc, argv);
 
   dash::barrier();
   DASH_LOG_DEBUG_VAR("bench.10.summa", getpid());
   dash::barrier();
 
-  // Print benchmark parameters:
-  if (dash::myid() == 0) {
-    cout << "--------------------------------" << endl
-         << "-- DASH benchmark bench.10.summa" << endl
-         << "-- parameters:" << endl
-         << "--   -s    variant:   " << setw(5) << params.variant   << endl
-         << "--   -sb   size base: " << setw(5) << params.size_base << endl
-         << "--   -nmax units max: " << setw(5) << params.units_max << endl
-         << "--   -ninc units inc: " << setw(5) << params.units_inc << endl
-         << "--   -emax exp max:   " << setw(5) << params.exp_max   << endl
-         << "--   -rmax rep. max:  " << setw(5) << params.rep_max   << endl
-         << "--   -rb   rep. base: " << setw(5) << params.rep_base  << endl
-         << "-- environment:" << endl;
-    if (env_shared_win_enabled) {
-      cout << "--   MPI shared windows: enabled"  << endl;
-    } else {
-      cout << "--   MPI shared windows: disabled" << endl;
-    }
-    if (env_mkl_enabled) {
-      cout << "--   Intel MKL:          enabled"  << endl;
-    } else {
-      cout << "--   Intel MKL:          disabled" << endl
-           << "-- ! WARNING:"                      << endl
-           << "-- !   MKL not available,"          << endl
-           << "-- !   falling back to naive local" << endl
-           << "-- !   matrix multiplication"       << endl
-           << endl;
-    }
-    cout << "--------------------------------"
-         << endl;
+  auto        params      = parse_args(argc, argv);
+  std::string variant     = params.variant;
+  extent_t    exp_max     = params.exp_max;
+  extent_t    num_threads = params.threads;
+  unsigned    repeats     = params.rep_max;
+  unsigned    rep_base    = params.rep_base;
+
+#ifdef DASH_ENABLE_MKL
+  // Require single unit for MKL variant:
+  if (variant == "mkl" && dash::size() != 1) {
+    DASH_THROW(
+      dash::exception::RuntimeError,
+      "MKL variant of bench.10.summa called with" <<
+      "team size " << dash::size() << " " <<
+      "but must be run on a single unit.");
   }
+  // Do not set dynamic flag by default as performance is impaired if SMT is
+  // not required.
+  mkl_set_dynamic(false);
+  mkl_set_num_threads(num_threads);
+  if (mkl_get_max_threads() < num_threads) {
+    // requested number of threads exceeds number of physical cores, set MKL
+    // dynamic flag and retry:
+    mkl_set_dynamic(true);
+    mkl_set_num_threads(num_threads);
+  }
+#endif
 
-  dash::barrier();
-
-  std::string variant = params.variant;
-  extent_t exp_max    = params.exp_max;
-  unsigned repeats    = params.rep_max;
-  unsigned rep_base   = params.rep_base;
-
-  std::deque<std::pair<extent_t, unsigned>> tests;
-  // Prints the header
-  tests.push_back({0, 0});
-
-  // Balance overall number of gflop in test runs:
+  // Run tests, try to balance overall number of gflop in test runs:
   for (auto exp = 0; exp < exp_max; ++exp) {
     extent_t size_run = pow(2, exp) * params.size_base;
     if (repeats == 0) {
       repeats = 1;
     }
-    tests.push_back({ size_run, repeats });
+    perform_test(variant, size_run, exp, repeats);
     repeats /= rep_base;
-  }
-
-  for (auto test: tests) {
-    perform_test(variant, test.first, test.second);
   }
 
   dash::finalize();
@@ -163,45 +138,11 @@ int main(int argc, char* argv[]) {
 void perform_test(
   const std::string & variant,
   extent_t            n,
-  unsigned            repeat)
+  unsigned            iteration,
+  unsigned            num_repeats)
 {
   auto num_units   = dash::size();
-  auto num_threads = 1;
-
-  dash::barrier();
-
-  if (n == 0) {
-    if (dash::myid() == 0) {
-      cout << setw(7)  << "units"   << ", "
-           << setw(7)  << "threads" << ", "
-           << setw(10) << "n"       << ", "
-           << setw(10) << "size"    << ", "
-           << setw(5)  << "impl"    << ", "
-           << setw(10) << "gflop/r" << ", "
-           << setw(10) << "repeats" << ", "
-           << setw(10) << "gflop/s" << ", "
-           << setw(11) << "init.s"  << ", "
-           << setw(11) << "mmult.s"
-           << endl;
-    }
-    return;
-  }
-
-  dash::barrier();
-
-  if (variant == "mkl") {
-#ifdef DASH_ENABLE_MKL
-    num_threads = mkl_get_max_threads();
-    if (num_units != 1) {
-      DASH_THROW(
-        dash::exception::RuntimeError,
-        "!! ERROR:" <<
-        "!! MKL variant of bench.10.summa called with" <<
-        "!! team size " << num_units << " but must" <<
-        "!! be run on a single unit.");
-    }
-#endif
-  }
+  auto num_threads = mkl_get_max_threads();
 
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:
@@ -213,12 +154,10 @@ void perform_test(
                  dash::summa_pattern_layout_constraints >(
                    size_spec,
                    team_spec);
-  static_assert(std::is_same<extent_t, decltype(size_spec)::size_type>::value,
-                "size type of SizeSpec must be unsigned long long");
-  static_assert(std::is_same<index_t, decltype(size_spec)::index_type>::value,
-                "index type of SizeSpec must be long long");
-  static_assert(std::is_same<index_t, decltype(pattern)::index_type>::value,
-                "index type of deduced pattern must be long long");
+  static_assert(std::is_same<extent_t, decltype(pattern)::size_type>::value,
+                "size type of deduced pattern and size spec differ");
+  static_assert(std::is_same<index_t,  decltype(pattern)::index_type>::value,
+                "index type of deduced pattern and size spec differ");
 
   dash::Matrix<value_t, 2, index_t> matrix_a(pattern);
   dash::Matrix<value_t, 2, index_t> matrix_b(pattern);
@@ -226,30 +165,42 @@ void perform_test(
 
   double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9;
   if (dash::myid() == 0) {
+    if (iteration == 0) {
+      // Print data set column headers:
+      cout << setw(7)  << "units"   << ", "
+           << setw(7)  << "threads" << ", "
+           << setw(6)  << "n"       << ", "
+           << setw(10) << "size"    << ", "
+           << setw(5)  << "impl"    << ", "
+           << setw(10) << "gflop/r" << ", "
+           << setw(7)  << "repeats" << ", "
+           << setw(10) << "gflop/s" << ", "
+           << setw(11) << "init.s"  << ", "
+           << setw(11) << "mmult.s"
+           << endl;
+    }
     cout << setw(7)  << num_units   << ", "
          << setw(7)  << num_threads << ", "
-         << setw(10) << n           << ", "
+         << setw(6)  << n           << ", "
          << setw(10) << (n*n)       << ", "
          << setw(5)  << variant     << ", "
-         << setw(10) << std::fixed << std::setprecision(4)
-                     << gflop      << ", "
-         << setw(10) << repeat     << ", "
+         << setw(10) << std::fixed  << std::setprecision(4)
+                     << gflop       << ", "
+         << setw(7)  << num_repeats << ", "
          << std::flush;
   }
 
   std::pair<double, double> t_mmult;
   if (variant == "mkl") {
-#ifdef DASH_ENABLE_MKL
     t_mmult = test_blas(matrix_a,
                         matrix_b,
                         matrix_c,
-                        repeat);
-#endif
+                        num_repeats);
   } else {
     t_mmult = test_dash(matrix_a,
                         matrix_b,
                         matrix_c,
-                        repeat);
+                        num_repeats);
   }
   double t_init = t_mmult.first;
   double t_mult = t_mmult.second;
@@ -259,7 +210,7 @@ void perform_test(
   if (dash::myid() == 0) {
     double s_mult = 1.0e-6 * t_mult;
     double s_init = 1.0e-6 * t_init;
-    double gflops = (gflop * repeat) / s_mult;
+    double gflops = (gflop * num_repeats) / s_mult;
     cout << setw(10) << std::fixed << std::setprecision(4) << gflops << ", "
          << setw(11) << std::fixed << std::setprecision(4) << s_init << ", "
          << setw(11) << std::fixed << std::setprecision(4) << s_mult
@@ -276,7 +227,7 @@ void init_values(
   // Initialize local sections of matrix C:
   auto unit_id          = dash::myid();
   auto pattern          = matrix_c.pattern();
-  auto block_cols       = pattern.blocksize(1);
+  auto block_cols       = pattern.blocksize(0);
   auto block_rows       = pattern.blocksize(1);
   auto num_blocks_cols  = pattern.extent(0) / block_cols;
   auto num_blocks_rows  = pattern.extent(1) / block_rows;
@@ -332,7 +283,6 @@ std::pair<double, double> test_dash(
   return time;
 }
 
-#ifdef DASH_ENABLE_MKL
 /**
  * Returns pair of durations (init_secs, multiply_secs).
  *
@@ -344,6 +294,7 @@ std::pair<double, double> test_blas(
   MatrixType & matrix_c,
   unsigned     repeat)
 {
+#ifdef DASH_ENABLE_MKL
   std::pair<double, double> time;
   double * l_matrix_a;
   double * l_matrix_b;
@@ -372,7 +323,6 @@ std::pair<double, double> test_blas(
     auto m = matrix_a.extent(0);
     auto n = matrix_a.extent(1);
     auto p = matrix_b.extent(0);
-//  mkl_set_num_threads(dash::Team::All().size());
 
     ts_multiply_start = Timer::Now();
     for (auto i = 0; i < repeat; ++i) {
@@ -403,8 +353,10 @@ std::pair<double, double> test_blas(
   }
 
   return time;
-}
+#else
+  DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
 #endif
+}
 
 benchmark_params parse_args(int argc, char * argv[]) {
   benchmark_params params;
@@ -414,10 +366,18 @@ benchmark_params parse_args(int argc, char * argv[]) {
   params.variant   = "dash";
   params.units_max = 0;
   params.units_inc = 0;
+  params.threads   = 1;
 #ifdef DASH_ENABLE_MKL
+  params.env_mkl   = true;
   params.exp_max   = 7;
 #else
+  params.env_mkl   = false;
   params.exp_max   = 4;
+#endif
+#ifdef DART_MPI_DISABLE_SHARED_WINDOWS
+  params.env_mpi_shared_win = false;
+#else
+  params.env_mpi_shared_win = true;
 #endif
   extent_t size_base     = 0;
   extent_t num_units_inc = 0;
@@ -433,6 +393,8 @@ benchmark_params parse_args(int argc, char * argv[]) {
     } else if (flag == "-nmax") {
       max_units       = static_cast<extent_t>(atoi(argv[i+1]));
       params.units_max = max_units;
+    } else if (flag == "-nt") {
+      params.threads  = static_cast<extent_t>(atoi(argv[i+1]));
     } else if (flag == "-s") {
       params.variant  = argv[i+1];
     } else if (flag == "-emax") {
@@ -475,3 +437,34 @@ benchmark_params parse_args(int argc, char * argv[]) {
   return params;
 }
 
+void print_params(const benchmark_params & params)
+{
+  cout << "---------------------------------" << endl
+       << "-- DASH benchmark bench.10.summa" << endl
+       << "-- parameters:" << endl
+       << "-- -s    variant:      " << setw(10) << params.variant   << endl
+       << "-- -sb   size base:    " << setw(10) << params.size_base << endl
+       << "-- -nmax units max:    " << setw(10) << params.units_max << endl
+       << "-- -ninc units inc:    " << setw(10) << params.units_inc << endl
+       << "-- -nt   threads/unit: " << setw(10) << params.threads   << endl
+       << "-- -emax exp max:      " << setw(10) << params.exp_max   << endl
+       << "-- -rmax rep. max:     " << setw(10) << params.rep_max   << endl
+       << "-- -rb   rep. base:    " << setw(10) << params.rep_base  << endl
+       << "-- environment:" << endl;
+  if (params.env_mpi_shared_win) {
+    cout << "--   MPI shared windows:  enabled" << endl;
+  } else {
+    cout << "--   MPI shared windows: disabled" << endl;
+  }
+  if (params.env_mkl) {
+    cout << "--   Intel MKL:           enabled" << endl;
+  } else {
+    cout << "--   Intel MKL:          disabled" << endl
+         << "-- ! MKL not available,"           << endl
+         << "-- ! falling back to naive local"  << endl
+         << "-- ! matrix multiplication"        << endl
+         << endl;
+  }
+  cout << "---------------------------------"
+       << endl;
+}

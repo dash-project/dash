@@ -189,6 +189,8 @@ dart_ret_t dart_accumulate(
   target_unitid_abs = gptr.unitid;
   mpi_dtype         = dart_mpi_datatype(dtype);
   mpi_op            = dart_mpi_op(op);
+  DART_LOG_DEBUG("dart_accumulate() nelem:%d dtype:%d op:%d unit:%d",
+                 nelem, dtype, op, target_unit_abs);
   if (seg_id) {
     dart_unit_t target_unitid_rel;
     uint16_t index = gptr.flags;
@@ -200,6 +202,8 @@ dart_ret_t dart_accumulate(
           seg_id,
           target_unitid_rel,
           &disp_s) == -1) {
+      DART_LOG_ERROR("dart_accumulate ! "
+                     "dart_adapt_transtable_get_disp failed");
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
@@ -214,7 +218,7 @@ dart_ret_t dart_accumulate(
       mpi_dtype,         // Data type of each entry in target buffer
       mpi_op,            // Reduce operation
       win);
-    DART_LOG_DEBUG("dart_accumulate: %d elements (collective allocation) "
+    DART_LOG_TRACE("dart_accumulate:  %d elements (collective allocation) "
                    "to unit:%d offset:%d",
                    nelem, target_unitid_abs, offset);
   } else {
@@ -230,10 +234,11 @@ dart_ret_t dart_accumulate(
       mpi_dtype,         // Data type of each entry in target buffer
       mpi_op,            // Reduce operation
       win);
-    DART_LOG_DEBUG("dart_accumulate: %d elements (local allocation) "
+    DART_LOG_TRACE("dart_accumulate:  %d elements (local allocation) "
                    "to unit:%d offset:%d",
                    nelem, target_unitid_abs, offset);
   }
+  DART_LOG_DEBUG("dart_accumulate > finished");
   return DART_OK;
 }
 

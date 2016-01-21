@@ -3,8 +3,11 @@ build
 build-ci
 *.o
 *.a
+*.so
 *~
 *.swp
 *.swo
 *#
 *.log
+ipm/*/GEN.*
+my.*.sh

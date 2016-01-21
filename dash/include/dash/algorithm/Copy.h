@@ -97,9 +97,9 @@ dash::Future<ValueType *> copy_impl(
 
   // Accessed global pointers to be flushed:
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
-  std::vector<dart_gptr_t>   flush_glob_ptrs;
+  std::vector<dart_gptr_t>   req_handles;
 #else
-  std::vector<dart_handle_t> flush_glob_ptrs;
+  std::vector<dart_handle_t> req_handles;
 #endif
 
   // MPI uses offset type int, do not copy more than INT_MAX bytes:
@@ -140,7 +140,7 @@ dash::Future<ValueType *> copy_impl(
           cur_in_first.dart_gptr(),
           num_copy_elem * sizeof(ValueType)),
         DART_OK);
-      flush_glob_ptrs.push_back(in_first.dart_gptr());
+      req_handles.push_back(in_first.dart_gptr());
 #else
       dart_handle_t get_handle;
       DASH_ASSERT_RETURNS(
@@ -150,7 +150,7 @@ dash::Future<ValueType *> copy_impl(
           num_copy_elem * sizeof(ValueType),
           &get_handle),
         DART_OK);
-      flush_glob_ptrs.push_back(get_handle);
+      req_handles.push_back(get_handle);
 #endif
       num_elem_copied += num_copy_elem;
     }
@@ -208,7 +208,7 @@ dash::Future<ValueType *> copy_impl(
         DASH_THROW(
           dash::exception::RuntimeError, "dart_get failed");
       }
-      flush_glob_ptrs.push_back(src_gptr);
+      req_handles.push_back(src_gptr);
 #else
       dart_handle_t get_handle;
       if (dart_get_handle(
@@ -221,7 +221,7 @@ dash::Future<ValueType *> copy_impl(
         DASH_THROW(
           dash::exception::RuntimeError, "dart_get_handle failed");
       }
-      flush_glob_ptrs.push_back(get_handle);
+      req_handles.push_back(get_handle);
 #endif
       num_elem_copied += num_copy_elem;
     }
@@ -230,17 +230,17 @@ dash::Future<ValueType *> copy_impl(
     // Wait for all get requests to complete:
     ValueType * _out = out_first + num_elem_copied;
     DASH_LOG_TRACE("dash::copy_impl [Future]()",
-                   "  wait for", flush_glob_ptrs.size(), "async get request");
-    DASH_LOG_TRACE("dash::copy_impl [Future]", "  flush:", flush_glob_ptrs);
+                   "  wait for", req_handles.size(), "async get request");
+    DASH_LOG_TRACE("dash::copy_impl [Future]", "  flush:", req_handles);
     DASH_LOG_TRACE("dash::copy_impl [Future]", "  _out:", _out);
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
-    for (auto gptr : flush_glob_ptrs) {
+    for (auto gptr : req_handles) {
       dart_flush(gptr);
     }
 #else
-    dart_waitall_local(&flush_glob_ptrs[0], flush_glob_ptrs.size());
+    dart_waitall_local(&req_handles[0], req_handles.size());
 /*
-    for (auto handle : flush_glob_ptrs) {
+    for (auto handle : req_handles) {
       if (dart_wait_local(handle) != DART_OK) {
         DASH_LOG_ERROR("dash::copy_impl [Future]", "  dart_wait failed");
         DASH_THROW(
