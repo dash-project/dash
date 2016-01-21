@@ -11,34 +11,29 @@ namespace dash {
 namespace internal {
 
 /**
- * Generic interface of the blocking DART accumulate operation.
+ * Wrapper of the blocking DART accumulate operation.
  */
 template< typename ValueType >
-dart_ret_t accumulate_blocking_impl(
+inline dart_ret_t accumulate_blocking_impl(
   dart_gptr_t        dest,
   ValueType        * values,
   size_t             nvalues,
   dart_operation_t   op,
-  dart_team_t        team);
-
-/**
- * Specialization of the blocking DART accumulate operation for value type
- * \c int.
- */
-template<>
-inline dart_ret_t accumulate_blocking_impl<int>(
-  dart_gptr_t        dest,
-  int              * values,
-  size_t             nvalues,
-  dart_operation_t   op,
-  dart_team_t        team) {
-  dart_ret_t result = dart_accumulate_int(dest, values, nvalues, op, team);
+  dart_team_t        team)
+{
+  dart_ret_t result = dart_accumulate(
+                        dest,
+                        reinterpret_cast<char *>(values),
+                        nvalues,
+                        dash::dart_datatype<ValueType>::value,
+                        op,
+                        team);
   dart_flush(dest);
   return result;
 }
 
 /**
- * Generic interface of the non-blocking DART accumulate operation.
+ * Wrapper of the non-blocking DART accumulate operation.
  */
 template< typename ValueType >
 dart_ret_t accumulate_impl(
@@ -46,20 +41,15 @@ dart_ret_t accumulate_impl(
   ValueType        * values,
   size_t             nvalues,
   dart_operation_t   op,
-  dart_team_t        team);
-
-/**
- * Specialization of the non-blocking DART accumulate operation for value type
- * \c int.
- */
-template<>
-inline dart_ret_t accumulate_impl<int>(
-  dart_gptr_t        dest,
-  int              * values,
-  size_t             nvalues,
-  dart_operation_t   op,
-  dart_team_t        team) {
-  dart_ret_t result = dart_accumulate_int(dest, values, nvalues, op, team);
+  dart_team_t        team)
+{
+  dart_ret_t result = dart_accumulate(
+                        dest,
+                        reinterpret_cast<char *>(values),
+                        nvalues,
+                        dash::dart_datatype<ValueType>::value,
+                        op,
+                        team);
   dart_flush_local(dest);
   return result;
 }
@@ -249,7 +239,7 @@ GlobOutputIt transform(
   // spans over more than one block. Otherwise, the difference of two global
   // iterators is not well-defined. The corresponding invariant is:
   //   g_out_last == g_out_first + (l_in_last - l_in_first)
-  // Example: 
+  // Example:
   //   unit:            0       1       0
   //   local offset:  | 0 1 2 | 0 1 2 | 3 4 5 | ...
   //   global offset: | 0 1 2   3 4 5   6 7 8   ...

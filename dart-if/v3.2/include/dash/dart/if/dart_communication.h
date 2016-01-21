@@ -110,12 +110,13 @@ dart_ret_t dart_put(
  *
  * \ingroup DartCommuncation
  */
-dart_ret_t dart_accumulate_int(
-  dart_gptr_t dest,
-  int *values,
-  size_t nvalues,
+dart_ret_t dart_accumulate(
+  dart_gptr_t      gptr,
+  char  *          values,
+  size_t           nelem,
+  dart_datatype_t  dtype,
   dart_operation_t op,
-  dart_team_t team);
+  dart_team_t      team);
 
 /**
  * 'HANDLE' variant of dart_get.
