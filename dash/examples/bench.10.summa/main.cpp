@@ -4,6 +4,8 @@
  */
 /* @DASH_HEADER@ */
 
+#define DASH__MKL_MULTITHREADING
+
 #include "../bench.h"
 #include <libdash.h>
 
@@ -38,6 +40,19 @@ typedef double    value_t;
 typedef int64_t   index_t;
 typedef uint64_t  extent_t;
 
+typedef struct benchmark_params_t {
+  std::string variant;
+  extent_t    size_base;
+  extent_t    exp_max;
+  unsigned    rep_base;
+  unsigned    rep_max;
+  extent_t    units_max;
+  extent_t    units_inc;
+  extent_t    threads;
+  bool        env_mkl;
+  bool        env_mpi_shared_win;
+} benchmark_params;
+
 template<typename MatrixType>
 void init_values(
   MatrixType & matrix_a,
@@ -59,23 +74,11 @@ std::pair<double, double> test_blas(
   unsigned     repeat);
 
 void perform_test(
-  const std::string & variant,
-  extent_t            n,
-  unsigned            repeat,
-  unsigned            num_repeats);
-
-typedef struct benchmark_params_t {
-  std::string variant;
-  extent_t    size_base;
-  extent_t    exp_max;
-  unsigned    rep_base;
-  unsigned    rep_max;
-  extent_t    units_max;
-  extent_t    units_inc;
-  extent_t    threads;
-  bool        env_mkl;
-  bool        env_mpi_shared_win;
-} benchmark_params;
+  const std::string      & variant,
+  extent_t                 n,
+  unsigned                 repeat,
+  unsigned                 num_repeats,
+  const benchmark_params & params);
 
 benchmark_params parse_args(int argc, char * argv[]);
 
@@ -99,24 +102,34 @@ int main(int argc, char* argv[])
   unsigned    repeats     = params.rep_max;
   unsigned    rep_base    = params.rep_base;
 
+  if (dash::myid() == 0) {
+    print_params(params);
+  }
+
 #ifdef DASH_ENABLE_MKL
-  // Require single unit for MKL variant:
-  if (variant == "mkl" && dash::size() != 1) {
-    DASH_THROW(
-      dash::exception::RuntimeError,
-      "MKL variant of bench.10.summa called with" <<
-      "team size " << dash::size() << " " <<
-      "but must be run on a single unit.");
+  if (variant == "mkl") {
+    // Require single unit for MKL variant:
+    if (dash::size() != 1) {
+      DASH_THROW(
+        dash::exception::RuntimeError,
+        "MKL variant of bench.10.summa called with" <<
+        "team size " << dash::size() << " " <<
+        "but must be run on a single unit.");
+    }
   }
   // Do not set dynamic flag by default as performance is impaired if SMT is
   // not required.
   mkl_set_dynamic(false);
   mkl_set_num_threads(num_threads);
-  if (mkl_get_max_threads() < num_threads) {
+  if (false && mkl_get_max_threads() < num_threads) {
     // requested number of threads exceeds number of physical cores, set MKL
     // dynamic flag and retry:
     mkl_set_dynamic(true);
     mkl_set_num_threads(num_threads);
+  }
+#else
+  if (variant == "mkl") {
+    DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
   }
 #endif
 
@@ -126,7 +139,7 @@ int main(int argc, char* argv[])
     if (repeats == 0) {
       repeats = 1;
     }
-    perform_test(variant, size_run, exp, repeats);
+    perform_test(variant, size_run, exp, repeats, params);
     repeats /= rep_base;
   }
 
@@ -136,13 +149,14 @@ int main(int argc, char* argv[])
 }
 
 void perform_test(
-  const std::string & variant,
-  extent_t            n,
-  unsigned            iteration,
-  unsigned            num_repeats)
+  const std::string      & variant,
+  extent_t                 n,
+  unsigned                 iteration,
+  unsigned                 num_repeats,
+  const benchmark_params & params)
 {
   auto num_units   = dash::size();
-  auto num_threads = mkl_get_max_threads();
+  auto num_threads = params.threads;
 
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:

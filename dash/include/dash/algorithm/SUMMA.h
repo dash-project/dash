@@ -35,7 +35,10 @@ void multiply_local(
   size_t            n,
   size_t            k)
 {
+#ifndef DASH__MKL_MULTITHREADING
   mkl_set_num_threads(1);
+  mkl_set_dynamic(false);
+#endif
   /// Memory storage order of A, B, C:
   auto   strg  = (storage == dash::ROW_MAJOR)
                  ? CblasRowMajor
