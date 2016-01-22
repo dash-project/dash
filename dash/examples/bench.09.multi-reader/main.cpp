@@ -22,8 +22,9 @@ int main(int argc, char **argv)
   Timer::Calibrate(0);
   
 	print_header();
+
   perform_test<int>(100);
-	perform_test<int>(500);
+	perform_test<int>(400);
 
   dash::finalize();
   
