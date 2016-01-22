@@ -4,7 +4,7 @@
  */
 /* @DASH_HEADER@ */
 
-#define DASH__MKL_MULTITHREADING
+//#define DASH__MKL_MULTITHREADING
 
 #include "../bench.h"
 #include <libdash.h>
@@ -98,7 +98,6 @@ int main(int argc, char* argv[])
   auto        params      = parse_args(argc, argv);
   std::string variant     = params.variant;
   extent_t    exp_max     = params.exp_max;
-  extent_t    num_threads = params.threads;
   unsigned    repeats     = params.rep_max;
   unsigned    rep_base    = params.rep_base;
 
@@ -120,13 +119,14 @@ int main(int argc, char* argv[])
   // Do not set dynamic flag by default as performance is impaired if SMT is
   // not required.
   mkl_set_dynamic(false);
-  mkl_set_num_threads(num_threads);
-  if (false && mkl_get_max_threads() < num_threads) {
+  mkl_set_num_threads(params.threads);
+  if (mkl_get_max_threads() < params.threads) {
     // requested number of threads exceeds number of physical cores, set MKL
     // dynamic flag and retry:
     mkl_set_dynamic(true);
-    mkl_set_num_threads(num_threads);
+    mkl_set_num_threads(params.threads);
   }
+  params.threads = mkl_get_max_threads();
 #else
   if (variant == "mkl") {
     DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
@@ -193,14 +193,14 @@ void perform_test(
            << setw(11) << "mmult.s"
            << endl;
     }
-    cout << setw(7)  << num_units   << ", "
-         << setw(7)  << num_threads << ", "
-         << setw(6)  << n           << ", "
-         << setw(10) << (n*n)       << ", "
-         << setw(5)  << variant     << ", "
-         << setw(10) << std::fixed  << std::setprecision(4)
-                     << gflop       << ", "
-         << setw(7)  << num_repeats << ", "
+    cout << setw(7)  << num_units      << ", "
+         << setw(7)  << params.threads << ", "
+         << setw(6)  << n              << ", "
+         << setw(10) << (n*n)          << ", "
+         << setw(5)  << variant        << ", "
+         << setw(10) << std::fixed     << std::setprecision(4)
+                     << gflop          << ", "
+         << setw(7)  << num_repeats    << ", "
          << std::flush;
   }
 
@@ -456,15 +456,19 @@ void print_params(const benchmark_params & params)
   cout << "---------------------------------" << endl
        << "-- DASH benchmark bench.10.summa" << endl
        << "-- parameters:" << endl
-       << "-- -s    variant:      " << setw(10) << params.variant   << endl
-       << "-- -sb   size base:    " << setw(10) << params.size_base << endl
-       << "-- -nmax units max:    " << setw(10) << params.units_max << endl
-       << "-- -ninc units inc:    " << setw(10) << params.units_inc << endl
-       << "-- -nt   threads/unit: " << setw(10) << params.threads   << endl
-       << "-- -emax exp max:      " << setw(10) << params.exp_max   << endl
-       << "-- -rmax rep. max:     " << setw(10) << params.rep_max   << endl
-       << "-- -rb   rep. base:    " << setw(10) << params.rep_base  << endl
+       << "--   -s    variant:      " << setw(8) << params.variant   << endl
+       << "--   -sb   size base:    " << setw(8) << params.size_base << endl
+       << "--   -nmax units max:    " << setw(8) << params.units_max << endl
+       << "--   -ninc units inc:    " << setw(8) << params.units_inc << endl
+       << "--   -nt   threads/unit: " << setw(8) << params.threads   << endl
+       << "--   -emax exp max:      " << setw(8) << params.exp_max   << endl
+       << "--   -rmax rep. max:     " << setw(8) << params.rep_max   << endl
+       << "--   -rb   rep. base:    " << setw(8) << params.rep_base  << endl
        << "-- environment:" << endl;
+#ifdef MPI_IMPL_ID
+    cout << "--   MPI implementation: "
+         << setw(8) << dash__toxstr(MPI_IMPL_ID) << endl;
+#endif
   if (params.env_mpi_shared_win) {
     cout << "--   MPI shared windows:  enabled" << endl;
   } else {

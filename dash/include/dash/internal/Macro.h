@@ -4,14 +4,14 @@
 /**
  * Macro parameter string expasion
  */
-#define __xstr(s) __str(s)
+#define dash__toxstr(s) dash__tostr(s)
 /**
  * Macro parameter value string expasion
  */
-#define __str(s) #s
+#define dash__tostr(s) #s
 
 /**
- * Workaround GCC versions that do not support the 
+ * Workaround GCC versions that do not support the
  * noinline attribute
  */
 #ifndef NOINLINE_ATTRIBUTE
