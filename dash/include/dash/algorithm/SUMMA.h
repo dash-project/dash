@@ -26,9 +26,9 @@ void multiply_local(
   const ValueType * B,
   /// Matrix to contain the multiplication result, m rows by n columns.
   ValueType       * C,
-  size_t            m,
-  size_t            n,
-  size_t            k,
+  long long         m,
+  long long         n,
+  long long         k,
   MemArrange        storage);
 
 /**
@@ -42,9 +42,9 @@ void multiply_local<float>(
   const float * B,
   /// Matrix to contain the multiplication result, m rows by n columns.
   float       * C,
-  size_t        m,
-  size_t        n,
-  size_t        k,
+  long long     m,
+  long long     n,
+  long long     k,
   MemArrange    storage)
 {
   typedef float value_t;
@@ -111,9 +111,9 @@ void multiply_local<double>(
   const double * B,
   /// Matrix to contain the multiplication result, m rows by n columns.
   double       * C,
-  size_t         m,
-  size_t         n,
-  size_t         k,
+  long long      m,
+  long long      n,
+  long long      k,
   MemArrange     storage)
 {
   typedef double value_t;
@@ -183,9 +183,9 @@ void multiply_local(
   const ValueType * B,
   /// Matrix to contain the multiplication result, extents n x p
   ValueType       * C,
-  size_t            m,
-  size_t            n,
-  size_t            p,
+  long long         m,
+  long long         n,
+  long long         p,
   MemArrange        storage)
 {
   ValueType c_sum = 0;

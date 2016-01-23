@@ -55,6 +55,7 @@ typedef struct benchmark_params_t {
   extent_t    threads;
   bool        env_mkl;
   bool        env_mpi_shared_win;
+  bool        mkl_dyn;
 } benchmark_params;
 
 template<typename MatrixType>
@@ -105,10 +106,6 @@ int main(int argc, char* argv[])
   unsigned    repeats     = params.rep_max;
   unsigned    rep_base    = params.rep_base;
 
-  if (dash::myid() == 0) {
-    print_params(params);
-  }
-
 #ifdef DASH_ENABLE_MKL
   if (variant == "mkl") {
     // Require single unit for MKL variant:
@@ -124,18 +121,23 @@ int main(int argc, char* argv[])
   // not required.
   mkl_set_dynamic(false);
   mkl_set_num_threads(params.threads);
-  if (mkl_get_max_threads() < params.threads) {
+  if (params.mkl_dyn || mkl_get_max_threads() < params.threads) {
     // requested number of threads exceeds number of physical cores, set MKL
     // dynamic flag and retry:
     mkl_set_dynamic(true);
     mkl_set_num_threads(params.threads);
   }
   params.threads = mkl_get_max_threads();
+  params.mkl_dyn = mkl_get_dynamic();
 #else
   if (variant == "mkl") {
     DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
   }
 #endif
+
+  if (dash::myid() == 0) {
+    print_params(params);
+  }
 
   // Run tests, try to balance overall number of gflop in test runs:
   for (auto exp = 0; exp < exp_max; ++exp) {
@@ -345,11 +347,12 @@ std::pair<double, double> test_blas(
     time.second = 0;
     return time;
   }
+  long long N = sb;
 
   // Create local copy of matrices:
-  l_matrix_a = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
-  l_matrix_b = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
-  l_matrix_c = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
+  l_matrix_a = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
+  l_matrix_b = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
+  l_matrix_c = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
 
   auto ts_init_start = Timer::Now();
   init_values(l_matrix_a, l_matrix_b, l_matrix_c, sb);
@@ -417,6 +420,7 @@ benchmark_params parse_args(int argc, char * argv[]) {
   params.units_max = 0;
   params.units_inc = 0;
   params.threads   = 1;
+  params.mkl_dyn   = false;
 #ifdef DASH_ENABLE_MKL
   params.env_mkl   = true;
   params.exp_max   = 7;
@@ -453,6 +457,8 @@ benchmark_params parse_args(int argc, char * argv[]) {
       params.rep_base = static_cast<unsigned>(atoi(argv[i+1]));
     } else if (flag == "-rmax") {
       params.rep_max  = static_cast<unsigned>(atoi(argv[i+1]));
+    } else if (flag == "-mkldyn") {
+      params.mkl_dyn  = true;
     }
   }
   if (size_base == 0 && max_units > 0 && num_units_inc > 0) {
@@ -502,18 +508,26 @@ void print_params(const benchmark_params & params)
        << "--   -rb   rep. base:    " << setw(8) << params.rep_base  << endl
        << "-- environment:" << endl;
 #ifdef MPI_IMPL_ID
-    cout << "--   MPI implementation: "
-         << setw(8) << dash__toxstr(MPI_IMPL_ID) << endl;
+  cout << "--   MPI implementation: "
+       << setw(8) << dash__toxstr(MPI_IMPL_ID) << endl;
 #endif
+  cout << "--   MPI shared windows: ";
   if (params.env_mpi_shared_win) {
-    cout << "--   MPI shared windows:  enabled" << endl;
+    cout << " enabled" << endl;
   } else {
-    cout << "--   MPI shared windows: disabled" << endl;
+    cout << "disabled" << endl;
   }
+  cout << "--   Intel MKL:          ";
   if (params.env_mkl) {
-    cout << "--   Intel MKL:           enabled" << endl;
+    cout << " enabled" << endl;
+    cout << "--   MKL dynamic:        ";
+    if (params.mkl_dyn) {
+      cout << " enabled" << endl;
+    } else {
+      cout << "disabled" << endl;
+    }
   } else {
-    cout << "--   Intel MKL:          disabled" << endl
+    cout << "disabled" << endl
          << "-- ! MKL not available,"           << endl
          << "-- ! falling back to naive local"  << endl
          << "-- ! matrix multiplication"        << endl
