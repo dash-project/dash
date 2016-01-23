@@ -18,12 +18,7 @@ namespace dash {
 namespace internal {
 
 #ifdef DASH_ENABLE_MKL
-/**
- * Matrix multiplication for local multiplication of matrix blocks via MKL.
- */
-template<
-  typename   ValueType,
-  MemArrange storage    = dash::ROW_MAJOR>
+template<typename  ValueType>
 void multiply_local(
   /// Matrix to multiply, m rows by k columns.
   const ValueType * A,
@@ -33,8 +28,26 @@ void multiply_local(
   ValueType       * C,
   size_t            m,
   size_t            n,
-  size_t            k)
+  size_t            k,
+  MemArrange        storage);
+
+/**
+ * Matrix multiplication for local multiplication of matrix blocks via MKL.
+ */
+template<>
+void multiply_local<float>(
+  /// Matrix to multiply, m rows by k columns.
+  const float * A,
+  /// Matrix to multiply, k rows by n columns.
+  const float * B,
+  /// Matrix to contain the multiplication result, m rows by n columns.
+  float       * C,
+  size_t        m,
+  size_t        n,
+  size_t        k,
+  MemArrange    storage)
 {
+  typedef float value_t;
 #ifndef DASH__MKL_MULTITHREADING
   mkl_set_num_threads(1);
   mkl_set_dynamic(false);
@@ -57,23 +70,92 @@ void multiply_local(
   /// rows (for row major storage) in memory.
   auto   ldc   = n;
   /// Real value used to scale the product of matrices A and B.
-  double alpha = 1.0;
+  value_t alpha = 1.0;
   /// Real value used to scale matrix C.
   /// Using 1.0 to preserve existing values in C such that C += A x B.
-  double beta  = 1.0;
+  value_t beta  = 1.0;
 /*
-  void cblas_dgemm(const CBLAS_LAYOUT    Layout,
+  void cblas_?gemm(const CBLAS_LAYOUT    Layout,
                    const CBLAS_TRANSPOSE TransA,
                    const CBLAS_TRANSPOSE TransB,
                    const MKL_INT         M,
                    const MKL_INT         N,
                    const MKL_INT         K,
-                   const double          alpha,
-                   const double *        A,
+                   const ValueT          alpha,
+                   const ValueT *        A,
                    const MKL_INT         lda,
-                   const double *        B,
+                   const ValueT *        B,
                    const MKL_INT         ldb,
-                   const double          beta,
+                   const ValueT          beta,
+                   double *              C,
+                   const MKL_INT         ldc);
+
+*/
+  cblas_sgemm(strg,
+              tp_a, tp_b,
+              m, n, k,
+              alpha,
+              A, lda,
+              B, ldb,
+              beta,
+              C, ldc);
+}
+/**
+ * Matrix multiplication for local multiplication of matrix blocks via MKL.
+ */
+template<>
+void multiply_local<double>(
+  /// Matrix to multiply, m rows by k columns.
+  const double * A,
+  /// Matrix to multiply, k rows by n columns.
+  const double * B,
+  /// Matrix to contain the multiplication result, m rows by n columns.
+  double       * C,
+  size_t         m,
+  size_t         n,
+  size_t         k,
+  MemArrange     storage)
+{
+  typedef double value_t;
+#ifndef DASH__MKL_MULTITHREADING
+  mkl_set_num_threads(1);
+  mkl_set_dynamic(false);
+#endif
+  /// Memory storage order of A, B, C:
+  auto   strg  = (storage == dash::ROW_MAJOR)
+                 ? CblasRowMajor
+                 : CblasColMajor;
+  /// Matrices A and B should not be transposed or conjugate transposed before
+  /// multiplication.
+  auto   tp_a  = CblasNoTrans;
+  auto   tp_b  = CblasNoTrans;
+  /// Leading dimension of A, or the number of elements between successive
+  /// rows (for row major storage) in memory.
+  auto   lda   = k;
+  /// Leading dimension of B, or the number of elements between successive
+  /// rows (for row major storage) in memory.
+  auto   ldb   = n;
+  /// Leading dimension of B, or the number of elements between successive
+  /// rows (for row major storage) in memory.
+  auto   ldc   = n;
+  /// Real value used to scale the product of matrices A and B.
+  value_t alpha = 1.0;
+  /// Real value used to scale matrix C.
+  /// Using 1.0 to preserve existing values in C such that C += A x B.
+  value_t beta  = 1.0;
+/*
+  void cblas_?gemm(const CBLAS_LAYOUT    Layout,
+                   const CBLAS_TRANSPOSE TransA,
+                   const CBLAS_TRANSPOSE TransB,
+                   const MKL_INT         M,
+                   const MKL_INT         N,
+                   const MKL_INT         K,
+                   const ValueT          alpha,
+                   const ValueT *        A,
+                   const MKL_INT         lda,
+                   const ValueT *        B,
+                   const MKL_INT         ldb,
+                   const ValueT          beta,
                    double *              C,
                    const MKL_INT         ldc);
 
@@ -93,9 +175,7 @@ void multiply_local(
  * Naive matrix multiplication for local multiplication of matrix blocks,
  * used only for tests and where MKL is not available.
  */
-template<
-  typename   ValueType,
-  MemArrange storage    = dash::ROW_MAJOR>
+template<typename ValueType>
 void multiply_local(
   /// Matrix to multiply, extents n x m
   const ValueType * A,
@@ -105,7 +185,8 @@ void multiply_local(
   ValueType       * C,
   size_t            m,
   size_t            n,
-  size_t            p)
+  size_t            p,
+  MemArrange        storage)
 {
   ValueType c_sum = 0;
   for (auto i = 0; i < n; ++i) {
@@ -194,8 +275,9 @@ void summa(
   const bool prefetch_local_blocks = false;
 
   static_assert(
-      std::is_same<value_type, double>::value,
-      "dash::summa expects matrix element type double");
+      std::is_same<value_type, double>::value ||
+      std::is_same<value_type, float>::value,
+      "dash::summa expects matrix element type double or float");
 
   DASH_LOG_DEBUG("dash::summa()");
   // Verify that matrix patterns satisfy pattern constraints:
@@ -294,10 +376,21 @@ void summa(
   DASH_LOG_TRACE("dash::summa", "allocating local temporary blocks, sizes:",
                  "A:", block_a_size,
                  "B:", block_b_size);
+#ifdef DASH_ENABLE_MKL
+  value_type * buf_block_a_get    = (value_type *)(mkl_malloc(
+                                      sizeof(value_type) * block_a_size, 64));
+  value_type * buf_block_b_get    = (value_type *)(mkl_malloc(
+                                      sizeof(value_type) * block_b_size, 64));
+  value_type * buf_block_a_comp   = (value_type *)(mkl_malloc(
+                                      sizeof(value_type) * block_a_size, 64));
+  value_type * buf_block_b_comp   = (value_type *)(mkl_malloc(
+                                      sizeof(value_type) * block_b_size, 64));
+#else
   value_type * buf_block_a_get    = new value_type[block_a_size];
   value_type * buf_block_b_get    = new value_type[block_b_size];
   value_type * buf_block_a_comp   = new value_type[block_a_size];
   value_type * buf_block_b_comp   = new value_type[block_b_size];
+#endif
   // Copy of buffer pointers for swapping, delete[] on swapped pointers tends
   // to crash:
   value_type * local_block_a_get  = buf_block_a_get;
@@ -461,13 +554,14 @@ void summa(
                      "multiplying local block matrices",
                      "C.local.block.comp:", lb,
                      "view:", l_block_c_comp.begin().viewspec());
-      dash::internal::multiply_local<value_type, memory_order>(
+      dash::internal::multiply_local<value_type>(
           local_block_a_comp,
           local_block_b_comp,
           l_block_c_comp.begin().local(),
           block_size_m,
           block_size_n,
-          block_size_p);
+          block_size_p,
+          memory_order);
 #ifdef DASH_ENABLE_LOGGING___
       auto A = local_block_a_comp;
       auto B = local_block_b_comp;
@@ -538,10 +632,17 @@ void summa(
   } // for lb
 
   DASH_LOG_TRACE("dash::summa", "locally completed");
+#ifdef DASH_ENABLE_MKL
+  mkl_free(buf_block_a_get);
+  mkl_free(buf_block_b_get);
+  mkl_free(buf_block_a_comp);
+  mkl_free(buf_block_b_comp);
+#else
   delete[] buf_block_a_get;
   delete[] buf_block_b_get;
   delete[] buf_block_a_comp;
   delete[] buf_block_b_comp;
+#endif
 
   DASH_LOG_TRACE("dash::summa", "waiting for other units");
   C.barrier();

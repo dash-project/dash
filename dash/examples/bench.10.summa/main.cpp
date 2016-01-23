@@ -36,7 +36,11 @@ typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
 
+#ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
 typedef double    value_t;
+#else
+typedef float     value_t;
+#endif
 typedef int64_t   index_t;
 typedef uint64_t  extent_t;
 
@@ -59,19 +63,19 @@ void init_values(
   MatrixType & matrix_b,
   MatrixType & matrix_c);
 
-template<typename MatrixType>
 std::pair<double, double> test_dash(
-  MatrixType & matrix_a,
-  MatrixType & matrix_b,
-  MatrixType & matrix_c,
-  unsigned     repeat);
+  extent_t sb,
+  unsigned repeat);
 
-template<typename MatrixType>
+void init_values(
+  value_t  * matrix_a,
+  value_t  * matrix_b,
+  value_t  * matrix_c,
+  extent_t   sb);
+
 std::pair<double, double> test_blas(
-  MatrixType & matrix_a,
-  MatrixType & matrix_b,
-  MatrixType & matrix_c,
-  unsigned     repeat);
+  extent_t sb,
+  unsigned repeat);
 
 void perform_test(
   const std::string      & variant,
@@ -158,25 +162,6 @@ void perform_test(
   auto num_units   = dash::size();
   auto num_threads = params.threads;
 
-  // Automatically deduce pattern type satisfying constraints defined by
-  // SUMMA implementation:
-  dash::SizeSpec<2, extent_t> size_spec(n, n);
-  dash::TeamSpec<2, index_t>  team_spec;
-  auto pattern = dash::make_pattern<
-                 dash::summa_pattern_partitioning_constraints,
-                 dash::summa_pattern_mapping_constraints,
-                 dash::summa_pattern_layout_constraints >(
-                   size_spec,
-                   team_spec);
-  static_assert(std::is_same<extent_t, decltype(pattern)::size_type>::value,
-                "size type of deduced pattern and size spec differ");
-  static_assert(std::is_same<index_t,  decltype(pattern)::index_type>::value,
-                "index type of deduced pattern and size spec differ");
-
-  dash::Matrix<value_t, 2, index_t> matrix_a(pattern);
-  dash::Matrix<value_t, 2, index_t> matrix_b(pattern);
-  dash::Matrix<value_t, 2, index_t> matrix_c(pattern);
-
   double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9;
   if (dash::myid() == 0) {
     if (iteration == 0) {
@@ -185,20 +170,37 @@ void perform_test(
            << setw(7)  << "threads" << ", "
            << setw(6)  << "n"       << ", "
            << setw(10) << "size"    << ", "
+           << setw(6)  << "mem.mb"  << ", "
            << setw(5)  << "impl"    << ", "
-           << setw(10) << "gflop/r" << ", "
+           << setw(12) << "gflop/r" << ", "
            << setw(7)  << "repeats" << ", "
            << setw(10) << "gflop/s" << ", "
            << setw(11) << "init.s"  << ", "
            << setw(11) << "mmult.s"
            << endl;
     }
+    int  mem_total_mb;
+    if (variant == "dash") {
+      auto block_s = (n / num_units) * (n / num_units);
+      mem_total_mb = ( sizeof(value_t) * (
+                         // matrices A, B, C:
+                         (3 * n * n) +
+                         // four local temporary blocks per unit:
+                         (num_units * 4 * block_s)
+                       ) / 1024 ) / 1024;
+    } else if (variant == "mkl") {
+      mem_total_mb = ( sizeof(value_t) * (
+                         // matrices A, B, C:
+                         (3 * n * n)
+                       ) / 1024 ) / 1024;
+    }
     cout << setw(7)  << num_units      << ", "
          << setw(7)  << params.threads << ", "
          << setw(6)  << n              << ", "
          << setw(10) << (n*n)          << ", "
+         << setw(6)  << mem_total_mb   << ", "
          << setw(5)  << variant        << ", "
-         << setw(10) << std::fixed     << std::setprecision(4)
+         << setw(12) << std::fixed     << std::setprecision(4)
                      << gflop          << ", "
          << setw(7)  << num_repeats    << ", "
          << std::flush;
@@ -206,15 +208,9 @@ void perform_test(
 
   std::pair<double, double> t_mmult;
   if (variant == "mkl") {
-    t_mmult = test_blas(matrix_a,
-                        matrix_b,
-                        matrix_c,
-                        num_repeats);
+    t_mmult = test_blas(n, num_repeats);
   } else {
-    t_mmult = test_dash(matrix_a,
-                        matrix_b,
-                        matrix_c,
-                        num_repeats);
+    t_mmult = test_dash(n, num_repeats);
   }
   double t_init = t_mmult.first;
   double t_mult = t_mmult.second;
@@ -247,17 +243,17 @@ void init_values(
   auto num_blocks_rows  = pattern.extent(1) / block_rows;
   auto num_blocks       = num_blocks_rows * num_blocks_cols;
   auto num_local_blocks = num_blocks / dash::Team::All().size();
-  double * l_block_elem_a;
-  double * l_block_elem_b;
+  value_t * l_block_elem_a;
+  value_t * l_block_elem_b;
   for (auto l_block_idx = 0; l_block_idx < num_local_blocks; ++l_block_idx) {
     auto l_block_a = matrix_a.local.block(l_block_idx);
     auto l_block_b = matrix_b.local.block(l_block_idx);
     l_block_elem_a = l_block_a.begin().local();
     l_block_elem_b = l_block_a.begin().local();
     for (auto phase = 0; phase < block_cols * block_rows; ++phase) {
-      double value = (100000 * (unit_id + 1)) +
-                     (100 * l_block_idx) +
-                     phase;
+      value_t value = (100000 * (unit_id + 1)) +
+                      (100 * l_block_idx) +
+                      phase;
       l_block_elem_a[phase] = value;
       l_block_elem_b[phase] = value;
     }
@@ -269,14 +265,30 @@ void init_values(
  * Returns pair of durations (init_secs, multiply_secs).
  *
  */
-template<typename MatrixType>
 std::pair<double, double> test_dash(
-  MatrixType & matrix_a,
-  MatrixType & matrix_b,
-  MatrixType & matrix_c,
-  unsigned     repeat)
+  extent_t n,
+  unsigned repeat)
 {
   std::pair<double, double> time;
+
+  // Automatically deduce pattern type satisfying constraints defined by
+  // SUMMA implementation:
+  dash::SizeSpec<2, extent_t> size_spec(n, n);
+  dash::TeamSpec<2, index_t>  team_spec;
+  auto pattern = dash::make_pattern<
+                 dash::summa_pattern_partitioning_constraints,
+                 dash::summa_pattern_mapping_constraints,
+                 dash::summa_pattern_layout_constraints >(
+                   size_spec,
+                   team_spec);
+  static_assert(std::is_same<extent_t, decltype(pattern)::size_type>::value,
+                "size type of deduced pattern and size spec differ");
+  static_assert(std::is_same<index_t,  decltype(pattern)::index_type>::value,
+                "index type of deduced pattern and size spec differ");
+
+  dash::Matrix<value_t, 2, index_t> matrix_a(pattern);
+  dash::Matrix<value_t, 2, index_t> matrix_b(pattern);
+  dash::Matrix<value_t, 2, index_t> matrix_c(pattern);
 
   dash::barrier();
 
@@ -297,74 +309,98 @@ std::pair<double, double> test_dash(
   return time;
 }
 
+void init_values(
+  value_t  * matrix_a,
+  value_t  * matrix_b,
+  value_t  * matrix_c,
+  extent_t   sb)
+{
+  // Initialize local sections of matrix C:
+  for (int i = 0; i < sb; ++i) {
+    for (int j = 0; j < sb; ++j) {
+      value_t value = (100000 * (i % 12)) + (j * 1000) + i;
+      matrix_a[i * sb + j] = value;
+      matrix_b[i * sb + j] = value;
+      matrix_c[i * sb + j] = 0;
+    }
+  }
+}
+
 /**
  * Returns pair of durations (init_secs, multiply_secs).
  *
  */
-template<typename MatrixType>
 std::pair<double, double> test_blas(
-  MatrixType & matrix_a,
-  MatrixType & matrix_b,
-  MatrixType & matrix_c,
-  unsigned     repeat)
+  extent_t sb,
+  unsigned repeat)
 {
 #ifdef DASH_ENABLE_MKL
   std::pair<double, double> time;
-  double * l_matrix_a;
-  double * l_matrix_b;
-  double * l_matrix_c;
+  value_t * l_matrix_a;
+  value_t * l_matrix_b;
+  value_t * l_matrix_c;
 
-  dash::barrier();
-
-  auto ts_init_start = Timer::Now();
-  init_values(matrix_a, matrix_b, matrix_c);
-  time.first = Timer::ElapsedSince(ts_init_start);
-
-  if (dash::myid() == 0) {
-    // Create local copy of matrices:
-    l_matrix_a = new double[matrix_a.size()];
-    l_matrix_b = new double[matrix_b.size()];
-    l_matrix_c = new double[matrix_c.size()];
-    dash::copy(matrix_a.begin(), matrix_a.end(), l_matrix_a);
-    dash::copy(matrix_b.begin(), matrix_b.end(), l_matrix_b);
-    dash::copy(matrix_c.begin(), matrix_c.end(), l_matrix_c);
+  if (dash::size() != 1) {
+    time.first  = 0;
+    time.second = 0;
+    return time;
   }
 
-  dash::barrier();
+  // Create local copy of matrices:
+  l_matrix_a = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
+  l_matrix_b = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
+  l_matrix_c = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
+
+  auto ts_init_start = Timer::Now();
+  init_values(l_matrix_a, l_matrix_b, l_matrix_c, sb);
+  time.first = Timer::ElapsedSince(ts_init_start);
 
   auto ts_multiply_start = Timer::Now();
-  if (dash::myid() == 0) {
-    auto m = matrix_a.extent(0);
-    auto n = matrix_a.extent(1);
-    auto p = matrix_b.extent(0);
+  auto m = sb;
+  auto n = sb;
+  auto p = sb;
 
-    ts_multiply_start = Timer::Now();
-    for (auto i = 0; i < repeat; ++i) {
-      cblas_dgemm(CblasRowMajor,
-                  CblasNoTrans,
-                  CblasNoTrans,
-                  m,
-                  n,
-                  p,
-                  1.0,
-                  static_cast<const double *>(l_matrix_a),
-                  p,
-                  static_cast<const double *>(l_matrix_b),
-                  n,
-                  0.0,
-                  static_cast<double *>(l_matrix_c),
-                  n);
-    }
+  ts_multiply_start = Timer::Now();
+  for (auto i = 0; i < repeat; ++i) {
+#ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
+    cblas_dgemm(
+        CblasRowMajor,
+        CblasNoTrans,
+        CblasNoTrans,
+        m,
+        n,
+        p,
+        1.0,
+        static_cast<const double *>(l_matrix_a),
+        p,
+        static_cast<const double *>(l_matrix_b),
+        n,
+        0.0,
+        static_cast<double *>(l_matrix_c),
+        n);
+#else
+    cblas_sgemm(
+        CblasRowMajor,
+        CblasNoTrans,
+        CblasNoTrans,
+        m,
+        n,
+        p,
+        1.0,
+        static_cast<const float *>(l_matrix_a),
+        p,
+        static_cast<const float *>(l_matrix_b),
+        n,
+        0.0,
+        static_cast<float *>(l_matrix_c),
+        n);
+#endif
   }
   time.second = Timer::ElapsedSince(ts_multiply_start);
 
-  dash::barrier();
-
-  if (dash::myid() == 0) {
-    delete[] l_matrix_a;
-    delete[] l_matrix_b;
-    delete[] l_matrix_c;
-  }
+  mkl_free(l_matrix_a);
+  mkl_free(l_matrix_b);
+  mkl_free(l_matrix_c);
 
   return time;
 #else
