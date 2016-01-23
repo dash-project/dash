@@ -250,24 +250,38 @@ dart_ret_t dart_get_handle(
   size_t          nbytes,
   dart_handle_t * handle)
 {
-  MPI_Request mpi_req;
-  MPI_Aint    disp_s,
-              disp_rel;
-  dart_unit_t target_unitid_abs,
-              target_unitid_rel;
-  MPI_Win     win;
-  int         mpi_ret;
-  uint64_t    offset = gptr.addr_or_offs.offset;
-  uint16_t    index  = gptr.flags;
-  int16_t     seg_id = gptr.segid;
+  return dart_get_type_handle(dest, gptr, nbytes, DART_TYPE_BYTE, handle);
+}
+
+
+dart_ret_t dart_get_type_handle(
+  void          * dest,
+  dart_gptr_t     gptr,
+  size_t          nbytes,
+  dart_datatype_t dtype,
+  dart_handle_t * handle)
+{
+  MPI_Request  mpi_req;
+  MPI_Aint     disp_s,
+               disp_rel;
+  MPI_Datatype mpi_type;
+  MPI_Win      win;
+  dart_unit_t  target_unitid_abs,
+               target_unitid_rel;
+  int          mpi_ret;
+  uint64_t     offset = gptr.addr_or_offs.offset;
+  uint16_t     index  = gptr.flags;
+  int16_t      seg_id = gptr.segid;
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  int n_count = (int)(nbytes);
   if (nbytes > INT_MAX) {
     DART_LOG_ERROR("dart_get_handle > failed: nbytes > INT_MAX");
     return DART_ERR_INVAL;
   }
+  int n_count = (int)(nbytes) / dart_mpi_datatype_disp_unit(dtype);
+
+  mpi_type = dart_mpi_datatype(dtype);
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;
@@ -371,18 +385,18 @@ dart_ret_t dart_get_handle(
      *      &mpi_req)
      *  ... could be an better alternative?
      */
-    DART_LOG_DEBUG("dart_get_handle:  -- %d bytes (collective allocation) "
+    DART_LOG_DEBUG("dart_get_handle:  -- %d elements (collective allocation) "
                    "from %d at offset %d",
                    n_count, target_unitid_rel, offset);
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
                 dest,              // origin address
                 n_count,           // origin count
-                MPI_BYTE,          // origin data type
+                mpi_type,          // origin data type
                 target_unitid_rel, // target rank
                 disp_rel,          // target disp in window
                 n_count,           // target count
-                MPI_BYTE,          // target data type
+                mpi_type,          // target data type
                 win,               // window
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {
@@ -396,7 +410,7 @@ dart_ret_t dart_get_handle(
      * The memory accessed is allocated with local allocation.
      */
     DART_LOG_TRACE("dart_get_handle:  -- local, segment:%d", seg_id);
-    DART_LOG_DEBUG("dart_get_handle:  -- %d bytes (local allocation) "
+    DART_LOG_DEBUG("dart_get_handle:  -- %d elements (local allocation) "
                    "from %d at offset %d",
                    n_count, target_unitid_abs, offset);
     win     = dart_win_local_alloc;
@@ -404,11 +418,11 @@ dart_ret_t dart_get_handle(
     mpi_ret = MPI_Rget(
                 dest,              // origin address
                 n_count,           // origin count
-                MPI_BYTE,          // origin data type
+                mpi_type,          // origin data type
                 target_unitid_abs, // target rank
                 offset,            // target disp in window
                 n_count,           // target count
-                MPI_BYTE,          // target data type
+                mpi_type,          // target data type
                 win,               // window
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {

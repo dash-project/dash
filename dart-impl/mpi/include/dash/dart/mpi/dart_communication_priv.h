@@ -50,4 +50,19 @@ MPI_Datatype dart_mpi_datatype(dart_datatype_t dart_datatype) {
   }
 }
 
+MPI_Datatype dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {
+  switch (dart_datatype) {
+    case DART_TYPE_BYTE     : return 1;
+    case DART_TYPE_SHORT    : return 1;
+    case DART_TYPE_INT      : return 4;
+    case DART_TYPE_UINT     : return 4;
+    case DART_TYPE_LONG     : return 4;
+    case DART_TYPE_ULONG    : return 4;
+    case DART_TYPE_LONGLONG : return 8;
+    case DART_TYPE_FLOAT    : return 4;
+    case DART_TYPE_DOUBLE   : return 8;
+    default:                  return 1;
+  }
+}
+
 #endif /* DART_ADAPT_COMMUNICATION_PRIV_H_INCLUDED */

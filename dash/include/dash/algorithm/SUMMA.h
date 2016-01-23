@@ -2,6 +2,10 @@
 #define DASH__ALGORITHM__SUMMA_H_
 
 #include <dash/Exception.h>
+#include <dash/Enums.h>
+#include <dash/Pattern.h>
+#include <dash/Future.h>
+#include <dash/algorithm/Copy.h>
 
 #include <utility>
 
@@ -18,6 +22,9 @@ namespace dash {
 namespace internal {
 
 #ifdef DASH_ENABLE_MKL
+/**
+ * Matrix multiplication for local multiplication of matrix blocks via MKL.
+ */
 template<typename  ValueType>
 void multiply_local(
   /// Matrix to multiply, m rows by k columns.
@@ -30,146 +37,6 @@ void multiply_local(
   long long         n,
   long long         k,
   MemArrange        storage);
-
-/**
- * Matrix multiplication for local multiplication of matrix blocks via MKL.
- */
-template<>
-void multiply_local<float>(
-  /// Matrix to multiply, m rows by k columns.
-  const float * A,
-  /// Matrix to multiply, k rows by n columns.
-  const float * B,
-  /// Matrix to contain the multiplication result, m rows by n columns.
-  float       * C,
-  long long     m,
-  long long     n,
-  long long     k,
-  MemArrange    storage)
-{
-  typedef float value_t;
-#ifndef DASH__MKL_MULTITHREADING
-  mkl_set_num_threads(1);
-  mkl_set_dynamic(false);
-#endif
-  /// Memory storage order of A, B, C:
-  auto   strg  = (storage == dash::ROW_MAJOR)
-                 ? CblasRowMajor
-                 : CblasColMajor;
-  /// Matrices A and B should not be transposed or conjugate transposed before
-  /// multiplication.
-  auto   tp_a  = CblasNoTrans;
-  auto   tp_b  = CblasNoTrans;
-  /// Leading dimension of A, or the number of elements between successive
-  /// rows (for row major storage) in memory.
-  auto   lda   = k;
-  /// Leading dimension of B, or the number of elements between successive
-  /// rows (for row major storage) in memory.
-  auto   ldb   = n;
-  /// Leading dimension of B, or the number of elements between successive
-  /// rows (for row major storage) in memory.
-  auto   ldc   = n;
-  /// Real value used to scale the product of matrices A and B.
-  value_t alpha = 1.0;
-  /// Real value used to scale matrix C.
-  /// Using 1.0 to preserve existing values in C such that C += A x B.
-  value_t beta  = 1.0;
-/*
-  void cblas_?gemm(const CBLAS_LAYOUT    Layout,
-                   const CBLAS_TRANSPOSE TransA,
-                   const CBLAS_TRANSPOSE TransB,
-                   const MKL_INT         M,
-                   const MKL_INT         N,
-                   const MKL_INT         K,
-                   const ValueT          alpha,
-                   const ValueT *        A,
-                   const MKL_INT         lda,
-                   const ValueT *        B,
-                   const MKL_INT         ldb,
-                   const ValueT          beta,
-                   double *              C,
-                   const MKL_INT         ldc);
-
-*/
-  cblas_sgemm(strg,
-              tp_a, tp_b,
-              m, n, k,
-              alpha,
-              A, lda,
-              B, ldb,
-              beta,
-              C, ldc);
-}
-/**
- * Matrix multiplication for local multiplication of matrix blocks via MKL.
- */
-template<>
-void multiply_local<double>(
-  /// Matrix to multiply, m rows by k columns.
-  const double * A,
-  /// Matrix to multiply, k rows by n columns.
-  const double * B,
-  /// Matrix to contain the multiplication result, m rows by n columns.
-  double       * C,
-  long long      m,
-  long long      n,
-  long long      k,
-  MemArrange     storage)
-{
-  typedef double value_t;
-#ifndef DASH__MKL_MULTITHREADING
-  mkl_set_num_threads(1);
-  mkl_set_dynamic(false);
-#endif
-  /// Memory storage order of A, B, C:
-  auto   strg  = (storage == dash::ROW_MAJOR)
-                 ? CblasRowMajor
-                 : CblasColMajor;
-  /// Matrices A and B should not be transposed or conjugate transposed before
-  /// multiplication.
-  auto   tp_a  = CblasNoTrans;
-  auto   tp_b  = CblasNoTrans;
-  /// Leading dimension of A, or the number of elements between successive
-  /// rows (for row major storage) in memory.
-  auto   lda   = k;
-  /// Leading dimension of B, or the number of elements between successive
-  /// rows (for row major storage) in memory.
-  auto   ldb   = n;
-  /// Leading dimension of B, or the number of elements between successive
-  /// rows (for row major storage) in memory.
-  auto   ldc   = n;
-  /// Real value used to scale the product of matrices A and B.
-  value_t alpha = 1.0;
-  /// Real value used to scale matrix C.
-  /// Using 1.0 to preserve existing values in C such that C += A x B.
-  value_t beta  = 1.0;
-/*
-  void cblas_?gemm(const CBLAS_LAYOUT    Layout,
-                   const CBLAS_TRANSPOSE TransA,
-                   const CBLAS_TRANSPOSE TransB,
-                   const MKL_INT         M,
-                   const MKL_INT         N,
-                   const MKL_INT         K,
-                   const ValueT          alpha,
-                   const ValueT *        A,
-                   const MKL_INT         lda,
-                   const ValueT *        B,
-                   const MKL_INT         ldb,
-                   const ValueT          beta,
-                   double *              C,
-                   const MKL_INT         ldc);
-
-*/
-  cblas_dgemm(strg,
-              tp_a, tp_b,
-              m, n, k,
-              alpha,
-              A, lda,
-              B, ldb,
-              beta,
-              C, ldc);
-}
-
 #else
 /**
  * Naive matrix multiplication for local multiplication of matrix blocks,
@@ -205,7 +72,6 @@ void multiply_local(
     }
   }
 }
-
 #endif // ifdef DASH_ENABLE_MKL
 
 } // namespace internal

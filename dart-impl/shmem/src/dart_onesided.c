@@ -46,17 +46,24 @@ inline int dart_shmem_reduce_int(int a, int b, dart_operation_t op) {
   }
 }
 
-dart_ret_t dart_accumulate_int(
-  dart_gptr_t ptr_dest,
-  int *values,
-  size_t nvalues,
+dart_ret_t dart_accumulate(
+  dart_gptr_t      ptr_dest,
+  char  *          values,
+  size_t           nvalues,
+  dart_datatype_t  dtype,
   dart_operation_t op,
-  dart_team_t team)
+  dart_team_t      team)
 {
   int             * addr;
   int               poolid;
   dart_unit_t       myid;
   dart_mempoolptr   pool;
+
+  if (dtype != DART_TYPE_INT) {
+    DART_LOG_ERROR("dart_accumulate: "
+                   "only datatype DART_TYPE_INT supported");
+    return DART_ERR_INVAL;
+  }
 
   dart_myid(&myid);
   poolid = ptr_dest.segid;
@@ -105,6 +112,16 @@ dart_ret_t dart_get_handle(
   void *dest,
   dart_gptr_t ptr,
 	size_t nbytes,
+  dart_handle_t *handle)
+{
+  return DART_ERR_OTHER;
+}
+
+dart_ret_t dart_get_type_handle(
+  void *dest,
+  dart_gptr_t ptr,
+	size_t nbytes,
+  dart_datatype_t dtype,
   dart_handle_t *handle)
 {
   return DART_ERR_OTHER;

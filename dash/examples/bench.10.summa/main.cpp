@@ -5,6 +5,7 @@
 /* @DASH_HEADER@ */
 
 //#define DASH__MKL_MULTITHREADING
+#define DASH__BENCH_10_SUMMA__DOUBLE_PREC
 
 #include "../bench.h"
 #include <libdash.h>
@@ -497,6 +498,11 @@ void print_params(const benchmark_params & params)
 {
   cout << "---------------------------------" << endl
        << "-- DASH benchmark bench.10.summa" << endl
+#ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
+       << "-- data type:            " << setw(8) << "double" << endl
+#else
+       << "-- data type:            " << setw(8) << "float"  << endl
+#endif
        << "-- parameters:" << endl
        << "--   -s    variant:      " << setw(8) << params.variant   << endl
        << "--   -sb   size base:    " << setw(8) << params.size_base << endl
