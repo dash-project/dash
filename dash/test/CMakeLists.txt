@@ -67,6 +67,11 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set(DASH_LIBRARY "dash-${dart_variant}")
   set(DART_LIBRARY "dart-${dart_variant}")
   set(DASH_TEST "dash-test-${dart_variant}")
+  set(VARIANT_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS})
+  if (${dart_variant} STREQUAL "mpi")
+    set(VARIANT_COMPILE_FLAGS
+        "${VARIANT_COMPILE_FLAGS} -DMPI_IMPL_ID=${MPI_IMPL_ID}")
+  endif()
   string(TOUPPER ${dart_variant} dart_variant_caps)
   message(INFO "Building DASH unit tests with backend " ${dart_variant_caps})
   include_directories(
@@ -87,7 +92,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
   set_target_properties(
     ${DASH_TEST} PROPERTIES
-    COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+    COMPILE_FLAGS ${VARIANT_COMPILE_FLAGS}
   )
   set_target_properties(
     ${DASH_TEST} PROPERTIES

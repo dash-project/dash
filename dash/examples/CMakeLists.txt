@@ -63,6 +63,20 @@ endif()
 foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set(DART_LIBRARY "dart-${dart_variant}")
   set(DASH_LIBRARY "dash-${dart_variant}")
+  set (VARIANT_ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDART_IMPL_${dart_variant_caps}")
+  # Some benchmarks use MPI directly
+  if (${dart_variant} STREQUAL "mpi")
+    set(VARIANT_ADDITIONAL_COMPILE_FLAGS
+        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID=${MPI_IMPL_ID}")
+    set (VARIANT_ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+         ${MPI_INCLUDE_PATH})
+    set (VARIANT_ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+         ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES})
+  else()
+    set (VARIANT_ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES})
+    set (VARIANT_ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES})
+  endif()
   string(TOUPPER ${dart_variant} dart_variant_caps)
   message(INFO "Building DASH examples with backend " ${dart_variant_caps})
   SubDirList(
@@ -72,18 +86,6 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
     set(exampletarget ${examplename}.${dart_variant})
     if (EXISTS
        ${CMAKE_CURRENT_SOURCE_DIR}/${examplename}/main.cpp)
-      # Some benchmarks use MPI directly
-      if (${dart_variant} STREQUAL "mpi")
-        set (VARIANT_ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
-             ${MPI_INCLUDE_PATH})
-        set (VARIANT_ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-             ${MPI_C_LIBRARIES} ${MPI_CXX_LIBRARIES})
-      else()
-        set (VARIANT_ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES})
-        set (VARIANT_ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES})
-      endif()
-      set (VARIANT_ADDITIONAL_COMPILE_FLAGS
-           "${ADDITIONAL_COMPILE_FLAGS} -DDART_IMPL_${dart_variant_caps}")
 
       # Build example for single DART implementation
 
