@@ -20,17 +20,48 @@ struct dart_handle_struct
 };
 
 MPI_Op dart_mpi_op(dart_operation_t dart_op) {
-  switch(dart_op) {
-  case DART_OP_MIN:  return MPI_MIN;
-  case DART_OP_MAX:  return MPI_MAX;
-  case DART_OP_SUM:  return MPI_SUM;
-  case DART_OP_PROD: return MPI_PROD;
-  case DART_OP_BAND: return MPI_BAND;
-  case DART_OP_LAND: return MPI_LAND;
-  case DART_OP_BOR:  return MPI_BOR;
-  case DART_OP_LOR:  return MPI_LOR;
-  case DART_OP_BXOR: return MPI_BXOR;
-  case DART_OP_LXOR: return MPI_LXOR;
+  switch (dart_op) {
+    case DART_OP_MIN  : return MPI_MIN;
+    case DART_OP_MAX  : return MPI_MAX;
+    case DART_OP_SUM  : return MPI_SUM;
+    case DART_OP_PROD : return MPI_PROD;
+    case DART_OP_BAND : return MPI_BAND;
+    case DART_OP_LAND : return MPI_LAND;
+    case DART_OP_BOR  : return MPI_BOR;
+    case DART_OP_LOR  : return MPI_LOR;
+    case DART_OP_BXOR : return MPI_BXOR;
+    case DART_OP_LXOR : return MPI_LXOR;
+    default:            return -1;
+  }
+}
+
+MPI_Datatype dart_mpi_datatype(dart_datatype_t dart_datatype) {
+  switch (dart_datatype) {
+    case DART_TYPE_BYTE     : return MPI_BYTE;
+    case DART_TYPE_SHORT    : return MPI_SHORT;
+    case DART_TYPE_INT      : return MPI_INT;
+    case DART_TYPE_UINT     : return MPI_UNSIGNED;
+    case DART_TYPE_LONG     : return MPI_LONG;
+    case DART_TYPE_ULONG    : return MPI_UNSIGNED_LONG;
+    case DART_TYPE_LONGLONG : return MPI_LONG_LONG_INT;
+    case DART_TYPE_FLOAT    : return MPI_FLOAT;
+    case DART_TYPE_DOUBLE   : return MPI_DOUBLE;
+    default:                  return -1;
+  }
+}
+
+MPI_Datatype dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {
+  switch (dart_datatype) {
+    case DART_TYPE_BYTE     : return 1;
+    case DART_TYPE_SHORT    : return 1;
+    case DART_TYPE_INT      : return 4;
+    case DART_TYPE_UINT     : return 4;
+    case DART_TYPE_LONG     : return 4;
+    case DART_TYPE_ULONG    : return 4;
+    case DART_TYPE_LONGLONG : return 8;
+    case DART_TYPE_FLOAT    : return 4;
+    case DART_TYPE_DOUBLE   : return 8;
+    default:                  return 1;
   }
 }
 

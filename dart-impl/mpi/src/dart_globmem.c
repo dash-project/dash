@@ -27,7 +27,7 @@
  * represents the displacement relative to the beginning of sub-memory
  * spanned by certain dart collective allocation.
  * For dart local allocation/free: offset in the returned gptr represents
- * the displacement relative to 
+ * the displacement relative to
  * the base address of memory region reserved for the dart local
  * allocation/free.
  */
@@ -39,7 +39,7 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 	uint64_t offset = gptr.addr_or_offs.offset;
 	dart_unit_t myid;
 	dart_myid (&myid);
-  
+
 	if (myid == gptr.unitid) {
 		if (seg_id) {
 			int flag;
@@ -107,7 +107,7 @@ dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 }
 
 dart_ret_t dart_memfree (dart_gptr_t gptr)
-{	
+{
   if (dart_buddy_free (dart_localpool, gptr.addr_or_offs.offset) == -1) {
     DART_LOG_ERROR("Free invalid local global pointer: "
           "invalid offset = %"PRIu64"\n", gptr.addr_or_offs.offset);
@@ -120,27 +120,28 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
 
 dart_ret_t
 dart_team_memalloc_aligned(
-  dart_team_t teamid,
-  size_t nbytes,
-  dart_gptr_t *gptr)
+  dart_team_t   teamid,
+  size_t        nbytes,
+  int           elem_size,
+  dart_gptr_t * gptr)
 {
 	size_t size;
- 	dart_unit_t unitid, gptr_unitid = -1;
+	dart_unit_t unitid, gptr_unitid = -1;
 	dart_team_myid(teamid, &unitid);
 	dart_team_size (teamid, &size);
-	
+
 	char *sub_mem;
 
 	/* The units belonging to the specified team are eligible to participate
 	 * below codes enclosed. */
-	 
+
 	MPI_Win win;
 	MPI_Comm comm;
 	MPI_Aint disp;
 	MPI_Aint* disp_set = (MPI_Aint*)malloc (size * sizeof (MPI_Aint));
-	
+
 	uint16_t index;
-	int result = dart_adapt_teamlist_convert (teamid, &index);
+	int result = dart_adapt_teamlist_convert(teamid, &index);
 
 	if (result == -1) {
 		return DART_ERR_INVAL;
@@ -153,7 +154,7 @@ dart_team_memalloc_aligned(
 #endif
 	dart_unit_t localid = 0;
 	if (index == 0) {
-		gptr_unitid = localid;		
+		gptr_unitid = localid;
 	} else {
 		MPI_Group group;
 		MPI_Group group_all;
@@ -164,45 +165,76 @@ dart_team_memalloc_aligned(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Info win_info;
 	MPI_Info_create (&win_info);
-	MPI_Info_set (win_info, "alloc_shared_noncontig", "true");
-	
+	MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
+
 	/* Allocate shared memory on sharedmem_comm, and create the related
    * sharedmem_win */
+
+  /* NOTE:
+   * Windows should definitely be optimized for the concrete value type i.e.
+   * via MPI_Type_create_index_block as this greatly improves performance of
+   * MPI_Get, MPI_Put and other RMA friends.
+   *
+   * !!! BUG IN INTEL-MPI 5.0
+   * !!!
+   * !!! See:
+   * !!! https://software.intel.com/de-de/forums/intel-clusters-and-hpc-technology/topic/519995
+   * !!!
+   * !!! Quote:
+   * !!!  "[When allocating, e.g., an] integer*4-array of array dimension N,
+   * !!!   then use it by the MPI-processes (on the same node), and then
+   * !!!   repeats the same for the next shared allocation [...] the number of
+   * !!!   shared windows do accumulate in the run, because I do not free the
+   * !!!   shared windows allocated so far. This allocation of shared windows
+   * !!!   works, but only until the total number of allocated memory exceeds
+   * !!!   a limit of ~30 millions of Integer*4 numbers (~120 MB).
+   * !!!   When that limit is reached, the next call of
+   * !!!   MPI_WIN_ALLOCATE_SHARED, MPI_WIN_SHARED_QUERY to allocated one
+   * !!!   more shared window do not give an error message, but the 1st
+   * !!!   attempt to use that allocated shared array results in a bus error
+   * !!!   (because the shared array has not been allocated correctly)."
+   * !!!
+   * !!! Reproduced on SuperMUC and mpich3.1 on projekt03.
+   */
 	MPI_Win_allocate_shared(
-    nbytes, sizeof (char),
+    nbytes,
+//  sizeof (char),
+    elem_size,
     win_info,
     sharedmem_comm,
     &sub_mem,
     &sharedmem_win);
 
-	int sharedmem_unitid;
-	MPI_Aint winseg_size;
-	char**baseptr_set;
-	char *baseptr;
-	int disp_unit, i;
+	int         sharedmem_unitid;
+	MPI_Aint    winseg_size;
+	char     ** baseptr_set;
+	char      * baseptr;
+	int         disp_unit, i;
 	MPI_Comm_rank (sharedmem_comm, &sharedmem_unitid);
-	baseptr_set = (char**)malloc (sizeof (char*) * dart_sharedmemnode_size[index]);
+	baseptr_set = (char**)malloc(sizeof(char*) * dart_sharedmemnode_size[index]);
 
 	for (i = 0; i < dart_sharedmemnode_size[index]; i++)
 	{
-		if (sharedmem_unitid != i){
-			MPI_Win_shared_query (sharedmem_win, i, &winseg_size, &disp_unit, &baseptr);
+		if (sharedmem_unitid != i) {
+			MPI_Win_shared_query(sharedmem_win, i, &winseg_size, &disp_unit, &baseptr);
 			baseptr_set[i] = baseptr;
 		}
-		else 
-		{baseptr_set[i] = sub_mem;}
+		else
+		{
+      baseptr_set[i] = sub_mem;
+    }
 	}
 #else
-	MPI_Alloc_mem (nbytes, MPI_INFO_NULL, &sub_mem);
-#endif		
+	MPI_Alloc_mem(nbytes, MPI_INFO_NULL, &sub_mem);
+#endif
 	win = dart_win_lists[index];
 	/* Attach the allocated shared memory to win */
-	MPI_Win_attach (win, sub_mem, nbytes);
+	MPI_Win_attach(win, sub_mem, nbytes);
 
-	MPI_Get_address (sub_mem, &disp);
+	MPI_Get_address(sub_mem, &disp);
 
 	/* Collect the disp information from all the ranks in comm */
-	MPI_Allgather (&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
+	MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
 
 	/* -- Updating infos on gptr -- */
 	gptr->unitid = gptr_unitid;
@@ -212,7 +244,7 @@ dart_team_memalloc_aligned(
   /* For collective allocation, the flag is marked as 'index' */
 	gptr->flags  = index;
 	gptr->addr_or_offs.offset = 0;
-	
+
 	/* Updating the translation table of teamid with the created
    * (offset, win) infos */
 	info_t item;
@@ -227,32 +259,32 @@ dart_team_memalloc_aligned(
 	item.baseptr = NULL;
 #endif
 	item.selfbaseptr = sub_mem;
-	/* Add this newly generated correspondence relationship record into the 
+	/* Add this newly generated correspondence relationship record into the
    * translation table. */
-	dart_adapt_transtable_add (item);
+	dart_adapt_transtable_add(item);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-	MPI_Info_free (&win_info);
+	MPI_Info_free(&win_info);
 #endif
 	dart_memid++;
 
   DART_LOG_DEBUG(
-    "%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d "
+    "dart_team_memalloc_aligned: bytes:%lu offset:%lu gptr_unitid:%d "
     "across team %d",
-		unitid, nbytes, 0, gptr_unitid, teamid);
+		nbytes, 0, gptr_unitid, teamid);
 
 	return DART_OK;
 }
 
 dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
-{		
+{
 	dart_unit_t unitid;
        	dart_team_myid (teamid, &unitid);
 	uint16_t index = gptr.flags;
 	char *sub_mem;
-		
+
 	MPI_Win win;
-	
-	int flag;	
+
+	int flag;
   	int16_t seg_id = gptr.segid;
 
 	win = dart_win_lists[index];
@@ -263,19 +295,19 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
         /* Detach the freed sub-memory from win */
 	MPI_Win_detach (win, sub_mem);
 
-	/* Release the shared memory win object related to the freed shared 
+	/* Release the shared memory win object related to the freed shared
    * memory */
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Win sharedmem_win;
 	if (dart_adapt_transtable_get_win (seg_id, &sharedmem_win) == -1)
 		return DART_ERR_INVAL;
-	MPI_Win_free (&sharedmem_win); 
+	MPI_Win_free (&sharedmem_win);
 #endif
   DART_LOG_DEBUG("%2d: COLLECTIVEFREE - offset = %d, gptr_unitid = %d "
-        "across team %d", 
+        "across team %d",
         unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
-	/* Remove the related correspondence relation record from the related 
+	/* Remove the related correspondence relation record from the related
    * translation table. */
 	if (dart_adapt_transtable_remove (seg_id) == -1) {
 		return DART_ERR_INVAL;
@@ -283,11 +315,11 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 	return DART_OK;
 }
 
-dart_ret_t 
+dart_ret_t
 dart_team_memregister_aligned (
    dart_team_t teamid,
    size_t nbytes,
-   void *addr, 
+   void *addr,
    dart_gptr_t *gptr)
 {
 	size_t size;
@@ -340,7 +372,7 @@ dart_team_memregister_aligned (
 	return DART_OK;
 }
 
-dart_ret_t 
+dart_ret_t
 dart_team_memderegister(
    dart_team_t teamid,
    dart_gptr_t gptr)

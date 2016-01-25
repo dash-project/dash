@@ -91,6 +91,11 @@ endif()
 foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set(DART_LIBRARY "dart-${dart_variant}")
   set(DASH_LIBRARY "dash-${dart_variant}")
+  set(VARIANT_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS})
+  if (${dart_variant} STREQUAL "mpi")
+    set(VARIANT_COMPILE_FLAGS
+        "${VARIANT_COMPILE_FLAGS} -DMPI_IMPL_ID=\"${MPI_IMPL_ID}\"")
+  endif()
   message(STATUS "Building DASH library " ${DASH_LIBRARY})
 
   # Library compilation sources
@@ -106,7 +111,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
-    COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+    COMPILE_FLAGS ${VARIANT_COMPILE_FLAGS}
   )
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
@@ -158,7 +163,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
-          COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+          COMPILE_FLAGS ${VARIANT_COMPILE_FLAGS}
         )
         set_target_properties(
           ${exampletarget} PROPERTIES

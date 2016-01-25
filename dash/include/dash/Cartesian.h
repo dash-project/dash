@@ -1,7 +1,6 @@
-/* 
+/*
  * dash-lib/Cartesian.h
  *
- * author(s): Karl Fuerlinger, LMU Munich 
  */
 /* @DASH_HEADER@ */
 
@@ -35,7 +34,7 @@ class CartesianSpace
 private:
   typedef typename std::make_signed<SizeType>::type
     IndexType;
-  typedef CartesianSpace<NumDimensions, SizeType> 
+  typedef CartesianSpace<NumDimensions, SizeType>
     self_t;
 
 public:
@@ -71,7 +70,7 @@ public:
    * all dimensions.
    */
   template<typename... Args>
-  CartesianSpace(SizeType arg, Args... args) 
+  CartesianSpace(SizeType arg, Args... args)
   : _size(0),
     _ndim(NumDimensions) {
     resize(arg, args...);
@@ -150,7 +149,7 @@ public:
     _extents[dim] = extent;
     resize(_extents);
   }
-  
+
   /**
    * The number of dimension in the cartesian space with extent greater
    * than 1.
@@ -162,7 +161,7 @@ public:
   SizeType rank() const {
     return NumDimensions;
   }
-  
+
   /**
    * The number of dimension in the cartesian space.
    *
@@ -173,7 +172,7 @@ public:
   SizeType num_dimensions() const noexcept {
     return NumDimensions;
   }
-  
+
   /**
    * The number of discrete elements within the space spanned by the
    * coordinate.
@@ -190,7 +189,7 @@ public:
   const std::array<SizeType, NumDimensions> & extents() const noexcept {
     return _extents;
   }
-  
+
   /**
    * The extent of the cartesian space in the given dimension.
    *
@@ -261,7 +260,7 @@ private:
     self_t;
   typedef ViewSpec<NumDimensions, IndexType>
     ViewSpec_t;
-/* 
+/*
  * Note: Not derived from CartesianSpace to provide resizing in O(d)
  *       instead of O(2d).
  */
@@ -308,7 +307,7 @@ public:
    * Constructor, creates a cartesian index space of given extents.
    */
   template<typename... Args>
-  CartesianIndexSpace(SizeType arg, Args... args) 
+  CartesianIndexSpace(SizeType arg, Args... args)
   : _size(0),
     _ndim(NumDimensions) {
     resize(arg, args...);
@@ -327,7 +326,7 @@ public:
       }
       // Comparing either row- or column major offsets suffices:
       if (_offset_row_major[i] != other._offset_row_major[i]) {
-        return false; 
+        return false;
       }
     }
     // No need to compare _size as it is derived from _extents.
@@ -383,7 +382,7 @@ public:
     _extents[dim] = extent;
     resize(_extents);
   }
-  
+
   /**
    * The number of dimension in the cartesian space with extent greater
    * than 1.
@@ -395,7 +394,7 @@ public:
   SizeType rank() const noexcept {
     return NumDimensions;
   }
-  
+
   /**
    * The number of dimension in the cartesian space.
    *
@@ -406,7 +405,7 @@ public:
   SizeType num_dimensions() const noexcept {
     return NumDimensions;
   }
-  
+
   /**
    * The number of discrete elements within the space spanned by the
    * coordinate.
@@ -423,7 +422,7 @@ public:
   const std::array<SizeType, NumDimensions> & extents() const noexcept {
     return _extents;
   }
-  
+
   /**
    * The extent of the cartesian space in the given dimension.
    *
@@ -437,7 +436,7 @@ public:
       " for CartesianIndexSpace::extent(dim) is out of bounds");
     return _extents[dim];
   }
-  
+
   /**
    * Convert the given coordinates to their respective linear index.
    *
@@ -456,7 +455,7 @@ public:
       { arg, (IndexType)(args) ... };
     return at<AtArrangement>(pos);
   }
-  
+
   /**
    * Convert the given cartesian point to its respective linear index.
    *
@@ -484,7 +483,7 @@ public:
     }
     return offs;
   }
-  
+
   /**
    * Convert the given cartesian point to a linear index, respective to
    * the offsets specified in the given ViewSpec.
@@ -582,7 +581,7 @@ public:
   x(SizeType offs) const {
     return coords(offs)[0];
   }
-  
+
   /**
    * Accessor for dimension 2 (y), enabled for dimensionality > 1.
    */
@@ -591,23 +590,23 @@ public:
   y(SizeType offs) const {
     return coords(offs)[1];
   }
-  
+
   /**
    * Accessor for dimension 3 (z), enabled for dimensionality > 2.
    */
   template<dim_t U = NumDimensions>
-  typename std::enable_if< (U > 2), SizeType >::type 
+  typename std::enable_if< (U > 2), SizeType >::type
   z(SizeType offs) const {
     return coords(offs)[2];
   }
 
 }; // class CartesianIndexSpace
 
-/** 
+/**
  * Specifies the arrangement of team units in a specified number
  * of dimensions.
  * Size of TeamSpec implies the number of units in the team.
- * 
+ *
  * Reoccurring units are currently not supported.
  *
  * \tparam  NumDimensions  Number of dimensions
@@ -672,7 +671,7 @@ public:
   TeamSpec(
     const self_t & other,
     const DistributionSpec<MaxDimensions> & distribution,
-    Team & team = dash::Team::All()) 
+    Team & team = dash::Team::All())
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>(
       other.extents())
   {
@@ -709,7 +708,7 @@ public:
           }
         }
       }
-    } 
+    }
     update_rank();
     DASH_LOG_TRACE_VAR("TeamSpec(ts, dist, t)", this->_extents);
     this->resize(this->_extents);
@@ -852,7 +851,7 @@ private:
 
 }; // class TeamSpec
 
-/** 
+/**
  * Specifies how local element indices are arranged in a specific number
  * of dimensions.
  * Behaves like CartesianIndexSpace if distribution is not tiled in any
@@ -939,7 +938,7 @@ public:
     // Tiles in at least one dimension
     // TODO
   }
-  
+
   /**
    * Convert the given coordinates to their respective linear index.
    *
@@ -958,7 +957,7 @@ public:
       { arg, (IndexType)(args) ... };
     return at<AtArrangement>(pos);
   }
-  
+
   /**
    * Convert the given cartesian point to its respective linear index.
    *
@@ -977,7 +976,7 @@ public:
     // Tiles in at least one dimension
     // TODO
   }
-  
+
   /**
    * Convert the given cartesian point to a linear index, respective to
    * the offsets specified in the given ViewSpec.

@@ -65,6 +65,7 @@ public:
       dart_team_memalloc_aligned(
         m_teamid,
         lsize,
+        sizeof(ElementType),
         &m_begptr),
       DART_OK);
     m_lbegin     = lbegin(dash::myid());

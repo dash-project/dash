@@ -2,6 +2,7 @@
 #define DASH__TYPES_H_
 
 #include <array>
+#include <dash/dart/if/dart_types.h>
 
 namespace dash {
 
@@ -53,6 +54,29 @@ template<
   typename SizeType = dash::default_extent_t>
 struct Extent {
   ::std::array<SizeType, NumDimensions> sizes;
+};
+
+/**
+ * Type traits for mapping to DART data types.
+ */
+template< typename Type >
+struct dart_datatype {
+  static const dart_datatype_t value;
+};
+
+template<>
+struct dart_datatype<int> {
+  static const dart_datatype_t value;
+};
+
+template<>
+struct dart_datatype<float> {
+  static const dart_datatype_t value;
+};
+
+template<>
+struct dart_datatype<double> {
+  static const dart_datatype_t value;
 };
 
 } // namespace dash
