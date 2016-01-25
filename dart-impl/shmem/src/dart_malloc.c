@@ -129,7 +129,6 @@ dart_ret_t dart_memalloc(
 dart_ret_t dart_team_memalloc_aligned(
   dart_team_t teamid,
   size_t nbytes,
-  int    type_disp,
   dart_gptr_t *gptr) {
   dart_ret_t ret;
   size_t teamsize;

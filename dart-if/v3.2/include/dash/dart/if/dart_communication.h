@@ -133,14 +133,7 @@ dart_ret_t dart_get_handle(
   /// [OUT] Pointer to DART handle to instantiate for later use with
   ///       \c dart_wait, \c dart_wait_all etc.
   dart_handle_t   * handle);
-dart_ret_t dart_get_type_handle(
-  void            * dest,
-  dart_gptr_t       ptr,
-  size_t            nbytes,
-  /// [OUT] Pointer to DART handle to instantiate for later use with
-  ///       \c dart_wait, \c dart_wait_all etc.
-  dart_datatype_t   dtype,
-  dart_handle_t   * handle);
+
 /**
  * 'HANDLE' variant of dart_put.
  * Neither local nor remote completion is guaranteed. A later

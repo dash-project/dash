@@ -190,7 +190,7 @@ dart_ret_t dart_accumulate(
   mpi_dtype         = dart_mpi_datatype(dtype);
   mpi_op            = dart_mpi_op(op);
   DART_LOG_DEBUG("dart_accumulate() nelem:%d dtype:%d op:%d unit:%d",
-                 nelem, dtype, op, target_unit_abs);
+                 nelem, dtype, op, target_unitid_abs);
   if (seg_id) {
     dart_unit_t target_unitid_rel;
     uint16_t index = gptr.flags;
@@ -250,17 +250,6 @@ dart_ret_t dart_get_handle(
   size_t          nbytes,
   dart_handle_t * handle)
 {
-  return dart_get_type_handle(dest, gptr, nbytes, DART_TYPE_BYTE, handle);
-}
-
-
-dart_ret_t dart_get_type_handle(
-  void          * dest,
-  dart_gptr_t     gptr,
-  size_t          nbytes,
-  dart_datatype_t dtype,
-  dart_handle_t * handle)
-{
   MPI_Request  mpi_req;
   MPI_Aint     disp_s,
                disp_rel;
@@ -279,9 +268,9 @@ dart_ret_t dart_get_type_handle(
     DART_LOG_ERROR("dart_get_handle > failed: nbytes > INT_MAX");
     return DART_ERR_INVAL;
   }
-  int n_count = (int)(nbytes) / dart_mpi_datatype_disp_unit(dtype);
+  int n_count = (int)(nbytes);
 
-  mpi_type = dart_mpi_datatype(dtype);
+  mpi_type = MPI_BYTE;
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;

@@ -127,7 +127,6 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
 dart_ret_t dart_team_memalloc_aligned(
   dart_team_t   teamid,
 	size_t        nbytes,
-  int           type_disp,
   dart_gptr_t * gptr);
 
 dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr);

@@ -144,11 +144,10 @@ dash::Future<ValueType *> copy_impl(
 #else
       dart_handle_t get_handle;
       DASH_ASSERT_RETURNS(
-        dart_get_type_handle(
+        dart_get_handle(
           cur_out_first,
           cur_in_first.dart_gptr(),
           num_copy_elem * sizeof(ValueType),
-          dash::dart_datatype<ValueType>::value,
           &get_handle),
         DART_OK);
       req_handles.push_back(get_handle);
@@ -212,11 +211,10 @@ dash::Future<ValueType *> copy_impl(
       req_handles.push_back(src_gptr);
 #else
       dart_handle_t get_handle;
-      if (dart_get_type_handle(
+      if (dart_get_handle(
             dest_ptr,
             src_gptr,
             num_copy_elem * sizeof(ValueType),
-            dash::dart_datatype<ValueType>::value,
             &get_handle)
           != DART_OK) {
         DASH_LOG_ERROR("dash::copy_impl", "dart_get_handle failed");
