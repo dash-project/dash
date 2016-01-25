@@ -65,6 +65,7 @@ public:
       dart_team_memalloc_aligned(
         m_teamid,
         lsize,
+        sizeof(ElementType),
         &m_begptr),
       DART_OK);
     m_lbegin     = lbegin(dash::myid());
@@ -86,7 +87,10 @@ public:
     m_kind       = dash::internal::LOCAL;
     size_t lsize = sizeof(ElementType) * m_nlelem;
     DASH_ASSERT_RETURNS(
-      dart_memalloc(lsize, &m_begptr),
+      dart_memalloc(
+        lsize,
+        sizeof(ElementType),
+        &m_begptr),
       DART_OK);
     m_lbegin     = lbegin(dash::myid());
     m_lend       = lend(dash::myid());

@@ -25,6 +25,12 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 
+#define DART__MPI__ERROR_STR(mpi_error) ( \
+      (mpi_error == MPI_SUCCESS)     ? "MPI_SUCCESS" \
+    : (mpi_error == MPI_ERR_PENDING) ? "MPI_ERR_PENDING" \
+    : "other" \
+    )
+
 int unit_g2l(
   uint16_t index,
   dart_unit_t abs_id,
@@ -63,12 +69,12 @@ dart_ret_t dart_get(
     win               = dart_win_lists[index];
     dart_unit_t target_unitid_rel;
 
-    DART_LOG_TRACE("dart_get() index:%d win:%lld",
+    DART_LOG_TRACE("dart_get:  index:%d win:%d",
                    index, win);
     unit_g2l(index,
              target_unitid_abs,
              &target_unitid_rel);
-    DART_LOG_TRACE("dart_get() relative unit id: %d",
+    DART_LOG_TRACE("dart_get:  relative unit id: %d",
                    target_unitid_rel);
     if (dart_adapt_transtable_get_disp(
           seg_id,
@@ -77,9 +83,10 @@ dart_ret_t dart_get(
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
-    DART_LOG_TRACE("dart_get: nbytes:%lld "
-                   "source (collect.): win:%lld unit:%d disp:%lld -> dest: %p",
+    DART_LOG_TRACE("dart_get:  nbytes:%lld "
+                   "source (collect.): win:%d unit:%d disp:%lld -> dest: %p",
                    nbytes, win, target_unitid_rel, disp_rel, dest);
+    DART_LOG_TRACE("dart_get:  MPI_Get");
     MPI_Get(
       dest,
       nbytes,
@@ -91,9 +98,10 @@ dart_ret_t dart_get(
       win);
   } else {
     win = dart_win_local_alloc;
-    DART_LOG_TRACE("dart_get: nbytes:%lld "
-                   "source (local): win:%lld unit:%d offset:%lld -> dest: %p",
+    DART_LOG_TRACE("dart_get:  nbytes:%lld "
+                   "source (local): win:%d unit:%d offset:%lld -> dest: %p",
                    nbytes, win, target_unitid_abs, offset, dest);
+    DART_LOG_TRACE("dart_get:  MPI_Get");
     MPI_Get(
       dest,
       nbytes,
@@ -162,23 +170,27 @@ dart_ret_t dart_put(
   return DART_OK;
 }
 
-/*
- * TODO: Define and use macro DART__DEFINE__ACCUMULATE(int)
- */
-dart_ret_t dart_accumulate_int(
-  dart_gptr_t gptr,
-  int *values,
-  size_t nelem,
+dart_ret_t dart_accumulate(
+  dart_gptr_t      gptr,
+  char  *          values,
+  size_t           nelem,
+  dart_datatype_t  dtype,
   dart_operation_t op,
-  dart_team_t team)
+  dart_team_t      team)
 {
-  MPI_Aint    disp_s,
-              disp_rel;
-  MPI_Win     win;
-  dart_unit_t target_unitid_abs;
+  MPI_Aint     disp_s,
+               disp_rel;
+  MPI_Win      win;
+  MPI_Datatype mpi_dtype;
+  MPI_Op       mpi_op;
+  dart_unit_t  target_unitid_abs;
   uint64_t offset   = gptr.addr_or_offs.offset;
   int16_t  seg_id   = gptr.segid;
   target_unitid_abs = gptr.unitid;
+  mpi_dtype         = dart_mpi_datatype(dtype);
+  mpi_op            = dart_mpi_op(op);
+  DART_LOG_DEBUG("dart_accumulate() nelem:%d dtype:%d op:%d unit:%d",
+                 nelem, dtype, op, target_unit_abs);
   if (seg_id) {
     dart_unit_t target_unitid_rel;
     uint16_t index = gptr.flags;
@@ -190,74 +202,140 @@ dart_ret_t dart_accumulate_int(
           seg_id,
           target_unitid_rel,
           &disp_s) == -1) {
+      DART_LOG_ERROR("dart_accumulate ! "
+                     "dart_adapt_transtable_get_disp failed");
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
     MPI_Accumulate(
       values,            // Origin address
       nelem,             // Number of entries in buffer
-      MPI_INT,           // Data type of each buffer entry
+      mpi_dtype,         // Data type of each buffer entry
       target_unitid_rel, // Rank of target
       disp_rel,          // Displacement from start of window to beginning
                          // of target buffer
       nelem,             // Number of entries in target buffer
-      MPI_INT,           // Data type of each entry in target buffer
-      dart_mpi_op(op),   // Reduce operation
+      mpi_dtype,         // Data type of each entry in target buffer
+      mpi_op,            // Reduce operation
       win);
-    DART_LOG_DEBUG ("ACC  - %d elements (allocated with collective allocation) "
-           "to %d at offset %d",
-           nelem, target_unitid_abs, offset);
+    DART_LOG_TRACE("dart_accumulate:  %d elements (collective allocation) "
+                   "to unit:%d offset:%d",
+                   nelem, target_unitid_abs, offset);
   } else {
     win = dart_win_local_alloc;
     MPI_Accumulate(
       values,            // Origin address
       nelem,             // Number of entries in buffer
-      MPI_INT,           // Data type of each buffer entry
+      mpi_dtype,         // Data type of each buffer entry
       target_unitid_abs, // Rank of target
       offset,            // Displacement from start of window to beginning
                          // of target buffer
       nelem,             // Number of entries in target buffer
-      MPI_INT,           // Data type of each entry in target buffer
-      dart_mpi_op(op),   // Reduce operation
+      mpi_dtype,         // Data type of each entry in target buffer
+      mpi_op,            // Reduce operation
       win);
-    DART_LOG_DEBUG ("ACC  - %d elements (allocated with local allocation) "
-           "to %d at offset %d",
-           nelem, target_unitid_abs, offset);
+    DART_LOG_TRACE("dart_accumulate:  %d elements (local allocation) "
+                   "to unit:%d offset:%d",
+                   nelem, target_unitid_abs, offset);
   }
+  DART_LOG_DEBUG("dart_accumulate > finished");
   return DART_OK;
 }
 
 /* -- Non-blocking dart one-sided operations -- */
 
 dart_ret_t dart_get_handle(
-  void *dest,
-  dart_gptr_t gptr,
-  size_t nbytes,
-  dart_handle_t *handle)
+  void          * dest,
+  dart_gptr_t     gptr,
+  size_t          nbytes,
+  dart_datatype_t dtype,
+  dart_handle_t * handle)
 {
-  MPI_Request mpi_req;
-  MPI_Aint    disp_s,
-              disp_rel;
-  dart_unit_t target_unitid_abs,
-              target_unitid_rel;
-  MPI_Win     win;
-  int         mpi_ret;
-  uint64_t    offset = gptr.addr_or_offs.offset;
-  uint16_t    index  = gptr.flags;
-  int16_t     seg_id = gptr.segid;
-  /* MPI uses offset type int, do not copy more than INT_MAX elements: */
-  int n_count = (int)(DART_MIN(INT_MAX, nbytes));
+  MPI_Request  mpi_req;
+  MPI_Aint     disp_s,
+               disp_rel;
+  MPI_Datatype mpi_type;
+  MPI_Win      win;
+  dart_unit_t  target_unitid_abs,
+               target_unitid_rel;
+  int          mpi_ret;
+  uint64_t     offset = gptr.addr_or_offs.offset;
+  uint16_t     index  = gptr.flags;
+  int16_t      seg_id = gptr.segid;
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nbytes > INT_MAX) {
+    DART_LOG_ERROR("dart_get_handle > failed: nbytes > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+  int n_count = (int)(nbytes) / dart_mpi_datatype_disp_unit(dtype);
+
+  mpi_type = dart_mpi_datatype(dtype);
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;
 
-  DART_LOG_DEBUG("dart_get_handle(): target_uid_abs:%d o:%lld s:%lld i:%lld",
-                 target_unitid_abs, offset, seg_id, index);
-//DART_LOG_TRACE("dart_get_handle(): handle:%p", *handle);
+  DART_LOG_DEBUG("dart_get_handle() uid_abs:%d o:%lld s:%d i:%d, bytes:%lld",
+                 target_unitid_abs, offset, seg_id, index, nbytes);
+  DART_LOG_TRACE("dart_get_handle:  allocated handle:%p", (void *)(*handle));
 
-  /* The memory accessed is allocated with collective allocation. */
-  if (seg_id) {
-    DART_LOG_TRACE("dart_get_handle: collective");
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+  DART_LOG_DEBUG("dart_get_handle: shared windows enabled");
+  if (seg_id >= 0) {
+    int       i;
+    MPI_Aint  maximum_size;
+    int       disp_unit;
+    char *    baseptr;
+
+    /*
+     * Use memcpy if the target is in the same node as the calling unit:
+     */
+    i = dart_sharedmem_table[index][gptr.unitid];
+    if (i >= 0) {
+      DART_LOG_DEBUG("dart_get_handle: shared memory segment, seg_id:%d",
+                     seg_id);
+      if (seg_id) {
+        if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr) == -1) {
+          DART_LOG_ERROR("dart_get_handle ! "
+                         "dart_adapt_transtable_get_baseptr failed");
+          return DART_ERR_INVAL;
+        }
+      } else {
+        baseptr = dart_sharedmem_local_baseptr_set[i];
+      }
+      disp_rel = offset;
+      baseptr += disp_rel;
+      DART_LOG_DEBUG("dart_get_handle: memcpy %d bytes", nbytes);
+      memcpy((char*)dest, baseptr, nbytes);
+      /*
+       * Mark request as completed:
+       */
+      (*handle)->request = MPI_REQUEST_NULL;
+      if (seg_id != 0) {
+        (*handle)->dest = target_unitid_abs;
+        (*handle)->win  = dart_win_lists[index];
+      } else {
+        unit_g2l(index, target_unitid_abs, &target_unitid_rel);
+        (*handle)->dest = target_unitid_rel;
+        (*handle)->win  = dart_win_local_alloc;
+      }
+      return DART_OK;
+    }
+  }
+#else
+  DART_LOG_DEBUG("dart_get_handle: shared windows disabled");
+#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+
+  /*
+   * MPI shared windows disabled or target and calling unit are on different
+   * nodes, use MPI_RGet:
+   */
+  if (seg_id != 0) {
+    /*
+     * The memory accessed is allocated with collective allocation.
+     */
+    DART_LOG_TRACE("dart_get_handle:  collective, segment:%d", seg_id);
 /*
     if (dart_adapt_transtable_get_win (index, offset, &begin, &win) == -1)
     {
@@ -274,7 +352,7 @@ dart_ret_t dart_get_handle(
      * object.
      */
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
-    DART_LOG_DEBUG("dart_get_handle: tgt_uid_rel:%d", target_unitid_rel);
+    DART_LOG_DEBUG("dart_get_handle:  -- uid_rel:%d", target_unitid_rel);
 
     if (dart_adapt_transtable_get_disp(
           seg_id,
@@ -282,66 +360,71 @@ dart_ret_t dart_get_handle(
           &disp_s) == -1)
     {
       DART_LOG_ERROR(
-        "dart_get_handle: dart_adapt_transtable_get_disp failed");
+        "dart_get_handle ! dart_adapt_transtable_get_disp failed");
+      free(*handle);
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
-    DART_LOG_TRACE("dart_get_handle: disp_s:%lld disp_rel:%lld",
+    DART_LOG_TRACE("dart_get_handle:  -- disp_s:%ld disp_rel:%ld",
                    disp_s, disp_rel);
 
-    /* MPI-3 newly added feature: request version of get call. */
-    /**
-     * TODO: Check if
+    /* TODO: Check if
      *    MPI_Rget_accumulate(
      *      NULL, 0, MPI_BYTE, dest, nbytes, MPI_BYTE,
      *      target_unitid, disp_rel, nbytes, MPI_BYTE, MPI_NO_OP, win,
      *      &mpi_req)
      *  ... could be an better alternative?
      */
-    DART_LOG_DEBUG("dart_get_handle: %d bytes (collective allocation) "
+    DART_LOG_DEBUG("dart_get_handle:  -- %d elements (collective allocation) "
                    "from %d at offset %d",
-                   n_count, target_unitid_abs, offset);
+                   n_count, target_unitid_rel, offset);
+    DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
-                dest,
-                n_count,
-                MPI_BYTE,
-                target_unitid_rel,
-                disp_rel,
-                n_count,
-                MPI_BYTE,
-                win,
+                dest,              // origin address
+                n_count,           // origin count
+                mpi_type,          // origin data type
+                target_unitid_rel, // target rank
+                disp_rel,          // target disp in window
+                n_count,           // target count
+                mpi_type,          // target data type
+                win,               // window
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {
-      DART_LOG_ERROR("dart_get_handle: MPI_Rget failed");
+      DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
+      free(*handle);
       return DART_ERR_INVAL;
     }
     (*handle)->dest = target_unitid_rel;
   } else {
-    /* The memory accessed is allocated with local allocation. */
-    DART_LOG_TRACE("dart_get_handle: local, segment:%lld", seg_id);
-    DART_LOG_DEBUG("dart_get_handle: %d bytes (local allocation) "
+    /*
+     * The memory accessed is allocated with local allocation.
+     */
+    DART_LOG_TRACE("dart_get_handle:  -- local, segment:%d", seg_id);
+    DART_LOG_DEBUG("dart_get_handle:  -- %d elements (local allocation) "
                    "from %d at offset %d",
-                   nbytes, target_unitid_abs, offset);
+                   n_count, target_unitid_abs, offset);
     win     = dart_win_local_alloc;
+    DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
-                dest,
-                nbytes,
-                MPI_BYTE,
-                target_unitid_abs,
-                offset,
-                nbytes,
-                MPI_BYTE,
-                win,
+                dest,              // origin address
+                n_count,           // origin count
+                mpi_type,          // origin data type
+                target_unitid_abs, // target rank
+                offset,            // target disp in window
+                n_count,           // target count
+                mpi_type,          // target data type
+                win,               // window
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {
-      DART_LOG_ERROR("dart_get_handle: MPI_Rget failed");
+      DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
+      free(*handle);
       return DART_ERR_INVAL;
     }
     (*handle)->dest = target_unitid_abs;
   }
   (*handle)->request = mpi_req;
   (*handle)->win     = win;
-  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%lld req:%lld",
+  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%d req:%d",
                  *handle, (*handle)->dest, win, mpi_req);
   return DART_OK;
 }
@@ -592,8 +675,7 @@ dart_ret_t dart_get_blocking(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get_blocking: shared windows enabled");
   if (seg_id >= 0) {
-    int       i,
-              is_sharedmem = 0;
+    int       i;
     MPI_Aint  maximum_size;
     int       disp_unit;
     char*     baseptr;
@@ -604,18 +686,17 @@ dart_ret_t dart_get_blocking(
 //        0,
 //        dart_sharedmem_size[j] - 1);
 
-    /* Check whether the target is in the same node as the calling unit
-     * or not.
+    /*
+     * Use memcpy if the target is in the same node as the calling unit:
      */
     i = dart_sharedmem_table[index][gptr.unitid];
     if (i >= 0) {
-      is_sharedmem = 1;
-    }
-    if (is_sharedmem) {
       DART_LOG_DEBUG("dart_get_blocking: shared memory segment, seg_id:%d",
                      seg_id);
       if (seg_id) {
         if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr) == -1) {
+          DART_LOG_ERROR("dart_get_blocking ! "
+                         "dart_adapt_transtable_get_baseptr failed");
           return DART_ERR_INVAL;
         }
       } else {
@@ -649,49 +730,51 @@ dart_ret_t dart_get_blocking(
 #else
   DART_LOG_DEBUG("dart_get_blocking: shared windows disabled");
 #endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  {
-    if (seg_id) {
-      win = dart_win_lists[index];
-      unit_g2l(index, target_unitid_abs, &target_unitid_rel);
-      if (dart_adapt_transtable_get_disp(
-            seg_id,
-            target_unitid_rel,
-            &disp_s) == -1) {
-        return DART_ERR_INVAL;
-      }
-      disp_rel = disp_s + offset;
-    } else {
-      win               = dart_win_local_alloc;
-      disp_rel          = offset;
-      target_unitid_rel = target_unitid_abs;
+  /*
+   * MPI shared windows disabled or target and calling unit are on different
+   * nodes, use MPI_RGet:
+   */
+  if (seg_id) {
+    win = dart_win_lists[index];
+    unit_g2l(index, target_unitid_abs, &target_unitid_rel);
+    if (dart_adapt_transtable_get_disp(
+          seg_id,
+          target_unitid_rel,
+          &disp_s) == -1) {
+      DART_LOG_ERROR("dart_get_blocking ! "
+                     "dart_adapt_transtable_get_disp failed");
+      return DART_ERR_INVAL;
     }
-    DART_LOG_DEBUG("dart_get_blocking: MPI_RGet");
-    MPI_Rget(
-      dest,
-      nbytes,
-      MPI_BYTE,
-      target_unitid_rel,
-      disp_rel,
-      nbytes,
-      MPI_BYTE,
-      win,
-      &mpi_req);
-    DART_LOG_DEBUG("dart_get_blocking: MPI_Wait");
-    MPI_Wait(&mpi_req, &mpi_sta);
-
-    if (seg_id) {
-      DART_LOG_DEBUG("dart_get_blocking: %d bytes "
-                     "(allocated with collective allocation) from %d "
-                     "at offset %d",
-                     nbytes, target_unitid_abs, offset);
-    } else {
-      DART_LOG_DEBUG("dart_get_blocking: %d bytes "
-                     "(allocated with local allocation) from %d "
-                     "at offset %d",
-                     nbytes, target_unitid_abs, offset);
-    }
-    return DART_OK;
+    disp_rel = disp_s + offset;
+    DART_LOG_DEBUG("dart_get_blocking: %d bytes "
+                   "(collective allocation) from unit:%d offset:%d",
+                   nbytes, target_unitid_abs, offset);
+  } else {
+    win               = dart_win_local_alloc;
+    disp_rel          = offset;
+    target_unitid_rel = target_unitid_abs;
+    DART_LOG_DEBUG("dart_get_blocking: %d bytes "
+                   "(local allocation) from unit:%d offset:%d",
+                   nbytes, target_unitid_abs, offset);
   }
+  DART_LOG_DEBUG("dart_get_blocking: MPI_RGet");
+  MPI_Rget(
+    dest,
+    nbytes,
+    MPI_BYTE,
+    target_unitid_rel,
+    disp_rel,
+    nbytes,
+    MPI_BYTE,
+    win,
+    &mpi_req);
+  DART_LOG_DEBUG("dart_get_blocking: MPI_Wait");
+  MPI_Wait(&mpi_req, &mpi_sta);
+  if (mpi_sta.MPI_ERROR != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_get_blocking ! MPI_Wait status != MPI_SUCCESS");
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
 }
 
 /* -- Dart RMA Synchronization Operations -- */
@@ -707,14 +790,16 @@ dart_ret_t dart_flush(
     dart_unit_t target_unitid_rel;
     uint16_t    index = gptr.flags;
     win               = dart_win_lists[index];
-    DART_LOG_DEBUG("dart_flush() win:%lld seg:%d unit:%d",
+    DART_LOG_DEBUG("dart_flush() win:%d seg:%d unit:%d",
                    win, seg_id, target_unitid_abs);
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
+    DART_LOG_TRACE("dart_flush: MPI_Win_flush");
     MPI_Win_flush(target_unitid_rel, win);
   } else {
     win = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_flush() lwin:%p seg:%d unit:%d",
                    win, seg_id, target_unitid_abs);
+    DART_LOG_TRACE("dart_flush: MPI_Win_flush");
     MPI_Win_flush(target_unitid_abs, win);
   }
   DART_LOG_DEBUG("dart_flush > finished");
@@ -727,13 +812,14 @@ dart_ret_t dart_flush_all(
   int16_t seg_id;
   seg_id = gptr.segid;
   MPI_Win win;
-  DART_LOG_DEBUG("dart_flush_all() win:%lld", win);
+  DART_LOG_DEBUG("dart_flush_all() win:%d", win);
   if (seg_id) {
     uint16_t index = gptr.flags;
     win = dart_win_lists[index];
   } else {
     win = dart_win_local_alloc;
   }
+  DART_LOG_TRACE("dart_flush_all: MPI_Win_flush_all");
   MPI_Win_flush_all(win);
   DART_LOG_DEBUG("dart_flush_all > finished");
   return DART_OK;
@@ -750,14 +836,16 @@ dart_ret_t dart_flush_local(
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
     win = dart_win_lists[index];
-    DART_LOG_DEBUG("dart_flush_local() win:%lld seg:%d unit:%d",
+    DART_LOG_DEBUG("dart_flush_local() win:%d seg:%d unit:%d",
                    win, seg_id, target_unitid_abs);
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
+    DART_LOG_TRACE("dart_flush_local: MPI_Win_flush_local");
     MPI_Win_flush_local(target_unitid_rel, win);
   } else {
     win = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_flush_local() lwin:%p seg:%d unit:%d",
                    win, seg_id, target_unitid_abs);
+    DART_LOG_TRACE("dart_flush_local: MPI_Win_flush_local");
     MPI_Win_flush_local(target_unitid_abs, win);
   }
   DART_LOG_DEBUG("dart_flush_local > finished");
@@ -783,10 +871,30 @@ dart_ret_t dart_flush_local_all(
 dart_ret_t dart_wait_local(
   dart_handle_t handle)
 {
-  DART_LOG_DEBUG("dart_wait_local()");
-  if (handle) {
-    MPI_Status mpi_sta;
-    MPI_Wait (&(handle->request), &mpi_sta);
+  int mpi_ret;
+  DART_LOG_DEBUG("dart_wait_local() handle:%p", (void*)(handle));
+  if (handle != NULL) {
+    DART_LOG_TRACE("dart_wait_local:     handle->dest: %d", handle->dest);
+    DART_LOG_TRACE("dart_wait_local:     handle->win:  %d", handle->win);
+    DART_LOG_TRACE("dart_wait_local:     handle->req:  %d", handle->request);
+    if (handle->request != MPI_REQUEST_NULL) {
+      MPI_Status mpi_sta;
+      mpi_ret = MPI_Wait(&(handle->request), &mpi_sta);
+      DART_LOG_TRACE("dart_wait_local:        -- mpi_sta.MPI_SOURCE = %d",
+                     mpi_sta.MPI_SOURCE);
+      DART_LOG_TRACE("dart_wait_local:        -- mpi_sta.MPI_ERROR  = %d (%s)",
+                     mpi_sta.MPI_ERROR,
+                     DART__MPI__ERROR_STR(mpi_sta.MPI_ERROR));
+      if (mpi_ret != MPI_SUCCESS) {
+        DART_LOG_DEBUG("dart_wait_local ! MPI_Wait failed");
+        return DART_ERR_INVAL;
+      }
+    } else {
+      DART_LOG_TRACE("dart_wait_local:     handle->req == MPI_REQUEST_NULL");
+    }
+    /* Free handle resource */
+    DART_LOG_DEBUG("dart_wait_local:   free handle %p", (void*)(handle));
+    free(handle);
   }
   DART_LOG_DEBUG("dart_wait_local > finished");
   return DART_OK;
@@ -795,17 +903,37 @@ dart_ret_t dart_wait_local(
 dart_ret_t dart_wait(
   dart_handle_t handle)
 {
-  DART_LOG_DEBUG("dart_wait()");
+  int mpi_ret;
+  DART_LOG_DEBUG("dart_wait() handle:%p", (void*)(handle));
   if (handle != NULL) {
-    MPI_Status mpi_sta;
-    DART_LOG_DEBUG("dart_wait: MPI_Wait");
-    MPI_Wait (&(handle -> request), &mpi_sta);
-    DART_LOG_DEBUG("dart_wait: MPI_Win_flush");
-    MPI_Win_flush(handle->dest, handle->win);
+    DART_LOG_TRACE("dart_wait:     handle->dest: %d", handle->dest);
+    DART_LOG_TRACE("dart_wait:     handle->win:  %d", handle->win);
+    DART_LOG_TRACE("dart_wait:     handle->req:  %d", handle->request);
+    if (handle->request != MPI_REQUEST_NULL) {
+      MPI_Status mpi_sta;
+      DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");
+      mpi_ret = MPI_Wait(&(handle->request), &mpi_sta);
+      DART_LOG_TRACE("dart_wait:        -- mpi_sta.MPI_SOURCE: %d",
+                     mpi_sta.MPI_SOURCE);
+      DART_LOG_TRACE("dart_wait:        -- mpi_sta.MPI_ERROR:  %d:%s",
+                     mpi_sta.MPI_ERROR,
+                     DART__MPI__ERROR_STR(mpi_sta.MPI_ERROR));
+      if (mpi_ret != MPI_SUCCESS) {
+        DART_LOG_DEBUG("dart_wait ! MPI_Wait failed");
+        return DART_ERR_INVAL;
+      }
+      DART_LOG_DEBUG("dart_wait:     -- MPI_Win_flush");
+      mpi_ret = MPI_Win_flush(handle->dest, handle->win);
+      if (mpi_ret != MPI_SUCCESS) {
+        DART_LOG_DEBUG("dart_wait ! MPI_Win_flush failed");
+        return DART_ERR_INVAL;
+      }
+    } else {
+      DART_LOG_TRACE("dart_wait:     handle->request: MPI_REQUEST_NULL");
+    }
     /* Free handle resource */
-    DART_LOG_DEBUG("dart_wait: free(handle)");
+    DART_LOG_DEBUG("dart_wait:   free handle %p", (void*)(handle));
     free(handle);
-    handle = NULL;
   }
   DART_LOG_DEBUG("dart_wait > finished");
   return DART_OK;
@@ -827,29 +955,81 @@ dart_ret_t dart_test_local(
 }
 
 dart_ret_t dart_waitall_local(
-  dart_handle_t *handle,
-  size_t n)
+  dart_handle_t * handle,
+  size_t          num_handles)
 {
   int i, r_n = 0;
   DART_LOG_DEBUG("dart_waitall_local()");
-  if (*handle) {
+  if (num_handles < 1) {
+    DART_LOG_ERROR("dart_waitall_local ! number of handles = 0");
+    return DART_ERR_INVAL;
+  }
+  if (num_handles > INT_MAX) {
+    DART_LOG_ERROR("dart_waitall_local ! number of handles > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+  if (*handle != NULL) {
     MPI_Status  *mpi_sta;
     MPI_Request *mpi_req;
-    mpi_req = (MPI_Request *)malloc(n * sizeof (MPI_Request));
-    mpi_sta = (MPI_Status *)malloc(n * sizeof (MPI_Status));
-    for (i = 0; i < n; i++)  {
+    mpi_req = (MPI_Request *) malloc(num_handles * sizeof(MPI_Request));
+    mpi_sta = (MPI_Status  *) malloc(num_handles * sizeof(MPI_Status));
+    for (i = 0; i < num_handles; i++)  {
       if (handle[i]) {
-        mpi_req[r_n++] = handle[i] -> request;
+        DART_LOG_TRACE("dart_waitall_local: -- handle[%d]: %p)",
+                       i, handle[i]);
+        DART_LOG_TRACE("dart_waitall_local:    handle[%d]->dest: %d",
+                       i, handle[i]->dest);
+        DART_LOG_TRACE("dart_waitall_local:    handle[%d]->win:  %d",
+                       i, handle[i]->win);
+        DART_LOG_TRACE("dart_waitall_local:    handle[%d]->req:  %d",
+                       i, handle[i]->request);
+        mpi_req[r_n] = handle[i]->request;
+        r_n++;
       }
     }
+    /*
+     * Wait for local completion of MPI requests:
+     */
+    DART_LOG_DEBUG("dart_waitall_local: "
+                   "MPI_Waitall, %d requests from %d handles",
+                   r_n, num_handles);
     MPI_Waitall(r_n, mpi_req, mpi_sta);
     r_n = 0;
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < num_handles; i++) {
       if (handle[i]) {
-        handle[r_n++] -> request = mpi_req[i++];
+        DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%d].MPI_SOURCE: %d",
+                       r_n, mpi_sta[r_n].MPI_SOURCE);
+        DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%d].MPI_ERROR:  %d:%s",
+                       r_n,
+                       mpi_sta[r_n].MPI_ERROR,
+                       DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
+        if (mpi_req[r_n] != MPI_REQUEST_NULL) {
+          if (mpi_sta[r_n].MPI_ERROR == MPI_SUCCESS) {
+            DART_LOG_TRACE("dart_waitall_local: -- MPI_Request_free");
+            if (MPI_Request_free(&mpi_req[r_n]) != MPI_SUCCESS) {
+              DART_LOG_TRACE("dart_waitall_local ! MPI_Request_free failed");
+              free(mpi_req);
+              free(mpi_sta);
+              return DART_ERR_INVAL;
+            }
+          } else {
+            DART_LOG_TRACE("dart_waitall_local: cannot free request %d",
+                           "mpi_sta[%d] = %d (%s)",
+                           r_n,
+                           mpi_sta[r_n].MPI_ERROR,
+                           DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
+          }
+        }
+        DART_LOG_DEBUG("dart_waitall_local: free handle[%d] %p",
+                       i, (void*)(handle[i]));
+        free(handle[i]);
+        handle[i] = NULL;
+        r_n++;
       }
     }
+    DART_LOG_TRACE("dart_waitall_local: free MPI_Request temporaries");
     free(mpi_req);
+    DART_LOG_TRACE("dart_waitall_local: free MPI_Status temporaries");
     free(mpi_sta);
   }
   DART_LOG_DEBUG("dart_waitall_local > finished");
@@ -864,11 +1044,11 @@ dart_ret_t dart_waitall(
   int num_handles = (int)n;
   DART_LOG_DEBUG("dart_waitall()");
   if (n < 1) {
-    DART_LOG_ERROR("dart_waitall: number of handles = 0");
+    DART_LOG_ERROR("dart_waitall ! number of handles = 0");
     return DART_ERR_INVAL;
   }
   if (n > INT_MAX) {
-    DART_LOG_ERROR("dart_waitall: number of handles > INT_MAX 0");
+    DART_LOG_ERROR("dart_waitall ! number of handles > INT_MAX");
     return DART_ERR_INVAL;
   }
   DART_LOG_DEBUG("dart_waitall: number of handles: %d", num_handles);
@@ -880,11 +1060,12 @@ dart_ret_t dart_waitall(
     /*
      * copy requests from DART handles to MPI request array:
      */
+    DART_LOG_TRACE("dart_waitall: copying DART handles to MPI request array");
     r_n = 0;
     for (i = 0; i < num_handles; i++) {
       if (handle[i]) {
-        DART_LOG_DEBUG("dart_waitall: "
-                       "  handle[%d](%p): dest:%d win:%lld req:%lld",
+        DART_LOG_DEBUG("dart_waitall:"
+                       " -- handle[%d](%p): dest:%d win:%d req:%lld",
                        i, handle[i],
                        handle[i]->dest, handle[i]->win, handle[i]->request);
         mpi_req[r_n] = handle[i]->request;
@@ -911,25 +1092,32 @@ dart_ret_t dart_waitall(
       DART_LOG_DEBUG("dart_waitall: MPI_Waitall completed");
     } else {
       DART_LOG_ERROR("dart_waitall: MPI_Waitall failed");
+      DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
+      free(mpi_req);
+      DART_LOG_TRACE("dart_waitall: free MPI_Status temporaries");
+      free(mpi_sta);
       return DART_ERR_INVAL;
     }
     /*
      * copy MPI requests back to DART handles:
      */
+    DART_LOG_TRACE("dart_waitall: copying MPI requests back to DART handles");
     r_n = 0;
     for (i = 0; i < num_handles; i++) {
       if (handle[i]) {
         if (mpi_req[r_n] == MPI_REQUEST_NULL) {
-          DART_LOG_TRACE("dart_waitall: mpi_req[%d] = MPI_REQUEST_NULL",
+          DART_LOG_TRACE("dart_waitall: -- mpi_req[%d] = MPI_REQUEST_NULL",
                          r_n);
         } else {
-          DART_LOG_TRACE("dart_waitall: mpi_req[%d] = %d",
+          DART_LOG_TRACE("dart_waitall: -- mpi_req[%d] = %d",
                          r_n, mpi_req[r_n]);
         }
-        DART_LOG_TRACE("dart_waitall: mpi_sta[%d].MPI_SOURCE = %d",
+        DART_LOG_TRACE("dart_waitall: -- mpi_sta[%d].MPI_SOURCE: %d",
                        r_n, mpi_sta[r_n].MPI_SOURCE);
-        DART_LOG_TRACE("dart_waitall: mpi_sta[%d].MPI_ERROR  = %d",
-                       r_n, mpi_sta[r_n].MPI_ERROR);
+        DART_LOG_TRACE("dart_waitall: -- mpi_sta[%d].MPI_ERROR:  %d:%s",
+                       r_n,
+                       mpi_sta[r_n].MPI_ERROR,
+                       DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
         handle[i]->request = mpi_req[r_n];
         r_n++;
       }
@@ -941,24 +1129,35 @@ dart_ret_t dart_waitall(
     for (i = 0; i < num_handles; i++) {
       if (handle[i]) {
         if (handle[i]->request == MPI_REQUEST_NULL) {
-          DART_LOG_TRACE("dart_waitall: - handle[%d] done (MPI_REQUEST_NULL)",
+          DART_LOG_TRACE("dart_waitall: -- handle[%d] done (MPI_REQUEST_NULL)",
                          i);
         } else {
-          DART_LOG_TRACE("dart_waitall: - MPI_Win_flush(handle[%d]: %p)",
+          DART_LOG_TRACE("dart_waitall: -- MPI_Win_flush(handle[%d]: %p)",
                          i, handle[i]);
-          DART_LOG_TRACE("dart_waitall:     handle[%d]->dest: %d",
+          DART_LOG_TRACE("dart_waitall:      handle[%d]->dest: %d",
                          i, handle[i]->dest);
-          DART_LOG_TRACE("dart_waitall:     handle[%d]->win: %d",
+          DART_LOG_TRACE("dart_waitall:      handle[%d]->win:  %d",
                          i, handle[i]->win);
-          if(MPI_Win_flush(handle[i]->dest, handle[i]->win) !=
-              MPI_SUCCESS)
-          {
+          DART_LOG_TRACE("dart_waitall:      handle[%d]->req:  %d",
+                         i, handle[i]->request);
+          /*
+           * MPI_Win_flush to wait for remote completion:
+           */
+          if (MPI_Win_flush(handle[i]->dest, handle[i]->win) != MPI_SUCCESS) {
             DART_LOG_ERROR("dart_waitall: MPI_Win_flush failed");
+            DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
+            free(mpi_req);
+            DART_LOG_TRACE("dart_waitall: free MPI_Status temporaries");
+            free(mpi_sta);
             return DART_ERR_INVAL;
           }
-          DART_LOG_TRACE("dart_waitall: MPI_Request_free");
+          DART_LOG_TRACE("dart_waitall: -- MPI_Request_free");
           if (MPI_Request_free(&handle[i]->request) != MPI_SUCCESS) {
             DART_LOG_ERROR("dart_waitall: MPI_Request_free failed");
+            DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
+            free(mpi_req);
+            DART_LOG_TRACE("dart_waitall: free MPI_Status temporaries");
+            free(mpi_sta);
             return DART_ERR_INVAL;
           }
         }
@@ -968,10 +1167,11 @@ dart_ret_t dart_waitall(
      * free memory:
      */
     DART_LOG_DEBUG("dart_waitall: free handles");
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < num_handles; i++) {
       if (handle[i]) {
         /* Free handle resource */
-        DART_LOG_TRACE("dart_waitall: free handle %d", i);
+        DART_LOG_TRACE("dart_waitall: -- free handle[%d]: %p",
+                       i, (void*)(handle[i]));
         free(handle[i]);
         handle[i] = NULL;
       }
