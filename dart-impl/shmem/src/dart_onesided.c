@@ -117,16 +117,6 @@ dart_ret_t dart_get_handle(
   return DART_ERR_OTHER;
 }
 
-dart_ret_t dart_get_type_handle(
-  void *dest,
-  dart_gptr_t ptr,
-	size_t nbytes,
-  dart_datatype_t dtype,
-  dart_handle_t *handle)
-{
-  return DART_ERR_OTHER;
-}
-
 dart_ret_t dart_put_handle(
   dart_gptr_t     ptr,
   const void    * src,

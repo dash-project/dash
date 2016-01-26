@@ -138,8 +138,6 @@ void summa(
   typedef typename MatrixTypeC::pattern_type pattern_c_type;
   typedef std::array<index_t, 2>             coords_t;
 
-  const bool prefetch_local_blocks = false;
-
   static_assert(
       std::is_same<value_type, double>::value ||
       std::is_same<value_type, float>::value,
@@ -259,10 +257,14 @@ void summa(
 #endif
   // Copy of buffer pointers for swapping, delete[] on swapped pointers tends
   // to crash:
-  value_type * local_block_a_get  = buf_block_a_get;
-  value_type * local_block_b_get  = buf_block_b_get;
-  value_type * local_block_a_comp = buf_block_a_comp;
-  value_type * local_block_b_comp = buf_block_b_comp;
+  value_type * local_block_a_get      = buf_block_a_get;
+  value_type * local_block_b_get      = buf_block_b_get;
+  value_type * local_block_a_comp     = buf_block_a_comp;
+  value_type * local_block_b_comp     = buf_block_b_comp;
+  value_type * local_block_a_get_bac  = nullptr;
+  value_type * local_block_b_get_bac  = nullptr;
+  value_type * local_block_a_comp_bac = nullptr;
+  value_type * local_block_b_comp_bac = nullptr;
   // -------------------------------------------------------------------------
   // Prefetch blocks from A and B for first local multiplication:
   // -------------------------------------------------------------------------
@@ -298,30 +300,32 @@ void summa(
                  "local:", block_a_lptr != nullptr,
                  "unit:",  block_a.begin().lpos().unit,
                  "view:",  block_a.begin().viewspec());
-  if (prefetch_local_blocks || block_a_lptr == nullptr) {
+  if (block_a_lptr == nullptr) {
     get_a = dash::copy_async(block_a.begin(), block_a.end(),
                              local_block_a_comp);
   } else {
-    local_block_a_comp = block_a_lptr;
+    local_block_a_comp_bac = local_block_a_comp;
+    local_block_a_comp     = block_a_lptr;
   }
   DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b",
                  "block:", block_b_get_coords,
                  "local:", block_b_lptr != nullptr,
                  "unit:",  block_b.begin().lpos().unit,
                  "view:",  block_b.begin().viewspec());
-  if (prefetch_local_blocks || block_b_lptr == nullptr) {
+  if (block_b_lptr == nullptr) {
     get_b = dash::copy_async(block_b.begin(), block_b.end(),
                              local_block_b_comp);
   } else {
-    local_block_b_comp = block_b_lptr;
+    local_block_b_comp_bac = local_block_b_comp;
+    local_block_b_comp     = block_b_lptr;
   }
-  if (prefetch_local_blocks || block_a_lptr == nullptr) {
+  if (block_a_lptr == nullptr) {
     DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a.wait",
                    "waiting for prefetching of block A from unit",
                    block_a.begin().lpos().unit);
     get_a.wait();
   }
-  if (prefetch_local_blocks || block_b_lptr == nullptr) {
+  if (block_b_lptr == nullptr) {
     DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b.wait",
                    "waiting for prefetching of block B from unit",
                    block_b.begin().lpos().unit);
@@ -389,24 +393,28 @@ void summa(
                        "local:", block_a_lptr != nullptr,
                        "unit:",  block_a.begin().lpos().unit,
                        "view:",  block_a.begin().viewspec());
-        if (prefetch_local_blocks || block_a_lptr == nullptr) {
+        if (block_a_lptr == nullptr) {
           get_a = dash::copy_async(block_a.begin(),
                                    block_a.end(),
                                    local_block_a_get);
+          local_block_a_get_bac = nullptr;
         } else {
-          local_block_a_get = block_a_lptr;
+          local_block_a_get_bac = local_block_a_get;
+          local_block_a_get     = block_a_lptr;
         }
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b",
                        "block:", block_b_get_coords,
                        "local:", block_b_lptr != nullptr,
                        "unit:",  block_b.begin().lpos().unit,
                        "view:",  block_b.begin().viewspec());
-        if (prefetch_local_blocks || block_b_lptr == nullptr) {
+        if (block_b_lptr == nullptr) {
           get_b = dash::copy_async(block_b.begin(),
                                    block_b.end(),
                                    local_block_b_get);
+          local_block_b_get_bac = nullptr;
         } else {
-          local_block_b_get = block_b_lptr;
+          local_block_b_get_bac = local_block_b_get;
+          local_block_b_get     = block_b_lptr;
         }
       } else {
         DASH_LOG_TRACE("dash::summa", " ->",
@@ -428,51 +436,25 @@ void summa(
           block_size_n,
           block_size_p,
           memory_order);
-#ifdef DASH_ENABLE_LOGGING___
-      auto A = local_block_a_comp;
-      auto B = local_block_b_comp;
-      auto C = l_block_c_comp.begin().local();
-      std::vector< std::vector<value_type> > a_rows;
-      std::vector< std::vector<value_type> > b_rows;
-      std::vector< std::vector<value_type> > c_rows;
-      for (auto row = 0; row < block_size_n; ++row) {
-        std::vector<value_type> a_row;
-        std::vector<value_type> b_row;
-        std::vector<value_type> c_row;
-        for (auto col = 0; col < block_size_m; ++col) {
-          auto offset = row * block_size_n + col;
-          a_row.push_back(A[offset]);
-          b_row.push_back(B[offset]);
-          c_row.push_back(C[offset]);
-        }
-        a_rows.push_back(a_row);
-        b_rows.push_back(b_row);
-        c_rows.push_back(c_row);
+      if (local_block_a_comp_bac != nullptr) {
+        local_block_a_comp     = local_block_a_comp_bac;
+        local_block_a_comp_bac = nullptr;
       }
-      for (auto row : a_rows) {
-        DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
-                       "  submatrix A:", row);
+      if (local_block_b_comp_bac != nullptr) {
+        local_block_b_comp     = local_block_b_comp_bac;
+        local_block_b_comp_bac = nullptr;
       }
-      for (auto row : b_rows) {
-        DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
-                       "x submatrix B:", row);
-      }
-      for (auto row : c_rows) {
-        DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
-                       "= submatrix C:", row);
-      }
-#endif
       if (!last) {
         // -------------------------------------------------------------------
         // Wait for local copies:
         // -------------------------------------------------------------------
-        if (prefetch_local_blocks || block_a_lptr == nullptr) {
+        if (block_a_lptr == nullptr) {
           DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a.wait",
                          "waiting for prefetching of block A from unit",
                          block_a.begin().lpos().unit);
           get_a.wait();
         }
-        if (prefetch_local_blocks || block_b_lptr == nullptr) {
+        if (block_b_lptr == nullptr) {
           DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b.wait",
                          "waiting for prefetching of block B from unit",
                          block_b.begin().lpos().unit);
@@ -485,13 +467,13 @@ void summa(
         // -----------------------------------------------------------------
         std::swap(local_block_a_get, local_block_a_comp);
         std::swap(local_block_b_get, local_block_b_comp);
-        if (local_block_a_get != buf_block_a_get &&
-            local_block_a_get != buf_block_a_comp) {
-          local_block_a_get = buf_block_a_comp;
+        if (local_block_a_get_bac != nullptr) {
+          local_block_a_comp_bac = local_block_a_get_bac;
+          local_block_a_get_bac  = nullptr;
         }
-        if (local_block_b_get != buf_block_b_get &&
-            local_block_b_get != buf_block_b_comp) {
-          local_block_b_get = buf_block_b_comp;
+        if (local_block_b_get_bac != nullptr) {
+          local_block_b_comp_bac = local_block_b_get_bac;
+          local_block_b_get_bac  = nullptr;
         }
       }
     }

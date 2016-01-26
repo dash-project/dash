@@ -85,7 +85,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
     array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
   array.barrier();
-  
+
   LOG_MESSAGE("Requesting remote blocks");
   // Copy values from all non-local blocks:
   int block = 0;
@@ -105,7 +105,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   }
   // Wait for completion of get operations:
   LOG_MESSAGE("Waiting for completion of async requests");
-  dart_waitall(
+  dart_waitall_local(
     &handles[0],
     handles.size()
   );

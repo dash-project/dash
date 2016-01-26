@@ -122,7 +122,6 @@ dart_ret_t
 dart_team_memalloc_aligned(
   dart_team_t   teamid,
   size_t        nbytes,
-  int           elem_size,
   dart_gptr_t * gptr)
 {
 	size_t size;
@@ -198,8 +197,7 @@ dart_team_memalloc_aligned(
    */
 	MPI_Win_allocate_shared(
     nbytes,
-//  sizeof (char),
-    elem_size,
+    sizeof (char),
     win_info,
     sharedmem_comm,
     &sub_mem,
@@ -278,14 +276,14 @@ dart_team_memalloc_aligned(
 dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 {
 	dart_unit_t unitid;
-       	dart_team_myid (teamid, &unitid);
+  dart_team_myid (teamid, &unitid);
 	uint16_t index = gptr.flags;
 	char *sub_mem;
 
 	MPI_Win win;
 
 	int flag;
-  	int16_t seg_id = gptr.segid;
+ 	int16_t seg_id = gptr.segid;
 
 	win = dart_win_lists[index];
 

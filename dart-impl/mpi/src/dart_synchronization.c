@@ -58,7 +58,6 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 	 * hold the next blocking unit info waiting on the lock. */
 	dart_team_memalloc_aligned(teamid,
                              sizeof(int32_t), // number of bytes
-                             sizeof(char),    // size of single value
                              &gptr_list);
 
 	MPI_Win win;

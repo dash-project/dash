@@ -4,6 +4,9 @@
 #include <gtest/gtest.h>
 #include <libdash.h>
 
+#include <sstream>
+#include <iomanip>
+
 /**
  * Test fixture for algorithm \c dash::summa.
  */
@@ -54,7 +57,12 @@ protected:
     }
     DASH_LOG_DEBUG("SUMMATest.print_matrix", "summa.matrix", name);
     for (auto row : values) {
-      DASH_LOG_DEBUG("SUMMATest.print_matrix", "summa.matrix", row);
+      std::ostringstream ss;
+      for (auto val : row) {
+        ss << std::setprecision(1) << std::fixed << std::setw(4)
+           << val << " ";
+      }
+      DASH_LOG_DEBUG("SUMMATest.print_matrix", "summa.matrix", ss.str());
     }
   }
 
