@@ -679,7 +679,7 @@ public:
     if (this->size() != team.size()) {
       DASH_THROW(
         dash::exception::InvalidArgument,
-        "Size of team " << team.size() << " differs from " <<
+        "Size of team "     << team.size()  << " differs from " <<
         "size of teamspec " << this->size() << " in TeamSpec()");
     }
     // Test if other teamspec has been default-constructed and has
@@ -812,7 +812,7 @@ public:
    */
   SizeType num_units(dim_t dimension) const
   {
-    return this->size();
+    return parent_t::extent(dimension);
   }
 
   /**
