@@ -72,11 +72,17 @@ TEST_F(TilePatternTest, Distribute1DimTile)
   }
 }
 
-TEST_F(TilePatternTest, Distribute2DimTileXY)
+TEST_F(TilePatternTest, Distribute2DimTile)
 {
   DASH_TEST_LOCAL_ONLY();
 
   typedef dash::default_index_t index_t;
+
+  if (dash::size() % 2 != 0) {
+    LOG_MESSAGE("Team size must be multiple of 2 for "
+                "TilePatternTest.Distribute2DimTile");
+    return;
+  }
 
   // 2-dimensional, blocked partitioning in first dimension:
   //
@@ -103,14 +109,14 @@ TEST_F(TilePatternTest, Distribute2DimTileXY)
       dash::DistributionSpec<2>(
         dash::TILE(block_size_x),
         dash::TILE(block_size_y)),
-      dash::TeamSpec<2>(dash::Team::All()),
+      dash::TeamSpec<2>(dash::size()/2, 2),
       dash::Team::All());
   dash::TilePattern<2, dash::COL_MAJOR> pat_tile_col(
       dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(
         dash::TILE(block_size_x),
         dash::TILE(block_size_y)),
-      dash::TeamSpec<2>(dash::Team::All()),
+      dash::TeamSpec<2>(dash::size()/2, 2),
       dash::Team::All());
   ASSERT_EQ(dash::TeamSpec<2>(dash::Team::All()).size(), team_size);
   ASSERT_EQ(pat_tile_row.capacity(), size);
@@ -180,3 +186,58 @@ TEST_F(TilePatternTest, Distribute2DimTileXY)
   }
 }
 
+TEST_F(TilePatternTest, Tile2DimTeam1Dim)
+{
+  DASH_TEST_LOCAL_ONLY();
+
+  typedef dash::default_index_t index_t;
+
+  // 2-dimensional, blocked partitioning in first dimension:
+  //
+  // [ team 0[0] | team 0[1] | ... | team 0[8]  | team 0[9]  | ... ]
+  // [ team 0[2] | team 0[3] | ... | team 0[10] | team 0[11] | ... ]
+  // [ team 0[4] | team 0[5] | ... | team 0[12] | team 0[13] | ... ]
+  // [ team 0[6] | team 0[7] | ... | team 0[14] | team 0[15] | ... ]
+  size_t team_size      = dash::Team::All().size();
+  // Choose 'inconvenient' extents:
+  size_t block_size_x   = 3;
+  size_t block_size_y   = 2;
+  size_t block_size     = block_size_x * block_size_y;
+  size_t extent_x       = team_size * 2 * block_size_x;
+  size_t extent_y       = team_size * 2 * block_size_y;
+  size_t size           = extent_x * extent_y;
+  size_t max_per_unit   = size / team_size;
+  LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
+      extent_x, extent_y,
+      block_size_x, block_size_y,
+      team_size,
+      max_per_unit);
+
+  dash::TeamSpec<2> teamspec(dash::Team::All());
+  ASSERT_EQ(1,            teamspec.rank());
+  ASSERT_EQ(dash::size(), teamspec.num_units(0));
+  ASSERT_EQ(1,            teamspec.num_units(1));
+  ASSERT_EQ(dash::size(), teamspec.size());
+
+  dash::TilePattern<2, dash::ROW_MAJOR> pattern(
+      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::DistributionSpec<2>(
+        dash::TILE(block_size_x),
+        dash::TILE(block_size_y)),
+      teamspec,
+      dash::Team::All());
+
+  ASSERT_EQ(dash::TeamSpec<2>(dash::Team::All()).size(), team_size);
+
+  std::vector< std::vector<dart_unit_t> > pattern_units;
+  for (int x = 0; x < extent_x; ++x) {
+    std::vector<dart_unit_t> row_units;
+    for (int y = 0; y < extent_y; ++y) {
+      row_units.push_back(pattern.unit_at(std::array<index_t, 2> { x, y }));
+    }
+    pattern_units.push_back(row_units);
+  }
+  for (auto row_units : pattern_units) {
+    DASH_LOG_DEBUG_VAR("TilePatternTest.Tile2DimTeam1Dim", row_units);
+  }
+}

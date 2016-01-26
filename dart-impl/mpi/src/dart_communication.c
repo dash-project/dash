@@ -797,11 +797,6 @@ dart_ret_t dart_get_blocking(
     return DART_ERR_INVAL;
   }
 
-  if (mpi_sta.MPI_ERROR != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_get_blocking ! MPI_Wait status != MPI_SUCCESS");
-    return DART_ERR_INVAL;
-  }
-
   DART_LOG_DEBUG("dart_get_blocking > finished");
   return DART_OK;
 }
