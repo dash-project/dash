@@ -251,15 +251,6 @@ dash::Future<ValueType *> copy_impl(
     } else {
       DASH_LOG_TRACE("dash::copy_impl [Future]", "  No pending handles");
     }
-/*
-    for (auto handle : req_handles) {
-      if (dart_wait_local(handle) != DART_OK) {
-        DASH_LOG_ERROR("dash::copy_impl [Future]", "  dart_wait failed");
-        DASH_THROW(
-          dash::exception::RuntimeError, "dart_wait failed");
-      }
-    }
-*/
 #endif
     DASH_LOG_TRACE("dash::copy_impl [Future] >",
                    "  async requests completed, _out:", _out);
