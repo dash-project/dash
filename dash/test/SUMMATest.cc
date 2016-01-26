@@ -12,10 +12,10 @@ TEST_F(SUMMATest, Deduction)
 
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
-  size_t tilesize_x  = 3;
-  size_t tilesize_y  = 3;
-  size_t num_local_blocks_x = 2;
-  size_t num_local_blocks_y = 2;
+  size_t tilesize_x  = 2;
+  size_t tilesize_y  = 2;
+  size_t num_local_blocks_x = 1;
+  size_t num_local_blocks_y = 1;
   size_t extent_cols = tilesize_x * num_units * num_local_blocks_x;
   size_t extent_rows = tilesize_y * num_units * num_local_blocks_y;
 
@@ -85,17 +85,21 @@ TEST_F(SUMMATest, Deduction)
 
   // Initialize operands:
   if (_dash_id == 0) {
+    // Matrix B is identity matrix:
+    for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
+      matrix_b[diag_idx][diag_idx] = 1;
+    }
     for (auto col = 0; col < pattern.extent(0); ++col) {
       for (auto row = 0; row < pattern.extent(1); ++row) {
         auto unit  = matrix_a.pattern()
                              .unit_at(std::array<index_t, 2> { col, row });
-        auto value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
+//      value_t value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
+        auto block_x  = col / tilesize_x;
+        auto block_y  = row / tilesize_x;
+        value_t value = static_cast<value_t>(block_x) +
+                        static_cast<value_t>(block_y) / 10.0;
         matrix_a[col][row] = value;
       }
-    }
-    // Matrix B is identity matrix:
-    for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
-      matrix_b[diag_idx][diag_idx] = 1;
     }
   }
 
@@ -117,14 +121,15 @@ TEST_F(SUMMATest, Deduction)
   dash::barrier();
 
   // Verify multiplication result (A x id = A):
-  if (_dash_id == 0) {
+  if (false && _dash_id == 0) {
     // Multiplication of matrix A with identity matrix B should be identical
     // to matrix A:
     for (auto col = 0; col < extent_cols; ++col) {
       for (auto row = 0; row < extent_rows; ++row) {
         auto unit = matrix_a.pattern()
                             .unit_at(std::array<index_t, 2> { col, row });
-        value_t expect = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
+//      value_t expect = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
+        value_t expect = ((1 + col) * 10) + (row + 1);
         value_t actual = matrix_c[col][row];
         ASSERT_EQ_U(expect, actual);
       }

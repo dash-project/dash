@@ -259,10 +259,14 @@ void summa(
 #endif
   // Copy of buffer pointers for swapping, delete[] on swapped pointers tends
   // to crash:
-  value_type * local_block_a_get  = buf_block_a_get;
-  value_type * local_block_b_get  = buf_block_b_get;
-  value_type * local_block_a_comp = buf_block_a_comp;
-  value_type * local_block_b_comp = buf_block_b_comp;
+  value_type * local_block_a_get      = buf_block_a_get;
+  value_type * local_block_b_get      = buf_block_b_get;
+  value_type * local_block_a_comp     = buf_block_a_comp;
+  value_type * local_block_b_comp     = buf_block_b_comp;
+  value_type * local_block_a_get_bac  = nullptr;
+  value_type * local_block_b_get_bac  = nullptr;
+  value_type * local_block_a_comp_bac = nullptr;
+  value_type * local_block_b_comp_bac = nullptr;
   // -------------------------------------------------------------------------
   // Prefetch blocks from A and B for first local multiplication:
   // -------------------------------------------------------------------------
@@ -302,7 +306,8 @@ void summa(
     get_a = dash::copy_async(block_a.begin(), block_a.end(),
                              local_block_a_comp);
   } else {
-    local_block_a_comp = block_a_lptr;
+    local_block_a_comp_bac = local_block_a_comp;
+    local_block_a_comp     = block_a_lptr;
   }
   DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b",
                  "block:", block_b_get_coords,
@@ -313,7 +318,8 @@ void summa(
     get_b = dash::copy_async(block_b.begin(), block_b.end(),
                              local_block_b_comp);
   } else {
-    local_block_b_comp = block_b_lptr;
+    local_block_b_comp_bac = local_block_b_comp;
+    local_block_b_comp     = block_b_lptr;
   }
   if (prefetch_local_blocks || block_a_lptr == nullptr) {
     DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a.wait",
@@ -393,8 +399,10 @@ void summa(
           get_a = dash::copy_async(block_a.begin(),
                                    block_a.end(),
                                    local_block_a_get);
+          local_block_a_get_bac = nullptr;
         } else {
-          local_block_a_get = block_a_lptr;
+          local_block_a_get_bac = local_block_a_get;
+          local_block_a_get     = block_a_lptr;
         }
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b",
                        "block:", block_b_get_coords,
@@ -405,8 +413,10 @@ void summa(
           get_b = dash::copy_async(block_b.begin(),
                                    block_b.end(),
                                    local_block_b_get);
+          local_block_b_get_bac = nullptr;
         } else {
-          local_block_b_get = block_b_lptr;
+          local_block_b_get_bac = local_block_b_get;
+          local_block_b_get     = block_b_lptr;
         }
       } else {
         DASH_LOG_TRACE("dash::summa", " ->",
@@ -428,7 +438,7 @@ void summa(
           block_size_n,
           block_size_p,
           memory_order);
-#ifdef DASH_ENABLE_LOGGING___
+#ifdef DASH_ENABLE_LOGGING
       auto A = local_block_a_comp;
       auto B = local_block_b_comp;
       auto C = l_block_c_comp.begin().local();
@@ -450,18 +460,41 @@ void summa(
         c_rows.push_back(c_row);
       }
       for (auto row : a_rows) {
+        std::ostringstream ss;
+        for (auto val : row) {
+          ss << std::setprecision(1) << std::fixed << std::setw(4)
+             << val << " ";
+        }
         DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
-                       "  submatrix A:", row);
+                       "  submatrix A:", ss.str());
       }
       for (auto row : b_rows) {
+        std::ostringstream ss;
+        for (auto val : row) {
+          ss << std::setprecision(1) << std::fixed << std::setw(4)
+             << val << " ";
+        }
         DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
-                       "x submatrix B:", row);
+                       "x submatrix B:", ss.str());
       }
       for (auto row : c_rows) {
+        std::ostringstream ss;
+        for (auto val : row) {
+          ss << std::setprecision(1) << std::fixed << std::setw(4)
+             << val << " ";
+        }
         DASH_LOG_TRACE("dash::internal::multiply_local", "summa.multiply",
-                       "= submatrix C:", row);
+                       "= submatrix C:", ss.str());
       }
 #endif
+      if (local_block_a_comp_bac != nullptr) {
+        local_block_a_comp     = local_block_a_comp_bac;
+        local_block_a_comp_bac = nullptr;
+      }
+      if (local_block_b_comp_bac != nullptr) {
+        local_block_b_comp     = local_block_b_comp_bac;
+        local_block_b_comp_bac = nullptr;
+      }
       if (!last) {
         // -------------------------------------------------------------------
         // Wait for local copies:
@@ -480,18 +513,53 @@ void summa(
         }
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.completed",
                        "local copies of next blocks received");
+#ifdef DASH_ENABLE_LOGGING
+        auto A = local_block_a_get;
+        auto B = local_block_b_get;
+        std::vector< std::vector<value_type> > a_rows;
+        std::vector< std::vector<value_type> > b_rows;
+        for (auto row = 0; row < block_size_n; ++row) {
+          std::vector<value_type> a_row;
+          std::vector<value_type> b_row;
+          for (auto col = 0; col < block_size_m; ++col) {
+            auto offset = row * block_size_n + col;
+            a_row.push_back(A[offset]);
+            b_row.push_back(B[offset]);
+          }
+          a_rows.push_back(a_row);
+          b_rows.push_back(b_row);
+        }
+        for (auto row : a_rows) {
+          std::ostringstream ss;
+          for (auto val : row) {
+            ss << std::setprecision(1) << std::fixed << std::setw(4)
+               << val << " ";
+          }
+          DASH_LOG_TRACE("dash::summa:", "summa.prefetch.a",
+                         "  submatrix A:", ss.str());
+        }
+        for (auto row : b_rows) {
+          std::ostringstream ss;
+          for (auto val : row) {
+            ss << std::setprecision(1) << std::fixed << std::setw(4)
+               << val << " ";
+          }
+          DASH_LOG_TRACE("dash::summa:", "summa.prefetch.b",
+                         "x submatrix B:", ss.str());
+        }
+#endif
         // -----------------------------------------------------------------
         // Swap communication and computation buffers:
         // -----------------------------------------------------------------
         std::swap(local_block_a_get, local_block_a_comp);
         std::swap(local_block_b_get, local_block_b_comp);
-        if (local_block_a_get != buf_block_a_get &&
-            local_block_a_get != buf_block_a_comp) {
-          local_block_a_get = buf_block_a_comp;
+        if (local_block_a_get_bac != nullptr) {
+          local_block_a_comp_bac = local_block_a_get_bac;
+          local_block_a_get_bac  = nullptr;
         }
-        if (local_block_b_get != buf_block_b_get &&
-            local_block_b_get != buf_block_b_comp) {
-          local_block_b_get = buf_block_b_comp;
+        if (local_block_b_get_bac != nullptr) {
+          local_block_b_comp_bac = local_block_b_get_bac;
+          local_block_b_get_bac  = nullptr;
         }
       }
     }

@@ -150,7 +150,9 @@ dash::Future<ValueType *> copy_impl(
           num_copy_elem * sizeof(ValueType),
           &get_handle),
         DART_OK);
-      req_handles.push_back(get_handle);
+      if (get_handle != NULL) {
+        req_handles.push_back(get_handle);
+      }
 #endif
       num_elem_copied += num_copy_elem;
     }
@@ -211,17 +213,16 @@ dash::Future<ValueType *> copy_impl(
       req_handles.push_back(src_gptr);
 #else
       dart_handle_t get_handle;
-      if (dart_get_handle(
+      DASH_ASSERT_RETURNS(
+        dart_get_handle(
             dest_ptr,
             src_gptr,
             num_copy_elem * sizeof(ValueType),
-            &get_handle)
-          != DART_OK) {
-        DASH_LOG_ERROR("dash::copy_impl", "dart_get_handle failed");
-        DASH_THROW(
-          dash::exception::RuntimeError, "dart_get_handle failed");
+            &get_handle),
+        DART_OK);
+      if (get_handle != NULL) {
+        req_handles.push_back(get_handle);
       }
-      req_handles.push_back(get_handle);
 #endif
       num_elem_copied += num_copy_elem;
     }
@@ -235,10 +236,21 @@ dash::Future<ValueType *> copy_impl(
     DASH_LOG_TRACE("dash::copy_impl [Future]", "  _out:", _out);
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
     for (auto gptr : req_handles) {
-      dart_flush(gptr);
+      dart_flush_local_all(gptr);
     }
 #else
-    dart_waitall_local(&req_handles[0], req_handles.size());
+    if (req_handles.size() > 0) {
+      if (dart_waitall_local(&req_handles[0], req_handles.size())
+          != DART_OK) {
+        DASH_LOG_ERROR("dash::copy_impl [Future]",
+                       "  dart_waitall_local failed");
+        DASH_THROW(
+          dash::exception::RuntimeError,
+          "dash::copy_impl [Future]: dart_waitall_local failed");
+      }
+    } else {
+      DASH_LOG_TRACE("dash::copy_impl [Future]", "  No pending handles");
+    }
 /*
     for (auto handle : req_handles) {
       if (dart_wait_local(handle) != DART_OK) {
