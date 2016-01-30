@@ -51,14 +51,14 @@ dart_ret_t dart_init(
 	int rank, size;
 	uint16_t index;
 	MPI_Win win;
-	
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)	
+
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_init: Shared memory enabled");
 	MPI_Info win_info;
 	MPI_Info_create (&win_info);
 	MPI_Info_set (win_info, "alloc_shared_noncontig", "true");
 #endif
-	
+
 	/* Initialize the teamlist. */
 	dart_adapt_teamlist_init();
 
@@ -74,7 +74,7 @@ dart_ret_t dart_init(
 		return DART_ERR_OTHER;
 	}
 	dart_teams[index] = MPI_COMM_WORLD;
-	
+
 	dart_next_availteamid++;
 
 	/* Create a global translation table for all
@@ -82,7 +82,7 @@ dart_ret_t dart_init(
 	dart_adapt_transtable_create();
 
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &size);	
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
 	dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	int i;
@@ -99,7 +99,7 @@ dart_ret_t dart_init(
     1,
     MPI_INFO_NULL,
     &sharedmem_comm);
-	
+
 	dart_sharedmem_comm_list[index] = sharedmem_comm;
 
 	MPI_Group group_all, sharedmem_group;
@@ -109,7 +109,7 @@ dart_ret_t dart_init(
 	if (sharedmem_comm != MPI_COMM_NULL) {
 		int sharedmem_unitid;
 		/* Reserve a free shared memory block for non-collective
-     * global memory allocation. */	
+     * global memory allocation. */
 		MPI_Win_allocate_shared(
       DART_MAX_LENGTH,
       sizeof(char),
@@ -139,7 +139,7 @@ dart_ret_t dart_init(
           &baseptr);
 				dart_sharedmem_local_baseptr_set[i] = baseptr;
       }
-			else { 
+			else {
         dart_sharedmem_local_baseptr_set[i] =
         dart_mempool_localalloc;
       }
@@ -164,8 +164,8 @@ dart_ret_t dart_init(
 			dart_sharedmem_table[index][i] = -1;
 		}
 
-		/* Generate the set (dart_unit_mapping) of units with absolute IDs, 
-		 * which are located in the same node 
+		/* Generate the set (dart_unit_mapping) of units with absolute IDs,
+		 * which are located in the same node
 		 */
 		MPI_Group_translate_ranks(
       sharedmem_group,
@@ -173,8 +173,8 @@ dart_ret_t dart_init(
 			sharedmem_ranks,
       group_all,
       dart_unit_mapping);
-	
-		/* The non-negative elements in the array 
+
+		/* The non-negative elements in the array
      * 'dart_sharedmem_table[index]' consist of a serial of units,
      * which are in the same node and they can communicate via
      * shared memory and i is the relative position in the node
@@ -200,7 +200,7 @@ dart_ret_t dart_init(
     dart_mempool_localalloc,
     DART_MAX_LENGTH,
     sizeof(char),
-    MPI_INFO_NULL, 
+    MPI_INFO_NULL,
 		MPI_COMM_WORLD,
     &dart_win_local_alloc);
 
@@ -213,7 +213,7 @@ dart_ret_t dart_init(
 	/* Start an access epoch on dart_win_local_alloc, and later
    * on all the units can access the memory region allocated
    * by the local allocation function through
-   * dart_win_local_alloc. */	
+   * dart_win_local_alloc. */
 	MPI_Win_lock_all(0, dart_win_local_alloc);
 
 	/* Start an access epoch on win, and later on all the units
@@ -243,7 +243,7 @@ dart_ret_t dart_exit()
 	uint16_t index;
 	dart_unit_t unitid;
 	dart_myid(&unitid);
- 	
+
 	DART_LOG_DEBUG("%2d: dart_exit()", unitid);
 	if (dart_adapt_teamlist_convert(DART_TEAM_ALL, &index) == -1) {
     DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed", unitid);
@@ -265,7 +265,7 @@ dart_ret_t dart_exit()
 	MPI_Win_free(&dart_sharedmem_win_local_alloc);
 #endif
 	MPI_Win_free(&dart_win_lists[index]);
-	
+
 	dart_adapt_transtable_destroy();
 	dart_buddy_delete(dart_localpool);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)

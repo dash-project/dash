@@ -17,6 +17,8 @@ set(ENABLE_UNIFIED_MEMORY_MODEL ${ENABLE_UNIFIED_MEMORY_MODEL}
     PARENT_SCOPE)
 set(ENABLE_DEFAULT_INDEX_TYPE_LONG ${ENABLE_DEFAULT_INDEX_TYPE_LONG}
     PARENT_SCOPE)
+set(ENABLE_SHARED_WINDOWS ${ENABLE_SHARED_WINDOWS}
+    PARENT_SCOPE)
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
@@ -91,10 +93,14 @@ endif()
 foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set(DART_LIBRARY "dart-${dart_variant}")
   set(DASH_LIBRARY "dash-${dart_variant}")
-  set(VARIANT_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS})
+  set(VARIANT_ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS})
   if (${dart_variant} STREQUAL "mpi")
-    set(VARIANT_COMPILE_FLAGS
-        "${VARIANT_COMPILE_FLAGS} -DMPI_IMPL_ID=\"${MPI_IMPL_ID}\"")
+    if (NOT ENABLE_SHARED_WINDOWS)
+      set (VARIANT_ADDITIONAL_COMPILE_FLAGS
+        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
+    endif()
+    set(VARIANT_ADDITIONAL_COMPILE_FLAGS
+      "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID=\"${MPI_IMPL_ID}\"")
   endif()
   message(STATUS "Building DASH library " ${DASH_LIBRARY})
 
@@ -111,7 +117,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   )
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
-    COMPILE_FLAGS ${VARIANT_COMPILE_FLAGS}
+    COMPILE_FLAGS ${VARIANT_ADDITIONAL_COMPILE_FLAGS}
   )
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
@@ -163,7 +169,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
-          COMPILE_FLAGS ${VARIANT_COMPILE_FLAGS}
+          COMPILE_FLAGS ${VARIANT_ADDITIONAL_COMPILE_FLAGS}
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
