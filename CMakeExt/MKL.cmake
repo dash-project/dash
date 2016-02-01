@@ -323,15 +323,37 @@ endif()
 
 set (MKL_SCALAPACK_LIBRARIES "")
 find_library(SCALAPACK_LIBRARY
-             NAMES scalapack scalapack-pvm
+             NAMES scalapack
+                   scalapack-mpi
+                   scalapack-mpich
+                   scalapack-mpich2
+                   scalapack-openmpi
+                   scalapack-pvm
+                   scalapack-lam
                    mkl_scalapack_lp64
-                   scalapack-mpi scalapack-mpich scalapack-mpich2
-                   scalapack-openmpi scalapack-lam
              PATHS ${_MKL_LIBRARY_SEARCH_DIRS}
              PATH_SUFFIXES ${_INTEL_LIBRARY_DIR_SUFFIXES}
 )
 if (SCALAPACK_LIBRARY)
   list(APPEND MKL_SCALAPACK_LIBRARIES ${SCALAPACK_LIBRARY})
+endif()
+find_library(BLACS_LIBRARY
+             NAMES blacs
+                   mkl_blacs
+                   mkl_blacs_lp64
+                   mkl_blacs_intelmpi
+                   mkl_blacs_intelmpi_lp64
+                   mkl_blacs_mpich
+                   mkl_blacs_mpich_lp64
+                   mkl_blacs_mpich2
+                   mkl_blacs_mpich2_lp64
+                   mkl_blacs_openmpi
+                   mkl_blacs_openmpi_lp64
+             PATHS ${_MKL_LIBRARY_SEARCH_DIRS}
+             PATH_SUFFIXES ${_INTEL_LIBRARY_DIR_SUFFIXES}
+)
+if (BLACS_LIBRARY)
+  list(APPEND MKL_SCALAPACK_LIBRARIES ${BLACS_LIBRARY})
 endif()
 
 if (MKL_FOUND)
