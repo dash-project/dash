@@ -10,7 +10,9 @@
 #include <vector>
 #include <memory>
 
-//#define DASH__ALGORITHM__COPY__USE_FLUSH
+#ifndef DASH__ALGORITHM__COPY__USE_WAIT
+#define DASH__ALGORITHM__COPY__USE_FLUSH
+#endif
 
 namespace dash {
 
@@ -78,8 +80,8 @@ dash::Future<ValueType *> copy_impl(
   DASH_LOG_TRACE("dash::copy_impl",
                  "total elements:", num_elem_total,
                  "expected out_last:", out_first + num_elem_total);
-  // Input iterators could be relative to a view. Map first input iterator to
-  // global index range and use it to resolve last input iterator.
+  // Input iterators could be relative to a view. Map first input iterator
+  // to global index range and use it to resolve last input iterator.
   // Do not use in_last.global() as this would span over the relative input
   // range.
   auto g_in_first      = in_first.global();
@@ -104,7 +106,7 @@ dash::Future<ValueType *> copy_impl(
 
   // MPI uses offset type int, do not copy more than INT_MAX bytes:
   size_type max_copy_elem   = (std::numeric_limits<int>::max() /
-                               sizeof(ValueType)) / 48;
+                               sizeof(ValueType));
   size_type num_elem_copied = 0;
   DASH_LOG_TRACE_VAR("dash::copy_impl", max_copy_elem);
   if (num_elem_total > max_copy_elem) {

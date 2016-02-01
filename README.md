@@ -15,7 +15,7 @@ Or, specify a new directory used for the build:
 
   (dash/)$ mkdir build && cd ./build
 
-For a list of available CMake parameters: 
+For a list of available CMake parameters:
 
   (build/)$ cmake . -L
 
@@ -24,7 +24,7 @@ will configure the build process to use clang instead of the default
 compiler:
 
   (build/)$ cmake -DCMAKE_CXX_COMPILER=clang++ \
-                       -DCMAKE_C_COMPILER=clang .. 
+                       -DCMAKE_C_COMPILER=clang ..
 
 Optionally, configure build parameters using ccmake:
 
@@ -48,17 +48,17 @@ By default, DASH is configured to build all variants of the runtime.
 You can define which implementation of DART to build using the cmake
 parameter
 
-  (build/)$ cmake -DDART_IMPLEMENTATION=mpi|cuda|shmem ... 
+  (build/)$ cmake -DDART_IMPLEMENTATION=mpi|cuda|shmem ...
 
 Programs using DASH select a runtime implementation by linking against the
-respective library. 
+respective library.
 
 ### 2. Developer Settings
 
 To activate a previous version of the DART interface, specify the
 cmake parameter
 
-  (build/)$ cmake -DDART_INTERFACE_VERSION=x.y ... 
+  (build/)$ cmake -DDART_INTERFACE_VERSION=x.y ...
 
 ### 3. Examples and Unit Tests
 
@@ -68,11 +68,11 @@ Binaries from examples and unit tests are deployed to the build direcory,
 but will not be installed.
 To disable building of examples, specify the cmake parameter
 
-  (build/)$ cmake -DBUILD_EXAMPLES=OFF ... 
+  (build/)$ cmake -DBUILD_EXAMPLES=OFF ...
 
 To disable building of unit tests, specify the cmake parameter
 
-  (build/)$ cmake -DBUILD_TESTS=OFF ... 
+  (build/)$ cmake -DBUILD_TESTS=OFF ...
 
 The example applications are located in the bin/ folder in the build
 directory.
@@ -111,6 +111,17 @@ For CUDA and SHMEM, use
 and respectively
 
   $ dartrun-shmem <app>-shmem
+
+Profiling DASH Applications using IPM
+-------------------------------------
+
+Compile IPM as described in ipm/INSTALL. Then, use `LD_PRELOAD` to run a
+DASH application built with the DART-MPI backend:
+
+  $ LD_PRELOAD=/path/to/ipm/lib/libipm.so mpirun -n <nproc> <DASH executable>
+
+Available options for IPM are documented in the
+[IPM user guide](http://ipm-hpc.org/docs/user.php).
 
 Links
 -----

@@ -6,6 +6,7 @@
 
 //#define DASH__MKL_MULTITHREADING
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
+#define DASH__ALGORITHM__COPY__USE_WAIT
 
 #include "../bench.h"
 #include <libdash.h>
@@ -58,6 +59,7 @@ typedef struct benchmark_params_t {
   bool        env_mpi_shared_win;
   bool        mkl_dyn;
 } benchmark_params;
+
 
 template<typename MatrixType>
 void init_values(
@@ -182,17 +184,17 @@ void perform_test(
            << setw(11) << "mmult.s"
            << endl;
     }
-    int  mem_total_mb;
+    int  mem_local_mb;
     if (variant == "dash") {
       auto block_s = (n / num_units) * (n / num_units);
-      mem_total_mb = ( sizeof(value_t) * (
+      mem_local_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
-                         (3 * n * n) +
+                         (3 * n * n / num_units) +
                          // four local temporary blocks per unit:
                          (num_units * 4 * block_s)
                        ) / 1024 ) / 1024;
     } else if (variant == "mkl") {
-      mem_total_mb = ( sizeof(value_t) * (
+      mem_local_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
                          (3 * n * n)
                        ) / 1024 ) / 1024;
@@ -201,7 +203,7 @@ void perform_test(
          << setw(7)  << params.threads << ", "
          << setw(6)  << n              << ", "
          << setw(10) << (n*n)          << ", "
-         << setw(6)  << mem_total_mb   << ", "
+         << setw(6)  << mem_local_mb   << ", "
          << setw(5)  << variant        << ", "
          << setw(12) << std::fixed     << std::setprecision(4)
                      << gflop          << ", "

@@ -38,6 +38,11 @@ make_distribution_spec(
     auto extent_d  = sizespec.extent(d);
     auto nunits_d  = teamspec.extent(d);
     auto nblocks_d = nunits_d;
+    DASH_LOG_TRACE("dash::make_distribution_spec",
+                   "d:",          d,
+                   "extent[d]:",  extent_d,
+                   "nunits[d]:",  nunits_d,
+                   "nblocks[d]:", nblocks_d);
     if (MappingTraits::diagonal || MappingTraits::neighbor) {
       // Diagonal and neighbor mapping properties require occurrence of every
       // unit in any hyperplane. Use total number of units in every dimension:
@@ -143,6 +148,8 @@ make_pattern(
   DASH_LOG_TRACE("dash::make_pattern", PartitioningTraits());
   DASH_LOG_TRACE("dash::make_pattern", MappingTraits());
   DASH_LOG_TRACE("dash::make_pattern", LayoutTraits());
+  DASH_LOG_TRACE_VAR("dash::make_pattern", sizespec.extents());
+  DASH_LOG_TRACE_VAR("dash::make_pattern", teamspec.extents());
   // Make distribution spec from template- and run time parameters:
   auto distspec =
     make_distribution_spec<

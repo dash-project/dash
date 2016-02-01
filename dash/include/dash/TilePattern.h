@@ -37,7 +37,6 @@ namespace dash {
  *
  * \concept{DashPatternConcept}
  *
- * TODO: Rename to BalancedDiagonalTilePattern.
  */
 template<
   dim_t NumDimensions,
@@ -46,8 +45,7 @@ template<
 class TilePattern
 {
 public:
-  static constexpr char const * PatternName =
-    "BalancedDiagonalTilePattern<N>";
+  static constexpr char const * PatternName = "TilePattern<N>";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
@@ -204,8 +202,8 @@ public:
     _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
     // Degrading to 1-dimensional team spec for now:
-    _teamspec(_distspec, *_team),
-//  _teamspec(_arguments.teamspec()),
+//  _teamspec(_distspec, *_team),
+    _teamspec(_arguments.teamspec()),
     _memory_layout(_arguments.sizespec().extents()),
     _nunits(_teamspec.size()),
     _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
@@ -264,23 +262,23 @@ public:
    */
   TilePattern(
     /// TilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t &         sizespec,
+    const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
     const DistributionSpec_t & dist,
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t &         teamspec,
+    const TeamSpec_t         & teamspec,
     /// Team containing units to which this pattern maps its elements
-    dash::Team &               team     = dash::Team::All())
+    dash::Team               & team     = dash::Team::All())
   : _distspec(dist),
     _team(&team),
     // Degrading to 1-dimensional team spec for now:
-    _teamspec(_distspec, *_team),
-//  _teamspec(
-//    teamspec,
-//    _distspec,
-//    *_team),
+//  _teamspec(_distspec, *_team),
+    _teamspec(
+      teamspec,
+      _distspec,
+      *_team),
     _memory_layout(sizespec.extents()),
     _nunits(_teamspec.size()),
     _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
@@ -339,13 +337,13 @@ public:
    */
   TilePattern(
     /// TilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t &         sizespec,
+    const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
     const DistributionSpec_t & dist = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
-    Team &                     team = dash::Team::All())
+    Team                     & team = dash::Team::All())
   : _distspec(dist),
     _team(&team),
     _teamspec(_distspec, *_team),
