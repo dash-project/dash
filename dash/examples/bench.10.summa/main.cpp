@@ -6,10 +6,11 @@
 
 //#define DASH__MKL_MULTITHREADING
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
-#define DASH__ALGORITHM__COPY__USE_WAIT
+#define DASH_ENABLE_SCALAPACK
 
 #include "../bench.h"
 #include <libdash.h>
+#include <dash/internal/Math.h>
 
 #include <array>
 #include <string>
@@ -28,7 +29,23 @@
 #include <mkl_cblas.h>
 #include <mkl_blas.h>
 #include <mkl_lapack.h>
+#ifdef DASH_ENABLE_SCALAPACK
+//#include <mkl_scalapack.h>
+#include <mkl_pblas.h>
+#include <mkl_blacs.h>
 #endif
+#endif
+
+extern "C" {
+  void descinit_(int *idescal,
+                 int *m, int *n,
+                 int *mb,int *nb,
+                 int *dummy1 , int *dummy2,
+                 int *icon,
+                 int *mla,
+                 int *info);
+  int numroc_(int *n, int *nb, int *iproc, int *isrcprocs, int *nprocs);
+}
 
 using std::cout;
 using std::endl;
@@ -56,10 +73,10 @@ typedef struct benchmark_params_t {
   extent_t    units_inc;
   extent_t    threads;
   bool        env_mkl;
+  bool        env_scalapack;
   bool        env_mpi_shared_win;
   bool        mkl_dyn;
 } benchmark_params;
-
 
 template<typename MatrixType>
 void init_values(
@@ -78,6 +95,10 @@ void init_values(
   extent_t   sb);
 
 std::pair<double, double> test_blas(
+  extent_t sb,
+  unsigned repeat);
+
+std::pair<double, double> test_pblas(
   extent_t sb,
   unsigned repeat);
 
@@ -212,8 +233,10 @@ void perform_test(
   }
 
   std::pair<double, double> t_mmult;
-  if (variant == "mkl") {
+  if (variant == "mkl" || variant == "blas") {
     t_mmult = test_blas(n, num_repeats);
+  } else if (variant == "pblas") {
+    t_mmult = test_pblas(n, num_repeats);
   } else {
     t_mmult = test_dash(n, num_repeats);
   }
@@ -290,6 +313,11 @@ std::pair<double, double> test_dash(
                 "size type of deduced pattern and size spec differ");
   static_assert(std::is_same<index_t,  decltype(pattern)::index_type>::value,
                 "index type of deduced pattern and size spec differ");
+
+  DASH_ASSERT_MSG(pattern.extent(0) % dash::size() == 0,
+                  "Matrix columns not divisible by number of units");
+  DASH_ASSERT_MSG(pattern.extent(1) % dash::size() == 0,
+                  "Matrix rows not divisible by number of units");
 
   dash::Matrix<value_t, 2, index_t> matrix_a(pattern);
   dash::Matrix<value_t, 2, index_t> matrix_b(pattern);
@@ -414,27 +442,197 @@ std::pair<double, double> test_blas(
 #endif
 }
 
-benchmark_params parse_args(int argc, char * argv[]) {
-  benchmark_params params;
-  params.size_base = 0;
-  params.rep_base  = 2;
-  params.rep_max   = 0;
-  params.variant   = "dash";
-  params.units_max = 0;
-  params.units_inc = 0;
-  params.threads   = 1;
-  params.mkl_dyn   = false;
-#ifdef DASH_ENABLE_MKL
-  params.env_mkl   = true;
-  params.exp_max   = 7;
+/**
+ * Returns pair of durations (init_secs, multiply_secs).
+ *
+ * See:
+ * http://www-01.ibm.com/support/knowledgecenter/SSNR5K_5.2.0/com.ibm.cluster.pessl.v5r2.pssl100.doc/am6gr_lgemm.htm
+ * http://www.trentu.ca/academic/physics/batkinson/scalapack_docs/node11.html
+ *
+ */
+std::pair<double, double> test_pblas(
+  extent_t sb,
+  unsigned repeat)
+{
+#if defined(DASH_ENABLE_MKL) && defined(DASH_ENABLE_SCALAPACK)
+  MKL_INT          i_one     =  1;
+  MKL_INT          i_zero    =  0;
+  MKL_INT          i_negone  = -1;
+  const float      f_one     =  1.0E+0;
+  const float      f_zero    =  0.0E+0;
+  const float      f_negone  = -1.0E+0;
+  const double     d_one     =  1.0E+0;
+  const double     d_zero    =  0.0E+0;
+  const double     d_negone  = -1.0E+0;
+  int64_t          N         = sb;
+  char             storage[] = "R";
+  char             trans_a[] = "N";
+  char             trans_b[] = "N";
+  int            * desc_a;
+  int            * desc_b;
+  int            * desc_c;
+  value_t        * matrix_a_dist;
+  value_t        * matrix_b_dist;
+  value_t        * matrix_c_dist;
+
+  std::pair<double, double> time;
+
+  int ictxt, myid, myrow, mycol;
+  int ierr;
+  int numproc  = dash::size();
+  int nprow    = numproc / 4,
+      npcol    = 4;
+  // Block extent in block size (nb x nb):
+  int nb       = sb / nprow;
+
+  // Number of rows in submatrix C used in the computation, and
+  // if transa = 'N', the number of rows in submatrix A.
+  int m;
+  // Number of columns in submatrix C used in the computation, and
+  // if transb = 'N', the number of columns in submatrix B
+  int n;
+  // If transa = 'N', the number of columns in submatrix A.
+  // If transb = 'N', the number of rows in submatrix B.
+  int k;
+  // Row index of the global matrix A, identifying the first row of the
+  // submatrix A.
+  int i_a;
+  // Column index of the global matrix A, identifying the first column of the
+  // submatrix A.
+  int j_a;
+  // Row index of the global matrix B, identifying the first row of the
+  // submatrix B.
+  int i_b;
+  // Column index of the global matrix B, identifying the first column of the
+  // submatrix B.
+  int j_b;
+  // Row index of the global matrix C, identifying the first row of the
+  // submatrix C.
+  int i_c;
+  // Column index of the global matrix C, identifying the first column of the
+  // submatrix C.
+  int j_c;
+
+  int lld_a, lld_b, lld_c;
+  int mp;
+  int kp;
+  int kq;
+  int nq;
+
+  // Note:
+  // Alternatives to blacs_foo functions: Cblacs_foo
+
+  // Initialize process grid:
+  blacs_get_(&i_negone, &i_zero, &ictxt);
+  blacs_gridinit_(&ictxt, storage, &nprow, &npcol);
+  blacs_gridinfo_(&ictxt,          &nprow, &npcol, &myrow, &mycol);
+  // Initialize array descriptors for matrix A, B, C:
+  mp = numroc_(&m, &nb, &myrow, &i_zero, &nprow);
+  kp = numroc_(&k, &nb, &myrow, &i_zero, &nprow);
+  kq = numroc_(&k, &nb, &mycol, &i_zero, &npcol);
+  nq = numroc_(&n, &nb, &mycol, &i_zero, &npcol);
+  lld_a = dash::math::max(mp, 1);
+  lld_b = dash::math::max(kp, 1);
+  lld_c = dash::math::max(mp, 1);
+  /*
+     descinit(&desc,
+              row,         cols,
+              block_rows,  block_cols,
+              pgrid_row_0, pgrid_col_0,
+              &context,
+              local_leading_dim);
+  */
+  descinit_(desc_a, &m, &k, &nb, &nb, 0, 0, &ictxt, &lld_a, &ierr);
+  DASH_ASSERT_EQ(0, ierr, "descinit(desc_a) failed");
+  descinit_(desc_b, &k, &n, &nb, &nb, 0, 0, &ictxt, &lld_b, &ierr);
+  DASH_ASSERT_EQ(0, ierr, "descinit(desc_b) failed");
+  descinit_(desc_c, &m, &n, &nb, &nb, 0, 0, &ictxt, &lld_c, &ierr);
+  DASH_ASSERT_EQ(0, ierr, "descinit(desc_c) failed");
+
+  // Allocate and initialize matrices A, B, C:
+  // Note:
+  // Leading dimensions in effect denote the linear storage order such that:
+  // A[i][j] := A[j * lda + i]
+
+  matrix_a_dist = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
+  matrix_b_dist = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
+  matrix_c_dist = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
+
+#if 0
+  // Call pdgeadd_ to distribute matrix (i.e. copy A into A_distr).
+  // Computes sum of two matrices A,A': A' := alpha * A + beta * A'
+  // so using alpha = 1, beta = 0 copies A to A'. Here, A' is the distributed
+  // matrix of A (matrix_a_dist).
+  matrix_a = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
+  matrix_b = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
+  matrix_c = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
+
+  pdgeadd_("N", &m, &n,
+           &d_one,  matrix_a,      &i_one, &i_one, descA,
+           &d_zero, matrix_a_dist, &i_one, &i_one, descA_distr);
+#endif
+
+  auto ts_multiply_start = Timer::Now();
+  pdgemm_(
+      trans_a,
+      trans_b,
+      &m,
+      &n,
+      &k,
+      &d_one,
+      static_cast<const double *>(matrix_a_dist),
+      &i_a,
+      &j_a,
+      desc_a,
+      static_cast<const double *>(matrix_b_dist),
+      &i_b,
+      &j_b,
+      desc_b,
+      &d_zero,
+      static_cast<double *>(matrix_c_dist),
+      &i_c,
+      &j_c,
+      desc_c);
+  time.second = Timer::ElapsedSince(ts_multiply_start);
+
+  // Exit process grid:
+  blacs_gridexit_(&ictxt);
+  blacs_exit_(&i_zero);
+
+  mkl_free(matrix_a_dist);
+  mkl_free(matrix_b_dist);
+  mkl_free(matrix_c_dist);
+
+  return time;
 #else
-  params.env_mkl   = false;
-  params.exp_max   = 4;
+  DASH_THROW(dash::exception::RuntimeError, "MKL or ScaLAPACK not enabled");
+#endif
+}
+
+benchmark_params parse_args(int argc, char * argv[])
+{
+  benchmark_params params;
+  params.size_base          = 0;
+  params.rep_base           = 2;
+  params.rep_max            = 0;
+  params.variant            = "dash";
+  params.units_max          = 0;
+  params.units_inc          = 0;
+  params.threads            = 1;
+  params.exp_max            = 4;
+  params.mkl_dyn            = false;
+  params.env_mpi_shared_win = true;
+  params.env_mkl            = false;
+  params.env_scalapack      = false;
+#ifdef DASH_ENABLE_MKL
+  params.env_mkl            = true;
+  params.exp_max            = 7;
+#endif
+#ifdef DASH_ENABLE_SCALAPACK
+  params.env_scalapack      = true;
 #endif
 #ifdef DART_MPI_DISABLE_SHARED_WINDOWS
   params.env_mpi_shared_win = false;
-#else
-  params.env_mpi_shared_win = true;
 #endif
   extent_t size_base     = 0;
   extent_t num_units_inc = 0;
@@ -530,6 +728,12 @@ void print_params(const benchmark_params & params)
     cout << " enabled" << endl;
     cout << "--   MKL dynamic:        ";
     if (params.mkl_dyn) {
+      cout << " enabled" << endl;
+    } else {
+      cout << "disabled" << endl;
+    }
+    cout << "--   ScaLAPACK:          ";
+    if (params.env_scalapack) {
       cout << " enabled" << endl;
     } else {
       cout << "disabled" << endl;

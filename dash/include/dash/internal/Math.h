@@ -16,8 +16,15 @@ constexpr T1 div_ceil(
   /// Dividend
   T1 a,
   /// Divisor
-  T2 b) {
+  T2 b)
+{
   return (a / b) + static_cast<T1>(a % b > 0);
+}
+
+template<typename T>
+constexpr T max(T a, T b)
+{
+  return (a > b) ? a : b;
 }
 
 } // namespace math

@@ -156,6 +156,7 @@ endif()
 set(_MKL_LIBRARY_SEARCH_DIRS ${_MKL_ROOT_SEARCH_DIRS})
 if (MKL_INCLUDE_DIR)
     list(APPEND _MKL_LIBRARY_SEARCH_DIRS "${MKL_INCLUDE_DIR}/..")
+#   list(APPEND _MKL_LIBRARY_SEARCH_DIRS "${MKL_INCLUDE_DIR}/../lib/mic")
 endif()
 
 if (MKL_FIND_DEBUG)
@@ -320,12 +321,26 @@ elseif (_MKL_MISSING_LIBRARIES)
     endif()
 endif()
 
+set (MKL_SCALAPACK_LIBRARIES "")
+find_library(SCALAPACK_LIBRARY
+             NAMES scalapack scalapack-pvm
+                   mkl_scalapack_lp64
+                   scalapack-mpi scalapack-mpich scalapack-mpich2
+                   scalapack-openmpi scalapack-lam
+             PATHS ${_MKL_LIBRARY_SEARCH_DIRS}
+             PATH_SUFFIXES ${_INTEL_LIBRARY_DIR_SUFFIXES}
+)
+if (SCALAPACK_LIBRARY)
+  list(APPEND MKL_SCALAPACK_LIBRARIES ${SCALAPACK_LIBRARY})
+endif()
+
 if (MKL_FOUND)
     if (NOT MKL_FIND_QUIETLY OR MKL_FIND_DEBUG)
         message(STATUS "Intel(R) MKL found:")
-        message(STATUS "MKL_INCLUDE_DIRS: ${MKL_INCLUDE_DIRS}")
-        message(STATUS "MKL_LIBRARY_DIRS: ${MKL_LIBRARY_DIRS}")
-        message(STATUS "MKL_LIBRARIES:    ${MKL_LIBRARIES}")
+        message(STATUS "MKL_INCLUDE_DIRS:        " ${MKL_INCLUDE_DIRS})
+        message(STATUS "MKL_LIBRARY_DIRS:        " ${MKL_LIBRARY_DIRS})
+        message(STATUS "MKL_LIBRARIES:           " ${MKL_LIBRARIES})
+        message(STATUS "MKL_SCALAPACK_LIBRARIES: " ${MKL_SCALAPACK_LIBRARIES})
     endif()
 else()
     if (MKL_FIND_REQUIRED)
