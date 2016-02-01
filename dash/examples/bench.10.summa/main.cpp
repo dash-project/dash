@@ -473,9 +473,9 @@ std::pair<double, double> test_pblas(
   char             storage[] = "R";
   char             trans_a[] = "N";
   char             trans_b[] = "N";
-  int            * desc_a;
-  int            * desc_b;
-  int            * desc_c;
+  int              desc_a[12];
+  int              desc_b[12];
+  int              desc_c[12];
   value_t        * matrix_a_dist;
   value_t        * matrix_b_dist;
   value_t        * matrix_c_dist;
@@ -489,6 +489,7 @@ std::pair<double, double> test_pblas(
       npcol    = 4;
   // Block extent in block size (nb x nb):
   int nb       = N / nprow;
+  int mb       = N / nprow;
 
   // Number of rows in submatrix C used in the computation, and
   // if transa = 'N', the number of rows in submatrix A.
@@ -501,22 +502,22 @@ std::pair<double, double> test_pblas(
   int k   = N / npcol;
   // Row index of the global matrix A, identifying the first row of the
   // submatrix A.
-  int i_a = myrow * nprow;
+  int i_a = 0;
   // Column index of the global matrix A, identifying the first column of the
   // submatrix A.
-  int j_a = mycol * npcol;
+  int j_a = 0;
   // Row index of the global matrix B, identifying the first row of the
   // submatrix B.
-  int i_b = myrow * nprow;
+  int i_b = 0;
   // Column index of the global matrix B, identifying the first column of the
   // submatrix B.
-  int j_b = mycol * npcol;
+  int j_b = 0;
   // Row index of the global matrix C, identifying the first row of the
   // submatrix C.
-  int i_c = myrow * nprow;
+  int i_c = 0;
   // Column index of the global matrix C, identifying the first column of the
   // submatrix C.
-  int j_c = mycol * npcol;
+  int j_c = 0;
 
   int lld_a, lld_b, lld_c;
   int mp;
@@ -533,6 +534,9 @@ std::pair<double, double> test_pblas(
   blacs_get_(&i_negone, &i_zero, &ictxt);
   blacs_gridinit_(&ictxt, storage, &nprow, &npcol);
   blacs_gridinfo_(&ictxt,          &nprow, &npcol, &myrow, &mycol);
+  // Set i_a, j_a, i_b, j_b, i_c, j_c:
+  // TODO
+
   // Initialize array descriptors for matrix A, B, C:
   mp = numroc_(&m, &nb, &myrow, &i_zero, &nprow);
   kp = numroc_(&k, &nb, &myrow, &i_zero, &nprow);
@@ -549,11 +553,14 @@ std::pair<double, double> test_pblas(
               &context,
               local_leading_dim);
   */
-  descinit_(desc_a, &m, &k, &nb, &nb, 0, 0, &ictxt, &lld_a, &ierr);
+  descinit_(desc_a, &m, &k, &nb, &nb, &i_zero, &i_zero, &ictxt, &lld_a,
+            &ierr);
   DASH_ASSERT_EQ(0, ierr, "descinit(desc_a) failed");
-  descinit_(desc_b, &k, &n, &nb, &nb, 0, 0, &ictxt, &lld_b, &ierr);
+  descinit_(desc_b, &k, &n, &nb, &nb, &i_zero, &i_zero, &ictxt, &lld_b,
+            &ierr);
   DASH_ASSERT_EQ(0, ierr, "descinit(desc_b) failed");
-  descinit_(desc_c, &m, &n, &nb, &nb, 0, 0, &ictxt, &lld_c, &ierr);
+  descinit_(desc_c, &m, &n, &nb, &nb, &i_zero, &i_zero, &ictxt, &lld_c,
+            &ierr);
   DASH_ASSERT_EQ(0, ierr, "descinit(desc_c) failed");
 
   // Allocate and initialize matrices A, B, C:
