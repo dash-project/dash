@@ -82,10 +82,18 @@ if (MKL_FOUND)
        ${MKL_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_LIBRARIES})
+else()
+  message(INFO "MKL not found")
+endif()
+
+if (MKL_SCALAPACK_FOUND)
+  message(INFO "ScaLAPACK found")
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_SCALAPACK")
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_SCALAPACK_LIBRARIES})
 else()
-  message(INFO "MKL not found")
+  message(INFO "ScaLAPACK not found")
 endif()
 
 ## Build targets
