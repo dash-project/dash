@@ -70,8 +70,9 @@ if (MKL_FIND_VERSION AND NOT MKL_FIND_QUIETLY)
     message(WARNING "Requesting a specific version of Intel(R) MKL is not supported")
 endif()
 
-message(STATUS "(ENV) $MKLROOT:   " $ENV{MKLROOT})
-message(STATUS "(ENV) $INTELROOT: " $ENV{INTELROOT})
+message(STATUS "(ENV) $MKLROOT:       " $ENV{MKLROOT})
+message(STATUS "(ENV) $INTELROOT:     " $ENV{INTELROOT})
+message(STATUS "(ENV) $SCALAPACK_LIB: " $ENV{SCALAPACK_LIB})
 
 # Use environment variables from Intel build scripts, if available
 if (NOT MKL_ROOT AND NOT $ENV{MKLROOT} STREQUAL "")
@@ -322,28 +323,34 @@ elseif (_MKL_MISSING_LIBRARIES)
 endif()
 
 set (MKL_SCALAPACK_LIBRARIES "")
-find_library(SCALAPACK_LIBRARY
-             NAMES scalapack
-                   scalapack-mpi
-                   scalapack-mpich
-                   scalapack-mpich2
-                   scalapack-openmpi
-                   scalapack-pvm
-                   scalapack-lam
-                   mkl_scalapack_lp64
-             PATHS ${_MKL_LIBRARY_SEARCH_DIRS}
-             PATH_SUFFIXES ${_INTEL_LIBRARY_DIR_SUFFIXES}
-)
 set(MKL_SCALAPACK_FOUND TRUE)
+
+# if (NOT $ENV{SCALAPACK_LIB} STREQUAL "")
+#   set(SCALAPACK_LIBRARY $ENV{SCALAPACK_LIB})
+# else()
+  find_library(SCALAPACK_LIBRARY
+               NAMES scalapack
+                     scalapack-mpi
+                     scalapack-mpich
+                     scalapack-mpich2
+                     scalapack-openmpi
+                     scalapack-pvm
+                     scalapack-lam
+                     mkl_scalapack_lp64
+               PATHS ${_MKL_LIBRARY_SEARCH_DIRS}
+               PATH_SUFFIXES ${_INTEL_LIBRARY_DIR_SUFFIXES}
+  )
+# endif()
 if (SCALAPACK_LIBRARY)
   list(APPEND MKL_SCALAPACK_LIBRARIES ${SCALAPACK_LIBRARY})
 else()
   set(MKL_SCALAPACK_FOUND FALSE)
 endif()
+
 find_library(BLACS_LIBRARY
              NAMES blacs
-                   mkl_blacs
-                   mkl_blacs_lp64
+#                  mkl_blacs
+#                  mkl_blacs_lp64
                    mkl_blacs_intelmpi
                    mkl_blacs_intelmpi_lp64
                    mkl_blacs_mpich

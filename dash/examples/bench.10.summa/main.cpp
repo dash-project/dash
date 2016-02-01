@@ -6,7 +6,7 @@
 
 //#define DASH__MKL_MULTITHREADING
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
-#define DASH_ENABLE_SCALAPACK
+//#define DASH_ENABLE_SCALAPACK
 
 #include "../bench.h"
 #include <libdash.h>
@@ -214,7 +214,12 @@ void perform_test(
                          // four local temporary blocks per unit:
                          (num_units * 4 * block_s)
                        ) / 1024 ) / 1024;
-    } else if (variant == "mkl") {
+    } else if (variant == "mkl" || variant == "blas") {
+      mem_local_mb = ( sizeof(value_t) * (
+                         // matrices A, B, C:
+                         (3 * n * n)
+                       ) / 1024 ) / 1024;
+    } else if (variant == "pblas") {
       mem_local_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
                          (3 * n * n)
@@ -483,41 +488,43 @@ std::pair<double, double> test_pblas(
   int nprow    = numproc / 4,
       npcol    = 4;
   // Block extent in block size (nb x nb):
-  int nb       = sb / nprow;
+  int nb       = N / nprow;
 
   // Number of rows in submatrix C used in the computation, and
   // if transa = 'N', the number of rows in submatrix A.
-  int m;
+  int m   = N / nprow;
   // Number of columns in submatrix C used in the computation, and
   // if transb = 'N', the number of columns in submatrix B
-  int n;
+  int n   = N / npcol;
   // If transa = 'N', the number of columns in submatrix A.
   // If transb = 'N', the number of rows in submatrix B.
-  int k;
+  int k   = N / npcol;
   // Row index of the global matrix A, identifying the first row of the
   // submatrix A.
-  int i_a;
+  int i_a = myrow * nprow;
   // Column index of the global matrix A, identifying the first column of the
   // submatrix A.
-  int j_a;
+  int j_a = mycol * npcol;
   // Row index of the global matrix B, identifying the first row of the
   // submatrix B.
-  int i_b;
+  int i_b = myrow * nprow;
   // Column index of the global matrix B, identifying the first column of the
   // submatrix B.
-  int j_b;
+  int j_b = mycol * npcol;
   // Row index of the global matrix C, identifying the first row of the
   // submatrix C.
-  int i_c;
+  int i_c = myrow * nprow;
   // Column index of the global matrix C, identifying the first column of the
   // submatrix C.
-  int j_c;
+  int j_c = mycol * npcol;
 
   int lld_a, lld_b, lld_c;
   int mp;
   int kp;
   int kq;
   int nq;
+
+  auto ts_init_start = Timer::Now();
 
   // Note:
   // Alternatives to blacs_foo functions: Cblacs_foo
@@ -572,7 +579,10 @@ std::pair<double, double> test_pblas(
            &d_zero, matrix_a_dist, &i_one, &i_one, descA_distr);
 #endif
 
+  time.first = Timer::ElapsedSince(ts_init_start);
+
   auto ts_multiply_start = Timer::Now();
+#ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
   pdgemm_(
       trans_a,
       trans_b,
@@ -594,6 +604,10 @@ std::pair<double, double> test_pblas(
       &j_c,
       desc_c);
   time.second = Timer::ElapsedSince(ts_multiply_start);
+#else
+  DASH_THROW(dash::exception::RuntimeError,
+             "PBLAS benchmark expects type double");
+#endif
 
   // Exit process grid:
   blacs_gridexit_(&ictxt);
