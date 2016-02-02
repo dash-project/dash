@@ -11,3 +11,4 @@ build-ci
 *.log
 ipm/*/GEN.*
 my.*.sh
+.syntastic*
