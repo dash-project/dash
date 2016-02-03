@@ -30,7 +30,7 @@
 #include <mkl_blas.h>
 #include <mkl_lapack.h>
 #ifdef DASH_ENABLE_SCALAPACK
-//#include <mkl_scalapack.h>
+// #include <mkl_scalapack.h>
 #include <mkl_pblas.h>
 #include <mkl_blacs.h>
 #endif
@@ -118,6 +118,9 @@ int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
 
+  int nunits = dash::size();
+  int myid   = dash::size();
+
   Timer::Calibrate(0);
 
   dash::barrier();
@@ -133,11 +136,11 @@ int main(int argc, char* argv[])
 #ifdef DASH_ENABLE_MKL
   if (variant == "mkl") {
     // Require single unit for MKL variant:
-    if (dash::size() != 1) {
+    if (nunits != 1) {
       DASH_THROW(
         dash::exception::RuntimeError,
         "MKL variant of bench.10.summa called with" <<
-        "team size " << dash::size() << " " <<
+        "team size " << nunits << " " <<
         "but must be run on a single unit.");
     }
   }
@@ -159,7 +162,7 @@ int main(int argc, char* argv[])
   }
 #endif
 
-  if (dash::myid() == 0) {
+  if (myid == 0) {
     print_params(params);
   }
 
@@ -185,11 +188,12 @@ void perform_test(
   unsigned                 num_repeats,
   const benchmark_params & params)
 {
+  auto myid        = dash::myid();
   auto num_units   = dash::size();
   auto num_threads = params.threads;
 
   double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9;
-  if (dash::myid() == 0) {
+  if (myid == 0) {
     if (iteration == 0) {
       // Print data set column headers:
       cout << setw(7)  << "units"   << ", "
@@ -250,7 +254,7 @@ void perform_test(
 
   dash::barrier();
 
-  if (dash::myid() == 0) {
+  if (myid == 0) {
     double s_mult = 1.0e-6 * t_mult;
     double s_init = 1.0e-6 * t_init;
     double gflops = (gflop * num_repeats) / s_mult;
@@ -353,7 +357,7 @@ void init_values(
   value_t  * matrix_c,
   extent_t   sb)
 {
-  // Initialize local sections of matrix C:
+  // Initialize local sections of matrices:
   for (int i = 0; i < sb; ++i) {
     for (int j = 0; j < sb; ++j) {
       value_t value = (100000 * (i % 12)) + (j * 1000) + i;
@@ -460,70 +464,84 @@ std::pair<double, double> test_pblas(
   unsigned repeat)
 {
 #if defined(DASH_ENABLE_MKL) && defined(DASH_ENABLE_SCALAPACK)
-  MKL_INT          i_one     =  1;
-  MKL_INT          i_zero    =  0;
-  MKL_INT          i_negone  = -1;
+  typedef MKL_INT int_t;
+
+  int_t            N         = sb;
+  int_t            i_one     =  1;
+  int_t            i_zero    =  0;
+  int_t            i_negone  = -1;
   const float      f_one     =  1.0E+0;
   const float      f_zero    =  0.0E+0;
   const float      f_negone  = -1.0E+0;
   const double     d_one     =  1.0E+0;
   const double     d_zero    =  0.0E+0;
   const double     d_negone  = -1.0E+0;
-  int64_t          N         = sb;
   char             storage[] = "R";
   char             trans_a[] = "N";
   char             trans_b[] = "N";
   int              desc_a[12];
   int              desc_b[12];
   int              desc_c[12];
-  value_t        * matrix_a_dist;
-  value_t        * matrix_b_dist;
-  value_t        * matrix_c_dist;
+  int              desc_a_distr[12];
+  int              desc_b_distr[12];
+  int              desc_c_distr[12];
+  value_t        * matrix_a_distr;
+  value_t        * matrix_b_distr;
+  value_t        * matrix_c_distr;
 
   std::pair<double, double> time;
 
-  int ictxt, myid, myrow, mycol;
-  int ierr;
-  int numproc  = dash::size();
-  int nprow    = numproc / 4,
-      npcol    = 4;
-  // Block extent in block size (nb x nb):
-  int nb       = N / nprow;
-  int mb       = N / nprow;
+  int_t ictxt;
+  int_t myrow, mycol;
+  int_t ierr;
+  int_t numproc = dash::size();
+  int_t myid    = dash::myid();
+
+  int_t nprow    = numproc / 4;
+  int_t npcol    = 4;
+  // Block extents such that block size = (nb x mb):
+  int_t sbrow    = N / nprow;
+  int_t sbcol    = N / npcol;
+  // Number of blocks:
+  int_t nbrow    = nprow;
+  int_t nbcol    = npcol;
 
   // Number of rows in submatrix C used in the computation, and
   // if transa = 'N', the number of rows in submatrix A.
-  int m   = N / nprow;
+  int_t m   = N;
   // Number of columns in submatrix C used in the computation, and
   // if transb = 'N', the number of columns in submatrix B
-  int n   = N / npcol;
+  int_t n   = N;
   // If transa = 'N', the number of columns in submatrix A.
   // If transb = 'N', the number of rows in submatrix B.
-  int k   = N / npcol;
+  int_t k   = N;
   // Row index of the global matrix A, identifying the first row of the
-  // submatrix A.
-  int i_a = 0;
+  // submatrix A. Global scope.
+  int_t i_a = 1;
   // Column index of the global matrix A, identifying the first column of the
-  // submatrix A.
-  int j_a = 0;
+  // submatrix A. Global scope.
+  int_t j_a = 1;
   // Row index of the global matrix B, identifying the first row of the
-  // submatrix B.
-  int i_b = 0;
+  // submatrix B. Global scope.
+  int_t i_b = 1;
   // Column index of the global matrix B, identifying the first column of the
-  // submatrix B.
-  int j_b = 0;
+  // submatrix B. Global scope.
+  int_t j_b = 1;
   // Row index of the global matrix C, identifying the first row of the
-  // submatrix C.
-  int i_c = 0;
+  // submatrix C. Global scope.
+  int_t i_c = 1;
   // Column index of the global matrix C, identifying the first column of the
-  // submatrix C.
-  int j_c = 0;
-
-  int lld_a, lld_b, lld_c;
-  int mp;
-  int kp;
-  int kq;
-  int nq;
+  // submatrix C. Global scope.
+  int_t j_c = 1;
+  // Local leading dimensions of global matrices:
+  int_t lld_a,       lld_b,       lld_c;
+  // Local leading dimensions of distributed submatrices:
+  int_t lld_a_distr, lld_b_distr, lld_c_distr;
+  // Blocking factors:
+  int_t mp;
+  int_t kp;
+  int_t kq;
+  int_t nq;
 
   auto ts_init_start = Timer::Now();
 
@@ -534,57 +552,94 @@ std::pair<double, double> test_pblas(
   blacs_get_(&i_negone, &i_zero, &ictxt);
   blacs_gridinit_(&ictxt, storage, &nprow, &npcol);
   blacs_gridinfo_(&ictxt,          &nprow, &npcol, &myrow, &mycol);
-  // Set i_a, j_a, i_b, j_b, i_c, j_c:
-  // TODO
 
   // Initialize array descriptors for matrix A, B, C:
-  mp = numroc_(&m, &nb, &myrow, &i_zero, &nprow);
-  kp = numroc_(&k, &nb, &myrow, &i_zero, &nprow);
-  kq = numroc_(&k, &nb, &mycol, &i_zero, &npcol);
-  nq = numroc_(&n, &nb, &mycol, &i_zero, &npcol);
-  lld_a = dash::math::max(mp, 1);
-  lld_b = dash::math::max(kp, 1);
-  lld_c = dash::math::max(mp, 1);
-  /*
-     descinit(&desc,
-              row,         cols,
-              block_rows,  block_cols,
-              pgrid_row_0, pgrid_col_0,
-              &context,
-              local_leading_dim);
-  */
-  descinit_(desc_a, &m, &k, &nb, &nb, &i_zero, &i_zero, &ictxt, &lld_a,
-            &ierr);
-  DASH_ASSERT_EQ(0, ierr, "descinit(desc_a) failed");
-  descinit_(desc_b, &k, &n, &nb, &nb, &i_zero, &i_zero, &ictxt, &lld_b,
-            &ierr);
-  DASH_ASSERT_EQ(0, ierr, "descinit(desc_b) failed");
-  descinit_(desc_c, &m, &n, &nb, &nb, &i_zero, &i_zero, &ictxt, &lld_c,
-            &ierr);
-  DASH_ASSERT_EQ(0, ierr, "descinit(desc_c) failed");
 
-  // Allocate and initialize matrices A, B, C:
-  // Note:
+  /*
+     NUMROC computes the NUMber of Rows Or Columns of a distributed matrix
+     owned by the process indicated by IPROC.
+
+     numroc(
+       n,        // - Number of rows or columns in the distributed matrix.
+       nb,       // - Block size in row or column dimension.
+       iproc,    // - Coordinate of the process whose local row or column
+                 //   is to be determined.
+       isrcproc, // - Coordinate of the process that possesses the first
+                 //   row or column in the distributed matrix.
+       nprocs    // - Total number of processes over which the matrix is
+                 //   distributed.
+     )
+   */
+  mp = numroc_(&m, &sbrow, &myrow, &i_zero, &nprow);
+  kp = numroc_(&k, &sbrow, &myrow, &i_zero, &nprow);
+  kq = numroc_(&k, &sbcol, &mycol, &i_zero, &npcol);
+  nq = numroc_(&n, &sbcol, &mycol, &i_zero, &npcol);
   // Leading dimensions in effect denote the linear storage order such that:
   // A[i][j] := A[j * lda + i]
+  // i.e. LD is used to define the distance in memory between elements of
+  // two consecutive columns which have the same row index.
+  // Local leaading dimensions (lld) refer to the size of a local block
+  // instead of the global matrix.
+  lld_a_distr = dash::math::max(mp, 1);
+  lld_b_distr = dash::math::max(kp, 1);
+  lld_c_distr = dash::math::max(mp, 1);
+  // Global matrices are considered as distributed with blocking factors (n,m)
+  // i.e. there is only one block (the whole matrix) located on process (0,0).
+  lld_a       = dash::math::max(numroc_(&n, &m, &myrow, &i_zero, &nprow), 1);
+  lld_b       = dash::math::max(numroc_(&n, &m, &myrow, &i_zero, &nprow), 1);
+  lld_c       = dash::math::max(numroc_(&n, &m, &myrow, &i_zero, &nprow), 1);
 
-  matrix_a_dist = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
-  matrix_b_dist = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
-  matrix_c_dist = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
+  DASH_LOG_DEBUG(
+      "bench.10.summa", "test_pblas",
+      "P:",     myid,
+      "npcol:", npcol,
+      "nprow:", nprow,
+      "mycol:", mycol,
+      "myrow:", myrow,
+      "sbrow:", sbrow,
+      "sbcol:", sbcol,
+      "lda_d:", lld_a_distr,
+      "ldb_d:", lld_b_distr,
+      "ldc_d:", lld_c_distr,
+      "mp:",    mp,
+      "kp:",    kp,
+      "kq:",    kq,
+      "nq:",    nq);
 
-#if 0
-  // Call pdgeadd_ to distribute matrix (i.e. copy A into A_distr).
-  // Computes sum of two matrices A,A': A' := alpha * A + beta * A'
-  // so using alpha = 1, beta = 0 copies A to A'. Here, A' is the distributed
-  // matrix of A (matrix_a_dist).
-  matrix_a = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
-  matrix_b = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
-  matrix_c = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
+  // Allocate and initialize local submatrices of A, B, C:
+  matrix_a_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
+  matrix_b_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
+  matrix_c_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
 
-  pdgeadd_("N", &m, &n,
-           &d_one,  matrix_a,      &i_one, &i_one, descA,
-           &d_zero, matrix_a_dist, &i_one, &i_one, descA_distr);
-#endif
+  init_values(matrix_a_distr, matrix_b_distr, matrix_c_distr, sbrow);
+
+  /*
+     descinit(
+       &desc,         // - Descriptor to initialize.
+       row,           // - Number of rows in the distributed matrix.
+       cols,          // - Number of columns in the distributed matrix.
+       block_rows,    // - Block size in row dimension.
+       block_cols,    // - Block size in column dimension.
+       pgrid_row_src, // - Process row over which the first row of the
+                      //   matrix is distributed.
+       pgrid_col_src, // - Process column over which the first column of
+                      //   the matrix is distributed.
+       &context,      // - BLACS context handle, indicating the global
+                      //   context of the operation on the matrix. The
+                      //   context itself is global.
+       lld            // - The leading dimension of the local array
+                      //   storing the local blocks of the distributed
+                      //   matrix.
+     );
+  */
+
+  // Create descriptors for distributed matrices:
+  descinit_(desc_a_distr, &m, &k, &sbrow, &sbcol, &i_zero, &i_zero,
+            &ictxt, &lld_a_distr, &ierr);
+  descinit_(desc_b_distr, &k, &n, &sbrow, &sbcol, &i_zero, &i_zero,
+            &ictxt, &lld_b_distr, &ierr);
+  descinit_(desc_c_distr, &m, &n, &sbrow, &sbcol, &i_zero, &i_zero,
+            &ictxt, &lld_c_distr, &ierr);
 
   time.first = Timer::ElapsedSince(ts_init_start);
 
@@ -597,19 +652,19 @@ std::pair<double, double> test_pblas(
       &n,
       &k,
       &d_one,
-      static_cast<const double *>(matrix_a_dist),
+      static_cast<const double *>(matrix_a_distr),
       &i_a,
       &j_a,
-      desc_a,
-      static_cast<const double *>(matrix_b_dist),
+      desc_a_distr,
+      static_cast<const double *>(matrix_b_distr),
       &i_b,
       &j_b,
-      desc_b,
+      desc_b_distr,
       &d_zero,
-      static_cast<double *>(matrix_c_dist),
+      static_cast<double *>(matrix_c_distr),
       &i_c,
       &j_c,
-      desc_c);
+      desc_c_distr);
   time.second = Timer::ElapsedSince(ts_multiply_start);
 #else
   DASH_THROW(dash::exception::RuntimeError,
@@ -620,9 +675,9 @@ std::pair<double, double> test_pblas(
   blacs_gridexit_(&ictxt);
   blacs_exit_(&i_zero);
 
-  mkl_free(matrix_a_dist);
-  mkl_free(matrix_b_dist);
-  mkl_free(matrix_c_dist);
+  mkl_free(matrix_a_distr);
+  mkl_free(matrix_b_distr);
+  mkl_free(matrix_c_distr);
 
   return time;
 #else
