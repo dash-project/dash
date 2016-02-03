@@ -4,7 +4,7 @@
  */
 /* @DASH_HEADER@ */
 
-//#define DASH__MKL_MULTITHREADING
+#define DASH__MKL_MULTITHREADING
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
 //#define DASH_ENABLE_SCALAPACK
 
@@ -76,6 +76,7 @@ typedef struct benchmark_params_t {
   bool        env_scalapack;
   bool        env_mpi_shared_win;
   bool        mkl_dyn;
+  float       cpu_gflops_peak;
 } benchmark_params;
 
 template<typename MatrixType>
@@ -119,7 +120,7 @@ int main(int argc, char* argv[])
   dash::init(&argc, &argv);
 
   int nunits = dash::size();
-  int myid   = dash::size();
+  int myid   = dash::myid();
 
   Timer::Calibrate(0);
 
@@ -167,13 +168,20 @@ int main(int argc, char* argv[])
   }
 
   // Run tests, try to balance overall number of gflop in test runs:
+  extent_t extent_base = 1;
   for (auto exp = 0; exp < exp_max; ++exp) {
-    extent_t size_run = pow(2, exp) * params.size_base;
+//  extent_t size_base   = pow(2, exp);
+//  extent_t extent_base = std::ceil(sqrt(size_base));
+    extent_t extent_run  = extent_base * params.size_base;
+
     if (repeats == 0) {
       repeats = 1;
     }
-    perform_test(variant, size_run, exp, repeats, params);
+    perform_test(variant, extent_run, exp, repeats, params);
     repeats /= rep_base;
+    if      (exp < 1) extent_base += 1;
+    else if (exp < 4) extent_base += 2;
+    else              extent_base += 4;
   }
 
   dash::finalize();
@@ -203,6 +211,7 @@ void perform_test(
            << setw(6)  << "mem.mb"  << ", "
            << setw(5)  << "impl"    << ", "
            << setw(12) << "gflop/r" << ", "
+           << setw(7)  << "peak.gf" << ", "
            << setw(7)  << "repeats" << ", "
            << setw(10) << "gflop/s" << ", "
            << setw(11) << "init.s"  << ", "
@@ -229,6 +238,9 @@ void perform_test(
                          (3 * n * n)
                        ) / 1024 ) / 1024;
     }
+
+    int gflops_peak = static_cast<int>(params.cpu_gflops_peak *
+                                       num_units * params.threads);
     cout << setw(7)  << num_units      << ", "
          << setw(7)  << params.threads << ", "
          << setw(6)  << n              << ", "
@@ -237,6 +249,7 @@ void perform_test(
          << setw(5)  << variant        << ", "
          << setw(12) << std::fixed     << std::setprecision(4)
                      << gflop          << ", "
+         << setw(7)  << gflops_peak    << ", "
          << setw(7)  << num_repeats    << ", "
          << std::flush;
   }
@@ -470,12 +483,9 @@ std::pair<double, double> test_pblas(
   int_t            i_one     =  1;
   int_t            i_zero    =  0;
   int_t            i_negone  = -1;
-  const float      f_one     =  1.0E+0;
-  const float      f_zero    =  0.0E+0;
-  const float      f_negone  = -1.0E+0;
-  const double     d_one     =  1.0E+0;
-  const double     d_zero    =  0.0E+0;
-  const double     d_negone  = -1.0E+0;
+  const value_t    d_one     =  1.0E+0;
+  const value_t    d_zero    =  0.0E+0;
+  const value_t    d_negone  = -1.0E+0;
   char             storage[] = "R";
   char             trans_a[] = "N";
   char             trans_b[] = "N";
@@ -607,9 +617,9 @@ std::pair<double, double> test_pblas(
       "nq:",    nq);
 
   // Allocate and initialize local submatrices of A, B, C:
-  matrix_a_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
-  matrix_b_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
-  matrix_c_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(double), 64));
+  matrix_a_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(value_t), 64));
+  matrix_b_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(value_t), 64));
+  matrix_c_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(value_t), 64));
 
   init_values(matrix_a_distr, matrix_b_distr, matrix_c_distr, sbrow);
 
@@ -667,15 +677,32 @@ std::pair<double, double> test_pblas(
         &j_c,
         desc_c_distr);
 #else
-    DASH_THROW(dash::exception::RuntimeError,
-               "PBLAS benchmark expects type double");
+    psgemm_(
+        trans_a,
+        trans_b,
+        &m,
+        &n,
+        &k,
+        &d_one,
+        static_cast<const float *>(matrix_a_distr),
+        &i_a,
+        &j_a,
+        desc_a_distr,
+        static_cast<const float *>(matrix_b_distr),
+        &i_b,
+        &j_b,
+        desc_b_distr,
+        &d_zero,
+        static_cast<float *>(matrix_c_distr),
+        &i_c,
+        &j_c,
+        desc_c_distr);
 #endif
   }
   time.second = Timer::ElapsedSince(ts_multiply_start);
 
   // Exit process grid:
   blacs_gridexit_(&ictxt);
-//blacs_exit_(&i_zero);
 
   mkl_free(matrix_a_distr);
   mkl_free(matrix_b_distr);
@@ -702,6 +729,7 @@ benchmark_params parse_args(int argc, char * argv[])
   params.env_mpi_shared_win = true;
   params.env_mkl            = false;
   params.env_scalapack      = false;
+  params.cpu_gflops_peak    = 41.4;
 #ifdef DASH_ENABLE_MKL
   params.env_mkl            = true;
   params.exp_max            = 7;
@@ -738,6 +766,8 @@ benchmark_params parse_args(int argc, char * argv[])
       params.rep_max  = static_cast<unsigned>(atoi(argv[i+1]));
     } else if (flag == "-mkldyn") {
       params.mkl_dyn  = true;
+    } else if (flag == "-cpupeak") {
+      params.cpu_gflops_peak = static_cast<float>(atof(argv[i+1]));
     }
   }
   if (size_base == 0 && max_units > 0 && num_units_inc > 0) {
