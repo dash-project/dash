@@ -644,36 +644,38 @@ std::pair<double, double> test_pblas(
   time.first = Timer::ElapsedSince(ts_init_start);
 
   auto ts_multiply_start = Timer::Now();
+  for (auto i = 0; i < repeat; ++i) {
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
-  pdgemm_(
-      trans_a,
-      trans_b,
-      &m,
-      &n,
-      &k,
-      &d_one,
-      static_cast<const double *>(matrix_a_distr),
-      &i_a,
-      &j_a,
-      desc_a_distr,
-      static_cast<const double *>(matrix_b_distr),
-      &i_b,
-      &j_b,
-      desc_b_distr,
-      &d_zero,
-      static_cast<double *>(matrix_c_distr),
-      &i_c,
-      &j_c,
-      desc_c_distr);
-  time.second = Timer::ElapsedSince(ts_multiply_start);
+    pdgemm_(
+        trans_a,
+        trans_b,
+        &m,
+        &n,
+        &k,
+        &d_one,
+        static_cast<const double *>(matrix_a_distr),
+        &i_a,
+        &j_a,
+        desc_a_distr,
+        static_cast<const double *>(matrix_b_distr),
+        &i_b,
+        &j_b,
+        desc_b_distr,
+        &d_zero,
+        static_cast<double *>(matrix_c_distr),
+        &i_c,
+        &j_c,
+        desc_c_distr);
 #else
-  DASH_THROW(dash::exception::RuntimeError,
-             "PBLAS benchmark expects type double");
+    DASH_THROW(dash::exception::RuntimeError,
+               "PBLAS benchmark expects type double");
 #endif
+  }
+  time.second = Timer::ElapsedSince(ts_multiply_start);
 
   // Exit process grid:
   blacs_gridexit_(&ictxt);
-  blacs_exit_(&i_zero);
+//blacs_exit_(&i_zero);
 
   mkl_free(matrix_a_distr);
   mkl_free(matrix_b_distr);
