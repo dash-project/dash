@@ -16,6 +16,7 @@
 #   MPI_LIBRARY                First MPI library to link against (cached)
 #   MPI_EXTRA_LIBRARY          Extra MPI libraries to link against (cached)
 #   MPI_LIBRARIES              All libraries to link MPI programs against
+#   MPI_IMPL_ID                Identifier string of MPI implementation
 
 
 # Start with the list of MPI wrappers. Acknowledgement to
@@ -80,6 +81,10 @@ if (MPI_INCLUDE_PATH AND MPI_LIBRARY)
     message(INFO "MPI implementation: MVAPICH")
     set(MPI_IMPL_IS_MVAPICH TRUE CACHE BOOL "MVAPICH detected")
     set(MPI_IMPL_ID "mvapich" CACHE STRING "MPI implementation identifier")
+  elseif ("${MPI_INCLUDE_PATH}" MATCHES "impi")
+    message(INFO "MPI implementation: Intel MPI")
+    set(MPI_IMPL_IS_INTEL TRUE CACHE BOOL "IntelMPI detected")
+    set(MPI_IMPL_ID "intelmpi" CACHE STRING "MPI implementation identifier")
   elseif ("${MPI_INCLUDE_PATH}" MATCHES "openmpi")
     message(INFO "MPI implementation: OpenMPI")
     set(MPI_IMPL_IS_OPENMPI TRUE CACHE BOOL "OpenMPI detected")
