@@ -105,7 +105,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set (DASH_LIBRARY "dash-${dart_variant}")
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS})
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS
-       "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-signed-compare")
+       "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-sign-compare")
   if (${dart_variant} STREQUAL "mpi")
     if (NOT ENABLE_SHARED_WINDOWS)
       set (VARIANT_ADDITIONAL_COMPILE_FLAGS
@@ -236,7 +236,7 @@ if (BUILD_TESTS)
     )
     set_target_properties(
       ${DASH_TEST} PROPERTIES
-      COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+      COMPILE_FLAGS ${VARIANT_ADDITIONAL_COMPILE_FLAGS}
     )
     set_target_properties(
       ${DASH_TEST} PROPERTIES
