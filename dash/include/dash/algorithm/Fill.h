@@ -32,8 +32,8 @@ void fill(
   const ElementType & value) {
   /// Global iterators to local range:
   auto index_range  = dash::local_range(first, last);
-  ElementType * lfirst = index_range.begin;
-  ElementType * llast = index_range.end;
+  auto lfirst = index_range.begin;
+  auto llast = index_range.end;
 
   std::fill(lfirst, llast, value);
 }
