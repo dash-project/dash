@@ -47,7 +47,7 @@ rm -Rf ./build/*
                      -DDART_IF_VERSION=3.2 \
                      -DINSTALL_PREFIX=$HOME/opt/ \
                      -DDART_IMPLEMENTATIONS=mpi,shmem \
-                     -DENABLE_COMPILER_WARNINGS=OFF \
+                     -DENABLE_COMPILER_WARNINGS=ON \
                      -DENABLE_ASSERTIONS=ON \
                      -DENABLE_SHARED_WINDOWS=ON \
                      -DENABLE_UNIFIED_MEMORY_MODEL=ON \
