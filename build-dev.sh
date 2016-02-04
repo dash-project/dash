@@ -48,6 +48,7 @@ rm -Rf ./build/*
                      -DINSTALL_PREFIX=$HOME/opt/ \
                      -DDART_IMPLEMENTATIONS=mpi,shmem \
                      -DENABLE_ASSERTIONS=ON \
+                     -DENABLE_COMPILER_WARNINGS=OFF \
                      -DENABLE_SHARED_WINDOWS=ON \
                      -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                      -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \

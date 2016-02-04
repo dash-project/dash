@@ -102,21 +102,21 @@ dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
                    nbytes);
 		return DART_ERR_OTHER;
 	}
-	DART_LOG_DEBUG("%2d: LOCALALLOC - %d bytes, offset = %d",
-        unitid, nbytes, gptr->addr_or_offs.offset);
+	DART_LOG_DEBUG("dart_memalloc: local alloc nbytes:%lu offset:%"PRIu64"",
+                 nbytes, gptr->addr_or_offs.offset);
 	return DART_OK;
 }
 
 dart_ret_t dart_memfree (dart_gptr_t gptr)
 {
-  if (dart_buddy_free (dart_localpool, gptr.addr_or_offs.offset) == -1) {
-    DART_LOG_ERROR("Free invalid local global pointer: "
-                   "invalid offset = %"PRIu64"",
+  if (dart_buddy_free(dart_localpool, gptr.addr_or_offs.offset) == -1) {
+    DART_LOG_ERROR("dart_memfree: invalid local global pointer: "
+                   "invalid offset: %"PRIu64"",
                    gptr.addr_or_offs.offset);
 		return DART_ERR_INVAL;
 	}
-	DART_LOG_DEBUG("%2d: LOCALFREE - offset = %llu",
-        gptr.unitid, gptr.addr_or_offs.offset);
+	DART_LOG_DEBUG("dart_memfree: local free, gptr.unitid:%2d offset:%"PRIu64"",
+                 gptr.unitid, gptr.addr_or_offs.offset);
 	return DART_OK;
 }
 
@@ -268,7 +268,7 @@ dart_team_memalloc_aligned(
 	dart_memid++;
 
   DART_LOG_DEBUG(
-    "dart_team_memalloc_aligned: bytes:%lu offset:%lu gptr_unitid:%d "
+    "dart_team_memalloc_aligned: bytes:%lu offset:%d gptr_unitid:%d "
     "across team %d",
 		nbytes, 0, gptr_unitid, teamid);
 
@@ -302,9 +302,9 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 		return DART_ERR_INVAL;
 	MPI_Win_free (&sharedmem_win);
 #endif
-  DART_LOG_DEBUG("%2d: COLLECTIVEFREE - offset = %d, gptr_unitid = %d "
-        "across team %d",
-        unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
+  DART_LOG_DEBUG("dart_team_memfree: collective free, team unit id: %2d "
+                 "offset:%"PRIu64" gptr_unitid:%d across team %d",
+                 unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 	/* Remove the related correspondence relation record from the related
    * translation table. */
 	if (dart_adapt_transtable_remove (seg_id) == -1) {
@@ -314,23 +314,24 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 }
 
 dart_ret_t
-dart_team_memregister_aligned (
+dart_team_memregister_aligned(
    dart_team_t teamid,
    size_t nbytes,
    void *addr,
    dart_gptr_t *gptr)
 {
 	size_t size;
-	dart_unit_t unitid, gptr_unitid = -1;
-	dart_team_myid (teamid, &unitid);
-	dart_team_size (teamid, &size);
+	dart_unit_t unitid;
+  dart_unit_t gptr_unitid = -1;
+	dart_team_myid(teamid, &unitid);
+	dart_team_size(teamid, &size);
 
-	MPI_Win win;
-	MPI_Comm comm;
-	MPI_Aint disp;
-	MPI_Aint *disp_set = (MPI_Aint*)malloc (size * sizeof (MPI_Aint));
-	uint16_t index;
-	int result = dart_adapt_teamlist_convert (teamid, &index);
+	MPI_Win    win;
+	MPI_Comm   comm;
+	MPI_Aint   disp;
+	MPI_Aint * disp_set = (MPI_Aint*)malloc(size * sizeof (MPI_Aint));
+	uint16_t   index;
+	int        result   = dart_adapt_teamlist_convert(teamid, &index);
 
 	if (result == -1){
 		return DART_ERR_INVAL;
@@ -339,7 +340,7 @@ dart_team_memregister_aligned (
 	dart_unit_t localid = 0;
 	if (index == 0){
 		gptr_unitid = localid;
-	}else{
+	} else {
 		MPI_Group group;
 		MPI_Group group_all;
 		MPI_Comm_group (comm, &group);
@@ -364,9 +365,10 @@ dart_team_memregister_aligned (
 	item.selfbaseptr = (char*)addr;
 	dart_adapt_transtable_add (item);
 	dart_registermemid --;
-	DART_LOG_DEBUG("%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d"
-			"across team %d",
-			unitid, nbytes, 0, gptr_unitid, teamid);
+	DART_LOG_DEBUG("dart_team_memregister_aligned: collective alloc, "
+                 "team unit %2d, nbytes:%lu offset:%d gptr_unitid:%d"
+                 "across team %d",
+                 unitid, nbytes, 0, gptr_unitid, teamid);
 	return DART_OK;
 }
 
@@ -393,7 +395,8 @@ dart_team_memderegister(
 	if (dart_adapt_transtable_remove (seg_id) == -1){
 		return DART_ERR_INVAL;
 	}
-  DART_LOG_DEBUG("%2D: COLLECTIVEFREE - offset = %d, gptr_unitid = %d"
+  DART_LOG_DEBUG("dart_team_memderegister: collective free, "
+                 "team unit %2d offset:%"PRIu64" gptr_unitid:%d"
                  "across team %d",
                  unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 	return DART_OK;

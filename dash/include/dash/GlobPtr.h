@@ -418,7 +418,7 @@ std::ostream & operator<<(
   std::ostringstream ss;
   char buf[100];
   sprintf(buf,
-          "%08X|%04X|%04X|%016X",
+          "%08X|%04X|%04X|%016lX",
           gptr._dart_gptr.unitid,
           gptr._dart_gptr.segid,
           gptr._dart_gptr.flags,

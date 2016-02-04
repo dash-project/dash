@@ -41,7 +41,7 @@ TEST_F(MatrixTest, Views)
   // Test viewspecs of blocks in global index domain:
   if (dash::myid() == 0) {
     LOG_MESSAGE("Testing viewspecs of blocks in global index domain");
-    for (auto b = 0; b < num_blocks_total; ++b) {
+    for (size_t b = 0; b < num_blocks_total; ++b) {
       LOG_MESSAGE("Testing viewspec of block %d", b);
       auto g_block       = matrix.block(b);
       auto g_block_first = g_block.begin();
@@ -69,7 +69,7 @@ TEST_F(MatrixTest, Views)
   // Test viewspecs of blocks in local index domain:
   LOG_MESSAGE("Testing viewspecs of blocks in local index domain");
   int lb = 0;
-  for (auto b = 0; b < num_blocks_total; ++b) {
+  for (size_t b = 0; b < num_blocks_total; ++b) {
     auto g_block       = matrix.block(b);
     auto g_block_first = g_block.begin();
     auto g_block_view  = g_block_first.viewspec();

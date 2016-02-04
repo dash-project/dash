@@ -436,6 +436,7 @@ public:
     _extents = other._extents;
     _rank    = other._rank;
     _size    = other._size;
+    return *this;
   }
 
   /**
@@ -554,8 +555,8 @@ private:
   void update_size()
   {
     _size = 1;
-    for (dim_t i = 0; i < _rank; ++i) {
-      _size *= _extents[i];
+    for (SizeType d = 0; d < _rank; ++d) {
+      _size *= _extents[d];
     }
   }
 };

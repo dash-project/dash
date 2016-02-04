@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 #include <libdash.h>
+#include "TestBase.h"
 
 #include <sstream>
 #include <iomanip>
@@ -30,13 +31,13 @@ protected:
   virtual void SetUp() {
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-    LOG_MESSAGE("===> Running test case with %d units ...",
+    LOG_MESSAGE("===> Running test case with %lu units ...",
                 _dash_size);
   }
 
   virtual void TearDown() {
     dash::Team::All().barrier();
-    LOG_MESSAGE("<=== Finished test case with %d units",
+    LOG_MESSAGE("<=== Finished test case with %lu units",
                 _dash_size);
   }
 
@@ -47,9 +48,9 @@ protected:
     // Print local copy of matrix to avoid interleaving of matrix values
     // and log messages:
     std::vector< std::vector<value_t> > values;
-    for (index_t row = 0; row < matrix.extent(1); ++row) {
+    for (auto row = 0; row < matrix.extent(1); ++row) {
       std::vector<value_t> row_values;
-      for (index_t col = 0; col < matrix.extent(0); ++col) {
+      for (auto col = 0; col < matrix.extent(0); ++col) {
         value_t value = matrix[col][row];
         row_values.push_back(value);
       }

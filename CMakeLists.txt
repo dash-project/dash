@@ -60,6 +60,9 @@ option(BUILD_DOCS
        "Whether doxygen documentation should be installed" on)
 option(BUILD_EXAMPLES
        "Specify whether to build examples" on)
+option(ENABLE_COMPILER_WARNINGS
+       "Specify whether strict compiler warnings should be enabled" off)
+message(INFO "Strict compiler warnings: " ${ENABLE_COMPILER_WARNINGS})
 option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LOGGING

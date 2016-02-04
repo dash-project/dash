@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <mpi.h>
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_communication.h>
 
 /** @brief Dart handle type for non-blocking one-sided operations.
@@ -31,7 +32,7 @@ MPI_Op dart_mpi_op(dart_operation_t dart_op) {
     case DART_OP_LOR  : return MPI_LOR;
     case DART_OP_BXOR : return MPI_BXOR;
     case DART_OP_LXOR : return MPI_LXOR;
-    default:            return -1;
+    default           : return (MPI_Op)(-1);
   }
 }
 
@@ -46,11 +47,11 @@ MPI_Datatype dart_mpi_datatype(dart_datatype_t dart_datatype) {
     case DART_TYPE_LONGLONG : return MPI_LONG_LONG_INT;
     case DART_TYPE_FLOAT    : return MPI_FLOAT;
     case DART_TYPE_DOUBLE   : return MPI_DOUBLE;
-    default:                  return -1;
+    default                 : return (MPI_Datatype)(-1);
   }
 }
 
-MPI_Datatype dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {
+int dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {
   switch (dart_datatype) {
     case DART_TYPE_BYTE     : return 1;
     case DART_TYPE_SHORT    : return 1;
@@ -61,7 +62,7 @@ MPI_Datatype dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {
     case DART_TYPE_LONGLONG : return 8;
     case DART_TYPE_FLOAT    : return 4;
     case DART_TYPE_DOUBLE   : return 8;
-    default:                  return 1;
+    default                 : return 1;
   }
 }
 

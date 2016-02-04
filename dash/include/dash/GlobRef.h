@@ -228,7 +228,7 @@ std::ostream & operator<<(
   const GlobRef<T> & gref) {
   char buf[100];
   sprintf(buf,
-          "(%08X|%04X|%04X|%016X)",
+          "(%08X|%04X|%04X|%016lX)",
           gref._gptr.unitid,
           gref._gptr.segid,
           gref._gptr.flags,

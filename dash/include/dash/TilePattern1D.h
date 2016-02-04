@@ -123,12 +123,12 @@ private:
   SizeType                    _blocksize       = 0;
   /// Number of blocks in all dimensions
   SizeType                    _nblocks         = 0;
-  /// Arrangement of local blocks in all dimensions
-  SizeType                    _nlblocks;
   /// Actual number of local elements.
   SizeType                    _local_size;
   /// Local memory layout of the pattern.
   LocalMemoryLayout_t         _local_memory_layout;
+  /// Arrangement of local blocks in all dimensions
+  SizeType                    _nlblocks;
   /// Maximum number of elements assigned to a single unit
   SizeType                    _local_capacity;
   /// Corresponding global index to first local index of the active unit

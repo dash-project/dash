@@ -2,6 +2,8 @@
 #define DASH__MAKE_PATTERN_H_
 
 #include <dash/Pattern.h>
+#include <dash/BlockPattern.h>
+#include <dash/TilePattern.h>
 
 namespace dash {
 
@@ -105,7 +107,7 @@ template<
 >
 struct deduce_pattern_model
 {
-  
+
 }
 #endif
 
@@ -117,7 +119,7 @@ struct deduce_pattern_model
  *
  * \returns  An instance of \c dash::TilePattern if the following constraints are
  *           specified:
- *           - Layout: blocked 
+ *           - Layout: blocked
  *           or
  *           - Partitioning: balanced
  *           - Dimensions:   1
@@ -186,7 +188,9 @@ template<
 >
 typename std::enable_if<
   LayoutTraits::canonical,
-  Pattern<SizeSpecType::ndim(), dash::ROW_MAJOR, typename SizeSpecType::index_type>
+  Pattern<SizeSpecType::ndim(),
+          dash::ROW_MAJOR,
+          typename SizeSpecType::index_type>
 >::type
 make_pattern(
   /// Size spec of cartesian space to be distributed by the pattern.
