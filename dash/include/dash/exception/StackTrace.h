@@ -14,7 +14,7 @@
 #include <execinfo.h>
 #include <cxxabi.h>
 
-/** 
+/**
  * Print a demangled stack backtrace of the caller function
  * to FILE* out.
  */
@@ -23,13 +23,14 @@ static void dash__print_stacktrace(
   unsigned int max_frames = 63) {
   fprintf(out, "Stack trace:\n");
   // storage array for stack trace address data
-  void* addrlist[max_frames+1];
+  void ** addrlist = (void**)(malloc(sizeof(void*) * (max_frames+1)));
   // retrieve current stack addresses
   int addrlen = backtrace(
                   addrlist,
-                  sizeof(addrlist) / sizeof(void*));
+                  max_frames+1);
   if (addrlen == 0) {
     fprintf(out, "  <empty, possibly corrupt>\n");
+    free(addrlist);
     return;
   }
   // resolve addresses into strings containing
@@ -68,8 +69,8 @@ static void dash__print_stacktrace(
       *begin_offset++ = '\0';
       *end_offset     = '\0';
       // mangled name is now in [begin_name, begin_offset)
-      // and caller offset in 
-      // [begin_offset, end_offset). 
+      // and caller offset in
+      // [begin_offset, end_offset).
       // now apply __cxa_demangle():
       int status;
       char* ret = abi::__cxa_demangle(
@@ -92,6 +93,7 @@ static void dash__print_stacktrace(
       fprintf(out, "  %s\n", symbollist[i]);
     }
   }
+  free(addrlist);
   free(funcname);
   free(symbollist);
 }

@@ -219,6 +219,6 @@ make_pattern(
   return pattern;
 }
 
-}; // namespace dash
+} // namespace dash
 
 #endif // DASH__MAKE_PATTERN_H_

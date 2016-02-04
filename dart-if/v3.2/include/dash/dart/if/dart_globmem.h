@@ -65,7 +65,14 @@ typedef struct
   } addr_or_offs;
 } dart_gptr_t;
 
-#define DART_GPTR_NULL ((dart_gptr_t){-1, 0, 0, 0})
+#ifdef __cplusplus
+#define DART_GPTR_NULL (dart_gptr_t { -1, 0, 0, { 0 } })
+#else
+#define DART_GPTR_NULL ((dart_gptr_t)({ .unitid = -1, \
+                                        .segid  =  0, \
+                                        .flags  =  0, \
+                                        .addr_or_offs.offset = 0 }))
+#endif
 
 #define DART_GPTR_ISNULL(gptr_)			\
   (gptr_.unitid<0 && gptr_.segid==0 &&		\

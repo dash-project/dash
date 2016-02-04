@@ -9,8 +9,8 @@ TEST_F(SUMMATest, Deduction)
   typedef double                value_t;
   typedef dash::TilePattern<2>  pattern_t;
   typedef pattern_t::index_type index_t;
+  typedef pattern_t::size_type  extent_t;
 
-  dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 2;
   size_t tilesize_y  = 2;
@@ -76,6 +76,7 @@ TEST_F(SUMMATest, Deduction)
         dash::summa_pattern_mapping_constraints,
         dash::summa_pattern_layout_constraints >(
       pattern);
+  ASSERT_TRUE_U(constraints_matched);
 
   // Create operands and result matrices with identical distribution pattern:
   LOG_MESSAGE("Initialize matrix instances ...");
@@ -86,13 +87,13 @@ TEST_F(SUMMATest, Deduction)
   // Initialize operands:
   if (_dash_id == 0) {
     // Matrix B is identity matrix:
-    for (auto diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
+    for (extent_t diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
       matrix_b[diag_idx][diag_idx] = 1;
     }
-    for (auto col = 0; col < pattern.extent(0); ++col) {
-      for (auto row = 0; row < pattern.extent(1); ++row) {
-        auto unit  = matrix_a.pattern()
-                             .unit_at(std::array<index_t, 2> { col, row });
+    for (extent_t col = 0; col < pattern.extent(0); ++col) {
+      for (extent_t row = 0; row < pattern.extent(1); ++row) {
+//      auto unit  = matrix_a.pattern()
+//                           .unit_at(std::array<index_t, 2> { col, row });
 //      value_t value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
         auto block_x  = col / tilesize_x;
         auto block_y  = row / tilesize_x;
@@ -124,10 +125,10 @@ TEST_F(SUMMATest, Deduction)
   if (false && _dash_id == 0) {
     // Multiplication of matrix A with identity matrix B should be identical
     // to matrix A:
-    for (auto col = 0; col < extent_cols; ++col) {
-      for (auto row = 0; row < extent_rows; ++row) {
-        auto unit = matrix_a.pattern()
-                            .unit_at(std::array<index_t, 2> { col, row });
+    for (extent_t col = 0; col < extent_cols; ++col) {
+      for (extent_t row = 0; row < extent_rows; ++row) {
+//      auto unit = matrix_a.pattern()
+//                          .unit_at(std::array<index_t, 2> { col, row });
 //      value_t expect = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
         value_t expect = ((1 + col) * 10) + (row + 1);
         value_t actual = matrix_c[col][row];
