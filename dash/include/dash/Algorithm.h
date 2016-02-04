@@ -13,6 +13,7 @@
 #include <dash/algorithm/Accumulate.h>
 #include <dash/algorithm/Copy.h>
 #include <dash/algorithm/Fill.h>
+#include <dash/algorithm/Generate.h>
 
 #include <dash/algorithm/SUMMA.h>
 

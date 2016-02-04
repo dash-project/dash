@@ -1,18 +1,18 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
+#include <functional>
+
 #include "TestBase.h"
-#include "FillTest.h"
+#include "GenerateTest.h"
 
-#include <array>
-
-TEST_F(FillTest, TestAllItemsFilled)
+TEST_F(GenerateTest, TestAllItemsGenerated)
 {
   // Initialize global array:
   Array_t array(_num_elem);
-  // arbitrary value
-  Element_t val = 17L;
-  // Fill array with value
-  dash::fill(array.begin(), array.end(), val);
+  // Generator function
+  std::function<Element_t()> f = [](){ return 17L; };
+  // Fill Array with given generator function
+  dash::generate(array.begin(), array.end(), f);
   // Wait for all units
   array.barrier();
   // Local begin
