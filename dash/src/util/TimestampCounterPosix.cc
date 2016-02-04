@@ -11,8 +11,8 @@ namespace internal {
 
 void TimestampCounterPosix::Calibrate(unsigned int freq) {
   frequencyScaling = freq == 0
-                     ? 1900.0f 
-                     : static_cast<double>(freq); 
+                     ? 1900.0f
+                     : static_cast<double>(freq);
   DASH_LOG_DEBUG("TimestampCounterPosix::Calibrate(freq)", freq);
   DASH_LOG_DEBUG("TimestampCounterPosix::Calibrate",
                  "timer:", TimerName());
@@ -20,7 +20,7 @@ void TimestampCounterPosix::Calibrate(unsigned int freq) {
                  "fscale:", frequencyScaling);
 }
 
-Timestamp::counter_t TimestampCounterPosix::frequencyScaling = 1; 
+Timestamp::counter_t TimestampCounterPosix::frequencyScaling = 1;
 
 } // namespace internal
 } // namespace util

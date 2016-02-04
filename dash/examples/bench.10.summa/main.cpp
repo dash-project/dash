@@ -135,6 +135,7 @@ int main(int argc, char* argv[])
 #ifdef DASH_ENABLE_MKL
   if (variant == "mkl") {
     // Require single unit for MKL variant:
+    auto nunits = dash::size();
     if (nunits != 1) {
       DASH_THROW(
         dash::exception::RuntimeError,

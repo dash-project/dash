@@ -60,7 +60,6 @@ dart_ret_t dart_get(
   MPI_Win      win;
   dart_unit_t  target_unitid_abs = gptr.unitid;
   dart_unit_t  target_unitid_rel = target_unitid_abs;
-  int          mpi_ret;
   uint64_t     offset            = gptr.addr_or_offs.offset;
   int16_t      seg_id            = gptr.segid;
   uint16_t     index             = gptr.flags;
@@ -72,8 +71,6 @@ dart_ret_t dart_get(
     DART_LOG_ERROR("dart_get ! failed: nbytes > INT_MAX");
     return DART_ERR_INVAL;
   }
-  int n_count = (int)(nbytes);
-
   if (seg_id) {
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
@@ -87,7 +84,6 @@ dart_ret_t dart_get(
   DART_LOG_DEBUG("dart_get: shared windows enabled");
   if (seg_id >= 0) {
     int    i;
-    int    disp_unit;
     char * baseptr;
     /*
      * Use memcpy if the target is in the same node as the calling unit:
@@ -326,7 +322,6 @@ dart_ret_t dart_get_handle(
   DART_LOG_DEBUG("dart_get_handle: shared windows enabled");
   if (seg_id >= 0) {
     int       i;
-    int       disp_unit;
     char *    baseptr;
     /*
      * Use memcpy if the target is in the same node as the calling unit:
@@ -576,7 +571,6 @@ dart_ret_t dart_put_blocking(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   if (seg_id >= 0) {
     int    i;
-    int    disp_unit;
     char * baseptr;
 
     /* Checking whether origin and target are in the same node.
@@ -693,10 +687,8 @@ dart_ret_t dart_get_blocking(
   MPI_Request mpi_req;
   MPI_Aint    disp_s,
               disp_rel;
-  dart_unit_t unitid;
   dart_unit_t target_unitid_abs = gptr.unitid;
   dart_unit_t target_unitid_rel = target_unitid_abs;
-  int         mpi_ret;
   uint64_t    offset            = gptr.addr_or_offs.offset;
   int16_t     seg_id            = gptr.segid;
   uint16_t    index             = gptr.flags;
@@ -708,8 +700,6 @@ dart_ret_t dart_get_blocking(
     DART_LOG_ERROR("dart_get_blocking ! failed: nbytes > INT_MAX");
     return DART_ERR_INVAL;
   }
-  int n_count = (int)(nbytes);
-
   if (seg_id) {
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
@@ -723,7 +713,6 @@ dart_ret_t dart_get_blocking(
   DART_LOG_DEBUG("dart_get_blocking: shared windows enabled");
   if (seg_id >= 0) {
     int    i;
-    int    disp_unit;
     char * baseptr;
     /*
      * Use memcpy if the target is in the same node as the calling unit:
