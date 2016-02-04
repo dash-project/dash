@@ -578,8 +578,8 @@ public:
     IndexType g_index) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", g_index);
-    for (SizeType unit_idx = 0; unit_idx < _nunits - 1; ++unit_idx) {
-      if (_block_offsets[unit_idx+1] > g_index) {
+    for (size_type unit_idx = 0; unit_idx < _nunits - 1; ++unit_idx) {
+      if (_block_offsets[unit_idx+1] > static_cast<size_type>(g_index)) {
         DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
         return unit_idx;
       }

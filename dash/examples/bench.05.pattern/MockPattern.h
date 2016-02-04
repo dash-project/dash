@@ -1048,7 +1048,7 @@ public:
     const std::vector<size_type> & local_sizes) const {
     DASH_LOG_TRACE_VAR("MockPattern.init_size()", local_sizes);
     size_type size = 0;
-    for (auto unit_idx = 0; unit_idx < local_sizes.size(); ++unit_idx) {
+    for (size_type unit_idx = 0; unit_idx < local_sizes.size(); ++unit_idx) {
       size += local_sizes[unit_idx];
     }
     DASH_LOG_TRACE_VAR("MockPattern.init_size >", size);

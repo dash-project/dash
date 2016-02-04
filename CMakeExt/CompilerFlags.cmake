@@ -11,8 +11,11 @@ message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
 set (CXX_WARN_FLAG "")
 set (CC_WARN_FLAG  "")
 if (ENABLE_COMPILER_WARNINGS)
-  set (CXX_WARN_FLAG "-Wall -pedantic -Wno-unused-function -Wno-missing-braces")
-  set (CC_WARN_FLAG  "-Wall -pedantic -Wno-unused-function -Wno-missing-braces")
+  set (CXX_WARN_FLAG "-Wall -pedantic")
+  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-function")
+  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-missing-braces")
+  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-format")
+  set (CC_WARN_FLAG  "${CXX_WARN_FLAG}")
 endif()
 
 # Set C++ compiler flags:
