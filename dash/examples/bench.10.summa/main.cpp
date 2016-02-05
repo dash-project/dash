@@ -144,13 +144,13 @@ int main(int argc, char* argv[])
         "but must be run on a single unit.");
     }
   }
-  // Do not set dynamic flag by default as performance is impaired if SMT is
-  // not required.
+  // Do not set dynamic flag by default as performance is impaired if SMT
+  // is not required.
   mkl_set_dynamic(false);
   mkl_set_num_threads(params.threads);
   if (params.mkl_dyn || mkl_get_max_threads() < params.threads) {
-    // requested number of threads exceeds number of physical cores, set MKL
-    // dynamic flag and retry:
+    // requested number of threads exceeds number of physical cores, set
+    // MKL dynamic flag and retry:
     mkl_set_dynamic(true);
     mkl_set_num_threads(params.threads);
   }
@@ -292,7 +292,10 @@ void init_values(
   auto num_local_blocks = num_blocks / dash::Team::All().size();
   value_t * l_block_elem_a;
   value_t * l_block_elem_b;
-  for (auto l_block_idx = 0; l_block_idx < num_local_blocks; ++l_block_idx) {
+  for (auto l_block_idx = 0;
+       l_block_idx < num_local_blocks;
+       ++l_block_idx)
+  {
     auto l_block_a = matrix_a.local.block(l_block_idx);
     auto l_block_b = matrix_b.local.block(l_block_idx);
     l_block_elem_a = l_block_a.begin().local();
@@ -317,21 +320,48 @@ std::pair<double, double> test_dash(
   unsigned repeat)
 {
   std::pair<double, double> time;
+  size_t num_units = dash::size();
+  auto   myid      = dash::myid();
 
+#ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
+  size_t team_size_x = std::max<size_t>(
+                         1, static_cast<size_t>(std::ceil(sqrt(num_units))));
+  size_t team_size_y = num_units / team_size_x;
+  DASH_ASSERT_EQ(num_units, team_size_x * team_size_y,
+                 "Team size must be square");
+#else
+  size_t team_size_x = num_units;
+  size_t team_size_y = 1;
+#endif
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:
   dash::SizeSpec<2, extent_t> size_spec(n, n);
-  dash::TeamSpec<2, index_t>  team_spec;
+  dash::TeamSpec<2, index_t>  team_spec(team_size_x, team_size_y);
   auto pattern = dash::make_pattern<
                  dash::summa_pattern_partitioning_constraints,
                  dash::summa_pattern_mapping_constraints,
                  dash::summa_pattern_layout_constraints >(
                    size_spec,
                    team_spec);
-  static_assert(std::is_same<extent_t, decltype(pattern)::size_type>::value,
+  static_assert(std::is_same<extent_t,
+                             decltype(pattern)::size_type>::value,
                 "size type of deduced pattern and size spec differ");
-  static_assert(std::is_same<index_t,  decltype(pattern)::index_type>::value,
+  static_assert(std::is_same<index_t,
+                             decltype(pattern)::index_type>::value,
                 "index type of deduced pattern and size spec differ");
+
+  auto blockspec = pattern.blockspec();
+  std::ostringstream ss;
+  ss << endl
+     << "Unit " << std::setw(2) << myid << ": "
+     << "pattern block spec "
+     << blockspec.extent(0)  << " x " << blockspec.extent(1)  << " "
+     << "pattern block size "
+     << pattern.blocksize(0) << " x " << pattern.blocksize(1) << " "
+     << "local size:"     << pattern.local_size()     << " "
+     << "local capacity:" << pattern.local_capacity() << " "
+     << "";
+  cout << ss.str();
 
   DASH_ASSERT_MSG(pattern.extent(0) % dash::size() == 0,
                   "Matrix columns not divisible by number of units");
@@ -525,20 +555,20 @@ std::pair<double, double> test_pblas(
   // Row index of the global matrix A, identifying the first row of the
   // submatrix A. Global scope.
   int_t i_a = 1;
-  // Column index of the global matrix A, identifying the first column of the
-  // submatrix A. Global scope.
+  // Column index of the global matrix A, identifying the first column of
+  // the submatrix A. Global scope.
   int_t j_a = 1;
   // Row index of the global matrix B, identifying the first row of the
   // submatrix B. Global scope.
   int_t i_b = 1;
-  // Column index of the global matrix B, identifying the first column of the
-  // submatrix B. Global scope.
+  // Column index of the global matrix B, identifying the first column of
+  // the submatrix B. Global scope.
   int_t j_b = 1;
   // Row index of the global matrix C, identifying the first row of the
   // submatrix C. Global scope.
   int_t i_c = 1;
-  // Column index of the global matrix C, identifying the first column of the
-  // submatrix C. Global scope.
+  // Column index of the global matrix C, identifying the first column of
+  // the submatrix C. Global scope.
   int_t j_c = 1;
   // Local leading dimensions of global matrices:
   int_t lld_a,       lld_b,       lld_c;
@@ -590,11 +620,12 @@ std::pair<double, double> test_pblas(
   lld_a_distr = dash::math::max(mp, 1);
   lld_b_distr = dash::math::max(kp, 1);
   lld_c_distr = dash::math::max(mp, 1);
-  // Global matrices are considered as distributed with blocking factors (n,m)
-  // i.e. there is only one block (the whole matrix) located on process (0,0).
-  lld_a       = dash::math::max(numroc_(&n, &m, &myrow, &i_zero, &nprow), 1);
-  lld_b       = dash::math::max(numroc_(&n, &m, &myrow, &i_zero, &nprow), 1);
-  lld_c       = dash::math::max(numroc_(&n, &m, &myrow, &i_zero, &nprow), 1);
+  // Global matrices are considered as distributed with blocking factors
+  // (n,m) i.e. there is only one block (the whole matrix) located on
+  // process (0,0).
+  lld_a = dash::math::max(numroc_(&n, &m, &myrow, &i_zero, &nprow), 1);
+  lld_b = dash::math::max(numroc_(&n, &m, &myrow, &i_zero, &nprow), 1);
+  lld_c = dash::math::max(numroc_(&n, &m, &myrow, &i_zero, &nprow), 1);
 
   DASH_LOG_DEBUG(
       "bench.10.summa", "test_pblas",

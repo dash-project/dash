@@ -17,6 +17,8 @@
 #include <mkl_lapack.h>
 #endif
 
+#define DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
+
 namespace dash {
 
 namespace internal {
@@ -79,7 +81,9 @@ void multiply_local(
 /// Constraints on pattern partitioning properties of matrix operands passed to
 /// \c dash::summa.
 typedef dash::pattern_partitioning_properties<
+#ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
             dash::pattern_partitioning_tag::minimal,
+#endif
             // Block extents are constant for every dimension.
             dash::pattern_partitioning_tag::rectangular,
             // Identical number of elements in every block.
@@ -88,10 +92,15 @@ typedef dash::pattern_partitioning_properties<
 /// Constraints on pattern mapping properties of matrix operands passed to
 /// \c dash::summa.
 typedef dash::pattern_mapping_properties<
+#ifndef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
+            // Every unit mapped in any single slice in every dimension.
+            dash::pattern_mapping_tag::diagonal,
+            // Same number of blocks assigned to all units.
+            dash::pattern_mapping_tag::balanced
+#else
             // Number of blocks assigned to a unit may differ.
             dash::pattern_mapping_tag::unbalanced
-            // Every unit mapped in any single slice in every dimension.
-//          dash::pattern_mapping_tag::diagonal
+#endif
         > summa_pattern_mapping_constraints;
 /// Constraints on pattern layout properties of matrix operands passed to
 /// \c dash::summa.
@@ -219,25 +228,28 @@ void summa(
   DASH_LOG_TRACE("dash::summa", "matrix pattern extents valid");
 
   // Patterns are balanced, all blocks have identical size:
-  auto block_size_m  = pattern_a.block(0).extent(0);
-  auto block_size_n  = pattern_b.block(0).extent(1);
-  auto block_size_p  = pattern_b.block(0).extent(0);
-  auto num_blocks_m  = m / block_size_m;
-  auto num_blocks_n  = n / block_size_n;
-  auto num_blocks_p  = p / block_size_p;
+  auto block_size_m   = pattern_a.block(0).extent(0);
+  auto block_size_n   = pattern_b.block(0).extent(1);
+  auto block_size_p   = pattern_b.block(0).extent(0);
+  auto num_blocks_m   = m / block_size_m;
+  auto num_blocks_n   = n / block_size_n;
+  auto num_blocks_p   = p / block_size_p;
   // Size of temporary local blocks
-  auto block_a_size  = block_size_n * block_size_m;
-  auto block_b_size  = block_size_m * block_size_p;
+  auto block_a_size   = block_size_n * block_size_m;
+  auto block_b_size   = block_size_m * block_size_p;
   // Number of units in rows and columns:
-  auto teamspec      = C.pattern().teamspec();
+  auto teamspec       = C.pattern().teamspec();
+  auto unit_ts_coords = teamspec.coords(unit_id);
 
   DASH_LOG_TRACE("dash::summa", "blocks:",
                  "m:", num_blocks_m, "*", block_size_m,
                  "n:", num_blocks_n, "*", block_size_n,
                  "p:", num_blocks_p, "*", block_size_p);
-  DASH_LOG_TRACE("dash::summa", "number of units:",
+  DASH_LOG_TRACE("dash::summa",
+                 "number of units:",
                  "cols:", teamspec.extent(0),
-                 "rows:", teamspec.extent(1));
+                 "rows:", teamspec.extent(1),
+                 "unit team coords:", unit_ts_coords);
   DASH_LOG_TRACE("dash::summa", "allocating local temporary blocks, sizes:",
                  "A:", block_a_size,
                  "B:", block_b_size);
@@ -279,10 +291,10 @@ void summa(
   index_t  l_block_c_get_row   = l_block_c_get_view.offset(1) / block_size_n;
   index_t  l_block_c_get_col   = l_block_c_get_view.offset(0) / block_size_p;
   // Block coordinates of blocks in A and B to prefetch:
-  block_a_get_coords = coords_t { static_cast<index_t>(unit_id),
+  block_a_get_coords = coords_t { static_cast<index_t>(unit_ts_coords[0]),
                                   l_block_c_get_row };
   block_b_get_coords = coords_t { l_block_c_get_col,
-                                  static_cast<index_t>(unit_id) };
+                                  static_cast<index_t>(unit_ts_coords[1]) };
   // Local block index of local submatrix of C for multiplication result of
   // currently prefetched blocks:
   auto     l_block_c_comp      = l_block_c_get;
@@ -371,6 +383,18 @@ void summa(
       // Do not prefetch blocks in last iteration:
       if (!last) {
         index_t block_get_k = static_cast<index_t>(block_k + 1);
+#ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
+        block_get_k = (block_get_k + unit_ts_coords[0]) % num_blocks_m;
+        // Block coordinate of local block in matrix C to prefetch:
+        if (block_k == num_blocks_m - 1) {
+          // Prefetch for next local block in matrix C:
+          block_get_k        = unit_ts_coords[0];
+          l_block_c_get      = C.local.block(lb + 1);
+          l_block_c_get_view = l_block_c_get.begin().viewspec();
+          l_block_c_get_row  = l_block_c_get_view.offset(1) / block_size_n;
+          l_block_c_get_col  = l_block_c_get_view.offset(0) / block_size_p;
+        }
+#else
         block_get_k = (block_get_k + unit_id) % num_blocks_m;
         // Block coordinate of local block in matrix C to prefetch:
         if (block_k == num_blocks_m - 1) {
@@ -381,6 +405,7 @@ void summa(
           l_block_c_get_row  = l_block_c_get_view.offset(1) / block_size_n;
           l_block_c_get_col  = l_block_c_get_view.offset(0) / block_size_p;
         }
+#endif
         // Block coordinates of blocks in A and B to prefetch:
         block_a_get_coords = coords_t { block_get_k,       l_block_c_get_row };
         block_b_get_coords = coords_t { l_block_c_get_col, block_get_k       };

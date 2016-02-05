@@ -14,10 +14,22 @@ TEST_F(SUMMATest, Deduction)
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 2;
   size_t tilesize_y  = 2;
+
+#ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
+  size_t team_size_x = std::max<size_t>(
+                         1, static_cast<size_t>(std::ceil(sqrt(num_units))));
+  size_t team_size_y = num_units / team_size_x;
+  size_t extent_cols = team_size_x * tilesize_x;
+  size_t extent_rows = team_size_y * tilesize_y;
+  LOG_MESSAGE("team size: %lu x %lu", team_size_x, team_size_y);
+#else
   size_t num_local_blocks_x = 1;
   size_t num_local_blocks_y = 1;
   size_t extent_cols = tilesize_x * num_units * num_local_blocks_x;
   size_t extent_rows = tilesize_y * num_units * num_local_blocks_y;
+  size_t team_size_x = num_units;
+  size_t team_size_y = 1;
+#endif
 
 #if 0
   // For explicit specification of data distribution:
@@ -35,7 +47,7 @@ TEST_F(SUMMATest, Deduction)
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:
   dash::SizeSpec<2> size_spec(extent_cols, extent_rows);
-  dash::TeamSpec<2> team_spec;
+  dash::TeamSpec<2> team_spec(team_size_x, team_size_y);
   LOG_MESSAGE("Initialize matrix pattern ...");
   auto pattern = dash::make_pattern <
                  dash::summa_pattern_partitioning_constraints,
@@ -57,8 +69,13 @@ TEST_F(SUMMATest, Deduction)
   // Plausibility check of single pattern traits:
   ASSERT_TRUE_U(
     dash::pattern_partitioning_traits<decltype(pattern)>::type::balanced);
+#ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
+  ASSERT_TRUE_U(
+    dash::pattern_partitioning_traits<decltype(pattern)>::type::minimal);
+#else
   ASSERT_TRUE_U(
     dash::pattern_mapping_traits<decltype(pattern)>::type::diagonal);
+#endif
   ASSERT_TRUE_U(
     dash::pattern_mapping_traits<decltype(pattern)>::type::unbalanced);
   ASSERT_TRUE_U(

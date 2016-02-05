@@ -8,7 +8,8 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
 {
   DASH_TEST_LOCAL_ONLY();
 
-  typedef dash::default_index_t index_t;
+  typedef dash::default_index_t  index_t;
+  typedef std::array<index_t, 2> coords_t;
 
   if (dash::size() % 2 != 0) {
     LOG_MESSAGE("Team size must be multiple of 2 for "
@@ -16,12 +17,6 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
     return;
   }
 
-  // 2-dimensional, blocked partitioning in first dimension:
-  //
-  // [ team 0[0] | team 0[1] | ... | team 0[8]  | team 0[9]  | ... ]
-  // [ team 0[2] | team 0[3] | ... | team 0[10] | team 0[11] | ... ]
-  // [ team 0[4] | team 0[5] | ... | team 0[12] | team 0[13] | ... ]
-  // [ team 0[6] | team 0[7] | ... | team 0[14] | team 0[15] | ... ]
   size_t team_size    = dash::Team::All().size();
   size_t team_size_x  = std::max<size_t>(
                           1, static_cast<size_t>(std::ceil(sqrt(team_size))));
@@ -29,8 +24,8 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
   LOG_MESSAGE("team size: %lu x %lu", team_size_x, team_size_y);
 
   // Choose 'inconvenient' extents:
-  size_t block_size_x = 3;
-  size_t block_size_y = 2;
+  int    block_size_x = 3;
+  int    block_size_y = 2;
   size_t block_size   = block_size_x * block_size_y;
   size_t extent_x     = team_size_x * block_size_x;
   size_t extent_y     = team_size_y * block_size_y;
@@ -60,6 +55,8 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
       teamspec_2d,
       dash::Team::All());
 
+  // Test .unit_at:
+
   std::vector< std::vector<dart_unit_t> > pattern_units;
   for (int y = 0; y < static_cast<int>(extent_y); ++y) {
     std::vector<dart_unit_t> row_units;
@@ -71,5 +68,108 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
   for (auto row_units : pattern_units) {
     DASH_LOG_DEBUG_VAR("TilePatternTest.Tile2DimTeam2Dim", row_units);
   }
+
+  // Test .global:
+
+  std::vector< std::vector<std::string> > pattern_g_coords;
+  std::vector< std::vector<index_t> >     pattern_g_indices;
+  for (int y = 0; y < static_cast<int>(extent_y); ++y) {
+    std::vector<std::string> row_g_coords;
+    std::vector<index_t>     row_g_indices;
+    for (int x = 0; x < static_cast<int>(extent_x); ++x) {
+      auto     unit_id  = pattern.unit_at(std::array<index_t, 2> { x, y });
+      coords_t l_coords = { x % block_size_x, y % block_size_y };
+      coords_t g_coords = pattern.global(unit_id, l_coords);
+      std::ostringstream ss;
+      ss << "(" << g_coords[0] << "," << g_coords[1] << ")";
+      row_g_coords.push_back(ss.str());
+      row_g_indices.push_back(pattern.global_index(unit_id, l_coords));
+    }
+    pattern_g_coords.push_back(row_g_coords);
+    pattern_g_indices.push_back(row_g_indices);
+  }
+  for (auto row_g_indices : pattern_g_indices) {
+    DASH_LOG_DEBUG_VAR("TilePatternTest.Tile2DimTeam2Dim", row_g_indices);
+  }
+  for (auto row_g_coords : pattern_g_coords) {
+    DASH_LOG_DEBUG_VAR("TilePatternTest.Tile2DimTeam2Dim", row_g_coords);
+  }
+
+  // Test .local:
+
+  std::vector< std::vector<std::string> > pattern_l_coords;
+  std::vector< std::vector<std::string> > pattern_l_indices;
+  for (int y = 0; y < static_cast<int>(extent_y); ++y) {
+    std::vector<std::string> row_l_coords;
+    std::vector<std::string> row_l_indices;
+    for (int x = 0; x < static_cast<int>(extent_x); ++x) {
+      coords_t g_coords = { x, y };
+
+      auto     l_pos_coords = pattern.local(g_coords);
+      auto     unit_id_c    = l_pos_coords.unit;
+      auto     l_coords     = l_pos_coords.coords;
+      std::ostringstream sc;
+      sc << "(" << unit_id_c << ":"
+         << l_coords[0] << "," << l_coords[1]
+         << ")";
+      row_l_coords.push_back(sc.str());
+
+      auto     l_pos_index  = pattern.local_index(g_coords);
+      auto     unit_id_i    = l_pos_index.unit;
+      auto     l_index      = l_pos_index.index;
+      std::ostringstream si;
+      si << "(" << unit_id_i << ":"
+         << l_index
+         << ")";
+      row_l_indices.push_back(si.str());
+    }
+    pattern_l_coords.push_back(row_l_coords);
+    pattern_l_indices.push_back(row_l_indices);
+  }
+  for (auto row_l_coords : pattern_l_coords) {
+    DASH_LOG_DEBUG_VAR("TilePatternTest.Tile2DimTeam2Dim", row_l_coords);
+  }
+  for (auto row_l_indices : pattern_l_indices) {
+    DASH_LOG_DEBUG_VAR("TilePatternTest.Tile2DimTeam2Dim", row_l_indices);
+  }
+
+  // Test .block:
+
+  std::vector< std::vector<std::string> > pattern_g_blocks;
+  std::vector< std::vector<std::string> > pattern_l_blocks;
+  for (int y = 0; y < static_cast<int>(extent_y); ++y) {
+    std::vector<std::string> row_g_blocks;
+    std::vector<std::string> row_l_blocks;
+    for (int x = 0; x < static_cast<int>(extent_x); ++x) {
+      coords_t g_coords      = { x, y };
+//    coords_t l_coords      = { x % block_size_x, y % block_size_y };
+      auto     unit_id       = pattern.unit_at(g_coords);
+      auto     g_block_index = pattern.block_at(g_coords);
+      auto     l_block_index = 0;
+
+      auto g_block_view = pattern.block(g_block_index);
+      std::ostringstream sg;
+      sg << "("
+         << g_block_view.offset(0) << "," << g_block_view.offset(1)
+         << ")";
+      row_g_blocks.push_back(sg.str());
+
+      auto l_block_view = pattern.local_block(unit_id, l_block_index);
+      std::ostringstream sl;
+      sl << "("
+         << l_block_view.offset(0) << "," << l_block_view.offset(1)
+         << ")";
+      row_l_blocks.push_back(sl.str());
+    }
+    pattern_g_blocks.push_back(row_g_blocks);
+    pattern_l_blocks.push_back(row_l_blocks);
+  }
+  for (auto row_g_blocks : pattern_g_blocks) {
+    DASH_LOG_DEBUG_VAR("TilePatternTest.Tile2DimTeam2Dim", row_g_blocks);
+  }
+  for (auto row_l_blocks : pattern_l_blocks) {
+    DASH_LOG_DEBUG_VAR("TilePatternTest.Tile2DimTeam2Dim", row_l_blocks);
+  }
+
 }
 
