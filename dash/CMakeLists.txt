@@ -101,16 +101,18 @@ endif()
 # DASH library for every enabled DART variant:
 #
 foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
-  set(DART_LIBRARY "dart-${dart_variant}")
-  set(DASH_LIBRARY "dash-${dart_variant}")
-  set(VARIANT_ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS})
+  set (DART_LIBRARY "dart-${dart_variant}")
+  set (DASH_LIBRARY "dash-${dart_variant}")
+  set (VARIANT_ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS})
+  set (VARIANT_ADDITIONAL_COMPILE_FLAGS
+       "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-sign-compare")
   if (${dart_variant} STREQUAL "mpi")
     if (NOT ENABLE_SHARED_WINDOWS)
       set (VARIANT_ADDITIONAL_COMPILE_FLAGS
-        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
+           "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
     endif()
-    set(VARIANT_ADDITIONAL_COMPILE_FLAGS
-      "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID=\"${MPI_IMPL_ID}\"")
+    set (VARIANT_ADDITIONAL_COMPILE_FLAGS
+         "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID=\"${MPI_IMPL_ID}\"")
   endif()
   message(STATUS "Building DASH library " ${DASH_LIBRARY})
 
@@ -234,7 +236,7 @@ if (BUILD_TESTS)
     )
     set_target_properties(
       ${DASH_TEST} PROPERTIES
-      COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS}
+      COMPILE_FLAGS ${VARIANT_ADDITIONAL_COMPILE_FLAGS}
     )
     set_target_properties(
       ${DASH_TEST} PROPERTIES

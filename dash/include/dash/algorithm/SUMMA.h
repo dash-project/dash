@@ -133,6 +133,7 @@ void summa(
 {
   typedef typename MatrixTypeA::value_type   value_type;
   typedef typename MatrixTypeA::index_type   index_t;
+  typedef typename MatrixTypeA::size_type    extent_t;
   typedef typename MatrixTypeA::pattern_type pattern_a_type;
   typedef typename MatrixTypeB::pattern_type pattern_b_type;
   typedef typename MatrixTypeC::pattern_type pattern_c_type;
@@ -220,7 +221,6 @@ void summa(
   auto block_size_m  = pattern_a.block(0).extent(0);
   auto block_size_n  = pattern_b.block(0).extent(1);
   auto block_size_p  = pattern_b.block(0).extent(0);
-  auto num_blocks_l  = n / block_size_n;
   auto num_blocks_m  = m / block_size_m;
   auto num_blocks_n  = n / block_size_n;
   auto num_blocks_p  = p / block_size_p;
@@ -336,11 +336,11 @@ void summa(
   // -------------------------------------------------------------------------
   // Iterate local blocks in matrix C:
   // -------------------------------------------------------------------------
-  auto num_local_blocks_c = (num_blocks_n * num_blocks_p) / teamspec.size();
+  extent_t num_local_blocks_c = (num_blocks_n * num_blocks_p) / teamspec.size();
   DASH_LOG_TRACE("dash::summa", "summa.block.C",
                  "C.num.local.blocks:",  num_local_blocks_c,
                  "C.num.column.blocks:", num_blocks_m);
-  for (auto lb = 0; lb < num_local_blocks_c; ++lb) {
+  for (extent_t lb = 0; lb < num_local_blocks_c; ++lb) {
     // Block coordinates for current block multiplication result:
     l_block_c_comp      = C.local.block(lb);
     l_block_c_comp_view = l_block_c_comp.begin().viewspec();
@@ -359,7 +359,7 @@ void summa(
     // -----------------------------------------------------------------------
     // Iterate blocks in columns of A / rows of B:
     // -----------------------------------------------------------------------
-    for (index_t block_k = 0; block_k < num_blocks_m; ++block_k) {
+    for (extent_t block_k = 0; block_k < num_blocks_m; ++block_k) {
       DASH_LOG_TRACE("dash::summa", "summa.block.k", block_k);
       // ---------------------------------------------------------------------
       // Prefetch local copy of blocks from A and B for multiplication in
@@ -369,7 +369,7 @@ void summa(
                   (block_k == num_blocks_m - 1);
       // Do not prefetch blocks in last iteration:
       if (!last) {
-        auto block_get_k = block_k + 1;
+        index_t block_get_k = static_cast<index_t>(block_k + 1);
         block_get_k = (block_get_k + unit_id) % num_blocks_m;
         // Block coordinate of local block in matrix C to prefetch:
         if (block_k == num_blocks_m - 1) {

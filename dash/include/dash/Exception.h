@@ -46,8 +46,9 @@
   }\
 } while(0)
 
+// Using (value+1) < (lower+1) to avoid compiler warning for unsigned.
 #define DASH_ASSERT_RANGE(lower, value, upper, message) do { \
-  if (value > upper || value < lower) { \
+  if ((value) > (upper) || (value+1) < (lower+1)) { \
     DASH_THROW(dash::exception::OutOfRange, \
                "Range assertion " \
                << lower << " <= " << value << " <= " << upper \
@@ -58,7 +59,7 @@
 } while(0)
 
 #define DASH_ASSERT_EQ(val_a, val_b, message) do { \
-  if (val_a != val_b) { \
+  if ((val_a) != (val_b)) { \
     DASH_THROW(dash::exception::AssertionFailed, \
                "Assertion " \
                << val_a << " == " << val_b \
@@ -68,8 +69,9 @@
   } \
 } while(0)
 
+// Using (value+1) < (lower+1) to avoid compiler warning for unsigned.
 #define DASH_ASSERT_GT(value, min, message) do { \
-  if (value <= min) { \
+  if ((value+1) <= (min+1)) { \
     DASH_THROW(dash::exception::OutOfRange, \
                "Range assertion " \
                << value << " > " << min \
@@ -80,7 +82,7 @@
 } while(0)
 
 #define DASH_ASSERT_LT(value, max, message) do { \
-  if (value >= max) { \
+  if ((value) >= (max)) { \
     DASH_THROW(dash::exception::OutOfRange, \
                "Range assertion " \
                << value << " < " << max \

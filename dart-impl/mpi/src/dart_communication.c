@@ -32,9 +32,9 @@
     )
 
 int unit_g2l(
-  uint16_t index,
-  dart_unit_t abs_id,
-  dart_unit_t *rel_id)
+  uint16_t      index,
+  dart_unit_t   abs_id,
+  dart_unit_t * rel_id)
 {
   if (index == 0) {
     *rel_id = abs_id;
@@ -43,8 +43,8 @@ int unit_g2l(
     MPI_Comm comm;
     MPI_Group group, group_all;
     comm = dart_teams[index];
-    MPI_Comm_group (comm, &group);
-    MPI_Comm_group (MPI_COMM_WORLD, &group_all);
+    MPI_Comm_group(comm, &group);
+    MPI_Comm_group(MPI_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks (group_all, 1, &abs_id, group, rel_id);
   }
   return 0;
@@ -60,7 +60,6 @@ dart_ret_t dart_get(
   MPI_Win      win;
   dart_unit_t  target_unitid_abs = gptr.unitid;
   dart_unit_t  target_unitid_rel = target_unitid_abs;
-  int          mpi_ret;
   uint64_t     offset            = gptr.addr_or_offs.offset;
   int16_t      seg_id            = gptr.segid;
   uint16_t     index             = gptr.flags;
@@ -72,14 +71,12 @@ dart_ret_t dart_get(
     DART_LOG_ERROR("dart_get ! failed: nbytes > INT_MAX");
     return DART_ERR_INVAL;
   }
-  int n_count = (int)(nbytes);
-
   if (seg_id) {
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
 
   DART_LOG_DEBUG("dart_get() uid_abs:%d uid_rel:%d "
-                 "o:%lld s:%d i:%d, bytes:%lld",
+                 "o:%"PRIu64" s:%d i:%u nbytes:%zu",
                  target_unitid_abs, target_unitid_rel,
                  offset, seg_id, index, nbytes);
 
@@ -87,7 +84,6 @@ dart_ret_t dart_get(
   DART_LOG_DEBUG("dart_get: shared windows enabled");
   if (seg_id >= 0) {
     int    i;
-    int    disp_unit;
     char * baseptr;
     /*
      * Use memcpy if the target is in the same node as the calling unit:
@@ -106,7 +102,7 @@ dart_ret_t dart_get(
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
       baseptr += offset;
-      DART_LOG_DEBUG("dart_get: memcpy %d bytes", nbytes);
+      DART_LOG_DEBUG("dart_get: memcpy %zu bytes", nbytes);
       memcpy((char*)dest, baseptr, nbytes);
       return DART_OK;
     }
@@ -127,15 +123,17 @@ dart_ret_t dart_get(
     }
     win      = dart_win_lists[index];
     disp_rel = disp_s + offset;
-    DART_LOG_TRACE("dart_get:  nbytes:%lld "
-                   "source (coll.): win:%d unit:%d disp:%lld -> dest: %p",
-                   nbytes, win, target_unitid_rel, disp_rel, dest);
+    DART_LOG_TRACE("dart_get:  nbytes:%zu "
+                   "source (coll.): win:%"PRIu64" unit:%d disp:%"PRId64" "
+                   "-> dest:%p",
+                   nbytes, (uint64_t)win, target_unitid_rel, disp_rel, dest);
   } else {
     win      = dart_win_local_alloc;
     disp_rel = offset;
-    DART_LOG_TRACE("dart_get:  nbytes:%lld "
-                   "source (local): win:%d unit:%d offset:%lld -> dest: %p",
-                   nbytes, win, target_unitid_rel, disp_rel, dest);
+    DART_LOG_TRACE("dart_get:  nbytes:%zu "
+                   "source (local): win:%"PRIu64" unit:%d disp:%"PRId64" "
+                   "-> dest:%p",
+                   nbytes, (uint64_t)win, target_unitid_rel, disp_rel, dest);
   }
   DART_LOG_TRACE("dart_get:  MPI_Get");
   if (MPI_Get(dest,
@@ -188,9 +186,9 @@ dart_ret_t dart_put(
       nbytes,
       MPI_BYTE,
       win);
-    DART_LOG_DEBUG ("PUT  -%d bytes (allocated with collective allocation) "
-           "to %d at the offset %d",
-           nbytes, target_unitid_abs, offset);
+    DART_LOG_DEBUG("dart_put: nbytes:%zu (from collective allocation) "
+                   "target unit: %d offset: %"PRIu64"",
+                   nbytes, target_unitid_abs, offset);
   } else {
     win = dart_win_local_alloc;
     MPI_Put(
@@ -202,9 +200,9 @@ dart_ret_t dart_put(
       nbytes,
       MPI_BYTE,
       win);
-    DART_LOG_DEBUG ("PUT  - %d bytes (allocated with local allocation) "
-           "to %d at the offset %d",
-           nbytes, target_unitid_abs, offset);
+    DART_LOG_DEBUG("dart_put: nbytes:%zu (from local allocation) "
+                   "target unit: %d offset: %"PRIu64"",
+                   nbytes, target_unitid_abs, offset);
   }
   return DART_OK;
 }
@@ -228,7 +226,10 @@ dart_ret_t dart_accumulate(
   target_unitid_abs = gptr.unitid;
   mpi_dtype         = dart_mpi_datatype(dtype);
   mpi_op            = dart_mpi_op(op);
-  DART_LOG_DEBUG("dart_accumulate() nelem:%d dtype:%d op:%d unit:%d",
+
+  (void)(team); // To prevent compiler warning from unused parameter.
+
+  DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%d op:%d unit:%d",
                  nelem, dtype, op, target_unitid_abs);
   if (seg_id) {
     dart_unit_t target_unitid_rel;
@@ -257,8 +258,8 @@ dart_ret_t dart_accumulate(
       mpi_dtype,         // Data type of each entry in target buffer
       mpi_op,            // Reduce operation
       win);
-    DART_LOG_TRACE("dart_accumulate:  %d elements (collective allocation) "
-                   "to unit:%d offset:%d",
+    DART_LOG_TRACE("dart_accumulate:  nelem:%zu (from collective allocation) "
+                   "target unit: %d offset: %"PRIu64"",
                    nelem, target_unitid_abs, offset);
   } else {
     win = dart_win_local_alloc;
@@ -273,8 +274,8 @@ dart_ret_t dart_accumulate(
       mpi_dtype,         // Data type of each entry in target buffer
       mpi_op,            // Reduce operation
       win);
-    DART_LOG_TRACE("dart_accumulate:  %d elements (local allocation) "
-                   "to unit:%d offset:%d",
+    DART_LOG_TRACE("dart_accumulate:  nelem:%zu (from local allocation) "
+                   "target unit: %d offset: %"PRIu64"",
                    nelem, target_unitid_abs, offset);
   }
   DART_LOG_DEBUG("dart_accumulate > finished");
@@ -317,7 +318,7 @@ dart_ret_t dart_get_handle(
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
   DART_LOG_DEBUG("dart_get_handle() uid_abs:%d uid_rel:%d "
-                 "o:%lld s:%d i:%d, bytes:%lld",
+                 "o:%"PRIu64" s:%d i:%d, nbytes:%zu",
                  target_unitid_abs, target_unitid_rel,
                  offset, seg_id, index, nbytes);
   DART_LOG_TRACE("dart_get_handle:  allocated handle:%p", (void *)(*handle));
@@ -326,7 +327,6 @@ dart_ret_t dart_get_handle(
   DART_LOG_DEBUG("dart_get_handle: shared windows enabled");
   if (seg_id >= 0) {
     int       i;
-    int       disp_unit;
     char *    baseptr;
     /*
      * Use memcpy if the target is in the same node as the calling unit:
@@ -345,7 +345,7 @@ dart_ret_t dart_get_handle(
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
       baseptr += offset;
-      DART_LOG_DEBUG("dart_get_handle: memcpy %d bytes", nbytes);
+      DART_LOG_DEBUG("dart_get_handle: memcpy %zu bytes", nbytes);
       memcpy((char*)dest, baseptr, nbytes);
 
       /*
@@ -401,7 +401,7 @@ dart_ret_t dart_get_handle(
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
-    DART_LOG_TRACE("dart_get_handle:  -- disp_s:%ld disp_rel:%ld",
+    DART_LOG_TRACE("dart_get_handle:  -- disp_s:%"PRId64" disp_rel:%"PRId64"",
                    disp_s, disp_rel);
 
     /* TODO: Check if
@@ -412,7 +412,7 @@ dart_ret_t dart_get_handle(
      *  ... could be an better alternative?
      */
     DART_LOG_DEBUG("dart_get_handle:  -- %d elements (collective allocation) "
-                   "from %d at offset %d",
+                   "from %d at offset %"PRIu64"",
                    n_count, target_unitid_rel, offset);
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
@@ -437,7 +437,7 @@ dart_ret_t dart_get_handle(
      */
     DART_LOG_TRACE("dart_get_handle:  -- local, segment:%d", seg_id);
     DART_LOG_DEBUG("dart_get_handle:  -- %d elements (local allocation) "
-                   "from %d at offset %d",
+                   "from %d at offset %"PRIu64"",
                    n_count, target_unitid_abs, offset);
     win     = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
@@ -460,8 +460,8 @@ dart_ret_t dart_get_handle(
   }
   (*handle)->request = mpi_req;
   (*handle)->win     = win;
-  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%d req:%d",
-                 *handle, (*handle)->dest, win, mpi_req);
+  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%"PRIu64" req:%d",
+                 (void*)(*handle), (*handle)->dest, (uint64_t)win, mpi_req);
   return DART_OK;
 }
 
@@ -519,9 +519,10 @@ dart_ret_t dart_put_handle(
       win,
       &mpi_req);
     (*handle) -> dest = target_unitid_rel;
-    DART_LOG_DEBUG("PUT  -%d bytes (allocated with collective allocation) "
-          "to %d at the offset %d",
-          nbytes, target_unitid_abs, offset);
+    DART_LOG_DEBUG("dart_put_blocking: nbytes:%zu "
+                   "(from collective allocation) "
+                   "target_unit:%d offset:%"PRIu64"",
+                   nbytes, target_unitid_abs, offset);
   } else {
     DART_LOG_DEBUG("dart_put_blocking: MPI_RPut");
     win = dart_win_local_alloc;
@@ -535,9 +536,10 @@ dart_ret_t dart_put_handle(
       MPI_BYTE,
       win,
       &mpi_req);
-    DART_LOG_DEBUG("PUT  - %d bytes (allocated with local allocation) "
-          "to %d at the offset %d",
-          nbytes, target_unitid_abs, offset);
+    DART_LOG_DEBUG("dart_put_blocking: nbytes:%zu "
+                   "(from local allocation) "
+                   "target_unit:%d offset:%"PRIu64"",
+                   nbytes, target_unitid_abs, offset);
     (*handle) -> dest = target_unitid_abs;
   }
   (*handle) -> request = mpi_req;
@@ -569,14 +571,13 @@ dart_ret_t dart_put_blocking(
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
   DART_LOG_DEBUG("dart_put_blocking() uid_abs:%d uid_rel:%d "
-                 "o:%lld s:%d i:%d, bytes:%lld",
+                 "o:%"PRIu64" s:%d i:%d, nbytes:%zu",
                  target_unitid_abs, target_unitid_rel,
                  offset, seg_id, index, nbytes);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   if (seg_id >= 0) {
     int    i;
-    int    disp_unit;
     char * baseptr;
 
     /* Checking whether origin and target are in the same node.
@@ -667,13 +668,13 @@ dart_ret_t dart_put_blocking(
      */
     if (seg_id) {
       DART_LOG_DEBUG(
-        "dart_put_blocking: %d bytes "
-        "(allocated with collective allocation) to %d at the offset %d",
+        "dart_put_blocking: nbytes:%zu "
+        "(from collective allocation) target_unit:%d offset:%"PRIu64"",
         nbytes, target_unitid_abs, offset);
     } else {
       DART_LOG_DEBUG(
-        "dart_put_blocking: %d bytes "
-        "(allocated with local allocation) to %d at the offset %d",
+        "dart_put_blocking: nbytes:%zu "
+        "(from local allocation) target_unit:%d offset:%"PRIu64"",
         nbytes, target_unitid_abs, offset);
     }
     return DART_OK;
@@ -693,10 +694,8 @@ dart_ret_t dart_get_blocking(
   MPI_Request mpi_req;
   MPI_Aint    disp_s,
               disp_rel;
-  dart_unit_t unitid;
   dart_unit_t target_unitid_abs = gptr.unitid;
   dart_unit_t target_unitid_rel = target_unitid_abs;
-  int         mpi_ret;
   uint64_t    offset            = gptr.addr_or_offs.offset;
   int16_t     seg_id            = gptr.segid;
   uint16_t    index             = gptr.flags;
@@ -708,14 +707,12 @@ dart_ret_t dart_get_blocking(
     DART_LOG_ERROR("dart_get_blocking ! failed: nbytes > INT_MAX");
     return DART_ERR_INVAL;
   }
-  int n_count = (int)(nbytes);
-
   if (seg_id) {
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
 
   DART_LOG_DEBUG("dart_get_blocking() uid_abs:%d uid_rel:%d "
-                 "o:%lld s:%d i:%d, bytes:%lld",
+                 "o:%"PRIu64" s:%d i:%u, nbytes:%zu",
                  target_unitid_abs, target_unitid_rel,
                  offset, seg_id, index, nbytes);
 
@@ -723,7 +720,6 @@ dart_ret_t dart_get_blocking(
   DART_LOG_DEBUG("dart_get_blocking: shared windows enabled");
   if (seg_id >= 0) {
     int    i;
-    int    disp_unit;
     char * baseptr;
     /*
      * Use memcpy if the target is in the same node as the calling unit:
@@ -742,7 +738,7 @@ dart_ret_t dart_get_blocking(
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
       baseptr += offset;
-      DART_LOG_DEBUG("dart_get_blocking: memcpy %d bytes", nbytes);
+      DART_LOG_DEBUG("dart_get_blocking: memcpy %zu bytes", nbytes);
       memcpy((char*)dest, baseptr, nbytes);
       return DART_OK;
     }
@@ -765,15 +761,19 @@ dart_ret_t dart_get_blocking(
     }
     win      = dart_win_lists[index];
     disp_rel = disp_s + offset;
-    DART_LOG_DEBUG("dart_get_blocking:  nbytes:%lld "
-                   "source (coll.): win:%d unit:%d offset:%lld -> dest: %p",
-                   nbytes, win, target_unitid_rel, disp_rel, dest);
+    DART_LOG_DEBUG("dart_get_blocking:  nbytes:%zu "
+                   "source (coll.): win:%"PRIu64" unit:%d offset:%"PRIu64" "
+                   "-> dest: %p",
+                   nbytes, (uint64_t)win, target_unitid_rel,
+                   (uint64_t)disp_rel, dest);
   } else {
     win      = dart_win_local_alloc;
     disp_rel = offset;
-    DART_LOG_DEBUG("dart_get_blocking:  nbytes:%lld "
-                   "source (local): win:%d unit:%d offset:%lld -> dest: %p",
-                   nbytes, win, target_unitid_rel, disp_rel, dest);
+    DART_LOG_DEBUG("dart_get_blocking:  nbytes:%zu "
+                   "source (local): win:%"PRIu64" unit:%d offset:%"PRIu64" "
+                   "-> dest: %p",
+                   nbytes, (uint64_t)win, target_unitid_rel,
+                   (uint64_t)disp_rel, dest);
   }
 
   DART_LOG_DEBUG("dart_get_blocking: MPI_RGet");
@@ -811,7 +811,7 @@ dart_ret_t dart_flush(
   int16_t     seg_id = gptr.segid;
   target_unitid_abs  = gptr.unitid;
   DART_LOG_DEBUG("dart_flush() gptr: "
-                 "unitid:%d offset:%d segid:%d index:%d",
+                 "unitid:%d offset:%"PRIu64" segid:%d index:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
   if (seg_id) {
@@ -837,7 +837,7 @@ dart_ret_t dart_flush_all(
   seg_id = gptr.segid;
   MPI_Win win;
   DART_LOG_DEBUG("dart_flush_all() gptr: "
-                 "unitid:%d offset:%d segid:%d index:%d",
+                 "unitid:%d offset:%"PRIu64" segid:%d index:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
   if (seg_id) {
@@ -860,22 +860,22 @@ dart_ret_t dart_flush_local(
   MPI_Win win;
   target_unitid_abs = gptr.unitid;
   DART_LOG_DEBUG("dart_flush_local() gptr: "
-                 "unitid:%d offset:%d segid:%d index:%d",
+                 "unitid:%d offset:%"PRIu64" segid:%d index:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
   if (seg_id) {
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
     win = dart_win_lists[index];
-    DART_LOG_DEBUG("dart_flush_local() win:%d seg:%d unit:%d",
-                   win, seg_id, target_unitid_abs);
+    DART_LOG_DEBUG("dart_flush_local() win:%"PRIu64" seg:%d unit:%d",
+                   (uint64_t)win, seg_id, target_unitid_abs);
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
     DART_LOG_TRACE("dart_flush_local: MPI_Win_flush_local");
     MPI_Win_flush_local(target_unitid_rel, win);
   } else {
     win = dart_win_local_alloc;
-    DART_LOG_DEBUG("dart_flush_local() lwin:%p seg:%d unit:%d",
-                   win, seg_id, target_unitid_abs);
+    DART_LOG_DEBUG("dart_flush_local() lwin:%"PRIu64" seg:%d unit:%d",
+                   (uint64_t)win, seg_id, target_unitid_abs);
     DART_LOG_TRACE("dart_flush_local: MPI_Win_flush_local");
     MPI_Win_flush_local(target_unitid_abs, win);
   }
@@ -889,7 +889,7 @@ dart_ret_t dart_flush_local_all(
   int16_t seg_id = gptr.segid;
   MPI_Win win;
   DART_LOG_DEBUG("dart_flush_local_all() gptr: "
-                 "unitid:%d offset:%d segid:%d index:%d",
+                 "unitid:%d offset:%"PRIu64" segid:%d index:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
   if (seg_id) {
@@ -909,9 +909,12 @@ dart_ret_t dart_wait_local(
   int mpi_ret;
   DART_LOG_DEBUG("dart_wait_local() handle:%p", (void*)(handle));
   if (handle != NULL) {
-    DART_LOG_TRACE("dart_wait_local:     handle->dest: %d", handle->dest);
-    DART_LOG_TRACE("dart_wait_local:     handle->win:  %d", handle->win);
-    DART_LOG_TRACE("dart_wait_local:     handle->req:  %d", handle->request);
+    DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
+                   handle->dest);
+    DART_LOG_TRACE("dart_wait_local:     handle->win:  %"PRIu64"",
+                   (uint64_t)handle->win);
+    DART_LOG_TRACE("dart_wait_local:     handle->req:  %d",
+                   handle->request);
     if (handle->request != MPI_REQUEST_NULL) {
       MPI_Status mpi_sta;
       mpi_ret = MPI_Wait(&(handle->request), &mpi_sta);
@@ -942,9 +945,12 @@ dart_ret_t dart_wait(
   int mpi_ret;
   DART_LOG_DEBUG("dart_wait() handle:%p", (void*)(handle));
   if (handle != NULL) {
-    DART_LOG_TRACE("dart_wait:     handle->dest: %d", handle->dest);
-    DART_LOG_TRACE("dart_wait:     handle->win:  %d", handle->win);
-    DART_LOG_TRACE("dart_wait:     handle->req:  %d", handle->request);
+    DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
+                   handle->dest);
+    DART_LOG_TRACE("dart_wait_local:     handle->win:  %"PRIu64"",
+                   (uint64_t)handle->win);
+    DART_LOG_TRACE("dart_wait_local:     handle->req:  %d",
+                   handle->request);
     if (handle->request != MPI_REQUEST_NULL) {
       MPI_Status mpi_sta;
       DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");
@@ -980,7 +986,7 @@ dart_ret_t dart_waitall_local(
   dart_handle_t * handle,
   size_t          num_handles)
 {
-  int i, r_n = 0;
+  size_t i, r_n = 0;
   DART_LOG_DEBUG("dart_waitall_local()");
   if (num_handles == 0) {
     DART_LOG_DEBUG("dart_waitall_local > number of handles = 0");
@@ -998,7 +1004,7 @@ dart_ret_t dart_waitall_local(
     for (i = 0; i < num_handles; i++)  {
       if (handle[i] != NULL) {
         DART_LOG_TRACE("dart_waitall_local: -- handle[%d]: %p)",
-                       i, handle[i]);
+                       i, (void*)handle[i]);
         DART_LOG_TRACE("dart_waitall_local:    handle[%d]->dest: %d",
                        i, handle[i]->dest);
         DART_LOG_TRACE("dart_waitall_local:    handle[%d]->win:  %d",
@@ -1013,7 +1019,7 @@ dart_ret_t dart_waitall_local(
      * Wait for local completion of MPI requests:
      */
     DART_LOG_DEBUG("dart_waitall_local: "
-                   "MPI_Waitall, %d requests from %d handles",
+                   "MPI_Waitall, %d requests from %zu handles",
                    r_n, num_handles);
     if (r_n > 0) {
       if (MPI_Waitall(r_n, mpi_req, mpi_sta) == MPI_SUCCESS) {
@@ -1054,8 +1060,9 @@ dart_ret_t dart_waitall_local(
               return DART_ERR_INVAL;
             }
           } else {
-            DART_LOG_TRACE("dart_waitall_local: cannot free request %d",
+            DART_LOG_TRACE("dart_waitall_local: cannot free request %d "
                            "mpi_sta[%d] = %d (%s)",
+                           r_n,
                            r_n,
                            mpi_sta[r_n].MPI_ERROR,
                            DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
@@ -1105,10 +1112,12 @@ dart_ret_t dart_waitall(
     r_n = 0;
     for (i = 0; i < num_handles; i++) {
       if (handle[i] != NULL) {
-        DART_LOG_DEBUG("dart_waitall:"
-                       " -- handle[%d](%p): dest:%d win:%d req:%lld",
-                       i, handle[i],
-                       handle[i]->dest, handle[i]->win, handle[i]->request);
+        DART_LOG_DEBUG("dart_waitall: -- handle[%d](%p): "
+                       "dest:%d win:%"PRIu64" req:%"PRIu64"",
+                       i, (void*)handle[i],
+                       handle[i]->dest,
+                       (uint64_t)handle[i]->win,
+                       (uint64_t)handle[i]->request);
         mpi_req[r_n] = handle[i]->request;
         r_n++;
       }
@@ -1178,14 +1187,14 @@ dart_ret_t dart_waitall(
           DART_LOG_TRACE("dart_waitall: -- handle[%d] done (MPI_REQUEST_NULL)",
                          i);
         } else {
-          DART_LOG_TRACE("dart_waitall: -- MPI_Win_flush(handle[%d]: %p)",
-                         i, handle[i]);
+          DART_LOG_DEBUG("dart_waitall: -- MPI_Win_flush(handle[%d]: %p))",
+                         i, (void*)handle[i]);
           DART_LOG_TRACE("dart_waitall:      handle[%d]->dest: %d",
                          i, handle[i]->dest);
-          DART_LOG_TRACE("dart_waitall:      handle[%d]->win:  %d",
-                         i, handle[i]->win);
-          DART_LOG_TRACE("dart_waitall:      handle[%d]->req:  %d",
-                         i, handle[i]->request);
+          DART_LOG_TRACE("dart_waitall:      handle[%d]->win:  %"PRIu64"",
+                         i, (uint64_t)handle[i]->win);
+          DART_LOG_TRACE("dart_waitall:      handle[%d]->req:  %"PRIu64"",
+                         i, (uint64_t)handle[i]->request);
           /*
            * MPI_Win_flush to wait for remote completion:
            */
@@ -1251,7 +1260,7 @@ dart_ret_t dart_testall_local(
   size_t          n,
   int32_t       * is_finished)
 {
-  int i, r_n;
+  size_t i, r_n;
   DART_LOG_DEBUG("dart_testall_local()");
   MPI_Status *mpi_sta;
   MPI_Request *mpi_req;

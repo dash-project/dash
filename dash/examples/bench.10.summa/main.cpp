@@ -6,7 +6,6 @@
 
 #define DASH__MKL_MULTITHREADING
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
-//#define DASH_ENABLE_SCALAPACK
 
 #include "../bench.h"
 #include <libdash.h>
@@ -119,7 +118,6 @@ int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
 
-  int nunits = dash::size();
   int myid   = dash::myid();
 
   Timer::Calibrate(0);
@@ -137,6 +135,7 @@ int main(int argc, char* argv[])
 #ifdef DASH_ENABLE_MKL
   if (variant == "mkl") {
     // Require single unit for MKL variant:
+    auto nunits = dash::size();
     if (nunits != 1) {
       DASH_THROW(
         dash::exception::RuntimeError,
@@ -169,15 +168,14 @@ int main(int argc, char* argv[])
 
   // Run tests, try to balance overall number of gflop in test runs:
   extent_t extent_base = 1;
-  for (auto exp = 0; exp < exp_max; ++exp) {
-//  extent_t size_base   = pow(2, exp);
-//  extent_t extent_base = std::ceil(sqrt(size_base));
+  for (extent_t exp = 0; exp < exp_max; ++exp) {
     extent_t extent_run  = extent_base * params.size_base;
-
     if (repeats == 0) {
       repeats = 1;
     }
+
     perform_test(variant, extent_run, exp, repeats, params);
+
     repeats /= rep_base;
     if      (exp < 1) extent_base += 1;
     else if (exp < 4) extent_base += 2;
@@ -198,7 +196,6 @@ void perform_test(
 {
   auto myid        = dash::myid();
   auto num_units   = dash::size();
-  auto num_threads = params.threads;
 
   double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9;
   if (myid == 0) {
@@ -218,7 +215,7 @@ void perform_test(
            << setw(11) << "mmult.s"
            << endl;
     }
-    int  mem_local_mb;
+    int  mem_local_mb = 0;
     if (variant == "dash") {
       auto block_s = (n / num_units) * (n / num_units);
       mem_local_mb = ( sizeof(value_t) * (
@@ -299,7 +296,7 @@ void init_values(
     auto l_block_a = matrix_a.local.block(l_block_idx);
     auto l_block_b = matrix_b.local.block(l_block_idx);
     l_block_elem_a = l_block_a.begin().local();
-    l_block_elem_b = l_block_a.begin().local();
+    l_block_elem_b = l_block_b.begin().local();
     for (auto phase = 0; phase < block_cols * block_rows; ++phase) {
       value_t value = (100000 * (unit_id + 1)) +
                       (100 * l_block_idx) +
@@ -354,7 +351,7 @@ std::pair<double, double> test_dash(
   dash::barrier();
 
   auto ts_multiply_start = Timer::Now();
-  for (auto i = 0; i < repeat; ++i) {
+  for (unsigned i = 0; i < repeat; ++i) {
     dash::summa(matrix_a, matrix_b, matrix_c);
   }
   time.second = Timer::ElapsedSince(ts_multiply_start);
@@ -371,8 +368,8 @@ void init_values(
   extent_t   sb)
 {
   // Initialize local sections of matrices:
-  for (int i = 0; i < sb; ++i) {
-    for (int j = 0; j < sb; ++j) {
+  for (extent_t i = 0; i < sb; ++i) {
+    for (extent_t j = 0; j < sb; ++j) {
       value_t value = (100000 * (i % 12)) + (j * 1000) + i;
       matrix_a[i * sb + j] = value;
       matrix_b[i * sb + j] = value;

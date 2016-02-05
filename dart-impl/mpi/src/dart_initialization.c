@@ -104,7 +104,6 @@ dart_ret_t dart_init(
 
 	MPI_Group group_all, sharedmem_group;
 	char *baseptr;
-	int flag;
 
 	if (sharedmem_comm != MPI_COMM_NULL) {
 		int sharedmem_unitid;
@@ -239,7 +238,6 @@ dart_ret_t dart_exit()
   }
   _dart_initialized = 0;
 
-	int finalized;
 	uint16_t index;
 	dart_unit_t unitid;
 	dart_myid(&unitid);

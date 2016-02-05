@@ -189,11 +189,9 @@ OutputIt transform_local(
   auto num_gvalues       = dash::distance(in_a_first, in_b_first);
   DASH_LOG_TRACE_VAR("dash::transform_local", num_gvalues);
   // Number of local elements:
-  auto num_lvalues       = std::distance(lbegin_a, lend_a);
-  DASH_LOG_TRACE_VAR("dash::transform_local", num_lvalues);
+  DASH_LOG_TRACE("dash::transform_local", "local elements:", lend_a-lbegin_a);
   // Local subrange of input range b:
   ValueType * lbegin_b   = dash::local(in_b_first + g_offset_first);
-  ValueType * lend_b     = lbegin_b + num_lvalues;
   // Local pointer of initial output element:
   ValueType * lbegin_out = dash::local(out_first + g_offset_first);
   // Generate output values:

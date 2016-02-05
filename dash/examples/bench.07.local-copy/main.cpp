@@ -111,12 +111,11 @@ double copy_all_local(size_t size, bool parallel)
   Array_t global_array(size, dash::BLOCKED);
   ElementType *local_array = nullptr;
 
-  auto l_start_idx  = global_array.pattern().lbegin();
-  auto l_end_idx    = global_array.pattern().lend();
-  size_t local_size = l_end_idx - l_start_idx;
-
-  auto timer_start  = Timer::Now();
-  double elapsed;  
+  auto   l_start_idx = global_array.pattern().lbegin();
+  auto   l_end_idx   = global_array.pattern().lend();
+  size_t local_size  = l_end_idx - l_start_idx;
+  auto   timer_start = Timer::Now();
+  double elapsed     = 0;
 
   DASH_LOG_DEBUG("copy_all_local()",
                  "size:",   size,
@@ -148,8 +147,8 @@ double copy_partially_local(size_t size, bool parallel)
 {
   Array_t global_array(size, dash::BLOCKED);
   ElementType *local_array = nullptr;
-  auto timer_start  = Timer::Now();
-  double elapsed;  
+  auto   timer_start = Timer::Now();
+  double elapsed     = 0;
 
   DASH_LOG_DEBUG("copy_partially_local()",
                  "size:", size);
@@ -184,7 +183,7 @@ double copy_no_local(size_t size, bool parallel)
 
   size_t  num_copy_elem  = size - local_size;
   auto    timer_start    = Timer::Now();
-  double  elapsed;
+  double  elapsed        = 0;
 
   DASH_LOG_DEBUG("copy_no_local()",
                  "size:",   size,
@@ -192,7 +191,7 @@ double copy_no_local(size_t size, bool parallel)
                  "l_size:", local_size,
                  "n_copy:", num_copy_elem);
 
-  for (auto l = 0; l < global_array.lsize(); ++l) {
+  for (size_t l = 0; l < global_array.lsize(); ++l) {
     global_array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
   dash::barrier();
@@ -225,6 +224,10 @@ double copy_no_local(size_t size, bool parallel)
                    global_array.end(),
                    dest_first);
     elapsed = Timer::ElapsedSince(timer_start);
+
+#ifndef DASH_ENABLE_ASSERTIONS
+    dash__unused(dest_last);
+#endif
 
     DASH_ASSERT_EQ(
       local_array + num_copy_elem,

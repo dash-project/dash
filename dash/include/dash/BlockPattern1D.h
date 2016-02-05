@@ -12,11 +12,13 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
+#include <dash/PatternProperties.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 #include <dash/internal/PatternArguments.h>
+
+#include <dash/BlockPattern.h>
 
 namespace dash {
 
@@ -121,12 +123,12 @@ private:
   SizeType                    _blocksize       = 0;
   /// Number of blocks in all dimensions
   SizeType                    _nblocks         = 0;
-  /// Arrangement of local blocks in all dimensions
-  SizeType                    _nlblocks;
   /// Actual number of local elements.
   SizeType                    _local_size;
   /// Local memory layout of the pattern.
   LocalMemoryLayout_t         _local_memory_layout;
+  /// Arrangement of local blocks in all dimensions
+  SizeType                    _nlblocks;
   /// Maximum number of elements assigned to a single unit
   SizeType                    _local_capacity;
   /// Corresponding global index to first local index of the active unit
@@ -336,9 +338,9 @@ public:
     _nunits(other._nunits),
     _blocksize(other._blocksize),
     _nblocks(other._nblocks),
-    _nlblocks(other._nlblocks),
     _local_size(other._local_size),
     _local_memory_layout(other._local_memory_layout),
+    _nlblocks(other._nlblocks),
     _local_capacity(other._local_capacity),
     _lbegin(other._lbegin),
     _lend(other._lend) {
@@ -1239,9 +1241,10 @@ private:
       IndexType num_add_blocks = static_cast<IndexType>(
                                    _nblocks % _nunits);
       // Unit id assigned to the last block in dimension:
-      auto last_block_unit     = (_nblocks % _nunits == 0)
-                                   ? _nunits - 1
-                                   : (_nblocks % _nunits) - 1;
+      dart_unit_t last_block_unit = static_cast<dart_unit_t>(
+                                      (_nblocks % _nunits == 0)
+                                        ? _nunits - 1
+                                        : (_nblocks % _nunits) - 1);
       DASH_LOG_TRACE_VAR("BlockPattern<1>.init_local_extents",
                          last_block_unit);
       DASH_LOG_TRACE_VAR("BlockPattern<1>.init_local_extents", num_add_blocks);

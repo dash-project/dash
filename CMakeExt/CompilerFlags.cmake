@@ -1,12 +1,23 @@
 ## Compiler flags
 
-# GCC debug flags: 
+# GCC debug flags:
 # -ggdb       Debug info for GDB
 # -rdynamic   Instructs the linker to add all symbols, not only used ones,
 #             to the dynamic symbol table
 
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
 message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
+
+set (CXX_WARN_FLAG "")
+set (CC_WARN_FLAG  "")
+if (ENABLE_COMPILER_WARNINGS)
+  set (CXX_WARN_FLAG "-Wall -Wextra -pedantic")
+  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-function")
+  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-missing-braces")
+  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-format")
+  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-parameter")
+  set (CC_WARN_FLAG  "${CXX_WARN_FLAG}")
+endif()
 
 # Set C++ compiler flags:
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
@@ -52,14 +63,14 @@ elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "Cray")
 endif()
 
 set(CMAKE_C_FLAGS_DEBUG
-    "${CMAKE_C_FLAGS_DEBUG} ${CC_STD_FLAG} -Ofast -DDASH_DEBUG ${CC_GDB_FLAG}")
+    "${CMAKE_C_FLAGS_DEBUG} ${CC_STD_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_DEBUG ${CC_GDB_FLAG}")
 set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} -Ofast -DDASH_DEBUG ${CXX_GDB_FLAG}")
+    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_DEBUG ${CXX_GDB_FLAG}")
 
 set(CMAKE_C_FLAGS_RELEASE
-    "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} -Ofast -DDASH_RELEASE")
+    "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} -Ofast -DDASH_RELEASE")
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 
 if (ENABLE_ASSERTIONS)
   set(CMAKE_CXX_FLAGS_DEBUG

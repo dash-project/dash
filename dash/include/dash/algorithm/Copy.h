@@ -72,7 +72,10 @@ dash::Future<ValueType *> copy_impl(
                  "in_first:",  in_first.pos(),
                  "in_last:",   in_last.pos(),
                  "out_first:", out_first);
-  auto num_elem_total  = dash::distance(in_first, in_last);
+  auto pattern = in_first.pattern();
+  typedef typename decltype(pattern)::index_type index_type;
+  typedef typename decltype(pattern)::size_type  size_type;
+  size_type num_elem_total = dash::distance(in_first, in_last);
   if (num_elem_total <= 0) {
     DASH_LOG_TRACE("dash::copy_impl", "input range empty");
     return dash::Future<ValueType *>([=]() { return out_first; });
@@ -89,13 +92,10 @@ dash::Future<ValueType *> copy_impl(
   DASH_LOG_TRACE("dash::copy_impl",
                  "g_in_first:", g_in_first.pos(),
                  "g_in_last:",  g_in_last.pos());
-  auto pattern         = in_first.pattern();
   auto unit_first      = pattern.unit_at(g_in_first.pos());
   DASH_LOG_TRACE_VAR("dash::copy_impl", unit_first);
   auto unit_last       = pattern.unit_at(g_in_last.pos() - 1);
   DASH_LOG_TRACE_VAR("dash::copy_impl", unit_last);
-  typedef typename decltype(pattern)::index_type index_type;
-  typedef typename decltype(pattern)::size_type  size_type;
 
   // Accessed global pointers to be flushed:
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
@@ -117,7 +117,6 @@ dash::Future<ValueType *> copy_impl(
   if (unit_first == unit_last) {
     // Input range is located at a single remote unit:
     DASH_LOG_TRACE("dash::copy_impl", "input range at single unit");
-    auto num_bytes_total = num_elem_total * sizeof(ValueType);
     while (num_elem_copied < num_elem_total) {
       // Number of elements left to copy:
       auto total_elem_left = num_elem_total - num_elem_copied;
@@ -173,8 +172,6 @@ dash::Future<ValueType *> copy_impl(
       // unit and local index of first element in current range segment:
       auto local_pos       = pattern.local(static_cast<index_type>(
                                              cur_in_first.pos()));
-      // Unit id owning current segment:
-      auto cur_unit        = local_pos.unit;
       // Local offset of first element in input range at current unit:
       auto l_in_first_idx  = local_pos.index;
       // Maximum number of elements to copy from current unit:
@@ -191,7 +188,7 @@ dash::Future<ValueType *> copy_impl(
       DASH_LOG_TRACE("dash::copy_impl",
                      "start g_idx:",    cur_in_first.pos(),
                      "->",
-                     "unit:",           cur_unit,
+                     "unit:",           local_pos.unit,
                      "l_idx:",          l_in_first_idx,
                      "->",
                      "unit elements:",  num_unit_elem,
@@ -390,9 +387,8 @@ dash::Future<ValueType *> copy_async(
                     "dash::copy_async: first index in global input (" <<
                     g_l_in_first.pos() << ") is not local");
 
-    size_t num_copy_elem = l_in_last - l_in_first;
     DASH_LOG_TRACE("dash::copy_async", "copy local subrange",
-                   "num_copy_elem:", num_copy_elem);
+                   "num_copy_elem:", l_in_last - l_in_first);
     out_last  = std::copy(l_in_first,
                           l_in_last,
                           dest_first);
@@ -401,7 +397,7 @@ dash::Future<ValueType *> copy_async(
                    "Expected to copy " << num_local_elem << " local elements "
                    "but copied " << (out_last - dest_first));
     DASH_LOG_TRACE("dash::copy_async", "finished local copy of",
-                   num_copy_elem, "elements");
+                   (out_last - dest_first), "elements");
     // Advance output pointers:
     dest_first = out_last;
     //
@@ -578,6 +574,8 @@ ValueType * copy(
   // TODO:
   // - Implement adapter for local-to-global dash::copy here
   // - Return if global input range has no local sub-range
+
+  return nullptr;
 }
 
 } // namespace dash

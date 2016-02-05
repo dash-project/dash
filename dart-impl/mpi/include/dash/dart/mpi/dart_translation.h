@@ -12,12 +12,12 @@
 #include <dash/dart/base/logging.h>
 
 /* Global object for one-sided communication on memory region allocated with 'local allocation'. */
-extern MPI_Win dart_win_local_alloc; 
+extern MPI_Win dart_win_local_alloc;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 extern MPI_Win dart_sharedmem_win_local_alloc;
 #endif
 /** @brief Definition of translation table.
- * 
+ *
  *  This global translation table is created for dart collective memory allocation.
  *  Here, several features for translation table are itemized below:
  **
@@ -26,18 +26,18 @@ extern MPI_Win dart_sharedmem_win_local_alloc;
  *  - store the one-to-one correspondence relationship between global pointer and shared memory window.
  *
  *  - arranged in an increasing order based upon global pointer (segid).
- * 
+ *
  *  @note global pointer (segid) <-> shared memory window (win object), win object should be determined by seg_id uniquely.
  */
 typedef struct
 {
-	int16_t seg_id; /* seg_id determines a global pointer uniquely */
-	size_t size;
-	MPI_Aint *disp; /* the address set of the memory location of all units in certain team. */
-	char **baseptr;
-	char *selfbaseptr;
-	MPI_Win win;
-}info_t;
+	int16_t     seg_id; /* seg_id determines a global pointer uniquely */
+	size_t      size;
+	MPI_Aint  * disp;   /* address set of memory location of all units in certain team. */
+	char     ** baseptr;
+	char      * selfbaseptr;
+	MPI_Win     win;
+} info_t;
 #if 0
 typedef struct
 {
@@ -61,15 +61,15 @@ typedef node_info_t* node_t;
 /* -- The operations on translation table -- */
 
 /** @brief Initialize this global translation table.
- *  
- *  Every translation table is arranged in a linked list fashion, so what "transtable_create" has done 
+ *
+ *  Every translation table is arranged in a linked list fashion, so what "transtable_create" has done
  *  is just to let the translation table on the specified team (teamid) be NULL.
  *
  */
 int dart_adapt_transtable_create ();
 
 /** @brief Add a new item into the specified translation table.
- *  
+ *
  *  The translation table is arranged in an increasing order based upon 'seg_id'.
  *
  *  @param[in] item	Record to be inserted into the translation table.
@@ -80,14 +80,14 @@ int dart_adapt_transtable_add (info_t item);
  *
  *  Seg_id can determine a record in the translation table uniquely.
  *
- *  @param[in] seg_id 
- */ 
+ *  @param[in] seg_id
+ */
 int dart_adapt_transtable_remove (int16_t seg_id);
 
 /** @brief Query the shared memory window object associated with the specified seg_id.
- * 
+ *
  *  @param[in] seg_id
- *  @param[out] win	A MPI window object. 
+ *  @param[out] win	A MPI window object.
  *
  *  @retval non-negative integer Search successfully.
  *  @retval negative integer Failure.
@@ -98,7 +98,7 @@ int dart_adapt_transtable_get_win (int16_t seg_id, MPI_Win *win);
 /** @brief Query the address of the memory location of the specified rel_unit in specified team.
  *
  *  The output disp_s information targets for the dart inter-node communication, which means
- *  the one-sided communication proceed within the dynamic window object instead of the 
+ *  the one-sided communication proceed within the dynamic window object instead of the
  *  shared memory window object.
  *
  *  @retval ditto

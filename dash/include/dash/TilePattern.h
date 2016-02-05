@@ -14,7 +14,7 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
+#include <dash/PatternProperties.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
@@ -1477,7 +1477,6 @@ private:
     // Number of blocks in all dimensions:
     std::array<SizeType, NumDimensions> n_blocks;
     for (auto d = 0; d < NumDimensions; ++d) {
-      const Distribution & dist = distspec[d];
       SizeType max_blocksize_d  = blocksizespec.extent(d);
       SizeType max_blocks_d     = dash::math::div_ceil(
         sizespec.extent(d),
@@ -1557,12 +1556,13 @@ private:
   std::array<SizeType, NumDimensions> initialize_local_extents(
     dart_unit_t unit) const {
     // Coordinates of local unit id in team spec:
+#ifdef DASH_ENABLE_LOGGING
     auto unit_ts_coords = _teamspec.coords(unit);
     DASH_LOG_DEBUG_VAR("TilePattern._local_extents()", unit);
     DASH_LOG_TRACE_VAR("TilePattern._local_extents", unit_ts_coords);
+#endif
     ::std::array<SizeType, NumDimensions> l_extents;
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto num_elem_d         = _memory_layout.extent(d);
       // Number of units in dimension:
       auto num_units_d        = _teamspec.extent(d);
       // Number of blocks in dimension:
@@ -1572,7 +1572,7 @@ private:
       // Minimum number of blocks local to every unit in dimension:
       auto min_local_blocks_d = num_blocks_d / num_units_d;
       // Coordinate of this unit id in teamspec in dimension:
-      auto unit_ts_coord      = unit_ts_coords[d];
+//    auto unit_ts_coord      = unit_ts_coords[d];
       // Possibly there are more blocks than units in dimension and no
       // block left for this unit. Local extent in d then becomes 0.
       l_extents[d] = min_local_blocks_d * blocksize_d;

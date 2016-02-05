@@ -43,7 +43,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
+inline typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::size() const noexcept
 {
@@ -51,8 +51,8 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
-MatrixRef<T, NumDim, CUR, PatternT>
+typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
+inline MatrixRef<T, NumDim, CUR, PatternT>
 ::local_size() const noexcept
 {
   // TODO: Should be
@@ -65,8 +65,8 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
-MatrixRef<T, NumDim, CUR, PatternT>
+typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
+inline MatrixRef<T, NumDim, CUR, PatternT>
 ::local_capacity() const noexcept
 {
   // TODO: Should be
@@ -79,7 +79,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
+inline typename MatrixRef<T, NumDim, CUR, PatternT>::size_type
 MatrixRef<T, NumDim, CUR, PatternT>
 ::extent(
   dim_t dim) const noexcept
@@ -88,7 +88,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr std::array<
+inline std::array<
   typename MatrixRef<T, NumDim, CUR, PatternT>::size_type,
   NumDim>
 MatrixRef<T, NumDim, CUR, PatternT>
@@ -98,7 +98,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
-constexpr bool
+inline bool
 MatrixRef<T, NumDim, CUR, PatternT>
 ::empty() const noexcept
 {

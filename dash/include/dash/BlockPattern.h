@@ -12,7 +12,7 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
+#include <dash/PatternProperties.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
@@ -128,12 +128,12 @@ private:
   BlockSizeSpec_t             _blocksize_spec;
   /// Number of blocks in all dimensions
   BlockSpec_t                 _blockspec;
-  /// Arrangement of local blocks in all dimensions
-  BlockSpec_t                 _local_blockspec;
   /// A projected view of the global memory layout representing the
   /// local memory layout of this unit's elements respective to memory
   /// order.
   LocalMemoryLayout_t         _local_memory_layout;
+  /// Arrangement of local blocks in all dimensions
+  BlockSpec_t                 _local_blockspec;
   /// Maximum number of elements assigned to a single unit
   SizeType                    _local_capacity;
   /// Corresponding global index to first local index of the active unit
@@ -370,8 +370,8 @@ public:
     _memory_layout(other._memory_layout),
     _blocksize_spec(other._blocksize_spec),
     _blockspec(other._blockspec),
-    _local_blockspec(other._local_blockspec),
     _local_memory_layout(other._local_memory_layout),
+    _local_blockspec(other._local_blockspec),
     _local_capacity(other._local_capacity),
     _lbegin(other._lbegin),
     _lend(other._lend) {
@@ -1387,8 +1387,7 @@ private:
     // Number of blocks in all dimensions:
     std::array<SizeType, NumDimensions> n_blocks;
     for (auto d = 0; d < NumDimensions; ++d) {
-      const Distribution & dist = distspec[d];
-      DASH_LOG_TRACE_VAR("BlockPattern.init_blockspec", dist.type);
+      DASH_LOG_TRACE_VAR("BlockPattern.init_blockspec", distspec[d].type);
       SizeType max_blocksize_d  = blocksizespec.extent(d);
       SizeType max_blocks_d     = dash::math::div_ceil(
                                     sizespec.extent(d),
@@ -1483,7 +1482,7 @@ private:
     DASH_LOG_DEBUG_VAR("BlockPattern.init_local_extents()", unit);
     DASH_LOG_DEBUG_VAR("BlockPattern.init_local_extents()", _nunits);
     if (_nunits == 0) {
-      return ::std::array<SizeType, NumDimensions> {  };
+      return ::std::array<SizeType, NumDimensions> {{ }};
     }
     // Coordinates of local unit id in team spec:
     auto unit_ts_coords = _teamspec.coords(unit);
@@ -1520,9 +1519,9 @@ private:
         IndexType num_add_blocks = static_cast<IndexType>(
                                      num_blocks_d % num_units_d);
         // Unit id assigned to the last block in dimension:
-        auto last_block_unit_d = (num_blocks_d % num_units_d == 0)
-                                 ? num_units_d - 1
-                                 : (num_blocks_d % num_units_d) - 1;
+        dart_unit_t last_block_unit_d = (num_blocks_d % num_units_d == 0)
+                                        ? num_units_d - 1
+                                        : (num_blocks_d % num_units_d) - 1;
         DASH_LOG_TRACE_VAR("BlockPattern.init_local_extents.d",
                            last_block_unit_d);
         DASH_LOG_TRACE_VAR("BlockPattern.init_local_extents.d", num_add_blocks);

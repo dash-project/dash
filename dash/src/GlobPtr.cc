@@ -6,7 +6,7 @@ std::ostream & operator<<(
   const dart_gptr_t & dartptr) {
   char buf[100];
   sprintf(buf,
-          "<%08X|%04X|%04X|%016X>",
+          "<%08X|%04X|%04X|%016lX>",
           dartptr.unitid,
           dartptr.segid,
           dartptr.flags,

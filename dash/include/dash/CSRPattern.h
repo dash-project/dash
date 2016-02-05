@@ -13,7 +13,7 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
+#include <dash/PatternProperties.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
@@ -559,7 +559,7 @@ public:
     // Apply viewspec offsets to coordinates:
     auto g_coord         = global_pos + viewspec[0].offset;
     for (; unit_idx < _nunits - 1; ++unit_idx) {
-      if (_block_offsets[unit_idx+1] >= g_coord) {
+      if (_block_offsets[unit_idx+1] >= static_cast<size_type>(g_coord)) {
         DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
         return unit_idx;
       }
@@ -575,11 +575,11 @@ public:
    */
   dart_unit_t unit_at(
     /// Global linear element offset
-    IndexType g_index) const {
+    IndexType g_index) const
+  {
     DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", g_index);
-    dart_unit_t unit_idx = 0;
-    for (; unit_idx < _nunits - 1; ++unit_idx) {
-      if (_block_offsets[unit_idx+1] > g_index) {
+    for (size_type unit_idx = 0; unit_idx < _nunits - 1; ++unit_idx) {
+      if (_block_offsets[unit_idx+1] > static_cast<size_type>(g_index)) {
         DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
         return unit_idx;
       }
@@ -714,7 +714,8 @@ public:
     IndexType g_index) const {
     DASH_LOG_TRACE_VAR("CSRPattern.local()", g_index);
     local_index_t l_index;
-    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
+    index_type    unit_idx = static_cast<index_type>(_nunits-1);
+    for (; unit_idx >= 0; --unit_idx) {
       index_type block_offset = _block_offsets[unit_idx];
       if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
@@ -738,8 +739,9 @@ public:
   std::array<IndexType, NumDimensions> local_coords(
     const std::array<IndexType, NumDimensions> & g_coords) const {
     DASH_LOG_TRACE_VAR("CSRPattern.local_coords()", g_coords);
-    IndexType g_index = g_coords[0];
-    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
+    IndexType  g_index  = g_coords[0];
+    index_type unit_idx = static_cast<index_type>(_nunits-1);
+    for (; unit_idx >= 0; --unit_idx) {
       index_type block_offset = _block_offsets[unit_idx];
       if (block_offset <= g_index) {
         auto l_coord = g_index - block_offset;
@@ -764,7 +766,8 @@ public:
     IndexType g_index = g_coords[0];
     DASH_LOG_TRACE_VAR("CSRPattern.local_index()", g_coords);
     local_index_t l_index;
-    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
+    index_type    unit_idx = static_cast<index_type>(_nunits-1);
+    for (; unit_idx >= 0; --unit_idx) {
       index_type block_offset = _block_offsets[unit_idx];
       if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
@@ -1227,7 +1230,7 @@ public:
     const std::vector<size_type> & local_sizes) const {
     DASH_LOG_TRACE_VAR("CSRPattern.init_size()", local_sizes);
     size_type size = 0;
-    for (auto unit_idx = 0; unit_idx < local_sizes.size(); ++unit_idx) {
+    for (size_type unit_idx = 0; unit_idx < local_sizes.size(); ++unit_idx) {
       size += local_sizes[unit_idx];
     }
     DASH_LOG_TRACE_VAR("CSRPattern.init_size >", size);
@@ -1255,19 +1258,19 @@ public:
     if (dist_type == dash::internal::DIST_BLOCKED ||
         dist_type == dash::internal::DIST_TILE) {
       auto blocksize = dash::math::div_ceil(total_size, nunits);
-      for (auto u = 0; u < nunits; ++u) {
+      for (size_type u = 0; u < nunits; ++u) {
         l_sizes.push_back(blocksize);
       }
     // Unspecified distribution (default-constructed pattern instance),
     // set all local sizes to 0:
     } else if (dist_type == dash::internal::DIST_UNDEFINED) {
-      for (auto u = 0; u < nunits; ++u) {
+      for (size_type u = 0; u < nunits; ++u) {
         l_sizes.push_back(0);
       }
     // No distribution, assign all indices to unit 0:
     } else if (dist_type == dash::internal::DIST_NONE) {
       l_sizes.push_back(total_size);
-      for (auto u = 0; u < nunits-1; ++u) {
+      for (size_type u = 0; u < nunits-1; ++u) {
         l_sizes.push_back(0);
       }
     // Incompatible distribution type:
@@ -1306,7 +1309,10 @@ public:
     if (local_sizes.size() > 0) {
       // NOTE: Assuming 1 block for every unit.
       block_offsets.push_back(0);
-      for (auto unit_idx = 0; unit_idx < local_sizes.size() - 1; ++unit_idx) {
+      for (size_type unit_idx = 0;
+           unit_idx < local_sizes.size()-1;
+           ++unit_idx)
+      {
         auto block_offset = block_offsets[unit_idx] +
                             local_sizes[unit_idx];
         block_offsets.push_back(block_offset);

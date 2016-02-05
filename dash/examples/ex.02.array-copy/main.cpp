@@ -53,18 +53,20 @@ int main(int argc, char* argv[])
 
   cout << "Array size:        " << array.size() << endl;
 
-  int local_array[num_elems_copy];
+  int * local_array = new int[num_elems_copy];
 
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
 
-  for(int i = 0; i < num_elems_copy; ++i) {
+  for(size_t i = 0; i < num_elems_copy; ++i) {
     cout << local_array[i] << " ";
   }
   cout << endl;
 
   array.barrier();
+
+  delete[] local_array;
 
   dash::finalize();
 

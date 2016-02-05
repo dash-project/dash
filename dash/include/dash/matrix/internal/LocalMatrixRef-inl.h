@@ -505,7 +505,7 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
 ::local_at(
   index_type pos) const
 {
-  if (!(pos < _refview->_mat->size())) {
+  if (!(static_cast<size_type>(pos) < _refview->_mat->size())) {
     DASH_THROW(
       dash::exception::OutOfRange,
       "Position for LocalMatrixRef<0>.local_at out of range");

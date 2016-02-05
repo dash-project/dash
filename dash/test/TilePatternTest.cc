@@ -35,7 +35,7 @@ TEST_F(TilePatternTest, Distribute1DimTile)
   EXPECT_EQ(pat_tile_col.local_capacity(), local_cap);
 
   std::array<index_t, 1> expected_coord;
-  for (int x = 0; x < extent; ++x) {
+  for (int x = 0; x < static_cast<int>(extent); ++x) {
     expected_coord[0]         = x;
     index_t expected_unit_id  = (x / block_size) % team_size;
     index_t block_index       = x / block_size;
@@ -128,9 +128,9 @@ TEST_F(TilePatternTest, Distribute2DimTile)
   ASSERT_EQ(pat_tile_col.blocksize(0), block_size_x);
   ASSERT_EQ(pat_tile_col.blocksize(1), block_size_y);
   // number of overflow blocks, e.g. 7 elements, 3 teams -> 1
-  int num_overflow_blocks = extent_x % team_size;
-  for (int x = 0; x < extent_x; ++x) {
-    for (int y = 0; y < extent_y; ++y) {
+//int num_overflow_blocks = extent_x % team_size;
+  for (int x = 0; x < static_cast<int>(extent_x); ++x) {
+    for (int y = 0; y < static_cast<int>(extent_y); ++y) {
       int num_blocks_x        = extent_x / block_size_x;
       int num_blocks_y        = extent_y / block_size_y;
       int num_l_blocks_x      = num_blocks_x / team_size;
@@ -139,19 +139,19 @@ TEST_F(TilePatternTest, Distribute2DimTile)
       int block_index_y       = y / block_size_y;
       int unit_id             = (block_index_x + block_index_y) % team_size;
       int l_block_index_x     = block_index_x / team_size;
-      int l_block_index_y     = block_index_y / team_size;
+//    int l_block_index_y     = block_index_y / team_size;
       int l_block_index_row   = (block_index_y * num_l_blocks_x) +
                                 l_block_index_x;
-      int l_block_index_col   = (block_index_x * num_l_blocks_y) +
-                                l_block_index_y;
+//    int l_block_index_col   = (block_index_x * num_l_blocks_y) +
+//                              l_block_index_y;
       int phase_x             = (x % block_size_x);
-      int phase_y             = (y % block_size_y);
+//    int phase_y             = (y % block_size_y);
       int phase_row           = (y % block_size_y) * block_size_x +
                                 phase_x;
-      int phase_col           = (x % block_size_x) * block_size_y +
-                                (y % block_size_y);
-      int local_x             = l_block_index_x * block_size_x + phase_x;
-      int local_y             = l_block_index_y * block_size_y + phase_y;
+//    int phase_col           = (x % block_size_x) * block_size_y +
+//                              (y % block_size_y);
+//    int local_x             = l_block_index_x * block_size_x + phase_x;
+//    int local_y             = l_block_index_y * block_size_y + phase_y;
       int local_index_row     = (l_block_index_row * block_size) +
                                 phase_row;
       // Row major:
@@ -202,7 +202,7 @@ TEST_F(TilePatternTest, Tile2DimTeam1Dim)
   // Choose 'inconvenient' extents:
   size_t block_size_x   = 3;
   size_t block_size_y   = 2;
-  size_t block_size     = block_size_x * block_size_y;
+//size_t block_size     = block_size_x * block_size_y;
   size_t extent_x       = team_size * 2 * block_size_x;
   size_t extent_y       = team_size * 2 * block_size_y;
   size_t size           = extent_x * extent_y;
@@ -230,9 +230,9 @@ TEST_F(TilePatternTest, Tile2DimTeam1Dim)
   ASSERT_EQ(dash::TeamSpec<2>(dash::Team::All()).size(), team_size);
 
   std::vector< std::vector<dart_unit_t> > pattern_units;
-  for (int x = 0; x < extent_x; ++x) {
+  for (int x = 0; x < static_cast<int>(extent_x); ++x) {
     std::vector<dart_unit_t> row_units;
-    for (int y = 0; y < extent_y; ++y) {
+    for (int y = 0; y < static_cast<int>(extent_y); ++y) {
       row_units.push_back(pattern.unit_at(std::array<index_t, 2> { x, y }));
     }
     pattern_units.push_back(row_units);

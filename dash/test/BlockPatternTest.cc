@@ -94,7 +94,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
   //
   // [ .. team 0 .. | .. team 1 .. | ... | team n-1 ]
   size_t team_size  = dash::Team::All().size();
-  LOG_MESSAGE("Team size: %d", team_size);
+  LOG_MESSAGE("Team size: %lu", team_size);
   // One underfilled block:
   _num_elem = 11 * team_size - 1;
   size_t block_size = dash::math::div_ceil(_num_elem, team_size);
@@ -116,7 +116,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size);
   EXPECT_EQ(pat_blocked_col.local_capacity(), local_cap);
   // Test local extents:
-  for (auto u = 0; u < team_size; ++u) {
+  for (size_t u = 0; u < team_size; ++u) {
     size_t local_extent_x;
     if (u < _num_elem / block_size) {
       // Full block
@@ -128,7 +128,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
       // Empty block
       local_extent_x = 0;
     }
-    LOG_MESSAGE("local extents: u:%d, le: %d",
+    LOG_MESSAGE("local extents: u:%lu, le:%lu",
       u, local_extent_x);
     EXPECT_EQ(local_extent_x, pat_blocked_row.local_extents(u)[0]);
     EXPECT_EQ(local_extent_x, pat_blocked_col.local_extents(u)[0]);
@@ -203,7 +203,6 @@ TEST_F(BlockPatternTest, Distribute1DimCyclic)
   EXPECT_EQ(pat_cyclic_col.capacity(), _num_elem);
   EXPECT_EQ(pat_cyclic_col.blocksize(0), 1);
   EXPECT_EQ(pat_cyclic_col.local_capacity(), local_cap);
-  size_t expected_unit_id;
   std::array<index_t, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
     int expected_unit_id = x % team_size;
@@ -272,8 +271,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlockcyclic)
   EXPECT_EQ(pat_blockcyclic_col.capacity(), _num_elem);
   EXPECT_EQ(pat_blockcyclic_col.blocksize(0), block_size);
   EXPECT_EQ(pat_blockcyclic_col.local_capacity(), local_cap);
-  size_t expected_unit_id;
-  LOG_MESSAGE("num elem: %d, block size: %d, num blocks: %d",
+  LOG_MESSAGE("num elem: %d, block size: %lu, num blocks: %lu",
     _num_elem, block_size, num_blocks);
   std::array<index_t, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
@@ -497,7 +495,7 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedX)
                                       : 0;
       // Actual extent of block, adjusted for underfilled extent:
       int block_size_x_adj          = block_size_x - underfill_x;
-      int expected_index_row_order  = (y * extent_x) + x;
+//    int expected_index_row_order  = (y * extent_x) + x;
       int expected_index_col_order  = (x * extent_y) + y;
       int expected_offset_row_order = (x % block_size_x) +
                                       (y * block_size_x_adj);
@@ -611,13 +609,13 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
   EXPECT_EQ_U(pat_col.local_capacity(), max_per_unit);
   EXPECT_EQ_U(pat_col.blocksize(0), block_size_x);
   EXPECT_EQ_U(pat_col.blocksize(1), block_size_y);
-  for (int x = 0; x < extent_x; ++x) {
-    for (int y = 0; y < extent_y; ++y) {
+  for (int x = 0; x < static_cast<int>(extent_x); ++x) {
+    for (int y = 0; y < static_cast<int>(extent_y); ++y) {
       // Units might have empty local range, e.g. when distributing 41
       // elements to 8 units.
       // Subtract missing elements in last block if any:
-      int underfill_x               = (x >= (num_blocks_x-1) *
-                                            block_size_x)
+      int underfill_x               = (x >= static_cast<int>(
+                                             (num_blocks_x-1) * block_size_x))
                                       ? (block_size_x * num_blocks_x) -
                                         extent_x
                                       : 0;
@@ -629,10 +627,10 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
       int block_coord_y             = (y / block_size_y) % num_units_y;
       int expected_unit_id          = block_coord_y * num_units_x +
                                       block_coord_x;
-      int local_x                   = x % block_size_x;
-      int local_y                   = y;
+//    int local_x                   = x % block_size_x;
+//    int local_y                   = y;
       // Row major:
-      LOG_MESSAGE("R %d,%d, eo:%d, ao:%d, nbx:%d, bx:%d, by:%d, bxa:%d",
+      LOG_MESSAGE("R %d,%d, eo:%d, ao:%d, nbx:%lu, bx:%lu, by:%lu, bxa:%d",
         x, y,
         expected_offset_row_order,
         pat_row.at(std::array<index_t, 2> { x, y }),
@@ -652,7 +650,7 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
           (std::array<index_t, 2> { local_x, local_y })));
 #endif
       // Col major:
-      LOG_MESSAGE("C %d,%d, eo:%d, ao:%d, ei:%d, bx:%d, by:%d",
+      LOG_MESSAGE("C %d,%d, eo:%d, ao:%d, bx:%lu, by:%lu",
         x, y,
         expected_offset_col_order,
         pat_col.at(std::array<index_t, 2> { x, y }),
@@ -727,8 +725,8 @@ TEST_F(BlockPatternTest, Distribute2DimCyclicX)
       if (unit_id < num_add_blocks_x) {
         num_blocks_unit_x++;
       }
-      int expected_index_row_order  = (y * extent_x) + x;
-      int expected_index_col_order  = (x * extent_y) + y;
+//    int expected_index_row_order  = (y * extent_x) + x;
+//    int expected_index_col_order  = (x * extent_y) + y;
       int expected_unit_id = x % team_size;
       int expected_offset_row_order = (y * num_blocks_unit_x) +
                                       x / team_size;
@@ -796,16 +794,17 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
   size_t extent_z     = 3;
   size_t size         = extent_x * extent_y * extent_z;
   size_t block_size_x = 2;
-  int num_blocks_x    = dash::math::div_ceil(extent_x, block_size_x);
-  int max_per_unit_x  = block_size_x *
-                          dash::math::div_ceil(num_blocks_x, team_size);
-  int block_size_y    = extent_y;
-  int block_size_z    = extent_z;
-  int max_per_unit    = max_per_unit_x * block_size_y * block_size_z;
-  LOG_MESSAGE("ex: %d, ey: %d, ez: %d, bsx: %d, bsy: %d, mpx: %d, mpu: %d",
-      extent_x, extent_y, extent_z,
-      block_size_x, block_size_y,
-      max_per_unit_x, max_per_unit);
+  size_t num_blocks_x    = dash::math::div_ceil(extent_x, block_size_x);
+  size_t max_per_unit_x  = block_size_x *
+                           dash::math::div_ceil(num_blocks_x, team_size);
+  size_t block_size_y    = extent_y;
+  size_t block_size_z    = extent_z;
+  size_t max_per_unit    = max_per_unit_x * block_size_y * block_size_z;
+  LOG_MESSAGE("ex: %lu, ey: %lu, ez: %lu, bsx: %lu, bsy: %lu, "
+              "mpx: %lu, mpu: %lu",
+              extent_x, extent_y, extent_z,
+              block_size_x, block_size_y,
+              max_per_unit_x, max_per_unit);
   dash::Pattern<3, dash::ROW_MAJOR> pat_blockcyclic_row(
       dash::SizeSpec<3>(extent_x, extent_y, extent_z),
       dash::DistributionSpec<3>(dash::BLOCKCYCLIC(block_size_x),
@@ -831,10 +830,10 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
   ASSERT_EQ(pat_blockcyclic_col.blocksize(1), block_size_y);
   ASSERT_EQ(pat_blockcyclic_col.blocksize(2), block_size_z);
   // number of overflow blocks, e.g. 7 elements, 3 teams -> 1
-  int num_overflow_blocks = extent_x % team_size;
-  for (int x = 0; x < extent_x; ++x) {
-    for (int y = 0; y < extent_y; ++y) {
-      for (int z = 0; z < extent_z; ++z) {
+//int num_overflow_blocks = extent_x % team_size;
+  for (int x = 0; x < static_cast<int>(extent_x); ++x) {
+    for (int y = 0; y < static_cast<int>(extent_y); ++y) {
+      for (int z = 0; z < static_cast<int>(extent_z); ++z) {
         int unit_id                   = (x / block_size_x) % team_size;
         int num_blocks_x              = dash::math::div_ceil(
                                           extent_x, block_size_x);
@@ -959,11 +958,11 @@ TEST_F(BlockPatternTest, LocalExtents2DimCyclicX)
   int extent_y       = 41;
   int block_size_x   = 1;
   int block_size_y   = extent_y;
-  int overflow_bs_x  = 0;
-  int overflow_bs_y  = 0;
+//int overflow_bs_x  = 0;
+//int overflow_bs_y  = 0;
   int underfill_bs_x = 0;
   int underfill_bs_y = 0;
-  size_t size        = extent_x * extent_y;
+//size_t size        = extent_x * extent_y;
   int max_per_unit_x = dash::math::div_ceil(extent_x, team_size);
   int max_per_unit   = max_per_unit_x * block_size_y;
   // Unit 0 should have 1 additional block assigned:
@@ -1031,8 +1030,8 @@ TEST_F(BlockPatternTest, LocalExtents2DimBlockcyclicY)
   int underfill_bs_x = 0;
   // Last block is 1 extent smaller:
   int underfill_bs_y = 1;
-  int overflow_bs_x  = 0;
-  int overflow_bs_y  = block_size_y - underfill_bs_y;
+//int overflow_bs_x  = 0;
+//int overflow_bs_y  = block_size_y - underfill_bs_y;
   // Two blocks for every unit, plus one additional block for
   // half of the units:
   int num_add_blocks = dash::math::div_ceil(team_size, 2);

@@ -16,7 +16,7 @@ TEST_F(TransformTest, ArrayLocalPlusLocal)
   dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
 
   // Fill ranges with initial values:
-  for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
+  for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     array_dest.local[l_idx] = 1;
     array_in_a.local[l_idx] = l_idx;
     array_in_b.local[l_idx] = 2 * l_idx;
@@ -33,7 +33,7 @@ TEST_F(TransformTest, ArrayLocalPlusLocal)
 
   dash::barrier();
 
-  for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
+  for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     ASSERT_EQ_U(array_in_a.local[l_idx], l_idx);
     ASSERT_EQ_U(array_in_b.local[l_idx], 2 * l_idx);
     ASSERT_EQ_U(array_dest.local[l_idx], 3 * l_idx);
@@ -58,12 +58,12 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   // array.
 
   // Initialize local values, e.g. unit 2: [ 2000, 2001, 2002, ... ]
-  for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
+  for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     local[l_idx] = ((dash::myid() + 1) * 1000) + (l_idx + 1);
   }
 
   // Accumulate local range to every block in the array:
-  for (auto block_idx = 0; block_idx < _dash_size; ++block_idx) {
+  for (size_t block_idx = 0; block_idx < _dash_size; ++block_idx) {
     auto block_offset = block_idx * num_elem_local;
     dash::transform<int>(&(*local.begin()), &(*local.end()), // A
                          array_dest.begin() + block_offset,  // B
@@ -72,13 +72,13 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   }
 
   dash::barrier();
-  
+
   // Verify values in local partition of array:
-  
+
   // Gaussian sum of all local values accumulated = 1100 + 1200 + ...
   int global_acc = ((dash::myid() + 1) * 100) +
                    ((_dash_size + 1) * _dash_size * 1000) / 2;
-  for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
+  for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     int expected = global_acc + ((l_idx + 1) * _dash_size);
     LOG_MESSAGE("array_dest.local[%d]: %p", l_idx, &array_dest.local[l_idx]);
     ASSERT_EQ_U(expected, array_dest.local[l_idx]);
@@ -102,7 +102,7 @@ TEST_F(TransformTest, ArrayGlobalPlusGlobalBlocking)
   // array.
 
   // Initialize values to add, e.g. unit 2: [ 2000, 2001, 2002, ... ]
-  for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
+  for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     array_values.local[l_idx] = ((dash::myid() + 1) * 1000) + (l_idx + 1);
   }
 
@@ -113,10 +113,10 @@ TEST_F(TransformTest, ArrayGlobalPlusGlobalBlocking)
                        dash::plus<int>());                       // op
 
   dash::barrier();
-  
+
   // Verify values in local partition of array:
-  
-  for (auto l_idx = 0; l_idx < num_elem_local; ++l_idx) {
+
+  for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     int expected = (dash::myid() + 1) * 100 +               // initial value
                    (dash::myid() + 1) * 1000 + (l_idx + 1); // added value
     ASSERT_EQ_U(expected, array_dest.local[l_idx]);
@@ -131,7 +131,6 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 7;
   size_t tilesize_y  = 3;
-  size_t tilesize    = tilesize_x * tilesize_y;
   size_t extent_cols = tilesize_x * num_units * 2;
   size_t extent_rows = tilesize_y * num_units * 2;
   dash::Matrix<int, 2> matrix_a(
@@ -157,8 +156,8 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   // Fill matrix
   if(myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
-    for(int i = 0; i < matrix_a.extent(0); ++i) {
-      for(int k = 0; k < matrix_a.extent(1); ++k) {
+    for(size_t i = 0; i < matrix_a.extent(0); ++i) {
+      for(size_t k = 0; k < matrix_a.extent(1); ++k) {
         auto value = (i * 1000) + (k * 1);
         LOG_MESSAGE("Setting matrix[%d][%d] = %d",
                     i, k, value);
@@ -176,7 +175,7 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   auto first_g_block_a = matrix_a.pattern().block(0);
   // Global coordinates of first element in first global block:
   std::array<index_t, 2> first_g_block_a_begin   = { 0, 0 };
-  std::array<index_t, 2> first_g_block_a_offsets = first_g_block_a.offsets();
+//std::array<index_t, 2> first_g_block_a_offsets = first_g_block_a.offsets();
   ASSERT_EQ_U(first_g_block_a_begin,
               first_g_block_a.offsets());
 
@@ -189,7 +188,4 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   std::array<index_t, 2> first_l_block_a_offsets = first_l_block_a.offsets();
   ASSERT_EQ_U(first_l_block_a_begin,
               first_l_block_a_offsets);
-
-  
-
 }
