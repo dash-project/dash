@@ -315,7 +315,7 @@ public:
     _ndim(NumDimensions),
     _extents(extents)
   {
-    resize(_extents);
+    resize(extents);
   }
 
   /**
@@ -374,7 +374,7 @@ public:
    * Change the extent of the cartesian space in every dimension.
    */
   template<typename SizeType_>
-  void resize(const extents_type & extents) {
+  void resize(const std::array<SizeType_, NumDimensions> & extents) {
     // Update size:
     _size = 1;
     for(auto i = 0; i < NumDimensions; i++ ) {
@@ -488,7 +488,9 @@ public:
     DASH_ASSERT_GT(_size, 0, "CartesianIndexSpace has size 0");
     for (auto i = 0; i < NumDimensions; i++) {
       DASH_ASSERT_RANGE(
-        0, static_cast<SizeType>(point[i]), _extents[i]-1,
+        0,
+        static_cast<IndexType>(point[i]),
+        static_cast<IndexType>(_extents[i]-1),
         "Given coordinate for CartesianIndexSpace::at() exceeds extent");
       SizeType offset_dim = 0;
       if (AtArrangement == ROW_MAJOR) {
@@ -529,10 +531,11 @@ public:
    */
   template<MemArrange CoordArrangement = Arrangement>
   std::array<IndexType, NumDimensions> coords(
-    IndexType index) const {
+    IndexType index) const
+  {
     DASH_ASSERT_GT(_size, 0, "CartesianIndexSpace has size 0");
     DASH_ASSERT_RANGE(
-      0, static_cast<SizeType>(index), _size-1,
+      0, index, static_cast<IndexType>(_size-1),
       "Given index for CartesianIndexSpace::coords() is out of bounds");
     ::std::array<IndexType, NumDimensions> pos;
     if (CoordArrangement == COL_MAJOR) {

@@ -12,11 +12,13 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
+#include <dash/PatternProperties.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 #include <dash/internal/PatternArguments.h>
+
+#include <dash/BlockPattern.h>
 
 namespace dash {
 

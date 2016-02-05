@@ -12,7 +12,7 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
+#include <dash/PatternProperties.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
@@ -1482,7 +1482,7 @@ private:
     DASH_LOG_DEBUG_VAR("BlockPattern.init_local_extents()", unit);
     DASH_LOG_DEBUG_VAR("BlockPattern.init_local_extents()", _nunits);
     if (_nunits == 0) {
-      return ::std::array<SizeType, NumDimensions> {  };
+      return ::std::array<SizeType, NumDimensions> {{ }};
     }
     // Coordinates of local unit id in team spec:
     auto unit_ts_coords = _teamspec.coords(unit);

@@ -13,7 +13,7 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
+#include <dash/PatternProperties.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
@@ -714,7 +714,8 @@ public:
     IndexType g_index) const {
     DASH_LOG_TRACE_VAR("CSRPattern.local()", g_index);
     local_index_t l_index;
-    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
+    index_type    unit_idx = static_cast<index_type>(_nunits-1);
+    for (; unit_idx >= 0; --unit_idx) {
       index_type block_offset = _block_offsets[unit_idx];
       if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
@@ -738,8 +739,9 @@ public:
   std::array<IndexType, NumDimensions> local_coords(
     const std::array<IndexType, NumDimensions> & g_coords) const {
     DASH_LOG_TRACE_VAR("CSRPattern.local_coords()", g_coords);
-    IndexType g_index = g_coords[0];
-    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
+    IndexType  g_index  = g_coords[0];
+    index_type unit_idx = static_cast<index_type>(_nunits-1);
+    for (; unit_idx >= 0; --unit_idx) {
       index_type block_offset = _block_offsets[unit_idx];
       if (block_offset <= g_index) {
         auto l_coord = g_index - block_offset;
@@ -764,7 +766,8 @@ public:
     IndexType g_index = g_coords[0];
     DASH_LOG_TRACE_VAR("CSRPattern.local_index()", g_coords);
     local_index_t l_index;
-    for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
+    index_type    unit_idx = static_cast<index_type>(_nunits-1);
+    for (; unit_idx >= 0; --unit_idx) {
       index_type block_offset = _block_offsets[unit_idx];
       if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
