@@ -62,7 +62,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
               _dash_size, num_elem_total,
               num_elem_per_unit, num_blocks_per_unit);
 
-  typedef dash::TilePattern<2>           pattern_t;
+  typedef dash::ShiftTilePattern<2>      pattern_t;
   typedef typename pattern_t::index_type index_t;
   typedef float                          value_t;
 
@@ -75,7 +75,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
       dash::TILE(block_size_y))
   );
 
-  dash::Matrix<value_t, 2> matrix(pattern);
+  dash::Matrix<value_t, 2, dash::default_index_t, pattern_t> matrix(pattern);
 
   // Assign initial values:
   for (size_t lb = 0; lb < num_blocks_per_unit; ++lb) {

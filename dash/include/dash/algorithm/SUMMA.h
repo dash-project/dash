@@ -149,6 +149,23 @@ void summa(
   typedef typename MatrixTypeC::pattern_type pattern_c_type;
   typedef std::array<index_t, 2>             coords_t;
 
+  const bool shifted_tiling = dash::pattern_constraints<
+                                dash::pattern_partitioning_properties<>,
+                                dash::pattern_mapping_properties<
+                                  dash::pattern_mapping_tag::diagonal
+                                >,
+                                dash::pattern_layout_properties<>,
+                                typename MatrixTypeC::pattern_type
+                              >::satisfied::value;
+  const bool minimal_tiling = dash::pattern_constraints<
+                                dash::pattern_partitioning_properties<
+                                  dash::pattern_partitioning_tag::minimal
+                                >,
+                                dash::pattern_mapping_properties<>,
+                                dash::pattern_layout_properties<>,
+                                typename MatrixTypeC::pattern_type
+                              >::satisfied::value;
+
   static_assert(
       std::is_same<value_type, double>::value ||
       std::is_same<value_type, float>::value,
@@ -188,6 +205,14 @@ void summa(
   }
   DASH_LOG_TRACE("dash::summa", "matrix pattern properties valid");
 
+  if (shifted_tiling) {
+    DASH_LOG_TRACE("dash::summa",
+                   "using communication scheme for diagonal-shift mapping");
+  }
+  if (minimal_tiling) {
+    DASH_LOG_TRACE("dash::summa",
+                   "using communication scheme for minimal partitioning");
+  }
   //    A         B         C
   //  _____     _____     _____
   // |     |   |     |   |     |
@@ -349,7 +374,8 @@ void summa(
   // -------------------------------------------------------------------------
   // Iterate local blocks in matrix C:
   // -------------------------------------------------------------------------
-  extent_t num_local_blocks_c = (num_blocks_n * num_blocks_p) / teamspec.size();
+  extent_t num_local_blocks_c = pattern_c.local_blockspec().size();
+
   DASH_LOG_TRACE("dash::summa", "summa.block.C",
                  "C.num.local.blocks:",  num_local_blocks_c,
                  "C.num.column.blocks:", num_blocks_m);
@@ -373,7 +399,8 @@ void summa(
     // Iterate blocks in columns of A / rows of B:
     // -----------------------------------------------------------------------
     for (extent_t block_k = 0; block_k < num_blocks_m; ++block_k) {
-      DASH_LOG_TRACE("dash::summa", "summa.block.k", block_k);
+      DASH_LOG_TRACE("dash::summa", "summa.block.k", block_k,
+                     "active local block in C:", lb);
       // ---------------------------------------------------------------------
       // Prefetch local copy of blocks from A and B for multiplication in
       // next iteration.
@@ -383,7 +410,6 @@ void summa(
       // Do not prefetch blocks in last iteration:
       if (!last) {
         index_t block_get_k = static_cast<index_t>(block_k + 1);
-#ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
         block_get_k = (block_get_k + unit_ts_coords[0]) % num_blocks_m;
         // Block coordinate of local block in matrix C to prefetch:
         if (block_k == num_blocks_m - 1) {
@@ -394,18 +420,6 @@ void summa(
           l_block_c_get_row  = l_block_c_get_view.offset(1) / block_size_n;
           l_block_c_get_col  = l_block_c_get_view.offset(0) / block_size_p;
         }
-#else
-        block_get_k = (block_get_k + unit_id) % num_blocks_m;
-        // Block coordinate of local block in matrix C to prefetch:
-        if (block_k == num_blocks_m - 1) {
-          // Prefetch for next local block in matrix C:
-          block_get_k        = unit_id;
-          l_block_c_get      = C.local.block(lb + 1);
-          l_block_c_get_view = l_block_c_get.begin().viewspec();
-          l_block_c_get_row  = l_block_c_get_view.offset(1) / block_size_n;
-          l_block_c_get_col  = l_block_c_get_view.offset(0) / block_size_p;
-        }
-#endif
         // Block coordinates of blocks in A and B to prefetch:
         block_a_get_coords = coords_t { block_get_k,       l_block_c_get_row };
         block_b_get_coords = coords_t { l_block_c_get_col, block_get_k       };

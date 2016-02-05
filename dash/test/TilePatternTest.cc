@@ -26,9 +26,11 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
   // Choose 'inconvenient' extents:
   int    block_size_x = 3;
   int    block_size_y = 2;
+  int    odd_blocks_x = 1;
+  int    odd_blocks_y = 2;
   size_t block_size   = block_size_x * block_size_y;
-  size_t extent_x     = team_size_x * block_size_x;
-  size_t extent_y     = team_size_y * block_size_y;
+  size_t extent_x     = (team_size_x + odd_blocks_x) * block_size_x;
+  size_t extent_y     = (team_size_y + odd_blocks_y) * block_size_y;
   size_t size         = extent_x * extent_y;
   size_t max_per_unit = size / team_size;
   LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
@@ -78,8 +80,12 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
     std::vector<index_t>     row_g_indices;
     for (int x = 0; x < static_cast<int>(extent_x); ++x) {
       auto     unit_id  = pattern.unit_at(std::array<index_t, 2> { x, y });
-      coords_t l_coords = { x % block_size_x, y % block_size_y };
+      auto     l_pos    = pattern.local(coords_t { x, y });
+      coords_t l_coords = l_pos.coords;
       coords_t g_coords = pattern.global(unit_id, l_coords);
+      ASSERT_EQ_U(unit_id, l_pos.unit);
+      ASSERT_EQ_U((coords_t { x, y }), g_coords);
+
       std::ostringstream ss;
       ss << "(" << g_coords[0] << "," << g_coords[1] << ")";
       row_g_coords.push_back(ss.str());
@@ -109,19 +115,17 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
       auto     unit_id_c    = l_pos_coords.unit;
       auto     l_coords     = l_pos_coords.coords;
       std::ostringstream sc;
-      sc << "(" << unit_id_c << ":"
-         << l_coords[0] << "," << l_coords[1]
-         << ")";
+      sc << "(" << l_coords[0] << "," << l_coords[1] << ")";
       row_l_coords.push_back(sc.str());
 
       auto     l_pos_index  = pattern.local_index(g_coords);
       auto     unit_id_i    = l_pos_index.unit;
       auto     l_index      = l_pos_index.index;
       std::ostringstream si;
-      si << "(" << unit_id_i << ":"
-         << l_index
-         << ")";
+      si << "(" << unit_id_i << ":" << l_index << ")";
       row_l_indices.push_back(si.str());
+
+      ASSERT_EQ_U(unit_id_c, unit_id_i);
     }
     pattern_l_coords.push_back(row_l_coords);
     pattern_l_indices.push_back(row_l_indices);

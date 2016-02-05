@@ -202,8 +202,6 @@ public:
     _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
     _myid(_team->myid()),
-    // Degrading to 1-dimensional team spec for now:
-//  _teamspec(_distspec, *_team),
     _teamspec(_arguments.teamspec()),
     _memory_layout(_arguments.sizespec().extents()),
     _nunits(_teamspec.size()),
@@ -277,8 +275,6 @@ public:
   : _distspec(dist),
     _team(&team),
     _myid(_team->myid()),
-    // Degrading to 1-dimensional team spec for now:
-//  _teamspec(_distspec, *_team),
     _teamspec(
       teamspec,
       _distspec,
@@ -407,16 +403,16 @@ public:
    * copy-construction.
    */
   TilePattern(self_t & other)
-  : TilePattern(static_cast<const self_t &>(other)) {
-  }
+  : TilePattern(static_cast<const self_t &>(other))
+  { }
 
   /**
    * Equality comparison operator.
    */
   bool operator==(
     /// TilePattern instance to compare for equality
-    const self_t & other
-  ) const {
+    const self_t & other) const
+  {
     if (this == &other) {
       return true;
     }
@@ -609,7 +605,8 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_extent(dim_t dim) const {
+  SizeType local_extent(dim_t dim) const
+  {
     if (dim >= NumDimensions || dim < 0) {
       DASH_THROW(
         dash::exception::OutOfRange,
@@ -632,9 +629,15 @@ public:
    * \see  DashPatternConcept
    */
   std::array<SizeType, NumDimensions> local_extents(
-    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const {
-    // Same local memory layout for all units:
-    return _local_memory_layout.extents();
+    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+  {
+    if (unit == DART_UNDEFINED_UNIT_ID) {
+      unit = _myid;
+    }
+    if (unit == _myid) {
+      return _local_memory_layout.extents();
+    }
+    return initialize_local_extents(unit);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -1167,14 +1170,6 @@ public:
   ////////////////////////////////////////////////////////////////////////////
 
   /**
-   * Cartesian arrangement of pattern blocks.
-   */
-  const BlockSpec_t & blockspec() const
-  {
-    return _blockspec;
-  }
-
-  /**
    * Index of block at given global coordinates.
    *
    * \see  DashPatternConcept
@@ -1304,8 +1299,25 @@ public:
    */
   SizeType blocksize(
     /// The dimension in the pattern
-    dim_t dimension) const {
+    dim_t dimension) const
+  {
     return _blocksize_spec.extent(dimension);
+  }
+
+  /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  const BlockSpec_t & blockspec() const
+  {
+    return _blockspec;
+  }
+
+  /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  const BlockSpec_t & local_blockspec() const
+  {
+    return _local_blockspec;
   }
 
   /**

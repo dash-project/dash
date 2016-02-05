@@ -321,7 +321,6 @@ std::pair<double, double> test_dash(
 {
   std::pair<double, double> time;
   size_t num_units = dash::size();
-  auto   myid      = dash::myid();
 
 #ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
   size_t team_size_x = std::max<size_t>(
@@ -349,19 +348,6 @@ std::pair<double, double> test_dash(
   static_assert(std::is_same<index_t,
                              decltype(pattern)::index_type>::value,
                 "index type of deduced pattern and size spec differ");
-
-  auto blockspec = pattern.blockspec();
-  std::ostringstream ss;
-  ss << endl
-     << "Unit " << std::setw(2) << myid << ": "
-     << "pattern block spec "
-     << blockspec.extent(0)  << " x " << blockspec.extent(1)  << " "
-     << "pattern block size "
-     << pattern.blocksize(0) << " x " << pattern.blocksize(1) << " "
-     << "local size:"     << pattern.local_size()     << " "
-     << "local capacity:" << pattern.local_capacity() << " "
-     << "";
-  cout << ss.str();
 
   DASH_ASSERT_MSG(pattern.extent(0) % dash::size() == 0,
                   "Matrix columns not divisible by number of units");

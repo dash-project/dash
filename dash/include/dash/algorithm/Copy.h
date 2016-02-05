@@ -81,7 +81,7 @@ dash::Future<ValueType *> copy_impl(
     return dash::Future<ValueType *>([=]() { return out_first; });
   }
   DASH_LOG_TRACE("dash::copy_impl",
-                 "total elements:", num_elem_total,
+                 "total elements:",    num_elem_total,
                  "expected out_last:", out_first + num_elem_total);
   // Input iterators could be relative to a view. Map first input iterator
   // to global index range and use it to resolve last input iterator.
