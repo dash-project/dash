@@ -96,7 +96,7 @@ dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 	gptr->segid = 0; /* For local allocation, the segid is marked as '0'. */
 	gptr->flags = 0; /* For local allocation, the flag is marked as '0'. */
 	gptr->addr_or_offs.offset = dart_buddy_alloc (dart_localpool, nbytes);
-	if (gptr->addr_or_offs.offset == -1) {
+	if (gptr->addr_or_offs.offset == (uint64_t)(-1)) {
 		DART_LOG_ERROR("dart_memalloc: Out of bounds "
                    "(dart_buddy_alloc %zu bytes): global memory exhausted",
                    nbytes);

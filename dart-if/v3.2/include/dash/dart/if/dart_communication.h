@@ -1,6 +1,8 @@
 #ifndef DART__COMMUNICATION_H_
 #define DART__COMMUNICATION_H_
 
+#include <dash/dart/if/dart_types.h>
+
 /**
  * \file dart_communication.h
  *

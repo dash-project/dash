@@ -226,6 +226,9 @@ dart_ret_t dart_accumulate(
   target_unitid_abs = gptr.unitid;
   mpi_dtype         = dart_mpi_datatype(dtype);
   mpi_op            = dart_mpi_op(op);
+
+  (void)(team); // To prevent compiler warning from unused parameter.
+
   DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%d op:%d unit:%d",
                  nelem, dtype, op, target_unitid_abs);
   if (seg_id) {
@@ -983,7 +986,7 @@ dart_ret_t dart_waitall_local(
   dart_handle_t * handle,
   size_t          num_handles)
 {
-  int i, r_n = 0;
+  size_t i, r_n = 0;
   DART_LOG_DEBUG("dart_waitall_local()");
   if (num_handles == 0) {
     DART_LOG_DEBUG("dart_waitall_local > number of handles = 0");
@@ -1257,7 +1260,7 @@ dart_ret_t dart_testall_local(
   size_t          n,
   int32_t       * is_finished)
 {
-  int i, r_n;
+  size_t i, r_n;
   DART_LOG_DEBUG("dart_testall_local()");
   MPI_Status *mpi_sta;
   MPI_Request *mpi_req;

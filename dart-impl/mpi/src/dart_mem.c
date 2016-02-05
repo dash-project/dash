@@ -7,7 +7,7 @@
 #include <inttypes.h>
 
 #define NODE_UNUSED 0
-#define NODE_USED 1	
+#define NODE_USED 1
 #define NODE_SPLIT 2
 #define NODE_FULL 3
 
@@ -143,16 +143,16 @@ _combine(struct dart_buddy * self, int index) {
 	}
 }
 
-int
-dart_buddy_free(struct dart_buddy * self, uint64_t offset) {
-	if (offset >= (1<<self->level)){
-		assert (offset<(1<<self->level));
+int dart_buddy_free(struct dart_buddy * self, uint64_t offset)
+{
+	int      length = 1 << self->level;
+	uint64_t left   = 0;
+	int      index  = 0;
+
+	if (offset >= (uint64_t)length) {
+		assert(offset < (uint64_t)length);
 		return -1;
 	}
-
-	int left = 0;
-	int length = 1 << self->level;
-	int index = 0;
 
 	for (;;) {
 		switch (self->tree[index]) {
@@ -160,7 +160,7 @@ dart_buddy_free(struct dart_buddy * self, uint64_t offset) {
 			if (offset != left){
 				assert (offset == left);
 				return -1;
-			}		
+			}
 			_combine(self, index);
 			return 0;
 		case NODE_UNUSED:
@@ -180,12 +180,13 @@ dart_buddy_free(struct dart_buddy * self, uint64_t offset) {
 	}
 }
 
-int
-buddy_size(struct dart_buddy * self, uint64_t offset) {
-	assert(offset < (1 << self->level));
-	int left = 0;
-	int length = 1 << self->level;
-	int index = 0;
+int buddy_size(struct dart_buddy * self, uint64_t offset)
+{
+	uint64_t left   = 0;
+	int      length = 1 << self->level;
+	int      index  = 0;
+
+  assert(offset < (uint64_t)length);
 
 	for (;;) {
 		switch (self->tree[index]) {
