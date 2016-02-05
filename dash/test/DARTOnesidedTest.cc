@@ -12,7 +12,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
   // Array to store local copy:
   int local_array[block_size];
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (auto l = 0; l < block_size; ++l) {
+  for (size_t l = 0; l < block_size; ++l) {
     array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
   array.barrier();
@@ -28,7 +28,7 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
     block_size * sizeof(value_t)                // nbytes
   );
-  for (auto l = 0; l < block_size; ++l) {
+  for (size_t l = 0; l < block_size; ++l) {
     LOG_MESSAGE("Testing local element %d = %d", l, local_array[l]);
     value_t expected = array[g_src_index + l];
     ASSERT_EQ_U(expected, local_array[l]);
@@ -48,7 +48,7 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
   // Array to store local copy:
   int local_array[num_elem_copy];
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (auto l = 0; l < block_size; ++l) {
+  for (size_t l = 0; l < block_size; ++l) {
     array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
   array.barrier();
@@ -59,7 +59,7 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
     num_elem_copy * sizeof(value_t)   // nbytes
   );
   // Fails for elements in second block, i.e. for l < num_elem_copy:
-  for (auto l = 0; l < block_size; ++l) {
+  for (size_t l = 0; l < block_size; ++l) {
     LOG_MESSAGE("Testing local element %d = %d", l, local_array[l]);
     value_t expected = array[l];
     ASSERT_EQ_U(expected, local_array[l]);
@@ -77,11 +77,11 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
     return;
   }
   // Array to store local copy:
-  int local_array[num_elem_copy];
+  int * local_array = new int[num_elem_copy];
   // Array of handles, one for each dart_get_handle:
   std::vector<dart_handle_t> handles;
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (auto l = 0; l < block_size; ++l) {
+  for (size_t l = 0; l < block_size; ++l) {
     array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
   array.barrier();
@@ -89,8 +89,8 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   LOG_MESSAGE("Requesting remote blocks");
   // Copy values from all non-local blocks:
   int block = 0;
-  for (auto u = 0; u < _dash_size; ++u) {
-    if (u != dash::myid()) {
+  for (size_t u = 0; u < _dash_size; ++u) {
+    if (u != static_cast<size_t>(dash::myid())) {
       LOG_MESSAGE("Requesting block %d from unit %d", block, u);
       dart_handle_t handle;
       handles.push_back(handle);
@@ -112,7 +112,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
 
   LOG_MESSAGE("Validating values");
   int l = 0;
-  for (auto g = 0; g < array.size(); ++g) {
+  for (size_t g = 0; g < array.size(); ++g) {
     auto unit = array.pattern().unit_at(g);
     if (unit != dash::myid()) {
       LOG_MESSAGE("Testing local element %d (g:%d u:%d) = %d",
@@ -122,5 +122,6 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
       ++l;
     }
   }
+  delete[] local_array;
   ASSERT_EQ_U(num_elem_copy, l);
 }

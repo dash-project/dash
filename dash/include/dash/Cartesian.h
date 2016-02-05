@@ -537,6 +537,7 @@ public:
     DASH_ASSERT_RANGE(
       0, index, static_cast<IndexType>(_size-1),
       "Given index for CartesianIndexSpace::coords() is out of bounds");
+
     ::std::array<IndexType, NumDimensions> pos;
     if (CoordArrangement == COL_MAJOR) {
       for(auto i = 0; i < NumDimensions; ++i) {

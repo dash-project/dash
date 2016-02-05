@@ -215,7 +215,7 @@ void perform_test(
            << setw(11) << "mmult.s"
            << endl;
     }
-    int  mem_local_mb;
+    int  mem_local_mb = 0;
     if (variant == "dash") {
       auto block_s = (n / num_units) * (n / num_units);
       mem_local_mb = ( sizeof(value_t) * (
@@ -296,7 +296,7 @@ void init_values(
     auto l_block_a = matrix_a.local.block(l_block_idx);
     auto l_block_b = matrix_b.local.block(l_block_idx);
     l_block_elem_a = l_block_a.begin().local();
-    l_block_elem_b = l_block_a.begin().local();
+    l_block_elem_b = l_block_b.begin().local();
     for (auto phase = 0; phase < block_cols * block_rows; ++phase) {
       value_t value = (100000 * (unit_id + 1)) +
                       (100 * l_block_idx) +

@@ -96,7 +96,6 @@ TEST_F(MatrixTest, Views)
 
 TEST_F(MatrixTest, SingleWriteMultipleRead)
 {
-  dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 7;
   size_t tilesize_y  = 3;
@@ -117,8 +116,8 @@ TEST_F(MatrixTest, SingleWriteMultipleRead)
   // Fill matrix
   if(_dash_id == 0) {
     LOG_MESSAGE("Assigning matrix values");
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
+    for(size_t i = 0; i < matrix.extent(0); ++i) {
+      for(size_t k = 0; k < matrix.extent(1); ++k) {
         matrix[i][k] = (i * 11) + (k * 97);
       }
     }
@@ -127,8 +126,8 @@ TEST_F(MatrixTest, SingleWriteMultipleRead)
   dash::Team::All().barrier();
 
   // Read and assert values in matrix
-  for(int i = 0; i < matrix.extent(0); ++i) {
-    for(int k = 0; k < matrix.extent(1); ++k) {
+  for(size_t i = 0; i < matrix.extent(0); ++i) {
+    for(size_t k = 0; k < matrix.extent(1); ++k) {
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
       ASSERT_EQ_U(expected, value);
@@ -138,7 +137,6 @@ TEST_F(MatrixTest, SingleWriteMultipleRead)
 
 TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
 {
-  dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t extent_cols = 43;
   size_t extent_rows = 54;
@@ -167,8 +165,8 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
   // Fill matrix
   if(_dash_id == 0) {
     LOG_MESSAGE("Assigning matrix values");
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
+    for(size_t i = 0; i < matrix.extent(0); ++i) {
+      for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 11) + (k * 97);
         LOG_MESSAGE("Setting matrix[%d][%d] = %d",
                     i, k, value);
@@ -182,8 +180,8 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
   LOG_MESSAGE("Team barrier passed");
 
   // Read and assert values in matrix
-  for(int i = 0; i < matrix.extent(0); ++i) {
-    for(int k = 0; k < matrix.extent(1); ++k) {
+  for(size_t i = 0; i < matrix.extent(0); ++i) {
+    for(size_t k = 0; k < matrix.extent(1); ++k) {
       LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
@@ -225,8 +223,8 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
   // Fill matrix
   if(myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
+    for(size_t i = 0; i < matrix.extent(0); ++i) {
+      for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 11) + (k * 97);
         LOG_MESSAGE("Setting matrix[%d][%d] = %d",
                     i, k, value);
@@ -241,8 +239,8 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
   LOG_MESSAGE("Team barrier passed");
 
   // Read and assert values in matrix
-  for(int i = 0; i < matrix.extent(0); ++i) {
-    for(int k = 0; k < matrix.extent(1); ++k) {
+  for(size_t i = 0; i < matrix.extent(0); ++i) {
+    for(size_t k = 0; k < matrix.extent(1); ++k) {
       LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
@@ -286,8 +284,8 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
   // Fill matrix
   if(myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
+    for(size_t i = 0; i < matrix.extent(0); ++i) {
+      for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 11) + (k * 97);
         LOG_MESSAGE("Setting matrix[%d][%d] = %d",
                     i, k, value);
@@ -301,8 +299,8 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
   LOG_MESSAGE("Team barrier passed");
 
   // Read and assert values in matrix
-  for(int i = 0; i < matrix.extent(0); ++i) {
-    for(int k = 0; k < matrix.extent(1); ++k) {
+  for(size_t i = 0; i < matrix.extent(0); ++i) {
+    for(size_t k = 0; k < matrix.extent(1); ++k) {
       LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
@@ -313,7 +311,6 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
 
 TEST_F(MatrixTest, Submat2DimDefault)
 {
-  dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -364,7 +361,6 @@ TEST_F(MatrixTest, Sub2DimDefault)
 {
   typedef dash::default_index_t index_t;
   typedef int                   element_t;
-  dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -418,10 +414,10 @@ TEST_F(MatrixTest, Sub2DimDefault)
   // Test values by column:
   size_t num_visited_total = 0;
   size_t num_visited_local = 0;
-  for (auto col = 0; col < extent_cols; ++col) {
+  for (index_t col = 0; col < static_cast<index_t>(extent_cols); ++col) {
     auto column = matrix.sub<0>(col);
-    for (auto row = 0; row < extent_rows; ++row) {
-      auto g_coords   = std::array<index_t, 2> { col, row };
+    for (index_t row = 0; row < static_cast<index_t>(extent_rows); ++row) {
+      auto g_coords   = std::array<index_t, 2> {{ col, row }};
       auto l_coords   = pattern.local_coords(g_coords);
       auto unit_id    = pattern.unit_at(g_coords);
       auto local_idx  = pattern.local_at(l_coords);
@@ -473,8 +469,8 @@ TEST_F(MatrixTest, BlockViews)
   // Fill matrix
   if(myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
-    for(int col = 0; col < matrix.extent(0); ++col) {
-      for(int row = 0; row < matrix.extent(1); ++row) {
+    for(size_t col = 0; col < matrix.extent(0); ++col) {
+      for(size_t row = 0; row < matrix.extent(1); ++row) {
         auto value = (row * matrix.extent(0)) + col;
         LOG_MESSAGE("Setting matrix[%d][%d] = %d",
                     col, row, value);
@@ -548,8 +544,8 @@ TEST_F(MatrixTest, ViewIteration)
   // Fill matrix
   if(myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
+    for(size_t i = 0; i < matrix.extent(0); ++i) {
+      for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 1000) + (k * 1);
         LOG_MESSAGE("Setting matrix[%d][%d] = %d",
                     i, k, value);
@@ -573,6 +569,10 @@ TEST_F(MatrixTest, ViewIteration)
   auto topright    = right.sub<1>(0,               extent_rows / 2);
   auto bottomright = right.sub<1>(extent_rows / 2, extent_rows / 2);
 
+  dash__unused(topleft);
+  dash__unused(bottomleft);
+  dash__unused(topright);
+
   auto g_br_x      = extent_cols / 2;
   auto g_br_y      = extent_rows / 2;
 
@@ -584,8 +584,6 @@ TEST_F(MatrixTest, ViewIteration)
   int  phase              = 0;
   // Extents of the view projection:
   int  view_size_x        = extent_cols / 2;
-  int  view_size_y        = extent_rows / 2;
-  int  view_size          = view_size_x * view_size_y;
   // Global coordinates of first element in bottom right block:
   int  block_base_coord_x = extent_cols / 2;
   int  block_base_coord_y = extent_rows / 2;
@@ -626,7 +624,6 @@ TEST_F(MatrixTest, BlockCopy)
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
-  size_t tilesize    = tilesize_x * tilesize_y;
   size_t extent_cols = tilesize_x * num_units * 4;
   size_t extent_rows = tilesize_y * num_units * 4;
   typedef dash::TilePattern<2> pattern_t;
@@ -655,8 +652,8 @@ TEST_F(MatrixTest, BlockCopy)
   // Fill matrix
   if(myid == 0) {
     LOG_MESSAGE("Assigning matrix values");
-    for(int col = 0; col < matrix_a.extent(0); ++col) {
-      for(int row = 0; row < matrix_a.extent(1); ++row) {
+    for(size_t col = 0; col < matrix_a.extent(0); ++col) {
+      for(size_t row = 0; row < matrix_a.extent(1); ++row) {
         auto value = (row * matrix_a.extent(0)) + col;
         LOG_MESSAGE("Setting matrix[%d][%d] = %d",
                     col, row, value);

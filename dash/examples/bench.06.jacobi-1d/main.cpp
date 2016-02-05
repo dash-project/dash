@@ -103,8 +103,6 @@ T jacobi_residual(const dash::Array<T>& v)
 void perform_test(size_t nelem, size_t steps)
 {
   auto myid = dash::myid();
-  auto size = dash::size();
-
 
   dash::Array<double> v1(nelem);
   dash::Array<double> v2(nelem);

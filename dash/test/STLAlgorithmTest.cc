@@ -42,7 +42,7 @@ TEST_F(STLAlgorithmTest, Copy) {
     global_begin + local_size,
     local_range);
   // Test and modify elements in local memory
-  for (auto li = 0; li < local_size; ++li) {
+  for (size_t li = 0; li < local_size; ++li) {
     // Check if local copies are identical to global values
     element_t g_element = array[global_offset + li];
     element_t l_element = local_range[li];
@@ -59,8 +59,7 @@ TEST_F(STLAlgorithmTest, Copy) {
       local_range + local_size,
       array.begin() + global_offset);
   // Test elements in global array
-  index_t i = 0;
-  for (auto li = 0; li < local_size; ++li) {
+  for (size_t li = 0; li < local_size; ++li) {
     element_t g_element = array[global_offset + li];
     element_t l_element = local_range[li];
     // Plausibility checks of element
