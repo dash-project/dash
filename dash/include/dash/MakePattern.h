@@ -4,6 +4,7 @@
 #include <dash/PatternProperties.h>
 #include <dash/BlockPattern.h>
 #include <dash/TilePattern.h>
+#include <dash/ShiftTilePattern.h>
 
 namespace dash {
 
@@ -117,12 +118,11 @@ struct deduce_pattern_model
  * Creates an instance of a Pattern model that satisfies the contiguos
  * linearization property from given pattern traits.
  *
- * \returns  An instance of \c dash::TilePattern if the following constraints are
- *           specified:
- *           - Layout: blocked
- *           or
- *           - Partitioning: balanced
- *           - Dimensions:   1
+ * \returns  An instance of \c dash::TilePattern if the following
+ *           constraints are specified:
+ *           (Partitioning: minimal)
+ *           and
+ *           (Layout:       blocked)
  */
 template<
   typename PartitioningTraits = dash::pattern_partitioning_default_properties,
@@ -132,9 +132,11 @@ template<
   class    TeamSpecType
 >
 typename std::enable_if<
-  (LayoutTraits::blocked) ||
-  (PartitioningTraits::balanced && SizeSpecType::ndim() == 1),
-  TilePattern<SizeSpecType::ndim(), dash::ROW_MAJOR, typename SizeSpecType::index_type>
+  PartitioningTraits::minimal &&
+  LayoutTraits::blocked,
+  TilePattern<SizeSpecType::ndim(),
+              dash::ROW_MAJOR,
+              typename SizeSpecType::index_type>
 >::type
 make_pattern(
   /// Size spec of cartesian space to be distributed by the pattern.
@@ -172,11 +174,75 @@ make_pattern(
 /**
  * Generic Abstract Factory for models of the Pattern concept.
  *
+ * Creates an instance of a Pattern model that satisfies the contiguos
+ * linearization property from given pattern traits.
+ *
+ * \returns  An instance of \c dash::ShiftTilePattern if the following
+ *           constraints are specified:
+ *           (Mapping:       diagonal)
+ *           and
+ *           (Layout:        blocked
+ *            or
+ *            (Partitioning: balanced
+ *             Dimensions:   1))
+ */
+template<
+  typename PartitioningTraits = dash::pattern_partitioning_default_properties,
+  typename MappingTraits      = dash::pattern_mapping_default_properties,
+  typename LayoutTraits       = dash::pattern_layout_default_properties,
+  class    SizeSpecType,
+  class    TeamSpecType
+>
+typename std::enable_if<
+  MappingTraits::diagonal &&
+  (LayoutTraits::blocked ||
+   (PartitioningTraits::balanced &&
+    SizeSpecType::ndim() == 1)),
+  ShiftTilePattern<SizeSpecType::ndim(),
+                   dash::ROW_MAJOR,
+                   typename SizeSpecType::index_type>
+>::type
+make_pattern(
+  /// Size spec of cartesian space to be distributed by the pattern.
+  const SizeSpecType & sizespec,
+  /// Team spec containing layout of units mapped by the pattern.
+  const TeamSpecType & teamspec)
+{
+  // Deduce number of dimensions from size spec:
+  const dim_t ndim = SizeSpecType::ndim();
+  // Deduce index type from size spec:
+  typedef typename SizeSpecType::index_type                 index_t;
+  typedef dash::ShiftTilePattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;
+  DASH_LOG_TRACE("dash::make_pattern", PartitioningTraits());
+  DASH_LOG_TRACE("dash::make_pattern", MappingTraits());
+  DASH_LOG_TRACE("dash::make_pattern", LayoutTraits());
+  DASH_LOG_TRACE_VAR("dash::make_pattern", sizespec.extents());
+  DASH_LOG_TRACE_VAR("dash::make_pattern", teamspec.extents());
+  // Make distribution spec from template- and run time parameters:
+  auto distspec =
+    make_distribution_spec<
+      PartitioningTraits,
+      MappingTraits,
+      LayoutTraits,
+      SizeSpecType,
+      TeamSpecType
+    >(sizespec,
+      teamspec);
+  // Make pattern from template- and run time parameters:
+  pattern_t pattern(sizespec,
+		    distspec,
+		    teamspec);
+  return pattern;
+}
+
+/**
+ * Generic Abstract Factory for models of the Pattern concept.
+ *
  * Creates an instance of a Pattern model that satisfies the canonical
  * (strided) layout property from given pattern traits.
  *
- * \returns  An instance of \c dash::BlockPattern if the following constraints are
- *           specified:
+ * \returns  An instance of \c dash::BlockPattern if the following constraints
+ *           are specified:
  *           - Layout: canonical
  */
 template<

@@ -1,5 +1,5 @@
-#ifndef DASH__TILE_PATTERN_1D_H_
-#define DASH__TILE_PATTERN_1D_H_
+#ifndef DASH__SHIFT_TILE_PATTERN_1D_H_
+#define DASH__SHIFT_TILE_PATTERN_1D_H_
 
 #include <functional>
 #include <array>
@@ -18,7 +18,7 @@
 #include <dash/internal/Logging.h>
 #include <dash/internal/PatternArguments.h>
 
-#include <dash/TilePattern.h>
+#include <dash/ShiftTilePattern.h>
 
 namespace dash {
 
@@ -32,20 +32,17 @@ template<
   MemArrange Arrangement,
   typename   IndexType
 >
-class TilePattern<1, Arrangement, IndexType>
+class ShiftTilePattern<1, Arrangement, IndexType>
 {
 private:
   static const dim_t      NumDimensions = 1;
 
 public:
-  static constexpr char const * PatternName = "TilePattern<1>";
+  static constexpr char const * PatternName = "ShiftTilePattern<1>";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
   typedef pattern_partitioning_properties<
-              // Minimal number of blocks in every dimension, i.e. one block
-              // per unit.
-              pattern_partitioning_tag::minimal,
               // Block extents are constant for every dimension.
               pattern_partitioning_tag::rectangular,
               // Identical number of elements in every block.
@@ -56,7 +53,9 @@ public:
               // Same number of blocks assigned to every unit.
               pattern_mapping_tag::balanced,
               // Number of blocks assigned to a unit may differ.
-              pattern_mapping_tag::unbalanced
+              pattern_mapping_tag::unbalanced,
+              // Every unit mapped in any single slice in every dimension.
+              pattern_mapping_tag::diagonal
           > mapping_properties;
   /// Satisfiable properties in pattern property category Layout:
   typedef pattern_layout_properties<
@@ -72,7 +71,7 @@ private:
   typedef typename std::make_unsigned<IndexType>::type
     SizeType;
   /// Fully specified type definition of self
-  typedef TilePattern<NumDimensions, Arrangement, IndexType>
+  typedef ShiftTilePattern<NumDimensions, Arrangement, IndexType>
     self_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     MemoryLayout_t;
@@ -157,7 +156,7 @@ public:
    * \endcode
    */
   template<typename ... Args>
-  TilePattern(
+  ShiftTilePattern(
     /// Argument list consisting of the pattern size (extent, number of
     /// elements) in every dimension followed by optional distribution
     /// types.
@@ -191,9 +190,9 @@ public:
         _nunits,
         _local_size)),
     _local_capacity(initialize_local_capacity()) {
-    DASH_LOG_TRACE("TilePattern<1>()", "Constructor with argument list");
+    DASH_LOG_TRACE("ShiftTilePattern<1>()", "Constructor with argument list");
     initialize_local_range();
-    DASH_LOG_TRACE("TilePattern<1>()", "TilePattern initialized");
+    DASH_LOG_TRACE("ShiftTilePattern<1>()", "ShiftTilePattern initialized");
   }
 
   /**
@@ -221,7 +220,7 @@ public:
    *              TeamSpec<1>(dash::Team::All()));
    * \endcode
    */
-  TilePattern(
+  ShiftTilePattern(
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t &         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE).
@@ -258,9 +257,9 @@ public:
         _nunits,
         _local_size)),
     _local_capacity(initialize_local_capacity()) {
-    DASH_LOG_TRACE("TilePattern<1>()", "(sizespec, dist, teamspec, team)");
+    DASH_LOG_TRACE("ShiftTilePattern<1>()", "(sizespec, dist, teamspec, team)");
     initialize_local_range();
-    DASH_LOG_TRACE("TilePattern<1>()", "TilePattern initialized");
+    DASH_LOG_TRACE("ShiftTilePattern<1>()", "ShiftTilePattern initialized");
   }
 
   /**
@@ -288,7 +287,7 @@ public:
    *              TeamSpec<1>(dash::Team::All()));
    * \endcode
    */
-  TilePattern(
+  ShiftTilePattern(
     /// Pattern size (extent, number of elements) in every dimension
     const SizeSpec_t &         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
@@ -321,15 +320,15 @@ public:
         _nunits,
         _local_size)),
     _local_capacity(initialize_local_capacity()) {
-    DASH_LOG_TRACE("TilePattern<1>()", "(sizespec, dist, team)");
+    DASH_LOG_TRACE("ShiftTilePattern<1>()", "(sizespec, dist, team)");
     initialize_local_range();
-    DASH_LOG_TRACE("TilePattern<1>()", "TilePattern initialized");
+    DASH_LOG_TRACE("ShiftTilePattern<1>()", "ShiftTilePattern initialized");
   }
 
   /**
    * Copy constructor.
    */
-  TilePattern(const self_t & other)
+  ShiftTilePattern(const self_t & other)
   : _size(other._size),
     _memory_layout(other._memory_layout),
     _distspec(other._distspec),
@@ -346,7 +345,7 @@ public:
     _lend(other._lend) {
     // No need to copy _arguments as it is just used to
     // initialize other members.
-    DASH_LOG_TRACE("TilePattern<1>(other)", "TilePattern copied");
+    DASH_LOG_TRACE("ShiftTilePattern<1>(other)", "ShiftTilePattern copied");
   }
 
   /**
@@ -355,8 +354,8 @@ public:
    * Introduced so variadic constructor is not a better match for
    * copy-construction.
    */
-  TilePattern(self_t & other)
-  : TilePattern(static_cast<const self_t &>(other)) {
+  ShiftTilePattern(self_t & other)
+  : ShiftTilePattern(static_cast<const self_t &>(other)) {
   }
 
   /**
@@ -395,7 +394,7 @@ public:
    * Assignment operator.
    */
   self_t & operator=(const self_t & other) {
-    DASH_LOG_TRACE("TilePattern<1>.=(other)");
+    DASH_LOG_TRACE("ShiftTilePattern<1>.=(other)");
     if (this != &other) {
       _size                = other._size;
       _memory_layout       = other._memory_layout;
@@ -411,7 +410,7 @@ public:
       _nunits              = other._nunits;
       _lbegin              = other._lbegin;
       _lend                = other._lend;
-      DASH_LOG_TRACE("TilePattern<1>.=(other)", "TilePattern assigned");
+      DASH_LOG_TRACE("ShiftTilePattern<1>.=(other)", "ShiftTilePattern assigned");
     }
     return *this;
   }
@@ -448,11 +447,11 @@ public:
     const std::array<IndexType, NumDimensions> & coords,
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
-    DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at()", coords);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.unit_at()", coords);
     // Apply viewspec offsets to coordinates:
     dart_unit_t unit_id = ((coords[0] + viewspec[0].offset) / _blocksize)
                           % _nunits;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at >", unit_id);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.unit_at >", unit_id);
     return unit_id;
   }
 
@@ -463,9 +462,9 @@ public:
    */
   dart_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & coords) const {
-    DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at()", coords);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.unit_at()", coords);
     dart_unit_t unit_id = (coords[0] / _blocksize) % _nunits;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at >", unit_id);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.unit_at >", unit_id);
     return unit_id;
   }
 
@@ -480,11 +479,11 @@ public:
     /// View to apply global position
     const ViewSpec_t & viewspec
   ) const {
-    DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at()", global_pos);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.unit_at()", global_pos);
     // Apply viewspec offsets to coordinates:
     dart_unit_t unit_id = ((global_pos + viewspec[0].offset) / _blocksize)
                           % _nunits;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at >", unit_id);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.unit_at >", unit_id);
     return unit_id;
   }
 
@@ -497,9 +496,9 @@ public:
     /// Global linear element offset
     IndexType global_pos
   ) const {
-    DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at()", global_pos);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.unit_at()", global_pos);
     dart_unit_t unit_id = (global_pos / _blocksize) % _nunits;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.unit_at >", unit_id);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.unit_at >", unit_id);
     return unit_id;
   }
 
@@ -519,7 +518,7 @@ public:
   IndexType extent(dim_t dim) const {
     DASH_ASSERT_EQ(
       0, dim,
-      "Wrong dimension for TilePattern<1>::local_extent. " <<
+      "Wrong dimension for ShiftTilePattern<1>::local_extent. " <<
       "Expected dimension = 0, got " << dim);
     return _size;
   }
@@ -538,7 +537,7 @@ public:
   IndexType local_extent(dim_t dim) const {
     DASH_ASSERT_EQ(
       0, dim,
-      "Wrong dimension for TilePattern<1>::local_extent. " <<
+      "Wrong dimension for ShiftTilePattern<1>::local_extent. " <<
       "Expected dimension = 0, got " << dim);
     return _local_size;
   }
@@ -556,8 +555,8 @@ public:
    */
   std::array<SizeType, NumDimensions> local_extents(
     dart_unit_t unit) const {
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_extents()", unit);
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_extents >", _local_size);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_extents()", unit);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_extents >", _local_size);
     return std::array<SizeType, 1> { _local_size };
   }
 
@@ -615,14 +614,14 @@ public:
    */
   local_index_t local(
     IndexType g_index) const {
-    DASH_LOG_TRACE_VAR("TilePattern<1>.local()", g_index);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.local()", g_index);
     index_type  g_block_index = g_index / _blocksize;
     index_type  l_phase       = g_index % _blocksize;
     index_type  l_block_index = g_block_index / _nunits;
     dart_unit_t unit          = g_block_index % _nunits;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.local >", unit);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.local >", unit);
     index_type  l_index       = (l_block_index * _blocksize) + l_phase;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.local >", l_index);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.local >", l_index);
     return local_index_t { unit, l_index };
   }
 
@@ -651,15 +650,15 @@ public:
    */
   local_index_t local_index(
     const std::array<IndexType, NumDimensions> & g_coords) const {
-    DASH_LOG_TRACE_VAR("TilePattern<1>.local_index()", g_coords);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.local_index()", g_coords);
     index_type  g_block_index = g_coords[0] / _blocksize;
     index_type  l_phase       = g_coords[0] % _blocksize;
     index_type  l_block_index = g_block_index / _nunits;
     dart_unit_t unit          = g_block_index % _nunits;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.local_index >", unit);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.local_index >", unit);
     // Global coords to local coords:
     index_type  l_index       = (l_block_index * _blocksize) + l_phase;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.local_index >", l_index);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.local_index >", l_index);
     return local_index_t { unit, l_index };
   }
 
@@ -675,18 +674,18 @@ public:
   std::array<IndexType, NumDimensions> global(
     dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const {
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.global()", unit);
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.global()", local_coords);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.global", _nunits);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.global()", unit);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.global()", local_coords);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.global", _nunits);
     if (_nunits < 2) {
       return local_coords;
     }
-    DASH_LOG_TRACE_VAR("TilePattern<1>.global", _nblocks);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.global", _nblocks);
     const Distribution & dist = _distspec[0];
     IndexType local_index     = local_coords[0];
     IndexType elem_phase      = local_index % _blocksize;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.global", local_index);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.global", elem_phase);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.global", local_index);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.global", elem_phase);
     // Global coords of the element's block within all blocks:
     IndexType block_index     = dist.local_index_to_block_coord(
                                   static_cast<IndexType>(unit),
@@ -696,8 +695,8 @@ public:
                                   _blocksize
                                 );
     IndexType glob_index      = (block_index * _blocksize) + elem_phase;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.global", block_index);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.global >", glob_index);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.global", block_index);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.global >", glob_index);
     return std::array<IndexType, 1> { glob_index };
   }
 
@@ -826,9 +825,9 @@ public:
       0, dim,
       "Wrong dimension for Pattern::has_local_elements. " <<
       "Expected dimension = 0, got " << dim);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.has_local_elements()", dim_offset);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.has_local_elements()", unit);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.has_local_elements()", viewspec);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.has_local_elements()", dim_offset);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.has_local_elements()", unit);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.has_local_elements()", viewspec);
     // Check if unit id lies in cartesian sub-space of team spec
     return _teamspec.includes_index(
               unit,
@@ -845,7 +844,7 @@ public:
     IndexType index,
     dart_unit_t unit) const {
     auto coords_unit = unit_at(index);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.is_local >", (coords_unit == unit));
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.is_local >", (coords_unit == unit));
     return coords_unit == unit;
   }
 
@@ -882,7 +881,7 @@ public:
     const std::array<index_type, 1> & g_coords) const
   {
     index_type block_idx = g_coords[0] / _blocksize;
-    DASH_LOG_TRACE("TilePattern<1>.block_at",
+    DASH_LOG_TRACE("ShiftTilePattern<1>.block_at",
                    "coords", g_coords,
                    "> block index", block_idx);
     return block_idx;
@@ -908,14 +907,14 @@ public:
   ViewSpec_t local_block(
     index_type l_block_index) const
   {
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block()", l_block_index);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_block()", l_block_index);
     // Local block index to local block coords:
     auto l_elem_index = l_block_index * _blocksize;
     auto g_elem_index = global(l_elem_index);
     std::array<index_type, NumDimensions> offsets = { g_elem_index };
     std::array<size_type, NumDimensions>  extents = { _blocksize };
     ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block >", block_vs);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_block >", block_vs);
     return block_vs;
   }
 
@@ -926,12 +925,12 @@ public:
   ViewSpec_t local_block_local(
     index_type l_block_index) const
   {
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block_local()", l_block_index);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_block_local()", l_block_index);
     index_type offset = l_block_index * _blocksize;
     std::array<index_type, NumDimensions> offsets = { offset };
     std::array<size_type, NumDimensions>  extents = { _blocksize };
     ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block_local >", block_vs);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_block_local >", block_vs);
     return block_vs;
   }
 
@@ -1106,7 +1105,7 @@ public:
     SizeType                   size,
     const DistributionSpec_t & distspec,
     SizeType                   nunits) const {
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_blocksize", nunits);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.init_blocksize", nunits);
     if (nunits == 0) {
       return 0;
     }
@@ -1127,12 +1126,12 @@ public:
     if (blocksize == 0) {
       return 0;
     }
-    DASH_LOG_TRACE("TilePattern<1>.init_num_blocks()",
+    DASH_LOG_TRACE("ShiftTilePattern<1>.init_num_blocks()",
                    "size", size, "blocksize", blocksize, "nunits", nunits);
     SizeType n_blocks = dash::math::div_ceil(
                           size,
                           blocksize);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_blockspec", n_blocks);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.init_blockspec", n_blocks);
     return n_blocks;
   }
 
@@ -1153,7 +1152,7 @@ public:
     } else {
       num_l_blocks = 0;
     }
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_num_local_blocks", num_l_blocks);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.init_num_local_blocks", num_l_blocks);
     return num_l_blocks;
   }
 
@@ -1168,10 +1167,10 @@ public:
     auto max_l_blocks = dash::math::div_ceil(
                           _nblocks,
                           _nunits);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_lcapacity.d", _nunits);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_lcapacity.d", max_l_blocks);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.init_lcapacity.d", _nunits);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.init_lcapacity.d", max_l_blocks);
     l_capacity = max_l_blocks * _blocksize;
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.init_lcapacity >", l_capacity);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.init_lcapacity >", l_capacity);
     return l_capacity;
   }
 
@@ -1181,7 +1180,7 @@ public:
    */
   void initialize_local_range() {
     auto l_size = _local_size;
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_range()", l_size);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.init_local_range()", l_size);
     if (l_size == 0) {
       _lbegin = 0;
       _lend   = 0;
@@ -1191,8 +1190,8 @@ public:
       // Index past last local index transformed to global index
       _lend   = global(l_size - 1) + 1;
     }
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_range >", _lbegin);
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_range >", _lend);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.init_local_range >", _lbegin);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.init_local_range >", _lend);
   }
 
   /**
@@ -1200,8 +1199,8 @@ public:
    */
   SizeType initialize_local_extent(
     dart_unit_t unit) const {
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent()", unit);
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent()", _nunits);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.init_local_extent()", unit);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.init_local_extent()", _nunits);
     if (_nunits == 0) {
       return 0;
     }
@@ -1209,15 +1208,15 @@ public:
     SizeType l_extent     = 0;
     // Minimum number of blocks local to every unit in dimension:
     auto min_local_blocks = _nblocks / _nunits;
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_local_extent", _nblocks);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_local_extent", _blocksize);
-    DASH_LOG_TRACE_VAR("TilePattern<1>.init_local_extent", min_local_blocks);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.init_local_extent", _nblocks);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.init_local_extent", _blocksize);
+    DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.init_local_extent", min_local_blocks);
     l_extent = min_local_blocks * _blocksize;
-    DASH_LOG_DEBUG_VAR("TilePattern<1>.init_local_extent >", l_extent);
+    DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.init_local_extent >", l_extent);
     return l_extent;
   }
 };
 
 } // namespace dash
 
-#endif // DASH__BLOCK_PATTERN_1D_H_
+#endif // DASH__SHIFT_TILE_PATTERN_1D_H_

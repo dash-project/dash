@@ -79,6 +79,7 @@ void multiply_local(
 /// Constraints on pattern partitioning properties of matrix operands passed to
 /// \c dash::summa.
 typedef dash::pattern_partitioning_properties<
+            dash::pattern_partitioning_tag::minimal,
             // Block extents are constant for every dimension.
             dash::pattern_partitioning_tag::rectangular,
             // Identical number of elements in every block.
@@ -88,9 +89,9 @@ typedef dash::pattern_partitioning_properties<
 /// \c dash::summa.
 typedef dash::pattern_mapping_properties<
             // Number of blocks assigned to a unit may differ.
-            dash::pattern_mapping_tag::unbalanced,
+            dash::pattern_mapping_tag::unbalanced
             // Every unit mapped in any single slice in every dimension.
-            dash::pattern_mapping_tag::diagonal
+//          dash::pattern_mapping_tag::diagonal
         > summa_pattern_mapping_constraints;
 /// Constraints on pattern layout properties of matrix operands passed to
 /// \c dash::summa.

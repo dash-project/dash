@@ -72,6 +72,7 @@ namespace dash {
 
 #include <dash/BlockPattern.h>
 #include <dash/TilePattern.h>
+#include <dash/ShiftTilePattern.h>
 #include <dash/CSRPattern.h>
 #include <dash/PatternIterator.h>
 #include <dash/PatternProperties.h>
