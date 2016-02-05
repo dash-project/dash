@@ -38,8 +38,9 @@ private:
     self_t;
 
 public:
-  typedef IndexType index_type;
-  typedef SizeType  size_type;
+  typedef IndexType                           index_type;
+  typedef SizeType                            size_type;
+  typedef std::array<SizeType, NumDimensions> extents_type;
 
 public:
   template<dim_t NDim_, typename SizeType_>
@@ -49,11 +50,11 @@ public:
 
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
-  SizeType _size;
+  SizeType     _size;
   /// Number of dimensions of the cartesian space, initialized with 0's.
-  SizeType _ndim;
+  SizeType     _ndim;
   /// Extents of the cartesian space by dimension.
-  std::array<SizeType, NumDimensions> _extents = {  };
+  extents_type _extents = {{  }};
 
 public:
   /**
@@ -62,7 +63,8 @@ public:
    */
   CartesianSpace()
   : _size(0),
-    _ndim(NumDimensions) {
+    _ndim(NumDimensions)
+  {
   }
 
   /**
@@ -72,7 +74,8 @@ public:
   template<typename... Args>
   CartesianSpace(SizeType arg, Args... args)
   : _size(0),
-    _ndim(NumDimensions) {
+    _ndim(NumDimensions)
+  {
     resize(arg, args...);
   }
 
@@ -80,9 +83,10 @@ public:
    * Constructor, creates a cartesian space of given extents.
    */
   CartesianSpace(
-    const ::std::array<SizeType, NumDimensions> & extents)
+    const extents_type & extents)
   : _size(0),
-    _ndim(NumDimensions) {
+    _ndim(NumDimensions)
+  {
     resize(extents);
   }
 
@@ -186,7 +190,7 @@ public:
   /**
    * Extents of the cartesian space, by dimension.
    */
-  const std::array<SizeType, NumDimensions> & extents() const noexcept {
+  const extents_type & extents() const noexcept {
     return _extents;
   }
 
@@ -260,25 +264,31 @@ private:
     self_t;
   typedef ViewSpec<NumDimensions, IndexType>
     ViewSpec_t;
+
+public:
+  typedef IndexType                           index_type;
+  typedef SizeType                            size_type;
+  typedef std::array<SizeType, NumDimensions> extents_type;
+
 /*
  * Note: Not derived from CartesianSpace to provide resizing in O(d)
  *       instead of O(2d).
  */
 protected:
   /// Number of elements in the cartesian space spanned by this instance.
-  SizeType _size;
+  SizeType     _size;
   /// Number of dimensions of the cartesian space, initialized with 0's.
-  SizeType _ndim;
+  SizeType     _ndim;
   /// Extents of the cartesian space by dimension.
-  std::array<SizeType, NumDimensions> _extents = {  };
+  extents_type _extents = {  };
   /// Cumulative index offsets of the index space by dimension respective
   /// to row order. Avoids recalculation of \c NumDimensions-1 offsets
   /// in every call of \at<ROW_ORDER>().
-  std::array<SizeType, NumDimensions> _offset_row_major;
+  extents_type _offset_row_major;
   /// Cumulative index offsets of the index space by dimension respective
   /// to column order. Avoids recalculation of \c NumDimensions-1 offsets
   /// in every call of \at<COL_ORDER>().
-  std::array<SizeType, NumDimensions> _offset_col_major;
+  extents_type _offset_col_major;
 
 public:
   /**
@@ -286,7 +296,10 @@ public:
    * in all dimensions.
    */
   CartesianIndexSpace()
-  : _size(0) {
+  : _size(0),
+    _ndim(0),
+    _extents({{ }})
+  {
     for(auto i = 0; i < NumDimensions; i++) {
       _offset_row_major[i] = 0;
       _offset_col_major[i] = 0;
@@ -297,10 +310,12 @@ public:
    * Constructor, creates a cartesian index space of given extents.
    */
   CartesianIndexSpace(
-    const ::std::array<SizeType, NumDimensions> & extents)
+    const extents_type & extents)
   : _size(0),
-    _ndim(NumDimensions) {
-    resize(extents);
+    _ndim(NumDimensions),
+    _extents(extents)
+  {
+    resize(_extents);
   }
 
   /**
@@ -309,7 +324,9 @@ public:
   template<typename... Args>
   CartesianIndexSpace(SizeType arg, Args... args)
   : _size(0),
-    _ndim(NumDimensions) {
+    _ndim(NumDimensions),
+    _extents({{ }})
+  {
     resize(arg, args...);
   }
 
@@ -357,7 +374,7 @@ public:
    * Change the extent of the cartesian space in every dimension.
    */
   template<typename SizeType_>
-  void resize(const std::array<SizeType_, NumDimensions> & extents) {
+  void resize(const extents_type & extents) {
     // Update size:
     _size = 1;
     for(auto i = 0; i < NumDimensions; i++ ) {
@@ -419,7 +436,7 @@ public:
   /**
    * Extents of the cartesian space, by dimension.
    */
-  const std::array<SizeType, NumDimensions> & extents() const noexcept {
+  const extents_type & extents() const noexcept {
     return _extents;
   }
 
