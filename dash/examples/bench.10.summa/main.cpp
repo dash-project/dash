@@ -204,8 +204,8 @@ void perform_test(
 
   // Minimize surface-to-volume in team spec:
   while (params.units_inc > 1 &&
-         team_size_x % params.units_inc == 0 &&
-         team_size_x > 2 * params.units_inc)
+         nu_x % params.units_inc == 0 &&
+         nu_x > 2 * params.units_inc)
   {
     nu_y *= params.units_inc;
     nu_x /= params.units_inc;
