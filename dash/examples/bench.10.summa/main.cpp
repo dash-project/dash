@@ -197,6 +197,12 @@ void perform_test(
   auto myid        = dash::myid();
   auto num_units   = dash::size();
 
+  dash::TeamSpec<2, index_t> teamspec(num_units, 1);
+  teamspec.balance_extents();
+
+  auto nu_x        = teamspec.extent(0);
+  auto nu_y        = teamspec.extent(1);
+
   double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9;
   if (myid == 0) {
     if (iteration == 0) {
@@ -205,6 +211,7 @@ void perform_test(
            << setw(7)  << "threads" << ", "
            << setw(6)  << "n"       << ", "
            << setw(10) << "size"    << ", "
+           << setw(7)  << "team"    << ", "
            << setw(6)  << "mem.mb"  << ", "
            << setw(5)  << "impl"    << ", "
            << setw(12) << "gflop/r" << ", "
@@ -215,26 +222,30 @@ void perform_test(
            << setw(11) << "mmult.s"
            << endl;
     }
-    int  mem_local_mb = 0;
+    int mem_total_mb = 0;
     if (variant == "dash") {
       auto block_s = (n / num_units) * (n / num_units);
-      mem_local_mb = ( sizeof(value_t) * (
+      mem_total_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
-                         (3 * n * n / num_units) +
+                         (3 * n * n) +
                          // four local temporary blocks per unit:
                          (num_units * 4 * block_s)
                        ) / 1024 ) / 1024;
     } else if (variant == "mkl" || variant == "blas") {
-      mem_local_mb = ( sizeof(value_t) * (
+      mem_total_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
                          (3 * n * n)
                        ) / 1024 ) / 1024;
     } else if (variant == "pblas") {
-      mem_local_mb = ( sizeof(value_t) * (
+      mem_total_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
                          (3 * n * n)
                        ) / 1024 ) / 1024;
     }
+
+    std::ostringstream ss;
+    ss << nu_x << "x" << nu_y;
+    std::string team_extents = ss.str();
 
     int gflops_peak = static_cast<int>(params.cpu_gflops_peak *
                                        num_units * params.threads);
@@ -242,9 +253,10 @@ void perform_test(
          << setw(7)  << params.threads << ", "
          << setw(6)  << n              << ", "
          << setw(10) << (n*n)          << ", "
-         << setw(6)  << mem_local_mb   << ", "
+         << setw(7)  << team_extents   << ", "
+         << setw(6)  << mem_total_mb   << ", "
          << setw(5)  << variant        << ", "
-         << setw(12) << std::fixed     << std::setprecision(4)
+         << setw(12) << std::fixed << std::setprecision(4)
                      << gflop          << ", "
          << setw(7)  << gflops_peak    << ", "
          << setw(7)  << num_repeats    << ", "
@@ -320,22 +332,17 @@ std::pair<double, double> test_dash(
   unsigned repeat)
 {
   std::pair<double, double> time;
-  size_t num_units = dash::size();
-
-#ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
-  size_t team_size_x = std::max<size_t>(
-                         1, static_cast<size_t>(std::ceil(sqrt(num_units))));
-  size_t team_size_y = num_units / team_size_x;
-  DASH_ASSERT_EQ(num_units, team_size_x * team_size_y,
-                 "Team size must be square");
-#else
+  size_t num_units   = dash::size();
   size_t team_size_x = num_units;
   size_t team_size_y = 1;
-#endif
+
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:
   dash::SizeSpec<2, extent_t> size_spec(n, n);
   dash::TeamSpec<2, index_t>  team_spec(team_size_x, team_size_y);
+
+  team_spec.balance_extents();
+
   auto pattern = dash::make_pattern<
                  dash::summa_pattern_partitioning_constraints,
                  dash::summa_pattern_mapping_constraints,
