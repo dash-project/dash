@@ -794,8 +794,9 @@ public:
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
       CartesianIndexSpace(value, values...)
   {
-    DASH_LOG_TRACE_VAR("TeamSpec(size,...)", this->_extents);
     update_rank();
+    this->resize(this->_extents);
+    DASH_LOG_TRACE_VAR("TeamSpec(size,...)", this->_extents);
   }
 
   /**
@@ -812,25 +813,35 @@ public:
   void balance_extents()
   {
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", this->_extents);
+    DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", size());
+    SizeType num_units = 1;
+    for (auto d = 0; d < MaxDimensions; ++d) {
+      num_units *= this->_extents[d];
+    }
+    _is_linear = false;
     // Find best surface-to-volume for two-dimensional team:
-    SizeType num_units = size();
     this->_extents[0]  = num_units;
     this->_extents[1]  = 1;
     auto teamsize_prime_factors = dash::math::factorize(num_units);
     SizeType surface = 0;
     for (auto it : teamsize_prime_factors) {
-      SizeType extent_x = it.first;
-      SizeType extent_y = num_units / extent_x;
-      SizeType surface_new = (2 * extent_x) + (2 * extent_y);
-      if (surface == 0 || surface_new < surface) {
-        surface           = surface_new;
-        this->_extents[0] = extent_x;
-        this->_extents[1] = extent_y;
+      DASH_LOG_TRACE("TeamSpec.balance_extents",
+                     "factor:", it.first, "x", it.second);
+      for (auto i = 1; i < it.second + 1; ++i) {
+        SizeType extent_x = it.first * i;
+        SizeType extent_y = num_units / extent_x;
+        SizeType surface_new = (2 * extent_x) + (2 * extent_y);
+        DASH_LOG_TRACE("TeamSpec.balance_extents", "Testing extents",
+                       extent_x, "x", extent_y, " - surface:", surface_new);
+        if (surface == 0 || surface_new < surface) {
+          surface           = surface_new;
+          this->_extents[0] = extent_x;
+          this->_extents[1] = extent_y;
+        }
       }
     }
     this->resize(this->_extents);
     update_rank();
-    _is_linear = false;
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents ->", this->_extents);
   }
 

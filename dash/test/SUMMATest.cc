@@ -42,7 +42,6 @@ TEST_F(SUMMATest, Deduction)
   // SUMMA implementation:
   dash::SizeSpec<2> size_spec(extent_cols, extent_rows);
   dash::TeamSpec<2> team_spec(team_size_x, team_size_y);
-
   team_spec.balance_extents();
 
   LOG_MESSAGE("Initialize matrix pattern ...");
