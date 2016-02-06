@@ -86,7 +86,8 @@ void init_values(
 
 std::pair<double, double> test_dash(
   extent_t sb,
-  unsigned repeat);
+  unsigned repeat,
+  const benchmark_params & params);
 
 void init_values(
   value_t  * matrix_a,
@@ -96,11 +97,13 @@ void init_values(
 
 std::pair<double, double> test_blas(
   extent_t sb,
-  unsigned repeat);
+  unsigned repeat,
+  const benchmark_params & params);
 
 std::pair<double, double> test_pblas(
   extent_t sb,
-  unsigned repeat);
+  unsigned repeat,
+  const benchmark_params & params);
 
 void perform_test(
   const std::string      & variant,
@@ -194,14 +197,19 @@ void perform_test(
   unsigned                 num_repeats,
   const benchmark_params & params)
 {
-  auto myid        = dash::myid();
-  auto num_units   = dash::size();
+  auto myid      = dash::myid();
+  auto num_units = dash::size();
+  auto nu_x      = num_units;
+  auto nu_y      = 1;
 
-  dash::TeamSpec<2, index_t> teamspec(num_units, 1);
-  teamspec.balance_extents();
-
-  auto nu_x        = teamspec.extent(0);
-  auto nu_y        = teamspec.extent(1);
+  // Minimize surface-to-volume in team spec:
+  while (params.units_inc > 1 &&
+         team_size_x % params.units_inc == 0 &&
+         team_size_x > 2 * params.units_inc)
+  {
+    nu_y *= params.units_inc;
+    nu_x /= params.units_inc;
+  }
 
   double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9;
   if (myid == 0) {
@@ -265,11 +273,11 @@ void perform_test(
 
   std::pair<double, double> t_mmult;
   if (variant == "mkl" || variant == "blas") {
-    t_mmult = test_blas(n, num_repeats);
+    t_mmult = test_blas(n, num_repeats, params);
   } else if (variant == "pblas") {
-    t_mmult = test_pblas(n, num_repeats);
+    t_mmult = test_pblas(n, num_repeats, params);
   } else {
-    t_mmult = test_dash(n, num_repeats);
+    t_mmult = test_dash(n, num_repeats, params);
   }
   double t_init = t_mmult.first;
   double t_mult = t_mmult.second;
@@ -329,19 +337,29 @@ void init_values(
  */
 std::pair<double, double> test_dash(
   extent_t n,
-  unsigned repeat)
+  unsigned repeat,
+  const benchmark_params & params)
 {
   std::pair<double, double> time;
   size_t num_units   = dash::size();
   size_t team_size_x = num_units;
   size_t team_size_y = 1;
 
+  // Minimize surface-to-volume in team spec:
+  while (params.units_inc > 1 &&
+         team_size_x % params.units_inc == 0 &&
+         team_size_x > 2 * params.units_inc)
+  {
+    team_size_y *= params.units_inc;
+    team_size_x /= params.units_inc;
+  }
+
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:
   dash::SizeSpec<2, extent_t> size_spec(n, n);
   dash::TeamSpec<2, index_t>  team_spec(team_size_x, team_size_y);
 
-  team_spec.balance_extents();
+//team_spec.balance_extents();
 
   auto pattern = dash::make_pattern<
                  dash::summa_pattern_partitioning_constraints,
@@ -407,7 +425,8 @@ void init_values(
  */
 std::pair<double, double> test_blas(
   extent_t sb,
-  unsigned repeat)
+  unsigned repeat,
+  const benchmark_params & params)
 {
 #ifdef DASH_ENABLE_MKL
   std::pair<double, double> time;
@@ -494,7 +513,8 @@ std::pair<double, double> test_blas(
  */
 std::pair<double, double> test_pblas(
   extent_t sb,
-  unsigned repeat)
+  unsigned repeat,
+  const benchmark_params & params)
 {
 #if defined(DASH_ENABLE_MKL) && defined(DASH_ENABLE_SCALAPACK)
   typedef MKL_INT int_t;
