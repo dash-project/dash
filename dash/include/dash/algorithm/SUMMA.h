@@ -235,19 +235,19 @@ void summa(
     pattern_a.extent(1),
     pattern_b.extent(0),
     "dash::summa(): "
-    "Extents of first operand in dimension 1 do not match extents of"
+    "Extents of first operand in dimension 1 do not match extents of "
     "second operand in dimension 0");
   DASH_ASSERT_EQ(
     pattern_c.extent(0),
     pattern_a.extent(0),
     "dash::summa(): "
-    "Extents of result matrix in dimension 0 do not match extents of"
+    "Extents of result matrix in dimension 0 do not match extents of "
     "first operand in dimension 0");
   DASH_ASSERT_EQ(
     pattern_c.extent(1),
     pattern_b.extent(1),
     "dash::summa(): "
-    "Extents of result matrix in dimension 1 do not match extents of"
+    "Extents of result matrix in dimension 1 do not match extents of "
     "second operand in dimension 1");
 
   DASH_LOG_TRACE("dash::summa", "matrix pattern extents valid");
@@ -319,7 +319,7 @@ void summa(
   block_a_get_coords = coords_t { static_cast<index_t>(unit_ts_coords[0]),
                                   l_block_c_get_row };
   block_b_get_coords = coords_t { l_block_c_get_col,
-                                  static_cast<index_t>(unit_ts_coords[1]) };
+                                  static_cast<index_t>(unit_ts_coords[0]) };
   // Local block index of local submatrix of C for multiplication result of
   // currently prefetched blocks:
   auto     l_block_c_comp      = l_block_c_get;

@@ -8,20 +8,17 @@
 TEST_F(SUMMATest, Deduction)
 {
   size_t num_units   = dash::Team::All().size();
-  size_t tilesize_x  = 2;
-  size_t tilesize_y  = 2;
+  size_t team_size_x = num_units;
+  size_t team_size_y = 1;
 
 #ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
-  size_t team_size_x = std::max<size_t>(
-                         1, static_cast<size_t>(
-                              std::ceil(sqrt(num_units))));
-  size_t team_size_y = num_units / team_size_x;
-  size_t extent_cols = team_size_x * tilesize_x;
-  size_t extent_rows = team_size_y * tilesize_y;
-  LOG_MESSAGE("team size: %lu x %lu", team_size_x, team_size_y);
+  size_t extent_cols = num_units;
+  size_t extent_rows = num_units;
 #else
   size_t num_local_blocks_x = 1;
   size_t num_local_blocks_y = 1;
+  size_t tilesize_x  = 2;
+  size_t tilesize_y  = 2;
   size_t extent_cols = tilesize_x * num_units * num_local_blocks_x;
   size_t extent_rows = tilesize_y * num_units * num_local_blocks_y;
   size_t team_size_x = num_units;
@@ -29,7 +26,7 @@ TEST_F(SUMMATest, Deduction)
 #endif
 
 #if 0
-  // For explicit specification of data distribution:
+  // For explicit definition of data distribution:
   //
   pattern_t pattern(
     dash::SizeSpec<2>(
@@ -45,6 +42,9 @@ TEST_F(SUMMATest, Deduction)
   // SUMMA implementation:
   dash::SizeSpec<2> size_spec(extent_cols, extent_rows);
   dash::TeamSpec<2> team_spec(team_size_x, team_size_y);
+
+  team_spec.balance_extents();
+
   LOG_MESSAGE("Initialize matrix pattern ...");
   auto pattern = dash::make_pattern <
                  dash::summa_pattern_partitioning_constraints,
@@ -61,6 +61,14 @@ TEST_F(SUMMATest, Deduction)
   typedef decltype(pattern)     pattern_t;
   typedef pattern_t::index_type index_t;
   typedef pattern_t::size_type  extent_t;
+
+  if (_dash_id == 0) {
+    dash::test::print_pattern_mapping(
+      "pattern.unit_at", pattern, 3,
+      [](const pattern_t & _pattern, int _x, int _y) -> dart_unit_t {
+          return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+      });
+  }
 
   LOG_MESSAGE("Deduced pattern: "
               "size(%d,%d) tilesize(%d,%d) teamsize(%d,%d) disttype(%d,%d)",
@@ -108,14 +116,19 @@ TEST_F(SUMMATest, Deduction)
   dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_b(pattern);
   dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_c(pattern);
 
+  LOG_MESSAGE("Starting initialization of matrix values");
+  dash::barrier();
+
   // Initialize operands:
   if (_dash_id == 0) {
     // Matrix B is identity matrix:
-    for (extent_t diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
-      matrix_b[diag_idx][diag_idx] = 1;
+    for (index_t d = 0; d < static_cast<index_t>(extent_rows); ++d) {
+      LOG_MESSAGE("Setting matrix B value (%d,%d)", d, d);
+      matrix_b[d][d] = 1;
     }
-    for (index_t col = 0; col < pattern.extent(0); ++col) {
-      for (index_t row = 0; row < pattern.extent(1); ++row) {
+    for (index_t row = 0; row < static_cast<index_t>(extent_rows); ++row) {
+      for (index_t col = 0; col < static_cast<index_t>(extent_cols); ++col) {
+        LOG_MESSAGE("Initialize A matrix value (%d,%d)", col, row);
         auto unit  = matrix_a.pattern()
                              .unit_at(std::array<index_t, 2> { col, row });
         value_t value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
@@ -123,12 +136,13 @@ TEST_F(SUMMATest, Deduction)
 //      auto block_y  = row / tilesize_x;
 //      value_t value = static_cast<value_t>(block_x) +
 //                      static_cast<value_t>(block_y) / 10.0;
+        LOG_MESSAGE("Setting matrix A value (%d,%d)", col, row);
         matrix_a[col][row] = value;
       }
     }
   }
 
-  LOG_MESSAGE("Waiting for barrier ...");
+  LOG_MESSAGE("Waiting for initialization of matrices ...");
   dash::barrier();
 
   // Expected to be resolved to SUMMA version of dash::multiply:
@@ -149,8 +163,8 @@ TEST_F(SUMMATest, Deduction)
   if (false && _dash_id == 0) {
     // Multiplication of matrix A with identity matrix B should be identical
     // to matrix A:
-    for (index_t col = 0; col < extent_cols; ++col) {
-      for (index_t row = 0; row < extent_rows; ++row) {
+    for (index_t row = 0; row < static_cast<index_t>(extent_rows); ++row) {
+      for (index_t col = 0; col < static_cast<index_t>(extent_cols); ++col) {
         auto unit = matrix_a.pattern()
                             .unit_at(std::array<index_t, 2> { col, row });
         value_t expect = ((1 + col) * 10000) + ((row + 1) * 100) + unit;

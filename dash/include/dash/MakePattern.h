@@ -38,19 +38,22 @@ make_distribution_spec(
   // Array of distribution specifiers in all dimensions,
   // e.g. { TILE(10), TILE(120) }:
   std::array<dash::Distribution, ndim> distributions;
-  // Find minimal block size in balanced partitioning, initialize with
-  // pattern size (maximum):
   extent_t min_block_extent = sizespec.size();
-  for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
-    auto extent_d    = sizespec.extent(d);
-    auto nunits_d    = teamspec.extent(d);
-    auto blocksize_d = extent_d / nunits_d;
-    if (blocksize_d < min_block_extent) {
-      min_block_extent = blocksize_d;
+  if (PartitioningTraits::minimal) {
+    // Find minimal block size in minimal partitioning, initialize with
+    // pattern size (maximum):
+    for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
+      auto extent_d    = sizespec.extent(d);
+      auto nunits_d    = teamspec.extent(d);
+      auto blocksize_d = extent_d / nunits_d;
+      if (blocksize_d < min_block_extent) {
+        min_block_extent = blocksize_d;
+      }
     }
+    DASH_LOG_TRACE("dash::make_distribution_spec",
+                   "minimum block extent for square blocks:",
+                   min_block_extent);
   }
-  DASH_LOG_TRACE("dash::make_distribution_spec",
-                 "minimum block extent for square blocks:", min_block_extent);
   // Resolve balanced tile extents from size spec and team spec:
   for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
     auto extent_d  = sizespec.extent(d);

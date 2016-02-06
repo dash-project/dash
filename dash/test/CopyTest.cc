@@ -613,6 +613,11 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
   matrix_a.barrier();
 
   if (_dash_id == 0) {
+    dash::test::print_pattern_mapping(
+      "matrix.a", pattern, 3,
+      [](const pattern_t & _pattern, int _x, int _y) -> dart_unit_t {
+          return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+      });
     dash::test::print_matrix("matrix.a", matrix_a, 2);
   }
 

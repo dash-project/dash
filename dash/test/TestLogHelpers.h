@@ -50,7 +50,8 @@ print_pattern_mapping(
   std::vector< std::vector<std::string> > units;
   auto blocksize_x = pattern.blocksize(0);
   auto blocksize_y = pattern.blocksize(1);
-  int  row_char_w  = (pattern.extent(0) * (field_width+1)) - 1;
+  auto n_blocks_x  = pattern.blockspec().extent(0);
+  int  row_char_w  = (pattern.extent(0) * field_width) + n_blocks_x - 1;
   std::string block_row_separator(row_char_w, '-');
   std::vector<std::string> block_row_separator_entry;
   block_row_separator_entry.push_back(" ");

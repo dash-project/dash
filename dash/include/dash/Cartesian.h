@@ -812,16 +812,21 @@ public:
   void balance_extents()
   {
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents()", this->_extents);
-    SizeType num_units   = size();
-    double   exp         = 1.0 / static_cast<double>(MaxDimensions);
-    // For n dimensions, nth root of total size is balanced base extent:
-    SizeType base_extent = std::ceil(std::pow(num_units, exp));
-    DASH_LOG_TRACE_VAR("TeamSpec.balance_extents", base_extent);
-    // TODO: currently only balances in two dimensions.
-    this->_extents[0] = base_extent;
-    this->_extents[1] = num_units / base_extent;
-    for (dim_t d = 2; d < MaxDimensions; ++d) {
-      this->_extents[d] = 1;
+    // Find best surface-to-volume for two-dimensional team:
+    SizeType num_units = size();
+    this->_extents[0]  = num_units;
+    this->_extents[1]  = 1;
+    auto teamsize_prime_factors = dash::math::factorize(num_units);
+    SizeType surface = 0;
+    for (auto it : teamsize_prime_factors) {
+      SizeType extent_x = it.first;
+      SizeType extent_y = num_units / extent_x;
+      SizeType surface_new = (2 * extent_x) + (2 * extent_y);
+      if (surface == 0 || surface_new < surface) {
+        surface           = surface_new;
+        this->_extents[0] = extent_x;
+        this->_extents[1] = extent_y;
+      }
     }
     this->resize(this->_extents);
     update_rank();
