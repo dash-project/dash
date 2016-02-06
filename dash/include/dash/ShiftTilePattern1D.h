@@ -864,14 +864,6 @@ public:
   ////////////////////////////////////////////////////////////////////////////
 
   /**
-   * Cartesian arrangement of pattern blocks.
-   */
-  BlockSpec_t blockspec() const {
-    BlockSpec_t bspec({ dash::math::div_ceil(_size, _blocksize) });
-    return bspec;
-  }
-
-  /**
    * Index of block at given global coordinates.
    *
    * \see  DashPatternConcept
@@ -932,6 +924,22 @@ public:
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_block_local >", block_vs);
     return block_vs;
+  }
+
+  /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  BlockSpec_t blockspec() const {
+    BlockSpec_t bspec({ dash::math::div_ceil(_size, _blocksize) });
+    return bspec;
+  }
+
+  /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  const BlockSpec_t & local_blockspec() const
+  {
+    return BlockSpec_t(_nlblocks);
   }
 
   /**

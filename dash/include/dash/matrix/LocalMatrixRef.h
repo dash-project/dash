@@ -58,6 +58,8 @@ private:
     MatrixRefView_t;
   typedef std::array<typename PatternT::size_type, NumDimensions>
     Extents_t;
+  typedef std::array<typename PatternT::index_type, NumDimensions>
+    Offsets_t;
   template <dim_t NumViewDim>
     using LocalMatrixRef_t =
           LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT>;
@@ -161,6 +163,8 @@ public:
   inline size_type           local_capacity()      const noexcept;
   inline size_type           extent(dim_t dim)     const noexcept;
   inline Extents_t           extents()             const noexcept;
+  inline index_type          offset(dim_t dim)     const noexcept;
+  inline Offsets_t           offsets()             const noexcept;
   inline bool                empty()               const noexcept;
 
   /**

@@ -78,8 +78,8 @@ void multiply_local(
 
 } // namespace internal
 
-/// Constraints on pattern partitioning properties of matrix operands passed to
-/// \c dash::summa.
+/// Constraints on pattern partitioning properties of matrix operands passed
+/// to \c dash::summa.
 typedef dash::pattern_partitioning_properties<
 #ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
             dash::pattern_partitioning_tag::minimal,
@@ -421,8 +421,8 @@ void summa(
           l_block_c_get_col  = l_block_c_get_view.offset(0) / block_size_p;
         }
         // Block coordinates of blocks in A and B to prefetch:
-        block_a_get_coords = coords_t { block_get_k,       l_block_c_get_row };
-        block_b_get_coords = coords_t { l_block_c_get_col, block_get_k       };
+        block_a_get_coords = coords_t { block_get_k, l_block_c_get_row };
+        block_b_get_coords = coords_t { l_block_c_get_col, block_get_k };
 
         block_a      = A.block(block_a_get_coords);
         block_a_lptr = block_a.begin().local();

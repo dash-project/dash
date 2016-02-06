@@ -110,7 +110,7 @@ template <
 class LocalMatrixRef;
 
 /**
- * An n-dimensional array supporting subranges and sub-dimensional 
+ * An n-dimensional array supporting subranges and sub-dimensional
  * projection.
  *
  * TODO:
@@ -175,39 +175,39 @@ public:
   friend class LocalMatrixRef;
 
 public:
-  typedef ElementT                                                 value_type;
-  typedef typename PatternT::size_type                              size_type;
-  typedef typename PatternT::index_type                       difference_type;
-  typedef typename PatternT::index_type                            index_type;
+  typedef ElementT                                              value_type;
+  typedef typename PatternT::size_type                           size_type;
+  typedef typename PatternT::index_type                    difference_type;
+  typedef typename PatternT::index_type                         index_type;
 
-  typedef       GlobIter_t                                           iterator;
-  typedef const GlobIter_t                                     const_iterator;
-  typedef std::reverse_iterator<iterator>                    reverse_iterator;
-  typedef std::reverse_iterator<const_iterator>        const_reverse_iterator;
+  typedef       GlobIter_t                                        iterator;
+  typedef const GlobIter_t                                  const_iterator;
+  typedef std::reverse_iterator<iterator>                 reverse_iterator;
+  typedef std::reverse_iterator<const_iterator>     const_reverse_iterator;
 
-  typedef       GlobRef<value_type>                                 reference;
-  typedef const GlobRef<value_type>                           const_reference;
+  typedef       GlobRef<value_type>                              reference;
+  typedef const GlobRef<value_type>                        const_reference;
 
-  typedef GlobIter_t                                                  pointer;
-  typedef const GlobIter_t                                      const_pointer;
+  typedef GlobIter_t                                               pointer;
+  typedef const GlobIter_t                                   const_pointer;
 
-  typedef       ElementT *                                      local_pointer;
-  typedef const ElementT *                                const_local_pointer;
+  typedef       ElementT *                                   local_pointer;
+  typedef const ElementT *                             const_local_pointer;
 
 // Public types as required by dash container concept
 public:
   /// Type specifying the view on local matrix elements.
-  typedef LocalRef_t                                          local_type;
+  typedef LocalRef_t                                            local_type;
 
   /// Type specifying the view on const local matrix elements.
-  typedef const LocalRef_t                              const_local_type;
+  typedef const LocalRef_t                                const_local_type;
 
   /// The type of the pattern specifying linear iteration order and how
   /// elements are distribute to units.
-  typedef PatternT                                          pattern_type;
+  typedef PatternT                                            pattern_type;
 
-  /// Type of views on matrix elements such as sub-matrices, row- and column
-  /// vectors.
+  /// Type of views on matrix elements such as sub-matrices, row- and
+  /// column vectors.
   template <dim_t NumViewDim>
     using view_type =
           MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>;
@@ -328,14 +328,16 @@ public:
   inline const_iterator    begin()  const noexcept;
 
   /**
-   * Iterator referencing past the last matrix element in global index space.
+   * Iterator referencing past the last matrix element in global index
+   * space.
    *
    * \see  DashContainerConcept
    */
   inline       iterator    end()          noexcept;
 
   /**
-   * Iterator referencing past the last matrix element in global index space.
+   * Iterator referencing past the last matrix element in global index
+   * space.
    *
    * \see  DashContainerConcept
    */
@@ -407,7 +409,7 @@ public:
    * that are located in the active unit's local memory.
    */
   inline local_type sub_local() noexcept;
-  
+
   /**
    * Projection to given offset in first sub-dimension (column), same as
    * \c sub<0>(n).
@@ -420,7 +422,7 @@ public:
   inline view_type<NumDimensions-1> col(
     size_type n       ///< Column offset.
   );
-  
+
   /**
    * Projection to given offset in second sub-dimension (rows), same as
    * \c sub<1>(n).
@@ -433,7 +435,7 @@ public:
   inline view_type<NumDimensions-1> row(
     size_type n       ///< Row offset.
   );
-  
+
   /**
    * Create a view representing the matrix slice within a column
    * range.
@@ -461,7 +463,7 @@ public:
     size_type n,      ///< Offset of first row in range.
     size_type range   ///< Number of rows in the range.
   );
-  
+
   /**
    * Fortran-style subscript operator.
    * As an example, the operation \c matrix(i,j) is equivalent to
@@ -471,7 +473,7 @@ public:
    *           coordinates.
    */
   template<typename ... Args>
-  inline reference at( 
+  inline reference at(
     Args... args      ///< Global coordinates
   );
 
@@ -485,7 +487,7 @@ public:
    * \see  at
    */
   template<typename... Args>
-  inline reference operator()( 
+  inline reference operator()(
     Args... args      ///< Global coordinates
   );
 

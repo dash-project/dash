@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "TestBase.h"
+#include "TestLogHelpers.h"
 #include "CopyTest.h"
 
 TEST_F(CopyTest, BlockingGlobalToLocalBlock)
@@ -54,11 +55,13 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   size_t num_blocks_per_unit = num_elem_per_unit / block_size;
 
   if (_dash_size < 2) {
-    LOG_MESSAGE("CopyTest.Blocking2DimGlobalToLocalBlock requires > 1 units");
+    LOG_MESSAGE("CopyTest.Blocking2DimGlobalToLocalBlock "
+                "requires > 1 units");
     return;
   }
 
-  LOG_MESSAGE("nunits:%d elem_total:%d elem_per_unit:%d blocks_per_unit:%d",
+  LOG_MESSAGE("nunits:%d elem_total:%d "
+              "elem_per_unit:%d blocks_per_unit:%d",
               _dash_size, num_elem_total,
               num_elem_per_unit, num_blocks_per_unit);
 
@@ -75,7 +78,8 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
       dash::TILE(block_size_y))
   );
 
-  dash::Matrix<value_t, 2, dash::default_index_t, pattern_t> matrix(pattern);
+  dash::Matrix<value_t, 2, dash::default_index_t, pattern_t>
+    matrix(pattern);
 
   // Assign initial values:
   for (size_t lb = 0; lb < num_blocks_per_unit; ++lb) {
@@ -243,7 +247,6 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
       ASSERT_EQ_U(expected, local_block_copy[l_offset]);
     }
   }
-
 }
 
 TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
@@ -367,8 +370,8 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlock)
   array.barrier();
 
   // Copy values from local range to remote global range.
-  // All units (u) copy into block (nblocks-1-u), so unit 0 copies into last
-  // block.
+  // All units (u) copy into block (nblocks-1-u), so unit 0 copies into
+  // last block.
   auto block_offset  = _dash_size - 1 - dash::myid();
   auto global_offset = block_offset * num_elem_per_unit;
   dash::copy(local_range,
@@ -407,8 +410,8 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlock)
   int local_array[num_elems_copy];
 
   // Copy values from global range to local memory.
-  // All units copy a part of the first block, so unit 0 tests local-to-local
-  // copying.
+  // All units copy a part of the first block, so unit 0 tests
+  // local-to-local copying.
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
@@ -449,8 +452,8 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockTwoUnits)
   int local_array[num_elems_copy];
 
   // Copy values from global range to local memory.
-  // All units copy a part of the first block, so unit 0 tests local-to-local
-  // copying.
+  // All units copy a part of the first block, so unit 0 tests
+  // local-to-local copying.
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
@@ -467,8 +470,11 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockThreeUnits)
   // Copy all elements contained in a single, continuous block,
   // starting from an index unequal 0.
 
-  if(_dash_size < 3)
+  if(_dash_size < 3) {
+    LOG_MESSAGE("CopyTest.BlockingGlobalToLocalSubBlockThreeUnits "
+                "requires > 3 units");
     return;
+  }
 
   const size_t num_elems_per_unit = 20;
   const size_t num_elems_total    = _dash_size * num_elems_per_unit;
@@ -489,8 +495,8 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockThreeUnits)
   int * local_array = new int[num_elems_copy];
 
   // Copy values from global range to local memory.
-  // All units copy a part of the first block, so unit 0 tests local-to-local
-  // copying.
+  // All units copy a part of the first block, so unit 0 tests
+  // local-to-local copying.
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
@@ -501,6 +507,184 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockThreeUnits)
     ASSERT_EQ_U(static_cast<int>(array[l+start_index]), local_array[l]);
   }
   delete[] local_array;
+}
+
+TEST_F(CopyTest, AsyncGlobalToLocalTiles)
+{
+  typedef double
+    value_t;
+  typedef dash::TilePattern<2>
+    pattern_t;
+  typedef dash::Matrix<value_t, 2, dash::default_index_t, pattern_t>
+    matrix_t;
+  typedef typename pattern_t::index_type
+    index_t;
+
+  if (_dash_size < 3) {
+    LOG_MESSAGE("CopyTest.AsyncGlobalToLocalTiles requires > 3 units");
+    return;
+  }
+  if (_dash_size % 2 != 0) {
+    LOG_MESSAGE("Team size must be multiple of 2 for "
+                "CopyTest.AsyncGlobalToLocalTiles");
+    return;
+  }
+
+  size_t tilesize_x     = 2;
+  size_t tilesize_y     = 3;
+  size_t num_block_elem = tilesize_x * tilesize_y;
+  // Additional blocks in both dimensions to ensure unbalanced mapping:
+  size_t odd_blocks_x   = std::ceil(sqrt(_dash_size)) + 1;
+  size_t odd_blocks_y   = 1;
+  size_t num_blocks_x   = (_dash_size / 2 + odd_blocks_x);
+  size_t num_blocks_y   = (_dash_size / 2 + odd_blocks_y);
+  size_t extent_x       = num_blocks_x * tilesize_x;
+  size_t extent_y       = num_blocks_y * tilesize_y;
+
+  dash::SizeSpec<2> sizespec(extent_x, extent_y);
+  dash::DistributionSpec<2> distspec(dash::TILE(tilesize_x),
+                                     dash::TILE(tilesize_y));
+  dash::TeamSpec<2> teamspec;
+  teamspec.balance_extents();
+
+  LOG_MESSAGE("SizeSpec(%lu,%lu) TeamSpec(%lu,%lu)",
+              sizespec.extent(0), sizespec.extent(1),
+              teamspec.extent(0), teamspec.extent(1));
+
+  pattern_t pattern(sizespec, distspec, teamspec);
+
+  if (_dash_id == 0) {
+    dash::test::print_pattern_mapping(
+      "matrix.pattern.unit_at", pattern, 3,
+      [](const pattern_t & _pattern, int _x, int _y) -> dart_unit_t {
+          return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+      });
+    dash::test::print_pattern_mapping(
+      "matrix.pattern.at", pattern, 3,
+      [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+          return _pattern.at(std::array<index_t, 2> {_x, _y});
+      });
+    dash::test::print_pattern_mapping(
+      "matrix.pattern.block_at", pattern, 3,
+      [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+          return _pattern.block_at(std::array<index_t, 2> {_x, _y});
+      });
+    dash::test::print_pattern_mapping(
+      "matrix.pattern.block.offset", pattern, 5,
+      [](const pattern_t & _pattern, int _x, int _y) -> std::string {
+          auto block_idx = _pattern.block_at(std::array<index_t, 2> {_x, _y});
+          auto block_vs  = _pattern.block(block_idx);
+          std::ostringstream ss;
+          ss << block_vs.offset(0) << "," << block_vs.offset(1);
+          return ss.str();
+      });
+    dash::test::print_pattern_mapping(
+      "matrix.pattern.local_index", pattern, 3,
+      [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+          return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+      });
+  }
+
+  matrix_t matrix_a(pattern);
+  matrix_t matrix_b(pattern);
+
+  auto lblockspec_a = matrix_a.pattern().local_blockspec();
+  auto lblockspec_b = matrix_b.pattern().local_blockspec();
+  auto blockspec_a  = matrix_a.pattern().blockspec();
+  auto blockspec_b  = matrix_b.pattern().blockspec();
+
+  size_t num_local_blocks_a = lblockspec_a.size();
+  size_t num_local_blocks_b = lblockspec_b.size();
+
+  LOG_MESSAGE("lblockspec_a(%lu,%lu)[%d] lblockspec_b(%lu,%lu)[%d]",
+              lblockspec_a.extent(0), lblockspec_a.extent(1),
+              num_local_blocks_a,
+              lblockspec_b.extent(0), lblockspec_b.extent(1),
+              num_local_blocks_b);
+
+  // Initialize values in local blocks of matrix A:
+  for (int lb = 0; lb < num_local_blocks_a; ++lb) {
+    auto lblock = matrix_a.local.block(lb);
+    for (auto lit = lblock.begin(); lit != lblock.end(); ++lit) {
+      *lit = dash::myid() + 0.1 * lb + 0.01 * lit.pos();
+    }
+  }
+
+  matrix_a.barrier();
+
+  if (_dash_id == 0) {
+    dash::test::print_matrix("matrix.a", matrix_a, 2);
+  }
+
+  // Copy blocks of matrix A from neighbor unit into local blocks of
+  // matrix B:
+
+  // Request handles from asynchronous copy operations:
+  std::vector< dash::Future<value_t*> > req_handles;
+  // Local copy target pointers for later validation:
+  std::vector< value_t* >               dst_pointers;
+  for (int lb = 0; lb < num_local_blocks_a; ++lb) {
+    // Get native pointer of local block of B as destination of copy:
+    auto matrix_b_lblock   = matrix_b.local.block(lb);
+    auto matrix_b_dest     = matrix_b_lblock.begin().local();
+    auto lblock_b_offset_x = matrix_b_lblock.offset(0);
+    auto lblock_b_offset_y = matrix_b_lblock.offset(1);
+    auto lblock_b_gcoord_x = lblock_b_offset_x / tilesize_x;
+    auto lblock_b_gcoord_y = lblock_b_offset_y / tilesize_y;
+    auto block_a_gcoord_x  = (lblock_b_gcoord_x + 1) % num_blocks_x;
+    auto block_a_gcoord_y  = (lblock_b_gcoord_y + 1) % num_blocks_y;
+    auto block_a_index     = blockspec_a.at(block_a_gcoord_x,
+                                            block_a_gcoord_y);
+    auto gblock_a          = matrix_a.block(block_a_index);
+
+    LOG_MESSAGE("local block %d: copy_async: "
+                "A.block((%d,%d):%d) -> B.block((%d,%d):%d)",
+                lb,
+                block_a_gcoord_x,  block_a_gcoord_y,  block_a_index,
+                lblock_b_gcoord_x, lblock_b_gcoord_y, lb);
+
+    ASSERT_NE_U(nullptr, matrix_b_dest);
+    auto req = dash::copy_async(gblock_a.begin(),
+                                gblock_a.end(),
+                                matrix_b_dest);
+    req_handles.push_back(req);
+    dst_pointers.push_back(matrix_b_dest);
+  }
+
+  // Create some CPU load
+  double m = 123.10;
+  double n = 234.23;
+  double p = 322.12;
+  for (size_t i = 0; i < 50000000; ++i) {
+    m = (n / std::pow(p, 1.0/3.0)) + sqrt(m);
+  }
+  // To prevent compiler from removing work load loop in optimization:
+  LOG_MESSAGE("Dummy result: %f", m);
+
+  for (auto req : req_handles) {
+    // Wait for completion of async copy operation.
+    // Returns pointer to final element copied into target range:
+    value_t * copy_dest_end   = req.get();
+    // Corresponding pointer to start of copy target range, also tests
+    // number of elements copied:
+    value_t * copy_dest_begin = copy_dest_end - num_block_elem;
+    // Test if correspondig start pointer is in set of start pointers used
+    // for copy_async:
+    ASSERT_TRUE_U(std::find(dst_pointers.begin(), dst_pointers.end(),
+                            copy_dest_begin) != dst_pointers.end());
+  }
+
+  // Wait for all units to complete their copy operations:
+  matrix_a.barrier();
+
+  if (_dash_id == 0) {
+    dash::test::print_matrix("matrix.b", matrix_b, 2);
+  }
+
+  // Validate copied values:
+  for (int lb = 0; lb < num_local_blocks_a; ++lb) {
+    auto block_view = matrix_a.local.block(lb);
+  }
 }
 
 TEST_F(CopyTest, AsyncGlobalToLocalBlock)

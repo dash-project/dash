@@ -1197,7 +1197,9 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_capacity() const {
+  inline SizeType local_capacity(
+    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+  {
     return _local_capacity;
   }
 
@@ -1211,7 +1213,9 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_size() const {
+  inline SizeType local_size(
+    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+  {
     return _local_memory_layout.size();
   }
 
@@ -1220,7 +1224,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr IndexType num_units() const {
+  inline IndexType num_units() const {
     return _nunits;
   }
 
@@ -1229,7 +1233,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr IndexType capacity() const {
+  inline IndexType capacity() const {
     return _memory_layout.size();
   }
 
@@ -1238,7 +1242,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr IndexType size() const {
+  inline IndexType size() const {
     return _memory_layout.size();
   }
 
@@ -1246,7 +1250,7 @@ public:
    * The Team containing the units to which this pattern's elements are
    * mapped.
    */
-  constexpr dash::Team & team() const {
+  inline dash::Team & team() const {
     return *_team;
   }
 

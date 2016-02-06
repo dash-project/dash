@@ -824,6 +824,8 @@ public:
       this->_extents[d] = 1;
     }
     this->resize(this->_extents);
+    update_rank();
+    _is_linear = false;
     DASH_LOG_TRACE_VAR("TeamSpec.balance_extents ->", this->_extents);
   }
 

@@ -354,9 +354,9 @@ std::pair<double, double> test_dash(
   DASH_ASSERT_MSG(pattern.extent(1) % dash::size() == 0,
                   "Matrix rows not divisible by number of units");
 
-  dash::Matrix<value_t, 2, index_t> matrix_a(pattern);
-  dash::Matrix<value_t, 2, index_t> matrix_b(pattern);
-  dash::Matrix<value_t, 2, index_t> matrix_c(pattern);
+  dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_a(pattern);
+  dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_b(pattern);
+  dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_c(pattern);
 
   dash::barrier();
 

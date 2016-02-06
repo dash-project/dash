@@ -163,15 +163,14 @@ dash::Future<ValueType *> copy_impl(
     //
     // Copy elements from every unit:
     //
-    // Number of elements located at a single unit:
-    size_type max_elem_per_unit = pattern.local_capacity();
-    DASH_LOG_TRACE_VAR("dash::copy_impl", max_elem_per_unit);
     while (num_elem_copied < num_elem_total) {
       // Global iterator pointing at begin of current unit's input range:
       auto cur_in_first    = g_in_first + num_elem_copied;
       // unit and local index of first element in current range segment:
       auto local_pos       = pattern.local(static_cast<index_type>(
                                              cur_in_first.pos()));
+      // Number of elements located at current source unit:
+      size_type max_elem_per_unit = pattern.local_size(local_pos.unit);
       // Local offset of first element in input range at current unit:
       auto l_in_first_idx  = local_pos.index;
       // Maximum number of elements to copy from current unit:
@@ -185,6 +184,8 @@ dash::Future<ValueType *> copy_impl(
       if (num_copy_elem > total_elem_left) {
         num_copy_elem = total_elem_left;
       }
+      DASH_ASSERT_GT(num_copy_elem, 0,
+                     "Number of element to copy is 0");
       DASH_LOG_TRACE("dash::copy_impl",
                      "start g_idx:",    cur_in_first.pos(),
                      "->",
@@ -192,6 +193,7 @@ dash::Future<ValueType *> copy_impl(
                      "l_idx:",          l_in_first_idx,
                      "->",
                      "unit elements:",  num_unit_elem,
+                     "max elem/unit:",  max_elem_per_unit,
                      "copy max:",       max_copy_elem,
                      "get elements:",   num_copy_elem,
                      "total:",          num_elem_total,

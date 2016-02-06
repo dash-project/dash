@@ -1,8 +1,12 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
+#include <iomanip>
 
 #include "TestBase.h"
 #include "TilePatternTest.h"
+
+using std::endl;
+using std::setw;
 
 TEST_F(TilePatternTest, Tile2DimTeam2Dim)
 {
@@ -19,12 +23,13 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
 
   size_t team_size    = dash::Team::All().size();
   size_t team_size_x  = std::max<size_t>(
-                          1, static_cast<size_t>(std::ceil(sqrt(team_size))));
+                          1, static_cast<size_t>(std::ceil(
+                               sqrt(team_size))));
   size_t team_size_y  = team_size / team_size_x;
   LOG_MESSAGE("team size: %lu x %lu", team_size_x, team_size_y);
 
   // Choose 'inconvenient' extents:
-  int    block_size_x = 3;
+  int    block_size_x = 2;
   int    block_size_y = 2;
   int    odd_blocks_x = 1;
   int    odd_blocks_y = 2;
@@ -87,7 +92,8 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
       ASSERT_EQ_U((coords_t { x, y }), g_coords);
 
       std::ostringstream ss;
-      ss << "(" << g_coords[0] << "," << g_coords[1] << ")";
+      ss << "(" << setw(2) << g_coords[0]
+         << "," << setw(2) << g_coords[1] << ")";
       row_g_coords.push_back(ss.str());
       row_g_indices.push_back(pattern.global_index(unit_id, l_coords));
     }
@@ -111,18 +117,24 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
     for (int x = 0; x < static_cast<int>(extent_x); ++x) {
       coords_t g_coords = { x, y };
 
-      auto     l_pos_coords = pattern.local(g_coords);
-      auto     unit_id_c    = l_pos_coords.unit;
-      auto     l_coords     = l_pos_coords.coords;
+      auto l_pos_coords = pattern.local(g_coords);
+      auto unit_id_c    = l_pos_coords.unit;
+      auto l_coords     = l_pos_coords.coords;
       std::ostringstream sc;
-      sc << "(" << l_coords[0] << "," << l_coords[1] << ")";
+      sc << "(" << setw(2) << l_coords[0]
+         << "," << setw(2) << l_coords[1] << ")";
       row_l_coords.push_back(sc.str());
 
-      auto     l_pos_index  = pattern.local_index(g_coords);
-      auto     unit_id_i    = l_pos_index.unit;
-      auto     l_index      = l_pos_index.index;
+      auto l_pos_index  = pattern.local_index(g_coords);
+      auto unit_id_i    = l_pos_index.unit;
+      auto l_index      = l_pos_index.index;
+      auto l_coords_idx = pattern.local_at(l_coords);
+
+      ASSERT_EQ_U(l_index, l_coords_idx);
+
       std::ostringstream si;
-      si << "(" << unit_id_i << ":" << l_index << ")";
+      si << "(" << setw(2) << unit_id_i
+         << ":" << setw(2) << l_index   << ")";
       row_l_indices.push_back(si.str());
 
       ASSERT_EQ_U(unit_id_c, unit_id_i);

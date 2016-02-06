@@ -1145,14 +1145,6 @@ public:
   ////////////////////////////////////////////////////////////////////////////
 
   /**
-   * Cartesian arrangement of pattern blocks.
-   */
-  const BlockSpec_t & blockspec() const
-  {
-    return _blockspec;
-  }
-
-  /**
    * Index of block at given global coordinates.
    *
    * \see  DashPatternConcept
@@ -1272,6 +1264,22 @@ public:
   }
 
   /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  const BlockSpec_t & blockspec() const
+  {
+    return _blockspec;
+  }
+
+  /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  const BlockSpec_t & local_blockspec() const
+  {
+    return _local_blockspec;
+  }
+
+  /**
    * Maximum number of elements in a single block in the given dimension.
    *
    * \return  The blocksize in the given dimension
@@ -1292,7 +1300,7 @@ public:
    *
    * \see     DashPatternConcept
    */
-  SizeType max_blocksize() const {
+  inline SizeType max_blocksize() const {
     return _blocksize_spec.size();
   }
 
@@ -1302,7 +1310,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_capacity() const {
+  inline SizeType local_capacity() const {
     // Balanced pattern, local capacity identical for every unit and
     // same as local size.
     return local_size();
@@ -1318,7 +1326,9 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_size() const {
+  inline SizeType local_size(
+    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+  {
     return _local_memory_layout.size();
   }
 
@@ -1327,7 +1337,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType num_units() const {
+  inline IndexType num_units() const {
     return _teamspec.size();
   }
 
@@ -1336,7 +1346,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType capacity() const {
+  inline IndexType capacity() const {
     return _memory_layout.size();
   }
 
@@ -1345,7 +1355,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType size() const {
+  inline IndexType size() const {
     return _memory_layout.size();
   }
 
@@ -1353,14 +1363,14 @@ public:
    * The Team containing the units to which this pattern's elements are
    * mapped.
    */
-  dash::Team & team() const {
+  inline dash::Team & team() const {
     return *_team;
   }
 
   /**
    * Distribution specification of this pattern.
    */
-  const DistributionSpec_t & distspec() const {
+  inline const DistributionSpec_t & distspec() const {
     return _distspec;
   }
 
@@ -1514,7 +1524,9 @@ private:
    * Currently calculated as (num_local_blocks * block_size), thus
    * ignoring underfilled blocks.
    */
-  SizeType initialize_local_capacity() const {
+  SizeType initialize_local_capacity(
+    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+  {
     // Assumes balanced distribution property, i.e.
     // range = k * blocksz * nunits
     auto l_capacity = size() / _nunits;

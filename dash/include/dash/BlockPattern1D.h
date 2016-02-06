@@ -963,7 +963,9 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_capacity() const {
+  constexpr SizeType local_capacity(
+    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+  {
     return _local_capacity;
   }
 
@@ -977,8 +979,10 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_size() const {
-    return _local_size;
+  constexpr SizeType local_size(
+    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+  {
+    return _local_memory_layout.size();
   }
 
   /**

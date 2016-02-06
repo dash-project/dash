@@ -2,22 +2,19 @@
 #include <gtest/gtest.h>
 
 #include "TestBase.h"
+#include "TestLogHelpers.h"
 #include "SUMMATest.h"
 
 TEST_F(SUMMATest, Deduction)
 {
-  typedef double                value_t;
-  typedef dash::TilePattern<2>  pattern_t;
-  typedef pattern_t::index_type index_t;
-  typedef pattern_t::size_type  extent_t;
-
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 2;
   size_t tilesize_y  = 2;
 
 #ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
   size_t team_size_x = std::max<size_t>(
-                         1, static_cast<size_t>(std::ceil(sqrt(num_units))));
+                         1, static_cast<size_t>(
+                              std::ceil(sqrt(num_units))));
   size_t team_size_y = num_units / team_size_x;
   size_t extent_cols = team_size_x * tilesize_x;
   size_t extent_rows = team_size_y * tilesize_y;
@@ -55,6 +52,16 @@ TEST_F(SUMMATest, Deduction)
                  dash::summa_pattern_layout_constraints >(
                    size_spec,
                    team_spec);
+
+  LOG_MESSAGE("SizeSpec(%lu,%lu) TeamSpec(%lu,%lu)",
+              size_spec.extent(0), size_spec.extent(1),
+              team_spec.extent(0), team_spec.extent(1));
+
+  typedef double                value_t;
+  typedef decltype(pattern)     pattern_t;
+  typedef pattern_t::index_type index_t;
+  typedef pattern_t::size_type  extent_t;
+
   LOG_MESSAGE("Deduced pattern: "
               "size(%d,%d) tilesize(%d,%d) teamsize(%d,%d) disttype(%d,%d)",
               pattern.extent(0),
@@ -97,9 +104,9 @@ TEST_F(SUMMATest, Deduction)
 
   // Create operands and result matrices with identical distribution pattern:
   LOG_MESSAGE("Initialize matrix instances ...");
-  dash::Matrix<value_t, 2> matrix_a(pattern);
-  dash::Matrix<value_t, 2> matrix_b(pattern);
-  dash::Matrix<value_t, 2> matrix_c(pattern);
+  dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_a(pattern);
+  dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_b(pattern);
+  dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_c(pattern);
 
   // Initialize operands:
   if (_dash_id == 0) {
@@ -107,15 +114,15 @@ TEST_F(SUMMATest, Deduction)
     for (extent_t diag_idx = 0; diag_idx < pattern.extent(0); ++diag_idx) {
       matrix_b[diag_idx][diag_idx] = 1;
     }
-    for (extent_t col = 0; col < pattern.extent(0); ++col) {
-      for (extent_t row = 0; row < pattern.extent(1); ++row) {
-//      auto unit  = matrix_a.pattern()
-//                           .unit_at(std::array<index_t, 2> { col, row });
-//      value_t value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
-        auto block_x  = col / tilesize_x;
-        auto block_y  = row / tilesize_x;
-        value_t value = static_cast<value_t>(block_x) +
-                        static_cast<value_t>(block_y) / 10.0;
+    for (index_t col = 0; col < pattern.extent(0); ++col) {
+      for (index_t row = 0; row < pattern.extent(1); ++row) {
+        auto unit  = matrix_a.pattern()
+                             .unit_at(std::array<index_t, 2> { col, row });
+        value_t value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
+//      auto block_x  = col / tilesize_x;
+//      auto block_y  = row / tilesize_x;
+//      value_t value = static_cast<value_t>(block_x) +
+//                      static_cast<value_t>(block_y) / 10.0;
         matrix_a[col][row] = value;
       }
     }
@@ -131,9 +138,9 @@ TEST_F(SUMMATest, Deduction)
                  matrix_c);
 
   if (_dash_id == 0) {
-    print_matrix("matrix A", matrix_a);
-    print_matrix("matrix B", matrix_b);
-    print_matrix("matrix C", matrix_c);
+    dash::test::print_matrix("summa.matrix A", matrix_a, 3);
+    dash::test::print_matrix("summa.matrix B", matrix_b, 3);
+    dash::test::print_matrix("summa.matrix C", matrix_c, 3);
   }
 
   dash::barrier();
@@ -142,12 +149,12 @@ TEST_F(SUMMATest, Deduction)
   if (false && _dash_id == 0) {
     // Multiplication of matrix A with identity matrix B should be identical
     // to matrix A:
-    for (extent_t col = 0; col < extent_cols; ++col) {
-      for (extent_t row = 0; row < extent_rows; ++row) {
-//      auto unit = matrix_a.pattern()
-//                          .unit_at(std::array<index_t, 2> { col, row });
-//      value_t expect = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
-        value_t expect = ((1 + col) * 10) + (row + 1);
+    for (index_t col = 0; col < extent_cols; ++col) {
+      for (index_t row = 0; row < extent_rows; ++row) {
+        auto unit = matrix_a.pattern()
+                            .unit_at(std::array<index_t, 2> { col, row });
+        value_t expect = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
+//      value_t expect = ((1 + col) * 10) + (row + 1);
         value_t actual = matrix_c[col][row];
         ASSERT_EQ_U(expect, actual);
       }
