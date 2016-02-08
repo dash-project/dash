@@ -87,7 +87,7 @@ print_pattern_mapping(
     for (auto x = 0; x < pattern.extent(0); ++x) {
       std::ostringstream ss;
       ss << std::setw(field_width + 1) << callback(pattern, x, y);
-      if ((x+1) % blocksize_x == 0) {
+      if ((x+1) == pattern.extent(0) || (x+1) % blocksize_x == 0) {
         ss << " |";
       }
       row_units.push_back(ss.str());
