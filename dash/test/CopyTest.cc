@@ -591,10 +591,12 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
   auto lblockspec_a = matrix_a.pattern().local_blockspec();
   auto lblockspec_b = matrix_b.pattern().local_blockspec();
   auto blockspec_a  = matrix_a.pattern().blockspec();
-  auto blockspec_b  = matrix_b.pattern().blockspec();
+//auto blockspec_b  = matrix_b.pattern().blockspec();
 
   size_t num_local_blocks_a = lblockspec_a.size();
   size_t num_local_blocks_b = lblockspec_b.size();
+
+  ASSERT_EQ_U(num_local_blocks_a, num_local_blocks_b);
 
   LOG_MESSAGE("lblockspec_a(%lu,%lu)[%d] lblockspec_b(%lu,%lu)[%d]",
               lblockspec_a.extent(0), lblockspec_a.extent(1),
@@ -603,7 +605,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
               num_local_blocks_b);
 
   // Initialize values in local blocks of matrix A:
-  for (int lb = 0; lb < num_local_blocks_a; ++lb) {
+  for (int lb = 0; lb < static_cast<int>(num_local_blocks_a); ++lb) {
     auto lblock = matrix_a.local.block(lb);
     for (auto lit = lblock.begin(); lit != lblock.end(); ++lit) {
       *lit = dash::myid() + 0.1 * lb + 0.01 * lit.pos();
@@ -628,7 +630,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
   std::vector< dash::Future<value_t*> > req_handles;
   // Local copy target pointers for later validation:
   std::vector< value_t* >               dst_pointers;
-  for (int lb = 0; lb < num_local_blocks_a; ++lb) {
+  for (int lb = 0; lb < static_cast<int>(num_local_blocks_a); ++lb) {
     // Get native pointer of local block of B as destination of copy:
     auto matrix_b_lblock   = matrix_b.local.block(lb);
     auto matrix_b_dest     = matrix_b_lblock.begin().local();
@@ -687,8 +689,8 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
   }
 
   // Validate copied values:
-  for (int lb = 0; lb < num_local_blocks_a; ++lb) {
-    auto block_view = matrix_a.local.block(lb);
+  for (int lb = 0; lb < static_cast<int>(num_local_blocks_a); ++lb) {
+//  auto block_view = matrix_a.local.block(lb);
   }
 }
 

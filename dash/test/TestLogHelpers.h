@@ -9,9 +9,15 @@
 namespace dash {
 namespace test {
 
+/**
+ * Log the values of a two-dimensional matrix.
+ */
 template<typename MatrixT>
-void print_matrix(
+typename std::enable_if<MatrixT::ndim() == 2, void>::type
+print_matrix(
+  /// Log message prefix.
   const std::string & name,
+  /// Matrix instance to log.
   MatrixT           & matrix,
   int                 precision = 1)
 {
@@ -35,23 +41,41 @@ void print_matrix(
       ss << std::setprecision(precision) << std::fixed << std::setw(4)
          << val << " ";
     }
-    DASH_LOG_DEBUG("print_matrix", ss.str());
+    DASH_LOG_DEBUG("print_matrix", name, ss.str());
   }
 }
 
+/**
+ * Log the result of a mapping function of a two-dimensional pattern.
+ * Example:
+ *
+ * \code
+ *  dash::test::print_pattern_mapping(
+ *    "pattern.unit_at", the_pattern_instance, 3,
+ *    [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+ *        return _pattern.unit_at(coords_t {_x, _y});
+ *    });
+ * \endcode
+ *
+ */
 template<typename PatternT, typename CallbackFun>
 typename std::enable_if<PatternT::ndim() == 2, void>::type
 print_pattern_mapping(
+  /// Log message prefix.
   const std::string & name,
+  /// Pattern instance to log.
   const PatternT    & pattern,
+  /// Width of a single mapping result in number of characters.
   int                 field_width,
+  /// The mapping function to call for every cell.
   const CallbackFun & callback)
 {
   std::vector< std::vector<std::string> > units;
   auto blocksize_x = pattern.blocksize(0);
   auto blocksize_y = pattern.blocksize(1);
   auto n_blocks_x  = pattern.blockspec().extent(0);
-  int  row_char_w  = (pattern.extent(0) * field_width) + n_blocks_x - 1;
+  int  row_char_w  = ((pattern.extent(0) + 1) * field_width) +
+                     (n_blocks_x * 2) - 1;
   std::string block_row_separator(row_char_w, '-');
   std::vector<std::string> block_row_separator_entry;
   block_row_separator_entry.push_back(" ");
@@ -62,7 +86,7 @@ print_pattern_mapping(
     row_units.push_back("|");
     for (auto x = 0; x < pattern.extent(0); ++x) {
       std::ostringstream ss;
-      ss << std::setw(field_width) << callback(pattern, x, y);
+      ss << std::setw(field_width + 1) << callback(pattern, x, y);
       if ((x+1) % blocksize_x == 0) {
         ss << " |";
       }
@@ -79,7 +103,7 @@ print_pattern_mapping(
     for (auto entry : row_fmt) {
       ss << entry;
     }
-    DASH_LOG_DEBUG("print_pattern_mapping", ss.str());
+    DASH_LOG_DEBUG("print_pattern_mapping", name, ss.str());
   }
 }
 

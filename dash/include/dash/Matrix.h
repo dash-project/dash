@@ -128,9 +128,9 @@ class LocalMatrixRef;
  */
 template<
   typename ElementT,
-  dim_t NumDimensions,
-  typename IndexT   = dash::default_index_t,
-  class PatternT    = TilePattern<NumDimensions, ROW_MAJOR, IndexT> >
+  dim_t    NumDimensions,
+  typename IndexT         = dash::default_index_t,
+  class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT> >
 class Matrix
 {
   static_assert(std::is_trivial<ElementT>::value,
@@ -215,6 +215,12 @@ public:
 public:
   /// Local view proxy object.
   local_type local;
+
+public:
+
+  static constexpr dim_t ndim() {
+    return NumDimensions;
+  }
 
 public:
   /**
