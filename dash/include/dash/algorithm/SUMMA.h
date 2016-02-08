@@ -17,7 +17,9 @@
 #include <mkl_lapack.h>
 #endif
 
+#ifndef DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
 #define DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
+#endif
 
 namespace dash {
 
@@ -278,6 +280,7 @@ void summa(
   DASH_LOG_TRACE("dash::summa", "allocating local temporary blocks, sizes:",
                  "A:", block_a_size,
                  "B:", block_b_size);
+
 #ifdef DASH_ENABLE_MKL
   value_type * buf_block_a_get    = (value_type *)(mkl_malloc(
                                       sizeof(value_type) * block_a_size, 64));

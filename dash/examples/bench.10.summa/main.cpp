@@ -7,6 +7,8 @@
 #define DASH__MKL_MULTITHREADING
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
 
+#define DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
+
 #include "../bench.h"
 #include <libdash.h>
 #include <dash/internal/Math.h>
@@ -202,6 +204,7 @@ void perform_test(
   auto nu_x      = num_units;
   auto nu_y      = 1;
 
+#ifndef DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
   // Minimize surface-to-volume in team spec:
   while (params.units_inc > 1 &&
          nu_x % params.units_inc == 0 &&
@@ -210,6 +213,7 @@ void perform_test(
     nu_y *= params.units_inc;
     nu_x /= params.units_inc;
   }
+#endif
 
   double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9;
   if (myid == 0) {
@@ -345,6 +349,7 @@ std::pair<double, double> test_dash(
   size_t team_size_x = num_units;
   size_t team_size_y = 1;
 
+#ifndef DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
   // Minimize surface-to-volume in team spec:
   while (params.units_inc > 1 &&
          team_size_x % params.units_inc == 0 &&
@@ -353,20 +358,20 @@ std::pair<double, double> test_dash(
     team_size_y *= params.units_inc;
     team_size_x /= params.units_inc;
   }
+#endif
 
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:
   dash::SizeSpec<2, extent_t> size_spec(n, n);
   dash::TeamSpec<2, index_t>  team_spec(team_size_x, team_size_y);
 
-//team_spec.balance_extents();
-
   auto pattern = dash::make_pattern<
-                 dash::summa_pattern_partitioning_constraints,
-                 dash::summa_pattern_mapping_constraints,
-                 dash::summa_pattern_layout_constraints >(
-                   size_spec,
-                   team_spec);
+                   dash::summa_pattern_partitioning_constraints,
+                   dash::summa_pattern_mapping_constraints,
+                   dash::summa_pattern_layout_constraints >(
+                     size_spec,
+                     team_spec);
+
   static_assert(std::is_same<extent_t,
                              decltype(pattern)::size_type>::value,
                 "size type of deduced pattern and size spec differ");
@@ -454,8 +459,6 @@ std::pair<double, double> test_blas(
   auto m = sb;
   auto n = sb;
   auto p = sb;
-
-  ts_multiply_start = Timer::Now();
   for (auto i = 0; i < repeat; ++i) {
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
     cblas_dgemm(
