@@ -892,6 +892,7 @@ public:
 private:
   void update_rank()
   {
+    _rank = 0;
     for (auto d = 0; d < MaxDimensions; ++d) {
       if (this->_extents[d] > 1) {
         ++_rank;

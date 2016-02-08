@@ -22,11 +22,13 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
   }
 
   size_t team_size    = dash::Team::All().size();
-  size_t team_size_x  = std::max<size_t>(
-                          1, static_cast<size_t>(std::ceil(
-                               sqrt(team_size))));
-  size_t team_size_y  = team_size / team_size_x;
-  LOG_MESSAGE("team size: %lu x %lu", team_size_x, team_size_y);
+
+  dash::TeamSpec<2> teamspec_2d(team_size, 1);
+  teamspec_2d.balance_extents();
+
+  size_t team_size_x  = teamspec_2d.num_units(0);
+  size_t team_size_y  = teamspec_2d.num_units(1);
+  int    team_rank    = (team_size_x > 1 && team_size_y > 1) ? 2 : 1;
 
   // Choose 'inconvenient' extents:
   int    block_size_x = 2;
@@ -46,12 +48,9 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
   dash__unused(max_per_unit);
   dash__unused(block_size);
 
-  ASSERT_EQ(dash::TeamSpec<2>(dash::Team::All()).size(), team_size);
+  ASSERT_EQ_U(dash::TeamSpec<2>(dash::Team::All()).size(), team_size);
 
-  dash::TeamSpec<2> teamspec_2d(team_size_x, team_size_y);
-  ASSERT_EQ(2,            teamspec_2d.rank());
-  ASSERT_EQ(team_size_x,  teamspec_2d.num_units(0));
-  ASSERT_EQ(team_size_y,  teamspec_2d.num_units(1));
+  ASSERT_EQ(team_rank,    teamspec_2d.rank());
   ASSERT_EQ(dash::size(), teamspec_2d.size());
 
   pattern_t pattern(
