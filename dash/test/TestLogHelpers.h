@@ -74,7 +74,7 @@ print_pattern_mapping(
   auto blocksize_x = pattern.blocksize(0);
   auto blocksize_y = pattern.blocksize(1);
   auto n_blocks_x  = pattern.blockspec().extent(0);
-  int  row_char_w  = ((pattern.extent(0) + 1) * field_width) +
+  int  row_char_w  = (pattern.extent(0) * (field_width + 1)) +
                      (n_blocks_x * 2) - 1;
   std::string block_row_separator(row_char_w, '-');
   std::vector<std::string> block_row_separator_entry;
@@ -93,7 +93,7 @@ print_pattern_mapping(
       row_units.push_back(ss.str());
     }
     units.push_back(row_units);
-    if ((y+1) % blocksize_y == 0) {
+    if ((y+1) == pattern.extent(1) || (y+1) % blocksize_y == 0) {
       units.push_back(block_row_separator_entry);
     }
   }
