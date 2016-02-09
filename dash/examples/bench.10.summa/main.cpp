@@ -7,7 +7,7 @@
 #define DASH__MKL_MULTITHREADING
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
 
-#define DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
+// #define DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
 
 #include "../bench.h"
 #include <libdash.h>
@@ -71,6 +71,8 @@ typedef struct benchmark_params_t {
   unsigned    rep_base;
   unsigned    rep_max;
   extent_t    units_max;
+  extent_t    units_x;
+  extent_t    units_y;
   extent_t    units_inc;
   extent_t    threads;
   bool        env_mkl;
@@ -167,6 +169,27 @@ int main(int argc, char* argv[])
   }
 #endif
 
+  if (params.units_x == 0 && params.units_y == 0) {
+    params.units_x = dash::size();
+    params.units_y = 1;
+#ifndef DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
+    // Minimize surface-to-volume in team spec:
+    while (params.units_inc > 1 &&
+           params.units_x % params.units_inc == 0 &&
+           params.units_x > 2 * params.units_inc)
+    {
+      params.units_y *= params.units_inc;
+      params.units_x /= params.units_inc;
+    }
+    while (params.units_x % 2 == 0 &&
+           params.units_x > 2 * params.units_y)
+    {
+      params.units_y *= 2;
+      params.units_x /= 2;
+    }
+#endif
+  }
+
   if (myid == 0) {
     print_params(params);
   }
@@ -199,33 +222,22 @@ void perform_test(
   unsigned                 num_repeats,
   const benchmark_params & params)
 {
-  auto myid      = dash::myid();
-  auto num_units = dash::size();
-  auto nu_x      = num_units;
-  auto nu_y      = 1;
+  auto   myid       = dash::myid();
+  auto   num_units  = dash::size();
+  auto   variant_id = variant;
+  double gflop      = static_cast<double>(n * n * n * 2) * 1.0e-9;
 
-#ifndef DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
-  // Minimize surface-to-volume in team spec:
-  while (params.units_inc > 1 &&
-         nu_x % params.units_inc == 0 &&
-         nu_x > 2 * params.units_inc)
-  {
-    nu_y *= params.units_inc;
-    nu_x /= params.units_inc;
-  }
-#endif
-
-  double gflop = static_cast<double>(n * n * n * 2) * 1.0e-9;
   if (myid == 0) {
     if (iteration == 0) {
       // Print data set column headers:
       cout << setw(7)  << "units"   << ", "
            << setw(7)  << "threads" << ", "
            << setw(6)  << "n"       << ", "
-           << setw(10) << "size"    << ", "
+           << setw(12) << "size"    << ", "
            << setw(7)  << "team"    << ", "
            << setw(6)  << "mem.mb"  << ", "
-           << setw(5)  << "impl"    << ", "
+           << setw(10)  << "mpi"     << ", "
+           << setw(10) << "impl"    << ", "
            << setw(12) << "gflop/r" << ", "
            << setw(7)  << "peak.gf" << ", "
            << setw(7)  << "repeats" << ", "
@@ -235,7 +247,12 @@ void perform_test(
            << endl;
     }
     int mem_total_mb = 0;
-    if (variant == "dash") {
+    if (variant.find("dash") == 0) {
+#ifdef DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
+      variant_id.append(".dm");
+#else
+      variant_id.append(".mp");
+#endif
       auto block_s = (n / num_units) * (n / num_units);
       mem_total_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
@@ -243,31 +260,33 @@ void perform_test(
                          // four local temporary blocks per unit:
                          (num_units * 4 * block_s)
                        ) / 1024 ) / 1024;
-    } else if (variant == "mkl" || variant == "blas") {
+    } else if (variant.find("mkl") == 0 || variant.find("blas") == 0) {
       mem_total_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
                          (3 * n * n)
                        ) / 1024 ) / 1024;
-    } else if (variant == "pblas") {
+    } else if (variant.find("pblas") == 0) {
       mem_total_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
                          (3 * n * n)
                        ) / 1024 ) / 1024;
     }
 
-    std::ostringstream ss;
-    ss << nu_x << "x" << nu_y;
-    std::string team_extents = ss.str();
+    std::ostringstream team_ss;
+    team_ss << params.units_x << "x" << params.units_y;
+    std::string team_extents = team_ss.str();
+    std::string mpi_impl     = dash__toxstr(MPI_IMPL_ID);
 
     int gflops_peak = static_cast<int>(params.cpu_gflops_peak *
                                        num_units * params.threads);
     cout << setw(7)  << num_units      << ", "
          << setw(7)  << params.threads << ", "
          << setw(6)  << n              << ", "
-         << setw(10) << (n*n)          << ", "
+         << setw(12) << (n*n)          << ", "
          << setw(7)  << team_extents   << ", "
          << setw(6)  << mem_total_mb   << ", "
-         << setw(5)  << variant        << ", "
+         << setw(10) << mpi_impl       << ", "
+         << setw(10) << variant_id     << ", "
          << setw(12) << std::fixed << std::setprecision(4)
                      << gflop          << ", "
          << setw(7)  << gflops_peak    << ", "
@@ -345,25 +364,11 @@ std::pair<double, double> test_dash(
   const benchmark_params & params)
 {
   std::pair<double, double> time;
-  size_t num_units   = dash::size();
-  size_t team_size_x = num_units;
-  size_t team_size_y = 1;
-
-#ifndef DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
-  // Minimize surface-to-volume in team spec:
-  while (params.units_inc > 1 &&
-         team_size_x % params.units_inc == 0 &&
-         team_size_x > 2 * params.units_inc)
-  {
-    team_size_y *= params.units_inc;
-    team_size_x /= params.units_inc;
-  }
-#endif
 
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:
   dash::SizeSpec<2, extent_t> size_spec(n, n);
-  dash::TeamSpec<2, index_t>  team_spec(team_size_x, team_size_y);
+  dash::TeamSpec<2, index_t>  team_spec(params.units_x, params.units_y);
 
   auto pattern = dash::make_pattern<
                    dash::summa_pattern_partitioning_constraints,
@@ -547,11 +552,11 @@ std::pair<double, double> test_pblas(
   int_t ictxt;
   int_t myrow, mycol;
   int_t ierr;
-  int_t numproc = dash::size();
-  int_t myid    = dash::myid();
+  int_t numproc  = dash::size();
+  int_t myid     = dash::myid();
 
-  int_t nprow    = numproc / 4;
-  int_t npcol    = 4;
+  int_t npcol    = params.units_inc;
+  int_t nprow    = numproc / npcol;
   // Block extents such that block size = (nb x mb):
   int_t sbrow    = N / nprow;
   int_t sbcol    = N / npcol;
@@ -767,6 +772,8 @@ benchmark_params parse_args(int argc, char * argv[])
   params.variant            = "dash";
   params.units_max          = 0;
   params.units_inc          = 0;
+  params.units_x            = 0;
+  params.units_y            = 0;
   params.threads            = 1;
   params.exp_max            = 4;
   params.mkl_dyn            = false;
@@ -798,6 +805,10 @@ benchmark_params parse_args(int argc, char * argv[])
     } else if (flag == "-nmax") {
       max_units       = static_cast<extent_t>(atoi(argv[i+1]));
       params.units_max = max_units;
+    } else if (flag == "-nx") {
+      params.units_x   = static_cast<extent_t>(atoi(argv[i+1]));
+    } else if (flag == "-ny") {
+      params.units_y   = static_cast<extent_t>(atoi(argv[i+1]));
     } else if (flag == "-nt") {
       params.threads  = static_cast<extent_t>(atoi(argv[i+1]));
     } else if (flag == "-s") {
@@ -859,6 +870,8 @@ void print_params(const benchmark_params & params)
        << "--   -s    variant:      " << setw(8) << params.variant   << endl
        << "--   -sb   size base:    " << setw(8) << params.size_base << endl
        << "--   -nmax units max:    " << setw(8) << params.units_max << endl
+       << "--   -nx   team size x:  " << setw(8) << params.units_x   << endl
+       << "--   -ny   team size y:  " << setw(8) << params.units_y   << endl
        << "--   -ninc units inc:    " << setw(8) << params.units_inc << endl
        << "--   -nt   threads/unit: " << setw(8) << params.threads   << endl
        << "--   -emax exp max:      " << setw(8) << params.exp_max   << endl
