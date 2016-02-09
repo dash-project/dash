@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include "TestBase.h"
+#include "TestLogHelpers.h"
 #include "BlockPatternTest.h"
 
 TEST_F(BlockPatternTest, SimpleConstructor)
@@ -323,7 +324,8 @@ TEST_F(BlockPatternTest, Distribute1DimBlockcyclic)
 TEST_F(BlockPatternTest, Distribute2DimBlockedY)
 {
   DASH_TEST_LOCAL_ONLY();
-  typedef dash::default_index_t index_t;
+  typedef dash::default_index_t  index_t;
+  typedef std::array<index_t, 2> coords_t;
   // 2-dimensional, blocked partitioning in second dimension:
   // Row major:
   // [ team 0[0] | team 0[1] | ... | team 0[2] ]
@@ -337,22 +339,22 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
   // [ team 1[0] | team 1[2] | ... | team 1[4] ]
   // [ team 1[1] | team 1[3] | ... | team 1[5] ]
   // [                   ...                   ]
-  int team_size = dash::Team::All().size();
-  int extent_x  = 27;
-  int extent_y  = 5;
-  size_t size   = extent_x * extent_y;
+  size_t team_size      = dash::Team::All().size();
+  size_t extent_x       = 27;
+  size_t extent_y       = 5;
+  size_t size           = extent_x * extent_y;
   // Ceil division
-  int block_size_x   = extent_x;
-  int block_size_y   = dash::math::div_ceil(extent_y, team_size);
-  int max_per_unit   = block_size_x * block_size_y;
-  int overflow_bs_x  = extent_x % block_size_x;
-  int overflow_bs_y  = extent_y % block_size_y;
-  int underfill_bs_x = (overflow_bs_x == 0)
-                       ? 0
-                       : block_size_x - overflow_bs_x;
-  int underfill_bs_y = (overflow_bs_y == 0)
-                       ? 0
-                       : block_size_y - overflow_bs_y;
+  size_t block_size_x   = extent_x;
+  size_t block_size_y   = dash::math::div_ceil(extent_y, team_size);
+  size_t max_per_unit   = block_size_x * block_size_y;
+  size_t overflow_bs_x  = extent_x % block_size_x;
+  size_t overflow_bs_y  = extent_y % block_size_y;
+  size_t underfill_bs_x = (overflow_bs_x == 0)
+                          ? 0
+                          : block_size_x - overflow_bs_x;
+  size_t underfill_bs_y = (overflow_bs_y == 0)
+                          ? 0
+                          : block_size_y - overflow_bs_y;
   LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpu: %d",
       extent_x, extent_y,
       block_size_x, block_size_y,
@@ -367,6 +369,7 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
       dash::DistributionSpec<2>(dash::NONE, dash::BLOCKED),
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
+
   EXPECT_EQ(pat_blocked_row.capacity(), size);
   EXPECT_EQ(pat_blocked_row.local_capacity(), max_per_unit);
   EXPECT_EQ(pat_blocked_row.blocksize(0), block_size_x);
@@ -547,7 +550,8 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedX)
 TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
 {
   DASH_TEST_LOCAL_ONLY();
-  typedef dash::default_index_t index_t;
+  typedef dash::default_index_t  index_t;
+  typedef std::array<index_t, 2> coords_t;
   // 2-dimensional, blocked partitioning in two dimensions:
   //
   // [ team 0[0] | team 1[0] | team 0[1] | team 1[1] ]
@@ -597,6 +601,37 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
         dash::BLOCKCYCLIC(block_size_y)),
       dash::TeamSpec<2>(num_units_x, num_units_y),
       dash::Team::All());
+
+  typedef decltype(pat_row) pattern_rmaj_t;
+  typedef decltype(pat_col) pattern_cmaj_t;
+
+  if (dash::myid() == 0) {
+    dash::test::print_pattern_mapping(
+      "pattern.row-major.local_index", pat_row, 6,
+      [](const pattern_rmaj_t & _pattern, int _x, int _y) -> std::string {
+          auto lpos    = _pattern.local_index(coords_t {_x, _y});
+          auto unit    = lpos.unit;
+          auto lindex  = lpos.index;
+          std::ostringstream ss;
+          ss << "u" << unit << "("
+             << std::setw(2) << lindex
+             << ")";
+          return ss.str();
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.col-major.local_index", pat_col, 6,
+      [](const pattern_cmaj_t & _pattern, int _x, int _y) -> std::string {
+          auto lpos    = _pattern.local_index(coords_t {_x, _y});
+          auto unit    = lpos.unit;
+          auto lindex  = lpos.index;
+          std::ostringstream ss;
+          ss << "u" << unit << "("
+             << std::setw(2) << lindex
+             << ")";
+          return ss.str();
+      });
+  }
+
   EXPECT_EQ_U(pat_row.team().size(), team_size);
   EXPECT_EQ_U(pat_row.teamspec().size(), team_size);
   EXPECT_EQ_U(pat_row.capacity(), size);
