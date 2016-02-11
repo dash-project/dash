@@ -47,6 +47,7 @@ int main(int argc, char** argv)
   double mem_rank;
   double mem_glob;
   size_t size;
+  size_t num_iterations = 10;
 
   dash::init(&argc, &argv);
   Timer::Calibrate(0);
@@ -56,9 +57,8 @@ int main(int argc, char** argv)
          << endl;
     cout << "Timer: " << Timer::TimerName()
          << endl;
-    cout << std::setw(8)  << "size";
+    cout << std::setw(14) << "size";
     cout << std::setw(14) << "all local";
-    cout << std::setw(14) << "part. loc.";
     cout << std::setw(14) << "no local";
     cout << std::setw(8)  << " ";
     cout << std::setw(14) << "mem/rank";
@@ -66,38 +66,39 @@ int main(int argc, char** argv)
     cout << endl;
   }
 
-  for (int size_exp = 3; size_exp < 10; ++size_exp)
-  {
-    size      = (size_t)std::pow((double)10, (double)size_exp);
+  size_t size_base = ((static_cast<size_t>(std::pow(2, 30)) /
+                       sizeof(ElementType)) *
+                      dash::size()) /
+                      num_iterations;
 
-    DASH_LOG_DEBUG("main", "START copy_all_local", "size: 10^", size_exp);
+  for (int iteration = 0; iteration < num_iterations; ++iteration)
+  {
+    size_t size = (iteration + 1) * size_base;
+
+    DASH_LOG_DEBUG("main", "START copy_all_local", "size: ", size_exp);
     kps_al    = copy_all_local(size, false);
     dash::barrier();
-    sleep(1);
-    DASH_LOG_DEBUG("main", "DONE  copy_all_local", "size: 10^", size_exp);
 
-    DASH_LOG_DEBUG("main", "START copy_partially_local", "size: 10^", size_exp);
-    kps_pl    = copy_partially_local(size, false);
-    dash::barrier();
     sleep(1);
-    DASH_LOG_DEBUG("main", "DONE  copy_partially_local", "size: 10^", size_exp);
+    DASH_LOG_DEBUG("main", "DONE  copy_all_local", "size: ", size_exp);
 
-    DASH_LOG_DEBUG("main", "START copy_no_local", "size: 10^", size_exp);
-    kps_nl    = copy_no_local(size,false);
+    DASH_LOG_DEBUG("main", "START copy_no_local", "size: ", size_exp);
+    kps_nl    = copy_no_local(size, false);
     dash::barrier();
-    sleep(1);
-    DASH_LOG_DEBUG("main", "DONE  copy_no_local", "size: 10^", size_exp);
+    DASH_LOG_DEBUG("main", "DONE  copy_no_local", "size: ", size_exp);
 
     mem_glob  = ((sizeof(ElementType) * size) / 1024) / 1024;
     mem_rank  = mem_glob / dash::size();
 
-    DASH_PRINT_MASTER("10^" << std::setw(5) << size_exp
-                      << std::setprecision(5) << std::setw(14) << kps_al
-                      << std::setprecision(5) << std::setw(14) << kps_pl
-                      << std::setprecision(5) << std::setw(14) << kps_nl
-                      << std::setw(8)  << "MKeys/s"
-                      << std::setw(10) << mem_rank << " MiB"
-                      << std::setw(10) << mem_glob << " MiB");
+    if (dash::myid() == 0) {
+      cout << std::setw(14) << size
+           << std::setprecision(5) << std::setw(14) << kps_al
+           << std::setprecision(5) << std::setw(14) << kps_nl
+           << std::setw(8)  << "MKeys/s"
+           << std::setw(10) << mem_rank << " MiB"
+           << std::setw(10) << mem_glob << " MiB"
+           << endl;
+    }
   }
 
   DASH_PRINT_MASTER("Benchmark finished");
@@ -123,71 +124,48 @@ double copy_all_local(size_t size, bool parallel)
                  "l_size:", local_size);
 
   if(dash::myid() == 0 && !parallel){
-    local_array = (ElementType*) malloc(sizeof(ElementType)*local_size*2);
+    local_array = (ElementType*) malloc(sizeof(ElementType) * local_size);
   }
 
   dash::barrier();
 
   if(dash::myid() == 0 && !parallel){
     timer_start = Timer::Now();
-    dash::copy(global_array.begin() + l_start_idx,
-               global_array.begin() + l_end_idx,
-               local_array);
+    ElementType * copy_lend = dash::copy(global_array.begin() + l_start_idx,
+                                         global_array.begin() + l_end_idx,
+                                         local_array);
     elapsed = Timer::ElapsedSince(timer_start);
+#ifdef DEBUG
+    cout << "l_start_idx:     " << l_start_idx << endl;
+    cout << "l_end_idx:       " << l_end_idx   << endl;
+    cout << "copied elements: " << (copy_lend - local_array) << endl;
+    cout << "lend-lbegin:     " << (global_array.lend() - global_array.lbegin()) << endl;
+    cout << "local size:      " << local_size << endl;
+    cout << "elapsed us:      " << elapsed << endl;
+#endif
     if (local_array != nullptr) {
       free(local_array);
     }
   }
 
   dash::barrier();
-  return (1.0e-6 * (local_size / elapsed));
-}
-
-double copy_partially_local(size_t size, bool parallel)
-{
-  Array_t global_array(size, dash::BLOCKED);
-  ElementType *local_array = nullptr;
-  auto   timer_start = Timer::Now();
-  double elapsed     = 0;
-
-  DASH_LOG_DEBUG("copy_partially_local()",
-                 "size:", size);
-
-  if(dash::myid() == 0 && !parallel){
-    local_array = (ElementType*) malloc(sizeof(ElementType)*size*2);
-  }
-
-  dash::barrier();
-
-  if(dash::myid() == 0 && !parallel){
-    timer_start = Timer::Now();
-    dash::copy(global_array.begin(),
-               global_array.end(),
-               local_array);
-    elapsed = Timer::ElapsedSince(timer_start);
-    if (local_array != nullptr) {
-      free(local_array);
-    }
-  }
-
-  dash::barrier();
-  return (1.0e-6 * (size / elapsed));
+  return (static_cast<double>(local_size) / elapsed);
 }
 
 double copy_no_local(size_t size, bool parallel)
 {
   Array_t global_array(size, dash::BLOCKED);
-  auto    l_start_idx    = global_array.pattern().lbegin();
-  auto    l_end_idx      = global_array.pattern().lend();
-  size_t  local_size     = l_end_idx - l_start_idx;
+  size_t  block_size       = global_array.pattern().local_size();
+  auto    remote_block     = global_array.pattern().block(dash::size() - 2);
+  auto    remote_start_idx = remote_block.offset(0);
+  auto    remote_end_idx   = remote_start_idx + block_size;
 
-  size_t  num_copy_elem  = size - local_size;
+  size_t  num_copy_elem  = block_size;
   auto    timer_start    = Timer::Now();
   double  elapsed        = 0;
 
   DASH_LOG_DEBUG("copy_no_local()",
                  "size:",   size,
-                 "l_idcs:", l_start_idx, "-", l_end_idx,
                  "l_size:", local_size,
                  "n_copy:", num_copy_elem);
 
@@ -206,24 +184,18 @@ double copy_no_local(size_t size, bool parallel)
     // Start timer:
     timer_start = Timer::Now();
     // Copy elements in front of local range:
-    DASH_LOG_DEBUG(
-      "copy_no_local",
-      "Copying from global range",
-      0, "-", l_start_idx);
-    dest_first = dash::copy(
-                   global_array.begin(),
-                   global_array.begin() + l_start_idx,
-                   dest_first);
-    // Copy elements after local range:
-    DASH_LOG_DEBUG(
-      "copy_no_local",
-      "Copying from global range",
-      l_end_idx, "-", global_array.size());
-    dest_last  = dash::copy(
-                   global_array.begin() + l_end_idx,
-                   global_array.end(),
-                   dest_first);
+    dest_last = dash::copy(
+                  global_array.begin() + remote_start_idx ,
+                  global_array.begin() + remote_end_idx,
+                  dest_first);
     elapsed = Timer::ElapsedSince(timer_start);
+#ifdef DEBUG
+    cout << "r_start_idx:     " << remote_start_idx << endl;
+    cout << "r_end_idx:       " << remote_end_idx   << endl;
+    cout << "block size:      " << block_size   << endl;
+    cout << "copied elements: " << (dest_last - dest_first) << endl;
+    cout << "elapsed us:      " << elapsed << endl;
+#endif
 
 #ifndef DASH_ENABLE_ASSERTIONS
     dash__unused(dest_last);
@@ -243,5 +215,5 @@ double copy_no_local(size_t size, bool parallel)
       "Waiting for completion of copy operation");
   dash::barrier();
 
-  return (1.0e-6 * (num_copy_elem / elapsed));
+  return (num_copy_elem / elapsed);
 }
