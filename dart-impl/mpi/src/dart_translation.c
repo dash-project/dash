@@ -30,7 +30,6 @@ int dart_adapt_transtable_add(info_t item)
       "dart_adapt_transtable_add() item: "
       "seg_id:%d size:%zu disp:%"PRIu64" win:%"PRIu64"",
       item.seg_id, item.size, (uint64_t)item.disp, (uint64_t)item.win);
-  //	printf ("item.seg_id is %d\n", item.seg_id);
   p -> trans.seg_id  = item.seg_id;
   p -> trans.size    = item.size;
   p -> trans.disp    = item.disp;
@@ -67,7 +66,7 @@ int dart_adapt_transtable_remove(int16_t seg_id)
   } else {
     while ((p != NULL ) && (seg_id != (p->trans.seg_id))) {
       pre = p;
-      p = p -> next;
+      p   = p->next;
     }
     if (!p) {
       DART_LOG_ERROR(
@@ -75,16 +74,16 @@ int dart_adapt_transtable_remove(int16_t seg_id)
         seg_id);
       return -1;
     }
-    pre -> next = p -> next;
+    pre->next = p->next;
   }
 
-  free (p->trans.disp);
+  free(p->trans.disp);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   if (p->trans.baseptr) {
-    free (p->trans.baseptr);
+    free(p->trans.baseptr);
   }
 #endif
-  free (p);
+  free(p);
   return 0;
 }
 

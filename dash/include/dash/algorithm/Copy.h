@@ -451,8 +451,7 @@ dash::Future<ValueType *> copy_async(
 }
 
 /**
- * Specialization of \c dash::copy as global-to-local asynchronous copy
- * operation.
+ * Specialization of \c dash::copy as global-to-local blocking copy operation.
  */
 template <
   typename ValueType,

@@ -6,7 +6,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-  
+
 #define DART_INTERFACE_ON
 
 /*
@@ -20,7 +20,7 @@ extern "C" {
   *ascending* order. I.e., a call to dart_group_getmembers() will
   return the list of member units in ascending order. Similarly, a
   call to dart_group_split() will split the group according to an
-  ascending ordering of the member units. 
+  ascending ordering of the member units.
 
   CLARIFICATION: Groups and teams interact in two ways. First, when a
   team is created and a group specification is passed in. Second,
@@ -45,7 +45,7 @@ dart_ret_t dart_group_fini(dart_group_t *group);
 
 
 /* make a copy of the group */
-dart_ret_t dart_group_copy(const dart_group_t *gin, 
+dart_ret_t dart_group_copy(const dart_group_t *gin,
 			   dart_group_t *gout);
 
 
@@ -70,7 +70,7 @@ dart_ret_t dart_group_delmember(dart_group_t *g, dart_unit_t unitid);
 
 
 /* test if unitid is a member */
-dart_ret_t dart_group_ismember(const dart_group_t *g, 
+dart_ret_t dart_group_ismember(const dart_group_t *g,
 			       dart_unit_t unitid, int32_t *ismember);
 
 
@@ -81,14 +81,14 @@ dart_ret_t dart_group_size(const dart_group_t *g,
 
 /* get all the members of the group, unitids must be large enough
    to hold dart_group_size() members */
-dart_ret_t dart_group_getmembers(const dart_group_t *g, 
+dart_ret_t dart_group_getmembers(const dart_group_t *g,
 				 dart_unit_t *unitids);
 
 
 /* split the group into n groups of approx. same size,
    gout must be an array of dart_group_t objects of size at least n
 */
-dart_ret_t dart_group_split(const dart_group_t *g, size_t n, 
+dart_ret_t dart_group_split(const dart_group_t *g, size_t n,
 			    dart_group_t **gout);
 
 
@@ -106,7 +106,7 @@ dart_ret_t dart_group_sizeof(size_t *size);
 dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group);
 
 
-/* 
+/*
   Create a new team from the specified group
 
   This is a collective call: All members of the parent team have to
@@ -114,40 +114,40 @@ dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group);
   to be formed (even those that do not participate in the new
   team). Units not participating in the new team may pass a null
   pointer for the group specification.
-  
+
   The returned integer team ID does *not need* to be globally unique.
 
-  However, the following guarantees are made: 
-  
+  However, the following guarantees are made:
+
   1) Each member of the new team will receive the same numerical team
      ID.
 
   2) The team ID of the returned team will be unique with respect to
     the parent team.
 
-  3) If a unit is part of several teams, all these teams will have 
+  3) If a unit is part of several teams, all these teams will have
     different team IDs
 
-  Example: 
+  Example:
 
   DART_TEAM_ALL: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-  
+
   Form two sub-teams of equal size (0-4, 5-9):
-  
+
   dart_team_create(DART_TEAM_ALL, {0,1,2,3,4}) -> TeamID=1
-  dart_team_create(DART_TEAM_ALL, {5,6,7,8,9}) -> TeamID=2 
-  
+  dart_team_create(DART_TEAM_ALL, {5,6,7,8,9}) -> TeamID=2
+
   (1,2 are unique ID's with respect to the parent team (DART_TEAM_ALL)
-  
+
   Build further sub-teams:
-  
+
   dart_team_create(1, {0,1,2}) -> TeamID=2
   dart_team_create(1, {3,4})   -> TeamID=3
-  
+
   (2,3 are unique with respect to the parent team (1)).
  */
-dart_ret_t dart_team_create(dart_team_t teamid, const dart_group_t *group, 
-			    dart_team_t *newteam); 
+dart_ret_t dart_team_create(dart_team_t teamid, const dart_group_t *group,
+			    dart_team_t *newteam);
 
 /* Free up resources associated with the specified team */
 dart_ret_t dart_team_destroy(dart_team_t teamid);
@@ -159,16 +159,16 @@ dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid);
 
    dart_team_myid(team) returns the relative ID for the calling unit
    in the specified team( [0...n-1] , where n is the size of team n)
-   
+
    The following guarantees are made with respect to the relationship
    between the global IDs and the local IDs.
-   
+
    Consider the following example:
 
    DART_TEAM_ALL = {0,1,2,3,4,5}
-   
+
    t1 = dart_team_create(DART_TEAM_ALL, {4,2,0}}
-   
+
    Global ID | ID in t1 (V1)    | ID in t1 (V2)
    ---------------------------------------------
    0         | 0                | 2
@@ -177,11 +177,11 @@ dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid);
    3         | not a member     | not a member
    4         | 2                | 0
    5         | not a member     | not a member
-   
+
    The order as in V1 is guaranteed (I.e., the unit with ID 0 is the
    member with the smallest global ID, regardless of the order in
    which the members are specified in the group spec.
-   
+
    RATIONALE: SPMD code often diverges based on rank/unit ID. It will
    be useful to know the new master (local ID 0) of a newly created
    team before actually creating it.x
@@ -196,19 +196,19 @@ dart_ret_t dart_myid(dart_unit_t *myid);
 dart_ret_t dart_size(size_t *size);
 
 
-/* convert between local and global unit IDs 
+/* convert between local and global unit IDs
 
    local means the ID with respect to the specified team
-   global means the ID with respect to DART_TEAM_ALL 
+   global means the ID with respect to DART_TEAM_ALL
 
    these calls are *not* collective calls on the specified teams
-*/   
-dart_ret_t dart_team_unit_l2g(dart_team_t team, 
-			      dart_unit_t localid, 
+*/
+dart_ret_t dart_team_unit_l2g(dart_team_t team,
+			      dart_unit_t localid,
 			      dart_unit_t *globalid);
-  
-dart_ret_t dart_team_unit_g2l(dart_team_t team, 
-			      dart_unit_t globalid, 
+
+dart_ret_t dart_team_unit_g2l(dart_team_t team,
+			      dart_unit_t globalid,
 			      dart_unit_t *localid);
 
 

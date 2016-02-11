@@ -977,7 +977,7 @@ public:
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_size);
     // Assure all units are synchronized before deallocation, otherwise
     // other units might still be working on the array:
-    if( dash::is_initialized() ) {
+    if (dash::is_initialized()) {
       barrier();
     }
     // Remove this function from team deallocator list to avoid
@@ -996,7 +996,8 @@ public:
 
 private:
   bool allocate(
-    const PatternType & pattern) {
+    const PatternType & pattern)
+  {
     DASH_LOG_TRACE("Array._allocate()", "pattern",
                    pattern.memory_layout().extents());
     // Check requested capacity:
@@ -1028,7 +1029,14 @@ private:
     // instance that has been used to initialized it:
     pattern.team().register_deallocator(
       this, std::bind(&Array::deallocate, this));
-    DASH_LOG_TRACE("Array._allocate() finished");
+    // Assure all units are synchronized after allocation, otherwise
+    // other units might start working on the array before allocation
+    // completed at all units:
+    if (dash::is_initialized()) {
+      DASH_LOG_TRACE("Array._allocate", "waiting for allocation of all units");
+      m_team->barrier();
+    }
+    DASH_LOG_TRACE("Array._allocate >", "finished");
     return true;
   }
 

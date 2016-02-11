@@ -48,8 +48,8 @@ public:
     /// Team containing all units operating on global memory
     Team & team,
     /// Number of local elements to allocate
-    size_t nlelem
-  ) {
+    size_t nlelem)
+  {
     DASH_LOG_TRACE("GlobMem(nunits,nelem)", team.size(), nlelem);
     m_begptr     = DART_GPTR_NULL;
     m_teamid     = team.dart_id();

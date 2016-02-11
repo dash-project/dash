@@ -9,9 +9,9 @@ extern "C" {
 
 #define DART_INTERFACE_ON
 
-/** 
- * Initialize the DART runtime 
- *  
+/**
+ * Initialize the DART runtime
+ *
  * No other DART function may be called before dart_init() or after
  * dart_exit().
 */
