@@ -145,12 +145,12 @@ public:
 
   inline    Team            & team();
 
-  constexpr size_type         size()                const noexcept;
-  constexpr size_type         local_size()          const noexcept;
-  constexpr size_type         local_capacity()      const noexcept;
-  constexpr size_type         extent(dim_t dim)     const noexcept;
-  constexpr Extents_t         extents()             const noexcept;
-  constexpr bool              empty()               const noexcept;
+  inline    size_type         size()                const noexcept;
+  inline    size_type         local_size()          const noexcept;
+  inline    size_type         local_capacity()      const noexcept;
+  inline    size_type         extent(dim_t dim)     const noexcept;
+  inline    Extents_t         extents()             const noexcept;
+  inline    bool              empty()               const noexcept;
 
   inline    void              barrier()             const;
 

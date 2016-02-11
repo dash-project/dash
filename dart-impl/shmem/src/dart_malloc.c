@@ -15,7 +15,7 @@ dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t);
 
 dart_ret_t dart_memfree(dart_gptr_t gptr);
 
-dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid, 
+dart_ret_t dart_team_memalloc_aligned(dart_team_t teamid,
               size_t nbytes, dart_gptr_t *gptr);
 dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr);
 */
@@ -25,7 +25,7 @@ dart_ret_t dart_gptr_getaddr(
   void **addr) {
   int  poolid;
   char *base;
-  void *ptr; 
+  void *ptr;
   dart_mempoolptr pool;
   poolid = gptr.segid;
   pool = dart_memarea_get_mempool_by_id(poolid);
@@ -34,7 +34,7 @@ dart_ret_t dart_gptr_getaddr(
   }
   base    = ((char*)pool->localbase_addr);
   ptr     = base + gptr.addr_or_offs.offset;
-  (*addr) = ptr; 
+  (*addr) = ptr;
   return DART_OK;
 }
 
@@ -77,7 +77,7 @@ dart_ret_t dart_gptr_incaddr(
   }
   poolid = gptr->segid;
   pool = dart_memarea_get_mempool_by_id(poolid);
-  if (!pool) { 
+  if (!pool) {
     return DART_ERR_OTHER;
   }
   gptr->addr_or_offs.offset += offs;
@@ -105,7 +105,7 @@ dart_ret_t dart_memalloc(
   // todo: this is not always 0
   poolid = 0;
   pool = dart_memarea_get_mempool_by_id(poolid);
-  if (!pool) { 
+  if (!pool) {
     return DART_ERR_OTHER;
   }
   bucket = pool->bucket;
@@ -127,7 +127,7 @@ dart_ret_t dart_memalloc(
 }
 
 dart_ret_t dart_team_memalloc_aligned(
-  dart_team_t teamid, 
+  dart_team_t teamid,
   size_t nbytes,
   dart_gptr_t *gptr) {
   dart_ret_t ret;
@@ -140,11 +140,11 @@ dart_ret_t dart_team_memalloc_aligned(
     return DART_ERR_OTHER;
   }
   ret = dart_team_size(teamid, &teamsize);
-  if (ret != DART_OK) { 
+  if (ret != DART_OK) {
     return DART_ERR_OTHER;
   }
   ret = dart_team_myid(teamid, &myid);
-  if (ret != DART_OK) { 
+  if (ret != DART_OK) {
     return DART_ERR_OTHER;
   }
   poolid = dart_memarea_create_mempool(
@@ -157,7 +157,7 @@ dart_ret_t dart_team_memalloc_aligned(
     return DART_ERR_OTHER;
   }
   pool = dart_memarea_get_mempool_by_id(poolid);
-  if (!pool) { 
+  if (!pool) {
     return DART_ERR_OTHER;
   }
   dart_team_unit_l2g(teamid, 0, &unit);

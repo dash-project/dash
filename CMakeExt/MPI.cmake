@@ -2,7 +2,7 @@
 # Extension to support setting mpiwrappers as compilers
 # If not, relies on the findMPI.cmake script to set libs, includes and compile
 # flags.
-# 
+#
 # Note: Improvement/evaluation must be made by comparing this script with:
 # 1) http://www.na-mic.org/svn/Slicer3-lib-mirrors/trunk/CMake/Modules/FindMPI.cmake
 # 2) http://www.openflipper.org/svnrepo/CoMISo/trunk/CoMISo/cmake/FindMPI.cmake
@@ -16,9 +16,10 @@
 #   MPI_LIBRARY                First MPI library to link against (cached)
 #   MPI_EXTRA_LIBRARY          Extra MPI libraries to link against (cached)
 #   MPI_LIBRARIES              All libraries to link MPI programs against
+#   MPI_IMPL_ID                Identifier string of MPI implementation
 
 
-# Start with the list of MPI wrappers. Acknowledgement to 
+# Start with the list of MPI wrappers. Acknowledgement to
 # http://www.openflipper.org/svnrepo/CoMISo/trunk/CoMISo/cmake/FindMPI.cmake
 
 # Generic MPI compilers
@@ -75,12 +76,19 @@ if (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   if ("${MPI_INCLUDE_PATH}" MATCHES "mpich")
     message(INFO "MPI implementation: MPICH")
     set(MPI_IMPL_IS_MPICH TRUE CACHE BOOL "MPICH detected")
+    set(MPI_IMPL_ID "mpich" CACHE STRING "MPI implementation identifier")
   elseif ("${MPI_INCLUDE_PATH}" MATCHES "mvapich")
     message(INFO "MPI implementation: MVAPICH")
     set(MPI_IMPL_IS_MVAPICH TRUE CACHE BOOL "MVAPICH detected")
+    set(MPI_IMPL_ID "mvapich" CACHE STRING "MPI implementation identifier")
+  elseif ("${MPI_INCLUDE_PATH}" MATCHES "impi")
+    message(INFO "MPI implementation: Intel MPI")
+    set(MPI_IMPL_IS_INTEL TRUE CACHE BOOL "IntelMPI detected")
+    set(MPI_IMPL_ID "intelmpi" CACHE STRING "MPI implementation identifier")
   elseif ("${MPI_INCLUDE_PATH}" MATCHES "openmpi")
     message(INFO "MPI implementation: OpenMPI")
     set(MPI_IMPL_IS_OPENMPI TRUE CACHE BOOL "OpenMPI detected")
+    set(MPI_IMPL_ID "openmpi" CACHE STRING "MPI implementation identifier")
   endif()
 else (MPI_INCLUDE_PATH AND MPI_LIBRARY)
   set(MPI_FOUND FALSE CACHE BOOL "Did not find the MPI library")

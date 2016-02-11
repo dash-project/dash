@@ -43,9 +43,11 @@ void test_array_alloc(size_t lelem)
   double gsize = lsize*(double)dash::size();
   
   if(myid==0 ) {
-    cout << "Allocating " << setw(20) << gsize << " MB on ";
-    cout << setw(14) << dash::size() << " unit(s) = ";
-    cout << setw(20) << lsize << " MB per unit";
+    std::cout.imbue(std::locale(""));
+    cout << "Allocating " << setw(22) << nelem << " Elem. ";
+    cout << " = " << setw(10) << gsize << " MB on ";
+    cout << setw(8) << dash::size() << " unit(s) = ";
+    cout << setw(10) << lsize << " MB per unit";
     cout.flush();
   }
   
@@ -56,6 +58,12 @@ void test_array_alloc(size_t lelem)
   }
 
   dash::barrier(); 
+
+  if( dash::myid()==0 ) {
+    for( auto i=1; i<=1000; i++ ) {
+      arr[arr.size()-i] = i;
+    }
+  }
 
   if(myid==0 ) {
     cout<<" -- SUCCESS!"<<endl;

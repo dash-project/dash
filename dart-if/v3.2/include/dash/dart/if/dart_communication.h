@@ -1,6 +1,8 @@
 #ifndef DART__COMMUNICATION_H_
 #define DART__COMMUNICATION_H_
 
+#include <dash/dart/if/dart_types.h>
+
 /**
  * \file dart_communication.h
  *
@@ -78,7 +80,7 @@ dart_ret_t dart_reduce_double(
   double *recvbuf,
   dart_team_t team);
 
-typedef struct dart_handle_struct *dart_handle_t;
+typedef struct dart_handle_struct * dart_handle_t;
 
 /**
  * 'REGULAR' variant of dart_get.
@@ -110,12 +112,13 @@ dart_ret_t dart_put(
  *
  * \ingroup DartCommuncation
  */
-dart_ret_t dart_accumulate_int(
-  dart_gptr_t dest,
-  int *values,
-  size_t nvalues,
+dart_ret_t dart_accumulate(
+  dart_gptr_t      gptr,
+  char  *          values,
+  size_t           nelem,
+  dart_datatype_t  dtype,
   dart_operation_t op,
-  dart_team_t team);
+  dart_team_t      team);
 
 /**
  * 'HANDLE' variant of dart_get.
@@ -126,12 +129,13 @@ dart_ret_t dart_accumulate_int(
  * \ingroup DartCommuncation
  */
 dart_ret_t dart_get_handle(
-  void *dest,
-  dart_gptr_t ptr,
-  size_t nbytes,
+  void            * dest,
+  dart_gptr_t       ptr,
+  size_t            nbytes,
   /// [OUT] Pointer to DART handle to instantiate for later use with
   ///       \c dart_wait, \c dart_wait_all etc.
-  dart_handle_t *handle);
+  dart_handle_t   * handle);
+
 /**
  * 'HANDLE' variant of dart_put.
  * Neither local nor remote completion is guaranteed. A later

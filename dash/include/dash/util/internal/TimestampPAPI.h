@@ -137,6 +137,7 @@ public:
     else if (retval < 0) {
       throw ::std::runtime_error("PAPI init failed");
     }
+    frequencyScaling = fscale;
   }
 
 public:

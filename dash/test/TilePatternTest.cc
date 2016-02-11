@@ -1,182 +1,196 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
+#include <iomanip>
 
 #include "TestBase.h"
+#include "TestLogHelpers.h"
 #include "TilePatternTest.h"
 
-TEST_F(TilePatternTest, Distribute1DimTile)
+using std::endl;
+using std::setw;
+
+TEST_F(TilePatternTest, Tile2DimTeam2Dim)
 {
-  DASH_TEST_LOCAL_ONLY();
+  typedef dash::default_index_t                 index_t;
+  typedef std::array<index_t, 2>                coords_t;
+  typedef dash::TilePattern<2, dash::ROW_MAJOR> pattern_t;
 
-  typedef dash::default_index_t index_t;
-
-  size_t team_size  = dash::Team::All().size();
-  size_t block_size = 3;
-  size_t extent     = team_size * block_size * 2;
-  size_t num_blocks = dash::math::div_ceil(extent, block_size);
-  size_t local_cap  = block_size *
-                        dash::math::div_ceil(num_blocks, team_size);
-  dash::TilePattern<1, dash::ROW_MAJOR> pat_tile_row(
-      dash::SizeSpec<1>(extent),
-      dash::DistributionSpec<1>(dash::TILE(block_size)),
-      dash::TeamSpec<1>(),
-      dash::Team::All());
-  // Check that memory order is irrelevant for 1-dim
-  dash::TilePattern<1, dash::COL_MAJOR> pat_tile_col(
-      dash::SizeSpec<1>(extent),
-      dash::DistributionSpec<1>(dash::TILE(block_size)),
-      dash::TeamSpec<1>(),
-      dash::Team::All());
-  EXPECT_EQ(pat_tile_row.capacity(), extent);
-  EXPECT_EQ(pat_tile_row.blocksize(0), block_size);
-  EXPECT_EQ(pat_tile_row.local_capacity(), local_cap);
-  EXPECT_EQ(pat_tile_col.capacity(), extent);
-  EXPECT_EQ(pat_tile_col.blocksize(0), block_size);
-  EXPECT_EQ(pat_tile_col.local_capacity(), local_cap);
-
-  std::array<index_t, 1> expected_coord;
-  for (int x = 0; x < extent; ++x) {
-    expected_coord[0]         = x;
-    index_t expected_unit_id  = (x / block_size) % team_size;
-    index_t block_index       = x / block_size;
-    index_t block_base_offset = block_size * (block_index / team_size);
-    index_t expected_offset   = (x % block_size) + block_base_offset;
-    // Row major:
-    EXPECT_EQ(
-      expected_coord,
-      pat_tile_row.coords(x));
-    EXPECT_EQ(
-      expected_unit_id,
-      pat_tile_row.unit_at(x));
-    EXPECT_EQ(
-      expected_offset,
-      pat_tile_row.at(x));
-    EXPECT_EQ(
-      (std::array<index_t, 1> { x }),
-      pat_tile_row.global(
-        expected_unit_id, (std::array<index_t, 1> { expected_offset })));
-    // Column major:
-    EXPECT_EQ(
-      expected_coord,
-      pat_tile_col.coords(x));
-    EXPECT_EQ(
-      expected_unit_id,
-      pat_tile_col.unit_at(x));
-    EXPECT_EQ(
-      expected_offset,
-      pat_tile_col.at(x));
-    EXPECT_EQ(
-      (std::array<index_t, 1> { x }),
-      pat_tile_col.global(
-        expected_unit_id, (std::array<index_t, 1> { expected_offset })));
+  if (dash::size() % 2 != 0) {
+    LOG_MESSAGE("Team size must be multiple of 2 for "
+                "TilePatternTest.Tile2DimTeam2Dim");
+    return;
   }
-}
 
-TEST_F(TilePatternTest, Distribute2DimTileXY)
-{
-  DASH_TEST_LOCAL_ONLY();
+  size_t team_size    = dash::Team::All().size();
 
-  typedef dash::default_index_t index_t;
+  dash::TeamSpec<2> teamspec_2d(team_size, 1);
+  teamspec_2d.balance_extents();
 
-  // 2-dimensional, blocked partitioning in first dimension:
-  //
-  // [ team 0[0] | team 0[1] | ... | team 0[8]  | team 0[9]  | ... ]
-  // [ team 0[2] | team 0[3] | ... | team 0[10] | team 0[11] | ... ]
-  // [ team 0[4] | team 0[5] | ... | team 0[12] | team 0[13] | ... ]
-  // [ team 0[6] | team 0[7] | ... | team 0[14] | team 0[15] | ... ]
-  size_t team_size      = dash::Team::All().size();
+  size_t team_size_x  = teamspec_2d.num_units(0);
+  size_t team_size_y  = teamspec_2d.num_units(1);
+  int    team_rank    = (team_size_x > 1 && team_size_y > 1) ? 2 : 1;
+
   // Choose 'inconvenient' extents:
-  size_t block_size_x   = 3;
-  size_t block_size_y   = 2;
-  size_t block_size     = block_size_x * block_size_y;
-  size_t extent_x       = team_size * 2 * block_size_x;
-  size_t extent_y       = team_size * 3 * block_size_y;
-  size_t size           = extent_x * extent_y;
-  size_t max_per_unit   = size / team_size;
+  int    block_size_x = 2;
+  int    block_size_y = 2;
+  int    odd_blocks_x = 1;
+  int    odd_blocks_y = 2;
+  size_t block_size   = block_size_x * block_size_y;
+  size_t extent_x     = (team_size_x + odd_blocks_x) * block_size_x;
+  size_t extent_y     = (team_size_y + odd_blocks_y) * block_size_y;
+  size_t size         = extent_x * extent_y;
+  size_t max_per_unit = size / team_size;
   LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
       extent_x, extent_y,
       block_size_x, block_size_y,
       team_size,
       max_per_unit);
-  dash::TilePattern<2, dash::ROW_MAJOR> pat_tile_row(
+  dash__unused(max_per_unit);
+  dash__unused(block_size);
+
+  ASSERT_EQ_U(dash::TeamSpec<2>(dash::Team::All()).size(), team_size);
+
+  ASSERT_EQ(team_rank,    teamspec_2d.rank());
+  ASSERT_EQ(dash::size(), teamspec_2d.size());
+
+  pattern_t pattern(
       dash::SizeSpec<2>(extent_x, extent_y),
       dash::DistributionSpec<2>(
         dash::TILE(block_size_x),
         dash::TILE(block_size_y)),
-      dash::TeamSpec<2>(dash::Team::All()),
+      teamspec_2d,
       dash::Team::All());
-  dash::TilePattern<2, dash::COL_MAJOR> pat_tile_col(
-      dash::SizeSpec<2>(extent_x, extent_y),
-      dash::DistributionSpec<2>(
-        dash::TILE(block_size_x),
-        dash::TILE(block_size_y)),
-      dash::TeamSpec<2>(dash::Team::All()),
-      dash::Team::All());
-  ASSERT_EQ(dash::TeamSpec<2>(dash::Team::All()).size(), team_size);
-  ASSERT_EQ(pat_tile_row.capacity(), size);
-  ASSERT_EQ(pat_tile_row.local_capacity(), max_per_unit);
-  ASSERT_EQ(pat_tile_row.blocksize(0), block_size_x);
-  ASSERT_EQ(pat_tile_row.blocksize(1), block_size_y);
-  ASSERT_EQ(pat_tile_col.capacity(), size);
-  ASSERT_EQ(pat_tile_col.local_capacity(), max_per_unit);
-  ASSERT_EQ(pat_tile_col.blocksize(0), block_size_x);
-  ASSERT_EQ(pat_tile_col.blocksize(1), block_size_y);
-  // number of overflow blocks, e.g. 7 elements, 3 teams -> 1
-  int num_overflow_blocks = extent_x % team_size;
-  for (int x = 0; x < extent_x; ++x) {
-    for (int y = 0; y < extent_y; ++y) {
-      int num_blocks_x        = extent_x / block_size_x;
-      int num_blocks_y        = extent_y / block_size_y;
-      int num_l_blocks_x      = num_blocks_x / team_size;
-      int num_l_blocks_y      = num_blocks_y / team_size;
-      int block_index_x       = x / block_size_x;
-      int block_index_y       = y / block_size_y;
-      int unit_id             = (block_index_x + block_index_y) % team_size;
-      int l_block_index_x     = block_index_x / team_size;
-      int l_block_index_y     = block_index_y / team_size;
-      int l_block_index_row   = (block_index_y * num_l_blocks_x) +
-                                l_block_index_x;
-      int l_block_index_col   = (block_index_x * num_l_blocks_y) +
-                                l_block_index_y;
-      int phase_x             = (x % block_size_x);
-      int phase_y             = (y % block_size_y);
-      int phase_row           = (y % block_size_y) * block_size_x +
-                                phase_x;
-      int phase_col           = (x % block_size_x) * block_size_y +
-                                (y % block_size_y);
-      int local_x             = l_block_index_x * block_size_x + phase_x;
-      int local_y             = l_block_index_y * block_size_y + phase_y;
-      int local_index_row     = (l_block_index_row * block_size) +
-                                phase_row;
-      // Row major:
-      auto local_coords_row   = pat_tile_row.local_coords(
-                                  std::array<index_t, 2> { x, y });
-      LOG_MESSAGE("R %d,%d, u:%d, b:%d,%d, nlb:%d,%d, lc: %d,%d, lbi:%d, p:%d",
-        x, y,
-        unit_id,
-        block_index_x, block_index_y,
-        num_l_blocks_x, num_l_blocks_y,
-        local_coords_row[0], local_coords_row[1],
-        l_block_index_row,
-        phase_row);
-      EXPECT_EQ(
-        unit_id,
-        pat_tile_row.unit_at(std::array<index_t, 2> { x, y }));
-      EXPECT_EQ(
-        local_index_row,
-        pat_tile_row.at(std::array<index_t, 2> { x, y }));
-      EXPECT_EQ(
-        local_index_row,
-        pat_tile_row.local_at(local_coords_row));
-      auto glob_coords_row =
-        pat_tile_row.global(
-          unit_id,
-          std::array<index_t, 2> { local_coords_row[0], local_coords_row[1] });
-      EXPECT_EQ(
-        (std::array<index_t, 2> { x, y }),
-        glob_coords_row);
-      // Col major:
+
+  // Test .unit_at:
+
+  if (dash::myid() == 0) {
+    dash::test::print_pattern_mapping(
+      "pattern.unit_at", pattern, 2,
+      [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+          return _pattern.unit_at(coords_t {_x, _y});
+      });
+  }
+
+  for (int y = 0; y < static_cast<int>(extent_y); ++y) {
+    for (int x = 0; x < static_cast<int>(extent_x); ++x) {
+      auto     unit_id  = pattern.unit_at(std::array<index_t, 2> { x, y });
+      auto     l_pos    = pattern.local(coords_t { x, y });
+      coords_t l_coords = l_pos.coords;
+      coords_t g_coords = pattern.global(unit_id, l_coords);
+      ASSERT_EQ_U(unit_id, l_pos.unit);
+      ASSERT_EQ_U((coords_t { x, y }), g_coords);
     }
   }
+
+  // Test .local:
+
+  if (dash::myid() == 0) {
+    dash::test::print_pattern_mapping(
+      "pattern.local", pattern, 7,
+      [](const pattern_t & _pattern, int _x, int _y) -> std::string {
+          auto lpos    = _pattern.local(coords_t {_x, _y});
+          auto unit    = lpos.unit;
+          auto lcoords = lpos.coords;
+          std::ostringstream ss;
+          ss << "u" << unit << "("
+             << lcoords[0] << ","
+             << lcoords[1]
+             << ")";
+          return ss.str();
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.local_index", pattern, 6,
+      [](const pattern_t & _pattern, int _x, int _y) -> std::string {
+          auto lpos    = _pattern.local_index(coords_t {_x, _y});
+          auto unit    = lpos.unit;
+          auto lindex  = lpos.index;
+          std::ostringstream ss;
+          ss << "u" << unit << "("
+             << std::setw(2) << lindex
+             << ")";
+          return ss.str();
+      });
+  }
+  dash::test::print_pattern_mapping(
+    "pattern.local_at", pattern, 6,
+    [](const pattern_t & _pattern, int _x, int _y) -> std::string {
+        auto lpos    = _pattern.local(coords_t {_x, _y});
+        auto unit    = lpos.unit;
+        auto lcoords = lpos.coords;
+        std::ostringstream ss;
+        ss << "u" << unit << "(";
+        if (unit == dash::myid()) {
+          auto lindex = _pattern.local_at(lcoords);
+          ss << std::setw(2) << lindex;
+        } else {
+          ss << std::setw(2) << "--";
+        }
+        ss << ")";
+        return ss.str();
+    });
+
+  for (int y = 0; y < static_cast<int>(extent_y); ++y) {
+    for (int x = 0; x < static_cast<int>(extent_x); ++x) {
+      coords_t g_coords = { x, y };
+
+      auto l_pos_coords = pattern.local(g_coords);
+      auto unit_id_c    = l_pos_coords.unit;
+      auto l_coords     = l_pos_coords.coords;
+
+      auto l_pos_index  = pattern.local_index(g_coords);
+      auto unit_id_i    = l_pos_index.unit;
+      auto l_index      = l_pos_index.index;
+
+      ASSERT_EQ_U(unit_id_c, unit_id_i);
+
+      if (dash::myid() == unit_id_i) {
+        auto l_coords_idx = pattern.local_at(l_coords);
+        ASSERT_EQ_U(l_index, l_coords_idx);
+      }
+    }
+  }
+
+  // Test .global:
+
+  if (dash::myid() == 0) {
+    dash::test::print_pattern_mapping(
+      "pattern.global", pattern, 7,
+      [](const pattern_t & _pattern, int _x, int _y) -> std::string {
+          auto unit    = _pattern.unit_at(coords_t { _x, _y });
+          auto gcoords = _pattern.global(unit, coords_t {_x, _y});
+          std::ostringstream ss;
+          ss << "(" << gcoords[0] << "," << gcoords[1] << ")";
+          return ss.str();
+      });
+  }
+
+  // Test .block:
+
+  if (dash::myid() == 0) {
+    dash::test::print_pattern_mapping(
+      "pattern.block_at.offset", pattern, 7,
+      [](const pattern_t & _pattern, int _x, int _y) -> std::string {
+          auto g_block_index = _pattern.block_at(coords_t {_x, _y});
+          auto block_v       = _pattern.block(g_block_index);
+          std::ostringstream ss;
+          ss << "(" << block_v.offset(0) << "," << block_v.offset(1) << ")";
+          return ss.str();
+      });
+  }
+
+  for (int y = 0; y < static_cast<int>(extent_y); ++y) {
+    for (int x = 0; x < static_cast<int>(extent_x); ++x) {
+/*
+      coords_t g_coords      = { x, y };
+      auto     unit_id       = pattern.unit_at(g_coords);
+      auto     g_block_index = pattern.block_at(g_coords);
+      auto     l_block_index = 0;
+
+      auto g_block_view = pattern.block(g_block_index);
+      auto l_block_view = pattern.local_block(unit_id, l_block_index);
+*/
+    }
+  }
+
 }
 

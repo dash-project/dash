@@ -1,5 +1,5 @@
-/* 
- * \file examples/ex.02.array-copy/main.cpp 
+/*
+ * \file examples/ex.02.array-copy/main.cpp
  *
  * author(s): Tobias Fuchs, LMU Munich */
 /* @DASH_HEADER@ */
@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
                  "Units:", num_units);
 
   std::vector<extent_t> local_sizes;
-  for (auto unit_idx = 0; unit_idx < num_units; ++unit_idx) {
+  for (size_t unit_idx = 0; unit_idx < num_units; ++unit_idx) {
     local_sizes.push_back(((unit_idx + 11) * 23) % max_local_size);
   }
   pattern_t pattern(local_sizes);

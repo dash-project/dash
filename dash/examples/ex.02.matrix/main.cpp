@@ -39,10 +39,8 @@ void print_matrix(const MatrixT & matrix) {
   delete[] matrix_copy;
 }
 
-int main(int argc, char* argv[]) {
-
-  pid_t pid;
-
+int main(int argc, char* argv[])
+{
   dash::init(&argc, &argv);
 
   dart_unit_t myid   = dash::myid();
@@ -71,8 +69,8 @@ int main(int argc, char* argv[]) {
   // Fill matrix
   if (0 == myid) {
     cout << "Assigning matrix values" << endl;
-    for(int i = 0; i < matrix.extent(0); ++i) {
-      for(int k = 0; k < matrix.extent(1); ++k) {
+    for(size_t i = 0; i < matrix.extent(0); ++i) {
+      for(size_t k = 0; k < matrix.extent(1); ++k) {
         matrix[i][k] = (i * 11) + (k * 97);
       }
     }
@@ -82,8 +80,8 @@ int main(int argc, char* argv[]) {
   dash::Team::All().barrier();
 
   // Read and assert values in matrix
-  for (int i = 0; i < matrix.extent(0); ++i) {
-    for (int k = 0; k < matrix.extent(1); ++k) {
+  for (size_t i = 0; i < matrix.extent(0); ++i) {
+    for (size_t k = 0; k < matrix.extent(1); ++k) {
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
       assert(expected == value);

@@ -4,6 +4,7 @@
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
+#include <dash/GlobIter.h>
 
 #include <cstddef>
 #include <functional>
@@ -200,7 +201,7 @@ public:
       local_pos_t;
     IndexType idx    = _idx;
     IndexType offset = 0;
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr()", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
@@ -727,8 +728,8 @@ private:
     }
 #endif
     // NOTE:
-    // Do not check _idx first, as it would never match for comparison with an
-    // end iterator.
+    // Do not check _idx first, as it would never match for comparison with
+    // an end iterator.
     if (_viewspec == other._viewspec) {
       // Same viewspec pointer
       return gidx_cmp(_idx, other._idx);

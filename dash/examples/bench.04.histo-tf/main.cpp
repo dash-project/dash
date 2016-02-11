@@ -105,7 +105,7 @@ int main(int argc, char **argv)
                   a);
   int    k    = MAX_KEY / 4;
   double x;
-  for(int l = 0; l < key_array.lsize(); l++) {
+  for(size_t l = 0; l < key_array.lsize(); l++) {
     x  = randlc(&seed, &a);
     x += randlc(&seed, &a);
     x += randlc(&seed, &a);
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
          << "Max key:        " << MAX_KEY
          << endl;
     if (verbose) {
-      for(int i=0; i < std::min<size_t>(200, key_array.size()); i++ ) {
+      for (size_t i = 0; i < std::min<size_t>(200, key_array.size()); i++) {
         cout << key_array[i] << " ";
       }
       cout << endl;
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
   //
 
   // Compute the histogram for the values in local range:
-  for (int i = 0; i < key_array.lsize(); i++) {
+  for (size_t i = 0; i < key_array.lsize(); i++) {
     int value = key_array.local[i];
     ++key_histo.local[value];
   }
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
          << endl
          << "------------------------"
          << endl;
-    for(int i = 0; i < key_histo.local.size(); ++i) {
+    for(size_t i = 0; i < key_histo.local.size(); ++i) {
       cout << std::setw(5) << i << ": " << key_histo.local[i]
            << endl;
     }
@@ -312,6 +312,9 @@ double find_my_seed(int    kn,     /* my processor rank, 0<=kn<=num procs */
     t3 = randlc(&t2, &t2);
     kk = ik;
   }
+  // To avoid compiler warning of unused variable:
+  (void)(t3);
+
   return(t1);
 }
 

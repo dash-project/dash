@@ -652,16 +652,16 @@ public:
    */
   Array(
     Team & team = dash::Team::Null())
-  : m_team(&team),
+  : local(this),
+    async(this),
+    m_team(&team),
     m_pattern(
       SizeSpec_t(0),
       DistributionSpec_t(dash::BLOCKED),
       team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0),
-    local(this),
-    async(this) {
+    m_lcapacity(0) {
     DASH_LOG_TRACE("Array()", "default constructor");
   }
 
@@ -672,16 +672,16 @@ public:
     size_type nelem,
     const DistributionSpec_t & distribution,
     Team & team = dash::Team::All())
-  : m_team(&team),
+  : local(this),
+    async(this),
+    m_team(&team),
     m_pattern(
       SizeSpec_t(nelem),
       distribution,
       team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0),
-    local(this),
-    async(this) {
+    m_lcapacity(0) {
     DASH_LOG_TRACE("Array()", nelem);
     allocate(m_pattern);
   }
@@ -691,13 +691,13 @@ public:
    */
   Array(
     const PatternType & pattern)
-  : m_team(&pattern.team()),
+  : local(this),
+    async(this),
+    m_team(&pattern.team()),
     m_pattern(pattern),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0),
-    local(this),
-    async(this) {
+    m_lcapacity(0) {
     DASH_LOG_TRACE("Array()", "pattern instance constructor");
     allocate(m_pattern);
   }

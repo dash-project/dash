@@ -13,7 +13,6 @@
 #include <dash/Team.h>
 #include <dash/Cartesian.h>
 #include <dash/View.h>
-#include <dash/Pattern.h>
 #include <dash/GlobMem.h>
 #include <dash/GlobPtr.h>
 #include <dash/GlobIter.h>
@@ -23,6 +22,7 @@
 #include <dash/Onesided.h>
 
 #include <dash/Enums.h>
+#include <dash/Pattern.h>
 #include <dash/Container.h>
 #include <dash/Shared.h>
 #include <dash/SharedCounter.h>

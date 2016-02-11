@@ -195,9 +195,12 @@ private:
       if (_distspec.dim(i).type == dash::internal::DIST_TILE)
         has_tile = true;
       if (_distspec.dim(i).type != _distspec.dim(i+1).type)
-        invalid = true;
+        invalid  = true;
     }
-    assert(!(has_tile && invalid));
+    if (has_tile && invalid) {
+      DASH_THROW(dash::exception::InvalidArgument,
+                 "Pattern arguments invalid: Mixed distribution types");
+    }
     if (has_tile) {
       for (auto i = 0; i < NumDimensions; i++) {
         assert(

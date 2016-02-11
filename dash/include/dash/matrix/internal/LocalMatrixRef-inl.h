@@ -105,7 +105,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   //                        block_view.extent(d));
   //
   DASH_LOG_TRACE("LocalMatrixRef.block()", block_lindex);
-  auto pattern      = _refview->_mat->_pattern;
+  auto pattern        = _refview->_mat->_pattern;
   // Global view of local block:
   auto l_block_g_view = pattern.local_block(block_lindex);
   // Local view of local block:
@@ -153,7 +153,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::extent(
   dim_t dim) const noexcept
 {
-  if(dim >= NumDim || dim == 0) {
+  if(dim >= NumDim || dim < 0) {
     DASH_THROW(
       dash::exception::InvalidArgument,
       "LocalMatrixRef.extent(): Invalid dimension, " <<
@@ -161,17 +161,39 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
       "got " << dim);
   }
   return _refview->_mat->_pattern.local_extent(dim);
+//return _refview->_viewspec.extent(dim);
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline
-  std::array<
-    typename PatternT::size_type,
-    NumDim>
+inline std::array<typename PatternT::size_type, NumDim>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::extents() const noexcept
 {
   return _refview->_viewspec.extents();
+}
+
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+inline typename LocalMatrixRef<T, NumDim, CUR, PatternT>::index_type
+LocalMatrixRef<T, NumDim, CUR, PatternT>
+::offset(
+  dim_t dim) const noexcept
+{
+  if(dim >= NumDim || dim < 0) {
+    DASH_THROW(
+      dash::exception::InvalidArgument,
+      "LocalMatrixRef.offset(): Invalid dimension, " <<
+      "expected 0.." << (NumDim - 1) << " " <<
+      "got " << dim);
+  }
+  return _refview->_viewspec.offset(dim);
+}
+
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+inline std::array<typename PatternT::index_type, NumDim>
+LocalMatrixRef<T, NumDim, CUR, PatternT>
+::offsets() const noexcept
+{
+  return _refview->_viewspec.offsets();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -505,7 +527,7 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
 ::local_at(
   index_type pos) const
 {
-  if (!(pos < _refview->_mat->size())) {
+  if (!(static_cast<size_type>(pos) < _refview->_mat->size())) {
     DASH_THROW(
       dash::exception::OutOfRange,
       "Position for LocalMatrixRef<0>.local_at out of range");

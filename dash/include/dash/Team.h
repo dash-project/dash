@@ -260,14 +260,15 @@ public:
     unsigned nParts
   ) {
     DASH_LOG_DEBUG_VAR("Team.split()", nParts);
-    dart_group_t *group;
-    dart_group_t *sub_groups[nParts];
+    dart_group_t *  group;
+    dart_group_t ** sub_groups = static_cast<dart_group_t**>(
+                                   malloc(sizeof(dart_group_t*) * nParts));
     size_t size;
 
     dart_group_sizeof(&size);
 
     group = static_cast<dart_group_t *>(malloc(size));
-    for (auto i = 0; i < nParts; i++) {
+    for (unsigned i = 0; i < nParts; i++) {
       sub_groups[i] = static_cast<dart_group_t *>(malloc(size));
       DASH_ASSERT_RETURNS(
         dart_group_init(sub_groups[i]),
@@ -291,7 +292,7 @@ public:
     dart_team_t oldteam = _dartid;
     // Create a child Team for every part with parent set to
     // this instance:
-    for(auto i = 0; i < nParts; i++) {
+    for(unsigned i = 0; i < nParts; i++) {
       dart_team_t newteam = DART_TEAM_NULL;
       DASH_ASSERT_RETURNS(
         dart_team_create(

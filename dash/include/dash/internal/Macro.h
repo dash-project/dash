@@ -2,16 +2,21 @@
 #define DASH__INTERNAL__MACRO_H_
 
 /**
- * Macro parameter string expasion
+ * Macro parameter string expansion
  */
-#define __xstr(s) __str(s)
+#define dash__toxstr(s) dash__tostr(s)
 /**
- * Macro parameter value string expasion
+ * Macro parameter value string expansion
  */
-#define __str(s) #s
+#define dash__tostr(s) #s
+/**
+ * Mark variable as intentionally or potentially unused to avoid compiler
+ * warning from unused variable.
+ */
+#define dash__unused(x) (void)(x)
 
 /**
- * Workaround GCC versions that do not support the 
+ * Workaround GCC versions that do not support the
  * noinline attribute
  */
 #ifndef NOINLINE_ATTRIBUTE

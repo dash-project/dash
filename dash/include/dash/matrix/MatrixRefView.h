@@ -60,7 +60,7 @@ class MatrixRefView
   Matrix<T, NumDimensions, index_type, PatternT>  * _mat;
   /// Coordinates of a single referenced element if view references fully
   /// specified coordinates.
-  ::std::array<index_type, NumDimensions>           _coord     = {  };
+  ::std::array<index_type, NumDimensions>           _coord     = {{  }};
   /// View offset and extents in global index range.
   ViewSpec<NumDimensions, index_type>               _viewspec;
   /// View offset and extents in local index range.
@@ -71,19 +71,19 @@ class MatrixRefView
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ > 
+    class PatternT_ >
   friend class MatrixRef;
   template<
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ > 
+    class PatternT_ >
   friend class LocalMatrixRef;
   template<
     typename T_,
     dim_t NumDimensions1,
     typename IndexT_,
-    class PatternT_ > 
+    class PatternT_ >
   friend class Matrix;
 
   MatrixRefView<T, NumDimensions, PatternT>();

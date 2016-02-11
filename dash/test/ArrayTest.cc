@@ -17,7 +17,6 @@ TEST_F(ArrayTest, Allocation)
 
 TEST_F(ArrayTest, SingleWriteMultipleRead)
 {
-  dart_unit_t myid  = dash::myid();
   size_t array_size = _num_elem * _dash_size;
   // Create array instances using varying constructor options
   LOG_MESSAGE("Array size: %d", array_size);
@@ -51,7 +50,7 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
     // Fill arrays with incrementing values
     if(_dash_id == 0) {
       LOG_MESSAGE("Assigning array values");
-      for(int i = 0; i < array_size; ++i) {
+      for(size_t i = 0; i < array_size; ++i) {
         arr1[i] = i;
         arr2[i] = i;
         arr3[i] = i;
@@ -63,7 +62,7 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
     // Units waiting for value initialization
     dash::Team::All().barrier();
     // Read and assert values in arrays
-    for(int i = 0; i < array_size; ++i) {
+    for(size_t i = 0; i < array_size; ++i) {
       ASSERT_EQ_U(i, static_cast<int>(arr1[i]));
       ASSERT_EQ_U(i, static_cast<int>(arr2[i]));
       ASSERT_EQ_U(i, static_cast<int>(arr3[i]));

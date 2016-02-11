@@ -1,5 +1,5 @@
-/* 
- * array/main.cpp 
+/*
+ * array/main.cpp
  *
  * author(s): Karl Fuerlinger, LMU Munich */
 /* @DASH_HEADER@ */
@@ -32,7 +32,6 @@ int main(int argc, char* argv[])
     DASH_LOG_DEBUG("After init");
     dash::Array<int> arr3;
 
-    auto myid = dash::myid();
     auto size = dash::size();
 
     DASH_LOG_DEBUG("Delayed allocate");

@@ -55,7 +55,7 @@ public:
   ValueType get() const {
     // TODO: std::accumulate should work, too
     ValueType acc = 0;
-    for (auto i = 0; i < _num_units; ++i) {
+    for (size_t i = 0; i < _num_units; ++i) {
       acc += _local_counts[i];
     }
     return acc;

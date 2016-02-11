@@ -4,8 +4,9 @@
 #include <dash/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/internal/Logging.h>
+#include <dash/Array.h>
 
-#include<algorithm>
+#include <algorithm>
 
 namespace dash {
 
@@ -35,8 +36,10 @@ GlobPtr<ElementType, PatternType> min_element(
       bool(const ElementType &, const ElementType)
     > & compare
       = std::less<const ElementType &>()) {
-  typedef dash::GlobPtr<ElementType, PatternType> globptr_t;
   auto pattern      = first.pattern();
+  typedef dash::GlobPtr<ElementType, PatternType> globptr_t;
+  typedef typename decltype(pattern)::size_type   extent_t;
+
   dash::Team & team = pattern.team();
   DASH_LOG_DEBUG("dash::min_element()",
                  "allocate minarr, size", team.size());
@@ -87,7 +90,7 @@ GlobPtr<ElementType, PatternType> min_element(
     DASH_LOG_TRACE("dash::min_element", "finding global min");
     globptr_t minloc = nullptr;
     ElementType minval;
-    for (auto i = 0; i < minarr.size(); ++i) {
+    for (extent_t i = 0; i < minarr.size(); ++i) {
       globptr_t lmingptr = minarr[i];
       DASH_LOG_TRACE("dash::min_element", "unit:", i, "lmin_gptr:", lmingptr);
       // Local gptr of units might be null if unit had empty range:
