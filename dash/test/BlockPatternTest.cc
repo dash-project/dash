@@ -21,7 +21,7 @@ TEST_F(BlockPatternTest, SimpleConstructor)
 
   dash::DistributionSpec<3> ds_blocked_z(
       dash::NONE, dash::NONE, dash::BLOCKED);
-  dash::Pattern<3> pat_ds(
+  dash::Pattern<3, dash::COL_MAJOR> pat_ds(
       extent_x, extent_y, extent_z,
       ds_blocked_z);
   EXPECT_EQ(ds_blocked_z, pat_ds.distspec());
@@ -398,11 +398,11 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
                                       : 0;
       // Actual extent of block, adjusted for underfilled extent:
       int block_size_y_adj          = block_size_y - underfill_y;
-      int expected_index_row_order  = (y * extent_x) + x;
-      int expected_index_col_order  = (x * extent_y) + y;
-      int expected_offset_row_order =
-        expected_index_row_order % max_per_unit;
-      int expected_offset_col_order = (y % block_size_y) + (x *
+      int expected_index_col_order  = (y * extent_x) + x;
+      int expected_index_row_order  = (x * extent_y) + y;
+      int expected_offset_col_order =
+        expected_index_col_order % max_per_unit;
+      int expected_offset_row_order = (y % block_size_y) + (x *
                                         block_size_y_adj);
       int expected_unit_id          = y / block_size_y;
       int local_x                   = x;
@@ -498,11 +498,11 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedX)
                                       : 0;
       // Actual extent of block, adjusted for underfilled extent:
       int block_size_x_adj          = block_size_x - underfill_x;
-//    int expected_index_row_order  = (y * extent_x) + x;
-      int expected_index_col_order  = (x * extent_y) + y;
-      int expected_offset_row_order = (x % block_size_x) +
+      int expected_index_col_order  = (y * extent_x) + x;
+      int expected_index_row_order  = (x * extent_y) + y;
+      int expected_offset_col_order = (x % block_size_x) +
                                       (y * block_size_x_adj);
-      int expected_offset_col_order = expected_index_col_order %
+      int expected_offset_row_order = expected_index_row_order %
                                         max_per_unit;
       int expected_unit_id          = x / block_size_x;
       int local_x                   = x % block_size_x;
@@ -660,8 +660,8 @@ TEST_F(BlockPatternTest, Distribute2DimBlockcyclicXY)
       int expected_offset_col_order = 0;
       int block_coord_x             = (x / block_size_x) % num_units_x;
       int block_coord_y             = (y / block_size_y) % num_units_y;
-      int expected_unit_id          = block_coord_y * num_units_x +
-                                      block_coord_x;
+      int expected_unit_id          = block_coord_x * num_units_y +
+                                      block_coord_y;
 //    int local_x                   = x % block_size_x;
 //    int local_y                   = y;
       // Row major:
@@ -762,10 +762,10 @@ TEST_F(BlockPatternTest, Distribute2DimCyclicX)
       }
 //    int expected_index_row_order  = (y * extent_x) + x;
 //    int expected_index_col_order  = (x * extent_y) + y;
-      int expected_unit_id = x % team_size;
-      int expected_offset_row_order = (y * num_blocks_unit_x) +
+      int expected_unit_id          = x % team_size;
+      int expected_offset_col_order = (y * num_blocks_unit_x) +
                                       x / team_size;
-      int expected_offset_col_order = ((x / team_size) * extent_y) + y;
+      int expected_offset_row_order = ((x / team_size) * extent_y) + y;
       int local_x                   = x / team_size;
       int local_y                   = y;
       auto glob_coords_row =
@@ -895,18 +895,18 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
         int local_extent_x            = (min_blocks_x * block_size_x) +
                                         num_add_elem_x;
         int local_block_index_x       = block_offset_x / team_size;
-        int expected_index_row_order  = (z * extent_y * extent_x) +
+        int expected_index_col_order  = (z * extent_y * extent_x) +
                                         (y * extent_x) + x;
-        int expected_index_col_order  = (x * extent_y * extent_z) +
+        int expected_index_row_order  = (x * extent_y * extent_z) +
                                         (y * extent_z) + z;
         int expected_unit_id          = (x / block_size_x) % team_size;
         int local_index_x             = (local_block_index_x *
                                           block_size_x) +
                                         (x % block_size_x);
-        int expected_offset_row_order = local_index_x +
+        int expected_offset_col_order = local_index_x +
                                         (y * local_extent_x) +
                                         (z * local_extent_x * extent_y);
-        int expected_offset_col_order = z +
+        int expected_offset_row_order = z +
                                         (y * extent_z) +
                                         (local_index_x *
                                           extent_y * extent_z);

@@ -135,7 +135,7 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
 
   DASH_LOG_DEBUG("copy_block_to_local()",
                  "size:",             size,
-                 "block index:"       block_index,
+                 "block index:",      block_index,
                  "block size:",       block_size,
                  "copy index range:", copy_start_idx, "-", copy_end_idx);
 

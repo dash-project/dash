@@ -473,10 +473,10 @@ MatrixRef<T, NumDim, 0, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRef<0>.(MatrixRef prev)", 0);
   // Copy proxy of MatrixRef from last dimension:
   _refview = new MatrixRefView<T, NumDim, PatternT>(
-             *(previous._refview));
+               *(previous._refview));
   _refview->_coord[_refview->_dim] = coord;
-  _refview->_dim                   = _refview->_dim + 1;
-  _refview->_viewspec.set_rank(1);
+  _refview->_dim++;
+  _refview->_viewspec.set_rank(NumDim);
   DASH_LOG_TRACE_VAR("MatrixRef<0>.(MatrixRef prev)", _refview->_coord);
   DASH_LOG_TRACE_VAR("MatrixRef<0>.(MatrixRef prev)", _refview->_dim);
 }

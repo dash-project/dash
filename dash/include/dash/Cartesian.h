@@ -382,13 +382,13 @@ public:
       _size      *= _extents[i];
     }
     // Update offsets:
-    _offset_col_major[NumDimensions-1] = 1;
+    _offset_row_major[NumDimensions-1] = 1;
     for(auto i = NumDimensions-2; i >= 0; --i) {
-      _offset_col_major[i] = _offset_col_major[i+1] * _extents[i+1];
+      _offset_row_major[i] = _offset_row_major[i+1] * _extents[i+1];
     }
-    _offset_row_major[0] = 1;
+    _offset_col_major[0] = 1;
     for(auto i = 1; i < NumDimensions; ++i) {
-      _offset_row_major[i] = _offset_row_major[i-1] * _extents[i-1];
+      _offset_col_major[i] = _offset_col_major[i-1] * _extents[i-1];
     }
   }
 
@@ -539,15 +539,15 @@ public:
       "Given index for CartesianIndexSpace::coords() is out of bounds");
 
     ::std::array<IndexType, NumDimensions> pos;
-    if (CoordArrangement == COL_MAJOR) {
+    if (CoordArrangement == ROW_MAJOR) {
       for(auto i = 0; i < NumDimensions; ++i) {
-        pos[i] = index / _offset_col_major[i];
-        index  = index % _offset_col_major[i];
-      }
-    } else if (CoordArrangement == ROW_MAJOR) {
-      for(auto i = NumDimensions-1; i >= 0; --i) {
         pos[i] = index / _offset_row_major[i];
         index  = index % _offset_row_major[i];
+      }
+    } else if (CoordArrangement == COL_MAJOR) {
+      for(auto i = NumDimensions-1; i >= 0; --i) {
+        pos[i] = index / _offset_col_major[i];
+        index  = index % _offset_col_major[i];
       }
     }
     return pos;
@@ -561,7 +561,8 @@ public:
   template<MemArrange CoordArrangement = Arrangement>
   std::array<IndexType, NumDimensions> coords(
     IndexType          index,
-    const ViewSpec_t & viewspec) const {
+    const ViewSpec_t & viewspec) const
+  {
     ::std::array<IndexType, NumDimensions> pos = coords(index);
     for(auto i = 0; i < NumDimensions; ++i) {
       pos[i] += viewspec.dim(i).offset;
@@ -569,6 +570,7 @@ public:
     return pos;
   }
 
+#if 0
   /**
    * Whether the given index lies in the cartesian sub-space specified by a
    * dimension and offset in the dimension.
@@ -593,6 +595,7 @@ public:
     }
     return true;
   }
+#endif
 
   /**
    * Accessor for dimension 1 (x), enabled for dimensionality > 0.

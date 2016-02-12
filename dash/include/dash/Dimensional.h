@@ -500,8 +500,8 @@ public:
   void set_rank(dim_t dimensions)
   {
     DASH_ASSERT_LT(
-      dimensions, NumDimensions,
-      "Dimension for ViewSpec::set_rank must be less than " << NumDimensions);
+      dimensions, NumDimensions+1,
+      "Maximum dimension for ViewSpec::set_rank is " << NumDimensions);
     _rank = dimensions;
     update_size();
   }

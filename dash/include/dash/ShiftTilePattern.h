@@ -722,8 +722,8 @@ public:
     DASH_LOG_TRACE_VAR("ShiftTilePattern.local()", g_index);
     // TODO: Implement dedicated method for this, conversion to/from
     //       global coordinates is expensive.
-    auto l_coords = coords(g_index);
-    return local_index(l_coords);
+    auto g_coords = coords(g_index);
+    return local_index(g_coords);
   }
 
   /**
@@ -752,16 +752,20 @@ public:
    * \see  DashPatternConcept
    */
   local_index_t local_index(
-    const std::array<IndexType, NumDimensions> & global_coords) const {
+    const std::array<IndexType, NumDimensions> & global_coords) const
+  {
     DASH_LOG_TRACE_VAR("Pattern.local_index()", global_coords);
     // Local offset of the element within all of the unit's local
     // elements:
     auto unit = unit_at(global_coords);
+#if __OLD__
     // Global coords to local coords:
     std::array<IndexType, NumDimensions> l_coords =
       local_coords(global_coords);
     // Local coords to local offset:
     auto l_index = local_at(l_coords);
+#endif
+    auto l_index = at(global_coords);
     DASH_LOG_TRACE_VAR("Pattern.local_index >", l_index);
 
     return local_index_t { unit, l_index };
@@ -1560,10 +1564,17 @@ private:
    * Return major dimension with tiled distribution, i.e. lowest tiled
    * dimension.
    */
-  dim_t initialize_major_tiled_dim(const DistributionSpec_t & ds) {
+  dim_t initialize_major_tiled_dim(const DistributionSpec_t & ds)
+  {
     DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim()");
-    for (auto d = 0; d < NumDimensions; ++d) {
-      if (ds[d].type == dash::internal::DIST_TILE) return d;
+    if (Arrangement == dash::COL_MAJOR) {
+      for (auto d = 0; d < NumDimensions; ++d) {
+        if (ds[d].type == dash::internal::DIST_TILE) return d;
+      }
+    } else {
+      for (auto d = NumDimensions-1; d >= 0; --d) {
+        if (ds[d].type == dash::internal::DIST_TILE) return d;
+      }
     }
     DASH_THROW(dash::exception::InvalidArgument,
               "Distribution is not tiled in any dimension");

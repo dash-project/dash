@@ -1,7 +1,11 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
 #include "TestBase.h"
+#include "TestLogHelpers.h"
 #include "MatrixTest.h"
+
+#include <iostream>
+#include <iomanip>
 
 TEST_F(MatrixTest, Views)
 {
@@ -24,8 +28,9 @@ TEST_F(MatrixTest, Views)
               _dash_size, num_elem_total,
               num_elem_per_unit, num_blocks_per_unit);
 
-  typedef dash::TilePattern<2>           pattern_t;
-  typedef typename pattern_t::index_type index_t;
+  typedef dash::default_index_t                 index_t;
+  typedef dash::default_size_t                  extent_t;
+  typedef dash::TilePattern<2, dash::COL_MAJOR> pattern_t;
 
   pattern_t pattern(
     dash::SizeSpec<2>(
@@ -36,7 +41,7 @@ TEST_F(MatrixTest, Views)
       dash::TILE(block_size_y))
   );
 
-  dash::Matrix<int, 2> matrix(pattern);
+  dash::Matrix<int, 2, index_t, pattern_t> matrix(pattern);
 
   // Test viewspecs of blocks in global index domain:
   if (dash::myid() == 0) {
@@ -203,11 +208,11 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
   dash::TeamSpec<2> team_spec(num_units, 1);
   dash::Matrix<int, 2, pattern_t::index_type, pattern_t> matrix(
                  dash::SizeSpec<2>(
-                   extent_cols,
-                   extent_rows),
+                   extent_rows,
+                   extent_cols),
                  dash::DistributionSpec<2>(
-                   dash::TILE(tilesize_x),
-                   dash::TILE(tilesize_y)),
+                   dash::TILE(tilesize_y),
+                   dash::TILE(tilesize_x)),
                  dash::Team::All(),
                  team_spec);
 
@@ -217,8 +222,8 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
 
   size_t matrix_size = extent_cols * extent_rows;
   ASSERT_EQ(matrix_size, matrix.size());
-  ASSERT_EQ(extent_cols, matrix.extent(0));
-  ASSERT_EQ(extent_rows, matrix.extent(1));
+  ASSERT_EQ(extent_rows, matrix.extent(0));
+  ASSERT_EQ(extent_cols, matrix.extent(1));
   LOG_MESSAGE("Matrix size: %d", matrix_size);
   // Fill matrix
   if(myid == 0) {
@@ -520,8 +525,8 @@ TEST_F(MatrixTest, BlockViews)
 
 TEST_F(MatrixTest, ViewIteration)
 {
-  typedef int                  element_t;
-  typedef dash::TilePattern<2> pattern_t;
+  typedef int                                   element_t;
+  typedef dash::TilePattern<2, dash::COL_MAJOR> pattern_t;
 
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
@@ -674,4 +679,62 @@ TEST_F(MatrixTest, BlockCopy)
   LOG_MESSAGE("Wait for team barrier ...");
   dash::barrier();
   LOG_MESSAGE("Team barrier passed");
+}
+
+TEST_F(MatrixTest, StorageOrder)
+{
+  const int nrows = 20;
+  const int ncols = 10;
+
+  dash::TilePattern<2, dash::ROW_MAJOR> pat_row(
+    nrows, ncols, dash::TILE(5), dash::TILE(5));
+  dash::TilePattern<2, dash::COL_MAJOR> pat_col(
+    nrows, ncols, dash::TILE(5), dash::TILE(5));
+
+  typedef dash::default_index_t index_t;
+
+  if (dash::myid() == 0) {
+    dash::test::print_pattern_mapping(
+      "pattern.row-major.local_index", pat_row, 3,
+      [](const decltype(pat_row) & _pattern, int _x, int _y) -> index_t {
+          return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.col-major.local_index", pat_col, 3,
+      [](const decltype(pat_col) & _pattern, int _x, int _y) -> index_t {
+          return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+      });
+  }
+
+  dash::Matrix<int, 2, index_t, decltype(pat_col)> mat_col(pat_col);
+  dash::Matrix<int, 2, index_t, decltype(pat_row)> mat_row(pat_row);
+
+  ASSERT_EQ_U(mat_row.local_size(), mat_row.local.size());
+  ASSERT_GT_U(mat_row.local.size(), 0);
+  ASSERT_EQ_U(mat_col.local_size(), mat_col.local.size());
+  ASSERT_GT_U(mat_col.local.size(), 0);
+
+  for (int i = 0; i < static_cast<int>(mat_row.local.size()); ++i) {
+     mat_row.lbegin()[i] = 1000 * (dash::myid() + 1) + i;
+     mat_col.lbegin()[i] = 1000 * (dash::myid() + 1) + i;
+  }
+
+  dash::barrier();
+
+  if (dash::myid() == 0) {
+    std::cout << "row major:" << std::endl;
+    for (int row = 0; row < nrows; ++row) {
+      for (int col = 0; col < ncols; ++col) {
+        std::cout << std::setw(5) << (int)(mat_row[row][col]) << " ";
+      }
+      std::cout << std::endl;
+    }
+    std::cout << "column major:" << std::endl;
+    for (int row = 0; row < nrows; ++row) {
+      for (int col = 0; col < ncols; ++col) {
+        std::cout << std::setw(5) << (int)(mat_col[row][col]) << " ";
+      }
+      std::cout << std::endl;
+    }
+  }
 }

@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include "TestBase.h"
+#include "TestLogHelpers.h"
 #include "ShiftTilePatternTest.h"
 
 #include <dash/ShiftTilePattern.h>
@@ -97,8 +98,8 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
   size_t block_size_x   = 3;
   size_t block_size_y   = 2;
   size_t block_size     = block_size_x * block_size_y;
-  size_t extent_x       = team_size * 2 * block_size_x;
-  size_t extent_y       = team_size * 3 * block_size_y;
+  size_t extent_x       = team_size * 3 * block_size_x;
+  size_t extent_y       = team_size * 2 * block_size_y;
   size_t size           = extent_x * extent_y;
   size_t max_per_unit   = size / team_size;
   LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
@@ -120,6 +121,56 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
         dash::TILE(block_size_y)),
       dash::TeamSpec<2>(dash::size()/2, 2),
       dash::Team::All());
+
+  if (dash::myid() == 0) {
+    dash::test::print_pattern_mapping(
+      "pattern.row.unit_at", pat_tile_row, 3,
+      [](const decltype(pat_tile_row) & _pattern, int _x, int _y) -> int {
+          return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.row.at", pat_tile_row, 3,
+      [](const decltype(pat_tile_row) & _pattern, int _x, int _y) -> index_t {
+          return _pattern.at(std::array<index_t, 2> {_x, _y});
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.row.local_index", pat_tile_row, 3,
+      [](const decltype(pat_tile_row) & _pattern, int _x, int _y) -> index_t {
+          return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.row.local_coords", pat_tile_row, 5,
+      [](const decltype(pat_tile_row) & _pat, int _x, int _y) -> std::string {
+          auto l_c = _pat.local_coords(std::array<index_t, 2> {_x, _y});
+          std::ostringstream ss;
+          ss << l_c[0] << "," << l_c[1];
+          return ss.str();
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.col.unit_at", pat_tile_col, 3,
+      [](const decltype(pat_tile_col) & _pattern, int _x, int _y) -> int {
+          return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.col.at", pat_tile_col, 3,
+      [](const decltype(pat_tile_col) & _pattern, int _x, int _y) -> index_t {
+          return _pattern.at(std::array<index_t, 2> {_x, _y});
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.col.local_index", pat_tile_col, 3,
+      [](const decltype(pat_tile_col) & _pattern, int _x, int _y) -> index_t {
+          return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.col.local_coords", pat_tile_col, 5,
+      [](const decltype(pat_tile_col) & _pat, int _x, int _y) -> std::string {
+          auto l_c = _pat.local_coords(std::array<index_t, 2> {_x, _y});
+          std::ostringstream ss;
+          ss << l_c[0] << "," << l_c[1];
+          return ss.str();
+      });
+  }
+
   ASSERT_EQ(dash::TeamSpec<2>(dash::Team::All()).size(), team_size);
   ASSERT_EQ(pat_tile_row.capacity(), size);
   ASSERT_EQ(pat_tile_row.local_capacity(), max_per_unit);
@@ -130,7 +181,6 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
   ASSERT_EQ(pat_tile_col.blocksize(0), block_size_x);
   ASSERT_EQ(pat_tile_col.blocksize(1), block_size_y);
   // number of overflow blocks, e.g. 7 elements, 3 teams -> 1
-//int num_overflow_blocks = extent_x % team_size;
   for (int x = 0; x < static_cast<int>(extent_x); ++x) {
     for (int y = 0; y < static_cast<int>(extent_y); ++y) {
       int num_blocks_x        = extent_x / block_size_x;
@@ -141,26 +191,29 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
       int block_index_y       = y / block_size_y;
       int unit_id             = (block_index_x + block_index_y) % team_size;
       int l_block_index_x     = block_index_x / team_size;
-//    int l_block_index_y     = block_index_y / team_size;
-      int l_block_index_row   = (block_index_y * num_l_blocks_x) +
+      int l_block_index_y     = block_index_y / team_size;
+      int l_block_index_col   = (block_index_y * num_l_blocks_x) +
                                 l_block_index_x;
-//    int l_block_index_col   = (block_index_x * num_l_blocks_y) +
-//                              l_block_index_y;
+      int l_block_index_row   = (block_index_x * num_l_blocks_y) +
+                                l_block_index_y;
       int phase_x             = (x % block_size_x);
-//    int phase_y             = (y % block_size_y);
-      int phase_row           = (y % block_size_y) * block_size_x +
+      int phase_y             = (y % block_size_y);
+      int phase_col           = (y % block_size_y) * block_size_x +
                                 phase_x;
-//    int phase_col           = (x % block_size_x) * block_size_y +
-//                              (y % block_size_y);
+      int phase_row           = (x % block_size_x) * block_size_y +
+                                phase_y;
 //    int local_x             = l_block_index_x * block_size_x + phase_x;
 //    int local_y             = l_block_index_y * block_size_y + phase_y;
+      int local_index_col     = (l_block_index_col * block_size) +
+                                phase_col;
       int local_index_row     = (l_block_index_row * block_size) +
                                 phase_row;
 
       dash__unused(num_l_blocks_y);
 
-      // Row major:
       auto local_coords_row   = pat_tile_row.local_coords(
+                                  std::array<index_t, 2> { x, y });
+      auto local_coords_col   = pat_tile_col.local_coords(
                                   std::array<index_t, 2> { x, y });
       LOG_MESSAGE("R %d,%d, u:%d, b:%d,%d, nlb:%d,%d, lc: %d,%d, lbi:%d, p:%d",
         x, y,
@@ -170,23 +223,22 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
         local_coords_row[0], local_coords_row[1],
         l_block_index_row,
         phase_row);
-      EXPECT_EQ(
+      ASSERT_EQ_U(
         unit_id,
         pat_tile_row.unit_at(std::array<index_t, 2> { x, y }));
-      EXPECT_EQ(
+      ASSERT_EQ_U(
         local_index_row,
         pat_tile_row.at(std::array<index_t, 2> { x, y }));
-      EXPECT_EQ(
+      ASSERT_EQ_U(
         local_index_row,
         pat_tile_row.local_at(local_coords_row));
       auto glob_coords_row =
         pat_tile_row.global(
           unit_id,
           std::array<index_t, 2> { local_coords_row[0], local_coords_row[1] });
-      EXPECT_EQ(
+      ASSERT_EQ_U(
         (std::array<index_t, 2> { x, y }),
         glob_coords_row);
-      // Col major:
     }
   }
 }
