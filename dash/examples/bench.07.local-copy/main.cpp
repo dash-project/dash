@@ -14,6 +14,9 @@
 #include <math.h>
 #include <unistd.h>
 
+#include <utmpx.h>
+#include <numa.h>
+
 using std::cout;
 using std::endl;
 using std::vector;
@@ -29,6 +32,13 @@ typedef dash::Array<
 typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
+
+typedef struct {
+  int  rank;
+  char host[100];
+  int  cpu;
+  int  numa_node;
+} unit_pin_info;
 
 #define DASH_PRINT_MASTER(expr) \
   do { \
@@ -48,6 +58,7 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index);
 void print_measurement_header();
 void print_measurement_record(
   const std::string & scenario,
+  int    unit_src,
   size_t size,
   int    num_repeats,
   double sec_total,
@@ -61,13 +72,62 @@ int main(int argc, char** argv)
   size_t num_iterations  = 5;
   int    num_repeats     = 200;
   auto   ts_start        = Timer::Now();
+  size_t num_numa_nodes  = numa_max_node() + 1;
+  // Number of physical cores on this system, divided by 2 to
+  // eliminate HT cores:
+  size_t num_local_cpus  = numa_num_configured_cpus() / 2;
   // Number of physical cores in a single NUMA domain (7 on SuperMUC):
-  size_t numa_node_cores = 7;
+  size_t numa_node_cores = num_local_cpus / num_numa_nodes;
   // Number of physical cores on a single socket (14 on SuperMUC):
-  size_t socket_cores    = 14;
+  size_t socket_cores    = numa_node_cores * 2;
 
   dash::init(&argc, &argv);
   Timer::Calibrate(0);
+
+  // Collect process pinning information:
+  //
+  dash::Array<unit_pin_info> unit_pinning(dash::size());
+
+  int cpu;
+  int numa_node;
+  cpu       = sched_getcpu();
+  numa_node = numa_node_of_cpu(cpu);
+
+  unit_pin_info my_pin_info;
+  my_pin_info.rank      = dash::myid();
+  my_pin_info.cpu       = cpu;
+  my_pin_info.numa_node = numa_node;
+  gethostname(my_pin_info.host, 100);
+
+  unit_pinning[dash::myid()] = my_pin_info;
+
+  dash::barrier();
+
+  if (dash::myid() == 0) {
+    cout << std::setw(5)  << "unit"      << " "
+         << std::setw(20) << "host"      << " "
+         << std::setw(10) << "numa node" << " "
+         << std::setw(5)  << "cpu"
+         << endl;
+    for (int unit = 0; unit < dash::size(); ++unit) {
+      unit_pin_info pin_info = unit_pinning[unit];
+      cout << std::setw(5)  << pin_info.rank      << " "
+           << std::setw(20) << pin_info.host      << " "
+           << std::setw(10) << pin_info.numa_node << " "
+           << std::setw(5)  << pin_info.cpu
+           << endl;
+    }
+    cout << "number of NUMA nodes: " << num_numa_nodes
+         << endl
+         << "local CPUs:           " << num_local_cpus
+         << endl
+         << "cores per NUMA node:  " << numa_node_cores
+         << endl
+         << "cores per socket:     " << socket_cores
+         << endl;
+  }
+
+  dash::barrier();
 
   print_measurement_header();
 
@@ -76,42 +136,50 @@ int main(int argc, char** argv)
                           sizeof(ElementType));
   size_t size_min = 1 * size_inc;
 
+  dart_unit_t unit_src;
   for (size_t iteration = 0; iteration < num_iterations; ++iteration) {
     size     = size_min + (iteration * size_inc);
 
     // Copy first block in array, assigned to unit 0:
+    unit_src = 0;
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, num_repeats, 0);
+    kps      = copy_block_to_local(size, num_repeats, unit_src);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("local", size, num_repeats, time_s, kps);
+    print_measurement_record("local", unit_src, size, num_repeats,
+                             time_s, kps);
 
     // Copy last block in the master's NUMA domain:
+    unit_src = (numa_node_cores-1) % dash::size();
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, num_repeats,
-                                   (numa_node_cores-1) % dash::size());
+    kps      = copy_block_to_local(size, num_repeats, unit_src);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("uma", size, num_repeats, time_s, kps);
+    print_measurement_record("uma", unit_src, size, num_repeats,
+                             time_s, kps);
 
-    // Copy first block in the master's neighbor NUMA domain:
+    // Copy block in the master's neighbor NUMA domain:
+    unit_src = (numa_node_cores + (numa_node_cores / 2)) % dash::size();
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, num_repeats,
-                                   numa_node_cores % dash::size());
+    kps      = copy_block_to_local(size, num_repeats, unit_src);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("numa", size, num_repeats, time_s, kps);
+    print_measurement_record("numa", unit_src, size, num_repeats,
+                             time_s, kps);
 
     // Copy first block in next socket on the master's node:
+    unit_src = (socket_cores + (numa_node_cores / 2)) % dash::size();
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, num_repeats,
-                                   socket_cores % dash::size());
+    kps      = copy_block_to_local(size, num_repeats, unit_src);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("socket", size, num_repeats, time_s, kps);
+    print_measurement_record("socket", unit_src, size, num_repeats,
+                             time_s, kps);
 
     // Copy block preceeding last block as it is guaranteed to be located on
     // a remote unit and completely filled:
+    unit_src = dash::size() - 2;
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, num_repeats, dash::size() - 2);
+    kps      = copy_block_to_local(size, num_repeats, unit_src);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remote", size, num_repeats, time_s, kps);
+    print_measurement_record("remote", unit_src, size, num_repeats,
+                             time_s, kps);
   }
 
   DASH_PRINT_MASTER("Benchmark finished");
@@ -197,6 +265,7 @@ void print_measurement_header()
          << std::setw(10) << "mpi impl"  << ","
          << std::setw(10) << "copy type" << ","
          << std::setw(10) << "scenario"  << ","
+         << std::setw(9)  << "src.unit"  << ","
          << std::setw(9)  << "repeats"   << ","
          << std::setw(12) << "blocksize" << ","
          << std::setw(9)  << "glob.mb"   << ","
@@ -209,6 +278,7 @@ void print_measurement_header()
 
 void print_measurement_record(
   const std::string & scenario,
+  int    unit_src,
   size_t size,
   int    num_repeats,
   double time_s,
@@ -223,6 +293,7 @@ void print_measurement_record(
          << std::setw(10) << mpi_impl            << ","
          << std::setw(10) << dash_copy_variant   << ","
          << std::setw(10) << scenario            << ","
+         << std::setw(9)  << unit_src            << ","
          << std::setw(9)  << num_repeats         << ","
          << std::setw(12) << size / dash::size() << ","
          << std::fixed << std::setprecision(2) << std::setw(9)  << mem_glob << ","
