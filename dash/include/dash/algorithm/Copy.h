@@ -525,11 +525,11 @@ GlobOutputIt copy(
     // Assert that all elements in local range have been copied:
     DASH_LOG_TRACE("dash::copy", "copying local subrange");
     DASH_LOG_TRACE_VAR("dash::copy", in_first);
-    DASH_ASSERT(
+    DASH_ASSERT_RETURNS(
       std::copy(in_first + l_elem_offset,
                 in_first + l_elem_offset + num_local_elem,
-                l_out_first)
-      == l_out_last);
+                l_out_first),
+      l_out_last);
     // Copy to remote elements preceding the local subrange:
     if (g_l_offset_begin > out_first.pos()) {
       DASH_LOG_TRACE("dash::copy", "copy to global preceding local subrange");

@@ -94,8 +94,8 @@
 
 #else  // DASH_ENABLE_ASSERTIONS
 
-#define DASH_ASSERT(expr) do { } while (expr)
-#define DASH_ASSERT_MSG(expr, msg) do { } while (expr)
+#define DASH_ASSERT(expr) do { } while (0)
+#define DASH_ASSERT_MSG(expr, msg) do { } while (0)
 #define DASH_ASSERT_RETURNS(expr, exp_value) (expr)
 #define DASH_ASSERT_RANGE(lower, value, upper, message) do { } while(0)
 #define DASH_ASSERT_EQ(val, min, message) do { } while (0)
