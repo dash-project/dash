@@ -95,8 +95,8 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
                 lb,
                 lblock_offsets[0], lblock_offsets[1],
                 lblock_extents[0], lblock_extents[1]);
-    for (auto by = 0; by < static_cast<int>(lblock_extents[1]); ++by) {
-      for (auto bx = 0; bx < static_cast<int>(lblock_extents[0]); ++bx) {
+    for (auto bx = 0; bx < static_cast<int>(lblock_extents[0]); ++bx) {
+      for (auto by = 0; by < static_cast<int>(lblock_extents[1]); ++by) {
         // Phase coordinates (bx,by) to global coordinates (gx,gy):
         index_t gx       = lblock_view.offset(0) + bx;
         index_t gy       = lblock_view.offset(1) + by;
@@ -105,12 +105,12 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
         value_t value    = static_cast<value_t>(dash::myid() + 1) +
                            (0.00001 * (
                              ((lb + 1) * 10000) +
-                             ((by + 1) * 100) +
-                             bx + 1
+                             ((bx + 1) * 100) +
+                             by + 1
                            ));
         LOG_MESSAGE("set local block %d at phase:(%d,%d) g:(%d,%d) = %f",
                     lb, bx, by, gx, gy, value);
-        lblock[bx][by]   = value;
+        lblock[bx][by] = value;
       }
     }
   }
@@ -187,10 +187,10 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   // Log values in local copy:
   std::vector< std::vector<value_t> > local_block_values;
   for (size_t lb = 0; lb < num_blocks_per_unit; ++lb) {
-    for (size_t by = 0; by < block_size_y; ++by) {
+    for (size_t bx = 0; bx < block_size_x; ++bx) {
       std::vector<value_t> row;
-      for (size_t bx = 0; bx < block_size_x; ++bx) {
-        auto l_offset = (lb * block_size) + (by * block_size_x) + bx;
+      for (size_t by = 0; by < block_size_y; ++by) {
+        auto l_offset = (lb * block_size) + (bx * block_size_y) + by;
         auto value    = local_copy[l_offset];
         row.push_back(value);
       }
@@ -203,14 +203,14 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
 
   // Validate values:
   for (size_t lb = 0; lb < num_blocks_per_unit; ++lb) {
-    for (size_t by = 0; by < block_size_y; ++by) {
-      for (size_t bx = 0; bx < block_size_x; ++bx) {
-        auto    l_offset = (lb * block_size) + (by * block_size_x) + bx;
+    for (size_t bx = 0; bx < block_size_x; ++bx) {
+      for (size_t by = 0; by < block_size_y; ++by) {
+        auto    l_offset = (lb * block_size) + (bx * block_size_y) + by;
         value_t expected = static_cast<value_t>(remote_unit_id + 1) +
                            (0.00001 * (
                              ((lb + 1) * 10000) +
-                             ((by + 1) * 100) +
-                             bx + 1
+                             ((bx + 1) * 100) +
+                             by + 1
                            ));
         LOG_MESSAGE("Validating block %d at block coords (%d,%d), "
                     "local offset: %d = %f",
@@ -235,14 +235,14 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   // Validate number of copied elements:
   auto num_copied = local_block_copy_last - local_block_copy;
   ASSERT_EQ_U(num_copied, block_size);
-  for (size_t by = 0; by < block_size_y; ++by) {
-    for (size_t bx = 0; bx < block_size_x; ++bx) {
-      auto    l_offset = (by * block_size_x) + bx;
+  for (size_t bx = 0; bx < block_size_x; ++bx) {
+    for (size_t by = 0; by < block_size_y; ++by) {
+      auto    l_offset = (bx * block_size_y) + by;
       value_t expected = static_cast<value_t>(dash::myid() + 1) +
                          (0.00001 * (
                            ((lb + 1) * 10000) +
-                           ((by + 1) * 100) +
-                           bx + 1
+                           ((bx + 1) * 100) +
+                           by + 1
                          ));
       ASSERT_EQ_U(expected, local_block_copy[l_offset]);
     }

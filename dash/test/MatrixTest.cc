@@ -683,13 +683,17 @@ TEST_F(MatrixTest, BlockCopy)
 
 TEST_F(MatrixTest, StorageOrder)
 {
-  const int nrows = 20;
-  const int ncols = 10;
+  size_t num_units = dash::size();
+
+  size_t tilesize_row = 5;
+  size_t tilesize_col = 4;
+  size_t nrows = tilesize_row * num_units * 2;
+  size_t ncols = tilesize_col * num_units * 2;
 
   dash::TilePattern<2, dash::ROW_MAJOR> pat_row(
-    nrows, ncols, dash::TILE(5), dash::TILE(5));
+    nrows, ncols, dash::TILE(tilesize_row), dash::TILE(tilesize_col));
   dash::TilePattern<2, dash::COL_MAJOR> pat_col(
-    nrows, ncols, dash::TILE(5), dash::TILE(5));
+    nrows, ncols, dash::TILE(tilesize_row), dash::TILE(tilesize_col));
 
   typedef dash::default_index_t index_t;
 
@@ -723,15 +727,15 @@ TEST_F(MatrixTest, StorageOrder)
 
   if (dash::myid() == 0) {
     std::cout << "row major:" << std::endl;
-    for (int row = 0; row < nrows; ++row) {
-      for (int col = 0; col < ncols; ++col) {
+    for (int row = 0; row < static_cast<int>(nrows); ++row) {
+      for (int col = 0; col < static_cast<int>(ncols); ++col) {
         std::cout << std::setw(5) << (int)(mat_row[row][col]) << " ";
       }
       std::cout << std::endl;
     }
     std::cout << "column major:" << std::endl;
-    for (int row = 0; row < nrows; ++row) {
-      for (int col = 0; col < ncols; ++col) {
+    for (int row = 0; row < static_cast<int>(nrows); ++row) {
+      for (int col = 0; col < static_cast<int>(ncols); ++col) {
         std::cout << std::setw(5) << (int)(mat_col[row][col]) << " ";
       }
       std::cout << std::endl;

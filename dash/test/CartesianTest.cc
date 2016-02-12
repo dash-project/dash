@@ -69,8 +69,8 @@ TEST_F(CartesianTest, Conversion2Dim) {
   EXPECT_EQ(cartesian2dC.extent(1), extent_y);
   for (size_t x = 0; x < extent_x; ++x) {
     for (size_t y = 0; y < extent_y; ++y) {
-      size_t exp_index_row_major = (y * extent_x) + x;
-      size_t exp_index_col_major = (x * extent_y) + y;
+      size_t exp_index_col_major = (y * extent_x) + x;
+      size_t exp_index_row_major = (x * extent_y) + y;
       EXPECT_EQ(exp_index_row_major, cartesian2dR.at(x, y));
       EXPECT_EQ(x, cartesian2dR.coords(exp_index_row_major)[0]);
       EXPECT_EQ(y, cartesian2dR.coords(exp_index_row_major)[1]);
@@ -91,29 +91,29 @@ TEST_F(CartesianTest, Conversion3Dim) {
     extent_x, extent_y, extent_z);
   dash::CartesianIndexSpace<3, dash::COL_MAJOR, size_t> cartesian3dC(
     extent_x, extent_y, extent_z);
-  EXPECT_EQ(cartesian3dR.rank(), 3);
-  EXPECT_EQ(cartesian3dC.rank(), 3);
-  EXPECT_EQ(cartesian3dR.size(), size);
-  EXPECT_EQ(cartesian3dC.size(), size);
-  EXPECT_EQ(cartesian3dR.extent(0), extent_x);
-  EXPECT_EQ(cartesian3dR.extent(0), extent_x);
-  EXPECT_EQ(cartesian3dC.extent(1), extent_y);
-  EXPECT_EQ(cartesian3dC.extent(1), extent_y);
-  EXPECT_EQ(cartesian3dC.extent(2), extent_z);
-  EXPECT_EQ(cartesian3dC.extent(2), extent_z);
+  ASSERT_EQ(cartesian3dR.rank(), 3);
+  ASSERT_EQ(cartesian3dC.rank(), 3);
+  ASSERT_EQ(cartesian3dR.size(), size);
+  ASSERT_EQ(cartesian3dC.size(), size);
+  ASSERT_EQ(cartesian3dR.extent(0), extent_x);
+  ASSERT_EQ(cartesian3dR.extent(0), extent_x);
+  ASSERT_EQ(cartesian3dC.extent(1), extent_y);
+  ASSERT_EQ(cartesian3dC.extent(1), extent_y);
+  ASSERT_EQ(cartesian3dC.extent(2), extent_z);
+  ASSERT_EQ(cartesian3dC.extent(2), extent_z);
   for (size_t x = 0; x < extent_x; ++x) {
     for (size_t y = 0; y < extent_y; ++y) {
       for (size_t z = 0; z < extent_z; ++z) {
-        size_t exp_index_row_major =
-          (z * extent_x * extent_y) + (y * extent_x) + x;
         size_t exp_index_col_major =
+          (z * extent_x * extent_y) + (y * extent_x) + x;
+        size_t exp_index_row_major =
           (x * extent_y * extent_z) + (y * extent_z) + z;
-        EXPECT_EQ(exp_index_row_major, cartesian3dR.at(x, y, z));
-        EXPECT_EQ(x, cartesian3dR.coords(exp_index_row_major)[0]);
-        EXPECT_EQ(y, cartesian3dR.coords(exp_index_row_major)[1]);
-        EXPECT_EQ(exp_index_col_major, cartesian3dC.at(x, y, z));
-        EXPECT_EQ(x, cartesian3dC.coords(exp_index_col_major)[0]);
-        EXPECT_EQ(y, cartesian3dC.coords(exp_index_col_major)[1]);
+        ASSERT_EQ(exp_index_row_major, cartesian3dR.at(x, y, z));
+        ASSERT_EQ(x, cartesian3dR.coords(exp_index_row_major)[0]);
+        ASSERT_EQ(y, cartesian3dR.coords(exp_index_row_major)[1]);
+        ASSERT_EQ(exp_index_col_major, cartesian3dC.at(x, y, z));
+        ASSERT_EQ(x, cartesian3dC.coords(exp_index_col_major)[0]);
+        ASSERT_EQ(y, cartesian3dC.coords(exp_index_col_major)[1]);
       }
     }
   }
