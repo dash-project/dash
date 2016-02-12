@@ -130,6 +130,7 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
   auto    source_block     = global_array.pattern().block(block_index);
   index_t copy_start_idx   = source_block.offset(0);
   index_t copy_end_idx     = copy_start_idx + block_size;
+  auto    source_unit_id   = global_array.pattern().unit_at(copy_start_idx);
   double  elapsed          = 1;
 
   DASH_LOG_DEBUG("copy_block_to_local()",
@@ -138,6 +139,12 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
                  "block size:",       block_size,
                  "copy index range:", copy_start_idx, "-", copy_end_idx);
 
+  if (source_unit_id != block_index) {
+    DASH_THROW(dash::exception::RuntimeError,
+               "copy_block_to_local: Invalid distribution of global array");
+    return 0;
+  }
+
   for (size_t l = 0; l < global_array.lsize(); ++l) {
     global_array.local[l] = ((dash::myid() + 1) * 1000) + l;
   }
@@ -145,7 +152,8 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
 
   if(dash::myid() == 0) {
     ElementType * local_array = new ElementType[block_size];
-    // Start timer:
+
+    // Perform measurement:
     auto timer_start = Timer::Now();
     for (int r = 0; r < num_repeats; ++r) {
       ElementType * copy_lend = dash::copy(
@@ -159,6 +167,16 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
 #endif
     }
     elapsed = Timer::ElapsedSince(timer_start);
+
+    // Validate values:
+    for (size_t l = 0; l < block_size; ++l) {
+      if (local_array[l] != ((source_unit_id + 1) * 1000) + l) {
+        DASH_THROW(dash::exception::RuntimeError,
+                   "copy_block_to_local: Validation failed");
+        return 0;
+      }
+    }
+
     delete[] local_array;
   }
 
