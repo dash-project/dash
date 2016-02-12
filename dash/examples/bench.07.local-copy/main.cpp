@@ -10,12 +10,14 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include <string>
 #include <math.h>
 #include <unistd.h>
 
 using std::cout;
 using std::endl;
 using std::vector;
+using std::string;
 
 typedef int     ElementType;
 typedef int64_t index_t;
@@ -56,8 +58,8 @@ int main(int argc, char** argv)
   double kps;
   double time_s;
   size_t size;
-  size_t num_iterations  = 10;
-  int    num_repeats     = 500;
+  size_t num_iterations  = 5;
+  int    num_repeats     = 200;
   auto   ts_start        = Timer::Now();
   // Number of physical cores in a single NUMA domain (7 on SuperMUC):
   size_t numa_node_cores = 7;
@@ -70,12 +72,12 @@ int main(int argc, char** argv)
   print_measurement_header();
 
   /// Increments of 1 GB of elements in total:
-  size_t size_inc = static_cast<size_t>(std::pow(2, 30)) /
-                    sizeof(ElementType);
-  size_t size_min = 7 * size_inc;
+  size_t size_inc = 10 * (static_cast<size_t>(std::pow(2, 30)) /
+                          sizeof(ElementType));
+  size_t size_min = 1 * size_inc;
 
   for (size_t iteration = 0; iteration < num_iterations; ++iteration) {
-    size     = size_min + ((iteration + 1) * size_inc);
+    size     = size_min + (iteration * size_inc);
 
     // Copy first block in array, assigned to unit 0:
     ts_start = Timer::Now();
@@ -174,6 +176,7 @@ void print_measurement_header()
          << endl
          << endl
          << std::setw(5)  << "units"     << ","
+         << std::setw(10) << "mpi impl"  << ","
          << std::setw(10) << "copy type" << ","
          << std::setw(10) << "scenario"  << ","
          << std::setw(9)  << "repeats"   << ","
@@ -193,11 +196,13 @@ void print_measurement_record(
   double time_s,
   double kps)
 {
-  double mem_glob = ((static_cast<double>(size) *
-                      sizeof(ElementType)) / 1024) / 1024;
-  double mem_rank = mem_glob / dash::size();
   if (dash::myid() == 0) {
+    string mpi_impl = dash__toxstr(MPI_IMPL_ID);
+    double mem_glob = ((static_cast<double>(size) *
+                        sizeof(ElementType)) / 1024) / 1024;
+    double mem_rank = mem_glob / dash::size();
     cout << std::setw(5)  << dash::size()        << ","
+         << std::setw(10) << mpi_impl            << ","
          << std::setw(10) << dash_copy_variant   << ","
          << std::setw(10) << scenario            << ","
          << std::setw(9)  << num_repeats         << ","
