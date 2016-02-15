@@ -23,6 +23,7 @@
 
 #include <dash/Enums.h>
 #include <dash/Pattern.h>
+#include <dash/PatternVisualizer.h>
 #include <dash/Container.h>
 #include <dash/Shared.h>
 #include <dash/SharedCounter.h>
