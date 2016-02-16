@@ -82,7 +82,7 @@ option(ENABLE_UNIFIED_MEMORY_MODEL
 message(INFO "Unified RMA memory model: " ${ENABLE_UNIFIED_MEMORY_MODEL})
 option(ENABLE_SHARED_WINDOWS
        "Specify whether shared memory features are enabled" on)
-message(INFO "Shared memory features:   " ${ENABLE_SHARED_WINDOWS})
+message(INFO "MPI shared windows:       " ${ENABLE_SHARED_WINDOWS})
 option(ENABLE_DEFAULT_INDEX_TYPE_LONG
        "Specify whether to use int64_t as default index type" off)
 message(INFO "Default index type long:  " ${ENABLE_DEFAULT_INDEX_TYPE_LONG})
