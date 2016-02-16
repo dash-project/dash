@@ -21,18 +21,19 @@ namespace dash {
  */
 template<
   typename ElementType,
-  class PatternType>
+  class    PatternType>
 void generate (
   /// Iterator to the initial position in the sequence
   GlobIter<ElementType, PatternType> first,
   /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType>  last,
+  GlobIter<ElementType, PatternType> last,
   /// Generator function
-  ::std::function<ElementType(void)> & g) {
+  ::std::function<ElementType(void)> & g)
+{
   /// Global iterators to local range:
-  auto index_range  = dash::local_range(first, last);
-  auto lfirst = index_range.begin;
-  auto llast = index_range.end;
+  auto lrange = dash::local_range(first, last);
+  auto lfirst = lrange.begin;
+  auto llast  = lrange.end;
 
   std::generate(lfirst, llast, g);
 }

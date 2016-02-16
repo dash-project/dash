@@ -41,7 +41,7 @@ template<
 class Pattern
 {
 public:
-  static constexpr char const * PatternName = "RegularPattern<N>";
+  static constexpr char const * PatternName = "BlockPattern<N>";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
@@ -1216,7 +1216,9 @@ public:
   inline SizeType local_size(
     dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
   {
-    return _local_memory_layout.size();
+    return (unit == DART_UNDEFINED_UNIT_ID)
+           ? _local_memory_layout.size()
+           : initialize_local_extents(unit).size();
   }
 
   /**
@@ -1482,7 +1484,8 @@ private:
    * Resolve extents of local memory layout for a specified unit.
    */
   std::array<SizeType, NumDimensions> initialize_local_extents(
-    dart_unit_t unit) const {
+    dart_unit_t unit) const
+  {
     DASH_LOG_DEBUG_VAR("BlockPattern.init_local_extents()", unit);
     DASH_LOG_DEBUG_VAR("BlockPattern.init_local_extents()", _nunits);
     if (_nunits == 0) {

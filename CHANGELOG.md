@@ -65,6 +65,8 @@ Features:
 - Added log helper `print_pattern_mapping` to visualize data distributions in
   log output.
 - Significantly improved performance of `dash::SUMMA`.
+- Added support for irregular blocked distributions (underfilled blocks) for
+  `dash::Array`.
 
 Bugfixes:
 

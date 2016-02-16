@@ -167,7 +167,8 @@ local_index_range(
     } else {
       DASH_THROW(
         dash::exception::InvalidArgument,
-        "dash::local_index_range: views of first and last iterators differ");
+        "dash::local_index_range: views of first and last iterators "
+        "differ");
     }
   }
   // Get pattern from global iterators, O(1):
@@ -242,13 +243,16 @@ local_range(
   typedef typename GlobIterType::pattern_type pattern_t;
   typedef typename GlobIterType::value_type   value_t;
   typedef typename pattern_t::index_type      idx_t;
+  DASH_LOG_TRACE("local_range()",
+                 "gfirst.pos:", first.pos(),
+                 "glast.pos:",  last.pos());
   /// Global iterators to local index range, O(d):
   auto index_range   = dash::local_index_range(first, last);
   idx_t lbegin_index = index_range.begin;
   idx_t lend_index   = index_range.end;
   if (lbegin_index == lend_index) {
     // Local range is empty
-    DASH_LOG_TRACE("local_range", "empty local range",
+    DASH_LOG_TRACE("local_range >", "empty local range",
                    lbegin_index, lend_index);
     return LocalRange<const value_t> { nullptr, nullptr };
   }
@@ -258,9 +262,12 @@ local_range(
                    pattern.team().myid());
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
-    DASH_LOG_TRACE("local_range", "lbegin null");
+    DASH_LOG_TRACE("local_range >", "lbegin null");
     return LocalRange<const value_t> { nullptr, nullptr };
   }
+  DASH_LOG_TRACE("local_range >",
+                 "lbegin:",      lbegin,
+                 "l_idx_range:", lbegin_index, "-", lend_index);
   return LocalRange<const value_t> {
            lbegin + lbegin_index,
            lbegin + lend_index };
@@ -277,13 +284,16 @@ local_range(
   typedef typename GlobIterType::pattern_type pattern_t;
   typedef typename GlobIterType::value_type   value_t;
   typedef typename pattern_t::index_type      idx_t;
+  DASH_LOG_TRACE("local_range()",
+                 "gfirst.pos:", first.pos(),
+                 "glast.pos:",  last.pos());
   /// Global iterators to local index range, O(d):
   auto index_range   = dash::local_index_range(first, last);
   idx_t lbegin_index = index_range.begin;
   idx_t lend_index   = index_range.end;
   if (lbegin_index == lend_index) {
     // Local range is empty
-    DASH_LOG_TRACE("local_range", "empty local range",
+    DASH_LOG_TRACE("local_range >", "empty local range",
                    lbegin_index, lend_index);
     return LocalRange<value_t> { nullptr, nullptr };
   }
@@ -293,9 +303,12 @@ local_range(
                    pattern.team().myid());
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
-    DASH_LOG_TRACE("local_range", "lbegin null");
+    DASH_LOG_TRACE("local_range >", "lbegin null");
     return LocalRange<value_t> { nullptr, nullptr };
   }
+  DASH_LOG_TRACE("local_range >",
+                 "lbegin:",      lbegin,
+                 "l_idx_range:", lbegin_index, "-", lend_index);
   return LocalRange<value_t> {
            lbegin + lbegin_index,
            lbegin + lend_index };

@@ -7,6 +7,8 @@
 
 TEST_F(FillTest, TestAllItemsFilled)
 {
+  typedef typename Array_t::value_type value_t;
+
   // Initialize global array:
   Array_t array(_num_elem);
   // arbitrary value
@@ -15,13 +17,16 @@ TEST_F(FillTest, TestAllItemsFilled)
   dash::fill(array.begin(), array.end(), val);
   // Wait for all units
   array.barrier();
-  // Local begin
+  // Local range in array:
   auto lbegin = array.lbegin();
-  // Local end
-  auto lend = array.lend();
+  auto lend   = array.lend();
+  auto lrange = dash::local_range(array.begin(), array.end());
+  ASSERT_EQ_U(lbegin, lrange.begin);
+  ASSERT_EQ_U(lend,   lrange.end);
+  ASSERT_EQ_U(array.pattern().local_size(), lend - lbegin);
 
   for(; lbegin != lend; ++lbegin)
   {
-    EXPECT_EQ(*lbegin, *lend);
+    ASSERT_EQ_U(17, static_cast<value_t>(*lbegin));
   }
 }

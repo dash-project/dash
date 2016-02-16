@@ -46,6 +46,57 @@ print_matrix(
 }
 
 /**
+ * Log the result of a mapping function of a one-dimensional pattern.
+ * Example:
+ *
+ * \code
+ *  dash::test::print_pattern_mapping(
+ *    "pattern.unit_at", the_pattern_instance, 3,
+ *    [](const pattern_t & _pattern, index_t _index) -> index_t {
+ *        return _pattern.unit_at(coords_t { _index });
+ *    });
+ * \endcode
+ *
+ */
+template<typename PatternT, typename CallbackFun>
+typename std::enable_if<PatternT::ndim() == 1, void>::type
+print_pattern_mapping(
+  /// Log message prefix.
+  const std::string & name,
+  /// Pattern instance to log.
+  const PatternT    & pattern,
+  /// Width of a single mapping result in number of characters.
+  int                 field_width,
+  /// The mapping function to call for every cell.
+  const CallbackFun & callback)
+{
+  typedef typename PatternT::index_type index_t;
+  std::string pattern_name = PatternT::PatternName;
+
+  std::vector<std::string> entries;
+  entries.push_back("[");
+  dart_unit_t last_unit = pattern.unit_at(0);
+  for (index_t i = 0; i < pattern.extent(0); ++i) {
+    std::ostringstream ss;
+    dart_unit_t entry_unit = pattern.unit_at(i);
+    if (entry_unit != last_unit) {
+      entries.push_back("|");
+      last_unit = entry_unit;
+    }
+    ss << std::setw(field_width) << callback(pattern, i) << " ";
+    entries.push_back(ss.str());
+  }
+  entries.push_back("]");
+
+  DASH_LOG_DEBUG("print_pattern_mapping", name, pattern_name);
+  std::ostringstream ss;
+  for (auto entry : entries) {
+    ss << entry;
+  }
+  DASH_LOG_DEBUG("print_pattern_mapping", name, ss.str());
+}
+
+/**
  * Log the result of a mapping function of a two-dimensional pattern.
  * Example:
  *

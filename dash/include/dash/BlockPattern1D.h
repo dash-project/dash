@@ -38,7 +38,7 @@ private:
   static const dim_t NumDimensions = 1;
 
 public:
-  static constexpr char const * PatternName = "RegularPattern<1>";
+  static constexpr char const * PatternName = "BlockPattern<1>";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
@@ -963,7 +963,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_capacity(
+  inline SizeType local_capacity(
     dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
   {
     return _local_capacity;
@@ -979,10 +979,12 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr SizeType local_size(
+  inline SizeType local_size(
     dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
   {
-    return _local_memory_layout.size();
+    return (unit == DART_UNDEFINED_UNIT_ID)
+           ? _local_size
+           : initialize_local_extent(unit);
   }
 
   /**
@@ -990,7 +992,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr IndexType num_units() const {
+  inline IndexType num_units() const {
     return _nunits;
   }
 
@@ -999,7 +1001,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr IndexType capacity() const {
+  inline IndexType capacity() const {
     return _size;
   }
 
@@ -1008,7 +1010,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  constexpr IndexType size() const {
+  inline IndexType size() const {
     return _size;
   }
 
@@ -1016,7 +1018,7 @@ public:
    * The Team containing the units to which this pattern's elements are
    * mapped.
    */
-  constexpr dash::Team & team() const {
+  inline dash::Team & team() const {
     return *_team;
   }
 
@@ -1221,7 +1223,8 @@ private:
    * Resolve extents of local memory layout for a specified unit.
    */
   SizeType initialize_local_extent(
-    dart_unit_t unit) const {
+    dart_unit_t unit) const
+  {
     DASH_LOG_DEBUG_VAR("BlockPattern<1>.init_local_extent()", unit);
     DASH_LOG_DEBUG_VAR("BlockPattern<1>.init_local_extent()", _nunits);
     if (_nunits == 0) {

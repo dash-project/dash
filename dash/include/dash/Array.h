@@ -576,21 +576,21 @@ private:
 
 /// Public types as required by iterator concept
 public:
-  typedef ElementType                                              value_type;
-  typedef IndexType                                                index_type;
-  typedef typename std::make_unsigned<IndexType>::type              size_type;
-  typedef typename std::make_unsigned<IndexType>::type        difference_type;
+  typedef ElementType                                             value_type;
+  typedef IndexType                                               index_type;
+  typedef typename std::make_unsigned<IndexType>::type             size_type;
+  typedef typename std::make_unsigned<IndexType>::type       difference_type;
 
-  typedef       GlobIter<value_type, PatternType>                    iterator;
-  typedef const GlobIter<value_type, PatternType>              const_iterator;
-  typedef       std::reverse_iterator<      iterator>        reverse_iterator;
-  typedef       std::reverse_iterator<const_iterator>  const_reverse_iterator;
+  typedef       GlobIter<value_type, PatternType>                   iterator;
+  typedef const GlobIter<value_type, PatternType>             const_iterator;
+  typedef       std::reverse_iterator<      iterator>       reverse_iterator;
+  typedef       std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-  typedef       GlobRef<value_type>                                 reference;
-  typedef const GlobRef<value_type>                           const_reference;
+  typedef       GlobRef<value_type>                                reference;
+  typedef const GlobRef<value_type>                          const_reference;
 
-  typedef       GlobIter<value_type, PatternType>                     pointer;
-  typedef const GlobIter<value_type, PatternType>               const_pointer;
+  typedef       GlobIter<value_type, PatternType>                    pointer;
+  typedef const GlobIter<value_type, PatternType>              const_pointer;
 
 public:
   template<
@@ -1015,13 +1015,19 @@ private:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
+#if 0
     m_globmem   = new GlobMem_t(pattern.team(), m_lcapacity);
+#else
+    m_globmem   = new GlobMem_t(pattern.team(), m_lsize);
+#endif
     // Global iterators:
     m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
     m_lbegin    = m_globmem->lbegin(m_myid);
-    m_lend      = m_globmem->lend(m_myid);
+    // More efficient than using m_globmem->lend as this a second mapping
+    // of the local memory segment:
+    m_lend      = m_lbegin + pattern.local_size();
     DASH_LOG_TRACE_VAR("Array._allocate", m_myid);
     DASH_LOG_TRACE_VAR("Array._allocate", m_size);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
