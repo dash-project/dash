@@ -21,7 +21,7 @@ cmake_minimum_required (VERSION 2.8)
 
 ## Version number
 set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
-set(DASH_VERSION_MINOR 1 CACHE STRING "DASH minor version number.")
+set(DASH_VERSION_MINOR 2 CACHE STRING "DASH minor version number.")
 set(DASH_VERSION_PATCH 0 CACHE STRING "DASH patch version number.")
 mark_as_advanced(
   DASH_VERSION_MAJOR
