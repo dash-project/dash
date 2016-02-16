@@ -31,8 +31,8 @@ struct LocalIndexRange {
  *   Result           | (local indices) <tt>2 3</tt>
  *
  * \return      A local index range consisting of offsets of the first and
- *              last element in local memory within the sequence limited by
- *              the given global iterators.
+ *              last element in local memory within the sequence limited
+ *              by the given global iterators.
  *
  * \tparam      ElementType  Type of the elements in the sequence
  * \tparam      PatternType  Type of the global iterators' pattern
@@ -113,8 +113,8 @@ local_index_range(
  *   Result           | (local indices) <tt>2 3</tt>
  *
  * \return      A local index range consisting of offsets of the first and
- *              last element in local memory within the sequence limited by
- *              the given global iterators.
+ *              last element in local memory within the sequence limited
+ *              by the given global iterators.
  *
  * \tparam      ElementType  Type of the elements in the sequence
  * \tparam      PatternType  Type of the global iterators' pattern
@@ -153,8 +153,8 @@ local_index_range(
       DASH_LOG_TRACE("local_index_range", "input iterators in same view");
       auto l_first        = first.lpos();
       bool first_is_local = l_first.unit == dash::myid();
-      // No need to check if last is local as both are relative to the same
-      // view.
+      // No need to check if last is local as both are relative to the
+      // same view.
       if (first_is_local) {
         auto l_last_idx  = last.lpos().index;
         auto l_first_idx = l_first.index;
@@ -228,7 +228,8 @@ local_index_range(
  * \tparam      ElementType  Type of the elements in the sequence
  * \tparam      PatternType  Type of the global iterators' pattern
  *                           implementation
- * \complexity  O(d), with \c d dimensions in the global iterators' pattern
+ * \complexity  O(d), with \c d dimensions in the global iterators'
+ *              pattern
  *
  * \ingroup     DashAlgorithms
  */
@@ -315,8 +316,8 @@ local_range(
 }
 
 /**
- * Convert global iterator referencing an element the active unit's memory to
- * a corresponding native pointer referencing the element.
+ * Convert global iterator referencing an element the active unit's
+ * memory to a corresponding native pointer referencing the element.
  *
  * Precondition:  \c g_it  is local
  *
@@ -328,15 +329,6 @@ ElementType * local(
   /// Global iterator referencing element in local memory
   const GlobIter<ElementType, PatternType> & g_it)
 {
-#if __OLD__
-  DASH_ASSERT_MSG(
-    g_it.is_local(),
-    "dash::local: global iterator does not reference local element");
-  // Global iterator to global pointer:
-  GlobPtr<ElementType> g_ptr = static_cast< GlobPtr<ElementType> >(g_it);
-  // Global pointer to native pointer:
-  return static_cast<ElementType*>(g_ptr);
-#endif
   return g_it.local();
 }
 

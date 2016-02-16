@@ -427,21 +427,21 @@ private:
 
 /// Public types as required by iterator concept
 public:
-  typedef ElementType                                              value_type;
-  typedef IndexType                                                index_type;
-  typedef typename std::make_unsigned<IndexType>::type              size_type;
-  typedef typename std::make_unsigned<IndexType>::type        difference_type;
+  typedef ElementType                                             value_type;
+  typedef IndexType                                               index_type;
+  typedef typename std::make_unsigned<IndexType>::type             size_type;
+  typedef typename std::make_unsigned<IndexType>::type       difference_type;
 
-  typedef       GlobIter<value_type, PatternType>                    iterator;
-  typedef const GlobIter<value_type, PatternType>              const_iterator;
-  typedef       std::reverse_iterator<      iterator>        reverse_iterator;
-  typedef       std::reverse_iterator<const_iterator>  const_reverse_iterator;
+  typedef       GlobIter<value_type, PatternType>                   iterator;
+  typedef const GlobIter<value_type, PatternType>             const_iterator;
+  typedef       std::reverse_iterator<      iterator>       reverse_iterator;
+  typedef       std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-  typedef       GlobRef<value_type>                                 reference;
-  typedef const GlobRef<value_type>                           const_reference;
+  typedef       GlobRef<value_type>                                reference;
+  typedef const GlobRef<value_type>                          const_reference;
 
-  typedef       GlobIter<value_type, PatternType>                     pointer;
-  typedef const GlobIter<value_type, PatternType>               const_pointer;
+  typedef       GlobIter<value_type, PatternType>                    pointer;
+  typedef const GlobIter<value_type, PatternType>              const_pointer;
 
 /// Public types as required by dash container concept
 public:
@@ -1039,7 +1039,8 @@ private:
     // other units might start working on the array before allocation
     // completed at all units:
     if (dash::is_initialized()) {
-      DASH_LOG_TRACE("Array._allocate", "waiting for allocation of all units");
+      DASH_LOG_TRACE("Array._allocate",
+                     "waiting for allocation of all units");
       m_team->barrier();
     }
     DASH_LOG_TRACE("Array._allocate >", "finished");
