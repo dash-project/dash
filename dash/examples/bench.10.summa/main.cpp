@@ -56,6 +56,26 @@ typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
 
+typedef struct {
+  int  rank;
+  char host[100];
+  int  cpu;
+  int  numa_node;
+} unit_pin_info;
+
+std::ostream & operator<<(
+  std::ostream        & os,
+  const unit_pin_info & upi)
+{
+  std::ostringstream ss;
+  ss << "unit_pin_info("
+     << "rank:" << upi.rank << " "
+     << "host:" << upi.host << " "
+     << "cpu:"  << upi.cpu  << " "
+     << "numa:" << upi.numa_node << ")";
+  return operator<<(os, ss.str());
+}
+
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
 typedef double    value_t;
 #else
@@ -131,6 +151,58 @@ int main(int argc, char* argv[])
 
   dash::barrier();
   DASH_LOG_DEBUG_VAR("bench.10.summa", getpid());
+  dash::barrier();
+
+  // Collect process pinning information:
+  //
+  size_t num_numa_nodes  = dash::util::Locality::NumNumaNodes();
+  // Number of physical cores on this system, divided by 2 to
+  // eliminate HT cores:
+  size_t num_local_cpus  = dash::util::Locality::NumCPUs();
+  // Number of physical cores in a single NUMA domain (7 on SuperMUC):
+  size_t numa_node_cores = num_local_cpus / num_numa_nodes;
+  // Number of physical cores on a single socket (14 on SuperMUC):
+  size_t socket_cores    = numa_node_cores * 2;
+
+  dash::Array<unit_pin_info> unit_pinning(dash::size());
+
+  int cpu        = dash::util::Locality::UnitCPU();
+  int numa_node  = dash::util::Locality::UnitNUMANode();
+
+  unit_pin_info my_pin_info;
+  my_pin_info.rank      = dash::myid();
+  my_pin_info.cpu       = cpu;
+  my_pin_info.numa_node = numa_node;
+  gethostname(my_pin_info.host, 100);
+
+  unit_pinning[dash::myid()] = my_pin_info;
+
+  dash::barrier();
+
+  if (dash::myid() == 0) {
+    cout << std::setw(5)  << "unit"      << " "
+         << std::setw(20) << "host"      << " "
+         << std::setw(10) << "numa node" << " "
+         << std::setw(5)  << "cpu"
+         << endl;
+    for (int unit = 0; unit < dash::size(); ++unit) {
+      unit_pin_info pin_info = unit_pinning[unit];
+      cout << std::setw(5)  << pin_info.rank      << " "
+           << std::setw(20) << pin_info.host      << " "
+           << std::setw(10) << pin_info.numa_node << " "
+           << std::setw(5)  << pin_info.cpu
+           << endl;
+    }
+    cout << "number of NUMA nodes: " << num_numa_nodes
+         << endl
+         << "local CPUs:           " << num_local_cpus
+         << endl
+         << "cores per NUMA node:  " << numa_node_cores
+         << endl
+         << "cores per socket:     " << socket_cores
+         << endl;
+  }
+
   dash::barrier();
 
   auto        params      = parse_args(argc, argv);
