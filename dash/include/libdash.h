@@ -23,7 +23,6 @@
 
 #include <dash/Enums.h>
 #include <dash/Pattern.h>
-#include <dash/PatternVisualizer.h>
 #include <dash/Container.h>
 #include <dash/Shared.h>
 #include <dash/SharedCounter.h>
@@ -34,5 +33,8 @@
 #include <dash/internal/Logging.h>
 
 #include <dash/util/Timer.h>
+#include <dash/util/Locality.h>
+
+#include <dash/tools/PatternVisualizer.h>
 
 #endif // DASH__LIBDASH_H_

@@ -14,9 +14,6 @@
 #include <math.h>
 #include <unistd.h>
 
-#include <utmpx.h>
-#include <numa.h>
-
 using std::cout;
 using std::endl;
 using std::vector;
@@ -39,6 +36,19 @@ typedef struct {
   int  cpu;
   int  numa_node;
 } unit_pin_info;
+
+std::ostream & operator<<(
+  std::ostream        & os,
+  const unit_pin_info & upi)
+{
+  std::ostringstream ss;
+  ss << "unit_pin_info("
+     << "rank:" << upi.rank << " "
+     << "host:" << upi.host << " "
+     << "cpu:"  << upi.cpu  << " "
+     << "numa:" << upi.numa_node << ")";
+  return operator<<(os, ss.str());
+}
 
 #define DASH_PRINT_MASTER(expr) \
   do { \
@@ -72,10 +82,8 @@ int main(int argc, char** argv)
   size_t num_iterations  = 5;
   int    num_repeats     = 200;
   auto   ts_start        = Timer::Now();
-  size_t num_numa_nodes  = numa_max_node() + 1;
-  // Number of physical cores on this system, divided by 2 to
-  // eliminate HT cores:
-  size_t num_local_cpus  = numa_num_configured_cpus() / 2;
+  size_t num_numa_nodes  = dash::util::Locality::NumNumaNodes();
+  size_t num_local_cpus  = dash::util::Locality::NumCPUs();
   // Number of physical cores in a single NUMA domain (7 on SuperMUC):
   size_t numa_node_cores = num_local_cpus / num_numa_nodes;
   // Number of physical cores on a single socket (14 on SuperMUC):
@@ -88,10 +96,8 @@ int main(int argc, char** argv)
   //
   dash::Array<unit_pin_info> unit_pinning(dash::size());
 
-  int cpu;
-  int numa_node;
-  cpu       = sched_getcpu();
-  numa_node = numa_node_of_cpu(cpu);
+  int cpu        = dash::util::Locality::UnitCPU();
+  int numa_node  = dash::util::Locality::UnitNUMANode();
 
   unit_pin_info my_pin_info;
   my_pin_info.rank      = dash::myid();
@@ -109,7 +115,7 @@ int main(int argc, char** argv)
          << std::setw(10) << "numa node" << " "
          << std::setw(5)  << "cpu"
          << endl;
-    for (int unit = 0; unit < dash::size(); ++unit) {
+    for (dart_unit_t unit = 0; unit < dash::size(); ++unit) {
       unit_pin_info pin_info = unit_pinning[unit];
       cout << std::setw(5)  << pin_info.rank      << " "
            << std::setw(20) << pin_info.host      << " "

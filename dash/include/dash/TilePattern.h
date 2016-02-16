@@ -480,9 +480,9 @@ public:
     return _lend;
   }
 
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
   /// unit_at
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   /**
    * Convert given point in pattern to its assigned unit id.
@@ -571,9 +571,9 @@ public:
     return unit_at(global_coords);
   }
 
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
   /// extent
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   /**
    * The number of elements in this pattern in the given dimension.
@@ -641,9 +641,9 @@ public:
     return initialize_local_extents(unit);
   }
 
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
   /// local
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   /**
    * Convert given local coordinates and viewspec to linear local offset
@@ -725,8 +725,8 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit and its respective
-   * local coordinates.
+   * Converts global coordinates to their associated unit and its
+   * respective local coordinates.
    *
    * \see  DashPatternConcept
    */
@@ -751,7 +751,8 @@ public:
   }
 
   /**
-   * Converts global index to its associated unit and respective local index.
+   * Converts global index to its associated unit and respective local
+   * index.
    *
    * TODO: Unoptimized
    *
@@ -832,17 +833,17 @@ public:
                      "phase coords:",       phase_coords);
       // Number of blocks preceeding the coordinates' block:
       auto block_offset_l = remote_l_blockspec.at(block_coords_l);
-      l_index = block_offset_l * _blocksize_spec.size() + // preceeding blocks
-                _blocksize_spec.at(phase_coords);         // element phase
+      l_index = block_offset_l * _blocksize_spec.size() + // prec. blocks
+                _blocksize_spec.at(phase_coords);         // elem. phase
     }
     DASH_LOG_TRACE_VAR("TilePattern.local_index >", l_index);
 
     return local_index_t { unit, l_index };
   }
 
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
   /// global
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   /**
    * Converts local coordinates of a given unit to global coordinates.
@@ -865,7 +866,8 @@ public:
       auto nunits_d        = _teamspec.extent(d);
       auto phase           = local_coords[d] % blocksize_d;
       auto l_block_coord_d = local_coords[d] / blocksize_d;
-      auto g_block_coord_d = (l_block_coord_d * nunits_d) + unit_ts_coords[d];
+      auto g_block_coord_d = (l_block_coord_d * nunits_d) +
+                             unit_ts_coords[d];
       global_coords[d]     = (g_block_coord_d * blocksize_d) + phase;
     }
     DASH_LOG_DEBUG_VAR("TilePattern.global >", global_coords);
@@ -987,7 +989,8 @@ public:
   }
 
   /**
-   * Global coordinates to global position in the pattern's iteration order.
+   * Global coordinates to global position in the pattern's iteration
+   * order.
    *
    * NOTE:
    * Expects extent[d] to be a multiple of blocksize[d] * nunits[d]
@@ -1026,9 +1029,9 @@ public:
     return offset;
   }
 
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
   /// at
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   /**
    * Global coordinates and viewspec to local index.
@@ -1063,8 +1066,8 @@ public:
                    "l_block_coords:", l_block_coords,
                    "l_block_index:",  l_block_index,
                    "phase_coords:",   phase_coords);
-    auto offset = l_block_index * _blocksize_spec.size() + // preceed. blocks
-                  _blocksize_spec.at(phase_coords);        // element phase
+    auto offset = l_block_index * _blocksize_spec.size() + // prec. blocks
+                  _blocksize_spec.at(phase_coords);        // elem. phase
     DASH_LOG_TRACE_VAR("TilePattern.at >", offset);
     return offset;
   }
@@ -1100,8 +1103,8 @@ public:
                    "l_block_coords:", l_block_coords,
                    "l_block_index:",  l_block_index,
                    "phase_coords:",   phase_coords);
-    auto offset = l_block_index * _blocksize_spec.size() + // preceed. blocks
-                  _blocksize_spec.at(phase_coords);        // element phase
+    auto offset = l_block_index * _blocksize_spec.size() + // prec. blocks
+                  _blocksize_spec.at(phase_coords);        // elem. phase
     DASH_LOG_TRACE_VAR("TilePattern.at >", offset);
     return offset;
   }
@@ -1125,9 +1128,9 @@ public:
     return at(inputindex);
   }
 
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
   /// is_local
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   /**
    * Whether there are local elements in a dimension at a given offset,
@@ -1192,9 +1195,9 @@ public:
     return is_local(index, _myid);
   }
 
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
   /// block
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   /**
    * Index of block at given global coordinates.
@@ -1219,8 +1222,8 @@ public:
   }
 
   /**
-   * View spec (offset and extents) of block at global linear block index in
-   * global cartesian element space.
+   * View spec (offset and extents) of block at global linear block index
+   * in global cartesian element space.
    *
    * \see  DashPatternConcept
    */
@@ -1301,7 +1304,8 @@ public:
   ViewSpec_t local_block_local(
     index_type local_block_index) const
   {
-    DASH_LOG_TRACE_VAR("TilePattern.local_block_local()", local_block_index);
+    DASH_LOG_TRACE_VAR("TilePattern.local_block_local()",
+                       local_block_index);
     // Initialize viewspec result with block extents:
     std::array<index_type, NumDimensions> offsets;
     std::array<size_type, NumDimensions>  extents =
@@ -1497,7 +1501,8 @@ public:
   }
 
   /**
-   * Number of dimensions of the cartesian space partitioned by the pattern.
+   * Number of dimensions of the cartesian space partitioned by the
+   * pattern.
    */
   constexpr static dim_t ndim() {
     return NumDimensions;

@@ -10,9 +10,9 @@
 #  PAPI_PREFIX             Set this variable to the root installation of
 #                          libpapi if the module has problems finding the
 #                          proper installation path.
-# 
+#
 # When using module, you can locate the PAPI base path via
-# 
+#
 #  $ module show papi
 #
 # Variables defined by this module:

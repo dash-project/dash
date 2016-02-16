@@ -22,6 +22,7 @@ set(ENABLE_SHARED_WINDOWS ${ENABLE_SHARED_WINDOWS}
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 
 # Source- and header files to be compiled (OBJ):
@@ -44,7 +45,6 @@ include_directories(
 
 set (ADDITIONAL_COMPILE_FLAGS "-DDASH")
 set (ADDITIONAL_INCLUDES      "")
-set (ADDITIONAL_LIBRARIES     "numa")
 
 if (ENABLE_DEFAULT_INDEX_TYPE_LONG)
   set (ADDITIONAL_COMPILE_FLAGS
@@ -72,6 +72,14 @@ if (PAPI_FOUND)
 else()
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        rt)
+endif()
+if (NUMA_FOUND)
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_NUMA")
+  set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+       ${NUMA_INCLUDE_DIRS})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${NUMA_LIBRARIES})
 endif()
 
 if (MKL_FOUND)
