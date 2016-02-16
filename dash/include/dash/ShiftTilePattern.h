@@ -216,7 +216,8 @@ public:
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
         _blockspec,
-        _major_tiled_dim)),
+        _major_tiled_dim,
+        _nunits)),
     _local_memory_layout(
         initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()) {
@@ -291,7 +292,8 @@ public:
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
         _blockspec,
-        _major_tiled_dim)),
+        _major_tiled_dim,
+        _nunits)),
     _local_memory_layout(
         initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()) {
@@ -359,7 +361,8 @@ public:
         _teamspec)),
     _local_blockspec(initialize_local_blockspec(
         _blockspec,
-        _major_tiled_dim)),
+        _major_tiled_dim,
+        _nunits)),
     _local_memory_layout(
         initialize_local_extents(_team->myid())),
     _local_capacity(initialize_local_capacity()) {
@@ -823,7 +826,8 @@ public:
    * \see  DashPatternConcept
    */
   std::array<IndexType, NumDimensions> global(
-    const std::array<IndexType, NumDimensions> & local_coords) const {
+    const std::array<IndexType, NumDimensions> & local_coords) const
+  {
     return global(_team->myid(), local_coords);
   }
 
@@ -1510,13 +1514,18 @@ private:
    */
   BlockSpec_t initialize_local_blockspec(
     const BlockSpec_t        & blockspec,
-    dim_t                      major_tiled_dim) const
+    dim_t                      major_tiled_dim,
+    size_t                     nunits) const
   {
     DASH_LOG_TRACE_VAR("ShiftTilePattern.init_local_blockspec()",
                        blockspec.extents());
+    DASH_LOG_TRACE_VAR("ShiftTilePattern.init_local_blockspec()",
+                       nunits);
     // Number of local blocks in all dimensions:
     auto l_blocks = blockspec.extents();
-    l_blocks[major_tiled_dim] /= _nunits;
+    l_blocks[major_tiled_dim] /= nunits;
+    DASH_ASSERT_GT(l_blocks[major_tiled_dim], 0,
+                   "ShiftTilePattern: Size must be divisible by team size");
     DASH_LOG_TRACE_VAR("ShiftTilePattern.init_local_blockspec >", l_blocks);
     return BlockSpec_t(l_blocks);
   }
@@ -1568,12 +1577,20 @@ private:
   {
     DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim()");
     if (Arrangement == dash::COL_MAJOR) {
+      DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim", "column major");
       for (auto d = 0; d < NumDimensions; ++d) {
-        if (ds[d].type == dash::internal::DIST_TILE) return d;
+        if (ds[d].type == dash::internal::DIST_TILE) {
+          DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim >", d);
+          return d;
+        }
       }
     } else {
+      DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim", "row major");
       for (auto d = NumDimensions-1; d >= 0; --d) {
-        if (ds[d].type == dash::internal::DIST_TILE) return d;
+        if (ds[d].type == dash::internal::DIST_TILE) {
+          DASH_LOG_TRACE("ShiftTilePattern.init_major_tiled_dim >", d);
+          return d;
+        }
       }
     }
     DASH_THROW(dash::exception::InvalidArgument,

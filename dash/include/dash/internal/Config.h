@@ -62,7 +62,7 @@
 #  define DASH__ARCH__HAS_CAS_32
 #elif defined(__arm__)
 #  define DASH__ARCH__ARCH_ARM
-// ARM versions consolidated to major architecture version. 
+// ARM versions consolidated to major architecture version.
 // See: https://wiki.edubuntu.org/ARM/Thumb2PortingHowto
 #  if defined(__ARM_ARCH_7__) || \
       defined(__ARM_ARCH_7R__) || \

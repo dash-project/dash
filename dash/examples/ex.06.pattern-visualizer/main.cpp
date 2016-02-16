@@ -6,58 +6,80 @@
 #include <libdash.h>
 
 using std::cout;
+using std::cerr;
 using std::endl;
 
 using namespace dash;
 
 template<typename PatternT>
-void print_example(PatternT pat, std::string fname, std::string title);
+void print_example(
+  PatternT    pat,
+  std::string fname,
+  std::string title);
 
 int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
 
-  if( dash::myid()==0 ) {
+  if (dash::size() != 4) {
+    dash::finalize();
+    cerr << "Pattern visualizer must be called with 4 units." << endl;
+    return EXIT_FAILURE;
+  }
 
-    auto ts = TeamSpec<2>(2,2);
-    auto pat = TilePattern<2>(20,15, TILE(5), TILE(1), ts);
+  if (dash::myid() == 0)
+  {
+    TeamSpec<2> ts2d(2,2);
+    TeamSpec<2> ts1d(2,1);
 
-    print_example(pat,
-		  "Test1.svg",
-		  "Test");
-    
-    print_example(TilePattern<2>(20,15, TILE(1), TILE(5)),
-		  "TilePattern1.svg",
-		  "TilePattern<2>(20,15, TILE(1), TILE(5))");
+    print_example(TilePattern<2>(20,15, TILE(1),TILE(5), ts2d),
+      "TilePattern_tile-1x5_team-2x2_rowmaj.svg",
+      "TilePattern<2>(20,15, TILE(1), TILE(5), TeamSpec<2>(2,2))");
 
+    print_example(TilePattern<2>(20,15, TILE(2),TILE(5), ts2d),
+      "TilePattern_tile-2x5_team-2x2_rowmaj.svg",
+      "TilePattern<2>(20,15, TILE(2), TILE(5), TeamSpec<2>(2,2))");
 
-    print_example(TilePattern<2>(20,15, TILE(2), TILE(5)),
-		  "TilePattern2.svg",
-		  "TilePattern<2>(20,15, TILE(2), TILE(5))");
+    print_example(TilePattern<2, COL_MAJOR>(20,15, TILE(5),TILE(5), ts2d),
+      "TilePattern_tile-5x5_team-2x2_colmaj.svg",
+      "TilePattern<2, COL_MAJOR>(20,15, TILE(5),TILE(5), TeamSpec<2>(2,2))");
 
-    print_example(TilePattern<2, COL_MAJOR>(20,15, TILE(5), TILE(5)),
-		  "TilePattern3.svg",
-		  "TilePattern<2, COL_MAJOR>(20,15, TILE(5), TILE(5))");
+    print_example(TilePattern<2>(20,15, TILE(5),TILE(1), ts2d),
+      "TilePattern_tile-5x1_team-2x2_rowmajor.svg",
+      "TilePattern<2>(20,15, TILE(5), TILE(1), TeamSpec<2>(2,2))");
 
-    print_example(Pattern<2>(20,15, BLOCKED, CYCLIC),
-		  "TilePattern4.svg",
-		  "Pattern<2>(20,15, BLOCKED, CYCLIC),");
+    print_example(Pattern<2>(20,15, BLOCKED,CYCLIC, ts2d),
+      "BlockPattern_blocked-cyclic_team-2x2_rowmaj.svg",
+      "Pattern<2>(20,15, BLOCKED,CYCLIC, TeamSpec<2>(2,2))");
 
+    print_example(ShiftTilePattern<2>(32,24, TILE(4), TILE(3), ts2d),
+      "ShiftTilePattern_4x5_team-2x2_rowmaj.svg",
+      "ShiftTilePattern<2>(32,24, TILE(4),TILE(5))");
 
+    print_example(ShiftTilePattern<2>(20,20, TILE(1), TILE(5), ts1d),
+      "ShiftTilePattern_4x5_team-2x1_rowmaj.svg",
+      "ShiftTilePattern<2>(20,20, TILE(1),TILE(5), TeamSpec<2>(2,1))");
   }
 
   dash::finalize();
+
+  return EXIT_SUCCESS;
 }
 
 template<typename PatternT>
-void print_example(PatternT pat, std::string fname, std::string title)
+void print_example(
+  PatternT    pat,
+  std::string fname,
+  std::string title)
 {
-  dash::PatternVisualizer<decltype(pat)> pv(pat);
+  typedef typename PatternT::index_type index_t;
+
+  dash::tools::PatternVisualizer<decltype(pat)> pv(pat);
   pv.set_title(title);
 
   std::ofstream out(fname);
 
-  std::array<int, pat.ndim()> coords = {};
+  std::array<index_t, pat.ndim()> coords = {};
   pv.draw_pattern(out, coords, 1, 0);
   out.close();
 }
