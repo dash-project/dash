@@ -10,12 +10,13 @@
 #include <mpi.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_types.h>
-#include <dash/dart/mpi/dart_mem.h>
-#include <dash/dart/mpi/dart_translation.h>
-#include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_communication.h>
+#include <dash/dart/mpi/dart_mpi_util.h>
+#include <dash/dart/mpi/dart_mem.h>
+#include <dash/dart/mpi/dart_translation.h>
+#include <dash/dart/mpi/dart_team_private.h>
 
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS
@@ -125,21 +126,22 @@ dart_team_memalloc_aligned(
   size_t        nbytes,
   dart_gptr_t * gptr)
 {
-	size_t size;
-	dart_unit_t unitid, gptr_unitid = -1;
+	size_t team_size;
+	dart_unit_t unitid;
+  dart_unit_t gptr_unitid = -1;
 	dart_team_myid(teamid, &unitid);
-	dart_team_size (teamid, &size);
+	dart_team_size(teamid, &team_size);
 
-	char *sub_mem;
+	char * sub_mem;
 
 	/* The units belonging to the specified team are eligible to participate
 	 * below codes enclosed.
    */
 
-	MPI_Win win;
-	MPI_Comm comm;
-	MPI_Aint disp;
-	MPI_Aint* disp_set = (MPI_Aint*)(malloc(size * sizeof (MPI_Aint)));
+	MPI_Win    win;
+	MPI_Comm   comm;
+	MPI_Aint   disp;
+	MPI_Aint * disp_set = (MPI_Aint*)(malloc(team_size * sizeof (MPI_Aint)));
 
 	uint16_t index;
 	int result = dart_adapt_teamlist_convert(teamid, &index);
@@ -165,7 +167,7 @@ dart_team_memalloc_aligned(
 	}
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Info win_info;
-	MPI_Info_create (&win_info);
+	MPI_Info_create(&win_info);
 	MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
 
 	/* Allocate shared memory on sharedmem_comm, and create the related
@@ -196,14 +198,24 @@ dart_team_memalloc_aligned(
    * !!!   (because the shared array has not been allocated correctly)."
    * !!!
    * !!! Reproduced on SuperMUC and mpich3.1 on projekt03.
+   *
+   * Related support ticket of MPICH:
+   * http://trac.mpich.org/projects/mpich/ticket/2178
    */
-	MPI_Win_allocate_shared(
-    nbytes,
-    sizeof(char),
-    win_info,
-    sharedmem_comm,
-    &sub_mem,
-    &sharedmem_win);
+  DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared(nbytes:%d)", nbytes);
+  int ret = MPI_Win_allocate_shared(
+              nbytes,
+              sizeof(char),
+              win_info,
+              sharedmem_comm,
+              &sub_mem,
+              &sharedmem_win);
+  if (ret != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_team_memalloc_aligned: "
+                   "MPI_Win_allocate_shared failed, error %d (%s)",
+                   ret, DART__MPI__ERROR_STR(ret));
+    return DART_ERR_OTHER;
+  }
 
 	int         sharedmem_unitid;
 	MPI_Aint    winseg_size;
@@ -215,7 +227,8 @@ dart_team_memalloc_aligned(
 
 	for (i = 0; i < dart_sharedmemnode_size[index]; i++) {
 		if (sharedmem_unitid != i) {
-			MPI_Win_shared_query(sharedmem_win, i, &winseg_size, &disp_unit, &baseptr);
+			MPI_Win_shared_query(sharedmem_win, i,
+                           &winseg_size, &disp_unit, &baseptr);
 			baseptr_set[i] = baseptr;
 		} else {
       baseptr_set[i] = sub_mem;

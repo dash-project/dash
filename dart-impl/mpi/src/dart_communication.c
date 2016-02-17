@@ -1,7 +1,7 @@
 /**
- * @file dart_communication.c
- * @date 25 Aug 2014
- * @brief Implementations of all the dart communication operations.
+ * \file dart_communication.c
+ *
+ * Implementations of all the dart communication operations.
  *
  * All the following functions are implemented with the underling *MPI-3*
  * one-sided runtime system.
@@ -24,12 +24,7 @@
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
-
-#define DART__MPI__ERROR_STR(mpi_error) ( \
-      (mpi_error == MPI_SUCCESS)     ? "MPI_SUCCESS" \
-    : (mpi_error == MPI_ERR_PENDING) ? "MPI_ERR_PENDING" \
-    : "other" \
-    )
+#include <dash/dart/mpi/dart_mpi_util.h>
 
 int unit_g2l(
   uint16_t      index,
