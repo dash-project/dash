@@ -11,14 +11,10 @@
 #include <iomanip>
 #include <vector>
 #include <string>
-#include <utility>
-#include <math.h>
-#include <unistd.h>
+#include <cstring>
 
 using std::cout;
 using std::endl;
-using std::vector;
-using std::string;
 
 // Environment variables as array of strings, terminated by null pointer.
 extern char ** environ;
@@ -94,12 +90,15 @@ void print_measurement_record(
 
 int main(int argc, char** argv)
 {
+  dash::init(&argc, &argv);
+  Timer::Calibrate(0);
+
   double kps;
   double time_s;
   size_t size;
   auto   params          = parse_args(argc, argv);
-  size_t num_iterations  = 5;
-  int    num_repeats     = 200;
+  size_t num_iterations  = 11;
+  int    num_repeats     = 50 * std::pow(2, 10);
   auto   ts_start        = Timer::Now();
   size_t num_numa_nodes  = dash::util::Locality::NumNumaNodes();
   size_t num_local_cpus  = dash::util::Locality::NumCPUs();
@@ -107,9 +106,6 @@ int main(int argc, char** argv)
   size_t numa_node_cores = num_local_cpus / num_numa_nodes;
   // Number of physical cores on a single socket (14 on SuperMUC):
   size_t socket_cores    = numa_node_cores * 2;
-
-  dash::init(&argc, &argv);
-  Timer::Calibrate(0);
 
   // Collect process pinning information:
   //
@@ -152,14 +148,14 @@ int main(int argc, char** argv)
 
   print_measurement_header();
 
-  /// Increments of 1 GB of elements in total:
-  size_t size_inc = 10 * (static_cast<size_t>(std::pow(2, 30)) /
-                          sizeof(ElementType));
-  size_t size_min = 1 * size_inc;
+  /// Increments of 64 MB of elements in total:
+  size_t size_inc = 1 * (static_cast<size_t>(std::pow(2, 30)) /
+                         sizeof(ElementType)) / 16;
+  size_t size_min = size_inc;
 
   dart_unit_t unit_src;
   for (size_t iteration = 0; iteration < num_iterations; ++iteration) {
-    size     = size_min + (iteration * size_inc);
+    size     = size_min + (std::pow(2,iteration) * size_inc);
 
     // Copy first block in array, assigned to unit 0:
     unit_src = 0;
@@ -201,6 +197,8 @@ int main(int argc, char** argv)
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("remote", params, unit_src, size, num_repeats,
                              time_s, kps);
+
+    num_repeats /= 2;
   }
 
   DASH_PRINT_MASTER("Benchmark finished");
@@ -282,8 +280,8 @@ void print_measurement_header()
     cout << std::right
          << std::setw(5)  << "units"      << ","
          << std::setw(10) << "mpi.impl"   << ","
-         << std::setw(10) << "copy type"  << ","
          << std::setw(10) << "scenario"   << ","
+         << std::setw(10) << "copy type"  << ","
          << std::setw(9)  << "src.unit"   << ","
          << std::setw(9)  << "repeats"    << ","
          << std::setw(12) << "blocksize"  << ","
@@ -305,7 +303,7 @@ void print_measurement_record(
   double                   kps)
 {
   if (dash::myid() == 0) {
-    string mpi_impl = dash__toxstr(MPI_IMPL_ID);
+    std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
     double mem_g = ((static_cast<double>(size) *
                      sizeof(ElementType)) / 1024) / 1024;
     double mem_l = mem_g / dash::size();
@@ -340,60 +338,26 @@ benchmark_params parse_args(int argc, char * argv[])
 #ifdef DART_MPI_DISABLE_SHARED_WINDOWS
   params.env_mpi_shared_win = false;
 #endif
-  for (auto i = 1; i < argc; i += 2) {
-    std::string flag = argv[i];
-    if (flag == "-envcfg") {
-      std::string flags_str = argv[i+1];
-      // Split string into vector of key-value pairs
-      const char delim    = ':';
-      string::size_type i = 0;
-      string::size_type j = flags_str.find(delim);
-      while (j != string::npos) {
-        string flag_str = flags_str.substr(i, j-i);
-        // Split into key and value:
-        string::size_type fi = flag_str.find('=');
-        string::size_type fj = flag_str.find('=', fi);
-        if (fj == string::npos) {
-          fj = flag_str.length();
-        }
-        string flag_name    = flag_str.substr(0,    fi);
-        string flag_value   = flag_str.substr(fi+1, fj);
-        params.env_config.push_back(std::make_pair(flag_name, flag_value));
-        i = ++j;
-        j = flags_str.find(delim, j);
-      }
-      if (j == string::npos) {
-        // Split into key and value:
-        string::size_type k = flags_str.find('=', i+1);
-        string flag_name    = flags_str.substr(i, k-i);
-        string flag_value   = flags_str.substr(k+1, flags_str.length());
-        params.env_config.push_back(std::make_pair(flag_name, flag_value));
-      }
-    }
-  }
   // Add environment variables starting with 'I_MPI_' or 'MP_' to
   // params.env_config:
   int    i          = 1;
   char * env_var_kv = *environ;
   for (; env_var_kv != 0; ++i) {
-    string flag_str(env_var_kv);
-    if (flag_str.substr(0, 6) == "I_MPI_" ||
-        flag_str.substr(0, 4) == "MV2_"   ||
-        flag_str.substr(0, 3) == "MP_")
+    if (strstr(env_var_kv, "I_MPI_") == env_var_kv ||
+        strstr(env_var_kv, "MV2_")   == env_var_kv ||
+        strstr(env_var_kv, "OMPI_")  == env_var_kv ||
+        strstr(env_var_kv, "MP_")    == env_var_kv)
     {
       // Split into key and value:
-      string::size_type fi = flag_str.find('=');
-      string::size_type fj = flag_str.find('=', fi);
-      if (fj == string::npos) {
-        fj = flag_str.length();
-      }
-      string flag_name    = flag_str.substr(0,    fi);
-      string flag_value   = flag_str.substr(fi+1, fj);
+      char * flag_name_cstr  = env_var_kv;
+      char * flag_value_cstr = strstr(env_var_kv, "=");
+      int    flag_name_len   = flag_value_cstr - flag_name_cstr;
+      std::string flag_name(flag_name_cstr, flag_name_cstr + flag_name_len);
+      std::string flag_value(flag_value_cstr+1);
       params.env_config.push_back(std::make_pair(flag_name, flag_value));
     }
     env_var_kv = *(environ + i);
   }
-
   return params;
 }
 

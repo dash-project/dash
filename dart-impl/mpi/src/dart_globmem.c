@@ -145,13 +145,15 @@ dart_team_memalloc_aligned(
 
 	uint16_t index;
 	int result = dart_adapt_teamlist_convert(teamid, &index);
+  DART_LOG_DEBUG("dart_team_memalloc_aligned: dart_adapt_teamlist_convert completed, index:%d",
+                 index);
 
 	if (result == -1) {
 		return DART_ERR_INVAL;
 	}
 	comm = dart_teams[index];
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-	MPI_Win sharedmem_win;
+	MPI_Win  sharedmem_win;
 	MPI_Comm sharedmem_comm;
 	sharedmem_comm = dart_sharedmem_comm_list[index];
 #endif
@@ -161,9 +163,9 @@ dart_team_memalloc_aligned(
 	} else {
 		MPI_Group group;
 		MPI_Group group_all;
-		MPI_Comm_group (comm, &group);
-		MPI_Comm_group (MPI_COMM_WORLD, &group_all);
-		MPI_Group_translate_ranks (group, 1, &localid, group_all, &gptr_unitid);
+		MPI_Comm_group(comm, &group);
+		MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+		MPI_Group_translate_ranks(group, 1, &localid, group_all, &gptr_unitid);
 	}
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Info win_info;
@@ -202,18 +204,27 @@ dart_team_memalloc_aligned(
    * Related support ticket of MPICH:
    * http://trac.mpich.org/projects/mpich/ticket/2178
    */
-  DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared(nbytes:%d)", nbytes);
-  int ret = MPI_Win_allocate_shared(
-              nbytes,
-              sizeof(char),
-              win_info,
-              sharedmem_comm,
-              &sub_mem,
-              &sharedmem_win);
-  if (ret != MPI_SUCCESS) {
+  DART_LOG_DEBUG("dart_team_memalloc_aligned: "
+                 "MPI_Win_allocate_shared(nbytes:%d)", nbytes);
+	if (sharedmem_comm != MPI_COMM_NULL) {
+    MPI_Barrier(sharedmem_comm);
+    int ret = MPI_Win_allocate_shared(
+                nbytes,
+                sizeof(char),
+                win_info,
+                sharedmem_comm,
+                &sub_mem,
+                &sharedmem_win);
+    if (ret != MPI_SUCCESS) {
+      DART_LOG_ERROR("dart_team_memalloc_aligned: "
+                     "MPI_Win_allocate_shared failed, error %d (%s)",
+                     ret, DART__MPI__ERROR_STR(ret));
+      return DART_ERR_OTHER;
+    }
+  } else {
     DART_LOG_ERROR("dart_team_memalloc_aligned: "
-                   "MPI_Win_allocate_shared failed, error %d (%s)",
-                   ret, DART__MPI__ERROR_STR(ret));
+                   "Shared memory communicator is MPI_COMM_NULL, "
+                   "cannot call MPI_Win_allocate_shared");
     return DART_ERR_OTHER;
   }
 

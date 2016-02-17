@@ -51,6 +51,7 @@ public:
     size_t nlelem)
   {
     DASH_LOG_TRACE("GlobMem(nunits,nelem)", team.size(), nlelem);
+    DASH_ASSERT_GT(nlelem, 0, "Requested to allocate 0 bytes");
     m_begptr     = DART_GPTR_NULL;
     m_teamid     = team.dart_id();
     m_nlelem     = nlelem;
@@ -77,9 +78,10 @@ public:
    */
   GlobMem(
       /// [IN] Number of local elements to allocate
-      size_t nlelem
-  ) {
+      size_t nlelem)
+  {
     DASH_LOG_TRACE("GlobMem(nelem)", nlelem);
+    DASH_ASSERT_GT(nlelem, 0, "Requested to allocate 0 bytes");
     m_begptr     = DART_GPTR_NULL;
     m_teamid     = DART_TEAM_NULL;
     m_nlelem     = nlelem;
