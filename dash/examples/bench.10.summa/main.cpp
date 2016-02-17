@@ -885,6 +885,7 @@ benchmark_params parse_args(int argc, char * argv[])
     } else if (flag == "-cpupeak") {
       params.cpu_gflops_peak = static_cast<float>(atof(argv[i+1]));
     } else if (flag == "-envcfg") {
+#if 0
       std::string flags_str = argv[i+1];
       // Split string into vector of key-value pairs
       const char delim    = ':';
@@ -911,6 +912,7 @@ benchmark_params parse_args(int argc, char * argv[])
         string flag_value   = flags_str.substr(k+1, flags_str.length());
         params.env_config.push_back(std::make_pair(flag_name, flag_value));
       }
+#endif
     }
   }
   // Add environment variables starting with 'I_MPI_' or 'MP_' to
@@ -918,19 +920,16 @@ benchmark_params parse_args(int argc, char * argv[])
   int    i          = 1;
   char * env_var_kv = *environ;
   for (; env_var_kv != 0; ++i) {
-    string flag_str(env_var_kv);
-    if (flag_str.substr(0, 6) == "I_MPI_" ||
-        flag_str.substr(0, 4) == "MV2_"   ||
-        flag_str.substr(0, 3) == "MP_")
+    if (strstr(env_var_kv, "I_MPI_") == env_var_kv ||
+        strstr(env_var_kv, "MV2_")   == env_var_kv ||
+        strstr(env_var_kv, "MP_")    == env_var_kv)
     {
       // Split into key and value:
-      string::size_type fi = flag_str.find('=');
-      string::size_type fj = flag_str.find('=', fi);
-      if (fj == string::npos) {
-        fj = flag_str.length();
-      }
-      string flag_name    = flag_str.substr(0,    fi);
-      string flag_value   = flag_str.substr(fi+1, fj);
+      char * flag_name_cstr  = env_var_kv;
+      char * flag_value_cstr = strstr(env_var_kv, "=");
+      int    flag_name_len   = flag_value_cstr - flag_name_cstr;
+      std::string flag_name(flag_name_cstr, flag_name_cstr + flag_name_len);
+      std::string flag_value(flag_value_cstr+1);
       params.env_config.push_back(std::make_pair(flag_name, flag_value));
     }
     env_var_kv = *(environ + i);

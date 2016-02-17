@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
   auto myid = dash::myid();
   auto size = dash::size();
 
-  dash::Array<int> arr(100);
+  dash::Array<int> arr(dash::size() * 5);
 
   if (myid == 0) {
     for (size_t i = 0; i < arr.size(); ++i) {

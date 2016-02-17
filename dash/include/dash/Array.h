@@ -1015,11 +1015,7 @@ private:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-#if 0
     m_globmem   = new GlobMem_t(pattern.team(), m_lcapacity);
-#else
-    m_globmem   = new GlobMem_t(pattern.team(), m_lsize);
-#endif
     // Global iterators:
     m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
