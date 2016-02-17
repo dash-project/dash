@@ -4,6 +4,7 @@
 #include "STLAlgorithmTest.h"
 
 #include <algorithm>
+#include <vector>
 #include <utility>
 
 namespace std {
@@ -16,7 +17,7 @@ namespace std {
   }
 }
 
-TEST_F(STLAlgorithmTest, Copy) {
+TEST_F(STLAlgorithmTest, StdCopyGlobalToLocal) {
   typedef std::pair<dart_unit_t, int> element_t;
   typedef dash::Array<element_t>      array_t;
   typedef array_t::const_iterator     const_it_t;
@@ -32,7 +33,7 @@ TEST_F(STLAlgorithmTest, Copy) {
   array.barrier();
   // Global ranges to copy are dealt to units from the back
   // to ensure most ranges are copied global-to-local.
-  auto global_offset      = array.size() - 
+  auto global_offset      = array.size() -
                             ((_dash_id + 1) * local_size);
   element_t * local_range = new element_t[local_size];
   const_it_t global_begin = array.begin() + global_offset;
@@ -69,4 +70,71 @@ TEST_F(STLAlgorithmTest, Copy) {
   }
   // Free local memory
   delete[] local_range;
+}
+
+TEST_F(STLAlgorithmTest, StdCopyGlobalToGlobal) {
+  typedef std::pair<dart_unit_t, int> element_t;
+  typedef dash::Array<element_t>      array_t;
+  typedef array_t::const_iterator     const_it_t;
+  typedef array_t::index_type         index_t;
+  size_t local_size = 5;
+  // Source array:
+  dash::Array<element_t> array_a(_dash_size * local_size);
+  // Target array:
+  dash::Array<element_t> array_b(_dash_size * local_size);
+  // Initialize local elements:
+  index_t lidx = 0;
+  for (auto l_it = array_a.lbegin(); l_it != array_a.lend(); ++l_it, ++lidx) {
+    *l_it = std::make_pair(_dash_id, lidx);
+  }
+  // Wait for all units to initialize their assigned range:
+  array_a.barrier();
+
+  // Global-to-global copy using std::copy:
+  if (dash::myid() == 0) {
+    std::copy(array_a.begin(), array_a.end(), array_b.begin());
+  }
+  // Wait until copy operation is completed:
+  dash::barrier();
+
+  // Validate values:
+  lidx = 0;
+  for (auto l_it = array_b.lbegin(); l_it != array_b.lend(); ++l_it, ++lidx) {
+    ASSERT_EQ_U(array_a.local[lidx], static_cast<element_t>(*l_it));
+  }
+}
+
+TEST_F(STLAlgorithmTest, StdAllOf) {
+  typedef int                     element_t;
+  typedef dash::Array<element_t>  array_t;
+  typedef array_t::const_iterator const_it_t;
+  typedef array_t::index_type     index_t;
+  size_t local_size = 50;
+  // Source array:
+  dash::Array<element_t> array(_dash_size * local_size);
+  // Initialize local elements:
+  index_t lidx = 5;
+  for (auto l_it = array.lbegin(); l_it != array.lend(); ++l_it, ++lidx) {
+    *l_it = lidx;
+  }
+  // Wait for all units to initialize their assigned range:
+  array.barrier();
+
+  if (dash::myid() == 0) {
+    bool all_gt_0 = std::all_of(array.begin(), array.end(),
+                                [](dash::GlobRef<element_t> r) {
+                                  return r > 0;
+                                });
+    bool all_gt_4 = std::all_of(array.begin(), array.end(),
+                                [](dash::GlobRef<element_t> r) {
+                                  return r > 4;
+                                });
+    bool all_gt_5 = std::all_of(array.begin(), array.end(),
+                                [](dash::GlobRef<element_t> r) {
+                                  return r > 5;
+                                });
+    ASSERT_TRUE(all_gt_0);
+    ASSERT_TRUE(all_gt_4);
+    ASSERT_FALSE(all_gt_5);
+  }
 }

@@ -84,12 +84,20 @@ public:
   /**
    * Assignment operator.
    */
-  GlobRef<T> & operator=(const GlobRef<T> & other) {
+  GlobRef<T> & operator=(const GlobRef<T> & other)
+  {
     DASH_LOG_TRACE_VAR("GlobRef.=()", other);
-    // This would result in a dart_put:
-//  return *this = T(other);
-    _gptr = other._gptr;
-    return *this;
+    // This results in a dart_put, required for STL algorithms like
+    // std::copy to work on global ranges.
+    // TODO: Not well-defined:
+    //       This violates copy semantics, as
+    //         GlobRef(const GlobRef & other)
+    //       copies the GlobRef instance while
+    //         GlobRef=(const GlobRef & other)
+    //       puts the value.
+    return *this = static_cast<T>(other);
+//  _gptr = other._gptr;
+//  return *this;
   }
 
   friend void swap(GlobRef<T> a, GlobRef<T> b) {
