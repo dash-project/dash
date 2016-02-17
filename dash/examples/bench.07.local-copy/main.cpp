@@ -97,7 +97,7 @@ int main(int argc, char** argv)
   double time_s;
   size_t size;
   auto   params          = parse_args(argc, argv);
-  size_t num_iterations  = 11;
+  size_t num_iterations  = 10;
   int    num_repeats     = 50 * std::pow(2, 10);
   auto   ts_start        = Timer::Now();
   size_t num_numa_nodes  = dash::util::Locality::NumNumaNodes();

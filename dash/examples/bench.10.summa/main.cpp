@@ -295,6 +295,7 @@ void perform_test(
            << setw(6)  << "n"       << ", "
            << setw(12) << "size"    << ", "
            << setw(7)  << "team"    << ", "
+           << setw(11) << "tile"    << ", "
            << setw(6)  << "mem.mb"  << ", "
            << setw(10) << "mpi"     << ", "
            << setw(10) << "impl"    << ", "
@@ -332,9 +333,26 @@ void perform_test(
                        ) / 1024 ) / 1024;
     }
 
+    // Obtain pattern tile size:
+    dash::SizeSpec<2, extent_t> size_spec(n, n);
+    dash::TeamSpec<2, index_t>  team_spec(params.units_x, params.units_y);
+    auto pattern = dash::make_pattern<
+                     dash::summa_pattern_partitioning_constraints,
+                     dash::summa_pattern_mapping_constraints,
+                     dash::summa_pattern_layout_constraints >(
+                       size_spec,
+                       team_spec);
+    extent_t tilesize_y = pattern.blocksize(0);
+    extent_t tilesize_x = pattern.blocksize(1);
+
     std::ostringstream team_ss;
-    team_ss << params.units_x << "x" << params.units_y;
+    team_ss << params.units_y << "x" << params.units_x;
     std::string team_extents = team_ss.str();
+
+    std::ostringstream tile_ss;
+    tile_ss << tilesize_y << "x" << tilesize_x;
+    std::string tile_extents = tile_ss.str();
+
     std::string mpi_impl     = dash__toxstr(MPI_IMPL_ID);
 
     int gflops_peak = static_cast<int>(params.cpu_gflops_peak *
@@ -345,6 +363,7 @@ void perform_test(
          << setw(6)  << n              << ", "
          << setw(12) << (n*n)          << ", "
          << setw(7)  << team_extents   << ", "
+         << setw(11) << tile_extents   << ", "
          << setw(6)  << mem_total_mb   << ", "
          << setw(10) << mpi_impl       << ", "
          << setw(10) << variant_id     << ", "
