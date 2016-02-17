@@ -207,7 +207,6 @@ dart_team_memalloc_aligned(
   DART_LOG_DEBUG("dart_team_memalloc_aligned: "
                  "MPI_Win_allocate_shared(nbytes:%d)", nbytes);
 	if (sharedmem_comm != MPI_COMM_NULL) {
-    MPI_Barrier(sharedmem_comm);
     int ret = MPI_Win_allocate_shared(
                 nbytes,
                 sizeof(char),

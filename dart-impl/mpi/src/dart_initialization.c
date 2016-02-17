@@ -132,10 +132,6 @@ dart_ret_t dart_init(
       return DART_ERR_OTHER;
     }
     DART_LOG_DEBUG("dart_init: MPI_Win_allocate_shared completed");
-/*
-    TODO: Clarify: why no MPI_Win_lock for this window?
-    MPI_Win_lock_all(0, dart_sharedmem_win_local_alloc);
-*/
 
 		int sharedmem_unitid;
 		MPI_Comm_size(
