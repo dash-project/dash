@@ -20,6 +20,9 @@ using std::endl;
 using std::vector;
 using std::string;
 
+// Environment variables as array of strings, terminated by null pointer.
+extern char ** environ;
+
 typedef int     ElementType;
 typedef int64_t index_t;
 typedef dash::Array<
@@ -368,6 +371,29 @@ benchmark_params parse_args(int argc, char * argv[])
       }
     }
   }
+  // Add environment variables starting with 'I_MPI_' or 'MP_' to
+  // params.env_config:
+  int    i          = 1;
+  char * env_var_kv = *environ;
+  for (; env_var_kv != 0; ++i) {
+    string flag_str(env_var_kv);
+    if (flag_str.substr(0, 6) == "I_MPI_" ||
+        flag_str.substr(0, 4) == "MV2_"   ||
+        flag_str.substr(0, 3) == "MP_")
+    {
+      // Split into key and value:
+      string::size_type fi = flag_str.find('=');
+      string::size_type fj = flag_str.find('=', fi);
+      if (fj == string::npos) {
+        fj = flag_str.length();
+      }
+      string flag_name    = flag_str.substr(0,    fi);
+      string flag_value   = flag_str.substr(fi+1, fj);
+      params.env_config.push_back(std::make_pair(flag_name, flag_value));
+    }
+    env_var_kv = *(environ + i);
+  }
+
   return params;
 }
 
@@ -385,8 +411,8 @@ void print_params(const benchmark_params & params)
        << "--   Flags:"
        << endl;
   for (auto flag : params.env_config) {
-    cout << "--     " << std::setw(box_width-12) << std::left  << flag.first
-                      << std::setw(5)            << std::right << flag.second
+    cout << "--     " << std::setw(box_width-22) << std::left  << flag.first
+                      << std::setw(15)           << std::right << flag.second
          << endl;
   }
 #ifdef MPI_IMPL_ID
