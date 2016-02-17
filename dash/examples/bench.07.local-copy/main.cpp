@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <vector>
 #include <string>
+#include <utility>
 #include <math.h>
 #include <unistd.h>
 
@@ -29,6 +30,16 @@ typedef dash::Array<
 typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
+
+typedef std::vector< std::pair< std::string, std::string > >
+  env_flags;
+
+typedef struct benchmark_params_t {
+  env_flags   env_config;
+  bool        env_mkl;
+  bool        env_scalapack;
+  bool        env_mpi_shared_win;
+} benchmark_params;
 
 typedef struct {
   int  rank;
@@ -65,20 +76,25 @@ const std::string dash_copy_variant = "wait";
 
 double copy_block_to_local(size_t size, int num_repeats, index_t block_index);
 
+benchmark_params parse_args(int argc, char * argv[]);
+
+void print_params(const benchmark_params & params);
 void print_measurement_header();
 void print_measurement_record(
-  const std::string & scenario,
-  int    unit_src,
-  size_t size,
-  int    num_repeats,
-  double sec_total,
-  double kps);
+  const std::string      & scenario,
+  const benchmark_params & params,
+  int                      unit_src,
+  size_t                   size,
+  int                      num_repeats,
+  double                   time_s,
+  double                   kps);
 
 int main(int argc, char** argv)
 {
   double kps;
   double time_s;
   size_t size;
+  auto   params          = parse_args(argc, argv);
   size_t num_iterations  = 5;
   int    num_repeats     = 200;
   auto   ts_start        = Timer::Now();
@@ -110,27 +126,23 @@ int main(int argc, char** argv)
   dash::barrier();
 
   if (dash::myid() == 0) {
-    cout << std::setw(5)  << "unit"      << " "
-         << std::setw(20) << "host"      << " "
-         << std::setw(10) << "numa node" << " "
+    print_params(params);
+
+    cout << std::left     << "-- "
+         << std::setw(5)  << "unit"
+         << std::setw(32) << "host"
+         << std::setw(10) << "numa node"
          << std::setw(5)  << "cpu"
          << endl;
-    for (dart_unit_t unit = 0; unit < dash::size(); ++unit) {
+    for (size_t unit = 0; unit < dash::size(); ++unit) {
       unit_pin_info pin_info = unit_pinning[unit];
-      cout << std::setw(5)  << pin_info.rank      << " "
-           << std::setw(20) << pin_info.host      << " "
-           << std::setw(10) << pin_info.numa_node << " "
+      cout << std::left     << "-- "
+           << std::setw(5)  << pin_info.rank
+           << std::setw(32) << pin_info.host
+           << std::setw(10) << pin_info.numa_node
            << std::setw(5)  << pin_info.cpu
            << endl;
     }
-    cout << "number of NUMA nodes: " << num_numa_nodes
-         << endl
-         << "local CPUs:           " << num_local_cpus
-         << endl
-         << "cores per NUMA node:  " << numa_node_cores
-         << endl
-         << "cores per socket:     " << socket_cores
-         << endl;
   }
 
   dash::barrier();
@@ -151,7 +163,7 @@ int main(int argc, char** argv)
     ts_start = Timer::Now();
     kps      = copy_block_to_local(size, num_repeats, unit_src);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("local", unit_src, size, num_repeats,
+    print_measurement_record("local", params, unit_src, size, num_repeats,
                              time_s, kps);
 
     // Copy last block in the master's NUMA domain:
@@ -159,7 +171,7 @@ int main(int argc, char** argv)
     ts_start = Timer::Now();
     kps      = copy_block_to_local(size, num_repeats, unit_src);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("uma", unit_src, size, num_repeats,
+    print_measurement_record("uma", params, unit_src, size, num_repeats,
                              time_s, kps);
 
     // Copy block in the master's neighbor NUMA domain:
@@ -167,7 +179,7 @@ int main(int argc, char** argv)
     ts_start = Timer::Now();
     kps      = copy_block_to_local(size, num_repeats, unit_src);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("numa", unit_src, size, num_repeats,
+    print_measurement_record("numa", params, unit_src, size, num_repeats,
                              time_s, kps);
 
     // Copy first block in next socket on the master's node:
@@ -175,7 +187,7 @@ int main(int argc, char** argv)
     ts_start = Timer::Now();
     kps      = copy_block_to_local(size, num_repeats, unit_src);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("socket", unit_src, size, num_repeats,
+    print_measurement_record("socket", params, unit_src, size, num_repeats,
                              time_s, kps);
 
     // Copy block preceeding last block as it is guaranteed to be located on
@@ -184,7 +196,7 @@ int main(int argc, char** argv)
     ts_start = Timer::Now();
     kps      = copy_block_to_local(size, num_repeats, unit_src);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remote", unit_src, size, num_repeats,
+    print_measurement_record("remote", params, unit_src, size, num_repeats,
                              time_s, kps);
   }
 
@@ -243,7 +255,7 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
     elapsed = Timer::ElapsedSince(timer_start);
 
     // Validate values:
-    for (size_t l = 0; l < block_size; ++l) {
+    for (int l = 0; l < static_cast<int>(block_size); ++l) {
       if (local_array[l] != ((source_unit_id + 1) * 1000) + l) {
         DASH_THROW(dash::exception::RuntimeError,
                    "copy_block_to_local: Validation failed");
@@ -264,48 +276,141 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
 void print_measurement_header()
 {
   if (dash::myid() == 0) {
-    cout << "bench.07.local-copy"
-         << endl
-         << endl
-         << std::setw(5)  << "units"     << ","
-         << std::setw(10) << "mpi impl"  << ","
-         << std::setw(10) << "copy type" << ","
-         << std::setw(10) << "scenario"  << ","
-         << std::setw(9)  << "src.unit"  << ","
-         << std::setw(9)  << "repeats"   << ","
-         << std::setw(12) << "blocksize" << ","
-         << std::setw(9)  << "glob.mb"   << ","
-         << std::setw(9)  << "mb/rank"   << ","
-         << std::setw(9)  << "time.s"    << ","
+    cout << std::right
+         << std::setw(5)  << "units"      << ","
+         << std::setw(10) << "mpi.impl"   << ","
+         << std::setw(10) << "copy type"  << ","
+         << std::setw(10) << "scenario"   << ","
+         << std::setw(9)  << "src.unit"   << ","
+         << std::setw(9)  << "repeats"    << ","
+         << std::setw(12) << "blocksize"  << ","
+         << std::setw(9)  << "glob.mb"    << ","
+         << std::setw(9)  << "mb/rank"    << ","
+         << std::setw(9)  << "time.s"     << ","
          << std::setw(12) << "elem.m/s"
          << endl;
   }
 }
 
 void print_measurement_record(
-  const std::string & scenario,
-  int    unit_src,
-  size_t size,
-  int    num_repeats,
-  double time_s,
-  double kps)
+  const std::string      & scenario,
+  const benchmark_params & params,
+  int                      unit_src,
+  size_t                   size,
+  int                      num_repeats,
+  double                   secs,
+  double                   kps)
 {
   if (dash::myid() == 0) {
     string mpi_impl = dash__toxstr(MPI_IMPL_ID);
-    double mem_glob = ((static_cast<double>(size) *
-                        sizeof(ElementType)) / 1024) / 1024;
-    double mem_rank = mem_glob / dash::size();
-    cout << std::setw(5)  << dash::size()        << ","
+    double mem_g = ((static_cast<double>(size) *
+                     sizeof(ElementType)) / 1024) / 1024;
+    double mem_l = mem_g / dash::size();
+    cout << std::right
+         << std::setw(5)  << dash::size()        << ","
          << std::setw(10) << mpi_impl            << ","
-         << std::setw(10) << dash_copy_variant   << ","
          << std::setw(10) << scenario            << ","
+         << std::setw(10) << dash_copy_variant   << ","
          << std::setw(9)  << unit_src            << ","
          << std::setw(9)  << num_repeats         << ","
          << std::setw(12) << size / dash::size() << ","
-         << std::fixed << std::setprecision(2) << std::setw(9)  << mem_glob << ","
-         << std::fixed << std::setprecision(2) << std::setw(9)  << mem_rank << ","
-         << std::fixed << std::setprecision(2) << std::setw(9)  << time_s   << ","
+         << std::fixed << std::setprecision(2) << std::setw(9)  << mem_g << ","
+         << std::fixed << std::setprecision(2) << std::setw(9)  << mem_l << ","
+         << std::fixed << std::setprecision(2) << std::setw(9)  << secs  << ","
          << std::fixed << std::setprecision(2) << std::setw(12) << kps
          << endl;
   }
+}
+
+benchmark_params parse_args(int argc, char * argv[])
+{
+  benchmark_params params;
+  params.env_mpi_shared_win = true;
+  params.env_mkl            = false;
+  params.env_scalapack      = false;
+#ifdef DASH_ENABLE_MKL
+  params.env_mkl            = true;
+#endif
+#ifdef DASH_ENABLE_SCALAPACK
+  params.env_scalapack      = true;
+#endif
+#ifdef DART_MPI_DISABLE_SHARED_WINDOWS
+  params.env_mpi_shared_win = false;
+#endif
+  for (auto i = 1; i < argc; i += 2) {
+    std::string flag = argv[i];
+    if (flag == "-envcfg") {
+      std::string flags_str = argv[i+1];
+      // Split string into vector of key-value pairs
+      const char delim    = ':';
+      string::size_type i = 0;
+      string::size_type j = flags_str.find(delim);
+      while (j != string::npos) {
+        string flag_str = flags_str.substr(i, j-i);
+        // Split into key and value:
+        string::size_type fi = flag_str.find('=');
+        string::size_type fj = flag_str.find('=', fi);
+        if (fj == string::npos) {
+          fj = flag_str.length();
+        }
+        string flag_name    = flag_str.substr(0,    fi);
+        string flag_value   = flag_str.substr(fi+1, fj);
+        params.env_config.push_back(std::make_pair(flag_name, flag_value));
+        i = ++j;
+        j = flags_str.find(delim, j);
+      }
+      if (j == string::npos) {
+        // Split into key and value:
+        string::size_type k = flags_str.find('=', i+1);
+        string flag_name    = flags_str.substr(i, k-i);
+        string flag_value   = flags_str.substr(k+1, flags_str.length());
+        params.env_config.push_back(std::make_pair(flag_name, flag_value));
+      }
+    }
+  }
+  return params;
+}
+
+void print_params(const benchmark_params & params)
+{
+  size_t box_width = 53;
+  std::string separator(box_width, '-');
+  size_t numa_nodes = dash::util::Locality::NumNumaNodes();
+  size_t local_cpus = dash::util::Locality::NumCPUs();
+  cout << separator << endl
+       << "-- bench.07.local-copy" << endl
+       << "-- environment:"        << endl
+       << "--   NUMA nodes:" << std::setw(box_width-16) << numa_nodes << endl
+       << "--   Local CPUs:" << std::setw(box_width-16) << local_cpus << endl
+       << "--   Flags:"
+       << endl;
+  for (auto flag : params.env_config) {
+    cout << "--     " << std::setw(box_width-12) << std::left  << flag.first
+                      << std::setw(5)            << std::right << flag.second
+         << endl;
+  }
+#ifdef MPI_IMPL_ID
+  cout << "--   MPI implementation:"
+       << std::setw(box_width-24) << dash__toxstr(MPI_IMPL_ID) << endl;
+#endif
+  cout << "--   MPI shared windows:";
+  if (params.env_mpi_shared_win) {
+    cout << std::setw(box_width-24) <<  "enabled" << endl;
+  } else {
+    cout << std::setw(box_width-24) << "disabled" << endl;
+  }
+  cout << "--   Intel MKL:";
+  if (params.env_mkl) {
+    cout << std::setw(box_width-15) << "enabled" << endl;
+    cout << "--   ScaLAPACK:";
+    if (params.env_scalapack) {
+      cout << std::setw(box_width-15) <<  "enabled" << endl;
+    } else {
+      cout << std::setw(box_width-15) << "disabled" << endl;
+    }
+  } else {
+    cout << std::setw(box_width-15) << "disabled" << endl;
+  }
+  cout << separator
+       << endl;
 }

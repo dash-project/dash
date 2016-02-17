@@ -51,6 +51,7 @@ extern "C" {
 using std::cout;
 using std::endl;
 using std::setw;
+using std::string;
 
 typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
@@ -84,7 +85,11 @@ typedef float     value_t;
 typedef int64_t   index_t;
 typedef uint64_t  extent_t;
 
+typedef std::vector< std::pair< std::string, std::string > >
+  env_flags;
+
 typedef struct benchmark_params_t {
+  env_flags   env_config;
   std::string variant;
   extent_t    size_base;
   extent_t    exp_max;
@@ -155,53 +160,14 @@ int main(int argc, char* argv[])
 
   // Collect process pinning information:
   //
-  size_t num_numa_nodes  = dash::util::Locality::NumNumaNodes();
-  // Number of physical cores on this system, divided by 2 to
-  // eliminate HT cores:
-  size_t num_local_cpus  = dash::util::Locality::NumCPUs();
-  // Number of physical cores in a single NUMA domain (7 on SuperMUC):
-  size_t numa_node_cores = num_local_cpus / num_numa_nodes;
-  // Number of physical cores on a single socket (14 on SuperMUC):
-  size_t socket_cores    = numa_node_cores * 2;
-
   dash::Array<unit_pin_info> unit_pinning(dash::size());
-
-  int cpu        = dash::util::Locality::UnitCPU();
-  int numa_node  = dash::util::Locality::UnitNUMANode();
-
   unit_pin_info my_pin_info;
   my_pin_info.rank      = dash::myid();
-  my_pin_info.cpu       = cpu;
-  my_pin_info.numa_node = numa_node;
+  my_pin_info.cpu       = dash::util::Locality::UnitCPU();
+  my_pin_info.numa_node = dash::util::Locality::UnitNUMANode();
   gethostname(my_pin_info.host, 100);
 
   unit_pinning[dash::myid()] = my_pin_info;
-
-  dash::barrier();
-
-  if (dash::myid() == 0) {
-    cout << std::setw(5)  << "unit"      << " "
-         << std::setw(20) << "host"      << " "
-         << std::setw(10) << "numa node" << " "
-         << std::setw(5)  << "cpu"
-         << endl;
-    for (int unit = 0; unit < dash::size(); ++unit) {
-      unit_pin_info pin_info = unit_pinning[unit];
-      cout << std::setw(5)  << pin_info.rank      << " "
-           << std::setw(20) << pin_info.host      << " "
-           << std::setw(10) << pin_info.numa_node << " "
-           << std::setw(5)  << pin_info.cpu
-           << endl;
-    }
-    cout << "number of NUMA nodes: " << num_numa_nodes
-         << endl
-         << "local CPUs:           " << num_local_cpus
-         << endl
-         << "cores per NUMA node:  " << numa_node_cores
-         << endl
-         << "cores per socket:     " << socket_cores
-         << endl;
-  }
 
   dash::barrier();
 
@@ -262,8 +228,26 @@ int main(int argc, char* argv[])
 #endif
   }
 
+  dash::barrier();
+
   if (myid == 0) {
     print_params(params);
+
+    cout << std::left     << "-- "
+         << std::setw(5)  << "unit"
+         << std::setw(32) << "host"
+         << std::setw(10) << "numa node"
+         << std::setw(5)  << "cpu"
+         << endl;
+    for (size_t unit = 0; unit < dash::size(); ++unit) {
+      unit_pin_info pin_info = unit_pinning[unit];
+      cout << std::left     << "-- "
+           << std::setw(5)  << pin_info.rank
+           << std::setw(32) << pin_info.host
+           << std::setw(10) << pin_info.numa_node
+           << std::setw(5)  << pin_info.cpu
+           << endl;
+    }
   }
 
   // Run tests, try to balance overall number of gflop in test runs:
@@ -302,13 +286,14 @@ void perform_test(
   if (myid == 0) {
     if (iteration == 0) {
       // Print data set column headers:
-      cout << setw(7)  << "units"   << ", "
+      cout << std::right
+           << setw(7)  << "units"   << ", "
            << setw(7)  << "threads" << ", "
            << setw(6)  << "n"       << ", "
            << setw(12) << "size"    << ", "
            << setw(7)  << "team"    << ", "
            << setw(6)  << "mem.mb"  << ", "
-           << setw(10)  << "mpi"     << ", "
+           << setw(10) << "mpi"     << ", "
            << setw(10) << "impl"    << ", "
            << setw(12) << "gflop/r" << ", "
            << setw(7)  << "peak.gf" << ", "
@@ -351,7 +336,8 @@ void perform_test(
 
     int gflops_peak = static_cast<int>(params.cpu_gflops_peak *
                                        num_units * params.threads);
-    cout << setw(7)  << num_units      << ", "
+    cout << std::right
+         << setw(7)  << num_units      << ", "
          << setw(7)  << params.threads << ", "
          << setw(6)  << n              << ", "
          << setw(12) << (n*n)          << ", "
@@ -895,6 +881,33 @@ benchmark_params parse_args(int argc, char * argv[])
       params.mkl_dyn  = true;
     } else if (flag == "-cpupeak") {
       params.cpu_gflops_peak = static_cast<float>(atof(argv[i+1]));
+    } else if (flag == "-envcfg") {
+      std::string flags_str = argv[i+1];
+      // Split string into vector of key-value pairs
+      const char delim    = ':';
+      string::size_type i = 0;
+      string::size_type j = flags_str.find(delim);
+      while (j != string::npos) {
+        string flag_str = flags_str.substr(i, j-i);
+        // Split into key and value:
+        string::size_type fi = flag_str.find('=');
+        string::size_type fj = flag_str.find('=', fi);
+        if (fj == string::npos) {
+          fj = flag_str.length();
+        }
+        string flag_name    = flag_str.substr(0,    fi);
+        string flag_value   = flag_str.substr(fi+1, fj);
+        params.env_config.push_back(std::make_pair(flag_name, flag_value));
+        i = ++j;
+        j = flags_str.find(delim, j);
+      }
+      if (j == string::npos) {
+        // Split into key and value:
+        string::size_type k = flags_str.find('=', i+1);
+        string flag_name    = flags_str.substr(i, k-i);
+        string flag_value   = flags_str.substr(k+1, flags_str.length());
+        params.env_config.push_back(std::make_pair(flag_name, flag_value));
+      }
     }
   }
   if (size_base == 0 && max_units > 0 && num_units_inc > 0) {
@@ -931,57 +944,74 @@ benchmark_params parse_args(int argc, char * argv[])
 
 void print_params(const benchmark_params & params)
 {
-  cout << "---------------------------------" << endl
-       << "-- DASH benchmark bench.10.summa" << endl
+  size_t box_width = 53;
+  std::string separator(box_width, '-');
+  size_t numa_nodes = dash::util::Locality::NumNumaNodes();
+  size_t local_cpus = dash::util::Locality::NumCPUs();
+  cout << separator           << endl
+       << "-- bench.10.summa" << endl
+       << "-- environment:"   << endl
+       << std::right
+       << "--   NUMA nodes:"  << std::setw(box_width-16) << numa_nodes << endl
+       << "--   Local CPUs:"  << std::setw(box_width-16) << local_cpus << endl
+       << "--   Flags:"
+       << endl;
+  for (auto flag : params.env_config) {
+    cout << "--     " << std::setw(box_width-12) << std::left  << flag.first
+                      << std::setw(5)            << std::right << flag.second
+         << endl;
+  }
+  size_t w = box_width-25;
+  cout << std::right
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
-       << "-- data type:            " << setw(8) << "double" << endl
+       << "-- data type:            " << setw(w) << "double" << endl
 #else
-       << "-- data type:            " << setw(8) << "float"  << endl
+       << "-- data type:            " << setw(w) << "float"  << endl
 #endif
        << "-- parameters:" << endl
-       << "--   -s    variant:      " << setw(8) << params.variant   << endl
-       << "--   -sb   size base:    " << setw(8) << params.size_base << endl
-       << "--   -nmax units max:    " << setw(8) << params.units_max << endl
-       << "--   -nx   team size x:  " << setw(8) << params.units_x   << endl
-       << "--   -ny   team size y:  " << setw(8) << params.units_y   << endl
-       << "--   -ninc units inc:    " << setw(8) << params.units_inc << endl
-       << "--   -nt   threads/unit: " << setw(8) << params.threads   << endl
-       << "--   -emax exp max:      " << setw(8) << params.exp_max   << endl
-       << "--   -rmax rep. max:     " << setw(8) << params.rep_max   << endl
-       << "--   -rb   rep. base:    " << setw(8) << params.rep_base  << endl
+       << "--   -s    variant:      " << setw(w) << params.variant   << endl
+       << "--   -sb   size base:    " << setw(w) << params.size_base << endl
+       << "--   -nmax units max:    " << setw(w) << params.units_max << endl
+       << "--   -nx   team size x:  " << setw(w) << params.units_x   << endl
+       << "--   -ny   team size y:  " << setw(w) << params.units_y   << endl
+       << "--   -ninc units inc:    " << setw(w) << params.units_inc << endl
+       << "--   -nt   threads/unit: " << setw(w) << params.threads   << endl
+       << "--   -emax exp max:      " << setw(w) << params.exp_max   << endl
+       << "--   -rmax rep. max:     " << setw(w) << params.rep_max   << endl
+       << "--   -rb   rep. base:    " << setw(w) << params.rep_base  << endl
        << "-- environment:" << endl;
 #ifdef MPI_IMPL_ID
-  cout << "--   MPI implementation: "
-       << setw(8) << dash__toxstr(MPI_IMPL_ID) << endl;
+  cout << "--   MPI implementation:"
+       << setw(box_width-24) << dash__toxstr(MPI_IMPL_ID) << endl;
 #endif
-  cout << "--   MPI shared windows: ";
+  cout << "--   MPI shared windows:";
   if (params.env_mpi_shared_win) {
-    cout << " enabled" << endl;
+    cout << setw(box_width-24) << "enabled"  << endl;
   } else {
-    cout << "disabled" << endl;
+    cout << setw(box_width-24) << "disabled" << endl;
   }
-  cout << "--   Intel MKL:          ";
+  cout << "--   Intel MKL:";
   if (params.env_mkl) {
-    cout << " enabled" << endl;
-    cout << "--   MKL dynamic:        ";
+    cout << setw(box_width-15) << " enabled" << endl;
+    cout << "--   MKL dynamic:";
     if (params.mkl_dyn) {
-      cout << " enabled" << endl;
+      cout << setw(box_width-17) << "enabled"  << endl;
     } else {
-      cout << "disabled" << endl;
+      cout << setw(box_width-17) << "disabled" << endl;
     }
-    cout << "--   ScaLAPACK:          ";
+    cout << "--   ScaLAPACK:";
     if (params.env_scalapack) {
-      cout << " enabled" << endl;
+      cout << setw(box_width-15) << "enabled" << endl;
     } else {
-      cout << "disabled" << endl;
+      cout << setw(box_width-15) << "disabled" << endl;
     }
   } else {
-    cout << "disabled" << endl
+    cout << setw(box_width-15) << "disabled" << endl
          << "-- ! MKL not available,"           << endl
          << "-- ! falling back to naive local"  << endl
          << "-- ! matrix multiplication"        << endl
          << endl;
   }
-  cout << "---------------------------------"
+  cout << separator
        << endl;
 }
