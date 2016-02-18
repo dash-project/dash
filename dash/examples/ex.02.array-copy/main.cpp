@@ -1,13 +1,14 @@
-/* 
- * \file examples/ex.02.array-copy/main.cpp 
- *
- * author(s): Tobias Fuchs, LMU Munich */
+/**
+ * \file examples/ex.02.array-copy/main.cpp
+ */
 /* @DASH_HEADER@ */
 
 #include <unistd.h>
 #include <iostream>
+#include <sstream>
 #include <cstddef>
 
+#define DASH__ALGORITHM__COPY__USE_WAIT
 #include <libdash.h>
 
 using std::cout;
@@ -16,8 +17,7 @@ using std::endl;
 template<
   template<typename, typename...> class ARRAY,
   typename T,
-  typename... REST
->
+  typename... REST >
 void fill_array(ARRAY<T, REST...> &array, T value)
 {
   std::fill(array.lbegin(), array.lend(), value);
@@ -42,16 +42,20 @@ int main(int argc, char* argv[])
 
   dash::Array<int> array(num_elems_total);
 
-  cout << endl
-       << "Elements per unit: " << num_elems_unit  << endl
-       << "Start index:       " << start_index     << endl
-       << "Elements to copy:  " << num_elems_copy  << endl;
+  if (myid == 0) {
+    cout << endl
+         << "Elements per unit: " << num_elems_unit  << endl
+         << "Start index:       " << start_index     << endl
+         << "Elements to copy:  " << num_elems_copy  << endl;
+  }
 
-  fill_array(array, myid);
+  std::fill(array.lbegin(), array.lend(), myid);
 
   array.barrier();
 
-  cout << "Array size:        " << array.size() << endl;
+  if (myid == 0) {
+    cout << "Array size:        " << array.size() << endl;
+  }
 
   int * local_array = new int[num_elems_copy];
 
@@ -59,10 +63,13 @@ int main(int argc, char* argv[])
              array.begin() + start_index + num_elems_copy,
              local_array);
 
+  std::ostringstream ss;
+  ss << "Local copy at unit " << myid << ": ";
   for(size_t i = 0; i < num_elems_copy; ++i) {
-    cout << local_array[i] << " ";
+    ss << local_array[i] << " ";
   }
-  cout << endl;
+  ss << endl;
+  cout << ss.str();
 
   array.barrier();
 
