@@ -1,8 +1,12 @@
 #ifndef DASH__UTIL__LOCALITY_H__
 #define DASH__UTIL__LOCALITY_H__
 
-#include <libdash.h>
+#include <dash/internal/Config.h>
+#include <dash/Exception.h>
+#include <dash/Init.h>
+
 #include <unistd.h>
+#include <string>
 
 #ifdef DASH_ENABLE_NUMA
 #include <utmpx.h>
@@ -39,9 +43,13 @@ public:
 #else
     DASH_THROW(
       dash::exception::NotImplemented,
-      "dash::util::Locality::NumCPUs required libnuma or POSIX platform")
+      "dash::util::Locality::NumCPUs required libnuma or POSIX platform");
 #endif
 #endif
+  }
+
+  static inline int NumNodes() {
+    return dash::size() / NumCPUs();
   }
 
   static inline int UnitNUMANode() {
@@ -60,7 +68,7 @@ public:
 #else
     DASH_THROW(
       dash::exception::NotImplemented,
-      "dash::util::Locality::UnitCPU is only available on Linux platforms")
+      "dash::util::Locality::UnitCPU is only available on Linux platforms");
 #endif
   }
 

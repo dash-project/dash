@@ -5,6 +5,7 @@
 #include <dash/BlockPattern.h>
 #include <dash/TilePattern.h>
 #include <dash/ShiftTilePattern.h>
+#include <dash/util/Locality.h>
 
 namespace dash {
 
@@ -24,8 +25,10 @@ make_team_spec(
   DASH_LOG_TRACE("dash::make_team_spec()");
   // Deduce number of dimensions from size spec:
   const dim_t ndim = SizeSpecType::ndim();
-  // Total team size:
+  // Total number of processes:
   auto  nunits     = dash::size();
+  // Number of processing nodes:
+  auto  nnodes     = dash::util::Locality::NumNodes();
   // Default team spec:
   dash::TeamSpec<ndim> teamspec;
   if (!MappingTraits::diagonal && !MappingTraits::neighbor &&
@@ -63,10 +66,11 @@ make_team_spec(
                    "nblocks[d]:", nblocks_d);
     auto nblocks_d = nunits_d;
     if (MappingTraits::multiple && ndim > 1) {
+      auto split_factor = nnodes > 1 ? nnodes : 2;
       if (d == 0) {
-        nunits_d /= 2;
+        nunits_d /= split_factor;
       } else if (d == 1) {
-        nunits_d *= 2;
+        nunits_d *= split_factor;
       }
     }
     if (MappingTraits::diagonal || MappingTraits::neighbor) {
