@@ -49,7 +49,7 @@ public:
   }
 
   static inline int NumNodes() {
-    return dash::size() / NumCPUs();
+    return std::max<int>(dash::size() / NumCPUs(), 1);
   }
 
   static inline int UnitNUMANode() {
