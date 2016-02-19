@@ -103,11 +103,8 @@ typedef struct benchmark_params_t {
   extent_t    units_y;
   extent_t    units_inc;
   extent_t    threads;
-  bool        env_mkl;
-  bool        env_scalapack;
-  bool        env_mpi_shared_win;
-  bool        mkl_dyn;
   float       cpu_gflops_peak;
+  bool        mkl_dyn;
 } benchmark_params;
 
 template<typename MatrixType>
@@ -146,7 +143,9 @@ void perform_test(
 
 benchmark_params parse_args(int argc, char * argv[]);
 
-void print_params(const benchmark_params & params);
+void print_params(
+  const dash::util::BenchmarkParams & bench_cfg,
+  const benchmark_params            & params);
 
 
 int main(int argc, char* argv[])
@@ -159,19 +158,6 @@ int main(int argc, char* argv[])
 
   dash::barrier();
   DASH_LOG_DEBUG_VAR("bench.10.summa", getpid());
-  dash::barrier();
-
-  // Collect process pinning information:
-  //
-  dash::Array<unit_pin_info> unit_pinning(dash::size());
-  unit_pin_info my_pin_info;
-  my_pin_info.rank      = dash::myid();
-  my_pin_info.cpu       = dash::util::Locality::UnitCPU();
-  my_pin_info.numa_node = dash::util::Locality::UnitNUMANode();
-  gethostname(my_pin_info.host, 100);
-
-  unit_pinning[dash::myid()] = my_pin_info;
-
   dash::barrier();
 
   auto        params      = parse_args(argc, argv);
@@ -231,27 +217,12 @@ int main(int argc, char* argv[])
 #endif
   }
 
-  dash::barrier();
+  dash::util::BenchmarkParams bench_params("bench.10.summa");
+  bench_params.set_output_width(72);
+  bench_params.print_header();
+  bench_params.print_pinning();
 
-  if (myid == 0) {
-    print_params(params);
-
-    cout << std::left     << "-- "
-         << std::setw(5)  << "unit"
-         << std::setw(32) << "host"
-         << std::setw(10) << "numa node"
-         << std::setw(5)  << "cpu"
-         << endl;
-    for (size_t unit = 0; unit < dash::size(); ++unit) {
-      unit_pin_info pin_info = unit_pinning[unit];
-      cout << std::left     << "-- "
-           << std::setw(5)  << pin_info.rank
-           << std::setw(32) << pin_info.host
-           << std::setw(10) << pin_info.numa_node
-           << std::setw(5)  << pin_info.cpu
-           << endl;
-    }
-  }
+  print_params(bench_params, params);
 
   // Run tests, try to balance overall number of gflop in test runs:
   extent_t extent_base = 1;
@@ -856,25 +827,13 @@ benchmark_params parse_args(int argc, char * argv[])
   params.units_y            = 0;
   params.threads            = 1;
   params.exp_max            = 4;
-  params.mkl_dyn            = false;
-  params.env_mpi_shared_win = true;
-  params.env_mkl            = false;
-  params.env_scalapack      = false;
   params.cpu_gflops_peak    = 41.4;
-#ifdef DASH_ENABLE_MKL
-  params.env_mkl            = true;
-  params.exp_max            = 7;
-#endif
-#ifdef DASH_ENABLE_SCALAPACK
-  params.env_scalapack      = true;
-#endif
-#ifdef DART_MPI_DISABLE_SHARED_WINDOWS
-  params.env_mpi_shared_win = false;
-#endif
-  extent_t size_base     = 0;
-  extent_t num_units_inc = 0;
-  extent_t max_units     = 0;
-  extent_t remainder     = 0;
+  params.mkl_dyn            = false;
+
+  extent_t size_base        = 0;
+  extent_t num_units_inc    = 0;
+  extent_t max_units        = 0;
+  extent_t remainder        = 0;
   for (auto i = 1; i < argc; i += 2) {
     std::string flag = argv[i];
     if (flag == "-sb") {
@@ -903,55 +862,7 @@ benchmark_params parse_args(int argc, char * argv[])
       params.mkl_dyn  = true;
     } else if (flag == "-cpupeak") {
       params.cpu_gflops_peak = static_cast<float>(atof(argv[i+1]));
-    } else if (flag == "-envcfg") {
-#if 0
-      std::string flags_str = argv[i+1];
-      // Split string into vector of key-value pairs
-      const char delim    = ':';
-      string::size_type i = 0;
-      string::size_type j = flags_str.find(delim);
-      while (j != string::npos) {
-        string flag_str = flags_str.substr(i, j-i);
-        // Split into key and value:
-        string::size_type fi = flag_str.find('=');
-        string::size_type fj = flag_str.find('=', fi);
-        if (fj == string::npos) {
-          fj = flag_str.length();
-        }
-        string flag_name    = flag_str.substr(0,    fi);
-        string flag_value   = flag_str.substr(fi+1, fj);
-        params.env_config.push_back(std::make_pair(flag_name, flag_value));
-        i = ++j;
-        j = flags_str.find(delim, j);
-      }
-      if (j == string::npos) {
-        // Split into key and value:
-        string::size_type k = flags_str.find('=', i+1);
-        string flag_name    = flags_str.substr(i, k-i);
-        string flag_value   = flags_str.substr(k+1, flags_str.length());
-        params.env_config.push_back(std::make_pair(flag_name, flag_value));
-      }
-#endif
     }
-  }
-  // Add environment variables starting with 'I_MPI_' or 'MP_' to
-  // params.env_config:
-  int    i          = 1;
-  char * env_var_kv = *environ;
-  for (; env_var_kv != 0; ++i) {
-    if (strstr(env_var_kv, "I_MPI_") == env_var_kv ||
-        strstr(env_var_kv, "MV2_")   == env_var_kv ||
-        strstr(env_var_kv, "MP_")    == env_var_kv)
-    {
-      // Split into key and value:
-      char * flag_name_cstr  = env_var_kv;
-      char * flag_value_cstr = strstr(env_var_kv, "=");
-      int    flag_name_len   = flag_value_cstr - flag_name_cstr;
-      std::string flag_name(flag_name_cstr, flag_name_cstr + flag_name_len);
-      std::string flag_value(flag_value_cstr+1);
-      params.env_config.push_back(std::make_pair(flag_name, flag_value));
-    }
-    env_var_kv = *(environ + i);
   }
   if (size_base == 0 && max_units > 0 && num_units_inc > 0) {
     size_base = num_units_inc;
@@ -982,79 +893,42 @@ benchmark_params parse_args(int argc, char * argv[])
     }
   }
   params.size_base = size_base;
+
+  if (params.size_base == 0) {
+    DASH_THROW(
+      dash::exception::InvalidArgument,
+      "Unspecified argument: -sb <size base>");
+  }
+
   return params;
 }
 
-void print_params(const benchmark_params & params)
+void print_params(
+  const dash::util::BenchmarkParams & bench_cfg,
+  const benchmark_params            & params)
 {
-  size_t box_width = 53;
-  std::string separator(box_width, '-');
-  size_t numa_nodes = dash::util::Locality::NumNumaNodes();
-  size_t local_cpus = dash::util::Locality::NumCPUs();
-  cout << separator           << endl
-       << "-- bench.10.summa" << endl
-       << "-- environment:"   << endl
-       << std::right
-       << "--   NUMA nodes:"  << std::setw(box_width-16) << numa_nodes << endl
-       << "--   Local CPUs:"  << std::setw(box_width-16) << local_cpus << endl
-       << "--   Flags:"
-       << endl;
-  for (auto flag : params.env_config) {
-    cout << "--     " << std::setw(box_width-22) << std::left  << flag.first
-                      << std::setw(15)           << std::right << flag.second
-         << endl;
+  if (dash::myid() != 0) {
+    return;
   }
-  size_t w = box_width-25;
-  cout << std::right
+
+  bench_cfg.print_section_start("Benchmark Configuration");
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
-       << "-- data type:            " << setw(w) << "double" << endl
+  bench_cfg.print_param("data type", "double");
 #else
-       << "-- data type:            " << setw(w) << "float"  << endl
+  bench_cfg.print_param("data type", "float");
 #endif
-       << "-- parameters:" << endl
-       << "--   -s    variant:      " << setw(w) << params.variant   << endl
-       << "--   -sb   size base:    " << setw(w) << params.size_base << endl
-       << "--   -nmax units max:    " << setw(w) << params.units_max << endl
-       << "--   -nx   team size x:  " << setw(w) << params.units_x   << endl
-       << "--   -ny   team size y:  " << setw(w) << params.units_y   << endl
-       << "--   -ninc units inc:    " << setw(w) << params.units_inc << endl
-       << "--   -nt   threads/unit: " << setw(w) << params.threads   << endl
-       << "--   -emax exp max:      " << setw(w) << params.exp_max   << endl
-       << "--   -rmax rep. max:     " << setw(w) << params.rep_max   << endl
-       << "--   -rb   rep. base:    " << setw(w) << params.rep_base  << endl
-       << "-- environment:" << endl;
-#ifdef MPI_IMPL_ID
-  cout << "--   MPI implementation:"
-       << setw(box_width-24) << dash__toxstr(MPI_IMPL_ID) << endl;
-#endif
-  cout << "--   MPI shared windows:";
-  if (params.env_mpi_shared_win) {
-    cout << setw(box_width-24) << "enabled"  << endl;
-  } else {
-    cout << setw(box_width-24) << "disabled" << endl;
-  }
-  cout << "--   Intel MKL:";
-  if (params.env_mkl) {
-    cout << setw(box_width-15) << " enabled" << endl;
-    cout << "--   MKL dynamic:";
-    if (params.mkl_dyn) {
-      cout << setw(box_width-17) << "enabled"  << endl;
-    } else {
-      cout << setw(box_width-17) << "disabled" << endl;
-    }
-    cout << "--   ScaLAPACK:";
-    if (params.env_scalapack) {
-      cout << setw(box_width-15) << "enabled" << endl;
-    } else {
-      cout << setw(box_width-15) << "disabled" << endl;
-    }
-  } else {
-    cout << setw(box_width-15) << "disabled" << endl
-         << "-- ! MKL not available,"           << endl
-         << "-- ! falling back to naive local"  << endl
-         << "-- ! matrix multiplication"        << endl
-         << endl;
-  }
-  cout << separator
-       << endl;
+  bench_cfg.print_section_end();
+
+  bench_cfg.print_section_start("Runtime arguments");
+  bench_cfg.print_param("-s",     "variant",       params.variant);
+  bench_cfg.print_param("-sb",    "size base",     params.size_base);
+  bench_cfg.print_param("-nmax",  "max. units",    params.units_max);
+  bench_cfg.print_param("-nx",    "team columns",  params.units_x);
+  bench_cfg.print_param("-ny",    "team rows",     params.units_y);
+  bench_cfg.print_param("-ninc",  "units inc.",    params.units_inc);
+  bench_cfg.print_param("-nt",    "threads/proc",  params.threads);
+  bench_cfg.print_param("-emax",  "threads/proc",  params.exp_max);
+  bench_cfg.print_param("-rmax",  "rep. max",      params.rep_max);
+  bench_cfg.print_param("-rbase", "rep. base",     params.rep_base);
+  bench_cfg.print_section_end();
 }

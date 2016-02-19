@@ -34,6 +34,7 @@
 
 #include <dash/util/Timer.h>
 #include <dash/util/Locality.h>
+#include <dash/util/BenchmarkParams.h>
 
 #include <dash/tools/PatternVisualizer.h>
 
