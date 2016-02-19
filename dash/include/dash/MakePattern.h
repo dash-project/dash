@@ -31,8 +31,9 @@ make_team_spec(
   auto  nnodes     = dash::util::Locality::NumNodes();
   // Default team spec:
   dash::TeamSpec<ndim> teamspec;
-  if (!MappingTraits::diagonal && !MappingTraits::neighbor &&
-      !MappingTraits::multiple) {
+  if (nnodes == 1 ||
+      (!MappingTraits::diagonal && !MappingTraits::neighbor &&
+       !MappingTraits::multiple)) {
     // Optimize for surface-to-volume ratio:
     teamspec.balance_extents();
   }
@@ -56,6 +57,10 @@ make_team_spec(
                    min_block_extent);
   }
   // Resolve balanced tile extents from size spec and team spec:
+  auto split_factor = nnodes > 1 ? nnodes : 2;
+  if (teamspec.extent(0) % split_factor != 0) {
+    split_factor = 1;
+  }
   for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
     auto extent_d  = sizespec.extent(d);
     auto nunits_d  = teamspec.extent(d);
@@ -66,7 +71,6 @@ make_team_spec(
                    "nblocks[d]:", nblocks_d);
     auto nblocks_d = nunits_d;
     if (MappingTraits::multiple && ndim > 1) {
-      auto split_factor = nnodes > 1 ? nnodes : 2;
       if (d == 0) {
         nunits_d /= split_factor;
       } else if (d == 1) {
