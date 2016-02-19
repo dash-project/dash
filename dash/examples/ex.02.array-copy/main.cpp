@@ -8,6 +8,12 @@
 #include <sstream>
 #include <cstddef>
 
+#ifdef DASH_ENABLE_IPM
+extern "C" {
+#include <ipm_core.h>
+}
+#endif
+
 #define DASH__ALGORITHM__COPY__USE_WAIT
 #include <libdash.h>
 
@@ -59,9 +65,18 @@ int main(int argc, char* argv[])
 
   int * local_array = new int[num_elems_copy];
 
+#ifdef DASH_ENABLE_IPM
+  ipm_monitor_on();
+  ipm_clear_htable();
+#endif
+
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
+
+#ifdef DASH_ENABLE_IPM
+  ipm_monitor_off();
+#endif
 
   std::ostringstream ss;
   ss << "Local copy at unit " << myid << ": ";

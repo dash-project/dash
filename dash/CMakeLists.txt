@@ -26,6 +26,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
@@ -117,6 +118,10 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS
        "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-sign-compare")
   if (${dart_variant} STREQUAL "mpi")
+    if (IPM_FOUND)
+      set (VARIANT_ADDITIONAL_COMPILE_FLAGS
+           "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_IPM")
+    endif()
     if (NOT ENABLE_SHARED_WINDOWS)
       set (VARIANT_ADDITIONAL_COMPILE_FLAGS
            "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
@@ -208,6 +213,13 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
             ${exampletarget}
             ${MPI_C_LIBRARIES}
             ${MPI_CXX_LIBRARIES})
+          if (IPM_FOUND)
+            include_directories(
+              ${IPM_INCLUDE_DIRS})
+            target_link_libraries(
+              ${exampletarget}
+              ${IPM_LIBRARIES})
+          endif()
         endif()
 
         # Installation
@@ -244,6 +256,15 @@ if (BUILD_TESTS)
       ${DART_LIBRARY}
       ${ADDITIONAL_LIBRARIES}
     )
+    if (${dart_variant} STREQUAL "mpi")
+      if (IPM_FOUND)
+        include_directories(
+          ${IPM_INCLUDE_DIRS})
+        target_link_libraries(
+          ${exampletarget}
+          ${IPM_LIBRARIES})
+      endif()
+    endif()
     set_target_properties(
       ${DASH_TEST} PROPERTIES
       COMPILE_FLAGS ${VARIANT_ADDITIONAL_COMPILE_FLAGS}

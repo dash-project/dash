@@ -23,7 +23,7 @@ if (NOT "${GTEST_LIBRARY_PATH}" STREQUAL "" AND
   message(STATUS "gtest      include path: " ${GTEST_INCLUDES})
   message(STATUS "gtest      library path: " ${GTEST_LIBRARY})
   message(STATUS "gtest_main library path: " ${GTEST_MAINLIB})
-  
+
   add_library(GTest IMPORTED STATIC GLOBAL)
   set_target_properties(
     GTest
@@ -57,7 +57,7 @@ else()
   set(GTEST_INCLUDES "${GTEST_PREFIX}/src/GTestExternal/include")
   set(GTEST_LIBRARY  "${GTEST_LOCATION}/${LIBPREFIX}gtest${LIBSUFFIX}")
   set(GTEST_MAINLIB  "${GTEST_LOCATION}/${LIBPREFIX}gtest_main${LIBSUFFIX}")
-  
+
   add_library(GTest IMPORTED STATIC GLOBAL)
   set_target_properties(
     GTest
@@ -65,7 +65,7 @@ else()
     IMPORTED_LOCATION                 "${GTEST_LIBRARY}"
     IMPORTED_LINK_INTERFACE_LIBRARIES "${CMAKE_THREAD_LIBS_INIT}")
   add_dependencies(GTest GTestExternal)
-  
+
   add_library(GTestMain IMPORTED STATIC GLOBAL)
   set_target_properties(
     GTestMain

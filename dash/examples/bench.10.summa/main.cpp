@@ -154,8 +154,6 @@ int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
 
-  int myid   = dash::myid();
-
   Timer::Calibrate(0);
 
   dash::barrier();
@@ -325,8 +323,7 @@ void perform_test(
                        ) / 1024 ) / 1024;
     }
 
-    extent_t tilesize_y = pattern.blocksize(0);
-    extent_t tilesize_x = pattern.blocksize(1);
+    extent_t tilesize = pattern.blocksize(0);
 
     std::ostringstream team_ss;
     team_ss << team_spec.extent(0) << "x" << team_spec.extent(1);
@@ -341,7 +338,7 @@ void perform_test(
          << setw(6)  << n              << ", "
          << setw(12) << (n*n)          << ", "
          << setw(7)  << team_extents   << ", "
-         << setw(11) << tilesize_x     << ", "
+         << setw(11) << tilesize       << ", "
          << setw(6)  << mem_total_mb   << ", "
          << setw(10) << mpi_impl       << ", "
          << setw(10) << variant_id     << ", "

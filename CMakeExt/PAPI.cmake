@@ -21,12 +21,12 @@
 #  PAPI_LIBRARIES          The PAPI library
 #  PAPI_INCLUDE_DIRS       The location of PAPI headers
 
-message(STATUS "Searching for PAPI in path " ${PAPI_PREFIX})
-
 find_path(
   PAPI_PREFIX
   NAMES include/papi.h
 )
+
+message(STATUS "Searching for PAPI in path " ${PAPI_PREFIX})
 
 find_library(
   PAPI_LIBRARIES

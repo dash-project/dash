@@ -22,12 +22,6 @@ if [ "${PAPI_HOME}" = "" ]; then
   PAPI_HOME=$PAPI_BASE
 fi
 
-# To use an existing installation of gtest instead of downloading the sources
-# from the google test subversion repository, use:
-#
-#                    -DGTEST_LIBRARY_PATH=${HOME}/gtest \
-#                    -DGTEST_INCLUDE_PATH=${HOME}/gtest/include \
-
 # To specify a build configuration for a specific system, use:
 #
 #                    -DENVIRONMENT_TYPE=<type> \
@@ -36,6 +30,18 @@ fi
 # To specify a custom build configuration, use:
 #
 #                    -DENVIRONMENT_CONFIG_PATH=<path to cmake file> \
+#
+# To use an existing installation of gtest instead of downloading the sources
+# from the google test subversion repository, use:
+#
+#                    -DGTEST_LIBRARY_PATH=${HOME}/gtest \
+#                    -DGTEST_INCLUDE_PATH=${HOME}/gtest/include \
+#
+# To build with MKL support, set environment variables MKLROOT and INTELROOT.
+#
+# To enable IPM runtime support, use:
+#
+#                    -DIPM_PREFIX=<IPM install path> \
 
 # To build with MKL support, set environment variables MKLROOT and INTELROOT.
 
@@ -58,6 +64,7 @@ rm -Rf ./build/*
                      -DBUILD_EXAMPLES=ON \
                      -DBUILD_TESTS=ON \
                      -DBUILD_DOCS=ON \
+                     -DIPM_PREFIX=${IPM_HOME} \
                      -DPAPI_PREFIX=${PAPI_HOME} \
                      ../ && \
  await_confirm && \
