@@ -94,6 +94,9 @@ typedef dash::pattern_partitioning_properties<
 /// Constraints on pattern mapping properties of matrix operands passed to
 /// \c dash::summa.
 typedef dash::pattern_mapping_properties<
+            // Every unit mapped to more than one block, required for
+            // block prefetching to take effect.
+            dash::pattern_mapping_tag::multiple,
 #ifndef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
             // Every unit mapped in any single slice in every dimension.
             dash::pattern_mapping_tag::diagonal,

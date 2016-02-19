@@ -113,10 +113,12 @@ void init_values(
   MatrixType & matrix_b,
   MatrixType & matrix_c);
 
+template<class PatternType>
 std::pair<double, double> test_dash(
-  extent_t sb,
-  unsigned repeat,
-  const benchmark_params & params);
+  extent_t                  n,
+  unsigned                  repeat,
+  const benchmark_params  & params,
+  const PatternType       & pattern);
 
 void init_values(
   value_t  * matrix_a,
@@ -196,6 +198,7 @@ int main(int argc, char* argv[])
   }
 #endif
 
+#if 0
   if (params.units_x == 0 && params.units_y == 0) {
     params.units_x = dash::size();
     params.units_y = 1;
@@ -216,6 +219,7 @@ int main(int argc, char* argv[])
     }
 #endif
   }
+#endif
 
   dash::util::BenchmarkParams bench_params("bench.10.summa");
   bench_params.set_output_width(72);
@@ -256,6 +260,23 @@ void perform_test(
   auto   num_units  = dash::size();
   auto   variant_id = variant;
   double gflop      = static_cast<double>(n * n * n * 2) * 1.0e-9;
+
+  dash::SizeSpec<2, extent_t> size_spec(n, n);
+  auto team_spec = dash::make_team_spec<
+                     dash::summa_pattern_partitioning_constraints,
+                     dash::summa_pattern_mapping_constraints,
+                     dash::summa_pattern_layout_constraints >(
+                       size_spec);
+  if (params.units_x > 0 && params.units_y > 0) {
+    std::array<extent_t, 2> team_extents { params.units_y, params.units_x };
+    team_spec.resize(team_extents);
+  }
+  auto pattern   = dash::make_pattern<
+                     dash::summa_pattern_partitioning_constraints,
+                     dash::summa_pattern_mapping_constraints,
+                     dash::summa_pattern_layout_constraints >(
+                       size_spec,
+                       team_spec);
 
   if (myid == 0) {
     if (iteration == 0) {
@@ -304,26 +325,12 @@ void perform_test(
                        ) / 1024 ) / 1024;
     }
 
-    // Obtain pattern tile size:
-    dash::SizeSpec<2, extent_t> size_spec(n, n);
-    dash::TeamSpec<2, index_t>  team_spec(params.units_x, params.units_y);
-    auto pattern = dash::make_pattern<
-                     dash::summa_pattern_partitioning_constraints,
-                     dash::summa_pattern_mapping_constraints,
-                     dash::summa_pattern_layout_constraints >(
-                       size_spec,
-                       team_spec);
     extent_t tilesize_y = pattern.blocksize(0);
     extent_t tilesize_x = pattern.blocksize(1);
 
     std::ostringstream team_ss;
-    team_ss << params.units_y << "x" << params.units_x;
+    team_ss << team_spec.extent(0) << "x" << team_spec.extent(1);
     std::string team_extents = team_ss.str();
-
-    std::ostringstream tile_ss;
-    tile_ss << tilesize_y << "x" << tilesize_x;
-    std::string tile_extents = tile_ss.str();
-
     std::string mpi_impl     = dash__toxstr(MPI_IMPL_ID);
 
     int gflops_peak = static_cast<int>(params.cpu_gflops_peak *
@@ -334,7 +341,7 @@ void perform_test(
          << setw(6)  << n              << ", "
          << setw(12) << (n*n)          << ", "
          << setw(7)  << team_extents   << ", "
-         << setw(11) << tile_extents   << ", "
+         << setw(11) << tilesize_x     << ", "
          << setw(6)  << mem_total_mb   << ", "
          << setw(10) << mpi_impl       << ", "
          << setw(10) << variant_id     << ", "
@@ -351,7 +358,7 @@ void perform_test(
   } else if (variant == "pblas") {
     t_mmult = test_pblas(n, num_repeats, params);
   } else {
-    t_mmult = test_dash(n, num_repeats, params);
+    t_mmult = test_dash(n, num_repeats, params, pattern);
   }
   double t_init = t_mmult.first;
   double t_mult = t_mmult.second;
@@ -409,30 +416,21 @@ void init_values(
  * Returns pair of durations (init_secs, multiply_secs).
  *
  */
+template<class PatternType>
 std::pair<double, double> test_dash(
-  extent_t n,
-  unsigned repeat,
-  const benchmark_params & params)
+  extent_t                  n,
+  unsigned                  repeat,
+  const benchmark_params  & params,
+  const PatternType       & pattern)
 {
   std::pair<double, double> time;
 
-  // Automatically deduce pattern type satisfying constraints defined by
-  // SUMMA implementation:
-  dash::SizeSpec<2, extent_t> size_spec(n, n);
-  dash::TeamSpec<2, index_t>  team_spec(params.units_x, params.units_y);
+  typedef typename PatternType::size_type  pat_size_t;
+  typedef typename PatternType::index_type pat_index_t;
 
-  auto pattern = dash::make_pattern<
-                   dash::summa_pattern_partitioning_constraints,
-                   dash::summa_pattern_mapping_constraints,
-                   dash::summa_pattern_layout_constraints >(
-                     size_spec,
-                     team_spec);
-
-  static_assert(std::is_same<extent_t,
-                             decltype(pattern)::size_type>::value,
+  static_assert(std::is_same<extent_t, pat_size_t>::value,
                 "size type of deduced pattern and size spec differ");
-  static_assert(std::is_same<index_t,
-                             decltype(pattern)::index_type>::value,
+  static_assert(std::is_same<index_t,  pat_index_t>::value,
                 "index type of deduced pattern and size spec differ");
 
   DASH_ASSERT_MSG(pattern.extent(0) % dash::size() == 0,
@@ -440,9 +438,9 @@ std::pair<double, double> test_dash(
   DASH_ASSERT_MSG(pattern.extent(1) % dash::size() == 0,
                   "Matrix rows not divisible by number of units");
 
-  dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_a(pattern);
-  dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_b(pattern);
-  dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_c(pattern);
+  dash::Matrix<value_t, 2, index_t, PatternType> matrix_a(pattern);
+  dash::Matrix<value_t, 2, index_t, PatternType> matrix_b(pattern);
+  dash::Matrix<value_t, 2, index_t, PatternType> matrix_c(pattern);
 
   dash::barrier();
 

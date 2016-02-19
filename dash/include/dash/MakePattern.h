@@ -8,6 +8,103 @@
 
 namespace dash {
 
+template<
+  typename PartitioningTraits,
+  typename MappingTraits,
+  typename LayoutTraits,
+  class SizeSpecType
+>
+TeamSpec<SizeSpecType::ndim()>
+make_team_spec(
+  /// Size spec of cartesian space to be distributed by the pattern.
+  const SizeSpecType & sizespec)
+{
+  typedef typename SizeSpecType::size_type extent_t;
+
+  DASH_LOG_TRACE("dash::make_team_spec()");
+  // Deduce number of dimensions from size spec:
+  const dim_t ndim = SizeSpecType::ndim();
+  // Total team size:
+  auto  nunits     = dash::size();
+  // Default team spec:
+  dash::TeamSpec<ndim> teamspec;
+  if (!MappingTraits::diagonal && !MappingTraits::neighbor &&
+      !MappingTraits::multiple) {
+    // Optimize for surface-to-volume ratio:
+    teamspec.balance_extents();
+  }
+  // Array of team extents by dimension:
+  std::array<extent_t, ndim> team_extents = teamspec.extents();
+
+  extent_t min_block_extent = sizespec.size();
+  if (PartitioningTraits::minimal) {
+    // Find minimal block size in minimal partitioning, initialize with
+    // pattern size (maximum):
+    for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
+      auto extent_d    = sizespec.extent(d);
+      auto nunits_d    = teamspec.extent(d);
+      auto blocksize_d = extent_d / nunits_d;
+      if (blocksize_d < min_block_extent) {
+        min_block_extent = blocksize_d;
+      }
+    }
+    DASH_LOG_TRACE("dash::make_team_spec",
+                   "minimum block extent for square blocks:",
+                   min_block_extent);
+  }
+  // Resolve balanced tile extents from size spec and team spec:
+  for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
+    auto extent_d  = sizespec.extent(d);
+    auto nunits_d  = teamspec.extent(d);
+    DASH_LOG_TRACE("dash::make_team_spec",
+                   "d:",          d,
+                   "extent[d]:",  extent_d,
+                   "nunits[d]:",  nunits_d,
+                   "nblocks[d]:", nblocks_d);
+    auto nblocks_d = nunits_d;
+    if (MappingTraits::multiple && ndim > 1) {
+      if (d == 0) {
+        nunits_d /= 2;
+      } else if (d == 1) {
+        nunits_d *= 2;
+      }
+    }
+    if (MappingTraits::diagonal || MappingTraits::neighbor) {
+      // Diagonal and neighbor mapping properties require occurrence of every
+      // unit in any hyperplane. Use total number of units in every dimension:
+      nblocks_d = teamspec.size();
+      DASH_LOG_TRACE("dash::make_distribution_spec",
+                     "diagonal or neighbor mapping",
+                     "d", d, "nblocks_d", nblocks_d);
+    } else if (PartitioningTraits::minimal) {
+      // Trying to assign one block per unit:
+      nblocks_d = nunits_d;
+      if (!MappingTraits::balanced) {
+        // Unbalanced mapping, trying to use same block extent in all
+        // dimensions:
+        nblocks_d = extent_d / min_block_extent;
+        DASH_LOG_TRACE("dash::make_distribution_spec",
+                       "minimal partitioning, mapping not balanced",
+                       "d", d, "nblocks_d", nblocks_d);
+      }
+    } else if (MappingTraits::balanced) {
+      // Balanced mapping, i.e. same number of blocks for every unit
+      if (nblocks_d % teamspec.extent(d) > 0) {
+        // Extent in this dimension is not a multiple of number of units,
+        // balanced mapping property cannot be satisfied:
+        DASH_THROW(dash::exception::InvalidArgument,
+                   "dash::make_distribution_spec: cannot distribute " <<
+                   nblocks_d << " blocks to " <<
+                   nunits_d  << " units in dimension " << d);
+      }
+    }
+    team_extents[d] = nunits_d;
+  }
+  // Make distribution spec from template- and run time parameters:
+  teamspec.resize(team_extents);
+  return teamspec;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 // Generic Abstract Pattern Factories (dash::make_pattern)
 //////////////////////////////////////////////////////////////////////////////
@@ -58,16 +155,19 @@ make_distribution_spec(
   for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
     auto extent_d  = sizespec.extent(d);
     auto nunits_d  = teamspec.extent(d);
-    auto nblocks_d = nunits_d;
     DASH_LOG_TRACE("dash::make_distribution_spec",
                    "d:",          d,
                    "extent[d]:",  extent_d,
                    "nunits[d]:",  nunits_d,
                    "nblocks[d]:", nblocks_d);
+    auto nblocks_d = nunits_d;
     if (MappingTraits::diagonal || MappingTraits::neighbor) {
       // Diagonal and neighbor mapping properties require occurrence of every
       // unit in any hyperplane. Use total number of units in every dimension:
       nblocks_d = teamspec.size();
+      DASH_LOG_TRACE("dash::make_distribution_spec",
+                     "diagonal or neighbor mapping",
+                     "d", d, "nblocks_d", nblocks_d);
     } else if (PartitioningTraits::minimal) {
       // Trying to assign one block per unit:
       nblocks_d = nunits_d;
@@ -75,6 +175,9 @@ make_distribution_spec(
         // Unbalanced mapping, trying to use same block extent in all
         // dimensions:
         nblocks_d = extent_d / min_block_extent;
+        DASH_LOG_TRACE("dash::make_distribution_spec",
+                       "minimal partitioning, mapping not balanced",
+                       "d", d, "nblocks_d", nblocks_d);
       }
     } else if (MappingTraits::balanced) {
       // Balanced mapping, i.e. same number of blocks for every unit
@@ -82,7 +185,7 @@ make_distribution_spec(
         // Extent in this dimension is not a multiple of number of units,
         // balanced mapping property cannot be satisfied:
         DASH_THROW(dash::exception::InvalidArgument,
-                   "dash::make_pattern: cannot distribute " <<
+                   "dash::make_distribution_spec: cannot distribute " <<
                    nblocks_d << " blocks to " <<
                    nunits_d  << " units in dimension " << d);
       }
@@ -96,7 +199,7 @@ make_distribution_spec(
         // Extent in this dimension is not a multiple of tile size,
         // balanced partitioning property cannot be satisfied:
         DASH_THROW(dash::exception::InvalidArgument,
-                   "dash::make_pattern: cannot distribute " <<
+                   "dash::make_distribution_spec: cannot distribute " <<
                    extent_d   << " elements to " <<
                    nblocks_d  << " blocks in dimension " << d);
       }
@@ -108,10 +211,7 @@ make_distribution_spec(
     }
   }
   // Make distribution spec from template- and run time parameters:
-  dash::DistributionSpec<
-      SizeSpecType::ndim()
-  > distspec(
-      distributions);
+  dash::DistributionSpec<ndim> distspec(distributions);
   return distspec;
 }
 

@@ -180,6 +180,10 @@ struct pattern_mapping_tag
     /// Units are mapped to blocks in diagonal chains in all hyperplanes.
     diagonal,
 
+    /// Units are mapped to more than one block. For minimal partitioning,
+    /// every unit is mapped to two blocks.
+    multiple,
+
     /// Blocks are assigned to processes like dealt from a deck of
     /// cards in every hyperplane, starting from first unit.
     cyclic
@@ -231,6 +235,10 @@ struct pattern_mapping_properties
 
   /// Units are mapped to blocks in diagonal chains in all hyperplanes.
   static const bool diagonal   = false;
+
+  /// Units are mapped to more than one block. For minimal partitioning,
+  /// every unit is mapped to two blocks.
+  static const bool multiple   = false;
 
   /// Blocks are assigned to processes like dealt from a deck of
   /// cards in every hyperplane, starting from first unit.
@@ -332,6 +340,26 @@ const bool
 pattern_mapping_properties<
   pattern_mapping_tag::type::diagonal, Tags ...
 >::diagonal = true;
+
+/**
+ * Specialization of \c dash::pattern_mapping_properties to process tag
+ * \c dash::pattern_mapping_tag::type::multiple in template parameter list.
+ */
+template<pattern_mapping_tag::type ... Tags>
+struct pattern_mapping_properties<
+         pattern_mapping_tag::type::multiple, Tags ...>
+: public pattern_mapping_properties<Tags ...>
+{
+  /// Units are mapped to more than one block. For minimal partitioning,
+  /// every unit is mapped to two blocks.
+  static const bool multiple;
+};
+
+template<pattern_mapping_tag::type ... Tags>
+const bool
+pattern_mapping_properties<
+  pattern_mapping_tag::type::multiple, Tags ...
+>::multiple = true;
 
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag

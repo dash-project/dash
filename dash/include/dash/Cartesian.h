@@ -876,6 +876,40 @@ public:
   }
 
   /**
+   * Change the extent of the cartesian space in every dimension.
+   */
+  template<typename... Args>
+  void resize(SizeType arg, Args... args)
+  {
+    static_assert(
+      sizeof...(Args) == MaxDimensions-1,
+      "Invalid number of arguments");
+    std::array<SizeType, MaxDimensions> extents =
+      { arg, (SizeType)(args)... };
+    resize(extents);
+  }
+
+  /**
+   * Change the extent of the cartesian space in every dimension.
+   */
+  template<typename SizeType_>
+  void resize(const std::array<SizeType_, MaxDimensions> & extents)
+  {
+    _is_linear = false;
+    parent_t::resize(extents);
+    update_rank();
+  }
+
+  /**
+   * Change the extent of the cartesian space in the given dimension.
+   */
+  void resize(dim_t dim, SizeType extent)
+  {
+    this->_extents[dim] = extent;
+    resize(this->_extents);
+  }
+
+  /**
    * The actual number of dimensions with extent greater than 1 in
    * this team arragement, that is the dimension of the vector space
    * spanned by the team arrangement's extents.
