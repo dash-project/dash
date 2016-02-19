@@ -9,9 +9,7 @@
 #include <cstddef>
 
 #ifdef DASH_ENABLE_IPM
-extern "C" {
-#include <ipm_core.h>
-}
+#include <mpi.h>
 #endif
 
 #define DASH__ALGORITHM__COPY__USE_WAIT
@@ -66,8 +64,8 @@ int main(int argc, char* argv[])
   int * local_array = new int[num_elems_copy];
 
 #ifdef DASH_ENABLE_IPM
-  ipm_monitor_on();
-  ipm_clear_htable();
+  MPI_Pcontrol(0, "on");    // turn monitoring on
+  MPI_Pcontrol(0, "clear"); // clear all performance data
 #endif
 
   dash::copy(array.begin() + start_index,
@@ -75,7 +73,7 @@ int main(int argc, char* argv[])
              local_array);
 
 #ifdef DASH_ENABLE_IPM
-  ipm_monitor_off();
+  MPI_Pcontrol(0, "off");   // turn monitoring off
 #endif
 
   std::ostringstream ss;

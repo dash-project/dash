@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <ctime>
 
 #include <dash/util/Locality.h>
 #include <dash/Array.h>
@@ -125,9 +126,14 @@ void BenchmarkParams::print_header()
   size_t numa_nodes = dash::util::Locality::NumNumaNodes();
   size_t local_cpus = dash::util::Locality::NumCPUs();
 
+  std::time_t t_now = std::time(NULL);
+  char date_cstr[100];
+  std::strftime(date_cstr, sizeof(date_cstr), "%c", std::localtime(&t_now));
+
   print_section_end();
   print_section_start("Benchmark");
   print_param("identifier", _name);
+  print_param("date",   date_cstr);
   print_section_end();
 
   print_section_start("Hardware Locality");
