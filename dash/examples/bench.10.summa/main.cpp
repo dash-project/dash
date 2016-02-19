@@ -7,7 +7,10 @@
 #define DASH__MKL_MULTITHREADING
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
 
-// #define DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
+#ifdef DASH_ENABLE_IPM
+#include <mpi.h>
+#define DASH__ALGORITHM__COPY__USE_WAIT
+#endif
 
 #include "../bench.h"
 #include <libdash.h>
@@ -152,6 +155,9 @@ void print_params(
 
 int main(int argc, char* argv[])
 {
+#ifdef DASH_ENABLE_IPM
+  MPI_Pcontrol(0, "off");
+#endif
   dash::init(&argc, &argv);
 
   Timer::Calibrate(0);
@@ -447,11 +453,18 @@ std::pair<double, double> test_dash(
 
   dash::barrier();
 
+#ifdef DASH_ENABLE_IPM
+  MPI_Pcontrol(0, "on");
+  MPI_Pcontrol(0, "clear");
+#endif
   auto ts_multiply_start = Timer::Now();
   for (unsigned i = 0; i < repeat; ++i) {
     dash::summa(matrix_a, matrix_b, matrix_c);
   }
   time.second = Timer::ElapsedSince(ts_multiply_start);
+#ifdef DASH_ENABLE_IPM
+  MPI_Pcontrol(0, "off");
+#endif
 
   dash::barrier();
 
