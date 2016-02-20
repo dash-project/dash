@@ -35,12 +35,8 @@ public:
     bool           env_mpi_shared_win;
   } config_params_type;
 
-  typedef struct {
-    int  rank;
-    char host[100];
-    int  cpu;
-    int  numa_node;
-  } unit_pinning_type;
+  typedef dash::util::Locality::UnitPinning
+    unit_pinning_type;
 
 public:
   BenchmarkParams(const std::string & benchmark_name);
@@ -58,10 +54,6 @@ public:
 
   int output_width() const {
     return _header_width;
-  }
-
-  inline const dash::Array<unit_pinning_type> & unit_pinning() const {
-    return _unit_pinning;
   }
 
   void print_header();
@@ -106,16 +98,11 @@ public:
   }
 
 private:
-  bool                           _myid;
-  int                            _header_width = 72;
-  config_params_type             _config;
-  std::string                    _name;
-  dash::Array<unit_pinning_type> _unit_pinning;
+  bool               _myid;
+  int                _header_width = 72;
+  config_params_type _config;
+  std::string        _name;
 };
-
-std::ostream & operator<<(
-  std::ostream        & os,
-  const typename BenchmarkParams::unit_pinning_type & upi);
 
 } // namespae util
 } // namespace dash

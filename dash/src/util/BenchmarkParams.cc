@@ -62,24 +62,6 @@ BenchmarkParams::BenchmarkParams(
     env_var_kv = *(environ + i);
   }
   _config = params;
-
-  // Collect process pinning information:
-  _unit_pinning.allocate(dash::size(), dash::BLOCKCYCLIC(1));
-  dash::barrier();
-
-  int cpu       = dash::util::Locality::UnitCPU();
-  int numa_node = dash::util::Locality::UnitNUMANode();
-
-  unit_pinning_type my_pin_info;
-  my_pin_info.rank      = dash::myid();
-  my_pin_info.cpu       = cpu;
-  my_pin_info.numa_node = numa_node;
-  gethostname(my_pin_info.host, 100);
-
-  _unit_pinning[dash::myid()] = my_pin_info;
-
-  // Ensure pinning data is ready:
-  dash::barrier();
 }
 
 void BenchmarkParams::parse_args(
@@ -189,8 +171,8 @@ void BenchmarkParams::print_pinning()
        << std::setw(10)     << "numa node"
        << std::setw(5)      << "cpu"
        << endl;
-  for (size_t unit = 0; unit < _unit_pinning.size(); ++unit) {
-    unit_pinning_type pin_info = _unit_pinning[unit];
+  for (size_t unit = 0; unit < Locality::Pinning().size(); ++unit) {
+    unit_pinning_type pin_info = Locality::Pinning()[unit];
     cout << std::left         << "--   "
          << std::setw(5)      << pin_info.rank
          << std::setw(host_w) << pin_info.host
@@ -219,19 +201,6 @@ void BenchmarkParams::print_section_end() const
   auto line_w = _header_width;
   std::string separator(line_w, '-');
   cout << separator << endl;
-}
-
-std::ostream & operator<<(
-  std::ostream        & os,
-  const typename BenchmarkParams::unit_pinning_type & upi)
-{
-  std::ostringstream ss;
-  ss << "unit_pinning_type("
-     << "rank:" << upi.rank << " "
-     << "host:" << upi.host << " "
-     << "cpu:"  << upi.cpu  << " "
-     << "numa:" << upi.numa_node << ")";
-  return operator<<(os, ss.str());
 }
 
 } // namespace util

@@ -5,8 +5,10 @@
 #include <dash/Exception.h>
 #include <dash/Init.h>
 
+#include <iostream>
 #include <unistd.h>
 #include <string>
+#include <vector>
 
 #ifdef DASH_ENABLE_NUMA
 #include <utmpx.h>
@@ -19,8 +21,25 @@
 namespace dash {
 namespace util {
 
+template<
+  typename ElementType,
+  typename IndexType,
+  class PatternType>
+class Array;
+
 class Locality
 {
+public:
+  friend void dash::init(int *argc, char ***argv);
+
+public:
+  typedef struct {
+    int  rank;
+    char host[100];
+    int  cpu;
+    int  numa_node;
+  } UnitPinning;
+
 public:
 
   static inline int NumNumaNodes() {
@@ -73,12 +92,27 @@ public:
   }
 
   static inline std::string Hostname() {
-    char host_cstr[100];
-    gethostname(host_cstr, 100);
-    return std::string(host_cstr);
+    return Hostname(dash::myid());
   }
 
+  static inline std::string Hostname(dart_unit_t unit_id) {
+    return _unit_pinning[unit_id].host;
+  }
+
+  static const std::vector<UnitPinning> & Pinning() {
+    return _unit_pinning;
+  }
+
+private:
+  static void init();
+
+private:
+  static std::vector<UnitPinning> _unit_pinning;
 };
+
+std::ostream & operator<<(
+  std::ostream        & os,
+  const typename dash::util::Locality::UnitPinning & upi);
 
 } // namespace util
 } // namespace dash

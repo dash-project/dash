@@ -93,5 +93,8 @@ Bugfixes:
 - Fixed order of coordinate indices in patterns and `dash::Matrix`.
 - Fixed definition of assertion macros when configured with runtime
   assertions disabled.
+- Added barrier in `dash::Array.deallocate()` to prevent partitions of a
+  global array to be freed when going out of scope while other units might
+  still attempt to access it.
 - Fixed compiler warnings.
 

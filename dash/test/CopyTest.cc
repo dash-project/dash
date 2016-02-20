@@ -724,3 +724,36 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
                 local_copy[l]);
   }
 }
+
+#if 0
+// TODO
+TEST_F(CopyTest, AsyncAllToLocalVector)
+{
+  // Copy all elements of global array into local vector:
+  const int num_elem_per_unit = 20;
+  size_t num_elem_total       = _dash_size * num_elem_per_unit;
+
+  dash::Array<int> array(num_elem_total, dash::BLOCKED);
+
+  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
+  for (auto l = 0; l < num_elem_per_unit; ++l) {
+    array.local[l] = ((dash::myid() + 1) * 1000) + l;
+  }
+  array.barrier();
+
+  // Local vector to store copy of global array;
+  std::vector<int> local_vector;
+
+  // Copy values from global range to local memory.
+  // All units copy first block, so unit 0 tests local-to-local copying.
+  auto future = dash::copy_async(array.begin(),
+                                   array.end(),
+                                   local_vector.begin());
+  auto local_dest_end = future.get();
+
+  ASSERT_EQ_U(num_elem_total, local_dest_end - local_vector.begin());
+  for (size_t i = 0; i < array.size(); ++i) {
+    ASSERT_EQ_U(static_cast<int>(array[i]), local_vector[i]);
+  }
+}
+#endif

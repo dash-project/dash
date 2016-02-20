@@ -67,8 +67,7 @@ make_team_spec(
     DASH_LOG_TRACE("dash::make_team_spec",
                    "d:",          d,
                    "extent[d]:",  extent_d,
-                   "nunits[d]:",  nunits_d,
-                   "nblocks[d]:", nblocks_d);
+                   "nunits[d]:",  nunits_d);
     auto nblocks_d = nunits_d;
     if (MappingTraits::multiple && ndim > 1) {
       if (d == 0) {
@@ -166,8 +165,7 @@ make_distribution_spec(
     DASH_LOG_TRACE("dash::make_distribution_spec",
                    "d:",          d,
                    "extent[d]:",  extent_d,
-                   "nunits[d]:",  nunits_d,
-                   "nblocks[d]:", nblocks_d);
+                   "nunits[d]:",  nunits_d);
     auto nblocks_d = nunits_d;
     if (MappingTraits::diagonal || MappingTraits::neighbor) {
       // Diagonal and neighbor mapping properties require occurrence of every
