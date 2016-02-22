@@ -211,8 +211,8 @@ void perform_test(const benchmark_params & params)
 #else
   // Global offset of local array region:
   auto l_begin_glob_offset = Table.pattern().global(0);
-  for (uint64_t i = l_begin_glob_offset; i < TableSize; ++i) {
-    Table[i] = i;
+  for (uint64_t i = 0; i < Table.local.size(); ++i) {
+    Table.local[i] = l_begin_glob_offset + i;
   }
 #endif
   dash::barrier();
