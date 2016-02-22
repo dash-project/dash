@@ -63,26 +63,6 @@ typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
 
-typedef struct {
-  int  rank;
-  char host[100];
-  int  cpu;
-  int  numa_node;
-} unit_pin_info;
-
-std::ostream & operator<<(
-  std::ostream        & os,
-  const unit_pin_info & upi)
-{
-  std::ostringstream ss;
-  ss << "unit_pin_info("
-     << "rank:" << upi.rank << " "
-     << "host:" << upi.host << " "
-     << "cpu:"  << upi.cpu  << " "
-     << "numa:" << upi.numa_node << ")";
-  return operator<<(os, ss.str());
-}
-
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
 typedef double    value_t;
 #else
@@ -95,7 +75,6 @@ typedef std::vector< std::pair< std::string, std::string > >
   env_flags;
 
 typedef struct benchmark_params_t {
-  env_flags   env_config;
   std::string variant;
   extent_t    size_base;
   extent_t    exp_max;
