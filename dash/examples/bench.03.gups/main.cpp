@@ -195,11 +195,19 @@ void perform_test(const benchmark_params & params)
   }
 
   // Initialize array values:
+#if 0
   if(dash::myid() == 0) {
     for (uint64_t i = dash::myid(); i < TableSize; ++i) {
       Table[i] = i;
     }
   }
+#else
+  // Global offset of local array region:
+  auto l_begin_glob_offset = Table.pattern().global(0);
+  for (uint64_t i = l_begin_glob_offset; i < TableSize; ++i) {
+    Table[i] = i;
+  }
+#endif
   dash::barrier();
 
   // Perform random access test:
