@@ -3,6 +3,7 @@
 
 #include <dash/GlobMem.h>
 #include <dash/Init.h>
+#include <dash/algorithm/Operation.h>
 
 namespace dash {
 
@@ -130,9 +131,21 @@ public:
   }
 
   GlobRef<T> & operator+=(const T& ref) {
+#if 0
+    T add_val = ref;
+    dart_ret_t result = dart_accumulate(
+                          _gptr,
+                          reinterpret_cast<char *>(add_val),
+                          1,
+                          dash::dart_datatype<T>::value,
+                          dash::plus<T>().dart_operation(),
+                          dash::Team::All().dart_id());
+    dart_flush(_gptr);
+#else
     T val  = operator T();
     val   += ref;
     operator=(val);
+#endif
     return *this;
   }
 
@@ -171,6 +184,27 @@ public:
     --val;
     operator=(val);
     return result;
+  }
+
+  GlobRef<T> & operator*=(const T& ref) {
+    T val  = operator T();
+    val   *= ref;
+    operator=(val);
+    return *this;
+  }
+
+  GlobRef<T> & operator/=(const T& ref) {
+    T val  = operator T();
+    val   /= ref;
+    operator=(val);
+    return *this;
+  }
+
+  GlobRef<T> & operator^=(const T& ref) {
+    T val  = operator T();
+    val   ^= ref;
+    operator=(val);
+    return *this;
   }
 
 #if 0

@@ -2,6 +2,8 @@
 #define DASH__ALGORITHM__TRANSFORM_H__
 
 #include <dash/GlobIter.h>
+#include <dash/GlobRef.h>
+#include <dash/GlobAsyncRef.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 #include <dash/dart/if/dart_communication.h>

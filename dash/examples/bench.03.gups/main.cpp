@@ -6,6 +6,10 @@
  *
  */
 
+#ifdef DASH_ENABLE_IPM
+#include <mpi.h>
+#endif
+
 #include <math.h>
 #include <stdio.h>
 #include <assert.h>
@@ -101,7 +105,7 @@ void RandomAccessUpdate(const benchmark_params & params)
   for (i = dash::myid(); i < params.num_updates; i += dash::size()) {
     ran           = (ran << 1) ^ (((int64_t) ran < 0) ? POLY : 0);
     int64_t g_idx = static_cast<int64_t>(ran & (table_size-1));
-    Table[g_idx]  = Table[g_idx] ^ ran;
+    Table[g_idx] ^= ran;
   }
 }
 
@@ -130,6 +134,9 @@ void print_params(
 
 int main(int argc, char **argv)
 {
+#ifdef DASH_ENABLE_IPM
+  MPI_Pcontrol(0, "off");
+#endif
   DASH_LOG_DEBUG("bench.gups", "main()");
 
   dash::init(&argc, &argv);
@@ -196,10 +203,17 @@ void perform_test(const benchmark_params & params)
   dash::barrier();
 
   // Perform random access test:
+#ifdef DASH_ENABLE_IPM
+  MPI_Pcontrol(0, "on");
+  MPI_Pcontrol(0, "clear");
+#endif
   ts_start    = Timer::Now();
   RandomAccessUpdate(params);
   dash::barrier();
   duration_us = Timer::ElapsedSince(ts_start);
+#ifdef DASH_ENABLE_IPM
+  MPI_Pcontrol(0, "off");
+#endif
 
   if(dash::myid() == 0) {
     double gups       = (static_cast<double>(params.num_updates) / 1000.0f)
