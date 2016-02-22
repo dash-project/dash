@@ -90,6 +90,8 @@ set(DART_IF_VERSION "3.2" CACHE STRING
     "Version of the DART interface")
 message(INFO "DART interface version:   " ${DART_IF_VERSION})
 
+message(INFO "Host system identifier:   " ${DASH_ENV_HOST_SYSTEM_ID})
+
 ## Include path of selected DART interface:
 set(DASH_DART_IF_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/dart-if/v${DART_IF_VERSION}/include

@@ -107,6 +107,12 @@ else()
   message(INFO "ScaLAPACK not found")
 endif()
 
+if (DASH_ENV_HOST_SYSTEM_ID)
+  set (HOST_ID ${DASH_ENV_HOST_SYSTEM_ID})
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENV_HOST_SYSTEM_ID=\"${HOST_ID}\"")
+endif()
+
 ## Build targets
 
 # DASH library for every enabled DART variant:

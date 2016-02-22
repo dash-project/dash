@@ -138,6 +138,9 @@ void BenchmarkParams::print_header()
 #ifdef MPI_IMPL_ID
   print_param("MPI implementation", dash__toxstr(MPI_IMPL_ID));
 #endif
+#ifdef DASH_ENV_HOST_SYSTEM_ID
+  print_param("Host system identifier", dash__toxstr(DASH_ENV_HOST_SYSTEM_ID));
+#endif
   if (_config.env_mpi_shared_win) {
     print_param("MPI shared windows", "enabled");
   } else {
