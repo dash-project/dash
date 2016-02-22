@@ -13,6 +13,8 @@
 #include <string>
 #include <cstring>
 
+#include <stdio.h> // for memcpy
+
 using std::cout;
 using std::endl;
 using std::setw;
@@ -45,7 +47,8 @@ const std::string dash_copy_variant = "wait";
 typedef typename dash::util::BenchmarkParams::config_params_type
   bench_cfg_params;
 
-double copy_block_to_local(size_t size, int num_repeats, index_t block_index);
+enum COPYMETHOD {DASHCOPY, MEMCPY, STDCOPY};
+double copy_block_to_local(size_t size, int num_repeats, index_t block_index, COPYMETHOD = DASHCOPY);
 
 void print_measurement_header();
 void print_measurement_record(
@@ -95,6 +98,23 @@ int main(int argc, char** argv)
   {
     size     = size_min + (std::pow(2,iteration) * size_inc);
 
+		// Use memcopy
+		unit_src = 0;
+    ts_start = Timer::Now();
+    kps      = copy_block_to_local(size, num_repeats, unit_src, MEMCPY);
+    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
+    print_measurement_record("memcopy", bench_cfg, unit_src, size, num_repeats,
+                             time_s, kps);
+
+			
+		// Use std::copy
+		unit_src = 0;
+    ts_start = Timer::Now();
+    kps      = copy_block_to_local(size, num_repeats, unit_src, STDCOPY);
+    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
+    print_measurement_record("std_copy", bench_cfg, unit_src, size, num_repeats,
+                             time_s, kps);
+
     // Copy first block in array, assigned to unit 0:
     unit_src = 0;
     ts_start = Timer::Now();
@@ -143,76 +163,101 @@ int main(int argc, char** argv)
   return 0;
 }
 
-double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
+
+double copy_block_to_local(size_t size, int num_repeats, index_t block_index, COPYMETHOD method)
 {
-  Array_t global_array(size, dash::BLOCKED);
+Array_t global_array(size, dash::BLOCKED);
 
-  auto    block_size       = global_array.pattern().local_size();
-  // Index of block to copy. Use block of succeeding neighbor
-  // which is expected to be in same NUMA domain for unit 0:
-  auto    source_block     = global_array.pattern().block(block_index);
-  index_t copy_start_idx   = source_block.offset(0);
-  index_t copy_end_idx     = copy_start_idx + block_size;
-  auto    source_unit_id   = global_array.pattern().unit_at(copy_start_idx);
-  double  elapsed          = 1;
+auto    block_size       = global_array.pattern().local_size();
+// Index of block to copy. Use block of succeeding neighbor
+// which is expected to be in same NUMA domain for unit 0:
+auto    source_block     = global_array.pattern().block(block_index);
+index_t copy_start_idx   = source_block.offset(0);
+index_t copy_end_idx     = copy_start_idx + block_size;
+auto    source_unit_id   = global_array.pattern().unit_at(copy_start_idx);
+double  elapsed          = 1;
 
-  DASH_LOG_DEBUG("copy_block_to_local()",
-                 "size:",             size,
-                 "block index:",      block_index,
-                 "block size:",       block_size,
-                 "copy index range:", copy_start_idx, "-", copy_end_idx);
+DASH_LOG_DEBUG("copy_block_to_local()",
+				 "size:",             size,
+				 "block index:",      block_index,
+				 "block size:",       block_size,
+				 "copy index range:", copy_start_idx, "-", copy_end_idx);
 
-  if (source_unit_id != block_index) {
-    DASH_THROW(dash::exception::RuntimeError,
-               "copy_block_to_local: Invalid distribution of global array");
-    return 0;
-  }
+if (source_unit_id != block_index) {
+DASH_THROW(dash::exception::RuntimeError,
+			 "copy_block_to_local: Invalid distribution of global array");
+return 0;
+}
 
-  for (size_t l = 0; l < global_array.lsize(); ++l) {
-    global_array.local[l] = ((dash::myid() + 1) * 1000) + l;
-  }
-  dash::barrier();
+for (size_t l = 0; l < global_array.lsize(); ++l) {
+global_array.local[l] = ((dash::myid() + 1) * 1000) + l;
+}
+dash::barrier();
 
-  if(dash::myid() == 0) {
-    ElementType * local_array = new ElementType[block_size];
+if(dash::myid() == 0) {
+ElementType * local_array = new ElementType[block_size];
 
-    // Perform measurement:
-    auto timer_start = Timer::Now();
-    for (int r = 0; r < num_repeats; ++r) {
-      ElementType * copy_lend = dash::copy(
-                                  global_array.begin() + copy_start_idx ,
-                                  global_array.begin() + copy_end_idx,
-                                  local_array);
-      DASH_ASSERT_EQ(local_array + block_size, copy_lend,
-                     "Unexpected end of copied range");
+// Perform measurement:
+auto timer_start = Timer::Now();
+for (int r = 0; r < num_repeats; ++r) {
+	ElementType * copy_lend; 
+	if(method == DASHCOPY){
+		// use dash::copy
+		copy_lend = dash::copy(
+													global_array.begin() + copy_start_idx ,
+													global_array.begin() + copy_end_idx,
+													local_array);
+	} else if(method == MEMCPY){
+			//DASH_ASSERT_LE(
+			//	global_array.lbegin() + copy_end_idx,
+			//	global_array.lsize(),
+			//	"Cannot use std::copy for non-local range");
+			memcpy(
+					local_array,					
+					global_array.lbegin() + copy_start_idx ,
+					(copy_end_idx - copy_start_idx) * sizeof(ElementType));
+	} else if(method == STDCOPY){
+			//DASH_ASSERT_LE(
+			//	global_array.lbegin() + copy_end_idx,
+			//	global_array.lsize(),
+			//	"Cannot use std::copy for non-local range");
+			copy_lend = std::copy(
+													global_array.lbegin() + copy_start_idx ,
+													global_array.lbegin() + copy_end_idx,
+													local_array);
+	}
+if(method != MEMCPY){	
+	DASH_ASSERT_EQ(local_array + block_size, copy_lend,
+						 "Unexpected end of copied range");
+}
 #ifndef DASH_ENABLE_ASSERTIONS
-      dash__unused(copy_lend);
+dash__unused(copy_lend);
 #endif
-    }
-    elapsed = Timer::ElapsedSince(timer_start);
+}
+elapsed = Timer::ElapsedSince(timer_start);
 
-    // Validate values:
-    for (int l = 0; l < static_cast<int>(block_size); ++l) {
-      auto expected = ((source_unit_id + 1) * 1000) + l;
-      auto actual   = local_array[l];
-      if (actual != expected) {
-        DASH_THROW(dash::exception::RuntimeError,
-                   "copy_block_to_local: Validation failed " <<
-                   "for copied element at offset " << l << ": " <<
-                   "expected: " << expected << " " <<
-                   "actual: "   << actual);
-        return 0;
-      }
-    }
+// Validate values:
+for (int l = 0; l < static_cast<int>(block_size); ++l) {
+auto expected = ((source_unit_id + 1) * 1000) + l;
+auto actual   = local_array[l];
+if (actual != expected) {
+DASH_THROW(dash::exception::RuntimeError,
+					 "copy_block_to_local: Validation failed " <<
+					 "for copied element at offset " << l << ": " <<
+					 "expected: " << expected << " " <<
+					 "actual: "   << actual);
+return 0;
+}
+}
 
-    delete[] local_array;
-  }
+delete[] local_array;
+}
 
-  DASH_LOG_DEBUG(
-      "copy_block_to_local",
-      "Waiting for completion of copy operation");
-  dash::barrier();
-  return (static_cast<double>(block_size * num_repeats) / elapsed);
+DASH_LOG_DEBUG(
+"copy_block_to_local",
+"Waiting for completion of copy operation");
+dash::barrier();
+return (static_cast<double>(block_size * num_repeats) / elapsed);
 }
 
 void print_measurement_header()
