@@ -9,3 +9,6 @@
 set(ENV{CXX} icc)
 set(ENV{CC} icc)
 
+set(DASH_ENV_HOST_SYSTEM_ID "supermuc" CACHE STRING
+    "Host system type identifier")
+

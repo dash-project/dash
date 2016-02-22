@@ -313,7 +313,11 @@ void perform_test(
     std::ostringstream team_ss;
     team_ss << team_spec.extent(0) << "x" << team_spec.extent(1);
     std::string team_extents = team_ss.str();
-    std::string mpi_impl     = dash__toxstr(MPI_IMPL_ID);
+#ifdef MPI_IMPL_ID
+    std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
+#else
+    std::string mpi_impl = "-";
+#endif
 
     int gflops_peak = static_cast<int>(params.cpu_gflops_peak *
                                        num_units * params.threads);

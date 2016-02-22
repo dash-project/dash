@@ -170,13 +170,19 @@ void perform_test(const benchmark_params & params)
   Table.allocate(params.size_base, dash::BLOCKED);
 
   if(dash::myid() == 0) {
-    auto   nunits      = dash::size();
-    double bytes_total = (double)(array_size * sizeof(value_t));
-    double mb_total    = bytes_total / 1024 / 1024;
-    double mb_unit     = mb_total / nunits;
-    double updates_m   = (double)(num_updates * 1.0e-9);
+    auto   nunits        = dash::size();
+    double bytes_total   = (double)(array_size * sizeof(value_t));
+    double mb_total      = bytes_total / 1024 / 1024;
+    double mb_unit       = mb_total / nunits;
+    double updates_m     = (double)(num_updates * 1.0e-9);
+#ifdef MPI_IMPL_ID
+    std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
+#else
+    std::string mpi_impl = "-";
+#endif
     cout << setw(6)  << "units"     << ","
          << setw(12) << "size"      << ","
+         << setw(9)  << "mpi.impl"  << ","
          << setw(12) << "mb.total"  << ","
          << setw(12) << "mb.unit"   << ","
          << setw(12) << "updates.m" << ","
@@ -188,9 +194,10 @@ void perform_test(const benchmark_params & params)
          << endl;
     cout << setw(6)  << nunits           << ","
          << setw(12) << params.size_base << ","
-         << setw(12) << std::setprecision(4) << mb_total  << ","
-         << setw(12) << std::setprecision(4) << mb_unit   << ","
-         << setw(12) << std::setprecision(4) << updates_m << ","
+         << setw(9)  << mpi_impl         << ","
+         << setw(12) << std::fixed << std::setprecision(4) << mb_total  << ","
+         << setw(12) << std::fixed << std::setprecision(4) << mb_unit   << ","
+         << setw(12) << std::fixed << std::setprecision(4) << updates_m << ","
          << std::flush;
   }
 
@@ -228,9 +235,9 @@ void perform_test(const benchmark_params & params)
                         / duration_us;
     double latency    = duration_us * dash::size() / num_updates;
     double duration_s = (duration_us * 1.0e-6);
-    cout << setw(9) << duration_s << ","
-         << setw(9) << latency    << ","
-         << setw(9) << gups       << ","
+    cout << setw(9) << std::fixed << std::setprecision(4) << duration_s << ","
+         << setw(9) << std::fixed << std::setprecision(4) << latency    << ","
+         << setw(9) << std::fixed << std::setprecision(4) << gups       << ","
          << std::flush;
   }
 
