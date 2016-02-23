@@ -12,3 +12,4 @@ build-ci
 ipm/*/GEN.*
 my.*.sh
 .syntastic*
+tags
