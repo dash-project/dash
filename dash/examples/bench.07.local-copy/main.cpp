@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 
   dart_unit_t unit_src;
   for (size_t iteration = 0;
-      iteration < num_iterations, num_repeats > 0;
+      iteration < num_iterations && num_repeats > 0;
       ++iteration, num_repeats /= 2)
   {
     size     = size_min + (std::pow(2,iteration) * size_inc);

@@ -222,7 +222,7 @@ public:
 
 private:
   RGB color(dart_unit_t unit) {
-    unsigned r, g, b;
+    unsigned r = 0, g = 0, b = 0;
     switch (unit % 8) {
     case 0:
       r = 0x00;

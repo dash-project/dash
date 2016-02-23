@@ -79,7 +79,7 @@ void print_example(
 
   std::ofstream out(fname);
 
-  std::array<index_t, pat.ndim()> coords = {};
+  std::array<index_t, pat.ndim()> coords = {0, 0};
   pv.draw_pattern(out, coords, 1, 0);
   out.close();
 }
