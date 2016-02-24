@@ -103,6 +103,8 @@ int main(int argc, char** argv)
   size_t numa_node_cores = num_local_cpus / num_numa_nodes;
   // Number of physical cores on a single socket (14 on SuperMUC):
   size_t socket_cores    = numa_node_cores * 2;
+  // Number of processing nodes:
+  size_t num_nodes       = dash::util::Locality::NumNodes();
 
   dash::util::BenchmarkParams bench_params("bench.07.local-copy");
   bench_params.print_header();
@@ -184,7 +186,7 @@ int main(int argc, char** argv)
     print_measurement_record("socket", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
 
-    if (params.local_only) {
+    if (params.local_only || num_nodes < 2) {
       continue;
     }
     // Copy block preceeding last block as it is guaranteed to be located on
@@ -196,6 +198,9 @@ int main(int argc, char** argv)
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("remote.1", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
+    if (num_nodes < 3) {
+      continue;
+    }
     u_src    = 0;
     u_dst    = dash::size() / 2;
     ts_start = Timer::Now();
@@ -203,6 +208,9 @@ int main(int argc, char** argv)
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("remote.2", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
+    if (num_nodes < 4) {
+      continue;
+    }
     u_src    = 0;
     u_dst    = ((num_local_cpus * 2) + (numa_node_cores / 2)) % dash::size();
     ts_start = Timer::Now();
