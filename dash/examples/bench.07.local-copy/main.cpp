@@ -18,7 +18,7 @@ using std::endl;
 using std::setw;
 using std::setprecision;
 
-typedef int     ElementType;
+typedef double  ElementType;
 typedef int64_t index_t;
 typedef dash::Array<
           ElementType,
@@ -45,17 +45,40 @@ const std::string dash_copy_variant = "wait";
 typedef typename dash::util::BenchmarkParams::config_params_type
   bench_cfg_params;
 
-double copy_block_to_local(size_t size, int num_repeats, index_t block_index);
+typedef struct benchmark_params_t {
+  size_t size_base;
+  size_t size_min;
+  size_t num_iterations;
+  size_t num_repeats;
+  size_t rep_base;
+  bool   verify;
+} benchmark_params;
+
+double copy_block_to_local(
+  size_t                   size,
+  int                      repeat,
+  int                      num_repeats,
+  index_t                  source_unit_id,
+  index_t                  target_unit_id,
+  const benchmark_params & params);
 
 void print_measurement_header();
 void print_measurement_record(
   const std::string      & scenario,
-  const bench_cfg_params & params,
+  const bench_cfg_params & cfg_params,
   int                      unit_src,
+  int                      unit_dest,
   size_t                   size,
   int                      num_repeats,
-  double                   time_s,
-  double                   kps);
+  double                   secs,
+  double                   kps,
+  const benchmark_params & params);
+
+benchmark_params parse_args(int argc, char * argv[]);
+
+void print_params(
+  const dash::util::BenchmarkParams & bench_cfg,
+  const benchmark_params            & params);
 
 int main(int argc, char** argv)
 {
@@ -64,9 +87,6 @@ int main(int argc, char** argv)
 
   double kps;
   double time_s;
-  size_t size;
-  size_t num_iterations  = 10;
-  int    num_repeats     = 50 * std::pow(2, 10);
   auto   ts_start        = Timer::Now();
   size_t num_numa_nodes  = dash::util::Locality::NumNumaNodes();
   size_t num_local_cpus  = dash::util::Locality::NumCPUs();
@@ -79,62 +99,77 @@ int main(int argc, char** argv)
   bench_params.print_header();
   bench_params.print_pinning();
 
-  print_measurement_header();
+  benchmark_params params = parse_args(argc, argv);
+  size_t num_iterations   = params.num_iterations;
+  size_t num_repeats      = params.num_repeats;
+  size_t size_inc         = params.size_base;
+  size_t size_min         = params.size_min;
 
   auto bench_cfg = bench_params.config();
 
-  /// Increments of 64 MB of elements in total:
-  size_t size_inc = 1 * (static_cast<size_t>(std::pow(2, 30)) /
-                         sizeof(ElementType)) / 16;
-  size_t size_min = size_inc;
+  print_params(bench_params, params);
+
+  print_measurement_header();
 
   dart_unit_t unit_src;
-  for (size_t iteration = 0;
-      iteration < num_iterations, num_repeats > 0;
-      ++iteration, num_repeats /= 2)
+  for (size_t i = 0; i < num_iterations && num_repeats > 0;
+       ++i, num_repeats /= params.rep_base)
   {
-    size     = size_min + (std::pow(2,iteration) * size_inc);
+    auto block_size = size_min + (std::pow(params.rep_base,i) * size_inc);
+    auto size       = block_size * dash::size();
 
     // Copy first block in array, assigned to unit 0:
     unit_src = 0;
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, num_repeats, unit_src);
+    kps      = copy_block_to_local(size, i, num_repeats, 0, unit_src, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("local", bench_cfg, unit_src, size, num_repeats,
-                             time_s, kps);
+    print_measurement_record("local", bench_cfg, 0, unit_src,
+                             size, num_repeats, time_s, kps, params);
 
     // Copy last block in the master's NUMA domain:
     unit_src = (numa_node_cores-1) % dash::size();
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, num_repeats, unit_src);
+    kps      = copy_block_to_local(size, i, num_repeats, 0, unit_src, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("uma", bench_cfg, unit_src, size, num_repeats,
-                             time_s, kps);
+    print_measurement_record("uma", bench_cfg, 0, unit_src,
+                             size, num_repeats, time_s, kps, params);
 
     // Copy block in the master's neighbor NUMA domain:
     unit_src = (numa_node_cores + (numa_node_cores / 2)) % dash::size();
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, num_repeats, unit_src);
+    kps      = copy_block_to_local(size, i, num_repeats, 0, unit_src, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("numa", bench_cfg, unit_src, size, num_repeats,
-                             time_s, kps);
+    print_measurement_record("numa", bench_cfg, 0, unit_src,
+                             size, num_repeats, time_s, kps, params);
 
     // Copy first block in next socket on the master's node:
     unit_src = (socket_cores + (numa_node_cores / 2)) % dash::size();
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, num_repeats, unit_src);
+    kps      = copy_block_to_local(size, i, num_repeats, 0, unit_src, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("socket", bench_cfg, unit_src, size, num_repeats,
-                             time_s, kps);
+    print_measurement_record("socket", bench_cfg, 0, unit_src,
+                             size, num_repeats, time_s, kps, params);
 
     // Copy block preceeding last block as it is guaranteed to be located on
     // a remote unit and completely filled:
     unit_src = dash::size() - 2;
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, num_repeats, unit_src);
+    kps      = copy_block_to_local(size, i, num_repeats, 0, unit_src, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remote", bench_cfg, unit_src, size, num_repeats,
-                             time_s, kps);
+    print_measurement_record("remote.1", bench_cfg, 0, unit_src,
+                             size, num_repeats, time_s, kps, params);
+    unit_src = dash::size() / 2;
+    ts_start = Timer::Now();
+    kps      = copy_block_to_local(size, i, num_repeats, 0, unit_src, params);
+    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
+    print_measurement_record("remote.2", bench_cfg, 0, unit_src,
+                             size, num_repeats, time_s, kps, params);
+    unit_src = ((num_local_cpus * 2) + (numa_node_cores / 2)) % dash::size();
+    ts_start = Timer::Now();
+    kps      = copy_block_to_local(size, i, num_repeats, 0, unit_src, params);
+    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
+    print_measurement_record("remote.3", bench_cfg, 0, unit_src,
+                             size, num_repeats, time_s, kps, params);
   }
 
   DASH_PRINT_MASTER("Benchmark finished");
@@ -143,18 +178,24 @@ int main(int argc, char** argv)
   return 0;
 }
 
-double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
+double copy_block_to_local(
+  size_t                   size,
+  int                      repeat,
+  int                      num_repeats,
+  index_t                  source_unit_id,
+  index_t                  target_unit_id,
+  const benchmark_params & params)
 {
   Array_t global_array(size, dash::BLOCKED);
-
-  auto    block_size       = global_array.pattern().local_size();
+  auto    block_size      = global_array.pattern().local_size();
   // Index of block to copy. Use block of succeeding neighbor
   // which is expected to be in same NUMA domain for unit 0:
-  auto    source_block     = global_array.pattern().block(block_index);
-  index_t copy_start_idx   = source_block.offset(0);
-  index_t copy_end_idx     = copy_start_idx + block_size;
-  auto    source_unit_id   = global_array.pattern().unit_at(copy_start_idx);
-  double  elapsed          = 1;
+  auto    block_index     = source_unit_id;
+  auto    source_block    = global_array.pattern().block(block_index);
+  index_t copy_start_idx  = source_block.offset(0);
+  index_t copy_end_idx    = copy_start_idx + block_size;
+  auto    block_unit_id   = global_array.pattern().unit_at(copy_start_idx);
+  dash::Shared<double> elapsed;
 
   DASH_LOG_DEBUG("copy_block_to_local()",
                  "size:",             size,
@@ -162,18 +203,21 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
                  "block size:",       block_size,
                  "copy index range:", copy_start_idx, "-", copy_end_idx);
 
-  if (source_unit_id != block_index) {
+  if (source_unit_id != block_unit_id) {
     DASH_THROW(dash::exception::RuntimeError,
                "copy_block_to_local: Invalid distribution of global array");
     return 0;
   }
 
+  std::srand(dash::myid() * 42 + repeat);
   for (size_t l = 0; l < global_array.lsize(); ++l) {
-    global_array.local[l] = ((dash::myid() + 1) * 1000) + l;
+    global_array.local[l] = ((dash::myid() + 1) * 100000)
+                            + (l * 1000)
+                            + (std::rand() * 1.0e-9);
   }
   dash::barrier();
 
-  if(dash::myid() == 0) {
+  if(dash::myid() == target_unit_id) {
     ElementType * local_array = new ElementType[block_size];
 
     // Perform measurement:
@@ -185,23 +229,23 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
                                   local_array);
       DASH_ASSERT_EQ(local_array + block_size, copy_lend,
                      "Unexpected end of copied range");
-#ifndef DASH_ENABLE_ASSERTIONS
       dash__unused(copy_lend);
-#endif
     }
-    elapsed = Timer::ElapsedSince(timer_start);
+    elapsed.set(Timer::ElapsedSince(timer_start));
 
     // Validate values:
-    for (int l = 0; l < static_cast<int>(block_size); ++l) {
-      auto expected = ((source_unit_id + 1) * 1000) + l;
-      auto actual   = local_array[l];
-      if (actual != expected) {
-        DASH_THROW(dash::exception::RuntimeError,
-                   "copy_block_to_local: Validation failed " <<
-                   "for copied element at offset " << l << ": " <<
-                   "expected: " << expected << " " <<
-                   "actual: "   << actual);
-        return 0;
+    if (params.verify) {
+      for (int l = 0; l < static_cast<int>(block_size); ++l) {
+        auto expected = global_array[l];
+        auto actual   = local_array[l];
+        if (actual != expected) {
+          DASH_THROW(dash::exception::RuntimeError,
+                     "copy_block_to_local: Validation failed " <<
+                     "for copied element at offset " << l << ": " <<
+                     "expected: " << expected << " " <<
+                     "actual: "   << actual);
+          return 0;
+        }
       }
     }
 
@@ -212,7 +256,8 @@ double copy_block_to_local(size_t size, int num_repeats, index_t block_index)
       "copy_block_to_local",
       "Waiting for completion of copy operation");
   dash::barrier();
-  return (static_cast<double>(block_size * num_repeats) / elapsed);
+
+  return (static_cast<double>(block_size * num_repeats) / elapsed.get());
 }
 
 void print_measurement_header()
@@ -223,11 +268,12 @@ void print_measurement_header()
          << std::setw(10) << "mpi.impl"   << ","
          << std::setw(10) << "scenario"   << ","
          << std::setw(10) << "copy type"  << ","
-         << std::setw(9)  << "src.unit"   << ","
+         << std::setw(11) << "src.unit"   << ","
+         << std::setw(11) << "dest.unit"  << ","
          << std::setw(9)  << "repeats"    << ","
          << std::setw(12) << "blocksize"  << ","
          << std::setw(9)  << "glob.mb"    << ","
-         << std::setw(9)  << "mb/rank"    << ","
+         << std::setw(9)  << "mb/block"   << ","
          << std::setw(9)  << "time.s"     << ","
          << std::setw(12) << "elem.m/s"
          << endl;
@@ -236,12 +282,14 @@ void print_measurement_header()
 
 void print_measurement_record(
   const std::string      & scenario,
-  const bench_cfg_params & params,
+  const bench_cfg_params & cfg_params,
   int                      unit_src,
+  int                      unit_dest,
   size_t                   size,
   int                      num_repeats,
   double                   secs,
-  double                   kps)
+  double                   kps,
+  const benchmark_params & params)
 {
   if (dash::myid() == 0) {
     std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
@@ -253,7 +301,8 @@ void print_measurement_record(
          << std::setw(10) << mpi_impl            << ","
          << std::setw(10) << scenario            << ","
          << std::setw(10) << dash_copy_variant   << ","
-         << std::setw(9)  << unit_src            << ","
+         << std::setw(11) << unit_src            << ","
+         << std::setw(11) << unit_dest           << ","
          << std::setw(9)  << num_repeats         << ","
          << std::setw(12) << size / dash::size() << ","
          << std::fixed << setprecision(2) << setw(9)  << mem_g << ","
@@ -262,5 +311,56 @@ void print_measurement_record(
          << std::fixed << setprecision(2) << setw(12) << kps
          << endl;
   }
+}
+
+benchmark_params parse_args(int argc, char * argv[])
+{
+  benchmark_params params;
+  // Minimum block size of 4 KB:
+  params.size_base      = (4 * 1024) / sizeof(ElementType);
+  params.num_iterations = 8;
+  params.rep_base       = 4;
+  params.num_repeats    = 0;
+  params.verify         = false;
+  params.size_min       = 0;
+
+  for (auto i = 1; i < argc; i += 2) {
+    std::string flag = argv[i];
+    if (flag == "-sb") {
+      params.size_base      = atoi(argv[i+1]);
+    } else if (flag == "-smin") {
+      params.size_min       = atoi(argv[i+1]);
+    } else if (flag == "-i") {
+      params.num_iterations = atoi(argv[i+1]);
+    } else if (flag == "-r") {
+      params.num_repeats    = atoi(argv[i+1]);
+    } else if (flag == "-rb") {
+      params.rep_base       = atoi(argv[i+1]);
+    } else if (flag == "-verify") {
+      params.verify         = (atoi(argv[i+1]) == 1);
+    }
+  }
+  if (params.num_repeats == 0) {
+    params.num_repeats = 2 * std::pow(params.rep_base, 10);
+  }
+  return params;
+}
+
+void print_params(
+  const dash::util::BenchmarkParams & bench_cfg,
+  const benchmark_params            & params)
+{
+  if (dash::myid() != 0) {
+    return;
+  }
+
+  bench_cfg.print_section_start("Runtime arguments");
+  bench_cfg.print_param("-sb",     "block size base", params.size_base);
+  bench_cfg.print_param("-smin",   "min. block size", params.size_min);
+  bench_cfg.print_param("-i",      "iterations",      params.num_iterations);
+  bench_cfg.print_param("-r",      "repeats",         params.num_repeats);
+  bench_cfg.print_param("-rb",     "rep. base",       params.rep_base);
+  bench_cfg.print_param("-verify", "verification",    params.verify);
+  bench_cfg.print_section_end();
 }
 

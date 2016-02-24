@@ -134,12 +134,12 @@ void print_params(
 
 int main(int argc, char **argv)
 {
-#ifdef DASH_ENABLE_IPM
-  MPI_Pcontrol(0, "off");
-#endif
   DASH_LOG_DEBUG("bench.gups", "main()");
 
   dash::init(&argc, &argv);
+#ifdef DASH_ENABLE_IPM
+  MPI_Pcontrol(0, "off");
+#endif
 
   Timer::Calibrate(0);
 

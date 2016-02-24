@@ -1,7 +1,7 @@
-/* 
+/*
  * dash-lib/Shared.h
  *
- * author(s): Karl Fuerlinger, LMU Munich 
+ * author(s): Karl Fuerlinger, LMU Munich
  */
 /* @DASH_HEADER@ */
 
@@ -16,26 +16,26 @@ namespace dash {
 
 /**
  * Shared access to a value in global memory across a team.
- * TODO: No support for atomic operations (like increment) so far
+ * TODO: No support for atomic operations (like increment) so far.
  *
  * \tparam  ElementType  The type of the shared value.
  */
 template<typename ElementType>
 class Shared {
 public:
-  typedef ElementType  value_type;
-  typedef size_t        size_type;
-  typedef size_t        difference_type;  
+  typedef ElementType                         value_type;
+  typedef size_t                               size_type;
+  typedef size_t                         difference_type;
 
-  typedef       GlobRef<value_type>       reference;
-  typedef const GlobRef<value_type> const_reference;
-  
-  typedef       GlobPtr<value_type>       pointer;
-  typedef const GlobPtr<value_type> const_pointer;
+  typedef       GlobRef<value_type>            reference;
+  typedef const GlobRef<value_type>      const_reference;
+
+  typedef       GlobPtr<value_type>              pointer;
+  typedef const GlobPtr<value_type>        const_pointer;
 
 private:
   typedef dash::GlobMem<value_type> GlobMem;
-  GlobMem *     m_globmem; 
+  GlobMem *     m_globmem;
   dash::Team &  m_team;
   pointer       m_ptr;
 
@@ -57,7 +57,7 @@ public:
 	    0,
       m_team.dart_id());
   }
-  
+
   /**
    * Destructor, frees shared memory.
    */

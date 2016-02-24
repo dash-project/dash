@@ -25,8 +25,6 @@ make_team_spec(
   DASH_LOG_TRACE("dash::make_team_spec()");
   // Deduce number of dimensions from size spec:
   const dim_t ndim = SizeSpecType::ndim();
-  // Total number of processes:
-  auto  nunits     = dash::size();
   // Number of processing nodes:
   auto  nnodes     = dash::util::Locality::NumNodes();
   // Default team spec:
