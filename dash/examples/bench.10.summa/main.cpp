@@ -921,5 +921,6 @@ void print_params(
   bench_cfg.print_param("-emax",  "threads/proc",  params.exp_max);
   bench_cfg.print_param("-rmax",  "rep. max",      params.rep_max);
   bench_cfg.print_param("-rbase", "rep. base",     params.rep_base);
+  bench_cfg.print_param("-mkldyn","MKL dynamic",   params.mkl_dyn);
   bench_cfg.print_section_end();
 }
