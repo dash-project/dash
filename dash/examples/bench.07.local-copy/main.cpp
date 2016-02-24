@@ -37,9 +37,9 @@ typedef dash::util::Timer<
   } while(0)
 
 #ifndef DASH__ALGORITHM__COPY__USE_WAIT
-const std::string dash_copy_variant = "flush";
+const std::string dash_async_copy_variant = "flush";
 #else
-const std::string dash_copy_variant = "wait";
+const std::string dash_async_copy_variant = "wait";
 #endif
 
 typedef typename dash::util::BenchmarkParams::config_params_type
@@ -52,6 +52,7 @@ typedef struct benchmark_params_t {
   size_t num_repeats;
   size_t rep_base;
   bool   verify;
+  bool   local_only;
 } benchmark_params;
 
 typedef enum local_copy_method_t {
@@ -72,6 +73,7 @@ double copy_block_to_local(
 void print_measurement_header();
 void print_measurement_record(
   const std::string      & scenario,
+  const std::string      & local_copy_method,
   const bench_cfg_params & cfg_params,
   int                      unit_src,
   int                      unit_dest,
@@ -133,7 +135,7 @@ int main(int argc, char** argv)
     mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params,
                                    MEMCPY);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("memcpy", bench_cfg, u_src, u_dst,
+    print_measurement_record("local", "memcpy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
 
     // Copy first block in array, assigned to unit 0, using std::copy:
@@ -143,7 +145,7 @@ int main(int argc, char** argv)
     mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params,
                                    STD_COPY);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("stdcopy", bench_cfg, u_src, u_dst,
+    print_measurement_record("local", "stdcopy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
 
     // Copy first block in array, assigned to unit 0:
@@ -152,7 +154,7 @@ int main(int argc, char** argv)
     ts_start = Timer::Now();
     mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("local", bench_cfg, u_src, u_dst,
+    print_measurement_record("local", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
 
     // Copy last block in the master's NUMA domain:
@@ -161,7 +163,7 @@ int main(int argc, char** argv)
     ts_start = Timer::Now();
     mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("uma", bench_cfg, u_src, u_dst,
+    print_measurement_record("uma", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
 
     // Copy block in the master's neighbor NUMA domain:
@@ -170,7 +172,7 @@ int main(int argc, char** argv)
     ts_start = Timer::Now();
     mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("numa", bench_cfg, u_src, u_dst,
+    print_measurement_record("numa", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
 
     // Copy first block in next socket on the master's node:
@@ -179,9 +181,12 @@ int main(int argc, char** argv)
     ts_start = Timer::Now();
     mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("socket", bench_cfg, u_src, u_dst,
+    print_measurement_record("socket", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
 
+    if (params.local_only) {
+      continue;
+    }
     // Copy block preceeding last block as it is guaranteed to be located on
     // a remote unit and completely filled:
     u_src    = 0;
@@ -189,21 +194,21 @@ int main(int argc, char** argv)
     ts_start = Timer::Now();
     mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remote.1", bench_cfg, u_src, u_dst,
+    print_measurement_record("remote.1", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
     u_src    = 0;
     u_dst    = dash::size() / 2;
     ts_start = Timer::Now();
     mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remote.2", bench_cfg, u_src, u_dst,
+    print_measurement_record("remote.2", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
     u_src    = 0;
     u_dst    = ((num_local_cpus * 2) + (numa_node_cores / 2)) % dash::size();
     ts_start = Timer::Now();
     mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remote.3", bench_cfg, u_src, u_dst,
+    print_measurement_record("remote.3", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_repeats, time_s, mbps, params);
   }
 
@@ -335,7 +340,8 @@ void print_measurement_header()
          << std::setw(5)  << "units"      << ","
          << std::setw(10) << "mpi.impl"   << ","
          << std::setw(10) << "scenario"   << ","
-         << std::setw(10) << "copy type"  << ","
+         << std::setw(12) << "copy.type"  << ","
+         << std::setw(10) << "acopy.type" << ","
          << std::setw(11) << "src.unit"   << ","
          << std::setw(11) << "dest.unit"  << ","
          << std::setw(9)  << "repeats"    << ","
@@ -350,6 +356,7 @@ void print_measurement_header()
 
 void print_measurement_record(
   const std::string      & scenario,
+  const std::string      & local_copy_method,
   const bench_cfg_params & cfg_params,
   int                      unit_src,
   int                      unit_dest,
@@ -365,14 +372,15 @@ void print_measurement_record(
                      sizeof(ElementType)) / 1024) / 1024;
     double mem_l = mem_g / dash::size();
     cout << std::right
-         << std::setw(5)  << dash::size()        << ","
-         << std::setw(10) << mpi_impl            << ","
-         << std::setw(10) << scenario            << ","
-         << std::setw(10) << dash_copy_variant   << ","
-         << std::setw(11) << unit_src            << ","
-         << std::setw(11) << unit_dest           << ","
-         << std::setw(9)  << num_repeats         << ","
-         << std::setw(12) << size / dash::size() << ","
+         << std::setw(5)  << dash::size()              << ","
+         << std::setw(10) << mpi_impl                  << ","
+         << std::setw(10) << scenario                  << ","
+         << std::setw(12) << local_copy_method         << ","
+         << std::setw(10) << dash_async_copy_variant   << ","
+         << std::setw(11) << unit_src                  << ","
+         << std::setw(11) << unit_dest                 << ","
+         << std::setw(9)  << num_repeats               << ","
+         << std::setw(12) << size / dash::size()       << ","
          << std::fixed << setprecision(2) << setw(9)  << mem_g << ","
          << std::fixed << setprecision(2) << setw(9)  << mem_l << ","
          << std::fixed << setprecision(2) << setw(9)  << secs  << ","
@@ -390,6 +398,7 @@ benchmark_params parse_args(int argc, char * argv[])
   params.rep_base       = 4;
   params.num_repeats    = 0;
   params.verify         = false;
+  params.local_only     = false;
   params.size_min       = 0;
 
   for (auto i = 1; i < argc; i += 2) {
@@ -406,6 +415,9 @@ benchmark_params parse_args(int argc, char * argv[])
       params.rep_base       = atoi(argv[i+1]);
     } else if (flag == "-verify") {
       params.verify         = true;
+      --i;
+    } else if (flag == "-lo") {
+      params.local_only     = true;
       --i;
     }
   }
@@ -430,6 +442,7 @@ void print_params(
   bench_cfg.print_param("-r",      "repeats",         params.num_repeats);
   bench_cfg.print_param("-rb",     "rep. base",       params.rep_base);
   bench_cfg.print_param("-verify", "verification",    params.verify);
+  bench_cfg.print_param("-lo",     "local only",      params.local_only);
   bench_cfg.print_section_end();
 }
 

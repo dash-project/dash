@@ -15,8 +15,8 @@
 #endif
 
 #ifndef DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES
-// Use memcpy instead of std::copy for ranges below 64 KB:
-#define DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES 0x80000
+// Use memcpy instead of std::copy for ranges below 1 MB:
+#define DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES 0x100000
 #endif
 
 namespace dash {
@@ -182,8 +182,8 @@ ValueType * copy_impl(
                      "total:",          num_elem_total,
                      "copied:",         num_elem_copied,
                      "left:",           total_elem_left);
-      auto src_gptr = cur_in_first.dart_gptr();
       auto dest_ptr = out_first + num_elem_copied;
+      auto src_gptr = cur_in_first.dart_gptr();
       if (dart_get_blocking(
             dest_ptr,
             src_gptr,
@@ -896,7 +896,7 @@ template <
   typename ValueType,
   class GlobInputIt,
   class GlobOutputIt >
-ValueType * copy(
+GlobOutputIt copy(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
   GlobOutputIt  out_first)
@@ -907,7 +907,7 @@ ValueType * copy(
   // - Implement adapter for local-to-global dash::copy here
   // - Return if global input range has no local sub-range
 
-  return nullptr;
+  return GlobOutputIt();
 }
 
 } // namespace dash
