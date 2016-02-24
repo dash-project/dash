@@ -48,6 +48,7 @@ BenchmarkParams::BenchmarkParams(
   for (; env_var_kv != 0; ++i) {
     if (strstr(env_var_kv, "I_MPI_") == env_var_kv ||
         strstr(env_var_kv, "MV2_")   == env_var_kv ||
+        strstr(env_var_kv, "MPICH")  == env_var_kv ||
         strstr(env_var_kv, "OMPI_")  == env_var_kv ||
         strstr(env_var_kv, "MP_")    == env_var_kv)
     {
