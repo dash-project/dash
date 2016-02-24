@@ -345,8 +345,15 @@ void summa(
                  "unit:",  block_a.begin().lpos().unit,
                  "view:",  block_a.begin().viewspec());
   if (block_a_lptr == nullptr) {
+#ifdef DASH_ALGORITHM_SUMMA_ASYNC_INIT_PREFETCH
     get_a = dash::copy_async(block_a.begin(), block_a.end(),
                              local_block_a_comp);
+#else
+    dash::copy(block_a.begin(), block_a.end(),
+               local_block_a_comp);
+    get_a = dash::Future<value_type *>(
+              [=]() { return local_block_a_comp + block_a.size(); });
+#endif
   } else {
     local_block_a_comp_bac = local_block_a_comp;
     local_block_a_comp     = block_a_lptr;
@@ -357,12 +364,20 @@ void summa(
                  "unit:",  block_b.begin().lpos().unit,
                  "view:",  block_b.begin().viewspec());
   if (block_b_lptr == nullptr) {
+#ifdef DASH_ALGORITHM_SUMMA_ASYNC_INIT_PREFETCH
     get_b = dash::copy_async(block_b.begin(), block_b.end(),
                              local_block_b_comp);
+#else
+    dash::copy(block_b.begin(), block_b.end(),
+               local_block_b_comp);
+    get_b = dash::Future<value_type *>(
+              [=]() { return local_block_b_comp + block_b.size(); });
+#endif
   } else {
     local_block_b_comp_bac = local_block_b_comp;
     local_block_b_comp     = block_b_lptr;
   }
+#ifdef DASH_ALGORITHM_SUMMA_ASYNC_INIT_PREFETCH
   if (block_a_lptr == nullptr) {
     DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a.wait",
                    "waiting for prefetching of block A from unit",
@@ -375,6 +390,7 @@ void summa(
                    block_b.begin().lpos().unit);
     get_b.wait();
   }
+#endif
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "prefetching of blocks completed");
   // -------------------------------------------------------------------------
