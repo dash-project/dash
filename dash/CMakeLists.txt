@@ -94,6 +94,10 @@ if (PLASMA_FOUND)
        ${PLASMA_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${PLASMA_LIBRARIES})
+# set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+#      quark)
+# set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+#      coreblas)
 else()
   message(INFO "Plasma not found")
 endif()
@@ -198,6 +202,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
       set(exampletarget ${examplename}.${dart_variant})
       if (EXISTS
          ${CMAKE_CURRENT_SOURCE_DIR}/examples/${examplename}/main.cpp)
+
         # Build example for single DART implementation
         add_executable(
           ${exampletarget}

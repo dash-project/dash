@@ -117,6 +117,11 @@ std::pair<double, double> test_blas(
   unsigned repeat,
   const benchmark_params & params);
 
+std::pair<double, double> test_plasma(
+  extent_t sb,
+  unsigned repeat,
+  const benchmark_params & params);
+
 std::pair<double, double> test_pblas(
   extent_t sb,
   unsigned repeat,
@@ -182,29 +187,6 @@ int main(int argc, char* argv[])
 #else
   if (variant == "mkl") {
     DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
-  }
-#endif
-
-#if 0
-  if (params.units_x == 0 && params.units_y == 0) {
-    params.units_x = dash::size();
-    params.units_y = 1;
-#ifndef DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
-    // Minimize surface-to-volume in team spec:
-    while (params.units_inc > 1 &&
-           params.units_x % params.units_inc == 0 &&
-           params.units_x > 2 * params.units_inc)
-    {
-      params.units_y *= params.units_inc;
-      params.units_x /= params.units_inc;
-    }
-    while (params.units_x % 2 == 0 &&
-           params.units_x > 2 * params.units_y)
-    {
-      params.units_y *= 2;
-      params.units_x /= 2;
-    }
-#endif
   }
 #endif
 
@@ -305,6 +287,11 @@ void perform_test(
                          // matrices A, B, C:
                          (3 * n * n)
                        ) / 1024 ) / 1024;
+    } else if (variant.find("plasma") == 0) {
+      mem_total_mb = ( sizeof(value_t) * (
+                         // matrices A, B, C:
+                         (3 * n * n)
+                       ) / 1024 ) / 1024;
     } else if (variant.find("pblas") == 0) {
       mem_total_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
@@ -345,6 +332,8 @@ void perform_test(
   std::pair<double, double> t_mmult;
   if (variant == "mkl" || variant == "blas") {
     t_mmult = test_blas(n, num_repeats, params);
+  } else if (variant == "plasma") {
+    t_mmult = test_plasma(n, num_repeats, params);
   } else if (variant == "pblas") {
     t_mmult = test_pblas(n, num_repeats, params);
   } else {
@@ -495,12 +484,11 @@ std::pair<double, double> test_blas(
     time.second = 0;
     return time;
   }
-  long long N = sb;
 
   // Create local copy of matrices:
-  l_matrix_a = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
-  l_matrix_b = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
-  l_matrix_c = (value_t *)(mkl_malloc(sizeof(value_t) * N * N, 64));
+  l_matrix_a = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
+  l_matrix_b = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
+  l_matrix_c = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
 
   auto ts_init_start = Timer::Now();
   init_values(l_matrix_a, l_matrix_b, l_matrix_c, sb);
@@ -554,6 +542,85 @@ std::pair<double, double> test_blas(
   return time;
 #else
   DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
+#endif
+}
+
+/**
+ * Returns pair of durations (init_secs, multiply_secs).
+ *
+ */
+std::pair<double, double> test_plasma(
+  extent_t sb,
+  unsigned repeat,
+  const benchmark_params & params)
+{
+#ifdef DASH_ENABLE_PLASMA
+  std::pair<double, double> time;
+  value_t * l_matrix_a;
+  value_t * l_matrix_b;
+  value_t * l_matrix_c;
+
+  if (dash::size() != 1) {
+    time.first  = 0;
+    time.second = 0;
+    return time;
+  }
+
+  // Create local copy of matrices:
+  l_matrix_a = (value_t *)(malloc(sizeof(value_t) * sb * sb));
+  l_matrix_b = (value_t *)(malloc(sizeof(value_t) * sb * sb));
+  l_matrix_c = (value_t *)(malloc(sizeof(value_t) * sb * sb));
+
+  auto ts_init_start = Timer::Now();
+  init_values(l_matrix_a, l_matrix_b, l_matrix_c, sb);
+  time.first = Timer::ElapsedSince(ts_init_start);
+
+  auto ts_multiply_start = Timer::Now();
+  auto m = sb;
+  auto n = sb;
+  auto p = sb;
+  for (auto i = 0; i < repeat; ++i) {
+#ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
+    PLASMA_dgemm(
+        PlasmaNoTrans,
+        PlasmaNoTrans,
+        m,
+        n,
+        p,
+        1.0,
+        static_cast<double *>(l_matrix_a),
+        p,
+        static_cast<double *>(l_matrix_b),
+        n,
+        0.0,
+        static_cast<double *>(l_matrix_c),
+        n);
+#else
+    PLASMA_sgemm(
+        PlasmaNoTrans,
+        PlasmaNoTrans,
+        m,
+        n,
+        p,
+        1.0,
+        static_cast<float *>(l_matrix_a),
+        p,
+        static_cast<float *>(l_matrix_b),
+        n,
+        0.0,
+        static_cast<float *>(l_matrix_c),
+        n);
+#endif
+  }
+  time.second = Timer::ElapsedSince(ts_multiply_start);
+
+  free(l_matrix_a);
+  free(l_matrix_b);
+  free(l_matrix_c);
+
+  return time;
+#else
+  DASH_THROW(dash::exception::RuntimeError, "PLASMA not enabled");
 #endif
 }
 
