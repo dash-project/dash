@@ -638,10 +638,12 @@ ValueType * copy(
   ValueType   * out_first)
 {
   DASH_LOG_TRACE("dash::copy()", "blocking, global to local");
+#if 0
   if (in_first == in_last) {
     DASH_LOG_TRACE("dash::copy", "input range empty");
     return out_first;
   }
+#endif
   ValueType * dest_first = out_first;
   // Return value, initialize with begin of output range, indicating no values
   // have been copied:

@@ -58,7 +58,8 @@ typedef struct benchmark_params_t {
 typedef enum local_copy_method_t {
   MEMCPY,
   STD_COPY,
-  DASH_COPY
+  DASH_COPY,
+  DASH_COPY_ASYNC
 } local_copy_method;
 
 double copy_block_to_local(
@@ -189,35 +190,45 @@ int main(int argc, char** argv)
     if (params.local_only || num_nodes < 2) {
       continue;
     }
+
+    // Limit number of repeats for remote copying:
+    auto num_r_repeats = std::min<size_t>(num_repeats, 100000);
+
     // Copy block preceeding last block as it is guaranteed to be located on
     // a remote unit and completely filled:
     u_src    = 0;
     u_dst    = dash::size() - 2;
     ts_start = Timer::Now();
-    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
+    mbps     = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("remote.1", "dash::copy", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, mbps, params);
+                             size, num_r_repeats, time_s, mbps, params);
+    ts_start = Timer::Now();
+    mbps     = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, params,
+                                   DASH_COPY_ASYNC);
+    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
+    print_measurement_record("remote.1", "dash::acopy", bench_cfg, u_src, u_dst,
+                             size, num_r_repeats, time_s, mbps, params);
     if (num_nodes < 3) {
       continue;
     }
     u_src    = 0;
     u_dst    = dash::size() / 2;
     ts_start = Timer::Now();
-    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
+    mbps     = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("remote.2", "dash::copy", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, mbps, params);
+                             size, num_r_repeats, time_s, mbps, params);
     if (num_nodes < 4) {
       continue;
     }
     u_src    = 0;
     u_dst    = ((num_local_cpus * 2) + (numa_node_cores / 2)) % dash::size();
     ts_start = Timer::Now();
-    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
+    mbps     = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("remote.3", "dash::copy", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, mbps, params);
+                             size, num_r_repeats, time_s, mbps, params);
   }
 
   DASH_PRINT_MASTER("Benchmark finished");
@@ -290,6 +301,13 @@ double copy_block_to_local(
           copy_lend   = local_array + block_size;
           ts_start    = Timer::Now();
           memcpy(local_array, src_begin, block_size * sizeof(ElementType));
+          elapsed_us += Timer::ElapsedSince(ts_start);
+          break;
+        case DASH_COPY_ASYNC:
+          ts_start    = Timer::Now();
+          copy_lend = dash::copy_async(global_array.begin() + copy_start_idx,
+                                       global_array.begin() + copy_end_idx,
+                                       local_array).get();
           elapsed_us += Timer::ElapsedSince(ts_start);
           break;
         default:

@@ -21,6 +21,8 @@
 #define DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
 #endif
 
+#define DASH_ALGORITHM_SUMMA_ASYNC_INIT_PREFETCH
+
 namespace dash {
 
 namespace internal {
