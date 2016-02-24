@@ -134,10 +134,10 @@ void print_params(
 
 int main(int argc, char* argv[])
 {
+  dash::init(&argc, &argv);
 #ifdef DASH_ENABLE_IPM
   MPI_Pcontrol(0, "off");
 #endif
-  dash::init(&argc, &argv);
 
   Timer::Calibrate(0);
 

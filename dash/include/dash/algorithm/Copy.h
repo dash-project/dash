@@ -14,6 +14,11 @@
 #define DASH__ALGORITHM__COPY__USE_FLUSH
 #endif
 
+#ifndef DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES
+// Use memcpy instead of std::copy for ranges below 64 KB:
+#define DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES 0x80000
+#endif
+
 namespace dash {
 
 #ifdef DOXYGEN
@@ -443,20 +448,6 @@ dash::Future<ValueType *> copy_async(
     DASH_LOG_TRACE("dash::copy_async", "input range empty");
     return dash::Future<ValueType *>([=]() { return out_first; });
   }
-  ValueType * l_g_in_first = in_first.local();
-  ValueType * l_g_in_last  = in_last.local();
-  if (l_g_in_first != nullptr && l_g_in_last != nullptr) {
-    // Entire input range is local:
-    DASH_LOG_TRACE("dash::copy", "entire input range is local");
-    auto num_copy_elem = l_g_in_last - l_g_in_first;
-    memcpy(out_first,    // destination
-           l_g_in_first, // source
-           num_copy_elem * sizeof(ValueType));
-    ValueType * out_last = out_first + num_copy_elem;
-    DASH_LOG_TRACE("dash::copy", "finished local copy of",
-                   (out_last - out_first), "elements");
-    return dash::Future<ValueType *>([=]() { return out_last; });
-  }
   ValueType * dest_first = out_first;
   // Return value, initialize with begin of output range, indicating no values
   // have been copied:
@@ -470,6 +461,29 @@ dash::Future<ValueType *> copy_async(
   auto num_local_elem  = li_range_in.end - li_range_in.begin;
   // Total number of elements to be copied:
   auto total_copy_elem = in_last - in_first;
+
+  if (num_local_elem == total_copy_elem) {
+    // Entire input range is local:
+    DASH_LOG_TRACE("dash::copy_async", "entire input range is local");
+    ValueType * out_last = out_first + total_copy_elem;
+    // Use memcpy for data ranges below 64 KB
+    if (total_copy_elem * sizeof(ValueType) <
+        DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES) {
+      memcpy(out_first,        // destination
+             in_first.local(), // source
+             num_local_elem * sizeof(ValueType));
+    } else {
+      ValueType * l_in_first = in_first.local();
+      ValueType * l_in_last  = l_in_first + num_local_elem;
+      out_last = std::copy(l_in_first,
+                           l_in_last,
+                           out_first);
+    }
+    DASH_LOG_TRACE("dash::copy_async", "finished local copy of",
+                   (out_last - out_first), "elements");
+    return dash::Future<ValueType *>([=]() { return out_last; });
+  }
+
   DASH_LOG_TRACE("dash::copy_async", "local range:",
                  li_range_in.begin,
                  li_range_in.end,
@@ -569,9 +583,17 @@ dash::Future<ValueType *> copy_async(
                    "num_copy_elem:", l_in_last - l_in_first);
     ValueType * local_out_first = out_first + num_prelocal_elem;
     ValueType * local_out_last;
-    local_out_last = std::copy(l_in_first,
-                               l_in_last,
-                               local_out_first);
+    // Use memcpy for data ranges below 64 KB
+    if (num_local_elem * sizeof(ValueType) <
+        DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES) {
+      memcpy(local_out_first, // destination
+             l_in_first,      // source
+             num_local_elem * sizeof(ValueType));
+    } else {
+      local_out_last = std::copy(l_in_first,
+                                 l_in_last,
+                                 local_out_first);
+    }
     DASH_LOG_TRACE("dash::copy_async", "finished local copy of",
                    (local_out_last - local_out_first),
                    "elements");
@@ -620,22 +642,6 @@ ValueType * copy(
     DASH_LOG_TRACE("dash::copy", "input range empty");
     return out_first;
   }
-#if 0
-  ValueType * l_g_in_first = in_first.local();
-  ValueType * l_g_in_last  = in_last.local();
-  if (l_g_in_first != nullptr && l_g_in_last != nullptr) {
-    // Entire input range is local:
-    DASH_LOG_TRACE("dash::copy", "entire input range is local");
-    auto num_copy_elem = l_g_in_last - l_g_in_first;
-    memcpy(out_first,    // destination
-           l_g_in_first, // source
-           num_copy_elem * sizeof(ValueType));
-    ValueType * out_last = out_first + num_copy_elem;
-    DASH_LOG_TRACE("dash::copy", "finished local copy of",
-                   (out_last - out_first), "elements");
-    return out_last;
-  }
-#endif
   ValueType * dest_first = out_first;
   // Return value, initialize with begin of output range, indicating no values
   // have been copied:
@@ -649,17 +655,29 @@ ValueType * copy(
   auto num_local_elem  = li_range_in.end - li_range_in.begin;
   // Total number of elements to be copied:
   auto total_copy_elem = in_last - in_first;
+
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:
     DASH_LOG_TRACE("dash::copy", "entire input range is local");
-    memcpy(out_first,        // destination
-           in_first.local(), // source
-           total_copy_elem * sizeof(ValueType));
     ValueType * out_last = out_first + total_copy_elem;
+    // Use memcpy for data ranges below 64 KB
+    if (total_copy_elem * sizeof(ValueType) <
+        DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES) {
+      memcpy(out_first,        // destination
+             in_first.local(), // source
+             num_local_elem * sizeof(ValueType));
+    } else {
+      ValueType * l_in_first = in_first.local();
+      ValueType * l_in_last  = l_in_first + num_local_elem;
+      out_last = std::copy(l_in_first,
+                           l_in_last,
+                           out_first);
+    }
     DASH_LOG_TRACE("dash::copy", "finished local copy of",
                    (out_last - out_first), "elements");
     return out_last;
   }
+
   DASH_LOG_TRACE("dash::copy", "local range:",
                  li_range_in.begin,
                  li_range_in.end,
@@ -732,9 +750,18 @@ ValueType * copy(
 
     DASH_LOG_TRACE("dash::copy", "copy local subrange",
                    "num_copy_elem:", l_in_last - l_in_first);
-    out_last = std::copy(l_in_first,
-                         l_in_last,
-                         dest_first);
+    // Use memcpy for data ranges below 64 KB
+    if (num_local_elem * sizeof(ValueType) <
+        DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES) {
+      memcpy(dest_first, // destination
+             l_in_first, // source
+             num_local_elem * sizeof(ValueType));
+      out_last = dest_first + num_local_elem;
+    } else {
+      out_last = std::copy(l_in_first,
+                           l_in_last,
+                           dest_first);
+    }
     // Assert that all elements in local range have been copied:
     DASH_ASSERT_EQ(out_last, dest_first + num_local_elem,
                    "Expected to copy " << num_local_elem << " local elements "
