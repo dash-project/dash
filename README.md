@@ -220,7 +220,7 @@ or
   (bin/dash/test/mpi)$ mpirun <MPI options> dash-test-mpi <gtest options>
 
 For example, you would all unit tests of matrix data structures on 4 units
-using the SHMEM runtime with:
+using the MPI runtime with:
 
-  (bin/dash/test/shmem)$ dartrun-shmem -n 4 dash-test-shmem --gtest_filter=Matrix*
+  (bin/dash/test/mpi)$ mpirun -n 4 dash-test-mpi --gtest_filter=Matrix*
 
