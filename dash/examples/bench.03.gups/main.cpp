@@ -291,7 +291,8 @@ benchmark_params parse_args(int argc, char * argv[])
     } else if (flag == "-rb") {
       params.rep_base  = atoi(argv[i+1]);
     } else if (flag == "-verify") {
-      params.verify    = (atoi(argv[i+1]) == 1);
+      params.verify    = true;
+      --i;
     }
   }
   return params;
