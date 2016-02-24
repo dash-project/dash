@@ -522,8 +522,29 @@ dash::Future<ValueType *> copy_async(
                                                           dest_first);
       futures.push_back(fut_prelocal);
       // Advance output pointers:
-      out_last   = dest_first + num_prelocal_elem;
-      dest_first = out_last;
+      out_last   += num_prelocal_elem;
+      dest_first  = out_last;
+    }
+    //
+    // -----------------------------------------------------------------------
+    // Copy remote elements succeeding the local subrange:
+    //
+    auto num_postlocal_elem = in_last.pos() - g_l_offset_end;
+    DASH_LOG_TRACE_VAR("dash::copy_async", num_postlocal_elem);
+    if (num_postlocal_elem > 0) {
+      dest_first += num_local_elem;
+      DASH_LOG_TRACE("dash::copy_async",
+                     "copy global range succeeding local subrange",
+                     "in_first:", g_l_in_last.pos(),
+                     "in_last:",  g_in_last.pos());
+      // ... [ ........ | ... l ... | --- copy --- ]
+      //     ^          ^           ^              ^
+      //     in_first   l_in_first  l_in_last      in_last
+      auto fut_postlocal = dash::internal::copy_async_impl(g_l_in_last,
+                                                           g_in_last,
+                                                           dest_first);
+      futures.push_back(fut_postlocal);
+      out_last += num_postlocal_elem;
     }
     //
     // -----------------------------------------------------------------------
@@ -546,37 +567,15 @@ dash::Future<ValueType *> copy_async(
 
     DASH_LOG_TRACE("dash::copy_async", "copy local subrange",
                    "num_copy_elem:", l_in_last - l_in_first);
-    out_last  = std::copy(l_in_first,
-                          l_in_last,
-                          dest_first);
-    // Assert that all elements in local range have been copied:
-    DASH_ASSERT_EQ(out_last, dest_first + num_local_elem,
-                   "Expected to copy " << num_local_elem << " local elements "
-                   "but copied " << (out_last - dest_first));
+    ValueType * local_out_first = out_first + num_prelocal_elem;
+    ValueType * local_out_last;
+    local_out_last = std::copy(l_in_first,
+                               l_in_last,
+                               local_out_first);
     DASH_LOG_TRACE("dash::copy_async", "finished local copy of",
-                   (out_last - dest_first), "elements");
-    // Advance output pointers:
-    dest_first = out_last;
-    //
-    // -----------------------------------------------------------------------
-    // Copy remote elements succeeding the local subrange:
-    //
-    auto num_postlocal_elem = in_last.pos() - g_l_offset_end;
-    DASH_LOG_TRACE_VAR("dash::copy_async", num_postlocal_elem);
-    if (num_postlocal_elem > 0) {
-      DASH_LOG_TRACE("dash::copy_async",
-                     "copy global range succeeding local subrange",
-                     "in_first:", g_l_in_last.pos(),
-                     "in_last:",  g_in_last.pos());
-      // ... [ ........ | ... l ... | --- copy --- ]
-      //     ^          ^           ^              ^
-      //     in_first   l_in_first  l_in_last      in_last
-      auto fut_postlocal = dash::internal::copy_async_impl(g_l_in_last,
-                                                           g_in_last,
-                                                           dest_first);
-      futures.push_back(fut_postlocal);
-      out_last = dest_first + num_postlocal_elem;
-    }
+                   (local_out_last - local_out_first),
+                   "elements");
+    out_last += (local_out_last - local_out_first);
   } else {
     DASH_LOG_TRACE("dash::copy_async", "no local subrange");
     // All elements in input range are remote
