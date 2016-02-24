@@ -12,6 +12,10 @@
 #define DASH__ALGORITHM__COPY__USE_WAIT
 #endif
 
+#ifdef DASH_ENABLE_PLASMA
+#include <plasma.h>
+#endif
+
 #include "../bench.h"
 #include <libdash.h>
 #include <dash/internal/Math.h>
@@ -573,9 +577,9 @@ std::pair<double, double> test_pblas(
   int_t            i_one     =  1;
   int_t            i_zero    =  0;
   int_t            i_negone  = -1;
-  const value_t    d_one     =  1.0E+0;
-  const value_t    d_zero    =  0.0E+0;
-  const value_t    d_negone  = -1.0E+0;
+  value_t          d_one     =  1.0E+0;
+  value_t          d_zero    =  0.0E+0;
+  value_t          d_negone  = -1.0E+0;
   char             storage[] = "R";
   char             trans_a[] = "N";
   char             trans_b[] = "N";
@@ -754,11 +758,11 @@ std::pair<double, double> test_pblas(
         &n,
         &k,
         &d_one,
-        static_cast<const double *>(matrix_a_distr),
+        static_cast<double *>(matrix_a_distr),
         &i_a,
         &j_a,
         desc_a_distr,
-        static_cast<const double *>(matrix_b_distr),
+        static_cast<double *>(matrix_b_distr),
         &i_b,
         &j_b,
         desc_b_distr,
@@ -775,11 +779,11 @@ std::pair<double, double> test_pblas(
         &n,
         &k,
         &d_one,
-        static_cast<const float *>(matrix_a_distr),
+        static_cast<float *>(matrix_a_distr),
         &i_a,
         &j_a,
         desc_a_distr,
-        static_cast<const float *>(matrix_b_distr),
+        static_cast<float *>(matrix_b_distr),
         &i_b,
         &j_b,
         desc_b_distr,
