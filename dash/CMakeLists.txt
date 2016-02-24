@@ -27,7 +27,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/Plasma.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
@@ -87,7 +87,7 @@ if (NUMA_FOUND)
 endif()
 
 if (PLASMA_FOUND)
-  message(INFO "Plasma found")
+  message(INFO "PLASMA found")
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_PLASMA")
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
@@ -95,7 +95,7 @@ if (PLASMA_FOUND)
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${PLASMA_LIBRARIES})
 else()
-  message(INFO "Plasma not found")
+  message(INFO "PLASMA not found")
 endif()
 
 if (MKL_FOUND)
