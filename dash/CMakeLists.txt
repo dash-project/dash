@@ -94,10 +94,6 @@ if (PLASMA_FOUND)
        ${PLASMA_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${PLASMA_LIBRARIES})
-# set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-#      quark)
-# set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-#      coreblas)
 else()
   message(INFO "Plasma not found")
 endif()
@@ -243,6 +239,11 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
             target_link_libraries(
               ${exampletarget}
               ${IPM_LIBRARIES})
+          endif()
+          if (PLASMA_FOUND)
+            target_link_libraries(
+              ${exampletarget}
+              ${PLASMA_LIBRARIES})
           endif()
         endif()
 

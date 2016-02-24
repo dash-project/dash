@@ -17,6 +17,13 @@ find_path(
 
 message(STATUS "Searching for IPM library in path " ${IPM_PREFIX})
 
+if (NOT IPM_PREFIX AND NOT $ENV{IPM_HOME} STREQUAL "")
+  set(IPM_PREFIX $ENV{IPM_HOME})
+endif()
+if (NOT IPM_SRC AND NOT $ENV{IPM_SRC} STREQUAL "")
+  set(IPM_SRC $ENV{IPM_SRC})
+endif()
+
 find_library(
   IPM_LIBRARIES
   NAMES ipm
@@ -27,6 +34,11 @@ find_path(
   IPM_INCLUDE_DIRS
   NAMES ipm.h
   HINTS ${IPM_PREFIX}/include
+)
+find_path(
+  IPM_INCLUDE_DIRS
+  NAMES ipm.h
+  HINTS ${IPM_SRC}/include
 )
 
 include(FindPackageHandleStandardArgs)

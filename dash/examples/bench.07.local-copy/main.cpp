@@ -13,6 +13,10 @@
 #include <string>
 #include <cstring>
 
+#ifdef DASH_ENABLE_IPM
+#include <mpi.h>
+#endif
+
 using std::cout;
 using std::endl;
 using std::setw;
@@ -93,6 +97,11 @@ void print_params(
 int main(int argc, char** argv)
 {
   dash::init(&argc, &argv);
+#ifdef DASH_ENABLE_IPM
+  MPI_Pcontrol(0, "off");
+  MPI_Pcontrol(0, "clear");
+#endif
+
   Timer::Calibrate(0);
 
   double mbps;
@@ -287,6 +296,9 @@ double copy_block_to_local(
       ElementType * copy_lend = nullptr;
       ElementType * src_begin = nullptr;
       Timer::timestamp_t ts_start = 0;
+#ifdef DASH_ENABLE_IPM
+      MPI_Pcontrol(0, "on");
+#endif
       switch (l_copy_method) {
         case STD_COPY:
           src_begin   = (global_array.begin() + copy_start_idx).local();
@@ -318,6 +330,9 @@ double copy_block_to_local(
           elapsed_us += Timer::ElapsedSince(ts_start);
           break;
       }
+#ifdef DASH_ENABLE_IPM
+      MPI_Pcontrol(0, "off");
+#endif
 
       if (copy_lend != local_array + block_size) {
         DASH_THROW(dash::exception::RuntimeError,

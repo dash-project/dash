@@ -20,23 +20,11 @@ find_path(
   NAMES include/plasma.h
 )
 
-set(PLASMA_LIBRARY_DIR "${PLASMA_PREFIX}/lib")
-
 message(STATUS "Searching for Plasma library in path " ${PLASMA_PREFIX})
 
 find_library(
   PLASMA_LIBRARIES
-  NAMES plasma.so
-  HINTS ${PLASMA_PREFIX}/lib
-)
-find_library(
-  QUARK_LIBRARIES
-  NAMES quark
-  HINTS ${PLASMA_PREFIX}/lib
-)
-find_library(
-  COREBLAS_LIBRARIES
-  NAMES coreblas
+  NAMES plasma
   HINTS ${PLASMA_PREFIX}/lib
 )
 
@@ -60,9 +48,9 @@ mark_as_advanced(
 )
 
 if (PLASMA_FOUND)
-  message(INFO "PLASMA found")
+  if (NOT $ENV{PLASMA_LIB} STREQUAL "")
+    set(PLASMA_LIBRARIES "$ENV{PLASMA_LIB}")
+  endif()
   message(STATUS "PLASMA includes:  " ${PLASMA_INCLUDE_DIRS})
   message(STATUS "PLASMA libraries: " ${PLASMA_LIBRARIES})
-else()
-  message(INFO "PLASMA not found")
 endif()
