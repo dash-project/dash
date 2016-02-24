@@ -78,7 +78,7 @@ void print_measurement_record(
   size_t                   size,
   int                      num_repeats,
   double                   secs,
-  double                   kps,
+  double                   mbps,
   const benchmark_params & params);
 
 benchmark_params parse_args(int argc, char * argv[]);
@@ -92,7 +92,7 @@ int main(int argc, char** argv)
   dash::init(&argc, &argv);
   Timer::Calibrate(0);
 
-  double kps;
+  double mbps;
   double time_s;
   auto   ts_start        = Timer::Now();
   size_t num_numa_nodes  = dash::util::Locality::NumNumaNodes();
@@ -130,81 +130,81 @@ int main(int argc, char** argv)
     u_src    = 0;
     u_dst    = 0;
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params,
+    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params,
                                    MEMCPY);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("memcpy", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, kps, params);
+                             size, num_repeats, time_s, mbps, params);
 
     // Copy first block in array, assigned to unit 0, using std::copy:
     u_src    = 0;
     u_dst    = 0;
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params,
+    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params,
                                    STD_COPY);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("stdcopy", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, kps, params);
+                             size, num_repeats, time_s, mbps, params);
 
     // Copy first block in array, assigned to unit 0:
     u_src    = 0;
     u_dst    = 0;
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
+    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("local", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, kps, params);
+                             size, num_repeats, time_s, mbps, params);
 
     // Copy last block in the master's NUMA domain:
     u_src    = 0;
     u_dst    = (numa_node_cores-1) % dash::size();
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
+    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("uma", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, kps, params);
+                             size, num_repeats, time_s, mbps, params);
 
     // Copy block in the master's neighbor NUMA domain:
     u_src    = 0;
     u_dst    = (numa_node_cores + (numa_node_cores / 2)) % dash::size();
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
+    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("numa", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, kps, params);
+                             size, num_repeats, time_s, mbps, params);
 
     // Copy first block in next socket on the master's node:
     u_src    = 0;
     u_dst    = (socket_cores + (numa_node_cores / 2)) % dash::size();
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
+    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("socket", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, kps, params);
+                             size, num_repeats, time_s, mbps, params);
 
     // Copy block preceeding last block as it is guaranteed to be located on
     // a remote unit and completely filled:
     u_src    = 0;
     u_dst    = dash::size() - 2;
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
+    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("remote.1", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, kps, params);
+                             size, num_repeats, time_s, mbps, params);
     u_src    = 0;
     u_dst    = dash::size() / 2;
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
+    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("remote.2", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, kps, params);
+                             size, num_repeats, time_s, mbps, params);
     u_src    = 0;
     u_dst    = ((num_local_cpus * 2) + (numa_node_cores / 2)) % dash::size();
     ts_start = Timer::Now();
-    kps      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
+    mbps     = copy_block_to_local(size, i, num_repeats, u_src, u_dst, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("remote.3", bench_cfg, u_src, u_dst,
-                             size, num_repeats, time_s, kps, params);
+                             size, num_repeats, time_s, mbps, params);
   }
 
   DASH_PRINT_MASTER("Benchmark finished");
@@ -323,7 +323,9 @@ double copy_block_to_local(
       "Waiting for completion of copy operation");
   dash::barrier();
 
-  return (static_cast<double>(block_size * num_repeats) / elapsed.get());
+  double mkeys_per_sec = (static_cast<double>(block_size * num_repeats)
+                         / elapsed.get());
+  return mkeys_per_sec * sizeof(ElementType);
 }
 
 void print_measurement_header()
@@ -341,7 +343,7 @@ void print_measurement_header()
          << std::setw(9)  << "glob.mb"    << ","
          << std::setw(9)  << "mb/block"   << ","
          << std::setw(9)  << "time.s"     << ","
-         << std::setw(12) << "elem.m/s"
+         << std::setw(12) << "mb/s"
          << endl;
   }
 }
@@ -354,7 +356,7 @@ void print_measurement_record(
   size_t                   size,
   int                      num_repeats,
   double                   secs,
-  double                   kps,
+  double                   mbps,
   const benchmark_params & params)
 {
   if (dash::myid() == 0) {
@@ -374,7 +376,7 @@ void print_measurement_record(
          << std::fixed << setprecision(2) << setw(9)  << mem_g << ","
          << std::fixed << setprecision(2) << setw(9)  << mem_l << ","
          << std::fixed << setprecision(2) << setw(9)  << secs  << ","
-         << std::fixed << setprecision(2) << setw(12) << kps
+         << std::fixed << setprecision(2) << setw(12) << mbps
          << endl;
   }
 }
