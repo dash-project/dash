@@ -9,6 +9,9 @@ Features:
 - Added support for MKL.
 - Added support for numalib.
 - Added support for IPM.
+- Added support for PLASMA.
+
+- Enabled reporting of compiler warnings (`-Wall -pedantic`).
 
 - New compiler flags:
 
@@ -19,6 +22,8 @@ Features:
     - `DASH_ENABLE_NUMA`: Whether DASH has been compiled with numalib support.
     - `DASH_ENABLE_IPM`: Whether DASH has been compiled with support for
       run-time calls of IPM functions.
+    - `DASH_ENABLE_PLASMA`: Whether DASH has been compiled with support for
+      the PLASMA linear algebra library.
 
   New compiler flags specific to DART-MPI, also available in DASH when built
   with DART-MPI backend:
@@ -53,15 +58,16 @@ Features:
 
 Bugfixes:
 
-- Fixed deallocation of shared memory segments when MPI shared windows are
-  disabled.
+- Fixed missing deallocation of shared memory segments when MPI shared windows
+  are disabled.
 - Reduced MPI calls in rank queries.
-- Numerous stability improvements.
+- Numerous stability improvements, added checks of parameters and return
+  values of MPI calls.
 - Fixed compiler warnings.
 
 ## DASH
 
-- Added documentation.
+- Added documentation of container concepts.
 
 Features:
 
@@ -70,12 +76,14 @@ Features:
 - Added `dash::ShiftTilePattern` (previously `dash::TilePattern`).
 - Added `dash::TilePattern`.
 - Added algorithms `dash::fill` and `dash::generate`.
-- Added `dash::util::Locality`, a minimalistic helper class for obtaining
-  basic locality information like NUMA domains and CPU pinning.
+- Added `dash::GlobViewIter` for specifying and iterating multi-dimensional
+  views e.g. on matrices.
 - Added benchmark application `bench.10.summa` for evaluation of
   `dash::multiply<dash::Matrix>`.
 - Added benchmark application `bench.07.local-copy` for evaluation of
   `dash::copy` (global-to-local copy operations).
+- Extended GUPS benchmark application `bench.03.gups`.
+- Extended micro-benchmark `bench.09.multi-reader`.
 - Added automatic balancing of process grid extents in `dash::TeamSpec`,
   optimizing for surface-to-volume ratio.
 - Added tool `dash::tools::PatternVisualizer` to visualize data distributions
@@ -85,11 +93,16 @@ Features:
 - Significantly improved performance of `dash::summa`.
 - Added support for irregular blocked distributions (underfilled blocks) for
   `dash::Array`.
+- Added `dash::util::Locality`, a minimalistic helper class for obtaining
+  basic locality information like NUMA domains and CPU pinning.
 - Added utility class `dash::util::BenchmarkParams` for printing benchmark
-  parameters and environment settings in measurement preamble.
+  parameters, DASH configuration and environment settings in measurements
+  preamble.
+- Improved efficiency of `dash::copy` for local-to-local copying.
 
 Bugfixes:
 
+- Fixed compiler errors for ICC 15.
 - Fixed order of coordinate indices in patterns and `dash::Matrix`.
 - Fixed definition of assertion macros when configured with runtime
   assertions disabled.
@@ -97,4 +110,4 @@ Bugfixes:
   global array to be freed when going out of scope while other units might
   still attempt to access it.
 - Fixed compiler warnings.
-
+- Fixed `dash::copy` for huge ranges.
