@@ -1,7 +1,7 @@
 include ../make.defs
 
 CFLAGS+=-I.. -I../$(DART_IF)/include -I../include -I../../base/include
-#CFLAGS+=-DDART_MPI_DISABLE_SHARED_WINDOWS
+CFLAGS+=-DDART_MPI_DISABLE_SHARED_WINDOWS
 #CFLAGS+=-DDART_DEBUG
 #OPT_FLAGS=-O3
 

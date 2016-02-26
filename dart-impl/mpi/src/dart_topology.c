@@ -247,6 +247,11 @@ dart_ret_t dart_top_set_nearest(dart_topology_t *  dart_topology, int num_units,
 	MPI_Comm reordered_comm;
     MPI_Comm_split(MPI_COMM_WORLD, 0, proxy_rank, &reordered_comm);
 
+	/* Make sure that the new rank of the unit is registered in reordered communicator */
+    int new_rank;
+    MPI_Comm_rank(reordered_comm, &new_rank);
+	assert(new_rank == dart_topology[unit_id].reordered_unit_id);
+
 	
 	*reordered_team = DART_TEAM_NULL;
 	uint16_t index;
@@ -257,7 +262,7 @@ dart_ret_t dart_top_set_nearest(dart_topology_t *  dart_topology, int num_units,
 	MPI_Allreduce(&dart_next_availteamid, &max_teamid, 1, MPI_INT32_T, MPI_MAX, MPI_COMM_WORLD);
 	dart_next_availteamid = max_teamid + 1;
 
-	if (reordered_comm != MPI_COMM_NULL) {
+	if(reordered_comm != MPI_COMM_NULL) {
 		int result = dart_adapt_teamlist_alloc(max_teamid, &index);
 		if (result == -1) {
 			return DART_ERR_OTHER;

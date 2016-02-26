@@ -5,7 +5,8 @@
 #include <stdio.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
-#include <dash/dart/mpi/dart_team_private.h>
+//#include <dash/dart/mpi/include/dash/dart/mpi/dart_team_private.h>
+#include "../include/dash/dart/mpi/dart_team_private.h"
 
 
 dart_team_t dart_next_availteamid;

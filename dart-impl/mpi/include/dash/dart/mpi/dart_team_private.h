@@ -132,8 +132,11 @@
 #define DART_ADAPT_TEAM_PRIVATE_H_INCLUDED
 
 #include <mpi.h>
-#include <dash/dart/base/logging.h>
-#include <dash/dart/mpi/dart_mem.h>
+//#include <dash/dart/base/logging.h>
+//#include <dash/dart/mpi/dart_mem.h>
+
+#include "dart_mem.h"
+#include "../../../../../base/include/dash/dart/base/logging.h"
 
 extern dart_team_t dart_next_availteamid;
 
