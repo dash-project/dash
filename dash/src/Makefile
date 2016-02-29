@@ -1,5 +1,5 @@
 #
-# In-place makefile for use side-by-side with the 
+# In-place makefile for use side-by-side with the
 # CMake build system
 #
 
@@ -13,7 +13,7 @@ ifeq ($(DASH_ENABLE_LOGGING),1)
 endif
 
 ifeq ($(DASH_ENABLE_TRACE_LOGGING),1)
-	CXXFLAGS+=-DDASH_ENABLE_LOGGING	
+	CXXFLAGS+=-DDASH_ENABLE_LOGGING
 	CXXFLAGS+=-DDASH_ENABLE_TRACE_LOGGING
 endif
 
@@ -30,21 +30,22 @@ LIBDASH = libdash.a
 
 FILES = Init Team Distribution Math \
 	util/Timer util/TimestampClockPosix \
-	util/TimestampCounterPosix
+	util/TimestampCounterPosix \
+	util/Locality
 
 OBJS = $(addsuffix .o, $(FILES))
 
-all : $(LIBDASH) 
+all : $(LIBDASH)
 
 $(LIBDASH) : $(OBJS)
 	ar rcs $(LIBDASH) $(OBJS)
 
-clean : 
+clean :
 	rm -f *~
 	rm -f *.o
 	rm -f $(LIBDASH)
 
-printenv : 
+printenv :
 	@echo "DART_IMPL   = $(DART_IMPL)"
 	@echo "DART_IF     = $(DART_IF)"
 	@echo "DASH_ROOT   = $(DASH_ROOT)"
