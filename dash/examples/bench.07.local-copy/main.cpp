@@ -201,7 +201,7 @@ int main(int argc, char** argv)
     }
 
     // Limit number of repeats for remote copying:
-    auto num_r_repeats = std::min<size_t>(num_repeats, 100000);
+    auto num_r_repeats = std::min<size_t>(num_repeats, 10000);
 
     // Copy block preceeding last block as it is guaranteed to be located on
     // a remote unit and completely filled:
@@ -279,33 +279,37 @@ double copy_block_to_local(
     return 0;
   }
 
-  std::srand(dash::myid() * 42 + repeat);
-  for (size_t l = 0; l < global_array.lsize(); ++l) {
-    global_array.local[l] = ((dash::myid() + 1) * 100000)
-                            + (l * 1000)
-                            + (std::rand() * 1.0e-9);
-  }
-  dash::barrier();
-
+  double elapsed_us = 0;
+  // Perform measurement:
+  ElementType * local_array;
   if(dash::myid() == target_unit_id) {
     ElementType * local_array = new ElementType[block_size];
+  }
+  for (int r = 0; r < num_repeats; ++r) {
+    ElementType * copy_lend = nullptr;
+    ElementType * src_begin = nullptr;
+    Timer::timestamp_t ts_start = 0;
 
-    double elapsed_us = 0;
-    // Perform measurement:
-    for (int r = 0; r < num_repeats; ++r) {
-      ElementType * copy_lend = nullptr;
-      ElementType * src_begin = nullptr;
-      Timer::timestamp_t ts_start = 0;
+    std::srand(dash::myid() * 42 + repeat);
+    for (size_t l = 0; l < global_array.lsize(); ++l) {
+      global_array.local[l] = ((dash::myid() + 1) * 100000)
+                              + (l * 1000)
+                              + (std::rand() * 1.0e-9);
+    }
+    dash::barrier();
 #ifdef DASH_ENABLE_IPM
-      MPI_Pcontrol(0, "on");
+    MPI_Pcontrol(0, "on");
 #endif
+    if(dash::myid() == target_unit_id) {
+      ElementType * local_array = new ElementType[block_size];
+
       switch (l_copy_method) {
         case STD_COPY:
           src_begin   = (global_array.begin() + copy_start_idx).local();
           ts_start    = Timer::Now();
           copy_lend   = std::copy(src_begin,
-                                src_begin + block_size,
-                                local_array);
+                                  src_begin + block_size,
+                                  local_array);
           elapsed_us += Timer::ElapsedSince(ts_start);
           break;
         case MEMCPY:
@@ -333,7 +337,7 @@ double copy_block_to_local(
 #ifdef DASH_ENABLE_IPM
       MPI_Pcontrol(0, "off");
 #endif
-
+      // Validate values:
       if (copy_lend != local_array + block_size) {
         DASH_THROW(dash::exception::RuntimeError,
                    "copy_block_to_local: " <<
@@ -341,26 +345,24 @@ double copy_block_to_local(
                    "expected: " << local_array + block_size << " " <<
                    "actual: "   << copy_lend);
       }
-    }
-
-    elapsed.set(elapsed_us);
-
-    // Validate values:
-    if (params.verify) {
-      for (size_t l = 0; l < block_size; ++l) {
-        ElementType expected = global_array[copy_start_idx + l];
-        ElementType actual   = local_array[l];
-        if (actual != expected) {
-          DASH_THROW(dash::exception::RuntimeError,
-                     "copy_block_to_local: Validation failed " <<
-                     "for copied element at offset " << l << ": " <<
-                     "expected: " << expected << " " <<
-                     "actual: "   << actual);
-          return 0;
+      if (params.verify) {
+        for (size_t l = 0; l < block_size; ++l) {
+          ElementType expected = global_array[copy_start_idx + l];
+          ElementType actual   = local_array[l];
+          if (actual != expected) {
+            DASH_THROW(dash::exception::RuntimeError,
+                       "copy_block_to_local: Validation failed " <<
+                       "for copied element at offset " << l << ": " <<
+                       "expected: " << expected << " " <<
+                       "actual: "   << actual);
+            return 0;
+          }
         }
       }
     }
-
+  }
+  if(dash::myid() == target_unit_id) {
+    elapsed.set(elapsed_us);
     delete[] local_array;
   }
 
