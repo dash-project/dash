@@ -281,9 +281,9 @@ double copy_block_to_local(
 
   double elapsed_us = 0;
   // Perform measurement:
-  ElementType * local_array;
+  ElementType * local_array = nullptr;
   if(dash::myid() == target_unit_id) {
-    ElementType * local_array = new ElementType[block_size];
+    local_array = new ElementType[block_size];
   }
   for (int r = 0; r < num_repeats; ++r) {
     ElementType * copy_lend = nullptr;
@@ -301,7 +301,7 @@ double copy_block_to_local(
     MPI_Pcontrol(0, "on");
 #endif
     if(dash::myid() == target_unit_id) {
-      ElementType * local_array = new ElementType[block_size];
+      local_array = new ElementType[block_size];
 
       switch (l_copy_method) {
         case STD_COPY:
