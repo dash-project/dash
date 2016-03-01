@@ -14,3 +14,4 @@ my.*.sh
 .syntastic*
 tags
 *.orig*
+RELEASE/*
