@@ -16,6 +16,7 @@ if (ENABLE_COMPILER_WARNINGS)
   set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-missing-braces")
   set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-format")
   set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-parameter")
+  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-local-typedefs")
   set (CC_WARN_FLAG  "${CXX_WARN_FLAG}")
 endif()
 

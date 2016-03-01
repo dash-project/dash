@@ -65,7 +65,7 @@ public:
   /// Satisfiable properties in pattern property category Mapping:
   typedef pattern_mapping_properties<
               // Number of blocks assigned to a unit may differ.
-              pattern_mapping_tag::balanced,
+              pattern_mapping_tag::balanced
           > mapping_properties;
   /// Satisfiable properties in pattern property category Layout:
   typedef pattern_layout_properties<

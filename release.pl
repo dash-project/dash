@@ -65,9 +65,14 @@ $license = read_file("LICENSE");
 	  # DASH examples
 	  #
 	  "dash/examples/Makefile_cpp",
+	  "dash/examples/*.h",
+	  "dash/examples/ex*/*.h",
 	  "dash/examples/ex*/*.cpp",
+	  "dash/examples/ex*/*.cc",
 	  "dash/examples/ex*/Makefile",
 	  "dash/examples/bench*/*.cpp",
+	  "dash/examples/bench*/*.cc",
+	  "dash/examples/bench*/*.h",
 	  "dash/examples/bench*/Makefile",
 	  "dash/examples/Makefile",
 	  "dash/examples/CMakeLists.txt",
@@ -77,6 +82,7 @@ $license = read_file("LICENSE");
 	  "dash/test/Makefile",
 	  "dash/test/CMakeLists.txt",
 	  "dash/test/*.cc",
+	  "dash/test/*.cpp",
 	  #
 	  # DASH scripts
 	  #
