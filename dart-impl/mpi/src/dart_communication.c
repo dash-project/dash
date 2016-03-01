@@ -540,7 +540,6 @@ dart_ret_t dart_put_blocking(
   size_t       nbytes)
 {
   MPI_Win     win;
-  MPI_Status  mpi_sta;
   MPI_Aint    disp_s,
               disp_rel;
   dart_unit_t target_unitid_abs = gptr.unitid;
@@ -613,17 +612,17 @@ dart_ret_t dart_put_blocking(
     disp_rel = disp_s + offset;
     DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
                    "target (coll.): win:%"PRIu64" unit:%d offset:%"PRIu64" "
-                   "-> dest: %p",
+                   "<- source: %p",
                    nbytes, (uint64_t)win, target_unitid_rel,
-                   (uint64_t)disp_rel, dest);
+                   (uint64_t)disp_rel, src);
   } else {
     win      = dart_win_local_alloc;
     disp_rel = offset;
     DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
                    "target (local): win:%"PRIu64" unit:%d offset:%"PRIu64" "
-                   "-> dest: %p",
+                   "<- source: %p",
                    nbytes, (uint64_t)win, target_unitid_rel,
-                   (uint64_t)disp_rel, dest);
+                   (uint64_t)disp_rel, src);
   }
 
   /*
@@ -661,8 +660,6 @@ dart_ret_t dart_get_blocking(
   size_t        nbytes)
 {
   MPI_Win     win;
-  MPI_Status  mpi_sta;
-  MPI_Request mpi_req;
   MPI_Aint    disp_s,
               disp_rel;
   dart_unit_t target_unitid_abs = gptr.unitid;
