@@ -85,6 +85,12 @@ message(INFO "MPI shared windows:       " ${ENABLE_SHARED_WINDOWS})
 option(ENABLE_DEFAULT_INDEX_TYPE_LONG
        "Specify whether to use int64_t as default index type" off)
 message(INFO "Default index type long:  " ${ENABLE_DEFAULT_INDEX_TYPE_LONG})
+option(ENABLE_LIBNUMA
+       "Specify whether libnuma features are enabled" on)
+message(INFO "libnuma:                  " ${ENABLE_LIBNUMA})
+option(ENABLE_HWLOC
+       "Specify whether hwloc features are enabled" on)
+message(INFO "hwloc:                    " ${ENABLE_HWLOC})
 
 set(DART_IF_VERSION "3.2" CACHE STRING
     "Version of the DART interface")
