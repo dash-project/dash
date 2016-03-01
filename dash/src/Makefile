@@ -31,7 +31,8 @@ LIBDASH = libdash.a
 FILES = Init Team Distribution Math \
 	util/Timer util/TimestampClockPosix \
 	util/TimestampCounterPosix \
-	util/Locality
+	util/Locality \
+	util/BenchmarkParams
 
 OBJS = $(addsuffix .o, $(FILES))
 
