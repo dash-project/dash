@@ -16,7 +16,7 @@ namespace tools {
  * Take a generic pattern instance and visualize it as an SVG image.
  * The visualization is limited to two dimensions at the moment, but
  * for higher-dimensional patterns any two dimensions can be specified
- * for visualization..
+ * for visualization.
  */
 template<typename PatternT>
 class PatternVisualizer
@@ -214,6 +214,11 @@ public:
         os << " <!-- (" << offset << ") -->";
         os << std::endl;
       }
+
+      os << "<circle cx=\"" << endx << "\" cy=\"" << endy << "\" r=\"1.5\" ";
+      os << " style=\"stroke:#E0E0E0;stroke-width:1;fill:#E0E0E0\" />";
+      os << std::endl;
+
       startx = endx;
       starty = endy;
     }
