@@ -81,6 +81,7 @@ $license = read_file("LICENSE");
 	  #
 	  "dash/test/Makefile",
 	  "dash/test/CMakeLists.txt",
+	  "dash/test/*.h",
 	  "dash/test/*.cc",
 	  "dash/test/*.cpp",
 	  #
