@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <iostream>
 #include <cstddef>
-#include <cassert>
 #include <iomanip>
 
 #include <libdash.h>
@@ -28,7 +27,7 @@ void print_matrix(const MatrixT & matrix) {
   auto copy_end = std::copy(matrix.begin(),
                             matrix.end(),
                             matrix_copy);
-  assert(copy_end == matrix_copy + matrix.size());
+  DASH_ASSERT(copy_end == matrix_copy + matrix.size());
   cout << "Matrix:" << endl;
   for (auto r = 0; r < extent_rows; ++r) {
     for (auto c = 0; c < extent_cols; ++c) {
@@ -57,9 +56,9 @@ int main(int argc, char* argv[])
                            dash::TILE(tilesize_x),
                            dash::TILE(tilesize_y)));
   size_t matrix_size = extent_cols * extent_rows;
-  assert(matrix_size == matrix.size());
-  assert(extent_cols == matrix.extent(0));
-  assert(extent_rows == matrix.extent(1));
+  DASH_ASSERT(matrix_size == matrix.size());
+  DASH_ASSERT(extent_cols == matrix.extent(0));
+  DASH_ASSERT(extent_rows == matrix.extent(1));
 
   cout << "Matrix size: " << extent_cols
        << " x " << extent_rows
@@ -84,7 +83,7 @@ int main(int argc, char* argv[])
     for (size_t k = 0; k < matrix.extent(1); ++k) {
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
-      assert(expected == value);
+      DASH_ASSERT(expected == value);
     }
   }
 

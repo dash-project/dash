@@ -233,9 +233,10 @@ void summa(
   auto pattern_b    = B.pattern();
   auto pattern_c    = C.pattern();
   auto m = pattern_a.extent(0); // number of columns in A, rows in B
+#if DASH_ENABLE_TRACE_LOGGING
   auto n = pattern_a.extent(1); // number of rows in A and C
   auto p = pattern_b.extent(0); // number of columns in B and C
-
+#endif
   const dash::MemArrange memory_order = pattern_a.memory_order();
 
   DASH_ASSERT_EQ(
@@ -264,8 +265,10 @@ void summa(
   auto block_size_n   = pattern_b.block(0).extent(1);
   auto block_size_p   = pattern_b.block(0).extent(0);
   auto num_blocks_m   = m / block_size_m;
+#if DASH_ENABLE_TRACE_LOGGING
   auto num_blocks_n   = n / block_size_n;
   auto num_blocks_p   = p / block_size_p;
+#endif
   // Size of temporary local blocks
   auto block_a_size   = block_size_n * block_size_m;
   auto block_b_size   = block_size_m * block_size_p;

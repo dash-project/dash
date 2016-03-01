@@ -89,7 +89,7 @@ GlobPtr<ElementType, PatternType> min_element(
   if (team.myid() == 0) {
     DASH_LOG_TRACE("dash::min_element", "finding global min");
     globptr_t minloc = nullptr;
-    ElementType minval;
+    ElementType minval = ElementType();
     for (extent_t i = 0; i < minarr.size(); ++i) {
       globptr_t lmingptr = minarr[i];
       DASH_LOG_TRACE("dash::min_element", "unit:", i, "lmin_gptr:", lmingptr);

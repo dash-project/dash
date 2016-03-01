@@ -96,11 +96,27 @@
 
 #define DASH_ASSERT(expr) do { } while (0)
 #define DASH_ASSERT_MSG(expr, msg) do { } while (0)
-#define DASH_ASSERT_RETURNS(expr, exp_value) (expr)
-#define DASH_ASSERT_RANGE(lower, value, upper, message) do { } while(0)
-#define DASH_ASSERT_EQ(val, min, message) do { } while (0)
-#define DASH_ASSERT_GT(val, min, message) do { } while (0)
-#define DASH_ASSERT_LT(val, max, message) do { } while (0)
+#define DASH_ASSERT_RETURNS(expr, exp_value) do { \
+          (expr); \
+          dash__unused(exp_value); \
+        } while(0)
+#define DASH_ASSERT_RANGE(lower, value, upper, message) do { \
+          dash__unused(lower);   \
+          dash__unused(value);   \
+          dash__unused(upper);   \
+        } while(0)
+#define DASH_ASSERT_EQ(val, exp, message) do { \
+          dash__unused(val); \
+          dash__unused(exp); \
+        } while (0)
+#define DASH_ASSERT_GT(val, min, message) do { \
+          dash__unused(val); \
+          dash__unused(min); \
+        } while (0)
+#define DASH_ASSERT_LT(val, max, message) do { \
+          dash__unused(val); \
+          dash__unused(max); \
+        } while (0)
 
 #endif // DASH_ENABLE_ASSERTIONS
 

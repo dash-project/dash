@@ -1,4 +1,6 @@
 #include <dash/internal/Math.h>
+#include <cstdlib>
+#include <ctime>
 
 namespace dash {
 namespace math {

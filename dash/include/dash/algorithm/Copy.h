@@ -627,6 +627,7 @@ dash::Future<ValueType *> copy_async(
       std::memcpy(local_out_first, // destination
                   l_in_first,      // source
                   num_local_elem * sizeof(ValueType));
+      local_out_last = local_out_first + num_local_elem;
     } else {
       local_out_last = std::copy(l_in_first,
                                  l_in_last,

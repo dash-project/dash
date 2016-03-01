@@ -305,18 +305,13 @@ measurement copy_block_to_local(
   pattern_t pattern(size, dash::BLOCKED);
 
   measurement result;
-  result.time_init_s      = 0;
-  result.time_copy_s      = 0;
-  result.time_copy_min_us = 0;
-  result.time_copy_max_us = 0;
-  result.mb_per_s         = 0;
+  result.time_init_s        = 0;
+  result.time_copy_s        = 0;
+  result.time_copy_min_us   = 0;
+  result.time_copy_max_us   = 0;
+  result.mb_per_s           = 0;
 
-  size_t  num_numa_nodes    = dash::util::Locality::NumNumaNodes();
-  size_t  num_local_cpus    = dash::util::Locality::NumCPUs();
   auto    myid              = dash::myid();
-  // Number of physical cores in a single NUMA domain (7 on SuperMUC):
-  size_t  numa_node_cores   = num_local_cpus / num_numa_nodes;
-
   // Index of block to copy. Use block of succeeding neighbor
   // which is expected to be in same NUMA domain for unit 0:
   index_t block_index       = source_unit_id;

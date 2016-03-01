@@ -76,7 +76,7 @@ if (PAPI_FOUND)
        ${PAPI_LIBRARIES})
   message(INFO "PAPI                      found")
 else()
-  message(INFO "PAPI                  not found")
+  message(NOTE "PAPI                  not found")
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        rt)
 endif()
@@ -89,7 +89,7 @@ if (HWLOC_FOUND)
        ${HWLOC_LIBRARIES})
   message(INFO "hwloc                     found")
 else()
-  message(INFO "hwloc                 not found")
+  message(NOTE "hwloc                 not found")
 endif()
 if (NUMA_FOUND)
   set (ADDITIONAL_COMPILE_FLAGS
@@ -100,7 +100,7 @@ if (NUMA_FOUND)
        ${NUMA_LIBRARIES})
   message(INFO "numalib                   found")
 else()
-  message(INFO "numalib               not found")
+  message(NOTE "numalib               not found")
 endif()
 
 if (PLASMA_FOUND)
@@ -112,7 +112,7 @@ if (PLASMA_FOUND)
        ${PLASMA_LIBRARIES})
   message(INFO "PLASMA                    found")
 else()
-  message(INFO "PLASMA                not found")
+  message(NOTE "PLASMA                not found")
 endif()
 
 if (MKL_FOUND)
@@ -124,7 +124,7 @@ if (MKL_FOUND)
        ${MKL_LIBRARIES})
   message(INFO "MKL                       found")
 else()
-  message(INFO "MKL                   not found")
+  message(NOTE "MKL                   not found")
 endif()
 
 if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
@@ -134,7 +134,7 @@ if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
        ${MKL_SCALAPACK_LIBRARIES})
   message(INFO "ScaLAPACK                 found")
 else()
-  message(INFO "ScaLAPACK             not found")
+  message(NOTE "ScaLAPACK             not found")
 endif()
 
 if (DASH_ENV_HOST_SYSTEM_ID)
@@ -233,7 +233,8 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
-          COMPILE_FLAGS ${VARIANT_ADDITIONAL_COMPILE_FLAGS}
+          COMPILE_FLAGS
+          "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused"
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
@@ -309,7 +310,8 @@ if (BUILD_TESTS)
     endif()
     set_target_properties(
       ${DASH_TEST} PROPERTIES
-      COMPILE_FLAGS ${VARIANT_ADDITIONAL_COMPILE_FLAGS}
+      COMPILE_FLAGS
+      "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused -Wno-sign-compare"
     )
     set_target_properties(
       ${DASH_TEST} PROPERTIES
