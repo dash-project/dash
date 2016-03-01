@@ -1,5 +1,5 @@
 #
-# In-place makefile for use side-by-side with the 
+# In-place makefile for use side-by-side with the
 # CMake build system
 #
 
@@ -28,14 +28,14 @@ PWD  = $(shell basename `pwd`)
 PAT  = $(shell echo -n $(PWD) )
 PROG = $(shell echo -n $(PAT) | cut -d . -f 3)
 
-all : regular 
+all : regular
 
 ipm : with-ipm
 
-regular : $(LIBDART) $(LIBDASH) $(PROG) 
+regular : $(LIBDART) $(LIBDASH) $(PROG)
 with-ipm: $(LIBDART) $(LIBDASH) $(LIBIPM) $(PROG).ipm
 
-printenv : 
+printenv :
 	 @echo "CXX           = $(CXX)"
 	 @echo "CFLAGS        = $(CFLAGS)"
 	 @echo "LFLAGS        = $(LFLAGS)"
@@ -44,7 +44,7 @@ printenv :
 	 @echo "DART_IMPL     = $(DART_IMPL)"
 	 @echo "LIBDART       = $(LIBDART)"
 	 @echo "LIBDART_EXTRA = $(LIBDART_EXTRA)"
-	 
+
 
 $(LIBDASH) :
 	make OPT_FLAGS="$(OPT_FLAGS)" -C $(DASH_ROOT)/src
@@ -52,7 +52,7 @@ $(LIBDASH) :
 $(LIBDART) :
 	make OPT_FLAGS="$(OPT_FLAGS)" -C $(LIBDART_DIR)
 
-$(LIBIPM) : 
+$(LIBIPM) :
 	make OPT_FLAGS="$(OPT_FLAGS)" -C $(LIBIPM_DIR)
 
 $(PROG) : main.o
@@ -61,10 +61,10 @@ $(PROG) : main.o
 $(PROG).ipm : main.o
 	$(CXX) $(LFLAGS) -o $@ $+ $(LIBDASH) $(LIBDART) $(LIBDART_EXTRA) $(LIBIPM)
 
-%.o 	: %.cpp 
+%.o 	: %.cpp
 	$(CXX) -c $(CFLAGS) -I$(DART_INC) -I$(DASH_INC) $+
 
-clean : 
+clean :
 	rm -f *.o *~
 	rm -f $(PROG)
 	rm -f $(PROG).ipm
