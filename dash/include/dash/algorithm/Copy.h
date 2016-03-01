@@ -57,7 +57,7 @@ OutputIt copy(
 namespace internal {
 
 /**
- * Asynchronous implementation of \c dash::copy (global to local) without
+ * Blocking implementation of \c dash::copy (global to local) without
  * optimization for local subrange.
  */
 template <
@@ -422,6 +422,7 @@ GlobOutputIt copy_impl(
       in_first,
       num_bytes),
     DART_OK);
+
   return out_first + num_elements;
 }
 
@@ -438,6 +439,8 @@ dash::Future<ValueType *> copy_async(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
+  const bool use_memcpy = false;
+
   DASH_LOG_TRACE("dash::copy_async()", "async, global to local");
   if (in_first == in_last) {
     DASH_LOG_TRACE("dash::copy_async", "input range empty");
@@ -464,7 +467,7 @@ dash::Future<ValueType *> copy_async(
     DASH_LOG_TRACE("dash::copy_async", "entire input range is local");
     ValueType * out_last = out_first + total_copy_elem;
     // Use memcpy for data ranges below 64 KB
-    if (total_copy_elem * sizeof(ValueType) <= l2_line_size) {
+    if (use_memcpy && total_copy_elem * sizeof(ValueType) <= l2_line_size) {
       memcpy(out_first,        // destination
              in_first.local(), // source
              num_local_elem * sizeof(ValueType));
@@ -580,7 +583,7 @@ dash::Future<ValueType *> copy_async(
     ValueType * local_out_first = out_first + num_prelocal_elem;
     ValueType * local_out_last;
     // Use memcpy for data ranges below 64 KB
-    if (num_local_elem * sizeof(ValueType) <= l2_line_size) {
+    if (use_memcpy && num_local_elem * sizeof(ValueType) <= l2_line_size) {
       memcpy(local_out_first, // destination
              l_in_first,      // source
              num_local_elem * sizeof(ValueType));
@@ -632,13 +635,31 @@ ValueType * copy(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
+  const bool use_memcpy = false;
+
   DASH_LOG_TRACE("dash::copy()", "blocking, global to local");
-#if 0
-  if (in_first == in_last) {
-    DASH_LOG_TRACE("dash::copy", "input range empty");
-    return out_first;
+  // Size of L2 data cache line:
+  size_t l2_line_size = dash::util::Locality::CacheLineSizes()[1];
+
+  ValueType * l_in_first = in_first.local();
+  ValueType * l_in_last  = (l_in_first == nullptr)
+                           ? nullptr
+                           : in_last.local();
+  if (l_in_first != nullptr && l_in_last != nullptr) {
+    auto total_copy_elem = std::distance(l_in_first, l_in_last);
+    ValueType * out_last = out_first + total_copy_elem;
+    if (use_memcpy && total_copy_elem * sizeof(ValueType) <= l2_line_size) {
+      memcpy(out_first,  // destination
+             l_in_first, // source
+             total_copy_elem * sizeof(ValueType));
+    } else {
+      out_last = std::copy(l_in_first,
+                           l_in_last,
+                           out_first);
+    }
+    return out_last;
   }
-#endif
+
   ValueType * dest_first = out_first;
   // Return value, initialize with begin of output range, indicating no values
   // have been copied:
@@ -652,15 +673,13 @@ ValueType * copy(
   auto num_local_elem  = li_range_in.end - li_range_in.begin;
   // Total number of elements to be copied:
   auto total_copy_elem = in_last - in_first;
-  // Size of L2 data cache line:
-  size_t l2_line_size  = dash::util::Locality::CacheLineSizes()[1];
 
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:
     DASH_LOG_TRACE("dash::copy", "entire input range is local");
     ValueType * out_last = out_first + total_copy_elem;
     // Use memcpy for data ranges below 64 KB
-    if (total_copy_elem * sizeof(ValueType) <= l2_line_size) {
+    if (use_memcpy && total_copy_elem * sizeof(ValueType) <= l2_line_size) {
       memcpy(out_first,        // destination
              in_first.local(), // source
              num_local_elem * sizeof(ValueType));
@@ -749,7 +768,7 @@ ValueType * copy(
     DASH_LOG_TRACE("dash::copy", "copy local subrange",
                    "num_copy_elem:", l_in_last - l_in_first);
     // Use memcpy for data ranges below 64 KB
-    if (num_local_elem * sizeof(ValueType) <= l2_line_size) {
+    if (use_memcpy && num_local_elem * sizeof(ValueType) <= l2_line_size) {
       memcpy(dest_first, // destination
              l_in_first, // source
              num_local_elem * sizeof(ValueType));
@@ -824,7 +843,7 @@ GlobOutputIt copy(
   DASH_LOG_TRACE_VAR("dash::copy", li_range_out.begin);
   DASH_LOG_TRACE_VAR("dash::copy", li_range_out.end);
   // Number of elements in the local subrange:
-  auto num_local_elem       = li_range_out.end - li_range_out.begin;
+  auto num_local_elem     = li_range_out.end - li_range_out.begin;
   // Check if part of the output range is local:
   if (num_local_elem > 0) {
     // Part of the output range is local
