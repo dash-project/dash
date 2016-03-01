@@ -28,7 +28,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/Plasma.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
