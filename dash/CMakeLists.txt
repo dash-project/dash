@@ -24,6 +24,7 @@ set(ENABLE_SCALAPACK ${ENABLE_SCALAPACK}
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
@@ -73,9 +74,22 @@ if (PAPI_FOUND)
        ${PAPI_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${PAPI_LIBRARIES})
+  message(INFO "PAPI                      found")
 else()
+  message(INFO "PAPI                  not found")
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        rt)
+endif()
+if (HWLOC_FOUND)
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_HWLOC")
+  set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+       ${HWLOC_INCLUDE_DIRS})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${HWLOC_LIBRARIES})
+  message(INFO "hwloc                     found")
+else()
+  message(INFO "hwloc                 not found")
 endif()
 if (NUMA_FOUND)
   set (ADDITIONAL_COMPILE_FLAGS
@@ -84,40 +98,43 @@ if (NUMA_FOUND)
        ${NUMA_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${NUMA_LIBRARIES})
+  message(INFO "numalib                   found")
+else()
+  message(INFO "numalib               not found")
 endif()
 
 if (PLASMA_FOUND)
-  message(INFO "Plasma found")
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_PLASMA")
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
        ${PLASMA_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${PLASMA_LIBRARIES})
+  message(INFO "PLASMA                    found")
 else()
-  message(INFO "Plasma not found")
+  message(INFO "PLASMA                not found")
 endif()
 
 if (MKL_FOUND)
-  message(INFO "MKL found")
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_MKL")
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
        ${MKL_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_LIBRARIES})
+  message(INFO "MKL                       found")
 else()
-  message(INFO "MKL not found")
+  message(INFO "MKL                   not found")
 endif()
 
 if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
-  message(INFO "ScaLAPACK found")
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_SCALAPACK")
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_SCALAPACK_LIBRARIES})
+  message(INFO "ScaLAPACK                 found")
 else()
-  message(INFO "ScaLAPACK not found")
+  message(INFO "ScaLAPACK             not found")
 endif()
 
 if (DASH_ENV_HOST_SYSTEM_ID)

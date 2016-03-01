@@ -36,9 +36,6 @@ mark_as_advanced(
 )
 
 if (NUMA_FOUND)
-  message(INFO "NUMA libraries found")
   message(STATUS "NUMA includes:  " ${NUMA_INCLUDE_DIRS})
   message(STATUS "NUMA libraries: " ${NUMA_LIBRARIES})
-else()
-  message(INFO "NUMA libraries not found")
 endif()

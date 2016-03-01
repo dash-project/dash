@@ -10,6 +10,11 @@
 #include <string>
 #include <cstring>
 
+#ifdef DASH_ENABLE_HWLOC
+#include <hwloc.h>
+#include <hwloc/helper.h>
+#endif
+
 namespace dash {
 namespace util {
 
@@ -54,6 +59,24 @@ void Locality::init()
 
   // Wait for completion of the other units' copy operations:
   dash::barrier();
+
+#ifdef DASH_ENABLE_HWLOC
+  hwloc_topology_t topology;
+  hwloc_topology_init(&topology);
+  hwloc_topology_load(topology);
+  // Resolve cache sizes, ordered by locality (i.e. smallest first):
+  hwloc_obj_t obj;
+  for (obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_PU, 0);
+       obj;
+       obj = obj->parent) {
+    if (obj->type == HWLOC_OBJ_CACHE) {
+      _cache_sizes.push_back(obj->attr->cache.size);
+    }
+  }
+  hwloc_topology_destroy(topology);
+#else
+  _cache_sizes.push_back(0);
+#endif
 }
 
 std::ostream & operator<<(
@@ -70,6 +93,7 @@ std::ostream & operator<<(
 }
 
 std::vector<Locality::UnitPinning> Locality::_unit_pinning;
+std::vector<size_t>                Locality::_cache_sizes;
 
 } // namespace util
 } // namespace dash

@@ -15,8 +15,10 @@
 #include <numa.h>
 #endif
 
-// #include <hwloc.h>
-// #include <hwloc/helper.h>
+#ifdef DASH_ENABLE_HWLOC
+#include <hwloc.h>
+#include <hwloc/helper.h>
+#endif
 
 namespace dash {
 namespace util {
@@ -103,11 +105,16 @@ public:
     return _unit_pinning;
   }
 
+  static const std::vector<size_t> & CacheSizes() {
+    return _cache_sizes;
+  }
+
 private:
   static void init();
 
 private:
   static std::vector<UnitPinning> _unit_pinning;
+  static std::vector<size_t>      _cache_sizes;
 };
 
 std::ostream & operator<<(

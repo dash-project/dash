@@ -212,12 +212,6 @@ int main(int argc, char** argv)
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("remote.1", "dash::copy", bench_cfg, u_src, u_dst,
                              size, num_r_repeats, time_s, mbps, params);
-    ts_start = Timer::Now();
-    mbps     = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, params,
-                                   DASH_COPY_ASYNC);
-    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remote.1", "dash::acopy", bench_cfg, u_src, u_dst,
-                             size, num_r_repeats, time_s, mbps, params);
     if (num_nodes < 3) {
       continue;
     }
@@ -264,6 +258,13 @@ double copy_block_to_local(
   index_t copy_start_idx  = source_block.offset(0);
   index_t copy_end_idx    = copy_start_idx + block_size;
   auto    block_unit_id   = global_array.pattern().unit_at(copy_start_idx);
+  size_t  num_numa_nodes  = dash::util::Locality::NumNumaNodes();
+  size_t  num_local_cpus  = dash::util::Locality::NumCPUs();
+  // Number of physical cores in a single NUMA domain (7 on SuperMUC):
+  size_t  numa_node_cores = num_local_cpus / num_numa_nodes;
+  auto    cache_sizes     = dash::util::Locality::CacheSizes();
+  // Size of largest shared cache, in bytes:
+  size_t  l3_cache_size   = cache_sizes.back();
 
   dash::Shared<double> elapsed;
 
@@ -286,23 +287,33 @@ double copy_block_to_local(
     local_array = new ElementType[block_size];
   }
   for (int r = 0; r < num_repeats; ++r) {
-    ElementType * copy_lend = nullptr;
-    ElementType * src_begin = nullptr;
-    Timer::timestamp_t ts_start = 0;
-
     std::srand(dash::myid() * 42 + repeat);
     for (size_t l = 0; l < global_array.lsize(); ++l) {
       global_array.local[l] = ((dash::myid() + 1) * 100000)
                               + (l * 1000)
                               + (std::rand() * 1.0e-9);
     }
+    // Overwrite L3 cache contents:
+    // Balanced size of L3 cache per unit, assuming L3 cache is shared
+    // on NUMA node level:
+    size_t l3_cache_lsize = l3_cache_size / numa_node_cores;
+    size_t l3_cache_lelem = l3_cache_lsize / sizeof(ElementType);
+    ElementType * cache_overwrite = new ElementType[l3_cache_lelem];
+    for (size_t i = 0; i < l3_cache_lelem; ++i) {
+      cache_overwrite[i] = std::rand() * 1.0e-9;
+    }
+    // Ensure all cache overwrite buffers are allocated at the same time:
+    dash::barrier();
+    delete[] cache_overwrite;
+    // Ensure all cache overwrite buffers are freed:
     dash::barrier();
 #ifdef DASH_ENABLE_IPM
     MPI_Pcontrol(0, "on");
 #endif
     if(dash::myid() == target_unit_id) {
-      local_array = new ElementType[block_size];
-
+      ElementType * copy_lend = nullptr;
+      ElementType * src_begin = nullptr;
+      Timer::timestamp_t ts_start = 0;
       switch (l_copy_method) {
         case STD_COPY:
           src_begin   = (global_array.begin() + copy_start_idx).local();
@@ -321,9 +332,9 @@ double copy_block_to_local(
           break;
         case DASH_COPY_ASYNC:
           ts_start    = Timer::Now();
-          copy_lend = dash::copy_async(global_array.begin() + copy_start_idx,
-                                       global_array.begin() + copy_end_idx,
-                                       local_array).get();
+          copy_lend   = dash::copy_async(global_array.begin() + copy_start_idx,
+                                         global_array.begin() + copy_end_idx,
+                                         local_array).get();
           elapsed_us += Timer::ElapsedSince(ts_start);
           break;
         default:
@@ -388,9 +399,8 @@ void print_measurement_header()
          << std::setw(11) << "src.unit"   << ","
          << std::setw(11) << "dest.unit"  << ","
          << std::setw(9)  << "repeats"    << ","
-         << std::setw(12) << "blocksize"  << ","
-         << std::setw(9)  << "glob.mb"    << ","
-         << std::setw(9)  << "mb/block"   << ","
+         << std::setw(15) << "block.b"    << ","
+         << std::setw(9)  << "glob.kb"    << ","
          << std::setw(9)  << "time.s"     << ","
          << std::setw(12) << "mb/s"
          << endl;
@@ -411,22 +421,20 @@ void print_measurement_record(
 {
   if (dash::myid() == 0) {
     std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
-    double mem_g = ((static_cast<double>(size) *
-                     sizeof(ElementType)) / 1024) / 1024;
-    double mem_l = mem_g / dash::size();
+    size_t g_size_kb   = (size * sizeof(ElementType)) / 1024;
+    size_t block_bytes = (size / dash::size()) * sizeof(ElementType);
     cout << std::right
-         << std::setw(5)  << dash::size()              << ","
-         << std::setw(10) << mpi_impl                  << ","
-         << std::setw(10) << scenario                  << ","
-         << std::setw(12) << local_copy_method         << ","
-         << std::setw(12) << dash_async_copy_variant   << ","
-         << std::setw(11) << unit_src                  << ","
-         << std::setw(11) << unit_dest                 << ","
-         << std::setw(9)  << num_repeats               << ","
-         << std::setw(12) << size / dash::size()       << ","
-         << std::fixed << setprecision(2) << setw(9)  << mem_g << ","
-         << std::fixed << setprecision(2) << setw(9)  << mem_l << ","
-         << std::fixed << setprecision(2) << setw(9)  << secs  << ","
+         << std::setw(5)  << dash::size()             << ","
+         << std::setw(10) << mpi_impl                 << ","
+         << std::setw(10) << scenario                 << ","
+         << std::setw(12) << local_copy_method        << ","
+         << std::setw(12) << dash_async_copy_variant  << ","
+         << std::setw(11) << unit_src                 << ","
+         << std::setw(11) << unit_dest                << ","
+         << std::setw(9)  << num_repeats              << ","
+         << std::setw(15) << block_bytes              << ","
+         << std::setw(9)  << g_size_kb                << ","
+         << std::fixed << setprecision(2) << setw(9)  << secs << ","
          << std::fixed << setprecision(2) << setw(12) << mbps
          << endl;
   }
@@ -440,7 +448,7 @@ benchmark_params parse_args(int argc, char * argv[])
   params.num_iterations = 8;
   params.rep_base       = 4;
   params.num_repeats    = 0;
-  params.verify         = false;
+  params.verify         = true;
   params.local_only     = false;
   params.size_min       = 0;
 

@@ -56,9 +56,6 @@ mark_as_advanced(
 )
 
 if (PAPI_FOUND)
-  message(INFO "PAPI found")
   message(STATUS "PAPI includes:  " ${PAPI_INCLUDE_DIRS})
   message(STATUS "PAPI libraries: " ${PAPI_LIBRARIES})
-else()
-  message(INFO "PAPI not found")
 endif()

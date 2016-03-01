@@ -15,14 +15,14 @@ find_path(
   NAMES include/ipm.h
 )
 
-message(STATUS "Searching for IPM library in path " ${IPM_PREFIX})
-
 if (NOT IPM_PREFIX AND NOT $ENV{IPM_HOME} STREQUAL "")
   set(IPM_PREFIX $ENV{IPM_HOME})
 endif()
 if (NOT IPM_SRC AND NOT $ENV{IPM_SRC} STREQUAL "")
   set(IPM_SRC $ENV{IPM_SRC})
 endif()
+
+message(STATUS "Searching for IPM library in path " ${IPM_PREFIX})
 
 find_library(
   IPM_LIBRARIES
@@ -55,9 +55,6 @@ mark_as_advanced(
 )
 
 if (IPM_FOUND)
-  message(INFO "IPM found")
   message(STATUS "IPM includes:  " ${IPM_INCLUDE_DIRS})
   message(STATUS "IPM libraries: " ${IPM_LIBRARIES})
-else()
-  message(INFO "IPM not found")
 endif()
