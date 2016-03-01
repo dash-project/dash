@@ -20,6 +20,7 @@ $license = read_file("LICENSE");
 	  "CMakeLists.txt",
 	  "CMakeExt/*.cmake",
 	  "build.sh",
+	  "build-dev.sh",
 	  "config/*.cmake",
 	  #
 	  # DART interface specification
@@ -66,9 +67,21 @@ $license = read_file("LICENSE");
 	  "dash/examples/Makefile_cpp",
 	  "dash/examples/ex*/*.cpp",
 	  "dash/examples/ex*/Makefile",
+	  "dash/examples/bench*/*.cpp",
+	  "dash/examples/bench*/Makefile",
 	  "dash/examples/Makefile",
 	  "dash/examples/CMakeLists.txt",
-    );
+	  #
+	  # DASH tests
+	  #
+	  "dash/test/Makefile",
+	  "dash/test/CMakeLists.txt",
+	  "dash/test/*.cc",
+	  #
+	  # DASH scripts
+	  #
+	  "dash/scripts/*.sh"
+        );
 
 
 foreach $dir (@files)
