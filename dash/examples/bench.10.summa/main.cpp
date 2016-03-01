@@ -31,6 +31,8 @@
 #include <type_traits>
 #include <cmath>
 
+#include <fstream>
+
 #ifdef DASH_ENABLE_MKL
 #include <mkl.h>
 #include <mkl_types.h>
@@ -91,6 +93,7 @@ typedef struct benchmark_params_t {
   extent_t    threads;
   float       cpu_gflops_peak;
   bool        mkl_dyn;
+	bool				plot_pattern;
 } benchmark_params;
 
 template<typename MatrixType>
@@ -246,6 +249,28 @@ void perform_test(
                      dash::summa_pattern_layout_constraints >(
                        size_spec,
                        team_spec);
+
+	if(params.plot_pattern){
+		auto units_x = team_spec.num_units(0);
+		auto units_y = team_spec.num_units(1);
+		if (units_x <= 5 && units_y <= 5 && n <= 64){
+			dash::barrier();
+			dash::tools::PatternVisualizer<decltype(pattern)> pv(pattern);
+			std::string svg_team	= std::to_string(units_x) + "x"
+											+ std::to_string(units_y);
+			std::string svg_title = "MatrixPattern Team" + svg_team;
+			std::string svg_filename = "matrixpattern_" + svg_team + ".svg";
+			pv.set_title(svg_title);
+			std::ofstream out(svg_filename);
+			std::array<index_t, pattern.ndim()> coords = {0, 0};
+			pv.draw_pattern(out, coords, 1, 0);
+			out.close();
+			dash::barrier();
+		} else {
+			std::cerr << "for svg output use less than 5 units "
+								<< "in each dimension and small matrix" << std::endl;
+		}
+	}
 
   if (myid == 0) {
     if (iteration == 0) {
@@ -891,6 +916,7 @@ benchmark_params parse_args(int argc, char * argv[])
   params.exp_max            = 4;
   params.cpu_gflops_peak    = 41.4;
   params.mkl_dyn            = false;
+	params.plot_pattern				= false;
 
   extent_t size_base        = 0;
   extent_t num_units_inc    = 0;
@@ -924,7 +950,9 @@ benchmark_params parse_args(int argc, char * argv[])
       params.mkl_dyn  = true;
     } else if (flag == "-cpupeak") {
       params.cpu_gflops_peak = static_cast<float>(atof(argv[i+1]));
-    }
+    } else if (flag == "-plotpattern") {
+			params.plot_pattern = true;
+		}
   }
   if (size_base == 0 && max_units > 0 && num_units_inc > 0) {
     size_base = num_units_inc;
@@ -982,16 +1010,17 @@ void print_params(
   bench_cfg.print_section_end();
 
   bench_cfg.print_section_start("Runtime arguments");
-  bench_cfg.print_param("-s",     "variant",       params.variant);
-  bench_cfg.print_param("-sb",    "size base",     params.size_base);
-  bench_cfg.print_param("-nmax",  "max. units",    params.units_max);
-  bench_cfg.print_param("-nx",    "team columns",  params.units_x);
-  bench_cfg.print_param("-ny",    "team rows",     params.units_y);
-  bench_cfg.print_param("-ninc",  "units inc.",    params.units_inc);
-  bench_cfg.print_param("-nt",    "threads/proc",  params.threads);
-  bench_cfg.print_param("-emax",  "threads/proc",  params.exp_max);
-  bench_cfg.print_param("-rmax",  "rep. max",      params.rep_max);
-  bench_cfg.print_param("-rbase", "rep. base",     params.rep_base);
-  bench_cfg.print_param("-mkldyn","MKL dynamic",   params.mkl_dyn);
+  bench_cfg.print_param("-s",     			"variant",       params.variant);
+  bench_cfg.print_param("-sb",    			"size base",     params.size_base);
+  bench_cfg.print_param("-nmax",  			"max. units",    params.units_max);
+  bench_cfg.print_param("-nx",    			"team columns",  params.units_x);
+  bench_cfg.print_param("-ny",    			"team rows",     params.units_y);
+  bench_cfg.print_param("-ninc",  			"units inc.",    params.units_inc);
+  bench_cfg.print_param("-nt",    			"threads/proc",  params.threads);
+  bench_cfg.print_param("-emax",  			"threads/proc",  params.exp_max);
+  bench_cfg.print_param("-rmax",  			"rep. max",      params.rep_max);
+  bench_cfg.print_param("-rbase", 			"rep. base",     params.rep_base);
+  bench_cfg.print_param("-mkldyn",			"MKL dynamic",   params.mkl_dyn);
+	bench_cfg.print_param("-plotpattern", "plot pattern",  params.plot_pattern);
   bench_cfg.print_section_end();
 }
