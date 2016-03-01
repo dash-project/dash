@@ -60,22 +60,29 @@ void Locality::init()
   // Wait for completion of the other units' copy operations:
   dash::barrier();
 
+  _cache_sizes[0]      = 0;
+  _cache_sizes[1]      = 0;
+  _cache_sizes[2]      = 0;
+  _cache_line_sizes[0] = 0;
+  _cache_line_sizes[1] = 0;
+  _cache_line_sizes[2] = 0;
 #ifdef DASH_ENABLE_HWLOC
   hwloc_topology_t topology;
   hwloc_topology_init(&topology);
   hwloc_topology_load(topology);
   // Resolve cache sizes, ordered by locality (i.e. smallest first):
+  int level = 0;
   hwloc_obj_t obj;
   for (obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_PU, 0);
        obj;
        obj = obj->parent) {
     if (obj->type == HWLOC_OBJ_CACHE) {
-      _cache_sizes.push_back(obj->attr->cache.size);
+      _cache_sizes[level]      = obj->attr->cache.size;
+      _cache_line_sizes[level] = obj->attr->cache.linesize;
+      ++level;
     }
   }
   hwloc_topology_destroy(topology);
-#else
-  _cache_sizes.push_back(0);
 #endif
 }
 
@@ -93,7 +100,8 @@ std::ostream & operator<<(
 }
 
 std::vector<Locality::UnitPinning> Locality::_unit_pinning;
-std::vector<size_t>                Locality::_cache_sizes;
+std::array<size_t, 3>              Locality::_cache_sizes;
+std::array<size_t, 3>              Locality::_cache_line_sizes;
 
 } // namespace util
 } // namespace dash

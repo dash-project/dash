@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
+#include <array>
 
 #ifdef DASH_ENABLE_NUMA
 #include <utmpx.h>
@@ -105,8 +106,12 @@ public:
     return _unit_pinning;
   }
 
-  static const std::vector<size_t> & CacheSizes() {
+  static const std::array<size_t, 3> & CacheSizes() {
     return _cache_sizes;
+  }
+
+  static const std::array<size_t, 3> & CacheLineSizes() {
+    return _cache_line_sizes;
   }
 
 private:
@@ -114,7 +119,8 @@ private:
 
 private:
   static std::vector<UnitPinning> _unit_pinning;
-  static std::vector<size_t>      _cache_sizes;
+  static std::array<size_t, 3>    _cache_sizes;
+  static std::array<size_t, 3>    _cache_line_sizes;
 };
 
 std::ostream & operator<<(

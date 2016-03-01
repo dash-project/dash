@@ -123,8 +123,7 @@ int main(int argc, char** argv)
   benchmark_params params = parse_args(argc, argv);
   size_t num_iterations   = params.num_iterations;
   size_t num_repeats      = params.num_repeats;
-  size_t size_inc         = params.size_base;
-  size_t size_min         = params.size_min;
+  size_t size_inc         = params.size_min;
 
   auto bench_cfg = bench_params.config();
 
@@ -137,7 +136,7 @@ int main(int argc, char** argv)
   for (size_t i = 0; i < num_iterations && num_repeats > 0;
        ++i, num_repeats /= params.rep_base)
   {
-    auto block_size = size_min + (std::pow(params.rep_base,i) * size_inc);
+    auto block_size = std::pow(params.size_base,i) * size_inc;
     auto size       = block_size * dash::size();
 
     // Copy first block in array, assigned to unit 0, using memcpy:
@@ -444,9 +443,9 @@ benchmark_params parse_args(int argc, char * argv[])
 {
   benchmark_params params;
   // Minimum block size of 4 KB:
-  params.size_base      = (4 * 1024) / sizeof(ElementType);
+  params.size_base      = 4;
   params.num_iterations = 8;
-  params.rep_base       = 4;
+  params.rep_base       = params.size_base;
   params.num_repeats    = 0;
   params.verify         = true;
   params.local_only     = false;
@@ -460,7 +459,7 @@ benchmark_params parse_args(int argc, char * argv[])
       params.size_min       = atoi(argv[i+1]);
     } else if (flag == "-i") {
       params.num_iterations = atoi(argv[i+1]);
-    } else if (flag == "-r") {
+    } else if (flag == "-rmax") {
       params.num_repeats    = atoi(argv[i+1]);
     } else if (flag == "-rb") {
       params.rep_base       = atoi(argv[i+1]);
@@ -487,13 +486,13 @@ void print_params(
   }
 
   bench_cfg.print_section_start("Runtime arguments");
-  bench_cfg.print_param("-sb",     "block size base", params.size_base);
-  bench_cfg.print_param("-smin",   "min. block size", params.size_min);
-  bench_cfg.print_param("-i",      "iterations",      params.num_iterations);
-  bench_cfg.print_param("-r",      "repeats",         params.num_repeats);
-  bench_cfg.print_param("-rb",     "rep. base",       params.rep_base);
-  bench_cfg.print_param("-verify", "verification",    params.verify);
-  bench_cfg.print_param("-lo",     "local only",      params.local_only);
+  bench_cfg.print_param("-smin",   "initial block size", params.size_min);
+  bench_cfg.print_param("-sb",     "block size base",    params.size_base);
+  bench_cfg.print_param("-rmax",   "initial repeats",    params.num_repeats);
+  bench_cfg.print_param("-rb",     "rep. base",          params.rep_base);
+  bench_cfg.print_param("-i",      "iterations",         params.num_iterations);
+  bench_cfg.print_param("-verify", "verification",       params.verify);
+  bench_cfg.print_param("-lo",     "local only",         params.local_only);
   bench_cfg.print_section_end();
 }
 

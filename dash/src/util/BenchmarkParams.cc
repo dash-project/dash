@@ -86,10 +86,12 @@ void BenchmarkParams::print_header()
     return;
   }
 
-  size_t box_width  = _header_width;
+  size_t box_width        = _header_width;
+  size_t numa_nodes       = dash::util::Locality::NumNumaNodes();
+  size_t local_cpus       = dash::util::Locality::NumCPUs();
+  auto   cache_sizes      = dash::util::Locality::CacheSizes();
+  auto   cache_line_sizes = dash::util::Locality::CacheLineSizes();
   std::string separator(box_width, '-');
-  size_t numa_nodes = dash::util::Locality::NumNumaNodes();
-  size_t local_cpus = dash::util::Locality::NumCPUs();
 
   std::time_t t_now = std::time(NULL);
   char date_cstr[100];
@@ -104,6 +106,16 @@ void BenchmarkParams::print_header()
   print_section_start("Hardware Locality");
   print_param("CPUs/node",    local_cpus);
   print_param("NUMA domains", numa_nodes);
+  for (int level = 0; level < cache_sizes.size(); ++level) {
+    auto cache_kb     = cache_sizes[level] / 1024;
+    auto cache_line_b = cache_line_sizes[level];
+    std::ostringstream cn;
+    cn << "L" << (level+1) << "d cache";
+    std::ostringstream cs;
+    cs << std::right << std::setw(5) << cache_kb << " KB, "
+       << std::right << std::setw(2) << cache_line_b << " B/line";
+    print_param(cn.str(), cs.str());
+  }
   print_section_end();
 
 #ifdef MPI_IMPL_ID
