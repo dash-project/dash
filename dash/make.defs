@@ -1,21 +1,20 @@
 #
-# In-place makefile for use side-by-side with the 
+# In-place makefile for use side-by-side with the
 # CMake build system
 #
 
-# change this to the name of the DART implementation 
+# change this to the name of the DART implementation
 # ("mpi", "shmem", etc.)
-#DART_IMPL   = shmem
+#DART_IMPL  = shmem
 DART_IMPL   = mpi
 
-OPT_FLAGS = -O3
+OPT_FLAGS   = -O3
 
 LIBDART_DIR = $(DASH_ROOT)/../dart-impl/$(DART_IMPL)/src
 
 include $(LIBDART_DIR)/../make.defs
 
 LIBDART     = $(LIBDART_DIR)/libdart.a $(LIBDART_EXTRA)
-#DART_INC    = $(LIBDART_DIR)/../../$(DART_IF)/include
 DART_INC    = $(DASH_ROOT)/../dart-impl/$(DART_IMPL)/$(DART_IF)/include
-
 DASH_INC    = $(DASH_ROOT)/include
+
