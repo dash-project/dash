@@ -21,6 +21,10 @@
 #include <hwloc/helper.h>
 #endif
 
+#ifdef DASH_ENABLE_PAPI
+#include <papi.h>
+#endif
+
 namespace dash {
 namespace util {
 
@@ -46,28 +50,48 @@ public:
 public:
 
   static inline int NumNumaNodes() {
+#ifdef DASH_ENABLE_PAPI
+    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
+    if (hwinfo == NULL) {
+      DASH_THROW(
+        dash::exception::RuntimeError,
+        "PAPI get hardware info failed");
+    }
+    return hwinfo->nnodes;
+#endif
+
 #ifdef DASH_ENABLE_NUMA
     return numa_max_node() + 1;
-#else
-    return 1;
 #endif
+    return 1;
   }
 
   static inline int NumCPUs() {
+#ifdef DASH_ENABLE_PAPI
+    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
+    if (hwinfo == NULL) {
+      DASH_THROW(
+        dash::exception::RuntimeError,
+        "PAPI get hardware info failed");
+    }
+    auto num_sockets      = hwinfo->sockets;
+    auto cores_per_socket = hwinfo->cores;
+    return num_sockets * cores_per_socket;
+#endif
+
 #ifdef DASH_ENABLE_NUMA
     // Number of physical cores on this system, divided by 2 to
-    // eliminate HT cores:
+    // eliminate hyperthreaded CPUs:
     return numa_num_configured_cpus() / 2;
-#else
+#endif
+
 #ifdef DASH__PLATFORM__POSIX
     int ret = sysconf(_SC_NPROCESSORS_ONLN);
     return (ret > 0) ? ret : 1;
-#else
+#endif
     DASH_THROW(
       dash::exception::NotImplemented,
-      "dash::util::Locality::NumCPUs required libnuma or POSIX platform");
-#endif
-#endif
+      "dash::util::Locality::NumCPUs requires PAPI, libnuma, or POSIX platform");
   }
 
   static inline int NumNodes() {
@@ -87,11 +111,36 @@ public:
   static inline int UnitCPU() {
 #ifdef DASH__PLATFORM__LINUX
     return sched_getcpu();
-#else
+#endif
     DASH_THROW(
       dash::exception::NotImplemented,
       "dash::util::Locality::UnitCPU is only available on Linux platforms");
+  }
+
+  static inline int CPUMaxMhz() {
+#ifdef DASH_ENABLE_PAPI
+    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
+    if (hwinfo == NULL) {
+      DASH_THROW(
+        dash::exception::RuntimeError,
+        "PAPI get hardware info failed");
+    }
+    return hwinfo->cpu_max_mhz;
 #endif
+    return -1;
+  }
+
+  static inline int CPUMinMhz() {
+#ifdef DASH_ENABLE_PAPI
+    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
+    if (hwinfo == NULL) {
+      DASH_THROW(
+        dash::exception::RuntimeError,
+        "PAPI get hardware info failed");
+    }
+    return hwinfo->cpu_min_mhz;
+#endif
+    return -1;
   }
 
   static inline std::string Hostname() {

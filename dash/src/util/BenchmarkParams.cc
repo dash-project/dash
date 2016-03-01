@@ -88,7 +88,10 @@ void BenchmarkParams::print_header()
 
   size_t box_width        = _header_width;
   size_t numa_nodes       = dash::util::Locality::NumNumaNodes();
+  size_t num_nodes        = dash::util::Locality::NumNodes();
   size_t local_cpus       = dash::util::Locality::NumCPUs();
+  int    cpu_max_mhz      = dash::util::Locality::CPUMaxMhz();
+  int    cpu_min_mhz      = dash::util::Locality::CPUMinMhz();
   auto   cache_sizes      = dash::util::Locality::CacheSizes();
   auto   cache_line_sizes = dash::util::Locality::CacheLineSizes();
   std::string separator(box_width, '-');
@@ -104,8 +107,9 @@ void BenchmarkParams::print_header()
   print_section_end();
 
   print_section_start("Hardware Locality");
-  print_param("CPUs/node",    local_cpus);
-  print_param("NUMA domains", numa_nodes);
+  print_param("Processing nodes",num_nodes);
+  print_param("CPUs/node",       local_cpus);
+  print_param("NUMA domains",    numa_nodes);
   for (int level = 0; level < cache_sizes.size(); ++level) {
     auto cache_kb     = cache_sizes[level] / 1024;
     auto cache_line_b = cache_line_sizes[level];
