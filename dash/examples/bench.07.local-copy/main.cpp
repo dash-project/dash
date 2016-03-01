@@ -362,7 +362,7 @@ measurement copy_block_to_local(
                     memalign(align_size, block_bytes));
   }
 
-  dash::math::sxrand(iteration + 42);
+  std::srand(time(NULL));
 
   double total_copy_us = 0;
   double total_init_us = 0;
@@ -385,8 +385,8 @@ measurement copy_block_to_local(
     // ------------------------------------------------------------------------
     // -- Initialize global array: --------------------------------------------
     for (size_t l = 0; l < block_size; ++l) {
-      global_array.local[l] = (r+1) * (l+1) * (myid+1)
-                              + (dash::math::xrand() / RAND_MAX);
+      global_array.local[l] = (l+1) * (myid+1)
+                              + (std::rand() / RAND_MAX);
     }
     dash::barrier();
     // -- Prevent copying from cache: -----------------------------------------
@@ -396,8 +396,8 @@ measurement copy_block_to_local(
       ElementType * block_values = new ElementType[block_size];
       for (size_t p = 0; p < block_size; ++p) {
         block_values[p] = ((myid+1) * 100000)
-                          + (p * 1000)
-                          + (dash::math::xrand() / RAND_MAX);
+                          + (p * 1000);
+//                        + (std::rand() / RAND_MAX);
       }
       // Copy block values to global array:
       dash::copy(block_values,
@@ -523,7 +523,7 @@ void print_measurement_header()
          << std::setw(9)  << "block.kb"    << ","
          << std::setw(9)  << "glob.kb"     << ","
          << std::setw(7)  << "init.s"      << ","
-         << std::setw(7)  << "copy.s"      << ","
+         << std::setw(8)  << "copy.s"      << ","
          << std::setw(12) << "copy.med.us" << ","
          << std::setw(12) << "copy.min.us" << ","
          << std::setw(12) << "copy.max.us" << ","
@@ -570,7 +570,7 @@ void print_measurement_record(
          << std::setw(9)  << block_kb                << ","
          << std::setw(9)  << g_size_kb               << ","
          << std::fixed << setprecision(2) << setw(7)  << init_s      << ","
-         << std::fixed << setprecision(5) << setw(7)  << copy_s      << ","
+         << std::fixed << setprecision(5) << setw(8)  << copy_s      << ","
          << std::fixed << setprecision(2) << setw(12) << copy_med_us << ","
          << std::fixed << setprecision(2) << setw(12) << copy_min_us << ","
          << std::fixed << setprecision(2) << setw(12) << copy_max_us << ","

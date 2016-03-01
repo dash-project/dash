@@ -107,9 +107,11 @@ void BenchmarkParams::print_header()
   print_section_end();
 
   print_section_start("Hardware Locality");
-  print_param("Processing nodes",num_nodes);
-  print_param("CPUs/node",       local_cpus);
-  print_param("NUMA domains",    numa_nodes);
+  print_param("Processing nodes",  num_nodes);
+  print_param("CPUs/node",         local_cpus);
+  print_param("NUMA domains/node", numa_nodes);
+  print_param("CPU max MHz",       cpu_max_mhz);
+  print_param("CPU min MHz",       cpu_min_mhz);
   for (int level = 0; level < cache_sizes.size(); ++level) {
     auto cache_kb     = cache_sizes[level] / 1024;
     auto cache_line_b = cache_line_sizes[level];
