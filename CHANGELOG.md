@@ -10,6 +10,7 @@ Features:
 - Added support for numalib.
 - Added support for IPM.
 - Added support for PLASMA.
+- Added support for hwloc.
 
 - Enabled reporting of compiler warnings (`-Wall -pedantic`).
 
