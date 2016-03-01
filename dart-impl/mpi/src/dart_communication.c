@@ -626,8 +626,8 @@ dart_ret_t dart_put_blocking(
                    (uint64_t)disp_rel, dest);
   }
 
-  /* Using MPI_Put instead of MPI_Rget as in dart_get_blocking as MPI_Win_flush
-   * is required in any case to ensure remote completion.
+  /*
+   * Using MPI_Put as MPI_Win_flush is required to ensure remote completion.
    */
   DART_LOG_DEBUG("dart_put_blocking: MPI_Put");
   if (MPI_Put(src,
@@ -748,24 +748,25 @@ dart_ret_t dart_get_blocking(
                    (uint64_t)disp_rel, dest);
   }
 
-  DART_LOG_DEBUG("dart_get_blocking: MPI_Rget");
-  if (MPI_Rget(dest,
-               nbytes,
-               MPI_BYTE,
-               target_unitid_rel,
-               disp_rel,
-               nbytes,
-               MPI_BYTE,
-               win,
-               &mpi_req)
+  /*
+   * Using MPI_Get as MPI_Win_flush is required to ensure remote completion.
+   */
+  DART_LOG_DEBUG("dart_get_blocking: MPI_Get");
+  if (MPI_Get(dest,
+              nbytes,
+              MPI_BYTE,
+              target_unitid_rel,
+              disp_rel,
+              nbytes,
+              MPI_BYTE,
+              win)
       != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_get_blocking ! MPI_Rget failed");
+    DART_LOG_ERROR("dart_get_blocking ! MPI_Get failed");
     return DART_ERR_INVAL;
   }
-
-  DART_LOG_DEBUG("dart_get_blocking: MPI_Wait");
-  if (MPI_Wait(&mpi_req, &mpi_sta) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_get_blocking ! MPI_Wait failed");
+  DART_LOG_DEBUG("dart_get_blocking: MPI_Win_flush");
+  if (MPI_Win_flush(target_unitid_rel, win) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_get_blocking ! MPI_Win_flush failed");
     return DART_ERR_INVAL;
   }
 
