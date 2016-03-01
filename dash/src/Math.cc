@@ -64,7 +64,7 @@ double xrand()
   _xrand_y  = _xrand_z;
   _xrand_z  = t ^ _xrand_x ^ _xrand_y;
   r         = _xrand_z;
-  return r;
+  return r * 1.0e-8;
 }
 
 }
