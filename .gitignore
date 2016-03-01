@@ -13,3 +13,4 @@ ipm/*/GEN.*
 my.*.sh
 .syntastic*
 tags
+*.orig*
