@@ -68,6 +68,42 @@ std::map<Integer, int> factorize(Integer n)
   return factors;
 }
 
+/**
+ * Seed initialization for dash::math::lrand().
+ *
+ * \see dash::math::lrand
+ */
+void slrand(unsigned seed = 0);
+
+/**
+ * More efficient alternative to std::rand, generates pseudo random
+ * number based on logistic map.
+ *
+ * \see dash::math::slrand
+ */
+double lrand();
+
+/**
+ * Seed initialization for dash::math::xrand().
+ *
+ * \see dash::math::xrand
+ */
+void sxrand(unsigned seed = 0);
+
+/**
+ * More efficient alternative to std::rand, generates pseudo random
+ * number based on XOR shift turns.
+ *
+ * \see dash::math::sxrand
+ */
+double xrand();
+
+namespace internal {
+
+double _lrand_f(double r, double x);
+
+} // namespace internal
+
 } // namespace math
 } // namespace dash
 
