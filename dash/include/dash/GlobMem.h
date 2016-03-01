@@ -98,7 +98,8 @@ public:
   /**
    * Destructor, collectively frees underlying global memory.
    */
-  ~GlobMem() {
+  ~GlobMem()
+  {
     DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", m_begptr);
     if (!dash::is_initialized()) {
       // If a DASH container is deleted after dash::finalize(), global
@@ -125,14 +126,16 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  const GlobPtr<ElementType> begin() const {
+  const GlobPtr<ElementType> begin() const
+  {
     return GlobPtr<ElementType>(m_begptr);
   }
 
   /**
    * Global pointer of the initial address of the global memory.
    */
-  GlobPtr<ElementType> begin() {
+  GlobPtr<ElementType> begin()
+  {
     return GlobPtr<ElementType>(m_begptr);
   }
 
@@ -140,7 +143,9 @@ public:
    * Native pointer of the initial address of the local memory of
    * a unit.
    */
-  const ElementType * lbegin(dart_unit_t unit_id) const {
+  const ElementType * lbegin(
+    dart_unit_t unit_id) const
+  {
     void *addr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", unit_id);
     dart_gptr_t gptr = begin().dart_gptr();
@@ -158,7 +163,9 @@ public:
    * Native pointer of the initial address of the local memory of
    * a unit.
    */
-  ElementType * lbegin(dart_unit_t unit_id) {
+  ElementType * lbegin(
+    dart_unit_t unit_id)
+  {
     void *addr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin()", unit_id);
     dart_gptr_t gptr = begin().dart_gptr();
@@ -178,7 +185,8 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  inline const ElementType * lbegin() const {
+  inline const ElementType * lbegin() const
+  {
     return m_lbegin;
   }
 
@@ -186,7 +194,8 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  inline ElementType * lbegin() {
+  inline ElementType * lbegin()
+  {
     return m_lbegin;
   }
 
@@ -194,7 +203,9 @@ public:
    * Native pointer of the final address of the local memory of
    * a unit.
    */
-  const ElementType * lend(dart_unit_t unit_id) const {
+  const ElementType * lend(
+    dart_unit_t unit_id) const
+  {
     void *addr;
     dart_gptr_t gptr = begin().dart_gptr();
     DASH_ASSERT_RETURNS(
@@ -213,7 +224,9 @@ public:
    * Native pointer of the final address of the local memory of
    * a unit.
    */
-  ElementType * lend(dart_unit_t unit_id) {
+  ElementType * lend(
+    dart_unit_t unit_id)
+  {
     void *addr;
     dart_gptr_t gptr = begin().dart_gptr();
     DASH_ASSERT_RETURNS(
@@ -232,7 +245,8 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  const ElementType * lend() const {
+  inline const ElementType * lend() const
+  {
     return m_lend;
   }
 
@@ -240,7 +254,8 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobMem instance.
    */
-  ElementType * lend() {
+  inline ElementType * lend()
+  {
     return m_lend;
   }
 
@@ -252,7 +267,8 @@ public:
   template<typename ValueType = ElementType>
   void put_value(
     const ValueType & newval,
-    size_t global_index) {
+    size_t            global_index)
+  {
     DASH_LOG_TRACE("GlobMem.put_value(newval, gidx = %d)", global_index);
     dart_gptr_t gptr = m_begptr;
     DASH_ASSERT_RETURNS(
@@ -271,7 +287,8 @@ public:
   template<typename ValueType = ElementType>
   void get_value(
     ValueType * ptr,
-    size_t global_index) {
+    size_t global_index)
+  {
     DASH_LOG_TRACE("GlobMem.get_value(newval, gidx = %d)", global_index);
     dart_gptr_t gptr = m_begptr;
     dart_gptr_incaddr(&gptr, global_index * sizeof(ValueType));
@@ -279,10 +296,21 @@ public:
   }
 
   /**
+   * Synchronize all units associated with this global memory instance.
+   */
+  void barrier()
+  {
+    DASH_ASSERT_RETURNS(
+      dart_barrier(m_teamid),
+      DART_OK);
+  }
+
+  /**
    * Complete all outstanding asynchronous operations on the referenced
    * global memory on all units.
    */
-  void flush() {
+  void flush()
+  {
     dart_flush(m_begptr);
   }
 
@@ -290,15 +318,18 @@ public:
    * Complete all outstanding asynchronous operations on the referenced
    * global memory on all units.
    */
-  void flush_all() {
+  void flush_all()
+  {
     dart_flush_all(m_begptr);
   }
 
-  void flush_local() {
+  void flush_local()
+  {
     dart_flush_local(m_begptr);
   }
 
-  void flush_local_all() {
+  void flush_local_all()
+  {
     dart_flush_local_all(m_begptr);
   }
 
@@ -344,7 +375,8 @@ public:
 };
 
 template<typename T>
-GlobPtr<T> memalloc(size_t nelem) {
+GlobPtr<T> memalloc(size_t nelem)
+{
   dart_gptr_t gptr;
   size_t lsize = sizeof(T) * nelem;
 
