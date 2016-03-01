@@ -30,35 +30,44 @@ BenchmarkParams::BenchmarkParams(
 
   config_params_type params;
   params.env_mpi_shared_win = true;
+  params.env_hwloc          = false;
   params.env_mkl            = false;
   params.env_scalapack      = false;
+#ifdef DART_MPI_DISABLE_SHARED_WINDOWS
+  params.env_mpi_shared_win = false;
+#endif
+#ifdef DASH_ENABLE_HWLOC
+  params.env_hwloc          = true;
+#endif
 #ifdef DASH_ENABLE_MKL
   params.env_mkl            = true;
 #endif
 #ifdef DASH_ENABLE_SCALAPACK
   params.env_scalapack      = true;
 #endif
-#ifdef DART_MPI_DISABLE_SHARED_WINDOWS
-  params.env_mpi_shared_win = false;
-#endif
-  // Add environment variables starting with 'I_MPI_' or 'MP_' to
-  // params.env_config:
+  // Add environment variables to params.env_mpi_config and
+  // params.env_dash_config:
   int    i          = 1;
   char * env_var_kv = *environ;
   for (; env_var_kv != 0; ++i) {
+    // Split into key and value:
+    char * flag_name_cstr  = env_var_kv;
+    char * flag_value_cstr = strstr(env_var_kv, "=");
+    int    flag_name_len   = flag_value_cstr - flag_name_cstr;
+    std::string flag_name(flag_name_cstr, flag_name_cstr + flag_name_len);
+    std::string flag_value(flag_value_cstr+1);
     if (strstr(env_var_kv, "I_MPI_") == env_var_kv ||
         strstr(env_var_kv, "MV2_")   == env_var_kv ||
         strstr(env_var_kv, "MPICH")  == env_var_kv ||
         strstr(env_var_kv, "OMPI_")  == env_var_kv ||
         strstr(env_var_kv, "MP_")    == env_var_kv)
     {
-      // Split into key and value:
-      char * flag_name_cstr  = env_var_kv;
-      char * flag_value_cstr = strstr(env_var_kv, "=");
-      int    flag_name_len   = flag_value_cstr - flag_name_cstr;
-      std::string flag_name(flag_name_cstr, flag_name_cstr + flag_name_len);
-      std::string flag_value(flag_value_cstr+1);
-      params.env_config.push_back(std::make_pair(flag_name, flag_value));
+      params.env_mpi_config.push_back(std::make_pair(flag_name, flag_value));
+    }
+    if (strstr(env_var_kv, "DASH_")  == env_var_kv ||
+        strstr(env_var_kv, "DART_")  == env_var_kv)
+    {
+      params.env_dash_config.push_back(std::make_pair(flag_name, flag_value));
     }
     env_var_kv = *(environ + i);
   }
@@ -68,34 +77,7 @@ BenchmarkParams::BenchmarkParams(
 void BenchmarkParams::parse_args(
   int argc, char * argv[])
 {
-#if 0
-  std::string flags_str = argv[i+1];
-  // Split string into vector of key-value pairs
-  const char delim    = ':';
-  string::size_type i = 0;
-  string::size_type j = flags_str.find(delim);
-  while (j != string::npos) {
-    string flag_str = flags_str.substr(i, j-i);
-    // Split into key and value:
-    string::size_type fi = flag_str.find('=');
-    string::size_type fj = flag_str.find('=', fi);
-    if (fj == string::npos) {
-      fj = flag_str.length();
-    }
-    string flag_name    = flag_str.substr(0,    fi);
-    string flag_value   = flag_str.substr(fi+1, fj);
-    params.env_config.push_back(std::make_pair(flag_name, flag_value));
-    i = ++j;
-    j = flags_str.find(delim, j);
-  }
-  if (j == string::npos) {
-    // Split into key and value:
-    string::size_type k = flags_str.find('=', i+1);
-    string flag_name    = flags_str.substr(i, k-i);
-    string flag_value   = flags_str.substr(k+1, flags_str.length());
-    params.env_config.push_back(std::make_pair(flag_name, flag_value));
-  }
-#endif
+  // TODO
 }
 
 void BenchmarkParams::print_header()
@@ -126,7 +108,7 @@ void BenchmarkParams::print_header()
 
 #ifdef MPI_IMPL_ID
   print_section_start("MPI Environment Flags");
-  for (auto flag : _config.env_config) {
+  for (auto flag : _config.env_mpi_config) {
     int val_w  = box_width - flag.first.length() - 5;
     cout << "--   " << std::left   << flag.first
                     << setw(val_w) << std::right << flag.second
@@ -135,6 +117,15 @@ void BenchmarkParams::print_header()
   print_section_end();
 #endif
 
+  print_section_start("DASH Environment Flags");
+  for (auto flag : _config.env_dash_config) {
+    int val_w  = box_width - flag.first.length() - 5;
+    cout << "--   " << std::left   << flag.first
+                    << setw(val_w) << std::right << flag.second
+         << endl;
+  }
+  print_section_end();
+
   print_section_start("DASH Configuration");
 #ifdef MPI_IMPL_ID
   print_param("MPI implementation", dash__toxstr(MPI_IMPL_ID));
@@ -142,6 +133,11 @@ void BenchmarkParams::print_header()
 #ifdef DASH_ENV_HOST_SYSTEM_ID
   print_param("Host system identifier", dash__toxstr(DASH_ENV_HOST_SYSTEM_ID));
 #endif
+  if (_config.env_hwloc) {
+    print_param("hwloc",              "enabled");
+  } else {
+    print_param("hwloc",              "disabled");
+  }
   if (_config.env_mpi_shared_win) {
     print_param("MPI shared windows", "enabled");
   } else {

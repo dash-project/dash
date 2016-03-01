@@ -16,7 +16,7 @@
 
 #ifndef DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES
 // Use memcpy instead of std::copy for ranges below 1 MB:
-#define DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES 0x100000
+#define DASH__ALGORITHM__COPY__MAX_MEMCPY_BYTES 0
 #endif
 
 namespace dash {

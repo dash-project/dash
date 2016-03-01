@@ -29,10 +29,12 @@ public:
     env_flags_type;
 
   typedef struct dash_config_params_t {
-    env_flags_type env_config;
+    env_flags_type env_mpi_config;
+    env_flags_type env_dash_config;
+    bool           env_hwloc;
+    bool           env_mpi_shared_win;
     bool           env_mkl;
     bool           env_scalapack;
-    bool           env_mpi_shared_win;
   } config_params_type;
 
   typedef dash::util::Locality::UnitPinning
