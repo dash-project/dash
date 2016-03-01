@@ -80,7 +80,12 @@ $license = read_file("LICENSE");
 	  #
 	  # DASH scripts
 	  #
-	  "dash/scripts/*.sh"
+	  "dash/scripts/*.sh",
+	  #
+	  # Documentation
+	  #
+	  "doc/config/*.dox",
+	  "doc/config/*.in"
         );
 
 
