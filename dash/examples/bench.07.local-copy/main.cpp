@@ -252,11 +252,22 @@ int main(int argc, char** argv)
     u_init   = (u_dst + num_local_cpus) % dash::size();
     ts_start = Timer::Now();
     res      = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, u_init,
-                                   params);
+                                   params, DASH_COPY);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remote.1", "dash::copy", bench_cfg,
+    print_measurement_record("remt.blkng", "dash::copy", bench_cfg,
                              u_src, u_dst, u_init, size, num_r_repeats,
                              time_s, res, params);
+    u_src    = 0;
+    u_dst    = dash::size() - 2;
+    u_init   = (u_dst + num_local_cpus) % dash::size();
+    ts_start = Timer::Now();
+    res      = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, u_init,
+                                   params, DASH_COPY_ASYNC);
+    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
+    print_measurement_record("remt.async", "dash::copy", bench_cfg,
+                             u_src, u_dst, u_init, size, num_r_repeats,
+                             time_s, res, params);
+
     if (num_nodes < 3) {
       continue;
     }
