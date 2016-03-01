@@ -52,7 +52,7 @@ rm -Rf ./build/*
                      -DENVIRONMENT_TYPE=default \
                      -DDART_IF_VERSION=3.2 \
                      -DINSTALL_PREFIX=$HOME/opt/ \
-                     -DDART_IMPLEMENTATIONS=mpi,shmem \
+                     -DDART_IMPLEMENTATIONS=mpi \
                      -DENABLE_ASSERTIONS=ON \
                      -DENABLE_COMPILER_WARNINGS=ON \
                      -DENABLE_SHARED_WINDOWS=ON \
