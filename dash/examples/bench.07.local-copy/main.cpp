@@ -37,13 +37,6 @@ typedef dash::util::Timer<
           dash::util::TimeMeasure::Counter
         > Timer;
 
-#define DASH_PRINT_MASTER(expr) \
-  do { \
-    if (dash::myid() == 0) { \
-      std::cout << "" << expr << std::endl; \
-    } \
-  } while(0)
-
 #ifndef DASH__ALGORITHM__COPY__USE_WAIT
 const std::string dash_async_copy_variant = "flush";
 #else
@@ -254,7 +247,7 @@ int main(int argc, char** argv)
     res      = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, u_init,
                                    params, DASH_COPY);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remt.blkng", "dash::copy", bench_cfg,
+    print_measurement_record("rmt.blkng", "dash::copy", bench_cfg,
                              u_src, u_dst, u_init, size, num_r_repeats,
                              time_s, res, params);
     u_src    = 0;
@@ -264,34 +257,7 @@ int main(int argc, char** argv)
     res      = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, u_init,
                                    params, DASH_COPY_ASYNC);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remt.async", "dash::copy", bench_cfg,
-                             u_src, u_dst, u_init, size, num_r_repeats,
-                             time_s, res, params);
-
-    if (num_nodes < 3) {
-      continue;
-    }
-    u_src    = 0;
-    u_dst    = dash::size() / 2;
-    u_init   = (u_dst + num_local_cpus) % dash::size();
-    ts_start = Timer::Now();
-    res      = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, u_init,
-                                   params);
-    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remote.2", "dash::copy", bench_cfg,
-                             u_src, u_dst, u_init, size, num_r_repeats,
-                             time_s, res, params);
-    if (num_nodes < 4) {
-      continue;
-    }
-    u_src    = 0;
-    u_dst    = ((num_local_cpus * 2) + (numa_node_cores / 2)) % dash::size();
-    u_init   = (u_dst + num_local_cpus) % dash::size();
-    ts_start = Timer::Now();
-    res      = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, u_init,
-                                   params);
-    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("remote.3", "dash::copy", bench_cfg,
+    print_measurement_record("rmt.async", "dash::copy", bench_cfg,
                              u_src, u_dst, u_init, size, num_r_repeats,
                              time_s, res, params);
   }
@@ -641,15 +607,15 @@ void print_params(
   }
 
   bench_cfg.print_section_start("Runtime arguments");
-  bench_cfg.print_param("-smin",   "initial block size",  params.size_min);
-  bench_cfg.print_param("-sb",     "block size base",     params.size_base);
-  bench_cfg.print_param("-rmax",   "initial repeats",     params.num_repeats);
-  bench_cfg.print_param("-rmin",   "min, repeats",        params.min_repeats);
-  bench_cfg.print_param("-rb",     "rep. base",           params.rep_base);
-  bench_cfg.print_param("-i",      "iterations",          params.num_iterations);
-  bench_cfg.print_param("-verify", "verification",        params.verify);
-  bench_cfg.print_param("-lo",     "local only",          params.local_only);
-  bench_cfg.print_param("-fcache", "flush full L3 cache", params.flush_cache);
+  bench_cfg.print_param("-smin",   "initial block size",    params.size_min);
+  bench_cfg.print_param("-sb",     "block size base",       params.size_base);
+  bench_cfg.print_param("-rmax",   "initial repeats",       params.num_repeats);
+  bench_cfg.print_param("-rmin",   "min, repeats",          params.min_repeats);
+  bench_cfg.print_param("-rb",     "rep. base",             params.rep_base);
+  bench_cfg.print_param("-i",      "iterations",            params.num_iterations);
+  bench_cfg.print_param("-verify", "verification",          params.verify);
+  bench_cfg.print_param("-lo",     "local only",            params.local_only);
+  bench_cfg.print_param("-fcache", "no copying from cache", params.flush_cache);
   bench_cfg.print_section_end();
 }
 
