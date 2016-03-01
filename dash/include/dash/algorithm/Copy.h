@@ -22,11 +22,10 @@ namespace dash {
  * Copies the elements in the range, defined by \c [in_first, in_last), to
  * another range beginning at \c out_first.
  *
- * In terms of data distribution, ranges passed to \c dash::copy can be local
- * (\c *ValueType) or global (\c GlobIter<ValueType>).
+ * In terms of data distribution, source and destination ranges passed to
+ * \c dash::copy can be local (\c *ValueType) or global (\c GlobIter<ValueType>).
  *
- * The operation performed is non-blocking if the output iterator is an
- * instance of a \c GlobAsyncIter type.
+ * For a non-blocking variant of \c dash::copy, see \c dash::async_copy.
  *
  * Example:
  *
@@ -42,6 +41,8 @@ namespace dash {
  *     dest_last.fence();
  * \endcode
  *
+ * \returns  The output range end iterator that is created on completion of the
+ *           copy operation.
  */
 template <
   typename ValueType,
@@ -52,7 +53,43 @@ OutputIt copy(
   InputIt  in_last,
   OutputIt out_first);
 
-#endif // DOXYGEN
+/**
+ * Asynchronous variant of \c dash::copy.
+ * Copies the elements in the range, defined by \c [in_first, in_last), to
+ * another range beginning at \c out_first.
+ *
+ * In terms of data distribution, source and destination ranges passed to
+ * \c dash::copy can be local (\c *ValueType) or global (\c GlobIter<ValueType>).
+ *
+ * For a blocking variant of \c dash::copy_async, see \c dash::copy.
+ *
+ * Example:
+ *
+ * \code
+ *     // Start asynchronous copying
+ *     dash::Future<T*> fut_dest_end =
+ *       dash::copy_async(array_a.block(0).begin(),
+ *                        array_a.block(0).end(),
+ *                        local_array);
+ *     // Overlapping computation here
+ *     // ...
+ *     // Wait for completion of asynchronous copying:
+ *     T * copy_dest_end = fut_dest_end.get();
+ * \endcode
+ *
+ * \returns  An instance of \c dash::Future providing the output range end
+ *           iterator that is created on completion of the asynchronous copy
+ *           operation.
+ */
+template <
+  typename ValueType,
+  class GlobInputIt >
+dash::Future<ValueType *> copy_async(
+  InputIt  in_first,
+  InputIt  in_last,
+  OutputIt out_first);
+
+#else // DOXYGEN
 
 namespace internal {
 
@@ -429,7 +466,7 @@ GlobOutputIt copy_impl(
 } // namespace internal
 
 /**
- * Specialization of \c dash::copy as global-to-local blocking copy operation.
+ * Variant of \c dash::copy as asynchronous global-to-local copy operation.
  */
 template <
   typename ValueType,
@@ -462,6 +499,9 @@ dash::Future<ValueType *> copy_async(
   // Total number of elements to be copied:
   auto total_copy_elem = in_last - in_first;
 
+  // Instead of testing in_first.local() and in_last.local(), this test for a
+  // local-only range only requires one call to in_first.local() which increases
+  // throughput by ~10% for local ranges.
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:
     DASH_LOG_TRACE("dash::copy_async", "entire input range is local");
@@ -641,27 +681,6 @@ ValueType * copy(
 
   DASH_LOG_TRACE("dash::copy()", "blocking, global to local");
 
-#if 1
-  ValueType * l_in_first = in_first.local();
-  ValueType * l_in_last  = (l_in_first == nullptr)
-                           ? nullptr
-                           : in_last.local();
-  if (l_in_first != nullptr && l_in_last != nullptr) {
-    auto total_copy_elem = std::distance(l_in_first, l_in_last);
-    ValueType * out_last = out_first + total_copy_elem;
-    if (use_memcpy) {
-      std::memcpy(out_first,  // destination
-                  l_in_first, // source
-                  total_copy_elem * sizeof(ValueType));
-    } else {
-      out_last = std::copy(l_in_first,
-                           l_in_last,
-                           out_first);
-    }
-    return out_last;
-  }
-#endif
-
   ValueType * dest_first = out_first;
   // Return value, initialize with begin of output range, indicating no values
   // have been copied:
@@ -676,7 +695,9 @@ ValueType * copy(
   // Total number of elements to be copied:
   auto total_copy_elem = in_last - in_first;
 
-#if 0
+  // Instead of testing in_first.local() and in_last.local(), this test for a
+  // local-only range only requires one call to in_first.local() which increases
+  // throughput by ~10% for local ranges.
   if (num_local_elem == total_copy_elem) {
     // Entire input range is local:
     DASH_LOG_TRACE("dash::copy", "entire input range is local");
@@ -697,7 +718,6 @@ ValueType * copy(
                    (out_last - out_first), "elements");
     return out_last;
   }
-#endif
 
   DASH_LOG_TRACE("dash::copy", "local range:",
                  li_range_in.begin,
@@ -929,6 +949,8 @@ GlobOutputIt copy(
 
   return GlobOutputIt();
 }
+
+#endif // DOXYGEN
 
 } // namespace dash
 

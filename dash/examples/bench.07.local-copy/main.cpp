@@ -161,6 +161,8 @@ int main(int argc, char** argv)
     auto block_size = std::pow(params.size_base,i) * size_inc;
     auto size       = block_size * dash::size();
 
+    num_repeats     = std::max<size_t>(num_repeats, params.min_repeats);
+
 #if 0
     // Copy first block in array, assigned to unit 0, using memcpy:
     u_src    = 0;
@@ -397,7 +399,6 @@ measurement copy_block_to_local(
       for (size_t p = 0; p < block_size; ++p) {
         block_values[p] = ((myid+1) * 100000)
                           + (p * 1000);
-//                        + (std::rand() / RAND_MAX);
       }
       // Copy block values to global array:
       dash::copy(block_values,
@@ -592,7 +593,7 @@ benchmark_params parse_args(int argc, char * argv[])
   params.verify         = true;
   params.local_only     = false;
   params.flush_cache    = false;
-  params.size_min       = 0;
+  params.size_min       = 64;
 
   for (auto i = 1; i < argc; i += 2) {
     std::string flag = argv[i];
@@ -620,7 +621,7 @@ benchmark_params parse_args(int argc, char * argv[])
     }
   }
   if (params.num_repeats == 0) {
-    params.num_repeats = 2 * std::pow(params.rep_base, 10);
+    params.num_repeats = 8 * std::pow(params.rep_base, params.num_iterations);
   }
   return params;
 }
