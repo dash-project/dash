@@ -359,8 +359,7 @@ dart_ret_t dart_get_handle(
   }
 #else
   DART_LOG_DEBUG("dart_get_handle: shared windows disabled");
-#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-
+#endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
   /*
    * MPI shared windows disabled or target and calling unit are on different
    * nodes, use MPI_RGet:
@@ -370,13 +369,6 @@ dart_ret_t dart_get_handle(
      * The memory accessed is allocated with collective allocation.
      */
     DART_LOG_TRACE("dart_get_handle:  collective, segment:%d", seg_id);
-/*
-    if (dart_adapt_transtable_get_win (index, offset, &begin, &win) == -1)
-    {
-      DART_LOG_ERROR ("Invalid accessing operation");
-      return DART_ERR_INVAL;
-    }
-*/
     win = dart_win_lists[index];
     /* Translate local unitID (relative to teamid) into global unitID
      * (relative to DART_TEAM_ALL).
@@ -476,15 +468,9 @@ dart_ret_t dart_put_handle(
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;
 
-  if (seg_id) {
+  if (seg_id != 0) {
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
-/*
-    if (dart_adapt_transtable_get_win(index, offset, &begin, &win) == -1) {
-      DART_LOG_ERROR ("Invalid accessing operation");
-      return DART_ERR_INVAL;
-    }
-*/
     win = dart_win_lists[index];
     unit_g2l (index, target_unitid_abs, &target_unitid_rel);
     if (dart_adapt_transtable_get_disp(
@@ -502,7 +488,7 @@ dart_ret_t dart_put_handle(
      *     REPLACE, win, &mpi_req)
      * ... could be a better alternative?
      */
-    DART_LOG_DEBUG("dart_put_blocking: MPI_RPut");
+    DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
     MPI_Rput(
       src,
       nbytes,
@@ -514,12 +500,12 @@ dart_ret_t dart_put_handle(
       win,
       &mpi_req);
     (*handle) -> dest = target_unitid_rel;
-    DART_LOG_DEBUG("dart_put_blocking: nbytes:%zu "
+    DART_LOG_DEBUG("dart_put_handle: nbytes:%zu "
                    "(from collective allocation) "
                    "target_unit:%d offset:%"PRIu64"",
                    nbytes, target_unitid_abs, offset);
   } else {
-    DART_LOG_DEBUG("dart_put_blocking: MPI_RPut");
+    DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
     win = dart_win_local_alloc;
     MPI_Rput(
       src,
@@ -531,7 +517,7 @@ dart_ret_t dart_put_handle(
       MPI_BYTE,
       win,
       &mpi_req);
-    DART_LOG_DEBUG("dart_put_blocking: nbytes:%zu "
+    DART_LOG_DEBUG("dart_put_handle: nbytes:%zu "
                    "(from local allocation) "
                    "target_unit:%d offset:%"PRIu64"",
                    nbytes, target_unitid_abs, offset);
@@ -548,132 +534,121 @@ dart_ret_t dart_put_handle(
  * TODO: Check if MPI_Get_accumulate (MPI_NO_OP) can bring better
  * performance?
  */
-
 dart_ret_t dart_put_blocking(
   dart_gptr_t  gptr,
   const void * src,
   size_t       nbytes)
 {
   MPI_Win     win;
+  MPI_Status  mpi_sta;
+  MPI_Request mpi_req;
   MPI_Aint    disp_s,
               disp_rel;
+  dart_unit_t target_unitid_abs = gptr.unitid;
+  dart_unit_t target_unitid_rel = target_unitid_abs;
   uint64_t    offset = gptr.addr_or_offs.offset;
   int16_t     seg_id = gptr.segid;
   uint16_t    index  = gptr.flags;
-  dart_unit_t target_unitid_abs = gptr.unitid;
-  dart_unit_t target_unitid_rel = target_unitid_abs;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nbytes > INT_MAX) {
+    DART_LOG_ERROR("dart_put_blocking ! failed: nbytes > INT_MAX");
+    return DART_ERR_INVAL;
+  }
   if (seg_id > 0) {
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
+
   DART_LOG_DEBUG("dart_put_blocking() uid_abs:%d uid_rel:%d "
                  "o:%"PRIu64" s:%d i:%d, nbytes:%zu",
                  target_unitid_abs, target_unitid_rel,
                  offset, seg_id, index, nbytes);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+  DART_LOG_DEBUG("dart_put_blocking: shared windows enabled");
   if (seg_id >= 0) {
     int    i;
     char * baseptr;
-
-    /* Checking whether origin and target are in the same node.
-     * We use the approach of shared memory accessing only when it passed
-     * the above check.
+    /*
+     * Use memcpy if the target is in the same node as the calling unit:
+     * The value of i will be the target's relative ID in teamid.
      */
-  //  i = binary_search (
-  //        dart_unit_mapping[j],
-  //        gptr.unitid,
-  //        0,
-  //        dart_sharedmem_size[j] - 1);
-    /* The value of i will be the target's relative ID in teamid. */
     i = dart_sharedmem_table[index][gptr.unitid];
     if (i >= 0) {
       DART_LOG_DEBUG("dart_put_blocking: shared memory segment, seg_id:%d",
                      seg_id);
       if (seg_id) {
         if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr) == -1) {
+          DART_LOG_ERROR("dart_put_blocking ! "
+                         "dart_adapt_transtable_get_baseptr failed");
           return DART_ERR_INVAL;
         }
       } else {
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
-      baseptr  += offset;
-      memcpy(baseptr, ((char*)src), nbytes);
+      baseptr += offset;
+      DART_LOG_DEBUG("dart_put_blocking: memcpy %zu bytes", nbytes);
+      memcpy(baseptr, (char*)src, nbytes);
       return DART_OK;
     }
   }
-
-#if 0
-    if (unitid == target_unitid_abs) {
-      /* If orgin and target are identical, then switches to local
-       * access.
-       */
-      if (seg_id) {
-        int flag;
-        MPI_Win_get_attr (win, MPI_WIN_BASE, &baseptr, &flag);
-        baseptr = baseptr + offset;
-      }  else {
-        baseptr = offset + dart_mempool_localalloc;
-      }
-    } else {
-      /* Accesses through shared memory (store). */
-      disp_rel = offset;
-      MPI_Aint maximum_size;
-      MPI_Win_shared_query(
-        win,
-        i,
-        &maximum_size,
-        &disp_unit,
-        &baseptr);
-      baseptr += disp_rel;
+#else
+  DART_LOG_DEBUG("dart_put_blocking: shared windows disabled");
+#endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
+  /*
+   * MPI shared windows disabled or target and calling unit are on different
+   * nodes, use MPI_Rput:
+   */
+  if (seg_id) {
+    if (dart_adapt_transtable_get_disp(
+          seg_id,
+          target_unitid_rel,
+          &disp_s) == -1) {
+      DART_LOG_ERROR("dart_put_blocking ! "
+                     "dart_adapt_transtable_get_disp failed");
+      return DART_ERR_INVAL;
     }
-    memcpy (baseptr, ((char*)src), nbytes);
-#endif
-#endif
-  {
-    /* The traditional remote access method */
-    if (seg_id)  {
-      win = dart_win_lists[index];
-      if (dart_adapt_transtable_get_disp(
-            seg_id,
-            target_unitid_rel,
-            &disp_s) == -1)  {
-        return DART_ERR_INVAL;
-      }
-      disp_rel = disp_s + offset;
-    }  else{
-      win = dart_win_local_alloc;
-      disp_rel = offset;
-      target_unitid_rel = target_unitid_abs;
-    }
-    DART_LOG_DEBUG("dart_put_blocking: MPI_Put");
-    MPI_Put(
-      src,
-      nbytes,
-      MPI_BYTE,
-      target_unitid_rel,
-      disp_rel,
-      nbytes,
-      MPI_BYTE,
-      win);
-    /* Make sure the access is completed remotedly */
-    DART_LOG_DEBUG("dart_put_blocking: MPI_Win_flush");
-    MPI_Win_flush(target_unitid_rel, win);
-    /* MPI_Wait is invoked to release the resource brought by the mpi
-     * request handle
-     */
-    if (seg_id) {
-      DART_LOG_DEBUG(
-        "dart_put_blocking: nbytes:%zu "
-        "(from collective allocation) target_unit:%d offset:%"PRIu64"",
-        nbytes, target_unitid_abs, offset);
-    } else {
-      DART_LOG_DEBUG(
-        "dart_put_blocking: nbytes:%zu "
-        "(from local allocation) target_unit:%d offset:%"PRIu64"",
-        nbytes, target_unitid_abs, offset);
-    }
-    return DART_OK;
+    win      = dart_win_lists[index];
+    disp_rel = disp_s + offset;
+    DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
+                   "target (coll.): win:%"PRIu64" unit:%d offset:%"PRIu64" "
+                   "-> dest: %p",
+                   nbytes, (uint64_t)win, target_unitid_rel,
+                   (uint64_t)disp_rel, dest);
+  } else {
+    win      = dart_win_local_alloc;
+    disp_rel = offset;
+    DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
+                   "target (local): win:%"PRIu64" unit:%d offset:%"PRIu64" "
+                   "-> dest: %p",
+                   nbytes, (uint64_t)win, target_unitid_rel,
+                   (uint64_t)disp_rel, dest);
   }
+
+  DART_LOG_DEBUG("dart_put_blocking: MPI_Rput");
+  if (MPI_Rput(src,
+               nbytes,
+               MPI_BYTE,
+               target_unitid_rel,
+               disp_rel,
+               nbytes,
+               MPI_BYTE,
+               win,
+               &mpi_req)
+      != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_put_blocking ! MPI_Rput failed");
+    return DART_ERR_INVAL;
+  }
+  DART_LOG_DEBUG("dart_put_blocking: MPI_Wait");
+  if (MPI_Wait(&mpi_req, &mpi_sta) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_put_blocking ! MPI_Wait failed");
+    return DART_ERR_INVAL;
+  }
+
+  DART_LOG_DEBUG("dart_put_blocking > finished");
+  return DART_OK;
 }
 
 /**
@@ -718,6 +693,7 @@ dart_ret_t dart_get_blocking(
     char * baseptr;
     /*
      * Use memcpy if the target is in the same node as the calling unit:
+     * The value of i will be the target's relative ID in teamid.
      */
     i = dart_sharedmem_table[index][gptr.unitid];
     if (i >= 0) {
@@ -740,10 +716,10 @@ dart_ret_t dart_get_blocking(
   }
 #else
   DART_LOG_DEBUG("dart_get_blocking: shared windows disabled");
-#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+#endif /* !defined(DART_MPI_DISABLE_SHARED_WINDOWS) */
   /*
    * MPI shared windows disabled or target and calling unit are on different
-   * nodes, use MPI_RGet:
+   * nodes, use MPI_Rget:
    */
   if (seg_id) {
     if (dart_adapt_transtable_get_disp(
@@ -771,7 +747,7 @@ dart_ret_t dart_get_blocking(
                    (uint64_t)disp_rel, dest);
   }
 
-  DART_LOG_DEBUG("dart_get_blocking: MPI_RGet");
+  DART_LOG_DEBUG("dart_get_blocking: MPI_Rget");
   if (MPI_Rget(dest,
                nbytes,
                MPI_BYTE,
