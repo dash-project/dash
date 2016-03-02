@@ -260,7 +260,9 @@ int main(int argc, char** argv)
                              time_s, res, params);
   }
 
-  DASH_PRINT_MASTER("Benchmark finished");
+  if( dash::myid()==0 ) {
+    cout<<"Benchmark finished"<<endl;
+  }
 
   dash::finalize();
   return 0;
