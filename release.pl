@@ -121,8 +121,18 @@ system("cd $rdir; tar -czf dash-$version.tar.gz dash-$version/");
 system("rm -rf $base");
 print "DONE!\n";
 
+
 if( -e "$base.tar.gz" ) {
-    print "DASH is here: $base.tar.gz\n";
+    $md5sum = `md5sum $base.tar.gz | cut -d ' ' -f 1`; chomp $md5sum;
+    $fsize  = `ls -l $base.tar.gz | cut -d ' ' -f 5`; chomp $fsize;
+
+    print "\n";
+    print "DASH $version release built\n";
+    print "------------------------------------------------\n";
+    print "archive   : $base.tar.gz\n";
+    print "md5sum    : $md5sum\n";
+    print "file size : $fsize bytes\n";
+    print "------------------------------------------------\n";
 } else {
     print "Something went wrong, check directory '$rdir'\n";
 }
