@@ -1,9 +1,7 @@
 /*
- * Sequential GUPS benchmark for various containers
- *
- * author(s): Karl Fuerlinger, LMU Munich */
-/* @DASH_HEADER@ */
-
+ * Independent parallel updates benchmark
+ * for various containers
+ */
 #include "../bench.h"
 #include <libdash.h>
 

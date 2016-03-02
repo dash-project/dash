@@ -1,9 +1,3 @@
-/*
- * Sequential GUPS benchmark for various pattern types.
- *
- */
-/* @DASH_HEADER@ */
-
 #define DASH__MKL_MULTITHREADING
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
 

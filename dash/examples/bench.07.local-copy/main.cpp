@@ -1,8 +1,6 @@
 /**
  * Local copy benchmark for various containers
- *
- * author(s): Felix Moessbauer, LMU Munich */
-/* @DASH_HEADER@ */
+ */
 
 #include <libdash.h>
 #include <iostream>

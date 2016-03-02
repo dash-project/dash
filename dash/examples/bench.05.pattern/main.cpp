@@ -1,9 +1,3 @@
-/* 
- * Sequential GUPS benchmark for various pattern types.
- *
- */
-/* @DASH_HEADER@ */
-
 #include "../bench.h"
 #include <libdash.h>
 #include "MockPattern.h"
