@@ -20,11 +20,10 @@ For a list of available CMake parameters:
   (build/)$ cmake . -L
 
 Parameters can be set using -D flags. As an example, these parameters
-will configure the build process to use clang instead of the default
-compiler:
+will configure the build process to use icc as C compiler instead of the
+default compiler:
 
-  (build/)$ cmake -DCMAKE_CXX_COMPILER=clang++ \
-                       -DCMAKE_C_COMPILER=clang ..
+  `(build/)$ cmake -DCMAKE_C_COMPILER=icc`
 
 Optionally, configure build parameters using ccmake:
 
@@ -35,90 +34,103 @@ Optionally, configure build parameters using ccmake:
 DASH provides the following variants:
 
   - MPI: the Message Passing Interface
-  - CUDA: nNvidia's Compute Unified Device Architecture
-  - SHMEM: Symmetric Hierarchical Memory access
+  - CUDA: nNvidia's Compute Unified Device Architecture (contributor
+    distribution only)
+  - SHMEM: Symmetric Hierarchical Memory access (contributor distribution
+    only)
 
-The build process creates the following static libraries:
+The build process creates the following libraries:
 
   - libdart-mpi
   - libdart-cuda
   - libdart-shmem
 
 By default, DASH is configured to build all variants of the runtime.
-You can define which implementation of DART to build using the cmake
-parameter
+You can specify which implementations of DART to build using the cmake
+option
 
-  (build/)$ cmake -DDART_IMPLEMENTATION=mpi|cuda|shmem ...
+  `(build/)$ cmake -DDART_IMPLEMENTATIONS=mpi,shmem ...`
 
 Programs using DASH select a runtime implementation by linking against the
 respective library.
 
 ### 2. Developer Settings
 
+*Only in DASH contributor distribution*
+
 To activate a previous version of the DART interface, specify the
 cmake parameter
 
-  (build/)$ cmake -DDART_INTERFACE_VERSION=x.y ...
+  `(build/)$ cmake -DDART_INTERFACE_VERSION=x.y ...`
 
 ### 3. Examples and Unit Tests
 
-Source code of usage examples of DASH are located in dash/examples/.
+Source code of usage examples of DASH are located in `dash/examples/`.
 Examples each consist of a single executable and are built by default.
-Binaries from examples and unit tests are deployed to the build direcory,
+Binaries from examples and unit tests are deployed to the build direcory
 but will not be installed.
-To disable building of examples, specify the cmake parameter
+To disable building of examples, specify the cmake option
 
-  (build/)$ cmake -DBUILD_EXAMPLES=OFF ...
+  `(build/)$ cmake -DBUILD_EXAMPLES=OFF ...`
 
-To disable building of unit tests, specify the cmake parameter
+To disable building of unit tests, specify the cmake option
 
-  (build/)$ cmake -DBUILD_TESTS=OFF ...
+  `(build/)$ cmake -DBUILD_TESTS=OFF ...`
 
 The example applications are located in the bin/ folder in the build
 directory.
 
 ### 4. Installation
 
-The default installation path is /usr/local/
+The default installation path is `$HOME/opt` as users on HPC systems typically
+have install permissions in their home directory only.
+
 To specify a different installation path, use
 
-  (build/)$ cmake -DINSTALL_PREFIX=/your/install/path ../
+  `(build/)$ cmake -DINSTALL_PREFIX=/your/install/path ../`
 
-The option "-DINSTALL_PREFIX=YourCustomPath" can also be given in Step 1.
+The option `-DINSTALL_PREFIX=<DASH install path>` can also be given in Step 1.
 
 The installation process copies the 'bin', 'lib', and 'include' directories
 in the build directory to the specified installation path.
 
-  (dash/)$ cmake --build . --target install
+  `(dash/)$ cmake --build . --target install`
 
 Or manually using make:
 
+~~~
   (build/)$ cmake <build options> ../
   (build/)$ make
   (build/)$ make install
+~~~
 
 Running DASH Applications
 -------------------------
 
 With the MPI variant, applications are spawn by MPI:
 
+~~~
   $ mpirun <app>-mpi
+~~~
 
 For CUDA and SHMEM, use
 
+~~~
   $ dartrun-cuda <app>-cuda
+~~~
 
 and respectively
 
+~~~
   $ dartrun-shmem <app>-shmem
+~~~
 
 Profiling DASH Applications using IPM
 -------------------------------------
 
-Compile IPM as described in ipm/INSTALL. Then, use `LD_PRELOAD` to run a
-DASH application built with the DART-MPI backend:
+Use `LD_PRELOAD` to run a DASH application built with the DART-MPI backend:
 
-  $ LD_PRELOAD=/path/to/ipm/lib/libipm.so mpirun -n <nproc> <DASH executable>
+  `$ LD_PRELOAD=/$IPM_HOME/lib/libipm.so mpirun -n <nproc> <DASH executable>`
 
 Available options for IPM are documented in the
 [IPM user guide](http://ipm-hpc.org/docs/user.php).
@@ -132,12 +144,12 @@ The Munich Network Management homepage: http://www.mnm-team.org
 Developer Notes
 ===============
 
-This section is relevant if you intend to contribute code to the DASH project.
+This section is only relevant to contributors in the DASH project.
 
 Code Style
 ----------
 
-We follow the Google C++ Style Guide which is widely accepted in prevalent
+We follow the Google C++ Style Guide which is widely accepted in established
 open source projects:
 
 http://google.github.io/styleguide/cppguide.html
@@ -148,6 +160,9 @@ http://llvm.org/docs/CodingStandards.html
 
 Contributing Code
 -----------------
+
+The DASH software development process is kept as simple as possible, balancing
+pragmatism and QA.
 
 1. Create a new, dedicated branch for any task. We follow the naming
    convention:
@@ -166,27 +181,27 @@ Contributing Code
     - Assign the ticket to yourself
 
    There is no need for time tracking, we use Redmine to maintain an overview
-   of who is working on which component, and what branches are active.
+   of active branches and who is working on which component.
 
-3. For features and bugfixes, implement unit tests
+3. For features and bugfixes, **implement unit tests**
 
 4. Once you are finished with your implementation and unit tests:
 
     - Clone branch master into a new working copy:
 
-          $ git clone git@git.dash-project.org:dash -b master ./dash-master
+          `$ git clone git@git.dash-project.org:dash -b master ./dash-master`
 
     - In the master working copy, pull from your branch:
 
-          (dash-master)$ git pull origin feat-myfeature
+          `(dash-master)$ git pull origin feat-myfeature`
 
     - Run continuous integration suite in the updated master working copy:
 
-          (dash-master)$ ./dash/scripts/dash-ci.sh
+          `(dash-master)$ ./dash/scripts/dash-ci.sh`
 
     - If continuous integration passed, push to master:
 
-          (dash-master)$ git push origin master
+          `(dash-master)$ git push origin master`
 
 5. Reviewing
 
@@ -196,15 +211,32 @@ Contributing Code
     - Set state to "Resolved"
     - Set "Assigned to" to the team member that will review your code
 
-   For now, we chose to merge to master before reviewing so everyone can
-   contribute to master without depending on other team members.
+   For now, we chose to merge to development branch before reviewing so
+   everyone can contribute to development snapshots without depending on other
+   team members.
 
 6. Closing a ticket
 
    Tickets are closed by reviewers once the code changes in the ticket's
    branch passed review.
 
-   Branches only be deleted when their ticket is closed.
+   Branches are only deleted when their ticket is closed.
+
+7. Merging to master
+
+   The development branch of DASH is merged to master periodically once all
+   tickets in the development branch are closed.
+
+   Before merging:
+     - Update the changelog in development branch.
+     - Announce the merge: send the updated changelog to the DASH mailing
+       list and set a deadline for issue reports.
+
+   After merging:
+     - Increment the DASH version number in the development
+       branch.
+     - Publish a new release: create a tarball distribution by running
+       `release.pl` and add a link on the DASH project website.
 
 
 Running Tests
@@ -213,14 +245,20 @@ Running Tests
 Launch the DASH unit test suite using <code>dash-test-shmem</code> or
 <code>dash-test-mpi</code>:
 
-  (bin/dash/test/shmem)$ dartrun-shmem <dartrun options> dash-test-shmem <gtest options>
+~~~
+  (bin/dash/test/shmem)$ dartrun-shmem <dartrun args> dash-test-shmem <gtest args>
+~~~
 
 or
 
+~~~
   (bin/dash/test/mpi)$ mpirun <MPI options> dash-test-mpi <gtest options>
+~~~
 
 For example, you would all unit tests of matrix data structures on 4 units
 using the MPI runtime with:
 
+~~~
   (bin/dash/test/mpi)$ mpirun -n 4 dash-test-mpi --gtest_filter=Matrix*
+~~~
 
