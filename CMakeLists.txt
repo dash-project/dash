@@ -152,13 +152,13 @@ if (BUILD_DOCS)
 endif()
 
 message(EMPH "DASH version ${DASH_VERSION}")
+message(EMPH "DART interface version " ${DART_IF_VERSION})
 message(EMPH "-----------------------------------------------------------")
 message(EMPH "Install prefix:           (INSTALL_PREFIX)                 "
         ${CMAKE_INSTALL_PREFIX})
 message(EMPH "Build type:               (CMAKE_BUILD_TYPE)               "
         ${CMAKE_BUILD_TYPE})
 
-message(INFO "DART interface version:   " ${DART_IF_VERSION})
 message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
         ${DASH_ENV_HOST_SYSTEM_ID})
 message(INFO "Strict compiler warnings: (ENABLE_COMPILER_WARNINGS)       "
