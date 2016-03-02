@@ -1,10 +1,3 @@
-/*
- * dash-lib/Shared.h
- *
- * author(s): Karl Fuerlinger, LMU Munich
- */
-/* @DASH_HEADER@ */
-
 #ifndef DASH__SHARED_H_
 #define DASH__SHARED_H_
 

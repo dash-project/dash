@@ -1,9 +1,3 @@
-/*
- * globref/main.cpp
- *
- * author(s): Karl Fuerlinger, LMU Munich */
-/* @DASH_HEADER@ */
-
 #include <unistd.h>
 #include <iostream>
 #include <libdash.h>

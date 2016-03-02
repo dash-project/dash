@@ -1,4 +1,3 @@
-
 #include <dash/Enums.h>
 #include <dash/Distribution.h>
 

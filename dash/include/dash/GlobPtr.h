@@ -1,10 +1,3 @@
-/*
- * dash-lib/GlobPtr.h
- *
- * author(s): Karl Fuerlinger, LMU Munich
- */
-/* @DASH_HEADER@ */
-
 #ifndef DASH__GLOB_PTR_H_
 #define DASH__GLOB_PTR_H_
 

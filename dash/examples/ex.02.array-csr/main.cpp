@@ -1,9 +1,3 @@
-/*
- * \file examples/ex.02.array-copy/main.cpp
- *
- * author(s): Tobias Fuchs, LMU Munich */
-/* @DASH_HEADER@ */
-
 #include <iostream>
 #include <string>
 #include <vector>

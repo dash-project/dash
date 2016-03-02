@@ -1,9 +1,3 @@
-/*
- * dash-lib/Cartesian.h
- *
- */
-/* @DASH_HEADER@ */
-
 #ifndef DASH__CARTESIAN_H_
 #define DASH__CARTESIAN_H_
 

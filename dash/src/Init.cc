@@ -1,4 +1,3 @@
-
 #include <dash/Init.h>
 #include <dash/Team.h>
 #include <dash/util/Locality.h>

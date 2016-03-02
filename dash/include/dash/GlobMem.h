@@ -1,10 +1,3 @@
-/*
- * dash-lib/GlobMem.h
- *
- * author(s): Karl Fuerlinger, LMU Munich
- */
-/* @DASH_HEADER@ */
-
 #ifndef DASH__GLOBMEM_H_
 #define DASH__GLOBMEM_H_
 

@@ -1,10 +1,3 @@
-/* 
- * dash-lib/Debug.h
- *
- * author(s): Karl Fuerlinger, LMU Munich 
- */
-/* @DASH_HEADER@ */
-
 #ifndef DEBUG_H_INCLUDED 
 #define DEBUG_H_INCLUDED 
 

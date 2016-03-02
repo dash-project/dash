@@ -1,9 +1,3 @@
-/**
- * \file dash-lib/HView.h
- *
- */
-/* @DASH_HEADER@ */
-
 #ifndef DASH__HVIEW_H_INCLUDED
 #define DASH__HVIEW_H_INCLUDED
 

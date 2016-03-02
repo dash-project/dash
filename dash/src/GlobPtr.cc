@@ -1,4 +1,3 @@
-
 #include <dash/GlobPtr.h>
 
 std::ostream & operator<<(

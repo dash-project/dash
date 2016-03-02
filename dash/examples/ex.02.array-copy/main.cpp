@@ -1,8 +1,3 @@
-/**
- * \file examples/ex.02.array-copy/main.cpp
- */
-/* @DASH_HEADER@ */
-
 #include <unistd.h>
 #include <iostream>
 #include <sstream>
