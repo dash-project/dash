@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 use File::Basename;
-use File::Slurp;
+#use File::Slurp;
 
 $rdir    = "RELEASE";
 $version = "0.2.0";
@@ -12,7 +12,7 @@ if( -e "$base" ) {
     exit;
 }
 
-$license = read_file("LICENSE");
+#$license = read_file("LICENSE");
 
 @files = ("LICENSE",
 	  "README.md",
@@ -103,28 +103,27 @@ foreach $dir (@files)
 	$dirname  = dirname("$base/$file");
 
 	system("mkdir -p $dirname");
-#
-#	open(IN , "$file") or die("Could not open '$file'.");
-#	open(OUT, ">$base/$file") or die("Could not open '$base/$file'.");
-#	foreach $line (<IN>) {
-#	    if( $line=~/\@DASH_HEADER\@/ ) {
-#		print OUT "$license";
-#	    } else {
-#		print OUT "$line";
-#	    }
-#	}
-#	close(IN);
-#	close(OUT);
 
 	print "copying '$file'\n";
-	system("cp $file $dirname");
 
+	# prepend license file for h,c,cc,cpp files
+	if( $file =~ /\.(c|h|cc|cpp)$/ ) {
+	    system("cat ./LICENSE $file > $base/$file");
+	} else {
+	    system("cp $file $dirname");
+	}
     }
 }
 
 
-#foreach $dir (@directories)
-#{
-#    system("mkdir -p $rdir/dash-$version/$dir");
-#}
-#print dirname("aasdf/asdfasdf*.pl");
+print "\nCreating tarball and cleaning up... ";
+system("cd $rdir; tar -czf dash-$version.tar.gz dash-$version/");
+system("rm -rf $base");
+print "DONE!\n";
+
+if( -e "$base.tar.gz" ) {
+    print "DASH is here: $base.tar.gz\n";
+} else {
+    print "Something went wrong, check directory '$rdir'\n";
+}
+
