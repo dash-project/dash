@@ -67,12 +67,8 @@ set(_MKL_TEST_VERSIONS ${MKL_ADDITIONAL_VERSIONS}
 )
 
 if (MKL_FIND_VERSION AND NOT MKL_FIND_QUIETLY)
-    message(WARNING "Requesting a specific version of Intel(R) MKL is not supported")
+  message(WARNING "Requesting a specific version of Intel(R) MKL is not supported")
 endif()
-
-message(STATUS "(ENV) $MKLROOT:       " $ENV{MKLROOT})
-message(STATUS "(ENV) $INTELROOT:     " $ENV{INTELROOT})
-message(STATUS "(ENV) $SCALAPACK_LIB: " $ENV{SCALAPACK_LIB})
 
 # Use environment variables from Intel build scripts, if available
 if (NOT MKL_ROOT AND NOT $ENV{MKLROOT} STREQUAL "")
@@ -382,6 +378,9 @@ else()
     else()
         message(STATUS "Intel(R) MKL could not be found.")
     endif()
+    message(STATUS "(ENV) MKLROOT:       " $ENV{MKLROOT})
+    message(STATUS "(ENV) INTELROOT:     " $ENV{INTELROOT})
+    message(STATUS "(ENV) SCALAPACK_LIB: " $ENV{SCALAPACK_LIB})
 endif()
 
 mark_as_advanced(

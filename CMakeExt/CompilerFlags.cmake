@@ -5,9 +5,6 @@
 # -rdynamic   Instructs the linker to add all symbols, not only used ones,
 #             to the dynamic symbol table
 
-message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
-message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
-
 set (CXX_WARN_FLAG "")
 set (CC_WARN_FLAG  "")
 if (ENABLE_COMPILER_WARNINGS)

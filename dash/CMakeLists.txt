@@ -25,14 +25,16 @@ set(ENABLE_LIBNUMA ${ENABLE_LIBNUMA}
     PARENT_SCOPE)
 set(ENABLE_HWLOC ${ENABLE_HWLOC}
     PARENT_SCOPE)
+set(ENABLE_PAPI ${ENABLE_PAPI}
+    PARENT_SCOPE)
 
-include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
+# include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
+# include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
+# include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
+# include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
+# include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
+# include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
+# include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
@@ -71,16 +73,14 @@ if (ENABLE_TRACE_LOGGING)
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_TRACE_LOGGING")
 endif()
-if (PAPI_FOUND)
+if (PAPI_FOUND AND ENABLE_PAPI)
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_PAPI")
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
        ${PAPI_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${PAPI_LIBRARIES})
-  message(INFO "PAPI                    enabled")
 else()
-  message(NOTE "PAPI                   disabled")
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        rt)
 endif()
@@ -91,9 +91,7 @@ if (HWLOC_FOUND AND ENABLE_HWLOC)
        ${HWLOC_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${HWLOC_LIBRARIES})
-  message(INFO "hwloc                   enabled")
 else()
-  message(NOTE "hwloc                  disabled")
 endif()
 if (NUMA_FOUND AND ENABLE_LIBNUMA)
   set (ADDITIONAL_COMPILE_FLAGS
@@ -102,21 +100,17 @@ if (NUMA_FOUND AND ENABLE_LIBNUMA)
        ${NUMA_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${NUMA_LIBRARIES})
-  message(INFO "numalib                 enabled")
 else()
-  message(NOTE "numalib                disabled")
 endif()
 
-if (PLASMA_FOUND)
+if (ENABLE_PLASMA AND PLASMA_FOUND)
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_PLASMA")
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
        ${PLASMA_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${PLASMA_LIBRARIES})
-  message(INFO "PLASMA                  enabled")
 else()
-  message(NOTE "PLASMA                 disabled")
 endif()
 
 if (MKL_FOUND)
@@ -126,9 +120,7 @@ if (MKL_FOUND)
        ${MKL_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_LIBRARIES})
-  message(INFO "MKL                     enabled")
 else()
-  message(NOTE "MKL                    disabled")
 endif()
 
 if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
@@ -136,9 +128,7 @@ if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_SCALAPACK")
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_SCALAPACK_LIBRARIES})
-  message(INFO "ScaLAPACK               enabled")
 else()
-  message(NOTE "ScaLAPACK              disabled")
 endif()
 
 if (DASH_ENV_HOST_SYSTEM_ID)
@@ -169,7 +159,7 @@ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
     set (VARIANT_ADDITIONAL_COMPILE_FLAGS
          "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID=\"${MPI_IMPL_ID}\"")
   endif()
-  message(STATUS "Building DASH library " ${DASH_LIBRARY})
+  message(STATUS "Building DASH library    " ${DASH_LIBRARY})
 
   # Library compilation sources
   add_library(

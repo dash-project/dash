@@ -16,6 +16,13 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 
 cmake_minimum_required (VERSION 2.8)
 
@@ -28,83 +35,83 @@ mark_as_advanced(
   DASH_VERSION_MINOR
   DASH_VERSION_PATCH)
 
+set(DASH_VERSION
+    "${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
+    CACHE STRING INTERNAL FORCE)
 set(DASH_VERSIONED_PROJECT_NAME
     "dash-${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
     CACHE STRING INTERNAL FORCE)
+set(DART_IF_VERSION "3.2" CACHE STRING
+    "Version of the DART interface")
 
-set(CMAKE_RULE_MESSAGES ON)
+set(CMAKE_RULE_MESSAGES OFF)
 set(CMAKE_VERBOSE_MAKEFILE OFF)
 set(CMAKE_COLOR_MAKEFILE ON)
-
-message(STATUS "Platform:                 " ${DASH_PLATFORM_NAME})
-message(STATUS "Platform is POSIX:        " ${DASH_PLATFORM_IS_POSIX})
 
 ## Install path
 if (INSTALL_PREFIX)
   set(CMAKE_INSTALL_PREFIX ${INSTALL_PREFIX})
 else()
-  set(CMAKE_INSTALL_PREFIX "/usr/local")
+  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/opt/")
 endif()
-message(INFO "Install prefix:           " ${CMAKE_INSTALL_PREFIX})
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif()
-message(INFO "Build type:               " ${CMAKE_BUILD_TYPE})
 
 ## Build options
 option(BUILD_TESTS
        "Whether tests should be built" on)
 option(BUILD_DOCS
-       "Whether doxygen documentation should be installed" on)
+       "Whether doxygen documentation should be installed" off)
 option(BUILD_EXAMPLES
        "Specify whether to build examples" on)
 option(ENABLE_COMPILER_WARNINGS
-       "Specify whether strict compiler warnings should be enabled" off)
-message(INFO "Strict compiler warnings: " ${ENABLE_COMPILER_WARNINGS})
+       "Specify whether strict compiler warnings should be enabled" on)
 option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
-message(INFO "Enable log messages:      " ${ENABLE_LOGGING})
 option(ENABLE_TRACE_LOGGING
        "Specify whether trace messages should be logged" off)
-message(INFO "Trace log messages:       " ${ENABLE_TRACE_LOGGING})
 option(ENABLE_DART_LOGGING
        "Specify whether messages from DART should be logged" off)
-message(INFO "DART log messages:        " ${ENABLE_DART_LOGGING})
 option(ENABLE_ASSERTIONS
        "Specify whether runtime assertions should be checked" off)
-message(INFO "Runtime assertions:       " ${ENABLE_ASSERTIONS})
 option(ENABLE_UNIFIED_MEMORY_MODEL
        "Specify whether to assume unified memory model" on)
-message(INFO "Unified RMA memory model: " ${ENABLE_UNIFIED_MEMORY_MODEL})
 option(ENABLE_SHARED_WINDOWS
        "Specify whether shared memory features are enabled" on)
-message(INFO "MPI shared windows:       " ${ENABLE_SHARED_WINDOWS})
 option(ENABLE_DEFAULT_INDEX_TYPE_LONG
-       "Specify whether to use int64_t as default index type" off)
-message(INFO "Default index type long:  " ${ENABLE_DEFAULT_INDEX_TYPE_LONG})
+       "Specify whether to use int64_t as default index type" on)
 option(ENABLE_LIBNUMA
        "Specify whether libnuma features are enabled" on)
-message(INFO "libnuma:                  " ${ENABLE_LIBNUMA})
 option(ENABLE_HWLOC
        "Specify whether hwloc features are enabled" on)
-message(INFO "hwloc:                    " ${ENABLE_HWLOC})
+option(ENABLE_PAPI
+       "Specify whether PAPI features are enabled" on)
+option(ENABLE_MKL
+       "Specify whether MKL features are enabled" on)
+option(ENABLE_SCALAPACK
+       "Specify whether ScaLAPACK features are enabled" on)
+option(ENABLE_PLASMA
+       "Specify whether PLASMA features are enabled" off)
 
-set(DART_IF_VERSION "3.2" CACHE STRING
-    "Version of the DART interface")
-message(INFO "DART interface version:   " ${DART_IF_VERSION})
+## Subprojects, one for each deliverable
 
-message(INFO "Host system identifier:   " ${DASH_ENV_HOST_SYSTEM_ID})
+set(DART_IMPLEMENTATIONS
+    "mpi" CACHE STRING
+    "Comma-separated list of DASH runtime implementations to build.
+     Default is 'mpi'")
+
+string(REPLACE "," ";"
+       DART_IMPLEMENTATIONS_LIST
+       ${DART_IMPLEMENTATIONS})
 
 ## Include path of selected DART interface:
 set(DASH_DART_IF_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/dart-if/v${DART_IF_VERSION}/include
     CACHE PATH INTERNAL FORCE)
-message(STATUS "DART interface path:      "
-        ${DASH_DART_IF_INCLUDE_DIR})
-
 set(DASH_DART_BASE_INCLUDE_DIR
     ${CMAKE_CURRENT_SOURCE_DIR}/dart-impl/base/include
     CACHE PATH INTERNAL FORCE)
@@ -118,17 +125,6 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/shared)
 
-## Subprojects, one for each deliverable
-
-set(DART_IMPLEMENTATIONS
-    "mpi,shmem" CACHE STRING
-    "Comma-separated list of DASH runtime implementations to
-     build, default is mpi,shmem")
-
-string(REPLACE "," ";"
-       DART_IMPLEMENTATIONS_LIST
-       ${DART_IMPLEMENTATIONS})
-
 # DART interface:
 add_subdirectory(dart-if)
 
@@ -139,22 +135,13 @@ add_subdirectory(dart-impl/base)
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";mpi;")
   set(DART_IMPLEMENTATION_MPI_ENABLED ON
       CACHE BOOL INTERNAL FORCE)
-  message(INFO "Building DART MPI backend")
   add_subdirectory(dart-impl/mpi)
 endif()
 
 if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
   set(DART_IMPLEMENTATION_SHMEM_ENABLED ON
       CACHE BOOL INTERNAL FORCE)
-  message(INFO "Building DART SHMEM backend")
   add_subdirectory(dart-impl/shmem)
-endif()
-
-if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";cuda;")
-  message(INFO "Building DART CUDA backend")
-  set(DART_IMPLEMENTATION_CUDA_ENABLED ON
-      CACHE BOOL INTERNAL FORCE)
-  add_subdirectory(dart-impl/cuda)
 endif()
 
 add_subdirectory(dash)
@@ -163,3 +150,105 @@ add_subdirectory(dash)
 if (BUILD_DOCS)
   CreateDoxygenTarget()
 endif()
+
+message(EMPH "DASH version ${DASH_VERSION}")
+message(EMPH "-----------------------------------------------------------")
+message(EMPH "Install prefix:           (INSTALL_PREFIX)                 "
+        ${CMAKE_INSTALL_PREFIX})
+message(EMPH "Build type:               (CMAKE_BUILD_TYPE)               "
+        ${CMAKE_BUILD_TYPE})
+
+message(INFO "DART interface version:   " ${DART_IF_VERSION})
+message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
+        ${DASH_ENV_HOST_SYSTEM_ID})
+message(INFO "Strict compiler warnings: (ENABLE_COMPILER_WARNINGS)       "
+        ${ENABLE_COMPILER_WARNINGS})
+message(INFO "Debug log messages:       (ENABLE_LOGGING)                 "
+        ${ENABLE_LOGGING})
+message(INFO "Trace log messages:       (ENABLE_LOGGING)                 "
+        ${ENABLE_TRACE_LOGGING})
+message(INFO "DART log messages:        (ENABLE_DART_LOGGING)            "
+        ${ENABLE_DART_LOGGING})
+message(INFO "Runtime assertions:       (ENABLE_ASSERTIONS)              "
+        ${ENABLE_ASSERTIONS})
+message(INFO "Unified RMA memory model: (ENABLE_UNIFIED_MEMORY_MODEL)    "
+        ${ENABLE_UNIFIED_MEMORY_MODEL})
+message(INFO "MPI shared windows:       (ENABLE_SHARED_WINDOWS)          "
+        ${ENABLE_SHARED_WINDOWS})
+message(INFO "Default index type long:  (ENABLE_DEFAULT_INDEX_TYPE_LONG) "
+        ${ENABLE_DEFAULT_INDEX_TYPE_LONG})
+message(INFO "libnuma support:          (ENABLE_LIBNUMA)                 "
+        ${ENABLE_LIBNUMA})
+message(INFO "hwloc support:            (ENABLE_HWLOC)                   "
+        ${ENABLE_HWLOC})
+message(INFO "PAPI support:             (ENABLE_PAPI)                    "
+        ${ENABLE_PAPI})
+message(INFO "MKL support:              (ENABLE_MKL)                     "
+        ${ENABLE_MKL})
+message(INFO "ScaLAPACK support:        (ENABLE_SCALAPACK)               "
+        ${ENABLE_SCALAPACK})
+message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
+        ${ENABLE_PLASMA})
+message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
+        ${DART_IMPLEMENTATIONS})
+message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
+message(INFO "C++ compiler id:          ${CMAKE_CXX_COMPILER_ID}")
+if (MPI_FOUND)
+  message(INFO "MPI implementation:       " ${MPI_IMPL_ID})
+endif()
+
+if (ENABLE_PAPI)
+  if (PAPI_FOUND)
+    message(INFO "PAPI                      enabled")
+  else()
+    message(NOTE "PAPI                      not found")
+  endif()
+else()
+  message(NOTE "PAPI                      disabled")
+endif()
+if (ENABLE_MKL)
+  if (MKL_FOUND)
+    message(INFO "MKL                       enabled")
+  else()
+    message(NOTE "MKL                       not found")
+  endif()
+else()
+  message(NOTE "MKL                       disabled")
+endif()
+if (ENABLE_HWLOC)
+  if (HWLOC_FOUND)
+    message(INFO "hwloc                     enabled")
+  else()
+    message(NOTE "hwloc                     not found")
+  endif()
+else()
+  message(NOTE "hwloc                     disabled")
+endif()
+if (ENABLE_SCALAPACK)
+  if (MKL_SCALAPACK_FOUND)
+    message(INFO "ScaLAPACK                 enabled")
+  else()
+    message(NOTE "ScaLAPACK                 not found")
+  endif()
+else()
+  message(NOTE "ScaLAPACK                 disabled")
+endif()
+if (ENABLE_PLASMA)
+  if (PLASMA_FOUND)
+    message(INFO "PLASMA                    enabled")
+  else()
+    message(NOTE "PLASMA                    not found")
+  endif()
+else()
+  message(NOTE "PLASMA                    disabled")
+endif()
+if (ENABLE_LIBNUMA)
+  if (NUMA_FOUND)
+    message(INFO "libnuma                   enabled")
+  else()
+    message(NOTE "libnuma                   not found")
+  endif()
+else()
+  message(NOTE "libnuma                   disabled")
+endif()
+

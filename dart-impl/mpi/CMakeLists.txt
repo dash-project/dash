@@ -7,6 +7,10 @@ set(DASH_DART_BASE_LIBRARY dart-base)
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 
+if (MPI_NOTFOUND)
+  message(FATAL_ERROR, "No MPI implementation found for dart-mpi")
+endif()
+
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_DART_IMPL_MPI_SOURCES "src/*.c" "src/*.h" "src/*.cc")
 file(GLOB_RECURSE DASH_DART_IMPL_MPI_HEADERS "include/*.h")
@@ -20,10 +24,15 @@ set(ENABLE_UNIFIED_MEMORY_MODEL ${ENABLE_UNIFIED_MEMORY_MODEL}
 set(ENABLE_SHARED_WINDOWS ${ENABLE_SHARED_WINDOWS}
     PARENT_SCOPE)
 
-  message(INFO "MPI implementation: " ${MPI_IMPL_ID})
-message("-- MPI include path: " "${MPI_INCLUDE_PATH}")
-message("-- MPI libraries:    " "${MPI_C_LIBRARIES}")
-message("-- MPI link flags:   " "${MPI_LINK_FLAGS}")
+message(STATUS "MPI include path:         " ${MPI_INCLUDE_PATH})
+message(STATUS "MPI libraries:")
+foreach (MPI_C_LIB ${MPI_C_LIBRARIES})
+  message(STATUS "    " ${MPI_C_LIB})
+endforeach()
+message(STATUS "MPI link flags:")
+foreach (MPI_LINK_FLAG ${MPI_LINK_FLAGS})
+  message(STATUS "   " ${MPI_LINK_FLAG})
+endforeach()
 
 ## Configure compile flags
 
