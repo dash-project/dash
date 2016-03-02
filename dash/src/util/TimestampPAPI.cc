@@ -10,7 +10,7 @@ int TimestampPAPI<TimeMeasure::Clock>::timer_mode   = 0;
 int TimestampPAPI<TimeMeasure::Counter>::timer_mode = 0;
 
 Timestamp::counter_t
-TimestampPAPI<TimeMeasure::Counter>::frequencyScaling = 0;
+TimestampPAPI<TimeMeasure::Counter>::frequencyScaling = 1;
 
 } // namespace internal
 } // namespace util

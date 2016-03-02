@@ -23,18 +23,18 @@ namespace internal {
  */
 class TimestampCounterPosix : public Timestamp
 {
-private: 
-  Timestamp::counter_t value; 
+private:
+  Timestamp::counter_t value;
 
-public: 
-  static Timestamp::counter_t frequencyScaling; 
+public:
+  static Timestamp::counter_t frequencyScaling;
 
   /**
    * Serialized RDTSCP (x86, x64) or PMC,PMU (arm6+)
-   * 
-   * Prevents out-of-order execution to affect timestamps.  
-   * 
-   */  
+   *
+   * Prevents out-of-order execution to affect timestamps.
+   *
+   */
   static inline uint64_t ArchCycleCount() {
 #if defined(DASH__ARCH__ARCH_X86_64)
     uint64_t rax, rdx;
@@ -49,10 +49,10 @@ public:
     uint32_t pmccntr;
     uint32_t pmuseren = 1;
     uint32_t pmcntenset;
-    
+
     // Read the user mode perf monitor counter access permissions.
     asm volatile ("mrc p15, 0, %0, c9, c14, 0" : "=r" (pmuseren));
-    // Set permission flag: 
+    // Set permission flag:
     // pmuseren &= 0x01;  // Set E bit
     // asm volatile ("mcr p15, 0, %0, c9, c14, 0" : "=r" (pmuseren));
     if (pmuseren & 1) {  // Allows reading perfmon counters for user mode code.
@@ -63,32 +63,32 @@ public:
         return static_cast<int64_t>(pmccntr) * 64;  // Should optimize to << 6
       }
       else {
-        return 1; 
+        return 1;
       }
     }
     else {
-      return 2; 
+      return 2;
     }
-#else // Fallback for architectures that do not provide any low-level counter: 
+#else // Fallback for architectures that do not provide any low-level counter:
 #pragma message "Fallback to generic performance counter implementation"
-    struct timeval tv; 
-    gettimeofday(&tv, NULL); 
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
     return static_cast<uint64_t>(
-        (tv.tv_sec + tv.tv_usec * 0.000001) *                           
-        FrequencyScaling());                                  
+        (tv.tv_sec + tv.tv_usec * 0.000001) *
+        FrequencyScaling());
 #endif
-    // Undefined value if perfmon is unavailable: 
-    return 0; 
+    // Undefined value if perfmon is unavailable:
+    return 0;
   }
 
-public: 
+public:
 
-  /** 
-   * Calibrates counts per microscecond. 
-   * 
-   * Used for frequency scaling of RDSTD. 
+  /**
+   * Calibrates counts per microscecond.
+   *
+   * Used for frequency scaling of RDSTD.
    */
-  static void Calibrate(unsigned int = 0); 
+  static void Calibrate(unsigned int = 0);
 
 public:
 
@@ -111,9 +111,9 @@ public:
     const TimestampCounterPosix rhs)
   {
     if (this != &rhs) {
-      value = rhs.value; 
+      value = rhs.value;
     }
-    return *this; 
+    return *this;
   }
 
   inline const counter_t & Value() const
@@ -134,13 +134,13 @@ public:
   inline static const char * TimerName()
   {
 #if defined(DASH__ARCH__ARCH_X86_64)
-    return "POSIX:X64:RDTSC"; 
+    return "POSIX:X64:RDTSC";
 #elif defined(DASH__ARCH__ARCH_X86_32)
-    return "POSIX:386:RDTSC"; 
+    return "POSIX:386:RDTSC";
 #elif defined(DASH__ARCH__ARCH_ARMV6)
-    return "POSIX:ARM:PMCNT"; 
-#else 
-    return "POSIX:GENERIC"; 
+    return "POSIX:ARM:PMCNT";
+#else
+    return "POSIX:GENERIC";
 #endif
   }
 

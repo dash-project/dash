@@ -1,7 +1,10 @@
+
+#include <dash/util/Timer.h>
+#include <dash/util/Timestamp.h>
+
 #if defined(DASH__UTIL__TIMER_POSIX) || \
     defined(DASH__UTIL__TIMER_UX)
 
-#include <dash/util/Timer.h>
 #include <dash/util/internal/TimestampCounterPosix.h>
 #include <dash/internal/Logging.h>
 
