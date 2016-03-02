@@ -1,17 +1,19 @@
 #!/usr/bin/perl
 
+use strict;
 use File::Basename;
 #use File::Slurp;
 
-$rdir    = "RELEASE";
-$version = "0.2.0";
-$base    = "$rdir/dash-$version";
+my $rdir    = "RELEASE";
+my $version = "0.2.0";
+my $base    = "$rdir/dash-$version";
 
 if( -e "$base" ) {
     print "Directory $base exists, exiting.\n";
     exit;
 }
 
+my @files;
 #$license = read_file("LICENSE");
 
 @files = ("LICENSE",
@@ -96,11 +98,11 @@ if( -e "$base" ) {
         );
 
 
-foreach $dir (@files)
+foreach my $dir (@files)
 {
-    foreach $file (glob($dir))
+    foreach my $file (glob($dir))
     {
-	$dirname  = dirname("$base/$file");
+	my $dirname  = dirname("$base/$file");
 
 	system("mkdir -p $dirname");
 
@@ -115,16 +117,21 @@ foreach $dir (@files)
     }
 }
 
+# use a fixed date (today) and time to make sure the md5sum
+# only depends on the content and not on the time-stamps
+my $date = `date +%F`; chomp($date);
+$date = $date." 10:02:33";
 
 print "\nCreating tarball and cleaning up... ";
-system("cd $rdir; tar -czf dash-$version.tar.gz dash-$version/");
+system("cd $rdir; tar --mtime='$date' -cf dash-$version.tar dash-$version/");
+system("cd $rdir; touch -d '$date' dash-$version.tar");
+system("cd $rdir; gzip -f dash-$version.tar");
 system("rm -rf $base");
 print "DONE!\n";
 
-
 if( -e "$base.tar.gz" ) {
-    $md5sum = `md5sum $base.tar.gz | cut -d ' ' -f 1`; chomp $md5sum;
-    $fsize  = `ls -l $base.tar.gz | cut -d ' ' -f 5`; chomp $fsize;
+    my $md5sum = `md5sum $base.tar.gz | cut -d ' ' -f 1`; chomp $md5sum;
+    my $fsize  = `ls -l $base.tar.gz | cut -d ' ' -f 5`; chomp $fsize;
 
     print "\n";
     print "DASH $version release built\n";
