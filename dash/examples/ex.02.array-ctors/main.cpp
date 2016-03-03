@@ -10,7 +10,7 @@ using namespace std;
 int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
-  
+
   auto myid = dash::myid();
   auto size = dash::size();
 
@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
   dash::Array<int> arr1(NELEM*size);
   dash::Array<int> arr2(NELEM*size, dash::BLOCKED);
   dash::Array<int> arr3(NELEM*size, dash::Team::All() );
-  dash::Array<int> arr4(NELEM*size, dash::BLOCKED, 
+  dash::Array<int> arr4(NELEM*size, dash::BLOCKED,
 			dash::Team::All() );
   dash::Array<int> arr5(pat);
 
@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
       assert( (int)arr1[i]==(int)arr5[i]);
     }
 
-    for( auto el: arr1 ) { cout<<el<<" "; } cout<<endl;	  
+    for( auto el: arr1 ) { cout<<(int)el<<" "; } cout<<endl;
   }
 
   dash::finalize();

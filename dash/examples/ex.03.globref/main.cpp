@@ -51,7 +51,7 @@ int main(int argc, char * argv[])
     DASH_ASSERT(arr[4] == 77);
 
     for ( auto i = 0; i < arr.size(); i++ ) {
-      cout << arr[i] << " ";
+      cout << (int) arr[i] << " ";
     }
     cout << endl;
   }
