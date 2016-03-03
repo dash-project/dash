@@ -98,9 +98,9 @@ my @files;
         );
 
 
-foreach my $dir (@files)
+foreach my $path (@files)
 {
-    foreach my $file (glob($dir))
+    foreach my $file (glob($path))
     {
 	my $dirname  = dirname("$base/$file");
 
@@ -117,9 +117,9 @@ foreach my $dir (@files)
     }
 }
 
-# use a fixed date (today) and time to make sure the md5sum
+# use a fixed date (yesterday) and time to make sure the md5sum
 # only depends on the content and not on the time-stamps
-my $date = `date +%F`; chomp($date);
+my $date = `date +%F --date yesterday`; chomp($date);
 $date = $date." 10:02:33";
 
 print "\nCreating tarball and cleaning up... ";
