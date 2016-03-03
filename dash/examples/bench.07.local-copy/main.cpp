@@ -68,6 +68,7 @@ typedef struct measurement_t {
   double time_copy_min_us;
   double time_copy_max_us;
   double time_copy_med_us;
+  double time_copy_sdv_us;
   double time_init_s;
   double mb_per_s;
 } measurement;
@@ -234,7 +235,8 @@ int main(int argc, char** argv)
     }
 
     // Limit number of repeats for remote copying:
-    auto num_r_repeats = std::min<size_t>(num_repeats, params.min_repeats);
+    auto num_r_repeats = num_repeats / params.rep_base;
+    num_r_repeats  = std::max<size_t>(num_r_repeats, params.min_repeats);
 
     // Copy block preceeding last block as it is guaranteed to be located on
     // a remote unit and completely filled:
@@ -315,8 +317,10 @@ measurement copy_block_to_local(
   dash::Shared<double> time_copy_min_us;
   // Maximum duration for a single copy operation:
   dash::Shared<double> time_copy_max_us;
-  // Median of duration for copy operations:
+  // Median of duration of copy operations:
   dash::Shared<double> time_copy_med_us;
+  // Standard deviation of duration of copy operations:
+  dash::Shared<double> time_copy_sdv_us;
 
   DASH_LOG_DEBUG("copy_block_to_local()",
                  "size:",             size,
@@ -408,7 +412,7 @@ measurement copy_block_to_local(
                                  src_g_end,
                                  local_array);
       }
-      auto copy_us = Timer::ElapsedSince(ts_copy_start);
+      auto copy_us   = Timer::ElapsedSince(ts_copy_start);
       total_copy_us += copy_us;
       history_copy_us.push_back(copy_us);
 
@@ -458,8 +462,11 @@ measurement copy_block_to_local(
 
     std::sort(history_copy_us.begin(), history_copy_us.end());
     time_copy_med_us.set(history_copy_us[history_copy_us.size() / 2]);
+    time_copy_sdv_us.set(dash::math::sigma(history_copy_us.begin(),
+                                           history_copy_us.end()));
     time_copy_min_us.set(history_copy_us.front());
     time_copy_max_us.set(history_copy_us.back());
+
   }
 
   DASH_LOG_DEBUG(
@@ -475,6 +482,7 @@ measurement copy_block_to_local(
   result.time_copy_min_us = time_copy_min_us.get();
   result.time_copy_max_us = time_copy_max_us.get();
   result.time_copy_med_us = time_copy_med_us.get();
+  result.time_copy_sdv_us = time_copy_sdv_us.get();
   result.mb_per_s         = mb_copied / result.time_copy_s;
 
   return result;
@@ -485,21 +493,21 @@ void print_measurement_header()
   if (dash::myid() == 0) {
     cout << std::right
          << std::setw(5)  << "units"       << ","
-         << std::setw(10) << "mpi.impl"    << ","
+         << std::setw(9)  << "mpi.impl"    << ","
          << std::setw(10) << "scenario"    << ","
          << std::setw(12) << "copy.type"   << ","
-         << std::setw(10) << "src.unit"    << ","
-         << std::setw(10) << "dest.unit"   << ","
-         << std::setw(10) << "init.unit"   << ","
-         << std::setw(9)  << "repeats"     << ","
+         << std::setw(7)  << "src.u"       << ","
+         << std::setw(7)  << "dest.u"      << ","
+         << std::setw(7)  << "init.u"      << ","
+         << std::setw(8)  << "repeats"     << ","
          << std::setw(9)  << "block.n"     << ","
          << std::setw(9)  << "block.kb"    << ","
-         << std::setw(9)  << "glob.kb"     << ","
          << std::setw(7)  << "init.s"      << ","
          << std::setw(8)  << "copy.s"      << ","
-         << std::setw(12) << "copy.med.us" << ","
          << std::setw(12) << "copy.min.us" << ","
+         << std::setw(12) << "copy.med.us" << ","
          << std::setw(12) << "copy.max.us" << ","
+         << std::setw(12) << "copy.sdv.us" << ","
          << std::setw(7)  << "time.s"      << ","
          << std::setw(9)  << "mb/s"
          << endl;
@@ -530,23 +538,24 @@ void print_measurement_record(
     double copy_min_us = measurement.time_copy_min_us;
     double copy_max_us = measurement.time_copy_max_us;
     double copy_med_us = measurement.time_copy_med_us;
+    double copy_sdv_us = measurement.time_copy_sdv_us;
     cout << std::right
          << std::setw(5)  << dash::size()            << ","
-         << std::setw(10) << mpi_impl                << ","
+         << std::setw(9)  << mpi_impl                << ","
          << std::setw(10) << scenario                << ","
          << std::setw(12) << local_copy_method       << ","
-         << std::setw(10) << unit_src                << ","
-         << std::setw(10) << unit_dest               << ","
-         << std::setw(10) << unit_init               << ","
-         << std::setw(9)  << num_repeats             << ","
+         << std::setw(7)  << unit_src                << ","
+         << std::setw(7)  << unit_dest               << ","
+         << std::setw(7)  << unit_init               << ","
+         << std::setw(8)  << num_repeats             << ","
          << std::setw(9)  << block_n                 << ","
          << std::setw(9)  << block_kb                << ","
-         << std::setw(9)  << g_size_kb               << ","
          << std::fixed << setprecision(2) << setw(7)  << init_s      << ","
          << std::fixed << setprecision(5) << setw(8)  << copy_s      << ","
-         << std::fixed << setprecision(2) << setw(12) << copy_med_us << ","
          << std::fixed << setprecision(2) << setw(12) << copy_min_us << ","
+         << std::fixed << setprecision(2) << setw(12) << copy_med_us << ","
          << std::fixed << setprecision(2) << setw(12) << copy_max_us << ","
+         << std::fixed << setprecision(2) << setw(12) << copy_sdv_us << ","
          << std::fixed << setprecision(2) << setw(7)  << secs        << ","
          << std::fixed << setprecision(2) << setw(9)  << mbps
          << endl;
@@ -556,13 +565,12 @@ void print_measurement_record(
 benchmark_params parse_args(int argc, char * argv[])
 {
   benchmark_params params;
-  // Minimum block size of 4 KB:
   params.size_base      = 4;
   params.num_iterations = 8;
   params.rep_base       = params.size_base;
   params.num_repeats    = 0;
   params.min_repeats    = 1;
-  params.verify         = true;
+  params.verify         = false;
   params.local_only     = false;
   params.flush_cache    = false;
   params.size_min       = 64;

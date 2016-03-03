@@ -1,3 +1,9 @@
+/*
+ * Sequential GUPS benchmark for various pattern types.
+ *
+ */
+/* @DASH_HEADER@ */
+
 #define DASH__MKL_MULTITHREADING
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
 
@@ -88,13 +94,15 @@ typedef struct benchmark_params_t {
   float       cpu_gflops_peak;
   bool        mkl_dyn;
   bool        plot_pattern;
+  bool        verify;
 } benchmark_params;
 
 template<typename MatrixType>
 void init_values(
-  MatrixType & matrix_a,
-  MatrixType & matrix_b,
-  MatrixType & matrix_c);
+  MatrixType             & matrix_a,
+  MatrixType             & matrix_b,
+  MatrixType             & matrix_c,
+  const benchmark_params & params);
 
 template<class PatternType>
 std::pair<double, double> test_dash(
@@ -104,10 +112,11 @@ std::pair<double, double> test_dash(
   const PatternType       & pattern);
 
 void init_values(
-  value_t  * matrix_a,
-  value_t  * matrix_b,
-  value_t  * matrix_c,
-  extent_t   sb);
+  value_t                * matrix_a,
+  value_t                * matrix_b,
+  value_t                * matrix_c,
+  extent_t                 sb,
+  const benchmark_params & params);
 
 std::pair<double, double> test_blas(
   extent_t sb,
@@ -376,9 +385,10 @@ void perform_test(
 
 template<typename MatrixType>
 void init_values(
-  MatrixType & matrix_a,
-  MatrixType & matrix_b,
-  MatrixType & matrix_c)
+  MatrixType             & matrix_a,
+  MatrixType             & matrix_b,
+  MatrixType             & matrix_c,
+  const benchmark_params & params)
 {
   // Initialize local sections of matrix C:
   auto unit_id          = dash::myid();
@@ -404,7 +414,16 @@ void init_values(
                       (100 * l_block_idx) +
                       phase;
       l_block_elem_a[phase] = value;
-      l_block_elem_b[phase] = value;
+      if (!params.verify) {
+        l_block_elem_b[phase] = value;
+      }
+    }
+  }
+  if (params.verify && dash::myid() == 0) {
+    // Initialize matrix B as identity matrix to verify A x B = A
+    // after the test run:
+    for (auto diag = 0; diag < pattern.extent(0); ++diag) {
+      matrix_b[diag][diag] = 1;
     }
   }
   dash::barrier();
@@ -443,7 +462,7 @@ std::pair<double, double> test_dash(
   dash::barrier();
 
   auto ts_init_start = Timer::Now();
-  init_values(matrix_a, matrix_b, matrix_c);
+  init_values(matrix_a, matrix_b, matrix_c, params);
   time.first = Timer::ElapsedSince(ts_init_start);
 
   dash::barrier();
@@ -463,6 +482,33 @@ std::pair<double, double> test_dash(
 
   dash::barrier();
 
+  if (params.verify) {
+    auto pattern          = matrix_c.pattern();
+    auto block_cols       = pattern.blocksize(0);
+    auto block_rows       = pattern.blocksize(1);
+    auto num_blocks_cols  = pattern.extent(0) / block_cols;
+    auto num_blocks_rows  = pattern.extent(1) / block_rows;
+    auto num_blocks       = num_blocks_rows * num_blocks_cols;
+    auto num_local_blocks = num_blocks / dash::Team::All().size();
+    for (auto l_block_idx = 0;
+         l_block_idx < num_local_blocks;
+         ++l_block_idx)
+    {
+      auto l_block_a = matrix_a.local.block(l_block_idx);
+      auto l_block_c = matrix_c.local.block(l_block_idx);
+      value_t * l_block_a_values = l_block_a.begin().local();
+      value_t * l_block_c_values = l_block_c.begin().local();
+      for (size_t p = 0; p < l_block_a.size(); ++p) {
+        if (l_block_a_values[p] != l_block_c_values[p]) {
+          DASH_THROW(
+            dash::exception::RuntimeError,
+            "Validation failed at unit " << dash::myid() << " " <<
+            "in local block " << l_block_idx << ", offset " << p);
+        }
+      }
+    }
+  }
+
   return time;
 }
 
@@ -470,15 +516,16 @@ void init_values(
   value_t  * matrix_a,
   value_t  * matrix_b,
   value_t  * matrix_c,
-  extent_t   sb)
+  extent_t   sb,
+  const benchmark_params & params)
 {
   // Initialize local sections of matrices:
   for (extent_t i = 0; i < sb; ++i) {
     for (extent_t j = 0; j < sb; ++j) {
       value_t value = (100000 * (i % 12)) + (j * 1000) + i;
       matrix_a[i * sb + j] = value;
-      matrix_b[i * sb + j] = value;
       matrix_c[i * sb + j] = 0;
+      matrix_b[i * sb + j] = value;
     }
   }
 }
@@ -510,7 +557,7 @@ std::pair<double, double> test_blas(
   l_matrix_c = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
 
   auto ts_init_start = Timer::Now();
-  init_values(l_matrix_a, l_matrix_b, l_matrix_c, sb);
+  init_values(l_matrix_a, l_matrix_b, l_matrix_c, sb, params);
   time.first = Timer::ElapsedSince(ts_init_start);
 
   auto ts_multiply_start = Timer::Now();
@@ -802,7 +849,7 @@ std::pair<double, double> test_pblas(
   matrix_b_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(value_t), 64));
   matrix_c_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(value_t), 64));
 
-  init_values(matrix_a_distr, matrix_b_distr, matrix_c_distr, sbrow);
+  init_values(matrix_a_distr, matrix_b_distr, matrix_c_distr, sbrow, params);
 
   /*
      descinit(
@@ -910,7 +957,8 @@ benchmark_params parse_args(int argc, char * argv[])
   params.exp_max            = 4;
   params.cpu_gflops_peak    = 41.4;
   params.mkl_dyn            = false;
-  params.plot_pattern        = false;
+  params.plot_pattern       = false;
+  params.verify             = false;
 
   extent_t size_base        = 0;
   extent_t num_units_inc    = 0;
@@ -940,12 +988,17 @@ benchmark_params parse_args(int argc, char * argv[])
       params.rep_base = static_cast<unsigned>(atoi(argv[i+1]));
     } else if (flag == "-rmax") {
       params.rep_max  = static_cast<unsigned>(atoi(argv[i+1]));
-    } else if (flag == "-mkldyn") {
-      params.mkl_dyn  = true;
     } else if (flag == "-cpupeak") {
       params.cpu_gflops_peak = static_cast<float>(atof(argv[i+1]));
+    } else if (flag == "-mkldyn") {
+      params.mkl_dyn  = true;
+      --i;
     } else if (flag == "-plotpattern") {
       params.plot_pattern = true;
+      --i;
+    } else if (flag == "-verify") {
+      params.verify   = true;
+      --i;
     }
   }
   if (size_base == 0 && max_units > 0 && num_units_inc > 0) {
@@ -983,39 +1036,44 @@ benchmark_params parse_args(int argc, char * argv[])
       dash::exception::InvalidArgument,
       "Unspecified argument: -sb <size base>");
   }
+  if (params.verify) {
+    // Only run one repetition for verification runs:
+    params.rep_max = 1;
+  }
 
   return params;
 }
 
 void print_params(
-  const dash::util::BenchmarkParams & bench_cfg,
+  const dash::util::BenchmarkParams & conf,
   const benchmark_params            & params)
 {
   if (dash::myid() != 0) {
     return;
   }
 
-  bench_cfg.print_section_start("Benchmark Configuration");
+  conf.print_section_start("Benchmark Configuration");
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
-  bench_cfg.print_param("data type", "double");
+  conf.print_param("data type", "double");
 #else
-  bench_cfg.print_param("data type", "float");
+  conf.print_param("data type", "float");
 #endif
-  bench_cfg.print_section_end();
+  conf.print_section_end();
 
-  bench_cfg.print_section_start("Runtime arguments");
-  bench_cfg.print_param("-s",           "variant",       params.variant);
-  bench_cfg.print_param("-sb",          "size base",     params.size_base);
-  bench_cfg.print_param("-nmax",        "max. units",    params.units_max);
-  bench_cfg.print_param("-nx",          "team columns",  params.units_x);
-  bench_cfg.print_param("-ny",          "team rows",     params.units_y);
-  bench_cfg.print_param("-ninc",        "units inc.",    params.units_inc);
-  bench_cfg.print_param("-nt",          "threads/proc",  params.threads);
-  bench_cfg.print_param("-emax",        "threads/proc",  params.exp_max);
-  bench_cfg.print_param("-rmax",        "rep. max",      params.rep_max);
-  bench_cfg.print_param("-rbase",       "rep. base",     params.rep_base);
-  bench_cfg.print_param("-mkldyn",      "MKL dynamic",   params.mkl_dyn);
-  bench_cfg.print_param("-plotpattern", "plot pattern",  params.plot_pattern);
-  bench_cfg.print_section_end();
+  conf.print_section_start("Runtime arguments");
+  conf.print_param("-s",           "variant",            params.variant);
+  conf.print_param("-sb",          "size base",          params.size_base);
+  conf.print_param("-nmax",        "max. units",         params.units_max);
+  conf.print_param("-nx",          "team columns",       params.units_x);
+  conf.print_param("-ny",          "team rows",          params.units_y);
+  conf.print_param("-ninc",        "units inc.",         params.units_inc);
+  conf.print_param("-nt",          "threads/proc",       params.threads);
+  conf.print_param("-emax",        "threads/proc",       params.exp_max);
+  conf.print_param("-rmax",        "rep. max",           params.rep_max);
+  conf.print_param("-rbase",       "rep. base",          params.rep_base);
+  conf.print_param("-mkldyn",      "MKL dynamic",        params.mkl_dyn);
+  conf.print_param("-plotpattern", "plot pattern",       params.plot_pattern);
+  conf.print_param("-verify",      "run test iteration", params.verify);
+  conf.print_section_end();
 }
 

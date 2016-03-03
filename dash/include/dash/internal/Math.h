@@ -32,6 +32,29 @@ constexpr T max(T a, T b)
   return (a > b) ? a : b;
 }
 
+template<
+  typename Iter>
+double sigma(
+  const Iter & begin,
+  const Iter & end)
+{
+  auto   n      = std::distance(begin, end);
+  double mean   = 0;
+  double devsum = 0;
+  double sum    = 0;
+  double var    = 0;
+  for (auto it = begin; it != end; ++it) {
+    sum += *it;
+  }
+  mean = sum / n;
+  for (auto it = begin; it != end; ++it) {
+    auto diff = *it - mean;
+    devsum += diff * diff;
+  }
+  var = devsum / n;
+  return sqrt(var);
+}
+
 template<typename Integer>
 std::map<Integer, int> factorize(Integer n)
 {
