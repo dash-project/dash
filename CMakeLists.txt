@@ -1,5 +1,7 @@
 project(project_dash)
 
+cmake_minimum_required (VERSION 2.8)
+
 if(POLICY CMP0054)
   cmake_policy(SET CMP0054 OLD)
 endif(POLICY CMP0054)
@@ -10,54 +12,6 @@ if(POLICY CMP0007)
   cmake_policy(SET CMP0007 OLD)
 endif(POLICY CMP0007)
 
-include(${CMAKE_SOURCE_DIR}/CMakeExt/MessageColor.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
-
-cmake_minimum_required (VERSION 2.8)
-
-## Version number
-set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
-set(DASH_VERSION_MINOR 2 CACHE STRING "DASH minor version number.")
-set(DASH_VERSION_PATCH 0 CACHE STRING "DASH patch version number.")
-mark_as_advanced(
-  DASH_VERSION_MAJOR
-  DASH_VERSION_MINOR
-  DASH_VERSION_PATCH)
-
-set(DASH_VERSION
-    "${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
-    CACHE STRING INTERNAL FORCE)
-set(DASH_VERSIONED_PROJECT_NAME
-    "dash-${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
-    CACHE STRING INTERNAL FORCE)
-set(DART_IF_VERSION "3.2" CACHE STRING
-    "Version of the DART interface")
-
-set(CMAKE_RULE_MESSAGES OFF)
-set(CMAKE_VERBOSE_MAKEFILE OFF)
-set(CMAKE_COLOR_MAKEFILE ON)
-
-## Install path
-if (INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX ${INSTALL_PREFIX})
-else()
-  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/opt/")
-endif()
-
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Release")
-endif()
 
 ## Build options
 option(BUILD_TESTS
@@ -96,6 +50,53 @@ option(ENABLE_SCALAPACK
        "Specify whether ScaLAPACK features are enabled" on)
 option(ENABLE_PLASMA
        "Specify whether PLASMA features are enabled" off)
+
+include(${CMAKE_SOURCE_DIR}/CMakeExt/MessageColor.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
+
+## Version number
+set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
+set(DASH_VERSION_MINOR 2 CACHE STRING "DASH minor version number.")
+set(DASH_VERSION_PATCH 0 CACHE STRING "DASH patch version number.")
+mark_as_advanced(
+  DASH_VERSION_MAJOR
+  DASH_VERSION_MINOR
+  DASH_VERSION_PATCH)
+
+set(DASH_VERSION
+    "${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
+    CACHE STRING INTERNAL FORCE)
+set(DASH_VERSIONED_PROJECT_NAME
+    "dash-${DASH_VERSION_MAJOR}.${DASH_VERSION_MINOR}.${DASH_VERSION_PATCH}"
+    CACHE STRING INTERNAL FORCE)
+set(DART_IF_VERSION "3.2" CACHE STRING
+    "Version of the DART interface")
+
+set(CMAKE_RULE_MESSAGES OFF)
+set(CMAKE_VERBOSE_MAKEFILE OFF)
+set(CMAKE_COLOR_MAKEFILE ON)
+
+## Install path
+if (INSTALL_PREFIX)
+  set(CMAKE_INSTALL_PREFIX ${INSTALL_PREFIX})
+else()
+  set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/opt/")
+endif()
+
+if (NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE "Release")
+endif()
 
 ## Subprojects, one for each deliverable
 

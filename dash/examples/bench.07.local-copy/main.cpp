@@ -32,7 +32,7 @@ typedef dash::Array<
           dash::CSRPattern<1, dash::ROW_MAJOR, index_t>
         > Array_t;
 typedef dash::util::Timer<
-          dash::util::TimeMeasure::Counter
+          dash::util::TimeMeasure::Clock
         > Timer;
 
 #ifndef DASH__ALGORITHM__COPY__USE_WAIT
@@ -147,6 +147,11 @@ int main(int argc, char** argv)
   dart_unit_t u_dst;
   // Unit that initializes the array range to be copied at the source unit:
   dart_unit_t u_init;
+  // Unit used as default destination:
+  dart_unit_t u_loc = (numa_node_cores % dash::size());
+
+#if 1
+  num_repeats = params.num_repeats;
   for (size_t i = 0; i < num_iterations && num_repeats > 0;
        ++i, num_repeats /= params.rep_base)
   {
@@ -155,22 +160,8 @@ int main(int argc, char** argv)
 
     num_repeats     = std::max<size_t>(num_repeats, params.min_repeats);
 
-#if 0
-    // Copy first block in array, assigned to unit 0, using memcpy:
-    u_src    = 0;
-    u_dst    = 0;
-    u_init   = (u_dst + num_local_cpus) % dash::size();
-    ts_start = Timer::Now();
-    res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,
-                                   params, MEMCPY);
-    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("local", "memcpy", bench_cfg,
-                             u_src, u_dst, u_init, size, num_repeats,
-                             time_s, res, params);
-#endif
-    // Copy first block in array, assigned to unit 0, using std::copy:
-    u_src    = 0;
-    u_dst    = 0;
+    u_src    = u_loc;
+    u_dst    = u_loc;
     u_init   = (u_dst + num_local_cpus) % dash::size();
     ts_start = Timer::Now();
     res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,
@@ -179,10 +170,21 @@ int main(int argc, char** argv)
     print_measurement_record("local", "std::copy", bench_cfg,
                              u_src, u_dst, u_init, size, num_repeats,
                              time_s, res, params);
+  }
+#endif
 
-    // Copy first block in array, assigned to unit 0:
-    u_src    = 0;
-    u_dst    = 0;
+#if 1
+  num_repeats = params.num_repeats;
+  for (size_t i = 0; i < num_iterations && num_repeats > 0;
+       ++i, num_repeats /= params.rep_base)
+  {
+    auto block_size = std::pow(params.size_base,i) * size_inc;
+    auto size       = block_size * dash::size();
+
+    num_repeats     = std::max<size_t>(num_repeats, params.min_repeats);
+
+    u_src    = u_loc;
+    u_dst    = u_loc;
     u_init   = (u_dst + num_local_cpus) % dash::size();
     ts_start = Timer::Now();
     res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,
@@ -191,79 +193,57 @@ int main(int argc, char** argv)
     print_measurement_record("local", "dash::copy", bench_cfg,
                              u_src, u_dst, u_init, size, num_repeats,
                              time_s, res, params);
-
-    // Copy last block in the master's NUMA domain:
-    u_src    = 0;
-    u_dst    = (numa_node_cores-1) % dash::size();
-    u_init   = (u_dst + num_local_cpus) % dash::size();
-    ts_start = Timer::Now();
-    res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,
-                                   params);
-    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("uma", "dash::copy", bench_cfg,
-                             u_src, u_dst, u_init, size, num_repeats,
-                             time_s, res, params);
-
-#if 0
-    // Copy block in the master's neighbor NUMA domain:
-    u_src    = 0;
-    u_dst    = (numa_node_cores + (numa_node_cores / 2)) % dash::size();
-    u_init   = (u_dst + num_local_cpus) % dash::size();
-    ts_start = Timer::Now();
-    res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,
-                                   params);
-    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("numa", "dash::copy", bench_cfg,
-                             u_src, u_dst, u_init, size, num_repeats,
-                             time_s, res, params);
+  }
 #endif
 
-    // Copy first block in next socket on the master's node:
-    u_src    = 0;
-    u_dst    = (socket_cores + (numa_node_cores / 2)) % dash::size();
+#if 1
+  num_repeats = params.num_repeats;
+  for (size_t i = 0; i < num_iterations && num_repeats > 0;
+       ++i, num_repeats /= params.rep_base)
+  {
+    auto block_size = std::pow(params.size_base,i) * size_inc;
+    auto size       = block_size * dash::size();
+
+    num_repeats     = std::max<size_t>(num_repeats, params.min_repeats);
+
+    u_src    = u_loc;
+    u_dst    = (u_src + numa_node_cores) % dash::size();
     u_init   = (u_dst + num_local_cpus) % dash::size();
     ts_start = Timer::Now();
     res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,
-                                   params);
-    time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("socket", "dash::copy", bench_cfg,
-                             u_src, u_dst, u_init, size, num_repeats,
-                             time_s, res, params);
-
-    if (params.local_only || num_nodes < 2) {
-      continue;
-    }
-
-    // Limit number of repeats for remote copying:
-    auto num_r_repeats = num_repeats / params.rep_base;
-    num_r_repeats  = std::max<size_t>(num_r_repeats, params.min_repeats);
-
-    // Copy block preceeding last block as it is guaranteed to be located on
-    // a remote unit and completely filled:
-    u_src    = 0;
-    u_dst    = dash::size() - 2;
-    u_init   = (u_dst + num_local_cpus) % dash::size();
-    ts_start = Timer::Now();
-    res      = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, u_init,
                                    params, DASH_COPY);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
-    print_measurement_record("rmt.blkng", "dash::copy", bench_cfg,
-                             u_src, u_dst, u_init, size, num_r_repeats,
+    print_measurement_record("socket.b", "dash::copy", bench_cfg,
+                             u_src, u_dst, u_init, size, num_repeats,
                              time_s, res, params);
-    u_src    = 0;
-    u_dst    = dash::size() - 2;
-    u_init   = (u_dst + num_local_cpus) % dash::size();
+  }
+#endif
+
+#if 1
+  num_repeats = params.num_repeats;
+  for (size_t i = 0; i < num_iterations && num_repeats > 0;
+       ++i, num_repeats /= params.rep_base)
+  {
+    auto block_size = std::pow(params.size_base,i) * size_inc;
+    auto size       = block_size * dash::size();
+
+    num_repeats     = std::max<size_t>(num_repeats, params.min_repeats);
+
+    u_src    = u_loc;
+    u_dst    = (u_src + num_local_cpus) % dash::size();
+    u_init   = (u_src + numa_node_cores) % dash::size();
     ts_start = Timer::Now();
-    res      = copy_block_to_local(size, i, num_r_repeats, u_src, u_dst, u_init,
+    res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,
                                    params, DASH_COPY_ASYNC);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record("rmt.async", "dash::copy", bench_cfg,
-                             u_src, u_dst, u_init, size, num_r_repeats,
+                             u_src, u_dst, u_init, size, num_repeats,
                              time_s, res, params);
   }
+#endif
 
   if( dash::myid()==0 ) {
-    cout<<"Benchmark finished"<<endl;
+    cout << "Benchmark finished" << endl;
   }
 
   dash::finalize();
@@ -340,6 +320,9 @@ measurement copy_block_to_local(
                     memalign(align_size, block_bytes));
   }
 
+  Array_t global_array;
+  global_array.allocate(size, dash::BLOCKED);
+
   std::srand(time(NULL));
 
   double total_copy_us = 0;
@@ -349,9 +332,6 @@ measurement copy_block_to_local(
   for (int r = 0; r < num_repeats; ++r) {
     dash::barrier();
     Timer::timestamp_t ts_init_start = Timer::Now();
-
-    Array_t global_array;
-    global_array.allocate(size, dash::BLOCKED);
 
     // Global pointer to copy input begin:
     auto    src_g_begin = global_array.begin() + copy_start_idx;
@@ -448,7 +428,6 @@ measurement copy_block_to_local(
     // Wait for validation, otherwise values in global array could be
     // overwritten when other units start with next repetition:
     dash::barrier();
-    global_array.deallocate();
   } // for repeats
 
   // Free buffers:
@@ -468,6 +447,8 @@ measurement copy_block_to_local(
     time_copy_max_us.set(history_copy_us.back());
 
   }
+
+  global_array.deallocate();
 
   DASH_LOG_DEBUG(
       "copy_block_to_local",
