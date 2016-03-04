@@ -13,7 +13,7 @@ set(DASH_ENV_HOST_SYSTEM_ID "supermuc" CACHE STRING
     "Host system type identifier")
 
 # Disable MPI shared windows for IBM MPI on SuperMUC:
-if ($ENV{MP_MPILIB} STREQUAL "mpich2")
+if ("$ENV{MP_MPILIB}" STREQUAL "mpich2")
   message(NOTE "MPI shared windows are disabled for IBM MPI on SuperMUC")
   set (ENABLE_SHARED_WINDOWS OFF CACHE BOOL
        "MPI shared windows are disabled for IBM MPI on SuperMUC" FORCE)
