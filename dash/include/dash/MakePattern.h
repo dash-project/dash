@@ -26,40 +26,43 @@ make_team_spec(
   // Deduce number of dimensions from size spec:
   const dim_t ndim = SizeSpecType::ndim();
   // Number of processing nodes:
-  auto  nnodes     = dash::util::Locality::NumNodes();
+  auto  n_nodes    = dash::util::Locality::NumNodes();
+  // Number of NUMA domains:
+  auto  n_numa_dom = dash::util::Locality::NumNumaNodes();
   // Default team spec:
   dash::TeamSpec<ndim> teamspec;
-  if (nnodes == 1 ||
+  // Check for trivial case first:
+  if (ndim == 1) {
+    return teamspec;
+  }
+
+  // Multi-dimensional case:
+  if (n_nodes == 1 ||
+      PartitioningTraits::minimal ||
       (!MappingTraits::diagonal && !MappingTraits::neighbor &&
        !MappingTraits::multiple)) {
     // Optimize for surface-to-volume ratio:
     teamspec.balance_extents();
   }
-  // Array of team extents by dimension:
+  // Create copy of team extents for rebalancing:
   std::array<extent_t, ndim> team_extents = teamspec.extents();
 
-  extent_t min_block_extent = sizespec.size();
-  if (PartitioningTraits::minimal) {
-    // Find minimal block size in minimal partitioning, initialize with
-    // pattern size (maximum):
-    for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
-      auto extent_d    = sizespec.extent(d);
-      auto nunits_d    = teamspec.extent(d);
-      auto blocksize_d = extent_d / nunits_d;
-      if (blocksize_d < min_block_extent) {
-        min_block_extent = blocksize_d;
-      }
-    }
-    DASH_LOG_TRACE("dash::make_team_spec",
-                   "minimum block extent for square blocks:",
-                   min_block_extent);
+  if (!MappingTraits::multiple) {
+    return teamspec;
   }
-  // Resolve balanced tile extents from size spec and team spec:
-  auto split_factor = nnodes > 1 ? nnodes : 2;
-  if (teamspec.extent(0) % split_factor != 0) {
+  // Do not rebalance team on single node if its arrangement is square:
+  if (n_nodes == 1 && ndim > 1 && team_extents[0] == team_extents[1]) {
+    return teamspec;
+  }
+
+  // Rebalance team extents by topology measures by applying:
+  //    teamsize[0] /= split_factor
+  //    teamsize[1] *= split_factor
+  auto split_factor = n_nodes > 1 ? n_nodes : 2;
+  if (team_extents[0] % split_factor != 0) {
     split_factor = 1;
   }
-  for (auto d = 0; d < SizeSpecType::ndim(); ++d) {
+  for (auto d = 0; d < ndim; ++d) {
     auto extent_d  = sizespec.extent(d);
     auto nunits_d  = teamspec.extent(d);
     DASH_LOG_TRACE("dash::make_team_spec",
@@ -67,40 +70,11 @@ make_team_spec(
                    "extent[d]:",  extent_d,
                    "nunits[d]:",  nunits_d);
     auto nblocks_d = nunits_d;
-    if (MappingTraits::multiple && ndim > 1) {
+    if (MappingTraits::multiple) {
       if (d == 0) {
         nunits_d /= split_factor;
       } else if (d == 1) {
         nunits_d *= split_factor;
-      }
-    }
-    if (MappingTraits::diagonal || MappingTraits::neighbor) {
-      // Diagonal and neighbor mapping properties require occurrence of every
-      // unit in any hyperplane. Use total number of units in every dimension:
-      nblocks_d = teamspec.size();
-      DASH_LOG_TRACE("dash::make_distribution_spec",
-                     "diagonal or neighbor mapping",
-                     "d", d, "nblocks_d", nblocks_d);
-    } else if (PartitioningTraits::minimal) {
-      // Trying to assign one block per unit:
-      nblocks_d = nunits_d;
-      if (!MappingTraits::balanced) {
-        // Unbalanced mapping, trying to use same block extent in all
-        // dimensions:
-        nblocks_d = extent_d / min_block_extent;
-        DASH_LOG_TRACE("dash::make_distribution_spec",
-                       "minimal partitioning, mapping not balanced",
-                       "d", d, "nblocks_d", nblocks_d);
-      }
-    } else if (MappingTraits::balanced) {
-      // Balanced mapping, i.e. same number of blocks for every unit
-      if (nblocks_d % teamspec.extent(d) > 0) {
-        // Extent in this dimension is not a multiple of number of units,
-        // balanced mapping property cannot be satisfied:
-        DASH_THROW(dash::exception::InvalidArgument,
-                   "dash::make_distribution_spec: cannot distribute " <<
-                   nblocks_d << " blocks to " <<
-                   nunits_d  << " units in dimension " << d);
       }
     }
     team_extents[d] = nunits_d;

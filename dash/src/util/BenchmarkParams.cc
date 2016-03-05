@@ -1,4 +1,5 @@
 #include <dash/util/BenchmarkParams.h>
+#include <dash/util/Config.h>
 
 #include <iostream>
 #include <iomanip>
@@ -131,8 +132,8 @@ void BenchmarkParams::print_header()
 #ifdef MPI_IMPL_ID
   print_section_start("MPI Environment Flags");
   for (auto flag : _config.env_mpi_config) {
-    int val_w  = box_width - flag.first.length() - 5;
-    cout << "--   " << std::left   << flag.first
+    int val_w  = box_width - flag.first.length() - 6;
+    cout << "--   " << std::left   << flag.first << " "
                     << setw(val_w) << std::right << flag.second
          << endl;
   }
