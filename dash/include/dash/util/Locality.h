@@ -49,6 +49,14 @@ public:
 
 public:
 
+  static inline int NumNodes() {
+    return std::max<int>(dash::size() / NumCPUs(), 1);
+  }
+
+  static inline int NumSockets() {
+    return _num_sockets;
+  }
+
   static inline int NumNumaNodes() {
     return _num_numa;
   }
@@ -57,12 +65,20 @@ public:
     return _num_cpus;
   }
 
-  static inline int NumNodes() {
-    return std::max<int>(dash::size() / NumCPUs(), 1);
+  static inline void SetNumNodes(int n) {
+    _num_nodes = n;
   }
 
-  static inline int NumSockets() {
-    return _num_sockets;
+  static inline void SetNumSockets(int n) {
+    _num_sockets = n;
+  }
+
+  static inline void SetNumNumaNodes(int n) {
+    _num_numa = n;
+  }
+
+  static inline void SetNumCPUs(int n) {
+    _num_cpus = n;
   }
 
   static inline int MyNUMANode() {

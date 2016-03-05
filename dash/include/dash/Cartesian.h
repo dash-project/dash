@@ -797,6 +797,25 @@ public:
   }
 
   /**
+   * Constructor, initializes new instance of TeamSpec with
+   * extents specified in array by dimension.
+   *
+   * \b Example:
+   *
+   * \code
+   *   TeamSpec<3> ts({ 1,2,3 }); // extents 1x2x3
+   * \endcode
+   */
+  TeamSpec(const std::array<SizeType, MaxDimensions> & extents)
+  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
+      CartesianIndexSpace(extents)
+  {
+    update_rank();
+    this->resize(this->_extents);
+    DASH_LOG_TRACE_VAR("TeamSpec({extents})", this->_extents);
+  }
+
+  /**
    * Copy constructor.
    */
   TeamSpec(

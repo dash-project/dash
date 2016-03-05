@@ -75,6 +75,9 @@ template<typename Integer>
 std::map<Integer, int> factorize(Integer n)
 {
   std::map<Integer, int> factors;
+  if (n < 2) {
+    return factors;
+  }
   while (n % 2 == 0) {
     n = n / 2;
     auto it = factors.find(2);
@@ -123,6 +126,9 @@ template<typename Integer>
 std::set<Integer> factors(Integer n)
 {
   std::set<Integer> primes;
+  if (n < 2) {
+    return primes;
+  }
   // In HPC applications, we assume (multiples of) powers of 2 as the
   // most common case:
   while (n % 2 == 0) {
@@ -159,10 +165,13 @@ typename std::enable_if<(NumDim > 1), std::array<Integer, NumDim> >::type
 balance_extents(
   std::array<Integer, NumDim> extents)
 {
+  DASH_LOG_TRACE_VAR("dash::math::balance_extents()", extents);
   Integer size = 1;
-  for (auto d = 0; d < NumDim; ++d) {
+  for (auto d = 0; d < extents.size(); ++d) {
     size *= extents[d];
   }
+  DASH_LOG_TRACE_VAR("dash::math::balance_extents", size);
+  DASH_ASSERT_GT(size, 0, "dash::math::balance_extents: extent must be > 0");
   extents[0]      = size;
   extents[1]      = 1;
   auto factors    = dash::math::factorize(size);
@@ -195,10 +204,14 @@ balance_extents(
   // List of preferred blocking factors.
   std::set<Integer>           blocking)
 {
+  DASH_LOG_TRACE_VAR("dash::math::balance_extents()", extents);
+  DASH_LOG_TRACE_VAR("dash::math::balance_extents()", blocking);
   Integer size = 1;
-  for (auto d = 0; d < NumDim; ++d) {
+  for (auto d = 0; d < extents.size(); ++d) {
     size *= extents[d];
   }
+  DASH_LOG_TRACE_VAR("dash::math::balance_extents", size);
+  DASH_ASSERT_GT(size, 0, "dash::math::balance_extents: extent must be > 0");
   extents[0]        = size;
   extents[1]        = 1;
   auto size_factors = dash::math::factorize(size);
@@ -208,13 +221,15 @@ balance_extents(
 
   // Test if size is divisible by blocking factors:
   for (auto block_size : blocking) {
-    if (size % block_size == 0) {
-      auto n_blocks = size / block_size;
+    auto n_combinations = size_factors[block_size];
+    DASH_LOG_TRACE("dash::math::balance_extents",
+                   "trying block factor", block_size,
+                   "in", n_combinations, "combinations");
+    for (int i = 1; i < n_combinations + 1; ++i) {
       // Size can be partitioned into n_blocks of size block_factor:
       DASH_LOG_TRACE("dash::math::balance_extents",
-                     "blocking factor matched:", block_size,
-                     "(blocks:", n_blocks, ")");
-      Integer extent_x    = block_size;
+                     "blocking factor matched:", block_size);
+      Integer extent_x    = i * block_size;
       Integer extent_y    = size / extent_x;
       Integer surface_new = (2 * extent_x) + (2 * extent_y);
       DASH_LOG_TRACE("dash::math::balance_extents", "testing extents",
