@@ -137,11 +137,15 @@ public:
     else if (retval < 0) {
       throw ::std::runtime_error("PAPI init failed");
     }
-    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
-    if (hwinfo == NULL) {
-      throw ::std::runtime_error("PAPI get hardware info failed");
+    if (fscale == 0) {
+      frequencyScaling = fscale;
+    } else {
+      const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
+      if (hwinfo == NULL) {
+        throw ::std::runtime_error("PAPI get hardware info failed");
+      }
+      frequencyScaling = hwinfo->cpu_max_mhz;
     }
-    frequencyScaling = hwinfo->cpu_max_mhz;
   }
 
 public:

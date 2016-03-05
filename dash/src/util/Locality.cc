@@ -20,7 +20,6 @@ namespace util {
 
 void Locality::init()
 {
-
   _cache_sizes[0]      = -1;
   _cache_sizes[1]      = -1;
   _cache_sizes[2]      = -1;
@@ -55,20 +54,30 @@ void Locality::init()
   hwloc_topology_destroy(topology);
 #endif
 #ifdef DASH_ENABLE_PAPI
-  const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
-  if (hwinfo == NULL) {
+  int retval = PAPI_library_init(PAPI_VER_CURRENT);
+  if (retval != PAPI_VER_CURRENT && retval > 0) {
     DASH_LOG_ERROR(
-      "dash::util::Locality::init(): PAPI get hardware info failed");
+      "dash::util::Locality::init(): PAPI version mismatch");
+  }
+  else if (retval < 0) {
+    DASH_LOG_ERROR(
+      "dash::util::Locality::init(): PAPI init failed");
   } else {
-    if (_num_sockets < 0) {
-      _num_sockets = hwinfo->sockets;
-    }
-    if (_num_numa < 0) {
-      _num_numa = hwinfo->nnodes;
-    }
-    if (_num_cpus < 0) {
-      auto cores_per_socket = hwinfo->cores;
-      _num_cpus = _num_sockets * cores_per_socket;
+    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
+    if (hwinfo == NULL) {
+      DASH_LOG_ERROR(
+        "dash::util::Locality::init(): PAPI get hardware info failed");
+    } else {
+      if (_num_sockets < 0) {
+        _num_sockets = hwinfo->sockets;
+      }
+      if (_num_numa < 0) {
+        _num_numa = hwinfo->nnodes;
+      }
+      if (_num_cpus < 0) {
+        auto cores_per_socket = hwinfo->cores;
+        _num_cpus = _num_sockets * cores_per_socket;
+      }
     }
   }
 #endif
