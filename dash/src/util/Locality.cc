@@ -23,12 +23,12 @@ void Locality::init()
   _cache_sizes[0]      = -1;
   _cache_sizes[1]      = -1;
   _cache_sizes[2]      = -1;
-  _cache_line_sizes[0] = 64;
-  _cache_line_sizes[1] = 64;
-  _cache_line_sizes[2] = 64;
+  _cache_line_sizes[0] = -1;
+  _cache_line_sizes[1] = -1;
+  _cache_line_sizes[2] = -1;
   _num_nodes           = -1;
   _num_sockets         = -1;
-  _num_numa      = -1;
+  _num_numa            = -1;
   _num_cpus            = -1;
 #ifdef DASH_ENABLE_HWLOC
   hwloc_topology_t topology;
@@ -50,6 +50,10 @@ void Locality::init()
   int depth = hwloc_get_type_depth(topology, HWLOC_OBJ_SOCKET);
   if (depth != HWLOC_TYPE_DEPTH_UNKNOWN) {
     _num_sockets = hwloc_get_nbobjs_by_depth(topology, depth);
+  }
+  int n_numa_nodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NODE);
+  if (n_numa_nodes > 0) {
+    _num_numa = n_numa_nodes;
   }
   hwloc_topology_destroy(topology);
 #endif

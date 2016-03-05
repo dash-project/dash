@@ -5,6 +5,7 @@
 
 #include <array>
 #include <vector>
+#include <map>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -91,6 +92,19 @@ std::ostream & operator<<(
   const std::vector<T> & arr) {
   std::copy(arr.cbegin(), arr.cend(),
             std::ostream_iterator<T>(o, ","));
+  return o;
+}
+// To print std::map to ostream
+template <typename T1, typename T2>
+std::ostream & operator<<(
+  std::ostream & o,
+  const std::map<T1,T2> & map) {
+  std::ostringstream ss;
+  for (auto kv : map) {
+    ss << "[" << kv->first  << "]"
+       << ":" << kv->second << ","
+  }
+  operator<<(o, ss.str())
   return o;
 }
 
