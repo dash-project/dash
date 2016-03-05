@@ -102,9 +102,9 @@ std::ostream & operator<<(
   std::ostringstream ss;
   for (auto kv : map) {
     ss << "[" << kv->first  << "]"
-       << ":" << kv->second << ","
+       << ":" << kv->second << ",";
   }
-  operator<<(o, ss.str())
+  operator<<(o, ss.str());
   return o;
 }
 
