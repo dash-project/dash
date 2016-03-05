@@ -76,3 +76,55 @@ TEST_F(AutobalanceTest, BalanceExtents)
                exp_extents[1] == bal_extents[0]));
 #endif
 }
+
+TEST_F(AutobalanceTest, BalanceTeamSpec)
+{
+  typedef std::array<size_t, 2> extents_t;
+
+  size_t size_base    = 1680;
+  int    size_exp_max = 1;
+
+  dash::util::Locality::SetNumNodes(1);
+  dash::util::Locality::SetNumSockets(2);
+  dash::util::Locality::SetNumNumaNodes(4);
+  dash::util::Locality::SetNumCPUs(28);
+
+  std::vector<extents_t> exp_team_extents;
+  exp_team_extents.push_back({{ 2,  2 }}); //  4 units
+  exp_team_extents.push_back({{ 2,  4 }}); //  8 units
+  exp_team_extents.push_back({{ 2,  6 }}); // 12 units
+  exp_team_extents.push_back({{ 4,  4 }}); // 16 units
+  exp_team_extents.push_back({{ 2, 10 }}); // 20 units
+  exp_team_extents.push_back({{ 2, 12 }}); // 24 units
+  exp_team_extents.push_back({{ 2, 14 }}); // 28 units
+
+  // Test for all combinations (team size x data extents):
+  extents_t exp_extents;
+  for (size_t u = 0; u < exp_team_extents.size(); ++u) {
+    for (int s = 0; s < size_exp_max; ++s) {
+      auto size_d    = size_base * std::pow(2, s);
+      dash::SizeSpec<2> sizespec(size_d, size_d);
+      exp_extents    = exp_team_extents[u];
+      int  num_units = exp_extents[0] * exp_extents[1];
+      DASH_LOG_TRACE("AutobalanceTest::BalanceTeamSpec",
+                     "testing balancing of", num_units, "units",
+                     "for size ", size_d, "x", size_d);
+      auto teamspec  = dash::make_team_spec<
+                         dash::summa_pattern_partitioning_constraints,
+                         dash::summa_pattern_mapping_constraints,
+                         dash::summa_pattern_layout_constraints >(
+                           sizespec, num_units);
+      auto bal_extents = teamspec.extents();
+      DASH_LOG_TRACE("AutobalanceTest::BalanceTeamSpec",
+                     "balanced", num_units, "units",
+                     "for size ", size_d, "x", size_d,
+                     ":", bal_extents);
+
+      EXPECT_EQ(num_units, teamspec.size());
+      EXPECT_TRUE((exp_extents[0] == bal_extents[0] &&
+                   exp_extents[1] == bal_extents[1]) ||
+                  (exp_extents[0] == bal_extents[1] &&
+                   exp_extents[1] == bal_extents[0]));
+    }
+  }
+}
