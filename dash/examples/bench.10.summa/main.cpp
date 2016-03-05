@@ -66,7 +66,7 @@ using std::string;
 extern char ** environ;
 
 typedef dash::util::Timer<
-          dash::util::TimeMeasure::Clock
+          dash::util::TimeMeasure::Counter
         > Timer;
 
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
@@ -106,10 +106,10 @@ void init_values(
 
 template<class PatternType>
 std::pair<double, double> test_dash(
-  extent_t                  n,
-  unsigned                  repeat,
-  const benchmark_params  & params,
-  const PatternType       & pattern);
+  extent_t                 n,
+  unsigned                 repeat,
+  const benchmark_params & params,
+  const PatternType      & pattern);
 
 void init_values(
   value_t                * matrix_a,
@@ -119,18 +119,18 @@ void init_values(
   const benchmark_params & params);
 
 std::pair<double, double> test_blas(
-  extent_t sb,
-  unsigned repeat,
+  extent_t                 sb,
+  unsigned                 repeat,
   const benchmark_params & params);
 
 std::pair<double, double> test_plasma(
-  extent_t sb,
-  unsigned repeat,
+  extent_t                 sb,
+  unsigned                 repeat,
   const benchmark_params & params);
 
 std::pair<double, double> test_pblas(
-  extent_t sb,
-  unsigned repeat,
+  extent_t                 sb,
+  unsigned                 repeat,
   const benchmark_params & params);
 
 void perform_test(
@@ -182,7 +182,9 @@ int main(int argc, char* argv[])
   // is not required.
   mkl_set_dynamic(false);
   mkl_set_num_threads(params.threads);
-  if (params.mkl_dyn || mkl_get_max_threads() < params.threads) {
+  if (params.mkl_dyn ||
+      (mkl_get_max_threads() > 0 &&
+       mkl_get_max_threads() < params.threads)) {
     // requested number of threads exceeds number of physical cores, set
     // MKL dynamic flag and retry:
     mkl_set_dynamic(true);
@@ -638,7 +640,7 @@ std::pair<double, double> test_plasma(
   l_matrix_c = (value_t *)(malloc(sizeof(value_t) * sb * sb));
 
   auto ts_init_start = Timer::Now();
-  init_values(l_matrix_a, l_matrix_b, l_matrix_c, sb);
+  init_values(l_matrix_a, l_matrix_b, l_matrix_c, sb, params);
   time.first = Timer::ElapsedSince(ts_init_start);
 
   auto ts_multiply_start = Timer::Now();
@@ -991,14 +993,11 @@ benchmark_params parse_args(int argc, char * argv[])
     } else if (flag == "-cpupeak") {
       params.cpu_gflops_peak = static_cast<float>(atof(argv[i+1]));
     } else if (flag == "-mkldyn") {
-      params.mkl_dyn  = true;
-      --i;
-    } else if (flag == "-plotpattern") {
-      params.plot_pattern = true;
-      --i;
+      params.mkl_dyn  = atoi(argv[i+1]) == 1;
+    } else if (flag == "-plot") {
+      params.plot_pattern = atoi(argv[i+1]) == 1;
     } else if (flag == "-verify") {
-      params.verify   = true;
-      --i;
+      params.verify   = atoi(argv[i+1]) == 1;
     }
   }
   if (size_base == 0 && max_units > 0 && num_units_inc > 0) {
@@ -1061,19 +1060,19 @@ void print_params(
   conf.print_section_end();
 
   conf.print_section_start("Runtime arguments");
-  conf.print_param("-s",           "variant",            params.variant);
-  conf.print_param("-sb",          "size base",          params.size_base);
-  conf.print_param("-nmax",        "max. units",         params.units_max);
-  conf.print_param("-nx",          "team columns",       params.units_x);
-  conf.print_param("-ny",          "team rows",          params.units_y);
-  conf.print_param("-ninc",        "units inc.",         params.units_inc);
-  conf.print_param("-nt",          "threads/proc",       params.threads);
-  conf.print_param("-emax",        "threads/proc",       params.exp_max);
-  conf.print_param("-rmax",        "rep. max",           params.rep_max);
-  conf.print_param("-rbase",       "rep. base",          params.rep_base);
-  conf.print_param("-mkldyn",      "MKL dynamic",        params.mkl_dyn);
-  conf.print_param("-plotpattern", "plot pattern",       params.plot_pattern);
-  conf.print_param("-verify",      "run test iteration", params.verify);
+  conf.print_param("-s",      "variant",            params.variant);
+  conf.print_param("-sb",     "size base",          params.size_base);
+  conf.print_param("-nmax",   "max. units",         params.units_max);
+  conf.print_param("-nx",     "team columns",       params.units_x);
+  conf.print_param("-ny",     "team rows",          params.units_y);
+  conf.print_param("-ninc",   "units inc.",         params.units_inc);
+  conf.print_param("-nt",     "threads/proc",       params.threads);
+  conf.print_param("-emax",   "threads/proc",       params.exp_max);
+  conf.print_param("-rmax",   "rep. max",           params.rep_max);
+  conf.print_param("-rbase",  "rep. base",          params.rep_base);
+  conf.print_param("-mkldyn", "MKL dynamic",        params.mkl_dyn);
+  conf.print_param("-plot",   "plot pattern",       params.plot_pattern);
+  conf.print_param("-verify", "run test iteration", params.verify);
   conf.print_section_end();
 }
 

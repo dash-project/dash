@@ -35,6 +35,7 @@ public:
     bool           env_mpi_shared_win;
     bool           env_mkl;
     bool           env_scalapack;
+    bool           env_plasma;
   } config_params_type;
 
   typedef dash::util::Locality::UnitPinning

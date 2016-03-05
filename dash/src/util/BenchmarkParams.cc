@@ -33,6 +33,7 @@ BenchmarkParams::BenchmarkParams(
   params.env_hwloc          = false;
   params.env_mkl            = false;
   params.env_scalapack      = false;
+  params.env_plasma         = false;
 #ifdef DART_MPI_DISABLE_SHARED_WINDOWS
   params.env_mpi_shared_win = false;
 #endif
@@ -44,6 +45,9 @@ BenchmarkParams::BenchmarkParams(
 #endif
 #ifdef DASH_ENABLE_SCALAPACK
   params.env_scalapack      = true;
+#endif
+#ifdef DASH_ENABLE_PLASMA
+  params.env_plasma         = true;
 #endif
   // Add environment variables to params.env_mpi_config and
   // params.env_dash_config:
@@ -180,7 +184,7 @@ void BenchmarkParams::print_pinning()
     return;
   }
   auto line_w = _header_width;
-  auto host_w = line_w - 5 - 5 - 10 - 5;
+  auto host_w = line_w - 5 - 5 - 10 - 5 - 5;
   print_section_start("Process Pinning");
   cout << std::left         << "--   "
        << std::setw(5)      << "unit"
@@ -188,6 +192,7 @@ void BenchmarkParams::print_pinning()
        << std::right
        << std::setw(10)     << "numa node"
        << std::setw(5)      << "cpu"
+       << std::setw(5)      << "core"
        << endl;
   for (size_t unit = 0; unit < Locality::Pinning().size(); ++unit) {
     unit_pinning_type pin_info = Locality::Pinning()[unit];
@@ -197,6 +202,7 @@ void BenchmarkParams::print_pinning()
          << std::right
          << std::setw(10)     << pin_info.numa_node
          << std::setw(5)      << pin_info.cpu
+         << std::setw(5)      << (pin_info.cpu % Locality::NumCPUs())
          << endl;
   }
   print_section_end();
