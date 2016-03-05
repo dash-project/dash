@@ -1,9 +1,13 @@
 #ifndef DASH__UTIL__CONFIG_H__
 #define DASH__UTIL__CONFIG_H__
 
+#include <dash/internal/Logging.h>
+
 #include <string>
 #include <sstream>
 #include <map>
+#include <type_traits>
+#include <cstdlib>
 
 namespace dash {
 namespace util {
@@ -22,6 +26,20 @@ extern std::map<std::string, std::string> __config_values;
  *   size_t cfg_value = dash::utils::Config::get<size_t>("NCHUNKS");
  * \endcode
  *
+ * Environment variables starting with 'DASH_' are automatically added.
+ *
+ * Configuration keys ending in '_SIZE' allow to set sizes (bytes) in
+ * human-readable format, e.g. "2M" -> 2048.
+ * The parsed size in number of bytes is then stored in a separate
+ * configuration key <key name>_BYTES.
+ *
+ * For example:
+ *
+ * \code
+ *   dash::utils::Config::set("CHUNK_SIZE", "4MB");
+ *   auto chunk_bytes = dash::utils::Config::get<size_t>("CHUNK_SIZE_BYTES");
+ * \endcode
+ *
  */
 class Config
 {
@@ -32,7 +50,8 @@ private:
     if (kv == internal::__config_values.end()) {
       return std::string("");
     }
-    return std::string(kv->second);
+    std::string value = kv->second;
+    return value;
   }
 
 public:
@@ -51,14 +70,22 @@ public:
   }
 
   template<typename ValueT>
-  static void set(
+  static
+  typename std::enable_if<std::is_arithmetic<ValueT>::value, void>::type
+  set(
     const std::string & key,
-    const ValueT      & setting_value)
+    ValueT              value)
   {
+    DASH_LOG_TRACE("util::Config::set(string,T)", key, value);
     std::ostringstream ss;
-    ss << setting_value;
+    ss << value;
     internal::__config_values[key] = ss.str();
   }
+
+  static void
+  set(
+    const std::string & key,
+    std::string         value);
 
   static typename std::map<std::string, std::string>::iterator
   begin() {
