@@ -2,48 +2,32 @@
 #define DASH__INTERNAL__LOGGING_H_
 
 #include <dash/internal/Macro.h>
-// #include <dash/Init.h>
+
+#include <array>
+#include <vector>
+#include <map>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+#include <iterator>
+#include <cstring>
 
 namespace dash {
   // forward-declaration
   int myid();
 }
 
-#if defined(DASH_ENABLE_LOGGING)
-// {
+//
+// Enable logging if trace logging is enabled:
+//
+#if defined(DASH_ENABLE_TRACE_LOGGING) && \
+    !defined(DASH_ENABLE_LOGGING)
+#define DASH_ENABLE_LOGGING
+#endif
 
-#include <array>
-#include <vector>
-#include <sstream>
-#include <iostream>
-#include <iomanip>
-#include <iterator>
-
-#if defined(DASH_ENABLE_TRACE_LOGGING)
-
-#  define DASH_LOG_TRACE(...) \
-     dash::internal::logging::LogWrapper(\
-       "TRACE", __FILE__, __LINE__, __VA_ARGS__)
-
-#  define DASH_LOG_TRACE_VAR(context, var) \
-     dash::internal::logging::LogVarWrapper(\
-       "TRACE", __FILE__, __LINE__, context, #var, (var))
-
-#else  // DASH_ENABLE_TRACE_LOGGING
-
-#  define DASH_LOG_TRACE(...) do {  } while(0)
-#  define DASH_LOG_TRACE_VAR(...) do {  } while(0)
-
-#endif // DASH_ENABLE_TRACE_LOGGING
-
-#define DASH_LOG_DEBUG(...) \
-  dash::internal::logging::LogWrapper(\
-    "DEBUG", __FILE__, __LINE__, __VA_ARGS__)
-
-#define DASH_LOG_DEBUG_VAR(context, var) \
-  dash::internal::logging::LogVarWrapper(\
-    "DEBUG", __FILE__, __LINE__, context, #var, (var))
-
+//
+// Always log error messages:
+//
 #define DASH_LOG_ERROR(...) \
   dash::internal::logging::LogWrapper(\
     "ERROR", __FILE__, __LINE__, __VA_ARGS__)
@@ -51,6 +35,42 @@ namespace dash {
 #define DASH_LOG_ERROR_VAR(context, var) \
   dash::internal::logging::LogVarWrapper(\
     "ERROR", __FILE__, __LINE__, context, #var, (var))
+
+//
+// Debug and trace log messages:
+//
+#if defined(DASH_ENABLE_LOGGING)
+#  define DASH_LOG_DEBUG(...) \
+     dash::internal::logging::LogWrapper(\
+       "DEBUG", __FILE__, __LINE__, __VA_ARGS__)
+
+#  define DASH_LOG_DEBUG_VAR(context, var) \
+     dash::internal::logging::LogVarWrapper(\
+       "DEBUG", __FILE__, __LINE__, context, #var, (var))
+
+#  if defined(DASH_ENABLE_TRACE_LOGGING)
+
+#    define DASH_LOG_TRACE(...) \
+       dash::internal::logging::LogWrapper(\
+         "TRACE", __FILE__, __LINE__, __VA_ARGS__)
+
+#    define DASH_LOG_TRACE_VAR(context, var) \
+       dash::internal::logging::LogVarWrapper(\
+         "TRACE", __FILE__, __LINE__, context, #var, (var))
+
+#  else  // DASH_ENABLE_TRACE_LOGGING
+#      define DASH_LOG_TRACE(...) do {  } while(0)
+#      define DASH_LOG_TRACE_VAR(...) do {  } while(0)
+
+#  endif // DASH_ENABLE_TRACE_LOGGING
+#else  // DASH_ENABLE_LOGGING
+
+#  define DASH_LOG_TRACE(...) do {  } while(0)
+#  define DASH_LOG_TRACE_VAR(...) do {  } while(0)
+#  define DASH_LOG_DEBUG(...) do {  } while(0)
+#  define DASH_LOG_DEBUG_VAR(...) do {  } while(0)
+
+#endif // DASH_ENABLE_LOGGING
 
 namespace dash {
 namespace internal {
@@ -74,6 +94,19 @@ std::ostream & operator<<(
             std::ostream_iterator<T>(o, ","));
   return o;
 }
+// To print std::map to ostream
+template <typename T1, typename T2>
+std::ostream & operator<<(
+  std::ostream & o,
+  const std::map<T1,T2> & map) {
+  std::ostringstream ss;
+  for (auto kv : map) {
+    ss << "[" << kv->first  << "]"
+       << ":" << kv->second << ","
+  }
+  operator<<(o, ss.str())
+  return o;
+}
 
 // Terminator
 static void Log_Recursive(
@@ -83,18 +116,18 @@ static void Log_Recursive(
   const char* context_tag,
   std::ostringstream & msg) {
   std::stringstream buf;
-  buf << "[ " 
+  buf << "[ "
       << std::setw(4) << dash::myid()
       << " "
       << level
       << " ] "
       << std::left << std::setw(25)
-      << file << ":" 
+      << file << ":"
       << std::left << std::setw(4)
       << line << " | "
       << std::left << std::setw(35)
       << context_tag
-      << msg.str() 
+      << msg.str()
       << std::endl;
   std::cout << buf.str();
 }
@@ -124,11 +157,11 @@ static void LogWrapper(
   std::ostringstream msg;
   msg << "| ";
   // Extract file name from path
-  std::string filename(filepath);
-  std::size_t offset = filename.find_last_of("/\\");
+  const char * filebase = strrchr(filepath, '/');
+  const char * filename = (filebase != 0) ? filebase + 1 : filepath;
   Log_Recursive(
     level,
-    filename.substr(offset+1).c_str(),
+    filename,
     line,
     context_tag,
     msg, args...);
@@ -147,11 +180,11 @@ static void LogVarWrapper(
   std::ostringstream msg;
   msg << "| = " << var_name << "(" << var_value << ")";
   // Extract file name from path
-  std::string filename(filepath);
-  std::size_t offset = filename.find_last_of("/\\");
+  const char * filebase = strrchr(filepath, '/');
+  const char * filename = (filebase != 0) ? filebase + 1 : filepath;
   Log_Recursive(
     level,
-    filename.substr(offset+1).c_str(),
+    filename,
     line,
     context_tag,
     msg);
@@ -160,17 +193,5 @@ static void LogVarWrapper(
 } // namespace logging
 } // namespace internal
 } // namespace dash
-
-// }
-#else  // DASH_ENABLE_LOGGING
-
-#  define DASH_LOG_TRACE(...) do {  } while(0)
-#  define DASH_LOG_TRACE_VAR(...) do {  } while(0)
-#  define DASH_LOG_DEBUG(...) do {  } while(0)
-#  define DASH_LOG_DEBUG_VAR(...) do {  } while(0)
-#  define DASH_LOG_ERROR(...) do {  } while(0)
-#  define DASH_LOG_ERROR_VAR(...) do {  } while(0)
-
-#endif // DASH_ENABLE_LOGGING
 
 #endif // DASH__INTERNAL__LOGGING_H_

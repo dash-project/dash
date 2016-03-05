@@ -19,6 +19,12 @@ namespace dash {
  *
  * - strong
  * - weak
+ *
+ * Traits concepts should work like this:
+ *
+ *   dash::pattern_traits<PatternType>::partitioning::balanced()
+ *
+ * and properties (currently named traits) should be renamed to tags.
  */
 
 
@@ -404,8 +410,10 @@ struct pattern_partitioning_tag
     balanced,
 
     /// Size of blocks may differ.
-    unbalanced
+    unbalanced,
 
+    /// Data range is partitioned in at least two dimensions.
+    ndimensional
   } type;
 };
 
@@ -417,20 +425,23 @@ struct pattern_partitioning_properties
   /// Partitioning properties defaults:
 
   /// Block extents are constant for every dimension.
-  static const bool rectangular = false;
+  static const bool rectangular  = false;
 
   /// Minimal number of blocks in every dimension, typically at most one
   /// block per unit.
-  static const bool minimal     = false;
+  static const bool minimal      = false;
 
   /// All blocks have identical extents.
-  static const bool regular     = false;
+  static const bool regular      = false;
 
   /// All blocks have identical size.
-  static const bool balanced    = false;
+  static const bool balanced     = false;
 
   /// Size of blocks may differ.
-  static const bool unbalanced  = false;
+  static const bool unbalanced   = false;
+
+  /// Data range is partitioned in at least two dimensions.
+  static const bool ndimensional = false;
 };
 
 /**
@@ -534,6 +545,26 @@ const bool
 pattern_partitioning_properties<
   pattern_partitioning_tag::type::unbalanced, Tags ...
 >::unbalanced = true;
+
+/**
+ * Specialization of \c dash::pattern_partitioning_properties to process tag
+ * \c dash::pattern_partitioning_tag::type::ndimensional in template parameter
+ * list.
+ */
+template<pattern_partitioning_tag::type ... Tags>
+struct pattern_partitioning_properties<
+         pattern_partitioning_tag::type::ndimensional, Tags ...>
+: public pattern_partitioning_properties<Tags ...>
+{
+  /// Data range is partitioned in at least two dimensions.
+  static const bool ndimensional;
+};
+
+template<pattern_partitioning_tag::type ... Tags>
+const bool
+pattern_partitioning_properties<
+  pattern_partitioning_tag::type::ndimensional, Tags ...
+>::ndimensional = true;
 
 //////////////////////////////////////////////////////////////////////////////
 // Pattern Traits Default Definitions

@@ -2,6 +2,7 @@
 #define DASH__INTERNAL__MATH_H_
 
 #include <map>
+#include <set>
 #include <utility>
 #include <cmath>
 
@@ -55,10 +56,21 @@ double sigma(
   return sqrt(var);
 }
 
+/**
+ * Factorize a given integer.
+ * Returns a map of prime factors to their frequency.
+ *
+ * Example:
+ *
+ * \code
+ *   long number  = 2 * 2 * 2 * 4 * 7 * 7;
+ *   auto factors = dash::math::factorize(number);
+ *   // returns map { (2,3), (4,1), (7,2) }
+ * \endcode
+ */
 template<typename Integer>
 std::map<Integer, int> factorize(Integer n)
 {
-  // Map of factors to their frequency:
   std::map<Integer, int> factors;
   while (n % 2 == 0) {
     n = n / 2;
@@ -89,6 +101,52 @@ std::map<Integer, int> factorize(Integer n)
     }
   }
   return factors;
+}
+
+/**
+ * Obtains prime factors of a given integer.
+ * Returns sorted set of primes.
+ *
+ * Example:
+ *
+ * \code
+ *   long number  = 2 * 2 * 2 * 4 * 7 * 7;
+ *   auto factors = dash::math::factors(number);
+ *   // returns set { 2, 4, 7 }
+ * \endcode
+ */
+template<typename Integer>
+std::set<Integer> factors(Integer n)
+{
+  std::set<Integer> primes;
+  // In HPC applications, we assume (multiples of) powers of 2 as the
+  // most common case:
+  while (n % 2 == 0) {
+    n = n / 2;
+    auto it = factors.find(2);
+    if (it == factors.end()) {
+      primes.insert(2);
+    } else {
+      it->second++;
+    }
+  }
+  for (int i = 3; i <= std::sqrt(n); i = i + 2) {
+    while (n  % i == 0) {
+      auto it = primes.find(i);
+      if (it == primes.end()) {
+        primes.insert(i);
+      }
+      n = n/i;
+    }
+  }
+  if (n > 2) {
+    // Check if the remainder is prime:
+    auto it = primes.find(n);
+    if (it == primes.end()) {
+      primes.insert(n);
+    }
+  }
+  return primes;
 }
 
 /**

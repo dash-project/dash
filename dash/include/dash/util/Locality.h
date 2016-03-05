@@ -50,56 +50,23 @@ public:
 public:
 
   static inline int NumNumaNodes() {
-#ifdef DASH_ENABLE_PAPI
-    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
-    if (hwinfo == NULL) {
-      DASH_THROW(
-        dash::exception::RuntimeError,
-        "PAPI get hardware info failed");
-    }
-    return hwinfo->nnodes;
-#endif
-
-#ifdef DASH_ENABLE_NUMA
-    return numa_max_node() + 1;
-#endif
-    return 1;
+    return _num_numa;
   }
 
   static inline int NumCPUs() {
-#ifdef DASH_ENABLE_PAPI
-    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
-    if (hwinfo == NULL) {
-      DASH_THROW(
-        dash::exception::RuntimeError,
-        "PAPI get hardware info failed");
-    }
-    auto num_sockets      = hwinfo->sockets;
-    auto cores_per_socket = hwinfo->cores;
-    return num_sockets * cores_per_socket;
-#endif
-
-#ifdef DASH_ENABLE_NUMA
-    // Number of physical cores on this system, divided by 2 to
-    // eliminate hyperthreaded CPUs:
-    return numa_num_configured_cpus() / 2;
-#endif
-
-#ifdef DASH__PLATFORM__POSIX
-    int ret = sysconf(_SC_NPROCESSORS_ONLN);
-    return (ret > 0) ? ret : 1;
-#endif
-    DASH_THROW(
-      dash::exception::NotImplemented,
-      "dash::util::Locality::NumCPUs requires PAPI, libnuma, or POSIX platform");
+    return _num_cpus;
   }
 
   static inline int NumNodes() {
     return std::max<int>(dash::size() / NumCPUs(), 1);
   }
 
-  static inline int UnitNUMANode() {
-    int numa_node = 0;
+  static inline int NumSockets() {
+    return _num_sockets;
+  }
+
+  static inline int MyNUMANode() {
+    int numa_node = -1;
 #ifdef DASH_ENABLE_NUMA
     int cpu;
     cpu       = sched_getcpu();
@@ -108,7 +75,7 @@ public:
     return numa_node;
   }
 
-  static inline int UnitCPU() {
+  static inline int MyCPU() {
 #ifdef DASH__PLATFORM__LINUX
     return sched_getcpu();
 #endif
@@ -167,6 +134,10 @@ private:
   static void init();
 
 private:
+  static int                      _num_nodes;
+  static int                      _num_sockets;
+  static int                      _num_numa;
+  static int                      _num_cpus;
   static std::vector<UnitPinning> _unit_pinning;
   static std::array<size_t, 3>    _cache_sizes;
   static std::array<size_t, 3>    _cache_line_sizes;

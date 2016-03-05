@@ -1,4 +1,5 @@
 #include <dash/util/BenchmarkParams.h>
+#include <dash/util/Config.h>
 
 #include <iostream>
 #include <iomanip>
@@ -116,7 +117,7 @@ void BenchmarkParams::print_header()
   print_param("NUMA domains/node", numa_nodes);
   print_param("CPU max MHz",       cpu_max_mhz);
   print_param("CPU min MHz",       cpu_min_mhz);
-  for (int level = 0; level < cache_sizes.size(); ++level) {
+  for (size_t level = 0; level < cache_sizes.size(); ++level) {
     auto cache_kb     = cache_sizes[level] / 1024;
     auto cache_line_b = cache_line_sizes[level];
     std::ostringstream cn;
@@ -131,8 +132,8 @@ void BenchmarkParams::print_header()
 #ifdef MPI_IMPL_ID
   print_section_start("MPI Environment Flags");
   for (auto flag : _config.env_mpi_config) {
-    int val_w  = box_width - flag.first.length() - 5;
-    cout << "--   " << std::left   << flag.first
+    int val_w  = box_width - flag.first.length() - 6;
+    cout << "--   " << std::left   << flag.first << " "
                     << setw(val_w) << std::right << flag.second
          << endl;
   }

@@ -11,7 +11,7 @@ namespace dash {
  * Specifies how a Pattern distributes elements to units
  * in a specific dimension.
  *
- * Predefined configurations are 
+ * Predefined configurations are
  *   * dash::BLOCKED
  *   * dash::BLOCKCYCLIC
  *   * dash::CYCLIC

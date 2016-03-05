@@ -91,7 +91,9 @@ typedef dash::pattern_partitioning_properties<
             // Block extents are constant for every dimension.
             dash::pattern_partitioning_tag::rectangular,
             // Identical number of elements in every block.
-            dash::pattern_partitioning_tag::balanced
+            dash::pattern_partitioning_tag::balanced,
+            // Matrices must be partitioned in more than one dimension.
+            dash::pattern_partitioning_tag::ndimensional
         > summa_pattern_partitioning_constraints;
 /// Constraints on pattern mapping properties of matrix operands passed to
 /// \c dash::summa.

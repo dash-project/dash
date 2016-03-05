@@ -1,6 +1,7 @@
 #include <dash/Init.h>
 #include <dash/Team.h>
 #include <dash/util/Locality.h>
+#include <dash/util/Config.h>
 
 namespace dash {
   static int  _myid        = -1;
@@ -13,6 +14,7 @@ void dash::init(int *argc, char ***argv)
   DASH_LOG_DEBUG("dash::init()");
   dart_init(argc,argv);
   dash::_initialized = true;
+  dash::util::Config::init();
   dash::util::Locality::init();
   DASH_LOG_DEBUG("dash::init >");
 }
