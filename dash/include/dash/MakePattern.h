@@ -6,6 +6,7 @@
 #include <dash/TilePattern.h>
 #include <dash/ShiftTilePattern.h>
 #include <dash/util/Locality.h>
+#include <dash/util/Config.h>
 
 namespace dash {
 
@@ -24,81 +25,103 @@ make_team_spec(
 
   DASH_LOG_TRACE("dash::make_team_spec()");
   // Deduce number of dimensions from size spec:
-  const dim_t ndim   = SizeSpecType::ndim();
+  const dim_t ndim  = SizeSpecType::ndim();
   // Number of processing nodes:
-  auto  n_nodes      = dash::util::Locality::NumNodes();
+  auto n_nodes      = dash::util::Locality::NumNodes();
   // Number of NUMA domains:
-  auto  n_numa_dom   = dash::util::Locality::NumNumaNodes();
+  auto n_numa_dom   = dash::util::Locality::NumNumaNodes();
   // Default team spec:
   dash::TeamSpec<ndim> teamspec;
   // Check for trivial case first:
   if (ndim == 1) {
     return teamspec;
   }
-  auto  n_team_units = teamspec.size();
-  auto  n_elem_total = sizespec.size();
-
-  // Multi-dimensional case:
-  if (n_nodes == 1 ||
-      PartitioningTags::minimal ||
+  auto n_team_units = teamspec.size();
+  auto n_elem_total = sizespec.size();
+  // Configure preferable blocking factors:
+  std::set<extent_t> blocking;
+  if (n_nodes == 1) {
+    // blocking by NUMA domains:
+    blocking.insert(n_numa_dom);
+  } else {
+    // blocking by processing nodes:
+    blocking.insert(dash::util::Locality::NumCPUs());
+  }
+  std::array<extent_t, ndim> team_extents = teamspec.extents();
+  DASH_LOG_TRACE("dash::make_team_spec",
+                 "initial team extents:", team_extents);
+  // Next simple case: Minimal partitioning, i.e. optimizing for minimum
+  // number of blocks:
+  if (PartitioningTags::minimal ||
       (!MappingTags::diagonal && !MappingTags::neighbor &&
        !MappingTags::multiple)) {
     // Optimize for surface-to-volume ratio:
-    teamspec.balance_extents();
+    team_extents = dash::math::balance_extents(team_extents, blocking);
+    if (team_extents[0] == n_team_units) {
+      // Could not balance with preferred blocking factors.
+    }
   }
-  // Create copy of team extents for rebalancing:
-  std::array<extent_t, ndim> team_extents = teamspec.extents();
-
-  auto team_factors = dash::math::factorize(n_team_units);
-  auto size_factors = dash::math::factorize(n_elem_total);
-
   DASH_LOG_TRACE("dash::make_team_spec",
-                 "team size:",    n_team_units,
-                 "factorized:",   team_factors,
-                 "data extents:", n_elem_total,
-                 "factorized:",   size_factors);
+                 "team extents after minimal partitioning:", team_extents);
+  // For minimal partitioning and multiple mapping, the first dimension is
+  // partitioned using the smallest possible blocking factor.
 
-  // Maximum balanced block size for this sizespec and team:
-  size_t max_balanced_block_size = sizespec.size();
-  if (PartitioningTags::ndimensional) {
-    // Partitioning in at least two dimensions required.
-    // This divides the maximum balanced block size by the smallest prime
-    // factor of the team size:
-    max_balanced_block_size /= team_factors.begin()->first;
-  }
-
-  if (!MappingTags::multiple) {
-    return teamspec;
-  }
-  // Do not rebalance team on single node if its arrangement is square:
-  if (n_nodes == 1 && ndim > 1 && team_extents[0] == team_extents[1]) {
-    return teamspec;
-  }
-
-  // Rebalance team extents by topology measures by applying:
-  //    teamsize[0] /= split_factor
-  //    teamsize[1] *= split_factor
-  auto split_factor = n_nodes > 1 ? n_nodes : 2;
-  if (team_extents[0] % split_factor != 0) {
-    split_factor = 1;
-  }
-  for (auto d = 0; d < ndim; ++d) {
-    auto extent_d  = sizespec.extent(d);
-    auto nunits_d  = teamspec.extent(d);
-    DASH_LOG_TRACE("dash::make_team_spec",
-                   "d:",          d,
-                   "extent[d]:",  extent_d,
-                   "nunits[d]:",  nunits_d);
-    auto nblocks_d = nunits_d;
-    if (MappingTags::multiple) {
-      if (d == 0) {
-        nunits_d /= split_factor;
-      } else if (d == 1) {
-        nunits_d *= split_factor;
+  // The smallest factor s.t. team- and data extents are divisible by it:
+  extent_t small_factor_found = 0;
+  auto team_factors_d0 = dash::math::factorize(team_extents[0]);
+  auto team_factors_d1 = dash::math::factorize(team_extents[1]);
+  if (PartitioningTags::minimal && MappingTags::multiple) {
+    for (auto small_factor_kv : team_factors_d0) {
+      auto small_factor = small_factor_kv.first;
+      // Find smallest factor s.t. team- and data extents are divisible by it:
+      if (team_extents[0] % small_factor &&
+          sizespec.extent(0) % small_factor == 0) {
+        team_extents[0] /= small_factor;
+        team_extents[1] *= small_factor;
+        small_factor_found = small_factor;
+        break;
       }
     }
-    team_extents[d] = nunits_d;
+    // No matching factor found in first dimension, try in second dimension:
+    if (small_factor_found == 0) {
+      for (auto small_factor_kv : team_factors_d1) {
+        auto small_factor = small_factor_kv.first;
+        if (team_extents[1] % small_factor &&
+            sizespec.extent(1) % small_factor == 0) {
+          team_extents[1] /= small_factor;
+          team_extents[0] *= small_factor;
+          small_factor_found = small_factor;
+          break;
+        }
+      }
+    }
   }
+  DASH_LOG_TRACE("dash::make_team_spec",
+                 "team extents after multiple mapping:", team_extents);
+
+  // Check if the resulting block sizes are within prefered bounds:
+  extent_t bulk_min = dash::util::Config::get<extent_t>(
+                        "DASH_BULK_MIN_SIZE_BYTES");
+  if (bulk_min > 0) {
+    auto team_factors = dash::math::factorize(n_team_units);
+    extent_t block_size = 1;
+    for (auto d = 0; d < ndim; ++d) {
+      auto block_extent_d = sizespec.extent(d) / team_extents[d];
+      block_size *= block_extent_d;
+    }
+    // TODO: Need sizeof(T) instead of 8:
+    if (block_size * 8 < bulk_min && small_factor_found > 0) {
+      // Unbalance extents to increase block size:
+      auto unbalance_factor = team_factors_d1.begin()->first;
+      team_extents[0] *= unbalance_factor;
+      team_extents[1] /= unbalance_factor;
+    }
+  }
+
+  DASH_LOG_TRACE("dash::make_team_spec",
+                 "team extents after adjusting for bulk min size:",
+                 team_extents);
+
   // Make distribution spec from template- and run time parameters:
   teamspec.resize(team_extents);
   return teamspec;

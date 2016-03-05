@@ -100,10 +100,14 @@ std::ostream & operator<<(
   std::ostream & o,
   const std::map<T1,T2> & map) {
   std::ostringstream ss;
+  ss << "{ ";
+  int i = 0;
   for (auto kv : map) {
-    ss << "[" << kv->first  << "]"
-       << ":" << kv->second << ",";
+    ss << "(" << kv.first
+       << ":" << kv.second << ")"
+       << (i++ < map.size() ? "," : "");
   }
+  ss << " }";
   operator<<(o, ss.str());
   return o;
 }
@@ -178,7 +182,7 @@ static void LogVarWrapper(
   const T & var_value,
   const Args & ... args) {
   std::ostringstream msg;
-  msg << "| = " << var_name << "(" << var_value << ")";
+  msg << "| |- " << var_name << ": " << var_value;
   // Extract file name from path
   const char * filebase = strrchr(filepath, '/');
   const char * filename = (filebase != 0) ? filebase + 1 : filepath;

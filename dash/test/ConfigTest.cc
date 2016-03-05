@@ -5,7 +5,7 @@
 #include "TestBase.h"
 #include "ConfigTest.h"
 
-TEST_F(ConfigTest, Deallocate) {
+TEST_F(ConfigTest, BasicSetGet) {
   DASH_TEST_LOCAL_ONLY();
 
   using dash::util::Config;

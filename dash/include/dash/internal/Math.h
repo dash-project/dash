@@ -1,8 +1,11 @@
 #ifndef DASH__INTERNAL__MATH_H_
 #define DASH__INTERNAL__MATH_H_
 
+#include <dash/internal/Logging.h>
+
 #include <map>
 #include <set>
+#include <array>
 #include <utility>
 #include <cmath>
 
@@ -81,7 +84,8 @@ std::map<Integer, int> factorize(Integer n)
       it->second++;
     }
   }
-  for (int i = 3; i <= std::sqrt(n); i = i + 2) {
+  Integer sqrt_n = std::ceil(std::sqrt(n));
+  for (int i = 3; i <= sqrt_n; i = i + 2) {
     while (n  % i == 0) {
       auto it = factors.find(i);
       if (it == factors.end()) {
@@ -130,7 +134,8 @@ std::set<Integer> factors(Integer n)
       it->second++;
     }
   }
-  for (int i = 3; i <= std::sqrt(n); i = i + 2) {
+  Integer sqrt_n = std::ceil(std::sqrt(n));
+  for (int i = 3; i <= sqrt_n; i = i + 2) {
     while (n  % i == 0) {
       auto it = primes.find(i);
       if (it == primes.end()) {
@@ -147,6 +152,81 @@ std::set<Integer> factors(Integer n)
     }
   }
   return primes;
+}
+
+template<typename Integer, size_t NumDim>
+typename std::enable_if<(NumDim > 1), std::array<Integer, NumDim> >::type
+balance_extents(
+  std::array<Integer, NumDim> extents)
+{
+  Integer size = 1;
+  for (auto d = 0; d < NumDim; ++d) {
+    size *= extents[d];
+  }
+  extents[0]      = size;
+  extents[1]      = 1;
+  auto factors    = dash::math::factorize(size);
+  Integer surface = 0;
+
+  DASH_LOG_TRACE_VAR("dash::math::balance_extents", factors);
+  for (auto it : factors) {
+    DASH_LOG_TRACE("dash::math::balance_extents",
+                   "factor:", it.first, "x", it.second);
+    for (auto i = 1; i < it.second + 1; ++i) {
+      Integer extent_x    = it.first * i;
+      Integer extent_y    = size / extent_x;
+      Integer surface_new = (2 * extent_x) + (2 * extent_y);
+      DASH_LOG_TRACE("dash::math::balance_extents", "testing extents",
+                     extent_x, "x", extent_y, " -> surface:", surface_new);
+      if (surface == 0 || surface_new < surface) {
+        surface    = surface_new;
+        extents[0] = extent_x;
+        extents[1] = extent_y;
+      }
+    }
+  }
+  return extents;
+}
+
+template<typename Integer, size_t NumDim>
+typename std::enable_if<(NumDim > 1), std::array<Integer, NumDim> >::type
+balance_extents(
+  std::array<Integer, NumDim> extents,
+  // List of preferred blocking factors.
+  std::set<Integer>           blocking)
+{
+  Integer size = 1;
+  for (auto d = 0; d < NumDim; ++d) {
+    size *= extents[d];
+  }
+  extents[0]        = size;
+  extents[1]        = 1;
+  auto size_factors = dash::math::factorize(size);
+  Integer surface   = 0;
+
+  DASH_LOG_TRACE_VAR("dash::math::balance_extents", size_factors);
+
+  // Test if size is divisible by blocking factors:
+  for (auto block_size : blocking) {
+    if (size % block_size == 0) {
+      auto n_blocks = size / block_size;
+      // Size can be partitioned into n_blocks of size block_factor:
+      DASH_LOG_TRACE("dash::math::balance_extents",
+                     "blocking factor matched:", block_size,
+                     "(blocks:", n_blocks, ")");
+      Integer extent_x    = block_size;
+      Integer extent_y    = size / extent_x;
+      Integer surface_new = (2 * extent_x) + (2 * extent_y);
+      DASH_LOG_TRACE("dash::math::balance_extents", "testing extents",
+                     extent_x, "x", extent_y, " -> surface:", surface_new);
+      if (surface == 0 || surface_new < surface) {
+        surface    = surface_new;
+        extents[0] = extent_x;
+        extents[1] = extent_y;
+      }
+    }
+  }
+  return extents;
 }
 
 /**
