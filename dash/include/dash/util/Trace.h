@@ -91,11 +91,12 @@ public:
       std::string      context = context_traces.first;
       trace_events_t & events  = context_traces.second;
       if (unit == 0) {
-        os << "-- [TRACE:" << context << "] "
-           << std::setw(6)  << "unit"     << ","
-           << std::setw(22) << "start"    << ","
-           << std::setw(22) << "end"      << ","
-           << std::setw(12) << "duration" << ","
+        os << "-- [TRACE] "
+           << std::setw(10) << "context"  << ","
+           << std::setw(5)  << "unit"     << ","
+           << std::setw(19) << "start"    << ","
+           << std::setw(19) << "end"      << ","
+     //    << std::setw(12) << "duration" << ","
            << std::setw(12) << "state"
            << std::endl;
       }
@@ -104,13 +105,12 @@ public:
         auto   start    = state_timespan.start;
         auto   end      = state_timespan.end;
         auto   state    = state_timespan.state;
-        double duration = timer_t::FromInterval(start, end);
-        os << "-- [TRACE:" << context << "] "
-           << std::setw(6)  << std::fixed << unit     << ","
+     // double duration = timer_t::FromInterval(start, end);
+        os << "-- [TRACE] "
+           << std::setw(10) << std::fixed << context  << ","
+           << std::setw(5)  << std::fixed << unit     << ","
            << std::setw(22) << std::fixed << start    << ","
            << std::setw(22) << std::fixed << end      << ","
-           << std::setw(12) << std::fixed << std::setprecision(4)
-                                          << duration << ","
            << std::setw(12) << std::fixed << state
            << std::endl;
       }
@@ -153,6 +153,7 @@ private:
 
 private:
   std::string _context;
+  timestamp_t _ts_start;
 
 public:
   Trace()
@@ -160,6 +161,8 @@ public:
   {
     TraceStore::add_context(_context);
     timer_t::Calibrate(0);
+    dash::barrier();
+    _ts_start = timer_t::Now();
   }
 
   Trace(const std::string & context)
@@ -167,6 +170,8 @@ public:
   {
     TraceStore::add_context(_context);
     timer_t::Calibrate(0);
+    dash::barrier();
+    _ts_start = timer_t::Now();
   }
 
   inline void enter_state(const state_t & state)
@@ -175,7 +180,7 @@ public:
       return;
     }
     state_timespan_t state_timespan;
-    timestamp_t ts_event = timer_t::Now();
+    timestamp_t ts_event = timer_t::Now() - _ts_start;
     state_timespan.start = ts_event;
     state_timespan.end   = ts_event;
     state_timespan.state = state;
@@ -187,7 +192,7 @@ public:
     if (!TraceStore::enabled()) {
       return;
     }
-    timestamp_t ts_event = timer_t::Now();
+    timestamp_t ts_event = timer_t::Now() - _ts_start;
     TraceStore::context_trace(_context).back().end = ts_event;
   }
 
