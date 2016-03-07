@@ -116,7 +116,7 @@ public:
   }
 
   /**
-   * Convert interval of two timestamp values to mircoseconds.
+   * Convert interval of two timestamp values to microseconds.
    */
   inline static double FromInterval(
     const timestamp_t & start,

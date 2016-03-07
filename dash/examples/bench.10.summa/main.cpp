@@ -1,10 +1,6 @@
-/*
- * Sequential GUPS benchmark for various pattern types.
- *
- */
-/* @DASH_HEADER@ */
-
 #define DASH__MKL_MULTITHREADING
+
+// Undefine for single-precision benchmark:
 #define DASH__BENCH_10_SUMMA__DOUBLE_PREC
 
 #ifdef DASH_ENABLE_IPM
@@ -16,7 +12,6 @@
 #include <plasma.h>
 #endif
 
-#include "../bench.h"
 #include <libdash.h>
 #include <dash/internal/Math.h>
 
@@ -26,12 +21,11 @@
 #include <deque>
 #include <utility>
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <unistd.h>
 #include <type_traits>
 #include <cmath>
-
-#include <fstream>
 
 #ifdef DASH_ENABLE_MKL
 #include <mkl.h>
@@ -208,7 +202,7 @@ int main(int argc, char* argv[])
   // Run tests, try to balance overall number of gflop in test runs:
   extent_t extent_base = 1;
   for (extent_t exp = 0; exp < exp_max; ++exp) {
-    extent_t extent_run  = extent_base * params.size_base;
+    extent_t extent_run = extent_base * params.size_base;
     if (repeats == 0) {
       repeats = 1;
     }
@@ -255,7 +249,7 @@ void perform_test(
                        size_spec,
                        team_spec);
 
-  if(params.plot_pattern){
+  if (params.plot_pattern) {
     auto units_x = team_spec.num_units(0);
     auto units_y = team_spec.num_units(1);
     if (units_x <= 5 && units_y <= 5 && n <= 64){
@@ -474,8 +468,20 @@ std::pair<double, double> test_dash(
   MPI_Pcontrol(0, "clear");
 #endif
   auto ts_multiply_start = Timer::Now();
+  dash::util::TraceStore::off();
   for (unsigned i = 0; i < repeat; ++i) {
+    if (i == 0) {
+      dash::util::TraceStore::on();
+      dash::util::TraceStore::clear();
+    }
+
     dash::summa(matrix_a, matrix_b, matrix_c);
+
+    if (i == 0) {
+      dash::util::TraceStore::off();
+      dash::util::TraceStore::write(std::cout);
+      dash::util::TraceStore::clear();
+    }
   }
   time.second = Timer::ElapsedSince(ts_multiply_start);
 #ifdef DASH_ENABLE_IPM

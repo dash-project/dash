@@ -6,6 +6,8 @@
 #include <dash/Pattern.h>
 #include <dash/Future.h>
 #include <dash/algorithm/Copy.h>
+#include <dash/util/Trace.h>
+#include <dash/MakePattern.h>
 
 #include <utility>
 
@@ -351,6 +353,10 @@ void summa(
                  "local:", block_a_lptr != nullptr,
                  "unit:",  block_a.begin().lpos().unit,
                  "view:",  block_a.begin().viewspec());
+
+  dash::util::Trace trace("SUMMA");
+
+  trace.enter_state("prefetch");
   if (block_a_lptr == nullptr) {
 #ifdef DASH_ALGORITHM_SUMMA_ASYNC_INIT_PREFETCH
     get_a = dash::copy_async(block_a.begin(), block_a.end(),
@@ -365,6 +371,7 @@ void summa(
     local_block_a_comp_bac = local_block_a_comp;
     local_block_a_comp     = block_a_lptr;
   }
+
   DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.b",
                  "block:", block_b_get_coords,
                  "local:", block_b_lptr != nullptr,
@@ -398,6 +405,8 @@ void summa(
     get_b.wait();
   }
 #endif
+  trace.exit_state("prefetch");
+
   DASH_LOG_TRACE("dash::summa", "summa.block",
                  "prefetching of blocks completed");
   // -------------------------------------------------------------------------
@@ -408,6 +417,7 @@ void summa(
   DASH_LOG_TRACE("dash::summa", "summa.block.C",
                  "C.num.local.blocks:",  num_local_blocks_c,
                  "C.num.column.blocks:", num_blocks_m);
+
   for (extent_t lb = 0; lb < num_local_blocks_c; ++lb) {
     // Block coordinates for current block multiplication result:
     l_block_c_comp      = C.local.block(lb);
@@ -430,6 +440,7 @@ void summa(
     for (extent_t block_k = 0; block_k < num_blocks_m; ++block_k) {
       DASH_LOG_TRACE("dash::summa", "summa.block.k", block_k,
                      "active local block in C:", lb);
+
       // ---------------------------------------------------------------------
       // Prefetch local copy of blocks from A and B for multiplication in
       // next iteration.
@@ -497,6 +508,8 @@ void summa(
                      "multiplying local block matrices",
                      "C.local.block.comp:", lb,
                      "view:", l_block_c_comp.begin().viewspec());
+
+      trace.enter_state("multiply");
       dash::internal::multiply_local<value_type>(
           local_block_a_comp,
           local_block_b_comp,
@@ -505,6 +518,8 @@ void summa(
           block_size_n,
           block_size_p,
           memory_order);
+      trace.exit_state("multiply");
+
       if (local_block_a_comp_bac != nullptr) {
         local_block_a_comp     = local_block_a_comp_bac;
         local_block_a_comp_bac = nullptr;
@@ -517,6 +532,7 @@ void summa(
         // -------------------------------------------------------------------
         // Wait for local copies:
         // -------------------------------------------------------------------
+        trace.enter_state("prefetch");
         if (block_a_lptr == nullptr) {
           DASH_LOG_TRACE("dash::summa", "summa.prefetch.block.a.wait",
                          "waiting for prefetching of block A from unit",
@@ -531,6 +547,8 @@ void summa(
         }
         DASH_LOG_TRACE("dash::summa", "summa.prefetch.completed",
                        "local copies of next blocks received");
+        trace.exit_state("prefetch");
+
         // -----------------------------------------------------------------
         // Swap communication and computation buffers:
         // -----------------------------------------------------------------
@@ -562,7 +580,9 @@ void summa(
 #endif
 
   DASH_LOG_TRACE("dash::summa", "waiting for other units");
+  trace.enter_state("barrier");
   C.barrier();
+  trace.exit_state("barrier");
 
   DASH_LOG_TRACE("dash::summa >", "finished");
 }

@@ -36,6 +36,7 @@
 #include <dash/util/Locality.h>
 #include <dash/util/BenchmarkParams.h>
 #include <dash/util/Config.h>
+#include <dash/util/Trace.h>
 
 #include <dash/tools/PatternVisualizer.h>
 

@@ -62,8 +62,6 @@ make_team_spec(
     // blocking by NUMA domains:
     blocking.insert(n_sockets);
     team_extents = dash::math::balance_extents(team_extents, blocking);
-//  team_extents[0]  = n_sockets;
-//  team_extents[1] /= n_sockets;
   } else {
     // blocking by processing nodes:
     blocking.insert(n_cpus);

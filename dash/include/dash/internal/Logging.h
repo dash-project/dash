@@ -61,15 +61,21 @@ namespace dash {
 
 #  else  // DASH_ENABLE_TRACE_LOGGING
 #      define DASH_LOG_TRACE(...) do {  } while(0)
-#      define DASH_LOG_TRACE_VAR(...) do {  } while(0)
+#      define DASH_LOG_TRACE_VAR(context, var) do { \
+                dash__unused(var); \
+              } while(0)
 
 #  endif // DASH_ENABLE_TRACE_LOGGING
 #else  // DASH_ENABLE_LOGGING
 
 #  define DASH_LOG_TRACE(...) do {  } while(0)
-#  define DASH_LOG_TRACE_VAR(...) do {  } while(0)
+#  define DASH_LOG_TRACE_VAR(context, var) do { \
+            dash__unused(var); \
+          } while(0)
 #  define DASH_LOG_DEBUG(...) do {  } while(0)
-#  define DASH_LOG_DEBUG_VAR(...) do {  } while(0)
+#  define DASH_LOG_DEBUG_VAR(context, var) do { \
+            dash__unused(var); \
+          } while(0)
 
 #endif // DASH_ENABLE_LOGGING
 

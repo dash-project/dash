@@ -4,7 +4,7 @@
 #include <dash/dart/if/dart.h>
 
 #include <sstream>
-#include <string>
+#include <array>
 #include <iomanip>
 #include <string>
 
