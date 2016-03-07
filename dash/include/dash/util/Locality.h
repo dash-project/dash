@@ -50,7 +50,7 @@ public:
 public:
 
   static inline int NumNodes() {
-    return std::max<int>(dash::size() / NumCPUs(), 1);
+    return _num_nodes;
   }
 
   static inline int NumSockets() {

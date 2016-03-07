@@ -77,12 +77,12 @@ TEST_F(AutobalanceTest, BalanceExtents)
 #endif
 }
 
-TEST_F(AutobalanceTest, BalanceTeamSpec)
+TEST_F(AutobalanceTest, BalanceTeamSpecNUMA)
 {
   typedef std::array<size_t, 2> extents_t;
 
   size_t size_base    = 1680;
-  int    size_exp_max = 1;
+  int    size_exp_max = 7;
 
   dash::util::Locality::SetNumNodes(1);
   dash::util::Locality::SetNumSockets(2);
@@ -121,10 +121,67 @@ TEST_F(AutobalanceTest, BalanceTeamSpec)
                      ":", bal_extents);
 
       EXPECT_EQ(num_units, teamspec.size());
-      EXPECT_TRUE((exp_extents[0] == bal_extents[0] &&
-                   exp_extents[1] == bal_extents[1]) ||
-                  (exp_extents[0] == bal_extents[1] &&
-                   exp_extents[1] == bal_extents[0]));
+      if ((exp_extents[0] != bal_extents[0] ||
+           exp_extents[1] != bal_extents[1]) &&
+          (exp_extents[0] != bal_extents[1] ||
+           exp_extents[1] != bal_extents[0])) {
+        EXPECT_EQ(exp_extents, bal_extents);
+      }
+    }
+  }
+}
+
+TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
+{
+  typedef std::array<size_t, 2> extents_t;
+
+  dash::util::Locality::SetNumSockets(2);
+  dash::util::Locality::SetNumNumaNodes(4);
+  dash::util::Locality::SetNumCPUs(28);
+
+  std::vector<extents_t> exp_team_extents;
+  exp_team_extents.push_back({{ 28,  4 }});
+  exp_team_extents.push_back({{ 28,  8 }});
+  exp_team_extents.push_back({{ 28, 16 }});
+#if 1
+  exp_team_extents.push_back({{ 28, 32 }});
+#else
+  // Actual optimum for SUMMA on SuperMUC:
+  exp_team_extents.push_back({{ 16, 56 }});
+#endif
+  exp_team_extents.push_back({{ 32, 56 }});
+  exp_team_extents.push_back({{ 64, 56 }});
+
+  // Test for all combinations (team size x data extents):
+  extents_t exp_extents;
+  for (size_t n = 0; n < exp_team_extents.size(); ++n) {
+    exp_extents    = exp_team_extents[n];
+    int  num_units = exp_extents[0] * exp_extents[1];
+    auto n_nodes   = num_units / dash::util::Locality::NumCPUs();
+    dash::util::Locality::SetNumNodes(n_nodes);
+
+    auto size_d    = 57344;
+    dash::SizeSpec<2> sizespec(size_d, size_d);
+    DASH_LOG_TRACE("AutobalanceTest::BalanceTeamSpec",
+                   "testing balancing of", num_units, "units",
+                   "for size ", size_d, "x", size_d);
+    auto teamspec  = dash::make_team_spec<
+                       dash::summa_pattern_partitioning_constraints,
+                       dash::summa_pattern_mapping_constraints,
+                       dash::summa_pattern_layout_constraints >(
+                         sizespec, num_units);
+    auto bal_extents = teamspec.extents();
+    DASH_LOG_TRACE("AutobalanceTest::BalanceTeamSpec",
+                   "balanced", num_units, "units",
+                   "for size ", size_d, "x", size_d,
+                   ":", bal_extents);
+
+    EXPECT_EQ(num_units, teamspec.size());
+    if ((exp_extents[0] != bal_extents[0] ||
+         exp_extents[1] != bal_extents[1]) &&
+        (exp_extents[0] != bal_extents[1] ||
+         exp_extents[1] != bal_extents[0])) {
+      EXPECT_EQ(exp_extents, bal_extents);
     }
   }
 }

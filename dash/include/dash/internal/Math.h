@@ -36,6 +36,9 @@ constexpr T max(T a, T b)
   return (a > b) ? a : b;
 }
 
+/**
+ * Calculates the standard deviation of given values.
+ */
 template<
   typename Iter>
 double sigma(
@@ -60,7 +63,7 @@ double sigma(
 }
 
 /**
- * Factorize a given integer.
+ * Factorizes a given integer.
  * Returns a map of prime factors to their frequency.
  *
  * Example:
@@ -210,7 +213,6 @@ balance_extents(
   for (auto d = 0; d < extents.size(); ++d) {
     size *= extents[d];
   }
-  DASH_LOG_TRACE_VAR("dash::math::balance_extents", size);
   DASH_ASSERT_GT(size, 0, "dash::math::balance_extents: extent must be > 0");
   extents[0]        = size;
   extents[1]        = 1;
@@ -222,13 +224,14 @@ balance_extents(
   // Test if size is divisible by blocking factors:
   for (auto block_size : blocking) {
     auto n_combinations = size_factors[block_size];
+    if (n_combinations == 0 && size % block_size == 0) {
+      n_combinations = size / block_size;
+    }
     DASH_LOG_TRACE("dash::math::balance_extents",
                    "trying block factor", block_size,
                    "in", n_combinations, "combinations");
-    for (int i = 1; i < n_combinations + 1; ++i) {
-      // Size can be partitioned into n_blocks of size block_factor:
-      DASH_LOG_TRACE("dash::math::balance_extents",
-                     "blocking factor matched:", block_size);
+    for (int i = 1; i < (n_combinations / 2) + 1; ++i) {
+      // Size can be partitioned into n_blocks of size block_size:
       Integer extent_x    = i * block_size;
       Integer extent_y    = size / extent_x;
       Integer surface_new = (2 * extent_x) + (2 * extent_y);

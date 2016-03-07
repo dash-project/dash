@@ -24,7 +24,8 @@ make_team_spec(
 {
   typedef typename SizeSpecType::size_type extent_t;
 
-  DASH_LOG_TRACE("dash::make_team_spec()");
+  DASH_LOG_TRACE_VAR("dash::make_team_spec()", sizespec.extents());
+  DASH_LOG_TRACE_VAR("dash::make_team_spec", n_team_units);
   // Deduce number of dimensions from size spec:
   const dim_t ndim  = SizeSpecType::ndim();
   // Number of processing nodes:
@@ -48,7 +49,7 @@ make_team_spec(
   dash::TeamSpec<ndim> teamspec(team_extents);
 
   DASH_LOG_TRACE("dash::make_team_spec",
-                 "initial team extents:", team_extents);
+                 "step 1 - initial team extents:", team_extents);
 
   // Check for trivial case first:
   if (ndim == 1) {
@@ -59,17 +60,18 @@ make_team_spec(
   std::set<extent_t> blocking;
   if (n_nodes == 1) {
     // blocking by NUMA domains:
-    team_extents[0]  = n_sockets;
-    team_extents[1] /= n_sockets;
+    blocking.insert(n_sockets);
+    team_extents = dash::math::balance_extents(team_extents, blocking);
+//  team_extents[0]  = n_sockets;
+//  team_extents[1] /= n_sockets;
   } else {
     // blocking by processing nodes:
     blocking.insert(n_cpus);
   }
   DASH_LOG_TRACE("dash::make_team_spec",
-                 "team extents after balancing on NUMA domains:",
+                 "step 2 - team extents after balancing on NUMA domains:",
                  team_extents);
-  DASH_LOG_TRACE("dash::make_team_spec",
-                 "initial blocking:", blocking);
+  DASH_LOG_TRACE_VAR("dash::make_team_spec", blocking);
   // Next simple case: Minimal partitioning, i.e. optimizing for minimum
   // number of blocks.
   // In this case, blocking will be minimal with respect to prefered blocking
@@ -80,16 +82,17 @@ make_team_spec(
         !MappingTags::multiple))) {
     // Optimize for surface-to-volume ratio:
     DASH_LOG_TRACE("dash::make_team_spec",
-                   "optimizing for minimal number of blocks");
+                   "- optimizing for minimal number of blocks");
     team_extents = dash::math::balance_extents(team_extents, blocking);
     if (team_extents[0] == n_team_units) {
       // Could not balance with preferred blocking factors.
       DASH_LOG_TRACE("dash::make_team_spec",
-                     "minimize number of blocks for blocking", blocking);
+                     "- minimize number of blocks for blocking", blocking);
     }
   }
   DASH_LOG_TRACE("dash::make_team_spec",
-                 "team extents after minimal partitioning:", team_extents);
+                 "step 3 - team extents after minimal partitioning:",
+                 team_extents);
   // For minimal partitioning and multiple mapping, the first dimension is
   // partitioned using the smallest possible blocking factor.
 
@@ -98,9 +101,9 @@ make_team_spec(
   auto team_factors_d0 = dash::math::factorize(team_extents[0]);
   auto team_factors_d1 = dash::math::factorize(team_extents[1]);
   DASH_LOG_TRACE("dash::make_team_spec",
-                 "team extent factors in dim 0:", team_factors_d0);
+                 "- team extent factors in dim 0:", team_factors_d0);
   DASH_LOG_TRACE("dash::make_team_spec",
-                 "team extent factors in dim 1:", team_factors_d1);
+                 "- team extent factors in dim 1:", team_factors_d1);
   if (PartitioningTags::minimal && MappingTags::multiple) {
     DASH_LOG_TRACE("dash::make_team_spec",
                    "optimizing for multiple blocks per unit");
@@ -130,14 +133,17 @@ make_team_spec(
     }
   }
   DASH_LOG_TRACE("dash::make_team_spec",
-                 "team extents after multiple mapping:", team_extents);
+                 "- smallest blocking factor:", small_factor_found);
+  DASH_LOG_TRACE("dash::make_team_spec",
+                 "step 4 - team extents after multiple mapping:",
+                 team_extents);
 
   // Check if the resulting block sizes are within prefered bounds:
   extent_t bulk_min = dash::util::Config::get<extent_t>(
                         "DASH_BULK_MIN_SIZE_BYTES");
   if (bulk_min > 0) {
     DASH_LOG_TRACE("dash::make_team_spec",
-                   "optimizing for bulk min size", bulk_min);
+                   "- optimizing for bulk min size", bulk_min);
     auto team_factors = dash::math::factorize(n_team_units);
     extent_t block_size = 1;
     for (auto d = 0; d < ndim; ++d) {
@@ -149,14 +155,14 @@ make_team_spec(
       // Unbalance extents to increase block size:
       auto unbalance_factor = team_factors_d1.begin()->first;
       DASH_LOG_TRACE("dash::make_team_spec",
-                     "unbalancing with factor", unbalance_factor);
+                     "- unbalancing with factor", unbalance_factor);
       team_extents[0] *= unbalance_factor;
       team_extents[1] /= unbalance_factor;
     }
   }
 
-  DASH_LOG_TRACE("dash::make_team_spec",
-                 "team extents after adjusting for bulk min size:",
+  DASH_LOG_TRACE("dash::make_team_spec >",
+                 "step 5 - team extents after adjusting for bulk min size:",
                  team_extents);
 
   // Make distribution spec from template- and run time parameters:
