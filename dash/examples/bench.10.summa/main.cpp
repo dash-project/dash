@@ -353,6 +353,9 @@ void perform_test(
          << std::flush;
   }
 
+  dash::util::TraceStore::off();
+  dash::util::TraceStore::clear();
+
   std::pair<double, double> t_mmult;
   if (variant == "mkl" || variant == "blas") {
     t_mmult = test_blas(n, num_repeats, params);
@@ -377,6 +380,9 @@ void perform_test(
          << setw(11) << std::fixed << std::setprecision(4) << s_mult
          << endl;
   }
+
+  dash::util::TraceStore::write(std::cout);
+  dash::util::TraceStore::clear();
 }
 
 template<typename MatrixType>
@@ -472,15 +478,12 @@ std::pair<double, double> test_dash(
   for (unsigned i = 0; i < repeat; ++i) {
     if (i == 0) {
       dash::util::TraceStore::on();
-      dash::util::TraceStore::clear();
     }
 
     dash::summa(matrix_a, matrix_b, matrix_c);
 
     if (i == 0) {
       dash::util::TraceStore::off();
-      dash::util::TraceStore::write(std::cout);
-      dash::util::TraceStore::clear();
     }
   }
   time.second = Timer::ElapsedSince(ts_multiply_start);
