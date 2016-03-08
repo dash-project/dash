@@ -14,7 +14,7 @@ message(STATUS "Searching for NUMA library")
 
 find_library(
   NUMA_LIBRARIES
-  NAMES numa
+  NAMES libnuma.a numa
 )
 
 find_path(

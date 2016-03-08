@@ -163,8 +163,8 @@ int Locality::_num_sockets = -1;
 int Locality::_num_numa    = -1;
 int Locality::_num_cpus    = -1;
 std::vector<Locality::UnitPinning> Locality::_unit_pinning;
-std::array<size_t, 3>              Locality::_cache_sizes;
-std::array<size_t, 3>              Locality::_cache_line_sizes;
+std::array<int, 3>                 Locality::_cache_sizes;
+std::array<int, 3>                 Locality::_cache_line_sizes;
 
 } // namespace util
 } // namespace dash

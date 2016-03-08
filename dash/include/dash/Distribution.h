@@ -31,7 +31,7 @@ public:
    */
   Distribution()
   : type(dash::internal::DIST_NONE),
-    blocksz(-1) {
+    blocksz(0) {
   }
 
   /**

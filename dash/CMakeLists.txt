@@ -137,11 +137,20 @@ if (DASH_ENV_HOST_SYSTEM_ID)
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENV_HOST_SYSTEM_ID=\"${HOST_ID}\"")
 endif()
 
+message (STATUS "DASH additional compile flags:")
+foreach (ADDITIONAL_FLAG ${ADDITIONAL_COMPILE_FLAGS})
+  message (STATUS "    " ${ADDITIONAL_FLAG})
+endforeach()
+message (STATUS "DASH additional libraries:")
+foreach (ADDITIONAL_LIB ${ADDITIONAL_LIBRARIES})
+  message (STATUS "    " ${ADDITIONAL_LIB})
+endforeach()
+
 ## Build targets
 
 # DASH library for every enabled DART variant:
 #
-foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   set (DART_LIBRARY "dart-${dart_variant}")
   set (DASH_LIBRARY "dash-${dart_variant}")
   set (VARIANT_ADDITIONAL_COMPILE_FLAGS ${ADDITIONAL_COMPILE_FLAGS})

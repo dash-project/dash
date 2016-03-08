@@ -1293,7 +1293,10 @@ dart_ret_t dart_bcast(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  return MPI_Bcast(buf, nbytes, MPI_BYTE, root, comm);
+  if (MPI_Bcast(buf, nbytes, MPI_BYTE, root, comm) != MPI_SUCCESS) {
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
 }
 
 dart_ret_t dart_scatter(
@@ -1310,7 +1313,7 @@ dart_ret_t dart_scatter(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  return MPI_Scatter(
+  if (MPI_Scatter(
            sendbuf,
            nbytes,
            MPI_BYTE,
@@ -1318,7 +1321,10 @@ dart_ret_t dart_scatter(
            nbytes,
            MPI_BYTE,
            root,
-           comm);
+           comm) != MPI_SUCCESS) {
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
 }
 
 dart_ret_t dart_gather(
@@ -1335,7 +1341,7 @@ dart_ret_t dart_gather(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  return MPI_Gather(
+  if (MPI_Gather(
            sendbuf,
            nbytes,
            MPI_BYTE,
@@ -1343,7 +1349,10 @@ dart_ret_t dart_gather(
            nbytes,
            MPI_BYTE,
            root,
-           comm);
+           comm) != MPI_SUCCESS) {
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
 }
 
 dart_ret_t dart_allgather(
@@ -1359,14 +1368,17 @@ dart_ret_t dart_allgather(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  return MPI_Allgather(
+  if (MPI_Allgather(
            sendbuf,
            nbytes,
            MPI_BYTE,
            recvbuf,
            nbytes,
            MPI_BYTE,
-           comm);
+           comm) != MPI_SUCCESS) {
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
 }
 
 dart_ret_t dart_reduce_double(
@@ -1381,12 +1393,15 @@ dart_ret_t dart_reduce_double(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  return MPI_Reduce(
+  if (MPI_Reduce(
            sendbuf,
            recvbuf,
            1,
            MPI_DOUBLE,
            MPI_MAX,
            0,
-           comm);
+           comm) != MPI_SUCCESS) {
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
 }

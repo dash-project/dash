@@ -11,6 +11,12 @@ endif(POLICY CMP0053)
 if(POLICY CMP0007)
   cmake_policy(SET CMP0007 OLD)
 endif(POLICY CMP0007)
+if(POLICY CMP0003)
+  cmake_policy(SET CMP0003 OLD)
+endif(POLICY CMP0003)
+if(POLICY CMP0060)
+  cmake_policy(SET CMP0060 OLD)
+endif(POLICY CMP0060)
 
 
 ## Build options

@@ -138,11 +138,11 @@ public:
     return _unit_pinning;
   }
 
-  static const std::array<size_t, 3> & CacheSizes() {
+  static const std::array<int, 3> & CacheSizes() {
     return _cache_sizes;
   }
 
-  static const std::array<size_t, 3> & CacheLineSizes() {
+  static const std::array<int, 3> & CacheLineSizes() {
     return _cache_line_sizes;
   }
 
@@ -155,8 +155,8 @@ private:
   static int                      _num_numa;
   static int                      _num_cpus;
   static std::vector<UnitPinning> _unit_pinning;
-  static std::array<size_t, 3>    _cache_sizes;
-  static std::array<size_t, 3>    _cache_line_sizes;
+  static std::array<int, 3>    _cache_sizes;
+  static std::array<int, 3>    _cache_line_sizes;
 };
 
 std::ostream & operator<<(

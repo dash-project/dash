@@ -31,14 +31,14 @@ message(STATUS "Searching for PAPI in path " ${PAPI_PREFIX})
 find_library(
   PAPI_LIBRARIES
   # Pick the static library first for easier run-time linking.
-  NAMES papi
-  HINTS ${PAPI_PREFIX}/lib ${HILTIDEPS}/lib
+  NAMES libpapi.a papi
+  HINTS ${PAPI_PREFIX}/lib
 )
 
 find_path(
   PAPI_INCLUDE_DIRS
   NAMES papi.h
-  HINTS ${PAPI_PREFIX}/include ${HILTIDEPS}/include
+  HINTS ${PAPI_PREFIX}/include
 )
 
 include(FindPackageHandleStandardArgs)
