@@ -33,7 +33,9 @@ public:
 public:
   static inline void on()
   {
-    _trace_enabled = true;
+    if (dash::util::Config::get<bool>("DASH_ENABLE_TRACE")) {
+      _trace_enabled = true;
+    }
   }
 
   static inline void off()
@@ -94,9 +96,8 @@ public:
         os << "-- [TRACE] "
            << std::setw(10) << "context"  << ","
            << std::setw(5)  << "unit"     << ","
-           << std::setw(19) << "start"    << ","
-           << std::setw(19) << "end"      << ","
-     //    << std::setw(12) << "duration" << ","
+           << std::setw(15) << "start"    << ","
+           << std::setw(15) << "end"      << ","
            << std::setw(12) << "state"
            << std::endl;
       }
@@ -105,17 +106,18 @@ public:
         auto   start    = state_timespan.start;
         auto   end      = state_timespan.end;
         auto   state    = state_timespan.state;
-     // double duration = timer_t::FromInterval(start, end);
         os << "-- [TRACE] "
            << std::setw(10) << std::fixed << context  << ","
            << std::setw(5)  << std::fixed << unit     << ","
-           << std::setw(22) << std::fixed << start    << ","
-           << std::setw(22) << std::fixed << end      << ","
+           << std::setw(15) << std::fixed << start    << ","
+           << std::setw(15) << std::fixed << end      << ","
            << std::setw(12) << std::fixed << state
            << std::endl;
       }
     }
     out << os.str();
+
+    dash::barrier();
   }
 
   /**

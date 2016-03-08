@@ -49,7 +49,7 @@ option(ENABLE_MKL
 option(ENABLE_SCALAPACK
        "Specify whether ScaLAPACK features are enabled" on)
 option(ENABLE_PLASMA
-       "Specify whether PLASMA features are enabled" off)
+       "Specify whether PLASMA features are enabled" on)
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MessageColor.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)

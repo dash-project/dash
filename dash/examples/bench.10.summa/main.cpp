@@ -77,6 +77,7 @@ typedef std::vector< std::pair< std::string, std::string > >
 typedef struct benchmark_params_t {
   std::string variant;
   extent_t    size_base;
+  extent_t    tilesize_base;
   extent_t    exp_max;
   unsigned    rep_base;
   unsigned    rep_max;
@@ -120,7 +121,8 @@ std::pair<double, double> test_blas(
 std::pair<double, double> test_plasma(
   extent_t                 sb,
   unsigned                 repeat,
-  const benchmark_params & params);
+  const benchmark_params & params,
+  extent_t                 tilesize);
 
 std::pair<double, double> test_pblas(
   extent_t                 sb,
@@ -160,8 +162,8 @@ int main(int argc, char* argv[])
   unsigned    repeats     = params.rep_max;
   unsigned    rep_base    = params.rep_base;
 
-#ifdef DASH_ENABLE_MKL
   if (variant == "mkl") {
+#ifdef DASH_ENABLE_MKL
     // Require single unit for MKL variant:
     auto nunits = dash::size();
     if (nunits != 1) {
@@ -171,26 +173,32 @@ int main(int argc, char* argv[])
         "team size " << nunits << " " <<
         "but must be run on a single unit.");
     }
-  }
-  // Do not set dynamic flag by default as performance is impaired if SMT
-  // is not required.
-  mkl_set_dynamic(false);
-  mkl_set_num_threads(params.threads);
-  if (params.mkl_dyn ||
-      (mkl_get_max_threads() > 0 &&
-       mkl_get_max_threads() < params.threads)) {
-    // requested number of threads exceeds number of physical cores, set
-    // MKL dynamic flag and retry:
-    mkl_set_dynamic(true);
+    // Do not set dynamic flag by default as performance is impaired if SMT
+    // is not required.
+    mkl_set_dynamic(false);
     mkl_set_num_threads(params.threads);
-  }
-  params.threads = mkl_get_max_threads();
-  params.mkl_dyn = mkl_get_dynamic();
+    if (params.mkl_dyn ||
+        (mkl_get_max_threads() > 0 &&
+         mkl_get_max_threads() < params.threads)) {
+      // requested number of threads exceeds number of physical cores, set
+      // MKL dynamic flag and retry:
+      mkl_set_dynamic(true);
+      mkl_set_num_threads(params.threads);
+    }
+    params.threads = mkl_get_max_threads();
+    params.mkl_dyn = mkl_get_dynamic();
 #else
-  if (variant == "mkl") {
     DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
-  }
 #endif
+  }
+
+  if (variant == "plasma") {
+#ifdef DASH_ENABLE_PLASMA
+    PLASMA_Init(params.threads);
+#else
+    DASH_THROW(dash::exception::RuntimeError, "PLASMA not enabled");
+#endif
+  }
 
   dash::util::BenchmarkParams bench_params("bench.10.summa");
   bench_params.set_output_width(72);
@@ -214,6 +222,12 @@ int main(int argc, char* argv[])
     else if (exp < 4) extent_base += 2;
     else              extent_base += 4;
   }
+
+#ifdef DASH_ENABLE_PLASMA
+  if (variant == "plasma") {
+    PLASMA_Finalize();
+  }
+#endif
 
   dash::finalize();
 
@@ -271,6 +285,11 @@ void perform_test(
     }
   }
 
+  extent_t tilesize = pattern.blocksize(0);
+  if (params.tilesize_base > 0) {
+    tilesize = (n / params.size_base) * params.tilesize_base;
+  }
+
   if (myid == 0) {
     if (iteration == 0) {
       // Print data set column headers:
@@ -323,8 +342,6 @@ void perform_test(
                        ) / 1024 ) / 1024;
     }
 
-    extent_t tilesize = pattern.blocksize(0);
-
     std::ostringstream team_ss;
     team_ss << team_spec.extent(0) << "x" << team_spec.extent(1);
     std::string team_extents = team_ss.str();
@@ -360,7 +377,7 @@ void perform_test(
   if (variant == "mkl" || variant == "blas") {
     t_mmult = test_blas(n, num_repeats, params);
   } else if (variant == "plasma") {
-    t_mmult = test_plasma(n, num_repeats, params);
+    t_mmult = test_plasma(n, num_repeats, params, tilesize);
   } else if (variant == "pblas") {
     t_mmult = test_pblas(n, num_repeats, params);
   } else {
@@ -627,9 +644,10 @@ std::pair<double, double> test_blas(
  *
  */
 std::pair<double, double> test_plasma(
-  extent_t sb,
-  unsigned repeat,
-  const benchmark_params & params)
+  extent_t                 sb,
+  unsigned                 repeat,
+  const benchmark_params & params,
+  extent_t                 tilesize)
 {
 #ifdef DASH_ENABLE_PLASMA
   std::pair<double, double> time;
@@ -643,6 +661,9 @@ std::pair<double, double> test_plasma(
     return time;
   }
 
+  // See PLASMA Users' Guide:
+  // http://icl.cs.utk.edu/projectsfiles/plasma/pdf/users_guide20090825.pdf
+
   // Create local copy of matrices:
   l_matrix_a = (value_t *)(malloc(sizeof(value_t) * sb * sb));
   l_matrix_b = (value_t *)(malloc(sizeof(value_t) * sb * sb));
@@ -650,6 +671,20 @@ std::pair<double, double> test_plasma(
 
   auto ts_init_start = Timer::Now();
   init_values(l_matrix_a, l_matrix_b, l_matrix_c, sb, params);
+
+  // Fill the matrix column major
+  for (extent_t i = 0; i < sb; ++i) {
+    for (extent_t j = 0; j < sb; ++j) {
+      value_t value = (100000 * (i % 12)) + (j * 1000) + i;
+      l_matrix_a[i + sb * j] = value;
+      l_matrix_b[i + sb * j] = value;
+      l_matrix_c[i + sb * j] = 0;
+    }
+  }
+  if (tilesize > 0) {
+    PLASMA_Disable(PLASMA_AUTOTUNING);
+    PLASMA_Set(PLASMA_TILE_SIZE, tilesize);
+  }
   time.first = Timer::ElapsedSince(ts_init_start);
 
   auto ts_multiply_start = Timer::Now();
@@ -959,6 +994,7 @@ benchmark_params parse_args(int argc, char * argv[])
   params.size_base          = 0;
   params.rep_base           = 2;
   params.rep_max            = 0;
+  params.tilesize_base      = 0;
   params.variant            = "dash";
   params.units_max          = 0;
   params.units_inc          = 0;
@@ -1007,6 +1043,8 @@ benchmark_params parse_args(int argc, char * argv[])
       params.plot_pattern = atoi(argv[i+1]) == 1;
     } else if (flag == "-verify") {
       params.verify   = atoi(argv[i+1]) == 1;
+    } else if (flag == "-tb") {
+      params.tilesize_base = static_cast<extent_t>(atoi(argv[i+1]));
     }
   }
   if (size_base == 0 && max_units > 0 && num_units_inc > 0) {
@@ -1071,17 +1109,18 @@ void print_params(
   conf.print_section_start("Runtime arguments");
   conf.print_param("-s",      "variant",            params.variant);
   conf.print_param("-sb",     "size base",          params.size_base);
-  conf.print_param("-nmax",   "max. units",         params.units_max);
+  conf.print_param("-tb",     "tilesize base",      params.tilesize_base);
   conf.print_param("-nx",     "team columns",       params.units_x);
   conf.print_param("-ny",     "team rows",          params.units_y);
-  conf.print_param("-ninc",   "units inc.",         params.units_inc);
-  conf.print_param("-nt",     "threads/proc",       params.threads);
-  conf.print_param("-emax",   "threads/proc",       params.exp_max);
+  conf.print_param("-emax",   "max. iterations",    params.exp_max);
   conf.print_param("-rmax",   "rep. max",           params.rep_max);
   conf.print_param("-rbase",  "rep. base",          params.rep_base);
+  conf.print_param("-nt",     "threads/proc",       params.threads);
   conf.print_param("-mkldyn", "MKL dynamic",        params.mkl_dyn);
   conf.print_param("-plot",   "plot pattern",       params.plot_pattern);
   conf.print_param("-verify", "run test iteration", params.verify);
+  conf.print_param("-ninc",   "units inc.",         params.units_inc);
+  conf.print_param("-nmax",   "max. units",         params.units_max);
   conf.print_section_end();
 }
 

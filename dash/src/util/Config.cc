@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <algorithm>
 #include <cstring>
 #include <unistd.h>
 
@@ -44,6 +45,20 @@ void Config::set(
 {
   DASH_LOG_TRACE("util::Config::set(string,string)", key, value);
   internal::__config_values[key] = value;
+
+  // Parse boolean values:
+  std::string value_lowercase;
+  std::transform(value.begin(), value.end(), value_lowercase.begin(), ::tolower);
+  if (value_lowercase == "true" || value_lowercase == "yes") {
+    std::string key_name_bool = key + "_BOOL";
+    set(key_name_bool, 1);
+    return;
+  }
+  else if (value_lowercase == "false" || value_lowercase == "no") {
+    std::string key_name_bool = key + "_BOOL";
+    set(key_name_bool, 0);
+    return;
+  }
 
   // Parse sizes from human-readable format into number of bytes,
   // e.g. 2K -> 2048.
@@ -87,7 +102,7 @@ template<>
 bool Config::get<bool>(
   const std::string & key)
 {
-  return atoi(get_str(key).c_str()) == 1;
+  return (get_str(key + "_BOOL") == "1");
 }
 
 
