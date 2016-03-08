@@ -820,10 +820,10 @@ public:
    */
   TeamSpec(
     /// Teamspec instance to copy
-    const TeamSpec<MaxDimensions> & other)
-  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
-      CartesianIndexSpace(other.extents()),
-    _rank(other._rank)
+    const self_t & other)
+  : _rank(other._rank),
+    CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
+      CartesianIndexSpace(other.extents())
   { }
 
   void balance_extents()
@@ -951,7 +951,7 @@ private:
     if (_rank == 0) _rank = 1;
   }
 
-private:
+protected:
   /// Actual number of dimensions of the team layout specification.
   dim_t _rank      = 0;
   /// Whether the team spec is linear

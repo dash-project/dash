@@ -8,14 +8,16 @@
 set (CXX_WARN_FLAG "")
 set (CC_WARN_FLAG  "")
 if (ENABLE_COMPILER_WARNINGS)
-  set (CXX_WARN_FLAG "-Wall -Wextra -pedantic")
-  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-function")
-  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-missing-braces")
-  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-format")
-  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-parameter")
-  set (CC_WARN_FLAG  "${CXX_WARN_FLAG}")
-  # C++ specific flags:
-  set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-local-typedefs")
+  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
+    set (CXX_WARN_FLAG "-Wall -Wextra -pedantic")
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-function")
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-missing-braces")
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-format")
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-parameter")
+    set (CC_WARN_FLAG  "${CXX_WARN_FLAG}")
+    # C++ specific flags:
+    set (CXX_WARN_FLAG "${CXX_WARN_FLAG} -Wno-unused-local-typedefs")
+  endif()
 endif()
 
 # Set C++ compiler flags:

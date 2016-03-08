@@ -69,7 +69,7 @@ typedef double    value_t;
 typedef float     value_t;
 #endif
 typedef int64_t   index_t;
-typedef uint64_t  extent_t;
+typedef size_t    extent_t;
 
 typedef std::vector< std::pair< std::string, std::string > >
   env_flags;

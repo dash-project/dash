@@ -16,13 +16,14 @@ template<
   typename LayoutTags,
   class SizeSpecType
 >
-TeamSpec<SizeSpecType::ndim()>
+TeamSpec<SizeSpecType::ndim(), typename SizeSpecType::index_type>
 make_team_spec(
   /// Size spec of cartesian space to be distributed by the pattern.
   const SizeSpecType & sizespec,
   unsigned             n_team_units = dash::Team::All().size())
 {
-  typedef typename SizeSpecType::size_type extent_t;
+  typedef typename SizeSpecType::size_type  extent_t;
+  typedef typename SizeSpecType::index_type index_t;
 
   DASH_LOG_TRACE_VAR("dash::make_team_spec()", sizespec.extents());
   DASH_LOG_TRACE_VAR("dash::make_team_spec", n_team_units);
@@ -46,7 +47,7 @@ make_team_spec(
   std::array<extent_t, ndim> team_extents;
   team_extents.fill(1);
   team_extents[1]   = n_team_units;
-  dash::TeamSpec<ndim> teamspec(team_extents);
+  dash::TeamSpec<ndim, index_t> teamspec(team_extents);
 
   DASH_LOG_TRACE("dash::make_team_spec",
                  "step 1 - initial team extents:", team_extents);
@@ -353,8 +354,8 @@ make_pattern(
       teamspec);
   // Make pattern from template- and run time parameters:
   pattern_t pattern(sizespec,
-		    distspec,
-		    teamspec);
+                    distspec,
+                    teamspec);
   return pattern;
 }
 

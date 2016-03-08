@@ -23,7 +23,7 @@ message(STATUS "Searching for hwloc library in path " ${HWLOC_PREFIX})
 
 find_library(
   HWLOC_LIBRARIES
-  NAMES hwloc
+  NAMES libhwloc.a hwloc
   HINTS ${HWLOC_PREFIX}/lib
 )
 
@@ -48,7 +48,7 @@ mark_as_advanced(
 
 if (HWLOC_FOUND)
   if (NOT $ENV{HWLOC_LIB} STREQUAL "")
-#   set(HWLOC_LIBRARIES "$ENV{HWLOC_LIB}")
+# set(HWLOC_LIBRARIES "$ENV{HWLOC_LIB}")
   endif()
   message(STATUS "hwloc includes:  " ${HWLOC_INCLUDE_DIRS})
   message(STATUS "hwloc libraries: " ${HWLOC_LIBRARIES})

@@ -54,11 +54,11 @@ dart_ret_t dart_group_union(
   dart_group_t *gout)
 {
   /* g1 and g2 are both ordered groups. */
-  int ret = MPI_Group_union(
+  if (MPI_Group_union(
               g1->mpi_group,
               g2->mpi_group,
-              &(gout -> mpi_group));
-  if (ret == MPI_SUCCESS) {
+              &(gout -> mpi_group)) == MPI_SUCCESS)
+  {
     int i, j, k, size_in, size_out;
     dart_unit_t *pre_unitidsout, *post_unitidsout;;
 
@@ -98,9 +98,9 @@ dart_ret_t dart_group_union(
       free (pre_unitidsout);
       free (post_unitidsout);
     }
-    ret = DART_OK;
+    return DART_OK;
   }
-  return ret;
+  return DART_ERR_INVAL;
 }
 
 dart_ret_t dart_group_intersect(
@@ -108,10 +108,13 @@ dart_ret_t dart_group_intersect(
   const dart_group_t *g2,
   dart_group_t *gout)
 {
-  return MPI_Group_intersection(
+  if (MPI_Group_intersection(
            g1 -> mpi_group,
            g2 -> mpi_group,
-           &(gout -> mpi_group));
+           &(gout -> mpi_group)) != MPI_SUCCESS) {
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
 }
 
 dart_ret_t dart_group_addmember(
