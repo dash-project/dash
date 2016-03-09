@@ -12,8 +12,8 @@ using std::setw;
 template<class MatrixT>
 void print_matrix(const MatrixT & matrix) {
   typedef typename MatrixT::value_type value_t;
-  auto extent_cols = matrix.extent(0);
-  auto extent_rows = matrix.extent(1);
+  auto rows = matrix.extent(0);
+  auto cols = matrix.extent(1);
 
   // Creating local copy for output to prevent interleaving with log
   // messages:
@@ -23,9 +23,9 @@ void print_matrix(const MatrixT & matrix) {
                             matrix_copy);
   DASH_ASSERT(copy_end == matrix_copy + matrix.size());
   cout << "Matrix:" << endl;
-  for (auto r = 0; r < extent_rows; ++r) {
-    for (auto c = 0; c < extent_cols; ++c) {
-      cout << " " << setw(5) << matrix_copy[r * extent_cols + c];
+  for (auto r = 0; r < rows; ++r) {
+    for (auto c = 0; c < cols; ++c) {
+      cout << " " << setw(5) << matrix_copy[r * cols + c];
     }
     cout << endl;
   }
@@ -40,31 +40,33 @@ int main(int argc, char* argv[])
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 2;
   size_t tilesize_y  = 3;
-  size_t extent_cols = tilesize_x * num_units * 2;
-  size_t extent_rows = tilesize_y * num_units * 2;
+  size_t rows = tilesize_x * num_units * 2;
+  size_t cols = tilesize_y * num_units * 2;
   dash::Matrix<int, 2> matrix(
                          dash::SizeSpec<2>(
-                           extent_cols,
-                           extent_rows),
+                           rows,
+                           cols),
                          dash::DistributionSpec<2>(
                            dash::TILE(tilesize_x),
                            dash::TILE(tilesize_y)));
-  size_t matrix_size = extent_cols * extent_rows;
+  size_t matrix_size = rows * cols;
   DASH_ASSERT(matrix_size == matrix.size());
-  DASH_ASSERT(extent_cols == matrix.extent(0));
-  DASH_ASSERT(extent_rows == matrix.extent(1));
+  DASH_ASSERT(rows == matrix.extent(0));
+  DASH_ASSERT(cols == matrix.extent(1));
 
-  cout << "Matrix size: " << extent_cols
-       << " x " << extent_rows
+  if (0 == myid) {
+    cout << "Matrix size: " << rows
+       << " x " << cols
        << " == " << matrix_size
        << endl;
+  }
 
   // Fill matrix
   if (0 == myid) {
     cout << "Assigning matrix values" << endl;
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
-        matrix[i][k] = (i * 11) + (k * 97);
+        matrix[i][k] = (i * 1000) + (k * 1);
       }
     }
   }
@@ -76,7 +78,7 @@ int main(int argc, char* argv[])
   for (size_t i = 0; i < matrix.extent(0); ++i) {
     for (size_t k = 0; k < matrix.extent(1); ++k) {
       int value    = matrix[i][k];
-      int expected = (i * 11) + (k * 97);
+      int expected = (i * 1000) + (k * 1);
       DASH_ASSERT(expected == value);
     }
   }
