@@ -36,19 +36,25 @@ int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
 
+  size_t team_size    = dash::Team::All().size();
+  dash::TeamSpec<2> teamspec_2d(team_size, 1);
+  teamspec_2d.balance_extents();
+
   dart_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
-  size_t tilesize_x  = 2;
-  size_t tilesize_y  = 3;
-  size_t rows = tilesize_x * num_units * 2;
-  size_t cols = tilesize_y * num_units * 2;
+  size_t tilesize_x  = 4;
+  size_t tilesize_y  = 6;
+  size_t rows = tilesize_x * num_units ;
+  size_t cols = tilesize_y * num_units ;
   dash::Matrix<int, 2> matrix(
                          dash::SizeSpec<2>(
                            rows,
                            cols),
                          dash::DistributionSpec<2>(
                            dash::TILE(tilesize_x),
-                           dash::TILE(tilesize_y)));
+                           dash::TILE(tilesize_y)),
+                         dash::Team::All(),
+                         teamspec_2d);
   size_t matrix_size = rows * cols;
   DASH_ASSERT(matrix_size == matrix.size());
   DASH_ASSERT(rows == matrix.extent(0));
