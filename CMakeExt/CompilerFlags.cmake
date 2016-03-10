@@ -33,7 +33,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
        CACHE STRING "C++ compiler GDB debug symbols flag")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
-  set (CXX_STD_FLAG "-std=c++11"
+  set (CXX_STD_FLAG "-std=c++11 -no-inline-max-size"
        CACHE STRING "C++ compiler std flag")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
   # Cray compiler not supported for C++

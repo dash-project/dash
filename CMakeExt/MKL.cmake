@@ -47,6 +47,8 @@
 #     redist\ia32\mkl
 #     redist\intel64\mkl
 
+set(MKL_USE_STATIC_LIBS ON)
+
 set(_MKL_IA32 FALSE)
 set(_MKL_INTEL64 FALSE)
 if (CMAKE_SIZEOF_VOID_P EQUAL 4)

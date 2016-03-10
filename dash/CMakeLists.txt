@@ -28,14 +28,6 @@ set(ENABLE_HWLOC ${ENABLE_HWLOC}
 set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
 
-# include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
-# include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
-# include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
-# include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
-# include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
-# include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
-# include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
-
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
      "src/*.c" "src/*.h" "src/*.cc" "src/*.cpp" )
@@ -113,11 +105,15 @@ if (ENABLE_PLASMA AND PLASMA_FOUND)
 else()
 endif()
 
+find_package(MKL)
 if (MKL_FOUND)
+  link_directories(${MKL_LIBRARY_DIRS})
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_MKL")
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
        ${MKL_INCLUDE_DIRS})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${MKL_LIBRARIES})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_LIBRARIES})
 else()
@@ -201,7 +197,8 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
       ${MPI_INCLUDE_PATH})
     target_link_libraries(
       ${DASH_LIBRARY}
-      ${MPI_C_LIBRARIES})
+#     ${MPI_C_LIBRARIES})
+      ${MPI_LIBRARIES})
   endif()
 
   DeployLibrary(${DASH_LIBRARY})
@@ -252,8 +249,10 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
             ${MPI_INCLUDE_PATH})
           target_link_libraries(
             ${exampletarget}
-            ${MPI_C_LIBRARIES}
-            ${MPI_CXX_LIBRARIES})
+            ${MPI_LIBRARIES}
+#           ${MPI_C_LIBRARIES}
+#           ${MPI_CXX_LIBRARIES}
+          )
           if (IPM_FOUND)
             include_directories(
               ${IPM_INCLUDE_DIRS})
