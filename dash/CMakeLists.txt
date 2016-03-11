@@ -27,6 +27,8 @@ set(ENABLE_HWLOC ${ENABLE_HWLOC}
     PARENT_SCOPE)
 set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
+set(ENABLE_MKL ${ENABLE_MKL}
+    PARENT_SCOPE)
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
@@ -106,16 +108,22 @@ else()
 endif()
 
 find_package(MKL)
-if (MKL_FOUND)
+# if (MKL_FOUND)
+if (ENABLE_MKL)
   link_directories(${MKL_LIBRARY_DIRS})
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_MKL")
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DMKL_LP64")
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -qopenmp")
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
        ${MKL_INCLUDE_DIRS})
-  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-       ${MKL_LIBRARIES})
-  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-       ${MKL_LIBRARIES})
+  set (MKLROOT $ENV{MKLROOT})
+  set (ADDITIONAL_LINK_FLAGS ${ADDITIONAL_LINK_FLAGS}
+       ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_blacs_lp64.a -Wl,--end-group -lpthread -lm -ldl -openmp)
+# set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+#      ${MKL_LIBRARIES})
 else()
 endif()
 
@@ -141,6 +149,8 @@ message (STATUS "DASH additional libraries:")
 foreach (ADDITIONAL_LIB ${ADDITIONAL_LIBRARIES})
   message (STATUS "    " ${ADDITIONAL_LIB})
 endforeach()
+message (STATUS "DASH additional linker flags:")
+message (STATUS "    " ${ADDITIONAL_LINK_FLAGS})
 
 ## Build targets
 
@@ -176,6 +186,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${DASH_LIBRARY}           # library name
     ${DASH_LINK_DART_LIBRARY} # dependency: DART lib
     ${ADDITIONAL_LIBRARIES}
+    ${ADDITIONAL_LINK_FLAGS}
   )
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
@@ -230,6 +241,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           ${DASH_LIBRARY}
           ${DART_LIBRARY}
           ${ADDITIONAL_LIBRARIES}
+          ${ADDITIONAL_LINK_FLAGS}
         )
         set_target_properties(
           ${exampletarget} PROPERTIES
@@ -300,6 +312,7 @@ if (BUILD_TESTS)
       ${DASH_LIBRARY}
       ${DART_LIBRARY}
       ${ADDITIONAL_LIBRARIES}
+      ${ADDITIONAL_LINK_FLAGS}
     )
     if (${dart_variant} STREQUAL "mpi")
       if (IPM_FOUND)
