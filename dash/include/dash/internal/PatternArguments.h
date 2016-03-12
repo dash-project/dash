@@ -6,6 +6,7 @@
 #include <dash/Team.h>
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
+#include <dash/TeamSpec.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
 #include <dash/internal/Math.h>

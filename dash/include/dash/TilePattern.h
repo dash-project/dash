@@ -45,7 +45,7 @@ template<
 class TilePattern
 {
 public:
-  static constexpr char const * PatternName = "TilePattern<N>";
+  static constexpr char const * PatternName = "TilePattern";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:

@@ -23,7 +23,7 @@ message(STATUS "Searching for hwloc library in path " ${HWLOC_PREFIX})
 
 find_library(
   HWLOC_LIBRARIES
-  NAMES libhwloc.a hwloc
+  NAMES hwloc
   HINTS ${HWLOC_PREFIX}/lib
 )
 
