@@ -81,9 +81,9 @@ private:
     MemoryLayout_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     LocalMemoryLayout_t;
-  typedef CartesianSpace<NumDimensions, SizeType>
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     BlockSpec_t;
-  typedef CartesianSpace<NumDimensions, SizeType>
+  typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     BlockSizeSpec_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
@@ -655,7 +655,7 @@ public:
   {
     auto coords = local_coords;
     for (auto d = 0; d < NumDimensions; ++d) {
-      coords[d] += viewspec[d].offset;
+      coords[d] += viewspec.offset(d);
     }
     return _local_memory_layout.at(coords);
   }
@@ -1111,9 +1111,12 @@ public:
    * global cartesian element space.
    */
   ViewSpec_t local_block(
-    index_type local_block_index) const {
+    index_type local_block_index) const
+  {
     // Initialize viewspec result with block extents:
-    ViewSpec_t block_vs(_blocksize_spec.extents());
+    std::array<SizeType, NumDimensions> block_vs_extents =
+      _blocksize_spec.extents();
+    std::array<IndexType, NumDimensions>  block_vs_offsets { };
     // Local block index to local block coords:
     auto l_block_coords = _local_blockspec.coords(local_block_index);
     auto l_elem_coords  = l_block_coords;
@@ -1121,13 +1124,13 @@ public:
     // Translate local coordinates of first element in local block to global
     // coordinates:
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto blocksize_d  = block_vs[d].extent;
+      auto blocksize_d  = block_vs_extents[d];
       l_elem_coords[d] *= blocksize_d;
     }
     // Global coordinates of first element in block:
     auto g_elem_coords = global(l_elem_coords);
     for (auto d = 0; d < NumDimensions; ++d) {
-      block_vs[d].offset = g_elem_coords[d];
+      block_vs_offsets[d] = g_elem_coords[d];
     }
 #ifdef __TODO__
     // Coordinates of the unit within the team spec:
@@ -1135,15 +1138,16 @@ public:
       _teamspec.coords(unit);
     for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = _distspec[d];
-      auto blocksize_d          = block_vs[d].extent;
+      auto blocksize_d          = block_vs_extents[d];
       auto num_units_d          = _teamspec.extent(d);
       auto num_blocks_d         = _blockspec.extent(d);
       // Local to global block coords:
       auto g_block_coord_d      = (l_block_coords[d] + _myid) *
                                   _teamspec.extent(d);
-      block_vs[d].offset        = g_block_coord_d * blocksize_d;
+      block_vs_offsets[d]       = g_block_coord_d * blocksize_d;
     }
 #endif
+    ViewSpec_t block_vs(block_vs_offsets, block_vs_extents);
     return block_vs;
   }
 
