@@ -841,6 +841,50 @@ ValueType * copy(
   return out_last;
 }
 
+#if DASH_EXPERIMENTAL
+/*
+ * Specialization of \c dash::copy as global-to-local blocking copy operation
+ * returning an allocated range.
+ * Allows for zero-copy operations if the copied range is local.
+ *
+ * Returns a future of a local range { begin, end }.
+ * If the requested data range is in shared memory, the range returned
+ * references the native pointers of the target range.
+ * If the requested data range needed to be copied from remote memory, the
+ * range returned is the copied destination range such that begin = out_first
+ * and end = out_first + num_elem_copied.
+ */
+template <
+  typename ValueType,
+  class GlobInputIt >
+dash::Future< dash::LocalRange<ValueType> >
+copy_async(
+  GlobInputIt in_first,
+  GlobInputIt in_last,
+  ValueType * out_first)
+{
+  dash::LocalRange<ValueType> l_range;
+  l_range.begin = nullptr;
+  l_range.end   = nullptr;
+  ValueType * l_in_first = in_first.local();
+  ValueType * l_in_last  = (l_in_first == nullptr)
+                           ? nullptr
+                           : in_last.local();
+  if (l_in_first != nullptr && l_in_last != nullptr) {
+    l_range.begin = l_in_first;
+    l_range.end   = l_in_last;
+    return dash::Future< dash::LocalRange<ValueType> >(
+             [=]() { return l_range; });
+  }
+  auto fut_copy_end = dash::copy_async(in_first, in_last, out_first);
+  return dash::Future< dash::LocalRange<ValueType> >([=]() {
+           l_range.begin = out_first;
+           l_range.end   = fut_copy_end.get();
+           return l_range;
+         });
+}
+#endif
+
 /**
  * Specialization of \c dash::copy as local-to-global blocking copy operation.
  */
