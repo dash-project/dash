@@ -2,7 +2,7 @@
 set(DASH_ENV_HOST_SYSTEM_ID "supermuc" CACHE STRING
     "Host system type identifier")
 
-if ("$ENV{MP_MPILIB}" STREQUAL "intelmpi")
+if ("${CMAKE_CXX_COMPILER}" MATCHES "icc")
   message(NOTE "hwloc support is disabled for Intel programming environment on Cori")
   set (ENABLE_HWLOC OFF CACHE BOOL
        "MPI shared windows are disabled for IBM MPI on SuperMUC" FORCE)
