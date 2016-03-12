@@ -2,7 +2,7 @@
 find_package(MPI)
 
 set (MPI_MATCH_STRING ${MPI_INCLUDE_PATH})
-if (MPI_C_COMPILER)
+if (NOT MPI_MATCH_STRING AND MPI_C_COMPILER)
   set (MPI_MATCH_STRING ${MPI_C_COMPILER})
 endif()
 
@@ -17,7 +17,8 @@ if (MPI_MATCH_STRING)
   elseif ("${MPI_MATCH_STRING}" MATCHES "mvapich")
     set(MPI_IMPL_IS_MVAPICH TRUE CACHE BOOL "MVAPICH detected")
     set(MPI_IMPL_ID "mvapich" CACHE STRING "MPI implementation identifier")
-  elseif ("${MPI_MATCH_STRING}" MATCHES "impi")
+  elseif ("${MPI_MATCH_STRING}" MATCHES "impi" OR
+          "${MPI_MATCH_STRING}" MATCHES "intel")
     set(MPI_IMPL_IS_INTEL TRUE CACHE BOOL "IntelMPI detected")
     set(MPI_IMPL_ID "intelmpi" CACHE STRING "MPI implementation identifier")
   elseif ("${MPI_MATCH_STRING}" MATCHES "openmpi")

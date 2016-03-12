@@ -762,12 +762,12 @@ std::pair<double, double> test_pblas(
   char             storage[] = "R";
   char             trans_a[] = "N";
   char             trans_b[] = "N";
-  int              desc_a[12];
-  int              desc_b[12];
-  int              desc_c[12];
-  int              desc_a_distr[12];
-  int              desc_b_distr[12];
-  int              desc_c_distr[12];
+  int_t            desc_a[12];
+  int_t            desc_b[12];
+  int_t            desc_c[12];
+  int_t            desc_a_distr[12];
+  int_t            desc_b_distr[12];
+  int_t            desc_c_distr[12];
   value_t        * matrix_a_distr;
   value_t        * matrix_b_distr;
   value_t        * matrix_c_distr;
@@ -780,7 +780,7 @@ std::pair<double, double> test_pblas(
   int_t numproc  = dash::size();
   int_t myid     = dash::myid();
 
-  int_t npcol    = params.units_inc;
+  int_t npcol    = params.units_x;
   int_t nprow    = numproc / npcol;
   // Block extents such that block size = (nb x mb):
   int_t sbrow    = N / nprow;
