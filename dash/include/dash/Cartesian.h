@@ -821,9 +821,9 @@ public:
   TeamSpec(
     /// Teamspec instance to copy
     const self_t & other)
-  : _rank(other._rank),
-    CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
-      CartesianIndexSpace(other.extents())
+  : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
+      CartesianIndexSpace(other.extents()),
+    _rank(other._rank)
   { }
 
   void balance_extents()
