@@ -362,16 +362,16 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
                           ? 0
                           : block_size_y - overflow_bs_y;
   LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpu: %d",
-      extent_x, extent_y,
-      block_size_x, block_size_y,
+      extent_y, extent_x,
+      block_size_y, block_size_x,
       max_per_unit);
   pattern_rowmajor_t pat_blocked_row(
-      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::SizeSpec<2>(extent_y, extent_x),
       dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE),
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
   pattern_colmajor_t pat_blocked_col(
-      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::SizeSpec<2>(extent_y, extent_x),
       dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE),
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
