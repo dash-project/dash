@@ -69,8 +69,8 @@ TEST_F(TeamSpecTest, ExtentAdjustingConstrutor)
     // NONE, BLOCKED, NONE -> will adjust to extents [1,n,1]
     dist_blocked_y,
     dash::Team::All());
-  EXPECT_EQ_U(1, ts_adjusted.extent(0));
-  EXPECT_EQ_U(num_units, ts_adjusted.extent(1));
+  EXPECT_EQ_U(1, ts_adjusted.extent(1));
+  EXPECT_EQ_U(num_units, ts_adjusted.extent(0));
   EXPECT_EQ_U(1, ts_adjusted.extent(2));
 }
 

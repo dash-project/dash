@@ -326,22 +326,28 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
   DASH_TEST_LOCAL_ONLY();
   typedef dash::default_index_t  index_t;
   typedef std::array<index_t, 2> coords_t;
-  // 2-dimensional, blocked partitioning in second dimension:
+
+  typedef dash::Pattern<2, dash::ROW_MAJOR>
+    pattern_rowmajor_t;
+  typedef dash::Pattern<2, dash::COL_MAJOR>
+    pattern_colmajor_t;
+
+  // 2-dimensional, blocked partitioning in first dimension:
   // Row major:
-  // [ team 0[0] | team 0[1] | ... | team 0[2] ]
-  // [ team 0[3] | team 0[4] | ... | team 0[5] ]
-  // [ team 1[0] | team 1[1] | ... | team 1[2] ]
-  // [ team 1[3] | team 1[4] | ... | team 1[5] ]
+  // [ unit 0[0] | unit 0[1] | ... | unit 0[2] ]
+  // [ unit 0[3] | unit 0[4] | ... | unit 0[5] ]
+  // [ unit 1[0] | unit 1[1] | ... | unit 1[2] ]
+  // [ unit 1[3] | unit 1[4] | ... | unit 1[5] ]
   // [                   ...                   ]
   // Column major:
-  // [ team 0[0] | team 0[2] | ... | team 0[4] ]
-  // [ team 0[1] | team 0[3] | ... | team 0[5] ]
-  // [ team 1[0] | team 1[2] | ... | team 1[4] ]
-  // [ team 1[1] | team 1[3] | ... | team 1[5] ]
+  // [ unit 0[0] | unit 0[2] | ... | unit 0[4] ]
+  // [ unit 0[1] | unit 0[3] | ... | unit 0[5] ]
+  // [ unit 1[0] | unit 1[2] | ... | unit 1[4] ]
+  // [ unit 1[1] | unit 1[3] | ... | unit 1[5] ]
   // [                   ...                   ]
   size_t team_size      = dash::Team::All().size();
-  size_t extent_x       = 27;
-  size_t extent_y       = 5;
+  size_t extent_x       = 17;
+  size_t extent_y       = 5 + team_size * 3;
   size_t size           = extent_x * extent_y;
   // Ceil division
   size_t block_size_x   = extent_x;
@@ -356,32 +362,53 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
                           ? 0
                           : block_size_y - overflow_bs_y;
   LOG_MESSAGE("ex: %d, ey: %d, bsx: %d, bsy: %d, mpu: %d",
-      extent_x, extent_y,
-      block_size_x, block_size_y,
+      extent_y, extent_x,
+      block_size_y, block_size_x,
       max_per_unit);
-  dash::Pattern<2, dash::ROW_MAJOR> pat_blocked_row(
-      dash::SizeSpec<2>(extent_x, extent_y),
-      dash::DistributionSpec<2>(dash::NONE, dash::BLOCKED),
+  pattern_rowmajor_t pat_blocked_row(
+      dash::SizeSpec<2>(extent_y, extent_x),
+      dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE),
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
-  dash::Pattern<2, dash::COL_MAJOR> pat_blocked_col(
-      dash::SizeSpec<2>(extent_x, extent_y),
-      dash::DistributionSpec<2>(dash::NONE, dash::BLOCKED),
+  pattern_colmajor_t pat_blocked_col(
+      dash::SizeSpec<2>(extent_y, extent_x),
+      dash::DistributionSpec<2>(dash::BLOCKED, dash::NONE),
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
 
+  dash::test::print_pattern_mapping(
+    "pattern.rowmajor.unit_at", pat_blocked_row, 1,
+    [](const pattern_rowmajor_t & _pattern, int _x, int _y) -> dart_unit_t {
+        return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+    });
+  dash::test::print_pattern_mapping(
+    "pattern.rowmajor.local_index", pat_blocked_row, 3,
+    [](const pattern_rowmajor_t & _pattern, int _x, int _y) -> index_t {
+        return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+    });
+  dash::test::print_pattern_mapping(
+    "pattern.colmajor.unit_at", pat_blocked_col, 1,
+    [](const pattern_colmajor_t & _pattern, int _x, int _y) -> dart_unit_t {
+        return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+    });
+  dash::test::print_pattern_mapping(
+    "pattern.colmajor.local_index", pat_blocked_col, 3,
+    [](const pattern_colmajor_t & _pattern, int _x, int _y) -> index_t {
+        return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+    });
+
   EXPECT_EQ(pat_blocked_row.capacity(), size);
   EXPECT_EQ(pat_blocked_row.local_capacity(), max_per_unit);
-  EXPECT_EQ(pat_blocked_row.blocksize(0), block_size_x);
-  EXPECT_EQ(pat_blocked_row.blocksize(1), block_size_y);
-  EXPECT_EQ(pat_blocked_row.underfilled_blocksize(0), underfill_bs_x);
-  EXPECT_EQ(pat_blocked_row.underfilled_blocksize(1), underfill_bs_y);
+  EXPECT_EQ(pat_blocked_row.blocksize(1), block_size_x);
+  EXPECT_EQ(pat_blocked_row.blocksize(0), block_size_y);
+  EXPECT_EQ(pat_blocked_row.underfilled_blocksize(1), underfill_bs_x);
+  EXPECT_EQ(pat_blocked_row.underfilled_blocksize(0), underfill_bs_y);
   EXPECT_EQ(pat_blocked_col.capacity(), size);
   EXPECT_EQ(pat_blocked_col.local_capacity(), max_per_unit);
-  EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_x);
-  EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_y);
-  EXPECT_EQ(pat_blocked_col.underfilled_blocksize(0), underfill_bs_x);
-  EXPECT_EQ(pat_blocked_col.underfilled_blocksize(1), underfill_bs_y);
+  EXPECT_EQ(pat_blocked_col.blocksize(1), block_size_x);
+  EXPECT_EQ(pat_blocked_col.blocksize(0), block_size_y);
+  EXPECT_EQ(pat_blocked_col.underfilled_blocksize(1), underfill_bs_x);
+  EXPECT_EQ(pat_blocked_col.underfilled_blocksize(0), underfill_bs_y);
   LOG_MESSAGE("block size: x: %d, y: %d",
     block_size_x, block_size_y);
   for (int x = 0; x < extent_x; ++x) {
@@ -398,51 +425,50 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
                                       : 0;
       // Actual extent of block, adjusted for underfilled extent:
       int block_size_y_adj          = block_size_y - underfill_y;
-      int expected_index_col_order  = (y * extent_x) + x;
-      int expected_index_row_order  = (x * extent_y) + y;
-      int expected_offset_col_order =
-        expected_index_col_order % max_per_unit;
-      int expected_offset_row_order = (y % block_size_y) + (x *
+      int expected_index_row_order  = (y * extent_x) + x;
+      int expected_index_col_order  = (x * extent_y) + y;
+      int expected_offset_row_order = expected_index_row_order % max_per_unit;
+      int expected_offset_col_order = (y % block_size_y) + (x *
                                         block_size_y_adj);
       int expected_unit_id          = y / block_size_y;
       int local_x                   = x;
       int local_y                   = y % block_size_y;
       // Row major:
       LOG_MESSAGE("R %d,%d, eo:%d, ao:%d, ei:%d, bx:%d, by:%d, bya:%d",
-        x, y,
+        y, x,
         expected_offset_row_order,
-        pat_blocked_row.at(std::array<index_t, 2> { x, y }),
+        pat_blocked_row.at(std::array<index_t, 2> { y, x }),
         expected_index_row_order,
         block_size_x, block_size_y, block_size_y_adj);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked_row.unit_at(std::array<index_t, 2> { x, y }));
+        pat_blocked_row.unit_at(std::array<index_t, 2> { y, x }));
       EXPECT_EQ(
         expected_offset_row_order,
-        pat_blocked_row.at(std::array<index_t, 2> { x, y }));
+        pat_blocked_row.at(std::array<index_t, 2> { y, x }));
       EXPECT_EQ(
-        (std::array<index_t, 2> { x, y }),
+        (std::array<index_t, 2> { y, x }),
         pat_blocked_row.global(
           expected_unit_id,
-          (std::array<index_t, 2> { local_x, local_y  })));
+          (std::array<index_t, 2> { local_y, local_x  })));
       // Col major:
       LOG_MESSAGE("C %d,%d, eo:%d, ao:%d, ei:%d, bx:%d, by:%d",
-        x, y,
+        y, x,
         expected_offset_col_order,
-        pat_blocked_col.at(std::array<index_t, 2> { x, y }),
+        pat_blocked_col.at(std::array<index_t, 2> { y, x }),
         expected_index_col_order,
         block_size_x, block_size_y);
       EXPECT_EQ(
         expected_unit_id,
-        pat_blocked_col.unit_at(std::array<index_t, 2> { x, y }));
+        pat_blocked_col.unit_at(std::array<index_t, 2> { y, x }));
       EXPECT_EQ(
         expected_offset_col_order,
-        pat_blocked_col.at(std::array<index_t, 2> { x, y }));
+        pat_blocked_col.at(std::array<index_t, 2> { y, x }));
       EXPECT_EQ(
-        (std::array<index_t, 2> { x, y }),
+        (std::array<index_t, 2> { y, x }),
         pat_blocked_col.global(
           expected_unit_id,
-          (std::array<index_t, 2> { local_x, local_y })));
+          (std::array<index_t, 2> { local_y, local_x })));
     }
   }
 }
@@ -1062,8 +1088,8 @@ TEST_F(BlockPatternTest, LocalExtents2DimBlockcyclicY)
   int team_size      = dash::Team::All().size();
   int extent_x       = 41;
   int block_size_y   = 3;
-  int underfill_bs_x = 0;
   // Last block is 1 extent smaller:
+  int underfill_bs_x = 0;
   int underfill_bs_y = 1;
 //int overflow_bs_x  = 0;
 //int overflow_bs_y  = block_size_y - underfill_bs_y;
@@ -1093,29 +1119,29 @@ TEST_F(BlockPatternTest, LocalExtents2DimBlockcyclicY)
       num_blocks_y, num_add_blocks,
       local_extent_x, local_extent_y);
   dash::Pattern<2, dash::ROW_MAJOR> pat_blockcyclic_row(
-      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::SizeSpec<2>(extent_y, extent_x),
       dash::DistributionSpec<2>(
-        dash::NONE, dash::BLOCKCYCLIC(block_size_y)),
+        dash::BLOCKCYCLIC(block_size_y), dash::NONE),
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
   dash::Pattern<2, dash::COL_MAJOR> pat_blockcyclic_col(
-      dash::SizeSpec<2>(extent_x, extent_y),
+      dash::SizeSpec<2>(extent_y, extent_x),
       dash::DistributionSpec<2>(
-        dash::NONE, dash::BLOCKCYCLIC(block_size_y)),
+        dash::BLOCKCYCLIC(block_size_y), dash::NONE),
       dash::TeamSpec<2>(dash::Team::All()),
       dash::Team::All());
   // Row major:
-  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(0), underfill_bs_x);
-  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(1), underfill_bs_y);
-  ASSERT_EQ(pat_blockcyclic_row.local_extent(0), local_extent_x);
-  ASSERT_EQ(pat_blockcyclic_row.local_extent(1), local_extent_y);
+  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(1), underfill_bs_x);
+  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(0), underfill_bs_y);
+  ASSERT_EQ(pat_blockcyclic_row.local_extent(1), local_extent_x);
+  ASSERT_EQ(pat_blockcyclic_row.local_extent(0), local_extent_y);
   EXPECT_EQ(pat_blockcyclic_row.local_size(),
             local_extent_x * local_extent_y);
   // Col major:
-  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(0), underfill_bs_x);
-  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(1), underfill_bs_y);
-  ASSERT_EQ(pat_blockcyclic_col.local_extent(0), local_extent_x);
-  ASSERT_EQ(pat_blockcyclic_col.local_extent(1), local_extent_y);
+  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(1), underfill_bs_x);
+  EXPECT_EQ(pat_blockcyclic_col.underfilled_blocksize(0), underfill_bs_y);
+  ASSERT_EQ(pat_blockcyclic_col.local_extent(1), local_extent_x);
+  ASSERT_EQ(pat_blockcyclic_col.local_extent(0), local_extent_y);
   EXPECT_EQ(pat_blockcyclic_col.local_size(),
             local_extent_x * local_extent_y);
 }

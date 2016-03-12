@@ -33,7 +33,10 @@ FILES = Init Team Distribution Math \
 	util/Timer util/TimestampClockPosix \
 	util/TimestampCounterPosix \
 	util/Locality \
-	util/BenchmarkParams
+	util/BenchmarkParams \
+	util/Config \
+	util/Trace
+
 
 OBJS = $(addsuffix .o, $(FILES))
 
