@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <vector>
 #include <memory>
+#include <future>
 
 #ifndef DASH__ALGORITHM__COPY__USE_WAIT
 #define DASH__ALGORITHM__COPY__USE_FLUSH
@@ -622,20 +623,42 @@ dash::Future<ValueType *> copy_async(
                    "num_copy_elem:", l_in_last - l_in_first);
     ValueType * local_out_first = out_first + num_prelocal_elem;
     ValueType * local_out_last;
-    // Use memcpy for data ranges below 64 KB
-    if (use_memcpy) {
-      std::memcpy(local_out_first, // destination
-                  l_in_first,      // source
-                  num_local_elem * sizeof(ValueType));
-      local_out_last = local_out_first + num_local_elem;
-    } else {
-      local_out_last = std::copy(l_in_first,
-                                 l_in_last,
-                                 local_out_first);
-    }
-    DASH_LOG_TRACE("dash::copy_async", "finished local copy of",
-                   (local_out_last - local_out_first),
-                   "elements");
+    std::shared_future<ValueType*> fut_local_copy_async(
+      std::async(
+        std::launch::async,
+        [=](size_t      _n_local,
+            ValueType * _l_in_first,
+            ValueType * _l_in_last,
+            ValueType * _l_out_first,
+            ValueType * _l_out_last)
+        {
+          // Use memcpy for data ranges below 64 KB
+          if (use_memcpy) {
+            std::memcpy(_l_out_first, // destination
+                        _l_in_first,  // source
+                        _n_local * sizeof(ValueType));
+            _l_out_last = _l_out_first + _n_local;
+          } else {
+            _l_out_last = std::copy(_l_in_first,
+                                    _l_in_last,
+                                    _l_out_first);
+          }
+          DASH_LOG_TRACE("dash::copy_async", "finished local copy of",
+                         (_l_out_last - _l_out_first),
+                         "elements");
+          return _l_out_last;
+        },
+        num_local_elem,
+        l_in_first,
+        l_in_last,
+        local_out_first,
+        local_out_last
+      ));
+    // Wrap std::future in dash::Future:
+    dash::Future<ValueType *> fut_local_copy([=]() mutable {
+        return fut_local_copy_async.get();
+    });
+    futures.push_back(fut_local_copy);
     out_last += (local_out_last - local_out_first);
   } else {
     DASH_LOG_TRACE("dash::copy_async", "no local subrange");

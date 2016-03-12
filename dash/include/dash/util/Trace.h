@@ -87,6 +87,10 @@ public:
    */
   static void write(std::ostream & out)
   {
+    if (!dash::util::Config::get<bool>("DASH_ENABLE_TRACE")) {
+      return;
+    }
+
     std::ostringstream os;
     auto unit = dash::myid();
     for (auto context_traces : _traces) {

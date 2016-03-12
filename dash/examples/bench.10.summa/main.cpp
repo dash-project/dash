@@ -64,12 +64,12 @@ typedef dash::util::Timer<
         > Timer;
 
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
-typedef double    value_t;
+typedef double  value_t;
 #else
-typedef float     value_t;
+typedef float   value_t;
 #endif
-typedef int64_t   index_t;
-typedef size_t    extent_t;
+typedef int64_t index_t;
+typedef size_t  extent_t;
 
 typedef std::vector< std::pair< std::string, std::string > >
   env_flags;
@@ -78,6 +78,7 @@ typedef struct benchmark_params_t {
   std::string variant;
   extent_t    size_base;
   extent_t    tilesize_base;
+  bool        tilesize_fixed;
   extent_t    exp_max;
   unsigned    rep_base;
   unsigned    rep_max;
@@ -88,7 +89,6 @@ typedef struct benchmark_params_t {
   extent_t    threads;
   float       cpu_gflops_peak;
   bool        mkl_dyn;
-  bool        plot_pattern;
   bool        verify;
 } benchmark_params;
 
@@ -262,32 +262,24 @@ void perform_test(
                      dash::summa_pattern_layout_constraints >(
                        size_spec,
                        team_spec);
-
-  if (params.plot_pattern) {
-    auto units_x = team_spec.num_units(0);
-    auto units_y = team_spec.num_units(1);
-    if (units_x <= 5 && units_y <= 5 && n <= 64){
-      dash::barrier();
-      dash::tools::PatternVisualizer<decltype(pattern)> pv(pattern);
-      std::string svg_team  = std::to_string(units_x) + "x"
-                      + std::to_string(units_y);
-      std::string svg_title = "MatrixPattern Team" + svg_team;
-      std::string svg_filename = "matrixpattern_" + svg_team + ".svg";
-      pv.set_title(svg_title);
-      std::ofstream out(svg_filename);
-      std::array<index_t, pattern.ndim()> coords = {0, 0};
-      pv.draw_pattern(out, coords, 1, 0);
-      out.close();
-      dash::barrier();
-    } else {
-      std::cerr << "for svg output use less than 5 units "
-                << "in each dimension and small matrix" << std::endl;
-    }
-  }
+  typedef decltype(pattern) pattern_t;
 
   extent_t tilesize = pattern.blocksize(0);
   if (params.tilesize_base > 0) {
-    tilesize = (n / params.size_base) * params.tilesize_base;
+    if (params.tilesize_fixed) {
+      tilesize = params.tilesize_base;
+    } else{
+      tilesize = (n / params.size_base) * params.tilesize_base;
+    }
+    pattern_t custom_pattern(
+                size_spec,
+                dash::DistributionSpec<2>(
+                  dash::TILE(tilesize),
+                  dash::TILE(tilesize)),
+                team_spec);
+    pattern = custom_pattern;
+    // Write back for verification:
+    tilesize = pattern.blocksize(0);
   }
 
   if (myid == 0) {
@@ -995,6 +987,7 @@ benchmark_params parse_args(int argc, char * argv[])
   params.rep_base           = 2;
   params.rep_max            = 0;
   params.tilesize_base      = 0;
+  params.tilesize_fixed     = false;
   params.variant            = "dash";
   params.units_max          = 0;
   params.units_inc          = 0;
@@ -1004,7 +997,6 @@ benchmark_params parse_args(int argc, char * argv[])
   params.exp_max            = 4;
   params.cpu_gflops_peak    = 41.4;
   params.mkl_dyn            = false;
-  params.plot_pattern       = false;
   params.verify             = false;
 
   extent_t size_base        = 0;
@@ -1039,12 +1031,12 @@ benchmark_params parse_args(int argc, char * argv[])
       params.cpu_gflops_peak = static_cast<float>(atof(argv[i+1]));
     } else if (flag == "-mkldyn") {
       params.mkl_dyn  = atoi(argv[i+1]) == 1;
-    } else if (flag == "-plot") {
-      params.plot_pattern = atoi(argv[i+1]) == 1;
     } else if (flag == "-verify") {
       params.verify   = atoi(argv[i+1]) == 1;
     } else if (flag == "-tb") {
       params.tilesize_base = static_cast<extent_t>(atoi(argv[i+1]));
+    } else if (flag == "-tf") {
+      params.tilesize_fixed = !!(atoi(argv[i+1]));
     }
   }
   if (size_base == 0 && max_units > 0 && num_units_inc > 0) {
@@ -1110,6 +1102,7 @@ void print_params(
   conf.print_param("-s",      "variant",            params.variant);
   conf.print_param("-sb",     "size base",          params.size_base);
   conf.print_param("-tb",     "tilesize base",      params.tilesize_base);
+  conf.print_param("-tf",     "fixed tilesize",     params.tilesize_fixed);
   conf.print_param("-nx",     "team columns",       params.units_x);
   conf.print_param("-ny",     "team rows",          params.units_y);
   conf.print_param("-emax",   "max. iterations",    params.exp_max);
@@ -1117,7 +1110,6 @@ void print_params(
   conf.print_param("-rbase",  "rep. base",          params.rep_base);
   conf.print_param("-nt",     "threads/proc",       params.threads);
   conf.print_param("-mkldyn", "MKL dynamic",        params.mkl_dyn);
-  conf.print_param("-plot",   "plot pattern",       params.plot_pattern);
   conf.print_param("-verify", "run test iteration", params.verify);
   conf.print_param("-ninc",   "units inc.",         params.units_inc);
   conf.print_param("-nmax",   "max. units",         params.units_max);
