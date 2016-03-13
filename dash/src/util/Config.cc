@@ -105,7 +105,7 @@ template<>
 bool Config::get<bool>(
   const std::string & key)
 {
-  return (get_str(key + "_BOOL") == "1") || (get_str(key) == "1");
+  return (get_str(key + "_BOOL") == "1");
 }
 
 
