@@ -24,8 +24,8 @@ typedef struct cli_params_t {
   extent_t    size_y;
   extent_t    units_x;
   extent_t    units_y;
-  extent_t    tile_x;
-  extent_t    tile_y;
+  int         tile_x;
+  int         tile_y;
   bool        cout;
 } cli_params;
 
@@ -70,13 +70,17 @@ int main(int argc, char* argv[])
                          sizespec,
                          teamspec);
 
-      if (params.tile_x > 0 && params.tile_y > 0) {
+      if (params.tile_x >= 0 && params.tile_y >= 0) {
         // change tile sizes of deduced pattern:
         typedef decltype(pattern) pattern_t;
         pattern_t custom_pattern(sizespec,
                                  dash::DistributionSpec<2>(
-                                   dash::TILE(params.tile_x),
-                                   dash::TILE(params.tile_y)),
+                                   params.tile_x > 0
+                                   ? dash::TILE(params.tile_x)
+                                   : dash::NONE,
+                                   params.tile_y > 0
+                                   ? dash::TILE(params.tile_y)
+                                   : dash::NONE),
                                  teamspec);
         pattern = custom_pattern;
       }
@@ -161,8 +165,8 @@ cli_params parse_args(int argc, char * argv[])
   params.size_y  = 110;
   params.units_x = 10;
   params.units_y = 10;
-  params.tile_x  = 0;
-  params.tile_y  = 0;
+  params.tile_x  = -1;
+  params.tile_y  = -1;
   params.cout    = false;
 
   for (auto i = 1; i < argc; i += 3) {
