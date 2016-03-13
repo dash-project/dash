@@ -10,6 +10,11 @@
 
 #include <dash/tools/Colorspace.h>
 
+#include <iostream>
+using std::cout;
+using std::cerr;
+using std::endl;
+
 namespace dash {
 namespace tools {
 
@@ -63,11 +68,28 @@ public:
                          const std::string & descr = "")
   : _pattern(pat), _title(title), _descr(descr)
   {
-    _gridx        = _gridy   = 17;
-    _tileszx      = _tileszy = 16;
-    _fontsz_tiny  =  6;
+    int tile_base_size = 26;
+    _gridx        = _gridy   = 27;
+    _tileszx      = _tileszy = tile_base_size;
+    _fontsz_tiny  =  8;
     _fontsz       = 10;
     _fontsz_title = 12;
+
+    // Adjust tile sizes proportional to block regions:
+    float block_format = static_cast<float>(pat.blocksize(0)) /
+                         static_cast<float>(pat.blocksize(1));
+    if (block_format < 1) {
+      block_format = 1.0 / block_format;
+      _tileszx *= block_format;
+      _gridx   *= block_format;
+    } else {
+      _tileszy *= block_format;
+      _gridy   *= block_format;
+    }
+    cerr << "bs0:" << pat.blocksize(0) << " "
+         << "bs1:" << pat.blocksize(1) << " "
+         << "bft:" << block_format
+         << endl;
   }
 
   PatternBlockVisualizer() = delete;
@@ -91,13 +113,13 @@ public:
     os << " xmlns:xlink=\"http://www.w3.org/1999/xlink\">\n";
 
     // typeset title line
-    os << "<text x=\"10\" y=\"15\" ";
+    os << "<text font-family=\"Verdana\" x=\"10\" y=\"15\" ";
     os << " fill=\"grey\" font-size=\"" << _fontsz_title << "\">";
     os << title;
     os << "</text>\n";
 
     // draw the pane, including axes and key
-    os << "<g transform=\"translate(10,20)\">\n";
+    os << "<g transform=\"translate(10,40)\">\n";
     draw_pane(os, coords, dimx, dimy);
     os << "</g>\n";
 
@@ -106,7 +128,8 @@ public:
 
   void draw_pane(std::ostream & os,
                  std::array<index_t, PatternT::ndim()> coords,
-                 int dimx, int dimy) {
+                 int dimx, int dimy)
+  {
     os << "<g transform=\"translate(10,10)\">" << std::endl;
     draw_axes(os, dimx, dimy);
 
@@ -119,7 +142,8 @@ public:
 
   void draw_axes(std::ostream & os,
                  int dimx, int dimy,
-                 int offsx = 0, int offsy = 0) {
+                 int offsx = 0, int offsy = 0)
+  {
     int startx, starty;
     int endx, endy;
 
@@ -132,10 +156,8 @@ public:
     os << " x2=\"" << endx << "\" y2=\"" << endy << "\"";
     os << " style=\"stroke:#808080;stroke-width:1\"/>";
 
-    os << "<text x=\"" << endx / 3 << "\" y=\"" << starty - 1 << "\" ";
-    os << " fill=\"grey\" font-size=\"" << _fontsz << "\"";
-    //    os<<" transform=\"rotate(30 20,40)\" ";
-    os << " >";
+    os << "<text font-family=\"Verdana\" x=\"" << endx/3 << "\" y=\"" << starty - _fontsz/2 << "\" ";
+    os << " fill=\"grey\" font-size=\"" << _fontsz << "\" >";
     os << "Dimension " << dimx << std::endl;
     os << "</text>" << std::endl;
 
@@ -148,9 +170,9 @@ public:
     os << " x2=\"" << endx << "\" y2=\"" << endy << "\"";
     os << " style=\"stroke:#808080;stroke-width:1\"/>";
 
-    os << "<text x=\"" << startx - 1 << "\" y=\"" << endy / 3 << "\" ";
+    os << "<text font-family=\"Verdana\" x=\"" << startx - _fontsz/2 << "\" y=\"" << endy/3 << "\" ";
     os << " fill=\"grey\" font-size=\"" << _fontsz << "\"";
-    os << " transform=\"rotate(-90," << startx - 1 << "," << endy / 3 << ")\" ";
+    os << " transform=\"rotate(-90," << startx - _fontsz/2 << "," << endy/3 << ")\" ";
     os << " >";
     os << "Dimension " << dimy << std::endl;
     os << "</text>" << std::endl;
@@ -187,6 +209,7 @@ public:
         os << "<text " << "x=\"" << t_x << "\" "
                        << "y=\"" << t_y << "\" "
                        << "fill=\"black\" "
+                       << "font-family=\"Verdana\" "
                        << "font-size=\"" << _fontsz_tiny << "\" >";
         os << unit;
         os << "</text>" << std::endl;
