@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <vector>
 #include <memory>
-#include <future>
+// #include <future>
 
 #ifndef DASH__ALGORITHM__COPY__USE_WAIT
 #define DASH__ALGORITHM__COPY__USE_FLUSH
@@ -510,6 +510,7 @@ dash::Future<ValueType *> copy_async(
     ValueType * l_in_first = in_first.local();
     ValueType * l_in_last  = l_in_first + total_copy_elem;
 
+#if DASH_ENABLE_FUTURES
     if (dash::util::Config::get<bool>("DASH_COPY_ASYNC_LOCAL_COPY")) {
       std::shared_future<ValueType*> fut_local_copy_async(
         std::async(
@@ -544,6 +545,7 @@ dash::Future<ValueType *> copy_async(
         return fut_local_copy_async.get();
       });
     } else {
+#endif
       // Use memcpy for data ranges below 64 KB
       if (use_memcpy) {
         std::memcpy(out_first,        // destination
@@ -559,7 +561,9 @@ dash::Future<ValueType *> copy_async(
       DASH_LOG_TRACE("dash::copy_async", "finished local copy of",
                      (out_last - out_first), "elements");
       return dash::Future<ValueType *>([=]() { return out_last; });
+#if DASH_ENABLE_FUTURES
     }
+#endif
   }
 
   DASH_LOG_TRACE("dash::copy_async", "local range:",
@@ -662,6 +666,7 @@ dash::Future<ValueType *> copy_async(
     ValueType * local_out_first = out_first + num_prelocal_elem;
     ValueType * local_out_last  = local_out_first + num_local_elem;
 
+#if DASH_ENABLE_FUTURES
     if (dash::util::Config::get<bool>("DASH_COPY_ASYNC_LOCAL_COPY")) {
       std::shared_future<ValueType*> fut_local_copy_async(
         std::async(
@@ -698,6 +703,7 @@ dash::Future<ValueType *> copy_async(
       });
       futures.push_back(fut_local_copy);
     } else {
+#endif
       // Use memcpy for data ranges below 64 KB
       if (use_memcpy) {
         std::memcpy(local_out_first, // destination
@@ -712,7 +718,9 @@ dash::Future<ValueType *> copy_async(
                      "finished local copy of",
                      (local_out_last - local_out_first),
                      "elements");
+#if DASH_ENABLE_FUTURES
     }
+#endif
     out_last += (local_out_last - local_out_first);
   } else {
     DASH_LOG_TRACE("dash::copy_async", "no local subrange");
