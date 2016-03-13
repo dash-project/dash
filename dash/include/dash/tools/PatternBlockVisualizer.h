@@ -10,11 +10,6 @@
 
 #include <dash/tools/Colorspace.h>
 
-#include <iostream>
-using std::cout;
-using std::cerr;
-using std::endl;
-
 namespace dash {
 namespace tools {
 
@@ -86,10 +81,6 @@ public:
       _tileszy *= block_format;
       _gridy   *= block_format;
     }
-    cerr << "bs0:" << pat.blocksize(0) << " "
-         << "bs1:" << pat.blocksize(1) << " "
-         << "bft:" << block_format
-         << endl;
   }
 
   PatternBlockVisualizer() = delete;

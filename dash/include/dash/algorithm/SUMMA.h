@@ -155,9 +155,9 @@ void summa(
   typedef typename MatrixTypeA::value_type   value_type;
   typedef typename MatrixTypeA::index_type   index_t;
   typedef typename MatrixTypeA::size_type    extent_t;
-  typedef typename MatrixTypeA::pattern_type pattern_a_type;
-  typedef typename MatrixTypeB::pattern_type pattern_b_type;
-  typedef typename MatrixTypeC::pattern_type pattern_c_type;
+//typedef typename MatrixTypeA::pattern_type pattern_a_type;
+//typedef typename MatrixTypeB::pattern_type pattern_b_type;
+//typedef typename MatrixTypeC::pattern_type pattern_c_type;
   typedef std::array<index_t, 2>             coords_t;
 
   const bool shifted_tiling = dash::pattern_constraints<

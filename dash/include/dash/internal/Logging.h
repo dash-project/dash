@@ -178,7 +178,7 @@ static void Log_Recursive(
       << context_tag
       << msg.str()
       << std::endl;
-  std::cout << buf.str();
+  std::cerr << buf.str();
 }
 
 // "Recursive" variadic function

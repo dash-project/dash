@@ -10,6 +10,8 @@
 
 #include <dash/tools/PatternBlockVisualizer.h>
 
+#include <dash/internal/PatternLogging.h>
+
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -62,14 +64,13 @@ int main(int argc, char* argv[])
     try {
       dash::SizeSpec<2, extent_t> sizespec(params.size_y, params.size_x);
       dash::TeamSpec<2, index_t>  teamspec(params.units_y, params.units_x);
-
+#if 0
       auto pattern = dash::make_pattern<
                        dash::summa_pattern_partitioning_constraints,
                        dash::summa_pattern_mapping_constraints,
                        dash::summa_pattern_layout_constraints >(
                          sizespec,
                          teamspec);
-
       if (params.tile_x >= 0 && params.tile_y >= 0) {
         // change tile sizes of deduced pattern:
         typedef decltype(pattern) pattern_t;
@@ -83,7 +84,70 @@ int main(int argc, char* argv[])
                                    : dash::NONE),
                                  teamspec);
         pattern = custom_pattern;
+#endif
+      if (params.tile_x < 0 && params.tile_y < 0) {
+        auto max_team_extent = std::max(teamspec.extent(0),
+                                        teamspec.extent(1));
+        params.tile_x = sizespec.extent(1) / max_team_extent;
+        params.tile_y = sizespec.extent(0) / max_team_extent;
       }
+#if 0
+      // Example: -n 1680 1680 -u 28 1 -t 60 60
+      dash::ShiftTilePattern<2> pattern(sizespec,
+                                        dash::DistributionSpec<2>(
+                                          dash::TILE(params.tile_y),
+                                          dash::TILE(params.tile_x)),
+                                        teamspec);
+#endif
+      // Example: -n 30 30 -u 4 1 -t 10 10
+      typedef dash::SeqTilePattern<2> pattern_t;
+      dash::SeqTilePattern<2> pattern(sizespec,
+                                      dash::DistributionSpec<2>(
+                                        dash::TILE(params.tile_y),
+                                        dash::TILE(params.tile_x)),
+                                      teamspec);
+      dash::internal::print_pattern_mapping(
+        "pattern.unit_at", pattern, 3,
+        [](const pattern_t & _pattern, int _x, int _y) -> dart_unit_t {
+            return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+        });
+      dash::internal::print_pattern_mapping(
+        "pattern.global_at", pattern, 3,
+        [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+            return _pattern.global_at(std::array<index_t, 2> {_x, _y});
+        });
+      dash::internal::print_pattern_mapping(
+        "pattern.local", pattern, 10,
+        [](const pattern_t & _pattern, int _x, int _y) -> std::string {
+            auto lpos = _pattern.local(std::array<index_t, 2> {_x, _y});
+            std::ostringstream ss;
+            ss << lpos.unit << ":" << lpos.coords;
+            return ss.str();
+        });
+      dash::internal::print_pattern_mapping(
+        "pattern.at", pattern, 3,
+        [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+            return _pattern.at(std::array<index_t, 2> {_x, _y});
+        });
+      dash::internal::print_pattern_mapping(
+        "pattern.block_at", pattern, 3,
+        [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+            return _pattern.block_at(std::array<index_t, 2> {_x, _y});
+        });
+      dash::internal::print_pattern_mapping(
+        "pattern.block.offset", pattern, 5,
+        [](const pattern_t & _pattern, int _x, int _y) -> std::string {
+            auto block_idx = _pattern.block_at(std::array<index_t, 2> {_x, _y});
+            auto block_vs  = _pattern.block(block_idx);
+            std::ostringstream ss;
+            ss << block_vs.offset(0) << "," << block_vs.offset(1);
+            return ss.str();
+        });
+      dash::internal::print_pattern_mapping(
+        "pattern.local_index", pattern, 3,
+        [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+            return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+        });
 
       int n_blocks_j   = pattern.blockspec().extent(0);
       int imb_blocks_i = pattern.blockspec().extent(0) % teamspec.extent(0);
