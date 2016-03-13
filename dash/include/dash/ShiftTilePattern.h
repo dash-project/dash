@@ -45,7 +45,7 @@ template<
 class ShiftTilePattern
 {
 public:
-  static constexpr char const * PatternName = "ShiftTilePattern<N>";
+  static constexpr char const * PatternName = "ShiftTilePattern";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:

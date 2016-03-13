@@ -6,6 +6,8 @@
 #include <cstring>
 #include <array>
 #include <type_traits>
+#include <iostream>
+#include <sstream>
 
 #include <dash/Types.h>
 #include <dash/Enums.h>
@@ -1682,6 +1684,44 @@ private:
     return l_extents;
   }
 };
+
+template<
+  dim_t      ND,
+  MemArrange Ar,
+  typename   Index>
+std::ostream & operator<<(
+  std::ostream                   & os,
+  const TilePattern<ND,Ar,Index> & pattern)
+{
+  typedef Index index_t;
+
+  dim_t ndim = pattern.ndim();
+
+  std::string storage_order = pattern.memory_order() == ROW_MAJOR
+                              ? "ROW_MAJOR"
+                              : "COL_MAJOR";
+
+  std::array<index_t, 2> blocksize;
+  blocksize[0] = pattern.blocksize(0);
+  blocksize[1] = pattern.blocksize(1);
+
+  std::ostringstream ss;
+  ss << "dash::"
+     << pattern.PatternName
+     << "<"
+     << ndim << ","
+     << storage_order << ","
+     << typeid(index_t).name()
+     << ">"
+     << "("
+     << "SizeSpec:"  << pattern.sizespec().extents()  << ", "
+     << "TeamSpec:"  << pattern.teamspec().extents()  << ", "
+     << "BlockSpec:" << pattern.blockspec().extents() << ", "
+     << "BlockSize:" << blocksize
+     << ")";
+
+  return operator<<(os, ss.str());
+}
 
 } // namespace dash
 

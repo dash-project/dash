@@ -6,6 +6,8 @@
 #include <cstring>
 #include <array>
 #include <type_traits>
+#include <iostream>
+#include <sstream>
 
 #include <dash/Types.h>
 #include <dash/Enums.h>
@@ -63,7 +65,9 @@ public:
               // Same number of blocks assigned to every unit.
               pattern_mapping_tag::balanced,
               // Number of blocks assigned to a unit may differ.
-              pattern_mapping_tag::unbalanced
+              pattern_mapping_tag::unbalanced,
+              // Every unit mapped in any single slice in every dimension.
+              pattern_mapping_tag::diagonal
           > mapping_properties;
   /// Satisfiable properties in pattern property category Layout:
   typedef pattern_layout_properties<
@@ -76,12 +80,12 @@ public:
           > layout_properties;
 
 private:
+  /// Fully specified type definition of self type
+  typedef SeqTilePattern<NumDimensions, Arrangement, IndexType>
+    self_t;
   /// Derive size type from given signed index / ptrdiff type
   typedef typename std::make_unsigned<IndexType>::type
     SizeType;
-  /// Fully specified type definition of self
-  typedef SeqTilePattern<NumDimensions, Arrangement, IndexType>
-    self_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
     MemoryLayout_t;
   typedef CartesianIndexSpace<NumDimensions, Arrangement, IndexType>
@@ -1249,9 +1253,9 @@ public:
                    "unit:",       unit,
                    "lblock_idx:", local_block_index);
     auto g_block_index  = local_block_index * _nunits + unit;
-    auto g_block_coords = _blockspec.at(g_block_index);
+    auto g_block_coords = _blockspec.coords(g_block_index);
 
-    DASH_LOG_TRACE_VAR("SeqTilePattern.local_block", l_block_coords);
+    DASH_LOG_TRACE_VAR("SeqTilePattern.local_block", g_block_coords);
     std::array<index_type, NumDimensions> offsets;
     std::array<size_type, NumDimensions>  extents;
     for (auto d = 0; d < NumDimensions; ++d) {
@@ -1614,22 +1618,22 @@ private:
     dart_unit_t unit) const
   {
     // Number of blocks in the pattern:
-    auto n_blocks          = _blockspec.size();
-    auto min_local_blocks  = n_blocks / _nunits;
+    auto n_blocks     = _blockspec.size();
+    auto min_l_blocks = n_blocks / _nunits;
     // Maximum difference in the number of blocks mapped to units is 1.
-    // A unit has an extra block mapped to it if its unit id is less than the 
+    // A unit has an extra block mapped to it if its unit id is less than the
     // remainder of blocks divided by total number of units.
-    auto num_local_blocks  = min_local_blocks;
+    auto num_l_blocks = min_l_blocks;
     if (unit < n_blocks % _nunits) {
-      ++num_local_blocks;
+      ++num_l_blocks;
     }
     DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()", unit);
-    DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()", min_local_blocks);
-    DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()", num_local_blocks);
-    // Blocks are arranged in a one-dimensional sequence in logical local memory
-    // layout:
+    DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()", min_l_blocks);
+    DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()", num_l_blocks);
+    // Blocks are arranged in a one-dimensional sequence in logical local
+    // memory layout:
     ::std::array<SizeType, NumDimensions> l_extents;
-    l_extents[0] = num_local_blocks * _blocksize_spec.extent(0);
+    l_extents[0] = num_l_blocks * _blocksize_spec.extent(0);
     for (auto d = 1; d < NumDimensions; ++d) {
       l_extents[d] = _blocksize_spec.extent(d);
     }
@@ -1637,6 +1641,44 @@ private:
     return l_extents;
   }
 };
+
+template<
+  dim_t      ND,
+  MemArrange Ar,
+  typename   Index>
+std::ostream & operator<<(
+  std::ostream                & os,
+  const SeqTilePattern<ND,Ar,Index> & pattern)
+{
+  typedef Index index_t;
+
+  dim_t ndim = pattern.ndim();
+
+  std::string storage_order = pattern.memory_order() == ROW_MAJOR
+                              ? "ROW_MAJOR"
+                              : "COL_MAJOR";
+
+  std::array<index_t, 2> blocksize;
+  blocksize[0] = pattern.blocksize(0);
+  blocksize[1] = pattern.blocksize(1);
+
+  std::ostringstream ss;
+  ss << "dash::"
+     << pattern.PatternName
+     << "<"
+     << ndim << ","
+     << storage_order << ","
+     << typeid(index_t).name()
+     << ">"
+     << "("
+     << "SizeSpec:"  << pattern.sizespec().extents()  << ", "
+     << "TeamSpec:"  << pattern.teamspec().extents()  << ", "
+     << "BlockSpec:" << pattern.blockspec().extents() << ", "
+     << "BlockSize:" << blocksize
+     << ")";
+
+  return operator<<(os, ss.str());
+}
 
 } // namespace dash
 

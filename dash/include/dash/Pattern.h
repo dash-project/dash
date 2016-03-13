@@ -67,7 +67,6 @@ namespace dash {
  * \}
  */
 
-
 } // namespace dash
 
 #include <dash/BlockPattern.h>

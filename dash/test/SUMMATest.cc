@@ -131,10 +131,6 @@ TEST_F(SUMMATest, Deduction)
         auto unit  = matrix_a.pattern()
                              .unit_at(std::array<index_t, 2> { col, row });
         value_t value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
-//      auto block_x  = col / tilesize_x;
-//      auto block_y  = row / tilesize_x;
-//      value_t value = static_cast<value_t>(block_x) +
-//                      static_cast<value_t>(block_y) / 10.0;
         LOG_MESSAGE("Setting matrix A value (%d,%d)", col, row);
         matrix_a[col][row] = value;
       }
@@ -167,7 +163,100 @@ TEST_F(SUMMATest, Deduction)
         auto unit = matrix_a.pattern()
                             .unit_at(std::array<index_t, 2> { col, row });
         value_t expect = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
-//      value_t expect = ((1 + col) * 10) + (row + 1);
+        value_t actual = matrix_c[col][row];
+        ASSERT_EQ_U(expect, actual);
+      }
+    }
+  }
+
+  dash::barrier();
+}
+
+TEST_F(SUMMATest, SeqTilePatternMatrix)
+{
+  typedef dash::SeqTilePattern<2> pattern_t;
+  typedef double                  value_t;
+  typedef pattern_t::index_type   index_t;
+  typedef pattern_t::size_type    extent_t;
+
+  extent_t tile_size   = 7;
+  extent_t base_size   = tile_size * 3;
+  extent_t extent_rows = dash::size() * base_size;
+  extent_t extent_cols = dash::size() * base_size;
+  dash::SizeSpec<2> size_spec(extent_rows, extent_cols);
+
+  auto team_spec = dash::make_team_spec<
+                     dash::summa_pattern_partitioning_constraints,
+                     dash::summa_pattern_mapping_constraints,
+                     dash::summa_pattern_layout_constraints >(
+                       size_spec);
+
+  dash::DistributionSpec<2> dist_spec(dash::TILE(tile_size),
+                                      dash::TILE(tile_size));
+  pattern_t pattern(size_spec, dist_spec, team_spec);
+
+  // Create operands and result matrices with identical distribution pattern:
+  LOG_MESSAGE("Initialize matrix instances ...");
+  dash::Matrix<value_t, 2, index_t, pattern_t> matrix_a(pattern);
+  dash::Matrix<value_t, 2, index_t, pattern_t> matrix_b(pattern);
+  dash::Matrix<value_t, 2, index_t, pattern_t> matrix_c(pattern);
+
+  LOG_MESSAGE("Starting initialization of matrix values");
+  dash::barrier();
+
+  // Initialize operands:
+  if (_dash_id == 0) {
+    // Matrix B is identity matrix:
+    for (index_t d = 0; d < static_cast<index_t>(extent_rows); ++d) {
+      LOG_MESSAGE("Setting matrix B value (%d,%d)", d, d);
+      matrix_b[d][d] = 1;
+    }
+    for (index_t row = 0; row < static_cast<index_t>(extent_rows); ++row) {
+      for (index_t col = 0; col < static_cast<index_t>(extent_cols); ++col) {
+        LOG_MESSAGE("Initialize A matrix value (%d,%d)", col, row);
+        auto unit  = matrix_a.pattern()
+                             .unit_at(std::array<index_t, 2> { col, row });
+        value_t value = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
+        LOG_MESSAGE("Setting matrix A value (%d,%d)", col, row);
+        matrix_a[col][row] = value;
+      }
+    }
+  }
+
+  LOG_MESSAGE("Waiting for initialization of matrices ...");
+  dash::barrier();
+
+  // Expected to be resolved to SUMMA version of dash::multiply:
+  LOG_MESSAGE("Calling dash::multiply ...");
+
+  dash::util::TraceStore::on();
+  dash::util::TraceStore::clear();
+  dash::util::Trace trace("SUMMATest.SeqTilePatternMatrix");
+  dash::multiply(matrix_a,
+                 matrix_b,
+                 matrix_c);
+
+  dash::barrier();
+  dash::util::TraceStore::off();
+  dash::util::TraceStore::write(std::cout);
+
+  if (_dash_id == 0) {
+    dash::test::print_matrix("summa.matrix A", matrix_a, 3);
+    dash::test::print_matrix("summa.matrix B", matrix_b, 3);
+    dash::test::print_matrix("summa.matrix C", matrix_c, 3);
+  }
+
+  dash::barrier();
+
+  // Verify multiplication result (A x id = A):
+  if (false && _dash_id == 0) {
+    // Multiplication of matrix A with identity matrix B should be identical
+    // to matrix A:
+    for (index_t row = 0; row < static_cast<index_t>(extent_rows); ++row) {
+      for (index_t col = 0; col < static_cast<index_t>(extent_cols); ++col) {
+        auto unit = matrix_a.pattern()
+                            .unit_at(std::array<index_t, 2> { col, row });
+        value_t expect = ((1 + col) * 10000) + ((row + 1) * 100) + unit;
         value_t actual = matrix_c[col][row];
         ASSERT_EQ_U(expect, actual);
       }

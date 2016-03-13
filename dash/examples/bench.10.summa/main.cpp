@@ -256,6 +256,7 @@ void perform_test(
     std::array<extent_t, 2> team_extents { params.units_y, params.units_x };
     team_spec.resize(team_extents);
   }
+#if 0
   auto pattern   = dash::make_pattern<
                      dash::summa_pattern_partitioning_constraints,
                      dash::summa_pattern_mapping_constraints,
@@ -263,8 +264,15 @@ void perform_test(
                        size_spec,
                        team_spec);
   typedef decltype(pattern) pattern_t;
-
   extent_t tilesize = pattern.blocksize(0);
+#else
+  typedef dash::SeqTilePattern<2, dash::ROW_MAJOR, index_t> pattern_t;
+  extent_t tilesize = size_spec.extent(0) / team_spec.size();
+  dash::DistributionSpec<2> dist_spec(dash::TILE(tilesize),
+                                      dash::TILE(tilesize));
+  pattern_t pattern(size_spec, dist_spec, team_spec);
+#endif
+
   if (params.tilesize_base > 0) {
     if (params.tilesize_fixed) {
       tilesize = params.tilesize_base;
@@ -285,6 +293,7 @@ void perform_test(
   if (myid == 0) {
     if (iteration == 0) {
       // Print data set column headers:
+      cout << "Pattern: " << pattern << endl;
       cout << std::right
            << setw(7)  << "units"   << ", "
            << setw(7)  << "threads" << ", "
@@ -305,11 +314,6 @@ void perform_test(
     }
     int mem_total_mb = 0;
     if (variant.find("dash") == 0) {
-#ifdef DASH_ALGORITHM_SUMMA_DIAGONAL_MAPPING
-      variant_id.append(".dm");
-#else
-      variant_id.append(".mp");
-#endif
       auto block_s = (n / num_units) * (n / num_units);
       mem_total_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:

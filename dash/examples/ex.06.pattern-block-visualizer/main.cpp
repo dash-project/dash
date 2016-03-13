@@ -34,13 +34,10 @@ typedef struct cli_params_t {
 template<typename PatternType>
 std::string pattern_to_string(
   const PatternType & pattern);
+
 template<typename PatternType>
 std::string pattern_to_filename(
   const PatternType & pattern);
-template <typename T, std::size_t N>
-std::ostream & operator<<(
-  std::ostream           & o,
-  const std::array<T, N> & arr);
 
 cli_params parse_args(int argc, char * argv[]);
 void print_params(const cli_params & params);
@@ -276,7 +273,6 @@ void print_params(const cli_params & params)
        << endl;
 }
 
-
 /**
  * Create string describing of pattern instance.
  */
@@ -346,23 +342,5 @@ std::string pattern_to_filename(
      << ".svg";
 
   return ss.str();
-}
-
-template <typename T, std::size_t N>
-std::ostream & operator<<(
-  std::ostream & o,
-  const std::array<T, N> & arr)
-{
-  std::ostringstream ss;
-  auto nelem = arr.size();
-  ss << "{ ";
-  int i = 1;
-  for (auto e : arr) {
-    ss << e
-       << (i++ < nelem ? "," : "");
-  }
-  ss << " }";
-  operator<<(o, ss.str());
-  return o;
 }
 
