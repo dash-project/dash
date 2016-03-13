@@ -860,6 +860,8 @@ public:
    * Resolve an element's linear global index from the calling unit's local
    * index of that element.
    *
+   * TODO: Optmize
+   *
    * \see  at  Inverse of global()
    *
    * \see  DashPatternConcept
@@ -1203,15 +1205,15 @@ public:
   {
     DASH_LOG_TRACE_VAR("SeqTilePattern.block()", global_block_index);
     // block index -> block coords -> offset
-    auto block_coords = _blockspec.coords(global_block_index);
-    DASH_LOG_TRACE_VAR("SeqTilePattern.block", block_coords);
+    auto g_block_coords = _blockspec.coords(global_block_index);
+    DASH_LOG_TRACE_VAR("SeqTilePattern.block", g_block_coords);
     DASH_LOG_TRACE_VAR("SeqTilePattern.block", _blocksize_spec.extents());
     std::array<index_type, NumDimensions> offsets;
     std::array<size_type, NumDimensions>  extents;
     for (auto d = 0; d < NumDimensions; ++d) {
       auto blocksize_d = _blocksize_spec.extent(d);
       extents[d] = blocksize_d;
-      offsets[d] = block_coords[d] * blocksize_d;
+      offsets[d] = g_block_coords[d] * blocksize_d;
     }
     DASH_LOG_TRACE("SeqTilePattern.block",
                    "offsets:", offsets,
@@ -1245,20 +1247,16 @@ public:
   {
     DASH_LOG_TRACE("SeqTilePattern.local_block()",
                    "unit:",       unit,
-                   "lblock_idx:", local_block_index,
-                   "lblockspec:", _local_blockspec.extents());
-    // Local block index to local block coords:
-    auto l_block_coords = _local_blockspec.coords(local_block_index);
-    auto unit_ts_coords = _teamspec.coords(unit);
+                   "lblock_idx:", local_block_index);
+    auto g_block_index  = local_block_index * _nunits + unit;
+    auto g_block_coords = _blockspec.at(g_block_index);
+
     DASH_LOG_TRACE_VAR("SeqTilePattern.local_block", l_block_coords);
     std::array<index_type, NumDimensions> offsets;
     std::array<size_type, NumDimensions>  extents;
     for (auto d = 0; d < NumDimensions; ++d) {
       auto blocksize_d = _blocksize_spec.extent(d);
-      auto nunits_d    = _teamspec.extent(d);
-      // Block offsets are lobal coordinates of first block element:
-      offsets[d] = ((l_block_coords[d] * nunits_d) + unit_ts_coords[d]) *
-                   blocksize_d;
+      offsets[d] = g_block_coords[d] * blocksize_d;
       extents[d] = blocksize_d;
     }
     ViewSpec_t block_vs(offsets, extents);
@@ -1285,8 +1283,7 @@ public:
     auto l_block_coords = _local_blockspec.coords(local_block_index);
     // Local block coords to local element offset:
     for (auto d = 0; d < NumDimensions; ++d) {
-      auto blocksize_d  = extents[d];
-      offsets[d]        = l_block_coords[d] * blocksize_d;
+      offsets[d] = l_block_coords[d] * extents[d];
     }
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_TRACE_VAR("SeqTilePattern.local_block_local >", block_vs);
