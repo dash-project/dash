@@ -1,5 +1,4 @@
 #include <dash/util/BenchmarkParams.h>
-#include <dash/util/Config.h>
 
 #include <iostream>
 #include <iomanip>
@@ -9,6 +8,7 @@
 #include <cstring>
 #include <ctime>
 
+#include <dash/util/Config.h>
 #include <dash/util/Locality.h>
 #include <dash/Array.h>
 
@@ -68,11 +68,6 @@ BenchmarkParams::BenchmarkParams(
         strstr(env_var_kv, "MP_")    == env_var_kv)
     {
       params.env_mpi_config.push_back(std::make_pair(flag_name, flag_value));
-    }
-    if (strstr(env_var_kv, "DASH_")  == env_var_kv ||
-        strstr(env_var_kv, "DART_")  == env_var_kv)
-    {
-      params.env_dash_config.push_back(std::make_pair(flag_name, flag_value));
     }
     env_var_kv = *(environ + i);
   }
@@ -141,10 +136,12 @@ void BenchmarkParams::print_header()
 #endif
 
   print_section_start("DASH Environment Flags");
-  for (auto flag : _config.env_dash_config) {
-    int val_w  = box_width - flag.first.length() - 5;
-    cout << "--   " << std::left   << flag.first
-                    << setw(val_w) << std::right << flag.second
+  for (auto flag = dash::util::Config::begin();
+       flag != dash::util::Config::end(); ++flag)
+  {
+    int val_w  = box_width - flag->first.length() - 5;
+    cout << "--   " << std::left   << flag->first
+                    << setw(val_w) << std::right << flag->second
          << endl;
   }
   print_section_end();
