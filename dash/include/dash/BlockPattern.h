@@ -41,7 +41,7 @@ template<
 class Pattern
 {
 public:
-  static constexpr char const * PatternName = "BlockPattern<N>";
+  static constexpr char const * PatternName = "BlockPattern";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
@@ -193,7 +193,7 @@ public:
     _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
     _teamspec(_arguments.teamspec()),
-    _nunits(_team->size()),
+    _nunits(_teamspec.size()),
     _memory_layout(_arguments.sizespec().extents()),
     _blocksize_spec(initialize_blocksizespec(
         _arguments.sizespec(),
@@ -263,7 +263,7 @@ public:
       teamspec,
       _distspec,
       *_team),
-    _nunits(_team->size()),
+    _nunits(_teamspec.size()),
     _memory_layout(sizespec.extents()),
     _blocksize_spec(initialize_blocksizespec(
         sizespec,
@@ -334,7 +334,7 @@ public:
   : _distspec(dist),
     _team(&team),
     _teamspec(_distspec, *_team),
-    _nunits(_team->size()),
+    _nunits(_teamspec.size()),
     _memory_layout(sizespec.extents()),
     _blocksize_spec(initialize_blocksizespec(
         sizespec,

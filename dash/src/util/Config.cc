@@ -47,14 +47,17 @@ void Config::set(
   internal::__config_values[key] = value;
 
   // Parse boolean values:
-  std::string value_lowercase;
-  std::transform(value.begin(), value.end(), value_lowercase.begin(), ::tolower);
-  if (value_lowercase == "true" || value_lowercase == "yes") {
+  std::string value_lowercase = value;
+  std::transform(value.begin(), value.end(), value_lowercase.begin(),
+                 ::tolower);
+  if (value_lowercase == "true" || value_lowercase == "yes" ||
+      value_lowercase == "t"    || value_lowercase == "y") {
     std::string key_name_bool = key + "_BOOL";
     set(key_name_bool, 1);
     return;
   }
-  else if (value_lowercase == "false" || value_lowercase == "no") {
+  else if (value_lowercase == "false" || value_lowercase == "no" ||
+           value_lowercase == "f"     || value_lowercase == "n") {
     std::string key_name_bool = key + "_BOOL";
     set(key_name_bool, 0);
     return;
@@ -102,7 +105,7 @@ template<>
 bool Config::get<bool>(
   const std::string & key)
 {
-  return (get_str(key + "_BOOL") == "1");
+  return (get_str(key + "_BOOL") == "1") || (get_str(key) == "1");
 }
 
 

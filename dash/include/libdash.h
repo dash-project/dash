@@ -12,6 +12,7 @@
 #include <dash/Init.h>
 #include <dash/Team.h>
 #include <dash/Cartesian.h>
+#include <dash/TeamSpec.h>
 #include <dash/View.h>
 #include <dash/GlobMem.h>
 #include <dash/GlobPtr.h>

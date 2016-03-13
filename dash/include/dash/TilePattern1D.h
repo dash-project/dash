@@ -38,7 +38,7 @@ private:
   static const dim_t      NumDimensions = 1;
 
 public:
-  static constexpr char const * PatternName = "TilePattern<1>";
+  static constexpr char const * PatternName = "TilePattern1D";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
