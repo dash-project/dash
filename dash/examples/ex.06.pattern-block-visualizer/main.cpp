@@ -22,6 +22,7 @@ typedef dash::default_index_t  index_t;
 typedef dash::default_extent_t extent_t;
 
 typedef struct cli_params_t {
+  std::string type;
   extent_t    size_x;
   extent_t    size_y;
   extent_t    units_x;
@@ -43,11 +44,101 @@ cli_params parse_args(int argc, char * argv[]);
 void print_params(const cli_params & params);
 
 template<typename PatternT>
+void print_mapping_imbalance(const PatternT & pattern);
+
+template<typename PatternT>
 void print_example(
-  PatternT           pat,
-  std::string        fname,
-  std::string        title,
-  const cli_params & params);
+  const PatternT   & pattern,
+  const cli_params & params)
+{
+  typedef typename PatternT::index_type index_t;
+
+  auto pattern_file = pattern_to_filename(pattern);
+  auto pattern_desc = pattern_to_string(pattern);
+  print_mapping_imbalance(pattern);
+
+  dash::tools::PatternBlockVisualizer<PatternT> pv(pattern);
+  pv.set_title(pattern_desc);
+
+  std::array<index_t, pattern.ndim()> coords = {0, 0};
+
+  cerr << "Generating visualization of "
+       << endl
+       << "    " << pattern_desc
+       << endl;
+
+  if (params.cout) {
+    pv.draw_pattern(std::cout, coords, 1, 0);
+  } else {
+    cerr << "Image file:"
+         << endl
+         << "    " << pattern_file
+         << endl;
+    std::ofstream out(pattern_file);
+    pv.draw_pattern(out, coords, 1, 0);
+    out.close();
+  }
+}
+
+dash::TilePattern<2, dash::ROW_MAJOR, index_t>
+make_summa_pattern(
+  const cli_params                  & params,
+  const dash::SizeSpec<2, extent_t> & sizespec,
+  const dash::TeamSpec<2, index_t>  & teamspec)
+{
+  auto pattern = dash::make_pattern<
+                   dash::summa_pattern_partitioning_constraints,
+                   dash::summa_pattern_mapping_constraints,
+                   dash::summa_pattern_layout_constraints >(
+                     sizespec,
+                     teamspec);
+  if (params.tile_x >= 0 && params.tile_y >= 0) {
+    // change tile sizes of deduced pattern:
+    typedef decltype(pattern) pattern_t;
+    pattern_t custom_pattern(sizespec,
+                             dash::DistributionSpec<2>(
+                               params.tile_x > 0
+                               ? dash::TILE(params.tile_x)
+                               : dash::NONE,
+                               params.tile_y > 0
+                               ? dash::TILE(params.tile_y)
+                               : dash::NONE),
+                             teamspec);
+    pattern = custom_pattern;
+  }
+  return pattern;
+}
+
+dash::ShiftTilePattern<2, dash::ROW_MAJOR, index_t>
+make_shift_tile_pattern(
+  const cli_params                  & params,
+  const dash::SizeSpec<2, extent_t> & sizespec,
+  const dash::TeamSpec<2, index_t>  & teamspec)
+{
+  // Example: -n 1680 1680 -u 28 1 -t 60 60
+  dash::ShiftTilePattern<2> pattern(sizespec,
+                                    dash::DistributionSpec<2>(
+                                      dash::TILE(params.tile_y),
+                                      dash::TILE(params.tile_x)),
+                                    teamspec);
+  return pattern;
+}
+
+dash::SeqTilePattern<2, dash::ROW_MAJOR, index_t>
+make_seq_tile_pattern(
+  const cli_params                  & params,
+  const dash::SizeSpec<2, extent_t> & sizespec,
+  const dash::TeamSpec<2, index_t>  & teamspec)
+{
+  // Example: -n 30 30 -u 4 1 -t 10 10
+  typedef dash::SeqTilePattern<2> pattern_t;
+  dash::SeqTilePattern<2> pattern(sizespec,
+                                  dash::DistributionSpec<2>(
+                                    dash::TILE(params.tile_y),
+                                    dash::TILE(params.tile_x)),
+                                  teamspec);
+  return pattern;
+}
 
 int main(int argc, char* argv[])
 {
@@ -56,127 +147,34 @@ int main(int argc, char* argv[])
   auto params = parse_args(argc, argv);
   print_params(params);
 
-  if (dash::myid() == 0)
-  {
+  if (dash::myid() == 0) {
     try {
-      dash::SizeSpec<2, extent_t> sizespec(params.size_y, params.size_x);
+      dash::SizeSpec<2, extent_t> sizespec(params.size_y,  params.size_x);
       dash::TeamSpec<2, index_t>  teamspec(params.units_y, params.units_x);
-#if 0
-      auto pattern = dash::make_pattern<
-                       dash::summa_pattern_partitioning_constraints,
-                       dash::summa_pattern_mapping_constraints,
-                       dash::summa_pattern_layout_constraints >(
-                         sizespec,
-                         teamspec);
-      if (params.tile_x >= 0 && params.tile_y >= 0) {
-        // change tile sizes of deduced pattern:
-        typedef decltype(pattern) pattern_t;
-        pattern_t custom_pattern(sizespec,
-                                 dash::DistributionSpec<2>(
-                                   params.tile_x > 0
-                                   ? dash::TILE(params.tile_x)
-                                   : dash::NONE,
-                                   params.tile_y > 0
-                                   ? dash::TILE(params.tile_y)
-                                   : dash::NONE),
-                                 teamspec);
-        pattern = custom_pattern;
-#endif
+
       if (params.tile_x < 0 && params.tile_y < 0) {
         auto max_team_extent = std::max(teamspec.extent(0),
                                         teamspec.extent(1));
         params.tile_x = sizespec.extent(1) / max_team_extent;
         params.tile_y = sizespec.extent(0) / max_team_extent;
       }
-#if 0
-      // Example: -n 1680 1680 -u 28 1 -t 60 60
-      dash::ShiftTilePattern<2> pattern(sizespec,
-                                        dash::DistributionSpec<2>(
-                                          dash::TILE(params.tile_y),
-                                          dash::TILE(params.tile_x)),
-                                        teamspec);
-#endif
-      // Example: -n 30 30 -u 4 1 -t 10 10
-      typedef dash::SeqTilePattern<2> pattern_t;
-      dash::SeqTilePattern<2> pattern(sizespec,
-                                      dash::DistributionSpec<2>(
-                                        dash::TILE(params.tile_y),
-                                        dash::TILE(params.tile_x)),
-                                      teamspec);
-      dash::internal::print_pattern_mapping(
-        "pattern.unit_at", pattern, 3,
-        [](const pattern_t & _pattern, int _x, int _y) -> dart_unit_t {
-            return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
-        });
-      dash::internal::print_pattern_mapping(
-        "pattern.global_at", pattern, 3,
-        [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-            return _pattern.global_at(std::array<index_t, 2> {_x, _y});
-        });
-      dash::internal::print_pattern_mapping(
-        "pattern.local", pattern, 10,
-        [](const pattern_t & _pattern, int _x, int _y) -> std::string {
-            auto lpos = _pattern.local(std::array<index_t, 2> {_x, _y});
-            std::ostringstream ss;
-            ss << lpos.unit << ":" << lpos.coords;
-            return ss.str();
-        });
-      dash::internal::print_pattern_mapping(
-        "pattern.at", pattern, 3,
-        [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-            return _pattern.at(std::array<index_t, 2> {_x, _y});
-        });
-      dash::internal::print_pattern_mapping(
-        "pattern.block_at", pattern, 3,
-        [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-            return _pattern.block_at(std::array<index_t, 2> {_x, _y});
-        });
-      dash::internal::print_pattern_mapping(
-        "pattern.block.offset", pattern, 5,
-        [](const pattern_t & _pattern, int _x, int _y) -> std::string {
-            auto block_idx = _pattern.block_at(std::array<index_t, 2> {_x, _y});
-            auto block_vs  = _pattern.block(block_idx);
-            std::ostringstream ss;
-            ss << block_vs.offset(0) << "," << block_vs.offset(1);
-            return ss.str();
-        });
-      dash::internal::print_pattern_mapping(
-        "pattern.local_index", pattern, 3,
-        [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-            return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
-        });
 
-      int n_blocks_j   = pattern.blockspec().extent(0);
-      int imb_blocks_i = pattern.blockspec().extent(0) % teamspec.extent(0);
-      int imb_blocks_j = pattern.blockspec().extent(1) % teamspec.extent(1);
-      int bal_blocks_i = pattern.blockspec().extent(0) - imb_blocks_i;
-      int bal_blocks_j = pattern.blockspec().extent(1) - imb_blocks_j;
-      int imb_blocks   = imb_blocks_i * n_blocks_j +
-                         bal_blocks_i * imb_blocks_j;
-      int bal_blocks   = bal_blocks_i * bal_blocks_j;
-      float imb_factor = static_cast<float>(imb_blocks) /
-                         static_cast<float>(bal_blocks);
+      if (params.type == "summa") {
+        auto pattern = make_summa_pattern(params, sizespec, teamspec);
+        print_example(pattern, params);
+      } else if (params.type == "shift") {
+        auto pattern = make_shift_tile_pattern(params, sizespec, teamspec);
+        print_example(pattern, params);
+      } else if (params.type == "seq") {
+        auto pattern = make_seq_tile_pattern(params, sizespec, teamspec);
+        print_example(pattern, params);
+      } else {
+        DASH_THROW(
+          dash::exception::InvalidArgument,
+          "Invalid argument '" << params.type << "' for pattern type, " <<
+          "expected 'summa', 'shift', or 'seq'");
+      }
 
-      cerr << "mapping imbalance: "
-           << endl
-           << "    balanced blocks:   ("
-           << std::fixed << std::setw(3) << bal_blocks_i << ","
-           << std::fixed << std::setw(3) << bal_blocks_j << " )"
-           << " = " << bal_blocks
-           << endl
-           << "    imbalanced blocks: ("
-           << std::fixed << std::setw(3) << imb_blocks_i << ","
-           << std::fixed << std::setw(3) << imb_blocks_j << " )"
-           << " = " << imb_blocks
-           << endl
-           << "    imbalance factor:  "  << std::setprecision(4) << imb_factor
-           << endl
-           << endl;
-
-      auto pattern_desc = pattern_to_string(pattern);
-      auto pattern_file = pattern_to_filename(pattern);
-
-      print_example(pattern, pattern_file, pattern_desc, params);
     } catch (std::exception & excep) {
       cerr << excep.what() << endl;
     }
@@ -185,38 +183,6 @@ int main(int argc, char* argv[])
   dash::finalize();
 
   return EXIT_SUCCESS;
-}
-
-template<typename PatternT>
-void print_example(
-  PatternT           pat,
-  std::string        fname,
-  std::string        title,
-  const cli_params & params)
-{
-  typedef typename PatternT::index_type index_t;
-
-  dash::tools::PatternBlockVisualizer<decltype(pat)> pv(pat);
-  pv.set_title(title);
-
-  std::array<index_t, pat.ndim()> coords = {0, 0};
-
-  cerr << "Generating visualization of "
-       << endl
-       << "    " << title
-       << endl;
-
-  if (params.cout) {
-    pv.draw_pattern(std::cout, coords, 1, 0);
-  } else {
-    cerr << "image file:"
-         << endl
-         << "    " << fname
-         << endl;
-    std::ofstream out(fname);
-    pv.draw_pattern(out, coords, 1, 0);
-    out.close();
-  }
 }
 
 cli_params parse_args(int argc, char * argv[])
@@ -229,10 +195,14 @@ cli_params parse_args(int argc, char * argv[])
   params.tile_x  = -1;
   params.tile_y  = -1;
   params.cout    = false;
+  params.type    = "summa";
 
   for (auto i = 1; i < argc; i += 3) {
     std::string flag = argv[i];
-    if (flag == "-n") {
+    if (flag == "-s") {
+      params.type    = argv[i+1];
+      i -= 1;
+    } else if (flag == "-n") {
       params.size_x  = static_cast<extent_t>(atoi(argv[i+1]));
       params.size_y  = static_cast<extent_t>(atoi(argv[i+2]));
     } else if (flag == "-u") {
@@ -257,6 +227,8 @@ void print_params(const cli_params & params)
   int w       = std::max({ w_size, w_units, w_tile }) + 1;
 
   cerr << "Parameters:"
+       << endl
+       << "    type (-s):       " << params.type
        << endl
        << "    size (-n x y): ( "
        << std::fixed << std::setw(w) << params.size_x << ", "
@@ -299,13 +271,11 @@ std::string pattern_to_string(
      << ndim << ","
      << storage_order << ","
      << typeid(index_t).name()
-     << ">"
-     << "("
-     << "SizeSpec:"  << pattern.sizespec().extents()  << ", "
-     << "TeamSpec:"  << pattern.teamspec().extents()  << ", "
-     << "BlockSpec:" << pattern.blockspec().extents() << ", "
-     << "BlockSize:" << blocksize
-     << ")";
+     << ">(" << endl
+     << "      SizeSpec:  " << pattern.sizespec().extents()  << "," << endl
+     << "      TeamSpec:  " << pattern.teamspec().extents()  << "," << endl
+     << "      BlockSpec: " << pattern.blockspec().extents() << "," << endl
+     << "      BlockSize: " << blocksize << " )";
 
   return ss.str();
 }
@@ -342,5 +312,105 @@ std::string pattern_to_filename(
      << ".svg";
 
   return ss.str();
+}
+
+template<typename PatternT>
+void print_mapping_imbalance(const PatternT & pattern)
+{
+  int nunits        = pattern.teamspec().size();
+  int * unit_blocks = new int[nunits];
+  for (int u = 0; u < nunits; ++u) {
+    unit_blocks[u] = 0;
+  }
+  for (int bi = 0; bi < pattern.blockspec().size(); ++bi) {
+    auto block      = pattern.block(bi);
+    auto block_unit = pattern.unit_at(std::array<index_t, 2> {
+                        block.offset(0),
+                        block.offset(1)
+                      });
+    unit_blocks[block_unit]++;
+  }
+
+  int block_size   = pattern.blocksize(0) * pattern.blocksize(1);
+  int min_blocks   = *std::min_element(unit_blocks,
+                                       unit_blocks + nunits);
+  int max_blocks   = *std::max_element(unit_blocks,
+                                       unit_blocks + nunits);
+  int min_elements = min_blocks * block_size;
+  int max_elements = max_blocks * block_size;
+  int n_bal_blocks = std::count(unit_blocks, unit_blocks + nunits,
+                                min_blocks);
+  int n_imb_blocks = std::count(unit_blocks, unit_blocks + nunits,
+                                max_blocks);
+
+  float imb_factor = static_cast<float>(max_elements) /
+                     static_cast<float>(min_elements);
+
+  delete[] unit_blocks;
+
+  cerr << "Mapping imbalance:"
+       << endl
+       << "    min. blocks/unit:   " << min_blocks
+       << " = " << min_blocks * block_size << " elements"
+       << endl
+       << "    max. blocks/unit:   " << max_blocks
+       << " = " << max_blocks * block_size << " elements"
+       << endl
+       << "    imbalance factor:   " << std::setprecision(4) << imb_factor
+       << endl
+       << "    balanced blocks:    " << n_bal_blocks
+       << endl
+       << "    imbalanced blocks:  " << n_imb_blocks
+       << endl
+       << endl;
+}
+
+template<typename PatternT>
+void log_pattern_mapping(const PatternT & pattern)
+{
+  typedef PatternT pattern_t;
+
+  dash::internal::print_pattern_mapping(
+    "pattern.unit_at", pattern, 3,
+    [](const pattern_t & _pattern, int _x, int _y) -> dart_unit_t {
+        return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+    });
+  dash::internal::print_pattern_mapping(
+    "pattern.global_at", pattern, 3,
+    [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+        return _pattern.global_at(std::array<index_t, 2> {_x, _y});
+    });
+  dash::internal::print_pattern_mapping(
+    "pattern.local", pattern, 10,
+    [](const pattern_t & _pattern, int _x, int _y) -> std::string {
+        auto lpos = _pattern.local(std::array<index_t, 2> {_x, _y});
+        std::ostringstream ss;
+        ss << lpos.unit << ":" << lpos.coords;
+        return ss.str();
+    });
+  dash::internal::print_pattern_mapping(
+    "pattern.at", pattern, 3,
+    [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+        return _pattern.at(std::array<index_t, 2> {_x, _y});
+    });
+  dash::internal::print_pattern_mapping(
+    "pattern.block_at", pattern, 3,
+    [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+        return _pattern.block_at(std::array<index_t, 2> {_x, _y});
+    });
+  dash::internal::print_pattern_mapping(
+    "pattern.block.offset", pattern, 5,
+    [](const pattern_t & _pattern, int _x, int _y) -> std::string {
+        auto block_idx = _pattern.block_at(std::array<index_t, 2> {_x, _y});
+        auto block_vs  = _pattern.block(block_idx);
+        std::ostringstream ss;
+        ss << block_vs.offset(0) << "," << block_vs.offset(1);
+        return ss.str();
+    });
+  dash::internal::print_pattern_mapping(
+    "pattern.local_index", pattern, 3,
+    [](const pattern_t & _pattern, int _x, int _y) -> index_t {
+        return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+    });
 }
 
