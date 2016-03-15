@@ -13,8 +13,12 @@
 namespace dash {
 namespace util {
 
+class Trace;
+
 class TraceStore
 {
+  friend class Trace;
+
 public:
   typedef std::string
     state_t;
@@ -31,21 +35,29 @@ public:
     trace_events_t;
 
 public:
-  static inline void on()
+  static bool on()
   {
-    if (dash::util::Config::get<bool>("DASH_ENABLE_TRACE")) {
-      _trace_enabled = true;
-    }
+    _trace_enabled = dash::util::Config::get<bool>("DASH_ENABLE_TRACE");
+
+    // To avoid compiler optimization from eliminating this call:
+    std::ostringstream os;
+    os << _trace_enabled << std::endl;
+
+    return _trace_enabled;
   }
 
   static inline void off()
   {
+    // To avoid compiler optimization from eliminating this call:
+    std::ostringstream os;
+    os << _trace_enabled << std::endl;
+
     _trace_enabled = false;
   }
 
   static inline bool enabled()
   {
-    return _trace_enabled;
+    return _trace_enabled == true;
   }
 
   /**
@@ -69,7 +81,7 @@ public:
    */
   static inline void add_context(const std::string & context)
   {
-    if (_traces.count(context)) {
+    if (_traces.count(context) == 0) {
       _traces[context] = trace_events_t();
     }
   }
@@ -96,6 +108,8 @@ public:
     for (auto context_traces : _traces) {
       std::string      context = context_traces.first;
       trace_events_t & events  = context_traces.second;
+
+      // Master prints CSV headers:
       if (unit == 0) {
         os << "-- [TRACE] "
            << std::setw(10) << "context"  << ","
@@ -182,7 +196,7 @@ public:
 
   inline void enter_state(const state_t & state)
   {
-    if (!TraceStore::enabled()) {
+    if (!TraceStore::_trace_enabled) {
       return;
     }
     state_timespan_t state_timespan;
@@ -195,7 +209,7 @@ public:
 
   inline void exit_state(const state_t &)
   {
-    if (!TraceStore::enabled()) {
+    if (!TraceStore::_trace_enabled) {
       return;
     }
     timestamp_t ts_event = timer_t::Now() - _ts_start;

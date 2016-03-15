@@ -51,13 +51,15 @@ void Config::set(
   std::transform(value.begin(), value.end(), value_lowercase.begin(),
                  ::tolower);
   if (value_lowercase == "true" || value_lowercase == "yes" ||
-      value_lowercase == "t"    || value_lowercase == "y") {
+      value_lowercase == "t"    || value_lowercase == "y"   ||
+      value_lowercase == "on") {
     std::string key_name_bool = key + "_BOOL";
     set(key_name_bool, 1);
     return;
   }
   else if (value_lowercase == "false" || value_lowercase == "no" ||
-           value_lowercase == "f"     || value_lowercase == "n") {
+           value_lowercase == "f"     || value_lowercase == "n"  ||
+           value_lowercase == "off") {
     std::string key_name_bool = key + "_BOOL";
     set(key_name_bool, 0);
     return;
@@ -105,7 +107,7 @@ template<>
 bool Config::get<bool>(
   const std::string & key)
 {
-  return (get_str(key + "_BOOL") == "1");
+  return (get_str(key + "_BOOL") == "1") || (get_str(key) == "1");
 }
 
 

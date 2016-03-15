@@ -8,6 +8,10 @@
 #define DASH__ALGORITHM__COPY__USE_WAIT
 #endif
 
+#ifndef MPI_IMPL_ID
+#define MPI_IMPL_ID unknown
+#endif
+
 #ifdef DASH_ENABLE_PLASMA
 #include <plasma.h>
 #endif
@@ -146,88 +150,95 @@ void print_params(
 int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
+
+  try {
 #ifdef DASH_ENABLE_IPM
-  MPI_Pcontrol(0, "off");
+    MPI_Pcontrol(0, "off");
 #endif
 
-  Timer::Calibrate(0);
+    Timer::Calibrate(0);
 
-  dash::barrier();
-  DASH_LOG_DEBUG_VAR("bench.10.summa", getpid());
-  dash::barrier();
+    dash::barrier();
+    DASH_LOG_DEBUG_VAR("bench.10.summa", getpid());
+    dash::barrier();
 
-  auto        params      = parse_args(argc, argv);
-  std::string variant     = params.variant;
-  extent_t    exp_max     = params.exp_max;
-  unsigned    repeats     = params.rep_max;
-  unsigned    rep_base    = params.rep_base;
+    auto        params      = parse_args(argc, argv);
+    std::string variant     = params.variant;
+    extent_t    exp_max     = params.exp_max;
+    unsigned    repeats     = params.rep_max;
+    unsigned    rep_base    = params.rep_base;
 
-  if (variant == "mkl") {
+    if (variant == "mkl") {
 #ifdef DASH_ENABLE_MKL
-    // Require single unit for MKL variant:
-    auto nunits = dash::size();
-    if (nunits != 1) {
-      DASH_THROW(
-        dash::exception::RuntimeError,
-        "MKL variant of bench.10.summa called with" <<
-        "team size " << nunits << " " <<
-        "but must be run on a single unit.");
-    }
-    // Do not set dynamic flag by default as performance is impaired if SMT
-    // is not required.
-    mkl_set_dynamic(false);
-    mkl_set_num_threads(params.threads);
-    if (params.mkl_dyn ||
-        (mkl_get_max_threads() > 0 &&
-         mkl_get_max_threads() < params.threads)) {
-      // requested number of threads exceeds number of physical cores, set
-      // MKL dynamic flag and retry:
-      mkl_set_dynamic(true);
+      // Require single unit for MKL variant:
+      auto nunits = dash::size();
+      if (nunits != 1) {
+        DASH_THROW(
+          dash::exception::RuntimeError,
+          "MKL variant of bench.10.summa called with" <<
+          "team size " << nunits << " " <<
+          "but must be run on a single unit.");
+      }
+      // Do not set dynamic flag by default as performance is impaired if SMT
+      // is not required.
+      mkl_set_dynamic(false);
       mkl_set_num_threads(params.threads);
-    }
-    params.threads = mkl_get_max_threads();
-    params.mkl_dyn = mkl_get_dynamic();
+      if (params.mkl_dyn ||
+          (mkl_get_max_threads() > 0 &&
+           mkl_get_max_threads() < params.threads)) {
+        // requested number of threads exceeds number of physical cores, set
+        // MKL dynamic flag and retry:
+        mkl_set_dynamic(true);
+        mkl_set_num_threads(params.threads);
+      }
+      params.threads = mkl_get_max_threads();
+      params.mkl_dyn = mkl_get_dynamic();
 #else
-    DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
+      DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
 #endif
-  }
-
-  if (variant == "plasma") {
-#ifdef DASH_ENABLE_PLASMA
-    PLASMA_Init(params.threads);
-#else
-    DASH_THROW(dash::exception::RuntimeError, "PLASMA not enabled");
-#endif
-  }
-
-  dash::util::BenchmarkParams bench_params("bench.10.summa");
-  bench_params.set_output_width(72);
-  bench_params.print_header();
-  bench_params.print_pinning();
-
-  print_params(bench_params, params);
-
-  // Run tests, try to balance overall number of gflop in test runs:
-  extent_t extent_base = 1;
-  for (extent_t exp = 0; exp < exp_max; ++exp) {
-    extent_t extent_run = extent_base * params.size_base;
-    if (repeats == 0) {
-      repeats = 1;
     }
 
-    perform_test(variant, extent_run, exp, repeats, params);
+    if (variant == "plasma") {
+#ifdef DASH_ENABLE_PLASMA
+      PLASMA_Init(params.threads);
+#else
+      DASH_THROW(dash::exception::RuntimeError, "PLASMA not enabled");
+#endif
+    }
 
-    repeats /= rep_base;
-    if      (exp < 1) extent_base += 1;
-    else if (exp < 4) extent_base += 2;
-    else              extent_base += 4;
-  }
+    dash::util::BenchmarkParams bench_params("bench.10.summa");
+    bench_params.set_output_width(72);
+    bench_params.print_header();
+    bench_params.print_pinning();
+
+    print_params(bench_params, params);
+
+    // Run tests, try to balance overall number of gflop in test runs:
+    extent_t extent_base = 1;
+    for (extent_t exp = 0; exp < exp_max; ++exp) {
+      extent_t extent_run = extent_base * params.size_base;
+      if (repeats == 0) {
+        repeats = 1;
+      }
+
+      perform_test(variant, extent_run, exp, repeats, params);
+
+      repeats /= rep_base;
+      if      (exp < 1) extent_base += 1;
+      else if (exp < 4) extent_base += 2;
+      else              extent_base += 4;
+    }
 
 #ifdef DASH_ENABLE_PLASMA
-  if (variant == "plasma") {
-    PLASMA_Finalize();
-  }
+    if (variant == "plasma") {
+      PLASMA_Finalize();
+    }
 #endif
+
+  } catch (std::exception & excep) {
+    cout << "ERROR: " << excep.what()
+         << endl;
+  }
 
   dash::finalize();
 
@@ -256,7 +267,7 @@ void perform_test(
     std::array<extent_t, 2> team_extents { params.units_y, params.units_x };
     team_spec.resize(team_extents);
   }
-#if 0
+#if 1
   auto pattern   = dash::make_pattern<
                      dash::summa_pattern_partitioning_constraints,
                      dash::summa_pattern_mapping_constraints,
@@ -321,17 +332,7 @@ void perform_test(
                          // four local temporary blocks per unit:
                          (num_units * 4 * block_s)
                        ) / 1024 ) / 1024;
-    } else if (variant.find("mkl") == 0 || variant.find("blas") == 0) {
-      mem_total_mb = ( sizeof(value_t) * (
-                         // matrices A, B, C:
-                         (3 * n * n)
-                       ) / 1024 ) / 1024;
-    } else if (variant.find("plasma") == 0) {
-      mem_total_mb = ( sizeof(value_t) * (
-                         // matrices A, B, C:
-                         (3 * n * n)
-                       ) / 1024 ) / 1024;
-    } else if (variant.find("pblas") == 0) {
+    } else {
       mem_total_mb = ( sizeof(value_t) * (
                          // matrices A, B, C:
                          (3 * n * n)
@@ -341,11 +342,7 @@ void perform_test(
     std::ostringstream team_ss;
     team_ss << team_spec.extent(0) << "x" << team_spec.extent(1);
     std::string team_extents = team_ss.str();
-#ifdef MPI_IMPL_ID
-    std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
-#else
-    std::string mpi_impl = "-";
-#endif
+    std::string mpi_impl     = dash__toxstr(MPI_IMPL_ID);
 
     int gflops_peak = static_cast<int>(params.cpu_gflops_peak *
                                        num_units * params.threads);
@@ -366,8 +363,10 @@ void perform_test(
          << std::flush;
   }
 
-  dash::util::TraceStore::off();
+  dash::util::TraceStore::on();
   dash::util::TraceStore::clear();
+
+  dash::barrier();
 
   std::pair<double, double> t_mmult;
   if (variant == "mkl" || variant == "blas") {
@@ -382,8 +381,6 @@ void perform_test(
   double t_init = t_mmult.first;
   double t_mult = t_mmult.second;
 
-  dash::barrier();
-
   if (myid == 0) {
     double s_mult = 1.0e-6 * t_mult;
     double s_init = 1.0e-6 * t_init;
@@ -394,8 +391,11 @@ void perform_test(
          << endl;
   }
 
+  dash::barrier();
+
   dash::util::TraceStore::write(std::cout);
   dash::util::TraceStore::clear();
+  dash::util::TraceStore::off();
 }
 
 template<typename MatrixType>
@@ -1096,9 +1096,9 @@ void print_params(
 
   conf.print_section_start("Benchmark Configuration");
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
-  conf.print_param("data type", "double");
+  conf.print_param("data type",                     "double");
 #else
-  conf.print_param("data type", "float");
+  conf.print_param("data type",                     "float");
 #endif
   conf.print_section_end();
 
