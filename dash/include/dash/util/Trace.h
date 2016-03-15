@@ -13,12 +13,8 @@
 namespace dash {
 namespace util {
 
-class Trace;
-
 class TraceStore
 {
-  friend class Trace;
-
 public:
   typedef std::string
     state_t;
@@ -35,122 +31,53 @@ public:
     trace_events_t;
 
 public:
-  static bool on()
-  {
-    _trace_enabled = dash::util::Config::get<bool>("DASH_ENABLE_TRACE");
+  /**
+   * Enable trace storage if environment variable DASH_ENABLE_TRACE
+   * is set to 'on'.
+   *
+   * \returns  true  if trace storage has been enabled, otherwise false.
+   */
+  static bool on();
 
-    // To avoid compiler optimization from eliminating this call:
-    std::ostringstream os;
-    os << _trace_enabled << std::endl;
+  /**
+   * Disable trace storage.
+   */
+  static void off();
 
-    return _trace_enabled;
-  }
-
-  static inline void off()
-  {
-    // To avoid compiler optimization from eliminating this call:
-    std::ostringstream os;
-    os << _trace_enabled << std::endl;
-
-    _trace_enabled = false;
-  }
-
-  static inline bool enabled()
-  {
-    return _trace_enabled == true;
-  }
+  /**
+   * Whether trace storage is enabled.
+   */
+  static bool enabled();
 
   /**
    * Clear trace data.
    */
-  static inline void clear()
-  {
-    _traces.clear();
-  }
+  static void clear();
 
   /**
    * Clear trace data of given context.
    */
-  static inline void clear(const std::string & context)
-  {
-    _traces[context].clear();
-  }
+  static void clear(const std::string & context);
 
   /**
    * Register a new trace context.
    */
-  static inline void add_context(const std::string & context)
-  {
-    if (_traces.count(context) == 0) {
-      _traces[context] = trace_events_t();
-    }
-  }
+  static void add_context(const std::string & context);
 
   /**
    * Return reference to traces list for given context.
    */
-  static inline trace_events_t & context_trace(const std::string & context)
-  {
-    return _traces[context];
-  }
+  static trace_events_t & context_trace(const std::string & context);
 
   /**
    * Write trace data to given output stream.
    */
-  static void write(std::ostream & out)
-  {
-    if (!dash::util::Config::get<bool>("DASH_ENABLE_TRACE")) {
-      return;
-    }
-
-    std::ostringstream os;
-    auto unit = dash::myid();
-    for (auto context_traces : _traces) {
-      std::string      context = context_traces.first;
-      trace_events_t & events  = context_traces.second;
-
-      // Master prints CSV headers:
-      if (unit == 0) {
-        os << "-- [TRACE] "
-           << std::setw(10) << "context"  << ","
-           << std::setw(5)  << "unit"     << ","
-           << std::setw(15) << "start"    << ","
-           << std::setw(15) << "end"      << ","
-           << std::setw(12) << "state"
-           << std::endl;
-      }
-      dash::barrier();
-      for (auto state_timespan : events) {
-        auto   start    = state_timespan.start;
-        auto   end      = state_timespan.end;
-        auto   state    = state_timespan.state;
-        os << "-- [TRACE] "
-           << std::setw(10) << std::fixed << context  << ","
-           << std::setw(5)  << std::fixed << unit     << ","
-           << std::setw(15) << std::fixed << start    << ","
-           << std::setw(15) << std::fixed << end      << ","
-           << std::setw(12) << std::fixed << state
-           << std::endl;
-      }
-    }
-    out << os.str();
-
-    dash::barrier();
-  }
+  static void write(std::ostream & out);
 
   /**
    * Write trace data to file.
    */
-  static void write(const std::string & filename)
-  {
-    auto unit = dash::myid();
-    std::ostringstream fn;
-    fn << "trace_" << unit << "." << filename;
-    std::string trace_file = fn.str();
-    std::ofstream out(trace_file);
-    write(out);
-    out.close();
-  }
+  static void write(const std::string & filename);
 
 private:
   static std::map<std::string, trace_events_t> _traces;
@@ -196,7 +123,7 @@ public:
 
   inline void enter_state(const state_t & state)
   {
-    if (!TraceStore::_trace_enabled) {
+    if (!TraceStore::enabled()) {
       return;
     }
     state_timespan_t state_timespan;
@@ -209,7 +136,7 @@ public:
 
   inline void exit_state(const state_t &)
   {
-    if (!TraceStore::_trace_enabled) {
+    if (!TraceStore::enabled()) {
       return;
     }
     timestamp_t ts_event = timer_t::Now() - _ts_start;
