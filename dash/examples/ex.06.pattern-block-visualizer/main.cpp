@@ -93,7 +93,8 @@ make_summa_pattern(
                    dash::summa_pattern_layout_constraints >(
                      sizespec,
                      teamspec);
-  if (params.tile_x >= 0 && params.tile_y >= 0) {
+
+  if (params.tile_x >= 0 || params.tile_y >= 0) {
     // change tile sizes of deduced pattern:
     typedef decltype(pattern) pattern_t;
     pattern_t custom_pattern(sizespec,
@@ -364,7 +365,7 @@ void print_pattern_metrics(const PatternT & pattern)
        << " = " << pm.max_elements_per_unit() << " elements"
        << endl
        << "        imbalance factor:   " << std::setprecision(4)
-                                       << pm.imbalance_factor()
+                                         << pm.imbalance_factor()
        << endl
        << "        balanced units:     " << pm.num_balanced_units()
        << endl

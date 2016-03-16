@@ -7,6 +7,8 @@
 #include <dash/ShiftTilePattern.h>
 #include <dash/util/Locality.h>
 #include <dash/util/Config.h>
+#include <dash/Distribution.h>
+#include <dash/Dimensional.h>
 
 namespace dash {
 
@@ -138,8 +140,10 @@ make_team_spec(
                  team_extents);
 
   // Check if the resulting block sizes are within prefered bounds:
-  extent_t bulk_min = dash::util::Config::get<extent_t>(
-                        "DASH_BULK_MIN_SIZE_BYTES");
+  extent_t bulk_min = std::max<extent_t>(
+                        dash::util::Config::get<extent_t>(
+                          "DASH_BULK_MIN_SIZE_BYTES"),
+                        4096);
   if (bulk_min > 0) {
     DASH_LOG_TRACE("dash::make_team_spec",
                    "- optimizing for bulk min size", bulk_min);
@@ -198,7 +202,7 @@ make_distribution_spec(
   const dim_t ndim = SizeSpecType::ndim();
   // Array of distribution specifiers in all dimensions,
   // e.g. { TILE(10), TILE(120) }:
-  std::array<dash::Distribution, ndim> distributions;
+  std::array<dash::Distribution, ndim> distributions = {{ }};
   extent_t min_block_extent = sizespec.size();
   if (PartitioningTags::minimal) {
     // Find minimal block size in minimal partitioning, initialize with
@@ -272,33 +276,14 @@ make_distribution_spec(
     } else {
       distributions[d] = dash::BLOCKCYCLIC(tilesize_d);
     }
+    DASH_LOG_TRACE_VAR("dash::make_distribution_spec", distributions[d]);
   }
   // Make distribution spec from template- and run time parameters:
+  DASH_LOG_TRACE_VAR("dash::make_distribution_spec >", distributions);
   dash::DistributionSpec<ndim> distspec(distributions);
+  DASH_LOG_TRACE_VAR("dash::make_distribution_spec >", distspec);
   return distspec;
 }
-
-#if __EXP__
-/**
- * Usage:
- *
- *    typedef dash::deduce_pattern_model<
- *              pattern_partitioning_properties<...>,
- *              pattern_mapping_properties<...>,
- *              pattern_layout_properties<...>
- *            >::type
- *      pattern_class;
- */
-template<
-  typename PartitioningTags,
-  typename MappingTags,
-  typename LayoutTags
->
-struct deduce_pattern_model
-{
-
-}
-#endif
 
 /**
  * Generic Abstract Factory for models of the Pattern concept.

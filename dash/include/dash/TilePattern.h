@@ -133,12 +133,6 @@ private:
   MemoryLayout_t              _memory_layout;
   /// Total amount of units to which this pattern's elements are mapped
   SizeType                    _nunits          = dash::Team::All().size();
-  /// Major tiled dimension, i.e. lowest tiled dimension in row-major,
-  /// highest tiled dimension in column-major order
-  dim_t                       _major_tiled_dim;
-  /// Minor tiled dimension, i.e. any dimension different from major tiled
-  /// dimension
-  dim_t                       _minor_tiled_dim;
   /// Maximum extents of a block in this pattern
   BlockSizeSpec_t             _blocksize_spec;
   /// Arrangement of blocks in all dimensions
@@ -208,8 +202,6 @@ public:
     _teamspec(_arguments.teamspec()),
     _memory_layout(_arguments.sizespec().extents()),
     _nunits(_teamspec.size()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
     _blocksize_spec(initialize_blocksizespec(
         _arguments.sizespec(),
         _distspec,
@@ -284,8 +276,6 @@ public:
       *_team),
     _memory_layout(sizespec.extents()),
     _nunits(_teamspec.size()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
     _blocksize_spec(initialize_blocksizespec(
         sizespec,
         _distspec,
@@ -355,8 +345,6 @@ public:
     _teamspec(_distspec, *_team),
     _memory_layout(sizespec.extents()),
     _nunits(_teamspec.size()),
-    _major_tiled_dim(initialize_major_tiled_dim(_distspec)),
-    _minor_tiled_dim((_major_tiled_dim + 1) % NumDimensions),
     _blocksize_spec(initialize_blocksizespec(
         sizespec,
         _distspec,
@@ -388,8 +376,6 @@ public:
     _teamspec(other._teamspec),
     _memory_layout(other._memory_layout),
     _nunits(other._nunits),
-    _major_tiled_dim(other._major_tiled_dim),
-    _minor_tiled_dim(other._minor_tiled_dim),
     _blocksize_spec(other._blocksize_spec),
     _blockspec(other._blockspec),
     _local_blockspec(other._local_blockspec),
@@ -456,8 +442,6 @@ public:
       _local_blockspec     = other._local_blockspec;
       _local_capacity      = other._local_capacity;
       _nunits              = other._nunits;
-      _minor_tiled_dim     = other._minor_tiled_dim;
-      _major_tiled_dim     = other._major_tiled_dim;
       _lbegin              = other._lbegin;
       _lend                = other._lend;
     }

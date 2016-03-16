@@ -27,24 +27,18 @@ namespace dash {
  * \see CartesianIndexSpace
  */
 template<typename ElementType, dim_t NumDimensions>
-class Dimensional {
-/*
- * Concept Dimensional:
- *   + Dimensional<T,D>::Dimensional(values[D]);
- *   + Dimensional<T,D>::dim(d | 0 < d < D);
- *   + Dimensional<T,D>::[d](d | 0 < d < D);
- */
+class Dimensional
+{
+  template<typename E_, dim_t ND_>
+  friend std::ostream& operator<<(
+    std::ostream & os,
+    const Dimensional<E_, ND_> & dimensional);
+
 private:
   typedef Dimensional<ElementType, NumDimensions> self_t;
 
 protected:
   std::array<ElementType, NumDimensions> _values;
-
-public:
-  template<typename E_, dim_t ND_>
-  friend std::ostream& operator<<(
-    std::ostream & os,
-    const Dimensional<E_, ND_> & dimensional);
 
 public:
   /**
@@ -74,6 +68,11 @@ public:
     for (unsigned int d = 0; d < NumDimensions; ++d) {
       _values[d] = other._values[d];
     }
+  }
+
+  self_t & operator=(const self_t & other) {
+    _values = other._values;
+    return *this;
   }
 
   /**
@@ -168,6 +167,12 @@ protected:
 template<dim_t NumDimensions>
 class DistributionSpec : public Dimensional<Distribution, NumDimensions>
 {
+  template<dim_t NumDimensions_>
+  friend
+  std::ostream & operator<<(
+    std::ostream & os,
+    const DistributionSpec<NumDimensions_> & distspec);
+
 private:
   typedef Dimensional<Distribution, NumDimensions> base_t;
 
@@ -176,17 +181,6 @@ public:
    * Default constructor, initializes default blocked distribution
    * (BLOCKED, NONE*).
    */
-/*
-  TODO:
-  Set defaults depending on pattern traits (e.g. tiled / blocked).
-  Sketch of implementation:
-
-  DistributionSpec(
-    const PatternTraits & traits)
-  : _traits(traits) {
-    this->_values = _traits.default_distribution(NumDimensions);
-  }
-*/
   DistributionSpec()
   : _is_tiled(false) {
     this->_values[0] = BLOCKED;
@@ -236,6 +230,7 @@ public:
   : Dimensional<Distribution, NumDimensions>::Dimensional(values),
     _is_tiled(false)
   {
+    DASH_LOG_TRACE_VAR("DistributionSpec(distribution[])", values);
     for (dim_t i = 1; i < NumDimensions; ++i) {
       if (this->_values[i].type == dash::internal::DIST_TILE) {
         _is_tiled = true;
@@ -263,6 +258,36 @@ public:
 private:
   bool _is_tiled;
 };
+
+template<dim_t NumDimensions>
+std::ostream & operator<<(
+  std::ostream & os,
+  const DistributionSpec<NumDimensions> & distspec)
+{
+  os << "dash::DistributionSpec<" << NumDimensions << ">(";
+  for (dim_t d = 0; d < NumDimensions; d++) {
+    if (distspec._values[d].type == dash::internal::DIST_TILE) {
+      os << "TILE(" << distspec._values[d].blocksz << ")";
+    }
+    else if (distspec._values[d].type == dash::internal::DIST_BLOCKED) {
+      os << "BLOCKCYCLIC(" << distspec._values[d].blocksz << ")";
+    }
+    else if (distspec._values[d].type == dash::internal::DIST_CYCLIC) {
+      os << "CYCLIC";
+    }
+    else if (distspec._values[d].type == dash::internal::DIST_BLOCKED) {
+      os << "BLOCKED";
+    }
+    else if (distspec._values[d].type == dash::internal::DIST_NONE) {
+      os << "NONE";
+    }
+    if (d < NumDimensions-1) {
+      os << ", ";
+    }
+  }
+  os << ")";
+  return os;
+}
 
 /**
  * Offset and extent in a single dimension.

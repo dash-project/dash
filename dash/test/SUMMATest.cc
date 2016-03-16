@@ -11,19 +11,8 @@ TEST_F(SUMMATest, Deduction)
   size_t team_size_x = num_units;
   size_t team_size_y = 1;
 
-#ifdef DASH_ALGORITHM_SUMMA_MINIMAL_PARTITIONING
   size_t extent_cols = num_units;
   size_t extent_rows = num_units;
-#else
-  size_t num_local_blocks_x = 1;
-  size_t num_local_blocks_y = 1;
-  size_t tilesize_x  = 2;
-  size_t tilesize_y  = 2;
-  size_t extent_cols = tilesize_x * num_units * num_local_blocks_x;
-  size_t extent_rows = tilesize_y * num_units * num_local_blocks_y;
-  size_t team_size_x = num_units;
-  size_t team_size_y = 1;
-#endif
 
 #if 0
   // For explicit definition of data distribution:

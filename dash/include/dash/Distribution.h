@@ -20,10 +20,18 @@ namespace dash {
  *
  * \see Pattern
  */
-class Distribution {
+class Distribution
+{
+private:
+  typedef Distribution self_t;
+
+  friend std::ostream & operator<<(
+    std::ostream & os,
+    const self_t & distribution);
+
 public:
   dash::internal::DistributionType type;
-  dash::default_size_t blocksz;
+  dash::default_size_t             blocksz;
 
   /**
    * Constructor, initializes Distribution with distribution
@@ -38,12 +46,22 @@ public:
    * Constructor, initializes Distribution with a
    * distribution type and a block size.
    */
-  template <typename SizeType>
   Distribution(
     dash::internal::DistributionType distType,
-    SizeType blockSize)
+    int                              blockSize)
   : type(distType),
     blocksz(blockSize) {
+  }
+
+  Distribution(const self_t & other)
+  : type(other.type),
+    blocksz(other.blocksz) {
+  }
+
+  self_t & operator=(const self_t & other) {
+    type    = other.type;
+    blocksz = other.blocksz;
+    return *this;
   }
 
   /**
@@ -129,7 +147,10 @@ public:
     /// Number of elements to distribute
     IndexType range,
     /// Number of units to which elements are distributed
-    SizeType num_units) const {
+    SizeType num_units) const
+  {
+    DASH_LOG_TRACE("Distribution.max_blocksize_in_range()",
+                   "range:", range, "nunits:", num_units);
     switch (type) {
       case dash::internal::DIST_NONE:
         return range;
@@ -139,6 +160,8 @@ public:
         return 1;
       case dash::internal::DIST_BLOCKCYCLIC:
       case dash::internal::DIST_TILE:
+        DASH_LOG_TRACE("Distribution.max_blocksize_in_range",
+                       "TILE", "blocksz:", blocksz);
         // Shrink block size in dimension if it exceeds the number
         // of elements in dimension:
         return std::min<SizeType>(range, blocksz);
@@ -197,6 +220,7 @@ extern const Distribution NONE;
  * \relates Distribution
  */
 Distribution TILE(int blockSize);
+
 /**
  * Distribution specifying that elements in a Pattern's
  * dimension shall be distributed to units in blocks of the
