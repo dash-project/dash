@@ -70,7 +70,8 @@ void dash::util::TraceStore::write(std::ostream & out)
   }
 
   std::ostringstream os;
-  auto unit = dash::myid();
+  auto unit   = dash::myid();
+  auto nunits = dash::size();
   for (auto context_traces : _traces) {
     std::string      context = context_traces.first;
     trace_events_t & events  = context_traces.second;
@@ -85,7 +86,9 @@ void dash::util::TraceStore::write(std::ostream & out)
          << std::setw(12) << "state"
          << std::endl;
     }
+
     dash::barrier();
+
     for (auto state_timespan : events) {
       auto   start    = state_timespan.start;
       auto   end      = state_timespan.end;
@@ -99,7 +102,13 @@ void dash::util::TraceStore::write(std::ostream & out)
          << std::endl;
     }
   }
-  out << os.str();
+  // Print trace events of units sequentially:
+  for (int trace_unit = 0; trace_unit < nunits; ++trace_unit) {
+    if (trace_unit == unit) {
+      out << os.str();
+    }
+    dash::barrier();
+  }
 
   // To help synchronization of writes:
   sleep(2);
