@@ -21,8 +21,6 @@ std::map<std::string, std::string> __config_values;
 
 void Config::init()
 {
-  set("DASH_BULK_MIN_SIZE", "12M");
-
   int    i          = 1;
   char * env_var_kv = *environ;
   for (; env_var_kv != 0; ++i) {
@@ -32,8 +30,18 @@ void Config::init()
     int    flag_name_len   = flag_value_cstr - flag_name_cstr;
     std::string flag_name(flag_name_cstr, flag_name_cstr + flag_name_len);
     std::string flag_value(flag_value_cstr+1);
+    // Flag name has prefix "DASH_":
     if (strstr(env_var_kv, "DASH_") == env_var_kv) {
       set(flag_name, flag_value);
+    }
+    else if (strstr(env_var_kv, "MP_RDMA_MTU") == env_var_kv) {
+      set("DASH_RDMA_MTU_SIZE", flag_value);
+    }
+    else if (strstr(env_var_kv, "MP_FIFO_MTU") == env_var_kv) {
+      set("DASH_FIFO_MTU_SIZE", flag_value);
+    }
+    else if (strstr(env_var_kv, "MP_BULK_MIN_MSG_SIZE") == env_var_kv) {
+      set("DASH_BULK_MIN_MSG_SIZE", flag_value);
     }
     env_var_kv = *(environ + i);
   }

@@ -101,6 +101,9 @@ void dash::util::TraceStore::write(std::ostream & out)
   }
   out << os.str();
 
+  // To help synchronization of writes:
+  sleep(2);
+
   dash::barrier();
 }
 

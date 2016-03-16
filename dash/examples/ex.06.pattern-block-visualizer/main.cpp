@@ -45,7 +45,7 @@ cli_params parse_args(int argc, char * argv[]);
 void print_params(const cli_params & params);
 
 template<typename PatternT>
-void print_mapping_imbalance(const PatternT & pattern);
+void print_pattern_metrics(const PatternT & pattern);
 
 template<typename PatternT>
 void print_example(
@@ -56,7 +56,7 @@ void print_example(
 
   auto pattern_file = pattern_to_filename(pattern);
   auto pattern_desc = pattern_to_string(pattern);
-  print_mapping_imbalance(pattern);
+  print_pattern_metrics(pattern);
 
   dash::tools::PatternBlockVisualizer<PatternT> pv(pattern);
   pv.set_title(pattern_desc);
@@ -273,10 +273,10 @@ std::string pattern_to_string(
      << storage_order << ","
      << typeid(index_t).name()
      << ">(" << endl
-     << "      SizeSpec:  " << pattern.sizespec().extents()  << "," << endl
-     << "      TeamSpec:  " << pattern.teamspec().extents()  << "," << endl
-     << "      BlockSpec: " << pattern.blockspec().extents() << "," << endl
-     << "      BlockSize: " << blocksize << " )";
+     << "        SizeSpec:  " << pattern.sizespec().extents()  << "," << endl
+     << "        TeamSpec:  " << pattern.teamspec().extents()  << "," << endl
+     << "        BlockSpec: " << pattern.blockspec().extents() << "," << endl
+     << "        BlockSize: " << blocksize << " )";
 
   return ss.str();
 }
@@ -316,24 +316,36 @@ std::string pattern_to_filename(
 }
 
 template<typename PatternT>
-void print_mapping_imbalance(const PatternT & pattern)
+void print_pattern_metrics(const PatternT & pattern)
 {
   dash::util::PatternMetrics<PatternT> pm(pattern);
 
-  cerr << "Mapping imbalance:"
+  size_t block_kbytes = pattern.blocksize(0) * pattern.blocksize(1) *
+                        sizeof(double) /
+                        1024;
+
+  cerr << "Pattern Metrics:"
        << endl
-       << "    min. blocks/unit:   " << pm.min_blocks_per_unit()
+       << "    Partitioning:"
+       << endl
+       << "        block size:         " << block_kbytes << " KB"
+       << endl
+       << "        number of blocks:   " << pm.num_blocks()
+       << endl
+       << "    Mapping imbalance:"
+       << endl
+       << "        min. blocks/unit:   " << pm.min_blocks_per_unit()
        << " = " << pm.min_elements_per_unit() << " elements"
        << endl
-       << "    max. blocks/unit:   " << pm.max_blocks_per_unit()
+       << "        max. blocks/unit:   " << pm.max_blocks_per_unit()
        << " = " << pm.max_elements_per_unit() << " elements"
        << endl
-       << "    imbalance factor:   " << std::setprecision(4)
-                                     << pm.imbalance_factor()
+       << "        imbalance factor:   " << std::setprecision(4)
+                                       << pm.imbalance_factor()
        << endl
-       << "    balanced units:     " << pm.num_balanced_units()
+       << "        balanced units:     " << pm.num_balanced_units()
        << endl
-       << "    imbalanced units:   " << pm.num_imbalanced_units()
+       << "        imbalanced units:   " << pm.num_imbalanced_units()
        << endl
        << endl;
 }

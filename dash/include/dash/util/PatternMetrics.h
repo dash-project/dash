@@ -18,7 +18,11 @@ public:
 
   PatternMetrics(const PatternT & pattern)
   {
-    init_mapping_balance(pattern);
+    init_metrics(pattern);
+  }
+
+  inline int num_blocks() const {
+    return _num_blocks;
   }
 
   /**
@@ -76,14 +80,17 @@ private:
   /**
    * Calculate mapping balancing metrics of given pattern instance.
    */
-  void init_mapping_balance(const PatternT & pattern)
+  void init_metrics(const PatternT & pattern)
   {
+    _num_blocks       = pattern.blockspec().size();
+
     int nunits        = pattern.teamspec().size();
     int * unit_blocks = new int[nunits];
+
     for (int u = 0; u < nunits; ++u) {
       unit_blocks[u] = 0;
     }
-    for (int bi = 0; bi < pattern.blockspec().size(); ++bi) {
+    for (int bi = 0; bi < _num_blocks; ++bi) {
       auto block      = pattern.block(bi);
       auto block_unit = pattern.unit_at(std::array<index_t, 2> {
                           block.offset(0),
@@ -99,8 +106,10 @@ private:
                                          unit_blocks + nunits);
     _num_bal_units   = std::count(unit_blocks, unit_blocks + nunits,
                                   _min_blocks);
-    _num_imb_units   = std::count(unit_blocks, unit_blocks + nunits,
-                                  _max_blocks);
+    _num_imb_units   = _min_blocks == _max_blocks
+                       ? 0
+                       : std::count(unit_blocks, unit_blocks + nunits,
+                                    _max_blocks);
 
     int min_elements = _min_blocks * _block_size;
     int max_elements = _max_blocks * _block_size;
@@ -111,6 +120,7 @@ private:
   }
 
 private:
+  int      _num_blocks       = 0;
   int      _block_size       = 0;
   int      _min_blocks       = 0;
   int      _max_blocks       = 0;
