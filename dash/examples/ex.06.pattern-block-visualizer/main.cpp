@@ -141,6 +141,26 @@ make_seq_tile_pattern(
   return pattern;
 }
 
+dash::Pattern<2, dash::ROW_MAJOR, index_t>
+make_block_pattern(
+  const cli_params                  & params,
+  const dash::SizeSpec<2, extent_t> & sizespec,
+  const dash::TeamSpec<2, index_t>  & teamspec)
+{
+  // Example: -n 30 30 -u 4 1 -t 10 10
+  typedef dash::Pattern<2> pattern_t;
+  dash::Pattern<2> pattern(sizespec,
+                           dash::DistributionSpec<2>(
+                             (params.tile_y > 0
+                              ? dash::BLOCKCYCLIC(params.tile_y)
+                              : dash::NONE),
+                             (params.tile_x > 0
+                              ? dash::BLOCKCYCLIC(params.tile_x)
+                              : dash::NONE)),
+                           teamspec);
+  return pattern;
+}
+
 int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
@@ -162,6 +182,9 @@ int main(int argc, char* argv[])
 
       if (params.type == "summa") {
         auto pattern = make_summa_pattern(params, sizespec, teamspec);
+        print_example(pattern, params);
+      } else if (params.type == "block") {
+        auto pattern = make_block_pattern(params, sizespec, teamspec);
         print_example(pattern, params);
       } else if (params.type == "shift") {
         auto pattern = make_shift_tile_pattern(params, sizespec, teamspec);

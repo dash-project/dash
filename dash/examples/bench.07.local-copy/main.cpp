@@ -9,8 +9,6 @@
 #include <string>
 #include <cstring>
 
-#include <atomic>
-#include <thread>
 #include <limits>
 
 #include <malloc.h>
@@ -329,7 +327,7 @@ measurement copy_block_to_local(
   double total_init_us = 0;
   std::vector<double> history_copy_us;
   // Perform measurement:
-  for (int r = 0; r < num_repeats; ++r) {
+  for (size_t r = 0; r < num_repeats; ++r) {
     dash::barrier();
     Timer::timestamp_t ts_init_start = Timer::Now();
 
