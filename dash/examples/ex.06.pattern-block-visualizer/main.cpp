@@ -156,8 +156,8 @@ int main(int argc, char* argv[])
       if (params.tile_x < 0 && params.tile_y < 0) {
         auto max_team_extent = std::max(teamspec.extent(0),
                                         teamspec.extent(1));
-        params.tile_x = sizespec.extent(1) / max_team_extent;
         params.tile_y = sizespec.extent(0) / max_team_extent;
+        params.tile_x = sizespec.extent(1) / max_team_extent;
       }
 
       if (params.type == "summa") {
@@ -204,14 +204,14 @@ cli_params parse_args(int argc, char * argv[])
       params.type    = argv[i+1];
       i -= 1;
     } else if (flag == "-n") {
-      params.size_x  = static_cast<extent_t>(atoi(argv[i+1]));
-      params.size_y  = static_cast<extent_t>(atoi(argv[i+2]));
+      params.size_y  = static_cast<extent_t>(atoi(argv[i+1]));
+      params.size_x  = static_cast<extent_t>(atoi(argv[i+2]));
     } else if (flag == "-u") {
-      params.units_x = static_cast<extent_t>(atoi(argv[i+1]));
-      params.units_y = static_cast<extent_t>(atoi(argv[i+2]));
+      params.units_y = static_cast<extent_t>(atoi(argv[i+1]));
+      params.units_x = static_cast<extent_t>(atoi(argv[i+2]));
     } else if (flag == "-t") {
-      params.tile_x  = static_cast<extent_t>(atoi(argv[i+1]));
-      params.tile_y  = static_cast<extent_t>(atoi(argv[i+2]));
+      params.tile_y  = static_cast<extent_t>(atoi(argv[i+1]));
+      params.tile_x  = static_cast<extent_t>(atoi(argv[i+2]));
     } else if (flag == "-p") {
       params.cout    = true;
       i -= 2;
@@ -229,19 +229,19 @@ void print_params(const cli_params & params)
 
   cerr << "Parameters:"
        << endl
-       << "    type (-s):       " << params.type
+       << "    type (-s):               " << params.type
        << endl
-       << "    size (-n x y): ( "
-       << std::fixed << std::setw(w) << params.size_x << ", "
-       << std::fixed << std::setw(w) << params.size_y << " )"
+       << "    size (-n <rows> <cols>): ( "
+       << std::fixed << std::setw(w) << params.size_y << ", "
+       << std::fixed << std::setw(w) << params.size_x << " )"
        << endl
-       << "    team (-u x y): ( "
-       << std::fixed << std::setw(w) << params.units_x << ", "
-       << std::fixed << std::setw(w) << params.units_y << " )"
+       << "    team (-u <rows> <cols>): ( "
+       << std::fixed << std::setw(w) << params.units_y << ", "
+       << std::fixed << std::setw(w) << params.units_x << " )"
        << endl
-       << "    tile (-t x y): ( "
-       << std::fixed << std::setw(w) << params.tile_x << ", "
-       << std::fixed << std::setw(w) << params.tile_y << " )"
+       << "    tile (-t <rows> <cols>): ( "
+       << std::fixed << std::setw(w) << params.tile_y << ", "
+       << std::fixed << std::setw(w) << params.tile_x << " )"
        << endl
        << endl;
 }
