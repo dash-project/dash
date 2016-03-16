@@ -10,6 +10,7 @@
 
 #include <dash/tools/PatternBlockVisualizer.h>
 
+#include <dash/util/PatternMetrics.h>
 #include <dash/internal/PatternLogging.h>
 
 using std::cout;
@@ -317,50 +318,22 @@ std::string pattern_to_filename(
 template<typename PatternT>
 void print_mapping_imbalance(const PatternT & pattern)
 {
-  int nunits        = pattern.teamspec().size();
-  int * unit_blocks = new int[nunits];
-  for (int u = 0; u < nunits; ++u) {
-    unit_blocks[u] = 0;
-  }
-  for (int bi = 0; bi < pattern.blockspec().size(); ++bi) {
-    auto block      = pattern.block(bi);
-    auto block_unit = pattern.unit_at(std::array<index_t, 2> {
-                        block.offset(0),
-                        block.offset(1)
-                      });
-    unit_blocks[block_unit]++;
-  }
-
-  int block_size   = pattern.blocksize(0) * pattern.blocksize(1);
-  int min_blocks   = *std::min_element(unit_blocks,
-                                       unit_blocks + nunits);
-  int max_blocks   = *std::max_element(unit_blocks,
-                                       unit_blocks + nunits);
-  int min_elements = min_blocks * block_size;
-  int max_elements = max_blocks * block_size;
-  int n_bal_blocks = std::count(unit_blocks, unit_blocks + nunits,
-                                min_blocks);
-  int n_imb_blocks = std::count(unit_blocks, unit_blocks + nunits,
-                                max_blocks);
-
-  float imb_factor = static_cast<float>(max_elements) /
-                     static_cast<float>(min_elements);
-
-  delete[] unit_blocks;
+  dash::util::PatternMetrics<PatternT> pm(pattern);
 
   cerr << "Mapping imbalance:"
        << endl
-       << "    min. blocks/unit:   " << min_blocks
-       << " = " << min_blocks * block_size << " elements"
+       << "    min. blocks/unit:   " << pm.min_blocks_per_unit()
+       << " = " << pm.min_elements_per_unit() << " elements"
        << endl
-       << "    max. blocks/unit:   " << max_blocks
-       << " = " << max_blocks * block_size << " elements"
+       << "    max. blocks/unit:   " << pm.max_blocks_per_unit()
+       << " = " << pm.max_elements_per_unit() << " elements"
        << endl
-       << "    imbalance factor:   " << std::setprecision(4) << imb_factor
+       << "    imbalance factor:   " << std::setprecision(4)
+                                     << pm.imbalance_factor()
        << endl
-       << "    balanced blocks:    " << n_bal_blocks
+       << "    balanced units:     " << pm.num_balanced_units()
        << endl
-       << "    imbalanced blocks:  " << n_imb_blocks
+       << "    imbalanced units:   " << pm.num_imbalanced_units()
        << endl
        << endl;
 }
