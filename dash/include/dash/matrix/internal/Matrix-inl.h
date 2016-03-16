@@ -182,6 +182,11 @@ void Matrix<T, NumDim, IndexT, PatternT>
     return;
   }
   DASH_LOG_TRACE_VAR("Matrix.deallocate()", this);
+  // Assure all units are synchronized before deallocation, otherwise
+  // other units might still be working on the matrix:
+  if (dash::is_initialized()) {
+    barrier();
+  }
   // Remove this function from team deallocator list to avoid
   // double-free:
   _team.unregister_deallocator(
