@@ -46,8 +46,9 @@ include_directories(
   ${DASH_DART_IF_INCLUDE_DIR}
 )
 
-set (ADDITIONAL_COMPILE_FLAGS "-DDASH")
-set (ADDITIONAL_INCLUDES      "")
+set (ADDITIONAL_COMPILE_FLAGS "${ADDITIONAL_COMPILE_FLAGS} -DDASH")
+# set (ADDITIONAL_INCLUDES "")
+# set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES} pthread)
 
 if (ENABLE_DEFAULT_INDEX_TYPE_LONG)
   set (ADDITIONAL_COMPILE_FLAGS
@@ -92,7 +93,6 @@ if (NUMA_FOUND AND ENABLE_LIBNUMA)
        ${NUMA_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${NUMA_LIBRARIES})
-else()
 endif()
 
 if (ENABLE_PLASMA AND PLASMA_FOUND)
@@ -102,17 +102,39 @@ if (ENABLE_PLASMA AND PLASMA_FOUND)
        ${PLASMA_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${PLASMA_LIBRARIES})
-else()
 endif()
 
-if (MKL_FOUND)
+if (ENABLE_MKL AND MKL_FOUND)
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_MKL")
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
        ${MKL_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_LIBRARIES})
-else()
+endif()
+
+if (ENABLE_BLAS AND BLAS_FOUND)
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_BLAS")
+  set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+       ${BLAS_INCLUDE_DIRS})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${BLAS_LIBRARIES})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${BLAS95_LIBRARIES})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${BLAS_LINKER_FLAGS})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       cblas)
+endif()
+
+if (ENABLE_LAPACK AND LAPACK_FOUND)
+  set (ADDITIONAL_COMPILE_FLAGS
+       "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_LAPACK")
+  set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+       ${LAPACK_INCLUDE_DIRS})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${LAPACK_LIBRARIES})
 endif()
 
 if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
@@ -120,7 +142,6 @@ if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_SCALAPACK")
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_SCALAPACK_LIBRARIES})
-else()
 endif()
 
 if (DASH_ENV_HOST_SYSTEM_ID)
@@ -128,6 +149,9 @@ if (DASH_ENV_HOST_SYSTEM_ID)
   set (ADDITIONAL_COMPILE_FLAGS
        "${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENV_HOST_SYSTEM_ID=\"${HOST_ID}\"")
 endif()
+
+set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+     pthread)
 
 message (STATUS "DASH additional compile flags:")
 foreach (ADDITIONAL_FLAG ${ADDITIONAL_COMPILE_FLAGS})
@@ -173,6 +197,13 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${DASH_LINK_DART_LIBRARY} # dependency: DART lib
     ${ADDITIONAL_LIBRARIES}
   )
+  if (${dart_variant} STREQUAL "mpi")
+    include_directories(
+      ${MPI_INCLUDE_PATH})
+    target_link_libraries(
+      ${DASH_LIBRARY}
+      ${MPI_C_LIBRARIES})
+  endif()
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
     COMPILE_FLAGS ${VARIANT_ADDITIONAL_COMPILE_FLAGS}
@@ -188,13 +219,6 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   include_directories(
     ${ADDITIONAL_INCLUDES}
   )
-  if (${dart_variant} STREQUAL "mpi")
-    include_directories(
-      ${MPI_INCLUDE_PATH})
-    target_link_libraries(
-      ${DASH_LIBRARY}
-      ${MPI_C_LIBRARIES})
-  endif()
 
   DeployLibrary(${DASH_LIBRARY})
 
@@ -226,19 +250,6 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           ${DART_LIBRARY}
           ${ADDITIONAL_LIBRARIES}
         )
-        set_target_properties(
-          ${exampletarget} PROPERTIES
-          COMPILE_FLAGS
-          "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused"
-        )
-        set_target_properties(
-          ${exampletarget} PROPERTIES
-          CXX_STANDARD 11
-        )
-        set_target_properties(
-          ${exampletarget} PROPERTIES
-          CXX_STANDARD_REQUIRED 11
-        )
         if (${dart_variant} STREQUAL "mpi")
           include_directories(
             ${MPI_INCLUDE_PATH})
@@ -259,6 +270,19 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
               ${PLASMA_LIBRARIES})
           endif()
         endif()
+        set_target_properties(
+          ${exampletarget} PROPERTIES
+          COMPILE_FLAGS
+          "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -Wno-unused"
+        )
+        set_target_properties(
+          ${exampletarget} PROPERTIES
+          CXX_STANDARD 11
+        )
+        set_target_properties(
+          ${exampletarget} PROPERTIES
+          CXX_STANDARD_REQUIRED 11
+        )
 
         # Installation
         DeployBinary(${exampletarget})

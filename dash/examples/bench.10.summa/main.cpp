@@ -42,14 +42,12 @@
 // #include <mkl_scalapack.h>
 #include <mkl_pblas.h>
 #include <mkl_blacs.h>
-#endif
+#    endif
 // BLAS support:
 #elif defined(DASH_ENABLE_BLAS)
+extern "C" {
 #include <cblas.h>
-#include <blas.h>
-#    if defined(DASH_ENABLE_LAPACK)
-#include <lapack.h>
-#endif
+}
 #endif
 
 extern "C" {
@@ -584,9 +582,15 @@ std::pair<double, double> test_blas(
   }
 
   // Create local copy of matrices:
+#ifdef DASH_ENABLE_MKL
   l_matrix_a = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
   l_matrix_b = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
   l_matrix_c = (value_t *)(mkl_malloc(sizeof(value_t) * sb * sb, 64));
+#else
+  l_matrix_a = (value_t *)(malloc(sizeof(value_t) * sb * sb));
+  l_matrix_b = (value_t *)(malloc(sizeof(value_t) * sb * sb));
+  l_matrix_c = (value_t *)(malloc(sizeof(value_t) * sb * sb));
+#endif
 
   auto ts_init_start = Timer::Now();
   init_values(l_matrix_a, l_matrix_b, l_matrix_c, sb, params);
@@ -633,9 +637,15 @@ std::pair<double, double> test_blas(
   }
   time.second = Timer::ElapsedSince(ts_multiply_start);
 
+#ifdef DASH_ENABLE_MKL
   mkl_free(l_matrix_a);
   mkl_free(l_matrix_b);
   mkl_free(l_matrix_c);
+#else
+  free(l_matrix_a);
+  free(l_matrix_b);
+  free(l_matrix_c);
+#endif
 
   return time;
 #else
@@ -896,9 +906,15 @@ std::pair<double, double> test_pblas(
       "nq:",    nq);
 
   // Allocate and initialize local submatrices of A, B, C:
+#ifdef DASH_ENABLE_MKL
   matrix_a_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(value_t), 64));
   matrix_b_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(value_t), 64));
   matrix_c_distr = (value_t *)(mkl_malloc(mp * nq * sizeof(value_t), 64));
+#else
+  matrix_a_distr = (value_t *)(malloc(mp * nq * sizeof(value_t)));
+  matrix_b_distr = (value_t *)(malloc(mp * nq * sizeof(value_t)));
+  matrix_c_distr = (value_t *)(malloc(mp * nq * sizeof(value_t)));
+#endif
 
   init_values(matrix_a_distr, matrix_b_distr, matrix_c_distr, sbrow, params);
 
@@ -983,9 +999,15 @@ std::pair<double, double> test_pblas(
   // Exit process grid:
   blacs_gridexit_(&ictxt);
 
+#ifdef DASH_ENABLE_MKL
   mkl_free(matrix_a_distr);
   mkl_free(matrix_b_distr);
   mkl_free(matrix_c_distr);
+#else
+  free(matrix_a_distr);
+  free(matrix_b_distr);
+  free(matrix_c_distr);
+#endif
 
   return time;
 #else

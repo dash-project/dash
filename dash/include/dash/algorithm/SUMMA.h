@@ -20,11 +20,10 @@
 #include <mkl_lapack.h>
 // BLAS support:
 #elif defined(DASH_ENABLE_BLAS)
-#include <cblas.h>
-#include <blas.h>
-# if defined(DASH_ENABLE_LAPACK)
-#include <lapack.h>
-#endif
+extern "C"
+{
+  #include <cblas.h>
+}
 #endif
 
 #define DASH_ALGORITHM_SUMMA_ASYNC_INIT_PREFETCH

@@ -1,8 +1,10 @@
 #ifndef DASH__BINDINGS__LAPACK_H__
 #define DASH__BINDINGS__LAPACK_H__
 
+#ifdef __cplusplus
 extern "C"
 {
+#endif // __cplusplus
   void dgemm_ ( void *, void *, void *, void *, void *, void *, void *, 
                 void *, void *, void *, void *, void *, void *);
   void sgemm_ ( void *, void *, void *, void *, void *, void *, void *, 
@@ -62,6 +64,8 @@ extern "C"
                void *, void *, void *);
   void cgbsv_ (void *, void *, void *, void *, void *, void *, void *, 
                void *, void *, void *);
+#ifdef __cplusplus
 }
+#endif // __cplusplus
 
 #endif  // DASH__BINDINGS__LAPACK_H__

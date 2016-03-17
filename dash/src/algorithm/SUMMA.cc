@@ -3,18 +3,25 @@
 #include <dash/Pattern.h>
 #include <dash/algorithm/SUMMA.h>
 
+// Prefer MKL if available:
 #ifdef DASH_ENABLE_MKL
 #include <mkl.h>
 #include <mkl_types.h>
 #include <mkl_cblas.h>
 #include <mkl_blas.h>
 #include <mkl_lapack.h>
+// BLAS support:
+#elif defined(DASH_ENABLE_BLAS)
+extern "C"
+{
+  #include <cblas.h>
+}
 #endif
 
 namespace dash {
 namespace internal {
 
-#ifdef DASH_ENABLE_MKL
+#if defined(DASH_ENABLE_MKL) || defined(DASH_ENABLE_BLAS)
 
 /**
  * Matrix multiplication for local multiplication of matrix blocks via MKL.
@@ -33,7 +40,7 @@ void multiply_local<float>(
   MemArrange    storage)
 {
   typedef float value_t;
-#ifndef DASH__MKL_MULTITHREADING
+#if defined(DASH_ENABLE_MKL) && defined(DASH__MKL_MULTITHREADING)
   mkl_set_num_threads(1);
   mkl_set_dynamic(false);
 #endif
@@ -102,7 +109,7 @@ void multiply_local<double>(
   MemArrange     storage)
 {
   typedef double value_t;
-#ifndef DASH__MKL_MULTITHREADING
+#if defined(DASH_ENABLE_MKL) && defined(DASH__MKL_MULTITHREADING)
   mkl_set_num_threads(1);
   mkl_set_dynamic(false);
 #endif
@@ -155,7 +162,7 @@ void multiply_local<double>(
               C, ldc);
 }
 
-#endif
+#endif // defined(DASH_ENABLE_MKL) || defined(DASH_ENABLE_BLAS)
 
 } // namespace internal
 } // namespace dash
