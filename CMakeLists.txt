@@ -74,7 +74,9 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
+if (NOT MKL_FOUND)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
+endif()
 
 ## Version number
 set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
