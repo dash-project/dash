@@ -33,6 +33,8 @@ BenchmarkParams::BenchmarkParams(
   params.env_mpi_shared_win = true;
   params.env_hwloc          = false;
   params.env_mkl            = false;
+  params.env_blas           = false;
+  params.env_lapack         = false;
   params.env_scalapack      = false;
   params.env_plasma         = false;
 #ifdef DART_MPI_DISABLE_SHARED_WINDOWS
@@ -43,6 +45,12 @@ BenchmarkParams::BenchmarkParams(
 #endif
 #ifdef DASH_ENABLE_MKL
   params.env_mkl            = true;
+#endif
+#ifdef DASH_ENABLE_BLAS
+  params.env_blas           = true;
+#endif
+#ifdef DASH_ENABLE_LAPACK
+  params.env_lapack         = true;
 #endif
 #ifdef DASH_ENABLE_SCALAPACK
   params.env_scalapack      = true;
@@ -163,15 +171,25 @@ void BenchmarkParams::print_header()
   } else {
     print_param("MPI shared windows", "disabled");
   }
-  if (_config.env_mkl) {
-    print_param("Intel MKL", "enabled");
-    if (_config.env_scalapack) {
-      print_param("ScaLAPACK", "enabled");
-    } else {
-      print_param("ScaLAPACK", "disabled");
-    }
+  if (_config.env_blas) {
+    print_param("BLAS",               "enabled");
   } else {
-    print_param("Intel MKL", "disabled");
+    print_param("BLAS",               "disabled");
+  }
+  if (_config.env_lapack) {
+    print_param("LAPACK",             "enabled");
+  } else {
+    print_param("LAPACK",             "disabled");
+  }
+  if (_config.env_mkl) {
+    print_param("Intel MKL",          "enabled");
+  } else {
+    print_param("Intel MKL",          "disabled");
+  }
+  if (_config.env_scalapack) {
+    print_param("ScaLAPACK",          "enabled");
+  } else {
+    print_param("ScaLAPACK",          "disabled");
   }
   print_section_end();
 }
@@ -182,7 +200,7 @@ void BenchmarkParams::print_pinning()
     return;
   }
   auto line_w = _header_width;
-  auto host_w = line_w - 5 - 5 - 10 - 5 - 5;
+  auto host_w = line_w - 5 - 5 - 10 - 5;
   print_section_start("Process Pinning");
   cout << std::left         << "--   "
        << std::setw(5)      << "unit"

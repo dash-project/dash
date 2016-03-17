@@ -34,6 +34,8 @@ public:
     bool           env_hwloc;
     bool           env_mpi_shared_win;
     bool           env_mkl;
+    bool           env_blas;
+    bool           env_lapack;
     bool           env_scalapack;
     bool           env_plasma;
   } config_params_type;
