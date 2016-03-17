@@ -1311,6 +1311,21 @@ public:
   }
 
   /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  BlockSpec_t local_blockspec(dart_unit_t unit) const
+  {
+    if (unit == _myid) {
+      return local_blockspec();
+    }
+    return initialize_local_blockspec(
+             _blockspec,
+             _blocksize_spec,
+             _teamspec,
+             unit);
+  }
+
+  /**
    * Maximum number of elements in a single block in the given dimension.
    *
    * \return  The blocksize in the given dimension
@@ -1552,23 +1567,17 @@ private:
     if (unit_id == DART_UNDEFINED_UNIT_ID) {
       unit_id = _myid;
     }
+    // Number of blocks in total:
+    auto num_blocks_total = blockspec.size();
     // Number of local blocks in all dimensions:
-    auto l_blocks = blockspec.extents();
-    // Coordinates of local unit id in team spec:
-    auto unit_ts_coords = _teamspec.coords(unit_id);
-    DASH_LOG_TRACE_VAR("SeqTilePattern.init_local_blockspec", unit_ts_coords);
-    for (auto d = 0; d < NumDimensions; ++d) {
-      // Number of units in dimension:
-      auto num_units_d        = _teamspec.extent(d);
-      // Number of blocks in dimension:
-      auto num_blocks_d       = _blockspec.extent(d);
-      // Number of blocks assigned to unit in this dimension:
-      auto num_l_blocks_d     = num_blocks_d / num_units_d;
-      auto num_odd_blocks_d   = num_blocks_d % num_units_d;
-      if (num_odd_blocks_d > unit_ts_coords[d]) {
-        ++num_l_blocks_d;
-      }
-      l_blocks[d] = num_l_blocks_d;
+    std::array<SizeType, NumDimensions> l_blocks;
+    auto min_local_blocks = num_blocks_total / _nunits;
+    l_blocks[0] = min_local_blocks;
+    if (unit_id < num_blocks_total % _nunits) {
+      l_blocks[0]++;
+    }
+    for (auto d = 1; d < NumDimensions; ++d) {
+      l_blocks[d] = 1;
     }
     DASH_LOG_TRACE_VAR("SeqTilePattern.init_local_blockspec >", l_blocks);
     return BlockSpec_t(l_blocks);
@@ -1617,25 +1626,15 @@ private:
   std::array<SizeType, NumDimensions> initialize_local_extents(
     dart_unit_t unit) const
   {
-    // Number of blocks in the pattern:
-    auto n_blocks     = _blockspec.size();
-    auto min_l_blocks = n_blocks / _nunits;
-    // Maximum difference in the number of blocks mapped to units is 1.
-    // A unit has an extra block mapped to it if its unit id is less than the
-    // remainder of blocks divided by total number of units.
-    auto num_l_blocks = min_l_blocks;
-    if (unit < n_blocks % _nunits) {
-      ++num_l_blocks;
-    }
     DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()", unit);
-    DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()", min_l_blocks);
-    DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()", num_l_blocks);
-    // Blocks are arranged in a one-dimensional sequence in logical local
-    // memory layout:
+    auto l_blockspec = initialize_local_blockspec(
+                        _blockspec, _blocksize_spec, _teamspec, unit);
+
+    DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents()",
+                       l_blockspec.extents());
     ::std::array<SizeType, NumDimensions> l_extents;
-    l_extents[0] = num_l_blocks * _blocksize_spec.extent(0);
-    for (auto d = 1; d < NumDimensions; ++d) {
-      l_extents[d] = _blocksize_spec.extent(d);
+    for (auto d = 0; d < NumDimensions; ++d) {
+      l_extents[d] = _blocksize_spec.extent(d) * l_blockspec.extent(d);
     }
     DASH_LOG_DEBUG_VAR("SeqTilePattern.init_local_extents >", l_extents);
     return l_extents;

@@ -1,5 +1,5 @@
-#ifndef DASH__TEST__SHIFT_TILE_PATTERN_TEST_H_
-#define DASH__TEST__SHIFT_TILE_PATTERN_TEST_H_
+#ifndef DASH__TEST__SEQ_TILE_PATTERN_TEST_H_
+#define DASH__TEST__SEQ_TILE_PATTERN_TEST_H_
 
 #include "TestBase.h"
 #include <gtest/gtest.h>
@@ -8,19 +8,19 @@
 /**
  * Test fixture for class dash::Pattern
  */
-class ShiftTilePatternTest : public ::testing::Test {
+class SeqTilePatternTest : public ::testing::Test {
 protected:
   int _num_elem;
   int _dash_size;
 
-  ShiftTilePatternTest()
+  SeqTilePatternTest()
   : _num_elem(0),
     _dash_size(0) {
-    LOG_MESSAGE(">>> Test suite: ShiftTilePatternTest");
+    LOG_MESSAGE(">>> Test suite: SeqTilePatternTest");
   }
 
-  virtual ~ShiftTilePatternTest() {
-    LOG_MESSAGE("<<< Closing test suite: ShiftTilePatternTest");
+  virtual ~SeqTilePatternTest() {
+    LOG_MESSAGE("<<< Closing test suite: SeqTilePatternTest");
   }
 
   virtual void SetUp() {

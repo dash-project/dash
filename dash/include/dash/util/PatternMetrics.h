@@ -21,6 +21,13 @@ public:
     init_metrics(pattern);
   }
 
+  ~PatternMetrics()
+  {
+    if (_unit_blocks != nullptr) {
+      delete[] _unit_blocks;
+    }
+  }
+
   inline int num_blocks() const {
     return _num_blocks;
   }
@@ -76,19 +83,26 @@ public:
     return _num_imb_units;
   }
 
+  /**
+   * Number of blocks mapped to given unit.
+   */
+  inline int unit_local_blocks(dart_unit_t unit) const {
+    return _unit_blocks[unit];
+  }
+
 private:
   /**
    * Calculate mapping balancing metrics of given pattern instance.
    */
   void init_metrics(const PatternT & pattern)
   {
-    _num_blocks       = pattern.blockspec().size();
+    _num_blocks  = pattern.blockspec().size();
 
-    int nunits        = pattern.teamspec().size();
-    int * unit_blocks = new int[nunits];
+    int nunits   = pattern.teamspec().size();
+    _unit_blocks = new int[nunits];
 
     for (int u = 0; u < nunits; ++u) {
-      unit_blocks[u] = 0;
+      _unit_blocks[u] = 0;
     }
     for (int bi = 0; bi < _num_blocks; ++bi) {
       auto block      = pattern.block(bi);
@@ -96,37 +110,36 @@ private:
                           block.offset(0),
                           block.offset(1)
                         });
-      unit_blocks[block_unit]++;
+      _unit_blocks[block_unit]++;
     }
 
     _block_size      = pattern.blocksize(0) * pattern.blocksize(1);
-    _min_blocks      = *std::min_element(unit_blocks,
-                                         unit_blocks + nunits);
-    _max_blocks      = *std::max_element(unit_blocks,
-                                         unit_blocks + nunits);
-    _num_bal_units   = std::count(unit_blocks, unit_blocks + nunits,
+    _min_blocks      = *std::min_element(_unit_blocks,
+                                         _unit_blocks + nunits);
+    _max_blocks      = *std::max_element(_unit_blocks,
+                                         _unit_blocks + nunits);
+    _num_bal_units   = std::count(_unit_blocks, _unit_blocks + nunits,
                                   _min_blocks);
     _num_imb_units   = _min_blocks == _max_blocks
                        ? 0
-                       : std::count(unit_blocks, unit_blocks + nunits,
+                       : std::count(_unit_blocks, _unit_blocks + nunits,
                                     _max_blocks);
 
     int min_elements = _min_blocks * _block_size;
     int max_elements = _max_blocks * _block_size;
     _imb_factor = static_cast<float>(max_elements) /
                   static_cast<float>(min_elements);
-
-    delete[] unit_blocks;
   }
 
 private:
-  int      _num_blocks       = 0;
-  int      _block_size       = 0;
-  int      _min_blocks       = 0;
-  int      _max_blocks       = 0;
-  int      _num_imb_units    = 0;
-  int      _num_bal_units    = 0;
-  double   _imb_factor       = 0.0;
+  int    * _unit_blocks   = nullptr;
+  int      _num_blocks    = 0;
+  int      _block_size    = 0;
+  int      _min_blocks    = 0;
+  int      _max_blocks    = 0;
+  int      _num_imb_units = 0;
+  int      _num_bal_units = 0;
+  double   _imb_factor    = 0.0;
 };
 
 } // namespace util
