@@ -31,16 +31,24 @@
 #include <type_traits>
 #include <cmath>
 
-#ifdef DASH_ENABLE_MKL
+// Prefer MKL if available:
+#if defined(DASH_ENABLE_MKL)
 #include <mkl.h>
 #include <mkl_types.h>
 #include <mkl_cblas.h>
 #include <mkl_blas.h>
 #include <mkl_lapack.h>
-#ifdef DASH_ENABLE_SCALAPACK
+#    if defined(DASH_ENABLE_SCALAPACK)
 // #include <mkl_scalapack.h>
 #include <mkl_pblas.h>
 #include <mkl_blacs.h>
+#endif
+// BLAS support:
+#elif defined(DASH_ENABLE_BLAS)
+#include <cblas.h>
+#include <blas.h>
+#    if defined(DASH_ENABLE_LAPACK)
+#include <lapack.h>
 #endif
 #endif
 
@@ -563,7 +571,7 @@ std::pair<double, double> test_blas(
   unsigned repeat,
   const benchmark_params & params)
 {
-#ifdef DASH_ENABLE_MKL
+#if defined(DASH_ENABLE_MKL) || defined(DASH_ENABLE_BLAS)
   std::pair<double, double> time;
   value_t * l_matrix_a;
   value_t * l_matrix_b;
@@ -631,7 +639,8 @@ std::pair<double, double> test_blas(
 
   return time;
 #else
-  DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
+  DASH_THROW(dash::exception::RuntimeError,
+             "MKL or BLAS required for BLAS scenario");
 #endif
 }
 

@@ -11,12 +11,20 @@
 
 #include <utility>
 
+// Prefer MKL if available:
 #ifdef DASH_ENABLE_MKL
 #include <mkl.h>
 #include <mkl_types.h>
 #include <mkl_cblas.h>
 #include <mkl_blas.h>
 #include <mkl_lapack.h>
+// BLAS support:
+#elif defined(DASH_ENABLE_BLAS)
+#include <cblas.h>
+#include <blas.h>
+# if defined(DASH_ENABLE_LAPACK)
+#include <lapack.h>
+#endif
 #endif
 
 #define DASH_ALGORITHM_SUMMA_ASYNC_INIT_PREFETCH
@@ -25,7 +33,7 @@ namespace dash {
 
 namespace internal {
 
-#ifdef DASH_ENABLE_MKL
+#if defined(DASH_ENABLE_MKL) || defined(DASH_ENABLE_BLAS)
 /**
  * Matrix multiplication for local multiplication of matrix blocks via MKL.
  */
@@ -76,7 +84,7 @@ void multiply_local(
     }
   }
 }
-#endif // ifdef DASH_ENABLE_MKL
+#endif // defined(DASH_ENABLE_MKL) || defined(DASH_ENABLE_BLAS)
 
 } // namespace internal
 

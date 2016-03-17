@@ -52,6 +52,10 @@ option(ENABLE_PAPI
        "Specify whether PAPI features are enabled" on)
 option(ENABLE_MKL
        "Specify whether MKL features are enabled" on)
+option(ENABLE_BLAS
+       "Specify whether BLAS features are enabled" on)
+option(ENABLE_LAPACK
+       "Specify whether LAPACK features are enabled" on)
 option(ENABLE_SCALAPACK
        "Specify whether ScaLAPACK features are enabled" on)
 option(ENABLE_PLASMA
@@ -70,6 +74,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
 
 ## Version number
 set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")
@@ -192,6 +197,10 @@ message(INFO "PAPI support:             (ENABLE_PAPI)                    "
         ${ENABLE_PAPI})
 message(INFO "MKL support:              (ENABLE_MKL)                     "
         ${ENABLE_MKL})
+message(INFO "BLAS support:             (ENABLE_BLAS)                    "
+        ${ENABLE_BLAS})
+message(INFO "LAPACK support:           (ENABLE_LAPACK)                  "
+        ${ENABLE_LAPACK})
 message(INFO "ScaLAPACK support:        (ENABLE_SCALAPACK)               "
         ${ENABLE_SCALAPACK})
 message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
@@ -222,6 +231,15 @@ if (ENABLE_MKL)
 else()
   message(NOTE "MKL                       disabled")
 endif()
+if (ENABLE_BLAS)
+  if (BLAS_FOUND)
+    message(INFO "BLAS                      enabled")
+  else()
+    message(NOTE "BLAS                      not found")
+  endif()
+else()
+  message(NOTE "BLAS                      disabled")
+endif()
 if (ENABLE_HWLOC)
   if (HWLOC_FOUND)
     message(INFO "hwloc                     enabled")
@@ -230,6 +248,15 @@ if (ENABLE_HWLOC)
   endif()
 else()
   message(NOTE "hwloc                     disabled")
+endif()
+if (ENABLE_LAPACK)
+  if (LAPACK_FOUND)
+    message(INFO "LAPACK                    enabled")
+  else()
+    message(NOTE "LAPACK                    not found")
+  endif()
+else()
+  message(NOTE "LAPACK                    disabled")
 endif()
 if (ENABLE_SCALAPACK)
   if (MKL_SCALAPACK_FOUND)

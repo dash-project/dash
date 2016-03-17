@@ -190,7 +190,6 @@ void BenchmarkParams::print_pinning()
        << std::right
        << std::setw(10)     << "numa node"
        << std::setw(5)      << "cpu"
-       << std::setw(5)      << "core"
        << endl;
   for (size_t unit = 0; unit < Locality::Pinning().size(); ++unit) {
     unit_pinning_type pin_info = Locality::Pinning()[unit];
@@ -200,7 +199,6 @@ void BenchmarkParams::print_pinning()
          << std::right
          << std::setw(10)     << pin_info.numa_node
          << std::setw(5)      << pin_info.cpu
-         << std::setw(5)      << (pin_info.cpu % Locality::NumCPUs())
          << endl;
   }
   print_section_end();
