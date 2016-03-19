@@ -51,10 +51,17 @@ void Locality::init()
   if (depth != HWLOC_TYPE_DEPTH_UNKNOWN) {
     _num_sockets = hwloc_get_nbobjs_by_depth(topology, depth);
   }
+	// Resolve number of NUMA nodes:
   int n_numa_nodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NODE);
   if (n_numa_nodes > 0) {
     _num_numa = n_numa_nodes;
   }
+	// Resolve number of cores per numa:
+	int n_cores = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_CORE);
+	if (n_cores > 0){
+		_num_cpus = n_cores;
+		DASH_LOG_DEBUG("_num_cpus first got by HWLOC", _num_cpus);
+	}
   hwloc_topology_destroy(topology);
 #endif
 #ifdef DASH_ENABLE_PAPI
@@ -81,14 +88,17 @@ void Locality::init()
       if (_num_cpus < 0) {
         auto cores_per_socket = hwinfo->cores;
         _num_cpus = _num_sockets * cores_per_socket;
+				DASH_LOG_DEBUG("_num_cpus first got by PAPI", _num_cpus);
       }
     }
   }
 #endif
 #ifdef DASH__PLATFORM__POSIX
   if (_num_cpus < 0) {
+		// be careful: includes hyperthreading
     int ret = sysconf(_SC_NPROCESSORS_ONLN);
     _num_cpus = (ret > 0) ? ret : _num_cpus;
+		DASH_LOG_DEBUG("_num_cpus first got by DASH__PLATFORM_POSIX", _num_cpus);
   }
 #endif
 #ifdef DASH_ENABLE_NUMA
