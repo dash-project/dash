@@ -20,6 +20,7 @@ namespace dash {
 namespace util {
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 class StoreHDF {
   public:
     friend void dash::init(int *argc, char ***argv);
@@ -251,6 +252,8 @@ class StoreHDF {
         return H5T_NATIVE_DOUBLE;
     }
 =======
+=======
+>>>>>>> f7e968e... Finished first version of HDF5 storage wrapper
 class StoreHDF 
 {
 public:
@@ -491,6 +494,9 @@ private:
 	static hid_t _convertType(double t){
 		return H5T_NATIVE_DOUBLE;
 	}
+<<<<<<< HEAD
+>>>>>>> f7e968e... Finished first version of HDF5 storage wrapper
+=======
 >>>>>>> f7e968e... Finished first version of HDF5 storage wrapper
 
 };
@@ -500,7 +506,10 @@ private:
 #endif // DASH__UTIL__HDF5_H_
 #endif
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> f7e968e... Finished first version of HDF5 storage wrapper
 =======
 >>>>>>> f7e968e... Finished first version of HDF5 storage wrapper
