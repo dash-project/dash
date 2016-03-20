@@ -60,6 +60,9 @@ option(ENABLE_SCALAPACK
        "Specify whether ScaLAPACK features are enabled" on)
 option(ENABLE_PLASMA
        "Specify whether PLASMA features are enabled" on)
+option(ENABLE_HDF5
+       "Specify whether HDF5 features are enabled" on)
+
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MessageColor.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)
@@ -74,6 +77,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
 if (NOT MKL_FOUND)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
 endif()
@@ -207,6 +211,8 @@ message(INFO "ScaLAPACK support:        (ENABLE_SCALAPACK)               "
         ${ENABLE_SCALAPACK})
 message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
+message(INFO "HDF5 support:             (ENABLE_PLASMA)                  "
+        ${ENABLE_HDF5})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
@@ -274,6 +280,15 @@ if (ENABLE_PLASMA)
     message(INFO "PLASMA                    enabled")
   else()
     message(NOTE "PLASMA                    not found")
+  endif()
+else()
+  message(NOTE "PLASMA                    disabled")
+endif()
+if (ENABLE_HDF5)
+  if (HDF5_FOUND)
+    message(INFO "HDF5                      enabled")
+  else()
+    message(NOTE "HDF5                      not found")
   endif()
 else()
   message(NOTE "PLASMA                    disabled")
