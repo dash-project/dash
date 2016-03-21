@@ -1,3 +1,5 @@
+#ifdef DASH_ENABLE_HDF5
+
 #ifndef DASH__TEST_HDF5_H
 #define DASH__TEST_HDF5_H
 
@@ -35,4 +37,5 @@ protected:
                 _dash_size);
   }
 };
+#endif
 #endif

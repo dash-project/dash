@@ -260,6 +260,9 @@ public:
   friend void dash::init(int *argc, char ***argv);
 
 public:
+	/**
+   * Store all array values in an HDF5 file
+	 */
 	template<
 		typename value_t,
 		typename index_t,
@@ -279,19 +282,9 @@ public:
 	auto		tiledist	 = numunits * tilesize;
 	// Map native types to HDF5 types
 	auto h5datatype = _convertType(array[0]);
-	/*
-	if(dash::myid() == 0){
-		std::cout << "Array Config:" << std::endl
-							<< "Globalsize: " << globalsize << std::endl
-							<< "Localsize: " << localsize << std::endl
-							<< "Tilesize: " << tilesize << std::endl
-							<< "tiledist: " << tiledist << std::endl;
-	}
-	dash::barrier();
-	std::cout << "UNIT: " << dash::myid()
-						<< ", lbegindex: " << lbegindex << std::endl;
-	dash::barrier();
-	*/
+
+	// Currently only works for 1-dimensional tiling
+	DASH_ASSERT_EQ(array.pattern().ndim(), 1, "Array has to be one-dimensional for HDF5 storage");
 
 	/* HDF5 definition */
 	hid_t		file_id;
@@ -371,6 +364,9 @@ public:
 	H5Fclose(file_id);
 	}
 
+	/**
+   * Read an HDF5 table into an DASH array.
+   */
 	template<typename value_t>
 	static void read(
 		dash::Array<value_t> &array,
@@ -424,15 +420,12 @@ public:
 	// Get dimensions of data
 	filespace 		= H5Dget_space(dataset);
 	rank      		= H5Sget_simple_extent_ndims(filespace);
-	if(rank != 1){
-		std::cerr << "Data dimension is not 1" << std::endl;
-		return; // QUIT
-	}
+	
+	DASH_ASSERT_EQ(rank, 1, "Data dimension of HDF5 table is not 1");
+
 	status    		= H5Sget_simple_extent_dims(filespace, data_dimsf, NULL);
 
-	if(dash::myid() == 0){
-		std::cout << "Dataset dimension: " << data_dimsf[0] << std::endl;
-	}
+	DASH_LOG_DEBUG("Dataset dimension: ", data_dimsf[0]);
 
 	// Initialize DASH Array
 	// no explicit pattern specified / try to load pattern from hdf5 file
