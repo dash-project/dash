@@ -179,7 +179,7 @@ message(INFO "Strict compiler warnings: (ENABLE_COMPILER_WARNINGS)       "
         ${ENABLE_COMPILER_WARNINGS})
 message(INFO "Debug log messages:       (ENABLE_LOGGING)                 "
         ${ENABLE_LOGGING})
-message(INFO "Trace log messages:       (ENABLE_LOGGING)                 "
+message(INFO "Trace log messages:       (ENABLE_TRACE_LOGGING)           "
         ${ENABLE_TRACE_LOGGING})
 message(INFO "DART log messages:        (ENABLE_DART_LOGGING)            "
         ${ENABLE_DART_LOGGING})
