@@ -18,8 +18,8 @@ bool dash::util::TraceStore::_trace_enabled
 bool dash::util::TraceStore::on()
 {
   _trace_enabled = dash::util::Config::get<bool>("DASH_ENABLE_TRACE");
-
-  // To avoid compiler optimization from eliminating this call:
+  
+	// To avoid compiler optimization from eliminating this call:
   std::ostringstream os;
   os << _trace_enabled << std::endl;
 
@@ -118,6 +118,9 @@ void dash::util::TraceStore::write(std::ostream & out)
 
 void dash::util::TraceStore::write(const std::string & filename)
 {
+	if (!dash::util::Config::get<bool>("DASH_ENABLE_TRACE")) {
+    return;
+  }
   auto unit = dash::myid();
   std::ostringstream fn;
   fn << "trace_" << unit << "." << filename;
@@ -126,4 +129,3 @@ void dash::util::TraceStore::write(const std::string & filename)
   write(out);
   out.close();
 }
-
