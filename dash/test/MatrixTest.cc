@@ -742,3 +742,43 @@ TEST_F(MatrixTest, StorageOrder)
     }
   }
 }
+
+TEST_F(MatrixTest, DelayedAlloc)
+{
+   
+  dart_unit_t myid = dash::myid();
+  size_t num_units = dash::size();
+
+  auto  tilesize_x=40;
+  auto  tilesize_y=40;
+  auto  tilesize_z=40;
+  auto  len_x=num_units*tilesize_x;
+  auto  len_y=num_units*tilesize_y;
+  auto  len_z=num_units*tilesize_z;
+
+
+  dash::Matrix<double, 3> mx2(
+      dash::SizeSpec<3>(
+        len_x,
+        len_y,
+        len_z),
+      dash::DistributionSpec<3>(
+        dash::TILE(tilesize_x),
+        dash::TILE(tilesize_y),
+        dash::TILE(tilesize_z))
+      );
+
+  mx::allocate(
+      dash::SizeSpec<3>(
+        len_x,
+        len_y,
+        len_z),
+      dash::DistributionSpec<3>(
+        dash::TILE(tilesize_x),
+        dash::TILE(tilesize_y),
+        dash::TILE(tilesize_z))
+      );
+
+
+}
+
