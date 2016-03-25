@@ -46,6 +46,52 @@ print_matrix(
 }
 
 /**
+ * Log the values of a three-dimensional matrix.
+ */
+template<typename MatrixT>
+typename std::enable_if<MatrixT::ndim() == 3, void>::type
+print_matrix(
+  /// Log message prefix.
+  const std::string & name,
+  /// Matrix instance to log.
+  MatrixT           & matrix,
+  int                 precision = 1)
+{
+  typedef typename MatrixT::value_type value_t;
+  typedef typename MatrixT::index_type index_t;
+
+  std::vector< std::vector< std::vector<value_t> > > values;
+  /// Offset of two-dimensional slice in third dimension to print
+  for (auto slice_offs = 0; slice_offs < matrix.extent(0); ++slice_offs) {
+    // Print local copy of matrix to avoid interleaving of matrix values
+    // and log messages:
+    std::vector< std::vector< value_t > > slice_values;
+    for (auto row = 0; row < matrix.extent(1); ++row) {
+      std::vector<value_t> row_values;
+      for (auto col = 0; col < matrix.extent(2); ++col) {
+        value_t value = matrix[slice_offs][row][col];
+        row_values.push_back(value);
+      }
+      slice_values.push_back(row_values);
+    }
+    values.push_back(slice_values);
+  }
+  for (auto slice_offs = 0; slice_offs < matrix.extent(0); ++slice_offs) {
+    DASH_LOG_DEBUG("print_matrix", name, "slice z:", slice_offs);
+    auto slice_values = values[slice_offs];
+    for (auto row : slice_values) {
+      std::ostringstream ss;
+      for (auto val : row) {
+        ss << std::setprecision(precision) << std::fixed << std::setw(4)
+           << val << " ";
+      }
+      DASH_LOG_DEBUG("print_matrix", name, "slice z:", slice_offs, "|",
+                     ss.str());
+    }
+  }
+}
+
+/**
  * Log the result of a mapping function of a one-dimensional pattern.
  * Example:
  *

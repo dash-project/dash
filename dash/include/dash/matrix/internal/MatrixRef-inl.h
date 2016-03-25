@@ -414,6 +414,17 @@ MatrixRef<T, NumDim, CUR, PatternT>
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+inline typename MatrixRef<T, NumDim, CUR, PatternT>::reference
+MatrixRef<T, NumDim, CUR, PatternT>
+::at(const ::std::array<typename PatternT::index_type, NumDim> & coords)
+{
+  for(auto i = _refview->_dim; i < NumDim; ++i) {
+    _refview->_coord[i] = coords[i-_refview->_dim];
+  }
+  return _refview->global_reference();
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
 template <typename ... Args>
 inline typename MatrixRef<T, NumDim, CUR, PatternT>::reference
 MatrixRef<T, NumDim, CUR, PatternT>

@@ -19,8 +19,9 @@
  * to FILE* out.
  */
 static void dash__print_stacktrace(
-  FILE *out               = stderr,
-  unsigned int max_frames = 63) {
+  FILE         * out        = stderr,
+  unsigned int   max_frames = 63)
+{
   fprintf(out, "Stack trace:\n");
   // storage array for stack trace address data
   void ** addrlist = (void**)(malloc(sizeof(void*) * (max_frames+1)));
@@ -101,9 +102,10 @@ static void dash__print_stacktrace(
 #else  // ifdef __GNUC__
 
 static inline void dash__print_stacktrace(
-  FILE *,
-  unsigned int) {
-  // No-op
+  FILE         * out        = stderr,
+  unsigned int)
+{
+  fprintf(out, "No stack trace\n");
 };
 
 #endif // ifdef __GNUC__

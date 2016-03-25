@@ -947,7 +947,8 @@ public:
   bool allocate(
     size_type nelem,
     dash::DistributionSpec<1> distribution,
-    dash::Team & team = dash::Team::All()) {
+    dash::Team & team = dash::Team::All())
+  {
     DASH_LOG_TRACE("Array.allocate()", nelem);
     DASH_LOG_TRACE_VAR("Array.allocate", m_team->dart_id());
     DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
@@ -957,7 +958,7 @@ public:
         dash::exception::InvalidArgument,
         "Tried to allocate dash::Array with size 0");
     }
-    if (*m_team == dash::Team::Null()) {
+    if (m_team == nullptr || *m_team == dash::Team::Null()) {
       DASH_LOG_TRACE("Array.allocate",
                      "initializing pattern with Team::All()");
       m_team    = &team;
@@ -972,7 +973,8 @@ public:
     return allocate(m_pattern);
   }
 
-  void deallocate() {
+  void deallocate()
+  {
     DASH_LOG_TRACE_VAR("Array.deallocate()", this);
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_size);
     // Assure all units are synchronized before deallocation, otherwise

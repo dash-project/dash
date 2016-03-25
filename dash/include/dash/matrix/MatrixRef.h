@@ -249,6 +249,18 @@ public:
     Args... args);
 
   /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
+  reference at(
+    /// Global coordinates
+    const ::std::array<index_type, NumDimensions> & coords);
+
+  /**
    * Fortran-style subscript operator, alias for \c at().
    * As an example, the operation \c matrix(i,j) is equivalent to
    * \c matrix[i][j].

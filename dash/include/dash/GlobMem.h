@@ -50,8 +50,8 @@ public:
     m_nlelem     = nlelem;
     m_kind       = dash::internal::COLLECTIVE;
     size_t lsize = sizeof(ElementType) * m_nlelem;
-    DASH_LOG_TRACE_VAR("GlobMem(nunits, nelem)", lsize);
-    DASH_LOG_TRACE_VAR("GlobMem(nunits, nelem)", m_teamid);
+    DASH_LOG_TRACE_VAR("GlobMem(nunits,nelem)", lsize);
+    DASH_LOG_TRACE_VAR("GlobMem(nunits,nelem)", m_teamid);
     DASH_ASSERT_RETURNS(
       dart_team_size(m_teamid, &m_nunits),
       DART_OK);

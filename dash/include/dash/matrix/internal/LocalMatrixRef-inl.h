@@ -273,7 +273,7 @@ inline T *
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::lbegin() noexcept
 {
-  return _refview->_mat->lbegin();
+  return begin().local();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -281,7 +281,7 @@ inline const T *
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::lbegin() const noexcept
 {
-  return _refview->_mat->lbegin();
+  return begin().local();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -289,7 +289,7 @@ inline T *
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::lend() noexcept
 {
-  return _refview->_mat->lend();
+  return end().local();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -297,7 +297,7 @@ inline const T *
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::lend() const noexcept
 {
-  return _refview->_mat->lend();
+  return end().local();
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>

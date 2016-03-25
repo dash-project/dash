@@ -234,9 +234,9 @@ public:
   template<dim_t NumSubDimensions>
   LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
     sub(size_type n);
-  inline LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT> 
+  inline LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
     col(size_type n);
-  inline LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT> 
+  inline LocalMatrixRef<T, NumDimensions, NumDimensions-1, PatternT>
     row(size_type n);
 
   template<dim_t SubDimension>
@@ -304,7 +304,7 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
     typename T_,
     dim_t NumDimensions1,
     dim_t NumDimensions2,
-    class PatternT_ > 
+    class PatternT_ >
   friend class LocalMatrixRef;
 
  public:

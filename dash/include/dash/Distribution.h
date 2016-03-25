@@ -155,7 +155,7 @@ public:
       case dash::internal::DIST_NONE:
         return range;
       case dash::internal::DIST_BLOCKED:
-        return dash::math::div_ceil(range, num_units);
+        return num_units == 0 ? 0 : dash::math::div_ceil(range, num_units);
       case dash::internal::DIST_CYCLIC:
         return 1;
       case dash::internal::DIST_BLOCKCYCLIC:

@@ -281,11 +281,20 @@ public:
    *
    * \see  DashContainerConcept
    */
-  template<dim_t NumDistributionDim>
   bool allocate(
-    size_type                                    nelem,
-    dash::DistributionSpec<NumDistributionDim>   distribution,
-    dash::Team                                 & team = dash::Team::All());
+    const SizeSpec_t         & sizespec,
+    const DistributionSpec_t & distribution,
+    const TeamSpec_t         & teamspec,
+    dash::Team               & team = dash::Team::All()
+  );
+
+  /**
+   * Allocation and distribution of matrix elements as specified by a given
+   * Pattern instance.
+   */
+  bool allocate(
+    const PatternT & pattern
+  );
 
   /**
    * Explicit deallocation of matrix elements, called implicitly in
@@ -324,7 +333,7 @@ public:
    *
    * \see  DashContainerConcept
    */
-  inline       iterator    begin()       noexcept;
+  inline       iterator    begin()        noexcept;
 
   /**
    * Iterator referencing first matrix element in global index space.
@@ -526,18 +535,9 @@ public:
     MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> ();
 
 private:
-  /**
-   * Allocation and distribution of matrix elements as specified by a given
-   * Pattern instance.
-   */
-  bool allocate(
-    const PatternT & pattern
-  );
-
-private:
   /// Team containing all units that collectively instantiated the
   /// Matrix instance
-  dash::Team                 & _team;
+  dash::Team                 * _team = nullptr;
   /// DART id of the unit that owns this matrix instance
   dart_unit_t                  _myid;
   /// Capacity (total number of elements) of the matrix
