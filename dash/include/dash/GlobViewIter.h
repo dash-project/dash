@@ -13,6 +13,16 @@
 
 namespace dash {
 
+#ifndef DOXYGEN
+// Forward-declaration
+template<
+  typename ElementType,
+  class    PatternType,
+  class    PointerType,
+  class    ReferenceType >
+class GlobStencilIter;
+#endif
+
 template<
   typename ElementType,
   class PatternType   = Pattern<1>,
@@ -56,6 +66,14 @@ public:
   friend std::ostream & operator<<(
       std::ostream & os,
       const GlobViewIter<T_, P_, Ptr_, Ref_> & it);
+
+  // For conversion to GlobStencilIter
+  template<
+    typename T_,
+    class    P_,
+    class    Ptr_,
+    class    Ref_ >
+  friend class GlobStencilIter;
 
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
@@ -405,10 +423,19 @@ public:
   }
 
   /**
-   * Position of the iterator in the index range relative to its view spec.
+   * Position of the iterator in its view's iteration space, disregarding
+   * the view's offset in global index space.
+   */
+  inline index_type rpos() const
+  {
+    return _idx;
+  }
+
+  /**
+   * Position of the iterator in its view's iteration space and the view's
+   * offset in global index space.
    */
   inline index_type pos() const
-
   {
     DASH_LOG_TRACE("GlobViewIter.pos()",
                    "idx:", _idx, "vs_offset:", _view_idx_offset);

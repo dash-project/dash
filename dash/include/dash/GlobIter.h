@@ -7,10 +7,41 @@
 
 #include <functional>
 #include <sstream>
-#include <iostream>
 
 namespace dash {
 
+#ifndef DOXYGEN
+// Forward-declaration
+template<
+  typename ElementType,
+  class    PatternType,
+  class    PointerType,
+  class    ReferenceType >
+class GlobStencilIter;
+// Forward-declaration
+template<
+  typename ElementType,
+  class    PatternType,
+  class    PointerType,
+  class    ReferenceType >
+class GlobViewIter;
+#endif // DOXYGEN
+
+/**
+ * \defgroup  DashGlobalIteratorConcept  Global Iterator Concept
+ * Concept for iterators in global index space.
+ *
+ * \ingroup DashConcept
+ * \{
+ * \par Description
+ *
+ * \par Methods
+ * Return Type             | Method                 | Parameters     | Description                                             |
+ * ----------------------- | ---------------------- | -------------- | ------------------------------------------------------- |
+ * <tt>dart_gptr_t</tt>    | <tt>dart_gptr</tt>     | &nbsp;         | DART global pointer on the iterator's current position. |
+ *
+ * \}
+ */
 template<
   typename ElementType,
   class    PatternType   = Pattern<1>,
@@ -49,8 +80,24 @@ public:
     class Ptr_,
     class Ref_ >
   friend std::ostream & operator<<(
-      std::ostream & os,
-      const GlobIter<T_, P_, Ptr_, Ref_> & it);
+           std::ostream & os,
+           const GlobIter<T_, P_, Ptr_, Ref_> & it);
+
+  // For conversion to GlobStencilIter
+  template<
+    typename T_,
+    class    P_,
+    class    Ptr_,
+    class    Ref_ >
+  friend class GlobStencilIter;
+
+  // For conversion to GlobViewIter
+  template<
+    typename T_,
+    class    P_,
+    class    Ptr_,
+    class    Ref_ >
+  friend class GlobViewIter;
 
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
@@ -560,5 +607,8 @@ std::ostream & operator<<(
 }
 
 } // namespace dash
+
+#include <dash/GlobViewIter.h>
+#include <dash/GlobStencilIter.h>
 
 #endif // DASH__GLOB_ITER_H_

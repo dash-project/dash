@@ -790,6 +790,8 @@ TEST_F(MatrixTest, DelayedAlloc)
     value_t;
   typedef dash::default_index_t
     index_t;
+  typedef dash::default_extent_t
+    extent_t;
   typedef dash::CartesianIndexSpace<3, dash::ROW_MAJOR, index_t>
     index_space_t;
 
@@ -835,7 +837,7 @@ TEST_F(MatrixTest, DelayedAlloc)
   ASSERT_EQ_U(mx.local.size(), n_local_elem);
 
   // Initialize values:
-  for (auto lbi = 0; lbi < n_local_blocks; ++lbi) {
+  for (extent_t lbi = 0; lbi < n_local_blocks; ++lbi) {
     // submatrix view on local block obtained from matrix relative to global
     // memory space:
     auto g_matrix_block  = mx.local.block(lbi);
@@ -873,9 +875,9 @@ TEST_F(MatrixTest, DelayedAlloc)
   // Testing view specifiers for every index explicitly, intentionally
   // inefficient.
   if (myid == 0) {
-    for (index_t i = 0; i < extent_i; ++i) {
-      for (index_t j = 0; j < extent_j; ++j) {
-        for (index_t k = 0; k < extent_k; ++k) {
+    for (index_t i = 0; i < static_cast<index_t>(extent_i); ++i) {
+      for (index_t j = 0; j < static_cast<index_t>(extent_j); ++j) {
+        for (index_t k = 0; k < static_cast<index_t>(extent_k); ++k) {
           DASH_LOG_TRACE("MatrixTest.DelayedAlloc",
                          "coords:", i, j, k);
           // global coordinate:
@@ -885,7 +887,6 @@ TEST_F(MatrixTest, DelayedAlloc)
           // block index in local memory space:
           auto lbi           = mx.pattern().local_block_at(gcoords).index;
           // block at global block index:
-          auto matrix_block  = mx.block(block_index);
           auto block_extents = mx.pattern().block(block_index).extents();
           auto block_i_space = index_space_t(block_extents);
           auto block_unit    = mx.pattern().unit_at(gcoords);

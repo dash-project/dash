@@ -26,10 +26,10 @@ print_matrix(
   // Print local copy of matrix to avoid interleaving of matrix values
   // and log messages:
   std::vector< std::vector<value_t> > values;
-  for (auto row = 0; row < matrix.extent(1); ++row) {
+  for (auto row = 0; row < matrix.extent(0); ++row) {
     std::vector<value_t> row_values;
-    for (auto col = 0; col < matrix.extent(0); ++col) {
-      value_t value = matrix[col][row];
+    for (auto col = 0; col < matrix.extent(1); ++col) {
+      value_t value = matrix[row][col];
       row_values.push_back(value);
     }
     values.push_back(row_values);
