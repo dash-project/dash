@@ -170,13 +170,23 @@ class BlockBoundaryIter
            ReferenceType >
 {
 private:
-  typedef BlockBoundaryIter<ElementType, PatternType>      self_t;
+  typedef BlockBoundaryIter<
+            ElementType,
+            PatternType,
+            PointerType,
+            ReferenceType>
+    self_t;
+
+private:
+  static const dim_t      NumDimensions = PatternType::ndim();
+  static const MemArrange Arrangement   = PatternType::memory_order();
 
 public:
   typedef PatternType                                pattern_type;
   typedef typename PatternType::index_type             index_type;
   typedef typename PatternType::size_type               size_type;
   typedef typename PatternType::viewspec_type       viewspec_type;
+  typedef dash::HaloSpec<NumDimensions>             halospec_type;
 
   typedef       ReferenceType                           reference;
   typedef const ReferenceType                     const_reference;
@@ -208,18 +218,21 @@ public:
     /// The halo to apply to the block.
     const halospec_type  & halospec,
     /// The iterator's position in the block boundary's iteration space
-    index_type             pos  = 0,
+    index_type             pos               = 0,
+    /// The iterator's view index start offset in memory storage order.
+    index_type             view_index_offset = 0,
     /// The number of elements in the block boundary's iteration space.
-    index_type             size = 0)
+    index_type             size              = 0)
   : _globmem(globmem),
     _pattern(&pattern),
     _viewspec(&viewspec),
     _halospec(&halospec),
     _idx(pos),
+    _view_idx_offset(view_index_offset),
     _size(size),
     _max_idx(_size-1),
     _myid(dash::myid()),
-    _lbegin(_globmem->lbegin()),
+    _lbegin(_globmem->lbegin())
   {
     if (_size <= 0) {
       dim_t d_v = NumDimensions - 1;
@@ -248,6 +261,65 @@ public:
    */
   self_t & operator=(
     const self_t & other) = default;
+
+  /**
+   * The number of dimensions of the iterator's underlying pattern.
+   *
+   * \see DashGlobalIteratorConcept
+   */
+  static dim_t ndim()
+  {
+    return NumDimensions;
+  }
+
+  /**
+   * Explicit conversion to \c dart_gptr_t.
+   *
+   * \see DashGlobalIteratorConcept
+   *
+   * \return  A DART global pointer to the element at the iterator's
+   *          position
+   */
+  dart_gptr_t dart_gptr() const
+  {
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter.dart_gptr()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    index_type idx    = _idx;
+    index_type offset = 0;
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.dart_gptr", _max_idx);
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.dart_gptr", idx);
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.dart_gptr", offset);
+    }
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(idx);
+    } else {
+      // Viewspec projection required:
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.dart_gptr", _viewspec);
+      auto glob_coords = coords(idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE("BlockBoundaryIter.dart_gptr",
+                   "unit:",        local_pos.unit,
+                   "local index:", local_pos.index);
+    // Global pointer to element at given position:
+    dash::GlobPtr<ElementType, PatternType> gptr(
+      _globmem->index_to_gptr(
+        local_pos.unit,
+        local_pos.index)
+    );
+    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr >", gptr);
+    return (gptr + offset).dart_gptr();
+  }
 
   /**
    * Position of the iterator in global storage order.
@@ -665,24 +737,26 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMem<ElementType> * _globmem;
+  GlobMem<ElementType> * _globmem         = nullptr;
   /// View specifying the block region. Iteration space contains the view
   /// elements within the boundary defined by the halo spec.
-  const viewspec_type  * _viewspec = nullptr;
+  const viewspec_type  * _viewspec        = nullptr;
   /// Pattern that created the encapsulated block.
-  const pattern_type   * _pattern  = nullptr;
+  const pattern_type   * _pattern         = nullptr;
   /// Halo to apply to the encapsulated block.
-  const halospec_type  * _halospec = nullptr;
+  const halospec_type  * _halospec        = nullptr;
   /// Iterator's position relative to the block border's iteration space.
-  index_type             _idx      = 0;
+  index_type             _idx             = 0;
+  /// The iterator's view index start offset in memory storage order.
+  index_type             _view_idx_offset = 0;
   /// Number of elements in the block border's iteration space.
-  index_type             _size     = 0;
+  index_type             _size            = 0;
   /// Maximum iterator position in the block border's iteration space.
-  index_type             _max_idx  = 0;
+  index_type             _max_idx         = 0;
   /// Unit id of the active unit
   dart_unit_t            _myid;
   /// Pointer to first element in local memory
-  ElementType          * _lbegin   = nullptr;
+  ElementType          * _lbegin          = nullptr;
 };
 
 template <
@@ -723,7 +797,10 @@ template<
 class BlockBoundaryView
 {
 private:
-  typedef BlockBoundaryView<PatternType> self_t;
+  typedef BlockBoundaryView<ElementType, PatternType> self_t;
+
+private:
+  static const dim_t NumDimensions = PatternType::ndim();
 
 public:
   typedef       BlockBoundaryIter<ElementType, PatternType>         iterator;
@@ -733,6 +810,7 @@ public:
   typedef typename PatternType::index_type                        index_type;
   typedef typename PatternType::size_type                          size_type;
   typedef typename PatternType::viewspec_type                  viewspec_type;
+  typedef dash::HaloSpec<NumDimensions>                        halospec_type;
 
 public:
   BlockBoundaryView(
@@ -745,16 +823,11 @@ public:
     // The halo to apply to the block.
     const halospec_type  & halospec)
   : _size(initialize_size(
-            halospec,
-            viewspec)),
-    _beg(globmem, _pattern, _viewspec, _halospec, 0,     _size),
-    _end(globmem, _pattern, _viewspec, _halospec, _size, _size)
-  {
-    dim_t d_v = NumDimensions - 1;
-    for (dim_t d = 0; d < NumDimensions; ++d, --d_v) {
-      _size += _halospec.width(d) * _viewspec.extent(d_v);
-    }
-  }
+            viewspec,
+            halospec)),
+    _beg(globmem, pattern, viewspec, halospec, 0,     _size),
+    _end(globmem, pattern, viewspec, halospec, _size, _size)
+  { }
 
   /**
    * Copy constructor.
@@ -783,7 +856,10 @@ public:
   }
 
 private:
-  index_type initialize_size() const
+  index_type initialize_size(
+    const viewspec_type  & viewspec,
+    // The halo to apply to the block.
+    const halospec_type  & halospec) const
   {
     index_type size = 0;
     dim_t d_v = NumDimensions - 1;
@@ -828,7 +904,11 @@ template<
 class HaloBlock
 {
 private:
-  typedef HaloBlock<PatternType, ElementType>                         self_t;
+  static const dim_t NumDimensions = PatternType::ndim();
+
+private:
+  typedef HaloBlock<ElementType, PatternType>
+    self_t;
 
 public:
   typedef PatternType                                           pattern_type;
@@ -837,9 +917,7 @@ public:
   typedef typename PatternType::viewspec_type                  viewspec_type;
   typedef BlockBoundaryView<PatternType, ElementType>     boundary_view_type;
   typedef BlockBoundaryView<PatternType, ElementType>         halo_view_type;
-
-private:
-  static const dim_t NumDimensions = PatternType::ndim();
+  typedef dash::HaloSpec<NumDimensions>                        halospec_type;
 
 public:
   /**
@@ -856,7 +934,7 @@ public:
     // The halo to apply to the block.
     const halospec_type  & halospec)
   : _globmem(globmem),
-    _pattern(&pattern)
+    _pattern(&pattern),
     _viewspec_inner(&viewspec),
     _halospec(&halospec),
     _boundary_view(globmem, pattern, viewspec, halospec)
@@ -885,12 +963,12 @@ public:
   /**
    * Assignment operator.
    */
-  self_t & operator=(const & self_t other) = default;
+  self_t & operator=(const self_t & other) = default;
 
   /**
    * View specifying the inner block region.
    */
-  inline const viewspec_t & inner() const
+  inline const viewspec_type & inner() const
   {
     return *_viewspec_inner;
   }
@@ -898,7 +976,7 @@ public:
   /**
    * View specifying the outer block region including halo.
    */
-  inline const viewspec_t & outer() const
+  inline const viewspec_type & outer() const
   {
     return _viewspec_outer;
   }
@@ -930,7 +1008,7 @@ public:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMem<ElementType> * globmem         = nullptr;
+  GlobMem<ElementType> * _globmem        = nullptr;
   /// The pattern that created the encapsulated block.
   const pattern_type   * _pattern        = nullptr;
   /// View specifying the original internal block region and its iteration

@@ -700,19 +700,7 @@ public:
   }
 
   /**
-   * Position of the iterator in its view's iteration space, disregarding
-   * the view's offset in global index space.
-   *
-   * \see DashGlobalViewIteratorConcept
-   */
-  inline index_type rpos() const
-  {
-    return _idx;
-  }
-
-  /**
-   * Position of the iterator in its view's iteration space and the view's
-   * offset in global index space.
+   * Position of the iterator in global storage order.
    *
    * \see DashGlobalIteratorConcept
    */
@@ -721,6 +709,17 @@ public:
     DASH_LOG_TRACE("GlobStencilIter.pos()",
                    "idx:", _idx, "vs_offset:", _view_idx_offset);
     return _idx + _view_idx_offset;
+  }
+
+  /**
+   * Position of the iterator in its view's iteration space, disregarding
+   * the view's offset in global index space.
+   *
+   * \see DashViewIteratorConcept
+   */
+  inline index_type rpos() const
+  {
+    return _idx;
   }
 
   /**
@@ -814,7 +813,7 @@ public:
   /**
    * The view that specifies this iterator's index range.
    *
-   * \see DashGlobalViewIteratorConcept
+   * \see DashViewIteratorConcept
    */
   inline ViewSpecType viewspec() const
   {
@@ -1140,13 +1139,17 @@ private:
  *
  * \ingroup     Algorithms
  */
-template<typename ElementType, typename PatternType>
+template <
+  typename ElementType,
+  class    Pattern,
+  class    Pointer,
+  class    Reference >
 auto distance(
   /// Global iterator to the initial position in the global sequence
-  const GlobStencilIter<ElementType, PatternType> & first,
+  const GlobStencilIter<ElementType, Pattern, Pointer, Reference> & first,
   /// Global iterator to the final position in the global sequence
-  const GlobStencilIter<ElementType, PatternType> & last
-) -> typename PatternType::index_type
+  const GlobStencilIter<ElementType, Pattern, Pointer, Reference> & last
+) -> typename Pattern::index_type
 {
   return last - first;
 }

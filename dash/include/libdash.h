@@ -29,6 +29,7 @@
 #include <dash/SharedCounter.h>
 #include <dash/Exception.h>
 #include <dash/Algorithm.h>
+#include <dash/Halo.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
