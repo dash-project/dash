@@ -179,9 +179,9 @@ TEST_F(GlobStencilIterTest, HaloBlock)
     auto matrix_block = matrix.block(g_block_coords);
 
     dash::HaloBlock<value_t, pattern_t> haloblock(
-                                          matrix.globmem(),
+                                          &matrix.begin().globmem(),
                                           pattern,
-                                          matrix_block,
+                                          matrix_block.viewspec(),
                                           halospec);
     auto block_boundary = haloblock.boundary();
     auto block_halo     = haloblock.halo();

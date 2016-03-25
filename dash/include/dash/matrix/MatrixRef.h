@@ -140,7 +140,7 @@ public:
   }
 
   MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>(
-    const MatrixRef<ElementT, NumDimensions, NumViewDim+1, PatternT> & previous,
+    const MatrixRef<ElementT, NumDimensions, NumViewDim+1, PatternT> & prev,
     index_type coord);
 
   inline    Team            & team();
@@ -279,6 +279,10 @@ public:
   template<dim_t Dimension>
   inline bool is_local(index_type n) const;
 
+  inline const ViewSpec<NumDimensions, index_type> & viewspec() const {
+    return _refview->_viewspec;
+  }
+
   template <int level>
   dash::HView<Matrix<ElementT, NumDimensions, Index_t, PatternT>, level>
   inline hview();
@@ -352,6 +356,10 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
     index_type elem);
 
   inline bool is_local() const;
+
+  inline const ViewSpec<NumDimensions, index_type> & viewspec() const {
+    return _refview->_viewspec;
+  }
 
   operator ElementT() const;
   operator GlobPtr<ElementT, PatternT>() const;

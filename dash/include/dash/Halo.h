@@ -224,8 +224,8 @@ public:
     /// The number of elements in the block boundary's iteration space.
     index_type             size              = 0)
   : _globmem(globmem),
-    _pattern(&pattern),
     _viewspec(&viewspec),
+    _pattern(&pattern),
     _halospec(&halospec),
     _idx(pos),
     _view_idx_offset(view_index_offset),
@@ -247,6 +247,11 @@ public:
     DASH_LOG_TRACE_VAR("BlockBoundaryIter(gmem,p,vs,hs,idx,sz)", *_viewspec);
     DASH_LOG_TRACE_VAR("BlockBoundaryIter(gmem,p,vs,hs,idx,sz)", *_halospec);
   }
+
+  /**
+   * Default constructor.
+   */
+  BlockBoundaryIter() = default;
 
   /**
    * Copy constructor.
@@ -757,7 +762,7 @@ private:
   dart_unit_t            _myid;
   /// Pointer to first element in local memory
   ElementType          * _lbegin          = nullptr;
-};
+}; // class BlockBoundaryIter
 
 template <
   typename ElementType,
@@ -829,6 +834,8 @@ public:
     _end(globmem, pattern, viewspec, halospec, _size, _size)
   { }
 
+  BlockBoundaryView() = default;
+
   /**
    * Copy constructor.
    */
@@ -870,13 +877,13 @@ private:
   }
 
 private:
+  /// The number of elements in this view.
+  index_type _size = 0;
   /// Iterator pointing at first element in the view.
   iterator   _beg;
   /// Iterator pointing past the last element in the view.
   iterator   _end;
-  /// The number of elements in this view.
-  index_type _size = 0;
-};
+}; // class BlockBoundaryView
 
 /**
  * View type that encapsulates pattern blocks in halo semantics.
@@ -915,8 +922,8 @@ public:
   typedef typename PatternType::index_type                        index_type;
   typedef typename PatternType::size_type                          size_type;
   typedef typename PatternType::viewspec_type                  viewspec_type;
-  typedef BlockBoundaryView<PatternType, ElementType>     boundary_view_type;
-  typedef BlockBoundaryView<PatternType, ElementType>         halo_view_type;
+  typedef BlockBoundaryView<ElementType, PatternType>     boundary_view_type;
+  typedef BlockBoundaryView<ElementType, PatternType>         halo_view_type;
   typedef dash::HaloSpec<NumDimensions>                        halospec_type;
 
 public:
@@ -939,11 +946,11 @@ public:
     _halospec(&halospec),
     _boundary_view(globmem, pattern, viewspec, halospec)
   {
-    _viewspec_outer = _viewspec_inner;
+    _viewspec_outer = *_viewspec_inner;
     for (dim_t d = 0; d < NumDimensions; ++d) {
       auto view_outer_offset_d = _halospec->offset_range(d).min;
       auto view_outer_extent_d = _viewspec_outer.extent(d) +
-                                 _halospec.width(d);
+                                 _halospec->width(d);
       _viewspec_outer.resize_dim(d, view_outer_offset_d, view_outer_extent_d);
     }
     _halo_view = halo_view_type(
