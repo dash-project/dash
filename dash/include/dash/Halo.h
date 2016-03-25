@@ -1,5 +1,5 @@
-#ifndef DASH__HALO_VIEW_H__
-#define DASH__HALO_VIEW_H__
+#ifndef DASH__HALO_H__
+#define DASH__HALO_H__
 
 namespace dash {
 
@@ -139,6 +139,22 @@ std::ostream & operator<<(
 /**
  * Iterator on block elements in internal (boundary) or external (halo) border
  * regions.
+ *
+ * Example for a block boundary iteration space:
+ *
+ *           .-------------------------.  _
+ *           |  0  1  2  3  4  5  6  7 |   \
+ *           |  8  9 10 11 12 13 14 15 |    }- halo width in dimension 0
+ *           `-------------------------'  _/
+ *  .-------..-------------------------..-------.
+ *  | 16 17 ||                         || 18 19 |
+ *  :  ...  ::   inner block region    ::  ...  :
+ *  | 28 29 ||                         || 30 31 |
+ *  '-------''-------------------------''-------'
+ *           ,-------------------------. \__ __/
+ *           | 32 33 34 35 36 37 38 39 |    |
+ *           | 40 41 42 43 44 45 46 47 |    '- halo width in dimension 1
+ *           `-------------------------'
  */
 template<
   typename ElementType,
@@ -940,4 +956,4 @@ private:
 
 } // namespace dash
 
-#endif // DASH__HALO_VIEW_H__
+#endif // DASH__HALO_H__
