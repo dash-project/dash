@@ -1271,6 +1271,33 @@ public:
   }
 
   /**
+   * View spec (offset and extents) of block at global block coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  ViewSpec_t block(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & block_coords) const
+  {
+    DASH_LOG_TRACE_VAR("TilePattern.block()", block_coords);
+    // block coords -> offset
+    DASH_LOG_TRACE_VAR("TilePattern.block", _blocksize_spec.extents());
+    std::array<index_type, NumDimensions> offsets;
+    std::array<size_type, NumDimensions>  extents;
+    for (auto d = 0; d < NumDimensions; ++d) {
+      auto blocksize_d = _blocksize_spec.extent(d);
+      extents[d] = blocksize_d;
+      offsets[d] = block_coords[d] * blocksize_d;
+    }
+    DASH_LOG_TRACE("TilePattern.block",
+                   "offsets:", offsets,
+                   "extents:", extents);
+    auto block_vs = ViewSpec_t(offsets, extents);
+    DASH_LOG_TRACE_VAR("TilePattern.block >", block_vs);
+    return block_vs;
+  }
+
+  /**
    * View spec (offset and extents) of block at local linear block index in
    * global cartesian element space.
    *

@@ -81,13 +81,22 @@ TEST_F(GlobStencilIterTest, Conversion)
                              static_cast<index_t>(num_tiles_rows / 2),
                              static_cast<index_t>(num_tiles_cols / 2)
                            }};
-    auto matrix_block   = matrix.block(g_block_coords);
-    auto g_view_it      = matrix_block.begin();
-    auto g_view_it_lpos = g_view_it.lpos();
     // Define halo for five-point stencil:
     dash::HaloSpec<2> halospec({{ { -1, 1 }, { -1, 1 } }});
+    auto matrix_block   = matrix.block(
+                            g_block_coords
+                         // halospec
+                          );
+    // Phase of element in the center of the block:
+    auto b_center_idx   = dash::CartesianIndexSpace<2>(
+                            matrix.pattern().block(g_block_coords).extents())
+                          .at(tilesize_rows / 2,
+                              tilesize_cols / 2);
+    auto g_view_it      = matrix_block.begin() + b_center_idx;
+    auto g_view_it_lpos = g_view_it.lpos();
     // Convert global view iterator to global stencil iterator:
-    dash::GlobStencilIter<value_t, pattern_t> g_stencil_it(g_view_it, halospec);
+    dash::GlobStencilIter<value_t, pattern_t> g_stencil_it(
+                                                g_view_it, halospec);
 
     auto halo_view      = g_stencil_it.halo();
     ASSERT_EQ_U(stencil_points,   halo_view.npoints());

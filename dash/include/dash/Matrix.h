@@ -275,6 +275,15 @@ public:
   view_type<NumDimensions> block(
     index_type block_gindex);
 
+#if 0
+  /**
+   * View at block at given global block offset with halo region.
+   */
+  halo_view_type<NumDimensions> block(
+    index_type                            block_gindex,
+    const dash::HaloSpec<NumDimensions> & halospec);
+#endif
+
   /**
    * Explicit allocation of matrix elements, used for delayed allocation
    * of default-constructed Matrix instance.
