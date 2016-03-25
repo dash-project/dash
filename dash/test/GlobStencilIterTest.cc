@@ -122,7 +122,7 @@ TEST_F(GlobStencilIterTest, Conversion)
   }
 }
 
-TEST_F(GlobStencilIterTest, HaloBlock)
+TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
 {
   typedef double                         value_t;
   typedef dash::TilePattern<2>           pattern_t;
@@ -166,9 +166,25 @@ TEST_F(GlobStencilIterTest, HaloBlock)
 
   dash::Matrix<value_t, 2, index_t, pattern_t> matrix(pattern);
 
+  // Initialize values:
+  auto n_local_blocks = pattern.local_blockspec().size();
+  for (extent_t lbi = 0; lbi < n_local_blocks; ++lbi) {
+    // submatrix view on local block obtained from matrix relative to global
+    // memory space:
+    auto g_matrix_block    = matrix.local.block(lbi);
+    value_t * block_lbegin = g_matrix_block.lbegin();
+    value_t * block_lend   = g_matrix_block.lend();
+    // element phase, canonical element offset in block:
+    index_t phase = 0;
+    for (auto lbv = block_lbegin; lbv != block_lend; ++lbv, ++phase) {
+      *lbv = myid + (0.01 * lbi) + (0.0001 * phase);
+    }
+  }
+  matrix.barrier();
+
   if (myid == 0) {
     dash::test::print_matrix("Matrix<2>", matrix, 4);
-    DASH_LOG_TRACE_VAR("GlobStencilIterTest.Conversion", teamspec.extents());
+    DASH_LOG_TRACE_VAR("GlobStencilIterTest.HaloBlock", teamspec.extents());
 
     std::array<index_t, 2> g_block_coords = {{
                              static_cast<index_t>(num_tiles_rows / 2),
@@ -176,14 +192,70 @@ TEST_F(GlobStencilIterTest, HaloBlock)
                            }};
     // Define halo for five-point stencil:
     dash::HaloSpec<2> halospec({{ { -1, 1 }, { -1, 1 } }});
+
+    ASSERT_EQ_U(1, halospec.width(0));
+    ASSERT_EQ_U(1, halospec.width(1));
+
     auto matrix_block = matrix.block(g_block_coords);
+    auto block_view   = matrix_block.viewspec();
 
     dash::HaloBlock<value_t, pattern_t> haloblock(
                                           &matrix.begin().globmem(),
                                           pattern,
-                                          matrix_block.viewspec(),
+                                          block_view,
                                           halospec);
-    auto block_boundary = haloblock.boundary();
-    auto block_halo     = haloblock.halo();
+    auto block_boundary   = haloblock.boundary();
+    auto block_bnd_begin  = block_boundary.begin();
+    auto block_bnd_end    = block_boundary.end();
+    auto block_halo       = haloblock.halo();
+    auto block_halo_begin = block_halo.begin();
+    auto block_halo_end   = block_halo.end();
+    // inner cells in boundary:
+    auto exp_bnd_size     = (tilesize_rows * 2) + ((tilesize_cols-2) * 2);
+    // outer cells in halo:
+    auto exp_halo_size    = (tilesize_rows * 2) + (tilesize_cols * 2);
+
+    std::array<index_t, 2>  inner_block_offsets = {{
+        block_view.offset(0) + halospec.offset_range(0).min,
+        block_view.offset(1) + halospec.offset_range(1).min
+    }};
+    std::array<extent_t, 2> inner_block_extents = {{
+        block_view.extent(0) + halospec.width(0) * 2,
+        block_view.extent(1) + halospec.width(1) * 2
+    }};
+    dash::ViewSpec<2> exp_inner_view(block_view);
+    dash::ViewSpec<2> exp_outer_view(inner_block_offsets,
+                                     inner_block_extents);
+
+    DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock", "original block:",
+                   "size:",          block_view.size(),
+                   "offsets:",       block_view.offsets(),
+                   "extents:",       block_view.extents());
+    DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock", "inner block view:",
+                   "boundary size:", block_boundary.size(),
+                   "offsets:",       haloblock.inner().offsets(),
+                   "extents:",       haloblock.inner().extents());
+    DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock", "outer block view:",
+                   "halo size:",     block_halo.size(),
+                   "offsets:",       haloblock.outer().offsets(),
+                   "extents:",       haloblock.outer().extents());
+
+    ASSERT_EQ_U(exp_bnd_size,   block_boundary.size());
+    ASSERT_EQ_U(exp_bnd_size,   block_bnd_end - block_bnd_begin);
+    ASSERT_EQ_U(exp_halo_size,  block_halo.size());
+    ASSERT_EQ_U(exp_halo_size,  block_halo_end - block_halo_begin);
+    ASSERT_EQ_U(exp_inner_view, haloblock.inner());
+    ASSERT_EQ_U(exp_outer_view, haloblock.outer());
+
+    std::vector<value_t> boundary_values;
+    for (auto bnd_it = block_bnd_begin; bnd_it != block_bnd_end; ++bnd_it) {
+      value_t v = *bnd_it;
+      boundary_values.push_back(v);
+    }
+
+    for (int i = 0; i < boundary_values.size(); ++i) {
+      value_t v = boundary_values[i];
+      DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock", "boundary[", i, "]", v);
+    }
   }
 }
