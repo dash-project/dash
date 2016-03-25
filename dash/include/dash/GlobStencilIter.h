@@ -4,6 +4,7 @@
 #include <dash/Pattern.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
+#include <dash/Halo.h>
 
 #include <iterator>
 #include <array>
@@ -13,125 +14,6 @@
 #include <cstdlib>
 
 namespace dash {
-
-template<dim_t NumDimensions>
-class HaloSpec
-{
-public:
-  typedef int
-    offset_type;
-
-  typedef struct {
-    offset_type min;
-    offset_type max;
-  } offset_range_type;
-
-private:
-  /// The stencil's offset range (min, max) in every dimension.
-  std::array<offset_range_type, NumDimensions> _offset_ranges;
-  /// Number of points in the stencil.
-  int                                          _points;
-
-public:
-  /**
-   * Creates a new instance of class HaloSpec with the given offset ranges
-   * (pair of minimum offset, maximum offset) in the stencil's dimensions.
-   *
-   * For example, a two-dimensional five-point stencil has offset ranges
-   * { (-1, 1), (-1, 1) }
-   * and a stencil with only north and east halo cells has offset ranges
-   * { (-1, 0), ( 0, 1) }.
-   */
-  HaloSpec(
-    const std::array<offset_range_type, NumDimensions> & offset_ranges)
-  : _offset_ranges(offset_ranges)
-  {
-    // minimum stencil size when containing center element only:
-    _points = 1;
-    for (dim_t d = 0; d < NumDimensions; ++d) {
-      _points += std::abs(_offset_ranges[d].max - _offset_ranges[d].min);
-    }
-  }
-
-  /**
-   * Creates a new instance of class HaloSpec with the given offset ranges
-   * (pair of minimum offset, maximum offset) in the stencil's dimensions.
-   *
-   * For example, a two-dimensional five-point stencil has offset ranges
-   * { (-1, 1), (-1, 1) }
-   * and a stencil with only north and east halo cells has offset ranges
-   * { (-1, 0), ( 0, 1) }.
-   */
-  template<typename... Args>
-  HaloSpec(offset_range_type arg, Args... args)
-  {
-    static_assert(sizeof...(Args) == NumDimensions-1,
-                  "Invalid number of offset ranges");
-    _offset_ranges = { arg, static_cast<offset_range_type>(args)... };
-    // minimum stencil size when containing center element only:
-    _points = 1;
-    for (dim_t d = 0; d < NumDimensions; ++d) {
-      _points += std::abs(_offset_ranges[d].max - _offset_ranges[d].min);
-    }
-  }
-
-  /**
-   * Creates a new instance of class HaloSpec that only consists of the
-   * center point.
-   */
-  HaloSpec()
-  : _points(1)
-  {
-    // initialize offset ranges with (0,0) in all dimensions:
-    for (dim_t d = 0; d < NumDimensions; ++d) {
-      _offset_ranges = {{ 0, 0 }};
-    }
-  }
-
-  /**
-   * The stencil's number of dimensions.
-   *
-   * \see DashGlobalIteratorConcept
-   */
-  static dim_t ndim() {
-    return NumDimensions;
-  }
-
-  /**
-   * Number of points in the stencil.
-   */
-  inline int npoints() const
-  {
-    return _points;
-  }
-
-  const offset_range_type & offset_range(dim_t dimension) const
-  {
-    return _offset_ranges[dimension];
-  }
-
-  const std::array< offset_range_type, NumDimensions> & offset_ranges() const
-  {
-    return _offset_ranges;
-  }
-};
-
-template<dim_t NumDimensions>
-std::ostream & operator<<(
-  std::ostream & os,
-  const dash::HaloSpec<NumDimensions> & halospec)
-{
-  std::ostringstream ss;
-  ss << "dash::HaloSpec<" << NumDimensions << ">(";
-  for (dim_t d = 0; d < NumDimensions; ++d) {
-    auto offset_range = halospec.offset_range(d);
-    ss << "{ " << offset_range.min
-       << ", " << offset_range.max
-       << " }";
-  }
-  ss << ")";
-  return operator<<(os, ss.str());
-}
 
 template<
   typename GlobIterType,
@@ -442,12 +324,16 @@ public:
 
   /**
    * Assignment operator.
+   *
+   * \see DashGlobalIteratorConcept
    */
   self_t & operator=(
     const self_t & other) = default;
 
   /**
    * The number of dimensions of the iterator's underlying pattern.
+   *
+   * \see DashGlobalIteratorConcept
    */
   static dim_t ndim()
   {
@@ -525,7 +411,7 @@ public:
    * \endcode
    *
    */
-  const ElementType & halo_cell(
+  ElementType halo_cell(
     /// Halo offset for each dimension.
     const std::array<offset_type, NumDimensions> & offsets) const
   {
@@ -534,7 +420,8 @@ public:
       local_pos_t;
     IndexType idx    = _idx;
     IndexType offset = 0;
-    DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell", _max_idx);
+    DASH_LOG_TRACE("GlobStencilIter.halo_cell",
+                   "idx:", _idx, "max_idx:", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
@@ -563,15 +450,34 @@ public:
     local_pos_t local_pos = _pattern->local(cell_g_index);
     DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell", local_pos.index);
-    // Offset of halo cell in local memory space:
-    auto local_cell_offset = local_pos.index + offset;
-    DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell >", local_cell_offset);
-    // Global reference to element at given position:
-    return *(_lbegin + local_cell_offset);
+
+    if (_myid == local_pos.unit) {
+      // Referenced cell is local to active unit, access element using offset
+      // of halo cell in local memory space:
+      auto local_cell_offset = local_pos.index + offset;
+      DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell >", local_cell_offset);
+      // Global reference to element at given position:
+      return *(_lbegin + local_cell_offset);
+    } else {
+      DASH_LOG_TRACE("GlobStencilIter.halo_cell",
+                     "requesting cell element from remote unit",
+                     local_pos.unit);
+      // Referenced cell is located at remote unit, access element using
+      // blocking get request:
+      // Global pointer to element at given position:
+      dart_gptr_t gptr = _globmem->index_to_gptr(
+                                     local_pos.unit,
+                                     local_pos.index);
+      // Global reference to element at given position:
+      DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell >", gptr);
+      return ReferenceType(gptr);
+    }
   }
 
   /**
    * Type conversion operator to \c GlobPtr.
+   *
+   * \see DashGlobalIteratorConcept
    *
    * \return  A global reference to the element at the iterator's position
    */
@@ -614,6 +520,8 @@ public:
 
   /**
    * Explicit conversion to \c dart_gptr_t.
+   *
+   * \see DashGlobalIteratorConcept
    *
    * \return  A DART global pointer to the element at the iterator's
    *          position
@@ -693,6 +601,8 @@ public:
   /**
    * Subscript operator, returns global reference to element at given
    * global index.
+   *
+   * \see DashGlobalIteratorConcept
    */
   reference operator[](
     /// The global position of the element
@@ -733,6 +643,8 @@ public:
 
   /**
    * Convert global iterator to native pointer.
+   *
+   * \see DashGlobalIteratorConcept
    */
   ElementType * local() const
   {
@@ -774,6 +686,8 @@ public:
 
   /**
    * Map iterator to global index domain by projecting the iterator's view.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline GlobIter<ElementType, PatternType> global() const
   {
@@ -788,6 +702,8 @@ public:
   /**
    * Position of the iterator in its view's iteration space, disregarding
    * the view's offset in global index space.
+   *
+   * \see DashGlobalViewIteratorConcept
    */
   inline index_type rpos() const
   {
@@ -797,6 +713,8 @@ public:
   /**
    * Position of the iterator in its view's iteration space and the view's
    * offset in global index space.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline index_type pos() const
   {
@@ -808,6 +726,8 @@ public:
   /**
    * Position of the iterator in global index range.
    * Projects iterator position from its view spec to global index domain.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline index_type gpos() const
   {
@@ -843,6 +763,8 @@ public:
   /**
    * Unit and local offset at the iterator's position.
    * Projects iterator position from its view spec to global index domain.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline typename pattern_type::local_index_t lpos() const
   {
@@ -881,6 +803,8 @@ public:
 
   /**
    * Whether the iterator's position is relative to a view.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline bool is_relative() const noexcept
   {
@@ -889,6 +813,8 @@ public:
 
   /**
    * The view that specifies this iterator's index range.
+   *
+   * \see DashGlobalViewIteratorConcept
    */
   inline ViewSpecType viewspec() const
   {
@@ -906,6 +832,8 @@ public:
   /**
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline const GlobMem<ElementType> & globmem() const
   {
@@ -915,6 +843,8 @@ public:
   /**
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline GlobMem<ElementType> & globmem()
   {
