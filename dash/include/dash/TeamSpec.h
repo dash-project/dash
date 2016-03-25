@@ -279,13 +279,15 @@ public:
    */
   dart_unit_t neighbor(std::initializer_list<int> offsets) const
   {
-    auto neighbor_coords = coords(_myid);
-    for (dim_t d = 0; d < NumDimensions; ++d) {
-      neighbor_coords[d] += offsets[d];
+    auto neighbor_coords = this->coords(_myid);
+    dim_t d = 0;
+    for (auto offset_d : offsets) {
+      neighbor_coords[d] += offset_d;
       if (neighbor_coords[d] < 0 ||
           neighbor_coords[d] >= this->_extents[d]) {
         return DART_UNDEFINED_UNIT_ID;
       }
+      ++d;
     }
     return at(neighbor_coords);
   }
@@ -316,13 +318,15 @@ public:
    */
   dart_unit_t periodic_neighbor(std::initializer_list<int> offsets) const
   {
-    auto neighbor_coords = coords(_myid);
-    for (dim_t d = 0; d < NumDimensions; ++d) {
-      neighbor_coords[d] += offsets[d];
+    auto neighbor_coords = this->coords(_myid);
+    dim_t d = 0;
+    for (auto offset_d : offsets) {
+      neighbor_coords[d] += offset_d;
       if (neighbor_coords[d] < 0 ||
           neighbor_coords[d] >= this->_extents[d]) {
         neighbor_coords[d] %= this->_extents[d];
       }
+      ++d;
     }
     return at(neighbor_coords);
   }

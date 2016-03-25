@@ -18,7 +18,7 @@ TEST_F(GlobStencilIterTest, Conversion)
   extent_t num_units = dash::size();
 
   if (num_units < 2) {
-    LOG_MESSAGE("GlobStencilIter.Conversion requires at least 2 units");
+    LOG_MESSAGE("GlobStencilIterTest.Conversion requires at least 2 units");
     return;
   }
 
@@ -119,5 +119,71 @@ TEST_F(GlobStencilIterTest, Conversion)
                 g_view_it_lpos.index,
                 static_cast<value_t>(*g_stencil_it),
                 north, east, south, west);
+  }
+}
+
+TEST_F(GlobStencilIterTest, HaloBlock)
+{
+  typedef double                         value_t;
+  typedef dash::TilePattern<2>           pattern_t;
+  typedef typename pattern_t::index_type index_t;
+  typedef typename pattern_t::size_type  extent_t;
+
+  auto     myid      = dash::myid();
+  extent_t num_units = dash::size();
+
+  if (num_units < 2) {
+    LOG_MESSAGE("GlobStencilIterTest.HaloBlock requires at least 2 units");
+    return;
+  }
+
+  // Default constructor creates team spec with extents (nunits, 1):
+  dash::TeamSpec<2> teamspec;
+  // Automatic balancing of team spec in two dimensions:
+  teamspec.balance_extents();
+
+  extent_t tilesize_rows   = 4;
+  extent_t tilesize_cols   = 3;
+  extent_t num_units_rows  = teamspec.extent(0);
+  extent_t num_units_cols  = teamspec.extent(1);
+  extent_t num_tiles_rows  = num_units_rows > 1 ? num_units_rows * 2 : 1;
+  extent_t num_tiles_cols  = num_units_cols > 1 ? num_units_cols * 3 : 1;
+  extent_t matrix_rows     = tilesize_rows * num_tiles_rows;
+  extent_t matrix_cols     = tilesize_cols * num_tiles_cols;
+  extent_t halo_rows       = tilesize_rows;
+  extent_t halo_cols       = tilesize_cols;
+  extent_t block_halo_size = 2 * halo_rows + 2 * (halo_cols - 2);
+  extent_t stencil_points  = 5;
+
+  pattern_t pattern(
+    dash::SizeSpec<2>(
+      matrix_rows,
+      matrix_cols),
+    dash::DistributionSpec<2>(
+      num_units_rows < 2 ? dash::NONE : dash::TILE(tilesize_rows),
+      num_units_cols < 2 ? dash::NONE : dash::TILE(tilesize_cols)),
+    teamspec);
+
+  dash::Matrix<value_t, 2, index_t, pattern_t> matrix(pattern);
+
+  if (myid == 0) {
+    dash::test::print_matrix("Matrix<2>", matrix, 4);
+    DASH_LOG_TRACE_VAR("GlobStencilIterTest.Conversion", teamspec.extents());
+
+    std::array<index_t, 2> g_block_coords = {{
+                             static_cast<index_t>(num_tiles_rows / 2),
+                             static_cast<index_t>(num_tiles_cols / 2)
+                           }};
+    // Define halo for five-point stencil:
+    dash::HaloSpec<2> halospec({{ { -1, 1 }, { -1, 1 } }});
+    auto matrix_block = matrix.block(g_block_coords);
+
+    dash::HaloBlock<value_t, pattern_t> haloblock(
+                                          matrix.globmem(),
+                                          pattern,
+                                          matrix_block,
+                                          halospec);
+    auto block_boundary = haloblock.boundary();
+    auto block_halo     = haloblock.halo();
   }
 }
