@@ -212,6 +212,15 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
   // clear matrix values:
   dash::fill(matrix.begin(), matrix.end(), 0.0);
 
+  value_t halo_n_value = 1.1111;
+  value_t halo_s_value = 2.2222;
+  value_t halo_w_value = 3.3333;
+  value_t halo_e_value = 4.4444;
+  value_t bnd_n_value  = 0.1;
+  value_t bnd_s_value  = 0.2;
+  value_t bnd_w_value  = 0.3;
+  value_t bnd_e_value  = 0.4;
+
   if (myid == 0) {
     DASH_LOG_TRACE_VAR("GlobStencilIterTest.HaloBlock", teamspec.extents());
 
@@ -227,15 +236,6 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
 
     auto matrix_block = matrix.block(g_block_coords);
     auto block_view   = matrix_block.viewspec();
-
-    halo_n_value = 1.1111;
-    halo_s_value = 2.2222;
-    halo_w_value = 3.3333;
-    halo_e_value = 4.4444;
-    bnd_n_value  = 0.1;
-    bnd_s_value  = 0.2;
-    bnd_w_value  = 0.3;
-    bnd_e_value  = 0.4;
 
     // write values in halo- and boundary cells only:
     for (int hi = 0; hi < halospec.width(0); ++hi) {
@@ -286,7 +286,7 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
         }
       }
     }
-    dash::test::print_matrix("Matrix<2>", matrix, 4);
+    dash::test::print_matrix("Matrix<2>", matrix, 2);
 
     dash::HaloBlock<value_t, pattern_t> halo_block(
                                           &matrix.begin().globmem(),
@@ -368,54 +368,6 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
     ASSERT_EQ_U(std::count(
                   h_region_e.begin(), h_region_e.end(), halo_e_value),
                 tilesize_rows);
-
-    // create local copy of halos:
-    value_t * h_region_n_copy     = new value_t[h_region_n.size()];
-    value_t * h_region_n_copy_end = h_region_n_copy + h_region_n.size();
-    dash::copy(h_region_n.begin(),
-               h_region_n.end(),
-               h_region_n_copy);
-    value_t * h_region_s_copy     = new value_t[h_region_s.size()];
-    value_t * h_region_s_copy_end = h_region_s_copy + h_region_s.size();
-    dash::copy(h_region_s.begin(),
-               h_region_s.end(),
-               h_region_s_copy);
-    value_t * h_region_w_copy     = new value_t[h_region_w.size()];
-    value_t * h_region_w_copy_end = h_region_w_copy + h_region_w.size();
-    dash::copy(h_region_w.begin(),
-               h_region_w.end(),
-               h_region_w_copy);
-    value_t * h_region_e_copy     = new value_t[h_region_e.size()];
-    value_t * h_region_e_copy_end = h_region_e_copy + h_region_e.size();
-    dash::copy(h_region_e.begin(),
-               h_region_e.end(),
-               h_region_e_copy);
-
-    auto h_n_mismatch = std::find_if_not(
-                          h_region_n_copy,
-                          h_region_n_copy_end,
-                          [](value_t v) { return v == 1.1111; });
-    ASSERT_EQ_U(h_n_mismatch, h_region_n_copy_end);
-    auto h_s_mismatch = std::find_if_not(
-                          h_region_s_copy,
-                          h_region_s_copy_end,
-                          [](value_t v) { return v == 2.2222; });
-    ASSERT_EQ_U(h_s_mismatch, h_region_s_copy_end);
-    auto h_w_mismatch = std::find_if_not(
-                          h_region_w_copy,
-                          h_region_w_copy_end,
-                          [](value_t v) { return v == 3.3333; });
-    ASSERT_EQ_U(h_w_mismatch, h_region_w_copy_end);
-    auto h_e_mismatch = std::find_if_not(
-                          h_region_e_copy,
-                          h_region_e_copy_end,
-                          [](value_t v) { return v == 4.4444; });
-    ASSERT_EQ_U(h_e_mismatch, h_region_e_copy_end);
-
-    delete[] h_region_n_copy;
-    delete[] h_region_s_copy;
-    delete[] h_region_w_copy;
-    delete[] h_region_e_copy;
   }
 }
 
