@@ -423,15 +423,6 @@ public:
   }
 
   /**
-   * Position of the iterator in its view's iteration space, disregarding
-   * the view's offset in global index space.
-   */
-  inline index_type rpos() const
-  {
-    return _idx;
-  }
-
-  /**
    * Position of the iterator in its view's iteration space and the view's
    * offset in global index space.
    */
@@ -440,6 +431,15 @@ public:
     DASH_LOG_TRACE("GlobViewIter.pos()",
                    "idx:", _idx, "vs_offset:", _view_idx_offset);
     return _idx + _view_idx_offset;
+  }
+
+  /**
+   * Position of the iterator in its view's iteration space, disregarding
+   * the view's offset in global index space.
+   */
+  inline index_type rpos() const
+  {
+    return _idx;
   }
 
   /**
