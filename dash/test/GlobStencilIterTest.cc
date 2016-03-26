@@ -83,10 +83,7 @@ TEST_F(GlobStencilIterTest, Conversion)
                            }};
     // Define halo for five-point stencil:
     dash::HaloSpec<2> halospec({{ { -1, 1 }, { -1, 1 } }});
-    auto matrix_block   = matrix.block(
-                            g_block_coords
-                         // halospec
-                          );
+    auto matrix_block   = matrix.block(g_block_coords);
     // Phase of element in the center of the block:
     auto b_center_idx   = dash::CartesianIndexSpace<2>(
                             matrix.pattern().block(g_block_coords).extents())
@@ -96,7 +93,8 @@ TEST_F(GlobStencilIterTest, Conversion)
     auto g_view_it_lpos = g_view_it.lpos();
     // Convert global view iterator to global stencil iterator:
     dash::GlobStencilIter<value_t, pattern_t> g_stencil_it(
-                                                g_view_it, halospec);
+                                                g_view_it,
+                                                halospec);
 
     auto halo_view      = g_stencil_it.halo();
     ASSERT_EQ_U(stencil_points,   halo_view.npoints());
@@ -184,6 +182,13 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
 
   if (myid == 0) {
     dash::test::print_matrix("Matrix<2>", matrix, 4);
+  }
+
+  matrix.barrier();
+  // clear matrix values:
+  dash::fill(matrix.begin(), matrix.end(), 0.0);
+
+  if (myid == 0) {
     DASH_LOG_TRACE_VAR("GlobStencilIterTest.HaloBlock", teamspec.extents());
 
     std::array<index_t, 2> g_block_coords = {{
@@ -199,15 +204,66 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
     auto matrix_block = matrix.block(g_block_coords);
     auto block_view   = matrix_block.viewspec();
 
-    dash::HaloBlock<value_t, pattern_t> haloblock(
+    // write values in halo- and boundary cells only:
+    for (int hi = 0; hi < halospec.width(0); ++hi) {
+      for (int hj = 0; hj < matrix_block.extent(1); ++hj) {
+        // write values into north halo:
+        auto nhi = block_view.offset(0) - halospec.width(0) + hi;
+        auto nhj = block_view.offset(1) + hj;
+        matrix[nhi][nhj] = 1.1111;
+        // write values into south halo:
+        auto shi = block_view.offset(0) + block_view.extent(0) + hi;
+        auto shj = block_view.offset(1) + hj;
+        matrix[shi][shj] = 2.2222;
+        // write values into north boundary:
+        auto nbi = block_view.offset(0) + hi;
+        auto nbj = block_view.offset(1) + hj;
+        matrix[nbi][nbj] = 0.0111;
+        // write values into south boundary:
+        auto sbi = block_view.offset(0) + block_view.extent(0) -
+                   halospec.width(0) + hi;
+        auto sbj = block_view.offset(1) + hj;
+        matrix[sbi][sbj] = 0.0222;
+      }
+    }
+    for (int hi = 0; hi < matrix_block.extent(0); ++hi) {
+      for (int hj = 0; hj < halospec.width(1); ++hj) {
+        // write values into west halo:
+        auto whi = block_view.offset(0) + hi;
+        auto whj = block_view.offset(1) - halospec.width(1) + hj;
+        matrix[whi][whj] = 3.3333;
+        // write values into east halo:
+        auto ehi = block_view.offset(0) + hi;
+        auto ehj = block_view.offset(1) + block_view.extent(1) + hj;
+        matrix[ehi][ehj] = 4.4444;
+        // write values into west boundary:
+        auto bi_max = block_view.offset(0) + block_view.extent(0) -
+                      halospec.width(0);
+        auto wbi = block_view.offset(0) + hi + halospec.width(0);
+        auto wbj = block_view.offset(1) + hj;
+        if (wbi < bi_max) {
+          matrix[wbi][wbj] = 0.0333;
+        }
+        // write values into east boundary:
+        auto ebi = block_view.offset(0) + hi + halospec.width(0);
+        auto ebj = block_view.offset(1) + block_view.extent(1) -
+                   halospec.width(1)+ hj;
+        if (ebi < bi_max) {
+          matrix[ebi][ebj] = 0.0444;
+        }
+      }
+    }
+    dash::test::print_matrix("Matrix<2>", matrix, 4);
+
+    dash::HaloBlock<value_t, pattern_t> halo_block(
                                           &matrix.begin().globmem(),
                                           pattern,
                                           block_view,
                                           halospec);
-    auto block_boundary   = haloblock.boundary();
+    auto block_boundary   = halo_block.boundary();
     auto block_bnd_begin  = block_boundary.begin();
     auto block_bnd_end    = block_boundary.end();
-    auto block_halo       = haloblock.halo();
+    auto block_halo       = halo_block.halo();
     auto block_halo_begin = block_halo.begin();
     auto block_halo_end   = block_halo.end();
     // inner cells in boundary:
@@ -233,29 +289,92 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
                    "extents:",       block_view.extents());
     DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock", "inner block view:",
                    "boundary size:", block_boundary.size(),
-                   "offsets:",       haloblock.inner().offsets(),
-                   "extents:",       haloblock.inner().extents());
+                   "offsets:",       halo_block.inner().offsets(),
+                   "extents:",       halo_block.inner().extents());
     DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock", "outer block view:",
                    "halo size:",     block_halo.size(),
-                   "offsets:",       haloblock.outer().offsets(),
-                   "extents:",       haloblock.outer().extents());
+                   "offsets:",       halo_block.outer().offsets(),
+                   "extents:",       halo_block.outer().extents());
 
     ASSERT_EQ_U(exp_bnd_size,   block_boundary.size());
     ASSERT_EQ_U(exp_bnd_size,   block_bnd_end - block_bnd_begin);
     ASSERT_EQ_U(exp_halo_size,  block_halo.size());
     ASSERT_EQ_U(exp_halo_size,  block_halo_end - block_halo_begin);
-    ASSERT_EQ_U(exp_inner_view, haloblock.inner());
-    ASSERT_EQ_U(exp_outer_view, haloblock.outer());
+    ASSERT_EQ_U(exp_inner_view, halo_block.inner());
+    ASSERT_EQ_U(exp_outer_view, halo_block.outer());
+
+    // create local copy of halo regions and validate values:
+
+    auto h_region_n = halo_block.halo_region({ -1, 0 });
+    value_t * h_region_n_copy     = new value_t[h_region_n.size()];
+    value_t * h_region_n_copy_end = h_region_n_copy + h_region_n.size();
+    dash::copy(h_region_n.begin(),
+               h_region_n.end(),
+               h_region_n_copy);
+    auto h_region_s = halo_block.halo_region({ 1, 0 });
+    value_t * h_region_s_copy     = new value_t[h_region_s.size()];
+    value_t * h_region_s_copy_end = h_region_s_copy + h_region_s.size();
+    dash::copy(h_region_s.begin(),
+               h_region_s.end(),
+               h_region_s_copy);
+    auto h_region_w = halo_block.halo_region({ 0, -1 });
+    value_t * h_region_w_copy     = new value_t[h_region_w.size()];
+    value_t * h_region_w_copy_end = h_region_w_copy + h_region_w.size();
+    dash::copy(h_region_w.begin(),
+               h_region_w.end(),
+               h_region_w_copy);
+    auto h_region_e = halo_block.halo_region({ 0, 1 });
+    value_t * h_region_e_copy     = new value_t[h_region_e.size()];
+    value_t * h_region_e_copy_end = h_region_e_copy + h_region_e.size();
+    dash::copy(h_region_e.begin(),
+               h_region_e.end(),
+               h_region_e_copy);
+
+    auto h_n_mismatch = std::find_if_not(
+                          h_region_n_copy,
+                          h_region_n_copy_end,
+                          [](value_t v) { return v == 1.1111; });
+    ASSERT_EQ_U(h_n_mismatch, h_region_n_copy_end);
+    auto h_s_mismatch = std::find_if_not(
+                          h_region_s_copy,
+                          h_region_s_copy_end,
+                          [](value_t v) { return v == 2.2222; });
+    ASSERT_EQ_U(h_s_mismatch, h_region_s_copy_end);
+    auto h_w_mismatch = std::find_if_not(
+                          h_region_w_copy,
+                          h_region_w_copy_end,
+                          [](value_t v) { return v == 3.3333; });
+    ASSERT_EQ_U(h_w_mismatch, h_region_w_copy_end);
+    auto h_e_mismatch = std::find_if_not(
+                          h_region_e_copy,
+                          h_region_e_copy_end,
+                          [](value_t v) { return v == 4.4444; });
+    ASSERT_EQ_U(h_e_mismatch, h_region_e_copy_end);
+
+    delete[] h_region_n_copy;
+    delete[] h_region_s_copy;
+    delete[] h_region_w_copy;
+    delete[] h_region_e_copy;
+
+    std::vector<value_t> halo_values;
+    for (auto h_it = block_halo_begin; h_it != block_halo_end; ++h_it) {
+      value_t v = *h_it;
+      halo_values.push_back(v);
+    }
+    for (int i = 0; i < halo_values.size(); ++i) {
+      value_t v = halo_values[i];
+      DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock", "halo[", i, "]", v);
+    }
 
     std::vector<value_t> boundary_values;
     for (auto bnd_it = block_bnd_begin; bnd_it != block_bnd_end; ++bnd_it) {
       value_t v = *bnd_it;
       boundary_values.push_back(v);
     }
-
     for (int i = 0; i < boundary_values.size(); ++i) {
       value_t v = boundary_values[i];
       DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock", "boundary[", i, "]", v);
     }
   }
 }
+

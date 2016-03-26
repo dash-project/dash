@@ -84,7 +84,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::extent(
   dim_t dim) const noexcept
 {
-  return _refview->_viewspec[dim].extent;
+  return _refview->_viewspec.extent(dim);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>

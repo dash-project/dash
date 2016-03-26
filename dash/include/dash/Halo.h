@@ -5,6 +5,75 @@
 
 namespace dash {
 
+/**
+ * The concepts defined in the following extend the abstraction of
+ * multidimensional block and views in DASH by halo- and stencil capabilities.
+ * The \c HaloBlock type acts as a wrapper of blocks represented by any
+ * implementation of the \c ViewSpec concept and extends these by boundary-
+ * and halo regions.
+ *
+ * As known from classic stencil algorithms, *boundaries* are the outermost
+ * elements within a block that are requested by neighoring units.
+ * *Halos* represent additional outer regions of a block that contain ghost
+ * cells with values copied from adjacent units' boundary regions.
+ *
+ * For this, halo blocks require the following index spaces:
+ * - the conventional *iteration space* over the block elements
+ * - the *allocation space* that includes block elements and the block's halo
+ *   regions
+ * - the *boundary space* for iterating elements in all or singular block
+ *   boundary regions
+ * - the *halo space* for iterating elements in all or singular block
+ *   halo regions
+ *
+ * Example for an outer block boundary iteration space (halo regions):
+ *
+ *                               .-- halo region 0
+ *                              /
+ *                .-------------------------. -.
+ *                |  0  1  2  3  4  5  6  7 |  |
+ *                |  8  9 10 11 12 13 14 15 |  |-- halo width in dimension 0
+ *                |  8  9 10 11 12 13 14 15 |  |
+ *                `-------------------------' -'
+ *       .-------..-------------------------..-------.
+ *       | 16 17 ||                         || 30 31 |
+ *       :  ...  ::          block          ::  ...  : --- halo region 3
+ *       | 28 29 ||                         || 42 43 |
+ *       '-------''-------------------------''-------'
+ *           :    .-------------------------.:       :
+ *           |    | 44 45 46 47 48 49 50 51 |'---.---'
+ *           |    | 52 53 54 55 56 57 58 59 |    :
+ *           |    `-------------------------'    '- halo width in dimension 1
+ *           '                  \
+ *     halo region 2             '- halo region 1
+ *
+ *
+ * Example for an inner block boundary iteration space:
+ *
+ *                      boundary region 0
+ *                              :
+ *          .-------------------'--------------------.
+ *         |                                         |
+ *       _ .-------.-------------------------.-------. _  __
+ *      |  |  0  1 |  3  4  5  6  7  8  9 10 | 12 13 |  |   |   halo width in
+ *      |  | 14 15 | 17 18 19 20 21 22 23 24 | 26 27 |  |   +-- dimension 0
+ *      |  | 28 29 | 31 32 33 34 35 36 37 38 | 40 41 |  |   |
+ *      |  :-------+-------------------------+-------:  | --'
+ *      |  | 42 43 |                         | 56 57 |  |
+ *    .-|  :  ...  :   inner block region    :  ...  :  +- boundary
+ *    | |  | 54 55 |                         | 68 69 |  |  region 3
+ *    | |  :-------+-------------------------+-------:  |
+ *    | |  | 70 71 | 73 74 75 76 77 78 79 80 |       |  |
+ *    | |  | 70 71 | 73 74 75 76 77 78 79 80 |  ...  |  |
+ *    | |  | 84 85 | 87 88 89 90 91 92 93 94 |       |  |
+ *    | '- `-------'-------------------------'-------' -'
+ *    |    |                                         |
+ *    |    `--------------------.------------+-------:
+ *    :                         :            '---.---'
+ *  boundary region 2   boundary region 1        '-------- halo width in
+ *                                                         dimension 1
+ */
+
 template<dim_t NumDimensions>
 class HaloSpec
 {
@@ -82,7 +151,8 @@ public:
   /**
    * The stencil's number of dimensions.
    */
-  static dim_t ndim() {
+  static dim_t ndim()
+  {
     return NumDimensions;
   }
 
@@ -141,49 +211,6 @@ std::ostream & operator<<(
 /**
  * Iterator on block elements in internal (boundary) or external (halo)
  * border regions.
- *
- * Example for an outer block boundary iteration space (halo regions):
- *
- *                               .-- halo region 0
- *                              /
- *                .-------------------------. __
- *                |  0  1  2  3  4  5  6  7 |   |
- *                |  8  9 10 11 12 13 14 15 |   |-- halo width in dimension 0
- *                |  8  9 10 11 12 13 14 15 |   |
- *                `-------------------------' --'
- *       .-------..-------------------------..-------.
- *       | 16 17 ||                         || 30 31 |
- *       :  ...  ::      original block     ::  ...  : --- halo region 1
- *       | 28 29 ||                         || 42 43 |
- *       '-------''-------------------------''-------'
- *           :    .-------------------------. \__ __/
- *           |    | 44 45 46 47 48 49 50 51 |    |
- *           |    | 52 53 54 55 56 57 58 59 |    '- halo width in dimension 1
- *           |    `-------------------------'
- *           '                  \
- *     halo region 3             '- halo region 2
- *
- *
- * Example for an inner block boundary iteration space:
- *
- *                               .-- boundary region 0
- *                              /
- *       .-------------------------------------------. __
- *       |  0  1  2  3  4  5  6  7  8  9 10 11 12 13 |   |
- *       | 14 15 16 17 18 19 20 21 22 23 24 25 26 27 |   |-- halo width in
- *       | 28 29 30 31 32 33 34 35 36 37 38 39 40 41 |   |   dimension 0
- *       `-------------------------------------------' --'
- *       .-------..-------------------------..-------.
- *       | 42 43 ||                         || 56 57 |
- *    .- :  ...  ::   inner block region    ::  ...  : --- boundary region 1
- *    |  | 54 55 ||                         || 68 69 |
- *    |  '-------''-------------------------''-------'
- *    |  .----------------------------------- \__ __/.
- *    |  | 70 71 72 73 74 75 76 77 78 79 80 ..   |   |
- *    |  | 84 85 86 87 88 89 90 91 92 93 94 95 ..'-------- halo width in
- *    |  `-------------------------------------------'  dimension 1
- *    '                         \
- *    boundary region 3          '- boundary region 2
  */
 template<
   typename ElementType,
@@ -241,6 +268,10 @@ public:
   typedef std::integral_constant<bool, true> has_view;
 
 public:
+  /**
+   * Constructor, creates a block boundary iterator on multiple boundary
+   * regions.
+   */
   BlockBoundaryIter(
     /// Global memory used to dereference iterated values.
     GlobMem<ElementType>             * globmem,
@@ -271,11 +302,11 @@ public:
     _myid(dash::myid()),
     _lbegin(_globmem->lbegin())
   {
-    DASH_LOG_TRACE_VAR("BlockBoundaryIter(gmem,p,vs,hs,idx,sz)", _idx);
-    DASH_LOG_TRACE_VAR("BlockBoundaryIter(gmem,p,vs,hs,idx,sz)", _max_idx);
-    DASH_LOG_TRACE_VAR("BlockBoundaryIter(gmem,p,vs,hs,idx,sz)", _size);
-    DASH_LOG_TRACE_VAR("BlockBoundaryIter(gmem,p,vs,hs,idx,sz)", *_viewspec);
-    DASH_LOG_TRACE_VAR("BlockBoundaryIter(gmem,p,vs,hs,idx,sz)", *_halospec);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter(<multiple regions>)", _idx);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter(<multiple regions>)", _max_idx);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter(<multiple regions>)", _size);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter(<multiple regions>)", *_viewspec);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter(<multiple regions>)", *_halospec);
   }
 
   /**
@@ -302,7 +333,8 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline static dim_t ndim() {
+  inline static dim_t ndim()
+  {
     return NumDimensions;
   }
 
@@ -968,21 +1000,24 @@ public:
   /**
    * Iterator pointing at first element in the view.
    */
-  inline iterator begin() const {
+  inline iterator begin() const
+  {
     return _beg;
   }
 
   /**
    * Iterator pointing past the last element in the view.
    */
-  inline const_iterator end() const {
+  inline const_iterator end() const
+  {
     return _end;
   }
 
   /**
    * The number of elements in the view.
    */
-  inline size_type size() const {
+  inline size_type size() const
+  {
     return static_cast<size_type>(_size);
   }
 
@@ -1103,8 +1138,7 @@ public:
         globmem, pattern, *_viewspec_inner, halospec, &_boundary_regions),
     _halo_view(
         globmem, pattern, _viewspec_outer, halospec, &_halo_regions)
-  {
-  }
+  { }
 
   /**
    * Default constructor.
@@ -1122,18 +1156,46 @@ public:
   self_t & operator=(const self_t & other) = default;
 
   /**
+   * Creates view on halo region at given offset relative to this block.
+   * For example, the adjacent north halo region of a two-dimensional block
+   * has offsets (-1, 0).
+   */
+  boundary_view_type halo_region(std::initializer_list<int> offsets)
+  {
+    auto halo_region_index = 0;
+    auto halo_region = _halo_regions[halo_region_index];
+
+    return boundary_view_type(
+             _globmem, *_pattern, *_viewspec_inner, *_halospec,
+             halo_region);
+  }
+
+  /**
+   * Creates view on boundary region at given offset relative to this block.
+   * For example, the east boundary region in a two-dimensional block
+   * has offsets (0, 1).
+   */
+  boundary_view_type boundary_region(std::initializer_list<int> offsets)
+  {
+    auto boundary_region_index = 0;
+    auto boundary_region = _boundary_regions[boundary_region_index];
+
+    return boundary_view_type(
+             _globmem, *_pattern, *_viewspec_inner, *_halospec,
+             boundary_region);
+  }
+
+  /**
    * View specifying the inner block region.
    */
-  inline const viewspec_type & inner() const
-  {
+  inline const viewspec_type & inner() const {
     return *_viewspec_inner;
   }
 
   /**
    * View specifying the outer block region including halo.
    */
-  inline const viewspec_type & outer() const
-  {
+  inline const viewspec_type & outer() const {
     return _viewspec_outer;
   }
 
@@ -1141,24 +1203,21 @@ public:
    * Proxy accessor providing iteration space of the block's boundary
    * cells.
    */
-  inline const boundary_view_type & boundary() const
-  {
+  inline const boundary_view_type & boundary() const {
     return _boundary_view;
   }
 
   /**
    * Proxy accessor providing iteration space of the block's halo cells.
    */
-  inline const halo_view_type & halo() const
-  {
+  inline const halo_view_type & halo() const {
     return _halo_view;
   }
 
   /**
    * The pattern instance that created the encapsulated block.
    */
-  inline const PatternType & pattern() const
-  {
+  inline const PatternType & pattern() const {
     return *_pattern;
   }
 
