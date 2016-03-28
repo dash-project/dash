@@ -386,9 +386,9 @@ public:
   /**
    * Whether the iterator's position is relative to a view.
    *
-   * TODO: should be iterator trait:
-   *
-   *         dash::iterator_traits<GlobIter<..>>::is_relative()::value
+   * TODO:
+   * should be iterator trait:
+   *   dash::iterator_traits<GlobIter<..>>::is_relative()::value
    */
   inline constexpr bool is_relative() const noexcept
   {

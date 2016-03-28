@@ -115,42 +115,6 @@ public:
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
-private:
-  PatternArguments_t          _arguments;
-  /// Extent of the linear pattern.
-  SizeType                    _size;
-  /// Number of local elements for every unit in the active team.
-  std::vector<size_type>      _local_sizes;
-  /// Block offsets for every unit. Prefix sum of local sizes.
-  std::vector<size_type>      _block_offsets;
-  /// Global memory layout of the pattern.
-  MemoryLayout_t              _memory_layout;
-  /// Number of blocks in all dimensions
-  BlockSpec_t                 _blockspec;
-  /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE) of
-  /// all dimensions. Defaults to BLOCKED.
-  DistributionSpec_t          _distspec;
-  /// Team containing the units to which the patterns element are mapped
-  dash::Team *                _team            = nullptr;
-  /// Cartesian arrangement of units within the team
-  TeamSpec_t                  _teamspec;
-  /// Total amount of units to which this pattern's elements are mapped
-  SizeType                    _nunits          = 0;
-  /// Maximum extents of a block in this pattern
-  SizeType                    _blocksize       = 0;
-  /// Number of blocks in all dimensions
-  SizeType                    _nblocks         = 0;
-  /// Actual number of local elements of the active unit.
-  SizeType                    _local_size;
-  /// Local memory layout of the pattern.
-  LocalMemoryLayout_t         _local_memory_layout;
-  /// Maximum number of elements assigned to a single unit
-  SizeType                    _local_capacity;
-  /// Corresponding global index to first local index of the active unit
-  IndexType                   _lbegin;
-  /// Corresponding global index past last local index of the active unit
-  IndexType                   _lend;
-
 public:
   /**
    * Constructor, initializes a pattern from an argument list consisting
@@ -660,7 +624,8 @@ public:
     /// Point in local memory
     const std::array<IndexType, NumDimensions> & local_coords,
     /// View specification (offsets) to apply on \c coords
-    const ViewSpec_t & viewspec) const {
+    const ViewSpec_t & viewspec) const
+  {
     return local_coords[0] + viewspec[0].offset;
   }
 
@@ -671,7 +636,8 @@ public:
    */
   IndexType local_at(
     /// Point in local memory
-    const std::array<IndexType, NumDimensions> & local_coords) const {
+    const std::array<IndexType, NumDimensions> & local_coords) const
+  {
     return local_coords[0];
   }
 
@@ -684,9 +650,10 @@ public:
    * \see  DashPatternConcept
    */
   local_coords_t local(
-    const std::array<IndexType, NumDimensions> & g_coords) const {
+    const std::array<IndexType, NumDimensions> & g_coords) const
+  {
     DASH_LOG_TRACE_VAR("CSRPattern.local()", g_coords);
-    IndexType g_index = g_coords[0];
+    IndexType     g_index = g_coords[0];
     local_index_t l_index;
     for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
       index_type block_offset = _block_offsets[unit_idx];
@@ -711,12 +678,20 @@ public:
    * \see  DashPatternConcept
    */
   local_index_t local(
-    IndexType g_index) const {
+    IndexType g_index) const
+  {
     DASH_LOG_TRACE_VAR("CSRPattern.local()", g_index);
+    DASH_LOG_TRACE_VAR("CSRPattern.local", _block_offsets.size());
+    DASH_ASSERT_GT(_nunits, 0,
+                   "team size is 0");
+    DASH_ASSERT_GE(_block_offsets.size(), _nunits,
+                   "missing block offsets");
     local_index_t l_index;
     index_type    unit_idx = static_cast<index_type>(_nunits-1);
     for (; unit_idx >= 0; --unit_idx) {
+      DASH_LOG_TRACE_VAR("CSRPattern.local", unit_idx);
       index_type block_offset = _block_offsets[unit_idx];
+      DASH_LOG_TRACE_VAR("CSRPattern.local", block_offset);
       if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
         l_index.index = g_index - block_offset;
@@ -737,7 +712,8 @@ public:
    * \see  DashPatternConcept
    */
   std::array<IndexType, NumDimensions> local_coords(
-    const std::array<IndexType, NumDimensions> & g_coords) const {
+    const std::array<IndexType, NumDimensions> & g_coords) const
+  {
     DASH_LOG_TRACE_VAR("CSRPattern.local_coords()", g_coords);
     IndexType  g_index  = g_coords[0];
     index_type unit_idx = static_cast<index_type>(_nunits-1);
@@ -762,7 +738,8 @@ public:
    * \see  DashPatternConcept
    */
   local_index_t local_index(
-    const std::array<IndexType, NumDimensions> & g_coords) const {
+    const std::array<IndexType, NumDimensions> & g_coords) const
+  {
     IndexType g_index = g_coords[0];
     DASH_LOG_TRACE_VAR("CSRPattern.local_index()", g_coords);
     local_index_t l_index;
@@ -793,7 +770,8 @@ public:
    */
   std::array<IndexType, NumDimensions> global(
     dart_unit_t unit,
-    const std::array<IndexType, NumDimensions> & local_coords) const {
+    const std::array<IndexType, NumDimensions> & local_coords) const
+  {
     DASH_LOG_DEBUG_VAR("CSRPattern.global()", unit);
     DASH_LOG_DEBUG_VAR("CSRPattern.global()", local_coords);
     DASH_LOG_TRACE_VAR("CSRPattern.global", _nunits);
@@ -812,7 +790,8 @@ public:
    * \see  DashPatternConcept
    */
   std::array<IndexType, NumDimensions> global(
-    const std::array<IndexType, NumDimensions> & l_coords) const {
+    const std::array<IndexType, NumDimensions> & l_coords) const
+  {
     return global(_team->myid(), l_coords);
   }
 
@@ -826,7 +805,8 @@ public:
    */
   IndexType global(
     dart_unit_t unit,
-    IndexType l_index) const {
+    IndexType l_index) const
+  {
     return global(unit, std::array<IndexType, 1> { l_index })[0];
   }
 
@@ -839,7 +819,8 @@ public:
    * \see  DashPatternConcept
    */
   IndexType global(
-    IndexType l_index) const {
+    IndexType l_index) const
+  {
     return global(_team->myid(), std::array<IndexType, 1> { l_index })[0];
   }
 
@@ -853,7 +834,8 @@ public:
    */
   IndexType global_index(
     dart_unit_t unit,
-    const std::array<IndexType, NumDimensions> & l_coords) const {
+    const std::array<IndexType, NumDimensions> & l_coords) const
+  {
     auto g_index = global(unit, l_coords[0]);
     return g_index;
   }
@@ -871,7 +853,8 @@ public:
    * \see  DashPatternConcept
    */
   IndexType at(
-    const std::array<IndexType, NumDimensions> & g_coords) const {
+    const std::array<IndexType, NumDimensions> & g_coords) const
+  {
     return local_coords(g_coords)[0];
   }
 
@@ -884,7 +867,8 @@ public:
    */
   IndexType at(
     const std::array<IndexType, NumDimensions> & g_coords,
-    const ViewSpec_t & viewspec) const {
+    const ViewSpec_t & viewspec) const
+  {
     auto vs_coords = g_coords;
     vs_coords[0] += viewspec[0].offset;
     return local_coords(vs_coords)[0];
@@ -898,7 +882,8 @@ public:
    * \see  DashPatternConcept
    */
   template<typename ... Values>
-  IndexType at(IndexType value, Values ... values) const {
+  IndexType at(IndexType value, Values ... values) const
+  {
     static_assert(
       sizeof...(values) == NumDimensions-1,
       "Wrong parameter number");
@@ -926,7 +911,8 @@ public:
     /// DART id of the unit
     dart_unit_t unit,
     /// Viewspec to apply
-    const ViewSpec_t & viewspec) const {
+    const ViewSpec_t & viewspec) const
+  {
     DASH_ASSERT_EQ(
       0, dim,
       "Wrong dimension for Pattern::has_local_elements. " <<
@@ -946,7 +932,8 @@ public:
    */
   inline bool is_local(
     IndexType index,
-    dart_unit_t unit) const {
+    dart_unit_t unit) const
+  {
     DASH_LOG_TRACE_VAR("CSRPattern.is_local()", index);
     DASH_LOG_TRACE_VAR("CSRPattern.is_local()", unit);
     bool is_loc = index >= _block_offsets[unit] &&
@@ -963,7 +950,8 @@ public:
    * \see  DashPatternConcept
    */
   inline bool is_local(
-    IndexType index) const {
+    IndexType index) const
+  {
     auto unit = team().myid();
     DASH_LOG_TRACE_VAR("CSRPattern.is_local()", index);
     DASH_LOG_TRACE_VAR("CSRPattern.is_local", unit);
@@ -981,7 +969,8 @@ public:
   /**
    * Cartesian arrangement of pattern blocks.
    */
-  const BlockSpec_t & blockspec() const {
+  const BlockSpec_t & blockspec() const
+  {
     return _blockspec;
   }
 
@@ -1069,7 +1058,8 @@ public:
    */
   SizeType blocksize(
     /// The dimension in the pattern
-    dim_t dimension) const {
+    dim_t dimension) const
+  {
     return _blocksize;
   }
 
@@ -1081,7 +1071,8 @@ public:
    *
    * \see     DashPatternConcept
    */
-  SizeType max_blocksize() const {
+  SizeType max_blocksize() const
+  {
     return _blocksize;
   }
 
@@ -1118,7 +1109,8 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline IndexType num_units() const {
+  inline IndexType num_units() const
+  {
     return _nunits;
   }
 
@@ -1127,7 +1119,8 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline IndexType capacity() const {
+  inline IndexType capacity() const
+  {
     return _size;
   }
 
@@ -1136,7 +1129,8 @@ public:
    *
    * \see  DashPatternConcept
    */
-  inline IndexType size() const {
+  inline IndexType size() const
+  {
     return _size;
   }
 
@@ -1144,14 +1138,16 @@ public:
    * The Team containing the units to which this pattern's elements are
    * mapped.
    */
-  inline dash::Team & team() const {
+  inline dash::Team & team() const
+  {
     return *_team;
   }
 
   /**
    * Distribution specification of this pattern.
    */
-  const DistributionSpec_t & distspec() const {
+  const DistributionSpec_t & distspec() const
+  {
     return _distspec;
   }
 
@@ -1160,7 +1156,8 @@ public:
    *
    * \see DashPatternConcept
    */
-  SizeSpec_t sizespec() const {
+  SizeSpec_t sizespec() const
+  {
     return SizeSpec_t(std::array<SizeType, 1> { _size });
   }
 
@@ -1169,7 +1166,8 @@ public:
    *
    * \see DashPatternConcept
    */
-  const std::array<SizeType, NumDimensions> & extents() const {
+  const std::array<SizeType, NumDimensions> & extents() const
+  {
     return std::array<SizeType, 1> { _size };
   }
 
@@ -1179,7 +1177,8 @@ public:
    *
    * \see DashPatternConcept
    */
-  const MemoryLayout_t & memory_layout() const {
+  const MemoryLayout_t & memory_layout() const
+  {
     return _memory_layout;
   }
 
@@ -1188,7 +1187,8 @@ public:
    * of this pattern for the calling unit.
    * Not part of DASH Pattern concept.
    */
-  const LocalMemoryLayout_t & local_memory_layout() const {
+  const LocalMemoryLayout_t & local_memory_layout() const
+  {
     return _local_memory_layout;
   }
 
@@ -1198,7 +1198,8 @@ public:
    *
    * \see DashPatternConcept
    */
-  const TeamSpec_t & teamspec() const {
+  const TeamSpec_t & teamspec() const
+  {
     return _teamspec;
   }
 
@@ -1217,14 +1218,16 @@ public:
   /**
    * Memory order followed by the pattern.
    */
-  constexpr static MemArrange memory_order() {
+  constexpr static MemArrange memory_order()
+  {
     return Arrangement;
   }
 
   /**
    * Number of dimensions of the cartesian space partitioned by the pattern.
    */
-  constexpr static dim_t ndim() {
+  constexpr static dim_t ndim()
+  {
     return 1;
   }
 
@@ -1232,7 +1235,8 @@ public:
    * Initialize the size (number of mapped elements) of the Pattern.
    */
   SizeType initialize_size(
-    const std::vector<size_type> & local_sizes) const {
+    const std::vector<size_type> & local_sizes) const
+  {
     DASH_LOG_TRACE_VAR("CSRPattern.init_size()", local_sizes);
     size_type size = 0;
     for (size_type unit_idx = 0; unit_idx < local_sizes.size(); ++unit_idx) {
@@ -1249,7 +1253,8 @@ public:
   std::vector<size_type> initialize_local_sizes(
     size_type                  total_size,
     const DistributionSpec_t & distspec,
-    const dash::Team         & team) const {
+    const dash::Team         & team) const
+  {
     DASH_LOG_TRACE_VAR("CSRPattern.init_local_sizes()", total_size);
     std::vector<size_type> l_sizes;
     auto nunits = team.size();
@@ -1334,7 +1339,8 @@ public:
   SizeType initialize_blocksize(
     SizeType                   size,
     const DistributionSpec_t & distspec,
-    SizeType                   nunits) const {
+    SizeType                   nunits) const
+  {
     DASH_LOG_TRACE_VAR("CSRPattern.init_blocksize", nunits);
     if (nunits == 0) {
       return 0;
@@ -1351,7 +1357,8 @@ public:
     SizeType                   blocksize,
     const DistributionSpec_t & distspec,
     SizeType                   nunits,
-    SizeType                   local_size) const {
+    SizeType                   local_size) const
+  {
     auto num_l_blocks = local_size;
     if (blocksize > 0) {
       num_l_blocks = dash::math::div_ceil(
@@ -1367,7 +1374,8 @@ public:
   /**
    * Max. elements per unit (local capacity)
    */
-  SizeType initialize_local_capacity() const {
+  SizeType initialize_local_capacity() const
+  {
     SizeType l_capacity = 0;
     if (_nunits == 0) {
       return 0;
@@ -1385,7 +1393,8 @@ public:
    * Initialize block- and block size specs from memory layout, team spec
    * and distribution spec.
    */
-  void initialize_local_range() {
+  void initialize_local_range()
+  {
     auto l_size = _local_size;
     DASH_LOG_DEBUG_VAR("CSRPattern.init_local_range()", l_size);
     if (l_size == 0) {
@@ -1407,7 +1416,8 @@ public:
    * Resolve extents of local memory layout for a specified unit.
    */
   SizeType initialize_local_extent(
-    dart_unit_t unit) const {
+    dart_unit_t unit) const
+  {
     DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent()", unit);
     DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent()", _nunits);
     if (_nunits == 0) {
@@ -1419,6 +1429,41 @@ public:
     return l_extent;
   }
 
+private:
+  PatternArguments_t          _arguments;
+  /// Extent of the linear pattern.
+  SizeType                    _size;
+  /// Number of local elements for every unit in the active team.
+  std::vector<size_type>      _local_sizes;
+  /// Block offsets for every unit. Prefix sum of local sizes.
+  std::vector<size_type>      _block_offsets;
+  /// Global memory layout of the pattern.
+  MemoryLayout_t              _memory_layout;
+  /// Number of blocks in all dimensions
+  BlockSpec_t                 _blockspec;
+  /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE) of
+  /// all dimensions. Defaults to BLOCKED.
+  DistributionSpec_t          _distspec;
+  /// Team containing the units to which the patterns element are mapped
+  dash::Team *                _team            = nullptr;
+  /// Cartesian arrangement of units within the team
+  TeamSpec_t                  _teamspec;
+  /// Total amount of units to which this pattern's elements are mapped
+  SizeType                    _nunits          = 0;
+  /// Maximum extents of a block in this pattern
+  SizeType                    _blocksize       = 0;
+  /// Number of blocks in all dimensions
+  SizeType                    _nblocks         = 0;
+  /// Actual number of local elements of the active unit.
+  SizeType                    _local_size;
+  /// Local memory layout of the pattern.
+  LocalMemoryLayout_t         _local_memory_layout;
+  /// Maximum number of elements assigned to a single unit
+  SizeType                    _local_capacity;
+  /// Corresponding global index to first local index of the active unit
+  IndexType                   _lbegin;
+  /// Corresponding global index past last local index of the active unit
+  IndexType                   _lend;
 };
 
 /**

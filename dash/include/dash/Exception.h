@@ -69,9 +69,9 @@
   } \
 } while(0)
 
-// Using (value+1) < (lower+1) to avoid compiler warning for unsigned.
+// Using (value+1) < (min+1) to avoid compiler warning for unsigned.
 #define DASH_ASSERT_GT(value, min, message) do { \
-  if ((value+1) <= (min+1)) { \
+  if (((value)+1) <= ((min)+1)) { \
     DASH_THROW(dash::exception::OutOfRange, \
                "Range assertion " \
                << value << " > " << min \
@@ -81,11 +81,36 @@
   } \
 } while(0)
 
+// Using (value+1) < (min+1) to avoid compiler warning for unsigned.
+#define DASH_ASSERT_GE(value, min, message) do { \
+  if (((value)+1) < ((min)+1)) { \
+    DASH_THROW(dash::exception::OutOfRange, \
+               "Range assertion " \
+               << value << " >= " << min \
+               << " failed: " \
+               << message << " " \
+               << __FILE__ << ":" << __LINE__); \
+  } \
+} while(0)
+
+// Using (value+1) >= (max+1) to avoid compiler warning for unsigned.
 #define DASH_ASSERT_LT(value, max, message) do { \
-  if ((value) >= (max)) { \
+  if (((value+1)) >= ((max)+1)) { \
     DASH_THROW(dash::exception::OutOfRange, \
                "Range assertion " \
                << value << " < " << max \
+               << " failed: " \
+               << message << " "\
+               << __FILE__ << ":" << __LINE__); \
+  } \
+} while(0)
+
+// Using (value+1) > (max+1) to avoid compiler warning for unsigned.
+#define DASH_ASSERT_LE(value, max, message) do { \
+  if (((value)+1) > ((max)+1)) { \
+    DASH_THROW(dash::exception::OutOfRange, \
+               "Range assertion " \
+               << value << " <= " << max \
                << " failed: " \
                << message << " "\
                << __FILE__ << ":" << __LINE__); \
@@ -113,7 +138,15 @@
           dash__unused(val); \
           dash__unused(min); \
         } while (0)
+#define DASH_ASSERT_GE(val, min, message) do { \
+          dash__unused(val); \
+          dash__unused(min); \
+        } while (0)
 #define DASH_ASSERT_LT(val, max, message) do { \
+          dash__unused(val); \
+          dash__unused(max); \
+        } while (0)
+#define DASH_ASSERT_LE(val, max, message) do { \
           dash__unused(val); \
           dash__unused(max); \
         } while (0)

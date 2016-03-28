@@ -569,7 +569,10 @@ private:
 template<
   typename ElementType,
   typename IndexType    = dash::default_index_t,
-  class    PatternType  = CSRPattern<1, ROW_MAJOR, IndexType> >
+  /// Pattern type used to distribute array elements among units.
+  /// Default is \c dash::BlockPattern<1, ROW_MAJOR> as it supports all
+  /// distribution types (BLOCKED, TILE, BLOCKCYCLIC, CYCLIC).
+  class    PatternType  = Pattern<1, ROW_MAJOR, IndexType> >
 class Array
 {
 private:
