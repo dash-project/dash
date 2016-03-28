@@ -9,11 +9,12 @@
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
-#include <dash/CSRPattern.h>
 #include <dash/Shared.h>
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
+//#include <dash/DynamicPattern.h>
+#include <dash/CSRPattern.h>
 #include <dash/Allocator.h>
 
 namespace dash {
@@ -107,10 +108,11 @@ namespace dash {
  *
  * // Logical structure of list for 3 units:
  * //
- * //        unit 0       unit 1       unit 2
+ * //     | unit 0     | unit 1     | unit 2    |
+ * // ----|------------|------------|-----------|---
  * // Nil ---> 2 --.  .---> 5 --.  .--->  8 --.
- * //      .-- 3 <-' /  .-- 6 <-' /  .--  9 <-'
- * //      `-> 4 ---'   `-> 7 ---'   `-> 10 ---> Nil
+ * //      .-- 3 <-' |  .-- 6 <-' |  .--  9 <-'
+ * //      `-> 4 ----'  `-> 7 ----'  `-> 10 ---> Nil
  *
  * assert(list.local.size()  == 1);
  * assert(list.local.front() == dash::myid() + 1);
@@ -130,25 +132,28 @@ namespace dash {
  *
  * // Logical structure of list for 3 units:
  * //
- * //        unit 0         unit 1       unit 2
- * // Nil ---> 0 --.    .---> 5 --.  .--->  8 --.
- * //      .-- 1 <-'   /  .-- 6 <-' /  .--  9 <-'
- * //      `-> 2 --.  /   `-> 7 ---'   `-> 10 --.
- * //      .-- 3 <-' /                 .-- 11 <-'
- * //      `-> 4 ---'                  `-> 12 --.
- * //                                  .-- 13 <-'
- * //                                  `-> 14 ---> Nil
+ * //     | unit 0     | unit 1     | unit 2    |
+ * // ----|------------|------------|-----------|---
+ * // Nil ---> 0 --.  .---> 5 --.  .--->  8 --.
+ * //      .-- 1 <-' |  .-- 6 <-' |  .--  9 <-'
+ * //      `-> 2 --. |  `-> 7 ----'  `-> 10 --.
+ * //      .-- 3 <-' |               .-- 11 <-'
+ * //      `-> 4 ----'               `-> 12 --.
+ * //                                .-- 13 <-'
+ * //                                `-> 14 ---> Nil
  *
  * list.balance();
  *
  * // Logical structure of list for 3 units:
  * //
- * //        unit 0         unit 1         unit 2
- * // Nil ---> 0 --.    .---> 5 --.    .---> 10 --.
- * //      .-- 1 <-'   /  .-- 6 <-'   /  .-- 11 <-'
- * //      `-> 2 --.  /   `-> 7 --.  /   `-> 12 --.
- * //      .-- 3 <-' /    .-- 8 <-' /    .-- 13 --'
- * //      `-> 4 ---'     `-> 9 ---'     `-> 14 ---> Nil
+ * //     | unit 0     | unit 1     | unit 2    |
+ * // ----|------------|------------|-----------|---
+ * // Nil ---> 0 --.  .---> 5 --.  .---> 10 --.
+ * //      .-- 1 <-' |  .-- 6 <-' |  .-- 11 <-'
+ * //      `-> 2 --. |  `-> 7 --. |  `-> 12 --.
+ * //      .-- 3 <-' |  .-- 8 <-' |  .-- 13 --'
+ * //      `-> 4 ----'  `-> 9 ----'  `-> 14 ---> Nil
+ *
  * \endcode
  */
 
@@ -563,10 +568,11 @@ private:
  */
 template<
   typename ElementType,
-  class    AllocatorType
-             = dash::allocator::LocalAllocator,
-  class    PatternType
-             = dash::CSRPattern<1, ROW_MAJOR, dash::default_index_t> >
+  class    AllocatorType = dash::allocator::LocalAllocator<ElementType>,
+//class    PatternType   = dash::DynamicPattern<
+//                           1, AllocatorType, dash::default_index_t> >
+  class    PatternType   = dash::CSRPattern<
+                             1, dash::ROW_MAJOR, dash::default_index_t> >
 class List
 {
   template<
@@ -1018,7 +1024,7 @@ private:
         dash::exception::InvalidArgument,
         "Tried to allocate dash::List with local capacity 0");
     }
-    _globmem   = new GlobMem_t(pattern.team(), _lcapacity);
+    _globmem   = new GlobMem_t(_lcapacity, pattern.team());
     // Global iterators:
     _begin     = iterator(_globmem, pattern);
     _end       = iterator(_begin) + _size;

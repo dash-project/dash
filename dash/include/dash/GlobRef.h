@@ -8,7 +8,7 @@
 namespace dash {
 
 // Forward declaration
-template<typename T> class GlobMem;
+template<typename T, class A> class GlobMem;
 // Forward declaration
 template<typename T, class PatternT> class GlobPtr;
 // Forward declaration
