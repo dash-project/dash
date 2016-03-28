@@ -30,6 +30,7 @@ namespace dash {
  *
  * Type                            | Definition
  * ------------------------------- | ----------------------------------------------------------------------------------------
+ * <b>STL</b>                      | &nbsp;
  * <tt>value_type</tt>             | First template parameter <tt>ElementType</tt>
  * <tt>allocator_type</tt>         | Second template parameter <tt>AllocatorType</tt>
  * <tt>reference</tt>              | <tt>value_type &</tt>
@@ -42,10 +43,83 @@ namespace dash {
  * <tt>const_reverse_iterator</tt> | <tt>reverse_iterator<const_iterator></tt>
  * <tt>difference_type</tt>        | A signed integral type, identical to <tt>iterator_traits<iterator>::difference_type</tt>
  * <tt>size_type</tt>              | Unsigned integral type to represent any non-negative value of <tt>difference_type</tt>
+ * <b>DASH-specific</b>            | &nbsp;
+ * <tt>index_type</tt>             | A signed integgral type to represent positions in global index space
+ * <tt>view_type</tt>              | Proxy type for views on list elements, implements \c DashListConcept
+ * <tt>local_type</tt>             | Proxy type for views on list elements that are local to the calling unit
+ * <tt>pattern_type</tt>           | Type implementing the \c DashPatternConcept used to distribute list elements to units
  *
  * \par Member functions
  *
+ * Function                     | Return type         | Definition
+ * ---------------------------- | ------------------- | -----------------------------------------------
+ * <b>Initialization</b>        | &nbsp;              | &nbsp;
+ * <tt>operator=</tt>           | <tt>self &</tt>     | Assignment operator
+ * <b>Iterators</b>             | &nbsp;              | &nbsp;
+ * <tt>begin</tt>               | <tt>iterator</tt>   | Iterator to first element in the list
+ * <tt>end</tt>                 | <tt>iterator</tt>   | Iterator past last element in the list
+ * <b>Capacity</b>              | &nbsp;              | &nbsp;
+ * <tt>size</tt>                | <tt>size_type</tt>  | Number of elements in the list
+ * <tt>max_size</tt>            | <tt>size_type</tt>  | Maximum number of elements the list can hold
+ * <tt>empty</tt>               | <tt>bool</tt>       | Whether the list is empty, i.e. size is 0
+ * <b>Element access</b>        | &nbsp;              | &nbsp;
+ * <tt>front</tt>               | <tt>reference</tt>  | Access the first element in the list
+ * <tt>back</tt>                | <tt>reference</tt>  | Access the last element in the list
+ * <b>Modifiers</b>             | &nbsp;              | &nbsp;
+ * <tt>push_front</tt>          | <tt>void</tt>       | Insert element at beginning
+ * <tt>pop_front</tt>           | <tt>void</tt>       | Delete first element
+ * <tt>push_back</tt>           | <tt>void</tt>       | Insert element at the end
+ * <tt>pop_back</tt>            | <tt>void</tt>       | Delete last element
+ * <tt>emplace</tt>             | <tt>iterator</tt>   | Construct and insert element at given position
+ * <tt>emplace_front</tt>       | <tt>void</tt>       | Construct and insert element at beginning
+ * <tt>emplace_back</tt>        | <tt>void</tt>       | Construct and insert element at the end
+ * <tt>insert</tt>              | <tt>iterator</tt>   | Insert elements before given position
+ * <tt>erase</tt>               | <tt>iterator</tt>   | Erase elements at position or in range
+ * <tt>swap</tt>                | <tt>void</tt>       | Swap content
+ * <tt>resize</tt>              | <tt>void</tt>       | Cbange the list's size
+ * <tt>clear</tt>               | <tt>void</tt>       | Clear the list's content
+ * <b>Operations</b>            | &nbsp;              | &nbsp;
+ * <tt>splice</tt>              | <tt>void</tt>       | Transfer elements from one list to another
+ * <tt>remove<tt>               | <tt>void</tt>       | Remove elements with a given value
+ * <tt>remove_if<tt>            | <tt>void</tt>       | Remove elements fulfilling a given condition
+ * <tt>unique</tt>              | <tt>void</tt>       | Remove duplicate elements
+ * <tt>sort</tt>                | <tt>void</tt>       | Sort list elements
+ * <tt>merge</tt>               | <tt>void</tt>       | Merge sorted lists
+ * <tt>reverse</tt>             | <tt>void</tt>       | Reverse the order of list elements
+ * <b>Views (DASH specific)</b> | &nbsp;              | &nbsp;
+ * <tt>local</tt>               | <tt>local_type</tt> | View on list elements local to calling unit
+ * <tt>block</tt>               | <tt>view_type</tt>  | View on elements in block at global block index
  * \}
+ *
+ * Usage examples:
+ *
+ * \code
+ * size_t initial_local_capacity = 100;
+ * size_t initial_capacity       = dash::size() * initial_local_capacity;
+ * dash::List<int> list(initial_capacity);
+ *
+ * assert(list.size() == 0);
+ * assert(list.capacity() == initial_capacity);
+ *
+ * list.local.push_back(dash::myid() + 1);
+ * list.local.push_back(dash::myid() + 2);
+ * list.local.push_back(dash::myid() + 3);
+ *
+ * // Logical contents of list:
+ * //
+ * //         unit 0       unit 1       unit 2
+ * // Nil -->   1 --.  .---> 2 --.  .---> 3 --.  .---> ...
+ * //       .-- 2 <-' /  .-- 3 <-' /  .-- 4 <-' /
+ * //       `-> 3 ---'   `-> 4 ---'   `-> 5 ---'
+ *
+ * assert(list.local.size()  == 1);
+ * assert(list.local.front() == dash::myid() + 1);
+ * assert(list.local.back()  == dash::myid() + 3);
+ *
+ * list.barrier();
+ * assert(list.size() == dash::size() * 3);
+ *
+ * \endcode
  */
 
 // forward declaration
@@ -116,7 +190,7 @@ public:
     /// Pointer to list instance referenced by this view.
     List<T, index_type, PatternType> * list,
     /// The view's offset and extent within the referenced list.
-    const ViewSpec_t & viewspec)
+    const ViewSpec_t                 & viewspec)
   : _list(list),
     _viewspec(viewspec)
   { }
@@ -154,27 +228,75 @@ public:
   }
 
   /**
+   * Inserts a new element at the end of the list, after its current
+   * last element. The content of \c value is copied or moved to the
+   * inserted element.
+   * Increases the container size by one.
+   */
+  inline void push_back(const value_type & value)
+  {
+    if (_list->_lcapacity > _list->_lsize) {
+      // no reallocation required
+    } else{
+      // local capacity must be increased, reallocate
+    }
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::ListLocalRef.push_back is not implemented");
+  }
+
+  /**
+   * Removes and destroys the last element in the list, reducing the
+   * container size by one.
+   */
+  void pop_back()
+  {
+  }
+
+  /**
+   * Accesses the last element in the list.
+   */
+  reference back()
+  {
+  }
+
+  /**
+   * Inserts a new element at the beginning of the list, before its current
+   * first element. The content of \c value is copied or moved to the
+   * inserted element.
+   * Increases the container size by one.
+   */
+  inline void push_front(const value_type & value)
+  {
+    if (_list->_lcapacity > _list->_lsize) {
+      // no reallocation required
+    } else{
+      // local capacity must be increased, reallocate
+    }
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::ListLocalRef.push_front is not implemented");
+  }
+
+  /**
+   * Removes and destroys the first element in the list, reducing the
+   * container size by one.
+   */
+  void pop_front()
+  {
+  }
+
+  /**
+   * Accesses the first element in the list.
+   */
+  reference front()
+  {
+  }
+
+  /**
    * Number of list elements in local memory.
    */
   inline size_type size() const noexcept
   {
     return end() - begin();
-  }
-
-  /**
-   * Subscript operator, access to local list element at given position.
-   */
-  inline value_type operator[](const size_t n) const
-  {
-    return (_list->_lbegin)[n];
-  }
-
-  /**
-   * Subscript operator, access to local list element at given position.
-   */
-  inline reference operator[](const size_t n)
-  {
-    return (_list->_lbegin)[n];
   }
 
   /**
@@ -288,6 +410,71 @@ public:
   { }
 
 public:
+
+  /**
+   * Inserts a new element at the end of the list, after its current
+   * last element. The content of \c value is copied or moved to the
+   * inserted element.
+   * Increases the container size by one.
+   */
+  inline void push_back(const value_type & value)
+  {
+    if (_list->_lcapacity > _list->_lsize) {
+      // no reallocation required
+    } else{
+      // local capacity must be increased, reallocate
+    }
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::ListRef.push_back is not implemented");
+  }
+
+  /**
+   * Removes and destroys the last element in the list, reducing the
+   * container size by one.
+   */
+  void pop_back()
+  {
+  }
+
+  /**
+   * Accesses the last element in the list.
+   */
+  reference back()
+  {
+  }
+
+  /**
+   * Inserts a new element at the beginning of the list, before its current
+   * first element. The content of \c value is copied or moved to the
+   * inserted element.
+   * Increases the container size by one.
+   */
+  inline void push_front(const value_type & value)
+  {
+    if (_list->_lcapacity > _list->_lsize) {
+      // no reallocation required
+    } else{
+      // local capacity must be increased, reallocate
+    }
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::ListRef.push_front is not implemented");
+  }
+
+  /**
+   * Removes and destroys the first element in the list, reducing the
+   * container size by one.
+   */
+  void pop_front()
+  {
+  }
+
+  /**
+   * Accesses the first element in the list.
+   */
+  reference front()
+  {
+  }
+
   inline Team              & team();
 
   inline size_type           size()             const noexcept;
@@ -304,56 +491,10 @@ public:
   inline const_iterator      begin()            const noexcept;
   inline iterator            end()                    noexcept;
   inline const_iterator      end()              const noexcept;
-  /// View representing elements in the active unit's local memory.
-  inline local_type          sub_local()              noexcept;
   /// Pointer to first element in local range.
   inline ElementType       * lbegin()           const noexcept;
   /// Pointer past final element in local range.
   inline ElementType       * lend()             const noexcept;
-
-  reference operator[](
-    /// The position of the element to return
-    size_type global_index)
-  {
-    DASH_LOG_TRACE("ListRef.[]=", global_index);
-    return _list->_begin[global_index];
-  }
-
-  const_reference operator[](
-    /// The position of the element to return
-    size_type global_index) const
-  {
-    DASH_LOG_TRACE("ListRef.[]", global_index);
-    return _list->_begin[global_index];
-  }
-
-  reference at(
-    /// The position of the element to return
-    size_type global_pos)
-  {
-    if (global_pos >= size()) {
-      DASH_THROW(
-          dash::exception::OutOfRange,
-          "Position " << global_pos
-          << " is out of range " << size()
-          << " in ListRef.at()" );
-    }
-    return _list->_begin[global_pos];
-  }
-
-  const_reference at(
-    /// The position of the element to return
-    size_type global_pos) const
-  {
-    if (global_pos >= size()) {
-      DASH_THROW(
-          dash::exception::OutOfRange,
-          "Position " << global_pos
-          << " is out of range " << size()
-          << " in ListRef.at()" );
-    }
-    return _list->_begin[global_pos];
-  }
 
   /**
    * The pattern used to distribute list elements to units.
@@ -514,18 +655,52 @@ public:
     deallocate();
   }
 
-  void push_back(const ElementType & element)
+  /**
+   * Inserts a new element at the end of the list, after its current
+   * last element. The content of \c value is copied or moved to the
+   * inserted element.
+   * Increases the container size by one.
+   */
+  void push_back(const value_type & element)
   {
   }
 
+  /**
+   * Removes and destroys the last element in the list, reducing the
+   * container size by one.
+   */
   void pop_back()
   {
   }
 
+  /**
+   * Accesses the last element in the list.
+   */
   reference back()
   {
   }
 
+  /**
+   * Inserts a new element at the beginning of the list, before its current
+   * first element. The content of \c value is copied or moved to the
+   * inserted element.
+   * Increases the container size by one.
+   */
+  void push_front(const value_type & value)
+  {
+  }
+
+  /**
+   * Removes and destroys the first element in the list, reducing the
+   * container size by one.
+   */
+  void pop_front()
+  {
+  }
+
+  /**
+   * Accesses the first element in the list.
+   */
   reference front()
   {
   }
@@ -595,82 +770,6 @@ public:
   ElementType * lend() const noexcept
   {
     return _lend;
-  }
-
-  /**
-   * Subscript assignment operator, not range-checked.
-   *
-   * \return  A global reference to the element in the list at the given
-   *          index.
-   */
-  reference operator[](
-    /// The position of the element to return
-    size_type global_index)
-  {
-    DASH_LOG_TRACE_VAR("List.[]=()", global_index);
-    auto global_ref = _begin[global_index];
-    DASH_LOG_TRACE_VAR("List.[]= >", global_ref);
-    return global_ref;
-  }
-
-  /**
-   * Subscript operator, not range-checked.
-   *
-   * \return  A global reference to the element in the list at the given
-   *          index.
-   */
-  const_reference operator[](
-    /// The position of the element to return
-    size_type global_index) const
-  {
-    DASH_LOG_TRACE_VAR("List.[]()", global_index);
-    auto global_ref = _begin[global_index];
-    DASH_LOG_TRACE_VAR("List.[] >", global_ref);
-    return global_ref;
-  }
-
-  /**
-   * Random access assignment operator, range-checked.
-   *
-   * \see operator[]
-   *
-   * \return  A global reference to the element in the list at the given
-   *          index.
-   */
-  reference at(
-    /// The position of the element to return
-    size_type global_pos)
-  {
-    if (global_pos >= size())  {
-      DASH_THROW(
-          dash::exception::OutOfRange,
-          "Position " << global_pos
-          << " is out of range " << size()
-          << " in List.at()" );
-    }
-    return _begin[global_pos];
-  }
-
-  /**
-   * Random access operator, range-checked.
-   *
-   * \see operator[]
-   *
-   * \return  A global reference to the element in the list at the given
-   *          index.
-   */
-  const_reference at(
-    /// The position of the element to return
-    size_type global_pos) const
-  {
-    if (global_pos >= size())  {
-      DASH_THROW(
-          dash::exception::OutOfRange,
-          "Position " << global_pos
-          << " is out of range " << size()
-          << " in List.at()" );
-    }
-    return _begin[global_pos];
   }
 
   /**
