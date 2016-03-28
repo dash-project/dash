@@ -101,16 +101,16 @@ namespace dash {
  * assert(list.size() == 0);
  * assert(list.capacity() == initial_capacity);
  *
- * list.local.push_back(dash::myid() + 1);
- * list.local.push_back(dash::myid() + 2);
- * list.local.push_back(dash::myid() + 3);
+ * list.local.push_back(dash::myid() + 2 + dash::myid() * 3);
+ * list.local.push_back(dash::myid() + 3 + dash::myid() * 3);
+ * list.local.push_back(dash::myid() + 4 + dash::myid() * 3);
  *
- * // Logical contents of list:
+ * // Logical structure of list for 3 units:
  * //
- * //         unit 0       unit 1       unit 2
- * // Nil -->   1 --.  .---> 2 --.  .---> 3 --.  .---> ...
- * //       .-- 2 <-' /  .-- 3 <-' /  .-- 4 <-' /
- * //       `-> 3 ---'   `-> 4 ---'   `-> 5 ---'
+ * //        unit 0       unit 1       unit 2
+ * // Nil ---> 2 --.  .---> 5 --.  .--->  8 --.
+ * //      .-- 3 <-' /  .-- 6 <-' /  .--  9 <-'
+ * //      `-> 4 ---'   `-> 7 ---'   `-> 10 ---> Nil
  *
  * assert(list.local.size()  == 1);
  * assert(list.local.front() == dash::myid() + 1);
@@ -119,6 +119,36 @@ namespace dash {
  * list.barrier();
  * assert(list.size() == dash::size() * 3);
  *
+ * if (dash::myid() == 0) {
+ *   list.push_front(0);
+ *   list.push_front(1);
+ *   list.push_back(11);
+ *   list.push_back(12);
+ *   list.push_back(13);
+ *   list.push_back(14);
+ * }
+ *
+ * // Logical structure of list for 3 units:
+ * //
+ * //        unit 0         unit 1       unit 2
+ * // Nil ---> 0 --.    .---> 5 --.  .--->  8 --.
+ * //      .-- 1 <-'   /  .-- 6 <-' /  .--  9 <-'
+ * //      `-> 2 --.  /   `-> 7 ---'   `-> 10 --.
+ * //      .-- 3 <-' /                 .-- 11 <-'
+ * //      `-> 4 ---'                  `-> 12 --.
+ * //                                  .-- 13 <-'
+ * //                                  `-> 14 ---> Nil
+ *
+ * list.balance();
+ *
+ * // Logical structure of list for 3 units:
+ * //
+ * //        unit 0         unit 1         unit 2
+ * // Nil ---> 0 --.    .---> 5 --.    .---> 10 --.
+ * //      .-- 1 <-'   /  .-- 6 <-'   /  .-- 11 <-'
+ * //      `-> 2 --.  /   `-> 7 --.  /   `-> 12 --.
+ * //      .-- 3 <-' /    .-- 8 <-' /    .-- 13 --'
+ * //      `-> 4 ---'     `-> 9 ---'     `-> 14 ---> Nil
  * \endcode
  */
 
@@ -250,6 +280,8 @@ public:
    */
   void pop_back()
   {
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::LocalListRef.pop_back is not implemented");
   }
 
   /**
@@ -257,6 +289,8 @@ public:
    */
   reference back()
   {
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::LocalListRef._back is not implemented");
   }
 
   /**
@@ -282,6 +316,8 @@ public:
    */
   void pop_front()
   {
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::LocalListRef.pop_front is not implemented");
   }
 
   /**
@@ -289,6 +325,8 @@ public:
    */
   reference front()
   {
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::LocalListRef.front is not implemented");
   }
 
   /**
@@ -352,12 +390,25 @@ class ListRef
 private:
   static const dim_t NumDimensions = 1;
 
+/// Type definitions required for DASH list concept:
 public:
-/// Type definitions required for dash::List concept:
   typedef typename PatternType::index_type                        index_type;
   typedef ElementType                                             value_type;
+  /// The type of the pattern used to distribute list elements to units
+  typedef PatternType
+    pattern_type;
+  typedef ListRef<ElementType, AllocatorType, PatternType>
+    view_type;
+  typedef LocalListRef<value_type, AllocatorType, PatternType>
+    local_type;
+  /// Type alias for List<T,I,P>::local_type
+  typedef LocalListRef<value_type, AllocatorType, PatternType>
+    Local;
+  /// Type alias for List<T,I,P>::view_type
+  typedef ListRef<ElementType, AllocatorType, PatternType>
+    View;
 
-/// Public types as required by std::list concept:
+/// Public types as required by STL list concept:
 public:
   typedef typename std::make_unsigned<index_type>::type            size_type;
   typedef typename std::make_unsigned<index_type>::type      difference_type;
@@ -372,22 +423,6 @@ public:
 
   typedef       GlobIter<value_type, PatternType>                    pointer;
   typedef const GlobIter<value_type, PatternType>              const_pointer;
-
-/// Public types as required by dash container concept
-public:
-  /// The type of the pattern used to distribute list elements to units
-  typedef PatternType
-    pattern_type;
-  typedef ListRef<ElementType, AllocatorType, PatternType>
-    view_type;
-  typedef LocalListRef<value_type, AllocatorType, PatternType>
-    local_type;
-  /// Type alias for List<T,I,P>::local_type
-  typedef LocalListRef<value_type, AllocatorType, PatternType>
-    Local;
-  /// Type alias for List<T,I,P>::view_type
-  typedef ListRef<ElementType, AllocatorType, PatternType>
-    View;
 
 private:
   typedef ListRef<ElementType, AllocatorType, PatternType>
@@ -410,7 +445,6 @@ public:
   { }
 
 public:
-
   /**
    * Inserts a new element at the end of the list, after its current
    * last element. The content of \c value is copied or moved to the
@@ -434,6 +468,8 @@ public:
    */
   void pop_back()
   {
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::ListRef.pop_back is not implemented");
   }
 
   /**
@@ -441,6 +477,8 @@ public:
    */
   reference back()
   {
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::ListRef.back is not implemented");
   }
 
   /**
@@ -466,6 +504,8 @@ public:
    */
   void pop_front()
   {
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::ListRef.pop_front is not implemented");
   }
 
   /**
@@ -473,6 +513,8 @@ public:
    */
   reference front()
   {
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::ListRef.front is not implemented");
   }
 
   inline Team              & team();
@@ -508,7 +550,7 @@ private:
   /// Pointer to list instance referenced by this view.
   List_t    * _list;
   /// The view's offset and extent within the referenced list.
-  ViewSpec_t   _viewspec;
+  ViewSpec_t  _viewspec;
 
 }; // class ListRef
 
@@ -533,7 +575,7 @@ class List
     class    P_>
   friend class LocalListRef;
 
-/// Public types as required by dash container concept
+/// Public types as required by DASH list concept
 public:
   /// The type of the pattern used to distribute list elements to units
   typedef PatternType                                           pattern_type;
@@ -543,7 +585,7 @@ public:
   typedef LocalListRef<ElementType, AllocatorType, PatternType>        Local;
   typedef ListRef<ElementType, AllocatorType, PatternType>              View;
 
-/// Public types as required by iterator concept
+/// Public types as required by STL list concept
 public:
   typedef ElementType                                             value_type;
   typedef typename std::make_unsigned<index_type>::type            size_type;
@@ -565,10 +607,9 @@ private:
   typedef List<ElementType, index_type, PatternType> self_t;
 
 private:
-  typedef DistributionSpec<1>
-    DistributionSpec_t;
-  typedef SizeSpec<1, size_type>
-    SizeSpec_t;
+  typedef DistributionSpec<1>       DistributionSpec_t;
+  typedef SizeSpec<1, size_type>    SizeSpec_t;
+  typedef dash::GlobMem<value_type> GlobMem_t;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
@@ -802,13 +843,6 @@ public:
   }
 
   /**
-   * Requests the container to reduce its capacity to fit its size.
-   */
-  void shrink_to_fit()
-  {
-  }
-
-  /**
    * The number of elements that can be held in currently allocated storage
    * of the list.
    *
@@ -1013,7 +1047,6 @@ private:
   }
 
 private:
-  typedef dash::GlobMem<value_type> GlobMem_t;
   /// Team containing all units interacting with the list
   dash::Team         * _team      = nullptr;
   /// DART id of the unit that created the list
@@ -1021,7 +1054,7 @@ private:
   /// Element distribution pattern
   PatternType          _pattern;
   /// Global memory allocation and -access
-  GlobMem_t          * _globmem;
+  GlobMem_t          * _globmem   = nullptr;
   /// Iterator to initial element in the list
   iterator             _begin;
   /// Iterator past the last element in the list
@@ -1035,9 +1068,9 @@ private:
   /// Element capacity in the list's currently allocated local storage.
   size_type            _lcapacity;
   /// Native pointer to first local element in the list
-  ElementType        * _lbegin;
+  ElementType        * _lbegin    = nullptr;
   /// Native pointer past the last local element in the list
-  ElementType        * _lend;
+  ElementType        * _lend      = nullptr;
 
 };
 
