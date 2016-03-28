@@ -15,17 +15,18 @@ namespace dash {
  * \tparam  ElementType  The type of the shared value.
  */
 template<typename ElementType>
-class Shared {
+class Shared
+{
 public:
-  typedef ElementType                         value_type;
-  typedef size_t                               size_type;
-  typedef size_t                         difference_type;
+  typedef ElementType                                value_type;
+  typedef size_t                                      size_type;
+  typedef size_t                                difference_type;
 
-  typedef       GlobRef<value_type>            reference;
-  typedef const GlobRef<value_type>      const_reference;
+  typedef       GlobRef<value_type>                   reference;
+  typedef const GlobRef<value_type>             const_reference;
 
-  typedef       GlobPtr<value_type>              pointer;
-  typedef const GlobPtr<value_type>        const_pointer;
+  typedef       GlobPtr<value_type>                     pointer;
+  typedef const GlobPtr<value_type>               const_pointer;
 
 private:
   typedef dash::GlobMem<

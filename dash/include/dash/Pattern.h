@@ -69,11 +69,13 @@ namespace dash {
 
 } // namespace dash
 
+// Static pattern types:
 #include <dash/BlockPattern.h>
 #include <dash/TilePattern.h>
 #include <dash/ShiftTilePattern.h>
 #include <dash/SeqTilePattern.h>
 #include <dash/CSRPattern.h>
+
 #include <dash/PatternIterator.h>
 #include <dash/PatternProperties.h>
 #include <dash/MakePattern.h>

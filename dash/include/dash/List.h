@@ -13,8 +13,7 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-//#include <dash/DynamicPattern.h>
-#include <dash/CSRPattern.h>
+#include <dash/DynamicPattern.h>
 #include <dash/Allocator.h>
 
 namespace dash {
@@ -569,9 +568,7 @@ private:
 template<
   typename ElementType,
   class    AllocatorType = dash::allocator::LocalAllocator<ElementType>,
-//class    PatternType   = dash::DynamicPattern<
-//                           1, AllocatorType, dash::default_index_t> >
-  class    PatternType   = dash::CSRPattern<
+  class    PatternType   = dash::DynamicPattern<
                              1, dash::ROW_MAJOR, dash::default_index_t> >
 class List
 {

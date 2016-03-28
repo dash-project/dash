@@ -12,7 +12,8 @@ namespace dash {
 namespace allocator {
 
 /**
- * Allocator of global memory regions in the active unit's local memory.
+ * Encapsulates a memory allocation and deallocation strategy of global
+ * memory regions located in the active unit's local memory.
  *
  * Satisfied STL concepts:
  *
@@ -178,7 +179,9 @@ bool operator!=(
 }
 
 /**
- * Allocator of global memory regions across units in a specified team.
+ * Encapsulates a memory allocation and deallocation strategy of global
+ * memory regions distributed across local memory of units in a specified
+ * team.
  *
  * Satisfied STL concepts:
  *
