@@ -17,29 +17,32 @@ TEST_F(ArrayTest, Allocation)
 
 TEST_F(ArrayTest, SingleWriteMultipleRead)
 {
+  typedef int                                         value_t;
+  typedef typename dash::Array<value_t>::pattern_type pattern_t;
+
   size_t array_size = _num_elem * _dash_size;
   // Create array instances using varying constructor options
   LOG_MESSAGE("Array size: %d", array_size);
   try {
     // Initialize arrays
     LOG_MESSAGE("Initialize arr1");
-    dash::Array<int> arr1(array_size);
+    dash::Array<value_t> arr1(array_size);
     LOG_MESSAGE("Initialize arr2");
-    dash::Array<int> arr2(array_size,
-                          dash::BLOCKED);
+    dash::Array<value_t> arr2(array_size,
+                              dash::BLOCKED);
     LOG_MESSAGE("Initialize arr3");
-    dash::Array<int> arr3(array_size,
-                          dash::Team::All());
+    dash::Array<value_t> arr3(array_size,
+                              dash::Team::All());
     LOG_MESSAGE("Initialize arr4");
-    dash::Array<int> arr4(array_size,
-                          dash::CYCLIC,
-                          dash::Team::All());
+    dash::Array<value_t> arr4(array_size,
+                              dash::CYCLIC,
+                              dash::Team::All());
     LOG_MESSAGE("Initialize arr5");
-    dash::Array<int> arr5(array_size,
-                          dash::BLOCKCYCLIC(12));
+    dash::Array<value_t> arr5(array_size,
+                              dash::BLOCKCYCLIC(12));
     LOG_MESSAGE("Initialize arr6");
-    dash::Pattern<1> pat(array_size);
-    dash::Array<int> arr6(pat);
+    pattern_t pat(array_size);
+    dash::Array<value_t> arr6(pat);
     // Check array sizes
     ASSERT_EQ(array_size, arr1.size());
     ASSERT_EQ(array_size, arr2.size());
@@ -63,12 +66,12 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
     dash::Team::All().barrier();
     // Read and assert values in arrays
     for(size_t i = 0; i < array_size; ++i) {
-      ASSERT_EQ_U(i, static_cast<int>(arr1[i]));
-      ASSERT_EQ_U(i, static_cast<int>(arr2[i]));
-      ASSERT_EQ_U(i, static_cast<int>(arr3[i]));
-      ASSERT_EQ_U(i, static_cast<int>(arr4[i]));
-      ASSERT_EQ_U(i, static_cast<int>(arr5[i]));
-      ASSERT_EQ_U(i, static_cast<int>(arr6[i]));
+      ASSERT_EQ_U(i, static_cast<value_t>(arr1[i]));
+      ASSERT_EQ_U(i, static_cast<value_t>(arr2[i]));
+      ASSERT_EQ_U(i, static_cast<value_t>(arr3[i]));
+      ASSERT_EQ_U(i, static_cast<value_t>(arr4[i]));
+      ASSERT_EQ_U(i, static_cast<value_t>(arr5[i]));
+      ASSERT_EQ_U(i, static_cast<value_t>(arr6[i]));
     }
   } catch (dash::exception::InvalidArgument & ia) {
     LOG_MESSAGE("ERROR: %s", ia.what());

@@ -1,22 +1,56 @@
 #ifndef DASH__VECTOR_H__
 #define DASH__VECTOR_H__
 
+#include <iterator>
+#include <limits>
+
 #include <dash/Types.h>
 #include <dash/GlobMem.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
-#include <dash/GlobAsyncRef.h>
 #include <dash/Team.h>
-#include <dash/Pattern.h>
-#include <dash/HView.h>
+#include <dash/CSRPattern.h>
 #include <dash/Shared.h>
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
 
-#include <iterator>
-
 namespace dash {
+
+/**
+ * \defgroup  DashVectorConcept  Vector Concept
+ * Concept of a distributed one-dimensional vector container.
+ *
+ * \ingroup DashConcept
+ * \{
+ * \par Description
+ *
+ * \par Methods
+ *
+ * \}
+ */
+
+/*
+   STANDARD TYPE DEFINITION CONVENTIONS FOR STL CONTAINERS
+
+            value_type  Type of element
+        allocator_type  Type of memory manager
+             size_type  Unsigned type of container
+                        subscripts, element counts, etc.
+       difference_type  Signed type of difference between
+                        iterators
+
+              iterator  Behaves like value_type*
+        const_iterator  Behaves like const value_type*
+      reverse_iterator  Behaves like value_type*
+const_reverse_iterator  Behaves like const value_type*
+
+             reference  value_type&
+       const_reference  const value_type&
+
+               pointer  Behaves like value_type*
+         const_pointer  Behaves like const value_type*
+*/
 
 // forward declaration
 template<
@@ -25,13 +59,307 @@ template<
   class    PatternType >
 class Vector;
 
+template<
+  typename T,
+  typename IndexType,
+  class    PatternType >
+class LocalVectorRef
+{
+private:
+  static const dim_t NumDimensions = 1;
+
+  typedef LocalVectorRef<T, IndexType, PatternType>
+    self_t;
+  typedef Vector<T, IndexType, PatternType>
+    Vector_t;
+  typedef ViewSpec<NumDimensions, IndexType>
+    ViewSpec_t;
+  typedef std::array<typename PatternType::size_type, NumDimensions>
+    Extents_t;
+
+public:
+  template <typename T_, typename I_, typename P_>
+    friend class LocalVectorRef;
+
+public:
+  typedef T                                                  value_type;
+
+  typedef typename std::make_unsigned<IndexType>::type        size_type;
+  typedef IndexType                                          index_type;
+
+  typedef IndexType                                     difference_type;
+
+  typedef T &                                                 reference;
+  typedef const T &                                     const_reference;
+
+  typedef T *                                                   pointer;
+  typedef const T *                                       const_pointer;
+
+public:
+  /// Type alias for LocalVectorRef<T,I,P>::view_type
+  typedef LocalVectorRef<T, IndexType, PatternType>
+    View;
+
+public:
+  /**
+   * Constructor, creates a local access proxy for the given vector.
+   */
+  LocalVectorRef(
+    Vector<T, IndexType, PatternType> * vector)
+  : _vector(vector)
+  { }
+
+  LocalVectorRef(
+    /// Pointer to vector instance referenced by this view.
+    Vector<T, IndexType, PatternType> * vector,
+    /// The view's offset and extent within the referenced vector.
+    const ViewSpec_t & viewspec)
+  : _vector(vector),
+    _viewspec(viewspec)
+  { }
+
+  /**
+   * Pointer to initial local element in the vector.
+   */
+  inline const_pointer begin() const noexcept {
+    return _vector->_lbegin;
+  }
+
+  /**
+   * Pointer to initial local element in the vector.
+   */
+  inline pointer begin() noexcept {
+    return _vector->_lbegin;
+  }
+
+  /**
+   * Pointer past final local element in the vector.
+   */
+  inline const_pointer end() const noexcept {
+    return _vector->_lend;
+  }
+
+  /**
+   * Pointer past final local element in the vector.
+   */
+  inline pointer end() noexcept {
+    return _vector->_lend;
+  }
+
+  /**
+   * Number of vector elements in local memory.
+   */
+  inline size_type size() const noexcept {
+    return end() - begin();
+  }
+
+  /**
+   * Subscript operator, access to local vector element at given position.
+   */
+  inline value_type operator[](const size_t n) const {
+    return (_vector->_lbegin)[n];
+  }
+
+  /**
+   * Subscript operator, access to local vector element at given position.
+   */
+  inline reference operator[](const size_t n) {
+    return (_vector->_lbegin)[n];
+  }
+
+  /**
+   * Checks whether the given global index is local to the calling unit.
+   *
+   * \return  True
+   */
+  constexpr bool is_local(
+    /// A global vector index
+    index_type global_index) const {
+    return true;
+  }
+
+  /**
+   * View at block at given global block offset.
+   */
+  self_t block(index_type block_lindex)
+  {
+    DASH_LOG_TRACE("LocalVectorRef.block()", block_lindex);
+    ViewSpec<1> block_view = pattern().local_block(block_lindex);
+    DASH_LOG_TRACE("LocalVectorRef.block >", block_view);
+    return self_t(_vector, block_view);
+  }
+
+  /**
+   * The pattern used to distribute vector elements to units.
+   */
+  inline const PatternType & pattern() const {
+    return _vector->pattern();
+  }
+
+private:
+  /// Pointer to vector instance referenced by this view.
+  Vector_t * const _vector;
+  /// The view's offset and extent within the referenced vector.
+  ViewSpec_t      _viewspec;
+};
+
+
+template<
+  typename ElementType,
+  typename IndexType,
+  class    PatternType>
+class VectorRef
+{
+private:
+  static const dim_t NumDimensions = 1;
+
+  typedef VectorRef<ElementType, IndexType, PatternType>
+    self_t;
+  typedef Vector<ElementType, IndexType, PatternType>
+    Vector_t;
+  typedef ViewSpec<NumDimensions, IndexType>
+    ViewSpec_t;
+  typedef std::array<typename PatternType::size_type, NumDimensions>
+    Extents_t;
+
+/// Public types as required by iterator concept
+public:
+  typedef ElementType                                             value_type;
+  typedef IndexType                                               index_type;
+  typedef typename std::make_unsigned<IndexType>::type             size_type;
+  typedef typename std::make_unsigned<IndexType>::type       difference_type;
+
+  typedef       GlobIter<value_type, PatternType>                   iterator;
+  typedef const GlobIter<value_type, PatternType>             const_iterator;
+  typedef       std::reverse_iterator<      iterator>       reverse_iterator;
+  typedef       std::reverse_iterator<const_iterator> const_reverse_iterator;
+
+  typedef       GlobRef<value_type>                                reference;
+  typedef const GlobRef<value_type>                          const_reference;
+
+  typedef       GlobIter<value_type, PatternType>                    pointer;
+  typedef const GlobIter<value_type, PatternType>              const_pointer;
+
+/// Public types as required by dash container concept
+public:
+  /// The type of the pattern used to distribute vector elements to units
+  typedef PatternType
+    pattern_type;
+  typedef VectorRef<ElementType, IndexType, PatternType>
+    view_type;
+  typedef LocalVectorRef<value_type, IndexType, PatternType>
+    local_type;
+  /// Type alias for Vector<T,I,P>::local_type
+  typedef LocalVectorRef<value_type, IndexType, PatternType>
+    Local;
+  /// Type alias for Vector<T,I,P>::view_type
+  typedef VectorRef<ElementType, IndexType, PatternType>
+    View;
+
+public:
+  VectorRef(
+    /// Pointer to vector instance referenced by this view.
+    Vector_t         * vector,
+    /// The view's offset and extent within the referenced vector.
+    const ViewSpec_t & viewspec)
+  : _vector(vector),
+    _viewspec(viewspec)
+  { }
+
+public:
+  inline    Team              & team();
+
+  constexpr size_type           size()             const noexcept;
+  constexpr size_type           local_size()       const noexcept;
+  constexpr size_type           local_capacity()   const noexcept;
+  constexpr size_type           extent(dim_t dim)  const noexcept;
+  constexpr Extents_t           extents()          const noexcept;
+  constexpr bool                empty()            const noexcept;
+
+  inline    void                barrier()          const;
+
+  inline    const_pointer       data()             const noexcept;
+  inline    iterator            begin()                  noexcept;
+  inline    const_iterator      begin()            const noexcept;
+  inline    iterator            end()                    noexcept;
+  inline    const_iterator      end()              const noexcept;
+  /// View representing elements in the active unit's local memory.
+  inline    local_type          sub_local()              noexcept;
+  /// Pointer to first element in local range.
+  inline    ElementType       * lbegin()           const noexcept;
+  /// Pointer past final element in local range.
+  inline    ElementType       * lend()             const noexcept;
+
+  reference operator[](
+    /// The position of the element to return
+    size_type global_index)
+  {
+    DASH_LOG_TRACE("VectorRef.[]=", global_index);
+    return _vector->_begin[global_index];
+  }
+
+  const_reference operator[](
+    /// The position of the element to return
+    size_type global_index) const
+  {
+    DASH_LOG_TRACE("VectorRef.[]", global_index);
+    return _vector->_begin[global_index];
+  }
+
+  reference at(
+    /// The position of the element to return
+    size_type global_pos)
+  {
+    if (global_pos >= size()) {
+      DASH_THROW(
+          dash::exception::OutOfRange,
+          "Position " << global_pos
+          << " is out of range " << size()
+          << " in VectorRef.at()" );
+    }
+    return _vector->_begin[global_pos];
+  }
+
+  const_reference at(
+    /// The position of the element to return
+    size_type global_pos) const
+  {
+    if (global_pos >= size()) {
+      DASH_THROW(
+          dash::exception::OutOfRange,
+          "Position " << global_pos
+          << " is out of range " << size()
+          << " in VectorRef.at()" );
+    }
+    return _vector->_begin[global_pos];
+  }
+
+  /**
+   * The pattern used to distribute vector elements to units.
+   */
+  inline const PatternType & pattern() const {
+    return _vector->pattern();
+  }
+
+private:
+  /// Pointer to vector instance referenced by this view.
+  Vector_t    * _vector;
+  /// The view's offset and extent within the referenced vector.
+  ViewSpec_t   _viewspec;
+
+}; // class VectorRef
+
+
 /**
- * A dynamic array with support for workload balancing.
+ * A dynamic vector with support for workload balancing.
+ *
+ * \concept{DashContainerConcept}
+ * \concept{DashVectorConcept}
  */
 template<
   typename ElementType,
   typename IndexType   = dash::default_index_t,
-  class PatternType    = Pattern<1, ROW_MAJOR, IndexType> >
+  class PatternType    = CSRPattern<1, ROW_MAJOR, IndexType> >
 class Vector
 {
 private:
@@ -61,21 +389,14 @@ public:
     typename I_,
     class P_>
   friend class LocalVectorRef;
-  template<
-    typename T_,
-    typename I_,
-    class P_>
-  friend class AsyncVectorRef;
 
 /// Public types as required by dash container concept
 public:
-  /// The type of the pattern used to distribute array elements to units
+  /// The type of the pattern used to distribute vector elements to units
   typedef PatternType
     pattern_type;
   typedef LocalVectorRef<value_type, IndexType, PatternType>
     local_type;
-  typedef AsyncVectorRef<value_type, IndexType, PatternType>
-    async_type;
 
   typedef LocalVectorRef<value_type, IndexType, PatternType>
     Local;
@@ -91,28 +412,25 @@ private:
 public:
   /// Local proxy object, allows use in range-based for loops.
   local_type           local;
-  /// Proxy object, provides non-blocking operations on array.
-  async_type           async;
 
 public:
   /**
    * Default constructor, for delayed allocation.
    *
-   * Sets the associated team to DART_TEAM_NULL for global array instances
+   * Sets the associated team to DART_TEAM_NULL for global vector instances
    * that are declared before \c dash::Init().
    */
   Vector(
     Team & team = dash::Team::Null())
   : local(this),
-    async(this),
-    m_team(&team),
-    m_pattern(
+    _team(&team),
+    _pattern(
       SizeSpec_t(0),
       DistributionSpec_t(dash::BLOCKED),
       team),
-    m_size(0),
-    m_lsize(0),
-    m_lcapacity(0)
+    _size(0),
+    _lsize(0),
+    _lcapacity(0)
   {
     DASH_LOG_TRACE("Vector()", "default constructor");
   }
@@ -121,22 +439,22 @@ public:
    * Constructor, specifies distribution type explicitly.
    */
   Vector(
-    size_type nelem,
+    size_type                  nelem,
     const DistributionSpec_t & distribution,
-    Team & team = dash::Team::All())
+    Team                     & team = dash::Team::All())
   : local(this),
-    async(this),
-    m_team(&team),
-    m_pattern(
+    _team(&team),
+    _pattern(
       SizeSpec_t(nelem),
       distribution,
       team),
-    m_size(0),
-    m_lsize(0),
-    m_lcapacity(0)
+    _size(0),
+    _lsize(0),
+    _capacity(0),
+    _lcapacity(0)
   {
     DASH_LOG_TRACE("Vector()", nelem);
-    allocate(m_pattern);
+    allocate(_pattern);
   }
 
   /**
@@ -145,30 +463,30 @@ public:
   Vector(
     const PatternType & pattern)
   : local(this),
-    async(this),
-    m_team(&pattern.team()),
-    m_pattern(pattern),
-    m_size(0),
-    m_lsize(0),
-    m_lcapacity(0)
+    _team(&pattern.team()),
+    _pattern(pattern),
+    _size(0),
+    _lsize(0),
+    _capacity(0),
+    _lcapacity(0)
   {
     DASH_LOG_TRACE("Vector()", "pattern instance constructor");
-    allocate(m_pattern);
+    allocate(_pattern);
   }
 
   /**
-   * Delegating constructor, specifies the size of the array.
+   * Delegating constructor, specifies the size of the vector.
    */
   Vector(
-    size_type nelem,
-    Team & team = dash::Team::All())
+    size_type   nelem,
+    Team      & team = dash::Team::All())
   : Vector(nelem, dash::BLOCKED, team)
   {
     DASH_LOG_TRACE("Vector()", "finished delegating constructor");
   }
 
   /**
-   * Destructor, deallocates array elements.
+   * Destructor, deallocates vector elements.
    */
   ~Vector()
   {
@@ -204,65 +522,65 @@ public:
   }
 
   /**
-   * Global const pointer to the beginning of the array.
+   * Global const pointer to the beginning of the vector.
    */
   const_pointer data() const noexcept
   {
-    return m_begin;
+    return _begin;
   }
 
   /**
-   * Global pointer to the beginning of the array.
+   * Global pointer to the beginning of the vector.
    */
   iterator begin() noexcept
   {
-    return m_begin;
+    return _begin;
   }
 
   /**
-   * Global pointer to the beginning of the array.
+   * Global pointer to the beginning of the vector.
    */
   const_iterator begin() const noexcept
   {
-    return m_begin;
+    return _begin;
   }
 
   /**
-   * Global pointer to the end of the array.
+   * Global pointer to the end of the vector.
    */
   iterator end() noexcept
   {
-    return m_end;
+    return _end;
   }
 
   /**
-   * Global pointer to the end of the array.
+   * Global pointer to the end of the vector.
    */
   const_iterator end() const noexcept
   {
-    return m_end;
+    return _end;
   }
 
   /**
-   * Native pointer to the first local element in the array.
+   * Native pointer to the first local element in the vector.
    */
   ElementType * lbegin() const noexcept
   {
-    return m_lbegin;
+    return _lbegin;
   }
 
   /**
-   * Native pointer to the end of the array.
+   * Native pointer to the end of the vector.
    */
   ElementType * lend() const noexcept
   {
-    return m_lend;
+    return _lend;
   }
 
   /**
    * Subscript assignment operator, not range-checked.
    *
-   * \return  A global reference to the element in the array at the given
+   * \return  A global reference to the element in the vector at the given
    *          index.
    */
   reference operator[](
@@ -270,7 +588,7 @@ public:
     size_type global_index)
   {
     DASH_LOG_TRACE_VAR("Vector.[]=()", global_index);
-    auto global_ref = m_begin[global_index];
+    auto global_ref = _begin[global_index];
     DASH_LOG_TRACE_VAR("Vector.[]= >", global_ref);
     return global_ref;
   }
@@ -278,7 +596,7 @@ public:
   /**
    * Subscript operator, not range-checked.
    *
-   * \return  A global reference to the element in the array at the given
+   * \return  A global reference to the element in the vector at the given
    *          index.
    */
   const_reference operator[](
@@ -286,7 +604,7 @@ public:
     size_type global_index) const
   {
     DASH_LOG_TRACE_VAR("Vector.[]()", global_index);
-    auto global_ref = m_begin[global_index];
+    auto global_ref = _begin[global_index];
     DASH_LOG_TRACE_VAR("Vector.[] >", global_ref);
     return global_ref;
   }
@@ -296,7 +614,7 @@ public:
    *
    * \see operator[]
    *
-   * \return  A global reference to the element in the array at the given
+   * \return  A global reference to the element in the vector at the given
    *          index.
    */
   reference at(
@@ -310,7 +628,7 @@ public:
           << " is out of range " << size()
           << " in Vector.at()" );
     }
-    return m_begin[global_pos];
+    return _begin[global_pos];
   }
 
   /**
@@ -318,7 +636,7 @@ public:
    *
    * \see operator[]
    *
-   * \return  A global reference to the element in the array at the given
+   * \return  A global reference to the element in the vector at the given
    *          index.
    */
   const_reference at(
@@ -332,17 +650,17 @@ public:
           << " is out of range " << size()
           << " in Vector.at()" );
     }
-    return m_begin[global_pos];
+    return _begin[global_pos];
   }
 
   /**
-   * The size of the array.
+   * The size of the vector.
    *
-   * \return  The number of elements in the array.
+   * \return  The number of elements in the vector.
    */
   inline size_type size() const noexcept
   {
-    return m_size;
+    return _size;
   }
 
   /**
@@ -350,9 +668,9 @@ public:
    * system limitations.
    * The maximum size is not guaranteed.
    */
-  inline size_typew max_size() const noexcept
+  inline size_type max_size() const noexcept
   {
-    return MAX_INT;
+    return std::numeric_limits<int>::max();
   }
 
   /**
@@ -388,58 +706,60 @@ public:
 
   /**
    * The number of elements that can be held in currently allocated storage
-   * of the array.
+   * of the vector.
    *
-   * \return  The number of elements in the array.
+   * \return  The number of elements in the vector.
    */
   inline size_type capacity() const noexcept
   {
-    return m_capacity;
+    return _capacity;
   }
 
   inline iterator erase(const_iterator position)
   {
+    return _begin;
   }
 
   inline iterator erase(const_iterator first, const_iterator last)
   {
+    return _end;
   }
 
   /**
-   * The team containing all units accessing this array.
+   * The team containing all units accessing this vector.
    *
-   * \return  The instance of Team that this array has been instantiated
+   * \return  The instance of Team that this vector has been instantiated
    *          with
    */
   inline const Team & team() const noexcept
   {
-    return *m_team;
+    return *_team;
   }
 
   /**
-   * The number of elements in the local part of the array.
+   * The number of elements in the local part of the vector.
    *
-   * \return  The number of elements in the array that are local to the
+   * \return  The number of elements in the vector that are local to the
    *          calling unit.
    */
   inline size_type lsize() const noexcept
   {
-    return m_lsize;
+    return _lsize;
   }
 
   /**
-   * The capacity of the local part of the array.
+   * The capacity of the local part of the vector.
    *
-   * \return  The number of allocated elements in the array that are local
+   * \return  The number of allocated elements in the vector that are local
    *          to the calling unit.
    */
   inline size_type lcapacity() const noexcept
   {
-    return m_lcapacity;
+    return _lcapacity;
   }
 
   /**
-   * Checks whether the array is empty.
+   * Checks whether the vector is empty.
    *
    * \return  True if \c size() is 0, otherwise false
    */
@@ -451,33 +771,33 @@ public:
   /**
    * Checks whether the given global index is local to the calling unit.
    *
-   * \return  True if the array element referenced by the index is held
+   * \return  True if the vector element referenced by the index is held
    *          in the calling unit's local memory
    */
   bool is_local(
-    /// A global array index
+    /// A global vector index
     index_type global_index) const
   {
-    return m_pattern.is_local(global_index, m_myid);
+    return _pattern.is_local(global_index, _myid);
   }
 
   /**
-   * Establish a barrier for all units operating on the array, publishing all
+   * Establish a barrier for all units operating on the vector, publishing all
    * changes to all units.
    */
   void barrier() const
   {
-    DASH_LOG_TRACE_VAR("Vector.barrier()", m_team);
-    m_team->barrier();
+    DASH_LOG_TRACE_VAR("Vector.barrier()", _team);
+    _team->barrier();
     DASH_LOG_TRACE("Vector.barrier()", "passed barrier");
   }
 
   /**
-   * The pattern used to distribute array elements to units.
+   * The pattern used to distribute vector elements to units.
    */
   inline const PatternType & pattern() const
   {
-    return m_pattern;
+    return _pattern;
   }
 
   template<int level>
@@ -487,12 +807,12 @@ public:
   }
 
   bool allocate(
-    size_type nelem,
-    dash::DistributionSpec<1> distribution,
-    dash::Team & team = dash::Team::All())
+    size_type                   nelem,
+    dash::DistributionSpec<1>   distribution,
+    dash::Team                & team = dash::Team::All())
   {
     DASH_LOG_TRACE("Vector.allocate()", nelem);
-    DASH_LOG_TRACE_VAR("Vector.allocate", m_team->dart_id());
+    DASH_LOG_TRACE_VAR("Vector.allocate", _team->dart_id());
     DASH_LOG_TRACE_VAR("Vector.allocate", team.dart_id());
     // Check requested capacity:
     if (nelem == 0) {
@@ -500,41 +820,41 @@ public:
         dash::exception::InvalidArgument,
         "Tried to allocate dash::Vector with size 0");
     }
-    if (m_team == nullptr || *m_team == dash::Team::Null()) {
+    if (_team == nullptr || *_team == dash::Team::Null()) {
       DASH_LOG_TRACE("Vector.allocate",
                      "initializing pattern with Team::All()");
-      m_team    = &team;
-      m_pattern = PatternType(nelem, distribution, team);
+      _team    = &team;
+      _pattern = PatternType(nelem, distribution, team);
       DASH_LOG_TRACE_VAR("Vector.allocate", team.dart_id());
-      DASH_LOG_TRACE_VAR("Vector.allocate", m_pattern.team().dart_id());
+      DASH_LOG_TRACE_VAR("Vector.allocate", _pattern.team().dart_id());
     } else {
       DASH_LOG_TRACE("Vector.allocate",
                      "initializing pattern with initial team");
-      m_pattern = PatternType(nelem, distribution, *m_team);
+      _pattern = PatternType(nelem, distribution, *_team);
     }
-    return allocate(m_pattern);
+    return allocate(_pattern);
   }
 
   void deallocate()
   {
     DASH_LOG_TRACE_VAR("Vector.deallocate()", this);
-    DASH_LOG_TRACE_VAR("Vector.deallocate()", m_size);
+    DASH_LOG_TRACE_VAR("Vector.deallocate()", _size);
     // Assure all units are synchronized before deallocation, otherwise
-    // other units might still be working on the array:
+    // other units might still be working on the vector:
     if (dash::is_initialized()) {
       barrier();
     }
     // Remove this function from team deallocator list to avoid
     // double-free:
-    m_pattern.team().unregister_deallocator(
+    _pattern.team().unregister_deallocator(
       this, std::bind(&Vector::deallocate, this));
-    // Actual destruction of the array instance:
-    DASH_LOG_TRACE_VAR("Vector.deallocate()", m_globmem);
-    if (m_globmem != nullptr) {
-      delete m_globmem;
-      m_globmem = nullptr;
+    // Actual destruction of the vector instance:
+    DASH_LOG_TRACE_VAR("Vector.deallocate()", _globmem);
+    if (_globmem != nullptr) {
+      delete _globmem;
+      _globmem = nullptr;
     }
-    m_size = 0;
+    _size = 0;
     DASH_LOG_TRACE_VAR("Vector.deallocate >", this);
   }
 
@@ -545,43 +865,43 @@ private:
     DASH_LOG_TRACE("Vector._allocate()", "pattern",
                    pattern.memory_layout().extents());
     // Check requested capacity:
-    m_size      = pattern.capacity();
-    m_team      = &pattern.team();
-    if (m_size == 0) {
+    _size      = pattern.capacity();
+    _team      = &pattern.team();
+    if (_size == 0) {
       DASH_THROW(
         dash::exception::InvalidArgument,
         "Tried to allocate dash::Vector with size 0");
     }
     // Initialize members:
-    m_lsize     = pattern.local_size();
-    m_lcapacity = pattern.local_capacity();
-    m_myid      = pattern.team().myid();
+    _lsize     = pattern.local_size();
+    _lcapacity = pattern.local_capacity();
+    _myid      = pattern.team().myid();
     // Allocate local memory of identical size on every unit:
-    DASH_LOG_TRACE_VAR("Vector._allocate", m_lcapacity);
-    DASH_LOG_TRACE_VAR("Vector._allocate", m_lsize);
-    m_globmem   = new GlobMem_t(pattern.team(), m_lcapacity);
+    DASH_LOG_TRACE_VAR("Vector._allocate", _lcapacity);
+    DASH_LOG_TRACE_VAR("Vector._allocate", _lsize);
+    _globmem   = new GlobMem_t(pattern.team(), _lcapacity);
     // Global iterators:
-    m_begin     = iterator(m_globmem, pattern);
-    m_end       = iterator(m_begin) + m_size;
+    _begin     = iterator(_globmem, pattern);
+    _end       = iterator(_begin) + _size;
     // Local iterators:
-    m_lbegin    = m_globmem->lbegin(m_myid);
-    // More efficient than using m_globmem->lend as this a second mapping
+    _lbegin    = _globmem->lbegin(_myid);
+    // More efficient than using _globmem->lend as this a second mapping
     // of the local memory segment:
-    m_lend      = m_lbegin + pattern.local_size();
-    DASH_LOG_TRACE_VAR("Vector._allocate", m_myid);
-    DASH_LOG_TRACE_VAR("Vector._allocate", m_size);
-    DASH_LOG_TRACE_VAR("Vector._allocate", m_lsize);
-    // Register deallocator of this array instance at the team
+    _lend      = _lbegin + pattern.local_size();
+    DASH_LOG_TRACE_VAR("Vector._allocate", _myid);
+    DASH_LOG_TRACE_VAR("Vector._allocate", _size);
+    DASH_LOG_TRACE_VAR("Vector._allocate", _lsize);
+    // Register deallocator of this vector instance at the team
     // instance that has been used to initialized it:
     pattern.team().register_deallocator(
       this, std::bind(&Vector::deallocate, this));
     // Assure all units are synchronized after allocation, otherwise
-    // other units might start working on the array before allocation
+    // other units might start working on the vector before allocation
     // completed at all units:
     if (dash::is_initialized()) {
       DASH_LOG_TRACE("Vector._allocate",
                      "waiting for allocation of all units");
-      m_team->barrier();
+      _team->barrier();
     }
     DASH_LOG_TRACE("Vector._allocate >", "finished");
     return true;
@@ -589,30 +909,30 @@ private:
 
 private:
   typedef dash::GlobMem<value_type> GlobMem_t;
-  /// Team containing all units interacting with the array
-  dash::Team         * m_team      = nullptr;
-  /// DART id of the unit that created the array
-  dart_unit_t          m_myid;
+  /// Team containing all units interacting with the vector
+  dash::Team         * _team      = nullptr;
+  /// DART id of the unit that created the vector
+  dart_unit_t          _myid;
   /// Element distribution pattern
-  PatternType          m_pattern;
+  PatternType          _pattern;
   /// Global memory allocation and -access
-  GlobMem_t          * m_globmem;
-  /// Iterator to initial element in the array
-  iterator             m_begin;
-  /// Iterator to final element in the array
-  iterator             m_end;
+  GlobMem_t          * _globmem;
+  /// Iterator to initial element in the vector
+  iterator             _begin;
+  /// Iterator past the last element in the vector
+  iterator             _end;
+  /// Number of elements in the vector
+  size_type            _size;
+  /// Number of local elements in the vector
+  size_type            _lsize;
   /// Element capacity in the vector's currently allocated storage.
-  size_type            m_size;
-  /// Total number of elements in the array
-  size_type            m_size;
-  /// Number of local elements in the array
-  size_type            m_lsize;
-  /// Number allocated local elements in the array
-  size_type            m_lcapacity;
-  /// Native pointer to first local element in the array
-  ElementType        * m_lbegin;
-  /// Native pointer past last local element in the array
-  ElementType        * m_lend;
+  size_type            _capacity;
+  /// Element capacity in the vector's currently allocated local storage.
+  size_type            _lcapacity;
+  /// Native pointer to first local element in the vector
+  ElementType        * _lbegin;
+  /// Native pointer past the last local element in the vector
+  ElementType        * _lend;
 
 };
 

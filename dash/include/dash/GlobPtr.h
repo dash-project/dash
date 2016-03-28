@@ -53,7 +53,8 @@ public:
   /**
    * Constructor, specifies underlying global address.
    */
-  explicit GlobPtr(dart_gptr_t gptr) {
+  explicit GlobPtr(dart_gptr_t gptr)
+  {
     DASH_LOG_TRACE_VAR("GlobPtr(dart_gptr_t)", gptr);
     _dart_gptr = gptr;
   }
@@ -61,7 +62,8 @@ public:
   /**
    * Constructor for conversion of std::nullptr_t.
    */
-  GlobPtr(std::nullptr_t p) {
+  GlobPtr(std::nullptr_t p)
+  {
     DASH_LOG_TRACE("GlobPtr()", "nullptr");
     _dart_gptr = DART_GPTR_NULL;
   }
@@ -71,7 +73,8 @@ public:
    * reference.
    */
   GlobPtr(const dash::GlobRef<ElementType> & globref)
-  : _dart_gptr(globref.gptr().dart_gptr()) {
+  : _dart_gptr(globref.gptr().dart_gptr())
+  {
     DASH_LOG_TRACE("GlobPtr()", "GlobRef<T> globref");
   }
 
@@ -79,14 +82,16 @@ public:
    * Copy constructor.
    */
   GlobPtr(const self_t & other)
-  : _dart_gptr(other._dart_gptr) {
+  : _dart_gptr(other._dart_gptr)
+  {
     DASH_LOG_TRACE("GlobPtr()", "GlobPtr<T> other");
   }
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & rhs) {
+  self_t & operator=(const self_t & rhs)
+  {
     DASH_LOG_TRACE("GlobPtr.=()", "GlobPtr<T> rhs");
     DASH_LOG_TRACE_VAR("GlobPtr.=", rhs);
     if (this != &rhs) {
@@ -99,7 +104,8 @@ public:
   /**
    * Converts pointer to its underlying global address.
    */
-  explicit operator dart_gptr_t() const {
+  explicit operator dart_gptr_t() const
+  {
     return _dart_gptr;
   }
 
@@ -108,21 +114,24 @@ public:
    * \c nullptr if the \c GlobPtr does not point to a local
    * address.
    */
-  explicit operator ElementType*() const {
+  explicit operator ElementType*() const
+  {
     return local();
   }
 
   /**
    * The pointer's underlying global address.
    */
-  dart_gptr_t dart_gptr() const {
+  dart_gptr_t dart_gptr() const
+  {
     return _dart_gptr;
   }
 
   /**
    * Prefix increment operator.
    */
-  self_t & operator++() {
+  self_t & operator++()
+  {
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&_dart_gptr, sizeof(ElementType)),
       DART_OK);
@@ -132,7 +141,8 @@ public:
   /**
    * Postfix increment operator.
    */
-  self_t operator++(int) {
+  self_t operator++(int)
+  {
     self_t result = *this;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&_dart_gptr, sizeof(ElementType)),
@@ -143,7 +153,8 @@ public:
   /**
    * Pointer increment operator.
    */
-  self_t operator+(gptrdiff_t n) const {
+  self_t operator+(gptrdiff_t n) const
+  {
     dart_gptr_t gptr = _dart_gptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&gptr, n * sizeof(ElementType)),
@@ -154,7 +165,8 @@ public:
   /**
    * Pointer increment operator.
    */
-  self_t operator+=(gptrdiff_t n) {
+  self_t operator+=(gptrdiff_t n)
+  {
     self_t result = *this;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&_dart_gptr, n * sizeof(ElementType)),
@@ -165,7 +177,8 @@ public:
   /**
    * Prefix decrement operator.
    */
-  self_t & operator--() {
+  self_t & operator--()
+  {
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&_dart_gptr, -sizeof(ElementType)),
       DART_OK);
@@ -175,7 +188,8 @@ public:
   /**
    * Postfix decrement operator.
    */
-  self_t operator--(int) {
+  self_t operator--(int)
+  {
     self_t result = *this;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&_dart_gptr, -sizeof(ElementType)),
@@ -189,14 +203,16 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  index_type operator-(const self_t & rhs) {
+  index_type operator-(const self_t & rhs)
+  {
     return _dart_gptr - rhs.m_dart_ptr;
   }
 
   /**
    * Pointer decrement operator.
    */
-  self_t operator-(index_type n) const {
+  self_t operator-(index_type n) const
+  {
     dart_gptr_t gptr = _dart_gptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&gptr, -(n * sizeof(ElementType))),
@@ -207,7 +223,8 @@ public:
   /**
    * Pointer decrement operator.
    */
-  self_t operator-=(index_type n) {
+  self_t operator-=(index_type n)
+  {
     self_t result = *this;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&_dart_gptr, -(n * sizeof(ElementType))),
@@ -218,14 +235,16 @@ public:
   /**
    * Equality comparison operator.
    */
-  bool operator==(const self_t & other) const {
+  bool operator==(const self_t & other) const
+  {
     return DART_GPTR_EQUAL(_dart_gptr, other._dart_gptr);
   }
 
   /**
    * Inequality comparison operator.
    */
-  bool operator!=(const self_t & other) const {
+  bool operator!=(const self_t & other) const
+  {
     return !DART_GPTR_EQUAL(_dart_gptr, other._dart_gptr);
   }
 
@@ -235,7 +254,8 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  bool operator<(const self_t & other) const {
+  bool operator<(const self_t & other) const
+  {
     return (
       ( _dart_gptr.unitid <  other._dart_gptr.unitid )
         ||
@@ -257,7 +277,8 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  bool operator<=(const self_t & other) const {
+  bool operator<=(const self_t & other) const
+  {
     return (
       ( _dart_gptr.unitid <  other._dart_gptr.unitid )
         ||
@@ -279,7 +300,8 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  bool operator>(const self_t & other) const {
+  bool operator>(const self_t & other) const
+  {
     return (
       ( _dart_gptr.unitid >  other._dart_gptr.unitid )
         ||
@@ -301,7 +323,8 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  bool operator>=(const self_t & other) const {
+  bool operator>=(const self_t & other) const
+  {
     return (
       ( _dart_gptr.unitid >  other._dart_gptr.unitid )
         ||
@@ -320,7 +343,8 @@ public:
   /**
    * Subscript operator.
    */
-  const GlobRef<ElementType> operator[](gptrdiff_t n) const {
+  const GlobRef<ElementType> operator[](gptrdiff_t n) const
+  {
     self_t ptr = (*this)+n;
     return GlobRef<ElementType>(ptr);
   }
@@ -328,7 +352,8 @@ public:
   /**
    * Subscript assignment operator.
    */
-  GlobRef<ElementType> operator[](gptrdiff_t n) {
+  GlobRef<ElementType> operator[](gptrdiff_t n)
+  {
     self_t ptr = (*this)+n;
     return GlobRef<ElementType>(ptr);
   }
@@ -336,7 +361,8 @@ public:
   /**
    * Dereference operator.
    */
-  GlobRef<ElementType> operator*() {
+  GlobRef<ElementType> operator*()
+  {
     return GlobRef<ElementType>(*this);
   }
 

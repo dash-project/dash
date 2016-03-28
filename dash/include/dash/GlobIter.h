@@ -127,7 +127,8 @@ public:
     _idx(0),
     _max_idx(0),
     _myid(dash::myid()),
-    _lbegin(nullptr) {
+    _lbegin(nullptr)
+  {
     DASH_LOG_TRACE_VAR("GlobIter()", _idx);
     DASH_LOG_TRACE_VAR("GlobIter()", _max_idx);
   }
@@ -145,7 +146,8 @@ public:
     _idx(position),
     _max_idx(pat.size() - 1),
     _myid(dash::myid()),
-    _lbegin(_globmem->lbegin()) {
+    _lbegin(_globmem->lbegin())
+  {
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx,abs)", _idx);
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx,abs)", _max_idx);
   }
@@ -165,7 +167,8 @@ public:
   /**
    * The number of dimensions of the iterator's underlying pattern.
    */
-  static dim_t ndim() {
+  static dim_t ndim()
+  {
     return NumDimensions;
   }
 
@@ -174,7 +177,8 @@ public:
    *
    * \return  A global reference to the element at the iterator's position
    */
-  operator PointerType() const {
+  operator PointerType() const
+  {
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
@@ -207,7 +211,8 @@ public:
    * \return  A DART global pointer to the element at the iterator's
    *          position
    */
-  dart_gptr_t dart_gptr() const {
+  dart_gptr_t dart_gptr() const
+  {
     DASH_LOG_TRACE_VAR("GlobIter.dart_gptr()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
@@ -243,7 +248,8 @@ public:
    *
    * \return  A global reference to the element at the iterator's position.
    */
-  ReferenceType operator*() const {
+  ReferenceType operator*() const
+  {
     DASH_LOG_TRACE("GlobIter.*", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
@@ -266,7 +272,8 @@ public:
    */
   ReferenceType operator[](
     /// The global position of the element
-    IndexType g_index) const {
+    IndexType g_index) const
+  {
     DASH_LOG_TRACE("GlobIter.[]", g_index);
     IndexType idx = g_index;
     typedef typename pattern_type::local_index_t
@@ -287,14 +294,16 @@ public:
    * Checks whether the element referenced by this global iterator is in
    * the calling unit's local memory.
    */
-  inline bool is_local() const {
+  inline bool is_local() const
+  {
     return (_myid == lpos().unit);
   }
 
   /**
    * Convert global iterator to native pointer.
    */
-  ElementType * local() const {
+  ElementType * local() const
+  {
     DASH_LOG_TRACE_VAR("GlobIter.local=()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
@@ -376,6 +385,10 @@ public:
 
   /**
    * Whether the iterator's position is relative to a view.
+   *
+   * TODO: should be iterator trait:
+   *
+   *         dash::iterator_traits<GlobIter<..>>::is_relative()::value
    */
   inline constexpr bool is_relative() const noexcept
   {
@@ -403,7 +416,7 @@ public:
   /**
    * Prefix increment operator.
    */
-  self_t & operator++()
+  inline self_t & operator++()
   {
     ++_idx;
     return *this;
@@ -412,7 +425,7 @@ public:
   /**
    * Postfix increment operator.
    */
-  self_t operator++(int)
+  inline self_t operator++(int)
   {
     self_t result = *this;
     ++_idx;
@@ -422,7 +435,7 @@ public:
   /**
    * Prefix decrement operator.
    */
-  self_t & operator--()
+  inline self_t & operator--()
   {
     --_idx;
     return *this;
@@ -431,26 +444,26 @@ public:
   /**
    * Postfix decrement operator.
    */
-  self_t operator--(int)
+  inline self_t operator--(int)
   {
     self_t result = *this;
     --_idx;
     return result;
   }
 
-  self_t & operator+=(IndexType n)
+  inline self_t & operator+=(IndexType n)
   {
     _idx += n;
     return *this;
   }
 
-  self_t & operator-=(IndexType n)
+  inline self_t & operator-=(IndexType n)
   {
     _idx -= n;
     return *this;
   }
 
-  self_t operator+(IndexType n) const
+  inline self_t operator+(IndexType n) const
   {
     self_t res(
       _globmem,
@@ -459,7 +472,7 @@ public:
     return res;
   }
 
-  self_t operator-(IndexType n) const
+  inline self_t operator-(IndexType n) const
   {
     self_t res(
       _globmem,
@@ -468,13 +481,13 @@ public:
     return res;
   }
 
-  IndexType operator+(
+  inline IndexType operator+(
     const self_t & other) const
   {
     return _idx + other._idx;
   }
 
-  IndexType operator-(
+  inline IndexType operator-(
     const self_t & other) const
   {
     return _idx - other._idx;

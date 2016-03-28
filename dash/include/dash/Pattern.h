@@ -5,8 +5,8 @@ namespace dash {
 
 /**
  * \defgroup  DashPatternConcept  Pattern Concept
- * Concept for distribution pattern of n-dimensional containers to
- * units in a team.
+ * Concept of a distribution pattern of n-dimensional containers to units in
+ * a team.
  *
  * \ingroup DashConcept
  * \{
