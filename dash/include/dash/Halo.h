@@ -3,6 +3,8 @@
 
 #include <functional>
 
+#include <dash/Allocator.h>
+#include <dash/GlobMem.h>
 #include <dash/internal/Logging.h>
 
 namespace dash {
@@ -240,6 +242,11 @@ private:
             PointerType,
             ReferenceType>
     self_t;
+
+  typedef GlobMem<
+            ElementType,
+            dash::allocator::CollectiveAllocator<ElementType> >
+    GlobMem_t;
 
 private:
   static const dim_t      NumDimensions = PatternType::ndim();
@@ -695,7 +702,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline const GlobMem<ElementType> & globmem() const
+  inline const GlobMem_t & globmem() const
   {
     return *_globmem;
   }
@@ -706,7 +713,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline GlobMem<ElementType> & globmem()
+  inline GlobMem_t & globmem()
   {
     return *_globmem;
   }
@@ -986,7 +993,7 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMem<ElementType>             * _globmem          = nullptr;
+  GlobMem_t                        * _globmem          = nullptr;
   /// View specifying the block region. Iteration space contains the view
   /// elements within the boundary defined by the halo spec.
   const viewspec_type              * _viewspec         = nullptr;
@@ -1240,6 +1247,11 @@ private:
   typedef HaloBlock<ElementType, PatternType>
     self_t;
 
+  typedef GlobMem<
+            ElementType,
+            dash::allocator::CollectiveAllocator<ElementType> >
+    GlobMem_t;
+
 public:
   typedef PatternType                                           pattern_type;
   typedef typename PatternType::index_type                        index_type;
@@ -1261,15 +1273,15 @@ public:
    */
   HaloBlock(
     /// Global memory used to dereference iterated values.
-    GlobMem<ElementType> * globmem,
+    GlobMem_t           * globmem,
     // Pattern that created the encapsulated block.
-    const pattern_type   & pattern,
+    const pattern_type  & pattern,
     // View specifying the inner block region.
-    const viewspec_type  & viewspec,
+    const viewspec_type & viewspec,
     // The halo to apply to the block.
-    const halospec_type  & halospec,
+    const halospec_type & halospec,
     /// Offset of the view's first index in global memory storage space.
-    index_type             view_index_offset = 0)
+    index_type            view_index_offset = 0)
   : _globmem(globmem),
     _pattern(&pattern),
     _viewspec_inner(
@@ -1306,7 +1318,10 @@ public:
    */
   self_t & operator=(const self_t & other) = default;
 
-  inline GlobMem<ElementType> & globmem()
+  /**
+   * Global memory accessor used to dereference iterated values.
+   */
+  inline GlobMem_t & globmem()
   {
     return *_globmem;
   }
@@ -1530,15 +1545,15 @@ private:
   }
 
 private:
-  /// Global memory used to dereference iterated values.
-  GlobMem<ElementType> * _globmem        = nullptr;
+  /// Global memory accessor used to dereference iterated values.
+  GlobMem_t               * _globmem        = nullptr;
 
   /// The pattern that created the encapsulated block.
-  const pattern_type   * _pattern        = nullptr;
+  const pattern_type      * _pattern        = nullptr;
 
   /// View specifying the original internal block region and its iteration
   /// space.
-  const viewspec_type  * _viewspec_inner = nullptr;
+  const viewspec_type     * _viewspec_inner = nullptr;
 
   /// Offsets of the inner viewspec are used as origin reference.
   /// The outer viewspec is offset the halo's minimal neighbor offsets and
@@ -1550,10 +1565,10 @@ private:
   /// (12-2, 20-2) = (10,18)
   /// and extents
   /// (23+4, 42+4) = (27,46).
-  viewspec_type          _viewspec_outer;
+  viewspec_type              _viewspec_outer;
 
   /// The halo to apply to the encapsulated block.
-  const halospec_type  * _halospec       = nullptr;
+  const halospec_type      * _halospec       = nullptr;
 
   /// Viewspecs for all contiguous boundaries in the halo block.
   std::vector<viewspec_type> _boundary_regions;
@@ -1563,11 +1578,11 @@ private:
 
   /// View proxy accessor providing iteration space of elements in inner
   /// block boundaries.
-  boundary_view_type     _boundary_view;
+  boundary_view_type         _boundary_view;
 
   /// View proxy accessor providing iteration space of elements in outer
   /// (halo) block boundaries.
-  halo_view_type         _halo_view;
+  halo_view_type             _halo_view;
 
 }; // class HaloBlock
 

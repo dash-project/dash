@@ -11,6 +11,18 @@
 #include <dash/Exception.h>
 #include <dash/Init.h>
 
+std::ostream & operator<<(
+  std::ostream      & os,
+  const dart_gptr_t & dartptr);
+
+bool operator==(
+  const dart_gptr_t & lhs,
+  const dart_gptr_t & rhs);
+
+bool operator!=(
+  const dart_gptr_t & lhs,
+  const dart_gptr_t & rhs);
+
 namespace dash {
 
 // Forward-declarations
@@ -18,7 +30,7 @@ template<typename T> class GlobRef;
 template<typename T, class PatternT> class GlobPtr;
 template<typename T, class PatternT>
 std::ostream & operator<<(
-  std::ostream & os,
+  std::ostream               & os,
   const GlobPtr<T, PatternT> & it);
 
 template<
@@ -237,7 +249,7 @@ public:
    */
   bool operator==(const self_t & other) const
   {
-    return DART_GPTR_EQUAL(_dart_gptr, other._dart_gptr);
+    return _dart_gptr == other._dart_gptr;
   }
 
   /**
@@ -245,7 +257,7 @@ public:
    */
   bool operator!=(const self_t & other) const
   {
-    return !DART_GPTR_EQUAL(_dart_gptr, other._dart_gptr);
+    return _dart_gptr != other._dart_gptr;
   }
 
   /**
@@ -447,9 +459,5 @@ std::ostream & operator<<(
 }
 
 } // namespace dash
-
-std::ostream & operator<<(
-  std::ostream      & os,
-  const dart_gptr_t & dartptr);
 
 #endif // DASH__GLOB_PTR_H_

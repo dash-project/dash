@@ -25,7 +25,7 @@ namespace internal {
 /**
  * Signed integer type used as default for index values.
  */
-typedef internal::default_signed_index default_index_t;
+typedef internal::default_signed_index    default_index_t;
 
 /**
  * Unsigned integer type used as default for extent values.
@@ -35,12 +35,12 @@ typedef internal::default_unsigned_index default_extent_t;
 /**
  * Unsigned integer type used as default for size values.
  */
-typedef internal::default_unsigned_index default_size_t;
+typedef internal::default_unsigned_index   default_size_t;
 
 /**
  * Difference type for global pointers.
  */
-typedef internal::default_signed_index gptrdiff_t;
+typedef internal::default_signed_index         gptrdiff_t;
 
 template<
   dash::dim_t NumDimensions,

@@ -69,6 +69,17 @@
   } \
 } while(0)
 
+#define DASH_ASSERT_NE(val_a, val_b, message) do { \
+  if ((val_a) == (val_b)) { \
+    DASH_THROW(dash::exception::AssertionFailed, \
+               "Assertion " \
+               << val_a << " != " << val_b \
+               << " failed: " \
+               << message << " " \
+               << __FILE__ << ":" << __LINE__); \
+  } \
+} while(0)
+
 // Using (value+1) < (min+1) to avoid compiler warning for unsigned.
 #define DASH_ASSERT_GT(value, min, message) do { \
   if (((value)+1) <= ((min)+1)) { \
@@ -131,6 +142,10 @@
           dash__unused(upper);   \
         } while(0)
 #define DASH_ASSERT_EQ(val, exp, message) do { \
+          dash__unused(val); \
+          dash__unused(exp); \
+        } while (0)
+#define DASH_ASSERT_NE(val, exp, message) do { \
           dash__unused(val); \
           dash__unused(exp); \
         } while (0)

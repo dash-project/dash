@@ -2,6 +2,8 @@
 #define DASH__GLOB_ASYNC_REF_H__
 
 #include <dash/GlobPtr.h>
+#include <dash/Allocator.h>
+#include <dash/GlobMem.h>
 
 #include <iostream>
 
@@ -35,14 +37,18 @@ namespace dash {
  * \endcode
  */
 template<typename T>
-class GlobAsyncRef {
-private:
-  typedef GlobAsyncRef<T> self_t;
-
+class GlobAsyncRef
+{
   template<typename U>
   friend std::ostream & operator<<(
     std::ostream & os,
     const GlobAsyncRef<U> & gar);
+
+private:
+  typedef GlobAsyncRef<T>
+    self_t;
+  typedef GlobMem<T, dash::allocator::CollectiveAllocator<T> >
+    GlobMem_t;
 
 public:
   /**
@@ -51,14 +57,14 @@ public:
    */
   GlobAsyncRef(
     /// Instance of GlobMem that issued this global reference
-    GlobMem<T> * globmem,
+    GlobMem_t * globmem,
     /// Pointer to referenced object in global memory
-    T * lptr)
+    T         * lptr)
   : _value(*lptr),
     _lptr(lptr),
     _is_local(true),
-    _has_value(true) {
-  }
+    _has_value(true)
+  { }
 
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in
@@ -70,8 +76,8 @@ public:
   : _value(*lptr),
     _lptr(lptr),
     _is_local(true),
-    _has_value(true) {
-  }
+    _has_value(true)
+  { }
 
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in
@@ -80,11 +86,12 @@ public:
   template<class PatternT>
   GlobAsyncRef(
     /// Instance of GlobMem that issued this global reference
-    GlobMem<T>           * globmem,
+    GlobMem_t            * globmem,
     /// Pointer to referenced object in global memory
     GlobPtr<T, PatternT> & gptr)
   : _gptr(gptr.dart_gptr()),
-    _is_local(gptr.is_local()) {
+    _is_local(gptr.is_local())
+  {
     if (_is_local) {
       _value     = *gptr;
       _lptr      = (T*)(gptr);
@@ -101,7 +108,8 @@ public:
     /// Pointer to referenced object in global memory
     GlobPtr<T, PatternT> & gptr)
   : _gptr(gptr.dart_gptr()),
-    _is_local(gptr.is_local()) {
+    _is_local(gptr.is_local())
+  {
     if (_is_local) {
       _value     = *gptr;
       _lptr      = (T*)(gptr);
@@ -115,9 +123,9 @@ public:
    */
   GlobAsyncRef(
     /// Instance of GlobMem that issued this global reference
-    GlobMem<T>           * globmem,
+    GlobMem_t   * globmem,
     /// Pointer to referenced object in global memory
-    dart_gptr_t dart_gptr)
+    dart_gptr_t   dart_gptr)
   : _gptr(dart_gptr)
   {
     GlobPtr<T> gptr(dart_gptr);
@@ -153,11 +161,11 @@ public:
    */
   GlobAsyncRef(
     /// Instance of GlobMem that issued this global reference
-    GlobMem<T> * globmem,
+    GlobMem_t  * globmem,
     /// Pointer to referenced object in global memory
     GlobRef<T> & gref)
-  : GlobAsyncRef(globmem, gref.gptr()) {
-  }
+  : GlobAsyncRef(globmem, gref.gptr())
+  { }
 
   /**
    * Conctructor, creates an GlobRefAsync object referencing an element in
@@ -166,20 +174,22 @@ public:
   GlobAsyncRef(
     /// Pointer to referenced object in global memory
     GlobRef<T> & gref)
-  : GlobAsyncRef(gref.dart_gptr()) {
-  }
+  : GlobAsyncRef(gref.dart_gptr())
+  { }
 
   /**
    * Whether the referenced element is located in local memory.
    */
-  bool is_local() const {
+  inline bool is_local() const
+  {
     return _is_local;
   }
 
   /**
    * Conversion operator to referenced element value.
    */
-  operator T() const {
+  operator T() const
+  {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.T()", _gptr);
     if (!_is_local) {
       dart_get(static_cast<void *>(&_value), _gptr, sizeof(T));
@@ -191,7 +201,8 @@ public:
    * Comparison operator, true if both GlobAsyncRef objects points to same
    * element in local / global memory.
    */
-  bool operator==(const self_t & other) const {
+  bool operator==(const self_t & other) const
+  {
     return (_lptr == other._lptr &&
             _gptr == other._gptr);
   }
@@ -200,7 +211,8 @@ public:
    * Value assignment operator, sets new value in local memory or calls
    * non-blocking put on remote memory.
    */
-  self_t & operator=(const T & new_value) {
+  self_t & operator=(const T & new_value)
+  {
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=()", new_value);
     DASH_LOG_TRACE_VAR("GlobAsyncRef.=", _gptr);
     // TODO: Comparison with current value could be inconsistent
@@ -221,14 +233,16 @@ public:
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & other) {
+  self_t & operator=(const self_t & other)
+  {
     return *this = T(other);
   }
 
   /**
    * Value increment operator.
    */
-  self_t & operator+=(const T & ref) {
+  self_t & operator+=(const T & ref)
+  {
     T val = operator T();
     val += ref;
     operator=(val);
@@ -238,7 +252,8 @@ public:
   /**
    * Prefix increment operator.
    */
-  self_t & operator++() {
+  self_t & operator++()
+  {
     T val = operator T();
     ++val;
     operator=(val);
@@ -248,7 +263,8 @@ public:
   /**
    * Postfix increment operator.
    */
-  self_t operator++(int) {
+  self_t operator++(int)
+  {
     self_t result = *this;
     T val = operator T();
     ++val;
@@ -259,7 +275,8 @@ public:
   /**
    * Value decrement operator.
    */
-  self_t & operator-=(const T & ref) {
+  self_t & operator-=(const T & ref)
+  {
     T val = operator T();
     val  -= ref;
     operator=(val);
@@ -269,7 +286,8 @@ public:
   /**
    * Prefix decrement operator.
    */
-  self_t & operator--() {
+  self_t & operator--()
+  {
     T val = operator T();
     --val;
     operator=(val);
@@ -279,7 +297,8 @@ public:
   /**
    * Postfix decrement operator.
    */
-  self_t operator--(int) {
+  self_t operator--(int)
+  {
     self_t result = *this;
     T val = operator T();
     --val;
@@ -289,7 +308,7 @@ public:
 
 private:
   /// Instance of GlobMem that issued this global reference
-  GlobMem<T> * _globmem;
+  GlobMem_t  * _globmem;
   /// Value of the referenced element, initially not loaded
   mutable T    _value;
   /// Pointer to referenced element in global memory

@@ -7,6 +7,8 @@
 #include <dash/Pattern.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
+#include <dash/GlobMem.h>
+#include <dash/Allocator.h>
 #include <dash/HView.h>
 #include <dash/Container.h>
 
@@ -149,7 +151,7 @@ private:
     Pattern_t;
   typedef GlobIter<ElementT, Pattern_t>
     GlobIter_t;
-  typedef GlobMem<ElementT>
+  typedef GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>
     GlobMem_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
@@ -560,7 +562,7 @@ private:
   /// The matrix elements' distribution pattern
   Pattern_t                    _pattern;
   /// Global memory allocation and -access
-  GlobMem<ElementT>          * _glob_mem;
+  GlobMem_t                  * _glob_mem;
   /// Native pointer to first local element in the array
   ElementT                   * _lbegin;
   /// Native pointer past last local element in the array

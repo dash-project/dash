@@ -2,9 +2,11 @@
 #define DASH__GLOB_VIEW_ITER_H__INCLUDED
 
 #include <dash/Pattern.h>
+#include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
 #include <dash/GlobIter.h>
+#include <dash/GlobMem.h>
 
 #include <cstddef>
 #include <functional>
@@ -25,9 +27,9 @@ class GlobStencilIter;
 
 template<
   typename ElementType,
-  class PatternType   = Pattern<1>,
-  class PointerType   = GlobPtr<ElementType, PatternType>,
-  class ReferenceType = GlobRef<ElementType> >
+  class    PatternType   = Pattern<1>,
+  class    PointerType   = GlobPtr<ElementType, PatternType>,
+  class    ReferenceType = GlobRef<ElementType> >
 class GlobViewIter
 : public std::iterator<
            std::random_access_iterator_tag,
@@ -43,6 +45,10 @@ private:
     ViewSpecType;
   typedef typename PatternType::index_type
     IndexType;
+  typedef GlobMem<
+            ElementType,
+            dash::allocator::CollectiveAllocator<ElementType> >
+    GlobMem_t;
 
 public:
   typedef       ReferenceType                      reference;
@@ -81,7 +87,7 @@ private:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobMem<ElementType>       * _globmem;
+  GlobMem_t                  * _globmem;
   /// Pattern that specifies the iteration order (access pattern).
   const PatternType          * _pattern;
   /// View that specifies the iterator's index range relative to the global
@@ -121,7 +127,7 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobViewIter(
-    GlobMem<ElementType> * gmem,
+    GlobMem_t            * gmem,
 	  const PatternType    & pat,
     const ViewSpecType   & viewspec,
 	  IndexType              position          = 0,
@@ -146,7 +152,7 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobViewIter(
-    GlobMem<ElementType> * gmem,
+    GlobMem_t            * gmem,
 	  const PatternType    & pat,
 	  IndexType              position          = 0,
     IndexType              view_index_offset = 0)
@@ -539,7 +545,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline const GlobMem<ElementType> & globmem() const
+  inline const GlobMem_t & globmem() const
   {
     return *_globmem;
   }
@@ -548,7 +554,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobMem<ElementType> & globmem()
+  inline GlobMem_t & globmem()
   {
     return *_globmem;
   }

@@ -139,7 +139,7 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
   // Allocate and initialize memory ranges:
   _ref._refview    = new MatrixRefView_t(this);
-  _glob_mem        = new GlobMem_t(pattern.team(), _lcapacity);
+  _glob_mem        = new GlobMem_t(_lcapacity, pattern.team());
   _begin           = GlobIter_t(_glob_mem, _pattern);
   _lbegin          = _glob_mem->lbegin();
   _lend            = _glob_mem->lend();

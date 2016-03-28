@@ -57,8 +57,13 @@ class GlobIter
 private:
   typedef GlobIter<ElementType, PatternType, PointerType, ReferenceType>
     self_t;
+
   typedef typename PatternType::index_type
     IndexType;
+  typedef GlobMem<
+            ElementType,
+            dash::allocator::CollectiveAllocator<ElementType> >
+    GlobMem_t;
 
 public:
   typedef       ReferenceType                      reference;
@@ -105,7 +110,7 @@ private:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobMem<ElementType> * _globmem;
+  GlobMem_t            * _globmem;
   /// Pattern that specifies the iteration order (access pattern).
   const PatternType    * _pattern;
   /// Current position of the iterator in global canonical index space.
@@ -138,7 +143,7 @@ public:
    * the element order specified by the given pattern.
    */
   GlobIter(
-    GlobMem<ElementType> * gmem,
+    GlobMem_t            * gmem,
 	  const PatternType    & pat,
 	  IndexType              position = 0)
   : _globmem(gmem),
@@ -399,7 +404,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline const GlobMem<ElementType> & globmem() const
+  inline const GlobMem_t & globmem() const
   {
     return *_globmem;
   }
@@ -408,7 +413,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobMem<ElementType> & globmem()
+  inline GlobMem_t & globmem()
   {
     return *_globmem;
   }

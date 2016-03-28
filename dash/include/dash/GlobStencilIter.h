@@ -2,9 +2,11 @@
 #define DASH__GLOB_STENCIL_ITER_H_
 
 #include <dash/Pattern.h>
+#include <dash/Halo.h>
+#include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <dash/Halo.h>
+#include <dash/GlobMem.h>
 
 #include <iterator>
 #include <array>
@@ -136,6 +138,11 @@ private:
             ReferenceType>
     self_t;
 
+  typedef GlobMem<
+            ElementType,
+            dash::allocator::CollectiveAllocator<ElementType> >
+    GlobMem_t;
+
   typedef typename PatternType::viewspec_type
     ViewSpecType;
   typedef typename PatternType::index_type
@@ -177,24 +184,24 @@ public:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobMem<ElementType>       * _globmem;
+  GlobMem_t           * _globmem;
   /// Pattern that specifies the iteration order (access pattern).
-  const PatternType          * _pattern;
+  const PatternType   * _pattern;
   /// View that specifies the iterator's index range relative to the global
   /// index range of the iterator's pattern.
-  const ViewSpecType         * _viewspec;
+  const ViewSpecType  * _viewspec;
   /// Current position of the iterator relative to the iterator's view.
-  IndexType                    _idx             = 0;
+  IndexType             _idx             = 0;
   /// The iterator's view index start offset.
-  IndexType                    _view_idx_offset = 0;
+  IndexType             _view_idx_offset = 0;
   /// Maximum position relative to the viewspec allowed for this iterator.
-  IndexType                    _max_idx         = 0;
+  IndexType             _max_idx         = 0;
   /// Unit id of the active unit
-  dart_unit_t                  _myid;
+  dart_unit_t           _myid;
   /// Pointer to first element in local memory
-  ElementType                * _lbegin          = nullptr;
+  ElementType         * _lbegin          = nullptr;
   /// Specification of the iterator's stencil.
-  HaloSpecType                 _halospec;
+  HaloSpecType          _halospec;
 
 public:
   /**
@@ -219,12 +226,12 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobStencilIter(
-    GlobMem<ElementType> * gmem,
-	  const PatternType    & pat,
-    const ViewSpecType   & viewspec,
-    const HaloSpecType   & halospec,
-	  IndexType              position          = 0,
-    IndexType              view_index_offset = 0)
+    GlobMem_t          * gmem,
+	  const PatternType  & pat,
+    const ViewSpecType & viewspec,
+    const HaloSpecType & halospec,
+	  IndexType            position          = 0,
+    IndexType            view_index_offset = 0)
   : _globmem(gmem),
     _pattern(&pat),
     _viewspec(&viewspec),
@@ -238,7 +245,8 @@ public:
     DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,vs,hs,idx,abs)", _idx);
     DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,vs,hs,idx,abs)", _max_idx);
     DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,vs,hs,idx,abs)", *_viewspec);
-    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,vs,hs,idx,abs)", _view_idx_offset);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,vs,hs,idx,abs)",
+                       _view_idx_offset);
   }
 
   /**
@@ -246,11 +254,11 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobStencilIter(
-    GlobMem<ElementType> * gmem,
-	  const PatternType    & pat,
-    const HaloSpecType   & halospec,
-	  IndexType              position          = 0,
-    IndexType              view_index_offset = 0)
+    GlobMem_t          * gmem,
+	  const PatternType  & pat,
+    const HaloSpecType & halospec,
+	  IndexType            position          = 0,
+    IndexType            view_index_offset = 0)
   : _globmem(gmem),
     _pattern(&pat),
     _viewspec(nullptr),
@@ -263,7 +271,8 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,hs,idx,abs)", _idx);
     DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,hs,idx,abs)", _max_idx);
-    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,hs,idx,abs)", _view_idx_offset);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,hs,idx,abs)",
+                       _view_idx_offset);
   }
 
   /**
@@ -274,12 +283,12 @@ public:
     const GlobIter<ElementType, PatternType, PtrT, RefT> & other,
     const ViewSpecType                                   & viewspec,
     const HaloSpecType                                   & halospec,
-    IndexType                                              view_idx_offset = 0)
+    IndexType                                              view_idx_offs = 0)
   : _globmem(&other.globmem()),
     _pattern(other._pattern),
     _viewspec(&viewspec),
     _idx(other._idx),
-    _view_idx_offset(view_idx_offset),
+    _view_idx_offset(view_idx_offs),
     _max_idx(other._max_idx),
     _myid(other._myid),
     _lbegin(other._lbegin),
@@ -509,7 +518,8 @@ public:
       local_pos        = _pattern->local_index(glob_coords);
     }
     DASH_LOG_TRACE_VAR("GlobStencilIter.GlobPtr >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobStencilIter.GlobPtr >", local_pos.index + offset);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.GlobPtr >",
+                       local_pos.index + offset);
     // Create global pointer from unit and local offset:
     PointerType gptr(
       _globmem->index_to_gptr(local_pos.unit, local_pos.index)
@@ -834,7 +844,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline const GlobMem<ElementType> & globmem() const
+  inline const GlobMem_t & globmem() const
   {
     return *_globmem;
   }
@@ -845,7 +855,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline GlobMem<ElementType> & globmem()
+  inline GlobMem_t & globmem()
   {
     return *_globmem;
   }
