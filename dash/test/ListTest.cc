@@ -29,5 +29,13 @@ TEST_F(ListTest, Initialization)
   // capacity is initial size:
   ASSERT_EQ_U(capacity,  list.capacity());
   ASSERT_EQ_U(lcapacity, list.lcapacity());
+
+  list.local.push_back(myid + 1);
+  list.local.push_back(myid + 2);
+  list.local.push_back(myid + 3);
+
+  list.barrier();
+  ASSERT_EQ_U(3,          list.lsize());
+  ASSERT_EQ_U(3 * nunits, list.size());
 }
 
