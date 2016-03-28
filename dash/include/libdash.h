@@ -30,6 +30,7 @@
 #include <dash/Exception.h>
 #include <dash/Algorithm.h>
 #include <dash/Halo.h>
+#include <dash/Allocator.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>

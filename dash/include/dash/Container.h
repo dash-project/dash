@@ -60,5 +60,6 @@
 
 #include<dash/Array.h>
 #include<dash/Matrix.h>
+#include<dash/List.h>
 
 #endif // DASH__CONTAINER_H_

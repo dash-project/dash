@@ -1,5 +1,5 @@
-#ifndef DASH__TEST__VECTOR_TEST_H_
-#define DASH__TEST__VECTOR_TEST_H_
+#ifndef DASH__TEST__LIST_TEST_H_
+#define DASH__TEST__LIST_TEST_H_
 
 #include <gtest/gtest.h>
 #include <libdash.h>
@@ -7,23 +7,23 @@
 #include "TestBase.h"
 
 /**
- * Test fixture for class dash::Vector
+ * Test fixture for class dash::List
  */
-class VectorTest : public ::testing::Test {
+class ListTest : public ::testing::Test {
 protected:
   size_t _dash_id;
   size_t _dash_size;
   int _num_elem;
 
-  VectorTest()
+  ListTest()
   : _dash_id(0),
     _dash_size(0),
     _num_elem(0) {
-    LOG_MESSAGE(">>> Test suite: VectorTest");
+    LOG_MESSAGE(">>> Test suite: ListTest");
   }
 
-  virtual ~VectorTest() {
-    LOG_MESSAGE("<<< Closing test suite: VectorTest");
+  virtual ~ListTest() {
+    LOG_MESSAGE("<<< Closing test suite: ListTest");
   }
 
   virtual void SetUp() {
@@ -41,4 +41,4 @@ protected:
   }
 };
 
-#endif // DASH__TEST__VECTOR_TEST_H_
+#endif // DASH__TEST__LIST_TEST_H_
