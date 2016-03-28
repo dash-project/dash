@@ -551,7 +551,8 @@ private:
   Array_t    * _arr;
   /// The view's offset and extent within the referenced array.
   ViewSpec_t   _viewspec;
-};
+
+}; // class ArrayRef
 
 /**
  * A distributed array.
@@ -567,8 +568,8 @@ private:
  */
 template<
   typename ElementType,
-  typename IndexType   = dash::default_index_t,
-  class PatternType    = Pattern<1, ROW_MAJOR, IndexType> >
+  typename IndexType    = dash::default_index_t,
+  class    PatternType  = CSRPattern<1, ROW_MAJOR, IndexType> >
 class Array
 {
 private:

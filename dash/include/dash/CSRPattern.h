@@ -1375,7 +1375,8 @@ public:
     DASH_LOG_TRACE_VAR("CSRPattern.init_lcapacity", _nunits);
     // Local capacity is maximum number of elements assigned to a single unit,
     // i.e. the maximum local size:
-    l_capacity = *(std::max_element(_local_sizes.begin(), _local_sizes.end()));
+    l_capacity = *(std::max_element(_local_sizes.begin(),
+                                    _local_sizes.end()));
     DASH_LOG_DEBUG_VAR("CSRPattern.init_lcapacity >", l_capacity);
     return l_capacity;
   }
@@ -2736,7 +2737,8 @@ public:
     DASH_LOG_TRACE_VAR("CSRPattern.init_lcapacity", _nunits);
     // Local capacity is maximum number of elements assigned to a single unit,
     // i.e. the maximum local size:
-    l_capacity = *(std::max_element(_local_sizes.begin(), _local_sizes.end()));
+    l_capacity = *(std::max_element(_local_sizes.begin(),
+                                    _local_sizes.end()));
     DASH_LOG_DEBUG_VAR("CSRPattern.init_lcapacity >", l_capacity);
     return l_capacity;
   }
@@ -2780,7 +2782,6 @@ public:
   }
 
 };
-
 
 } // namespace dash
 
