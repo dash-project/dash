@@ -14,6 +14,7 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
+#include <dash/Allocator.h>
 
 namespace dash {
 
@@ -25,69 +26,66 @@ namespace dash {
  * \{
  * \par Description
  *
- * \par Methods
+ * \par Member types
+ *
+ * Type                            | Definition
+ * ------------------------------- | ----------------------------------------------------------------------------------------
+ * <tt>value_type</tt>             | First template parameter <tt>ElementType</tt>
+ * <tt>allocator_type</tt>         | Second template parameter <tt>AllocatorType</tt>
+ * <tt>reference</tt>              | <tt>value_type &</tt>
+ * <tt>const_reference</tt>        | <tt>const value_type &</tt>
+ * <tt>pointer</tt>                | <tt>allocator_traits<allocator_type>::pointer</tt>
+ * <tt>const_pointer</tt>          | <tt>allocator_traits<allocator_type>::const_pointer</tt>
+ * <tt>iterator</tt>               | A bidirectional iterator to <tt>value_type</tt>
+ * <tt>const_iterator</tt>         | A bidirectional iterator to <tt>const value_type</tt>
+ * <tt>reverse_iterator</tt>       | <tt>reverse_iterator<iterator></tt>
+ * <tt>const_reverse_iterator</tt> | <tt>reverse_iterator<const_iterator></tt>
+ * <tt>difference_type</tt>        | A signed integral type, identical to <tt>iterator_traits<iterator>::difference_type</tt>
+ * <tt>size_type</tt>              | Unsigned integral type to represent any non-negative value of <tt>difference_type</tt>
+ *
+ * \par Member functions
  *
  * \}
  */
 
-/*
-   STANDARD TYPE DEFINITION CONVENTIONS FOR STL CONTAINERS
-
-            value_type  Type of element
-        allocator_type  Type of memory manager
-             size_type  Unsigned type of container
-                        subscripts, element counts, etc.
-       difference_type  Signed type of difference between
-                        iterators
-
-              iterator  Behaves like value_type*
-        const_iterator  Behaves like const value_type*
-      reverse_iterator  Behaves like value_type*
-const_reverse_iterator  Behaves like const value_type*
-
-             reference  value_type&
-       const_reference  const value_type&
-
-               pointer  Behaves like value_type*
-         const_pointer  Behaves like const value_type*
-*/
-
 // forward declaration
 template<
   typename ElementType,
-  typename IndexType,
+  class    AllocatorType,
   class    PatternType >
 class List;
 
+/**
+ * Proxy type representing a local view on a referenced \c dash::List.
+ *
+ * \concept{DashContainerConcept}
+ * \concept{DashListConcept}
+ */
 template<
   typename T,
-  typename IndexType,
+  class    AllocatorType,
   class    PatternType >
 class LocalListRef
 {
-private:
-  static const dim_t NumDimensions = 1;
-
-  typedef LocalListRef<T, IndexType, PatternType>
-    self_t;
-  typedef List<T, IndexType, PatternType>
-    List_t;
-  typedef ViewSpec<NumDimensions, IndexType>
-    ViewSpec_t;
-  typedef std::array<typename PatternType::size_type, NumDimensions>
-    Extents_t;
-
-public:
   template <typename T_, typename I_, typename P_>
     friend class LocalListRef;
 
+private:
+  static const dim_t NumDimensions = 1;
+
+public:
+/// Type definitions required for dash::List concept:
+  typedef typename PatternType::index_type                   index_type;
+  /// Type alias for LocalListRef<T,I,P>::view_type
+  typedef LocalListRef<T, index_type, PatternType>                 View;
+
+/// Type definitions required for std::list concept:
 public:
   typedef T                                                  value_type;
 
-  typedef typename std::make_unsigned<IndexType>::type        size_type;
-  typedef IndexType                                          index_type;
+  typedef typename std::make_unsigned<index_type>::type       size_type;
 
-  typedef IndexType                                     difference_type;
+  typedef index_type                                    difference_type;
 
   typedef T &                                                 reference;
   typedef const T &                                     const_reference;
@@ -95,23 +93,28 @@ public:
   typedef T *                                                   pointer;
   typedef const T *                                       const_pointer;
 
-public:
-  /// Type alias for LocalListRef<T,I,P>::view_type
-  typedef LocalListRef<T, IndexType, PatternType>
-    View;
+private:
+  typedef LocalListRef<T, AllocatorType, PatternType>
+    self_t;
+  typedef List<T, AllocatorType, PatternType>
+    List_t;
+  typedef ViewSpec<NumDimensions, index_type>
+    ViewSpec_t;
+  typedef std::array<typename PatternType::size_type, NumDimensions>
+    Extents_t;
 
 public:
   /**
    * Constructor, creates a local access proxy for the given list.
    */
   LocalListRef(
-    List<T, IndexType, PatternType> * list)
+    List<T, index_type, PatternType> * list)
   : _list(list)
   { }
 
   LocalListRef(
     /// Pointer to list instance referenced by this view.
-    List<T, IndexType, PatternType> * list,
+    List<T, index_type, PatternType> * list,
     /// The view's offset and extent within the referenced list.
     const ViewSpec_t & viewspec)
   : _list(list),
@@ -209,34 +212,33 @@ private:
   /// Pointer to list instance referenced by this view.
   List_t * const _list;
   /// The view's offset and extent within the referenced list.
-  ViewSpec_t      _viewspec;
+  ViewSpec_t     _viewspec;
 };
 
-
+/**
+ * Proxy type referencing a \c dash::List.
+ *
+ * \concept{DashContainerConcept}
+ * \concept{DashListConcept}
+ */
 template<
   typename ElementType,
-  typename IndexType,
+  class    AllocatorType,
   class    PatternType>
 class ListRef
 {
 private:
   static const dim_t NumDimensions = 1;
 
-  typedef ListRef<ElementType, IndexType, PatternType>
-    self_t;
-  typedef List<ElementType, IndexType, PatternType>
-    List_t;
-  typedef ViewSpec<NumDimensions, IndexType>
-    ViewSpec_t;
-  typedef std::array<typename PatternType::size_type, NumDimensions>
-    Extents_t;
-
-/// Public types as required by iterator concept
 public:
+/// Type definitions required for dash::List concept:
+  typedef typename PatternType::index_type                        index_type;
   typedef ElementType                                             value_type;
-  typedef IndexType                                               index_type;
-  typedef typename std::make_unsigned<IndexType>::type             size_type;
-  typedef typename std::make_unsigned<IndexType>::type       difference_type;
+
+/// Public types as required by std::list concept:
+public:
+  typedef typename std::make_unsigned<index_type>::type            size_type;
+  typedef typename std::make_unsigned<index_type>::type      difference_type;
 
   typedef       GlobIter<value_type, PatternType>                   iterator;
   typedef const GlobIter<value_type, PatternType>             const_iterator;
@@ -254,16 +256,26 @@ public:
   /// The type of the pattern used to distribute list elements to units
   typedef PatternType
     pattern_type;
-  typedef ListRef<ElementType, IndexType, PatternType>
+  typedef ListRef<ElementType, AllocatorType, PatternType>
     view_type;
-  typedef LocalListRef<value_type, IndexType, PatternType>
+  typedef LocalListRef<value_type, AllocatorType, PatternType>
     local_type;
   /// Type alias for List<T,I,P>::local_type
-  typedef LocalListRef<value_type, IndexType, PatternType>
+  typedef LocalListRef<value_type, AllocatorType, PatternType>
     Local;
   /// Type alias for List<T,I,P>::view_type
-  typedef ListRef<ElementType, IndexType, PatternType>
+  typedef ListRef<ElementType, AllocatorType, PatternType>
     View;
+
+private:
+  typedef ListRef<ElementType, AllocatorType, PatternType>
+    self_t;
+  typedef List<ElementType, AllocatorType, PatternType>
+    List_t;
+  typedef ViewSpec<NumDimensions, index_type>
+    ViewSpec_t;
+  typedef std::array<typename PatternType::size_type, NumDimensions>
+    Extents_t;
 
 public:
   ListRef(
@@ -361,26 +373,41 @@ private:
 
 
 /**
- * A dynamic list with support for workload balancing.
+ * A dynamic bi-directional list with support for workload balancing.
  *
  * \concept{DashContainerConcept}
  * \concept{DashListConcept}
  */
 template<
   typename ElementType,
-  typename IndexType   = dash::default_index_t,
-  class PatternType    = CSRPattern<1, ROW_MAJOR, IndexType> >
+  class    AllocatorType
+             = dash::allocator::LocalAllocator,
+  class    PatternType
+             = dash::CSRPattern<1, ROW_MAJOR, dash::default_index_t> >
 class List
 {
-private:
-  typedef List<ElementType, IndexType, PatternType> self_t;
+  template<
+    typename T_,
+    class    A_,
+    class    P_>
+  friend class LocalListRef;
+
+/// Public types as required by dash container concept
+public:
+  /// The type of the pattern used to distribute list elements to units
+  typedef PatternType                                           pattern_type;
+  typedef typename PatternType::index_type                        index_type;
+  typedef LocalListRef<ElementType, AllocatorType, PatternType>   local_type;
+
+  typedef LocalListRef<ElementType, AllocatorType, PatternType>        Local;
+  typedef ListRef<ElementType, AllocatorType, PatternType>              View;
 
 /// Public types as required by iterator concept
 public:
   typedef ElementType                                             value_type;
-  typedef IndexType                                               index_type;
-  typedef typename std::make_unsigned<IndexType>::type             size_type;
-  typedef typename std::make_unsigned<IndexType>::type       difference_type;
+  typedef typename std::make_unsigned<index_type>::type            size_type;
+
+  typedef typename std::make_unsigned<index_type>::type      difference_type;
 
   typedef       GlobIter<value_type, PatternType>                   iterator;
   typedef const GlobIter<value_type, PatternType>             const_iterator;
@@ -393,25 +420,8 @@ public:
   typedef       GlobIter<value_type, PatternType>                    pointer;
   typedef const GlobIter<value_type, PatternType>              const_pointer;
 
-public:
-  template<
-    typename T_,
-    typename I_,
-    class P_>
-  friend class LocalListRef;
-
-/// Public types as required by dash container concept
-public:
-  /// The type of the pattern used to distribute list elements to units
-  typedef PatternType
-    pattern_type;
-  typedef LocalListRef<value_type, IndexType, PatternType>
-    local_type;
-
-  typedef LocalListRef<value_type, IndexType, PatternType>
-    Local;
-  typedef ListRef<ElementType, IndexType, PatternType>
-    View;
+private:
+  typedef List<ElementType, index_type, PatternType> self_t;
 
 private:
   typedef DistributionSpec<1>
@@ -684,21 +694,6 @@ public:
   }
 
   /**
-   * Requests that the list capacity be at least enough to contain n
-   * elements.
-   * If n is greater than the current list capacity, the function causes
-   * the container to reallocate its storage increasing its capacity to n
-   * (or greater).
-   * In all other cases, the function call does not cause a reallocation and
-   * the list capacity is not affected.
-   * This function has no effect on the list size and cannot alter its
-   * elements.
-   */
-  void reserve(size_t num_elements)
-  {
-  }
-
-  /**
    * Resizes the list so its capacity is changed to the given number of
    * elements. Elements are removed and destroying elements from the back,
    * if necessary.
@@ -875,20 +870,21 @@ private:
     DASH_LOG_TRACE("List._allocate()", "pattern",
                    pattern.memory_layout().extents());
     // Check requested capacity:
-    _size      = pattern.capacity();
-    _team      = &pattern.team();
-    if (_size == 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Tried to allocate dash::List with size 0");
-    }
-    // Initialize members:
-    _lsize     = pattern.local_size();
+    _size      = 0;
+    _lsize     = 0;
+    _capacity  = pattern.capacity();
     _lcapacity = pattern.local_capacity();
+    _team      = &pattern.team();
+    // Initialize members:
     _myid      = pattern.team().myid();
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("List._allocate", _lcapacity);
     DASH_LOG_TRACE_VAR("List._allocate", _lsize);
+    if (_lcapacity == 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Tried to allocate dash::List with local capacity 0");
+    }
     _globmem   = new GlobMem_t(pattern.team(), _lcapacity);
     // Global iterators:
     _begin     = iterator(_globmem, pattern);
@@ -904,7 +900,7 @@ private:
     // Register deallocator of this list instance at the team
     // instance that has been used to initialized it:
     pattern.team().register_deallocator(
-      this, std::bind(&List::deallocate, this));
+                     this, std::bind(&List::deallocate, this));
     // Assure all units are synchronized after allocation, otherwise
     // other units might start working on the list before allocation
     // completed at all units:
