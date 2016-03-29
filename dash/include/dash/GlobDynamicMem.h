@@ -11,7 +11,149 @@
 
 #include <dash/internal/Logging.h>
 
+#include <list>
+#include <iterator>
+
+/**
+ * Conventional global memory (see \c dash::GlobMem) allocates a single
+ * contiguous range of fixed size in local memory at every unit.
+ * Iterating local memory space is therefore easy to implement as native
+ * pointer arithmetics can be used to traverse elements in canonical storage
+ * order.
+ * In global dynamic memory, units allocate multiple heap-allocated buckets
+ * of identical size in local memory.
+ * The number of local buckets may differ between units.
+ * In effect, elements in local memory are distributed in non-contiguous
+ * address ranges and a custom iterator is used to access elements in
+ * logical storage order.
+ */
+
 namespace dash {
+
+namespace internal {
+
+template<
+  typename ElementType,
+  typename IndexType,
+  typename PointerType   = ElementType *,
+  typename ReferenceType = ElementType & >
+class LocalBucketIter
+: public std::iterator<
+           std::random_access_iterator_tag,
+           ElementType,
+           IndexType,
+           PointerType,
+           ReferenceType >
+{
+private:
+  typedef LocalBucketIter<ElementType, IndexType>
+    self_t;
+
+/// Type definitions required for std::iterator_traits:
+public:
+  typedef std::random_access_iterator_tag                 iterator_category;
+  typedef IndexType                                         difference_type;
+  typedef ElementType                                            value_type;
+  typedef ElementType *                                             pointer;
+  typedef ElementType &                                           reference;
+
+public:
+  typedef IndexType                                              index_type;
+  typedef typename std::make_unsigned<index_type>::type           size_type;
+
+public:
+  LocalBucketIter(
+    index_type                      position,
+    size_type                       bucket_size,
+    const std::list<value_type *> & buckets)
+  : _idx(position),
+    _bucket_idx(position / bucket_size),
+    _bucket_phase(position % bucket_size),
+    _bucket_size(bucket_size),
+    _buckets(buckets)
+  { }
+
+  self_t & operator++()
+  {
+    ++_idx;
+    ++_bucket_phase;
+    if (_bucket_phase >= _bucket_size) {
+      // advance to next bucket
+      _bucket_phase = 0;
+      _bucket_idx++;
+    }
+    return *this;
+  }
+
+  reference operator*()
+  {
+    return _buckets[_bucket_idx][_bucket_phase];
+  }
+
+  reference operator[](index_type offset)
+  {
+    auto bucket_idx   = _bucket_idx + offset / _bucket_size;
+    auto bucket_phase = _bucket_phase + offset % _bucket_size;
+    return _buckets[bucket_idx][bucket_phase];
+  }
+
+  inline index_type operator+(
+    const self_t & other) const
+  {
+    return _idx + other._idx;
+  }
+
+  inline index_type operator-(
+    const self_t & other) const
+  {
+    return _idx - other._idx;
+  }
+
+  inline bool operator<(const self_t & other) const
+  {
+    return (_idx < other._idx);
+  }
+
+  inline bool operator<=(const self_t & other) const
+  {
+    return (_idx <= other._idx);
+  }
+
+  inline bool operator>(const self_t & other) const
+  {
+    return (_idx > other._idx);
+  }
+
+  inline bool operator>=(const self_t & other) const
+  {
+    return (_idx >= other._idx);
+  }
+
+  inline bool operator==(const self_t & other) const
+  {
+    return _idx == other._idx;
+  }
+
+  inline bool operator!=(const self_t & other) const
+  {
+    return _idx != other._idx;
+  }
+
+  constexpr bool is_local() const
+  {
+    return true;
+  }
+
+private:
+  index_type                      _idx;
+  index_type                      _bucket_idx;
+  index_type                      _bucket_phase;
+  size_type                       _bucket_size;
+  const std::list<value_type *> & _buckets;
+
+}; // class LocalBucketIter
+
+} // namespace internal
 
 /**
  * Global memory region with dynamic size.
@@ -22,7 +164,7 @@ template<
   /// Type of allocator implementation used to allocate and deallocate
   /// global memory
   class    AllocatorType =
-             dash::allocator::LocalAllocator<ElementType> >
+             dash::allocator::DynamicAllocator<ElementType> >
 class GlobDynamicMem
 {
 private:
@@ -45,9 +187,16 @@ public:
 
   typedef ElementType &                                     local_reference;
   typedef const ElementType &                         const_local_reference;
-  // TODO: define specific local pointer type
+
+#if __TODO__
+  typedef internal::LocalBucketIter<value_type, index_type>
+    local_pointer;
+  typedef internal::LocalBucketIter<const value_type, index_type>
+    const_local_pointer;
+#else
   typedef ElementType *                                       local_pointer;
   typedef const ElementType *                           const_local_pointer;
+#endif
 
 public:
   /**
