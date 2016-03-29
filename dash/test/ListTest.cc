@@ -8,9 +8,9 @@
 
 TEST_F(ListTest, Initialization)
 {
-  typedef int                            value_t;
-  typedef dash::CSRPattern<1>            pattern_t;
-  typedef typename pattern_t::index_type index_t;
+  typedef int                                           value_t;
+  typedef typename dash::List<value_t>::pattern_type  pattern_t;
+  typedef typename pattern_t::index_type                index_t;
 
   auto nunits    = dash::size();
   auto myid      = dash::myid();
@@ -18,8 +18,7 @@ TEST_F(ListTest, Initialization)
   auto lcapacity = 5;
   auto capacity  = nunits * lcapacity;
 
-  pattern_t pattern(capacity);
-  dash::List<value_t, index_t, pattern_t> list(pattern);
+  dash::List<value_t> list(capacity);
 
   // no elements added yet, size is 0:
   ASSERT_EQ_U(0, list.size());

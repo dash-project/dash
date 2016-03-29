@@ -5,7 +5,6 @@
 #include <limits>
 
 #include <dash/Types.h>
-#include <dash/GlobMem.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
@@ -14,6 +13,7 @@
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
 #include <dash/DynamicPattern.h>
+#include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
 
 namespace dash {
@@ -181,25 +181,30 @@ class LocalListRef
 private:
   static const dim_t NumDimensions = 1;
 
-public:
 /// Type definitions required for dash::List concept:
-  typedef typename PatternType::index_type                   index_type;
-  /// Type alias for LocalListRef<T,I,P>::view_type
-  typedef LocalListRef<T, index_type, PatternType>                 View;
+public:
+  typedef PatternType                                           pattern_type;
+  typedef typename PatternType::index_type                        index_type;
+  typedef LocalListRef<T, index_type, PatternType>                 view_type;
+  typedef AllocatorType                                       allocator_type;
+  typedef dash::GlobDynamicMem<T, AllocatorType>               glob_mem_type;
 
 /// Type definitions required for std::list concept:
 public:
-  typedef T                                                  value_type;
+  typedef T                                                       value_type;
+  typedef typename std::make_unsigned<index_type>::type            size_type;
+  typedef typename std::make_unsigned<index_type>::type      difference_type;
 
-  typedef typename std::make_unsigned<index_type>::type       size_type;
+  typedef typename glob_mem_type::local_pointer                      pointer;
+  typedef typename glob_mem_type::const_local_pointer          const_pointer;
 
-  typedef index_type                                    difference_type;
+  typedef typename glob_mem_type::local_reference                  reference;
+  typedef typename glob_mem_type::const_local_reference      const_reference;
 
-  typedef T &                                                 reference;
-  typedef const T &                                     const_reference;
-
-  typedef T *                                                   pointer;
-  typedef const T *                                       const_pointer;
+  typedef pointer                                                   iterator;
+  typedef const_pointer                                       const_iterator;
+  typedef std::reverse_iterator<      iterator>             reverse_iterator;
+  typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
 private:
   typedef LocalListRef<T, AllocatorType, PatternType>
@@ -216,7 +221,7 @@ public:
    * Constructor, creates a local access proxy for the given list.
    */
   LocalListRef(
-    List<T, index_type, PatternType> * list)
+    List_t * list)
   : _list(list)
   { }
 
@@ -232,7 +237,7 @@ public:
   /**
    * Pointer to initial local element in the list.
    */
-  inline const_pointer begin() const noexcept
+  inline const_iterator begin() const noexcept
   {
     return _list->_lbegin;
   }
@@ -240,7 +245,7 @@ public:
   /**
    * Pointer to initial local element in the list.
    */
-  inline pointer begin() noexcept
+  inline iterator begin() noexcept
   {
     return _list->_lbegin;
   }
@@ -248,7 +253,7 @@ public:
   /**
    * Pointer past final local element in the list.
    */
-  inline const_pointer end() const noexcept
+  inline const_iterator end() const noexcept
   {
     return _list->_lend;
   }
@@ -256,7 +261,7 @@ public:
   /**
    * Pointer past final local element in the list.
    */
-  inline pointer end() noexcept
+  inline iterator end() noexcept
   {
     return _list->_lend;
   }
@@ -269,10 +274,13 @@ public:
    */
   inline void push_back(const value_type & value)
   {
+    // Increase local size in pattern:
+    _list->pattern().local_resize(_list->_lsize + 1);
+    // Acquire memory for new element:
     if (_list->_lcapacity > _list->_lsize) {
-      // no reallocation required
+      // No reallocation required.
     } else{
-      // local capacity must be increased, reallocate
+      // Local capacity must be increased, reallocate:
     }
     DASH_THROW(dash::exception::NotImplemented,
                "dash::ListLocalRef.push_back is not implemented");
@@ -367,7 +375,15 @@ public:
   /**
    * The pattern used to distribute list elements to units.
    */
-  inline const PatternType & pattern() const
+  inline const pattern_type & pattern() const
+  {
+    return _list->pattern();
+  }
+
+  /**
+   * The pattern used to distribute list elements to units.
+   */
+  inline pattern_type & pattern()
   {
     return _list->pattern();
   }
@@ -398,19 +414,10 @@ private:
 public:
   typedef typename PatternType::index_type                        index_type;
   typedef ElementType                                             value_type;
-  /// The type of the pattern used to distribute list elements to units
-  typedef PatternType
-    pattern_type;
-  typedef ListRef<ElementType, AllocatorType, PatternType>
-    view_type;
-  typedef LocalListRef<value_type, AllocatorType, PatternType>
-    local_type;
-  /// Type alias for List<T,I,P>::local_type
-  typedef LocalListRef<value_type, AllocatorType, PatternType>
-    Local;
-  /// Type alias for List<T,I,P>::view_type
-  typedef ListRef<ElementType, AllocatorType, PatternType>
-    View;
+  typedef PatternType                                           pattern_type;
+  typedef ListRef<ElementType, AllocatorType, PatternType>         view_type;
+  typedef LocalListRef<value_type, AllocatorType, PatternType>    local_type;
+  typedef AllocatorType                                       allocator_type;
 
 /// Public types as required by STL list concept:
 public:
@@ -550,6 +557,14 @@ public:
     return _list->pattern();
   }
 
+  /**
+   * The pattern used to distribute list elements to units.
+   */
+  inline PatternType & pattern()
+  {
+    return _list->pattern();
+  }
+
 private:
   /// Pointer to list instance referenced by this view.
   List_t    * _list;
@@ -581,38 +596,50 @@ class List
 /// Public types as required by DASH list concept
 public:
   /// The type of the pattern used to distribute list elements to units
-  typedef PatternType                                           pattern_type;
+  typedef ElementType                                             value_type;
   typedef typename PatternType::index_type                        index_type;
+  typedef typename std::make_unsigned<index_type>::type            size_type;
+  typedef PatternType                                           pattern_type;
+  typedef AllocatorType                                       allocator_type;
   typedef LocalListRef<ElementType, AllocatorType, PatternType>   local_type;
+  typedef ListRef<ElementType, AllocatorType, PatternType>         view_type;
 
-  typedef LocalListRef<ElementType, AllocatorType, PatternType>        Local;
-  typedef ListRef<ElementType, AllocatorType, PatternType>              View;
+  typedef typename local_type::iterator
+    local_iterator;
+  typedef typename local_type::const_iterator
+    local_const_iterator;
+  typedef typename local_type::reverse_iterator
+    local_reverse_iterator;
+  typedef typename local_type::const_reverse_iterator
+    local_const_reverse_iterator;
+
+private:
+  typedef DistributionSpec<1>
+    DistributionSpec_t;
+  typedef SizeSpec<1, size_type>
+    SizeSpec_t;
+  typedef ViewSpec<1, index_type>
+    ViewSpec_t;
+  typedef dash::GlobDynamicMem<value_type, allocator_type>
+    GlobMem_t;
 
 /// Public types as required by STL list concept
 public:
-  typedef ElementType                                             value_type;
-  typedef typename std::make_unsigned<index_type>::type            size_type;
-
   typedef typename std::make_unsigned<index_type>::type      difference_type;
 
-  typedef       GlobIter<value_type, PatternType>                   iterator;
-  typedef const GlobIter<value_type, PatternType>             const_iterator;
-  typedef       std::reverse_iterator<      iterator>       reverse_iterator;
-  typedef       std::reverse_iterator<const_iterator> const_reverse_iterator;
+  typedef GlobIter<value_type, PatternType, GlobMem_t>              iterator;
+  typedef GlobIter<const value_type, PatternType, GlobMem_t>  const_iterator;
+  typedef std::reverse_iterator<      iterator>             reverse_iterator;
+  typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
-  typedef       GlobRef<value_type>                                reference;
-  typedef const GlobRef<value_type>                          const_reference;
+  typedef GlobRef<value_type>                                      reference;
+  typedef GlobRef<const value_type>                          const_reference;
 
-  typedef       GlobIter<value_type, PatternType>                    pointer;
-  typedef const GlobIter<value_type, PatternType>              const_pointer;
+  typedef GlobIter<value_type, PatternType>                          pointer;
+  typedef GlobIter<const value_type, PatternType>              const_pointer;
 
 private:
   typedef List<ElementType, index_type, PatternType> self_t;
-
-private:
-  typedef DistributionSpec<1>       DistributionSpec_t;
-  typedef SizeSpec<1, size_type>    SizeSpec_t;
-  typedef dash::GlobMem<value_type> GlobMem_t;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
@@ -752,12 +779,12 @@ public:
   /**
    * View at block at given global block offset.
    */
-  View block(index_type block_gindex)
+  view_type block(index_type block_gindex)
   {
     DASH_LOG_TRACE("List.block()", block_gindex);
-    ViewSpec<1> block_view = pattern().block(block_gindex);
+    ViewSpec_t block_view = pattern().block(block_gindex);
     DASH_LOG_TRACE("List.block >", block_view);
-    return View(this, block_view);
+    return view_type(this, block_view);
   }
 
   /**
@@ -803,7 +830,15 @@ public:
   /**
    * Native pointer to the first local element in the list.
    */
-  ElementType * lbegin() const noexcept
+  local_iterator lbegin() noexcept
+  {
+    return _lbegin;
+  }
+
+  /**
+   * Native pointer to the first local element in the list.
+   */
+  local_const_iterator lbegin() const noexcept
   {
     return _lbegin;
   }
@@ -811,7 +846,15 @@ public:
   /**
    * Native pointer to the end of the list.
    */
-  ElementType * lend() const noexcept
+  local_iterator lend() noexcept
+  {
+    return _lend;
+  }
+
+  /**
+   * Native pointer to the end of the list.
+   */
+  local_const_iterator lend() const noexcept
   {
     return _lend;
   }
@@ -941,6 +984,14 @@ public:
     return _pattern;
   }
 
+  /**
+   * The pattern used to distribute list elements to units.
+   */
+  inline PatternType & pattern()
+  {
+    return _pattern;
+  }
+
   template<int level>
   dash::HView<self_t, level> hview()
   {
@@ -989,7 +1040,7 @@ public:
     // double-free:
     _pattern.team().unregister_deallocator(
       this, std::bind(&List::deallocate, this));
-    // Actual destruction of the list instance:
+    // Deallocate list elements:
     DASH_LOG_TRACE_VAR("List.deallocate()", _globmem);
     if (_globmem != nullptr) {
       delete _globmem;
@@ -1071,9 +1122,9 @@ private:
   /// Element capacity in the list's currently allocated local storage.
   size_type            _lcapacity;
   /// Native pointer to first local element in the list
-  ElementType        * _lbegin    = nullptr;
+  local_iterator       _lbegin;
   /// Native pointer past the last local element in the list
-  ElementType        * _lend      = nullptr;
+  local_iterator       _lend;
 
 };
 

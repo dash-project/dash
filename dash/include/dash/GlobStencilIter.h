@@ -115,7 +115,8 @@ private:
  */
 template<
   typename ElementType,
-  class    PatternType   = Pattern<1>,
+  class    PatternType,
+  class    GlobMemType   = GlobMem<ElementType>,
   class    PointerType   = GlobPtr<ElementType, PatternType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobStencilIter
@@ -134,14 +135,10 @@ private:
   typedef GlobStencilIter<
             ElementType,
             PatternType,
+            GlobMemType,
             PointerType,
             ReferenceType>
     self_t;
-
-  typedef GlobMem<
-            ElementType,
-            dash::allocator::CollectiveAllocator<ElementType> >
-    GlobMem_t;
 
   typedef typename PatternType::viewspec_type
     ViewSpecType;
@@ -175,21 +172,22 @@ public:
   // For ostream output
   template <
     typename T_,
-    class P_,
-    class Ptr_,
-    class Ref_ >
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
   friend std::ostream & operator<<(
       std::ostream & os,
-      const GlobStencilIter<T_, P_, Ptr_, Ref_> & it);
+      const GlobStencilIter<T_, P_, GM_, Ptr_, Ref_> & it);
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobMem_t           * _globmem;
+  GlobMemType         * _globmem         = nullptr;
   /// Pattern that specifies the iteration order (access pattern).
-  const PatternType   * _pattern;
+  const PatternType   * _pattern         = nullptr;
   /// View that specifies the iterator's index range relative to the global
   /// index range of the iterator's pattern.
-  const ViewSpecType  * _viewspec;
+  const ViewSpecType  * _viewspec        = nullptr;
   /// Current position of the iterator relative to the iterator's view.
   IndexType             _idx             = 0;
   /// The iterator's view index start offset.
@@ -226,7 +224,7 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobStencilIter(
-    GlobMem_t          * gmem,
+    GlobMemType        * gmem,
 	  const PatternType  & pat,
     const ViewSpecType & viewspec,
     const HaloSpecType & halospec,
@@ -254,7 +252,7 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobStencilIter(
-    GlobMem_t          * gmem,
+    GlobMemType        * gmem,
 	  const PatternType  & pat,
     const HaloSpecType & halospec,
 	  IndexType            position          = 0,
@@ -844,7 +842,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline const GlobMem_t & globmem() const
+  inline const GlobMemType & globmem() const
   {
     return *_globmem;
   }
@@ -855,7 +853,7 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  inline GlobMem_t & globmem()
+  inline GlobMemType & globmem()
   {
     return *_globmem;
   }
@@ -1152,13 +1150,16 @@ private:
 template <
   typename ElementType,
   class    Pattern,
+  class    GlobMem,
   class    Pointer,
   class    Reference >
 auto distance(
   /// Global iterator to the initial position in the global sequence
-  const GlobStencilIter<ElementType, Pattern, Pointer, Reference> & first,
+  const GlobStencilIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+    first,
   /// Global iterator to the final position in the global sequence
-  const GlobStencilIter<ElementType, Pattern, Pointer, Reference> & last
+  const GlobStencilIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+    last
 ) -> typename Pattern::index_type
 {
   return last - first;
@@ -1167,11 +1168,13 @@ auto distance(
 template <
   typename ElementType,
   class    Pattern,
+  class    GlobMem,
   class    Pointer,
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::GlobStencilIter<ElementType, Pattern, Pointer, Reference> & it)
+  const dash::GlobStencilIter<
+          ElementType, Pattern, GlobMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
   dash::GlobPtr<ElementType, Pattern> ptr(it);

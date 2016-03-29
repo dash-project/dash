@@ -8,6 +8,9 @@
 
 #include <dash/internal/Logging.h>
 
+#include <vector>
+#include <algorithm>
+
 namespace dash {
 namespace allocator {
 
@@ -38,9 +41,14 @@ class LocalAllocator
 private:
   typedef LocalAllocator<ElementType>      self_t;
 
+/// Type definitions required for std::allocator concept:
 public:
-  typedef ElementType                  value_type;
-  typedef dash::default_size_t          size_type;
+  using value_type                             = ElementType;
+  using size_type                              = dash::default_size_t;
+  using propagate_on_container_move_assignment = std::true_type;
+
+/// Type definitions required for dash::allocator concept:
+public:
   typedef dash::gptrdiff_t        difference_type;
   typedef dart_gptr_t                     pointer;
   typedef dart_gptr_t                void_pointer;
@@ -53,19 +61,24 @@ public:
    * Creates a new instance of \c dash::LocalAllocator for a given team.
    */
   LocalAllocator(
-    Team & team = dash::Team::Null())
+    Team & team = dash::Team::Null()) noexcept
   : _team_id(team.dart_id())
   { }
 
-  template<class U>
-  LocalAllocator(const LocalAllocator<U> & other)
-  : _team_id(other._team_id)
-  { }
+  /**
+   * Move-constructor.
+   * Takes ownership of the moved instance's allocation.
+   */
+  LocalAllocator(self_t && other) noexcept
+  : _allocated(other._allocated)
+  {
+    other._allocated.clear();
+  }
 
   /**
    * Default constructor, deleted.
    */
-  LocalAllocator()
+  LocalAllocator() noexcept
     = delete;
 
   /**
@@ -73,16 +86,50 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  LocalAllocator(const self_t & other)
-    = default;
+  LocalAllocator(const self_t & other) noexcept
+  : _team_id(other._team_id)
+  { }
+
+  /**
+   * Copy-constructor.
+   * Does not take ownership of the copied instance's allocation.
+   */
+  template<class U>
+  LocalAllocator(const LocalAllocator<U> & other) noexcept
+  : _team_id(other._team_id)
+  { }
+
+  /**
+   * Destructor.
+   * Frees all global memory regions allocated by this allocator instance.
+   */
+  ~LocalAllocator() noexcept
+  {
+    clear();
+  }
 
   /**
    * Assignment operator.
    *
    * \see DashAllocatorConcept
    */
-  self_t & operator=(const self_t & other)
-    = default;
+  self_t & operator=(const self_t & other) noexcept
+  {
+    // noop
+    return *this;
+  }
+
+  /**
+   * Move-assignment operator.
+   */
+  self_t & operator=(const self_t && other) noexcept
+  {
+    // Take ownership of other instance's allocation vector:
+    clear();
+    _allocated = other._allocated;
+    other._allocated.clear();
+    return *this;
+  }
 
   /**
    * Whether storage allocated by this allocator can be deallocated
@@ -129,6 +176,7 @@ public:
       size_type   num_local_bytes = sizeof(ElementType) * num_local_elem;
       dart_gptr_t gptr;
       if (dart_memalloc(num_local_bytes, &gptr) == DART_OK) {
+        _allocated.push_back(gptr);
         return gptr;
       }
     }
@@ -154,10 +202,28 @@ public:
     DASH_ASSERT_RETURNS(
       dart_memfree(gptr),
       DART_OK);
+    _allocated.erase(
+        std::remove(_allocated.begin(), _allocated.end(), gptr),
+        _allocated.end());
   }
 
 private:
-  dart_team_t _team_id = DART_TEAM_NULL;
+  /**
+   * Frees all global memory regions allocated by this allocator instance.
+   */
+  void clear() noexcept
+  {
+    for (auto gptr : _allocated) {
+      // TODO:
+      // Inefficient as deallocate() applies vector.erase(std::remove)
+      // for every element.
+      deallocate(gptr);
+    }
+  }
+
+private:
+  dart_team_t          _team_id   = DART_TEAM_NULL;
+  std::vector<pointer> _allocated;
 
 }; // class LocalAllocator
 
@@ -206,10 +272,15 @@ class CollectiveAllocator
 private:
   typedef CollectiveAllocator<ElementType> self_t;
 
+/// Type definitions required for std::allocator concept:
 public:
-  typedef ElementType                  value_type;
-  typedef dash::default_size_t          size_type;
-  typedef gptrdiff_t              difference_type;
+  using value_type                             = ElementType;
+  using size_type                              = dash::default_size_t;
+  using propagate_on_container_move_assignment = std::true_type;
+
+/// Type definitions required for dash::allocator concept:
+public:
+  typedef dash::gptrdiff_t        difference_type;
   typedef dart_gptr_t                     pointer;
   typedef dart_gptr_t                void_pointer;
   typedef dart_gptr_t               const_pointer;
@@ -221,7 +292,7 @@ public:
    * Creates a new instance of \c dash::CollectiveAllocator for a given team.
    */
   CollectiveAllocator(
-    Team & team = dash::Team::Null())
+    Team & team = dash::Team::Null()) noexcept
   : _team_id(team.dart_id())
   {
     DASH_ASSERT_RETURNS(
@@ -229,16 +300,20 @@ public:
       DART_OK);
   }
 
-  template<class U>
-  CollectiveAllocator(const CollectiveAllocator<U> & other)
-  : _team_id(other._team_id),
-    _nunits(other._nunits)
-  { }
+  /**
+   * Move-constructor.
+   * Takes ownership of the moved instance's allocation.
+   */
+  CollectiveAllocator(self_t && other) noexcept
+  : _allocated(other._allocated)
+  {
+    other._allocated.clear();
+  }
 
   /**
    * Default constructor, deleted.
    */
-  CollectiveAllocator()
+  CollectiveAllocator() noexcept
     = delete;
 
   /**
@@ -246,16 +321,52 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  CollectiveAllocator(const self_t & other)
-    = default;
+  CollectiveAllocator(const self_t & other) noexcept
+  : _team_id(other._team_id),
+    _nunits(other._nunits)
+  { }
+
+  /**
+   * Copy-constructor.
+   * Does not take ownership of the copied instance's allocation.
+   */
+  template<class U>
+  CollectiveAllocator(const CollectiveAllocator<U> & other) noexcept
+  : _team_id(other._team_id),
+    _nunits(other._nunits)
+  { }
+
+  /**
+   * Destructor.
+   * Frees all global memory regions allocated by this allocator instance.
+   */
+  ~CollectiveAllocator() noexcept
+  {
+    clear();
+  }
 
   /**
    * Assignment operator.
    *
    * \see DashAllocatorConcept
    */
-  self_t & operator=(const self_t & other)
-    = default;
+  self_t & operator=(const self_t & other) noexcept
+  {
+    // noop
+    return *this;
+  }
+
+  /**
+   * Move-assignment operator.
+   */
+  self_t & operator=(const self_t && other) noexcept
+  {
+    // Take ownership of other instance's allocation vector:
+    clear();
+    _allocated = other._allocated;
+    other._allocated.clear();
+    return *this;
+  }
 
   /**
    * Whether storage allocated by this allocator can be deallocated
@@ -303,6 +414,7 @@ public:
       dart_gptr_t gptr;
       if (dart_team_memalloc_aligned(
             _team_id, num_local_bytes, &gptr) == DART_OK) {
+        _allocated.push_back(gptr);
         return gptr;
       }
     }
@@ -328,11 +440,29 @@ public:
     DASH_ASSERT_RETURNS(
       dart_team_memfree(_team_id, gptr),
       DART_OK);
+    _allocated.erase(
+        std::remove(_allocated.begin(), _allocated.end(), gptr),
+        _allocated.end());
   }
 
 private:
-  dart_team_t _team_id = DART_TEAM_NULL;
-  size_type   _nunits  = 0;
+  /**
+   * Frees all global memory regions allocated by this allocator instance.
+   */
+  void clear() noexcept
+  {
+    for (auto gptr : _allocated) {
+      // TODO:
+      // Inefficient as deallocate() applies vector.erase(std::remove)
+      // for every element.
+      deallocate(gptr);
+    }
+  }
+
+private:
+  dart_team_t          _team_id   = DART_TEAM_NULL;
+  size_type            _nunits    = 0;
+  std::vector<pointer> _allocated;
 
 }; // class CollectiveAllocator
 

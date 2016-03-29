@@ -13,7 +13,6 @@
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
 #include <dash/PatternProperties.h>
-#include <dash/Shared.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
@@ -31,13 +30,6 @@ template<
   MemArrange Arrangement  = dash::ROW_MAJOR,
   typename   IndexType    = dash::default_index_t >
 class DynamicPattern;
-
-// forward declaration
-template<
-  typename ElementType,
-  typename IndexType,
-  class    PatternType >
-class Array;
 
 /**
  * Irregular dynamic pattern.
@@ -67,7 +59,9 @@ public:
               // Identical number of elements in every block.
               pattern_partitioning_tag::balanced,
               // Size of blocks may differ.
-              pattern_partitioning_tag::unbalanced
+              pattern_partitioning_tag::unbalanced,
+              // Partitioning is dynamic.
+              pattern_partitioning_tag::dynamic
           > partitioning_properties;
   /// Satisfiable properties in pattern property category Mapping:
   typedef pattern_mapping_properties<
@@ -106,16 +100,6 @@ private:
     ViewSpec_t;
   typedef internal::PatternArguments<NumDimensions, IndexType>
     PatternArguments_t;
-  typedef dash::Array<
-            SizeType,
-            IndexType,
-            dash::CSRPattern<1, dash::ROW_MAJOR, IndexType> >
-    LocalSizes_t;
-  typedef dash::Array<
-            IndexType,
-            IndexType,
-            dash::CSRPattern<1, dash::ROW_MAJOR, IndexType> >
-    BlockOffsets_t;
 
 public:
   typedef IndexType   index_type;
@@ -180,9 +164,6 @@ public:
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    if (_myid == 0) {
-//    _resized.set(false);
-    }
     DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
   }
 
@@ -230,9 +211,6 @@ public:
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    if (_myid == 0) {
-//    _resized.set(false);
-    }
     DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
   }
 
@@ -284,9 +262,6 @@ public:
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    if (_myid == 0) {
-//    _resized.set(false);
-    }
     DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
   }
 
@@ -335,9 +310,6 @@ public:
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    if (_myid == 0) {
-//    _resized.set(false);
-    }
     DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
   }
 
@@ -381,9 +353,6 @@ public:
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    if (_myid == 0) {
-//    _resized.set(false);
-    }
     DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
   }
 
@@ -512,10 +481,17 @@ public:
   /**
    * Update the number of local elements of the specified unit.
    */
-  inline void resize(dart_unit_t unit, size_type local_size)
+  inline void local_resize(dart_unit_t unit, size_type local_size)
   {
-//  _resized.set(true);
     _local_sizes[unit] = local_size;
+  }
+
+  /**
+   * Update the number of local elements of the active unit.
+   */
+  inline void local_resize(size_type local_size)
+  {
+    _local_sizes[_myid] = local_size;
   }
 
   /**
@@ -1502,13 +1478,10 @@ private:
   PatternArguments_t          _arguments;
   /// Extent of the linear pattern.
   SizeType                    _size;
-  /// Whether any local capacity has been resized since the last
-  /// synchronization of local capacities.
-  dash::Shared<bool>          _resized;
   /// Number of local elements for every unit in the active team.
-  LocalSizes_t                _local_sizes;
+  std::vector<size_type>      _local_sizes;
   /// Block offsets for every unit. Prefix sum of local sizes.
-  BlockOffsets_t              _block_offsets;
+  std::vector<size_type>      _block_offsets;
   /// Global memory layout of the pattern.
   MemoryLayout_t              _memory_layout;
   /// Number of blocks in all dimensions
