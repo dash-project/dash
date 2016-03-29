@@ -32,11 +32,11 @@ std::ostream & operator<<(
  * - move-assignment
  */
 class Team {
-  template< class U>
+  template <typename U>
     friend class Shared;
-  template< class U, class Pattern, class Ptr, class Ref >
+  template <typename U, class P, class GM, class Ptr, class Ref >
     friend class GlobIter;
-  template< class U>
+  template <typename U>
     friend class GlobRef;
   friend std::ostream & operator<<(
     std::ostream & os,

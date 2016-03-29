@@ -413,7 +413,10 @@ struct pattern_partitioning_tag
     unbalanced,
 
     /// Data range is partitioned in at least two dimensions.
-    ndimensional
+    ndimensional,
+
+    /// Data range is partitioned dynamically.
+    dynamic
   } type;
 };
 
@@ -442,6 +445,9 @@ struct pattern_partitioning_properties
 
   /// Data range is partitioned in at least two dimensions.
   static const bool ndimensional = false;
+
+  /// Data range is partitioned dynamically.
+  static const bool dynamic      = false;
 };
 
 /**
@@ -565,6 +571,26 @@ const bool
 pattern_partitioning_properties<
   pattern_partitioning_tag::type::ndimensional, Tags ...
 >::ndimensional = true;
+
+/**
+ * Specialization of \c dash::pattern_partitioning_properties to process tag
+ * \c dash::pattern_partitioning_tag::type::dynamic in template parameter
+ * list.
+ */
+template<pattern_partitioning_tag::type ... Tags>
+struct pattern_partitioning_properties<
+         pattern_partitioning_tag::type::dynamic, Tags ...>
+: public pattern_partitioning_properties<Tags ...>
+{
+  /// Data range is partitioned dynamically.
+  static const bool dynamic;
+};
+
+template<pattern_partitioning_tag::type ... Tags>
+const bool
+pattern_partitioning_properties<
+  pattern_partitioning_tag::type::dynamic, Tags ...
+>::dynamic = true;
 
 //////////////////////////////////////////////////////////////////////////////
 // Pattern Traits Default Definitions

@@ -20,6 +20,7 @@ namespace dash {
 template<
   typename ElementType,
   class    PatternType,
+  class    GlobMemType,
   class    PointerType,
   class    ReferenceType >
 class GlobStencilIter;
@@ -27,7 +28,8 @@ class GlobStencilIter;
 
 template<
   typename ElementType,
-  class    PatternType   = Pattern<1>,
+  class    PatternType,
+  class    GlobMemType   = GlobMem<ElementType>,
   class    PointerType   = GlobPtr<ElementType, PatternType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobViewIter
@@ -38,17 +40,18 @@ class GlobViewIter
            PointerType,
            ReferenceType > {
 private:
-  typedef GlobViewIter<ElementType, PatternType, PointerType, ReferenceType>
+  typedef GlobViewIter<
+            ElementType,
+            PatternType,
+            GlobMemType,
+            PointerType,
+            ReferenceType>
     self_t;
 
   typedef typename PatternType::viewspec_type
     ViewSpecType;
   typedef typename PatternType::index_type
     IndexType;
-  typedef GlobMem<
-            ElementType,
-            dash::allocator::CollectiveAllocator<ElementType> >
-    GlobMem_t;
 
 public:
   typedef       ReferenceType                      reference;
@@ -66,18 +69,20 @@ public:
   // For ostream output
   template <
     typename T_,
-    class P_,
-    class Ptr_,
-    class Ref_ >
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
   friend std::ostream & operator<<(
       std::ostream & os,
-      const GlobViewIter<T_, P_, Ptr_, Ref_> & it);
+      const GlobViewIter<T_, P_, GM_, Ptr_, Ref_> & it);
 
   // For conversion to GlobStencilIter
   template<
     typename T_,
     class    P_,
     class    Ptr_,
+    class    GM_,
     class    Ref_ >
   friend class GlobStencilIter;
 
@@ -87,7 +92,7 @@ private:
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobMem_t                  * _globmem;
+  GlobMemType                * _globmem;
   /// Pattern that specifies the iteration order (access pattern).
   const PatternType          * _pattern;
   /// View that specifies the iterator's index range relative to the global
@@ -127,7 +132,7 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobViewIter(
-    GlobMem_t            * gmem,
+    GlobMemType          * gmem,
 	  const PatternType    & pat,
     const ViewSpecType   & viewspec,
 	  IndexType              position          = 0,
@@ -152,10 +157,10 @@ public:
    * the element order specified by the given pattern and view spec.
    */
   GlobViewIter(
-    GlobMem_t            * gmem,
-	  const PatternType    & pat,
-	  IndexType              position          = 0,
-    IndexType              view_index_offset = 0)
+    GlobMemType       * gmem,
+	  const PatternType & pat,
+	  IndexType           position          = 0,
+    IndexType           view_index_offset = 0)
   : _globmem(gmem),
     _pattern(&pat),
     _viewspec(nullptr),
@@ -418,10 +423,10 @@ public:
   /**
    * Map iterator to global index domain by projecting the iterator's view.
    */
-  inline GlobIter<ElementType, PatternType> global() const
+  inline GlobIter<ElementType, PatternType, GlobMemType> global() const
   {
     auto g_idx = gpos();
-    return dash::GlobIter<ElementType, PatternType>(
+    return dash::GlobIter<ElementType, PatternType, GlobMemType>(
              _globmem,
              *_pattern,
              g_idx
@@ -545,7 +550,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline const GlobMem_t & globmem() const
+  inline const GlobMemType & globmem() const
   {
     return *_globmem;
   }
@@ -554,7 +559,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobMem_t & globmem()
+  inline GlobMemType & globmem()
   {
     return *_globmem;
   }
@@ -848,13 +853,19 @@ private:
  *
  * \ingroup     Algorithms
  */
-template<typename ElementType, typename PatternType>
+template<
+  typename ElementType,
+  class    Pattern,
+  class    GlobMem,
+  class    Pointer,
+  class    Reference >
 auto distance(
-  /// Global iterator to the initial position in the global sequence
-  const GlobViewIter<ElementType, PatternType> & first,
+  const GlobViewIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+    first,
   /// Global iterator to the final position in the global sequence
-  const GlobViewIter<ElementType, PatternType> & last)
--> typename PatternType::index_type
+  const GlobViewIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+    last)
+-> typename Pattern::index_type
 {
   return last - first;
 }
@@ -862,16 +873,18 @@ auto distance(
 template <
   typename ElementType,
   class    Pattern,
+  class    GlobMem,
   class    Pointer,
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::GlobViewIter<ElementType, Pattern, Pointer, Reference> & it)
+  const dash::GlobViewIter<
+          ElementType, Pattern, GlobMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
   dash::GlobPtr<ElementType, Pattern> ptr(it);
   ss << "dash::GlobViewIter<" << typeid(ElementType).name() << ">("
-     << "idx:" << it._idx << ", "
+     << "idx:"  << it._idx << ", "
      << "gptr:" << ptr << ")";
   return operator<<(os, ss.str());
 }
