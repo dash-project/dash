@@ -56,7 +56,8 @@ class GlobIter
            ElementType,
            typename PatternType::index_type,
            PointerType,
-           ReferenceType > {
+           ReferenceType >
+{
 private:
   typedef GlobIter<
             ElementType,
@@ -82,10 +83,10 @@ public:
   // For ostream output
   template <
     typename T_,
-    class P_,
-    class GM_,
-    class Ptr_,
-    class Ref_ >
+    class    P_,
+    class    GM_,
+    class    Ptr_,
+    class    Ref_ >
   friend std::ostream & operator<<(
            std::ostream & os,
            const GlobIter<T_, P_, GM_, Ptr_, Ref_> & it);
