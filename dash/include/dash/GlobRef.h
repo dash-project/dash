@@ -243,7 +243,7 @@ public:
    * specified offset
    */
   template<typename MEMTYPE>
-  GlobRef<MEMTYPE> member(size_t offs) {
+  GlobRef<MEMTYPE> member(size_t offs) const {
     dart_gptr_t dartptr = _gptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&dartptr, offs),
@@ -257,7 +257,7 @@ public:
    */
   template<class MEMTYPE, class P=T>
   GlobRef<MEMTYPE> member(
-    const MEMTYPE P::*mem) {
+    const MEMTYPE P::*mem) const {
     // TODO: Thaaaat ... looks hacky.
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
     return member<MEMTYPE>(offs);
