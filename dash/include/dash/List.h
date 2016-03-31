@@ -238,15 +238,7 @@ public:
   /**
    * Pointer to initial local element in the list.
    */
-  inline const_iterator begin() const noexcept
-  {
-    return _list->_lbegin;
-  }
-
-  /**
-   * Pointer to initial local element in the list.
-   */
-  inline iterator begin() noexcept
+  inline iterator begin() const noexcept
   {
     return _list->_lbegin;
   }
@@ -254,15 +246,7 @@ public:
   /**
    * Pointer past final local element in the list.
    */
-  inline const_iterator end() const noexcept
-  {
-    return _list->_lend;
-  }
-
-  /**
-   * Pointer past final local element in the list.
-   */
-  inline iterator end() noexcept
+  inline iterator end() const noexcept
   {
     return _list->_lend;
   }
@@ -277,18 +261,13 @@ public:
   {
     // Increase local size in pattern:
     _list->pattern().local_resize(_list->_lsize + 1);
-    // Acquire memory for new element:
-    if (_list->_lcapacity > _list->_lsize) {
-      // No reallocation required.
-      _list->_lbegin[_list->_lsize] = value;
-      _list->_lsize++;
-      _list->_size++;
-    } else{
-      // Local capacity must be increased, reallocate:
-      DASH_THROW(dash::exception::NotImplemented,
-                 "dash::ListLocalRef.push_back: "
-                 "reallocation is not implemented");
+    if (_list->lcapacity() < _list->_lsize) {
+      // Acquire memory for new element:
+      _list->_globmem->grow(5);
     }
+    _list->_lbegin[_list->_lsize] = value;
+    _list->_lsize++;
+    _list->_size++;
   }
 
   /**
@@ -901,7 +880,7 @@ public:
    */
   inline size_type capacity() const noexcept
   {
-    return _capacity;
+    return _globmem->size();
   }
 
   inline iterator erase(const_iterator position)
@@ -944,7 +923,7 @@ public:
    */
   inline size_type lcapacity() const noexcept
   {
-    return _lcapacity;
+    return _globmem->local_size();
   }
 
   /**
@@ -977,7 +956,7 @@ public:
   void barrier() const
   {
     DASH_LOG_TRACE_VAR("List.barrier()", _team);
-    _team->barrier();
+    _globmem->commit();
     DASH_LOG_TRACE("List.barrier()", "passed barrier");
   }
 

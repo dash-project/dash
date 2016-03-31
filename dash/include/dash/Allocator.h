@@ -680,9 +680,7 @@ public:
                      "DASH not initialized, abort");
       return;
     }
-    DASH_ASSERT_RETURNS(
-      dart_team_memderegister(_team_id, gptr),
-      DART_OK);
+    bool do_detach = false;
     std::for_each(
       _allocated.begin(),
       _allocated.end(),
@@ -690,8 +688,16 @@ public:
         if (e.second == gptr && e.first != nullptr) {
           delete[] e.first;
           e.first = nullptr;
+          DASH_LOG_DEBUG("DynamicAllocator.deallocate",
+                         "gptr", e.second, "marked for detach");
+          do_detach = true;
         }
       });
+    if (do_detach) {
+      DASH_ASSERT_RETURNS(
+        dart_team_memderegister(_team_id, gptr),
+        DART_OK);
+    }
     _allocated.erase(
       std::remove_if(
         _allocated.begin(),

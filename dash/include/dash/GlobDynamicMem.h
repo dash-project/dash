@@ -818,7 +818,7 @@ public:
                        "gptr:", bucket_it->gptr);
         // Detach bucket from global memory region and deallocate its local
         // memory segment:
-        if (!bucket_it->attached) {
+        if (bucket_it->attached) {
           _allocator.detach(bucket_it->gptr);
           bucket_it->attached = false;
         }

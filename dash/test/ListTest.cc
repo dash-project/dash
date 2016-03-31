@@ -35,6 +35,11 @@ TEST_F(ListTest, Initialization)
   ASSERT_EQ_U(3,          list.lsize());
 
   list.barrier();
+
+  for (auto li = 0; li < list.local.size(); ++li) {
+    LOG_MESSAGE("list.local[%d] = %d", li, *(list.local.begin() + li));
+  }
+
   ASSERT_EQ_U(3 * nunits, list.size());
 }
 
