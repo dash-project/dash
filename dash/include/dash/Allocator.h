@@ -535,13 +535,10 @@ public:
    * Creates a new instance of \c dash::DynamicAllocator for a given team.
    */
   DynamicAllocator(
-    Team & team = dash::Team::Null()) noexcept
-  : _team_id(team.dart_id())
-  {
-    DASH_ASSERT_RETURNS(
-      dart_team_size(_team_id, &_nunits),
-      DART_OK);
-  }
+    Team & team = dash::Team::All()) noexcept
+  : _team_id(team.dart_id()),
+    _nunits(team.size())
+  { }
 
   /**
    * Move-constructor.

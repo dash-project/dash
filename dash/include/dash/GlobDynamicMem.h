@@ -13,14 +13,45 @@
 #include <dash/internal/Logging.h>
 
 #include <list>
+#include <vector>
 #include <iterator>
 #include <sstream>
 #include <iostream>
 
 
 namespace dash {
-
 namespace internal {
+
+template<
+  typename SizeType,
+  typename ElementType >
+struct _glob_dynamic_mem_bucket_type
+{
+  SizeType      size;
+  ElementType * lptr;
+  dart_gptr_t   gptr;
+  bool          attached;
+};
+
+#if 0
+template<
+  typename SizeType,
+  typename ElementType >
+std::ostream & operator<<(
+  std::ostream & os,
+  const dash::internal::_glob_dynamic_mem_bucket_type<
+          SizeType, ElementType> & bucket)
+{
+  std::ostringstream ss;
+  ss << "GlobDynamicMem::bucket_type("
+     << "size: "     << bucket.size << ", "
+     << "lptr: "     << bucket.lptr << ", "
+     << "gptr: "     << bucket.gptr << ", "
+     << "attached: " << bucket.attached
+     << ")";
+  return operator<<(os, ss.str());
+}
+#endif
 
 template<
   typename ElementType,
@@ -51,15 +82,13 @@ public:
   typedef ElementType *                                             pointer;
   typedef ElementType &                                           reference;
 
-  typedef struct {
-    size_type     size;
-    pointer       lptr;
-    dart_gptr_t   gptr;
-    bool          attached;
-  } bucket_type;
+  typedef _glob_dynamic_mem_bucket_type<size_type, value_type>  bucket_type;
 
 private:
-  typedef typename std::list<bucket_type>::iterator bucket_iterator;
+  typedef typename std::list<bucket_type>
+    bucket_list;
+  typedef typename bucket_list::iterator
+    bucket_iterator;
 
 public:
   LocalBucketIter(
@@ -142,62 +171,31 @@ public:
     return !_is_nullptr;
   }
 
-private:
-  void increment(int offset)
+public:
+  reference operator*()
   {
-    _idx += offset;
+    return _bucket_it->lptr[_bucket_phase];
+  }
+
+  reference operator[](index_type offset)
+  {
     if (_bucket_phase + offset < _bucket_it->size) {
       // element is in bucket currently referenced by this iterator:
-      _bucket_phase += offset;
+      return _bucket_it->lptr[_bucket_phase + offset];
     } else {
       // find bucket containing element at given offset:
-      for (; _bucket_it != _bucket_last; ++_bucket_it) {
-        if (offset >= _bucket_it->size) {
-          offset -= _bucket_it->size;
-        } else if (offset < _bucket_it->size) {
-          _bucket_phase = offset;
-          break;
+      for (auto b_it = _bucket_it; b_it != _bucket_last; ++b_it) {
+        if (offset >= b_it->size) {
+          offset -= b_it->size;
+        } else if (offset < b_it->size) {
+          return b_it->lptr[offset];
         }
       }
     }
-    if (_bucket_it == _bucket_last) {
-      DASH_THROW(dash::exception::OutOfRange,
-                 "offset " << offset << " is out of range");
-    }
+    DASH_THROW(dash::exception::OutOfRange,
+               "offset " << offset << " is out of range");
   }
 
-  void decrement(int offset)
-  {
-    if (offset > _idx) {
-      DASH_THROW(dash::exception::OutOfRange,
-                 "offset " << offset << " is out of range");
-    }
-    _idx -= offset;
-    if (offset <= _bucket_phase) {
-      // element is in bucket currently referenced by this iterator:
-      _bucket_phase -= offset;
-    } else {
-      offset -= _bucket_phase;
-      // find bucket containing element at given offset:
-      for (; _bucket_it != _bucket_first; --_bucket_it) {
-        if (offset >= _bucket_it->size) {
-          offset -= _bucket_it->size;
-        } else if (offset < _bucket_it->size) {
-          _bucket_phase = _bucket_it->size - offset;
-          break;
-        }
-      }
-    }
-    if (_bucket_it == _bucket_first) {
-      _bucket_phase = _bucket_it->size - offset;
-    }
-    if (false) {
-      DASH_THROW(dash::exception::OutOfRange,
-                 "offset " << offset << " is out of range");
-    }
-  }
-
-public:
   self_t & operator++()
   {
     increment(1);
@@ -250,30 +248,6 @@ public:
     return res;
   }
 
-  reference operator*()
-  {
-    return _bucket_it->lptr[_bucket_phase];
-  }
-
-  reference operator[](index_type offset)
-  {
-    if (_bucket_phase + offset < _bucket_it->size) {
-      // element is in bucket currently referenced by this iterator:
-      return _bucket_it->lptr[_bucket_phase + offset];
-    } else {
-      // find bucket containing element at given offset:
-      for (auto b_it = _bucket_it; b_it != _bucket_last; ++b_it) {
-        if (offset >= b_it->size) {
-          offset -= b_it->size;
-        } else if (offset < b_it->size) {
-          return b_it->lptr[offset];
-        }
-      }
-    }
-    DASH_THROW(dash::exception::OutOfRange,
-               "offset " << offset << " is out of range");
-  }
-
   inline index_type operator+(
     const self_t & other) const
   {
@@ -322,6 +296,61 @@ public:
   }
 
 private:
+  void increment(int offset)
+  {
+    _idx += offset;
+    if (_bucket_phase + offset < _bucket_it->size) {
+      // element is in bucket currently referenced by this iterator:
+      _bucket_phase += offset;
+    } else {
+      // find bucket containing element at given offset:
+      for (; _bucket_it != _bucket_last; ++_bucket_it) {
+        if (offset >= _bucket_it->size) {
+          offset -= _bucket_it->size;
+        } else if (offset < _bucket_it->size) {
+          _bucket_phase = offset;
+          break;
+        }
+      }
+    }
+    // end iterator
+    if (_bucket_it == _bucket_last) {
+      _bucket_phase = offset;
+    }
+  }
+
+  void decrement(int offset)
+  {
+    if (offset > _idx) {
+      DASH_THROW(dash::exception::OutOfRange,
+                 "offset " << offset << " is out of range");
+    }
+    _idx -= offset;
+    if (offset <= _bucket_phase) {
+      // element is in bucket currently referenced by this iterator:
+      _bucket_phase -= offset;
+    } else {
+      offset -= _bucket_phase;
+      // find bucket containing element at given offset:
+      for (; _bucket_it != _bucket_first; --_bucket_it) {
+        if (offset >= _bucket_it->size) {
+          offset -= _bucket_it->size;
+        } else if (offset < _bucket_it->size) {
+          _bucket_phase = _bucket_it->size - offset;
+          break;
+        }
+      }
+    }
+    if (_bucket_it == _bucket_first) {
+      _bucket_phase = _bucket_it->size - offset;
+    }
+    if (false) {
+      DASH_THROW(dash::exception::OutOfRange,
+                 "offset " << offset << " is out of range");
+    }
+  }
+
+private:
   bucket_iterator _bucket_first;
   bucket_iterator _bucket_last;
   index_type      _idx           = 0;
@@ -330,21 +359,6 @@ private:
   bool            _is_nullptr    = false;
 
 }; // class LocalBucketIter
-
-template<typename E, typename I, typename P, typename R >
-std::ostream & operator>>(
-  std::ostream & os,
-  const typename LocalBucketIter<E,I,P,R>::bucket_type & bucket)
-{
-  std::ostringstream ss;
-  ss << "LocalBucketIter::bucket_type("
-     << "size: "     << bucket.size << ", "
-     << "lptr: "     << bucket.lptr << ", "
-     << "gptr: "     << bucket.gptr << ", "
-     << "attached: " << bucket.attached
-     << ")";
-  return operator<<(os, ss.str());
-}
 
 } // namespace internal
 
@@ -474,7 +488,9 @@ public:
   typedef typename local_iterator::bucket_type                  bucket_type;
 
 private:
-  typedef typename std::list<bucket_type>::iterator
+  typedef typename std::list<bucket_type>
+    bucket_list;
+  typedef typename bucket_list::iterator
     bucket_iterator;
 
   typedef dash::Array<size_type, int,
@@ -490,34 +506,24 @@ public:
     /// Initial number of local elements to allocate in global memory space
     size_type   n_local_elem = 0,
     /// Team containing all units operating on the global memory region
-    Team      & team         = dash::Team::Null())
+    Team      & team         = dash::Team::All())
   : _allocator(team),
     _teamid(team.dart_id()),
+    _nunits(team.size()),
     _myid(team.myid()),
-    _bucket_attached_last(_buckets.begin()),
     _local_sizes(team.size())
   {
     DASH_LOG_TRACE("GlobDynamicMem(nunits,nelem)",
                    team.size(), n_local_elem);
 
-    _local_sizes.local[0] = n_local_elem;
-    team.barrier();
-
-    if (_teamid == DART_TEAM_NULL) {
-      _nunits = 1;
-    } else {
-      DASH_ASSERT_RETURNS(
-        dart_team_size(_teamid, &_nunits),
-        DART_OK);
-    }
-
-    if (n_local_elem > 0) {
-      grow(n_local_elem);
-    }
-    commit();
+    _bucket_attached_last = _buckets.end();
+    _local_sizes.local[0] = 0;
 
     _lbegin = lbegin(_myid);
     _lend   = lend(_myid);
+
+    grow(n_local_elem);
+    commit();
   }
 
   /**
@@ -528,6 +534,8 @@ public:
     DASH_LOG_TRACE_VAR("GlobDynamicMem.~GlobDynamicMem()", _begptr);
     DASH_LOG_TRACE("GlobDynamicMem.~GlobDynamicMem >");
   }
+
+  GlobDynamicMem() = delete;
 
   /**
    * Copy constructor.
@@ -562,7 +570,12 @@ public:
    */
   inline size_type size() const
   {
-    return _remote_size + local_size();
+    DASH_LOG_DEBUG("GlobDynamicMem.size()",
+                   "local size:",  local_size(),
+                   "remote size:", _remote_size);
+    auto global_size = _remote_size + local_size();
+    DASH_LOG_DEBUG("GlobDynamicMem.size >", global_size);
+    return global_size;
   }
 
   /**
@@ -596,6 +609,13 @@ public:
    */
   void grow(size_type num_elements)
   {
+    DASH_LOG_DEBUG_VAR("GlobDynamicMem.grow()", num_elements);
+    DASH_LOG_DEBUG("GlobDynamicMem.grow",
+                   "current local size:", _local_sizes.local[0]);
+    if (num_elements == 0) {
+      DASH_LOG_DEBUG("GlobDynamicMem.grow >", "no grow");
+      return;
+    }
     // Allocate new bucket:
     auto bucket_lptr = _allocator.allocate_local(num_elements);
     if (nullptr == bucket_lptr) {
@@ -608,7 +628,29 @@ public:
     bucket.attached = false;
     // Add bucket to local memory space:
     _buckets.push_back(bucket);
+    _bucket_attached_last = std::find_if(
+                              _buckets.begin(),
+                              _buckets.end(),
+                              [](bucket_type bit) {
+                                return !bit.attached;
+                              });
+    // Update size of local memory space:
     _local_sizes.local[0] += num_elements;
+    // Update size of local iteration space:
+    _lbegin = lbegin(_myid);
+    _lend   = lend(_myid);
+
+    DASH_LOG_DEBUG("GlobDynamicMem.grow", "new bucket:",
+                   "size:", bucket.size,
+                   "lptr:", bucket.lptr);
+    DASH_LOG_DEBUG("GlobDynamicMem.grow >", "finished - ",
+                   "new local size:",           _local_sizes.local[0],
+                   "new iteration space size:", std::distance(
+                                                  _lbegin, _lend),
+                   "total number of buckets:",  _buckets.size(),
+                   "unattached buckets:",       std::distance(
+                                                  _bucket_attached_last,
+                                                  _buckets.end()));
   }
 
   /**
@@ -629,18 +671,20 @@ public:
   void shrink(size_type num_elements)
   {
     num_elements = std::min(local_size(), num_elements);
+    DASH_LOG_DEBUG_VAR("GlobDynamicMem.shrink()", num_elements);
     if (num_elements == 0) {
+      DASH_LOG_DEBUG("GlobDynamicMem.shrink >", "no shrink");
       return;
     }
-    // Update size of local memory space:
-    _local_sizes.local[0] -= num_elements;
+    DASH_LOG_DEBUG("GlobDynamicMem.shrink",
+                   "current local size:", _local_sizes.local[0]);
     auto num_dealloc          = num_elements;
     auto num_realloc          = 0;
     auto num_dealloc_lbuckets = 0;
     // Try to reduce local capacity by deallocating un-attached local buckets
     // as they do not have to be detached collectively:
     for (auto bucket_it = _buckets.rbegin();
-         bucket_it != _buckets.rend();
+         bucket_it.base() != _bucket_attached_last;
          ++bucket_it) {
       if (bucket_it->size <= num_dealloc) {
         // mark entire bucket for deallocation:
@@ -659,10 +703,18 @@ public:
       }
     }
     // Deallocate un-attached buckets marked for deallocation:
+    DASH_LOG_DEBUG_VAR("GlobDynamicMem.shrink", num_dealloc_lbuckets);
     while (num_dealloc_lbuckets-- > 0) {
       auto dealloc_bucket = _buckets.back();
+      DASH_LOG_DEBUG("GlobDynamicMem.shrink",
+                     "deallocating unattached bucket:"
+                     "size:", dealloc_bucket.size,
+                     "lptr:", dealloc_bucket.lptr);
       _allocator.deallocate_local(dealloc_bucket.lptr);
+      // Unregister bucket:
       _buckets.pop_back();
+      // Update size of local memory space:
+      _local_sizes.local[0] -= dealloc_bucket.size;
     }
     // Number of elements to deallocate exceeds capacity of un-attached
     // buckets, deallocate attached buckets:
@@ -686,17 +738,44 @@ public:
         break;
       }
     }
-    // Deallocate un-attached buckets marked for deallocation:
+    // Mark attached buckets for deallocation:
+    DASH_LOG_DEBUG_VAR("GlobDynamicMem.shrink", num_dealloc_gbuckets);
     while (num_dealloc_gbuckets-- > 0) {
       auto dealloc_bucket = _buckets.back();
+      DASH_LOG_DEBUG("GlobDynamicMem.shrink",
+                     "deallocating attached bucket:"
+                     "size:", dealloc_bucket.size,
+                     "lptr:", dealloc_bucket.lptr);
       // Mark bucket to be detached in next call of commit():
       _detach_buckets.push_back(dealloc_bucket);
       // Unregister bucket:
       _buckets.pop_back();
+      // Update size of local memory space:
+      _local_sizes.local[0] -= dealloc_bucket.size;
     }
+    _bucket_attached_last = std::find_if(
+                              _buckets.begin(),
+                              _buckets.end(),
+                              [](bucket_type bit) {
+                                return !bit.attached;
+                              });
     if (num_realloc > 0) {
+      DASH_LOG_DEBUG("GlobDynamicMem.shrink",
+                     "reallocating", num_realloc, "elements");
       grow(num_realloc);
     }
+    // Update size of local iteration space:
+    _lbegin = lbegin(_myid);
+    _lend   = lend(_myid);
+
+    DASH_LOG_DEBUG("GlobDynamicMem.shrink >", "finished - ",
+                   "new local size:",           _local_sizes.local[0],
+                   "new iteration space size:", std::distance(
+                                                  _lbegin, _lend),
+                   "total number of buckets:",  _buckets.size(),
+                   "unattached buckets:",       std::distance(
+                                                  _bucket_attached_last,
+                                                  _buckets.end()));
   }
 
   /**
@@ -715,6 +794,15 @@ public:
    */
   void commit()
   {
+    auto num_attach_buckets = std::distance(_bucket_attached_last,
+                                            _buckets.end());
+    DASH_LOG_DEBUG("GlobDynamicMem.commit()",
+                   "buckets to attach:", num_attach_buckets,
+                   "buckets to detach:", _detach_buckets.size());
+    DASH_LOG_DEBUG_VAR("GlobDynamicMem.commit", _buckets.size());
+
+    barrier();
+
     // First detach, then attach to minimize number of elements allocated
     // at the same time.
 
@@ -722,20 +810,37 @@ public:
     for (auto bucket_it = _detach_buckets.begin();
          bucket_it != _detach_buckets.end();
          ++bucket_it) {
+      DASH_LOG_DEBUG("GlobDynamicMem.commit", "detaching bucket:",
+                     "size:", bucket_it->size,
+                     "lptr:", bucket_it->lptr,
+                     "gptr:", bucket_it->gptr);
       // Detach bucket from global memory region and deallocate its local
       // memory segment:
-      _allocator.detach(bucket_it->gptr);
-      bucket_it->attached = false;
+      if (!bucket_it->attached) {
+        _allocator.detach(bucket_it->gptr);
+        bucket_it->attached = false;
+      }
     }
+    _detach_buckets.clear();
+
     // Register buckets marked for attach in global memory:
     for (auto bucket_it = _bucket_attached_last;
          bucket_it != _buckets.end();
          ++bucket_it) {
+      DASH_LOG_DEBUG("GlobDynamicMem.commit", "attaching bucket:",
+                     "size:", bucket_it->size,
+                     "lptr:", bucket_it->lptr,
+                     "gptr:", bucket_it->gptr);
       // Attach bucket's local memory segment in global memory:
-      _allocator.attach(bucket_it->lptr, bucket_it->size);
+      bucket_it->gptr = _allocator.attach(
+                          bucket_it->lptr,
+                          bucket_it->size);
+      DASH_LOG_DEBUG("GlobDynamicMem.commit", "attached bucket:",
+                     "gptr:", bucket_it->gptr);
       bucket_it->attached = true;
-      ++_bucket_attached_last;
     }
+    _bucket_attached_last = _buckets.end();
+
     // Update new capacity of global attached memory space.
     //
     // TODO:
@@ -746,9 +851,14 @@ public:
     _remote_size = 0;
     for (int u = 0; u < _nunits; ++u) {
       if (u != _myid) {
-        _remote_size += static_cast<size_type>(_local_sizes[u]);
+        size_type unit_local_size = _local_sizes[u];
+        DASH_LOG_DEBUG("GlobDynamicMem.commit",
+                       "unit", u, "local size:", unit_local_size);
+        _remote_size += unit_local_size;
       }
     }
+    DASH_LOG_DEBUG_VAR("GlobDynamicMem.commit", _remote_size);
+    DASH_LOG_DEBUG("GlobDynamicMem.commit >", "finished");
   }
 
   /**
@@ -957,6 +1067,15 @@ public:
     return _lend;
   }
 
+  inline std::vector<dart_gptr_t> buckets() const
+  {
+    std::vector<dart_gptr_t> buckets;
+    for (auto bit = _buckets.begin(); bit != _bucket_attached_last; ++bit) {
+      buckets.push_back(bit->gptr);
+    }
+    return buckets;
+  }
+
   /**
    * Write value to global memory at given offset.
    *
@@ -1046,6 +1165,11 @@ public:
   {
     DASH_LOG_DEBUG("GlobDynamicMem.index_to_gptr(unit,l_idx)",
                    unit, local_index);
+    if (_nunits == 0) {
+      DASH_THROW(dash::exception::RuntimeError, "No units in team");
+    }
+    DASH_THROW(dash::exception::NotImplemented,
+               "GlobDynamicMem.index_to_gptr is not implemented");
     // Initialize with global pointer to start address:
     dart_gptr_t gptr = _begptr;
     // Resolve global unit id
@@ -1088,12 +1212,12 @@ private:
   ///
   ///   [ ... attached buckets ... | ... allocated buckets ... ]
   ///
-  std::list<bucket_type>     _buckets;
-  /// Iterator partitioning _buckets into attached and un-attached buckets,
+  bucket_list                _buckets;
+  /// Iterator partitioning buckets into attached and un-attached buckets,
   /// i.e. pointing past the final attached bucket in _buckets.
   bucket_iterator            _bucket_attached_last;
   /// List of buckets marked for detach.
-  std::list<bucket_type>     _detach_buckets;
+  bucket_list                _detach_buckets;
   /// Map of unit id to number of elements in the unit's attached local
   /// memory space.
   local_sizes_map            _local_sizes;
