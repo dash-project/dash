@@ -201,8 +201,9 @@ public:
   typedef typename glob_mem_type::local_reference                  reference;
   typedef typename glob_mem_type::const_local_reference      const_reference;
 
-  typedef pointer                                                   iterator;
-  typedef const_pointer                                       const_iterator;
+  typedef typename glob_mem_type::local_iterator                    iterator;
+  typedef typename glob_mem_type::const_local_iterator        const_iterator;
+
   typedef std::reverse_iterator<      iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
@@ -279,11 +280,15 @@ public:
     // Acquire memory for new element:
     if (_list->_lcapacity > _list->_lsize) {
       // No reallocation required.
+      _list->_lbegin[_list->_lsize] = value;
+      _list->_lsize++;
+      _list->_size++;
     } else{
       // Local capacity must be increased, reallocate:
+      DASH_THROW(dash::exception::NotImplemented,
+                 "dash::ListLocalRef.push_back: "
+                 "reallocation is not implemented");
     }
-    DASH_THROW(dash::exception::NotImplemented,
-               "dash::ListLocalRef.push_back is not implemented");
   }
 
   /**
@@ -582,7 +587,7 @@ private:
  */
 template<
   typename ElementType,
-  class    AllocatorType = dash::allocator::LocalAllocator<ElementType>,
+  class    AllocatorType = dash::allocator::DynamicAllocator<ElementType>,
   class    PatternType   = dash::DynamicPattern<
                              1, dash::ROW_MAJOR, dash::default_index_t> >
 class List

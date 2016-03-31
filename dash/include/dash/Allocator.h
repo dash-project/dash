@@ -526,6 +526,8 @@ public:
   typedef dart_gptr_t                void_pointer;
   typedef dart_gptr_t               const_pointer;
   typedef dart_gptr_t          const_void_pointer;
+  typedef value_type              * local_pointer;
+  typedef const value_type *  const_local_pointer;
 
 public:
   /**
@@ -643,16 +645,18 @@ public:
   }
 
   /**
-   * Allocates \c num_local_elem local elements at every unit in global
-   * memory space.
+   * Register pre-allocated local memory segment of \c num_local_elem
+   * elements in global memory space.
    *
-   * \see DashAllocatorConcept
+   * Collective operation.
+   * The number of allocated elements may differ between units.
+   *
+   * \see DashDynamicAllocatorConcept
    */
-  pointer allocate(size_type num_local_elem)
+  pointer attach(local_pointer lptr, size_type num_local_elem)
   {
     if (num_local_elem > 0) {
       size_type    num_local_bytes = sizeof(ElementType) * num_local_elem;
-      value_type * lptr = new value_type[num_local_elem];
       dart_gptr_t  gptr;
       if (dart_team_memregister_aligned(
             _team_id, num_local_bytes, lptr, &gptr) == DART_OK) {
@@ -665,12 +669,13 @@ public:
   }
 
   /**
-   * Deallocates memory in global memory space previously allocated across
-   * local memory of all units in the team.
+   * Unregister local memory segment from global memory space.
    *
-   * \see DashAllocatorConcept
+   * Collective operation.
+   *
+   * \see DashDynamicAllocatorConcept
    */
-  void deallocate(pointer gptr)
+  void detach(pointer gptr)
   {
     if (!dash::is_initialized()) {
       // If a DASH container is deleted after dash::finalize(), global
@@ -702,6 +707,58 @@ public:
       _allocated.end());
   }
 
+  /**
+   * Allocates \c num_local_elem local elements in the active unit's local
+   * memory.
+   *
+   * Local operation.
+   *
+   * \see DashDynamicAllocatorConcept
+   */
+  local_pointer allocate_local(size_type num_local_elem)
+  {
+    return new value_type[num_local_elem];
+  }
+
+  /**
+   * Deallocates memory segment in the active unit's local memory.
+   *
+   * Local operation.
+   *
+   * \see DashDynamicAllocatorConcept
+   */
+  void deallocate_local(local_pointer lptr)
+  {
+    delete[] lptr;
+  }
+
+  /**
+   * Allocates \c num_local_elem local elements at active unit in global
+   * memory space.
+   *
+   * Collective operation.
+   * The number of allocated elements may differ between units.
+   *
+   * \see DashAllocatorConcept
+   */
+  pointer allocate(size_type num_local_elem)
+  {
+    return attach(allocate_local(num_local_elem), num_local_elem);
+  }
+
+  /**
+   * Deallocates memory in global memory space previously allocated across
+   * local memory of all units in the team.
+   *
+   * Collective operation.
+   *
+   * \see DashAllocatorConcept
+   */
+  void deallocate(pointer gptr)
+  {
+    return detach(gptr);
+  }
+
 private:
   /**
    * Frees all global memory regions allocated by this allocator instance.
@@ -712,7 +769,7 @@ private:
       // TODO:
       // Inefficient as deallocate() applies vector.erase(std::remove)
       // for every element.
-      deallocate(gptr);
+      deallocate(gptr.second);
     }
   }
 

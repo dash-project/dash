@@ -877,7 +877,7 @@ public:
    *
    * \return  The number of elements in the array.
    */
-  constexpr size_type size() const noexcept
+  inline size_type size() const noexcept
   {
     return m_size;
   }
@@ -888,7 +888,7 @@ public:
    *
    * \return  The number of elements in the array.
    */
-  constexpr size_type capacity() const noexcept
+  inline size_type capacity() const noexcept
   {
     return m_size;
   }
@@ -899,7 +899,7 @@ public:
    * \return  The instance of Team that this array has been instantiated
    *          with
    */
-  constexpr const Team & team() const noexcept
+  inline const Team & team() const noexcept
   {
     return *m_team;
   }
@@ -910,7 +910,7 @@ public:
    * \return  The number of elements in the array that are local to the
    *          calling unit.
    */
-  constexpr size_type lsize() const noexcept
+  inline size_type lsize() const noexcept
   {
     return m_lsize;
   }
@@ -921,7 +921,7 @@ public:
    * \return  The number of allocated elements in the array that are local
    *          to the calling unit.
    */
-  constexpr size_type lcapacity() const noexcept
+  inline size_type lcapacity() const noexcept
   {
     return m_lcapacity;
   }
@@ -931,7 +931,7 @@ public:
    *
    * \return  True if \c size() is 0, otherwise false
    */
-  constexpr bool empty() const noexcept
+  inline bool empty() const noexcept
   {
     return size() == 0;
   }
