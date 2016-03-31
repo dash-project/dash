@@ -420,7 +420,6 @@ dart_ret_t dart_team_create(
 	MPI_Group_translate_ranks (user_group, sub_size, unitids, group_all, abso_unitids);
 	MPI_Group_translate_ranks (group->mpi_group, 1, *sub_unitid, parent_group, &parent_unitid);
 	MPI_Bcast (&index, 1, MPI_UINT16_T, parent_unitid, comm);
-
 #endif
 #endif
 
