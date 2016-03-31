@@ -18,12 +18,11 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   LOG_MESSAGE("initializing GlobDynamicMem<T>");
 
   size_t initial_local_capacity = 10;
-  size_t local_buffer_capacity  = 10;
-  dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity,
-                                      local_buffer_capacity);
+  dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
-  initial_local_capacity  += local_buffer_capacity;
-  initial_global_capacity += local_buffer_capacity;
+
+  LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
+              initial_global_capacity, initial_local_capacity);
 
   EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
   EXPECT_EQ_U(initial_local_capacity,
@@ -107,8 +106,6 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
 
   // Initialize values in local memory:
   LOG_MESSAGE("initialize local values");
-  LOG_MESSAGE("local size: %d",
-              gdmem.local_size());
   auto lbegin = gdmem.lbegin();
   for (size_t li = 0; li < gdmem.local_size(); ++li) {
     value_t value = 100 * (dash::myid() + 1) + li;
@@ -121,11 +118,16 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   // Memory marked for deallocation is still accessible by other units:
 
   LOG_MESSAGE("committing global memory");
+  LOG_MESSAGE("local capacity before commit: %d",  gdmem.local_size());
+  LOG_MESSAGE("global capacity before commit: %d", gdmem.size());
   // Collectively commit changes of local memory allocation to global
   // memory space:
   // register newly allocated local memory and remove local memory marked
   // for deallocation.
   gdmem.commit();
+
+  LOG_MESSAGE("local capacity after commit: %d",  gdmem.local_size());
+  LOG_MESSAGE("global capacity after commit: %d", gdmem.size());
 
   DASH_LOG_DEBUG("GlobDynamicMemTest.Commit",
                  "attached local buckets:", gdmem.buckets());
