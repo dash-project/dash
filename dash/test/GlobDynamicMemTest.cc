@@ -31,16 +31,21 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
 
   dash::barrier();
 
+  // Total changes of local capacity:
   int unit_0_lsize_diff =  5;
   int unit_1_lsize_diff = -2;
 
   if (dash::myid() == 0) {
-    LOG_MESSAGE("grow(5)");
-    gdmem.grow(unit_0_lsize_diff);
+    gdmem.grow(3);
+    gdmem.shrink(2);
+    gdmem.grow(5);
+    gdmem.shrink(1);
   }
   if (dash::myid() == 1) {
-    LOG_MESSAGE("shrink(2)");
-    gdmem.shrink(-unit_1_lsize_diff);
+    gdmem.shrink(2);
+    gdmem.grow(5);
+    gdmem.shrink(2);
+    gdmem.shrink(3);
   }
 
   dash::barrier();
@@ -133,52 +138,39 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
                  "attached local buckets:", gdmem.buckets());
 
   // Changes are globally visible now:
-  EXPECT_EQ_U(
-    gdmem.size(),
-    initial_global_capacity + unit_0_lsize_diff + unit_1_lsize_diff);
-}
-
-TEST_F(GlobDynamicMemTest, LocalMultipleResize)
-{
-  typedef int value_t;
-
-  if (dash::size() < 2) {
-    LOG_MESSAGE(
-      "GlobDynamicMemTest.LocalMultipleResize requires at least two units");
-    return;
-  }
-
-  size_t initial_local_capacity  = 10;
-  size_t initial_global_capacity = dash::size() * initial_local_capacity;
-  dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
-
-  EXPECT_EQ_U(initial_local_capacity, gdmem.local_size());
-  EXPECT_EQ_U(initial_local_capacity,
-              gdmem.lend(dash::myid()) - gdmem.lbegin(dash::myid()));
-  EXPECT_EQ_U(initial_global_capacity, gdmem.size());
-
-  dash::barrier();
-
-  int unit_0_lsize_diff =  5;
-  int unit_1_lsize_diff = -2;
+  auto expected_global_capacity = initial_global_capacity +
+                                  unit_0_lsize_diff + unit_1_lsize_diff;
+  EXPECT_EQ_U(expected_global_capacity, gdmem.size());
 
   if (dash::myid() == 0) {
-    gdmem.grow(3);
-    gdmem.shrink(2);
-    gdmem.grow(5);
-    gdmem.shrink(1);
+    LOG_MESSAGE("grow(30)");
+    gdmem.grow(30);
   }
   if (dash::myid() == 1) {
-    gdmem.shrink(2);
-    gdmem.grow(5);
-    gdmem.shrink(2);
-    gdmem.shrink(3);
+    LOG_MESSAGE("grow(30)");
+    gdmem.grow(30);
   }
-
+  LOG_MESSAGE("commit, balanced attach");
   gdmem.commit();
+  // Capacity changes have been published globally:
+  expected_global_capacity += (30 + 30);
+  EXPECT_EQ(expected_global_capacity, gdmem.size());
 
-  DASH_LOG_DEBUG("GlobDynamicMemTest.LocalMultipleResize",
-                 "attached local buckets:", gdmem.buckets());
+  if (dash::myid() == 0) {
+    // resizes attached bucket:
+    LOG_MESSAGE("shrink(29)");
+    gdmem.shrink(29);
+  }
+  if (dash::myid() == 1) {
+    // marks bucket for detach:
+    LOG_MESSAGE("shrink(30)");
+    gdmem.shrink(30);
+  }
+  LOG_MESSAGE("commit, unbalanced detach");
+  gdmem.commit();
+  // Capacity changes have been published globally:
+  expected_global_capacity -= (29 + 30);
+  EXPECT_EQ(expected_global_capacity, gdmem.size());
 }
 
 TEST_F(GlobDynamicMemTest, RemoteAccess)
