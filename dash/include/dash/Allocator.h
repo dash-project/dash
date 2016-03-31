@@ -652,16 +652,14 @@ public:
    */
   pointer attach(local_pointer lptr, size_type num_local_elem)
   {
-    if (num_local_elem > 0) {
-      size_type    num_local_bytes = sizeof(ElementType) * num_local_elem;
-      dart_gptr_t  gptr;
-      if (dart_team_memregister_aligned(
-            _team_id, num_local_bytes, lptr, &gptr) == DART_OK) {
-        _allocated.push_back(std::make_pair(lptr, gptr));
-        return gptr;
-      }
-      delete [] lptr;
+    size_type    num_local_bytes = sizeof(ElementType) * num_local_elem;
+    dart_gptr_t  gptr;
+    if (dart_team_memregister_aligned(
+          _team_id, num_local_bytes, lptr, &gptr) == DART_OK) {
+      _allocated.push_back(std::make_pair(lptr, gptr));
+      return gptr;
     }
+    delete [] lptr;
     return DART_GPTR_NULL;
   }
 

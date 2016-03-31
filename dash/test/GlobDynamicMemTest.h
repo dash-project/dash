@@ -28,7 +28,7 @@ protected:
   virtual void SetUp() {
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-//  dash::barrier();
+    dash::Team::All().barrier();
     LOG_MESSAGE("===> Running test case with %d units ...",
                 _dash_size);
   }
