@@ -73,6 +73,8 @@ public:
   typedef       PointerType                          pointer;
   typedef const PointerType                    const_pointer;
 
+  typedef typename GlobMemType::local_pointer  local_pointer;
+
   typedef       PatternType                     pattern_type;
   typedef typename PatternType::index_type        index_type;
 
@@ -125,7 +127,7 @@ protected:
   /// Unit id of the active unit
   dart_unit_t            _myid;
   /// Pointer to first element in local memory
-  ElementType          * _lbegin          = nullptr;
+  local_pointer          _lbegin          = nullptr;
 
 public:
   /**
@@ -312,7 +314,7 @@ public:
   /**
    * Convert global iterator to native pointer.
    */
-  ElementType * local() const
+  local_pointer local() const
   {
     DASH_LOG_TRACE_VAR("GlobIter.local=()", _idx);
     typedef typename pattern_type::local_index_t

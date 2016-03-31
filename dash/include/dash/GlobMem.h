@@ -39,6 +39,7 @@ public:
   typedef typename allocator_type::void_pointer              void_pointer;
   typedef typename allocator_type::const_pointer            const_pointer;
   typedef typename allocator_type::const_void_pointer  const_void_pointer;
+  typedef ElementType *                                     local_pointer;
 
 public:
   /**
