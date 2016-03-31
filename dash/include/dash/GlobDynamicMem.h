@@ -511,7 +511,6 @@ public:
   GlobDynamicMem(
     /// Initial number of local elements to allocate in global memory space
     size_type   n_local_elem        = 0,
-    size_type   n_local_buffer_elem = 0,
     /// Team containing all units operating on the global memory region
     Team      & team                = dash::Team::All())
   : _allocator(team),
@@ -521,8 +520,8 @@ public:
     _local_sizes(team.size()),
     _num_detach_buckets(team.size())
   {
-    DASH_LOG_TRACE("GlobDynamicMem.(ninit,nbuf,nunits)",
-                   n_local_elem, n_local_buffer_elem, team.size());
+    DASH_LOG_TRACE("GlobDynamicMem.(ninit,nunits)",
+                   n_local_elem, team.size());
 
     _local_sizes.local[0]        = 0;
     _num_detach_buckets.local[0] = 0;
@@ -534,11 +533,6 @@ public:
                    "allocating initial memory space");
     grow(n_local_elem);
     commit();
-
-    DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem",
-                   "reserving local buffer bucket");
-    grow(n_local_buffer_elem);
-    DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem >");
   }
 
   /**
@@ -728,7 +722,7 @@ public:
     for (auto bucket_it = _buckets.rbegin();
          bucket_it != _buckets.rend();
          ++bucket_it) {
-      if (bucket_it->attached) {
+      if (!bucket_it->attached) {
         continue;
       }
       if (num_dealloc == 0) {
@@ -737,7 +731,8 @@ public:
       if (bucket_it->size <= num_dealloc) {
         // mark entire bucket for deallocation:
         num_dealloc_gbuckets++;
-        num_dealloc -= bucket_it->size;
+        _local_sizes.local[0] -= bucket_it->size;
+        num_dealloc           -= bucket_it->size;
       } else if (bucket_it->size > num_dealloc) {
         DASH_LOG_TRACE("GlobDynamicMem.shrink",
                        "shrinking attached bucket:",
@@ -760,8 +755,6 @@ public:
       _detach_buckets.push_back(dealloc_bucket);
       // Unregister bucket:
       _buckets.pop_back();
-      // Update size of local memory space:
-      _local_sizes.local[0] -= dealloc_bucket.size;
     }
     // Update local iteration space:
     _lbegin = lbegin(_myid);
@@ -842,8 +835,10 @@ public:
                      "at unit",             unit_max_detach_buckets);
     }
 
-    // Register bucket marked for attach in global memory:
-    if (!_buckets.empty() && !_buckets.back().attached) {
+    // Attach local buffer bucket in global memory space if it exists and
+    // contains values:
+    if (!_local_commit_buf.empty() &&
+        !_buckets.empty() && !_buckets.back().attached) {
       bucket_type & bucket_last = _buckets.back();
       // Extend existing unattached bucket:
       DASH_LOG_TRACE("GlobDynamicMem.commit", "attaching bucket:",
