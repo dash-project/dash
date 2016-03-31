@@ -341,8 +341,8 @@ dart_ret_t dart_team_create(
 		/* max_teamid is thought to be the new created team ID. */
 		*newteam = max_teamid;
 		dart_teams[index] = subcomm;
-		MPI_Win_create_dynamic(MPI_INFO_NULL, subcomm, &win);
-		dart_win_lists[index] = win;
+//		MPI_Win_create_dynamic(MPI_INFO_NULL, subcomm, &win);
+//		dart_win_lists[index] = win;
 	}
 #if 0
 	/* Another way of generating the available teamID for the newly crated team. */
@@ -396,6 +396,35 @@ dart_ret_t dart_team_create(
 		}
 	}
 #endif	
+	MPI_Group group_all;
+	MPI_Comm_group (MPI_COMM_WORLD, &group_all);
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	int parent_unitid, sub_unitid = 0;
+
+	int size, sub_size, iter;
+	MPI_Comm real_comm, real_subcomm;
+	MPI_Group parent_group;
+	MPI_Comm_group (comm, &parent_group);
+	real_comm = dart_realteams[unique_id];
+	MPI_Comm_size (real_comm, &size);
+	MPI_Group_size (group->mpi_group, &sub_size);
+	MPI_Comm_rank (dart_sharedmem_comm_list[unique_id], &unitid);
+
+	MPI_Group user_group;
+	MPI_Comm_group (user_comm_world, &user_group);
+	
+	dart_unit_t* unitids = (dart_unit_t*) malloc (sizeof(dart_unit_t) * (sub_size)+2);
+	dart_unit_t* abso_unitids = (dart_unit_t*)malloc (sizeof(dart_unit_t) * (sub_size)+2);
+	dart_group_getmembers (group, unitids);
+	MPI_Group_translate_ranks (user_group, sub_size, unitids, group_all, abso_unitids);
+	MPI_Group_translate_ranks (group->mpi_group, 1, *sub_unitid, parent_group, &parent_unitid);
+	MPI_Bcast (&index, 1, MPI_UINT16_T, parent_unitid, comm);
+
+#endif
+#endif
+
+
 
 	if (subcomm != MPI_COMM_NULL) {
 #ifdef SHAREDMEM_ENABLE
