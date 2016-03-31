@@ -10,6 +10,8 @@
 #include <dash/Onesided.h>
 #include <dash/Array.h>
 
+#include <dash/algorithm/MinMax.h>
+
 #include <dash/internal/Logging.h>
 
 #include <list>
@@ -497,6 +499,10 @@ private:
                       dash::CSRPattern<1, dash::ROW_MAJOR, int> >
     local_sizes_map;
 
+  typedef dash::Array<size_type, int,
+                      dash::CSRPattern<1, dash::ROW_MAJOR, int> >
+    local_nbuckets_map;
+
 public:
   /**
    * Constructor, collectively allocates the given number of elements in
@@ -504,26 +510,35 @@ public:
    */
   GlobDynamicMem(
     /// Initial number of local elements to allocate in global memory space
-    size_type   n_local_elem = 0,
+    size_type   n_local_elem        = 0,
+    size_type   n_local_buffer_elem = 0,
     /// Team containing all units operating on the global memory region
-    Team      & team         = dash::Team::All())
+    Team      & team                = dash::Team::All())
   : _allocator(team),
     _teamid(team.dart_id()),
     _nunits(team.size()),
     _myid(team.myid()),
-    _local_sizes(team.size())
+    _local_sizes(team.size()),
+    _num_detach_buckets(team.size())
   {
-    DASH_LOG_TRACE("GlobDynamicMem(nunits,nelem)",
-                   team.size(), n_local_elem);
+    DASH_LOG_TRACE("GlobDynamicMem.(ninit,nbuf,nunits)",
+                   n_local_elem, n_local_buffer_elem, team.size());
 
-    _bucket_attached_last = _buckets.end();
-    _local_sizes.local[0] = 0;
+    _local_sizes.local[0]        = 0;
+    _num_detach_buckets.local[0] = 0;
 
     _lbegin = lbegin(_myid);
     _lend   = lend(_myid);
 
+    DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem",
+                   "allocating initial memory space");
     grow(n_local_elem);
     commit();
+
+    DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem",
+                   "reserving local buffer bucket");
+    grow(n_local_buffer_elem);
+    DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem >");
   }
 
   /**
@@ -531,7 +546,7 @@ public:
    */
   ~GlobDynamicMem()
   {
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.~GlobDynamicMem()", _begptr);
+    DASH_LOG_TRACE("GlobDynamicMem.~GlobDynamicMem()");
     DASH_LOG_TRACE("GlobDynamicMem.~GlobDynamicMem >");
   }
 
@@ -560,7 +575,6 @@ public:
             _lbegin               == rhs._lbegin &&
             _lend                 == rhs._lend &&
             _buckets              == rhs._buckets &&
-            _bucket_attached_last == rhs._bucket_attached_last &&
             _detach_buckets       == rhs._detach_buckets);
   }
 
@@ -610,47 +624,53 @@ public:
   void grow(size_type num_elements)
   {
     DASH_LOG_DEBUG_VAR("GlobDynamicMem.grow()", num_elements);
-    DASH_LOG_DEBUG("GlobDynamicMem.grow",
+    DASH_LOG_TRACE("GlobDynamicMem.grow",
                    "current local size:", _local_sizes.local[0]);
     if (num_elements == 0) {
       DASH_LOG_DEBUG("GlobDynamicMem.grow >", "no grow");
       return;
     }
-    // Allocate new bucket:
-    auto bucket_lptr = _allocator.allocate_local(num_elements);
-    if (nullptr == bucket_lptr) {
-      DASH_THROW(dash::exception::RuntimeError, "allocation failed");
+    if (!_buckets.empty() && !_buckets.back().attached) {
+      bucket_type & bucket_last = _buckets.back();
+      DASH_LOG_TRACE("GlobDynamicMem.grow",
+                     "extending existing unattached bucket,",
+                     "old size:", _local_commit_buf.size());
+      // Extend existing unattached bucket:
+      auto num_unattached = bucket_last.size + num_elements;
+      _local_commit_buf.resize(num_unattached);
+      bucket_last.size = num_unattached;
+      bucket_last.lptr = &_local_commit_buf[0];
+      DASH_ASSERT(bucket_last.gptr == DART_GPTR_NULL);
+    } else {
+      // Create new unattached bucket:
+      DASH_LOG_TRACE("GlobDynamicMem.grow", "creating new unattached bucket:",
+                     "size:", num_elements);
+      _local_commit_buf.resize(num_elements);
+      bucket_type bucket;
+      bucket.size     = num_elements;
+      bucket.lptr     = &_local_commit_buf[0];
+      bucket.gptr     = DART_GPTR_NULL;
+      bucket.attached = false;
+      // Add bucket to local memory space:
+      _buckets.push_back(bucket);
+      DASH_LOG_TRACE("GlobDynamicMem.grow", "added unattached bucket:",
+                     "size:", bucket.size,
+                     "lptr:", bucket.lptr);
     }
-    bucket_type bucket;
-    bucket.size     = num_elements;
-    bucket.lptr     = bucket_lptr;
-    bucket.gptr     = DART_GPTR_NULL;
-    bucket.attached = false;
-    // Add bucket to local memory space:
-    _buckets.push_back(bucket);
-    _bucket_attached_last = std::find_if(
-                              _buckets.begin(),
-                              _buckets.end(),
-                              [](bucket_type bit) {
-                                return !bit.attached;
-                              });
+    DASH_LOG_TRACE("GlobDynamicMem.grow",
+                   "local buffer bucket size:", _local_commit_buf.size());
     // Update size of local memory space:
     _local_sizes.local[0] += num_elements;
-    // Update size of local iteration space:
+    // Update local iteration space:
     _lbegin = lbegin(_myid);
     _lend   = lend(_myid);
 
-    DASH_LOG_DEBUG("GlobDynamicMem.grow", "new bucket:",
-                   "size:", bucket.size,
-                   "lptr:", bucket.lptr);
     DASH_LOG_DEBUG("GlobDynamicMem.grow >", "finished - ",
                    "new local size:",           _local_sizes.local[0],
                    "new iteration space size:", std::distance(
                                                   _lbegin, _lend),
                    "total number of buckets:",  _buckets.size(),
-                   "unattached buckets:",       std::distance(
-                                                  _bucket_attached_last,
-                                                  _buckets.end()));
+                   "unattached bucket:",        !_buckets.back().attached);
   }
 
   /**
@@ -676,73 +696,63 @@ public:
       DASH_LOG_DEBUG("GlobDynamicMem.shrink >", "no shrink");
       return;
     }
-    DASH_LOG_DEBUG("GlobDynamicMem.shrink",
+    DASH_LOG_TRACE("GlobDynamicMem.shrink",
                    "current local size:", _local_sizes.local[0]);
-    auto num_dealloc          = num_elements;
-    auto num_realloc          = 0;
-    auto num_dealloc_lbuckets = 0;
+    auto num_dealloc = num_elements;
     // Try to reduce local capacity by deallocating un-attached local buckets
     // as they do not have to be detached collectively:
-    for (auto bucket_it = _buckets.rbegin();
-         bucket_it.base() != _bucket_attached_last;
-         ++bucket_it) {
-      if (bucket_it->size <= num_dealloc) {
+    bucket_type & bucket_last = _buckets.back();
+    if (!bucket_last.attached) {
+      if (bucket_last.size <= num_dealloc) {
+        DASH_LOG_TRACE("GlobDynamicMem.shrink",
+                       "removing unattached bucket:",
+                       "size:", bucket_last.size);
         // mark entire bucket for deallocation:
-        num_dealloc_lbuckets++;
-        num_dealloc -= bucket_it->size;
-      } else if (bucket_it->size > num_dealloc) {
-        // As allocators do not provide resizing local memory segments,
-        // mark entire bucket for deallocation and register its remaining
-        // size for reallocation:
-        num_dealloc_lbuckets++;
-        num_realloc += bucket_it->size - num_dealloc;
-        num_dealloc  = 0;
-      }
-      if (num_dealloc == 0) {
-        break;
+        num_dealloc           -= bucket_last.size;
+        _local_sizes.local[0] -= bucket_last.size;
+        _buckets.pop_back();
+      } else if (bucket_last.size > num_dealloc) {
+        DASH_LOG_TRACE("GlobDynamicMem.shrink",
+                       "shrinking unattached bucket:",
+                       "old size:", bucket_last.size,
+                       "new size:", bucket_last.size - num_dealloc),
+        bucket_last.size      -= num_dealloc;
+        _local_sizes.local[0] -= num_dealloc;
+        num_dealloc = 0;
       }
     }
-    // Deallocate un-attached buckets marked for deallocation:
-    DASH_LOG_DEBUG_VAR("GlobDynamicMem.shrink", num_dealloc_lbuckets);
-    while (num_dealloc_lbuckets-- > 0) {
-      auto dealloc_bucket = _buckets.back();
-      DASH_LOG_DEBUG("GlobDynamicMem.shrink",
-                     "deallocating unattached bucket:"
-                     "size:", dealloc_bucket.size,
-                     "lptr:", dealloc_bucket.lptr);
-      _allocator.deallocate_local(dealloc_bucket.lptr);
-      // Unregister bucket:
-      _buckets.pop_back();
-      // Update size of local memory space:
-      _local_sizes.local[0] -= dealloc_bucket.size;
-    }
+
     // Number of elements to deallocate exceeds capacity of un-attached
     // buckets, deallocate attached buckets:
     auto num_dealloc_gbuckets = 0;
     for (auto bucket_it = _buckets.rbegin();
          bucket_it != _buckets.rend();
          ++bucket_it) {
+      if (bucket_it->attached) {
+        continue;
+      }
+      if (num_dealloc == 0) {
+        break;
+      }
       if (bucket_it->size <= num_dealloc) {
         // mark entire bucket for deallocation:
         num_dealloc_gbuckets++;
         num_dealloc -= bucket_it->size;
       } else if (bucket_it->size > num_dealloc) {
-        // As allocators do not provide resizing local memory segments,
-        // mark entire bucket for deallocation and register its remaining
-        // size for reallocation:
-        num_dealloc_gbuckets++;
-        num_realloc += bucket_it->size - num_dealloc;
-        num_dealloc  = 0;
-      }
-      if (num_dealloc == 0) {
-        break;
+        DASH_LOG_TRACE("GlobDynamicMem.shrink",
+                       "shrinking attached bucket:",
+                       "old size:", bucket_it->size,
+                       "new size:", bucket_it->size - num_dealloc),
+        bucket_it->size       -= num_dealloc;
+        _local_sizes.local[0] -= num_dealloc;
+        num_dealloc = 0;
       }
     }
     // Mark attached buckets for deallocation:
     DASH_LOG_DEBUG_VAR("GlobDynamicMem.shrink", num_dealloc_gbuckets);
     while (num_dealloc_gbuckets-- > 0) {
       auto dealloc_bucket = _buckets.back();
-      DASH_LOG_DEBUG("GlobDynamicMem.shrink",
+      DASH_LOG_TRACE("GlobDynamicMem.shrink",
                      "deallocating attached bucket:"
                      "size:", dealloc_bucket.size,
                      "lptr:", dealloc_bucket.lptr);
@@ -753,18 +763,7 @@ public:
       // Update size of local memory space:
       _local_sizes.local[0] -= dealloc_bucket.size;
     }
-    _bucket_attached_last = std::find_if(
-                              _buckets.begin(),
-                              _buckets.end(),
-                              [](bucket_type bit) {
-                                return !bit.attached;
-                              });
-    if (num_realloc > 0) {
-      DASH_LOG_DEBUG("GlobDynamicMem.shrink",
-                     "reallocating", num_realloc, "elements");
-      grow(num_realloc);
-    }
-    // Update size of local iteration space:
+    // Update local iteration space:
     _lbegin = lbegin(_myid);
     _lend   = lend(_myid);
 
@@ -773,9 +772,7 @@ public:
                    "new iteration space size:", std::distance(
                                                   _lbegin, _lend),
                    "total number of buckets:",  _buckets.size(),
-                   "unattached buckets:",       std::distance(
-                                                  _bucket_attached_last,
-                                                  _buckets.end()));
+                   "unattached bucket:",        !_buckets.back().attached);
   }
 
   /**
@@ -794,52 +791,92 @@ public:
    */
   void commit()
   {
-    auto num_attach_buckets = std::distance(_bucket_attached_last,
-                                            _buckets.end());
+    auto num_attach_buckets = _buckets.back().attached ? 0 : 1;
+    auto num_detach_buckets = _detach_buckets.size();
     DASH_LOG_DEBUG("GlobDynamicMem.commit()",
                    "buckets to attach:", num_attach_buckets,
-                   "buckets to detach:", _detach_buckets.size());
-    DASH_LOG_DEBUG_VAR("GlobDynamicMem.commit", _buckets.size());
-
-    barrier();
+                   "buckets to detach:", num_detach_buckets);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _buckets.size());
 
     // First detach, then attach to minimize number of elements allocated
     // at the same time.
 
     // Unregister buckets marked for detach in global memory:
-    for (auto bucket_it = _detach_buckets.begin();
-         bucket_it != _detach_buckets.end();
-         ++bucket_it) {
-      DASH_LOG_DEBUG("GlobDynamicMem.commit", "detaching bucket:",
-                     "size:", bucket_it->size,
-                     "lptr:", bucket_it->lptr,
-                     "gptr:", bucket_it->gptr);
-      // Detach bucket from global memory region and deallocate its local
-      // memory segment:
-      if (!bucket_it->attached) {
-        _allocator.detach(bucket_it->gptr);
-        bucket_it->attached = false;
-      }
-    }
-    _detach_buckets.clear();
+    _num_detach_buckets.local[0] = num_detach_buckets;
+    barrier();
 
-    // Register buckets marked for attach in global memory:
-    for (auto bucket_it = _bucket_attached_last;
-         bucket_it != _buckets.end();
-         ++bucket_it) {
-      DASH_LOG_DEBUG("GlobDynamicMem.commit", "attaching bucket:",
-                     "size:", bucket_it->size,
-                     "lptr:", bucket_it->lptr,
-                     "gptr:", bucket_it->gptr);
-      // Attach bucket's local memory segment in global memory:
-      bucket_it->gptr = _allocator.attach(
-                          bucket_it->lptr,
-                          bucket_it->size);
-      DASH_LOG_DEBUG("GlobDynamicMem.commit", "attached bucket:",
-                     "gptr:", bucket_it->gptr);
-      bucket_it->attached = true;
+    auto min_detach_buckets_git  = dash::min_element(
+                                     _num_detach_buckets.begin(),
+                                     _num_detach_buckets.end());
+    auto max_detach_buckets_git  = dash::max_element(
+                                     _num_detach_buckets.begin(),
+                                     _num_detach_buckets.end());
+    auto unit_min_detach_buckets = min_detach_buckets_git.gpos();
+    auto unit_max_detach_buckets = max_detach_buckets_git.gpos();
+    int  min_detach_buckets      = *min_detach_buckets_git;
+    int  max_detach_buckets      = *max_detach_buckets_git;
+    if (min_detach_buckets == max_detach_buckets) {
+      for (auto bucket_it = _detach_buckets.begin();
+           bucket_it != _detach_buckets.end();
+           ++bucket_it) {
+        DASH_LOG_TRACE("GlobDynamicMem.commit", "detaching bucket:",
+                       "size:", bucket_it->size,
+                       "lptr:", bucket_it->lptr,
+                       "gptr:", bucket_it->gptr);
+        // Detach bucket from global memory region and deallocate its local
+        // memory segment:
+        if (!bucket_it->attached) {
+          _allocator.detach(bucket_it->gptr);
+          bucket_it->attached = false;
+        }
+      }
+      _detach_buckets.clear();
+    } else {
+      // Cannot detach
+      DASH_LOG_TRACE("GlobDynamicMem.commit",
+                     "inbalanced number of buckets to detach: ",
+                     "local buckets:",      num_detach_buckets, ", ",
+                     "min. local buckets:", min_detach_buckets,
+                     "at unit",             unit_min_detach_buckets, ", "
+                     "max. local buckets:", min_detach_buckets,
+                     "at unit",             unit_max_detach_buckets);
     }
-    _bucket_attached_last = _buckets.end();
+
+    // Register bucket marked for attach in global memory:
+    if (!_buckets.empty() && !_buckets.back().attached) {
+      bucket_type & bucket_last = _buckets.back();
+      // Extend existing unattached bucket:
+      DASH_LOG_TRACE("GlobDynamicMem.commit", "attaching bucket:",
+                     "size:", bucket_last.size,
+                     "lptr:", bucket_last.lptr,
+                     "gptr:", bucket_last.gptr);
+      bucket_last.lptr = _allocator.allocate_local(bucket_last.size);
+      std::copy(_local_commit_buf.begin(),
+                _local_commit_buf.end(),
+                bucket_last.lptr);
+      _local_commit_buf.resize(0);
+      // Attach bucket's local memory segment in global memory:
+      bucket_last.gptr = _allocator.attach(
+                           bucket_last.lptr,
+                           bucket_last.size);
+      DASH_LOG_TRACE("GlobDynamicMem.commit", "attached bucket:",
+                     "gptr:", bucket_last.gptr);
+      bucket_last.attached = true;
+    } else {
+      // No bucket to attach but attaching is a collective operation.
+      // Attach empty bucket:
+      DASH_LOG_TRACE("GlobDynamicMem.commit", "attaching empty bucket");
+      bucket_type bucket;
+      bucket.size     = 0;
+      bucket.lptr     = nullptr;
+      bucket.gptr     = DART_GPTR_NULL;
+      bucket.attached = true;
+      bucket.gptr     = _allocator.attach(
+                          bucket.lptr,
+                          bucket.size);
+      DASH_LOG_TRACE("GlobDynamicMem.commit", "attached empty bucket:",
+                     "gptr:", bucket.gptr);
+    }
 
     // Update new capacity of global attached memory space.
     //
@@ -852,12 +889,12 @@ public:
     for (int u = 0; u < _nunits; ++u) {
       if (u != _myid) {
         size_type unit_local_size = _local_sizes[u];
-        DASH_LOG_DEBUG("GlobDynamicMem.commit",
+        DASH_LOG_TRACE("GlobDynamicMem.commit",
                        "unit", u, "local size:", unit_local_size);
         _remote_size += unit_local_size;
       }
     }
-    DASH_LOG_DEBUG_VAR("GlobDynamicMem.commit", _remote_size);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _remote_size);
     DASH_LOG_DEBUG("GlobDynamicMem.commit >", "finished");
   }
 
@@ -882,7 +919,7 @@ public:
    */
   void resize(size_type num_elements)
   {
-    auto diff_capacity = num_elements - local_size();
+    index_type diff_capacity = num_elements - local_size();
     if (diff_capacity > 0) {
       grow(diff_capacity);
     } else if (diff_capacity < 0) {
@@ -1070,7 +1107,7 @@ public:
   inline std::vector<dart_gptr_t> buckets() const
   {
     std::vector<dart_gptr_t> buckets;
-    for (auto bit = _buckets.begin(); bit != _bucket_attached_last; ++bit) {
+    for (auto bit = _buckets.begin(); bit != _buckets.end(); ++bit) {
       buckets.push_back(bit->gptr);
     }
     return buckets;
@@ -1206,23 +1243,24 @@ private:
   local_iterator             _lbegin;
   local_iterator             _lend;
   dart_unit_t                _myid;
-  /// Buckets in local memory space, partitioned in two segments:
-  /// - allocated buckets attached to global memory space.
-  /// - allocated buckets to be attached
+  /// Buckets in local memory space. Local buffer bucket is last element in
+  /// list, if existing.
   ///
-  ///   [ ... attached buckets ... | ... allocated buckets ... ]
+  ///   [ attached buckets, ... , local buffer bucket ]
   ///
   bucket_list                _buckets;
-  /// Iterator partitioning buckets into attached and un-attached buckets,
-  /// i.e. pointing past the final attached bucket in _buckets.
-  bucket_iterator            _bucket_attached_last;
   /// List of buckets marked for detach.
   bucket_list                _detach_buckets;
   /// Map of unit id to number of elements in the unit's attached local
   /// memory space.
   local_sizes_map            _local_sizes;
+  /// Map of unit id to number of buckets marked for detach in the unit's
+  /// memory space.
+  local_sizes_map            _num_detach_buckets;
   /// Total number of elements in attached memory space of remote units.
   size_type                  _remote_size;
+  /// Vector storing elements in unattached bucket.
+  std::vector<value_type>    _local_commit_buf;
 
 }; // class GlobDynamicMem
 

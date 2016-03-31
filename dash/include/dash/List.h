@@ -1077,7 +1077,9 @@ private:
         dash::exception::InvalidArgument,
         "Tried to allocate dash::List with local capacity 0");
     }
-    _globmem   = new GlobMem_t(_lcapacity, pattern.team());
+
+    auto l_buf_capacity = std::min<size_type>(_lcapacity, 32);
+    _globmem   = new GlobMem_t(_lcapacity, l_buf_capacity, pattern.team());
     // Global iterators:
     _begin     = iterator(_globmem, pattern);
     _end       = iterator(_begin) + _size;
