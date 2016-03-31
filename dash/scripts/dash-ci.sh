@@ -10,13 +10,13 @@ run_ci()
 {
   BUILD_TYPE=${1}
   DEPLOY_PATH=$BASEPATH/build-ci/$TIMESTAMP/${BUILD_TYPE}
-  
+
   mkdir -p $DEPLOY_PATH && \
     cd $DEPLOY_PATH
-  
+
   echo "[ BUILD  ] Deploying build $BUILD_TYPE to $DEPLOY_PATH ..."
   $CMD_DEPLOY "--b=$BUILD_TYPE" -f "--i=$DEPLOY_PATH" >> $DEPLOY_PATH/build.log 2>&1
-  
+
   if [ "$?" = "0" ]; then
 
 ### Test DASH using DART SHMEM backend:
