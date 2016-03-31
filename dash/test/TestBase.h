@@ -47,11 +47,14 @@ extern void ColoredPrintf(
 
 #define LOG_MESSAGE(...) do { \
   char buffer[300]; \
+  const char * filepath = __FILE__; \
+  const char * filebase = strrchr(filepath, '/'); \
+  const char * filename = (filebase != 0) ? filebase + 1 : filepath; \
   sprintf(buffer, __VA_ARGS__); \
   testing::internal::ColoredPrintf( \
     testing::internal::COLOR_YELLOW, \
-    "[ %*d   LOG ] %s \n", \
-    4, dash::myid(),\
+    "[= %*d  LOG =] %*s :%*d | %s \n", \
+    3, dash::myid(), 24, filename, 4, __LINE__, \
     buffer); \
 } while(0)
 
