@@ -107,12 +107,32 @@ public:
     b = temp;
   }
 
+  T get() const {
+    DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    T t;
+    dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
+    return t;
+  }
+
   operator T() const {
     DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     T t;
     dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
     return t;
+  }
+
+  void get(T *tptr) const {
+    DASH_LOG_TRACE("GlobRef.get(T*)", "explicit get into provided ptr");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    dart_get_blocking(static_cast<void *>(tptr), _gptr, sizeof(T));
+  }
+
+  void get(T& tref) const {
+    DASH_LOG_TRACE("GlobRef.get(T&)", "explicit get into provided ref");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    dart_get_blocking(static_cast<void *>(&tref), _gptr, sizeof(T));
   }
 
   operator GlobPtr<T>() const {
