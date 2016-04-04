@@ -7,6 +7,7 @@
 extern "C" {
 #endif
   
+#include <mpi.h>
 #define DART_INTERFACE_ON
 
 /*
@@ -195,6 +196,8 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size);
 dart_ret_t dart_myid(dart_unit_t *myid);
 dart_ret_t dart_size(size_t *size);
 
+
+MPI_Comm dart_get_user_commworld ();
 
 /* convert between local and global unit IDs 
 
