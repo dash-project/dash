@@ -135,6 +135,18 @@ public:
     dart_get_blocking(static_cast<void *>(&tref), _gptr, sizeof(T));
   }
 
+  void put(T& tref) const {
+    DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    dart_put_blocking(_gptr, static_cast<void *>(&tref), sizeof(T));
+  }
+
+  void put(T* tptr) const {
+    DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    dart_put_blocking(_gptr, static_cast<void *>(tptr), sizeof(T));
+  }
+
   operator GlobPtr<T>() const {
     DASH_LOG_TRACE("GlobRef.GlobPtr()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
