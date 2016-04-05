@@ -292,7 +292,6 @@ public:
    *
    * \see  DashContainerConcept
    */
-  template<dim_t NumDistributionDim>
   bool allocate(
     const SizeSpec_t         & sizespec,
     const DistributionSpec_t & distribution,
