@@ -21,10 +21,14 @@ template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline Matrix<T, NumDim, IndexT, PatternT>
 ::Matrix(
   Team & t)
-: _team(t),
+: _team(&t),
   _size(0),
   _lsize(0),
-  _lcapacity(0)
+  _lcapacity(0),
+  _pattern(
+    SizeSpec_t(),
+    DistributionSpec_t(),
+    *_team)
 {
   DASH_LOG_TRACE("Matrix()", "default constructor");
 }
@@ -36,8 +40,8 @@ inline Matrix<T, NumDim, IndexT, PatternT>
   const DistributionSpec_t & ds,
   Team & t,
   const TeamSpec_t & ts)
-: _team(t),
-  _myid(_team.myid()),
+: _team(&t),
+  _myid(_team->myid()),
   _size(0),
   _lsize(0),
   _lcapacity(0),
@@ -52,8 +56,8 @@ template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline Matrix<T, NumDim, IndexT, PatternT>
 ::Matrix(
   const PatternT & pattern)
-: _team(pattern.team()),
-  _myid(_team.myid()),
+: _team(&pattern.team()),
+  _myid(_team->myid()),
   _size(0),
   _lsize(0),
   _lcapacity(0),
@@ -68,7 +72,7 @@ template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline Matrix<T, NumDim, IndexT, PatternT>
 ::~Matrix()
 {
-  DASH_LOG_TRACE_VAR("Array.~Matrix()", this);
+  DASH_LOG_TRACE_VAR("Matrix.~Matrix()", this);
   deallocate();
 }
 
@@ -123,10 +127,11 @@ bool Matrix<T, NumDim, IndexT, PatternT>
 ::allocate(
   const PatternT & pattern)
 {
-  DASH_LOG_TRACE("Matrix.allocate()", "pattern", 
+  DASH_LOG_TRACE("Matrix.allocate()", "pattern",
                  pattern.memory_layout().extents());
   // Copy sizes from pattern:
   _size            = _pattern.size();
+  _team            = &pattern.team();
   _lsize           = _pattern.local_size();
   _lcapacity       = _pattern.local_capacity();
   DASH_LOG_TRACE_VAR("Matrix.allocate", _size);
@@ -134,12 +139,12 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
   // Allocate and initialize memory ranges:
   _ref._refview    = new MatrixRefView_t(this);
-  _glob_mem        = new GlobMem_t(_team, _lcapacity);
+  _glob_mem        = new GlobMem_t(_lcapacity, pattern.team());
   _begin           = GlobIter_t(_glob_mem, _pattern);
   _lbegin          = _glob_mem->lbegin();
   _lend            = _glob_mem->lend();
   // Register team deallocator:
-  _team.register_deallocator(
+  _team->register_deallocator(
     this, std::bind(&Matrix::deallocate, this));
   // Initialize local proxy object:
   local            = local_type(this);
@@ -148,28 +153,29 @@ bool Matrix<T, NumDim, IndexT, PatternT>
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
-template <dim_t NumDistDim >
 bool Matrix<T, NumDim, IndexT, PatternT>
 ::allocate(
-  size_type                            nelem,
-  dash::DistributionSpec<NumDistDim>   distribution,
-  dash::Team                         & team)
+  const SizeSpec<NumDim, typename PatternT::size_type>  & sizespec,
+  const DistributionSpec<NumDim>                        & distribution,
+  const TeamSpec<NumDim, typename PatternT::index_type> & teamspec,
+  dash::Team                                            & team)
 {
-  DASH_LOG_TRACE("Matrix.allocate()", nelem);
+  DASH_LOG_TRACE("Matrix.allocate()", sizespec.extents());
   // Check requested capacity:
-  if (nelem == 0) {
+  if (sizespec.size() == 0) {
     DASH_THROW(
       dash::exception::InvalidArgument,
       "Tried to allocate dash::Matrix with size 0");
   }
-  if (_team == dash::Team::Null()) {
+  if (_team == nullptr || *_team == dash::Team::Null()) {
     DASH_LOG_TRACE("Matrix.allocate",
                    "initializing pattern with Team::All()");
-    _pattern = PatternT(nelem, distribution, team);
+    _team    = &team;
+    _pattern = PatternT(sizespec, distribution, teamspec, team);
   } else {
     DASH_LOG_TRACE("Matrix.allocate",
                    "initializing pattern with initial team");
-    _pattern = PatternT(nelem, distribution, _team);
+    _pattern = PatternT(sizespec, distribution, teamspec, *_team);
   }
   return allocate(_pattern);
 }
@@ -189,7 +195,7 @@ void Matrix<T, NumDim, IndexT, PatternT>
   }
   // Remove this function from team deallocator list to avoid
   // double-free:
-  _team.unregister_deallocator(
+  _team->unregister_deallocator(
     this, std::bind(&Matrix::deallocate, this));
   // Actual destruction of the array instance:
   delete _glob_mem;
@@ -199,7 +205,7 @@ void Matrix<T, NumDim, IndexT, PatternT>
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline dash::Team & Matrix<T, NumDim, IndexT, PatternT>
 ::team() {
-  return _team;
+  return *_team;
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -258,7 +264,7 @@ template <typename T, dim_t NumDim, typename IndexT, class PatternT>
 inline void
 Matrix<T, NumDim, IndexT, PatternT>
 ::barrier() const {
-  _team.barrier();
+  _team->barrier();
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>

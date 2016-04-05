@@ -5,8 +5,8 @@ namespace dash {
 
 /**
  * \defgroup  DashPatternConcept  Pattern Concept
- * Concept for distribution pattern of n-dimensional containers to
- * units in a team.
+ * Concept of a distribution pattern of n-dimensional containers to units in
+ * a team.
  *
  * \ingroup DashConcept
  * \{
@@ -69,11 +69,13 @@ namespace dash {
 
 } // namespace dash
 
+// Static pattern types:
 #include <dash/BlockPattern.h>
 #include <dash/TilePattern.h>
 #include <dash/ShiftTilePattern.h>
 #include <dash/SeqTilePattern.h>
 #include <dash/CSRPattern.h>
+
 #include <dash/PatternIterator.h>
 #include <dash/PatternProperties.h>
 #include <dash/MakePattern.h>

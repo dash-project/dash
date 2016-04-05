@@ -23,26 +23,15 @@ endif
 
 CXXFLAGS+=-DDASH_ENABLE_DEFAULT_INDEX_TYPE_LONG
 
-
 #CXXFLAGS+=-DDASH_DEBUG
 #CFLAGS+=-D_SVID_SOURCE
 
 LIBDASH = libdash.a
 
-FILES = Init \
-				Team \
-				Distribution \
-        Math \
-				GlobPtr \
-				Types \
-				util/Timer \
-				util/TimestampClockPosix \
-				util/TimestampCounterPosix \
-				util/TimestampPAPI \
-				util/Locality \
-				util/BenchmarkParams \
-				util/Config \
-				util/Trace
+FILES = Init Team Distribution Math GlobPtr Types util/Timer	\
+	util/TimestampClockPosix util/TimestampCounterPosix	\
+	util/TimestampPAPI util/Locality util/BenchmarkParams	\
+	util/Config util/Trace algorithm/SUMMA
 
 
 OBJS = $(addsuffix .o, $(FILES))

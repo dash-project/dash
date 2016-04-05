@@ -11,7 +11,7 @@ namespace dash {
 
 template <
   typename ElementType,
-   class PatternType = Pattern<1> > 
+  class    PatternType = Pattern<1> >
 class GlobAsyncIter
 : public GlobIter<
            ElementType,
@@ -44,7 +44,8 @@ public:
    * that have been executed on this global iterator since the last call
    * of \c wait.
    */
-  void wait() {
+  void wait()
+  {
     dart_flush_all(this->dart_gptr());
   }
 
@@ -52,7 +53,8 @@ public:
    * Wait for local completion of non-blocking read operations that have 
    * been executed on this global iterator since the last call of \c wait.
    */
-  void get() {
+  void get()
+  {
     dart_flush_all(this->dart_gptr());
   }
 
@@ -62,7 +64,8 @@ public:
    * published.
    * Does not guarantee remote completion.
    */
-  void push() {
+  void push()
+  {
     dart_flush_local_all(this->dart_gptr());
   }
 

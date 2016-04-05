@@ -4,6 +4,7 @@
 #include <dash/GlobMem.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
+#include <dash/Allocator.h>
 
 namespace dash {
 
@@ -14,23 +15,24 @@ namespace dash {
  * \tparam  ElementType  The type of the shared value.
  */
 template<typename ElementType>
-class Shared {
+class Shared
+{
 public:
-  typedef ElementType                         value_type;
-  typedef size_t                               size_type;
-  typedef size_t                         difference_type;
+  typedef ElementType                                value_type;
+  typedef size_t                                      size_type;
+  typedef size_t                                difference_type;
 
-  typedef       GlobRef<value_type>            reference;
-  typedef const GlobRef<value_type>      const_reference;
+  typedef       GlobRef<value_type>                   reference;
+  typedef const GlobRef<value_type>             const_reference;
 
-  typedef       GlobPtr<value_type>              pointer;
-  typedef const GlobPtr<value_type>        const_pointer;
+  typedef       GlobPtr<value_type>                     pointer;
+  typedef const GlobPtr<value_type>               const_pointer;
 
 private:
-  typedef dash::GlobMem<value_type> GlobMem;
-  GlobMem *     m_globmem;
-  dash::Team &  m_team;
-  pointer       m_ptr;
+  typedef dash::GlobMem<
+            value_type,
+            dash::allocator::LocalAllocator<value_type> >
+    GlobMem_t;
 
 public:
   /**
@@ -39,9 +41,10 @@ public:
   Shared(
     /// Team containing all units accessing the element in shared memory
     Team & team = dash::Team::All())
-  : m_team(team) {
+  : m_team(team)
+  {
     if (m_team.myid() == 0) {
-      m_globmem = new GlobMem(1);
+      m_globmem = new GlobMem_t(1);
       m_ptr     = m_globmem->begin();
     }
     dart_bcast(
@@ -54,7 +57,8 @@ public:
   /**
    * Destructor, frees shared memory.
    */
-  ~Shared() {
+  ~Shared()
+  {
     if (m_team.myid() == 0) {
       delete m_globmem;
     }
@@ -63,16 +67,23 @@ public:
   /**
    * Set the value of the shared element.
    */
-  void set(ElementType val) noexcept {
+  void set(ElementType val) noexcept
+  {
     *m_ptr = val;
   }
 
   /**
    * Get the value of the shared element.
    */
-  reference get() noexcept {
+  reference get() noexcept
+  {
     return *m_ptr;
   }
+
+private:
+  GlobMem_t  *  m_globmem = nullptr;
+  dash::Team &  m_team;
+  pointer       m_ptr;
 
 private:
   /// Prevent copy-construction.

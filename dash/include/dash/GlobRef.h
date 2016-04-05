@@ -8,7 +8,7 @@
 namespace dash {
 
 // Forward declaration
-template<typename T> class GlobMem;
+template<typename T, class A> class GlobMem;
 // Forward declaration
 template<typename T, class PatternT> class GlobPtr;
 // Forward declaration
@@ -107,12 +107,44 @@ public:
     b = temp;
   }
 
+  T get() const {
+    DASH_LOG_TRACE("T GlobRef.get()", "explicit get");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    T t;
+    dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
+    return t;
+  }
+
   operator T() const {
     DASH_LOG_TRACE("GlobRef.T()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
     T t;
     dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
     return t;
+  }
+
+  void get(T *tptr) const {
+    DASH_LOG_TRACE("GlobRef.get(T*)", "explicit get into provided ptr");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    dart_get_blocking(static_cast<void *>(tptr), _gptr, sizeof(T));
+  }
+
+  void get(T& tref) const {
+    DASH_LOG_TRACE("GlobRef.get(T&)", "explicit get into provided ref");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    dart_get_blocking(static_cast<void *>(&tref), _gptr, sizeof(T));
+  }
+
+  void put(T& tref) const {
+    DASH_LOG_TRACE("GlobRef.put(T&)", "explicit put of provided ref");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    dart_put_blocking(_gptr, static_cast<void *>(&tref), sizeof(T));
+  }
+
+  void put(T* tptr) const {
+    DASH_LOG_TRACE("GlobRef.put(T*)", "explicit put of provided ptr");
+    DASH_LOG_TRACE_VAR("GlobRef.T()", _gptr);
+    dart_put_blocking(_gptr, static_cast<void *>(tptr), sizeof(T));
   }
 
   operator GlobPtr<T>() const {
@@ -243,7 +275,7 @@ public:
    * specified offset
    */
   template<typename MEMTYPE>
-  GlobRef<MEMTYPE> member(size_t offs) {
+  GlobRef<MEMTYPE> member(size_t offs) const {
     dart_gptr_t dartptr = _gptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&dartptr, offs),
@@ -257,7 +289,7 @@ public:
    */
   template<class MEMTYPE, class P=T>
   GlobRef<MEMTYPE> member(
-    const MEMTYPE P::*mem) {
+    const MEMTYPE P::*mem) const {
     // TODO: Thaaaat ... looks hacky.
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
     return member<MEMTYPE>(offs);

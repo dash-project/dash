@@ -21,11 +21,13 @@ struct dart_buddy {
 extern char* dart_mempool_localalloc;
 extern struct dart_buddy* dart_localpool;
 
-struct dart_buddy* dart_buddy_new(int level);
-void dart_buddy_delete(struct dart_buddy *);
+struct dart_buddy *
+dart_buddy_new(int level);
+
+void     dart_buddy_delete(struct dart_buddy *);
 uint64_t dart_buddy_alloc(struct dart_buddy *, size_t size);
-int dart_buddy_free(struct dart_buddy *, uint64_t offset);
-int buddy_size(struct dart_buddy *, uint64_t offset);
-void buddy_dump(struct dart_buddy *);
+int      dart_buddy_free(struct dart_buddy *, uint64_t offset);
+int      buddy_size(struct dart_buddy *, uint64_t offset);
+void     buddy_dump(struct dart_buddy *);
 
 #endif

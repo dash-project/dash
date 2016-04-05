@@ -12,7 +12,8 @@
 #define NODE_FULL 3
 
 struct dart_buddy *
-	dart_buddy_new(int level) {
+	dart_buddy_new(int level)
+{
 	int size = 1 << level;
 	struct dart_buddy * self =
     malloc(sizeof(struct dart_buddy) + sizeof(uint8_t) * (size * 2 - 2));

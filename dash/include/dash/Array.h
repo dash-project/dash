@@ -551,7 +551,8 @@ private:
   Array_t    * _arr;
   /// The view's offset and extent within the referenced array.
   ViewSpec_t   _viewspec;
-};
+
+}; // class ArrayRef
 
 /**
  * A distributed array.
@@ -567,8 +568,11 @@ private:
  */
 template<
   typename ElementType,
-  typename IndexType   = dash::default_index_t,
-  class PatternType    = Pattern<1, ROW_MAJOR, IndexType> >
+  typename IndexType    = dash::default_index_t,
+  /// Pattern type used to distribute array elements among units.
+  /// Default is \c dash::BlockPattern<1, ROW_MAJOR> as it supports all
+  /// distribution types (BLOCKED, TILE, BLOCKCYCLIC, CYCLIC).
+  class    PatternType  = Pattern<1, ROW_MAJOR, IndexType> >
 class Array
 {
 private:
@@ -661,7 +665,8 @@ public:
       team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0) {
+    m_lcapacity(0)
+  {
     DASH_LOG_TRACE("Array()", "default constructor");
   }
 
@@ -669,9 +674,9 @@ public:
    * Constructor, specifies distribution type explicitly.
    */
   Array(
-    size_type nelem,
+    size_type                  nelem,
     const DistributionSpec_t & distribution,
-    Team & team = dash::Team::All())
+    Team                     & team = dash::Team::All())
   : local(this),
     async(this),
     m_team(&team),
@@ -681,7 +686,8 @@ public:
       team),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0) {
+    m_lcapacity(0)
+  {
     DASH_LOG_TRACE("Array()", nelem);
     allocate(m_pattern);
   }
@@ -697,7 +703,8 @@ public:
     m_pattern(pattern),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0) {
+    m_lcapacity(0)
+  {
     DASH_LOG_TRACE("Array()", "pattern instance constructor");
     allocate(m_pattern);
   }
@@ -706,16 +713,18 @@ public:
    * Delegating constructor, specifies the size of the array.
    */
   Array(
-    size_type nelem,
-    Team & team = dash::Team::All())
-  : Array(nelem, dash::BLOCKED, team) {
+    size_type   nelem,
+    Team      & team = dash::Team::All())
+  : Array(nelem, dash::BLOCKED, team)
+  {
     DASH_LOG_TRACE("Array()", "finished delegating constructor");
   }
 
   /**
    * Destructor, deallocates array elements.
    */
-  ~Array() {
+  ~Array()
+  {
     DASH_LOG_TRACE_VAR("Array.~Array()", this);
     deallocate();
   }
@@ -734,49 +743,56 @@ public:
   /**
    * Global const pointer to the beginning of the array.
    */
-  const_pointer data() const noexcept {
+  const_pointer data() const noexcept
+  {
     return m_begin;
   }
 
   /**
    * Global pointer to the beginning of the array.
    */
-  iterator begin() noexcept {
+  iterator begin() noexcept
+  {
     return m_begin;
   }
 
   /**
    * Global pointer to the beginning of the array.
    */
-  const_iterator begin() const noexcept {
+  const_iterator begin() const noexcept
+  {
     return m_begin;
   }
 
   /**
    * Global pointer to the end of the array.
    */
-  iterator end() noexcept {
+  iterator end() noexcept
+  {
     return m_end;
   }
 
   /**
    * Global pointer to the end of the array.
    */
-  const_iterator end() const noexcept {
+  const_iterator end() const noexcept
+  {
     return m_end;
   }
 
   /**
    * Native pointer to the first local element in the array.
    */
-  ElementType * lbegin() const noexcept {
+  ElementType * lbegin() const noexcept
+  {
     return m_lbegin;
   }
 
   /**
    * Native pointer to the end of the array.
    */
-  ElementType * lend() const noexcept {
+  ElementType * lend() const noexcept
+  {
     return m_lend;
   }
 
@@ -788,7 +804,8 @@ public:
    */
   reference operator[](
     /// The position of the element to return
-    size_type global_index) {
+    size_type global_index)
+  {
     DASH_LOG_TRACE_VAR("Array.[]=()", global_index);
     auto global_ref = m_begin[global_index];
     DASH_LOG_TRACE_VAR("Array.[]= >", global_ref);
@@ -803,7 +820,8 @@ public:
    */
   const_reference operator[](
     /// The position of the element to return
-    size_type global_index) const {
+    size_type global_index) const
+  {
     DASH_LOG_TRACE_VAR("Array.[]()", global_index);
     auto global_ref = m_begin[global_index];
     DASH_LOG_TRACE_VAR("Array.[] >", global_ref);
@@ -820,7 +838,8 @@ public:
    */
   reference at(
     /// The position of the element to return
-    size_type global_pos) {
+    size_type global_pos)
+  {
     if (global_pos >= size())  {
       DASH_THROW(
           dash::exception::OutOfRange,
@@ -841,7 +860,8 @@ public:
    */
   const_reference at(
     /// The position of the element to return
-    size_type global_pos) const {
+    size_type global_pos) const
+  {
     if (global_pos >= size())  {
       DASH_THROW(
           dash::exception::OutOfRange,
@@ -857,7 +877,8 @@ public:
    *
    * \return  The number of elements in the array.
    */
-  constexpr size_type size() const noexcept {
+  inline size_type size() const noexcept
+  {
     return m_size;
   }
 
@@ -867,7 +888,8 @@ public:
    *
    * \return  The number of elements in the array.
    */
-  constexpr size_type capacity() const noexcept {
+  inline size_type capacity() const noexcept
+  {
     return m_size;
   }
 
@@ -877,7 +899,8 @@ public:
    * \return  The instance of Team that this array has been instantiated
    *          with
    */
-  constexpr const Team & team() const noexcept {
+  inline const Team & team() const noexcept
+  {
     return *m_team;
   }
 
@@ -887,7 +910,8 @@ public:
    * \return  The number of elements in the array that are local to the
    *          calling unit.
    */
-  constexpr size_type lsize() const noexcept {
+  inline size_type lsize() const noexcept
+  {
     return m_lsize;
   }
 
@@ -897,7 +921,8 @@ public:
    * \return  The number of allocated elements in the array that are local
    *          to the calling unit.
    */
-  constexpr size_type lcapacity() const noexcept {
+  inline size_type lcapacity() const noexcept
+  {
     return m_lcapacity;
   }
 
@@ -906,7 +931,8 @@ public:
    *
    * \return  True if \c size() is 0, otherwise false
    */
-  constexpr bool empty() const noexcept {
+  inline bool empty() const noexcept
+  {
     return size() == 0;
   }
 
@@ -918,7 +944,8 @@ public:
    */
   bool is_local(
     /// A global array index
-    index_type global_index) const {
+    index_type global_index) const
+  {
     return m_pattern.is_local(global_index, m_myid);
   }
 
@@ -926,7 +953,8 @@ public:
    * Establish a barrier for all units operating on the array, publishing all
    * changes to all units.
    */
-  void barrier() const {
+  void barrier() const
+  {
     DASH_LOG_TRACE_VAR("Array.barrier()", m_team);
     m_team->barrier();
     DASH_LOG_TRACE("Array.barrier()", "passed barrier");
@@ -935,19 +963,22 @@ public:
   /**
    * The pattern used to distribute array elements to units.
    */
-  inline const PatternType & pattern() const {
+  inline const PatternType & pattern() const
+  {
     return m_pattern;
   }
 
   template<int level>
-  dash::HView<self_t, level> hview() {
+  dash::HView<self_t, level> hview()
+  {
     return dash::HView<self_t, level>(*this);
   }
 
   bool allocate(
     size_type nelem,
     dash::DistributionSpec<1> distribution,
-    dash::Team & team = dash::Team::All()) {
+    dash::Team & team = dash::Team::All())
+  {
     DASH_LOG_TRACE("Array.allocate()", nelem);
     DASH_LOG_TRACE_VAR("Array.allocate", m_team->dart_id());
     DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
@@ -957,7 +988,7 @@ public:
         dash::exception::InvalidArgument,
         "Tried to allocate dash::Array with size 0");
     }
-    if (*m_team == dash::Team::Null()) {
+    if (m_team == nullptr || *m_team == dash::Team::Null()) {
       DASH_LOG_TRACE("Array.allocate",
                      "initializing pattern with Team::All()");
       m_team    = &team;
@@ -972,7 +1003,8 @@ public:
     return allocate(m_pattern);
   }
 
-  void deallocate() {
+  void deallocate()
+  {
     DASH_LOG_TRACE_VAR("Array.deallocate()", this);
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_size);
     // Assure all units are synchronized before deallocation, otherwise
@@ -1015,7 +1047,7 @@ private:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new GlobMem_t(pattern.team(), m_lcapacity);
+    m_globmem   = new GlobMem_t(m_lcapacity, pattern.team());
     // Global iterators:
     m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;

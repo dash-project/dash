@@ -7,6 +7,8 @@
 #include <dash/Pattern.h>
 #include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
+#include <dash/GlobMem.h>
+#include <dash/Allocator.h>
 #include <dash/HView.h>
 #include <dash/Container.h>
 
@@ -149,7 +151,7 @@ private:
     Pattern_t;
   typedef GlobIter<ElementT, Pattern_t>
     GlobIter_t;
-  typedef GlobMem<ElementT>
+  typedef GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>
     GlobMem_t;
   typedef DistributionSpec<NumDimensions>
     DistributionSpec_t;
@@ -275,6 +277,15 @@ public:
   view_type<NumDimensions> block(
     index_type block_gindex);
 
+#if 0
+  /**
+   * View at block at given global block offset with halo region.
+   */
+  halo_view_type<NumDimensions> block(
+    index_type                            block_gindex,
+    const dash::HaloSpec<NumDimensions> & halospec);
+#endif
+
   /**
    * Explicit allocation of matrix elements, used for delayed allocation
    * of default-constructed Matrix instance.
@@ -283,9 +294,19 @@ public:
    */
   template<dim_t NumDistributionDim>
   bool allocate(
-    size_type                                    nelem,
-    dash::DistributionSpec<NumDistributionDim>   distribution,
-    dash::Team                                 & team = dash::Team::All());
+    const SizeSpec_t         & sizespec,
+    const DistributionSpec_t & distribution,
+    const TeamSpec_t         & teamspec,
+    dash::Team               & team = dash::Team::All()
+  );
+
+  /**
+   * Allocation and distribution of matrix elements as specified by a given
+   * Pattern instance.
+   */
+  bool allocate(
+    const PatternT & pattern
+  );
 
   /**
    * Explicit deallocation of matrix elements, called implicitly in
@@ -324,7 +345,7 @@ public:
    *
    * \see  DashContainerConcept
    */
-  inline       iterator    begin()       noexcept;
+  inline       iterator    begin()        noexcept;
 
   /**
    * Iterator referencing first matrix element in global index space.
@@ -525,18 +546,10 @@ public:
   inline operator
     MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> ();
 
-  /**
-   * Allocation and distribution of matrix elements as specified by a given
-   * Pattern instance.
-   */
-  bool allocate(
-    const PatternT & pattern
-  );
-
 private:
   /// Team containing all units that collectively instantiated the
   /// Matrix instance
-  dash::Team                 & _team;
+  dash::Team                 * _team = nullptr;
   /// DART id of the unit that owns this matrix instance
   dart_unit_t                  _myid;
   /// Capacity (total number of elements) of the matrix
@@ -550,7 +563,7 @@ private:
   /// The matrix elements' distribution pattern
   Pattern_t                    _pattern;
   /// Global memory allocation and -access
-  GlobMem<ElementT>          * _glob_mem;
+  GlobMem_t                  * _glob_mem;
   /// Native pointer to first local element in the array
   ElementT                   * _lbegin;
   /// Native pointer past last local element in the array

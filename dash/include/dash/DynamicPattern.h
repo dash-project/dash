@@ -1,9 +1,8 @@
-#ifndef DASH__CSR_PATTERN_1D_H_
-#define DASH__CSR_PATTERN_1D_H_
+#ifndef DASH__DYNAMIC_PATTERN_1D_H__INCLUDED
+#define DASH__DYNAMIC_PATTERN_1D_H__INCLUDED
 
 #include <functional>
 #include <array>
-#include <vector>
 #include <type_traits>
 
 #include <dash/Types.h>
@@ -22,34 +21,32 @@
 namespace dash {
 
 /**
- * Irregular Pattern for Compressed Sparse Row Storage.
+ * Irregular dynamic pattern.
  *
  * \concept{DashPatternConcept}
  */
 template<
   dim_t      NumDimensions,
   MemArrange Arrangement  = dash::ROW_MAJOR,
-  typename   IndexType    = dash::default_index_t
->
-class CSRPattern;
+  typename   IndexType    = dash::default_index_t >
+class DynamicPattern;
 
 /**
- * Irregular Pattern for Compressed Sparse Row Storage.
+ * Irregular dynamic pattern.
  * Specialization for 1-dimensional data.
  *
  * \concept{DashPatternConcept}
  */
 template<
   MemArrange Arrangement,
-  typename   IndexType
->
-class CSRPattern<1, Arrangement, IndexType>
+  typename   IndexType >
+class DynamicPattern<1, Arrangement, IndexType>
 {
 private:
   static const dim_t NumDimensions = 1;
 
 public:
-  static constexpr char const * PatternName = "CSRPattern1D";
+  static constexpr char const * PatternName = "DynamicPattern1D";
 
 public:
   /// Satisfiable properties in pattern property category Partitioning:
@@ -62,7 +59,9 @@ public:
               // Identical number of elements in every block.
               pattern_partitioning_tag::balanced,
               // Size of blocks may differ.
-              pattern_partitioning_tag::unbalanced
+              pattern_partitioning_tag::unbalanced,
+              // Partitioning is dynamic.
+              pattern_partitioning_tag::dynamic
           > partitioning_properties;
   /// Satisfiable properties in pattern property category Mapping:
   typedef pattern_mapping_properties<
@@ -80,7 +79,7 @@ public:
 
 private:
   /// Fully specified type definition of self
-  typedef CSRPattern<NumDimensions, Arrangement, IndexType>
+  typedef DynamicPattern<NumDimensions, Arrangement, IndexType>
     self_t;
   /// Derive size type from given signed index / ptrdiff type
   typedef typename std::make_unsigned<IndexType>::type
@@ -123,7 +122,7 @@ public:
    *
    */
   template<typename ... Args>
-  CSRPattern(
+  DynamicPattern(
     /// Argument list consisting of the pattern size (extent, number of
     /// elements) in every dimension followed by optional distribution
     /// types.
@@ -146,6 +145,7 @@ public:
         _local_sizes)),
     _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
+    _myid(_team->myid()),
     _teamspec(_arguments.teamspec()),
     _nunits(_team->size()),
     _blocksize(initialize_blocksize(
@@ -158,13 +158,13 @@ public:
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
     _local_capacity(initialize_local_capacity())
   {
-    DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
+    DASH_LOG_TRACE("DynamicPattern()", "Constructor with argument list");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
+    DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
   }
 
   /**
@@ -172,7 +172,7 @@ public:
    * \c SizeSpec, \c DistributionSpec and \c Team.
    *
    */
-  CSRPattern(
+  DynamicPattern(
     /// Size spec of the pattern.
     const SizeSpec_t         & sizespec,
     /// Distribution spec.
@@ -192,6 +192,7 @@ public:
         _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
+    _myid(_team->myid()),
     _teamspec(_distspec, *_team),
     _nunits(_team->size()),
     _blocksize(initialize_blocksize(
@@ -204,13 +205,13 @@ public:
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
     _local_capacity(initialize_local_capacity())
   {
-    DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, team)");
+    DASH_LOG_TRACE("DynamicPattern()", "(sizespec, dist, team)");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
+    DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
   }
 
   /**
@@ -220,7 +221,7 @@ public:
    *
    */
   template<typename ... Args>
-  CSRPattern(
+  DynamicPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type> & local_sizes,
     /// Argument list consisting of the pattern size (extent, number of
@@ -242,6 +243,7 @@ public:
         _local_sizes)),
     _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
+    _myid(_team->myid()),
     _teamspec(_arguments.teamspec()),
     _nunits(_team->size()),
     _blocksize(initialize_blocksize(
@@ -254,13 +256,13 @@ public:
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
     _local_capacity(initialize_local_capacity())
   {
-    DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
+    DASH_LOG_TRACE("DynamicPattern()", "Constructor with argument list");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
+    DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
   }
 
   /**
@@ -268,13 +270,13 @@ public:
    * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
    *
    */
-  CSRPattern(
+  DynamicPattern(
     /// Number of local elements for every unit in the active team.
-    const std::vector<size_type>          & local_sizes,
+    const std::vector<size_type> & local_sizes,
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t                      & teamspec,
+    const TeamSpec_t             & teamspec,
     /// Team containing units to which this pattern maps its elements
-    dash::Team                            & team     = dash::Team::All())
+    dash::Team                   & team     = dash::Team::All())
   : _size(initialize_size(
         local_sizes)),
     _local_sizes(local_sizes),
@@ -286,6 +288,7 @@ public:
         _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
+    _myid(_team->myid()),
     _teamspec(
         teamspec,
         _distspec,
@@ -301,13 +304,13 @@ public:
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
     _local_capacity(initialize_local_capacity())
   {
-    DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, teamspec, team)");
+    DASH_LOG_TRACE("DynamicPattern()", "(sizespec, dist, teamspec, team)");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
+    DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
   }
 
   /**
@@ -315,7 +318,7 @@ public:
    * \c SizeSpec, \c DistributionSpec, \c TeamSpec and a \c Team.
    *
    */
-  CSRPattern(
+  DynamicPattern(
     /// Number of local elements for every unit in the active team.
     const std::vector<size_type> & local_sizes,
     /// Team containing units to which this pattern maps its elements
@@ -331,6 +334,7 @@ public:
         _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
+    _myid(_team->myid()),
     _teamspec(_distspec, *_team),
     _nunits(_team->size()),
     _blocksize(initialize_blocksize(
@@ -343,19 +347,19 @@ public:
     _local_memory_layout(std::array<SizeType, 1> { _local_size }),
     _local_capacity(initialize_local_capacity())
   {
-    DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, team)");
+    DASH_LOG_TRACE("DynamicPattern()", "(sizespec, dist, team)");
     DASH_ASSERT_EQ(
       _local_sizes.size(), _nunits,
       "Number of given local sizes "   << _local_sizes.size() << " " <<
       "does not match number of units" << _nunits);
     initialize_local_range();
-    DASH_LOG_TRACE("CSRPattern()", "CSRPattern initialized");
+    DASH_LOG_TRACE("DynamicPattern()", "DynamicPattern initialized");
   }
 
   /**
    * Copy constructor.
    */
-  CSRPattern(const self_t & other)
+  DynamicPattern(const self_t & other)
   : _size(other._size),
     _local_sizes(other._local_sizes),
     _block_offsets(other._block_offsets),
@@ -363,6 +367,7 @@ public:
     _blockspec(other._blockspec),
     _distspec(other._distspec),
     _team(other._team),
+    _myid(other._myid),
     _teamspec(other._teamspec),
     _nunits(other._nunits),
     _blocksize(other._blocksize),
@@ -375,7 +380,7 @@ public:
   {
     // No need to copy _arguments as it is just used to
     // initialize other members.
-    DASH_LOG_TRACE("CSRPattern(other)", "CSRPattern copied");
+    DASH_LOG_TRACE("DynamicPattern(other)", "DynamicPattern copied");
   }
 
   /**
@@ -384,8 +389,8 @@ public:
    * Introduced so variadic constructor is not a better match for
    * copy-construction.
    */
-  CSRPattern(self_t & other)
-  : CSRPattern(static_cast<const self_t &>(other))
+  DynamicPattern(self_t & other)
+  : DynamicPattern(static_cast<const self_t &>(other))
   { }
 
   /**
@@ -426,7 +431,7 @@ public:
    */
   self_t & operator=(const self_t & other)
   {
-    DASH_LOG_TRACE("CSRPattern.=(other)");
+    DASH_LOG_TRACE("DynamicPattern.=(other)");
     if (this != &other) {
       _size                = other._size;
       _local_sizes         = other._local_sizes;
@@ -444,7 +449,7 @@ public:
       _nunits              = other._nunits;
       _lbegin              = other._lbegin;
       _lend                = other._lend;
-      DASH_LOG_TRACE("CSRPattern.=(other)", "CSRPattern assigned");
+      DASH_LOG_TRACE("DynamicPattern.=(other)", "DynamicPattern assigned");
     }
     return *this;
   }
@@ -470,6 +475,36 @@ public:
   }
 
   ////////////////////////////////////////////////////////////////////////////
+  /// resize / balance
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Update the number of local elements of the specified unit.
+   */
+  inline void local_resize(dart_unit_t unit, size_type local_size)
+  {
+    _local_sizes[unit] = local_size;
+  }
+
+  /**
+   * Update the number of local elements of the active unit.
+   */
+  inline void local_resize(size_type local_size)
+  {
+    _local_sizes[_myid] = local_size;
+  }
+
+  /**
+   * Balance the number of local elements across all units in the pattern's
+   * associated team.
+   *
+   * Collective operation.
+   */
+  inline void balance()
+  {
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
   /// unit_at
   ////////////////////////////////////////////////////////////////////////////
 
@@ -484,11 +519,11 @@ public:
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", coords);
+    DASH_LOG_TRACE_VAR("DynamicPattern.unit_at()", coords);
     // Apply viewspec offsets to coordinates:
     dart_unit_t unit_id = ((coords[0] + viewspec[0].offset) / _blocksize)
                           % _nunits;
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_id);
+    DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", unit_id);
     return unit_id;
   }
 
@@ -500,16 +535,16 @@ public:
   dart_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", g_coords);
+    DASH_LOG_TRACE_VAR("DynamicPattern.unit_at()", g_coords);
     dart_unit_t unit_idx = 0;
     auto g_coord         = g_coords[0];
     for (; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] >= g_coord) {
-        DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
+        DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", unit_idx);
         return unit_idx;
       }
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", _nunits-1);
+    DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", _nunits-1);
     return _nunits-1;
   }
 
@@ -524,18 +559,18 @@ public:
     /// View to apply global position
     const ViewSpec_t & viewspec) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", global_pos);
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", viewspec);
+    DASH_LOG_TRACE_VAR("DynamicPattern.unit_at()", global_pos);
+    DASH_LOG_TRACE_VAR("DynamicPattern.unit_at()", viewspec);
     dart_unit_t unit_idx = 0;
     // Apply viewspec offsets to coordinates:
     auto g_coord         = global_pos + viewspec[0].offset;
     for (; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] >= static_cast<size_type>(g_coord)) {
-        DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
+        DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", unit_idx);
         return unit_idx;
       }
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", _nunits-1);
+    DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", _nunits-1);
     return _nunits-1;
   }
 
@@ -548,14 +583,14 @@ public:
     /// Global linear element offset
     IndexType g_index) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", g_index);
+    DASH_LOG_TRACE_VAR("DynamicPattern.unit_at()", g_index);
     for (size_type unit_idx = 0; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] > static_cast<size_type>(g_index)) {
-        DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
+        DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", unit_idx);
         return unit_idx;
       }
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", _nunits-1);
+    DASH_LOG_TRACE_VAR("DynamicPattern.unit_at >", _nunits-1);
     return _nunits-1;
   }
 
@@ -615,8 +650,8 @@ public:
   std::array<SizeType, NumDimensions> local_extents(
     dart_unit_t unit) const
   {
-    DASH_LOG_DEBUG_VAR("CSRPattern.local_extents()", unit);
-    DASH_LOG_DEBUG_VAR("CSRPattern.local_extents >", _local_size);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.local_extents()", unit);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.local_extents >", _local_size);
     return std::array<SizeType, 1> { _local_size };
   }
 
@@ -662,7 +697,7 @@ public:
   local_coords_t local(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.local()", g_coords);
+    DASH_LOG_TRACE_VAR("DynamicPattern.local()", g_coords);
     IndexType     g_index = g_coords[0];
     local_index_t l_index;
     for (auto unit_idx = _nunits-1; unit_idx >= 0; --unit_idx) {
@@ -670,14 +705,14 @@ public:
       if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
         l_index.index = g_index - block_offset;
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.unit);
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.index);
+        DASH_LOG_TRACE_VAR("DynamicPattern.local >", l_index.unit);
+        DASH_LOG_TRACE_VAR("DynamicPattern.local >", l_index.index);
         return l_index;
       }
     }
     DASH_THROW(
       dash::exception::InvalidArgument,
-      "CSRPattern.local: global coord " << g_index << " is out of bounds");
+      "DynamicPattern.local: global coord " << g_index << " is out of bounds");
   }
 
   /**
@@ -690,8 +725,8 @@ public:
   local_index_t local(
     IndexType g_index) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.local()", g_index);
-    DASH_LOG_TRACE_VAR("CSRPattern.local", _block_offsets.size());
+    DASH_LOG_TRACE_VAR("DynamicPattern.local()", g_index);
+    DASH_LOG_TRACE_VAR("DynamicPattern.local", _block_offsets.size());
     DASH_ASSERT_GT(_nunits, 0,
                    "team size is 0");
     DASH_ASSERT_GE(_block_offsets.size(), _nunits,
@@ -699,20 +734,20 @@ public:
     local_index_t l_index;
     index_type    unit_idx = static_cast<index_type>(_nunits-1);
     for (; unit_idx >= 0; --unit_idx) {
-      DASH_LOG_TRACE_VAR("CSRPattern.local", unit_idx);
+      DASH_LOG_TRACE_VAR("DynamicPattern.local", unit_idx);
       index_type block_offset = _block_offsets[unit_idx];
-      DASH_LOG_TRACE_VAR("CSRPattern.local", block_offset);
+      DASH_LOG_TRACE_VAR("DynamicPattern.local", block_offset);
       if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
         l_index.index = g_index - block_offset;
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.unit);
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.index);
+        DASH_LOG_TRACE_VAR("DynamicPattern.local >", l_index.unit);
+        DASH_LOG_TRACE_VAR("DynamicPattern.local >", l_index.index);
         return l_index;
       }
     }
     DASH_THROW(
       dash::exception::InvalidArgument,
-      "CSRPattern.local: global index " << g_index << " is out of bounds");
+      "DynamicPattern.local: global index " << g_index << " is out of bounds");
   }
 
   /**
@@ -724,20 +759,20 @@ public:
   std::array<IndexType, NumDimensions> local_coords(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.local_coords()", g_coords);
+    DASH_LOG_TRACE_VAR("DynamicPattern.local_coords()", g_coords);
     IndexType  g_index  = g_coords[0];
     index_type unit_idx = static_cast<index_type>(_nunits-1);
     for (; unit_idx >= 0; --unit_idx) {
       index_type block_offset = _block_offsets[unit_idx];
       if (block_offset <= g_index) {
         auto l_coord = g_index - block_offset;
-        DASH_LOG_TRACE_VAR("CSRPattern.local_coords >", l_coord);
+        DASH_LOG_TRACE_VAR("DynamicPattern.local_coords >", l_coord);
         return std::array<IndexType, 1> { l_coord };
       }
     }
     DASH_THROW(
       dash::exception::InvalidArgument,
-      "CSRPattern.local_coords: global index " << g_index <<
+      "DynamicPattern.local_coords: global index " << g_index <<
       " is out of bounds");
   }
 
@@ -751,7 +786,7 @@ public:
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
     IndexType g_index = g_coords[0];
-    DASH_LOG_TRACE_VAR("CSRPattern.local_index()", g_coords);
+    DASH_LOG_TRACE_VAR("DynamicPattern.local_index()", g_coords);
     local_index_t l_index;
     index_type    unit_idx = static_cast<index_type>(_nunits-1);
     for (; unit_idx >= 0; --unit_idx) {
@@ -759,14 +794,14 @@ public:
       if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
         l_index.index = g_index - block_offset;
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.unit);
-        DASH_LOG_TRACE_VAR("CSRPattern.local >", l_index.index);
+        DASH_LOG_TRACE_VAR("DynamicPattern.local >", l_index.unit);
+        DASH_LOG_TRACE_VAR("DynamicPattern.local >", l_index.index);
         return l_index;
       }
     }
     DASH_THROW(
       dash::exception::InvalidArgument,
-      "CSRPattern.local: global index " << g_index << " is out of bounds");
+      "DynamicPattern.local: global index " << g_index << " is out of bounds");
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -782,15 +817,15 @@ public:
     dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const
   {
-    DASH_LOG_DEBUG_VAR("CSRPattern.global()", unit);
-    DASH_LOG_DEBUG_VAR("CSRPattern.global()", local_coords);
-    DASH_LOG_TRACE_VAR("CSRPattern.global", _nunits);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.global()", unit);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.global()", local_coords);
+    DASH_LOG_TRACE_VAR("DynamicPattern.global", _nunits);
     if (_nunits < 2) {
       return local_coords;
     }
     // Initialize global index with element phase (= local coords):
     index_type glob_index = _block_offsets[unit] + local_coords[0];
-    DASH_LOG_TRACE_VAR("CSRPattern.global >", glob_index);
+    DASH_LOG_TRACE_VAR("DynamicPattern.global >", glob_index);
     return std::array<IndexType, 1> { glob_index };
   }
 
@@ -927,12 +962,12 @@ public:
       0, dim,
       "Wrong dimension for Pattern::has_local_elements. " <<
       "Expected dimension = 0, got " << dim);
-    DASH_LOG_TRACE_VAR("CSRPattern.has_local_elements()", dim_offset);
-    DASH_LOG_TRACE_VAR("CSRPattern.has_local_elements()", unit);
-    DASH_LOG_TRACE_VAR("CSRPattern.has_local_elements()", viewspec);
+    DASH_LOG_TRACE_VAR("DynamicPattern.has_local_elements()", dim_offset);
+    DASH_LOG_TRACE_VAR("DynamicPattern.has_local_elements()", unit);
+    DASH_LOG_TRACE_VAR("DynamicPattern.has_local_elements()", viewspec);
     DASH_THROW(
       dash::exception::NotImplemented,
-      "CSRPattern.has_local_elements is not implemented");
+      "DynamicPattern.has_local_elements is not implemented");
   }
 
   /**
@@ -944,12 +979,12 @@ public:
     IndexType index,
     dart_unit_t unit) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local()", index);
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local()", unit);
+    DASH_LOG_TRACE_VAR("DynamicPattern.is_local()", index);
+    DASH_LOG_TRACE_VAR("DynamicPattern.is_local()", unit);
     bool is_loc = index >= _block_offsets[unit] &&
                   (unit == _nunits-1 ||
                    index <  _block_offsets[unit+1]);
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local >", is_loc);
+    DASH_LOG_TRACE_VAR("DynamicPattern.is_local >", is_loc);
     return is_loc;
   }
 
@@ -963,12 +998,12 @@ public:
     IndexType index) const
   {
     auto unit = team().myid();
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local()", index);
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local", unit);
+    DASH_LOG_TRACE_VAR("DynamicPattern.is_local()", index);
+    DASH_LOG_TRACE_VAR("DynamicPattern.is_local", unit);
     bool is_loc = index >= _block_offsets[unit] &&
                   (unit == _nunits-1 ||
                    index <  _block_offsets[unit+1]);
-    DASH_LOG_TRACE_VAR("CSRPattern.is_local >", is_loc);
+    DASH_LOG_TRACE_VAR("DynamicPattern.is_local >", is_loc);
     return is_loc;
   }
 
@@ -993,16 +1028,16 @@ public:
     /// Global coordinates of element
     const std::array<index_type, NumDimensions> & g_coords) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.block_at()", g_coords);
+    DASH_LOG_TRACE_VAR("DynamicPattern.block_at()", g_coords);
     dart_unit_t block_idx = 0;
     auto g_coord         = g_coords[0];
     for (; block_idx < _nunits - 1; ++block_idx) {
       if (_block_offsets[block_idx+1] >= g_coord) {
-        DASH_LOG_TRACE_VAR("CSRPattern.block_at >", block_idx);
+        DASH_LOG_TRACE_VAR("DynamicPattern.block_at >", block_idx);
         return block_idx;
       }
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.block_at >", _nunits-1);
+    DASH_LOG_TRACE_VAR("DynamicPattern.block_at >", _nunits-1);
     return _nunits-1;
   }
 
@@ -1013,13 +1048,13 @@ public:
   ViewSpec_t block(
     index_type g_block_index) const
   {
-    DASH_LOG_DEBUG_VAR("CSRPattern<1>.block >", g_block_index);
+    DASH_LOG_DEBUG_VAR("DynamicPattern<1>.block >", g_block_index);
     index_type offset = _block_offsets[g_block_index];
     auto block_size   = _local_sizes[g_block_index];
     std::array<index_type, NumDimensions> offsets = { offset };
     std::array<size_type, NumDimensions>  extents = { block_size };
     ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("CSRPattern<1>.block >", block_vs);
+    DASH_LOG_DEBUG_VAR("DynamicPattern<1>.block >", block_vs);
     return block_vs;
   }
 
@@ -1030,16 +1065,16 @@ public:
   ViewSpec_t local_block(
     index_type l_block_index) const
   {
-    DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block()", l_block_index);
+    DASH_LOG_DEBUG_VAR("DynamicPattern<1>.local_block()", l_block_index);
     DASH_ASSERT_EQ(
       0, l_block_index,
-      "CSRPattern always assigns exactly 1 block to a single unit");
+      "DynamicPattern always assigns exactly 1 block to a single unit");
     index_type block_offset = _block_offsets[_team->myid()];
     size_type  block_size   = _local_sizes[_team->myid()];
     std::array<index_type, NumDimensions> offsets = { block_offset };
     std::array<size_type, NumDimensions>  extents = { block_size };
     ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block >", block_vs);
+    DASH_LOG_DEBUG_VAR("DynamicPattern<1>.local_block >", block_vs);
     return block_vs;
   }
 
@@ -1050,12 +1085,12 @@ public:
   ViewSpec_t local_block_local(
     index_type l_block_index) const
   {
-    DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block_local >", l_block_index);
+    DASH_LOG_DEBUG_VAR("DynamicPattern<1>.local_block_local >", l_block_index);
     size_type block_size = _local_sizes[_team->myid()];
     std::array<index_type, NumDimensions> offsets = { 0 };
     std::array<size_type, NumDimensions>  extents = { block_size };
     ViewSpec_t block_vs(offsets, extents);
-    DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block_local >", block_vs);
+    DASH_LOG_DEBUG_VAR("DynamicPattern<1>.local_block_local >", block_vs);
     return block_vs;
   }
 
@@ -1247,12 +1282,12 @@ public:
   SizeType initialize_size(
     const std::vector<size_type> & local_sizes) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.init_size()", local_sizes);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_size()", local_sizes);
     size_type size = 0;
     for (size_type unit_idx = 0; unit_idx < local_sizes.size(); ++unit_idx) {
       size += local_sizes[unit_idx];
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.init_size >", size);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_size >", size);
     return size;
   }
 
@@ -1265,15 +1300,15 @@ public:
     const DistributionSpec_t & distspec,
     const dash::Team         & team) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.init_local_sizes()", total_size);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_local_sizes()", total_size);
     std::vector<size_type> l_sizes;
     auto nunits = team.size();
-    DASH_LOG_TRACE_VAR("CSRPattern.init_local_sizes()", nunits);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_local_sizes()", nunits);
     if (nunits < 1) {
       return l_sizes;
     }
     auto dist_type = distspec[0].type;
-    DASH_LOG_TRACE_VAR("CSRPattern.init_local_sizes()", dist_type);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_local_sizes()", dist_type);
     // Tiled and blocked distribution:
     if (dist_type == dash::internal::DIST_BLOCKED ||
         dist_type == dash::internal::DIST_TILE) {
@@ -1297,11 +1332,11 @@ public:
     } else {
       DASH_THROW(
         dash::exception::InvalidArgument,
-        "CSRPattern expects TILE (" << dash::internal::DIST_TILE << ") " <<
+        "DynamicPattern expects TILE (" << dash::internal::DIST_TILE << ") " <<
         "or BLOCKED (" << dash::internal::DIST_BLOCKED << ") " <<
         "distribution, got " << dist_type);
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.init_local_sizes >", l_sizes);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_local_sizes >", l_sizes);
     return l_sizes;
   }
 
@@ -1309,11 +1344,11 @@ public:
     size_type                      size,
     const std::vector<size_type> & local_sizes) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec", local_sizes);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_blockspec", local_sizes);
     BlockSpec_t blockspec({
                   static_cast<size_type>(local_sizes.size())
                 });
-    DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec >", blockspec);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_blockspec >", blockspec);
     return blockspec;
   }
 
@@ -1324,7 +1359,7 @@ public:
   std::vector<size_type> initialize_block_offsets(
     const std::vector<size_type> & local_sizes) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.init_block_offsets", local_sizes);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_block_offsets", local_sizes);
     std::vector<size_type> block_offsets;
     if (local_sizes.size() > 0) {
       // NOTE: Assuming 1 block for every unit.
@@ -1338,7 +1373,7 @@ public:
         block_offsets.push_back(block_offset);
       }
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.init_block_offsets >", block_offsets);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_block_offsets >", block_offsets);
     return block_offsets;
   }
 
@@ -1351,7 +1386,7 @@ public:
     const DistributionSpec_t & distspec,
     SizeType                   nunits) const
   {
-    DASH_LOG_TRACE_VAR("CSRPattern.init_blocksize", nunits);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_blocksize", nunits);
     if (nunits == 0) {
       return 0;
     }
@@ -1377,7 +1412,7 @@ public:
     } else {
       num_l_blocks = 0;
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.init_num_local_blocks", num_l_blocks);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_num_local_blocks", num_l_blocks);
     return num_l_blocks;
   }
 
@@ -1390,12 +1425,12 @@ public:
     if (_nunits == 0) {
       return 0;
     }
-    DASH_LOG_TRACE_VAR("CSRPattern.init_lcapacity", _nunits);
+    DASH_LOG_TRACE_VAR("DynamicPattern.init_lcapacity", _nunits);
     // Local capacity is maximum number of elements assigned to a single unit,
     // i.e. the maximum local size:
     l_capacity = *(std::max_element(_local_sizes.begin(),
                                     _local_sizes.end()));
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_lcapacity >", l_capacity);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.init_lcapacity >", l_capacity);
     return l_capacity;
   }
 
@@ -1406,7 +1441,7 @@ public:
   void initialize_local_range()
   {
     auto l_size = _local_size;
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_range()", l_size);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.init_local_range()", l_size);
     if (l_size == 0) {
       _lbegin = 0;
       _lend   = 0;
@@ -1418,8 +1453,8 @@ public:
       // to the last element and increment by 1:
       _lend   = global(l_size - 1) + 1;
     }
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_range >", _lbegin);
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_range >", _lend);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.init_local_range >", _lbegin);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.init_local_range >", _lend);
   }
 
   /**
@@ -1428,14 +1463,14 @@ public:
   SizeType initialize_local_extent(
     dart_unit_t unit) const
   {
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent()", unit);
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent()", _nunits);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.init_local_extent()", unit);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.init_local_extent()", _nunits);
     if (_nunits == 0) {
       return 0;
     }
     // Local size of given unit:
     SizeType l_extent = _local_sizes[static_cast<int>(unit)];
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent >", l_extent);
+    DASH_LOG_DEBUG_VAR("DynamicPattern.init_local_extent >", l_extent);
     return l_extent;
   }
 
@@ -1456,6 +1491,8 @@ private:
   DistributionSpec_t          _distspec;
   /// Team containing the units to which the patterns element are mapped
   dash::Team *                _team            = nullptr;
+  /// The active unit's id.
+  dart_unit_t                 _myid;
   /// Cartesian arrangement of units within the team
   TeamSpec_t                  _teamspec;
   /// Total amount of units to which this pattern's elements are mapped
@@ -1475,8 +1512,8 @@ private:
   /// Corresponding global index past last local index of the active unit
   IndexType                   _lend;
 
-}; // class CSRPattern<1>
+}; // class DynamicPattern<1>
 
 } // namespace dash
 
-#endif // DASH__CSR_PATTERN_1D_H_
+#endif // DASH__DYNAMIC_PATTERN_1D_H__INCLUDED

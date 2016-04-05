@@ -26,22 +26,82 @@ print_matrix(
   // Print local copy of matrix to avoid interleaving of matrix values
   // and log messages:
   std::vector< std::vector<value_t> > values;
-  for (auto row = 0; row < matrix.extent(1); ++row) {
+  std::vector<value_t> col_header;
+  for (auto col = 0; col < matrix.extent(1); ++col) {
+    col_header.push_back(col);
+  }
+  values.push_back(col_header);
+  for (auto row = 0; row < matrix.extent(0); ++row) {
     std::vector<value_t> row_values;
-    for (auto col = 0; col < matrix.extent(0); ++col) {
-      value_t value = matrix[col][row];
+    for (auto col = 0; col < matrix.extent(1); ++col) {
+      value_t value = matrix[row][col];
       row_values.push_back(value);
     }
     values.push_back(row_values);
   }
   DASH_LOG_DEBUG("print_matrix", name);
+  int row_idx = -1;
   for (auto row : values) {
     std::ostringstream ss;
+    if (row_idx < 0) {
+      // do not print row index for column header:
+      ss << std::setw(5) << " ";
+    } else {
+      ss << std::setw(3) << row_idx << ":  ";
+    }
+    row_idx++;
     for (auto val : row) {
-      ss << std::setprecision(precision) << std::fixed << std::setw(4)
+      ss << std::setprecision(row_idx == 0 ? 0 : precision)
+         << std::fixed << std::setw(precision + 3)
          << val << " ";
     }
     DASH_LOG_DEBUG("print_matrix", name, ss.str());
+  }
+}
+
+/**
+ * Log the values of a three-dimensional matrix.
+ */
+template<typename MatrixT>
+typename std::enable_if<MatrixT::ndim() == 3, void>::type
+print_matrix(
+  /// Log message prefix.
+  const std::string & name,
+  /// Matrix instance to log.
+  MatrixT           & matrix,
+  int                 precision = 1)
+{
+  typedef typename MatrixT::value_type value_t;
+  typedef typename MatrixT::index_type index_t;
+
+  std::vector< std::vector< std::vector<value_t> > > values;
+  /// Offset of two-dimensional slice in third dimension to print
+  for (auto slice_offs = 0; slice_offs < matrix.extent(0); ++slice_offs) {
+    // Print local copy of matrix to avoid interleaving of matrix values
+    // and log messages:
+    std::vector< std::vector< value_t > > slice_values;
+    for (auto row = 0; row < matrix.extent(1); ++row) {
+      std::vector<value_t> row_values;
+      for (auto col = 0; col < matrix.extent(2); ++col) {
+        value_t value = matrix[slice_offs][row][col];
+        row_values.push_back(value);
+      }
+      slice_values.push_back(row_values);
+    }
+    values.push_back(slice_values);
+  }
+  for (auto slice_offs = 0; slice_offs < matrix.extent(0); ++slice_offs) {
+    DASH_LOG_DEBUG("print_matrix", name, "slice z:", slice_offs);
+    auto slice_values = values[slice_offs];
+    for (auto row : slice_values) {
+      std::ostringstream ss;
+      for (auto val : row) {
+        ss << std::setprecision(precision) << std::fixed << std::setw(4)
+           << val << " ";
+      }
+      DASH_LOG_DEBUG("print_matrix", name, "slice z:", slice_offs, "|",
+                     ss.str());
+    }
   }
 }
 

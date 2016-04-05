@@ -88,7 +88,24 @@ std::ostream & operator<<(
   operator<<(o, ss.str());
   return o;
 }
-
+// To print std::initializer_list to ostream
+template <typename T>
+std::ostream & operator<<(
+  std::ostream & o,
+  const std::initializer_list<T> & lst)
+{
+  std::ostringstream ss;
+  auto nelem = lst.size();
+  ss << "{ ";
+  int i = 1;
+  for (auto e : lst) {
+    ss << e
+       << (i++ < nelem ? "," : "");
+  }
+  ss << " }";
+  operator<<(o, ss.str());
+  return o;
+}
 
 } // namespace dash
 

@@ -260,6 +260,78 @@ public:
   }
 
   /**
+   * Resolve unit id at given offset in Cartesian team grid relative to the
+   * active unit's position in the team.
+   *
+   * Example:
+   *
+   * \code
+   *   TeamSpec<2> teamspec(7,4);
+   *   // west neighbor is offset -1 in column dimension:
+   *   dart_unit_t neighbor_west = teamspec.neigbor({ 0, -1 });
+   *   // second south neighbor is offset -2 in row dimension:
+   *   dart_unit_t neighbor_west = teamspec.neigbor({ -2, 0 });
+   * \endcode
+   *
+   * \returns  The unit id at given offset in the team grid, relative to the
+   *           active unit's position in the team, or DART_UNDEFINED_UNIT_ID
+   *           if the offset is out of bounds.
+   */
+  dart_unit_t neighbor(std::initializer_list<int> offsets) const
+  {
+    auto neighbor_coords = this->coords(_myid);
+    dim_t d = 0;
+    for (auto offset_d : offsets) {
+      neighbor_coords[d] += offset_d;
+      if (neighbor_coords[d] < 0 ||
+          neighbor_coords[d] >= this->_extents[d]) {
+        return DART_UNDEFINED_UNIT_ID;
+      }
+      ++d;
+    }
+    return at(neighbor_coords);
+  }
+
+  /**
+   * Resolve unit id at given offset in Cartesian team grid relative to the
+   * active unit's position in the team.
+   * Offsets wrap around in every dimension as in a torus topology.
+   *
+   * Example:
+   *
+   * \code
+   *   // assuming dash::myid() == 1, i.e. team spec coordinates are (0,1)
+   *   TeamSpec<2> teamspec(2,2);
+   *   // west neighbor is offset -1 in column dimension:
+   *   dart_unit_t neighbor_west = teamspec.neigbor_periodic({ 0, -1 });
+   *   // -> unit 0
+   *   // second south neighbor at offset -2 in row dimension wraps around
+   *   // to row coordinate 0:
+   *   dart_unit_t neighbor_west = teamspec.neigbor_periodic({ -2, 0 });
+   *   // -> unit 1
+   * \endcode
+   *
+   * \returns  The unit id at given offset in the team grid, relative to the
+   *           active unit's position in the team.
+   *           If an offset is out of bounds, it is wrapped around in the
+   *           respective dimension as in a torus topology.
+   */
+  dart_unit_t periodic_neighbor(std::initializer_list<int> offsets) const
+  {
+    auto neighbor_coords = this->coords(_myid);
+    dim_t d = 0;
+    for (auto offset_d : offsets) {
+      neighbor_coords[d] += offset_d;
+      if (neighbor_coords[d] < 0 ||
+          neighbor_coords[d] >= this->_extents[d]) {
+        neighbor_coords[d] %= this->_extents[d];
+      }
+      ++d;
+    }
+    return at(neighbor_coords);
+  }
+
+  /**
    * Whether the given index lies in the cartesian sub-space specified by a
    * dimension and offset in the dimension.
    */
@@ -351,9 +423,11 @@ private:
 
 protected:
   /// Actual number of dimensions of the team layout specification.
-  dim_t _rank      = 0;
+  dim_t _rank       = 0;
   /// Whether the team spec is linear
-  bool  _is_linear = false;
+  bool  _is_linear  = false;
+  /// Unit id of active unit
+  dart_unit_t _myid = dash::myid();
 
 }; // class TeamSpec
 

@@ -1,46 +1,138 @@
-#ifndef DASH__GLOB_VIEW_ITER_H__INCLUDED
-#define DASH__GLOB_VIEW_ITER_H__INCLUDED
+#ifndef DASH__GLOB_STENCIL_ITER_H_
+#define DASH__GLOB_STENCIL_ITER_H_
 
 #include <dash/Pattern.h>
+#include <dash/Halo.h>
 #include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobMem.h>
 
-#include <cstddef>
+#include <iterator>
+#include <array>
+#include <utility>
 #include <functional>
 #include <sstream>
-#include <iostream>
+#include <cstdlib>
 
 namespace dash {
 
-#ifndef DOXYGEN
-// Forward-declaration
 template<
-  typename ElementType,
-  class    PatternType,
-  class    GlobMemType,
-  class    PointerType,
-  class    ReferenceType >
-class GlobStencilIter;
-#endif
+  typename GlobIterType,
+  dim_t    NumDimensions = GlobIterType::ndim() >
+class IteratorHalo
+{
+private:
+  typedef int
+    offset_type;
+  typedef typename GlobIterType::pattern_type::size_type
+    extent_t;
+  typedef typename std::iterator_traits<GlobIterType>::value_type
+    ElementType;
 
+public:
+  /**
+   *
+   */
+  IteratorHalo(const GlobIterType & glob_iter)
+  : _glob_iter(glob_iter)
+  { }
+
+  /**
+   * The number of dimensions of the halo region.
+   */
+  static dim_t ndim() {
+    return NumDimensions;
+  }
+
+  template<typename... Args>
+  inline const ElementType & operator()(
+    /// Halo offset for each dimension.
+    offset_type arg, Args... args) const
+  {
+    std::array<offset_type, NumDimensions> offsets =
+      { arg, static_cast<offset_type>(args)... };
+    return at(offsets);
+  }
+
+  template<typename... Args>
+  const ElementType & at(
+    /// Halo offset for each dimension.
+    offset_type arg, Args... args) const
+  {
+    static_assert(sizeof...(Args) == NumDimensions-1,
+                  "Invalid number of offset arguments");
+    std::array<offset_type, NumDimensions> offsets =
+      { arg, static_cast<offset_type>(args)... };
+    return at(offsets);
+  }
+
+  const ElementType & at(
+    /// Halo offset for each dimension.
+    const std::array<offset_type, NumDimensions> & offs) const
+  {
+    return _glob_iter.halo_cell(offs);
+  }
+
+/*
+ * TODO: Implement begin() and end()
+ */
+
+  /**
+   * Number of elements in the halo region, i.e. the number of points in the
+   * halo region's associated stencil without the center element.
+   */
+  inline extent_t size() const noexcept
+  {
+    return static_cast<extent_t>(_glob_iter.halospec().npoints()-1);
+  }
+
+  /**
+   * Number of points in the stencil associated with this halo region.
+   */
+  inline int npoints() const noexcept
+  {
+    return _glob_iter.halospec().npoints();
+  }
+
+  /**
+   * Specifier of the halo region's associated stencil.
+   */
+  inline const HaloSpec<NumDimensions> & halospec() const noexcept
+  {
+    return _glob_iter.halospec();
+  }
+
+private:
+  GlobIterType _glob_iter;
+};
+
+/**
+ * An iterator in global memory space providing access to halo cells of its
+ * referenced element.
+ *
+ * \concept{DashGlobalIteratorConcept}
+ */
 template<
   typename ElementType,
   class    PatternType,
   class    GlobMemType   = GlobMem<ElementType>,
   class    PointerType   = GlobPtr<ElementType, PatternType>,
   class    ReferenceType = GlobRef<ElementType> >
-class GlobViewIter
+class GlobStencilIter
 : public std::iterator<
            std::random_access_iterator_tag,
            ElementType,
            typename PatternType::index_type,
            PointerType,
-           ReferenceType > {
+           ReferenceType >
+{
 private:
-  typedef GlobViewIter<
+  static const dim_t      NumDimensions = PatternType::ndim();
+  static const MemArrange Arrangement   = PatternType::memory_order();
+
+private:
+  typedef GlobStencilIter<
             ElementType,
             PatternType,
             GlobMemType,
@@ -52,6 +144,10 @@ private:
     ViewSpecType;
   typedef typename PatternType::index_type
     IndexType;
+  typedef dash::HaloSpec<NumDimensions>
+    HaloSpecType;
+  typedef IteratorHalo<self_t, NumDimensions>
+    IteratorHaloType;
 
 public:
   typedef       ReferenceType                      reference;
@@ -61,6 +157,13 @@ public:
 
   typedef       PatternType                     pattern_type;
   typedef       IndexType                         index_type;
+
+  typedef       IteratorHaloType                   halo_type;
+  typedef const IteratorHaloType             const_halo_type;
+
+  typedef       HaloSpecType                    stencil_spec;
+
+  typedef typename HaloSpecType::offset_type     offset_type;
 
 public:
   typedef std::integral_constant<bool, true>        has_view;
@@ -75,45 +178,34 @@ public:
     class    Ref_ >
   friend std::ostream & operator<<(
       std::ostream & os,
-      const GlobViewIter<T_, P_, GM_, Ptr_, Ref_> & it);
-
-  // For conversion to GlobStencilIter
-  template<
-    typename T_,
-    class    P_,
-    class    Ptr_,
-    class    GM_,
-    class    Ref_ >
-  friend class GlobStencilIter;
-
-private:
-  static const dim_t      NumDimensions = PatternType::ndim();
-  static const MemArrange Arrangement   = PatternType::memory_order();
+      const GlobStencilIter<T_, P_, GM_, Ptr_, Ref_> & it);
 
 protected:
   /// Global memory used to dereference iterated values.
-  GlobMemType                * _globmem;
+  GlobMemType         * _globmem         = nullptr;
   /// Pattern that specifies the iteration order (access pattern).
-  const PatternType          * _pattern;
+  const PatternType   * _pattern         = nullptr;
   /// View that specifies the iterator's index range relative to the global
   /// index range of the iterator's pattern.
-  const ViewSpecType         * _viewspec;
+  const ViewSpecType  * _viewspec        = nullptr;
   /// Current position of the iterator relative to the iterator's view.
-  IndexType                    _idx             = 0;
+  IndexType             _idx             = 0;
   /// The iterator's view index start offset.
-  IndexType                    _view_idx_offset = 0;
+  IndexType             _view_idx_offset = 0;
   /// Maximum position relative to the viewspec allowed for this iterator.
-  IndexType                    _max_idx         = 0;
+  IndexType             _max_idx         = 0;
   /// Unit id of the active unit
-  dart_unit_t                  _myid;
+  dart_unit_t           _myid;
   /// Pointer to first element in local memory
-  ElementType                * _lbegin          = nullptr;
+  ElementType         * _lbegin          = nullptr;
+  /// Specification of the iterator's stencil.
+  HaloSpecType          _halospec;
 
 public:
   /**
    * Default constructor.
    */
-  GlobViewIter()
+  GlobStencilIter()
   : _globmem(nullptr),
     _pattern(nullptr),
     _viewspec(nullptr),
@@ -123,20 +215,21 @@ public:
     _myid(dash::myid()),
     _lbegin(nullptr)
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter()", _idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter()", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter()", _idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter()", _max_idx);
   }
 
   /**
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern and view spec.
    */
-  GlobViewIter(
-    GlobMemType          * gmem,
-	  const PatternType    & pat,
-    const ViewSpecType   & viewspec,
-	  IndexType              position          = 0,
-    IndexType              view_index_offset = 0)
+  GlobStencilIter(
+    GlobMemType        * gmem,
+	  const PatternType  & pat,
+    const ViewSpecType & viewspec,
+    const HaloSpecType & halospec,
+	  IndexType            position          = 0,
+    IndexType            view_index_offset = 0)
   : _globmem(gmem),
     _pattern(&pat),
     _viewspec(&viewspec),
@@ -144,23 +237,26 @@ public:
     _view_idx_offset(view_index_offset),
     _max_idx(viewspec.size() - 1),
     _myid(dash::myid()),
-    _lbegin(_globmem->lbegin())
+    _lbegin(_globmem->lbegin()),
+    _halospec(halospec)
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", _idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", _max_idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", *_viewspec);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,vs,idx,abs)", _view_idx_offset);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,vs,hs,idx,abs)", _idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,vs,hs,idx,abs)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,vs,hs,idx,abs)", *_viewspec);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,vs,hs,idx,abs)",
+                       _view_idx_offset);
   }
 
   /**
    * Constructor, creates a global iterator on global memory following
    * the element order specified by the given pattern and view spec.
    */
-  GlobViewIter(
-    GlobMemType       * gmem,
-	  const PatternType & pat,
-	  IndexType           position          = 0,
-    IndexType           view_index_offset = 0)
+  GlobStencilIter(
+    GlobMemType        * gmem,
+	  const PatternType  & pat,
+    const HaloSpecType & halospec,
+	  IndexType            position          = 0,
+    IndexType            view_index_offset = 0)
   : _globmem(gmem),
     _pattern(&pat),
     _viewspec(nullptr),
@@ -168,50 +264,83 @@ public:
     _view_idx_offset(view_index_offset),
     _max_idx(pat.size() - 1),
     _myid(dash::myid()),
-    _lbegin(_globmem->lbegin())
+    _lbegin(_globmem->lbegin()),
+    _halospec(halospec)
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,idx,abs)", _idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,idx,abs)", _max_idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(gmem,pat,idx,abs)", _view_idx_offset);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,hs,idx,abs)", _idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,hs,idx,abs)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(gmem,p,hs,idx,abs)",
+                       _view_idx_offset);
   }
 
   /**
-   * Constructor, creates a global view iterator from a global iterator.
+   * Constructor, creates a global stencil iterator from a global iterator.
    */
   template<class PtrT, class RefT>
-  GlobViewIter(
+  GlobStencilIter(
     const GlobIter<ElementType, PatternType, PtrT, RefT> & other,
     const ViewSpecType                                   & viewspec,
-    IndexType                                              view_idx_offset = 0)
-  : _globmem(other._globmem),
+    const HaloSpecType                                   & halospec,
+    IndexType                                              view_idx_offs = 0)
+  : _globmem(&other.globmem()),
     _pattern(other._pattern),
     _viewspec(&viewspec),
     _idx(other._idx),
-    _view_idx_offset(view_idx_offset),
+    _view_idx_offset(view_idx_offs),
     _max_idx(other._max_idx),
     _myid(other._myid),
-    _lbegin(other._lbegin)
+    _lbegin(other._lbegin),
+    _halospec(halospec)
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", _idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", _max_idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", *_viewspec);
-    DASH_LOG_TRACE_VAR("GlobViewIter(GlobIter)", _view_idx_offset);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(GlobIter)", _idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(GlobIter)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(GlobIter)", *_viewspec);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(GlobIter)", _view_idx_offset);
+  }
+
+  /**
+   * Constructor, creates a global stencil iterator from a global view
+   * iterator.
+   */
+  template<class PtrT, class RefT>
+  GlobStencilIter(
+    const GlobViewIter<ElementType, PatternType, PtrT, RefT> & other,
+    const HaloSpecType                                       & halospec)
+  : _globmem(other._globmem),
+    _pattern(other._pattern),
+    _viewspec(other._viewspec),
+    _idx(other._idx),
+    _view_idx_offset(other._view_idx_offset),
+    _max_idx(other._max_idx),
+    _myid(other._myid),
+    _lbegin(other._lbegin),
+    _halospec(halospec)
+  {
+    DASH_LOG_TRACE_VAR("GlobStencilIter(GlobViewIter)", _idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(GlobViewIter)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(GlobViewIter)", *_viewspec);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(GlobViewIter)", _halospec);
+    DASH_LOG_TRACE_VAR("GlobStencilIter(GlobViewIter)", _view_idx_offset);
   }
 
   /**
    * Copy constructor.
    */
-  GlobViewIter(
+  GlobStencilIter(
     const self_t & other) = default;
 
   /**
    * Assignment operator.
+   *
+   * \see DashGlobalIteratorConcept
    */
   self_t & operator=(
     const self_t & other) = default;
 
   /**
    * The number of dimensions of the iterator's underlying pattern.
+   *
+   * \see DashGlobalIteratorConcept
    */
   static dim_t ndim()
   {
@@ -219,18 +348,87 @@ public:
   }
 
   /**
-   * Type conversion operator to \c GlobPtr.
+   * Halo region at current iterator position.
    *
-   * \return  A global reference to the element at the iterator's position
+   * Example:
+   *
+   * \code
+   *    // five-point stencil has offset range (-1, +1) in both row- and
+   *    // column dimension:
+   *    std::array<int, 2> stencil_offs_range_rows = { -1, 1 };
+   *    std::array<int, 2> stencil_offs_range_cols = { -1, 1 };
+   *    dash::HaloSpec<2>  five_point_stencil(stencil_offs_range_rows,
+   *                                          stencil_offs_range_cols);
+   *    dash::StencilMatrix<2, double> stencil_matrix(sizespec,
+   *                                                  five_point_stencil,
+   *                                                  distspec,
+   *                                                  teamspec);
+   *    auto   st_iter = stencil_matrix.block(1,2).begin();
+   *    // stencil points can either be accessed using halo view specifiers
+   *    // returned by \c GlobStencilIter::halo which implement the sequential
+   *    // container concept and thus provice an iteration space for the halo
+   *    // cells:
+   *    auto   halo_vs = st_iter.halo();
+   *    double center  = halo_vs( 0, 0); // = halo_vs[1]
+   *    double north   = halo_vs(-1, 0); // = halo_vs[0] = halo_vs.begin()
+   *    double east    = halo_vs( 0, 1); // = halo_vs[4]
+   *    // If the halo cells are not used as sequential containers, using
+   *    // method \c GlobStencilIter::halo_cell for direct element access is
+   *    // more efficient as it does not instantiate a view proxy object:
+   *    double south   = st_iter.halo_cell( 1, 0); // = halo_vs[2]
+   *    double west    = st_iter.halo_cell( 0,-1); // = halo_vs[3]
+   * \endcode
+   *
    */
-  operator PointerType() const
+  inline halo_type halo()
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr()", _idx);
+    return halo_type(*this);
+  }
+
+  /**
+   * Halo cell at given offsets at current iterator position.
+   *
+   * Example:
+   *
+   * \code
+   *    // five-point stencil has offset range (-1, +1) in both row- and
+   *    // column dimension:
+   *    std::array<int, 2> stencil_offs_range_rows = { -1, 1 };
+   *    std::array<int, 2> stencil_offs_range_cols = { -1, 1 };
+   *    dash::HaloSpec<2>  five_point_stencil(stencil_offs_range_rows,
+   *                                          stencil_offs_range_cols);
+   *    dash::StencilMatrix<2, double> stencil_matrix(sizespec,
+   *                                                  five_point_stencil,
+   *                                                  distspec,
+   *                                                  teamspec);
+   *    auto   st_iter = stencil_matrix.block(1,2).begin();
+   *    // stencil points can either be accessed using halo view specifiers
+   *    // returned by \c GlobStencilIter::halo which implement the sequential
+   *    // container concept and thus provice an iteration space for the halo
+   *    // cells:
+   *    auto   halo_vs = st_iter.halo();
+   *    double center  = halo_vs( 0, 0); // = halo_vs[1]
+   *    double north   = halo_vs(-1, 0); // = halo_vs[0] = halo_vs.begin()
+   *    double east    = halo_vs( 0, 1); // = halo_vs[4]
+   *    // If the halo cells are not used as sequential containers, using
+   *    // method \c GlobStencilIter::halo_cell for direct element access is
+   *    // more efficient as it does not instantiate a view proxy object:
+   *    double south   = st_iter.halo_cell( 1, 0); // = halo_vs[2]
+   *    double west    = st_iter.halo_cell( 0,-1); // = halo_vs[3]
+   * \endcode
+   *
+   */
+  ElementType halo_cell(
+    /// Halo offset for each dimension.
+    const std::array<offset_type, NumDimensions> & offsets) const
+  {
+    DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell()", offsets);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx    = _idx;
     IndexType offset = 0;
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", _max_idx);
+    DASH_LOG_TRACE("GlobStencilIter.halo_cell",
+                   "idx:", _idx, "max_idx:", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
@@ -238,8 +436,75 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr", offset);
+    // Global iterator position to Cartesian coordinates relative to view
+    // spec:
+    auto cell_g_coords = coords(_idx);
+    DASH_LOG_TRACE("GlobStencilIter.halo_cell",
+                   "stencil center coords:", cell_g_coords);
+    // Apply stencil offsets to Cartesian coordinates:
+    for (dim_t d = 0; d < NumDimensions; ++d) {
+      // TODO: negative coordinates can be used to detect access to ghost cell
+      cell_g_coords[d] = std::max<IndexType>(
+                           cell_g_coords[d] + offsets[d],
+                           0);
+    }
+    DASH_LOG_TRACE("GlobStencilIter.halo_cell",
+                   "halo cell coords:", cell_g_coords);
+    // Convert cell coordinates back to global index:
+    auto cell_g_index = _pattern->memory_layout().at(cell_g_coords);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell", cell_g_index);
+    // Global index to local index and unit:
+    local_pos_t local_pos = _pattern->local(cell_g_index);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell", local_pos.index);
+
+    if (_myid == local_pos.unit) {
+      // Referenced cell is local to active unit, access element using offset
+      // of halo cell in local memory space:
+      auto local_cell_offset = local_pos.index + offset;
+      DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell >", local_cell_offset);
+      // Global reference to element at given position:
+      return *(_lbegin + local_cell_offset);
+    } else {
+      DASH_LOG_TRACE("GlobStencilIter.halo_cell",
+                     "requesting cell element from remote unit",
+                     local_pos.unit);
+      // Referenced cell is located at remote unit, access element using
+      // blocking get request:
+      // Global pointer to element at given position:
+      dart_gptr_t gptr = _globmem->index_to_gptr(
+                                     local_pos.unit,
+                                     local_pos.index);
+      // Global reference to element at given position:
+      DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell >", gptr);
+      return ReferenceType(gptr);
+    }
+  }
+
+  /**
+   * Type conversion operator to \c GlobPtr.
+   *
+   * \see DashGlobalIteratorConcept
+   *
+   * \return  A global reference to the element at the iterator's position
+   */
+  operator PointerType() const
+  {
+    DASH_LOG_TRACE_VAR("GlobStencilIter.GlobPtr()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    IndexType idx    = _idx;
+    IndexType offset = 0;
+    DASH_LOG_TRACE_VAR("GlobStencilIter.GlobPtr", _max_idx);
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+    }
+    DASH_LOG_TRACE_VAR("GlobStencilIter.GlobPtr", idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.GlobPtr", offset);
     // Global index to local index and unit:
     local_pos_t local_pos;
     if (_viewspec == nullptr) {
@@ -250,8 +515,9 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.GlobPtr >", local_pos.index + offset);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.GlobPtr >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.GlobPtr >",
+                       local_pos.index + offset);
     // Create global pointer from unit and local offset:
     PointerType gptr(
       _globmem->index_to_gptr(local_pos.unit, local_pos.index)
@@ -263,12 +529,14 @@ public:
   /**
    * Explicit conversion to \c dart_gptr_t.
    *
+   * \see DashGlobalIteratorConcept
+   *
    * \return  A DART global pointer to the element at the iterator's
    *          position
    */
   dart_gptr_t dart_gptr() const
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.dart_gptr()", _idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.dart_gptr()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx    = _idx;
@@ -279,9 +547,9 @@ public:
       // which is the case for .end() iterators.
       idx     = _max_idx;
       offset += _idx - _max_idx;
-      DASH_LOG_TRACE_VAR("GlobViewIter.dart_gptr", _max_idx);
-      DASH_LOG_TRACE_VAR("GlobViewIter.dart_gptr", idx);
-      DASH_LOG_TRACE_VAR("GlobViewIter.dart_gptr", offset);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.dart_gptr", _max_idx);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.dart_gptr", idx);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.dart_gptr", offset);
     }
     // Global index to local index and unit:
     local_pos_t local_pos;
@@ -290,11 +558,11 @@ public:
       local_pos        = _pattern->local(idx);
     } else {
       // Viewspec projection required:
-      DASH_LOG_TRACE_VAR("GlobViewIter.dart_gptr", _viewspec);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.dart_gptr", _viewspec);
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE("GlobViewIter.dart_gptr",
+    DASH_LOG_TRACE("GlobStencilIter.dart_gptr",
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
@@ -314,7 +582,7 @@ public:
    */
   reference operator*() const
   {
-    DASH_LOG_TRACE("GlobViewIter.*", _idx, _view_idx_offset);
+    DASH_LOG_TRACE("GlobStencilIter.*", _idx, _view_idx_offset);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx = _idx;
@@ -328,8 +596,8 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.*", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.*", local_pos.index);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.*", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.*", local_pos.index);
     // Global pointer to element at given position:
     dart_gptr_t gptr = _globmem->index_to_gptr(
                                    local_pos.unit,
@@ -341,12 +609,14 @@ public:
   /**
    * Subscript operator, returns global reference to element at given
    * global index.
+   *
+   * \see DashGlobalIteratorConcept
    */
   reference operator[](
     /// The global position of the element
     index_type g_index) const
   {
-    DASH_LOG_TRACE("GlobViewIter.[]", g_index, _view_idx_offset);
+    DASH_LOG_TRACE("GlobStencilIter.[]", g_index, _view_idx_offset);
     IndexType idx = g_index;
     typedef typename pattern_type::local_index_t
       local_pos_t;
@@ -360,8 +630,8 @@ public:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.[]", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.[]", local_pos.index);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.[]", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.[]", local_pos.index);
     // Global pointer to element at given position:
     PointerType gptr(
       _globmem->index_to_gptr(local_pos.unit, local_pos.index)
@@ -381,15 +651,17 @@ public:
 
   /**
    * Convert global iterator to native pointer.
+   *
+   * \see DashGlobalIteratorConcept
    */
   ElementType * local() const
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.local=()", _idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.local=()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx    = _idx;
     IndexType offset = 0;
-    DASH_LOG_TRACE_VAR("GlobViewIter.local=", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.local=", _max_idx);
     // Convert iterator position (_idx) to local index and unit.
     if (_idx > _max_idx) {
       // Global iterator pointing past the range indexed by the pattern
@@ -397,8 +669,8 @@ public:
       idx     = _max_idx;
       offset += _idx - _max_idx;
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.local=", idx);
-    DASH_LOG_TRACE_VAR("GlobViewIter.local=", offset);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.local=", idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.local=", offset);
 
     // Global index to local index and unit:
     local_pos_t local_pos;
@@ -406,13 +678,13 @@ public:
       // No viewspec mapping required:
       local_pos        = _pattern->local(idx);
     } else {
-      DASH_LOG_TRACE_VAR("GlobViewIter.local=", *_viewspec);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.local=", *_viewspec);
       // Viewspec projection required:
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.local= >", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobViewIter.local= >", local_pos.index);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.local= >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.local= >", local_pos.index);
     if (_myid != local_pos.unit) {
       // Iterator position does not point to local element
       return nullptr;
@@ -422,11 +694,13 @@ public:
 
   /**
    * Map iterator to global index domain by projecting the iterator's view.
+   *
+   * \see DashGlobalIteratorConcept
    */
-  inline GlobIter<ElementType, PatternType, GlobMemType> global() const
+  inline GlobIter<ElementType, PatternType> global() const
   {
     auto g_idx = gpos();
-    return dash::GlobIter<ElementType, PatternType, GlobMemType>(
+    return dash::GlobIter<ElementType, PatternType>(
              _globmem,
              *_pattern,
              g_idx
@@ -434,12 +708,13 @@ public:
   }
 
   /**
-   * Position of the iterator in its view's iteration space and the view's
-   * offset in global index space.
+   * Position of the iterator in global storage order.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline index_type pos() const
   {
-    DASH_LOG_TRACE("GlobViewIter.pos()",
+    DASH_LOG_TRACE("GlobStencilIter.pos()",
                    "idx:", _idx, "vs_offset:", _view_idx_offset);
     return _idx + _view_idx_offset;
   }
@@ -447,6 +722,8 @@ public:
   /**
    * Position of the iterator in its view's iteration space, disregarding
    * the view's offset in global index space.
+   *
+   * \see DashViewIteratorConcept
    */
   inline index_type rpos() const
   {
@@ -456,19 +733,21 @@ public:
   /**
    * Position of the iterator in global index range.
    * Projects iterator position from its view spec to global index domain.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline index_type gpos() const
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.gpos()", _idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.gpos()", _idx);
     if (_viewspec == nullptr) {
       // No viewspec mapping required:
-      DASH_LOG_TRACE_VAR("GlobViewIter.gpos >", _idx);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.gpos >", _idx);
       return _idx;
     } else {
       IndexType idx    = _idx;
       IndexType offset = 0;
-      DASH_LOG_TRACE_VAR("GlobViewIter.gpos", *_viewspec);
-      DASH_LOG_TRACE_VAR("GlobViewIter.gpos", _max_idx);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.gpos", *_viewspec);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.gpos", _max_idx);
       // Convert iterator position (_idx) to local index and unit.
       if (_idx > _max_idx) {
         // Global iterator pointing past the range indexed by the pattern
@@ -478,12 +757,12 @@ public:
       }
       // Viewspec projection required:
       auto g_coords = coords(idx);
-      DASH_LOG_TRACE_VAR("GlobViewIter.gpos", _idx);
-      DASH_LOG_TRACE_VAR("GlobViewIter.gpos", g_coords);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.gpos", _idx);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.gpos", g_coords);
       auto g_idx    = _pattern->memory_layout().at(g_coords);
-      DASH_LOG_TRACE_VAR("GlobViewIter.gpos", g_idx);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.gpos", g_idx);
       g_idx += offset;
-      DASH_LOG_TRACE_VAR("GlobViewIter.gpos >", g_idx);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.gpos >", g_idx);
       return g_idx;
     }
   }
@@ -491,10 +770,12 @@ public:
   /**
    * Unit and local offset at the iterator's position.
    * Projects iterator position from its view spec to global index domain.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline typename pattern_type::local_index_t lpos() const
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.lpos()", _idx);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.lpos()", _idx);
     typedef typename pattern_type::local_index_t
       local_pos_t;
     IndexType idx    = _idx;
@@ -505,9 +786,9 @@ public:
       // which is the case for .end() iterators.
       idx    = _max_idx;
       offset = _idx - _max_idx;
-      DASH_LOG_TRACE_VAR("GlobViewIter.lpos", _max_idx);
-      DASH_LOG_TRACE_VAR("GlobViewIter.lpos", idx);
-      DASH_LOG_TRACE_VAR("GlobViewIter.lpos", offset);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.lpos", _max_idx);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.lpos", idx);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.lpos", offset);
     }
     // Global index to local index and unit:
     local_pos_t local_pos;
@@ -516,12 +797,12 @@ public:
       local_pos        = _pattern->local(idx);
     } else {
       // Viewspec projection required:
-      DASH_LOG_TRACE_VAR("GlobViewIter.lpos", *_viewspec);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.lpos", *_viewspec);
       auto glob_coords = coords(idx);
       local_pos        = _pattern->local_index(glob_coords);
     }
     local_pos.index += offset;
-    DASH_LOG_TRACE("GlobViewIter.lpos >",
+    DASH_LOG_TRACE("GlobStencilIter.lpos >",
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     return local_pos;
@@ -529,6 +810,8 @@ public:
 
   /**
    * Whether the iterator's position is relative to a view.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline bool is_relative() const noexcept
   {
@@ -537,6 +820,8 @@ public:
 
   /**
    * The view that specifies this iterator's index range.
+   *
+   * \see DashViewIteratorConcept
    */
   inline ViewSpecType viewspec() const
   {
@@ -546,9 +831,16 @@ public:
     return ViewSpecType(_pattern->memory_layout().extents());
   }
 
+  inline const HaloSpecType & halospec() const noexcept
+  {
+    return _halospec;
+  }
+
   /**
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline const GlobMemType & globmem() const
   {
@@ -558,6 +850,8 @@ public:
   /**
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
+   *
+   * \see DashGlobalIteratorConcept
    */
   inline GlobMemType & globmem()
   {
@@ -804,11 +1098,11 @@ private:
   std::array<IndexType, NumDimensions> coords(
     IndexType glob_index) const
   {
-    DASH_LOG_TRACE_VAR("GlobViewIter.coords()", glob_index);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.coords()", glob_index);
     // Global cartesian coords of current iterator position:
     std::array<IndexType, NumDimensions> glob_coords;
     if (_viewspec != nullptr) {
-      DASH_LOG_TRACE_VAR("GlobViewIter.coords", *_viewspec);
+      DASH_LOG_TRACE_VAR("GlobStencilIter.coords", *_viewspec);
       // Create cartesian index space from extents of view projection:
       CartesianIndexSpace<NumDimensions, Arrangement, IndexType> index_space(
         _viewspec->extents());
@@ -823,14 +1117,14 @@ private:
     } else {
       glob_coords = _pattern->memory_layout().coords(glob_index);
     }
-    DASH_LOG_TRACE_VAR("GlobViewIter.coords >", glob_coords);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.coords >", glob_coords);
     return glob_coords;
   }
 
-}; // class GlobViewIter
+}; // class GlobStencilIter
 
 /**
- * Resolve the number of elements between two global iterators.
+ * Resolve the number of elements between two global stencil iterators.
  *
  * The difference of global pointers is not well-defined if their range
  * spans over more than one block.
@@ -853,19 +1147,20 @@ private:
  *
  * \ingroup     Algorithms
  */
-template<
+template <
   typename ElementType,
   class    Pattern,
   class    GlobMem,
   class    Pointer,
   class    Reference >
 auto distance(
-  const GlobViewIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+  /// Global iterator to the initial position in the global sequence
+  const GlobStencilIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
     first,
   /// Global iterator to the final position in the global sequence
-  const GlobViewIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
-    last)
--> typename Pattern::index_type
+  const GlobStencilIter<ElementType, Pattern, GlobMem, Pointer, Reference> &
+    last
+) -> typename Pattern::index_type
 {
   return last - first;
 }
@@ -878,17 +1173,17 @@ template <
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::GlobViewIter<
+  const dash::GlobStencilIter<
           ElementType, Pattern, GlobMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
   dash::GlobPtr<ElementType, Pattern> ptr(it);
-  ss << "dash::GlobViewIter<" << typeid(ElementType).name() << ">("
-     << "idx:"  << it._idx << ", "
+  ss << "dash::GlobStencilIter<" << typeid(ElementType).name() << ">("
+     << "idx:" << it._idx << ", "
      << "gptr:" << ptr << ")";
   return operator<<(os, ss.str());
 }
 
 } // namespace dash
 
-#endif // DASH__GLOB_VIEW_ITER_H__INCLUDED
+#endif // DASH__GLOB_STENCIL_ITER_H_

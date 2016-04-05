@@ -2,35 +2,44 @@
 #define DASH__GLOBMEM_H_
 
 #include <dash/dart/if/dart.h>
+
+#include <dash/Types.h>
 #include <dash/GlobPtr.h>
+#include <dash/Allocator.h>
 #include <dash/Team.h>
 #include <dash/Onesided.h>
 
+#include <dash/internal/Logging.h>
+
 namespace dash {
 
-namespace internal {
-
-enum class GlobMemKind {
-  COLLECTIVE,
-  LOCAL
-};
-
-constexpr GlobMemKind COLLECTIVE { GlobMemKind::COLLECTIVE };
-constexpr GlobMemKind COLL       { GlobMemKind::COLLECTIVE };
-constexpr GlobMemKind LOCAL      { GlobMemKind::LOCAL };
-
-} // namespace internal
-
-template<typename ElementType>
-class GlobMem {
+/**
+ * Global memory region with static size.
+ */
+template<
+  /// Type of values allocated in the global memory space
+  typename ElementType,
+  /// Type of allocator implementation used to allocate and deallocate
+  /// global memory
+  class    AllocatorType =
+             dash::allocator::CollectiveAllocator<ElementType> >
+class GlobMem
+{
 private:
-  dart_gptr_t             m_begptr;
-  dart_team_t             m_teamid;
-  size_t                  m_nunits;
-  size_t                  m_nlelem;
-  internal::GlobMemKind   m_kind;
-  ElementType           * m_lbegin;
-  ElementType           * m_lend;
+  typedef GlobMem<ElementType, AllocatorType>
+    self_t;
+
+public:
+  typedef AllocatorType                                    allocator_type;
+  typedef ElementType                                          value_type;
+  typedef typename allocator_type::size_type                    size_type;
+  typedef typename allocator_type::difference_type        difference_type;
+  typedef typename allocator_type::difference_type             index_type;
+  typedef typename allocator_type::pointer                        pointer;
+  typedef typename allocator_type::void_pointer              void_pointer;
+  typedef typename allocator_type::const_pointer            const_pointer;
+  typedef typename allocator_type::const_void_pointer  const_void_pointer;
+  typedef ElementType *                                     local_pointer;
 
 public:
   /**
@@ -38,54 +47,28 @@ public:
    * local memory of every unit in a team.
    */
   GlobMem(
-    /// Team containing all units operating on global memory
-    Team & team,
-    /// Number of local elements to allocate
-    size_t nlelem)
+    /// Number of local elements to allocate in global memory space
+    size_type   n_local_elem,
+    /// Team containing all units operating on the global memory region
+    Team      & team = dash::Team::Null())
+  : _allocator(team),
+    _teamid(team.dart_id()),
+    _nlelem(n_local_elem)
   {
-    DASH_LOG_TRACE("GlobMem(nunits,nelem)", team.size(), nlelem);
-    DASH_ASSERT_GT(nlelem, 0, "Requested to allocate 0 bytes");
-    m_begptr     = DART_GPTR_NULL;
-    m_teamid     = team.dart_id();
-    m_nlelem     = nlelem;
-    m_kind       = dash::internal::COLLECTIVE;
-    size_t lsize = sizeof(ElementType) * m_nlelem;
-    DASH_LOG_TRACE_VAR("GlobMem(nunits, nelem)", lsize);
-    DASH_LOG_TRACE_VAR("GlobMem(nunits, nelem)", m_teamid);
-    DASH_ASSERT_RETURNS(
-      dart_team_size(m_teamid, &m_nunits),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_team_memalloc_aligned(
-        m_teamid,
-        lsize,
-    //  sizeof(ElementType),
-        &m_begptr),
-      DART_OK);
-    m_lbegin     = lbegin(dash::myid());
-    m_lend       = lend(dash::myid());
-  }
+    DASH_LOG_TRACE("GlobMem(nunits,nelem)", team.size(), _nlelem);
 
-  /**
-   * Constructor, allocates the given number of elements in local memory.
-   */
-  GlobMem(
-      /// [IN] Number of local elements to allocate
-      size_t nlelem)
-  {
-    DASH_LOG_TRACE("GlobMem(nelem)", nlelem);
-    DASH_ASSERT_GT(nlelem, 0, "Requested to allocate 0 bytes");
-    m_begptr     = DART_GPTR_NULL;
-    m_teamid     = DART_TEAM_NULL;
-    m_nlelem     = nlelem;
-    m_nunits     = 1;
-    m_kind       = dash::internal::LOCAL;
-    size_t lsize = sizeof(ElementType) * m_nlelem;
-    DASH_ASSERT_RETURNS(
-      dart_memalloc(lsize, &m_begptr),
-      DART_OK);
-    m_lbegin     = lbegin(dash::myid());
-    m_lend       = lend(dash::myid());
+    _begptr = _allocator.allocate(_nlelem);
+    DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
+
+    if (_teamid == DART_TEAM_NULL) {
+      _nunits = 1;
+    } else {
+      DASH_ASSERT_RETURNS(
+        dart_team_size(_teamid, &_nunits),
+        DART_OK);
+    }
+    _lbegin = lbegin(dash::myid());
+    _lend   = lend(dash::myid());
   }
 
   /**
@@ -93,27 +76,42 @@ public:
    */
   ~GlobMem()
   {
-    DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", m_begptr);
-    if (!dash::is_initialized()) {
-      // If a DASH container is deleted after dash::finalize(), global
-      // memory has already been freed by dart_exit() and must not be
-      // deallocated again.
-      DASH_LOG_DEBUG("GlobMem.~GlobMem >", "DASH not initialized, abort");
-      return;
-    }
-    if (!DART_GPTR_ISNULL(m_begptr)) {
-      if (m_kind == dash::internal::COLLECTIVE) {
-        DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", m_teamid);
-        DASH_ASSERT_RETURNS(
-          dart_team_memfree(m_teamid, m_begptr),
-          DART_OK);
-      } else {
-        DASH_ASSERT_RETURNS(
-          dart_memfree(m_begptr),
-          DART_OK);
-      }
-    }
+    DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", _begptr);
+    _allocator.deallocate(_begptr);
     DASH_LOG_TRACE("GlobMem.~GlobMem >");
+  }
+
+  /**
+   * Copy constructor.
+   */
+  GlobMem(const self_t & other)
+    = default;
+
+  /**
+   * Assignment operator.
+   */
+  self_t & operator=(const self_t & rhs)
+    = default;
+
+  /**
+   * Equality comparison operator.
+   */
+  bool operator==(const self_t & rhs) const
+  {
+    return (_begptr == rhs._begptr &&
+            _teamid == rhs._teamid &&
+            _nunits == rhs._nunits &&
+            _nlelem == rhs._nlelem &&
+            _lbegin == rhs._lbegin &&
+            _lend   == rhs._lend);
+  }
+
+  /**
+   * Inequality comparison operator.
+   */
+  bool operator!=(const self_t & rhs) const
+  {
+    return !(*this == rhs);
   }
 
   /**
@@ -121,7 +119,7 @@ public:
    */
   const GlobPtr<ElementType> begin() const
   {
-    return GlobPtr<ElementType>(m_begptr);
+    return GlobPtr<ElementType>(_begptr);
   }
 
   /**
@@ -129,7 +127,7 @@ public:
    */
   GlobPtr<ElementType> begin()
   {
-    return GlobPtr<ElementType>(m_begptr);
+    return GlobPtr<ElementType>(_begptr);
   }
 
   /**
@@ -180,7 +178,7 @@ public:
    */
   inline const ElementType * lbegin() const
   {
-    return m_lbegin;
+    return _lbegin;
   }
 
   /**
@@ -189,7 +187,7 @@ public:
    */
   inline ElementType * lbegin()
   {
-    return m_lbegin;
+    return _lbegin;
   }
 
   /**
@@ -205,7 +203,7 @@ public:
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&gptr, m_nlelem * sizeof(ElementType)),
+      dart_gptr_incaddr(&gptr, _nlelem * sizeof(ElementType)),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
@@ -226,7 +224,7 @@ public:
       dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
     DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&gptr, m_nlelem * sizeof(ElementType)),
+      dart_gptr_incaddr(&gptr, _nlelem * sizeof(ElementType)),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
@@ -240,7 +238,7 @@ public:
    */
   inline const ElementType * lend() const
   {
-    return m_lend;
+    return _lend;
   }
 
   /**
@@ -249,10 +247,10 @@ public:
    */
   inline ElementType * lend()
   {
-    return m_lend;
+    return _lend;
   }
 
-  /*
+  /**
    * Write value to global memory at given offset.
    *
    * \see  dash::put_value
@@ -260,10 +258,10 @@ public:
   template<typename ValueType = ElementType>
   void put_value(
     const ValueType & newval,
-    size_t            global_index)
+    index_type        global_index)
   {
     DASH_LOG_TRACE("GlobMem.put_value(newval, gidx = %d)", global_index);
-    dart_gptr_t gptr = m_begptr;
+    dart_gptr_t gptr = _begptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(
         &gptr,
@@ -272,18 +270,18 @@ public:
     dash::put_value(newval, GlobPtr<ValueType>(gptr));
   }
 
-  /*
+  /**
    * Read value from global memory at given offset.
    *
    * \see  dash::get_value
    */
   template<typename ValueType = ElementType>
   void get_value(
-    ValueType * ptr,
-    size_t global_index)
+    ValueType  * ptr,
+    index_type   global_index)
   {
     DASH_LOG_TRACE("GlobMem.get_value(newval, gidx = %d)", global_index);
-    dart_gptr_t gptr = m_begptr;
+    dart_gptr_t gptr = _begptr;
     dart_gptr_incaddr(&gptr, global_index * sizeof(ValueType));
     dash::get_value(ptr, GlobPtr<ValueType>(gptr));
   }
@@ -294,7 +292,7 @@ public:
   void barrier()
   {
     DASH_ASSERT_RETURNS(
-      dart_barrier(m_teamid),
+      dart_barrier(_teamid),
       DART_OK);
   }
 
@@ -304,7 +302,7 @@ public:
    */
   void flush()
   {
-    dart_flush(m_begptr);
+    dart_flush(_begptr);
   }
 
   /**
@@ -313,17 +311,17 @@ public:
    */
   void flush_all()
   {
-    dart_flush_all(m_begptr);
+    dart_flush_all(_begptr);
   }
 
   void flush_local()
   {
-    dart_flush_local(m_begptr);
+    dart_flush_local(_begptr);
   }
 
   void flush_local_all()
   {
-    dart_flush_local_all(m_begptr);
+    dart_flush_local_all(_begptr);
   }
 
   /**
@@ -335,23 +333,23 @@ public:
     /// The unit id
     dart_unit_t unit,
     /// The unit's local address offset
-    IndexType local_index) const
+    IndexType   local_index) const
   {
     DASH_LOG_DEBUG("GlobMem.index_to_gptr(unit,l_idx)", unit, local_index);
     // Initialize with global pointer to start address:
-    dart_gptr_t gptr = m_begptr;
+    dart_gptr_t gptr = _begptr;
     // Resolve global unit id
     dart_unit_t lunit, gunit;
     DASH_LOG_DEBUG("GlobMem.index_to_gptr (=g_begp)  ", gptr);
     DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", gptr.unitid);
     // Resolve local unit id from global unit id in global pointer:
-    dart_team_unit_g2l(m_teamid, gptr.unitid, &lunit);
+    dart_team_unit_g2l(_teamid, gptr.unitid, &lunit);
     DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", lunit);
-    lunit = (lunit + unit) % m_nunits;
+    lunit = (lunit + unit) % _nunits;
     DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", lunit);
-    if (m_teamid != dash::Team::All().dart_id()) {
+    if (_teamid != dash::Team::All().dart_id()) {
       // Unit is member of a split team, resolve global unit id:
-      dart_team_unit_l2g(m_teamid, lunit, &gunit);
+      dart_team_unit_l2g(_teamid, lunit, &gunit);
     } else {
       // Unit is member of top level team, no conversion to global unit id
       // necessary:
@@ -365,6 +363,15 @@ public:
     DASH_LOG_DEBUG("GlobMem.index_to_gptr (+g_unit) >", gptr);
     return gptr;
   }
+
+private:
+  allocator_type          _allocator;
+  dart_gptr_t             _begptr;
+  dart_team_t             _teamid;
+  size_type               _nunits;
+  size_type               _nlelem;
+  ElementType           * _lbegin    = nullptr;
+  ElementType           * _lend      = nullptr;
 };
 
 template<typename T>

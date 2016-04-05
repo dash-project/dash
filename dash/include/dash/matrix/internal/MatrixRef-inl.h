@@ -84,7 +84,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::extent(
   dim_t dim) const noexcept
 {
-  return _refview->_viewspec[dim].extent;
+  return _refview->_viewspec.extent(dim);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -409,6 +409,17 @@ MatrixRef<T, NumDim, CUR, PatternT>
   ::std::array<index_type, NumDim> coord = { args... };
   for(auto i = _refview->_dim; i < NumDim; ++i) {
     _refview->_coord[i] = coord[i-_refview->_dim];
+  }
+  return _refview->global_reference();
+}
+
+template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
+inline typename MatrixRef<T, NumDim, CUR, PatternT>::reference
+MatrixRef<T, NumDim, CUR, PatternT>
+::at(const ::std::array<typename PatternT::index_type, NumDim> & coords)
+{
+  for(auto i = _refview->_dim; i < NumDim; ++i) {
+    _refview->_coord[i] = coords[i-_refview->_dim];
   }
   return _refview->global_reference();
 }

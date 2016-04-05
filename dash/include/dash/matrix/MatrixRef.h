@@ -140,7 +140,7 @@ public:
   }
 
   MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>(
-    const MatrixRef<ElementT, NumDimensions, NumViewDim+1, PatternT> & previous,
+    const MatrixRef<ElementT, NumDimensions, NumViewDim+1, PatternT> & prev,
     index_type coord);
 
   inline    Team            & team();
@@ -249,6 +249,18 @@ public:
     Args... args);
 
   /**
+   * Fortran-style subscript operator.
+   * As an example, the operation \c matrix(i,j) is equivalent to
+   * \c matrix[i][j].
+   *
+   * \returns  A global reference to the element at the given global
+   *           coordinates.
+   */
+  reference at(
+    /// Global coordinates
+    const ::std::array<index_type, NumDimensions> & coords);
+
+  /**
    * Fortran-style subscript operator, alias for \c at().
    * As an example, the operation \c matrix(i,j) is equivalent to
    * \c matrix[i][j].
@@ -266,6 +278,10 @@ public:
 
   template<dim_t Dimension>
   inline bool is_local(index_type n) const;
+
+  inline const ViewSpec<NumDimensions, index_type> & viewspec() const {
+    return _refview->_viewspec;
+  }
 
   template <int level>
   dash::HView<Matrix<ElementT, NumDimensions, Index_t, PatternT>, level>
@@ -340,6 +356,10 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
     index_type elem);
 
   inline bool is_local() const;
+
+  inline const ViewSpec<NumDimensions, index_type> & viewspec() const {
+    return _refview->_viewspec;
+  }
 
   operator ElementT() const;
   operator GlobPtr<ElementT, PatternT>() const;
