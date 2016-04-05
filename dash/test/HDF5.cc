@@ -97,7 +97,7 @@ TEST_F(HDFTest, StoreMultiDimMatrix)
 	{
 		matrix_t mat1(pattern);
 		dash::barrier();
-		std::cout << "Matrix created" << std::endl;
+		LOG_MESSAGE("Matrix created");
 
 		// Fill Array
 		for(int x=0; x<pattern.local_extent(0); x++){
@@ -107,15 +107,26 @@ TEST_F(HDFTest, StoreMultiDimMatrix)
 		}
 		dash::barrier();
 		DASH_LOG_DEBUG("BEGIN STORE HDF");
-		dash::util::StoreHDF::write(mat1, "test2.hdf5", "data");
+		dash::util::StoreHDF::write(mat1, "test.hdf5", "data");
 		DASH_LOG_DEBUG("END STORE HDF");
 		dash::barrier();
 	}
 dash::barrier();
 }
+
 #if 0
 TEST_F(HDFTest, StoreSUMMAMatrix)
 {
+	typedef double	value_t;
+	typedef long		index_t;
+
+	auto myid				 = dash::myid();
+	auto num_units	 = dash::Team::All().size();
+	auto extent_cols = num_units;
+	auto extent_rows = num_units;
+	auto team_size_x = num_units;
+	auto team_size_y = 1;
+
 	// Adopted from SUMMA test case
   // Automatically deduce pattern type satisfying constraints defined by
   // SUMMA implementation:
@@ -130,7 +141,27 @@ TEST_F(HDFTest, StoreSUMMAMatrix)
                  dash::summa_pattern_layout_constraints >(
                    size_spec,
                    team_spec);
+	DASH_LOG_DEBUG("Pattern", pattern);
+	
+	{
+		// Instantiate Matrix
+		dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_a(pattern);
+		dash::barrier();
+	
+		// Fill local block with id of unit
+		std::fill(matrix_a.lbegin(), matrix_a.lend(), myid);
+		dash::barrier();
 
+		// Store Matrix
+		dash::util::StoreHDF::write(matrix_a, "test.hdf5", "data");
+		dash::barrier();
+
+		// Read HDF5 Matrix
+	}
+
+	dash::Matrix<double, 2> matrix_b;
+	dash::util::StoreHDF::read(matrix_b, "test.hdf5", "data");
+	dash::barrier();
 }
 #endif
 

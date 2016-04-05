@@ -61,7 +61,7 @@ public:
 	/* HDF5 definition */
 	hid_t		file_id;
 	hid_t		dataset;
-	hid_t 	timings_type;
+	hid_t 	internal_type;
 	hid_t		plist_id; // property list identifier
 	hid_t 	filespace;
 	hid_t		memspace;
@@ -92,10 +92,10 @@ public:
 	// Create dataspace
 	filespace			= H5Screate_simple(1, data_dimsf, NULL);
 	memspace			= H5Screate_simple(1, data_dimsm, NULL);
-	timings_type	= H5Tcopy(h5datatype);
+	internal_type	= H5Tcopy(h5datatype);
 	
 	// Create dataset
-	dataset = H5Dcreate(file_id, table.c_str(), timings_type, filespace,
+	dataset = H5Dcreate(file_id, table.c_str(), internal_type, filespace,
 			H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 	// Close global dataspace
@@ -117,7 +117,7 @@ public:
 		H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
 		// Write data
-		H5Dwrite(dataset, timings_type, memspace, filespace,
+		H5Dwrite(dataset, internal_type, memspace, filespace,
 						plist_id, array.lbegin());
 	} else {
 		// Store each block separate
@@ -146,7 +146,7 @@ public:
 	H5Dclose(dataset);
 	H5Sclose(filespace);
 	H5Sclose(memspace);
-	H5Tclose(timings_type);
+	H5Tclose(internal_type);
 	H5Fclose(file_id);
 	}
 
@@ -182,7 +182,7 @@ public:
 	/* HDF5 definition */
 	hid_t		file_id;
 	hid_t		dataset;
-	hid_t 	timings_type;
+	hid_t 	internal_type;
 	hid_t		plist_id; // property list identifier
 	hid_t 	filespace;
 	hid_t		memspace;
@@ -232,10 +232,10 @@ public:
 	// Create dataspace
 	filespace			= H5Screate_simple(ndim, data_dimsf, NULL);
 	memspace			= H5Screate_simple(ndim, data_dimsm, NULL);
-	timings_type	= H5Tcopy(h5datatype);
+	internal_type	= H5Tcopy(h5datatype);
 	
 	// Create dataset
-	dataset = H5Dcreate(file_id, table.c_str(), timings_type, filespace,
+	dataset = H5Dcreate(file_id, table.c_str(), internal_type, filespace,
 			H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 	// Close global dataspace
@@ -250,26 +250,36 @@ public:
 	H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
 	// Write data
-	H5Dwrite(dataset, timings_type, memspace, filespace,
+	H5Dwrite(dataset, internal_type, memspace, filespace,
 						plist_id, array.lbegin());
 
 	// Add Attributes
-#if 0
-	hid_t attrspace = H5Screate(H5S_SCALAR);
-	long attr = (long) tilesize;
+	long pattern_spec[ndim*4];
+	// Structure is 
+	// sizespec, teamspec, blockspec, blocksize
+	for(int i=0; i<ndim; i++){
+		pattern_spec[i]	  				= pattern.sizespec().extent(i);
+		pattern_spec[i+ndim] 			= pattern.teamspec().extent(i);
+		pattern_spec[i+(ndim*2)] 	= pattern.blockspec().extent(i);
+		pattern_spec[i+(ndim*3)]  = pattern.blocksize(i);
+	}
+
+	hsize_t attr_len[] = { ndim*4 };
+	hid_t attrspace = H5Screate_simple(1,
+											attr_len, 
+											NULL);
 	hid_t attribute_id = H5Acreate(
-		dataset, "DASH_TILESIZE", H5T_NATIVE_LONG,
+		dataset, "DASH_PATTERN", H5T_NATIVE_LONG,
 		attrspace, H5P_DEFAULT, H5P_DEFAULT);
-	H5Awrite(attribute_id, H5T_NATIVE_LONG, &attr);
+	H5Awrite(attribute_id, H5T_NATIVE_LONG, &pattern_spec);
 	H5Aclose(attribute_id);
 	H5Sclose(attrspace);
-#endif
 
 	// Close all
 	H5Dclose(dataset);
 	H5Sclose(filespace);
 	H5Sclose(memspace);
-	H5Tclose(timings_type);
+	H5Tclose(internal_type);
 	H5Fclose(file_id);
 	}
 
@@ -294,7 +304,7 @@ public:
 	/* HDF5 definition */
 	hid_t		file_id;
 	hid_t		dataset;
-	hid_t 	timings_type;
+	hid_t 	internal_type;
 	hid_t		plist_id; // property list identifier
 	hid_t 	filespace;
 	hid_t		memspace;
@@ -362,7 +372,7 @@ public:
 
 	// Create HDF5 memspace
 	memspace  		= H5Screate_simple(1,data_dimsm,NULL);
-	timings_type  = H5Tcopy(h5datatype);
+	internal_type  = H5Tcopy(h5datatype);
 
 	// Select Hyperslabs in file
 	count[0]	= (hsize_t) (localsize/tilesize); // tiles per node
@@ -377,15 +387,172 @@ public:
 	H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
 	// read data
-	H5Dread(dataset, timings_type, memspace, filespace,
+	H5Dread(dataset, internal_type, memspace, filespace,
 		plist_id, array.lbegin());
 
 	// Close all
 	H5Dclose(dataset);
 	H5Sclose(filespace);
 	H5Sclose(memspace);
-	H5Tclose(timings_type);
+	H5Tclose(internal_type);
 	H5Fclose(file_id);
+	}
+
+
+	/**
+   * Import a HDF5 n-dimensional matrix into a DASH::Matrix
+	 */
+	template<
+		typename value_t,
+		dim_t ndim>
+	static void read(
+		dash::Matrix<
+						value_t,
+						ndim> &matrix,
+		std::string filename,
+		std::string table)
+	{
+	typedef dash::TilePattern<ndim> pattern_t;
+
+	/* HDF5 definition */
+	hid_t		file_id;
+	hid_t		dataset;
+	hid_t 	internal_type;
+	hid_t		plist_id; // property list identifier
+	hid_t 	filespace;
+	hid_t		memspace;
+	/* global data dims */
+	hsize_t	data_dimsf[ndim];
+	/* local data dims */
+	hsize_t data_dimsm[ndim];
+
+	herr_t	status;
+	int			rank;
+	// Map native types to HDF5 types
+	hid_t h5datatype;
+	
+	// Hyperslab definition
+	hsize_t	count[ndim];
+	hsize_t stride[ndim];
+	hsize_t	offset[ndim];
+	hsize_t block[ndim];
+
+	// setup mpi access
+	plist_id = H5Pcreate(H5P_FILE_ACCESS);
+	H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+	// HD5 create file
+	file_id = H5Fopen(filename.c_str(), H5P_DEFAULT, plist_id );
+
+	// close property list
+	H5Pclose(plist_id);
+
+	// Create dataset
+	dataset = H5Dopen(file_id, table.c_str(), H5P_DEFAULT);
+
+	// Get dimensions of data
+	filespace 		= H5Dget_space(dataset);
+	rank      		= H5Sget_simple_extent_ndims(filespace);
+	
+	DASH_ASSERT_EQ(rank, ndim, 
+			"Data dimension of HDF5 table does not match matrix dimension");
+
+	status    		= H5Sget_simple_extent_dims(filespace, data_dimsf, NULL);
+
+	// Initialize DASH Array
+	// no explicit pattern specified / try to load pattern from hdf5 file
+
+	std::array<size_t, ndim>						 size_extents;
+	std::array<size_t, ndim> 						 team_extents;
+	std::array<dash::Distribution, ndim> dist_extents;
+	long hdf_dash_pattern[ndim*4];
+
+	// delayed initialisation not possible
+	for(int i=0; i<ndim; i++){
+			size_extents[i] = data_dimsf[i];
+			if(i==0){
+				team_extents[i] = dash::Team::All().size();
+			} else {
+				team_extents[i] = 1;
+			}
+		}
+		dash::SizeSpec<ndim> size_spec(size_extents);
+		dash::TeamSpec<ndim> team_spec(team_extents);
+		team_spec.balance_extents();
+
+		pattern_t pattern = dash::make_pattern <
+                dash::summa_pattern_partitioning_constraints,
+     		        dash::summa_pattern_mapping_constraints,
+           			dash::summa_pattern_layout_constraints >(
+             			size_spec,
+             			team_spec);
+
+	// Check if file contains DASH metadata and recreate the pattern
+	if(H5Aexists(dataset, "DASH_PATTERN")){
+		hsize_t attr_len[]  = { ndim*4};
+		hid_t attrspace			= H5Screate_simple(1, attr_len, NULL);
+		hid_t attribute_id  = H5Aopen(dataset, "DASH_PATTERN", H5P_DEFAULT);
+		H5Aread(attribute_id, H5T_NATIVE_LONG, hdf_dash_pattern);
+		H5Aclose(attribute_id);
+		H5Sclose(attrspace);
+		for(int i=0; i<ndim; i++){
+			size_extents[i]  = static_cast<size_t> (hdf_dash_pattern[i]);
+			team_extents[i]  = static_cast<size_t> (hdf_dash_pattern[i+ndim]);
+			dist_extents[i]  = dash::TILE(hdf_dash_pattern[i+(ndim*3)]);
+		}
+		// instantiate pattern
+		pattern = pattern_t(
+								dash::SizeSpec<ndim>(size_extents),
+								dash::DistributionSpec<ndim>(dist_extents),
+								dash::TeamSpec<ndim>(team_extents));
+	}
+
+	DASH_LOG_DEBUG("Pattern", pattern);
+
+	// Allocate DASH Matrix
+	
+	matrix.allocate(pattern);
+	h5datatype 		= _convertType(*matrix.lbegin()); // hack
+
+  // setup extends per dimension
+	for(int i=0; i<ndim; i++){
+		data_dimsm[i] = pattern.local_extent(i);
+		// number of tiles in this dimension
+		// works also for underfilled tiles
+		count[i]			= (data_dimsm[i]-1) / pattern.blocksize(i) + 1;
+		offset[i]			= pattern.local_block(0).offset(i);
+		block[i]			= pattern.blocksize(i);
+
+		// calculate stride
+		stride[i] = pattern.teamspec().extent(i)*block[i];
+	
+		DASH_LOG_DEBUG("COUNT",i, count[i]);
+		DASH_LOG_DEBUG("OFFSET",i, offset[i]);
+		DASH_LOG_DEBUG("BLOCK",i, block[i]);
+		DASH_LOG_DEBUG("STRIDE",i, stride[i]);
+	}
+
+	// Create dataspace
+	memspace			= H5Screate_simple(ndim, data_dimsm, NULL);
+	internal_type	= H5Tcopy(h5datatype);
+
+	H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, stride, count, block);
+
+	// Create property list for collective reads
+	plist_id = H5Pcreate(H5P_DATASET_XFER);
+	H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+	// read data
+	H5Dread(dataset, internal_type, memspace, filespace,
+		plist_id, matrix.lbegin());
+
+	// Close all
+	H5Dclose(dataset);
+	H5Sclose(filespace);
+	H5Sclose(memspace);
+	H5Tclose(internal_type);
+	H5Fclose(file_id);
+
 	}
 
 private:

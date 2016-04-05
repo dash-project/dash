@@ -525,7 +525,6 @@ public:
   inline operator
     MatrixRef<ElementT, NumDimensions, NumDimensions, PatternT> ();
 
-private:
   /**
    * Allocation and distribution of matrix elements as specified by a given
    * Pattern instance.

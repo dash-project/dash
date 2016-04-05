@@ -742,3 +742,28 @@ TEST_F(MatrixTest, StorageOrder)
     }
   }
 }
+
+TEST_F(MatrixTest, DelayedAllocation)
+{
+	auto num_units	 = dash::Team::All().size();
+	auto extent_cols = num_units;
+	auto extent_rows = num_units;
+	auto team_size_x = num_units;
+	auto team_size_y = 1;
+
+	dash::SizeSpec<2> size_spec(extent_cols, extent_rows);
+  dash::TeamSpec<2> team_spec(team_size_x, team_size_y);
+  team_spec.balance_extents();
+
+  LOG_MESSAGE("Initialize matrix pattern ...");
+  auto pattern = dash::make_pattern <
+                 dash::summa_pattern_partitioning_constraints,
+                 dash::summa_pattern_mapping_constraints,
+                 dash::summa_pattern_layout_constraints >(
+                   size_spec,
+                   team_spec);
+	LOG_MESSAGE("Pattern", pattern);
+	
+	dash::Matrix<double, 2> matrix;
+	matrix.allocate(pattern);
+}
