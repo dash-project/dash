@@ -114,37 +114,50 @@ public:
   void draw_axes(std::ostream & os,
                  int dimx, int dimy,
                  int offsx = 0, int offsy = 0) {
-    int startx, starty;
-    int endx, endy;
 
-    startx = offsx;
-    starty = offsy;
-    endx = startx + (1 + _pattern.extent(dimx)) * _gridx;
-    endy = starty;
+    int startx = offsx;
+    int starty = offsy;
+    int lenx   = (1 + _pattern.extent(dimx)) * _gridx;
+    int leny   = (1 + _pattern.extent(dimy)) * _gridy;
 
-    os << "<line x1=\"" << startx << "\" y1=\"" << starty << "\"";
-    os << " x2=\"" << endx << "\" y2=\"" << endy << "\"";
-    os << " style=\"stroke:#808080;stroke-width:1\"/>";
+    os << "<path d=\"";
+    os << "M " << startx      << " " << starty+leny << " ";
+    os << "L " << startx      << " " << starty << " ";
+    os << "L " << startx+lenx << "  "<< starty << " ";
+    os << "\"";
+    os << " style=\"fill:none;stroke:#808080;stroke-width:1\"";
+    os << "/>";
 
-    os << "<text x=\"" << endx / 3 << "\" y=\"" << starty - 1 << "\" ";
+    os << "<defs>\n";
+    os << "<g transform=\"scale(0.20)\" id=\"arrowhead\">\n";
+    os << "<path d=\"";
+    os << "M " << -10 << " " << -15 << " ";
+    os << "L " <<  20 << " " <<   0 << " ";
+    os << "L " << -10 << " " <<  15 << " ";
+    os << "L " <<   0 << " " <<   0 << " ";
+    os << "z ";
+    os << "\"";
+    os << " style=\"fill:#808080;stroke:#808080;stroke-width:1\"";
+    os << "/>";
+    os << "</g>\n";
+    os << "</defs>\n";
+
+    os << "<use x=\"" << startx+lenx << "\" y=\"" << starty <<"\" ";
+    os << " xlink:href=\"#arrowhead\" />";
+
+    os << "<use x=\"" << startx << "\" y=\"" << starty+leny <<"\" ";
+    os << " transform=\"rotate(90," << startx << "," << starty+leny <<")\" ";
+    os << " xlink:href=\"#arrowhead\" />";
+
+    os << "<text x=\"" << startx+ lenx / 3 << "\" y=\"" << starty - 2 << "\" ";
     os << " fill=\"grey\" font-size=\"" << _fontsz << "\"";
-    //    os<<" transform=\"rotate(30 20,40)\" ";
     os << " >";
     os << "Dimension " << dimx << std::endl;
     os << "</text>" << std::endl;
 
-    startx = offsx;
-    starty = offsy;
-    endx = startx;
-    endy = starty + (1 + _pattern.extent(dimy)) * _gridy;
-
-    os << "<line x1=\"" << startx << "\" y1=\"" << starty << "\"";
-    os << " x2=\"" << endx << "\" y2=\"" << endy << "\"";
-    os << " style=\"stroke:#808080;stroke-width:1\"/>";
-
-    os << "<text x=\"" << startx - 1 << "\" y=\"" << endy / 3 << "\" ";
+    os << "<text x=\"" << startx - 2 << "\" y=\"" << starty + leny / 3 << "\" ";
     os << " fill=\"grey\" font-size=\"" << _fontsz << "\"";
-    os << " transform=\"rotate(-90," << startx - 1 << "," << endy / 3 << ")\" ";
+    os << " transform=\"rotate(-90," << startx - 2 << "," << starty + leny / 3 << ")\" ";
     os << " >";
     os << "Dimension " << dimy << std::endl;
     os << "</text>" << std::endl;
@@ -186,9 +199,11 @@ public:
         coords[dimx] = i;
         coords[dimy] = j;
 
-        os << tilestyle(_pattern.unit_at(coords));
-        os << "> ";
-        os << "<!-- i=" << i << " j=" << j << "--> ";
+	auto unit = _pattern.unit_at(coords);
+        os << tilestyle(unit);
+        os << " tooltip=\"enable\" > ";
+	os << " <title> Element ("<<j<<","<<i<<"), Unit "<<unit<<"</title> ";
+	  //os << "<!-- i=" << i << " j=" << j << "--> ";
         os << "</rect>" << std::endl;
       }
     }
