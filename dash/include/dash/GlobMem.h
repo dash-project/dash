@@ -64,7 +64,7 @@ public:
       _nunits = 1;
     } else {
       DASH_ASSERT_RETURNS(
-        dart_team_size(_teamid, &_nunits),
+        dart_team_size(_teamid, (size_t *) &_nunits),
         DART_OK);
     }
     _lbegin = lbegin(dash::myid());

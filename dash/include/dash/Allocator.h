@@ -297,7 +297,7 @@ public:
   : _team_id(team.dart_id())
   {
     DASH_ASSERT_RETURNS(
-      dart_team_size(_team_id, &_nunits),
+      dart_team_size(_team_id, (size_t *) &_nunits),
       DART_OK);
   }
 
