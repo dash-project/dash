@@ -7,6 +7,7 @@
 #include <dash/Init.h>
 #include <dash/Array.h>
 #include <dash/Matrix.h>
+#include <sys/stat.h>
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
@@ -22,7 +23,13 @@ namespace util {
 
 class StoreHDF {
   public:
-    friend void dash::init(int *argc, char ***argv);
+    typedef struct hdf5_file_options_t {
+        bool					overwrite_file;
+        bool					overwrite_table;  // TODO
+        bool					store_pattern;
+        bool					restore_pattern;
+        std::string		pattern_metadata_key;
+    } hdf5_file_options;
 
   public:
     /**
@@ -35,7 +42,8 @@ class StoreHDF {
     static void write(
         dash::Array<value_t, index_t, pattern_t> &array,
         std::string filename,
-        std::string table) {
+        std::string table,
+        hdf5_file_options foptions = _get_fdefaults()) {
 
         auto		globalsize = array.size();
         auto		pattern		 = array.pattern();
@@ -81,9 +89,24 @@ class StoreHDF {
         plist_id = H5Pcreate(H5P_FILE_ACCESS);
         H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-        // HD5 create file
-        file_id = H5Fcreate( filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, plist_id );
+        dash::Shared<int> f_exists;
+        if(dash::myid() == 0) {
+            if(access( filename.c_str(), F_OK ) != -1) {
+                // check if file exists
+                f_exists.set(static_cast<int> (H5Fis_hdf5( filename.c_str())));
+            } else {
+                f_exists.set(-1);
+            }
+        }
+        dash::barrier();
 
+        if(foptions.overwrite_file || (f_exists.get() <= 0)) {
+            // HD5 create file
+            file_id = H5Fcreate( filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, plist_id );
+        } else {
+            // Open file
+            file_id = H5Fopen( filename.c_str(), H5F_ACC_TRUNC, plist_id );
+        }
         // close property list
         H5Pclose(plist_id);
 
@@ -131,14 +154,17 @@ class StoreHDF {
         }
 
         // Add Attributes
-        hid_t attrspace = H5Screate(H5S_SCALAR);
-        long attr = (long) tilesize;
-        hid_t attribute_id = H5Acreate(
-                                 dataset, "DASH_TILESIZE", H5T_NATIVE_LONG,
-                                 attrspace, H5P_DEFAULT, H5P_DEFAULT);
-        H5Awrite(attribute_id, H5T_NATIVE_LONG, &attr);
-        H5Aclose(attribute_id);
-        H5Sclose(attrspace);
+        if(foptions.store_pattern) {
+            auto pat_key = foptions.pattern_metadata_key.c_str();
+            hid_t attrspace = H5Screate(H5S_SCALAR);
+            long attr = (long) tilesize;
+            hid_t attribute_id = H5Acreate(
+                                     dataset, pat_key, H5T_NATIVE_LONG,
+                                     attrspace, H5P_DEFAULT, H5P_DEFAULT);
+            H5Awrite(attribute_id, H5T_NATIVE_LONG, &attr);
+            H5Aclose(attribute_id);
+            H5Sclose(attrspace);
+        }
 
         // Close all
         H5Dclose(dataset);
@@ -159,7 +185,8 @@ class StoreHDF {
     static void write(
         dash::Matrix<value_t, ndim, index_t, pattern_t> &array,
         std::string filename,
-        std::string table) {
+        std::string table,
+        hdf5_file_options foptions = _get_fdefaults()) {
 
         auto pattern		= array.pattern();
         auto pat_dims		= pattern.ndim();
@@ -218,8 +245,25 @@ class StoreHDF {
         plist_id = H5Pcreate(H5P_FILE_ACCESS);
         H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
-        // HD5 create file
-        file_id = H5Fcreate( filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, plist_id );
+        dash::Shared<int> f_exists;
+        if(dash::myid() == 0) {
+            if(access( filename.c_str(), F_OK ) != -1) {
+                // check if file exists
+                f_exists.set(static_cast<int> (H5Fis_hdf5( filename.c_str())));
+            } else {
+                f_exists.set(-1);
+            }
+        }
+        dash::barrier();
+
+        if(foptions.overwrite_file || (f_exists.get() <= 0)) {
+            // HD5 create file
+            file_id = H5Fcreate( filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, plist_id );
+            std::cout << "Create File" << std::endl;
+        } else {
+            // Open file
+            file_id = H5Fopen( filename.c_str(), H5F_ACC_TRUNC, plist_id );
+        }
 
         // close property list
         H5Pclose(plist_id);
@@ -249,26 +293,29 @@ class StoreHDF {
                  plist_id, array.lbegin());
 
         // Add Attributes
-        long pattern_spec[ndim*4];
-        // Structure is
-        // sizespec, teamspec, blockspec, blocksize
-        for(int i=0; i<ndim; i++) {
-            pattern_spec[i]	  				= pattern.sizespec().extent(i);
-            pattern_spec[i+ndim] 			= pattern.teamspec().extent(i);
-            pattern_spec[i+(ndim*2)] 	= pattern.blockspec().extent(i);
-            pattern_spec[i+(ndim*3)]  = pattern.blocksize(i);
-        }
+        if(foptions.store_pattern) {
+            auto pat_key = foptions.pattern_metadata_key.c_str();
+            long pattern_spec[ndim*4];
+            // Structure is
+            // sizespec, teamspec, blockspec, blocksize
+            for(int i=0; i<ndim; i++) {
+                pattern_spec[i]	  				= pattern.sizespec().extent(i);
+                pattern_spec[i+ndim] 			= pattern.teamspec().extent(i);
+                pattern_spec[i+(ndim*2)] 	= pattern.blockspec().extent(i);
+                pattern_spec[i+(ndim*3)]  = pattern.blocksize(i);
+            }
 
-        hsize_t attr_len[] = { static_cast<hsize_t> (ndim*4) };
-        hid_t attrspace = H5Screate_simple(1,
-                                           attr_len,
-                                           NULL);
-        hid_t attribute_id = H5Acreate(
-                                 dataset, "DASH_PATTERN", H5T_NATIVE_LONG,
-                                 attrspace, H5P_DEFAULT, H5P_DEFAULT);
-        H5Awrite(attribute_id, H5T_NATIVE_LONG, &pattern_spec);
-        H5Aclose(attribute_id);
-        H5Sclose(attrspace);
+            hsize_t attr_len[] = { static_cast<hsize_t> (ndim*4) };
+            hid_t attrspace = H5Screate_simple(1,
+                                               attr_len,
+                                               NULL);
+            hid_t attribute_id = H5Acreate(
+                                     dataset, pat_key, H5T_NATIVE_LONG,
+                                     attrspace, H5P_DEFAULT, H5P_DEFAULT);
+            H5Awrite(attribute_id, H5T_NATIVE_LONG, &pattern_spec);
+            H5Aclose(attribute_id);
+            H5Sclose(attrspace);
+        }
 
         // Close all
         H5Dclose(dataset);
@@ -286,7 +333,8 @@ class StoreHDF {
     static void read(
         dash::Array<value_t> &array,
         std::string filename,
-        std::string table) {
+        std::string table,
+        hdf5_file_options foptions = _get_fdefaults()) {
 
         long		globalsize;
         long 		localsize;
@@ -341,9 +389,10 @@ class StoreHDF {
 
         // Initialize DASH Array
         // no explicit pattern specified / try to load pattern from hdf5 file
-        if(H5Aexists(dataset, "DASH_TILESIZE")) {
+        auto pat_key = foptions.pattern_metadata_key.c_str();
+        if(foptions.restore_pattern && H5Aexists(dataset, pat_key)) {
             hid_t attrspace			= H5Screate(H5S_SCALAR);
-            hid_t attribute_id  = H5Aopen(dataset, "DASH_TILESIZE", H5P_DEFAULT);
+            hid_t attribute_id  = H5Aopen(dataset, pat_key, H5P_DEFAULT);
             H5Aread(attribute_id, H5T_NATIVE_LONG, &tilesize);
             H5Aclose(attribute_id);
             H5Sclose(attrspace);
@@ -406,7 +455,9 @@ class StoreHDF {
         ndim,
         index_t> &matrix,
         std::string filename,
-        std::string table) {
+        std::string table,
+        hdf5_file_options foptions = _get_fdefaults()) {
+
         typedef dash::TilePattern<ndim> pattern_t;
 
         /* HDF5 definition */
@@ -478,10 +529,11 @@ class StoreHDF {
                                 team_spec);
 
         // Check if file contains DASH metadata and recreate the pattern
-        if(H5Aexists(dataset, "DASH_PATTERN")) {
+        auto pat_key = foptions.pattern_metadata_key.c_str();
+        if(foptions.restore_pattern && H5Aexists(dataset, pat_key)) {
             hsize_t attr_len[]  = { ndim*4};
             hid_t attrspace			= H5Screate_simple(1, attr_len, NULL);
-            hid_t attribute_id  = H5Aopen(dataset, "DASH_PATTERN", H5P_DEFAULT);
+            hid_t attribute_id  = H5Aopen(dataset, pat_key, H5P_DEFAULT);
 
             H5Aread(attribute_id, H5T_NATIVE_LONG, hdf_dash_pattern);
             H5Aclose(attribute_id);
@@ -549,17 +601,34 @@ class StoreHDF {
         H5Fclose(file_id);
     }
 
+  public:
+    static inline hdf5_file_options get_default_options() {
+        return _get_fdefaults();
+    }
+
   private:
-    static hid_t _convertType(int t) {
+    static inline hdf5_file_options _get_fdefaults() {
+        hdf5_file_options fopt;
+        fopt.overwrite_file = true;
+        fopt.overwrite_table = false;
+        fopt.store_pattern = true;
+        fopt.restore_pattern = true;
+        fopt.pattern_metadata_key = "DASH_PATTERN";
+
+        return fopt;
+    }
+
+  private:
+    static inline hid_t _convertType(int t) {
         return H5T_NATIVE_INT;
     }
-    static hid_t _convertType(long t) {
+    static inline hid_t _convertType(long t) {
         return H5T_NATIVE_LONG;
     }
-    static hid_t _convertType(float t) {
+    static inline hid_t _convertType(float t) {
         return H5T_NATIVE_FLOAT;
     }
-    static hid_t _convertType(double t) {
+    static inline hid_t _convertType(double t) {
         return H5T_NATIVE_DOUBLE;
     }
 
@@ -569,4 +638,5 @@ class StoreHDF {
 
 #endif // DASH__UTIL__HDF5_H_
 #endif
+
 
