@@ -47,7 +47,7 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
   
 	if (myid == gptr.unitid) {
 		if (seg_id) {
-			int flag;
+		//	int flag;
 			if (dart_adapt_transtable_get_selfbaseptr(seg_id, (char **)addr) == -1) {
 				return DART_ERR_INVAL;}
 
@@ -191,7 +191,7 @@ dart_team_memalloc_aligned(
 #endif
 	size_t size;
  	dart_unit_t unitid, gptr_unitid = -1;
-	dart_team_myid(teamid, &unitid);
+//	dart_team_myid(teamid, &unitid);
 	dart_team_size (teamid, &size);
 	
 	char *sub_mem;
@@ -221,27 +221,32 @@ dart_team_memalloc_aligned(
 		gptr_unitid = localid;		
 	} else {
 		MPI_Group group;
-		MPI_Group group_all;
+		MPI_Group user_group_all;
 		MPI_Comm_group (comm, &group);
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
 		MPI_Comm_group (user_comm_world, &user_group_all);
-#else
-		MPI_Comm_group (MPI_COMM_WORLD, &group_all);
 #endif
-#else
-		MPI_Comm_group (MPI_COMM_WORLD, &group_all);
+#endif
+#ifndef PROGRESS_ENABLE
+		MPI_Comm_group (MPI_COMM_WORLD, &user_group_all);
 #endif
 
-		MPI_Group_translate_ranks (group, 1, &localid, group_all, &gptr_unitid);
+		MPI_Group_translate_ranks (group, 1, &localid, user_group_all, &gptr_unitid);
 	}
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
-	if (unitid == 2){
-		MPI_Send (&teamid, 1, MPI_INT32_T, PROGRESS_UNIT, MEMALLOC, dart_sharedmem_comm_list[0]);
-		MPI_Send (&teamid, 1, MPI_INT32_T, PROGRESS_UNIT+1, MEMALLOC, dart_sharedmem_comm_list[0]);
+	//if (sharedmem_comm != MPI_COMM_NULL)
+	MPI_Comm_rank (sharedmem_comm, &unitid);
+	if (unitid == PROGRESS_NUM){
+		int i;
+		for (i = 0; i < PROGRESS_NUM; i++){
+			MPI_Send (&index, 1, MPI_UINT16_T, PROGRESS_UNIT+i, MEMALLOC, dart_sharedmem_comm_list[0]);
+		}
 	}
-#endif
+	MPI_Win_allocate_shared (nbytes, sizeof(char), MPI_INFO_NULL, sharedmem_comm, 
+			&sub_mem, &sharedmem_win);
+#else
 
 	MPI_Info win_info;
 	MPI_Info_create (&win_info);
@@ -255,13 +260,13 @@ dart_team_memalloc_aligned(
     sharedmem_comm,
     &sub_mem,
     &sharedmem_win);
-
-	int sharedmem_unitid;
+#endif
+//	int sharedmem_unitid;
 	MPI_Aint winseg_size;
 	char**baseptr_set;
 	char *baseptr;
 	int disp_unit, i;
-	MPI_Comm_rank (sharedmem_comm, &sharedmem_unitid);
+//	MPI_Comm_rank (sharedmem_comm, &sharedmem_unitid);
 	baseptr_set = (char**)malloc (sizeof (char*) * dart_sharedmemnode_size[index]);
 
 #ifdef PROGRESS_ENABLE
@@ -270,7 +275,7 @@ dart_team_memalloc_aligned(
 	for (i = 0; i < dart_sharedmemnode_size[index]; i++)
 #endif
 	{
-		if (sharedmem_unitid != i){
+		if (unitid != i){
 			MPI_Win_shared_query (sharedmem_win, i, &winseg_size, &disp_unit, &baseptr);
 			baseptr_set[i] = baseptr;
 		}
@@ -288,12 +293,24 @@ dart_team_memalloc_aligned(
 
 	/* Collect the disp information from all the ranks in comm */
 	MPI_Allgather (&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	MPI_Comm real_comm = dart_realteams[index];
+	int16_t max_memid;
+	MPI_Allreduce (&dart_memid, &max_memid, 1, MPI_INT16_T, MPI_MAX, real_comm);
+#endif
+#endif
 
 	/* -- Updating infos on gptr -- */
 	gptr->unitid = gptr_unitid;
   /* Segid equals to dart_memid (always a positive integer), identifies an
    * unique collective global memory. */
-	gptr->segid  = dart_memid;
+#ifndef PROGRESS_ENABLE
+	gptr->segid = dart_memid;
+#else
+	gptr->segid = max_memid;
+#endif
+//	gptr->segid  = dart_memid;
   /* For collective allocation, the flag is marked as 'index' */
 	gptr->flags  = index;
 	gptr->addr_or_offs.offset = 0;
@@ -316,9 +333,18 @@ dart_team_memalloc_aligned(
    * translation table. */
 	dart_adapt_transtable_add (item);
 #ifdef SHAREDMEM_ENABLE
+#ifndef PROGRESS_ENABLE
 	MPI_Info_free (&win_info);
 #endif
+#endif
+#ifndef PROGRESS_ENABLE
 	dart_memid++;
+#else
+	dart_memid = max_memid + 1;
+#endif
+#ifdef SHAREDMEM_ENABLE
+	MPI_Win_lock_all (0, sharedmem_win);
+#endif
 
   DART_LOG_DEBUG(
     "%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d "
@@ -362,8 +388,8 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
-	int i;
 	if (unitid == PROGRESS_NUM){
+		int i;
 		for (i = 0; i < PROGRESS_NUM; i++){
 			MPI_Send (&seg_id, 1, MPI_INT16_T, PROGRESS_UNIT+i, MEMFREE, dart_sharedmem_comm_list[0]);
 		}

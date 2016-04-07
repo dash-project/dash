@@ -29,11 +29,6 @@
  */
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
-struct dart_handle_struct
-{
-	MPI_Request request;
-};
-
 struct datastruct
 {
 	int32_t	    dest;
@@ -49,14 +44,15 @@ extern MPI_Datatype data_info_type;
 extern MPI_Comm     user_comm_world;
 extern int          top;
 #endif
-#else
+#endif
+
 struct dart_handle_struct
 {
 	MPI_Request request;
 	MPI_Win	    win;
 	dart_unit_t dest;
 };
-#endif
+
 MPI_Op dart_mpi_op(dart_operation_t dart_op) {
   switch(dart_op) {
   case DART_OP_MIN:  return MPI_MIN;
