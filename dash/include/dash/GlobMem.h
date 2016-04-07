@@ -329,24 +329,24 @@ public:
    * local memory.
    */
   template<typename IndexType>
-  dart_gptr_t index_to_gptr(
+  dart_gptr_t at(
     /// The unit id
     dart_unit_t unit,
     /// The unit's local address offset
     IndexType   local_index) const
   {
-    DASH_LOG_DEBUG("GlobMem.index_to_gptr(unit,l_idx)", unit, local_index);
+    DASH_LOG_DEBUG("GlobMem.at(unit,l_idx)", unit, local_index);
     // Initialize with global pointer to start address:
     dart_gptr_t gptr = _begptr;
     // Resolve global unit id
     dart_unit_t lunit, gunit;
-    DASH_LOG_DEBUG("GlobMem.index_to_gptr (=g_begp)  ", gptr);
-    DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", gptr.unitid);
+    DASH_LOG_DEBUG("GlobMem.at (=g_begp)  ", gptr);
+    DASH_LOG_TRACE_VAR("GlobMem.at", gptr.unitid);
     // Resolve local unit id from global unit id in global pointer:
     dart_team_unit_g2l(_teamid, gptr.unitid, &lunit);
-    DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", lunit);
+    DASH_LOG_TRACE_VAR("GlobMem.at", lunit);
     lunit = (lunit + unit) % _nunits;
-    DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", lunit);
+    DASH_LOG_TRACE_VAR("GlobMem.at", lunit);
     if (_teamid != dash::Team::All().dart_id()) {
       // Unit is member of a split team, resolve global unit id:
       dart_team_unit_l2g(_teamid, lunit, &gunit);
@@ -355,12 +355,12 @@ public:
       // necessary:
       gunit = lunit;
     }
-    DASH_LOG_TRACE_VAR("GlobMem.index_to_gptr", gunit);
+    DASH_LOG_TRACE_VAR("GlobMem.at", gunit);
     // Apply global unit to global pointer:
     dart_gptr_setunit(&gptr, gunit);
     // Apply local offset to global pointer:
     dart_gptr_incaddr(&gptr, local_index * sizeof(ElementType));
-    DASH_LOG_DEBUG("GlobMem.index_to_gptr (+g_unit) >", gptr);
+    DASH_LOG_DEBUG("GlobMem.at (+g_unit) >", gptr);
     return gptr;
   }
 

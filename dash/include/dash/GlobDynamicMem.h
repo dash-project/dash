@@ -13,6 +13,9 @@
 #include <dash/algorithm/MinMax.h>
 
 #include <dash/internal/Logging.h>
+#include <dash/internal/allocator/GlobDynamicMemTypes.h>
+#include <dash/internal/allocator/LocalBucketIter.h>
+#include <dash/internal/allocator/GlobBucketIter.h>
 
 #include <list>
 #include <vector>
@@ -22,347 +25,6 @@
 
 
 namespace dash {
-namespace internal {
-
-template<
-  typename SizeType,
-  typename ElementType >
-struct _glob_dynamic_mem_bucket_type
-{
-  SizeType      size;
-  ElementType * lptr;
-  dart_gptr_t   gptr;
-  bool          attached;
-};
-
-#if 0
-template<
-  typename SizeType,
-  typename ElementType >
-std::ostream & operator<<(
-  std::ostream & os,
-  const dash::internal::_glob_dynamic_mem_bucket_type<
-          SizeType, ElementType> & bucket)
-{
-  std::ostringstream ss;
-  ss << "GlobDynamicMem::bucket_type("
-     << "size: "     << bucket.size << ", "
-     << "lptr: "     << bucket.lptr << ", "
-     << "gptr: "     << bucket.gptr << ", "
-     << "attached: " << bucket.attached
-     << ")";
-  return operator<<(os, ss.str());
-}
-#endif
-
-template<
-  typename ElementType,
-  typename IndexType,
-  typename PointerType   = ElementType *,
-  typename ReferenceType = ElementType & >
-class LocalBucketIter
-: public std::iterator<
-           std::random_access_iterator_tag,
-           ElementType,
-           IndexType,
-           PointerType,
-           ReferenceType >
-{
-private:
-  typedef LocalBucketIter<ElementType, IndexType>
-    self_t;
-
-public:
-  typedef IndexType                                              index_type;
-  typedef typename std::make_unsigned<index_type>::type           size_type;
-
-/// Type definitions required for std::iterator_traits:
-public:
-  typedef std::random_access_iterator_tag                 iterator_category;
-  typedef IndexType                                         difference_type;
-  typedef ElementType                                            value_type;
-  typedef ElementType *                                             pointer;
-  typedef ElementType &                                           reference;
-
-  typedef _glob_dynamic_mem_bucket_type<size_type, value_type>  bucket_type;
-
-private:
-  typedef typename std::list<bucket_type>
-    bucket_list;
-  typedef typename bucket_list::iterator
-    bucket_iterator;
-
-public:
-  LocalBucketIter(
-    const bucket_iterator & bucket_first,
-    const bucket_iterator & bucket_last,
-    index_type              position,
-    const bucket_iterator & bucket_it,
-    index_type              bucket_phase)
-  : _bucket_first(bucket_first),
-    _bucket_last(bucket_last),
-    _idx(position),
-    _bucket_it(bucket_it),
-    _bucket_phase(bucket_phase),
-    _is_nullptr(false)
-  { }
-
-  LocalBucketIter(
-    const bucket_iterator & bucket_first,
-    const bucket_iterator & bucket_last,
-    index_type              position)
-  : _bucket_first(bucket_first),
-    _bucket_last(bucket_last),
-    _idx(position),
-    _bucket_it(bucket_first),
-    _bucket_phase(0),
-    _is_nullptr(false)
-  {
-    for (_bucket_it = _bucket_first;
-         _bucket_it != _bucket_last; ++_bucket_it) {
-      if (position >= _bucket_it->size) {
-        position -= _bucket_it->size;
-      } else if (position < _bucket_it->size) {
-        _bucket_phase = position;
-        break;
-      }
-    }
-  }
-
-  LocalBucketIter() = default;
-
-  LocalBucketIter(const self_t & other)
-  : _bucket_first(other._bucket_first),
-    _bucket_last(other._bucket_last),
-    _idx(other._idx),
-    _bucket_it(other._bucket_it),
-    _bucket_phase(other._bucket_phase),
-    _is_nullptr(other._is_nullptr)
-  { }
-
-  self_t & operator=(const self_t & rhs)
-  {
-    if (this != &rhs) {
-      _bucket_first = rhs._bucket_first;
-      _bucket_last  = rhs._bucket_last;
-      _idx          = rhs._idx;
-      _bucket_it    = rhs._bucket_it;
-      _bucket_phase = rhs._bucket_phase;
-      _is_nullptr   = rhs._is_nullptr;
-    }
-    return *this;
-  }
-
-  LocalBucketIter(std::nullptr_t)
-  : _is_nullptr(true)
-  { }
-
-  self_t & operator=(std::nullptr_t)
-  {
-    _is_nullptr = true;
-    return *this;
-  }
-
-  inline bool operator==(std::nullptr_t) const
-  {
-    return _is_nullptr;
-  }
-
-  inline bool operator!=(std::nullptr_t) const
-  {
-    return !_is_nullptr;
-  }
-
-public:
-  reference operator*()
-  {
-    return _bucket_it->lptr[_bucket_phase];
-  }
-
-  reference operator[](index_type offset)
-  {
-    if (_bucket_phase + offset < _bucket_it->size) {
-      // element is in bucket currently referenced by this iterator:
-      return _bucket_it->lptr[_bucket_phase + offset];
-    } else {
-      // find bucket containing element at given offset:
-      for (auto b_it = _bucket_it; b_it != _bucket_last; ++b_it) {
-        if (offset >= b_it->size) {
-          offset -= b_it->size;
-        } else if (offset < b_it->size) {
-          return b_it->lptr[offset];
-        }
-      }
-    }
-    DASH_THROW(dash::exception::OutOfRange,
-               "offset " << offset << " is out of range");
-  }
-
-  self_t & operator++()
-  {
-    increment(1);
-    return *this;
-  }
-
-  self_t & operator--()
-  {
-    decrement(1);
-    return *this;
-  }
-
-  self_t & operator++(int)
-  {
-    auto res = *this;
-    increment(1);
-    return res;
-  }
-
-  self_t & operator--(int)
-  {
-    auto res = *this;
-    decrement(1);
-    return res;
-  }
-
-  self_t & operator+=(int offset)
-  {
-    increment(offset);
-    return *this;
-  }
-
-  self_t & operator-=(int offset)
-  {
-    decrement(offset);
-    return *this;
-  }
-
-  self_t operator+(int offset) const
-  {
-    auto res = *this;
-    res += offset;
-    return res;
-  }
-
-  self_t operator-(int offset) const
-  {
-    auto res = *this;
-    res -= offset;
-    return res;
-  }
-
-  inline index_type operator+(
-    const self_t & other) const
-  {
-    return _idx + other._idx;
-  }
-
-  inline index_type operator-(
-    const self_t & other) const
-  {
-    return _idx - other._idx;
-  }
-
-  inline bool operator<(const self_t & other) const
-  {
-    return (_idx < other._idx);
-  }
-
-  inline bool operator<=(const self_t & other) const
-  {
-    return (_idx <= other._idx);
-  }
-
-  inline bool operator>(const self_t & other) const
-  {
-    return (_idx > other._idx);
-  }
-
-  inline bool operator>=(const self_t & other) const
-  {
-    return (_idx >= other._idx);
-  }
-
-  inline bool operator==(const self_t & other) const
-  {
-    return (this == &other || _idx == other._idx);
-  }
-
-  inline bool operator!=(const self_t & other) const
-  {
-    return (*this != other);
-  }
-
-  constexpr bool is_local() const
-  {
-    return true;
-  }
-
-private:
-  void increment(int offset)
-  {
-    _idx += offset;
-    if (_bucket_phase + offset < _bucket_it->size) {
-      // element is in bucket currently referenced by this iterator:
-      _bucket_phase += offset;
-    } else {
-      // find bucket containing element at given offset:
-      for (; _bucket_it != _bucket_last; ++_bucket_it) {
-        if (offset >= _bucket_it->size) {
-          offset -= _bucket_it->size;
-        } else if (offset < _bucket_it->size) {
-          _bucket_phase = offset;
-          break;
-        }
-      }
-    }
-    // end iterator
-    if (_bucket_it == _bucket_last) {
-      _bucket_phase = offset;
-    }
-  }
-
-  void decrement(int offset)
-  {
-    if (offset > _idx) {
-      DASH_THROW(dash::exception::OutOfRange,
-                 "offset " << offset << " is out of range");
-    }
-    _idx -= offset;
-    if (offset <= _bucket_phase) {
-      // element is in bucket currently referenced by this iterator:
-      _bucket_phase -= offset;
-    } else {
-      offset -= _bucket_phase;
-      // find bucket containing element at given offset:
-      for (; _bucket_it != _bucket_first; --_bucket_it) {
-        if (offset >= _bucket_it->size) {
-          offset -= _bucket_it->size;
-        } else if (offset < _bucket_it->size) {
-          _bucket_phase = _bucket_it->size - offset;
-          break;
-        }
-      }
-    }
-    if (_bucket_it == _bucket_first) {
-      _bucket_phase = _bucket_it->size - offset;
-    }
-    if (false) {
-      DASH_THROW(dash::exception::OutOfRange,
-                 "offset " << offset << " is out of range");
-    }
-  }
-
-private:
-  bucket_iterator _bucket_first;
-  bucket_iterator _bucket_last;
-  index_type      _idx           = 0;
-  bucket_iterator _bucket_it;
-  index_type      _bucket_phase  = 0;
-  bool            _is_nullptr    = false;
-
-}; // class LocalBucketIter
-
-} // namespace internal
 
 /**
  * Global memory region with dynamic size.
@@ -429,7 +91,7 @@ private:
  *
  *   // Memory marked for deallocation is still accessible by other units:
  *   if (dash::myid() != 1) {
- *     auto unit_1_last = gdmem.index_to_gptr(1, initial_local_capacity-1);
+ *     auto unit_1_last = gdmem.at(dash::myid(), initial_local_capacity-1);
  *     double * value;
  *     gdmem.get_value(value, unit_1_last);
  *   }
@@ -484,7 +146,14 @@ public:
   typedef internal::LocalBucketIter<const value_type, index_type>
     const_local_iterator;
 
-  typedef local_iterator                                      local_pointer;
+  typedef internal::GlobBucketIter<
+            value_type, self_t, pointer, reference>
+    global_iterator;
+  typedef internal::GlobBucketIter<
+            const value_type, const self_t, const_pointer, const_reference>
+    const_global_iterator;
+
+  typedef       local_iterator                                local_pointer;
   typedef const_local_iterator                          const_local_pointer;
 
   typedef typename local_iterator::bucket_type                  bucket_type;
@@ -507,12 +176,15 @@ public:
   /**
    * Constructor, collectively allocates the given number of elements in
    * local memory of every unit in a team.
+   *
+   * \concept{DashDynamicMemorySpaceConcept}
+   * \concept{DashMemorySpaceConcept}
    */
   GlobDynamicMem(
     /// Initial number of local elements to allocate in global memory space
-    size_type   n_local_elem        = 0,
+    size_type   n_local_elem = 0,
     /// Team containing all units operating on the global memory region
-    Team      & team                = dash::Team::All())
+    Team      & team         = dash::Team::All())
   : _allocator(team),
     _teamid(team.dart_id()),
     _nunits(team.size()),
@@ -563,13 +235,13 @@ public:
    */
   bool operator==(const self_t & rhs) const
   {
-    return (_begptr               == rhs._begptr &&
-            _teamid               == rhs._teamid &&
-            _nunits               == rhs._nunits &&
-            _lbegin               == rhs._lbegin &&
-            _lend                 == rhs._lend &&
-            _buckets              == rhs._buckets &&
-            _detach_buckets       == rhs._detach_buckets);
+    return (_begptr         == rhs._begptr &&
+            _teamid         == rhs._teamid &&
+            _nunits         == rhs._nunits &&
+            _lbegin         == rhs._lbegin &&
+            _lend           == rhs._lend &&
+            _buckets        == rhs._buckets &&
+            _detach_buckets == rhs._detach_buckets);
   }
 
   /**
@@ -798,6 +470,8 @@ public:
     _num_detach_buckets.local[0] = num_detach_buckets;
     barrier();
 
+    // TODO: use dash::min_max_element once it is available
+    //
     auto min_detach_buckets_git  = dash::min_element(
                                      _num_detach_buckets.begin(),
                                      _num_detach_buckets.end());
@@ -837,6 +511,12 @@ public:
 
     // Attach local buffer bucket in global memory space if it exists and
     // contains values:
+    //
+    // TODO: As bucket sizes differ between units, units must collect gptr's
+    //       (dart_gptr_t) and size of buckets attached by other units and
+    //       store them locally so a remote unit's local index can be mapped
+    //       to the remote unit's bucket.
+    //
     if (!_local_commit_buf.empty() &&
         !_buckets.empty() && !_buckets.back().attached) {
       bucket_type & bucket_last = _buckets.back();
@@ -925,41 +605,17 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  const_pointer begin() const
-  {
-    return const_pointer(_begptr);
-  }
-
-  /**
-   * Global pointer of the initial address of the global memory.
-   */
   pointer begin()
   {
     return pointer(_begptr);
   }
 
   /**
-   * Native pointer of the initial address of the local memory of
-   * a unit.
+   * Global pointer of the initial address of the global memory.
    */
-  const_local_iterator lbegin(
-    dart_unit_t unit_id) const
+  const_pointer begin() const
   {
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.lbegin const()", unit_id);
-    if (unit_id == _myid) {
-      return const_local_iterator(
-               // iteration space
-               _buckets.begin(), _buckets.end(),
-               // position in iteration space
-               0,
-               // bucket at position in iteration space,
-               // offset in bucket
-               _buckets.begin(), 0);
-    } else {
-      DASH_THROW(dash::exception::NotImplemented,
-                 "dash::GlobDynamicMem.lbegin(unit) is not implemented "
-                 "for unit != dash::myid()");
-    }
+    return const_pointer(_begptr);
   }
 
   /**
@@ -988,11 +644,26 @@ public:
 
   /**
    * Native pointer of the initial address of the local memory of
-   * the unit that initialized this GlobDynamicMem instance.
+   * a unit.
    */
-  inline const_local_iterator lbegin() const
+  const_local_iterator lbegin(
+    dart_unit_t unit_id) const
   {
-    return _lbegin;
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.lbegin const()", unit_id);
+    if (unit_id == _myid) {
+      return const_local_iterator(
+               // iteration space
+               _buckets.begin(), _buckets.end(),
+               // position in iteration space
+               0,
+               // bucket at position in iteration space,
+               // offset in bucket
+               _buckets.begin(), 0);
+    } else {
+      DASH_THROW(dash::exception::NotImplemented,
+                 "dash::GlobDynamicMem.lbegin(unit) is not implemented "
+                 "for unit != dash::myid()");
+    }
   }
 
   /**
@@ -1005,42 +676,12 @@ public:
   }
 
   /**
-   * Native pointer of the final address of the local memory of
-   * a unit.
+   * Native pointer of the initial address of the local memory of
+   * the unit that initialized this GlobDynamicMem instance.
    */
-  const_local_iterator lend(
-    dart_unit_t unit_id) const
+  inline const_local_iterator lbegin() const
   {
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.lend() const", unit_id);
-    if (unit_id == _myid) {
-      return const_local_iterator(
-               // iteration space
-               _buckets.begin(), _buckets.end(),
-               // position in iteration space
-               local_size(),
-               // bucket at position in iteration space,
-               // offset in bucket
-               _buckets.end(), 0
-             );
-    } else {
-      DASH_THROW(dash::exception::NotImplemented,
-                 "dash::GlobDynamicMem.lend(unit) is not implemented "
-                 "for unit != dash::myid()");
-    }
-#if 0
-    void *addr;
-    dart_gptr_t gptr = begin().dart_gptr();
-    DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, unit_id),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&gptr, _nlelem * sizeof(ElementType)),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(gptr, &addr),
-      DART_OK);
-    return const_local_pointer(addr);
-#endif
+    return _lbegin;
   }
 
   /**
@@ -1065,27 +706,37 @@ public:
                  "dash::GlobDynamicMem.lend(unit) is not implemented "
                  "for unit != dash::myid()");
     }
-#if 0
-    void *addr;
-    dart_gptr_t gptr = begin().dart_gptr();
-    DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, unit_id),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(&gptr, _nlelem * sizeof(ElementType)),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_getaddr(gptr, &addr),
-      DART_OK);
-    return local_pointer(addr);
-#endif
+  }
+
+  /**
+   * Native pointer of the final address of the local memory of
+   * a unit.
+   */
+  const_local_iterator lend(
+    dart_unit_t unit_id) const
+  {
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.lend()", unit_id);
+    if (unit_id == _myid) {
+      return const_local_iterator(
+               // iteration space
+               _buckets.cbegin(), _buckets.cend(),
+               // position in iteration space
+               local_size(),
+               // bucket at position in iteration space,
+               // offset in bucket
+               _buckets.cend(), 0);
+    } else {
+      DASH_THROW(dash::exception::NotImplemented,
+                 "dash::GlobDynamicMem.lend(unit) is not implemented "
+                 "for unit != dash::myid()");
+    }
   }
 
   /**
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobDynamicMem instance.
    */
-  inline const_local_iterator lend() const
+  inline local_iterator lend()
   {
     return _lend;
   }
@@ -1094,7 +745,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobDynamicMem instance.
    */
-  inline local_iterator lend()
+  inline const_local_iterator lend() const
   {
     return _lend;
   }
@@ -1137,7 +788,7 @@ public:
   template<typename ValueType = ElementType>
   void get_value(
     ValueType  * ptr,
-    index_type   global_index)
+    index_type   global_index) const
   {
     DASH_LOG_TRACE("GlobDynamicMem.get_value(newval, gidx = %d)",
                    global_index);
@@ -1149,7 +800,7 @@ public:
   /**
    * Synchronize all units associated with this global memory instance.
    */
-  void barrier()
+  void barrier() const
   {
     DASH_ASSERT_RETURNS(
       dart_barrier(_teamid),
@@ -1157,77 +808,49 @@ public:
   }
 
   /**
-   * Complete all outstanding asynchronous operations on the referenced
-   * global memory on all units.
-   */
-  void flush()
-  {
-    dart_flush(_begptr);
-  }
-
-  /**
-   * Complete all outstanding asynchronous operations on the referenced
-   * global memory on all units.
-   */
-  void flush_all()
-  {
-    dart_flush_all(_begptr);
-  }
-
-  void flush_local()
-  {
-    dart_flush_local(_begptr);
-  }
-
-  void flush_local_all()
-  {
-    dart_flush_local_all(_begptr);
-  }
-
-  /**
-   * Resolve the global pointer from an element position in a unit's
+   * Resolve the global iterator referencing an element position in a unit's
    * local memory.
    */
   template<typename IndexT>
-  dart_gptr_t index_to_gptr(
+  global_iterator at(
+    /// The unit id
+    dart_unit_t unit,
+    /// The unit's local address offset
+    IndexT      local_index)
+  {
+    DASH_LOG_DEBUG("GlobDynamicMem.at(unit,l_idx)", unit, local_index);
+    if (_nunits == 0) {
+      DASH_THROW(dash::exception::RuntimeError, "No units in team");
+    }
+    IndexT global_index = 0;
+    // TODO
+
+    global_iterator gbit(this, global_index);
+    DASH_LOG_DEBUG("GlobDynamicMem.at >");
+    return gbit;
+  }
+
+  /**
+   * Resolve the global iterator referencing an element position in a unit's
+   * local memory.
+   */
+  template<typename IndexT>
+  const_global_iterator at(
     /// The unit id
     dart_unit_t unit,
     /// The unit's local address offset
     IndexT      local_index) const
   {
-    DASH_LOG_DEBUG("GlobDynamicMem.index_to_gptr(unit,l_idx)",
-                   unit, local_index);
+    DASH_LOG_DEBUG("GlobDynamicMem.at(unit,l_idx)", unit, local_index);
     if (_nunits == 0) {
       DASH_THROW(dash::exception::RuntimeError, "No units in team");
     }
-    DASH_THROW(dash::exception::NotImplemented,
-               "GlobDynamicMem.index_to_gptr is not implemented");
-    // Initialize with global pointer to start address:
-    dart_gptr_t gptr = _begptr;
-    // Resolve global unit id
-    dart_unit_t lunit, gunit;
-    DASH_LOG_DEBUG("GlobDynamicMem.index_to_gptr (=g_begp)  ", gptr);
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.index_to_gptr", gptr.unitid);
-    // Resolve local unit id from global unit id in global pointer:
-    dart_team_unit_g2l(_teamid, gptr.unitid, &lunit);
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.index_to_gptr", lunit);
-    lunit = (lunit + unit) % _nunits;
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.index_to_gptr", lunit);
-    if (_teamid != dash::Team::All().dart_id()) {
-      // Unit is member of a split team, resolve global unit id:
-      dart_team_unit_l2g(_teamid, lunit, &gunit);
-    } else {
-      // Unit is member of top level team, no conversion to global unit id
-      // necessary:
-      gunit = lunit;
-    }
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.index_to_gptr", gunit);
-    // Apply global unit to global pointer:
-    dart_gptr_setunit(&gptr, gunit);
-    // Apply local offset to global pointer:
-    dart_gptr_incaddr(&gptr, local_index * sizeof(ElementType));
-    DASH_LOG_DEBUG("GlobDynamicMem.index_to_gptr (+g_unit) >", gptr);
-    return gptr;
+    IndexT global_index = 0;
+    // TODO
+
+    const_global_iterator gbit(this, global_index);
+    DASH_LOG_DEBUG("GlobDynamicMem.at >");
+    return gbit;
   }
 
 private:

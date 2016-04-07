@@ -224,11 +224,9 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
 
   if (dash::myid() != 1) {
     LOG_MESSAGE("requesting last local element from unit 1");
-    dash::GlobPtr<value_t> unit_1_last(
-                            gdmem.index_to_gptr(
-                              1, initial_local_capacity-1));
+    auto unit_1_git_last = gdmem.at(1, initial_local_capacity-1);
     value_t actual;
-    dash::get_value(&actual, unit_1_last);
+    dash::get_value(&actual, unit_1_git_last);
     value_t expected = 100 * 2 + initial_local_capacity - 1;
     EXPECT_EQ_U(expected, actual);
   }
