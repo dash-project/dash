@@ -1,5 +1,5 @@
-#ifndef DASH__ALLOCATOR__LOCAL_ALLOCATOR_H__INCLUDED
-#define DASH__ALLOCATOR__LOCAL_ALLOCATOR_H__INCLUDED
+#ifndef DASH__ALLOCATOR__COLLECTIVE_ALLOCATOR_H__INCLUDED
+#define DASH__ALLOCATOR__COLLECTIVE_ALLOCATOR_H__INCLUDED
 
 #include <dash/dart/if/dart.h>
 
@@ -17,7 +17,8 @@ namespace allocator {
 
 /**
  * Encapsulates a memory allocation and deallocation strategy of global
- * memory regions located in the active unit's local memory.
+ * memory regions distributed across local memory of units in a specified
+ * team.
  *
  * Satisfied STL concepts:
  *
@@ -27,20 +28,20 @@ namespace allocator {
  * \concept{DashAllocatorConcept}
  */
 template<typename ElementType>
-class LocalAllocator
+class CollectiveAllocator
 {
   template <class T, class U>
   friend bool operator==(
-    const LocalAllocator<T> & lhs,
-    const LocalAllocator<U> & rhs);
+    const CollectiveAllocator<T> & lhs,
+    const CollectiveAllocator<U> & rhs);
 
   template <class T, class U>
   friend bool operator!=(
-    const LocalAllocator<T> & lhs,
-    const LocalAllocator<U> & rhs);
+    const CollectiveAllocator<T> & lhs,
+    const CollectiveAllocator<U> & rhs);
 
 private:
-  typedef LocalAllocator<ElementType>      self_t;
+  typedef CollectiveAllocator<ElementType> self_t;
 
 /// Type definitions required for std::allocator concept:
 public:
@@ -59,18 +60,22 @@ public:
 public:
   /**
    * Constructor.
-   * Creates a new instance of \c dash::LocalAllocator for a given team.
+   * Creates a new instance of \c dash::CollectiveAllocator for a given team.
    */
-  LocalAllocator(
+  CollectiveAllocator(
     Team & team = dash::Team::Null()) noexcept
   : _team_id(team.dart_id())
-  { }
+  {
+    DASH_ASSERT_RETURNS(
+      dart_team_size(_team_id, &_nunits),
+      DART_OK);
+  }
 
   /**
    * Move-constructor.
    * Takes ownership of the moved instance's allocation.
    */
-  LocalAllocator(self_t && other) noexcept
+  CollectiveAllocator(self_t && other) noexcept
   : _allocated(other._allocated)
   {
     other._allocated.clear();
@@ -79,7 +84,7 @@ public:
   /**
    * Default constructor, deleted.
    */
-  LocalAllocator() noexcept
+  CollectiveAllocator() noexcept
     = delete;
 
   /**
@@ -87,8 +92,9 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  LocalAllocator(const self_t & other) noexcept
-  : _team_id(other._team_id)
+  CollectiveAllocator(const self_t & other) noexcept
+  : _team_id(other._team_id),
+    _nunits(other._nunits)
   { }
 
   /**
@@ -96,15 +102,16 @@ public:
    * Does not take ownership of the copied instance's allocation.
    */
   template<class U>
-  LocalAllocator(const LocalAllocator<U> & other) noexcept
-  : _team_id(other._team_id)
+  CollectiveAllocator(const CollectiveAllocator<U> & other) noexcept
+  : _team_id(other._team_id),
+    _nunits(other._nunits)
   { }
 
   /**
    * Destructor.
    * Frees all global memory regions allocated by this allocator instance.
    */
-  ~LocalAllocator() noexcept
+  ~CollectiveAllocator() noexcept
   {
     clear();
   }
@@ -166,7 +173,7 @@ public:
   }
 
   /**
-   * Allocates \c num_local_elem local elements at active unit in global
+   * Allocates \c num_local_elem local elements at every unit in global
    * memory space.
    *
    * \see DashAllocatorConcept
@@ -176,7 +183,8 @@ public:
     if (num_local_elem > 0) {
       size_type   num_local_bytes = sizeof(ElementType) * num_local_elem;
       dart_gptr_t gptr;
-      if (dart_memalloc(num_local_bytes, &gptr) == DART_OK) {
+      if (dart_team_memalloc_aligned(
+            _team_id, num_local_bytes, &gptr) == DART_OK) {
         _allocated.push_back(gptr);
         return gptr;
       }
@@ -185,8 +193,8 @@ public:
   }
 
   /**
-   * Deallocates memory in global memory space previously allocated in the
-   * active unit's local memory.
+   * Deallocates memory in global memory space previously allocated across
+   * local memory of all units in the team.
    *
    * \see DashAllocatorConcept
    */
@@ -196,12 +204,12 @@ public:
       // If a DASH container is deleted after dash::finalize(), global
       // memory has already been freed by dart_exit() and must not be
       // deallocated again.
-      DASH_LOG_DEBUG("LocalAllocator.deallocate >",
+      DASH_LOG_DEBUG("CollectiveAllocator.deallocate >",
                      "DASH not initialized, abort");
       return;
     }
     DASH_ASSERT_RETURNS(
-      dart_memfree(gptr),
+      dart_team_memfree(_team_id, gptr),
       DART_OK);
     _allocated.erase(
         std::remove(_allocated.begin(), _allocated.end(), gptr),
@@ -224,23 +232,25 @@ private:
 
 private:
   dart_team_t          _team_id   = DART_TEAM_NULL;
+  size_t               _nunits    = 0;
   std::vector<pointer> _allocated;
 
-}; // class LocalAllocator
+}; // class CollectiveAllocator
 
 template <class T, class U>
 bool operator==(
-  const LocalAllocator<T> & lhs,
-  const LocalAllocator<U> & rhs)
+  const CollectiveAllocator<T> & lhs,
+  const CollectiveAllocator<U> & rhs)
 {
   return (sizeof(T)    == sizeof(U) &&
-          lhs._team_id == rhs._team_id);
+          lhs._team_id == rhs._team_id &&
+          lhs._nunits  == rhs._nunits );
 }
 
 template <class T, class U>
 bool operator!=(
-  const LocalAllocator<T> & lhs,
-  const LocalAllocator<U> & rhs)
+  const CollectiveAllocator<T> & lhs,
+  const CollectiveAllocator<U> & rhs)
 {
   return !(lhs == rhs);
 }
@@ -248,4 +258,4 @@ bool operator!=(
 } // namespace allocator
 } // namespace dash
 
-#endif // DASH__ALLOCATOR__LOCAL_ALLOCATOR_H__INCLUDED
+#endif // DASH__ALLOCATOR__COLLECTIVE_ALLOCATOR_H__INCLUDED
