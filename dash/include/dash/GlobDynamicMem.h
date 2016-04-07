@@ -709,7 +709,7 @@ public:
         DASH_LOG_TRACE("GlobDynamicMem.shrink",
                        "shrinking unattached bucket:",
                        "old size:", bucket_last.size,
-                       "new size:", bucket_last.size - num_dealloc),
+                       "new size:", bucket_last.size - num_dealloc);
         bucket_last.size      -= num_dealloc;
         _local_sizes.local[0] -= num_dealloc;
         num_dealloc = 0;
@@ -737,7 +737,7 @@ public:
         DASH_LOG_TRACE("GlobDynamicMem.shrink",
                        "shrinking attached bucket:",
                        "old size:", bucket_it->size,
-                       "new size:", bucket_it->size - num_dealloc),
+                       "new size:", bucket_it->size - num_dealloc);
         bucket_it->size       -= num_dealloc;
         _local_sizes.local[0] -= num_dealloc;
         num_dealloc = 0;
