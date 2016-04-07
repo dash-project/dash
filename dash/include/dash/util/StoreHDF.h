@@ -259,7 +259,6 @@ class StoreHDF {
         if(foptions.overwrite_file || (f_exists.get() <= 0)) {
             // HD5 create file
             file_id = H5Fcreate( filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, plist_id );
-            std::cout << "Create File" << std::endl;
         } else {
             // Open file
             file_id = H5Fopen( filename.c_str(), H5F_ACC_TRUNC, plist_id );
