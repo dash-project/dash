@@ -281,6 +281,7 @@ public:
    */
   inline size_type local_size(dart_unit_t unit) const
   {
+    DASH_ASSERT_RANGE(0, unit, _nunits, "unit id out of range");
     return _bucket_cumul_sizes[unit].back();
   }
 

@@ -19,6 +19,7 @@ protected:
     _dash_size(0)
   {
     LOG_MESSAGE(">>> Test suite: GlobDynamicMemTest");
+    LOG_MESSAGE(">>> Hostname: %s PID: %d", _hostname().c_str(), _pid());
   }
 
   virtual ~GlobDynamicMemTest() {
@@ -37,6 +38,17 @@ protected:
     dash::Team::All().barrier();
     LOG_MESSAGE("<=== Finished test case with %d units",
                 _dash_size);
+  }
+
+protected:
+  std::string _hostname() {
+    char hostname[100];
+    gethostname(hostname, 100);
+    return std::string(hostname);
+  }
+
+  int _pid() {
+    return static_cast<int>(getpid());
   }
 };
 

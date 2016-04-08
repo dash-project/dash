@@ -569,31 +569,47 @@ private:
       _idx_bucket_phase -= offset;
       _idx_local_idx    -= offset;
     } else {
-      offset -= _idx_bucket_phase;
       // iterate units:
+      auto first_unit = _idx_unit_id;
       for (; _idx_unit_id >= 0; --_idx_unit_id) {
-        auto unit_bkt_sizes = (*_bucket_cumul_sizes)[_idx_unit_id];
-        DASH_LOG_TRACE("GlobBucketIter.decrement",
-                       "unit:",                _idx_unit_id,
-                       "cumul. bucket sizes:", unit_bkt_sizes);
-        // iterate the unit's bucket sizes:
-        for (; _idx_bucket_idx >= 0; --_idx_bucket_idx) {
-          auto bucket_size = unit_bkt_sizes[_idx_bucket_idx];
-          if (offset >= bucket_size) {
-            _idx_local_idx -= bucket_size;
-            offset         -= bucket_size;
-          } else {
-            _idx_local_idx    -= offset;
-            _idx_bucket_phase  = offset;
-            offset             = 0;
-            break;
+        auto unit_bkt_sizes       = (*_bucket_cumul_sizes)[_idx_unit_id];
+        auto unit_bkt_sizes_total = unit_bkt_sizes.back();
+        auto unit_num_bkts        = unit_bkt_sizes.size();
+        if (_idx_unit_id != first_unit) {
+          --offset;
+          _idx_bucket_idx    = unit_num_bkts - 1;
+          _idx_local_idx     = unit_bkt_sizes_total - 1;
+          auto last_bkt_size = unit_bkt_sizes.back();
+          if (unit_num_bkts > 1) {
+            last_bkt_size -= unit_bkt_sizes[_idx_bucket_idx-1];
           }
-          // advance to previous bucket:
-          _idx_bucket_phase = bucket_size - 1;
+          _idx_bucket_phase  = last_bkt_size - 1;
         }
-        // advance to previous unit:
-        _idx_local_idx  = 0;
-        _idx_bucket_idx = unit_bkt_sizes.size() - 1;
+        if (offset <= _idx_local_idx) {
+          // offset refers to current unit:
+          // iterate the unit's bucket sizes:
+          for (; _idx_bucket_idx >= 0; --_idx_bucket_idx) {
+            auto bucket_size = unit_bkt_sizes[_idx_bucket_idx];
+            if (offset <= _idx_bucket_phase) {
+              // offset refers to current bucket:
+              _idx_local_idx    -= offset;
+              _idx_bucket_phase -= offset;
+              offset             = 0;
+              break;
+            } else {
+              // offset refers to preceeding bucket:
+              _idx_local_idx    -= (_idx_bucket_phase + 1);
+              offset            -= (_idx_bucket_phase + 1);
+              _idx_bucket_phase  = unit_bkt_sizes[_idx_bucket_idx-1] - 1;
+            }
+          }
+        } else {
+          // offset refers to preceeding unit:
+          offset -= _idx_local_idx;
+        }
+        if (offset == 0) {
+          break;
+        }
       }
     }
     DASH_LOG_TRACE("GlobBucketIter.decrement >",

@@ -81,7 +81,7 @@ TEST_F(GlobDynamicMemTest, SimpleRealloc)
   }
 
   DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
-                 "size checks after commit passed");
+                 "size checks after commit completed");
 
   // Initialize values in reallocated memory:
   auto lmem = gdmem.lbegin();
@@ -163,18 +163,12 @@ TEST_F(GlobDynamicMemTest, SimpleRealloc)
                  "testing reverse iteration");
 
   // Test memory space of all units by iterating global index space:
-  auto unit          = 0;
-  auto local_offset  = 0;
-  auto unit_capacity = gdmem.local_size(unit);
+  auto unit         = dash::size() - 1;
+  auto local_offset = gdmem.local_size(unit) - 1;
   // Invert order to test reverse iterators:
-  auto rgend         = gdmem.rend();
+  auto rgend        = gdmem.rend();
   EXPECT_EQ_U(gdmem.size(), gdmem.rend() - gdmem.rbegin());
   for (auto rgit = gdmem.rbegin(); rgit != rgend; ++rgit) {
-    if (local_offset == unit_capacity) {
-      ++unit;
-      unit_capacity = gdmem.local_size(unit);
-      local_offset  = 0;
-    }
     DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
                    "requesting element at",
                    "local offset", local_offset,
@@ -187,8 +181,15 @@ TEST_F(GlobDynamicMemTest, SimpleRealloc)
 
     EXPECT_EQ_U(expected, rgit_value);
     EXPECT_EQ_U(expected, git_value);
-    ++local_offset;
+    if (local_offset == 0 && unit > 0) {
+      --unit;
+      local_offset = gdmem.local_size(unit);
+    }
+    --local_offset;
   }
+
+  DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
+                 "testing reverse iteration completed");
 }
 
 TEST_F(GlobDynamicMemTest, LocalVisibility)
