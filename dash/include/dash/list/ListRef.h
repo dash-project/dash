@@ -11,7 +11,6 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-#include <dash/DynamicPattern.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
 
@@ -23,15 +22,13 @@ namespace dash {
 // forward declaration
 template<
   typename ElementType,
-  class    AllocatorType,
-  class    PatternType >
+  class    AllocatorType >
 class List;
 
 // forward declaration
 template<
   typename ElementType,
-  class    AllocatorType,
-  class    PatternType >
+  class    AllocatorType >
 class LocalListRef;
 
 /**
@@ -42,8 +39,7 @@ class LocalListRef;
  */
 template<
   typename ElementType,
-  class    AllocatorType,
-  class    PatternType>
+  class    AllocatorType >
 class ListRef
 {
 private:
@@ -51,43 +47,45 @@ private:
 
 /// Type definitions required for DASH list concept:
 public:
-  typedef typename PatternType::index_type                        index_type;
+  typedef dash::default_index_t                                   index_type;
   typedef ElementType                                             value_type;
-  typedef PatternType                                           pattern_type;
-  typedef ListRef<ElementType, AllocatorType, PatternType>         view_type;
-  typedef LocalListRef<value_type, AllocatorType, PatternType>    local_type;
+  typedef ListRef<ElementType, AllocatorType>                      view_type;
+  typedef LocalListRef<value_type, AllocatorType>                 local_type;
   typedef AllocatorType                                       allocator_type;
+
+private:
+  typedef ListRef<ElementType, AllocatorType>
+    self_t;
+  typedef List<ElementType, AllocatorType>
+    list_type;
+  typedef ViewSpec<NumDimensions, index_type>
+    ViewSpec_t;
+  typedef internal::ListNode<ElementType>
+    ListNode_t;
+  typedef typename allocator_type::template rebind<ListNode_t>::other
+    node_allocator_type;
+  typedef dash::GlobDynamicMem<ElementType, node_allocator_type>
+    glob_mem_type;
 
 /// Public types as required by STL list concept:
 public:
   typedef typename std::make_unsigned<index_type>::type            size_type;
-  typedef typename std::make_unsigned<index_type>::type      difference_type;
 
-  typedef       GlobIter<value_type, PatternType>                   iterator;
-  typedef const GlobIter<value_type, PatternType>             const_iterator;
-  typedef       std::reverse_iterator<      iterator>       reverse_iterator;
-  typedef       std::reverse_iterator<const_iterator> const_reverse_iterator;
-
-  typedef       GlobRef<value_type>                                reference;
-  typedef const GlobRef<value_type>                          const_reference;
-
-  typedef       GlobIter<value_type, PatternType>                    pointer;
-  typedef const GlobIter<value_type, PatternType>              const_pointer;
-
-private:
-  typedef ListRef<ElementType, AllocatorType, PatternType>
-    self_t;
-  typedef List<ElementType, AllocatorType, PatternType>
-    List_t;
-  typedef ViewSpec<NumDimensions, index_type>
-    ViewSpec_t;
-  typedef std::array<typename PatternType::size_type, NumDimensions>
-    Extents_t;
+  typedef typename list_type::iterator                              iterator;
+  typedef typename list_type::const_iterator                  const_iterator;
+  typedef typename list_type::reverse_iterator              reverse_iterator;
+  typedef typename list_type::const_reverse_iterator  const_reverse_iterator;
+  typedef typename list_type::reference                            reference;
+  typedef typename list_type::const_reference                const_reference;
+  typedef typename list_type::pointer                                pointer;
+  typedef typename list_type::const_pointer                    const_pointer;
+  typedef typename glob_mem_type::local_pointer                local_pointer;
+  typedef typename glob_mem_type::const_local_pointer    const_local_pointer;
 
 public:
   ListRef(
     /// Pointer to list instance referenced by this view.
-    List_t         * list,
+    list_type        * list,
     /// The view's offset and extent within the referenced list.
     const ViewSpec_t & viewspec)
   : _list(list),
@@ -103,11 +101,6 @@ public:
    */
   inline void push_back(const value_type & value)
   {
-    if (_list->_lcapacity > _list->_lsize) {
-      // no reallocation required
-    } else{
-      // local capacity must be increased, reallocate
-    }
     DASH_THROW(dash::exception::NotImplemented,
                "dash::ListRef.push_back is not implemented");
   }
@@ -139,11 +132,6 @@ public:
    */
   inline void push_front(const value_type & value)
   {
-    if (_list->_lcapacity > _list->_lsize) {
-      // no reallocation required
-    } else{
-      // local capacity must be increased, reallocate
-    }
     DASH_THROW(dash::exception::NotImplemented,
                "dash::ListRef.push_front is not implemented");
   }
@@ -172,8 +160,6 @@ public:
   inline size_type           size()             const noexcept;
   inline size_type           local_size()       const noexcept;
   inline size_type           local_capacity()   const noexcept;
-  inline size_type           extent(dim_t dim)  const noexcept;
-  inline Extents_t           extents()          const noexcept;
   inline bool                empty()            const noexcept;
 
   inline void                barrier()          const;
@@ -184,31 +170,15 @@ public:
   inline iterator            end()                    noexcept;
   inline const_iterator      end()              const noexcept;
   /// Pointer to first element in local range.
-  inline ElementType       * lbegin()           const noexcept;
+  inline local_pointer       lbegin()           const noexcept;
   /// Pointer past final element in local range.
-  inline ElementType       * lend()             const noexcept;
-
-  /**
-   * The pattern used to distribute list elements to units.
-   */
-  inline const PatternType & pattern() const
-  {
-    return _list->pattern();
-  }
-
-  /**
-   * The pattern used to distribute list elements to units.
-   */
-  inline PatternType & pattern()
-  {
-    return _list->pattern();
-  }
+  inline local_pointer       lend()             const noexcept;
 
 private:
   /// Pointer to list instance referenced by this view.
-  List_t    * _list;
+  list_type  * _list;
   /// The view's offset and extent within the referenced list.
-  ViewSpec_t  _viewspec;
+  ViewSpec_t   _viewspec;
 
 }; // class ListRef
 

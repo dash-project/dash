@@ -11,7 +11,6 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-#include <dash/DynamicPattern.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
 
@@ -23,8 +22,7 @@ namespace dash {
 // forward declaration
 template<
   typename ElementType,
-  class    AllocatorType,
-  class    PatternType >
+  class    AllocatorType >
 class List;
 
 /**
@@ -35,23 +33,34 @@ class List;
  */
 template<
   typename T,
-  class    AllocatorType,
-  class    PatternType >
+  class    AllocatorType >
 class LocalListRef
 {
-  template <typename T_, typename I_, typename P_>
-    friend class LocalListRef;
+  template <typename T_, typename A_>
+  friend class LocalListRef;
 
 private:
   static const dim_t NumDimensions = 1;
 
 /// Type definitions required for dash::List concept:
 public:
-  typedef PatternType                                           pattern_type;
-  typedef typename PatternType::index_type                        index_type;
-  typedef LocalListRef<T, index_type, PatternType>                 view_type;
+  typedef dash::default_index_t                                   index_type;
+  typedef LocalListRef<T, index_type>                              view_type;
   typedef AllocatorType                                       allocator_type;
-  typedef dash::GlobDynamicMem<T, AllocatorType>               glob_mem_type;
+
+private:
+  typedef LocalListRef<T, AllocatorType>
+    self_t;
+  typedef List<T, AllocatorType>
+    list_type;
+  typedef ViewSpec<NumDimensions, index_type>
+    ViewSpec_t;
+  typedef internal::ListNode<T>
+    ListNode_t;
+  typedef typename allocator_type::template rebind<ListNode_t>::other
+    node_allocator_type;
+  typedef typename list_type::glob_mem_type
+    glob_mem_type;
 
 /// Type definitions required for std::list concept:
 public:
@@ -62,43 +71,29 @@ public:
   typedef typename glob_mem_type::local_pointer                      pointer;
   typedef typename glob_mem_type::const_local_pointer          const_pointer;
 
-  typedef typename glob_mem_type::local_reference                  reference;
-  typedef typename glob_mem_type::const_local_reference      const_reference;
+  typedef typename list_type::local_reference                      reference;
+  typedef typename list_type::const_local_reference          const_reference;
 
-  typedef typename glob_mem_type::local_iterator                    iterator;
-  typedef typename glob_mem_type::const_local_iterator        const_iterator;
+  typedef typename list_type::local_iterator                        iterator;
+  typedef typename list_type::const_local_iterator            const_iterator;
 
   typedef std::reverse_iterator<      iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
-
-private:
-  typedef LocalListRef<T, AllocatorType, PatternType>
-    self_t;
-  typedef List<T, AllocatorType, PatternType>
-    List_t;
-  typedef ViewSpec<NumDimensions, index_type>
-    ViewSpec_t;
-  typedef std::array<typename PatternType::size_type, NumDimensions>
-    Extents_t;
-  typedef internal::ListNode<value_type>
-    ListNode_t;
-  typedef typename allocator_type::template rebind<ListNode_t>::other
-    node_allocator_type;
 
 public:
   /**
    * Constructor, creates a local access proxy for the given list.
    */
   LocalListRef(
-    List_t * list)
+    list_type * list)
   : _list(list)
   { }
 
   LocalListRef(
     /// Pointer to list instance referenced by this view.
-    List<T, index_type, PatternType> * list,
+    list_type        * list,
     /// The view's offset and extent within the referenced list.
-    const ViewSpec_t                 & viewspec)
+    const ViewSpec_t & viewspec)
   : _list(list),
     _viewspec(viewspec)
   { }
@@ -131,6 +126,13 @@ public:
     node.lnext = nullptr;
     node.gprev = _gprev;
     node.gnext = _gnext;
+    // Acquire local memory for new element:
+    if (_list->lcapacity() <= _list->lsize()) {
+      _list->_globmem->grow(1);
+      _list->_local_sizes.local[0]++;
+    }
+    // Pointer to allocated node:
+    ListNode_t * node_lptr = _list->_globmem->lend() - 1;
 
     iterator it_insert_end;
     return it_insert_end;
@@ -144,25 +146,29 @@ public:
    */
   inline void push_back(const value_type & value)
   {
+    DASH_LOG_TRACE("LocalListRef.push_back()");
     // New element node:
     ListNode_t node;
-    node.lprev = nullptr;
-    node.lnext = nullptr;
-    node.gprev = _gprev;
-    node.gnext = _gnext;
-    if (_list->_globmem->local_size() > 0) {
+    node.value     = value;
+    node.lprev     = nullptr;
+    node.lnext     = nullptr;
+    node.gprev     = _gprev;
+    node.gnext     = _gnext;
+    auto lcapacity = _list->_globmem->local_size();
+    DASH_LOG_TRACE_VAR("LocalListRef.push_back", lcapacity);
+    if (lcapacity > 0) {
       // Node predecessor:
-      node.lprev = _list->_globmem->lend() - 1;
+      node.lprev = _list->_globmem->lbegin() + lcapacity - 1;
     }
-    // Increase local size in pattern:
-    _list->pattern().local_resize(_list->_lsize + 1);
     // Acquire local memory for new element:
     _list->_globmem->grow(1);
     // Pointer to allocated node:
-    ListNode_t * node_lptr = _list->_globmem->lend() - 1;
-    *node_lptr             = node;
-    _list->_lsize++;
-    _list->_size++;
+    ListNode_t * node_lptr = _list->_globmem->lbegin() + lcapacity - 1;
+    DASH_LOG_TRACE("LocalListRef.push_back",
+                   "list.globmem.local.last", node_lptr);
+    *node_lptr = node;
+    _list->_local_sizes.local[0]++;
+    DASH_LOG_TRACE("LocalListRef.push_back >");
   }
 
   /**
@@ -220,7 +226,7 @@ public:
    */
   inline size_type size() const noexcept
   {
-    return end() - begin();
+    return _list->lsize();
   }
 
   /**
@@ -235,41 +241,14 @@ public:
     return true;
   }
 
-  /**
-   * View at block at given global block offset.
-   */
-  self_t block(index_type block_lindex)
-  {
-    DASH_LOG_TRACE("LocalListRef.block()", block_lindex);
-    ViewSpec<1> block_view = pattern().local_block(block_lindex);
-    DASH_LOG_TRACE("LocalListRef.block >", block_view);
-    return self_t(_list, block_view);
-  }
-
-  /**
-   * The pattern used to distribute list elements to units.
-   */
-  inline const pattern_type & pattern() const
-  {
-    return _list->pattern();
-  }
-
-  /**
-   * The pattern used to distribute list elements to units.
-   */
-  inline pattern_type & pattern()
-  {
-    return _list->pattern();
-  }
-
 private:
   /// Pointer to list instance referenced by this view.
-  List_t * const _list;
+  list_type * const _list;
   /// The view's offset and extent within the referenced list.
-  ViewSpec_t     _viewspec;
+  ViewSpec_t        _viewspec;
 
-  dart_gptr_t    _gprev;
-  dart_gptr_t    _gnext;
+  dart_gptr_t       _gprev;
+  dart_gptr_t       _gnext;
 };
 
 } // namespace dash

@@ -12,9 +12,9 @@
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
-#include <dash/DynamicPattern.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
+#include <dash/Array.h>
 
 #include <dash/list/ListRef.h>
 #include <dash/list/LocalListRef.h>
@@ -52,7 +52,6 @@ namespace dash {
  * <tt>index_type</tt>             | A signed integgral type to represent positions in global index space
  * <tt>view_type</tt>              | Proxy type for views on list elements, implements \c DashListConcept
  * <tt>local_type</tt>             | Proxy type for views on list elements that are local to the calling unit
- * <tt>pattern_type</tt>           | Type implementing the \c DashPatternConcept used to distribute list elements to units
  *
  * \par Member functions
  *
@@ -93,7 +92,6 @@ namespace dash {
  * <tt>reverse</tt>             | <tt>void</tt>       | Reverse the order of list elements
  * <b>Views (DASH specific)</b> | &nbsp;              | &nbsp;
  * <tt>local</tt>               | <tt>local_type</tt> | View on list elements local to calling unit
- * <tt>block</tt>               | <tt>view_type</tt>  | View on elements in block at global block index
  * \}
  *
  * Usage examples:
@@ -169,27 +167,20 @@ namespace dash {
  */
 template<
   typename ElementType,
-  class    AllocatorType = dash::allocator::DynamicAllocator<ElementType>,
-  class    PatternType   = dash::DynamicPattern<
-                             1, dash::ROW_MAJOR, dash::default_index_t> >
+  class    AllocatorType = dash::allocator::DynamicAllocator<ElementType> >
 class List
 {
-  template<
-    typename T_,
-    class    A_,
-    class    P_>
+  template<typename T_, class A_>
   friend class LocalListRef;
 
 /// Public types as required by DASH list concept
 public:
-  /// The type of the pattern used to distribute list elements to units
   typedef ElementType                                             value_type;
-  typedef typename PatternType::index_type                        index_type;
+  typedef typename dash::default_index_t                          index_type;
   typedef typename std::make_unsigned<index_type>::type            size_type;
-  typedef PatternType                                           pattern_type;
   typedef AllocatorType                                       allocator_type;
-  typedef LocalListRef<ElementType, AllocatorType, PatternType>   local_type;
-  typedef ListRef<ElementType, AllocatorType, PatternType>         view_type;
+  typedef LocalListRef<ElementType, AllocatorType>                local_type;
+  typedef ListRef<ElementType, AllocatorType>                      view_type;
 
 private:
   typedef internal::ListNode<value_type>
@@ -204,16 +195,18 @@ private:
                      internal::ListNode<ElementType> >::other
     node_allocator_type;
   typedef dash::GlobDynamicMem<node_type, node_allocator_type>
-    GlobMem_t;
+    glob_mem_type;
+
+  typedef dash::Array<
+            size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
+    local_sizes_map;
 
 /// Public types as required by STL list concept
 public:
   typedef typename std::make_unsigned<index_type>::type      difference_type;
 
-  typedef GlobListIter<value_type, PatternType, GlobMem_t>
-    iterator;
-  typedef GlobListIter<const value_type, PatternType, GlobMem_t>
-    const_iterator;
+  typedef GlobListIter<value_type, glob_mem_type>                   iterator;
+  typedef GlobListIter<const value_type, glob_mem_type>       const_iterator;
 
   typedef std::reverse_iterator<      iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
@@ -224,17 +217,22 @@ public:
   typedef       iterator                                             pointer;
   typedef const_iterator                                       const_pointer;
 
-  typedef typename GlobMem_t::local_iterator
+  typedef typename glob_mem_type::local_iterator
     local_iterator;
-  typedef typename GlobMem_t::const_local_iterator
+  typedef typename glob_mem_type::const_local_iterator
     const_local_iterator;
-  typedef typename GlobMem_t::reverse_local_iterator
+  typedef typename glob_mem_type::reverse_local_iterator
     reverse_local_iterator;
-  typedef typename GlobMem_t::const_reverse_local_iterator
+  typedef typename glob_mem_type::const_reverse_local_iterator
     const_reverse_local_iterator;
 
+  typedef typename glob_mem_type::local_reference
+    local_reference;
+  typedef typename glob_mem_type::const_local_reference
+    const_local_reference;
+
 private:
-  typedef List<ElementType, index_type, PatternType> self_t;
+  typedef List<ElementType, AllocatorType> self_t;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
@@ -251,65 +249,28 @@ public:
     Team & team = dash::Team::Null())
   : local(this),
     _team(&team),
-    _pattern(
-      SizeSpec_t(0),
-      DistributionSpec_t(dash::BLOCKED),
-      team),
-    _size(0),
-    _lsize(0),
-    _lcapacity(0)
+    _remote_size(0)
   {
-    DASH_LOG_TRACE("List()", "default constructor");
+    DASH_LOG_TRACE("List() >", "default constructor");
   }
 
   /**
    * Constructor, specifies distribution type explicitly.
    */
   List(
-    size_type                  nelem,
-    const DistributionSpec_t & distribution,
-    Team                     & team = dash::Team::All())
+    size_type   nelem,
+    Team      & team   = dash::Team::All())
   : local(this),
     _team(&team),
-    _pattern(
-      SizeSpec_t(nelem),
-      distribution,
-      team),
-    _size(0),
-    _lsize(0),
-    _capacity(0),
-    _lcapacity(0)
+    _remote_size(0)
   {
     DASH_LOG_TRACE("List()", nelem);
-    allocate(_pattern);
-  }
-
-  /**
-   * Constructor, specifies distribution pattern explicitly.
-   */
-  List(
-    const PatternType & pattern)
-  : local(this),
-    _team(&pattern.team()),
-    _pattern(pattern),
-    _size(0),
-    _lsize(0),
-    _capacity(0),
-    _lcapacity(0)
-  {
-    DASH_LOG_TRACE("List()", "pattern instance constructor");
-    allocate(_pattern);
-  }
-
-  /**
-   * Delegating constructor, specifies the size of the list.
-   */
-  List(
-    size_type   nelem,
-    Team      & team = dash::Team::All())
-  : List(nelem, dash::BLOCKED, team)
-  {
-    DASH_LOG_TRACE("List()", "finished delegating constructor");
+    if (_team->size() > 0) {
+      _local_sizes.allocate(team.size(), dash::BLOCKED, team);
+      _local_sizes.local[0] = 0;
+    }
+    allocate(nelem);
+    DASH_LOG_TRACE("List() >");
   }
 
   /**
@@ -386,17 +347,6 @@ public:
   }
 
   /**
-   * View at block at given global block offset.
-   */
-  view_type block(index_type block_gindex)
-  {
-    DASH_LOG_TRACE("List.block()", block_gindex);
-    ViewSpec_t block_view = pattern().block(block_gindex);
-    DASH_LOG_TRACE("List.block >", block_view);
-    return view_type(this, block_view);
-  }
-
-  /**
    * Global pointer to the beginning of the list.
    */
   iterator begin() noexcept
@@ -467,7 +417,7 @@ public:
    */
   inline size_type size() const noexcept
   {
-    return _size;
+    return _remote_size + _local_sizes.local[0];
   }
 
   /**
@@ -529,7 +479,7 @@ public:
    */
   inline size_type lsize() const noexcept
   {
-    return _lsize;
+    return _local_sizes.local[0];
   }
 
   /**
@@ -554,85 +504,75 @@ public:
   }
 
   /**
-   * Checks whether the given global index is local to the calling unit.
-   *
-   * \return  True if the list element referenced by the index is held
-   *          in the calling unit's local memory
-   */
-  bool is_local(
-    /// A global list index
-    index_type global_index) const
-  {
-    return _pattern.is_local(global_index, _myid);
-  }
-
-  /**
    * Establish a barrier for all units operating on the list, publishing all
    * changes to all units.
    */
-  void barrier() const
+  void barrier()
   {
     DASH_LOG_TRACE_VAR("List.barrier()", _team);
     // Apply changes in local memory spaces to global memory space:
     _globmem->commit();
+    // Accumulate local sizes of remote units:
+    _remote_size = 0;
+    for (int u = 0; u < _team->size(); ++u) {
+      if (u != _myid) {
+        _remote_size += _local_sizes[u];
+      }
+    }
     DASH_LOG_TRACE("List.barrier()", "passed barrier");
   }
 
-  /**
-   * The pattern used to distribute list elements to units.
-   */
-  inline const PatternType & pattern() const
-  {
-    return _pattern;
-  }
-
-  /**
-   * The pattern used to distribute list elements to units.
-   */
-  inline PatternType & pattern()
-  {
-    return _pattern;
-  }
-
-  template<int level>
-  dash::HView<self_t, level> hview()
-  {
-    return dash::HView<self_t, level>(*this);
-  }
-
   bool allocate(
-    size_type                   nelem,
-    dash::DistributionSpec<1>   distribution,
-    dash::Team                & team = dash::Team::All())
+    /// Initial global capacity of the list.
+    size_type    nelem = 0,
+    dash::Team & team  = dash::Team::All())
   {
-    DASH_LOG_TRACE("List.allocate()", nelem);
-    DASH_LOG_TRACE_VAR("List.allocate", _team->dart_id());
-    DASH_LOG_TRACE_VAR("List.allocate", team.dart_id());
-    // Check requested capacity:
-    if (nelem == 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Tried to allocate dash::List with size 0");
-    }
+    DASH_LOG_TRACE("List.allocate()");
     if (_team == nullptr || *_team == dash::Team::Null()) {
       DASH_LOG_TRACE("List.allocate",
-                     "initializing pattern with Team::All()");
-      _team    = &team;
-      _pattern = PatternType(nelem, distribution, team);
+                     "initializing with Team::All()");
+      _team = &team;
       DASH_LOG_TRACE_VAR("List.allocate", team.dart_id());
-      DASH_LOG_TRACE_VAR("List.allocate", _pattern.team().dart_id());
     } else {
       DASH_LOG_TRACE("List.allocate",
-                     "initializing pattern with initial team");
-      _pattern = PatternType(nelem, distribution, *_team);
+                     "initializing with initial team");
     }
-    return allocate(_pattern);
+    _remote_size = 0;
+    auto lcap    = dash::math::div_ceil(nelem, _team->size());
+    // Initialize members:
+    _myid        = _team->myid();
+    // Allocate local memory of identical size on every unit:
+    DASH_LOG_TRACE_VAR("List.allocate", lcap);
+
+    _globmem     = new glob_mem_type(lcap, *_team);
+    // Global iterators:
+    _begin       = iterator(_globmem, _nil_node);
+    _end         = _begin;
+    // Local iterators:
+    _lbegin      = _globmem->lbegin(_myid);
+    // More efficient than using _globmem->lend as this a second mapping
+    // of the local memory segment:
+    _lend        = _lbegin;
+    DASH_LOG_TRACE_VAR("List.allocate", _myid);
+    // Register deallocator of this list instance at the team
+    // instance that has been used to initialized it:
+    _team->register_deallocator(
+             this, std::bind(&List::deallocate, this));
+    // Assure all units are synchronized after allocation, otherwise
+    // other units might start working on the list before allocation
+    // completed at all units:
+    if (dash::is_initialized()) {
+      DASH_LOG_TRACE("List.allocate",
+                     "waiting for allocation of all units");
+      _team->barrier();
+    }
+    DASH_LOG_TRACE("List.allocate >", "finished");
+    return true;
   }
 
   void deallocate()
   {
     DASH_LOG_TRACE_VAR("List.deallocate()", this);
-    DASH_LOG_TRACE_VAR("List.deallocate()", _size);
     // Assure all units are synchronized before deallocation, otherwise
     // other units might still be working on the list:
     if (dash::is_initialized()) {
@@ -640,7 +580,7 @@ public:
     }
     // Remove this function from team deallocator list to avoid
     // double-free:
-    _pattern.team().unregister_deallocator(
+    _team->unregister_deallocator(
       this, std::bind(&List::deallocate, this));
     // Deallocate list elements:
     DASH_LOG_TRACE_VAR("List.deallocate()", _globmem);
@@ -648,88 +588,32 @@ public:
       delete _globmem;
       _globmem = nullptr;
     }
-    _size = 0;
+    _local_sizes.local[0] = 0;
+    _remote_size          = 0;
     DASH_LOG_TRACE_VAR("List.deallocate >", this);
   }
 
 private:
-  bool allocate(
-    const PatternType & pattern)
-  {
-    DASH_LOG_TRACE("List._allocate()", "pattern",
-                   pattern.memory_layout().extents());
-    // Check requested capacity:
-    _size      = 0;
-    _lsize     = 0;
-    _capacity  = pattern.capacity();
-    _lcapacity = pattern.local_capacity();
-    _team      = &pattern.team();
-    // Initialize members:
-    _myid      = pattern.team().myid();
-    // Allocate local memory of identical size on every unit:
-    DASH_LOG_TRACE_VAR("List._allocate", _lcapacity);
-    DASH_LOG_TRACE_VAR("List._allocate", _lsize);
-    if (_lcapacity == 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Tried to allocate dash::List with local capacity 0");
-    }
-
-    _globmem   = new GlobMem_t(_lcapacity, pattern.team());
-    // Global iterators:
-    _begin     = iterator(_globmem, _nil_node, pattern);
-    _end       = _begin;
-    // Local iterators:
-    _lbegin    = _globmem->lbegin(_myid);
-    // More efficient than using _globmem->lend as this a second mapping
-    // of the local memory segment:
-    _lend      = _lbegin + pattern.local_size();
-    DASH_LOG_TRACE_VAR("List._allocate", _myid);
-    DASH_LOG_TRACE_VAR("List._allocate", _size);
-    DASH_LOG_TRACE_VAR("List._allocate", _lsize);
-    // Register deallocator of this list instance at the team
-    // instance that has been used to initialized it:
-    pattern.team().register_deallocator(
-                     this, std::bind(&List::deallocate, this));
-    // Assure all units are synchronized after allocation, otherwise
-    // other units might start working on the list before allocation
-    // completed at all units:
-    if (dash::is_initialized()) {
-      DASH_LOG_TRACE("List._allocate",
-                     "waiting for allocation of all units");
-      _team->barrier();
-    }
-    DASH_LOG_TRACE("List._allocate >", "finished");
-    return true;
-  }
-
-private:
-  /// Team containing all units interacting with the list
-  dash::Team         * _team      = nullptr;
-  /// DART id of the unit that created the list
+  /// Team containing all units interacting with the list.
+  dash::Team         * _team        = nullptr;
+  /// DART id of the unit that created the list.
   dart_unit_t          _myid;
-  /// Element distribution pattern
-  PatternType          _pattern;
-  /// Global memory allocation and -access
-  GlobMem_t          * _globmem   = nullptr;
-  /// Iterator to initial element in the list
+  /// Global memory allocation and -access.
+  glob_mem_type      * _globmem     = nullptr;
+  /// Iterator to initial element in the list.
   iterator             _begin;
-  /// Iterator past the last element in the list
+  /// Iterator past the last element in the list.
   iterator             _end;
-  /// Number of elements in the list
-  size_type            _size;
-  /// Number of local elements in the list
-  size_type            _lsize;
-  /// Element capacity in the list's currently allocated storage.
-  size_type            _capacity;
-  /// Element capacity in the list's currently allocated local storage.
-  size_type            _lcapacity;
-  /// Native pointer to first local element in the list
+  /// Number of elements in the list.
+  size_type            _remote_size = 0;
+  /// Native pointer to first local element in the list.
   local_iterator       _lbegin;
-  /// Native pointer past the last local element in the list
+  /// Native pointer past the last local element in the list.
   local_iterator       _lend;
   /// Sentinel node in empty list.
   node_type            _nil_node;
+  /// Mapping units to their number of local list elements.
+  local_sizes_map      _local_sizes;
 
 };
 

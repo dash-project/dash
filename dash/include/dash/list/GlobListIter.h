@@ -11,29 +11,24 @@ namespace dash {
 
 template<
   typename ElementType,
-  class    PatternType,
   class    GlobMemType,
-  class    PointerType   = GlobPtr<ElementType, PatternType>,
+  class    PointerType   = GlobPtr<ElementType>,
   class    ReferenceType = GlobRef<ElementType> >
 class GlobListIter
 : public std::iterator<
            std::bidirectional_iterator_tag,
            ElementType,
-           typename PatternType::index_type,
+           dash::default_index_t,
            PointerType,
            ReferenceType >
 {
 private:
   typedef GlobListIter<
             ElementType,
-            PatternType,
             GlobMemType,
             PointerType,
             ReferenceType>
     self_t;
-
-private:
-  static const dim_t NumDimensions = PatternType::ndim();
 
 public:
   typedef ElementType                             value_type;
@@ -43,9 +38,6 @@ public:
   typedef const PointerType                    const_pointer;
 
   typedef typename GlobMemType::local_pointer  local_pointer;
-
-  typedef PatternType                           pattern_type;
-  typedef typename PatternType::index_type        index_type;
 
   typedef internal::ListNode<value_type>           node_type;
 
@@ -62,12 +54,10 @@ public:
    * Constructor, creates a global iterator on a \c dash::List instance.
    */
   GlobListIter(
-    GlobMemType       * gmem,
-    node_type    & node,
-	  const PatternType & pat)
+    GlobMemType  * gmem,
+    node_type    & node)
   : _globmem(gmem),
     _node(&node),
-    _pattern(&pat),
     _myid(dash::myid())
   {
     DASH_LOG_TRACE("GlobListIter(gmem,node,pat)");
@@ -84,14 +74,6 @@ public:
    */
   self_t & operator=(
     const self_t & other) = default;
-
-  /**
-   * The number of dimensions of the iterator's underlying pattern.
-   */
-  static dim_t ndim()
-  {
-    return NumDimensions;
-  }
 
   /**
    * Type conversion operator to \c pointer type.
@@ -230,12 +212,10 @@ private:
 private:
   /// Global memory used to dereference iterated values.
   GlobMemType          * _globmem;
-  /// Pattern that specifies the iteration order (access pattern).
-  const PatternType    * _pattern;
-  /// Unit id of the active unit
-  dart_unit_t            _myid;
   /// The node element referenced at the iterator's position.
   node_type            * _node     = nullptr;
+  /// Unit id of the active unit
+  dart_unit_t            _myid;
 
 }; // class GlobListIter
 

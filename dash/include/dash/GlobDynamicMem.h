@@ -325,7 +325,7 @@ public:
                      "old size:", _local_commit_buf.size());
       // Extend existing unattached bucket:
       auto num_unattached = bucket_last.size + num_elements;
-      _local_commit_buf.resize(num_unattached);
+      _local_commit_buf.reserve(num_unattached);
       _bucket_cumul_sizes[_myid].back() += num_elements;
       bucket_last.size = num_unattached;
       bucket_last.lptr = &_local_commit_buf[0];
@@ -334,7 +334,7 @@ public:
       // Create new unattached bucket:
       DASH_LOG_TRACE("GlobDynamicMem.grow", "creating new unattached bucket:",
                      "size:", num_elements);
-      _local_commit_buf.resize(num_elements);
+      _local_commit_buf.reserve(num_elements);
       bucket_type bucket;
       bucket.size     = num_elements;
       bucket.lptr     = &_local_commit_buf[0];
