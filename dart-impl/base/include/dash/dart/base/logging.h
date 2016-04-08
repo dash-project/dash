@@ -21,6 +21,12 @@
 /* Maximum length of a single log message in number of characters */
 #define DASH__DART_LOGGING__MAX_MESSAGE_LENGTH 256;
 
+#ifdef DART_LOG_OUTPUT_STDERR
+#define DART_LOG_OUTPUT_TARGET stderr
+#else
+#define DART_LOG_OUTPUT_TARGET stdout
+#endif
+
 /* GNU variant of basename.3 */
 inline char * dart_base_logging_basename(char *path) {
     char *base = strrchr(path, '/');
@@ -41,7 +47,7 @@ inline char * dart_base_logging_basename(char *path) {
     } \
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
-    printf( \
+    fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d ERROR ] %-*s:%-*d |   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -65,7 +71,7 @@ inline char * dart_base_logging_basename(char *path) {
     } \
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
-    printf( \
+    fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d TRACE ] %-*s:%-*d |   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -84,7 +90,7 @@ inline char * dart_base_logging_basename(char *path) {
     } \
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
-    printf( \
+    fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d DEBUG ] %-*s:%-*d |   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -103,7 +109,7 @@ inline char * dart_base_logging_basename(char *path) {
     } \
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
-    printf( \
+    fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d INFO  ] %-*s:%-*d |   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
