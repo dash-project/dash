@@ -426,14 +426,14 @@ public:
   inline self_t operator+(index_type offset) const
   {
     auto res = *this;
-    increment(offset);
+    res.increment(offset);
     return res;
   }
 
   inline self_t operator-(index_type offset) const
   {
     auto res = *this;
-    decrement(offset);
+    res.decrement(offset);
     return res;
   }
 
@@ -482,40 +482,68 @@ public:
 private:
   void increment(int offset)
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter.increment", offset);
+    DASH_LOG_TRACE("GlobBucketIter.increment()",
+                   "gidx:",   _idx,
+                   "unit:",   _idx_unit_id,
+                   "lidx:",   _idx_local_idx,
+                   "bidx:",   _idx_bucket_idx,
+                   "bphase:", _idx_bucket_phase,
+                   "offset:", offset);
     _idx += offset;
-    if (_idx_local_idx + offset <
-        (*_bucket_cumul_sizes)[_idx_unit_id][_idx_bucket_idx]) {
+    auto current_bucket_size =
+           (*_bucket_cumul_sizes)[_idx_unit_id][_idx_bucket_idx];
+    if (_idx_local_idx + offset < current_bucket_size) {
       // element is in bucket currently referenced by this iterator:
       _idx_bucket_phase += offset;
       _idx_local_idx    += offset;
     } else {
       // iterate units:
-      for (; _idx_unit_id < _bucket_cumul_sizes->size(); ++_idx_unit_id) {
-        auto unit_bkt_sizes = (*_bucket_cumul_sizes)[_idx_unit_id];
-        DASH_LOG_TRACE("GlobBucketIter.increment",
-                       "unit:",                _idx_unit_id,
-                       "cumul. bucket sizes:", unit_bkt_sizes);
-        // iterate the unit's bucket sizes:
-        for (; _idx_bucket_idx < unit_bkt_sizes.size(); ++_idx_bucket_idx) {
-          auto bucket_size = unit_bkt_sizes[_idx_bucket_idx];
-          if (offset >= bucket_size) {
-            _idx_local_idx += bucket_size;
-            offset         -= bucket_size;
-          } else {
-            _idx_local_idx    += offset;
-            _idx_bucket_phase  = offset;
+      auto unit_id_max = _bucket_cumul_sizes->size() - 1;
+      for (; _idx_unit_id <= unit_id_max; ++_idx_unit_id) {
+        auto unit_bkt_sizes       = (*_bucket_cumul_sizes)[_idx_unit_id];
+        auto unit_bkt_sizes_total = unit_bkt_sizes.back();
+        auto unit_num_bkts        = unit_bkt_sizes.size();
+        if (_idx_local_idx + offset >= unit_bkt_sizes_total) {
+          offset -= unit_bkt_sizes_total;
+          // offset refers to next unit:
+          if (_idx_unit_id == unit_id_max) {
+            // end iterator, offset exceeds iteration space:
+            _idx_bucket_idx    = unit_num_bkts - 1;
+            auto last_bkt_size = unit_bkt_sizes.back();
+            if (unit_num_bkts > 1) {
+              last_bkt_size -= unit_bkt_sizes[_idx_bucket_idx-1];
+            }
+            _idx_bucket_phase  = last_bkt_size + offset;
+            _idx_local_idx    += unit_bkt_sizes_total  + offset;
             break;
           }
-          // advance to next bucket:
+          _idx_local_idx    = 0;
+          _idx_bucket_idx   = 0;
           _idx_bucket_phase = 0;
+        } else {
+          // offset refers to current unit:
+          _idx_local_idx += offset;
+          // iterate the unit's bucket sizes:
+          for (; _idx_bucket_idx < unit_num_bkts; ++_idx_bucket_idx) {
+            auto bucket_size = unit_bkt_sizes[_idx_bucket_idx];
+            if (_idx_bucket_phase + offset >= bucket_size) {
+              // offset refers to next bucket:
+              offset -= (bucket_size - _idx_bucket_phase);
+            } else {
+              // offset refers to current bucket:
+              _idx_bucket_phase = offset;
+              offset            = 0;
+              break;
+            }
+          }
         }
-        // advance to next unit:
-        _idx_local_idx  = 0;
-        _idx_bucket_idx = 0;
+        if (offset == 0) {
+          break;
+        }
       }
     }
     DASH_LOG_TRACE("GlobBucketIter.increment >",
+                   "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
                    "bidx:",   _idx_bucket_idx,
@@ -524,7 +552,13 @@ private:
 
   void decrement(int offset)
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter.decrement", offset);
+    DASH_LOG_TRACE("GlobBucketIter.decrement()",
+                   "gidx:",   _idx,
+                   "unit:",   _idx_unit_id,
+                   "lidx:",   _idx_local_idx,
+                   "bidx:",   _idx_bucket_idx,
+                   "bphase:", _idx_bucket_phase,
+                   "offset:", -offset);
     if (offset > _idx) {
       DASH_THROW(dash::exception::OutOfRange,
                  "offset " << offset << " is out of range");
@@ -551,6 +585,7 @@ private:
           } else {
             _idx_local_idx    -= offset;
             _idx_bucket_phase  = offset;
+            offset             = 0;
             break;
           }
           // advance to previous bucket:
@@ -562,6 +597,7 @@ private:
       }
     }
     DASH_LOG_TRACE("GlobBucketIter.decrement >",
+                   "gidx:",   _idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
                    "bidx:",   _idx_bucket_idx,

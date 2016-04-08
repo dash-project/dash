@@ -37,7 +37,7 @@ TEST_F(GlobDynamicMemTest, SimpleRealloc)
   int unit_x_lsize_diff = 5;
   int gsize_diff        = unit_0_lsize_diff +
                           unit_1_lsize_diff +
-                          unit_x_lsize_diff;
+                          (dash::size() - 2) * unit_x_lsize_diff;
 
   // Extend local size, changes should be locally visible immediately:
   if (dash::myid() == 0) {
@@ -64,6 +64,9 @@ TEST_F(GlobDynamicMemTest, SimpleRealloc)
   LOG_MESSAGE("after commit: global size: %d, local size: %d",
                gdmem.size(), gdmem.local_size());
 
+  // Global size should be updated after commit:
+  EXPECT_EQ_U(initial_global_capacity + gsize_diff, gdmem.size());
+
   // Local sizes should be unchanged after commit:
   if (dash::myid() == 0) {
     EXPECT_EQ_U(initial_local_capacity + unit_0_lsize_diff,
@@ -76,9 +79,6 @@ TEST_F(GlobDynamicMemTest, SimpleRealloc)
     EXPECT_EQ_U(initial_local_capacity + unit_x_lsize_diff,
                 gdmem.local_size());
   }
-
-  // Global size should be updated after commit:
-  EXPECT_EQ_U(initial_global_capacity + gsize_diff, gdmem.size());
 
   DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
                  "size checks after commit passed");
@@ -94,11 +94,36 @@ TEST_F(GlobDynamicMemTest, SimpleRealloc)
   }
   dash::barrier();
 
+  if (dash::myid() == 0) {
+    DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
+                   "testing basic iterator arithmetic");
+
+    DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc", "git_first");
+    auto git_first  = gdmem.begin();
+    DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc", "git_second");
+    auto git_second = git_first + 1;
+    DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc", "git_remote");
+    auto git_remote = git_first + gdmem.local_size() + 11;
+    DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc", "git_last");
+    auto git_last   = git_first + gdmem.size() - 1;
+    DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc", "git_end");
+    auto git_end    = git_first + gdmem.size();
+  }
+  dash::barrier();
+
+  // Test memory space of units separately:
   for (dart_unit_t unit = 0; unit < dash::size(); ++unit) {
     if (dash::myid() != unit) {
       auto unit_git_begin = gdmem.at(unit, 0);
       auto unit_git_end   = gdmem.at(unit, gdmem.local_size(unit));
-      auto exp_l_capacity = initial_local_capacity + unit_1_lsize_diff;
+      auto exp_l_capacity = initial_local_capacity;
+      if (unit == 0) {
+        exp_l_capacity += unit_0_lsize_diff;
+      } else if (unit == 1) {
+        exp_l_capacity += unit_1_lsize_diff;
+      } else {
+        exp_l_capacity += unit_x_lsize_diff;
+      }
       DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
                      "remote unit:",          unit,
                      "expected local size:",  exp_l_capacity,
@@ -131,6 +156,38 @@ TEST_F(GlobDynamicMemTest, SimpleRealloc)
         EXPECT_EQ_U(expected, git_value);
       }
     }
+  }
+  dash::barrier();
+
+  DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
+                 "testing reverse iteration");
+
+  // Test memory space of all units by iterating global index space:
+  auto unit          = 0;
+  auto local_offset  = 0;
+  auto unit_capacity = gdmem.local_size(unit);
+  // Invert order to test reverse iterators:
+  auto rgend         = gdmem.rend();
+  EXPECT_EQ_U(gdmem.size(), gdmem.rend() - gdmem.rbegin());
+  for (auto rgit = gdmem.rbegin(); rgit != rgend; ++rgit) {
+    if (local_offset == unit_capacity) {
+      ++unit;
+      unit_capacity = gdmem.local_size(unit);
+      local_offset  = 0;
+    }
+    DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
+                   "requesting element at",
+                   "local offset", local_offset,
+                   "from unit",    unit);
+    value_t expected   = 1000 * (unit + 1) + local_offset;
+    value_t rgit_value = *rgit;
+    DASH_LOG_TRACE_VAR("GlobDynamicMemTest.SimpleRealloc", rgit_value);
+    value_t git_value  = *gdmem.at(unit, local_offset);
+    DASH_LOG_TRACE_VAR("GlobDynamicMemTest.SimpleRealloc", git_value);
+
+    EXPECT_EQ_U(expected, rgit_value);
+    EXPECT_EQ_U(expected, git_value);
+    ++local_offset;
   }
 }
 
@@ -256,9 +313,6 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
 
   LOG_MESSAGE("local capacity after commit: %d",  gdmem.local_size());
   LOG_MESSAGE("global capacity after commit: %d", gdmem.size());
-
-  DASH_LOG_DEBUG("GlobDynamicMemTest.Commit",
-                 "attached local buckets:", gdmem.buckets());
 
   // Changes are globally visible now:
   auto expected_global_capacity = initial_global_capacity +

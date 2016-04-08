@@ -153,6 +153,16 @@ public:
             const value_type, const self_t, const_pointer, const_reference>
     const_global_iterator;
 
+  typedef std::reverse_iterator<      global_iterator>
+    reverse_global_iterator;
+  typedef std::reverse_iterator<const_global_iterator>
+    const_reverse_global_iterator;
+
+  typedef std::reverse_iterator<      local_iterator>
+    reverse_local_iterator;
+  typedef std::reverse_iterator<const_local_iterator>
+    const_reverse_local_iterator;
+
   typedef       local_iterator                                local_pointer;
   typedef const_local_iterator                          const_local_pointer;
 
@@ -208,6 +218,8 @@ public:
                    "allocating initial memory space");
     grow(n_local_elem);
     commit();
+
+    _begin = at(0, 0);
   }
 
   /**
@@ -238,8 +250,7 @@ public:
    */
   bool operator==(const self_t & rhs) const
   {
-    return (_begptr         == rhs._begptr &&
-            _teamid         == rhs._teamid &&
+    return (_teamid         == rhs._teamid &&
             _nunits         == rhs._nunits &&
             _lbegin         == rhs._lbegin &&
             _lend           == rhs._lend &&
@@ -592,11 +603,13 @@ public:
                        "old local size:", unit_local_size_old,
                        "new local size:", unit_local_size_new,
                        "attached size:",  unit_attached_size);
-//      unit_bucket_cumul_sizes.push_back(unit_attached_size);
         unit_bucket_cumul_sizes.push_back(unit_local_size_new);
         _remote_size += unit_local_size_new;
       }
     }
+    // Update _begin iterator:
+    _begin = at(0, 0);
+
     DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _remote_size);
     DASH_LOG_DEBUG("GlobDynamicMem.commit >", "finished");
   }
@@ -633,17 +646,65 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  pointer begin()
+  global_iterator begin()
   {
-    return pointer(_begptr);
+    return _begin;
   }
 
   /**
    * Global pointer of the initial address of the global memory.
    */
-  const_pointer begin() const
+  const_global_iterator begin() const
   {
-    return const_pointer(_begptr);
+    return _begin;
+  }
+
+  /**
+   * Global pointer of the initial address of the global memory.
+   */
+  reverse_global_iterator rbegin()
+  {
+    return reverse_global_iterator(_begin + size());
+  }
+
+  /**
+   * Global pointer of the initial address of the global memory.
+   */
+  const_reverse_global_iterator rbegin() const
+  {
+    return const_reverse_global_iterator(_begin + size());
+  }
+
+  /**
+   * Global pointer of the initial address of the global memory.
+   */
+  global_iterator end()
+  {
+    return _begin + size();
+  }
+
+  /**
+   * Global pointer of the initial address of the global memory.
+   */
+  const_global_iterator end() const
+  {
+    return _begin + size();
+  }
+
+  /**
+   * Global pointer of the initial address of the global memory.
+   */
+  reverse_global_iterator rend()
+  {
+    return reverse_global_iterator(_begin);
+  }
+
+  /**
+   * Global pointer of the initial address of the global memory.
+   */
+  const_reverse_global_iterator rend() const
+  {
+    return const_reverse_global_iterator(_begin);
   }
 
   /**
@@ -778,15 +839,6 @@ public:
     return _lend;
   }
 
-  inline std::vector<dart_gptr_t> buckets() const
-  {
-    std::vector<dart_gptr_t> buckets;
-    for (auto bit = _buckets.begin(); bit != _buckets.end(); ++bit) {
-      buckets.push_back(bit->gptr);
-    }
-    return buckets;
-  }
-
   /**
    * Write value to global memory at given offset.
    *
@@ -799,13 +851,8 @@ public:
   {
     DASH_LOG_TRACE("GlobDynamicMem.put_value(newval, gidx = %d)",
                    global_index);
-    dart_gptr_t gptr = _begptr;
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(
-        &gptr,
-        global_index * sizeof(ValueType)),
-      DART_OK);
-    dash::put_value(newval, GlobPtr<ValueType>(gptr));
+    auto git = const_global_iterator(this, global_index);
+    dash::put_value(newval, git);
   }
 
   /**
@@ -820,9 +867,8 @@ public:
   {
     DASH_LOG_TRACE("GlobDynamicMem.get_value(newval, gidx = %d)",
                    global_index);
-    dart_gptr_t gptr = _begptr;
-    dart_gptr_incaddr(&gptr, global_index * sizeof(ValueType));
-    dash::get_value(ptr, GlobPtr<ValueType>(gptr));
+    auto git = const_global_iterator(this, global_index);
+    dash::get_value(ptr, git);
   }
 
   /**
@@ -896,8 +942,14 @@ public:
     std::advance(bucket_it, bucket_index);
     auto dart_gptr = bucket_it->gptr;
     // Move dart_gptr to unit and local offset:
-    dart_gptr_setunit(&dart_gptr, unit);
-    dart_gptr_incaddr(&dart_gptr, bucket_phase);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_setunit(&dart_gptr, unit),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_gptr_incaddr(
+        &dart_gptr,
+        bucket_phase * sizeof(value_type)),
+      DART_OK);
 
     DASH_LOG_DEBUG("GlobDynamicMem.dart_gptr_at >", dart_gptr);
     return dart_gptr;
@@ -905,7 +957,6 @@ public:
 
 private:
   allocator_type             _allocator;
-  dart_gptr_t                _begptr;
   dart_team_t                _teamid;
   size_type                  _nunits;
   local_iterator             _lbegin;
@@ -932,6 +983,8 @@ private:
   size_type                  _remote_size;
   /// Vector storing elements in unattached bucket.
   std::vector<value_type>    _local_commit_buf;
+  /// Global iterator referencing start of global memory space.
+  global_iterator            _begin;
 
 }; // class GlobDynamicMem
 

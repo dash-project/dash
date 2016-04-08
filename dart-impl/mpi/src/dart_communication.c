@@ -447,8 +447,9 @@ dart_ret_t dart_get_handle(
   }
   (*handle)->request = mpi_req;
   (*handle)->win     = win;
-  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%"PRIu64" req:%d",
-                 (void*)(*handle), (*handle)->dest, (uint64_t)win, mpi_req);
+  DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%"PRIu64" req:%ld",
+                 (void*)(*handle), (*handle)->dest,
+                 (uint64_t)win, (int64_t)mpi_req);
   return DART_OK;
 }
 
@@ -731,18 +732,18 @@ dart_ret_t dart_get_blocking(
     win      = dart_win_lists[index];
     disp_rel = disp_s + offset;
     DART_LOG_DEBUG("dart_get_blocking:  nbytes:%zu "
-                   "source (coll.): win:%"PRIu64" unit:%d offset:%"PRIu64" "
+                   "source (coll.): win:%p unit:%d offset:%p"
                    "-> dest: %p",
-                   nbytes, (uint64_t)win, target_unitid_rel,
-                   (uint64_t)disp_rel, dest);
+                   nbytes, (void*)((uint64_t)win), target_unitid_rel,
+                   (void*)disp_rel, dest);
   } else {
     win      = dart_win_local_alloc;
     disp_rel = offset;
     DART_LOG_DEBUG("dart_get_blocking:  nbytes:%zu "
-                   "source (local): win:%"PRIu64" unit:%d offset:%"PRIu64" "
+                   "source (local): win:%p unit:%d offset:%p "
                    "-> dest: %p",
-                   nbytes, (uint64_t)win, target_unitid_rel,
-                   (uint64_t)disp_rel, dest);
+                   nbytes, (void*)((uint64_t)win), target_unitid_rel,
+                   (void*)disp_rel, dest);
   }
 
   /*
@@ -881,10 +882,10 @@ dart_ret_t dart_wait_local(
   if (handle != NULL) {
     DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
                    handle->dest);
-    DART_LOG_TRACE("dart_wait_local:     handle->win:  %"PRIu64"",
-                   (uint64_t)handle->win);
-    DART_LOG_TRACE("dart_wait_local:     handle->req:  %d",
-                   handle->request);
+    DART_LOG_TRACE("dart_wait_local:     handle->win:  %p",
+                   (void*)(uint64_t)(handle->win));
+    DART_LOG_TRACE("dart_wait_local:     handle->req:  %ld",
+                   (int64_t)handle->request);
     if (handle->request != MPI_REQUEST_NULL) {
       MPI_Status mpi_sta;
       mpi_ret = MPI_Wait(&(handle->request), &mpi_sta);
