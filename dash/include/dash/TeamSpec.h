@@ -368,7 +368,7 @@ public:
       sizeof...(Args) == MaxDimensions-1,
       "Invalid number of arguments");
     std::array<SizeType, MaxDimensions> extents =
-      { arg, (SizeType)(args)... };
+      {{ arg, (SizeType)(args)... }};
     resize(extents);
   }
 
