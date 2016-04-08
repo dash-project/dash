@@ -339,30 +339,6 @@ public:
   }
 
   /**
-   * Map iterator to global index domain.
-   */
-  inline self_t global() const
-  {
-    return *this;
-  }
-
-  /**
-   * Position of the iterator in global index space.
-   */
-  inline index_type pos() const
-  {
-    return _idx;
-  }
-
-  /**
-   * Position of the iterator in global index range.
-   */
-  inline index_type gpos() const
-  {
-    return _idx;
-  }
-
-  /**
    * Unit and local offset at the iterator's position.
    */
   inline typename pattern_type::local_index_t lpos() const
@@ -389,6 +365,30 @@ public:
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     return local_pos;
+  }
+
+  /**
+   * Map iterator to global index domain.
+   */
+  inline self_t global() const
+  {
+    return *this;
+  }
+
+  /**
+   * Position of the iterator in global index space.
+   */
+  inline index_type pos() const
+  {
+    return _idx;
+  }
+
+  /**
+   * Position of the iterator in global index range.
+   */
+  inline index_type gpos() const
+  {
+    return _idx;
   }
 
   /**

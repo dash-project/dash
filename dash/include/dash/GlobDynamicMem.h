@@ -164,13 +164,15 @@ private:
   typedef typename bucket_list::iterator
     bucket_iterator;
 
-  typedef dash::Array<size_type, int,
-                      dash::CSRPattern<1, dash::ROW_MAJOR, int> >
+  typedef dash::Array<
+            size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
     local_sizes_map;
 
-  typedef dash::Array<size_type, int,
-                      dash::CSRPattern<1, dash::ROW_MAJOR, int> >
-    local_nbuckets_map;
+  typedef std::vector<std::vector<size_type> >
+    bucket_cumul_sizes_map;
+
+  template<typename T_, class GMem_, class Ptr_, class Ref_>
+  friend class dash::internal::GlobBucketIter;
 
 public:
   /**
@@ -190,6 +192,7 @@ public:
     _nunits(team.size()),
     _myid(team.myid()),
     _local_sizes(team.size()),
+    _bucket_cumul_sizes(team.size()),
     _num_detach_buckets(team.size())
   {
     DASH_LOG_TRACE("GlobDynamicMem.(ninit,nunits)",
@@ -250,11 +253,7 @@ public:
    */
   inline size_type size() const
   {
-    DASH_LOG_DEBUG("GlobDynamicMem.size()",
-                   "local size:",  local_size(),
-                   "remote size:", _remote_size);
     auto global_size = _remote_size + local_size();
-    DASH_LOG_DEBUG("GlobDynamicMem.size >", global_size);
     return global_size;
   }
 
@@ -264,6 +263,14 @@ public:
   inline size_type local_size() const
   {
     return _local_sizes.local[0];
+  }
+
+  /**
+   * Number of elements in local memory space of given unit.
+   */
+  inline size_type local_size(dart_unit_t unit) const
+  {
+    return _bucket_cumul_sizes[unit].back();
   }
 
   /**
@@ -296,6 +303,9 @@ public:
       DASH_LOG_DEBUG("GlobDynamicMem.grow >", "no grow");
       return;
     }
+    // Update size of local memory space:
+    _local_sizes.local[0] += num_elements;
+
     if (!_buckets.empty() && !_buckets.back().attached) {
       bucket_type & bucket_last = _buckets.back();
       DASH_LOG_TRACE("GlobDynamicMem.grow",
@@ -304,6 +314,7 @@ public:
       // Extend existing unattached bucket:
       auto num_unattached = bucket_last.size + num_elements;
       _local_commit_buf.resize(num_unattached);
+      _bucket_cumul_sizes[_myid].back() += num_elements;
       bucket_last.size = num_unattached;
       bucket_last.lptr = &_local_commit_buf[0];
       DASH_ASSERT(bucket_last.gptr == DART_GPTR_NULL);
@@ -319,14 +330,13 @@ public:
       bucket.attached = false;
       // Add bucket to local memory space:
       _buckets.push_back(bucket);
+      _bucket_cumul_sizes[_myid].push_back(_local_sizes.local[0]);
       DASH_LOG_TRACE("GlobDynamicMem.grow", "added unattached bucket:",
                      "size:", bucket.size,
                      "lptr:", bucket.lptr);
     }
     DASH_LOG_TRACE("GlobDynamicMem.grow",
                    "local buffer bucket size:", _local_commit_buf.size());
-    // Update size of local memory space:
-    _local_sizes.local[0] += num_elements;
     // Update local iteration space:
     _lbegin = lbegin(_myid);
     _lend   = lend(_myid);
@@ -376,14 +386,16 @@ public:
         // mark entire bucket for deallocation:
         num_dealloc           -= bucket_last.size;
         _local_sizes.local[0] -= bucket_last.size;
+        _bucket_cumul_sizes[_myid].pop_back();
         _buckets.pop_back();
       } else if (bucket_last.size > num_dealloc) {
         DASH_LOG_TRACE("GlobDynamicMem.shrink",
                        "shrinking unattached bucket:",
                        "old size:", bucket_last.size,
                        "new size:", bucket_last.size - num_dealloc);
-        bucket_last.size      -= num_dealloc;
-        _local_sizes.local[0] -= num_dealloc;
+        bucket_last.size                  -= num_dealloc;
+        _local_sizes.local[0]             -= num_dealloc;
+        _bucket_cumul_sizes[_myid].back() -= num_dealloc;
         num_dealloc = 0;
       }
     }
@@ -403,15 +415,17 @@ public:
       if (bucket_it->size <= num_dealloc) {
         // mark entire bucket for deallocation:
         num_dealloc_gbuckets++;
-        _local_sizes.local[0] -= bucket_it->size;
-        num_dealloc           -= bucket_it->size;
+        _local_sizes.local[0]             -= bucket_it->size;
+        _bucket_cumul_sizes[_myid].back() -= bucket_it->size;
+        num_dealloc                       -= bucket_it->size;
       } else if (bucket_it->size > num_dealloc) {
         DASH_LOG_TRACE("GlobDynamicMem.shrink",
                        "shrinking attached bucket:",
                        "old size:", bucket_it->size,
                        "new size:", bucket_it->size - num_dealloc);
-        bucket_it->size       -= num_dealloc;
-        _local_sizes.local[0] -= num_dealloc;
+        bucket_it->size                   -= num_dealloc;
+        _local_sizes.local[0]             -= num_dealloc;
+        _bucket_cumul_sizes[_myid].back() -= num_dealloc;
         num_dealloc = 0;
       }
     }
@@ -512,10 +526,10 @@ public:
     // Attach local buffer bucket in global memory space if it exists and
     // contains values:
     //
-    // TODO: As bucket sizes differ between units, units must collect gptr's
-    //       (dart_gptr_t) and size of buckets attached by other units and
-    //       store them locally so a remote unit's local index can be mapped
-    //       to the remote unit's bucket.
+    // As bucket sizes differ between units, units must collect gptr's
+    // (dart_gptr_t) and size of buckets attached by other units and store
+    // them locally so a remote unit's local index can be mapped to the
+    // remote unit's bucket.
     //
     if (!_local_commit_buf.empty() &&
         !_buckets.empty() && !_buckets.back().attached) {
@@ -556,17 +570,31 @@ public:
     // Update new capacity of global attached memory space.
     //
     // TODO:
-    //
     //   dash::accumulate(_local_sizes.begin(),
     //                    _local_sizes.end(),
     //                    0, dash::plus<size_type>());
     _remote_size = 0;
     for (int u = 0; u < _nunits; ++u) {
       if (u != _myid) {
-        size_type unit_local_size = _local_sizes[u];
+        size_type unit_local_size_new = _local_sizes[u];
+        // Accumulating previous local capacity of unit from its list of
+        // local bucket sizes instead of creating a local copy of
+        // _local_sizes bevore committing as we avoid communication this way:
+        auto    & unit_bucket_cumul_sizes   = _bucket_cumul_sizes[u];
+        size_type unit_local_size_old = std::accumulate(
+                                          unit_bucket_cumul_sizes.begin(),
+                                          unit_bucket_cumul_sizes.end(), 0);
+        // Size of the bucket attached by unit in this commit phase:
+        size_type unit_attached_size  = unit_local_size_new -
+                                        unit_local_size_old;
         DASH_LOG_TRACE("GlobDynamicMem.commit",
-                       "unit", u, "local size:", unit_local_size);
-        _remote_size += unit_local_size;
+                       "unit", u,
+                       "old local size:", unit_local_size_old,
+                       "new local size:", unit_local_size_new,
+                       "attached size:",  unit_attached_size);
+//      unit_bucket_cumul_sizes.push_back(unit_attached_size);
+        unit_bucket_cumul_sizes.push_back(unit_local_size_new);
+        _remote_size += unit_local_size_new;
       }
     }
     DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _remote_size);
@@ -822,10 +850,7 @@ public:
     if (_nunits == 0) {
       DASH_THROW(dash::exception::RuntimeError, "No units in team");
     }
-    IndexT global_index = 0;
-    // TODO
-
-    global_iterator gbit(this, global_index);
+    global_iterator gbit(this, unit, local_index);
     DASH_LOG_DEBUG("GlobDynamicMem.at >");
     return gbit;
   }
@@ -845,12 +870,37 @@ public:
     if (_nunits == 0) {
       DASH_THROW(dash::exception::RuntimeError, "No units in team");
     }
-    IndexT global_index = 0;
-    // TODO
-
-    const_global_iterator gbit(this, global_index);
+    const_global_iterator gbit(this, unit, local_index);
     DASH_LOG_DEBUG("GlobDynamicMem.at >");
     return gbit;
+  }
+
+  /**
+   * Global pointer referencing an element position in a unit's bucket.
+   */
+  dart_gptr_t dart_gptr_at(
+    /// Unit id mapped to address in global memory space.
+    dart_unit_t unit,
+    /// Index of bucket containing the referenced address.
+    index_type  bucket_index,
+    /// Offset of the referenced address in the bucket's memory space.
+    index_type  bucket_phase) const
+  {
+    DASH_LOG_DEBUG("GlobDynamicMem.dart_gptr_at(u,bi,bp)",
+                   unit, bucket_index, bucket_phase);
+    if (_nunits == 0) {
+      DASH_THROW(dash::exception::RuntimeError, "No units in team");
+    }
+    // Get the referenced bucket's dart_gptr:
+    auto bucket_it = _buckets.begin();
+    std::advance(bucket_it, bucket_index);
+    auto dart_gptr = bucket_it->gptr;
+    // Move dart_gptr to unit and local offset:
+    dart_gptr_setunit(&dart_gptr, unit);
+    dart_gptr_incaddr(&dart_gptr, bucket_phase);
+
+    DASH_LOG_DEBUG("GlobDynamicMem.dart_gptr_at >", dart_gptr);
+    return dart_gptr;
   }
 
 private:
@@ -869,10 +919,13 @@ private:
   bucket_list                _buckets;
   /// List of buckets marked for detach.
   bucket_list                _detach_buckets;
-  /// Map of unit id to number of elements in the unit's attached local
+  /// Mapping unit id to number of elements in the unit's attached local
   /// memory space.
   local_sizes_map            _local_sizes;
-  /// Map of unit id to number of buckets marked for detach in the unit's
+  /// Mapping unit id to cumulative size of buckets in the unit's attached
+  /// local memory space.
+  bucket_cumul_sizes_map     _bucket_cumul_sizes;
+  /// Mapping unit id to number of buckets marked for detach in the unit's
   /// memory space.
   local_sizes_map            _num_detach_buckets;
   /// Total number of elements in attached memory space of remote units.

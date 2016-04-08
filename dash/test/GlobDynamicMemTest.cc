@@ -5,6 +5,135 @@
 #include "GlobDynamicMemTest.h"
 
 
+TEST_F(GlobDynamicMemTest, SimpleRealloc)
+{
+  typedef int value_t;
+
+  if (dash::size() < 2) {
+    LOG_MESSAGE(
+      "GlobDynamicMemTest.SimpleRealloc requires at least two units");
+    return;
+  }
+
+  LOG_MESSAGE("initializing GlobDynamicMem<T>");
+
+  size_t initial_local_capacity  = 10;
+  size_t initial_global_capacity = dash::size() * initial_local_capacity;
+  dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
+
+  LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
+              initial_global_capacity, initial_local_capacity);
+
+  EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
+  EXPECT_EQ_U(initial_local_capacity,  gdmem.lend(dash::myid()) -
+                                       gdmem.lbegin(dash::myid()));
+  EXPECT_EQ_U(initial_global_capacity, gdmem.size());
+
+  dash::barrier();
+
+  // Total changes of local capacity:
+  int unit_0_lsize_diff = 5;
+  int unit_1_lsize_diff = 5;
+  int unit_x_lsize_diff = 5;
+  int gsize_diff        = unit_0_lsize_diff +
+                          unit_1_lsize_diff +
+                          unit_x_lsize_diff;
+
+  // Extend local size, changes should be locally visible immediately:
+  if (dash::myid() == 0) {
+    gdmem.grow(unit_0_lsize_diff);
+    EXPECT_EQ_U(initial_local_capacity + unit_0_lsize_diff,
+                gdmem.local_size());
+  }
+  else if (dash::myid() == 1) {
+    gdmem.grow(unit_1_lsize_diff);
+    EXPECT_EQ_U(initial_local_capacity + unit_1_lsize_diff,
+                gdmem.local_size());
+  } else {
+    gdmem.grow(unit_x_lsize_diff);
+    EXPECT_EQ_U(initial_local_capacity + unit_x_lsize_diff,
+                gdmem.local_size());
+  }
+
+  dash::barrier();
+  LOG_MESSAGE("before commit: global size: %d, local size: %d",
+               gdmem.size(), gdmem.local_size());
+
+  gdmem.commit();
+
+  LOG_MESSAGE("after commit: global size: %d, local size: %d",
+               gdmem.size(), gdmem.local_size());
+
+  // Local sizes should be unchanged after commit:
+  if (dash::myid() == 0) {
+    EXPECT_EQ_U(initial_local_capacity + unit_0_lsize_diff,
+                gdmem.local_size());
+  }
+  else if (dash::myid() == 1) {
+    EXPECT_EQ_U(initial_local_capacity + unit_1_lsize_diff,
+                gdmem.local_size());
+  } else {
+    EXPECT_EQ_U(initial_local_capacity + unit_x_lsize_diff,
+                gdmem.local_size());
+  }
+
+  // Global size should be updated after commit:
+  EXPECT_EQ_U(initial_global_capacity + gsize_diff, gdmem.size());
+
+  DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
+                 "size checks after commit passed");
+
+  // Initialize values in reallocated memory:
+  auto lmem = gdmem.lbegin();
+  auto lcap = gdmem.local_size();
+  for (int li = 0; li < lcap; ++li) {
+    DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
+                   "setting value at local offset", li,
+                   "at unit", dash::myid());
+    lmem[li] = 1000 * (dash::myid() + 1) + li;
+  }
+  dash::barrier();
+
+  for (dart_unit_t unit = 0; unit < dash::size(); ++unit) {
+    if (dash::myid() != unit) {
+      auto unit_git_begin = gdmem.at(unit, 0);
+      auto unit_git_end   = gdmem.at(unit, gdmem.local_size(unit));
+      auto exp_l_capacity = initial_local_capacity + unit_1_lsize_diff;
+      DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
+                     "remote unit:",          unit,
+                     "expected local size:",  exp_l_capacity,
+                     "gdm.local_size(unit):", gdmem.local_size(unit),
+                     "git_end - git_begin:",  unit_git_end - unit_git_begin);
+      EXPECT_EQ_U(initial_local_capacity + unit_1_lsize_diff,
+                  gdmem.local_size(unit));
+      EXPECT_EQ_U(initial_local_capacity + unit_1_lsize_diff,
+                  unit_git_end - unit_git_begin);
+      int l_idx = 0;
+      for(auto it = unit_git_begin; it != unit_git_end; ++it, ++l_idx) {
+        DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",
+                       "requesting element at",
+                       "local offset", l_idx,
+                       "from unit",    unit);
+        auto gptr = it.dart_gptr();
+        DASH_LOG_TRACE_VAR("GlobDynamicMemTest.SimpleRealloc", gptr);
+
+        // request value via DART global pointer:
+        value_t dart_gptr_value;
+        dart_get_blocking(&dart_gptr_value, gptr, sizeof(value_t));
+        DASH_LOG_TRACE_VAR("GlobDynamicMemTest.SimpleRealloc", dart_gptr_value);
+
+        // request value via DASH global iterator:
+        value_t git_value = *it;
+        DASH_LOG_TRACE_VAR("GlobDynamicMemTest.SimpleRealloc", git_value);
+
+        value_t expected = 1000 * (unit + 1) + l_idx;
+        EXPECT_EQ_U(expected, dart_gptr_value);
+        EXPECT_EQ_U(expected, git_value);
+      }
+    }
+  }
+}
+
 TEST_F(GlobDynamicMemTest, LocalVisibility)
 {
   typedef int value_t;
@@ -17,18 +146,12 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
 
   LOG_MESSAGE("initializing GlobDynamicMem<T>");
 
-  size_t initial_local_capacity = 10;
-  dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
+  size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
+  dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
 
   LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
               initial_global_capacity, initial_local_capacity);
-
-  EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
-  EXPECT_EQ_U(initial_local_capacity,
-              gdmem.lend(dash::myid()) - gdmem.lbegin(dash::myid()));
-  EXPECT_EQ_U(initial_global_capacity, gdmem.size());
-
   dash::barrier();
 
   // Total changes of local capacity:
@@ -186,11 +309,6 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
   dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
-
-  EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
-  EXPECT_EQ_U(initial_local_capacity,
-              gdmem.lend(dash::myid()) - gdmem.lbegin(dash::myid()));
-  EXPECT_EQ_U(initial_global_capacity, gdmem.size());
 
   int unit_0_lsize_diff =  5;
   int unit_1_lsize_diff = -2;

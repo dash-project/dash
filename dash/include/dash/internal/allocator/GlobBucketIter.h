@@ -78,17 +78,9 @@ public:
     index_type  index;
   } local_index;
 
-protected:
-  /// Global memory used to dereference iterated values.
-  GlobMemType          * _globmem  = nullptr;
-  /// Pointer to first element in local data space.
-  local_pointer          _lbegin;
-  /// Current position of the iterator in global canonical index space.
-  index_type             _idx      = 0;
-  /// Maximum position allowed for this iterator.
-  index_type             _max_idx  = 0;
-  /// Unit id of the active unit
-  dart_unit_t            _myid;
+private:
+  typedef std::vector<std::vector<size_type> >
+    bucket_cumul_sizes_map;
 
 public:
   /**
@@ -96,29 +88,103 @@ public:
    */
   GlobBucketIter()
   : _globmem(nullptr),
+    _bucket_cumul_sizes(nullptr),
     _idx(0),
     _max_idx(0),
-    _myid(dash::myid())
+    _myid(dash::myid()),
+    _idx_unit_id(DART_UNDEFINED_UNIT_ID),
+    _idx_local_idx(-1),
+    _idx_bucket_idx(-1),
+    _idx_bucket_phase(-1)
   {
     DASH_LOG_TRACE_VAR("GlobBucketIter()", _idx);
     DASH_LOG_TRACE_VAR("GlobBucketIter()", _max_idx);
   }
 
   /**
-   * Constructor, creates a global iterator on global memory following
-   * logical storage order.
+   * Constructor, creates a global iterator on global memory from global
+   * offset in logical storage order.
    */
   GlobBucketIter(
     GlobMemType * gmem,
 	  index_type    position = 0)
   : _globmem(gmem),
+    _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
     _lbegin(_globmem->lbegin()),
     _idx(position),
     _max_idx(gmem->size() - 1),
-    _myid(dash::myid())
+    _myid(dash::myid()),
+    _idx_unit_id(0),
+    _idx_local_idx(0),
+    _idx_bucket_idx(0),
+    _idx_bucket_phase(0)
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx,abs)", _idx);
-    DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx,abs)", _max_idx);
+    DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", position);
+    for (auto unit_bucket_cumul_sizes : *_bucket_cumul_sizes) {
+      _idx_local_idx    = position;
+      _idx_bucket_phase = position;
+      for (auto bucket_cumul_size : unit_bucket_cumul_sizes) {
+        if (position > bucket_cumul_size) {
+          _idx_bucket_phase -= bucket_cumul_size;
+          break;
+        }
+        ++_idx_bucket_idx;
+      }
+      // advance to next unit, adjust position relative to next unit's
+      // local index space:
+      position -= unit_bucket_cumul_sizes.back();
+      ++_idx_unit_id;
+    }
+    DASH_LOG_TRACE("GlobBucketIter(gmem,idx)",
+                   "gidx:",   _idx,
+                   "unit:",   _idx_unit_id,
+                   "lidx:",   _idx_local_idx,
+                   "bucket:", _idx_bucket_idx,
+                   "phase:",  _idx_bucket_phase);
+  }
+
+  /**
+   * Constructor, creates a global iterator on global memory from unit and
+   * local offset in logical storage order.
+   */
+  GlobBucketIter(
+    GlobMemType * gmem,
+    dart_unit_t   unit,
+	  index_type    local_index)
+  : _globmem(gmem),
+    _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
+    _lbegin(_globmem->lbegin()),
+    _idx(0),
+    _max_idx(gmem->size() - 1),
+    _myid(dash::myid()),
+    _idx_unit_id(unit),
+    _idx_local_idx(local_index),
+    _idx_bucket_idx(0),
+    _idx_bucket_phase(0)
+  {
+    DASH_LOG_TRACE("GlobBucketIter(gmem,unit,lidx)", unit, local_index);
+    DASH_ASSERT_LT(unit, _bucket_cumul_sizes->size(), "invalid unit id");
+
+    for (size_type unit = 0; unit < _idx_unit_id; ++unit) {
+      auto prec_unit_local_size = (*_bucket_cumul_sizes)[unit].back();
+      _idx += prec_unit_local_size;
+    }
+    _idx_bucket_phase = _idx_local_idx;
+    for (auto unit_bucket_cumul_size : (*_bucket_cumul_sizes)[_idx_unit_id])
+    {
+      if (_idx_local_idx < unit_bucket_cumul_size) {
+        break;
+      }
+      _idx_bucket_phase -= unit_bucket_cumul_size;
+      _idx_bucket_idx++;
+    }
+    _idx += _idx_local_idx;
+    DASH_LOG_TRACE("GlobBucketIter(gmem,unit,lidx)",
+                   "gidx:",   _idx,
+                   "unit:",   _idx_unit_id,
+                   "lidx:",   _idx_local_idx,
+                   "bucket:", _idx_bucket_idx,
+                   "phase:",  _idx_bucket_phase);
   }
 
   /**
@@ -140,23 +206,7 @@ public:
    */
   operator PointerType() const
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter.GlobPtr", _idx);
-    index_type idx    = _idx;
-    index_type offset = 0;
-    DASH_LOG_TRACE_VAR("GlobBucketIter.GlobPtr", _max_idx);
-    // TODO
-    local_index local_pos;
-
-    // Global index to local index and unit:
-    DASH_LOG_TRACE("GlobBucketIter.GlobPtr",
-                   "unit:",        local_pos.unit,
-                   "local index:", local_pos.index);
-    // Create global pointer from unit and local offset,
-    // using type conversion operator GlobBucketIter.GlobPtr():
-    PointerType gptr = _globmem->at(
-                         local_pos.unit,
-                         local_pos.index);
-    return gptr + offset;
+    return PointerType(dart_gptr());
   }
 
   /**
@@ -170,19 +220,21 @@ public:
     DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr()", _idx);
     index_type idx    = _idx;
     index_type offset = 0;
-    // TODO
-    local_index local_pos;
-
-    // Global index to local index and unit:
-    DASH_LOG_TRACE("GlobBucketIter.dart_gptr",
-                   "unit:",        local_pos.unit,
-                   "local index:", local_pos.index);
-    // Global pointer to element at given position,
-    // using type conversion operator GlobBucketIter.GlobPtr():
-    auto gptr = _globmem->at(
-                   local_pos.unit,
-                   local_pos.index);
-    dart_gptr_t dart_gptr = (gptr + offset).dart_gptr();
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+      DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr", _max_idx);
+      DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr", idx);
+      DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr", offset);
+    }
+    // Create global pointer from unit, bucket and phase:
+    dart_gptr_t dart_gptr = _globmem->dart_gptr_at(
+                              _idx_unit_id,
+                              _idx_bucket_idx,
+                              _idx_bucket_phase + offset);
     DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr >", dart_gptr);
     return dart_gptr;
   }
@@ -194,18 +246,7 @@ public:
    */
   reference operator*() const
   {
-    DASH_LOG_TRACE("GlobBucketIter.*", _idx);
-    index_type idx = _idx;
-    // Global index to local index and unit:
-    local_index local_pos;
-    // TODO
-
-    DASH_LOG_TRACE_VAR("GlobBucketIter.*", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobBucketIter.*", local_pos.index);
-    // Global reference to element at given position, using dereference
-    // operator GlobBucketIter.*():
-    return *_globmem->at(local_pos.unit,
-                         local_pos.index);
+    return reference(dart_gptr());
   }
 
   /**
@@ -216,18 +257,11 @@ public:
     /// The global position of the element
     index_type g_index) const
   {
-    DASH_LOG_TRACE("GlobBucketIter.[]", g_index);
-    index_type idx = g_index;
-    // Global index to local index and unit:
-    local_index local_pos;
-    // TODO
-
-    DASH_LOG_TRACE_VAR("GlobBucketIter.[]", local_pos.unit);
-    DASH_LOG_TRACE_VAR("GlobBucketIter.[]", local_pos.index);
-    // Global reference to element at given position, using dereference
-    // operator GlobBucketIter.*():
-    return *_globmem->at(local_pos.unit,
-                         local_pos.index);
+    DASH_LOG_TRACE_VAR("GlobBucketIter.[]()", g_index);
+    auto gbit = *this;
+    gbit += g_index;
+    auto gref = *gbit;
+    DASH_LOG_TRACE_VAR("GlobBucketIter.[] >", gref);
   }
 
   /**
@@ -236,20 +270,73 @@ public:
    */
   inline bool is_local() const
   {
-    return (_myid == lpos().unit);
+    return (_myid == _idx_unit_id);
   }
 
   /**
    * Conversion to local bucket iterator.
+   *
+   * TODO
    */
   local_pointer local() const
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter.local=()", _idx);
+    DASH_LOG_TRACE_VAR("GlobBucketIter.local()", _idx);
     index_type idx    = _idx;
     index_type offset = 0;
-    DASH_LOG_TRACE_VAR("GlobBucketIter.local=", _max_idx);
-    // TODO
-    return nullptr;
+    DASH_LOG_TRACE_VAR("GlobBucketIter.local", _max_idx);
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+    }
+    DASH_LOG_TRACE_VAR("GlobBucketIter.local", idx);
+    DASH_LOG_TRACE_VAR("GlobBucketIter.local", offset);
+    // Global index to local index and unit:
+    auto l_idx = _idx_local_idx + offset;
+    DASH_LOG_TRACE_VAR("GlobBucketIter.local >", _idx_unit_id);
+    DASH_LOG_TRACE_VAR("GlobBucketIter.local >", l_idx);
+    if (_myid != _idx_unit_id) {
+      // Iterator position does not point to local element
+      return nullptr;
+    }
+    return (_lbegin + l_idx);
+  }
+
+  /**
+   * Unit and local offset at the iterator's position.
+   *
+   * TODO
+   */
+  inline local_index lpos() const
+  {
+    DASH_LOG_TRACE_VAR("GlobBucketIter.lpos()", _idx);
+    index_type idx    = _idx;
+    index_type offset = 0;
+    local_index local_pos;
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx    = _max_idx;
+      offset = _idx - _max_idx;
+      DASH_LOG_TRACE_VAR("GlobBucketIter.lpos", _max_idx);
+      DASH_LOG_TRACE_VAR("GlobBucketIter.lpos", idx);
+      DASH_LOG_TRACE_VAR("GlobBucketIter.lpos", offset);
+    }
+    // Global index to local index and unit:
+    local_pos.unit  = _idx_unit_id;
+    local_pos.index = _idx_local_idx + offset;
+    return local_pos;
+  }
+
+  /**
+   * Map iterator to global index domain.
+   */
+  inline self_t global() const
+  {
+    return *this;
   }
 
   /**
@@ -261,16 +348,11 @@ public:
   }
 
   /**
-   * Unit and local offset at the iterator's position.
+   * Position of the iterator in global index range.
    */
-  inline local_index lpos() const
+  inline index_type gpos() const
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter.lpos()", _idx);
-    index_type idx    = _idx;
-    index_type offset = 0;
-    local_index local_pos;
-    // TODO
-    return local_pos;
+    return _idx;
   }
 
   /**
@@ -296,7 +378,16 @@ public:
    */
   inline self_t & operator++()
   {
-    ++_idx;
+    increment(1);
+    return *this;
+  }
+
+  /**
+   * Prefix decrement operator.
+   */
+  inline self_t & operator--()
+  {
+    decrement(1);
     return *this;
   }
 
@@ -305,18 +396,9 @@ public:
    */
   inline self_t operator++(int)
   {
-    self_t result = *this;
-    ++_idx;
+    auto result = *this;
+    increment(1);
     return result;
-  }
-
-  /**
-   * Prefix decrement operator.
-   */
-  inline self_t & operator--()
-  {
-    --_idx;
-    return *this;
   }
 
   /**
@@ -324,36 +406,34 @@ public:
    */
   inline self_t operator--(int)
   {
-    self_t result = *this;
-    --_idx;
+    auto result = *this;
+    decrement(1);
     return result;
   }
 
-  inline self_t & operator+=(index_type n)
+  inline self_t & operator+=(index_type offset)
   {
-    _idx += n;
+    increment(offset);
     return *this;
   }
 
-  inline self_t & operator-=(index_type n)
+  inline self_t & operator-=(index_type offset)
   {
-    _idx -= n;
+    increment(offset);
     return *this;
   }
 
-  inline self_t operator+(index_type n) const
+  inline self_t operator+(index_type offset) const
   {
-    self_t res(
-      _globmem,
-      _idx + static_cast<index_type>(n));
+    auto res = *this;
+    increment(offset);
     return res;
   }
 
-  inline self_t operator-(index_type n) const
+  inline self_t operator-(index_type offset) const
   {
-    self_t res(
-      _globmem,
-      _idx - static_cast<index_type>(n));
+    auto res = *this;
+    decrement(offset);
     return res;
   }
 
@@ -398,6 +478,117 @@ public:
   {
     return _idx != other._idx;
   }
+
+private:
+  void increment(int offset)
+  {
+    DASH_LOG_TRACE_VAR("GlobBucketIter.increment", offset);
+    _idx += offset;
+    if (_idx_local_idx + offset <
+        (*_bucket_cumul_sizes)[_idx_unit_id][_idx_bucket_idx]) {
+      // element is in bucket currently referenced by this iterator:
+      _idx_bucket_phase += offset;
+      _idx_local_idx    += offset;
+    } else {
+      // iterate units:
+      for (; _idx_unit_id < _bucket_cumul_sizes->size(); ++_idx_unit_id) {
+        auto unit_bkt_sizes = (*_bucket_cumul_sizes)[_idx_unit_id];
+        DASH_LOG_TRACE("GlobBucketIter.increment",
+                       "unit:",                _idx_unit_id,
+                       "cumul. bucket sizes:", unit_bkt_sizes);
+        // iterate the unit's bucket sizes:
+        for (; _idx_bucket_idx < unit_bkt_sizes.size(); ++_idx_bucket_idx) {
+          auto bucket_size = unit_bkt_sizes[_idx_bucket_idx];
+          if (offset >= bucket_size) {
+            _idx_local_idx += bucket_size;
+            offset         -= bucket_size;
+          } else {
+            _idx_local_idx    += offset;
+            _idx_bucket_phase  = offset;
+            break;
+          }
+          // advance to next bucket:
+          _idx_bucket_phase = 0;
+        }
+        // advance to next unit:
+        _idx_local_idx  = 0;
+        _idx_bucket_idx = 0;
+      }
+    }
+    DASH_LOG_TRACE("GlobBucketIter.increment >",
+                   "unit:",   _idx_unit_id,
+                   "lidx:",   _idx_local_idx,
+                   "bidx:",   _idx_bucket_idx,
+                   "bphase:", _idx_bucket_phase);
+  }
+
+  void decrement(int offset)
+  {
+    DASH_LOG_TRACE_VAR("GlobBucketIter.decrement", offset);
+    if (offset > _idx) {
+      DASH_THROW(dash::exception::OutOfRange,
+                 "offset " << offset << " is out of range");
+    }
+    _idx -= offset;
+    if (offset <= _idx_bucket_phase) {
+      // element is in bucket currently referenced by this iterator:
+      _idx_bucket_phase -= offset;
+      _idx_local_idx    -= offset;
+    } else {
+      offset -= _idx_bucket_phase;
+      // iterate units:
+      for (; _idx_unit_id >= 0; --_idx_unit_id) {
+        auto unit_bkt_sizes = (*_bucket_cumul_sizes)[_idx_unit_id];
+        DASH_LOG_TRACE("GlobBucketIter.decrement",
+                       "unit:",                _idx_unit_id,
+                       "cumul. bucket sizes:", unit_bkt_sizes);
+        // iterate the unit's bucket sizes:
+        for (; _idx_bucket_idx >= 0; --_idx_bucket_idx) {
+          auto bucket_size = unit_bkt_sizes[_idx_bucket_idx];
+          if (offset >= bucket_size) {
+            _idx_local_idx -= bucket_size;
+            offset         -= bucket_size;
+          } else {
+            _idx_local_idx    -= offset;
+            _idx_bucket_phase  = offset;
+            break;
+          }
+          // advance to previous bucket:
+          _idx_bucket_phase = bucket_size - 1;
+        }
+        // advance to previous unit:
+        _idx_local_idx  = 0;
+        _idx_bucket_idx = unit_bkt_sizes.size() - 1;
+      }
+    }
+    DASH_LOG_TRACE("GlobBucketIter.decrement >",
+                   "unit:",   _idx_unit_id,
+                   "lidx:",   _idx_local_idx,
+                   "bidx:",   _idx_bucket_idx,
+                   "bphase:", _idx_bucket_phase);
+  }
+
+private:
+  /// Global memory used to dereference iterated values.
+  GlobMemType            * _globmem            = nullptr;
+  /// Mapping unit id to buckets in the unit's attached local storage.
+  bucket_cumul_sizes_map * _bucket_cumul_sizes = nullptr;
+  /// Pointer to first element in local data space.
+  local_pointer            _lbegin;
+  /// Current position of the iterator in global canonical index space.
+  index_type               _idx                = 0;
+  /// Maximum position allowed for this iterator.
+  index_type               _max_idx            = 0;
+  /// Unit id of the active unit.
+  dart_unit_t              _myid;
+  /// Unit id at the iterator's current position.
+  dart_unit_t              _idx_unit_id        = DART_UNDEFINED_UNIT_ID;
+  /// Logical offset in local index space at the iterator's current position.
+  index_type               _idx_local_idx      = -1;
+  /// Local bucket index at the iterator's current position.
+  index_type               _idx_bucket_idx     = -1;
+  /// Element offset in bucket at the iterator's current position.
+  index_type               _idx_bucket_phase   = -1;
 
 }; // class GlobBucketIter
 

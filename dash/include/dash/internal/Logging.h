@@ -19,6 +19,12 @@ namespace dash {
   int myid();
 }
 
+#ifdef DASH_LOG_OUTPUT_STDERR
+#  define DASH_LOG_OUTPUT_TARGET std::cerr
+#else
+#  define DASH_LOG_OUTPUT_TARGET std::cout
+#endif
+
 //
 // Enable logging if trace logging is enabled:
 //
@@ -106,19 +112,20 @@ static void Log_Recursive(
       << context_tag
       << msg.str()
       << std::endl;
-  std::cerr << buf.str();
+  DASH_LOG_OUTPUT_TARGET << buf.str();
 }
 
 // "Recursive" variadic function
 template<typename T, typename... Args>
 static void Log_Recursive(
-  const char* level,
-  const char* file,
-  int line,
-  const char* context_tag,
+  const char         * level,
+  const char         * file,
+  int                  line,
+  const char         * context_tag,
   std::ostringstream & msg,
-  T value,
-  const Args & ... args) {
+  T                    value,
+  const Args & ...     args)
+{
   msg << value << " ";
   Log_Recursive(level, file, line, context_tag, msg, args...);
 }
@@ -126,11 +133,12 @@ static void Log_Recursive(
 // Log_Recursive wrapper that creates the ostringstream
 template<typename... Args>
 static void LogWrapper(
-  const char* level,
-  const char* filepath,
-  int line,
-  const char* context_tag,
-  const Args & ... args) {
+  const char *     level,
+  const char *     filepath,
+  int              line,
+  const char *     context_tag,
+  const Args & ... args)
+{
   std::ostringstream msg;
   msg << "| ";
   // Extract file name from path

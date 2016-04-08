@@ -278,7 +278,7 @@ public:
   template<typename ValueType = ElementType>
   void get_value(
     ValueType  * ptr,
-    index_type   global_index)
+    index_type   global_index) const
   {
     DASH_LOG_TRACE("GlobMem.get_value(newval, gidx = %d)", global_index);
     dart_gptr_t gptr = _begptr;
@@ -289,7 +289,7 @@ public:
   /**
    * Synchronize all units associated with this global memory instance.
    */
-  void barrier()
+  void barrier() const
   {
     DASH_ASSERT_RETURNS(
       dart_barrier(_teamid),
@@ -327,6 +327,9 @@ public:
   /**
    * Resolve the global pointer from an element position in a unit's
    * local memory.
+   *
+   * TODO: Should return GlobPtr<T> as dart_gptr_t is not an iterator.
+   *       See GlobDynamicMem in comparison.
    */
   template<typename IndexType>
   dart_gptr_t at(

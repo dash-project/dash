@@ -94,15 +94,25 @@ public:
     _bucket_phase(0),
     _is_nullptr(false)
   {
+    DASH_LOG_TRACE_VAR("LocalBucketIter(idx)", position);
+#ifdef DASH_ENABLE_TRACE_LOGGING
+    index_type bucket_idx = 0;
+#endif
     for (_bucket_it = _bucket_first;
          _bucket_it != _bucket_last; ++_bucket_it) {
       if (position >= _bucket_it->size) {
         position -= _bucket_it->size;
-      } else if (position < _bucket_it->size) {
+      } else {
         _bucket_phase = position;
         break;
       }
+#ifdef DASH_ENABLE_TRACE_LOGGING
+      ++bucket_idx;
+#endif
     }
+    DASH_LOG_TRACE("LocalBucketIter(idx) >",
+                   "bucket:", bucket_idx,
+                   "phase:",  _bucket_phase);
   }
 
   LocalBucketIter() = default;
