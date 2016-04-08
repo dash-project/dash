@@ -920,8 +920,8 @@ dart_ret_t dart_wait(
                    handle->dest);
     DART_LOG_TRACE("dart_wait_local:     handle->win:  %"PRIu64"",
                    (uint64_t)handle->win);
-    DART_LOG_TRACE("dart_wait_local:     handle->req:  %d",
-                   handle->request);
+    DART_LOG_TRACE("dart_wait_local:     handle->req:  %ld",
+                   (uint64_t)handle->request);
     if (handle->request != MPI_REQUEST_NULL) {
       MPI_Status mpi_sta;
       DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");
@@ -980,8 +980,8 @@ dart_ret_t dart_waitall_local(
                        i, handle[i]->dest);
         DART_LOG_TRACE("dart_waitall_local:    handle[%d]->win:  %d",
                        i, handle[i]->win);
-        DART_LOG_TRACE("dart_waitall_local:    handle[%d]->req:  %d",
-                       i, handle[i]->request);
+        DART_LOG_TRACE("dart_waitall_local:    handle[%d]->req:  %p",
+                       i, (void*)((uint64_t)(handle[i]->request)));
         mpi_req[r_n] = handle[i]->request;
         r_n++;
       }

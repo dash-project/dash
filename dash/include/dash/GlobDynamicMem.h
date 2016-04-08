@@ -922,6 +922,7 @@ public:
     return gbit;
   }
 
+private:
   /**
    * Global pointer referencing an element position in a unit's bucket.
    */

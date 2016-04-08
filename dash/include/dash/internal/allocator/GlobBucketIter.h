@@ -275,8 +275,6 @@ public:
 
   /**
    * Conversion to local bucket iterator.
-   *
-   * TODO
    */
   local_pointer local() const
   {
@@ -306,8 +304,6 @@ public:
 
   /**
    * Unit and local offset at the iterator's position.
-   *
-   * TODO
    */
   inline local_index lpos() const
   {

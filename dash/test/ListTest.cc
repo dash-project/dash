@@ -32,7 +32,7 @@ TEST_F(ListTest, Initialization)
   list.local.push_back(myid + 1);
   list.local.push_back(myid + 2);
   list.local.push_back(myid + 3);
-  ASSERT_EQ_U(3,          list.lsize());
+  ASSERT_EQ_U(3, list.lsize());
 
   list.barrier();
 

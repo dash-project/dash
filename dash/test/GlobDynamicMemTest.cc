@@ -32,9 +32,9 @@ TEST_F(GlobDynamicMemTest, SimpleRealloc)
   dash::barrier();
 
   // Total changes of local capacity:
-  int unit_0_lsize_diff = 5;
-  int unit_1_lsize_diff = 5;
-  int unit_x_lsize_diff = 5;
+  int unit_0_lsize_diff = 120;
+  int unit_1_lsize_diff =   6;
+  int unit_x_lsize_diff =   5;
   int gsize_diff        = unit_0_lsize_diff +
                           unit_1_lsize_diff +
                           (dash::size() - 2) * unit_x_lsize_diff;
@@ -129,10 +129,8 @@ TEST_F(GlobDynamicMemTest, SimpleRealloc)
                      "expected local size:",  exp_l_capacity,
                      "gdm.local_size(unit):", gdmem.local_size(unit),
                      "git_end - git_begin:",  unit_git_end - unit_git_begin);
-      EXPECT_EQ_U(initial_local_capacity + unit_1_lsize_diff,
-                  gdmem.local_size(unit));
-      EXPECT_EQ_U(initial_local_capacity + unit_1_lsize_diff,
-                  unit_git_end - unit_git_begin);
+      EXPECT_EQ_U(exp_l_capacity, gdmem.local_size(unit));
+      EXPECT_EQ_U(exp_l_capacity, unit_git_end - unit_git_begin);
       int l_idx = 0;
       for(auto it = unit_git_begin; it != unit_git_end; ++it, ++l_idx) {
         DASH_LOG_TRACE("GlobDynamicMemTest.SimpleRealloc",

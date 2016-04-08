@@ -192,7 +192,7 @@ public:
                "offset " << offset << " is out of range");
   }
 
-  pointer operator&()
+  operator pointer()
   {
     return &_bucket_it->lptr[_bucket_phase];
   }
