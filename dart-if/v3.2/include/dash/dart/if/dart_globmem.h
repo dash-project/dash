@@ -150,6 +150,10 @@ dart_ret_t dart_team_memregister_aligned(dart_team_t teamid,
 					 size_t nbytes,
 					 void *addr, dart_gptr_t *gptr);
 
+dart_ret_t dart_team_memregister(dart_team_t teamid,
+					 size_t nbytes,
+					 void *addr, dart_gptr_t *gptr);
+
 dart_ret_t dart_team_memderegister(dart_team_t teamid, dart_gptr_t gptr);
 
 
