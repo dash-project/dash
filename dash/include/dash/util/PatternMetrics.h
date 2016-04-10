@@ -106,10 +106,10 @@ private:
     }
     for (int bi = 0; bi < _num_blocks; ++bi) {
       auto block      = pattern.block(bi);
-      auto block_unit = pattern.unit_at(std::array<index_t, 2> {
+      auto block_unit = pattern.unit_at(std::array<index_t, 2> {{
                           block.offset(0),
                           block.offset(1)
-                        });
+			    }});
       _unit_blocks[block_unit]++;
     }
 

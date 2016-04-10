@@ -61,7 +61,7 @@ void print_example(
   dash::tools::PatternBlockVisualizer<PatternT> pv(pattern);
   pv.set_title(pattern_desc);
 
-  std::array<index_t, pattern.ndim()> coords = {0, 0};
+  std::array<index_t, pattern.ndim()> coords = {{0}};
 
   cerr << "Generating visualization of "
        << endl
@@ -382,17 +382,17 @@ void log_pattern_mapping(const PatternT & pattern)
   dash::internal::print_pattern_mapping(
     "pattern.unit_at", pattern, 3,
     [](const pattern_t & _pattern, int _x, int _y) -> dart_unit_t {
-        return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+      return _pattern.unit_at(std::array<index_t, 2> {{_x, _y}});
     });
   dash::internal::print_pattern_mapping(
     "pattern.global_at", pattern, 3,
     [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-        return _pattern.global_at(std::array<index_t, 2> {_x, _y});
+      return _pattern.global_at(std::array<index_t, 2> {{_x, _y}});
     });
   dash::internal::print_pattern_mapping(
     "pattern.local", pattern, 10,
     [](const pattern_t & _pattern, int _x, int _y) -> std::string {
-        auto lpos = _pattern.local(std::array<index_t, 2> {_x, _y});
+      auto lpos = _pattern.local(std::array<index_t, 2> {{_x, _y}});
         std::ostringstream ss;
         ss << lpos.unit << ":" << lpos.coords;
         return ss.str();
@@ -400,17 +400,17 @@ void log_pattern_mapping(const PatternT & pattern)
   dash::internal::print_pattern_mapping(
     "pattern.at", pattern, 3,
     [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-        return _pattern.at(std::array<index_t, 2> {_x, _y});
+      return _pattern.at(std::array<index_t, 2> {{_x, _y}});
     });
   dash::internal::print_pattern_mapping(
     "pattern.block_at", pattern, 3,
     [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-        return _pattern.block_at(std::array<index_t, 2> {_x, _y});
+      return _pattern.block_at(std::array<index_t, 2> {{_x, _y}});
     });
   dash::internal::print_pattern_mapping(
     "pattern.block.offset", pattern, 5,
     [](const pattern_t & _pattern, int _x, int _y) -> std::string {
-        auto block_idx = _pattern.block_at(std::array<index_t, 2> {_x, _y});
+      auto block_idx = _pattern.block_at(std::array<index_t, 2> {{_x, _y}});
         auto block_vs  = _pattern.block(block_idx);
         std::ostringstream ss;
         ss << block_vs.offset(0) << "," << block_vs.offset(1);
@@ -419,7 +419,7 @@ void log_pattern_mapping(const PatternT & pattern)
   dash::internal::print_pattern_mapping(
     "pattern.local_index", pattern, 3,
     [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-        return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+      return _pattern.local_index(std::array<index_t, 2> {{_x, _y}}).index;
     });
 }
 
