@@ -45,6 +45,7 @@ printenv :
 	 @echo "DART_IMPL     = $(DART_IMPL)"
 	 @echo "LIBDART       = $(LIBDART)"
 	 @echo "LIBDART_EXTRA = $(LIBDART_EXTRA)"
+	 @echo "DASH_INC      = $(DASH_INC)"
 
 
 $(LIBDASH) :

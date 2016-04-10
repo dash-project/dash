@@ -44,7 +44,9 @@ $(LIBDASH) : $(OBJS)
 clean :
 	rm -f *~
 	rm -f *.o
+	rm -f util/*.o algorithm/*.o
 	rm -f $(LIBDASH)
+
 
 printenv :
 	@echo "DART_IMPL   = $(DART_IMPL)"
