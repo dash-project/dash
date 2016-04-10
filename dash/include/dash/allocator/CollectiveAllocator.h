@@ -180,16 +180,20 @@ public:
    */
   pointer allocate(size_type num_local_elem)
   {
+    DASH_LOG_DEBUG("CollectiveAllocator.allocate(nlocal)",
+                   "number of local values:", num_local_elem);
+    pointer gptr = DART_GPTR_NULL;
     if (num_local_elem > 0) {
-      size_type   num_local_bytes = sizeof(ElementType) * num_local_elem;
-      dart_gptr_t gptr;
+      size_type num_local_bytes = sizeof(ElementType) * num_local_elem;
       if (dart_team_memalloc_aligned(
             _team_id, num_local_bytes, &gptr) == DART_OK) {
         _allocated.push_back(gptr);
-        return gptr;
+      } else {
+        gptr = DART_GPTR_NULL;
       }
     }
-    return DART_GPTR_NULL;
+    DASH_LOG_DEBUG_VAR("CollectiveAllocator.allocate >", gptr);
+    return gptr;
   }
 
   /**

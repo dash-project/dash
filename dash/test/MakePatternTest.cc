@@ -1,9 +1,8 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
 #include "TestBase.h"
-#include "MakePatternTest.h"
 
-#include <dash/MakePattern.h>
+#include "MakePatternTest.h"
 
 using namespace dash;
 

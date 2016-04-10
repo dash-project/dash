@@ -1,17 +1,10 @@
 #ifndef DASH__LIST_H__
 #define DASH__LIST_H__
 
-#include <iterator>
-#include <limits>
-
 #include <dash/Types.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
-#include <dash/Shared.h>
 #include <dash/Exception.h>
-#include <dash/Cartesian.h>
-#include <dash/Dimensional.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
 #include <dash/Array.h>
@@ -20,6 +13,10 @@
 #include <dash/list/LocalListRef.h>
 #include <dash/list/GlobListIter.h>
 #include <dash/internal/list/ListTypes.h>
+
+#include <iterator>
+#include <limits>
+#include <vector>
 
 namespace dash {
 
@@ -173,27 +170,27 @@ class List
   template<typename T_, class A_>
   friend class LocalListRef;
 
+private:
+  typedef List<ElementType, AllocatorType> self_t;
+
 /// Public types as required by DASH list concept
 public:
   typedef ElementType                                             value_type;
   typedef typename dash::default_index_t                          index_type;
-  typedef typename std::make_unsigned<index_type>::type            size_type;
+  typedef typename dash::default_size_t                            size_type;
   typedef AllocatorType                                       allocator_type;
-  typedef LocalListRef<ElementType, AllocatorType>                local_type;
+
   typedef ListRef<ElementType, AllocatorType>                      view_type;
+  typedef LocalListRef<ElementType, AllocatorType>                local_type;
 
 private:
   typedef internal::ListNode<value_type>
     node_type;
-  typedef DistributionSpec<1>
-    DistributionSpec_t;
-  typedef SizeSpec<1, size_type>
-    SizeSpec_t;
-  typedef ViewSpec<1, index_type>
-    ViewSpec_t;
+
   typedef typename AllocatorType::template rebind<
                      internal::ListNode<ElementType> >::other
     node_allocator_type;
+
   typedef dash::GlobDynamicMem<node_type, node_allocator_type>
     glob_mem_type;
 
@@ -203,7 +200,7 @@ private:
 
 /// Public types as required by STL list concept
 public:
-  typedef typename std::make_unsigned<index_type>::type      difference_type;
+  typedef index_type                                         difference_type;
 
   typedef GlobListIter<value_type, glob_mem_type>                   iterator;
   typedef GlobListIter<const value_type, glob_mem_type>       const_iterator;
@@ -231,9 +228,6 @@ public:
   typedef typename glob_mem_type::const_local_reference
     const_local_reference;
 
-private:
-  typedef List<ElementType, AllocatorType> self_t;
-
 public:
   /// Local proxy object, allows use in range-based for loops.
   local_type local;
@@ -249,19 +243,22 @@ public:
     Team & team = dash::Team::Null())
   : local(this),
     _team(&team),
+    _myid(team.myid()),
     _remote_size(0)
   {
     DASH_LOG_TRACE("List() >", "default constructor");
   }
 
   /**
-   * Constructor, specifies distribution type explicitly.
+   * Constructor, creates a new constainer instance with the specified
+   * initial global container capacity and associated units.
    */
   List(
     size_type   nelem,
     Team      & team   = dash::Team::All())
   : local(this),
     _team(&team),
+    _myid(team.myid()),
     _remote_size(0)
   {
     DASH_LOG_TRACE("List()", nelem);
@@ -270,16 +267,19 @@ public:
       _local_sizes.local[0] = 0;
     }
     allocate(nelem);
+    barrier();
     DASH_LOG_TRACE("List() >");
   }
 
   /**
-   * Destructor, deallocates list elements.
+   * Destructor, deallocates local and global memory acquired by the
+   * container instance.
    */
   ~List()
   {
     DASH_LOG_TRACE_VAR("List.~List()", this);
     deallocate();
+    DASH_LOG_TRACE_VAR("List.~List >", this);
   }
 
   /**
@@ -411,6 +411,16 @@ public:
   }
 
   /**
+   * Maximum number of elements a list container can hold, e.g. due to
+   * system limitations.
+   * The maximum size is not guaranteed.
+   */
+  constexpr size_type max_size() const noexcept
+  {
+    return std::numeric_limits<index_type>::max();
+  }
+
+  /**
    * The size of the list.
    *
    * \return  The number of elements in the list.
@@ -418,16 +428,6 @@ public:
   inline size_type size() const noexcept
   {
     return _remote_size + _local_sizes.local[0];
-  }
-
-  /**
-   * Maximum number of elements a list container can hold, e.g. due to
-   * system limitations.
-   * The maximum size is not guaranteed.
-   */
-  inline size_type max_size() const noexcept
-  {
-    return std::numeric_limits<int>::max();
   }
 
   /**
@@ -450,11 +450,25 @@ public:
     return _globmem->size();
   }
 
+  /**
+   * Removes and destroys single element referenced by given iterator from
+   * the container, decreasing the container size by 1.
+   *
+   * \return  iterator to the element that follows the last element removed,
+   *          or \c end() if the last element was removed.
+   */
   inline iterator erase(const_iterator position)
   {
     return _begin;
   }
 
+  /**
+   * Removes and destroys elements in the given range from the container,
+   * decreasing the container size by the number of elements removed.
+   *
+   * \return  iterator to the element that follows the last element removed,
+   *          or \c end() if the last element was removed.
+   */
   inline iterator erase(const_iterator first, const_iterator last)
   {
     return _end;
@@ -463,8 +477,8 @@ public:
   /**
    * The team containing all units accessing this list.
    *
-   * \return  The instance of Team that this list has been instantiated
-   *          with
+   * \return  A reference to the Team containing the units associated with
+   *          the container instance.
    */
   inline const Team & team() const noexcept
   {
@@ -490,13 +504,15 @@ public:
    */
   inline size_type lcapacity() const noexcept
   {
-    return _globmem->local_size();
+    return _globmem != nullptr
+           ? _globmem->local_size()
+           : 0;
   }
 
   /**
-   * Checks whether the list is empty.
+   * Whether the list is empty.
    *
-   * \return  True if \c size() is 0, otherwise false
+   * \return  true if \c size() is 0, otherwise false
    */
   inline bool empty() const noexcept
   {
@@ -511,20 +527,30 @@ public:
   {
     DASH_LOG_TRACE_VAR("List.barrier()", _team);
     // Apply changes in local memory spaces to global memory space:
-    _globmem->commit();
+    if (_globmem != nullptr) {
+      _globmem->commit();
+    }
     // Accumulate local sizes of remote units:
     _remote_size = 0;
     for (int u = 0; u < _team->size(); ++u) {
       if (u != _myid) {
-        _remote_size += _local_sizes[u];
+        size_type local_size_u  = _local_sizes[u];
+        _remote_size           += local_size_u;
       }
     }
     DASH_LOG_TRACE("List.barrier()", "passed barrier");
   }
 
+  /**
+   * Allocate memory for this container in global memory.
+   *
+   * Calls implicit barrier on the team associated with the container
+   * instance.
+   */
   bool allocate(
-    /// Initial global capacity of the list.
+    /// Initial global capacity of the container.
     size_type    nelem = 0,
+    /// Team containing all units associated with the container.
     dash::Team & team  = dash::Team::All())
   {
     DASH_LOG_TRACE("List.allocate()");
@@ -570,6 +596,12 @@ public:
     return true;
   }
 
+  /**
+   * Free global memory allocated by this container instance.
+   *
+   * Calls implicit barrier on the team associated with the container
+   * instance.
+   */
   void deallocate()
   {
     DASH_LOG_TRACE_VAR("List.deallocate()", this);

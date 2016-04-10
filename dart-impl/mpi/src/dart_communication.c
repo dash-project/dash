@@ -974,13 +974,13 @@ dart_ret_t dart_waitall_local(
     mpi_sta = (MPI_Status  *) malloc(num_handles * sizeof(MPI_Status));
     for (i = 0; i < num_handles; i++)  {
       if (handle[i] != NULL) {
-        DART_LOG_TRACE("dart_waitall_local: -- handle[%d]: %p)",
+        DART_LOG_TRACE("dart_waitall_local: -- handle[%"PRIu64"]: %p)",
                        i, (void*)handle[i]);
-        DART_LOG_TRACE("dart_waitall_local:    handle[%d]->dest: %d",
+        DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->dest: %d",
                        i, handle[i]->dest);
-        DART_LOG_TRACE("dart_waitall_local:    handle[%d]->win:  %d",
-                       i, handle[i]->win);
-        DART_LOG_TRACE("dart_waitall_local:    handle[%d]->req:  %p",
+        DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->win:  %p",
+                       i, (void*)((uint64_t)(handle[i]->win)));
+        DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->req:  %p",
                        i, (void*)((uint64_t)(handle[i]->request)));
         mpi_req[r_n] = handle[i]->request;
         r_n++;
@@ -990,7 +990,7 @@ dart_ret_t dart_waitall_local(
      * Wait for local completion of MPI requests:
      */
     DART_LOG_DEBUG("dart_waitall_local: "
-                   "MPI_Waitall, %d requests from %zu handles",
+                   "MPI_Waitall, %"PRIu64" requests from %"PRIu64" handles",
                    r_n, num_handles);
     if (r_n > 0) {
       if (MPI_Waitall(r_n, mpi_req, mpi_sta) == MPI_SUCCESS) {
@@ -1015,9 +1015,11 @@ dart_ret_t dart_waitall_local(
     r_n = 0;
     for (i = 0; i < num_handles; i++) {
       if (handle[i]) {
-        DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%d].MPI_SOURCE: %d",
+        DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%"PRIu64"].MPI_SOURCE:"
+                       " %d",
                        r_n, mpi_sta[r_n].MPI_SOURCE);
-        DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%d].MPI_ERROR:  %d:%s",
+        DART_LOG_TRACE("dart_waitall_local: -- mpi_sta[%"PRIu64"].MPI_ERROR:"
+                       "  %d:%s",
                        r_n,
                        mpi_sta[r_n].MPI_ERROR,
                        DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
@@ -1282,10 +1284,10 @@ dart_ret_t dart_barrier(
 }
 
 dart_ret_t dart_bcast(
-  void *buf,
-  size_t nbytes,
-  int root,
-  dart_team_t teamid)
+  void        * buf,
+  size_t        nbytes,
+  int           root,
+  dart_team_t   teamid)
 {
   MPI_Comm comm;
   uint16_t index;
