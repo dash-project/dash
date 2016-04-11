@@ -334,7 +334,7 @@ public:
       // Create new unattached bucket:
       DASH_LOG_TRACE("GlobDynamicMem.grow", "creating new unattached bucket:",
                      "size:", num_elements);
-      _local_commit_buf.reserve(num_elements);
+      _local_commit_buf.resize(num_elements);
       bucket_type bucket;
       bucket.size     = num_elements;
       bucket.lptr     = &_local_commit_buf[0];
@@ -498,6 +498,8 @@ public:
     _num_detach_buckets.local[0] = num_detach_buckets;
     barrier();
 
+    DASH_LOG_TRACE("GlobDynamicMem.commit",
+                   "querying min_detach/max_detach");
     // TODO: use dash::min_max_element once it is available
     //
     auto min_detach_buckets_git  = dash::min_element(
@@ -510,6 +512,8 @@ public:
     auto unit_max_detach_buckets = max_detach_buckets_git.gpos();
     int  min_detach_buckets      = *min_detach_buckets_git;
     int  max_detach_buckets      = *max_detach_buckets_git;
+    DASH_LOG_TRACE("GlobDynamicMem.commit",
+                   "finished querying min_detach/max_detach");
     if (min_detach_buckets == max_detach_buckets) {
       for (auto bucket_it = _detach_buckets.begin();
            bucket_it != _detach_buckets.end();
@@ -545,8 +549,16 @@ public:
     // them locally so a remote unit's local index can be mapped to the
     // remote unit's bucket.
     //
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _local_commit_buf.size());
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _buckets.size());
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _buckets.back().attached);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _buckets.back().size);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _buckets.back().gptr);
+    DASH_ASSERT(num_attach_buckets == 0 || !_local_commit_buf.empty());
     if (!_local_commit_buf.empty() &&
-        !_buckets.empty() && !_buckets.back().attached) {
+        !_buckets.empty() &&
+        !_buckets.back().attached)
+    {
       bucket_type & bucket_last = _buckets.back();
       // Extend existing unattached bucket:
       DASH_LOG_TRACE("GlobDynamicMem.commit", "attaching bucket:",
@@ -618,7 +630,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", size());
     // Update _begin iterator:
     DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _begin");
-    _begin = global_iterator(this, 0, 0);
+    _begin             = global_iterator(this, 0, 0);
     value_type v_begin = *_begin;
     dash__unused(v_begin);
     DASH_LOG_DEBUG("GlobDynamicMem.commit >", "finished");
@@ -952,16 +964,20 @@ private:
     auto bucket_it = _buckets.begin();
     std::advance(bucket_it, bucket_index);
     auto dart_gptr = bucket_it->gptr;
-    // Move dart_gptr to unit and local offset:
-    DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&dart_gptr, unit),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_gptr_incaddr(
-        &dart_gptr,
-        bucket_phase * sizeof(value_type)),
-      DART_OK);
-
+    if (DART_GPTR_EQUAL(dart_gptr, DART_GPTR_NULL)) {
+      DASH_LOG_TRACE("GlobDynamicMem.dart_gptr_at",
+                     "bucket.gptr is DART_GPTR_NULL");
+    } else {
+      // Move dart_gptr to unit and local offset:
+      DASH_ASSERT_RETURNS(
+        dart_gptr_setunit(&dart_gptr, unit),
+        DART_OK);
+      DASH_ASSERT_RETURNS(
+        dart_gptr_incaddr(
+          &dart_gptr,
+          bucket_phase * sizeof(value_type)),
+        DART_OK);
+    }
     DASH_LOG_DEBUG("GlobDynamicMem.dart_gptr_at >", dart_gptr);
     return dart_gptr;
   }

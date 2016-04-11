@@ -179,7 +179,7 @@ public:
       _idx_bucket_idx++;
     }
     _idx += _idx_local_idx;
-    DASH_LOG_TRACE("GlobBucketIter(gmem,unit,lidx)",
+    DASH_LOG_TRACE("GlobBucketIter(gmem,unit,lidx) >",
                    "gidx:",   _idx,
                    "maxidx:", _max_idx,
                    "unit:",   _idx_unit_id,
@@ -219,23 +219,11 @@ public:
   dart_gptr_t dart_gptr() const
   {
     DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr()", _idx);
-    index_type idx    = _idx;
-    index_type offset = 0;
-    // Convert iterator position (_idx) to local index and unit.
-    if (_idx > _max_idx) {
-      // Global iterator pointing past the range indexed by the pattern
-      // which is the case for .end() iterators.
-      idx     = _max_idx;
-      offset += _idx - _max_idx;
-      DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr", _max_idx);
-      DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr", idx);
-      DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr", offset);
-    }
     // Create global pointer from unit, bucket and phase:
     dart_gptr_t dart_gptr = _globmem->dart_gptr_at(
                               _idx_unit_id,
                               _idx_bucket_idx,
-                              _idx_bucket_phase + offset);
+                              _idx_bucket_phase);
     DASH_LOG_TRACE_VAR("GlobBucketIter.dart_gptr >", dart_gptr);
     return dart_gptr;
   }
@@ -279,28 +267,11 @@ public:
    */
   local_pointer local() const
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter.local()", _idx);
-    index_type idx    = _idx;
-    index_type offset = 0;
-    DASH_LOG_TRACE_VAR("GlobBucketIter.local", _max_idx);
-    // Convert iterator position (_idx) to local index and unit.
-    if (_idx > _max_idx) {
-      // Global iterator pointing past the range indexed by the pattern
-      // which is the case for .end() iterators.
-      idx     = _max_idx;
-      offset += _idx - _max_idx;
-    }
-    DASH_LOG_TRACE_VAR("GlobBucketIter.local", idx);
-    DASH_LOG_TRACE_VAR("GlobBucketIter.local", offset);
-    // Global index to local index and unit:
-    auto l_idx = _idx_local_idx + offset;
-    DASH_LOG_TRACE_VAR("GlobBucketIter.local >", _idx_unit_id);
-    DASH_LOG_TRACE_VAR("GlobBucketIter.local >", l_idx);
     if (_myid != _idx_unit_id) {
       // Iterator position does not point to local element
       return nullptr;
     }
-    return (_lbegin + l_idx);
+    return (_lbegin + _idx_local_idx);
   }
 
   /**
@@ -308,23 +279,9 @@ public:
    */
   inline local_index lpos() const
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter.lpos()", _idx);
-    index_type idx    = _idx;
-    index_type offset = 0;
     local_index local_pos;
-    // Convert iterator position (_idx) to local index and unit.
-    if (_idx > _max_idx) {
-      // Global iterator pointing past the range indexed by the pattern
-      // which is the case for .end() iterators.
-      idx    = _max_idx;
-      offset = _idx - _max_idx;
-      DASH_LOG_TRACE_VAR("GlobBucketIter.lpos", _max_idx);
-      DASH_LOG_TRACE_VAR("GlobBucketIter.lpos", idx);
-      DASH_LOG_TRACE_VAR("GlobBucketIter.lpos", offset);
-    }
-    // Global index to local index and unit:
     local_pos.unit  = _idx_unit_id;
-    local_pos.index = _idx_local_idx + offset;
+    local_pos.index = _idx_local_idx;
     return local_pos;
   }
 

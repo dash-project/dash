@@ -32,13 +32,17 @@ TEST_F(UnorderedMapTest, Initialization)
     EXPECT_TRUE_U(elem_inserted);
   }
 
+  DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "committing elements");
   map.barrier();
 
   if (_dash_id == 0) {
     DASH_LOG_DEBUG("UnorderedMapTest.Initialization",
                    "validate inserted element");
-    auto elem_git = map.begin();
-    EXPECT_EQ_U(static_cast<map_value>(*elem_git), value);
+    auto      elem_git = map.begin();
+    map_value actual   = static_cast<map_value>(*elem_git);
+    DASH_LOG_DEBUG("UnorderedMapTest.Initialization",
+                   "got key:", actual.first, "mapped:", actual.second);
+    EXPECT_EQ_U(actual, value);
   }
 
   map.barrier();
