@@ -152,6 +152,27 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
         dash::util::StoreHDF::write(matrix_a, "test.hdf5", "data");
         dash::barrier();
 
+#if 0
+				std::ostream cout;
+        cout << std::setprecision(4) << std::setw(8)
+             << std::left
+             << (double)(4.5432)
+
+        dash::HDF5OutputStream os("test.hdf5");
+
+        os << dash::HDF5Table("data")
+           << dash::HDF5::transposed
+           << matrix_a;
+				os.flush();
+
+				matrix_t m;
+        os >> m;
+
+
+
+        dash::HDF5OutputStream os("test.hdf5");
+#endif
+
         // Read HDF5 Matrix
     }
 
@@ -162,6 +183,13 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
     for(auto i=matrix_b.lbegin(); i<matrix_b.lend(); i++) {
         ASSERT_EQ_U(*i, myid);
     }
+}
+
+TEST_F(HDFTest, OutputStream){
+	auto fopts = dash::HDF5Options::getDefaults();
+	auto test  = dash::HDF5OutputStream("test_stream.hdf5");
+	test << dash::HDF5Table("data")
+			 << dash::HDF5Options(fopts);
 }
 
 #endif // DASH_ENABLE_HDF5

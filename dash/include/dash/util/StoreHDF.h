@@ -7,6 +7,9 @@
 #include <dash/Init.h>
 #include <dash/Array.h>
 #include <dash/Matrix.h>
+
+#include <dash/HDF5OutputStream.h>
+
 #include <sys/stat.h>
 
 #include <hdf5.h>
