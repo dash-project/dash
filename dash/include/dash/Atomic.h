@@ -130,7 +130,8 @@ public:
   /**
    * Atomic fetch-and-op operation on the referenced shared value.
    *
-   * \return  The new value of the referenced shared variable.
+   * \return  The value of the referenced shared variable before the
+   *          operation.
    */
   template<typename BinaryOp>
   ValueType fetch_and_op(
@@ -161,7 +162,8 @@ public:
   /**
    * Atomic fetch-and-add operation on the referenced shared value.
    *
-   * \return  The new value of the referenced shared variable.
+   * \return  The value of the referenced shared variable before the
+   *          operation.
    */
   ValueType fetch_and_add(
     /// Value to be added to global atomic variable.

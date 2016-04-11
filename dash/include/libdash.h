@@ -30,6 +30,7 @@
 #include <dash/Algorithm.h>
 #include <dash/Halo.h>
 #include <dash/Allocator.h>
+#include <dash/Atomic.h>
 
 #include <dash/Pattern.h>
 #include <dash/DynamicPattern.h>

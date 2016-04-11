@@ -952,7 +952,7 @@ public:
   {
     DASH_LOG_TRACE_VAR("Array.barrier()", m_team);
     m_team->barrier();
-    DASH_LOG_TRACE("Array.barrier()", "passed barrier");
+    DASH_LOG_TRACE("Array.barrier >", "passed barrier");
   }
 
   /**
@@ -985,7 +985,8 @@ public:
     }
     if (m_team == nullptr || *m_team == dash::Team::Null()) {
       DASH_LOG_TRACE("Array.allocate",
-                     "initializing pattern with Team::All()");
+                     "initializing with specified team -",
+                     "team size:", team.size());
       m_team    = &team;
       m_pattern = PatternType(nelem, distribution, team);
       DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());

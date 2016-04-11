@@ -162,13 +162,15 @@ public:
     return *this;
   }
 
-  GlobRef<T> & operator+=(const T& ref) {
+  GlobRef<T> & operator+=(const T& ref)
+  {
 #if 0
     T add_val = ref;
-    dart_ret_t result = dart_accumulate(
+    T old_val;
+    dart_ret_t result = dart_fetch_and_op(
                           _gptr,
-                          reinterpret_cast<char *>(add_val),
-                          1,
+                          reinterpret_cast<void *>(&add_val),
+                          reinterpret_cast<void *>(&old_val),
                           dash::dart_datatype<T>::value,
                           dash::plus<T>().dart_operation(),
                           dash::Team::All().dart_id());

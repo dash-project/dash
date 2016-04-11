@@ -181,6 +181,7 @@ public:
     _idx += _idx_local_idx;
     DASH_LOG_TRACE("GlobBucketIter(gmem,unit,lidx)",
                    "gidx:",   _idx,
+                   "maxidx:", _max_idx,
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
                    "bucket:", _idx_bucket_idx,
@@ -664,7 +665,8 @@ auto distance(
   return last - first;
 }
 
-#if 0
+} // namespace internal
+
 template<
   typename ElementType,
   class    GlobMemType,
@@ -683,9 +685,7 @@ std::ostream & operator<<(
      << "gptr:" << ptr      << ")";
   return operator<<(os, ss.str());
 }
-#endif
 
-} // namespace internal
 } // namespace dash
 
 #endif // DASH__INTERNAL__ALLOCATOR__GLOB_BUCKET_ITER_H__INCLUDED

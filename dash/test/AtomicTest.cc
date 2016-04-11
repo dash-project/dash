@@ -7,6 +7,35 @@
 #include <vector>
 #include <algorithm>
 
+TEST_F(AtomicTest, FetchAndOp)
+{
+  typedef size_t value_t;
+
+  value_t     val_init  = 100;
+  dart_unit_t owner     = dash::size() - 1;
+  dash::Shared<value_t> shared(owner);
+
+  if (dash::myid() == 0) {
+    shared.set(val_init);
+  }
+  // wait for initialization:
+  dash::barrier();
+
+  dash::Atomic<value_t> atomic(shared);
+
+  atomic.fetch_and_add(2);
+  // wait for completion of all atomic operations:
+  dash::barrier();
+
+  // incremented by 2 by every unit:
+  value_t val_expect   = val_init + (dash::size() * 2);
+  value_t a_val_actual = atomic.get();
+  value_t s_val_actual = shared.get();
+  EXPECT_EQ_U(val_expect, a_val_actual);
+  EXPECT_EQ_U(val_expect, s_val_actual);
+
+  dash::barrier();
+}
 
 TEST_F(AtomicTest, ArrayElements)
 {

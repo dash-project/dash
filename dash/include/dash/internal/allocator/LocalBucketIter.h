@@ -12,6 +12,7 @@
 #include <iterator>
 #include <sstream>
 #include <iostream>
+#include <memory>
 
 
 namespace dash {
@@ -170,11 +171,13 @@ public:
 
   reference operator*()
   {
+    DASH_ASSERT(!_is_nullptr);
     return _bucket_it->lptr[_bucket_phase];
   }
 
   reference operator[](index_type offset)
   {
+    DASH_ASSERT(!_is_nullptr);
     if (_bucket_phase + offset < _bucket_it->size) {
       // element is in bucket currently referenced by this iterator:
       return _bucket_it->lptr[_bucket_phase + offset];
@@ -192,9 +195,24 @@ public:
                "offset " << offset << " is out of range");
   }
 
-  operator pointer()
+  operator pointer() const
   {
-    return &_bucket_it->lptr[_bucket_phase];
+    DASH_LOG_TRACE("LocalBucketIter.pointer()", "nullptr:", _is_nullptr);
+    pointer lptr = nullptr;
+    if (!_is_nullptr) {
+      auto bucket_size = _bucket_it->size;
+      DASH_LOG_TRACE("LocalBucketIter.pointer",
+                     "bucket size:",  bucket_size, ",",
+                     "bucket phase:", _bucket_phase);
+      DASH_ASSERT_LT(
+        _bucket_phase, bucket_size,
+        "bucket phase out of bounds, " <<
+        "got: " << _bucket_phase <<
+        "max: " << bucket_size);
+      lptr = _bucket_it->lptr + _bucket_phase;
+    }
+    DASH_LOG_TRACE_VAR("LocalBucketIter.pointer >", lptr);
+    return lptr;
   }
 
   self_t & operator++()
@@ -288,13 +306,13 @@ public:
   template<typename E_, typename I_, typename P_, typename R_>
   inline bool operator==(const LocalBucketIter<E_,I_,P_,R_> & other) const
   {
-    return (this == &other || _idx == other._idx);
+    return (this == std::addressof(other) || _idx == other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
   inline bool operator!=(const LocalBucketIter<E_,I_,P_,R_> & other) const
   {
-    return (*this != other);
+    return !(*this == other);
   }
 
   constexpr bool is_local() const
@@ -310,6 +328,7 @@ public:
 private:
   void increment(int offset)
   {
+    DASH_ASSERT(!_is_nullptr);
     _idx += offset;
     if (_bucket_phase + offset < _bucket_it->size) {
       // element is in bucket currently referenced by this iterator:
@@ -333,6 +352,7 @@ private:
 
   void decrement(int offset)
   {
+    DASH_ASSERT(!_is_nullptr);
     if (offset > _idx) {
       DASH_THROW(dash::exception::OutOfRange,
                  "offset " << offset << " is out of range");
@@ -396,7 +416,8 @@ auto distance(
   return last - first;
 }
 
-#if 0
+} // namespace internal
+
 template<
   typename ElementType,
   typename IndexType,
@@ -408,16 +429,14 @@ std::ostream & operator<<(
           ElementType, IndexType, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  auto ptr = &it;
+  ElementType * lptr = it;
   ss << "dash::internal::LocalBucketIter<"
      << typeid(ElementType).name() << ">("
      << "idx:"  << it.pos() << ", "
-     << "lptr:" << ptr      << ")";
+     << "lptr:" << lptr     << ")";
   return operator<<(os, ss.str());
 }
-#endif
 
-} // namespace internal
 } // namespace dash
 
 #endif // DASH__INTERNAL__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED

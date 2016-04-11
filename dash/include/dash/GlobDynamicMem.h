@@ -306,14 +306,14 @@ public:
    * \see shrink
    * \see commit
    */
-  void grow(size_type num_elements)
+  local_iterator grow(size_type num_elements)
   {
     DASH_LOG_DEBUG_VAR("GlobDynamicMem.grow()", num_elements);
     DASH_LOG_TRACE("GlobDynamicMem.grow",
                    "current local size:", _local_sizes.local[0]);
     if (num_elements == 0) {
       DASH_LOG_DEBUG("GlobDynamicMem.grow >", "no grow");
-      return;
+      return _lend;
     }
     // Update size of local memory space:
     _local_sizes.local[0] += num_elements;
@@ -353,12 +353,14 @@ public:
     _lbegin = lbegin(_myid);
     _lend   = lend(_myid);
 
-    DASH_LOG_DEBUG("GlobDynamicMem.grow >", "finished - ",
+    DASH_LOG_DEBUG("GlobDynamicMem.grow", "finished - ",
                    "new local size:",           _local_sizes.local[0],
                    "new iteration space size:", std::distance(
                                                   _lbegin, _lend),
                    "total number of buckets:",  _buckets.size(),
                    "unattached bucket:",        !_buckets.back().attached);
+    DASH_LOG_DEBUG("GlobDynamicMem.grow >");
+    return _lbegin + (local_size() - 1);
   }
 
   /**
@@ -552,9 +554,13 @@ public:
                      "lptr:", bucket_last.lptr,
                      "gptr:", bucket_last.gptr);
       bucket_last.lptr = _allocator.allocate_local(bucket_last.size);
-      std::copy(_local_commit_buf.begin(),
-                _local_commit_buf.end(),
-                bucket_last.lptr);
+      // Using placement new to avoid copy/assignment as value_type might
+      // be const:
+      value_type * lptr_alloc = bucket_last.lptr;
+      for (auto elem : _local_commit_buf) {
+        new (lptr_alloc) value_type(elem);
+        ++lptr_alloc;
+      }
       _local_commit_buf.resize(0);
       // Attach bucket's local memory segment in global memory:
       bucket_last.gptr = _allocator.attach(
@@ -608,10 +614,13 @@ public:
         _remote_size += unit_local_size_new;
       }
     }
-    // Update _begin iterator:
-    _begin = at(0, 0);
-
     DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _remote_size);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", size());
+    // Update _begin iterator:
+    DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _begin");
+    _begin = global_iterator(this, 0, 0);
+    value_type v_begin = *_begin;
+    dash__unused(v_begin);
     DASH_LOG_DEBUG("GlobDynamicMem.commit >", "finished");
   }
 

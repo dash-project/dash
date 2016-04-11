@@ -235,6 +235,14 @@ public:
     _team->barrier();
   }
 
+  /**
+   * Get underlying DART global pointer of the shared variable.
+   */
+  inline dart_gptr_t dart_gptr() const noexcept
+  {
+    return _ptr.dart_gptr();
+  }
+
 private:
   dash::Team                   * _team    = nullptr;
   dart_unit_t                    _owner   = DART_UNDEFINED_UNIT_ID;
