@@ -62,6 +62,7 @@ public:
     DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
 
     if (_teamid == DART_TEAM_NULL) {
+      // TODO: Should be 0
       _nunits = 1;
     } else {
       DASH_ASSERT_RETURNS(
@@ -102,7 +103,12 @@ public:
     _lbegin = lbegin(dash::myid());
     _lend   = lend(dash::myid());
     // Initialize allocated local elements with specified values:
-    std::copy(_lbegin, _lend, local_elements.begin());
+    auto copy_end = std::copy(local_elements.begin(),
+                      local_elements.end(),
+                      _lbegin);
+    DASH_ASSERT_EQ(_lend, copy_end,
+                   "initialization of specified local values failed");
+
     DASH_LOG_TRACE("GlobMem(lvals,team) >");
   }
 

@@ -669,7 +669,7 @@ public:
     async(this),
     m_team(&team),
     m_pattern(
-      SizeSpec_t(local_elements.size()),
+      SizeSpec_t(nelem),
       distribution,
       team),
     m_size(0),
@@ -1000,6 +1000,7 @@ public:
   }
 
   bool allocate(
+    size_type                           nelem,
     std::initializer_list<value_type>   local_elements,
     dash::DistributionSpec<1>           distribution,
     dash::Team                        & team = dash::Team::All())
@@ -1009,7 +1010,6 @@ public:
     DASH_LOG_TRACE_VAR("Array.allocate", m_team->dart_id());
     DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
     // Check requested capacity:
-    auto nelem = local_elements.size();
     if (nelem == 0) {
       DASH_THROW(
         dash::exception::InvalidArgument,

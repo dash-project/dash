@@ -31,12 +31,13 @@ protected:
     _dash_id   = dash::myid();
     _dash_size = dash::size();
     _num_elem  = 100;
+    dash::barrier();
     LOG_MESSAGE("===> Running test case with %d units ...",
                 _dash_size);
   }
 
   virtual void TearDown() {
-    dash::Team::All().barrier();
+    dash::barrier();
     LOG_MESSAGE("<=== Finished test case with %d units",
                 _dash_size);
   }
