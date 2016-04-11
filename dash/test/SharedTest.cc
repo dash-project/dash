@@ -1,8 +1,9 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
-#include "TestBase.h"
 
+#include "TestBase.h"
 #include "SharedTest.h"
+
 
 TEST_F(SharedTest, SingleWriteMultiRead)
 {

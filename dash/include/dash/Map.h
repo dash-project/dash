@@ -8,7 +8,7 @@
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
 #include <dash/Array.h>
-#include <dash/Shared.h>
+#include <dash/Atomic.h>
 
 #include <dash/map/MapRef.h>
 #include <dash/map/LocalMapRef.h>
@@ -18,6 +18,7 @@
 #include <utility>
 #include <limits>
 #include <vector>
+#include <functional>
 
 namespace dash {
 
@@ -163,11 +164,16 @@ public:
     const_local_reference;
 
   typedef dash::Array<
-            dash::Shared<size_type>,
-            int,
-            dash::CSRPattern<1, dash::ROW_MAJOR, int>
-          >
+            size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
     local_sizes_map;
+
+  typedef struct {
+    dart_unit_t unit;
+    index_type  index;
+  } key_local_pos;
+
+  typedef std::function<key_local_pos(key_type)>
+    key_mapping;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
@@ -181,13 +187,25 @@ public:
    * that are declared before \c dash::Init().
    */
   Map(
-    Team & team = dash::Team::Null())
+    size_type   nelem = 0,
+    Team      & team  = dash::Team::Null())
   : local(this),
     _team(&team),
     _myid(team.myid()),
-    _remote_size(0)
+    _remote_size(0),
+    _key_mapping(
+      std::bind(&self_t::cyclic_key_mapping, this, std::placeholders::_1))
   {
-    DASH_LOG_TRACE("Map() >", "default constructor");
+    DASH_LOG_TRACE_VAR("Map(nelem,team)", nelem);
+    if (_team->size() > 0) {
+      _local_sizes.allocate(team.size(), dash::BLOCKED, team);
+      _local_sizes.local[0] = 0;
+      if (nelem > 0) {
+        allocate(nelem);
+        barrier();
+      }
+    }
+    DASH_LOG_TRACE("Map(nelem,team) >");
   }
 
   /**
@@ -195,21 +213,26 @@ public:
    * initial global container capacity and associated units.
    */
   Map(
-    size_type   nelem,
-    Team      & team   = dash::Team::All())
+    size_type            nelem,
+    /// Function mapping element keys to unit and local index.
+    const key_mapping  & key_mapping_fun,
+    Team               & team = dash::Team::All())
   : local(this),
     _team(&team),
     _myid(team.myid()),
-    _remote_size(0)
+    _remote_size(0),
+    _key_mapping(key_mapping_fun)
   {
-    DASH_LOG_TRACE("Map()", nelem);
+    DASH_LOG_TRACE_VAR("Map(nelem,kmap,team)", nelem);
     if (_team->size() > 0) {
       _local_sizes.allocate(team.size(), dash::BLOCKED, team);
-      _local_sizes.local[0].set(0);
+      _local_sizes.local[0] = 0;
+      if (nelem > 0) {
+        allocate(nelem);
+        barrier();
+      }
     }
-    allocate(nelem);
-    barrier();
-    DASH_LOG_TRACE("Map() >");
+    DASH_LOG_TRACE("Map(nelem,kmap,team) >");
   }
 
   /**
@@ -259,7 +282,7 @@ public:
     _remote_size = 0;
     for (int u = 0; u < _team->size(); ++u) {
       if (u != _myid) {
-        size_type local_size_u  = _local_sizes[u].get();
+        size_type local_size_u  = _local_sizes[u];
         _remote_size           += local_size_u;
       }
     }
@@ -345,8 +368,8 @@ public:
       delete _globmem;
       _globmem = nullptr;
     }
-    _local_sizes.local[0].set(0);
-    _remote_size = 0;
+    _local_sizes.local[0] = 0;
+    _remote_size          = 0;
     DASH_LOG_TRACE_VAR("Map.deallocate >", this);
   }
 
@@ -458,7 +481,7 @@ public:
    */
   inline size_type size() const noexcept
   {
-    return _remote_size + _local_sizes.local[0].get();
+    return _remote_size + _local_sizes.local[0];
   }
 
   /**
@@ -490,7 +513,7 @@ public:
    */
   inline size_type lsize() const noexcept
   {
-    return _local_sizes.local[0].get();
+    return _local_sizes.local[0];
   }
 
   /**
@@ -597,27 +620,46 @@ public:
     /// The element to insert.
     const value_type & value)
   {
-    bool          inserted    = false;
-    key_local_pos l_pos       = _key_mapping.at(key);
+    auto result   = std::make_pair(_end, false);
+    auto key      = value.first;
+    auto mapped   = value.second;
+    // Resolve insertion position of element from key mapping:
+    auto l_pos    = _key_mapping(key);
     // Unit assigned to range containing the given key:
-    dart_unit_t   unit        = l_pos.unit;
+    auto unit     = l_pos.unit;
     // Offset of key in local memory:
-    index_type    l_idx       = l_pos.index;
-    // Local capacity and number of elements of remote unit:
-    size_type     remote_cap  = _globmem->local_size(unit);
-    size_type     remote_size = _local_sizes[unit].get();
-    // Global iterator to element insert position:
-    auto          g_it        = _globmem->at(unit, l_idx);
-    if (element_found) {
+    auto l_idx    = l_pos.index;
+    if (unit == _myid) {
+      // Local insertion, target unit of element is active unit:
     } else {
-      // No element with equivalent key found, try to add new element:
-      inserted = true;
-      if (remote_cap > remote_size) {
-        // Emplace new element at remote unit:
-        // TODO
+      // Remote insertion:
+      // Local capacity and number of elements of remote unit:
+      size_type remote_cap  = _globmem->local_size(unit);
+      size_type remote_size = _local_sizes[unit];
+      // Global iterator to element insert position:
+      auto      g_it        = _globmem->at(unit, l_idx);
+      if (element_found) {
+        // Existing element with equivalent key found, no insertion:
+        result.second = false;
+      } else {
+        // No element with equivalent key found, try to add new element:
+        result.second = true;
+        if (remote_cap > remote_size) {
+          // Emplace new element at remote unit:
+          // Atomic increment of local size of remote unit:
+          size_type new_remote_size = dash::Atomic<size_type>(
+                                        _local_sizes[unit]
+                                      ).fetch_and_add(1);
+          // Check local capacity of remote unit after atomic increment:
+          if (remote_cap < new_remote_size) {
+            DASH_THROW(
+              dash::exception::RuntimeError,
+              "Map.insert failed: local capacity of target unit exceeded");
+          }
+        }
       }
     }
-    return std::make_pair(g_it, inserted);
+    return result;
   }
 
   /**
@@ -676,6 +718,20 @@ public:
   }
 
 private:
+  /**
+   * Simplistic cyclic key mapping function.
+   */
+  key_local_pos cyclic_key_mapping(key_type key) const
+  {
+    key_local_pos lpos;
+    auto unit  = static_cast<dart_unit_t>(key) % _team->size();
+    auto lcap  = _globmem->local_size(unit);
+    lpos.unit  = unit;
+    lpos.index = static_cast<index_type>(key) % unit_lcap;
+    return lpos;
+  }
+
+private:
   /// Team containing all units interacting with the map.
   dash::Team           * _team        = nullptr;
   /// DART id of the unit that created the map.
@@ -694,6 +750,8 @@ private:
   local_iterator         _lend;
   /// Mapping units to their number of local map elements.
   local_sizes_map        _local_sizes;
+  /// Mapping of key to unit and local offset.
+  key_mapping            _key_mapping;
 
 }; // class Map
 

@@ -277,6 +277,77 @@ dart_ret_t dart_accumulate(
   return DART_OK;
 }
 
+dart_ret_t dart_fetch_and_op(
+  dart_gptr_t      gptr,
+  void *           value,
+  void *           result,
+  dart_datatype_t  dtype,
+  dart_operation_t op,
+  dart_team_t      team)
+{
+  MPI_Aint     disp_s,
+               disp_rel;
+  MPI_Win      win;
+  MPI_Datatype mpi_dtype;
+  MPI_Op       mpi_op;
+  dart_unit_t  target_unitid_abs;
+  uint64_t offset   = gptr.addr_or_offs.offset;
+  int16_t  seg_id   = gptr.segid;
+  target_unitid_abs = gptr.unitid;
+  mpi_dtype         = dart_mpi_datatype(dtype);
+  mpi_op            = dart_mpi_op(op);
+
+  (void)(team); // To prevent compiler warning from unused parameter.
+
+  DART_LOG_DEBUG("dart_fetch_and_op() dtype:%d op:%d unit:%d",
+                 dtype, op, target_unitid_abs);
+  if (seg_id) {
+    dart_unit_t target_unitid_rel;
+    uint16_t index = gptr.flags;
+    win            = dart_win_lists[index];
+    unit_g2l(index,
+             target_unitid_abs,
+             &target_unitid_rel);
+    if (dart_adapt_transtable_get_disp(
+          seg_id,
+          target_unitid_rel,
+          &disp_s) == -1) {
+      DART_LOG_ERROR("dart_fetch_and_op ! "
+                     "dart_adapt_transtable_get_disp failed");
+      return DART_ERR_INVAL;
+    }
+    disp_rel = disp_s + offset;
+    MPI_Fetch_and_op(
+      value,             // Origin address
+      result,            // Result address
+      mpi_dtype,         // Data type of each buffer entry
+      target_unitid_rel, // Rank of target
+      disp_rel,          // Displacement from start of window to beginning
+                         // of target buffer
+      mpi_op,            // Reduce operation
+      win);
+    DART_LOG_TRACE("dart_fetch_and_op:  (from coll. allocation) "
+                   "target unit: %d offset: %"PRIu64"",
+                   target_unitid_abs, offset);
+  } else {
+    win = dart_win_local_alloc;
+    MPI_Fetch_and_op(
+      value,             // Origin address
+      result,            // Result address
+      mpi_dtype,         // Data type of each buffer entry
+      target_unitid_abs, // Rank of target
+      offset,            // Displacement from start of window to beginning
+                         // of target buffer
+      mpi_op,            // Reduce operation
+      win);
+    DART_LOG_TRACE("dart_fetch_and_op:  (from local allocation) "
+                   "target unit: %d offset: %"PRIu64"",
+                   target_unitid_abs, offset);
+  }
+  DART_LOG_DEBUG("dart_fetch_and_op > finished");
+  return DART_OK;
+}
+
 /* -- Non-blocking dart one-sided operations -- */
 
 dart_ret_t dart_get_handle(

@@ -1,11 +1,12 @@
 #ifndef DASH__HALO_H__
 #define DASH__HALO_H__
 
-#include <functional>
-
 #include <dash/Allocator.h>
 #include <dash/GlobMem.h>
 #include <dash/internal/Logging.h>
+
+#include <functional>
+
 
 namespace dash {
 

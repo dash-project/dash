@@ -1,5 +1,5 @@
-#ifndef DASH__TEST__SHARED_TEST_H_
-#define DASH__TEST__SHARED_TEST_H_
+#ifndef DASH__TEST__ATOMIC_TEST_H_
+#define DASH__TEST__ATOMIC_TEST_H_
 
 #include <gtest/gtest.h>
 #include <libdash.h>
@@ -7,36 +7,32 @@
 #include "TestBase.h"
 
 /**
- * Test fixture for class dash::Shared
+ * Test fixture for class dash::Atomic
  */
-class SharedTest : public ::testing::Test {
+class AtomicTest : public ::testing::Test {
 protected:
   size_t _dash_id;
   size_t _dash_size;
 
-  SharedTest()
+  AtomicTest()
   : _dash_id(0),
-    _dash_size(0)
-  {
-    LOG_MESSAGE(">>> Test suite: SharedTest");
+    _dash_size(0) {
+    LOG_MESSAGE(">>> Test suite: AtomicTest");
     LOG_MESSAGE(">>> Hostname: %s PID: %d", _hostname().c_str(), _pid());
   }
 
-  virtual ~SharedTest()
-  {
-    LOG_MESSAGE("<<< Closing test suite: SharedTest");
+  virtual ~AtomicTest() {
+    LOG_MESSAGE("<<< Closing test suite: AtomicTest");
   }
 
-  virtual void SetUp()
-  {
+  virtual void SetUp() {
     _dash_id   = dash::myid();
     _dash_size = dash::size();
     dash::barrier();
     LOG_MESSAGE("===> Running test case with %d units ...", _dash_size);
   }
 
-  virtual void TearDown()
-  {
+  virtual void TearDown() {
     dash::barrier();
     LOG_MESSAGE("<=== Finished test case with %d units", _dash_size);
   }
@@ -53,4 +49,4 @@ protected:
   }
 };
 
-#endif // DASH__TEST__SHARED_TEST_H_
+#endif // DASH__TEST__ATOMIC_TEST_H_

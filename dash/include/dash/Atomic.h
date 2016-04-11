@@ -114,16 +114,60 @@ public:
     DASH_ASSERT(
       !DART_GPTR_EQUAL(
         _gptr, DART_GPTR_NULL));
+    value_type acc = add_val;
     dart_ret_t ret = dart_accumulate(
                        _gptr,
-                       reinterpret_cast<char *>(&add_val),
+                       reinterpret_cast<char *>(&acc),
                        1,
                        dash::dart_datatype<ValueType>::value,
                        dash::plus<ValueType>().dart_operation(),
                        _team->dart_id());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     dart_flush(_gptr);
-    DASH_LOG_DEBUG("Atomic.add >");
+    DASH_LOG_DEBUG_VAR("Atomic.add >", acc);
+  }
+
+  /**
+   * Atomic fetch-and-op operation on the referenced shared value.
+   *
+   * \return  The new value of the referenced shared variable.
+   */
+  template<typename BinaryOp>
+  ValueType fetch_and_op(
+    BinaryOp  op,
+    /// Value to be added to global atomic variable.
+    ValueType val)
+  {
+    DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op()", val);
+    DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   _gptr);
+    DASH_ASSERT(_team != nullptr);
+    DASH_ASSERT(
+      !DART_GPTR_EQUAL(
+        _gptr, DART_GPTR_NULL));
+    value_type acc;
+    dart_ret_t ret = dart_fetch_and_op(
+                       _gptr,
+                       reinterpret_cast<void *>(&val),
+                       reinterpret_cast<void *>(&acc),
+                       dash::dart_datatype<ValueType>::value,
+                       op.dart_operation(),
+                       _team->dart_id());
+    DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
+    dart_flush(_gptr);
+    DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op >", acc);
+    return acc;
+  }
+
+  /**
+   * Atomic fetch-and-add operation on the referenced shared value.
+   *
+   * \return  The new value of the referenced shared variable.
+   */
+  ValueType fetch_and_add(
+    /// Value to be added to global atomic variable.
+    ValueType val)
+  {
+    return fetch_and_op(dash::plus<ValueType>(), val);
   }
 
 private:
