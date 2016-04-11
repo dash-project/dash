@@ -270,7 +270,7 @@ void perform_test(
                      dash::summa_pattern_layout_constraints >(
                        size_spec);
   if (params.units_x > 0 && params.units_y > 0) {
-    std::array<extent_t, 2> team_extents { params.units_y, params.units_x };
+    std::array<extent_t, 2> team_extents {{ params.units_y, params.units_x }};
     team_spec.resize(team_extents);
   }
 #if 0

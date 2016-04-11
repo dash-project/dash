@@ -172,7 +172,7 @@ public:
     _local_sizes(local_sizes),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _distspec(_arguments.distspec()), 
     _team(&_arguments.team()),
     _teamspec(_arguments.teamspec()), 
@@ -184,7 +184,7 @@ public:
     _nblocks(_nunits),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("MockPattern()", "Constructor with argument list");
@@ -213,7 +213,7 @@ public:
     _local_sizes(local_sizes),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _distspec(DistributionSpec_t()),
     _team(&team),
     _teamspec(
@@ -228,7 +228,7 @@ public:
     _nblocks(_nunits),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("MockPattern()", "(sizespec, dist, teamspec, team)");
@@ -255,7 +255,7 @@ public:
     _local_sizes(local_sizes),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _distspec(DistributionSpec_t()),
     _team(&team),
     _teamspec(_distspec, *_team),
@@ -267,7 +267,7 @@ public:
     _nblocks(_nunits),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("MockPattern()", "(sizespec, dist, team)");
@@ -532,7 +532,7 @@ public:
     dart_unit_t unit) const {
     DASH_LOG_DEBUG_VAR("MockPattern.local_extents()", unit);
     DASH_LOG_DEBUG_VAR("MockPattern.local_extents >", _local_size);
-    return std::array<SizeType, 1> { _local_size };
+    return std::array<SizeType, 1> {{ _local_size }};
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -617,7 +617,7 @@ public:
       if (block_offset <= g_index) {
         auto l_coord = g_index - block_offset;
         DASH_LOG_TRACE_VAR("MockPattern.local_coords >", l_coord);
-        return std::array<IndexType, 1> { l_coord };
+        return std::array<IndexType, 1> {{ l_coord }};
       }
     }
     DASH_THROW(
@@ -673,7 +673,7 @@ public:
     // Initialize global index with element phase (= local coords):
     index_type glob_index = _block_offsets[unit] + local_coords[0];
     DASH_LOG_TRACE_VAR("MockPattern.global >", glob_index);
-    return std::array<IndexType, 1> { glob_index };
+    return std::array<IndexType, 1> {{ glob_index }};
   }
 
   /**
@@ -697,7 +697,7 @@ public:
   IndexType global(
     dart_unit_t unit,
     IndexType l_index) const {
-    return global(unit, std::array<IndexType, 1> { l_index })[0];
+    return global(unit, std::array<IndexType, 1> {{ l_index }})[0];
   }
 
   /**
@@ -710,7 +710,7 @@ public:
    */
   IndexType global(
     IndexType l_index) const {
-    return global(_team->myid(), std::array<IndexType, 1> { l_index })[0];
+    return global(_team->myid(), std::array<IndexType, 1> {{ l_index }})[0];
   }
 
   /**
@@ -937,7 +937,7 @@ public:
    * \see DashPatternConcept
    */
   SizeSpec_t sizespec() const {
-    return SizeSpec_t(std::array<SizeType, 1> { _size });
+    return SizeSpec_t(std::array<SizeType, 1> {{ _size }});
   }
 
   /**
@@ -946,7 +946,7 @@ public:
    * \see DashPatternConcept
    */
   const std::array<SizeType, NumDimensions> & extents() const {
-    return std::array<SizeType, 1> { _size };
+    return std::array<SizeType, 1> {{ _size }};
   }
 
   /**
@@ -986,7 +986,7 @@ public:
    */
   std::array<IndexType, NumDimensions> coords(
     IndexType index) const {
-    return std::array<IndexType, 1> { index };
+    return std::array<IndexType, 1> {{ index }};
   }
 
   /**
