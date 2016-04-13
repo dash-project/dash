@@ -12,6 +12,8 @@
 
 // #include <dash/map/UnorderedMapRef.h>
 // #include <dash/map/LocalUnorderedMapRef.h>
+#include <dash/map/LocalUnorderedMapIter.h>
+#include <dash/map/GlobUnorderedMapIter.h>
 
 #include <iterator>
 #include <utility>
@@ -204,42 +206,72 @@ private:
     self_t;
 
 public:
-  typedef Key                                                        key_type;
-  typedef Mapped                                                  mapped_type;
-  typedef Hash                                                         hasher;
-  typedef Pred                                                      key_equal;
-  typedef Alloc                                                allocator_type;
+  typedef Key                                                       key_type;
+  typedef Mapped                                                 mapped_type;
+  typedef Hash                                                        hasher;
+  typedef Pred                                                     key_equal;
+  typedef Alloc                                               allocator_type;
 
-  typedef dash::default_index_t                               difference_type;
-  typedef dash::default_size_t                                      size_type;
-  typedef std::pair<const key_type, mapped_type>                   value_type;
-  typedef std::pair<      key_type, mapped_type>              base_value_type;
+  typedef dash::default_index_t                                   index_type;
+  typedef dash::default_index_t                              difference_type;
+  typedef dash::default_size_t                                     size_type;
+  typedef std::pair<const key_type, mapped_type>                  value_type;
 
-  typedef dash::GlobDynamicMem<value_type, allocator_type>
-    glob_mem_type;
+  typedef LocalUnorderedMapRef<Key, Mapped, Hash, Pred, Alloc>    local_type;
 
-  typedef typename glob_mem_type::global_iterator                    iterator;
-  typedef typename glob_mem_type::const_global_iterator        const_iterator;
+  typedef dash::GlobDynamicMem<value_type, allocator_type>     glob_mem_type;
 
-  typedef typename glob_mem_type::reference                         reference;
-  typedef typename glob_mem_type::const_reference             const_reference;
+  typedef typename glob_mem_type::reference                        reference;
+  typedef typename glob_mem_type::const_reference            const_reference;
 
-  typedef typename glob_mem_type::local_iterator               local_iterator;
-  typedef typename glob_mem_type::const_local_iterator   const_local_iterator;
-
-  typedef typename glob_mem_type::local_reference             local_reference;
-  typedef typename glob_mem_type::const_local_reference const_local_reference;
-
+  typedef typename glob_mem_type::global_iterator
+    node_iterator;
+  typedef typename glob_mem_type::const_global_iterator
+    const_node_iterator;
+  typedef typename glob_mem_type::local_iterator
+    local_node_iterator;
+  typedef typename glob_mem_type::const_local_iterator
+    const_local_node_iterator;
   typedef typename glob_mem_type::reverse_global_iterator
-    reverse_iterator;
+    reverse_node_iterator;
   typedef typename glob_mem_type::const_reverse_global_iterator
-    const_reverse_iterator;
+    const_reverse_node_iterator;
   typedef typename glob_mem_type::reverse_local_iterator
-    reverse_local_iterator;
+    reverse_local_node_iterator;
   typedef typename glob_mem_type::const_reverse_local_iterator
+    const_reverse_local_node_iterator;
+
+  typedef typename glob_mem_type::global_iterator
+    local_node_pointer;
+  typedef typename glob_mem_type::const_global_iterator
+    const_local_node_pointer;
+
+  typedef GlobUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+    iterator;
+  typedef GlobUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+    const_iterator;
+  typedef typename std::reverse_iterator<iterator>
+    reverse_iterator;
+  typedef typename std::reverse_iterator<const_iterator>
+    const_reverse_iterator;
+
+  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+    local_pointer;
+  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+    const_local_pointer;
+  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+    local_iterator;
+  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+    const_local_iterator;
+  typedef typename std::reverse_iterator<local_iterator>
+    reverse_local_iterator;
+  typedef typename std::reverse_iterator<const_local_iterator>
     const_reverse_local_iterator;
 
-  typedef LocalUnorderedMapRef<Key, Mapped, Hash, Pred, Alloc>     local_type;
+  typedef typename glob_mem_type::local_reference
+    local_reference;
+  typedef typename glob_mem_type::const_local_reference
+    const_local_reference;
 
   typedef dash::Array<
             size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
@@ -348,8 +380,8 @@ public:
         _remote_size           += local_size_u;
       }
     }
-    _begin = _globmem->begin();
-    _end   = _begin + size();
+    _begin = iterator(this, 0);
+    _end   = iterator(this, size());
     DASH_LOG_TRACE("UnorderedMap.barrier >", "passed barrier");
   }
 
@@ -392,12 +424,12 @@ public:
 
     _globmem     = new glob_mem_type(lcap, *_team);
     // Global iterators:
-    _begin       = _globmem->begin();
+    _begin       = iterator(this, 0);
     _end         = _begin;
     DASH_LOG_TRACE_VAR("UnorderedMap.allocate", _begin);
     DASH_LOG_TRACE_VAR("UnorderedMap.allocate", _end);
     // Local iterators:
-    _lbegin      = _globmem->lbegin();
+    _lbegin      = local_iterator(this, 0);
     _lend        = _lbegin;
     DASH_LOG_TRACE_VAR("UnorderedMap.allocate", _lbegin);
     DASH_LOG_TRACE_VAR("UnorderedMap.allocate", _lend);
@@ -715,19 +747,14 @@ public:
     // Local insertion, target unit of element is active unit.
     // Look up existing element at given key:
     DASH_LOG_TRACE("UnorderedMap.insert", "element key lookup");
-    local_iterator lbegin = _globmem->lbegin();
-    DASH_LOG_TRACE_VAR("UnorderedMap.insert", lbegin);
-    local_iterator lend   = _globmem->lend();
-    DASH_LOG_TRACE_VAR("UnorderedMap.insert", lend);
-    DASH_LOG_TRACE_VAR("UnorderedMap.insert", lend - lbegin);
-    local_iterator found  = std::find_if(lbegin, lend,
-                              [&](const value_type & v) {
-                                return _key_equal(v.first, key);
-                              });
-    if (found != lend) {
+    iterator found = std::find_if(begin(), end(),
+                       [&](const value_type & v) {
+                         return _key_equal(v.first, key);
+                       });
+    if (found != end()) {
       DASH_LOG_TRACE("UnorderedMap.insert", "key found");
       // Existing element found, no insertion:
-      result.first  = _globmem->at(unit, found.pos());
+      result.first  = iterator(this, found.pos());
       result.second = false;
     } else {
       DASH_LOG_TRACE("UnorderedMap.insert", "key not found");
@@ -764,13 +791,13 @@ public:
       // Convert local iterator to global iterator:
       DASH_LOG_TRACE("UnorderedMap.insert", "converting to global iterator",
                      "unit:", unit, "lidx:", old_local_size);
-      result.first  = _globmem->at(unit, old_local_size);
+      result.first  = iterator(this, unit, old_local_size);
       result.second = true;
       // Update iterators as global memory space has been changed for the
       // active unit:
       DASH_LOG_TRACE("UnorderedMap.insert", "updating _begin, _end");
-      _begin        = _globmem->begin();
-      _end          = _begin + size();
+      _begin        = iterator(this, 0);
+      _end          = iterator(this, size());
     }
     DASH_LOG_DEBUG("UnorderedMap.insert >",
                    (result.second ? "inserted" : "existing"), ":",

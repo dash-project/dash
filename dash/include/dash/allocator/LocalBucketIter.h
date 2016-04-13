@@ -1,8 +1,9 @@
-#ifndef DASH__INTERNAL__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
-#define DASH__INTERNAL__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
+#ifndef DASH__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
+#define DASH__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
 
 #include <dash/dart/if/dart.h>
 #include <dash/Types.h>
+
 #include <dash/internal/Logging.h>
 #include <dash/internal/allocator/GlobDynamicMemTypes.h>
 
@@ -16,7 +17,6 @@
 
 
 namespace dash {
-namespace internal {
 
 /**
  * Iterator on local buckets. Represents local pointer type.
@@ -40,10 +40,10 @@ class LocalBucketIter
   template<typename E_, typename I_, typename P_, typename R_>
   friend std::ostream & dash::operator<<(
     std::ostream & os,
-    const dash::internal::LocalBucketIter<E_, I_, P_, R_> & it);
+    const dash::LocalBucketIter<E_, I_, P_, R_> & it);
 
 private:
-  typedef LocalBucketIter<ElementType, IndexType>
+  typedef LocalBucketIter<ElementType, IndexType, PointerType, ReferenceType>
     self_t;
 
 public:
@@ -58,7 +58,8 @@ public:
   typedef ElementType *                                             pointer;
   typedef ElementType &                                           reference;
 
-  typedef glob_dynamic_mem_bucket_type<size_type, value_type>   bucket_type;
+  typedef internal::glob_dynamic_mem_bucket_type<size_type, value_type>
+    bucket_type;
 
 private:
   typedef typename std::list<bucket_type>
@@ -71,6 +72,9 @@ private:
       typename bucket_list::iterator
     >::type
     bucket_iterator;
+
+  typedef typename bucket_list::const_iterator
+    const_bucket_iterator;
 
 public:
   template<typename BucketIterator>
@@ -123,7 +127,8 @@ public:
 
   LocalBucketIter() = default;
 
-  LocalBucketIter(const self_t & other)
+  template<typename E_, typename I_, typename P_, typename R_>
+  LocalBucketIter(const LocalBucketIter<E_, I_, P_, R_> & other)
   : _bucket_first(other._bucket_first),
     _bucket_last(other._bucket_last),
     _idx(other._idx),
@@ -132,7 +137,8 @@ public:
     _is_nullptr(other._is_nullptr)
   { }
 
-  self_t & operator=(const self_t & rhs)
+  template<typename E_, typename I_, typename P_, typename R_>
+  self_t & operator=(const LocalBucketIter<E_, I_, P_, R_> & rhs)
   {
     if (this != &rhs) {
       _bucket_first = rhs._bucket_first;
@@ -437,12 +443,12 @@ private:
   }
 
 private:
-  bucket_iterator _bucket_first;
-  bucket_iterator _bucket_last;
-  index_type      _idx           = 0;
-  bucket_iterator _bucket_it;
-  index_type      _bucket_phase  = 0;
-  bool            _is_nullptr    = false;
+  bucket_iterator       _bucket_first;
+  bucket_iterator       _bucket_last;
+  index_type            _idx           = 0;
+  bucket_iterator       _bucket_it;
+  index_type            _bucket_phase  = 0;
+  bool                  _is_nullptr    = false;
 
 }; // class LocalBucketIter
 
@@ -460,17 +466,15 @@ template<
   class    Reference>
 auto distance(
   /// Global iterator to the first position in the global sequence
-  const dash::internal::LocalBucketIter<
+  const dash::LocalBucketIter<
           ElementType, IndexType, Pointer, Reference> & first,
   /// Global iterator to the final position in the global sequence
-  const dash::internal::LocalBucketIter<
+  const dash::LocalBucketIter<
           ElementType, IndexType, Pointer, Reference> & last)
 -> IndexType
 {
   return last - first;
 }
-
-} // namespace internal
 
 template<
   typename ElementType,
@@ -479,12 +483,12 @@ template<
   class    Reference>
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::internal::LocalBucketIter<
+  const dash::LocalBucketIter<
           ElementType, IndexType, Pointer, Reference> & it)
 {
   std::ostringstream ss;
   ElementType * lptr = it;
-  ss << "dash::internal::LocalBucketIter<"
+  ss << "dash::LocalBucketIter<"
      << typeid(ElementType).name() << ">"
      << "("
      << "idx:"  << it._idx          << ", "
@@ -496,4 +500,4 @@ std::ostream & operator<<(
 
 } // namespace dash
 
-#endif // DASH__INTERNAL__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
+#endif // DASH__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED

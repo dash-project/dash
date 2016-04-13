@@ -127,7 +127,6 @@ TEST_F(UnorderedMapTest, BalancedMultiInsert)
 
   if (dash::myid() == 0) {
     DASH_LOG_DEBUG("UnorderedMapTest.MultiInsert", "validate elements");
-    EXPECT_EQ_U(map.size(), map.end() - map.begin());
     int gidx = 0;
     for (auto git = map.begin(); git != map.end(); ++git) {
       auto      unit = gidx / elem_per_unit;

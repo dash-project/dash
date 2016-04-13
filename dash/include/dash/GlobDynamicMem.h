@@ -13,10 +13,11 @@
 #include <dash/algorithm/MinMax.h>
 #include <dash/algorithm/Copy.h>
 
+#include <dash/allocator/LocalBucketIter.h>
+#include <dash/allocator/GlobBucketIter.h>
+
 #include <dash/internal/Logging.h>
 #include <dash/internal/allocator/GlobDynamicMemTypes.h>
-#include <dash/internal/allocator/LocalBucketIter.h>
-#include <dash/internal/allocator/GlobBucketIter.h>
 
 #include <list>
 #include <vector>
@@ -142,15 +143,15 @@ public:
   typedef ElementType &                                     local_reference;
   typedef const ElementType &                         const_local_reference;
 
-  typedef internal::LocalBucketIter<value_type, index_type>
+  typedef LocalBucketIter<value_type, index_type>
     local_iterator;
-  typedef internal::LocalBucketIter<const value_type, index_type>
+  typedef LocalBucketIter<const value_type, index_type>
     const_local_iterator;
 
-  typedef internal::GlobBucketIter<
+  typedef GlobBucketIter<
             value_type, self_t, pointer, reference>
     global_iterator;
-  typedef internal::GlobBucketIter<
+  typedef GlobBucketIter<
             const value_type, const self_t, const_pointer, const_reference>
     const_global_iterator;
 
@@ -183,7 +184,7 @@ private:
     bucket_cumul_sizes_map;
 
   template<typename T_, class GMem_, class Ptr_, class Ref_>
-  friend class dash::internal::GlobBucketIter;
+  friend class dash::GlobBucketIter;
 
 public:
   /**
@@ -552,7 +553,7 @@ public:
    */
   const_global_iterator begin() const
   {
-    return _begin;
+    return const_global_iterator(_begin);
   }
 
   /**
@@ -584,7 +585,7 @@ public:
    */
   const_global_iterator end() const
   {
-    return _begin + size();
+    return const_global_iterator(_begin + size());
   }
 
   /**
@@ -670,7 +671,7 @@ public:
    */
   inline const_local_iterator lbegin() const
   {
-    return _lbegin;
+    return const_local_iterator(_lbegin);
   }
 
   /**
@@ -740,7 +741,7 @@ public:
    */
   inline const_local_iterator lend() const
   {
-    return _lend;
+    return const_local_iterator(_lend);
   }
 
   /**
@@ -822,6 +823,7 @@ public:
     if (_nunits == 0) {
       DASH_THROW(dash::exception::RuntimeError, "No units in team");
     }
+    // TODO
     const_global_iterator git(this, unit, local_index);
     DASH_LOG_DEBUG_VAR("GlobDynamicMem.at const >", git);
     return git;
