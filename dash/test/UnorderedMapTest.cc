@@ -16,37 +16,60 @@ TEST_F(UnorderedMapTest, Initialization)
   typedef typename map_t::iterator             map_iterator;
   typedef typename map_t::value_type           map_value;
 
-  map_t map;
+  auto nunits    = dash::size();
+  auto myid      = dash::myid();
+  // Size of local commit buffer:
+  auto lbuf_size = 1;
+  // Initial number of elements per unit:
+  auto lcap_init = 1;
+  // Initial global capacity:
+  auto gcap_init = nunits * lcap_init;
+  // Number of elements to insert:
+  auto ninsert   = 3;
+
+  map_t map(gcap_init, lbuf_size);
+
   EXPECT_EQ_U(0, map.size());
   EXPECT_EQ_U(0, map.lsize());
+  EXPECT_EQ_U(gcap_init, map.capacity());
+  EXPECT_EQ_U(lcap_init, map.lcapacity());
 
-  // key-value pair to be inserted:
-  key_t     key    = 100 + _dash_id;
-  mapped_t  mapped = 1.0 + 0.1 * _dash_id;
-  map_value value({ key, mapped });
-
-  map.barrier();
+  dash::barrier();
   DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "map initialized");
 
   if (_dash_id == 0) {
-    DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "insert element");
-    auto insertion     = map.insert(value);
-    bool elem_inserted = insertion.second;
-    EXPECT_TRUE_U(elem_inserted);
+    for (auto li = 0; li < ninsert; ++li) {
+      DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "insert element");
+      key_t     key    = 100 * (_dash_id + 1) + li;
+      mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * li);
+      map_value value({ key, mapped });
+
+      auto inserted = map.insert(value);
+      EXPECT_TRUE_U(inserted.second);
+      auto existing = map.insert(value);
+      EXPECT_FALSE_U(existing.second);
+    }
   }
 
   DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "committing elements");
   map.barrier();
 
   if (_dash_id == 0) {
+    // Validate elements after commit:
     DASH_LOG_DEBUG("UnorderedMapTest.Initialization",
-                   "validate inserted element");
-    auto      elem_git = map.begin();
-    map_value actual   = static_cast<map_value>(*elem_git);
-    DASH_LOG_DEBUG("UnorderedMapTest.Initialization",
-                   "key:",    actual.first,
-                   "mapped:", actual.second);
-    EXPECT_EQ_U(actual, value);
+                   "validate values after commit");
+    int li = 0;
+    for (auto git = map.begin(); git != map.end(); ++git) {
+      key_t     key    = 100 * (_dash_id + 1) + li;
+      mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * li);
+      map_value expect({ key, mapped });
+      map_value actual = static_cast<map_value>(*git);
+      DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "after commit",
+                     "git:",   git,
+                     "value:", actual.first, "->", actual.second);
+      EXPECT_EQ_U(expect, actual);
+      li++;
+    }
   }
   map.barrier();
 }

@@ -273,6 +273,31 @@ public:
   }
 
   /**
+   * Constructor.
+   *
+   * Sets the associated team to DART_TEAM_NULL for global map instances
+   * that are declared before \c dash::Init().
+   */
+  UnorderedMap(
+    size_type   nelem,
+    size_type   nlbuf,
+    Team      & team  = dash::Team::All())
+  : local(this),
+    _team(&team),
+    _myid(team.myid()),
+    _remote_size(0),
+    _key_hash(team),
+    _local_buffer_size(nlbuf)
+  {
+    DASH_LOG_TRACE("UnorderedMap(nelem,nlbuf,team)",
+                   "nelem:", nelem, "nlbuf:", nlbuf);
+    if (_team->size() > 0) {
+      allocate(nelem, team);
+    }
+    DASH_LOG_TRACE("UnorderedMap(nelem,nlbuf,team) >");
+  }
+
+  /**
    * Destructor, deallocates local and global memory acquired by the
    * container instance.
    */
@@ -323,7 +348,8 @@ public:
         _remote_size           += local_size_u;
       }
     }
-    _end = _begin + size();
+    _begin = _globmem->begin();
+    _end   = _begin + size();
     DASH_LOG_TRACE("UnorderedMap.barrier >", "passed barrier");
   }
 
@@ -340,6 +366,8 @@ public:
     dash::Team & team  = dash::Team::All())
   {
     DASH_LOG_TRACE("UnorderedMap.allocate()");
+    DASH_LOG_TRACE_VAR("UnorderedMap.allocate", nelem);
+    DASH_LOG_TRACE_VAR("UnorderedMap.allocate", _local_buffer_size);
     if (_team == nullptr || *_team == dash::Team::Null()) {
       DASH_LOG_TRACE("UnorderedMap.allocate",
                      "initializing with specified team -",
@@ -350,8 +378,9 @@ public:
       DASH_LOG_TRACE("UnorderedMap.allocate",
                      "initializing with initial team");
     }
-    if (nelem < _team->size()) {
-      nelem = _team->size();
+    DASH_ASSERT_GT(_local_buffer_size, 0, "local buffer size must not be 0");
+    if (nelem < _team->size() * _local_buffer_size) {
+      nelem = _team->size() * _local_buffer_size;
     }
     _key_hash    = hasher(*_team);
     _remote_size = 0;
@@ -715,27 +744,36 @@ public:
       DASH_LOG_TRACE_VAR("UnorderedMap.insert", old_local_size);
       DASH_LOG_TRACE_VAR("UnorderedMap.insert", new_local_size);
       DASH_ASSERT_GT(new_local_size, 0, "new local size is 0");
-      if (local_capacity < new_local_size) {
+      // Pointer to new element:
+      value_type * lptr_insert = nullptr;
+      // Acquire target pointer of new element:
+      if (new_local_size > local_capacity) {
         DASH_LOG_TRACE("UnorderedMap.insert",
-                       "allocating additional local memory");
-        _globmem->grow(1);
+                       "globmem.grow(", _local_buffer_size, ")");
+        lptr_insert = _globmem->grow(_local_buffer_size);
+      } else {
+        lptr_insert = _globmem->lbegin() + old_local_size;
       }
-      DASH_LOG_TRACE("UnorderedMap.insert", "assigning value");
       // Assign new value to insert position.
-      local_iterator l_it_insert  = _globmem->lbegin() +
-                                      (new_local_size - 1);
-      value_type *   l_ptr_insert = &(*l_it_insert);
       DASH_LOG_TRACE("UnorderedMap.insert", "value target address:",
-                     l_ptr_insert);
+                     lptr_insert);
+      DASH_ASSERT(lptr_insert != nullptr);
       // Using placement new to avoid assignment/copy as value_type is
       // const:
-      new (l_ptr_insert) value_type(value);
+      new (lptr_insert) value_type(value);
       // Convert local iterator to global iterator:
-      DASH_LOG_TRACE("UnorderedMap.insert", "converting to global iterator");
-      result.first  = _globmem->at(unit, l_it_insert.pos());
+      DASH_LOG_TRACE("UnorderedMap.insert", "converting to global iterator",
+                     "unit:", unit, "lidx:", old_local_size);
+      result.first  = _globmem->at(unit, old_local_size);
       result.second = true;
+      // Update iterators as global memory space has been changed for the
+      // active unit:
+      DASH_LOG_TRACE("UnorderedMap.insert", "updating _begin, _end");
+      _begin        = _globmem->begin();
+      _end          = _begin + size();
     }
-    DASH_LOG_DEBUG("UnorderedMap.insert >", "inserted:", result.second,
+    DASH_LOG_DEBUG("UnorderedMap.insert >",
+                   (result.second ? "inserted" : "existing"), ":",
                    result.first);
     return result;
   }
@@ -828,6 +866,11 @@ private:
   hasher                 _key_hash;
   /// Predicate for key comparison.
   key_equal              _key_equal;
+  /// Capacity of local buffer containing locally added node elements that
+  /// have not been committed to global memory yet.
+  /// Default is 4 KB.
+  size_type            _local_buffer_size
+                         = 4096 / sizeof(value_type);
 
 }; // class UnorderedMap
 

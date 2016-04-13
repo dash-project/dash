@@ -211,22 +211,31 @@ public:
   typedef GlobRef<value_type>                                      reference;
   typedef GlobRef<const value_type>                          const_reference;
 
+  typedef       value_type &                                 local_reference;
+  typedef const value_type &                           const_local_reference;
+
   typedef       iterator                                             pointer;
   typedef const_iterator                                       const_pointer;
 
   typedef typename glob_mem_type::local_iterator
-    local_iterator;
+    local_node_iterator;
   typedef typename glob_mem_type::const_local_iterator
-    const_local_iterator;
+    const_local_node_iterator;
   typedef typename glob_mem_type::reverse_local_iterator
-    reverse_local_iterator;
+    reverse_local_node_iterator;
   typedef typename glob_mem_type::const_reverse_local_iterator
-    const_reverse_local_iterator;
+    const_reverse_local_node_iterator;
 
   typedef typename glob_mem_type::local_reference
-    local_reference;
+    local_node_reference;
   typedef typename glob_mem_type::const_local_reference
-    const_local_reference;
+    const_local_node_reference;
+
+  // TODO: define ListLocalIter to dereference node iterators
+  typedef               local_node_iterator                   local_iterator;
+  typedef         const_local_node_iterator             const_local_iterator;
+  typedef       reverse_local_node_iterator           reverse_local_iterator;
+  typedef const_reverse_local_node_iterator     const_reverse_local_iterator;
 
 public:
   /// Local proxy object, allows use in range-based for loops.
@@ -254,21 +263,46 @@ public:
    * initial global container capacity and associated units.
    */
   List(
-    size_type   nelem,
-    Team      & team   = dash::Team::All())
+    size_type   nelem = 0,
+    Team      & team  = dash::Team::All())
   : local(this),
     _team(&team),
     _myid(team.myid()),
     _remote_size(0)
   {
-    DASH_LOG_TRACE("List()", nelem);
+    DASH_LOG_TRACE("List(nelem,team)", "nelem:", nelem);
     if (_team->size() > 0) {
       _local_sizes.allocate(team.size(), dash::BLOCKED, team);
       _local_sizes.local[0] = 0;
     }
     allocate(nelem);
     barrier();
-    DASH_LOG_TRACE("List() >");
+    DASH_LOG_TRACE("List(nelem,team) >");
+  }
+
+  /**
+   * Constructor, creates a new constainer instance with the specified
+   * initial global container capacity and associated units.
+   */
+  List(
+    size_type   nelem,
+    size_type   nlbuf,
+    Team      & team   = dash::Team::All())
+  : local(this),
+    _team(&team),
+    _myid(team.myid()),
+    _remote_size(0),
+    _local_buffer_size(nlbuf)
+  {
+    DASH_LOG_TRACE("List(nelem,nlbuf,team)",
+                   "nelem:", nelem, "nlbuf:", nlbuf);
+    if (_team->size() > 0) {
+      _local_sizes.allocate(team.size(), dash::BLOCKED, team);
+      _local_sizes.local[0] = 0;
+    }
+    allocate(nelem);
+    barrier();
+    DASH_LOG_TRACE("List(nelem,nlbuf,team) >");
   }
 
   /**
@@ -554,6 +588,8 @@ public:
     dash::Team & team  = dash::Team::All())
   {
     DASH_LOG_TRACE("List.allocate()");
+    DASH_LOG_TRACE_VAR("List.allocate", nelem);
+    DASH_LOG_TRACE_VAR("List.allocate", _local_buffer_size);
     if (_team == nullptr || *_team == dash::Team::Null()) {
       DASH_LOG_TRACE("List.allocate",
                      "initializing with Team::All()");
@@ -563,8 +599,9 @@ public:
       DASH_LOG_TRACE("List.allocate",
                      "initializing with initial team");
     }
-    if (nelem < _team->size()) {
-      nelem = _team->size();
+    DASH_ASSERT_GT(_local_buffer_size, 0, "local buffer size must not be 0");
+    if (nelem < _team->size() * _local_buffer_size) {
+      nelem = _team->size() * _local_buffer_size;
     }
     _remote_size = 0;
     auto lcap    = dash::math::div_ceil(nelem, _team->size());
@@ -630,17 +667,20 @@ public:
 
 private:
   /// Team containing all units interacting with the list.
-  dash::Team         * _team        = nullptr;
+  dash::Team         * _team
+                         = nullptr;
   /// DART id of the unit that created the list.
   dart_unit_t          _myid;
   /// Global memory allocation and -access.
-  glob_mem_type      * _globmem     = nullptr;
+  glob_mem_type      * _globmem
+                         = nullptr;
   /// Iterator to initial element in the list.
   iterator             _begin;
   /// Iterator past the last element in the list.
   iterator             _end;
   /// Number of elements in the list.
-  size_type            _remote_size = 0;
+  size_type            _remote_size
+                         = 0;
   /// Native pointer to first local element in the list.
   local_iterator       _lbegin;
   /// Native pointer past the last local element in the list.
@@ -649,6 +689,11 @@ private:
   node_type            _nil_node;
   /// Mapping units to their number of local list elements.
   local_sizes_map      _local_sizes;
+  /// Capacity of local buffer containing locally added node elements that
+  /// have not been committed to global memory yet.
+  /// Default is 4 KB.
+  size_type            _local_buffer_size
+                         = 4096 / sizeof(value_type);
 
 };
 

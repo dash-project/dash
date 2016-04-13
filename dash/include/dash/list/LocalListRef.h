@@ -120,21 +120,18 @@ public:
     /// Value to be copied in the inserted element.
     const value_type & value)
   {
+    DASH_LOG_TRACE("LocalListRef.insert()");
     // New element node:
     ListNode_t node;
     node.lprev = nullptr;
     node.lnext = nullptr;
     node.gprev = _gprev;
     node.gnext = _gnext;
-    // Acquire local memory for new element:
-    if (_list->lcapacity() <= _list->lsize()) {
-      _list->_globmem->grow(1);
-      _list->_local_sizes.local[0]++;
-    }
-    // Pointer to allocated node:
-    ListNode_t * node_lptr = _list->_globmem->lend() - 1;
+    iterator it_insert_end = _list->_end;
+    DASH_THROW(dash::exception::NotImplemented,
+               "dash::LocalListRef.pop_back is not implemented");
 
-    iterator it_insert_end;
+    DASH_LOG_TRACE("LocalListRef.insert >");
     return it_insert_end;
   }
 
@@ -168,14 +165,18 @@ public:
     DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_cap_old);
     DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_size_old);
     if (l_size_new > l_cap_old) {
+      DASH_LOG_TRACE("LocalListRef.push_back",
+                     "globmem.grow(", _list->_local_buffer_size, ")");
       // Acquire local memory for new node:
-      node_lptr = _list->_globmem->grow(1);
+      node_lptr = _list->_globmem->grow(_list->_local_buffer_size);
       DASH_ASSERT_GT(_list->_globmem->local_size(), l_cap_old,
                      "local capacity not increased after globmem.grow()");
     } else {
       // No allocation required:
       node_lptr = _list->_globmem->lbegin() + l_size_old;
     }
+    // Local capacity before operation:
+    auto l_cap_new = _list->_globmem->local_size();
     DASH_LOG_TRACE("LocalListRef.push_back",
                    "node target address:", node_lptr);
     if (l_size_old > 0) {
@@ -187,9 +188,11 @@ public:
       DASH_LOG_TRACE_VAR("LocalListRef.push_back", node.lprev->lnext);
     }
     DASH_LOG_TRACE_VAR("LocalListRef.push_back", node.lprev);
+    DASH_LOG_TRACE_VAR("LocalListRef.push_back", node.value);
     DASH_LOG_TRACE_VAR("LocalListRef.push_back", node.lnext);
     // Copy new node to target address:
     *node_lptr = node;
+    DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_cap_new);
     DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_size_new);
     DASH_LOG_TRACE("LocalListRef.push_back >");
   }

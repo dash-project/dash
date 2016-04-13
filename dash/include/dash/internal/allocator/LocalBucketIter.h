@@ -341,9 +341,11 @@ public:
    */
   operator pointer() const
   {
-    DASH_LOG_TRACE("LocalBucketIter.pointer()", "nullptr:", _is_nullptr);
+    DASH_LOG_TRACE("LocalBucketIter.pointer()");
     pointer lptr = nullptr;
-    if (!_is_nullptr) {
+    if (_is_nullptr) {
+      DASH_LOG_TRACE("LocalBucketIter.pointer", "is nullptr");
+    } else {
       auto bucket_size = _bucket_it->size;
       DASH_LOG_TRACE("LocalBucketIter.pointer",
                      "bucket size:",  bucket_size, ",",
@@ -359,7 +361,9 @@ public:
       //   value = *(globmem.lend() + (2 - 3));
       // as it creates a temporary pointer to an address beyond _lend (+2)
       // which is then moved back into valid memory range (-3).
-      if (_bucket_phase >= bucket_size) {
+      if (_bucket_it == _bucket_last) {
+        DASH_LOG_TRACE("LocalBucketIter.pointer", "position at lend");
+      } else if (_bucket_phase >= bucket_size) {
         DASH_LOG_TRACE("LocalBucketIter.pointer",
                        "note: iterator position out of bounds (lend?)");
       }

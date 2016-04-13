@@ -168,7 +168,7 @@ public:
     _max_idx(gmem->size() - 1),
     _myid(dash::myid()),
     _idx_unit_id(unit),
-    _idx_local_idx(local_index),
+    _idx_local_idx(0),
     _idx_bucket_idx(0),
     _idx_bucket_phase(0)
   {
@@ -179,16 +179,7 @@ public:
       auto prec_unit_local_size = (*_bucket_cumul_sizes)[unit].back();
       _idx += prec_unit_local_size;
     }
-    _idx_bucket_phase = _idx_local_idx;
-    for (auto unit_bucket_cumul_size : (*_bucket_cumul_sizes)[_idx_unit_id])
-    {
-      if (_idx_local_idx < unit_bucket_cumul_size) {
-        break;
-      }
-      _idx_bucket_phase -= unit_bucket_cumul_size;
-      _idx_bucket_idx++;
-    }
-    _idx += _idx_local_idx;
+    increment(local_index);
     DASH_LOG_TRACE("GlobBucketIter(gmem,unit,lidx) >",
                    "gidx:",   _idx,
                    "maxidx:", _max_idx,
@@ -456,7 +447,6 @@ private:
     _idx += offset;
     auto current_bucket_size =
            (*_bucket_cumul_sizes)[_idx_unit_id][_idx_bucket_idx];
-    DASH_LOG_TRACE_VAR("GlobBucketIter.increment", current_bucket_size);
     if (_idx_local_idx + offset < current_bucket_size) {
       DASH_LOG_TRACE("GlobBucketIter.increment", "position current bucket");
       // element is in bucket currently referenced by this iterator:
@@ -475,8 +465,8 @@ private:
         auto unit_bkt_sizes_total = unit_bkt_sizes.back();
         auto unit_num_bkts        = unit_bkt_sizes.size();
         DASH_LOG_TRACE("GlobBucketIter.increment",
-                       "unit", _idx_unit_id,
-                       "remaining offset", offset,
+                       "unit:", _idx_unit_id,
+                       "remaining offset:", offset,
                        "total local bucket size:", unit_bkt_sizes_total);
         if (_idx_local_idx + offset >= unit_bkt_sizes_total) {
           // offset refers to next unit:
@@ -501,17 +491,19 @@ private:
         } else {
           // offset refers to current unit:
           DASH_LOG_TRACE("GlobBucketIter.increment",
-                         "position in local range");
+                         "position in local range",
+                         "current bucket phase:", _idx_bucket_phase,
+                         "cumul. bucket sizes:",  unit_bkt_sizes);
           _idx_local_idx += offset;
           // iterate the unit's bucket sizes:
           for (; _idx_bucket_idx < unit_num_bkts; ++_idx_bucket_idx) {
-            auto bucket_size = unit_bkt_sizes[_idx_bucket_idx];
-            if (_idx_bucket_phase + offset >= bucket_size) {
-              // offset refers to next bucket:
-              offset -= (bucket_size - _idx_bucket_phase);
-            } else {
+            auto cumul_bucket_size = unit_bkt_sizes[_idx_bucket_idx];
+            if (_idx_local_idx < cumul_bucket_size) {
+              auto cumul_prev  = _idx_bucket_idx > 0
+                                 ? unit_bkt_sizes[_idx_bucket_idx-1]
+                                 : 0;
               // offset refers to current bucket:
-              _idx_bucket_phase = offset;
+              _idx_bucket_phase = _idx_local_idx - cumul_prev;
               offset            = 0;
               break;
             }

@@ -13,23 +13,28 @@ TEST_F(ListTest, Initialization)
 
   auto nunits    = dash::size();
   auto myid      = dash::myid();
+  // Size of local commit buffer:
+  auto lbuf_size = 2;
   // Initial number of elements per unit:
-  auto lcap_init = 5;
+  auto lcap_init = 3;
   // Initial global capacity:
   auto gcap_init = nunits * lcap_init;
-  // Number of elements to re-allocate at every unit:
-  auto nalloc    = 2;
+  // Number of elements to insert beyond initial capacity at every unit:
+  auto nalloc    = lbuf_size + 3;
   // Number of elements to be added by every unit.
   // Set greater than initial local capacity to force re-allocation:
   auto nlocal    = lcap_init + nalloc;
   // Total number of elements to be added:
   auto nglobal   = nlocal * nunits;
   // Local capacity after local insert operations:
-  auto lcap_new  = nlocal;
+  auto lcap_new  = lcap_init +
+                   lbuf_size * dash::math::div_ceil(nalloc, lbuf_size);
   // Global capacity after committing all insert operations:
-  auto gcap_new  = nunits * nlocal;
+  auto gcap_new  = gcap_init + nunits * (lcap_new - lcap_init);
+  // Global capacity visible to local unit after local insert operations:
+  auto gcap_loc  = gcap_init + (lcap_new - lcap_init);
 
-  dash::List<value_t> list(gcap_init);
+  dash::List<value_t> list(gcap_init, lbuf_size);
   DASH_LOG_DEBUG("ListTest.Initialization", "list initialized");
 
   // no elements added yet, size is 0:
@@ -43,15 +48,30 @@ TEST_F(ListTest, Initialization)
   dash::barrier();
 
   for (auto li = 0; li < nlocal; ++li) {
-    DASH_LOG_DEBUG("ListTest.Initialization", "list.local.push_back()");
-    list.local.push_back(myid + 1 + li);
+    value_t v = 1000 * (myid + 1) + li;
+    DASH_LOG_DEBUG("ListTest.Initialization",
+                   "list.local.push_back(", v, ")");
+    list.local.push_back(v);
   }
   // No commit yet, only changes of local size should be visible:
   EXPECT_EQ_U(nlocal,    list.size());
   EXPECT_EQ_U(nlocal,    list.lsize());
   EXPECT_EQ_U(nlocal,    list.local.size());
   EXPECT_EQ_U(lcap_new,  list.lcapacity());
-  EXPECT_EQ_U(gcap_init + nalloc, list.capacity());
+  EXPECT_EQ_U(gcap_loc,  list.capacity());
+
+  // Validate local values before commit:
+  for (auto li = 0; li < list.local.size(); ++li) {
+    DASH_LOG_DEBUG("ListTest.Initialization",
+                   "validate list.local[", li, "]");
+    auto    l_node_unattached = *(list.local.begin() + li);
+    DASH_LOG_DEBUG_VAR("ListTest.Initialization", l_node_unattached.value);
+    DASH_LOG_DEBUG_VAR("ListTest.Initialization", l_node_unattached.lprev);
+    DASH_LOG_DEBUG_VAR("ListTest.Initialization", l_node_unattached.lnext);
+    value_t expect = 1000 * (myid + 1) + li;
+    value_t actual = l_node_unattached.value;
+    EXPECT_EQ_U(expect, actual);
+  }
 
   DASH_LOG_DEBUG("ListTest.Initialization", "list.barrier()");
   list.barrier();
@@ -64,14 +84,17 @@ TEST_F(ListTest, Initialization)
   EXPECT_EQ_U(gcap_new,  list.capacity());
   EXPECT_EQ_U(lcap_new,  list.lcapacity());
 
+  // Validate local values after commit:
   for (auto li = 0; li < list.local.size(); ++li) {
     DASH_LOG_DEBUG("ListTest.Initialization",
                    "validate list.local[", li, "]");
-    value_t expect = myid + 1 + li;
-//  value_t actual = *(list.local.begin() + li);
-//  EXPECT_EQ_U(expect, actual);
-    LOG_MESSAGE("ListTest.Initialization: list.local[%d] = %d",
-                li, *(list.local.begin() + li));
+    auto    l_node_attached = *(list.local.begin() + li);
+    DASH_LOG_DEBUG_VAR("ListTest.Initialization", l_node_attached.value);
+    DASH_LOG_DEBUG_VAR("ListTest.Initialization", l_node_attached.lprev);
+    DASH_LOG_DEBUG_VAR("ListTest.Initialization", l_node_attached.lnext);
+    value_t expect = 1000 * (myid + 1) + li;
+    value_t actual = l_node_attached.value;
+    EXPECT_EQ_U(expect, actual);
   }
 }
 
