@@ -32,14 +32,17 @@ struct has_subscript_operator
 };
 
 template<typename T>
-class GlobRef {
-private:
-  dart_gptr_t _gptr;
-
+class GlobRef
+{
   template<typename U>
   friend std::ostream & operator<<(
     std::ostream & os,
     const GlobRef<U> & gref);
+
+private:
+
+  typedef GlobRef<T>
+    self_t;
 
 public:
   /**
@@ -99,6 +102,16 @@ public:
     return *this = static_cast<T>(other);
 //  _gptr = other._gptr;
 //  return *this;
+  }
+
+  inline bool operator==(const self_t & other) const noexcept
+  {
+    return _gptr == other._gptr;
+  }
+
+  inline bool operator!=(const self_t & other) const noexcept
+  {
+    return !(*this == other);
   }
 
   friend void swap(GlobRef<T> a, GlobRef<T> b) {
@@ -296,6 +309,11 @@ public:
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
     return member<MEMTYPE>(offs);
   }
+
+private:
+
+  dart_gptr_t _gptr;
+
 };
 
 template<typename T>

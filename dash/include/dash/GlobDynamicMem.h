@@ -499,13 +499,12 @@ public:
       _begin = global_iterator(this, 0);
       DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _end");
       _end   = _begin + size();
-      value_type v_begin = *_begin;
-      dash__unused(v_begin);
     }
     // Update local iterators as bucket iterators might have changed:
+    DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _lbegin");
     _lbegin = lbegin(_myid);
+    DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _lend");
     _lend   = lend(_myid);
-
     DASH_LOG_DEBUG("GlobDynamicMem.commit >", "finished");
   }
 

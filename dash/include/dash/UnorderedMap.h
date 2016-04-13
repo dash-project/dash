@@ -423,6 +423,7 @@ public:
       DASH_LOG_TRACE("UnorderedMap.allocate",
                      "initializing with initial team");
     }
+    _local_cumul_sizes = std::vector<size_type>(_team->size(), 0);
     DASH_ASSERT_GT(_local_buffer_size, 0, "local buffer size must not be 0");
     if (nelem < _team->size() * _local_buffer_size) {
       nelem = _team->size() * _local_buffer_size;
@@ -451,7 +452,6 @@ public:
     _team->register_deallocator(
              this, std::bind(&UnorderedMap::deallocate, this));
     // Initialize local sizes with 0:
-    _local_cumul_sizes    = std::vector<size_type>(_team->size(), 0);
     _local_sizes.allocate(_team->size(), dash::BLOCKED, *_team);
     _local_sizes.local[0] = 0;
     _local_size_gptr      = _local_sizes[_myid].dart_gptr();
@@ -762,11 +762,16 @@ public:
     // Local insertion, target unit of element is active unit.
     // Look up existing element at given key:
     DASH_LOG_TRACE("UnorderedMap.insert", "element key lookup");
-    iterator found = std::find_if(begin(), end(),
+    DASH_LOG_TRACE_VAR("UnorderedMap.insert", _begin);
+    DASH_LOG_TRACE_VAR("UnorderedMap.insert", _end);
+    iterator found = std::find_if(_begin, _end,
                        [&](const value_type & v) {
+                         DASH_LOG_TRACE("UnorderedMap.insert", "find",
+                                        "v.key:", v.first, "f.key:", key);
                          return _key_equal(v.first, key);
                        });
-    if (found != end()) {
+    DASH_LOG_TRACE_VAR("UnorderedMap.insert", found);
+    if (found != _end) {
       DASH_LOG_TRACE("UnorderedMap.insert", "key found");
       // Existing element found, no insertion:
       result.first  = iterator(this, found.pos());
@@ -777,14 +782,16 @@ public:
       // Increase local size first to reserve storage for the new element.
       // Use atomic increment to prevent hazard when other units perform
       // remote insertion at the local unit:
-      size_type old_local_size = dash::Atomic<size_type>(
-                                    _local_size_gptr
-                                 ).fetch_and_add(1);
-      size_type new_local_size = old_local_size + 1;
-      size_type local_capacity = _globmem->local_size();
+      size_type old_local_size   = dash::Atomic<size_type>(
+                                      _local_size_gptr
+                                   ).fetch_and_add(1);
+      size_type new_local_size   = old_local_size + 1;
+      size_type local_capacity   = _globmem->local_size();
+      _local_cumul_sizes[_myid] += 1;
       DASH_LOG_TRACE_VAR("UnorderedMap.insert", local_capacity);
       DASH_LOG_TRACE_VAR("UnorderedMap.insert", old_local_size);
       DASH_LOG_TRACE_VAR("UnorderedMap.insert", new_local_size);
+      DASH_LOG_TRACE_VAR("UnorderedMap.insert", _local_cumul_sizes[_myid]);
       DASH_ASSERT_GT(new_local_size, 0, "new local size is 0");
       // Pointer to new element:
       value_type * lptr_insert = nullptr;
@@ -810,9 +817,13 @@ public:
       result.second = true;
       // Update iterators as global memory space has been changed for the
       // active unit:
-      DASH_LOG_TRACE("UnorderedMap.insert", "updating _begin, _end");
+      auto new_size = size();
+      DASH_LOG_TRACE("UnorderedMap.insert", "new size:", new_size,
+                     "updating _begin, _end");
       _begin        = iterator(this, 0);
-      _end          = iterator(this, size());
+      DASH_LOG_TRACE_VAR("UnorderedMap.insert", _begin);
+      _end          = iterator(this, new_size);
+      DASH_LOG_TRACE_VAR("UnorderedMap.insert", _end);
     }
     DASH_LOG_DEBUG("UnorderedMap.insert >",
                    (result.second ? "inserted" : "existing"), ":",
@@ -891,15 +902,15 @@ private:
   /// Global memory allocation and -access.
   glob_mem_type        * _globmem         = nullptr;
   /// Iterator to initial element in the map.
-  iterator               _begin;
+  iterator               _begin           = nullptr;
   /// Iterator past the last element in the map.
-  iterator               _end;
+  iterator               _end             = nullptr;
   /// Number of elements in the map.
   size_type              _remote_size     = 0;
   /// Native pointer to first local element in the map.
-  local_iterator         _lbegin;
+  local_iterator         _lbegin          = nullptr;
   /// Native pointer past the last local element in the map.
-  local_iterator         _lend;
+  local_iterator         _lend            = nullptr;
   /// Mapping units to their number of local map elements.
   local_sizes_map        _local_sizes;
   /// Cumulative (postfix sum) local sizes of all units.

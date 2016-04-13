@@ -5,7 +5,7 @@
 
 #include <dash/Types.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobRef.h>
+#include <dash/GlobSharedRef.h>
 #include <dash/Allocator.h>
 #include <dash/Team.h>
 #include <dash/Onesided.h>
@@ -44,7 +44,7 @@ class GlobUnorderedMapIter
            std::pair<const Key, Mapped>,
            dash::default_index_t,
            dash::GlobPtr< std::pair<const Key, Mapped> >,
-           dash::GlobRef< std::pair<const Key, Mapped> > >
+           dash::GlobSharedRef< std::pair<const Key, Mapped> > >
 {
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   friend class GlobUnorderedMapIter;
@@ -68,8 +68,8 @@ public:
 
   typedef dash::GlobPtr<      value_type>                            pointer;
   typedef dash::GlobPtr<const value_type>                      const_pointer;
-  typedef dash::GlobRef<      value_type>                          reference;
-  typedef dash::GlobRef<const value_type>                    const_reference;
+  typedef dash::GlobSharedRef<      value_type>                    reference;
+  typedef dash::GlobSharedRef<const value_type>              const_reference;
 
   typedef typename
     std::conditional<
@@ -89,16 +89,8 @@ public:
    * Default constructor.
    */
   GlobUnorderedMapIter()
-  : _map(nullptr),
-    _idx(-1),
-    _max_idx(_map->size() - 1),
-    _myid(DART_UNDEFINED_UNIT_ID),
-    _idx_unit_id(DART_UNDEFINED_UNIT_ID),
-    _idx_local_idx(-1)
-  {
-    DASH_LOG_TRACE("GlobUnorderedMapIter()");
-    DASH_LOG_TRACE("GlobUnorderedMapIter >");
-  }
+  : GlobUnorderedMapIter(nullptr)
+  { }
 
   /**
    * Constructor, creates iterator at specified global position.
@@ -107,15 +99,14 @@ public:
     map_t       * map,
     index_type    position)
   : _map(map),
-    _idx(position),
+    _idx(0),
     _max_idx(_map->size() - 1),
     _myid(dash::myid()),
-    _idx_unit_id(DART_UNDEFINED_UNIT_ID),
-    _idx_local_idx(-1)
+    _idx_unit_id(0),
+    _idx_local_idx(0)
   {
-    DASH_LOG_TRACE("GlobUnorderedMapIter(map,pos)()");
     DASH_LOG_TRACE_VAR("GlobUnorderedMapIter(map,pos)", _idx);
-    DASH_LOG_TRACE_VAR("GlobUnorderedMapIter(map,pos)", _max_idx);
+    increment(position);
     DASH_LOG_TRACE("GlobUnorderedMapIter(map,pos) >");
   }
 
@@ -128,15 +119,22 @@ public:
     dart_unit_t   unit,
     index_type    local_index)
   : _map(map),
-    _idx(-1),
+    _idx(0),
     _max_idx(_map->size() - 1),
     _myid(dash::myid()),
     _idx_unit_id(unit),
     _idx_local_idx(local_index)
   {
-    DASH_LOG_TRACE("GlobUnorderedMapIter(map,unit,lidx)()", _idx);
+    DASH_LOG_TRACE("GlobUnorderedMapIter(map,unit,lidx)()");
+    DASH_LOG_TRACE_VAR("GlobUnorderedMapIter(map,unit,lidx)", unit);
+    DASH_LOG_TRACE_VAR("GlobUnorderedMapIter(map,unit,lidx)", local_index);
+    // Unit and local offset to global position:
+    size_type unit_l_cumul_size_prev = 0;
+    if (unit > 0) {
+      unit_l_cumul_size_prev = _map->_local_cumul_sizes[unit-1];
+    }
+    _idx = unit_l_cumul_size_prev + _idx_local_idx;
     DASH_LOG_TRACE_VAR("GlobUnorderedMapIter(map,unit,lidx)", _idx);
-    DASH_LOG_TRACE_VAR("GlobUnorderedMapIter(map,unit,lidx)", _max_idx);
     DASH_LOG_TRACE("GlobUnorderedMapIter(map,unit,lidx) >");
   }
 
@@ -220,7 +218,12 @@ public:
    */
   reference operator*() const
   {
-    return reference(dart_gptr());
+    auto lptr = local();
+    if (lptr != nullptr) {
+      return reference(lptr);
+    } else {
+      return reference(dart_gptr());
+    }
   }
 
   /**
@@ -239,7 +242,7 @@ public:
   {
     if (_myid != _idx_unit_id) {
       // Iterator position does not point to local element
-      return nullptr;
+      return local_pointer(nullptr);
     }
     return (_map->lbegin() + _idx_local_idx);
   }
@@ -319,14 +322,14 @@ public:
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   inline bool operator==(
-    const GlobUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+    const GlobUnorderedMapIter<K_, M_, H_, P_, A_> & other) const noexcept
   {
     return (this == std::addressof(other) || _idx == other._idx);
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   inline bool operator!=(
-    const GlobUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+    const GlobUnorderedMapIter<K_, M_, H_, P_, A_> & other) const noexcept
   {
     return !(*this == other);
   }
@@ -342,15 +345,17 @@ private:
                    "unit:",   _idx_unit_id,
                    "lidx:",   _idx_local_idx,
                    "offset:", offset);
-    _idx += offset;
+    _idx           += offset;
+    _idx_local_idx  = _idx;
     auto & l_cumul_sizes = _map->_local_cumul_sizes;
     // Find unit at global offset:
     while (_idx > l_cumul_sizes[_idx_unit_id] &&
            _idx_unit_id < l_cumul_sizes.size()) {
+      DASH_LOG_TRACE("GlobUnorderedMapIter.increment",
+                     l_cumul_sizes[_idx_unit_id]);
       _idx_unit_id++;
+      _idx_local_idx -= l_cumul_sizes[_idx_unit_id];
     }
-    // Global offset and unit to local index:
-    _idx_local_idx = _idx - l_cumul_sizes[_idx_unit_id];
     DASH_LOG_TRACE("GlobUnorderedMapIter.increment >");
   }
 

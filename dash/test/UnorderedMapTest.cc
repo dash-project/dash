@@ -50,7 +50,8 @@ TEST_F(UnorderedMapTest, Initialization)
       EXPECT_FALSE_U(existing.second);
     }
   }
-
+  dash::barrier();
+#if 0
   DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "committing elements");
   map.barrier();
 
@@ -72,6 +73,7 @@ TEST_F(UnorderedMapTest, Initialization)
     }
   }
   map.barrier();
+#endif
 }
 
 TEST_F(UnorderedMapTest, BalancedMultiInsert)

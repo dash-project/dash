@@ -77,14 +77,8 @@ public:
    * Default constructor.
    */
   LocalUnorderedMapIter()
-  : _map(nullptr),
-    _idx(-1),
-    _max_idx(-1),
-    _myid(DART_UNDEFINED_UNIT_ID)
-  {
-    DASH_LOG_TRACE("LocalUnorderedMapIter()");
-    DASH_LOG_TRACE("LocalUnorderedMapIter >");
-  }
+  : LocalUnorderedMapIter(nullptr)
+  { }
 
   /**
    * Constructor, creates iterator at specified global position.
@@ -154,7 +148,10 @@ public:
    */
   operator pointer() const
   {
-    return pointer(dart_gptr());
+    if (_is_nullptr) {
+      return nullptr;
+    }
+    return (_map->lbegin() + _idx);
   }
 
   /**
@@ -179,7 +176,7 @@ public:
    */
   reference operator*() const
   {
-    return reference(dart_gptr());
+    return *(_map->lbegin() + _idx);
   }
 
   /**

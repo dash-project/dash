@@ -5,7 +5,7 @@
 
 #include <dash/Types.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobRef.h>
+#include <dash/GlobSharedRef.h>
 #include <dash/Allocator.h>
 #include <dash/Team.h>
 #include <dash/Onesided.h>
@@ -38,7 +38,7 @@ template<
   typename ElementType,
   class    GlobMemType,
   class    PointerType   = dash::GlobPtr<ElementType>,
-  class    ReferenceType = dash::GlobRef<ElementType> >
+  class    ReferenceType = dash::GlobSharedRef<ElementType> >
 class GlobBucketIter
 : public std::iterator<
            std::random_access_iterator_tag,
@@ -277,7 +277,12 @@ public:
    */
   reference operator*() const
   {
-    return reference(dart_gptr());
+    auto lptr = local();
+    if (lptr != nullptr) {
+      return reference(lptr);
+    } else {
+      return reference(dart_gptr());
+    }
   }
 
   /**
@@ -290,9 +295,15 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobBucketIter.[]()", g_index);
     auto git = *this;
-    git += g_index;
-    auto gref = *git;
-    DASH_LOG_TRACE_VAR("GlobBucketIter.[] >", gref);
+    git  += g_index;
+    auto lptr = git.local();
+    if (lptr != nullptr) {
+      return reference(lptr);
+    } else {
+      auto gref = *git;
+      DASH_LOG_TRACE_VAR("GlobBucketIter.[] >", gref);
+      return gref;
+    }
   }
 
   /**
