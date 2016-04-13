@@ -35,7 +35,12 @@ class LocalBucketIter
            ReferenceType >
 {
   template<typename E_, typename I_, typename P_, typename R_>
-    friend class LocalBucketIter;
+  friend class LocalBucketIter;
+
+  template<typename E_, typename I_, typename P_, typename R_>
+  friend std::ostream & dash::operator<<(
+    std::ostream & os,
+    const dash::internal::LocalBucketIter<E_, I_, P_, R_> & it);
 
 private:
   typedef LocalBucketIter<ElementType, IndexType>
@@ -209,39 +214,6 @@ public:
                "offset: " << offset);
   }
 
-  /**
-   * Conversion to native pointer.
-   */
-  operator pointer() const
-  {
-    DASH_LOG_TRACE("LocalBucketIter.pointer()", "nullptr:", _is_nullptr);
-    pointer lptr = nullptr;
-    if (!_is_nullptr) {
-      auto bucket_size = _bucket_it->size;
-      DASH_LOG_TRACE("LocalBucketIter.pointer",
-                     "bucket size:",  bucket_size, ",",
-                     "bucket phase:", _bucket_phase);
-      // This iterator type represents a local pointer so no bounds checks
-      // have to be performed in pointer arithmetics.
-      // Moving a pointer to out-of-bounds address is allowed, however
-      // dereferencing it will lead to segfault. This is a prerequisite for
-      // many common pointer arithmetic use cases.
-      // Example:
-      //   value = *((globmem.lend() + 2) - 3);
-      // is a valid operation and equivalent to
-      //   value = *(globmem.lend() + (2 - 3));
-      // as it creates a temporary pointer to an address beyond _lend (+2)
-      // which is then moved back into valid memory range (-3).
-      if (_bucket_phase >= bucket_size) {
-        DASH_LOG_TRACE("LocalBucketIter.pointer",
-                       "note: iterator position out of bounds (lend?)");
-      }
-      lptr = _bucket_it->lptr + _bucket_phase;
-    }
-    DASH_LOG_TRACE_VAR("LocalBucketIter.pointer >", lptr);
-    return lptr;
-  }
-
   self_t & operator++()
   {
     increment(1);
@@ -360,6 +332,43 @@ public:
     return _idx;
   }
 
+  /**
+   * Conversion to native pointer.
+   *
+   * Use with caution: This conversion returns a pointer a that does not
+   * iterate over buckets, pointer arithmetics may lead to undefined
+   * behaviour.
+   */
+  operator pointer() const
+  {
+    DASH_LOG_TRACE("LocalBucketIter.pointer()", "nullptr:", _is_nullptr);
+    pointer lptr = nullptr;
+    if (!_is_nullptr) {
+      auto bucket_size = _bucket_it->size;
+      DASH_LOG_TRACE("LocalBucketIter.pointer",
+                     "bucket size:",  bucket_size, ",",
+                     "bucket phase:", _bucket_phase);
+      // This iterator type represents a local pointer so no bounds checks
+      // have to be performed in pointer arithmetics.
+      // Moving a pointer to out-of-bounds address is allowed, however
+      // dereferencing it will lead to segfault. This is a prerequisite for
+      // many common pointer arithmetic use cases.
+      // Example:
+      //   value = *((globmem.lend() + 2) - 3);
+      // is a valid operation and equivalent to
+      //   value = *(globmem.lend() + (2 - 3));
+      // as it creates a temporary pointer to an address beyond _lend (+2)
+      // which is then moved back into valid memory range (-3).
+      if (_bucket_phase >= bucket_size) {
+        DASH_LOG_TRACE("LocalBucketIter.pointer",
+                       "note: iterator position out of bounds (lend?)");
+      }
+      lptr = _bucket_it->lptr + _bucket_phase;
+    }
+    DASH_LOG_TRACE_VAR("LocalBucketIter.pointer >", lptr);
+    return lptr;
+  }
+
 private:
   /**
    * Advance pointer by specified position offset.
@@ -472,9 +481,12 @@ std::ostream & operator<<(
   std::ostringstream ss;
   ElementType * lptr = it;
   ss << "dash::internal::LocalBucketIter<"
-     << typeid(ElementType).name() << ">("
-     << "idx:"  << it.pos() << ", "
-     << "lptr:" << lptr     << ")";
+     << typeid(ElementType).name() << ">"
+     << "("
+     << "idx:"  << it._idx          << ", "
+     << "bp:"   << it._bucket_phase << ", "
+     << "lptr:" << lptr
+     << ")";
   return operator<<(os, ss.str());
 }
 

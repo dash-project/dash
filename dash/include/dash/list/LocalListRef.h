@@ -162,14 +162,11 @@ public:
     _list->_local_sizes.local[0]++;
     // Number of local elements after operation:
     auto l_size_new = _list->_local_sizes.local[0];
-    // Pointer to first local address in global memory:
-    ListNode_t * lbegin    = _list->_globmem->lbegin();
     // Pointer to new node element:
-    ListNode_t * node_lptr = nullptr;
+    pointer node_lptr = nullptr;
 
     DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_cap_old);
     DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_size_old);
-    DASH_LOG_TRACE_VAR("LocalListRef.push_back", lbegin);
     if (l_size_new > l_cap_old) {
       // Acquire local memory for new node:
       node_lptr = _list->_globmem->grow(1);
@@ -177,15 +174,13 @@ public:
                      "local capacity not increased after globmem.grow()");
     } else {
       // No allocation required:
-      node_lptr = lbegin + l_size_old;
+      node_lptr = _list->_globmem->lbegin() + l_size_old;
     }
     DASH_LOG_TRACE("LocalListRef.push_back",
                    "node target address:", node_lptr);
-    DASH_ASSERT(lbegin    == _list->_globmem->lbegin());
-    DASH_ASSERT(node_lptr == lbegin + l_size_old);
     if (l_size_old > 0) {
       // Set node predecessor:
-      node.lprev        = lbegin + l_size_old - 1;
+      node.lprev        = _list->_globmem->lbegin() + (l_size_old - 1);
       // Set successor of node predecessor to new node:
       DASH_ASSERT(node.lprev->lnext == nullptr);
       node.lprev->lnext = node_lptr;

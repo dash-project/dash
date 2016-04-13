@@ -724,7 +724,7 @@ public:
       // Assign new value to insert position.
       local_iterator l_it_insert  = _globmem->lbegin() +
                                       (new_local_size - 1);
-      value_type *   l_ptr_insert = l_it_insert;
+      value_type *   l_ptr_insert = &(*l_it_insert);
       DASH_LOG_TRACE("UnorderedMap.insert", "value target address:",
                      l_ptr_insert);
       // Using placement new to avoid assignment/copy as value_type is

@@ -70,7 +70,8 @@ TEST_F(ListTest, Initialization)
     value_t expect = myid + 1 + li;
 //  value_t actual = *(list.local.begin() + li);
 //  EXPECT_EQ_U(expect, actual);
-    LOG_MESSAGE("list.local[%d] = %d", li, *(list.local.begin() + li));
+    LOG_MESSAGE("ListTest.Initialization: list.local[%d] = %d",
+                li, *(list.local.begin() + li));
   }
 }
 

@@ -951,6 +951,7 @@ private:
       DASH_LOG_TRACE("GlobDynamicMem.commit_attach", "attaching bucket");
       bucket_last.lptr = _allocator.allocate_local(bucket_last.size);
       DASH_ASSERT(bucket_last.lptr != nullptr);
+      // Copy values from local commit buffer to bucket.
       // Using placement new to avoid copy/assignment as value_type might
       // be const:
       value_type * lptr_alloc = bucket_last.lptr;
