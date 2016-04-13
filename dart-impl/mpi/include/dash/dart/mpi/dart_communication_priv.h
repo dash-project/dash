@@ -10,7 +10,7 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_communication.h>
 
-#ifdef SHMEM_ENABLE
+#ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
 #define PROGRESS_NUM 2
 #define PROGRESS_UNIT 0
@@ -33,9 +33,9 @@ struct datastruct
 {
 	int32_t	    dest;
 	uint16_t    index;
-	MPI_Aint    orgin_offset;
+	MPI_Aint    origin_offset;
 	MPI_Aint    target_offset;
-	int         dart_size;
+	int         data_size;
 	int16_t     segid;
 	short       is_sharedmem;
 };

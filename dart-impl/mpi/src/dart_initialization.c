@@ -6,12 +6,15 @@
 #include <stdio.h>
 #include <mpi.h>
 #include <dash/dart/if/dart_types.h>
-#include <dash/dart/if/dart_initialization.h>
+//#include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_communication_priv.h>
+#include <dash/dart/if/dart_initialization.h>
 
 #define DART_BUDDY_ORDER 24
 
@@ -126,6 +129,8 @@ dart_ret_t dart_init(
 	int flag;
 	MPI_Comm_group (MPI_COMM_WORLD, &group_all);
 	MPI_Comm_group (sharedmem_comm, &sharedmem_group);
+	dart_unit_t sharedmem_unitid;
+        MPI_Comm_rank (sharedmem_comm, &sharedmem_unitid);
 #ifdef PROGRESS_ENABLE
 	MPI_Group user_group;
 	
@@ -185,15 +190,15 @@ dart_ret_t dart_init(
 		MPI_Group_difference (group_all, progress_group, &user_group);
 
 		user_comm_world = MPI_COMM_NULL;
-		MPI_Comm_create (MPI_COMM_WOLRD, user_group, &user_comm_world);
+		MPI_Comm_create (MPI_COMM_WORLD, user_group, &user_comm_world);
 		dart_teams[index] = user_comm_world;
 		free (progresshead_node);
 		free (progress_node);
 		free (progress_recv);
 
 		if (user_comm_world != MPI_COMM_NULL){
-			top = sharedmem_rank % PROGRESS_NUM;
-			MPI_Win_allocate_shared (DART_MAX_LENGHT, sizeof (char), MPI_INFO_NULL, sharedmem_comm,
+			top = sharedmem_unitid % PROGRESS_NUM;
+			MPI_Win_allocate_shared (DART_MAX_LENGTH, sizeof (char), MPI_INFO_NULL, sharedmem_comm,
 					&(dart_mempool_localalloc), &dart_sharedmem_win_local_alloc);
 		}else{
 			MPI_Win_allocate_shared (0, sizeof(char), MPI_INFO_NULL, sharedmem_comm,
@@ -201,15 +206,14 @@ dart_ret_t dart_init(
 		}
 	}
 	if (user_comm_world != MPI_COMM_NULL){
-		MPI_Win_create (dart_mempool_localalloc, DART_MAX_LENGHT, sizeof(char), MPI_INFO_NULL,
-					MPI_COMM_WOLRD, &dart_win_local_alloc);
+		MPI_Win_create (dart_mempool_localalloc, DART_MAX_LENGTH, sizeof(char), MPI_INFO_NULL,
+					MPI_COMM_WORLD, &dart_win_local_alloc);
 	}else{
 		MPI_Win_create (dart_mempool_localalloc, 0, sizeof(char), MPI_INFO_NULL, MPI_COMM_WORLD, &dart_win_local_alloc);
 	}
 #else
 
 	if (sharedmem_comm != MPI_COMM_NULL) {
-		int sharedmem_unitid;
 		/* Reserve a free shared memory block for non-collective
      * global memory allocation. */	
 		MPI_Win_allocate_shared(
@@ -223,12 +227,13 @@ dart_ret_t dart_init(
 //		      MPI_COMM_WORLD, &dart_win_local_alloc);
 	}
 #endif
+  //    int sharedmem_unitid;
 		MPI_Comm_size(
       sharedmem_comm,
       &(dart_sharedmemnode_size[index]));
-		MPI_Comm_rank(
-      sharedmem_comm,
-      &sharedmem_unitid);
+//		MPI_Comm_rank(
+//      sharedmem_comm,
+//      &sharedmem_unitid);
 		dart_sharedmem_local_baseptr_set = (char**)malloc(
         sizeof(char*) * dart_sharedmemnode_size[index]);
 		if (sharedmem_comm!=MPI_COMM_NULL){
@@ -255,7 +260,7 @@ dart_ret_t dart_init(
         dart_sharedmem_local_baseptr_set[i] =
         dart_mempool_localalloc;
       }
-		}
+		}}
 		
 //#ifdef PROGRESS_EANBLE
 //		if (user_comm_world != MPI_COMM_NULL)
@@ -266,7 +271,7 @@ dart_ret_t dart_init(
 		int user_size;
 		if (user_comm_world != MPI_COMM_NULL){
 		MPI_Comm_size (user_comm_world, &user_size);
-		dart_sharedmem_table[index] = (int) malloc (sizeof(int) * user_size);
+		dart_sharedmem_table[index] = (int*) malloc (sizeof(int) * user_size);
 		dart_unit_mapping = (int*)malloc (sizeof(int) * (dart_sharedmemnode_size[index]-PROGRESS_NUM));
 		sharedmem_ranks = (int*)malloc (sizeof(int) * (dart_sharedmemnode_size[index]-PROGRESS_NUM));
 		}
@@ -330,7 +335,7 @@ dart_ret_t dart_init(
 		MPI_Group_translate_ranks (sharedmem_group, dart_sharedmemnode_size[index], sharedmem_ranks_progress,
 				group_all, dart_unit_mapping_progress);
 		for (i = 0; i < dart_sharedmemnode_size[index]; i++){
-			dart_sharedmem_progress_tabl[index][dart_unit_mapping_progress[i]] = i;
+			dart_sharedmem_progress_table[index][dart_unit_mapping_progress[i]] = i;
 		}
 		free (sharedmem_ranks_progress);
 		free (dart_unit_mapping_progress);
@@ -431,6 +436,7 @@ dart_ret_t dart_init(
 	MPI_Type_commit (&data_info_type);
 //	MPI_Info_free(&win_info);
 #endif
+#endif
 	DART_LOG_DEBUG("%2d: dart_init: Initialization finished", rank);
         _dart_initialized = 1;
 
@@ -454,7 +460,7 @@ dart_ret_t dart_exit()
 	 	struct rmareq_node
 		{
 			int source;
-			data_unit_t dest;
+			dart_unit_t dest;
 			MPI_Win win;
 			int direction;
 			struct rmareq_node* next;
@@ -543,7 +549,7 @@ dart_ret_t dart_exit()
 							EXIT, dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
 					MPI_Win_unlock_all (dart_sharedmem_win_local_alloc);
 					MPI_Win_unlock_all (dart_win_lists[0]);
-					MPI_Win_unlock_all (dart_win_lock_alloc);
+					MPI_Win_unlock_all (dart_win_local_alloc);
 
 					MPI_Win_free (&dart_win_lists[0]);
 					MPI_Win_free (&dart_win_local_alloc);
@@ -561,7 +567,7 @@ dart_ret_t dart_exit()
 			//	printf ("inside the TEAMCREATE\n");
 
 				int count, size;
-				int i, j;
+				int i, j, iter;
 				int index, sub_index;
 				MPI_Comm newcomm, parent_comm, sub_comm;
 				MPI_Group group, group_all, sub_group, parent_group, progress_group;
@@ -717,14 +723,14 @@ dart_ret_t dart_exit()
 						else win = dart_win_local_alloc;
 					baseptr = dart_sharedmem_local_baseptr_set[mpi_status.MPI_SOURCE];}
 
-				{
+				
 					MPI_Put (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win);
 				//	MPI_Rput (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win, &mpi_req);
 				//	if (nbytes >= PUT_THRESH){
 				//		MPI_Win_flush (dest, win);
 				//		MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, PUT, dart_sharedmem_comm_list[0]);
 				//	}else
-					{
+					
 					struct rmareq_node* p = (struct rmareq_node*)malloc (sizeof(struct rmareq_node));
 					p -> dest = dest;
 					p -> source = mpi_status.MPI_SOURCE;
@@ -733,7 +739,7 @@ dart_ret_t dart_exit()
 					p -> next = NULL;
 					
 					if(!header) {header = p; tail = header;}
-					else {tail -> next = p; tail=p;}}
+					else {tail -> next = p; tail=p;}
 /*
 					if (rmareq_num >= 128){
 						while(header){
@@ -748,7 +754,7 @@ dart_ret_t dart_exit()
 					}*/
 
 					//	MPI_Wait (&mpi_req, &mpi_sta);
-				}
+				
 
 			//	MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, PUT, dart_sharedmem_comm_list[0]);
 			}
@@ -791,8 +797,8 @@ dart_ret_t dart_exit()
 			//	MPI_Rget (baseptr+origin_offset, nbytes, MPI_BYTE, dest, target_offset, nbytes, MPI_BYTE, win, &mpi_req);
 
 			//	if (nbytes >= GET_THRESH){
-			////		MPI_Win_flush (dest, win);
-					MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, GET, dart_sharedmem_comm_list[0]);
+			//		MPI_Win_flush (dest, win);
+			//		MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, GET, dart_sharedmem_comm_list[0]);
 			//	}else
 				{
 			        struct rmareq_node* p = (struct rmareq_node*) malloc (sizeof(struct rmareq_node));
@@ -821,8 +827,8 @@ dart_ret_t dart_exit()
 					header = header -> next;
 					free (p);	
 				        }
-				MPI_Send (NULL, 0, MPI_INT, mpi_status.MPI_SOURCE, WAIT, 
-						dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
+				MPI_Send (NULL, 0, MPI_UINT16_T, mpi_status.MPI_SOURCE, WAIT, 
+						dart_sharedmem_comm_list[0]);
 			}}
 			else{
 		
@@ -847,8 +853,8 @@ dart_ret_t dart_exit()
 
 	int i;
 	if (unitid == PROGRESS_NUM){
-		for (i = 0; i < PROGRESS_NUMM; i++){
-		MPI_Send (NULL, 0, MPI_UNIT16_T, PROGRESS_UNIT+i, EXIT, dart_sharedmem_comm_list[0]);}
+		for (i = 0; i < PROGRESS_NUM; i++){
+		MPI_Send (NULL, 0, MPI_UINT16_T, PROGRESS_UNIT+i, EXIT, dart_sharedmem_comm_list[0]);}
 	}
 	int result = dart_adapt_teamlist_convert (DART_TEAM_ALL, &index);
 

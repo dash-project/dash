@@ -1,7 +1,8 @@
 include ../make.defs
 
 CFLAGS+=-I.. -I../$(DART_IF)/include -I../include -I../../base/include
-#CFLAGS+=-DSHAREDMEM_ENABLE
+CFLAGS+=-DPROGRESS_ENABLE
+CFLAGS+=-DSHAREDMEM_ENABLE
 #CFLAGS+=-DDART_DEBUG
 #OPT_FLAGS=-O3
 

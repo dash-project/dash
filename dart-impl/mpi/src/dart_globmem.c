@@ -16,6 +16,7 @@
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_communication.h>
+#include <dash/dart/mpi/dart_communication_priv.h>
 
 
 /* For PRIu64, uint64_t in printf */
@@ -70,8 +71,8 @@ dart_ret_t dart_gptr_getaddr (const dart_gptr_t gptr, void **addr)
 
 dart_ret_t dart_gptr_setaddr (dart_gptr_t* gptr, void* addr)
 {
-#ifdef SHAREDMEM_ENBALE
-#ifdef PROGRESS_ENBALE
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
 	if (user_comm_world != MPI_COMM_NULL){
 #endif
 #endif
@@ -270,7 +271,7 @@ dart_team_memalloc_aligned(
 	baseptr_set = (char**)malloc (sizeof (char*) * dart_sharedmemnode_size[index]);
 
 #ifdef PROGRESS_ENABLE
-	for (i = PROGRESS_NUM, i < dart_sharedmemnode_size[index]; i++)
+	for (i = PROGRESS_NUM; i < dart_sharedmemnode_size[index]; i++)
 #else
 	for (i = 0; i < dart_sharedmemnode_size[index]; i++)
 #endif
@@ -350,9 +351,10 @@ dart_team_memalloc_aligned(
     "%2d: COLLECTIVEALLOC - %d bytes, offset = %d, gptr_unitid = %d "
     "across team %d",
 		unitid, nbytes, 0, gptr_unitid, teamid);
-
+#ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
 	}
+#endif
 #endif
 
 	return DART_OK;
@@ -365,8 +367,8 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
         if (user_comm_world != MPI_COMM_NULL){
 #endif
 #endif	
-	dart_unit_t unitid;
-       	dart_team_myid (teamid, &unitid);
+	dart_unit_t id, unitid;
+       	dart_team_myid (teamid, &id);
 	uint16_t index = gptr.flags;
 	char *sub_mem;
 		
@@ -388,6 +390,8 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
+	MPI_Comm sharedmem_comm = dart_sharedmem_comm_list[index];
+	MPI_Comm_rank (sharedmem_comm, &unitid);
 	if (unitid == PROGRESS_NUM){
 		int i;
 		for (i = 0; i < PROGRESS_NUM; i++){
@@ -401,16 +405,19 @@ dart_ret_t dart_team_memfree (dart_team_t teamid, dart_gptr_t gptr)
 	MPI_Win_unlock_all (sharedmem_win);
 	MPI_Win_free (&sharedmem_win); 
 #endif
+
   DART_LOG_DEBUG("%2d: COLLECTIVEFREE - offset = %d, gptr_unitid = %d "
         "across team %d", 
-        unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
+        id, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 	/* Remove the related correspondence relation record from the related 
    * translation table. */
 	if (dart_adapt_transtable_remove (seg_id) == -1) {
 		return DART_ERR_INVAL;
 	}
+#ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
 	}
+#endif
 #endif
 	return DART_OK;
 }

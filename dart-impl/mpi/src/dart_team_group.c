@@ -10,9 +10,11 @@
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_group_priv.h>
+#include <dash/dart/mpi/dart_communication_priv.h>
 /*
 #ifndef SHAREDMEM_ENABLE
 #define SHAREDMEM_ENABLE
@@ -308,12 +310,11 @@ dart_ret_t dart_team_create(
 	MPI_Comm subcomm;
 	MPI_Win win;
 	uint16_t index, unique_id;
-	size_t size;
 	dart_team_t max_teamid = -1;
 	dart_unit_t sub_unit, unit;
 
 	dart_myid (&unit);
-	dart_size (&size);
+//	dart_size (&size);
 	dart_team_myid (teamid, &sub_unit);
 	
 	int result = dart_adapt_teamlist_convert (teamid, &unique_id);
@@ -405,9 +406,11 @@ dart_ret_t dart_team_create(
 	MPI_Comm_group (MPI_COMM_WORLD, &group_all);
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
+	dart_unit_t unitid;
 	int parent_unitid, sub_unitid = 0;
 
-	int size, sub_size, iter;
+	int size, sub_size;
+	int i, j, iter;
 	MPI_Comm real_comm, real_subcomm;
 	MPI_Group parent_group;
 	MPI_Comm_group (comm, &parent_group);
@@ -419,11 +422,11 @@ dart_ret_t dart_team_create(
 	MPI_Group user_group;
 	MPI_Comm_group (user_comm_world, &user_group);
 	
-	dart_unit_t* unitids = (dart_unit_t*) malloc (sizeof(dart_unit_t) * (sub_size)+2);
-	dart_unit_t* abso_unitids = (dart_unit_t*)malloc (sizeof(dart_unit_t) * (sub_size)+2);
+	dart_unit_t* unitids = (dart_unit_t*) malloc (sizeof(dart_unit_t) * (sub_size+2));
+	dart_unit_t* abso_unitids = (dart_unit_t*)malloc (sizeof(dart_unit_t) * (sub_size+2));
 	dart_group_getmembers (group, unitids);
 	MPI_Group_translate_ranks (user_group, sub_size, unitids, group_all, abso_unitids);
-	MPI_Group_translate_ranks (group->mpi_group, 1, *sub_unitid, parent_group, &parent_unitid);
+	MPI_Group_translate_ranks (group->mpi_group, 1, &sub_unitid, parent_group, &parent_unitid);
 	MPI_Bcast (&index, 1, MPI_UINT16_T, parent_unitid, comm);
 
 	if (unitid == PROGRESS_NUM){
@@ -449,7 +452,7 @@ dart_ret_t dart_team_create(
 			{
 				if (dart_sharedmem_progress_table[0][j]!=-1){
 					if (mark == -1) mark = j+iter;
-					progress = j
+					progress = j;
 				}
 			}
 
@@ -565,7 +568,7 @@ dart_ret_t dart_team_create(
 			for (i = 0; i < user_size; i++)
 #else
 			for (i = 0; i < size_all; i++)
-#else
+#endif
 			{
 				dart_sharedmem_table[index][i] = -1;
 			}
@@ -578,7 +581,7 @@ dart_ret_t dart_team_create(
 #else
 			MPI_Group_translate_ranks (sharedmem_group, dart_sharedmemnode_size[index],
 					sharedmem_ranks, group_all, dart_unit_mapping);
-			for (i = 0; i < dart_sharedmemnode_size[index], i++){
+			for (i = 0; i < dart_sharedmemnode_size[index]; i++){
 				dart_sharedmem_table[index][dart_unit_mapping[i]] = i;
 			}
 #endif
@@ -656,7 +659,7 @@ dart_ret_t dart_team_destroy(
 {
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
-	if (user_comm_world != MPI_COMM_NUMM){
+	if (user_comm_world != MPI_COMM_NULL){
 #endif
 #endif
 	MPI_Comm comm;
@@ -668,7 +671,7 @@ dart_ret_t dart_team_destroy(
 	if (result == -1) {
 		return DART_ERR_INVAL;
 	}
-  comm = dart_teams[index];
+        comm = dart_teams[index];
 
 	dart_myid (&id);
 	
@@ -676,9 +679,9 @@ dart_ret_t dart_team_destroy(
 
 //	MPI_Win_free (&(sharedmem_win_list[index]));
 #ifdef SHAREDMEM_ENABLE
-#ifndef PROGRESS_ENABLE
 	free(dart_sharedmem_table[index]);
-#else
+#ifdef PROGRESS_ENABLE
+	MPI_Comm sharedmem_comm = dart_sharedmem_comm_list[index];
 	dart_unit_t unitid;
 	MPI_Comm_rank (sharedmem_comm, &unitid);
 	if (unitid == PROGRESS_NUM){
@@ -777,6 +780,11 @@ dart_ret_t dart_team_size(
   dart_team_t teamid,
   size_t *size)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	MPI_Comm comm;
 	uint16_t index;
 	if (teamid == DART_TEAM_NULL) {
@@ -791,6 +799,11 @@ dart_ret_t dart_team_size(
 	int s;
 	MPI_Comm_size (comm, &s);
 	(*size) = s;
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
@@ -837,6 +850,7 @@ dart_ret_t dart_team_unit_l2g(
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
 	if (user_comm_world != MPI_COMM_NULL){
+#endif
 #endif
 	int size;
 	dart_group_t group;
