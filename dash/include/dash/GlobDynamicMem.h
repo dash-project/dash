@@ -11,6 +11,7 @@
 #include <dash/Array.h>
 
 #include <dash/algorithm/MinMax.h>
+#include <dash/algorithm/Copy.h>
 
 #include <dash/internal/Logging.h>
 #include <dash/internal/allocator/GlobDynamicMemTypes.h>
@@ -203,7 +204,8 @@ public:
     _myid(team.myid()),
     _local_sizes(team.size()),
     _bucket_cumul_sizes(team.size()),
-    _num_detach_buckets(team.size())
+    _num_detach_buckets(team.size()),
+    _remote_size(0)
   {
     DASH_LOG_TRACE("GlobDynamicMem.(ninit,nunits)",
                    n_local_elem, team.size());
@@ -219,7 +221,11 @@ public:
     grow(n_local_elem);
     commit();
 
+    DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem",
+                   "initialize global begin() iterator");
     _begin = at(0, 0);
+
+    DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem >");
   }
 
   /**
@@ -281,7 +287,7 @@ public:
    */
   inline size_type local_size(dart_unit_t unit) const
   {
-    DASH_ASSERT_RANGE(0, unit, _nunits, "unit id out of range");
+    DASH_ASSERT_RANGE(0, unit, _nunits-1, "unit id out of range");
     return _bucket_cumul_sizes[unit].back();
   }
 
@@ -301,6 +307,8 @@ public:
    * Local operation.
    * Newly allocated memory is attached to global memory space by calling
    * the collective operation \c attach().
+   *
+   * \return  Native pointer to beginning of new allocated memory.
    *
    * \see resize
    * \see shrink
@@ -325,15 +333,22 @@ public:
                      "old size:", _local_commit_buf.size());
       // Extend existing unattached bucket:
       auto num_unattached = bucket_last.size + num_elements;
+      // Use reserve() to avoid re-allocation which would invalidate pointers
+      // to elements in the local commit buffer:
       _local_commit_buf.reserve(num_unattached);
       _bucket_cumul_sizes[_myid].back() += num_elements;
       bucket_last.size = num_unattached;
-      bucket_last.lptr = &_local_commit_buf[0];
+      // Ensure address of local commit buffer did not change by increasing
+      // its capacity:
+      DASH_ASSERT(bucket_last.lptr == &_local_commit_buf[0]);
       DASH_ASSERT(bucket_last.gptr == DART_GPTR_NULL);
     } else {
       // Create new unattached bucket:
       DASH_LOG_TRACE("GlobDynamicMem.grow", "creating new unattached bucket:",
                      "size:", num_elements);
+      // Use resize() to update the size of the local commit buffer.
+      // This might cause re-allocation, however no un-attached pointers to
+      // elements in the local commit buffer exist at this point:
       _local_commit_buf.resize(num_elements);
       bucket_type bucket;
       bucket.size     = num_elements;
@@ -484,155 +499,21 @@ public:
    */
   void commit()
   {
-    auto num_attach_buckets = _buckets.back().attached ? 0 : 1;
-    auto num_detach_buckets = _detach_buckets.size();
-    DASH_LOG_DEBUG("GlobDynamicMem.commit()",
-                   "buckets to attach:", num_attach_buckets,
-                   "buckets to detach:", num_detach_buckets);
+    DASH_LOG_DEBUG("GlobDynamicMem.commit()");
     DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _buckets.size());
 
     // First detach, then attach to minimize number of elements allocated
-    // at the same time.
+    // at the same time:
+    size_type num_detached_elem = commit_detach();
+    size_type num_attached_elem = commit_attach();
 
-    // Unregister buckets marked for detach in global memory:
-    _num_detach_buckets.local[0] = num_detach_buckets;
-    barrier();
-
-    DASH_LOG_TRACE("GlobDynamicMem.commit",
-                   "querying min_detach/max_detach");
-    // TODO: use dash::min_max_element once it is available
-    //
-    auto min_detach_buckets_git  = dash::min_element(
-                                     _num_detach_buckets.begin(),
-                                     _num_detach_buckets.end());
-    auto max_detach_buckets_git  = dash::max_element(
-                                     _num_detach_buckets.begin(),
-                                     _num_detach_buckets.end());
-    auto unit_min_detach_buckets = min_detach_buckets_git.gpos();
-    auto unit_max_detach_buckets = max_detach_buckets_git.gpos();
-    int  min_detach_buckets      = *min_detach_buckets_git;
-    int  max_detach_buckets      = *max_detach_buckets_git;
-    DASH_LOG_TRACE("GlobDynamicMem.commit",
-                   "finished querying min_detach/max_detach");
-    if (min_detach_buckets == max_detach_buckets) {
-      for (auto bucket_it = _detach_buckets.begin();
-           bucket_it != _detach_buckets.end();
-           ++bucket_it) {
-        DASH_LOG_TRACE("GlobDynamicMem.commit", "detaching bucket:",
-                       "size:", bucket_it->size,
-                       "lptr:", bucket_it->lptr,
-                       "gptr:", bucket_it->gptr);
-        // Detach bucket from global memory region and deallocate its local
-        // memory segment:
-        if (bucket_it->attached) {
-          _allocator.detach(bucket_it->gptr);
-          bucket_it->attached = false;
-        }
-      }
-      _detach_buckets.clear();
-    } else {
-      // Cannot detach
-      DASH_LOG_TRACE("GlobDynamicMem.commit",
-                     "inbalanced number of buckets to detach: ",
-                     "local buckets:",      num_detach_buckets, ", ",
-                     "min. local buckets:", min_detach_buckets,
-                     "at unit",             unit_min_detach_buckets, ", "
-                     "max. local buckets:", min_detach_buckets,
-                     "at unit",             unit_max_detach_buckets);
+    if (num_detached_elem > 0 || num_attached_elem > 0) {
+      // Update _begin iterator:
+      DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _begin");
+      _begin             = global_iterator(this, 0, 0);
+      value_type v_begin = *_begin;
+      dash__unused(v_begin);
     }
-
-    // Attach local buffer bucket in global memory space if it exists and
-    // contains values:
-    //
-    // As bucket sizes differ between units, units must collect gptr's
-    // (dart_gptr_t) and size of buckets attached by other units and store
-    // them locally so a remote unit's local index can be mapped to the
-    // remote unit's bucket.
-    //
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _local_commit_buf.size());
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _buckets.size());
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _buckets.back().attached);
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _buckets.back().size);
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _buckets.back().gptr);
-    DASH_ASSERT(num_attach_buckets == 0 || !_local_commit_buf.empty());
-    if (!_local_commit_buf.empty() &&
-        !_buckets.empty() &&
-        !_buckets.back().attached)
-    {
-      bucket_type & bucket_last = _buckets.back();
-      // Extend existing unattached bucket:
-      DASH_LOG_TRACE("GlobDynamicMem.commit", "attaching bucket:",
-                     "size:", bucket_last.size,
-                     "lptr:", bucket_last.lptr,
-                     "gptr:", bucket_last.gptr);
-      bucket_last.lptr = _allocator.allocate_local(bucket_last.size);
-      // Using placement new to avoid copy/assignment as value_type might
-      // be const:
-      value_type * lptr_alloc = bucket_last.lptr;
-      for (auto elem : _local_commit_buf) {
-        new (lptr_alloc) value_type(elem);
-        ++lptr_alloc;
-      }
-      _local_commit_buf.resize(0);
-      // Attach bucket's local memory segment in global memory:
-      bucket_last.gptr = _allocator.attach(
-                           bucket_last.lptr,
-                           bucket_last.size);
-      DASH_LOG_TRACE("GlobDynamicMem.commit", "attached bucket:",
-                     "gptr:", bucket_last.gptr);
-      bucket_last.attached = true;
-    } else {
-      // No bucket to attach but attaching is a collective operation.
-      // Attach empty bucket:
-      DASH_LOG_TRACE("GlobDynamicMem.commit", "attaching empty bucket");
-      bucket_type bucket;
-      bucket.size     = 0;
-      bucket.lptr     = nullptr;
-      bucket.gptr     = DART_GPTR_NULL;
-      bucket.attached = true;
-      bucket.gptr     = _allocator.attach(
-                          bucket.lptr,
-                          bucket.size);
-      DASH_LOG_TRACE("GlobDynamicMem.commit", "attached empty bucket:",
-                     "gptr:", bucket.gptr);
-    }
-
-    // Update new capacity of global attached memory space.
-    //
-    // TODO:
-    //   dash::accumulate(_local_sizes.begin(),
-    //                    _local_sizes.end(),
-    //                    0, dash::plus<size_type>());
-    _remote_size = 0;
-    for (int u = 0; u < _nunits; ++u) {
-      if (u != _myid) {
-        size_type unit_local_size_new = _local_sizes[u];
-        // Accumulating previous local capacity of unit from its list of
-        // local bucket sizes instead of creating a local copy of
-        // _local_sizes bevore committing as we avoid communication this way:
-        auto    & unit_bucket_cumul_sizes   = _bucket_cumul_sizes[u];
-        size_type unit_local_size_old = std::accumulate(
-                                          unit_bucket_cumul_sizes.begin(),
-                                          unit_bucket_cumul_sizes.end(), 0);
-        // Size of the bucket attached by unit in this commit phase:
-        size_type unit_attached_size  = unit_local_size_new -
-                                        unit_local_size_old;
-        DASH_LOG_TRACE("GlobDynamicMem.commit",
-                       "unit", u,
-                       "old local size:", unit_local_size_old,
-                       "new local size:", unit_local_size_new,
-                       "attached size:",  unit_attached_size);
-        unit_bucket_cumul_sizes.push_back(unit_local_size_new);
-        _remote_size += unit_local_size_new;
-      }
-    }
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", _remote_size);
-    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit", size());
-    // Update _begin iterator:
-    DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _begin");
-    _begin             = global_iterator(this, 0, 0);
-    value_type v_begin = *_begin;
-    dash__unused(v_begin);
     DASH_LOG_DEBUG("GlobDynamicMem.commit >", "finished");
   }
 
@@ -943,7 +824,221 @@ public:
     return gbit;
   }
 
+  inline const bucket_list & local_buckets() const
+  {
+    return _buckets;
+  }
+
 private:
+  /**
+   * Commit global deallocation of buffers marked for detach.
+   */
+  size_type commit_detach()
+  {
+    auto num_detach_buckets_local = _detach_buckets.size();
+    DASH_LOG_TRACE("GlobDynamicMem.commit_detach()",
+                   "buckets to detach:", num_detach_buckets_local);
+    // Unregister buckets marked for detach in global memory:
+    _num_detach_buckets.local[0] = num_detach_buckets_local;
+    barrier();
+
+    // TODO: Unoptimized, use dash::min_max_element once it is available
+    //
+    DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
+                   "querying min_detach/max_detach");
+    size_type * lcopy_num_detach_buckets =
+                  new size_type[_num_detach_buckets.size()];
+    size_type * lcopy_num_detach_buckets_end =
+                  dash::copy(_num_detach_buckets.begin(),
+                             _num_detach_buckets.end(),
+                             lcopy_num_detach_buckets);
+    auto min_detach_buckets_lptr = std::min_element(
+                                     lcopy_num_detach_buckets,
+                                     lcopy_num_detach_buckets_end);
+    auto max_detach_buckets_lptr = std::max_element(
+                                     lcopy_num_detach_buckets,
+                                     lcopy_num_detach_buckets_end);
+    auto unit_min_detach_buckets = lcopy_num_detach_buckets_end -
+                                     min_detach_buckets_lptr;
+    auto unit_max_detach_buckets = lcopy_num_detach_buckets_end -
+                                     max_detach_buckets_lptr;
+    int  min_detach_buckets      = *min_detach_buckets_lptr;
+    int  max_detach_buckets      = *max_detach_buckets_lptr;
+    delete[] lcopy_num_detach_buckets;
+    DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
+                   "finished querying min_detach/max_detach:",
+                   "local detach buckets:", num_detach_buckets_local);
+    DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
+                   "min. detach buckets:",  min_detach_buckets,
+                   "at unit",               unit_min_detach_buckets);
+    DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
+                   "max. detach buckets:",  min_detach_buckets,
+                   "at unit",               unit_max_detach_buckets);
+    size_type num_detached_elem = 0;
+    if (num_detach_buckets_local == 0 &&
+        min_detach_buckets == 0 &&
+        max_detach_buckets == 0) {
+      DASH_LOG_TRACE("GlobDynamicMem.commit_detach", "no detach");
+    } else if (min_detach_buckets == max_detach_buckets) {
+      DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
+                     "balanced number of buckets to detach");
+      for (auto bucket_it = _detach_buckets.begin();
+           bucket_it != _detach_buckets.cend(); ++bucket_it) {
+        DASH_LOG_TRACE("GlobDynamicMem.commit_detach", "detaching bucket:",
+                       "size:", bucket_it->size,
+                       "lptr:", bucket_it->lptr,
+                       "gptr:", bucket_it->gptr);
+        // Detach bucket from global memory region and deallocate its local
+        // memory segment:
+        if (bucket_it->attached) {
+          _allocator.detach(bucket_it->gptr);
+          num_detached_elem   += bucket_it->size;
+          bucket_it->attached  = false;
+        }
+      }
+      _detach_buckets.clear();
+    } else {
+      // Cannot detach
+      DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
+                     "inbalanced number of buckets to detach");
+    }
+    DASH_LOG_TRACE("GlobDynamicMem.commit_detach >",
+                   "globally deallocated elements:", num_detached_elem);
+    return num_detached_elem;
+  }
+
+  /**
+   * Commit global allocation of buffers marked for attach.
+   */
+  size_type commit_attach()
+  {
+    DASH_LOG_TRACE("GlobDynamicMem.commit_attach()");
+    auto num_attach_buckets = _buckets.back().attached ? 0 : 1;
+    DASH_LOG_TRACE("GlobDynamicMem.commit_attach",
+                   "buckets to attach:", num_attach_buckets);
+    size_type num_attached_elem = 0;
+    size_type old_remote_size   = _remote_size;
+    _remote_size                = update_remote_size();
+    // Whether at least one remote unit needs to attach additional global
+    // memory:
+    bool remote_attach          = _remote_size != old_remote_size;
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", old_remote_size);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", _remote_size);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", size());
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", remote_attach);
+
+    // Attach local buffer bucket in global memory space if it exists and
+    // contains values:
+    //
+    // As bucket sizes differ between units, units must collect gptr's
+    // (dart_gptr_t) and size of buckets attached by other units and store
+    // them locally so a remote unit's local index can be mapped to the
+    // remote unit's bucket.
+    //
+    bucket_type & bucket_last = _buckets.back();
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach",
+                       _local_commit_buf.size());
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", _buckets.size());
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", bucket_last.attached);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", bucket_last.size);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", bucket_last.lptr);
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", bucket_last.gptr);
+    DASH_ASSERT(num_attach_buckets == 0 || !_local_commit_buf.empty());
+    if (!_local_commit_buf.empty() &&
+        !_buckets.empty() &&
+        !_buckets.back().attached) {
+      // Extend existing unattached bucket:
+      DASH_LOG_TRACE("GlobDynamicMem.commit_attach", "attaching bucket");
+      bucket_last.lptr = _allocator.allocate_local(bucket_last.size);
+      DASH_ASSERT(bucket_last.lptr != nullptr);
+      // Using placement new to avoid copy/assignment as value_type might
+      // be const:
+      value_type * lptr_alloc = bucket_last.lptr;
+      for (auto elem : _local_commit_buf) {
+        new (lptr_alloc) value_type(elem);
+        ++lptr_alloc;
+      }
+      _local_commit_buf.resize(0);
+      // Attach bucket's local memory segment in global memory:
+      bucket_last.gptr      = _allocator.attach(
+                                bucket_last.lptr,
+                                bucket_last.size);
+      bucket_last.attached  = true;
+      num_attached_elem    += bucket_last.size;
+      DASH_ASSERT(bucket_last.gptr != DART_GPTR_NULL);
+      DASH_LOG_TRACE("GlobDynamicMem.commit_attach", "attached bucket:",
+                     "gptr:", bucket_last.gptr);
+    } else if (remote_attach) {
+      // No additional global memory required by local unit but by at least
+      // one remote unit.
+      // Participate in attach as it is a collective operation and attach
+      // empty bucket:
+      DASH_LOG_TRACE("GlobDynamicMem.commit_attach", "attaching null bucket");
+      bucket_type bucket;
+      bucket.size     = 0;
+      bucket.lptr     = nullptr;
+      bucket.attached = true;
+      bucket.gptr     = _allocator.attach(
+                          bucket.lptr,
+                          bucket.size);
+      _buckets.push_back(bucket);
+      DASH_ASSERT(bucket.gptr != DART_GPTR_NULL);
+      DASH_LOG_TRACE("GlobDynamicMem.commit_attach", "attached null bucket:",
+                     "gptr:", bucket.gptr);
+    } else {
+      // No additional global memory required by any unit, pass.
+      DASH_LOG_TRACE("GlobDynamicMem.commit_attach", "no attach");
+    }
+    DASH_LOG_TRACE("GlobDynamicMem.commit_attach >",
+                   "globally allocated elements:", num_attached_elem);
+    return num_attached_elem;
+  }
+
+  /**
+   * Collect and update capacity of global attached memory space.
+   */
+  size_type update_remote_size()
+  {
+    DASH_LOG_TRACE("GlobDynamicMem.update_remote_size");
+    size_type new_remote_size = 0;
+    for (int u = 0; u < _nunits; ++u) {
+      if (u != _myid) {
+        // Last known locally allocated capacity of remote unit:
+        auto    & u_bucket_cumul_sizes = _bucket_cumul_sizes[u];
+        size_type u_local_size_old     = u_bucket_cumul_sizes.size() > 0
+                                         ? u_bucket_cumul_sizes.back()
+                                         : 0;
+        // Request current locally allocated capacity of remote unit:
+        size_type u_local_size_new     = _local_sizes[u];
+        DASH_LOG_TRACE("GlobDynamicMem.update_remote_size",
+                       "unit", u,
+                       "old local size:", u_local_size_old,
+                       "new local size:", u_local_size_new);
+        u_bucket_cumul_sizes.push_back(u_local_size_new);
+        new_remote_size += u_local_size_new;
+      }
+    }
+    if (new_remote_size == _remote_size) {
+      for (int u = 0; u < _nunits; ++u) {
+        if (u != _myid) {
+          // No new buckets allocated at any unit, undo updates of
+          // accumulated bucket sizes:
+          _bucket_cumul_sizes[u].pop_back();
+        }
+      }
+    }
+#if DASH_ENABLE_TRACE_LOGGING
+    for (int u = 0; u < _nunits; ++u) {
+      DASH_LOG_TRACE("GlobDynamicMem.update_remote_size",
+                     "unit", u,
+                     "cumulative bucket sizes:", _bucket_cumul_sizes[u]);
+    }
+#endif
+    DASH_LOG_TRACE("GlobDynamicMem.update_remote_size >", new_remote_size);
+    _remote_size = new_remote_size;
+    return _remote_size;
+  }
+
   /**
    * Global pointer referencing an element position in a unit's bucket.
    */
@@ -985,10 +1080,10 @@ private:
 private:
   allocator_type             _allocator;
   dart_team_t                _teamid;
-  size_type                  _nunits;
-  local_iterator             _lbegin;
-  local_iterator             _lend;
-  dart_unit_t                _myid;
+  size_type                  _nunits = 0;
+  local_iterator             _lbegin = nullptr;
+  local_iterator             _lend   = nullptr;
+  dart_unit_t                _myid   = DART_UNDEFINED_UNIT_ID;
   /// Buckets in local memory space. Local buffer bucket is last element in
   /// list, if existing.
   ///
@@ -1007,7 +1102,7 @@ private:
   /// memory space.
   local_sizes_map            _num_detach_buckets;
   /// Total number of elements in attached memory space of remote units.
-  size_type                  _remote_size;
+  size_type                  _remote_size = 0;
   /// Vector storing elements in unattached bucket.
   std::vector<value_type>    _local_commit_buf;
   /// Global iterator referencing start of global memory space.

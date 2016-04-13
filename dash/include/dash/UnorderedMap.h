@@ -309,7 +309,7 @@ public:
    */
   void barrier()
   {
-    DASH_LOG_TRACE_VAR("UnorderedMap.barrier()", _team);
+    DASH_LOG_TRACE_VAR("UnorderedMap.barrier()", _team->dart_id());
     // Apply changes in local memory spaces to global memory space:
     if (_globmem != nullptr) {
       _globmem->commit();
@@ -323,6 +323,7 @@ public:
         _remote_size           += local_size_u;
       }
     }
+    _end = _begin + size();
     DASH_LOG_TRACE("UnorderedMap.barrier >", "passed barrier");
   }
 
@@ -416,6 +417,8 @@ public:
     }
     _local_sizes.local[0] = 0;
     _remote_size          = 0;
+    _begin                = iterator();
+    _end                  = _begin;
     DASH_LOG_TRACE_VAR("UnorderedMap.deallocate >", this);
   }
 
@@ -732,9 +735,8 @@ public:
       result.first  = _globmem->at(unit, l_it_insert.pos());
       result.second = true;
     }
-    DASH_LOG_DEBUG("UnorderedMap.insert >",
-                   "value g.it:", result.first,
-                   "inserted:",   result.second);
+    DASH_LOG_DEBUG("UnorderedMap.insert >", "inserted:", result.second,
+                   result.first);
     return result;
   }
 
@@ -794,6 +796,11 @@ public:
     const_iterator last)
   {
     return _end;
+  }
+
+  inline const glob_mem_type & globmem() const
+  {
+    return *_globmem;
   }
 
 private:

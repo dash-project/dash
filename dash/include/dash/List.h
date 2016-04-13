@@ -563,6 +563,9 @@ public:
       DASH_LOG_TRACE("List.allocate",
                      "initializing with initial team");
     }
+    if (nelem < _team->size()) {
+      nelem = _team->size();
+    }
     _remote_size = 0;
     auto lcap    = dash::math::div_ceil(nelem, _team->size());
     // Initialize members:

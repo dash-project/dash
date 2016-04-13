@@ -149,25 +149,53 @@ public:
     DASH_LOG_TRACE("LocalListRef.push_back()");
     // New element node:
     ListNode_t node;
-    node.value     = value;
-    node.lprev     = nullptr;
-    node.lnext     = nullptr;
-    node.gprev     = _gprev;
-    node.gnext     = _gnext;
-    auto lcapacity = _list->_globmem->local_size();
-    DASH_LOG_TRACE_VAR("LocalListRef.push_back", lcapacity);
-    if (lcapacity > 0) {
-      // Node predecessor:
-      node.lprev = _list->_globmem->lbegin() + lcapacity - 1;
-    }
-    // Acquire local memory for new element:
-    _list->_globmem->grow(1);
-    // Pointer to allocated node:
-    ListNode_t * node_lptr = _list->_globmem->lbegin() + lcapacity - 1;
-    DASH_LOG_TRACE("LocalListRef.push_back",
-                   "list.globmem.local.last", node_lptr);
-    *node_lptr = node;
+    node.value = value;
+    node.lprev = nullptr;
+    node.lnext = nullptr;
+    node.gprev = _gprev;
+    node.gnext = _gnext;
+    // Local capacity before operation:
+    auto l_cap_old  = _list->_globmem->local_size();
+    // Number of local elements before operation:
+    auto l_size_old = _list->_local_sizes.local[0];
+    // Update local size:
     _list->_local_sizes.local[0]++;
+    // Number of local elements after operation:
+    auto l_size_new = _list->_local_sizes.local[0];
+    // Pointer to first local address in global memory:
+    ListNode_t * lbegin    = _list->_globmem->lbegin();
+    // Pointer to new node element:
+    ListNode_t * node_lptr = nullptr;
+
+    DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_cap_old);
+    DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_size_old);
+    DASH_LOG_TRACE_VAR("LocalListRef.push_back", lbegin);
+    if (l_size_new > l_cap_old) {
+      // Acquire local memory for new node:
+      node_lptr = _list->_globmem->grow(1);
+      DASH_ASSERT_GT(_list->_globmem->local_size(), l_cap_old,
+                     "local capacity not increased after globmem.grow()");
+    } else {
+      // No allocation required:
+      node_lptr = lbegin + l_size_old;
+    }
+    DASH_LOG_TRACE("LocalListRef.push_back",
+                   "node target address:", node_lptr);
+    DASH_ASSERT(lbegin    == _list->_globmem->lbegin());
+    DASH_ASSERT(node_lptr == lbegin + l_size_old);
+    if (l_size_old > 0) {
+      // Set node predecessor:
+      node.lprev        = lbegin + l_size_old - 1;
+      // Set successor of node predecessor to new node:
+      DASH_ASSERT(node.lprev->lnext == nullptr);
+      node.lprev->lnext = node_lptr;
+      DASH_LOG_TRACE_VAR("LocalListRef.push_back", node.lprev->lnext);
+    }
+    DASH_LOG_TRACE_VAR("LocalListRef.push_back", node.lprev);
+    DASH_LOG_TRACE_VAR("LocalListRef.push_back", node.lnext);
+    // Copy new node to target address:
+    *node_lptr = node;
+    DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_size_new);
     DASH_LOG_TRACE("LocalListRef.push_back >");
   }
 

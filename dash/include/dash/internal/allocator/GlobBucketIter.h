@@ -47,6 +47,16 @@ class GlobBucketIter
            PointerType,
            ReferenceType >
 {
+  template<
+    typename ElementType_,
+    class    GlobMemType_,
+    class    Pointer_,
+    class    Reference_>
+  friend std::ostream & dash::operator<<(
+    std::ostream & os,
+    const dash::internal::GlobBucketIter<
+            ElementType_, GlobMemType_, Pointer_, Reference_> & it);
+
 private:
   typedef GlobBucketIter<
             ElementType,
@@ -446,20 +456,34 @@ private:
     _idx += offset;
     auto current_bucket_size =
            (*_bucket_cumul_sizes)[_idx_unit_id][_idx_bucket_idx];
+    DASH_LOG_TRACE_VAR("GlobBucketIter.increment", current_bucket_size);
     if (_idx_local_idx + offset < current_bucket_size) {
+      DASH_LOG_TRACE("GlobBucketIter.increment", "position current bucket");
       // element is in bucket currently referenced by this iterator:
       _idx_bucket_phase += offset;
       _idx_local_idx    += offset;
     } else {
+      DASH_LOG_TRACE("GlobBucketIter.increment",
+                     "position in succeeding bucket");
       // iterate units:
       auto unit_id_max = _bucket_cumul_sizes->size() - 1;
       for (; _idx_unit_id <= unit_id_max; ++_idx_unit_id) {
+        if (offset == 0) {
+          break;
+        }
         auto unit_bkt_sizes       = (*_bucket_cumul_sizes)[_idx_unit_id];
         auto unit_bkt_sizes_total = unit_bkt_sizes.back();
         auto unit_num_bkts        = unit_bkt_sizes.size();
+        DASH_LOG_TRACE("GlobBucketIter.increment",
+                       "unit", _idx_unit_id,
+                       "remaining offset", offset,
+                       "total local bucket size:", unit_bkt_sizes_total);
         if (_idx_local_idx + offset >= unit_bkt_sizes_total) {
-          offset -= unit_bkt_sizes_total;
           // offset refers to next unit:
+          DASH_LOG_TRACE("GlobBucketIter.increment",
+                         "position in remote range");
+          // subtract remaining own local size from remaining offset:
+          offset -= (unit_bkt_sizes_total - _idx_local_idx);
           if (_idx_unit_id == unit_id_max) {
             // end iterator, offset exceeds iteration space:
             _idx_bucket_idx    = unit_num_bkts - 1;
@@ -476,6 +500,8 @@ private:
           _idx_bucket_phase = 0;
         } else {
           // offset refers to current unit:
+          DASH_LOG_TRACE("GlobBucketIter.increment",
+                         "position in local range");
           _idx_local_idx += offset;
           // iterate the unit's bucket sizes:
           for (; _idx_bucket_idx < unit_num_bkts; ++_idx_bucket_idx) {
@@ -490,9 +516,9 @@ private:
               break;
             }
           }
-        }
-        if (offset == 0) {
-          break;
+          if (offset == 0) {
+            break;
+          }
         }
       }
     }
@@ -635,11 +661,14 @@ std::ostream & operator<<(
           ElementType, GlobMemType, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  auto ptr = it.dart_gptr();
   ss << "dash::internal::GlobBucketIter<"
      << typeid(ElementType).name() << ">("
-     << "idx:"  << it.pos() << ", "
-     << "gptr:" << ptr      << ")";
+     << "gidx:"   << it._idx              << ", ("
+     << "unit:"   << it._idx_unit_id      << ", "
+     << "lidx:"   << it._idx_local_idx    << "), ("
+     << "bidx:"   << it._idx_bucket_idx   << ", "
+     << "bphase:" << it._idx_bucket_phase << ")"
+     << ")";
   return operator<<(os, ss.str());
 }
 

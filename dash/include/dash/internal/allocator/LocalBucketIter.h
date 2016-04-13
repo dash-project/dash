@@ -169,12 +169,24 @@ public:
     return !_is_nullptr;
   }
 
+  /**
+   * Dereference operator.
+   */
   reference operator*()
   {
     DASH_ASSERT(!_is_nullptr);
+    if (_bucket_phase > _bucket_it->size) {
+      DASH_THROW(dash::exception::OutOfRange,
+                 "dereferenced position " << _idx << " is out of range: " <<
+                 "bucket phase: " << _bucket_phase << ", " <<
+                 "bucket size: "  << _bucket_it->size);
+    }
     return _bucket_it->lptr[_bucket_phase];
   }
 
+  /**
+   * Random access operator.
+   */
   reference operator[](index_type offset)
   {
     DASH_ASSERT(!_is_nullptr);
@@ -192,9 +204,14 @@ public:
       }
     }
     DASH_THROW(dash::exception::OutOfRange,
-               "offset " << offset << " is out of range");
+               "dereferenced position " << _idx + offset << " " <<
+               "is out of range: pointer position: " << _idx << ", " <<
+               "offset: " << offset);
   }
 
+  /**
+   * Conversion to native pointer.
+   */
   operator pointer() const
   {
     DASH_LOG_TRACE("LocalBucketIter.pointer()", "nullptr:", _is_nullptr);
@@ -204,11 +221,21 @@ public:
       DASH_LOG_TRACE("LocalBucketIter.pointer",
                      "bucket size:",  bucket_size, ",",
                      "bucket phase:", _bucket_phase);
-      DASH_ASSERT_LT(
-        _bucket_phase, bucket_size,
-        "bucket phase out of bounds, " <<
-        "got: " << _bucket_phase <<
-        "max: " << bucket_size);
+      // This iterator type represents a local pointer so no bounds checks
+      // have to be performed in pointer arithmetics.
+      // Moving a pointer to out-of-bounds address is allowed, however
+      // dereferencing it will lead to segfault. This is a prerequisite for
+      // many common pointer arithmetic use cases.
+      // Example:
+      //   value = *((globmem.lend() + 2) - 3);
+      // is a valid operation and equivalent to
+      //   value = *(globmem.lend() + (2 - 3));
+      // as it creates a temporary pointer to an address beyond _lend (+2)
+      // which is then moved back into valid memory range (-3).
+      if (_bucket_phase >= bucket_size) {
+        DASH_LOG_TRACE("LocalBucketIter.pointer",
+                       "note: iterator position out of bounds (lend?)");
+      }
       lptr = _bucket_it->lptr + _bucket_phase;
     }
     DASH_LOG_TRACE_VAR("LocalBucketIter.pointer >", lptr);
@@ -315,17 +342,28 @@ public:
     return !(*this == other);
   }
 
+  /**
+   * Whether the pointer references an element in local memory space.
+   *
+   * \return  true
+   */
   constexpr bool is_local() const
   {
     return true;
   }
 
+  /**
+   * Position of the pointer relative to its referenced memory space.
+   */
   index_type pos() const
   {
     return _idx;
   }
 
 private:
+  /**
+   * Advance pointer by specified position offset.
+   */
   void increment(int offset)
   {
     DASH_ASSERT(!_is_nullptr);
@@ -350,6 +388,9 @@ private:
     }
   }
 
+  /**
+   * Decrement pointer by specified position offset.
+   */
   void decrement(int offset)
   {
     DASH_ASSERT(!_is_nullptr);
