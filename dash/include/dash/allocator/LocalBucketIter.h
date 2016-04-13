@@ -72,33 +72,28 @@ private:
     const_bucket_iterator;
 
 public:
-  template<
-    typename BucketIterA,
-    typename BucketIterB,
-    typename BucketIterC >
+  template<typename BucketIter>
   LocalBucketIter(
-    const BucketIterA & bucket_first,
-    const BucketIterB & bucket_last,
-    index_type          position,
-    const BucketIterC & bucket_it,
-    index_type          bucket_phase)
-  : _bucket_first(&bucket_first),
-    _bucket_last(&bucket_last),
+    const BucketIter & bucket_first,
+    const BucketIter & bucket_last,
+    index_type         position,
+    const BucketIter & bucket_it,
+    index_type         bucket_phase)
+  : _bucket_first(bucket_first),
+    _bucket_last(bucket_last),
     _idx(position),
     _bucket_it(bucket_it),
     _bucket_phase(bucket_phase),
     _is_nullptr(false)
   { }
 
-  template<
-    typename BucketIterA,
-    typename BucketIterB >
+  template<typename BucketIter>
   LocalBucketIter(
-    const BucketIterA & bucket_first,
-    const BucketIterB & bucket_last,
-    index_type          position)
-  : _bucket_first(&bucket_first),
-    _bucket_last(&bucket_last),
+    const BucketIter & bucket_first,
+    const BucketIter & bucket_last,
+    index_type         position)
+  : _bucket_first(bucket_first),
+    _bucket_last(bucket_last),
     _idx(position),
     _bucket_it(bucket_first),
     _bucket_phase(0),
@@ -108,8 +103,8 @@ public:
 #ifdef DASH_ENABLE_TRACE_LOGGING
     index_type bucket_idx = 0;
 #endif
-    for (_bucket_it  = *_bucket_first;
-         _bucket_it != *_bucket_last; ++_bucket_it) {
+    for (_bucket_it  = _bucket_first;
+         _bucket_it != _bucket_last; ++_bucket_it) {
       if (position >= _bucket_it->size) {
         position -= _bucket_it->size;
       } else {
@@ -159,8 +154,8 @@ public:
       return LocalBucketIter<const value_type, I_, P_, R_>(nullptr);
     }
     return LocalBucketIter<const value_type, I_, P_, R_>(
-             &_bucket_first,
-             &_bucket_last,
+             _bucket_first,
+             _bucket_last,
              _idx,
              _bucket_it,
              _bucket_phase);
@@ -212,7 +207,7 @@ public:
       return _bucket_it->lptr[_bucket_phase + offset];
     } else {
       // find bucket containing element at given offset:
-      for (auto b_it = _bucket_it; b_it != *_bucket_last; ++b_it) {
+      for (auto b_it = _bucket_it; b_it != _bucket_last; ++b_it) {
         if (offset >= b_it->size) {
           offset -= b_it->size;
         } else if (offset < b_it->size) {
@@ -373,7 +368,7 @@ public:
       //   value = *(globmem.lend() + (2 - 3));
       // as it creates a temporary pointer to an address beyond _lend (+2)
       // which is then moved back into valid memory range (-3).
-      if (_bucket_it == *_bucket_last) {
+      if (_bucket_it == _bucket_last) {
         DASH_LOG_TRACE("LocalBucketIter.pointer", "position at lend");
       } else if (_bucket_phase >= bucket_size) {
         DASH_LOG_TRACE("LocalBucketIter.pointer",
@@ -398,7 +393,7 @@ private:
       _bucket_phase += offset;
     } else {
       // find bucket containing element at given offset:
-      for (; _bucket_it != *_bucket_last; ++_bucket_it) {
+      for (; _bucket_it != _bucket_last; ++_bucket_it) {
         if (offset >= _bucket_it->size) {
           offset -= _bucket_it->size;
         } else if (offset < _bucket_it->size) {
@@ -408,7 +403,7 @@ private:
       }
     }
     // end iterator
-    if (_bucket_it == *_bucket_last) {
+    if (_bucket_it == _bucket_last) {
       _bucket_phase = offset;
     }
   }
@@ -430,7 +425,7 @@ private:
     } else {
       offset -= _bucket_phase;
       // find bucket containing element at given offset:
-      for (; _bucket_it != *_bucket_first; --_bucket_it) {
+      for (; _bucket_it != _bucket_first; --_bucket_it) {
         if (offset >= _bucket_it->size) {
           offset -= _bucket_it->size;
         } else if (offset < _bucket_it->size) {
@@ -439,7 +434,7 @@ private:
         }
       }
     }
-    if (_bucket_it == *_bucket_first) {
+    if (_bucket_it == _bucket_first) {
       _bucket_phase = _bucket_it->size - offset;
     }
     if (false) {
@@ -449,12 +444,12 @@ private:
   }
 
 private:
-  const bucket_iterator * _bucket_first  = nullptr;
-  const bucket_iterator * _bucket_last   = nullptr;
-  index_type              _idx           = 0;
-  bucket_iterator         _bucket_it;
-  index_type              _bucket_phase  = 0;
-  bool                    _is_nullptr    = false;
+  bucket_iterator  _bucket_first;
+  bucket_iterator  _bucket_last;
+  index_type       _idx           = 0;
+  bucket_iterator  _bucket_it;
+  index_type       _bucket_phase  = 0;
+  bool             _is_nullptr    = false;
 
 }; // class LocalBucketIter
 

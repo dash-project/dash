@@ -139,16 +139,26 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", position);
     for (auto unit_bucket_cumul_sizes : *_bucket_cumul_sizes) {
-      _idx_local_idx    = position;
-      _idx_bucket_phase = position;
+      DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)",
+                         unit_bucket_cumul_sizes);
+      size_type bucket_cumul_size_prev = 0;
       for (auto bucket_cumul_size : unit_bucket_cumul_sizes) {
-        if (position > bucket_cumul_size) {
+        DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", bucket_cumul_size);
+        if (position < bucket_cumul_size) {
+          DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", position);
           _idx_bucket_phase -= bucket_cumul_size;
+          position           = 0;
+          _idx_local_idx     = position;
+          _idx_bucket_phase  = position - bucket_cumul_size_prev;
           break;
         }
+        bucket_cumul_size_prev = bucket_cumul_size;
         ++_idx_bucket_idx;
       }
-      // advance to next unit, adjust position relative to next unit's
+      if (position == 0) {
+        break;
+      }
+      // Advance to next unit, adjust position relative to next unit's
       // local index space:
       position -= unit_bucket_cumul_sizes.back();
       ++_idx_unit_id;

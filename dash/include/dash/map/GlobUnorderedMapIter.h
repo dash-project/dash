@@ -90,7 +90,6 @@ public:
    */
   GlobUnorderedMapIter()
   : _map(nullptr),
-    _lbegin(nullptr),
     _idx(-1),
     _max_idx(_map->size() - 1),
     _myid(DART_UNDEFINED_UNIT_ID),
@@ -108,7 +107,6 @@ public:
     map_t       * map,
     index_type    position)
   : _map(map),
-    _lbegin(_map->lbegin()),
     _idx(position),
     _max_idx(_map->size() - 1),
     _myid(dash::myid()),
@@ -130,7 +128,6 @@ public:
     dart_unit_t   unit,
     index_type    local_index)
   : _map(map),
-    _lbegin(_map->lbegin()),
     _idx(-1),
     _max_idx(_map->size() - 1),
     _myid(dash::myid()),
@@ -160,7 +157,6 @@ public:
    */
   GlobUnorderedMapIter(std::nullptr_t)
   : _map(nullptr),
-    _lbegin(nullptr),
     _idx(-1),
     _max_idx(-1),
     _myid(DART_UNDEFINED_UNIT_ID),
@@ -245,7 +241,7 @@ public:
       // Iterator position does not point to local element
       return nullptr;
     }
-    return (_lbegin + _idx_local_idx);
+    return (_map->lbegin() + _idx_local_idx);
   }
 
   /**
@@ -347,6 +343,14 @@ private:
                    "lidx:",   _idx_local_idx,
                    "offset:", offset);
     _idx += offset;
+    auto & l_cumul_sizes = _map->_local_cumul_sizes;
+    // Find unit at global offset:
+    while (_idx > l_cumul_sizes[_idx_unit_id] &&
+           _idx_unit_id < l_cumul_sizes.size()) {
+      _idx_unit_id++;
+    }
+    // Global offset and unit to local index:
+    _idx_local_idx = _idx - l_cumul_sizes[_idx_unit_id];
     DASH_LOG_TRACE("GlobUnorderedMapIter.increment >");
   }
 
@@ -367,8 +371,6 @@ private:
 private:
   /// Pointer to referenced map instance.
   map_t                  * _map           = nullptr;
-  /// Pointer to first element in local data space.
-  local_pointer            _lbegin;
   /// Current position of the iterator in global canonical index space.
   index_type               _idx           = -1;
   /// Maximum position allowed for this iterator.

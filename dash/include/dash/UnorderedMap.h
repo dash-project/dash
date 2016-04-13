@@ -381,9 +381,16 @@ public:
     _local_sizes.barrier();
     _remote_size = 0;
     for (int u = 0; u < _team->size(); ++u) {
+      size_type local_size_u;
       if (u != _myid) {
-        size_type local_size_u  = _local_sizes[u];
-        _remote_size           += local_size_u;
+        local_size_u = _local_sizes[u];
+        _remote_size += local_size_u;
+      } else {
+        local_size_u = _local_sizes.local[0];
+      }
+      _local_cumul_sizes[u] = local_size_u;
+      if (u > 0) {
+        _local_cumul_sizes[u] += _local_cumul_sizes[u-1];
       }
     }
     _begin = iterator(this, 0);
@@ -443,6 +450,8 @@ public:
     // instance that has been used to initialized it:
     _team->register_deallocator(
              this, std::bind(&UnorderedMap::deallocate, this));
+    // Initialize local sizes with 0:
+    _local_cumul_sizes    = std::vector<size_type>(_team->size(), 0);
     _local_sizes.allocate(_team->size(), dash::BLOCKED, *_team);
     _local_sizes.local[0] = 0;
     _local_size_gptr      = _local_sizes[_myid].dart_gptr();
@@ -482,6 +491,7 @@ public:
       delete _globmem;
       _globmem = nullptr;
     }
+    _local_cumul_sizes    = std::vector<size_type>(_team->size(), 0);
     _local_sizes.local[0] = 0;
     _remote_size          = 0;
     _begin                = iterator();
@@ -892,6 +902,8 @@ private:
   local_iterator         _lend;
   /// Mapping units to their number of local map elements.
   local_sizes_map        _local_sizes;
+  /// Cumulative (postfix sum) local sizes of all units.
+  std::vector<size_type> _local_cumul_sizes;
   /// Global pointer to local element in _local_sizes.
   dart_gptr_t            _local_size_gptr = DART_GPTR_NULL;
   /// Hash type for mapping of key to unit and local offset.

@@ -217,18 +217,13 @@ public:
     _num_attach_buckets.local[0] = 0;
     _num_detach_buckets.local[0] = 0;
 
-    _lbegin = lbegin(_myid);
-    _lend   = lend(_myid);
+//  _lbegin = lbegin(_myid);
+//  _lend   = lend(_myid);
 
     DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem",
                    "allocating initial memory space");
     grow(n_local_elem);
     commit();
-
-    DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem",
-                   "initialize global begin() iterator");
-    _begin = at(0, 0);
-    _end   = at(0, size());
 
     DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem >");
   }
@@ -259,7 +254,7 @@ public:
   /**
    * Equality comparison operator.
    */
-  bool operator==(const self_t & rhs) const
+  bool operator==(const self_t & rhs) const noexcept
   {
     return (_teamid         == rhs._teamid &&
             _nunits         == rhs._nunits &&
@@ -282,7 +277,7 @@ public:
   /**
    * Number of elements in local memory space.
    */
-  inline size_type local_size() const
+  inline size_type local_size() const noexcept
   {
     return _local_sizes.local[0];
   }
@@ -299,7 +294,7 @@ public:
   /**
    * Inequality comparison operator.
    */
-  bool operator!=(const self_t & rhs) const
+  bool operator!=(const self_t & rhs) const noexcept
   {
     return !(*this == rhs);
   }
@@ -502,7 +497,8 @@ public:
       // Update _begin iterator:
       DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _begin");
       _begin = global_iterator(this, 0);
-      _end   = global_iterator(this, size());
+      DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _end");
+      _end   = _begin + size();
       value_type v_begin = *_begin;
       dash__unused(v_begin);
     }
@@ -662,7 +658,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobDynamicMem instance.
    */
-  inline local_iterator lbegin()
+  inline local_iterator & lbegin()
   {
     return _lbegin;
   }
@@ -732,7 +728,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobDynamicMem instance.
    */
-  inline local_iterator lend()
+  inline local_iterator & lend()
   {
     return _lend;
   }
@@ -741,7 +737,7 @@ public:
    * Native pointer of the initial address of the local memory of
    * the unit that initialized this GlobDynamicMem instance.
    */
-  inline const_local_iterator lend() const
+  inline const_local_iterator & lend() const
   {
     return _lend;
   }
@@ -993,9 +989,9 @@ private:
     min_max.first  = *min_lptr;
     min_max.second = *max_lptr;
     delete[] lcopy;
-    DASH_LOG_TRACE("GlobDynamicMem.gather_min_max >"
-                   "min. detach buckets:", min_max.first,
-                   "max. detach buckets:", min_max.second);
+    DASH_LOG_TRACE("GlobDynamicMem.gather_min_max >",
+                   "min:", min_max.first,
+                   "max:", min_max.second);
     return min_max;
   }
 
