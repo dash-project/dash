@@ -156,6 +156,41 @@ public:
     const self_t & other) = default;
 
   /**
+   * Null-pointer constructor.
+   */
+  GlobUnorderedMapIter(std::nullptr_t)
+  : _map(nullptr),
+    _lbegin(nullptr),
+    _idx(-1),
+    _max_idx(-1),
+    _myid(DART_UNDEFINED_UNIT_ID),
+    _idx_unit_id(DART_UNDEFINED_UNIT_ID),
+    _idx_local_idx(-1),
+    _is_nullptr(true)
+  {
+    DASH_LOG_TRACE("GlobUnorderedMapIter(nullptr)");
+  }
+
+  /**
+   * Null-pointer assignment operator.
+   */
+  self_t & operator=(std::nullptr_t) noexcept
+  {
+    _is_nullptr = true;
+    return *this;
+  }
+
+  inline bool operator==(std::nullptr_t) const noexcept
+  {
+    return _is_nullptr;
+  }
+
+  inline bool operator!=(std::nullptr_t) const noexcept
+  {
+    return !_is_nullptr;
+  }
+
+  /**
    * Type conversion operator to \c GlobPtr.
    *
    * \return  A global reference to the element at the iterator's position
@@ -235,7 +270,7 @@ public:
   /**
    * Position of the iterator in global index space.
    */
-  inline index_type pos() const
+  inline index_type pos() const noexcept
   {
     return _idx;
   }
@@ -243,7 +278,7 @@ public:
   /**
    * Position of the iterator in global index range.
    */
-  inline index_type gpos() const
+  inline index_type gpos() const noexcept
   {
     return _idx;
   }
@@ -286,14 +321,18 @@ public:
     return result;
   }
 
-  inline bool operator==(const self_t & other) const noexcept
+  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  inline bool operator==(
+    const GlobUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
   {
-    return _idx == other._idx;
+    return (this == std::addressof(other) || _idx == other._idx);
   }
 
-  inline bool operator!=(const self_t & other) const noexcept
+  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  inline bool operator!=(
+    const GlobUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
   {
-    return _idx != other._idx;
+    return !(*this == other);
   }
 
 private:
@@ -340,6 +379,8 @@ private:
   dart_unit_t              _idx_unit_id   = DART_UNDEFINED_UNIT_ID;
   /// Logical offset in local index space at the iterator's current position.
   index_type               _idx_local_idx = -1;
+  /// Whether the iterator represents a null pointer.
+  bool                     _is_nullptr    = false;
 
 }; // class GlobUnorderedMapIter
 

@@ -69,11 +69,19 @@ public:
   typedef typename GlobMemType::index_type                       index_type;
   typedef typename std::make_unsigned<index_type>::type           size_type;
 
-  typedef       ElementType                                      value_type;
-  typedef       ReferenceType                                     reference;
-  typedef const ReferenceType                               const_reference;
-  typedef       PointerType                                         pointer;
-  typedef const PointerType                                   const_pointer;
+  typedef ElementType                                            value_type;
+  typedef ReferenceType                                           reference;
+  typedef ReferenceType                                     const_reference;
+  typedef PointerType                                               pointer;
+  typedef PointerType                                         const_pointer;
+
+  typedef typename
+    std::conditional<
+      std::is_const<value_type>::value,
+      const GlobMemType,
+      GlobMemType
+    >::type
+    globmem_type;
 
   typedef typename
     std::conditional<
@@ -116,8 +124,8 @@ public:
    * offset in logical storage order.
    */
   GlobBucketIter(
-    GlobMemType * gmem,
-	  index_type    position = 0)
+    globmem_type * gmem,
+	  index_type     position = 0)
   : _globmem(gmem),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
     _lbegin(_globmem->lbegin()),
@@ -158,9 +166,9 @@ public:
    * local offset in logical storage order.
    */
   GlobBucketIter(
-    GlobMemType * gmem,
-    dart_unit_t   unit,
-	  index_type    local_index)
+    globmem_type * gmem,
+    dart_unit_t    unit,
+	  index_type     local_index)
   : _globmem(gmem),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
     _lbegin(_globmem->lbegin()),
@@ -192,14 +200,37 @@ public:
   /**
    * Copy constructor.
    */
+  template<typename E_, typename G_, typename P_, typename R_>
   GlobBucketIter(
-    const self_t & other) = default;
+    const GlobBucketIter<E_, G_, P_, R_> & other)
+  : _globmem(other._globmem),
+    _bucket_cumul_sizes(other._bucket_cumul_sizes),
+    _lbegin(other._lbegin),
+    _idx(other._idx),
+    _max_idx(other._max_idx),
+    _idx_unit_id(other._idx_unit_id),
+    _idx_local_idx(other._idx_local_idx),
+    _idx_bucket_idx(other._idx_bucket_idx),
+    _idx_bucket_phase(other._idx_bucket_phase)
+  { }
 
   /**
    * Assignment operator.
    */
+  template<typename E_, typename G_, typename P_, typename R_>
   self_t & operator=(
-    const self_t & other) = default;
+    const GlobBucketIter<E_, G_, P_, R_> & other)
+  {
+    _globmem            = other._globmem;
+    _bucket_cumul_sizes = other._bucket_cumul_sizes;
+    _lbegin             = other._lbegin;
+    _idx                = other._idx;
+    _max_idx            = other._max_idx;
+    _idx_unit_id        = other._idx_unit_id;
+    _idx_local_idx      = other._idx_local_idx;
+    _idx_bucket_idx     = other._idx_bucket_idx;
+    _idx_bucket_phase   = other._idx_bucket_phase;
+  }
 
   /**
    * Type conversion operator to \c GlobPtr.
@@ -314,7 +345,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline const GlobMemType & globmem() const
+  inline const globmem_type & globmem() const
   {
     return *_globmem;
   }
@@ -323,7 +354,7 @@ public:
    * The instance of \c GlobMem used by this iterator to resolve addresses
    * in global memory.
    */
-  inline GlobMemType & globmem()
+  inline globmem_type & globmem()
   {
     return *_globmem;
   }
@@ -404,32 +435,38 @@ public:
     return _idx - other._idx;
   }
 
-  inline bool operator<(const self_t & other) const
+  template<typename E_, typename G_, typename P_, typename R_>
+  inline bool operator<(const GlobBucketIter<E_, G_, P_, R_> & other) const
   {
     return (_idx < other._idx);
   }
 
-  inline bool operator<=(const self_t & other) const
+  template<typename E_, typename G_, typename P_, typename R_>
+  inline bool operator<=(const GlobBucketIter<E_, G_, P_, R_> & other) const
   {
     return (_idx <= other._idx);
   }
 
-  inline bool operator>(const self_t & other) const
+  template<typename E_, typename G_, typename P_, typename R_>
+  inline bool operator>(const GlobBucketIter<E_, G_, P_, R_> & other) const
   {
     return (_idx > other._idx);
   }
 
-  inline bool operator>=(const self_t & other) const
+  template<typename E_, typename G_, typename P_, typename R_>
+  inline bool operator>=(const GlobBucketIter<E_, G_, P_, R_> & other) const
   {
     return (_idx >= other._idx);
   }
 
-  inline bool operator==(const self_t & other) const
+  template<typename E_, typename G_, typename P_, typename R_>
+  inline bool operator==(const GlobBucketIter<E_, G_, P_, R_> & other) const
   {
     return _idx == other._idx;
   }
 
-  inline bool operator!=(const self_t & other) const
+  template<typename E_, typename G_, typename P_, typename R_>
+  inline bool operator!=(const GlobBucketIter<E_, G_, P_, R_> & other) const
   {
     return _idx != other._idx;
   }
@@ -600,7 +637,7 @@ private:
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMemType                  * _globmem            = nullptr;
+  globmem_type                 * _globmem            = nullptr;
   /// Mapping unit id to buckets in the unit's attached local storage.
   const bucket_cumul_sizes_map * _bucket_cumul_sizes = nullptr;
   /// Pointer to first element in local data space.

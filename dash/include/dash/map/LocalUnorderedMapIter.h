@@ -104,20 +104,6 @@ public:
   }
 
   /**
-   * Null-pointer constructor.
-   */
-  LocalUnorderedMapIter(std::nullptr_t)
-  : _map(nullptr),
-    _idx(-1),
-    _max_idx(-1),
-    _myid(DART_UNDEFINED_UNIT_ID),
-    _is_nullptr(true)
-  {
-    DASH_LOG_TRACE("LocalUnorderedMapIter()");
-    DASH_LOG_TRACE("LocalUnorderedMapIter >");
-  }
-
-  /**
    * Copy constructor.
    */
   LocalUnorderedMapIter(
@@ -130,9 +116,22 @@ public:
     const self_t & other) = default;
 
   /**
+   * Null-pointer constructor.
+   */
+  LocalUnorderedMapIter(std::nullptr_t)
+  : _map(nullptr),
+    _idx(-1),
+    _max_idx(-1),
+    _myid(DART_UNDEFINED_UNIT_ID),
+    _is_nullptr(true)
+  {
+    DASH_LOG_TRACE("LocalUnorderedMapIter(nullptr)");
+  }
+
+  /**
    * Null-pointer assignment operator.
    */
-  self_t & operator=(std::nullptr_t)
+  self_t & operator=(std::nullptr_t) noexcept
   {
     _is_nullptr = true;
     return *this;
@@ -249,14 +248,18 @@ public:
     return result;
   }
 
-  inline bool operator==(const self_t & other) const noexcept
+  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  inline bool operator==(
+    const LocalUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
   {
-    return _idx == other._idx;
+    return (this == std::addressof(other) || _idx == other._idx);
   }
 
-  inline bool operator!=(const self_t & other) const noexcept
+  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  inline bool operator!=(
+    const LocalUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
   {
-    return _idx != other._idx;
+    return !(*this == other);
   }
 
 private:
@@ -296,7 +299,7 @@ private:
   /// Unit id of the active unit.
   dart_unit_t              _myid          = DART_UNDEFINED_UNIT_ID;
   /// Whether the iterator represents a null pointer.
-  bool                     _is_nullptr    = true;
+  bool                     _is_nullptr    = false;
 
 }; // class LocalUnorderedMapIter
 

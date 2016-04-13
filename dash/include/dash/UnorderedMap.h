@@ -201,6 +201,12 @@ class UnorderedMap
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   friend class LocalUnorderedMapRef;
 
+  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  friend class GlobUnorderedMapIter;
+
+  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  friend class LocalUnorderedMapIter;
+
 private:
   typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>
     self_t;
@@ -498,17 +504,17 @@ public:
   /**
    * Global const pointer to the beginning of the map.
    */
-  inline const_iterator begin() const noexcept
+  inline const_iterator & begin() const noexcept
   {
-    return const_iterator(_begin);
+    return const_cast<const self_t *>(this)->begin();
   }
 
   /**
    * Global const pointer to the beginning of the map.
    */
-  inline const_iterator cbegin() const noexcept
+  inline const_iterator & cbegin() const noexcept
   {
-    return const_iterator(_begin);
+    return const_cast<const self_t *>(this)->begin();
   }
 
   /**
@@ -522,19 +528,18 @@ public:
   /**
    * Global const pointer to the end of the map.
    */
-  inline const_iterator end() const noexcept
+  inline const_iterator & end() const noexcept
   {
-    return const_iterator(_end);
+    return const_cast<const self_t *>(this)->end();
   }
 
   /**
    * Global const pointer to the end of the map.
    */
-  inline const_iterator cend() const noexcept
+  inline const_iterator & cend() const noexcept
   {
-    return const_iterator(_end);
+    return const_cast<const self_t *>(this)->end();
   }
-
 
   //////////////////////////////////////////////////////////////////////////
   // Local Iterators
@@ -547,12 +552,12 @@ public:
 
   inline const_local_iterator & lbegin() const noexcept
   {
-    return const_local_iterator(_lbegin);
+    return const_cast<const self_t *>(this)->lbegin();
   }
 
   inline const_local_iterator & clbegin() const noexcept
   {
-    return const_local_iterator(_lbegin);
+    return const_cast<const self_t *>(this)->lbegin();
   }
 
   inline local_iterator & lend() noexcept
@@ -562,12 +567,12 @@ public:
 
   inline const_local_iterator & lend() const noexcept
   {
-    return const_local_iterator(_lend);
+    return const_cast<const self_t *>(this)->lend();
   }
 
   inline const_local_iterator & clend() const noexcept
   {
-    return const_local_iterator(_lend);
+    return const_cast<const self_t *>(this)->lend();
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -896,8 +901,8 @@ private:
   /// Capacity of local buffer containing locally added node elements that
   /// have not been committed to global memory yet.
   /// Default is 4 KB.
-  size_type            _local_buffer_size
-                         = 4096 / sizeof(value_type);
+  size_type              _local_buffer_size
+                           = 4096 / sizeof(value_type);
 
 }; // class UnorderedMap
 

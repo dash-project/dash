@@ -65,40 +65,40 @@ private:
   typedef typename std::list<bucket_type>
     bucket_list;
 
-  typedef typename
-    std::conditional<
-      std::is_const<value_type>::value,
-      typename bucket_list::const_iterator,
-      typename bucket_list::iterator
-    >::type
+  typedef typename bucket_list::iterator
     bucket_iterator;
 
   typedef typename bucket_list::const_iterator
     const_bucket_iterator;
 
 public:
-  template<typename BucketIterator>
+  template<
+    typename BucketIterA,
+    typename BucketIterB,
+    typename BucketIterC >
   LocalBucketIter(
-    const BucketIterator & bucket_first,
-    const BucketIterator & bucket_last,
-    index_type             position,
-    const BucketIterator & bucket_it,
-    index_type             bucket_phase)
-  : _bucket_first(bucket_first),
-    _bucket_last(bucket_last),
+    const BucketIterA & bucket_first,
+    const BucketIterB & bucket_last,
+    index_type          position,
+    const BucketIterC & bucket_it,
+    index_type          bucket_phase)
+  : _bucket_first(&bucket_first),
+    _bucket_last(&bucket_last),
     _idx(position),
     _bucket_it(bucket_it),
     _bucket_phase(bucket_phase),
     _is_nullptr(false)
   { }
 
-  template<typename BucketIterator>
+  template<
+    typename BucketIterA,
+    typename BucketIterB >
   LocalBucketIter(
-    const BucketIterator & bucket_first,
-    const BucketIterator & bucket_last,
-    index_type             position)
-  : _bucket_first(bucket_first),
-    _bucket_last(bucket_last),
+    const BucketIterA & bucket_first,
+    const BucketIterB & bucket_last,
+    index_type          position)
+  : _bucket_first(&bucket_first),
+    _bucket_last(&bucket_last),
     _idx(position),
     _bucket_it(bucket_first),
     _bucket_phase(0),
@@ -108,8 +108,8 @@ public:
 #ifdef DASH_ENABLE_TRACE_LOGGING
     index_type bucket_idx = 0;
 #endif
-    for (_bucket_it = _bucket_first;
-         _bucket_it != _bucket_last; ++_bucket_it) {
+    for (_bucket_it  = *_bucket_first;
+         _bucket_it != *_bucket_last; ++_bucket_it) {
       if (position >= _bucket_it->size) {
         position -= _bucket_it->size;
       } else {
@@ -127,8 +127,7 @@ public:
 
   LocalBucketIter() = default;
 
-  template<typename E_, typename I_, typename P_, typename R_>
-  LocalBucketIter(const LocalBucketIter<E_, I_, P_, R_> & other)
+  LocalBucketIter(const self_t & other)
   : _bucket_first(other._bucket_first),
     _bucket_last(other._bucket_last),
     _idx(other._idx),
@@ -137,8 +136,7 @@ public:
     _is_nullptr(other._is_nullptr)
   { }
 
-  template<typename E_, typename I_, typename P_, typename R_>
-  self_t & operator=(const LocalBucketIter<E_, I_, P_, R_> & rhs)
+  self_t & operator=(const self_t & rhs)
   {
     if (this != &rhs) {
       _bucket_first = rhs._bucket_first;
@@ -151,14 +149,22 @@ public:
     return *this;
   }
 
-#if 0
   /**
    * Conversion to const iterator.
    */
-  operator LocalBucketIter<const value_type>() const
+  template<typename I_, typename P_, typename R_>
+  operator LocalBucketIter<const value_type, I_, P_, R_>() const
   {
+    if (_is_nullptr) {
+      return LocalBucketIter<const value_type, I_, P_, R_>(nullptr);
+    }
+    return LocalBucketIter<const value_type, I_, P_, R_>(
+             &_bucket_first,
+             &_bucket_last,
+             _idx,
+             _bucket_it,
+             _bucket_phase);
   }
-#endif
 
   LocalBucketIter(std::nullptr_t)
   : _is_nullptr(true)
@@ -206,7 +212,7 @@ public:
       return _bucket_it->lptr[_bucket_phase + offset];
     } else {
       // find bucket containing element at given offset:
-      for (auto b_it = _bucket_it; b_it != _bucket_last; ++b_it) {
+      for (auto b_it = _bucket_it; b_it != *_bucket_last; ++b_it) {
         if (offset >= b_it->size) {
           offset -= b_it->size;
         } else if (offset < b_it->size) {
@@ -367,7 +373,7 @@ public:
       //   value = *(globmem.lend() + (2 - 3));
       // as it creates a temporary pointer to an address beyond _lend (+2)
       // which is then moved back into valid memory range (-3).
-      if (_bucket_it == _bucket_last) {
+      if (_bucket_it == *_bucket_last) {
         DASH_LOG_TRACE("LocalBucketIter.pointer", "position at lend");
       } else if (_bucket_phase >= bucket_size) {
         DASH_LOG_TRACE("LocalBucketIter.pointer",
@@ -392,7 +398,7 @@ private:
       _bucket_phase += offset;
     } else {
       // find bucket containing element at given offset:
-      for (; _bucket_it != _bucket_last; ++_bucket_it) {
+      for (; _bucket_it != *_bucket_last; ++_bucket_it) {
         if (offset >= _bucket_it->size) {
           offset -= _bucket_it->size;
         } else if (offset < _bucket_it->size) {
@@ -402,7 +408,7 @@ private:
       }
     }
     // end iterator
-    if (_bucket_it == _bucket_last) {
+    if (_bucket_it == *_bucket_last) {
       _bucket_phase = offset;
     }
   }
@@ -424,7 +430,7 @@ private:
     } else {
       offset -= _bucket_phase;
       // find bucket containing element at given offset:
-      for (; _bucket_it != _bucket_first; --_bucket_it) {
+      for (; _bucket_it != *_bucket_first; --_bucket_it) {
         if (offset >= _bucket_it->size) {
           offset -= _bucket_it->size;
         } else if (offset < _bucket_it->size) {
@@ -433,7 +439,7 @@ private:
         }
       }
     }
-    if (_bucket_it == _bucket_first) {
+    if (_bucket_it == *_bucket_first) {
       _bucket_phase = _bucket_it->size - offset;
     }
     if (false) {
@@ -443,12 +449,12 @@ private:
   }
 
 private:
-  bucket_iterator       _bucket_first;
-  bucket_iterator       _bucket_last;
-  index_type            _idx           = 0;
-  bucket_iterator       _bucket_it;
-  index_type            _bucket_phase  = 0;
-  bool                  _is_nullptr    = false;
+  const bucket_iterator * _bucket_first  = nullptr;
+  const bucket_iterator * _bucket_last   = nullptr;
+  index_type              _idx           = 0;
+  bucket_iterator         _bucket_it;
+  index_type              _bucket_phase  = 0;
+  bool                    _is_nullptr    = false;
 
 }; // class LocalBucketIter
 

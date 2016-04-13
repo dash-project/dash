@@ -145,7 +145,7 @@ public:
 
   typedef LocalBucketIter<value_type, index_type>
     local_iterator;
-  typedef LocalBucketIter<const value_type, index_type>
+  typedef LocalBucketIter<value_type, index_type>
     const_local_iterator;
 
   typedef GlobBucketIter<
@@ -228,6 +228,7 @@ public:
     DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem",
                    "initialize global begin() iterator");
     _begin = at(0, 0);
+    _end   = at(0, size());
 
     DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem >");
   }
@@ -500,7 +501,8 @@ public:
     if (num_detached_elem > 0 || num_attached_elem > 0) {
       // Update _begin iterator:
       DASH_LOG_TRACE("GlobDynamicMem.commit", "updating _begin");
-      _begin             = global_iterator(this, 0, 0);
+      _begin = global_iterator(this, 0);
+      _end   = global_iterator(this, size());
       value_type v_begin = *_begin;
       dash__unused(v_begin);
     }
@@ -543,7 +545,7 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  global_iterator begin()
+  global_iterator & begin()
   {
     return _begin;
   }
@@ -551,9 +553,9 @@ public:
   /**
    * Global pointer of the initial address of the global memory.
    */
-  const_global_iterator begin() const
+  const_global_iterator & begin() const
   {
-    return const_global_iterator(_begin);
+    return _begin;
   }
 
   /**
@@ -561,7 +563,7 @@ public:
    */
   reverse_global_iterator rbegin()
   {
-    return reverse_global_iterator(_begin + size());
+    return reverse_global_iterator(_end);
   }
 
   /**
@@ -569,23 +571,23 @@ public:
    */
   const_reverse_global_iterator rbegin() const
   {
-    return const_reverse_global_iterator(_begin + size());
+    return reverse_global_iterator(_end);
   }
 
   /**
    * Global pointer of the initial address of the global memory.
    */
-  global_iterator end()
+  global_iterator & end()
   {
-    return _begin + size();
+    return _end;
   }
 
   /**
    * Global pointer of the initial address of the global memory.
    */
-  const_global_iterator end() const
+  const_global_iterator & end() const
   {
-    return const_global_iterator(_begin + size());
+    return _end;
   }
 
   /**
@@ -601,7 +603,7 @@ public:
    */
   const_reverse_global_iterator rend() const
   {
-    return const_reverse_global_iterator(_begin);
+    return reverse_global_iterator(_begin);
   }
 
   /**
@@ -639,7 +641,7 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobDynamicMem.lbegin const()", unit_id);
     if (unit_id == _myid) {
-      const_local_iterator unit_clbegin(
+      local_iterator unit_clbegin(
                // iteration space
                _buckets.begin(), _buckets.end(),
                // position in iteration space
@@ -671,7 +673,7 @@ public:
    */
   inline const_local_iterator lbegin() const
   {
-    return const_local_iterator(_lbegin);
+    return _lbegin;
   }
 
   /**
@@ -709,7 +711,7 @@ public:
   {
     DASH_LOG_TRACE_VAR("GlobDynamicMem.lend() const", unit_id);
     if (unit_id == _myid) {
-      const_local_iterator unit_clend(
+      local_iterator unit_clend(
                // iteration space
                _buckets.cbegin(), _buckets.cend(),
                // position in iteration space
@@ -741,7 +743,7 @@ public:
    */
   inline const_local_iterator lend() const
   {
-    return const_local_iterator(_lend);
+    return _lend;
   }
 
   /**
@@ -1117,6 +1119,8 @@ private:
   size_type                  _remote_size = 0;
   /// Global iterator referencing start of global memory space.
   global_iterator            _begin;
+  /// Global iterator referencing the final position in global memory space.
+  global_iterator            _end;
 
 }; // class GlobDynamicMem
 
