@@ -1,6 +1,7 @@
 #ifdef DASH_ENABLE_HDF5
 
 #include <dash/HDF5OutputStream.h>
+#include <dash/util/StoreHDF.h>
 
 #endif
 
@@ -18,7 +19,26 @@ namespace dash {
 			HDF5Options opts)
 		{
 			os._foptions = opts._foptions;
-			//os._test = opts._test;
 			return os;
 		}
-}
+	
+	template<
+       typename value_t,
+       dim_t ndim,
+       typename index_t,
+       class pattern_t >
+	inline HDF5OutputStream& operator<< (
+			HDF5OutputStream& os,
+			dash::Matrix<value_t,
+									ndim,
+									index_t,
+									pattern_t> matrix)
+	{
+		dash::util::StoreHDF::write(
+			matrix,
+			os._filename,
+			os._table,
+			os._foptions);
+		return os;
+	}
+};

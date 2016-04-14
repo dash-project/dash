@@ -186,10 +186,14 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
 }
 
 TEST_F(HDFTest, OutputStream){
+	auto matrix = dash::Matrix<long,2>(
+						dash::SizeSpec<2>(100,100));
+
 	auto fopts = dash::HDF5Options::getDefaults();
 	auto test  = dash::HDF5OutputStream("test_stream.hdf5");
 	test << dash::HDF5Table("data")
-			 << dash::HDF5Options(fopts);
+			 << dash::HDF5Options(fopts)
+			 << matrix;
 }
 
 #endif // DASH_ENABLE_HDF5
