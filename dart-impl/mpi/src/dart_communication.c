@@ -681,15 +681,20 @@ if (seg_id >= 0){
         return DART_ERR_INVAL;
       }  
       disp_rel = disp_s + offset;
+#ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
       unit_g2p (index, target_unitid_abs, &target_unitid_rel);
+#endif
 #endif
     }  else{
       win = dart_win_local_alloc;
       disp_rel = offset;
+#ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
       unit_g2p (index, target_unitid_abs, &target_unitid_rel);
-#else
+#endif
+#endif
+#ifndef PROGRESS_ENABLE
       target_unitid_rel = target_unitid_abs;
 #endif
     }  
@@ -805,15 +810,20 @@ dart_ret_t dart_get_blocking(
         return DART_ERR_INVAL;
       }
       disp_rel = disp_s + offset;
+#ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
       unit_g2p (index, target_unitid_abs, &target_unitid_rel);
+#endif
 #endif
     } else {
       win = dart_win_local_alloc;
       disp_rel = offset;
+#ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
       unit_g2p (index, target_unitid_abs, &target_unitid_rel);
-#else
+#endif
+#endif
+#ifndef PROGRESS_ENABLE
       target_unitid_rel = target_unitid_abs;
 #endif
     }
@@ -899,8 +909,8 @@ dart_ret_t dart_flush_all(
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
 	if (user_comm_world != MPI_COMM_NULL){
-    MPI_Request *mpi_req;
-    MPI_Status  *mpi_sta;
+    MPI_Request mpi_req[PROGRESS_NUM];
+    MPI_Status  mpi_sta[PROGRESS_NUM];
 //  MPI_Request *mpi_req = (MPI_Request*)malloc (sizeof(MPI_Request) * PROGRESS_NUM);
 //  MPI_Status *mpi_sta = (MPI_Request*)malloc (sizeof(MPI_Request) * PROGRESS_NUM);
   int i;

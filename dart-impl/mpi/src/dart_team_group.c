@@ -525,7 +525,7 @@ dart_ret_t dart_team_create(
 		int i;
 
 		MPI_Comm sharedmem_comm;
-		MPI_Group sharedmem_group, group_all;
+		MPI_Group sharedmem_group;
 #ifdef PROGRESS_ENABLE
 		MPI_Win_create_dynamic (MPI_INFO_NULL, real_subcomm, &win);
 	//	dart_win_lists[index] = win;

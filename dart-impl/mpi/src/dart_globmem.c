@@ -192,7 +192,7 @@ dart_team_memalloc_aligned(
 #endif
 	size_t size;
  	dart_unit_t unitid, gptr_unitid = -1;
-//	dart_team_myid(teamid, &unitid);
+	dart_team_myid(teamid, &unitid);
 	dart_team_size (teamid, &size);
 	
 	char *sub_mem;
@@ -236,10 +236,11 @@ dart_team_memalloc_aligned(
 		MPI_Group_translate_ranks (group, 1, &localid, user_group_all, &gptr_unitid);
 	}
 #ifdef SHAREDMEM_ENABLE
+	int shmem_unitid;
+	MPI_Comm_rank (sharedmem_comm, &shmem_unitid);
 #ifdef PROGRESS_ENABLE
-	//if (sharedmem_comm != MPI_COMM_NULL)
-	MPI_Comm_rank (sharedmem_comm, &unitid);
-	if (unitid == PROGRESS_NUM){
+	
+	if (shmem_unitid == PROGRESS_NUM){
 		int i;
 		for (i = 0; i < PROGRESS_NUM; i++){
 			MPI_Send (&index, 1, MPI_UINT16_T, PROGRESS_UNIT+i, MEMALLOC, dart_sharedmem_comm_list[0]);
@@ -276,7 +277,7 @@ dart_team_memalloc_aligned(
 	for (i = 0; i < dart_sharedmemnode_size[index]; i++)
 #endif
 	{
-		if (unitid != i){
+		if (shmem_unitid != i){
 			MPI_Win_shared_query (sharedmem_win, i, &winseg_size, &disp_unit, &baseptr);
 			baseptr_set[i] = baseptr;
 		}

@@ -65,6 +65,7 @@ MPI_Op dart_mpi_op(dart_operation_t dart_op) {
   case DART_OP_LOR:  return MPI_LOR;
   case DART_OP_BXOR: return MPI_BXOR;
   case DART_OP_LXOR: return MPI_LXOR;
+  default:	     return -1;
   }
 }
 

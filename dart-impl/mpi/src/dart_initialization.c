@@ -449,7 +449,7 @@ dart_ret_t dart_exit()
     DART_LOG_ERROR("dart_exit(): DART has not been initialized");
     return DART_ERR_OTHER;
   }
-  _dart_initialized = 0;
+//  _dart_initialized = 0;
 
 	int finalized;
 	uint16_t index;
@@ -866,7 +866,7 @@ dart_ret_t dart_exit()
 	MPI_Win_free (&dart_sharedmem_win_local_alloc);
 
 	dart_adapt_transtable_destroy ();
-	buddy_delete (dart_localpool);
+	dart_buddy_delete (dart_localpool);
 
 	free (dart_sharedmem_table[index]);
 	free (dart_sharedmem_local_baseptr_set);
@@ -915,6 +915,7 @@ dart_ret_t dart_exit()
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();
   }
+	_dart_initialized = 0;
 	DART_LOG_DEBUG("%2d: dart_exit: Finalization finished", unitid);
 
 	return DART_OK;
