@@ -24,22 +24,17 @@
 char* dart_mempool_localalloc;
 #ifdef SHAREDMEM_ENABLE
 char**        dart_sharedmem_local_baseptr_set;
+#ifdef PROGRESS_ENABLE
 MPI_Datatype  data_info_type;
 MPI_Comm      user_comm_world;
 int           top;
+#endif
 #endif
 /* Help to do memory management work for local allocation/free */
 struct dart_buddy   * dart_localpool;
 int                   _init_by_dart     = 0;
 int                   _dart_initialized = 0;
 
-#ifdef SHAREDMEM_ENABLE
-#ifdef PROGRESS_ENABLE
-MPI_Datatype data_info_type;
-MPI_Comm user_comm_world;
-int top;
-#endif
-#endif
 
 dart_ret_t dart_init(
   int*    argc,
@@ -67,11 +62,12 @@ dart_ret_t dart_init(
 	MPI_Win win;
 	
 #ifdef SHAREDMEM_ENABLE
+#ifndef PROGRESS_ENABLE
   DART_LOG_DEBUG("dart_init: Shared memory enabled");
 	MPI_Info win_info;
 	MPI_Info_create (&win_info);
 	MPI_Info_set (win_info, "alloc_shared_noncontig", "true");
-
+#endif
 #endif
 	
 	/* Initialize the teamlist. */
@@ -383,9 +379,9 @@ dart_ret_t dart_init(
 	MPI_Win_create_dynamic(
     MPI_INFO_NULL, MPI_COMM_WORLD, &win);
 	dart_win_lists[index] = win;
-#ifdef SHAREDMEM_EANBLE
+#ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
-	if (user_comm_world != MPI_COMM_NULl)
+	if (user_comm_world != MPI_COMM_NULL)
 		dart_localpool = dart_buddy_new (DART_BUDDY_ORDER);
 #endif
 #endif
@@ -521,7 +517,7 @@ dart_ret_t dart_exit()
 					MPI_Allreduce (&dart_memid, &max_memid, 1, MPI_INT16_T, MPI_MAX, real_comm);
 
 					info_t item;
-					item.seg_id = dart_memid;
+					item.seg_id = max_memid;
 					item.size = 0;
 					item.disp = NULL;
 					item.win = sharedmem_win;
@@ -899,6 +895,10 @@ dart_ret_t dart_exit()
 	/* -- Free up all the resources for dart programme -- */
 	MPI_Win_free(&dart_win_local_alloc);
 #ifdef SHAREDMEM_ENABLE
+	if (MPI_Win_unlock_all (dart_sharedmem_win_local_alloc) != MPI_SUCCESS) {
+		DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid);
+	        return DART_ERR_OTHER;
+	}
 	MPI_Win_free(&dart_sharedmem_win_local_alloc);
 #endif
 	MPI_Win_free(&dart_win_lists[index]);

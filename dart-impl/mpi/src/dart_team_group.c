@@ -70,7 +70,14 @@ dart_ret_t dart_group_union(
 		dart_unit_t *pre_unitidsout, *post_unitidsout;;
 	
 		MPI_Group group_all;
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+		MPI_Comm_group (user_comm_world, &group_all);
+#endif
+#endif
+#ifndef PROGRESS_ENABLE
 		MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+#endif
 		MPI_Group_size(gout->mpi_group, &size_out);
 		if (size_out > 1) {
 			MPI_Group_size(g1->mpi_group, &size_in);
@@ -129,7 +136,14 @@ dart_ret_t dart_group_addmember(
 	dart_group_t* group_copy, *group;
 	MPI_Group     newgroup, group_all;
 	/* Group_all comprises all the running units. */
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	MPI_Comm_group (user_comm_world, &group_all);
+#endif
+#endif
+#ifndef PROGRESS_ENABLE
 	MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+#endif
 	group_copy = (dart_group_t*)malloc(sizeof(dart_group_t));
 	group      = (dart_group_t*)malloc(sizeof(dart_group_t));
 	dart_group_copy(g, group_copy);
@@ -149,7 +163,14 @@ dart_ret_t dart_group_delmember(
 {
 	int array[1];
 	MPI_Group newgroup, group_all;
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	MPI_Comm_group (user_comm_world, &group_all);
+#endif
+#endif
+#ifndef PROGRESS_ENABLE
 	MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+#endif
 	array[0] = unitid;
 	MPI_Group_incl(
     group_all,
@@ -181,7 +202,14 @@ dart_ret_t dart_group_getmembers(
 	int *array;
 	MPI_Group group_all;
 	MPI_Group_size(g -> mpi_group, &size);
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	MPI_Comm_group (user_comm_world, &group_all);
+#endif
+#endif
+#ifndef PROGRESS_ENABLE
 	MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+#endif
 	array = (int*) malloc (sizeof (int) * size);
 	for (i = 0; i < size; i++) {
 		array[i] = i;
@@ -504,10 +532,10 @@ dart_ret_t dart_team_create(
 	}
 	MPI_Group sub_group;
 	MPI_Group_union (progress_group, group->mpi_group, &sub_group);
-	int test_ranks[2], all_ranks[2];
-	for (i = 0; i < 2; i++)
-		test_ranks[i] = i;
-	MPI_Group_translate_ranks(sub_group, 2, test_ranks, group_all, all_ranks);
+//	int test_ranks[2], all_ranks[2];
+//	for (i = 0; i < 2; i++)
+//		test_ranks[i] = i;
+//	MPI_Group_translate_ranks(sub_group, 2, test_ranks, group_all, all_ranks);
 	real_subcomm = MPI_COMM_NULL;
 	MPI_Comm_create (real_comm, sub_group, &real_subcomm);
 	free (progress_node);
@@ -721,7 +749,7 @@ dart_ret_t dart_myid(dart_unit_t *unitid)
 #ifdef PROGRESS_ENABLE
     if (user_comm_world != MPI_COMM_NULL){
 	    MPI_Comm_rank (user_comm_world, unitid);
-    }
+    } else *unitid = -1;
 #endif
 #endif
 #ifndef PROGRESS_ENABLE
@@ -740,13 +768,14 @@ dart_ret_t dart_size(size_t *size)
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
 	if (user_comm_world != MPI_COMM_NULL){
-		MPI_Comm_size (user_comm_world, &s);}
+		MPI_Comm_size (user_comm_world, &s);
+		(*size) = s;}
 #endif
 #endif
 #ifndef PROGRESS_ENABLE
 	MPI_Comm_size (MPI_COMM_WORLD, &s);
-#endif
 	(*size) = s;
+#endif
 	return DART_OK;
 }
 

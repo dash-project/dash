@@ -425,7 +425,7 @@ dart_ret_t dart_get_handle(
 {
   MPI_Request mpi_req;
   MPI_Aint disp_s, disp_rel;
-  dart_unit_t target_unitid_abs;
+  dart_unit_t target_unitid_abs, target_unitid_rel;
   uint64_t offset = gptr.addr_or_offs.offset;
   int16_t seg_id = gptr.segid;
   MPI_Win win;
@@ -436,7 +436,7 @@ dart_ret_t dart_get_handle(
   /* The memory accessed is allocated with collective allocation. */
   if (seg_id) {
     uint16_t index = gptr.flags;
-    dart_unit_t target_unitid_rel;      
+ //   dart_unit_t target_unitid_rel;      
 /*
     if (dart_adapt_transtable_get_win (index, offset, &begin, &win) == -1)
     {
@@ -471,6 +471,11 @@ dart_ret_t dart_get_handle(
      *      &mpi_req)
      *  ... could be an better alternative? 
      */
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+    unit_g2p (index, target_unitid_abs, &target_unitid_rel);
+#endif
+#endif
     MPI_Rget(
       dest,
       nbytes,
@@ -487,18 +492,26 @@ dart_ret_t dart_get_handle(
            nbytes, target_unitid_abs, offset);
   } else {
     /* The memory accessed is allocated with local allocation. */
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	  unit_g2p (DART_TEAM_ALL, target_unitid_abs, &target_unitid_rel);
+#endif
+#endif
+#ifndef PROGRESS_ENABLE
+	  target_unitid_rel = target_unitid_abs;
+#endif
     win = dart_win_local_alloc;
     MPI_Rget(
       dest,
       nbytes,
       MPI_BYTE,
-      target_unitid_abs,
+      target_unitid_rel,
       offset,
       nbytes,
       MPI_BYTE,
       win,
       &mpi_req);
-    (*handle) -> dest = target_unitid_abs;
+    (*handle) -> dest = target_unitid_rel;
     DART_LOG_DEBUG ("GET  - %d bytes (allocated with local allocation) "
            "from %d at the offset %d",
            nbytes, target_unitid_abs, offset);
@@ -516,7 +529,7 @@ dart_ret_t dart_put_handle(
 {
   MPI_Request mpi_req;
   MPI_Aint disp_s, disp_rel;
-  dart_unit_t target_unitid_abs;
+  dart_unit_t target_unitid_abs, target_unitid_rel;
   uint64_t offset = gptr.addr_or_offs.offset;
   int16_t seg_id = gptr.segid;
   MPI_Win win;
@@ -526,7 +539,7 @@ dart_ret_t dart_put_handle(
 
   if (seg_id) {
     uint16_t index = gptr.flags;
-    dart_unit_t target_unitid_rel;
+//    dart_unit_t target_unitid_rel;
 /*
     if (dart_adapt_transtable_get_win(index, offset, &begin, &win) == -1) {
       DART_LOG_ERROR ("Invalid accessing operation");
@@ -550,6 +563,11 @@ dart_ret_t dart_put_handle(
      *     REPLACE, win, &mpi_req) 
      * ... could be a better alternative? 
      */
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+    unit_g2p (index, target_unitid_abs, &target_unitid_rel);
+#endif
+#endif
     MPI_Rput(
       src,
       nbytes,
@@ -565,12 +583,20 @@ dart_ret_t dart_put_handle(
           "to %d at the offset %d",
           nbytes, target_unitid_abs, offset);
   } else {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	  unit_g2p (DART_TEAM_ALL, target_unitid_abs, &target_unitid_rel);
+#endif
+#endif
+#ifndef PROGRESS_ENABLE
+	  target_unitid_rel = target_unitid_abs;
+#endif
     win = dart_win_local_alloc;
     MPI_Rput(
       src,
       nbytes,
       MPI_BYTE,
-      target_unitid_abs,
+      target_unitid_rel,
       offset,
       nbytes,
       MPI_BYTE,
@@ -579,7 +605,7 @@ dart_ret_t dart_put_handle(
     DART_LOG_DEBUG("PUT  - %d bytes (allocated with local allocation) "
           "to %d at the offset %d", 
           nbytes, target_unitid_abs, offset);
-    (*handle) -> dest = target_unitid_abs;
+    (*handle) -> dest = target_unitid_rel;
   }
   (*handle) -> request = mpi_req;
   (*handle) -> win     = win;
@@ -768,8 +794,8 @@ dart_ret_t dart_get_blocking(
     }
     if (is_sharedmem) {
       if (seg_id) {
-      if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr)!=-1)
-      return DART_ERR_INVAL;
+      if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr)==-1)
+        return DART_ERR_INVAL;
       } else {
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
@@ -918,7 +944,7 @@ dart_ret_t dart_flush_all(
 	  MPI_Irecv (NULL, 0, MPI_UINT16_T, i, WAIT, dart_sharedmem_comm_list[0], &mpi_req[i]);
 	  MPI_Send (NULL, 0, MPI_UINT16_T, i, WAIT, dart_sharedmem_comm_list[0]);
   }
-  MPI_Waitall (PROGRESS_NUM, mpi_req, mpi_sta)
+  MPI_Waitall (PROGRESS_NUM, mpi_req, mpi_sta);
 //  for (i = 0; i < PROGRESS_NUM; i++)
 //	  MPI_Wait (&mpi_req[i], &mpi_sta);
 //  free (mpi_req);

@@ -320,7 +320,7 @@ dart_team_memalloc_aligned(
 	/* Updating the translation table of teamid with the created
    * (offset, win) infos */
 	info_t item;
-	item.seg_id = dart_memid;
+	item.seg_id = gptr->segid;
 	item.size   = nbytes;
   	item.disp   = disp_set;
 #ifdef SHAREDMEM_ENABLE
