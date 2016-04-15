@@ -1,4 +1,4 @@
-#ifndef DASH__ENUMS_H_ 
+#ifndef DASH__ENUMS_H_
 #define DASH__ENUMS_H_
 
 #include <dash/Exception.h>
@@ -13,6 +13,12 @@ typedef enum MemArrange {
   ROW_MAJOR,
   COL_MAJOR
 } MemArrange;
+
+enum class HaloRegion : int
+{
+  pre = 0,
+  post
+};
 
 namespace internal {
 

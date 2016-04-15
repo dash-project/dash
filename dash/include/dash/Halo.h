@@ -1185,12 +1185,12 @@ private:
       auto halo_offs_neg  = std::abs(halospec.offset_range(d).min);
       auto halo_offs_pos  = std::abs(halospec.offset_range(d).max);
       if (Scope == boundary_scope::INNER) {
-        if (d == 0) {
+       // if (d == 0) {
           size += (halo_offs_neg + halo_offs_pos) * view_extent_dv;
-        } else {
-          size += (halo_offs_neg  + halo_offs_pos) *
-                  (view_extent_dv - (halospec.width(d_v) * 2));
-        }
+        //} else {
+        //  size += (halo_offs_neg  + halo_offs_pos) *
+        //          (view_extent_dv - (halospec.width(d_v) * 2));
+        //}
       } else {
         auto view_extent_dv = viewspec.extent(d_v) -
                               (halospec.width(d_v) * 2);
@@ -1336,66 +1336,29 @@ public:
   }
 
   /**
-   * Creates view on halo region at given offset relative to this block.
-   * For example, the adjacent north halo region of a two-dimensional block
-   * has offsets (-1, 0).
+   * Creates view on halo region for a given dimension and halo region.
+   * For example, the east halo region in a two-dimensional block
+   * has (1, dash::HaloRegion::post).
    */
-  boundary_view_type halo_region(std::initializer_list<int> offsets)
+  //TODO Which value the first dimension has? 0 or 1?
+  boundary_view_type halo_region(dim_t dimension, HaloRegion region)
   {
-    DASH_LOG_TRACE_VAR("BlockBoundaryView.halo_region()", offsets);
-    // convert offset to region index:
-    auto  region_index = 0;
-    dim_t d = 0;
-    for (auto offset_d : offsets) {
-      auto halo_ext_d = ( std::abs(_halospec->offset_range(d).min) +
-                          std::abs(_halospec->offset_range(d).max) );
-      DASH_LOG_TRACE("BlockBoundaryView.halo_region", "d:", d,
-                     "stencil_extent_d:", halo_ext_d,
-                     "offset_d:",         offset_d);
-      if (offset_d != 0) {
-        if (d > 0) {
-          auto halo_ext_di = ( std::abs(_halospec->offset_range(d-1).min) +
-                               std::abs(_halospec->offset_range(d-1).max) );
-          region_index += halo_ext_di;
-        }
-        region_index += _halospec->width(d) + offset_d;
-        if (offset_d > 0) {
-          region_index--;
-        }
-      }
-      d++;
-    }
-    DASH_LOG_TRACE("BlockBoundaryView.halo_region >",
-                   "region index:", region_index);
-    auto region = _halo_regions[region_index];
-    return boundary_view_type(
-             *this, *_viewspec_inner, region);
+    auto region_index = 2 * dimension + static_cast<char>(region);
+
+    return boundary_view_type(*this, *_viewspec_inner, _halo_regions[region_index]);
   }
 
   /**
-   * Creates view on boundary region at given offset relative to this block.
+   * Creates view on boundary region for a given dimension and boundary region.
    * For example, the east boundary region in a two-dimensional block
-   * has offsets (0, 1).
+   * has (1, dash::HaloRegion::post).
    */
-  boundary_view_type boundary_region(std::initializer_list<int> offsets)
+  //TODO Which value the first dimension has? 0 or 1?
+  boundary_view_type boundary_region(dim_t dimension, HaloRegion region)
   {
-    // convert offset to region index:
-    auto  region_index = 0;
-    dim_t d = 0;
-    for (auto offset_d : offsets) {
-      auto stencil_extent_d = ( std::abs(_halospec->offset_range(d-1).min) +
-                                std::abs(_halospec->offset_range(d-1).max) );
-      if (offset_d != 0) {
-        if (d > 0) {
-          region_index += d * stencil_extent_d;
-        }
-        region_index += stencil_extent_d + offset_d;
-      }
-      d++;
-    }
-    auto region = _boundary_regions[region_index];
-    return boundary_view_type(
-             *this, *_viewspec_inner, region);
+    auto region_index = 2 * dimension + static_cast<char>(region);
+
+    return boundary_view_type(*this, *_viewspec_inner, _boundary_regions[region_index]);
   }
 
   /**
@@ -1438,41 +1401,32 @@ private:
   {
     std::vector<viewspec_type> boundary_regions;
     // 0-2 regions per dimension:
-    dim_t di = NumDimensions - 1;
-    for (dim_t d = 0; d < NumDimensions; ++d, --di) {
-      auto view_extent_di = viewspec.extent(di);
+    for (dim_t d = 0; d < NumDimensions; ++d)
+    {
       auto halo_offs_neg  = std::abs(halospec.offset_range(d).min);
       auto halo_offs_pos  = std::abs(halospec.offset_range(d).max);
-      if (d > 0) {
-        // subtract overlapping areas from view extents:
-        view_extent_di -= ( std::abs(halospec.offset_range(di).min) +
-                            std::abs(halospec.offset_range(di).min) );
-      }
-      if (halo_offs_neg > 0) {
-        // boundary extends to negative direction, e.g. west or north:
-        auto bnd_region_offsets = viewspec.offsets();
-        auto bnd_region_extents = viewspec.extents();
-        bnd_region_extents[d]   = halo_offs_neg;
-        bnd_region_extents[di]  = view_extent_di;
-        viewspec_type bnd_region(bnd_region_offsets, bnd_region_extents);
-        boundary_regions.push_back(bnd_region);
-        DASH_LOG_TRACE("HaloBlock.init_boundary_regions >", "d:", d,
-                       "offsets:", bnd_region_offsets,
-                       "extents:", bnd_region_extents);
-      }
-      if (halo_offs_pos > 0) {
-        // boundary extends to positive direction, e.g. east or south:
-        auto bnd_region_offsets = viewspec.offsets();
-        auto bnd_region_extents = viewspec.extents();
-        bnd_region_extents[d]   = halo_offs_pos;
-        bnd_region_extents[di]  = view_extent_di;
-        viewspec_type bnd_region(bnd_region_offsets, bnd_region_extents);
-        DASH_LOG_TRACE("HaloBlock.init_boundary_regions >", "d:", d,
-                       "offsets:", bnd_region_offsets,
-                       "extents:", bnd_region_extents);
-        boundary_regions.push_back(bnd_region);
-      }
+
+      auto bnd_region_offsets = viewspec.offsets();
+      auto bnd_region_extents = viewspec.extents();
+
+      // boundary extends to negative direction, e.g. west or north:
+      bnd_region_extents[d]   = halo_offs_neg;
+      viewspec_type bnd_region(bnd_region_offsets, bnd_region_extents);
+      DASH_LOG_TRACE("HaloBlock.init_boundary_regions >", "d:", d,
+                     "offsets:", bnd_region_offsets,
+                     "extents:", bnd_region_extents);
+      boundary_regions.push_back(viewspec_type(bnd_region_offsets, bnd_region_extents));
+
+      // boundary extends to positive direction, e.g. east or south:
+      bnd_region_extents = viewspec.extents();
+      bnd_region_offsets[d]  += bnd_region_extents[d] - halo_offs_pos;
+      bnd_region_extents[d]   = halo_offs_pos;
+      DASH_LOG_TRACE("HaloBlock.init_boundary_regions >", "d:", d,
+                     "offsets:", bnd_region_offsets,
+                     "extents:", bnd_region_extents);
+      boundary_regions.push_back(viewspec_type(bnd_region_offsets, bnd_region_extents));
     }
+
     return boundary_regions;
   }
 
@@ -1486,9 +1440,7 @@ private:
   {
     std::vector<viewspec_type> halo_regions;
     // 0-2 regions per dimension:
-    dim_t di = NumDimensions - 1;
-    for (dim_t d = 0; d < NumDimensions; ++d, --di) {
-      auto view_extent_di = viewspec.extent(di);
+    for (dim_t d = 0; d < NumDimensions; ++d) {
       auto halo_offs_neg  = std::abs(halospec.offset_range(d).min);
       auto halo_offs_pos  = std::abs(halospec.offset_range(d).max);
       if (halo_offs_neg > 0) {
