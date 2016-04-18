@@ -1415,7 +1415,6 @@ private:
 
       // boundary extends to negative direction, e.g. west or north:
       bnd_region_extents[d]   = halo_offs_neg;
-      viewspec_type bnd_region(bnd_region_offsets, bnd_region_extents);
       DASH_LOG_TRACE("HaloBlock.init_boundary_regions >", "d:", d,
                      "offsets:", bnd_region_offsets,
                      "extents:", bnd_region_extents);
@@ -1444,34 +1443,33 @@ private:
   {
     std::vector<viewspec_type> halo_regions;
     // 0-2 regions per dimension:
-    for (dim_t d = 0; d < NumDimensions; ++d) {
+    for (dim_t d = 0; d < NumDimensions; ++d)
+    {
       auto halo_offs_neg  = std::abs(halospec.offset_range(d).min);
       auto halo_offs_pos  = std::abs(halospec.offset_range(d).max);
-      if (halo_offs_neg > 0) {
-        // halo extends to negative direction, e.g. west or north:
-        auto halo_region_offsets = viewspec.offsets();
-        halo_region_offsets[d]  -= halo_offs_neg;
-        auto halo_region_extents = viewspec.extents();
-        halo_region_extents[d]   = halo_offs_neg;
-        viewspec_type halo_region(halo_region_offsets, halo_region_extents);
-        DASH_LOG_TRACE("HaloBlock.init_halo_regions >", "d:", d,
-                       "offsets:", halo_region_offsets,
-                       "extents:", halo_region_extents);
-        halo_regions.push_back(halo_region);
-      }
-      if (halo_offs_pos > 0) {
-        // halo extends to positive direction, e.g. east or south:
-        auto halo_region_offsets = viewspec.offsets();
-        halo_region_offsets[d]  += viewspec.extent(d);
-        auto halo_region_extents = viewspec.extents();
-        halo_region_extents[d]   = halo_offs_pos;
-        viewspec_type halo_region(halo_region_offsets, halo_region_extents);
-        DASH_LOG_TRACE("HaloBlock.init_halo_regions >", "d:", d,
-                       "offsets:", halo_region_offsets,
-                       "extents:", halo_region_extents);
-        halo_regions.push_back(halo_region);
-      }
+
+      auto halo_region_offsets = viewspec.offsets();
+      auto halo_region_extents = viewspec.extents();
+
+      // halo extends to negative direction, e.g. west or north:
+      halo_region_offsets[d]  -= halo_offs_neg;
+      halo_region_extents[d]   = halo_offs_neg;
+      DASH_LOG_TRACE("HaloBlock.init_halo_regions >", "d:", d,
+                     "offsets:", halo_region_offsets,
+                     "extents:", halo_region_extents);
+      halo_regions.push_back(viewspec_type(halo_region_offsets, halo_region_extents));
+
+      // halo extends to positive direction, e.g. east or south:
+      halo_region_offsets = viewspec.offsets();
+      halo_region_offsets[d]  += viewspec.extent(d);
+      halo_region_extents = viewspec.extents();
+      halo_region_extents[d]   = halo_offs_pos;
+      DASH_LOG_TRACE("HaloBlock.init_halo_regions >", "d:", d,
+                     "offsets:", halo_region_offsets,
+                     "extents:", halo_region_extents);
+      halo_regions.push_back(viewspec_type(halo_region_offsets, halo_region_extents));
     }
+
     return halo_regions;
   }
 
