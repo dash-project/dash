@@ -304,7 +304,7 @@ dart_ret_t dart_init(
 #ifdef PROGRESS_ENABLE
 		if (user_comm_world != MPI_COMM_NULL){
 			for (i = 0; i < user_size; i++){
-				dart_sharedmem_table[index][i] == -1;
+				dart_sharedmem_table[index][i] = -1;
 			}
 		}
 		for (i = 0; i < size; i++){
@@ -455,10 +455,8 @@ dart_ret_t dart_exit()
 	{
 	 	struct rmareq_node
 		{
-			int source;
 			dart_unit_t dest;
 			MPI_Win win;
-			int direction;
 			struct rmareq_node* next;
 		};
 		int16_t segid;
@@ -729,8 +727,6 @@ dart_ret_t dart_exit()
 					
 					struct rmareq_node* p = (struct rmareq_node*)malloc (sizeof(struct rmareq_node));
 					p -> dest = dest;
-					p -> source = mpi_status.MPI_SOURCE;
-					p -> direction = PUT;
 					p -> win = win;
 					p -> next = NULL;
 					
@@ -783,7 +779,7 @@ dart_ret_t dart_exit()
 				}else{
 					if (is_sharedmem) win = dart_sharedmem_win_local_alloc;
 					else win = dart_win_local_alloc;
-					baseptr = dart_sharedmem_local_baseptr_set[src];
+					baseptr = dart_sharedmem_local_baseptr_set[mpi_status.MPI_SOURCE];
 				}
 
 			
@@ -799,8 +795,6 @@ dart_ret_t dart_exit()
 				{
 			        struct rmareq_node* p = (struct rmareq_node*) malloc (sizeof(struct rmareq_node));
 				p -> dest = dest;
-				p -> source = mpi_status.MPI_SOURCE;
-				p -> direction = GET;
 				p -> win = win;
 				p -> next = NULL;
 				if(!header) {header= p; tail=header;}

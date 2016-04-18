@@ -1028,8 +1028,8 @@ dart_ret_t dart_wait(
     MPI_Wait (&(handle -> request), &mpi_sta);  
     MPI_Win_flush(handle->dest, handle->win);   
     /* Free handle resource */
-    handle = NULL;
     free (handle);
+    handle = NULL;
   }
   DART_LOG_DEBUG("WAIT  - finished");
   return DART_OK;
@@ -1106,8 +1106,8 @@ dart_ret_t dart_waitall(
       if (handle[i]) {
         MPI_Win_flush (handle[i]->dest, handle[i]->win);
         /* Free handle resource */
-        handle[i] = NULL;
         free (handle[i]);
+	handle[i] = NULL;
       }
     }
   }
