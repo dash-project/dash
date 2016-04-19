@@ -505,6 +505,8 @@ public:
 
   /**
    * Global pointer to the beginning of the map.
+   * After inserting and removing elements, iterators returned by \c begin()
+   * and \c end() differ between units until the next call of \c commit().
    */
   inline iterator & begin() noexcept
   {
@@ -513,6 +515,8 @@ public:
 
   /**
    * Global const pointer to the beginning of the map.
+   * After inserting and removing elements, iterators returned by \c begin()
+   * and \c end() differ between units until the next call of \c commit().
    */
   inline const_iterator & begin() const noexcept
   {
@@ -521,6 +525,8 @@ public:
 
   /**
    * Global const pointer to the beginning of the map.
+   * After inserting and removing elements, iterators returned by \c begin()
+   * and \c end() differ between units until the next call of \c commit().
    */
   inline const_iterator & cbegin() const noexcept
   {
@@ -529,6 +535,8 @@ public:
 
   /**
    * Global pointer to the end of the map.
+   * After inserting and removing elements, iterators returned by \c begin()
+   * and \c end() differ between units until the next call of \c commit().
    */
   inline iterator & end() noexcept
   {
@@ -537,6 +545,8 @@ public:
 
   /**
    * Global const pointer to the end of the map.
+   * After inserting and removing elements, iterators returned by \c begin()
+   * and \c end() differ between units until the next call of \c commit().
    */
   inline const_iterator & end() const noexcept
   {
@@ -545,6 +555,8 @@ public:
 
   /**
    * Global const pointer to the end of the map.
+   * After inserting and removing elements, iterators returned by \c begin()
+   * and \c end() differ between units until the next call of \c commit().
    */
   inline const_iterator & cend() const noexcept
   {
@@ -764,12 +776,23 @@ public:
     DASH_LOG_TRACE("UnorderedMap.insert", "element key lookup");
     DASH_LOG_TRACE_VAR("UnorderedMap.insert", _begin);
     DASH_LOG_TRACE_VAR("UnorderedMap.insert", _end);
-    iterator found = std::find_if(_begin, _end,
-                       [&](const value_type & v) {
-                         DASH_LOG_TRACE("UnorderedMap.insert", "find",
-                                        "v.key:", v.first, "f.key:", key);
-                         return _key_equal(v.first, key);
-                       });
+#if DASH_ENABLE_TRACE_LOGGING
+    DASH_LOG_TRACE("UnorderedMap.insert", "existing map elements:");
+    for (auto it = _begin; it != _end; ++it) {
+      value_type v = *it;
+      DASH_LOG_TRACE("UnorderedMap.insert",
+                     "iterator:", it,
+                     "element:",  v.first, "->", v.second);
+    }
+#endif
+    const_iterator found = std::find_if(
+                             _begin, _end,
+                             [&](const value_type & v) {
+                               DASH_LOG_TRACE("UnorderedMap.insert.find",
+                                              "existing.key:", v.first,
+                                              "inserted.key:", key);
+                               return _key_equal(v.first, key);
+                             });
     DASH_LOG_TRACE_VAR("UnorderedMap.insert", found);
     if (found != _end) {
       DASH_LOG_TRACE("UnorderedMap.insert", "key found");
@@ -820,11 +843,12 @@ public:
       // Update iterators as global memory space has been changed for the
       // active unit:
       auto new_size = size();
-      DASH_LOG_TRACE("UnorderedMap.insert", "new size:", new_size,
-                     "updating _begin, _end");
+      DASH_LOG_TRACE("UnorderedMap.insert", "new size:", new_size);
+      DASH_LOG_TRACE("UnorderedMap.insert", "updating _begin");
       _begin        = iterator(this, 0);
-      DASH_LOG_TRACE_VAR("UnorderedMap.insert", _begin);
+      DASH_LOG_TRACE("UnorderedMap.insert", "updating _end");
       _end          = iterator(this, new_size);
+      DASH_LOG_TRACE_VAR("UnorderedMap.insert", _begin);
       DASH_LOG_TRACE_VAR("UnorderedMap.insert", _end);
     }
     DASH_LOG_DEBUG("UnorderedMap.insert >",

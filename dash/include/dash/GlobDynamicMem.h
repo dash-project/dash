@@ -218,9 +218,6 @@ public:
     _num_attach_buckets.local[0] = 0;
     _num_detach_buckets.local[0] = 0;
 
-//  _lbegin = lbegin(_myid);
-//  _lend   = lend(_myid);
-
     DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem",
                    "allocating initial memory space");
     grow(n_local_elem);
@@ -365,6 +362,10 @@ public:
   }
 
   /**
+   * TODO:
+   * Buckets should not be deallocated until next commit as other units might
+   * still reference them.
+   *
    * Decrease capacity of local segment of global memory region by the given
    * number of elements.
    * Same as \c resize(local_size() - num_elements).
@@ -495,6 +496,8 @@ public:
 
   /**
    * Commit changes of local memory region to global memory space.
+   * Applies calls of \c grow(), \c shrink() and \c resize() to global
+   * memory.
    *
    * Collective operation.
    *
@@ -799,6 +802,9 @@ public:
 
   /**
    * Synchronize all units associated with this global memory instance.
+   * Does not commit changes of local memory space.
+   *
+   * \see  commit
    */
   void barrier() const
   {

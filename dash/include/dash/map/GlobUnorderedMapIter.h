@@ -244,6 +244,9 @@ public:
     if (is_local()) {
       // To local map iterator:
       auto l_map_it = local();
+      DASH_ASSERT_MSG(l_map_it != nullptr,
+                      "Converting global iterator at local position to "
+                      "local iterator failed");
       // To native pointer via conversion:
       return reference(static_cast<raw_pointer>(l_map_it));
     } else {
@@ -261,12 +264,25 @@ public:
     if (is_local()) {
       // To local map iterator:
       auto l_map_it = local();
+      DASH_ASSERT_MSG(l_map_it != nullptr,
+                      "Converting global iterator at local position to "
+                      "local iterator failed");
       // To native pointer via conversion:
       return reference(static_cast<raw_pointer>(l_map_it));
     } else {
       return reference(dart_gptr());
     }
   }
+
+#if 0
+  /**
+   * Requires type \c pointer to provide \c operator->().
+   */
+  pointer operator->() const
+  {
+    return static_cast<pointer>(*this);
+  }
+#endif
 
   /**
    * Checks whether the element referenced by this global iterator is in
@@ -463,22 +479,43 @@ private:
   void increment(index_type offset)
   {
     DASH_LOG_TRACE("GlobUnorderedMapIter.increment()",
-                   "gidx:",   _idx,
+                   "gidx:",   _idx, "-> (",
                    "unit:",   _idx_unit_id,
-                   "lidx:",   _idx_local_idx,
+                   "lidx:",   _idx_local_idx, ")",
                    "offset:", offset);
-    _idx           += offset;
-    _idx_local_idx  = _idx;
-    auto & l_cumul_sizes = _map->_local_cumul_sizes;
-    // Find unit at global offset:
-    while (_idx > l_cumul_sizes[_idx_unit_id] &&
-           _idx_unit_id < l_cumul_sizes.size()) {
-      DASH_LOG_TRACE("GlobUnorderedMapIter.increment",
-                     l_cumul_sizes[_idx_unit_id]);
-      _idx_unit_id++;
-      _idx_local_idx -= l_cumul_sizes[_idx_unit_id];
+    if (offset < 0) {
+      decrement(-offset);
+    } else {
+      // Note:
+      //
+      // increment(0) is not a no-op as GlobUnorderedMapIter(map, 0) should
+      // reference the first existing element, not the first possible element
+      // position.
+      // The first existing element has gidx:0 and lidx:0 but might not be
+      // located at unit 0.
+      // Example:
+      //
+      //     unit 0    unit 1    unit 2
+      //   [ (empty) | (empty) | elem_0, elem_1 ]
+      //                         |
+      //                         '- first element
+      //
+      //   --> GlobUnorderedMapIter(map, 0) -> (gidx:0, unit:2, lidx:0)
+      //
+      _idx           += offset;
+      _idx_local_idx  = _idx;
+      auto & l_cumul_sizes = _map->_local_cumul_sizes;
+      // Find unit at global offset:
+      while (_idx >= l_cumul_sizes[_idx_unit_id] &&
+             _idx_unit_id < l_cumul_sizes.size() - 1) {
+        DASH_LOG_TRACE("GlobUnorderedMapIter.increment",
+                       "local cumulative size of unit", _idx_unit_id, ":",
+                       l_cumul_sizes[_idx_unit_id]);
+        _idx_local_idx = _idx - l_cumul_sizes[_idx_unit_id];
+        _idx_unit_id++;
+      }
     }
-    DASH_LOG_TRACE("GlobUnorderedMapIter.increment >");
+    DASH_LOG_TRACE("GlobUnorderedMapIter.increment >", *this);
   }
 
   /**
@@ -487,12 +524,18 @@ private:
   void decrement(index_type offset)
   {
     DASH_LOG_TRACE("GlobUnorderedMapIter.decrement()",
-                   "gidx:",   _idx,
+                   "gidx:",   _idx, "-> (",
                    "unit:",   _idx_unit_id,
-                   "lidx:",   _idx_local_idx,
+                   "lidx:",   _idx_local_idx, ")",
                    "offset:", -offset);
-    _idx -= offset;
-    DASH_LOG_TRACE("GlobUnorderedMapIter.decrement >");
+    if (offset < 0) {
+      increment(-offset);
+    } else if (offset > 0) {
+      // TODO
+      _idx           -= offset;
+      _idx_local_idx  = _idx;
+    }
+    DASH_LOG_TRACE("GlobUnorderedMapIter.decrement >", *this);
   }
 
 private:
