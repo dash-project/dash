@@ -133,7 +133,7 @@ public:
 
   self_t & operator=(const self_t & rhs)
   {
-    if (this != &rhs) {
+    if (this != std::addressof(rhs)) {
       _bucket_first = rhs._bucket_first;
       _bucket_last  = rhs._bucket_last;
       _idx          = rhs._idx;
@@ -219,6 +219,47 @@ public:
                "dereferenced position " << _idx + offset << " " <<
                "is out of range: pointer position: " << _idx << ", " <<
                "offset: " << offset);
+  }
+
+  /**
+   * Conversion to native pointer.
+   *
+   * Use with caution: This conversion returns a pointer a that does not
+   * iterate over buckets, pointer arithmetics may lead to undefined
+   * behaviour.
+   */
+  explicit operator pointer() const
+  {
+    DASH_LOG_TRACE("LocalBucketIter.pointer()");
+    pointer lptr = nullptr;
+    if (_is_nullptr) {
+      DASH_LOG_TRACE("LocalBucketIter.pointer", "is nullptr");
+    } else {
+      auto bucket_size = _bucket_it->size;
+      DASH_LOG_TRACE("LocalBucketIter.pointer",
+                     "bucket size:",  bucket_size, ",",
+                     "bucket phase:", _bucket_phase);
+      // This iterator type represents a local pointer so no bounds checks
+      // have to be performed in pointer arithmetics.
+      // Moving a pointer to out-of-bounds address is allowed, however
+      // dereferencing it will lead to segfault. This is a prerequisite for
+      // many common pointer arithmetic use cases.
+      // Example:
+      //   value = *((globmem.lend() + 2) - 3);
+      // is a valid operation and equivalent to
+      //   value = *(globmem.lend() + (2 - 3));
+      // as it creates a temporary pointer to an address beyond _lend (+2)
+      // which is then moved back into valid memory range (-3).
+      if (_bucket_it == _bucket_last) {
+        DASH_LOG_TRACE("LocalBucketIter.pointer", "position at lend");
+      } else if (_bucket_phase >= bucket_size) {
+        DASH_LOG_TRACE("LocalBucketIter.pointer",
+                       "note: iterator position out of bounds (lend?)");
+      }
+      lptr = _bucket_it->lptr + _bucket_phase;
+    }
+    DASH_LOG_TRACE_VAR("LocalBucketIter.pointer >", lptr);
+    return lptr;
   }
 
   self_t & operator++()
@@ -337,47 +378,6 @@ public:
   index_type pos() const
   {
     return _idx;
-  }
-
-  /**
-   * Conversion to native pointer.
-   *
-   * Use with caution: This conversion returns a pointer a that does not
-   * iterate over buckets, pointer arithmetics may lead to undefined
-   * behaviour.
-   */
-  operator pointer() const
-  {
-    DASH_LOG_TRACE("LocalBucketIter.pointer()");
-    pointer lptr = nullptr;
-    if (_is_nullptr) {
-      DASH_LOG_TRACE("LocalBucketIter.pointer", "is nullptr");
-    } else {
-      auto bucket_size = _bucket_it->size;
-      DASH_LOG_TRACE("LocalBucketIter.pointer",
-                     "bucket size:",  bucket_size, ",",
-                     "bucket phase:", _bucket_phase);
-      // This iterator type represents a local pointer so no bounds checks
-      // have to be performed in pointer arithmetics.
-      // Moving a pointer to out-of-bounds address is allowed, however
-      // dereferencing it will lead to segfault. This is a prerequisite for
-      // many common pointer arithmetic use cases.
-      // Example:
-      //   value = *((globmem.lend() + 2) - 3);
-      // is a valid operation and equivalent to
-      //   value = *(globmem.lend() + (2 - 3));
-      // as it creates a temporary pointer to an address beyond _lend (+2)
-      // which is then moved back into valid memory range (-3).
-      if (_bucket_it == _bucket_last) {
-        DASH_LOG_TRACE("LocalBucketIter.pointer", "position at lend");
-      } else if (_bucket_phase >= bucket_size) {
-        DASH_LOG_TRACE("LocalBucketIter.pointer",
-                       "note: iterator position out of bounds (lend?)");
-      }
-      lptr = _bucket_it->lptr + _bucket_phase;
-    }
-    DASH_LOG_TRACE_VAR("LocalBucketIter.pointer >", lptr);
-    return lptr;
   }
 
 private:

@@ -799,9 +799,11 @@ public:
       if (new_local_size > local_capacity) {
         DASH_LOG_TRACE("UnorderedMap.insert",
                        "globmem.grow(", _local_buffer_size, ")");
-        lptr_insert = _globmem->grow(_local_buffer_size);
+        lptr_insert = static_cast<value_type *>(
+                        _globmem->grow(_local_buffer_size));
       } else {
-        lptr_insert = _globmem->lbegin() + old_local_size;
+        lptr_insert = static_cast<value_type *>(
+                        _globmem->lbegin() + old_local_size);
       }
       // Assign new value to insert position.
       DASH_LOG_TRACE("UnorderedMap.insert", "value target address:",

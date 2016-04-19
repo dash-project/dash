@@ -80,6 +80,8 @@ public:
   typedef std::reverse_iterator<      iterator>             reverse_iterator;
   typedef std::reverse_iterator<const_iterator>       const_reverse_iterator;
 
+  typedef ListNode_t *                                          node_pointer;
+
 public:
   /**
    * Constructor, creates a local access proxy for the given list.
@@ -144,8 +146,10 @@ public:
   inline void push_back(const value_type & value)
   {
     DASH_LOG_TRACE("LocalListRef.push_back()");
+    // Pointer to new node element:
+    ListNode_t * node_lptr = nullptr;
     // New element node:
-    ListNode_t node;
+    ListNode_t   node;
     node.value = value;
     node.lprev = nullptr;
     node.lnext = nullptr;
@@ -159,8 +163,6 @@ public:
     _list->_local_sizes.local[0]++;
     // Number of local elements after operation:
     auto l_size_new = _list->_local_sizes.local[0];
-    // Pointer to new node element:
-    pointer node_lptr = nullptr;
 
     DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_cap_old);
     DASH_LOG_TRACE_VAR("LocalListRef.push_back", l_size_old);
@@ -168,20 +170,23 @@ public:
       DASH_LOG_TRACE("LocalListRef.push_back",
                      "globmem.grow(", _list->_local_buffer_size, ")");
       // Acquire local memory for new node:
-      node_lptr = _list->_globmem->grow(_list->_local_buffer_size);
+      node_lptr = static_cast<ListNode_t *>(
+                    _list->_globmem->grow(_list->_local_buffer_size));
       DASH_ASSERT_GT(_list->_globmem->local_size(), l_cap_old,
                      "local capacity not increased after globmem.grow()");
     } else {
-      // No allocation required:
-      node_lptr = _list->_globmem->lbegin() + l_size_old;
+      // No allocation required (cast from LocalBucketIter<T> to T *):
+      node_lptr = static_cast<ListNode_t *>(
+                    _list->_globmem->lbegin() + l_size_old);
     }
     // Local capacity before operation:
     auto l_cap_new = _list->_globmem->local_size();
     DASH_LOG_TRACE("LocalListRef.push_back",
                    "node target address:", node_lptr);
     if (l_size_old > 0) {
-      // Set node predecessor:
-      node.lprev        = _list->_globmem->lbegin() + (l_size_old - 1);
+      // Set node predecessor (cast from LocalBucketIter<T> to T *):
+      node.lprev = static_cast<ListNode_t *>(
+                     _list->_globmem->lbegin() + (l_size_old - 1));
       // Set successor of node predecessor to new node:
       DASH_ASSERT(node.lprev->lnext == nullptr);
       node.lprev->lnext = node_lptr;

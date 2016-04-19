@@ -40,7 +40,7 @@ template<
   typename Alloc >
 class GlobUnorderedMapIter
 : public std::iterator<
-           std::bidirectional_iterator_tag,
+           std::random_access_iterator_tag,
            std::pair<const Key, Mapped>,
            dash::default_index_t,
            dash::GlobPtr< std::pair<const Key, Mapped> >,
@@ -61,21 +61,34 @@ private:
   typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>
     map_t;
 
+  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+    local_iterator;
+  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+    const_local_iterator;
+
 public:
   typedef typename map_t::value_type                              value_type;
+#if 0
   typedef typename map_t::index_type                              index_type;
   typedef typename map_t::size_type                                size_type;
+#else
+  typedef dash::default_index_t                                   index_type;
+  typedef dash::default_size_t                                     size_type;
+#endif
 
   typedef dash::GlobPtr<      value_type>                            pointer;
   typedef dash::GlobPtr<const value_type>                      const_pointer;
   typedef dash::GlobSharedRef<      value_type>                    reference;
   typedef dash::GlobSharedRef<const value_type>              const_reference;
 
+  typedef       value_type *                                     raw_pointer;
+  typedef const value_type *                               const_raw_pointer;
+
   typedef typename
     std::conditional<
       std::is_const<value_type>::value,
-      typename map_t::const_local_pointer,
-      typename map_t::local_pointer
+      typename map_t::const_local_iterator,
+      typename map_t::local_iterator
     >::type
     local_pointer;
 
@@ -185,7 +198,17 @@ public:
   }
 
   /**
-   * Type conversion operator to \c GlobPtr.
+   * Random access operator.
+   */
+  reference operator[](index_type offset)
+  {
+    auto res = *this;
+    res += offset;
+    return *this;
+  }
+
+  /**
+   * Type conversion operator to global pointer.
    *
    * \return  A global reference to the element at the iterator's position
    */
@@ -216,11 +239,30 @@ public:
    *
    * \return  A global reference to the element at the iterator's position.
    */
-  reference operator*() const
+  reference operator*()
   {
-    auto lptr = local();
-    if (lptr != nullptr) {
-      return reference(lptr);
+    if (is_local()) {
+      // To local map iterator:
+      auto l_map_it = local();
+      // To native pointer via conversion:
+      return reference(static_cast<raw_pointer>(l_map_it));
+    } else {
+      return reference(dart_gptr());
+    }
+  }
+
+  /**
+   * Dereference operator.
+   *
+   * \return  A global reference to the element at the iterator's position.
+   */
+  const_reference operator*() const
+  {
+    if (is_local()) {
+      // To local map iterator:
+      auto l_map_it = local();
+      // To native pointer via conversion:
+      return reference(static_cast<raw_pointer>(l_map_it));
     } else {
       return reference(dart_gptr());
     }
@@ -238,14 +280,28 @@ public:
   /**
    * Conversion to local bucket iterator.
    */
-  local_pointer local() const noexcept
+  local_iterator local()
   {
     if (_myid != _idx_unit_id) {
       // Iterator position does not point to local element
-      return local_pointer(nullptr);
+      return local_iterator(nullptr);
     }
     return (_map->lbegin() + _idx_local_idx);
   }
+
+#if 0
+  /**
+   * Conversion to local bucket iterator.
+   */
+  const_local_iterator local() const
+  {
+    if (_myid != _idx_unit_id) {
+      // Iterator position does not point to local element
+      return local_iterator(nullptr);
+    }
+    return (_map->lbegin() + _idx_local_idx);
+  }
+#endif
 
   /**
    * Unit and local offset at the iterator's position.
@@ -334,11 +390,77 @@ public:
     return !(*this == other);
   }
 
+  self_t & operator+=(index_type offset)
+  {
+    increment(offset);
+    return *this;
+  }
+
+  self_t & operator-=(index_type offset)
+  {
+    decrement(offset);
+    return *this;
+  }
+
+  self_t operator+(index_type offset) const
+  {
+    auto res = *this;
+    res += offset;
+    return res;
+  }
+
+  self_t operator-(index_type offset) const
+  {
+    auto res = *this;
+    res -= offset;
+    return res;
+  }
+
+  inline index_type operator+(
+    const self_t & other) const
+  {
+    return _idx + other._idx;
+  }
+
+  inline index_type operator-(
+    const self_t & other) const
+  {
+    return _idx - other._idx;
+  }
+
+  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  inline bool operator<(
+    const GlobUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+  {
+    return (_idx < other._idx);
+  }
+
+  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  inline bool operator<=(
+    const GlobUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+  {
+    return (_idx <= other._idx);
+  }
+
+  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  inline bool operator>(
+    const GlobUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+  {
+    return (_idx > other._idx);
+  }
+
+  template<typename K_, typename M_, typename H_, typename P_, typename A_>
+  inline bool operator>=(
+    const GlobUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+  {
+    return (_idx >= other._idx);
+  }
+
 private:
   /**
    * Advance pointer by specified position offset.
    */
-  void increment(int offset)
+  void increment(index_type offset)
   {
     DASH_LOG_TRACE("GlobUnorderedMapIter.increment()",
                    "gidx:",   _idx,
@@ -362,7 +484,7 @@ private:
   /**
    * Decrement pointer by specified position offset.
    */
-  void decrement(int offset)
+  void decrement(index_type offset)
   {
     DASH_LOG_TRACE("GlobUnorderedMapIter.decrement()",
                    "gidx:",   _idx,

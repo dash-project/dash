@@ -75,6 +75,8 @@ public:
   typedef PointerType                                               pointer;
   typedef PointerType                                         const_pointer;
 
+  typedef ElementType *                                         raw_pointer;
+
   typedef typename
     std::conditional<
       std::is_const<value_type>::value,
@@ -279,7 +281,7 @@ public:
   {
     auto lptr = local();
     if (lptr != nullptr) {
-      return reference(lptr);
+      return reference(static_cast<raw_pointer>(lptr));
     } else {
       return reference(dart_gptr());
     }

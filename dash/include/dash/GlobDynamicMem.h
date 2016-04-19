@@ -5,6 +5,7 @@
 
 #include <dash/Types.h>
 #include <dash/GlobPtr.h>
+#include <dash/GlobSharedRef.h>
 #include <dash/Allocator.h>
 #include <dash/Team.h>
 #include <dash/Onesided.h>
@@ -137,8 +138,8 @@ public:
   typedef typename AllocatorType::const_void_pointer     const_void_pointer;
   typedef GlobPtr<ElementType>                                      pointer;
   typedef GlobPtr<const ElementType>                          const_pointer;
-  typedef GlobRef<ElementType>                                    reference;
-  typedef GlobRef<const ElementType>                        const_reference;
+  typedef GlobSharedRef<ElementType>                              reference;
+  typedef GlobSharedRef<const ElementType>                  const_reference;
 
   typedef ElementType &                                     local_reference;
   typedef const ElementType &                         const_local_reference;

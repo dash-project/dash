@@ -140,6 +140,9 @@ public:
       dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
       return t;
     }
+    DASH_THROW(
+      dash::exception::RuntimeError,
+      "GlobSharedRef: dereferenced null-pointer");
   }
 
   friend void swap(self_t a, self_t b) {
