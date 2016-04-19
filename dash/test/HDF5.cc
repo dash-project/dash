@@ -145,33 +145,17 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
         dash::barrier();
 
         // Fill local block with id of unit
-        std::fill(matrix_a.lbegin(), matrix_a.lend(), myid);
+        for(int i=0; i<matrix_a.local.extent(0); i++) {
+            for(int j=0; j<matrix_a.local.extent(1); j++) {
+                matrix_a.local[i][j] = myid*1e4 + i*1e2 + j;
+            }
+        }
+        //std::fill(matrix_a.lbegin(), matrix_a.lend(), myid);
         dash::barrier();
 
         // Store Matrix
         dash::util::StoreHDF::write(matrix_a, "test.hdf5", "data");
         dash::barrier();
-
-#if 0
-				std::ostream cout;
-        cout << std::setprecision(4) << std::setw(8)
-             << std::left
-             << (double)(4.5432)
-
-        dash::HDF5OutputStream os("test.hdf5");
-
-        os << dash::HDF5Table("data")
-           << dash::HDF5::transposed
-           << matrix_a;
-				os.flush();
-
-				matrix_t m;
-        os >> m;
-
-
-
-        dash::HDF5OutputStream os("test.hdf5");
-#endif
 
         // Read HDF5 Matrix
     }
@@ -180,22 +164,28 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
     dash::util::StoreHDF::read(matrix_b, "test.hdf5", "data");
     dash::barrier();
 
-    for(auto i=matrix_b.lbegin(); i<matrix_b.lend(); i++) {
-        ASSERT_EQ_U(*i, myid);
+    for(int i=0; i<matrix_b.local.extent(0); i++) {
+        for(int j=0; j<matrix_b.local.extent(1); j++) {
+            ASSERT_EQ_U(matrix_b.local[i][j],
+                        myid*1e4 + i*1e2 + j);
+        }
     }
 }
 
-TEST_F(HDFTest, OutputStream){
-	auto matrix = dash::Matrix<long,2>(
-						dash::SizeSpec<2>(100,100));
+#if 0
+TEST_F(HDFTest, OutputStream) {
+    auto matrix = dash::Matrix<long,2>(
+                      dash::SizeSpec<2>(100,100));
 
-	auto fopts = dash::HDF5Options::getDefaults();
-	auto test  = dash::HDF5OutputStream("test_stream.hdf5");
-	test << dash::HDF5Table("data")
-			 << dash::HDF5Options(fopts)
-			 << matrix;
+    auto fopts = dash::HDF5Options::getDefaults();
+    auto test  = dash::HDF5OutputStream("test_stream.hdf5");
+    test << dash::HDF5Table("data")
+         << dash::HDF5Options(fopts)
+         << matrix;
 }
+#endif
 
 #endif // DASH_ENABLE_HDF5
+
 
 

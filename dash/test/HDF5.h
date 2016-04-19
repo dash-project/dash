@@ -32,7 +32,7 @@ protected:
 
   virtual void TearDown() {
     dash::Team::All().barrier();
-		//remove("test.hdf5");
+		remove("test.hdf5");
     LOG_MESSAGE("<=== Finished test case with %d units",
                 _dash_size);
   }
