@@ -503,7 +503,7 @@ private:
       //   --> GlobUnorderedMapIter(map, 0) -> (gidx:0, unit:2, lidx:0)
       //
       _idx           += offset;
-      _idx_local_idx  = _idx;
+      _idx_local_idx = _idx;
       auto & l_cumul_sizes = _map->_local_cumul_sizes;
       // Find unit at global offset:
       while (_idx >= l_cumul_sizes[_idx_unit_id] &&
@@ -511,8 +511,10 @@ private:
         DASH_LOG_TRACE("GlobUnorderedMapIter.increment",
                        "local cumulative size of unit", _idx_unit_id, ":",
                        l_cumul_sizes[_idx_unit_id]);
-        _idx_local_idx = _idx - l_cumul_sizes[_idx_unit_id];
         _idx_unit_id++;
+      }
+      if (_idx_unit_id > 0) {
+        _idx_local_idx = _idx - l_cumul_sizes[_idx_unit_id-1];
       }
     }
     DASH_LOG_TRACE("GlobUnorderedMapIter.increment >", *this);

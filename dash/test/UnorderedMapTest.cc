@@ -107,56 +107,72 @@ TEST_F(UnorderedMapTest, BalancedGlobalInsert)
   EXPECT_FALSE_U(existing_b.second);
 
   DASH_LOG_DEBUG("UnorderedMapTest.BalancedGlobalInsert",
+                 "map size before commit:", map.size(),
+                 "local size:", map.lsize());
+  EXPECT_EQ_U(elem_per_unit, map.lsize());
+  EXPECT_EQ_U(map.lsize(),   map.size());
+
+  DASH_LOG_TRACE("UnorderedMapTest.BalancedGlobalInsert",
+                 "validating global elements before commit");
+  // Changes of global elements must be immediately visible to the unit that
+  // performed the changes (i.e. without committing):
+  int gidx = 0;
+  for (auto git = map.begin(); git != map.end(); ++git) {
+    key_t     key;
+    mapped_t  mapped;
+    if (gidx % 2 == 0) {
+      key    = key_a;
+      mapped = mapped_a;
+    } else {
+      key    = key_b;
+      mapped = mapped_b;
+    }
+    map_value expect({ key, mapped });
+    map_value actual = *git;
+    DASH_LOG_TRACE("UnorderedMapTest.BalancedGlobalInsert",
+                   "before commit:",
+                   "gidx:",  gidx,
+                   "unit:",  _dash_id,
+                   "git:",   git,
+                   "value:", actual.first, "->", actual.second);
+    EXPECT_EQ_U(expect, actual);
+    gidx++;
+  }
+
+  DASH_LOG_DEBUG("UnorderedMapTest.BalancedGlobalInsert",
                  "committing elements");
   map.barrier();
 
   DASH_LOG_DEBUG("UnorderedMapTest.BalancedGlobalInsert",
-                 "map size:", map.size());
-  EXPECT_EQ_U(elem_per_unit, map.lsize());
+                 "map size after commit:", map.size(),
+                 "local size:", map.lsize());
+  EXPECT_EQ_U(elem_per_unit,                map.lsize());
   EXPECT_EQ_U(dash::size() * elem_per_unit, map.size());
 
   DASH_LOG_TRACE("UnorderedMapTest.BalancedGlobalInsert",
-                 "map globmem buckets:");
-  auto gmem_buckets = map.globmem().local_buckets();
-  for (auto bit = gmem_buckets.begin(); bit != gmem_buckets.end(); ++bit) {
-    auto local_bucket = *bit;
-    DASH_LOG_TRACE_VAR("UnorderedMapTest.BalancedGlobalInsert",
-                       local_bucket.size);
-    DASH_LOG_TRACE_VAR("UnorderedMapTest.BalancedGlobalInsert",
-                       local_bucket.attached);
-    DASH_LOG_TRACE_VAR("UnorderedMapTest.BalancedGlobalInsert",
-                       local_bucket.gptr);
-    DASH_LOG_TRACE_VAR("UnorderedMapTest.BalancedGlobalInsert",
-                       local_bucket.lptr);
-  }
-  dash::barrier();
-
-  if (dash::myid() == 0) {
-    DASH_LOG_DEBUG("UnorderedMapTest.BalancedGlobalInsert",
-                   "validate elements");
-    int gidx = 0;
-    for (auto git = map.begin(); git != map.end(); ++git) {
-      auto      unit = gidx / elem_per_unit;
-      key_t     key;
-      mapped_t  mapped;
-      if (gidx % 2 == 0) {
-        key    = 100 * (unit + 1) + 1;
-        mapped = 1.0 * (unit + 1) + 0.01;
-      } else {
-        key    = 100 * (unit + 1) + 2;
-        mapped = 1.0 * (unit + 1) + 0.02;
-      }
-      map_value expect({ key, mapped });
-      map_value actual = *git;
-      DASH_LOG_TRACE("UnorderedMapTest.BalancedGlobalInsert",
-                     "gidx:",  gidx,
-                     "unit:",  unit,
-                     "git:",   git,
-                     "value:", actual.first,
-                     "->",     actual.second);
-      EXPECT_EQ_U(expect, actual);
-      gidx++;
+                 "validating global elements after commit");
+  gidx = 0;
+  for (auto git = map.begin(); git != map.end(); ++git) {
+    auto      unit = gidx / elem_per_unit;
+    key_t     key;
+    mapped_t  mapped;
+    if (gidx % 2 == 0) {
+      key    = 100 * (unit + 1) + 1;
+      mapped = 1.0 * (unit + 1) + 0.01;
+    } else {
+      key    = 100 * (unit + 1) + 2;
+      mapped = 1.0 * (unit + 1) + 0.02;
     }
+    map_value expect({ key, mapped });
+    map_value actual = *git;
+    DASH_LOG_TRACE("UnorderedMapTest.BalancedGlobalInsert",
+                   "after commit:",
+                   "gidx:",  gidx,
+                   "unit:",  unit,
+                   "git:",   git,
+                   "value:", actual.first, "->", actual.second);
+    EXPECT_EQ_U(expect, actual);
+    gidx++;
   }
 }
 
@@ -169,18 +185,95 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   typedef typename map_t::value_type           map_value;
 
   map_t map;
+  DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
+                 "map initialized");
+
   EXPECT_EQ_U(0, map.size());
   EXPECT_EQ_U(0, map.lsize());
 
   // key-value pair to be inserted:
-  int       elem_per_unit = 2;
-  key_t     key_a    = 100 * (_dash_id + 1) + 1;
-  mapped_t  mapped_a = 1.0 * (_dash_id + 1) + 0.01;
-  map_value value_a({ key_a, mapped_a });
-  key_t     key_b    = 100 * (_dash_id + 1) + 2;
-  mapped_t  mapped_b = 1.0 * (_dash_id + 1) + 0.02;
-  map_value value_b({ key_b, mapped_b });
+  int unit_0_elements = 4;
+  int unit_1_elements = 3;
+  int unit_x_elements = 2;
+  int total_elements  = unit_0_elements + unit_1_elements +
+                        ((dash::size() - 2) * unit_x_elements);
+  int local_elements  = unit_x_elements;
+
+  if (_dash_id == 0) {
+    local_elements = unit_0_elements;
+  }
+  if (_dash_id == 1) {
+    local_elements = unit_1_elements;
+  }
 
   DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
-                 "map initialized");
+                 "insert elements");
+  for (int li = 0; li < local_elements; ++li) {
+    key_t     key    = 100 * (_dash_id + 1) + (li + 1);
+    mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * (li + 1));
+    map_value value({ key, mapped });
+    auto insertion = map.insert(value);
+    EXPECT_TRUE(insertion.second);
+    auto existing  = map.insert(value);
+    EXPECT_FALSE(existing.second);
+    EXPECT_EQ(insertion.first, existing.first);
+    map_value value_res = *insertion.first;
+    DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
+                   "inserted element:",
+                   "iterator:", insertion.first,
+                   "value:",    value_res.first, "->", value_res.second);
+  }
+  DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
+                 "map size before commit:", map.size(),
+                 "local size:",             map.lsize());
+  EXPECT_EQ_U(local_elements, map.size());
+  EXPECT_EQ_U(local_elements, map.lsize());
+
+  DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert", "commit");
+  map.barrier();
+
+  DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
+                 "map size after commit:", map.size(),
+                 "local size:",            map.lsize());
+  EXPECT_EQ_U(total_elements, map.size());
+  EXPECT_EQ_U(local_elements, map.lsize());
+
+  DASH_LOG_TRACE("UnorderedMapTest.UnbalancedGlobalInsert",
+                 "validating global elements after commit");
+  int gidx = 0;
+  int unit = 0;
+  for (auto git = map.begin(); git != map.end(); ++git) {
+    int      lidx;
+    int      nlocal;
+    if (unit == 0) {
+      lidx   = gidx;
+      nlocal = unit_0_elements;
+    }
+    else if (unit == 1) {
+      lidx   = gidx - unit_0_elements;
+      nlocal = unit_1_elements;
+    }
+    else if (unit > 1) {
+      lidx   = gidx - unit_0_elements - unit_1_elements -
+                      ((unit - 2) * unit_x_elements);
+      nlocal = unit_x_elements;
+    }
+    if (lidx == nlocal) {
+      unit++;
+      lidx = 0;
+    }
+    key_t    key    = 100 * (unit + 1) + (lidx + 1);
+    mapped_t mapped = 1.0 * (unit + 1) + (0.01 * (lidx + 1));
+    map_value expect({ key, mapped });
+    map_value actual = *git;
+    DASH_LOG_TRACE("UnorderedMapTest.UnbalancedGlobalInsert",
+                   "after commit:",
+                   "gidx:",  gidx,
+                   "unit:",  unit,
+                   "lidx:",  lidx,
+                   "git:",   git,
+                   "value:", actual.first, "->", actual.second);
+    EXPECT_EQ_U(expect, actual);
+    ++gidx;
+  }
 }

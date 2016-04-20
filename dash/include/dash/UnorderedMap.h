@@ -392,9 +392,16 @@ public:
       if (u > 0) {
         _local_cumul_sizes[u] += _local_cumul_sizes[u-1];
       }
+      DASH_LOG_TRACE("UnorderedMap.barrier",
+                     "local size at unit", u, ":", local_size_u,
+                     "cumulative size:", _local_cumul_sizes[u]);
     }
+    auto new_size = size();
+    DASH_LOG_TRACE("UnorderedMap.barrier", "new size:", new_size);
+    DASH_ASSERT_EQ(_remote_size, new_size - _local_sizes.local[0],
+                   "invalid size after global commit");
     _begin = iterator(this, 0);
-    _end   = iterator(this, size());
+    _end   = iterator(this, new_size);
     DASH_LOG_TRACE("UnorderedMap.barrier >", "passed barrier");
   }
 
