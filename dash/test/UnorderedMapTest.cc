@@ -267,8 +267,9 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
       unit++;
       lidx = 0;
     }
-    key_t    key    = 100 * (unit + 1) + (lidx + 1);
-    mapped_t mapped = 1.0 * (unit + 1) + (0.01 * (lidx + 1));
+    key_t     key    = 100 * (unit + 1) + (lidx + 1);
+    mapped_t  mapped = 1.0 * (unit + 1) + (0.01 * (lidx + 1));
+    // Test iterator dereferenciation:
     map_value expect({ key, mapped });
     map_value actual = *git;
     DASH_LOG_TRACE("UnorderedMapTest.UnbalancedGlobalInsert",
@@ -279,6 +280,14 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
                    "git:",   git,
                    "value:", actual.first, "->", actual.second);
     EXPECT_EQ_U(expect, actual);
+    // Test element lookup:
+    auto found = map.find(key);
+    auto count = map.count(key);
+    EXPECT_EQ_U(git, found);
+    EXPECT_EQ_U(1,   count);
+    // Test element access:
+    mapped_t mapped_lookup = map[key];
+    EXPECT_EQ_U(mapped, mapped_lookup);
     ++gidx;
   }
 }

@@ -93,12 +93,10 @@ public:
     index_type    local_position)
   : _map(map),
     _idx(local_position),
-    _max_idx(_map->size() - 1),
     _myid(dash::myid())
   {
     DASH_LOG_TRACE("LocalUnorderedMapIter(map,lpos)()");
     DASH_LOG_TRACE_VAR("LocalUnorderedMapIter(map,lpos)", _idx);
-    DASH_LOG_TRACE_VAR("LocalUnorderedMapIter(map,lpos)", _max_idx);
     DASH_LOG_TRACE("LocalUnorderedMapIter(map,lpos) >");
   }
 
@@ -120,7 +118,6 @@ public:
   LocalUnorderedMapIter(std::nullptr_t)
   : _map(nullptr),
     _idx(-1),
-    _max_idx(-1),
     _myid(DART_UNDEFINED_UNIT_ID),
     _is_nullptr(true)
   {
@@ -157,35 +154,19 @@ public:
   }
 
   /**
-   * Address resolution to native pointer.
-   *
-   * \return  A global reference to the element at the iterator's position
-   */
-  pointer operator&() const
-  {
-    typedef typename map_t::local_node_iterator local_iter_t;
-    if (_is_nullptr) {
-      return nullptr;
-    }
-    // TODO: check for correctness, _idx refers to local iteration space, not
-    //       local memory space.
-    local_iter_t l_it = _map->globmem().lbegin();
-    return pointer(l_it + _idx);
-  }
-
-  /**
    * Type conversion operator to native pointer.
    *
    * \return  A global reference to the element at the iterator's position
    */
-  operator pointer() const
+  explicit operator pointer() const
   {
     typedef typename map_t::local_node_iterator local_iter_t;
     if (_is_nullptr) {
       return nullptr;
     }
-    // TODO: check for correctness, _idx refers to local iteration space, not
-    //       local memory space.
+    // TODO: Must be extended for correctness: _idx refers to local iteration
+    //       space, not local memory space. Undefined behaviour if local
+    //       memory space has gaps, e.g. after erasing elements.
     local_iter_t l_it = _map->globmem().lbegin();
     return pointer(l_it + static_cast<index_type>(_idx));
   }
@@ -198,8 +179,10 @@ public:
   reference operator*() const
   {
     typedef typename map_t::local_node_iterator local_iter_t;
-    // TODO: check for correctness, _idx refers to local iteration space, not
-    //       local memory space.
+    DASH_ASSERT(!_is_nullptr);
+    // TODO: Must be extended for correctness: _idx refers to local iteration
+    //       space, not local memory space. Undefined behaviour if local
+    //       memory space has gaps, e.g. after erasing elements.
     local_iter_t l_it = _map->globmem().lbegin();
     return *pointer(l_it + static_cast<index_type>(_idx));
   }
@@ -213,8 +196,10 @@ public:
   dart_gptr_t dart_gptr() const
   {
     DASH_LOG_TRACE_VAR("LocalUnorderedMapIter.dart_gptr()", _idx);
-    dart_gptr_t dart_gptr = _map->globmem().at(_myid, _idx)
-                            .dart_gptr();
+    dart_gptr_t dart_gptr = DART_GPTR_NULL;
+    if (!_is_nullptr) {
+      dart_gptr = _map->globmem().at(_myid, _idx).dart_gptr();
+    }
     DASH_LOG_TRACE_VAR("LocalUnorderedMapIter.dart_gptr >", dart_gptr);
     return dart_gptr;
   }
@@ -397,8 +382,6 @@ private:
   map_t                  * _map           = nullptr;
   /// Current position of the iterator in local canonical index space.
   index_type               _idx           = -1;
-  /// Maximum position allowed for this iterator.
-  index_type               _max_idx       = -1;
   /// Unit id of the active unit.
   dart_unit_t              _myid          = DART_UNDEFINED_UNIT_ID;
   /// Whether the iterator represents a null pointer.

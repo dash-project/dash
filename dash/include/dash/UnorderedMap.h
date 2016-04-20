@@ -21,12 +21,23 @@
 #include <vector>
 #include <functional>
 #include <algorithm>
+#include <cstddef>
 
 namespace dash {
 
 /**
- * \defgroup  DashUnorderedMapConcept  UnorderedMap Concept
- * Concept of a distributed map container.
+ * \defgroup  DashUnorderedMapConcept  Unordered Map Container Concept
+ * Concept of a distributed unordered map container.
+ *
+ * \ingroup DashConcept
+ * \{
+ * \par Description
+ *
+ * Different from regular maps, elements in unordered map containers are
+ * not sorted in any particular order, but organized into buckets depending
+ * on their hash values. Unordered maps allow for fast access to individual
+ * elements as the storage location of a key in global and/or local memory
+ * can be resolved directly from its hash value.
  *
  * Container properties:
  *
@@ -39,9 +50,15 @@ namespace dash {
  * - Allocator-aware: The container uses an allocator object to manage
  *   acquisition and release of storage space.
  *
- * \ingroup DashConcept
- * \{
- * \par Description
+ * Iterator validity:
+ *
+ * - All iterators in the container remain valid after the insertion unless
+ *   it forces a rehash. In this case, all iterators in the container are
+ *   invalidated.
+ * - A rehash is forced if the new container size after the insertion
+ *   operation would increase above its capacity threshold.
+ * - References to elements in the map container remain valid in all cases,
+ *   even after a rehash.
  *
  * \par Member types
  *
@@ -229,6 +246,11 @@ public:
 
   typedef typename glob_mem_type::reference                        reference;
   typedef typename glob_mem_type::const_reference            const_reference;
+
+  typedef typename reference::template rebind<mapped_type>::other
+    mapped_type_reference;
+  typedef typename const_reference::template rebind<mapped_type>::other
+    const_mapped_type_reference;
 
   typedef typename glob_mem_type::global_iterator
     node_iterator;
@@ -703,12 +725,72 @@ public:
    * \return   reference to the mapped value of the element with a key value
    *           equivalent to \c key.
    */
-  reference operator[](const key_type & key)
+  mapped_type_reference operator[](const key_type & key)
   {
-    return (*((insert(
-                std::make_pair(key, mapped_type())
-              )).first))
-           .second;
+    DASH_LOG_TRACE("UnorderedMap.[]()", "key:", key);
+    iterator     git_value    = insert(
+                                   std::make_pair(key, mapped_type()))
+                                .first;
+    DASH_LOG_TRACE_VAR("UnorderedMap.[]", git_value);
+    dart_gptr_t   gptr_mapped = git_value.dart_gptr();
+    value_type  * lptr_value  = git_value.local();
+    mapped_type * lptr_mapped = nullptr;
+    DASH_LOG_TRACE("UnorderedMap.[]", "gptr to element:", gptr_mapped);
+    DASH_LOG_TRACE("UnorderedMap.[]", "lptr to element:", lptr_value);
+    // Byte offset of mapped value in element type:
+    auto          mapped_offs = offsetof(value_type, second);
+    DASH_LOG_TRACE("UnorderedMap.[]", "byte offset of mapped member:",
+                   mapped_offs);
+    // Increment pointers to element by byte offset of mapped value member:
+    if (lptr_value != nullptr) {
+      // Convert to char pointer for byte-wise increment:
+      char * b_lptr_mapped  = reinterpret_cast<char *>(lptr_value);
+      b_lptr_mapped        += mapped_offs;
+      // Convert to mapped type pointer:
+      lptr_mapped           = reinterpret_cast<mapped_type *>(b_lptr_mapped);
+    }
+    if (!DART_GPTR_EQUAL(DART_GPTR_NULL, gptr_mapped)) {
+      DASH_ASSERT_RETURNS(
+        dart_gptr_incaddr(&gptr_mapped, mapped_offs),
+        DART_OK);
+    }
+    DASH_LOG_TRACE("UnorderedMap.[]", "gptr to mapped member:", gptr_mapped);
+    DASH_LOG_TRACE("UnorderedMap.[]", "lptr to mapped member:", lptr_mapped);
+    // Create global reference to mapped value member in element:
+    mapped_type_reference mapped(gptr_mapped,
+                                 lptr_mapped);
+    DASH_LOG_TRACE("UnorderedMap.[] >", mapped);
+    return mapped;
+  }
+
+  /**
+   * If \c key matches the key of an element in the container, returns a
+   * const reference to its mapped value.
+   *
+   * Throws an exception if \c key does not match the key of any element in
+   * the container.
+   *
+   * Member function \c operator[]() has the same behavior when an element
+   * with the key exists, but does not throw an exception when it does not.
+   *
+   * \return   const reference to the mapped value of the element with a key
+   *           value equivalent to \c key.
+   */
+  const_mapped_type_reference at(const key_type & key) const
+  {
+    DASH_LOG_TRACE("UnorderedMap.at() const", "key:", key);
+    // TODO: Unoptimized, currently calls find(key) twice as operator[](key)
+    //       calls insert(key).
+    const_iterator git_value = find(key);
+    if (git_value == _end) {
+      // No equivalent key in map, throw:
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "No element in map for key " << key);
+    }
+    auto mapped = this->operator[](key);
+    DASH_LOG_TRACE("UnorderedMap.at > const", mapped);
+    return mapped;
   }
 
   /**
@@ -724,19 +806,95 @@ public:
    * \return   reference to the mapped value of the element with a key value
    *           equivalent to \c key.
    */
-  reference at(const key_type & key)
+  mapped_type_reference at(const key_type & key)
   {
-    auto insertion = insert(
-                       std::make_pair(key, mapped_type())
-                     );
-    if (!insertion.second) {
-      // Equivalent key existed in map, return mapped element:
-      return (*(insertion.first)).second;
+    DASH_LOG_TRACE("UnorderedMap.at()", "key:", key);
+    // TODO: Unoptimized, currently calls find(key) twice as operator[](key)
+    //       calls insert(key).
+    const_iterator git_value = find(key);
+    if (git_value == _end) {
+      // No equivalent key in map, throw:
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "No element in map for key " << key);
     }
-    // No equivalent key in map, throw:
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "No element in map for key " << key);
+    auto mapped = this->operator[](key);
+    DASH_LOG_TRACE("UnorderedMap.at >", mapped);
+    return mapped;
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  // Element Lookup
+  //////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Count elements with a specific key.
+   * Searches the container for elements with specified key and returns the
+   * number of elements found.
+   * As maps do not allow for duplicate keys, either 1 or 0 elements are
+   * matched.
+   *
+   * \return  1 if an element with the specified key exists in the container,
+   *          otherwise 0.
+   */
+  size_type count(const key_type & key) const
+  {
+    DASH_LOG_TRACE_VAR("UnorderedMap.count()", key);
+    size_type nelem = 0;
+    if (find(key) != _end) {
+      nelem = 1;
+    }
+    DASH_LOG_TRACE("UnorderedMap.count >", nelem);
+    return nelem;
+  }
+
+  /**
+   * Get iterator to element with specified key.
+   * The mapped value can also be accessed directly by using member functions
+   * \c at or \c operator[].
+   *
+   * \return  iterator to element with specified key if found, otherwise
+   *          iterator to the element past the end of the container.
+   *
+   * \see  count
+   * \see  at
+   * \see  operator[]
+   */
+  iterator find(const key_type & key)
+  {
+    DASH_LOG_TRACE_VAR("UnorderedMap.find()", key);
+    iterator found = std::find_if(
+                       _begin, _end,
+                       [&](const value_type & v) {
+                         return _key_equal(v.first, key);
+                       });
+    DASH_LOG_TRACE("UnorderedMap.find >", found);
+    return found;
+  }
+
+  /**
+   * Get const_iterator to element with specified key.
+   * The mapped value can also be accessed directly by using member functions
+   * \c at or \c operator[].
+   *
+   * \return  const_iterator to element with specified key if found,
+   *          otherwise const_iterator to the element past the end of the
+   *          container.
+   *
+   * \see  count
+   * \see  at
+   * \see  operator[]
+   */
+  const_iterator find(const key_type & key) const
+  {
+    DASH_LOG_TRACE_VAR("UnorderedMap.find() const", key);
+    const_iterator found = std::find_if(
+                             _begin, _end,
+                             [&](const value_type & v) {
+                               return _key_equal(v.first, key);
+                             });
+    DASH_LOG_TRACE("UnorderedMap.find const >", found);
+    return found;
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -746,10 +904,16 @@ public:
   /**
    * Insert a new element as key-value pair, increasing the container size
    * by 1.
-   * Internally, map containers keep all their elements sorted by their key
-   * following the criterion specified by its comparison object.
-   * The elements are always inserted in its respective position following
-   * this ordering.
+   *
+   * Iterator validity:
+   *
+   * - All iterators in the container remain valid after the insertion unless
+   *   it forces a rehash. In this case, all iterators in the container are
+   *   invalidated.
+   * - A rehash is forced if the new container size after the insertion
+   *   operation would increase above its capacity threshold.
+   * - References to elements in the map container remain valid in all cases,
+   *   even after a rehash.
    *
    * \see     \c operator[]
    *
@@ -783,23 +947,7 @@ public:
     DASH_LOG_TRACE("UnorderedMap.insert", "element key lookup");
     DASH_LOG_TRACE_VAR("UnorderedMap.insert", _begin);
     DASH_LOG_TRACE_VAR("UnorderedMap.insert", _end);
-#if DASH_ENABLE_TRACE_LOGGING
-    DASH_LOG_TRACE("UnorderedMap.insert", "existing map elements:");
-    for (auto it = _begin; it != _end; ++it) {
-      value_type v = *it;
-      DASH_LOG_TRACE("UnorderedMap.insert",
-                     "iterator:", it,
-                     "element:",  v.first, "->", v.second);
-    }
-#endif
-    const_iterator found = std::find_if(
-                             _begin, _end,
-                             [&](const value_type & v) {
-                               DASH_LOG_TRACE("UnorderedMap.insert.find",
-                                              "existing.key:", v.first,
-                                              "inserted.key:", key);
-                               return _key_equal(v.first, key);
-                             });
+    const_iterator found = find(key);
     DASH_LOG_TRACE_VAR("UnorderedMap.insert", found);
     if (found != _end) {
       DASH_LOG_TRACE("UnorderedMap.insert", "key found");
@@ -868,16 +1016,31 @@ public:
   /**
    * Insert elements in iterator range of key-value pairs, increasing the
    * container size by the number of elements in the range.
-   * Internally, map containers keep all their elements sorted by their key
-   * following the criterion specified by its comparison object.
-   * The elements are always inserted in its respective position following
-   * this ordering.
+   *
+   * Iterator validity:
+   *
+   * - All iterators in the container remain valid after the insertion unless
+   *   it forces a rehash. In this case, all iterators in the container are
+   *   invalidated.
+   * - A rehash is forced if the new container size after the insertion
+   *   operation would increase above its capacity threshold.
+   * - References to elements in the map container remain valid in all cases,
+   *   even after a rehash.
    */
   template<class InputIterator>
   void insert(
+    // Iterator at first value in the range to insert.
     InputIterator first,
+    // Iterator past the last value in the range to insert.
     InputIterator last)
   {
+    // TODO: Calling insert() on every single element in the range could cause
+    //       multiple calls of globmem.grow(_local_buffer_size).
+    //       Could be optimized to allocate additional memory in a single call
+    //       of globmem.grow(std::distance(first,last)).
+    for (auto it = first; it != last; ++it) {
+      insert(*it);
+    }
   }
 
   /**
@@ -923,6 +1086,10 @@ public:
     return _end;
   }
 
+  /**
+   * Reference to instance of \c DashGlobalMemoryConcept used for underlying
+   * memory management of this container instance.
+   */
   inline const glob_mem_type & globmem() const
   {
     return *_globmem;

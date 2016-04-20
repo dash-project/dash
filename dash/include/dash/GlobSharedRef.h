@@ -41,6 +41,13 @@ public:
   typedef const T *                 const_local_pointer;
 
 public:
+  /// Convert GlobSharedRef<T> to GlobSharedRef<U>.
+  template<typename U>
+  struct rebind {
+    typedef GlobSharedRef<U, GlobalPointerType> other;
+  };
+
+public:
   /**
    * Default constructor, creates an GlobSharedRef object referencing an
    * element in global memory.
@@ -49,6 +56,21 @@ public:
   : _gptr(DART_GPTR_NULL),
     _lptr(nullptr)
   { }
+
+  /**
+   * Constructor, creates an GlobSharedRef object referencing an element in
+   * global memory.
+   */
+  explicit GlobSharedRef(
+    /// Pointer to referenced object in global memory
+    dart_gptr_t   gptr,
+    local_pointer lptr)
+  : _gptr(gptr),
+    _lptr(lptr)
+  {
+    DASH_LOG_TRACE_VAR("GlobSharedRef(gptr,lptr)", gptr);
+    DASH_LOG_TRACE_VAR("GlobSharedRef(gptr,lptr)", lptr);
+  }
 
   /**
    * Constructor, creates an GlobSharedRef object referencing an element in
@@ -145,11 +167,13 @@ public:
       "GlobSharedRef: dereferenced null-pointer");
   }
 
+#if 0
   friend void swap(self_t a, self_t b) {
     T temp = (T)a;
     a = b;
     b = temp;
   }
+#endif
 
   T get() const {
     DASH_LOG_TRACE("T GlobSharedRef.get()", "explicit get");
@@ -176,7 +200,7 @@ public:
     DASH_LOG_TRACE("GlobSharedRef.put >");
   }
 
-  operator global_pointer() const {
+  explicit operator global_pointer() const {
     DASH_LOG_TRACE("GlobSharedRef.global_pointer()", "conversion operator");
     DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
     return global_pointer(_gptr);
