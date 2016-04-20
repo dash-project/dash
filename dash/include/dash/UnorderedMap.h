@@ -459,6 +459,7 @@ public:
     DASH_ASSERT_GT(_local_buffer_size, 0, "local buffer size must not be 0");
     if (nelem < _team->size() * _local_buffer_size) {
       nelem = _team->size() * _local_buffer_size;
+      DASH_LOG_TRACE("UnorderedMap.allocate", "nelem increased to", nelem);
     }
     _key_hash    = hasher(*_team);
     _remote_size = 0;

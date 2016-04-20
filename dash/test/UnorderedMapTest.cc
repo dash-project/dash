@@ -60,7 +60,7 @@ TEST_F(UnorderedMapTest, Initialization)
                    "validate values after commit");
     int li = 0;
     for (auto git = map.begin(); git != map.end(); ++git) {
-      key_t     key    = 100 * (_dash_id + 1) + li;
+      key_t     key    = 100 * (_dash_id + 1) + (li + 1);
       mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * li);
       map_value expect({ key, mapped });
       map_value actual = static_cast<map_value>(*git);
@@ -219,11 +219,14 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
     key_t     key    = 100 * (_dash_id + 1) + (li + 1);
     mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * (li + 1));
     map_value value({ key, mapped });
+
     auto insertion = map.insert(value);
     EXPECT_TRUE(insertion.second);
+
     auto existing  = map.insert(value);
     EXPECT_FALSE(existing.second);
     EXPECT_EQ(insertion.first, existing.first);
+
     map_value value_res = *insertion.first;
     DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
                    "inserted element:",

@@ -34,15 +34,38 @@ namespace dash {
  *
  * Conventional global memory (see \c dash::GlobMem) allocates a single
  * contiguous range of fixed size in local memory at every unit.
- * Iterating local memory space is therefore easy to implement as native
- * pointer arithmetics can be used to traverse elements in canonical storage
- * order.
+ * Iterating static memory space is trivial as native pointer arithmetics
+ * can be used to traverse elements in canonical storage order.
+ *
  * In global dynamic memory, units allocate multiple heap-allocated buckets
- * of identical size in local memory.
- * The number of local buckets may differ between units.
+ * in local memory.
+ * The number of local buckets and their sizes may differ between units.
  * In effect, elements in local memory are distributed in non-contiguous
  * address ranges and a custom iterator is used to access elements in
  * logical storage order.
+ *
+ * Any unit can change the capacity of the global memory space by resizing
+ * its own local segment of the global memory space.
+ * Resizing local memory segments (methods \c resize, \c grow and \c shrink)
+ * is non-collective, however the resulting changes to local and global
+ * memory space are only immediately visible to the unit that executed the
+ * resize operation.
+ *
+ * The collective operation \c commit synchronizes changes on local memory
+ * spaces between all units such that new allocated memory segments are
+ * attached in global memory and deallocated segments detached, respectively.
+ *
+ * Newly allocated memory segments are unattached and immediately accessible
+ * by the local unit only.
+ * Deallocated memory is immediately removed from the local unit's memory
+ * space but remains accessible for remote units.
+ *
+ * Different from typical dynamic container semantics, neither resizing the
+ * memory space nor commit operations invalidate iterators to elements in
+ * allocated global memory.
+ * An iterators referencing a remote element in global dynamic memory is only
+ * invalidated in the \c commit operation following the deallocation of the
+ * element's memory segment.
  *
  * Usage examples:
  *
@@ -377,12 +400,10 @@ public:
   }
 
   /**
-   * TODO:
-   * Buckets should not be deallocated until next commit as other units might
-   * still reference them.
-   *
    * Decrease capacity of local segment of global memory region by the given
    * number of elements.
+   * Buckets are not deallocated until next commit as other units might
+   * still reference them.
    * Same as \c resize(local_size() - num_elements).
    *
    * Local operation.
@@ -1045,33 +1066,69 @@ private:
   }
 
   /**
-   * Collect and update capacity of global attached memory space.
+   * Request the size of all units' local memory, including unattached memory
+   * regions, and update the capacity of global memory space.
    */
   size_type update_remote_size()
   {
+    // This function updates local snapshots of the remote unit's local
+    // sizes.
+    // The following members are updated:
+    //
+    // _remote_size:
+    //    The sum of all remote units' local size, including the sizes of
+    //    unattached buckets.
+    //
+    // _bucket_cumul_sizes:
+    //    An array mapping units to a list of their cumulative bucket sizes
+    //    (i.e. postfix sum) which is required to iterate over the
+    //    non-contigous global dynamic memory space.
+    //    For example, if unit 2 allocated buckets with sizes 1, 3 and 5,
+    //    _bucket_cumul_sizes[2] is a list { 1, 4, 9 }.
+    //
+    // Outline:
+    //
+    // 1. Create local copy of the distributed array _num_attach_buckets that
+    //    contains the number of unattached buckets of every unit.
+    // 2. Temporarily attach an array attach_bucket_sizes in global memory
+    //    that contains the sizes of this unit's unattached buckets.
+    // 3. At this point, every unit published the number of buckets it will
+    //    attach in the next commit, and their sizes.
+    //    The current local size Lu of every unit, including its unattached
+    //    buckets, is stored in _local_sizes.
+    // 4. For every remote unit u:
+    //    - If unit u has one unattached bucket, append the unit's current
+    //      local size Lu to the unit's list of cumulative bucket sizes.
+    //    - If unit u has more than one unattached bucket, the sizes of the
+    //      single buckets must be retrieved from the vector
+    //      attach_bucket_sizes temporarily attached by u in step 1.
+    // 5. Detach vector attach_bucket_sizes.
+
     DASH_LOG_TRACE("GlobDynamicMem.update_remote_size()");
     size_type new_remote_size = 0;
     // Number of unattached buckets of every unit:
-    size_type * num_unattached_buckets = new size_type(_nunits-1);
+    std::vector<size_type> num_unattached_buckets(_nunits, 0);
     _num_attach_buckets.barrier();
     dash::copy(_num_attach_buckets.begin(),
                _num_attach_buckets.end(),
-               num_unattached_buckets);
-    // Attach array of local unattached bucket sizes, collective operation:
+               num_unattached_buckets.data());
+    // Attach array of local unattached bucket sizes to allow remote units to
+    // query the sizes of this unit's unattached buckets.
     std::vector<size_type> attach_buckets_sizes;
     for (auto bit = _attach_buckets_first; bit != _buckets.end(); ++bit) {
       attach_buckets_sizes.push_back((*bit).size);
     }
     DASH_LOG_TRACE_VAR("GlobDynamicMem.update_remote_size",
                        attach_buckets_sizes);
+    // Use same allocator type as used for values in global memory:
     typedef typename allocator_type::template rebind<size_type>::other
       size_type_allocator_t;
     size_type_allocator_t attach_buckets_sizes_allocator(_allocator.team());
     auto attach_buckets_sizes_gptr = attach_buckets_sizes_allocator.attach(
                                        &attach_buckets_sizes[0],
                                        attach_buckets_sizes.size());
-    // Should also have implicit barrier in allocator.attach
     _team->barrier();
+    // Implicit barrier in allocator.attach
     DASH_LOG_TRACE_VAR("GlobDynamicMem.update_remote_size",
                        attach_buckets_sizes_gptr);
     for (int u = 0; u < _nunits; ++u) {
@@ -1082,9 +1139,6 @@ private:
                      "collecting local bucket sizes of unit", u);
       // Last known local attached capacity of remote unit:
       auto    & u_bucket_cumul_sizes = _bucket_cumul_sizes[u];
-      size_type u_local_size_old     = u_bucket_cumul_sizes.size() > 0
-                                       ? u_bucket_cumul_sizes.back()
-                                       : 0;
       // Request current locally allocated capacity of remote unit:
       size_type u_local_size_new     = _local_sizes[u];
       new_remote_size               += u_local_size_new;
@@ -1099,16 +1153,16 @@ private:
         // sizes:
         u_bucket_cumul_sizes.push_back(u_local_size_new);
       } else {
-        // Unit u has multiple unattached buckets, request single sizes:
-        // Sizes of single unattached buckets of unit u:
-        size_type * u_attach_buckets_sizes =
-                      new size_type[u_num_attach_buckets];
+        // Unit u has multiple unattached buckets.
+        // Request sizes of single unattached buckets of unit u:
+        std::vector<size_type> u_attach_buckets_sizes(
+                                 u_num_attach_buckets, 0);
         dart_gptr_t u_attach_buckets_sizes_gptr = attach_buckets_sizes_gptr;
         dart_gptr_setunit(&u_attach_buckets_sizes_gptr, u);
         DASH_ASSERT_RETURNS(
           dart_get_blocking(
             // local dest:
-            u_attach_buckets_sizes,
+            u_attach_buckets_sizes.data(),
             // global source:
             u_attach_buckets_sizes_gptr,
             // request bytes (~= number of sizes) from unit u:
@@ -1125,12 +1179,11 @@ private:
           }
           u_bucket_cumul_sizes.push_back(cumul_bkt_size);
         }
-        delete[] u_attach_buckets_sizes;
       }
     }
     // Detach array of local unattached bucket sizes, implicit barrier:
     attach_buckets_sizes_allocator.detach(attach_buckets_sizes_gptr);
-    // Should also have implicit barrier in allocator.detach
+    // Implicit barrier in allocator.detach
     _team->barrier();
 #if DASH_ENABLE_TRACE_LOGGING
     for (int u = 0; u < _nunits; ++u) {
@@ -1210,8 +1263,11 @@ private:
   /// Mapping unit id to number of elements in the unit's attached local
   /// memory space.
   local_sizes_map            _local_sizes;
-  /// Mapping unit id to cumulative size of buckets in the unit's attached
-  /// local memory space.
+  /// An array mapping units to a list of their cumulative bucket sizes
+  /// (i.e. postfix sum) which is required to iterate over the
+  /// non-contigous global dynamic memory space.
+  /// For example, if unit 2 allocated buckets with sizes 1,3,5, the
+  /// list at _bucket_cumul_sizes[2] has values 1,4,9.
   bucket_cumul_sizes_map     _bucket_cumul_sizes;
   /// Mapping unit id to number of buckets marked for attach in the unit's
   /// memory space.
