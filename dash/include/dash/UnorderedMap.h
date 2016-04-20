@@ -819,6 +819,7 @@ public:
       size_type local_capacity   = _globmem->local_size();
       _local_cumul_sizes[_myid] += 1;
       DASH_LOG_TRACE_VAR("UnorderedMap.insert", local_capacity);
+      DASH_LOG_TRACE_VAR("UnorderedMap.insert", _local_buffer_size);
       DASH_LOG_TRACE_VAR("UnorderedMap.insert", old_local_size);
       DASH_LOG_TRACE_VAR("UnorderedMap.insert", new_local_size);
       DASH_LOG_TRACE_VAR("UnorderedMap.insert", _local_cumul_sizes[_myid]);

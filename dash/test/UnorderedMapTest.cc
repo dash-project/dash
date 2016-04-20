@@ -183,18 +183,23 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   typedef dash::UnorderedMap<key_t, mapped_t>  map_t;
   typedef typename map_t::iterator             map_iterator;
   typedef typename map_t::value_type           map_value;
+  typedef typename map_t::size_type            size_type;
 
-  map_t map;
+  // Use small local buffer size to enforce reallocation:
+  size_type init_global_size  = 0;
+  size_type local_buffer_size = 2;
+  map_t map(init_global_size, local_buffer_size);
   DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
                  "map initialized");
-
   EXPECT_EQ_U(0, map.size());
   EXPECT_EQ_U(0, map.lsize());
+  // Minumum local capacity is local buffer size:
+  EXPECT_EQ_U(local_buffer_size, map.lcapacity());
 
   // key-value pair to be inserted:
-  int unit_0_elements = 4;
-  int unit_1_elements = 3;
-  int unit_x_elements = 2;
+  int unit_0_elements = 4; // two reallocs
+  int unit_1_elements = 3; // one realloc
+  int unit_x_elements = 2; // no realloc
   int total_elements  = unit_0_elements + unit_1_elements +
                         ((dash::size() - 2) * unit_x_elements);
   int local_elements  = unit_x_elements;
