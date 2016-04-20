@@ -141,10 +141,12 @@ public:
    */
   self_t & operator=(const self_t && other) noexcept
   {
+    DASH_LOG_DEBUG("DynamicAllocator.=(&&)()");
     // Take ownership of other instance's allocation vector:
     clear();
     _allocated = other._allocated;
     other._allocated.clear();
+    DASH_LOG_DEBUG("DynamicAllocator.=(&&) >");
     return *this;
   }
 
@@ -215,6 +217,7 @@ public:
 
   /**
    * Unregister local memory segment from global memory space.
+   * Does not deallocate local memory.
    *
    * Collective operation.
    *
@@ -267,12 +270,14 @@ public:
    */
   void deallocate_local(local_pointer lptr)
   {
-    delete[] lptr;
+    if (lptr != nullptr) {
+      delete[] lptr;
+    }
   }
 
   /**
-   * Allocates \c num_local_elem local elements at active unit in global
-   * memory space.
+   * Allocates \c num_local_elem local elements at active unit and attaches
+   * the local memory segment in global memory space.
    *
    * Collective operation.
    * The number of allocated elements may differ between units.
@@ -283,15 +288,16 @@ public:
   {
     local_pointer lmem = allocate_local(num_local_elem);
     pointer       gmem = attach(lmem, num_local_elem);
-    if (gmem == DART_GPTR_NULL) {
+    if (DART_GPTR_EQUAL(gmem, DART_GPTR_NULL)) {
+      // Attach failed, free requested local memory:
       deallocate_local(lmem);
     }
     return gmem;
   }
 
   /**
-   * Deallocates memory in global memory space previously allocated across
-   * local memory of all units in the team.
+   * Detaches memory segment from global memory space and deallocates the
+   * associated local memory region.
    *
    * Collective operation.
    *
@@ -300,36 +306,61 @@ public:
   void deallocate(pointer gptr)
   {
     DASH_LOG_DEBUG("DynamicAllocator.deallocate()", "gptr:", gptr);
-    // Unregister from global memory space:
-    detach(gptr);
+    if (!dash::is_initialized()) {
+      // If a DASH container is deleted after dash::finalize(), global
+      // memory has already been freed by dart_exit() and must not be
+      // deallocated again.
+      DASH_LOG_DEBUG("DynamicAllocator.deallocate >",
+                     "DASH not initialized, abort");
+      return;
+    }
     // Free local memory:
     DASH_LOG_DEBUG("DynamicAllocator.deallocate", "deallocate local memory");
+    bool do_detach = false;
     std::for_each(
       _allocated.begin(),
       _allocated.end(),
       [&](std::pair<value_type *, pointer> e) mutable {
         if (e.second == gptr && e.first != nullptr) {
           delete[] e.first;
-          e.first = nullptr;
+          e.first   = nullptr;
+          do_detach = true;
           DASH_LOG_DEBUG("DynamicAllocator.deallocate",
                          "gptr", e.second, "marked for detach");
         }
       });
+    // Unregister from global memory space, removes gptr from _allocated:
+    if (do_detach) {
+      detach(gptr);
+    }
     DASH_LOG_DEBUG("DynamicAllocator.deallocate >");
   }
 
 private:
   /**
-   * Frees all global memory regions allocated by this allocator instance.
+   * Frees and detaches all global memory regions allocated by this allocator
+   * instance.
    */
   void clear() noexcept
   {
-    for (auto gptr : _allocated) {
-      // TODO:
-      // Inefficient as deallocate() applies vector.erase(std::remove)
-      // for every element.
-      deallocate(gptr.second);
+    DASH_LOG_DEBUG("DynamicAllocator.clear()");
+    for (auto e : _allocated) {
+      // Null-buckets have lptr set to nullptr
+      if (e.first != nullptr) {
+        DASH_LOG_DEBUG("DynamicAllocator.clear", "deallocate local memory:",
+                       e.first);
+        delete[] e.first;
+      }
+      if (!DART_GPTR_EQUAL(e.second, DART_GPTR_NULL)) {
+        DASH_LOG_DEBUG("DynamicAllocator.clear", "detach global memory:",
+                       e.second);
+        DASH_ASSERT_RETURNS(
+          dart_team_memderegister(_team_id, e.second),
+          DART_OK);
+      }
     }
+    _allocated.clear();
+    DASH_LOG_DEBUG("DynamicAllocator.clear >");
   }
 
 private:

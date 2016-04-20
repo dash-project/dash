@@ -40,7 +40,7 @@ TEST_F(UnorderedMapTest, Initialization)
   if (_dash_id == 0) {
     for (auto li = 0; li < ninsert; ++li) {
       DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "insert element");
-      key_t     key    = 100 * (_dash_id + 1) + li;
+      key_t     key    = 100 * (_dash_id + 1) + (li + 1);
       mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * li);
       map_value value({ key, mapped });
 
@@ -50,7 +50,6 @@ TEST_F(UnorderedMapTest, Initialization)
       EXPECT_FALSE_U(existing.second);
     }
   }
-  dash::barrier();
 
   DASH_LOG_DEBUG("UnorderedMapTest.Initialization", "committing elements");
   map.barrier();
@@ -72,7 +71,6 @@ TEST_F(UnorderedMapTest, Initialization)
       li++;
     }
   }
-  map.barrier();
 }
 
 TEST_F(UnorderedMapTest, BalancedGlobalInsert)
@@ -185,15 +183,17 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   typedef typename map_t::value_type           map_value;
   typedef typename map_t::size_type            size_type;
 
-  // Use small local buffer size to enforce reallocation:
+  // Number of preallocated elements:
   size_type init_global_size  = 0;
-  size_type local_buffer_size = 2;
+  // Use small local buffer size to enforce reallocation.
+  // Also determines eager allocation size:
+  size_type local_buffer_size = _dash_id == 0 ? 2 : 3;
   map_t map(init_global_size, local_buffer_size);
   DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
                  "map initialized");
   EXPECT_EQ_U(0, map.size());
   EXPECT_EQ_U(0, map.lsize());
-  // Minumum local capacity is local buffer size:
+  // Local capacity is at least local buffer size:
   EXPECT_EQ_U(local_buffer_size, map.lcapacity());
 
   // key-value pair to be inserted:
@@ -213,6 +213,8 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
 
   DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
                  "insert elements");
+  // Changes in global memory space are immediately visible to the unit that
+  // executed them.
   for (int li = 0; li < local_elements; ++li) {
     key_t     key    = 100 * (_dash_id + 1) + (li + 1);
     mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * (li + 1));
@@ -227,6 +229,8 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
                    "inserted element:",
                    "iterator:", insertion.first,
                    "value:",    value_res.first, "->", value_res.second);
+    EXPECT_EQ_U(1, map.count(key));
+    EXPECT_NE_U(map.end(), map.find(key));
   }
   DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert",
                  "map size before commit:", map.size(),
@@ -234,6 +238,8 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   EXPECT_EQ_U(local_elements, map.size());
   EXPECT_EQ_U(local_elements, map.lsize());
 
+  // After the barrier (commit), all changes in global and local memory
+  // space are visible to all units.
   DASH_LOG_DEBUG("UnorderedMapTest.UnbalancedGlobalInsert", "commit");
   map.barrier();
 
@@ -256,11 +262,13 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
                      "to", mapped_new);
       // Change mapped value by writing to reference to mapped:
       map[key] = mapped_new;
-      // Read mapped value back:
-      mapped_t mapped_acc  = map[key];
+      // Read value back and verify:
+      mapped_t mapped_acc = map[key];
       EXPECT_EQ_U(mapped_new, mapped_acc);
     }
   }
+  // No map.barrier (commit) needed here, all changes must be immediately
+  // visible to all units as memory space did not change:
   dash::barrier();
 
   DASH_LOG_TRACE("UnorderedMapTest.UnbalancedGlobalInsert",

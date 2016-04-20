@@ -380,7 +380,10 @@ public:
    */
   inline const Team & team() const noexcept
   {
-    return *_team;
+    if (_team != nullptr) {
+      return *_team;
+    }
+    return dash::Team::Null();
   }
 
   //////////////////////////////////////////////////////////////////////////

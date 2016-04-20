@@ -201,6 +201,7 @@ public:
     /// Team containing all units operating on the global memory region
     Team      & team         = dash::Team::All())
   : _allocator(team),
+    _team(&team),
     _teamid(team.dart_id()),
     _nunits(team.size()),
     _myid(team.myid()),
@@ -295,6 +296,20 @@ public:
   bool operator!=(const self_t & rhs) const noexcept
   {
     return !(*this == rhs);
+  }
+
+  /**
+   * The team containing all units accessing the global memory space.
+   *
+   * \return  A reference to the Team containing the units associated with
+   *          the global dynamic memory space.
+   */
+  inline dash::Team & team() const noexcept
+  {
+    if (_team != nullptr) {
+      return *_team;
+    }
+    return dash::Team::Null();
   }
 
   /**
@@ -898,7 +913,7 @@ private:
         // Detach bucket from global memory region and deallocate its local
         // memory segment:
         if (bucket_it->attached) {
-          _allocator.detach(bucket_it->gptr);
+          _allocator.deallocate(bucket_it->gptr);
           num_detached_elem   += bucket_it->size;
           bucket_it->attached  = false;
         }
@@ -967,10 +982,8 @@ private:
       bucket_type & bucket = *_attach_buckets_first;
       DASH_ASSERT(!bucket.attached);
       DASH_LOG_TRACE("GlobDynamicMem.commit_attach", "attaching bucket");
-      DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", bucket.attached);
       DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", bucket.size);
       DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", bucket.lptr);
-      DASH_LOG_TRACE_VAR("GlobDynamicMem.commit_attach", bucket.gptr);
       // Attach bucket's local memory segment in global memory:
       bucket.gptr     = _allocator.attach(bucket.lptr, bucket.size);
       bucket.attached = true;
@@ -1038,36 +1051,6 @@ private:
   {
     DASH_LOG_TRACE("GlobDynamicMem.update_remote_size()");
     size_type new_remote_size = 0;
-#if __OLD__
-    // TODO Assumes that unit 0 only attached one bucket, but additional
-    //      local size at unit u could consist of several buckets.
-    for (int u = 0; u < _nunits; ++u) {
-      if (u != _myid) {
-        // Last known locally allocated capacity of remote unit:
-        auto    & u_bucket_cumul_sizes = _bucket_cumul_sizes[u];
-        size_type u_local_size_old     = u_bucket_cumul_sizes.size() > 0
-                                         ? u_bucket_cumul_sizes.back()
-                                         : 0;
-        // Request current locally allocated capacity of remote unit:
-        size_type u_local_size_new     = _local_sizes[u];
-        DASH_LOG_TRACE("GlobDynamicMem.update_remote_size",
-                       "unit", u,
-                       "old local size:", u_local_size_old,
-                       "new local size:", u_local_size_new);
-        u_bucket_cumul_sizes.push_back(u_local_size_new);
-        new_remote_size += u_local_size_new;
-      }
-    }
-    if (new_remote_size == _remote_size) {
-      for (int u = 0; u < _nunits; ++u) {
-        if (u != _myid) {
-          // No new buckets allocated at any unit, undo updates of
-          // accumulated bucket sizes:
-          _bucket_cumul_sizes[u].pop_back();
-        }
-      }
-    }
-#else
     // Number of unattached buckets of every unit:
     size_type * num_unattached_buckets = new size_type(_nunits-1);
     _num_attach_buckets.barrier();
@@ -1079,62 +1062,76 @@ private:
     for (auto bit = _attach_buckets_first; bit != _buckets.end(); ++bit) {
       attach_buckets_sizes.push_back((*bit).size);
     }
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.update_remote_size",
+                       attach_buckets_sizes);
     typedef typename allocator_type::template rebind<size_type>::other
       size_type_allocator_t;
     size_type_allocator_t attach_buckets_sizes_allocator(_allocator.team());
     auto attach_buckets_sizes_gptr = attach_buckets_sizes_allocator.attach(
                                        &attach_buckets_sizes[0],
                                        attach_buckets_sizes.size());
-    // Implicit barrier in allocator.attach
+    // Should also have implicit barrier in allocator.attach
+    _team->barrier();
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.update_remote_size",
+                       attach_buckets_sizes_gptr);
     for (int u = 0; u < _nunits; ++u) {
       if (u == _myid) {
         continue;
       }
-      // Last known locally allocated capacity of remote unit:
+      DASH_LOG_TRACE("GlobDynamicMem.update_remote_size",
+                     "collecting local bucket sizes of unit", u);
+      // Last known local attached capacity of remote unit:
       auto    & u_bucket_cumul_sizes = _bucket_cumul_sizes[u];
       size_type u_local_size_old     = u_bucket_cumul_sizes.size() > 0
                                        ? u_bucket_cumul_sizes.back()
                                        : 0;
       // Request current locally allocated capacity of remote unit:
       size_type u_local_size_new     = _local_sizes[u];
+      new_remote_size               += u_local_size_new;
       // Number of unattached buckets of unit u:
       size_type u_num_attach_buckets = num_unattached_buckets[u];
+      DASH_LOG_TRACE_VAR("GlobDynamicMem.update_remote_size",
+                         u_num_attach_buckets);
       if (u_num_attach_buckets == 0) {
         // No unattached buckets at unit u.
       } else if (u_num_attach_buckets == 1) {
         // One unattached bucket at unit u, no need to request single bucket
         // sizes:
         u_bucket_cumul_sizes.push_back(u_local_size_new);
-        new_remote_size += u_local_size_new;
       } else {
         // Unit u has multiple unattached buckets, request single sizes:
         // Sizes of single unattached buckets of unit u:
-        size_type * u_attach_buckets_sizes      = new size_type(
-                                                    u_num_attach_buckets);
+        size_type * u_attach_buckets_sizes =
+                      new size_type[u_num_attach_buckets];
         dart_gptr_t u_attach_buckets_sizes_gptr = attach_buckets_sizes_gptr;
         dart_gptr_setunit(&u_attach_buckets_sizes_gptr, u);
-        dart_get(
-          // local dest:
-          u_attach_buckets_sizes,
-          // global source:
-          u_attach_buckets_sizes_gptr,
-          // request bytes (~= number of sizes) from unit u:
-          u_num_attach_buckets * sizeof(size_type)
-        );
+        DASH_ASSERT_RETURNS(
+          dart_get_blocking(
+            // local dest:
+            u_attach_buckets_sizes,
+            // global source:
+            u_attach_buckets_sizes_gptr,
+            // request bytes (~= number of sizes) from unit u:
+            u_num_attach_buckets * sizeof(size_type)),
+          DART_OK);
         // Update local snapshot of cumulative bucket sizes at unit u:
         for (int bi = 0; bi < u_num_attach_buckets; ++bi) {
-          size_type cumul_bkt_size  = u_attach_buckets_sizes[bi];
-          new_remote_size          += u_attach_buckets_sizes[bi];
+          size_type single_bkt_size = u_attach_buckets_sizes[bi];
+          size_type cumul_bkt_size  = single_bkt_size;
+          DASH_LOG_TRACE_VAR("GlobDynamicMem.update_remote_size",
+                             single_bkt_size);
           if (u_bucket_cumul_sizes.size() > 0) {
             cumul_bkt_size += u_bucket_cumul_sizes.back();
           }
           u_bucket_cumul_sizes.push_back(cumul_bkt_size);
         }
+        delete[] u_attach_buckets_sizes;
       }
     }
     // Detach array of local unattached bucket sizes, implicit barrier:
     attach_buckets_sizes_allocator.detach(attach_buckets_sizes_gptr);
-#endif
+    // Should also have implicit barrier in allocator.detach
+    _team->barrier();
 #if DASH_ENABLE_TRACE_LOGGING
     for (int u = 0; u < _nunits; ++u) {
       DASH_LOG_TRACE("GlobDynamicMem.update_remote_size",
@@ -1196,6 +1193,7 @@ private:
 
 private:
   allocator_type             _allocator;
+  dash::Team               * _team   = nullptr;
   dart_team_t                _teamid;
   size_type                  _nunits = 0;
   local_iterator             _lbegin = nullptr;
