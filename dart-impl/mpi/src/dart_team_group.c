@@ -23,14 +23,34 @@
 dart_ret_t dart_group_init(
   dart_group_t *group)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	group -> mpi_group = MPI_GROUP_EMPTY;
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
 dart_ret_t dart_group_fini(
   dart_group_t *group)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	group -> mpi_group = MPI_GROUP_NULL;
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
@@ -38,7 +58,17 @@ dart_ret_t dart_group_copy(
   const dart_group_t *gin,
   dart_group_t *gout)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	gout -> mpi_group = gin -> mpi_group;
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
@@ -60,6 +90,11 @@ dart_ret_t dart_group_union(
   const dart_group_t *g2,
   dart_group_t *gout)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	/* g1 and g2 are both ordered groups. */
 	int ret = MPI_Group_union(
               g1->mpi_group,
@@ -115,6 +150,12 @@ dart_ret_t dart_group_union(
 		ret = DART_OK;
 	}
 	return ret;
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}else return DART_OK;
+#endif
+#endif
+
 }
 
 dart_ret_t dart_group_intersect(
@@ -122,16 +163,31 @@ dart_ret_t dart_group_intersect(
   const dart_group_t *g2,
   dart_group_t *gout)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	return MPI_Group_intersection(
            g1 -> mpi_group,
            g2 -> mpi_group,
            &(gout -> mpi_group));
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}else return DART_OK;
+#endif
+#endif
 }
 
 dart_ret_t dart_group_addmember(
   dart_group_t *g,
   dart_unit_t unitid)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	int array[1];
 	dart_group_t* group_copy, *group;
 	MPI_Group     newgroup, group_all;
@@ -154,6 +210,11 @@ dart_ret_t dart_group_addmember(
 	dart_group_union (group_copy, group, g);
 	free (group_copy);
 	free (group);
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
@@ -161,6 +222,11 @@ dart_ret_t dart_group_delmember(
   dart_group_t *g,
   dart_unit_t unitid)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	int array[1];
 	MPI_Group newgroup, group_all;
 #ifdef SHAREDMEM_ENABLE
@@ -181,6 +247,11 @@ dart_ret_t dart_group_delmember(
     g -> mpi_group,
     newgroup,
     &(g -> mpi_group));
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
@@ -188,9 +259,19 @@ dart_ret_t dart_group_size(
   const dart_group_t *g,
   size_t *size)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	int s;
 	MPI_Group_size (g -> mpi_group, &s);
 	(*size) = s;
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
@@ -198,6 +279,11 @@ dart_ret_t dart_group_getmembers(
   const dart_group_t *g,
   dart_unit_t *unitids)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	int size, i;
 	int *array;
 	MPI_Group group_all;
@@ -221,6 +307,11 @@ dart_ret_t dart_group_getmembers(
     group_all,
     unitids);
 	free (array);
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
@@ -229,6 +320,11 @@ dart_ret_t dart_group_split(
   size_t n,
   dart_group_t **gout)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	MPI_Group grouptem;
 	int size, length, i, ranges[1][3];
 
@@ -266,12 +362,27 @@ dart_ret_t dart_group_split(
 			(*(gout + i))->mpi_group = MPI_GROUP_EMPTY;
 		}
 	}
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
 dart_ret_t dart_group_sizeof (size_t *size)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	*size = sizeof (dart_group_t);
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
@@ -280,6 +391,11 @@ dart_ret_t dart_group_ismember(
   dart_unit_t unitid,
   int32_t *ismember)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	dart_unit_t id;
 	dart_myid (&id);
 
@@ -296,6 +412,11 @@ dart_ret_t dart_group_ismember(
 	}
 	*ismember = (i!=size);
 	DART_LOG_DEBUG("%2d: GROUP_ISMEMBER - %s", unitid, (*ismember) ? "yes" : "no");
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 
@@ -303,6 +424,11 @@ dart_ret_t dart_team_get_group(
   dart_team_t teamid,
   dart_group_t *group)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
 	MPI_Comm comm;
 	uint16_t index;
 	
@@ -312,6 +438,11 @@ dart_ret_t dart_team_get_group(
 	}
 	comm = dart_teams[index];
 	MPI_Comm_group (comm, & (group->mpi_group));
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
 	return DART_OK;
 }
 

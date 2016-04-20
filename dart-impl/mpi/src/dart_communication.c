@@ -360,6 +360,11 @@ dart_ret_t dart_accumulate_int(
   dart_operation_t op,
   dart_team_t team)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   MPI_Aint    disp_s,
               disp_rel;
   MPI_Win     win;
@@ -412,6 +417,11 @@ dart_ret_t dart_accumulate_int(
            "to %d at offset %d", 
            nelem, target_unitid_abs, offset);
   }
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
@@ -423,6 +433,11 @@ dart_ret_t dart_get_handle(
   size_t nbytes,
   dart_handle_t *handle)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   MPI_Request mpi_req;
   MPI_Aint disp_s, disp_rel;
   dart_unit_t target_unitid_abs, target_unitid_rel;
@@ -518,6 +533,11 @@ dart_ret_t dart_get_handle(
   }
   (*handle) -> request = mpi_req;
   (*handle) -> win     = win;
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
@@ -527,6 +547,11 @@ dart_ret_t dart_put_handle(
   size_t nbytes,
   dart_handle_t *handle)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   MPI_Request mpi_req;
   MPI_Aint disp_s, disp_rel;
   dart_unit_t target_unitid_abs, target_unitid_rel;
@@ -609,6 +634,11 @@ dart_ret_t dart_put_handle(
   }
   (*handle) -> request = mpi_req;
   (*handle) -> win     = win;
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
@@ -624,6 +654,11 @@ dart_ret_t dart_put_blocking(
   void *src,
   size_t nbytes)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   MPI_Win win;
   MPI_Aint disp_s, disp_rel;
 
@@ -747,6 +782,11 @@ if (seg_id >= 0){
             "(allocated with local allocation) to %d at the offset %d",
             nbytes, target_unitid_abs, offset);
     }
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+  }
+#endif
+#endif
     return DART_OK;
   }
 }
@@ -759,6 +799,11 @@ dart_ret_t dart_get_blocking(
   dart_gptr_t   gptr,
   size_t        nbytes)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   MPI_Win win;
   MPI_Status mpi_sta;
   MPI_Request mpi_req;
@@ -875,6 +920,11 @@ dart_ret_t dart_get_blocking(
                      "(allocated with local allocation) from %d at offset %d", 
                       nbytes, target_unitid_abs, offset);
     }
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+  }
+#endif
+#endif
     return DART_OK;
   }
 }
@@ -975,6 +1025,11 @@ dart_ret_t dart_flush_all(
 dart_ret_t dart_flush_local(
   dart_gptr_t gptr)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   dart_unit_t target_unitid_abs;
   int16_t seg_id = gptr.segid;
   MPI_Win win;
@@ -990,12 +1045,22 @@ dart_ret_t dart_flush_local(
     MPI_Win_flush_local(target_unitid_abs, win);
   }
   DART_LOG_DEBUG("FLUSH_LOCAL - finished");
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
 dart_ret_t dart_flush_local_all(
   dart_gptr_t gptr)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   int16_t seg_id = gptr.segid;
   MPI_Win win;
   if (seg_id) {
@@ -1006,23 +1071,43 @@ dart_ret_t dart_flush_local_all(
   }
   MPI_Win_flush_local_all(win);
   DART_LOG_DEBUG("FLUSH_LOCAL_ALL  - finished");
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
 dart_ret_t dart_wait_local(
   dart_handle_t handle)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   if (handle) {
     MPI_Status mpi_sta;
     MPI_Wait (&(handle->request), &mpi_sta);
   }
   DART_LOG_DEBUG("WAIT_LOCAL  - finished");
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
 dart_ret_t dart_wait(
   dart_handle_t handle)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   if (handle) {
     MPI_Status mpi_sta;
     MPI_Wait (&(handle -> request), &mpi_sta);  
@@ -1032,6 +1117,11 @@ dart_ret_t dart_wait(
     handle = NULL;
   }
   DART_LOG_DEBUG("WAIT  - finished");
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
@@ -1039,6 +1129,11 @@ dart_ret_t dart_test_local(
   dart_handle_t handle,
   int32_t* is_finished)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   if (!handle) {
     *is_finished = 1;
     return DART_OK;
@@ -1046,6 +1141,11 @@ dart_ret_t dart_test_local(
   MPI_Status mpi_sta;
   MPI_Test (&(handle->request), is_finished, &mpi_sta);
   DART_LOG_DEBUG("TEST_LOCAL  - finished");
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
@@ -1053,6 +1153,11 @@ dart_ret_t dart_waitall_local(
   dart_handle_t *handle,
   size_t n)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   int i, r_n = 0;
   if (*handle) {
     MPI_Status  *mpi_sta;
@@ -1075,6 +1180,11 @@ dart_ret_t dart_waitall_local(
     free (mpi_sta);
   }
   DART_LOG_DEBUG("WAITALL_LOCAL  - finished");
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
@@ -1082,6 +1192,11 @@ dart_ret_t dart_waitall(
   dart_handle_t *handle,
   size_t n)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   int i, n_r = 0;
   if (*handle) {
     MPI_Status  *mpi_sta;
@@ -1112,6 +1227,11 @@ dart_ret_t dart_waitall(
     }
   }
   DART_LOG_DEBUG("WAITALL  - finished");
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
@@ -1120,6 +1240,11 @@ dart_ret_t dart_testall_local(
   size_t n,
   int32_t* is_finished)
 {
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	if (user_comm_world != MPI_COMM_NULL){
+#endif
+#endif
   int i, r_n = 0;
   MPI_Status *mpi_sta;
   MPI_Request *mpi_req;
@@ -1140,6 +1265,11 @@ dart_ret_t dart_testall_local(
   free(mpi_req);
   free(mpi_sta);
   DART_LOG_DEBUG("TESTALL_LOCAL  - finished");
+#ifdef SHAREDMEM_ENABLE
+#ifdef PROGRESS_ENABLE
+	}
+#endif
+#endif
   return DART_OK;
 }
 
