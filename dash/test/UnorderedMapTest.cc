@@ -197,7 +197,7 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   EXPECT_EQ_U(local_buffer_size, map.lcapacity());
 
   // key-value pair to be inserted:
-  int unit_0_elements = 4; // two reallocs
+  int unit_0_elements = 5; // two reallocs
   int unit_1_elements = 3; // one realloc
   int unit_x_elements = 2; // no realloc
   int total_elements  = unit_0_elements + unit_1_elements +

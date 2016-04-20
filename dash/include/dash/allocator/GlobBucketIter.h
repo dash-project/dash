@@ -139,7 +139,7 @@ public:
     _idx_bucket_idx(0),
     _idx_bucket_phase(0)
   {
-    DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", position);
+    DASH_LOG_TRACE("GlobBucketIter(gmem,idx)", "gidx:", position);
     for (auto unit_bucket_cumul_sizes : *_bucket_cumul_sizes) {
       DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)",
                          unit_bucket_cumul_sizes);
@@ -192,7 +192,9 @@ public:
     _idx_bucket_idx(0),
     _idx_bucket_phase(0)
   {
-    DASH_LOG_TRACE("GlobBucketIter(gmem,unit,lidx)", unit, local_index);
+    DASH_LOG_TRACE("GlobBucketIter(gmem,unit,lidx)",
+                   "unit:", unit,
+                   "lidx:", local_index);
     DASH_ASSERT_LT(unit, _bucket_cumul_sizes->size(), "invalid unit id");
 
     for (size_type unit = 0; unit < _idx_unit_id; ++unit) {

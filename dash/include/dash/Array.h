@@ -514,6 +514,9 @@ private:
  * \concept{DashContainerConcept}
  * \concept{DashArrayConcept}
  *
+ * TODO: Add template parameter:
+ *       class GlobMemType = dash::GlobMem<ElementType>
+ *
  * Note: Template parameter IndexType could be deduced from pattern type:
  *       PatternT::index_type
  */
@@ -523,7 +526,8 @@ template<
   /// Pattern type used to distribute array elements among units.
   /// Default is \c dash::BlockPattern<1, ROW_MAJOR> as it supports all
   /// distribution types (BLOCKED, TILE, BLOCKCYCLIC, CYCLIC).
-  class    PatternType  = Pattern<1, ROW_MAJOR, IndexType> >
+  class    PatternType  = Pattern<1, ROW_MAJOR, IndexType>
+>
 class Array
 {
 private:
@@ -546,6 +550,8 @@ public:
 
   typedef       GlobIter<value_type, PatternType>                    pointer;
   typedef const GlobIter<value_type, PatternType>              const_pointer;
+
+  typedef dash::GlobMem<value_type>                            glob_mem_type;
 
 public:
   template<
@@ -1075,7 +1081,7 @@ private:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new GlobMem_t(m_lcapacity, pattern.team());
+    m_globmem   = new glob_mem_type(m_lcapacity, pattern.team());
     // Global iterators:
     m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
@@ -1129,7 +1135,7 @@ private:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new GlobMem_t(local_elements, pattern.team());
+    m_globmem   = new glob_mem_type(local_elements, pattern.team());
     // Global iterators:
     m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
@@ -1158,7 +1164,6 @@ private:
   }
 
 private:
-  typedef dash::GlobMem<value_type> GlobMem_t;
   /// Team containing all units interacting with the array
   dash::Team         * m_team      = nullptr;
   /// DART id of the unit that created the array
@@ -1166,7 +1171,7 @@ private:
   /// Element distribution pattern
   PatternType          m_pattern;
   /// Global memory allocation and -access
-  GlobMem_t          * m_globmem;
+  glob_mem_type      * m_globmem;
   /// Iterator to initial element in the array
   iterator             m_begin;
   /// Iterator to final element in the array

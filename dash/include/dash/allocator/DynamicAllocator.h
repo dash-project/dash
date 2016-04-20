@@ -73,7 +73,8 @@ public:
    */
   DynamicAllocator(
     Team & team = dash::Team::All()) noexcept
-  : _team_id(team.dart_id()),
+  : _team(&team),
+    _team_id(team.dart_id()),
     _nunits(team.size())
   { }
 
@@ -99,7 +100,8 @@ public:
    * \see DashAllocatorConcept
    */
   DynamicAllocator(const self_t & other) noexcept
-  : _team_id(other._team_id),
+  : _team(other._team),
+    _team_id(other._team_id),
     _nunits(other._nunits)
   { }
 
@@ -109,7 +111,8 @@ public:
    */
   template<class U>
   DynamicAllocator(const DynamicAllocator<U> & other) noexcept
-  : _team_id(other._team_id),
+  : _team(other._team),
+    _team_id(other._team_id),
     _nunits(other._nunits)
   { }
 
@@ -179,6 +182,17 @@ public:
   }
 
   /**
+   * Team containing units associated with the allocator's memory space.
+   */
+  inline dash::Team & team() const noexcept
+  {
+    if (_team == nullptr) {
+      return dash::Team::Null();
+    }
+    return *_team;
+  }
+
+  /**
    * Register pre-allocated local memory segment of \c num_local_elem
    * elements in global memory space.
    *
@@ -208,32 +222,18 @@ public:
    */
   void detach(pointer gptr)
   {
+    DASH_LOG_DEBUG("DynamicAllocator.detach()", "gptr:", gptr);
     if (!dash::is_initialized()) {
       // If a DASH container is deleted after dash::finalize(), global
       // memory has already been freed by dart_exit() and must not be
       // deallocated again.
-      DASH_LOG_DEBUG("DynamicAllocator.deallocate >",
+      DASH_LOG_DEBUG("DynamicAllocator.detach >",
                      "DASH not initialized, abort");
       return;
     }
-    bool do_detach = false;
-    std::for_each(
-      _allocated.begin(),
-      _allocated.end(),
-      [&](std::pair<value_type *, pointer> e) mutable {
-        if (e.second == gptr && e.first != nullptr) {
-          delete[] e.first;
-          e.first = nullptr;
-          DASH_LOG_DEBUG("DynamicAllocator.deallocate",
-                         "gptr", e.second, "marked for detach");
-          do_detach = true;
-        }
-      });
-    if (do_detach) {
-      DASH_ASSERT_RETURNS(
-        dart_team_memderegister(_team_id, gptr),
-        DART_OK);
-    }
+    DASH_ASSERT_RETURNS(
+      dart_team_memderegister(_team_id, gptr),
+      DART_OK);
     _allocated.erase(
       std::remove_if(
         _allocated.begin(),
@@ -242,6 +242,7 @@ public:
           return e.second == gptr;
         }),
       _allocated.end());
+    DASH_LOG_DEBUG("DynamicAllocator.detach >");
   }
 
   /**
@@ -298,7 +299,23 @@ public:
    */
   void deallocate(pointer gptr)
   {
-    return detach(gptr);
+    DASH_LOG_DEBUG("DynamicAllocator.deallocate()", "gptr:", gptr);
+    // Unregister from global memory space:
+    detach(gptr);
+    // Free local memory:
+    DASH_LOG_DEBUG("DynamicAllocator.deallocate", "deallocate local memory");
+    std::for_each(
+      _allocated.begin(),
+      _allocated.end(),
+      [&](std::pair<value_type *, pointer> e) mutable {
+        if (e.second == gptr && e.first != nullptr) {
+          delete[] e.first;
+          e.first = nullptr;
+          DASH_LOG_DEBUG("DynamicAllocator.deallocate",
+                         "gptr", e.second, "marked for detach");
+        }
+      });
+    DASH_LOG_DEBUG("DynamicAllocator.deallocate >");
   }
 
 private:
@@ -316,6 +333,7 @@ private:
   }
 
 private:
+  dash::Team                                    * _team      = nullptr;
   dart_team_t                                     _team_id   = DART_TEAM_NULL;
   size_t                                          _nunits    = 0;
   std::vector< std::pair<value_type *, pointer> > _allocated;
