@@ -728,7 +728,7 @@ public:
   mapped_type_reference operator[](const key_type & key)
   {
     DASH_LOG_TRACE("UnorderedMap.[]()", "key:", key);
-    iterator     git_value    = insert(
+    iterator      git_value   = insert(
                                    std::make_pair(key, mapped_type()))
                                 .first;
     DASH_LOG_TRACE_VAR("UnorderedMap.[]", git_value);

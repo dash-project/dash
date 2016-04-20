@@ -41,10 +41,17 @@ public:
   typedef const T *                 const_local_pointer;
 
 public:
-  /// Convert GlobSharedRef<T> to GlobSharedRef<U>.
+  /// Convert
+  ///   GlobSharedRef<T, GlobalPointer<T>>
+  /// to
+  ///   GlobSharedRef<U, GlobalPointer<U>>.
   template<typename U>
   struct rebind {
-    typedef GlobSharedRef<U, GlobalPointerType> other;
+    typedef GlobSharedRef<
+              U,
+              // recursively rebind depending global pointer type:
+              typename GlobalPointerType::template rebind<U>::other
+            > other;
   };
 
 public:

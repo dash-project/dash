@@ -244,6 +244,26 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   EXPECT_EQ_U(local_elements, map.lsize());
 
   DASH_LOG_TRACE("UnorderedMapTest.UnbalancedGlobalInsert",
+                 "updating values");
+  if (_dash_id == 0) {
+    for (auto git = map.begin(); git != map.end(); ++git) {
+      map_value elem       = *git;
+      key_t     key        = elem.first;
+      mapped_t  mapped_old = elem.second;
+      mapped_t  mapped_new = mapped_old + 1000;
+      DASH_LOG_TRACE("UnorderedMapTest.UnbalancedGlobalInsert",
+                     "changing mapped value of key", key,
+                     "to", mapped_new);
+      // Change mapped value by writing to reference to mapped:
+      map[key] = mapped_new;
+      // Read mapped value back:
+      mapped_t mapped_acc  = map[key];
+      EXPECT_EQ_U(mapped_new, mapped_acc);
+    }
+  }
+  dash::barrier();
+
+  DASH_LOG_TRACE("UnorderedMapTest.UnbalancedGlobalInsert",
                  "validating global elements after commit");
   int gidx = 0;
   int unit = 0;
@@ -267,8 +287,9 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
       unit++;
       lidx = 0;
     }
+    // Validate updated mapped values:
     key_t     key    = 100 * (unit + 1) + (lidx + 1);
-    mapped_t  mapped = 1.0 * (unit + 1) + (0.01 * (lidx + 1));
+    mapped_t  mapped = 1.0 * (unit + 1) + (0.01 * (lidx + 1)) + 1000;
     // Test iterator dereferenciation:
     map_value expect({ key, mapped });
     map_value actual = *git;
@@ -286,8 +307,8 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
     EXPECT_EQ_U(git, found);
     EXPECT_EQ_U(1,   count);
     // Test element access:
-    mapped_t mapped_lookup = map[key];
-    EXPECT_EQ_U(mapped, mapped_lookup);
+    mapped_t mapped_acc = map[key];
+    EXPECT_EQ_U(mapped, mapped_acc);
     ++gidx;
   }
 }
