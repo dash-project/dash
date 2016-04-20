@@ -68,6 +68,7 @@ private:
     self_t;
 
 public:
+  typedef       ElementType                       value_type;
   typedef       ReferenceType                      reference;
   typedef const ReferenceType                const_reference;
   typedef       PointerType                          pointer;
@@ -75,7 +76,7 @@ public:
 
   typedef typename GlobMemType::local_pointer  local_pointer;
 
-  typedef       PatternType                     pattern_type;
+  typedef          PatternType                  pattern_type;
   typedef typename PatternType::index_type        index_type;
 
 public:

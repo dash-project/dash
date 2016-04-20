@@ -60,6 +60,13 @@ public:
   typedef const value_type *  const_local_pointer;
 
 public:
+  /// Convert DynamicAllocator<T> to DynamicAllocator<U>.
+  template<typename U>
+  struct rebind {
+    typedef DynamicAllocator<U> other;
+  };
+
+public:
   /**
    * Constructor.
    * Creates a new instance of \c dash::DynamicAllocator for a given team.
@@ -182,14 +189,13 @@ public:
    */
   pointer attach(local_pointer lptr, size_type num_local_elem)
   {
-    size_type    num_local_bytes = sizeof(ElementType) * num_local_elem;
-    dart_gptr_t  gptr;
-    if (dart_team_memregister_aligned(
+    size_type num_local_bytes = sizeof(ElementType) * num_local_elem;
+    pointer   gptr;
+    if (dart_team_memregister(
           _team_id, num_local_bytes, lptr, &gptr) == DART_OK) {
       _allocated.push_back(std::make_pair(lptr, gptr));
       return gptr;
     }
-    delete [] lptr;
     return DART_GPTR_NULL;
   }
 
@@ -274,7 +280,12 @@ public:
    */
   pointer allocate(size_type num_local_elem)
   {
-    return attach(allocate_local(num_local_elem), num_local_elem);
+    local_pointer lmem = allocate_local(num_local_elem);
+    pointer       gmem = attach(lmem, num_local_elem);
+    if (gmem == DART_GPTR_NULL) {
+      deallocate_local(lmem);
+    }
+    return gmem;
   }
 
   /**

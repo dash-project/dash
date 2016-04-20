@@ -58,8 +58,12 @@
  * \}
  */
 
+// Static containers:
 #include<dash/Array.h>
 #include<dash/Matrix.h>
+
+// Dynamic containers:
 #include<dash/List.h>
+#include<dash/UnorderedMap.h>
 
 #endif // DASH__CONTAINER_H_

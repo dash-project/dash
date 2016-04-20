@@ -436,6 +436,12 @@ dart_team_memregister(
 	MPI_Aint * disp_set = (MPI_Aint*)malloc(size * sizeof (MPI_Aint));
 	uint16_t   index;
 	int        result   = dart_adapt_teamlist_convert(teamid, &index);
+  int        nil;
+
+  if (nbytes == 0) {
+    // Attaching empty memory region, set sendbuf to valid dummy pointer:
+    addr = (void*)(&nil);
+  }
 
 	if (result == -1) {
 		return DART_ERR_INVAL;

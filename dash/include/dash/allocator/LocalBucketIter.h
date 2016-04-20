@@ -1,8 +1,9 @@
-#ifndef DASH__INTERNAL__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
-#define DASH__INTERNAL__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
+#ifndef DASH__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
+#define DASH__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
 
 #include <dash/dart/if/dart.h>
 #include <dash/Types.h>
+
 #include <dash/internal/Logging.h>
 #include <dash/internal/allocator/GlobDynamicMemTypes.h>
 
@@ -12,10 +13,10 @@
 #include <iterator>
 #include <sstream>
 #include <iostream>
+#include <memory>
 
 
 namespace dash {
-namespace internal {
 
 /**
  * Iterator on local buckets. Represents local pointer type.
@@ -34,10 +35,15 @@ class LocalBucketIter
            ReferenceType >
 {
   template<typename E_, typename I_, typename P_, typename R_>
-    friend class LocalBucketIter;
+  friend class LocalBucketIter;
+
+  template<typename E_, typename I_, typename P_, typename R_>
+  friend std::ostream & dash::operator<<(
+    std::ostream & os,
+    const dash::LocalBucketIter<E_, I_, P_, R_> & it);
 
 private:
-  typedef LocalBucketIter<ElementType, IndexType>
+  typedef LocalBucketIter<ElementType, IndexType, PointerType, ReferenceType>
     self_t;
 
 public:
@@ -52,28 +58,27 @@ public:
   typedef ElementType *                                             pointer;
   typedef ElementType &                                           reference;
 
-  typedef glob_dynamic_mem_bucket_type<size_type, value_type>   bucket_type;
+  typedef internal::glob_dynamic_mem_bucket_type<size_type, value_type>
+    bucket_type;
 
 private:
   typedef typename std::list<bucket_type>
     bucket_list;
 
-  typedef typename
-    std::conditional<
-      std::is_const<value_type>::value,
-      typename bucket_list::const_iterator,
-      typename bucket_list::iterator
-    >::type
+  typedef typename bucket_list::iterator
     bucket_iterator;
 
+  typedef typename bucket_list::const_iterator
+    const_bucket_iterator;
+
 public:
-  template<typename BucketIterator>
+  template<typename BucketIter>
   LocalBucketIter(
-    const BucketIterator & bucket_first,
-    const BucketIterator & bucket_last,
-    index_type             position,
-    const BucketIterator & bucket_it,
-    index_type             bucket_phase)
+    const BucketIter & bucket_first,
+    const BucketIter & bucket_last,
+    index_type         position,
+    const BucketIter & bucket_it,
+    index_type         bucket_phase)
   : _bucket_first(bucket_first),
     _bucket_last(bucket_last),
     _idx(position),
@@ -82,11 +87,11 @@ public:
     _is_nullptr(false)
   { }
 
-  template<typename BucketIterator>
+  template<typename BucketIter>
   LocalBucketIter(
-    const BucketIterator & bucket_first,
-    const BucketIterator & bucket_last,
-    index_type             position)
+    const BucketIter & bucket_first,
+    const BucketIter & bucket_last,
+    index_type         position)
   : _bucket_first(bucket_first),
     _bucket_last(bucket_last),
     _idx(position),
@@ -98,7 +103,7 @@ public:
 #ifdef DASH_ENABLE_TRACE_LOGGING
     index_type bucket_idx = 0;
 #endif
-    for (_bucket_it = _bucket_first;
+    for (_bucket_it  = _bucket_first;
          _bucket_it != _bucket_last; ++_bucket_it) {
       if (position >= _bucket_it->size) {
         position -= _bucket_it->size;
@@ -128,7 +133,7 @@ public:
 
   self_t & operator=(const self_t & rhs)
   {
-    if (this != &rhs) {
+    if (this != std::addressof(rhs)) {
       _bucket_first = rhs._bucket_first;
       _bucket_last  = rhs._bucket_last;
       _idx          = rhs._idx;
@@ -139,14 +144,22 @@ public:
     return *this;
   }
 
-#if 0
   /**
    * Conversion to const iterator.
    */
-  operator LocalBucketIter<const value_type>() const
+  template<typename I_, typename P_, typename R_>
+  operator LocalBucketIter<const value_type, I_, P_, R_>() const
   {
+    if (_is_nullptr) {
+      return LocalBucketIter<const value_type, I_, P_, R_>(nullptr);
+    }
+    return LocalBucketIter<const value_type, I_, P_, R_>(
+             _bucket_first,
+             _bucket_last,
+             _idx,
+             _bucket_it,
+             _bucket_phase);
   }
-#endif
 
   LocalBucketIter(std::nullptr_t)
   : _is_nullptr(true)
@@ -168,13 +181,27 @@ public:
     return !_is_nullptr;
   }
 
+  /**
+   * Dereference operator.
+   */
   reference operator*()
   {
+    DASH_ASSERT(!_is_nullptr);
+    if (_bucket_phase > _bucket_it->size) {
+      DASH_THROW(dash::exception::OutOfRange,
+                 "dereferenced position " << _idx << " is out of range: " <<
+                 "bucket phase: " << _bucket_phase << ", " <<
+                 "bucket size: "  << _bucket_it->size);
+    }
     return _bucket_it->lptr[_bucket_phase];
   }
 
+  /**
+   * Random access operator.
+   */
   reference operator[](index_type offset)
   {
+    DASH_ASSERT(!_is_nullptr);
     if (_bucket_phase + offset < _bucket_it->size) {
       // element is in bucket currently referenced by this iterator:
       return _bucket_it->lptr[_bucket_phase + offset];
@@ -189,12 +216,50 @@ public:
       }
     }
     DASH_THROW(dash::exception::OutOfRange,
-               "offset " << offset << " is out of range");
+               "dereferenced position " << _idx + offset << " " <<
+               "is out of range: pointer position: " << _idx << ", " <<
+               "offset: " << offset);
   }
 
-  pointer operator&()
+  /**
+   * Conversion to native pointer.
+   *
+   * Use with caution: This conversion returns a pointer a that does not
+   * iterate over buckets, pointer arithmetics may lead to undefined
+   * behaviour.
+   */
+  explicit operator pointer() const
   {
-    return &_bucket_it->lptr[_bucket_phase];
+    DASH_LOG_TRACE("LocalBucketIter.pointer()");
+    pointer lptr = nullptr;
+    if (_is_nullptr) {
+      DASH_LOG_TRACE("LocalBucketIter.pointer", "is nullptr");
+    } else {
+      auto bucket_size = _bucket_it->size;
+      DASH_LOG_TRACE("LocalBucketIter.pointer",
+                     "bucket size:",  bucket_size, ",",
+                     "bucket phase:", _bucket_phase);
+      // This iterator type represents a local pointer so no bounds checks
+      // have to be performed in pointer arithmetics.
+      // Moving a pointer to out-of-bounds address is allowed, however
+      // dereferencing it will lead to segfault. This is a prerequisite for
+      // many common pointer arithmetic use cases.
+      // Example:
+      //   value = *((globmem.lend() + 2) - 3);
+      // is a valid operation and equivalent to
+      //   value = *(globmem.lend() + (2 - 3));
+      // as it creates a temporary pointer to an address beyond _lend (+2)
+      // which is then moved back into valid memory range (-3).
+      if (_bucket_it == _bucket_last) {
+        DASH_LOG_TRACE("LocalBucketIter.pointer", "position at lend");
+      } else if (_bucket_phase >= bucket_size) {
+        DASH_LOG_TRACE("LocalBucketIter.pointer",
+                       "note: iterator position out of bounds (lend?)");
+      }
+      lptr = _bucket_it->lptr + _bucket_phase;
+    }
+    DASH_LOG_TRACE_VAR("LocalBucketIter.pointer >", lptr);
+    return lptr;
   }
 
   self_t & operator++()
@@ -288,28 +353,40 @@ public:
   template<typename E_, typename I_, typename P_, typename R_>
   inline bool operator==(const LocalBucketIter<E_,I_,P_,R_> & other) const
   {
-    return (this == &other || _idx == other._idx);
+    return (this == std::addressof(other) || _idx == other._idx);
   }
 
   template<typename E_, typename I_, typename P_, typename R_>
   inline bool operator!=(const LocalBucketIter<E_,I_,P_,R_> & other) const
   {
-    return (*this != other);
+    return !(*this == other);
   }
 
+  /**
+   * Whether the pointer references an element in local memory space.
+   *
+   * \return  true
+   */
   constexpr bool is_local() const
   {
     return true;
   }
 
+  /**
+   * Position of the pointer relative to its referenced memory space.
+   */
   index_type pos() const
   {
     return _idx;
   }
 
 private:
+  /**
+   * Advance pointer by specified position offset.
+   */
   void increment(int offset)
   {
+    DASH_ASSERT(!_is_nullptr);
     _idx += offset;
     if (_bucket_phase + offset < _bucket_it->size) {
       // element is in bucket currently referenced by this iterator:
@@ -331,8 +408,12 @@ private:
     }
   }
 
+  /**
+   * Decrement pointer by specified position offset.
+   */
   void decrement(int offset)
   {
+    DASH_ASSERT(!_is_nullptr);
     if (offset > _idx) {
       DASH_THROW(dash::exception::OutOfRange,
                  "offset " << offset << " is out of range");
@@ -363,12 +444,12 @@ private:
   }
 
 private:
-  bucket_iterator _bucket_first;
-  bucket_iterator _bucket_last;
-  index_type      _idx           = 0;
-  bucket_iterator _bucket_it;
-  index_type      _bucket_phase  = 0;
-  bool            _is_nullptr    = false;
+  bucket_iterator  _bucket_first;
+  bucket_iterator  _bucket_last;
+  index_type       _idx           = 0;
+  bucket_iterator  _bucket_it;
+  index_type       _bucket_phase  = 0;
+  bool             _is_nullptr    = false;
 
 }; // class LocalBucketIter
 
@@ -386,17 +467,16 @@ template<
   class    Reference>
 auto distance(
   /// Global iterator to the first position in the global sequence
-  const dash::internal::LocalBucketIter<
+  const dash::LocalBucketIter<
           ElementType, IndexType, Pointer, Reference> & first,
   /// Global iterator to the final position in the global sequence
-  const dash::internal::LocalBucketIter<
+  const dash::LocalBucketIter<
           ElementType, IndexType, Pointer, Reference> & last)
 -> IndexType
 {
   return last - first;
 }
 
-#if 0
 template<
   typename ElementType,
   typename IndexType,
@@ -404,20 +484,21 @@ template<
   class    Reference>
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::internal::LocalBucketIter<
+  const dash::LocalBucketIter<
           ElementType, IndexType, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  auto ptr = &it;
-  ss << "dash::internal::LocalBucketIter<"
-     << typeid(ElementType).name() << ">("
-     << "idx:"  << it.pos() << ", "
-     << "lptr:" << ptr      << ")";
+  ElementType * lptr = it;
+  ss << "dash::LocalBucketIter<"
+     << typeid(ElementType).name() << ">"
+     << "("
+     << "idx:"  << it._idx          << ", "
+     << "bp:"   << it._bucket_phase << ", "
+     << "lptr:" << lptr
+     << ")";
   return operator<<(os, ss.str());
 }
-#endif
 
-} // namespace internal
 } // namespace dash
 
-#endif // DASH__INTERNAL__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED
+#endif // DASH__ALLOCATOR__LOCAL_BUCKET_ITER_H__INCLUDED

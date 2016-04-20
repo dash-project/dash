@@ -173,15 +173,19 @@ public:
    */
   pointer allocate(size_type num_local_elem)
   {
+    DASH_LOG_DEBUG("LocalAllocator.allocate(nlocal)",
+                   "number of local values:", num_local_elem);
+    pointer gptr = DART_GPTR_NULL;
     if (num_local_elem > 0) {
       size_type   num_local_bytes = sizeof(ElementType) * num_local_elem;
-      dart_gptr_t gptr;
       if (dart_memalloc(num_local_bytes, &gptr) == DART_OK) {
         _allocated.push_back(gptr);
-        return gptr;
+      } else {
+        gptr = DART_GPTR_NULL;
       }
     }
-    return DART_GPTR_NULL;
+    DASH_LOG_DEBUG_VAR("LocalAllocator.allocate >", gptr);
+    return gptr;
   }
 
   /**
@@ -192,6 +196,7 @@ public:
    */
   void deallocate(pointer gptr)
   {
+    DASH_LOG_DEBUG_VAR("LocalAllocator.deallocate(gptr)", gptr);
     if (!dash::is_initialized()) {
       // If a DASH container is deleted after dash::finalize(), global
       // memory has already been freed by dart_exit() and must not be
@@ -206,6 +211,7 @@ public:
     _allocated.erase(
         std::remove(_allocated.begin(), _allocated.end(), gptr),
         _allocated.end());
+    DASH_LOG_DEBUG("LocalAllocator.deallocate >");
   }
 
 private:
