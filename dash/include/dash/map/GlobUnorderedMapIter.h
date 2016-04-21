@@ -113,7 +113,6 @@ public:
     index_type    position)
   : _map(map),
     _idx(0),
-    _max_idx(_map->size() - 1),
     _myid(dash::myid()),
     _idx_unit_id(0),
     _idx_local_idx(0)
@@ -133,7 +132,6 @@ public:
     index_type    local_index)
   : _map(map),
     _idx(0),
-    _max_idx(_map->size() - 1),
     _myid(dash::myid()),
     _idx_unit_id(unit),
     _idx_local_idx(local_index)
@@ -169,7 +167,6 @@ public:
   GlobUnorderedMapIter(std::nullptr_t)
   : _map(nullptr),
     _idx(-1),
-    _max_idx(-1),
     _myid(DART_UNDEFINED_UNIT_ID),
     _idx_unit_id(DART_UNDEFINED_UNIT_ID),
     _idx_local_idx(-1),
@@ -545,8 +542,6 @@ private:
   map_t                  * _map           = nullptr;
   /// Current position of the iterator in global canonical index space.
   index_type               _idx           = -1;
-  /// Maximum position allowed for this iterator.
-  index_type               _max_idx       = -1;
   /// Unit id of the active unit.
   dart_unit_t              _myid          = DART_UNDEFINED_UNIT_ID;
   /// Unit id at the iterator's current position.

@@ -466,10 +466,17 @@ public:
     auto lcap    = dash::math::div_ceil(nelem, _team->size());
     // Initialize members:
     _myid        = _team->myid();
-    // Allocate local memory of identical size on every unit:
-    DASH_LOG_TRACE_VAR("UnorderedMap.allocate", lcap);
 
+    DASH_LOG_TRACE("UnorderedMap.allocate", "initialize global memory,",
+                   "local capacity:", lcap);
     _globmem     = new glob_mem_type(lcap, *_team);
+    DASH_LOG_TRACE("UnorderedMap.allocate", "global memory initialized");
+
+    // Initialize local sizes with 0:
+    _local_sizes.allocate(_team->size(), dash::BLOCKED, *_team);
+    _local_sizes.local[0] = 0;
+    _local_size_gptr      = _local_sizes[_myid].dart_gptr();
+
     // Global iterators:
     _begin       = iterator(this, 0);
     _end         = _begin;
@@ -484,10 +491,6 @@ public:
     // instance that has been used to initialized it:
     _team->register_deallocator(
              this, std::bind(&UnorderedMap::deallocate, this));
-    // Initialize local sizes with 0:
-    _local_sizes.allocate(_team->size(), dash::BLOCKED, *_team);
-    _local_sizes.local[0] = 0;
-    _local_size_gptr      = _local_sizes[_myid].dart_gptr();
     // Assure all units are synchronized after allocation, otherwise
     // other units might start working on the map before allocation
     // completed at all units:
