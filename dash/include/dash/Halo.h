@@ -372,21 +372,7 @@ public:
    * Copy constructor.
    */
   BlockBoundaryIter(
-    const self_t & other)
-  {
-    _globmem = other._globmem;
-    _viewspec = other._viewspec;
-    _pattern = other._pattern;
-    _halospec = other._halospec;
-    _boundary_regions = other._boundary_regions;
-    _idx = other._idx;
-    _view_idx_offset = other._view_idx_offset;
-    _size = other._size;
-    _max_idx = other._max_idx;
-    _myid = other._myid;
-    _lbegin = other._lbegin;
-    _position_to_coords = other._position_to_coords;
-  }
+    const self_t & other) = default;
 
   /**
    * Assignment operator.
@@ -394,23 +380,8 @@ public:
    * \see DashGlobalIteratorConcept
    */
   self_t & operator=(
-    const self_t & other)// = default;
-  {
-    _globmem = other._globmem;
-    _viewspec = other._viewspec;
-    _pattern = other._pattern;
-    _halospec = other._halospec;
-    _boundary_regions = other._boundary_regions;
-    _idx = other._idx;
-    _view_idx_offset = other._view_idx_offset;
-    _size = other._size;
-    _max_idx = other._max_idx;
-    _myid = other._myid;
-    _lbegin = other._lbegin;
-    _position_to_coords = other._position_to_coords;
+    const self_t & other) = default;
 
-    return *this;
-  }
   /**
    * The number of dimensions of the iterator's underlying pattern.
    *
