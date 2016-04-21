@@ -306,11 +306,26 @@ public:
 
   /**
    * Number of elements in local memory space of given unit.
+   *
+   * \return  Local capacity as published by the specified unit in last
+   *          commit.
    */
   inline size_type local_size(dart_unit_t unit) const
   {
+    DASH_LOG_TRACE("GlobDynamicMem.local_size(u)", "unit:", unit);
     DASH_ASSERT_RANGE(0, unit, _nunits-1, "unit id out of range");
-    return _bucket_cumul_sizes[unit].back();
+    DASH_LOG_TRACE_VAR("GlobDynamicMem.local_size",
+                       _bucket_cumul_sizes[unit]);
+    size_type unit_local_size;
+    if (unit == _myid) {
+      // Value of _local_sizes[u] is the local size as visible by the unit,
+      // i.e. including size of unattached buckets.
+      unit_local_size = _local_sizes.local[0];
+    } else {
+      unit_local_size = _bucket_cumul_sizes[unit].back();
+    }
+    DASH_LOG_TRACE("GlobDynamicMem.local_size >", unit_local_size);
+    return unit_local_size;
   }
 
   /**
@@ -338,7 +353,7 @@ public:
   /**
    * Increase capacity of local segment of global memory region by the given
    * number of elements.
-   * Same as \c resize(local_size() + num_elements).
+   * Same as \c resize(size() + num_elements).
    *
    * Local operation.
    * Newly allocated memory is attached to global memory space by calling
@@ -404,9 +419,10 @@ public:
    * number of elements.
    * Buckets are not deallocated until next commit as other units might
    * still reference them.
-   * Same as \c resize(local_size() - num_elements).
+   * Same as \c resize(size() - num_elements).
    *
    * Local operation.
+   *
    * Resizes logical local memory space but does not deallocate memory.
    * Local memory is accessible by other units until deallocated and
    * detached from global memory space by calling the collective operation
@@ -418,8 +434,41 @@ public:
    */
   void shrink(size_type num_elements)
   {
-    num_elements = std::min(local_size(), num_elements);
+    // This function updates the size of the local memory space of the
+    // calling unit u.
+    // The following members are updated:
+    //
+    // _local_sizes[u]:
+    //   Size of local memory space as visible to unit u.
+    //
+    // _bucket_cumul_sizes:
+    //    An array mapping units to a list of their cumulative bucket sizes
+    //    (i.e. postfix sum) which is required to iterate over the
+    //    non-contigous global dynamic memory space.
+    //    For example, if unit 2 allocated buckets with sizes 1, 3 and 5,
+    //    _bucket_cumul_sizes[2] is a list { 1, 4, 9 }.
+    //
+    // _buckets:
+    //    List of local buckets that provide the underlying storage of the
+    //    active unit's local memory space.
+    //
+    // Notes:
+    //
+    // It must be ensured that the updated cumulative bucket sizes of a
+    // remote unit can be resolved in \c update_local_size() after any
+    // possible combination of grow- and shrink-operations at the remote unit
+    // from the following information:
+    //
+    // - the cumulative bucket sizes of the remote unit at the time of the
+    //   last commit
+    // - the remote unit's local size at the time of the last commit
+    // - the remote unit's current local size (including unattached buckets)
+    // - the number of the remote unit's unattached buckets and their size
+
     DASH_LOG_DEBUG_VAR("GlobDynamicMem.shrink()", num_elements);
+    DASH_ASSERT_LT(num_elements, local_size() + 1,
+                   "cannot shrink size " << local_size() << " "
+                   "by " << num_elements << " elements");
     if (num_elements == 0) {
       DASH_LOG_DEBUG("GlobDynamicMem.shrink >", "no shrink");
       return;
@@ -435,9 +484,12 @@ public:
     // Number of elements left to deallocate:
     auto num_dealloc = num_elements;
     // Try to reduce local capacity by deallocating un-attached local buckets
-    // as they do not have to be detached collectively:
-    bucket_type & bucket_last = _buckets.back();
-    if (!bucket_last.attached) {
+    // as they do not have to be detached collectively.
+    // Unattached buckets can be removed from memory space immediately as
+    // remote units cannot have a pending reference on them.
+    while (!_buckets.back().attached && num_dealloc > 0) {
+      bucket_type & bucket_last = _buckets.back();
+      // Shrink / remove unattached buckets starting at newest bucket:
       if (bucket_last.size <= num_dealloc) {
         DASH_LOG_TRACE("GlobDynamicMem.shrink", "remove unattached bucket:",
                        "size:", bucket_last.size);
@@ -467,6 +519,7 @@ public:
                        "for attach is 0");
         _num_attach_buckets.local[0] -= 1;
       } else if (bucket_last.size > num_dealloc) {
+        // TODO: Clarify if shrinking unattached buckets is allowed
         DASH_LOG_TRACE("GlobDynamicMem.shrink", "shrink unattached bucket:",
                        "old size:", bucket_last.size,
                        "new size:", bucket_last.size - num_dealloc);
@@ -476,10 +529,10 @@ public:
         num_dealloc = 0;
       }
     }
-
     // Number of elements to deallocate exceeds capacity of un-attached
     // buckets, deallocate attached buckets:
     auto num_dealloc_gbuckets = 0;
+    // Shrink attached buckets starting at newest bucket:
     for (auto bucket_it = _buckets.rbegin();
          bucket_it != _buckets.rend();
          ++bucket_it) {
@@ -506,7 +559,8 @@ public:
         num_dealloc = 0;
       }
     }
-    // Mark attached buckets for deallocation:
+    // Mark attached buckets for deallocation.
+    // Requires separate loop as iterators on _buckets could be invalidated.
     DASH_LOG_DEBUG_VAR("GlobDynamicMem.shrink", num_dealloc_gbuckets);
     while (num_dealloc_gbuckets-- > 0) {
       auto dealloc_bucket = _buckets.back();
@@ -522,12 +576,18 @@ public:
     _lbegin = lbegin(_myid);
     _lend   = lend(_myid);
 
-    DASH_LOG_DEBUG("GlobDynamicMem.shrink >", "finished - ",
+    DASH_LOG_TRACE("GlobDynamicMem.shrink",
+                   "cumulative bucket sizes:",  _bucket_cumul_sizes[_myid]);
+    DASH_LOG_TRACE("GlobDynamicMem.shrink",
                    "new local size:",           _local_sizes.local[0],
                    "new iteration space size:", std::distance(
-                                                  _lbegin, _lend),
+                                                  _lbegin, _lend));
+    DASH_LOG_TRACE("GlobDynamicMem.shrink",
                    "total number of buckets:",  _buckets.size(),
-                   "unattached bucket:",        !_buckets.back().attached);
+                   "unattached buckets:",       std::distance(
+                                                  _attach_buckets_first,
+                                                  _buckets.end()));
+    DASH_LOG_DEBUG("GlobDynamicMem.shrink >");
   }
 
   /**
@@ -592,12 +652,14 @@ public:
    */
   void resize(size_type num_elements)
   {
-    index_type diff_capacity = num_elements - local_size();
+    DASH_LOG_DEBUG("GlobDynamicMem.resize()", "new size:", num_elements);
+    index_type diff_capacity = num_elements - size();
     if (diff_capacity > 0) {
       grow(diff_capacity);
     } else if (diff_capacity < 0) {
       shrink(-diff_capacity);
     }
+    DASH_LOG_DEBUG("GlobDynamicMem.resize >");
   }
 
   /**
@@ -667,6 +729,9 @@ public:
   /**
    * Native pointer of the initial address of the local memory of
    * a unit.
+   *
+   * TODO: Should be private and renamed to update_lbegin() as returning a
+   *       local iterator from lbegin(u) is not possible if u is remote.
    */
   local_iterator lbegin(
     dart_unit_t unit_id)
@@ -693,6 +758,8 @@ public:
   /**
    * Native pointer of the initial address of the local memory of
    * a unit.
+   *
+   * TODO: Should be removed once non-const lbegin(u) is refactored.
    */
   const_local_iterator lbegin(
     dart_unit_t unit_id) const
@@ -906,45 +973,24 @@ private:
     DASH_LOG_TRACE("GlobDynamicMem.commit_detach()");
     DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
                    "local buckets to detach:", _num_detach_buckets.local[0]);
-    // Unregister buckets marked for detach in global memory:
-    _num_detach_buckets.barrier();
-    // Minumum and maximum number of buckets to be attached by any unit:
-    auto min_max_detach     = gather_min_max(_num_detach_buckets.begin(),
-                                             _num_detach_buckets.end());
-    auto min_detach_buckets = min_max_detach.first;
-    auto max_detach_buckets = min_max_detach.second;
-    DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
-                   "min. detach buckets:",  min_detach_buckets);
-    DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
-                   "max. detach buckets:",  min_detach_buckets);
     // Number of elements successfully deallocated from global memory in
     // this commit:
     size_type num_detached_elem = 0;
-    if (min_detach_buckets == 0 && max_detach_buckets == 0) {
-      DASH_LOG_TRACE("GlobDynamicMem.commit_detach", "no detach");
-    } else if (min_detach_buckets == max_detach_buckets) {
-      DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
-                     "balanced number of buckets to detach");
-      for (auto bucket_it = _detach_buckets.begin();
-           bucket_it != _detach_buckets.cend(); ++bucket_it) {
-        DASH_LOG_TRACE("GlobDynamicMem.commit_detach", "detaching bucket:",
-                       "size:", bucket_it->size,
-                       "lptr:", bucket_it->lptr,
-                       "gptr:", bucket_it->gptr);
-        // Detach bucket from global memory region and deallocate its local
-        // memory segment:
-        if (bucket_it->attached) {
-          _allocator.deallocate(bucket_it->gptr);
-          num_detached_elem   += bucket_it->size;
-          bucket_it->attached  = false;
-        }
+    for (auto bucket_it = _detach_buckets.begin();
+         bucket_it != _detach_buckets.cend(); ++bucket_it) {
+      DASH_LOG_TRACE("GlobDynamicMem.commit_detach", "detaching bucket:",
+                     "size:", bucket_it->size,
+                     "lptr:", bucket_it->lptr,
+                     "gptr:", bucket_it->gptr);
+      // Detach bucket from global memory region and deallocate its local
+      // memory segment:
+      if (bucket_it->attached) {
+        _allocator.deallocate(bucket_it->gptr);
+        num_detached_elem   += bucket_it->size;
+        bucket_it->attached  = false;
       }
-      _detach_buckets.clear();
-    } else {
-      // Cannot detach
-      DASH_LOG_TRACE("GlobDynamicMem.commit_detach",
-                     "inbalanced number of buckets to detach");
     }
+    _detach_buckets.clear();
     DASH_LOG_TRACE("GlobDynamicMem.commit_detach >",
                    "globally deallocated elements:", num_detached_elem);
     return num_detached_elem;
@@ -1138,10 +1184,18 @@ private:
       DASH_LOG_TRACE("GlobDynamicMem.update_remote_size",
                      "collecting local bucket sizes of unit", u);
       // Last known local attached capacity of remote unit:
-      auto    & u_bucket_cumul_sizes = _bucket_cumul_sizes[u];
+      auto & u_bucket_cumul_sizes = _bucket_cumul_sizes[u];
       // Request current locally allocated capacity of remote unit:
-      size_type u_local_size_new     = _local_sizes[u];
-      new_remote_size               += u_local_size_new;
+      size_type u_local_size_old  = u_bucket_cumul_sizes.size() == 0
+                                    ? 0
+                                    : u_bucket_cumul_sizes.back();
+      size_type u_local_size_new  = _local_sizes[u];
+      DASH_LOG_TRACE_VAR("GlobDynamicMem.update_remote_size",
+                         u_local_size_old);
+      DASH_LOG_TRACE_VAR("GlobDynamicMem.update_remote_size",
+                         u_local_size_old);
+      int u_local_size_diff  = u_local_size_new - u_local_size_old;
+      new_remote_size       += u_local_size_new;
       // Number of unattached buckets of unit u:
       size_type u_num_attach_buckets = num_unattached_buckets[u];
       DASH_LOG_TRACE_VAR("GlobDynamicMem.update_remote_size",
@@ -1179,6 +1233,10 @@ private:
           }
           u_bucket_cumul_sizes.push_back(cumul_bkt_size);
         }
+      }
+      // Local memory space of unit shrunk:
+      if (u_local_size_diff < 0 && u_bucket_cumul_sizes.size() > 0) {
+        u_bucket_cumul_sizes.back() += u_local_size_diff;
       }
     }
     // Detach array of local unattached bucket sizes, implicit barrier:

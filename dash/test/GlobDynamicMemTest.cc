@@ -451,46 +451,130 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
     return;
   }
 
+  /* Illustration of the test case:
+   *
+   *  unit 0:
+   *
+   *  size: 10              size: 15                    size: 15
+   * .-------------. grow  .-------------.----. init   .--------.----------.
+   * |             | ----> |             |    | -----> | 0 1 .. | .. 13 14 |
+   * '-------------`       '-------------'-/--'        '---/----'-----/----'
+   *                                      /               /          /
+   *                                  allocated,      attached,  unattached,
+   *                                  locally         globally   locally
+   *                                  visible         visible    visible
+   *  unit 1:
+   *
+   *  size: 10              size: 10                    size: 8
+   * .-------------. init  .-------------.   shrink    .---------.-----.
+   * |             | ----> | 0 1 ... 8 9 | --------->  | 0 1 2 ..| 8 9 |
+   * '-------------`       '-------------'             '--/------'--/--'
+   *                                                     /         /
+   *                                                attached,   attached,
+   *                                                globally    visible to
+   *                                   |            visible     remote units
+   *                                   :
+   *                                   '
+   * =============================== COMMIT ==================================
+   *                                   :
+   *                                  \|/
+   *  unit 0:                          V      unit 1:
+   *
+   *  size: 15                                size: 8
+   * .----------------------------------.    .-----------------..-----.
+   * | 0 1 2 3 4 5 6 ... 10 11 12 13 14 |    | 0 1 2 3 4 5 6 7 || x x |
+   * '--------/-------------------------'    '--------/--------''---/-'
+   *         /                                       /             /
+   *     attached,                               attached,     detached,
+   *     globally                                globally      deallocated
+   *     visible                                 visible
+   */
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
   dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
 
-  int unit_0_lsize_diff =  5;
-  int unit_1_lsize_diff = -2;
+  int unit_0_num_grow   = 5;
+  int unit_1_num_shrink = 2;
 
   if (dash::myid() == 0) {
-    gdmem.resize(initial_global_capacity + unit_0_lsize_diff);
-  }
-  if (dash::myid() == 1) {
-    gdmem.resize(initial_global_capacity + unit_1_lsize_diff);
+    gdmem.resize(initial_global_capacity + unit_0_num_grow);
   }
 
+  EXPECT_EQ_U(gdmem.local_size(),
+              std::distance(gdmem.lbegin(), gdmem.lend()));
+
+  // Initialize values in local memory:
+  auto lbegin = gdmem.lbegin();
+  DASH_LOG_TRACE("GlobDynamicMemTest.RemoteAccess",
+                 "globmem.lbegin():", lbegin);
+  for (size_t li = 0; li < gdmem.local_size(); ++li) {
+    value_t value  = (100 * (dash::myid() + 1)) + li;
+    DASH_LOG_TRACE("GlobDynamicMemTest.RemoteAccess",
+                   "local[", li, "] =", value);
+    *(lbegin + li) = value;
+  }
+  // Shrink after initialization of local values so elements in the locally
+  // removed memory segment have meaningful values.
+  if (dash::myid() == 1) {
+    gdmem.resize(initial_global_capacity - unit_1_num_shrink);
+  }
+
+  // Wait for initialization of local values of all units:
   dash::barrier();
 
-  if (dash::myid() > 1) {
-    auto unit_0_local_size = gdmem.lend(0) - gdmem.lbegin(0);
-    auto unit_1_local_size = gdmem.lend(1) - gdmem.lbegin(1);
-    if (dash::myid() == 0) {
-      EXPECT_EQ_U(unit_0_local_size, initial_local_capacity + 5);
-      EXPECT_EQ_U(unit_0_local_size, gdmem.local_size());
-    } else {
-      EXPECT_EQ_U(unit_0_local_size, initial_local_capacity);
-    }
-    if (dash::myid() == 1) {
-      EXPECT_EQ_U(unit_1_local_size, initial_local_capacity - 2);
-      EXPECT_EQ_U(unit_1_local_size, gdmem.local_size());
-    } else {
-      EXPECT_EQ_U(unit_0_local_size, initial_local_capacity);
-      EXPECT_EQ_U(unit_1_local_size, initial_local_capacity);
+  for (int u = 0; u < dash::size(); ++u) {
+    if (dash::myid() != u) {
+      size_t  nlocal_expect = initial_local_capacity;
+      size_t  nlocal_elem   = gdmem.local_size(u);
+
+      EXPECT_EQ_U(nlocal_expect, nlocal_elem);
+      DASH_LOG_DEBUG("GlobDynamicMemTest.RemoteAccess",
+                     "requesting element from unit", u,
+                     "before commit,", "local capacity:", nlocal_elem);
+      for (size_t lidx = 0; lidx < nlocal_elem; ++lidx) {
+        // Retreive global pointer from local-to-global address resolution
+        // provided my global memory management:
+        auto    u_last_elem = gdmem.at(u, lidx);
+        value_t expected    = (100 * (u + 1)) + lidx;
+        value_t actual;
+        // Request value from unit u via dart_get on global pointer:
+        dash::get_value(&actual, u_last_elem);
+        EXPECT_EQ_U(expected, actual);
+      }
     }
   }
 
-  if (dash::myid() != 1) {
-    LOG_MESSAGE("requesting last local element from unit 1");
-    auto unit_1_git_last = gdmem.at(1, initial_local_capacity-1);
-    value_t actual;
-    dash::get_value(&actual, unit_1_git_last);
-    value_t expected = 100 * 2 + initial_local_capacity - 1;
-    EXPECT_EQ_U(expected, actual);
+  gdmem.commit();
+
+  // Changed sizes of memory spaces are visible to all units after commit:
+  EXPECT_EQ_U(initial_local_capacity + unit_0_num_grow,
+              gdmem.local_size(0));
+  EXPECT_EQ_U(initial_local_capacity - unit_1_num_shrink,
+              gdmem.local_size(1));
+
+  // Validate values after commit:
+  for (int u = 0; u < dash::size(); ++u) {
+    if (dash::myid() != u) {
+      size_t  nlocal_elem   = gdmem.local_size(u);
+      size_t  nlocal_expect = initial_local_capacity;
+      if (u == 0) { nlocal_expect += unit_0_num_grow; }
+      if (u == 1) { nlocal_expect -= unit_1_num_shrink; }
+
+      EXPECT_EQ_U(nlocal_expect, nlocal_elem);
+      DASH_LOG_DEBUG("GlobDynamicMemTest.RemoteAccess",
+                     "requesting element from unit", u,
+                     "after commit,", "local capacity:", nlocal_elem);
+      for (size_t lidx = 0; lidx < nlocal_elem; ++lidx) {
+        // Retreive global pointer from local-to-global address resolution
+        // Retreive global pointer from local-to-global address resolution
+        // provided my global memory management:
+        auto    u_last_elem = gdmem.at(u, lidx);
+        value_t expected    = (100 * (u + 1)) + lidx;
+        value_t actual;
+        // Request value from unit u via dart_get on global pointer:
+        dash::get_value(&actual, u_last_elem);
+        EXPECT_EQ_U(expected, actual);
+      }
+    }
   }
 }

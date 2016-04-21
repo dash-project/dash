@@ -89,9 +89,6 @@ public:
   ~Shared()
   {
     DASH_LOG_DEBUG("Shared.~Shared()");
-    if (_team->myid() != _owner) {
-      _globmem = nullptr;
-    }
     DASH_LOG_DEBUG("Shared.~Shared >");
   }
 

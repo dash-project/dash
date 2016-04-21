@@ -394,6 +394,8 @@ public:
    * Synchronize changes on local and global memory space of the map since
    * initialization or the last call of its \c barrier method with global
    * memory.
+   *
+   * TODO: Implement moving elements, integrate rebalance policy type.
    */
   void barrier()
   {
@@ -938,16 +940,8 @@ public:
     auto key    = value.first;
     auto mapped = value.second;
     DASH_LOG_DEBUG("UnorderedMap.insert()", "key:", key, "mapped:", mapped);
-    // Unit assigned to range containing the given key:
-    auto unit   = _key_hash(key);
-    DASH_LOG_TRACE("UnorderedMap.insert", "target unit:", unit);
-
     auto result = std::make_pair(_end, false);
-    if (unit != _myid) {
-      DASH_THROW(
-        dash::exception::NotImplemented,
-        "UnorderedMap.insert: remote insertion is not implemented");
-    }
+
     DASH_ASSERT(_globmem != nullptr);
     // Local insertion, target unit of element is active unit.
     // Look up existing element at given key:
@@ -963,6 +957,9 @@ public:
       result.second = false;
     } else {
       DASH_LOG_TRACE("UnorderedMap.insert", "key not found");
+      // Unit mapped to the new element's key by the hash function:
+      auto unit = _key_hash(key);
+      DASH_LOG_TRACE("UnorderedMap.insert", "target unit:", unit);
       // No element with specified key exists, insert new value.
       // Increase local size first to reserve storage for the new element.
       // Use atomic increment to prevent hazard when other units perform
@@ -1003,6 +1000,13 @@ public:
                      "unit:", unit, "lidx:", old_local_size);
       result.first  = iterator(this, unit, old_local_size);
       result.second = true;
+
+      if (unit != _myid) {
+        DASH_LOG_TRACE("UnorderedMap.insert", "remote insertion");
+        // Mark inserted element for move to remote unit in next commit:
+        _move_elements.push_back(result.first);
+      }
+
       // Update iterators as global memory space has been changed for the
       // active unit:
       auto new_size = size();
@@ -1127,6 +1131,9 @@ private:
   local_sizes_map        _local_sizes;
   /// Cumulative (postfix sum) local sizes of all units.
   std::vector<size_type> _local_cumul_sizes;
+  /// Iterators to elements in local memory space that are marked for move
+  /// to remote unit in next commit.
+  std::vector<iterator>  _move_elements;
   /// Global pointer to local element in _local_sizes.
   dart_gptr_t            _local_size_gptr = DART_GPTR_NULL;
   /// Hash type for mapping of key to unit and local offset.

@@ -11,6 +11,7 @@ TEST_F(MatrixTest, OddSize)
 {
   typedef dash::Pattern<2>                 pattern_t;
   typedef typename pattern_t::index_type   index_t;
+
   dash::Matrix<int, 2, index_t, pattern_t> matrix(dash::SizeSpec<2>(8, 15));
 
   for (int i = 0; i < matrix.extent(0); i++) {

@@ -236,9 +236,6 @@ public:
       DASH_LOG_TRACE("LocalBucketIter.pointer", "is nullptr");
     } else {
       auto bucket_size = _bucket_it->size;
-      DASH_LOG_TRACE("LocalBucketIter.pointer",
-                     "bucket size:",  bucket_size, ",",
-                     "bucket phase:", _bucket_phase);
       // This iterator type represents a local pointer so no bounds checks
       // have to be performed in pointer arithmetics.
       // Moving a pointer to out-of-bounds address is allowed, however
@@ -253,6 +250,9 @@ public:
       if (_bucket_it == _bucket_last) {
         DASH_LOG_TRACE("LocalBucketIter.pointer", "position at lend");
       } else if (_bucket_phase >= bucket_size) {
+        DASH_LOG_TRACE("LocalBucketIter.pointer",
+                       "bucket size:",  bucket_size, ",",
+                       "bucket phase:", _bucket_phase);
         DASH_LOG_TRACE("LocalBucketIter.pointer",
                        "note: iterator position out of bounds (lend?)");
       }
