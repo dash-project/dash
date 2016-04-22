@@ -22,6 +22,8 @@ TEST_F(SharedTest, SingleWriteMultiRead)
   value_t actual_1 = static_cast<value_t>(shared.get());
   LOG_MESSAGE("read first shared value: %d", actual_1);
   EXPECT_EQ_U(shared_value_1, actual_1);
+  // Wait for validation at all units
+  dash::barrier();
 
   if (dash::size() < 2) {
     return;
