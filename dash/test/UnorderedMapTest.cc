@@ -183,6 +183,12 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   typedef typename map_t::value_type           map_value;
   typedef typename map_t::size_type            size_type;
 
+  if (dash::size() < 2) {
+    LOG_MESSAGE(
+      "UnorderedMapTest.UnbalancedGlobalInsert requires at least two units");
+    return;
+  }
+
   // Number of preallocated elements:
   size_type init_global_size  = 0;
   // Use small local buffer size to enforce reallocation.

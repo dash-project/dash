@@ -154,7 +154,7 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
   auto     myid      = dash::myid();
   extent_t num_units = dash::size();
 
-  if (num_units < 2) {
+  if (num_units < 2 || num_units % 2 != 0) {
     LOG_MESSAGE("GlobStencilIterTest.HaloBlock requires at least 2 units");
     return;
   }
