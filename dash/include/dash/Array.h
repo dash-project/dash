@@ -1002,8 +1002,9 @@ public:
                      "initializing pattern with initial team");
       m_pattern = PatternType(nelem, distribution, *m_team);
     }
-    return allocate(m_pattern);
+    bool ret = allocate(m_pattern);
     DASH_LOG_TRACE("Array.allocate(nlocal,ds,team) >");
+    return ret;
   }
 
   bool allocate(
@@ -1034,8 +1035,9 @@ public:
                      "initializing pattern with initial team");
       m_pattern = PatternType(nelem, distribution, *m_team);
     }
-    return allocate(m_pattern, local_elements);
+    bool ret = allocate(m_pattern, local_elements);
     DASH_LOG_TRACE("Array.allocate(lvals,ds,team) >");
+    return ret;
   }
 
   void deallocate()

@@ -497,7 +497,8 @@ public:
                                 .first;
     DASH_LOG_TRACE_VAR("UnorderedMap.[]", git_value);
     dart_gptr_t   gptr_mapped = git_value.dart_gptr();
-    value_type  * lptr_value  = git_value.local();
+    value_type  * lptr_value  = static_cast<value_type *>(
+                                  git_value.local());
     mapped_type * lptr_mapped = nullptr;
     DASH_LOG_TRACE("UnorderedMap.[]", "gptr to element:", gptr_mapped);
     DASH_LOG_TRACE("UnorderedMap.[]", "lptr to element:", lptr_value);

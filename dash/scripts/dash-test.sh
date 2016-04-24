@@ -45,21 +45,25 @@ TOTAL_FAIL_COUNT=0
 TESTS_PASSED=true
 run_suite()
 {
-  echo "[[ RUN    ]] ${RUN_CMD} -n ${1} ${TEST_BINARY}" | tee -a $LOGFILE
+  NUNITS=$1
+  echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${TEST_BINARY}" | tee -a $LOGFILE
   $RUN_CMD -n $1 $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
     tee -a $LOGFILE
   TEST_RET=$?
   # Cannot use exit code as dartrun-shmem seems to always return 0
   NEW_FAIL_COUNT=`grep --count 'FAILED TEST' $LOGFILE`
+  # Failure is logged by every unit, divide reported failures by number of
+  # units:
+  NEW_FAIL_COUNT=$(($NEW_FAIL_COUNT / $NUNITS))
   # Number of failed tests in this run
   THIS_FAIL_COUNT=$(($NEW_FAIL_COUNT-$TOTAL_FAIL_COUNT))
   TOTAL_FAIL_COUNT=$NEW_FAIL_COUNT
   if [ "$THIS_FAIL_COUNT" = "0" ]; then
-    echo "[[ OK     ]] Tests passed, returned ${TEST_RET}" | \
+    echo "[[     OK ]] Tests passed, returned ${TEST_RET}" | \
       tee -a $LOGFILE
   else
     TESTS_PASSED=false
-    echo "[[ FAIL   ]] $THIS_FAIL_COUNT failed tests, returned ${TEST_RET}" | \
+    echo "[[   FAIL ]] $THIS_FAIL_COUNT failed tests, returned ${TEST_RET}" | \
       tee -a $LOGFILE
   fi
 }
