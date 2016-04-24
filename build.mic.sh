@@ -41,34 +41,34 @@ fi
 
 # Configure with default release build settings:
 mkdir -p build
-rm -Rf ./build/*
-(cd ./build && cmake -DCMAKE_BUILD_TYPE=Release \
-                     -DENVIRONMENT_TYPE=supermic \
-                     -DCMAKE_C_COMPILER=mpiicc \
-                     -DCMAKE_CXX_COMPILER=mpiicc \
-                     -DDART_IF_VERSION=3.2 \
-                     -DINSTALL_PREFIX=$HOME/opt/ \
-                     -DDART_IMPLEMENTATIONS=mpi \
-                     -DENABLE_COMPILER_WARNINGS=ON \
-                     -DENABLE_ASSERTIONS=OFF \
-                     -DENABLE_SHARED_WINDOWS=ON \
-                     -DENABLE_UNIFIED_MEMORY_MODEL=ON \
-                     -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
-                     -DENABLE_LOGGING=OFF \
-                     -DENABLE_TRACE_LOGGING=OFF \
-                     -DENABLE_DART_LOGGING=OFF \
-                     -DENABLE_SCALAPACK=OFF \
-                     -DENABLE_MKL=ON \
-                     -DENABLE_LIBNUMA=OFF \
-                     -DENABLE_PAPI=OFF \
-                     -DBUILD_EXAMPLES=ON \
-                     -DBUILD_TESTS=OFF \
-                     -DBUILD_DOCS=OFF \
-                     -DPAPI_PREFIX=${PAPI_HOME} \
-                     -DIPM_PREFIX=${IPM_BASE} \
-                     -DGTEST_LIBRARY_PATH=${HOME}/opt/gtest \
-                     -DGTEST_INCLUDE_PATH=${HOME}/opt/gtest/include \
-                     ../ && \
+rm -Rf ./build.mic/*
+(cd ./build.mic && cmake -DCMAKE_BUILD_TYPE=Release \
+                         -DENVIRONMENT_TYPE=supermic \
+                         -DCMAKE_C_COMPILER=mpiicc \
+                         -DCMAKE_CXX_COMPILER=mpiicc \
+                         -DDART_IF_VERSION=3.2 \
+                         -DINSTALL_PREFIX=$HOME/opt/ \
+                         -DDART_IMPLEMENTATIONS=mpi \
+                         -DENABLE_COMPILER_WARNINGS=ON \
+                         -DENABLE_ASSERTIONS=OFF \
+                         -DENABLE_SHARED_WINDOWS=ON \
+                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
+                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
+                         -DENABLE_LOGGING=OFF \
+                         -DENABLE_TRACE_LOGGING=OFF \
+                         -DENABLE_DART_LOGGING=OFF \
+                         -DENABLE_SCALAPACK=OFF \
+                         -DENABLE_MKL=ON \
+                         -DENABLE_LIBNUMA=OFF \
+                         -DENABLE_PAPI=OFF \
+                         -DENABLE_HWLOC=OFF \
+                         -DENABLE_LIKWID=OFF \
+                         -DBUILD_EXAMPLES=ON \
+                         -DBUILD_TESTS=OFF \
+                         -DBUILD_DOCS=OFF \
+                         -DPAPI_PREFIX=${PAPI_HOME} \
+                         -DIPM_PREFIX=${IPM_BASE} \
+                         ../ && \
  await_confirm && \
- make) && \
+ make -j 5) && \
 exit_message

@@ -697,7 +697,7 @@ public:
     IndexType glob_index      = (block_index * _blocksize) + elem_phase;
     DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.global", block_index);
     DASH_LOG_TRACE_VAR("ShiftTilePattern<1>.global >", glob_index);
-    return std::array<IndexType, 1> { glob_index };
+    return std::array<IndexType, 1> {{ glob_index }};
   }
 
   /**
@@ -721,7 +721,7 @@ public:
   IndexType global(
     dart_unit_t unit,
     IndexType l_index) const {
-    return global(unit, std::array<IndexType, 1> { l_index })[0];
+    return global(unit, std::array<IndexType, 1> {{ l_index }})[0];
   }
 
   /**
@@ -734,7 +734,7 @@ public:
    */
   IndexType global(
     IndexType l_index) const {
-    return global(_team->myid(), std::array<IndexType, 1> { l_index })[0];
+    return global(_team->myid(), std::array<IndexType, 1> {{ l_index }})[0];
   }
 
   /**
@@ -887,8 +887,8 @@ public:
     index_type g_block_index) const
   {
     index_type offset = g_block_index * _size;
-    std::array<index_type, NumDimensions> offsets = { offset };
-    std::array<size_type, NumDimensions>  extents = { _blocksize };
+    std::array<index_type, NumDimensions> offsets {{ offset }};
+    std::array<size_type, NumDimensions>  extents {{ _blocksize }};
     return ViewSpec_t(offsets, extents);
   }
 
@@ -903,8 +903,8 @@ public:
     // Local block index to local block coords:
     auto l_elem_index = l_block_index * _blocksize;
     auto g_elem_index = global(l_elem_index);
-    std::array<index_type, NumDimensions> offsets = { g_elem_index };
-    std::array<size_type, NumDimensions>  extents = { _blocksize };
+    std::array<index_type, NumDimensions> offsets {{ g_elem_index }};
+    std::array<size_type, NumDimensions>  extents {{ _blocksize }};
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_block >", block_vs);
     return block_vs;
@@ -919,8 +919,8 @@ public:
   {
     DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_block_local()", l_block_index);
     index_type offset = l_block_index * _blocksize;
-    std::array<index_type, NumDimensions> offsets = { offset };
-    std::array<size_type, NumDimensions>  extents = { _blocksize };
+    std::array<index_type, NumDimensions> offsets {{ offset }};
+    std::array<size_type, NumDimensions>  extents {{ _blocksize }};
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.local_block_local >", block_vs);
     return block_vs;
@@ -930,7 +930,7 @@ public:
    * Cartesian arrangement of pattern blocks.
    */
   BlockSpec_t blockspec() const {
-    BlockSpec_t bspec({ dash::math::div_ceil(_size, _blocksize) });
+    BlockSpec_t bspec({{ dash::math::div_ceil(_size, _blocksize) }});
     return bspec;
   }
 
@@ -1039,7 +1039,7 @@ public:
    * \see DashPatternConcept
    */
   SizeSpec_t sizespec() const {
-    return SizeSpec_t(std::array<SizeType, 1> { _size });
+    return SizeSpec_t(std::array<SizeType, 1> {{ _size }});
   }
 
   /**
@@ -1088,7 +1088,7 @@ public:
    */
   std::array<IndexType, NumDimensions> coords(
     IndexType index) const {
-    return std::array<IndexType, 1> { index };
+    return std::array<IndexType, 1> {{ index }};
   }
 
   /**
@@ -1151,7 +1151,8 @@ public:
     SizeType                    blocksize,
     const DistributionSpec_t  & distspec,
     SizeType                    nunits,
-    SizeType                    local_size) const {
+    SizeType                    local_size) const
+  {
     auto num_l_blocks = local_size;
     if (blocksize > 0) {
       num_l_blocks = dash::math::div_ceil(
@@ -1167,7 +1168,8 @@ public:
   /**
    * Max. elements per unit (local capacity)
    */
-  SizeType initialize_local_capacity() const {
+  SizeType initialize_local_capacity() const
+  {
     SizeType l_capacity = 1;
     if (_nunits == 0) {
       return 0;
@@ -1186,7 +1188,8 @@ public:
    * Initialize block- and block size specs from memory layout, team spec
    * and distribution spec.
    */
-  void initialize_local_range() {
+  void initialize_local_range()
+  {
     auto l_size = _local_size;
     DASH_LOG_DEBUG_VAR("ShiftTilePattern<1>.init_local_range()", l_size);
     if (l_size == 0) {

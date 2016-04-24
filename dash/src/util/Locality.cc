@@ -15,6 +15,10 @@
 #include <hwloc/helper.h>
 #endif
 
+#ifdef DASH_ENABLE_LIKWID
+#include <likwid.h>
+#endif
+
 namespace dash {
 namespace util {
 
@@ -30,6 +34,34 @@ void Locality::init()
   _num_sockets         = -1;
   _num_numa            = -1;
   _num_cpus            = -1;
+  _cpu_min_mhz         =  0;
+  _cpu_max_mhz         =  0;
+#ifdef DASH_ENABLE_LIKWID
+  // see likwid API documentation:
+  // https://rrze-hpc.github.io/likwid/Doxygen/C-likwidAPI-code.html
+  int likwid_err = topology_init();
+  if (likwid_err < 0) {
+    DASH_LOG_ERROR(
+      "dash::util::Locality::init(): likwid: topology_init failed");
+  } else {
+    CpuInfo_t     info = get_cpuInfo();
+    CpuTopology_t topo = get_cpuTopology();
+    if (_cpu_min_mhz < 0 || _cpu_max_mhz < 0) {
+      _cpu_min_mhz = info->clock;
+      _cpu_max_mhz = info->clock;
+    }
+    if (_num_sockets < 0) {
+      _num_sockets = topo->numSockets;
+    }
+    if (_num_numa < 0) {
+      _num_numa    = _num_sockets;
+    }
+    if (_num_cpus < 0) {
+      _num_cpus    = topo->numCoresPerSocket * _num_sockets;
+    }
+    topology_finalize();
+  }
+#endif
 #ifdef DASH_ENABLE_HWLOC
   hwloc_topology_t topology;
   hwloc_topology_init(&topology);
@@ -46,20 +78,26 @@ void Locality::init()
       ++level;
     }
   }
-  // Resolve number of sockets:
-  int depth = hwloc_get_type_depth(topology, HWLOC_OBJ_SOCKET);
-  if (depth != HWLOC_TYPE_DEPTH_UNKNOWN) {
-    _num_sockets = hwloc_get_nbobjs_by_depth(topology, depth);
+  if (_num_sockets < 0) {
+    // Resolve number of sockets:
+    int depth = hwloc_get_type_depth(topology, HWLOC_OBJ_SOCKET);
+    if (depth != HWLOC_TYPE_DEPTH_UNKNOWN) {
+      _num_sockets = hwloc_get_nbobjs_by_depth(topology, depth);
+    }
   }
-	// Resolve number of NUMA nodes:
-  int n_numa_nodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NODE);
-  if (n_numa_nodes > 0) {
-    _num_numa = n_numa_nodes;
+  if (_num_numa < 0) {
+    // Resolve number of NUMA nodes:
+    int n_numa_nodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NODE);
+    if (n_numa_nodes > 0) {
+      _num_numa = n_numa_nodes;
+    }
   }
-	// Resolve number of cores per numa:
-	int n_cores = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_CORE);
-	if (n_cores > 0){
-		_num_cpus = n_cores;
+  if (_num_cpus < 0) {
+    // Resolve number of cores per numa:
+    int n_cores = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_CORE);
+    if (n_cores > 0) {
+      _num_cpus = n_cores;
+    }
 	}
   hwloc_topology_destroy(topology);
 #endif
@@ -82,16 +120,36 @@ void Locality::init()
         _num_sockets = hwinfo->sockets;
       }
       if (_num_numa < 0) {
-        _num_numa = hwinfo->nnodes;
+        _num_numa    = hwinfo->nnodes;
       }
       if (_num_cpus < 0) {
         auto cores_per_socket = hwinfo->cores;
-        _num_cpus = _num_sockets * cores_per_socket;
+        _num_cpus    = _num_sockets * cores_per_socket;
 				DASH_LOG_DEBUG("_num_cpus first got by PAPI", _num_cpus);
+      }
+      if (_cpu_min_mhz < 0 || _cpu_max_mhz < 0) {
+        _cpu_min_mhz = hwinfo->cpu_min_mhz;
+        _cpu_max_mhz = hwinfo->cpu_max_mhz;
       }
     }
   }
 #endif
+#ifdef DASH__ARCH__IS_MIC
+  if (_num_sockets < 0) {
+    _num_sockets = 1;
+  }
+  if (_num_numa < 0) {
+    _num_numa    = 1;
+  }
+  if (_num_cpus < 0) {
+    _num_cpus    = 60;
+  }
+  if (_cpu_min_mhz < 0 || _cpu_max_mhz < 0) {
+    _cpu_min_mhz = 1100;
+    _cpu_max_mhz = 1100;
+  }
+#endif
+
 #ifdef DASH__PLATFORM__POSIX
   if (_num_cpus < 0) {
 		// be careful: includes hyperthreading
@@ -171,6 +229,8 @@ int Locality::_num_nodes   = -1;
 int Locality::_num_sockets = -1;
 int Locality::_num_numa    = -1;
 int Locality::_num_cpus    = -1;
+int Locality::_cpu_min_mhz = -1;
+int Locality::_cpu_max_mhz = -1;
 std::vector<Locality::UnitPinning> Locality::_unit_pinning;
 std::array<int, 3>                 Locality::_cache_sizes;
 std::array<int, 3>                 Locality::_cache_line_sizes;
