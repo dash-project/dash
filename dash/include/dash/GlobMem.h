@@ -55,9 +55,42 @@ public:
     _teamid(team.dart_id()),
     _nlelem(n_local_elem)
   {
-    DASH_LOG_TRACE("GlobMem(nunits,nelem)", team.size(), _nlelem);
-
+    DASH_LOG_TRACE("GlobMem(nlocal,team)",
+                   "number of local values:", _nlelem,
+                   "team size:",              team.size());
     _begptr = _allocator.allocate(_nlelem);
+    DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
+
+    if (_teamid == DART_TEAM_NULL) {
+      // TODO: Should be 0
+      _nunits = 1;
+    } else {
+      DASH_ASSERT_RETURNS(
+        dart_team_size(_teamid, (size_t *) &_nunits),
+        DART_OK);
+    }
+    _lbegin = lbegin(dash::myid());
+    _lend   = lend(dash::myid());
+    DASH_LOG_TRACE("GlobMem(nlocal,team) >");
+  }
+
+  /**
+   * Constructor, collectively allocates the given number of elements in
+   * local memory of every unit in a team.
+   */
+  GlobMem(
+    /// Local elements to allocate in global memory space
+    std::initializer_list<value_type>   local_elements,
+    /// Team containing all units operating on the global memory region
+    Team                              & team = dash::Team::Null())
+  : _allocator(team),
+    _teamid(team.dart_id()),
+    _nlelem(local_elements.size())
+  {
+    DASH_LOG_TRACE("GlobMem(lvals,team)",
+                   "number of local values:", _nlelem,
+                   "team size:",              team.size());
+    _begptr = _allocator.allocate(local_elements.size());
     DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
 
     if (_teamid == DART_TEAM_NULL) {
@@ -69,6 +102,14 @@ public:
     }
     _lbegin = lbegin(dash::myid());
     _lend   = lend(dash::myid());
+    // Initialize allocated local elements with specified values:
+    auto copy_end = std::copy(local_elements.begin(),
+                      local_elements.end(),
+                      _lbegin);
+    DASH_ASSERT_EQ(_lend, copy_end,
+                   "initialization of specified local values failed");
+
+    DASH_LOG_TRACE("GlobMem(lvals,team) >");
   }
 
   /**

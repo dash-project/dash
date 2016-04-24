@@ -691,7 +691,6 @@ public:
     IndexType g_index) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.local()", g_index);
-    DASH_LOG_TRACE_VAR("CSRPattern.local", _block_offsets.size());
     DASH_ASSERT_GT(_nunits, 0,
                    "team size is 0");
     DASH_ASSERT_GE(_block_offsets.size(), _nunits,
@@ -699,9 +698,7 @@ public:
     local_index_t l_index;
     index_type    unit_idx = static_cast<index_type>(_nunits-1);
     for (; unit_idx >= 0; --unit_idx) {
-      DASH_LOG_TRACE_VAR("CSRPattern.local", unit_idx);
       index_type block_offset = _block_offsets[unit_idx];
-      DASH_LOG_TRACE_VAR("CSRPattern.local", block_offset);
       if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
         l_index.index = g_index - block_offset;

@@ -32,14 +32,17 @@ struct has_subscript_operator
 };
 
 template<typename T>
-class GlobRef {
-private:
-  dart_gptr_t _gptr;
-
+class GlobRef
+{
   template<typename U>
   friend std::ostream & operator<<(
     std::ostream & os,
     const GlobRef<U> & gref);
+
+private:
+
+  typedef GlobRef<T>
+    self_t;
 
 public:
   /**
@@ -99,6 +102,16 @@ public:
     return *this = static_cast<T>(other);
 //  _gptr = other._gptr;
 //  return *this;
+  }
+
+  inline bool operator==(const self_t & other) const noexcept
+  {
+    return _gptr == other._gptr;
+  }
+
+  inline bool operator!=(const self_t & other) const noexcept
+  {
+    return !(*this == other);
   }
 
   friend void swap(GlobRef<T> a, GlobRef<T> b) {
@@ -162,13 +175,15 @@ public:
     return *this;
   }
 
-  GlobRef<T> & operator+=(const T& ref) {
+  GlobRef<T> & operator+=(const T& ref)
+  {
 #if 0
     T add_val = ref;
-    dart_ret_t result = dart_accumulate(
+    T old_val;
+    dart_ret_t result = dart_fetch_and_op(
                           _gptr,
-                          reinterpret_cast<char *>(add_val),
-                          1,
+                          reinterpret_cast<void *>(&add_val),
+                          reinterpret_cast<void *>(&old_val),
                           dash::dart_datatype<T>::value,
                           dash::plus<T>().dart_operation(),
                           dash::Team::All().dart_id());
@@ -294,6 +309,11 @@ public:
     size_t offs = (size_t) &( reinterpret_cast<P*>(0)->*mem);
     return member<MEMTYPE>(offs);
   }
+
+private:
+
+  dart_gptr_t _gptr;
+
 };
 
 template<typename T>

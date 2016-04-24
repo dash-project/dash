@@ -60,7 +60,6 @@ void Locality::init()
 	int n_cores = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_CORE);
 	if (n_cores > 0){
 		_num_cpus = n_cores;
-		DASH_LOG_DEBUG("_num_cpus first got by HWLOC", _num_cpus);
 	}
   hwloc_topology_destroy(topology);
 #endif

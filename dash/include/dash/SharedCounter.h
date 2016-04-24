@@ -23,8 +23,10 @@ public:
   SharedCounter()
   : _num_units(dash::Team::All().size()),
     _myid(dash::Team::All().myid()),
-    _local_counts(_num_units) {
-    _local_counts[_myid] = 0;
+    _local_counts(_num_units)
+  {
+    _local_counts.local[0] = 0;
+    _local_counts.barrier();
   }
 
   /**
@@ -32,7 +34,8 @@ public:
    */
   void inc(
     /// Increment value
-    ValueType increment) {
+    ValueType increment)
+  {
     _local_counts[_myid] += increment;
   }
 
@@ -41,7 +44,8 @@ public:
    */
   void dec(
     /// Decrement value
-    ValueType increment) {
+    ValueType increment)
+  {
     _local_counts[_myid] -= increment;
   }
 
@@ -52,11 +56,14 @@ public:
    *
    * \complexity  O(u) for \c u units in the associated team
    */
-  ValueType get() const {
-    // TODO: std::accumulate should work, too
+  ValueType get() const
+  {
     ValueType acc = 0;
     for (size_t i = 0; i < _num_units; ++i) {
-      acc += _local_counts[i];
+      // use local access on own counter value:
+      acc += (i == _myid
+                ? _local_counts.local[0]
+                : _local_counts[i]);
     }
     return acc;
   }

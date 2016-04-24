@@ -7,6 +7,23 @@
 #include <iostream>
 #include <iomanip>
 
+TEST_F(MatrixTest, OddSize)
+{
+  typedef dash::Pattern<2>                 pattern_t;
+  typedef typename pattern_t::index_type   index_t;
+
+  dash::Matrix<int, 2, index_t, pattern_t> matrix(dash::SizeSpec<2>(8, 15));
+
+  for (int i = 0; i < matrix.extent(0); i++) {
+    for (int j = 0; j < matrix.extent(1); j++) {
+      if (matrix(i,j).is_local()) {
+        DASH_LOG_TRACE("MatrixText.OddSize", "(", i, ",", j, ")",
+                       "unit:", _dash_id);
+      }
+    }
+  }
+}
+
 TEST_F(MatrixTest, Views)
 {
   const size_t block_size_x  = 3;

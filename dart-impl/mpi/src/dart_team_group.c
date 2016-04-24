@@ -541,7 +541,8 @@ dart_ret_t dart_team_size(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-
+  // TODO: This should be a local operation.
+  //       Team sizes could be cached and updated in dart_team_create.
   int s;
   MPI_Comm_size (comm, &s);
   (*size) = s;

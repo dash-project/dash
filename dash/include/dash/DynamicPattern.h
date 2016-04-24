@@ -497,8 +497,6 @@ public:
   /**
    * Balance the number of local elements across all units in the pattern's
    * associated team.
-   *
-   * Collective operation.
    */
   inline void balance()
   {
@@ -1276,6 +1274,7 @@ public:
     return 1;
   }
 
+private:
   /**
    * Initialize the size (number of mapped elements) of the Pattern.
    */

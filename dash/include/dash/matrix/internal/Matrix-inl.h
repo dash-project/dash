@@ -129,9 +129,13 @@ bool Matrix<T, NumDim, IndexT, PatternT>
 {
   DASH_LOG_TRACE("Matrix.allocate()", "pattern",
                  pattern.memory_layout().extents());
+  if (&_pattern != &pattern) {
+    DASH_LOG_TRACE("Matrix.allocate()", "using specified pattern");
+    _pattern = pattern;
+  }
   // Copy sizes from pattern:
   _size            = _pattern.size();
-  _team            = &pattern.team();
+  _team            = &(_pattern.team());
   _lsize           = _pattern.local_size();
   _lcapacity       = _pattern.local_capacity();
   DASH_LOG_TRACE_VAR("Matrix.allocate", _size);
@@ -139,7 +143,7 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
   // Allocate and initialize memory ranges:
   _ref._refview    = new MatrixRefView_t(this);
-  _glob_mem        = new GlobMem_t(_lcapacity, pattern.team());
+  _glob_mem        = new GlobMem_t(_lcapacity, _pattern.team());
   _begin           = GlobIter_t(_glob_mem, _pattern);
   _lbegin          = _glob_mem->lbegin();
   _lend            = _glob_mem->lend();

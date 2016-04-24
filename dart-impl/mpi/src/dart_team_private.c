@@ -81,7 +81,7 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, uint16_t* index)
 	if (dart_free_teamlist_header != NULL) {
 		*index = dart_free_teamlist_header -> index;
 		p = dart_free_teamlist_header;
-		
+
 		dart_free_teamlist_header = dart_free_teamlist_header -> next;
 		free (p);
 #if 0
@@ -94,16 +94,16 @@ int dart_adapt_teamlist_alloc (dart_team_t teamid, uint16_t* index)
 		dart_allocated_teamlist_array[j+1].allocated_teamid = teamid;
 #endif
 
-		/* The allocated teamlist array should be arranged in an increasing order based on 
+		/* The allocated teamlist array should be arranged in an increasing order based on
 		 * the member of allocated_teamid.
 		 *
-		 * Notes: the newly created teamid will always be increased because the teamid 
+		 * Notes: the newly created teamid will always be increased because the teamid
 		 * is not reused after certain team is destroyed.
 		 */
 		dart_allocated_teamlist_array[dart_allocated_teamlist_size].index = *index;
 		dart_allocated_teamlist_array[dart_allocated_teamlist_size].allocated_teamid = teamid;
 		dart_allocated_teamlist_size ++;
-		
+
 		/* If allocated successfully, the position of the new element in the allcoated array
 		 * is returned.
 		 */
@@ -133,7 +133,7 @@ int dart_adapt_teamlist_recycle (uint16_t index, int pos)
       dart_allocated_teamlist_array[i + 1].index;
 	}
 	dart_allocated_teamlist_size --;
-	return 0;	
+	return 0;
 }
 
 int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index)
@@ -142,7 +142,9 @@ int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index)
 		*index = 0;
 		return 0;
 	}
-	/* Locate the teamid in the allocated teamlist array by using the binary-search approach. */
+	/* Locate the team id in the allocated teamlist array by using the
+   * binary-search approach.
+   */
 	int imin, imax;
 	imin = 0;
 	imax = dart_allocated_teamlist_size - 1;
@@ -154,12 +156,15 @@ int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index)
 			imax = imid;
 		}
 	}
-	if ((imax == imin) && (dart_allocated_teamlist_array[imin].allocated_teamid == teamid)) {
+	if ((imax == imin) &&
+      (dart_allocated_teamlist_array[imin].allocated_teamid == teamid)) {
 		*index = dart_allocated_teamlist_array[imin].index;
-		/* If search successfully, the position of the teamid in array is returned. */
+		/* If search successfully, the position of the teamid in array is
+     * returned.
+     */
 		return imin;
 	} else {
-		DART_LOG_ERROR ("Invalid teamid input: %d", teamid);
-		return -1;	
+		DART_LOG_ERROR("Invalid teamid input: %d", teamid);
+		return -1;
 	}
 }
