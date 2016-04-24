@@ -123,7 +123,7 @@ public:
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
     std::array<SizeType, NumDimensions> extents =
-      { arg, (SizeType)(args)... };
+      {{ arg, (SizeType)(args)... }};
     resize(extents);
   }
 
@@ -360,7 +360,7 @@ public:
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
     std::array<SizeType, NumDimensions> extents =
-      { arg, (SizeType)(args)... };
+      {{ arg, (SizeType)(args)... }};
     resize(extents);
   }
 
@@ -463,7 +463,7 @@ public:
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
     ::std::array<IndexType, NumDimensions> pos =
-      { arg, (IndexType)(args) ... };
+	{{ arg, (IndexType)(args) ... }};
     return at<AtArrangement>(pos);
   }
 
@@ -692,7 +692,7 @@ public:
       sizeof...(Args) == NumDimensions-1,
       "Invalid number of arguments");
     std::array<SizeType, NumDimensions> extents =
-      { arg, (SizeType)(args)... };
+      {{ arg, (SizeType)(args)... }};
     resize(extents);
   }
 

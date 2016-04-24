@@ -168,7 +168,7 @@ public:
     Args && ... args)
   : _arguments(arg, args...),
     _size(_arguments.sizespec().size()),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _distspec(_arguments.distspec()),
     _team(&_arguments.team()),
     _teamspec(_arguments.teamspec()),
@@ -183,7 +183,7 @@ public:
         _nunits)),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _nlblocks(initialize_num_local_blocks(
         _nblocks,
         _blocksize,
@@ -232,7 +232,7 @@ public:
     /// Team containing units to which this pattern maps its elements
     dash::Team &               team     = dash::Team::All())
   : _size(sizespec.size()),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _distspec(dist),
     _team(&team),
     _teamspec(
@@ -250,7 +250,7 @@ public:
         _nunits)),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _nlblocks(initialize_num_local_blocks(
         _nblocks,
         _blocksize,
@@ -298,7 +298,7 @@ public:
     /// Team containing units to which this pattern maps its elements
     Team &                     team = dash::Team::All())
   : _size(sizespec.size()),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _distspec(dist),
     _team(&team),
     _teamspec(_distspec, *_team),
@@ -313,7 +313,7 @@ public:
         _nunits)),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _nlblocks(initialize_num_local_blocks(
         _nblocks,
         _blocksize,
@@ -558,7 +558,7 @@ public:
     dart_unit_t unit) const {
     DASH_LOG_DEBUG_VAR("TilePattern<1>.local_extents()", unit);
     DASH_LOG_DEBUG_VAR("TilePattern<1>.local_extents >", _local_size);
-    return std::array<SizeType, 1> { _local_size };
+    return std::array<SizeType, 1> {{ _local_size }};
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -640,7 +640,7 @@ public:
     auto g_block_offset = g_index / _blocksize;
     auto l_block_offset = g_block_offset / _nunits;
     local_coord         = (l_block_offset * _blocksize) + elem_phase;
-    return std::array<IndexType, 1> { local_coord };
+    return std::array<IndexType, 1> {{ local_coord }};
   }
 
   /**
@@ -698,7 +698,7 @@ public:
     IndexType glob_index      = (block_index * _blocksize) + elem_phase;
     DASH_LOG_TRACE_VAR("TilePattern<1>.global", block_index);
     DASH_LOG_TRACE_VAR("TilePattern<1>.global >", glob_index);
-    return std::array<IndexType, 1> { glob_index };
+    return std::array<IndexType, 1> {{ glob_index }};
   }
 
   /**
@@ -722,7 +722,7 @@ public:
   IndexType global(
     dart_unit_t unit,
     IndexType l_index) const {
-    return global(unit, std::array<IndexType, 1> { l_index })[0];
+    return global(unit, std::array<IndexType, 1> {{ l_index }})[0];
   }
 
   /**
@@ -735,7 +735,7 @@ public:
    */
   IndexType global(
     IndexType l_index) const {
-    return global(_team->myid(), std::array<IndexType, 1> { l_index })[0];
+    return global(_team->myid(), std::array<IndexType, 1> {{ l_index }})[0];
   }
 
   /**
@@ -896,8 +896,8 @@ public:
     index_type g_block_index) const
   {
     index_type offset = g_block_index * _size;
-    std::array<index_type, NumDimensions> offsets = { offset };
-    std::array<size_type, NumDimensions>  extents = { _blocksize };
+    std::array<index_type, NumDimensions> offsets = {{ offset }};
+    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
     return ViewSpec_t(offsets, extents);
   }
 
@@ -912,8 +912,8 @@ public:
     // Local block index to local block coords:
     auto l_elem_index = l_block_index * _blocksize;
     auto g_elem_index = global(l_elem_index);
-    std::array<index_type, NumDimensions> offsets = { g_elem_index };
-    std::array<size_type, NumDimensions>  extents = { _blocksize };
+    std::array<index_type, NumDimensions> offsets = {{ g_elem_index }};
+    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block >", block_vs);
     return block_vs;
@@ -928,8 +928,8 @@ public:
   {
     DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block_local()", l_block_index);
     index_type offset = l_block_index * _blocksize;
-    std::array<index_type, NumDimensions> offsets = { offset };
-    std::array<size_type, NumDimensions>  extents = { _blocksize };
+    std::array<index_type, NumDimensions> offsets = {{ offset }};
+    std::array<size_type, NumDimensions>  extents = {{ _blocksize }};
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("TilePattern<1>.local_block_local >", block_vs);
     return block_vs;
@@ -1032,7 +1032,7 @@ public:
    * \see DashPatternConcept
    */
   SizeSpec_t sizespec() const {
-    return SizeSpec_t(std::array<SizeType, 1> { _size });
+    return SizeSpec_t(std::array<SizeType, 1> {{ _size }});
   }
 
   /**
@@ -1041,7 +1041,7 @@ public:
    * \see DashPatternConcept
    */
   const std::array<SizeType, NumDimensions> & extents() const {
-    return std::array<SizeType, 1> { _size };
+    return std::array<SizeType, 1> {{ _size }};
   }
 
   /**
@@ -1081,7 +1081,7 @@ public:
    */
   std::array<IndexType, NumDimensions> coords(
     IndexType index) const {
-    return std::array<IndexType, 1> { index };
+    return std::array<IndexType, 1> {{ index }};
   }
 
   /**
