@@ -37,16 +37,35 @@ typedef dash::util::Timer <
   dash::util::TimeMeasure::Clock
 > Timer;
 
-#define MAX_KEY     100
-#define ARRAY_SIZE  500
-#define ITERATION   8
-#define INIT_REPEAT 50000 // Initial Repeat Size
+#define CLASS_A__TOTAL_KEYS  (1 << 23)
+#define CLASS_A__MAX_KEY     (1 << 19)
+
+#define CLASS_B__TOTAL_KEYS  (1 << 25)
+#define CLASS_B__MAX_KEY     (1 << 21)
+
+#define CLASS_C__TOTAL_KEYS  (1 << 27)
+#define CLASS_C__MAX_KEY     (1 << 23)
+
+#define CLASS_D__TOTAL_KEYS  (1 << 29)
+#define CLASS_D__MAX_KEY     (1 << 27)
+
+#define ITERATION   1
+#define INIT_REPEAT 10 // Initial Repeat Size
 typedef int key_type;
 
 int main(int argc, char * argv[])
 {
-  size_t array_size = ARRAY_SIZE;
-  size_t max_key    = MAX_KEY;
+#if 0
+  typedef dash::Array<
+            key_type, int,
+            dash::CSRPattern<1, dash::ROW_MAJOR, int> >
+    array_t;
+#else
+  typedef dash::Array<key_type> array_t;
+#endif
+
+  size_t array_size = CLASS_A__TOTAL_KEYS;
+  size_t max_key    = CLASS_A__MAX_KEY;
   size_t iteration  = ITERATION;
   size_t repeat     = INIT_REPEAT;
   int    head       = 0;
@@ -62,20 +81,36 @@ int main(int argc, char * argv[])
   //  For TimeMeasure::Counter:
   //  Timer::Calibrate(<CPU_BASE_FREQ_MHZ>);
 
-  auto myid    = dash::myid();
-  auto size    = dash::size();
+  auto myid   = dash::myid();
+  auto nunits = dash::size();
 
-  if (argc >= 2) {
+  if (argc == 2) {
+    char class_name = argv[1][0];
+    if (dash::myid() == 0) {
+      cout << "class:           " << class_name << endl;
+    }
+    if (class_name == 'A') {
+      array_size = CLASS_A__TOTAL_KEYS;
+      max_key    = CLASS_A__MAX_KEY;
+    } else if (class_name == 'B') {
+      array_size = CLASS_B__TOTAL_KEYS;
+      max_key    = CLASS_B__MAX_KEY;
+    } else if (class_name == 'C') {
+      array_size = CLASS_C__TOTAL_KEYS;
+      max_key    = CLASS_C__MAX_KEY;
+    } else if (class_name == 'D') {
+      array_size = CLASS_D__TOTAL_KEYS;
+      max_key    = CLASS_D__MAX_KEY;
+    }
+  } else if (argc > 2) {
     array_size = atoi(argv[1]);
-  }
-  if (argc >= 3) {
     max_key    = atoi(argv[2]);
-  }
-  if (argc >= 4) {
-    repeat     = atoi(argv[3]);
-  }
-  if (argc >= 5) {
-    iteration  = atoi(argv[4]);
+    if (argc >= 4) {
+      repeat    = atoi(argv[3]);
+    }
+    if (argc >= 5) {
+      iteration = atoi(argv[4]);
+    }
   }
 
   if (dash::myid() == 0) {
@@ -91,16 +126,16 @@ int main(int argc, char * argv[])
 
     double duration_it_s = 0;
 
-    dash::Array<key_type> arr(array_size);
-    dash::Array<key_type> key_histo(max_key * size, dash::BLOCKED);
-    dash::Array<key_type> pre_sum(key_histo.size() / size);
+    array_t arr(array_size);
+    array_t key_histo(max_key * nunits, dash::BLOCKED);
+    array_t pre_sum(key_histo.size() / nunits);
 
     for (size_t rep = 0; rep < repeat; rep++)
     {
       srand(time(0)+myid);
       // Initialization:
       // Writing the data into the array.
-      key_type a = myid * key_histo.size() / size;
+      key_type a = myid * key_histo.size() / nunits;
       for (auto lit = arr.lbegin(); lit != arr.lend(); ++lit) {
         *lit = rand() % max_key;
         a++;
@@ -144,6 +179,7 @@ int main(int argc, char * argv[])
       // Wait for all units to obtain the result histogram:
       dash::barrier();
 
+#if 0
       if (myid == 0) {
         key_type value = key_histo[0];
         pre_sum[0] = value;
@@ -152,31 +188,6 @@ int main(int argc, char * argv[])
         }
       }
       dash::barrier();
-
-#ifdef DASH_ENABLE_LOGGING
-      if (myid == 0) {
-        std::vector<key_type> pre_sum_tmp;
-        std::vector<key_type> key_histo_tmp;
-        for (size_t i = 0; i < max_key; i++) {
-          pre_sum_tmp.push_back(pre_sum[i]);
-          key_histo_tmp.push_back(*(key_histo.lbegin() + i));
-        }
-        // From:
-        //   dash/internal/Logging.h
-        //
-        // DASH_LOG_[ TRACE | DEBUG | INFO | ERROR ](
-        //    "Value is:", value, "a float value:", 1.5f);
-        // prints:
-        //    "Value is: 34, a float value: 1.5"
-        //
-        // DASH_LOG_[ TRACE | DEBUG | INFO | ERROR ]_VAR(
-        //    "Here is a variable:", value);
-        // prints:
-        //    "Here is a variable: value(123)"
-        DASH_LOG_DEBUG("ex.10.psort", "histogram:", key_histo_tmp);
-        DASH_LOG_DEBUG("ex.10.psort", "pref. sum:", pre_sum_tmp);
-      }
-#endif
 
       /*
         As the prefix sum offset is generated in the prefix_sum array what we
@@ -216,6 +227,7 @@ int main(int argc, char * argv[])
       }
 
       dash::barrier();
+#endif
 
       double duration_rep_s = Timer::ElapsedSince(ts_rep_start) * 1.0e-6;
       if (duration_rep_s < duration_min_s) {
@@ -237,15 +249,21 @@ int main(int argc, char * argv[])
              << std::setw(12) << "min.s"
              << std::setw(12) << "avg.s"
              << std::setw(12) << "max.s"
+             << std::setw(12) << "m.op/s"
+             << std::setw(12) << "m.op/s/p"
              << std::endl;
         head = 1;
       }
-      cout << std::setw(12) << size
+      double mop_total_per_s = (array_size / duration_avg_s) * 1.0e-6;
+      double mop_proc_per_s  = mop_total_per_s / nunits;
+      cout << std::setw(12) << nunits
            << std::setw(12) << array_size
            << std::setw(12) << repeat
-           << std::setw(12) << std::setprecision(3) << duration_min_s
-           << std::setw(12) << std::setprecision(3) << duration_avg_s
-           << std::setw(12) << std::setprecision(3) << duration_max_s
+           << std::setw(12) << std::fixed << std::setprecision(2) << duration_min_s
+           << std::setw(12) << std::fixed << std::setprecision(2) << duration_avg_s
+           << std::setw(12) << std::fixed << std::setprecision(2) << duration_max_s
+           << std::setw(12) << std::fixed << std::setprecision(2) << mop_total_per_s
+           << std::setw(12) << std::fixed << std::setprecision(2) << mop_proc_per_s
            << std::endl;
     }
 
@@ -256,26 +274,6 @@ int main(int argc, char * argv[])
       repeat = 1;
     }
   }
-/*
-  if (myid == size - 1) {
-  cout << "histogram: " << endl;
-    for (auto i = 0; i < key_histo.size(); i++) {
-  cout << std::setw(4) << i << std::setw(6) << (key_type)key_histo[i]
-   << endl;
-    }
-    cout << "pref. sum: " << endl;
-    for (auto i = 0; i < pre_sum.size(); i++) {
-  cout << std::setw(4) << i << std::setw(4) << (key_type)pre_sum[i]
-   << endl;
-    }
-    cout << "sorted array: " << endl;
-    for (auto i = 0; i < arr.size(); i++) {
-  cout << std::setw(4) << i << std::setw(4) << (key_type)arr[i]
-   << endl;
-    }
-    cout << "time: " << duration_us << endl;
-    }
-*/
   dash::finalize();
 }
 

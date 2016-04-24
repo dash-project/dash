@@ -18,10 +18,10 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-#define MAX_KEY       100
-#define ARRAY_SIZE    500
-#define ITERATION     8
-#define INIT_REPEAT   50000
+#define MAX_KEY       524288
+#define ARRAY_SIZE    8388608
+#define ITERATION     1
+#define INIT_REPEAT   1
 
 // number of bits for integer
 #define bits_init     32
@@ -62,7 +62,7 @@ radix_sort_result radix_sort(
   result.array = nullptr;
   result.size  = 0;
 
-  cout << "unit " << dash::myid() << " radix_sort--1" << endl;
+//  cout << "unit " << dash::myid() << " radix_sort--1" << endl;
 
   try {
 
@@ -87,30 +87,30 @@ radix_sort_result radix_sort(
       pre_sum.push_back(lb_pref_sum);
     }
 
-    cout << "unit " << dash::myid() << " radix_sort--2" << endl;
+//  cout << "unit " << dash::myid() << " radix_sort--2" << endl;
 
     MPI_Request req;
     MPI_Status  stat;
 
     for (auto pass = 0; pass < NUM_PASSES; pass++) {
-      cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
-           << "begin" << endl;
+//    cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
+//         << "begin" << endl;
 
       int * lit  = count.lbegin();
       int * lend = count.lend();
 
       dash::barrier();
 
-      cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
-           << "step 1" << endl;
+//    cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
+//         << "step 1" << endl;
 
       for (size_t it = 0; lit != lend; ++it, ++lit) {
         if (it < count.local_size()) {
           *lit = 0;
         }
       }
-      cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
-           << "step 2 -- arr_lsize = " << arr_lsize << endl;
+//    cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
+//         << "step 2 -- arr_lsize = " << arr_lsize << endl;
 
       for (auto i = 0; i < arr_lsize; i++) {
         unsigned int idx  = bits(local_a[i],
@@ -125,19 +125,19 @@ radix_sort_result radix_sort(
              << " Count-idx-rank: " << std::setw(5) << (int)count[idx][myid]
              << " \n";
 #endif
-        cout << "unit " << dash::myid() << " radix_sort--pass-" << pass << "-"
-             << "add_item(idx:" << idx << " item:" << local_a[i] << ")"
-             << endl;
+//      cout << "unit " << dash::myid() << " radix_sort--pass-" << pass << "-"
+//           << "add_item(idx:" << idx << " item:" << local_a[i] << ")"
+//           << endl;
         buckets[idx].push_back(local_a[i]);
       }
 
-      cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
-           << "step 3 pre-barrier" << endl;
+//    cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
+//         << "step 3 pre-barrier" << endl;
 
       dash::barrier();
 
-      cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
-           << "step 3 post-barrier" << endl;
+//    cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
+//         << "step 3 post-barrier" << endl;
 
       key_type new_size = 0;
       for (auto j = 0; j < l_B; j++) {
@@ -161,8 +161,8 @@ radix_sort_result radix_sort(
 
       dash::barrier();
 
-      cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
-           << "step 4" << endl;
+//    cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
+//         << "step 4" << endl;
 
       for (auto j = 0; j < NUM_BUCKETS; j++) {
         // determine which process this buckets belongs to
@@ -187,8 +187,8 @@ radix_sort_result radix_sort(
         }
       }
 
-      cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
-           << "step 5" << endl;
+//    cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
+//         << "step 5" << endl;
 
       for (auto j = 0; j < l_B; j++) {
         key_type idx = j + myid * l_B;
@@ -222,13 +222,13 @@ radix_sort_result radix_sort(
       arr_lsize = new_size;
 
       dash::barrier();
-      cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
-           << "end -- arr_lsize = " << arr_lsize << endl;
+//    cout << "unit " << dash::myid() << " radix_sort--pass--" << pass << "-"
+//         << "end -- arr_lsize = " << arr_lsize << endl;
     } // pass ended
 
     dash::barrier();
 
-    cout << "unit " << dash::myid() << " radix_sort--3" << endl;
+//  cout << "unit " << dash::myid() << " radix_sort--3" << endl;
 
     result.array = local_a;
     result.size  = arr_lsize;
@@ -261,20 +261,8 @@ int main(int argc, char * argv[])
   dash::init(&argc, &argv);
   Timer::Calibrate(0);
 
-  //  For TimeMeasure::Counter:
-  //  Timer::Calibrate(dash::util::Locality::MaxCPUMhz());
-
   auto myid    = dash::myid();
   auto size    = dash::size();
-
-  if (argc < 2) {
-    if (myid == 0) {
-      cout << "ex.10.radixsort <array size> <may key> <max. repeats> <n.iter>"
-           << endl;
-    }
-    dash::finalize();
-    return EXIT_SUCCESS;
-  }
 
   if (argc >= 2) {
     array_size = atoi(argv[1]);
@@ -287,6 +275,13 @@ int main(int argc, char * argv[])
   }
   if (argc >= 5) {
     iteration  = atoi(argv[4]);
+  }
+
+  if (dash::myid() == 0) {
+    cout << "min. array size: " << array_size << endl;
+    cout << "max. key value:  " << max_key    << endl;
+    cout << "num repeats:     " << repeat     << endl;
+    cout << "num iterations:  " << iteration  << endl;
   }
 
   if ((array_size % size) != 0) {
