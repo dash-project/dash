@@ -58,7 +58,7 @@ rm -Rf ./build/*
                      -DENABLE_TRACE_LOGGING=OFF \
                      -DENABLE_DART_LOGGING=OFF \
                      -DENABLE_SCALAPACK=OFF \
-                     -DENABLE_MKL=OFF \
+                     -DENABLE_MKL=ON \
                      -DENABLE_LIBNUMA=OFF \
                      -DENABLE_PAPI=OFF \
                      -DBUILD_EXAMPLES=ON \
@@ -66,6 +66,8 @@ rm -Rf ./build/*
                      -DBUILD_DOCS=OFF \
                      -DPAPI_PREFIX=${PAPI_HOME} \
                      -DIPM_PREFIX=${IPM_BASE} \
+                     -DGTEST_LIBRARY_PATH=${HOME}/opt/gtest \
+                     -DGTEST_INCLUDE_PATH=${HOME}/opt/gtest/include \
                      ../ && \
  await_confirm && \
  make) && \

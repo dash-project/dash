@@ -11,6 +11,10 @@ if (MKL_FOUND)
         message(STATUS "MKL_LIBRARY_DIRS:        " ${MKL_LIBRARY_DIRS})
         message(STATUS "MKL_LIBRARIES:           " ${MKL_LIBRARIES})
         message(STATUS "MKL_SCALAPACK_LIBRARIES: " ${MKL_SCALAPACK_LIBRARIES})
+        message(STATUS "MKL_LINK_FLAGS:")
+        foreach (MKL_LINK_FLAG ${MKL_LINK_FLAGS})
+          message(STATUS "   " ${MKL_LINK_FLAG})
+        endforeach()
     endif()
 else()
     if (MKL_FIND_REQUIRED)
@@ -27,4 +31,5 @@ mark_as_advanced(
     MKL_INCLUDE_DIR
     MKL_INCLUDE_DIRS
     MKL_LIBRARY_DIRS
+    MKL_LINK_FLAGS
 )

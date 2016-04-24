@@ -20,16 +20,19 @@ set(CXX_ENV_SETUP_FLAGS "${CXX_ENV_SETUP_FLAGS} -mmic")
 set(CXX_ENV_SETUP_FLAGS "${CXX_ENV_SETUP_FLAGS} -qopt-streaming-stores always")
 set(CXX_ENV_SETUP_FLAGS "${CXX_ENV_SETUP_FLAGS} -qopt-prefetch-distance=64,8")
 
-set(MKLROOT $ENV{MKLROOT})
 
-set(MKL_LIBRARIES "${MKL_LIBRARIES} ${MKLROOT}/lib/mic/libmkl_scalapack_lp64.a")
-set(MKL_LIBRARIES "${MKL_LIBRARIES} -Wl,--start-group")
-set(MKL_LIBRARIES "${MKL_LIBRARIES} ${MKLROOT}/lib/mic/libmkl_intel_lp64.a")
-set(MKL_LIBRARIES "${MKL_LIBRARIES} ${MKLROOT}/lib/mic/libmkl_core.a")
-set(MKL_LIBRARIES "${MKL_LIBRARIES} ${MKLROOT}/lib/mic/libmkl_sequential.a")
-set(MKL_LIBRARIES "${MKL_LIBRARIES} ${MKLROOT}/lib/mic/libmkl_blacs_intelmpi_lp64.a")
-set(MKL_LIBRARIES "${MKL_LIBRARIES} -Wl,--end-group -lpthread -lm -ldl")
+set(MKLROOT $ENV{MKLROOT})
+set(MKL_LINK_FLAGS
+    ${MKLROOT}/lib/mic/libmkl_scalapack_lp64.a
+    -Wl,--start-group
+    ${MKLROOT}/lib/mic/libmkl_intel_lp64.a
+    ${MKLROOT}/lib/mic/libmkl_core.a
+    ${MKLROOT}/lib/mic/libmkl_sequential.a
+    ${MKLROOT}/lib/mic/libmkl_blacs_intelmpi_lp64.a
+    -Wl,--end-group
+    -lpthread -lm -ldl)
 
 set(MKL_INCLUDE_DIRS "${MKLROOT}/include")
+set(MKL_LIBRARIES "")
 
 set(MKL_FOUND TRUE)

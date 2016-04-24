@@ -111,6 +111,10 @@ if (ENABLE_MKL AND MKL_FOUND)
        ${MKL_INCLUDE_DIRS})
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_LIBRARIES})
+  if (MKL_LINK_FLAGS)
+    set (ADDITIONAL_LINK_FLAGS ${ADDITIONAL_LINK_FLAGS}
+         ${MKL_LINK_FLAGS})
+  endif()
 else()
   if (ENABLE_BLAS AND BLAS_FOUND)
     set (ADDITIONAL_COMPILE_FLAGS
@@ -195,6 +199,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   target_link_libraries(
     ${DASH_LIBRARY}           # library name
     ${DASH_LINK_DART_LIBRARY} # dependency: DART lib
+    ${ADDITIONAL_LINK_FLAGS}
     ${ADDITIONAL_LIBRARIES}
   )
   if (${dart_variant} STREQUAL "mpi")
@@ -248,6 +253,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           ${exampletarget}
           ${DASH_LIBRARY}
           ${DART_LIBRARY}
+          ${ADDITIONAL_LINK_FLAGS}
           ${ADDITIONAL_LIBRARIES}
         )
         if (${dart_variant} STREQUAL "mpi")
