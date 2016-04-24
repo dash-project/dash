@@ -6,7 +6,7 @@
 
 /**
  * \defgroup DashReduceOperations
- * 
+ *
  * Distributed reduce operations.
  *
  */
