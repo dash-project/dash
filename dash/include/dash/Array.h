@@ -1002,8 +1002,8 @@ public:
                      "initializing pattern with initial team");
       m_pattern = PatternType(nelem, distribution, *m_team);
     }
-    return allocate(m_pattern);
     DASH_LOG_TRACE("Array.allocate(nlocal,ds,team) >");
+    return allocate(m_pattern);
   }
 
   bool allocate(
@@ -1109,11 +1109,17 @@ private:
     return true;
   }
 
+#if 0
+  // TODO: Not supported by Intel ICC 16.0,
+  //       needs definition depending on compiler capabilities.
   typename std::enable_if<
     std::is_move_constructible<value_type>::value &&
     std::is_move_assignable<value_type>::value,
     bool
   >::type
+#else
+  bool
+#endif
   allocate(
     const PatternType                 & pattern,
     std::initializer_list<value_type>   local_elements)
