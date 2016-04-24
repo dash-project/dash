@@ -1455,6 +1455,36 @@ dart_ret_t dart_allgather(
   return DART_OK;
 }
 
+dart_ret_t dart_allreduce(
+  void           * sendbuf,
+  void           * recvbuf,
+  size_t           nbytes,
+  dart_datatype_t  dtype,
+  dart_operation_t op,
+  dart_team_t      team)
+{
+  MPI_Comm     comm;
+  MPI_Op       mpi_op    = dart_mpi_op(op);
+  MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
+  uint16_t     team_idx;
+  int          result    = dart_adapt_teamlist_convert(team, &team_idx);
+
+  if (result == -1) {
+    return DART_ERR_INVAL;
+  }
+  comm = dart_teams[team_idx];
+  if (MPI_Allreduce(
+           sendbuf,   // send buffer
+           recvbuf,   // receive buffer
+           nbytes,    // buffer size
+           mpi_dtype, // datatype
+           mpi_op,    // reduce operation
+           comm) != MPI_SUCCESS) {
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
+}
+
 dart_ret_t dart_reduce_double(
   double *sendbuf,
   double *recvbuf,

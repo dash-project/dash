@@ -128,7 +128,7 @@ int main(int argc, char * argv[])
 
     array_t arr(array_size);
     array_t key_histo(max_key * nunits, dash::BLOCKED);
-    array_t pre_sum(key_histo.size() / nunits);
+    array_t pre_sum(max_key);
 
     for (size_t rep = 0; rep < repeat; rep++)
     {
@@ -156,6 +156,9 @@ int main(int argc, char * argv[])
         ++key_histo.local[value];
       }
 
+      // Accumulate and broadcast (allreduce) local histograms:
+      //
+#if __OLD__
       if (myid != 0) {
         // Add local histogram values to result histogram at unit 0:
         // C[i] = A[i] + B[i]
@@ -164,22 +167,30 @@ int main(int argc, char * argv[])
                                   key_histo.begin(),  // B begin
                                   key_histo.begin(),  // C begin
                                   dash::plus<key_type>());
-      }
-
-      dash::barrier();
-
-      if (myid != 0) {
         // Overwrite local histogram result with result histogram from unit 0:
         dash::copy(
           key_histo.begin(),           // Begin of block at unit 0
           key_histo.begin() + max_key, // End of block at unit 0
           key_histo.lbegin());
       }
-
       // Wait for all units to obtain the result histogram:
       dash::barrier();
+#else
+      std::vector<key_type> key_histo_res(key_histo.lsize());
+      dart_allreduce(
+        key_histo.lbegin(),                      // send buffer
+        key_histo_res.data(),                    // receive buffer
+        key_histo.lsize(),                       // buffer size
+        dash::dart_datatype<key_type>::value,    // data type
+        dash::plus<key_type>().dart_operation(), // operation
+        dash::Team::All().dart_id()              // team
+      );
+      // Overwrite local histogram with sum of all local histograms:
+      std::copy(key_histo_res.begin(), key_histo_res.end(),
+                key_histo.lbegin());
+#endif
 
-#if 0
+#ifdef __OLD__
       if (myid == 0) {
         key_type value = key_histo[0];
         pre_sum[0] = value;
@@ -188,6 +199,23 @@ int main(int argc, char * argv[])
         }
       }
       dash::barrier();
+#else
+      // Prefix sum in local sections of histogram:
+      pre_sum.local[0] = key_histo.local[0];
+      for (size_t li = 0; li < pre_sum.lsize() - 1; ++li) {
+        pre_sum.local[li + 1] = pre_sum.local[li] + key_histo.local[li + 1];
+      }
+      dash::barrier();
+      // Sum of maximum prefix sums of predeceeding units:
+      key_type pre_sum_pred = 0;
+      for (size_t u_pred = 1; u_pred < nunits; ++u_pred) {
+        auto u_pred_lidx_last = u_pred * pre_sum.lsize() - 1;
+        pre_sum_pred += pre_sum[u_pred_lidx_last];
+      }
+      for (size_t li = 0; li < pre_sum.lsize() - 1; ++li) {
+        pre_sum.local[li] += pre_sum_pred;
+      }
+#endif
 
       /*
         As the prefix sum offset is generated in the prefix_sum array what we
@@ -210,10 +238,8 @@ int main(int argc, char * argv[])
           break;
         }
       }
-
       // find out how many items to take out of this bucket
       key_type fill = pre_sum[bucket] - gstart;
-
       // fill local part of result array
       for (size_t i = 0; i < arr.lsize();) {
         for (key_type j = 0; j < fill; j++, i++ ) {
@@ -225,9 +251,8 @@ int main(int argc, char * argv[])
                  arr.lsize() - i,
                  pre_sum[bucket] - pre_sum[bucket - 1]);
       }
-
+      // Wait units to write values into their local segment of result array:
       dash::barrier();
-#endif
 
       double duration_rep_s = Timer::ElapsedSince(ts_rep_start) * 1.0e-6;
       if (duration_rep_s < duration_min_s) {
