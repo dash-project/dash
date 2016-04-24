@@ -576,6 +576,9 @@ public:
    * Removes and destroys single element referenced by given iterator from
    * the container, decreasing the container size by 1.
    *
+   * References and iterators to the erased elements are invalidated.
+   * Other iterators and references are not invalidated.
+   *
    * \return  iterator to the element that follows the last element removed,
    *          or \c end() if the last element was removed.
    */
@@ -587,6 +590,9 @@ public:
    * container, decreasing the container size by the number of elements
    * removed.
    *
+   * References and iterators to the erased elements are invalidated.
+   * Other iterators and references are not invalidated.
+   *
    * \return  The number of elements removed.
    */
   size_type erase(
@@ -597,6 +603,9 @@ public:
    * Removes and destroys elements in the given range from the container,
    * decreasing the container size by the number of elements removed.
    *
+   * References and iterators to the erased elements are invalidated.
+   * Other iterators and references are not invalidated.
+   *
    * \return  iterator to the element that follows the last element removed,
    *          or \c end() if the last element was removed.
    */
@@ -605,6 +614,30 @@ public:
     const_iterator first,
     /// Iterator past the last element to remove.
     const_iterator last);
+
+  //////////////////////////////////////////////////////////////////////////
+  // Bucket Interface
+  //////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Returns the index of the bucket for a specified key.
+   * Elements with keys equivalent to the specified key are always found in
+   * this bucket.
+   *
+   * \return  Bucket index for the specified key
+   */
+  size_type bucket(
+    /// The value of the key to examine
+    const key_type & key) const;
+
+  /**
+   * The number of elements in a specified bucket.
+   *
+   * \return  The number of elements in the bucket with the specified index
+   */
+  size_type bucket_size(
+    /// The index of the bucket to examine
+    size_type bucket_index) const;
 
   //////////////////////////////////////////////////////////////////////////
   // Observers

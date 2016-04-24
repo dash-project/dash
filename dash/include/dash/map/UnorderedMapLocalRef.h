@@ -388,20 +388,28 @@ public:
   }
 
   iterator erase(
-    const_iterator position)
+    const_iterator it)
   {
-    DASH_THROW(
-      dash::exception::NotImplemented,
-      "dash::UnorderedMapLocalRef.erase is not implemented.");
+    DASH_LOG_DEBUG("UnorderedMapLocalRef.erase()", "iterator:", it);
+    erase(*it.first);
+    DASH_LOG_DEBUG("UnorderedMapLocalRef.erase >");
   }
 
   size_type erase(
     /// Key of the container element to remove.
     const key_type & key)
   {
+    DASH_LOG_DEBUG("UnorderedMapLocalRef.erase()", "key:", key);
+    auto b_idx  = bucket(key);
+    auto b_size = bucket_size(b_idx);
+    DASH_LOG_TRACE_VAR("UnorderedMapLocalRef.erase", b_idx);
+    DASH_LOG_TRACE_VAR("UnorderedMapLocalRef.erase", b_size);
+
     DASH_THROW(
       dash::exception::NotImplemented,
       "dash::UnorderedMapLocalRef.erase is not implemented.");
+
+    DASH_LOG_DEBUG("UnorderedMapLocalRef.erase >");
   }
 
   iterator erase(
@@ -410,9 +418,27 @@ public:
     /// Iterator past the last element to remove.
     const_iterator last)
   {
-    DASH_THROW(
-      dash::exception::NotImplemented,
-      "dash::UnorderedMapLocalRef.erase is not implemented.");
+    DASH_LOG_DEBUG("UnorderedMapLocalRef.erase(first,last)");
+    DASH_LOG_TRACE_VAR("UnorderedMapLocalRef.erase()", first);
+    DASH_LOG_TRACE_VAR("UnorderedMapLocalRef.erase()", last);
+    for (auto it = first; it != last; ++it) {
+      erase(*it.first);
+    }
+    DASH_LOG_DEBUG("UnorderedMapLocalRef.erase(first,last) >");
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  // Bucket Interface
+  //////////////////////////////////////////////////////////////////////////
+
+  inline size_type bucket(const key_type & key) const
+  {
+    return _map->bucket(key);
+  }
+
+  inline size_type bucket_size(size_type bucket_index) const
+  {
+    return _map->bucket_size(bucket_index);
   }
 
   //////////////////////////////////////////////////////////////////////////

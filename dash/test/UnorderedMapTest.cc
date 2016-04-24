@@ -385,7 +385,7 @@ TEST_F(UnorderedMapTest, Local)
   size_type local_elements = 5;
 
   for (int li = 0; li < local_elements; ++li) {
-    key_t     key    = (nunits * (100 + li)) + dash::myid();
+    key_t     key    = (nunits * (100 + li)) + _dash_id;
     mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * (li + 1));
     map_value value({ key, mapped });
 
@@ -432,4 +432,23 @@ TEST_F(UnorderedMapTest, Local)
   EXPECT_EQ_U(nunits * local_elements, map.size());
   EXPECT_EQ_U(local_elements,          map.lsize());
   EXPECT_EQ_U(local_elements,          map.local.size());
+
+  // Test elements added by all units:
+  for (int li = 0; li < local_elements; ++li) {
+    for (int unit = 0; unit < nunits; ++unit) {
+      key_t     key    = (nunits * (100 + li)) + unit;
+      mapped_t  mapped = 1.0 * (unit + 1) + (0.01 * (li + 1));
+      map_value value({ key, mapped });
+
+      DASH_LOG_DEBUG("UnorderedMapTest.Local", "look up element",
+                     value.first, "->", value.second);
+
+      auto found = map.find(key);
+      EXPECT_NE_U(map.end(), found);
+      map_value found_value = *found;
+      EXPECT_EQ_U(value, found_value);
+
+      EXPECT_EQ_U(1, map.count(key));
+    }
+  }
 }
