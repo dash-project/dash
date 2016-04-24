@@ -1575,26 +1575,22 @@ private:
     }
     for (auto d = 0; d < NumDimensions; ++d) {
       const Distribution & dist = distspec[d];
-      auto  extent_d            = sizespec.extent(d);
-      auto  units_d             = teamspec.extent(d);
-      DASH_LOG_TRACE("TilePattern.init_blocksizespec",
-                     "dim:",         d,
-                     "sizespec[d]:", extent_d,
-                     "teamspec[d]:", units_d);
+      auto  extent_d   = sizespec.extent(d);
+      auto  units_d    = teamspec.extent(d);
       DASH_ASSERT_GT(extent_d, 0,
                      "Extent of size spec in dimension" << d << "is 0");
       DASH_ASSERT_GT(units_d,  0,
                      "Extent of team spec in dimension" << d << "is 0");
-      DASH_ASSERT_EQ(0, extent_d % units_d,
+      auto blocksize_d = dist.max_blocksize_in_range(
+                           extent_d, // size of range (extent)
+                           units_d   // number of blocks (units)
+                         );
+      DASH_ASSERT_EQ(0, extent_d % blocksize_d,
                      "TilePattern requires balanced block sizes: " <<
-                     "extent "    << extent_d << " not divisible " <<
-                     "by "        << units_d  << " units in " <<
+                     "extent "    << extent_d    << " is no multiple of " <<
+                     "block size" << blocksize_d << " in " <<
                      "dimension " << d);
-      SizeType max_blocksize_d  = dist.max_blocksize_in_range(
-                                    extent_d, // size of range (extent)
-                                    units_d   // number of blocks (units)
-                                  );
-      s_blocks[d] = max_blocksize_d;
+      s_blocks[d] = blocksize_d;
     }
     DASH_LOG_TRACE_VAR("TilePattern.init_blocksizespec >", s_blocks);
     return BlockSizeSpec_t(s_blocks);
