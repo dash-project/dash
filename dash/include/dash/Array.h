@@ -1110,8 +1110,6 @@ private:
   }
 
 #if 0
-  // TODO: Not supported by Intel ICC 16.0,
-  //       needs definition depending on compiler capabilities.
   typename std::enable_if<
     std::is_move_constructible<value_type>::value &&
     std::is_move_assignable<value_type>::value,
