@@ -93,69 +93,6 @@ public:
     DASH_LOG_DEBUG("Shared.~Shared >");
   }
 
-#if 0
-  // For logging of assignment / move operations only.
-
-  /**
-   * Copy-constructor.
-   */
-  Shared(const self_t & other)
-  : _team(other._team),
-    _owner(other._owner),
-    _globmem(other._globmem),
-    _ptr(other._ptr)
-  {
-    DASH_LOG_DEBUG("Shared.Shared(other) >");
-  }
-
-  /**
-   * Move-constructor. Transfers ownership from other instance.
-   */
-  Shared(self_t && other)
-  : _team(other._team),
-    _owner(other._owner),
-    _ptr(other._ptr)
-  {
-    DASH_LOG_DEBUG("Shared.Shared(&& other)()");
-    // move ownership of assigned instance's _globmem:
-    _globmem       = other._globmem;
-    // leave moved instance in valid state:
-    other._globmem.reset();
-    other._globmem = nullptr;
-    DASH_LOG_DEBUG("Shared.Shared(&& other) >");
-  }
-
-  /**
-   * Assignment operator.
-   */
-  self_t & operator=(const self_t & other)
-  {
-    DASH_LOG_DEBUG("Shared.=(other)()");
-    _team    = other._team;
-    _owner   = other._owner;
-    _globmem = other._globmem;
-    _ptr     = other._ptr;
-    DASH_LOG_DEBUG("Shared.=(other) >");
-    return *this;
-  }
-
-  /**
-   * Move-assignment operator.
-   */
-  self_t & operator=(self_t && other)
-  {
-    DASH_LOG_DEBUG("Shared.=(&& other)()");
-    _team          = other._team;
-    _owner         = other._owner;
-    _ptr           = other._ptr;
-    // move ownership of assigned instance's _globmem:
-    _globmem       = other._globmem;
-    // leave moved instance in valid state:
-    other._globmem = nullptr;
-    other._globmem.reset();
-    DASH_LOG_DEBUG("Shared.=(&& other) >");
-  }
-#else
   /**
    * Copy-constructor.
    */
@@ -175,7 +112,6 @@ public:
    * Move-assignment operator.
    */
   self_t & operator=(self_t && other) = default;
-#endif
 
   /**
    * Set the value of the shared element.

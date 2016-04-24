@@ -329,3 +329,107 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
     ++gidx;
   }
 }
+
+template<typename Key>
+struct HashCyclic
+{
+  HashCyclic(dash::Team & team)
+  : _nunits(team.size())
+  { }
+
+  dart_unit_t operator()(const Key & key) {
+    return (key % _nunits);
+  }
+
+private:
+  size_t _nunits;
+};
+
+TEST_F(UnorderedMapTest, Local)
+{
+  typedef int                                           key_t;
+  typedef double                                        mapped_t;
+  typedef HashCyclic<key_t>                             hash_t;
+  typedef dash::UnorderedMap<key_t, mapped_t, hash_t>   map_t;
+  typedef typename map_t::iterator                      map_iterator;
+  typedef typename map_t::value_type                    map_value;
+  typedef typename map_t::size_type                     size_type;
+
+  if (dash::size() < 2) {
+    LOG_MESSAGE(
+      "UnorderedMapTest.Local requires at least two units");
+    return;
+  }
+
+  size_type nunits            = dash::size();
+  // Number of preallocated elements:
+  size_type init_global_size  = 0;
+  // Use small local buffer size to enforce reallocation.
+  // Also determines eager allocation size:
+  size_type local_buffer_size = _dash_id == 0 ? 2 : 3;
+
+  map_t map(init_global_size,
+            local_buffer_size);
+  DASH_LOG_DEBUG("UnorderedMapTest.Local", "map initialized");
+
+  EXPECT_EQ_U(0, map.size());
+  EXPECT_EQ_U(0, map.lsize());
+  EXPECT_EQ_U(0, map.local.size());
+  // Local capacity is at least local buffer size:
+  EXPECT_EQ_U(local_buffer_size, map.lcapacity());
+  EXPECT_EQ_U(local_buffer_size, map.local.capacity());
+
+  // Wait for validation of all units:
+  dash::barrier();
+
+  size_type local_elements = 5;
+
+  for (int li = 0; li < local_elements; ++li) {
+    key_t     key    = (nunits * (100 + li)) + dash::myid();
+    mapped_t  mapped = 1.0 * (_dash_id + 1) + (0.01 * (li + 1));
+    map_value value({ key, mapped });
+
+    DASH_LOG_DEBUG("UnorderedMapTest.Local",
+                   "insert new element:",
+                   value.first, "->", value.second);
+    auto      insertion     = map.local.insert(value);
+    map_value insertion_val = *insertion.first;
+    DASH_LOG_DEBUG("UnorderedMapTest.Local",
+                   "first insert returned:",
+                   "inserted:", insertion.second,
+                   "iterator:", insertion.first,
+                   "value:",    insertion_val.first,
+                   "->",        insertion_val.second);
+    EXPECT_TRUE_U(insertion.second);
+
+    DASH_LOG_DEBUG("UnorderedMapTest.Local",
+                   "insert existing element:",
+                   value.first, "->", value.second);
+    auto      existing     = map.local.insert(value);
+    map_value existing_val = *insertion.first;
+    DASH_LOG_DEBUG("UnorderedMapTest.Local",
+                   "second insert returned:",
+                   "inserted:", existing.second,
+                   "iterator:", existing.first,
+                   "value:",    existing_val.first,
+                   "->",        existing_val.second);
+    EXPECT_FALSE_U(existing.second);
+    EXPECT_EQ_U(insertion.first, existing.first);
+
+    EXPECT_EQ_U(1, map.local.count(key));
+    EXPECT_NE_U(map.local.end(), map.local.find(key));
+  }
+  EXPECT_EQ_U(local_elements, map.size());
+  EXPECT_EQ_U(local_elements, map.lsize());
+  EXPECT_EQ_U(local_elements, map.local.size());
+
+  // Wait for initialization of local values of all units:
+  dash::barrier();
+
+  // Synchronize map elements across units:
+  map.barrier();
+
+  EXPECT_EQ_U(nunits * local_elements, map.size());
+  EXPECT_EQ_U(local_elements,          map.lsize());
+  EXPECT_EQ_U(local_elements,          map.local.size());
+}

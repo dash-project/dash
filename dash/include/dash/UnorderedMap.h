@@ -4,16 +4,10 @@
 #include <dash/Types.h>
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
-#include <dash/Exception.h>
 #include <dash/Array.h>
 #include <dash/Atomic.h>
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
-
-// #include <dash/map/UnorderedMapRef.h>
-// #include <dash/map/LocalUnorderedMapRef.h>
-#include <dash/map/LocalUnorderedMapIter.h>
-#include <dash/map/GlobUnorderedMapIter.h>
 
 #include <iterator>
 #include <utility>
@@ -22,6 +16,8 @@
 #include <functional>
 #include <algorithm>
 #include <cstddef>
+
+#ifdef DOXYGEN
 
 namespace dash {
 
@@ -38,6 +34,12 @@ namespace dash {
  * on their hash values. Unordered maps allow for fast access to individual
  * elements as the storage location of a key in global and/or local memory
  * can be resolved directly from its hash value.
+ *
+ * Extends concepts:
+ *
+ * - \ref DashContainerConcept
+ * - \ref DashSequentialContainerConcept
+ * - \ref DashDynamicContainerConcept
  *
  * Container properties:
  *
@@ -122,88 +124,11 @@ namespace dash {
  * \endcode
  */
 
-template<typename Key>
-class HashLocal
-{
-private:
-  typedef dash::default_size_t size_type;
-
-public:
-  typedef Key          argument_type;
-  typedef dart_unit_t  result_type;
-
-public:
-  /**
-   * Default constructor.
-   */
-  HashLocal()
-  : _team(nullptr),
-    _nunits(0),
-    _myid(DART_UNDEFINED_UNIT_ID)
-  { }
-
-  /**
-   * Constructor.
-   */
-  HashLocal(
-    dash::Team & team)
-  : _team(&team),
-    _nunits(team.size()),
-    _myid(team.myid())
-  { }
-
-  result_type operator()(
-    const argument_type & key) const
-  {
-    return _myid;
-  }
-
-private:
-  dash::Team * _team   = nullptr;
-  size_type    _nunits = 0;
-  dart_unit_t  _myid   = DART_UNDEFINED_UNIT_ID;
-
-}; // class HashLocal
-
-// Forward-declaration.
-template<
-  typename Key,
-  typename Mapped,
-  typename Hash,
-  typename Pred,
-  typename Alloc >
-class UnorderedMap;
-
-template<
-  typename Key,
-  typename Mapped,
-  typename Hash,
-  typename Pred,
-  typename Alloc >
-class LocalUnorderedMapRef
-{
-private:
-  typedef LocalUnorderedMapRef<Key, Mapped, Hash, Pred, Alloc>
-    self_t;
-
-  typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>
-    map_type;
-
-public:
-  LocalUnorderedMapRef(
-    map_type * map = nullptr)
-  : _map(map)
-  { }
-
-private:
-  map_type * _map = nullptr;
-
-}; // class LocalUnorderedMapRef
-
 /**
  * A dynamic map container with support for workload balancing.
  *
  * \concept{DashContainerConcept}
+ * \concept{DashSequentialContainerConcept}
  * \concept{DashUnorderedMapConcept}
  */
 template<
@@ -213,22 +138,11 @@ template<
   typename Pred    = std::equal_to<Key>,
   typename Alloc   = dash::allocator::DynamicAllocator<
                        std::pair<const Key, Mapped> > >
-class UnorderedMap
+class UnorderedMapConcept
 {
-  template<typename K_, typename M_, typename H_, typename P_, typename A_>
-  friend class LocalUnorderedMapRef;
-
-  template<typename K_, typename M_, typename H_, typename P_, typename A_>
-  friend class GlobUnorderedMapIter;
-
-  template<typename K_, typename M_, typename H_, typename P_, typename A_>
-  friend class LocalUnorderedMapIter;
-
-private:
-  typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>
-    self_t;
-
 public:
+  typedef UnorderedMapConcept<Key, Mapped, Hash, Pred, Alloc>      self_type;
+
   typedef Key                                                       key_type;
   typedef Mapped                                                 mapped_type;
   typedef Hash                                                        hasher;
@@ -240,7 +154,7 @@ public:
   typedef dash::default_size_t                                     size_type;
   typedef std::pair<const key_type, mapped_type>                  value_type;
 
-  typedef LocalUnorderedMapRef<Key, Mapped, Hash, Pred, Alloc>    local_type;
+  typedef typename dash::container_traits<self_type>::local_type  local_type;
 
   typedef dash::GlobDynamicMem<value_type, allocator_type>     glob_mem_type;
 
@@ -274,22 +188,22 @@ public:
   typedef typename glob_mem_type::const_global_iterator
     const_local_node_pointer;
 
-  typedef GlobUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
     iterator;
-  typedef GlobUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapGlobIter<Key, Mapped, Hash, Pred, Alloc>
     const_iterator;
   typedef typename std::reverse_iterator<iterator>
     reverse_iterator;
   typedef typename std::reverse_iterator<const_iterator>
     const_reverse_iterator;
 
-  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
     local_pointer;
-  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
     const_local_pointer;
-  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
     local_iterator;
-  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
     const_local_iterator;
   typedef typename std::reverse_iterator<local_iterator>
     reverse_local_iterator;
@@ -309,65 +223,6 @@ public:
   /// Local proxy object, allows use in range-based for loops.
   local_type local;
 
-public:
-  /**
-   * Constructor.
-   *
-   * Sets the associated team to DART_TEAM_NULL for global map instances
-   * that are declared before \c dash::Init().
-   */
-  UnorderedMap(
-    size_type   nelem = 0,
-    Team      & team  = dash::Team::All())
-  : local(this),
-    _team(&team),
-    _myid(team.myid()),
-    _remote_size(0),
-    _key_hash(team)
-  {
-    DASH_LOG_TRACE_VAR("UnorderedMap(nelem,team)", nelem);
-    if (_team->size() > 0) {
-      allocate(nelem, team);
-    }
-    DASH_LOG_TRACE("UnorderedMap(nelem,team) >");
-  }
-
-  /**
-   * Constructor.
-   *
-   * Sets the associated team to DART_TEAM_NULL for global map instances
-   * that are declared before \c dash::Init().
-   */
-  UnorderedMap(
-    size_type   nelem,
-    size_type   nlbuf,
-    Team      & team  = dash::Team::All())
-  : local(this),
-    _team(&team),
-    _myid(team.myid()),
-    _remote_size(0),
-    _key_hash(team),
-    _local_buffer_size(nlbuf)
-  {
-    DASH_LOG_TRACE("UnorderedMap(nelem,nlbuf,team)",
-                   "nelem:", nelem, "nlbuf:", nlbuf);
-    if (_team->size() > 0) {
-      allocate(nelem, team);
-    }
-    DASH_LOG_TRACE("UnorderedMap(nelem,nlbuf,team) >");
-  }
-
-  /**
-   * Destructor, deallocates local and global memory acquired by the
-   * container instance.
-   */
-  ~UnorderedMap()
-  {
-    DASH_LOG_TRACE_VAR("UnorderedMap.~UnorderedMap()", this);
-    deallocate();
-    DASH_LOG_TRACE_VAR("UnorderedMap.~UnorderedMap >", this);
-  }
-
   //////////////////////////////////////////////////////////////////////////
   // Distributed container
   //////////////////////////////////////////////////////////////////////////
@@ -378,13 +233,13 @@ public:
    * \return  A reference to the Team containing the units associated with
    *          the container instance.
    */
-  inline const Team & team() const noexcept
-  {
-    if (_team != nullptr) {
-      return *_team;
-    }
-    return dash::Team::Null();
-  }
+  const Team & team() const noexcept;
+
+  /**
+   * Reference to instance of \c DashGlobalMemoryConcept used for underlying
+   * memory management of this container instance.
+   */
+  const glob_mem_type & globmem() const;
 
   //////////////////////////////////////////////////////////////////////////
   // Dynamic distributed memory
@@ -394,43 +249,8 @@ public:
    * Synchronize changes on local and global memory space of the map since
    * initialization or the last call of its \c barrier method with global
    * memory.
-   *
-   * TODO: Implement moving elements, integrate rebalance policy type.
    */
-  void barrier()
-  {
-    DASH_LOG_TRACE_VAR("UnorderedMap.barrier()", _team->dart_id());
-    // Apply changes in local memory spaces to global memory space:
-    if (_globmem != nullptr) {
-      _globmem->commit();
-    }
-    // Accumulate local sizes of remote units:
-    _local_sizes.barrier();
-    _remote_size = 0;
-    for (int u = 0; u < _team->size(); ++u) {
-      size_type local_size_u;
-      if (u != _myid) {
-        local_size_u = _local_sizes[u];
-        _remote_size += local_size_u;
-      } else {
-        local_size_u = _local_sizes.local[0];
-      }
-      _local_cumul_sizes[u] = local_size_u;
-      if (u > 0) {
-        _local_cumul_sizes[u] += _local_cumul_sizes[u-1];
-      }
-      DASH_LOG_TRACE("UnorderedMap.barrier",
-                     "local size at unit", u, ":", local_size_u,
-                     "cumulative size:", _local_cumul_sizes[u]);
-    }
-    auto new_size = size();
-    DASH_LOG_TRACE("UnorderedMap.barrier", "new size:", new_size);
-    DASH_ASSERT_EQ(_remote_size, new_size - _local_sizes.local[0],
-                   "invalid size after global commit");
-    _begin = iterator(this, 0);
-    _end   = iterator(this, new_size);
-    DASH_LOG_TRACE("UnorderedMap.barrier >", "passed barrier");
-  }
+  void barrier();
 
   /**
    * Allocate memory for this container in global memory.
@@ -442,68 +262,7 @@ public:
     /// Initial global capacity of the container.
     size_type    nelem = 0,
     /// Team containing all units associated with the container.
-    dash::Team & team  = dash::Team::All())
-  {
-    DASH_LOG_TRACE("UnorderedMap.allocate()");
-    DASH_LOG_TRACE_VAR("UnorderedMap.allocate", nelem);
-    DASH_LOG_TRACE_VAR("UnorderedMap.allocate", _local_buffer_size);
-    if (_team == nullptr || *_team == dash::Team::Null()) {
-      DASH_LOG_TRACE("UnorderedMap.allocate",
-                     "initializing with specified team -",
-                     "team size:", team.size());
-      _team = &team;
-      DASH_LOG_TRACE_VAR("UnorderedMap.allocate", team.dart_id());
-    } else {
-      DASH_LOG_TRACE("UnorderedMap.allocate",
-                     "initializing with initial team");
-    }
-    _local_cumul_sizes = std::vector<size_type>(_team->size(), 0);
-    DASH_ASSERT_GT(_local_buffer_size, 0, "local buffer size must not be 0");
-    if (nelem < _team->size() * _local_buffer_size) {
-      nelem = _team->size() * _local_buffer_size;
-      DASH_LOG_TRACE("UnorderedMap.allocate", "nelem increased to", nelem);
-    }
-    _key_hash    = hasher(*_team);
-    _remote_size = 0;
-    auto lcap    = dash::math::div_ceil(nelem, _team->size());
-    // Initialize members:
-    _myid        = _team->myid();
-
-    DASH_LOG_TRACE("UnorderedMap.allocate", "initialize global memory,",
-                   "local capacity:", lcap);
-    _globmem     = new glob_mem_type(lcap, *_team);
-    DASH_LOG_TRACE("UnorderedMap.allocate", "global memory initialized");
-
-    // Initialize local sizes with 0:
-    _local_sizes.allocate(_team->size(), dash::BLOCKED, *_team);
-    _local_sizes.local[0] = 0;
-    _local_size_gptr      = _local_sizes[_myid].dart_gptr();
-
-    // Global iterators:
-    _begin       = iterator(this, 0);
-    _end         = _begin;
-    DASH_LOG_TRACE_VAR("UnorderedMap.allocate", _begin);
-    DASH_LOG_TRACE_VAR("UnorderedMap.allocate", _end);
-    // Local iterators:
-    _lbegin      = local_iterator(this, 0);
-    _lend        = _lbegin;
-    DASH_LOG_TRACE_VAR("UnorderedMap.allocate", _lbegin);
-    DASH_LOG_TRACE_VAR("UnorderedMap.allocate", _lend);
-    // Register deallocator of this map instance at the team
-    // instance that has been used to initialized it:
-    _team->register_deallocator(
-             this, std::bind(&UnorderedMap::deallocate, this));
-    // Assure all units are synchronized after allocation, otherwise
-    // other units might start working on the map before allocation
-    // completed at all units:
-    if (dash::is_initialized()) {
-      DASH_LOG_TRACE("UnorderedMap.allocate",
-                     "waiting for allocation of all units");
-      _team->barrier();
-    }
-    DASH_LOG_TRACE("UnorderedMap.allocate >", "finished");
-    return true;
-  }
+    dash::Team & team  = dash::Team::All());
 
   /**
    * Free global memory allocated by this container instance.
@@ -511,129 +270,99 @@ public:
    * Calls implicit barrier on the team associated with the container
    * instance.
    */
-  void deallocate()
-  {
-    DASH_LOG_TRACE_VAR("UnorderedMap.deallocate()", this);
-    // Assure all units are synchronized before deallocation, otherwise
-    // other units might still be working on the map:
-    if (dash::is_initialized()) {
-      barrier();
-    }
-    // Remove this function from team deallocator map to avoid
-    // double-free:
-    _team->unregister_deallocator(
-      this, std::bind(&UnorderedMap::deallocate, this));
-    // Deallocate map elements:
-    DASH_LOG_TRACE_VAR("UnorderedMap.deallocate()", _globmem);
-    if (_globmem != nullptr) {
-      delete _globmem;
-      _globmem = nullptr;
-    }
-    _local_cumul_sizes    = std::vector<size_type>(_team->size(), 0);
-    _local_sizes.local[0] = 0;
-    _remote_size          = 0;
-    _begin                = iterator();
-    _end                  = _begin;
-    DASH_LOG_TRACE_VAR("UnorderedMap.deallocate >", this);
-  }
+  void deallocate();
 
   //////////////////////////////////////////////////////////////////////////
   // Global Iterators
   //////////////////////////////////////////////////////////////////////////
 
   /**
-   * Global pointer to the beginning of the map.
-   * After inserting and removing elements, iterators returned by \c begin()
-   * and \c end() differ between units until the next call of \c commit().
+   * Global iterator to the beginning of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
    */
-  inline iterator & begin() noexcept
-  {
-    return _begin;
-  }
+  iterator & begin() noexcept;
 
   /**
-   * Global const pointer to the beginning of the map.
-   * After inserting and removing elements, iterators returned by \c begin()
-   * and \c end() differ between units until the next call of \c commit().
+   * Global const iterator to the beginning of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
    */
-  inline const_iterator & begin() const noexcept
-  {
-    return const_cast<const self_t *>(this)->begin();
-  }
+  const_iterator & begin() const noexcept;
 
   /**
-   * Global const pointer to the beginning of the map.
-   * After inserting and removing elements, iterators returned by \c begin()
-   * and \c end() differ between units until the next call of \c commit().
+   * Global const iterator to the beginning of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
    */
-  inline const_iterator & cbegin() const noexcept
-  {
-    return const_cast<const self_t *>(this)->begin();
-  }
+  const_iterator & cbegin() const noexcept;
 
   /**
-   * Global pointer to the end of the map.
-   * After inserting and removing elements, iterators returned by \c begin()
-   * and \c end() differ between units until the next call of \c commit().
+   * Global iterator to the end of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
    */
-  inline iterator & end() noexcept
-  {
-    return _end;
-  }
+  iterator & end() noexcept;
 
   /**
-   * Global const pointer to the end of the map.
-   * After inserting and removing elements, iterators returned by \c begin()
-   * and \c end() differ between units until the next call of \c commit().
+   * Global const iterator to the end of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
    */
-  inline const_iterator & end() const noexcept
-  {
-    return const_cast<const self_t *>(this)->end();
-  }
+  const_iterator & end() const noexcept;
 
   /**
-   * Global const pointer to the end of the map.
-   * After inserting and removing elements, iterators returned by \c begin()
-   * and \c end() differ between units until the next call of \c commit().
+   * Global const iterator to the end of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
    */
-  inline const_iterator & cend() const noexcept
-  {
-    return const_cast<const self_t *>(this)->end();
-  }
+  const_iterator & cend() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////
   // Local Iterators
   //////////////////////////////////////////////////////////////////////////
 
-  inline local_iterator & lbegin() noexcept
-  {
-    return _lbegin;
-  }
+  /**
+   * Local iterator to the local beginning of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
+   */
+  local_iterator & lbegin() noexcept;
 
-  inline const_local_iterator & lbegin() const noexcept
-  {
-    return const_cast<const self_t *>(this)->lbegin();
-  }
+  /**
+   * Const local iterator to the local beginning of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
+   */
+  const_local_iterator & lbegin() const noexcept;
 
-  inline const_local_iterator & clbegin() const noexcept
-  {
-    return const_cast<const self_t *>(this)->lbegin();
-  }
+  /**
+   * Const local iterator to the local beginning of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
+   */
+  const_local_iterator & clbegin() const noexcept;
 
-  inline local_iterator & lend() noexcept
-  {
-    return _lend;
-  }
+  /**
+   * Local iterator to the local end of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
+   */
+  local_iterator & lend() noexcept;
 
-  inline const_local_iterator & lend() const noexcept
-  {
-    return const_cast<const self_t *>(this)->lend();
-  }
+  /**
+   * Local const iterator to the local end of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
+   */
+  const_local_iterator & lend() const noexcept;
 
-  inline const_local_iterator & clend() const noexcept
-  {
-    return const_cast<const self_t *>(this)->lend();
-  }
+  /**
+   * Local const iterator to the local end of the map.
+   * After inserting and removing elements, begin and end iterators may
+   * differ between units until the next call of \c commit().
+   */
+  const_local_iterator & clend() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////
   // Capacity
@@ -644,20 +373,14 @@ public:
    * system limitations.
    * The maximum size is not guaranteed.
    */
-  constexpr size_type max_size() const noexcept
-  {
-    return std::numeric_limits<key_type>::max();
-  }
+  constexpr size_type max_size() const noexcept;
 
   /**
    * The size of the map.
    *
    * \return  The number of elements in the map.
    */
-  inline size_type size() const noexcept
-  {
-    return _remote_size + _local_sizes.local[0];
-  }
+  size_type size() const noexcept;
 
   /**
    * The number of elements that can be held in currently allocated storage
@@ -665,20 +388,14 @@ public:
    *
    * \return  The number of elements in the map.
    */
-  inline size_type capacity() const noexcept
-  {
-    return _globmem->size();
-  }
+  size_type capacity() const noexcept;
 
   /**
    * Whether the map is empty.
    *
    * \return  true if \c size() is 0, otherwise false
    */
-  inline bool empty() const noexcept
-  {
-    return size() == 0;
-  }
+  bool empty() const noexcept;
 
   /**
    * The number of elements in the local part of the map.
@@ -686,10 +403,7 @@ public:
    * \return  The number of elements in the map that are local to the
    *          calling unit.
    */
-  inline size_type lsize() const noexcept
-  {
-    return _local_sizes.local[0];
-  }
+  size_type lsize() const noexcept;
 
   /**
    * The capacity of the local part of the map.
@@ -697,12 +411,7 @@ public:
    * \return  The number of allocated elements in the map that are local
    *          to the calling unit.
    */
-  inline size_type lcapacity() const noexcept
-  {
-    return _globmem != nullptr
-           ? _globmem->local_size()
-           : 0;
-  }
+  size_type lcapacity() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////
   // Element Access
@@ -734,43 +443,7 @@ public:
    * \return   reference to the mapped value of the element with a key value
    *           equivalent to \c key.
    */
-  mapped_type_reference operator[](const key_type & key)
-  {
-    DASH_LOG_TRACE("UnorderedMap.[]()", "key:", key);
-    iterator      git_value   = insert(
-                                   std::make_pair(key, mapped_type()))
-                                .first;
-    DASH_LOG_TRACE_VAR("UnorderedMap.[]", git_value);
-    dart_gptr_t   gptr_mapped = git_value.dart_gptr();
-    value_type  * lptr_value  = git_value.local();
-    mapped_type * lptr_mapped = nullptr;
-    DASH_LOG_TRACE("UnorderedMap.[]", "gptr to element:", gptr_mapped);
-    DASH_LOG_TRACE("UnorderedMap.[]", "lptr to element:", lptr_value);
-    // Byte offset of mapped value in element type:
-    auto          mapped_offs = offsetof(value_type, second);
-    DASH_LOG_TRACE("UnorderedMap.[]", "byte offset of mapped member:",
-                   mapped_offs);
-    // Increment pointers to element by byte offset of mapped value member:
-    if (lptr_value != nullptr) {
-      // Convert to char pointer for byte-wise increment:
-      char * b_lptr_mapped  = reinterpret_cast<char *>(lptr_value);
-      b_lptr_mapped        += mapped_offs;
-      // Convert to mapped type pointer:
-      lptr_mapped           = reinterpret_cast<mapped_type *>(b_lptr_mapped);
-    }
-    if (!DART_GPTR_EQUAL(DART_GPTR_NULL, gptr_mapped)) {
-      DASH_ASSERT_RETURNS(
-        dart_gptr_incaddr(&gptr_mapped, mapped_offs),
-        DART_OK);
-    }
-    DASH_LOG_TRACE("UnorderedMap.[]", "gptr to mapped member:", gptr_mapped);
-    DASH_LOG_TRACE("UnorderedMap.[]", "lptr to mapped member:", lptr_mapped);
-    // Create global reference to mapped value member in element:
-    mapped_type_reference mapped(gptr_mapped,
-                                 lptr_mapped);
-    DASH_LOG_TRACE("UnorderedMap.[] >", mapped);
-    return mapped;
-  }
+  mapped_type_reference operator[](const key_type & key);
 
   /**
    * If \c key matches the key of an element in the container, returns a
@@ -785,22 +458,7 @@ public:
    * \return   const reference to the mapped value of the element with a key
    *           value equivalent to \c key.
    */
-  const_mapped_type_reference at(const key_type & key) const
-  {
-    DASH_LOG_TRACE("UnorderedMap.at() const", "key:", key);
-    // TODO: Unoptimized, currently calls find(key) twice as operator[](key)
-    //       calls insert(key).
-    const_iterator git_value = find(key);
-    if (git_value == _end) {
-      // No equivalent key in map, throw:
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "No element in map for key " << key);
-    }
-    auto mapped = this->operator[](key);
-    DASH_LOG_TRACE("UnorderedMap.at > const", mapped);
-    return mapped;
-  }
+  const_mapped_type_reference at(const key_type & key) const;
 
   /**
    * If \c key matches the key of an element in the container, returns a
@@ -815,22 +473,7 @@ public:
    * \return   reference to the mapped value of the element with a key value
    *           equivalent to \c key.
    */
-  mapped_type_reference at(const key_type & key)
-  {
-    DASH_LOG_TRACE("UnorderedMap.at()", "key:", key);
-    // TODO: Unoptimized, currently calls find(key) twice as operator[](key)
-    //       calls insert(key).
-    const_iterator git_value = find(key);
-    if (git_value == _end) {
-      // No equivalent key in map, throw:
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "No element in map for key " << key);
-    }
-    auto mapped = this->operator[](key);
-    DASH_LOG_TRACE("UnorderedMap.at >", mapped);
-    return mapped;
-  }
+  mapped_type_reference at(const key_type & key);
 
   //////////////////////////////////////////////////////////////////////////
   // Element Lookup
@@ -846,16 +489,7 @@ public:
    * \return  1 if an element with the specified key exists in the container,
    *          otherwise 0.
    */
-  size_type count(const key_type & key) const
-  {
-    DASH_LOG_TRACE_VAR("UnorderedMap.count()", key);
-    size_type nelem = 0;
-    if (find(key) != _end) {
-      nelem = 1;
-    }
-    DASH_LOG_TRACE("UnorderedMap.count >", nelem);
-    return nelem;
-  }
+  size_type count(const key_type & key) const;
 
   /**
    * Get iterator to element with specified key.
@@ -869,17 +503,7 @@ public:
    * \see  at
    * \see  operator[]
    */
-  iterator find(const key_type & key)
-  {
-    DASH_LOG_TRACE_VAR("UnorderedMap.find()", key);
-    iterator found = std::find_if(
-                       _begin, _end,
-                       [&](const value_type & v) {
-                         return _key_equal(v.first, key);
-                       });
-    DASH_LOG_TRACE("UnorderedMap.find >", found);
-    return found;
-  }
+  iterator find(const key_type & key);
 
   /**
    * Get const_iterator to element with specified key.
@@ -894,17 +518,7 @@ public:
    * \see  at
    * \see  operator[]
    */
-  const_iterator find(const key_type & key) const
-  {
-    DASH_LOG_TRACE_VAR("UnorderedMap.find() const", key);
-    const_iterator found = std::find_if(
-                             _begin, _end,
-                             [&](const value_type & v) {
-                               return _key_equal(v.first, key);
-                             });
-    DASH_LOG_TRACE("UnorderedMap.find const >", found);
-    return found;
-  }
+  const_iterator find(const key_type & key) const;
 
   //////////////////////////////////////////////////////////////////////////
   // Modifiers
@@ -935,94 +549,7 @@ public:
    */
   std::pair<iterator, bool> insert(
     /// The element to insert.
-    const value_type & value)
-  {
-    auto key    = value.first;
-    auto mapped = value.second;
-    DASH_LOG_DEBUG("UnorderedMap.insert()", "key:", key, "mapped:", mapped);
-    auto result = std::make_pair(_end, false);
-
-    DASH_ASSERT(_globmem != nullptr);
-    // Local insertion, target unit of element is active unit.
-    // Look up existing element at given key:
-    DASH_LOG_TRACE("UnorderedMap.insert", "element key lookup");
-    DASH_LOG_TRACE_VAR("UnorderedMap.insert", _begin);
-    DASH_LOG_TRACE_VAR("UnorderedMap.insert", _end);
-    const_iterator found = find(key);
-    DASH_LOG_TRACE_VAR("UnorderedMap.insert", found);
-    if (found != _end) {
-      DASH_LOG_TRACE("UnorderedMap.insert", "key found");
-      // Existing element found, no insertion:
-      result.first  = iterator(this, found.pos());
-      result.second = false;
-    } else {
-      DASH_LOG_TRACE("UnorderedMap.insert", "key not found");
-      // Unit mapped to the new element's key by the hash function:
-      auto unit = _key_hash(key);
-      DASH_LOG_TRACE("UnorderedMap.insert", "target unit:", unit);
-      // No element with specified key exists, insert new value.
-      // Increase local size first to reserve storage for the new element.
-      // Use atomic increment to prevent hazard when other units perform
-      // remote insertion at the local unit:
-      size_type old_local_size   = dash::Atomic<size_type>(
-                                      _local_size_gptr
-                                   ).fetch_and_add(1);
-      size_type new_local_size   = old_local_size + 1;
-      size_type local_capacity   = _globmem->local_size();
-      _local_cumul_sizes[_myid] += 1;
-      DASH_LOG_TRACE_VAR("UnorderedMap.insert", local_capacity);
-      DASH_LOG_TRACE_VAR("UnorderedMap.insert", _local_buffer_size);
-      DASH_LOG_TRACE_VAR("UnorderedMap.insert", old_local_size);
-      DASH_LOG_TRACE_VAR("UnorderedMap.insert", new_local_size);
-      DASH_LOG_TRACE_VAR("UnorderedMap.insert", _local_cumul_sizes[_myid]);
-      DASH_ASSERT_GT(new_local_size, 0, "new local size is 0");
-      // Pointer to new element:
-      value_type * lptr_insert = nullptr;
-      // Acquire target pointer of new element:
-      if (new_local_size > local_capacity) {
-        DASH_LOG_TRACE("UnorderedMap.insert",
-                       "globmem.grow(", _local_buffer_size, ")");
-        lptr_insert = static_cast<value_type *>(
-                        _globmem->grow(_local_buffer_size));
-      } else {
-        lptr_insert = static_cast<value_type *>(
-                        _globmem->lbegin() + old_local_size);
-      }
-      // Assign new value to insert position.
-      DASH_LOG_TRACE("UnorderedMap.insert", "value target address:",
-                     lptr_insert);
-      DASH_ASSERT(lptr_insert != nullptr);
-      // Using placement new to avoid assignment/copy as value_type is
-      // const:
-      new (lptr_insert) value_type(value);
-      // Convert local iterator to global iterator:
-      DASH_LOG_TRACE("UnorderedMap.insert", "converting to global iterator",
-                     "unit:", unit, "lidx:", old_local_size);
-      result.first  = iterator(this, unit, old_local_size);
-      result.second = true;
-
-      if (unit != _myid) {
-        DASH_LOG_TRACE("UnorderedMap.insert", "remote insertion");
-        // Mark inserted element for move to remote unit in next commit:
-        _move_elements.push_back(result.first);
-      }
-
-      // Update iterators as global memory space has been changed for the
-      // active unit:
-      auto new_size = size();
-      DASH_LOG_TRACE("UnorderedMap.insert", "new size:", new_size);
-      DASH_LOG_TRACE("UnorderedMap.insert", "updating _begin");
-      _begin        = iterator(this, 0);
-      DASH_LOG_TRACE("UnorderedMap.insert", "updating _end");
-      _end          = iterator(this, new_size);
-      DASH_LOG_TRACE_VAR("UnorderedMap.insert", _begin);
-      DASH_LOG_TRACE_VAR("UnorderedMap.insert", _end);
-    }
-    DASH_LOG_DEBUG("UnorderedMap.insert >",
-                   (result.second ? "inserted" : "existing"), ":",
-                   result.first);
-    return result;
-  }
+    const value_type & value);
 
   /**
    * Insert elements in iterator range of key-value pairs, increasing the
@@ -1043,16 +570,7 @@ public:
     // Iterator at first value in the range to insert.
     InputIterator first,
     // Iterator past the last value in the range to insert.
-    InputIterator last)
-  {
-    // TODO: Calling insert() on every single element in the range could cause
-    //       multiple calls of globmem.grow(_local_buffer_size).
-    //       Could be optimized to allocate additional memory in a single call
-    //       of globmem.grow(std::distance(first,last)).
-    for (auto it = first; it != last; ++it) {
-      insert(*it);
-    }
-  }
+    InputIterator last);
 
   /**
    * Removes and destroys single element referenced by given iterator from
@@ -1062,10 +580,7 @@ public:
    *          or \c end() if the last element was removed.
    */
   iterator erase(
-    const_iterator position)
-  {
-    return _end;
-  }
+    const_iterator position);
 
   /**
    * Removes and destroys elements referenced by the given key from the
@@ -1076,10 +591,7 @@ public:
    */
   size_type erase(
     /// Key of the container element to remove.
-    const key_type & key)
-  {
-    return 0;
-  }
+    const key_type & key);
 
   /**
    * Removes and destroys elements in the given range from the container,
@@ -1092,62 +604,28 @@ public:
     /// Iterator at first element to remove.
     const_iterator first,
     /// Iterator past the last element to remove.
-    const_iterator last)
-  {
-    return _end;
-  }
+    const_iterator last);
 
   //////////////////////////////////////////////////////////////////////////
   // Observers
   //////////////////////////////////////////////////////////////////////////
 
   /**
-   * Reference to instance of \c DashGlobalMemoryConcept used for underlying
-   * memory management of this container instance.
+   * Returns the function that compares keys for equality.
    */
-  inline const glob_mem_type & globmem() const
-  {
-    return *_globmem;
-  }
+  key_equal key_eq() const;
 
-private:
-  /// Team containing all units interacting with the map.
-  dash::Team           * _team            = nullptr;
-  /// DART id of the unit that created the map.
-  dart_unit_t            _myid;
-  /// Global memory allocation and -access.
-  glob_mem_type        * _globmem         = nullptr;
-  /// Iterator to initial element in the map.
-  iterator               _begin           = nullptr;
-  /// Iterator past the last element in the map.
-  iterator               _end             = nullptr;
-  /// Number of elements in the map.
-  size_type              _remote_size     = 0;
-  /// Native pointer to first local element in the map.
-  local_iterator         _lbegin          = nullptr;
-  /// Native pointer past the last local element in the map.
-  local_iterator         _lend            = nullptr;
-  /// Mapping units to their number of local map elements.
-  local_sizes_map        _local_sizes;
-  /// Cumulative (postfix sum) local sizes of all units.
-  std::vector<size_type> _local_cumul_sizes;
-  /// Iterators to elements in local memory space that are marked for move
-  /// to remote unit in next commit.
-  std::vector<iterator>  _move_elements;
-  /// Global pointer to local element in _local_sizes.
-  dart_gptr_t            _local_size_gptr = DART_GPTR_NULL;
-  /// Hash type for mapping of key to unit and local offset.
-  hasher                 _key_hash;
-  /// Predicate for key comparison.
-  key_equal              _key_equal;
-  /// Capacity of local buffer containing locally added node elements that
-  /// have not been committed to global memory yet.
-  /// Default is 4 KB.
-  size_type              _local_buffer_size
-                           = 4096 / sizeof(value_type);
+  /**
+   * Returns the function that hashes the keys.
+   */
+  hasher hash_function() const;
 
-}; // class UnorderedMap
+}; // class UnorderedMapConcept
 
 } // namespace dash
+
+#endif // ifdef DOXYGEN
+
+#include <dash/map/UnorderedMap.h>
 
 #endif // DASH__UNORDERED_MAP_H__INCLUDED

@@ -1,5 +1,5 @@
-#ifndef DASH__MAP__LOCAL_UNORDERED_MAP_ITER_H__INCLUDED
-#define DASH__MAP__LOCAL_UNORDERED_MAP_ITER_H__INCLUDED
+#ifndef DASH__MAP__UNORDERED_MAP_LOCAL_ITER_H__INCLUDED
+#define DASH__MAP__UNORDERED_MAP_LOCAL_ITER_H__INCLUDED
 
 #include <dash/dart/if/dart.h>
 
@@ -9,7 +9,7 @@
 #include <dash/Team.h>
 #include <dash/Onesided.h>
 
-#include <dash/map/LocalUnorderedMapIter.h>
+#include <dash/map/UnorderedMapLocalIter.h>
 
 #include <dash/internal/Logging.h>
 
@@ -37,7 +37,7 @@ template<
   typename Hash,
   typename Pred,
   typename Alloc >
-class LocalUnorderedMapIter
+class UnorderedMapLocalIter
 : public std::iterator<
            std::random_access_iterator_tag,
            std::pair<const Key, Mapped>,
@@ -48,10 +48,10 @@ class LocalUnorderedMapIter
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   friend std::ostream & dash::operator<<(
     std::ostream & os,
-    const dash::LocalUnorderedMapIter<K_, M_, H_, P_, A_> & it);
+    const dash::UnorderedMapLocalIter<K_, M_, H_, P_, A_> & it);
 
 private:
-  typedef LocalUnorderedMapIter<Key, Mapped, Hash, Pred, Alloc>
+  typedef UnorderedMapLocalIter<Key, Mapped, Hash, Pred, Alloc>
     self_t;
 
   typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>
@@ -81,29 +81,29 @@ public:
   /**
    * Default constructor.
    */
-  LocalUnorderedMapIter()
-  : LocalUnorderedMapIter(nullptr)
+  UnorderedMapLocalIter()
+  : UnorderedMapLocalIter(nullptr)
   { }
 
   /**
    * Constructor, creates iterator at specified global position.
    */
-  LocalUnorderedMapIter(
+  UnorderedMapLocalIter(
     map_t       * map,
     index_type    local_position)
   : _map(map),
     _idx(local_position),
     _myid(dash::myid())
   {
-    DASH_LOG_TRACE("LocalUnorderedMapIter(map,lpos)()");
-    DASH_LOG_TRACE_VAR("LocalUnorderedMapIter(map,lpos)", _idx);
-    DASH_LOG_TRACE("LocalUnorderedMapIter(map,lpos) >");
+    DASH_LOG_TRACE("UnorderedMapLocalIter(map,lpos)()");
+    DASH_LOG_TRACE_VAR("UnorderedMapLocalIter(map,lpos)", _idx);
+    DASH_LOG_TRACE("UnorderedMapLocalIter(map,lpos) >");
   }
 
   /**
    * Copy constructor.
    */
-  LocalUnorderedMapIter(
+  UnorderedMapLocalIter(
     const self_t & other) = default;
 
   /**
@@ -115,13 +115,13 @@ public:
   /**
    * Null-pointer constructor.
    */
-  LocalUnorderedMapIter(std::nullptr_t)
+  UnorderedMapLocalIter(std::nullptr_t)
   : _map(nullptr),
     _idx(-1),
     _myid(DART_UNDEFINED_UNIT_ID),
     _is_nullptr(true)
   {
-    DASH_LOG_TRACE("LocalUnorderedMapIter(nullptr)");
+    DASH_LOG_TRACE("UnorderedMapLocalIter(nullptr)");
   }
 
   /**
@@ -195,12 +195,12 @@ public:
    */
   dart_gptr_t dart_gptr() const
   {
-    DASH_LOG_TRACE_VAR("LocalUnorderedMapIter.dart_gptr()", _idx);
+    DASH_LOG_TRACE_VAR("UnorderedMapLocalIter.dart_gptr()", _idx);
     dart_gptr_t dart_gptr = DART_GPTR_NULL;
     if (!_is_nullptr) {
       dart_gptr = _map->globmem().at(_myid, _idx).dart_gptr();
     }
-    DASH_LOG_TRACE_VAR("LocalUnorderedMapIter.dart_gptr >", dart_gptr);
+    DASH_LOG_TRACE_VAR("UnorderedMapLocalIter.dart_gptr >", dart_gptr);
     return dart_gptr;
   }
 
@@ -272,14 +272,14 @@ public:
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   inline bool operator==(
-    const LocalUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+    const UnorderedMapLocalIter<K_, M_, H_, P_, A_> & other) const
   {
     return (this == std::addressof(other) || _idx == other._idx);
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   inline bool operator!=(
-    const LocalUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+    const UnorderedMapLocalIter<K_, M_, H_, P_, A_> & other) const
   {
     return !(*this == other);
   }
@@ -324,28 +324,28 @@ public:
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   inline bool operator<(
-    const LocalUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+    const UnorderedMapLocalIter<K_, M_, H_, P_, A_> & other) const
   {
     return (_idx < other._idx);
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   inline bool operator<=(
-    const LocalUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+    const UnorderedMapLocalIter<K_, M_, H_, P_, A_> & other) const
   {
     return (_idx <= other._idx);
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   inline bool operator>(
-    const LocalUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+    const UnorderedMapLocalIter<K_, M_, H_, P_, A_> & other) const
   {
     return (_idx > other._idx);
   }
 
   template<typename K_, typename M_, typename H_, typename P_, typename A_>
   inline bool operator>=(
-    const LocalUnorderedMapIter<K_, M_, H_, P_, A_> & other) const
+    const UnorderedMapLocalIter<K_, M_, H_, P_, A_> & other) const
   {
     return (_idx >= other._idx);
   }
@@ -356,12 +356,12 @@ private:
    */
   void increment(index_type offset)
   {
-    DASH_LOG_TRACE("LocalUnorderedMapIter.increment()",
+    DASH_LOG_TRACE("UnorderedMapLocalIter.increment()",
                    "unit:",   _myid,
                    "lidx:",   _idx,
                    "offset:", offset);
     _idx += offset;
-    DASH_LOG_TRACE("LocalUnorderedMapIter.increment >");
+    DASH_LOG_TRACE("UnorderedMapLocalIter.increment >");
   }
 
   /**
@@ -369,12 +369,12 @@ private:
    */
   void decrement(index_type offset)
   {
-    DASH_LOG_TRACE("LocalUnorderedMapIter.decrement()",
+    DASH_LOG_TRACE("UnorderedMapLocalIter.decrement()",
                    "unit:",   _myid,
                    "lidx:",   _idx,
                    "offset:", -offset);
     _idx -= offset;
-    DASH_LOG_TRACE("LocalUnorderedMapIter.decrement >");
+    DASH_LOG_TRACE("UnorderedMapLocalIter.decrement >");
   }
 
 private:
@@ -387,7 +387,7 @@ private:
   /// Whether the iterator represents a null pointer.
   bool                     _is_nullptr    = false;
 
-}; // class LocalUnorderedMapIter
+}; // class UnorderedMapLocalIter
 
 template<
   typename Key,
@@ -397,11 +397,11 @@ template<
   typename Alloc >
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::LocalUnorderedMapIter<
+  const dash::UnorderedMapLocalIter<
           Key, Mapped, Hash, Pred, Alloc> & it)
 {
   std::ostringstream ss;
-  ss << "dash::LocalUnorderedMapIter<"
+  ss << "dash::UnorderedMapLocalIter<"
      << typeid(Key).name()    << ","
      << typeid(Mapped).name() << ">"
      << "("
@@ -413,4 +413,4 @@ std::ostream & operator<<(
 
 } // namespace dash
 
-#endif // DASH__MAP__LOCAL_UNORDERED_MAP_ITER_H__INCLUDED
+#endif // DASH__MAP__UNORDERED_MAP_LOCAL_ITER_H__INCLUDED

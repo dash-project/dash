@@ -102,25 +102,27 @@ public:
   }
 
   /**
-   * Atomic add operation on the referenced shared value.
+   * Atomically executes specified operation on the referenced shared value.
    */
-  void add(
+  template<typename BinaryOp>
+  void op(
+    BinaryOp  binary_op,
     /// Value to be added to global atomic variable.
-    ValueType add_val)
+    ValueType value)
   {
-    DASH_LOG_DEBUG_VAR("Atomic.add()", add_val);
+    DASH_LOG_DEBUG_VAR("Atomic.add()", value);
     DASH_LOG_TRACE_VAR("Atomic.add",   _gptr);
     DASH_ASSERT(_team != nullptr);
     DASH_ASSERT(
       !DART_GPTR_EQUAL(
         _gptr, DART_GPTR_NULL));
-    value_type acc = add_val;
+    value_type acc = value;
     dart_ret_t ret = dart_accumulate(
                        _gptr,
                        reinterpret_cast<char *>(&acc),
                        1,
                        dash::dart_datatype<ValueType>::value,
-                       dash::plus<ValueType>().dart_operation(),
+                       binary_op.dart_operation(),
                        _team->dart_id());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     dart_flush(_gptr);
@@ -160,6 +162,24 @@ public:
   }
 
   /**
+   * Atomic add operation on the referenced shared value.
+   */
+  void add(
+    ValueType value)
+  {
+    op(dash::plus<ValueType>(), value);
+  }
+
+  /**
+   * Atomic subtract operation on the referenced shared value.
+   */
+  void sub(
+    ValueType value)
+  {
+    op(dash::plus<ValueType>(), -value);
+  }
+
+  /**
    * Atomic fetch-and-add operation on the referenced shared value.
    *
    * \return  The value of the referenced shared variable before the
@@ -170,6 +190,19 @@ public:
     ValueType val)
   {
     return fetch_and_op(dash::plus<ValueType>(), val);
+  }
+
+  /**
+   * Atomic fetch-and-sub operation on the referenced shared value.
+   *
+   * \return  The value of the referenced shared variable before the
+   *          operation.
+   */
+  ValueType fetch_and_sub(
+    /// Value to be subtracted from global atomic variable.
+    ValueType val)
+  {
+    return fetch_and_op(dash::plus<ValueType>(), -val);
   }
 
 private:

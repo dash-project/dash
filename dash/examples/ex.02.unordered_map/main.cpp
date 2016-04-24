@@ -10,6 +10,12 @@
 using std::cout;
 using std::endl;
 
+#define COUT(expr) {             \
+          std::ostringstream os; \
+          os << expr;            \
+          std::cout << os.str(); \
+        } do { } while(0)
+
 /**
  * Hash functor for mapping element keys to units.
  */
@@ -75,8 +81,7 @@ void print_map(InputIt first, InputIt last)
   for (auto mit = first; mit != last; ++mit) {
     value_t elem = *mit;
     auto    lpos = mit.lpos();
-    cout << std::setw(3)
-         << idx << ": "
+    COUT(std::setw(3) << idx << ": "
          << "unit:" << std::setw(2) << lpos.unit  << ", "
          << "lidx:" << std::setw(3) << lpos.index << " "
          << "value:"
@@ -85,7 +90,7 @@ void print_map(InputIt first, InputIt last)
          << " -> "
          << std::setprecision(3) << std::fixed
          << static_cast<mapped_t>(elem.second)
-         << endl;
+         << endl);
     idx++;
   }
 }
@@ -107,7 +112,7 @@ int main(int argc, char* argv[])
   size_type bucket_size       = (myid % 2 == 0) ? 5 : 7;
 
   size_type min_elem_per_unit =  5;
-  size_type max_elem_per_unit = 23;
+  size_type max_elem_per_unit = 12;
   if (argc >= 3) {
     min_elem_per_unit = static_cast<size_type>(atoi(argv[1]));
     max_elem_per_unit = static_cast<size_type>(atoi(argv[2]));
@@ -117,23 +122,21 @@ int main(int argc, char* argv[])
                                                   bucket_size);
 
   if (myid == 0) {
-    cout << "ex.02.unordered_map <min inserts> <max inserts>" << endl
+    COUT(endl
+         << "ex.02.unordered_map <min inserts> <max inserts>" << endl
          << "  min. number of elements inserted per unit: "
          << min_elem_per_unit << endl
          << "  max. number of elements inserted per unit: "
          << max_elem_per_unit << endl
          << endl
          << "Initial map size: " << map.size()
-         << endl;
+         << endl);
   }
 
   dash::barrier();
-  {
-    std::ostringstream os;
-    os   << "Initial local map size (unit " << myid << "): " << map.lsize()
-         << endl;
-    cout << os.str();
-  }
+
+  COUT("Initial local map size (unit " << myid << "): " << map.lsize());
+
   dash::barrier();
 
   // fresh random numbers for every run and unit:
@@ -168,19 +171,14 @@ int main(int argc, char* argv[])
   // Wait for initialization of local values:
   dash::barrier();
 
-  {
-    std::ostringstream os;
-    os   << "Local map size after inserts (unit " << myid << "): "
-         << map.lsize() << endl;
-    cout << os.str();
-  }
+  COUT("Local map size after inserts (unit " << myid << "): " << map.lsize());
+
   dash::barrier();
 
   if (myid == 0) {
-    cout << endl
+    COUT(endl
          << "Map size before commit: " << map.size() << endl
-         << "Elements accessible to unit 0 before commit: "
-         << endl;
+         << "Elements accessible to unit 0 before commit: " << endl);
     print_map(map.begin(), map.end());
   }
 
@@ -188,10 +186,9 @@ int main(int argc, char* argv[])
   map.barrier();
 
   if (myid == 0) {
-    cout << endl
+    COUT(endl
          << "Size of map after commit: " << map.size() << endl
-         << "Elements accessible to unit 0 after commit: "
-         << endl;
+         << "Elements accessible to unit 0 after commit: ");
     print_map(map.begin(), map.end());
   }
 }
