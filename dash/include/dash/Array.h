@@ -1111,11 +1111,15 @@ private:
     return true;
   }
 
+#if 0
   typename std::enable_if<
     std::is_move_constructible<value_type>::value &&
     std::is_move_assignable<value_type>::value,
     bool
   >::type
+#else
+  bool
+#endif
   allocate(
     const PatternType                 & pattern,
     std::initializer_list<value_type>   local_elements)
