@@ -43,6 +43,7 @@ struct datastruct
 extern MPI_Datatype data_info_type;
 extern MPI_Comm     user_comm_world;
 extern int          top;
+extern int          progress_index;
 #endif
 #endif
 

@@ -581,18 +581,17 @@ dart_ret_t dart_team_create(
 	MPI_Group user_group;
 	MPI_Comm_group (user_comm_world, &user_group);
 	
-	dart_unit_t* unitids = (dart_unit_t*) malloc (sizeof(dart_unit_t) * (sub_size+2));
-	dart_unit_t* abso_unitids = (dart_unit_t*)malloc (sizeof(dart_unit_t) * (sub_size+2));
+	dart_unit_t* unitids = (dart_unit_t*) malloc (sizeof(dart_unit_t) * (sub_size+1));
+	dart_unit_t* abso_unitids = (dart_unit_t*)malloc (sizeof(dart_unit_t) * (sub_size+1));
 	dart_group_getmembers (group, unitids);
 	MPI_Group_translate_ranks (user_group, sub_size, unitids, group_all, abso_unitids);
 	MPI_Group_translate_ranks (group->mpi_group, 1, &sub_unitid, parent_group, &parent_unitid);
-	MPI_Bcast (&index, 1, MPI_UINT16_T, parent_unitid, comm);
+//	MPI_Bcast (&index, 1, MPI_UINT16_T, parent_unitid, comm);
 
 	if (unitid == PROGRESS_NUM){
-		abso_unitids[sub_size] = unique_id;
-		abso_unitids[sub_size+1] = index;
+		abso_unitids[sub_size] = dart_progress_index[unique_id];
 		for (iter = 0; iter < PROGRESS_NUM; iter++){
-			MPI_Send (abso_unitids, sub_size+2, MPI_INT32_T, PROGRESS_UNIT+iter, TEAMCREATE, dart_sharedmem_comm_list[0]);
+			MPI_Send (abso_unitids, sub_size+1, MPI_INT32_T, PROGRESS_UNIT+iter, TEAMCREATE, dart_sharedmem_comm_list[0]);
 		}
 	}
 	MPI_Group new_group[PROGRESS_NUM], progress_group;
@@ -669,6 +668,10 @@ dart_ret_t dart_team_create(
 //	MPI_Group_translate_ranks(sub_group, 2, test_ranks, group_all, all_ranks);
 	real_subcomm = MPI_COMM_NULL;
 	MPI_Comm_create (real_comm, sub_group, &real_subcomm);
+
+	if (real_subcomm != MPI_COMM_NULL){
+		MPI_Bcast (&progress_index, 1, MPI_INT32_T, 0, real_subcomm);
+		dart_progress_index[index] = progress_index;}
 	free (progress_node);
 	free (progress_recv);
 	free (progresshead_node);

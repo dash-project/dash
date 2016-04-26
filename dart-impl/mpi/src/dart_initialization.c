@@ -28,6 +28,7 @@ char**        dart_sharedmem_local_baseptr_set;
 MPI_Datatype  data_info_type;
 MPI_Comm      user_comm_world;
 int           top;
+int	      progress_index;
 #endif
 #endif
 /* Help to do memory management work for local allocation/free */
@@ -87,6 +88,7 @@ dart_ret_t dart_init(
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
 	dart_realteams[index] = MPI_COMM_WORLD;
+	progress_index        = 0;
 #endif
 #endif
 #ifndef PROGRESS_ENABLE
@@ -204,8 +206,10 @@ dart_ret_t dart_init(
 	if (user_comm_world != MPI_COMM_NULL){
 		MPI_Win_create (dart_mempool_localalloc, DART_MAX_LENGTH, sizeof(char), MPI_INFO_NULL,
 					MPI_COMM_WORLD, &dart_win_local_alloc);
+		dart_progress_index[index] = progress_index;
 	}else{
 		MPI_Win_create (dart_mempool_localalloc, 0, sizeof(char), MPI_INFO_NULL, MPI_COMM_WORLD, &dart_win_local_alloc);
+		progress_index ++;
 	}
 #else
 
@@ -563,16 +567,15 @@ dart_ret_t dart_exit()
 				int count, size;
 				int i, j, iter;
 				int index, sub_index;
-				MPI_Comm newcomm, parent_comm, sub_comm;
+				MPI_Comm newcomm, parent_comm;
 				MPI_Group group, group_all, sub_group, parent_group, progress_group;
 				//MPI_Comm_size (MPI_COMM_WORLD, &size);
 				MPI_Get_count (&mpi_status, MPI_INT32_T, &count);
 				dart_unit_t* unitids = (dart_unit_t*)malloc (sizeof (dart_unit_t) * count);
 				MPI_Recv (unitids, count, MPI_INT32_T, mpi_status.MPI_SOURCE,
 						TEAMCREATE, dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
-				sub_index = unitids[count-1];
-				index = unitids[count-2];
-				sub_comm = dart_teams[sub_index];
+				index = unitids[count-1];
+			//	sub_comm = dart_teams[sub_index];
 				parent_comm = dart_realteams[index];
 				MPI_Comm_size (parent_comm, &size);
 				MPI_Comm_group (MPI_COMM_WORLD, &group_all);
@@ -651,21 +654,23 @@ dart_ret_t dart_exit()
 				free (unitids);
 
 				MPI_Comm_create (parent_comm, sub_group, &newcomm);
+				MPI_Bcast (&progress_index, 1, MPI_INT32_T, 0, newcomm);
 
 				if (newcomm != MPI_COMM_NULL){
 					int newcomm_size;
 					MPI_Comm_size (newcomm, &newcomm_size);
 					MPI_Win_create_dynamic (MPI_INFO_NULL, newcomm, &win);
 
-					dart_win_lists[sub_index] = win;
-					dart_realteams[sub_index] = newcomm;
+					dart_win_lists[progress_index] = win;
+					dart_realteams[progress_index] = newcomm;
 					MPI_Comm sharedmem_comm;
 
 					MPI_Comm_split_type (newcomm, MPI_COMM_TYPE_SHARED, 1, MPI_INFO_NULL, &sharedmem_comm);
 
 					if (sharedmem_comm != MPI_COMM_NULL)
-						dart_sharedmem_comm_list[sub_index] = sharedmem_comm;
-					MPI_Comm_size (sharedmem_comm, &(dart_sharedmemnode_size[sub_index]));
+						dart_sharedmem_comm_list[progress_index] = sharedmem_comm;
+					MPI_Comm_size (sharedmem_comm, &(dart_sharedmemnode_size[progress_index]));
+					progress_index ++;
 					MPI_Win_lock_all (0, win);
 				}
 			}
