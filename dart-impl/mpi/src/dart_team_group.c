@@ -566,13 +566,11 @@ dart_ret_t dart_team_create(
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
 	dart_unit_t unitid;
-	int parent_unitid, sub_unitid = 0;
-
 	int size, sub_size;
 	int i, j, iter;
 	MPI_Comm real_comm, real_subcomm;
-	MPI_Group parent_group;
-	MPI_Comm_group (comm, &parent_group);
+//	MPI_Group parent_group;
+//	MPI_Comm_group (comm, &parent_group);
 	real_comm = dart_realteams[unique_id];
 	MPI_Comm_size (real_comm, &size);
 	MPI_Group_size (group->mpi_group, &sub_size);
@@ -585,7 +583,7 @@ dart_ret_t dart_team_create(
 	dart_unit_t* abso_unitids = (dart_unit_t*)malloc (sizeof(dart_unit_t) * (sub_size+1));
 	dart_group_getmembers (group, unitids);
 	MPI_Group_translate_ranks (user_group, sub_size, unitids, group_all, abso_unitids);
-	MPI_Group_translate_ranks (group->mpi_group, 1, &sub_unitid, parent_group, &parent_unitid);
+//	MPI_Group_translate_ranks (group->mpi_group, 1, &sub_unitid, parent_group, &parent_unitid);
 //	MPI_Bcast (&index, 1, MPI_UINT16_T, parent_unitid, comm);
 
 	if (unitid == PROGRESS_NUM){
