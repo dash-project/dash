@@ -145,17 +145,38 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
         dash::barrier();
 
         // Fill local block with id of unit
-				for(int i=0; i<matrix_a.local.extent(0); i++){
-					for(int j=0; j<matrix_a.local.extent(1); j++){
-						matrix_a.local[i][j] = myid*1e4 + i*1e2 + j;
-					}
-				}
+        for(int i=0; i<matrix_a.local.extent(0); i++) {
+            for(int j=0; j<matrix_a.local.extent(1); j++) {
+                matrix_a.local[i][j] = myid*1e4 + i*1e2 + j;
+            }
+        }
         //std::fill(matrix_a.lbegin(), matrix_a.lend(), myid);
         dash::barrier();
 
         // Store Matrix
         dash::util::StoreHDF::write(matrix_a, "test.hdf5", "data");
         dash::barrier();
+
+#if 0
+				std::ostream cout;
+        cout << std::setprecision(4) << std::setw(8)
+             << std::left
+             << (double)(4.5432)
+
+        dash::HDF5OutputStream os("test.hdf5");
+
+        os << dash::HDF5Table("data")
+           << dash::HDF5::transposed
+           << matrix_a;
+				os.flush();
+
+				matrix_t m;
+        os >> m;
+
+
+
+        dash::HDF5OutputStream os("test.hdf5");
+#endif
 
         // Read HDF5 Matrix
     }
@@ -164,12 +185,12 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
     dash::util::StoreHDF::read(matrix_b, "test.hdf5", "data");
     dash::barrier();
 
-		for(int i=0; i<matrix_b.local.extent(0); i++){
-					for(int j=0; j<matrix_b.local.extent(1); j++){
-						ASSERT_EQ_U(matrix_b.local[i][j],
-												myid*1e4 + i*1e2 + j);
-					}
-		}
+    for(int i=0; i<matrix_b.local.extent(0); i++) {
+        for(int j=0; j<matrix_b.local.extent(1); j++) {
+            ASSERT_EQ_U(matrix_b.local[i][j],
+                        myid*1e4 + i*1e2 + j);
+        }
+    }
 }
 
 TEST_F(HDFTest, Options) {
