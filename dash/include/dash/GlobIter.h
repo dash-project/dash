@@ -68,6 +68,7 @@ private:
     self_t;
 
 public:
+  typedef       ElementType                       value_type;
   typedef       ReferenceType                      reference;
   typedef const ReferenceType                const_reference;
   typedef       PointerType                          pointer;
@@ -75,7 +76,7 @@ public:
 
   typedef typename GlobMemType::local_pointer  local_pointer;
 
-  typedef       PatternType                     pattern_type;
+  typedef          PatternType                  pattern_type;
   typedef typename PatternType::index_type        index_type;
 
 public:
@@ -212,7 +213,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.index);
     // Create global pointer from unit and local offset:
     PointerType gptr(
-      _globmem->index_to_gptr(local_pos.unit, local_pos.index)
+      _globmem->at(local_pos.unit, local_pos.index)
     );
     return gptr + offset;
   }
@@ -247,7 +248,7 @@ public:
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
     dash::GlobPtr<ElementType, PatternType> gptr(
-      _globmem->index_to_gptr(
+      _globmem->at(
         local_pos.unit,
         local_pos.index)
     );
@@ -270,12 +271,10 @@ public:
     local_pos_t local_pos = _pattern->local(idx);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
-    // Global pointer to element at given position:
-    dart_gptr_t gptr = _globmem->index_to_gptr(
-                                   local_pos.unit,
-                                   local_pos.index);
     // Global reference to element at given position:
-    return ReferenceType(gptr);
+    return ReferenceType(
+             _globmem->at(local_pos.unit,
+                          local_pos.index));
   }
 
   /**
@@ -294,12 +293,10 @@ public:
     local_pos_t local_pos = _pattern->local(idx);
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.index);
-    // Global pointer to element at given position:
-    dart_gptr_t gptr = _globmem->index_to_gptr(
-                                   local_pos.unit,
-                                   local_pos.index);
     // Global reference to element at given position:
-    return ReferenceType(gptr);
+    return ReferenceType(
+             _globmem->at(local_pos.unit,
+                          local_pos.index));
   }
 
   /**
@@ -343,30 +340,6 @@ public:
   }
 
   /**
-   * Map iterator to global index domain.
-   */
-  inline self_t global() const
-  {
-    return *this;
-  }
-
-  /**
-   * Position of the iterator in global index space.
-   */
-  inline index_type pos() const
-  {
-    return _idx;
-  }
-
-  /**
-   * Position of the iterator in global index range.
-   */
-  inline index_type gpos() const
-  {
-    return _idx;
-  }
-
-  /**
    * Unit and local offset at the iterator's position.
    */
   inline typename pattern_type::local_index_t lpos() const
@@ -393,6 +366,30 @@ public:
                    "unit:",        local_pos.unit,
                    "local index:", local_pos.index);
     return local_pos;
+  }
+
+  /**
+   * Map iterator to global index domain.
+   */
+  inline self_t global() const
+  {
+    return *this;
+  }
+
+  /**
+   * Position of the iterator in global index space.
+   */
+  inline index_type pos() const
+  {
+    return _idx;
+  }
+
+  /**
+   * Position of the iterator in global index range.
+   */
+  inline index_type gpos() const
+  {
+    return _idx;
   }
 
   /**

@@ -103,6 +103,7 @@ public:
     draw_axes(os, dimx, dimy);
 
     os << "<g transform=\"translate(4,4)\">" << std::endl;
+    draw_blocks(os, coords, dimx, dimy);
     draw_tiles(os, coords, dimx, dimy);
     draw_memlayout(os, coords, dimx, dimy);
     draw_key(os, dimx, dimy, (2 + _pattern.extent(dimx))*_gridx, 0);
@@ -188,21 +189,65 @@ public:
     }
   }
 
+  void draw_blocks(std::ostream & os,
+		   std::array<index_t, PatternT::ndim()> coords,
+		   int dimx, int dimy)
+  {
+    std::array<index_t, PatternT::ndim()> block_coords = coords;
+    std::array<index_t, PatternT::ndim()> block_begin_coords = coords;
+
+    auto blockspec = _pattern.blockspec();
+
+    for (int i = 0; i < blockspec.extent(dimx); i++) {
+      for (int j = 0; j < blockspec.extent(dimy); j++) {
+
+        block_coords[dimx] = i;
+        block_coords[dimy] = j;
+        auto block_idx = _pattern.blockspec().at(block_coords);
+        auto block     = _pattern.block(block_idx);
+
+	block_begin_coords[dimx] = block.offset(dimx);
+        block_begin_coords[dimy] = block.offset(dimy);
+        auto unit      = _pattern.unit_at(block_begin_coords);
+
+	if( unit==0 ) {
+	  int i_grid = block.offset(dimx)*_gridx - 1;
+	  int j_grid = block.offset(dimy)*_gridy - 1;
+
+	  int width  = (block.extent(dimx)-1)*_gridx + _tileszx + 2;
+	  int height = (block.extent(dimy)-1)*_gridy + _tileszy + 2;
+
+	  os << "<rect x=\"" << i_grid << "\" y=\"" << j_grid << "\" ";
+	  os << "height=\"" << height << "\" width=\"" << width << "\" ";
+	  os << "style=\"fill:#999999;stroke-width:0\" >";
+	  os << "</rect>" << std::endl;
+	}
+      }
+    }
+  }
+
   void draw_tiles(std::ostream & os,
-                  std::array<index_t, PatternT::ndim()> coords,
-                  int dimx, int dimy) {
+		  std::array<index_t, PatternT::ndim()> coords,
+		  int dimx, int dimy) {
     for (int i = 0; i < _pattern.extent(dimx); i++) {
       for (int j = 0; j < _pattern.extent(dimy); j++) {
+
         os << "<rect x=\"" << (i * _gridx) << "\" y=\"" << (j * _gridy) << "\" ";
         os << "height=\"" << _tileszy << "\" width=\"" << _tileszx << "\" ";
 
         coords[dimx] = i;
         coords[dimy] = j;
 
-	auto unit = _pattern.unit_at(coords);
+	auto unit  = _pattern.unit_at(coords);
+	auto loffs = _pattern.at(coords);
+
         os << tilestyle(unit);
         os << " tooltip=\"enable\" > ";
-	os << " <title> Element ("<<j<<","<<i<<"), Unit "<<unit<<"</title> ";
+	os << " <title>Elem: (" << j << "," << i <<"),";
+	os << " Unit " << unit;
+	os << " Local offs. " << loffs;
+	os << "</title>";
+
 	  //os << "<!-- i=" << i << " j=" << j << "--> ";
         os << "</rect>" << std::endl;
       }

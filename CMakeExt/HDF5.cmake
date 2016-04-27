@@ -48,7 +48,7 @@ find_package_handle_standard_args(
 
 # set flags
 if(HDF5_FOUND)
-	set (HDF5_LINKER_FLAGS "-lhdf5_hl -lhdf5")
+	set (HDF5_LINKER_FLAGS "-lhdf5_hl -lhdf5 -ldl -lm -lz")
 endif()
 
 mark_as_advanced(

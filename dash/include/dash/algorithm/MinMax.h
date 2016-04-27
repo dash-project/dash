@@ -81,15 +81,8 @@ GlobIter<ElementType, PatternType> min_element(
     if (lmin != l_range_end) {
       DASH_LOG_TRACE_VAR("dash::min_element", *lmin);
     }
-#if 0
-    // Global pointer to local minimum:
-    globptr_t g_lmin(first.globmem().index_to_gptr(
-                                       team.myid(),
-                                       l_idx_lmin));
-#else
     // Global position of local minimum:
     index_t gi_lmin = pattern.global(l_idx_lmin);
-#endif
     if (lmin != l_range_end) {
       DASH_LOG_DEBUG("dash::min_element",
                      "global index of local minimum:", gi_lmin);

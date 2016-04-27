@@ -40,10 +40,6 @@ void multiply_local<float>(
   MemArrange    storage)
 {
   typedef float value_t;
-#if defined(DASH_ENABLE_MKL) && defined(DASH__MKL_MULTITHREADING)
-  mkl_set_num_threads(1);
-  mkl_set_dynamic(false);
-#endif
   /// Memory storage order of A, B, C:
   auto   strg  = (storage == dash::ROW_MAJOR)
                  ? CblasRowMajor
@@ -109,10 +105,6 @@ void multiply_local<double>(
   MemArrange     storage)
 {
   typedef double value_t;
-#if defined(DASH_ENABLE_MKL) && defined(DASH__MKL_MULTITHREADING)
-  mkl_set_num_threads(1);
-  mkl_set_dynamic(false);
-#endif
   /// Memory storage order of A, B, C:
   auto   strg  = (storage == dash::ROW_MAJOR)
                  ? CblasRowMajor

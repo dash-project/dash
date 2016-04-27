@@ -470,14 +470,11 @@ public:
                      "requesting cell element from remote unit",
                      local_pos.unit);
       // Referenced cell is located at remote unit, access element using
-      // blocking get request:
-      // Global pointer to element at given position:
-      dart_gptr_t gptr = _globmem->index_to_gptr(
-                                     local_pos.unit,
-                                     local_pos.index);
+      // blocking get request.
       // Global reference to element at given position:
-      DASH_LOG_TRACE_VAR("GlobStencilIter.halo_cell >", gptr);
-      return ReferenceType(gptr);
+      return ReferenceType(
+               _globmem->at(local_pos.unit,
+                            local_pos.index));
     }
   }
 
@@ -520,7 +517,7 @@ public:
                        local_pos.index + offset);
     // Create global pointer from unit and local offset:
     PointerType gptr(
-      _globmem->index_to_gptr(local_pos.unit, local_pos.index)
+      _globmem->at(local_pos.unit, local_pos.index)
     );
     gptr += offset;
     return gptr;
@@ -567,7 +564,7 @@ public:
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
     dash::GlobPtr<ElementType, PatternType> gptr(
-      _globmem->index_to_gptr(
+      _globmem->at(
         local_pos.unit,
         local_pos.index)
     );
@@ -598,12 +595,10 @@ public:
     }
     DASH_LOG_TRACE_VAR("GlobStencilIter.*", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobStencilIter.*", local_pos.index);
-    // Global pointer to element at given position:
-    dart_gptr_t gptr = _globmem->index_to_gptr(
-                                   local_pos.unit,
-                                   local_pos.index);
     // Global reference to element at given position:
-    return ReferenceType(gptr);
+    return ReferenceType(
+             _globmem->at(local_pos.unit,
+                          local_pos.index));
   }
 
   /**
@@ -634,7 +629,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobStencilIter.[]", local_pos.index);
     // Global pointer to element at given position:
     PointerType gptr(
-      _globmem->index_to_gptr(local_pos.unit, local_pos.index)
+      _globmem->at(local_pos.unit, local_pos.index)
     );
     // Global reference to element at given position:
     return ReferenceType(gptr);

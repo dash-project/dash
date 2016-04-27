@@ -108,7 +108,7 @@ dart_ret_t dart_put(
   size_t       nbytes);
 
 /**
- * DART Equivalent to MPI accumulate for values of type \c int.
+ * DART Equivalent to MPI_Accumulate.
  *
  * \ingroup DartCommuncation
  */
@@ -116,6 +116,19 @@ dart_ret_t dart_accumulate(
   dart_gptr_t      gptr,
   char  *          values,
   size_t           nelem,
+  dart_datatype_t  dtype,
+  dart_operation_t op,
+  dart_team_t      team);
+
+/**
+ * DART Equivalent to MPI_Fetch_and_op.
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_fetch_and_op(
+  dart_gptr_t      gptr,
+  void *           value,
+  void *           result,
   dart_datatype_t  dtype,
   dart_operation_t op,
   dart_team_t      team);

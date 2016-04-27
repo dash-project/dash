@@ -66,6 +66,11 @@ void multiply_local(
   long long         p,
   MemArrange        storage)
 {
+#ifndef DEBUG
+  DASH_THROW(
+    dash::exception::RuntimeError,
+    "Called fallback implementation of DGEMM (only enabled in Debug)");
+#endif
   ValueType c_sum = 0;
   for (auto i = 0; i < n; ++i) {
     // row i = 0...n
@@ -325,10 +330,10 @@ void summa(
   index_t  l_block_c_get_row   = l_block_c_get_view.offset(1) / block_size_n;
   index_t  l_block_c_get_col   = l_block_c_get_view.offset(0) / block_size_p;
   // Block coordinates of blocks in A and B to prefetch:
-  block_a_get_coords = coords_t { static_cast<index_t>(unit_ts_coords[0]),
-                                  l_block_c_get_row };
-  block_b_get_coords = coords_t { l_block_c_get_col,
-                                  static_cast<index_t>(unit_ts_coords[0]) };
+  block_a_get_coords = coords_t {{ static_cast<index_t>(unit_ts_coords[0]),
+				   l_block_c_get_row }};
+  block_b_get_coords = coords_t {{ l_block_c_get_col,
+				   static_cast<index_t>(unit_ts_coords[0]) }};
   // Local block index of local submatrix of C for multiplication result of
   // currently prefetched blocks:
   auto     l_block_c_comp      = l_block_c_get;
@@ -455,8 +460,8 @@ void summa(
           l_block_c_get_col  = l_block_c_get_view.offset(0) / block_size_p;
         }
         // Block coordinates of blocks in A and B to prefetch:
-        block_a_get_coords = coords_t { block_get_k, l_block_c_get_row };
-        block_b_get_coords = coords_t { l_block_c_get_col, block_get_k };
+        block_a_get_coords = coords_t {{ block_get_k, l_block_c_get_row }};
+        block_b_get_coords = coords_t {{ l_block_c_get_col, block_get_k }};
 
         block_a      = A.block(block_a_get_coords);
         block_a_lptr = block_a.begin().local();

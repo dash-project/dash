@@ -140,7 +140,7 @@ public:
         _arguments.team())),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _blockspec(initialize_blockspec(
         _size,
         _local_sizes)),
@@ -155,7 +155,7 @@ public:
     _nblocks(_nunits),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
@@ -186,7 +186,7 @@ public:
         team)),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _blockspec(initialize_blockspec(
         _size,
         _local_sizes)),
@@ -201,7 +201,7 @@ public:
     _nblocks(_nunits),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, team)");
@@ -236,7 +236,7 @@ public:
     _local_sizes(local_sizes),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _blockspec(initialize_blockspec(
         _size,
         _local_sizes)),
@@ -251,7 +251,7 @@ public:
     _nblocks(_nunits),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
@@ -280,7 +280,7 @@ public:
     _local_sizes(local_sizes),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _blockspec(initialize_blockspec(
         _size,
         _local_sizes)),
@@ -298,7 +298,7 @@ public:
     _nblocks(_nunits),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, teamspec, team)");
@@ -325,7 +325,7 @@ public:
     _local_sizes(local_sizes),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> { _size }),
+    _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _blockspec(initialize_blockspec(
         _size,
         _local_sizes)),
@@ -340,7 +340,7 @@ public:
     _nblocks(_nunits),
     _local_size(
         initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
+    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
     _local_capacity(initialize_local_capacity())
   {
     DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, team)");
@@ -617,7 +617,7 @@ public:
   {
     DASH_LOG_DEBUG_VAR("CSRPattern.local_extents()", unit);
     DASH_LOG_DEBUG_VAR("CSRPattern.local_extents >", _local_size);
-    return std::array<SizeType, 1> { _local_size };
+    return std::array<SizeType, 1> {{ _local_size }};
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -691,7 +691,6 @@ public:
     IndexType g_index) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.local()", g_index);
-    DASH_LOG_TRACE_VAR("CSRPattern.local", _block_offsets.size());
     DASH_ASSERT_GT(_nunits, 0,
                    "team size is 0");
     DASH_ASSERT_GE(_block_offsets.size(), _nunits,
@@ -699,9 +698,7 @@ public:
     local_index_t l_index;
     index_type    unit_idx = static_cast<index_type>(_nunits-1);
     for (; unit_idx >= 0; --unit_idx) {
-      DASH_LOG_TRACE_VAR("CSRPattern.local", unit_idx);
       index_type block_offset = _block_offsets[unit_idx];
-      DASH_LOG_TRACE_VAR("CSRPattern.local", block_offset);
       if (block_offset <= g_index) {
         l_index.unit  = unit_idx;
         l_index.index = g_index - block_offset;
@@ -732,7 +729,7 @@ public:
       if (block_offset <= g_index) {
         auto l_coord = g_index - block_offset;
         DASH_LOG_TRACE_VAR("CSRPattern.local_coords >", l_coord);
-        return std::array<IndexType, 1> { l_coord };
+        return std::array<IndexType, 1> {{ l_coord }};
       }
     }
     DASH_THROW(
@@ -791,7 +788,7 @@ public:
     // Initialize global index with element phase (= local coords):
     index_type glob_index = _block_offsets[unit] + local_coords[0];
     DASH_LOG_TRACE_VAR("CSRPattern.global >", glob_index);
-    return std::array<IndexType, 1> { glob_index };
+    return std::array<IndexType, 1> {{ glob_index }};
   }
 
   /**
@@ -817,7 +814,7 @@ public:
     dart_unit_t unit,
     IndexType l_index) const
   {
-    return global(unit, std::array<IndexType, 1> { l_index })[0];
+    return global(unit, std::array<IndexType, 1> {{ l_index }})[0];
   }
 
   /**
@@ -831,7 +828,7 @@ public:
   IndexType global(
     IndexType l_index) const
   {
-    return global(_team->myid(), std::array<IndexType, 1> { l_index })[0];
+    return global(_team->myid(), std::array<IndexType, 1> {{ l_index }})[0];
   }
 
   /**
@@ -897,9 +894,9 @@ public:
     static_assert(
       sizeof...(values) == NumDimensions-1,
       "Wrong parameter number");
-    std::array<IndexType, NumDimensions> inputindex = {
+    std::array<IndexType, NumDimensions> inputindex = {{
       value, (IndexType)values...
-    };
+      }};
     return at(inputindex);
   }
 
@@ -1016,8 +1013,8 @@ public:
     DASH_LOG_DEBUG_VAR("CSRPattern<1>.block >", g_block_index);
     index_type offset = _block_offsets[g_block_index];
     auto block_size   = _local_sizes[g_block_index];
-    std::array<index_type, NumDimensions> offsets = { offset };
-    std::array<size_type, NumDimensions>  extents = { block_size };
+    std::array<index_type, NumDimensions> offsets = {{ offset }};
+    std::array<size_type, NumDimensions>  extents = {{ block_size }};
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("CSRPattern<1>.block >", block_vs);
     return block_vs;
@@ -1036,8 +1033,8 @@ public:
       "CSRPattern always assigns exactly 1 block to a single unit");
     index_type block_offset = _block_offsets[_team->myid()];
     size_type  block_size   = _local_sizes[_team->myid()];
-    std::array<index_type, NumDimensions> offsets = { block_offset };
-    std::array<size_type, NumDimensions>  extents = { block_size };
+    std::array<index_type, NumDimensions> offsets = {{ block_offset }};
+    std::array<size_type, NumDimensions>  extents = {{ block_size }};
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block >", block_vs);
     return block_vs;
@@ -1052,8 +1049,8 @@ public:
   {
     DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block_local >", l_block_index);
     size_type block_size = _local_sizes[_team->myid()];
-    std::array<index_type, NumDimensions> offsets = { 0 };
-    std::array<size_type, NumDimensions>  extents = { block_size };
+    std::array<index_type, NumDimensions> offsets = {{ 0 }};
+    std::array<size_type, NumDimensions>  extents = {{ block_size }};
     ViewSpec_t block_vs(offsets, extents);
     DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block_local >", block_vs);
     return block_vs;
@@ -1168,7 +1165,7 @@ public:
    */
   SizeSpec_t sizespec() const
   {
-    return SizeSpec_t(std::array<SizeType, 1> { _size });
+    return SizeSpec_t(std::array<SizeType, 1> {{ _size }});
   }
 
   /**
@@ -1178,7 +1175,7 @@ public:
    */
   const std::array<SizeType, NumDimensions> & extents() const
   {
-    return std::array<SizeType, 1> { _size };
+    return std::array<SizeType, 1> {{ _size }};
   }
 
   /**
@@ -1222,7 +1219,7 @@ public:
   std::array<IndexType, NumDimensions> coords(
     IndexType index) const
   {
-    return std::array<IndexType, 1> { index };
+    return std::array<IndexType, 1> {{ index }};
   }
 
   /**
@@ -1311,8 +1308,8 @@ public:
   {
     DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec", local_sizes);
     BlockSpec_t blockspec({
-                  static_cast<size_type>(local_sizes.size())
-                });
+	static_cast<size_type>(local_sizes.size())
+	  });
     DASH_LOG_TRACE_VAR("CSRPattern.init_blockspec >", blockspec);
     return blockspec;
   }

@@ -296,6 +296,7 @@ class StoreHDF {
 
         // Add Attributes
         if(foptions.store_pattern) {
+						DASH_LOG_DEBUG("store pattern in hdf5 file");
             auto pat_key = foptions.pattern_metadata_key.c_str();
             long pattern_spec[ndim*4];
             // Structure is
@@ -460,8 +461,6 @@ class StoreHDF {
         std::string table,
         hdf5_file_options foptions = _get_fdefaults()) {
 
-        typedef dash::TilePattern<ndim> pattern_t;
-
         /* HDF5 definition */
         hid_t		file_id;
         hid_t		dataset;
@@ -519,16 +518,6 @@ class StoreHDF {
         for(int i=0; i<ndim; i++) {
             size_extents[i] = data_dimsf[i];
         }
-        dash::SizeSpec<ndim> size_spec(size_extents);
-        dash::TeamSpec<ndim> team_spec;
-        team_spec.balance_extents();
-
-        pattern_t pattern = dash::make_pattern <
-                            dash::summa_pattern_partitioning_constraints,
-                            dash::summa_pattern_mapping_constraints,
-                            dash::summa_pattern_layout_constraints >(
-                                size_spec,
-                                team_spec);
 
         // Check if file contains DASH metadata and recreate the pattern
         auto pat_key = foptions.pattern_metadata_key.c_str();
@@ -546,26 +535,33 @@ class StoreHDF {
                 team_extents[i]  = static_cast<size_t> (hdf_dash_pattern[i+ndim]);
                 dist_extents[i]  = dash::TILE(hdf_dash_pattern[i+(ndim*3)]);
             }
-            // instantiate pattern
-            pattern = pattern_t(
-                          dash::SizeSpec<ndim>(size_extents),
-                          dash::DistributionSpec<ndim>(dist_extents),
-                          dash::TeamSpec<ndim>(team_extents));
-            DASH_LOG_DEBUG("Created pattern according to metadata");
-        }
-
-        DASH_LOG_DEBUG("Pattern", pattern);
-
-        // Allocate DASH Matrix
-
-        matrix.allocate(
-            dash::SizeSpec<ndim>(size_extents),
-            dash::DistributionSpec<ndim>(dist_extents),
-            dash::TeamSpec<ndim>(team_extents));
-
+           DASH_LOG_DEBUG("Created pattern according to metadata");
+						
+        		// Allocate DASH Matrix
+						matrix.allocate(
+            	dash::SizeSpec<ndim>(size_extents),
+            	dash::DistributionSpec<ndim>(dist_extents),
+            	dash::TeamSpec<ndim>(team_extents));
+        } else {
+					team_extents[0] = dash::size();
+					auto teamspec = dash::TeamSpec<ndim>(team_extents);
+					auto sizespec = dash::SizeSpec<ndim>(team_extents);
+					teamspec.balance_extents();
+					auto pattern = 	dash::make_pattern<
+														dash::pattern_partitioning_properties<
+															dash::pattern_partitioning_tag::minimal>,
+														dash::pattern_layout_properties<
+															dash::pattern_layout_tag::blocked> >(
+					 									teamspec,
+														sizespec);
+					matrix.allocate(pattern);
+				}
+        
         h5datatype 		= _convertType(*matrix.lbegin()); // hack
 
         // setup extends per dimension
+				auto pattern = matrix.pattern();
+        DASH_LOG_DEBUG("Pattern", pattern);
         for(int i=0; i<ndim; i++) {
             data_dimsm[i] = pattern.local_extent(i);
             // number of tiles in this dimension

@@ -47,6 +47,13 @@ public:
   typedef PatternType pattern_type;
   typedef IndexType   gptrdiff_t;
 
+public:
+  /// Convert GlobPtr<T, PatternType> to GlobPtr<U, PatternType>.
+  template<typename U>
+  struct rebind {
+    typedef GlobPtr<U, PatternType> other;
+  };
+
 private:
   dart_gptr_t _dart_gptr;
 

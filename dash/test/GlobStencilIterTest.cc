@@ -154,8 +154,8 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
   auto     myid      = dash::myid();
   extent_t num_units = dash::size();
 
-  if (num_units < 2) {
-    LOG_MESSAGE("GlobStencilIterTest.HaloBlock requires at least 2 units");
+  if (num_units < 4 || num_units % 2 != 0) {
+    LOG_MESSAGE("GlobStencilIterTest.HaloBlock requires at least 4 units");
     return;
   }
 
@@ -223,6 +223,11 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
 
   if (myid == 0) {
     DASH_LOG_TRACE_VAR("GlobStencilIterTest.HaloBlock", teamspec.extents());
+    DASH_LOG_TRACE_VAR("GlobStencilIterTest.HaloBlock", pattern.extents());
+    DASH_LOG_TRACE_VAR("GlobStencilIterTest.HaloBlock", pattern.blocksize(0));
+    DASH_LOG_TRACE_VAR("GlobStencilIterTest.HaloBlock", pattern.blocksize(1));
+    DASH_LOG_TRACE_VAR("GlobStencilIterTest.HaloBlock",
+                       pattern.blockspec().extents());
 
     std::array<index_t, 2> g_block_coords = {{
                              static_cast<index_t>(num_tiles_rows / 2),
@@ -238,8 +243,14 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
     auto block_view   = matrix_block.viewspec();
 
     // write values in halo- and boundary cells only:
+    DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock",
+                   "write to north and south boundary- and halo cells.",
+                   "halospec rows:", halospec.width(0),
+                   "block columns:", matrix_block.extent(1));
     for (int hi = 0; hi < halospec.width(0); ++hi) {
       for (int hj = 0; hj < matrix_block.extent(1); ++hj) {
+        DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock",
+                       "( hi:", hi, "hj:", hj, ")");
         // write values into north halo:
         auto nhi = block_view.offset(0) - halospec.width(0) + hi;
         auto nhj = block_view.offset(1) + hj;
@@ -259,8 +270,14 @@ TEST_F(GlobStencilIterTest, FivePoint2DimHaloBlock)
         matrix[sbi][sbj] = bnd_s_value;
       }
     }
+    DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock",
+                   "write to west and east boundary- and halo cells.",
+                   "block rows:",       matrix_block.extent(0),
+                   "halospec columns:", halospec.width(1));
     for (int hi = 0; hi < matrix_block.extent(0); ++hi) {
       for (int hj = 0; hj < halospec.width(1); ++hj) {
+        DASH_LOG_TRACE("GlobStencilIterTest.HaloBlock",
+                       "( hi:", hi, "hj:", hj, ")");
         // write values into west halo:
         auto whi = block_view.offset(0) + hi;
         auto whj = block_view.offset(1) - halospec.width(1) + hj;

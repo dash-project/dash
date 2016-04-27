@@ -15,6 +15,8 @@
 #include <dash/Dimensional.h>
 
 #include <iterator>
+#include <initializer_list>
+#include <type_traits>
 
 /**
  * \defgroup  DashContainerConcept  Container Concept
@@ -25,21 +27,6 @@
  * \par Description
  *
  * \par Methods
- * <table>
- *   <tr>
- *     <th>Method Signature</th>
- *     <th>Semantics</th>
- *   </tr>
- *   <tr>
- *     <td>
- *       \c [](gindex)
- *     </td>
- *     <td>
- *       Returns the element located at the given global position
- *       in the container.
- *     </td>
- *   </tr>
- * </table>
  * \}
  */
 
@@ -52,46 +39,10 @@
  * \par Description
  *
  * \par Methods
- * <table>
- *   <tr>
- *     <th>Method Signature</th>
- *     <th>Semantics</th>
- *   <tr>
- *     <td>
- *       \c [](gindex)
- *     </td>
- *     <td>
- *       Returns the element located at the given global position
- *       in the array.
- *     </td>
- *   </tr>
- * </table>
  * \}
  */
 
 namespace dash {
-
-/*
-   STANDARD TYPE DEFINITION CONVENTIONS FOR STL CONTAINERS
-
-            value_type  Type of element
-        allocator_type  Type of memory manager
-             size_type  Unsigned type of container
-                        subscripts, element counts, etc.
-       difference_type  Signed type of difference between
-                        iterators
-
-              iterator  Behaves like value_type*
-        const_iterator  Behaves like const value_type*
-      reverse_iterator  Behaves like value_type*
-const_reverse_iterator  Behaves like const value_type*
-
-             reference  value_type&
-       const_reference  const value_type&
-
-               pointer  Behaves like value_type*
-         const_pointer  Behaves like const value_type*
-*/
 
 // forward declaration
 template<
@@ -563,6 +514,9 @@ private:
  * \concept{DashContainerConcept}
  * \concept{DashArrayConcept}
  *
+ * TODO: Add template parameter:
+ *       class GlobMemType = dash::GlobMem<ElementType>
+ *
  * Note: Template parameter IndexType could be deduced from pattern type:
  *       PatternT::index_type
  */
@@ -572,7 +526,8 @@ template<
   /// Pattern type used to distribute array elements among units.
   /// Default is \c dash::BlockPattern<1, ROW_MAJOR> as it supports all
   /// distribution types (BLOCKED, TILE, BLOCKCYCLIC, CYCLIC).
-  class    PatternType  = Pattern<1, ROW_MAJOR, IndexType> >
+  class    PatternType  = Pattern<1, ROW_MAJOR, IndexType>
+>
 class Array
 {
 private:
@@ -595,6 +550,8 @@ public:
 
   typedef       GlobIter<value_type, PatternType>                    pointer;
   typedef const GlobIter<value_type, PatternType>              const_pointer;
+
+  typedef dash::GlobMem<value_type>                            glob_mem_type;
 
 public:
   template<
@@ -667,11 +624,11 @@ public:
     m_lsize(0),
     m_lcapacity(0)
   {
-    DASH_LOG_TRACE("Array()", "default constructor");
+    DASH_LOG_TRACE("Array() >", "finished default constructor");
   }
 
   /**
-   * Constructor, specifies distribution type explicitly.
+   * Constructor, specifies the array's global capacity and distribution.
    */
   Array(
     size_type                  nelem,
@@ -688,8 +645,62 @@ public:
     m_lsize(0),
     m_lcapacity(0)
   {
-    DASH_LOG_TRACE("Array()", nelem);
+    DASH_LOG_TRACE("Array(nglobal,dist,team)()", "size:", nelem);
     allocate(m_pattern);
+    DASH_LOG_TRACE("Array(nglobal,dist,team) >");
+  }
+
+  /**
+   * Delegating constructor, specifies the array's global capacity.
+   */
+  Array(
+    size_type   nelem,
+    Team      & team = dash::Team::All())
+  : Array(nelem, dash::BLOCKED, team)
+  {
+    DASH_LOG_TRACE("Array(nglobal,team) >",
+                   "finished delegating constructor");
+  }
+
+  /**
+   * Constructor, specifies the array's global capacity, values of local
+   * elements and distribution.
+   */
+  Array(
+    size_type                           nelem,
+    std::initializer_list<value_type>   local_elements,
+    const DistributionSpec_t          & distribution,
+    Team                              & team = dash::Team::All())
+  : local(this),
+    async(this),
+    m_team(&team),
+    m_pattern(
+      SizeSpec_t(nelem),
+      distribution,
+      team),
+    m_size(0),
+    m_lsize(0),
+    m_lcapacity(0)
+  {
+    DASH_LOG_TRACE("Array(nglobal,lvals,dist,team)()",
+                   "size:",   nelem,
+                   "nlocal:", local_elements.size());
+    allocate(m_pattern, local_elements);
+    DASH_LOG_TRACE("Array(nglobal,lvals,dist,team) >");
+  }
+
+  /**
+   * Delegating constructor, specifies the array's global capacity and values
+   * of local elements.
+   */
+  Array(
+    size_type                           nelem,
+    std::initializer_list<value_type>   local_elements,
+    Team                              & team = dash::Team::All())
+  : Array(nelem, local_elements, dash::BLOCKED, team)
+  {
+    DASH_LOG_TRACE("Array(nglobal,lvals,team) >",
+                   "finished delegating constructor");
   }
 
   /**
@@ -710,23 +721,13 @@ public:
   }
 
   /**
-   * Delegating constructor, specifies the size of the array.
-   */
-  Array(
-    size_type   nelem,
-    Team      & team = dash::Team::All())
-  : Array(nelem, dash::BLOCKED, team)
-  {
-    DASH_LOG_TRACE("Array()", "finished delegating constructor");
-  }
-
-  /**
    * Destructor, deallocates array elements.
    */
   ~Array()
   {
     DASH_LOG_TRACE_VAR("Array.~Array()", this);
     deallocate();
+    DASH_LOG_TRACE_VAR("Array.~Array >", this);
   }
 
   /**
@@ -957,7 +958,7 @@ public:
   {
     DASH_LOG_TRACE_VAR("Array.barrier()", m_team);
     m_team->barrier();
-    DASH_LOG_TRACE("Array.barrier()", "passed barrier");
+    DASH_LOG_TRACE("Array.barrier >", "passed barrier");
   }
 
   /**
@@ -975,11 +976,45 @@ public:
   }
 
   bool allocate(
-    size_type nelem,
-    dash::DistributionSpec<1> distribution,
-    dash::Team & team = dash::Team::All())
+    size_type                   nelem,
+    dash::DistributionSpec<1>   distribution,
+    dash::Team                & team = dash::Team::All())
   {
-    DASH_LOG_TRACE("Array.allocate()", nelem);
+    DASH_LOG_TRACE_VAR("Array.allocate(nlocal,ds,team)", nelem);
+    DASH_LOG_TRACE_VAR("Array.allocate", m_team->dart_id());
+    DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
+    // Check requested capacity:
+    if (nelem == 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Tried to allocate dash::Array with size 0");
+    }
+    if (m_team == nullptr || *m_team == dash::Team::Null()) {
+      DASH_LOG_TRACE("Array.allocate",
+                     "initializing with specified team -",
+                     "team size:", team.size());
+      m_team    = &team;
+      m_pattern = PatternType(nelem, distribution, team);
+      DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
+      DASH_LOG_TRACE_VAR("Array.allocate", m_pattern.team().dart_id());
+    } else {
+      DASH_LOG_TRACE("Array.allocate",
+                     "initializing pattern with initial team");
+      m_pattern = PatternType(nelem, distribution, *m_team);
+    }
+    bool ret = allocate(m_pattern);
+    DASH_LOG_TRACE("Array.allocate(nlocal,ds,team) >");
+    return ret;
+  }
+
+  bool allocate(
+    size_type                           nelem,
+    std::initializer_list<value_type>   local_elements,
+    dash::DistributionSpec<1>           distribution,
+    dash::Team                        & team = dash::Team::All())
+  {
+    DASH_LOG_TRACE_VAR("Array.allocate(lvals,ds,team)",
+                       local_elements.size());
     DASH_LOG_TRACE_VAR("Array.allocate", m_team->dart_id());
     DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
     // Check requested capacity:
@@ -1000,7 +1035,9 @@ public:
                      "initializing pattern with initial team");
       m_pattern = PatternType(nelem, distribution, *m_team);
     }
-    return allocate(m_pattern);
+    bool ret = allocate(m_pattern, local_elements);
+    DASH_LOG_TRACE("Array.allocate(lvals,ds,team) >");
+    return ret;
   }
 
   void deallocate()
@@ -1027,8 +1064,7 @@ public:
   }
 
 private:
-  bool allocate(
-    const PatternType & pattern)
+  bool allocate(const PatternType & pattern)
   {
     DASH_LOG_TRACE("Array._allocate()", "pattern",
                    pattern.memory_layout().extents());
@@ -1047,7 +1083,65 @@ private:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new GlobMem_t(m_lcapacity, pattern.team());
+    m_globmem   = new glob_mem_type(m_lcapacity, pattern.team());
+    // Global iterators:
+    m_begin     = iterator(m_globmem, pattern);
+    m_end       = iterator(m_begin) + m_size;
+    // Local iterators:
+    m_lbegin    = m_globmem->lbegin(m_myid);
+    // More efficient than using m_globmem->lend as this a second mapping
+    // of the local memory segment:
+    m_lend      = m_lbegin + pattern.local_size();
+    DASH_LOG_TRACE_VAR("Array._allocate", m_myid);
+    DASH_LOG_TRACE_VAR("Array._allocate", m_size);
+    DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
+    // Register deallocator of this array instance at the team
+    // instance that has been used to initialized it:
+    pattern.team().register_deallocator(
+      this, std::bind(&Array::deallocate, this));
+    // Assure all units are synchronized after allocation, otherwise
+    // other units might start working on the array before allocation
+    // completed at all units:
+    if (dash::is_initialized()) {
+      DASH_LOG_TRACE("Array._allocate",
+                     "waiting for allocation of all units");
+      m_team->barrier();
+    }
+    DASH_LOG_TRACE("Array._allocate >", "finished");
+    return true;
+  }
+
+#if 0
+  typename std::enable_if<
+    std::is_move_constructible<value_type>::value &&
+    std::is_move_assignable<value_type>::value,
+    bool
+  >::type
+#else
+  bool
+#endif
+  allocate(
+    const PatternType                 & pattern,
+    std::initializer_list<value_type>   local_elements)
+  {
+    DASH_LOG_TRACE("Array._allocate()", "pattern",
+                   pattern.memory_layout().extents());
+    // Check requested capacity:
+    m_size      = pattern.capacity();
+    m_team      = &pattern.team();
+    if (m_size == 0) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Tried to allocate dash::Array with size 0");
+    }
+    // Initialize members:
+    m_lsize     = pattern.local_size();
+    m_lcapacity = pattern.local_capacity();
+    m_myid      = pattern.team().myid();
+    // Allocate local memory of identical size on every unit:
+    DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
+    DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
+    m_globmem   = new glob_mem_type(local_elements, pattern.team());
     // Global iterators:
     m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
@@ -1076,7 +1170,6 @@ private:
   }
 
 private:
-  typedef dash::GlobMem<value_type> GlobMem_t;
   /// Team containing all units interacting with the array
   dash::Team         * m_team      = nullptr;
   /// DART id of the unit that created the array
@@ -1084,7 +1177,7 @@ private:
   /// Element distribution pattern
   PatternType          m_pattern;
   /// Global memory allocation and -access
-  GlobMem_t          * m_globmem;
+  glob_mem_type      * m_globmem;
   /// Iterator to initial element in the array
   iterator             m_begin;
   /// Iterator to final element in the array

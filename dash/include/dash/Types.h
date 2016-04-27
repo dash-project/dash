@@ -65,7 +65,27 @@ struct dart_datatype {
 };
 
 template<>
+struct dart_datatype<char> {
+  static const dart_datatype_t value;
+};
+
+template<>
 struct dart_datatype<int> {
+  static const dart_datatype_t value;
+};
+
+template<>
+struct dart_datatype<unsigned int> {
+  static const dart_datatype_t value;
+};
+
+template<>
+struct dart_datatype<long> {
+  static const dart_datatype_t value;
+};
+
+template<>
+struct dart_datatype<size_t> {
   static const dart_datatype_t value;
 };
 

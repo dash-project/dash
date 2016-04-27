@@ -70,9 +70,13 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
+
+# Load build modules to locate libraries after environment setup
+# has been loaded:
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Likwid.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
@@ -211,7 +215,7 @@ message(INFO "ScaLAPACK support:        (ENABLE_SCALAPACK)               "
         ${ENABLE_SCALAPACK})
 message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
-message(INFO "HDF5 support:             (ENABLE_PLASMA)                  "
+message(INFO "HDF5 support:             (ENABLE_HDF5)                  "
         ${ENABLE_HDF5})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
@@ -256,6 +260,15 @@ if (ENABLE_HWLOC)
   endif()
 else()
   message(NOTE "hwloc                     disabled")
+endif()
+if (ENABLE_LIKWID)
+  if (LIKWID_FOUND)
+    message(INFO "likwid                    enabled")
+  else()
+    message(NOTE "likwid                    not found")
+  endif()
+else()
+  message(NOTE "likwid                    disabled")
 endif()
 if (ENABLE_LAPACK)
   if (LAPACK_FOUND)

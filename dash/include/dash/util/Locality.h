@@ -101,29 +101,11 @@ public:
   }
 
   static inline int CPUMaxMhz() {
-#ifdef DASH_ENABLE_PAPI
-    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
-    if (hwinfo == NULL) {
-      DASH_THROW(
-        dash::exception::RuntimeError,
-        "PAPI get hardware info failed");
-    }
-    return hwinfo->cpu_max_mhz;
-#endif
-    return -1;
+    return _cpu_max_mhz;
   }
 
   static inline int CPUMinMhz() {
-#ifdef DASH_ENABLE_PAPI
-    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
-    if (hwinfo == NULL) {
-      DASH_THROW(
-        dash::exception::RuntimeError,
-        "PAPI get hardware info failed");
-    }
-    return hwinfo->cpu_min_mhz;
-#endif
-    return -1;
+    return _cpu_min_mhz;
   }
 
   static inline std::string Hostname() {
@@ -154,9 +136,11 @@ private:
   static int                      _num_sockets;
   static int                      _num_numa;
   static int                      _num_cpus;
+  static int                      _cpu_min_mhz;
+  static int                      _cpu_max_mhz;
   static std::vector<UnitPinning> _unit_pinning;
-  static std::array<int, 3>    _cache_sizes;
-  static std::array<int, 3>    _cache_line_sizes;
+  static std::array<int, 3>       _cache_sizes;
+  static std::array<int, 3>       _cache_line_sizes;
 };
 
 std::ostream & operator<<(

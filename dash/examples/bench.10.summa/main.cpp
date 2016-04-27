@@ -70,7 +70,7 @@ using std::string;
 extern char ** environ;
 
 typedef dash::util::Timer<
-          dash::util::TimeMeasure::Counter
+          dash::util::TimeMeasure::Clock
         > Timer;
 
 #ifdef DASH__BENCH_10_SUMMA__DOUBLE_PREC
@@ -270,10 +270,10 @@ void perform_test(
                      dash::summa_pattern_layout_constraints >(
                        size_spec);
   if (params.units_x > 0 && params.units_y > 0) {
-    std::array<extent_t, 2> team_extents { params.units_y, params.units_x };
+    std::array<extent_t, 2> team_extents {{ params.units_y, params.units_x }};
     team_spec.resize(team_extents);
   }
-#if 0
+#if 1
   auto pattern   = dash::make_pattern<
                      dash::summa_pattern_partitioning_constraints,
                      dash::summa_pattern_mapping_constraints,
@@ -322,7 +322,7 @@ void perform_test(
            << setw(6)  << "mem.mb"  << ", "
            << setw(10) << "mpi"     << ", "
            << setw(10) << "impl"    << ", "
-           << setw(12) << "gflop/r" << ", "
+           << setw(10) << "gflop/r" << ", "
            << setw(7)  << "peak.gf" << ", "
            << setw(7)  << "repeats" << ", "
            << setw(10) << "gflop/s" << ", "
@@ -363,7 +363,7 @@ void perform_test(
          << setw(6)  << mem_total_mb   << ", "
          << setw(10) << mpi_impl       << ", "
          << setw(10) << variant_id     << ", "
-         << setw(12) << std::fixed << std::setprecision(4)
+         << setw(10) << std::fixed << std::setprecision(2)
                      << gflop          << ", "
          << setw(7)  << gflops_peak    << ", "
          << setw(7)  << num_repeats    << ", "

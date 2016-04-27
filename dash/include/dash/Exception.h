@@ -106,7 +106,7 @@
 
 // Using (value+1) >= (max+1) to avoid compiler warning for unsigned.
 #define DASH_ASSERT_LT(value, max, message) do { \
-  if (((value+1)) >= ((max)+1)) { \
+  if (((value)+1) >= ((max)+1)) { \
     DASH_THROW(dash::exception::OutOfRange, \
                "Range assertion " \
                << value << " < " << max \

@@ -1,11 +1,12 @@
 #ifndef DASH__HALO_H__
 #define DASH__HALO_H__
 
-#include <functional>
-
 #include <dash/Allocator.h>
 #include <dash/GlobMem.h>
 #include <dash/internal/Logging.h>
+
+#include <functional>
+
 
 namespace dash {
 
@@ -431,7 +432,7 @@ public:
                    "local index:", local_pos.index);
     // Global pointer to element at given position:
     dash::GlobPtr<ElementType, PatternType> gptr(
-      _globmem->index_to_gptr(
+      _globmem->at(
         local_pos.unit,
         local_pos.index)
     );
@@ -462,12 +463,10 @@ public:
     }
     DASH_LOG_TRACE_VAR("GlobStencilIter.*", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobStencilIter.*", local_pos.index);
-    // Global pointer to element at given position:
-    dart_gptr_t gptr = _globmem->index_to_gptr(
-                                   local_pos.unit,
-                                   local_pos.index);
     // Global reference to element at given position:
-    return ReferenceType(gptr);
+    return reference(
+             _globmem->at(local_pos.unit,
+                          local_pos.index));
   }
 
   /**
@@ -496,12 +495,10 @@ public:
     }
     DASH_LOG_TRACE_VAR("GlobStencilIter.[]", local_pos.unit);
     DASH_LOG_TRACE_VAR("GlobStencilIter.[]", local_pos.index);
-    // Global pointer to element at given position:
-    PointerType gptr(
-      _globmem->index_to_gptr(local_pos.unit, local_pos.index)
-    );
     // Global reference to element at given position:
-    return ReferenceType(gptr);
+    return reference(
+             _globmem->at(local_pos.unit,
+                          local_pos.index));
   }
 
   /**
