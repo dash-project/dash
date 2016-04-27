@@ -49,7 +49,7 @@ option(ENABLE_LIBNUMA
 option(ENABLE_HWLOC
        "Specify whether hwloc support is enabled" on)
 option(ENABLE_LIKWID
-       "Specify whether likwid support is enabled" on)
+       "Specify whether likwid support is enabled" off)
 option(ENABLE_PAPI
        "Specify whether PAPI support is enabled" on)
 option(ENABLE_MKL
