@@ -243,7 +243,7 @@ dart_team_memalloc_aligned(
 	if (shmem_unitid == PROGRESS_NUM){
 		int i;
 		for (i = 0; i < PROGRESS_NUM; i++){
-			MPI_Send (&index, 1, MPI_UINT16_T, PROGRESS_UNIT+i, MEMALLOC, dart_sharedmem_comm_list[0]);
+			MPI_Send (&dart_progress_index[index], 1, MPI_UINT16_T, PROGRESS_UNIT+i, MEMALLOC, dart_sharedmem_comm_list[0]);
 		}
 	}
 	MPI_Win_allocate_shared (nbytes, sizeof(char), MPI_INFO_NULL, sharedmem_comm, 

@@ -155,7 +155,7 @@ extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
 #ifdef SHAREDMEM_ENABLE
 
 #ifdef PROGRESS_ENABLE
-extern int dart_progress_index[DART_MAX_TEAM_NUMBER];
+extern int32_t dart_progress_index[DART_MAX_TEAM_NUMBER];
 extern MPI_Comm dart_realteams[DART_MAX_TEAM_NUMBER];
 extern int* dart_sharedmem_progress_table[DART_MAX_TEAM_NUMBER];
 #endif

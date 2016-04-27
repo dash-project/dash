@@ -28,7 +28,7 @@ char**        dart_sharedmem_local_baseptr_set;
 MPI_Datatype  data_info_type;
 MPI_Comm      user_comm_world;
 int           top;
-int	      progress_index;
+int32_t	      progress_index;
 #endif
 #endif
 /* Help to do memory management work for local allocation/free */
@@ -495,7 +495,7 @@ dart_ret_t dart_exit()
 			if (flag)
 			{
 				if (mpi_status.MPI_TAG == MEMALLOC){
-					MPI_Recv (&index, 1, MPI_UINT16_T, mpi_status.MPI_SOURCE, 
+					MPI_Recv (&index, 1, MPI_INT32_T, mpi_status.MPI_SOURCE, 
 							MEMALLOC, dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
 									
 					char* sub_mem;
@@ -641,7 +641,7 @@ dart_ret_t dart_exit()
 					}
 				}
 
-				MPI_Group_incl (group_all, count-2, unitids, &group);
+				MPI_Group_incl (group_all, count-1, unitids, &group);
 				MPI_Group_union (progress_group, group, &sub_group);
 				int test_ranks[2], all_ranks[2];
 				for (i = 0; i < 2; i++)
@@ -654,9 +654,9 @@ dart_ret_t dart_exit()
 				free (unitids);
 
 				MPI_Comm_create (parent_comm, sub_group, &newcomm);
-				MPI_Bcast (&progress_index, 1, MPI_INT32_T, 0, newcomm);
 
 				if (newcomm != MPI_COMM_NULL){
+					MPI_Bcast (&progress_index, 1, MPI_INT32_T, 0, newcomm);
 					int newcomm_size;
 					MPI_Comm_size (newcomm, &newcomm_size);
 					MPI_Win_create_dynamic (MPI_INFO_NULL, newcomm, &win);
@@ -675,7 +675,7 @@ dart_ret_t dart_exit()
 				}
 			}
 			if (mpi_status.MPI_TAG == TEAMDESTROY){
-				MPI_Recv (&index, 1, MPI_UINT16_T, mpi_status.MPI_SOURCE, TEAMDESTROY, 
+				MPI_Recv (&index, 1, MPI_INT32_T, mpi_status.MPI_SOURCE, TEAMDESTROY, 
 						dart_sharedmem_comm_list[0], MPI_STATUS_IGNORE);
 
 		//		result = dart_adapt_teamlist_convert (teamid, &index);

@@ -847,7 +847,7 @@ dart_ret_t dart_team_destroy(
 	if (unitid == PROGRESS_NUM){
 		int iter;
 		for (iter = 0; iter < PROGRESS_NUM; iter++){
-			MPI_Send (&index, 1, MPI_UINT16_T, PROGRESS_UNIT+iter, TEAMDESTROY, dart_sharedmem_comm_list[0]);
+			MPI_Send (&dart_progress_index[index], 1, MPI_UINT16_T, PROGRESS_UNIT+iter, TEAMDESTROY, dart_sharedmem_comm_list[0]);
 		}
 	}
 #endif

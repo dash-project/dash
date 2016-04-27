@@ -148,7 +148,7 @@ dart_ret_t dart_get(
 	  }
 	  origin_offset = (char*)dest - addr;
 	  send_data.is_sharedmem = is_sharedmem;
-	  send_data.index = index;
+	  send_data.index = dart_progress_index[index];
 	  send_data.origin_offset = origin_offset;
 	  send_data.target_offset = disp_rel;
 	  send_data.data_size = nbytes;
@@ -291,7 +291,7 @@ dart_ret_t dart_put(
 	    origin_offset = (char*)src - addr;
 	    send_data.is_sharedmem = is_sharedmem;
 
-	    send_data.index = index;
+	    send_data.index = dart_progress_index[index];
 	    send_data.origin_offset = origin_offset;
 	    send_data.target_offset = disp_rel;
 	    send_data.data_size  =nbytes;
