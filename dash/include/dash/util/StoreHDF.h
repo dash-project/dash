@@ -547,6 +547,8 @@ class StoreHDF {
 					auto teamspec = dash::TeamSpec<ndim>(team_extents);
 					auto sizespec = dash::SizeSpec<ndim>(team_extents);
 					teamspec.balance_extents();
+#if 0
+// Buggy
 					auto pattern = 	dash::make_pattern<
 														dash::pattern_partitioning_properties<
 															dash::pattern_partitioning_tag::minimal>,
@@ -555,6 +557,8 @@ class StoreHDF {
 					 									teamspec,
 														sizespec);
 					matrix.allocate(pattern);
+#endif
+					DASH_ASSERT("Currently not supported");
 				}
         
         h5datatype 		= _convertType(*matrix.lbegin()); // hack
