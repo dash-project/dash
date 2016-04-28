@@ -296,7 +296,7 @@ class StoreHDF {
 
         // Add Attributes
         if(foptions.store_pattern) {
-						DASH_LOG_DEBUG("store pattern in hdf5 file");
+            DASH_LOG_DEBUG("store pattern in hdf5 file");
             auto pat_key = foptions.pattern_metadata_key.c_str();
             long pattern_spec[ndim*4];
             // Structure is
@@ -535,36 +535,36 @@ class StoreHDF {
                 team_extents[i]  = static_cast<size_t> (hdf_dash_pattern[i+ndim]);
                 dist_extents[i]  = dash::TILE(hdf_dash_pattern[i+(ndim*3)]);
             }
-           DASH_LOG_DEBUG("Created pattern according to metadata");
-						
-        		// Allocate DASH Matrix
-						matrix.allocate(
-            	dash::SizeSpec<ndim>(size_extents),
-            	dash::DistributionSpec<ndim>(dist_extents),
-            	dash::TeamSpec<ndim>(team_extents));
+            DASH_LOG_DEBUG("Created pattern according to metadata");
+
+            // Allocate DASH Matrix
+            matrix.allocate(
+                dash::SizeSpec<ndim>(size_extents),
+                dash::DistributionSpec<ndim>(dist_extents),
+                dash::TeamSpec<ndim>(team_extents));
         } else {
-					team_extents[0] = dash::size();
-					auto teamspec = dash::TeamSpec<ndim>(team_extents);
-					auto sizespec = dash::SizeSpec<ndim>(team_extents);
-					teamspec.balance_extents();
+            team_extents[0] = dash::size();
+            auto teamspec = dash::TeamSpec<ndim>(team_extents);
+            auto sizespec = dash::SizeSpec<ndim>(team_extents);
+            teamspec.balance_extents();
 #if 0
 // Buggy
-					auto pattern = 	dash::make_pattern<
-														dash::pattern_partitioning_properties<
-															dash::pattern_partitioning_tag::minimal>,
-														dash::pattern_layout_properties<
-															dash::pattern_layout_tag::blocked> >(
-					 									teamspec,
-														sizespec);
-					matrix.allocate(pattern);
+            auto pattern = 	dash::make_pattern<
+                            dash::pattern_partitioning_properties<
+                            dash::pattern_partitioning_tag::minimal>,
+                            dash::pattern_layout_properties<
+                            dash::pattern_layout_tag::blocked> >(
+                                teamspec,
+                                sizespec);
+            matrix.allocate(pattern);
 #endif
-					DASH_ASSERT("Currently not supported");
-				}
-        
+            DASH_ASSERT("Currently not supported");
+        }
+
         h5datatype 		= _convertType(*matrix.lbegin()); // hack
 
         // setup extends per dimension
-				auto pattern = matrix.pattern();
+        auto pattern = matrix.pattern();
         DASH_LOG_DEBUG("Pattern", pattern);
         for(int i=0; i<ndim; i++) {
             data_dimsm[i] = pattern.local_extent(i);

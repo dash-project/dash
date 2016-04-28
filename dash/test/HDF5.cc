@@ -14,6 +14,69 @@ typedef dash::Array<
 uvalue_t,
 long> uarray_t;
 
+/**
+ * Cantors pairing function to map n-tuple to single number
+ */
+template<
+    typename T,
+    size_t ndim>
+T cantorpi(std::array<T, ndim> tuple) {
+    int cantor = 0;
+    for(int i=0; i<ndim-1; i++) {
+        T x = tuple[i];
+        T y = tuple[i+1];
+        cantor += y + 0.5*(x+y)*(x+y+1);
+    }
+    return cantor;
+}
+
+/**
+ * Fill a n-dimensional dash matrix with a signatures that contains
+ * the global coordinates and a secret which can be the unit id
+ * for example
+ */
+template<
+    typename T,
+    int ndim,
+    typename IndexT,
+    typename PatternT>
+void fill_matrix(dash::Matrix<T, ndim, IndexT, PatternT> matrix, T secret = 0) {
+    std::function< void(const T &, IndexT)>
+    f = [&matrix, &secret](T el, IndexT i) {
+        auto coords = matrix.pattern().coords(i);
+        el = cantorpi(coords) + secret;
+    };
+    dash::for_each_with_index(
+        matrix.begin(),
+        matrix.end(),
+        f);
+}
+
+/**
+ * Counterpart to fill_matrix which checks if the given matrix satisfies
+ * the desired signature
+ */
+template<
+    typename T,
+    int ndim,
+    typename IndexT,
+    typename PatternT>
+void verify_matrix(dash::Matrix<T, ndim, IndexT, PatternT> matrix, T secret = 0) {
+    std::function< void(const T &, IndexT)>
+    f = [&matrix, &secret](T el, IndexT i) {
+        auto coords  = matrix.pattern().coords(i);
+        auto desired = cantorpi(coords) + secret;
+        ASSERT_EQ_U(
+            desired,
+            el);
+    };
+    dash::for_each_with_index(
+        matrix.begin(),
+        matrix.end(),
+        f);
+}
+
+
 TEST_F(HDFTest, StoreLargeDashArray) {
     // Pattern for arr2 array
     size_t nunits   				= dash::Team::All().size();
@@ -144,13 +207,7 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
         dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_a(pattern);
         dash::barrier();
 
-        // Fill local block with id of unit
-        for(int i=0; i<matrix_a.local.extent(0); i++) {
-            for(int j=0; j<matrix_a.local.extent(1); j++) {
-                matrix_a.local[i][j] = myid*1e4 + i*1e2 + j;
-            }
-        }
-        //std::fill(matrix_a.lbegin(), matrix_a.lend(), myid);
+        fill_matrix(matrix_a, static_cast<double>(myid));
         dash::barrier();
 
         // Store Matrix
@@ -184,13 +241,7 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
     dash::Matrix<double, 2> matrix_b;
     dash::util::StoreHDF::read(matrix_b, "test.hdf5", "data");
     dash::barrier();
-
-    for(int i=0; i<matrix_b.local.extent(0); i++) {
-        for(int j=0; j<matrix_b.local.extent(1); j++) {
-            ASSERT_EQ_U(matrix_b.local[i][j],
-                        myid*1e4 + i*1e2 + j);
-        }
-    }
+    //verify_matrix(matrix_b, static_cast<double>(myid));
 }
 
 TEST_F(HDFTest, Options) {
