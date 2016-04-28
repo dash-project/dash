@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <cstddef>
+#include <sstream>
 
 #include <libdash.h>
 
@@ -12,15 +13,21 @@ int main(int argc, char* argv[])
   char buf[100];
 
   dash::init(&argc, &argv);
-  
+
   auto myid = dash::myid();
   auto size = dash::size();
 
   gethostname(buf, 100);
   pid = getpid();
 
-  cout<<"'Hello world' from unit "<<myid<<
-    " of "<<size<<" on "<<buf<<" pid="<<pid<<endl;
-  
+  // To avoid interleaving output:
+  std::ostringstream os;
+  os << "'Hello world' from "
+     << "unit " << myid << " of " << size << " "
+     << "on "   << buf  << " pid=" << pid
+     << endl;
+
+  cout << os.str();
+
   dash::finalize();
 }

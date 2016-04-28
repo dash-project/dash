@@ -14,8 +14,8 @@ await_confirm() {
 }
 
 exit_message() {
-  echo "--------------------------------------------------------"
-  echo "Done. To install DASH, run    make install    in ./build"
+  echo "------------------------------------------------------------"
+  echo "Done. To install DASH, run    make install    in ./build.mic"
 }
 
 if [ "${PAPI_HOME}" = "" ]; then
@@ -40,7 +40,7 @@ fi
 # To build with MKL support, set environment variables MKLROOT and INTELROOT.
 
 # Configure with default release build settings:
-mkdir -p build
+mkdir -p build.mic
 rm -Rf ./build.mic/*
 (cd ./build.mic && cmake -DCMAKE_BUILD_TYPE=Release \
                          -DENVIRONMENT_TYPE=supermic \

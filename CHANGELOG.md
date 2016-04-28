@@ -1,5 +1,29 @@
 # DASH 0.3.0
 
+## Build System
+
+Features:
+
+- Added support for likwid.
+- Added build for Intel MIC (tested on SuperMIC).
+
+- New compiler flags:
+
+    - `DASH_ENABLE_LIKWID`: Whether DASH has been compiled with likwid
+      support.
+    - `DASH__ARCH__HAS_RDTSC`: Whether the target architecture provides
+      an RDTSC micro-instruction.
+
+Bugfixes:
+
+- Fixed compiler errors for Intel MIC compiler (`icc -mmic`, `mpiicc -mic`).
+
+## DART Interface
+
+Features:
+
+- Added function `dart_allreduce`.
+
 
 # DASH 0.2.0 (2016-03-03)
 
