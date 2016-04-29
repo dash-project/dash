@@ -888,7 +888,6 @@ dart_ret_t dart_exit()
 	dart_myid(&unitid);
 	uint16_t index;
  	
-	printf("%2d: dart_exit()\n", unitid);
 	if (dart_adapt_teamlist_convert(DART_TEAM_ALL, &index) == -1) {
     DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed", unitid);
     return DART_ERR_OTHER;
