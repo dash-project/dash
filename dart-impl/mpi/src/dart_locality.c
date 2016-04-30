@@ -1,10 +1,10 @@
 /**
  * \file dart_locality.c
  *
- *  Implementation of all the related global pointer operations
+ * Implementation of all the related global pointer operations
  *
- *  All the following functions are implemented with the underlying *MPI-3*
- *  one-sided runtime system.
+ * All the following functions are implemented with the underlying *MPI-3*
+ * one-sided runtime system.
  */
 
 /*

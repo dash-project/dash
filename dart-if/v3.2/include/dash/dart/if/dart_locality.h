@@ -1,14 +1,15 @@
+/**
+ * \file dart/if/dart_locality.h
+ *
+ * Functions for querying topology and node-level locality information of
+ * teams and units.
+ *
+ */
 #ifndef DART__LOCALITY_H_
 #define DART__LOCALITY_H_
 
 #include <dash/dart/if/dart_types.h>
 
-/**
- * \file dart_locality.h
- *
- * Functions for querying topology and node-level locality information of
- * teams and units.
- */
 
 /**
  * \defgroup  DartLocality  Locality information routines in DART

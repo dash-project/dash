@@ -1,8 +1,8 @@
-/** @file dart_initialization.c
- *  @date 25 Aug 2014
- *  @brief Implementations of the dart init and exit operations.
+/**
+ * \file dart_initialization.c
+ *
+ *  Implementations of the dart init and exit operations.
  */
-
 #include <stdio.h>
 #include <mpi.h>
 #include <dash/dart/if/dart_types.h>
@@ -13,6 +13,7 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_locality_priv.h>
 
 #define DART_BUDDY_ORDER 24
 
@@ -247,6 +248,8 @@ dart_ret_t dart_init(
 
   _dart_initialized = 1;
 
+  dart__mpi__locality_init();
+
 	return DART_OK;
 }
 
@@ -296,6 +299,9 @@ dart_ret_t dart_exit()
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();
   }
+
+  dart__mpi__locality_finalize();
+
 	DART_LOG_DEBUG("%2d: dart_exit: Finalization finished", unitid);
 
 	return DART_OK;
