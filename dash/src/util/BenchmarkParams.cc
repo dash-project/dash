@@ -15,6 +15,7 @@
 // Environment variables as array of strings, terminated by null pointer.
 extern char ** environ;
 
+
 namespace dash {
 namespace util {
 
@@ -95,7 +96,7 @@ void BenchmarkParams::print_header()
   }
 
   size_t box_width        = _header_width;
-  size_t numa_nodes       = dash::util::Locality::NumNumaNodes();
+  size_t numa_nodes       = dash::util::Locality::NumNUMANodes();
   size_t num_nodes        = dash::util::Locality::NumNodes();
   size_t local_cpus       = dash::util::Locality::NumCPUs();
   int    cpu_max_mhz      = dash::util::Locality::CPUMaxMhz();

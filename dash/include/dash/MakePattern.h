@@ -36,7 +36,7 @@ make_team_spec(
   // Number of sockets per processing node:
   auto n_sockets    = dash::util::Locality::NumSockets();
   // Number of NUMA domains per processing node:
-  auto n_numa_dom   = dash::util::Locality::NumNumaNodes();
+  auto n_numa_dom   = dash::util::Locality::NumNUMANodes();
   // Number of CPUs per processing node:
   auto n_cpus       = dash::util::Locality::NumCPUs();
 

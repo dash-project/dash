@@ -11,18 +11,14 @@ extern "C" {
 
 #define DART_INTERFACE_ON
 
-/*
-   --- DART Types ---
-*/
-
 typedef enum
   {
-    DART_OK           = 0,
-    DART_PENDING      = 1,
-    DART_ERR_INVAL    = 2,
-    DART_ERR_NOTFOUND = 3,
-    DART_ERR_NOTINIT  = 4,
-    DART_ERR_OTHER    = 999,
+    DART_OK           =   0,
+    DART_PENDING      =   1,
+    DART_ERR_INVAL    =   2,
+    DART_ERR_NOTFOUND =   3,
+    DART_ERR_NOTINIT  =   4,
+    DART_ERR_OTHER    = 999
     /* add error codes as needed */
   } dart_ret_t;
 
@@ -59,6 +55,250 @@ typedef int32_t dart_unit_t;
 typedef int32_t dart_team_t;
 
 #define DART_UNDEFINED_UNIT_ID ((dart_unit_t)(-1))
+#define DART_UNDEFINED_TEAM_ID ((dart_team_t)(-1))
+
+typedef enum
+  {
+    DART_LOCALITY_SCOPE_UNDEFINED = -1,
+    DART_LOCALITY_SCOPE_GLOBAL    =  0,
+    DART_LOCALITY_SCOPE_NODE,
+    DART_LOCALITY_SCOPE_COMPONENT,
+    DART_LOCALITY_SCOPE_UNIT,
+    DART_LOCALITY_SCOPE_CORE
+  } dart_locality_scope_t;
+
+#define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(16))
+#define DART_LOCALITY_HOST_MAX_SIZE ((int)(30))
+
+/*
+ * A domain is a group of processing entities such as cores in a specific
+ * NUMA domain or a Intel MIC entity.
+ * Domains are organized in a hierarchy.
+ * In this, a domain may consist of heterogenous child domains.
+ * Processing entities in domains on the lowest locality level are
+ * homogenous.
+ *
+ * Domains represent the actual hardware topology but also can represent
+ * grouping from user-defined team specifications.
+ *
+ * Use cases:
+ *
+ * - To determine whether units in a domain have access to common shared
+ *   memory, test if domain descriptor field
+ *
+ *     - \c num_nodes is set to 1, or
+ *     - \c scope is set to \c DART_LOCALITY_SCOPE_NODE or greater.
+ *
+ *
+ * - The maximum number of threads for a single unit, e.g. for MKL routines,
+ *   can be calculated as:
+ *
+ *     <tt>
+ *       (dloc.num_cores x dloc.num_threads)
+ *     </tt>
+ *
+ *   from a domain descriptor \c dloc with scope \c DART_LOCALITY_SCOPE_UNIT.
+ *
+ *
+ * - A simple metric of processing power of components in a homogenous domain
+ *   (minimum number of instructions per second) can be calculated as:
+ *
+ *     <tt>
+ *       dmhz(dloc) = (dloc.num_cores x dloc.min_threads x dloc.min_cpu_mhz)
+ *     </tt>
+ *
+ *   This metric then can be used to balance workload between homogenous
+ *   domains with different processing components.
+ *   A simple balance factor \c wb can be calculated as:
+ *
+ *     <tt>
+ *       wb = dmhz(dloc_a) / dmhz(dloc_b)
+ *     </tt>
+ *
+ *   from domain descriptors \c dloc_a and \c dloc_b.
+ *
+ *
+ * Illustrating example:
+ *
+ * <tt>
+ *   domain (top level, heterogenous)
+ *   domain_tag:  "."
+ *   scope:       DART_LOCALITY_SCOPE_GLOBAL
+ *   level:         0
+ *   num_nodes:     4
+ *   num_cores:   544 (4 nodes x 136 cores per node)
+ *   min_threads:   2
+ *   max_threads:   4
+ *   num_domains:   4 (4 nodes)
+ *   domains:
+ *   :
+ *   |-- domain (compute node, heterogenous)
+ *   :   domain_tag:  ".0"
+ *   :   scope:       DART_LOCALITY_SCOPE_NODE
+ *   :   level:         1
+ *   :   num_nodes:     1
+ *   :   num_cores:   136 (16 host cores + 2x60 MIC cores)
+ *   :   min_threads:   2
+ *   :   max_threads:   4
+ *   :   num_domains:   3 (1 host + 2 MICs)
+ *   :   domains:
+ *   :   :
+ *   :   |-- domain (host, homogenous)
+ *   :   :   domain_tag:  ".0.0"
+ *   :   :   scope:       DART_LOCALITY_SCOPE_COMPONENT
+ *   :   :   level:         2
+ *   :   :   num_nodes:     1
+ *   :   :   num_cores:    16
+ *   :   :   min_threads:   2
+ *   :   :   max_threads:   2
+ *   :   :   num_domains:   0
+ *   :   :
+ *   :   |-- domain (MIC, homogenous)
+ *   :   :   domain_tag:  ".0.1"
+ *   :   :   scope:       DART_LOCALITY_SCOPE_COMPONENT
+ *   :   :   level:         2
+ *   :   :   num_nodes:     1
+ *   :   :   num_cores:    60
+ *   :   :   min_threads:   4
+ *   :   :   max_threads:   4
+ *   :   :   num_domains:   0
+ *   :   :
+ *   :   '-- domain (MIC, homogenous)
+ *   :       domain_tag:  ".0.2"
+ *   :       scope:       DART_LOCALITY_SCOPE_COMPONENT
+ *   :       level:         2
+ *   :       num_nodes:     1
+ *   :       num_cores:    60
+ *   :       min_threads:   4
+ *   :       max_threads:   4
+ *   :       domains:
+ *   :       num_domains:   2
+ *   :       :
+ *   :       |-- domain (unit of MIC cores, homogenous)
+ *   :       :   domain_tag:  ".0.2.0"
+ *   :       :   scope:       DART_LOCALITY_SCOPE_UNIT
+ *   :       :   level:        3
+ *   :       :   num_nodes:    1
+ *   :       :   num_cores:   30
+ *   :       :   num_domains:  0
+ *   :       :
+ *   :       '-- domain (unit of MIC cores, homogenous)
+ *   :           domain_tag:  ".0.2.1"
+ *   :           scope:       DART_LOCALITY_SCOPE_UNIT
+ *   :           level:        3
+ *   :           num_nodes:    1
+ *   :           num_cores:   30
+ *   :           num_domains:  0
+ *   :
+ *   |-- domain (compute node, heterogenous)
+ *   :   domain_tag:  ".1"
+ *   :   scope:       DART_LOCALITY_SCOPE_NODE
+ *   :   level:         1
+ *   :   num_cores:   136
+ *   :   num_domains:   3
+ *   :   domains:
+ *   :   :
+ *   :   '
+ *   :   ...
+ *   '
+ *   ...
+ * </tt>
+ *
+ */
+struct dart_domain_locality_s
+  {
+    /**
+     * Hierarchical domain identifier, represented as dot-separated string.
+     * Example:
+     *   0.5.5
+     */
+    char domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+
+    /** Locality scope of the domain. */
+    dart_locality_scope_t scope;
+    /** Level in the domain locality hierarchy. */
+    int  level;
+
+    /** Identifying name of the domain's host system. */
+    char host[DART_LOCALITY_HOST_MAX_SIZE];
+
+    /** Number of subordinate domains. */
+    int  num_domains;
+    /** Descriptors of subordinate domains. */
+    struct dart_domain_locality_s * domains;
+
+    /** Total number of NUMA domains in the associated domain. */
+    int   num_numa;
+    /** IDs of the unit's NUMA domains, relative to parent node domain. */
+    int * numa_ids;
+
+    /** Total number of CPUs in the associated domain. */
+    int   num_cores;
+    /** IDs of CPUs in the unit, relative to parent node domain. */
+    int * cpu_ids;
+
+    /** Number of compute nodes in the associated domain. */
+    int   num_nodes;
+    /** Total number of sockets in the associated domain. */
+    int   num_sockets;
+
+    /** Minimum clock frequency of CPUs in the domain. */
+    int   min_cpu_mhz;
+    /** Maximum clock frequency of CPUs in the domain. */
+    int   max_cpu_mhz;
+
+    /** Minimum number of threads per core in the domain. */
+    int   min_threads;
+    /** Maximum number of threads per core in the domain. */
+    int   max_threads;
+
+    /** Cache sizes in the unit by cache level (L1, L2, L3). */
+    int   cache_sizes[3];
+    /** Cache line sizes in the unit by cache level (L1, L2, L3). */
+    int   cache_line_sizes[3];
+    /** Flags indicating shared caches by cache level (L1, L2, L3). */
+    int   cache_shared[3];
+
+  };
+struct dart_domain_locality_s;
+typedef struct dart_domain_locality_s
+  dart_domain_locality_t;
+
+/**
+ * Locality and topology information of a single unit.
+ * Processing entities grouped in a single unit are homogenous.
+ * Each unit is a member of one specific locality domain.
+ */
+typedef struct
+  {
+    /** Global unit ID */
+    int   unit_id;
+
+    /** Identifier of the unit's parent homogenous locality domain. */
+    char  domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+
+    /** Number of sockets in the unit. */
+    int   num_sockets;
+
+    /** Number of NUMA domains in the unit. */
+    int   num_numa;
+    /** IDs of the unit's NUMA domains, relative to domain at node level. */
+    int * numa_ids;
+
+    /** Number of CPUs in the unit. */
+    int   num_cores;
+    /** IDs of CPUs in the unit, relative to domain at node level. */
+    int * cpu_ids;
+
+    /** Minimum clock frequency of CPUs in the unit. */
+    int   min_cpu_mhz;
+    /** Maximum clock frequency of CPUs in the unit. */
+    int   max_cpu_mhz;
+
+    /** Number of threads of a single core in the unit. */
+    int   num_threads;
+
+  } dart_unit_locality_t;
 
 #define DART_INTERFACE_OFF
 

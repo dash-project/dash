@@ -47,7 +47,7 @@ rm -Rf ./build.mic/*
                          -DCMAKE_C_COMPILER=mpiicc \
                          -DCMAKE_CXX_COMPILER=mpiicc \
                          -DDART_IF_VERSION=3.2 \
-                         -DINSTALL_PREFIX=$HOME/opt/ \
+                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-mic/ \
                          -DDART_IMPLEMENTATIONS=mpi \
                          -DENABLE_COMPILER_WARNINGS=ON \
                          -DENABLE_ASSERTIONS=OFF \
