@@ -79,8 +79,8 @@ typedef enum
     DART_LOCALITY_SCOPE_CORE       =  500
   } dart_locality_scope_t;
 
-#define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(16))
 #define DART_LOCALITY_HOST_MAX_SIZE       ((int)(30))
+#define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(16))
 #define DART_LOCALITY_UNIT_MAX_CPUS       ((int)(8))
 
 /*
@@ -320,12 +320,6 @@ typedef struct
     /** Global unit ID */
     dart_unit_t unit;
 
-    /** Identifier of the unit's parent homogenous locality domain. */
-    char  domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
-
-    /** Hostname of the unit's local node or 0 if unspecified. */
-    char  host[DART_LOCALITY_HOST_MAX_SIZE];
-
     /** ID of the unit's NUMA domain, relative to parent processing module. */
     int   numa_id;
 
@@ -338,14 +332,21 @@ typedef struct
 
     /** Number of threads supported by a single core in the unit. */
     int   num_threads;
-    /** IDs of \c (num_threads x num_cores) CPUs in the unit, relative to
-     *  domain at node level. */
-    int   cpu_ids[DART_LOCALITY_UNIT_MAX_CPUS];
 
     /** Minimum clock frequency of CPUs in the unit. */
     int   min_cpu_mhz;
     /** Maximum clock frequency of CPUs in the unit. */
     int   max_cpu_mhz;
+
+    /** Hostname of the unit's local node or 0 if unspecified. */
+    char  host[DART_LOCALITY_HOST_MAX_SIZE];
+
+    /** IDs of \c (num_threads x num_cores) CPUs in the unit, relative to
+     *  domain at node level. */
+    int   cpu_ids[DART_LOCALITY_UNIT_MAX_CPUS];
+
+    /** Identifier of the unit's parent homogenous locality domain. */
+    char  domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 
   } dart_unit_locality_t;
 

@@ -6,15 +6,6 @@
  * All the following functions are implemented with the underling *MPI-3*
  * one-sided runtime system.
  */
-
-
-#include <stdio.h>
-#include <mpi.h>
-#include <string.h>
-#include <limits.h>
-#include <math.h>
-#include <dash/dart/base/logging.h>
-#include <dash/dart/base/math.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_globmem.h>
@@ -25,6 +16,16 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
+
+#include <dash/dart/base/logging.h>
+#include <dash/dart/base/math.h>
+
+#include <stdio.h>
+#include <mpi.h>
+#include <string.h>
+#include <limits.h>
+#include <math.h>
+
 
 int unit_g2l(
   uint16_t      index,
@@ -1430,14 +1431,18 @@ dart_ret_t dart_gather(
 }
 
 dart_ret_t dart_allgather(
-  void *sendbuf,
-  void *recvbuf,
-  size_t nbytes,
-  dart_team_t teamid)
+  void        * sendbuf,
+  void        * recvbuf,
+  size_t        nbytes,
+  dart_team_t   teamid)
 {
   MPI_Comm comm;
   uint16_t index;
-  int result = dart_adapt_teamlist_convert (teamid, &index);
+  int      result;
+  DART_LOG_TRACE("dart_allgather() team:%d nbytes:%"PRIu64"",
+                 teamid, nbytes);
+
+  result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
     return DART_ERR_INVAL;
   }
@@ -1450,8 +1455,12 @@ dart_ret_t dart_allgather(
            nbytes,
            MPI_BYTE,
            comm) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_allgather ! team:%d nbytes:%"PRIu64" failed",
+                   teamid, nbytes);
     return DART_ERR_INVAL;
   }
+  DART_LOG_TRACE("dart_allgather > team:%d nbytes:%"PRIu64"",
+                 teamid, nbytes);
   return DART_OK;
 }
 

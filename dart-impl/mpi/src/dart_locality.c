@@ -6,6 +6,7 @@
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
+#include <dash/dart/base/internal/unit_locality.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
@@ -96,24 +97,15 @@ dart_ret_t dart_unit_locality(
   dart_unit_t             unit,
   dart_unit_locality_t ** locality)
 {
-  dart__unused(unit);
-  /*
-   * TODO: Should be cached, locality information for a global unit id is
-   *       invariant.
-   */
   DART_LOG_DEBUG("dart_unit_locality() unit(%d)", unit);
   *locality = NULL;
 
-  /* TODO: Temporary implementation, using locality information for local
-   *       unit, should be lookup of locality for specified unit.
-   */
-  dart_unit_locality_t * loc =
-    (dart_unit_locality_t *)(malloc(sizeof(dart_unit_locality_t)));
-
-  dart_ret_t ret = dart__base__locality__local_unit_new(loc);
+  dart_unit_locality_t * loc;
+  dart_ret_t ret = dart__base__unit_locality__get(unit, &loc);
   if (ret != DART_OK) {
-    DART_LOG_ERROR("dart_unit_locality: dart__base__locality__get_local_unit "
-                   "failed (%d)", ret);
+    DART_LOG_ERROR("dart_unit_locality: "
+                   "dart__base__unit_locality__get(unit:%d) failed (%d)",
+                   unit, ret);
     return ret;
   }
   *locality = loc;
@@ -128,3 +120,4 @@ dart_ret_t dart_set_unit_locality(
   dart__unused(loc);
   return DART_OK;
 }
+

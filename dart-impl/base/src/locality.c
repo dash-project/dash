@@ -15,6 +15,8 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
 
+#include <dash/dart/base/internal/unit_locality.h>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
 
@@ -138,13 +140,23 @@ dart_ret_t dart__base__locality__init()
 {
   DART_LOG_DEBUG("dart__base__locality__init()");
 
-  dart_ret_t ret = dart__base__locality__global_domain_new(
-                     &_dart__base__locality__domain_root);
+  dart_ret_t ret;
+
+  ret = dart__base__locality__global_domain_new(
+          &_dart__base__locality__domain_root);
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart__base__locality__init ! "
                    "dart__base__locality__global_domain_new failed: %d", ret);
     return ret;
   }
+
+  ret = dart__base__unit_locality__init();
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("dart__base__locality__init ! "
+                   "dart__base__unit_locality__init failed: %d", ret);
+    return ret;
+  }
+
   DART_LOG_DEBUG("dart__base__locality__init >");
   return DART_OK;
 }
@@ -242,8 +254,6 @@ dart_ret_t dart__base__locality__set_subdomains(
 dart_ret_t dart__base__locality__domain_delete(
   dart_domain_locality_t * domain)
 {
-  DART_LOG_DEBUG("dart__base__locality__domain_delete() loc: %p domain(%s)",
-                 domain, domain->domain_tag);
   if (domain == NULL) {
     return DART_OK;
   }
@@ -266,7 +276,6 @@ dart_ret_t dart__base__locality__domain_delete(
   domain->domains     = NULL;
   domain->num_domains = 0;
 
-  DART_LOG_DEBUG("dart__base__locality__domain_delete >");
   return DART_OK;
 }
 

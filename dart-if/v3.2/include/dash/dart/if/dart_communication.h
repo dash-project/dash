@@ -2,6 +2,7 @@
 #define DART__COMMUNICATION_H_
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_globmem.h>
 
 /**
  * \file dart_communication.h
