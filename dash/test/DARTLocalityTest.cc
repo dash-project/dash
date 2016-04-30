@@ -16,8 +16,9 @@ TEST_F(DARTLocalityTest, UnitLocality)
 
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", uloc->unit);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", uloc->domain_tag);
-  DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", uloc->num_sockets);
-  DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", uloc->num_numa);
+  DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", uloc->host);
+  DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", uloc->numa_id);
+  DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", uloc->core_id);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", uloc->num_cores);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", uloc->min_cpu_mhz);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", uloc->max_cpu_mhz);
@@ -28,12 +29,9 @@ TEST_F(DARTLocalityTest, UnitLocality)
   EXPECT_EQ_U(std::string(uloc->domain_tag), ".");
 
   // Units may group multiple cores:
+  EXPECT_GE_U(uloc->core_id,     0);
   EXPECT_GT_U(uloc->num_cores,   0);
   EXPECT_GT_U(uloc->num_threads, 0);
-
-  // Unit cores are affine to a single socket and NUMA domain:
-  EXPECT_EQ_U(uloc->num_sockets, 1);
-  EXPECT_EQ_U(uloc->num_numa,    1);
 
   // Get domain locality from unit locality descriptor:
   DASH_LOG_TRACE("DARTLocalityTest.UnitLocality",

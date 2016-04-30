@@ -180,6 +180,7 @@ dart_ret_t dart__base__locality__domain_locality_init(
     return DART_ERR_INVAL;
   }
   loc->domain_tag[0]       = '\0';
+  loc->parent              = NULL;
   loc->scope               = DART_LOCALITY_SCOPE_UNDEFINED;
   loc->level               =  0;
   loc->host[0]             = '\0';
@@ -190,7 +191,7 @@ dart_ret_t dart__base__locality__domain_locality_init(
   loc->num_cores           = -1;
   loc->cpu_ids             = NULL;
   loc->num_nodes           = -1;
-  loc->num_groups          = -1;
+  loc->num_modules         = -1;
   loc->num_sockets         = -1;
   loc->min_cpu_mhz         = -1;
   loc->max_cpu_mhz         = -1;
@@ -445,6 +446,8 @@ dart_ret_t dart__base__locality__global_domain_new(
   DART_LOG_TRACE("dart__base__locality__global_domain_new: using numalib");
   if (loc->num_numa < 0) {
     loc->num_numa       = numa_max_node() + 1;
+  }
+  if (unit_master_cpu_id >= 0) {
     unit_master_numa_id = numa_node_of_cpu(unit_master_cpu_id);
   }
   DART_LOG_TRACE("dart__base__locality__global_domain_new: numalib: "
@@ -456,26 +459,26 @@ dart_ret_t dart__base__locality__global_domain_new(
   }
 #endif
 
-  if (loc->num_nodes < 0) {
-    loc->num_nodes   = 1;
+  if (loc->num_nodes   < 0) {
+    loc->num_nodes     = 1;
   }
-  if (loc->num_groups < 0) {
-    loc->num_groups  = 1;
+  if (loc->num_modules < 0) {
+    loc->num_modules   = 1;
   }
-  if (loc->num_cores < 0) {
-    loc->num_cores   = 1;
+  if (loc->num_cores   < 0) {
+    loc->num_cores     = 1;
   }
-  if (loc->num_numa  > 0) {
-    loc->numa_ids    = (int *)(malloc(sizeof(int) * loc->num_numa));
-    loc->numa_ids[0] = unit_master_numa_id;
+  if (loc->num_numa    > 0) {
+    loc->numa_ids      = (int *)(malloc(sizeof(int) * loc->num_numa));
+    loc->numa_ids[0]   = unit_master_numa_id;
   }
-  if (loc->num_cores > 0) {
-    loc->cpu_ids     = (int *)(malloc(sizeof(int) * loc->num_cores));
-    loc->cpu_ids[0]  = unit_master_cpu_id;
+  if (loc->num_cores   > 0) {
+    loc->cpu_ids       = (int *)(malloc(sizeof(int) * loc->num_cores));
+    loc->cpu_ids[0]    = unit_master_cpu_id;
   }
   if (loc->min_threads < 0 || loc->max_threads < 0) {
-    loc->min_threads = 1;
-    loc->max_threads = 1;
+    loc->min_threads   = 1;
+    loc->max_threads   = 1;
   }
 
   DART_LOG_TRACE("dart__base__locality__global_domain_new: finished: "
@@ -499,7 +502,7 @@ dart_ret_t dart__base__locality__get_subdomains(
   int sub_scope       = (int)(DART_LOCALITY_SCOPE_UNDEFINED);
   int sub_level       = loc->level + 1;
   int sub_num_nodes   = loc->num_nodes;
-  int sub_num_groups  = loc->num_groups;
+  int sub_num_modules = loc->num_modules;
   int sub_num_numa    = loc->num_numa;
   int sub_num_sockets = loc->num_sockets;
   int sub_num_cores   = loc->num_cores;
@@ -516,11 +519,11 @@ dart_ret_t dart__base__locality__get_subdomains(
       break;
     case DART_LOCALITY_SCOPE_NODE:
       DART_LOG_TRACE("dart__base__locality__get_subdomains: sub: groups");
-      loc->num_domains    = loc->num_groups;
-      sub_num_groups      = 1;
-      sub_scope           = DART_LOCALITY_SCOPE_PROC_GROUP;
+      loc->num_domains    = loc->num_modules;
+      sub_num_modules     = 1;
+      sub_scope           = DART_LOCALITY_SCOPE_MODULE;
       break;
-    case DART_LOCALITY_SCOPE_PROC_GROUP:
+    case DART_LOCALITY_SCOPE_MODULE:
       DART_LOG_TRACE("dart__base__locality__get_subdomains: sub: NUMA nodes");
       loc->num_domains    = loc->num_numa;
       sub_num_numa        = 1;
@@ -564,11 +567,12 @@ dart_ret_t dart__base__locality__get_subdomains(
     dart_domain_locality_t * subdomain = loc->domains + d;
     dart__base__locality__domain_locality_init(subdomain);
     /* initialize subdomain scope, level and hwinfo: */
+    subdomain->parent      = loc;
     subdomain->level       = sub_level;
     subdomain->scope       = sub_scope;
     subdomain->num_nodes   = sub_num_nodes;
     subdomain->num_numa    = sub_num_numa;
-    subdomain->num_groups  = sub_num_groups;
+    subdomain->num_modules = sub_num_modules;
     subdomain->num_sockets = sub_num_sockets;
     subdomain->num_cores   = sub_num_cores;
     /* host of subdomain is same as host of parent domain: */
@@ -647,12 +651,10 @@ dart_ret_t dart__base__locality__unit_locality_init(
   }
   loc->unit          = DART_UNDEFINED_UNIT_ID;
   loc->domain_tag[0] = '\0';
+  loc->host[0]       = '\0';
+  loc->numa_id       = -1;
+  loc->core_id       = -1;
   loc->num_cores     = -1;
-  loc->num_sockets   = -1;
-  loc->num_numa      = -1;
-  loc->numa_ids      = NULL;
-  loc->num_cores     = -1;
-  loc->cpu_ids       = NULL;
   loc->num_threads   = -1;
   loc->max_cpu_mhz   = -1;
   loc->min_cpu_mhz   = -1;
@@ -701,18 +703,13 @@ dart_ret_t dart__base__locality__local_unit_new(
     return ret;
   }
 
-  loc->num_cores = 1;
-  if (loc->num_cores == 1) {
-    loc->num_sockets = 1;
-    loc->num_numa    = 1;
-  } else {
-    loc->num_sockets = dloc->num_sockets;
-    loc->num_numa    = dloc->num_numa;
-  }
-  loc->numa_ids    = dloc->numa_ids;
-  loc->cpu_ids     = dloc->cpu_ids;
+  loc->num_cores   = 1;
+  loc->core_id     = dloc->cpu_ids[0];
+  loc->numa_id     = dloc->numa_ids[0];
   loc->min_cpu_mhz = dloc->min_cpu_mhz;
   loc->max_cpu_mhz = dloc->max_cpu_mhz;
+
+  strncpy(loc->host, dloc->host, DART_LOCALITY_HOST_MAX_SIZE);
 
 #ifdef DART_ENABLE_HWLOC
   hwloc_topology_t topology;

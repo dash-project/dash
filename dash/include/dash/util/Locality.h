@@ -43,6 +43,16 @@ public:
     int  numa_node;
   } UnitPinning;
 
+  typedef enum {
+    Undefined = DART_LOCALITY_SCOPE_UNDEFINED,
+    Global    = DART_LOCALITY_SCOPE_GLOBAL,
+    Node      = DART_LOCALITY_SCOPE_NODE,
+    Module    = DART_LOCALITY_SCOPE_MODULE,
+    NUMA      = DART_LOCALITY_SCOPE_NUMA,
+    Unit      = DART_LOCALITY_SCOPE_UNIT,
+    Core      = DART_LOCALITY_SCOPE_CORE
+  } Scope;
+
 public:
 
   static inline int NumNodes() {
@@ -50,15 +60,15 @@ public:
   }
 
   static inline int NumSockets() {
-    return (_unit_loc == nullptr) ? -1 : _unit_loc->num_sockets;
+    return (_domain_loc == nullptr) ? -1 : _domain_loc->num_sockets;
   }
 
   static inline int NumNUMANodes() {
-    return (_unit_loc == nullptr) ? -1 : _unit_loc->num_numa;
+    return (_domain_loc == nullptr) ? -1 : _domain_loc->num_numa;
   }
 
   static inline int NumCPUs() {
-    return (_unit_loc == nullptr) ? -1 : _unit_loc->num_cores;
+    return (_domain_loc == nullptr) ? -1 : _domain_loc->num_cores;
   }
 
   static inline void SetNumNodes(int n) {
@@ -70,28 +80,28 @@ public:
     if (_unit_loc == nullptr) {
       return;
     }
-    _unit_loc->num_sockets = n;
-    dart_set_unit_locality(_unit_loc);
+    _domain_loc->num_sockets = n;
+    dart_set_domain_locality(_domain_loc);
   }
 
   static inline void SetNumNUMANodes(int n) {
     if (_unit_loc == nullptr) {
       return;
     }
-    _unit_loc->num_numa = n;
-    dart_set_unit_locality(_unit_loc);
+    _domain_loc->num_numa = n;
+    dart_set_domain_locality(_domain_loc);
   }
 
   static inline void SetNumCPUs(int n) {
-    _unit_loc->num_cores = n;
-    dart_set_unit_locality(_unit_loc);
+    _domain_loc->num_cores = n;
+    dart_set_domain_locality(_domain_loc);
   }
 
   static std::vector<int> UnitNUMANodes() {
     std::vector<int> numa_ids;
     int num_numa = NumNUMANodes();
     for (int i = 0; i < num_numa; ++i) {
-      numa_ids.push_back(_unit_loc->numa_ids[i]);
+      numa_ids.push_back(_domain_loc->numa_ids[i]);
     }
     return numa_ids;
   }

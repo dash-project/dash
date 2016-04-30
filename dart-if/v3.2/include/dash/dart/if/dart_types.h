@@ -66,7 +66,7 @@ typedef enum
     DART_LOCALITY_SCOPE_NODE       =  100,
     /** Locality in a group of hetereogenous components in different NUMA
      *  domains. */
-    DART_LOCALITY_SCOPE_PROC_GROUP =  200,
+    DART_LOCALITY_SCOPE_MODULE     =  200,
     /** Locality of homogenous components in different NUMA domains. */
     DART_LOCALITY_SCOPE_NUMA       =  300,
     /** Locality of homogenous components in the same NUMA domain at
@@ -80,7 +80,8 @@ typedef enum
   } dart_locality_scope_t;
 
 #define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(16))
-#define DART_LOCALITY_HOST_MAX_SIZE ((int)(30))
+#define DART_LOCALITY_HOST_MAX_SIZE       ((int)(30))
+#define DART_LOCALITY_UNIT_MAX_CPUS       ((int)(8))
 
 /*
  * A domain is a group of processing entities such as cores in a specific
@@ -257,12 +258,17 @@ struct dart_domain_locality_s
     /** Level in the domain locality hierarchy. */
     int  level;
 
-    /** Identifying name of the domain's host system. */
+    /** Hostname of the domain's node or 0 if unspecified. */
     char host[DART_LOCALITY_HOST_MAX_SIZE];
+
+    /** Pointer to descriptor of parent domain or 0 if no parent domain
+     *  is specified. */
+    struct dart_domain_locality_s * parent;
 
     /** Number of subordinate domains. */
     int  num_domains;
-    /** Descriptors of subordinate domains. */
+    /** Array of subordinate domains of size \c num_domains or 0 if no
+     *  subdomains are specified. */
     struct dart_domain_locality_s * domains;
 
     /** Total number of NUMA domains in the associated domain. */
@@ -278,7 +284,7 @@ struct dart_domain_locality_s
     /** Number of compute nodes in the associated domain. */
     int   num_nodes;
     /** Number of processing groups (e.g. host + accelerators) per node. */
-    int   num_groups;
+    int   num_modules;
     /** Total number of sockets per node. */
     int   num_sockets;
 
@@ -317,26 +323,29 @@ typedef struct
     /** Identifier of the unit's parent homogenous locality domain. */
     char  domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 
-    /** Number of sockets in the unit. */
-    int   num_sockets;
+    /** Hostname of the unit's local node or 0 if unspecified. */
+    char  host[DART_LOCALITY_HOST_MAX_SIZE];
 
-    /** Number of NUMA domains in the unit. */
-    int   num_numa;
-    /** IDs of the unit's NUMA domains, relative to domain at node level. */
-    int * numa_ids;
+    /** ID of the unit's NUMA domain, relative to parent processing module. */
+    int   numa_id;
 
-    /** Number of CPUs in the unit. */
+    /** The unit's affine core, unique identifier within a processing
+     *  module. */
+    int   core_id;
+
+    /** Number of cores in the unit. */
     int   num_cores;
-    /** IDs of CPUs in the unit, relative to domain at node level. */
-    int * cpu_ids;
+
+    /** Number of threads supported by a single core in the unit. */
+    int   num_threads;
+    /** IDs of \c (num_threads x num_cores) CPUs in the unit, relative to
+     *  domain at node level. */
+    int   cpu_ids[DART_LOCALITY_UNIT_MAX_CPUS];
 
     /** Minimum clock frequency of CPUs in the unit. */
     int   min_cpu_mhz;
     /** Maximum clock frequency of CPUs in the unit. */
     int   max_cpu_mhz;
-
-    /** Number of threads of a single core in the unit. */
-    int   num_threads;
 
   } dart_unit_locality_t;
 

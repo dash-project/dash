@@ -2,11 +2,6 @@
  * \file dart_locality.c
  *
  */
-
-/*
- * Include config and utmpx.h first to prevent previous include of utmpx.h
- * without _GNU_SOURCE in included headers:
- */
 #include <dash/dart/base/config.h>
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
