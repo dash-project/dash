@@ -42,4 +42,5 @@ dart_ret_t dart__base__domain_map__find(
   const char              * domain_tag,
   dart_domain_locality_t ** locality);
 
+
 #endif /* DART__BASE__DOMAIN_MAP_H__ */
