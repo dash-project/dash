@@ -1,10 +1,6 @@
 /**
  * \file dart_locality.c
  *
- * Implementation of all the related global pointer operations
- *
- * All the following functions are implemented with the underlying *MPI-3*
- * one-sided runtime system.
  */
 
 /*
@@ -15,7 +11,6 @@
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
-#include <dash/dart/base/domain_map.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
@@ -34,16 +29,20 @@ dart_ret_t dart_domain_locality(
   const char              * domain_tag,
   dart_domain_locality_t ** locality)
 {
-  DART_LOG_DEBUG("dart_domain_locality() domain: %s", domain_tag);
+  DART_LOG_DEBUG("dart_domain_locality() domain(%s) -> %p",
+                 domain_tag, *locality);
+  dart_ret_t ret;
 
-  dart_domain_locality_t * loc;
-  dart_ret_t ret = dart__base__domain_map__find(domain_tag, &loc);
+  dart_domain_locality_t * dloc;
+  ret = dart__base__locality__domain(domain_tag, &dloc);
   if (ret != DART_OK) {
+    DART_LOG_ERROR("dart_domain_locality: dart__base__locality__domain "
+                   "failed (%d)", ret);
     return ret;
   }
-  *locality = loc;
+  *locality = dloc;
 
-  DART_LOG_DEBUG("dart_domain_locality > domain: %s -> %p",
+  DART_LOG_DEBUG("dart_domain_locality > domain(%s) -> %p",
                  domain_tag, *locality);
   return DART_OK;
 }
@@ -67,14 +66,14 @@ dart_ret_t dart_team_locality(
    * TODO: Should be cached, locality information for a global team id is
    *       invariant.
    */
-  DART_LOG_DEBUG("dart_team_locality() team: %d", team);
+  DART_LOG_DEBUG("dart_team_locality() team(%d)", team);
 
   dart_domain_locality_t * loc =
     (dart_domain_locality_t *)(malloc(sizeof(dart_domain_locality_t)));
 
   /* TODO: resolve domain of given team */
   char domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
-  sprintf(domain_tag, "%d", (int)team);
+  sprintf(domain_tag, "t.%d", (int)team);
 
   strncpy(loc->domain_tag, domain_tag, DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
 
@@ -83,7 +82,7 @@ dart_ret_t dart_team_locality(
 
   *locality = loc;
 
-  DART_LOG_DEBUG("dart_team_locality > team: %d -> %p", team, *locality);
+  DART_LOG_DEBUG("dart_team_locality > team(%d) -> %p", team, *locality);
   return DART_OK;
 }
 
@@ -107,20 +106,24 @@ dart_ret_t dart_unit_locality(
    * TODO: Should be cached, locality information for a global unit id is
    *       invariant.
    */
-  DART_LOG_DEBUG("dart_unit_locality() unit:%d", unit);
+  DART_LOG_DEBUG("dart_unit_locality() unit(%d)", unit);
   *locality = NULL;
 
   /* TODO: Temporary implementation, using locality information for local
    *       unit, should be lookup of locality for specified unit.
    */
-  dart_unit_locality_t * loc;
-  dart_ret_t ret = dart__base__locality__local_unit(&loc);
+  dart_unit_locality_t * loc =
+    (dart_unit_locality_t *)(malloc(sizeof(dart_unit_locality_t)));
+
+  dart_ret_t ret = dart__base__locality__local_unit_new(loc);
   if (ret != DART_OK) {
+    DART_LOG_ERROR("dart_unit_locality: dart__base__locality__get_local_unit "
+                   "failed (%d)", ret);
     return ret;
   }
   *locality = loc;
 
-  DART_LOG_DEBUG("dart_unit_locality > unit: %d -> %p", unit, *locality);
+  DART_LOG_DEBUG("dart_unit_locality > unit(%d) -> %p", unit, *locality);
   return DART_OK;
 }
 

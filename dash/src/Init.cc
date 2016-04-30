@@ -12,9 +12,14 @@ namespace dash {
 void dash::init(int *argc, char ***argv)
 {
   DASH_LOG_DEBUG("dash::init()");
+  DASH_LOG_DEBUG("dash::init", "dart_init()");
   dart_init(argc,argv);
   dash::_initialized = true;
+
+  DASH_LOG_DEBUG("dash::init", "dash::util::Config::init()");
   dash::util::Config::init();
+
+  DASH_LOG_DEBUG("dash::init", "dash::util::Locality::init()");
   dash::util::Locality::init();
   DASH_LOG_DEBUG("dash::init >");
 }

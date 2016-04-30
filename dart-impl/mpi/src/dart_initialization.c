@@ -5,9 +5,11 @@
  */
 #include <stdio.h>
 #include <mpi.h>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_team_group.h>
+
 #include <dash/dart/mpi/dart_mpi_util.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_team_private.h>
@@ -244,12 +246,13 @@ dart_ret_t dart_init(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Info_free(&win_info);
 #endif
-	DART_LOG_DEBUG("dart_init: Initialization finished");
+	DART_LOG_DEBUG("dart_init: communication backend initialization finished");
 
   _dart_initialized = 1;
 
   dart__mpi__locality_init();
 
+	DART_LOG_DEBUG("dart_init > initialization finished");
 	return DART_OK;
 }
 
@@ -302,7 +305,7 @@ dart_ret_t dart_exit()
 
   dart__mpi__locality_finalize();
 
-	DART_LOG_DEBUG("%2d: dart_exit: Finalization finished", unitid);
+	DART_LOG_DEBUG("%2d: dart_exit: finalization finished", unitid);
 
 	return DART_OK;
 }

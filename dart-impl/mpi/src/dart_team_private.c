@@ -9,16 +9,20 @@
 
 
 dart_team_t dart_next_availteamid;
+
 MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
+
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 #endif
 
 MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
+
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
 int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 #endif
+
 struct dart_free_teamlist_entry
 {
 	uint16_t index;
@@ -26,6 +30,7 @@ struct dart_free_teamlist_entry
 };
 typedef struct dart_free_teamlist_entry dart_free_entry;
 typedef dart_free_entry* dart_free_teamlist_ptr;
+
 dart_free_teamlist_ptr dart_free_teamlist_header;
 
 /* Structure of the allocated teamlist entry */

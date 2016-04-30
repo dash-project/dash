@@ -59,12 +59,24 @@ typedef int32_t dart_team_t;
 
 typedef enum
   {
-    DART_LOCALITY_SCOPE_UNDEFINED = -1,
-    DART_LOCALITY_SCOPE_GLOBAL    =  0,
-    DART_LOCALITY_SCOPE_NODE,
-    DART_LOCALITY_SCOPE_COMPONENT,
-    DART_LOCALITY_SCOPE_UNIT,
-    DART_LOCALITY_SCOPE_CORE
+    DART_LOCALITY_SCOPE_UNDEFINED  =   -1,
+    /** Global locality scope, components may be heterogenous. */
+    DART_LOCALITY_SCOPE_GLOBAL     =    0,
+    /** Node-level locality scope, components may be heterogenous. */
+    DART_LOCALITY_SCOPE_NODE       =  100,
+    /** Locality in a group of hetereogenous components in different NUMA
+     *  domains. */
+    DART_LOCALITY_SCOPE_PROC_GROUP =  200,
+    /** Locality of homogenous components in different NUMA domains. */
+    DART_LOCALITY_SCOPE_NUMA       =  300,
+    /** Locality of homogenous components in the same NUMA domain at
+     *  process-level, i.e. of a unit-addressable, homogenous entity.
+     *  A single unit corresponds to a DART (e.g. MPI) process and can
+     *  occupy multiple homogenous cores, e.g. for multithreading. */
+    DART_LOCALITY_SCOPE_UNIT       =  400,
+    /** Locality at physical processing level. Cannot be referenced by DART
+     *  directly. */
+    DART_LOCALITY_SCOPE_CORE       =  500
   } dart_locality_scope_t;
 
 #define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(16))
@@ -123,6 +135,7 @@ typedef enum
  * <tt>
  *   domain (top level, heterogenous)
  *   domain_tag:  "."
+ *   host:        "number-crunch-9000"
  *   scope:       DART_LOCALITY_SCOPE_GLOBAL
  *   level:         0
  *   num_nodes:     4
@@ -145,17 +158,42 @@ typedef enum
  *   :   :
  *   :   |-- domain (host, homogenous)
  *   :   :   domain_tag:  ".0.0"
- *   :   :   scope:       DART_LOCALITY_SCOPE_COMPONENT
+ *   :   :   scope:       DART_LOCALITY_SCOPE_PROC_GROUP
  *   :   :   level:         2
  *   :   :   num_nodes:     1
+ *   :   :   num_numa:      2
  *   :   :   num_cores:    16
  *   :   :   min_threads:   2
  *   :   :   max_threads:   2
- *   :   :   num_domains:   0
+ *   :   :   num_domains:   2
+ *   :   :   :
+ *   :   :   |-- domain (NUMA domain at host)
+ *   :   :   :   domain_tag:  ".0.0.1"
+ *   :   :   :   scope:       DART_LOCALITY_SCOPE_UNIT
+ *   :   :   :   level:        3
+ *   :   :   :   num_nodes:    1
+ *   :   :   :   num_numa:     1
+ *   :   :   :   num_cores:    8
+ *   :   :   :   num_domains:  8
+ *   :   :   :   :
+ *   :   :   :   '
+ *   :   :   :   ...
+ *   :   :   :
+ *   :   :   '-- domain (NUMA domain at host)
+ *   :   :       domain_tag:  ".0.0.1"
+ *   :   :       scope:       DART_LOCALITY_SCOPE_UNIT
+ *   :   :       level:        3
+ *   :   :       num_nodes:    1
+ *   :   :       num_numa:     1
+ *   :   :       num_cores:    8
+ *   :   :       num_domains:  8
+ *   :   :       :
+ *   :   :       '
+ *   :   :       ...
  *   :   :
  *   :   |-- domain (MIC, homogenous)
  *   :   :   domain_tag:  ".0.1"
- *   :   :   scope:       DART_LOCALITY_SCOPE_COMPONENT
+ *   :   :   scope:       DART_LOCALITY_SCOPE_PROC_GROUP
  *   :   :   level:         2
  *   :   :   num_nodes:     1
  *   :   :   num_cores:    60
@@ -165,7 +203,7 @@ typedef enum
  *   :   :
  *   :   '-- domain (MIC, homogenous)
  *   :       domain_tag:  ".0.2"
- *   :       scope:       DART_LOCALITY_SCOPE_COMPONENT
+ *   :       scope:       DART_LOCALITY_SCOPE_PROC_GROUP
  *   :       level:         2
  *   :       num_nodes:     1
  *   :       num_cores:    60
@@ -239,7 +277,9 @@ struct dart_domain_locality_s
 
     /** Number of compute nodes in the associated domain. */
     int   num_nodes;
-    /** Total number of sockets in the associated domain. */
+    /** Number of processing groups (e.g. host + accelerators) per node. */
+    int   num_groups;
+    /** Total number of sockets per node. */
     int   num_sockets;
 
     /** Minimum clock frequency of CPUs in the domain. */
@@ -272,7 +312,7 @@ typedef struct dart_domain_locality_s
 typedef struct
   {
     /** Global unit ID */
-    int   unit_id;
+    dart_unit_t unit;
 
     /** Identifier of the unit's parent homogenous locality domain. */
     char  domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];

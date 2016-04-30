@@ -1,8 +1,6 @@
 #ifndef DASH__UTIL__LOCALITY_H__
 #define DASH__UTIL__LOCALITY_H__
 
-#include <dash/internal/Config.h>
-#include <dash/Exception.h>
 #include <dash/Init.h>
 
 #include <dash/dart/if/dart_types.h>
@@ -12,6 +10,16 @@
 #include <string>
 #include <vector>
 #include <array>
+
+
+std::ostream & operator<<(
+  std::ostream & os,
+  const dart_domain_locality_t & domain_loc);
+
+std::ostream & operator<<(
+  std::ostream & os,
+  const dart_unit_locality_t & unit_loc);
+
 
 namespace dash {
 namespace util {

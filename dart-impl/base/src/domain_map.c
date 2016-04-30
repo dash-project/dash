@@ -2,11 +2,14 @@
  * \file dart/base/domain_map.c
  *
  */
-#include <dash/dart/base/macro.h>
-#include <dash/dart/base/string.h>
+#include <dash/dart/if/dart_types.h>
+
 #include <dash/dart/base/domain_map.h>
 
-#include <dash/dart/if/dart_types.h>
+#include <dash/dart/base/macro.h>
+#include <dash/dart/base/logging.h>
+#include <dash/dart/base/string.h>
+#include <dash/dart/base/locality.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -22,6 +25,9 @@ dart_ret_t dart__base__domain_tree__find_node(
   const char                      * domain_tag,
   dart__base__domain_tree_node_t ** domain_tree_node)
 {
+  DART_LOG_TRACE("dart__base__domain_tree__find_node() domain(%s)",
+                 domain_tag);
+
   dart__base__domain_tree_node_t * node = &dart__base__domain_tree;
 
   *domain_tree_node = NULL;
@@ -50,6 +56,8 @@ dart_ret_t dart__base__domain_tree__find_node(
   }
   *domain_tree_node = node;
 
+  DART_LOG_TRACE("dart__base__domain_tree__find_node > domain(%s)",
+                 domain_tag);
   return DART_OK;
 }
 
@@ -87,18 +95,35 @@ dart_ret_t dart__base__domain_tree__free_node(
 
 dart_ret_t dart__base__domain_map__init()
 {
+  DART_LOG_TRACE("dart__base__domain_map__init()");
+
+  /* default-construct locality domain of top level node: */
+  dart_domain_locality_t * blank_global_domain_loc =
+    (dart_domain_locality_t *)(malloc(sizeof(dart_domain_locality_t)));
+  dart__base__locality__domain_locality_init(blank_global_domain_loc);
+
   dart__base__domain_tree.num_child_nodes = 0;
   dart__base__domain_tree.child_nodes     = NULL;
   dart__base__domain_tree.level           = 0;
   dart__base__domain_tree.relative_id     = 0;
-  dart__base__domain_tree.domain          = NULL;
+  dart__base__domain_tree.domain          = blank_global_domain_loc;
 
+  DART_LOG_TRACE("dart__base__domain_map__init >");
   return DART_OK;
 }
 
 dart_ret_t dart__base__domain_map__finalize()
 {
-  return dart__base__domain_tree__free_node(&dart__base__domain_tree);
+  DART_LOG_TRACE("dart__base__domain_map__finalize()");
+  dart_ret_t ret = dart__base__domain_tree__free_node(
+                     &dart__base__domain_tree);
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("dart__base__domain_map__finalize ! "
+                   "dart__base__domain_tree__free_node failed (%d)", ret);
+    return ret;
+  }
+  DART_LOG_TRACE("dart__base__domain_map__finalize >");
+  return DART_OK;
 }
 
 dart_ret_t dart__base__domain_map__add_subdomains(
@@ -139,6 +164,7 @@ dart_ret_t dart__base__domain_map__find(
   const char              * domain_tag,
   dart_domain_locality_t ** locality)
 {
+  DART_LOG_TRACE("dart__base__domain_map__find() domain(%s)", domain_tag);
   dart__base__domain_tree_node_t * node;
   /* find node in domain tree for specified domain tag: */
   if (dart__base__domain_tree__find_node(domain_tag, &node) != DART_OK) {
@@ -147,5 +173,7 @@ dart_ret_t dart__base__domain_map__find(
   }
   *locality = node->domain;
 
+  DART_LOG_TRACE("dart__base__domain_map__find > domain(%s) loc(%p)",
+                 domain_tag, *locality);
   return DART_OK;
 }
