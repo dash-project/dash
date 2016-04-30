@@ -180,7 +180,7 @@ dart_ret_t dart__base__locality__finalize()
  * Domain Locality                                                          *
  * ======================================================================== */
 
-dart_ret_t dart__base__locality__get_subdomains(
+dart_ret_t dart__base__locality__create_subdomains(
   dart_domain_locality_t * loc);
 
 dart_ret_t dart__base__locality__domain_locality_init(
@@ -494,21 +494,22 @@ dart_ret_t dart__base__locality__global_domain_new(
                  "num_sockets: %d num_numa: %d num_cores: %d",
                  loc->num_sockets, loc->num_numa, loc->num_cores);
 
-  dart__base__locality__get_subdomains(loc);
+  dart__base__locality__create_subdomains(loc);
 
   DART_LOG_DEBUG("dart__base__locality__global_domain_new > %p", loc);
   return DART_OK;
 }
 
-dart_ret_t dart__base__locality__get_subdomains(
+dart_ret_t dart__base__locality__create_subdomains(
   dart_domain_locality_t * loc)
 {
-  DART_LOG_DEBUG("dart__base__locality__get_subdomains() loc: %p - "
+  DART_LOG_DEBUG("dart__base__locality__create_subdomains() loc: %p - "
                  "scope: %d level: %d subdomains: %d domain(%s)",
                  loc, loc->scope, loc->level, loc->num_domains,
                  loc->domain_tag);
 
-  int sub_scope       = (int)(DART_LOCALITY_SCOPE_UNDEFINED);
+  dart_locality_scope_t sub_scope;
+  sub_scope           = DART_LOCALITY_SCOPE_UNDEFINED;
   int sub_level       = loc->level + 1;
   int sub_num_nodes   = loc->num_nodes;
   int sub_num_modules = loc->num_modules;
@@ -517,51 +518,51 @@ dart_ret_t dart__base__locality__get_subdomains(
   int sub_num_cores   = loc->num_cores;
   switch (loc->scope) {
     case DART_LOCALITY_SCOPE_UNDEFINED:
-      DART_LOG_ERROR("dart__base__locality__get_subdomains ! "
+      DART_LOG_ERROR("dart__base__locality__create_subdomains ! "
                      "locality scope undefined");
       return DART_ERR_INVAL;
     case DART_LOCALITY_SCOPE_GLOBAL:
-      DART_LOG_TRACE("dart__base__locality__get_subdomains: sub: nodes");
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: sub: nodes");
       loc->num_domains    = loc->num_nodes;
       sub_num_nodes       = 1;
       sub_scope           = DART_LOCALITY_SCOPE_NODE;
       break;
     case DART_LOCALITY_SCOPE_NODE:
-      DART_LOG_TRACE("dart__base__locality__get_subdomains: sub: groups");
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: sub: groups");
       loc->num_domains    = loc->num_modules;
       sub_num_modules     = 1;
       sub_scope           = DART_LOCALITY_SCOPE_MODULE;
       break;
     case DART_LOCALITY_SCOPE_MODULE:
-      DART_LOG_TRACE("dart__base__locality__get_subdomains: sub: NUMA nodes");
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: sub: NUMA nodes");
       loc->num_domains    = loc->num_numa;
       sub_num_numa        = 1;
       sub_num_cores       = loc->num_cores / loc->num_numa;
       sub_scope           = DART_LOCALITY_SCOPE_NUMA;
       break;
     case DART_LOCALITY_SCOPE_NUMA:
-      DART_LOG_TRACE("dart__base__locality__get_subdomains: sub: UMA nodes");
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: sub: UMA nodes");
       loc->num_domains    = loc->num_cores;
       sub_num_numa        = 1;
       sub_num_cores       = 1;
       sub_scope           = DART_LOCALITY_SCOPE_UNIT;
       break;
     case DART_LOCALITY_SCOPE_UNIT:
-      DART_LOG_TRACE("dart__base__locality__get_subdomains: sub: cores");
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: sub: cores");
       loc->num_domains    = 0;
       sub_num_cores       = 1;
       sub_scope           = DART_LOCALITY_SCOPE_CORE;
       break;
     default:
-      DART_LOG_TRACE("dart__base__locality__get_subdomains: sub: other");
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: sub: other");
       loc->num_domains    = 0;
       break;
   }
-  DART_LOG_TRACE("dart__base__locality__get_subdomains: subdomains: %d",
+  DART_LOG_TRACE("dart__base__locality__create_subdomains: subdomains: %d",
                  loc->num_domains);
   if (loc->num_domains == 0) {
     loc->domains = NULL;
-    DART_LOG_DEBUG("dart__base__locality__get_subdomains > loc: %p - "
+    DART_LOG_DEBUG("dart__base__locality__create_subdomains > loc: %p - "
                    "scope: %d level: %d subdomains: %d domain(%s) - final",
                    loc, loc->scope, loc->level, loc->num_domains,
                    loc->domain_tag);
@@ -597,15 +598,15 @@ dart_ret_t dart__base__locality__get_subdomains(
     /* append the subdomain tag part to subdomain tag, e.g. ".0.1": */
     sprintf(subdomain->domain_tag + base_tag_len, ".%d", d);
     /* recursively initialize subdomains: */
-    ret = dart__base__locality__get_subdomains(subdomain);
+    ret = dart__base__locality__create_subdomains(subdomain);
     if (ret != DART_OK) {
-      DART_LOG_ERROR("dart__base__locality__get_subdomains ! "
+      DART_LOG_ERROR("dart__base__locality__create_subdomains ! "
                      "failed to initialize subdomains of '%s' (%d)",
                      subdomain->domain_tag, ret);
       return ret;
     }
   }
-  DART_LOG_DEBUG("dart__base__locality__get_subdomains > loc: %p - "
+  DART_LOG_DEBUG("dart__base__locality__create_subdomains > loc: %p - "
                  "scope: %d level: %d subdomains: %d domain(%s)",
                  loc, loc->scope, loc->level, loc->num_domains,
                  loc->domain_tag);
@@ -699,11 +700,6 @@ dart_ret_t dart__base__locality__local_unit_new(
   strncpy(loc->domain_tag, ".", 1);
   loc->domain_tag[1] = '\0';
 
-  /*
-   * TODO: Temporary implementation, copying locality information from
-   *       domain '0'.
-   *       Should be lookup of locality information for unit id.
-   */
   dart_domain_locality_t * dloc;
   ret = dart_domain_locality(".", &dloc);
   if (ret != DART_OK) {
@@ -732,6 +728,21 @@ dart_ret_t dart__base__locality__local_unit_new(
   hwloc_topology_destroy(topology);
 #else
   loc->num_threads = 1;
+#endif
+
+#ifdef DART__ARCH__IS_MIC
+  DART_LOG_TRACE("dart__base__locality__local_unit_new: "
+                 "MIC architecture");
+
+  if (loc->numa_id     < 0) { loc->numa_id     =  0; }
+  if (loc->num_cores   < 0) { loc->num_cores   = 60; }
+  if (loc->min_cpu_mhz < 0 || loc->max_cpu_mhz < 0) {
+    loc->min_cpu_mhz = 1100;
+    loc->max_cpu_mhz = 1100;
+  }
+  if (loc->num_threads < 0) {
+    loc->num_threads = 4;
+  }
 #endif
 
   DART_LOG_DEBUG("dart__base__locality__local_unit_new > loc(%p)", loc);

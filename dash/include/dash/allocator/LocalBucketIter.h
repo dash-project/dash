@@ -488,7 +488,7 @@ std::ostream & operator<<(
           ElementType, IndexType, Pointer, Reference> & it)
 {
   std::ostringstream ss;
-  ElementType * lptr = it;
+  ElementType * lptr = static_cast<ElementType *>(it);
   ss << "dash::LocalBucketIter<"
      << typeid(ElementType).name() << ">"
      << "("

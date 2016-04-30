@@ -54,7 +54,7 @@ dart_ret_t dart__base__unit_locality__get(
   dart_unit_locality_t ** loc)
 {
   if ((size_t)(unit) >= _dart__base__unit_locality__team_size_all) {
-    DART_LOG_ERROR("dart__base__unit_locality__init ! "
+    DART_LOG_ERROR("dart__base__unit_locality__get ! "
                    "unit id %d out of bounds, team size: %"PRIu64"",
                    unit, _dart__base__unit_locality__team_size_all);
     return DART_ERR_INVAL;
@@ -66,8 +66,8 @@ dart_ret_t dart__base__unit_locality__get(
 dart_ret_t dart__base__unit_locality__init()
 {
   dart_ret_t  ret;
-  dart_unit_t myid;
-  size_t      nunits;
+  dart_unit_t myid   = DART_UNDEFINED_UNIT_ID;
+  size_t      nunits = 0;
   DART_LOG_DEBUG("dart__base__unit_locality__init()");
 
   DART_ASSERT_RETURNS(dart_myid(&myid),   DART_OK);
@@ -79,28 +79,37 @@ dart_ret_t dart__base__unit_locality__init()
 
   /* get local unit's locality information: */
   dart_unit_locality_t * uloc;
+#if 0
   uloc = (dart_unit_locality_t *)(malloc(sizeof(dart_unit_locality_t)));
+#else
+  uloc = (dart_unit_locality_t *)(malloc(nunits * nbytes));
+#endif
   ret  = dart__base__locality__local_unit_new(uloc);
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart__base__unit_locality__init ! "
                    "dart_unit_locality failed: %d", ret);
     return ret;
   }
-  DART_LOG_TRACE("dart__base__unit_locality__init: unit[%d]: "
+  DART_LOG_TRACE("dart__base__unit_locality__init: unit %d of %"PRIu64": "
                  "sending %"PRIu64" bytes: "
                  "host:%s core_id:%d numa_id:%d nthreads:%d",
-                 myid, nbytes, uloc->host, uloc->core_id, uloc->numa_id,
+                 myid, nunits, nbytes,
+                 uloc->host, uloc->core_id, uloc->numa_id,
                  uloc->num_threads);
+
+  _dart__base__unit_locality__map = (dart_unit_locality_t *)(
+                                       malloc(nunits * nbytes));
+  dart_barrier(DART_TEAM_ALL);
 
   /* all-to-all exchange of locality data across all units:
    * (send, recv, nbytes, team) */
-  _dart__base__unit_locality__map = (dart_unit_locality_t *)(
-                                       malloc(nunits * nbytes));
-
   DART_LOG_DEBUG("dart__base__unit_locality__init: dart_allgather");
   ret = dart_allgather(uloc, _dart__base__unit_locality__map, nbytes,
                        DART_TEAM_ALL);
+
+  dart_barrier(DART_TEAM_ALL);
   free(uloc);
+
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart__base__unit_locality__init ! "
                    "dart_allgather failed: %d", ret);

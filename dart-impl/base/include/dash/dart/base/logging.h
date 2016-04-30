@@ -12,6 +12,10 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
 
+#ifdef DART_ENABLE_ASSERTIONS
+#include <assert.h>
+#endif
+
 /* Width of unit id field in log messages in number of characters */
 #define DASH__DART_LOGGING__UNIT__WIDTH 4
 /* Width of file name field in log messages in number of characters */
@@ -141,6 +145,14 @@ inline char * dart_base_logging_basename(char *path) {
     assert((expr) == (exp_value)); \
   } \
 } while(0)
+
+#else /* DART_ENABLE_ASSERTIONS */
+
+#define DART_ASSERT(...) do { } while (0)
+#define DART_ASSERT_RETURNS(expr, exp_value) do { \
+          (expr); \
+          dash__unused(exp_value); \
+        } while(0)
 
 #endif /* DART_ENABLE_ASSERTIONS */
 
