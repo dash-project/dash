@@ -14,6 +14,7 @@
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
+#include <dash/dart/base/assert.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
