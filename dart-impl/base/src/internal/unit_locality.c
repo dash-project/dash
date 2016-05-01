@@ -128,8 +128,10 @@ dart_ret_t dart__base__unit_locality__init()
                    "unit:%d host:%s domain:%s num_cores:%d core_id:%d "
                    "numa_id:%d nthreads:%d",
                    u, ulm_u->unit, ulm_u->host, ulm_u->domain_tag,
-                   ulm_u->hwinfo.num_cores, ulm_u->hwinfo.cpu_id,
-                   ulm_u->hwinfo.numa_id, ulm_u->hwinfo.max_threads);
+                   ulm_u->hwinfo.num_modules, ulm_u->hwinfo.num_numa,
+                   ulm_u->hwinfo.num_sockets, ulm_u->hwinfo.num_cores,
+                   ulm_u->hwinfo.cpu_id, ulm_u->hwinfo.numa_id,
+                   ulm_u->hwinfo.max_threads);
   }
 #endif
 

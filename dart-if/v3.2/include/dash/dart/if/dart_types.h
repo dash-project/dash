@@ -313,6 +313,9 @@ struct dart_domain_locality_s
     /** Hardware specification of the domains's affinity. */
     dart_hwinfo_t hwinfo;
 
+    /** Identifier of the domain's processing node. */
+    int   node_id;
+
     /** Number of compute nodes in the domain. */
     int   num_nodes;
 

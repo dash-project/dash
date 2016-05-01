@@ -264,67 +264,42 @@ dart_ret_t dart__base__locality__create_subdomains(
   DART_LOG_DEBUG("dart__base__locality__create_subdomains() loc: %p "
                  "scope: %d level: %d", loc, loc->scope, loc->level);
 
+  /* Locality information of every unit: */
+  dart_unit_locality_t * unit_localities;
+  DART_ASSERT_RETURNS(
+    dart__base__unit_locality__data(&unit_localities),
+    DART_OK);
+
+  /*
+   * First step: initialize the domain's scope, level, and number of
+   * sub-domains only, that is: only the number of partitions without
+   * specifying their size.
+   */
   dart_locality_scope_t sub_scope;
   sub_scope           = DART_LOCALITY_SCOPE_UNDEFINED;
-  int sub_level       = loc->level + 1;
-  int sub_num_nodes   = loc->num_nodes;
-  int sub_num_units   = loc->num_units;
-  int sub_num_modules = loc->hwinfo.num_modules;
-  int sub_num_numa    = loc->hwinfo.num_numa;
-  int sub_num_sockets = loc->hwinfo.num_sockets;
-  int sub_num_cores   = loc->hwinfo.num_cores;
   switch (loc->scope) {
     case DART_LOCALITY_SCOPE_UNDEFINED:
       DART_LOG_ERROR("dart__base__locality__create_subdomains ! "
                      "locality scope undefined");
       return DART_ERR_INVAL;
     case DART_LOCALITY_SCOPE_GLOBAL:
-      DART_LOG_TRACE("dart__base__locality__create_subdomains: sub: nodes");
-      loc->num_domains        = host_topology->num_nodes;
-      loc->hwinfo.num_modules = host_topology->num_modules;
-      sub_num_nodes           = 1;
-      sub_scope               = DART_LOCALITY_SCOPE_NODE;
+      loc->num_domains = host_topology->num_nodes;
+      sub_scope        = DART_LOCALITY_SCOPE_NODE;
       break;
     case DART_LOCALITY_SCOPE_NODE:
-      DART_LOG_TRACE("dart__base__locality__create_subdomains: sub: modules");
-      /* Resolve number of units on this node from from host topology: */
-      dart_unit_t * node_units;
-      size_t        num_node_units;
-      dart__base__host_topology__node_units(
-        host_topology, loc->host, &node_units, &num_node_units);
-      loc->num_domains    = loc->hwinfo.num_modules;
-      sub_num_modules     = 1;
-      sub_num_units       = num_node_units;
-      sub_scope           = DART_LOCALITY_SCOPE_MODULE;
+      loc->num_domains = loc->hwinfo.num_modules;
+      sub_scope        = DART_LOCALITY_SCOPE_MODULE;
       break;
     case DART_LOCALITY_SCOPE_MODULE:
-      DART_LOG_TRACE("dart__base__locality__create_subdomains: "
-                     "sub: NUMA nodes, cores: %d, numa domains: %d",
-                     loc->hwinfo.num_cores, loc->hwinfo.num_numa);
-      loc->num_domains    = loc->hwinfo.num_numa;
-      sub_num_numa        = 1;
-      /*
-       * TODO: Resolve actual balancing of cores to NUMA domains, currently
-       *       assuming that NUMA domains have identical size.
-       */
-      sub_num_cores       = loc->hwinfo.num_cores / loc->hwinfo.num_numa;
-      sub_num_units       = loc->num_units / loc->hwinfo.num_numa;
-      sub_scope           = DART_LOCALITY_SCOPE_NUMA;
+      loc->num_domains = loc->hwinfo.num_numa;
+      sub_scope        = DART_LOCALITY_SCOPE_NUMA;
       break;
     case DART_LOCALITY_SCOPE_NUMA:
-      DART_LOG_TRACE("dart__base__locality__create_subdomains: "
-                     "sub: UMA nodes");
-      loc->num_domains    = loc->hwinfo.num_cores;
-      /* all domains below NUMA level are contained in a single NUMA
-       * domain: */
-      sub_num_numa        = 1;
-      /* number of cores per unit: */
-      sub_num_cores       = 1;
-      sub_scope           = DART_LOCALITY_SCOPE_CORE;
+      loc->num_domains = loc->hwinfo.num_cores;
+      sub_scope        = DART_LOCALITY_SCOPE_CORE;
       break;
     default:
-      DART_LOG_TRACE("dart__base__locality__create_subdomains: sub: other");
-      loc->num_domains    = 0;
+      loc->num_domains = 0;
       break;
   }
   DART_LOG_TRACE("dart__base__locality__create_subdomains: subdomains: %d",
@@ -338,6 +313,7 @@ dart_ret_t dart__base__locality__create_subdomains(
     return DART_OK;
   }
 
+  /* Allocate subdomains: */
   loc->domains = (dart_domain_locality_t *)(
                     malloc(loc->num_domains *
                            sizeof(dart_domain_locality_t)));
@@ -345,31 +321,138 @@ dart_ret_t dart__base__locality__create_subdomains(
                  "scope: %d level: %d subdomains: %d domain(%s)",
                  loc, loc->scope, loc->level, loc->num_domains,
                  loc->domain_tag);
-  dart_ret_t ret;
+  /*
+   * Second step: determine the subdomain capacities and distribute
+   * domain elements like units and cores.
+   * For this, determine number of units/numa domains/cores from hwinfo
+   * and host topology for the single sub-domains.
+   */
+
+  /* Iterate on sub-domains in the domain's locality scope: */
   for (int rel_idx = 0; rel_idx < loc->num_domains; ++rel_idx) {
+    DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+                   "initialize, level: %d, subdomain %d of %d",
+                   loc->level + 1, rel_idx, loc->num_domains);
+
     dart_domain_locality_t * subdomain = loc->domains + rel_idx;
     dart__base__locality__domain_locality_init(subdomain);
-    /*
-     * TODO: Should determine number of units/numa domains/cores from
-     *       hwinfo and host topology for every sub-domain specificly.
-     *       Currently, all sub-domain of a domain use the same values.
-     */
 
-    /* initialize subdomain scope, level and hwinfo: */
-    subdomain->parent             = loc;
-    subdomain->relative_index     = rel_idx;
-    subdomain->level              = sub_level;
-    subdomain->scope              = sub_scope;
-    subdomain->num_nodes          = sub_num_nodes;
-    subdomain->num_units          = sub_num_units;
-    subdomain->hwinfo.num_numa    = sub_num_numa;
-    subdomain->hwinfo.num_modules = sub_num_modules;
-    subdomain->hwinfo.num_sockets = sub_num_sockets;
-    subdomain->hwinfo.num_cores   = sub_num_cores;
+    subdomain->parent         = loc;
+    subdomain->scope          = sub_scope;
+    subdomain->relative_index = rel_idx;
+    subdomain->level          = loc->level + 1;
+    subdomain->node_id        = loc->node_id;
+    /* Initialize with hwinfo from parent domain as most properties are
+     * identical: */
+    subdomain->hwinfo         = loc->hwinfo;
+
+    /* TODO: Could skip with continue if (loc->num_domains == 1). */
+
+    if (loc->scope == DART_LOCALITY_SCOPE_GLOBAL) {
+      /* Loop iterates on nodes. Partitioning is trivial, split into one
+       * node per sub-domain. */
+
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: GLOBAL");
+      /* units in node at relative index: */
+      dart_node_units_t * node_units = &host_topology->node_units[rel_idx];
+      /* single units could be accessed via node_units->units[] */
+      /* number of modules in the node: */
+      size_t num_node_units  = node_units->num_units;
+      /* relative sub-domain index at global scope is node id: */
+      subdomain->node_id   = rel_idx;
+      subdomain->num_nodes = 1;
+      subdomain->num_units = num_node_units;
+    }
+    else if (loc->scope == DART_LOCALITY_SCOPE_NODE) {
+      /* Loop splits into processing modules.
+       * Usually there is only one module (the host system), otherwise
+       * partitioning is heterogenous. */
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: NODE - "
+                     "number of modules: %d", host_topology->num_modules);
+
+      subdomain->hwinfo.num_modules = host_topology->num_modules;
+      int    node_id        = loc->node_id;
+      size_t num_node_units = host_topology->node_units[node_id].num_units;
+      if (loc->num_domains == 1) {
+        /* Module occupies entire node, no partitioning.
+         * Could assert on host_topology->num_host_levels == 1 */
+        subdomain->num_units  = num_node_units;
+      } else {
+        /* Module is a node segment, determine number of units, cores and
+         * NUMA nodes in the module: */
+        size_t num_module_units = 0;
+        /* Count number of units in the node that have the module's host
+         * name: */
+        char * module_hostname  = host_topology->host_names[rel_idx];
+        for (size_t u = 0; u < num_node_units; ++u) {
+          char * node_unit_hostname =
+            host_topology->node_units[node_id].host;
+          if (strcmp(module_hostname, node_unit_hostname) == 0) {
+            ++num_module_units;
+          }
+        }
+        subdomain->num_nodes = 1;
+        subdomain->num_units = num_module_units;
+      }
+    }
+    else if (loc->scope == DART_LOCALITY_SCOPE_MODULE) {
+      /* Loop splits into NUMA nodes. */
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: MODULE");
+
+      size_t num_numa_units = 0;
+      int    node_id        = loc->node_id;
+      size_t num_node_units = host_topology->node_units[node_id].num_units;
+      /* Count number of units in the node that have the NUMA domain's
+       * NUMA id: */
+      for (size_t u = 0; u < num_node_units; ++u) {
+        dart_unit_t node_unit_id =
+          host_topology->node_units[node_id].units[u];
+        /* query the unit's hw- and locality information: */
+        dart_unit_locality_t * node_unit_loc;
+        dart_unit_locality(node_unit_id, &node_unit_loc);
+        int node_unit_numa_id = node_unit_loc->hwinfo.numa_id;
+        /* TODO: assuming that rel_idx corresponds to NUMA id: */
+        DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+                       "unit %d numa id: %d", u, node_unit_numa_id);
+        if (node_unit_numa_id == rel_idx) {
+          ++num_numa_units;
+        }
+      }
+      subdomain->hwinfo.num_modules = 1;
+      subdomain->num_nodes          = 1;
+      subdomain->num_units          = num_numa_units;
+      /* TODO: using balanced split for now, assuming same number of cores
+       *       in all NUMA domains: */
+      subdomain->hwinfo.num_cores   = loc->hwinfo.num_cores /
+                                      loc->num_domains;
+      subdomain->hwinfo.num_numa    = 1;
+    }
+    else if (loc->scope == DART_LOCALITY_SCOPE_NUMA) {
+      /* Loop splits into UMA segments within a NUMA domain or module.
+       * Using balanced split, segments are assumed to be homogenous at
+       * this level. */
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: NUMA");
+
+      subdomain->hwinfo.num_modules = 1;
+      subdomain->num_nodes          = 1;
+      subdomain->num_units          = loc->num_units / loc->num_domains;
+      subdomain->hwinfo.num_numa    = 1;
+      subdomain->hwinfo.num_cores   = loc->hwinfo.num_cores /loc->num_domains;
+    }
+    else if (loc->scope == DART_LOCALITY_SCOPE_CORE) {
+      /* Loop splits into cores in a UMA segment. Partitioning is trivial,
+       * one core per domain. */
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: CORE");
+
+      subdomain->hwinfo.num_modules = 1;
+      subdomain->num_nodes          = 1;
+      subdomain->num_units          = 1;
+      subdomain->hwinfo.num_numa    = 1;
+      subdomain->hwinfo.num_cores   = 1;
+    }
+
     /* host of subdomain is same as host of parent domain: */
     strncpy(subdomain->host, loc->host, DART_LOCALITY_HOST_MAX_SIZE);
-    /* initialize subdomain tag with parent domain tag, e.g. ".0",
-     * returns pointer to end of domain tag: */
     int base_tag_len = 0;
     if (loc->level > 0) {
       /* only copy base domain tag if it contains preceeding domain parts: */
@@ -378,14 +461,11 @@ dart_ret_t dart__base__locality__create_subdomains(
     }
     /* append the subdomain tag part to subdomain tag, e.g. ".0.1": */
     sprintf(subdomain->domain_tag + base_tag_len, ".%d", rel_idx);
+
     /* recursively initialize subdomains: */
-    ret = dart__base__locality__create_subdomains(subdomain, host_topology);
-    if (ret != DART_OK) {
-      DART_LOG_ERROR("dart__base__locality__create_subdomains ! "
-                     "failed to initialize subdomains of '%s' (%d)",
-                     subdomain->domain_tag, ret);
-      return ret;
-    }
+    DART_ASSERT_RETURNS(
+        dart__base__locality__create_subdomains(subdomain, host_topology),
+        DART_OK);
   }
   DART_LOG_DEBUG("dart__base__locality__create_subdomains >");
   return DART_OK;
