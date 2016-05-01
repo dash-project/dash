@@ -497,14 +497,14 @@ dart_ret_t dart__base__locality__local_unit_new(
   DART_LOG_TRACE("dart__base__locality__local_unit_new: "
                  "MIC architecture");
 
-  if (loc->numa_id     < 0) { loc->numa_id     =  0; }
-  if (loc->num_cores   < 0) { loc->num_cores   = 60; }
-  if (loc->min_cpu_mhz < 0 || loc->max_cpu_mhz < 0) {
-    loc->min_cpu_mhz = 1100;
-    loc->max_cpu_mhz = 1100;
+  if (loc->hwinfo.numa_id     < 0) { loc->hwinfo.numa_id     =  0; }
+  if (loc->hwinfo.num_cores   < 0) { loc->hwinfo.num_cores   = 60; }
+  if (loc->hwinfo.min_cpu_mhz < 0 || loc->hwinfo.max_cpu_mhz < 0) {
+    loc->hwinfo.min_cpu_mhz = 1100;
+    loc->hwinfo.max_cpu_mhz = 1100;
   }
-  if (loc->max_threads < 0) {
-    loc->max_threads = 4;
+  if (loc->hwinfo.max_threads < 0) {
+    loc->hwinfo.max_threads = 4;
   }
 #endif
   if (loc->hwinfo.min_threads < 0) {
