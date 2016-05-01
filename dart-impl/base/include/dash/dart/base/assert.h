@@ -7,6 +7,7 @@
 #define DART__BASE__ASSERT_H__
 
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/macro.h>
 
 #ifdef DART_ENABLE_ASSERTIONS
 #include <assert.h>
