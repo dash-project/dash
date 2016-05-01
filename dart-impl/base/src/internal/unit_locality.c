@@ -50,7 +50,16 @@
 dart_unit_locality_t * _dart__base__unit_locality__map;
 size_t                 _dart__base__unit_locality__team_size_all;
 
-dart_ret_t dart__base__unit_locality__get(
+
+
+dart_ret_t dart__base__unit_locality__data(
+  dart_unit_locality_t ** loc)
+{
+  *loc = _dart__base__unit_locality__map;
+  return DART_OK;
+}
+
+dart_ret_t dart__base__unit_locality__at(
   dart_unit_t             unit,
   dart_unit_locality_t ** loc)
 {

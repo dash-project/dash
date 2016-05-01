@@ -78,7 +78,7 @@ dart_ret_t dart__base__host_topology__create(
                    hostnames[h]);
     for (size_t u = 0; u < num_units; ++u) {
       dart_unit_locality_t * ul;
-      DART_ASSERT_RETURNS(dart__base__unit_locality__get(u, &ul), DART_OK);
+      DART_ASSERT_RETURNS(dart__base__unit_locality__at(u, &ul), DART_OK);
       if (strncmp(ul->host, hostnames[h], max_host_len) == 0) {
         node_units->units[node_units->num_units] = ul->unit;
         node_units->num_units++;

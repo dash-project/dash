@@ -296,6 +296,8 @@ struct dart_domain_locality_s
     dart_locality_scope_t scope;
     /** Level in the domain locality hierarchy. */
     int  level;
+    /** The domain's index within its parent domain. */
+    int  relative_index;
 
     /** Pointer to descriptor of parent domain or 0 if no parent domain
      *  is specified. */
@@ -311,11 +313,14 @@ struct dart_domain_locality_s
     /** Hardware specification of the domains's affinity. */
     dart_hwinfo_t hwinfo;
 
-    /** Number of compute nodes in the associated domain. */
+    /** Number of compute nodes in the domain. */
     int   num_nodes;
 
-    /** Number of units in the associated domain. */
+    /** Number of units in the domain. */
     int   num_units;
+
+    /** IDs of units in the domain. */
+    dart_unit_t * unit_ids;
 
   };
 struct dart_domain_locality_s;

@@ -101,7 +101,7 @@ dart_ret_t dart_unit_locality(
   *locality = NULL;
 
   dart_unit_locality_t * loc;
-  dart_ret_t ret = dart__base__unit_locality__get(unit, &loc);
+  dart_ret_t ret = dart__base__unit_locality__at(unit, &loc);
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart_unit_locality: "
                    "dart__base__unit_locality__get(unit:%d) failed (%d)",
