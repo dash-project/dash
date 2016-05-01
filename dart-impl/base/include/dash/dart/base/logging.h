@@ -7,14 +7,14 @@
 #define DART__BASE__LOGGING_H__
 
 #include <string.h>
-#include <dash/dart/base/logging.h>
 #include <stdio.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
 
-#include <dash/dart/base/assert.h>
-
+#ifdef DART_ENABLE_ASSERTIONS
+#include <assert.h>
+#endif
 
 /* Width of unit id field in log messages in number of characters */
 #define DASH__DART_LOGGING__UNIT__WIDTH 4

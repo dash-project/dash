@@ -8,8 +8,10 @@
 
 typedef struct {
   char          host[DART_LOCALITY_HOST_MAX_SIZE];
+  char          parent[DART_LOCALITY_HOST_MAX_SIZE];
   dart_unit_t * units;
-  int           num_units;
+  size_t        num_units;
+  int           level;
 } dart_node_units_t;
 
 
@@ -45,6 +47,6 @@ dart_ret_t dart__base__locality__local_unit_new(
 dart_ret_t dart__base__locality__node_units(
   const char   * hostname,
   dart_unit_t ** units,
-  int          * num_units);
+  size_t       * num_units);
 
 #endif /* DART__BASE__LOCALITY_H__ */

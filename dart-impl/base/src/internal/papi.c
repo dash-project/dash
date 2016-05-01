@@ -6,15 +6,20 @@
 
 #include <dash/dart/if/dart_types.h>
 
-#include <dash/dart/base/macro.h>
+#ifdef DART_ENABLE_PAPI
+#include <dash/dart/base/internal/papi.h>
 #include <dash/dart/base/logging.h>
 
-#include <dart/impl/base/internal/papi.h>
-
-#ifdef DART_ENABLE_PAPI
 #include <papi.h>
+#include <errno.h>
 
-static void dart__base__locality__papi_handle_error(
+#include <inttypes.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdio.h>
+
+
+void dart__base__locality__papi_handle_error(
   int papi_ret)
 {
   /*
@@ -53,7 +58,7 @@ static void dart__base__locality__papi_handle_error(
   }
 }
 
-static dart_ret_t dart__base__locality__papi_init(
+dart_ret_t dart__base__locality__papi_init(
   const PAPI_hw_info_t ** hwinfo)
 {
   int papi_ret;
@@ -82,13 +87,14 @@ static dart_ret_t dart__base__locality__papi_init(
     }
   }
 
+#if 0
   papi_ret = PAPI_thread_init(pthread_self);
 
   if (papi_ret != PAPI_OK) {
     DART_LOG_ERROR("dart__base__locality: PAPI: PAPI_thread_init failed");
     return DART_ERR_OTHER;
   }
-
+#endif
   *hwinfo = PAPI_get_hardware_info();
   if (*hwinfo == NULL) {
     DART_LOG_ERROR("dart__base__locality: PAPI: get hardware info failed");

@@ -251,8 +251,8 @@ dart_ret_t dart_group_locality_split(
   int n_units;
 
   dart__unused(scope);
-  dart__unused(n);
   dart__unused(gout);
+  dart__unused(n);
 
   MPI_Group_size(g->mpi_group, &n_units);
 
