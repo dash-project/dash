@@ -84,6 +84,22 @@ public:
     pattern_t > matrix);
 };
 
+HDF5OutputStream & operator<< (
+  HDF5OutputStream & os,
+  const HDF5Table & tbl)
+{
+  os._table = tbl._table;
+  return os;
+}
+
+HDF5OutputStream & operator<< (
+  HDF5OutputStream & os,
+  HDF5Options opts)
+{
+  os._foptions = opts._foptions;
+  return os;
+}
+
 } // namespace io
 } // namespace dash
 
