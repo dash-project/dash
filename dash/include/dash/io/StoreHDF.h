@@ -2,6 +2,9 @@
 #define DASH__IO__STORE_HDF5_H__
 
 #include <dash/internal/Config.h>
+
+#ifdef DASH_ENABLE_HDF5
+
 #include <dash/Exception.h>
 #include <dash/Init.h>
 #include <dash/Array.h>
@@ -641,5 +644,7 @@ private:
 
 } // namespace io
 } // namespace dash
+
+#endif // DASH_ENABLE_HDF5
 
 #endif

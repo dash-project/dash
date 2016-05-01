@@ -1,6 +1,8 @@
 
 #include <dash/io/StoreHDF.h>
 
+#ifdef DASH_ENABLE_HDF5
+
 #include <dash/Array.h>
 
 #include <hdf5.h>
@@ -259,4 +261,6 @@ void StoreHDF::read(
 
 } // namespace io
 } // namespace dash
+
+#endif // DASH_ENABLE_HDF5
 
