@@ -16,7 +16,7 @@
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/logging.h>
 
-#include <dart/impl/base/internal/papi.h>
+#include <dash/dart/base/internal/papi.h>
 #include <dash/dart/base/internal/unit_locality.h>
 
 #include <dash/dart/if/dart_types.h>
@@ -100,6 +100,7 @@ dart_ret_t dart__base__locality__init()
   /* Filter unique host names from locality information of all units.
    * Could be further optimized but only runs once durin startup. */
   size_t    nunits       = 0;
+  size_t    nhosts       = 0;
   const int max_host_len = DART_LOCALITY_HOST_MAX_SIZE;
   DART_ASSERT_RETURNS(dart_size(&nunits), DART_OK);
   DART_LOG_TRACE("dart__base__locality__init: copying host names");
@@ -723,6 +724,7 @@ dart_ret_t dart__base__locality__local_unit_new(
     DART_LOG_ERROR("dart__base__locality__local_unit_new ! null");
     return DART_ERR_INVAL;
   }
+  dart_ret_t  ret;
   dart_unit_t myid = DART_UNDEFINED_UNIT_ID;
 
   DART_ASSERT_RETURNS(dart__base__locality__unit_locality_init(loc), DART_OK);

@@ -7,14 +7,14 @@
 #define DART__BASE__LOGGING_H__
 
 #include <string.h>
-#include <dash/dart/base/logging.h>
 #include <stdio.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
 
-#include <dash/dart/base/assert.h>
-
+#ifdef DART_ENABLE_ASSERTIONS
+#include <assert.h>
+#endif
 
 /* Width of unit id field in log messages in number of characters */
 #define DASH__DART_LOGGING__UNIT__WIDTH 4
@@ -128,5 +128,32 @@ inline char * dart_base_logging_basename(char *path) {
 #define DART_LOG_INFO(...)  do { } while(0)
 
 #endif /* DART_ENABLE_LOGGING */
+
+
+#ifdef DART_ENABLE_ASSERTIONS
+
+#define DART_ASSERT(expr) do { \
+  if (!(expr)) { \
+    DART_LOG_ERROR("Assertion failed"); \
+    assert(expr); \
+  } \
+} while(0)
+
+#define DART_ASSERT_RETURNS(expr, exp_value) do { \
+  if ((expr) != (exp_value)) { \
+    DART_LOG_ERROR("Assertion failed: Expected return value %d"); \
+    assert((expr) == (exp_value)); \
+  } \
+} while(0)
+
+#else /* DART_ENABLE_ASSERTIONS */
+
+#define DART_ASSERT(...) do { } while (0)
+#define DART_ASSERT_RETURNS(expr, exp_value) do { \
+          (expr); \
+          dash__unused(exp_value); \
+        } while(0)
+
+#endif /* DART_ENABLE_ASSERTIONS */
 
 #endif /* DART__BASE__LOGGING_H__ */

@@ -8,8 +8,7 @@
 
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
-
-#include <dart/impl/base/internal/papi.h>
+#include <dash/dart/base/internal/papi.h>
 
 #ifdef DART_ENABLE_PAPI
 #include <papi.h>
