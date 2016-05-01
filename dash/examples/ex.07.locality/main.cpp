@@ -45,18 +45,19 @@ int main(int argc, char * argv[])
 
   if (myid == 0) {
     std::ostringstream ls;
-    for (int u = 0; u < size; ++u) {
+    for (unsigned u = 0; u < size; ++u) {
       dart_unit_locality(u, &uloc);
       ls << "unit " << u << " locality: " << endl
-         << "  unit:        " << uloc->unit        << endl
-         << "  host:        " << uloc->host        << endl
-         << "  domain:      " << uloc->domain_tag  << endl
-         << "  numa_id:     " << uloc->numa_id     << endl
-         << "  core_id:     " << uloc->core_id     << endl
-         << "  num_cores:   " << uloc->num_cores   << endl
-         << "  min_cpu_mhz: " << uloc->min_cpu_mhz << endl
-         << "  max_cpu_mhz: " << uloc->max_cpu_mhz << endl
-         << "  num_threads: " << uloc->num_threads << endl
+         << "  unit:        " << uloc->unit               << endl
+         << "  host:        " << uloc->host               << endl
+         << "  domain:      " << uloc->domain_tag         << endl
+         << "  numa_id:     " << uloc->hwinfo.numa_id     << endl
+         << "  core_id:     " << uloc->hwinfo.cpu_id      << endl
+         << "  num_cores:   " << uloc->hwinfo.num_cores   << endl
+         << "  min_cpu_mhz: " << uloc->hwinfo.min_cpu_mhz << endl
+         << "  max_cpu_mhz: " << uloc->hwinfo.max_cpu_mhz << endl
+         << "  min_threads: " << uloc->hwinfo.min_threads << endl
+         << "  max_threads: " << uloc->hwinfo.max_threads << endl
          << endl;
       cout << ls.str();
     }

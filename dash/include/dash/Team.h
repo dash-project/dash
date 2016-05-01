@@ -323,7 +323,7 @@ public:
     dart_locality_scope_t dart_scope = static_cast<dart_locality_scope_t>(
                                           static_cast<int>(scope));
     // TODO: Stub */
-    int n_sub_groups = 2;
+    unsigned n_sub_groups = 2;
 
     // TODO: Replace dynamic arrays with vectors.
 

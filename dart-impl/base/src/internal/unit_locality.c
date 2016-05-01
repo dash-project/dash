@@ -91,8 +91,8 @@ dart_ret_t dart__base__unit_locality__init()
                  "sending %"PRIu64" bytes: "
                  "host:%s domain:%s core_id:%d numa_id:%d nthreads:%d",
                  myid, nunits, nbytes,
-                 uloc->host, uloc->domain_tag, uloc->core_id, uloc->numa_id,
-                 uloc->num_threads);
+                 uloc->host, uloc->domain_tag, uloc->hwinfo.cpu_id,
+                 uloc->hwinfo.numa_id, uloc->hwinfo.max_threads);
 
   _dart__base__unit_locality__map = (dart_unit_locality_t *)(
                                        malloc(nunits * nbytes));
@@ -119,8 +119,8 @@ dart_ret_t dart__base__unit_locality__init()
                    "unit:%d host:%s domain:%s num_cores:%d core_id:%d "
                    "numa_id:%d nthreads:%d",
                    u, ulm_u->unit, ulm_u->host, ulm_u->domain_tag,
-                   ulm_u->num_cores, ulm_u->core_id, ulm_u->numa_id,
-                   ulm_u->num_threads);
+                   ulm_u->hwinfo.num_cores, ulm_u->hwinfo.cpu_id,
+                   ulm_u->hwinfo.numa_id, ulm_u->hwinfo.max_threads);
   }
 #endif
 

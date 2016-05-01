@@ -219,7 +219,7 @@ void BenchmarkParams::print_pinning()
          << std::setw(10)     << pin_info.domain
          << std::right
          << std::setw(10)     << pin_info.numa_id
-         << std::setw(5)      << pin_info.core_id
+         << std::setw(5)      << pin_info.cpu_id
          << endl;
   }
   print_section_end();

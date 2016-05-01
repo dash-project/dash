@@ -83,6 +83,43 @@ typedef enum
 #define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(16))
 #define DART_LOCALITY_UNIT_MAX_CPUS       ((int)(8))
 
+typedef struct {
+
+    /** Number of processing groups (e.g. host + accelerators) per node. */
+    int   num_modules;
+    /** Total number of sockets per node. */
+    int   num_sockets;
+    /** Total number of NUMA domains in the associated domain. */
+    int   num_numa;
+    /** Total number of CPUs in the associated domain. */
+    int   num_cores;
+
+    /** The unit's affine core, unique identifier within a processing
+     *  module. */
+    int   numa_id;
+    /** The unit's affine core, unique identifier within a processing
+     *  module. */
+    int   cpu_id;
+
+    /** Minimum clock frequency of CPUs in the domain. */
+    int   min_cpu_mhz;
+    /** Maximum clock frequency of CPUs in the domain. */
+    int   max_cpu_mhz;
+
+    /** Cache sizes by cache level (L1, L2, L3). */
+    int   cache_sizes[3];
+    /** Cache line sizes by cache level (L1, L2, L3). */
+    int   cache_line_sizes[3];
+    /** Flags indicating shared caches by cache level (L1, L2, L3). */
+    int   cache_shared[3];
+
+    /** Minimum number of CPU threads. */
+    int   min_threads;
+    /** Maximum number of CPU threads. */
+    int   max_threads;
+
+} dart_hwinfo_t;
+
 /*
  * A domain is a group of processing entities such as cores in a specific
  * NUMA domain or a Intel MIC entity.
@@ -247,19 +284,18 @@ typedef enum
 struct dart_domain_locality_s
   {
     /**
-     * Hierarchical domain identifier, represented as dot-separated string.
-     * Example:
-     *   0.5.5
+     * Hierarchical domain identifier, represented as dot-separated list
+     * of relative indices on every level in the locality hierarchy.
      */
-    char domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+    char  domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+
+    /** Hostname of the domain's node or 0 if unspecified. */
+    char  host[DART_LOCALITY_HOST_MAX_SIZE];
 
     /** Locality scope of the domain. */
     dart_locality_scope_t scope;
     /** Level in the domain locality hierarchy. */
     int  level;
-
-    /** Hostname of the domain's node or 0 if unspecified. */
-    char host[DART_LOCALITY_HOST_MAX_SIZE];
 
     /** Pointer to descriptor of parent domain or 0 if no parent domain
      *  is specified. */
@@ -267,43 +303,16 @@ struct dart_domain_locality_s
 
     /** Number of subordinate domains. */
     int  num_domains;
+
     /** Array of subordinate domains of size \c num_domains or 0 if no
      *  subdomains are specified. */
     struct dart_domain_locality_s * domains;
 
-    /** Total number of NUMA domains in the associated domain. */
-    int   num_numa;
-    /** IDs of the unit's NUMA domains, relative to parent node domain. */
-    int * numa_ids;
-
-    /** Total number of CPUs in the associated domain. */
-    int   num_cores;
-    /** IDs of CPUs in the unit, relative to parent node domain. */
-    int * cpu_ids;
+    /** Hardware specification of the domains's affinity. */
+    dart_hwinfo_t hwinfo;
 
     /** Number of compute nodes in the associated domain. */
     int   num_nodes;
-    /** Number of processing groups (e.g. host + accelerators) per node. */
-    int   num_modules;
-    /** Total number of sockets per node. */
-    int   num_sockets;
-
-    /** Minimum clock frequency of CPUs in the domain. */
-    int   min_cpu_mhz;
-    /** Maximum clock frequency of CPUs in the domain. */
-    int   max_cpu_mhz;
-
-    /** Minimum number of threads per core in the domain. */
-    int   min_threads;
-    /** Maximum number of threads per core in the domain. */
-    int   max_threads;
-
-    /** Cache sizes in the unit by cache level (L1, L2, L3). */
-    int   cache_sizes[3];
-    /** Cache line sizes in the unit by cache level (L1, L2, L3). */
-    int   cache_line_sizes[3];
-    /** Flags indicating shared caches by cache level (L1, L2, L3). */
-    int   cache_shared[3];
 
   };
 struct dart_domain_locality_s;
@@ -318,35 +327,16 @@ typedef struct dart_domain_locality_s
 typedef struct
   {
     /** Global unit ID */
-    dart_unit_t unit;
+    dart_unit_t   unit;
 
-    /** ID of the unit's NUMA domain, relative to parent processing module. */
-    int   numa_id;
+    /** Hostname of the domain's node or 0 if unspecified. */
+    char          host[DART_LOCALITY_HOST_MAX_SIZE];
 
-    /** The unit's affine core, unique identifier within a processing
-     *  module. */
-    int   core_id;
-
-    /** Number of cores in the unit. */
-    int   num_cores;
-
-    /** Number of threads supported by a single core in the unit. */
-    int   num_threads;
-
-    /** Minimum clock frequency of CPUs in the unit. */
-    int   min_cpu_mhz;
-    /** Maximum clock frequency of CPUs in the unit. */
-    int   max_cpu_mhz;
-
-    /** Hostname of the unit's local node or 0 if unspecified. */
-    char  host[DART_LOCALITY_HOST_MAX_SIZE];
-
-    /** IDs of \c (num_threads x num_cores) CPUs in the unit, relative to
-     *  domain at node level. */
-    int   cpu_ids[DART_LOCALITY_UNIT_MAX_CPUS];
+    /** Hardware specification of the unit's affinity. */
+    dart_hwinfo_t hwinfo;
 
     /** Identifier of the unit's parent homogenous locality domain. */
-    char  domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+    char          domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 
   } dart_unit_locality_t;
 
