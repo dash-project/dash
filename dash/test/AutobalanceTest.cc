@@ -86,7 +86,7 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNUMA)
 
   dash::util::Locality::SetNumNodes(1);
   dash::util::Locality::SetNumSockets(2);
-  dash::util::Locality::SetNumNumaNodes(4);
+  dash::util::Locality::SetNumNUMANodes(4);
   dash::util::Locality::SetNumCPUs(28);
 
   std::vector<extents_t> exp_team_extents;
@@ -136,7 +136,7 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
   typedef std::array<size_t, 2> extents_t;
 
   dash::util::Locality::SetNumSockets(2);
-  dash::util::Locality::SetNumNumaNodes(4);
+  dash::util::Locality::SetNumNUMANodes(4);
   dash::util::Locality::SetNumCPUs(28);
 
   std::vector<extents_t> exp_team_extents;

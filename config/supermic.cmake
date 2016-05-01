@@ -12,6 +12,11 @@ set(ENV{CC} mpiicc)
 set(DASH_ENV_HOST_SYSTEM_ID "supermic" CACHE STRING
     "Host system type identifier")
 
+# Force Intel MPI implementation:
+if (NOT "$ENV{MPI_BASE}" MATCHES "intel")
+  message(ERROR "MIC build requires Intel MPI")
+endif()
+
 set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -qopenmp -mmic -mkl")
 set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -qopt-streaming-stores always")
 set(CC_ENV_SETUP_FLAGS "${CC_ENV_SETUP_FLAGS} -qopt-prefetch-distance=64,8")

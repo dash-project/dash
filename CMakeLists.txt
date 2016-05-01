@@ -48,6 +48,8 @@ option(ENABLE_LIBNUMA
        "Specify whether libnuma features are enabled" on)
 option(ENABLE_HWLOC
        "Specify whether hwloc features are enabled" on)
+option(ENABLE_LIKWID
+       "Specify whether likwid support is enabled" off)
 option(ENABLE_PAPI
        "Specify whether PAPI features are enabled" on)
 option(ENABLE_MKL

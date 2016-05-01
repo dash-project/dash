@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <unistd.h>
+
 std::map<std::string, dash::util::TraceStore::trace_events_t> dash::util::TraceStore::_traces
   = {{ }};
 
@@ -18,7 +20,7 @@ bool dash::util::TraceStore::_trace_enabled
 bool dash::util::TraceStore::on()
 {
   _trace_enabled = dash::util::Config::get<bool>("DASH_ENABLE_TRACE");
-  
+
 	// To avoid compiler optimization from eliminating this call:
   std::ostringstream os;
   os << _trace_enabled << std::endl;

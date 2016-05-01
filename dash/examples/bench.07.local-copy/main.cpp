@@ -115,7 +115,7 @@ int main(int argc, char** argv)
   measurement res;
   double time_s;
   auto   ts_start        = Timer::Now();
-  size_t num_numa_nodes  = dash::util::Locality::NumNumaNodes();
+  size_t num_numa_nodes  = dash::util::Locality::NumNUMANodes();
   size_t num_local_cpus  = dash::util::Locality::NumCPUs();
   // Number of physical cores in a single NUMA domain (7 on SuperMUC):
   size_t numa_node_cores = num_local_cpus / num_numa_nodes;

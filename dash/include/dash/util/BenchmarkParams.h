@@ -9,8 +9,6 @@
 #include <vector>
 #include <string>
 
-// Environment variables as array of strings, terminated by null pointer.
-extern char ** environ;
 
 namespace dash {
 namespace util {

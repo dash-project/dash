@@ -43,8 +43,9 @@ void print_header() {
 template<typename T>
 void perform_test(size_t REPEAT)
 {
-  T sum;
+  T sum = 0;
   Timer::timestamp_t ts_start;
+
   double duration_unit0;
   double duration_local;
   double duration_neigh;

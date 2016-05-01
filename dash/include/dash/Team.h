@@ -6,11 +6,16 @@
 #include <memory>
 #include <type_traits>
 
+#include <dash/dart/if/dart.h>
+
 #include <dash/Init.h>
 #include <dash/Enums.h>
 #include <dash/Exception.h>
+
+#include <dash/util/Locality.h>
+
 #include <dash/internal/Logging.h>
-#include <dash/dart/if/dart.h>
+
 
 namespace dash {
 
@@ -250,8 +255,8 @@ public:
    */
   Team & split(
     /// Number of parts to split this team's units into
-    unsigned nParts
-  ) {
+    unsigned nParts)
+  {
     DASH_LOG_DEBUG_VAR("Team.split()", nParts);
     dart_group_t *  group;
     dart_group_t ** sub_groups = static_cast<dart_group_t**>(
@@ -271,6 +276,7 @@ public:
     Team *result = &(dash::Team::Null());
 
     if (this->size() <= 1) {
+      DASH_LOG_DEBUG("Team.split >", "Team size is 1, cannot split");
       return *result;
     }
     DASH_ASSERT_RETURNS(
@@ -297,6 +303,77 @@ public:
         result = new Team(newteam, this, i);
       }
     }
+    DASH_LOG_DEBUG("Team.split >");
+    return *result;
+  }
+
+  /**
+   * Split this Team's units into child Team instances at the specified
+   * locality scope.
+   *
+   * \return A new Team instance as a parent of the child teams.
+   */
+  Team & locality_split(
+    /// Locality scope that determines the level in the topology hierarchy
+    /// where the team is split.
+    dash::util::Locality::Scope scope)
+  {
+    DASH_LOG_DEBUG_VAR("Team.locality_split()", scope);
+
+    dart_locality_scope_t dart_scope = static_cast<dart_locality_scope_t>(
+                                          static_cast<int>(scope));
+    // TODO: Stub */
+    int n_sub_groups = 2;
+
+    // TODO: Replace dynamic arrays with vectors.
+
+    dart_group_t *  group;
+    dart_group_t ** sub_groups = static_cast<dart_group_t**>(
+                                   malloc(sizeof(dart_group_t *) *
+                                          n_sub_groups));
+    size_t group_t_size;
+
+    dart_group_sizeof(&group_t_size);
+
+    group = static_cast<dart_group_t *>(malloc(group_t_size));
+    for (unsigned i = 0; i < n_sub_groups; i++) {
+      sub_groups[i] = static_cast<dart_group_t *>(malloc(group_t_size));
+      DASH_ASSERT_RETURNS(
+        dart_group_init(sub_groups[i]),
+        DART_OK);
+    }
+
+    Team * result = &(dash::Team::Null());
+
+    if (this->size() <= 1) {
+      DASH_LOG_DEBUG("Team.locality_split >", "Team size < 2, cannot split");
+      return *result;
+    }
+    DASH_ASSERT_RETURNS(
+      dart_group_init(group),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_team_get_group(_dartid, group),
+      DART_OK);
+    DASH_ASSERT_RETURNS(
+      dart_group_locality_split(group, dart_scope, n_sub_groups, sub_groups),
+      DART_OK);
+    dart_team_t oldteam = _dartid;
+    // Create a child Team for every part with parent set to
+    // this instance:
+    for(unsigned i = 0; i < n_sub_groups; i++) {
+      dart_team_t newteam = DART_TEAM_NULL;
+      DASH_ASSERT_RETURNS(
+        dart_team_create(
+          oldteam,
+          sub_groups[i],
+          &newteam),
+        DART_OK);
+      if(newteam != DART_TEAM_NULL) {
+        result = new Team(newteam, this, i);
+      }
+    }
+    DASH_LOG_DEBUG("Team.locality_split >");
     return *result;
   }
 

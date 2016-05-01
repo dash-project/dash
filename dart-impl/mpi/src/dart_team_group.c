@@ -5,13 +5,18 @@
  */
 
 #include <mpi.h>
-#include <dash/dart/base/logging.h>
+
+#include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_initialization.h>
-#include <dash/dart/if/dart_types.h>
+
+#include <dash/dart/base/logging.h>
+#include <dash/dart/base/macro.h>
+
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_group_priv.h>
+
 
 dart_ret_t dart_group_init(
   dart_group_t *group)
@@ -164,7 +169,7 @@ dart_ret_t dart_group_size(
   size_t *size)
 {
   int s;
-  MPI_Group_size (g -> mpi_group, &s);
+  MPI_Group_size(g->mpi_group, &s);
   (*size) = s;
   return DART_OK;
 }
@@ -176,9 +181,9 @@ dart_ret_t dart_group_getmembers(
   int size, i;
   int *array;
   MPI_Group group_all;
-  MPI_Group_size(g -> mpi_group, &size);
+  MPI_Group_size(g->mpi_group, &size);
   MPI_Comm_group(MPI_COMM_WORLD, &group_all);
-  array = (int*) malloc (sizeof (int) * size);
+  array = (int*) malloc(sizeof (int) * size);
   for (i = 0; i < size; i++) {
     array[i] = i;
   }
@@ -237,9 +242,38 @@ dart_ret_t dart_group_split(
   return DART_OK;
 }
 
-dart_ret_t dart_group_sizeof (size_t *size)
+dart_ret_t dart_group_locality_split(
+  const dart_group_t      * g,
+  dart_locality_scope_t     scope,
+  size_t                    n,
+  dart_group_t           ** gout)
 {
-  *size = sizeof (dart_group_t);
+  int n_units;
+
+  dart__unused(scope);
+  dart__unused(gout);
+  dart__unused(n);
+
+  MPI_Group_size(g->mpi_group, &n_units);
+
+  dart_unit_t * unit_ids =
+    (dart_unit_t *)(
+      malloc(n_units * sizeof(dart_unit_t)));
+  dart_group_getmembers(g, unit_ids);
+
+#if 0
+  /* should work without querying full locality domain descriptors */
+  dart_domain_locality_t * unit_domains =
+    (dart_domain_locality_t *)(
+      malloc(n_units * sizeof(dart_domain_locality_t)));
+#endif
+
+  return DART_OK;
+}
+
+dart_ret_t dart_group_sizeof(size_t *size)
+{
+  *size = sizeof(dart_group_t);
   return DART_OK;
 }
 

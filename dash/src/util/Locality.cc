@@ -3,6 +3,9 @@
 #include <dash/Array.h>
 #include <dash/algorithm/Copy.h>
 
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_locality.h>
+
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -10,206 +13,87 @@
 #include <string>
 #include <cstring>
 
-#ifdef DASH_ENABLE_HWLOC
-#include <hwloc.h>
-#include <hwloc/helper.h>
-#endif
 
-#ifdef DASH_ENABLE_LIKWID
-#include <likwid.h>
-#endif
+std::ostream & operator<<(
+  std::ostream                 & os,
+  const dart_domain_locality_t & domain_loc)
+{
+  std::ostringstream ss;
+  ss << "dart_domain_locality_t("
+     <<   "level:"     << domain_loc.level       << " "
+     <<   "scope:"     << domain_loc.scope       << " "
+     <<   "n_nodes:"   << domain_loc.num_nodes   << " "
+     <<   "n_numa:"    << domain_loc.num_numa    << " "
+     <<   "n_sockets:" << domain_loc.num_sockets << " "
+     <<   "n_cores:"   << domain_loc.num_cores   << " "
+     <<   "cpu_mhz:"   << domain_loc.min_cpu_mhz << ".."
+                       << domain_loc.max_cpu_mhz << " "
+     <<   "threads:"   << domain_loc.min_threads << ".."
+                       << domain_loc.max_threads << " "
+     <<   "n_domains:" << domain_loc.num_domains
+     << ")";
+  return operator<<(os, ss.str());
+}
+
+std::ostream & operator<<(
+  std::ostream               & os,
+  const dart_unit_locality_t & unit_loc)
+{
+  std::ostringstream ss;
+  ss << "dart_unit_locality_t("
+     <<   "unit:"      << unit_loc.unit        << " "
+     <<   "domain:'"   << unit_loc.domain_tag  << "' "
+     <<   "host:'"     << unit_loc.host        << "' "
+     <<   "numa_id:'"  << unit_loc.numa_id     << "' "
+     <<   "core_id:"   << unit_loc.core_id     << " "
+     <<   "n_cores:"   << unit_loc.num_cores   << " "
+     <<   "cpu_mhz:"   << unit_loc.min_cpu_mhz << ".."
+                       << unit_loc.max_cpu_mhz << " "
+     <<   "threads:"   << unit_loc.num_threads
+     << ")";
+  return operator<<(os, ss.str());
+}
+
 
 namespace dash {
 namespace util {
 
 void Locality::init()
 {
-  _cache_sizes[0]      = -1;
-  _cache_sizes[1]      = -1;
-  _cache_sizes[2]      = -1;
-  _cache_line_sizes[0] = -1;
-  _cache_line_sizes[1] = -1;
-  _cache_line_sizes[2] = -1;
-  _num_nodes           = -1;
-  _num_sockets         = -1;
-  _num_numa            = -1;
-  _num_cpus            = -1;
-  _cpu_min_mhz         =  0;
-  _cpu_max_mhz         =  0;
-#ifdef DASH_ENABLE_LIKWID
-  // see likwid API documentation:
-  // https://rrze-hpc.github.io/likwid/Doxygen/C-likwidAPI-code.html
-  int likwid_err = topology_init();
-  if (likwid_err < 0) {
-    DASH_LOG_ERROR(
-      "dash::util::Locality::init(): likwid: topology_init failed");
-  } else {
-    CpuInfo_t     info = get_cpuInfo();
-    CpuTopology_t topo = get_cpuTopology();
-    if (_cpu_min_mhz < 0 || _cpu_max_mhz < 0) {
-      _cpu_min_mhz = info->clock;
-      _cpu_max_mhz = info->clock;
-    }
-    if (_num_sockets < 0) {
-      _num_sockets = topo->numSockets;
-    }
-    if (_num_numa < 0) {
-      _num_numa    = _num_sockets;
-    }
-    if (_num_cpus < 0) {
-      _num_cpus    = topo->numCoresPerSocket * _num_sockets;
-    }
-    topology_finalize();
-  }
-#endif
-#ifdef DASH_ENABLE_HWLOC
-  hwloc_topology_t topology;
-  hwloc_topology_init(&topology);
-  hwloc_topology_load(topology);
-  // Resolve cache sizes, ordered by locality (i.e. smallest first):
-  int level = 0;
-  hwloc_obj_t obj;
-  for (obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_PU, 0);
-       obj;
-       obj = obj->parent) {
-    if (obj->type == HWLOC_OBJ_CACHE) {
-      _cache_sizes[level]      = obj->attr->cache.size;
-      _cache_line_sizes[level] = obj->attr->cache.linesize;
-      ++level;
-    }
-  }
-  if (_num_sockets < 0) {
-    // Resolve number of sockets:
-    int depth = hwloc_get_type_depth(topology, HWLOC_OBJ_SOCKET);
-    if (depth != HWLOC_TYPE_DEPTH_UNKNOWN) {
-      _num_sockets = hwloc_get_nbobjs_by_depth(topology, depth);
-    }
-  }
-  if (_num_numa < 0) {
-    // Resolve number of NUMA nodes:
-    int n_numa_nodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NODE);
-    if (n_numa_nodes > 0) {
-      _num_numa = n_numa_nodes;
-    }
-  }
-  if (_num_cpus < 0) {
-    // Resolve number of cores per numa:
-    int n_cores = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_CORE);
-    if (n_cores > 0) {
-      _num_cpus = n_cores;
-    }
-	}
-  hwloc_topology_destroy(topology);
-#endif
-#ifdef DASH_ENABLE_PAPI
-  int retval = PAPI_library_init(PAPI_VER_CURRENT);
-  if (retval != PAPI_VER_CURRENT && retval > 0) {
-    DASH_LOG_ERROR(
-      "dash::util::Locality::init(): PAPI version mismatch");
-  }
-  else if (retval < 0) {
-    DASH_LOG_ERROR(
-      "dash::util::Locality::init(): PAPI init failed");
-  } else {
-    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
-    if (hwinfo == NULL) {
-      DASH_LOG_ERROR(
-        "dash::util::Locality::init(): PAPI get hardware info failed");
-    } else {
-      if (_num_sockets < 0) {
-        _num_sockets = hwinfo->sockets;
-      }
-      if (_num_numa < 0) {
-        _num_numa    = hwinfo->nnodes;
-      }
-      if (_num_cpus < 0) {
-        auto cores_per_socket = hwinfo->cores;
-        _num_cpus    = _num_sockets * cores_per_socket;
-				DASH_LOG_DEBUG("_num_cpus first got by PAPI", _num_cpus);
-      }
-      if (_cpu_min_mhz < 0 || _cpu_max_mhz < 0) {
-        _cpu_min_mhz = hwinfo->cpu_min_mhz;
-        _cpu_max_mhz = hwinfo->cpu_max_mhz;
-      }
-    }
-  }
-#endif
-#ifdef DASH__ARCH__IS_MIC
-  if (_num_sockets < 0) {
-    _num_sockets = 1;
-  }
-  if (_num_numa < 0) {
-    _num_numa    = 1;
-  }
-  if (_num_cpus < 0) {
-    _num_cpus    = 60;
-  }
-  if (_cpu_min_mhz < 0 || _cpu_max_mhz < 0) {
-    _cpu_min_mhz = 1100;
-    _cpu_max_mhz = 1100;
-  }
-#endif
+  DASH_LOG_DEBUG("dash::util::Locality::init()");
 
-#ifdef DASH__PLATFORM__POSIX
-  if (_num_cpus < 0) {
-		// be careful: includes hyperthreading
-    int ret = sysconf(_SC_NPROCESSORS_ONLN);
-    _num_cpus = (ret > 0) ? ret : _num_cpus;
-		DASH_LOG_DEBUG("_num_cpus first got by DASH__PLATFORM_POSIX", _num_cpus);
+  if (dart_unit_locality(dash::myid(), &_unit_loc) != DART_OK) {
+    DASH_THROW(dash::exception::RuntimeError,
+               "Locality::init(): dart_unit_locality failed " <<
+               "for unit " << dash::myid());
   }
-#endif
-#ifdef DASH_ENABLE_NUMA
-  if (_num_numa < 0) {
-    _num_numa = numa_max_node() + 1;
+  DASH_LOG_TRACE_VAR("dash::util::Locality::init", _unit_loc);
+  if (_unit_loc == nullptr) {
+    DASH_THROW(dash::exception::RuntimeError,
+               "Locality::init(): dart_unit_locality returned nullptr " <<
+               "for unit " << dash::myid());
   }
-#endif
-  if (_num_nodes < 0 && _num_cpus > 0) {
-    _num_nodes = std::max<int>(dash::size() / _num_cpus, 1);
+
+  if (dart_domain_locality(_unit_loc->domain_tag, &_domain_loc) != DART_OK) {
+    DASH_THROW(dash::exception::RuntimeError,
+               "Locality::init(): dart_domain_locality failed " <<
+               "for domain '" << _unit_loc->domain_tag << "'");
   }
-  if (_num_nodes   < 0) { _num_nodes   = 1; }
-  if (_num_sockets < 0) { _num_sockets = 1; }
-  if (_num_numa    < 0) { _num_numa    = 1; }
-  if (_num_cpus    < 0) { _num_cpus    = 1; }
+  DASH_LOG_TRACE_VAR("dash::util::Locality::init", _domain_loc);
+  if (_domain_loc == nullptr) {
+    DASH_THROW(dash::exception::RuntimeError,
+               "Locality::init(): dart_domain_locality returned nullptr " <<
+               "for domain '" << _unit_loc->domain_tag << "'");
+  }
 
-  // Collect process pinning information:
-  dash::Array<UnitPinning> pinning(dash::size());
+  _cache_sizes[0]      = _domain_loc->cache_sizes[0];
+  _cache_sizes[1]      = _domain_loc->cache_sizes[1];
+  _cache_sizes[2]      = _domain_loc->cache_sizes[2];
+  _cache_line_sizes[0] = _domain_loc->cache_line_sizes[0];
+  _cache_line_sizes[1] = _domain_loc->cache_line_sizes[1];
+  _cache_line_sizes[2] = _domain_loc->cache_line_sizes[2];
 
-  int cpu       = dash::util::Locality::MyCPU();
-  int numa_node = dash::util::Locality::MyNUMANode();
-
-  UnitPinning my_pin_info;
-  my_pin_info.rank      = dash::myid();
-  my_pin_info.cpu       = cpu;
-  my_pin_info.numa_node = numa_node;
-  gethostname(my_pin_info.host, 100);
-
-  pinning[dash::myid()] = my_pin_info;
-
-  // Ensure pinning data is ready:
-  dash::barrier();
-
-  // Create local copy of pinning info:
-
-  // TODO:
-  // Change to directly copying to local_vector.begin()
-  // when dash::copy is available for iterator output
-  // ranges.
-
-  // Copy into temporary array:
-  UnitPinning * local_copy_tmp = new UnitPinning[pinning.size()];
-
-  auto copy_end = dash::copy(pinning.begin(), pinning.end(),
-                             local_copy_tmp);
-  auto n_copied = copy_end - local_copy_tmp;
-  DASH_LOG_TRACE_VAR("dash::util::Locality::init", n_copied);
-  // Copy from temporary array to local vector:
-  _unit_pinning.insert(_unit_pinning.end(),
-                       local_copy_tmp, local_copy_tmp + n_copied);
-  // Free temporary array:
-  delete[] local_copy_tmp;
-
-  // Wait for completion of the other units' copy operations:
-  dash::barrier();
+  DASH_LOG_DEBUG("dash::util::Locality::init >");
 }
 
 std::ostream & operator<<(
@@ -218,22 +102,21 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   ss << "dash::util::Locality::UnitPinning("
-     << "rank:" << upi.rank << " "
-     << "host:" << upi.host << " "
-     << "cpu:"  << upi.cpu  << " "
-     << "numa:" << upi.numa_node << ")";
+     << "unit:"         << upi.unit << " "
+     << "host:"         << upi.host << " "
+     << "domain:"       << upi.domain << " "
+     << "numa_id:"      << upi.numa_id << " "
+     << "core_id:"      << upi.core_id  << " "
+     << "num_cores:"    << upi.num_cores  << " "
+     << "num_threads:"  << upi.num_threads  << ")";
   return operator<<(os, ss.str());
 }
 
-int Locality::_num_nodes   = -1;
-int Locality::_num_sockets = -1;
-int Locality::_num_numa    = -1;
-int Locality::_num_cpus    = -1;
-int Locality::_cpu_min_mhz = -1;
-int Locality::_cpu_max_mhz = -1;
-std::vector<Locality::UnitPinning> Locality::_unit_pinning;
-std::array<int, 3>                 Locality::_cache_sizes;
-std::array<int, 3>                 Locality::_cache_line_sizes;
+dart_unit_locality_t   * Locality::_unit_loc   = nullptr;
+dart_domain_locality_t * Locality::_domain_loc = nullptr;
+
+std::array<int, 3> Locality::_cache_sizes;
+std::array<int, 3> Locality::_cache_line_sizes;
 
 } // namespace util
 } // namespace dash

@@ -1,9 +1,10 @@
-/** @file dart_globmem.c
- *  @date 25 Aug 2014
- *  @brief Implementation of all the related global pointer operations
+/**
+ * \file dart_globmem.c
  *
- *  All the following functions are implemented with the underlying *MPI-3*
- *  one-sided runtime system.
+ * Implementation of all the related global pointer operations
+ *
+ * All the following functions are implemented with the underlying *MPI-3*
+ * one-sided runtime system.
  */
 
 #include <stdio.h>
@@ -33,6 +34,7 @@
  */
 int16_t dart_memid;
 int16_t dart_registermemid;
+
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
 {
 	int16_t seg_id = gptr.segid;

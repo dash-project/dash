@@ -51,7 +51,7 @@ rm -Rf ./build/*
 (cd ./build && cmake -DCMAKE_BUILD_TYPE=Debug \
                      -DENVIRONMENT_TYPE=default \
                      -DDART_IF_VERSION=3.2 \
-                     -DINSTALL_PREFIX=$HOME/opt/ \
+                     -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-dev/ \
                      -DDART_IMPLEMENTATIONS=mpi \
                      -DENABLE_ASSERTIONS=ON \
                      -DENABLE_COMPILER_WARNINGS=ON \

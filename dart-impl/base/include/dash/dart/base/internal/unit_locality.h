@@ -1,0 +1,18 @@
+/**
+ * \file dash/dart/base/internal/unit_locality.h
+ */
+#ifndef DART__BASE__INTERNAL__UNIT_LOCALITY_H__
+#define DART__BASE__INTERNAL__UNIT_LOCALITY_H__
+
+#include <dash/dart/if/dart_types.h>
+
+
+dart_ret_t dart__base__unit_locality__init();
+
+dart_ret_t dart__base__unit_locality__finalize();
+
+dart_ret_t dart__base__unit_locality__get(
+  dart_unit_t             unit,
+  dart_unit_locality_t ** loc);
+
+#endif /* DART__BASE__INTERNAL__UNIT_LOCALITY_H__ */
