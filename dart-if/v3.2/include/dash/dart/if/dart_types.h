@@ -314,6 +314,9 @@ struct dart_domain_locality_s
     /** Number of compute nodes in the associated domain. */
     int   num_nodes;
 
+    /** Number of units in the associated domain. */
+    int   num_units;
+
   };
 struct dart_domain_locality_s;
 typedef struct dart_domain_locality_s

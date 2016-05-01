@@ -20,7 +20,6 @@ static int cmpstr_(const void * p1, const void * p2) {
 
 dart_ret_t dart__base__host_topology__create(
   char                 * hostnames[],
-  size_t                 num_hostnames,
   dart_team_t            team,
   dart_host_topology_t * topo)
 {
@@ -29,7 +28,7 @@ dart_ret_t dart__base__host_topology__create(
   DART_ASSERT_RETURNS(dart_team_size(team, &num_units), DART_OK);
 
   /* Sort host names to find duplicates in one pass: */
-  qsort(hostnames, num_hostnames, sizeof(char*), cmpstr_);
+  qsort(hostnames, num_units, sizeof(char*), cmpstr_);
   /* Find unique host names in array 'hosts': */
   size_t last_host_idx  = 0;
   /* Maximum number of units mapped to a single host: */
@@ -157,7 +156,7 @@ dart_ret_t dart__base__host_topology__create(
   return DART_OK;
 }
 
-dart_ret_t dart__base__host_topolgoy__node_units(
+dart_ret_t dart__base__host_topology__node_units(
   dart_host_topology_t  * topo,
   const char            * hostname,
   dart_unit_t          ** units,
