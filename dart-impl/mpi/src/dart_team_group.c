@@ -11,6 +11,7 @@
 #include <dash/dart/if/dart_initialization.h>
 
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/macro.h>
 
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_translation.h>
@@ -247,9 +248,11 @@ dart_ret_t dart_group_locality_split(
   size_t                    n,
   dart_group_t           ** gout)
 {
-  MPI_Group grouptem;
   int n_units;
-  int length, i, ranges[1][3];
+
+  dart__unused(scope);
+  dart__unused(gout);
+  dart__unused(n);
 
   MPI_Group_size(g->mpi_group, &n_units);
 

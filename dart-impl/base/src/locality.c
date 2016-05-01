@@ -15,6 +15,7 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/logging.h>
+#include <dash/dart/base/assert.h>
 
 #include <dash/dart/base/internal/papi.h>
 #include <dash/dart/base/internal/unit_locality.h>
@@ -95,7 +96,6 @@ dart_ret_t dart__base__locality__init()
   /* Filter unique host names from locality information of all units.
    * Could be further optimized but only runs once durin startup. */
   size_t    nunits       = 0;
-  size_t    nhosts       = 0;
   const int max_host_len = DART_LOCALITY_HOST_MAX_SIZE;
   DART_ASSERT_RETURNS(dart_size(&nunits), DART_OK);
   DART_LOG_TRACE("dart__base__locality__init: copying host names");
@@ -148,7 +148,7 @@ dart_ret_t dart__base__locality__init()
   /* Map units to hosts: */
   dart__base__locality__node_units_ =
     malloc(num_hosts * sizeof(dart_node_units_t));
-  for (int h = 0; h < num_hosts; ++h) {
+  for (size_t h = 0; h < num_hosts; ++h) {
     dart_node_units_t * node_units = &dart__base__locality__node_units_[h];
     /* allocate array with capacity of maximum units on a single host: */
     node_units->units = malloc(sizeof(dart_unit_t) * max_host_units);
@@ -188,7 +188,7 @@ dart_ret_t dart__base__locality__init()
    * Find shortest strings in array of distinct host names:
    */
   int hostname_min_len = INT_MAX;
-  for (int n = 0; n < dart__base__locality__num_hosts_; ++n) {
+  for (size_t n = 0; n < dart__base__locality__num_hosts_; ++n) {
     dart__base__locality__node_units_[n].level     = 0;
     dart__base__locality__node_units_[n].parent[0] = '\0';
     int hostname_len = strlen(dart__base__locality__host_names_[n]);
@@ -198,14 +198,15 @@ dart_ret_t dart__base__locality__init()
   }
   dart__base__locality__num_host_levels_ = 0;
   /* Match short hostnames as prefix of every other hostname: */
-  for (int parent = 0; parent < dart__base__locality__num_hosts_; ++parent) {
-    if (strlen(dart__base__locality__host_names_[parent]) == hostname_min_len) {
+  for (size_t parent = 0; parent < dart__base__locality__num_hosts_; ++parent) {
+    if (strlen(dart__base__locality__host_names_[parent]) ==
+        (size_t)hostname_min_len) {
       /* Host name is candidate, test for all other hostnames: */
       char * short_name = dart__base__locality__host_names_[parent];
-      for (int sub = 0; sub < dart__base__locality__num_hosts_; ++sub) {
+      for (size_t sub = 0; sub < dart__base__locality__num_hosts_; ++sub) {
         char * other_name = dart__base__locality__host_names_[sub];
         /* Other hostname is longer and has short host name in prefix: */
-        if (strlen(other_name) > hostname_min_len &&
+        if (strlen(other_name) > (size_t)hostname_min_len &&
             strncmp(short_name, other_name, hostname_min_len) == 0) {
           /* Increment topology level of other host: */
           size_t node_level = dart__base__locality__node_units_[parent].level + 1;
@@ -366,7 +367,6 @@ dart_ret_t dart__base__locality__global_domain_new(
   dart_domain_locality_t * loc)
 {
   DART_LOG_DEBUG("dart__base__locality__global_domain_new() loc: %p", loc);
-  dart_ret_t ret;
 
   /* initialize domain descriptor: */
   DART_ASSERT_RETURNS(
@@ -379,7 +379,7 @@ dart_ret_t dart__base__locality__global_domain_new(
     /* Considering host at level 0 as nodes: */
     int num_nodes   = 0;
     int num_modules = 0;
-    for (int h = 0; h < dart__base__locality__num_hosts_; ++h) {
+    for (size_t h = 0; h < dart__base__locality__num_hosts_; ++h) {
       dart_node_units_t * node_units = &dart__base__locality__node_units_[h];
       if (node_units->level == 0) {
         num_nodes++;
@@ -777,7 +777,6 @@ dart_ret_t dart__base__locality__local_unit_new(
     DART_LOG_ERROR("dart__base__locality__local_unit_new ! null");
     return DART_ERR_INVAL;
   }
-  dart_ret_t  ret;
   dart_unit_t myid = DART_UNDEFINED_UNIT_ID;
 
   DART_ASSERT_RETURNS(dart__base__locality__unit_locality_init(loc), DART_OK);
@@ -836,12 +835,12 @@ dart_ret_t dart__base__locality__local_unit_new(
 dart_ret_t dart__base__locality__node_units(
   const char   * hostname,
   dart_unit_t ** units,
-  int          * num_units)
+  size_t       * num_units)
 {
   DART_LOG_TRACE("dart__base__locality__node_units() host: %s", hostname);
   *num_units     = 0;
   int host_found = 0;
-  for (int h = 0; h < dart__base__locality__num_hosts_; ++h) {
+  for (size_t h = 0; h < dart__base__locality__num_hosts_; ++h) {
     dart_node_units_t * node_units = &dart__base__locality__node_units_[h];
     if (strncmp(node_units->host, hostname, DART_LOCALITY_HOST_MAX_SIZE) == 0) {
       *units     = node_units->units;
