@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <sched.h>
+#include <limits.h>
 
 #ifdef DART_ENABLE_LIKWID
 #  include <likwid.h>
@@ -97,6 +98,7 @@ dart_ret_t dart__base__locality__init()
                    "dart__base__unit_locality__init failed: %d", ret);
     return ret;
   }
+
   /* Filter unique host names from locality information of all units.
    * Could be further optimized but only runs once durin startup. */
   size_t    nunits       = 0;
@@ -182,19 +184,59 @@ dart_ret_t dart__base__locality__init()
   dart__base__locality__host_names_ = (char **)(realloc(hosts, num_hosts));
   DART_ASSERT(dart__base__locality__host_names_ != NULL);
 
+  /* Classify hostnames into categories 'node' and 'module'.
+   * Typically, modules have the hostname of their nodes as prefix in their
+   * hostname, e.g.:
+   *
+   *   computer-node-12
+   *     compute-node-12-mic0
+   *     compute-node-12-mic1
+   *
+   * Find shortest strings in array of distinct host names:
+   */
+  int hostname_min_len = INT_MAX;
+  for (int n = 0; n < dart__base__locality__num_hosts_; ++n) {
+    dart__base__locality__node_units_[n].level     = 0;
+    dart__base__locality__node_units_[n].parent[0] = '\0';
+    int hostname_len = strlen(dart__base__locality__host_names_[n]);
+    if (hostname_len < hostname_min_len) {
+      hostname_min_len = hostname_len;
+    }
+  }
+  /* Match short hostnames as prefix of every other hostname: */
+  for (int parent = 0; parent < dart__base__locality__num_hosts_; ++parent) {
+    if (strlen(dart__base__locality__host_names_[parent]) == hostname_min_len) {
+      /* Host name is candidate, test for all other hostnames: */
+      char * short_name = dart__base__locality__host_names_[parent];
+      for (int sub = 0; sub < dart__base__locality__num_hosts_; ++sub) {
+        char * other_name = dart__base__locality__host_names_[sub];
+        /* Other hostname is longer and has short host name in prefix: */
+        if (strlen(other_name) > hostname_min_len &&
+            strncmp(short_name, other_name, hostname_min_len) == 0) {
+          /* Increment topology level of other host: */
+          dart__base__locality__node_units_[sub].level =
+            dart__base__locality__node_units_[parent].level + 1;
+          /* Set short hostname as parent: */
+          strncpy(dart__base__locality__node_units_[sub].parent,
+                  short_name,
+                  DART_LOCALITY_HOST_MAX_SIZE);
+        }
+      }
+    }
+  }
 #ifdef DART_ENABLE_LOGGING
   for (int h = 0; h < num_hosts; ++h) {
     dart_node_units_t * node_units = &dart__base__locality__node_units_[h];
     char * hostname = dart__base__locality__host_names_[h];
-    DART_LOG_TRACE("dart__base__locality__init: %d units mapped to host %s:",
-                   node_units->num_units, hostname);
+    DART_LOG_TRACE("dart__base__locality__init: "
+                   "host %s: units:%d level:%d parent:%s", hostname,
+                   node_units->num_units, node_units->level, node_units->parent);
     for (int u = 0; u < node_units->num_units; ++u) {
       DART_LOG_TRACE("dart__base__locality__init: %s unit[%d]: %d",
                      hostname, u, node_units->units[u]);
     }
   }
 #endif
-
   DART_LOG_DEBUG("dart__base__locality__init >");
   return DART_OK;
 }
