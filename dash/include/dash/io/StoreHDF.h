@@ -13,13 +13,14 @@
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
-#endif
 
 #include <iostream>
 #include <unistd.h>
 #include <string>
 #include <vector>
 #include <array>
+
+#include <mpi.h>
 
 
 namespace dash {
@@ -29,10 +30,10 @@ class StoreHDF {
 public:
   typedef struct hdf5_file_options_t {
     bool          overwrite_file;
-    bool          overwrite_table;  // TODO
+    bool          overwrite_table;
     bool          store_pattern;
     bool          restore_pattern;
-    std::string    pattern_metadata_key;
+    std::string   pattern_metadata_key;
   } hdf5_file_options;
 
 public:
@@ -561,23 +562,24 @@ public:
       DASH_ASSERT("Currently not supported");
     }
 
-    h5datatype     = _convertType(*matrix.lbegin()); // hack
+    h5datatype = _convertType(*matrix.lbegin()); // hack
 
     // setup extends per dimension
     auto pattern = matrix.pattern();
+
     DASH_LOG_DEBUG("Pattern", pattern);
     for (int i = 0; i < ndim; i++) {
       data_dimsm[i] = pattern.local_extent(i);
       // number of tiles in this dimension
       // works also for underfilled tiles
-      count[i]      = (data_dimsm[i] - 1) / pattern.blocksize(i) + 1;
-      offset[i]      = pattern.local_block(0).offset(i);
-      block[i]      = pattern.blocksize(i);
-      stride[i]      = pattern.teamspec().extent(i) * block[i];
+      count[i]  = (data_dimsm[i] - 1) / pattern.blocksize(i) + 1;
+      offset[i] = pattern.local_block(0).offset(i);
+      block[i]  = pattern.blocksize(i);
+      stride[i] = pattern.teamspec().extent(i) * block[i];
 
-      DASH_LOG_DEBUG("COUNT", i, count[i]);
+      DASH_LOG_DEBUG("COUNT",  i, count[i]);
       DASH_LOG_DEBUG("OFFSET", i, offset[i]);
-      DASH_LOG_DEBUG("BLOCK", i, block[i]);
+      DASH_LOG_DEBUG("BLOCK",  i, block[i]);
       DASH_LOG_DEBUG("STRIDE", i, stride[i]);
     }
 
@@ -640,3 +642,4 @@ private:
 } // namespace io
 } // namespace dash
 
+#endif

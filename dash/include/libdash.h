@@ -35,12 +35,13 @@
 #include <dash/Pattern.h>
 #include <dash/DynamicPattern.h>
 
+#include <dash/io/StoreHDF.h>
+
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 
 #include <dash/util/Timer.h>
 #include <dash/util/Locality.h>
-#include <dash/util/StoreHDF.h>
 #include <dash/util/BenchmarkParams.h>
 #include <dash/util/Config.h>
 #include <dash/util/Trace.h>

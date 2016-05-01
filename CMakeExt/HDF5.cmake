@@ -28,7 +28,7 @@ endif()
 
 find_library(
 	HDF5_LIBRARIES
-	NAMES libhdf5 libhdf5.a libhdf5.so
+	NAMES hdf5
 	HINTS ${HDF5_PREFIX}/lib
 )
 
@@ -48,7 +48,8 @@ find_package_handle_standard_args(
 
 # set flags
 if(HDF5_FOUND)
-	set (HDF5_LINKER_FLAGS "-lhdf5_hl -lhdf5 -ldl -lm -lz")
+#  set (HDF5_LINKER_FLAGS "-lhdf5_hl -lhdf5 -ldl -lm -lz")
+   set (HDF5_LINKER_FLAGS $ENV{HDF5_LIB} ${SZIP_LIB} -lz)
 endif()
 
 mark_as_advanced(

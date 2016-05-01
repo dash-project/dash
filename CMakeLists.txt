@@ -217,7 +217,7 @@ message(INFO "ScaLAPACK support:        (ENABLE_SCALAPACK)               "
         ${ENABLE_SCALAPACK})
 message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
-message(INFO "HDF5 support:             (ENABLE_HDF5)                  "
+message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})

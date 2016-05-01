@@ -67,6 +67,7 @@ rm -Rf ./build/*
                      -DENABLE_LAPACK=OFF \
                      -DENABLE_SCALAPACK=OFF \
                      -DENABLE_PLASMA=OFF \
+                     -DENABLE_HDF5=OFF \
                      -DBUILD_EXAMPLES=ON \
                      -DBUILD_TESTS=OFF \
                      -DBUILD_DOCS=OFF \
