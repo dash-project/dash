@@ -307,16 +307,15 @@ dart_ret_t dart__base__locality__create_subdomains(
       DART_LOG_TRACE("dart__base__locality__create_subdomains: "
                      "relative index: %d module hostname: %s",
                      loc->relative_index, module_hostname);
-#if 0
-      size_t num_module_units = 0;
-      for (size_t u = 0; u < num_node_units; ++u) {
-        char * node_unit_hostname =
-          host_topology->node_units[node_id].host;
-        if (strcmp(module_hostname, node_unit_hostname) == 0) {
-          ++num_module_units;
-        }
-      }
-#endif
+      size_t num_module_units;
+      dart_unit_t * module_units;
+      DART_ASSERT_RETURNS(
+        dart__base__host_topology__node_units(
+          host_topology, module_hostname, &module_units, &num_module_units),
+        DART_OK);
+      DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+                     "number of module units: %d", num_module_units);
+      loc->num_units = num_module_units;
       break;
     case DART_LOCALITY_SCOPE_NUMA:
       DART_LOG_TRACE("dart__base__locality__create_subdomains: ===== NUMA =====");
@@ -324,7 +323,8 @@ dart_ret_t dart__base__locality__create_subdomains(
        * Cannot use local hwinfo, number of cores could refer to non-local
        * module. Use host topology instead.
        */
-      loc->num_domains = loc->hwinfo.num_cores;
+//    loc->num_domains = loc->hwinfo.num_cores;
+      loc->num_domains = loc->num_units;
       sub_scope        = DART_LOCALITY_SCOPE_CORE;
       DART_LOG_TRACE("dart__base__locality__create_subdomains: "
                      "relative index: %d", loc->relative_index);
@@ -456,14 +456,14 @@ dart_ret_t dart__base__locality__create_subdomains(
       }
       subdomain->hwinfo.num_modules = 1;
       subdomain->num_nodes          = 1;
-      subdomain->num_units          = num_numa_units;
 #if 0
-      /* TODO: using balanced split for now, assuming same number of cores
-       *       in all NUMA domains: */
+      subdomain->num_units          = num_numa_units;
+      /* TODO: Use host name to resolve number of units or cores in module. */
       subdomain->hwinfo.num_cores   = loc->hwinfo.num_cores /
                                       loc->num_domains;
 #else
-      subdomain->hwinfo.num_cores   = num_numa_units;
+      subdomain->num_units          = loc->num_units;
+      subdomain->hwinfo.num_cores   = loc->num_units;
 #endif
       subdomain->hwinfo.num_numa    = 1;
     }
