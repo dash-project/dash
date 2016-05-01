@@ -14,6 +14,9 @@ int main(int argc, char * argv[])
 
   dash::init(&argc, &argv);
 
+  dart_barrier(DART_TEAM_ALL);
+  sleep(10);
+
   auto myid = dash::myid();
   auto size = dash::size();
 
@@ -29,7 +32,6 @@ int main(int argc, char * argv[])
 
   cout << os.str();
 
-#if 0
   dart_unit_locality_t * uloc;
   dart_ret_t             ret = dart_unit_locality(myid, &uloc);
   if (ret != DART_OK) {
@@ -38,9 +40,13 @@ int main(int argc, char * argv[])
     return EXIT_FAILURE;
   }
 
+  dart_barrier(DART_TEAM_ALL);
+  sleep(10);
+
   if (myid == 0) {
     std::ostringstream ls;
     for (int u = 0; u < size; ++u) {
+      dart_unit_locality(u, &uloc);
       ls << "unit " << u << " locality: " << endl
          << "  unit:        " << uloc->unit        << endl
          << "  host:        " << uloc->host        << endl
@@ -54,8 +60,12 @@ int main(int argc, char * argv[])
          << endl;
       cout << ls.str();
     }
+  } else {
+    sleep(5);
   }
-#endif
+
+  dart_barrier(DART_TEAM_ALL);
+  sleep(5);
 
   dash::finalize();
 

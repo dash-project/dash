@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <cstring>
 
 
 std::ostream & operator<<(
@@ -37,10 +38,13 @@ public:
 
 public:
   typedef struct {
-    int  rank;
-    char host[100];
-    int  cpu;
-    int  numa_node;
+    int  unit;
+    char host[40];
+    char domain[20];
+    int  core_id;
+    int  num_cores;
+    int  numa_id;
+    int  num_threads;
   } UnitPinning;
 
   typedef enum {
@@ -127,12 +131,24 @@ public:
     return (_domain_loc == nullptr) ? "" : _domain_loc->host;
   }
 
-  static inline std::string Hostname(dart_unit_t unit_id) {
-    return _unit_pinning[unit_id].host;
+  static inline std::string Hostname(dart_unit_t unit) {
+    dart_unit_locality_t * ul;
+    dart_unit_locality(unit, &ul);
+    return ul->host;
   }
 
-  static const std::vector<UnitPinning> & Pinning() {
-    return _unit_pinning;
+  static const UnitPinning Pinning(dart_unit_t unit) {
+    dart_unit_locality_t * ul;
+    dart_unit_locality(unit, &ul);
+    UnitPinning pinning;
+    pinning.unit        = ul->unit;
+    pinning.num_cores   = ul->num_cores;
+    pinning.core_id     = ul->core_id;
+    pinning.numa_id     = ul->numa_id;
+    pinning.num_threads = ul->num_threads;
+    strncpy(pinning.host,   ul->host,       40);
+    strncpy(pinning.domain, ul->domain_tag, 20);
+    return pinning;
   }
 
   static const std::array<int, 3> & CacheSizes() {
@@ -152,8 +168,6 @@ private:
 
   static std::array<int, 3>         _cache_sizes;
   static std::array<int, 3>         _cache_line_sizes;
-
-  static std::vector<UnitPinning>   _unit_pinning;
 };
 
 std::ostream & operator<<(

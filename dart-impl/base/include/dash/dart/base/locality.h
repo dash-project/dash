@@ -6,6 +6,13 @@
 
 #include <dash/dart/if/dart_types.h>
 
+typedef struct {
+  char          host[DART_LOCALITY_HOST_MAX_SIZE];
+  dart_unit_t * units;
+  int           num_units;
+} dart_node_units_t;
+
+
 dart_ret_t dart__base__locality__init();
 
 dart_ret_t dart__base__locality__finalize();

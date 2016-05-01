@@ -79,22 +79,18 @@ dart_ret_t dart__base__unit_locality__init()
 
   /* get local unit's locality information: */
   dart_unit_locality_t * uloc;
-#if 0
   uloc = (dart_unit_locality_t *)(malloc(sizeof(dart_unit_locality_t)));
-#else
-  uloc = (dart_unit_locality_t *)(malloc(nunits * nbytes));
-#endif
   ret  = dart__base__locality__local_unit_new(uloc);
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart__base__unit_locality__init ! "
-                   "dart_unit_locality failed: %d", ret);
+                   "dart__base__locality__local_unit_new failed: %d", ret);
     return ret;
   }
   DART_LOG_TRACE("dart__base__unit_locality__init: unit %d of %"PRIu64": "
                  "sending %"PRIu64" bytes: "
-                 "host:%s core_id:%d numa_id:%d nthreads:%d",
+                 "host:%s domain:%s core_id:%d numa_id:%d nthreads:%d",
                  myid, nunits, nbytes,
-                 uloc->host, uloc->core_id, uloc->numa_id,
+                 uloc->host, uloc->domain_tag, uloc->core_id, uloc->numa_id,
                  uloc->num_threads);
 
   _dart__base__unit_locality__map = (dart_unit_locality_t *)(
@@ -119,8 +115,10 @@ dart_ret_t dart__base__unit_locality__init()
   for (size_t u = 0; u < nunits; ++u) {
     dart_unit_locality_t * ulm_u = &_dart__base__unit_locality__map[u];
     DART_LOG_TRACE("dart__base__unit_locality__init: unit[%d]: "
-                   "host:%s core_id:%d numa_id:%d nthreads:%d",
-                   u, ulm_u->host, ulm_u->core_id, ulm_u->numa_id,
+                   "unit:%d host:%s domain:%s num_cores:%d core_id:%d "
+                   "numa_id:%d nthreads:%d",
+                   u, ulm_u->unit, ulm_u->host, ulm_u->domain_tag,
+                   ulm_u->num_cores, ulm_u->core_id, ulm_u->numa_id,
                    ulm_u->num_threads);
   }
 #endif

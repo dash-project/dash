@@ -206,18 +206,20 @@ void BenchmarkParams::print_pinning()
   cout << std::left         << "--   "
        << std::setw(5)      << "unit"
        << std::setw(host_w) << "host"
+       << std::setw(10)     << "domain"
        << std::right
        << std::setw(10)     << "numa node"
-       << std::setw(5)      << "cpu"
+       << std::setw(5)      << "core"
        << endl;
-  for (size_t unit = 0; unit < Locality::Pinning().size(); ++unit) {
-    unit_pinning_type pin_info = Locality::Pinning()[unit];
+  for (size_t unit = 0; unit < dash::size(); ++unit) {
+    unit_pinning_type pin_info = Locality::Pinning(unit);
     cout << std::left         << "--   "
-         << std::setw(5)      << pin_info.rank
+         << std::setw(5)      << pin_info.unit
          << std::setw(host_w) << pin_info.host
+         << std::setw(10)     << pin_info.domain
          << std::right
-         << std::setw(10)     << pin_info.numa_node
-         << std::setw(5)      << pin_info.cpu
+         << std::setw(10)     << pin_info.numa_id
+         << std::setw(5)      << pin_info.core_id
          << endl;
   }
   print_section_end();
