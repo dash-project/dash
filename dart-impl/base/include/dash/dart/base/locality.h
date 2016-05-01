@@ -30,9 +30,6 @@ dart_ret_t dart__base__locality__set_subdomains(
 dart_ret_t dart__base__locality__domain_delete(
   dart_domain_locality_t * loc);
 
-dart_ret_t dart__base__locality__global_domain_new(
-  dart_domain_locality_t * global_domain);
-
 dart_ret_t dart__base__locality__domain(
   const char              * domain_tag,
   dart_domain_locality_t ** locality);
@@ -44,5 +41,10 @@ dart_ret_t dart__base__locality__unit_locality_init(
 
 dart_ret_t dart__base__locality__local_unit_new(
   dart_unit_locality_t * locality);
+
+dart_ret_t dart__base__locality__node_units(
+  const char   * hostname,
+  dart_unit_t ** units,
+  int          * num_units);
 
 #endif /* DART__BASE__LOCALITY_H__ */

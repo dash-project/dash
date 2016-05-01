@@ -16,6 +16,7 @@
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/logging.h>
 
+#include <dart/impl/base/internal/papi.h>
 #include <dash/dart/base/internal/unit_locality.h>
 
 #include <dash/dart/if/dart_types.h>
@@ -45,98 +46,24 @@
 #  include <numa.h>
 #endif
 
-#ifdef DART_ENABLE_PAPI
-static void dart__base__locality__papi_handle_error(
-  int papi_ret)
-{
-  /*
-   * PAPI_EINVAL   papi.h is different from the version used to compile the
-   *               PAPI library.
-   * PAPI_ENOMEM   Insufficient memory to complete the operation.
-   * PAPI_ECMP     This component does not support the underlying hardware.
-   * PAPI_ESYS     A system or C library call failed inside PAPI, see the
-   *               errno variable.
-   */
-  switch (papi_ret) {
-    case PAPI_EINVAL:
-         DART_LOG_ERROR("dart__base__locality: PAPI_EINVAL: "
-                        "papi.h is different from the version used to "
-                        "compile the PAPI library.");
-         break;
-    case PAPI_ENOMEM:
-         DART_LOG_ERROR("dart__base__locality: PAPI_ENOMEM: "
-                        "insufficient memory to complete the operation.");
-         break;
-    case PAPI_ECMP:
-         DART_LOG_ERROR("dart__base__locality: PAPI_ENOMEM: "
-                        "this component does not support the underlying "
-                        "hardware.");
-         break;
-    case PAPI_ESYS:
-         DART_LOG_ERROR("dart_domain_locality: PAPI_ESYS: "
-                        "a system or C library call failed inside PAPI, see "
-                        "the errno variable");
-         DART_LOG_ERROR("dart__base__locality: PAPI_ESYS: errno: %d", errno);
-         break;
-    default:
-         DART_LOG_ERROR("dart__base__locality: PAPI: unknown error: %d",
-                        papi_ret);
-         break;
-  }
-}
-
-static dart_ret_t dart__base__locality__papi_init(
-  const PAPI_hw_info_t ** hwinfo)
-{
-  int papi_ret;
-
-  if (PAPI_is_initialized()) {
-    *hwinfo = PAPI_get_hardware_info();
-    return DART_OK;
-  }
-  DART_LOG_DEBUG("dart__base__locality: PAPI: init");
-
-  papi_ret = PAPI_library_init(PAPI_VER_CURRENT);
-
-  if (papi_ret != PAPI_VER_CURRENT && papi_ret > 0) {
-    DART_LOG_ERROR("dart__base__locality: PAPI: version mismatch");
-    return DART_ERR_OTHER;
-  } else if (papi_ret < 0) {
-    DART_LOG_ERROR("dart__base__locality: PAPI: init failed, returned %d",
-                   papi_ret);
-    dart__base__locality__papi_handle_error(papi_ret);
-    return DART_ERR_OTHER;
-  } else {
-    papi_ret = PAPI_is_initialized();
-    if (papi_ret != PAPI_LOW_LEVEL_INITED) {
-      dart__base__locality__papi_handle_error(papi_ret);
-      return DART_ERR_OTHER;
-    }
-  }
-
-  papi_ret = PAPI_thread_init(pthread_self);
-
-  if (papi_ret != PAPI_OK) {
-    DART_LOG_ERROR("dart__base__locality: PAPI: PAPI_thread_init failed");
-    return DART_ERR_OTHER;
-  }
-
-  *hwinfo = PAPI_get_hardware_info();
-  if (*hwinfo == NULL) {
-    DART_LOG_ERROR("dart__base__locality: PAPI: get hardware info failed");
-    return DART_ERR_OTHER;
-  }
-
-  DART_LOG_DEBUG("dart__base__locality: PAPI: initialized");
-  return DART_OK;
-}
-#endif /* DART_ENABLE_PAPI */
-
+/* ======================================================================== *
+ * Private Data                                                             *
+ * ======================================================================== */
 
 dart_domain_locality_t dart__base__locality__domain_root_;
 size_t  dart__base__locality__num_hosts_;
 char ** dart__base__locality__host_names_;
 dart_node_units_t * dart__base__locality__node_units_;
+
+/* ======================================================================== *
+ * Private Functions                                                        *
+ * ======================================================================== */
+
+dart_ret_t dart__base__locality__create_subdomains(
+  dart_domain_locality_t * loc);
+
+dart_ret_t dart__base__locality__global_domain_new(
+  dart_domain_locality_t * global_domain);
 
 /* ======================================================================== *
  * Helpers                                                                  *
@@ -178,7 +105,7 @@ dart_ret_t dart__base__locality__init()
   DART_ASSERT_RETURNS(dart_size(&nunits), DART_OK);
   DART_LOG_TRACE("dart__base__locality__init: copying host names");
   /* Copy host names of all units into array: */
-  char ** hosts = malloc(sizeof(char *) * nunits);
+  char ** hosts       = malloc(sizeof(char *) * nunits);
   for (size_t u = 0; u < nunits; ++u) {
     hosts[u] = malloc(sizeof(char) * max_host_len);
     dart_unit_locality_t * ul;
@@ -188,45 +115,85 @@ dart_ret_t dart__base__locality__init()
   /* Sort host names to find duplicates in one pass: */
   qsort(hosts, nunits, sizeof(char*), cmpstr_);
   /* Find unique host names in array 'hosts': */
-  size_t last_host_idx = 0;
-  /* Number of units at the current host: */
-//size_t host_n_units  = 0;
+  size_t last_host_idx  = 0;
+  /* Maximum number of units mapped to a single host: */
+  size_t max_host_units = 0;
+  /* Number of units mapped to current host: */
+  size_t num_host_units = 0;
   DART_LOG_TRACE("dart__base__locality__init: filtering host names");
   for (size_t u = 0; u < nunits; ++u) {
-//  ++host_n_units;
+    ++num_host_units;
     if (u == last_host_idx) { continue; }
     /* copies next differing host name to the left, like:
-     *     [ a a a a b b b c c c ]  last_host_index++
-     *               ^
-     * ->  [ a b a a b b b c c c ]  last_host_index++
-     *                     ^
-     * ->  [ a b c a b b b c c c ]  last_host_index++
+     *
+     *     [ a a a a b b b c c c ]  last_host_index++ = 1
+     *         .---------'
+     *         v
+     * ->  [ a b a a b b b c c c ]  last_host_index++ = 2
+     *           .-----------'
+     *           v
+     * ->  [ a b c a b b b c c c ]  last_host_index++ = 3
      * ...
      */
     if (strcmp(hosts[u], hosts[last_host_idx]) != 0) {
       ++last_host_idx;
       strncpy(hosts[last_host_idx], hosts[u], max_host_len);
+      if (num_host_units > max_host_units) {
+        max_host_units = num_host_units;
+      }
+      num_host_units = 0;
     }
   }
   /* All entries after index last_host_ids are duplicates now: */
   size_t num_hosts = last_host_idx + 1;
   DART_LOG_TRACE("dart__base__locality__init: number of hosts: %d", num_hosts);
+  DART_LOG_TRACE("dart__base__locality__init: maximum number of units "
+                 "per hosts: %d", max_host_units);
 
-#if 0
   /* Map units to hosts: */
   dart__base__locality__node_units_ =
     malloc(num_hosts * sizeof(dart_node_units_t));
   for (int h = 0; h < num_hosts; ++h) {
-    DART_LOG_TRACE("dart__base__locality__init: host %d: %s",
-                   h, hosts[h]);
-    dart_node_units_t * node_units = &dart__base__locality__num_hosts_[h];
+    dart_node_units_t * node_units = &dart__base__locality__node_units_[h];
+    /* allocate array with capacity of maximum units on a single host: */
+    node_units->units = malloc(sizeof(dart_unit_t) * max_host_units);
     strncpy(node_units->host, hosts[h], max_host_len);
     node_units->num_units = 0;
+    DART_LOG_TRACE("dart__base__locality__init: mapping units to host %d",
+                   hosts[h]);
+    for (size_t u = 0; u < nunits; ++u) {
+      dart_unit_locality_t * ul;
+      DART_ASSERT_RETURNS(dart__base__unit_locality__get(u, &ul), DART_OK);
+      if (strncmp(ul->host, hosts[h], max_host_len) == 0) {
+        node_units->units[node_units->num_units] = ul->unit;
+        node_units->num_units++;
+      }
+    }
+    /* shrink unit array to required capacity: */
+    if (node_units->num_units < max_host_units) {
+      DART_LOG_TRACE("dart__base__locality__init: shrinking node unit "
+                     "array from %d to %d elements",
+                     max_host_units, node_units->num_units);
+      node_units->units = realloc(node_units->units, node_units->num_units);
+      DART_ASSERT(node_units->units != NULL);
+    }
   }
-#endif
-
   dart__base__locality__num_hosts_  = num_hosts;
   dart__base__locality__host_names_ = (char **)(realloc(hosts, num_hosts));
+  DART_ASSERT(dart__base__locality__host_names_ != NULL);
+
+#ifdef DART_ENABLE_LOGGING
+  for (int h = 0; h < num_hosts; ++h) {
+    dart_node_units_t * node_units = &dart__base__locality__node_units_[h];
+    char * hostname = dart__base__locality__host_names_[h];
+    DART_LOG_TRACE("dart__base__locality__init: %d units mapped to host %s:",
+                   node_units->num_units, hostname);
+    for (int u = 0; u < node_units->num_units; ++u) {
+      DART_LOG_TRACE("dart__base__locality__init: %s unit[%d]: %d",
+                     hostname, u, node_units->units[u]);
+    }
+  }
+#endif
 
   DART_LOG_DEBUG("dart__base__locality__init >");
   return DART_OK;
@@ -243,6 +210,15 @@ dart_ret_t dart__base__locality__finalize()
                    "dart__base__locality__domain_delete failed: %d", ret);
     return ret;
   }
+  if (dart__base__locality__node_units_ != NULL) {
+    free(dart__base__locality__node_units_);
+    dart__base__locality__node_units_ = NULL;
+  }
+  if (dart__base__locality__host_names_ != NULL) {
+    free(dart__base__locality__host_names_);
+    dart__base__locality__host_names_ = NULL;
+  }
+
   DART_LOG_DEBUG("dart__base__locality__finalize >");
   return DART_OK;
 }
@@ -250,9 +226,6 @@ dart_ret_t dart__base__locality__finalize()
 /* ======================================================================== *
  * Domain Locality                                                          *
  * ======================================================================== */
-
-dart_ret_t dart__base__locality__create_subdomains(
-  dart_domain_locality_t * loc);
 
 dart_ret_t dart__base__locality__domain_locality_init(
   dart_domain_locality_t * loc)
@@ -807,3 +780,29 @@ dart_ret_t dart__base__locality__local_unit_new(
   return DART_OK;
 }
 
+dart_ret_t dart__base__locality__node_units(
+  const char   * hostname,
+  dart_unit_t ** units,
+  int          * num_units)
+{
+  DART_LOG_TRACE("dart__base__locality__node_units() host: %s", hostname);
+  *num_units     = 0;
+  int host_found = 0;
+  for (int h = 0; h < dart__base__locality__num_hosts_; ++h) {
+    dart_node_units_t * node_units = &dart__base__locality__node_units_[h];
+    if (strncmp(node_units->host, hostname, DART_LOCALITY_HOST_MAX_SIZE) == 0) {
+      *units     = node_units->units;
+      *num_units = node_units->num_units;
+      host_found = 1;
+      break;
+    }
+  }
+  if (host_found) {
+    DART_LOG_TRACE("dart__base__locality__node_units > num_units: %d",
+                   *num_units);
+    return DART_OK;
+  }
+  DART_LOG_ERROR("dart__base__locality__node_units ! no entry for host '%s')",
+                 hostname);
+  return DART_ERR_NOTFOUND;
+}
