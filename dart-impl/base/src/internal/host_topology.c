@@ -32,7 +32,7 @@ dart_ret_t dart__base__host_topology__create(
   /* Find unique host names in array 'hosts': */
   size_t last_host_idx  = 0;
   /* Maximum number of units mapped to a single host: */
-  size_t max_host_units = num_units;
+  size_t max_host_units = 0;
   /* Number of units mapped to current host: */
   size_t num_host_units = 0;
   DART_LOG_TRACE("dart__base__host_topology__init: filtering host names");
@@ -85,6 +85,7 @@ dart_ret_t dart__base__host_topology__create(
       }
     }
     /* shrink unit array to required capacity: */
+#if 0
     if (node_units->num_units < max_host_units) {
       DART_LOG_TRACE("dart__base__host_topology__init: shrinking node unit "
                      "array from %d to %d elements",
@@ -92,9 +93,15 @@ dart_ret_t dart__base__host_topology__create(
       node_units->units = realloc(node_units->units, node_units->num_units);
       DART_ASSERT(node_units->units != NULL);
     }
+#endif
   }
   topo->num_hosts  = num_hosts;
+#if 0
   topo->host_names = (char **)(realloc(hostnames, num_hosts));
+#else
+  topo->host_names = hostnames;
+#endif
+
   DART_ASSERT(topo->host_names != NULL);
 
   /* Classify hostnames into categories 'node' and 'module'.
