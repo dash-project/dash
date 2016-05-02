@@ -323,7 +323,6 @@ dart_ret_t dart__base__locality__create_subdomains(
        * Cannot use local hwinfo, number of cores could refer to non-local
        * module. Use host topology instead.
        */
-//    loc->num_domains = loc->hwinfo.num_cores;
       loc->num_domains = loc->num_units;
       sub_scope        = DART_LOCALITY_SCOPE_CORE;
       DART_LOG_TRACE("dart__base__locality__create_subdomains: "
@@ -456,15 +455,8 @@ dart_ret_t dart__base__locality__create_subdomains(
       }
       subdomain->hwinfo.num_modules = 1;
       subdomain->num_nodes          = 1;
-#if 0
-      subdomain->num_units          = num_numa_units;
-      /* TODO: Use host name to resolve number of units or cores in module. */
-      subdomain->hwinfo.num_cores   = loc->hwinfo.num_cores /
-                                      loc->num_domains;
-#else
       subdomain->num_units          = loc->num_units;
       subdomain->hwinfo.num_cores   = loc->num_units;
-#endif
       subdomain->hwinfo.num_numa    = 1;
     }
     else if (loc->scope == DART_LOCALITY_SCOPE_NUMA) {

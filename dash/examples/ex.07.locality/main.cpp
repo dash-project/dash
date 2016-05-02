@@ -44,9 +44,9 @@ int main(int argc, char * argv[])
   sleep(10);
 
   if (myid == 0) {
-    std::ostringstream ls;
     for (unsigned u = 0; u < size; ++u) {
       dart_unit_locality(u, &uloc);
+      std::ostringstream ls;
       ls << "unit " << u << " locality: " << endl
          << "  unit:        " << uloc->unit               << endl
          << "  host:        " << uloc->host               << endl
