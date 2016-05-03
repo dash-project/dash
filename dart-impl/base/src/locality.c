@@ -264,12 +264,6 @@ dart_ret_t dart__base__locality__create_subdomains(
   DART_LOG_DEBUG("dart__base__locality__create_subdomains() loc: %p "
                  "scope: %d level: %d", loc, loc->scope, loc->level);
 
-  /* Locality information of every unit: */
-  dart_unit_locality_t * unit_localities;
-  DART_ASSERT_RETURNS(
-    dart__base__unit_locality__data(&unit_localities),
-    DART_OK);
-
   /*
    * First step: determine the number of sub-domains.
    * Initialize the domain's scope, level, and number of sub-domains
@@ -475,7 +469,7 @@ dart_ret_t dart__base__locality__create_subdomains(
         dart_unit_t node_unit_id = node_units->units[u];
         /* query the unit's hw- and locality information: */
         dart_unit_locality_t * node_unit_loc;
-        dart_unit_locality(node_unit_id, &node_unit_loc);
+        dart__base__unit_locality__at(node_unit_id, &node_unit_loc);
         int node_unit_numa_id = node_unit_loc->hwinfo.numa_id;
         /* TODO: assuming that rel_idx corresponds to NUMA id: */
         DART_LOG_TRACE("dart__base__locality__create_subdomains: "
@@ -512,10 +506,19 @@ dart_ret_t dart__base__locality__create_subdomains(
       subdomain->unit_ids           = malloc(subdomain->num_units *
                                              sizeof(dart_unit_t));
       for (int u = 0; u < subdomain->num_units; ++u) {
-        dart_unit_t unit_id      = loc->unit_ids[u];
-        subdomain->unit_ids[u]   = unit_id;
-        /* set domain tag of unit in unit locality map: */
-        strncpy(unit_localities[unit_id].domain_tag, subdomain->domain_tag,
+        dart_unit_t unit_id    = loc->unit_ids[u];
+        subdomain->unit_ids[u] = unit_id;
+        /* set host and domain tag of unit in unit locality map: */
+        dart_unit_locality_t * unit_loc;
+        DART_ASSERT_RETURNS(
+          dart__base__unit_locality__at(unit_id, &unit_loc),
+          DART_OK);
+        DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+                       "setting unit %d domain_tag: %s host: %s",
+                       unit_id, subdomain->domain_tag, subdomain->host);
+        strncpy(unit_loc->host, subdomain->host,
+                DART_LOCALITY_HOST_MAX_SIZE);
+        strncpy(unit_loc->domain_tag, subdomain->domain_tag,
                 DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
       }
     }
@@ -554,26 +557,37 @@ dart_ret_t dart__base__locality__domain(
   dart_domain_locality_t * domain = &dart__base__locality__domain_root_;
 
   /* pointer to dot separator in front of tag part:  */
-  const char * dot_begin = domain_tag;
-  /* pointer to dot separator in after tag part:     */
-  char *       dot_end   = (char *)(domain_tag) + 1;
+  char * dot_begin  = strchr(domain_tag, '.');
+  /* pointer to begin of tag part: */
+  char * part_begin = dot_begin + 1;
   /* Iterate tag (.1.2.3) by parts (1, 2, 3):        */
-  while (*dot_end != '\0') {
+  int    level     = 0;
+  while (dot_begin != NULL && *dot_begin != '\0' && *part_begin != '\0') {
+    char * dot_end;
     /* domain tag part converted to int is relative index of child: */
-    long tag_part      = strtol(dot_begin, &dot_end, 10);
-    int  subdomain_idx = (int)(tag_part);
+    long   tag_part      = strtol(part_begin, &dot_end, 10);
+    int    subdomain_idx = (int)(tag_part);
     if (domain == NULL) {
       /* tree leaf node reached before last tag part: */
+      DART_LOG_ERROR("dart__base__locality__domain ! domain(%s): "
+                     "subdomain at index %d in level %d is undefined",
+                     domain_tag, subdomain_idx, level);
       return DART_ERR_INVAL;
     }
     if (domain->num_domains <= subdomain_idx) {
       /* child index out of range: */
+      DART_LOG_ERROR("dart__base__locality__domain ! domain(%s): "
+                     "subdomain index %d in level %d is out ouf bounds "
+                     "(number of subdomains: %d)",
+                     domain_tag, subdomain_idx, level, domain->num_domains);
       return DART_ERR_INVAL;
     }
     /* descend to child at relative index: */
-    domain    = domain->domains + subdomain_idx;
+    domain     = domain->domains + subdomain_idx;
     /* continue scanning of domain tag at next part: */
-    dot_begin = dot_end;
+    dot_begin  = dot_end;
+    part_begin = dot_end+1;
+    level++;
   }
   *locality = domain;
   return DART_OK;
