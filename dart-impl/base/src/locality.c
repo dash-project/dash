@@ -389,6 +389,15 @@ dart_ret_t dart__base__locality__create_subdomains(
     subdomain->hwinfo         = loc->hwinfo;
     /* host of subdomain is same as host of parent domain: */
     strncpy(subdomain->host, loc->host, DART_LOCALITY_HOST_MAX_SIZE);
+    /* set domain tag of subdomain: */
+    int base_tag_len = 0;
+    if (loc->level > 0) {
+      /* only copy base domain tag if it contains preceeding domain parts: */
+      base_tag_len = sprintf(subdomain->domain_tag, "%s",
+                             loc->domain_tag);
+    }
+    /* append the subdomain tag part to subdomain tag, e.g. ".0.1": */
+    sprintf(subdomain->domain_tag + base_tag_len, ".%d", rel_idx);
 
     if (loc->scope == DART_LOCALITY_SCOPE_GLOBAL) {
       /* Loop iterates on nodes. Partitioning is trivial, split into one
@@ -482,7 +491,7 @@ dart_ret_t dart__base__locality__create_subdomains(
       subdomain->num_units          = loc->num_units;
       subdomain->unit_ids           = malloc(subdomain->num_units *
                                              sizeof(dart_unit_t));
-      for (size_t u = 0; u < subdomain->num_units; ++u) {
+      for (int u = 0; u < subdomain->num_units; ++u) {
         subdomain->unit_ids[u] = node_units->units[u];
       }
     }
@@ -502,8 +511,12 @@ dart_ret_t dart__base__locality__create_subdomains(
       subdomain->num_units          = loc->num_units / loc->num_domains;
       subdomain->unit_ids           = malloc(subdomain->num_units *
                                              sizeof(dart_unit_t));
-      for (size_t u = 0; u < subdomain->num_units; ++u) {
-        subdomain->unit_ids[u] = loc->unit_ids[u];
+      for (int u = 0; u < subdomain->num_units; ++u) {
+        dart_unit_t unit_id      = loc->unit_ids[u];
+        subdomain->unit_ids[u]   = unit_id;
+        /* set domain tag of unit in unit locality map: */
+        strncpy(unit_localities[unit_id].domain_tag, subdomain->domain_tag,
+                DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
       }
     }
     else if (loc->scope == DART_LOCALITY_SCOPE_CORE) {
@@ -522,15 +535,6 @@ dart_ret_t dart__base__locality__create_subdomains(
       subdomain->unit_ids           = malloc(sizeof(dart_unit_t));
       subdomain->unit_ids[0]        = loc->unit_ids[rel_idx];
     }
-
-    int base_tag_len = 0;
-    if (loc->level > 0) {
-      /* only copy base domain tag if it contains preceeding domain parts: */
-      base_tag_len = sprintf(subdomain->domain_tag, "%s",
-                             loc->domain_tag);
-    }
-    /* append the subdomain tag part to subdomain tag, e.g. ".0.1": */
-    sprintf(subdomain->domain_tag + base_tag_len, ".%d", rel_idx);
 
     /* recursively initialize subdomains: */
     DART_ASSERT_RETURNS(
