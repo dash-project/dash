@@ -33,6 +33,12 @@ dart_ret_t dart__base__host_topology__node_units(
   dart_unit_t          ** units,
   size_t                * num_units);
 
+dart_ret_t dart__base__host_topology__module_units(
+  dart_host_topology_t  * topo,
+  const char            * hostname,
+  dart_unit_t          ** units,
+  size_t                * num_units);
+
 /**
  * Resolve the host topology from the unit's host names in a specified
  * team.

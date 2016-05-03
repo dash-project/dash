@@ -2,6 +2,9 @@
  * \file dash/dart/base/internal/host_topology.c
  *
  */
+#include <string.h>
+#include <limits.h>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/base/internal/host_topology.h>
@@ -9,8 +12,6 @@
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
-
-#include <limits.h>
 
 
 static int cmpstr_(const void * p1, const void * p2) {
@@ -172,26 +173,78 @@ dart_ret_t dart__base__host_topology__node_units(
   DART_LOG_TRACE("dart__base__host_topolgoy__node_units() host: %s",
                  hostname);
   *num_units     = 0;
+  *units         = NULL;
   int host_found = 0;
+  /*
+   * Also includes units in sub-modules, e.g. a query for host name
+   * "some-node" would also include units from "sub-node-*":
+   */
+
+  /* First pass: Find total number of units: */
   for (size_t h = 0; h < topo->num_hosts; ++h) {
-    dart_node_units_t * node_units =
-      &topo->node_units[h];
-    if (strncmp(node_units->host, hostname,
-                DART_LOCALITY_HOST_MAX_SIZE) == 0) {
-      *units     = node_units->units;
-      *num_units = node_units->num_units;
-      host_found = 1;
-      break;
+    dart_node_units_t * node_units = &topo->node_units[h];
+    if (strncmp(node_units->host, hostname, strlen(hostname))
+        == 0) {
+      *num_units += node_units->num_units;
+      host_found  = 1;
     }
   }
-  if (host_found) {
-    DART_LOG_TRACE("dart__base__host_topology__node_units > num_units: %d",
-                   *num_units);
-    return DART_OK;
+  if (!host_found) {
+    DART_LOG_ERROR("dart__base__host_topology__node_units ! "
+                   "no entry for host '%s')", hostname);
+    return DART_ERR_NOTFOUND;
   }
-  DART_LOG_ERROR("dart__base__host_topology__node_units ! "
-                 "no entry for host '%s')", hostname);
-  return DART_ERR_NOTFOUND;
+  /* Second pass: Copy unit ids: */
+  dart_unit_t * node_unit_ids = malloc(*num_units * sizeof(dart_unit_t));
+  int           node_unit_idx = 0;
+  for (size_t h = 0; h < topo->num_hosts; ++h) {
+    dart_node_units_t * node_units = &topo->node_units[h];
+    if (strncmp(node_units->host, hostname, strlen(hostname))
+        == 0) {
+      for (int nu = 0; nu < node_units->num_units; ++nu) {
+        node_unit_ids[node_unit_idx + nu] = node_units->units[nu];
+      }
+      node_unit_idx += node_units->num_units;
+    }
+  }
+  *units = node_unit_ids;
+  DART_LOG_TRACE("dart__base__host_topology__node_units > num_units: %d",
+                 *num_units);
+  return DART_OK;
+}
+
+dart_ret_t dart__base__host_topology__module_units(
+  dart_host_topology_t  * topo,
+  const char            * hostname,
+  dart_unit_t          ** units,
+  size_t                * num_units)
+{
+  DART_LOG_TRACE("dart__base__host_topolgoy__module_units() host: %s",
+                 hostname);
+  *num_units     = 0;
+  *units         = NULL;
+  int host_found = 0;
+  /*
+   * Does not include units in sub-modules, e.g. a query for host name
+   * "some-node" would not include units from "sub-node-*":
+   */
+  for (size_t h = 0; h < topo->num_hosts; ++h) {
+    dart_node_units_t * node_units = &topo->node_units[h];
+    if (strncmp(node_units->host, hostname, DART_LOCALITY_HOST_MAX_SIZE)
+        == 0) {
+      *num_units += node_units->num_units;
+      *units      = node_units->units;
+      host_found  = 1;
+    }
+  }
+  if (!host_found) {
+    DART_LOG_ERROR("dart__base__host_topology__module_units ! "
+                   "no entry for host '%s')", hostname);
+    return DART_ERR_NOTFOUND;
+  }
+  DART_LOG_TRACE("dart__base__host_topology__module_units > num_units: %d",
+                 *num_units);
+  return DART_OK;
 }
 
 dart_ret_t dart__base__host_topology__delete(
