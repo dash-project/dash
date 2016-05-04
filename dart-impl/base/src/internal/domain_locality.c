@@ -236,6 +236,8 @@ dart_ret_t dart__base__locality__create_subdomains(
         subdomain->unit_ids           = malloc(sizeof(dart_unit_t));
         subdomain->unit_ids[0]        = domain->unit_ids[rel_idx];
         break;
+      default:
+        break;
     }
     /* recursively initialize subdomains: */
     DART_ASSERT_RETURNS(
@@ -258,6 +260,7 @@ dart_ret_t dart__base__locality__create_global_subdomain(
 {
   /* Loop iterates on nodes. Partitioning is trivial, split into one
    * node per sub-domain. */
+  dart__unused(global_domain);
 
   DART_LOG_TRACE("dart__base__locality__create_subdomains: "
                  "== SPLIT GLOBAL ==");
@@ -354,7 +357,6 @@ dart_ret_t dart__base__locality__create_module_subdomain(
                  rel_idx, module_domain->num_domains);
 
   size_t        num_numa_units  = 0;
-  int           node_id         = module_domain->node_id;
   char *        module_hostname = module_domain->host;
   /* set subdomain hostname to module's hostname: */
   strncpy(subdomain->host, module_hostname,
@@ -370,7 +372,7 @@ dart_ret_t dart__base__locality__create_module_subdomain(
     DART_OK);
   /* Assign units in the node that have the NUMA domain's NUMA id: */
   /* First pass: Count number of units in NUMA domain: */
-  for (size_t mu = 0; mu < num_module_units; ++mu) {
+  for (int mu = 0; mu < num_module_units; ++mu) {
     dart_unit_t module_unit_id = module_unit_ids[mu];
     /* query the unit's hw- and locality information: */
     dart_unit_locality_t * module_unit_loc;
@@ -391,7 +393,7 @@ dart_ret_t dart__base__locality__create_module_subdomain(
                                          sizeof(dart_unit_t));
   /* Second pass: Assign unit ids in NUMA domain: */
   dart_unit_t numa_unit_idx = 0;
-  for (size_t mu = 0; mu < num_module_units; ++mu) {
+  for (int mu = 0; mu < num_module_units; ++mu) {
     dart_unit_t module_unit_id = module_unit_ids[mu];
     /* query the unit's hw- and locality information: */
     dart_unit_locality_t * module_unit_loc;
@@ -418,6 +420,8 @@ dart_ret_t dart__base__locality__create_numa_subdomain(
   /* Loop splits into UMA segments within a NUMA domain or module.
    * Using balanced split, segments are assumed to be homogenous at
    * this level. */
+  dart__unused(host_topology);
+
   DART_LOG_TRACE("dart__base__locality__create_subdomains: "
                  "== SPLIT NUMA ==");
   DART_LOG_TRACE("dart__base__locality__create_subdomains: == %d of %d",

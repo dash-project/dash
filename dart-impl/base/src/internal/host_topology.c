@@ -83,7 +83,7 @@ dart_ret_t dart__base__host_topology__create(
     node_units->num_units = 0;
     DART_LOG_TRACE("dart__base__host_topology__init: mapping units to %s",
                    hostnames[h]);
-    for (int    u = 0; u < num_units; ++u) {
+    for (size_t u = 0; u < num_units; ++u) {
       dart_unit_locality_t * ul;
       DART_ASSERT_RETURNS(dart__base__unit_locality__at(u, &ul), DART_OK);
       if (strncmp(ul->host, hostnames[h], max_host_len) == 0) {
@@ -141,15 +141,14 @@ dart_ret_t dart__base__host_topology__create(
     topo->num_nodes = 0;
     /* Match short hostnames as prefix of every other hostname: */
     for (int top = 0; top < num_hosts; ++top) {
-      if (strlen(topo->host_names[top]) ==
-          (int)hostname_min_len) {
+      if (strlen(topo->host_names[top]) == (size_t)hostname_min_len) {
         ++topo->num_nodes;
         /* Host name is candidate, test for all other hostnames: */
         char * short_name = topo->host_names[top];
         for (int sub = 0; sub < num_hosts; ++sub) {
           char * other_name = topo->host_names[sub];
           /* Other hostname is longer and has short host name in prefix: */
-          if (strlen(other_name) > (int)hostname_min_len &&
+          if (strlen(other_name) > (size_t)hostname_min_len &&
               strncmp(short_name, other_name, hostname_min_len) == 0) {
             /* Increment topology level of other host: */
             int node_level = topo->node_units[top].level + 1;

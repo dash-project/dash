@@ -69,7 +69,7 @@ dart_ret_t dart__base__locality__init()
 
   dart__base__locality__domain_root_.unit_ids =
     malloc(num_units * sizeof(dart_unit_t));
-  for (int u = 0; u < num_units; ++u) {
+  for (size_t u = 0; u < num_units; ++u) {
     dart__base__locality__domain_root_.unit_ids[u] = u;
   }
 
@@ -102,14 +102,14 @@ dart_ret_t dart__base__locality__init()
   dart__base__locality__domain_root_.num_nodes = num_nodes;
 
 #ifdef DART_ENABLE_LOGGING
-  for (size_t h = 0; h < topo->num_hosts; ++h) {
+  for (int h = 0; h < topo->num_hosts; ++h) {
     dart_node_units_t * node_units = &topo->node_units[h];
     char * hostname = topo->host_names[h];
     DART_LOG_TRACE("dart__base__locality__init: "
                    "host %s: units:%d level:%d parent:%s", hostname,
                    node_units->num_units, node_units->level,
                    node_units->parent);
-    for (size_t u = 0; u < node_units->num_units; ++u) {
+    for (int u = 0; u < node_units->num_units; ++u) {
       DART_LOG_TRACE("dart__base__locality__init: %s unit[%d]: %d",
                      hostname, u, node_units->units[u]);
     }
