@@ -11,33 +11,18 @@ typedef struct {
   char          host[DART_LOCALITY_HOST_MAX_SIZE];
   char          parent[DART_LOCALITY_HOST_MAX_SIZE];
   dart_unit_t * units;
-  size_t        num_units;
+  int           num_units;
   int           level;
 } dart_node_units_t;
 
 typedef struct {
-  size_t              num_nodes;
-  size_t              num_modules;
-  size_t              num_hosts;
-  size_t              num_host_levels;
+  int                 num_nodes;
+  int                 num_hosts;
+  int                 num_host_levels;
   char **             host_names;
   dart_node_units_t * node_units;
 } dart_host_topology_t;
 
-
-
-
-dart_ret_t dart__base__host_topology__node_units(
-  dart_host_topology_t  * topo,
-  const char            * hostname,
-  dart_unit_t          ** units,
-  size_t                * num_units);
-
-dart_ret_t dart__base__host_topology__module_units(
-  dart_host_topology_t  * topo,
-  const char            * hostname,
-  dart_unit_t          ** units,
-  size_t                * num_units);
 
 /**
  * Resolve the host topology from the unit's host names in a specified
@@ -51,7 +36,40 @@ dart_ret_t dart__base__host_topology__create(
   dart_host_topology_t  * topo);
 
 dart_ret_t dart__base__host_topology__delete(
-  dart_host_topology_t * topo);
+  dart_host_topology_t  * topo);
+
+
+dart_ret_t dart__base__host_topology__num_nodes(
+  dart_host_topology_t  * topo,
+  int                   * num_nodes);
+
+dart_ret_t dart__base__host_topology__node(
+  dart_host_topology_t  * topo,
+  int                     node_index,
+  const char           ** node_hostname);
+
+dart_ret_t dart__base__host_topology__num_node_modules(
+  dart_host_topology_t  * topo,
+  const char            * node_hostname,
+  int                   * num_modules);
+
+dart_ret_t dart__base__host_topology__node_module(
+  dart_host_topology_t  * topo,
+  const char            * node_hostname,
+  int                     module_index,
+  const char           ** module_hostname);
+
+dart_ret_t dart__base__host_topology__node_units(
+  dart_host_topology_t  * topo,
+  const char            * node_hostname,
+  dart_unit_t          ** units,
+  int                   * num_units);
+
+dart_ret_t dart__base__host_topology__module_units(
+  dart_host_topology_t  * topo,
+  const char            * module_hostname,
+  dart_unit_t          ** units,
+  int                   * num_units);
 
 
 #endif /* DART__BASE__INTERNAL__HOST_TOPOLOGY_H__ */

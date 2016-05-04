@@ -97,12 +97,9 @@ dart_ret_t dart__base__locality__init()
     DART_OK);
   dart__base__locality__host_topology_ = topo;
   size_t num_nodes   = dart__base__locality__host_topology_->num_nodes;
-  size_t num_modules = dart__base__locality__host_topology_->num_modules;
   DART_LOG_TRACE("dart__base__locality__init: nodes:   %d", num_nodes);
-  DART_LOG_TRACE("dart__base__locality__init: modules: %d", num_modules);
 
-  dart__base__locality__domain_root_.num_nodes          = num_nodes;
-  dart__base__locality__domain_root_.hwinfo.num_modules = num_modules;
+  dart__base__locality__domain_root_.num_nodes = num_nodes;
 
 #ifdef DART_ENABLE_LOGGING
   for (size_t h = 0; h < topo->num_hosts; ++h) {

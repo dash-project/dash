@@ -13,11 +13,17 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 
+/* ======================================================================== *
+ * Private Functions                                                        *
+ * ======================================================================== */
 
 static int cmpstr_(const void * p1, const void * p2) {
   return strcmp(* (char * const *) p1, * (char * const *) p2);
 }
 
+/* ======================================================================== *
+ * Internal Functions                                                       *
+ * ======================================================================== */
 
 dart_ret_t dart__base__host_topology__create(
   char                 * hostnames[],
@@ -33,9 +39,9 @@ dart_ret_t dart__base__host_topology__create(
   /* Find unique host names in array 'hosts': */
   size_t last_host_idx  = 0;
   /* Maximum number of units mapped to a single host: */
-  size_t max_host_units = 0;
+  int    max_host_units = 0;
   /* Number of units mapped to current host: */
-  size_t num_host_units = 0;
+  int    num_host_units = 0;
   DART_LOG_TRACE("dart__base__host_topology__init: filtering host names");
   for (size_t u = 0; u < num_units; ++u) {
     ++num_host_units;
@@ -61,7 +67,7 @@ dart_ret_t dart__base__host_topology__create(
     }
   }
   /* All entries after index last_host_ids are duplicates now: */
-  size_t num_hosts = last_host_idx + 1;
+  int    num_hosts = last_host_idx + 1;
   DART_LOG_TRACE("dart__base__host_topology__init: number of hosts: %d",
                  num_hosts);
   DART_LOG_TRACE("dart__base__host_topology__init: maximum number of units "
@@ -69,7 +75,7 @@ dart_ret_t dart__base__host_topology__create(
 
   /* Map units to hosts: */
   topo->node_units = malloc(num_hosts * sizeof(dart_node_units_t));
-  for (size_t h = 0; h < num_hosts; ++h) {
+  for (int h = 0; h < num_hosts; ++h) {
     dart_node_units_t * node_units = &topo->node_units[h];
     /* allocate array with capacity of maximum units on a single host: */
     node_units->units = malloc(sizeof(dart_unit_t) * max_host_units);
@@ -77,7 +83,7 @@ dart_ret_t dart__base__host_topology__create(
     node_units->num_units = 0;
     DART_LOG_TRACE("dart__base__host_topology__init: mapping units to %s",
                    hostnames[h]);
-    for (size_t u = 0; u < num_units; ++u) {
+    for (int    u = 0; u < num_units; ++u) {
       dart_unit_locality_t * ul;
       DART_ASSERT_RETURNS(dart__base__unit_locality__at(u, &ul), DART_OK);
       if (strncmp(ul->host, hostnames[h], max_host_len) == 0) {
@@ -118,7 +124,7 @@ dart_ret_t dart__base__host_topology__create(
    */
   int hostname_min_len = INT_MAX;
   int hostname_max_len = 0;
-  for (size_t n = 0; n < num_hosts; ++n) {
+  for (int n = 0; n < num_hosts; ++n) {
     topo->node_units[n].level     = 0;
     topo->node_units[n].parent[0] = '\0';
     int hostname_len = strlen(topo->host_names[n]);
@@ -131,23 +137,22 @@ dart_ret_t dart__base__host_topology__create(
   }
   topo->num_host_levels = 0;
   topo->num_nodes       = num_hosts;
-  topo->num_modules     = 1;
   if (hostname_min_len != hostname_max_len) {
     topo->num_nodes = 0;
     /* Match short hostnames as prefix of every other hostname: */
-    for (size_t top = 0; top < num_hosts; ++top) {
+    for (int top = 0; top < num_hosts; ++top) {
       if (strlen(topo->host_names[top]) ==
-          (size_t)hostname_min_len) {
+          (int)hostname_min_len) {
         ++topo->num_nodes;
         /* Host name is candidate, test for all other hostnames: */
         char * short_name = topo->host_names[top];
-        for (size_t sub = 0; sub < num_hosts; ++sub) {
+        for (int sub = 0; sub < num_hosts; ++sub) {
           char * other_name = topo->host_names[sub];
           /* Other hostname is longer and has short host name in prefix: */
-          if (strlen(other_name) > (size_t)hostname_min_len &&
+          if (strlen(other_name) > (int)hostname_min_len &&
               strncmp(short_name, other_name, hostname_min_len) == 0) {
             /* Increment topology level of other host: */
-            size_t node_level = topo->node_units[top].level + 1;
+            int node_level = topo->node_units[top].level + 1;
             if (node_level > topo->num_host_levels) {
               topo->num_host_levels = node_level;
             }
@@ -155,7 +160,6 @@ dart_ret_t dart__base__host_topology__create(
             /* Set short hostname as parent: */
             strncpy(topo->node_units[sub].parent, short_name,
                     DART_LOCALITY_HOST_MAX_SIZE);
-            topo->num_modules++;
           }
         }
       }
@@ -164,11 +168,91 @@ dart_ret_t dart__base__host_topology__create(
   return DART_OK;
 }
 
+dart_ret_t dart__base__host_topology__delete(
+  dart_host_topology_t * topo)
+{
+  DART_LOG_DEBUG("dart__base__host_topology__delete()");
+  if (topo->node_units != NULL) {
+    free(topo->node_units);
+    topo->node_units = NULL;
+  }
+  if (topo->host_names != NULL) {
+    free(topo->host_names);
+    topo->host_names = NULL;
+  }
+  DART_LOG_DEBUG("dart__base__host_topology__delete >");
+  return DART_OK;
+}
+
+
+dart_ret_t dart__base__host_topology__num_nodes(
+  dart_host_topology_t  * topo,
+  int                   * num_nodes)
+{
+  *num_nodes = topo->num_nodes;
+  return DART_OK;
+}
+
+dart_ret_t dart__base__host_topology__node(
+  dart_host_topology_t  * topo,
+  int                     node_index,
+  const char           ** node_hostname)
+{
+  int n_index = 0;
+  for (int h = 0; h < topo->num_hosts; ++h) {
+    if (topo->node_units[h].level == 0) {
+      if (n_index == node_index) {
+        *node_hostname = topo->host_names[h];
+        return DART_OK;
+      }
+      n_index++;
+    }
+  }
+  return DART_ERR_NOTFOUND;
+}
+
+dart_ret_t dart__base__host_topology__num_node_modules(
+  dart_host_topology_t  * topo,
+  const char            * node_hostname,
+  int                   * num_modules)
+{
+  *num_modules = 0;
+  for (int h = 0; h < topo->num_hosts; ++h) {
+    /* also includes node itself */
+    char * m_hostname = topo->node_units[h].host;
+    if (strncmp(node_hostname, m_hostname, strlen(node_hostname)) == 0) {
+      *num_modules += 1;
+    }
+  }
+  return DART_OK;
+}
+
+dart_ret_t dart__base__host_topology__node_module(
+  dart_host_topology_t  * topo,
+  const char            * node_hostname,
+  int                     module_index,
+  const char           ** module_hostname)
+{
+  int m_index = 0;
+  for (int h = 0; h < topo->num_hosts; ++h) {
+    char * m_hostname = topo->host_names[h];
+    /* also includes node itself */
+    if (strncmp(node_hostname, m_hostname, strlen(node_hostname)) == 0) {
+      if (m_index == module_index) {
+        *module_hostname = m_hostname;
+        return DART_OK;
+      }
+      m_index++;
+    }
+  }
+  return DART_ERR_NOTFOUND;
+}
+
 dart_ret_t dart__base__host_topology__node_units(
   dart_host_topology_t  * topo,
   const char            * hostname,
   dart_unit_t          ** units,
-  size_t                * num_units)
+  int                   * num_units)
 {
   DART_LOG_TRACE("dart__base__host_topolgoy__node_units() host: %s",
                  hostname);
@@ -181,7 +265,7 @@ dart_ret_t dart__base__host_topology__node_units(
    */
 
   /* First pass: Find total number of units: */
-  for (size_t h = 0; h < topo->num_hosts; ++h) {
+  for (int h = 0; h < topo->num_hosts; ++h) {
     dart_node_units_t * node_units = &topo->node_units[h];
     if (strncmp(node_units->host, hostname, strlen(hostname))
         == 0) {
@@ -197,7 +281,7 @@ dart_ret_t dart__base__host_topology__node_units(
   /* Second pass: Copy unit ids: */
   dart_unit_t * node_unit_ids = malloc(*num_units * sizeof(dart_unit_t));
   int           node_unit_idx = 0;
-  for (size_t h = 0; h < topo->num_hosts; ++h) {
+  for (int h = 0; h < topo->num_hosts; ++h) {
     dart_node_units_t * node_units = &topo->node_units[h];
     if (strncmp(node_units->host, hostname, strlen(hostname))
         == 0) {
@@ -217,7 +301,7 @@ dart_ret_t dart__base__host_topology__module_units(
   dart_host_topology_t  * topo,
   const char            * hostname,
   dart_unit_t          ** units,
-  size_t                * num_units)
+  int                   * num_units)
 {
   DART_LOG_TRACE("dart__base__host_topolgoy__module_units() host: %s",
                  hostname);
@@ -228,7 +312,7 @@ dart_ret_t dart__base__host_topology__module_units(
    * Does not include units in sub-modules, e.g. a query for host name
    * "some-node" would not include units from "sub-node-*":
    */
-  for (size_t h = 0; h < topo->num_hosts; ++h) {
+  for (int h = 0; h < topo->num_hosts; ++h) {
     dart_node_units_t * node_units = &topo->node_units[h];
     if (strncmp(node_units->host, hostname, DART_LOCALITY_HOST_MAX_SIZE)
         == 0) {
@@ -244,22 +328,6 @@ dart_ret_t dart__base__host_topology__module_units(
   }
   DART_LOG_TRACE("dart__base__host_topology__module_units > num_units: %d",
                  *num_units);
-  return DART_OK;
-}
-
-dart_ret_t dart__base__host_topology__delete(
-  dart_host_topology_t * topo)
-{
-  DART_LOG_DEBUG("dart__base__host_topology__delete()");
-  if (topo->node_units != NULL) {
-    free(topo->node_units);
-    topo->node_units = NULL;
-  }
-  if (topo->host_names != NULL) {
-    free(topo->host_names);
-    topo->host_names = NULL;
-  }
-  DART_LOG_DEBUG("dart__base__host_topology__delete >");
   return DART_OK;
 }
 

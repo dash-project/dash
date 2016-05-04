@@ -114,12 +114,13 @@ dart_ret_t dart__base__unit_locality__init()
   for (size_t u = 0; u < nunits; ++u) {
     dart_unit_locality_t * ulm_u = &_dart__base__unit_locality__map[u];
     DART_LOG_TRACE("dart__base__unit_locality__init: unit[%d]: "
-                   "unit:%d host:%s domain:%s num_cores:%d core_id:%d "
-                   "numa_id:%d nthreads:%d",
+                   "unit:%d host:%s domain:%s "
+                   "num_cores:%d cpu_id:%d "
+                   "num_numa:%d numa_id:%d "
+                   "nthreads:%d",
                    u, ulm_u->unit, ulm_u->host, ulm_u->domain_tag,
-                   ulm_u->hwinfo.num_modules, ulm_u->hwinfo.num_numa,
-                   ulm_u->hwinfo.num_sockets, ulm_u->hwinfo.num_cores,
-                   ulm_u->hwinfo.cpu_id, ulm_u->hwinfo.numa_id,
+                   ulm_u->hwinfo.num_cores, ulm_u->hwinfo.cpu_id,
+                   ulm_u->hwinfo.num_numa, ulm_u->hwinfo.numa_id,
                    ulm_u->hwinfo.max_threads);
   }
 #endif
@@ -263,5 +264,4 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
   DART_LOG_DEBUG("dart__base__unit_locality__local_unit_new > loc(%p)", loc);
   return DART_OK;
 }
-
 
