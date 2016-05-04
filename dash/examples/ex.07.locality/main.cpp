@@ -31,22 +31,13 @@ int main(int argc, char * argv[])
   gethostname(buf, 100);
   pid = getpid();
 
-  // To avoid interleaving output:
+  // To prevent interleaving output:
   std::ostringstream os;
   os << "Process started at "
      << "unit " << myid << " of " << size << " "
      << "on "   << buf  << " pid=" << pid
      << endl;
-
   cout << os.str();
-
-  dart_unit_locality_t * uloc;
-  dart_ret_t             ret = dart_unit_locality(myid, &uloc);
-  if (ret != DART_OK) {
-    cerr << "Error: dart_unit_locality(" << myid << ") failed"
-         << endl;
-    return EXIT_FAILURE;
-  }
 
   dart_barrier(DART_TEAM_ALL);
   sleep(5);
@@ -55,28 +46,32 @@ int main(int argc, char * argv[])
     dart_domain_locality_t * global_domain_locality;
     dart_domain_locality(".", &global_domain_locality);
     print_domain(global_domain_locality);
-
-    for (unsigned u = 0; u < size; ++u) {
-      dart_unit_locality(u, &uloc);
-      cout << "unit " << u << " locality: " << endl
-           << "  unit:        " << uloc->unit               << endl
-           << "  host:        " << uloc->host               << endl
-           << "  domain:      " << uloc->domain_tag         << endl
-           << "  numa_id:     " << uloc->hwinfo.numa_id     << endl
-           << "  core_id:     " << uloc->hwinfo.cpu_id      << endl
-           << "  num_cores:   " << uloc->hwinfo.num_cores   << endl
-           << "  cpu_mhz:     " << uloc->hwinfo.min_cpu_mhz << "..."
-                                << uloc->hwinfo.max_cpu_mhz << endl
-           << "  threads:     " << uloc->hwinfo.min_threads << "..."
-                                << uloc->hwinfo.max_threads
-           << endl;
-    }
   } else {
     sleep(5);
   }
 
-  dart_barrier(DART_TEAM_ALL);
-  sleep(5);
+  for (unsigned u = 0; u < size; ++u) {
+    if (u == myid) {
+      // To prevent interleaving output:
+      std::ostringstream     u_os;
+      dart_unit_locality_t * uloc;
+      dart_unit_locality(u, &uloc);
+      u_os << "unit " << u << " locality: " << endl
+           << "  unit:      " << uloc->unit               << endl
+           << "  host:      " << uloc->host               << endl
+           << "  domain:    " << uloc->domain_tag         << endl
+           << "  numa_id:   " << uloc->hwinfo.numa_id     << endl
+           << "  core_id:   " << uloc->hwinfo.cpu_id      << endl
+           << "  num_cores: " << uloc->hwinfo.num_cores   << endl
+           << "  cpu_mhz:   " << uloc->hwinfo.min_cpu_mhz << "..."
+                              << uloc->hwinfo.max_cpu_mhz << endl
+           << "  threads:   " << uloc->hwinfo.min_threads << "..."
+                              << uloc->hwinfo.max_threads
+           << endl;
+      cout << u_os.str();
+    }
+    dart_barrier(DART_TEAM_ALL);
+  }
 
   dash::finalize();
 
@@ -102,7 +97,9 @@ std::ostream & operator<<(
 void print_domain(
   dart_domain_locality_t * domain)
 {
-  if (domain->level >= 3) {
+  const int max_level = 2;
+
+  if (domain->level > max_level) {
     return;
   }
   std::string indent(domain->level * 4, ' ');
@@ -145,7 +142,7 @@ void print_domain(
       }
     }
   }
-  if (domain->num_domains > 0) {
+  if (domain->level <= max_level && domain->num_domains > 0) {
     cout << indent << "- domains: " << domain->num_domains << endl;
     for (int d = 0; d < domain->num_domains; ++d) {
       cout << indent << "  domains[" << d << "]: " << endl;

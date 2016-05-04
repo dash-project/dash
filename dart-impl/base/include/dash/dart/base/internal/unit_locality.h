@@ -6,6 +6,9 @@
 
 #include <dash/dart/if/dart_types.h>
 
+dart_ret_t dart__base__unit_locality__init();
+
+dart_ret_t dart__base__unit_locality__finalize();
 
 dart_ret_t dart__base__unit_locality__data(
   dart_unit_locality_t ** loc);
@@ -14,8 +17,10 @@ dart_ret_t dart__base__unit_locality__at(
   dart_unit_t             unit,
   dart_unit_locality_t ** loc);
 
-dart_ret_t dart__base__unit_locality__init();
+dart_ret_t dart__base__unit_locality__unit_locality_init(
+  dart_unit_locality_t  * loc);
 
-dart_ret_t dart__base__unit_locality__finalize();
+dart_ret_t dart__base__unit_locality__local_unit_new(
+  dart_unit_locality_t  * loc);
 
 #endif /* DART__BASE__INTERNAL__UNIT_LOCALITY_H__ */

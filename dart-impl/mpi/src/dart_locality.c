@@ -100,15 +100,15 @@ dart_ret_t dart_unit_locality(
   DART_LOG_DEBUG("dart_unit_locality() unit(%d)", unit);
   *locality = NULL;
 
-  dart_unit_locality_t * loc;
-  dart_ret_t ret = dart__base__unit_locality__at(unit, &loc);
+  dart_unit_locality_t * uloc;
+  dart_ret_t ret = dart__base__locality__unit(unit, &uloc);
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart_unit_locality: "
                    "dart__base__unit_locality__get(unit:%d) failed (%d)",
                    unit, ret);
     return ret;
   }
-  *locality = loc;
+  *locality = uloc;
 
   DART_LOG_DEBUG("dart_unit_locality > unit(%d) -> %p", unit, *locality);
   return DART_OK;
