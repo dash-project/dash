@@ -51,7 +51,7 @@ int main(int argc, char * argv[])
     sleep(5);
   }
 
-  auto & split_team = dash::Team::All().split(2);
+  auto & split_team = dash::Team::All().split(3);
 
   std::ostringstream t_os;
   t_os << "Unit id " << setw(3) << myid << " -> "
@@ -64,6 +64,7 @@ int main(int argc, char * argv[])
   sleep(2);
 
   if (split_team.dart_id() == 1 && split_team.myid() == 0) {
+    cout << "Locality domains of unit 0 in team 1:" << endl;
     dart_domain_locality_t * global_domain_locality;
     dart_domain_locality(split_team.dart_id(), ".", &global_domain_locality);
     print_domain(split_team.dart_id(), global_domain_locality);
@@ -74,6 +75,18 @@ int main(int argc, char * argv[])
   sleep(2);
 
   if (split_team.dart_id() == 2 && split_team.myid() == 0) {
+    cout << "Locality domains of unit 0 in team 2:" << endl;
+    dart_domain_locality_t * global_domain_locality;
+    dart_domain_locality(split_team.dart_id(), ".", &global_domain_locality);
+    print_domain(split_team.dart_id(), global_domain_locality);
+  } else {
+    sleep(5);
+  }
+  dart_barrier(DART_TEAM_ALL);
+  sleep(2);
+
+  if (split_team.dart_id() == 3 && split_team.myid() == 0) {
+    cout << "Locality domains of unit 0 in team 3:" << endl;
     dart_domain_locality_t * global_domain_locality;
     dart_domain_locality(split_team.dart_id(), ".", &global_domain_locality);
     print_domain(split_team.dart_id(), global_domain_locality);
@@ -140,14 +153,18 @@ void print_domain(
     cout << indent << "- units: " << domain->num_units << endl;
     if (domain->level == 3) {
       for (int u = 0; u < domain->num_units; ++u) {
-        dart_unit_t            unit_id = domain->unit_ids[u];
+        dart_unit_t            unit_id  = domain->unit_ids[u];
+        dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
         dart_unit_locality_t * uloc;
         dart_unit_locality(team, unit_id, &uloc);
+        dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
         cout << indent << "  units[" << setw(3) << u << "]: " << unit_id
                        << endl;
         cout << indent << "              unit:   " << uloc->unit
                        << endl;
         cout << indent << "              team:   " << uloc->team
+                       << endl;
+        cout << indent << "              unit_g: " << unit_gid
                        << endl;
         cout << indent << "              host:   " << uloc->host
                        << endl;
