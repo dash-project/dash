@@ -43,7 +43,8 @@ dart_ret_t dart__base__host_topology__create(
   int    max_host_units = 0;
   /* Number of units mapped to current host: */
   int    num_host_units = 0;
-  DART_LOG_TRACE("dart__base__host_topology__init: filtering host names");
+  DART_LOG_TRACE("dart__base__host_topology__init: "
+                 "filtering host names of %d units", num_units);
   for (size_t u = 0; u < num_units; ++u) {
     ++num_host_units;
     if (u == last_host_idx) { continue; }
@@ -66,6 +67,10 @@ dart_ret_t dart__base__host_topology__create(
       }
       num_host_units = 0;
     }
+  }
+  if (max_host_units == 0) {
+    /* All units mapped to same host: */
+    max_host_units = num_host_units;
   }
   /* All entries after index last_host_ids are duplicates now: */
   int    num_hosts = last_host_idx + 1;
