@@ -119,7 +119,8 @@ dart_ret_t dart__base__locality__create_subdomains(
    */
   dart_locality_scope_t sub_scope;
   sub_scope           = DART_LOCALITY_SCOPE_UNDEFINED;
-  const char * module_hostname;
+  const char  * module_hostname;
+  dart_unit_t * module_units;
   switch (domain->scope) {
     case DART_LOCALITY_SCOPE_UNDEFINED:
       DART_LOG_ERROR("dart__base__locality__create_subdomains ! "
@@ -134,35 +135,41 @@ dart_ret_t dart__base__locality__create_subdomains(
       sub_scope           = DART_LOCALITY_SCOPE_NODE;
       break;
     case DART_LOCALITY_SCOPE_NODE:
-      DART_ASSERT_RETURNS(
-        dart__base__host_topology__num_node_modules(
-          host_topology,
-          domain->host,
-          &domain->num_domains),
-        DART_OK);
+      if (dart__base__host_topology__num_node_modules(
+            host_topology,
+            domain->host,
+            &domain->num_domains) != DART_OK) {
+        DART_LOG_DEBUG("dart__base__locality__create_subdomains: "
+                       "could not get number of modules of host %s",
+                       domain->host);
+        domain->num_domains = 0;
+      }
       sub_scope           = DART_LOCALITY_SCOPE_MODULE;
       break;
     case DART_LOCALITY_SCOPE_MODULE:
       domain->num_domains = domain->hwinfo.num_numa;
+      domain->num_units   = 0;
+      module_units        = NULL;
       sub_scope           = DART_LOCALITY_SCOPE_NUMA;
-      DART_ASSERT_RETURNS(
-        dart__base__host_topology__node_module(
-          host_topology,
-          domain->host,
-          domain->relative_index,
-          &module_hostname),
-        DART_OK);
-      /* Requires to resolve number of units in this module domain.
-       * Cannot use local hwinfo, number of cores could refer to non-local
-       * module. Use host topology instead. */
-      dart_unit_t * module_units;
-      DART_ASSERT_RETURNS(
-        dart__base__host_topology__module_units(
-          host_topology,
-          module_hostname,
-          &module_units,
-          &domain->num_units),
-        DART_OK);
+      if (dart__base__host_topology__node_module(
+            host_topology,
+            domain->host,
+            domain->relative_index,
+            &module_hostname) != DART_OK) {
+        DART_LOG_DEBUG("dart__base__locality__create_subdomains: "
+                       "could not get module hostname %d of host %s",
+                       domain->relative_index, domain->host);
+      } else {
+        if (dart__base__host_topology__module_units(
+              host_topology,
+              module_hostname,
+              &module_units,
+              &domain->num_units) != DART_OK) {
+          DART_LOG_DEBUG("dart__base__locality__create_subdomains: "
+                         "could not find units of module %s",
+                         module_hostname);
+        }
+      }
       break;
     case DART_LOCALITY_SCOPE_NUMA:
       domain->num_domains = domain->num_units;

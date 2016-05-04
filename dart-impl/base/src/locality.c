@@ -92,8 +92,13 @@ dart_ret_t dart__base__locality__create(
 
   /* Initialize the global domain as the root entry in the locality
    * hierarchy: */
-  team_all_global_domain->scope  = DART_LOCALITY_SCOPE_GLOBAL;
-  team_all_global_domain->hwinfo = *hwinfo;
+  team_all_global_domain->scope       = DART_LOCALITY_SCOPE_GLOBAL;
+  team_all_global_domain->level       = 0;
+  team_all_global_domain->parent      = NULL;
+  team_all_global_domain->num_domains = 0;
+  team_all_global_domain->domains     = NULL;
+  team_all_global_domain->hwinfo      = *hwinfo;
+  team_all_global_domain->num_units   = 0;
 
   char   hostname[DART_LOCALITY_HOST_MAX_SIZE];
   gethostname(hostname, DART_LOCALITY_HOST_MAX_SIZE);
@@ -142,7 +147,7 @@ dart_ret_t dart__base__locality__create(
     DART_OK);
   dart__base__locality__host_topology_[team] = topo;
   size_t num_nodes = topo->num_nodes;
-  DART_LOG_TRACE("dart__base__locality__create: nodes:   %d", num_nodes);
+  DART_LOG_TRACE("dart__base__locality__create: nodes: %d", num_nodes);
 
   team_all_global_domain->num_nodes = num_nodes;
 

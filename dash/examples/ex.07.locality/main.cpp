@@ -61,25 +61,27 @@ int main(int argc, char * argv[])
   cout << t_os.str();
 
   dart_barrier(DART_TEAM_ALL);
-  sleep(1);
+  sleep(2);
 
   if (split_team.dart_id() == 1 && split_team.myid() == 0) {
     dart_domain_locality_t * global_domain_locality;
     dart_domain_locality(split_team.dart_id(), ".", &global_domain_locality);
     print_domain(split_team.dart_id(), global_domain_locality);
   } else {
-    sleep(2);
+    sleep(5);
   }
   dart_barrier(DART_TEAM_ALL);
+  sleep(2);
 
   if (split_team.dart_id() == 2 && split_team.myid() == 0) {
     dart_domain_locality_t * global_domain_locality;
     dart_domain_locality(split_team.dart_id(), ".", &global_domain_locality);
     print_domain(split_team.dart_id(), global_domain_locality);
   } else {
-    sleep(2);
+    sleep(5);
   }
   dart_barrier(DART_TEAM_ALL);
+  sleep(2);
 
   // To prevent interleaving output:
   std::ostringstream f_os;
