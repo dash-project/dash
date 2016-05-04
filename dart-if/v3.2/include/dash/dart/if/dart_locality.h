@@ -1,5 +1,5 @@
 /**
- * \file dart/if/dart_locality.h
+ * \file dash/dart/if/dart_locality.h
  *
  * Functions for querying topology and node-level locality information of
  * teams and units.
