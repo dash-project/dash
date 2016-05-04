@@ -300,6 +300,7 @@ public:
           &newteam),
         DART_OK);
       if(newteam != DART_TEAM_NULL) {
+        // Create team instance of child team:
         result = new Team(newteam, this, i);
       }
     }

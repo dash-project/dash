@@ -77,7 +77,6 @@ public:
 
   static inline void SetNumNodes(int n) {
     _domain_loc->num_nodes = n;
-    dart_set_domain_locality(_domain_loc);
   }
 
   static inline void SetNumSockets(int n) {
@@ -85,7 +84,6 @@ public:
       return;
     }
     _domain_loc->hwinfo.num_sockets = n;
-    dart_set_domain_locality(_domain_loc);
   }
 
   static inline void SetNumNUMANodes(int n) {
@@ -93,12 +91,10 @@ public:
       return;
     }
     _domain_loc->hwinfo.num_numa = n;
-    dart_set_domain_locality(_domain_loc);
   }
 
   static inline void SetNumCPUs(int n) {
     _domain_loc->hwinfo.num_cores = n;
-    dart_set_domain_locality(_domain_loc);
   }
 
   static int UnitNUMAId() {
@@ -123,13 +119,13 @@ public:
 
   static inline std::string Hostname(dart_unit_t unit) {
     dart_unit_locality_t * ul;
-    dart_unit_locality(unit, &ul);
+    dart_unit_locality(DART_TEAM_ALL, unit, &ul);
     return ul->host;
   }
 
   static const UnitPinning Pinning(dart_unit_t unit) {
     dart_unit_locality_t * ul;
-    dart_unit_locality(unit, &ul);
+    dart_unit_locality(DART_TEAM_ALL, unit, &ul);
     UnitPinning pinning;
     pinning.unit        = ul->unit;
     pinning.num_cores   = ul->hwinfo.num_cores;

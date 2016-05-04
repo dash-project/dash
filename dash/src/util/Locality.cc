@@ -60,7 +60,8 @@ void Locality::init()
 {
   DASH_LOG_DEBUG("dash::util::Locality::init()");
 
-  if (dart_unit_locality(dash::myid(), &_unit_loc) != DART_OK) {
+  if (dart_unit_locality(DART_TEAM_ALL, dash::myid(), &_unit_loc)
+      != DART_OK) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_unit_locality failed " <<
                "for unit " << dash::myid());
@@ -72,7 +73,8 @@ void Locality::init()
                "for unit " << dash::myid());
   }
 
-  if (dart_domain_locality(_unit_loc->domain_tag, &_domain_loc) != DART_OK) {
+  if (dart_domain_locality(DART_TEAM_ALL, _unit_loc->domain_tag, &_domain_loc)
+      != DART_OK) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_domain_locality failed " <<
                "for domain '" << _unit_loc->domain_tag << "'");

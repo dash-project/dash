@@ -5,6 +5,7 @@
 #define DART__BASE__INTERNAL__HOST_TOPOLOGY_H__
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/base/internal/unit_locality.h>
 
 
 typedef struct {
@@ -33,6 +34,7 @@ typedef struct {
 dart_ret_t dart__base__host_topology__create(
   char                  * unit_hostnames[],
   dart_team_t             team,
+  dart_unit_mapping_t   * unit_mapping,
   dart_host_topology_t  * topo);
 
 dart_ret_t dart__base__host_topology__delete(

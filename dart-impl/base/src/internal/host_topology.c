@@ -28,6 +28,7 @@ static int cmpstr_(const void * p1, const void * p2) {
 dart_ret_t dart__base__host_topology__create(
   char                 * hostnames[],
   dart_team_t            team,
+  dart_unit_mapping_t  * unit_mapping,
   dart_host_topology_t * topo)
 {
   const int max_host_len = DART_LOCALITY_HOST_MAX_SIZE;
@@ -85,7 +86,9 @@ dart_ret_t dart__base__host_topology__create(
                    hostnames[h]);
     for (size_t u = 0; u < num_units; ++u) {
       dart_unit_locality_t * ul;
-      DART_ASSERT_RETURNS(dart__base__unit_locality__at(u, &ul), DART_OK);
+      DART_ASSERT_RETURNS(
+        dart__base__unit_locality__at(unit_mapping, u, &ul),
+        DART_OK);
       if (strncmp(ul->host, hostnames[h], max_host_len) == 0) {
         node_units->units[node_units->num_units] = ul->unit;
         node_units->num_units++;

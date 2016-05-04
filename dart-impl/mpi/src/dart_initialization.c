@@ -268,6 +268,8 @@ dart_ret_t dart_exit()
 	dart_unit_t unitid;
 	dart_myid(&unitid);
 
+  dart__mpi__locality_finalize();
+
 	DART_LOG_DEBUG("%2d: dart_exit()", unitid);
 	if (dart_adapt_teamlist_convert(DART_TEAM_ALL, &index) == -1) {
     DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed", unitid);
@@ -302,8 +304,6 @@ dart_ret_t dart_exit()
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();
   }
-
-  dart__mpi__locality_finalize();
 
 	DART_LOG_DEBUG("%2d: dart_exit: finalization finished", unitid);
 
