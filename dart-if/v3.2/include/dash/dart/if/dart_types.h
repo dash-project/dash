@@ -85,8 +85,6 @@ typedef enum
 
 typedef struct {
 
-    /** Number of processing groups (e.g. host + accelerators) per node. */
-    int   num_modules;
     /** Total number of sockets per node. */
     int   num_sockets;
     /** Total number of NUMA domains in the associated domain. */
