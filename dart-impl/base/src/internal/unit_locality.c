@@ -227,7 +227,9 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
   loc->hwinfo           = *hwinfo;
   loc->hwinfo.num_cores = 1;
 
-  strncpy(loc->host, dloc->host, DART_LOCALITY_HOST_MAX_SIZE);
+  char   hostname[DART_LOCALITY_HOST_MAX_SIZE];
+  gethostname(hostname, DART_LOCALITY_HOST_MAX_SIZE);
+  strncpy(loc->host, hostname, DART_LOCALITY_HOST_MAX_SIZE);
 
 #ifdef DART_ENABLE_HWLOC
   hwloc_topology_t topology;
