@@ -138,9 +138,9 @@ dart_ret_t dart__base__unit_locality__create(
 dart_ret_t dart__base__unit_locality__delete(
   dart_unit_mapping_t   * unit_mapping)
 {
-  DART_LOG_DEBUG("dart__base__unit_locality__delete()");
+  DART_LOG_DEBUG("dart__base__unit_locality__delete() team: %d",
+                 unit_mapping->team);
 
-  dart_barrier(unit_mapping->team);
   free(unit_mapping->unit_localities);
 
   DART_LOG_DEBUG("dart__base__unit_locality__delete >");
@@ -222,11 +222,10 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
   dart_domain_locality_t * dloc;
   DART_ASSERT_RETURNS(dart_domain_locality(team, ".", &dloc), DART_OK);
 
-  loc->unit               = myid;
-  loc->team               = team;
-  loc->team_unit          = myid;
-  loc->hwinfo             = *hwinfo;
-  loc->hwinfo.num_cores   = 1;
+  loc->unit             = myid;
+  loc->team             = team;
+  loc->hwinfo           = *hwinfo;
+  loc->hwinfo.num_cores = 1;
 
   strncpy(loc->host, dloc->host, DART_LOCALITY_HOST_MAX_SIZE);
 

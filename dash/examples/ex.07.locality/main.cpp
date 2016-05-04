@@ -81,30 +81,6 @@ int main(int argc, char * argv[])
   }
   dart_barrier(DART_TEAM_ALL);
 
-#if 0
-  for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(size); ++u) {
-    if (u == myid) {
-      // To prevent interleaving output:
-      std::ostringstream     u_os;
-      dart_unit_locality_t * uloc;
-      dart_unit_locality(DART_TEAM_ALL, u, &uloc);
-      u_os << "unit " << u << " locality: " << endl
-           << "  unit:      " << uloc->unit               << endl
-           << "  host:      " << uloc->host               << endl
-           << "  domain:    " << uloc->domain_tag         << endl
-           << "  numa_id:   " << uloc->hwinfo.numa_id     << endl
-           << "  core_id:   " << uloc->hwinfo.cpu_id      << endl
-           << "  num_cores: " << uloc->hwinfo.num_cores   << endl
-           << "  cpu_mhz:   " << uloc->hwinfo.min_cpu_mhz << "..."
-                              << uloc->hwinfo.max_cpu_mhz << endl
-           << "  threads:   " << uloc->hwinfo.min_threads << "..."
-                              << uloc->hwinfo.max_threads
-           << endl;
-      cout << u_os.str();
-    }
-    dart_barrier(DART_TEAM_ALL);
-  }
-#endif
   // To prevent interleaving output:
   std::ostringstream f_os;
   f_os << "Process exiting at "
@@ -112,6 +88,8 @@ int main(int argc, char * argv[])
        << "on "   << buf     << " pid:" << pid
        << endl;
   cout << f_os.str();
+
+  dart_barrier(DART_TEAM_ALL);
   dash::finalize();
 
   return EXIT_SUCCESS;
@@ -165,11 +143,9 @@ void print_domain(
         dart_unit_locality(team, unit_id, &uloc);
         cout << indent << "  units[" << setw(3) << u << "]: " << unit_id
                        << endl;
-        cout << indent << "              unit_g: " << uloc->unit
+        cout << indent << "              unit:   " << uloc->unit
                        << endl;
         cout << indent << "              team:   " << uloc->team
-                       << endl;
-        cout << indent << "              unit_l: " << uloc->team_unit
                        << endl;
         cout << indent << "              host:   " << uloc->host
                        << endl;

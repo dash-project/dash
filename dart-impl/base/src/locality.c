@@ -25,6 +25,7 @@
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
+#include <dash/dart/if/dart_communication.h>
 
 #include <inttypes.h>
 #include <string.h>
@@ -62,6 +63,8 @@ dart_ret_t dart__base__locality__finalize()
   for (dart_team_t t = 0; t < DART__BASE__LOCALITY__MAX_TEAM_DOMAINS; ++t) {
     dart__base__locality__delete(t);
   }
+
+  dart_barrier(DART_TEAM_ALL);
   return DART_OK;
 }
 
@@ -174,9 +177,15 @@ dart_ret_t dart__base__locality__create(
 dart_ret_t dart__base__locality__delete(
   dart_team_t team)
 {
-  DART_LOG_DEBUG("dart__base__locality__delete() team(%d)", team);
-
   dart_ret_t ret = DART_OK;
+
+  if (dart__base__locality__global_domain_[team] == NULL &&
+      dart__base__locality__host_topology_[team] == NULL &&
+      dart__base__locality__unit_mapping_[team]  == NULL) {
+    return ret;
+  }
+
+  DART_LOG_DEBUG("dart__base__locality__delete() team(%d)", team);
 
   if (dart__base__locality__global_domain_[team] != NULL) {
     ret = dart__base__locality__domain_delete(
@@ -211,7 +220,7 @@ dart_ret_t dart__base__locality__delete(
     dart__base__locality__unit_mapping_[team] = NULL;
   }
 
-  DART_LOG_DEBUG("dart__base__locality__delete > team(d%)", team);
+  DART_LOG_DEBUG("dart__base__locality__delete > team(%d)", team);
   return DART_OK;
 }
 

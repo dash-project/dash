@@ -6,6 +6,7 @@
 #include <dash/dart/mpi/dart_locality_priv.h>
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_locality.h>
 
 #include <dash/dart/base/logging.h>
@@ -33,6 +34,9 @@ dart_ret_t dart__mpi__locality_finalize()
   dart_ret_t ret;
 
   ret = dart__base__locality__finalize();
+
+  dart_barrier(DART_TEAM_ALL);
+
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart__mpi__locality_finalize ! "
                    "dart__base__locality__finalize failed: %d", ret);

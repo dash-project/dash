@@ -377,14 +377,11 @@ typedef struct dart_domain_locality_s
  */
 typedef struct
 {
-  /** Global unit ID. */
+  /** Unit ID relative to team. */
   dart_unit_t   unit;
 
   /** Team ID. */
   dart_team_t   team;
-
-  /** Unit ID in team. */
-  dart_unit_t   team_unit;
 
   /** Hostname of the domain's node or 0 if unspecified. */
   char          host[DART_LOCALITY_HOST_MAX_SIZE];
