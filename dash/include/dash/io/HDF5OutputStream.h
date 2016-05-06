@@ -4,7 +4,6 @@
 #include <string>
 #include <dash/Matrix.h>
 
-
 namespace dash {
 namespace io {
 

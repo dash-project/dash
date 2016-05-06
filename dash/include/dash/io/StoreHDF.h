@@ -10,8 +10,6 @@
 #include <dash/Array.h>
 #include <dash/Matrix.h>
 
-#include <dash/io/HDF5OutputStream.h>
-
 #include <sys/stat.h>
 
 #include <hdf5.h>
@@ -645,6 +643,6 @@ private:
 } // namespace io
 } // namespace dash
 
-#endif // DASH_ENABLE_HDF5
+#endif // DASH_ENABLE_HDF6
 
 #endif

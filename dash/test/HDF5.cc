@@ -39,12 +39,13 @@ typename T,
          int ndim,
          typename IndexT,
          typename PatternT >
-void fill_matrix(dash::Matrix<T, ndim, IndexT, PatternT> matrix, T secret = 0)
+void fill_matrix(dash::Matrix<T, ndim, IndexT, PatternT> & matrix, T secret = 0)
 {
   std::function< void(const T &, IndexT)>
   f = [&matrix, &secret](T el, IndexT i) {
-    auto coords = matrix.pattern().coords(i);
-    el = cantorpi(coords) + secret;
+		auto coords = matrix.pattern().coords(i);
+		// hack
+		*(matrix.begin()+i) = cantorpi(coords) + secret;
   };
   dash::for_each_with_index(
     matrix.begin(),
@@ -61,7 +62,7 @@ typename T,
          int ndim,
          typename IndexT,
          typename PatternT >
-void verify_matrix(dash::Matrix<T, ndim, IndexT, PatternT> matrix,
+void verify_matrix(dash::Matrix<T, ndim, IndexT, PatternT> & matrix,
                    T secret = 0)
 {
   std::function< void(const T &, IndexT)>
@@ -246,7 +247,7 @@ TEST_F(HDFTest, StoreSUMMAMatrix)
   dash::Matrix<double, 2> matrix_b;
   dash::io::StoreHDF::read(matrix_b, "test.hdf5", "data");
   dash::barrier();
-  //verify_matrix(matrix_b, static_cast<double>(myid));
+  verify_matrix(matrix_b, static_cast<double>(myid));
 }
 
 TEST_F(HDFTest, Options)
@@ -257,13 +258,7 @@ TEST_F(HDFTest, Options)
                         dash::size(),
                         dash::size()));
     // Fill
-    for (int i = 0; i < matrix_a.local.extent(0); i++) {
-      for (int j = 0; j < matrix_a.local.extent(1); j++) {
-        int ofx = matrix_a.local.offset(0);
-        int ofy = matrix_a.local.offset(1);
-        matrix_a.local[i][j] = (ofx + i) * 1000 + ofy + j;
-      }
-    }
+   	fill_matrix(matrix_a); 
     dash::barrier();
 
     // Set option
@@ -278,17 +273,7 @@ TEST_F(HDFTest, Options)
   dash::barrier();
 
   // Verify
-#if 0
-  for (int i = 0; i < matrix_b.local.extent(0); i++) {
-    for (int j = 0; j < matrix_b.local.extent(1); j++) {
-      int ofx = matrix_b.local.offset(0);
-      int ofy = matrix_b.local.offset(1);
-      ASSERT_EQ_U(
-        matrix_b.local[i][j],
-        (ofx + i) * 1000 + ofy + j);
-    }
-  }
-#endif
+	//verify_matrix(matrix_b);
 }
 #if 0
 TEST_F(HDFTest, OutputStream)
