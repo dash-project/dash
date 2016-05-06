@@ -13,23 +13,22 @@ namespace dash {
 namespace io {
 
 template <
-  typename value_t,
-  dim_t    ndim,
-  typename index_t,
-  class    pattern_t >
+    typename value_t,
+    dim_t    ndim,
+    typename index_t,
+    class    pattern_t >
 inline HDF5OutputStream & operator<< (
-  HDF5OutputStream & os,
-  dash::Matrix < value_t,
-  ndim,
-  index_t,
-  pattern_t > matrix)
-{
-  dash::io::StoreHDF::write(
-    matrix,
-    os._filename,
-    os._table,
-    os._foptions);
-  return os;
+    HDF5OutputStream & os,
+    dash::Matrix < value_t,
+    ndim,
+    index_t,
+    pattern_t > matrix) {
+    dash::io::StoreHDF::write(
+        matrix,
+        os._filename,
+        os._table,
+        os._foptions);
+    return os;
 }
 
 } // namespace io
