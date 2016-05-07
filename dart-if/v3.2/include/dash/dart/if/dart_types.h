@@ -245,7 +245,7 @@ dart_hwinfo_t;
  *   :   :   num_domains:   2
  *   :   :   :
  *   :   :   |-- domain (NUMA domain at host)
- *   :   :   :   domain_tag:  ".0.0.1"
+ *   :   :   :   domain_tag:  ".0.0.0"
  *   :   :   :   scope:       DART_LOCALITY_SCOPE_UNIT
  *   :   :   :   level:        3
  *   :   :   :   num_nodes:    1
