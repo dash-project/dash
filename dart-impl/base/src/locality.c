@@ -120,11 +120,9 @@ dart_ret_t dart__base__locality__create(
     DART_OK);
   dart__base__locality__unit_mapping_[team] = unit_mapping;
 
-  /* Filter unique host names from locality information of all units.
-   * Could be further optimized but only runs once during startup. */
+  /* Copy host names of all units into array: */
   const int max_host_len = DART_LOCALITY_HOST_MAX_SIZE;
   DART_LOG_TRACE("dart__base__locality__create: copying host names");
-  /* Copy host names of all units into array: */
   char ** hosts = malloc(sizeof(char *) * num_units);
   for (size_t u = 0; u < num_units; ++u) {
     hosts[u] = malloc(sizeof(char) * max_host_len);

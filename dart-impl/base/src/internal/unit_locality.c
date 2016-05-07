@@ -69,7 +69,7 @@ dart_ret_t dart__base__unit_locality__create(
   dart_unit_t myid   = DART_UNDEFINED_UNIT_ID;
   size_t      nunits = 0;
   *unit_mapping      = NULL;
-  DART_LOG_DEBUG("dart__base__unit_locality__init()");
+  DART_LOG_DEBUG("dart__base__unit_locality__create()");
 
   DART_ASSERT_RETURNS(dart_team_myid(team, &myid),   DART_OK);
   DART_ASSERT_RETURNS(dart_team_size(team, &nunits), DART_OK);
@@ -84,12 +84,12 @@ dart_ret_t dart__base__unit_locality__create(
   uloc = (dart_unit_locality_t *)(malloc(sizeof(dart_unit_locality_t)));
   ret  = dart__base__unit_locality__local_unit_new(team, uloc);
   if (ret != DART_OK) {
-    DART_LOG_ERROR("dart__base__unit_locality__init ! "
+    DART_LOG_ERROR("dart__base__unit_locality__create ! "
                    "dart__base__unit_locality__local_unit_new failed: %d",
                    ret);
     return ret;
   }
-  DART_LOG_TRACE("dart__base__unit_locality__init: unit %d of %"PRIu64": "
+  DART_LOG_TRACE("dart__base__unit_locality__create: unit %d of %"PRIu64": "
                  "sending %"PRIu64" bytes: "
                  "host:%s domain:%s core_id:%d numa_id:%d nthreads:%d",
                  myid, nunits, nbytes,
@@ -102,7 +102,7 @@ dart_ret_t dart__base__unit_locality__create(
 
   /* all-to-all exchange of locality data across all units:
    * (send, recv, nbytes, team) */
-  DART_LOG_DEBUG("dart__base__unit_locality__init: dart_allgather");
+  DART_LOG_DEBUG("dart__base__unit_locality__create: dart_allgather");
   ret = dart_allgather(uloc, mapping->unit_localities, nbytes,
                        team);
 
@@ -110,14 +110,14 @@ dart_ret_t dart__base__unit_locality__create(
   free(uloc);
 
   if (ret != DART_OK) {
-    DART_LOG_ERROR("dart__base__unit_locality__init ! "
+    DART_LOG_ERROR("dart__base__unit_locality__create ! "
                    "dart_allgather failed: %d", ret);
     return ret;
   }
 #ifdef DART_ENABLE_LOGGING
   for (size_t u = 0; u < nunits; ++u) {
     dart_unit_locality_t * ulm_u = &mapping->unit_localities[u];
-    DART_LOG_TRACE("dart__base__unit_locality__init: unit[%d]: "
+    DART_LOG_TRACE("dart__base__unit_locality__create: unit[%d]: "
                    "unit:%d host:%s domain:%s "
                    "num_cores:%d cpu_id:%d "
                    "num_numa:%d numa_id:%d "
@@ -131,7 +131,7 @@ dart_ret_t dart__base__unit_locality__create(
 
   *unit_mapping = mapping;
 
-  DART_LOG_DEBUG("dart__base__unit_locality__init >");
+  DART_LOG_DEBUG("dart__base__unit_locality__create >");
   return DART_OK;
 }
 

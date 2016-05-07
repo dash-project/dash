@@ -73,7 +73,7 @@ dart_ret_t dart__base__host_topology__create(
     max_host_units = num_host_units;
   }
   /* All entries after index last_host_ids are duplicates now: */
-  int    num_hosts = last_host_idx + 1;
+  int num_hosts = last_host_idx + 1;
   DART_LOG_TRACE("dart__base__host_topology__init: number of hosts: %d",
                  num_hosts);
   DART_LOG_TRACE("dart__base__host_topology__init: maximum number of units "
@@ -124,7 +124,7 @@ dart_ret_t dart__base__host_topology__create(
    * hostname, e.g.:
    *
    *   computer-node-124           <-- node, heterogenous
-   *   |- compute_node-host-sys    <-- module, homogenous
+   *   |- compute_node-124-sys     <-- module, homogenous
    *   |- compute-node-124-mic0    <-- module, homogenous
    *   '- compute-node-124-mic1    <-- module, homogenous
    *
@@ -143,21 +143,32 @@ dart_ret_t dart__base__host_topology__create(
       hostname_max_len = hostname_len;
     }
   }
+  DART_LOG_TRACE("dart__base__host_topology__init: "
+                 "host name length min: %d, max: %d",
+                 hostname_min_len, hostname_max_len);
+
   topo->num_host_levels = 0;
   topo->num_nodes       = num_hosts;
   if (hostname_min_len != hostname_max_len) {
     topo->num_nodes = 0;
+    int num_modules = 0;
     /* Match short hostnames as prefix of every other hostname: */
     for (int top = 0; top < num_hosts; ++top) {
       if (strlen(topo->host_names[top]) == (size_t)hostname_min_len) {
         ++topo->num_nodes;
-        /* Host name is candidate, test for all other hostnames: */
+        /* Host name is node, find its modules in all other hostnames: */
         char * short_name = topo->host_names[top];
+        DART_LOG_TRACE("dart__base__host_topology__init: node: %s",
+                       short_name);
         for (int sub = 0; sub < num_hosts; ++sub) {
           char * other_name = topo->host_names[sub];
           /* Other hostname is longer and has short host name in prefix: */
           if (strlen(other_name) > (size_t)hostname_min_len &&
               strncmp(short_name, other_name, hostname_min_len) == 0) {
+            DART_LOG_TRACE("dart__base__host_topology__init: "
+                           "module: %s, parent node: %s",
+                           other_name, short_name);
+            num_modules++;
             /* Increment topology level of other host: */
             int node_level = topo->node_units[top].level + 1;
             if (node_level > topo->num_host_levels) {
@@ -171,6 +182,13 @@ dart_ret_t dart__base__host_topology__create(
         }
       }
     }
+    if (num_hosts > topo->num_nodes + num_modules) {
+      /* some hosts are modules of node that is not in host names: */
+      topo->num_nodes += num_hosts - (topo->num_nodes + num_modules);
+    }
+    DART_LOG_TRACE("dart__base__host_topology__init: "
+                   "hosts: %d nodes: %d modules: %d",
+                   topo->num_hosts, topo->num_nodes, num_modules);
   }
   return DART_OK;
 }

@@ -132,60 +132,73 @@ void print_domain(
 {
   const int max_level = 3;
 
+  std::string indent;
+  for (int i = 0; i < domain->level; ++i) {
+    indent += ":   ";
+  }
+
+  cout << indent << "scope:   " << domain->scope << " "
+                 << "(level "  << domain->level << ")"
+       << endl
+       << indent << "domain:  " << domain->domain_tag
+       << endl;
+
   if (domain->level > max_level) {
     return;
   }
-  std::string indent(domain->level * 4, ' ');
-
-  cout << indent << "level:  " << domain->level
-       << endl
-       << indent << "scope:  " << domain->scope
-       << endl
-       << indent << "domain: " << domain->domain_tag
-       << endl;
 
   if (domain->level == 0) {
-    cout << indent << "nodes:  " << domain->num_nodes << endl;
+    cout << indent << "nodes:   " << domain->num_nodes << endl;
   } else {
-    cout << indent << "host:   " << domain->host << endl;
+    cout << indent << "host:    " << domain->host << endl;
   }
-  if (domain->num_units > 0) {
-    cout << indent << "- units: " << domain->num_units << endl;
-    if (domain->level == 3) {
-      for (int u = 0; u < domain->num_units; ++u) {
-        dart_unit_t            unit_id  = domain->unit_ids[u];
-        dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
-        dart_unit_locality_t * uloc;
-        dart_unit_locality(team, unit_id, &uloc);
-        dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
-        cout << indent << "  units[" << setw(3) << u << "]: " << unit_id
-                       << endl;
-        cout << indent << "              unit:   " << uloc->unit
-                       << endl;
-        cout << indent << "              team:   " << uloc->team
-                       << endl;
-        cout << indent << "              unit_g: " << unit_gid
-                       << endl;
-        cout << indent << "              host:   " << uloc->host
-                       << endl;
-        cout << indent << "              domain: " << uloc->domain_tag
-                       << endl;
-        cout << indent << "              hwinfo: "
-                       << "numa_id: " << uloc->hwinfo.numa_id << " "
-                       << "cpu_id: "  << uloc->hwinfo.cpu_id  << " "
-                       << "threads: " << uloc->hwinfo.min_threads << "..."
-                                      << uloc->hwinfo.max_threads << " "
-                       << "cpu_mhz: " << uloc->hwinfo.min_cpu_mhz << "..."
-                                      << uloc->hwinfo.max_cpu_mhz
-                       << endl;
-      }
+  cout << indent << "units:   " << domain->num_units << endl;
+  if (domain->level == 3) {
+    for (int u = 0; u < domain->num_units; ++u) {
+      dart_unit_t            unit_id  = domain->unit_ids[u];
+      dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
+      dart_unit_locality_t * uloc;
+      dart_unit_locality(team, unit_id, &uloc);
+      dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
+      cout << indent << "|-- units[" << setw(3) << u << "]: " << unit_id
+                     << endl;
+      cout << indent << "|               unit:   "
+                                         << uloc->unit
+                                         << " in team "  << uloc->team
+                                         << ", global: " << unit_gid
+                     << endl;
+      cout << indent << "|               domain: " << uloc->domain_tag
+                     << endl;
+      cout << indent << "|               host:   " << uloc->host
+                     << endl;
+      cout << indent << "|               hwinfo: "
+                           << "numa_id: "
+                              << uloc->hwinfo.numa_id << " "
+                           << "cpu_id: "
+                              << setw(3) << uloc->hwinfo.cpu_id  << " "
+                           << "threads: "
+                              << uloc->hwinfo.min_threads << "..."
+                              << uloc->hwinfo.max_threads << " "
+                           << "cpu_mhz: "
+                              << uloc->hwinfo.min_cpu_mhz << "..."
+                              << uloc->hwinfo.max_cpu_mhz
+                           << endl;
+    }
+    if (domain->num_units > 0) {
+      cout << indent << "'-----------"
+           << endl;
     }
   }
-  if (domain->level <= max_level && domain->num_domains > 0) {
-    cout << indent << "- domains: " << domain->num_domains << endl;
+  if (domain->level < max_level && domain->num_domains > 0) {
+    cout << indent << "domains: " << domain->num_domains << endl;
     for (int d = 0; d < domain->num_domains; ++d) {
-      cout << indent << "  domains[" << d << "]: " << endl;
+      cout << indent << "|-- domains[" << setw(3) << d << "]: " << endl;
+
       print_domain(team, &domain->domains[d]);
+
+      cout << indent << "'----------"
+           << endl
+           << indent << endl;
     }
   }
 }
