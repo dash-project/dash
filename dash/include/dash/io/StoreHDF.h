@@ -643,6 +643,8 @@ class StoreHDF {
 } // namespace io
 } // namespace dash
 
-#endif // DASH_ENABLE_HDF6
+#include <dash/io/HDF5OutputStream.h>
+
+#endif // DASH_ENABLE_HDF5
 
 #endif

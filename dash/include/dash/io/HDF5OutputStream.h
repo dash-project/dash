@@ -1,11 +1,15 @@
 #ifndef DASH__IO__HDF5_OUTPUT_STREAM_H__
 #define DASH__IO__HDF5_OUTPUT_STREAM_H__
 
+#ifdef DASH_ENABLE_HDF5
+
 #include <string>
 #include <dash/Matrix.h>
 
 namespace dash {
 namespace io {
+
+typedef dash::io::StoreHDF::hdf5_file_options hdf5_file_options;
 
 class HDF5Table {
   public:
@@ -18,33 +22,15 @@ class HDF5Table {
 
 class HDF5Options {
   public:
-    typedef struct file_options_t {
-        bool          overwrite_file;
-        bool          overwrite_table;  // TODO
-        bool          store_pattern;
-        bool          restore_pattern;
-        std::string   pattern_metadata_key;
-    } file_options;
-
-    file_options _foptions;
+    hdf5_file_options _foptions;
     std::string  _test;
 
   public:
     HDF5Options() {
     }
 
-    HDF5Options(file_options opts) {
+    HDF5Options(hdf5_file_options opts) {
         _foptions = opts;
-    }
-
-    static inline file_options getDefaults() {
-        file_options fopt;
-        fopt.overwrite_file       = true;
-        fopt.overwrite_table      = false;
-        fopt.store_pattern        = true;
-        fopt.restore_pattern      = true;
-        fopt.pattern_metadata_key = "DASH_PATTERN";
-        return fopt;
     }
 };
 
@@ -53,20 +39,28 @@ class HDF5OutputStream {
   private:
     std::string                _filename;
     std::string                _table;
-    HDF5Options::file_options  _foptions;
+    hdf5_file_options					 _foptions;
 
   public:
     HDF5OutputStream(std::string filename) {
         _filename = filename;
+        _foptions = dash::io::StoreHDF::get_default_options();
     }
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
-        const HDF5Table & tbl);
+        const HDF5Table & tbl) {
+        os._table = tbl._table;
+        return os;
+    }
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
-        HDF5Options opts);
+        hdf5_file_options opts) {
+        os._foptions = opts;
+        return os;
+    }
+
 
     template <
         typename value_t,
@@ -81,23 +75,13 @@ class HDF5OutputStream {
         pattern_t > matrix);
 };
 
-HDF5OutputStream & operator<< (
-    HDF5OutputStream & os,
-    const HDF5Table & tbl) {
-    os._table = tbl._table;
-    return os;
-}
 
-HDF5OutputStream & operator<< (
-    HDF5OutputStream & os,
-    HDF5Options opts) {
-    os._foptions = opts._foptions;
-    return os;
-}
 
 } // namespace io
 } // namespace dash
 
 #include <dash/io/internal/HDF5OutputStream-inl.h>
+
+#endif // DASH_ENABLE_HDF5
 
 #endif // DASH__IO__HDF5_OUTPUT_STREAM_H__
