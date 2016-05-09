@@ -90,6 +90,12 @@ typedef int32_t dart_team_t;
 #define DART_UNDEFINED_TEAM_ID ((dart_team_t)(-1))
 
 /**
+ * Scopes of locality domains.
+ * Enum values are ordered by scope level in the locality hierarchy.
+ * Consequently, the comparison \c (scope_a > scope_b) is valid
+ * and evaluates to \c true if \c scope_a is a parent scope of
+ * \c scope_b.
+ *
  * \ingroup DartTypes
  */
 typedef enum
@@ -97,6 +103,8 @@ typedef enum
   DART_LOCALITY_SCOPE_UNDEFINED  =   -1,
   /** Global locality scope, components may be heterogenous. */
   DART_LOCALITY_SCOPE_GLOBAL     =    0,
+  /** Interconnect topology scope, components may be heterogenous. */
+  DART_LOCALITY_SCOPE_NETWORK    =   50,
   /** Node-level locality scope, components may be heterogenous. */
   DART_LOCALITY_SCOPE_NODE       =  100,
   /** Locality in a group of hetereogenous components in different NUMA
@@ -109,9 +117,18 @@ typedef enum
    *  A single unit corresponds to a DART (e.g. MPI) process and can
    *  occupy multiple homogenous cores, e.g. for multithreading. */
   DART_LOCALITY_SCOPE_UNIT       =  400,
-  /** Locality at physical processing level. Cannot be referenced by DART
-   *  directly. */
-  DART_LOCALITY_SCOPE_CORE       =  500
+  /** Locality at level of physical processor package. Cannot be
+   *  referenced by DART directly. */
+  DART_LOCALITY_SCOPE_PACKAGE    =  500,
+  /** Locality at processor uncore (system agent) level. Intel only.
+   *  Cannot be referenced by DART directly. */
+  DART_LOCALITY_SCOPE_UNCORE     =  510,
+  /** Locality at physical processing core level. Cannot be referenced
+   *  by DART directly. */
+  DART_LOCALITY_SCOPE_CORE       =  550,
+  /** Locality at logical CPU level (SMT thread). Cannot be referenced
+   *  by DART directly. */
+  DART_LOCALITY_SCOPE_CPU        =  600
 }
 dart_locality_scope_t;
 
@@ -245,7 +262,7 @@ dart_hwinfo_t;
  *   :   :   num_domains:   2
  *   :   :   :
  *   :   :   |-- domain (NUMA domain at host)
- *   :   :   :   domain_tag:  ".0.0.0"
+ *   :   :   :   domain_tag:  ".0.0.1"
  *   :   :   :   scope:       DART_LOCALITY_SCOPE_UNIT
  *   :   :   :   level:        3
  *   :   :   :   num_nodes:    1
@@ -326,43 +343,46 @@ struct dart_domain_locality_s
    * Hierarchical domain identifier, represented as dot-separated list
    * of relative indices on every level in the locality hierarchy.
    */
-  char  domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+  char                            domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 
   /** Hostname of the domain's node or 0 if unspecified. */
-  char  host[DART_LOCALITY_HOST_MAX_SIZE];
+  char                            host[DART_LOCALITY_HOST_MAX_SIZE];
 
   /** Locality scope of the domain. */
-  dart_locality_scope_t scope;
+  dart_locality_scope_t           scope;
   /** Level in the domain locality hierarchy. */
-  int  level;
+  int                             level;
   /** The domain's index within its parent domain. */
-  int  relative_index;
+  int                             relative_index;
+
+  /** Team associated with the domain. */
+  dart_team_t                     team;
 
   /** Pointer to descriptor of parent domain or 0 if no parent domain
    *  is specified. */
   struct dart_domain_locality_s * parent;
 
   /** Number of subordinate domains. */
-  int  num_domains;
+  int                             num_domains;
 
   /** Array of subordinate domains of size \c num_domains or 0 if no
    *  subdomains are specified. */
   struct dart_domain_locality_s * domains;
 
   /** Hardware specification of the domains's affinity. */
-  dart_hwinfo_t hwinfo;
+  dart_hwinfo_t                   hwinfo;
 
   /** Identifier of the domain's processing node. */
-  int   node_id;
+  int                             node_id;
 
   /** Number of compute nodes in the domain. */
-  int   num_nodes;
+  int                             num_nodes;
 
   /** Number of units in the domain. */
-  int   num_units;
+  int                             num_units;
 
   /** IDs of units in the domain. */
-  dart_unit_t * unit_ids;
+  dart_unit_t                   * unit_ids;
 };
 struct dart_domain_locality_s;
 typedef struct dart_domain_locality_s

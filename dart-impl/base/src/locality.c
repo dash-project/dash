@@ -85,32 +85,34 @@ dart_ret_t dart__base__locality__create(
     dart__base__locality__host_topology_[td] = NULL;
   }
 
-  dart_domain_locality_t * team_all_global_domain =
+  dart_domain_locality_t * team_global_domain =
     malloc(sizeof(dart_domain_locality_t));
   dart__base__locality__global_domain_[team] =
-    team_all_global_domain;
+    team_global_domain;
 
   /* Initialize the global domain as the root entry in the locality
    * hierarchy: */
-  team_all_global_domain->scope         = DART_LOCALITY_SCOPE_GLOBAL;
-  team_all_global_domain->level         = 0;
-  team_all_global_domain->parent        = NULL;
-  team_all_global_domain->num_domains   = 0;
-  team_all_global_domain->domains       = NULL;
-  team_all_global_domain->hwinfo        = *hwinfo;
-  team_all_global_domain->num_units     = 0;
-  team_all_global_domain->host[0]       = '\0';
-  team_all_global_domain->domain_tag[0] = '.';
-  team_all_global_domain->domain_tag[1] = '\0';
+  team_global_domain->scope          = DART_LOCALITY_SCOPE_GLOBAL;
+  team_global_domain->level          = 0;
+  team_global_domain->relative_index = 0;
+  team_global_domain->team           = team;
+  team_global_domain->parent         = NULL;
+  team_global_domain->num_domains    = 0;
+  team_global_domain->domains        = NULL;
+  team_global_domain->hwinfo         = *hwinfo;
+  team_global_domain->num_units      = 0;
+  team_global_domain->host[0]        = '\0';
+  team_global_domain->domain_tag[0]  = '.';
+  team_global_domain->domain_tag[1]  = '\0';
 
   size_t num_units = 0;
   DART_ASSERT_RETURNS(dart_team_size(team, &num_units), DART_OK);
-  team_all_global_domain->num_units = num_units;
+  team_global_domain->num_units = num_units;
 
-  team_all_global_domain->unit_ids =
+  team_global_domain->unit_ids =
     malloc(num_units * sizeof(dart_unit_t));
   for (size_t u = 0; u < num_units; ++u) {
-    team_all_global_domain->unit_ids[u] = u;
+    team_global_domain->unit_ids[u] = u;
   }
 
   /* Exchange unit locality information between all units: */
@@ -142,7 +144,7 @@ dart_ret_t dart__base__locality__create(
   size_t num_nodes = topo->num_nodes;
   DART_LOG_TRACE("dart__base__locality__create: nodes: %d", num_nodes);
 
-  team_all_global_domain->num_nodes = num_nodes;
+  team_global_domain->num_nodes = num_nodes;
 
 #ifdef DART_ENABLE_LOGGING
   for (int h = 0; h < topo->num_hosts; ++h) {

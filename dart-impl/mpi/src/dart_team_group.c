@@ -9,15 +9,26 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_initialization.h>
+#include <dash/dart/if/dart_locality.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/macro.h>
+#include <dash/dart/base/assert.h>
 #include <dash/dart/base/locality.h>
 
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_group_priv.h>
 
+/* ============================================================================= *
+ * Private Functions                                                             *
+ * ============================================================================= */
+
+dart_ret_t dart_group_locality_split_recurse(
+  dart_domain_locality_t  * domain,
+  dart_locality_scope_t     scope,
+  int                     * num_domains_out,
+  char                  *** domain_tags_out);
 
 dart_ret_t dart_group_init(
   dart_group_t *group)
@@ -206,10 +217,10 @@ dart_ret_t dart_group_split(
   MPI_Group grouptem;
   int size, length, i, ranges[1][3];
 
-  MPI_Group_size(g -> mpi_group, &size);
+  MPI_Group_size(g->mpi_group, &size);
 
   /* Ceiling division. */
-  length = (size+(int)n-1)/(int)n;
+  length = (size + (int)(n-1)) / ((int)(n));
 
   /* Note: split the group into chunks of subgroups. */
   for (i = 0; i < (int)n; i++) {
@@ -224,7 +235,7 @@ dart_ret_t dart_group_split(
       ranges[0][2] = 1;
 
       MPI_Group_range_incl(
-        g -> mpi_group,
+        g->mpi_group,
         1,
         ranges,
         &grouptem);
@@ -238,15 +249,21 @@ dart_ret_t dart_group_split(
 
 dart_ret_t dart_group_locality_split(
   const dart_group_t      * g,
+  dart_domain_locality_t  * domain,
   dart_locality_scope_t     scope,
   size_t                    n,
   dart_group_t           ** gout)
 {
   int n_units;
 
+  MPI_Group grouptem;
+
   dart__unused(scope);
   dart__unused(gout);
   dart__unused(n);
+
+  DART_LOG_TRACE("dart_group_locality_split: split at scope %d",
+                 scope);
 
   MPI_Group_size(g->mpi_group, &n_units);
 
@@ -256,12 +273,80 @@ dart_ret_t dart_group_locality_split(
   dart_group_getmembers(g, unit_ids);
 
 #if 0
-  /* should work without querying full locality domain descriptors */
-  dart_domain_locality_t * unit_domains =
-    (dart_domain_locality_t *)(
-      malloc(n_units * sizeof(dart_domain_locality_t)));
+  dart_domain_locality_t * domain;
+  DART_ASSERT_RETURNS(
+    dart_domain_locality(g->team_id, ".", &domain),
+    DART_OK);
 #endif
 
+  /* query domain tags of all domains in specified scope: */
+  int     num_domains = 0;
+  char ** domain_tags = NULL;
+  DART_ASSERT_RETURNS(
+    dart_group_locality_split_recurse(
+      domain,
+      scope,
+      &num_domains,
+      &domain_tags),
+    DART_OK);
+  DART_LOG_TRACE("dart_group_locality_split: %d domains at scope %d",
+                 num_domains, scope);
+
+  /* create a group for every domain in the specified scope: */
+  for (int d = 0; d < num_domains; ++d) {
+    char * domain_tag = domain_tags[d];
+    dart_domain_locality_t * scope_dom;
+    DART_ASSERT_RETURNS(
+      dart_domain_locality(domain->team, ".", &scope_dom),
+      DART_OK);
+    size_t        scope_dom_num_units = scope_dom->num_units;
+    dart_unit_t * scope_dom_unit_ids  = scope_dom->unit_ids;
+  }
+
+  free(domain_tags);
+
+  return DART_OK;
+}
+
+dart_ret_t dart_group_locality_split_recurse(
+  dart_domain_locality_t  * domain,
+  dart_locality_scope_t     scope,
+  int                     * num_domains_out,
+  char                  *** domain_tags_out)
+{
+  dart_ret_t ret;
+
+  if (domain->level == 0) {
+    *num_domains_out = 0;
+    *domain_tags_out = NULL;
+  }
+  if (domain->scope == scope) {
+    int     dom_idx           = *num_domains_out;
+    *num_domains_out         += 1;
+    char ** domain_tags_temp  = (char **)(
+                                  realloc(*domain_tags_out,
+                                          sizeof(char *) * (*num_domains_out)));
+    if (domain_tags_temp != NULL) {
+      int domain_tag_size       = strlen(domain->domain_tag) + 1;
+      *domain_tags_out          = domain_tags_temp;
+      *domain_tags_out[dom_idx] = malloc(sizeof(char) * domain_tag_size);
+      strncpy(*domain_tags_out[dom_idx], domain->domain_tag,
+              DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
+    } else {
+      return DART_ERR_OTHER;
+    }
+  } else {
+    for (int d = 0; d < domain->num_domains; ++d) {
+      ret = dart_group_locality_split_recurse(
+              &domain->domains[d],
+              scope,
+              num_domains_out,
+              domain_tags_out);
+      if (ret != DART_OK) {
+        return ret;
+      }
+    }
+  }
   return DART_OK;
 }
 

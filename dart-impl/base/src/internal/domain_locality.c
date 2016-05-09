@@ -212,6 +212,7 @@ dart_ret_t dart__base__locality__create_subdomains(
     subdomain->scope          = sub_scope;
     subdomain->relative_index = rel_idx;
     subdomain->level          = domain->level + 1;
+    subdomain->team           = domain->team;
     subdomain->node_id        = domain->node_id;
     /* set domain tag of subdomain: */
     strncpy(subdomain->host, domain->host, DART_LOCALITY_HOST_MAX_SIZE);

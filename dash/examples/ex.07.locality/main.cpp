@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cstddef>
+#include <cstdlib>
 #include <sstream>
 
 #include <libdash.h>
@@ -20,6 +21,23 @@ int main(int argc, char * argv[])
 {
   pid_t pid;
   char buf[100];
+  bool locality_split   = false;
+  int  split_num_groups = 3;
+  dart_locality_scope_t split_scope = DART_LOCALITY_SCOPE_NODE;
+
+  if (argc >= 2) {
+    if (std::string(argv[1]) == "-s") {
+      locality_split   = false;
+      split_num_groups = static_cast<int>(strtol(argv[2], NULL, 10));
+    } else if (std::string(argv[1]) == "-ls") {
+      split_scope = DART_LOCALITY_SCOPE_NODE;
+      if (std::string(argv[2]) == "module") {
+        split_scope = DART_LOCALITY_SCOPE_MODULE;
+      } else if (std::string(argv[2]) == "numa") {
+        split_scope = DART_LOCALITY_SCOPE_NUMA;
+      }
+    }
+  }
 
   dash::init(&argc, &argv);
 
@@ -31,6 +49,23 @@ int main(int argc, char * argv[])
 
   gethostname(buf, 100);
   pid = getpid();
+
+  std::string separator(80, '=');
+
+  dart_barrier(DART_TEAM_ALL);
+  if (myid == 0) {
+    cout << "ex.07.locality [-s <num_split_groups> | -ls <split_scope>]" << endl;
+    if (locality_split) {
+      cout << "-ls " << argv[2] << ": "
+           << "locality split into groups at scope " << split_scope << endl;
+    } else {
+      cout << "-s " << split_num_groups << ": "
+           << "regular split into " << split_num_groups << " groups" << endl;
+    }
+    cout << separator << endl;
+  }
+  dart_barrier(DART_TEAM_ALL);
+  sleep(1);
 
   // To prevent interleaving output:
   std::ostringstream i_os;
@@ -44,14 +79,18 @@ int main(int argc, char * argv[])
   sleep(5);
 
   if (myid == 0) {
+    cout << separator << endl;
     dart_domain_locality_t * global_domain_locality;
     dart_domain_locality(DART_TEAM_ALL, ".", &global_domain_locality);
     print_domain(DART_TEAM_ALL, global_domain_locality);
+    cout << separator << endl;
   } else {
     sleep(5);
   }
 
-  auto & split_team = dash::Team::All().split(3);
+  auto & split_team = locality_split
+                      ? dash::Team::All().locality_split(split_scope)
+                      : dash::Team::All().split(split_num_groups);
 
   std::ostringstream t_os;
   t_os << "Unit id " << setw(3) << myid << " -> "
@@ -64,10 +103,12 @@ int main(int argc, char * argv[])
   sleep(2);
 
   if (split_team.dart_id() == 1 && split_team.myid() == 0) {
-    cout << "Locality domains of unit 0 in team 1:" << endl;
+    cout << "Locality domains of unit 0 in team 1:" << endl
+         << endl;
     dart_domain_locality_t * global_domain_locality;
     dart_domain_locality(split_team.dart_id(), ".", &global_domain_locality);
     print_domain(split_team.dart_id(), global_domain_locality);
+    cout << separator << endl;
   } else {
     sleep(5);
   }
@@ -75,10 +116,12 @@ int main(int argc, char * argv[])
   sleep(2);
 
   if (split_team.dart_id() == 2 && split_team.myid() == 0) {
-    cout << "Locality domains of unit 0 in team 2:" << endl;
+    cout << "Locality domains of unit 0 in team 2:" << endl
+         << endl;
     dart_domain_locality_t * global_domain_locality;
     dart_domain_locality(split_team.dart_id(), ".", &global_domain_locality);
     print_domain(split_team.dart_id(), global_domain_locality);
+    cout << separator << endl;
   } else {
     sleep(5);
   }
@@ -86,10 +129,12 @@ int main(int argc, char * argv[])
   sleep(2);
 
   if (split_team.dart_id() == 3 && split_team.myid() == 0) {
-    cout << "Locality domains of unit 0 in team 3:" << endl;
+    cout << "Locality domains of unit 0 in team 3:" << endl
+         << endl;
     dart_domain_locality_t * global_domain_locality;
     dart_domain_locality(split_team.dart_id(), ".", &global_domain_locality);
     print_domain(split_team.dart_id(), global_domain_locality);
+    cout << separator << endl;
   } else {
     sleep(5);
   }
@@ -147,7 +192,8 @@ void print_domain(
     return;
   }
 
-  if (domain->level == 0) {
+  if (static_cast<int>(domain->scope) <
+      static_cast<int>(DART_LOCALITY_SCOPE_NODE)) {
     cout << indent << "nodes:   " << domain->num_nodes << endl;
   } else {
     cout << indent << "host:    " << domain->host << endl;
@@ -160,22 +206,22 @@ void print_domain(
       dart_unit_locality_t * uloc;
       dart_unit_locality(team, unit_id, &uloc);
       dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
-      cout << indent << "|-- units[" << setw(3) << u << "]: " << unit_id
+      cout << indent << "|-- units[" << setw(2) << u << "]: " << unit_id
                      << endl;
-      cout << indent << "|               unit:   "
-                                         << uloc->unit
-                                         << " in team "  << uloc->team
-                                         << ", global: " << unit_gid
+      cout << indent << "|              unit:   "
+                                        << uloc->unit
+                                        << " in team "  << uloc->team
+                                        << ", global: " << unit_gid
                      << endl;
-      cout << indent << "|               domain: " << uloc->domain_tag
+      cout << indent << "|              domain: " << uloc->domain_tag
                      << endl;
-      cout << indent << "|               host:   " << uloc->host
+      cout << indent << "|              host:   " << uloc->host
                      << endl;
-      cout << indent << "|               hwinfo: "
+      cout << indent << "|              hwinfo: "
                            << "numa_id: "
                               << uloc->hwinfo.numa_id << " "
                            << "cpu_id: "
-                              << setw(3) << uloc->hwinfo.cpu_id  << " "
+                              << uloc->hwinfo.cpu_id  << " "
                            << "threads: "
                               << uloc->hwinfo.min_threads << "..."
                               << uloc->hwinfo.max_threads << " "
@@ -184,21 +230,16 @@ void print_domain(
                               << uloc->hwinfo.max_cpu_mhz
                            << endl;
     }
-    if (domain->num_units > 0) {
-      cout << indent << "'-----------"
-           << endl;
-    }
   }
   if (domain->level < max_level && domain->num_domains > 0) {
     cout << indent << "domains: " << domain->num_domains << endl;
     for (int d = 0; d < domain->num_domains; ++d) {
-      cout << indent << "|-- domains[" << setw(3) << d << "]: " << endl;
+      cout << indent << "|-- domains[" << setw(2) << d << "]: " << endl;
 
       print_domain(team, &domain->domains[d]);
 
       cout << indent << "'----------"
-           << endl
-           << indent << endl;
+           << endl;
     }
   }
 }

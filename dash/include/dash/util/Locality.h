@@ -50,11 +50,15 @@ public:
   typedef enum {
     Undefined = DART_LOCALITY_SCOPE_UNDEFINED,
     Global    = DART_LOCALITY_SCOPE_GLOBAL,
+    Network   = DART_LOCALITY_SCOPE_NETWORK,
     Node      = DART_LOCALITY_SCOPE_NODE,
     Module    = DART_LOCALITY_SCOPE_MODULE,
     NUMA      = DART_LOCALITY_SCOPE_NUMA,
     Unit      = DART_LOCALITY_SCOPE_UNIT,
-    Core      = DART_LOCALITY_SCOPE_CORE
+    Package   = DART_LOCALITY_SCOPE_PACKAGE,
+    Uncore    = DART_LOCALITY_SCOPE_UNCORE,
+    Core      = DART_LOCALITY_SCOPE_CORE,
+    CPU       = DART_LOCALITY_SCOPE_CPU
   } Scope;
 
 public:

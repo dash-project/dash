@@ -350,6 +350,11 @@ public:
       DASH_LOG_DEBUG("Team.locality_split >", "Team size < 2, cannot split");
       return *result;
     }
+
+    dart_domain_locality_t * domain;
+    DASH_ASSERT_RETURNS(
+      dart_domain_locality(_dartid, ".", &domain),
+      DART_OK);
     DASH_ASSERT_RETURNS(
       dart_group_init(group),
       DART_OK);
@@ -357,7 +362,8 @@ public:
       dart_team_get_group(_dartid, group),
       DART_OK);
     DASH_ASSERT_RETURNS(
-      dart_group_locality_split(group, dart_scope, n_sub_groups, sub_groups),
+      dart_group_locality_split(
+        group, domain, dart_scope, n_sub_groups, sub_groups),
       DART_OK);
     dart_team_t oldteam = _dartid;
     // Create a child Team for every part with parent set to
@@ -376,6 +382,22 @@ public:
     }
     DASH_LOG_DEBUG("Team.locality_split >");
     return *result;
+  }
+
+  /**
+   * Split this Team's units into child Team instances at the specified
+   * locality scope.
+   *
+   * \return A new Team instance as a parent of the child teams.
+   */
+  Team & locality_split(
+    /// Locality scope that determines the level in the topology hierarchy
+    /// where the team is split.
+    dart_locality_scope_t scope)
+  {
+    return locality_split(
+             static_cast<dash::util::Locality::Scope>(
+               scope));
   }
 
   /**
