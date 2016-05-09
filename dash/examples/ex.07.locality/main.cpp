@@ -19,6 +19,9 @@ void print_domain(
 
 int main(int argc, char * argv[])
 {
+  // Note: barriers and sleeps are only required to prevent output of
+  //       different units to interleave.
+
   pid_t pid;
   char buf[100];
   bool locality_split   = false;
@@ -54,7 +57,10 @@ int main(int argc, char * argv[])
 
   dart_barrier(DART_TEAM_ALL);
   if (myid == 0) {
-    cout << "ex.07.locality [-s <num_split_groups> | -ls <split_scope>]" << endl;
+    cout << "Usage:" << endl
+         << "  ex.07.locality [-s <num_split_groups> | -ls <split_scope>]" << endl
+         << endl
+         << "  ex.07.locality ";
     if (locality_split) {
       cout << "-ls " << argv[2] << ": "
            << "locality split into groups at scope " << split_scope << endl;
@@ -63,6 +69,8 @@ int main(int argc, char * argv[])
            << "regular split into " << split_num_groups << " groups" << endl;
     }
     cout << separator << endl;
+  } else {
+    sleep(1);
   }
   dart_barrier(DART_TEAM_ALL);
   sleep(1);
@@ -177,10 +185,7 @@ void print_domain(
 {
   const int max_level = 3;
 
-  std::string indent;
-  for (int i = 0; i < domain->level; ++i) {
-    indent += ":   ";
-  }
+  std::string indent(domain->level * 4, ' ');
 
   cout << indent << "scope:   " << domain->scope << " "
                  << "(level "  << domain->level << ")"
@@ -196,39 +201,49 @@ void print_domain(
       static_cast<int>(DART_LOCALITY_SCOPE_NODE)) {
     cout << indent << "nodes:   " << domain->num_nodes << endl;
   } else {
-    cout << indent << "host:    " << domain->host << endl;
+    cout << indent << "host:    " << domain->host            << endl
+         << indent << "NUMAs:   " << domain->hwinfo.num_numa << endl;
   }
-  cout << indent << "units:   " << domain->num_units << endl;
+  cout << indent << "units:   " << domain->num_units << ": { ";
+  for (int u = 0; u < domain->num_units; ++u) {
+    cout << domain->unit_ids[u];
+    if (u < domain->num_units-1) {
+      cout << ", ";
+    }
+  }
+  cout << " }" << endl;
+
   if (domain->level == 3) {
+    std::string uindent((domain->level + 1) * 4, ' ');
     for (int u = 0; u < domain->num_units; ++u) {
       dart_unit_t            unit_id  = domain->unit_ids[u];
       dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
       dart_unit_locality_t * uloc;
       dart_unit_locality(team, unit_id, &uloc);
       dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
-      cout << indent << "|-- units[" << setw(2) << u << "]: " << unit_id
-                     << endl;
-      cout << indent << "|              unit:   "
-                                        << uloc->unit
-                                        << " in team "  << uloc->team
-                                        << ", global: " << unit_gid
-                     << endl;
-      cout << indent << "|              domain: " << uloc->domain_tag
-                     << endl;
-      cout << indent << "|              host:   " << uloc->host
-                     << endl;
-      cout << indent << "|              hwinfo: "
-                           << "numa_id: "
-                              << uloc->hwinfo.numa_id << " "
-                           << "cpu_id: "
-                              << uloc->hwinfo.cpu_id  << " "
-                           << "threads: "
-                              << uloc->hwinfo.min_threads << "..."
-                              << uloc->hwinfo.max_threads << " "
-                           << "cpu_mhz: "
-                              << uloc->hwinfo.min_cpu_mhz << "..."
-                              << uloc->hwinfo.max_cpu_mhz
-                           << endl;
+      cout << uindent << "|-- units[" << setw(2) << u << "]: " << unit_id
+                      << endl;
+      cout << uindent << "|              unit:   "
+                                         << uloc->unit
+                                         << " in team "  << uloc->team
+                                         << ", global: " << unit_gid
+                      << endl;
+      cout << uindent << "|              domain: " << uloc->domain_tag
+                      << endl;
+      cout << uindent << "|              host:   " << uloc->host
+                      << endl;
+      cout << uindent << "|              hwinfo: "
+                            << "numa_id: "
+                               << uloc->hwinfo.numa_id << " "
+                            << "cpu_id: "
+                               << uloc->hwinfo.cpu_id  << " "
+                            << "threads: "
+                               << uloc->hwinfo.min_threads << "..."
+                               << uloc->hwinfo.max_threads << " "
+                            << "cpu_mhz: "
+                               << uloc->hwinfo.min_cpu_mhz << "..."
+                               << uloc->hwinfo.max_cpu_mhz
+                            << endl;
     }
   }
   if (domain->level < max_level && domain->num_domains > 0) {
