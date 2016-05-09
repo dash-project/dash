@@ -26,8 +26,6 @@ TEST_F(DARTLocalityTest, UnitLocality)
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", ul->hwinfo.max_threads);
 
   EXPECT_EQ_U(_dash_id, ul->unit);
-  // Units in Team::All() are members of the global domain:
-  EXPECT_EQ_U(".", std::string(ul->domain_tag));
 
   // Units may group multiple cores:
   EXPECT_GE_U(ul->hwinfo.cpu_id,      0);
@@ -45,9 +43,9 @@ TEST_F(DARTLocalityTest, UnitLocality)
   DASH_LOG_TRACE("DARTLocalityTest.UnitLocality",
                  "pointer to local unit's domain descriptor:", dl);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", *dl);
-  // Global domain has locality level 0 (DART_LOCALITY_SCOPE_GLOBAL):
-  EXPECT_EQ_U(dl->level, 0);
-  EXPECT_EQ_U(dl->level, DART_LOCALITY_SCOPE_GLOBAL);
+
+  EXPECT_GT_U(dl->level, 2);
+  EXPECT_EQ_U(dl->scope, DART_LOCALITY_SCOPE_CORE);
 }
 
 TEST_F(DARTLocalityTest, Domains)
@@ -88,8 +86,6 @@ TEST_F(DARTLocalityTest, Domains)
   EXPECT_GT_U(dl->hwinfo.min_threads, 0);
   EXPECT_GT_U(dl->hwinfo.max_threads, 0);
 
-  // Units in Team::All() are members of the global domain:
-  EXPECT_EQ_U(".", std::string(dl->domain_tag));
   // Global domain has locality level 0 (DART_LOCALITY_SCOPE_GLOBAL):
   EXPECT_EQ_U(dl->level, 0);
   EXPECT_EQ_U(dl->level, DART_LOCALITY_SCOPE_GLOBAL);
