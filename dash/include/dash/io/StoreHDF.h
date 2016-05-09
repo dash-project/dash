@@ -23,23 +23,40 @@
 
 #include <mpi.h>
 
-
+/**
+ * DASH wrapper to store an dash::Array or dash::Matrix
+ * in an HDF5 file using parallel IO.
+ */
 namespace dash {
 namespace io {
 
 class StoreHDF {
   public:
+    /**
+    * Options which can be passed to dash::io::StoreHDF::write
+    * to specify how existing structures are treated and what
+    * metadata is stored.
+    */
     typedef struct hdf5_file_options_t {
+        /// Overwrite HDF5 file if already existing
         bool          overwrite_file;
+        /// Overwrite HDF5 table if already existing
         bool          overwrite_table;
+        /// Store dash pattern characteristics as metadata in HDF5 file
         bool          store_pattern;
+        /// Restore pattern from metadata if HDF5 file contains any.
         bool          restore_pattern;
+        /// Metadata attribute key in HDF5 file.
         std::string   pattern_metadata_key;
     } hdf5_file_options;
 
   public:
     /**
-    * Store all array values in an HDF5 file
+     * Store all dash::Array values in an HDF5 file using parallel IO
+     * \param array     Array to store
+    	 * \param filename  Filename of HDF5 file including extension
+     * \param table     HDF5 Table in which the data is stored
+    	 * \param foptions
      */
     template <
         typename value_t,
@@ -51,6 +68,7 @@ class StoreHDF {
         std::string table,
         hdf5_file_options foptions = _get_fdefaults()) {
 
+        //auto team				= array.team();
         auto globalsize = array.size();
         auto pattern    = array.pattern();
         auto pat_dims   = pattern.ndim();
@@ -68,6 +86,12 @@ class StoreHDF {
         DASH_ASSERT_EQ(
             pat_dims, 1,
             "Array pattern has to be one-dimensional for HDF5 storage");
+
+        // Leave team if not in team of array,
+        // currently not implemented
+        //if(!team.is_member(dash::myid())){
+        //	return;
+        //}
 
         /* HDF5 definition */
         hid_t   file_id;
@@ -180,8 +204,12 @@ class StoreHDF {
     }
 
     /**
-    * Store DASH::Matrix in an HDF5 file
-     */
+    * Store all dash::Matrix values in an HDF5 file using parallel IO
+    * \param array     Array to store
+     * \param filename  Filename of HDF5 file including extension
+    * \param table     HDF5 Table in which the data is stored
+     * \param foptions
+    */
     template <
         typename value_t,
         dim_t    ndim,
@@ -330,9 +358,15 @@ class StoreHDF {
         H5Fclose(file_id);
     }
 
-
     /**
-    * Read an HDF5 table into an DASH array.
+    * Read an HDF5 table into a dash::Array using parallel IO
+    * if the array is already allocated, the size has to match the HDF5 table
+     * size and all data will be overwritten.
+    * Otherwise the array will be allocated.
+    * \param array     Import data in this dash::Array
+     * \param filename  Filename of HDF5 file including extension
+    * \param table     HDF5 Table in which the data is stored
+     * \param foptions
     */
     template<typename value_t>
     static void read(
@@ -446,9 +480,15 @@ class StoreHDF {
         H5Fclose(file_id);
     }
 
-
     /**
-    * Import a HDF5 n-dimensional matrix into a DASH::Matrix
+     * Read an HDF5 table into a dash::Matrix using parallel IO
+     * if the matrix is already allocated, the sizes have to match
+    	 * the HDF5 table sizes and all data will be overwritten.
+     * Otherwise the matrix will be allocated.
+     * \param matrix    Import data in this dash::Matrix
+    	 * \param filename  Filename of HDF5 file including extension
+     * \param table     HDF5 Table in which the data is stored
+    	 * \param foptions
      */
     template <
         typename value_t,
@@ -608,6 +648,10 @@ class StoreHDF {
     }
 
   public:
+    /**
+    * Returns default file options
+     * \return hdf5_file_options struct
+    */
     static inline hdf5_file_options get_default_options() {
         return _get_fdefaults();
     }

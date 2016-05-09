@@ -34,6 +34,10 @@ class HDF5Options {
     }
 };
 
+/**
+ * DASH stream API to store an dash::Array or dash::Matrix
+ * in an HDF5 file using parallel IO.
+ */
 
 class HDF5OutputStream {
   private:
