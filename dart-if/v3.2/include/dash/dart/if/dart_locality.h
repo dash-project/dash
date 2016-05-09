@@ -27,8 +27,20 @@ extern "C" {
  */
 dart_ret_t dart_domain_locality(
   dart_team_t               team,
-  const char              * domain,
+  const char              * domain_tag,
   dart_domain_locality_t ** loc);
+
+/**
+ * Domain tags of all domains with the specified locality scope.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_scope_domains(
+  dart_team_t               team,
+  const char              * domain_tag,
+  dart_locality_scope_t     scope,
+  int                     * num_domains_out,
+  char                  *** domain_tags_out);
 
 /**
  * Locality information of the unit with the specified global id.

@@ -26,12 +26,6 @@
  * Private Functions                                                             *
  * ============================================================================= */
 
-dart_ret_t dart_group_locality_split_recurse(
-  dart_domain_locality_t  * domain,
-  dart_locality_scope_t     scope,
-  int                     * num_domains_out,
-  char                  *** domain_tags_out);
-
 dart_ret_t dart_group_init(
   dart_group_t *group)
 {
@@ -262,22 +256,13 @@ dart_ret_t dart_group_locality_split(
 
   dart_team_t team = domain->team;
 
-#if 0
-  int n_units;
-  MPI_Group_size(group->mpi_group, &n_units);
-
-  dart_unit_t * unit_ids =
-    (dart_unit_t *)(
-      malloc(n_units * sizeof(dart_unit_t)));
-  dart_group_getmembers(g, unit_ids);
-#endif
-
   /* query domain tags of all domains in specified scope: */
-  int     num_domains = 0;
-  char ** domain_tags = NULL;
+  int     num_domains;
+  char ** domain_tags;
   DART_ASSERT_RETURNS(
-    dart_group_locality_split_recurse(
-      domain,
+    dart_scope_domains(
+      team,
+      domain->domain_tag,
       scope,
       &num_domains,
       &domain_tags),
@@ -435,55 +420,6 @@ dart_ret_t dart_group_locality_split(
   free(domain_tags);
 
   DART_LOG_TRACE("dart_group_locality_split >");
-  return DART_OK;
-}
-
-dart_ret_t dart_group_locality_split_recurse(
-  dart_domain_locality_t  * domain,
-  dart_locality_scope_t     scope,
-  int                     * num_domains_out,
-  char                  *** domain_tags_out)
-{
-  dart_ret_t ret;
-  DART_LOG_TRACE("dart_group_locality_split_recurse() level %d",
-                 domain->level);
-
-  if (domain->scope == scope) {
-    DART_LOG_TRACE("dart_group_locality_split_recurse domain %s matched",
-                   domain->domain_tag);
-    int     dom_idx           = *num_domains_out;
-    *num_domains_out         += 1;
-    char ** domain_tags_temp  = (char **)(
-                                  realloc(*domain_tags_out,
-                                            sizeof(char *) *
-                                            (*num_domains_out)));
-    if (domain_tags_temp != NULL) {
-      int domain_tag_size         = strlen(domain->domain_tag) + 1;
-      *domain_tags_out            = domain_tags_temp;
-      (*domain_tags_out)[dom_idx] = malloc(sizeof(char) * domain_tag_size);
-      strncpy((*domain_tags_out)[dom_idx], domain->domain_tag,
-              DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
-    } else {
-      DART_LOG_ERROR("dart_group_locality_split_recurse ! realloc failed");
-      return DART_ERR_OTHER;
-    }
-  } else {
-    for (int d = 0; d < domain->num_domains; ++d) {
-      ret = dart_group_locality_split_recurse(
-              &domain->domains[d],
-              scope,
-              num_domains_out,
-              domain_tags_out);
-      if (ret != DART_OK) {
-        return ret;
-      }
-    }
-  }
-  if (*num_domains_out <= 0) {
-    DART_LOG_ERROR("dart_group_locality_split_recurse ! no domains found");
-    return DART_ERR_NOTFOUND;
-  }
-  DART_LOG_TRACE("dart_group_locality_split_recurse >");
   return DART_OK;
 }
 

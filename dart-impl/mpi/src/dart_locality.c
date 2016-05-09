@@ -44,6 +44,24 @@ dart_ret_t dart_domain_locality(
   return DART_OK;
 }
 
+dart_ret_t dart_scope_domains(
+  dart_team_t               team,
+  const char              * domain_tag,
+  dart_locality_scope_t     scope,
+  int                     * num_domains_out,
+  char                  *** domain_tags_out)
+{
+  *num_domains_out = 0;
+  *domain_tags_out = NULL;
+
+  return dart__base__locality__scope_domains(
+           team,
+           domain_tag,
+           scope,
+           num_domains_out,
+           domain_tags_out);
+}
+
 /* ======================================================================== *
  * Unit Locality                                                            *
  * ======================================================================== */

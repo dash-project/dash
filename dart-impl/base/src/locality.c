@@ -50,6 +50,16 @@ dart_domain_locality_t *
 dart__base__locality__global_domain_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
 /* ======================================================================== *
+ * Private Functions                                                        *
+ * ======================================================================== */
+
+dart_ret_t dart__base__locality__scope_domains_rec(
+  dart_domain_locality_t  * domain,
+  dart_locality_scope_t     scope,
+  int                     * num_domains_out,
+  char                  *** domain_tags_out);
+
+/* ======================================================================== *
  * Init / Finalize                                                          *
  * ======================================================================== */
 
@@ -279,6 +289,25 @@ dart_ret_t dart__base__locality__domain(
   return DART_OK;
 }
 
+dart_ret_t dart__base__locality__scope_domains(
+  dart_team_t               team,
+  const char              * domain_tag,
+  dart_locality_scope_t     scope,
+  int                     * num_domains_out,
+  char                  *** domain_tags_out)
+{
+  *num_domains_out = 0;
+  *domain_tags_out = NULL;
+
+  dart_domain_locality_t * domain;
+  DART_ASSERT_RETURNS(
+    dart__base__locality__domain(team, domain_tag, &domain),
+    DART_OK);
+
+  return dart__base__locality__scope_domains_rec(
+           domain, scope, num_domains_out, domain_tags_out);
+}
+
 /* ======================================================================== *
  * Unit Locality                                                            *
  * ======================================================================== */
@@ -305,6 +334,59 @@ dart_ret_t dart__base__locality__unit(
 
   DART_LOG_DEBUG("dart__base__locality__unit > team(%d) unit(%d)",
                  team, unit);
+  return DART_OK;
+}
+
+/* ======================================================================== *
+ * Private Function Definitions                                             *
+ * ======================================================================== */
+
+dart_ret_t dart__base__locality__scope_domains_rec(
+  dart_domain_locality_t  * domain,
+  dart_locality_scope_t     scope,
+  int                     * num_domains_out,
+  char                  *** domain_tags_out)
+{
+  dart_ret_t ret;
+  DART_LOG_TRACE("dart__base__locality__scope_domains() level %d",
+                 domain->level);
+
+  if (domain->scope == scope) {
+    DART_LOG_TRACE("dart__base__locality__scope_domains domain %s matched",
+                   domain->domain_tag);
+    int     dom_idx           = *num_domains_out;
+    *num_domains_out         += 1;
+    char ** domain_tags_temp  = (char **)(
+                                  realloc(*domain_tags_out,
+                                            sizeof(char *) *
+                                            (*num_domains_out)));
+    if (domain_tags_temp != NULL) {
+      int domain_tag_size         = strlen(domain->domain_tag) + 1;
+      *domain_tags_out            = domain_tags_temp;
+      (*domain_tags_out)[dom_idx] = malloc(sizeof(char) * domain_tag_size);
+      strncpy((*domain_tags_out)[dom_idx], domain->domain_tag,
+              DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
+    } else {
+      DART_LOG_ERROR("dart__base__locality__scope_domains ! realloc failed");
+      return DART_ERR_OTHER;
+    }
+  } else {
+    for (int d = 0; d < domain->num_domains; ++d) {
+      ret = dart__base__locality__scope_domains_rec(
+              &domain->domains[d],
+              scope,
+              num_domains_out,
+              domain_tags_out);
+      if (ret != DART_OK) {
+        return ret;
+      }
+    }
+  }
+  if (*num_domains_out <= 0) {
+    DART_LOG_ERROR("dart__base__locality__scope_domains ! no domains found");
+    return DART_ERR_NOTFOUND;
+  }
+  DART_LOG_TRACE("dart__base__locality__scope_domains >");
   return DART_OK;
 }
 
