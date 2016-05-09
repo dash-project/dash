@@ -40,16 +40,19 @@ class HDF5OutputStream {
     std::string                _filename;
     std::string                _table;
     hdf5_file_options					 _foptions;
+    bool											 _flushed;
 
   public:
     HDF5OutputStream(std::string filename) {
         _filename = filename;
+        _flushed  = false;
         _foptions = dash::io::StoreHDF::get_default_options();
     }
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
         const HDF5Table & tbl) {
+        os._assert_flush();
         os._table = tbl._table;
         return os;
     }
@@ -57,6 +60,7 @@ class HDF5OutputStream {
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
         hdf5_file_options opts) {
+        os._assert_flush();
         os._foptions = opts;
         return os;
     }
@@ -73,6 +77,14 @@ class HDF5OutputStream {
         ndim,
         index_t,
         pattern_t > &matrix);
+
+  private:
+    void _assert_flush() {
+        if(_flushed) {
+            dash::exception::AssertionFailed(
+                "cannot modify HDF5 parameters because matrix is already written");
+        }
+    }
 };
 
 

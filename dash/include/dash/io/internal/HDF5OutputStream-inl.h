@@ -23,6 +23,10 @@ inline HDF5OutputStream & operator<< (
     ndim,
     index_t,
     pattern_t > &matrix) {
+
+    // make stream immutable
+    os._flushed = true;
+
     matrix.barrier();
     dash::io::StoreHDF::write(
         matrix,
