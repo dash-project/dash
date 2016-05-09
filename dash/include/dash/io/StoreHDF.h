@@ -26,6 +26,7 @@
 /**
  * DASH wrapper to store an dash::Array or dash::Matrix
  * in an HDF5 file using parallel IO.
+ * All operations are collective.
  */
 namespace dash {
 namespace io {
@@ -36,6 +37,8 @@ class StoreHDF {
     * Options which can be passed to dash::io::StoreHDF::write
     * to specify how existing structures are treated and what
     * metadata is stored.
+    *
+    * Collective operation.
     */
     typedef struct hdf5_file_options_t {
         /// Overwrite HDF5 file if already existing
@@ -52,7 +55,8 @@ class StoreHDF {
 
   public:
     /**
-     * Store all dash::Array values in an HDF5 file using parallel IO
+     * Store all dash::Array values in an HDF5 file using parallel IO.
+     * Collective operation.
      * \param array     Array to store
     	 * \param filename  Filename of HDF5 file including extension
      * \param table     HDF5 Table in which the data is stored
@@ -205,6 +209,7 @@ class StoreHDF {
 
     /**
     * Store all dash::Matrix values in an HDF5 file using parallel IO
+    	* Collective operation.
     * \param array     Array to store
      * \param filename  Filename of HDF5 file including extension
     * \param table     HDF5 Table in which the data is stored
@@ -363,6 +368,8 @@ class StoreHDF {
     * if the array is already allocated, the size has to match the HDF5 table
      * size and all data will be overwritten.
     * Otherwise the array will be allocated.
+    *
+    * Colletive operation.
     * \param array     Import data in this dash::Array
      * \param filename  Filename of HDF5 file including extension
     * \param table     HDF5 Table in which the data is stored
