@@ -33,11 +33,15 @@ int main(int argc, char * argv[])
       locality_split   = false;
       split_num_groups = static_cast<int>(strtol(argv[2], NULL, 10));
     } else if (std::string(argv[1]) == "-ls") {
-      split_scope = DART_LOCALITY_SCOPE_NODE;
+      locality_split   = true;
+      split_scope      = DART_LOCALITY_SCOPE_NODE;
       if (std::string(argv[2]) == "module") {
         split_scope = DART_LOCALITY_SCOPE_MODULE;
       } else if (std::string(argv[2]) == "numa") {
         split_scope = DART_LOCALITY_SCOPE_NUMA;
+      }
+      if (argc >= 4) {
+        split_num_groups = static_cast<int>(strtol(argv[3], NULL, 10));
       }
     }
   }
@@ -58,12 +62,14 @@ int main(int argc, char * argv[])
   dart_barrier(DART_TEAM_ALL);
   if (myid == 0) {
     cout << "Usage:" << endl
-         << "  ex.07.locality [-s <num_split_groups> | -ls <split_scope>]" << endl
+         << "  ex.07.locality [-s <num_split_groups> | -ls <split_scope>]"
+         << endl
          << endl
          << "  ex.07.locality ";
     if (locality_split) {
-      cout << "-ls " << argv[2] << ": "
-           << "locality split into groups at scope " << split_scope << endl;
+      cout << "-ls " << argv[2] << " " << split_num_groups << ": "
+           << "locality split into " << split_num_groups << " groups "
+           << "at scope " << split_scope << endl;
     } else {
       cout << "-s " << split_num_groups << ": "
            << "regular split into " << split_num_groups << " groups" << endl;
@@ -97,7 +103,8 @@ int main(int argc, char * argv[])
   }
 
   auto & split_team = locality_split
-                      ? dash::Team::All().locality_split(split_scope)
+                      ? dash::Team::All().locality_split(split_scope,
+                                                         split_num_groups)
                       : dash::Team::All().split(split_num_groups);
 
   std::ostringstream t_os;
