@@ -5,12 +5,11 @@
 
 #include "TestBase.h"
 #include "TestLogHelpers.h"
-#include "HDF5.h"
+#include "HDF5MatrixTest.h"
 
 #include "limits.h"
 
 typedef int value_t;
-typedef dash::Array<value_t, long> array_t;
 
 /**
  * Cantors pairing function to map n-tuple to single number
@@ -76,56 +75,7 @@ void verify_matrix(dash::Matrix<T, ndim, IndexT, PatternT> & matrix,
         f);
 }
 
-
-TEST_F(HDFTest, StoreLargeDashArray) {
-    // Pattern for arr2 array
-    size_t nunits           = dash::Team::All().size();
-    size_t tilesize         = 512 * 512;
-    size_t blocks_per_unit  = 32;
-    size_t size             = nunits * tilesize * blocks_per_unit;
-    long   mbsize_total     = (size * sizeof(value_t)) / (tilesize);
-    long   mbsize_unit      = mbsize_total / nunits;
-
-    // Add some randomness to the data
-    std::srand(time(NULL));
-    int local_secret = std::rand() % 1000;
-    int myid         = dash::myid();
-
-    {
-        // Create first array
-        array_t arr1(size, dash::TILE(tilesize));
-
-        // Fill Array
-        for (int i = 0; i < arr1.local.size(); i++) {
-            arr1.local[i] = local_secret + myid + i;
-        }
-
-        dash::barrier();
-
-        DASH_LOG_DEBUG("Estimated memory per rank: ", mbsize_unit, "MB");
-        DASH_LOG_DEBUG("Estimated memory total: ", mbsize_total, "MB");
-        DASH_LOG_DEBUG("Array filled, begin hdf5 store");
-
-        dash::io::StoreHDF::write(arr1, "test.hdf5", "data");
-        dash::barrier();
-    }
-    DASH_LOG_DEBUG("Array successfully written ");
-
-    // Create second array
-    dash::Array<value_t> arr2;
-    dash::barrier();
-    dash::io::StoreHDF::read(arr2, "test.hdf5", "data");
-
-    dash::barrier();
-    for (int i = 0; i < arr2.local.size(); i++) {
-        ASSERT_EQ_U(
-            static_cast<int>(arr2.local[i]),
-            local_secret + myid + i);
-    }
-    dash::barrier();
-}
-
-TEST_F(HDFTest, StoreMultiDimMatrix) {
+TEST_F(HDFMatrixTest, StoreMultiDimMatrix) {
     typedef dash::TilePattern<2>  pattern_t;
     typedef dash::Matrix <
     value_t,
@@ -168,14 +118,14 @@ TEST_F(HDFTest, StoreMultiDimMatrix) {
         }
         dash::barrier();
         DASH_LOG_DEBUG("BEGIN STORE HDF");
-        dash::io::StoreHDF::write(mat1, "test.hdf5", "data");
+        dash::io::StoreHDF::write(mat1, _filename, _table);
         DASH_LOG_DEBUG("END STORE HDF");
         dash::barrier();
     }
     dash::barrier();
 }
 
-TEST_F(HDFTest, StoreSUMMAMatrix) {
+TEST_F(HDFMatrixTest, StoreSUMMAMatrix) {
     typedef double  value_t;
     typedef long    index_t;
 
@@ -211,17 +161,17 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
         dash::barrier();
 
         // Store Matrix
-        dash::io::StoreHDF::write(matrix_a, "test.hdf5", "data");
+        dash::io::StoreHDF::write(matrix_a, _filename, _table);
         dash::barrier();
     }
 
     dash::Matrix<double, 2> matrix_b;
-    dash::io::StoreHDF::read(matrix_b, "test.hdf5", "data");
+    dash::io::StoreHDF::read(matrix_b, _filename, _table);
     dash::barrier();
     verify_matrix(matrix_b, static_cast<double>(myid));
 }
 
-TEST_F(HDFTest, AutoGeneratePattern) {
+TEST_F(HDFMatrixTest, AutoGeneratePattern) {
     {
         auto matrix_a = dash::Matrix<int, 2>(
                             dash::SizeSpec<2>(
@@ -235,11 +185,11 @@ TEST_F(HDFTest, AutoGeneratePattern) {
         auto fopts = dash::io::StoreHDF::get_default_options();
         fopts.store_pattern = false;
 
-        dash::io::StoreHDF::write(matrix_a, "test.hdf5", "data", fopts);
+        dash::io::StoreHDF::write(matrix_a, _filename, _table, fopts);
         dash::barrier();
     }
     dash::Matrix<int, 2> matrix_b;
-    dash::io::StoreHDF::read(matrix_b, "test.hdf5", "data");
+    dash::io::StoreHDF::read(matrix_b, _filename, _table);
     dash::barrier();
 
     // Verify
@@ -249,7 +199,7 @@ TEST_F(HDFTest, AutoGeneratePattern) {
 // Import data into a already allocated matrix
 // because matrix_a and matrix_b are allocated the same way
 // it is expected that each unit remains its local ranges
-TEST_F(HDFTest, PreAllocation) {
+TEST_F(HDFMatrixTest, PreAllocation) {
     int ext_x = dash::size();
     int ext_y = ext_x*2+1;
     {
@@ -265,14 +215,14 @@ TEST_F(HDFTest, PreAllocation) {
         auto fopts = dash::io::StoreHDF::get_default_options();
         fopts.store_pattern = false;
 
-        dash::io::StoreHDF::write(matrix_a, "test.hdf5", "data", fopts);
+        dash::io::StoreHDF::write(matrix_a, _filename, _table, fopts);
         dash::barrier();
     }
     dash::Matrix<int, 2> matrix_b(
         dash::SizeSpec<2>(
             ext_x,
             ext_y));
-    dash::io::StoreHDF::read(matrix_b, "test.hdf5", "data");
+    dash::io::StoreHDF::read(matrix_b, _filename, _table);
     dash::barrier();
 
     // Verify
@@ -280,7 +230,7 @@ TEST_F(HDFTest, PreAllocation) {
 }
 
 // Test Stream API
-TEST_F(HDFTest, OutputStream) {
+TEST_F(HDFMatrixTest, OutputStream) {
     {
         auto matrix_a = dash::Matrix<long, 2>(
                             dash::SizeSpec<2>(
@@ -291,16 +241,16 @@ TEST_F(HDFTest, OutputStream) {
         dash::barrier();
 
         auto fopts = dash::io::StoreHDF::get_default_options();
-        auto os  = dash::io::HDF5OutputStream("test.hdf5");
-        os   << dash::io::HDF5Table("data")
+        auto os  = dash::io::HDF5OutputStream(_filename);
+        os   << dash::io::HDF5Table(_table)
              << fopts
              << matrix_a;
     }
     dash::barrier();
     // Import data
     dash::Matrix<long, 2> matrix_b;
-    auto is = dash::io::HDF5OutputStream("test.hdf5");
-    (is << dash::io::HDF5Table("data")) >> matrix_b;
+    auto is = dash::io::HDF5OutputStream(_filename);
+    (is << dash::io::HDF5Table(_table)) >> matrix_b;
 
     verify_matrix(matrix_b);
 }
@@ -309,7 +259,7 @@ TEST_F(HDFTest, OutputStream) {
 // Test Conversion between dash::Array and dash::Matrix
 // Currently not possible as matrix has to be at least
 // two dimensional
-TEST_F(HDFTest, ArrayToMatrix) {
+TEST_F(HDFMatrixTest, ArrayToMatrix) {
     {
         auto array = dash::Array<int>(100, dash::CYCLIC);
         if(dash::myid() == 0) {
@@ -322,11 +272,11 @@ TEST_F(HDFTest, ArrayToMatrix) {
         auto fopts = dash::io::StoreHDF::get_default_options();
         fopts.store_pattern = false;
 
-        dash::io::StoreHDF::write(array, "test.hdf5", "data");
+        dash::io::StoreHDF::write(array, _filename, _table);
         dash::barrier();
     }
     dash::Matrix<int, 1> matrix;
-    dash::io::StoreHDF::read(matrix, "test.hdf5", "data");
+    dash::io::StoreHDF::read(matrix, _filename, _table);
     dash::barrier();
 
     // Verify
