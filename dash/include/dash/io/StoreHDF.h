@@ -492,6 +492,7 @@ class StoreHDF {
      * if the matrix is already allocated, the sizes have to match
     	 * the HDF5 table sizes and all data will be overwritten.
      * Otherwise the matrix will be allocated.
+     * Collective operation
      * \param matrix    Import data in this dash::Matrix
     	 * \param filename  Filename of HDF5 file including extension
      * \param table     HDF5 Table in which the data is stored
@@ -569,8 +570,13 @@ class StoreHDF {
         }
 
         // Check if file contains DASH metadata and recreate the pattern
-        auto pat_key = foptions.pattern_metadata_key.c_str();
-        if (foptions.restore_pattern && H5Aexists(dataset, pat_key)) {
+        auto pat_key   = foptions.pattern_metadata_key.c_str();
+        // Check if matrix is already allocated
+        bool is_alloc  = (matrix.size() != 0);
+
+        if (!is_alloc												// not allocated
+                && foptions.restore_pattern			// pattern should be restored
+                && H5Aexists(dataset, pat_key)) { // hdf5 contains pattern
             hsize_t attr_len[]  = { ndim * 4};
             hid_t attrspace      = H5Screate_simple(1, attr_len, NULL);
             hid_t attribute_id  = H5Aopen(dataset, pat_key, H5P_DEFAULT);
@@ -591,23 +597,22 @@ class StoreHDF {
                 dash::SizeSpec<ndim>(size_extents),
                 dash::DistributionSpec<ndim>(dist_extents),
                 dash::TeamSpec<ndim>(team_extents));
+        } else if(is_alloc) {
+            DASH_LOG_DEBUG("Matrix already allocated");
+            // Check if matrix extents match data extents
+            auto pattern_extents = matrix.pattern().extents();
+            for(int i=0; i < ndim; i++) {
+                DASH_ASSERT_EQ(
+                    size_extents[i],
+                    pattern_extents[i],
+                    "Matrix extents do not match data extents");
+            }
         } else {
-            team_extents[0] = dash::size();
-            auto teamspec = dash::TeamSpec<ndim>(team_extents);
-            auto sizespec = dash::SizeSpec<ndim>(team_extents);
-            teamspec.balance_extents();
-#if 0
-            // Buggy
-            auto pattern =   dash::make_pattern <
-                             dash::pattern_partitioning_properties <
-                             dash::pattern_partitioning_tag::minimal > ,
-                             dash::pattern_layout_properties <
-                             dash::pattern_layout_tag::blocked > > (
-                                 teamspec,
-                                 sizespec);
+            // Auto deduce pattern
+            auto sizespec = dash::SizeSpec<ndim>(size_extents);
+            auto pattern = dash::TilePattern<ndim>(sizespec);
+
             matrix.allocate(pattern);
-#endif
-            DASH_ASSERT("Currently not supported");
         }
 
         h5datatype = _convertType(*matrix.lbegin()); // hack

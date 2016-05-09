@@ -213,29 +213,6 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
         // Store Matrix
         dash::io::StoreHDF::write(matrix_a, "test.hdf5", "data");
         dash::barrier();
-
-#if 0
-        std::ostream cout;
-        cout << std::setprecision(4) << std::setw(8)
-             << std::left
-             << (double)(4.5432)
-
-             dash::HDF5OutputStream os("test.hdf5");
-
-        os << dash::HDF5Table("data")
-           << dash::HDF5::transposed
-           << matrix_a;
-        os.flush();
-
-        matrix_t m;
-        os >> m;
-
-
-
-        dash::HDF5OutputStream os("test.hdf5");
-#endif
-
-        // Read HDF5 Matrix
     }
 
     dash::Matrix<double, 2> matrix_b;
@@ -244,7 +221,7 @@ TEST_F(HDFTest, StoreSUMMAMatrix) {
     verify_matrix(matrix_b, static_cast<double>(myid));
 }
 
-TEST_F(HDFTest, Options) {
+TEST_F(HDFTest, AutoGeneratePattern) {
     {
         auto matrix_a = dash::Matrix<int, 2>(
                             dash::SizeSpec<2>(
@@ -262,29 +239,63 @@ TEST_F(HDFTest, Options) {
         dash::barrier();
     }
     dash::Matrix<int, 2> matrix_b;
-    //dash::io::StoreHDF::read(matrix_b, "test.hdf5", "data");
+    dash::io::StoreHDF::read(matrix_b, "test.hdf5", "data");
     dash::barrier();
 
     // Verify
-    //verify_matrix(matrix_b);
+    verify_matrix(matrix_b);
+}
+
+// Import data into a already allocated matrix
+// because matrix_a and matrix_b are allocated the same way
+// it is expected that each unit remains its local ranges
+TEST_F(HDFTest, PreAllocation) {
+    int ext_x = dash::size();
+    int ext_y = ext_x*2+1;
+    {
+        auto matrix_a = dash::Matrix<int, 2>(
+                            dash::SizeSpec<2>(
+                                ext_x,
+                                ext_y));
+        // Fill
+        fill_matrix(matrix_a, dash::myid());
+        dash::barrier();
+
+        // Set option
+        auto fopts = dash::io::StoreHDF::get_default_options();
+        fopts.store_pattern = false;
+
+        dash::io::StoreHDF::write(matrix_a, "test.hdf5", "data", fopts);
+        dash::barrier();
+    }
+    dash::Matrix<int, 2> matrix_b(
+        dash::SizeSpec<2>(
+            ext_x,
+            ext_y));
+    dash::io::StoreHDF::read(matrix_b, "test.hdf5", "data");
+    dash::barrier();
+
+    // Verify
+    verify_matrix(matrix_b, dash::myid());
 }
 
 TEST_F(HDFTest, OutputStream) {
-    auto matrix_a = dash::Matrix<long, 2>(
-                        dash::SizeSpec<2>(
-                            dash::size(),
-                            dash::size()));
+    {
+        auto matrix_a = dash::Matrix<long, 2>(
+                            dash::SizeSpec<2>(
+                                dash::size(),
+                                dash::size()));
 
-    fill_matrix(matrix_a);
+        fill_matrix(matrix_a);
+        dash::barrier();
+
+        auto fopts = dash::io::StoreHDF::get_default_options();
+        auto os  = dash::io::HDF5OutputStream("test.hdf5");
+        os   << dash::io::HDF5Table("data")
+             << fopts
+             << matrix_a;
+    }
     dash::barrier();
-
-    auto fopts = dash::io::StoreHDF::get_default_options();
-    auto os  = dash::io::HDF5OutputStream("test.hdf5");
-    os   << dash::io::HDF5Table("data")
-         << fopts
-         << matrix_a;
-    dash::barrier();
-
     // Import data
     dash::Matrix<long, 2> matrix_b;
     auto is = dash::io::HDF5OutputStream("test.hdf5");
