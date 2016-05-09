@@ -268,24 +268,30 @@ TEST_F(HDFTest, Options) {
     // Verify
     //verify_matrix(matrix_b);
 }
-#if 1
-TEST_F(HDFTest, OutputStream) {
-    auto matrix = dash::Matrix<long, 2>(
-                      dash::SizeSpec<2>(
-                          dash::size(),
-                          dash::size()));
 
-    fill_matrix(matrix);
+TEST_F(HDFTest, OutputStream) {
+    auto matrix_a = dash::Matrix<long, 2>(
+                        dash::SizeSpec<2>(
+                            dash::size(),
+                            dash::size()));
+
+    fill_matrix(matrix_a);
     dash::barrier();
 
     auto fopts = dash::io::StoreHDF::get_default_options();
-    auto test  = dash::io::HDF5OutputStream("test_stream.hdf5");
-    test << dash::io::HDF5Table("data")
+    auto os  = dash::io::HDF5OutputStream("test.hdf5");
+    os   << dash::io::HDF5Table("data")
          << fopts
-         << matrix;
+         << matrix_a;
     dash::barrier();
+
+    // Import data
+    dash::Matrix<long, 2> matrix_b;
+    auto is = dash::io::HDF5OutputStream("test.hdf5");
+    (is << dash::io::HDF5Table("data")) >> matrix_b;
+
+    verify_matrix(matrix_b);
 }
-#endif
 
 #endif // DASH_ENABLE_HDF5
 

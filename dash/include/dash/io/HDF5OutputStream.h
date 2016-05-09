@@ -84,6 +84,19 @@ class HDF5OutputStream {
         index_t,
         pattern_t > &matrix);
 
+    template <
+        typename value_t,
+        dim_t    ndim,
+        typename index_t,
+        class    pattern_t >
+    friend HDF5OutputStream & operator>> (
+        HDF5OutputStream & os,
+        dash::Matrix < value_t,
+        ndim,
+        index_t,
+        pattern_t > &matrix);
+
+
   private:
     void _assert_flush() {
         if(_flushed) {

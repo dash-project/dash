@@ -36,6 +36,31 @@ inline HDF5OutputStream & operator<< (
     return os;
 }
 
+
+template <
+    typename value_t,
+    dim_t    ndim,
+    typename index_t,
+    class    pattern_t >
+inline HDF5OutputStream & operator>> (
+    HDF5OutputStream & os,
+    dash::Matrix < value_t,
+    ndim,
+    index_t,
+    pattern_t > &matrix) {
+
+    // make stream immutable
+    os._flushed = true;
+
+    matrix.barrier();
+    dash::io::StoreHDF::read(
+        matrix,
+        os._filename,
+        os._table,
+        os._foptions);
+    return os;
+}
+
 } // namespace io
 } // namespace dash
 
