@@ -100,6 +100,7 @@ dart_ret_t dart_group_split(const dart_group_t  * g,
    \c dart_group_t objects.
 */
 dart_ret_t dart_group_locality_split(const dart_group_t      * g,
+                                     dart_domain_locality_t  * domain,
                                      dart_locality_scope_t     scope,
                                      size_t                    n,
                                      dart_group_t           ** gout);

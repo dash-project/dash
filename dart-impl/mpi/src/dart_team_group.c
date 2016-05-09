@@ -9,14 +9,22 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_initialization.h>
+#include <dash/dart/if/dart_locality.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/macro.h>
+#include <dash/dart/base/assert.h>
+#include <dash/dart/base/locality.h>
 
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_group_priv.h>
 
+#include <limits.h>
+
+/* ============================================================================= *
+ * Private Functions                                                             *
+ * ============================================================================= */
 
 dart_ret_t dart_group_init(
   dart_group_t *group)
@@ -198,44 +206,37 @@ dart_ret_t dart_group_getmembers(
 }
 
 dart_ret_t dart_group_split(
-  const dart_group_t *g,
-  size_t n,
-  dart_group_t **gout)
+  const dart_group_t  * g,
+  size_t                n,
+  dart_group_t       ** gout)
 {
   MPI_Group grouptem;
   int size, length, i, ranges[1][3];
 
-  MPI_Group_size (g -> mpi_group, &size);
+  MPI_Group_size(g->mpi_group, &size);
 
   /* Ceiling division. */
-  length = (size+(int)n-1)/(int)n;
+  length = (size + (int)(n-1)) / ((int)(n));
 
   /* Note: split the group into chunks of subgroups. */
-  for (i = 0; i < (int)n; i++)
-  {
-    if (i * length < size)
-    {
+  for (i = 0; i < (int)n; i++) {
+    if (i * length < size) {
       ranges[0][0] = i * length;
 
-      if (i * length + length <= size)
-      {
+      if (i * length + length <= size) {
         ranges[0][1] = i * length + length -1;
-      }
-      else
-      {
+      } else {
         ranges[0][1] = size - 1;
       }
-
       ranges[0][2] = 1;
+
       MPI_Group_range_incl(
-        g -> mpi_group,
+        g->mpi_group,
         1,
         ranges,
         &grouptem);
       (*(gout + i))->mpi_group = grouptem;
-    }
-    else
-    {
+    } else {
       (*(gout + i))->mpi_group = MPI_GROUP_EMPTY;
     }
   }
@@ -243,31 +244,182 @@ dart_ret_t dart_group_split(
 }
 
 dart_ret_t dart_group_locality_split(
-  const dart_group_t      * g,
+  const dart_group_t      * group,
+  dart_domain_locality_t  * domain,
   dart_locality_scope_t     scope,
-  size_t                    n,
+  size_t                    num_groups,
   dart_group_t           ** gout)
 {
-  int n_units;
+  MPI_Group grouptem;
 
-  dart__unused(scope);
-  dart__unused(gout);
-  dart__unused(n);
+  DART_LOG_TRACE("dart_group_locality_split: split at scope %d", scope);
 
-  MPI_Group_size(g->mpi_group, &n_units);
+  dart_team_t team = domain->team;
 
-  dart_unit_t * unit_ids =
-    (dart_unit_t *)(
-      malloc(n_units * sizeof(dart_unit_t)));
-  dart_group_getmembers(g, unit_ids);
+  /* query domain tags of all domains in specified scope: */
+  int     num_domains;
+  char ** domain_tags;
+  DART_ASSERT_RETURNS(
+    dart_scope_domains(
+      team,
+      domain->domain_tag,
+      scope,
+      &num_domains,
+      &domain_tags),
+    DART_OK);
 
+  DART_LOG_TRACE("dart_group_locality_split: %d domains at scope %d",
+                 num_domains, scope);
+
+  /* create a group for every domain in the specified scope: */
+
+  int total_domains_units           = 0;
+  dart_domain_locality_t ** domains = malloc(
+                                        num_domains *
+                                        sizeof(dart_domain_locality_t *));
+  for (int d = 0; d < num_domains; ++d) {
+    DART_ASSERT_RETURNS(
+      dart_domain_locality(team, domain_tags[d], &domains[d]),
+      DART_OK);
+    total_domains_units += domains[d]->num_units;
+
+    DART_LOG_TRACE("dart_group_locality_split: domains[%d]: %s",
+                   d, domain_tags[d]);
+    DART_LOG_TRACE("dart_group_locality_split: - number of units: %d",
+                   domains[d]->num_units);
+  }
+  DART_LOG_TRACE("dart_group_locality_split: total number of units: %d",
+                 total_domains_units);
+
+  /* TODO: splitting into more groups than domains not supported yet: */
+  if (num_groups > (size_t)num_domains) {
+    num_groups = num_domains;
+  }
+
+  if (num_groups == (size_t)num_domains) {
+    /* one domain per group: */
+    for (size_t g = 0; g < num_groups; ++g) {
+      int   group_num_units       = domains[g]->num_units;
+      int * group_team_unit_ids   = domains[g]->unit_ids;
+
+      /* convert relative unit ids from domain to global unit ids: */
+      int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
+      for (int u = 0; u < group_num_units; ++u) {
+        dart_team_unit_l2g(team,
+                           group_team_unit_ids[u],
+                           &group_global_unit_ids[u]);
+        DART_LOG_TRACE("dart_group_locality_split: group[%d].units[%d] "
+                       "global unit id: %d",
+                       g, u, group_global_unit_ids[u]);
+      }
+
+      MPI_Group_incl(
+        group->mpi_group,
+        group_num_units,
+        group_global_unit_ids,
+        &grouptem);
+      (*(gout + g))->mpi_group = grouptem;
+
+      free(group_global_unit_ids);
+    }
+  } else if (num_groups < (size_t)num_domains) {
+    /* Multiple domains per group. */
 #if 0
-  /* should work without querying full locality domain descriptors */
-  dart_domain_locality_t * unit_domains =
-    (dart_domain_locality_t *)(
-      malloc(n_units * sizeof(dart_domain_locality_t)));
-#endif
+    /* TODO */
+    /* Combine domains into groups such that the number of units in the
+     * groups is balanced, that is: the difference of the number of units of
+     * the groups is minimal.
+     *
+     * Note that this corresponds to the NP-complete partition problem
+     * (see https://en.wikipedia.org/wiki/Partition_problem), more specific
+     * the multi-way partition- or multiprocessor schedulig problem
+     * (see https://en.wikipedia.org/wiki/Multiprocessor_scheduling).
+     *
+     * Using the "Longest Processing Time" (LPT) algorithm here.
+     */
 
+    /* number of units assigned to single groups: */
+    int * units_in_group = calloc(num_groups * sizeof(int), sizeof(int));
+
+    /* sort domains by their number of units: */
+    typedef struct {
+      int domain_idx;
+      int num_units;
+    } domain_units_t_;
+
+    domain_units_t_ * sorted_domains = malloc(num_domains *
+                                              sizeof(domain_units_t_));
+
+    /* minimum number of units in any group: */
+    int min_group_units    = INT_MAX;
+    /* index of group with fewest units: */
+    int smallest_group_idx = 0;
+    for (int d = 0; d < num_domains; ++d) {
+      units_in_group[smallest_group_idx] = sorted_domains[d].num_units;
+      min_group_units = INT_MAX;
+      for (size_t g = 0; g < num_groups; ++g) {
+        if (units_in_group[g] < min_group_units) {
+          smallest_group_idx = g;
+          min_group_units    = units_in_group[g];
+        }
+      }
+    }
+#else
+    /* Preliminary implementation */
+    int max_group_domains = (num_domains + (num_groups-1)) / num_groups;
+    DART_LOG_TRACE("dart_group_locality_split: max. domains per group: %d",
+                   max_group_domains);
+    for (size_t g = 0; g < num_groups; ++g) {
+      int   group_num_units     = 0;
+      int * group_team_unit_ids = NULL;
+      int   num_group_domains = max_group_domains;
+      if ((g+1) * max_group_domains > (size_t)num_domains) {
+        num_group_domains = (g * max_group_domains) - num_domains;
+      }
+      DART_LOG_TRACE("dart_group_locality_split: domains in group %d: %d",
+                     g, num_group_domains);
+      int group_first_dom_idx = g * num_group_domains;
+      int group_last_dom_idx  = group_first_dom_idx + num_group_domains;
+      for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
+        group_num_units += domains[d]->num_units;
+      }
+      group_team_unit_ids = malloc(sizeof(int) * group_num_units);
+      int group_unit_idx = 0;
+      for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
+        for (int u = 0; u < domains[d]->num_units; ++u) {
+          group_team_unit_ids[group_unit_idx + u] = domains[d]->unit_ids[u];
+        }
+        group_unit_idx += domains[d]->num_units;
+      }
+
+      /* convert relative unit ids from domain to global unit ids: */
+      int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
+      for (int u = 0; u < group_num_units; ++u) {
+        dart_team_unit_l2g(team,
+                           group_team_unit_ids[u],
+                           &group_global_unit_ids[u]);
+        DART_LOG_TRACE("dart_group_locality_split: group[%d].units[%d] "
+                       "global unit id: %d",
+                       g, u, group_global_unit_ids[u]);
+      }
+
+      MPI_Group_incl(
+        group->mpi_group,
+        group_num_units,
+        group_global_unit_ids,
+        &grouptem);
+      (*(gout + g))->mpi_group = grouptem;
+
+      free(group_team_unit_ids);
+      free(group_global_unit_ids);
+    }
+#endif
+  }
+
+  free(domains);
+  free(domain_tags);
+
+  DART_LOG_TRACE("dart_group_locality_split >");
   return DART_OK;
 }
 
@@ -278,9 +430,9 @@ dart_ret_t dart_group_sizeof(size_t *size)
 }
 
 dart_ret_t dart_group_ismember(
-  const dart_group_t *g,
-  dart_unit_t unitid,
-  int32_t *ismember)
+  const dart_group_t * g,
+  dart_unit_t          unitid,
+  int32_t            * ismember)
 {
   dart_unit_t id;
   dart_myid (&id);
@@ -302,8 +454,8 @@ dart_ret_t dart_group_ismember(
 }
 
 dart_ret_t dart_team_get_group(
-  dart_team_t teamid,
-  dart_group_t *group)
+  dart_team_t    teamid,
+  dart_group_t * group)
 {
   MPI_Comm comm;
   uint16_t index;
@@ -313,7 +465,7 @@ dart_ret_t dart_team_get_group(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  MPI_Comm_group (comm, & (group->mpi_group));
+  MPI_Comm_group(comm, &(group->mpi_group));
   return DART_OK;
 }
 
@@ -327,30 +479,32 @@ dart_ret_t dart_team_get_group(
  *  newteam.
  */
 dart_ret_t dart_team_create(
-  dart_team_t teamid,
-  const dart_group_t* group,
-  dart_team_t *newteam)
+  dart_team_t          teamid,
+  const dart_group_t * group,
+  dart_team_t        * newteam)
 {
-  MPI_Comm comm;
-  MPI_Comm subcomm;
-  MPI_Win win;
-  uint16_t index, unique_id;
-  size_t size;
+  MPI_Comm    comm;
+  MPI_Comm    subcomm;
+  MPI_Win     win;
+  uint16_t    index,
+              unique_id;
+  size_t      size;
   dart_team_t max_teamid = -1;
-  dart_unit_t sub_unit, unit;
+  dart_unit_t sub_unit,
+              unit;
 
-  dart_myid (&unit);
-  dart_size (&size);
-  dart_team_myid (teamid, &sub_unit);
+  dart_myid(&unit);
+  dart_size(&size);
+  dart_team_myid(teamid, &sub_unit);
 
-  int result = dart_adapt_teamlist_convert (teamid, &unique_id);
+  int result = dart_adapt_teamlist_convert(teamid, &unique_id);
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[unique_id];
+  comm    = dart_teams[unique_id];
   subcomm = MPI_COMM_NULL;
 
-  MPI_Comm_create (comm, group -> mpi_group, &subcomm);
+  MPI_Comm_create(comm, group -> mpi_group, &subcomm);
 
   *newteam = DART_TEAM_NULL;
 
@@ -443,30 +597,30 @@ dart_ret_t dart_team_create(
       MPI_INFO_NULL,
       &sharedmem_comm);
     dart_sharedmem_comm_list[index] = sharedmem_comm;
+
     if (sharedmem_comm != MPI_COMM_NULL) {
       MPI_Comm_size(
         sharedmem_comm,
         &(dart_sharedmemnode_size[index]));
 
-  //    dart_unit_mapping[index] = (int*)malloc (
-  //      dart_sharedmem_size[index] * sizeof (int));
+//    dart_unit_mapping[index] = (int*)malloc (
+//      dart_sharedmem_size[index] * sizeof (int));
 
       MPI_Comm_group(sharedmem_comm, &sharedmem_group);
       MPI_Comm_group(MPI_COMM_WORLD, &group_all);
 
-      int* dart_unit_mapping = (int *)malloc (
-        dart_sharedmemnode_size[index] * sizeof (int));
-      int* sharedmem_ranks = (int*)malloc (
-        dart_sharedmemnode_size[index] * sizeof (int));
-
-      dart_sharedmem_table[index] = (int*)malloc(size * sizeof(int));
+      int * dart_unit_mapping     = malloc(dart_sharedmemnode_size[index] *
+                                           sizeof(int));
+      int * sharedmem_ranks       = malloc(dart_sharedmemnode_size[index] *
+                                           sizeof (int));
+      dart_sharedmem_table[index] = malloc(size * sizeof(int));
 
       for (i = 0; i < dart_sharedmemnode_size[index]; i++) {
         sharedmem_ranks[i] = i;
       }
 
-  //    MPI_Group_translate_ranks (sharedmem_group, dart_sharedmem_size[index],
-  //        sharedmem_ranks, group_all, dart_unit_mapping[index]);
+//    MPI_Group_translate_ranks (sharedmem_group, dart_sharedmem_size[index],
+//        sharedmem_ranks, group_all, dart_unit_mapping[index]);
       MPI_Group_translate_ranks(
         sharedmem_group,
         dart_sharedmemnode_size[index],
@@ -480,15 +634,19 @@ dart_ret_t dart_team_create(
       for (i = 0; i < dart_sharedmemnode_size[index]; i++) {
         dart_sharedmem_table[index][dart_unit_mapping[i]] = i;
       }
-      free (sharedmem_ranks);
-      free (dart_unit_mapping);
+      free(sharedmem_ranks);
+      free(dart_unit_mapping);
     }
-
 #endif
     MPI_Win_lock_all(0, win);
-    DART_LOG_DEBUG ("%2d: TEAMCREATE  - create team %d out of parent team %d",
-           unit, *newteam, teamid);
+    DART_LOG_DEBUG("TEAMCREATE - create team %d from parent team %d",
+                   *newteam, teamid);
   }
+
+  if (*newteam != DART_TEAM_NULL) {
+    dart__base__locality__create(*newteam);
+  }
+
   return DART_OK;
 }
 
@@ -545,8 +703,8 @@ dart_ret_t dart_size(size_t *size)
 }
 
 dart_ret_t dart_team_myid(
-  dart_team_t teamid,
-  dart_unit_t *unitid)
+  dart_team_t   teamid,
+  dart_unit_t * unitid)
 {
   MPI_Comm comm;
   uint16_t index;
@@ -562,8 +720,8 @@ dart_ret_t dart_team_myid(
 }
 
 dart_ret_t dart_team_size(
-  dart_team_t teamid,
-  size_t *size)
+  dart_team_t   teamid,
+  size_t      * size)
 {
   MPI_Comm comm;
   uint16_t index;
@@ -584,9 +742,9 @@ dart_ret_t dart_team_size(
 }
 
 dart_ret_t dart_team_unit_l2g(
-  dart_team_t teamid,
-  dart_unit_t localid,
-  dart_unit_t *globalid)
+  dart_team_t   teamid,
+  dart_unit_t   localid,
+  dart_unit_t * globalid)
 {
 #if 0
   dart_unit_t *unitids;
@@ -636,9 +794,9 @@ dart_ret_t dart_team_unit_l2g(
 }
 
 dart_ret_t dart_team_unit_g2l(
-  dart_team_t teamid,
-  dart_unit_t globalid,
-  dart_unit_t *localid)
+  dart_team_t   teamid,
+  dart_unit_t   globalid,
+  dart_unit_t * localid)
 {
 #if 0
   dart_unit_t *unitids;

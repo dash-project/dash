@@ -262,11 +262,13 @@ dart_ret_t dart_exit()
     DART_LOG_ERROR("dart_exit(): DART has not been initialized");
     return DART_ERR_OTHER;
   }
-  _dart_initialized = 0;
-
-	uint16_t index;
+	uint16_t    index;
 	dart_unit_t unitid;
 	dart_myid(&unitid);
+
+  dart__mpi__locality_finalize();
+
+  _dart_initialized = 0;
 
 	DART_LOG_DEBUG("%2d: dart_exit()", unitid);
 	if (dart_adapt_teamlist_convert(DART_TEAM_ALL, &index) == -1) {
@@ -296,14 +298,12 @@ dart_ret_t dart_exit()
 	free(dart_sharedmem_table[index]);
 	free(dart_sharedmem_local_baseptr_set);
 #endif
-	dart_adapt_teamlist_destroy ();
+	dart_adapt_teamlist_destroy();
 
 	if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();
   }
-
-  dart__mpi__locality_finalize();
 
 	DART_LOG_DEBUG("%2d: dart_exit: finalization finished", unitid);
 

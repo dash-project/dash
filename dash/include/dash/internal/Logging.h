@@ -14,6 +14,9 @@
 #include <iterator>
 #include <cstring>
 
+#include <sys/types.h>
+#include <unistd.h>
+
 namespace dash {
   // forward-declaration
   int myid();
@@ -97,12 +100,16 @@ static void Log_Recursive(
   const char* file,
   int line,
   const char* context_tag,
-  std::ostringstream & msg) {
+  std::ostringstream & msg)
+{
+  pid_t pid = getpid();
   std::stringstream buf;
   buf << "[ "
       << std::setw(4) << dash::myid()
       << " "
       << level
+      << " ] [ "
+      << std::right << std::setw(5) << pid
       << " ] "
       << std::left << std::setw(25)
       << file << ":"

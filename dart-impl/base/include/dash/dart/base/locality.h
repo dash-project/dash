@@ -6,47 +6,47 @@
 
 #include <dash/dart/if/dart_types.h>
 
-typedef struct {
-  char          host[DART_LOCALITY_HOST_MAX_SIZE];
-  char          parent[DART_LOCALITY_HOST_MAX_SIZE];
-  dart_unit_t * units;
-  size_t        num_units;
-  int           level;
-} dart_node_units_t;
-
+/* ======================================================================== *
+ * Init / Finalize                                                          *
+ * ======================================================================== */
 
 dart_ret_t dart__base__locality__init();
 
 dart_ret_t dart__base__locality__finalize();
 
+/* ======================================================================== *
+ * Create / Delete                                                          *
+ * ======================================================================== */
 
+dart_ret_t dart__base__locality__create(
+  dart_team_t team);
 
-dart_ret_t dart__base__locality__domain_init(
-  dart_domain_locality_t * loc);
+dart_ret_t dart__base__locality__delete(
+  dart_team_t team);
 
-dart_ret_t dart__base__locality__set_subdomains(
-  const char             * domain_tag,
-  dart_domain_locality_t * subdomains,
-  int                      num_subdomains);
-
-dart_ret_t dart__base__locality__domain_delete(
-  dart_domain_locality_t * loc);
+/* ======================================================================== *
+ * Domain Locality                                                          *
+ * ======================================================================== */
 
 dart_ret_t dart__base__locality__domain(
+  dart_team_t               team,
   const char              * domain_tag,
   dart_domain_locality_t ** locality);
 
+dart_ret_t dart__base__locality__scope_domains(
+  dart_team_t               team,
+  const char              * domain_tag,
+  dart_locality_scope_t     scope,
+  int                     * num_domains_out,
+  char                  *** domain_tags_out);
 
+/* ======================================================================== *
+ * Unit Locality                                                            *
+ * ======================================================================== */
 
-dart_ret_t dart__base__locality__unit_locality_init(
-  dart_unit_locality_t * loc);
-
-dart_ret_t dart__base__locality__local_unit_new(
-  dart_unit_locality_t * locality);
-
-dart_ret_t dart__base__locality__node_units(
-  const char   * hostname,
-  dart_unit_t ** units,
-  size_t       * num_units);
+dart_ret_t dart__base__locality__unit(
+  dart_team_t               team,
+  dart_unit_t               unit,
+  dart_unit_locality_t   ** locality);
 
 #endif /* DART__BASE__LOCALITY_H__ */

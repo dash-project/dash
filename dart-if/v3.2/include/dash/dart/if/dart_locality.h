@@ -1,5 +1,5 @@
 /**
- * \file dart/if/dart_locality.h
+ * \file dash/dart/if/dart_locality.h
  *
  * Functions for querying topology and node-level locality information of
  * teams and units.
@@ -26,23 +26,21 @@ extern "C" {
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_locality(
-  const char              * domain,
+  dart_team_t               team,
+  const char              * domain_tag,
   dart_domain_locality_t ** loc);
 
-dart_ret_t dart_set_domain_locality(
-  dart_domain_locality_t  * loc);
-
 /**
- * Locality information of the team with the specified global id.
+ * Domain tags of all domains with the specified locality scope.
  *
  * \ingroup DartLocality
  */
-dart_ret_t dart_team_locality(
+dart_ret_t dart_scope_domains(
   dart_team_t               team,
-  dart_domain_locality_t ** loc);
-
-dart_ret_t dart_set_team_locality(
-  dart_domain_locality_t  * loc);
+  const char              * domain_tag,
+  dart_locality_scope_t     scope,
+  int                     * num_domains_out,
+  char                  *** domain_tags_out);
 
 /**
  * Locality information of the unit with the specified global id.
@@ -50,11 +48,9 @@ dart_ret_t dart_set_team_locality(
  * \ingroup DartLocality
  */
 dart_ret_t dart_unit_locality(
+  dart_team_t               team,
   dart_unit_t               unit,
   dart_unit_locality_t   ** loc);
-
-dart_ret_t dart_set_unit_locality(
-  dart_unit_locality_t    * loc);
 
 #define DART_INTERFACE_OFF
 

@@ -41,7 +41,7 @@ public:
     int  unit;
     char host[40];
     char domain[20];
-    int  core_id;
+    int  cpu_id;
     int  num_cores;
     int  numa_id;
     int  num_threads;
@@ -50,11 +50,15 @@ public:
   typedef enum {
     Undefined = DART_LOCALITY_SCOPE_UNDEFINED,
     Global    = DART_LOCALITY_SCOPE_GLOBAL,
+    Network   = DART_LOCALITY_SCOPE_NETWORK,
     Node      = DART_LOCALITY_SCOPE_NODE,
     Module    = DART_LOCALITY_SCOPE_MODULE,
     NUMA      = DART_LOCALITY_SCOPE_NUMA,
     Unit      = DART_LOCALITY_SCOPE_UNIT,
-    Core      = DART_LOCALITY_SCOPE_CORE
+    Package   = DART_LOCALITY_SCOPE_PACKAGE,
+    Uncore    = DART_LOCALITY_SCOPE_UNCORE,
+    Core      = DART_LOCALITY_SCOPE_CORE,
+    CPU       = DART_LOCALITY_SCOPE_CPU
   } Scope;
 
 public:
@@ -64,67 +68,53 @@ public:
   }
 
   static inline int NumSockets() {
-    return (_domain_loc == nullptr) ? -1 : _domain_loc->num_sockets;
+    return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_sockets;
   }
 
   static inline int NumNUMANodes() {
-    return (_domain_loc == nullptr) ? -1 : _domain_loc->num_numa;
+    return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_numa;
   }
 
   static inline int NumCPUs() {
-    return (_domain_loc == nullptr) ? -1 : _domain_loc->num_cores;
+    return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_cores;
   }
 
   static inline void SetNumNodes(int n) {
     _domain_loc->num_nodes = n;
-    dart_set_domain_locality(_domain_loc);
   }
 
   static inline void SetNumSockets(int n) {
     if (_unit_loc == nullptr) {
       return;
     }
-    _domain_loc->num_sockets = n;
-    dart_set_domain_locality(_domain_loc);
+    _domain_loc->hwinfo.num_sockets = n;
   }
 
   static inline void SetNumNUMANodes(int n) {
     if (_unit_loc == nullptr) {
       return;
     }
-    _domain_loc->num_numa = n;
-    dart_set_domain_locality(_domain_loc);
+    _domain_loc->hwinfo.num_numa = n;
   }
 
   static inline void SetNumCPUs(int n) {
-    _domain_loc->num_cores = n;
-    dart_set_domain_locality(_domain_loc);
+    _domain_loc->hwinfo.num_cores = n;
   }
 
-  static std::vector<int> UnitNUMANodes() {
-    std::vector<int> numa_ids;
-    int num_numa = NumNUMANodes();
-    for (int i = 0; i < num_numa; ++i) {
-      numa_ids.push_back(_domain_loc->numa_ids[i]);
-    }
-    return numa_ids;
+  static int UnitNUMAId() {
+    return _domain_loc->hwinfo.numa_id;
   }
 
-  static std::vector<int> UnitCPUIds() {
-    std::vector<int> cpu_ids;
-    int num_cores = NumCPUs();
-    for (int i = 0; i < num_cores; ++i) {
-      cpu_ids.push_back(_unit_loc->cpu_ids[i]);
-    }
-    return cpu_ids;
+  static int UnitCPUId() {
+    return _domain_loc->hwinfo.cpu_id;
   }
 
   static inline int CPUMaxMhz() {
-    return (_unit_loc == nullptr) ? -1 : _unit_loc->max_cpu_mhz;
+    return (_unit_loc == nullptr) ? -1 : _unit_loc->hwinfo.max_cpu_mhz;
   }
 
   static inline int CPUMinMhz() {
-    return (_unit_loc == nullptr) ? -1 : _unit_loc->min_cpu_mhz;
+    return (_unit_loc == nullptr) ? -1 : _unit_loc->hwinfo.min_cpu_mhz;
   }
 
   static inline std::string Hostname() {
@@ -133,19 +123,19 @@ public:
 
   static inline std::string Hostname(dart_unit_t unit) {
     dart_unit_locality_t * ul;
-    dart_unit_locality(unit, &ul);
+    dart_unit_locality(DART_TEAM_ALL, unit, &ul);
     return ul->host;
   }
 
   static const UnitPinning Pinning(dart_unit_t unit) {
     dart_unit_locality_t * ul;
-    dart_unit_locality(unit, &ul);
+    dart_unit_locality(DART_TEAM_ALL, unit, &ul);
     UnitPinning pinning;
     pinning.unit        = ul->unit;
-    pinning.num_cores   = ul->num_cores;
-    pinning.core_id     = ul->core_id;
-    pinning.numa_id     = ul->numa_id;
-    pinning.num_threads = ul->num_threads;
+    pinning.num_cores   = ul->hwinfo.num_cores;
+    pinning.cpu_id      = ul->hwinfo.cpu_id;
+    pinning.numa_id     = ul->hwinfo.numa_id;
+    pinning.num_threads = ul->hwinfo.max_threads;
     strncpy(pinning.host,   ul->host,       40);
     strncpy(pinning.domain, ul->domain_tag, 20);
     return pinning;

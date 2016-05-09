@@ -6,6 +6,8 @@
 #ifndef DART__BASE__LOGGING_H__
 #define DART__BASE__LOGGING_H__
 
+#include <sys/types.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 
@@ -18,6 +20,8 @@
 
 /* Width of unit id field in log messages in number of characters */
 #define DASH__DART_LOGGING__UNIT__WIDTH 4
+/* Width of process id field in log messages in number of characters */
+#define DASH__DART_LOGGING__PROC__WIDTH 5
 /* Width of file name field in log messages in number of characters */
 #define DASH__DART_LOGGING__FILE__WIDTH 25
 /* Width of line number field in log messages in number of characters */
@@ -45,6 +49,7 @@ inline char * dart_base_logging_basename(char *path) {
     const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
     int       sn_ret; \
     char      msg_buf[maxlen]; \
+    pid_t     pid = getpid(); \
     sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
@@ -52,8 +57,9 @@ inline char * dart_base_logging_basename(char *path) {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d ERROR ] %-*s:%-*d |   DART: %s\n", \
+      "[ %*d ERROR ] [ %*d ] %-*s:%-*d !!! DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
       msg_buf); \
@@ -69,6 +75,7 @@ inline char * dart_base_logging_basename(char *path) {
     const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
     int       sn_ret; \
     char      msg_buf[maxlen]; \
+    pid_t     pid = getpid(); \
     sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
@@ -76,8 +83,9 @@ inline char * dart_base_logging_basename(char *path) {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d TRACE ] %-*s:%-*d |   DART: %s\n", \
+      "[ %*d TRACE ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
       msg_buf); \
@@ -88,6 +96,7 @@ inline char * dart_base_logging_basename(char *path) {
     const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
     int       sn_ret; \
     char      msg_buf[maxlen]; \
+    pid_t     pid = getpid(); \
     sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
@@ -95,8 +104,9 @@ inline char * dart_base_logging_basename(char *path) {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d DEBUG ] %-*s:%-*d |   DART: %s\n", \
+      "[ %*d DEBUG ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
       msg_buf); \
@@ -107,6 +117,7 @@ inline char * dart_base_logging_basename(char *path) {
     const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
     int       sn_ret; \
     char      msg_buf[maxlen]; \
+    pid_t     pid = getpid(); \
     sn_ret = snprintf(msg_buf, maxlen, __VA_ARGS__); \
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
@@ -114,8 +125,9 @@ inline char * dart_base_logging_basename(char *path) {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d INFO  ] %-*s:%-*d |   DART: %s\n", \
+      "[ %*d INFO  ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
       msg_buf); \

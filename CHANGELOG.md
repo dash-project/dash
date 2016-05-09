@@ -24,6 +24,38 @@ Features:
 
 - Added function `dart_allreduce`.
 
+- Added interface component `dart_locality` implementing topology discovery
+  and hierarchical locality description
+
+    - New types:
+
+        - `dart_locality_scope_t`: enum of locality scopes (global, node,
+          module, NUMA, ...)
+        - `dart_hwinfo_t`: hardware information such as number of NUMA
+          domains and cores, CPU clock frequencies, CPU pinning, cache sizes,
+          etc.
+        - `dart_domain_locality_t`: node in a locality domain hierarchy
+          providing locality information such as the number of units in the
+          domain and their ids, sub-domains, level in topology, etc.
+        - `dart_unit_localiy_t`: locality information for a specific unit
+
+    - New functions:
+
+        - `dart_domain_locality`: Access hierarchical locality description of
+          a specified locality domain
+        - `dart_team_locality`: Access hierarchical locality description of a
+          specified team.
+        - `dart_unit_locality`: Access locality description of a specified
+          unit
+
+    - New base implementations: \
+      Implementations of the locality components to be usable by any DART
+      backend:
+
+        - `dart__base__locality__init`
+        - `dart__base__locality__finalize`
+        - `dart__base__locality__domain`
+        - `dart__base__locality__unit`
 
 # DASH 0.2.0 (2016-03-03)
 

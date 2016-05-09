@@ -20,16 +20,14 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   ss << "dart_domain_locality_t("
-     <<   "level:"     << domain_loc.level       << " "
-     <<   "scope:"     << domain_loc.scope       << " "
-     <<   "n_nodes:"   << domain_loc.num_nodes   << " "
-     <<   "n_numa:"    << domain_loc.num_numa    << " "
-     <<   "n_sockets:" << domain_loc.num_sockets << " "
-     <<   "n_cores:"   << domain_loc.num_cores   << " "
-     <<   "cpu_mhz:"   << domain_loc.min_cpu_mhz << ".."
-                       << domain_loc.max_cpu_mhz << " "
-     <<   "threads:"   << domain_loc.min_threads << ".."
-                       << domain_loc.max_threads << " "
+     <<   "level:"     << domain_loc.level              << " "
+     <<   "scope:"     << domain_loc.scope              << " "
+     <<   "n_nodes:"   << domain_loc.num_nodes          << " "
+     <<   "n_numa:"    << domain_loc.hwinfo.num_numa    << " "
+     <<   "n_sockets:" << domain_loc.hwinfo.num_sockets << " "
+     <<   "n_cores:"   << domain_loc.hwinfo.num_cores   << " "
+     <<   "cpu_mhz:"   << domain_loc.hwinfo.min_cpu_mhz << ".."
+                       << domain_loc.hwinfo.max_cpu_mhz << " "
      <<   "n_domains:" << domain_loc.num_domains
      << ")";
   return operator<<(os, ss.str());
@@ -41,15 +39,15 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   ss << "dart_unit_locality_t("
-     <<   "unit:"      << unit_loc.unit        << " "
-     <<   "domain:'"   << unit_loc.domain_tag  << "' "
-     <<   "host:'"     << unit_loc.host        << "' "
-     <<   "numa_id:'"  << unit_loc.numa_id     << "' "
-     <<   "core_id:"   << unit_loc.core_id     << " "
-     <<   "n_cores:"   << unit_loc.num_cores   << " "
-     <<   "cpu_mhz:"   << unit_loc.min_cpu_mhz << ".."
-                       << unit_loc.max_cpu_mhz << " "
-     <<   "threads:"   << unit_loc.num_threads
+     <<   "unit:"      << unit_loc.unit               << " "
+     <<   "domain:'"   << unit_loc.domain_tag         << "' "
+     <<   "host:'"     << unit_loc.host               << "' "
+     <<   "numa_id:'"  << unit_loc.hwinfo.numa_id     << "' "
+     <<   "core_id:"   << unit_loc.hwinfo.cpu_id      << " "
+     <<   "n_cores:"   << unit_loc.hwinfo.num_cores   << " "
+     <<   "cpu_mhz:"   << unit_loc.hwinfo.min_cpu_mhz << ".."
+                       << unit_loc.hwinfo.max_cpu_mhz << " "
+     <<   "threads:"   << unit_loc.hwinfo.max_threads
      << ")";
   return operator<<(os, ss.str());
 }
@@ -62,7 +60,8 @@ void Locality::init()
 {
   DASH_LOG_DEBUG("dash::util::Locality::init()");
 
-  if (dart_unit_locality(dash::myid(), &_unit_loc) != DART_OK) {
+  if (dart_unit_locality(DART_TEAM_ALL, dash::myid(), &_unit_loc)
+      != DART_OK) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_unit_locality failed " <<
                "for unit " << dash::myid());
@@ -74,7 +73,8 @@ void Locality::init()
                "for unit " << dash::myid());
   }
 
-  if (dart_domain_locality(_unit_loc->domain_tag, &_domain_loc) != DART_OK) {
+  if (dart_domain_locality(DART_TEAM_ALL, _unit_loc->domain_tag, &_domain_loc)
+      != DART_OK) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_domain_locality failed " <<
                "for domain '" << _unit_loc->domain_tag << "'");
@@ -86,12 +86,12 @@ void Locality::init()
                "for domain '" << _unit_loc->domain_tag << "'");
   }
 
-  _cache_sizes[0]      = _domain_loc->cache_sizes[0];
-  _cache_sizes[1]      = _domain_loc->cache_sizes[1];
-  _cache_sizes[2]      = _domain_loc->cache_sizes[2];
-  _cache_line_sizes[0] = _domain_loc->cache_line_sizes[0];
-  _cache_line_sizes[1] = _domain_loc->cache_line_sizes[1];
-  _cache_line_sizes[2] = _domain_loc->cache_line_sizes[2];
+  _cache_sizes[0]      = _domain_loc->hwinfo.cache_sizes[0];
+  _cache_sizes[1]      = _domain_loc->hwinfo.cache_sizes[1];
+  _cache_sizes[2]      = _domain_loc->hwinfo.cache_sizes[2];
+  _cache_line_sizes[0] = _domain_loc->hwinfo.cache_line_sizes[0];
+  _cache_line_sizes[1] = _domain_loc->hwinfo.cache_line_sizes[1];
+  _cache_line_sizes[2] = _domain_loc->hwinfo.cache_line_sizes[2];
 
   DASH_LOG_DEBUG("dash::util::Locality::init >");
 }
@@ -102,13 +102,13 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   ss << "dash::util::Locality::UnitPinning("
-     << "unit:"         << upi.unit << " "
-     << "host:"         << upi.host << " "
-     << "domain:"       << upi.domain << " "
-     << "numa_id:"      << upi.numa_id << " "
-     << "core_id:"      << upi.core_id  << " "
-     << "num_cores:"    << upi.num_cores  << " "
-     << "num_threads:"  << upi.num_threads  << ")";
+     << "unit:"         << upi.unit         << " "
+     << "host:"         << upi.host         << " "
+     << "domain:"       << upi.domain       << " "
+     << "numa_id:"      << upi.numa_id      << " "
+     << "core_id:"      << upi.cpu_id       << " "
+     << "num_cores:"    << upi.num_cores    << " "
+     << "max_threads:"  << upi.num_threads  << ")";
   return operator<<(os, ss.str());
 }
 
