@@ -103,7 +103,7 @@ class StoreHDF {
                 f_exists.set(-1);
             }
         }
-        dash::barrier();
+        array.barrier();
 
         if (foptions.overwrite_file || (f_exists.get() <= 0)) {
             // HD5 create file
@@ -259,7 +259,7 @@ class StoreHDF {
                 f_exists.set(-1);
             }
         }
-        dash::barrier();
+        array.barrier();
 
         if (foptions.overwrite_file || (f_exists.get() <= 0)) {
             // HD5 create file

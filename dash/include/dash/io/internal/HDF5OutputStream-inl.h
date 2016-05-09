@@ -22,7 +22,8 @@ inline HDF5OutputStream & operator<< (
     dash::Matrix < value_t,
     ndim,
     index_t,
-    pattern_t > matrix) {
+    pattern_t > &matrix) {
+    matrix.barrier();
     dash::io::StoreHDF::write(
         matrix,
         os._filename,

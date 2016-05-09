@@ -271,13 +271,19 @@ TEST_F(HDFTest, Options) {
 #if 1
 TEST_F(HDFTest, OutputStream) {
     auto matrix = dash::Matrix<long, 2>(
-                      dash::SizeSpec<2>(100, 100));
+                      dash::SizeSpec<2>(
+                          dash::size(),
+                          dash::size()));
+
+    fill_matrix(matrix);
+    dash::barrier();
 
     auto fopts = dash::io::StoreHDF::get_default_options();
     auto test  = dash::io::HDF5OutputStream("test_stream.hdf5");
     test << dash::io::HDF5Table("data")
          << fopts
          << matrix;
+    dash::barrier();
 }
 #endif
 

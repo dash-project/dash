@@ -72,7 +72,7 @@ class HDF5OutputStream {
         dash::Matrix < value_t,
         ndim,
         index_t,
-        pattern_t > matrix);
+        pattern_t > &matrix);
 };
 
 
