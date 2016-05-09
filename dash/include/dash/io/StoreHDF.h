@@ -174,16 +174,7 @@ class StoreHDF {
             H5Dwrite(dataset, internal_type, memspace, filespace,
                      plist_id, array.lbegin());
         } else {
-            // Store each block separate
-            for (int dim = 0; dim < pat_dims; dim++) {
-                // TODO
-                //count[0]  = pattern.local_extend(dim);
-                //stride[0] =
-                //DASH_LOG_DEBUG("ext ",dim ,count[0]);
-                //stride[0] = 0;
-                //offset[0] = 0;
-                //block[0]  = blocksize(dim)
-            }
+            // TODO: Store each block separate and remove assertion
         }
 
         // Add Attributes
@@ -436,18 +427,31 @@ class StoreHDF {
         // Initialize DASH Array
         // no explicit pattern specified / try to load pattern from hdf5 file
         auto pat_key = foptions.pattern_metadata_key.c_str();
-        if (foptions.restore_pattern && H5Aexists(dataset, pat_key)) {
+        // Check if matrix is already allocated
+        bool is_alloc  = (array.size() != 0);
+
+        if (!is_alloc												    // not allocated
+                && foptions.restore_pattern			// pattern should be restored
+                && H5Aexists(dataset, pat_key)) { // hdf5 contains pattern
             hid_t attrspace      = H5Screate(H5S_SCALAR);
             hid_t attribute_id  = H5Aopen(dataset, pat_key, H5P_DEFAULT);
             H5Aread(attribute_id, H5T_NATIVE_LONG, &tilesize);
             H5Aclose(attribute_id);
             H5Sclose(attrspace);
+
+            array.allocate(data_dimsf[0], dash::TILE(tilesize));
+        } else if(is_alloc) {
+            DASH_LOG_DEBUG("Array already allocated");
+            // Check if array size matches data extents
+            DASH_ASSERT_EQ(
+                data_dimsf[0],
+                array.size(),
+                "Array size does not match data extents");
         } else {
-            tilesize = 1; // dash::CYCLIC
+            // Auto deduce pattern
+            array.allocate(data_dimsf[0], dash::CYCLIC);
         }
 
-        // Allocate DASH Array
-        array.allocate(data_dimsf[0], dash::TILE(tilesize));
         h5datatype     = _convertType(array[0]); // hack
 
         // Calculate chunks

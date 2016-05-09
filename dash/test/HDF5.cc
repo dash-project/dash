@@ -279,6 +279,7 @@ TEST_F(HDFTest, PreAllocation) {
     verify_matrix(matrix_b, dash::myid());
 }
 
+// Test Stream API
 TEST_F(HDFTest, OutputStream) {
     {
         auto matrix_a = dash::Matrix<long, 2>(
@@ -304,6 +305,38 @@ TEST_F(HDFTest, OutputStream) {
     verify_matrix(matrix_b);
 }
 
+#if 0
+// Test Conversion between dash::Array and dash::Matrix
+// Currently not possible as matrix has to be at least
+// two dimensional
+TEST_F(HDFTest, ArrayToMatrix) {
+    {
+        auto array = dash::Array<int>(100, dash::CYCLIC);
+        if(dash::myid() == 0) {
+            for(int i=0; i<array.size(); i++) {
+                array[i] = i;
+            }
+        }
+
+        // Do not store pattern
+        auto fopts = dash::io::StoreHDF::get_default_options();
+        fopts.store_pattern = false;
+
+        dash::io::StoreHDF::write(array, "test.hdf5", "data");
+        dash::barrier();
+    }
+    dash::Matrix<int, 1> matrix;
+    dash::io::StoreHDF::read(matrix, "test.hdf5", "data");
+    dash::barrier();
+
+    // Verify
+    if(dash::myid() == 0) {
+        for(int i=0; i<matrix.extent(0); i++) {
+            ASSERT_EQ(i, matrix[i]);
+        }
+    }
+}
+#endif
 #endif // DASH_ENABLE_HDF5
 
 

@@ -71,7 +71,28 @@ class HDF5OutputStream {
         return os;
     }
 
+    // Array Implementation
+    template <
+        typename value_t,
+        typename index_t,
+        class    pattern_t >
+    friend HDF5OutputStream & operator<< (
+        HDF5OutputStream & os,
+        dash::Array < value_t,
+        index_t,
+        pattern_t > &array);
 
+    template <
+        typename value_t,
+        typename index_t,
+        class    pattern_t >
+    friend HDF5OutputStream & operator>> (
+        HDF5OutputStream & os,
+        dash::Array < value_t,
+        index_t,
+        pattern_t > &array);
+
+    // Matrix Implementation
     template <
         typename value_t,
         dim_t    ndim,
@@ -95,7 +116,6 @@ class HDF5OutputStream {
         ndim,
         index_t,
         pattern_t > &matrix);
-
 
   private:
     void _assert_flush() {

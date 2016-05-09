@@ -12,6 +12,54 @@
 namespace dash {
 namespace io {
 
+// Array implementation
+template <
+    typename value_t,
+    typename index_t,
+    class    pattern_t >
+inline HDF5OutputStream & operator<< (
+    HDF5OutputStream & os,
+    dash::Array< value_t,
+    index_t,
+    pattern_t > &array) {
+
+    // make stream immutable
+    os._flushed = true;
+
+    array.barrier();
+    dash::io::StoreHDF::write(
+        array,
+        os._filename,
+        os._table,
+        os._foptions);
+    return os;
+}
+
+
+template <
+    typename value_t,
+    typename index_t,
+    class    pattern_t >
+inline HDF5OutputStream & operator>> (
+    HDF5OutputStream & os,
+    dash::Array< value_t,
+    index_t,
+    pattern_t > &array) {
+
+    // make stream immutable
+    os._flushed = true;
+
+    array.barrier();
+    dash::io::StoreHDF::read(
+        array,
+        os._filename,
+        os._table,
+        os._foptions);
+    return os;
+}
+
+
+// Matrix implementation
 template <
     typename value_t,
     dim_t    ndim,
