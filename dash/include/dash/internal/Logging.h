@@ -18,8 +18,8 @@
 #include <unistd.h>
 
 namespace dash {
-  // forward-declaration
-  int myid();
+// forward-declaration
+int myid();
 }
 
 #ifdef DASH_LOG_OUTPUT_STDERR
@@ -96,90 +96,87 @@ namespace logging {
 
 // Terminator
 static void Log_Recursive(
-  const char* level,
-  const char* file,
-  int line,
-  const char* context_tag,
-  std::ostringstream & msg)
-{
-  pid_t pid = getpid();
-  std::stringstream buf;
-  buf << "[ "
-      << std::setw(4) << dash::myid()
-      << " "
-      << level
-      << " ] [ "
-      << std::right << std::setw(5) << pid
-      << " ] "
-      << std::left << std::setw(25)
-      << file << ":"
-      << std::left << std::setw(4)
-      << line << " | "
-      << std::left << std::setw(35)
-      << context_tag
-      << msg.str()
-      << std::endl;
-  DASH_LOG_OUTPUT_TARGET << buf.str();
+    const char* level,
+    const char* file,
+    int line,
+    const char* context_tag,
+    std::ostringstream & msg) {
+    pid_t pid = getpid();
+    std::stringstream buf;
+    buf << "[ "
+        << std::setw(4) << dash::myid()
+        << " "
+        << level
+        << " ] [ "
+        << std::right << std::setw(5) << pid
+        << " ] "
+        << std::left << std::setw(25)
+        << file << ":"
+        << std::left << std::setw(4)
+        << line << " | "
+        << std::left << std::setw(35)
+        << context_tag
+        << msg.str()
+        << std::endl;
+    DASH_LOG_OUTPUT_TARGET << buf.str();
 }
 
 // "Recursive" variadic function
 template<typename T, typename... Args>
 static void Log_Recursive(
-  const char         * level,
-  const char         * file,
-  int                  line,
-  const char         * context_tag,
-  std::ostringstream & msg,
-  T                    value,
-  const Args & ...     args)
-{
-  msg << value << " ";
-  Log_Recursive(level, file, line, context_tag, msg, args...);
+    const char         * level,
+    const char         * file,
+    int                  line,
+    const char         * context_tag,
+    std::ostringstream & msg,
+    T                    value,
+    const Args & ...     args) {
+    msg << value << " ";
+    Log_Recursive(level, file, line, context_tag, msg, args...);
 }
 
 // Log_Recursive wrapper that creates the ostringstream
 template<typename... Args>
 static void LogWrapper(
-  const char *     level,
-  const char *     filepath,
-  int              line,
-  const char *     context_tag,
-  const Args & ... args)
-{
-  std::ostringstream msg;
-  msg << "| ";
-  // Extract file name from path
-  const char * filebase = strrchr(filepath, '/');
-  const char * filename = (filebase != 0) ? filebase + 1 : filepath;
-  Log_Recursive(
-    level,
-    filename,
-    line,
-    context_tag,
-    msg, args...);
+    const char *     level,
+    const char *     filepath,
+    int              line,
+    const char *     context_tag,
+    const Args & ... args) {
+    std::ostringstream msg;
+    msg << "| ";
+    // Extract file name from path
+    const char * filebase = strrchr(filepath, '/');
+    const char * filename = (filebase != 0) ? filebase + 1 : filepath;
+    Log_Recursive(
+        level,
+        filename,
+        line,
+        context_tag,
+        msg, args...);
 }
 
 // Log_Recursive wrapper that creates the ostringstream
 template<typename T, typename... Args>
 static void LogVarWrapper(
-  const char* level,
-  const char* filepath,
-  int line,
-  const char* context_tag,
-  const char* var_name,
-  const T & var_value,
-  const Args & ... args) {
-  std::ostringstream msg;
-  msg << "| |- " << var_name << ": " << var_value;
-  // Extract file name from path
-  const char * filebase = strrchr(filepath, '/');
-  const char * filename = (filebase != 0) ? filebase + 1 : filepath;
-  Log_Recursive(
-    level,
-    filename,
-    line,
-    context_tag,
-    msg);
+    const char* level,
+    const char* filepath,
+    int line,
+    const char* context_tag,
+    const char* var_name,
+    const T & var_value,
+    const Args & ... args) {
+    std::ostringstream msg;
+    msg << "| |- " << var_name << ": " << var_value;
+    // Extract file name from path
+    const char * filebase = strrchr(filepath, '/');
+    const char * filename = (filebase != 0) ? filebase + 1 : filepath;
+    Log_Recursive(
+        level,
+        filename,
+        line,
+        context_tag,
+        msg);
 }
 
 } // namespace logging

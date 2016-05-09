@@ -22,22 +22,21 @@ namespace dash {
  * \ingroup     DashAlgorithms
  */
 template<
-  typename ElementType,
-  class    PatternType>
+    typename ElementType,
+    class    PatternType>
 void generate (
-  /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType> first,
-  /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType> last,
-  /// Generator function
-  ::std::function<ElementType(void)> & g)
-{
-  /// Global iterators to local range:
-  auto lrange = dash::local_range(first, last);
-  auto lfirst = lrange.begin;
-  auto llast  = lrange.end;
+    /// Iterator to the initial position in the sequence
+    GlobIter<ElementType, PatternType> first,
+    /// Iterator to the final position in the sequence
+    GlobIter<ElementType, PatternType> last,
+    /// Generator function
+    ::std::function<ElementType(void)> & g) {
+    /// Global iterators to local range:
+    auto lrange = dash::local_range(first, last);
+    auto lfirst = lrange.begin;
+    auto llast  = lrange.end;
 
-  std::generate(lfirst, llast, g);
+    std::generate(lfirst, llast, g);
 }
 
 } // namespace dash

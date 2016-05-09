@@ -35,18 +35,18 @@ TEST_F(ForEachTest, TestArrayAllInvoked) {
 TEST_F(ForEachTest, ForEachWithIndex) {
     std::function<void(const Element_t &, index_t)> dummy_fct =
     [](Element_t el, index_t idx) {
-				EXPECT_EQ_U(
-					el,
-					static_cast<Element_t>(dash::myid())
-				);
+        EXPECT_EQ_U(
+            el,
+            static_cast<Element_t>(dash::myid())
+        );
     };
 
     // Test Array
     Array_t array(_num_elem);
-		dash::fill(
-						array.begin(),
-						array.end(),
-						static_cast<Element_t>(dash::myid()));
+    dash::fill(
+        array.begin(),
+        array.end(),
+        static_cast<Element_t>(dash::myid()));
     dash::for_each_with_index(
         array.begin(),
         array.end(),
@@ -58,10 +58,10 @@ TEST_F(ForEachTest, ForEachWithIndex) {
                       dash::SizeSpec<2>(
                           dash::size(),
                           dash::size()));
-		dash::fill(
-						matrix.begin(),
-						matrix.end(),
-						static_cast<Element_t>(dash::myid()));
+    dash::fill(
+        matrix.begin(),
+        matrix.end(),
+        static_cast<Element_t>(dash::myid()));
 
     dash::for_each_with_index(
         matrix.begin(),

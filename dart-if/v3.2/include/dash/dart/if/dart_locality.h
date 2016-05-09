@@ -26,9 +26,9 @@ extern "C" {
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_locality(
-  dart_team_t               team,
-  const char              * domain_tag,
-  dart_domain_locality_t ** loc);
+    dart_team_t               team,
+    const char              * domain_tag,
+    dart_domain_locality_t ** loc);
 
 /**
  * Domain tags of all domains with the specified locality scope.
@@ -36,11 +36,11 @@ dart_ret_t dart_domain_locality(
  * \ingroup DartLocality
  */
 dart_ret_t dart_scope_domains(
-  dart_team_t               team,
-  const char              * domain_tag,
-  dart_locality_scope_t     scope,
-  int                     * num_domains_out,
-  char                  *** domain_tags_out);
+    dart_team_t               team,
+    const char              * domain_tag,
+    dart_locality_scope_t     scope,
+    int                     * num_domains_out,
+    char                  *** domain_tags_out);
 
 /**
  * Locality information of the unit with the specified global id.
@@ -48,9 +48,9 @@ dart_ret_t dart_scope_domains(
  * \ingroup DartLocality
  */
 dart_ret_t dart_unit_locality(
-  dart_team_t               team,
-  dart_unit_t               unit,
-  dart_unit_locality_t   ** loc);
+    dart_team_t               team,
+    dart_unit_t               unit,
+    dart_unit_locality_t   ** loc);
 
 #define DART_INTERFACE_OFF
 

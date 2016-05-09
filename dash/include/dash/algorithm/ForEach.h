@@ -21,33 +21,33 @@ namespace dash {
  * \ingroup     DashAlgorithms
  */
 template<
-  typename ElementType,
-  typename IndexType,
-  class PatternType>
+    typename ElementType,
+    typename IndexType,
+    class PatternType>
 void for_each(
-  /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
-  /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
-  /// Function to invoke on every index in the range
-  ::std::function<void(IndexType)> & func) {
-  /// Global iterators to local index range:
-  auto index_range  = dash::local_index_range(first, last);
-  auto lbegin_index = index_range.begin;
-  auto lend_index   = index_range.end;
-  if (lbegin_index == lend_index) {
-    // Local range is empty
-    return;
-  }
-  // Pattern from global begin iterator:
-  auto pattern = first.pattern();
-  // Iterate local index range:
-  for (IndexType lindex = lbegin_index;
-       lindex != lend_index;
-       ++lindex) {
-    IndexType gindex = pattern.global(lindex);
-    func(gindex);
-  }
+    /// Iterator to the initial position in the sequence
+    const GlobIter<ElementType, PatternType> & first,
+    /// Iterator to the final position in the sequence
+    const GlobIter<ElementType, PatternType> & last,
+    /// Function to invoke on every index in the range
+    ::std::function<void(IndexType)> & func) {
+    /// Global iterators to local index range:
+    auto index_range  = dash::local_index_range(first, last);
+    auto lbegin_index = index_range.begin;
+    auto lend_index   = index_range.end;
+    if (lbegin_index == lend_index) {
+        // Local range is empty
+        return;
+    }
+    // Pattern from global begin iterator:
+    auto pattern = first.pattern();
+    // Iterate local index range:
+    for (IndexType lindex = lbegin_index;
+            lindex != lend_index;
+            ++lindex) {
+        IndexType gindex = pattern.global(lindex);
+        func(gindex);
+    }
 }
 
 /**
@@ -65,35 +65,35 @@ void for_each(
  * \ingroup     DashAlgorithms
  */
 template<
-  typename ElementType,
-  typename IndexType,
-  class PatternType>
+    typename ElementType,
+    typename IndexType,
+    class PatternType>
 void for_each_with_index(
-  /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
-  /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
-  /// Function to invoke on every index in the range
-  ::std::function<void(const ElementType &, IndexType)> & func) {
-  /// Global iterators to local index range:
-  auto index_range  = dash::local_index_range(first, last);
-  auto lbegin_index = index_range.begin;
-  auto lend_index   = index_range.end;
-  if (lbegin_index == lend_index) {
-    // Local range is empty
-    return;
-  }
-  // Pattern from global begin iterator:
-  auto pattern = first.pattern();
-  // Iterate local index range:
-  for (IndexType lindex = lbegin_index;
-       lindex != lend_index;
-       ++lindex) {
-    IndexType gindex  = pattern.global(lindex);
-    auto first_offset = first.pos();
-    auto element_it   = first + (gindex - first_offset);
-    func(*element_it, gindex);
-  }
+    /// Iterator to the initial position in the sequence
+    const GlobIter<ElementType, PatternType> & first,
+    /// Iterator to the final position in the sequence
+    const GlobIter<ElementType, PatternType> & last,
+    /// Function to invoke on every index in the range
+    ::std::function<void(const ElementType &, IndexType)> & func) {
+    /// Global iterators to local index range:
+    auto index_range  = dash::local_index_range(first, last);
+    auto lbegin_index = index_range.begin;
+    auto lend_index   = index_range.end;
+    if (lbegin_index == lend_index) {
+        // Local range is empty
+        return;
+    }
+    // Pattern from global begin iterator:
+    auto pattern = first.pattern();
+    // Iterate local index range:
+    for (IndexType lindex = lbegin_index;
+            lindex != lend_index;
+            ++lindex) {
+        IndexType gindex  = pattern.global(lindex);
+        auto first_offset = first.pos();
+        auto element_it   = first + (gindex - first_offset);
+        func(*element_it, gindex);
+    }
 }
 
 } // namespace dash
