@@ -104,7 +104,7 @@ public:
 
   LocalityDomain()
   : _team(&dash::Team::Null()),
-    _domain_locality(nullptr),
+    _domain(nullptr),
     _domains(nullptr)
   {
     _begin = iterator(*this, 0);
@@ -112,100 +112,30 @@ public:
   }
 
   LocalityDomain(
-    dash::Team  & team,
-    std::string   domain_tag)
-  : _team(&team)
+    dash::Team             & team,
+    dart_domain_locality_t * domain)
+  : _team(&team),
+    _domain(domain)
   {
     DASH_LOG_TRACE("LocalityDomain(t,dom)",
-                   "team:", team.dart_id(), "domain:", domain_tag);
-    DASH_ASSERT_RETURNS(
-      dart_domain_locality(
-        _team->dart_id(),
-        domain_tag.c_str(),
-        &_domain_locality),
-      DART_OK);
+                   "team:", team.dart_id(), "domain:", domain->domain_tag);
     DASH_ASSERT_MSG(
-      _domain_locality != NULL &&
-      _domain_locality != nullptr,
-      "Failed to load locality domain with tag " << domain_tag);
+      _domain != NULL &&
+      _domain != nullptr,
+      "Failed to load locality domain with tag " << domain->domain_tag);
 
-    if (_domain_locality->num_units > 0) {
+    if (_domain->num_units > 0) {
       _unit_ids = std::vector<dart_unit_t>(
-                    _domain_locality->unit_ids,
-                    _domain_locality->unit_ids + _domain_locality->num_units);
+                    _domain->unit_ids,
+                    _domain->unit_ids + _domain->num_units);
     }
 
     _begin = iterator(*this, 0);
-    _end   = iterator(*this, _domain_locality->num_domains);
+    _end   = iterator(*this, _domain->num_domains);
 
     _domains = new std::unordered_map<int, self_t>();
 
     DASH_LOG_TRACE("LocalityDomain(t,dom) >");
-  }
-
-  LocalityDomain(
-    dash::Team          & team,
-    std::string           domain_tag,
-    std::vector<self_t> & domains)
-  : _team(&team),
-    _domain_locality(nullptr),
-    _is_owner(true)
-  {
-    DASH_LOG_TRACE("LocalityDomain(t,dom,subdoms)",
-                   "team:", team.dart_id(), "domain:", domain_tag,
-                   "n.domains:", domains.size());
-    _begin = iterator(*this, 0);
-    _end   = iterator(*this, domains.size());
-
-    _domains = new std::unordered_map<int, self_t>();
-
-    dart_domain_locality_t * parent_domain;
-    DASH_ASSERT_RETURNS(
-      dart_domain_locality(
-        _team->dart_id(),
-        domain_tag.c_str(),
-        &parent_domain),
-      DART_OK);
-
-    int n_domains = domains.size();
-
-    _domain_locality                 = new dart_domain_locality_t();
-    _domain_locality->scope          = parent_domain->scope;
-    _domain_locality->level          = 0;
-    _domain_locality->relative_index = 0;
-    _domain_locality->team           = _team->dart_id();
-    _domain_locality->parent         = NULL;
-    _domain_locality->num_domains    = n_domains;
-    _domain_locality->domains        = new dart_domain_locality_t[n_domains];
-    _domain_locality->hwinfo         = parent_domain->hwinfo;
-    _domain_locality->node_id        = parent_domain->node_id;
-    _domain_locality->num_nodes      = parent_domain->num_nodes;
-
-    int n_units       = 0;
-    int subdomain_idx = 0;
-    for (auto & domain : domains) {
-      n_units += domain.units().size();
-
-      _unit_ids.insert(_unit_ids.end(),
-                       domain.units().begin(),
-                       domain.units().end());
-      _domains->insert(std::make_pair(subdomain_idx, domain));
-
-      _domain_locality->domains[subdomain_idx] =
-        domain.dart_type();
-
-      subdomain_idx++;
-    }
-
-    _domain_locality->num_units = n_units;
-    _domain_locality->unit_ids  = new dart_unit_t[n_units];
-
-    std::copy(_unit_ids.begin(), _unit_ids.end(),
-              _domain_locality->unit_ids);
-    std::strcpy(_domain_locality->domain_tag, parent_domain->domain_tag);
-    std::strcpy(_domain_locality->host,       parent_domain->host);
-
-    DASH_LOG_TRACE("LocalityDomain(t,dom,subdoms) >");
   }
 
   ~LocalityDomain()
@@ -214,11 +144,11 @@ public:
       delete _domains;
       _domains = nullptr;
     }
-    if (_is_owner && _domain_locality != nullptr) {
-      delete _domain_locality->domains;
-      delete _domain_locality->unit_ids;
-      delete _domain_locality;
-      _domain_locality = nullptr;
+    if (_is_owner && _domain != nullptr) {
+      delete _domain->domains;
+      delete _domain->unit_ids;
+      delete _domain;
+      _domain = nullptr;
     }
   }
 
@@ -226,20 +156,16 @@ public:
   : _team(other._team),
     _unit_ids(other._unit_ids)
   {
-    std::string domain_tag = "";
-    if (other._domain_locality != nullptr) {
-      domain_tag = other._domain_locality->domain_tag;
-    }
     _is_owner = other._is_owner;
     if (_is_owner) {
-      _domain_locality  = new dart_domain_locality_t();
-      *_domain_locality = *(other._domain_locality);
+      _domain  = new dart_domain_locality_t();
+      *_domain = *(other._domain);
     } else {
-      _domain_locality = other._domain_locality;
+      _domain = other._domain;
     }
     _begin = iterator(*this, 0);
-    if (_domain_locality != nullptr && domain_tag != "") {
-      _end = iterator(*this, _domain_locality->num_domains);
+    if (_domain != nullptr) {
+      _end = iterator(*this, _domain->num_domains);
     } else {
       _end = iterator(*this, 0);
     }
@@ -253,20 +179,16 @@ public:
     _unit_ids = other._unit_ids;
     _is_owner = other._is_owner;
 
-    std::string domain_tag = "";
-    if (other._domain_locality != nullptr) {
-      domain_tag = other._domain_locality->domain_tag;
-    }
     _is_owner = other._is_owner;
     if (_is_owner) {
-      _domain_locality  = new dart_domain_locality_t();
-      *_domain_locality = *(other._domain_locality);
+      _domain  = new dart_domain_locality_t();
+      *_domain = *(other._domain);
     } else {
-      _domain_locality = other._domain_locality;
+      _domain = other._domain;
     }
     _begin = iterator(*this, 0);
-    if (_domain_locality != nullptr && domain_tag != "") {
-      _end = iterator(*this, _domain_locality->num_domains);
+    if (_domain != nullptr) {
+      _end = iterator(*this, _domain->num_domains);
     } else {
       _end = iterator(*this, 0);
     }
@@ -284,15 +206,15 @@ public:
                &&
                (*_team == *rhs._team) ) )
            &&
-           ( (_domain_locality == rhs._domain_locality)
+           ( (_domain == rhs._domain)
              ||
-             ( (_domain_locality     != nullptr &&
-                rhs._domain_locality != nullptr)
+             ( (_domain     != nullptr &&
+                rhs._domain != nullptr)
                 &&
-               (_domain_locality->team
-                  == rhs._domain_locality->team &&
-                _domain_locality->domain_tag
-                  == rhs._domain_locality->domain_tag) ) );
+               (_domain->team
+                  == rhs._domain->team &&
+                _domain->domain_tag
+                  == rhs._domain->domain_tag) ) );
   }
 
   inline bool operator!=(const self_t & rhs) const
@@ -302,26 +224,26 @@ public:
 
   inline dash::Team & team()
   {
-    DASH_ASSERT(_domain_locality != nullptr);
+    DASH_ASSERT(_domain != nullptr);
     return *_team;
   }
 
   inline std::string domain_tag() const
   {
-    DASH_ASSERT(_domain_locality != nullptr);
-    return _domain_locality->domain_tag;
+    DASH_ASSERT(_domain != nullptr);
+    return _domain->domain_tag;
   }
 
   inline const dart_domain_locality_t & dart_type() const
   {
-    DASH_ASSERT(_domain_locality != nullptr);
-    return *_domain_locality;
+    DASH_ASSERT(_domain != nullptr);
+    return *_domain;
   }
 
   inline std::string host() const
   {
-    DASH_ASSERT(_domain_locality != nullptr);
-    return _domain_locality->host;
+    DASH_ASSERT(_domain != nullptr);
+    return _domain->host;
   }
 
   inline iterator begin() const
@@ -336,9 +258,9 @@ public:
 
   inline size_t size() const
   {
-    return _domain_locality == nullptr
+    return _domain == nullptr
            ? 0
-           : _domain_locality->num_domains;
+           : _domain->num_domains;
   }
 
   inline const std::vector<dart_unit_t> & units() const
@@ -348,39 +270,39 @@ public:
 
   inline const dart_hwinfo_t & hwinfo() const
   {
-    DASH_ASSERT(_domain_locality != nullptr);
-    return _domain_locality->hwinfo;
+    DASH_ASSERT(_domain != nullptr);
+    return _domain->hwinfo;
   }
 
   inline int level() const
   {
-    DASH_ASSERT(_domain_locality != nullptr);
-    return _domain_locality->level;
+    DASH_ASSERT(_domain != nullptr);
+    return _domain->level;
   }
 
   inline Scope_t scope() const
   {
-    return _domain_locality == nullptr
+    return _domain == nullptr
            ? Scope_t::Undefined
-           : static_cast<Scope_t>(_domain_locality->scope);
+           : static_cast<Scope_t>(_domain->scope);
   }
 
   inline int node_id() const
   {
-    DASH_ASSERT(_domain_locality != nullptr);
-    return _domain_locality->node_id;
+    DASH_ASSERT(_domain != nullptr);
+    return _domain->node_id;
   }
 
   inline int num_nodes() const
   {
-    DASH_ASSERT(_domain_locality != nullptr);
-    return _domain_locality->num_nodes;
+    DASH_ASSERT(_domain != nullptr);
+    return _domain->num_nodes;
   }
 
   inline int relative_index() const
   {
-    DASH_ASSERT(_domain_locality != nullptr);
-    return _domain_locality->relative_index;
+    DASH_ASSERT(_domain != nullptr);
+    return _domain->relative_index;
   }
 
   /**
@@ -388,34 +310,32 @@ public:
    */
   inline self_t & at(int relative_index) const
   {
-    DASH_ASSERT(_domains         != nullptr);
-    DASH_ASSERT(_domain_locality != nullptr);
+    DASH_ASSERT(_domains != nullptr);
+    DASH_ASSERT(_domain  != nullptr);
     if (_domains->find(relative_index) == _domains->end()) {
       // LocalityDomain instance for subdomain not cached yet:
-      std::string subdomain_tag(
-                    _domain_locality->domains[relative_index].domain_tag);
-      self_t      subdomain_loc(*_team, subdomain_tag);
-      _domains->insert(std::make_pair(relative_index, subdomain_loc));
+      self_t subdomain(*_team, &(_domain->domains[relative_index]));
+      _domains->insert(std::make_pair(relative_index, subdomain));
     }
     return (*_domains)[relative_index];
   }
 
 private:
-  dash::Team                               * _team = &dash::Team::Null();
+  dash::Team                               * _team    = &dash::Team::Null();
   /// Underlying \c dart_domain_locality_t object.
-  dart_domain_locality_t                   * _domain_locality = nullptr;
+  dart_domain_locality_t                   * _domain  = nullptr;
   /// Cache of lazy-loaded subdomains, mapped by subdomain relative index.
   /// Must be heap-allocated as type is incomplete due to type definition
   /// cycle.
-  mutable std::unordered_map<int, self_t>  * _domains         = nullptr;
+  mutable std::unordered_map<int, self_t>  * _domains = nullptr;
   /// Units in the domain.
   std::vector<dart_unit_t>                   _unit_ids;
   /// Iterator to the first subdomain.
   iterator                                   _begin;
   /// Iterator past the last subdomain.
   iterator                                   _end;
-  /// Whether this instance is owner of _domain_locality.
-  bool                                       _is_owner        = false;
+  /// Whether this instance is owner of _domain.
+  bool                                       _is_owner = false;
 
 }; // class LocalityDomain
 
@@ -533,8 +453,15 @@ public:
       select(_domain_tag);
     }
     if (_scope == Scope_t::Global) {
+      dart_domain_locality_t * domain;
+      DASH_ASSERT_RETURNS(
+        dart_domain_locality(
+          _team.dart_id(),
+          _domain_tag.c_str(),
+          &domain),
+        DART_OK);
       // Load the team's global locality domain hierarchy:
-      _domains.push_back(LocalityDomain(_team, _domain_tag));
+      _domains.push_back(LocalityDomain(_team, domain));
       for (auto & domain : _domains) {
         _unit_ids.insert(_unit_ids.end(),
                          domain.units().begin(),
@@ -564,7 +491,14 @@ public:
     _domains.clear();
     _unit_ids.clear();
 
-    _domains.push_back(LocalityDomain(_team, _domain_tag));
+    dart_domain_locality_t * domain;
+    DASH_ASSERT_RETURNS(
+      dart_domain_locality(
+        _team.dart_id(),
+        _domain_tag.c_str(),
+        &domain),
+      DART_OK);
+    _domains.push_back(LocalityDomain(_team, domain));
 
     for (auto & domain : _domains) {
       _unit_ids.insert(_unit_ids.end(),
@@ -590,90 +524,54 @@ public:
     _domains.clear();
     _unit_ids.clear();
 
+    dart_domain_locality_t * domain;
+    DASH_ASSERT_RETURNS(
+      dart_domain_locality(
+        _team.dart_id(),
+        _domain_tag.c_str(),
+        &domain),
+      DART_OK);
+
     int     num_domains;
     char ** domain_tags;
     DASH_ASSERT_RETURNS(
       dart_scope_domains(
-        _team.dart_id(),
-        _domain_tag.c_str(),
+        domain,
         static_cast<dart_locality_scope_t>(_scope),
         &num_domains,
         &domain_tags),
       DART_OK);
+    free(domain_tags);
 
     if (num_parts < 1 || num_domains <= num_parts) {
       DASH_LOG_DEBUG("TeamLocality.split", "split into single subdomains");
       /* Split into single subdomains: */
       for (int d = 0; d < num_domains; ++d) {
-        DASH_LOG_TRACE_VAR("TeamLocality.split", domain_tags[d]);
-        _domains.push_back(LocalityDomain(_team, domain_tags[d]));
+        dart_domain_locality_t * subdomain;
+        DASH_ASSERT_RETURNS(
+          dart_domain_split(
+            domain,
+            static_cast<dart_locality_scope_t>(_scope),
+            num_domains,
+            &subdomain),
+          DART_OK);
+        DASH_LOG_TRACE_VAR("TeamLocality.split", subdomain->domain_tag);
+        _domains.push_back(LocalityDomain(_team, subdomain));
       }
     } else {
       DASH_LOG_DEBUG("TeamLocality.split", "split into groups of subdomains");
-      /* Split into single subdomains: */
       /* Split into groups of subdomains: */
-      int    * group_sizes;
-      char *** group_domain_tags;
+      dart_domain_locality_t * domain_split;
       DASH_ASSERT_RETURNS(
         dart_domain_split(
-          _team.dart_id(),
-          _domain_tag.c_str(),
+          domain,
           static_cast<dart_locality_scope_t>(_scope),
           num_parts,
-          &group_sizes,
-          &group_domain_tags),
+          &domain_split),
         DART_OK);
-      // Find longest common prefix of split domain tags:
-      std::string root_domain_tag = dash::internal::common_prefix(
-                                      std::vector<std::string>(
-                                        domain_tags,
-                                        domain_tags + num_domains));
-      // Remove trailing '.':
-      root_domain_tag.erase(root_domain_tag.find_last_of("."));
 
-      std::vector<std::string> group_tags;
-      for (int g = 0; g < num_parts; ++g) {
-        std::string group_tag = dash::internal::common_prefix(
-                                  std::vector<std::string>(
-                                    group_domain_tags[g],
-                                    group_domain_tags[g] + group_sizes[g]));
-        // Remove trailing '.':
-        group_tag.erase(group_tag.find_last_of("."));
-        DASH_LOG_TRACE_VAR("TeamLocality.split", group_tag);
-        group_tags.push_back(group_tag);
-        while (group_tag == root_domain_tag) {
-          // Root domain tag collides with group domain tag.
-          // Remove trailing domain parts from root domain tag until it is
-          // a valid parent tag of the group.
-          size_t last_dot_pos = root_domain_tag.find_last_of(".");
-          root_domain_tag.erase(last_dot_pos);
-        }
-      }
-      DASH_LOG_TRACE_VAR("TeamLocality.split", root_domain_tag);
-      // Group subdomains:
-      for (int g = 0; g < num_parts; ++g) {
-        int n_group_domains     = group_sizes[g];
-        std::string & group_tag = group_tags[g];
-        DASH_LOG_TRACE("TeamLocality.split", "-- group[", g, "]:",
-                       "group tag:", group_tag,
-                       "domains:",   n_group_domains);
-        std::vector<LocalityDomain> subdomains;
-        for (int d = 0; d < n_group_domains; ++d) {
-          std::string & subdomain_tag = group_domain_tags[g][d];
-          subdomains.push_back(
-            LocalityDomain(_team, subdomain_tag));
-          DASH_LOG_TRACE("TeamLocality.split", "   group[", g, "][", d, "]:",
-                         "tag:",     subdomains.back().domain_tag(),
-                         "units:",   subdomains.back().units(),
-                         "domains:", subdomains.back().size());
-        }
-        _domains.push_back(
-          LocalityDomain(_team, group_tag, subdomains));
-        DASH_LOG_TRACE("TeamLocality.split", "-> group[", g, "]:",
-                       "tag:",     _domains.back().domain_tag(),
-                       "units:",   _domains.back().units(),
-                       "domains:", _domains.back().size());
-      }
+      _domains.push_back(
+        LocalityDomain(_team, domain_split));
     }
 
     for (auto & domain : _domains) {
@@ -683,7 +581,6 @@ public:
     }
 
     DASH_LOG_DEBUG("TeamLocality.split >");
-    free(domain_tags);
 
     return *this;
   }

@@ -8,14 +8,18 @@
 /**
  * Count occurrences of \c needle in string \c haystack.
  */
-static inline int dart__strcnt(
-  const char * haystack, char needle)
-{
-  int cnt = 0;
-  for(; *haystack; haystack++) {
-    if (*haystack == needle) { cnt++; }
-  }
-  return cnt;
-}
+int dart__base__strcnt(
+  char  * haystack,
+  char    needle);
+
+int dart__base__strscommonprefix(
+  char ** strings,
+  int     num_strings,
+  char ** prefix_out);
+
+int dart__base__strcommonprefix(
+  char  * string_a,
+  char  * string_b,
+  char ** prefix_out);
 
 #endif /* DART__BASE__STRING_H__ */

@@ -4,6 +4,7 @@
  */
 #include <dash/dart/base/config.h>
 #include <dash/dart/base/macro.h>
+#include <dash/dart/base/assert.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/internal/unit_locality.h>
@@ -45,26 +46,43 @@ dart_ret_t dart_domain_locality(
 }
 
 dart_ret_t dart_domain_split(
-  dart_team_t               team,
-  const char              * domain_tag,
+  dart_domain_locality_t  * domain_in,
   dart_locality_scope_t     scope,
   int                       num_parts,
-  int                    ** group_sizes_out,
-  char                 **** group_domain_tags_out)
+  dart_domain_locality_t ** split_domain_loc_out)
 {
   DART_LOG_DEBUG("dart_domain_split() team(%d) domain(%s) "
                  "into %d parts at scope %d",
-                 team, domain_tag, num_parts, scope);
-  return dart__base__locality__domain_split(
-           team, domain_tag, scope, num_parts,
-           group_sizes_out, group_domain_tags_out);
+                 domain_in->team, domain_in->domain_tag, num_parts, scope);
+  int    * group_sizes       = NULL;
+  char *** group_domain_tags = NULL;
+  /* Get domain tags for a split, grouped by locality scope.
+   * For 4 domains in the specified scope, a split into 2 parts results
+   * in a grouping of domain tags like:
+   *
+   *   group_domain_tags = {
+   *     { split_domain_0, split_domain_1 },
+   *     { split_domain_2, split_domain_3 }
+   *   }
+   */
+  DART_ASSERT_RETURNS(
+    dart__base__locality__domain_split_tags(
+      domain_in, scope, num_parts,
+      &group_sizes, &group_domain_tags),
+    DART_OK);
+  /* Use grouping of domain tags to create new locality domain hierarchy: */
+  DART_ASSERT_RETURNS(
+    dart__base__locality__domain_intersect(
+      domain_in, num_parts, group_sizes, group_domain_tags,
+      split_domain_loc_out),
+    DART_OK);
+
   DART_LOG_DEBUG("dart_domain_split >");
   return DART_OK;
 }
 
 dart_ret_t dart_scope_domains(
-  dart_team_t               team,
-  const char              * domain_tag,
+  dart_domain_locality_t  * domain_in,
   dart_locality_scope_t     scope,
   int                     * num_domains_out,
   char                  *** domain_tags_out)
@@ -73,9 +91,7 @@ dart_ret_t dart_scope_domains(
   *domain_tags_out = NULL;
 
   return dart__base__locality__scope_domains(
-           team,
-           domain_tag,
-           scope,
+           domain_in, scope,
            num_domains_out,
            domain_tags_out);
 }

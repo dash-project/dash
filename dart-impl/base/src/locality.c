@@ -23,6 +23,8 @@
 #include <dash/dart/base/internal/unit_locality.h>
 #include <dash/dart/base/internal/domain_locality.h>
 
+#include <dash/dart/base/string.h>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_communication.h>
@@ -34,9 +36,9 @@
 #include <sched.h>
 #include <limits.h>
 
-/* ======================================================================== *
- * Private Data                                                             *
- * ======================================================================== */
+/* ====================================================================== *
+ * Private Data                                                           *
+ * ====================================================================== */
 
 #define DART__BASE__LOCALITY__MAX_TEAM_DOMAINS 32
 
@@ -49,9 +51,9 @@ dart__base__locality__unit_mapping_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 dart_domain_locality_t *
 dart__base__locality__global_domain_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
-/* ======================================================================== *
- * Private Functions                                                        *
- * ======================================================================== */
+/* ====================================================================== *
+ * Private Functions                                                      *
+ * ====================================================================== */
 
 dart_ret_t dart__base__locality__scope_domains_rec(
   dart_domain_locality_t  * domain,
@@ -59,9 +61,15 @@ dart_ret_t dart__base__locality__scope_domains_rec(
   int                     * num_domains_out,
   char                  *** domain_tags_out);
 
-/* ======================================================================== *
- * Init / Finalize                                                          *
- * ======================================================================== */
+dart_ret_t dart__base__locality__domain_intersect_rec(
+  dart_domain_locality_t   * domain_in,
+  int                        num_groups,
+  char                    ** group_domain_tags,
+  dart_domain_locality_t   * domain_out);
+
+/* ====================================================================== *
+ * Init / Finalize                                                        *
+ * ====================================================================== */
 
 dart_ret_t dart__base__locality__init()
 {
@@ -78,9 +86,9 @@ dart_ret_t dart__base__locality__finalize()
   return DART_OK;
 }
 
-/* ======================================================================== *
- * Create / Delete                                                          *
- * ======================================================================== */
+/* ====================================================================== *
+ * Create / Delete                                                        *
+ * ====================================================================== */
 
 dart_ret_t dart__base__locality__create(
   dart_team_t team)
@@ -234,17 +242,19 @@ dart_ret_t dart__base__locality__delete(
   return DART_OK;
 }
 
-/* ======================================================================== *
- * Domain Locality                                                          *
- * ======================================================================== */
+/* ====================================================================== *
+ * Domain Locality                                                        *
+ * ====================================================================== */
 
 dart_ret_t dart__base__locality__domain(
   dart_team_t               team,
   const char              * domain_tag,
-  dart_domain_locality_t ** locality)
+  dart_domain_locality_t ** domain_out)
 {
   DART_LOG_DEBUG("dart__base__locality__domain() team(%d) domain(%s)",
                  team, domain_tag);
+
+  *domain_out = NULL;
 
   dart_domain_locality_t * domain =
     dart__base__locality__global_domain_[team];
@@ -283,34 +293,26 @@ dart_ret_t dart__base__locality__domain(
     part_begin = dot_end+1;
     level++;
   }
-  *locality = domain;
+  *domain_out = domain;
   DART_LOG_DEBUG("dart__base__locality__domain > team(%d) domain(%s) -> %p",
                  team, domain_tag, domain);
   return DART_OK;
 }
 
 dart_ret_t dart__base__locality__scope_domains(
-  dart_team_t               team,
-  const char              * domain_tag,
+  dart_domain_locality_t  * domain_in,
   dart_locality_scope_t     scope,
   int                     * num_domains_out,
   char                  *** domain_tags_out)
 {
   *num_domains_out = 0;
   *domain_tags_out = NULL;
-
-  dart_domain_locality_t * domain;
-  DART_ASSERT_RETURNS(
-    dart__base__locality__domain(team, domain_tag, &domain),
-    DART_OK);
-
   return dart__base__locality__scope_domains_rec(
-           domain, scope, num_domains_out, domain_tags_out);
+           domain_in, scope, num_domains_out, domain_tags_out);
 }
 
-dart_ret_t dart__base__locality__domain_split(
-  dart_team_t               team,
-  const char              * domain_tag,
+dart_ret_t dart__base__locality__domain_split_tags(
+  dart_domain_locality_t  * domain_in,
   dart_locality_scope_t     scope,
   int                       num_parts,
   int                    ** group_sizes_out,
@@ -319,14 +321,16 @@ dart_ret_t dart__base__locality__domain_split(
   /* For 4 domains in the specified scope, a split into 2 parts results
    * in a domain hierarchy like:
    *
-   *   global(.) -> [ group(.0) -> [ split_domain_0, split_domain_1 ],
-   *                  group(.1) -> [ split_domain_2, split_domain_3 ] ]
+   *   group_domain_tags[g][d] -> {
+   *                                0: [ domain_0, domain_1 ],
+   *                                1: [ domain_2, domain_3 ], ...
+   *                              }
    *
    */
 
-  DART_LOG_TRACE("dart__base__locality__domain_split() team(%d) domain(%s) "
-                 "scope(%d) parts(%d)",
-                 team, domain_tag, scope, num_parts);
+  DART_LOG_TRACE("dart__base__locality__domain_split_tags() "
+                 "team(%d) domain(%s) scope(%d) parts(%d)",
+                 domain_in->team, domain_in->domain_tag, scope, num_parts);
 
   /* Subdomains of global domain.
    * Domains of split parts, grouping domains at split scope. */
@@ -338,7 +342,7 @@ dart_ret_t dart__base__locality__domain_split(
   char ** domain_tags;
   DART_ASSERT_RETURNS(
     dart__base__locality__scope_domains(
-      team, domain_tag, scope, &num_domains, &domain_tags),
+      domain_in, scope, &num_domains, &domain_tags),
     DART_OK);
 
   /* Group domains in split scope into specified number of parts: */
@@ -353,7 +357,7 @@ dart_ret_t dart__base__locality__domain_split(
     if ((g+1) * max_group_domains > num_domains) {
       num_group_subdomains = (g * max_group_domains) - num_domains;
     }
-    DART_LOG_TRACE("dart__base__locality__domain_split: "
+    DART_LOG_TRACE("dart__base__locality__domain_split_tags: "
                    "domains in group %d: %d", g, num_group_subdomains);
 
     group_sizes[g]       = num_group_subdomains;
@@ -374,13 +378,94 @@ dart_ret_t dart__base__locality__domain_split(
   *group_sizes_out       = group_sizes;
   *group_domain_tags_out = group_domain_tags;
 
-  DART_LOG_TRACE("dart__base__locality__domain_split >");
+  DART_LOG_TRACE("dart__base__locality__domain_split_tags >");
   return DART_OK;
 }
 
-/* ======================================================================== *
- * Unit Locality                                                            *
- * ======================================================================== */
+dart_ret_t dart__base__locality__domain_intersect(
+  dart_domain_locality_t   * domain_in,
+  int                        num_groups,
+  int                      * group_sizes,
+  char                   *** group_domain_tags,
+  dart_domain_locality_t  ** domain_out)
+{
+  DART_LOG_TRACE("dart__base__locality__domain_intersect() "
+                 "team(%d) domain(%s)");
+  dart_ret_t ret;
+
+  *domain_out = NULL;
+
+  /* Find common prefix of all domain tags in intersection: */
+  char prefix[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+  int  prefix_len = DART_LOCALITY_DOMAIN_TAG_MAX_SIZE;
+  for (int g = 0; g < num_groups; ++g) {
+    /* Common prefix of group domain tags: */
+    char group_prefix[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+    int  group_prefix_len = dart__base__strscommonprefix(
+                              group_domain_tags[g],
+                              group_sizes[g],
+                              (char **)(&group_prefix));
+    if (group_prefix_len < prefix_len ||
+        strncmp(group_prefix, prefix, prefix_len) == 0) {
+      /* Common prefix of domain tags in group is shorter than current
+       * root prefix or root prefix is too specific: */
+      char prefix_new[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+      prefix_len = dart__base__strcommonprefix(prefix,
+                                               group_prefix,
+                                               (char **)(&prefix_new));
+      strncpy(prefix, prefix_new, prefix_len);
+    }
+  }
+
+  /* Get domain tagged with group domain tag prefix: */
+  dart_domain_locality_t * domain_in_groups_parent;
+  ret = dart__base__locality__domain(
+          domain_in->team,
+          prefix,
+          &domain_in_groups_parent);
+  if (ret != DART_OK) {
+    return ret;
+  }
+
+  /* Create intersect locality domain hierarchy as new object: */
+  dart_domain_locality_t * domain_split =
+    malloc(sizeof(dart_domain_locality_t));
+  DART_ASSERT_RETURNS(
+    dart__base__locality__domain_locality_init(domain_split),
+    DART_OK);
+  /* Create one subdomain per group in the output domain: */
+  strcpy(domain_split->host, domain_in->host);
+  domain_split->domain_tag[0]  = '\0';
+  domain_split->level          = 0;
+  domain_split->scope          = DART_LOCALITY_SCOPE_GLOBAL;
+  domain_split->relative_index = 0;
+  domain_split->num_domains    = num_groups;
+  domain_split->domains        = malloc(num_groups *
+                                        sizeof(dart_domain_locality_t));
+
+  /* Recurse original hierarchy and construct new split domain hierarchy
+   * according to the specified grouping of domain tags.
+   * Creates groups in subdomains of groups parent domain.
+   * Parent domains are irrelevant as they are not part of any group. */
+  for (int g = 0; g < num_groups; ++g) {
+    domain_split->domains[g].parent         = domain_split;
+    domain_split->domains[g].relative_index = g;
+    DART_ASSERT_RETURNS(
+      dart__base__locality__domain_intersect_rec(
+        domain_in_groups_parent, group_sizes[g], group_domain_tags[g],
+        &(domain_split->domains[g])),
+      DART_OK);
+  }
+
+  *domain_out = domain_split;
+
+  DART_LOG_TRACE("dart__base__locality__domain_intersect >");
+  return DART_OK;
+}
+
+/* ====================================================================== *
+ * Unit Locality                                                          *
+ * ====================================================================== */
 
 dart_ret_t dart__base__locality__unit(
   dart_team_t             team,
@@ -393,11 +478,12 @@ dart_ret_t dart__base__locality__unit(
 
   dart_unit_locality_t * uloc;
   dart_ret_t ret = dart__base__unit_locality__at(
-                     dart__base__locality__unit_mapping_[team], unit, &uloc);
+                     dart__base__locality__unit_mapping_[team], unit,
+                     &uloc);
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart_unit_locality: "
-                   "dart__base__locality__unit(team:%d unit:%d) failed (%d)",
-                   team, unit, ret);
+                   "dart__base__locality__unit(team:%d unit:%d) "
+                   "failed (%d)", team, unit, ret);
     return ret;
   }
   *locality = uloc;
@@ -407,9 +493,48 @@ dart_ret_t dart__base__locality__unit(
   return DART_OK;
 }
 
-/* ======================================================================== *
- * Private Function Definitions                                             *
- * ======================================================================== */
+/* ====================================================================== *
+ * Private Function Definitions                                           *
+ * ====================================================================== */
+
+dart_ret_t dart__base__locality__domain_intersect_rec(
+  dart_domain_locality_t   * domain_parent_in,
+  int                        num_groups,
+  char                    ** group_domain_tags,
+  dart_domain_locality_t   * domain_out)
+{
+  /* Note that domain_parent_in->domain-tag is the domain tag prefix of
+   * domains in the current scope. */
+
+  /* Initialize subdomains: */
+  for (int sd = 0; sd < domain_out->num_domains; ++sd) {
+    /* Initialize a single domain and recurse into its subdomains: */
+    dart_domain_locality_t * subdomain_out = &(domain_out->domains[sd]);
+    dart_domain_locality_t * subdomain_in  = &(domain_parent_in->domains[sd]);
+    strcpy(subdomain_out->host, domain_parent_in->host);
+    subdomain_out->level          = domain_out->level + 1;
+    subdomain_out->scope          = domain_parent_in->scope;
+    subdomain_out->parent         = subdomain_out;
+    subdomain_out->relative_index = sd;
+    /* Copy domain tag from parent to subdomain tag and append subdomain's
+     * relative index: */
+    int parent_tag_len = 0;
+    if (domain_out->level > 0) {
+      parent_tag_len = sprintf(subdomain_out->domain_tag, "%s",
+                               domain_out->domain_tag);
+    }
+    sprintf(subdomain_out->domain_tag + parent_tag_len, ".%d", sd);
+    if (subdomain_out->level == 1) {
+      subdomain_out->num_domains = num_groups;
+    }
+    DART_ASSERT_RETURNS(
+      dart__base__locality__domain_intersect_rec(
+        subdomain_in, num_groups, group_domain_tags,
+        subdomain_out),
+      DART_OK);
+  }
+  return DART_OK;
+}
 
 dart_ret_t dart__base__locality__scope_domains_rec(
   dart_domain_locality_t  * domain,

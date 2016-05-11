@@ -261,8 +261,7 @@ dart_ret_t dart_group_locality_split(
   char ** domain_tags;
   DART_ASSERT_RETURNS(
     dart_scope_domains(
-      team,
-      domain->domain_tag,
+      domain,
       scope,
       &num_domains,
       &domain_tags),

@@ -28,7 +28,7 @@ extern "C" {
 dart_ret_t dart_domain_locality(
   dart_team_t               team,
   const char              * domain_tag,
-  dart_domain_locality_t ** domain_loc_out);
+  dart_domain_locality_t ** domain_out);
 
 /**
  * Split locality domain hierarchy at given domain tag into \c num_parts
@@ -37,17 +37,10 @@ dart_ret_t dart_domain_locality(
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_split(
-  dart_team_t               team,
-  const char              * domain_tag,
+  dart_domain_locality_t  * domain_in,
   dart_locality_scope_t     scope,
   int                       num_parts,
-  /** Number of domains in every split group. Size \c num_parts. */
-  int                    ** group_sizes_out,
-  /** Two-dimensional array containing tag identifiers of domains in the
-   *  split groups.
-   *  Output parameter \c group_sizes_out[group] denotes the size of
-   *  \c group_domain_tags_out[group] with \c (0 <= group < num_parts). */
-  char                 **** group_domain_tags_out);
+  dart_domain_locality_t ** split_domain_out);
 
 /**
  * Domain tags of all domains with the specified locality scope.
@@ -55,8 +48,7 @@ dart_ret_t dart_domain_split(
  * \ingroup DartLocality
  */
 dart_ret_t dart_scope_domains(
-  dart_team_t               team,
-  const char              * domain_tag,
+  dart_domain_locality_t  * domain_in,
   dart_locality_scope_t     scope,
   int                     * num_domains_out,
   char                  *** domain_tags_out);
