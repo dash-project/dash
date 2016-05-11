@@ -65,15 +65,16 @@ dart_ret_t dart__base__locality__domain_locality_init(
     DART_LOG_ERROR("dart__base__locality__domain_locality_init ! null");
     return DART_ERR_INVAL;
   }
-  loc->domain_tag[0] = '\0';
-  loc->host[0]       = '\0';
-  loc->scope         = DART_LOCALITY_SCOPE_UNDEFINED;
-  loc->level         =  0;
-  loc->parent        = NULL;
-  loc->num_domains   =  0;
-  loc->domains       = NULL;
-  loc->num_nodes     = -1;
-  loc->num_units     = -1;
+  loc->domain_tag[0]  = '\0';
+  loc->host[0]        = '\0';
+  loc->scope          = DART_LOCALITY_SCOPE_UNDEFINED;
+  loc->level          =  0;
+  loc->relative_index =  0;
+  loc->parent         = NULL;
+  loc->num_domains    =  0;
+  loc->domains        = NULL;
+  loc->num_nodes      = -1;
+  loc->num_units      = -1;
   DART_LOG_TRACE("dart__base__locality__domain_locality_init >");
   return DART_OK;
 }
@@ -81,7 +82,9 @@ dart_ret_t dart__base__locality__domain_locality_init(
 dart_ret_t dart__base__locality__domain_delete(
   dart_domain_locality_t * domain)
 {
+  DART_LOG_DEBUG("dart__base__locality__domain_delete() domain(%p)", domain);
   if (domain == NULL) {
+    DART_LOG_DEBUG("dart__base__locality__domain_delete >");
     return DART_OK;
   }
   /* deallocate child nodes in depth-first recursion: */
@@ -99,10 +102,22 @@ dart_ret_t dart__base__locality__domain_delete(
       domain->domains + subdom_idx);
   }
   /* deallocate node itself: */
-  free(domain->domains);
+  if (domain->domains != NULL) {
+    DART_LOG_DEBUG("dart__base__locality__domain_delete: "
+                   "free(domain->domains)");
+    free(domain->domains);
+  }
+  if (domain->unit_ids != NULL) {
+    DART_LOG_DEBUG("dart__base__locality__domain_delete: "
+                   "free(domain->unit_ids)");
+    free(domain->unit_ids);
+  }
   domain->domains     = NULL;
+  domain->unit_ids    = NULL;
   domain->num_domains = 0;
+  domain->num_units   = 0;
 
+  DART_LOG_DEBUG("dart__base__locality__domain_delete >");
   return DART_OK;
 }
 

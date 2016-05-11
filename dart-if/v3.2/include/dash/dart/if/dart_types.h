@@ -103,6 +103,9 @@ typedef enum
   DART_LOCALITY_SCOPE_UNDEFINED  =   -1,
   /** Global locality scope, components may be heterogenous. */
   DART_LOCALITY_SCOPE_GLOBAL     =    0,
+  /** Group of domains in specific locality scope, used as parent scope of
+   *  domains in a user-defined group at any locality level. */
+  DART_LOCALITY_SCOPE_GROUP      =    1,
   /** Interconnect topology scope, components may be heterogenous. */
   DART_LOCALITY_SCOPE_NETWORK    =   50,
   /** Node-level locality scope, components may be heterogenous. */

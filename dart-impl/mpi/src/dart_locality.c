@@ -44,6 +44,24 @@ dart_ret_t dart_domain_locality(
   return DART_OK;
 }
 
+dart_ret_t dart_domain_split(
+  dart_team_t               team,
+  const char              * domain_tag,
+  dart_locality_scope_t     scope,
+  int                       num_parts,
+  int                    ** group_sizes_out,
+  char                 **** group_domain_tags_out)
+{
+  DART_LOG_DEBUG("dart_domain_split() team(%d) domain(%s) "
+                 "into %d parts at scope %d",
+                 team, domain_tag, num_parts, scope);
+  return dart__base__locality__domain_split(
+           team, domain_tag, scope, num_parts,
+           group_sizes_out, group_domain_tags_out);
+  DART_LOG_DEBUG("dart_domain_split >");
+  return DART_OK;
+}
+
 dart_ret_t dart_scope_domains(
   dart_team_t               team,
   const char              * domain_tag,

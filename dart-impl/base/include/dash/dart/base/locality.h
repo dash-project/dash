@@ -33,6 +33,14 @@ dart_ret_t dart__base__locality__domain(
   const char              * domain_tag,
   dart_domain_locality_t ** locality);
 
+dart_ret_t dart__base__locality__domain_split(
+  dart_team_t               team,
+  const char              * domain_tag,
+  dart_locality_scope_t     scope,
+  int                       num_parts,
+  int                    ** group_sizes_out,
+  char                 **** group_domain_tags_out);
+
 dart_ret_t dart__base__locality__scope_domains(
   dart_team_t               team,
   const char              * domain_tag,

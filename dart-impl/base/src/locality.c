@@ -308,6 +308,76 @@ dart_ret_t dart__base__locality__scope_domains(
            domain, scope, num_domains_out, domain_tags_out);
 }
 
+dart_ret_t dart__base__locality__domain_split(
+  dart_team_t               team,
+  const char              * domain_tag,
+  dart_locality_scope_t     scope,
+  int                       num_parts,
+  int                    ** group_sizes_out,
+  char                 **** group_domain_tags_out)
+{
+  /* For 4 domains in the specified scope, a split into 2 parts results
+   * in a domain hierarchy like:
+   *
+   *   global(.) -> [ group(.0) -> [ split_domain_0, split_domain_1 ],
+   *                  group(.1) -> [ split_domain_2, split_domain_3 ] ]
+   *
+   */
+
+  DART_LOG_TRACE("dart__base__locality__domain_split() team(%d) domain(%s) "
+                 "scope(%d) parts(%d)",
+                 team, domain_tag, scope, num_parts);
+
+  /* Subdomains of global domain.
+   * Domains of split parts, grouping domains at split scope. */
+  char *** group_domain_tags = malloc(num_parts * sizeof(char **));
+  int    * group_sizes       = malloc(num_parts * sizeof(int));
+
+  /* Get total number and tags of domains in split scope: */
+  int     num_domains;
+  char ** domain_tags;
+  DART_ASSERT_RETURNS(
+    dart__base__locality__scope_domains(
+      team, domain_tag, scope, &num_domains, &domain_tags),
+    DART_OK);
+
+  /* Group domains in split scope into specified number of parts: */
+  int max_group_domains      = (num_domains + (num_parts-1)) / num_parts;
+  int group_first_domain_idx = 0;
+  /*
+   * TODO: Preliminary implementation, should balance number of units in
+   *       groups.
+   */
+  for (int g = 0; g < num_parts; ++g) {
+    int num_group_subdomains = max_group_domains;
+    if ((g+1) * max_group_domains > num_domains) {
+      num_group_subdomains = (g * max_group_domains) - num_domains;
+    }
+    DART_LOG_TRACE("dart__base__locality__domain_split: "
+                   "domains in group %d: %d", g, num_group_subdomains);
+
+    group_sizes[g]       = num_group_subdomains;
+    group_domain_tags[g] = malloc(sizeof(char *) * num_group_subdomains);
+
+    for (int d_rel = 0; d_rel < num_group_subdomains; ++d_rel) {
+      int d_abs   = group_first_domain_idx + d_rel;
+      int tag_len = strlen(domain_tags[d_abs]);
+      group_domain_tags[g][d_rel] = malloc(sizeof(char) * (tag_len + 1));
+      strncpy(group_domain_tags[g][d_rel], domain_tags[d_abs],
+              DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
+      group_domain_tags[g][d_rel][tag_len] = '\0';
+    }
+    /* Create domain of group: */
+    group_first_domain_idx += num_group_subdomains;
+  }
+
+  *group_sizes_out       = group_sizes;
+  *group_domain_tags_out = group_domain_tags;
+
+  DART_LOG_TRACE("dart__base__locality__domain_split >");
+  return DART_OK;
+}
+
 /* ======================================================================== *
  * Unit Locality                                                            *
  * ======================================================================== */
