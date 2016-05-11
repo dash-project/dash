@@ -178,16 +178,18 @@ TEST_F(HDFArrayTest, OutputStream)
 
 TEST_F(HDFArrayTest, UnderfilledPattern)
 {
+  int   ext_x = dash::size() * 5 + 1;
+  long  tilesize;
   {
-    auto array_a = dash::Array<int>(dash::size() * 5 + 1);
+    auto array_a = dash::Array<int>(ext_x);
+    tilesize = array_a.pattern().blocksize(0);
     // Fill
     fill_array(array_a);
     dash::barrier();
-    //std::cout << "Blocksize: " << array_a.pattern().blocksize(0) << std::endl;
-
     // Set option
     auto fopts = dash::io::StoreHDF::get_default_options();
-    fopts.store_pattern = false;
+    // Important as recreation should create equal pattern
+    fopts.store_pattern = true;
 
     dash::io::StoreHDF::write(array_a, _filename, _table, fopts);
     dash::barrier();
@@ -197,8 +199,49 @@ TEST_F(HDFArrayTest, UnderfilledPattern)
   dash::barrier();
 
   // Verify
+  // Check extents
+  DASH_ASSERT_EQ(
+    ext_x,
+    array_b.size(),
+    "Array extent does not match input array");
+  // Check tilesize
+  DASH_ASSERT_EQ(
+    tilesize,
+    array_b.pattern().blocksize(0),
+    "Tilesizes do not match");
+  // Verify data
   verify_array(array_b);
 }
+
+TEST_F(HDFArrayTest, UnderfilledPatPreAllocate)
+{
+  int ext_x = dash::size() * 5 + 1;
+  {
+    auto array_a = dash::Array<int>(ext_x);
+    // Fill
+    fill_array(array_a);
+    dash::barrier();
+    // Set option
+    auto fopts = dash::io::StoreHDF::get_default_options();
+    fopts.store_pattern = false;
+
+    dash::io::StoreHDF::write(array_a, _filename, _table, fopts);
+    dash::barrier();
+  }
+  auto array_b = dash::Array<int>(ext_x);
+  dash::io::StoreHDF::read(array_b, _filename, _table);
+  dash::barrier();
+
+  // Verify
+  // Check extents
+  DASH_ASSERT_EQ(
+    ext_x,
+    array_b.size(),
+    "Array extent does not match input array");
+  // Verify data
+  verify_array(array_b);
+}
+
 
 #endif // DASH_ENABLE_HDF5
 

@@ -72,7 +72,6 @@ public:
     std::string table,
     hdf5_file_options foptions = _get_fdefaults())
   {
-
     //auto team				= array.team();
     auto globalsize = array.size();
     auto pattern    = array.pattern();
@@ -84,9 +83,9 @@ public:
     // global distance between two local tiles in elements
     auto tiledist   = numunits * tilesize;
     // Number of elements in fully filled blocks
-    int  lfullsize  = (localsize / tilesize) * tilesize;
+    long lfullsize  = (localsize / tilesize) * tilesize;
     // global id of last block
-    int localblocks = localsize / tilesize;
+    long localblocks = localsize / tilesize;
     // Map native types to HDF5 types
     auto h5datatype = _convertType(array[0]);
 
@@ -94,12 +93,6 @@ public:
     DASH_ASSERT_EQ(
       pat_dims, 1,
       "Array pattern has to be one-dimensional for HDF5 storage");
-
-    // Leave team if not in team of array,
-    // currently not implemented
-    //if(!team.is_member(dash::myid())){
-    //	return;
-    //}
 
     /* HDF5 definition */
     hid_t   file_id;
@@ -406,13 +399,17 @@ public:
     std::string table,
     hdf5_file_options foptions = _get_fdefaults())
   {
-
     long    globalsize;
     long     localsize;
     long    tilesize;
     int      numunits;
     long    lbegindex;
-    long    tiledist;// global distance between two local tiles
+    // global distance between two local tiles in elements
+    long    tiledist;
+    // Number of elements in fully filled blocks
+    long lfullsize;
+    // global id of last block
+    long localblocks;
 
     /* HDF5 definition */
     hid_t    file_id;
@@ -490,12 +487,15 @@ public:
 
     // Calculate chunks
     globalsize    = array.size();
-    localsize      = array.pattern().local_size();
+    localsize     = array.pattern().local_size();
     tilesize      = array.pattern().blocksize(0);
     numunits      =  array.pattern().num_units();
-    lbegindex      = array.pattern().lbegin();
+    lbegindex     = array.pattern().lbegin();
     tiledist      = numunits * tilesize;
-    data_dimsm[0]  = localsize;
+    lfullsize     = (localsize / tilesize) * tilesize;
+    localblocks   = localsize / tilesize;
+    // Map native types to HDF5 types
+    data_dimsm[0]  = lfullsize;
 
     // Create HDF5 memspace
     memspace      = H5Screate_simple(1, data_dimsm, NULL);
@@ -514,6 +514,30 @@ public:
     H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
     // read data
+    H5Dread(dataset, internal_type, memspace, filespace,
+            plist_id, array.lbegin());
+
+    // read underfilled blocks
+    data_dimsm[0] = (hsize_t) localsize - lfullsize;
+    memspace      = H5Screate_simple(1, data_dimsm, NULL);
+    stride[0]   = tilesize;
+    if (localsize != lfullsize) {
+      count[0]    = 1;
+      offset[0]   = array.pattern().local_block(localblocks).offset(0);
+      block[0]    = localsize - lfullsize;
+    } else {
+      count[0]    = 0;
+      offset[0]   = 0;
+      block[0]    = 0;
+    }
+
+    H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, stride, count, block);
+
+    // Create property list for collective writes
+    plist_id = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+    // Write completely filled blocks by pattern
     H5Dread(dataset, internal_type, memspace, filespace,
             plist_id, array.lbegin());
 
