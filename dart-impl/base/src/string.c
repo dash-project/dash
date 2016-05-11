@@ -85,5 +85,3 @@ int dart__base__strcommonprefix(
   return prefix_len;
 }
 
-
-
