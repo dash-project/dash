@@ -167,9 +167,9 @@ typedef struct
   /** Flags indicating shared caches by cache level (L1, L2, L3). */
   int   cache_shared[3];
 
-  /** Minimum number of CPU threads. */
+  /** Minimum number of CPU threads per core. */
   int   min_threads;
-  /** Maximum number of CPU threads. */
+  /** Maximum number of CPU threads per core. */
   int   max_threads;
 }
 dart_hwinfo_t;
@@ -343,10 +343,10 @@ struct dart_domain_locality_s
    * Hierarchical domain identifier, represented as dot-separated list
    * of relative indices on every level in the locality hierarchy.
    */
-  char                            domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+  char domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 
   /** Hostname of the domain's node or 0 if unspecified. */
-  char                            host[DART_LOCALITY_HOST_MAX_SIZE];
+  char host[DART_LOCALITY_HOST_MAX_SIZE];
 
   /** Locality scope of the domain. */
   dart_locality_scope_t           scope;

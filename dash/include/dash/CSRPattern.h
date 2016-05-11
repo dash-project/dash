@@ -1266,7 +1266,10 @@ public:
     std::vector<size_type> l_sizes;
     auto nunits = team.size();
     DASH_LOG_TRACE_VAR("CSRPattern.init_local_sizes()", nunits);
-    if (nunits < 1) {
+    if (nunits == 1) {
+      l_sizes.push_back(total_size);
+    }
+    if (nunits <= 1) {
       return l_sizes;
     }
     auto dist_type = distspec[0].type;

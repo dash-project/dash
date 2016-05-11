@@ -40,6 +40,7 @@
 
 #include <dash/util/Timer.h>
 #include <dash/util/Locality.h>
+#include <dash/util/TeamLocality.h>
 #include <dash/util/BenchmarkParams.h>
 #include <dash/util/Config.h>
 #include <dash/util/Trace.h>
