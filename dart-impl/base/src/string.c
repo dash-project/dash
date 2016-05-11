@@ -40,23 +40,25 @@ int dart__base__strscommonprefix(
   for (int i = 0; i < num_strings; i++) {
     char * prefix_i  = malloc((strlen(strings[i]) + 1) * sizeof(char));
     int prefix_i_len = dart__base__strcommonprefix(
-                         prefix_out, strings[0], prefix_i);
+                         prefix_out, strings[i], prefix_i);
     if (prefix_i_len < prefix_len) {
       prefix_len = prefix_i_len;
       strcpy(prefix_out, prefix_i);
     }
+    free(prefix_i);
   }
   if (prefix_len == INT_MAX) {
     prefix_len = 0;
   }
+  prefix_out[prefix_len] = '\0';
 
   return prefix_len;
 }
 
 int dart__base__strcommonprefix(
-  char  * string_a,
-  char  * string_b,
-  char  * prefix_out)
+  char * string_a,
+  char * string_b,
+  char * prefix_out)
 {
   int prefix_len   = 0;
   int string_a_len = strlen(string_a);
@@ -75,8 +77,11 @@ int dart__base__strcommonprefix(
       break;
     } else {
       prefix_out[prefix_len] = string_a[i];
+      prefix_len++;
     }
   }
+  prefix_out[prefix_len] = '\0';
+
   return prefix_len;
 }
 
