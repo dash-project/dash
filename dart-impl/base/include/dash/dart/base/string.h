@@ -15,11 +15,11 @@ int dart__base__strcnt(
 int dart__base__strscommonprefix(
   char ** strings,
   int     num_strings,
-  char ** prefix_out);
+  char  * prefix_out);
 
 int dart__base__strcommonprefix(
   char  * string_a,
   char  * string_b,
-  char ** prefix_out);
+  char  * prefix_out);
 
 #endif /* DART__BASE__STRING_H__ */
