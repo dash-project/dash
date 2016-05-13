@@ -22,4 +22,8 @@ int dart__base__strcommonprefix(
   char  * string_b,
   char  * prefix_out);
 
+int dart__base__strsunique(
+  char ** strings,
+  int     num_strings);
+
 #endif /* DART__BASE__STRING_H__ */

@@ -67,15 +67,25 @@ dart_ret_t dart_domain_split(
    */
   DART_ASSERT_RETURNS(
     dart__base__locality__domain_split_tags(
-      domain_in, scope, num_parts,
-      &group_sizes, &group_domain_tags),
+      domain_in, scope, num_parts, &group_sizes, &group_domain_tags),
     DART_OK);
-  /* Use grouping of domain tags to create new locality domain hierarchy: */
-  DART_ASSERT_RETURNS(
-    dart__base__locality__domain_intersect(
-      domain_in, num_parts, group_sizes, group_domain_tags,
-      split_domain_loc_out),
-    DART_OK);
+  /* Use grouping of domain tags to create new locality domain
+   * hierarchy:
+   */
+  for (int p = 0; p < num_parts; p++) {
+    DART_ASSERT_RETURNS(
+      dart__base__locality__copy_domain(
+        domain_in,
+        split_domain_loc_out[p]),
+      DART_OK);
+    DART_ASSERT_RETURNS(
+      dart__base__locality__domain_group(
+        split_domain_loc_out[p],
+        num_parts,
+        group_sizes,
+        group_domain_tags),
+      DART_OK);
+  }
 
   DART_LOG_DEBUG("dart_domain_split >");
   return DART_OK;
@@ -96,9 +106,9 @@ dart_ret_t dart_scope_domains(
            domain_tags_out);
 }
 
-/* ======================================================================== *
- * Unit Locality                                                            *
- * ======================================================================== */
+/* ====================================================================== *
+ * Unit Locality                                                          *
+ * ====================================================================== */
 
 dart_ret_t dart_unit_locality(
   dart_team_t             team,

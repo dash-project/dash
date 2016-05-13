@@ -64,7 +64,9 @@ int dart__base__strcommonprefix(
   int string_a_len = strlen(string_a);
   int string_b_len = strlen(string_b);
 
-  prefix_out[0] = '\0';
+  if (prefix_out != NULL) {
+    prefix_out[0] = '\0';
+  }
 
   if (string_a_len == 0 || string_b_len == 0) {
     return prefix_len;
@@ -76,12 +78,30 @@ int dart__base__strcommonprefix(
     if (string_a[i] != string_b[i]) {
       break;
     } else {
-      prefix_out[prefix_len] = string_a[i];
+      if (prefix_out != NULL) {
+        prefix_out[prefix_len] = string_a[i];
+      }
       prefix_len++;
     }
   }
-  prefix_out[prefix_len] = '\0';
+  if (prefix_out != NULL) {
+    prefix_out[prefix_len] = '\0';
+  }
 
   return prefix_len;
+}
+
+int dart__base__strsunique(
+  char ** strings,
+  int     num_strings)
+{
+  int last_unique = 0;
+  for (int s = 0; s < num_strings; s++) {
+    if (strcmp(strings[s], strings[last_unique]) != 0) {
+      ++last_unique;
+      strcpy(strings[last_unique], strings[s]);
+    }
+  }
+  return last_unique;
 }
 
