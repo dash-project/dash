@@ -1101,7 +1101,6 @@ public:
     return 1;
   }
 
-private:
   /**
    * Number of elements missing in the overflow block of given dimension
    * compared to the regular blocksize (\see blocksize(d)), with
@@ -1118,6 +1117,7 @@ private:
     }
   }
 
+private:
   /**
    * Initialize block size specs from memory layout, team spec and
    * distribution spec.
