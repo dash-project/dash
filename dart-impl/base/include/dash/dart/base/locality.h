@@ -55,8 +55,8 @@ dart_ret_t dart__base__locality__scope_domains(
   char                   *** domain_tags_out);
 
 dart_ret_t dart__base__locality__copy_domain(
-  dart_domain_locality_t   * domain_in,
-  dart_domain_locality_t   * domain_out);
+  const dart_domain_locality_t * domain_in,
+  dart_domain_locality_t       * domain_out);
 
 dart_ret_t dart__base__locality__child_domain(
   dart_domain_locality_t   * domain,

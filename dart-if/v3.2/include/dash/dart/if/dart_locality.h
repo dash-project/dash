@@ -40,7 +40,7 @@ dart_ret_t dart_domain_split(
   dart_domain_locality_t  * domain_in,
   dart_locality_scope_t     scope,
   int                       num_parts,
-  dart_domain_locality_t ** split_domain_out);
+  dart_domain_locality_t  * split_domain_out);
 
 /**
  * Domain tags of all domains with the specified locality scope.

@@ -545,33 +545,43 @@ public:
 
     if (num_parts < 1 || num_domains <= num_parts) {
       DASH_LOG_DEBUG("TeamLocality.split", "split into single subdomains");
-      /* Split into single subdomains: */
-      for (int d = 0; d < num_domains; ++d) {
-        dart_domain_locality_t * subdomain;
-        DASH_ASSERT_RETURNS(
-          dart_domain_split(
-            domain,
-            static_cast<dart_locality_scope_t>(_scope),
-            num_domains,
-            &subdomain),
-          DART_OK);
-        DASH_LOG_TRACE_VAR("TeamLocality.split", subdomain->domain_tag);
-        _domains.push_back(LocalityDomain(_team, subdomain));
+
+      dart_domain_locality_t * subdomains =
+        new dart_domain_locality_t[num_domains];
+
+      DASH_ASSERT_RETURNS(
+        dart_domain_split(
+          domain,
+          static_cast<dart_locality_scope_t>(_scope),
+          num_domains,
+          subdomains),
+        DART_OK);
+      for (int sd = 0; sd < num_domains; ++sd) {
+        DASH_LOG_TRACE_VAR("TeamLocality.split", subdomains[sd].domain_tag);
+        _domains.push_back(LocalityDomain(_team, &subdomains[sd]));
       }
     } else {
       DASH_LOG_DEBUG("TeamLocality.split", "split into groups of subdomains");
-      /* Split into groups of subdomains: */
-      dart_domain_locality_t * domain_split;
+
+      dart_domain_locality_t * domain_split =
+        new dart_domain_locality_t[num_parts];
+
+      for (int sd = 0; sd < num_parts; ++sd) {
+        DASH_LOG_DEBUG_VAR("TeamLocality.split", &domain_split[sd]);
+      }
+
       DASH_ASSERT_RETURNS(
         dart_domain_split(
           domain,
           static_cast<dart_locality_scope_t>(_scope),
           num_parts,
-          &domain_split),
+          domain_split),
         DART_OK);
 
-      _domains.push_back(
-        LocalityDomain(_team, domain_split));
+      for (int sd = 0; sd < num_parts; ++sd) {
+        DASH_LOG_TRACE_VAR("TeamLocality.split", domain_split[sd].domain_tag);
+        _domains.push_back(LocalityDomain(_team, &domain_split[sd]));
+      }
     }
 
     for (auto & domain : _domains) {
