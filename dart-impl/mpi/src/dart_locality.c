@@ -148,6 +148,19 @@ dart_ret_t dart_scope_domains(
            domain_tags_out);
 }
 
+dart_ret_t dart_group_domains(
+  dart_domain_locality_t  * domain_in,
+  int                       num_groups,
+  const int               * group_sizes,
+  const char            *** group_domain_tags)
+{
+  return dart__base__locality__domain_group(
+           domain_in,
+           num_groups,
+           group_sizes,
+           group_domain_tags);
+}
+
 /* ====================================================================== *
  * Unit Locality                                                          *
  * ====================================================================== */

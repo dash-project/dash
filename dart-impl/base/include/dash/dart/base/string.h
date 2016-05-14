@@ -9,21 +9,21 @@
  * Count occurrences of \c needle in string \c haystack.
  */
 int dart__base__strcnt(
-  char  * haystack,
-  char    needle);
+  const char  * haystack,
+  char          needle);
 
 int dart__base__strscommonprefix(
-  char ** strings,
-  int     num_strings,
-  char  * prefix_out);
+  const char ** strings,
+  int           num_strings,
+  char        * prefix_out);
 
 int dart__base__strcommonprefix(
-  char  * string_a,
-  char  * string_b,
-  char  * prefix_out);
+  const char  * string_a,
+  const char  * string_b,
+  char        * prefix_out);
 
 int dart__base__strsunique(
-  char ** strings,
-  int     num_strings);
+  char       ** strings,
+  int           num_strings);
 
 #endif /* DART__BASE__STRING_H__ */

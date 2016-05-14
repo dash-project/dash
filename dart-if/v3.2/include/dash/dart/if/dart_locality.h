@@ -53,6 +53,12 @@ dart_ret_t dart_scope_domains(
   int                     * num_domains_out,
   char                  *** domain_tags_out);
 
+dart_ret_t dart_group_domains(
+  dart_domain_locality_t  * domain_in,
+  int                       num_groups,
+  const int               * group_sizes,
+  const char            *** group_domain_tags);
+
 /**
  * Locality information of the unit with the specified global id.
  *

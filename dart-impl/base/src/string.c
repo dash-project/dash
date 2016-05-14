@@ -12,8 +12,8 @@
 
 
 int dart__base__strcnt(
-  char * haystack,
-  char   needle)
+  const char * haystack,
+  char         needle)
 {
   int cnt = 0;
   for(; *haystack; haystack++) {
@@ -23,9 +23,9 @@ int dart__base__strcnt(
 }
 
 int dart__base__strscommonprefix(
-  char ** strings,
-  int     num_strings,
-  char  * prefix_out)
+  const char ** strings,
+  int           num_strings,
+  char        * prefix_out)
 {
   int prefix_len = 0;
 
@@ -56,9 +56,9 @@ int dart__base__strscommonprefix(
 }
 
 int dart__base__strcommonprefix(
-  char * string_a,
-  char * string_b,
-  char * prefix_out)
+  const char * string_a,
+  const char * string_b,
+  char       * prefix_out)
 {
   int prefix_len   = 0;
   int string_a_len = strlen(string_a);

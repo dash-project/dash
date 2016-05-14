@@ -389,8 +389,8 @@ dart_ret_t dart__base__locality__domain_split_tags(
 dart_ret_t dart__base__locality__domain_group(
   dart_domain_locality_t   * domain,
   int                        num_groups,
-  int                      * group_sizes,
-  char                   *** group_domain_tags)
+  const int                * group_sizes,
+  const char              ** group_domain_tags[])
 {
   DART_LOG_TRACE("dart__base__locality__domain_group() "
                  "domain_in: (%s: %d @ %d) num_groups: %d",
@@ -431,7 +431,7 @@ dart_ret_t dart__base__locality__domain_group(
     int num_group_parent_domain_tag_parts =
           dart__base__strcnt(group_parent_domain->domain_tag, '.');
     for (int sd = 0; sd < group_sizes[g]; sd++) {
-      char * group_domain_tag = group_domain_tags[g][sd];
+      const char * group_domain_tag = group_domain_tags[g][sd];
       DART_LOG_TRACE("dart__base__locality__domain_group: "
                      "    group_domain_tags[%d][%d]: %s",
                      g, sd, group_domain_tag);
@@ -618,7 +618,7 @@ dart_ret_t dart__base__locality__copy_domain(
  */
 dart_ret_t dart__base__locality__child_domain(
   dart_domain_locality_t   * domain,
-  char                     * subdomain_tag,
+  const char               * subdomain_tag,
   dart_domain_locality_t  ** subdomain_out)
 {
   if (strcmp(domain->domain_tag, subdomain_tag) == 0) {
@@ -640,7 +640,7 @@ dart_ret_t dart__base__locality__child_domain(
  */
 dart_ret_t dart__base__locality__parent_domain(
   dart_domain_locality_t   * domain_in,
-  char                     * subdomain_tags[],
+  const char               * subdomain_tags[],
   int                        num_subdomain_tags,
   dart_domain_locality_t  ** domain_out)
 {
@@ -717,7 +717,7 @@ dart_ret_t dart__base__locality__select_subdomains_if(
  */
 dart_ret_t dart__base__locality__select_subdomains(
   dart_domain_locality_t   * domain,
-  char                     * subdomain_tags[],
+  const char               * subdomain_tags[],
   int                        num_subdomain_tags)
 {
   dart_ret_t ret;
@@ -726,48 +726,43 @@ dart_ret_t dart__base__locality__select_subdomains(
                  "domain: %s level: %d subdomains: %d",
                  domain->domain_tag, domain->level, domain->num_domains);
 
-  int is_unit_scope = ((int)domain->scope == (int)DART_LOCALITY_SCOPE_UNIT);
+  int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_UNIT);
   int tag_len       = 0;
   int matched       = 0;
   int unit_idx      = 0;
   int subdomain_idx = 0;
-  int selected      = is_unit_scope;
 
-  if (!is_unit_scope) {
-    domain->num_units = 0;
+  if (is_unit_scope) {
+    return DART_OK;
   }
 
   for (int sd = 0; sd < domain->num_domains; sd++) {
+    /* ---------------------------------------------------------------- *
+     * Selection predicate is just this block.                          *
+     * Could use functors to allow arbitrary selection functions.       *
+     *                                                                  */
     char * subdomain_tag = domain->domains[sd].domain_tag;
-    DART_LOG_TRACE("dart__base__locality__select_subdomains:      : "
-                   "subdomain: %s sd: %d subdomains matched: %d",
-                   subdomain_tag, sd, subdomain_idx);
     matched = 0;
     tag_len = (int)strlen(subdomain_tag);
     for (int dt = 0; dt < num_subdomain_tags; dt++) {
       if (dart__base__strcommonprefix(
             subdomain_tag, subdomain_tags[dt], NULL) >= tag_len) {
-        matched  = 1;
-        selected = 1;
-        DART_LOG_TRACE("dart__base__locality__select_subdomains:  "
-                       "match: domain %s == filter %s",
-                       domain->domain_tag, subdomain_tags[dt]);
+        matched = 1;
         break;
       }
     }
+    /*                                                                   *
+     * ----------------------------------------------------------------- */
+
     if (matched == 0) {
       continue;
     }
     if (subdomain_idx != sd) {
-      DART_LOG_TRACE("dart__base__locality__select_subdomains:  "
-                     "     : copy domains[%d] <- domains[%d]",
-                     subdomain_idx, sd);
       memcpy(domain->domains + subdomain_idx,
              domain->domains + sd,
              sizeof(dart_domain_locality_t));
     }
 
-    /* ===== Recursion ===== */
     ret = dart__base__locality__select_subdomains(
             domain->domains + subdomain_idx,
             subdomain_tags,
@@ -775,65 +770,39 @@ dart_ret_t dart__base__locality__select_subdomains(
     if (ret != DART_OK) {
       return ret;
     }
-    /* Collect units and domains bottom-up after maximum recursion
-     * depth has been reached. */
-    DART_LOG_TRACE("dart__base__locality__select_subdomains:      : "
-                   "copy unit_ids[%d..] <- domains[%d].unit_ids[%d..] "
-                   "(%d units)",
-                   unit_idx, subdomain_idx, 0, subdomain_idx,
-                   domain->domains[subdomain_idx].num_units);
 
-    if (domain->num_units > 0) {
+    /* Collect units and domains bottom-up after maximum recursion
+     * depth has been reached:
+     */
+    if (domain->domains[subdomain_idx].num_units > 0) {
       memcpy(domain->unit_ids + unit_idx,
              domain->domains[subdomain_idx].unit_ids,
              domain->domains[subdomain_idx].num_units *
                sizeof(dart_unit_t));
       unit_idx += domain->domains[subdomain_idx].num_units;
     }
-    if (domain->num_units != unit_idx && domain->unit_ids != NULL) {
-      DART_LOG_TRACE("dart__base__locality__select_subdomains:   realloc: "
-                     "resize %s from %d to %d unit ids",
-                     domain->domain_tag, domain->num_units, unit_idx);
-      dart_unit_t * tmp =
-        realloc(domain->unit_ids, unit_idx * sizeof(dart_unit_t));
-      if (tmp != NULL) {
-        domain->unit_ids = tmp;
-      }
-      DART_LOG_TRACE("dart__base__locality__select_subdomains:  "
-                     "domain %s units: %d",
-                     domain->domain_tag, domain->num_units);
-    }
-    domain->num_units = unit_idx;
     subdomain_idx++;
   }
-  if (selected == 0) {
-    domain->num_units   = 0;
-    domain->num_domains = 0;
-    if (domain->unit_ids != NULL) {
-      free(domain->unit_ids);
-      domain->unit_ids  = NULL;
+  /*
+   * Bottom-up accumulation of units and domains:
+   */
+  if (domain->unit_ids != NULL) {
+    dart_unit_t * tmp =
+      realloc(domain->unit_ids, unit_idx * sizeof(dart_unit_t));
+    if (tmp != NULL) {
+      domain->unit_ids = tmp;
     }
-    if (domain->domains != NULL) {
-      free(domain->domains);
-      domain->domains   = NULL;
-    }
-    return DART_OK;
+    domain->num_units = unit_idx;
   }
   if (domain->num_domains > subdomain_idx && domain->domains != NULL) {
-    DART_LOG_TRACE("dart__base__locality__select_subdomains: realloc: "
-                   "resize %s from %d to %d domains",
-                   domain->domain_tag, domain->num_domains, subdomain_idx);
     dart_domain_locality_t * tmp =
       realloc(domain->domains,
               subdomain_idx * sizeof(dart_domain_locality_t));
     if (tmp != NULL) {
       domain->domains = tmp;
     }
-    DART_LOG_TRACE("dart__base__locality__select_subdomains:  "
-                   "domain %s subdomains: %d",
-                   domain->domain_tag, domain->num_domains);
+    domain->num_domains = subdomain_idx;
   }
-  domain->num_domains = subdomain_idx;
   DART_LOG_TRACE("dart__base__locality__select_subdomains >");
   return DART_OK;
 }
@@ -844,7 +813,7 @@ dart_ret_t dart__base__locality__select_subdomains(
  */
 dart_ret_t dart__base__locality__remove_subdomains(
   dart_domain_locality_t   * domain,
-  char                     * subdomain_tags[],
+  const char               * subdomain_tags[],
   int                        num_subdomain_tags)
 {
   dart_ret_t ret;
@@ -899,7 +868,7 @@ dart_ret_t dart__base__locality__remove_subdomains(
  */
 dart_ret_t dart__base__locality__group_subdomains(
   dart_domain_locality_t   * domain,
-  char                    ** group_subdomain_tags,
+  const char               * group_subdomain_tags[],
   int                        num_group_subdomain_tags)
 {
   DART_LOG_TRACE("dart__base__locality__group_subdomains() "
