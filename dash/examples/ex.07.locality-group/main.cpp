@@ -14,7 +14,7 @@
 using namespace std;
 
 
-int main(int argc, char * argv[])
+int main(int argc, char ** argv)
 {
   // Note: barriers and sleeps are only required to prevent output of
   //       different units to interleave.
@@ -26,12 +26,13 @@ int main(int argc, char * argv[])
 
   std::vector<std::vector<std::string>> group_domain_tags;
 
-  int group_idx = 1;
   if (argc >= 3) {
-    if (std::string(argv[group_idx]) == "-g") {
-      group_domain_tags.push_back(std::vector<std::string>());
-      for (int g = 2; g < argc; g++) {
-        group_domain_tags[group_idx].push_back(argv[g]);
+    for (int aidx = 1; aidx < argc; aidx++) {
+      if (std::string(argv[aidx]) == "-g") {
+        group_domain_tags.push_back(std::vector<std::string>());
+      } else {
+        group_domain_tags.back().push_back(
+            std::string(argv[aidx]));
       }
     }
   } else {
@@ -58,11 +59,28 @@ int main(int argc, char * argv[])
     dart_barrier(DART_TEAM_ALL);
     sleep(2);
     if (myid == 0) {
-      cout << "Usage:" << endl
-           << "  ex.07.locality-group [-g groups ... ]"
-           << endl
-           << endl
-           << separator << endl;
+      if (argc < 3 || std::string(argv[1]) != "-g") {
+        cout << "Usage:"
+             << endl
+             << "  ex.07.locality-group [-g groups ... ]"
+             << endl
+             << endl;
+      } else {
+        cout << "ex.07.locality-group"
+             << endl
+             << endl
+             << "  specified groups:"
+             << endl;
+        for (auto group : group_domain_tags) {
+          cout << "   {" << endl;
+          for (auto domain : group) {
+            cout << "     " << std::left << domain
+                 << endl;
+          }
+          cout << "   }" << endl;
+        }
+      }
+      cout << separator << endl;
     } else {
       sleep(2);
     }
@@ -112,7 +130,6 @@ int main(int argc, char * argv[])
   } else {
     sleep(2);
   }
-
 
   // To prevent interleaving output:
   std::ostringstream f_os;

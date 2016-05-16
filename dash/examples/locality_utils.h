@@ -12,13 +12,15 @@ std::ostream & operator<<(
   dart_locality_scope_t   scope)
 {
   switch(scope) {
-    case DART_LOCALITY_SCOPE_GLOBAL: os << "GLOBAL";    break;
-    case DART_LOCALITY_SCOPE_NODE:   os << "NODE";      break;
-    case DART_LOCALITY_SCOPE_MODULE: os << "MODULE";    break;
-    case DART_LOCALITY_SCOPE_NUMA:   os << "NUMA";      break;
-    case DART_LOCALITY_SCOPE_UNIT:   os << "UNIT";      break;
-    case DART_LOCALITY_SCOPE_CORE:   os << "CORE";      break;
-    default:                         os << "UNDEFINED"; break;
+    case DART_LOCALITY_SCOPE_GLOBAL:  os << "GLOBAL";    break;
+    case DART_LOCALITY_SCOPE_GROUP:   os << "GROUP";     break;
+    case DART_LOCALITY_SCOPE_NETWORK: os << "NETWORK";   break;
+    case DART_LOCALITY_SCOPE_NODE:    os << "NODE";      break;
+    case DART_LOCALITY_SCOPE_MODULE:  os << "MODULE";    break;
+    case DART_LOCALITY_SCOPE_NUMA:    os << "NUMA";      break;
+    case DART_LOCALITY_SCOPE_UNIT:    os << "UNIT";      break;
+    case DART_LOCALITY_SCOPE_CORE:    os << "CORE";      break;
+    default:                          os << "UNDEFINED"; break;
   }
   return os;
 }
@@ -34,7 +36,7 @@ void print_domain(
   std::string indent(domain->level * 4, ' ');
 
   cout << indent << "scope:   " << domain->scope << " "
-                 << "(level "  << domain->level << ")"
+                 << "(level "   << domain->level << ")"
        << endl
        << indent << "domain:  " << domain->domain_tag
        << endl;

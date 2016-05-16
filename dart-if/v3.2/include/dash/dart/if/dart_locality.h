@@ -53,6 +53,9 @@ dart_ret_t dart_scope_domains(
   int                     * num_domains_out,
   char                  *** domain_tags_out);
 
+/**
+ * Adds entries to locality hierarchy to group locality domains.
+ */
 dart_ret_t dart_group_domains(
   dart_domain_locality_t  * domain_in,
   int                       num_groups,

@@ -49,7 +49,7 @@ dart_ret_t dart_domain_split(
   dart_domain_locality_t  * domain_in,
   dart_locality_scope_t     scope,
   int                       num_parts,
-  dart_domain_locality_t  * split_domain_loc_out)
+  dart_domain_locality_t  * domains_out)
 {
   DART_LOG_DEBUG("dart_domain_split() team(%d) domain(%s) "
                  "into %d parts at scope %d",
@@ -84,28 +84,6 @@ dart_ret_t dart_domain_split(
   /* Use grouping of domain tags to create new locality domain
    * hierarchy:
    */
-
-#if 0
-  dart_domain_locality_t * input_domain_cpy =
-    malloc(sizeof(dart_domain_locality_t));
-
-  /* Deep copy of domain: */
-  DART_LOG_TRACE("dart_domain_split: copying input domain");
-  DART_ASSERT_RETURNS(
-    dart__base__locality__copy_domain(
-      domain_in,
-      input_domain_cpy),
-    DART_OK);
-  /* Create groups in copy of domain: */
-  DART_LOG_TRACE("dart_domain_split: grouping domain)");
-  DART_ASSERT_RETURNS(
-    dart__base__locality__domain_group(
-      input_domain_cpy,
-      num_parts,
-      group_sizes,
-      group_domain_tags),
-    DART_OK);
-#endif
   for (int p = 0; p < num_parts; p++) {
     DART_LOG_DEBUG("dart_domain_split: domain split %d / %d",
                    p + 1, num_parts);
@@ -115,7 +93,7 @@ dart_ret_t dart_domain_split(
     DART_ASSERT_RETURNS(
       dart__base__locality__copy_domain(
         domain_in,
-        split_domain_loc_out + p),
+        domains_out + p),
       DART_OK);
   }
   for (int p = 0; p < num_parts; p++) {
@@ -123,8 +101,8 @@ dart_ret_t dart_domain_split(
     DART_LOG_TRACE("dart_domain_split: selecting subdomains");
     DART_ASSERT_RETURNS(
       dart__base__locality__select_subdomains(
-        split_domain_loc_out + p,
-        group_domain_tags[p],
+        domains_out + p,
+        (const char **)(group_domain_tags[p]),
         group_sizes[p]),
       DART_OK);
   }
