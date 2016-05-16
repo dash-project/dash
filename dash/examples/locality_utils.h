@@ -31,7 +31,7 @@ void print_domain(
 {
   using namespace std;
 
-  const int max_level = 3;
+  const int max_level = 4;
 
   std::string indent(domain->level * 4, ' ');
 
@@ -63,7 +63,8 @@ void print_domain(
   }
   cout << " }" << endl;
 
-  if (domain->level == 3) {
+  if (domain->scope == DART_LOCALITY_SCOPE_NUMA ||
+      domain->scope == DART_LOCALITY_SCOPE_GROUP) {
     std::string uindent((domain->level + 1) * 4, ' ');
     for (int u = 0; u < domain->num_units; ++u) {
       dart_unit_t            unit_id  = domain->unit_ids[u];
@@ -99,12 +100,15 @@ void print_domain(
   if (domain->level < max_level && domain->num_domains > 0) {
     cout << indent << "domains: " << domain->num_domains << endl;
     for (int d = 0; d < domain->num_domains; ++d) {
-      cout << indent << "|-- domains[" << setw(2) << d << "]: " << endl;
+      if (static_cast<int>(domain->domains[d].scope) <
+          static_cast<int>(DART_LOCALITY_SCOPE_CORE)) {
+        cout << indent << "|-- domains[" << setw(2) << d << "]: " << endl;
 
-      print_domain(team, &domain->domains[d]);
+        print_domain(team, &domain->domains[d]);
 
-      cout << indent << "'----------"
-           << endl;
+        cout << indent << "'----------"
+             << endl;
+      }
     }
   }
 }

@@ -1007,6 +1007,19 @@ dart_ret_t dart__base__locality__group_subdomains(
     group_domain->num_units += group_domain->domains[gd].num_units;
     group_domain->num_nodes += group_domain->domains[gd].num_nodes;
   }
+  /*
+   * Collect unit ids of group domain:
+   */
+  group_domain->unit_ids = malloc(sizeof(dart_unit_t) *
+                                  group_domain->num_units);
+  int group_domain_unit_idx = 0;
+  for (int gd = 0; gd < num_grouped; gd++) {
+    dart_domain_locality_t * group_subdomain = group_domain->domains + gd;
+    memcpy(group_domain->unit_ids + group_domain_unit_idx,
+           group_subdomain->unit_ids,
+           sizeof(dart_unit_t) * group_subdomain->num_units);
+    group_domain_unit_idx += group_subdomain->num_units;
+  }
 
   for (int g = 0; g < num_existing_domain_groups; g++) {
     DART_LOG_TRACE(
