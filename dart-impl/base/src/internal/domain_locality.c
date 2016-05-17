@@ -127,18 +127,14 @@ dart_ret_t dart__base__locality__domain__copy(
   dart_domain_locality_t         * domain_dst)
 {
   DART_LOG_TRACE("dart__base__locality__domain__copy() "
-                 "domain: %s (level %d) subdomains: %d units: %d (%p -> %p)",
+                 "domain: %s (level %d) subdomains: %d units: %d (%p = %p)",
                  domain_src->domain_tag,  domain_src->level,
                  domain_src->num_domains, domain_src->num_units,
-                 domain_src, domain_dst);
+                 domain_dst, domain_src);
+  dart_ret_t ret;
 
   DART_LOG_TRACE("dart__base__locality__domain__copy: assigning");
-  *domain_dst = *domain_src;
-
-  domain_dst->num_units   = domain_src->num_units;
-  domain_dst->unit_ids    = NULL;
-  domain_dst->num_domains = domain_src->num_domains;
-  domain_dst->domains     = NULL;
+  memcpy(domain_dst, domain_src, sizeof(dart_domain_locality_t));
 
   /* Copy unit ids:
    */
@@ -153,8 +149,11 @@ dart_ret_t dart__base__locality__domain__copy(
                    domain_src->num_units);
     domain_dst->unit_ids = malloc(sizeof(dart_unit_t) *
                                   domain_src->num_units);
-    memcpy(domain_dst->unit_ids, domain_src->unit_ids,
-           sizeof(dart_unit_t) * domain_src->num_units);
+    for (int u = 0; u < domain_src->num_units; u++) {
+      domain_dst->unit_ids[u] = domain_src->unit_ids[u];
+    }
+  } else {
+    domain_dst->unit_ids = NULL;
   }
 
   /* Copy subdomains:
@@ -170,22 +169,30 @@ dart_ret_t dart__base__locality__domain__copy(
                    domain_src->num_domains);
     domain_dst->domains = malloc(sizeof(dart_domain_locality_t) *
                                  domain_src->num_domains);
+  } else {
+    domain_dst->domains = NULL;
   }
 
   /* Recursively copy subdomains:
    */
-  int num_domains = domain_dst->num_domains;
-  for (int sd = 0; sd < num_domains; ++sd) {
-    DART_LOG_TRACE("dart__base__locality__domain__copy --v (%d / %d)",
-                   sd, num_domains - 1);
+  for (int sd = 0; sd < domain_src->num_domains; sd++) {
+    const dart_domain_locality_t * subdomain_src = domain_src->domains + sd;
+    dart_domain_locality_t * subdomain_dst       = domain_dst->domains + sd;
+    DART_LOG_TRACE("dart__base__locality__domain__copy --v (%d / %d) %p = %p",
+                   sd, domain_src->num_domains - 1,
+                   subdomain_dst, subdomain_src);
 
-    dart__base__locality__domain__copy(
-      domain_src->domains + sd,
-      domain_dst->domains + sd);
+    ret = dart__base__locality__domain__copy(
+            subdomain_src,
+            subdomain_dst);
+    if (ret != DART_OK) {
+      return ret;
+    }
     domain_dst->domains[sd].parent = domain_dst;
 
-    DART_LOG_TRACE("dart__base__locality__domain__copy --^ (%d / %d)",
-                   sd, num_domains - 1);
+    DART_LOG_TRACE("dart__base__locality__domain__copy --^ (%d / %d) %p = %p",
+                   sd, domain_src->num_domains - 1,
+                   subdomain_dst, subdomain_src);
   }
 
   DART_LOG_TRACE("dart__base__locality__domain__copy >");
@@ -196,14 +203,21 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
   dart_domain_locality_t         * domain)
 {
   int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_UNIT);
-  if (!is_unit_scope) {
+  DART_LOG_TRACE("dart__base__locality__domain__update_subdomains() "
+                 "domain: %s, scope: %d, subdomains: %d, units: %d, "
+                 "in unit scope: %s",
+                 domain->domain_tag,  domain->scope,
+                 domain->num_domains, domain->num_units,
+                 (is_unit_scope ? "true" : "false"));
+  if (is_unit_scope) {
+    DART_ASSERT(domain->num_units   <= 1);
+    DART_ASSERT(domain->num_domains == 0);
+  } else {
     domain->num_units = 0;
-    if (domain->unit_ids != NULL) {
-      free(domain->unit_ids);
-    }
   }
   for (int sd = 0; sd < domain->num_domains; sd++) {
     dart_domain_locality_t * subdomain = domain->domains + sd;
+    subdomain->team           = domain->team;
     subdomain->level          = domain->level + 1;
     subdomain->relative_index = sd;
     subdomain->parent         = domain;
@@ -211,21 +225,43 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
     sprintf(subdomain->domain_tag, "%s.%d", domain->domain_tag, sd);
 
     /* Recursively update subdomains: */
+    DART_LOG_TRACE("dart__base__locality__domain__update_subdomains --v");
     dart__base__locality__domain__update_subdomains(
       subdomain);
+    DART_LOG_TRACE("dart__base__locality__domain__update_subdomains --^");
 
     if (!is_unit_scope) {
       domain->num_units += subdomain->num_units;
     }
   }
-  if (!is_unit_scope) {
-    domain->unit_ids = malloc(sizeof(dart_unit_t) * domain->num_units);
-    for (int sd = 0; sd < domain->num_domains; sd++) {
-      dart_domain_locality_t * subdomain = domain->domains + sd;
-      memcpy(domain->unit_ids, subdomain->unit_ids,
-             sizeof(dart_unit_t) * domain->num_units);
+  if (domain->num_units   == 0 && domain->unit_ids != NULL) {
+    free(domain->unit_ids);
+  }
+  if (domain->num_domains == 0 && domain->domains  != NULL) {
+    free(domain->domains);
+  }
+  if (domain->num_units > 0) {
+    if (is_unit_scope) {
+      dart_unit_t unit_id = domain->unit_ids[0];
+      free(domain->unit_ids);
+      domain->unit_ids    = malloc(sizeof(dart_unit_t));
+      domain->unit_ids[0] = unit_id;
+    } else {
+      domain->unit_ids = malloc(sizeof(dart_unit_t) * domain->num_units);
+      int domain_unit_idx = 0;
+      for (int sd = 0; sd < domain->num_domains; sd++) {
+        dart_domain_locality_t * subdomain = domain->domains + sd;
+        memcpy(domain->unit_ids + domain_unit_idx,
+               subdomain->unit_ids,
+               sizeof(dart_unit_t) * subdomain->num_units);
+        domain_unit_idx += subdomain->num_units;
+      }
     }
   }
+  DART_LOG_TRACE("dart__base__locality__domain__update_subdomains > "
+                 "domain: %s, scope: %d, subdomains: %d, units: %d",
+                 domain->domain_tag,  domain->scope,
+                 domain->num_domains, domain->num_units);
   return DART_OK;
 }
 

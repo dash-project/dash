@@ -26,9 +26,26 @@ extern "C" {
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_locality(
-  dart_team_t               team,
-  const char              * domain_tag,
-  dart_domain_locality_t ** domain_out);
+  dart_team_t                     team,
+  const char                    * domain_tag,
+  dart_domain_locality_t       ** domain_out);
+
+/**
+ * Copy a locality domain object.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_copy(
+  const dart_domain_locality_t  * domain_in,
+  dart_domain_locality_t        * domain_out);
+
+/**
+ * Delete a locality domain object.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_delete(
+  dart_domain_locality_t        * domain);
 
 /**
  * Split locality domain hierarchy at given domain tag into \c num_parts
@@ -37,10 +54,10 @@ dart_ret_t dart_domain_locality(
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_split(
-  dart_domain_locality_t  * domain_in,
-  dart_locality_scope_t     scope,
-  int                       num_parts,
-  dart_domain_locality_t  * split_domain_out);
+  const dart_domain_locality_t  * domain_in,
+  dart_locality_scope_t           scope,
+  int                             num_parts,
+  dart_domain_locality_t        * split_domain_out);
 
 /**
  * Domain tags of all domains with the specified locality scope.
@@ -48,19 +65,19 @@ dart_ret_t dart_domain_split(
  * \ingroup DartLocality
  */
 dart_ret_t dart_scope_domains(
-  dart_domain_locality_t  * domain_in,
-  dart_locality_scope_t     scope,
-  int                     * num_domains_out,
-  char                  *** domain_tags_out);
+  dart_domain_locality_t        * domain_in,
+  dart_locality_scope_t           scope,
+  int                           * num_domains_out,
+  char                        *** domain_tags_out);
 
 /**
  * Adds entries to locality hierarchy to group locality domains.
  */
 dart_ret_t dart_group_domains(
-  dart_domain_locality_t  * domain_in,
-  int                       num_groups,
-  const int               * group_sizes,
-  const char            *** group_domain_tags);
+  dart_domain_locality_t        * domain_in,
+  int                             num_groups,
+  const int                     * group_sizes,
+  const char                  *** group_domain_tags);
 
 /**
  * Locality information of the unit with the specified global id.
@@ -68,9 +85,9 @@ dart_ret_t dart_group_domains(
  * \ingroup DartLocality
  */
 dart_ret_t dart_unit_locality(
-  dart_team_t               team,
-  dart_unit_t               unit,
-  dart_unit_locality_t   ** loc);
+  dart_team_t                     team,
+  dart_unit_t                     unit,
+  dart_unit_locality_t         ** loc);
 
 #define DART_INTERFACE_OFF
 

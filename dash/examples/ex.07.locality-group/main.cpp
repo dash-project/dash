@@ -101,8 +101,20 @@ int main(int argc, char ** argv)
 
   if (myid == 0) {
     cout << separator << endl;
-    dart_domain_locality_t * global_domain_locality;
-    dart_domain_locality(DART_TEAM_ALL, ".", &global_domain_locality);
+
+    dart_domain_locality_t * global_domain;
+    dart_domain_locality(DART_TEAM_ALL, ".", &global_domain);
+
+    cout << endl
+         << "global domain:"
+         << endl;
+    print_domain(DART_TEAM_ALL, global_domain);
+
+    cout << separator << endl;
+
+    cout << endl
+         << "grouped domain:"
+         << endl;
 
     int num_groups = group_domain_tags.size();
     std::vector<int>     group_sizes;
@@ -119,13 +131,22 @@ int main(int argc, char ** argv)
       }
     }
 
+    dart_domain_locality_t grouped_domain;
+    dart_domain_copy(
+      global_domain,
+      &grouped_domain);
+
     dart_group_domains(
-      global_domain_locality,
+      &grouped_domain,
       num_groups,
       group_sizes.data(),
       (const char ***)(group_tags));
 
-    print_domain(DART_TEAM_ALL, global_domain_locality);
+    print_domain(DART_TEAM_ALL, &grouped_domain);
+
+    dart_domain_delete(
+      &grouped_domain);
+
     cout << separator << endl;
   } else {
     sleep(2);

@@ -57,11 +57,24 @@ dart_ret_t dart_domain_locality(
   return DART_OK;
 }
 
+dart_ret_t dart_domain_copy(
+  const dart_domain_locality_t * domain_in,
+  dart_domain_locality_t       * domain_out)
+{
+  return dart__base__locality__copy_domain(domain_in, domain_out);
+}
+
+dart_ret_t dart_domain_delete(
+  dart_domain_locality_t       * domain)
+{
+  return dart__base__locality__delete_domain(domain);
+}
+
 dart_ret_t dart_domain_split(
-  dart_domain_locality_t  * domain_in,
-  dart_locality_scope_t     scope,
-  int                       num_parts,
-  dart_domain_locality_t  * domains_out)
+  const dart_domain_locality_t * domain_in,
+  dart_locality_scope_t          scope,
+  int                            num_parts,
+  dart_domain_locality_t       * domains_out)
 {
   DART_LOG_DEBUG("dart_domain_split() team(%d) domain(%s) "
                  "into %d parts at scope %d",
