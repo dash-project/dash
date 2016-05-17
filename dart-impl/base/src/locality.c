@@ -2,16 +2,6 @@
  * \file dash/dart/base/locality.c
  */
 
-/*
- * Include config and utmpx.h first to prevent previous include of utmpx.h
- * without _GNU_SOURCE in included headers:
- */
-#include <dash/dart/base/config.h>
-#ifdef DART__PLATFORM__LINUX
-#  define _GNU_SOURCE
-#  include <utmpx.h>
-#endif
-
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
@@ -66,10 +56,16 @@ dart_ret_t dart__base__locality__scope_domains_rec(
   char                         *** domain_tags_out);
 
 dart_locality_scope_t dart__base__locality__scope_parent(
-  dart_locality_scope_t      scope);
+  dart_locality_scope_t            scope);
 
 dart_locality_scope_t dart__base__locality__scope_child(
-  dart_locality_scope_t      scope);
+  dart_locality_scope_t            scope);
+
+dart_ret_t dart__base__locality__group_subdomains(
+  dart_domain_locality_t         * domain,
+  const char                    ** group_subdomain_tags,
+  int                              num_group_subdomain_tags,
+  char                           * group_domain_tag_out);
 
 /* ====================================================================== *
  * Init / Finalize                                                        *
@@ -251,8 +247,8 @@ dart_ret_t dart__base__locality__delete(
  * ====================================================================== */
 
 dart_ret_t dart__base__locality__team_domain(
-  dart_team_t                team,
-  dart_domain_locality_t  ** domain_out)
+  dart_team_t                        team,
+  dart_domain_locality_t          ** domain_out)
 {
   DART_LOG_DEBUG("dart__base__locality__team_domain() team(%d)", team);
   dart_ret_t ret = DART_ERR_NOTFOUND;
@@ -275,56 +271,6 @@ dart_ret_t dart__base__locality__domain(
 {
   return dart__base__locality__domain__child(
            domain_in, domain_tag, domain_out);
-#if 0
-  DART_LOG_DEBUG("dart__base__locality__domain() "
-                 "domain_in(%s) domain_tag(%s)",
-                 domain_in, domain_tag);
-
-  *domain_out = NULL;
-  const dart_domain_locality_t * domain = domain_in;
-
-  /* pointer to dot separator in front of tag part:  */
-  char * dot_begin  = strchr(domain_tag, '.');
-  /* pointer to begin of tag part: */
-  char * part_begin = dot_begin + 1;
-  /* Iterate tag (.1.2.3) by parts (1, 2, 3):        */
-  int    level     = 0;
-  while (dot_begin != NULL && *dot_begin != '\0' && *part_begin != '\0') {
-    char * dot_end;
-    /* domain tag part converted to int is relative index of child: */
-    long   tag_part      = strtol(part_begin, &dot_end, 10);
-    int    subdomain_idx = (int)(tag_part);
-    if (domain == NULL) {
-      /* tree leaf node reached before last tag part: */
-      DART_LOG_ERROR("dart__base__locality__domain ! "
-                     "domain(%s) domain_tag(%s): "
-                     "subdomain at index %d in level %d is undefined",
-                     domain->domain_tag, domain_tag, subdomain_idx, level);
-      return DART_ERR_NOTFOUND;
-    }
-    if (domain->num_domains <= subdomain_idx) {
-      /* child index out of range: */
-      DART_LOG_ERROR("dart__base__locality__domain ! "
-                     "domain(%s) domain_tag(%s): "
-                     "subdomain at index %d in level %d is out of bounds "
-                     "(number of subdomains: %d)",
-                     domain->domain_tag, domain_tag, subdomain_idx, level,
-                     domain->num_domains);
-      return DART_ERR_NOTFOUND;
-    }
-    /* descend to child at relative index: */
-    domain     = domain->domains + subdomain_idx;
-    /* continue scanning of domain tag at next part: */
-    dot_begin  = dot_end;
-    part_begin = dot_end+1;
-    level++;
-  }
-  *domain_out = (dart_domain_locality_t *)(domain);
-  DART_LOG_DEBUG("dart__base__locality__domain > "
-                 "domain_in(%s) domain_tag(%s) -> %p",
-                 domain_in->domain_tag, domain_tag, domain);
-  return DART_OK;
-#endif
 }
 
 dart_ret_t dart__base__locality__scope_domains(
@@ -411,11 +357,11 @@ dart_ret_t dart__base__locality__domain_split_tags(
 }
 
 dart_ret_t dart__base__locality__domain_group(
-  dart_domain_locality_t   * domain,
-  int                        num_groups,
-  const int                * group_sizes,
-  const char             *** group_subdomain_tags,
-  char                    ** group_domain_tags_out)
+  dart_domain_locality_t           * domain,
+  int                                num_groups,
+  const int                        * group_sizes,
+  const char                     *** group_subdomain_tags,
+  char                            ** group_domain_tags_out)
 {
   DART_LOG_TRACE("dart__base__locality__domain_group() "
                  "domain_in: (%s: %d @ %d) num_groups: %d",
@@ -686,14 +632,48 @@ dart_ret_t dart__base__locality__domain_group(
   return DART_OK;
 }
 
+/* ====================================================================== *
+ * Unit Locality                                                          *
+ * ====================================================================== */
+
+dart_ret_t dart__base__locality__unit(
+  dart_team_t                        team,
+  dart_unit_t                        unit,
+  dart_unit_locality_t            ** locality)
+{
+  DART_LOG_DEBUG("dart__base__locality__unit() team(%d) unit(%d)",
+                 team, unit);
+  *locality = NULL;
+
+  dart_unit_locality_t * uloc;
+  dart_ret_t ret = dart__base__unit_locality__at(
+                     dart__base__locality__unit_mapping_[team], unit,
+                     &uloc);
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("dart_unit_locality: "
+                   "dart__base__locality__unit(team:%d unit:%d) "
+                   "failed (%d)", team, unit, ret);
+    return ret;
+  }
+  *locality = uloc;
+
+  DART_LOG_DEBUG("dart__base__locality__unit > team(%d) unit(%d)",
+                 team, unit);
+  return DART_OK;
+}
+
+/* ====================================================================== *
+ * Private Function Definitions                                           *
+ * ====================================================================== */
+
 /**
  * Move subset of a domain's immediate child nodes into a group subdomain.
  */
 dart_ret_t dart__base__locality__group_subdomains(
-  dart_domain_locality_t   * domain,
-  const char              ** group_subdomain_tags,
-  int                        num_group_subdomain_tags,
-  char                     * group_domain_tag_out)
+  dart_domain_locality_t           * domain,
+  const char                      ** group_subdomain_tags,
+  int                                num_group_subdomain_tags,
+  char                             * group_domain_tag_out)
 {
   DART_LOG_TRACE("dart__base__locality__group_subdomains() "
                  "group parent domain: %s num domains: %d "
@@ -904,45 +884,11 @@ dart_ret_t dart__base__locality__group_subdomains(
   return DART_OK;
 }
 
-/* ====================================================================== *
- * Unit Locality                                                          *
- * ====================================================================== */
-
-dart_ret_t dart__base__locality__unit(
-  dart_team_t             team,
-  dart_unit_t             unit,
-  dart_unit_locality_t ** locality)
-{
-  DART_LOG_DEBUG("dart__base__locality__unit() team(%d) unit(%d)",
-                 team, unit);
-  *locality = NULL;
-
-  dart_unit_locality_t * uloc;
-  dart_ret_t ret = dart__base__unit_locality__at(
-                     dart__base__locality__unit_mapping_[team], unit,
-                     &uloc);
-  if (ret != DART_OK) {
-    DART_LOG_ERROR("dart_unit_locality: "
-                   "dart__base__locality__unit(team:%d unit:%d) "
-                   "failed (%d)", team, unit, ret);
-    return ret;
-  }
-  *locality = uloc;
-
-  DART_LOG_DEBUG("dart__base__locality__unit > team(%d) unit(%d)",
-                 team, unit);
-  return DART_OK;
-}
-
-/* ====================================================================== *
- * Private Function Definitions                                           *
- * ====================================================================== */
-
 dart_ret_t dart__base__locality__scope_domains_rec(
-  const dart_domain_locality_t   * domain,
-  dart_locality_scope_t            scope,
-  int                            * num_domains_out,
-  char                         *** domain_tags_out)
+  const dart_domain_locality_t     * domain,
+  dart_locality_scope_t              scope,
+  int                              * num_domains_out,
+  char                           *** domain_tags_out)
 {
   dart_ret_t ret;
   DART_LOG_TRACE("dart__base__locality__scope_domains() level %d",

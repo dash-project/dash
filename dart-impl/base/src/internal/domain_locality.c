@@ -265,6 +265,9 @@ dart_ret_t dart__base__locality__domain__child(
     *subdomain_out = (dart_domain_locality_t *)(domain);
     return DART_OK;
   }
+  /*
+   * TODO: Optimize, currently using exhaustive search.
+   */
   for (int sd = 0; sd < domain->num_domains; ++sd) {
     if (dart__base__locality__domain__child(
           &domain->domains[sd], subdomain_tag, subdomain_out)
@@ -323,8 +326,8 @@ dart_ret_t dart__base__locality__domain__select_subdomains_if(
 }
 
 /**
- * Remove all child nodes from a domain that do not match the specified
- * domain tags.
+ * Remove all child nodes from a domain that match or do not match the
+ * specified domain tags.
  */
 dart_ret_t dart__base__locality__domain__filter_subdomains(
   dart_domain_locality_t   * domain,
@@ -434,6 +437,10 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
   return DART_OK;
 }
 
+/**
+ * Remove all child nodes from a domain that do not match the specified
+ * domain tags.
+ */
 dart_ret_t dart__base__locality__domain__select_subdomains(
   dart_domain_locality_t   * domain,
   const char              ** subdomain_tags,
