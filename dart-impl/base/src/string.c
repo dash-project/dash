@@ -96,12 +96,16 @@ int dart__base__strsunique(
   int     num_strings)
 {
   int last_unique = 0;
-  for (int s = 0; s < num_strings; s++) {
-    if (strcmp(strings[s], strings[last_unique]) != 0) {
-      ++last_unique;
-      strcpy(strings[last_unique], strings[s]);
+  if (num_strings >= 2) {
+    for (int s = 1; s < num_strings; s++) {
+      if (strcmp(strings[s], strings[last_unique]) != 0) {
+        ++last_unique;
+        if (s != last_unique) {
+          strcpy(strings[last_unique], strings[s]);
+        }
+      }
     }
   }
-  return last_unique;
+  return last_unique + 1;
 }
 

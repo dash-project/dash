@@ -31,14 +31,26 @@ dart_ret_t dart_domain_locality(
                  team, domain_tag, *locality);
   dart_ret_t ret;
 
-  dart_domain_locality_t * dloc;
-  ret = dart__base__locality__domain(team, domain_tag, &dloc);
+  dart_domain_locality_t * team_domain;
+  ret = dart__base__locality__team_domain(team, &team_domain);
   if (ret != DART_OK) {
-    DART_LOG_ERROR("dart_domain_locality: dart__base__locality__domain "
-                   "failed (%d)", ret);
+    DART_LOG_ERROR("dart_domain_locality: "
+                   "dart__base__locality__team_domain failed (%d)", ret);
     return ret;
   }
-  *locality = dloc;
+  *locality = team_domain;
+
+  if (strcmp(domain_tag, team_domain->domain_tag) != 0) {
+    dart_domain_locality_t * team_subdomain;
+    ret = dart__base__locality__domain(
+            team_domain, domain_tag, &team_subdomain);
+    if (ret != DART_OK) {
+      DART_LOG_ERROR("dart_domain_locality: "
+                     "dart__base__locality__domain failed (%d)", ret);
+      return ret;
+    }
+    *locality = team_subdomain;
+  }
 
   DART_LOG_DEBUG("dart_domain_locality > team(%d) domain(%s) -> %p",
                  team, domain_tag, *locality);

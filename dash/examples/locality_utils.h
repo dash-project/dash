@@ -31,7 +31,7 @@ void print_domain(
 {
   using namespace std;
 
-  const int max_level = 4;
+  const int max_level = 5;
 
   std::string indent(domain->level * 4, ' ');
 
@@ -49,8 +49,7 @@ void print_domain(
       static_cast<int>(DART_LOCALITY_SCOPE_NODE)) {
     cout << indent << "nodes:   " << domain->num_nodes << endl;
   } else {
-    cout << indent << "host:    " << domain->host            << endl
-         << indent << "NUMAs:   " << domain->hwinfo.num_numa << endl;
+    cout << indent << "NUMAs:   " << domain->hwinfo.num_numa << endl;
   }
   cout << indent << "units:   " << domain->num_units << ": global ids { ";
   for (int u = 0; u < domain->num_units; ++u) {
@@ -63,6 +62,7 @@ void print_domain(
   }
   cout << " }" << endl;
 
+#if 0
   if (domain->scope == DART_LOCALITY_SCOPE_NUMA ||
       domain->scope == DART_LOCALITY_SCOPE_GROUP) {
     std::string uindent((domain->level + 1) * 4, ' ');
@@ -97,10 +97,11 @@ void print_domain(
                             << endl;
     }
   }
+#endif
   if (domain->level < max_level && domain->num_domains > 0) {
     cout << indent << "domains: " << domain->num_domains << endl;
     for (int d = 0; d < domain->num_domains; ++d) {
-      if (static_cast<int>(domain->domains[d].scope) <
+      if (static_cast<int>(domain->domains[d].scope) <=
           static_cast<int>(DART_LOCALITY_SCOPE_CORE)) {
         cout << indent << "|-- domains[" << setw(2) << d << "]: " << endl;
 

@@ -7,6 +7,7 @@
 #include <dash/dart/base/assert.h>
 #include <dash/dart/base/hwinfo.h>
 
+#include <dash/dart/base/string.h>
 #include <dash/dart/base/internal/host_topology.h>
 #include <dash/dart/base/internal/unit_locality.h>
 #include <dash/dart/base/internal/domain_locality.h>
@@ -25,28 +26,28 @@
  * Private Functions: Declarations                                          *
  * ======================================================================== */
 
-dart_ret_t dart__base__locality__create_global_subdomain(
+dart_ret_t dart__base__locality__domain__create_global_subdomain(
   dart_host_topology_t   * host_topology,
   dart_unit_mapping_t    * unit_mapping,
   dart_domain_locality_t * global_domain,
   dart_domain_locality_t * subdomain,
   int                      rel_idx);
 
-dart_ret_t dart__base__locality__create_node_subdomain(
+dart_ret_t dart__base__locality__domain__create_node_subdomain(
   dart_host_topology_t   * host_topology,
   dart_unit_mapping_t    * unit_mapping,
   dart_domain_locality_t * node_domain,
   dart_domain_locality_t * subdomain,
   int                      rel_idx);
 
-dart_ret_t dart__base__locality__create_module_subdomain(
+dart_ret_t dart__base__locality__domain__create_module_subdomain(
   dart_host_topology_t   * host_topology,
   dart_unit_mapping_t    * unit_mapping,
   dart_domain_locality_t * module_domain,
   dart_domain_locality_t * subdomain,
   int                      rel_idx);
 
-dart_ret_t dart__base__locality__create_numa_subdomain(
+dart_ret_t dart__base__locality__domain__create_numa_subdomain(
   dart_host_topology_t   * host_topology,
   dart_unit_mapping_t    * unit_mapping,
   dart_domain_locality_t * numa_domain,
@@ -57,7 +58,7 @@ dart_ret_t dart__base__locality__create_numa_subdomain(
  * Internal Functions                                                       *
  * ======================================================================== */
 
-dart_ret_t dart__base__locality__domain_locality_init(
+dart_ret_t dart__base__locality__domain__init(
   dart_domain_locality_t * loc)
 {
   DART_LOG_TRACE("dart__base__locality__domain_locality_init() loc: %p", loc);
@@ -79,7 +80,7 @@ dart_ret_t dart__base__locality__domain_locality_init(
   return DART_OK;
 }
 
-dart_ret_t dart__base__locality__domain_delete(
+dart_ret_t dart__base__locality__domain__delete(
   dart_domain_locality_t * domain)
 {
   DART_LOG_DEBUG("dart__base__locality__domain_delete() domain(%p)", domain);
@@ -98,7 +99,7 @@ dart_ret_t dart__base__locality__domain_delete(
       /* child nodes field is unspecified: */
       return DART_ERR_INVAL;
     }
-    dart__base__locality__domain_delete(
+    dart__base__locality__domain__delete(
       domain->domains + subdom_idx);
   }
   /* deallocate node itself: */
@@ -121,12 +122,348 @@ dart_ret_t dart__base__locality__domain_delete(
   return DART_OK;
 }
 
-dart_ret_t dart__base__locality__create_subdomains(
-  dart_domain_locality_t * domain,
-  dart_host_topology_t   * host_topology,
-  dart_unit_mapping_t    * unit_mapping)
+dart_ret_t dart__base__locality__domain__copy(
+  const dart_domain_locality_t   * domain_src,
+  dart_domain_locality_t         * domain_dst)
 {
-  DART_LOG_DEBUG("dart__base__locality__create_subdomains() "
+  DART_LOG_TRACE("dart__base__locality__domain__copy() "
+                 "domain: %s (level %d) subdomains: %d units: %d (%p -> %p)",
+                 domain_src->domain_tag,  domain_src->level,
+                 domain_src->num_domains, domain_src->num_units,
+                 domain_src, domain_dst);
+
+  DART_LOG_TRACE("dart__base__locality__domain__copy: assigning");
+  *domain_dst = *domain_src;
+
+  domain_dst->num_units   = domain_src->num_units;
+  domain_dst->unit_ids    = NULL;
+  domain_dst->num_domains = domain_src->num_domains;
+  domain_dst->domains     = NULL;
+
+  /* Copy unit ids:
+   */
+  if (domain_src->num_units > 0) {
+    if (domain_src->unit_ids == NULL) {
+      DART_LOG_ERROR("dart__base__locality__domain__copy: domain %s "
+                     "has num_units = %d but domain->unit_ids is NULL",
+                     domain_src->domain_tag, domain_src->num_units);
+      return DART_ERR_OTHER;
+    }
+    DART_LOG_TRACE("dart__base__locality__domain__copy: alloc %d unit ids",
+                   domain_src->num_units);
+    domain_dst->unit_ids = malloc(sizeof(dart_unit_t) *
+                                  domain_src->num_units);
+    memcpy(domain_dst->unit_ids, domain_src->unit_ids,
+           sizeof(dart_unit_t) * domain_src->num_units);
+  }
+
+  /* Copy subdomains:
+   */
+  if (domain_src->num_domains > 0) {
+    if (domain_src->domains == NULL) {
+      DART_LOG_ERROR("dart__base__locality__domain__copy: domain %s "
+                     "has num_domains = %d but domain->domains is NULL",
+                     domain_src->domain_tag, domain_src->num_domains);
+      return DART_ERR_OTHER;
+    }
+    DART_LOG_TRACE("dart__base__locality__domain__copy: alloc %d domains",
+                   domain_src->num_domains);
+    domain_dst->domains = malloc(sizeof(dart_domain_locality_t) *
+                                 domain_src->num_domains);
+  }
+
+  /* Recursively copy subdomains:
+   */
+  int num_domains = domain_dst->num_domains;
+  for (int sd = 0; sd < num_domains; ++sd) {
+    DART_LOG_TRACE("dart__base__locality__domain__copy --v (%d / %d)",
+                   sd, num_domains - 1);
+
+    dart__base__locality__domain__copy(
+      domain_src->domains + sd,
+      domain_dst->domains + sd);
+    domain_dst->domains[sd].parent = domain_dst;
+
+    DART_LOG_TRACE("dart__base__locality__domain__copy --^ (%d / %d)",
+                   sd, num_domains - 1);
+  }
+
+  DART_LOG_TRACE("dart__base__locality__domain__copy >");
+  return DART_OK;
+}
+
+dart_ret_t dart__base__locality__domain__update_subdomains(
+  dart_domain_locality_t         * domain)
+{
+  int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_UNIT);
+  if (!is_unit_scope) {
+    domain->num_units = 0;
+    if (domain->unit_ids != NULL) {
+      free(domain->unit_ids);
+    }
+  }
+  for (int sd = 0; sd < domain->num_domains; sd++) {
+    dart_domain_locality_t * subdomain = domain->domains + sd;
+    subdomain->level          = domain->level + 1;
+    subdomain->relative_index = sd;
+    subdomain->parent         = domain;
+
+    sprintf(subdomain->domain_tag, "%s.%d", domain->domain_tag, sd);
+
+    /* Recursively update subdomains: */
+    dart__base__locality__domain__update_subdomains(
+      subdomain);
+
+    if (!is_unit_scope) {
+      domain->num_units += subdomain->num_units;
+    }
+  }
+  if (!is_unit_scope) {
+    domain->unit_ids = malloc(sizeof(dart_unit_t) * domain->num_units);
+    for (int sd = 0; sd < domain->num_domains; sd++) {
+      dart_domain_locality_t * subdomain = domain->domains + sd;
+      memcpy(domain->unit_ids, subdomain->unit_ids,
+             sizeof(dart_unit_t) * domain->num_units);
+    }
+  }
+  return DART_OK;
+}
+
+/**
+ * Find subdomain at arbitrary level below a specified domain.
+ */
+dart_ret_t dart__base__locality__domain__child(
+  dart_domain_locality_t   * domain,
+  const char               * subdomain_tag,
+  dart_domain_locality_t  ** subdomain_out)
+{
+  if (strcmp(domain->domain_tag, subdomain_tag) == 0) {
+    *subdomain_out = domain;
+    return DART_OK;
+  }
+  for (int sd = 0; sd < domain->num_domains; ++sd) {
+    if (dart__base__locality__domain__child(
+          &domain->domains[sd], subdomain_tag, subdomain_out)
+        == DART_OK) {
+      return DART_OK;
+    }
+  }
+  return DART_ERR_NOTFOUND;
+}
+
+/**
+ * Find common parent of specified domains.
+ */
+dart_ret_t dart__base__locality__domain__parent(
+  dart_domain_locality_t   * domain_in,
+  const char              ** subdomain_tags,
+  int                        num_subdomain_tags,
+  dart_domain_locality_t  ** domain_out)
+{
+  *domain_out = NULL;
+
+  /* Parent domain tag of subdomains is common prefix of subdomain tags:
+   */
+  char subdomains_prefix[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+  int  subdomains_prefix_len = dart__base__strscommonprefix(
+                                 subdomain_tags,
+                                 num_subdomain_tags,
+                                 subdomains_prefix);
+  /* Remove trailing '.' */
+  if (subdomains_prefix[subdomains_prefix_len - 1] == '.') {
+    subdomains_prefix_len--;
+    subdomains_prefix[subdomains_prefix_len] = '\0';
+  }
+  if (subdomains_prefix_len == 0) {
+    *domain_out = domain_in;
+    return DART_OK;
+  }
+
+  /* Find domain tagged with subdomains prefix: */
+  return dart__base__locality__domain__child(
+           domain_in, subdomains_prefix, domain_out);
+}
+
+/**
+ * Remove all child nodes from a domain that do not match the specified
+ * domain tags.
+ */
+dart_ret_t dart__base__locality__domain__select_subdomains_if(
+  dart_domain_locality_t   * domain,
+  dart_domain_predicate_t    pred)
+{
+  dart__unused(domain);
+  dart__unused(pred);
+
+  return DART_OK;
+}
+
+/**
+ * Remove all child nodes from a domain that do not match the specified
+ * domain tags.
+ */
+dart_ret_t dart__base__locality__domain__select_subdomains(
+  dart_domain_locality_t   * domain,
+  const char              ** subdomain_tags,
+  int                        num_subdomain_tags)
+{
+  dart_ret_t ret;
+
+  DART_LOG_TRACE("dart__base__locality__domain__select_subdomains() "
+                 "domain: %s level: %d subdomains: %d",
+                 domain->domain_tag, domain->level, domain->num_domains);
+#ifdef DART_ENABLE_LOGGING
+  for (int sdt = 0; sdt < num_subdomain_tags; sdt++) {
+    DART_LOG_TRACE("dart__base__locality__domain__select_subdomains() "
+                   "-- subdomain_tags[%d] = %s",
+                   sdt, subdomain_tags[sdt]);
+  }
+#endif
+
+  int tag_len       = 0;
+  int matched       = 0;
+  int unit_idx      = 0;
+  int subdomain_idx = 0;
+
+  for (int sd = 0; sd < domain->num_domains; sd++) {
+    DART_LOG_TRACE("dart__base__locality__domain__select_subdomains "
+                   "domain->domains[%d of %d]",
+                   sd, domain->num_domains - 1);
+    /* ---------------------------------------------------------------- *
+     * Selection predicate is just this block.                          *
+     * Could use functors to allow arbitrary selection functions.       *
+     *                                                                  */
+    char * subdomain_tag = domain->domains[sd].domain_tag;
+    matched = 0;
+    tag_len = (int)strlen(subdomain_tag);
+    for (int dt = 0; dt < num_subdomain_tags; dt++) {
+      if (dart__base__strcommonprefix(
+            subdomain_tag, subdomain_tags[dt], NULL) >= tag_len) {
+        matched = 1;
+        break;
+      }
+    }
+    /*                                                                   *
+     * ----------------------------------------------------------------- */
+
+    if (matched == 0) {
+      continue;
+    }
+    DART_LOG_TRACE("dart__base__locality__domain__select_subdomains "
+                   "subdomain %s matched", subdomain_tag);
+
+    if (subdomain_idx != sd) {
+      memcpy(domain->domains + subdomain_idx,
+             domain->domains + sd,
+             sizeof(dart_domain_locality_t));
+    }
+
+    ret = dart__base__locality__domain__select_subdomains(
+            domain->domains + subdomain_idx,
+            subdomain_tags,
+            num_subdomain_tags);
+    if (ret != DART_OK) {
+      return ret;
+    }
+
+    /* Collect units and domains bottom-up after maximum recursion
+     * depth has been reached:
+     */
+    if (domain->domains[subdomain_idx].num_units > 0) {
+      memcpy(domain->unit_ids + unit_idx,
+             domain->domains[subdomain_idx].unit_ids,
+             domain->domains[subdomain_idx].num_units *
+               sizeof(dart_unit_t));
+      unit_idx += domain->domains[subdomain_idx].num_units;
+    }
+    subdomain_idx++;
+  }
+  /*
+   * Bottom-up accumulation of units and domains:
+   */
+  if (domain->unit_ids != NULL) {
+    dart_unit_t * tmp =
+      realloc(domain->unit_ids, unit_idx * sizeof(dart_unit_t));
+    if (tmp != NULL) {
+      domain->unit_ids = tmp;
+    }
+    domain->num_units = unit_idx;
+  }
+  if (domain->num_domains > subdomain_idx && domain->domains != NULL) {
+    dart_domain_locality_t * tmp =
+      realloc(domain->domains,
+              subdomain_idx * sizeof(dart_domain_locality_t));
+    if (tmp != NULL) {
+      domain->domains = tmp;
+    }
+    domain->num_domains = subdomain_idx;
+  }
+  DART_LOG_TRACE("dart__base__locality__domain__select_subdomains >");
+  return DART_OK;
+}
+
+/**
+ * Remove all child nodes from a domain that match the specified domain
+ * tags.
+ */
+dart_ret_t dart__base__locality__domain__remove_subdomains(
+  dart_domain_locality_t   * domain,
+  const char              ** subdomain_tags,
+  int                        num_subdomain_tags)
+{
+  dart_ret_t ret;
+
+  if (domain->num_domains == 0) {
+    return DART_OK;
+  }
+  int subdomain_idx = 0;
+  for (int sd = 0; sd < domain->num_domains; sd++) {
+    int matched = 0;
+    for (int dt = 0; dt < num_subdomain_tags; dt++) {
+      if (strcmp(domain->domains[sd].domain_tag, subdomain_tags[dt]) == 0) {
+        matched = 1;
+        break;
+      }
+    }
+    if (matched) {
+      if (subdomain_idx != sd) {
+        /* Delete matched subdomain: */
+        dart__base__locality__domain__delete(
+          &domain->domains[sd]);
+        /* Move next subdomain to position of deleted subdomain: */
+        memcpy(&domain->domains[subdomain_idx],
+               &domain->domains[sd],
+               sizeof(dart_domain_locality_t));
+      }
+      ret = dart__base__locality__domain__remove_subdomains(
+              &domain->domains[subdomain_idx],
+              subdomain_tags,
+              num_subdomain_tags);
+      if (ret != DART_OK) {
+        return ret;
+      }
+      break;
+    } else {
+      subdomain_idx++;
+    }
+  }
+  if (domain->num_domains != subdomain_idx && domain->domains != NULL) {
+    dart_domain_locality_t * tmp =
+      realloc(domain->domains, domain->num_domains);
+    if (tmp != NULL) {
+      domain->domains = tmp;
+    }
+    domain->num_domains = subdomain_idx;
+  }
+  return DART_OK;
+}
+
+dart_ret_t dart__base__locality__domain__create_subdomains(
+  dart_domain_locality_t   * domain,
+  dart_host_topology_t     * host_topology,
+  dart_unit_mapping_t      * unit_mapping)
+{
+  DART_LOG_DEBUG("dart__base__locality__domain__create_subdomains() "
                  "parent: %p scope: %d level: %d",
                  domain, domain->scope, domain->level);
 
@@ -142,7 +479,7 @@ dart_ret_t dart__base__locality__create_subdomains(
   dart_unit_t * module_units;
   switch (domain->scope) {
     case DART_LOCALITY_SCOPE_UNDEFINED:
-      DART_LOG_ERROR("dart__base__locality__create_subdomains ! "
+      DART_LOG_ERROR("dart__base__locality__domain__create_subdomains ! "
                      "locality scope undefined");
       return DART_ERR_INVAL;
     case DART_LOCALITY_SCOPE_GLOBAL:
@@ -158,7 +495,7 @@ dart_ret_t dart__base__locality__create_subdomains(
             host_topology,
             domain->host,
             &domain->num_domains) != DART_OK) {
-        DART_LOG_DEBUG("dart__base__locality__create_subdomains: "
+        DART_LOG_DEBUG("dart__base__locality__domain__create_subdomains: "
                        "could not get number of modules of host %s",
                        domain->host);
         domain->num_domains = 0;
@@ -175,7 +512,7 @@ dart_ret_t dart__base__locality__create_subdomains(
             domain->host,
             domain->relative_index,
             &module_hostname) != DART_OK) {
-        DART_LOG_DEBUG("dart__base__locality__create_subdomains: "
+        DART_LOG_DEBUG("dart__base__locality__domain__create_subdomains: "
                        "could not get module hostname %d of host %s",
                        domain->relative_index, domain->host);
       } else {
@@ -184,7 +521,7 @@ dart_ret_t dart__base__locality__create_subdomains(
               module_hostname,
               &module_units,
               &domain->num_units) != DART_OK) {
-          DART_LOG_DEBUG("dart__base__locality__create_subdomains: "
+          DART_LOG_DEBUG("dart__base__locality__domain__create_subdomains: "
                          "could not find units of module %s",
                          module_hostname);
         }
@@ -198,11 +535,11 @@ dart_ret_t dart__base__locality__create_subdomains(
       domain->num_domains = 0;
       break;
   }
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: subdomains: %d",
-                 domain->num_domains);
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
+                 "subdomains: %d", domain->num_domains);
   if (domain->num_domains == 0) {
     domain->domains = NULL;
-    DART_LOG_DEBUG("dart__base__locality__create_subdomains > "
+    DART_LOG_DEBUG("dart__base__locality__domain__create_subdomains > "
                    "domain: %p - scope: %d level: %d "
                    "subdomains: %d domain(%s) - final",
                    domain, domain->scope, domain->level,
@@ -224,12 +561,12 @@ dart_ret_t dart__base__locality__create_subdomains(
 
   int num_domain_units = 0;
   for (int rel_idx = 0; rel_idx < domain->num_domains; ++rel_idx) {
-    DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+    DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                    "initialize, level: %d, subdomain %d of %d",
                    domain->level + 1, rel_idx, domain->num_domains);
 
     dart_domain_locality_t * subdomain = domain->domains + rel_idx;
-    dart__base__locality__domain_locality_init(subdomain);
+    dart__base__locality__domain__init(subdomain);
 
     /* Initialize hwinfo from parent as most properties are identical: */
     subdomain->hwinfo         = domain->hwinfo;
@@ -251,36 +588,36 @@ dart_ret_t dart__base__locality__create_subdomains(
 
     switch (domain->scope) {
       case DART_LOCALITY_SCOPE_GLOBAL:
-        dart__base__locality__create_global_subdomain(
+        dart__base__locality__domain__create_global_subdomain(
           host_topology, unit_mapping, domain, subdomain, rel_idx);
         break;
       case DART_LOCALITY_SCOPE_NODE:
-        dart__base__locality__create_node_subdomain(
+        dart__base__locality__domain__create_node_subdomain(
           host_topology, unit_mapping, domain, subdomain, rel_idx);
         break;
       case DART_LOCALITY_SCOPE_MODULE:
-        dart__base__locality__create_module_subdomain(
+        dart__base__locality__domain__create_module_subdomain(
           host_topology, unit_mapping, domain, subdomain, rel_idx);
         break;
       case DART_LOCALITY_SCOPE_NUMA:
-        subdomain->hwinfo.num_numa    = 1;
-        dart__base__locality__create_numa_subdomain(
+        subdomain->hwinfo.num_numa  = 1;
+        dart__base__locality__domain__create_numa_subdomain(
           host_topology, unit_mapping, domain, subdomain, rel_idx);
         break;
       case DART_LOCALITY_SCOPE_CORE:
-        subdomain->hwinfo.num_numa    = 1;
-        subdomain->hwinfo.num_cores   = 1;
-        subdomain->num_nodes          = 1;
-        subdomain->num_units          = 1;
-        subdomain->unit_ids           = malloc(sizeof(dart_unit_t));
-        subdomain->unit_ids[0]        = domain->unit_ids[rel_idx];
+        subdomain->hwinfo.num_numa  = 1;
+        subdomain->hwinfo.num_cores = 1;
+        subdomain->num_nodes        = 1;
+        subdomain->num_units        = 1;
+        subdomain->unit_ids         = malloc(sizeof(dart_unit_t));
+        subdomain->unit_ids[0]      = domain->unit_ids[rel_idx];
         break;
       default:
         break;
     }
     /* recursively initialize subdomains: */
     DART_ASSERT_RETURNS(
-        dart__base__locality__create_subdomains(
+        dart__base__locality__domain__create_subdomains(
           subdomain, host_topology, unit_mapping),
         DART_OK);
 
@@ -288,7 +625,7 @@ dart_ret_t dart__base__locality__create_subdomains(
   }
   domain->num_units = num_domain_units;
 
-  DART_LOG_DEBUG("dart__base__locality__create_subdomains >");
+  DART_LOG_DEBUG("dart__base__locality__domain__create_subdomains >");
   return DART_OK;
 }
 
@@ -299,7 +636,7 @@ dart_ret_t dart__base__locality__create_subdomains(
 /**
  * Creates a single node subdomain of the global domain.
  */
-dart_ret_t dart__base__locality__create_global_subdomain(
+dart_ret_t dart__base__locality__domain__create_global_subdomain(
   dart_host_topology_t   * host_topology,
   dart_unit_mapping_t    * unit_mapping,
   dart_domain_locality_t * global_domain,
@@ -311,10 +648,10 @@ dart_ret_t dart__base__locality__create_global_subdomain(
   dart__unused(global_domain);
   dart__unused(unit_mapping);
 
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                  "== SPLIT GLOBAL ==");
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: == %d of %d",
-                 rel_idx, global_domain->num_domains);
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
+                 "== %d of %d", rel_idx, global_domain->num_domains);
   /* units in node at relative index: */
   const char * node_hostname;
   DART_ASSERT_RETURNS(
@@ -323,7 +660,7 @@ dart_ret_t dart__base__locality__create_global_subdomain(
       rel_idx,
       &node_hostname),
     DART_OK);
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: host: %s",
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: host: %s",
                  node_hostname);
   strncpy(subdomain->host, node_hostname, DART_LOCALITY_HOST_MAX_SIZE);
 
@@ -350,7 +687,7 @@ dart_ret_t dart__base__locality__create_global_subdomain(
 /**
  * Creates a single module subdomain of a node domain.
  */
-dart_ret_t dart__base__locality__create_node_subdomain(
+dart_ret_t dart__base__locality__domain__create_node_subdomain(
   dart_host_topology_t   * host_topology,
   dart_unit_mapping_t    * unit_mapping,
   dart_domain_locality_t * node_domain,
@@ -361,10 +698,10 @@ dart_ret_t dart__base__locality__create_node_subdomain(
    * Usually there is only one module (the host system), otherwise
    * partitioning is heterogenous. */
 
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                  "== SPLIT NODE ==");
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: == %d of %d",
-                 rel_idx, node_domain->num_domains);
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
+                 "== %d of %d", rel_idx, node_domain->num_domains);
   const char * module_hostname;
   DART_ASSERT_RETURNS(
     dart__base__host_topology__node_module(
@@ -373,7 +710,7 @@ dart_ret_t dart__base__locality__create_node_subdomain(
       rel_idx,
       &module_hostname),
     DART_OK);
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: host: %s",
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: host: %s",
                  module_hostname);
   /* set subdomain hostname to module's hostname: */
   strncpy(subdomain->host, module_hostname,
@@ -415,7 +752,7 @@ dart_ret_t dart__base__locality__create_node_subdomain(
 /**
  * Creates a single NUMA node subdomain of a module domain.
  */
-dart_ret_t dart__base__locality__create_module_subdomain(
+dart_ret_t dart__base__locality__domain__create_module_subdomain(
   dart_host_topology_t   * host_topology,
   dart_unit_mapping_t    * unit_mapping,
   dart_domain_locality_t * module_domain,
@@ -423,10 +760,10 @@ dart_ret_t dart__base__locality__create_module_subdomain(
   int                      rel_idx)
 {
   /* Loop splits into NUMA nodes. */
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                  "== SPLIT MODULE ==");
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: == %d of %d",
-                 rel_idx, module_domain->num_domains);
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
+                 "== %d of %d", rel_idx, module_domain->num_domains);
 
   size_t        num_numa_units  = 0;
   char *        module_hostname = module_domain->host;
@@ -452,13 +789,13 @@ dart_ret_t dart__base__locality__create_module_subdomain(
       unit_mapping, module_unit_id, &module_unit_loc);
     int module_unit_numa_id = module_unit_loc->hwinfo.numa_id;
     /* TODO: assuming that rel_idx corresponds to NUMA id: */
-    DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+    DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                    "unit %d numa id: %d", mu, module_unit_numa_id);
     if (module_unit_numa_id == rel_idx) {
       ++num_numa_units;
     }
   }
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                  "number of units in NUMA domain %d: %d",
                   rel_idx, num_numa_units);
   subdomain->num_nodes          = 1;
@@ -478,7 +815,7 @@ dart_ret_t dart__base__locality__create_module_subdomain(
     int module_unit_numa_id = module_unit_loc->hwinfo.numa_id;
     if (module_unit_numa_id == rel_idx) {
       dart_unit_t numa_unit_id = module_unit_id;
-      DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+      DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                      "NUMA unit %d of %d: unit id %d",
                      numa_unit_idx, subdomain->num_units, numa_unit_id);
       subdomain->unit_ids[numa_unit_idx] = numa_unit_id;
@@ -491,7 +828,7 @@ dart_ret_t dart__base__locality__create_module_subdomain(
 /**
  * Creates a single core node subdomain of a NUMA domain.
  */
-dart_ret_t dart__base__locality__create_numa_subdomain(
+dart_ret_t dart__base__locality__domain__create_numa_subdomain(
   dart_host_topology_t   * host_topology,
   dart_unit_mapping_t    * unit_mapping,
   dart_domain_locality_t * numa_domain,
@@ -503,10 +840,10 @@ dart_ret_t dart__base__locality__create_numa_subdomain(
    * this level. */
   dart__unused(host_topology);
 
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                  "== SPLIT NUMA ==");
-  DART_LOG_TRACE("dart__base__locality__create_subdomains: == %d of %d",
-                 rel_idx, numa_domain->num_domains);
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
+                 "== %d of %d", rel_idx, numa_domain->num_domains);
   size_t num_uma_units          = numa_domain->num_units /
                                   numa_domain->num_domains;
   subdomain->num_nodes          = 1;
@@ -520,7 +857,7 @@ dart_ret_t dart__base__locality__create_numa_subdomain(
     int numa_unit_idx      = (rel_idx * num_uma_units) + u;
     dart_unit_t unit_id    = numa_domain->unit_ids[numa_unit_idx];
     subdomain->unit_ids[u] = unit_id;
-    DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+    DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                    "UMA unit %d of %d (NUMA unit %d): unit id %d",
                    u, subdomain->num_units, numa_unit_idx, unit_id);
     /* set host and domain tag of unit in unit locality map: */
@@ -528,7 +865,7 @@ dart_ret_t dart__base__locality__create_numa_subdomain(
     DART_ASSERT_RETURNS(
       dart__base__unit_locality__at(unit_mapping, unit_id, &unit_loc),
       DART_OK);
-    DART_LOG_TRACE("dart__base__locality__create_subdomains: "
+    DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                    "setting unit %d domain_tag: %s host: %s",
                    unit_id, subdomain->domain_tag, subdomain->host);
     strncpy(unit_loc->domain_tag, subdomain->domain_tag,
