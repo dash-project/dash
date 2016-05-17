@@ -361,7 +361,7 @@ public:
 
     dart_domain_locality_t * domain;
     DASH_ASSERT_RETURNS(
-      dart_domain_locality(_dartid, ".", &domain),
+      dart_domain_team_locality(_dartid, ".", &domain),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_group_init(group),

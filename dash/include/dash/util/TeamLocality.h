@@ -455,7 +455,7 @@ public:
     if (_scope == Scope_t::Global) {
       dart_domain_locality_t * domain;
       DASH_ASSERT_RETURNS(
-        dart_domain_locality(
+        dart_domain_team_locality(
           _team.dart_id(),
           _domain_tag.c_str(),
           &domain),
@@ -493,7 +493,7 @@ public:
 
     dart_domain_locality_t * domain;
     DASH_ASSERT_RETURNS(
-      dart_domain_locality(
+      dart_domain_team_locality(
         _team.dart_id(),
         _domain_tag.c_str(),
         &domain),
@@ -526,7 +526,7 @@ public:
 
     dart_domain_locality_t * domain;
     DASH_ASSERT_RETURNS(
-      dart_domain_locality(
+      dart_domain_team_locality(
         _team.dart_id(),
         _domain_tag.c_str(),
         &domain),

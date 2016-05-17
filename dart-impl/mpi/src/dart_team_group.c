@@ -278,7 +278,7 @@ dart_ret_t dart_group_locality_split(
                                         sizeof(dart_domain_locality_t *));
   for (int d = 0; d < num_domains; ++d) {
     DART_ASSERT_RETURNS(
-      dart_domain_locality(team, domain_tags[d], &domains[d]),
+      dart_domain_team_locality(team, domain_tags[d], &domains[d]),
       DART_OK);
     total_domains_units += domains[d]->num_units;
 

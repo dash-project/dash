@@ -220,7 +220,9 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
   loc->domain_tag[1] = '\0';
 
   dart_domain_locality_t * dloc;
-  DART_ASSERT_RETURNS(dart_domain_locality(team, ".", &dloc), DART_OK);
+  DART_ASSERT_RETURNS(
+    dart_domain_team_locality(team, ".", &dloc),
+    DART_OK);
 
   loc->unit             = myid;
   loc->team             = team;

@@ -22,13 +22,13 @@
  * Domain Locality                                                          *
  * ======================================================================== */
 
-dart_ret_t dart_domain_locality(
+dart_ret_t dart_domain_team_locality(
   dart_team_t               team,
   const char              * domain_tag,
-  dart_domain_locality_t ** locality)
+  dart_domain_locality_t ** team_domain_out)
 {
-  DART_LOG_DEBUG("dart_domain_locality() team(%d) domain(%s) -> %p",
-                 team, domain_tag, *locality);
+  DART_LOG_DEBUG("dart_domain_locality() team(%d) domain(%s)",
+                 team, domain_tag);
   dart_ret_t ret;
 
   dart_domain_locality_t * team_domain;
@@ -38,7 +38,7 @@ dart_ret_t dart_domain_locality(
                    "dart__base__locality__team_domain failed (%d)", ret);
     return ret;
   }
-  *locality = team_domain;
+  *team_domain_out = team_domain;
 
   if (strcmp(domain_tag, team_domain->domain_tag) != 0) {
     dart_domain_locality_t * team_subdomain;
@@ -49,17 +49,26 @@ dart_ret_t dart_domain_locality(
                      "dart__base__locality__domain failed (%d)", ret);
       return ret;
     }
-    *locality = team_subdomain;
+    *team_domain_out = team_subdomain;
   }
 
   DART_LOG_DEBUG("dart_domain_locality > team(%d) domain(%s) -> %p",
-                 team, domain_tag, *locality);
+                 team, domain_tag, *team_domain_out);
   return DART_OK;
 }
 
+dart_ret_t dart_domain_locality(
+  const dart_domain_locality_t  * domain_in,
+  const char                    * domain_tag,
+  dart_domain_locality_t       ** subdomain_out)
+{
+  return dart__base__locality__domain(
+           domain_in, domain_tag, subdomain_out);
+}
+
 dart_ret_t dart_domain_copy(
-  const dart_domain_locality_t * domain_in,
-  dart_domain_locality_t       * domain_out)
+  const dart_domain_locality_t  * domain_in,
+  dart_domain_locality_t        * domain_out)
 {
   return dart__base__locality__copy_domain(domain_in, domain_out);
 }
@@ -155,13 +164,15 @@ dart_ret_t dart_group_domains(
   dart_domain_locality_t  * domain_in,
   int                       num_groups,
   const int               * group_sizes,
-  const char            *** group_domain_tags)
+  const char            *** group_subdomain_tags,
+  char                   ** group_domain_tags_out)
 {
   return dart__base__locality__domain_group(
            domain_in,
            num_groups,
            group_sizes,
-           group_domain_tags);
+           group_subdomain_tags,
+           group_domain_tags_out);
 }
 
 /* ====================================================================== *

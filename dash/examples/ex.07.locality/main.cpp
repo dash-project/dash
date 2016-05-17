@@ -125,7 +125,8 @@ int main(int argc, char * argv[])
            << endl;
 
       dart_domain_locality_t * global_domain_locality;
-      dart_domain_locality(split_team.dart_id(), ".", &global_domain_locality);
+      dart_domain_team_locality(
+        split_team.dart_id(), ".", &global_domain_locality);
       print_domain(split_team.dart_id(), global_domain_locality);
 
       cout << separator << endl;

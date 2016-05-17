@@ -73,7 +73,8 @@ void Locality::init()
                "for unit " << dash::myid());
   }
 
-  if (dart_domain_locality(DART_TEAM_ALL, _unit_loc->domain_tag, &_domain_loc)
+  if (dart_domain_team_locality(
+        DART_TEAM_ALL, _unit_loc->domain_tag, &_domain_loc)
       != DART_OK) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_domain_locality failed " <<

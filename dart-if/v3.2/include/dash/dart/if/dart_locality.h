@@ -25,10 +25,15 @@ extern "C" {
  *
  * \ingroup DartLocality
  */
-dart_ret_t dart_domain_locality(
+dart_ret_t dart_domain_team_locality(
   dart_team_t                     team,
   const char                    * domain_tag,
-  dart_domain_locality_t       ** domain_out);
+  dart_domain_locality_t       ** team_domain_out);
+
+dart_ret_t dart_domain_locality(
+  const dart_domain_locality_t  * domain_in,
+  const char                    * domain_tag,
+  dart_domain_locality_t       ** subdomain_out);
 
 /**
  * Copy a locality domain object.
@@ -77,7 +82,8 @@ dart_ret_t dart_group_domains(
   dart_domain_locality_t        * domain_in,
   int                             num_groups,
   const int                     * group_sizes,
-  const char                  *** group_domain_tags);
+  const char                  *** group_subdomain_tags,
+  char                         ** group_domain_tags_out);
 
 /**
  * Locality information of the unit with the specified global id.

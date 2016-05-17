@@ -25,15 +25,15 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
   dart_domain_locality_t       * domain);
 
 dart_ret_t dart__base__locality__domain__child(
-  dart_domain_locality_t       * domain,
-  const char                   * subdomain_tag,
-  dart_domain_locality_t      ** subdomain_out);
+  const dart_domain_locality_t  * domain,
+  const char                    * subdomain_tag,
+  dart_domain_locality_t       ** subdomain_out);
 
 dart_ret_t dart__base__locality__domain__parent(
-  dart_domain_locality_t       * domain,
-  const char                  ** subdomain_tags,
-  int                            num_subdomain_tags,
-  dart_domain_locality_t      ** domain_out);
+  const dart_domain_locality_t  * domain,
+  const char                   ** subdomain_tags,
+  int                             num_subdomain_tags,
+  dart_domain_locality_t       ** domain_out);
 
 dart_ret_t dart__base__locality__domain__select_subdomains(
   dart_domain_locality_t       * domain,

@@ -133,7 +133,6 @@ dart_ret_t dart__base__locality__domain__copy(
                  domain_dst, domain_src);
   dart_ret_t ret;
 
-  DART_LOG_TRACE("dart__base__locality__domain__copy: assigning");
   memcpy(domain_dst, domain_src, sizeof(dart_domain_locality_t));
 
   /* Copy unit ids:
@@ -145,8 +144,6 @@ dart_ret_t dart__base__locality__domain__copy(
                      domain_src->domain_tag, domain_src->num_units);
       return DART_ERR_OTHER;
     }
-    DART_LOG_TRACE("dart__base__locality__domain__copy: alloc %d unit ids",
-                   domain_src->num_units);
     domain_dst->unit_ids = malloc(sizeof(dart_unit_t) *
                                   domain_src->num_units);
     for (int u = 0; u < domain_src->num_units; u++) {
@@ -165,8 +162,6 @@ dart_ret_t dart__base__locality__domain__copy(
                      domain_src->domain_tag, domain_src->num_domains);
       return DART_ERR_OTHER;
     }
-    DART_LOG_TRACE("dart__base__locality__domain__copy: alloc %d domains",
-                   domain_src->num_domains);
     domain_dst->domains = malloc(sizeof(dart_domain_locality_t) *
                                  domain_src->num_domains);
   } else {
@@ -178,9 +173,6 @@ dart_ret_t dart__base__locality__domain__copy(
   for (int sd = 0; sd < domain_src->num_domains; sd++) {
     const dart_domain_locality_t * subdomain_src = domain_src->domains + sd;
     dart_domain_locality_t * subdomain_dst       = domain_dst->domains + sd;
-    DART_LOG_TRACE("dart__base__locality__domain__copy --v (%d / %d) %p = %p",
-                   sd, domain_src->num_domains - 1,
-                   subdomain_dst, subdomain_src);
 
     ret = dart__base__locality__domain__copy(
             subdomain_src,
@@ -189,10 +181,6 @@ dart_ret_t dart__base__locality__domain__copy(
       return ret;
     }
     domain_dst->domains[sd].parent = domain_dst;
-
-    DART_LOG_TRACE("dart__base__locality__domain__copy --^ (%d / %d) %p = %p",
-                   sd, domain_src->num_domains - 1,
-                   subdomain_dst, subdomain_src);
   }
 
   DART_LOG_TRACE("dart__base__locality__domain__copy >");
@@ -269,12 +257,12 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
  * Find subdomain at arbitrary level below a specified domain.
  */
 dart_ret_t dart__base__locality__domain__child(
-  dart_domain_locality_t   * domain,
-  const char               * subdomain_tag,
-  dart_domain_locality_t  ** subdomain_out)
+  const dart_domain_locality_t   * domain,
+  const char                     * subdomain_tag,
+  dart_domain_locality_t        ** subdomain_out)
 {
   if (strcmp(domain->domain_tag, subdomain_tag) == 0) {
-    *subdomain_out = domain;
+    *subdomain_out = (dart_domain_locality_t *)(domain);
     return DART_OK;
   }
   for (int sd = 0; sd < domain->num_domains; ++sd) {
@@ -291,10 +279,10 @@ dart_ret_t dart__base__locality__domain__child(
  * Find common parent of specified domains.
  */
 dart_ret_t dart__base__locality__domain__parent(
-  dart_domain_locality_t   * domain_in,
-  const char              ** subdomain_tags,
-  int                        num_subdomain_tags,
-  dart_domain_locality_t  ** domain_out)
+  const dart_domain_locality_t   * domain_in,
+  const char                    ** subdomain_tags,
+  int                              num_subdomain_tags,
+  dart_domain_locality_t        ** domain_out)
 {
   *domain_out = NULL;
 
@@ -311,7 +299,7 @@ dart_ret_t dart__base__locality__domain__parent(
     subdomains_prefix[subdomains_prefix_len] = '\0';
   }
   if (subdomains_prefix_len == 0) {
-    *domain_out = domain_in;
+    *domain_out = (dart_domain_locality_t *)(domain_in);
     return DART_OK;
   }
 

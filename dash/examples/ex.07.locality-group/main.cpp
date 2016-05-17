@@ -103,7 +103,7 @@ int main(int argc, char ** argv)
     cout << separator << endl;
 
     dart_domain_locality_t * global_domain;
-    dart_domain_locality(DART_TEAM_ALL, ".", &global_domain);
+    dart_domain_team_locality(DART_TEAM_ALL, ".", &global_domain);
 
     cout << endl
          << "global domain:"
@@ -117,16 +117,14 @@ int main(int argc, char ** argv)
          << endl;
 
     int num_groups = group_domain_tags.size();
-    std::vector<int>     group_sizes;
-    char ***             group_tags = new char **[num_groups];
+    std::vector<int> group_sizes;
+    char ***         group_tags = new char **[num_groups];
     for (int g = 0; g < num_groups; g++) {
       int group_size = group_domain_tags[g].size();
       group_sizes.push_back(group_size);
       group_tags[g] = new char *[group_domain_tags[g].size()];
-      cout << "group " << g << ":" << endl;
       for (int d = 0; d < group_size; d++) {
         std::string domain_tag(group_domain_tags[g][d]);
-        cout << "  domain: " << std::left << domain_tag << endl;
         group_tags[g][d] = (char *)domain_tag.c_str();
       }
     }
@@ -136,18 +134,42 @@ int main(int argc, char ** argv)
       global_domain,
       &grouped_domain);
 
+    char ** group_domain_tags = (char **)(malloc(sizeof(char *) *
+                                          num_groups));
+
     dart_group_domains(
       &grouped_domain,
       num_groups,
       group_sizes.data(),
-      (const char ***)(group_tags));
+      (const char ***)(group_tags),
+      group_domain_tags);
 
     print_domain(DART_TEAM_ALL, &grouped_domain);
 
+    for (int g = 0; g < num_groups; g++) {
+      cout << separator << endl;
+      cout << "group[" << g << "]: " << group_domain_tags[g]
+           << endl;
+      for (int sd = 0; sd < group_sizes[g]; sd++) {
+        cout << "-- " << group_tags[g][sd]
+             << endl;
+      }
+      cout << endl;
+
+      dart_domain_locality_t * group_domain;
+      dart_domain_locality(
+        &grouped_domain,
+        group_domain_tags[g],
+        &group_domain);
+
+      print_domain(DART_TEAM_ALL, group_domain);
+    }
+    cout << separator << endl;
+
     dart_domain_delete(
       &grouped_domain);
+    free(group_domain_tags);
 
-    cout << separator << endl;
   } else {
     sleep(2);
   }

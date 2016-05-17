@@ -35,8 +35,10 @@ void print_domain(
 
   std::string indent(domain->level * 4, ' ');
 
-  cout << indent << "scope:   " << domain->scope << " "
-                 << "(level "   << domain->level << ")"
+  cout << indent << "scope:   " << domain->scope << " ("
+                                << "level "   << domain->level << ", "
+                                << "rel.idx " << domain->relative_index
+                                << ")"
        << endl
        << indent << "domain:  " << domain->domain_tag
        << endl;
