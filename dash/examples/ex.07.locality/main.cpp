@@ -96,7 +96,8 @@ int main(int argc, char * argv[])
   if (myid == 0) {
     cout << separator << endl;
     dart_domain_locality_t * global_domain_locality;
-    dart_domain_locality(DART_TEAM_ALL, ".", &global_domain_locality);
+    dart_domain_team_locality(
+      DART_TEAM_ALL, ".", &global_domain_locality);
     print_domain(DART_TEAM_ALL, global_domain_locality);
     cout << separator << endl;
   } else {
