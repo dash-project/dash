@@ -3,7 +3,6 @@
 
 #include <dash/internal/Config.h>
 
-#ifdef DASH_ENABLE_HDF5
 
 #include <dash/Exception.h>
 #include <dash/Init.h>
@@ -23,14 +22,14 @@
 
 #include <mpi.h>
 
+namespace dash {
+namespace io {
+
 /**
  * DASH wrapper to store an dash::Array or dash::Matrix
  * in an HDF5 file using parallel IO.
  * All operations are collective.
  */
-namespace dash {
-namespace io {
-
 class StoreHDF {
 public:
   /**
@@ -759,6 +758,5 @@ private:
 
 #include <dash/io/HDF5OutputStream.h>
 
-#endif // DASH_ENABLE_HDF5
 
 #endif
