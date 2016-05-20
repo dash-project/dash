@@ -104,7 +104,7 @@ public:
 
 public:
 
-  LocalityDomain()
+  inline LocalityDomain()
   : _domain(nullptr),
     _subdomains(nullptr)
   {
@@ -112,117 +112,26 @@ public:
   }
 
   LocalityDomain(
-    const self_t & parent,
-    std::string    domain_tag)
-  : _domain(nullptr),
-    _is_owner(false)
-  {
-    DASH_LOG_TRACE("LocalityDomain(domain_tag)",
-                   "domain tag:", domain_tag);
-
-    DASH_ASSERT_RETURNS(
-      dart_domain_locality(
-        &(parent.dart_type()),
-        domain_tag.c_str(),
-        &_domain),
-      DART_OK);
-
-    DASH_ASSERT_MSG(
-      _domain != NULL &&
-      _domain != nullptr,
-      "Failed to load locality domain with tag " << domain_tag);
-
-    _subdomains = new std::unordered_map<int, self_t>();
-
-    init(_domain);
-
-    DASH_LOG_TRACE("LocalityDomain(t,dom) >");
-  }
+    const self_t           & parent,
+    dart_domain_locality_t * domain);
 
   LocalityDomain(
-    dart_domain_locality_t * domain)
-  : _domain(domain),
-    _is_owner(false)
-  {
-    DASH_LOG_TRACE("LocalityDomain(const dom)",
-                   "domain:", domain->domain_tag);
-    DASH_ASSERT_MSG(
-      _domain != NULL &&
-      _domain != nullptr,
-      "Failed to load locality domain with tag " << domain->domain_tag);
+    dart_domain_locality_t * domain);
 
-    _subdomains = new std::unordered_map<int, self_t>();
+  LocalityDomain(
+    const self_t           & parent,
+    std::string              subdomain_tag);
 
-    init(_domain);
+  ~LocalityDomain();
 
-    DASH_LOG_TRACE("LocalityDomain(t,dom) >");
-  }
+  LocalityDomain(
+    const self_t & other);
 
-  ~LocalityDomain()
-  {
-    if (_subdomains != nullptr) {
-      delete _subdomains;
-      _subdomains = nullptr;
-    }
-    if (_is_owner && _domain != nullptr) {
-      dart_domain_delete(_domain);
-      _domain = nullptr;
-    }
-  }
+  self_t & operator=(
+    const self_t & other);
 
-  LocalityDomain(const self_t & other)
-  : _domain_tag(other._domain_tag),
-    _unit_ids(other._unit_ids)
-  {
-    _subdomains = new std::unordered_map<int, self_t>();
-
-    _is_owner = other._is_owner;
-    if (_is_owner) {
-      _domain = new dart_domain_locality_t();
-      DASH_ASSERT_RETURNS(
-        dart_domain_copy(
-          _domain,
-          other._domain),
-        DART_OK);
-    } else {
-      _domain = other._domain;
-    }
-    _begin = iterator(*this, 0);
-    if (_domain != nullptr) {
-      _end = iterator(*this, _domain->num_domains);
-    } else {
-      _end = iterator(*this, 0);
-    }
-  }
-
-  self_t & operator=(const self_t & other)
-  {
-    _unit_ids   = other._unit_ids;
-    _is_owner   = other._is_owner;
-
-    _subdomains = new std::unordered_map<int, self_t>();
-
-    if (_is_owner) {
-      _domain = new dart_domain_locality_t();
-      DASH_ASSERT_RETURNS(
-        dart_domain_copy(
-          _domain,
-          other._domain),
-        DART_OK);
-    } else {
-      _domain = other._domain;
-    }
-    _begin = iterator(*this, 0);
-    if (_domain != nullptr) {
-      _end = iterator(*this, _domain->num_domains);
-    } else {
-      _end = iterator(*this, 0);
-    }
-
-    return *this;
-  }
-
-  inline bool operator==(const self_t & rhs) const
+  inline bool operator==(
+    const self_t & rhs) const
   {
     return ( (_domain == rhs._domain)
              ||
@@ -235,82 +144,20 @@ public:
                   == rhs._domain->domain_tag) ) );
   }
 
-  inline bool operator!=(const self_t & rhs) const
+  inline bool operator!=(
+    const self_t & rhs) const
   {
     return !(*this == rhs);
   }
 
   self_t & select(
-    std::initializer_list<std::string> subdomain_tags)
-  {
-    std::vector<const char *> subdomain_tags_cstr;
-    for (auto domain_tag : subdomain_tags) {
-      subdomain_tags_cstr.push_back(domain_tag.c_str());
-    }
-
-    DASH_ASSERT_RETURNS(
-      dart_domain_select(
-        _domain,
-        subdomain_tags_cstr.size(),
-        subdomain_tags_cstr.data()),
-      DART_OK);
-
-    init(_domain);
-    return *this;
-  }
+    std::initializer_list<std::string> subdomain_tags);
 
   self_t & exclude(
-    std::initializer_list<std::string> subdomain_tags)
-  {
-    std::vector<const char *> subdomain_tags_cstr;
-    for (auto domain_tag : subdomain_tags) {
-      subdomain_tags_cstr.push_back(domain_tag.c_str());
-    }
-
-    DASH_ASSERT_RETURNS(
-      dart_domain_exclude(
-        _domain,
-        subdomain_tags_cstr.size(),
-        subdomain_tags_cstr.data()),
-      DART_OK);
-
-    init(_domain);
-    return *this;
-  }
+    std::initializer_list<std::string> subdomain_tags);
 
   self_t & group(
-    std::initializer_list<std::string> group_subdomain_tags)
-  {
-    std::vector<const char *> subdomain_tags_cstr;
-    for (auto domain_tag : group_subdomain_tags) {
-      subdomain_tags_cstr.push_back(domain_tag.c_str());
-    }
-
-    char group_domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
-
-    DASH_ASSERT_RETURNS(
-      dart_group_domains(
-        _domain,                    // dart_t       * domain
-        subdomain_tags_cstr.size(), // int            num_group_subdomains
-        subdomain_tags_cstr.data(), // const char  ** group_subdomain_tags
-        group_domain_tag),          // char        ** group_domain_tag_out
-      DART_OK);
-
-    // Clear cached subdomain instances:
-    _subdomains->clear();
-
-    dart_domain_locality_t * group_domain;
-    DASH_ASSERT_RETURNS(
-      dart_domain_locality(
-        _domain,
-        group_domain_tag,
-        &group_domain),
-      DART_OK);
-
-    _groups.push_back(self_t(group_domain));
-
-    return _groups.back();
-  }
+    std::initializer_list<std::string> group_subdomain_tags);
 
   inline void clear()
   {
@@ -326,7 +173,8 @@ public:
   /**
    * Lazy-load instance of \c LocalityDomain for subdomain.
    */
-  inline self_t & at(int relative_index) const
+  inline self_t & at(
+    int relative_index) const
   {
     DASH_ASSERT(_subdomains != nullptr);
     DASH_ASSERT(_domain  != nullptr);
@@ -424,7 +272,8 @@ public:
 
 private:
 
-  void init(dart_domain_locality_t * domain)
+  inline void init(
+    dart_domain_locality_t * domain)
   {
     clear();
 

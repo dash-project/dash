@@ -38,7 +38,7 @@ namespace util {
  * tloc.select(".0")
  *     .split(dash::util::Locality::Scope::Module);
  *
- * size_t num_module_split_domains = tloc.parts().size();
+ * size_t num_module_parts = tloc.parts().size();
  * for (dash::util::LocalityDomain domain : tloc.parts()) {
  *   int module_index            = domain.relative_index();
  *   int domain_max_core_mhz     = domain.hwinfo().max_cpu_mhz;
@@ -67,13 +67,22 @@ private:
 
 public:
   /**
-   * Constructor. Creates new instance of \c dash::util::TeamLocality for
-   * a specified team.
+   * Constructor.
+   * Creates new instance of \c dash::util::TeamLocality by loading the
+   * locality domain of a specified team.
    */
   TeamLocality(
     dash::Team & team,
     Scope_t      scope      = Scope_t::Global,
     std::string  domain_tag = ".");
+
+  /**
+   * Constructor. Creates new instance of \c dash::util::TeamLocality for
+   * a specified team and locality domain.
+   */
+  TeamLocality(
+    dash::Team       & team,
+    LocalityDomain_t & domain);
 
   /**
    * Default constructor.
@@ -90,16 +99,44 @@ public:
    */
   self_t & operator=(const self_t & other) = default;
 
-  self_t & split(Scope_t scope, int num_parts = 0);
-
-  inline std::vector<LocalityDomain_t> & parts()
+  /**
+   * The team locality domain descriptor.
+   */
+  inline const LocalityDomain_t & domain() const
   {
-    return _split_domains;
+    return _domain;
   }
 
-  inline const std::vector<LocalityDomain_t> & parts() const
+  /**
+   * The team locality domain descriptor.
+   */
+  inline LocalityDomain_t & domain()
   {
-    return _split_domains;
+    return _domain;
+  }
+
+  /**
+   * Split the team locality domain into the given number of parts on the
+   * specified locality scope.
+   * Team locality domains resulting from the split can be accessed using
+   * method \c parts() after completion.
+   */
+  self_t & split(Scope_t scope, int num_parts = 0);
+
+  /**
+   * Parts of the team locality that resulted from a previous split.
+   */
+  inline std::vector<self_t> & parts()
+  {
+    return _parts;
+  }
+
+  /**
+   * Parts of the team locality that have been created in a previous split.
+   */
+  inline const std::vector<self_t> & parts() const
+  {
+    return _parts;
   }
 
   inline dash::Team & team()
@@ -109,13 +146,13 @@ public:
 
   inline const std::vector<dart_unit_t> & units() const
   {
-    return _unit_ids;
+    return _domain.units();
   }
 
   inline self_t & group(
     std::initializer_list<std::string> group_subdomain_tags)
   {
-    for (auto domain : _split_domains) {
+    for (auto domain : _parts) {
       domain.group(group_subdomain_tags);
     }
     return *this;
@@ -124,7 +161,7 @@ public:
   inline self_t & select(
     std::initializer_list<std::string> domain_tags)
   {
-    for (auto domain : _split_domains) {
+    for (auto domain : _parts) {
       domain.select(domain_tags);
     }
     return *this;
@@ -133,7 +170,7 @@ public:
   inline self_t & exclude(
     std::initializer_list<std::string> domain_tags)
   {
-    for (auto domain : _split_domains) {
+    for (auto domain : _parts) {
       domain.exclude(domain_tags);
     }
     return *this;
@@ -144,11 +181,9 @@ private:
   /// Parent scope of the team locality domain hierarchy.
   Scope_t                             _scope         = Scope_t::Undefined;
   /// Split domains in the team locality, one domain for every split group.
-  std::vector<LocalityDomain_t>       _split_domains;
+  std::vector<self_t>                 _parts;
   /// Locality domain of the team.
   LocalityDomain_t                    _domain;
-  /// Units in the domain.
-  std::vector<dart_unit_t>            _unit_ids;
 
 }; // class TeamLocality
 

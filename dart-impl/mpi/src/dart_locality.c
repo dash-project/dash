@@ -106,8 +106,10 @@ dart_ret_t dart_domain_split(
   DART_LOG_DEBUG("dart_domain_split() team(%d) domain(%s) "
                  "into %d parts at scope %d",
                  domain_in->team, domain_in->domain_tag, num_parts, scope);
+
   int    * group_sizes       = NULL;
   char *** group_domain_tags = NULL;
+
   /* Get domain tags for a split, grouped by locality scope.
    * For 4 domains in the specified scope, a split into 2 parts results
    * in a grouping of domain tags like:
@@ -122,23 +124,22 @@ dart_ret_t dart_domain_split(
       domain_in, scope, num_parts, &group_sizes, &group_domain_tags),
     DART_OK);
 
-#ifdef DART_ENABLE_LOGGING
-  for (int p = 0; p < num_parts; p++) {
-    DART_LOG_TRACE("dart_domain_split: groups[%d] size: %d",
-                   p, group_sizes[p]);
-    for (int g = 0; g < group_sizes[p]; g++) {
-      DART_LOG_TRACE("dart_domain_split:            tag: %s",
-                     group_domain_tags[p][g]);
-    }
-  }
-#endif
-
   /* Use grouping of domain tags to create new locality domain
    * hierarchy:
    */
   for (int p = 0; p < num_parts; p++) {
-    DART_LOG_DEBUG("dart_domain_split: domain split %d / %d",
+    DART_LOG_DEBUG("dart_domain_split: split %d / %d",
                    p + 1, num_parts);
+
+#ifdef DART_ENABLE_LOGGING
+    DART_LOG_TRACE("dart_domain_split: groups[%d] size: %d",
+                   p, group_sizes[p]);
+    for (int g = 0; g < group_sizes[p]; g++) {
+      DART_LOG_TRACE("dart_domain_split:            |- tags[%d]: %s",
+                     g, group_domain_tags[p][g]);
+    }
+#endif
+
     /* Deep copy of grouped domain so we do not have to recalculate
      * groups for every split group : */
     DART_LOG_TRACE("dart_domain_split: copying input domain");
@@ -147,8 +148,7 @@ dart_ret_t dart_domain_split(
         domain_in,
         domains_out + p),
       DART_OK);
-  }
-  for (int p = 0; p < num_parts; p++) {
+
     /* Drop domains that are not in split group: */
     DART_LOG_TRACE("dart_domain_split: selecting subdomains");
     DART_ASSERT_RETURNS(

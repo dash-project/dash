@@ -8,6 +8,7 @@
 #include <dash/dart/base/hwinfo.h>
 
 #include <dash/dart/base/string.h>
+#include <dash/dart/base/math.h>
 #include <dash/dart/base/internal/host_topology.h>
 #include <dash/dart/base/internal/unit_locality.h>
 #include <dash/dart/base/internal/domain_locality.h>
@@ -338,31 +339,36 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
   dart_ret_t ret;
 
   int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_UNIT);
-  int tag_len       = 0;
   int matched       = 0;
   int unit_idx      = 0;
   int subdomain_idx = 0;
 
+  DART_LOG_TRACE("dart__base__locality__domain__select_subdomains() "
+                 "domain: %s, level: %d, domains: %d, units: %d",
+                 domain->domain_tag,  domain->level,
+                 domain->num_domains, domain->num_units);
+
   if (is_unit_scope) {
     return DART_OK;
   }
-
-  DART_LOG_TRACE("dart__base__locality__domain__select_subdomains() "
-                 "domain: %s, level: %d, subdomains: %d, units: %d",
-                 domain->domain_tag,  domain->level,
-                 domain->num_domains, domain->num_units);
 
   for (int sd = 0; sd < domain->num_domains; sd++) {
     /* ---------------------------------------------------------------- *
      * Selection predicate is just this block.                          *
      * Could use functors to allow arbitrary selection functions.       *
      *                                                                  */
-    char * subdomain_tag = domain->domains[sd].domain_tag;
+    char * subdomain_tag     = domain->domains[sd].domain_tag;
+    size_t subdomain_tag_len = strlen(subdomain_tag);
     matched = 0;
-    tag_len = (int)strlen(subdomain_tag);
     for (int dt = 0; dt < num_subdomain_tags; dt++) {
-      if (dart__base__strcommonprefix(
-            subdomain_tag, subdomain_tags[dt], NULL) >= tag_len) {
+      size_t filter_tag_len    = strlen(subdomain_tags[dt]);
+      size_t common_prefix_len = dart__base__strcommonprefix(
+                                   subdomain_tag, subdomain_tags[dt], NULL);
+      size_t min_tag_match_len = filter_tag_len < subdomain_tag_len
+                                   ? filter_tag_len
+                                   : subdomain_tag_len;
+
+      if (common_prefix_len >= min_tag_match_len) {
         matched = 1;
         break;
       }
@@ -413,8 +419,8 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
    * Bottom-up accumulation of units and domains:
    */
   DART_LOG_TRACE("dart__base__locality__domain__select_subdomains : "
-                 "--> collected in %s: units: %d, domains: %d",
-                 domain->domain_tag, unit_idx, subdomain_idx);
+                 "--> collected in %s: domains: %d, units: %d",
+                 domain->domain_tag, subdomain_idx, unit_idx);
 
   if (domain->num_units != unit_idx && domain->unit_ids != NULL) {
     dart_unit_t * tmp =

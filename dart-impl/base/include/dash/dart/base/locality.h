@@ -85,10 +85,10 @@ dart_ret_t dart__base__locality__domain_split_tags(
   char                        **** group_domain_tags_out);
 
 dart_ret_t dart__base__locality__domain_group(
-  dart_domain_locality_t           * domain,
-  int                                group_size,
-  const char                      ** group_subdomain_tags,
-  char                             * group_domain_tag_out);
+  dart_domain_locality_t         * domain,
+  int                              group_size,
+  const char                    ** group_subdomain_tags,
+  char                           * group_domain_tag_out);
 
 dart_ret_t dart__base__locality__scope_domains(
   const dart_domain_locality_t   * domain_in,

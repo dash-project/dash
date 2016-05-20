@@ -7,9 +7,21 @@
 #include <string>
 
 
-void print_locality_domain(const dash::util::LocalityDomain & ld)
+void print_locality_domain(
+  std::string                        context,
+  const dash::util::LocalityDomain & ld)
 {
+  if (dash::myid() != 0) {
+    return;
+  }
+
   std::string indent(ld.level() * 4, ' ');
+
+  if (ld.level() == 0) {
+    DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "context: ",
+                   context);
+    DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "----------");
+  }
 
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "scope:   ",
                  ld.scope());
@@ -17,14 +29,20 @@ void print_locality_domain(const dash::util::LocalityDomain & ld)
                  ld.domain_tag());
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "unit ids:",
                  ld.units());
-  DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "domains: ",
-                 ld.size());
+
+  if (ld.size() > 0) {
+    DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "domains: ",
+                   ld.size());
+  }
 
   int d = 0;
   for (auto & domain : ld) {
     DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "[", d, "]:");
-    print_locality_domain(domain);
+    print_locality_domain(context, domain);
     ++d;
+  }
+  if (ld.level() == 0) {
+    DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "----------");
   }
 }
 
@@ -46,13 +64,10 @@ TEST_F(TeamLocalityTest, GlobalAll)
   }
 
   DASH_LOG_DEBUG("TeamLocalityTest.GlobalAll",
-                 "team all, global domain, domains:", tloc.parts().size());
-  EXPECT_EQ_U(1, tloc.parts().size());
+                 "team all, global domain, parts:", tloc.parts().size());
+  EXPECT_EQ_U(0, tloc.parts().size());
 
-  for (auto & domain : tloc.parts()) {
-    DASH_LOG_DEBUG("TeamLocalityTest.GlobalAll", "team locality domain:");
-    print_locality_domain(domain);
-  }
+  print_locality_domain("global", tloc.domain());
 }
 
 TEST_F(TeamLocalityTest, SplitCore)
@@ -61,11 +76,10 @@ TEST_F(TeamLocalityTest, SplitCore)
   int num_split     = std::min<int>(dash::size(), 3);
 
   dash::util::TeamLocality tloc(team);
-  for (auto & domain : tloc.parts()) {
-    DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
-                   "team locality in Global domain:");
-    print_locality_domain(domain);
-  }
+
+  DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
+                 "team locality in Global domain:");
+  print_locality_domain("global", tloc.domain());
 
   // Split via explicit method call:
   DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
@@ -73,12 +87,12 @@ TEST_F(TeamLocalityTest, SplitCore)
   tloc.split(dash::util::Locality::Scope::Core, num_split);
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
-                 "team all, Core domains:", tloc.parts().size());
+                 "team all, Core parts:", tloc.parts().size());
 
-  for (auto & domain : tloc.parts()) {
+  for (auto & part : tloc.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
                    "team locality in Core domain:");
-    print_locality_domain(domain);
+    print_locality_domain("CORE split", part.domain());
   }
 }
 
@@ -87,22 +101,21 @@ TEST_F(TeamLocalityTest, SplitNUMA)
   dash::Team & team = dash::Team::All();
 
   dash::util::TeamLocality tloc(team);
-  for (auto & domain : tloc.parts()) {
-    DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
-                   "team locality in Global domain:");
-    print_locality_domain(domain);
-  }
+
+  DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
+                 "team locality in Global domain:");
+  print_locality_domain("global", tloc.domain());
 
   // Split via constructor parameter:
   dash::util::TeamLocality tloc_numa(
       team, dash::util::Locality::Scope::NUMA);
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
-                 "team all, NUMA domains:", tloc_numa.parts().size());
+                 "team all, NUMA parts:", tloc_numa.parts().size());
 
-  for (auto & domain : tloc_numa.parts()) {
+  for (auto & part : tloc_numa.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
                    "team locality NUMA domain:");
-    print_locality_domain(domain);
+    print_locality_domain("NUMA split", part.domain());
   }
 }

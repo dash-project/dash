@@ -20,6 +20,11 @@ dash::util::TeamLocality::TeamLocality(
 : _team(&team),
   _scope(scope)
 {
+  DASH_LOG_DEBUG("TeamLocality(t,s,dt)",
+                 "team:",       team.dart_id(),
+                 "scope:",      scope,
+                 "domain tag:", domain_tag);
+
   dart_domain_locality_t * domain;
   DASH_ASSERT_RETURNS(
     dart_domain_team_locality(
@@ -28,19 +33,35 @@ dash::util::TeamLocality::TeamLocality(
       &domain),
     DART_OK);
 
-  _split_domains.push_back(dash::util::LocalityDomain(domain));
+  _domain = dash::util::LocalityDomain(domain);
 
   if (_scope != Scope_t::Global) {
     split(_scope);
   }
+
+  DASH_LOG_DEBUG("TeamLocality >");
+}
+
+dash::util::TeamLocality::TeamLocality(
+  dash::Team                  & team,
+  dash::util::LocalityDomain  & domain)
+: _team(&team),
+  _scope(domain.scope()),
+  _domain(domain)
+{
+  DASH_LOG_DEBUG("TeamLocality(t,d)",
+                 "team:",   team.dart_id(),
+                 "domain:", domain.domain_tag());
+
+  DASH_LOG_DEBUG("TeamLocality >");
 }
 
 dash::util::TeamLocality &
 dash::util::TeamLocality::split(
   dash::util::Locality::Scope   scope,
-  int                           num_parts)
+  int                           num_split_parts)
 {
-  DASH_LOG_DEBUG_VAR("TeamLocality.split()", num_parts);
+  DASH_LOG_DEBUG_VAR("TeamLocality.split()", num_split_parts);
 
   if (static_cast<int>(_scope) > static_cast<int>(scope)) {
     // Cannot split into higher scope
@@ -50,66 +71,55 @@ dash::util::TeamLocality::split(
       "into a parent scope (got: " << scope << ")");
   }
   _scope = scope;
-  _split_domains.clear();
-  _unit_ids.clear();
 
-  int     num_split_domains;
+  _parts.clear();
+
+  // Actual number of subdomains created in the split:
+  int     num_parts = num_split_parts;
+  // Number of domains at specified scope:
+  int     num_scope_parts;
+  // Tags of domains at specified scope:
   char ** domain_tags;
   DASH_ASSERT_RETURNS(
     dart_scope_domains(
       &(_domain.dart_type()),
       static_cast<dart_locality_scope_t>(_scope),
-      &num_split_domains,
+      &num_scope_parts,
       &domain_tags),
     DART_OK);
   free(domain_tags);
 
-  if (num_parts < 1 || num_split_domains <= num_parts) {
-    DASH_LOG_DEBUG("TeamLocality.split",
-                   "split into single subdomains");
-
-    dart_domain_locality_t * subdomains =
-      new dart_domain_locality_t[num_split_domains];
-
-    DASH_ASSERT_RETURNS(
-      dart_domain_split(
-        &(_domain.dart_type()),
-        static_cast<dart_locality_scope_t>(_scope),
-        num_split_domains,
-        subdomains),
-      DART_OK);
-    for (int sd = 0; sd < num_split_domains; ++sd) {
-      DASH_LOG_TRACE_VAR("TeamLocality.split", subdomains[sd].domain_tag);
-      _split_domains.push_back(
-          dash::util::LocalityDomain(&subdomains[sd]));
-    }
+  if (num_split_parts < 1 || num_scope_parts <= num_split_parts) {
+    DASH_LOG_DEBUG("TeamLocality.split", "split into single subdomains");
+    num_parts = num_scope_parts;
   } else {
-    DASH_LOG_DEBUG("TeamLocality.split",
-                   "split into groups of subdomains");
-
-    dart_domain_locality_t * split_split_domains =
-      new dart_domain_locality_t[num_parts];
-
-    DASH_ASSERT_RETURNS(
-      dart_domain_split(
-        &(_domain.dart_type()),
-        static_cast<dart_locality_scope_t>(_scope),
-        num_parts,
-        split_split_domains),
-      DART_OK);
-
-    for (int sd = 0; sd < num_parts; ++sd) {
-      DASH_LOG_TRACE_VAR("TeamLocality.split",
-                         split_split_domains[sd].domain_tag);
-      _split_domains.push_back(
-          dash::util::LocalityDomain(&split_split_domains[sd]));
-    }
+    DASH_LOG_DEBUG("TeamLocality.split", "split into groups of subdomains");
+    num_parts = num_split_parts;
   }
 
-  for (auto & domain : _split_domains) {
-    _unit_ids.insert(_unit_ids.end(),
-                     domain.units().begin(),
-                     domain.units().end());
+  dart_domain_locality_t * subdomains =
+    new dart_domain_locality_t[num_parts];
+
+  DASH_ASSERT_RETURNS(
+    dart_domain_split(
+      &(_domain.dart_type()),
+      static_cast<dart_locality_scope_t>(_scope),
+      num_parts,
+      subdomains),
+    DART_OK);
+
+  for (int sd = 0; sd < num_parts; ++sd) {
+    DASH_LOG_TRACE_VAR("TeamLocality.split",
+                       subdomains[sd].domain_tag);
+
+    dash::util::LocalityDomain locality_domain(
+      _domain,        // parent
+      &subdomains[sd] // subdomain
+    );
+    _parts.push_back(
+      dash::util::TeamLocality(
+        *_team, locality_domain)
+    );
   }
 
   DASH_LOG_DEBUG("TeamLocality.split >");
