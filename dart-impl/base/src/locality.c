@@ -358,275 +358,264 @@ dart_ret_t dart__base__locality__domain_split_tags(
 
 dart_ret_t dart__base__locality__domain_group(
   dart_domain_locality_t           * domain,
-  int                                num_groups,
-  const int                        * group_sizes,
-  const char                     *** group_subdomain_tags,
-  char                            ** group_domain_tags_out)
+  int                                group_size,
+  const char                      ** group_subdomain_tags,
+  char                             * group_domain_tag_out)
 {
   DART_LOG_TRACE("dart__base__locality__domain_group() "
-                 "domain_in: (%s: %d @ %d) num_groups: %d",
+                 "domain_in: (%s: %d @ %d) group size: %d",
                  domain->domain_tag, domain->scope, domain->level,
-                 num_groups);
+                 group_size);
 #ifdef DART_ENABLE_LOGGING
-  for (int g = 0; g < num_groups; g++) {
-    for (int sd = 0; sd < group_sizes[g]; sd++) {
-      DART_LOG_TRACE("dart__base__locality__domain_group: "
-                     "group_subdomain_tags[%d][%d]: %s",
-                     g, sd, group_subdomain_tags[g][sd]);
-    }
+  for (int sd = 0; sd < group_size; sd++) {
+    DART_LOG_TRACE("dart__base__locality__domain_group: "
+                   "group_subdomain_tags[%d]: %s",
+                   sd, group_subdomain_tags[sd]);
   }
 #endif
 
-  if (num_groups < 1) {
+  if (group_size < 1) {
     return DART_ERR_INVAL;
   }
 
-  dart_ret_t ret;
-  for (int g = 0; g < num_groups; g++) {
+  dart_ret_t ret = DART_OK;
+
+  DART_LOG_TRACE("dart__base__locality__domain_group: "
+                 "group size: %d", group_size);
+
+  group_domain_tag_out[0] = '\0';
+
+  /* The group's parent domain: */
+  dart_domain_locality_t * group_parent_domain;
+  dart__base__locality__domain__parent(
+    domain, group_subdomain_tags, group_size, &group_parent_domain);
+
+  DART_LOG_TRACE("dart__base__locality__domain_group: "
+                 "group parent: %s",
+                 group_parent_domain->domain_tag);
+
+  /* Find parents of specified subdomains that are an immediate child node
+   * of the input domain.
+   */
+  int immediate_subdomains_group = 1;
+  int num_group_parent_domain_tag_parts =
+        dart__base__strcnt(group_parent_domain->domain_tag, '.');
+  for (int sd = 0; sd < group_size; sd++) {
+    const char * group_domain_tag = group_subdomain_tags[sd];
     DART_LOG_TRACE("dart__base__locality__domain_group: "
-                   "group[%d] size: %d", g, group_sizes[g]);
-
-    group_domain_tags_out[g] = NULL;
-
-    /* The group's parent domain: */
-    dart_domain_locality_t * group_parent_domain;
-    dart__base__locality__domain__parent(
-      domain, group_subdomain_tags[g], group_sizes[g], &group_parent_domain);
-
-    DART_LOG_TRACE("dart__base__locality__domain_group: "
-                   "group[%d] parent: %s",
-                   g, group_parent_domain->domain_tag);
-
-    /* Find parents of specified subdomains that are an immediate child node
-     * of the input domain.
-     */
-    int immediate_subdomains_group = 1;
-    int num_group_parent_domain_tag_parts =
-          dart__base__strcnt(group_parent_domain->domain_tag, '.');
-    for (int sd = 0; sd < group_sizes[g]; sd++) {
-      const char * group_domain_tag = group_subdomain_tags[g][sd];
-      DART_LOG_TRACE("dart__base__locality__domain_group: "
-                     "    group_subdomain_tags[%d][%d]: %s",
-                     g, sd, group_domain_tag);
-      if (dart__base__strcnt(group_domain_tag, '.') !=
-          num_group_parent_domain_tag_parts + 1) {
-        immediate_subdomains_group = 0;
-        break;
-      }
+                   "    group_subdomain_tags[%d]: %s",
+                   sd, group_domain_tag);
+    if (dart__base__strcnt(group_domain_tag, '.') !=
+        num_group_parent_domain_tag_parts + 1) {
+      immediate_subdomains_group = 0;
+      break;
     }
-    if (immediate_subdomains_group) {
-      DART_LOG_TRACE("dart__base__locality__domain_group: "
-                     "group[%d]: group of immediate child domains", g);
-      /* Subdomains in group are immediate child nodes of group parent
-       * domain:
-       */
-      group_domain_tags_out[g] =
+  }
+  if (immediate_subdomains_group) {
+    DART_LOG_TRACE("dart__base__locality__domain_group: "
+                   "group of immediate child domains");
+    /* Subdomains in group are immediate child nodes of group parent
+     * domain:
+     */
+    ret = dart__base__locality__group_subdomains(
+            group_parent_domain,
+            group_subdomain_tags, group_size,
+            group_domain_tag_out);
+    if (ret != DART_OK) {
+      return ret;
+    }
+  } else {
+    DART_LOG_TRACE("dart__base__locality__domain_group: "
+                   "group of indirect child domains");
+
+    /* Subdomains in group are in indirect child nodes of group parent
+     * domain.
+     * Find immediate child nodes that are parents of group subdomains.
+     * Example:
+     *
+     *     parent:        .0
+     *     group domains: { .0.1.2, .0.1.3, .0.2.0 }
+     *
+     *     --> { .0.1, .0.1, .0.2 }
+     *
+     *     --> groups:  { .0.1, .0.2 }
+     */
+    char ** immediate_subdomain_tags    = malloc(sizeof(char *) *
+                                                 group_size);
+    char *  group_parent_domain_tag     = group_parent_domain->domain_tag;
+    int     group_parent_domain_tag_len = strlen(group_parent_domain_tag);
+    DART_LOG_TRACE("dart__base__locality__domain_group: parent: %s",
+                   group_parent_domain_tag);
+    for (int sd = 0; sd < group_size; sd++) {
+      /* Resolve relative index of subdomain: */
+      immediate_subdomain_tags[sd] =
         calloc(sizeof(char) * DART_LOCALITY_DOMAIN_TAG_MAX_SIZE,
                sizeof(char));
-      ret = dart__base__locality__group_subdomains(
-              group_parent_domain,
-              group_subdomain_tags[g], group_sizes[g],
-              group_domain_tags_out[g]);
-      if (ret != DART_OK) {
-        return ret;
+
+      char * dot_pos = strchr(group_subdomain_tags[sd] +
+                              group_parent_domain_tag_len + 1, '.');
+      int immediate_subdomain_tag_len;
+      if (dot_pos == NULL) {
+        /* subdomain is immediate child of parent: */
+        immediate_subdomain_tag_len = strlen(group_subdomain_tags[sd]);
+      } else {
+        /* subdomain is indirect child of parent: */
+        immediate_subdomain_tag_len = dot_pos -
+                                      group_subdomain_tags[sd];
       }
-    } else {
-      DART_LOG_TRACE("dart__base__locality__domain_group: "
-                     "group[%d]: group of indirect child domains", g);
-
-      /* Subdomains in group are in indirect child nodes of group parent
-       * domain.
-       * Find immediate child nodes that are parents of group subdomains.
-       * Example:
-       *
-       *     parent:        .0
-       *     group domains: { .0.1.2, .0.1.3, .0.2.0 }
-       *
-       *     --> { .0.1, .0.1, .0.2 }
-       *
-       *     --> groups:  { .0.1, .0.2 }
-       */
-      char ** immediate_subdomain_tags    = malloc(sizeof(char *) *
-                                                   group_sizes[g]);
-      char *  group_parent_domain_tag     = group_parent_domain->domain_tag;
-      int     group_parent_domain_tag_len = strlen(group_parent_domain_tag);
-      DART_LOG_TRACE("dart__base__locality__domain_group: parent: %s",
-                     group_parent_domain_tag);
-      for (int sd = 0; sd < group_sizes[g]; sd++) {
-        /* Resolve relative index of subdomain: */
-        immediate_subdomain_tags[sd] =
-          calloc(sizeof(char) * DART_LOCALITY_DOMAIN_TAG_MAX_SIZE,
-                 sizeof(char));
-
-        char * dot_pos = strchr(group_subdomain_tags[g][sd] +
-                                group_parent_domain_tag_len + 1, '.');
-        int immediate_subdomain_tag_len;
-        if (dot_pos == NULL) {
-          /* subdomain is immediate child of parent: */
-          immediate_subdomain_tag_len = strlen(group_subdomain_tags[g][sd]);
-        } else {
-          /* subdomain is indirect child of parent: */
-          immediate_subdomain_tag_len = dot_pos -
-                                        group_subdomain_tags[g][sd];
-        }
-        strncpy(immediate_subdomain_tags[sd], group_subdomain_tags[g][sd],
-                immediate_subdomain_tag_len);
-        immediate_subdomain_tags[sd][immediate_subdomain_tag_len] = '\0';
-      }
-      int num_group_subdomains = dart__base__strsunique(
-                                   immediate_subdomain_tags,
-                                   group_sizes[g]);
-      DART_LOG_TRACE("dart__base__locality__domain_group: "
-                     "num_group_subdomains: %d", num_group_subdomains);
-#ifdef DART_ENABLE_LOGGING
-      for (int gsd = 0; gsd < num_group_subdomains; gsd++) {
-        DART_LOG_TRACE("dart__base__locality__domain_group: "
-                       "group[%d].subdomain[%d]: %s",
-                       g, gsd, immediate_subdomain_tags[gsd]);
-      }
-#endif
-      /*
-       * Note: Required to append group domain at the end of the group
-       *       parent's subdomain list to ensure that tags of domains not
-       *       included in group remain valid.
-       */
-      group_parent_domain->domains =
-        realloc(group_parent_domain->domains,
-                sizeof(dart_domain_locality_t) *
-                  (group_parent_domain->num_domains + 1));
-      dart_domain_locality_t * group_domain =
-        group_parent_domain->domains + group_parent_domain->num_domains;
-
-      dart__base__locality__domain__init(group_domain);
-
-      group_domain->team           = group_parent_domain->team;
-      group_domain->scope          = DART_LOCALITY_SCOPE_GROUP;
-      group_domain->level          = group_parent_domain->level + 1;
-      group_domain->parent         = group_parent_domain;
-      group_domain->relative_index = group_parent_domain->num_domains;
-      group_domain->num_nodes      = group_parent_domain->num_nodes;
-      group_domain->num_units      = 0;
-      group_domain->unit_ids       = NULL;
-      group_domain->num_domains    = 0;
-      group_domain->domains        = malloc(sizeof(dart_domain_locality_t) *
-                                            num_group_subdomains);
-
-      strncpy(group_domain->domain_tag, group_parent_domain_tag,
-              group_parent_domain_tag_len);
-      group_domain->domain_tag[group_parent_domain_tag_len] = '\0';
-      int group_domain_tag_len =
-        sprintf(group_domain->domain_tag + group_parent_domain_tag_len,
-                ".%d", group_domain->relative_index) +
-        group_parent_domain_tag_len;
-      group_domain->domain_tag[group_domain_tag_len] = '\0';
-
-      group_domain_tags_out[g] = calloc(sizeof(char) *
-                                          group_domain_tag_len,
-                                        sizeof(char));
-      strcpy(group_domain_tags_out[g], group_domain->domain_tag);
-
-      /* Initialize group subdomains:
-       */
-      DART_LOG_TRACE("dart__base__locality__domain_group: "
-                     "initialize %d subdomains of group[%d] (%s)",
-                     num_group_subdomains, g, group_domain->domain_tag);
-
-      for (int gsd = 0; gsd < num_group_subdomains; gsd++) {
-        dart_domain_locality_t * group_subdomain_in;
-
-        /* Copy
-         *   domain.domains[domain_tag = group[g].immediate_subdomains[gsd]]
-         * to
-         *   group[g].domains[gsd]:
-         */
-        DART_LOG_TRACE("dart__base__locality__domain_group: "
-                       "load domain.domains[domain_tag = "
-                       "(group[%d].immediate_subdomain_tags[%d] = %s])",
-                       g, gsd, immediate_subdomain_tags[gsd]);
-
-        ret = dart__base__locality__domain(
-                domain, immediate_subdomain_tags[gsd],
-                &group_subdomain_in);
-        if (ret != DART_OK) { break; }
-
-        DART_LOG_TRACE("dart__base__locality__domain_group: "
-                       "copy domain.domains[domain_tag = %s] to "
-                       "group[%d].domains[%d]",
-                       immediate_subdomain_tags[gsd], g, gsd);
-        ret = dart__base__locality__domain__copy(
-                group_subdomain_in,
-                group_domain->domains + gsd);
-        if (ret != DART_OK) { break; }
-
-        group_domain->domains[gsd].parent = group_domain;
-        group_domain->num_domains++;
-        group_domain->num_units += group_domain[gsd].num_units;
-
-      } /* for group_domain.domains */
-
-      if (ret != DART_OK) { break; }
-
-      group_domain->unit_ids = malloc(sizeof(dart_unit_t) *
-                                      group_domain->num_units);
-
-      /* Remove entries from group domain that are not part of the group:
-       */
-      DART_LOG_TRACE("dart__base__locality__domain_group: "
-                     "select %d subdomains in group[%d] = %s",
-                     group_sizes[g], g, group_domain->domain_tag);
-      ret = dart__base__locality__domain__select_subdomains(
-              group_domain,
-              group_subdomain_tags[g],
-              group_sizes[g]);
-      if (ret != DART_OK) { break; }
-
-      DART_LOG_TRACE("dart__base__locality__domain_group: "
-                     "update group[%d] (%s) after adding subdomains",
-                     g, group_domain->domain_tag);
-      ret = dart__base__locality__domain__update_subdomains(
-              group_domain);
-      if (ret != DART_OK) { break; }
-
-      /* Remove grouped domains from parent's subdomains:
-       */
-      for (int sd = 0; sd < group_parent_domain->num_domains; sd++) {
-        dart_domain_locality_t * group_parent_subdomain =
-                                   group_parent_domain->domains + sd;
-        /* Whether this sibling of the group domain contains subdomains
-         * affected by the group:
-         */
-        int contains_grouped_domains = 0;
-        for (int gd = 0; gd < group_sizes[g]; ++gd) {
-          if (strcmp(group_parent_subdomain->domain_tag,
-                     immediate_subdomain_tags[gd]) == 0) {
-            contains_grouped_domains = 1;
-            break;
-          }
-        }
-        if (contains_grouped_domains) {
-          DART_LOG_TRACE("dart__base__locality__domain_group: "
-                         "remove grouped domains from %s",
-                         group_parent_subdomain->domain_tag);
-          ret = dart__base__locality__domain__remove_subdomains(
-                  group_parent_subdomain,
-                  group_subdomain_tags[g],
-                  group_sizes[g]);
-          if (ret != DART_OK) { break; }
-        }
-      }
-
-      for (int sd = 0; sd < group_sizes[g]; sd++) {
-        free(immediate_subdomain_tags[sd]);
-      }
-      free(immediate_subdomain_tags);
-
-      if (ret != DART_OK) { break; }
-
-      group_parent_domain->num_domains++;
+      strncpy(immediate_subdomain_tags[sd], group_subdomain_tags[sd],
+              immediate_subdomain_tag_len);
+      immediate_subdomain_tags[sd][immediate_subdomain_tag_len] = '\0';
     }
-    if (ret != DART_OK) { break; }
+    int num_group_subdomains = dart__base__strsunique(
+                                 immediate_subdomain_tags,
+                                 group_size);
+    DART_LOG_TRACE("dart__base__locality__domain_group: "
+                   "num_group_subdomains: %d", num_group_subdomains);
+#ifdef DART_ENABLE_LOGGING
+    for (int gsd = 0; gsd < num_group_subdomains; gsd++) {
+      DART_LOG_TRACE("dart__base__locality__domain_group: "
+                     "group.subdomain[%d]: %s",
+                     gsd, immediate_subdomain_tags[gsd]);
+    }
+#endif
+    /*
+     * Note: Required to append group domain at the end of the group
+     *       parent's subdomain list to ensure that tags of domains not
+     *       included in group remain valid.
+     */
+    group_parent_domain->domains =
+      realloc(group_parent_domain->domains,
+              sizeof(dart_domain_locality_t) *
+                (group_parent_domain->num_domains + 1));
+    dart_domain_locality_t * group_domain =
+      group_parent_domain->domains + group_parent_domain->num_domains;
 
-  } /* for g : 0 ... num_groups */
+    dart__base__locality__domain__init(group_domain);
+
+    group_domain->team           = group_parent_domain->team;
+    group_domain->scope          = DART_LOCALITY_SCOPE_GROUP;
+    group_domain->level          = group_parent_domain->level + 1;
+    group_domain->parent         = group_parent_domain;
+    group_domain->relative_index = group_parent_domain->num_domains;
+    group_domain->num_nodes      = group_parent_domain->num_nodes;
+    group_domain->num_units      = 0;
+    group_domain->unit_ids       = NULL;
+    group_domain->num_domains    = 0;
+    group_domain->domains        = malloc(sizeof(dart_domain_locality_t) *
+                                          num_group_subdomains);
+
+    strncpy(group_domain->domain_tag, group_parent_domain_tag,
+            group_parent_domain_tag_len);
+    group_domain->domain_tag[group_parent_domain_tag_len] = '\0';
+    int group_domain_tag_len =
+      sprintf(group_domain->domain_tag + group_parent_domain_tag_len,
+              ".%d", group_domain->relative_index) +
+      group_parent_domain_tag_len;
+    group_domain->domain_tag[group_domain_tag_len] = '\0';
+
+    strcpy(group_domain_tag_out, group_domain->domain_tag);
+
+    /* Initialize group subdomains:
+     */
+    DART_LOG_TRACE("dart__base__locality__domain_group: "
+                   "initialize %d subdomains of group (%s)",
+                   num_group_subdomains, group_domain->domain_tag);
+
+    for (int gsd = 0; gsd < num_group_subdomains; gsd++) {
+      dart_domain_locality_t * group_subdomain_in;
+
+      /* Copy
+       *   domain.domains[domain_tag = group[g].immediate_subdomains[gsd]]
+       * to
+       *   group[g].domains[gsd]:
+       */
+      DART_LOG_TRACE("dart__base__locality__domain_group: "
+                     "load domain.domains[domain_tag = "
+                     "(group.immediate_subdomain_tags[%d] = %s])",
+                     gsd, immediate_subdomain_tags[gsd]);
+
+      ret = dart__base__locality__domain(
+              domain, immediate_subdomain_tags[gsd],
+              &group_subdomain_in);
+      if (ret != DART_OK) { break; }
+
+      DART_LOG_TRACE("dart__base__locality__domain_group: "
+                     "copy domain.domains[domain_tag = %s] to "
+                     "group.domains[%d]",
+                     immediate_subdomain_tags[gsd], gsd);
+      ret = dart__base__locality__domain__copy(
+              group_subdomain_in,
+              group_domain->domains + gsd);
+      if (ret != DART_OK) { break; }
+
+      group_domain->domains[gsd].parent = group_domain;
+      group_domain->num_domains++;
+      group_domain->num_units += group_domain[gsd].num_units;
+
+    } /* for group_domain.domains */
+
+    if (ret != DART_OK) { return ret; }
+
+    group_domain->unit_ids = malloc(sizeof(dart_unit_t) *
+                                    group_domain->num_units);
+
+    /* Remove entries from group domain that are not part of the group:
+     */
+    DART_LOG_TRACE("dart__base__locality__domain_group: "
+                   "select %d subdomains in group = %s",
+                   group_size, group_domain->domain_tag);
+    ret = dart__base__locality__domain_select_subdomains(
+            group_domain,
+            group_subdomain_tags,
+            group_size);
+    if (ret != DART_OK) { return ret; }
+
+    DART_LOG_TRACE("dart__base__locality__domain_group: "
+                   "update group (%s) after adding subdomains",
+                   group_domain->domain_tag);
+    ret = dart__base__locality__domain__update_subdomains(
+            group_domain);
+    if (ret != DART_OK) { return ret; }
+
+    /* Remove grouped domains from parent's subdomains:
+     */
+    for (int sd = 0; sd < group_parent_domain->num_domains; sd++) {
+      dart_domain_locality_t * group_parent_subdomain =
+                                 group_parent_domain->domains + sd;
+      /* Whether this sibling of the group domain contains subdomains
+       * affected by the group:
+       */
+      int contains_grouped_domains = 0;
+      for (int gd = 0; gd < group_size; ++gd) {
+        if (strcmp(group_parent_subdomain->domain_tag,
+                   immediate_subdomain_tags[gd]) == 0) {
+          contains_grouped_domains = 1;
+          break;
+        }
+      }
+      if (contains_grouped_domains) {
+        DART_LOG_TRACE("dart__base__locality__domain_group: "
+                       "remove grouped domains from %s",
+                       group_parent_subdomain->domain_tag);
+        ret = dart__base__locality__domain_remove_subdomains(
+                group_parent_subdomain,
+                group_subdomain_tags,
+                group_size);
+        if (ret != DART_OK) { break; }
+      }
+    }
+
+    for (int sd = 0; sd < group_size; sd++) {
+      free(immediate_subdomain_tags[sd]);
+    }
+    free(immediate_subdomain_tags);
+
+    if (ret != DART_OK) { return ret; }
+
+    group_parent_domain->num_domains++;
+  }
+  if (ret != DART_OK) { return ret; }
 
   DART_LOG_TRACE("dart__base__locality__domain_group >");
   return DART_OK;

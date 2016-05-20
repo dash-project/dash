@@ -47,23 +47,25 @@ dart_ret_t dart__base__locality__delete_domain(
 }
 
 static inline
-dart_ret_t dart__base__locality__select_subdomains(
+dart_ret_t dart__base__locality__domain_select_subdomains(
   dart_domain_locality_t         * domain,
   const char                    ** subdomain_tags,
   int                              num_subdomain_tags)
 {
-  return dart__base__locality__domain__select_subdomains(
-           domain, subdomain_tags, num_subdomain_tags);
+  static const int remove_matches = 0;
+  return dart__base__locality__domain__filter_subdomains(
+           domain, subdomain_tags, num_subdomain_tags, remove_matches);
 }
 
 static inline
-dart_ret_t dart__base__locality__remove_subdomains(
+dart_ret_t dart__base__locality__domain_remove_subdomains(
   dart_domain_locality_t         * domain,
   const char                    ** subdomain_tags,
   int                              num_subdomain_tags)
 {
-  return dart__base__locality__domain__remove_subdomains(
-           domain, subdomain_tags, num_subdomain_tags);
+  static const int remove_matches = 1;
+  return dart__base__locality__domain__filter_subdomains(
+           domain, subdomain_tags, num_subdomain_tags, remove_matches);
 }
 
 dart_ret_t dart__base__locality__team_domain(
@@ -83,11 +85,10 @@ dart_ret_t dart__base__locality__domain_split_tags(
   char                        **** group_domain_tags_out);
 
 dart_ret_t dart__base__locality__domain_group(
-  dart_domain_locality_t         * domain,
-  int                              num_groups,
-  const int                      * group_sizes,
-  const char                   *** group_subdomain_tags,
-  char                          ** group_domain_tags_out);
+  dart_domain_locality_t           * domain,
+  int                                group_size,
+  const char                      ** group_subdomain_tags,
+  char                             * group_domain_tag_out);
 
 dart_ret_t dart__base__locality__scope_domains(
   const dart_domain_locality_t   * domain_in,

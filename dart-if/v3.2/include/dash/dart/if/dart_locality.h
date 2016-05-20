@@ -53,6 +53,28 @@ dart_ret_t dart_domain_delete(
   dart_domain_locality_t        * domain);
 
 /**
+ * Remove domains in locality domain hierarchy that do not match the
+ * specified domain tags and are not a parent of a matched domain.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_select(
+  dart_domain_locality_t        * domain_in,
+  int                             num_subdomain_tags,
+  const char                   ** subdomain_tags);
+
+/**
+ * Remove domains in locality domain hierarchy matching the specified domain
+ * tags.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_remove(
+  dart_domain_locality_t        * domain_in,
+  int                             num_subdomain_tags,
+  const char                   ** subdomain_tags);
+
+/**
  * Split locality domain hierarchy at given domain tag into \c num_parts
  * groups at specified scope.
  *
@@ -80,10 +102,9 @@ dart_ret_t dart_scope_domains(
  */
 dart_ret_t dart_group_domains(
   dart_domain_locality_t        * domain_in,
-  int                             num_groups,
-  const int                     * group_sizes,
-  const char                  *** group_subdomain_tags,
-  char                         ** group_domain_tags_out);
+  int                             num_group_subdomains,
+  const char                   ** group_subdomain_tags,
+  char                          * group_domain_tag_out);
 
 /**
  * Locality information of the unit with the specified global id.

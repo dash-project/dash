@@ -315,9 +315,9 @@ dart_ret_t dart__base__locality__domain__parent(
  * Remove all child nodes from a domain that do not match the specified
  * domain tags.
  */
-dart_ret_t dart__base__locality__domain__select_subdomains_if(
-  dart_domain_locality_t   * domain,
-  dart_domain_predicate_t    pred)
+dart_ret_t dart__base__locality__domain__filter_subdomains_if(
+  dart_domain_locality_t         * domain,
+  dart_domain_predicate_t          pred)
 {
   dart__unused(domain);
   dart__unused(pred);
@@ -330,10 +330,10 @@ dart_ret_t dart__base__locality__domain__select_subdomains_if(
  * specified domain tags.
  */
 dart_ret_t dart__base__locality__domain__filter_subdomains(
-  dart_domain_locality_t   * domain,
-  const char              ** subdomain_tags,
-  int                        num_subdomain_tags,
-  int                        remove_matches)
+  dart_domain_locality_t         * domain,
+  const char                    ** subdomain_tags,
+  int                              num_subdomain_tags,
+  int                              remove_matches)
 {
   dart_ret_t ret;
 
@@ -438,37 +438,13 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
 }
 
 /**
- * Remove all child nodes from a domain that do not match the specified
- * domain tags.
+ * Recursively initialize subdomains from specified host topology and unit
+ * mapping.
  */
-dart_ret_t dart__base__locality__domain__select_subdomains(
-  dart_domain_locality_t   * domain,
-  const char              ** subdomain_tags,
-  int                        num_subdomain_tags)
-{
-  int remove_matches = 0;
-  return dart__base__locality__domain__filter_subdomains(
-           domain, subdomain_tags, num_subdomain_tags, remove_matches);
-}
-
-/**
- * Remove all child nodes from a domain that match the specified domain
- * tags.
- */
-dart_ret_t dart__base__locality__domain__remove_subdomains(
-  dart_domain_locality_t   * domain,
-  const char              ** subdomain_tags,
-  int                        num_subdomain_tags)
-{
-  int remove_matches = 1;
-  return dart__base__locality__domain__filter_subdomains(
-           domain, subdomain_tags, num_subdomain_tags, remove_matches);
-}
-
 dart_ret_t dart__base__locality__domain__create_subdomains(
-  dart_domain_locality_t   * domain,
-  dart_host_topology_t     * host_topology,
-  dart_unit_mapping_t      * unit_mapping)
+  dart_domain_locality_t         * domain,
+  dart_host_topology_t           * host_topology,
+  dart_unit_mapping_t            * unit_mapping)
 {
   DART_LOG_DEBUG("dart__base__locality__domain__create_subdomains() "
                  "parent: %p scope: %d level: %d",
@@ -644,11 +620,11 @@ dart_ret_t dart__base__locality__domain__create_subdomains(
  * Creates a single node subdomain of the global domain.
  */
 dart_ret_t dart__base__locality__domain__create_global_subdomain(
-  dart_host_topology_t   * host_topology,
-  dart_unit_mapping_t    * unit_mapping,
-  dart_domain_locality_t * global_domain,
-  dart_domain_locality_t * subdomain,
-  int                      rel_idx)
+  dart_host_topology_t           * host_topology,
+  dart_unit_mapping_t            * unit_mapping,
+  dart_domain_locality_t         * global_domain,
+  dart_domain_locality_t         * subdomain,
+  int                              rel_idx)
 {
   /* Loop iterates on nodes. Partitioning is trivial, split into one
    * node per sub-domain. */
@@ -695,11 +671,11 @@ dart_ret_t dart__base__locality__domain__create_global_subdomain(
  * Creates a single module subdomain of a node domain.
  */
 dart_ret_t dart__base__locality__domain__create_node_subdomain(
-  dart_host_topology_t   * host_topology,
-  dart_unit_mapping_t    * unit_mapping,
-  dart_domain_locality_t * node_domain,
-  dart_domain_locality_t * subdomain,
-  int                      rel_idx)
+  dart_host_topology_t           * host_topology,
+  dart_unit_mapping_t            * unit_mapping,
+  dart_domain_locality_t         * node_domain,
+  dart_domain_locality_t         * subdomain,
+  int                              rel_idx)
 {
   /* Loop splits into processing modules.
    * Usually there is only one module (the host system), otherwise
@@ -760,11 +736,11 @@ dart_ret_t dart__base__locality__domain__create_node_subdomain(
  * Creates a single NUMA node subdomain of a module domain.
  */
 dart_ret_t dart__base__locality__domain__create_module_subdomain(
-  dart_host_topology_t   * host_topology,
-  dart_unit_mapping_t    * unit_mapping,
-  dart_domain_locality_t * module_domain,
-  dart_domain_locality_t * subdomain,
-  int                      rel_idx)
+  dart_host_topology_t           * host_topology,
+  dart_unit_mapping_t            * unit_mapping,
+  dart_domain_locality_t         * module_domain,
+  dart_domain_locality_t         * subdomain,
+  int                              rel_idx)
 {
   /* Loop splits into NUMA nodes. */
   DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
@@ -836,11 +812,11 @@ dart_ret_t dart__base__locality__domain__create_module_subdomain(
  * Creates a single core node subdomain of a NUMA domain.
  */
 dart_ret_t dart__base__locality__domain__create_numa_subdomain(
-  dart_host_topology_t   * host_topology,
-  dart_unit_mapping_t    * unit_mapping,
-  dart_domain_locality_t * numa_domain,
-  dart_domain_locality_t * subdomain,
-  int                      rel_idx)
+  dart_host_topology_t           * host_topology,
+  dart_unit_mapping_t            * unit_mapping,
+  dart_domain_locality_t         * numa_domain,
+  dart_domain_locality_t         * subdomain,
+  int                              rel_idx)
 {
   /* Loop splits into UMA segments within a NUMA domain or module.
    * Using balanced split, segments are assumed to be homogenous at

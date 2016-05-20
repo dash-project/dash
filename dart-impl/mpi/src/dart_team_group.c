@@ -371,7 +371,7 @@ dart_ret_t dart_group_locality_split(
     for (size_t g = 0; g < num_groups; ++g) {
       int   group_num_units     = 0;
       int * group_team_unit_ids = NULL;
-      int   num_group_domains = max_group_domains;
+      int   num_group_domains   = max_group_domains;
       if ((g+1) * max_group_domains > (size_t)num_domains) {
         num_group_domains = (g * max_group_domains) - num_domains;
       }

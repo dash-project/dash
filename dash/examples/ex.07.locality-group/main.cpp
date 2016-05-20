@@ -24,14 +24,14 @@ int main(int argc, char ** argv)
   int  split_num_groups = 3;
   dart_locality_scope_t split_scope = DART_LOCALITY_SCOPE_NODE;
 
-  std::vector<std::vector<std::string>> group_domain_tags;
+  std::vector<std::vector<std::string>> groups_subdomain_tags;
 
   if (argc >= 3) {
     for (int aidx = 1; aidx < argc; aidx++) {
       if (std::string(argv[aidx]) == "-g") {
-        group_domain_tags.push_back(std::vector<std::string>());
+        groups_subdomain_tags.push_back(std::vector<std::string>());
       } else {
-        group_domain_tags.back().push_back(
+        groups_subdomain_tags.back().push_back(
             std::string(argv[aidx]));
       }
     }
@@ -39,7 +39,7 @@ int main(int argc, char ** argv)
     std::vector<std::string> group_1_domain_tags;
     group_1_domain_tags.push_back(".0.0.0");
     group_1_domain_tags.push_back(".0.0.1");
-    group_domain_tags.push_back(group_1_domain_tags);
+    groups_subdomain_tags.push_back(group_1_domain_tags);
   }
 
   dash::init(&argc, &argv);
@@ -71,7 +71,7 @@ int main(int argc, char ** argv)
              << endl
              << "  specified groups:"
              << endl;
-        for (auto group : group_domain_tags) {
+        for (auto group : groups_subdomain_tags) {
           cout << "   {" << endl;
           for (auto domain : group) {
             cout << "     " << std::left << domain
@@ -116,17 +116,25 @@ int main(int argc, char ** argv)
          << "grouped domain:"
          << endl;
 
-    int num_groups = group_domain_tags.size();
-    std::vector<int> group_sizes;
-    char ***         group_tags = new char **[num_groups];
+    int num_groups = groups_subdomain_tags.size();
+
+    std::vector< int >          group_sizes;
+    std::vector< std::string> > group_domain_tags;
+
     for (int g = 0; g < num_groups; g++) {
-      int group_size = group_domain_tags[g].size();
-      group_sizes.push_back(group_size);
-      group_tags[g] = new char *[group_domain_tags[g].size()];
-      for (int d = 0; d < group_size; d++) {
-        std::string domain_tag(group_domain_tags[g][d]);
-        group_tags[g][d] = (char *)domain_tag.c_str();
+      std::vector<char *> group_subdomain_tags;
+      for (int d = 0; d < groups_subdomain_tags[g].size(); d++) {
+        group_subdomain_tags.push_back(groups_subdomain_tags[g][d].c_str());
       }
+
+      char group_domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+      dart_group_domains(
+        &grouped_domain,
+        group_size,
+        (const char **)(group_subdomain_tags.data()),
+        group_domain_tag);
+
+      group_domain_tags.push_back(group_domain_tag);
     }
 
     dart_domain_locality_t grouped_domain;
@@ -134,24 +142,16 @@ int main(int argc, char ** argv)
       global_domain,
       &grouped_domain);
 
-    char ** group_domain_tags = (char **)(malloc(sizeof(char *) *
-                                          num_groups));
-
-    dart_group_domains(
-      &grouped_domain,
-      num_groups,
-      group_sizes.data(),
-      (const char ***)(group_tags),
-      group_domain_tags);
-
     print_domain(DART_TEAM_ALL, &grouped_domain);
 
     for (int g = 0; g < num_groups; g++) {
-      cout << separator << endl;
+      cout << separator
+           << endl;
       cout << "group[" << g << "]: " << group_domain_tags[g]
            << endl;
+
       for (int sd = 0; sd < group_sizes[g]; sd++) {
-        cout << "-- " << group_tags[g][sd]
+        cout << "-- " << groups_subdomain_tags[g][sd]
              << endl;
       }
       cout << endl;
@@ -168,7 +168,6 @@ int main(int argc, char ** argv)
 
     dart_domain_delete(
       &grouped_domain);
-    free(group_domain_tags);
 
   } else {
     sleep(2);
