@@ -46,10 +46,10 @@ TEST_F(TeamLocalityTest, GlobalAll)
   }
 
   DASH_LOG_DEBUG("TeamLocalityTest.GlobalAll",
-                 "team all, global domain, domains:", tloc.domains().size());
-  EXPECT_EQ_U(1, tloc.domains().size());
+                 "team all, global domain, domains:", tloc.parts().size());
+  EXPECT_EQ_U(1, tloc.parts().size());
 
-  for (auto & domain : tloc.domains()) {
+  for (auto & domain : tloc.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.GlobalAll", "team locality domain:");
     print_locality_domain(domain);
   }
@@ -61,7 +61,7 @@ TEST_F(TeamLocalityTest, SplitCore)
   int num_split     = std::min<int>(dash::size(), 3);
 
   dash::util::TeamLocality tloc(team);
-  for (auto & domain : tloc.domains()) {
+  for (auto & domain : tloc.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
                    "team locality in Global domain:");
     print_locality_domain(domain);
@@ -73,9 +73,9 @@ TEST_F(TeamLocalityTest, SplitCore)
   tloc.split(dash::util::Locality::Scope::Core, num_split);
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
-                 "team all, Core domains:", tloc.domains().size());
+                 "team all, Core domains:", tloc.parts().size());
 
-  for (auto & domain : tloc.domains()) {
+  for (auto & domain : tloc.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
                    "team locality in Core domain:");
     print_locality_domain(domain);
@@ -87,7 +87,7 @@ TEST_F(TeamLocalityTest, SplitNUMA)
   dash::Team & team = dash::Team::All();
 
   dash::util::TeamLocality tloc(team);
-  for (auto & domain : tloc.domains()) {
+  for (auto & domain : tloc.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
                    "team locality in Global domain:");
     print_locality_domain(domain);
@@ -98,9 +98,9 @@ TEST_F(TeamLocalityTest, SplitNUMA)
       team, dash::util::Locality::Scope::NUMA);
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
-                 "team all, NUMA domains:", tloc_numa.domains().size());
+                 "team all, NUMA domains:", tloc_numa.parts().size());
 
-  for (auto & domain : tloc_numa.domains()) {
+  for (auto & domain : tloc_numa.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
                    "team locality NUMA domain:");
     print_locality_domain(domain);

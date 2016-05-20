@@ -9,6 +9,9 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
 
+#include <dash/Exception.h>
+#include <dash/Team.h>
+
 #include <string>
 #include <vector>
 #include <unordered_map>

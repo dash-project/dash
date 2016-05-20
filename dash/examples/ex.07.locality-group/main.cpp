@@ -57,7 +57,7 @@ int main(int argc, char ** argv)
 
   {
     dart_barrier(DART_TEAM_ALL);
-    sleep(2);
+    sleep(1);
     if (myid == 0) {
       if (argc < 3 || std::string(argv[1]) != "-g") {
         cout << "Usage:"
@@ -82,10 +82,9 @@ int main(int argc, char ** argv)
       }
       cout << separator << endl;
     } else {
-      sleep(2);
+      sleep(1);
     }
     dart_barrier(DART_TEAM_ALL);
-    sleep(1);
   }
 
   // To prevent interleaving output:
@@ -116,15 +115,23 @@ int main(int argc, char ** argv)
          << "grouped domain:"
          << endl;
 
+    dart_domain_locality_t grouped_domain;
+    dart_domain_copy(
+      global_domain,
+      &grouped_domain);
+
     int num_groups = groups_subdomain_tags.size();
 
-    std::vector< int >          group_sizes;
-    std::vector< std::string> > group_domain_tags;
+    std::vector<int>         group_sizes;
+    std::vector<std::string> group_domain_tags;
 
     for (int g = 0; g < num_groups; g++) {
-      std::vector<char *> group_subdomain_tags;
-      for (int d = 0; d < groups_subdomain_tags[g].size(); d++) {
-        group_subdomain_tags.push_back(groups_subdomain_tags[g][d].c_str());
+      int group_size = groups_subdomain_tags[g].size();
+
+      std::vector<const char *> group_subdomain_tags;
+      for (int d = 0; d < group_size; d++) {
+        group_subdomain_tags.push_back(
+          groups_subdomain_tags[g][d].c_str());
       }
 
       char group_domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
@@ -136,11 +143,6 @@ int main(int argc, char ** argv)
 
       group_domain_tags.push_back(group_domain_tag);
     }
-
-    dart_domain_locality_t grouped_domain;
-    dart_domain_copy(
-      global_domain,
-      &grouped_domain);
 
     print_domain(DART_TEAM_ALL, &grouped_domain);
 
@@ -159,7 +161,7 @@ int main(int argc, char ** argv)
       dart_domain_locality_t * group_domain;
       dart_domain_locality(
         &grouped_domain,
-        group_domain_tags[g],
+        group_domain_tags[g].c_str(),
         &group_domain);
 
       print_domain(DART_TEAM_ALL, group_domain);

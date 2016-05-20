@@ -3,10 +3,12 @@
 
 #include <dash/util/Locality.h>
 
-#include <dash/algorithm/internal/String.h>
-
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
+
+#include <dash/algorithm/internal/String.h>
+
+#include <dash/Exception.h>
 
 #include <string>
 #include <vector>
@@ -266,7 +268,7 @@ public:
     }
 
     DASH_ASSERT_RETURNS(
-      dart_domain_remove(
+      dart_domain_exclude(
         _domain,
         subdomain_tags_cstr.size(),
         subdomain_tags_cstr.data()),
@@ -294,19 +296,26 @@ public:
         group_domain_tag),          // char        ** group_domain_tag_out
       DART_OK);
 
-    _group_domain_tags.push_back(group_domain_tag);
-
     // Clear cached subdomain instances:
     _subdomains->clear();
 
-    // TODO: Should return locality domain of newly created group:
-    return *this;
+    dart_domain_locality_t * group_domain;
+    DASH_ASSERT_RETURNS(
+      dart_domain_locality(
+        _domain,
+        group_domain_tag,
+        &group_domain),
+      DART_OK);
+
+    _groups.push_back(self_t(group_domain));
+
+    return _groups.back();
   }
 
   inline void clear()
   {
     _unit_ids.clear();
-    _group_domain_tags.clear();
+    _groups.clear();
     if (nullptr != _subdomains) {
       _subdomains->clear();
     }
@@ -449,7 +458,7 @@ private:
   /// Whether this instance is owner of _domain.
   bool                                       _is_owner   = false;
   /// Domain tags of groups in the locality domain.
-  std::vector<std::string>                   _group_domain_tags;
+  std::vector<self_t>                        _groups;
 
 }; // class LocalityDomain
 

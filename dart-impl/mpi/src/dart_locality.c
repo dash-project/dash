@@ -88,7 +88,7 @@ dart_ret_t dart_domain_select(
            domain_in, subdomain_tags, num_subdomain_tags);
 }
 
-dart_ret_t dart_domain_remove(
+dart_ret_t dart_domain_exclude(
   dart_domain_locality_t       * domain_in,
   int                            num_subdomain_tags,
   const char                  ** subdomain_tags)
@@ -164,7 +164,7 @@ dart_ret_t dart_domain_split(
 }
 
 dart_ret_t dart_scope_domains(
-  dart_domain_locality_t       * domain_in,
+  const dart_domain_locality_t * domain_in,
   dart_locality_scope_t          scope,
   int                          * num_domains_out,
   char                       *** domain_tags_out)
@@ -173,7 +173,8 @@ dart_ret_t dart_scope_domains(
   *domain_tags_out = NULL;
 
   return dart__base__locality__scope_domains(
-           domain_in, scope,
+           domain_in,
+           scope,
            num_domains_out,
            domain_tags_out);
 }

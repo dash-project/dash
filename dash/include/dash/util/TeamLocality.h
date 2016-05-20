@@ -5,10 +5,13 @@
 #include <dash/util/LocalityDomain.h>
 #include <dash/util/UnitLocality.h>
 
-#include <dash/algorithm/internal/String.h>
-
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
+
+#include <dash/algorithm/internal/String.h>
+
+#include <dash/Exception.h>
+#include <dash/Team.h>
 
 #include <string>
 #include <vector>
@@ -35,7 +38,7 @@ namespace util {
  * tloc.select(".0")
  *     .split(dash::util::Locality::Scope::Module);
  *
- * size_t num_module_domains = tloc.parts().size();
+ * size_t num_module_split_domains = tloc.parts().size();
  * for (dash::util::LocalityDomain domain : tloc.parts()) {
  *   int module_index            = domain.relative_index();
  *   int domain_max_core_mhz     = domain.hwinfo().max_cpu_mhz;
@@ -63,42 +66,40 @@ private:
   typedef dash::util::LocalityDomain      LocalityDomain_t;
 
 public:
-
+  /**
+   * Constructor. Creates new instance of \c dash::util::TeamLocality for
+   * a specified team.
+   */
   TeamLocality(
     dash::Team & team,
     Scope_t      scope      = Scope_t::Global,
-    std::string  domain_tag = ".")
-  : _team(&team),
-    _scope(scope)
-  {
-    dart_domain_locality_t * domain;
-    DASH_ASSERT_RETURNS(
-      dart_domain_team_locality(
-        _team->dart_id(),
-        domain_tag.c_str(),
-        &domain),
-      DART_OK);
+    std::string  domain_tag = ".");
 
-    _domains.push_back(LocalityDomain_t(domain));
-
-    if (_scope != Scope_t::Global) {
-      split(_scope);
-    }
-  }
-
+  /**
+   * Default constructor.
+   */
   TeamLocality()                           = default;
+
+  /**
+   * Copy constructor.
+   */
   TeamLocality(const self_t & other)       = default;
 
+  /**
+   * Assignment operator.
+   */
   self_t & operator=(const self_t & other) = default;
+
+  self_t & split(Scope_t scope, int num_parts = 0);
 
   inline std::vector<LocalityDomain_t> & parts()
   {
-    return _domains;
+    return _split_domains;
   }
 
   inline const std::vector<LocalityDomain_t> & parts() const
   {
-    return _domains;
+    return _split_domains;
   }
 
   inline dash::Team & team()
@@ -111,105 +112,28 @@ public:
     return _unit_ids;
   }
 
-  self_t & split(Scope_t scope, int num_parts = 0)
-  {
-    DASH_LOG_DEBUG_VAR("TeamLocality.split()", num_parts);
-
-    if (static_cast<int>(_scope) > static_cast<int>(scope)) {
-      // Cannot split into higher scope
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Cannot split LocalityDomain at scope " << _scope << " "
-        "into a parent scope (got: " << scope << ")");
-    }
-    _scope = scope;
-    _domains.clear();
-    _unit_ids.clear();
-
-    int     num_domains;
-    char ** domain_tags;
-    DASH_ASSERT_RETURNS(
-      dart_scope_domains(
-        _domain,
-        static_cast<dart_locality_scope_t>(_scope),
-        &num_domains,
-        &domain_tags),
-      DART_OK);
-    free(domain_tags);
-
-    if (num_parts < 1 || num_domains <= num_parts) {
-      DASH_LOG_DEBUG("TeamLocality.split",
-                     "split into single subdomains");
-
-      dart_domain_locality_t * subdomains =
-        new dart_domain_locality_t[num_domains];
-
-      DASH_ASSERT_RETURNS(
-        dart_domain_split(
-          domain,
-          static_cast<dart_locality_scope_t>(_scope),
-          num_domains,
-          subdomains),
-        DART_OK);
-      for (int sd = 0; sd < num_domains; ++sd) {
-        DASH_LOG_TRACE_VAR("TeamLocality.split", subdomains[sd].domain_tag);
-        _domains.push_back(LocalityDomain(&subdomains[sd]));
-      }
-    } else {
-      DASH_LOG_DEBUG("TeamLocality.split",
-                     "split into groups of subdomains");
-
-      dart_domain_locality_t * split_domains =
-        new dart_domain_locality_t[num_parts];
-
-      DASH_ASSERT_RETURNS(
-        dart_domain_split(
-          domain,
-          static_cast<dart_locality_scope_t>(_scope),
-          num_parts,
-          split_domains),
-        DART_OK);
-
-      for (int sd = 0; sd < num_parts; ++sd) {
-        DASH_LOG_TRACE_VAR("TeamLocality.split",
-                           split_domains[sd].domain_tag);
-        _domains.push_back(LocalityDomain(&split_domains[sd]));
-      }
-    }
-
-    for (auto & domain : _domains) {
-      _unit_ids.insert(_unit_ids.end(),
-                       domain.units().begin(),
-                       domain.units().end());
-    }
-
-    DASH_LOG_DEBUG("TeamLocality.split >");
-
-    return *this;
-  }
-
-  self_t & group(
+  inline self_t & group(
     std::initializer_list<std::string> group_subdomain_tags)
   {
-    for (auto domain : _domains) {
-      domain.group(group_domain_tags);
+    for (auto domain : _split_domains) {
+      domain.group(group_subdomain_tags);
     }
     return *this;
   }
 
-  self_t & select(
+  inline self_t & select(
     std::initializer_list<std::string> domain_tags)
   {
-    for (auto domain : _domains) {
+    for (auto domain : _split_domains) {
       domain.select(domain_tags);
     }
     return *this;
   }
 
-  self_t & exclude(
+  inline self_t & exclude(
     std::initializer_list<std::string> domain_tags)
   {
-    for (auto domain : _domains) {
+    for (auto domain : _split_domains) {
       domain.exclude(domain_tags);
     }
     return *this;
@@ -219,8 +143,10 @@ private:
   dash::Team                        * _team          = nullptr;
   /// Parent scope of the team locality domain hierarchy.
   Scope_t                             _scope         = Scope_t::Undefined;
-  /// Domains in the team locality, one domain for every split group.
-  std::vector<LocalityDomain_t>       _domains;
+  /// Split domains in the team locality, one domain for every split group.
+  std::vector<LocalityDomain_t>       _split_domains;
+  /// Locality domain of the team.
+  LocalityDomain_t                    _domain;
   /// Units in the domain.
   std::vector<dart_unit_t>            _unit_ids;
 

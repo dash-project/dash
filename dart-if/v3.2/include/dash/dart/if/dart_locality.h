@@ -21,7 +21,7 @@ extern "C" {
 #define DART_INTERFACE_ON
 
 /**
- * Locality information of the domain with the specified id tag.
+ * Locality information of the team domain with the specified id tag.
  *
  * \ingroup DartLocality
  */
@@ -30,6 +30,11 @@ dart_ret_t dart_domain_team_locality(
   const char                    * domain_tag,
   dart_domain_locality_t       ** team_domain_out);
 
+/**
+ * Locality information of the subdomain with the specified id tag.
+ *
+ * \ingroup DartLocality
+ */
 dart_ret_t dart_domain_locality(
   const dart_domain_locality_t  * domain_in,
   const char                    * domain_tag,
@@ -69,7 +74,7 @@ dart_ret_t dart_domain_select(
  *
  * \ingroup DartLocality
  */
-dart_ret_t dart_domain_remove(
+dart_ret_t dart_domain_exclude(
   dart_domain_locality_t        * domain_in,
   int                             num_subdomain_tags,
   const char                   ** subdomain_tags);
@@ -92,7 +97,7 @@ dart_ret_t dart_domain_split(
  * \ingroup DartLocality
  */
 dart_ret_t dart_scope_domains(
-  dart_domain_locality_t        * domain_in,
+  const dart_domain_locality_t  * domain_in,
   dart_locality_scope_t           scope,
   int                           * num_domains_out,
   char                        *** domain_tags_out);
