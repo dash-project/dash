@@ -118,7 +118,7 @@ int main(int argc, char ** argv)
 
     int num_groups = groups_subdomain_tags.size();
 
-//  std::vector<const char *> group_domain_tags;
+    std::vector<std::string> group_domain_tags;
 
     for (int g = 0; g < num_groups; g++) {
       int group_size = groups_subdomain_tags[g].size();
@@ -137,11 +137,10 @@ int main(int argc, char ** argv)
         group_subdomain_tags.data(),
         group_domain_tag);
 
-//    group_domain_tags.push_back(
-//      group_domain_tag);
+      group_domain_tags.push_back(
+        std::string(group_domain_tag));
     }
 
-#if 0
     cout << endl
          << "grouped domain:"
          << endl;
@@ -169,7 +168,6 @@ int main(int argc, char ** argv)
 
       print_domain(DART_TEAM_ALL, group_domain);
     }
-#endif
 
     dart_domain_destruct(
       &grouped_domain);
@@ -178,10 +176,6 @@ int main(int argc, char ** argv)
 
   } else {
     sleep(2);
-  }
-
-  if (myid == 0) {
-    cout << "finished" << endl;
   }
 
   // To prevent interleaving output:
