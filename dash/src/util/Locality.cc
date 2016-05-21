@@ -34,8 +34,8 @@ std::ostream & operator<<(
 }
 
 std::ostream & operator<<(
-  std::ostream               & os,
-  const dart_unit_locality_t & unit_loc)
+  std::ostream                 & os,
+  const dart_unit_locality_t   & unit_loc)
 {
   std::ostringstream ss;
   ss << "dart_unit_locality_t("
@@ -51,7 +51,6 @@ std::ostream & operator<<(
      << ")";
   return operator<<(os, ss.str());
 }
-
 
 namespace dash {
 namespace util {
@@ -118,6 +117,31 @@ dart_domain_locality_t * Locality::_domain_loc = nullptr;
 
 std::array<int, 3> Locality::_cache_sizes;
 std::array<int, 3> Locality::_cache_line_sizes;
+
+std::ostream & operator<<(
+  std::ostream                 & os,
+  dash::util::Locality::Scope    scope)
+{
+  return os << (static_cast<dart_locality_scope_t>(scope));
+}
+
+std::ostream & operator<<(
+  std::ostream                 & os,
+  dart_locality_scope_t          scope)
+{
+  switch(scope) {
+    case DART_LOCALITY_SCOPE_GLOBAL:  os << "GLOBAL";    break;
+    case DART_LOCALITY_SCOPE_GROUP:   os << "GROUP";     break;
+    case DART_LOCALITY_SCOPE_NETWORK: os << "NETWORK";   break;
+    case DART_LOCALITY_SCOPE_NODE:    os << "NODE";      break;
+    case DART_LOCALITY_SCOPE_MODULE:  os << "MODULE";    break;
+    case DART_LOCALITY_SCOPE_NUMA:    os << "NUMA";      break;
+    case DART_LOCALITY_SCOPE_UNIT:    os << "UNIT";      break;
+    case DART_LOCALITY_SCOPE_CORE:    os << "CORE";      break;
+    default:                          os << "UNDEFINED"; break;
+  }
+  return os;
+}
 
 } // namespace util
 } // namespace dash

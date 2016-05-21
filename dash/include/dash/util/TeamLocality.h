@@ -115,15 +115,30 @@ public:
     return _domain;
   }
 
+  inline dash::util::UnitLocality unit_locality(
+    dart_unit_t unit)
+  {
+    return dash::util::UnitLocality(*_team, unit);
+  }
+
   /**
    * Split the team locality domain into the given number of parts on the
    * specified locality scope.
    * Team locality domains resulting from the split can be accessed using
-   * method \c parts() after completion.
+   * method \c parts().
    */
   inline self_t & split(Scope_t scope, int num_split_parts = 0)
   {
     _domain.split(scope, num_split_parts);
+    return *this;
+  }
+
+  /**
+   * Split groups in locality domain into separate parts.
+   */
+  inline self_t & split_groups()
+  {
+    _domain.split_groups();
     return *this;
   }
 
@@ -170,20 +185,20 @@ public:
   }
 
   inline LocalityDomain_t & group(
-    std::initializer_list<std::string> group_subdomain_tags)
+    const std::vector<std::string> & group_subdomain_tags)
   {
     return _domain.group(group_subdomain_tags);
   }
 
   inline self_t & select(
-    std::initializer_list<std::string> domain_tags)
+    const std::vector<std::string> & domain_tags)
   {
     _domain.select(domain_tags);
     return *this;
   }
 
   inline self_t & exclude(
-    std::initializer_list<std::string> domain_tags)
+    const std::vector<std::string> & domain_tags)
   {
     _domain.exclude(domain_tags);
     return *this;

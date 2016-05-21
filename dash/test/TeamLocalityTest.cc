@@ -24,7 +24,7 @@ void print_locality_domain(
   }
 
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "scope:   ",
-                 static_cast<dart_locality_scope_t>(ld.scope()));
+                 ld.scope());
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "rel.idx: ",
                  ld.relative_index());
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "tag:     ",
@@ -124,6 +124,10 @@ TEST_F(TeamLocalityTest, SplitNUMA)
 
 TEST_F(TeamLocalityTest, GroupUnits)
 {
+  if (dash::size() < 4) {
+    return;
+  }
+
   dash::Team & team = dash::Team::All();
 
   dash::util::TeamLocality tloc(team);
@@ -134,29 +138,70 @@ TEST_F(TeamLocalityTest, GroupUnits)
 
   dash::barrier();
 
-  // Split via constructor parameter:
-  DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
-                 "Add first group");
-  auto & group_1 = tloc.group({ ".0.0.0.0", ".0.0.0.1" });
-  DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
-                 "First group ptr:", &group_1);
-  print_locality_domain("group_1", group_1);
+  std::vector<dart_unit_t> group_1_units;
+  std::vector<dart_unit_t> group_2_units;
+  std::vector<dart_unit_t> group_3_units;
+  std::vector<std::string> group_1_tags;
+  std::vector<std::string> group_2_tags;
+  std::vector<std::string> group_3_tags;
 
-  dash::barrier();
-
-  auto subdom_2 = tloc.domain().find(".0.0.1");
-  if (subdom_2 != tloc.domain().end() && subdom_2->units().size() > 1) {
-    DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
-                   "Add second group");
-    auto & group_2 = tloc.group({ ".0.0.1.0", ".0.0.1.1" });
-    print_locality_domain("group_2", group_2);
+  // Put the first 2 units in group 1:
+  group_1_units.push_back(0);
+  group_1_units.push_back(1);
+  // Put every third unit in group 2, starting at rank 3:
+  for (dart_unit_t u = 3; u < dash::size(); u += 3) {
+    group_2_units.push_back(u);
   }
-  dash::barrier();
+  // Put every second unit in group 3, starting at center:
+  for (dart_unit_t u = dash::size() / 2; u < dash::size(); u += 2) {
+    // Domains must not be members of more than one group:
+    if (u % 3 != 0) {
+      group_3_units.push_back(u);
+    }
+  }
+
+  for (dart_unit_t u : group_1_units) {
+    group_1_tags.push_back(tloc.unit_locality(u).domain_tag());
+  }
+  for (dart_unit_t u : group_2_units) {
+    group_2_tags.push_back(tloc.unit_locality(u).domain_tag());
+  }
+  for (dart_unit_t u : group_3_units) {
+    group_3_tags.push_back(tloc.unit_locality(u).domain_tag());
+  }
+
+  DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group 1:", group_1_tags);
+  DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group 2:", group_2_tags);
+  DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group 3:", group_3_tags);
+
+  if (group_1_tags.size() > 1) {
+    DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_1_tags);
+    auto & group_1 = tloc.group(group_1_tags);
+    print_locality_domain("group_1", group_1);
+    dash::barrier();
+
+    EXPECT_EQ_U(group_1_units, group_1.units());
+  }
+  if (group_2_tags.size() > 1) {
+    DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_2_tags);
+    auto & group_2 = tloc.group(group_2_tags);
+    print_locality_domain("group_2", group_2);
+    dash::barrier();
+
+    EXPECT_EQ_U(group_2_units, group_2.units());
+  }
+  if (group_3_tags.size() > 1) {
+    DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_3_tags);
+    auto & group_3 = tloc.group(group_3_tags);
+    print_locality_domain("group_3", group_3);
+    dash::barrier();
+
+    EXPECT_EQ_U(group_3_units, group_3.units());
+  }
 
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
                  "Global domain after grouping:");
   print_locality_domain("global", tloc.domain());
-
   dash::barrier();
 
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
@@ -166,7 +211,73 @@ TEST_F(TeamLocalityTest, GroupUnits)
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
                    "team locality group domain: tag:", group->domain_tag());
 
+    DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "----------------------");
     print_locality_domain("Group", *group);
+    DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "----------------------");
   }
 }
 
+TEST_F(TeamLocalityTest, SplitGroups)
+{
+  if (dash::size() < 4) {
+    return;
+  }
+
+  dash::Team & team = dash::Team::All();
+
+  dash::util::TeamLocality tloc(team);
+
+  DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups",
+                 "team locality in Global domain:");
+  print_locality_domain("global", tloc.domain());
+
+  dash::barrier();
+
+  std::vector<dart_unit_t> group_1_units;
+  std::vector<dart_unit_t> group_2_units;
+  std::vector<std::string> group_1_tags;
+  std::vector<std::string> group_2_tags;
+
+  // Put the first 2 units in group 1:
+  group_1_units.push_back(0);
+  group_1_units.push_back(1);
+  // Put every third unit in group 2, starting at rank 3:
+  for (dart_unit_t u = 3; u < dash::size(); u += 3) {
+    group_2_units.push_back(u);
+  }
+
+  for (dart_unit_t u : group_1_units) {
+    group_1_tags.push_back(tloc.unit_locality(u).domain_tag());
+  }
+  for (dart_unit_t u : group_2_units) {
+    group_2_tags.push_back(tloc.unit_locality(u).domain_tag());
+  }
+
+  DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group 1:", group_1_tags);
+  DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group 2:", group_2_tags);
+
+  if (group_1_tags.size() > 1) {
+    DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_1_tags);
+    auto & group_1 = tloc.group(group_1_tags);
+    print_locality_domain("group_1", group_1);
+    dash::barrier();
+
+    EXPECT_EQ_U(group_1_units, group_1.units());
+  }
+  if (group_2_tags.size() > 1) {
+    DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_2_tags);
+    auto & group_2 = tloc.group(group_2_tags);
+    print_locality_domain("group_2", group_2);
+    dash::barrier();
+
+    EXPECT_EQ_U(group_2_units, group_2.units());
+  }
+
+  tloc.split_groups();
+
+  for (auto part : tloc.parts()) {
+    DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups",
+                   "team locality split group:");
+    print_locality_domain("Group split", part);
+  }
+}

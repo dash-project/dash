@@ -20,19 +20,22 @@
 
 dash::util::LocalityDomain::LocalityDomain(
   const dash::util::LocalityDomain & parent,
-  dart_domain_locality_t           * domain
-) : _domain(domain),
-    _is_owner(false)
+  const dart_domain_locality_t     & domain
+) : _domain(nullptr)
 {
-  DASH_ASSERT_MSG(
-    domain != nullptr,
-    "Failed to load locality domain: domain pointer is null");
-
   DASH_LOG_TRACE("LocalityDomain(parent,sd)()",
                  "parent domain:", parent.domain_tag(),
-                 "subdomain:",     domain->domain_tag);
+                 "subdomain:",     domain.domain_tag);
 
   _subdomains = new std::unordered_map<int, self_t>();
+
+  _is_owner   = true;
+  _domain     = new dart_domain_locality_t();
+  DASH_ASSERT_RETURNS(
+    dart_domain_copy(
+      &domain,
+      _domain),
+    DART_OK);
 
   init(_domain);
 
@@ -119,8 +122,8 @@ dash::util::LocalityDomain::LocalityDomain(
     _domain = new dart_domain_locality_t();
     DASH_ASSERT_RETURNS(
       dart_domain_copy(
-        _domain,
-        other._domain),
+        other._domain,
+        _domain),
       DART_OK);
   } else {
     _domain = other._domain;
@@ -132,7 +135,7 @@ dash::util::LocalityDomain::LocalityDomain(
     _end = iterator(*this, 0);
   }
 
-  collect_groups(*this);
+  collect_groups(_group_domain_tags);
 
   DASH_LOG_TRACE_VAR("LocalityDomain(other) >", other._domain_tag);
 }
@@ -154,8 +157,8 @@ dash::util::LocalityDomain::operator=(
     _domain = new dart_domain_locality_t();
     DASH_ASSERT_RETURNS(
       dart_domain_copy(
-        _domain,
-        other._domain),
+        other._domain,
+        _domain),
       DART_OK);
   } else {
     _domain = other._domain;
@@ -167,7 +170,7 @@ dash::util::LocalityDomain::operator=(
     _end = iterator(*this, 0);
   }
 
-  collect_groups(*this);
+  collect_groups(_group_domain_tags);
 
   DASH_LOG_TRACE("LocalityDomain.= >");
   return *this;
@@ -175,7 +178,7 @@ dash::util::LocalityDomain::operator=(
 
 dash::util::LocalityDomain &
 dash::util::LocalityDomain::LocalityDomain::select(
-  std::initializer_list<std::string> subdomain_tags)
+  const std::vector<std::string> & subdomain_tags)
 {
   DASH_LOG_TRACE("LocalityDomain.select(subdomains[])");
 
@@ -203,7 +206,7 @@ dash::util::LocalityDomain::LocalityDomain::select(
 
 dash::util::LocalityDomain &
 dash::util::LocalityDomain::exclude(
-  std::initializer_list<std::string> subdomain_tags)
+  const std::vector<std::string> & subdomain_tags)
 {
   DASH_LOG_TRACE("LocalityDomain.exclude(subdomains[])");
 
@@ -231,7 +234,7 @@ dash::util::LocalityDomain::exclude(
 
 dash::util::LocalityDomain &
 dash::util::LocalityDomain::group(
-  std::initializer_list<std::string> group_subdomain_tags)
+  const std::vector<std::string> & group_subdomain_tags)
 {
   DASH_LOG_TRACE("LocalityDomain.group(subdomains[])");
 
@@ -255,20 +258,8 @@ dash::util::LocalityDomain::group(
   // Clear cached group references:
   _groups.clear();
 
-#if 0
-  dart_domain_locality_t * group_domain;
-  DASH_ASSERT_RETURNS(
-    dart_domain_find(
-      _domain,
-      group_domain_tag,
-      &group_domain),
-    DART_OK);
-
-  _groups.push_back(self_t(group_domain));
-#else
   _group_domain_tags.push_back(group_domain_tag);
-  collect_groups(*this);
-#endif
+  collect_groups(_group_domain_tags);
 
   for (auto part : _parts) {
     part.group(group_subdomain_tags);
@@ -325,18 +316,51 @@ dash::util::LocalityDomain::split(
       subdomains.data()),
     DART_OK);
 
+  _parts.clear();
   for (int sd = 0; sd < num_parts; ++sd) {
     DASH_LOG_TRACE_VAR("LocalityDomain.split",
                        subdomains[sd].domain_tag);
-
     _parts.push_back(
         dash::util::LocalityDomain(
-          *this,          // parent
-          &subdomains[sd] // subdomain
+          *this,         // parent
+          subdomains[sd] // subdomain
         ));
   }
 
   DASH_LOG_DEBUG("LocalityDomain.split >");
+
+  return *this;
+}
+
+dash::util::LocalityDomain &
+dash::util::LocalityDomain::split_groups()
+{
+  DASH_LOG_DEBUG_VAR("LocalityDomain.split_groups()", _group_domain_tags);
+  _parts.clear();
+  for (auto group_domain_tag : _group_domain_tags) {
+    DASH_LOG_TRACE_VAR("LocalityDomain.split_groups",
+                       group_domain_tag);
+    // Copy the base domain:
+    dart_domain_locality_t group;
+    DASH_ASSERT_RETURNS(
+      dart_domain_copy(
+        _domain,
+        &group),
+      DART_OK);
+    // Remove all subdomains from copied base domain except for the group:
+    const char * group_domain_tag_cstr = group_domain_tag.c_str();
+    DASH_ASSERT_RETURNS(
+      dart_domain_select(
+        &group, 1, &group_domain_tag_cstr),
+      DART_OK);
+
+    _parts.push_back(
+        dash::util::LocalityDomain(
+          *this,  // parent
+          group   // subdomain
+        ));
+  }
+  DASH_LOG_DEBUG("LocalityDomain.split_groups >");
 
   return *this;
 }

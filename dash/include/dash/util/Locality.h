@@ -14,13 +14,12 @@
 
 
 std::ostream & operator<<(
-  std::ostream & os,
+  std::ostream                 & os,
   const dart_domain_locality_t & domain_loc);
 
 std::ostream & operator<<(
-  std::ostream & os,
-  const dart_unit_locality_t & unit_loc);
-
+  std::ostream                 & os,
+  const dart_unit_locality_t   & unit_loc);
 
 namespace dash {
 namespace util {
@@ -164,6 +163,14 @@ private:
 std::ostream & operator<<(
   std::ostream & os,
   const typename dash::util::Locality::UnitPinning & upi);
+
+std::ostream & operator<<(
+  std::ostream                 & os,
+  dash::util::Locality::Scope    scope);
+
+std::ostream & operator<<(
+  std::ostream                 & os,
+  dart_locality_scope_t          scope);
 
 } // namespace util
 } // namespace dash

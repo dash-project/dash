@@ -131,18 +131,18 @@ public:
   typedef domain_iterator<self_t>                iterator;
   typedef domain_iterator<const self_t>    const_iterator;
 
+private:
+
+  LocalityDomain(
+    const self_t                 & parent,
+    const dart_domain_locality_t & domain);
+
 public:
 
   inline LocalityDomain()
   : _domain(nullptr),
     _subdomains(nullptr)
-  {
-    clear();
-  }
-
-  LocalityDomain(
-    const self_t           & parent,
-    dart_domain_locality_t * domain);
+  { }
 
   LocalityDomain(
     dart_domain_locality_t * domain);
@@ -184,27 +184,35 @@ public:
    * and are not a subdomain of a matched domain.
    */
   self_t & select(
-    std::initializer_list<std::string> subdomain_tags);
+    const std::vector<std::string> & subdomain_tags);
 
   /**
    * Remove subdomains that match the specified domain tags or are a
    * subdomain of a matched domain.
    */
   self_t & exclude(
-    std::initializer_list<std::string> subdomain_tags);
+    const std::vector<std::string> & subdomain_tags);
 
   /**
    * Add a group subdomain consisting of domains with the specified tags.
    */
   self_t & group(
-    std::initializer_list<std::string> group_subdomain_tags);
+    const std::vector<std::string> & group_subdomain_tags);
 
   /**
-   * Split locality domain into given number of parts at specified scope.
+   * Split the team locality domain into the given number of parts on the
+   * specified locality scope.
+   * Team locality domains resulting from the split can be accessed using
+   * method \c parts().
    */
   self_t & split(
     dash::util::Locality::Scope        scope,
     int                                num_split_parts);
+
+  /**
+   * Split groups in locality domain into separate parts.
+   */
+  self_t & split_groups();
 
   /**
    * Lazy-load instance of \c LocalityDomain for child subdomain at relative
@@ -337,8 +345,6 @@ private:
     DASH_LOG_DEBUG("LocalityDomain.init()",
                    "domain:", domain->domain_tag);
 
-    clear();
-
     _domain     = domain;
     _domain_tag = _domain->domain_tag;
 
@@ -351,47 +357,19 @@ private:
     _begin = iterator(*this, 0);
     _end   = iterator(*this, _domain->num_domains);
 
-    collect_groups(*this);
+    collect_groups(_group_domain_tags);
 
     DASH_LOG_DEBUG("LocalityDomain.init >",
                    "domain:", domain->domain_tag);
   }
 
-  inline void clear()
-  {
-    return;
-
-    DASH_LOG_DEBUG("LocalityDomain.clear()");
-
-    _unit_ids.clear();
-    _groups.clear();
-    _parts.clear();
-    if (nullptr != _subdomains) {
-      _subdomains->clear();
-    }
-    _begin = iterator(*this, 0);
-    _end   = iterator(*this, 0);
-
-    DASH_LOG_DEBUG("LocalityDomain.clear >");
-  }
-
   inline void collect_groups(
-    self_t & domain)
+    const std::vector<std::string> & group_domain_tags)
   {
-#if 0
-    for (auto it = domain.begin(); it != domain.end(); ++it) {
-      self_t & subdomain = *it;
-      if (subdomain.scope() == Scope_t::Group) {
-        _groups.push_back(it);
-      }
-      collect_groups(subdomain);
-    }
-#else
     _groups.clear();
-    for (auto gdt : _group_domain_tags) {
+    for (auto gdt : group_domain_tags) {
       _groups.push_back(find(gdt));
     }
-#endif
   }
 
 private:
