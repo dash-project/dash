@@ -359,6 +359,8 @@ private:
 
   inline void clear()
   {
+    return;
+
     DASH_LOG_DEBUG("LocalityDomain.clear()");
 
     _unit_ids.clear();
@@ -376,8 +378,7 @@ private:
   inline void collect_groups(
     self_t & domain)
   {
-    return;
-
+#if 0
     for (auto it = domain.begin(); it != domain.end(); ++it) {
       self_t & subdomain = *it;
       if (subdomain.scope() == Scope_t::Group) {
@@ -385,6 +386,12 @@ private:
       }
       collect_groups(subdomain);
     }
+#else
+    _groups.clear();
+    for (auto gdt : _group_domain_tags) {
+      _groups.push_back(find(gdt));
+    }
+#endif
   }
 
 private:
@@ -406,6 +413,7 @@ private:
   bool                                        _is_owner   = false;
   /// Domain tags of groups in the locality domain.
   std::vector<iterator>                       _groups;
+  std::vector<std::string>                    _group_domain_tags;
   /// Split domains in the team locality, one domain for every split group.
   std::vector<self_t>                         _parts;
 

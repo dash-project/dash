@@ -107,7 +107,8 @@ dash::util::LocalityDomain::~LocalityDomain()
 dash::util::LocalityDomain::LocalityDomain(
   const dash::util::LocalityDomain & other
 ) : _domain_tag(other._domain_tag),
-    _unit_ids(other._unit_ids)
+    _unit_ids(other._unit_ids),
+    _group_domain_tags(other._group_domain_tags)
 {
   DASH_LOG_TRACE_VAR("LocalityDomain(other)()", other._domain_tag);
 
@@ -142,10 +143,12 @@ dash::util::LocalityDomain::operator=(
 {
   DASH_LOG_TRACE("LocalityDomain.=(other)");
 
-  _subdomains  = new std::unordered_map<int, self_t>(*(other._subdomains));
-  _is_owner    = other._is_owner;
-  _unit_ids    = other._unit_ids;
-  _domain_tag  = other._domain_tag;
+  _subdomains        = new std::unordered_map<int, self_t>(
+                             *(other._subdomains));
+  _is_owner          = other._is_owner;
+  _unit_ids          = other._unit_ids;
+  _domain_tag        = other._domain_tag;
+  _group_domain_tags = other._group_domain_tags;
 
   if (_is_owner) {
     _domain = new dart_domain_locality_t();
@@ -249,6 +252,8 @@ dash::util::LocalityDomain::group(
 
   // Clear cached subdomain instances:
   _subdomains->clear();
+  // Clear cached group references:
+  _groups.clear();
 
 #if 0
   dart_domain_locality_t * group_domain;
@@ -261,7 +266,8 @@ dash::util::LocalityDomain::group(
 
   _groups.push_back(self_t(group_domain));
 #else
-  _groups.push_back(find(group_domain_tag));
+  _group_domain_tags.push_back(group_domain_tag);
+  collect_groups(*this);
 #endif
 
   for (auto part : _parts) {

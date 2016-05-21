@@ -24,7 +24,7 @@ void print_locality_domain(
   }
 
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "scope:   ",
-                 ld.scope());
+                 static_cast<dart_locality_scope_t>(ld.scope()));
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "rel.idx: ",
                  ld.relative_index());
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "tag:     ",
@@ -158,8 +158,6 @@ TEST_F(TeamLocalityTest, GroupUnits)
   print_locality_domain("global", tloc.domain());
 
   dash::barrier();
-
-  return;
 
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
                  "team all, groups:", tloc.groups().size());
