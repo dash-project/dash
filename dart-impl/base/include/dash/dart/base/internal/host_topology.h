@@ -37,7 +37,7 @@ dart_ret_t dart__base__host_topology__create(
   dart_unit_mapping_t   * unit_mapping,
   dart_host_topology_t  * topo);
 
-dart_ret_t dart__base__host_topology__delete(
+dart_ret_t dart__base__host_topology__destruct(
   dart_host_topology_t  * topo);
 
 

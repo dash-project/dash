@@ -81,45 +81,53 @@ dart_ret_t dart__base__locality__domain__init(
   return DART_OK;
 }
 
-dart_ret_t dart__base__locality__domain__delete(
+dart_ret_t dart__base__locality__domain__destruct(
   dart_domain_locality_t * domain)
 {
-  DART_LOG_DEBUG("dart__base__locality__domain_delete() domain(%p)", domain);
+  DART_LOG_DEBUG("dart__base__locality__domain_delete() "
+                 "domain(%p)", domain);
+
   if (domain == NULL) {
-    DART_LOG_DEBUG("dart__base__locality__domain_delete >");
+    DART_LOG_DEBUG("dart__base__locality__domain_delete > domain NULL");
     return DART_OK;
   }
+
+  DART_LOG_DEBUG("dart__base__locality__domain_delete :   "
+                 "domain tag: %s level: %d",
+                 domain->domain_tag, domain->level);
+
+  if (domain->num_domains > 0 && NULL == domain->domains) {
+    DART_LOG_ERROR("dart__base__locality__domain_delete ! "
+                   "domain.domains must not be NULL for "
+                   "domain.num_domains = %d", domain->num_domains);
+    return DART_ERR_INVAL;
+  }
+  else if (domain->num_domains == 0 && NULL != domain->domains) {
+    DART_LOG_ERROR("dart__base__locality__domain_delete ! "
+                   "domain.domains expected to be NULL for "
+                   "domain.num_domains = %d", domain->num_domains);
+    return DART_ERR_INVAL;
+  }
+
   /* deallocate child nodes in depth-first recursion: */
-  int num_child_nodes = domain->num_domains;
-  for (int subdom_idx = 0; subdom_idx < num_child_nodes; ++subdom_idx) {
-    if (domain->num_domains <= subdom_idx) {
-      /* child index out of range: */
-      return DART_ERR_INVAL;
-    }
-    if (domain->domains == NULL) {
-      /* child nodes field is unspecified: */
-      return DART_ERR_INVAL;
-    }
-    dart__base__locality__domain__delete(
+  for (int subdom_idx = 0; subdom_idx < domain->num_domains; ++subdom_idx) {
+    dart__base__locality__domain__destruct(
       domain->domains + subdom_idx);
   }
   /* deallocate node itself: */
-  if (domain->domains != NULL) {
-    DART_LOG_DEBUG("dart__base__locality__domain_delete: "
-                   "free(domain->domains)");
+  if (NULL != domain->domains) {
     free(domain->domains);
+    domain->domains  = NULL;
   }
-  if (domain->unit_ids != NULL) {
-    DART_LOG_DEBUG("dart__base__locality__domain_delete: "
-                   "free(domain->unit_ids)");
+  if (NULL != domain->unit_ids) {
     free(domain->unit_ids);
+    domain->unit_ids = NULL;
   }
-  domain->domains     = NULL;
-  domain->unit_ids    = NULL;
   domain->num_domains = 0;
   domain->num_units   = 0;
 
-  DART_LOG_DEBUG("dart__base__locality__domain_delete >");
+  DART_LOG_DEBUG("dart__base__locality__domain_delete > "
+                 "domain(%p)", domain);
   return DART_OK;
 }
 
@@ -134,12 +142,12 @@ dart_ret_t dart__base__locality__domain__copy(
                  domain_dst, domain_src);
   dart_ret_t ret;
 
-  memcpy(domain_dst, domain_src, sizeof(dart_domain_locality_t));
+  *domain_dst = *domain_src;
 
   /* Copy unit ids:
    */
   if (domain_src->num_units > 0) {
-    if (domain_src->unit_ids == NULL) {
+    if (NULL == domain_src->unit_ids) {
       DART_LOG_ERROR("dart__base__locality__domain__copy: domain %s "
                      "has num_units = %d but domain->unit_ids is NULL",
                      domain_src->domain_tag, domain_src->num_units);
@@ -151,21 +159,33 @@ dart_ret_t dart__base__locality__domain__copy(
       domain_dst->unit_ids[u] = domain_src->unit_ids[u];
     }
   } else {
+    if (NULL != domain_src->unit_ids) {
+      DART_LOG_ERROR("dart__base__locality__domain__copy: domain %s "
+                     "has num_units = %d, expected unit_ids == NULL",
+                     domain_src->domain_tag, domain_src->num_units);
+      return DART_ERR_OTHER;
+    }
     domain_dst->unit_ids = NULL;
   }
 
   /* Copy subdomains:
    */
   if (domain_src->num_domains > 0) {
-    if (domain_src->domains == NULL) {
+    if (NULL == domain_src->domains) {
       DART_LOG_ERROR("dart__base__locality__domain__copy: domain %s "
-                     "has num_domains = %d but domain->domains is NULL",
+                     "has num_domains = %d, expected domains != NULL",
                      domain_src->domain_tag, domain_src->num_domains);
       return DART_ERR_OTHER;
     }
     domain_dst->domains = malloc(sizeof(dart_domain_locality_t) *
                                  domain_src->num_domains);
   } else {
+    if (NULL != domain_src->domains) {
+      DART_LOG_ERROR("dart__base__locality__domain__copy: domain %s "
+                     "has num_domains = %d, expected domains = NULL",
+                     domain_src->domain_tag, domain_src->num_domains);
+      return DART_ERR_OTHER;
+    }
     domain_dst->domains = NULL;
   }
 
@@ -342,8 +362,9 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
   int matched       = 0;
   int unit_idx      = 0;
   int subdomain_idx = 0;
+  int num_numa      = 0;
 
-  DART_LOG_TRACE("dart__base__locality__domain__select_subdomains() "
+  DART_LOG_TRACE("dart__base__locality__domain__filter_subdomains() "
                  "domain: %s, level: %d, domains: %d, units: %d",
                  domain->domain_tag,  domain->level,
                  domain->num_domains, domain->num_units);
@@ -379,13 +400,14 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
     if (matched == remove_matches) {
       continue;
     }
-    DART_LOG_TRACE("dart__base__locality__domain__select_subdomains : "
+    DART_LOG_TRACE("dart__base__locality__domain__filter_subdomains : "
                    "  --v  subdomain[%d] = %s matched", sd, subdomain_tag);
 
     if (subdomain_idx != sd) {
       memcpy(domain->domains + subdomain_idx,
              domain->domains + sd,
              sizeof(dart_domain_locality_t));
+      domain->domains[subdomain_idx].relative_index = subdomain_idx;
     }
 
     ret = dart__base__locality__domain__filter_subdomains(
@@ -397,7 +419,7 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
       return ret;
     }
 
-    DART_LOG_TRACE("dart__base__locality__domain__select_subdomains : "
+    DART_LOG_TRACE("dart__base__locality__domain__filter_subdomains : "
                    "  --^  subdomain[%d] = %s: domains: %d, units: %d", sd,
                    domain->domains[subdomain_idx].domain_tag,
                    domain->domains[subdomain_idx].num_domains,
@@ -413,14 +435,18 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
                sizeof(dart_unit_t));
       unit_idx += domain->domains[subdomain_idx].num_units;
     }
+    num_numa += domain->domains[subdomain_idx].hwinfo.num_numa;
     subdomain_idx++;
   }
+
   /*
    * Bottom-up accumulation of units and domains:
    */
-  DART_LOG_TRACE("dart__base__locality__domain__select_subdomains : "
+  DART_LOG_TRACE("dart__base__locality__domain__filter_subdomains : "
                  "--> collected in %s: domains: %d, units: %d",
                  domain->domain_tag, subdomain_idx, unit_idx);
+
+  domain->hwinfo.num_numa = num_numa;
 
   if (domain->num_units != unit_idx && domain->unit_ids != NULL) {
     dart_unit_t * tmp =
@@ -439,7 +465,7 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
     }
     domain->num_domains = subdomain_idx;
   }
-  DART_LOG_TRACE("dart__base__locality__domain__select_subdomains >");
+  DART_LOG_TRACE("dart__base__locality__domain__filter_subdomains >");
   return DART_OK;
 }
 

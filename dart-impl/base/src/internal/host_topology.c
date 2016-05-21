@@ -193,10 +193,10 @@ dart_ret_t dart__base__host_topology__create(
   return DART_OK;
 }
 
-dart_ret_t dart__base__host_topology__delete(
+dart_ret_t dart__base__host_topology__destruct(
   dart_host_topology_t * topo)
 {
-  DART_LOG_DEBUG("dart__base__host_topology__delete()");
+  DART_LOG_DEBUG("dart__base__host_topology__destruct()");
   if (topo->node_units != NULL) {
     free(topo->node_units);
     topo->node_units = NULL;
@@ -205,7 +205,7 @@ dart_ret_t dart__base__host_topology__delete(
     free(topo->host_names);
     topo->host_names = NULL;
   }
-  DART_LOG_DEBUG("dart__base__host_topology__delete >");
+  DART_LOG_DEBUG("dart__base__host_topology__destruct >");
   return DART_OK;
 }
 

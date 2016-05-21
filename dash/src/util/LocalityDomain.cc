@@ -65,7 +65,7 @@ dash::util::LocalityDomain::LocalityDomain(
                  "subdomain:",     subdomain_tag);
 
   DASH_ASSERT_RETURNS(
-    dart_domain_locality(
+    dart_domain_find(
       &(parent.dart_type()),
       subdomain_tag.c_str(),
       &_domain),
@@ -89,10 +89,13 @@ dash::util::LocalityDomain::~LocalityDomain()
     delete _subdomains;
     _subdomains = nullptr;
   }
-  if (_is_owner && _domain != nullptr) {
-    dart_domain_delete(_domain);
-    _domain = nullptr;
+  if (_domain != nullptr) {
+    dart_domain_destruct(_domain);
   }
+  if (_is_owner) {
+    delete _domain;
+  }
+  _domain = nullptr;
 }
 
 dash::util::LocalityDomain::LocalityDomain(
@@ -217,7 +220,7 @@ dash::util::LocalityDomain::group(
   char group_domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 
   DASH_ASSERT_RETURNS(
-    dart_group_domains(
+    dart_domain_group(
       _domain,                    // dart_t       * domain
       subdomain_tags_cstr.size(), // int            num_group_subdomains
       subdomain_tags_cstr.data(), // const char  ** group_subdomain_tags
@@ -229,7 +232,7 @@ dash::util::LocalityDomain::group(
 
   dart_domain_locality_t * group_domain;
   DASH_ASSERT_RETURNS(
-    dart_domain_locality(
+    dart_domain_find(
       _domain,
       group_domain_tag,
       &group_domain),
@@ -240,5 +243,19 @@ dash::util::LocalityDomain::group(
   DASH_LOG_TRACE("LocalityDomain.group >",
                  "group domain:", _groups.back().domain_tag());
   return _groups.back();
+}
+
+dash::util::LocalityDomain &
+dash::util::LocalityDomain::at(
+  int relative_index) const
+{
+  DASH_ASSERT(_subdomains != nullptr);
+  DASH_ASSERT(_domain  != nullptr);
+  if (_subdomains->find(relative_index) == _subdomains->end()) {
+    // LocalityDomain instance for subdomain not cached yet:
+    self_t subdomain(&(_domain->domains[relative_index]));
+    _subdomains->insert(std::make_pair(relative_index, subdomain));
+  }
+  return (*_subdomains)[relative_index];
 }
 

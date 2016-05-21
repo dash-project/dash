@@ -197,44 +197,47 @@ dart_ret_t dart__base__locality__delete(
 {
   dart_ret_t ret = DART_OK;
 
-  if (dart__base__locality__global_domain_[team] == NULL &&
-      dart__base__locality__host_topology_[team] == NULL &&
-      dart__base__locality__unit_mapping_[team]  == NULL) {
+  if (NULL == dart__base__locality__global_domain_[team] &&
+      NULL == dart__base__locality__host_topology_[team] &&
+      NULL == dart__base__locality__unit_mapping_[team]) {
     return ret;
   }
 
   DART_LOG_DEBUG("dart__base__locality__delete() team(%d)", team);
 
-  if (dart__base__locality__global_domain_[team] != NULL) {
-    ret = dart__base__locality__domain__delete(
+  if (NULL != dart__base__locality__global_domain_[team]) {
+    ret = dart__base__locality__domain__destruct(
             dart__base__locality__global_domain_[team]);
     if (ret != DART_OK) {
       DART_LOG_ERROR("dart__base__locality__delete ! "
                      "dart__base__locality__domain_delete failed: %d", ret);
       return ret;
     }
+    free(dart__base__locality__global_domain_[team]);
     dart__base__locality__global_domain_[team] = NULL;
   }
 
-  if (dart__base__locality__host_topology_[team] != NULL) {
-    ret = dart__base__host_topology__delete(
+  if (NULL != dart__base__locality__host_topology_[team]) {
+    ret = dart__base__host_topology__destruct(
             dart__base__locality__host_topology_[team]);
     if (ret != DART_OK) {
       DART_LOG_ERROR("dart__base__locality__delete ! "
-                     "dart__base__host_topology__delete failed: %d", ret);
+                     "dart__base__host_topology__destruct failed: %d", ret);
       return ret;
     }
+    free(dart__base__locality__host_topology_[team]);
     dart__base__locality__host_topology_[team] = NULL;
   }
 
-  if (dart__base__locality__unit_mapping_[team] != NULL) {
-    ret = dart__base__unit_locality__delete(
+  if (NULL != dart__base__locality__unit_mapping_[team]) {
+    ret = dart__base__unit_locality__destruct(
             dart__base__locality__unit_mapping_[team]);
     if (ret != DART_OK) {
       DART_LOG_ERROR("dart__base__locality__delete ! "
-                     "dart__base__unit_locality__delete failed: %d", ret);
+                     "dart__base__unit_locality__destruct failed: %d", ret);
       return ret;
     }
+    free(dart__base__locality__unit_mapping_[team]);
     dart__base__locality__unit_mapping_[team] = NULL;
   }
 
@@ -387,8 +390,14 @@ dart_ret_t dart__base__locality__domain_group(
 
   /* The group's parent domain: */
   dart_domain_locality_t * group_parent_domain;
-  dart__base__locality__domain__parent(
-    domain, group_subdomain_tags, group_size, &group_parent_domain);
+  ret = dart__base__locality__domain__parent(
+          domain,
+          group_subdomain_tags, group_size,
+          &group_parent_domain);
+
+  if (ret != DART_OK) {
+    return ret;
+  }
 
   DART_LOG_TRACE("dart__base__locality__domain_group: "
                  "group parent: %s",
@@ -598,7 +607,7 @@ dart_ret_t dart__base__locality__domain_group(
         DART_LOG_TRACE("dart__base__locality__domain_group: "
                        "remove grouped domains from %s",
                        group_parent_subdomain->domain_tag);
-        ret = dart__base__locality__domain_remove_subdomains(
+        ret = dart__base__locality__domain_exclude_subdomains(
                 group_parent_subdomain,
                 group_subdomain_tags,
                 group_size);

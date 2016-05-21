@@ -150,40 +150,35 @@ public:
     return !(*this == rhs);
   }
 
+  /**
+   * Remove subdomains that do not match one of the specified domain tags
+   * and are not a subdomain of a matched domain.
+   */
   self_t & select(
     std::initializer_list<std::string> subdomain_tags);
 
+  /**
+   * Remove subdomains that match the specified domain tags or are a
+   * subdomain of a matched domain.
+   */
   self_t & exclude(
     std::initializer_list<std::string> subdomain_tags);
 
+  /**
+   * Add a group subdomain consisting of domains with the specified tags.
+   */
   self_t & group(
     std::initializer_list<std::string> group_subdomain_tags);
-
-  inline void clear()
-  {
-    _unit_ids.clear();
-    _groups.clear();
-    if (nullptr != _subdomains) {
-      _subdomains->clear();
-    }
-    _begin = iterator(*this, 0);
-    _end   = iterator(*this, 0);
-  }
 
   /**
    * Lazy-load instance of \c LocalityDomain for subdomain.
    */
-  inline self_t & at(
-    int relative_index) const
+  self_t & at(
+    int relative_index) const;
+
+  inline const std::vector<self_t> & groups() const
   {
-    DASH_ASSERT(_subdomains != nullptr);
-    DASH_ASSERT(_domain  != nullptr);
-    if (_subdomains->find(relative_index) == _subdomains->end()) {
-      // LocalityDomain instance for subdomain not cached yet:
-      self_t subdomain(&(_domain->domains[relative_index]));
-      _subdomains->insert(std::make_pair(relative_index, subdomain));
-    }
-    return (*_subdomains)[relative_index];
+    return _groups;
   }
 
   inline dart_team_t dart_team()
@@ -287,6 +282,17 @@ private:
 
     _begin = iterator(*this, 0);
     _end   = iterator(*this, _domain->num_domains);
+  }
+
+  inline void clear()
+  {
+    _unit_ids.clear();
+    _groups.clear();
+    if (nullptr != _subdomains) {
+      _subdomains->clear();
+    }
+    _begin = iterator(*this, 0);
+    _end   = iterator(*this, 0);
   }
 
 private:

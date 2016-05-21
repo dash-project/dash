@@ -35,7 +35,7 @@ dart_ret_t dart_domain_team_locality(
  *
  * \ingroup DartLocality
  */
-dart_ret_t dart_domain_locality(
+dart_ret_t dart_domain_find(
   const dart_domain_locality_t  * domain_in,
   const char                    * domain_tag,
   dart_domain_locality_t       ** subdomain_out);
@@ -54,7 +54,7 @@ dart_ret_t dart_domain_copy(
  *
  * \ingroup DartLocality
  */
-dart_ret_t dart_domain_delete(
+dart_ret_t dart_domain_destruct(
   dart_domain_locality_t        * domain);
 
 /**
@@ -96,7 +96,7 @@ dart_ret_t dart_domain_split(
  *
  * \ingroup DartLocality
  */
-dart_ret_t dart_scope_domains(
+dart_ret_t dart_domain_scope_tags(
   const dart_domain_locality_t  * domain_in,
   dart_locality_scope_t           scope,
   int                           * num_domains_out,
@@ -105,7 +105,7 @@ dart_ret_t dart_scope_domains(
 /**
  * Adds entries to locality hierarchy to group locality domains.
  */
-dart_ret_t dart_group_domains(
+dart_ret_t dart_domain_group(
   dart_domain_locality_t        * domain_in,
   int                             num_group_subdomains,
   const char                   ** group_subdomain_tags,

@@ -14,7 +14,7 @@ typedef int (*dart_domain_predicate_t)(dart_domain_locality_t * domain);
 dart_ret_t dart__base__locality__domain__init(
   dart_domain_locality_t       * domain);
 
-dart_ret_t dart__base__locality__domain__delete(
+dart_ret_t dart__base__locality__domain__destruct(
   dart_domain_locality_t       * domain);
 
 dart_ret_t dart__base__locality__domain__copy(

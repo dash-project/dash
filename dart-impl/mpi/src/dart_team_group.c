@@ -260,7 +260,7 @@ dart_ret_t dart_group_locality_split(
   int     num_domains;
   char ** domain_tags;
   DART_ASSERT_RETURNS(
-    dart_scope_domains(
+    dart_domain_scope_tags(
       domain,
       scope,
       &num_domains,
@@ -448,7 +448,8 @@ dart_ret_t dart_group_ismember(
     }
   }
   *ismember = (i!=size);
-  DART_LOG_DEBUG("%2d: GROUP_ISMEMBER - %s", unitid, (*ismember) ? "yes" : "no");
+  DART_LOG_DEBUG("dart_group_ismember : unit %2d: %s",
+                 unitid, (*ismember) ? "yes" : "no");
   return DART_OK;
 }
 

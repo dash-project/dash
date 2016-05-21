@@ -81,7 +81,7 @@ dash::util::TeamLocality::split(
   // Tags of domains at specified scope:
   char ** domain_tags;
   DASH_ASSERT_RETURNS(
-    dart_scope_domains(
+    dart_domain_scope_tags(
       &(_domain.dart_type()),
       static_cast<dart_locality_scope_t>(_scope),
       &num_scope_parts,

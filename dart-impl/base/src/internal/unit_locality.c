@@ -135,15 +135,15 @@ dart_ret_t dart__base__unit_locality__create(
   return DART_OK;
 }
 
-dart_ret_t dart__base__unit_locality__delete(
+dart_ret_t dart__base__unit_locality__destruct(
   dart_unit_mapping_t   * unit_mapping)
 {
-  DART_LOG_DEBUG("dart__base__unit_locality__delete() team: %d",
+  DART_LOG_DEBUG("dart__base__unit_locality__destruct() team: %d",
                  unit_mapping->team);
 
   free(unit_mapping->unit_localities);
 
-  DART_LOG_DEBUG("dart__base__unit_locality__delete >");
+  DART_LOG_DEBUG("dart__base__unit_locality__destruct >");
   return DART_OK;
 }
 
