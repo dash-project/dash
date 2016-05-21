@@ -72,9 +72,9 @@ public:
    * locality domain of a specified team.
    */
   TeamLocality(
-    dash::Team & team,
-    Scope_t      scope      = Scope_t::Global,
-    std::string  domain_tag = ".");
+    dash::Team       & team,
+    Scope_t            scope      = Scope_t::Global,
+    std::string        domain_tag = ".");
 
   /**
    * Constructor. Creates new instance of \c dash::util::TeamLocality for
@@ -121,22 +121,42 @@ public:
    * Team locality domains resulting from the split can be accessed using
    * method \c parts() after completion.
    */
-  self_t & split(Scope_t scope, int num_parts = 0);
+  inline self_t & split(Scope_t scope, int num_split_parts = 0)
+  {
+    _domain.split(scope, num_split_parts);
+    return *this;
+  }
 
   /**
    * Parts of the team locality that resulted from a previous split.
    */
-  inline std::vector<self_t> & parts()
+  inline std::vector<LocalityDomain_t::iterator> & groups()
   {
-    return _parts;
+    return _domain.groups();
   }
 
   /**
    * Parts of the team locality that have been created in a previous split.
    */
-  inline const std::vector<self_t> & parts() const
+  inline const std::vector<LocalityDomain_t::iterator> & groups() const
   {
-    return _parts;
+    return _domain.groups();
+  }
+
+  /**
+   * Parts of the team locality that resulted from a previous split.
+   */
+  inline std::vector<LocalityDomain_t> & parts()
+  {
+    return _domain.parts();
+  }
+
+  /**
+   * Parts of the team locality that have been created in a previous split.
+   */
+  inline const std::vector<LocalityDomain_t> & parts() const
+  {
+    return _domain.parts();
   }
 
   inline dash::Team & team()
@@ -149,30 +169,23 @@ public:
     return _domain.units();
   }
 
-  inline self_t & group(
+  inline LocalityDomain_t & group(
     std::initializer_list<std::string> group_subdomain_tags)
   {
-    for (auto domain : _parts) {
-      domain.group(group_subdomain_tags);
-    }
-    return *this;
+    return _domain.group(group_subdomain_tags);
   }
 
   inline self_t & select(
     std::initializer_list<std::string> domain_tags)
   {
-    for (auto domain : _parts) {
-      domain.select(domain_tags);
-    }
+    _domain.select(domain_tags);
     return *this;
   }
 
   inline self_t & exclude(
     std::initializer_list<std::string> domain_tags)
   {
-    for (auto domain : _parts) {
-      domain.exclude(domain_tags);
-    }
+    _domain.exclude(domain_tags);
     return *this;
   }
 
@@ -180,8 +193,6 @@ private:
   dash::Team                        * _team          = nullptr;
   /// Parent scope of the team locality domain hierarchy.
   Scope_t                             _scope         = Scope_t::Undefined;
-  /// Split domains in the team locality, one domain for every split group.
-  std::vector<self_t>                 _parts;
   /// Locality domain of the team.
   LocalityDomain_t                    _domain;
 

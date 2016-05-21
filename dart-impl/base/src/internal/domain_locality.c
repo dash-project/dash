@@ -84,28 +84,28 @@ dart_ret_t dart__base__locality__domain__init(
 dart_ret_t dart__base__locality__domain__destruct(
   dart_domain_locality_t * domain)
 {
-  DART_LOG_DEBUG("dart__base__locality__domain_delete() "
+  DART_LOG_DEBUG("dart__base__locality__domain__destruct() "
                  "domain(%p)", domain);
 
   dart_ret_t ret = DART_OK;
 
   if (domain == NULL) {
-    DART_LOG_DEBUG("dart__base__locality__domain_delete > domain NULL");
+    DART_LOG_DEBUG("dart__base__locality__domain__destruct > domain NULL");
     return DART_OK;
   }
 
-  DART_LOG_DEBUG("dart__base__locality__domain_delete :   "
+  DART_LOG_DEBUG("dart__base__locality__domain__destruct :   "
                  "domain tag: %s level: %d",
                  domain->domain_tag, domain->level);
 
   if (domain->num_domains > 0 && NULL == domain->domains) {
-    DART_LOG_ERROR("dart__base__locality__domain_delete ! "
+    DART_LOG_ERROR("dart__base__locality__domain__destruct ! "
                    "domain.domains must not be NULL for "
                    "domain.num_domains = %d", domain->num_domains);
     return DART_ERR_INVAL;
   }
   else if (domain->num_domains == 0 && NULL != domain->domains) {
-    DART_LOG_ERROR("dart__base__locality__domain_delete ! "
+    DART_LOG_ERROR("dart__base__locality__domain__destruct ! "
                    "domain.domains expected to be NULL for "
                    "domain.num_domains = %d", domain->num_domains);
     return DART_ERR_INVAL;
@@ -131,7 +131,7 @@ dart_ret_t dart__base__locality__domain__destruct(
   domain->num_domains = 0;
   domain->num_units   = 0;
 
-  DART_LOG_DEBUG("dart__base__locality__domain_delete > "
+  DART_LOG_DEBUG("dart__base__locality__domain__destruct > "
                  "domain(%p)", domain);
   return DART_OK;
 }

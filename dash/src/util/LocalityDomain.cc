@@ -15,6 +15,7 @@
 #include <utility>
 #include <iterator>
 #include <algorithm>
+#include <functional>
 
 
 dash::util::LocalityDomain::LocalityDomain(
@@ -23,6 +24,10 @@ dash::util::LocalityDomain::LocalityDomain(
 ) : _domain(domain),
     _is_owner(false)
 {
+  DASH_ASSERT_MSG(
+    domain != nullptr,
+    "Failed to load locality domain: domain pointer is null");
+
   DASH_LOG_TRACE("LocalityDomain(parent,sd)()",
                  "parent domain:", parent.domain_tag(),
                  "subdomain:",     domain->domain_tag);
@@ -39,26 +44,26 @@ dash::util::LocalityDomain::LocalityDomain(
 ) : _domain(domain),
     _is_owner(false)
 {
+  DASH_ASSERT_MSG(
+    domain != nullptr,
+    "Failed to load locality domain: domain pointer is null");
+
   DASH_LOG_TRACE("LocalityDomain(d)()",
                  "domain:", domain->domain_tag);
-
-  DASH_ASSERT_MSG(
-    _domain != NULL &&
-    _domain != nullptr,
-    "Failed to load locality domain with tag " << domain->domain_tag);
 
   _subdomains = new std::unordered_map<int, self_t>();
 
   init(_domain);
 
-  DASH_LOG_TRACE("LocalityDomain(d) >");
+  DASH_LOG_TRACE("LocalityDomain(d) >", "domain:", _domain->domain_tag);
 }
 
 dash::util::LocalityDomain::LocalityDomain(
   const dash::util::LocalityDomain & parent,
   std::string                        subdomain_tag
 ) : _domain(nullptr),
-    _is_owner(true)
+    _domain_tag(subdomain_tag),
+    _is_owner(false)
 {
   DASH_LOG_TRACE("LocalityDomain(parent,sdt)()",
                  "parent domain:", parent.domain_tag(),
@@ -72,7 +77,6 @@ dash::util::LocalityDomain::LocalityDomain(
     DART_OK);
 
   DASH_ASSERT_MSG(
-    _domain != NULL &&
     _domain != nullptr,
     "Failed to load locality domain with tag " << subdomain_tag);
 
@@ -85,17 +89,19 @@ dash::util::LocalityDomain::LocalityDomain(
 
 dash::util::LocalityDomain::~LocalityDomain()
 {
+  DASH_LOG_TRACE_VAR("LocalityDomain.~()", _domain->domain_tag);
+
   if (_subdomains != nullptr) {
     delete _subdomains;
     _subdomains = nullptr;
   }
-  if (_domain != nullptr) {
+  if (_is_owner && _domain != nullptr) {
     dart_domain_destruct(_domain);
-  }
-  if (_is_owner) {
     delete _domain;
   }
   _domain = nullptr;
+
+  DASH_LOG_TRACE("LocalityDomain.~ >");
 }
 
 dash::util::LocalityDomain::LocalityDomain(
@@ -103,10 +109,10 @@ dash::util::LocalityDomain::LocalityDomain(
 ) : _domain_tag(other._domain_tag),
     _unit_ids(other._unit_ids)
 {
-  DASH_LOG_TRACE("LocalityDomain(other)()");
+  DASH_LOG_TRACE_VAR("LocalityDomain(other)()", other._domain_tag);
 
-  _subdomains = new std::unordered_map<int, self_t>();
-  _is_owner   = other._is_owner;
+  _subdomains  = new std::unordered_map<int, self_t>(*(other._subdomains));
+  _is_owner    = other._is_owner;
 
   if (_is_owner) {
     _domain = new dart_domain_locality_t();
@@ -124,7 +130,10 @@ dash::util::LocalityDomain::LocalityDomain(
   } else {
     _end = iterator(*this, 0);
   }
-  DASH_LOG_TRACE("LocalityDomain(other) > ");
+
+  collect_groups(*this);
+
+  DASH_LOG_TRACE_VAR("LocalityDomain(other) >", other._domain_tag);
 }
 
 dash::util::LocalityDomain &
@@ -133,9 +142,10 @@ dash::util::LocalityDomain::operator=(
 {
   DASH_LOG_TRACE("LocalityDomain.=(other)");
 
-  _unit_ids   = other._unit_ids;
-  _is_owner   = other._is_owner;
-  _subdomains = new std::unordered_map<int, self_t>();
+  _subdomains  = new std::unordered_map<int, self_t>(*(other._subdomains));
+  _is_owner    = other._is_owner;
+  _unit_ids    = other._unit_ids;
+  _domain_tag  = other._domain_tag;
 
   if (_is_owner) {
     _domain = new dart_domain_locality_t();
@@ -153,6 +163,8 @@ dash::util::LocalityDomain::operator=(
   } else {
     _end = iterator(*this, 0);
   }
+
+  collect_groups(*this);
 
   DASH_LOG_TRACE("LocalityDomain.= >");
   return *this;
@@ -178,6 +190,10 @@ dash::util::LocalityDomain::LocalityDomain::select(
 
   init(_domain);
 
+  for (auto part : _parts) {
+    part.select(subdomain_tags);
+  }
+
   DASH_LOG_TRACE("LocalityDomain.select >");
   return *this;
 }
@@ -201,6 +217,10 @@ dash::util::LocalityDomain::exclude(
     DART_OK);
 
   init(_domain);
+
+  for (auto part : _parts) {
+    part.exclude(subdomain_tags);
+  }
 
   DASH_LOG_TRACE("LocalityDomain.exclude >");
   return *this;
@@ -230,6 +250,7 @@ dash::util::LocalityDomain::group(
   // Clear cached subdomain instances:
   _subdomains->clear();
 
+#if 0
   dart_domain_locality_t * group_domain;
   DASH_ASSERT_RETURNS(
     dart_domain_find(
@@ -239,23 +260,144 @@ dash::util::LocalityDomain::group(
     DART_OK);
 
   _groups.push_back(self_t(group_domain));
+#else
+  _groups.push_back(find(group_domain_tag));
+#endif
+
+  for (auto part : _parts) {
+    part.group(group_subdomain_tags);
+  }
 
   DASH_LOG_TRACE("LocalityDomain.group >",
-                 "group domain:", _groups.back().domain_tag());
-  return _groups.back();
+                 "group domain:", _groups.back()->domain_tag());
+  return *(_groups.back());
+}
+
+dash::util::LocalityDomain &
+dash::util::LocalityDomain::split(
+  dash::util::Locality::Scope scope,
+  int                         num_split_parts)
+{
+  DASH_LOG_DEBUG("LocalityDomain.split()",
+                 "domain:", _domain->domain_tag,
+                 "scope:",  scope,
+                 "parts:",  num_split_parts);
+
+  // Actual number of subdomains created in the split:
+  int     num_parts = num_split_parts;
+  // Number of domains at specified scope:
+  int     num_scope_parts;
+  // Tags of domains at specified scope:
+  char ** domain_tags;
+  DASH_ASSERT_RETURNS(
+    dart_domain_scope_tags(
+      _domain,
+      static_cast<dart_locality_scope_t>(scope),
+      &num_scope_parts,
+      &domain_tags),
+    DART_OK);
+  free(domain_tags);
+
+  if (num_split_parts < 1 || num_scope_parts <= num_split_parts) {
+    DASH_LOG_DEBUG("LocalityDomain.split",
+                   "split into single subdomains");
+    num_parts = num_scope_parts;
+  } else {
+    DASH_LOG_DEBUG("LocalityDomain.split",
+                   "split into groups of subdomains");
+    num_parts = num_split_parts;
+  }
+
+  std::vector<dart_domain_locality_t> subdomains;
+  subdomains.resize(num_parts);
+
+  DASH_ASSERT_RETURNS(
+    dart_domain_split(
+      _domain,
+      static_cast<dart_locality_scope_t>(scope),
+      num_parts,
+      subdomains.data()),
+    DART_OK);
+
+  for (int sd = 0; sd < num_parts; ++sd) {
+    DASH_LOG_TRACE_VAR("LocalityDomain.split",
+                       subdomains[sd].domain_tag);
+
+    _parts.push_back(
+        dash::util::LocalityDomain(
+          *this,          // parent
+          &subdomains[sd] // subdomain
+        ));
+  }
+
+  DASH_LOG_DEBUG("LocalityDomain.split >");
+
+  return *this;
 }
 
 dash::util::LocalityDomain &
 dash::util::LocalityDomain::at(
   int relative_index) const
 {
+  DASH_LOG_DEBUG_VAR("LocalityDomain.at()", relative_index);
+
   DASH_ASSERT(_subdomains != nullptr);
-  DASH_ASSERT(_domain  != nullptr);
+  DASH_ASSERT(_domain     != nullptr);
+  DASH_ASSERT_RANGE(
+    0, relative_index, _domain->num_domains,
+    "Relative index out of bounds");
+
   if (_subdomains->find(relative_index) == _subdomains->end()) {
     // LocalityDomain instance for subdomain not cached yet:
-    self_t subdomain(&(_domain->domains[relative_index]));
-    _subdomains->insert(std::make_pair(relative_index, subdomain));
+
+    DASH_LOG_DEBUG("LocalityDomain.at", " --> creating subdomain instance");
+    auto insertion = _subdomains->insert(
+                       std::make_pair(
+                         relative_index,
+                         self_t(&(_domain->domains[relative_index]))
+                       ));
+    DASH_LOG_DEBUG("LocalityDomain.at", " <-- created subdomain instance");
+    DASH_LOG_DEBUG("LocalityDomain.at >",
+                   "cached domains[", relative_index, "]");
+    return (*(insertion.first)).second;
   }
+  DASH_LOG_DEBUG("LocalityDomain.at >");
   return (*_subdomains)[relative_index];
+}
+
+dash::util::LocalityDomain::iterator
+dash::util::LocalityDomain::find(
+  const std::string & find_tag)
+{
+  DASH_LOG_DEBUG("LocalityDomain.find()",
+                 "find tag",  find_tag,
+                 "in domain", _domain->domain_tag);
+
+  for (auto subdomain_it = begin(); subdomain_it != end(); ++subdomain_it) {
+    const std::string & subdomain_tag = subdomain_it->domain_tag();
+
+    // Domain found:
+    if (subdomain_tag == find_tag) {
+      DASH_LOG_DEBUG_VAR("LocalityDomain.find >", subdomain_tag);
+      return subdomain_it;
+    }
+
+    // Recurse into subdomains with domain tag that is a prefix of the
+    // specified tag:
+    auto match_range  = std::mismatch(subdomain_tag.begin(),
+                                      subdomain_tag.end(),
+                                      find_tag.begin());
+    bool prefix_match = match_range.first == subdomain_tag.end();
+    if (prefix_match) {
+      auto subdomain_res = subdomain_it->find(find_tag);
+      if (subdomain_res != subdomain_it->end()) {
+        return subdomain_res;
+      }
+    }
+  }
+  DASH_LOG_DEBUG("LocalityDomain.find >",
+                 "subdomain", find_tag, "not found",
+                 "in domain", _domain->domain_tag);
+  return end();
 }
 

@@ -25,6 +25,8 @@ void print_locality_domain(
 
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "scope:   ",
                  ld.scope());
+  DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "rel.idx: ",
+                 ld.relative_index());
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "tag:     ",
                  ld.domain_tag());
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "unit ids:",
@@ -92,7 +94,7 @@ TEST_F(TeamLocalityTest, SplitCore)
   for (auto & part : tloc.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitCore",
                    "team locality in Core domain:");
-    print_locality_domain("CORE split", part.domain());
+    print_locality_domain("CORE split", part);
   }
 }
 
@@ -116,6 +118,57 @@ TEST_F(TeamLocalityTest, SplitNUMA)
   for (auto & part : tloc_numa.parts()) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
                    "team locality NUMA domain:");
-    print_locality_domain("NUMA split", part.domain());
+    print_locality_domain("NUMA split", part);
   }
 }
+
+TEST_F(TeamLocalityTest, GroupUnits)
+{
+  dash::Team & team = dash::Team::All();
+
+  dash::util::TeamLocality tloc(team);
+
+  DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
+                 "team locality in Global domain:");
+  print_locality_domain("global", tloc.domain());
+
+  dash::barrier();
+
+  // Split via constructor parameter:
+  DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
+                 "Add first group");
+  auto & group_1 = tloc.group({ ".0.0.0.0", ".0.0.0.1" });
+  DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
+                 "First group ptr:", &group_1);
+  print_locality_domain("group_1", group_1);
+
+  dash::barrier();
+
+  auto subdom_2 = tloc.domain().find(".0.0.1");
+  if (subdom_2 != tloc.domain().end() && subdom_2->units().size() > 1) {
+    DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
+                   "Add second group");
+    auto & group_2 = tloc.group({ ".0.0.1.0", ".0.0.1.1" });
+    print_locality_domain("group_2", group_2);
+  }
+  dash::barrier();
+
+  DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
+                 "Global domain after grouping:");
+  print_locality_domain("global", tloc.domain());
+
+  dash::barrier();
+
+  return;
+
+  DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
+                 "team all, groups:", tloc.groups().size());
+
+  for (auto group : tloc.groups()) {
+    DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
+                   "team locality group domain: tag:", group->domain_tag());
+
+    print_locality_domain("Group", *group);
+  }
+}
+

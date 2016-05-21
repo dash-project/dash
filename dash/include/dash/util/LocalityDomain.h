@@ -16,6 +16,7 @@
 #include <utility>
 #include <iterator>
 #include <algorithm>
+#include <functional>
 
 
 namespace dash {
@@ -23,6 +24,19 @@ namespace util {
 
 /**
  * Wrapper of a single \c dart_domain_locality_t object.
+ *
+ * Usage examples:
+ *
+ * \code
+ * dash::util::TeamLocality     team_locality(dash::Team::All());
+ * dash::util::LocalityDomain & domain = team_locality.domain();
+ *
+ * domain.split_groups(dash::util::Locality::Scope::Module);
+ *
+ * for (auto part : domain.groups()) {
+ *   // Iterate over all domains in Module locality scope
+ * }
+ * \endcode
  */
 class LocalityDomain
 {
@@ -30,35 +44,45 @@ private:
   typedef LocalityDomain                       self_t;
   typedef dash::util::Locality::Scope         Scope_t;
 
-public:
+private:
   /**
    * Iterator on subdomains of the locality domain.
    */
-  class iterator
-  : public std::iterator< std::random_access_iterator_tag, LocalityDomain >
+  template< typename LocalityDomainT >
+  class domain_iterator
+  : public std::iterator< std::random_access_iterator_tag, LocalityDomainT >
   {
+    template< typename LocalityDomainT_ >
+    friend class domain_iterator;
+
   private:
-    typedef iterator                           self_t;
+    typedef domain_iterator<LocalityDomainT>          self_t;
 
   public:
-    typedef iterator                        self_type;
-    typedef int                       difference_type;
+    typedef domain_iterator<LocalityDomainT>       self_type;
+    typedef int                              difference_type;
 
-    typedef       LocalityDomain           value_type;
-    typedef       LocalityDomain *            pointer;
-    typedef const LocalityDomain *      const_pointer;
-    typedef       LocalityDomain &          reference;
-    typedef const LocalityDomain &    const_reference;
+    typedef       LocalityDomainT                 value_type;
+    typedef       LocalityDomainT *                  pointer;
+    typedef       LocalityDomainT &                reference;
 
   public:
-    iterator(
-      const LocalityDomain & domain,
-      int                    subdomain_idx = 0)
+
+    domain_iterator(
+      LocalityDomainT & domain,
+      int               subdomain_idx = 0)
     : _domain(&domain),
       _idx(subdomain_idx)
     { }
 
-    iterator() = default;
+    domain_iterator() = default;
+
+    template< typename LocalityDomainT_Other >
+    domain_iterator(
+      const domain_iterator<LocalityDomainT_Other> & other)
+    : _domain(const_cast<LocalityDomainT *>(other._domain)),
+      _idx(other._idx)
+    { }
 
     bool operator==(const self_type & rhs) const {
       return *_domain == *(rhs._domain) && _idx == rhs._idx;
@@ -68,20 +92,20 @@ public:
       return !(*this == rhs);
     }
 
-    const_reference operator[](int i)
+    reference operator[](int i)
     {
       DASH_ASSERT(_domain != nullptr);
       int subdomain_idx = _idx + i;
       return _domain->at(subdomain_idx);
     }
 
-    const_reference operator*()
+    reference operator*()
     {
       DASH_ASSERT(_domain != nullptr);
       return _domain->at(_idx);
     }
 
-    const_pointer operator->()
+    pointer operator->()
     {
       DASH_ASSERT(_domain != nullptr);
       return &(_domain->at(_idx));
@@ -97,10 +121,15 @@ public:
     self_t   operator--(int)   { self_t ret = *this; _idx--;   return ret; }
 
   private:
-    const LocalityDomain * _domain = nullptr;
-    int                    _idx    = 0;
+    LocalityDomainT * _domain = nullptr;
+    int               _idx    = 0;
 
   }; // class LocalityDomain::iterator
+
+public:
+
+  typedef domain_iterator<self_t>                iterator;
+  typedef domain_iterator<const self_t>    const_iterator;
 
 public:
 
@@ -171,14 +200,43 @@ public:
     std::initializer_list<std::string> group_subdomain_tags);
 
   /**
-   * Lazy-load instance of \c LocalityDomain for subdomain.
+   * Split locality domain into given number of parts at specified scope.
+   */
+  self_t & split(
+    dash::util::Locality::Scope        scope,
+    int                                num_split_parts);
+
+  /**
+   * Lazy-load instance of \c LocalityDomain for child subdomain at relative
+   * index.
    */
   self_t & at(
     int relative_index) const;
 
-  inline const std::vector<self_t> & groups() const
+  /**
+   * Find locality subdomain with specified domain tag.
+   */
+  iterator find(
+    const std::string & subdomain_tag);
+
+  inline std::vector<iterator> & groups()
   {
     return _groups;
+  }
+
+  inline const std::vector<iterator> & groups() const
+  {
+    return _groups;
+  }
+
+  inline std::vector<self_t> & parts()
+  {
+    return _parts;
+  }
+
+  inline const std::vector<self_t> & parts() const
+  {
+    return _parts;
   }
 
   inline dart_team_t dart_team()
@@ -206,14 +264,24 @@ public:
     return _domain->host;
   }
 
-  inline iterator begin() const
+  inline iterator begin()
   {
     return _begin;
   }
 
-  inline iterator end() const
+  inline const_iterator begin() const
+  {
+    return const_iterator(_begin);
+  }
+
+  inline iterator end()
   {
     return _end;
+  }
+
+  inline const_iterator end() const
+  {
+    return const_iterator(_end);
   }
 
   inline size_t size() const
@@ -236,8 +304,7 @@ public:
 
   inline int level() const
   {
-    DASH_ASSERT(_domain != nullptr);
-    return _domain->level;
+    return (nullptr == _domain ? -1 : _domain->level);
   }
 
   inline Scope_t scope() const
@@ -249,20 +316,17 @@ public:
 
   inline int node_id() const
   {
-    DASH_ASSERT(_domain != nullptr);
-    return _domain->node_id;
+    return (nullptr == _domain ? -1 : _domain->node_id);
   }
 
   inline int num_nodes() const
   {
-    DASH_ASSERT(_domain != nullptr);
-    return _domain->num_nodes;
+    return (nullptr == _domain ? -1 : _domain->num_nodes);
   }
 
   inline int relative_index() const
   {
-    DASH_ASSERT(_domain != nullptr);
-    return _domain->relative_index;
+    return (nullptr == _domain ? -1 : _domain->relative_index);
   }
 
 private:
@@ -270,50 +334,80 @@ private:
   inline void init(
     dart_domain_locality_t * domain)
   {
+    DASH_LOG_DEBUG("LocalityDomain.init()",
+                   "domain:", domain->domain_tag);
+
     clear();
 
-    _domain = domain;
+    _domain     = domain;
+    _domain_tag = _domain->domain_tag;
 
     if (_domain->num_units > 0) {
-      _unit_ids = std::vector<dart_unit_t>(
-                    _domain->unit_ids,
-                    _domain->unit_ids + _domain->num_units);
+      _unit_ids.insert(_unit_ids.end(),
+                       _domain->unit_ids,
+                       _domain->unit_ids + _domain->num_units);
     }
 
     _begin = iterator(*this, 0);
     _end   = iterator(*this, _domain->num_domains);
+
+    collect_groups(*this);
+
+    DASH_LOG_DEBUG("LocalityDomain.init >",
+                   "domain:", domain->domain_tag);
   }
 
   inline void clear()
   {
+    DASH_LOG_DEBUG("LocalityDomain.clear()");
+
     _unit_ids.clear();
     _groups.clear();
+    _parts.clear();
     if (nullptr != _subdomains) {
       _subdomains->clear();
     }
     _begin = iterator(*this, 0);
     _end   = iterator(*this, 0);
+
+    DASH_LOG_DEBUG("LocalityDomain.clear >");
+  }
+
+  inline void collect_groups(
+    self_t & domain)
+  {
+    return;
+
+    for (auto it = domain.begin(); it != domain.end(); ++it) {
+      self_t & subdomain = *it;
+      if (subdomain.scope() == Scope_t::Group) {
+        _groups.push_back(it);
+      }
+      collect_groups(subdomain);
+    }
   }
 
 private:
   /// Underlying \c dart_domain_locality_t object.
-  dart_domain_locality_t                   * _domain    = nullptr;
+  dart_domain_locality_t                    * _domain    = nullptr;
   /// Copy of _domain->domain_tag to avoid string copying.
-  std::string                                _domain_tag;
+  std::string                                 _domain_tag;
   /// Cache of lazy-loaded subdomains, mapped by subdomain relative index.
   /// Must be heap-allocated as type is incomplete due to type definition
   /// cycle.
-  mutable std::unordered_map<int, self_t>  * _subdomains = nullptr;
+  mutable std::unordered_map<int, self_t>   * _subdomains = nullptr;
   /// Units in the domain.
-  std::vector<dart_unit_t>                   _unit_ids;
+  std::vector<dart_unit_t>                    _unit_ids;
   /// Iterator to the first subdomain.
-  iterator                                   _begin;
+  iterator                                    _begin;
   /// Iterator past the last subdomain.
-  iterator                                   _end;
+  iterator                                    _end;
   /// Whether this instance is owner of _domain.
-  bool                                       _is_owner   = false;
+  bool                                        _is_owner   = false;
   /// Domain tags of groups in the locality domain.
-  std::vector<self_t>                        _groups;
+  std::vector<iterator>                       _groups;
+  /// Split domains in the team locality, one domain for every split group.
+  std::vector<self_t>                         _parts;
 
 }; // class LocalityDomain
 

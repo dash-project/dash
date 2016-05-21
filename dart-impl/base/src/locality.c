@@ -679,6 +679,14 @@ dart_ret_t dart__base__locality__group_subdomains(
                  domain->domain_tag, domain->num_domains,
                  num_group_subdomain_tags);
 
+  group_domain_tag_out[0] = '\0';
+
+  if (domain->num_domains < 1) {
+    DART_LOG_ERROR("dart__base__locality__group_subdomains ! "
+                   "no subdomains, cannot create group");
+    return DART_ERR_NOTFOUND;
+  }
+
   int num_grouped         = num_group_subdomain_tags;
   int num_ungrouped       = domain->num_domains - num_grouped;
   int num_subdomains_new  = num_ungrouped + 1;

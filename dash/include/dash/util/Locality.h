@@ -50,6 +50,7 @@ public:
   typedef enum {
     Undefined = DART_LOCALITY_SCOPE_UNDEFINED,
     Global    = DART_LOCALITY_SCOPE_GLOBAL,
+    Group     = DART_LOCALITY_SCOPE_GROUP,
     Network   = DART_LOCALITY_SCOPE_NETWORK,
     Node      = DART_LOCALITY_SCOPE_NODE,
     Module    = DART_LOCALITY_SCOPE_MODULE,
