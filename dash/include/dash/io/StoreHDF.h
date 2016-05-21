@@ -53,6 +53,22 @@ public:
     std::string   pattern_metadata_key;
   } hdf5_file_options;
 
+  /**
+   * test at compile time if pattern is compatible
+   * \return true if pattern is compatible
+   */
+private:
+  template <
+    class pattern_t >
+  static constexpr bool _compatible_pattern()
+  {
+    return dash::pattern_partitioning_traits<pattern_t>::type::rectangular &&
+           dash::pattern_layout_traits<pattern_t>::type::linear &&
+           !dash::pattern_mapping_traits<pattern_t>::type::shifted &&
+           !dash::pattern_mapping_traits<pattern_t>::type::diagonal;
+    // TODO: check if mapping is regular by checking pattern property
+  }
+
 public:
   /**
    * Store all dash::Array values in an HDF5 file using parallel IO.
@@ -66,22 +82,21 @@ public:
     typename value_t,
     typename index_t,
     class    pattern_t >
-  static void write(
-    dash::Array<value_t, index_t, pattern_t> & array,
-    std::string filename,
-    std::string table,
-    hdf5_file_options foptions = _get_fdefaults())
+  typename std::enable_if <
+  _compatible_pattern<pattern_t>() &&
+  pattern_t::ndim() == 1,
+            void >::type
+            static write(
+              dash::Array<value_t, index_t, pattern_t> & array,
+              std::string filename,
+              std::string table,
+              hdf5_file_options foptions = _get_fdefaults())
   {
     auto pattern    = array.pattern();
     auto pat_dims   = pattern.ndim();
     long tilesize   = pattern.blocksize(0);
     // Map native types to HDF5 types
     auto h5datatype = _convertType(array[0]);
-
-    // Currently only works for 1-dimensional tiling
-    DASH_ASSERT_EQ(
-      pat_dims, 1,
-      "Array pattern has to be one-dimensional for HDF5 storage");
 
     /* HDF5 definition */
     hid_t   file_id;
@@ -135,8 +150,29 @@ public:
 
     filespace = H5Dget_space(dataset);
 
-    if (pat_dims == 1) {
-      // Select Hyperslabs in file
+    // Select Hyperslabs in file
+    H5Sselect_hyperslab(
+      filespace,
+      H5S_SELECT_SET,
+      ts.offset,
+      ts.stride,
+      ts.count,
+      ts.block);
+
+    // Create property list for collective writes
+    plist_id = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+    // Write completely filled blocks by pattern
+    H5Dwrite(dataset, internal_type, memspace, filespace,
+             plist_id, array.lbegin());
+
+    // write underfilled blocks
+    if (pattern.underfilled_blocksize(0) != 0) {
+      // get hdf pattern layout
+      ts = _get_blockpattern_hdf_spec_underfilled(pattern);
+      memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
+
       H5Sselect_hyperslab(
         filespace,
         H5S_SELECT_SET,
@@ -145,34 +181,9 @@ public:
         ts.count,
         ts.block);
 
-      // Create property list for collective writes
-      plist_id = H5Pcreate(H5P_DATASET_XFER);
-      H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
       // Write completely filled blocks by pattern
       H5Dwrite(dataset, internal_type, memspace, filespace,
                plist_id, array.lbegin());
-
-      // write underfilled blocks
-      if (pattern.underfilled_blocksize(0) != 0) {
-        // get hdf pattern layout
-        ts = _get_blockpattern_hdf_spec_underfilled(pattern);
-        memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
-
-        H5Sselect_hyperslab(
-          filespace,
-          H5S_SELECT_SET,
-          ts.offset,
-          ts.stride,
-          ts.count,
-          ts.block);
-
-        // Write completely filled blocks by pattern
-        H5Dwrite(dataset, internal_type, memspace, filespace,
-                 plist_id, array.lbegin());
-      }
-    } else {
-      // TODO: Store each block separate and remove assertion
     }
 
     // Add Attributes
@@ -208,23 +219,26 @@ public:
     typename value_t,
     dim_t    ndim,
     typename index_t,
-    class    pattern_t >
-  static void write(
-    dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
-    std::string filename,
-    std::string table,
-    hdf5_file_options foptions = _get_fdefaults())
+    typename pattern_t
+    >
+  typename std::enable_if <
+  _compatible_pattern<pattern_t>(),
+                      void >::type
+                      static write(
+                        dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
+                        std::string filename,
+                        std::string table,
+                        hdf5_file_options foptions = _get_fdefaults())
   {
+    static_assert(
+      array.ndim() == pattern_t::ndim(),
+      "Pattern dimension has to match matrix dimension");
 
     auto pattern    = array.pattern();
     auto pat_dims    = pattern.ndim();
     // Map native types to HDF5 types
     auto h5datatype = _convertType(*array.lbegin());
 
-    DASH_ASSERT_EQ(
-      pat_dims,
-      ndim,
-      "Pattern dimension has to match matrix dimension");
 
     /* HDF5 definition */
     hid_t   file_id;
@@ -664,8 +678,11 @@ private:
   template <
     dim_t ndim,
     class pattern_t >
-  static inline hdf5_tilepattern_spec<ndim> _get_tilepattern_hdf_spec(
-    pattern_t pattern)
+  typename std::enable_if <
+  _compatible_pattern<pattern_t>(),
+                      hdf5_tilepattern_spec<ndim >>::type
+                      static inline _get_tilepattern_hdf_spec(
+                        pattern_t pattern)
   {
     hdf5_tilepattern_spec<ndim> ts;
     // setup extends per dimension
@@ -693,8 +710,11 @@ private:
    */
   template <
     class pattern_t >
-  static inline hdf5_tilepattern_spec<1> _get_blockpattern_hdf_spec(
-    pattern_t pattern)
+  typename std::enable_if <
+  _compatible_pattern<pattern_t>(),
+                      hdf5_tilepattern_spec<1 >>::type
+                      static inline _get_blockpattern_hdf_spec(
+                        pattern_t pattern)
   {
     hdf5_tilepattern_spec<1> ts;
     long tilesize    = pattern.blocksize(0);
@@ -716,8 +736,11 @@ private:
    */
   template <
     class pattern_t >
-  static inline hdf5_tilepattern_spec<1> _get_blockpattern_hdf_spec_underfilled(
-    pattern_t pattern)
+  typename std::enable_if <
+  _compatible_pattern<pattern_t>(),
+                      hdf5_tilepattern_spec<1 >>::type
+                      static inline _get_blockpattern_hdf_spec_underfilled(
+                        pattern_t pattern)
   {
     hdf5_tilepattern_spec<1> ts;
     long tilesize    = pattern.blocksize(0);
