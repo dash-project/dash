@@ -15,6 +15,7 @@
 #include <dash/PatternProperties.h>
 
 #include <dash/util/TeamLocality.h>
+#include <dash/util/LocalityDomain.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
@@ -104,6 +105,8 @@ private:
     PatternArguments_t;
   typedef dash::util::TeamLocality
     TeamLocality_t;
+  typedef dash::util::LocalityDomain
+    LocalityDomain_t;
 
 public:
   typedef IndexType   index_type;
@@ -126,10 +129,10 @@ public:
     /// Size spec of the pattern.
     const SizeSpec_t     & sizespec,
     /// Locality hierarchy of the team.
-    const TeamLocality_t & team_loc)
+    TeamLocality_t       & team_loc)
   : _size(sizespec.size()),
     _local_sizes(initialize_local_sizes(
-        _size,
+        sizespec.size(),
         team_loc)),
     _block_offsets(initialize_block_offsets(
         _local_sizes)),
@@ -138,7 +141,7 @@ public:
         _size,
         _local_sizes)),
     _distspec(dash::BLOCKED),
-    _team(&team),
+    _team(&team_loc.team()),
     _myid(_team->myid()),
     _teamspec(*_team),
     _nunits(_team->size()),
@@ -664,18 +667,43 @@ public:
   }
 
 private:
+
+  /**
+   * Returns unit CPU capacities as percentage of the team's total CPU
+   * capacity, so values add up to 1.
+   */
+  std::vector<double> initialize_cpu_capacity_weights(
+    const TeamLocality_t & tloc) const
+  {
+    std::vector<double> unit_cpu_perc;
+    std::vector<size_t> unit_cpu_capacities;
+    size_t total_cpu_capacity = 0;
+
+    for (auto u : tloc.units()) {
+      auto & unit_hwinfo   = tloc.unit_locality(u).hwinfo();
+      size_t unit_cpu_cap  = unit_hwinfo.min_threads *
+                             unit_hwinfo.min_cpu_mhz;
+      total_cpu_capacity  += unit_cpu_cap;
+      unit_cpu_capacities.push_back(unit_cpu_cap);
+    }
+    for (auto unit_cpu_capacity : unit_cpu_capacities) {
+      unit_cpu_perc.push_back(static_cast<double>(unit_cpu_capacity) /
+                              static_cast<double>(total_cpu_capacity));
+    }
+    return unit_cpu_perc;
+  }
+
   /**
    * Initialize local sizes from pattern size, team and team locality
    * hierarchy.
    */
   std::vector<size_type> initialize_local_sizes(
     size_type              total_size,
-    const TeamLocality_t & locality,
-    const dash::Team     & team) const
+    const TeamLocality_t & locality) const
   {
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_local_sizes()", total_size);
     std::vector<size_type> l_sizes;
-    auto nunits = team.size();
+    auto nunits = locality.team().size();
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_local_sizes()", nunits);
     if (nunits == 1) {
       l_sizes.push_back(total_size);
@@ -683,10 +711,17 @@ private:
     if (nunits <= 1) {
       return l_sizes;
     }
-    size_type blocksize_u = 0;
-    for (size_type u = 0; u < nunits; ++u) {
-      l_sizes.push_back(blocksize_u);
+
+    std::vector<double> capacity_weights =
+      initialize_cpu_capacity_weights(locality);
+
+    size_t assigned_capacity = 0;
+    for (double weight : capacity_weights) {
+      size_t unit_capacity  = weight * total_size;
+      assigned_capacity    += unit_capacity;
+      l_sizes.push_back(unit_capacity);
     }
+    l_sizes.back() += (total_size - assigned_capacity);
 
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_local_sizes >", l_sizes);
     return l_sizes;

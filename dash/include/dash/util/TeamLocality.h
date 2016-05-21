@@ -116,7 +116,7 @@ public:
   }
 
   inline dash::util::UnitLocality unit_locality(
-    dart_unit_t unit)
+    dart_unit_t unit) const
   {
     return dash::util::UnitLocality(*_team, unit);
   }
@@ -175,6 +175,11 @@ public:
   }
 
   inline dash::Team & team()
+  {
+    return (nullptr == _team) ? dash::Team::Null() : *_team;
+  }
+
+  inline const dash::Team & team() const
   {
     return (nullptr == _team) ? dash::Team::Null() : *_team;
   }

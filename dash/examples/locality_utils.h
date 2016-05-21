@@ -72,6 +72,16 @@ void print_domain(
                                           << uloc->hwinfo.max_cpu_mhz
                                        << endl;
     }
+  } else if (domain->scope == DART_LOCALITY_SCOPE_GROUP) {
+    std::string uindent = indent;
+    uindent += std::string(5, ' ');
+    cout << uindent << "hwinfo:    " << "threads: "
+                                        << domain->hwinfo.min_threads << "..."
+                                        << domain->hwinfo.max_threads << " "
+                                     << "cpu_mhz: "
+                                        << domain->hwinfo.min_cpu_mhz << "..."
+                                        << domain->hwinfo.max_cpu_mhz
+                                     << endl;
   }
 
   if (domain->num_domains > 0) {

@@ -23,9 +23,9 @@
  * ======================================================================== */
 
 dart_ret_t dart_domain_team_locality(
-  dart_team_t               team,
-  const char              * domain_tag,
-  dart_domain_locality_t ** team_domain_out)
+  dart_team_t                     team,
+  const char                    * domain_tag,
+  dart_domain_locality_t       ** team_domain_out)
 {
   DART_LOG_DEBUG("dart_domain_locality() team(%d) domain(%s)",
                  team, domain_tag);
@@ -74,34 +74,34 @@ dart_ret_t dart_domain_copy(
 }
 
 dart_ret_t dart_domain_destruct(
-  dart_domain_locality_t       * domain)
+  dart_domain_locality_t        * domain)
 {
   return dart__base__locality__destruct_domain(domain);
 }
 
 dart_ret_t dart_domain_select(
-  dart_domain_locality_t       * domain_in,
-  int                            num_subdomain_tags,
-  const char                  ** subdomain_tags)
+  dart_domain_locality_t        * domain_in,
+  int                             num_subdomain_tags,
+  const char                   ** subdomain_tags)
 {
   return dart__base__locality__domain_select_subdomains(
            domain_in, subdomain_tags, num_subdomain_tags);
 }
 
 dart_ret_t dart_domain_exclude(
-  dart_domain_locality_t       * domain_in,
-  int                            num_subdomain_tags,
-  const char                  ** subdomain_tags)
+  dart_domain_locality_t        * domain_in,
+  int                             num_subdomain_tags,
+  const char                   ** subdomain_tags)
 {
   return dart__base__locality__domain_exclude_subdomains(
            domain_in, subdomain_tags, num_subdomain_tags);
 }
 
 dart_ret_t dart_domain_split(
-  const dart_domain_locality_t * domain_in,
-  dart_locality_scope_t          scope,
-  int                            num_parts,
-  dart_domain_locality_t       * domains_out)
+  const dart_domain_locality_t  * domain_in,
+  dart_locality_scope_t           scope,
+  int                             num_parts,
+  dart_domain_locality_t        * domains_out)
 {
   DART_LOG_DEBUG("dart_domain_split() team(%d) domain(%s) "
                  "into %d parts at scope %d",
@@ -164,10 +164,10 @@ dart_ret_t dart_domain_split(
 }
 
 dart_ret_t dart_domain_scope_tags(
-  const dart_domain_locality_t * domain_in,
-  dart_locality_scope_t          scope,
-  int                          * num_domains_out,
-  char                       *** domain_tags_out)
+  const dart_domain_locality_t  * domain_in,
+  dart_locality_scope_t           scope,
+  int                           * num_domains_out,
+  char                        *** domain_tags_out)
 {
   *num_domains_out = 0;
   *domain_tags_out = NULL;
@@ -180,10 +180,10 @@ dart_ret_t dart_domain_scope_tags(
 }
 
 dart_ret_t dart_domain_group(
-  dart_domain_locality_t       * domain_in,
-  int                            num_group_subdomains,
-  const char                  ** group_subdomain_tags,
-  char                         * group_domain_tag_out)
+  dart_domain_locality_t        * domain_in,
+  int                             num_group_subdomains,
+  const char                   ** group_subdomain_tags,
+  char                          * group_domain_tag_out)
 {
   return dart__base__locality__domain_group(
            domain_in,
@@ -197,9 +197,9 @@ dart_ret_t dart_domain_group(
  * ====================================================================== */
 
 dart_ret_t dart_unit_locality(
-  dart_team_t                    team,
-  dart_unit_t                    unit,
-  dart_unit_locality_t        ** locality)
+  dart_team_t                     team,
+  dart_unit_t                     unit,
+  dart_unit_locality_t         ** locality)
 {
   DART_LOG_DEBUG("dart_unit_locality() team(%d) unit(%d)", team, unit);
   *locality = NULL;
