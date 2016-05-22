@@ -318,7 +318,7 @@ public:
       long pattern_spec[ndim * 4];
       // Structure is
       // sizespec, teamspec, blockspec, blocksize
-      for (int i = 0; i < ndim; i++) {
+      for (int i = 0; i < ndim; ++i) {
         pattern_spec[i]              = pattern.sizespec().extent(i);
         pattern_spec[i + ndim]       = pattern.teamspec().extent(i);
         pattern_spec[i + (ndim * 2)] = pattern.blockspec().extent(i);
@@ -548,7 +548,7 @@ public:
     long hdf_dash_pattern[ndim * 4];
 
     // set matrix size according to hdf5 dataset dimensions
-    for (int i = 0; i < ndim; i++) {
+    for (int i = 0; i < ndim; ++i) {
       size_extents[i] = data_dimsf[i];
     }
 
@@ -568,7 +568,7 @@ public:
       H5Aclose(attribute_id);
       H5Sclose(attrspace);
 
-      for (int i = 0; i < ndim; i++) {
+      for (int i = 0; i < ndim; ++i) {
         size_extents[i]  = static_cast<size_t> (hdf_dash_pattern[i]);
         team_extents[i]  = static_cast<size_t> (hdf_dash_pattern[i + ndim]);
         dist_extents[i]  = dash::TILE(hdf_dash_pattern[i + (ndim * 3)]);
@@ -584,7 +584,7 @@ public:
       DASH_LOG_DEBUG("Matrix already allocated");
       // Check if matrix extents match data extents
       auto pattern_extents = matrix.pattern().extents();
-      for (int i = 0; i < ndim; i++) {
+      for (int i = 0; i < ndim; ++i) {
         DASH_ASSERT_EQ(
           size_extents[i],
           pattern_extents[i],
@@ -686,7 +686,7 @@ private:
   {
     hdf5_tilepattern_spec<ndim> ts;
     // setup extends per dimension
-    for (int i = 0; i < ndim; i++) {
+    for (int i = 0; i < ndim; ++i) {
       ts.data_dimsf[i] = pattern.extent(i);
       ts.data_dimsm[i] = pattern.local_extent(i);
       // number of tiles in this dimension
