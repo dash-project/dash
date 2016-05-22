@@ -694,11 +694,6 @@ private:
       ts.offset[i]     = pattern.local_block(0).offset(i);
       ts.block[i]      = pattern.blocksize(i);
       ts.stride[i]     = pattern.teamspec().extent(i) * ts.block[i];
-
-      DASH_LOG_DEBUG("COUNT", i, count[i]);
-      DASH_LOG_DEBUG("OFFSET", i, offset[i]);
-      DASH_LOG_DEBUG("BLOCK", i, block[i]);
-      DASH_LOG_DEBUG("STRIDE", i, stride[i]);
     }
     return ts;
   }
