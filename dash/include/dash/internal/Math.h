@@ -248,7 +248,7 @@ balance_extents(
 }
 
 /**
- * Seed initialization for dash::math::lrand().
+ * Seed initialization for \c dash::math::lrand().
  *
  * \see dash::math::lrand
  */
@@ -263,19 +263,33 @@ void slrand(unsigned seed = 0);
 double lrand();
 
 /**
- * Seed initialization for dash::math::xrand().
+ * Seed initialization for \c dash::math::xrand().
  *
  * \see dash::math::xrand
  */
 void sxrand(unsigned seed = 0);
 
 /**
- * More efficient alternative to std::rand, generates pseudo random
+ * More efficient alternative to \c std::rand, generates pseudo random
  * number based on XOR shift turns.
  *
  * \see dash::math::sxrand
  */
 double xrand();
+
+/**
+ * Seed initialization for \c dash::math::drand().
+ *
+ * \see dash::math::drand
+ */
+void sdrand();
+
+/**
+ * Random value between 0.0 and 1.0.
+ *
+ * \see dash::math::sdrand
+ */
+double drand();
 
 namespace internal {
 

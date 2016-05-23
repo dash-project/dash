@@ -11,7 +11,7 @@ using std::setprecision;
 
 using dash::util::BenchmarkParams;
 
-#define LOAD_BALANCE
+// #define LOAD_BALANCE
 
 // ==========================================================================
 // Type definitions
@@ -45,6 +45,7 @@ typedef struct benchmark_params_t
     size_t num_repeats;
     size_t min_repeats;
     size_t rep_base;
+    bool   verify;
   }
   benchmark_params;
 
@@ -64,8 +65,9 @@ typedef struct measurement_t
 // ==========================================================================
 
 measurement perform_test(
-  size_t NELEM,
-  size_t REPEAT);
+  size_t                   NELEM,
+  size_t                   REPEAT,
+  const benchmark_params & params);
 
 void print_measurement_header();
 void print_measurement_record(
@@ -126,6 +128,8 @@ int main(int argc, char **argv)
 
   print_measurement_header();
 
+  dash::barrier();
+
   num_repeats = params.num_repeats;
   for (size_t i = 0; i < num_iterations && num_repeats > 0;
        ++i, num_repeats /= params.rep_base)
@@ -135,7 +139,7 @@ int main(int argc, char **argv)
     num_repeats = std::max<size_t>(num_repeats, params.min_repeats);
 
     ts_start = Timer::Now();
-    res      = perform_test(size, num_repeats);
+    res      = perform_test(size, num_repeats, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
     print_measurement_record(bench_cfg, size, num_repeats,
                              time_s, res, params);
@@ -147,8 +151,9 @@ int main(int argc, char **argv)
 }
 
 measurement perform_test(
-  size_t NELEM,
-  size_t REPEAT)
+  size_t                   NELEM,
+  size_t                   REPEAT,
+  const benchmark_params & params)
 {
   measurement result;
   result.time_s        = 0;
@@ -169,6 +174,8 @@ measurement perform_test(
   // Standard deviation of durations:
   dash::Shared<double> time_sdv_us;
 
+  dash::Shared<IndexType> min_lidx_exp;
+
   double duration_us;
 
 #ifdef LOAD_BALANCE
@@ -182,26 +189,92 @@ measurement perform_test(
 
   ArrayType arr(pattern);
 
-  for (auto & el: arr.local) {
-    el = rand();
+  ElementType min_value_exp   = 17;
+  dart_unit_t min_value_unit  = static_cast<dart_unit_t>(
+                                  (arr.team().size() / 2) - 1);
+
+  for (size_t li = 0; li < arr.lsize(); li++) {
+    arr.local[li] = 42;
   }
-  arr.barrier();
+
+  if (myid == min_value_unit) {
+    IndexType min_value_lidx  = static_cast<IndexType>(
+                                  dash::math::drand() *
+                                  pattern.local_size());
+    arr.local[min_value_lidx] = min_value_exp;
+
+    min_lidx_exp.set(min_value_lidx);
+  }
+
+  dash::barrier();
 
   double total_time_us = 0;
   std::vector<double> history_time_us;
   for (size_t i = 0; i < REPEAT; i++) {
     dash::barrier();
 
-    auto ts_start = Timer::Now();
-    auto min = dash::min_element(arr.begin(), arr.end());
-    dash__unused(min);
+    auto ts_start  = Timer::Now();
+
+    auto min_git   = dash::min_element(arr.begin(), arr.end());
 
     auto time_us   = Timer::ElapsedSince(ts_start);
     total_time_us += time_us;
     history_time_us.push_back(time_us);
+
+    if (params.verify) {
+      auto        lpos       = min_git.lpos();
+      IndexType   lidx_exp   = min_lidx_exp.get();
+      ElementType min_actual = *min_git;
+
+      DASH_LOG_DEBUG("perform_test.verify", "actual value:", min_actual);
+      DASH_LOG_DEBUG("perform_test.verify", "actual unit:",  lpos.unit);
+      DASH_LOG_DEBUG("perform_test.verify", "actual lpos:",  lpos.index);
+      DASH_LOG_DEBUG("perform_test.verify", "exp. value:",   min_value_exp);
+      DASH_LOG_DEBUG("perform_test.verify", "exp. unit:",    min_value_unit);
+      DASH_LOG_DEBUG("perform_test.verify", "exp. lpos:",    lidx_exp);
+
+      if (min_git == arr.end()) {
+        DASH_THROW(
+          dash::exception::RuntimeError,
+          "Minimum value not found " <<
+          "in repeat " << i);
+      }
+      if (lpos.unit != min_value_unit) {
+        DASH_THROW(
+          dash::exception::RuntimeError,
+          "dash::min_element: " <<
+          "minimum "        << min_actual     << " " <<
+          "at unit "        << lpos.unit      << " " <<
+          "offset "         << lpos.index     << ", " <<
+          "expected unit "  << min_value_unit << " "
+          "in repeat "      << i);
+      }
+      if (lpos.index != lidx_exp) {
+        DASH_THROW(
+          dash::exception::RuntimeError,
+          "dash::min_element: " <<
+          "minimum "         << min_actual    << " " <<
+          "at unit "         << lpos.unit     << " " <<
+          "offset "          << lpos.index    << ", " <<
+          "expected offset " << lidx_exp      << " "
+          "in repeat "       << i);
+      }
+      if (min_actual != min_value_exp) {
+        DASH_THROW(
+          dash::exception::RuntimeError,
+          "dash::min_element: " <<
+          "minimum "         << min_actual    << " " <<
+          "at unit "         << lpos.unit     << " " <<
+          "offset "          << lpos.index    << ", " <<
+          "expected value "  << min_value_exp << " " <<
+          "in repeat "       << i);
+      }
+    }
+
+    dash::barrier();
   }
 
-  if(myid == 0) {
+  if (myid == 0) {
     time_us.set(total_time_us);
 
     std::sort(history_time_us.begin(), history_time_us.end());
@@ -292,6 +365,7 @@ benchmark_params parse_args(int argc, char * argv[])
   params.num_repeats    = 0;
   params.min_repeats    = 1;
   params.size_min       = 1024;
+  params.verify         = false;
 
   for (auto i = 1; i < argc; i += 2) {
     std::string flag = argv[i];
@@ -307,6 +381,9 @@ benchmark_params parse_args(int argc, char * argv[])
       params.min_repeats    = atoi(argv[i+1]);
     } else if (flag == "-rb") {
       params.rep_base       = atoi(argv[i+1]);
+    } else if (flag == "-v") {
+      params.verify         = true;
+      i++;
     }
   }
   if (params.num_repeats == 0) {
@@ -331,6 +408,7 @@ void print_params(
   bench_cfg.print_param("-rmin",   "min. repeats",    params.min_repeats);
   bench_cfg.print_param("-rb",     "rep. base",       params.rep_base);
   bench_cfg.print_param("-i",      "iterations",      params.num_iterations);
+  bench_cfg.print_param("-v",      "verify",          params.verify);
   bench_cfg.print_section_end();
 }
 
