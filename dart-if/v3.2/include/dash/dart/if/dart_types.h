@@ -418,6 +418,12 @@ typedef struct
 }
 dart_unit_locality_t;
 
+typedef struct
+{
+  int log_enabled;
+}
+dart_config_t;
+
 #define DART_INTERFACE_OFF
 
 #ifdef __cplusplus

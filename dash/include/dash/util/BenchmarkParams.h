@@ -73,7 +73,7 @@ public:
     std::ostringstream oss;
     std::string line;
     while(std::getline(lines, line)) {
-      oss << "--   " << line << std::endl;
+      oss << "--   " << line << '\n';
     }
     std::cout << oss.str();
   }
@@ -91,7 +91,7 @@ public:
     oss << "--   "
         << std::left  << name << " "
         << std::right << std::setw(value_w) << value
-        << std::endl;
+        << '\n';
     std::cout << oss.str();
   }
 
@@ -112,7 +112,7 @@ public:
         << std::left  << std::setw(flag_w)  << flag << " "
         << std::right << std::setw(value_w) << value
         << std::right << std::setw(desc_w)  << description
-        << std::endl;
+        << '\n';
     std::cout << oss.str();
   }
 

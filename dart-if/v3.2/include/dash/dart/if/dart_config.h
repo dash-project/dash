@@ -1,13 +1,14 @@
-#ifndef DART_CONFIG_H_INCLUDED
-#define DART_CONFIG_H_INCLUDED
+#ifndef DART__IF__CONFIG_H__
+#define DART__IF__CONFIG_H__
+
+#include <dash/dart/if/dart_types.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct
-{
-} dart_config_t;
+void dart_config(
+  dart_config_t ** config_out);
 
 #define DART_INTERFACE_OFF
 
@@ -17,4 +18,4 @@ typedef struct
 
 #define DART_INTERFACE_ON
 
-#endif /* DART_CONFIG_H_INCLUDED */
+#endif /* DART__IF__CONFIG_H__ */

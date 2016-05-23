@@ -18,6 +18,8 @@ namespace dash {
 namespace internal {
 namespace logging {
 
+bool _log_enabled = true;
+
 void Log_Recursive(
   const char* level,
   const char* file,
@@ -30,6 +32,7 @@ void Log_Recursive(
   while (std::getline(ss, item)) {
     Log_Line(level, file, line, context_tag, item);
   }
+  (DASH_LOG_OUTPUT_TARGET).flush();
 }
 
 } // namespace logging

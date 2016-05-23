@@ -12,11 +12,13 @@
 #include <stdio.h>
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_config.h>
 #include <dash/dart/if/dart_team_group.h>
 
 #ifdef DART_ENABLE_ASSERTIONS
 #include <assert.h>
 #endif
+
 
 /* Width of unit id field in log messages in number of characters */
 #define DASH__DART_LOGGING__UNIT__WIDTH 4
@@ -72,6 +74,11 @@ inline char * dart_base_logging_basename(char *path) {
 
 #define DART_LOG_TRACE(...) \
   do { \
+    dart_config_t * dart_cfg;  \
+    dart_config(&dart_cfg);    \
+    if (!dart_cfg->log_enabled) { \
+      break; \
+    } \
     const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
     int       sn_ret; \
     char      msg_buf[maxlen]; \
@@ -93,6 +100,11 @@ inline char * dart_base_logging_basename(char *path) {
 
 #define DART_LOG_DEBUG(...) \
   do { \
+    dart_config_t * dart_cfg;  \
+    dart_config(&dart_cfg);    \
+    if (!dart_cfg->log_enabled) { \
+      break; \
+    } \
     const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
     int       sn_ret; \
     char      msg_buf[maxlen]; \
@@ -114,6 +126,11 @@ inline char * dart_base_logging_basename(char *path) {
 
 #define DART_LOG_INFO(...) \
   do { \
+    dart_config_t * dart_cfg;  \
+    dart_config(&dart_cfg);    \
+    if (!dart_cfg->log_enabled) { \
+      break; \
+    } \
     const int maxlen = DASH__DART_LOGGING__MAX_MESSAGE_LENGTH; \
     int       sn_ret; \
     char      msg_buf[maxlen]; \

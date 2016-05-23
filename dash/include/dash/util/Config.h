@@ -85,6 +85,28 @@ public:
   static void
   set(
     const std::string & key,
+    bool                value)
+  {
+    DASH_LOG_TRACE("util::Config::set(string,bool)", key, value);
+
+    if (key == "ENABLE_LOG") {
+      if (value) {
+        dash::internal::logging::enable_log();
+        DASH_LOG_TRACE("util::Config::set", "Log enabled");
+      } else {
+        DASH_LOG_TRACE("util::Config::set", "Disabling log");
+        dash::internal::logging::disable_log();
+      }
+    }
+
+    std::ostringstream ss;
+    ss << value;
+    internal::__config_values[key] = ss.str();
+  }
+
+  static void
+  set(
+    const std::string & key,
     std::string         value);
 
   static typename std::map<std::string, std::string>::iterator

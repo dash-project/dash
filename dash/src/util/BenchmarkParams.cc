@@ -19,11 +19,6 @@ extern char ** environ;
 namespace dash {
 namespace util {
 
-using std::cout;
-using std::endl;
-using std::setw;
-using std::setprecision;
-
 BenchmarkParams::BenchmarkParams(
   const std::string & benchmark_name)
 : _name(benchmark_name)
@@ -133,13 +128,15 @@ void BenchmarkParams::print_header()
   }
   print_section_end();
 
+  std::ostringstream oss;
+
 #ifdef MPI_IMPL_ID
   print_section_start("MPI Environment Flags");
   for (auto flag : _config.env_mpi_config) {
     int val_w  = box_width - flag.first.length() - 6;
-    cout << "--   " << std::left   << flag.first << " "
-                    << setw(val_w) << std::right << flag.second
-         << endl;
+    oss << "--   " << std::left   << flag.first << " "
+                   << std::setw(val_w) << std::right << flag.second
+        << '\n';
   }
   print_section_end();
 #endif
@@ -149,10 +146,13 @@ void BenchmarkParams::print_header()
        flag != dash::util::Config::end(); ++flag)
   {
     int val_w  = box_width - flag->first.length() - 5;
-    cout << "--   " << std::left   << flag->first
-                    << setw(val_w) << std::right << flag->second
-         << endl;
+    oss << "--   " << std::left   << flag->first
+                   << std::setw(val_w) << std::right << flag->second
+        << '\n';
   }
+
+  std::cout << oss.str();
+
   print_section_end();
 
   print_section_start("DASH Configuration");
@@ -200,28 +200,33 @@ void BenchmarkParams::print_pinning()
   if (_myid != 0) {
     return;
   }
+
+  std::ostringstream oss;
+
   auto line_w = _header_width;
   auto host_w = line_w - 5 - 5 - 10 - 10 - 5;
   print_section_start("Process Pinning");
-  cout << std::left         << "--   "
-       << std::setw(5)      << "unit"
-       << std::setw(host_w) << "host"
-       << std::setw(10)     << "domain"
-       << std::right
-       << std::setw(10)     << "numa node"
-       << std::setw(5)      << "core"
-       << endl;
+  oss << std::left         << "--   "
+      << std::setw(5)      << "unit"
+      << std::setw(host_w) << "host"
+      << std::setw(10)     << "domain"
+      << std::right
+      << std::setw(10)     << "numa node"
+      << std::setw(5)      << "core"
+      << '\n';
   for (size_t unit = 0; unit < dash::size(); ++unit) {
     unit_pinning_type pin_info = Locality::Pinning(unit);
-    cout << std::left         << "--   "
-         << std::setw(5)      << pin_info.unit
-         << std::setw(host_w) << pin_info.host
-         << std::setw(10)     << pin_info.domain
-         << std::right
-         << std::setw(10)     << pin_info.numa_id
-         << std::setw(5)      << pin_info.cpu_id
-         << endl;
+    oss << std::left         << "--   "
+        << std::setw(5)      << pin_info.unit
+        << std::setw(host_w) << pin_info.host
+        << std::setw(10)     << pin_info.domain
+        << std::right
+        << std::setw(10)     << pin_info.numa_id
+        << std::setw(5)      << pin_info.cpu_id
+        << '\n';
   }
+  std::cout << oss.str();
+
   print_section_end();
 }
 
@@ -231,7 +236,11 @@ void BenchmarkParams::print_section_start(
   if (_myid != 0) {
     return;
   }
-  cout << std::left << "-- " << section_name << endl;
+
+  std::ostringstream oss;
+  oss << std::left << "-- " << section_name << '\n';
+
+  std::cout << oss.str();
 }
 
 void BenchmarkParams::print_section_end() const
@@ -239,9 +248,10 @@ void BenchmarkParams::print_section_end() const
   if (_myid != 0) {
     return;
   }
-  auto line_w = _header_width;
-  std::string separator(line_w, '-');
-  cout << separator << endl;
+  std::string separator(_header_width, '-');
+  separator += '\n';
+
+  std::cout << separator;
 }
 
 } // namespace util

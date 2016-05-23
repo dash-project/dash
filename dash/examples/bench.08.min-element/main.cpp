@@ -101,6 +101,9 @@ void print_team_locality(
 int main(int argc, char **argv)
 {
   dash::init(&argc, &argv);
+
+  dash::util::Config::set("ENABLE_LOG", false);
+
   Timer::Calibrate(0);
 
   measurement res;
@@ -199,7 +202,9 @@ measurement perform_test(
   PatternType pattern(NELEM);
 #endif
 
+  dash::util::Config::set("ENABLE_LOG", true);
   ArrayType arr(pattern);
+  dash::util::Config::set("ENABLE_LOG", false);
 
   ElementType min_value_exp   = 17;
   dart_unit_t min_value_unit  = static_cast<dart_unit_t>(
