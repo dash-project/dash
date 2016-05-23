@@ -154,7 +154,7 @@ dart_ret_t dart_hwinfo(
   }
   hwloc_topology_destroy(topology);
   DART_LOG_TRACE("dart_hwinfo: hwloc: "
-                 "num_sockets: %d num_numa: %d num_cores: %d",
+                 "num_sockets:%d num_numa:%d num_cores:%d",
                  hw.num_sockets, hw.num_numa, hw.num_cores);
 #endif /* DART_ENABLE_HWLOC */
 
@@ -174,7 +174,7 @@ dart_ret_t dart_hwinfo(
       hw.max_cpu_mhz = papi_hwinfo->cpu_max_mhz;
     }
     DART_LOG_TRACE("dart_hwinfo: PAPI: "
-                   "num_sockets: %d num_numa: %d num_cores: %d",
+                   "num_sockets:%d num_numa:%d num_cores:%d",
                    hw.num_sockets, hw.num_numa, hw.num_cores);
   }
 #endif /* DART_ENABLE_PAPI */
@@ -221,12 +221,12 @@ dart_ret_t dart_hwinfo(
   if (hw.num_numa < 0) {
     hw.num_numa = numa_max_node() + 1;
   }
-  if (hw.cpu_id >= 0) {
+  if (hw.numa_id < 0 && hw.cpu_id >= 0) {
     hw.numa_id  = numa_node_of_cpu(hw.cpu_id);
   }
   DART_LOG_TRACE("dart_hwinfo: numalib: "
-                 "num_sockets: %d num_numa: %d num_cores: %d",
-                 hw.num_sockets, hw.num_numa, hw.num_cores);
+                 "num_sockets:%d num_numa:%d numa_id:%d num_cores:%d",
+                 hw.num_sockets, hw.num_numa, hw.numa_id, hw.num_cores);
 #else
   if (hw.num_numa < 0) {
     hw.num_numa = 1;

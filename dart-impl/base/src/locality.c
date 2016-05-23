@@ -323,9 +323,15 @@ dart_ret_t dart__base__locality__domain_split_tags(
       domain_in, scope, &num_domains, &domain_tags),
     DART_OK);
 
+  DART_LOG_TRACE("dart__base__locality__domain_split_tags: "
+                 "number of domains in scope %d: %d", scope, num_domains);
+
   /* Group domains in split scope into specified number of parts: */
   int max_group_domains      = (num_domains + (num_parts-1)) / num_parts;
   int group_first_domain_idx = 0;
+
+  DART_LOG_TRACE("dart__base__locality__domain_split_tags: "
+                 "max. domains per group: %d", max_group_domains);
   /*
    * TODO: Preliminary implementation, should balance number of units in
    *       groups.
@@ -333,7 +339,7 @@ dart_ret_t dart__base__locality__domain_split_tags(
   for (int g = 0; g < num_parts; ++g) {
     int num_group_subdomains = max_group_domains;
     if ((g+1) * max_group_domains > num_domains) {
-      num_group_subdomains = (g * max_group_domains) - num_domains;
+      num_group_subdomains = num_domains - (g * max_group_domains);
     }
     DART_LOG_TRACE("dart__base__locality__domain_split_tags: "
                    "domains in group %d: %d", g, num_group_subdomains);
