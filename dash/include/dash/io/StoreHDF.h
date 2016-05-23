@@ -435,7 +435,7 @@ public:
       H5Aclose(attribute_id);
       H5Sclose(attrspace);
       // TODO: Array allocate(pattern) is currently not working.
-#if 1
+#if 0
       const pattern_t pattern(
         dash::SizeSpec<1>(static_cast<size_t>(data_dimsf[0])),
         dash::DistributionSpec<1>(dash::TILE(tilesize)),
@@ -455,7 +455,7 @@ public:
         "Array size does not match data extents");
     } else {
       // Auto deduce pattern
-#if 1
+#if 0
       const pattern_t pattern(
         dash::SizeSpec<1>(static_cast<size_t>(data_dimsf[0])),
         dash::DistributionSpec<1>(),
