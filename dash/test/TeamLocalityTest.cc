@@ -142,9 +142,6 @@ TEST_F(TeamLocalityTest, GroupUnits)
   if (dash::size() < 4) {
     return;
   }
-  if (_dash_id != 0) {
-    return;
-  }
 
   dash::Team & team = dash::Team::All();
 
@@ -238,9 +235,6 @@ TEST_F(TeamLocalityTest, GroupUnits)
 TEST_F(TeamLocalityTest, SplitGroups)
 {
   if (dash::size() < 4) {
-    return;
-  }
-  if (_dash_id != 0) {
     return;
   }
 
