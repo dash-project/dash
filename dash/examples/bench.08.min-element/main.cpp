@@ -11,6 +11,8 @@ using std::setprecision;
 
 using dash::util::BenchmarkParams;
 
+#define LOAD_BALANCE
+
 // ==========================================================================
 // Type definitions
 // ==========================================================================
@@ -19,8 +21,15 @@ typedef int
   ElementType;
 typedef dash::default_index_t
   IndexType;
+
+#ifdef LOAD_BALANCE
 typedef dash::LoadBalancePattern<1>
   PatternType;
+#else
+typedef dash::Pattern<1>
+  PatternType;
+#endif
+
 typedef dash::Array<ElementType, IndexType, PatternType>
   ArrayType;
 typedef dash::util::Timer<dash::util::TimeMeasure::Clock>
@@ -75,6 +84,10 @@ void print_params(
   const BenchmarkParams  & bench_cfg,
   const benchmark_params & params);
 
+void print_local_sizes(
+  const BenchmarkParams  & bench_cfg,
+  const PatternType      & pattern);
+
 // ==========================================================================
 // Benchmark Implementation
 // ==========================================================================
@@ -99,8 +112,17 @@ int main(int argc, char **argv)
 
   auto   bench_cfg        = bench_params.config();
 
+#ifdef LOAD_BALANCE
+  dash::util::TeamLocality tloc(dash::Team::All());
+  PatternType pattern(
+    dash::SizeSpec<1>(size_inc),
+    tloc);
+#else
+  PatternType pattern(size_inc);
+#endif
 
   print_params(bench_params, params);
+  print_local_sizes(bench_params, pattern);
 
   print_measurement_header();
 
@@ -149,12 +171,16 @@ measurement perform_test(
 
   double duration_us;
 
+#ifdef LOAD_BALANCE
   dash::util::TeamLocality tloc(dash::Team::All());
+  PatternType pattern(
+    dash::SizeSpec<1>(NELEM),
+    tloc);
+#else
+  PatternType pattern(NELEM);
+#endif
 
-  ArrayType arr(
-      PatternType(
-        dash::SizeSpec<1>(NELEM),
-        tloc));
+  ArrayType arr(pattern);
 
   for (auto & el: arr.local) {
     el = rand();
@@ -210,16 +236,16 @@ void print_measurement_header()
 {
   if (dash::myid() == 0) {
     cout << std::right
-         << std::setw(5)  << "units"      << ","
-         << std::setw(9)  << "mpi.impl"   << ","
-         << std::setw(8)  << "repeats"    << ","
-         << std::setw(8)  << "size"       << ","
-         << std::setw(12) << "time.s"     << ","
-         << std::setw(12) << "time.min.s" << ","
-         << std::setw(12) << "time.med.s" << ","
-         << std::setw(12) << "time.max.s" << ","
-         << std::setw(12) << "time.sdv.s" << ","
-         << std::setw(12) << "total.s"    << ","
+         << std::setw(5)  << "units"       << ","
+         << std::setw(9)  << "mpi.impl"    << ","
+         << std::setw(8)  << "repeats"     << ","
+         << std::setw(12) << "size"        << ","
+         << std::setw(12) << "time.s"      << ","
+         << std::setw(12) << "time.min.us" << ","
+         << std::setw(12) << "time.med.us" << ","
+         << std::setw(12) << "time.max.us" << ","
+         << std::setw(12) << "time.sdv.us" << ","
+         << std::setw(12) << "total.s"     << ","
          << std::setw(9)  << "mkeys/s"
          << endl;
   }
@@ -235,23 +261,23 @@ void print_measurement_record(
 {
   if (dash::myid() == 0) {
     std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
-    double mkps       = measurement.mkeys_per_s;
-    double time_s     = measurement.time_s;
-    double time_min_s = measurement.time_min_us * 1.0e-06;
-    double time_max_s = measurement.time_max_us * 1.0e-06;
-    double time_med_s = measurement.time_med_us * 1.0e-06;
-    double time_sdv_s = measurement.time_sdv_us * 1.0e-06;
+    double mkps        = measurement.mkeys_per_s;
+    double time_s      = measurement.time_s;
+    double time_min_us = measurement.time_min_us;
+    double time_max_us = measurement.time_max_us;
+    double time_med_us = measurement.time_med_us;
+    double time_sdv_us = measurement.time_sdv_us;
     cout << std::right
-         << std::setw(5) << dash::size()  << ","
-         << std::setw(9) << mpi_impl      << ","
-         << std::setw(8) << num_repeats   << ","
-         << std::setw(8) << size          << ","
-         << std::fixed << setprecision(2) << setw(12) << time_s     << ","
-         << std::fixed << setprecision(2) << setw(12) << time_min_s << ","
-         << std::fixed << setprecision(2) << setw(12) << time_med_s << ","
-         << std::fixed << setprecision(2) << setw(12) << time_max_s << ","
-         << std::fixed << setprecision(2) << setw(12) << time_sdv_s << ","
-         << std::fixed << setprecision(2) << setw(12) << secs       << ","
+         << std::setw(5)  << dash::size() << ","
+         << std::setw(9)  << mpi_impl     << ","
+         << std::setw(8)  << num_repeats  << ","
+         << std::setw(12) << size         << ","
+         << std::fixed << setprecision(2) << setw(12) << time_s      << ","
+         << std::fixed << setprecision(2) << setw(12) << time_min_us << ","
+         << std::fixed << setprecision(2) << setw(12) << time_med_us << ","
+         << std::fixed << setprecision(2) << setw(12) << time_max_us << ","
+         << std::fixed << setprecision(2) << setw(12) << time_sdv_us << ","
+         << std::fixed << setprecision(2) << setw(12) << secs        << ","
          << std::fixed << setprecision(2) << setw(9)  << mkps
          << endl;
   }
@@ -260,9 +286,9 @@ void print_measurement_record(
 benchmark_params parse_args(int argc, char * argv[])
 {
   benchmark_params params;
-  params.size_base      = 10;
+  params.size_base      = 2;
   params.num_iterations = 4;
-  params.rep_base       = 8;
+  params.rep_base       = 2;
   params.num_repeats    = 0;
   params.min_repeats    = 1;
   params.size_min       = 1024;
@@ -284,7 +310,8 @@ benchmark_params parse_args(int argc, char * argv[])
     }
   }
   if (params.num_repeats == 0) {
-    params.num_repeats = std::pow(params.rep_base, params.num_iterations);
+    params.num_repeats = params.size_min *
+                         std::pow(params.rep_base, params.num_iterations);
   }
   return params;
 }
@@ -304,5 +331,18 @@ void print_params(
   bench_cfg.print_param("-rmin",   "min. repeats",    params.min_repeats);
   bench_cfg.print_param("-rb",     "rep. base",       params.rep_base);
   bench_cfg.print_param("-i",      "iterations",      params.num_iterations);
+  bench_cfg.print_section_end();
+}
+
+void print_local_sizes(
+  const dash::util::BenchmarkParams & bench_cfg,
+  const PatternType                 & pattern)
+{
+  bench_cfg.print_section_start("Data Partitioning");
+  for (size_t u = 0; u < pattern.team().size(); u++) {
+    std::ostringstream uss;
+    uss << "unit " << setw(2) << u;
+    bench_cfg.print_param(uss.str(), "local size", pattern.local_size(u));
+  }
   bench_cfg.print_section_end();
 }
