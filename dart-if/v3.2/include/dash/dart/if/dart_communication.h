@@ -2,6 +2,7 @@
 #define DART__COMMUNICATION_H_
 
 #include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_globmem.h>
 
 /**
  * \file dart_communication.h
@@ -69,6 +70,19 @@ dart_ret_t dart_allgather(
   void *recvbuf,
   size_t nbytes,
 	dart_team_t team);
+
+/**
+ * DART Equivalent to MPI allreduce.
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_allreduce(
+  void           * sendbuf,
+  void           * recvbuf,
+  size_t           nbytes,
+  dart_datatype_t  dtype,
+  dart_operation_t op,
+  dart_team_t      team);
 
 /**
  * DART Equivalent to MPI reduce.

@@ -384,7 +384,7 @@ public:
     dart_gptr_t gptr = _begptr;
     // Resolve global unit id
     dart_unit_t lunit, gunit;
-    DASH_LOG_DEBUG("GlobMem.at (=g_begp)  ", gptr);
+    DASH_LOG_TRACE_VAR("GlobMem.at (=g_begptr)", gptr);
     DASH_LOG_TRACE_VAR("GlobMem.at", gptr.unitid);
     // Resolve local unit id from global unit id in global pointer:
     dart_team_unit_g2l(_teamid, gptr.unitid, &lunit);

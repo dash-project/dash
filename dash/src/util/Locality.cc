@@ -3,6 +3,9 @@
 #include <dash/Array.h>
 #include <dash/algorithm/Copy.h>
 
+#include <dash/dart/if/dart_types.h>
+#include <dash/dart/if/dart_locality.h>
+
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -10,148 +13,114 @@
 #include <string>
 #include <cstring>
 
-#ifdef DASH_ENABLE_HWLOC
-#include <hwloc.h>
-#include <hwloc/helper.h>
-#endif
+
+namespace dash {
+namespace util {
+
+static void print_domain(
+  std::ostream                 & ostr,
+  dart_team_t                    team,
+  const dart_domain_locality_t * domain,
+  std::string                    indent = "");
+
+} // namespace util
+} // namespace dash
+
+std::ostream & operator<<(
+  std::ostream                 & os,
+  const dart_domain_locality_t & domain_loc)
+{
+  std::ostringstream ss;
+  dash::util::print_domain(ss, domain_loc.team, &domain_loc);
+  return operator<<(os, ss.str());
+}
+
+std::ostream & operator<<(
+  std::ostream                 & os,
+  const dart_unit_locality_t   & unit_loc)
+{
+  std::ostringstream ss;
+  ss << "dart_unit_locality_t("
+     <<   "unit:"      << unit_loc.unit               << " "
+     <<   "domain:'"   << unit_loc.domain_tag         << "' "
+     <<   "host:'"     << unit_loc.host               << "' "
+     <<   "numa_id:'"  << unit_loc.hwinfo.numa_id     << "' "
+     <<   "core_id:"   << unit_loc.hwinfo.cpu_id      << " "
+     <<   "n_cores:"   << unit_loc.hwinfo.num_cores   << " "
+     <<   "cpu_mhz:"   << unit_loc.hwinfo.min_cpu_mhz << ".."
+                       << unit_loc.hwinfo.max_cpu_mhz << " "
+     <<   "threads:"   << unit_loc.hwinfo.max_threads
+     << ")";
+  return operator<<(os, ss.str());
+}
+
+std::ostream & operator<<(
+  std::ostream                 & os,
+  dash::util::Locality::Scope    scope)
+{
+  return os << (static_cast<dart_locality_scope_t>(scope));
+}
+
+std::ostream & operator<<(
+  std::ostream                 & os,
+  dart_locality_scope_t          scope)
+{
+  switch(scope) {
+    case DART_LOCALITY_SCOPE_GLOBAL:  os << "GLOBAL";    break;
+    case DART_LOCALITY_SCOPE_GROUP:   os << "GROUP";     break;
+    case DART_LOCALITY_SCOPE_NETWORK: os << "NETWORK";   break;
+    case DART_LOCALITY_SCOPE_NODE:    os << "NODE";      break;
+    case DART_LOCALITY_SCOPE_MODULE:  os << "MODULE";    break;
+    case DART_LOCALITY_SCOPE_NUMA:    os << "NUMA";      break;
+    case DART_LOCALITY_SCOPE_UNIT:    os << "UNIT";      break;
+    case DART_LOCALITY_SCOPE_CORE:    os << "CORE";      break;
+    default:                          os << "UNDEFINED"; break;
+  }
+  return os;
+}
 
 namespace dash {
 namespace util {
 
 void Locality::init()
 {
-  _cache_sizes[0]      = -1;
-  _cache_sizes[1]      = -1;
-  _cache_sizes[2]      = -1;
-  _cache_line_sizes[0] = -1;
-  _cache_line_sizes[1] = -1;
-  _cache_line_sizes[2] = -1;
-  _num_nodes           = -1;
-  _num_sockets         = -1;
-  _num_numa            = -1;
-  _num_cpus            = -1;
-#ifdef DASH_ENABLE_HWLOC
-  hwloc_topology_t topology;
-  hwloc_topology_init(&topology);
-  hwloc_topology_load(topology);
-  // Resolve cache sizes, ordered by locality (i.e. smallest first):
-  int level = 0;
-  hwloc_obj_t obj;
-  for (obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_PU, 0);
-       obj;
-       obj = obj->parent) {
-    if (obj->type == HWLOC_OBJ_CACHE) {
-      _cache_sizes[level]      = obj->attr->cache.size;
-      _cache_line_sizes[level] = obj->attr->cache.linesize;
-      ++level;
-    }
+  DASH_LOG_DEBUG("dash::util::Locality::init()");
+
+  if (dart_unit_locality(DART_TEAM_ALL, dash::myid(), &_unit_loc)
+      != DART_OK) {
+    DASH_THROW(dash::exception::RuntimeError,
+               "Locality::init(): dart_unit_locality failed " <<
+               "for unit " << dash::myid());
   }
-  // Resolve number of sockets:
-  int depth = hwloc_get_type_depth(topology, HWLOC_OBJ_SOCKET);
-  if (depth != HWLOC_TYPE_DEPTH_UNKNOWN) {
-    _num_sockets = hwloc_get_nbobjs_by_depth(topology, depth);
+  DASH_LOG_TRACE_VAR("dash::util::Locality::init", _unit_loc);
+  if (_unit_loc == nullptr) {
+    DASH_THROW(dash::exception::RuntimeError,
+               "Locality::init(): dart_unit_locality returned nullptr " <<
+               "for unit " << dash::myid());
   }
-	// Resolve number of NUMA nodes:
-  int n_numa_nodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NODE);
-  if (n_numa_nodes > 0) {
-    _num_numa = n_numa_nodes;
+
+  if (dart_domain_team_locality(
+        DART_TEAM_ALL, _unit_loc->domain_tag, &_domain_loc)
+      != DART_OK) {
+    DASH_THROW(dash::exception::RuntimeError,
+               "Locality::init(): dart_domain_locality failed " <<
+               "for domain '" << _unit_loc->domain_tag << "'");
   }
-	// Resolve number of cores per numa:
-	int n_cores = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_CORE);
-	if (n_cores > 0){
-		_num_cpus = n_cores;
-	}
-  hwloc_topology_destroy(topology);
-#endif
-#ifdef DASH_ENABLE_PAPI
-  int retval = PAPI_library_init(PAPI_VER_CURRENT);
-  if (retval != PAPI_VER_CURRENT && retval > 0) {
-    DASH_LOG_ERROR(
-      "dash::util::Locality::init(): PAPI version mismatch");
+  DASH_LOG_TRACE_VAR("dash::util::Locality::init", _domain_loc);
+  if (_domain_loc == nullptr) {
+    DASH_THROW(dash::exception::RuntimeError,
+               "Locality::init(): dart_domain_locality returned nullptr " <<
+               "for domain '" << _unit_loc->domain_tag << "'");
   }
-  else if (retval < 0) {
-    DASH_LOG_ERROR(
-      "dash::util::Locality::init(): PAPI init failed");
-  } else {
-    const PAPI_hw_info_t * hwinfo = PAPI_get_hardware_info();
-    if (hwinfo == NULL) {
-      DASH_LOG_ERROR(
-        "dash::util::Locality::init(): PAPI get hardware info failed");
-    } else {
-      if (_num_sockets < 0) {
-        _num_sockets = hwinfo->sockets;
-      }
-      if (_num_numa < 0) {
-        _num_numa = hwinfo->nnodes;
-      }
-      if (_num_cpus < 0) {
-        auto cores_per_socket = hwinfo->cores;
-        _num_cpus = _num_sockets * cores_per_socket;
-				DASH_LOG_DEBUG("_num_cpus first got by PAPI", _num_cpus);
-      }
-    }
-  }
-#endif
-#ifdef DASH__PLATFORM__POSIX
-  if (_num_cpus < 0) {
-		// be careful: includes hyperthreading
-    int ret = sysconf(_SC_NPROCESSORS_ONLN);
-    _num_cpus = (ret > 0) ? ret : _num_cpus;
-		DASH_LOG_DEBUG("_num_cpus first got by DASH__PLATFORM_POSIX", _num_cpus);
-  }
-#endif
-#ifdef DASH_ENABLE_NUMA
-  if (_num_numa < 0) {
-    _num_numa = numa_max_node() + 1;
-  }
-#endif
-  if (_num_nodes < 0 && _num_cpus > 0) {
-    _num_nodes = std::max<int>(dash::size() / _num_cpus, 1);
-  }
-  if (_num_nodes   < 0) { _num_nodes   = 1; }
-  if (_num_sockets < 0) { _num_sockets = 1; }
-  if (_num_numa    < 0) { _num_numa    = 1; }
-  if (_num_cpus    < 0) { _num_cpus    = 1; }
 
-  // Collect process pinning information:
-  dash::Array<UnitPinning> pinning(dash::size());
+  _cache_sizes[0]      = _domain_loc->hwinfo.cache_sizes[0];
+  _cache_sizes[1]      = _domain_loc->hwinfo.cache_sizes[1];
+  _cache_sizes[2]      = _domain_loc->hwinfo.cache_sizes[2];
+  _cache_line_sizes[0] = _domain_loc->hwinfo.cache_line_sizes[0];
+  _cache_line_sizes[1] = _domain_loc->hwinfo.cache_line_sizes[1];
+  _cache_line_sizes[2] = _domain_loc->hwinfo.cache_line_sizes[2];
 
-  int cpu       = dash::util::Locality::MyCPU();
-  int numa_node = dash::util::Locality::MyNUMANode();
-
-  UnitPinning my_pin_info;
-  my_pin_info.rank      = dash::myid();
-  my_pin_info.cpu       = cpu;
-  my_pin_info.numa_node = numa_node;
-  gethostname(my_pin_info.host, 100);
-
-  pinning[dash::myid()] = my_pin_info;
-
-  // Ensure pinning data is ready:
-  dash::barrier();
-
-  // Create local copy of pinning info:
-
-  // TODO:
-  // Change to directly copying to local_vector.begin()
-  // when dash::copy is available for iterator output
-  // ranges.
-
-  // Copy into temporary array:
-  UnitPinning * local_copy_tmp = new UnitPinning[pinning.size()];
-
-  auto copy_end = dash::copy(pinning.begin(), pinning.end(),
-                             local_copy_tmp);
-  auto n_copied = copy_end - local_copy_tmp;
-  DASH_LOG_TRACE_VAR("dash::util::Locality::init", n_copied);
-  // Copy from temporary array to local vector:
-  _unit_pinning.insert(_unit_pinning.end(),
-                       local_copy_tmp, local_copy_tmp + n_copied);
-  // Free temporary array:
-  delete[] local_copy_tmp;
-
-  // Wait for completion of the other units' copy operations:
-  dash::barrier();
+  DASH_LOG_DEBUG("dash::util::Locality::init >");
 }
 
 std::ostream & operator<<(
@@ -160,20 +129,129 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   ss << "dash::util::Locality::UnitPinning("
-     << "rank:" << upi.rank << " "
-     << "host:" << upi.host << " "
-     << "cpu:"  << upi.cpu  << " "
-     << "numa:" << upi.numa_node << ")";
+     << "unit:"         << upi.unit         << " "
+     << "host:"         << upi.host         << " "
+     << "domain:"       << upi.domain       << " "
+     << "numa_id:"      << upi.numa_id      << " "
+     << "core_id:"      << upi.cpu_id       << " "
+     << "num_cores:"    << upi.num_cores    << " "
+     << "max_threads:"  << upi.num_threads  << ")";
   return operator<<(os, ss.str());
 }
 
-int Locality::_num_nodes   = -1;
-int Locality::_num_sockets = -1;
-int Locality::_num_numa    = -1;
-int Locality::_num_cpus    = -1;
-std::vector<Locality::UnitPinning> Locality::_unit_pinning;
-std::array<int, 3>                 Locality::_cache_sizes;
-std::array<int, 3>                 Locality::_cache_line_sizes;
+dart_unit_locality_t   * Locality::_unit_loc   = nullptr;
+dart_domain_locality_t * Locality::_domain_loc = nullptr;
+
+std::array<int, 3> Locality::_cache_sizes;
+std::array<int, 3> Locality::_cache_line_sizes;
+
+static void print_domain(
+  std::ostream                 & ostr,
+  dart_team_t                    team,
+  const dart_domain_locality_t * domain,
+  std::string                    indent)
+{
+  using namespace std;
+
+  ostr << indent << "scope:   " << domain->scope << " "
+                                << "(level " << domain->level << ")"
+       << endl
+       << indent << "rel.idx: " << domain->relative_index
+       << endl;
+
+  if (static_cast<int>(domain->scope) <
+      static_cast<int>(DART_LOCALITY_SCOPE_NODE)) {
+    ostr << indent << "nodes:   " << domain->num_nodes << endl;
+  }
+
+  ostr << indent << "NUMAs:   " << domain->hwinfo.num_numa << endl;
+
+  if (static_cast<int>(domain->scope) >=
+      static_cast<int>(DART_LOCALITY_SCOPE_NUMA)) {
+    ostr << indent << "NUMA id: " << domain->hwinfo.numa_id  << endl;
+  }
+
+  if (domain->num_units > 0) {
+    ostr << indent << "units:   " << "{ ";
+    for (int u = 0; u < domain->num_units; ++u) {
+      dart_unit_t g_unit_id;
+      dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
+      ostr << g_unit_id;
+      if (u < domain->num_units-1) {
+        ostr << ", ";
+      }
+    }
+    ostr << " }" << endl;
+  }
+
+  if (domain->scope == DART_LOCALITY_SCOPE_CORE) {
+    std::string uindent = indent;
+    uindent += std::string(9, ' ');
+
+    for (int u = 0; u < domain->num_units; ++u) {
+      dart_unit_t            unit_id  = domain->unit_ids[u];
+      dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
+      dart_unit_locality_t * uloc;
+      dart_unit_locality(team, unit_id, &uloc);
+      dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
+      ostr << uindent << "unit id:   " << uloc->unit << "  ("
+                                       << "in team " << uloc->team << ", "
+                                       << "global: " << unit_gid   << ")"
+                      << endl;
+      ostr << uindent << "domain:    " << uloc->domain_tag
+                      << endl;
+      ostr << uindent << "host:      " << uloc->host
+                      << endl;
+      ostr << uindent << "hwinfo:    " << "numa_id: "
+                                          << uloc->hwinfo.numa_id << " "
+                                       << "cpu_id: "
+                                          << uloc->hwinfo.cpu_id  << " "
+                                       << "threads: "
+                                          << uloc->hwinfo.min_threads << "..."
+                                          << uloc->hwinfo.max_threads << " "
+                                       << "cpu_mhz: "
+                                          << uloc->hwinfo.min_cpu_mhz << "..."
+                                          << uloc->hwinfo.max_cpu_mhz
+                                       << endl;
+    }
+  } else if (domain->scope == DART_LOCALITY_SCOPE_GROUP) {
+    ostr << indent << "hwinfo:  " << "threads: "
+                                     << domain->hwinfo.min_threads << "..."
+                                     << domain->hwinfo.max_threads << " "
+                                  << "cpu_mhz: "
+                                     << domain->hwinfo.min_cpu_mhz << "..."
+                                     << domain->hwinfo.max_cpu_mhz
+                                  << endl;
+  }
+
+  if (domain->num_domains > 0) {
+    ostr << indent << "domains: " << domain->num_domains << endl;
+
+    for (int d = 0; d < domain->num_domains; ++d) {
+      if (static_cast<int>(domain->domains[d].scope) <=
+          static_cast<int>(DART_LOCALITY_SCOPE_CORE)) {
+
+        ostr << indent;
+        std::string sub_indent = indent;
+
+        if (d < domain->num_domains - 1) {
+          sub_indent += "|";
+          ostr << "|";
+        } else if (d == domain->num_domains - 1) {
+          sub_indent += " ";
+          ostr << "'";
+        }
+        sub_indent += std::string(8, ' ');
+
+        ostr << "-- [" << d << "]: "
+             << "(" << domain->domains[d].domain_tag << ")"
+             << endl;
+
+        print_domain(ostr, team, &domain->domains[d], sub_indent);
+      }
+    }
+  }
+}
 
 } // namespace util
 } // namespace dash

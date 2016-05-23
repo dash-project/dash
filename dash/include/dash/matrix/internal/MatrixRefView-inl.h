@@ -53,10 +53,6 @@ MatrixRefView<T, NumDim, PatternT>
   auto pattern       = _mat->pattern();
   auto memory_layout = pattern.memory_layout();
   // MatrixRef coordinate and viewspec to global linear index:
-  auto coord_inverse = _coord;
-  for (dim_t d = 0; d < NumDim; ++d) {
-    coord_inverse[d] = _coord[NumDim - 1 - d];
-  }
   auto global_index  = memory_layout.at(_coord, _viewspec);
   DASH_LOG_TRACE_VAR("MatrixRefView.global_reference", global_index);
   auto global_begin  = _mat->begin();

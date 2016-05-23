@@ -69,5 +69,16 @@ double xrand()
   return r * 1.0e-8;
 }
 
+void sdrand(unsigned seed)
+{
+  std::srand(time(NULL) + seed);
 }
+
+double drand()
+{
+  return static_cast<double>(std::rand()) /
+         static_cast<double>(RAND_MAX);
 }
+
+} // namespace math
+} // namespace dash

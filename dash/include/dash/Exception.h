@@ -7,6 +7,10 @@
 #include <dash/exception/NotImplemented.h>
 #include <dash/exception/AssertionFailed.h>
 #include <dash/exception/StackTrace.h>
+
+#include <dash/internal/Macro.h>
+#include <dash/internal/Logging.h>
+
 #include <sstream>
 
 #define DASH_STACK_TRACE() do { \
@@ -17,6 +21,7 @@
     ::std::ostringstream os; \
     os << "[ Unit " << dash::myid() << " ] "; \
     os << msg_stream; \
+    DASH_LOG_ERROR(dash__toxstr(excep_type), os.str()); \
     throw(excep_type(os.str())); \
   } while(0)
 

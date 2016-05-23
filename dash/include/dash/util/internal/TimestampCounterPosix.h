@@ -8,9 +8,13 @@
 #include <iostream>
 
 #include <dash/internal/Config.h>
-#if !defined(DASH__ARCH__ARCH_X86_64) && \
-    !defined(DASH__ARCH__ARCH_X86_32) && \
-    !defined(DASH__ARCH__ARCH_ARMV6)
+#if ((defined(DASH__ARCH__ARCH_X86_64) || \
+      defined(DASH__ARCH__ARCH_X86_32)) && \
+     !defined(DASH__ARCH__HAS_RDTSC)) \
+    || \
+    (!defined(DASH__ARCH__ARCH_X86_64) && \
+     !defined(DASH__ARCH__ARCH_X86_32) && \
+     !defined(DASH__ARCH__ARCH_ARMV6))
 #include <sys/time.h>
 #endif // ARM <= V3 or MIPS
 
@@ -36,12 +40,12 @@ public:
    *
    */
   static inline uint64_t ArchCycleCount() {
-#if defined(DASH__ARCH__ARCH_X86_64)
+#if defined(DASH__ARCH__HAS_RDTSC) && defined(DASH__ARCH__ARCH_X86_64)
     uint64_t rax, rdx;
     uint32_t tsc_aux;
     __asm__ volatile ("rdtscp\n" : "=a" (rax), "=d" (rdx), "=c" (tsc_aux) : : );
     return (rdx << 32) + rax;
-#elif defined(DASH__ARCH__ARCH_X86_32)
+#elif defined(DASH__ARCH__HAS_RDTSC) && defined(DASH__ARCH__ARCH_X86_32)
     int64_t ret;
     __asm__ volatile ("rdtsc" : "=A" (ret) );
     return ret;

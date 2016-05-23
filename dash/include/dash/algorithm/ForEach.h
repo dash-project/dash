@@ -53,7 +53,8 @@ void for_each(
 /**
  * Invoke a function on every element in a range distributed by a pattern.
  * Being a collaborative operation, each unit will invoke the given
- * function on its local elements only.
+ * function on its local elements only. The index passed to the function is
+ * a global index.
  *
  * \tparam      ElementType  Type of the elements in the sequence
  * \tparam      IndexType    Parameter type expected by function to

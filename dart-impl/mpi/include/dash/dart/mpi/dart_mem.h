@@ -1,7 +1,9 @@
-//https://github.com/cloudwu/buddy
-
 #ifndef BUDDY_MEMORY_ALLOCATION_H
 #define BUDDY_MEMORY_ALLOCATION_H
+
+/* TODO: Needs refactoring, implementation from
+ *       https://github.com/cloudwu/buddy
+ */
 
 #include <stdio.h>
 #include <stdlib.h>

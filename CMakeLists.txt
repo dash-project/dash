@@ -45,21 +45,23 @@ option(ENABLE_SHARED_WINDOWS
 option(ENABLE_DEFAULT_INDEX_TYPE_LONG
        "Specify whether to use int64_t as default index type" on)
 option(ENABLE_LIBNUMA
-       "Specify whether libnuma features are enabled" on)
+       "Specify whether libnuma support is enabled" on)
 option(ENABLE_HWLOC
-       "Specify whether hwloc features are enabled" on)
+       "Specify whether hwloc support is enabled" on)
+option(ENABLE_LIKWID
+       "Specify whether likwid support is enabled" off)
 option(ENABLE_PAPI
-       "Specify whether PAPI features are enabled" on)
+       "Specify whether PAPI support is enabled" on)
 option(ENABLE_MKL
-       "Specify whether MKL features are enabled" on)
+       "Specify whether MKL support is enabled" on)
 option(ENABLE_BLAS
-       "Specify whether BLAS features are enabled" on)
+       "Specify whether BLAS support is enabled" on)
 option(ENABLE_LAPACK
-       "Specify whether LAPACK features are enabled" on)
+       "Specify whether LAPACK support is enabled" on)
 option(ENABLE_SCALAPACK
-       "Specify whether ScaLAPACK features are enabled" on)
+       "Specify whether ScaLAPACK support is enabled" on)
 option(ENABLE_PLASMA
-       "Specify whether PLASMA features are enabled" on)
+       "Specify whether PLASMA support is enabled" on)
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MessageColor.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)
@@ -67,9 +69,13 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
+
+# Load build modules to locate libraries after environment setup
+# has been loaded:
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PAPI.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Hwloc.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Likwid.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/NUMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
@@ -250,6 +256,15 @@ if (ENABLE_HWLOC)
   endif()
 else()
   message(NOTE "hwloc                     disabled")
+endif()
+if (ENABLE_LIKWID)
+  if (LIKWID_FOUND)
+    message(INFO "likwid                    enabled")
+  else()
+    message(NOTE "likwid                    not found")
+  endif()
+else()
+  message(NOTE "likwid                    disabled")
 endif()
 if (ENABLE_LAPACK)
   if (LAPACK_FOUND)

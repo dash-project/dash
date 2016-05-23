@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <cstddef>
+#include <sstream>
 
 #include <libdash.h>
 
@@ -8,7 +9,7 @@
 #include "mpi.h"
 #endif
 
-//#define INIT_TEST
+// #define INIT_TEST
 
 using namespace std;
 
@@ -22,43 +23,52 @@ int main(int argc, char* argv[])
 #endif
 
   dash::init(&argc, &argv);
-  
+
   auto myid = dash::myid();
   auto size = dash::size();
 
   gethostname(buf, 100);
   pid = getpid();
 
-  if(myid==0 ) {
-    cout<<"-------------------------"<<endl;
+  if (myid == 0) {
+    cout << "-------------------------"
+         << endl;
 #ifdef DART_MPI
-    cout<<argv[0]<<" "<<"built with DART_MPI"<<endl;
-#endif 
+    cout << argv[0] << " " << "built with DART_MPI"
+         << endl;
+#endif
 #ifdef DART_SHMEM
-    cout<<argv[0]<<" "<<"built with DART_SHMEM"<<endl;
-#endif 
-    
+    cout << argv[0] << " " << "built with DART_SHMEM"
+         << endl;
+#endif
+
 #ifdef MPI_VERSION
-    cout<<"-------------------------"<<endl;
-    cout<<"MPI_VERSION    : "<<MPI_VERSION<<endl;
-    cout<<"MPI_SUBVERSION : "<<MPI_SUBVERSION<<endl;
+    cout << "-------------------------" << endl;
+    cout << "MPI_VERSION    : " << MPI_VERSION << endl;
+    cout << "MPI_SUBVERSION : " << MPI_SUBVERSION << endl;
 #ifdef MPICH
-    cout<<"MPICH          : "<<MPICH<<endl;
-    cout<<"MPICH_NAME     : "<<MPICH_NAME<<endl;
-    cout<<"MPICH_HAS_C2F  : "<<MPICH_HAS_C2F<<endl;
+    cout << "MPICH          : " << MPICH << endl;
+    cout << "MPICH_NAME     : " << MPICH_NAME << endl;
+    cout << "MPICH_HAS_C2F  : " << MPICH_HAS_C2F << endl;
 #endif // MPICH
 #ifdef OPEN_MPI
-    cout<<"OPEN_MPI       : "<<OPEN_MPI<<endl;
+    cout << "OPEN_MPI       : " << OPEN_MPI << endl;
 #endif // OPEN_MPI
 #endif // MPI_VERSION
-    cout<<"-------------------------"<<endl;
+    cout << "-------------------------" << endl;
   }
-  
+
   dash::barrier();
-  
-  cout<<"'Hello world' from unit "<<myid<<
-    " of "<<size<<" on "<<buf<<" pid="<<pid<<endl;
-  
+
+  // To avoid interleaving output:
+  std::ostringstream os;
+  os << "'Hello world' from "
+     << "unit " << myid << " of " << size << " "
+     << "on "   << buf  << " pid=" << pid
+     << endl;
+
+  cout << os.str();
+
   dash::finalize();
 
 #if defined(DART_MPI) && defined(INIT_TEST)

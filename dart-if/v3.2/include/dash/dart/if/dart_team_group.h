@@ -46,7 +46,7 @@ dart_ret_t dart_group_fini(dart_group_t *group);
 
 /* make a copy of the group */
 dart_ret_t dart_group_copy(const dart_group_t *gin,
-			   dart_group_t *gout);
+                           dart_group_t *gout);
 
 
 /* set union */
@@ -71,26 +71,39 @@ dart_ret_t dart_group_delmember(dart_group_t *g, dart_unit_t unitid);
 
 /* test if unitid is a member */
 dart_ret_t dart_group_ismember(const dart_group_t *g,
-			       dart_unit_t unitid, int32_t *ismember);
+                               dart_unit_t unitid, int32_t *ismember);
 
 
 /* determine the size of the group */
 dart_ret_t dart_group_size(const dart_group_t *g,
-			   size_t *size);
+                           size_t *size);
 
 
 /* get all the members of the group, unitids must be large enough
    to hold dart_group_size() members */
 dart_ret_t dart_group_getmembers(const dart_group_t *g,
-				 dart_unit_t *unitids);
+                                 dart_unit_t *unitids);
 
 
-/* split the group into n groups of approx. same size,
-   gout must be an array of dart_group_t objects of size at least n
+/* split the group into \c n groups of approx. same size,
+   \c gout must be an array of \c dart_group_t objects of size at least \c n.
 */
-dart_ret_t dart_group_split(const dart_group_t *g, size_t n,
-			    dart_group_t **gout);
+dart_ret_t dart_group_split(const dart_group_t  * g,
+                            size_t                n,
+                            dart_group_t       ** gout);
 
+/* split the group \c g into \c n groups by the specified locality scope.
+   For example, a locality split in socket scope creates at least one new
+   group for every socket containing all units in the original group that
+   have affinity with the respective socket.
+   Size of array \c gout must have a capacity of at least \c n
+   \c dart_group_t objects.
+*/
+dart_ret_t dart_group_locality_split(const dart_group_t      * g,
+                                     dart_domain_locality_t  * domain,
+                                     dart_locality_scope_t     scope,
+                                     size_t                    n,
+                                     dart_group_t           ** gout);
 
 /* get the size of the opaque object */
 dart_ret_t dart_group_sizeof(size_t *size);
@@ -146,8 +159,9 @@ dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group);
 
   (2,3 are unique with respect to the parent team (1)).
  */
-dart_ret_t dart_team_create(dart_team_t teamid, const dart_group_t *group,
-			    dart_team_t *newteam);
+dart_ret_t dart_team_create(dart_team_t          teamid,
+                            const dart_group_t * group,
+                            dart_team_t        * newteam);
 
 /* Free up resources associated with the specified team */
 dart_ret_t dart_team_destroy(dart_team_t teamid);
@@ -204,12 +218,12 @@ dart_ret_t dart_size(size_t *size);
    these calls are *not* collective calls on the specified teams
 */
 dart_ret_t dart_team_unit_l2g(dart_team_t team,
-			      dart_unit_t localid,
-			      dart_unit_t *globalid);
+                              dart_unit_t localid,
+                              dart_unit_t *globalid);
 
 dart_ret_t dart_team_unit_g2l(dart_team_t team,
-			      dart_unit_t globalid,
-			      dart_unit_t *localid);
+                              dart_unit_t globalid,
+                              dart_unit_t *localid);
 
 
 

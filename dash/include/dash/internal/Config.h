@@ -105,6 +105,20 @@
 #  define DASH__ARCH__ARCH_UNKNOWN
 #endif
 
+// Intel(R) Many Integrated Core (MIC, Xeon Phi)
+#if defined(__MIC__)
+#  define DASH__ARCH__IS_MIC
+#endif
+
+
+// RDTSC support:
+//
+#if defined(DASH__ARCH__ARCH_X86_64) && \
+    !defined(DASH__ARCH__IS_MIC)
+#  define DASH__ARCH__HAS_RDTSC
+#endif
+
+
 // Atomic instructions:
 //
 // LL/SC:
@@ -127,7 +141,7 @@
 #  define DASH__ARCH__ARCH_32
 #endif
 
-// Cache line and page size, in bytes
+// Default cache line and page size, in bytes
 #if defined(DASH__ARCH__ARCH_64)
 #  define DASH__ARCH__CACHE_LINE_SIZE 64
 #  define DASH__ARCH__PAGE_SIZE 0x1000

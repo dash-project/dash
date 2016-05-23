@@ -66,6 +66,11 @@ void multiply_local(
   long long         p,
   MemArrange        storage)
 {
+#ifndef DEBUG
+  DASH_THROW(
+    dash::exception::RuntimeError,
+    "Called fallback implementation of DGEMM (only enabled in Debug)");
+#endif
   ValueType c_sum = 0;
   for (auto i = 0; i < n; ++i) {
     // row i = 0...n

@@ -38,13 +38,13 @@ if (NOT "${GTEST_LIBRARY_PATH}" STREQUAL "" AND
     IMPORTED_LINK_INTERFACE_LIBRARIES "${GTEST_LIBRARY};${CMAKE_THREAD_LIBS_INIT}")
 
 else()
-  # Download gtest from official subversion repository:
+  # Download gtest from official github repository:
   message(STATUS "Downloading GTest from official repository")
   set(GTEST_PREFIX "${CMAKE_BINARY_DIR}/gtest")
   ExternalProject_Add(
     GTestExternal
-    SVN_REPOSITORY http://googletest.googlecode.com/svn/trunk
-    SVN_REVISION -r HEAD
+    GIT_REPOSITORY https://github.com/google/googletest.git 
+    GIT_TAG master 
     TIMEOUT 10
     PREFIX "${GTEST_PREFIX}"
     INSTALL_COMMAND ""
@@ -53,8 +53,8 @@ else()
     LOG_CONFIGURE ON
     LOG_BUILD ON
   )
-  set(GTEST_LOCATION "${GTEST_PREFIX}/src/GTestExternal-build")
-  set(GTEST_INCLUDES "${GTEST_PREFIX}/src/GTestExternal/include")
+  set(GTEST_LOCATION "${GTEST_PREFIX}/src/GTestExternal-build/googlemock/gtest")
+  set(GTEST_INCLUDES "${GTEST_PREFIX}/src/GTestExternal/googletest/include")
   set(GTEST_LIBRARY  "${GTEST_LOCATION}/${LIBPREFIX}gtest${LIBSUFFIX}")
   set(GTEST_MAINLIB  "${GTEST_LOCATION}/${LIBPREFIX}gtest_main${LIBSUFFIX}")
 

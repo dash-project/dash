@@ -15,6 +15,7 @@
 // Environment variables as array of strings, terminated by null pointer.
 extern char ** environ;
 
+
 namespace dash {
 namespace util {
 
@@ -95,7 +96,7 @@ void BenchmarkParams::print_header()
   }
 
   size_t box_width        = _header_width;
-  size_t numa_nodes       = dash::util::Locality::NumNumaNodes();
+  size_t numa_nodes       = dash::util::Locality::NumNUMANodes();
   size_t num_nodes        = dash::util::Locality::NumNodes();
   size_t local_cpus       = dash::util::Locality::NumCPUs();
   int    cpu_max_mhz      = dash::util::Locality::CPUMaxMhz();
@@ -200,23 +201,25 @@ void BenchmarkParams::print_pinning()
     return;
   }
   auto line_w = _header_width;
-  auto host_w = line_w - 5 - 5 - 10 - 5;
+  auto host_w = line_w - 5 - 5 - 10 - 10 - 5;
   print_section_start("Process Pinning");
   cout << std::left         << "--   "
        << std::setw(5)      << "unit"
        << std::setw(host_w) << "host"
+       << std::setw(10)     << "domain"
        << std::right
        << std::setw(10)     << "numa node"
-       << std::setw(5)      << "cpu"
+       << std::setw(5)      << "core"
        << endl;
-  for (size_t unit = 0; unit < Locality::Pinning().size(); ++unit) {
-    unit_pinning_type pin_info = Locality::Pinning()[unit];
+  for (size_t unit = 0; unit < dash::size(); ++unit) {
+    unit_pinning_type pin_info = Locality::Pinning(unit);
     cout << std::left         << "--   "
-         << std::setw(5)      << pin_info.rank
+         << std::setw(5)      << pin_info.unit
          << std::setw(host_w) << pin_info.host
+         << std::setw(10)     << pin_info.domain
          << std::right
-         << std::setw(10)     << pin_info.numa_node
-         << std::setw(5)      << pin_info.cpu
+         << std::setw(10)     << pin_info.numa_id
+         << std::setw(5)      << pin_info.cpu_id
          << endl;
   }
   print_section_end();

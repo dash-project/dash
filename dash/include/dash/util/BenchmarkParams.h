@@ -9,8 +9,6 @@
 #include <vector>
 #include <string>
 
-// Environment variables as array of strings, terminated by null pointer.
-extern char ** environ;
 
 namespace dash {
 namespace util {
@@ -104,7 +102,7 @@ public:
 
 private:
   bool               _myid;
-  int                _header_width = 72;
+  int                _header_width = 82;
   config_params_type _config;
   std::string        _name;
 };
