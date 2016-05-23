@@ -154,9 +154,11 @@ public:
         _nunits)),
     _nblocks(_nunits),
     _local_size(
-        initialize_local_extent(_team->myid())),
+        initialize_local_extent(
+          _team->myid(),
+          _local_sizes)),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _local_capacity(initialize_local_capacity())
+    _local_capacity(initialize_local_capacity(_local_sizes))
   {
     DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
     DASH_ASSERT_EQ(
@@ -200,9 +202,11 @@ public:
         _nunits)),
     _nblocks(_nunits),
     _local_size(
-        initialize_local_extent(_team->myid())),
+        initialize_local_extent(
+          _team->myid(),
+          _local_sizes)),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _local_capacity(initialize_local_capacity())
+    _local_capacity(initialize_local_capacity(_local_sizes))
   {
     DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, team)");
     DASH_ASSERT_EQ(
@@ -250,9 +254,11 @@ public:
         _nunits)),
     _nblocks(_nunits),
     _local_size(
-        initialize_local_extent(_team->myid())),
+        initialize_local_extent(
+          _team->myid(),
+          _local_sizes)),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _local_capacity(initialize_local_capacity())
+    _local_capacity(initialize_local_capacity(_local_sizes))
   {
     DASH_LOG_TRACE("CSRPattern()", "Constructor with argument list");
     DASH_ASSERT_EQ(
@@ -297,9 +303,11 @@ public:
         _nunits)),
     _nblocks(_nunits),
     _local_size(
-        initialize_local_extent(_team->myid())),
+        initialize_local_extent(
+          _team->myid(),
+          _local_sizes)),
     _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _local_capacity(initialize_local_capacity())
+    _local_capacity(initialize_local_capacity(_local_sizes))
   {
     DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, teamspec, team)");
     DASH_ASSERT_EQ(
@@ -320,28 +328,36 @@ public:
     const std::vector<size_type> & local_sizes,
     /// Team containing units to which this pattern maps its elements
     Team                         & team = dash::Team::All())
-  : _size(initialize_size(
+  : _size(
+      initialize_size(
         local_sizes)),
     _local_sizes(local_sizes),
-    _block_offsets(initialize_block_offsets(
+    _block_offsets(
+      initialize_block_offsets(
         _local_sizes)),
     _memory_layout(std::array<SizeType, 1> {{ _size }}),
-    _blockspec(initialize_blockspec(
+    _blockspec(
+      initialize_blockspec(
         _size,
         _local_sizes)),
     _distspec(DistributionSpec_t()),
     _team(&team),
     _teamspec(_distspec, *_team),
     _nunits(_team->size()),
-    _blocksize(initialize_blocksize(
+    _blocksize(
+      initialize_blocksize(
         _size,
         _distspec,
         _nunits)),
     _nblocks(_nunits),
     _local_size(
-        initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> {{ _local_size }}),
-    _local_capacity(initialize_local_capacity())
+        initialize_local_extent(
+          _team->myid(),
+          _local_sizes)),
+    _local_memory_layout(
+      std::array<SizeType, 1> {{ _local_size }}),
+    _local_capacity(
+      initialize_local_capacity(_local_sizes))
   {
     DASH_LOG_TRACE("CSRPattern()", "(sizespec, dist, team)");
     DASH_ASSERT_EQ(
@@ -1384,7 +1400,8 @@ public:
   /**
    * Max. elements per unit (local capacity)
    */
-  SizeType initialize_local_capacity() const
+  SizeType initialize_local_capacity(
+    const std::vector<size_type> & local_sizes) const
   {
     SizeType l_capacity = 0;
     if (_nunits == 0) {
@@ -1393,8 +1410,8 @@ public:
     DASH_LOG_TRACE_VAR("CSRPattern.init_lcapacity", _nunits);
     // Local capacity is maximum number of elements assigned to a single unit,
     // i.e. the maximum local size:
-    l_capacity = *(std::max_element(_local_sizes.begin(),
-                                    _local_sizes.end()));
+    l_capacity = *(std::max_element(local_sizes.begin(),
+                                    local_sizes.end()));
     DASH_LOG_DEBUG_VAR("CSRPattern.init_lcapacity >", l_capacity);
     return l_capacity;
   }
@@ -1426,15 +1443,15 @@ public:
    * Resolve extents of local memory layout for a specified unit.
    */
   SizeType initialize_local_extent(
-    dart_unit_t unit) const
+    dart_unit_t                    unit,
+    const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent()", unit);
-    DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent()", _nunits);
-    if (_nunits == 0) {
+    if (local_sizes.size() == 0) {
       return 0;
     }
     // Local size of given unit:
-    SizeType l_extent = _local_sizes[static_cast<int>(unit)];
+    SizeType l_extent = local_sizes[static_cast<int>(unit)];
     DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent >", l_extent);
     return l_extent;
   }

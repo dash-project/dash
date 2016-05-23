@@ -2,6 +2,7 @@
 #define DASH__UTIL__LOCALITY_DOMAIN_H__INCLUDED
 
 #include <dash/util/Locality.h>
+#include <dash/util/UnitLocality.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
@@ -41,8 +42,9 @@ namespace util {
 class LocalityDomain
 {
 private:
-  typedef LocalityDomain                       self_t;
-  typedef dash::util::Locality::Scope         Scope_t;
+  typedef LocalityDomain                           self_t;
+  typedef dash::util::Locality::Scope             Scope_t;
+  typedef dash::util::UnitLocality         UnitLocality_t;
 
 private:
   /**
@@ -135,9 +137,12 @@ private:
 
   LocalityDomain(
     const self_t                 & parent,
-    const dart_domain_locality_t & domain);
+    dart_domain_locality_t       * domain);
 
 public:
+
+  LocalityDomain(
+    const dart_domain_locality_t & domain);
 
   inline LocalityDomain()
   : _domain(nullptr),
@@ -146,10 +151,6 @@ public:
 
   LocalityDomain(
     dart_domain_locality_t * domain);
-
-  LocalityDomain(
-    const self_t           & parent,
-    std::string              subdomain_tag);
 
   ~LocalityDomain();
 
@@ -206,8 +207,8 @@ public:
    * method \c parts().
    */
   self_t & split(
-    dash::util::Locality::Scope        scope,
-    int                                num_split_parts);
+    dash::util::Locality::Scope      scope,
+    int                              num_split_parts);
 
   /**
    * Split groups in locality domain into separate parts.
@@ -218,8 +219,21 @@ public:
    * Lazy-load instance of \c LocalityDomain for child subdomain at relative
    * index.
    */
-  self_t & at(
+  const self_t & at(
     int relative_index) const;
+
+  /**
+   * Lazy-load instance of \c LocalityDomain for child subdomain at relative
+   * index.
+   */
+  self_t & at(
+    int relative_index);
+
+  /**
+   * Find locality subdomain with specified domain tag.
+   */
+  const_iterator find(
+    const std::string & subdomain_tag) const;
 
   /**
    * Find locality subdomain with specified domain tag.
@@ -247,7 +261,25 @@ public:
     return _parts;
   }
 
-  inline dart_team_t dart_team()
+  inline const UnitLocality_t & unit_locality(
+      dart_unit_t unit) const
+  {
+    if (nullptr == _parent) {
+      return (*_unit_localities.find(unit)).second;
+    }
+    return _parent->unit_locality(unit);
+  }
+
+  inline UnitLocality_t & unit_locality(
+      dart_unit_t unit)
+  {
+    if (nullptr == _parent) {
+      return _unit_localities[unit];
+    }
+    return _parent->unit_locality(unit);
+  }
+
+  inline dart_team_t dart_team() const
   {
     if (nullptr == _domain) {
       return DART_TEAM_NULL;
@@ -304,7 +336,18 @@ public:
     return _unit_ids;
   }
 
+  inline std::vector<dart_unit_t> & units()
+  {
+    return _unit_ids;
+  }
+
   inline const dart_hwinfo_t & hwinfo() const
+  {
+    DASH_ASSERT(_domain != nullptr);
+    return _domain->hwinfo;
+  }
+
+  inline dart_hwinfo_t & hwinfo()
   {
     DASH_ASSERT(_domain != nullptr);
     return _domain->hwinfo;
@@ -340,28 +383,7 @@ public:
 private:
 
   inline void init(
-    dart_domain_locality_t * domain)
-  {
-    DASH_LOG_DEBUG("LocalityDomain.init()",
-                   "domain:", domain->domain_tag);
-
-    _domain     = domain;
-    _domain_tag = _domain->domain_tag;
-
-    if (_domain->num_units > 0) {
-      _unit_ids.insert(_unit_ids.end(),
-                       _domain->unit_ids,
-                       _domain->unit_ids + _domain->num_units);
-    }
-
-    _begin = iterator(*this, 0);
-    _end   = iterator(*this, _domain->num_domains);
-
-    collect_groups(_group_domain_tags);
-
-    DASH_LOG_DEBUG("LocalityDomain.init >",
-                   "domain:", domain->domain_tag);
-  }
+    dart_domain_locality_t * domain);
 
   inline void collect_groups(
     const std::vector<std::string> & group_domain_tags)
@@ -373,27 +395,32 @@ private:
   }
 
 private:
+  /// Parent locality domain.
+  mutable self_t                                  * _parent    = nullptr;
   /// Underlying \c dart_domain_locality_t object.
-  dart_domain_locality_t                    * _domain    = nullptr;
+  dart_domain_locality_t                          * _domain    = nullptr;
   /// Copy of _domain->domain_tag to avoid string copying.
-  std::string                                 _domain_tag;
+  std::string                                       _domain_tag;
   /// Cache of lazy-loaded subdomains, mapped by subdomain relative index.
   /// Must be heap-allocated as type is incomplete due to type definition
   /// cycle.
-  mutable std::unordered_map<int, self_t>   * _subdomains = nullptr;
+  mutable std::unordered_map<int, self_t>         * _subdomains = nullptr;
   /// Units in the domain.
-  std::vector<dart_unit_t>                    _unit_ids;
+  std::vector<dart_unit_t>                          _unit_ids;
+  /// Locality descriptors of units in the domain. Only specified in root
+  /// locality domain and resolved from parent in upward recursion otherwise.
+  std::unordered_map<dart_unit_t, UnitLocality_t>   _unit_localities;
   /// Iterator to the first subdomain.
-  iterator                                    _begin;
+  iterator                                          _begin;
   /// Iterator past the last subdomain.
-  iterator                                    _end;
+  iterator                                          _end;
   /// Whether this instance is owner of _domain.
-  bool                                        _is_owner   = false;
+  bool                                              _is_owner   = false;
   /// Domain tags of groups in the locality domain.
-  std::vector<iterator>                       _groups;
-  std::vector<std::string>                    _group_domain_tags;
+  std::vector<iterator>                             _groups;
+  std::vector<std::string>                          _group_domain_tags;
   /// Split domains in the team locality, one domain for every split group.
-  std::vector<self_t>                         _parts;
+  std::vector<self_t>                               _parts;
 
 }; // class LocalityDomain
 

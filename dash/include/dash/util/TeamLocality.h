@@ -115,10 +115,16 @@ public:
     return _domain;
   }
 
-  inline dash::util::UnitLocality unit_locality(
+  inline const dash::util::UnitLocality & unit_locality(
     dart_unit_t unit) const
   {
-    return dash::util::UnitLocality(*_team, unit);
+    return _domain.unit_locality(unit);
+  }
+
+  inline dash::util::UnitLocality & unit_locality(
+    dart_unit_t unit)
+  {
+    return _domain.unit_locality(unit);
   }
 
   /**

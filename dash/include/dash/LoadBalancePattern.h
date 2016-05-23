@@ -131,13 +131,17 @@ public:
     /// Locality hierarchy of the team.
     TeamLocality_t       & team_loc)
   : _size(sizespec.size()),
-    _local_sizes(initialize_local_sizes(
+    _local_sizes(
+      initialize_local_sizes(
         sizespec.size(),
         team_loc)),
-    _block_offsets(initialize_block_offsets(
+    _block_offsets(
+      initialize_block_offsets(
         _local_sizes)),
-    _memory_layout(std::array<SizeType, 1> { _size }),
-    _blockspec(initialize_blockspec(
+    _memory_layout(
+      std::array<SizeType, 1> { _size }),
+    _blockspec(
+      initialize_blockspec(
         _size,
         _local_sizes)),
     _distspec(dash::BLOCKED),
@@ -147,9 +151,14 @@ public:
     _nunits(_team->size()),
     _nblocks(_nunits),
     _local_size(
-        initialize_local_extent(_team->myid())),
-    _local_memory_layout(std::array<SizeType, 1> { _local_size }),
-    _local_capacity(initialize_local_capacity())
+      initialize_local_extent(
+        _team->myid(),
+        _local_sizes)),
+    _local_memory_layout(
+      std::array<SizeType, 1> { _local_size }),
+    _local_capacity(
+      initialize_local_capacity(
+        _local_sizes))
   {
     DASH_LOG_TRACE("LoadBalancePattern()", "(sizespec, dist, team)");
     DASH_ASSERT_EQ(
@@ -512,13 +521,11 @@ public:
   }
 
   /**
-   * Maximum number of elements assigned to a single unit in total,
-   * equivalent to the local capacity of every unit in this pattern.
+   * Maximum number of elements assigned to a single unit.
    *
    * \see  DashPatternConcept
    */
-  inline SizeType local_capacity(
-    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+  inline SizeType local_capacity() const
   {
     return _local_capacity;
   }
@@ -536,7 +543,7 @@ public:
   inline SizeType local_size(
     dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
   {
-    return _local_size;
+    return _local_sizes[unit];
   }
 
   /**
@@ -670,7 +677,8 @@ private:
 
   /**
    * Returns unit CPU capacities as percentage of the team's total CPU
-   * capacity, so values add up to 1.
+   * capacity average, e.g. vector of 1's if all units have identical
+   * CPU capacity.
    */
   std::vector<double> initialize_cpu_capacity_weights(
     const TeamLocality_t & tloc) const
@@ -686,9 +694,17 @@ private:
       total_cpu_capacity  += unit_cpu_cap;
       unit_cpu_capacities.push_back(unit_cpu_cap);
     }
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_cpu_capacity_weights",
+                       total_cpu_capacity);
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_cpu_capacity_weights",
+                       unit_cpu_capacities);
+
+    double avg_cpu_capacity = static_cast<double>(total_cpu_capacity) /
+                              tloc.units().size();
+
     for (auto unit_cpu_capacity : unit_cpu_capacities) {
       unit_cpu_perc.push_back(static_cast<double>(unit_cpu_capacity) /
-                              static_cast<double>(total_cpu_capacity));
+                              avg_cpu_capacity);
     }
     return unit_cpu_perc;
   }
@@ -715,13 +731,31 @@ private:
     std::vector<double> capacity_weights =
       initialize_cpu_capacity_weights(locality);
 
-    size_t assigned_capacity = 0;
-    for (double weight : capacity_weights) {
-      size_t unit_capacity  = weight * total_size;
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_local_sizes",
+                       capacity_weights);
+
+    double balanced_lsize = static_cast<double>(total_size) / nunits;
+
+    size_t      assigned_capacity = 0;
+    // Unit with maximum CPU capacity in team:
+    dart_unit_t max_cpu_cap_unit  = 0;
+    // Maximum CPU capacity found:
+    size_t      unit_max_cpu_cap  = 0;
+    for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(nunits); u++) {
+      double weight         = capacity_weights[u];
+      size_t unit_capacity  = weight > 1
+                              ? std::ceil(weight * balanced_lsize)
+                              : std::floor(weight * balanced_lsize);
+      if (unit_capacity > unit_max_cpu_cap) {
+        max_cpu_cap_unit = u;
+        unit_max_cpu_cap = unit_capacity;
+      }
       assigned_capacity    += unit_capacity;
       l_sizes.push_back(unit_capacity);
     }
-    l_sizes.back() += (total_size - assigned_capacity);
+    // Some elements might be unassigned due to rounding.
+    // Assign them to the unit with highest CPU capacity:
+    l_sizes[max_cpu_cap_unit] += (total_size - assigned_capacity);
 
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_local_sizes >", l_sizes);
     return l_sizes;
@@ -733,7 +767,7 @@ private:
   {
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_blockspec", local_sizes);
     BlockSpec_t blockspec({
-	static_cast<size_type>(local_sizes.size())
+      static_cast<size_type>(local_sizes.size())
 	  });
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_blockspec >", blockspec);
     return blockspec;
@@ -768,7 +802,8 @@ private:
   /**
    * Max. elements per unit (local capacity)
    */
-  SizeType initialize_local_capacity() const
+  SizeType initialize_local_capacity(
+    const std::vector<size_type> & local_sizes) const
   {
     SizeType l_capacity = 0;
     if (_nunits == 0) {
@@ -777,8 +812,8 @@ private:
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_lcapacity", _nunits);
     // Local capacity is maximum number of elements assigned to a single unit,
     // i.e. the maximum local size:
-    l_capacity = *(std::max_element(_local_sizes.begin(),
-                                    _local_sizes.end()));
+    l_capacity = *(std::max_element(local_sizes.begin(),
+                                    local_sizes.end()));
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.init_lcapacity >", l_capacity);
     return l_capacity;
   }
@@ -810,15 +845,15 @@ private:
    * Resolve extents of local memory layout for a specified unit.
    */
   SizeType initialize_local_extent(
-    dart_unit_t unit) const
+    dart_unit_t                    unit,
+    const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.init_local_extent()", unit);
-    DASH_LOG_DEBUG_VAR("LoadBalancePattern.init_local_extent()", _nunits);
-    if (_nunits == 0) {
+    if (local_sizes.size() == 0) {
       return 0;
     }
     // Local size of given unit:
-    SizeType l_extent = _local_sizes[static_cast<int>(unit)];
+    SizeType l_extent = local_sizes[static_cast<int>(unit)];
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.init_local_extent >", l_extent);
     return l_extent;
   }

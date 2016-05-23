@@ -202,17 +202,15 @@ dart_ret_t dart_unit_locality(
   dart_unit_locality_t         ** locality)
 {
   DART_LOG_DEBUG("dart_unit_locality() team(%d) unit(%d)", team, unit);
-  *locality = NULL;
 
-  dart_unit_locality_t * uloc;
-  dart_ret_t ret = dart__base__locality__unit(team, unit, &uloc);
+  dart_ret_t ret = dart__base__locality__unit(team, unit, locality);
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart_unit_locality: "
                    "dart__base__unit_locality__get(unit:%d) failed (%d)",
                    unit, ret);
+    *locality = NULL;
     return ret;
   }
-  *locality = uloc;
 
   DART_LOG_DEBUG("dart_unit_locality > team(%d) unit(%d) -> %p",
                  team, unit, *locality);

@@ -36,7 +36,7 @@ public:
   UnitLocality(
     dash::Team  & team,
     dart_unit_t   unit)
-  : _team(team)
+  : _team(&team)
   {
     DASH_ASSERT_RETURNS(
       dart_unit_locality(
@@ -44,41 +44,64 @@ public:
       DART_OK);
   }
 
-  UnitLocality() = delete;
+  UnitLocality()                                 = default;
+  UnitLocality(const UnitLocality &)             = default;
+  UnitLocality & operator=(const UnitLocality &) = default;
 
   inline const dart_hwinfo_t & hwinfo() const
   {
-    DASH_ASSERT(_unit_locality != nullptr);
+    DASH_ASSERT(nullptr != _unit_locality);
+    return _unit_locality->hwinfo;
+  }
+
+  inline dart_hwinfo_t & hwinfo()
+  {
+    DASH_ASSERT(nullptr != _unit_locality);
     return _unit_locality->hwinfo;
   }
 
   inline dash::Team & team()
   {
-    DASH_ASSERT(_unit_locality != nullptr);
-    return _team;
+    if (nullptr == _team) {
+      return dash::Team::Null();
+    }
+    return *_team;
   }
 
   inline dart_unit_t unit_id() const
   {
-    return _unit_locality == nullptr
+    return nullptr == _unit_locality
            ? DART_UNDEFINED_UNIT_ID
            : _unit_locality->unit;
   }
 
   inline std::string domain_tag() const
   {
-    DASH_ASSERT(_unit_locality != nullptr);
+    DASH_ASSERT(nullptr != _unit_locality);
     return _unit_locality->domain_tag;
   }
 
   inline std::string host() const
   {
-    DASH_ASSERT(_unit_locality != nullptr);
+    DASH_ASSERT(nullptr != _unit_locality);
     return _unit_locality->host;
   }
 
+  inline void set_domain_tag(
+    const std::string & tag)
+  {
+    strcpy(_unit_locality->domain_tag, tag.c_str());
+  }
+
+  inline void set_host(
+    const std::string & hostname)
+  {
+    strcpy(_unit_locality->host, hostname.c_str());
+  }
+
 private:
-  dash::Team             & _team;
+
+  dash::Team             * _team          = nullptr;
   dart_unit_locality_t   * _unit_locality = nullptr;
 
 }; // class UnitLocality

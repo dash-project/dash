@@ -42,13 +42,12 @@ void Log_Recursive(
       << file << ":"
       << std::left << std::setw(4)
       << line << " | "
-      << std::left << std::setw(35)
+      << std::left << std::setw(45)
       << context_tag
       << msg.str()
       << std::endl;
   DASH_LOG_OUTPUT_TARGET << buf.str();
 }
-
 
 } // namespace logging
 } // namespace internal

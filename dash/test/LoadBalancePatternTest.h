@@ -17,8 +17,7 @@ protected:
 
   LoadBalancePatternTest()
   : _dash_id(0),
-    _dash_size(0),
-    _num_elem(0) {
+    _dash_size(0) {
     LOG_MESSAGE(">>> Test suite: LoadBalancePatternTest");
   }
 
@@ -29,7 +28,6 @@ protected:
   virtual void SetUp() {
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-    _num_elem  = 100;
     LOG_MESSAGE("===> Running test case with %d units ...",
                 _dash_size);
   }
