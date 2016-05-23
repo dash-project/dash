@@ -963,7 +963,7 @@ TEST_F(MatrixTest, UnderfilledPattern)
 
   matrix_a.deallocate();
 
-  // Check TilePattern
+  // Check BlockPattern
   const pattern_t pattern(
     size_spec,
     dash::DistributionSpec<2>(
