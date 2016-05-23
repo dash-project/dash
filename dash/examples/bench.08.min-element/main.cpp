@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 {
   dash::init(&argc, &argv);
 
-  dash::util::Config::set("ENABLE_LOG", false);
+  dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
   Timer::Calibrate(0);
 
@@ -202,9 +202,7 @@ measurement perform_test(
   PatternType pattern(NELEM);
 #endif
 
-  dash::util::Config::set("ENABLE_LOG", true);
   ArrayType arr(pattern);
-  dash::util::Config::set("ENABLE_LOG", false);
 
   ElementType min_value_exp   = 17;
   dart_unit_t min_value_unit  = static_cast<dart_unit_t>(
@@ -220,7 +218,9 @@ measurement perform_test(
                                   pattern.local_size());
     arr.local[min_value_lidx] = min_value_exp;
 
+    dash::util::Config::set("DASH_ENABLE_LOGGING", true);
     min_lidx_exp.set(min_value_lidx);
+    dash::util::Config::set("DASH_ENABLE_LOGGING", false);
   }
 
   dash::barrier();
