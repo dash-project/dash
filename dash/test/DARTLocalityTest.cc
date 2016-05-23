@@ -39,7 +39,7 @@ TEST_F(DARTLocalityTest, UnitLocality)
   dart_domain_locality_t * dl;
   ASSERT_EQ_U(
     DART_OK,
-    dart_domain_locality(DART_TEAM_ALL, ul->domain_tag, &dl));
+    dart_domain_team_locality(DART_TEAM_ALL, ul->domain_tag, &dl));
   DASH_LOG_TRACE("DARTLocalityTest.UnitLocality",
                  "pointer to local unit's domain descriptor:", dl);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", *dl);
@@ -53,7 +53,7 @@ TEST_F(DARTLocalityTest, Domains)
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "get global domain descriptor");
   dart_domain_locality_t * dl;
-  ASSERT_EQ_U(DART_OK, dart_domain_locality(DART_TEAM_ALL, ".", &dl));
+  ASSERT_EQ_U(DART_OK, dart_domain_team_locality(DART_TEAM_ALL, ".", &dl));
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "pointer to global domain descriptor: ", dl);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.Domains", *dl);

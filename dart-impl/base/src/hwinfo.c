@@ -55,15 +55,15 @@ dart_ret_t dart_hwinfo(
 
   dart_hwinfo_t hw;
 
-  hw.num_sockets = -1;
-  hw.num_numa    = -1;
-  hw.numa_id     = -1;
-  hw.num_cores   = -1;
-  hw.cpu_id      = -1;
-  hw.min_cpu_mhz = -1;
-  hw.max_cpu_mhz = -1;
-  hw.min_threads = -1;
-  hw.max_threads = -1;
+  hw.num_sockets         = -1;
+  hw.num_numa            = -1;
+  hw.numa_id             = -1;
+  hw.num_cores           = -1;
+  hw.cpu_id              = -1;
+  hw.min_cpu_mhz         = -1;
+  hw.max_cpu_mhz         = -1;
+  hw.min_threads         = -1;
+  hw.max_threads         = -1;
   hw.cache_sizes[0]      = -1;
   hw.cache_sizes[1]      = -1;
   hw.cache_sizes[2]      = -1;

@@ -103,6 +103,9 @@ typedef enum
   DART_LOCALITY_SCOPE_UNDEFINED  =   -1,
   /** Global locality scope, components may be heterogenous. */
   DART_LOCALITY_SCOPE_GLOBAL     =    0,
+  /** Group of domains in specific locality scope, used as parent scope of
+   *  domains in a user-defined group at any locality level. */
+  DART_LOCALITY_SCOPE_GROUP      =    1,
   /** Interconnect topology scope, components may be heterogenous. */
   DART_LOCALITY_SCOPE_NETWORK    =   50,
   /** Node-level locality scope, components may be heterogenous. */
@@ -135,6 +138,7 @@ dart_locality_scope_t;
 #define DART_LOCALITY_HOST_MAX_SIZE       ((int)(30))
 #define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(16))
 #define DART_LOCALITY_UNIT_MAX_CPUS       ((int)(8))
+#define DART_LOCALITY_MAX_NUMA_ID         ((int)(16))
 
 /**
  * \ingroup DartTypes
@@ -167,9 +171,9 @@ typedef struct
   /** Flags indicating shared caches by cache level (L1, L2, L3). */
   int   cache_shared[3];
 
-  /** Minimum number of CPU threads. */
+  /** Minimum number of CPU threads per core. */
   int   min_threads;
-  /** Maximum number of CPU threads. */
+  /** Maximum number of CPU threads per core. */
   int   max_threads;
 }
 dart_hwinfo_t;
@@ -343,10 +347,10 @@ struct dart_domain_locality_s
    * Hierarchical domain identifier, represented as dot-separated list
    * of relative indices on every level in the locality hierarchy.
    */
-  char                            domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+  char domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 
   /** Hostname of the domain's node or 0 if unspecified. */
-  char                            host[DART_LOCALITY_HOST_MAX_SIZE];
+  char host[DART_LOCALITY_HOST_MAX_SIZE];
 
   /** Locality scope of the domain. */
   dart_locality_scope_t           scope;

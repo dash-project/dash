@@ -14,13 +14,12 @@
 
 
 std::ostream & operator<<(
-  std::ostream & os,
+  std::ostream                 & os,
   const dart_domain_locality_t & domain_loc);
 
 std::ostream & operator<<(
-  std::ostream & os,
-  const dart_unit_locality_t & unit_loc);
-
+  std::ostream                 & os,
+  const dart_unit_locality_t   & unit_loc);
 
 namespace dash {
 namespace util {
@@ -37,7 +36,8 @@ public:
   friend void dash::init(int *argc, char ***argv);
 
 public:
-  typedef struct {
+  typedef struct
+  {
     int  unit;
     char host[40];
     char domain[20];
@@ -45,11 +45,14 @@ public:
     int  num_cores;
     int  numa_id;
     int  num_threads;
-  } UnitPinning;
+  }
+  UnitPinning;
 
-  typedef enum {
+  typedef enum
+  {
     Undefined = DART_LOCALITY_SCOPE_UNDEFINED,
     Global    = DART_LOCALITY_SCOPE_GLOBAL,
+    Group     = DART_LOCALITY_SCOPE_GROUP,
     Network   = DART_LOCALITY_SCOPE_NETWORK,
     Node      = DART_LOCALITY_SCOPE_NODE,
     Module    = DART_LOCALITY_SCOPE_MODULE,
@@ -59,75 +62,91 @@ public:
     Uncore    = DART_LOCALITY_SCOPE_UNCORE,
     Core      = DART_LOCALITY_SCOPE_CORE,
     CPU       = DART_LOCALITY_SCOPE_CPU
-  } Scope;
+  }
+  Scope;
 
 public:
 
-  static inline int NumNodes() {
+  static inline int NumNodes()
+  {
     return (_domain_loc == nullptr) ? -1 : _domain_loc->num_nodes;
   }
 
-  static inline int NumSockets() {
+  static inline int NumSockets()
+  {
     return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_sockets;
   }
 
-  static inline int NumNUMANodes() {
+  static inline int NumNUMANodes()
+  {
     return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_numa;
   }
 
-  static inline int NumCPUs() {
+  static inline int NumCPUs()
+  {
     return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_cores;
   }
 
-  static inline void SetNumNodes(int n) {
+  static inline void SetNumNodes(int n)
+  {
     _domain_loc->num_nodes = n;
   }
 
-  static inline void SetNumSockets(int n) {
+  static inline void SetNumSockets(int n)
+  {
     if (_unit_loc == nullptr) {
       return;
     }
     _domain_loc->hwinfo.num_sockets = n;
   }
 
-  static inline void SetNumNUMANodes(int n) {
+  static inline void SetNumNUMANodes(int n)
+  {
     if (_unit_loc == nullptr) {
       return;
     }
     _domain_loc->hwinfo.num_numa = n;
   }
 
-  static inline void SetNumCPUs(int n) {
+  static inline void SetNumCPUs(int n)
+  {
     _domain_loc->hwinfo.num_cores = n;
   }
 
-  static int UnitNUMAId() {
+  static int UnitNUMAId()
+  {
     return _domain_loc->hwinfo.numa_id;
   }
 
-  static int UnitCPUId() {
+  static int UnitCPUId()
+  {
     return _domain_loc->hwinfo.cpu_id;
   }
 
-  static inline int CPUMaxMhz() {
+  static inline int CPUMaxMhz()
+  {
     return (_unit_loc == nullptr) ? -1 : _unit_loc->hwinfo.max_cpu_mhz;
   }
 
-  static inline int CPUMinMhz() {
+  static inline int CPUMinMhz()
+  {
     return (_unit_loc == nullptr) ? -1 : _unit_loc->hwinfo.min_cpu_mhz;
   }
 
-  static inline std::string Hostname() {
+  static inline std::string Hostname()
+  {
     return (_domain_loc == nullptr) ? "" : _domain_loc->host;
   }
 
-  static inline std::string Hostname(dart_unit_t unit) {
+  static inline std::string Hostname(dart_unit_t unit)
+  {
     dart_unit_locality_t * ul;
     dart_unit_locality(DART_TEAM_ALL, unit, &ul);
     return ul->host;
   }
 
-  static const UnitPinning Pinning(dart_unit_t unit) {
+  static const UnitPinning Pinning(dart_unit_t unit)
+  {
     dart_unit_locality_t * ul;
     dart_unit_locality(DART_TEAM_ALL, unit, &ul);
     UnitPinning pinning;
@@ -141,11 +160,13 @@ public:
     return pinning;
   }
 
-  static const std::array<int, 3> & CacheSizes() {
+  static const std::array<int, 3> & CacheSizes()
+  {
     return _cache_sizes;
   }
 
-  static const std::array<int, 3> & CacheLineSizes() {
+  static const std::array<int, 3> & CacheLineSizes()
+  {
     return _cache_line_sizes;
   }
 
@@ -166,5 +187,13 @@ std::ostream & operator<<(
 
 } // namespace util
 } // namespace dash
+
+std::ostream & operator<<(
+  std::ostream                 & os,
+  dash::util::Locality::Scope    scope);
+
+std::ostream & operator<<(
+  std::ostream                 & os,
+  dart_locality_scope_t          scope);
 
 #endif // DASH__UTIL__LOCALITY_H__

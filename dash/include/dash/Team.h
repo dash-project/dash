@@ -1,11 +1,6 @@
 #ifndef TEAM_H_INCLUDED
 #define TEAM_H_INCLUDED
 
-#include <list>
-#include <iostream>
-#include <memory>
-#include <type_traits>
-
 #include <dash/dart/if/dart.h>
 
 #include <dash/Init.h>
@@ -16,6 +11,12 @@
 
 #include <dash/internal/Logging.h>
 
+#include <list>
+#include <unordered_map>
+#include <iostream>
+#include <memory>
+#include <type_traits>
+
 
 namespace dash {
 
@@ -23,7 +24,7 @@ namespace dash {
 class Team;
 std::ostream & operator<<(
   std::ostream & os,
-  const Team & team);
+  const Team   & team);
 
 /**
  * A Team instance specifies a subset of all available units.
@@ -36,7 +37,8 @@ std::ostream & operator<<(
  * - move-construction
  * - move-assignment
  */
-class Team {
+class Team
+{
   template <typename U>
     friend class Shared;
   template <typename U, class P, class GM, class Ptr, class Ref >
@@ -48,7 +50,8 @@ class Team {
     const Team & team);
 
 public:
-  typedef struct iterator {
+  typedef struct iterator
+  {
     int val;
 
     iterator(int v) : val(v) {}
@@ -70,16 +73,19 @@ public:
     }
   } iterator;
 
-  inline iterator begin() {
+  inline iterator begin()
+  {
     return iterator(0);
   }
 
-  inline iterator end() {
+  inline iterator end()
+  {
     return iterator(size());
   }
 
 public:
-  typedef struct Deallocator {
+  typedef struct Deallocator
+  {
     typedef std::function<void(void)> dealloc_function;
     void             * object;
     dealloc_function   deallocator;
@@ -90,30 +96,15 @@ private:
    * Constructor, allows to specify the instance's parent team and its
    * position within the team group.
    */
-  Team(dart_team_t id,
-       /// Parent team, or \c nullptr for none
-       Team * parent = nullptr,
-       /// Position within the team's group
-       size_t pos = 0)
-  : _parent(parent) {
-    _dartid   = id;
-    _position = pos;
-    DASH_LOG_DEBUG_VAR("Team()", id);
-    DASH_LOG_DEBUG_VAR("Team()", pos);
-    if (nullptr != parent) {
-      if (parent->_child) {
-        DASH_THROW(
-          dash::exception::InvalidArgument,
-          "child of team "  << parent->dart_id() << " " <<
-          "already set to " << parent->_child->dart_id() << ", " <<
-          "cannot set to "  << id);
-      } else {
-        parent->_child = this;
-      }
-    }
-  }
+  Team(
+    dart_team_t id,
+    /// Parent team, or \c nullptr for none
+    Team      * parent = nullptr,
+    /// Position within the team's group
+    size_t      pos    = 0);
 
-  bool get_group() const {
+  bool get_group() const
+  {
     if (dash::is_initialized() && !_has_group) {
       DASH_LOG_DEBUG("Team.get_group()");
       size_t sz;
@@ -140,7 +131,8 @@ public:
   /**
    * Move-constructor.
    */
-  Team(Team && t) {
+  Team(Team && t)
+  {
     if (this != &t) {
       // Free existing resources
       free();
@@ -156,7 +148,8 @@ public:
   /**
    * Move-assignment operator.
    */
-  Team & operator=(Team && t) {
+  Team & operator=(Team && t)
+  {
     if (this != &t) {
       // Free existing resources
       free();
@@ -173,8 +166,12 @@ public:
   /**
    * Destructor. Recursively frees this Team instance's child teams.
    */
-  ~Team() {
+  ~Team()
+  {
     DASH_LOG_DEBUG_VAR("Team.~Team()", this);
+
+    Team::unregister_team(this);
+
     if (_child) {
       delete(_child);
     }
@@ -184,22 +181,40 @@ public:
   /**
    * The invariant Team instance containing all available units.
    */
-  inline static Team & All() {
+  inline static Team & All()
+  {
     return Team::_team_all;
   }
 
   /**
    * The invariant Team instance representing an undefined team.
    */
-  inline static Team & Null() {
+  inline static Team & Null()
+  {
     return Team::_team_null;
+  }
+
+  /**
+   * Get Team instance by id.
+   */
+  inline static Team & Get(
+    dart_team_t team_id)
+  {
+    if (DART_TEAM_NULL == team_id) {
+      return dash::Team::Null();
+    }
+    if (DART_TEAM_ALL == team_id) {
+      return dash::Team::All();
+    }
+    return *(Team::_teams[team_id]);
   }
 
   /**
    * Finalize all teams.
    * Frees global memory allocated by \c dash::Team::All().
    */
-  static void finalize() {
+  static void finalize()
+  {
     DASH_LOG_TRACE("Team::finalize()");
     Team::All().free();
   }
@@ -213,7 +228,8 @@ public:
     /// Object to deallocate
     void * object,
     /// Function deallocating the object
-    Deallocator::dealloc_function dealloc) {
+    Deallocator::dealloc_function dealloc)
+  {
     DASH_LOG_DEBUG_VAR("Team.register_deallocator()", object);
     _deallocs.push_back(Deallocator { object, dealloc });
   }
@@ -227,7 +243,8 @@ public:
     /// Object to deallocate
     void * object,
     /// Function deallocating the object
-    Deallocator::dealloc_function dealloc) {
+    Deallocator::dealloc_function dealloc)
+  {
     DASH_LOG_DEBUG_VAR("Team.unregister_deallocator()", object);
     _deallocs.remove(Deallocator { object, dealloc });
   }
@@ -236,7 +253,8 @@ public:
    * Call registered deallocator functions for all team-allocated
    * objects.
    */
-  void free() {
+  void free()
+  {
     DASH_LOG_DEBUG("Team.free()");
     for (auto dealloc = _deallocs.rbegin();
          dealloc != _deallocs.rend();
@@ -256,58 +274,7 @@ public:
    */
   Team & split(
     /// Number of parts to split this team's units into
-    unsigned nParts)
-  {
-    DASH_LOG_DEBUG_VAR("Team.split()", nParts);
-    dart_group_t *  group;
-    dart_group_t ** sub_groups = static_cast<dart_group_t**>(
-                                   malloc(sizeof(dart_group_t*) * nParts));
-    size_t size;
-
-    dart_group_sizeof(&size);
-
-    group = static_cast<dart_group_t *>(malloc(size));
-    for (unsigned i = 0; i < nParts; i++) {
-      sub_groups[i] = static_cast<dart_group_t *>(malloc(size));
-      DASH_ASSERT_RETURNS(
-        dart_group_init(sub_groups[i]),
-        DART_OK);
-    }
-
-    Team *result = &(dash::Team::Null());
-
-    if (this->size() <= 1) {
-      DASH_LOG_DEBUG("Team.split >", "Team size is 1, cannot split");
-      return *result;
-    }
-    DASH_ASSERT_RETURNS(
-      dart_group_init(group),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_team_get_group(_dartid, group),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_group_split(group, nParts, sub_groups),
-      DART_OK);
-    dart_team_t oldteam = _dartid;
-    // Create a child Team for every part with parent set to
-    // this instance:
-    for(unsigned i = 0; i < nParts; i++) {
-      dart_team_t newteam = DART_TEAM_NULL;
-      DASH_ASSERT_RETURNS(
-        dart_team_create(
-          oldteam,
-          sub_groups[i],
-          &newteam),
-        DART_OK);
-      if(newteam != DART_TEAM_NULL) {
-        // Create team instance of child team:
-        result = new Team(newteam, this, i);
-      }
-    }
-    DASH_LOG_DEBUG("Team.split >");
-    return *result;
-  }
+    unsigned nParts);
 
   /**
    * Split this Team's units into child Team instances at the specified
@@ -320,87 +287,7 @@ public:
     /// where the team is split.
     dash::util::Locality::Scope scope,
     /// Number of parts to split this team's units into
-    unsigned                    num_parts)
-  {
-    DASH_LOG_DEBUG_VAR("Team.locality_split()", scope);
-    DASH_LOG_DEBUG_VAR("Team.locality_split()", num_parts);
-
-    if (num_parts == 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Number of parts to split team must be greater than 0");
-    }
-
-    dart_locality_scope_t dart_scope = static_cast<dart_locality_scope_t>(
-                                          static_cast<int>(scope));
-
-    // TODO: Replace dynamic arrays with vectors.
-
-    dart_group_t *  group;
-    dart_group_t ** sub_groups = static_cast<dart_group_t**>(
-                                   malloc(sizeof(dart_group_t *) *
-                                          num_parts));
-    size_t group_t_size;
-
-    dart_group_sizeof(&group_t_size);
-
-    group = static_cast<dart_group_t *>(malloc(group_t_size));
-    for (unsigned i = 0; i < num_parts; i++) {
-      sub_groups[i] = static_cast<dart_group_t *>(malloc(group_t_size));
-      DASH_ASSERT_RETURNS(
-        dart_group_init(sub_groups[i]),
-        DART_OK);
-    }
-
-    Team * result = &(dash::Team::Null());
-
-    if (this->size() < 2) {
-      DASH_LOG_DEBUG("Team.locality_split >", "Team size < 2, cannot split");
-      return *result;
-    }
-
-    dart_domain_locality_t * domain;
-    DASH_ASSERT_RETURNS(
-      dart_domain_locality(_dartid, ".", &domain),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_group_init(group),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_team_get_group(_dartid, group),
-      DART_OK);
-    DASH_ASSERT_RETURNS(
-      dart_group_locality_split(
-        group, domain, dart_scope, num_parts, sub_groups),
-      DART_OK);
-    dart_team_t oldteam = _dartid;
-#if DASH_ENABLE_TRACE_LOGGING
-    for(unsigned i = 0; i < num_parts; i++) {
-      size_t sub_group_size = 0;
-      dart_group_size(sub_groups[i], &sub_group_size);
-      std::vector<dart_unit_t> sub_group_unit_ids(sub_group_size);
-      dart_group_getmembers(sub_groups[i], sub_group_unit_ids.data());
-      DASH_LOG_TRACE("Team.locality_split", "child team", i, "units:",
-                     sub_group_unit_ids);
-    }
-#endif
-    // Create a child Team for every part with parent set to
-    // this instance:
-    for(unsigned i = 0; i < num_parts; i++) {
-      dart_team_t newteam = DART_TEAM_NULL;
-      DASH_ASSERT_RETURNS(
-        dart_team_create(
-          oldteam,
-          sub_groups[i],
-          &newteam),
-        DART_OK);
-      if(newteam != DART_TEAM_NULL) {
-        result = new Team(newteam, this, i);
-      }
-    }
-    DASH_LOG_DEBUG("Team.locality_split >");
-    return *result;
-  }
+    unsigned                    num_parts);
 
   /**
    * Split this Team's units into child Team instances at the specified
@@ -408,7 +295,7 @@ public:
    *
    * \return A new Team instance as a parent of the child teams.
    */
-  Team & locality_split(
+  inline Team & locality_split(
     /// Locality scope that determines the level in the topology hierarchy
     /// where the team is split.
     dart_locality_scope_t scope,
@@ -428,7 +315,8 @@ public:
    * \returns  True if and only if the given Team instance and this Team
    *           share the same DART id
    */
-  bool operator==(const Team & rhs) const {
+  inline bool operator==(const Team & rhs) const
+  {
     return _dartid == rhs._dartid;
   }
 
@@ -439,21 +327,24 @@ public:
    * \returns  True if and only if the given Team instance and this Team
    *           do not share the same DART id
    */
-  bool operator!=(const Team & rhs) const {
+  inline bool operator!=(const Team & rhs) const
+  {
     return !(operator == (rhs));
   }
 
   /**
    * Whether this Team contains all available units.
    */
-  bool is_all() const {
+  inline bool is_all() const
+  {
     return operator==(All());
   }
 
   /**
    * Whether this Team is empty.
    */
-  bool is_null() const {
+  inline bool is_null() const
+  {
     return operator==(Null());
   }
 
@@ -461,7 +352,8 @@ public:
    * Whether this Team is a leaf node in a Team hierarchy, i.e. does not
    * have any child Teams assigned.
    */
-  bool is_leaf() const {
+  inline bool is_leaf() const
+  {
     return _child == nullptr;
   }
 
@@ -469,7 +361,8 @@ public:
    * Whether this Team is a root node in a Team hierarchy, i.e. does not
    * have a parent Team assigned.
    */
-  bool is_root() const {
+  inline bool is_root() const
+  {
     return _parent == nullptr;
   }
 
@@ -481,7 +374,8 @@ public:
    * \return  True if and only if this Team instance is member of a group
    *          with given id
    */
-  bool is_member(size_t groupId) const {
+  bool is_member(size_t groupId) const
+  {
     if(!get_group()) {
       return false;
     }
@@ -496,12 +390,14 @@ public:
     return ismember;
   }
 
-  Team & parent() {
+  inline Team & parent()
+  {
     if(_parent) { return *_parent; }
     else { return Null(); }
   }
 
-  Team & sub(size_t level = 1) {
+  Team & sub(size_t level = 1)
+  {
     Team * t = this;
     while (t && level > 0 && !(t->is_leaf())) {
       t = t->_child;
@@ -510,7 +406,8 @@ public:
     return *t;
   }
 
-  Team & bottom() {
+  Team & bottom()
+  {
     Team *t = this;
     while (t && !(t->is_leaf())) {
       t = t->_child;
@@ -518,7 +415,8 @@ public:
     return *t;
   }
 
-  void barrier() const {
+  inline void barrier() const
+  {
     if (!is_null()) {
       DASH_ASSERT_RETURNS(
         dart_barrier(_dartid),
@@ -526,7 +424,8 @@ public:
     }
   }
 
-  dart_unit_t myid() const {
+  inline dart_unit_t myid() const
+  {
     if (_myid == -1 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
         dart_team_myid(_dartid, &_myid),
@@ -542,7 +441,8 @@ public:
    *
    * \return  The number of unit grouped in this Team instance
    */
-  size_t size() const {
+  inline size_t size() const
+  {
     if (_size == 0 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
         dart_team_size(_dartid, &_size),
@@ -553,15 +453,19 @@ public:
     return _size;
   }
 
-  size_t position() const {
+  inline size_t position() const
+  {
     return _position;
   }
 
-  dart_team_t dart_id() const {
+  inline dart_team_t dart_id() const
+  {
     return _dartid;
   }
 
-  dart_unit_t global_id(dart_unit_t local_id) {
+  inline dart_unit_t global_id(
+    dart_unit_t local_id)
+  {
     dart_unit_t g_id;
     DASH_ASSERT_RETURNS(
       dart_team_unit_l2g(
@@ -573,19 +477,38 @@ public:
   }
 
 private:
+
+  void register_team(Team * team)
+  {
+    DASH_LOG_DEBUG("Team.register_team",
+                   "team id:", team->_dartid);
+    dash::Team::_teams.insert(
+      std::make_pair(team->_dartid, team));
+  }
+
+  void unregister_team(Team * team)
+  {
+    DASH_LOG_DEBUG("Team.unregister_team",
+                   "team id:", team->_dartid);
+    dash::Team::_teams.erase(
+      team->_dartid);
+  }
+
+private:
   dart_team_t             _dartid    = DART_TEAM_NULL;
   Team                  * _parent    = nullptr;
   Team                  * _child     = nullptr;
   size_t                  _position  = 0;
   mutable size_t          _size      = 0;
   mutable dart_unit_t     _myid      = -1;
-
   mutable bool            _has_group = false;
   mutable dart_group_t  * _group     = nullptr;
 
   /// Deallocation list for freeing memory acquired via
   /// team-aligned allocation
   std::list<Deallocator>  _deallocs;
+
+  static std::unordered_map<dart_team_t, Team *> _teams;
 
   static Team _team_all;
   static Team _team_null;
@@ -603,9 +526,9 @@ namespace std {
 template<>
 struct iterator_traits<dash::Team::iterator> {
 public:
-  typedef dash::Team::iterator value_type;
-  typedef dash::Team::iterator reference;
-  typedef dash::Team::iterator difference_type;
+  typedef dash::Team::iterator       value_type;
+  typedef dash::Team::iterator       reference;
+  typedef dash::Team::iterator       difference_type;
   typedef random_access_iterator_tag iterator_category;
 };
 

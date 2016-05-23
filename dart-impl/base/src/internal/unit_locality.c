@@ -135,15 +135,15 @@ dart_ret_t dart__base__unit_locality__create(
   return DART_OK;
 }
 
-dart_ret_t dart__base__unit_locality__delete(
+dart_ret_t dart__base__unit_locality__destruct(
   dart_unit_mapping_t   * unit_mapping)
 {
-  DART_LOG_DEBUG("dart__base__unit_locality__delete() team: %d",
+  DART_LOG_DEBUG("dart__base__unit_locality__destruct() team: %d",
                  unit_mapping->team);
 
   free(unit_mapping->unit_localities);
 
-  DART_LOG_DEBUG("dart__base__unit_locality__delete >");
+  DART_LOG_DEBUG("dart__base__unit_locality__destruct >");
   return DART_OK;
 }
 
@@ -220,7 +220,9 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
   loc->domain_tag[1] = '\0';
 
   dart_domain_locality_t * dloc;
-  DART_ASSERT_RETURNS(dart_domain_locality(team, ".", &dloc), DART_OK);
+  DART_ASSERT_RETURNS(
+    dart_domain_team_locality(team, ".", &dloc),
+    DART_OK);
 
   loc->unit             = myid;
   loc->team             = team;

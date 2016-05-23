@@ -22,9 +22,9 @@
 
 #include <limits.h>
 
-/* ============================================================================= *
- * Private Functions                                                             *
- * ============================================================================= */
+/* ======================================================================= *
+ * Private Funtions                                                        *
+ * ======================================================================= */
 
 dart_ret_t dart_group_init(
   dart_group_t *group)
@@ -260,9 +260,8 @@ dart_ret_t dart_group_locality_split(
   int     num_domains;
   char ** domain_tags;
   DART_ASSERT_RETURNS(
-    dart_scope_domains(
-      team,
-      domain->domain_tag,
+    dart_domain_scope_tags(
+      domain,
       scope,
       &num_domains,
       &domain_tags),
@@ -279,7 +278,7 @@ dart_ret_t dart_group_locality_split(
                                         sizeof(dart_domain_locality_t *));
   for (int d = 0; d < num_domains; ++d) {
     DART_ASSERT_RETURNS(
-      dart_domain_locality(team, domain_tags[d], &domains[d]),
+      dart_domain_team_locality(team, domain_tags[d], &domains[d]),
       DART_OK);
     total_domains_units += domains[d]->num_units;
 
@@ -372,7 +371,7 @@ dart_ret_t dart_group_locality_split(
     for (size_t g = 0; g < num_groups; ++g) {
       int   group_num_units     = 0;
       int * group_team_unit_ids = NULL;
-      int   num_group_domains = max_group_domains;
+      int   num_group_domains   = max_group_domains;
       if ((g+1) * max_group_domains > (size_t)num_domains) {
         num_group_domains = (g * max_group_domains) - num_domains;
       }
@@ -449,7 +448,8 @@ dart_ret_t dart_group_ismember(
     }
   }
   *ismember = (i!=size);
-  DART_LOG_DEBUG("%2d: GROUP_ISMEMBER - %s", unitid, (*ismember) ? "yes" : "no");
+  DART_LOG_DEBUG("dart_group_ismember : unit %2d: %s",
+                 unitid, (*ismember) ? "yes" : "no");
   return DART_OK;
 }
 
