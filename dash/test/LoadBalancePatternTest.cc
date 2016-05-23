@@ -43,23 +43,18 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
 
   // Ratio unit 0 CPU capacity / unit 1 CPU capacity:
   double cpu_cap_ratio      = 8.0;
-  // Balanced local size (i.e. without load-balancing):
-  double cap_balanced       = static_cast<double>(size) / dash::size();
+  double cap_balanced       = static_cast<double>(size) /
+                                (8 + 1 + (2 * (dash::size() - 2)));
 
   pattern_t pat(dash::SizeSpec<1>(size), tloc);
 
   // Test that all elements have been assigned:
   ASSERT_EQ_U(size, pat.size());
 
-  size_t unit_0_lsize_exp   = std::ceil((
-                               (2 * cap_balanced) / (cpu_cap_ratio + 1)) *
-                                 cpu_cap_ratio);
-  size_t unit_1_lsize_exp   = (2 * cap_balanced) - unit_0_lsize_exp;
-  size_t unit_x_lsize_exp   = _dash_size > 2
-                              ? (size -
-                                  (unit_0_lsize_exp - unit_1_lsize_exp)) /
-                                (_dash_size - 2)
-                              : 0;
+  size_t unit_1_lsize_exp   = std::floor(cap_balanced);
+  size_t unit_x_lsize_exp   = std::floor(cap_balanced * 2);
+  size_t unit_0_lsize_exp   = size - unit_1_lsize_exp -
+                                ((_dash_size - 2) * unit_x_lsize_exp);
 
   DASH_LOG_DEBUG_VAR("LoadBalancePatternTest.LocalSizes", unit_0_lsize_exp);
   DASH_LOG_DEBUG_VAR("LoadBalancePatternTest.LocalSizes", unit_1_lsize_exp);
@@ -68,6 +63,9 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
   EXPECT_EQ_U(cpu_cap_ratio,
               std::floor(
                 pat.local_size(0) / pat.local_size(1)));
+
+  EXPECT_EQ_U(unit_0_lsize_exp, pat.local_size(0));
+  EXPECT_EQ_U(unit_1_lsize_exp, pat.local_size(1));
 
   for (dart_unit_t u = 2; u < static_cast<dart_unit_t>(_dash_size); u++) {
     EXPECT_EQ_U(unit_x_lsize_exp, pat.local_size(u));

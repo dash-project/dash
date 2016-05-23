@@ -750,7 +750,7 @@ private:
         max_cpu_cap_unit = u;
         unit_max_cpu_cap = unit_capacity;
       }
-      assigned_capacity    += unit_capacity;
+      assigned_capacity += unit_capacity;
       l_sizes.push_back(unit_capacity);
     }
     // Some elements might be unassigned due to rounding.
