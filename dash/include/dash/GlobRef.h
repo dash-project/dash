@@ -114,7 +114,6 @@ public:
     return !(*this == other);
   }
 
-#if 0
   inline bool operator==(const T & value) const
   {
     return static_cast<T>(*this) == value;
@@ -124,7 +123,6 @@ public:
   {
     return !(*this != value);
   }
-#endif
 
   friend void swap(GlobRef<T> a, GlobRef<T> b) {
     T temp = (T)a;
