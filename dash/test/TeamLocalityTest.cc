@@ -15,41 +15,11 @@ void print_locality_domain(
     return;
   }
 
-  std::string indent(ld.level() * 4, ' ');
-
-  if (ld.level() == 0) {
-    DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "context: ",
-                   context);
-    DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "----------");
-  }
-
-  DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "scope:   ",
-                 ld.scope());
-  DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "rel.idx: ",
-                 ld.relative_index());
-  DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "tag:     ",
-                 ld.domain_tag());
-  DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "NUMA:    ",
-                 "id:",      ld.hwinfo().numa_id,
-                 "domains:", ld.hwinfo().num_numa);
-  DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "unit ids:",
-                 ld.units());
-
-  if (ld.size() > 0) {
-    DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "domains: ",
-                   ld.size());
-  }
-
-  int d = 0;
-  for (auto & domain : ld) {
-    DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "[", d, "]:");
-    print_locality_domain(context, domain);
-    ++d;
-  }
-  if (ld.level() == 0) {
-    DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "----------");
-  }
+  std::string context_pref = "TeamLocalityTest.print_domain.";
+  context_pref += context;
+  DASH_LOG_DEBUG(context_pref.c_str(), ld);
 }
+
 
 TEST_F(TeamLocalityTest, GlobalAll)
 {

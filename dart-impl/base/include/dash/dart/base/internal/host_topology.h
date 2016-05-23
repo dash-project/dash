@@ -76,7 +76,8 @@ dart_ret_t dart__base__host_topology__module_units(
   dart_host_topology_t  * topo,
   const char            * module_hostname,
   dart_unit_t          ** units,
-  int                   * num_units);
+  int                   * num_units,
+  int                   * num_numa_domains);
 
 
 #endif /* DART__BASE__INTERNAL__HOST_TOPOLOGY_H__ */

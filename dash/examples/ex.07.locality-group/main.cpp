@@ -9,8 +9,6 @@
 
 #include <libdash.h>
 
-#include "../locality_utils.h"
-
 using namespace std;
 using namespace dash;
 
@@ -107,10 +105,10 @@ int main(int argc, char ** argv)
 
     cout << endl
          << "global domain:"
-         << endl;
-    print_domain(DART_TEAM_ALL, global_domain);
-
-    cout << separator << endl;
+         << endl
+         << *global_domain
+         << endl
+         << separator << endl;
 
     dart_domain_locality_t grouped_domain;
     dart_domain_copy(
@@ -144,13 +142,14 @@ int main(int argc, char ** argv)
 
     cout << endl
          << "grouped domain:"
+         << endl
+         << grouped_domain
          << endl;
-    print_domain(DART_TEAM_ALL, &grouped_domain);
 
     for (int g = 0; g < num_groups; g++) {
       cout << separator
-           << endl;
-      cout << "group[" << g << "]:"
+           << endl
+           << "group[" << g << "]:"
            << endl
            << "     domain tag: " << group_domain_tags[g]
            << endl;
@@ -167,7 +166,8 @@ int main(int argc, char ** argv)
         group_domain_tags[g].c_str(),
         &group_domain);
 
-      print_domain(DART_TEAM_ALL, group_domain);
+      cout << *group_domain
+           << endl;
     }
 
     dart_domain_destruct(

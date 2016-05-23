@@ -424,6 +424,10 @@ private:
 
 }; // class LocalityDomain
 
+std::ostream & operator<<(
+  std::ostream                     & os,
+  const dash::util::LocalityDomain & domain_loc);
+
 } // namespace util
 } // namespace dash
 

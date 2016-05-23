@@ -546,11 +546,13 @@ dart_ret_t dart__base__locality__domain__create_subdomains(
                        "could not get module hostname %d of host %s",
                        domain->relative_index, domain->host);
       } else {
+        int num_module_numa_domains;
         if (dart__base__host_topology__module_units(
               host_topology,
               module_hostname,
               &module_units,
-              &domain->num_units) != DART_OK) {
+              &domain->num_units,
+              &num_module_numa_domains) != DART_OK) {
           DART_LOG_DEBUG("dart__base__locality__domain__create_subdomains: "
                          "could not find units of module %s",
                          module_hostname);
@@ -754,15 +756,18 @@ dart_ret_t dart__base__locality__domain__create_node_subdomain(
 
   dart_unit_t * module_unit_ids;
   int           num_module_units;
+  int           num_module_numa_domains;
   DART_ASSERT_RETURNS(
     dart__base__host_topology__module_units(
       host_topology,
       module_hostname,
       &module_unit_ids,
-      &num_module_units),
+      &num_module_units,
+      &num_module_numa_domains),
     DART_OK);
-  subdomain->num_nodes = 1;
-  subdomain->num_units = num_module_units;
+  subdomain->num_nodes        = 1;
+  subdomain->num_units        = num_module_units;
+//subdomain->hwinfo.num_numa  = num_module_numa_domains;
   if (subdomain->num_units > 0) {
     subdomain->unit_ids = malloc(subdomain->num_units * sizeof(dart_unit_t));
   } else {
@@ -810,13 +815,15 @@ dart_ret_t dart__base__locality__domain__create_module_subdomain(
   strncpy(subdomain->host, module_hostname,
           DART_LOCALITY_HOST_MAX_SIZE);
   int           num_module_units;
+  int           num_module_numa_domains;
   dart_unit_t * module_unit_ids;
   DART_ASSERT_RETURNS(
     dart__base__host_topology__module_units(
         host_topology,
         module_hostname,
         &module_unit_ids,
-        &num_module_units),
+        &num_module_units,
+        &num_module_numa_domains),
     DART_OK);
   /* Assign units in the node that have the NUMA domain's NUMA id: */
   /* First pass: Count number of units in NUMA domain: */

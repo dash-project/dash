@@ -762,6 +762,9 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   /* Check that all subdomains have been found: */
   if (sdt != num_group_subdomain_tags) {
+    DART_LOG_ERROR("dart__base__locality__group_subdomains ! "
+                   "only found %d of %d requested subdomains",
+                   sdt, num_group_subdomain_tags);
     return DART_ERR_NOTFOUND;
   }
 

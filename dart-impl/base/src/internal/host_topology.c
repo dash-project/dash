@@ -118,11 +118,10 @@ dart_ret_t dart__base__host_topology__create(
         }
       }
     }
-#if 0
     DART_LOG_TRACE("dart__base__host_topology__init: "
                    "found %d NUMA domains on host %s",
                    node_units->num_numa, hostnames[h]);
-
+#if 0
     if (node_units->num_numa < 1) {
       node_units->num_numa = 1;
     }
@@ -137,7 +136,6 @@ dart_ret_t dart__base__host_topology__create(
 #endif
 
     /* Shrink unit array to required capacity: */
-#if 0
     if (node_units->num_units < max_host_units) {
       DART_LOG_TRACE("dart__base__host_topology__init: shrinking node unit "
                      "array from %d to %d elements",
@@ -145,15 +143,9 @@ dart_ret_t dart__base__host_topology__create(
       node_units->units = realloc(node_units->units, node_units->num_units);
       DART_ASSERT(node_units->units != NULL);
     }
-#endif
   }
   topo->num_hosts  = num_hosts;
-#if 0
   topo->host_names = (char **)(realloc(hostnames, num_hosts));
-#else
-  topo->host_names = hostnames;
-#endif
-
   DART_ASSERT(topo->host_names != NULL);
 
   /* Classify hostnames into categories 'node' and 'module'.
@@ -363,13 +355,15 @@ dart_ret_t dart__base__host_topology__module_units(
   dart_host_topology_t  * topo,
   const char            * hostname,
   dart_unit_t          ** units,
-  int                   * num_units)
+  int                   * num_units,
+  int                   * num_numa_domains)
 {
   DART_LOG_TRACE("dart__base__host_topolgoy__module_units() host: %s",
                  hostname);
-  *num_units     = 0;
-  *units         = NULL;
-  int host_found = 0;
+  *num_units        = 0;
+  *num_numa_domains = 0;
+  *units            = NULL;
+  int host_found    = 0;
   /*
    * Does not include units in sub-modules, e.g. a query for host name
    * "some-node" would not include units from "sub-node-*":
@@ -378,9 +372,10 @@ dart_ret_t dart__base__host_topology__module_units(
     dart_node_units_t * node_units = &topo->node_units[h];
     if (strncmp(node_units->host, hostname, DART_LOCALITY_HOST_MAX_SIZE)
         == 0) {
-      *num_units += node_units->num_units;
-      *units      = node_units->units;
-      host_found  = 1;
+      *num_units        += node_units->num_units;
+      *num_numa_domains += node_units->num_numa;
+      *units             = node_units->units;
+      host_found         = 1;
     }
   }
   if (!host_found) {

@@ -17,6 +17,20 @@
 #include <algorithm>
 #include <functional>
 
+
+namespace dash {
+namespace util {
+
+std::ostream & operator<<(
+  std::ostream                     & os,
+  const dash::util::LocalityDomain & domain_loc)
+{
+  return operator<<(os, domain_loc.dart_type());
+}
+
+} // namespace util
+} // namespace dash
+
 // -------------------------------------------------------------------------
 // Public Constructors
 // -------------------------------------------------------------------------

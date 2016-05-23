@@ -5,15 +5,12 @@
 
 #include <array>
 #include <vector>
-#include <map>
-#include <set>
+#include <string>
 #include <sstream>
 #include <iostream>
 #include <iomanip>
-#include <iterator>
 #include <cstring>
 
-#include <sys/types.h>
 #include <unistd.h>
 
 
@@ -21,7 +18,6 @@ namespace dash {
 namespace internal {
 namespace logging {
 
-// Terminator
 void Log_Recursive(
   const char* level,
   const char* file,
@@ -29,24 +25,19 @@ void Log_Recursive(
   const char* context_tag,
   std::ostringstream & msg)
 {
-  pid_t pid = getpid();
-  std::stringstream buf;
-  buf << "[ "
-      << std::setw(4) << dash::myid()
-      << " "
-      << level
-      << " ] [ "
-      << std::right << std::setw(5) << pid
-      << " ] "
-      << std::left << std::setw(25)
-      << file << ":"
-      << std::left << std::setw(4)
-      << line << " | "
-      << std::left << std::setw(45)
-      << context_tag
-      << msg.str()
-      << std::endl;
-  DASH_LOG_OUTPUT_TARGET << buf.str();
+  std::string msg_str = msg.str();
+
+  if (msg_str.length() > 40) {
+    if (msg_str.find('\n') != std::string::npos) {
+      std::stringstream ss(msg_str);
+      std::string item;
+      while (std::getline(ss, item, '\n')) {
+        Log_Line(level, file, line, context_tag, item);
+      }
+    }
+  } else {
+    Log_Line(level, file, line, context_tag, msg_str);
+  }
 }
 
 } // namespace logging

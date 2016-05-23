@@ -7,8 +7,6 @@
 
 #include <libdash.h>
 
-#include "../locality_utils.h"
-
 using namespace std;
 using namespace dash;
 
@@ -94,8 +92,11 @@ int main(int argc, char * argv[])
     dart_domain_locality_t * global_domain_locality;
     dart_domain_team_locality(
       DART_TEAM_ALL, ".", &global_domain_locality);
-    print_domain(DART_TEAM_ALL, global_domain_locality);
-    cout << separator << endl;
+
+    cout << *global_domain_locality
+         << endl
+         << separator
+         << endl;
   } else {
     sleep(2);
   }
@@ -124,9 +125,11 @@ int main(int argc, char * argv[])
       dart_domain_locality_t * global_domain_locality;
       dart_domain_team_locality(
         split_team.dart_id(), ".", &global_domain_locality);
-      print_domain(split_team.dart_id(), global_domain_locality);
 
-      cout << separator << endl;
+      cout << *global_domain_locality
+           << endl
+           << separator
+           << endl;
     } else {
       sleep(2);
     }
