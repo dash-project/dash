@@ -13,6 +13,7 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 
+
 /* ======================================================================== *
  * Private Functions                                                        *
  * ======================================================================== */
@@ -51,10 +52,10 @@ dart_ret_t dart__base__host_topology__create(
     /* copies next differing host name to the left, like:
      *
      *     [ a a a a b b b c c c ]  last_host_index++ = 1
-     *         .---------'
+     *         .-----'
      *         v
      * ->  [ a b a a b b b c c c ]  last_host_index++ = 2
-     *           .-----------'
+     *           .---------'
      *           v
      * ->  [ a b c a b b b c c c ]  last_host_index++ = 3
      * ...
@@ -83,23 +84,59 @@ dart_ret_t dart__base__host_topology__create(
   topo->node_units = malloc(num_hosts * sizeof(dart_node_units_t));
   for (int h = 0; h < num_hosts; ++h) {
     dart_node_units_t * node_units = &topo->node_units[h];
-    /* allocate array with capacity of maximum units on a single host: */
-    node_units->units = malloc(sizeof(dart_unit_t) * max_host_units);
-    strncpy(node_units->host, hostnames[h], max_host_len);
+    /* Histogram of NUMA ids: */
+    int numa_ids[DART_LOCALITY_MAX_NUMA_ID] = { 0 };
+    /* Allocate array with capacity of maximum units on a single host: */
+    node_units->units     = malloc(sizeof(dart_unit_t) * max_host_units);
     node_units->num_units = 0;
+    node_units->num_numa  = 0;
+    strncpy(node_units->host, hostnames[h], max_host_len);
+
     DART_LOG_TRACE("dart__base__host_topology__init: mapping units to %s",
                    hostnames[h]);
+    /* Iterate over all units: */
     for (size_t u = 0; u < num_units; ++u) {
       dart_unit_locality_t * ul;
       DART_ASSERT_RETURNS(
         dart__base__unit_locality__at(unit_mapping, u, &ul),
         DART_OK);
       if (strncmp(ul->host, hostnames[h], max_host_len) == 0) {
+        /* Unit is local to host at index h: */
         node_units->units[node_units->num_units] = ul->unit;
         node_units->num_units++;
+
+        int unit_numa_id = ul->hwinfo.numa_id;
+
+        DART_LOG_TRACE("dart__base__host_topology__init: "
+                       "mapping unit %d to %s, NUMA id: %d",
+                       u, hostnames[h], unit_numa_id);
+        if (unit_numa_id >= 0) {
+          if (numa_ids[unit_numa_id] == 0) {
+            node_units->num_numa++;
+          }
+          numa_ids[unit_numa_id]++;
+        }
       }
     }
-    /* shrink unit array to required capacity: */
+#if 0
+    DART_LOG_TRACE("dart__base__host_topology__init: "
+                   "found %d NUMA domains on host %s",
+                   node_units->num_numa, hostnames[h]);
+
+    if (node_units->num_numa < 1) {
+      node_units->num_numa = 1;
+    }
+    for (int u = 0; u < node_units->num_units; ++u) {
+      dart_unit_locality_t * ul;
+      DART_ASSERT_RETURNS(
+        dart__base__unit_locality__at(
+          unit_mapping, node_units->units[u], &ul),
+        DART_OK);
+      ul->hwinfo.num_numa = node_units->num_numa;
+    }
+#endif
+
+    /* Shrink unit array to required capacity: */
 #if 0
     if (node_units->num_units < max_host_units) {
       DART_LOG_TRACE("dart__base__host_topology__init: shrinking node unit "

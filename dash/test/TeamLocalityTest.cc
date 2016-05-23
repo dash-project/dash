@@ -29,6 +29,9 @@ void print_locality_domain(
                  ld.relative_index());
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "tag:     ",
                  ld.domain_tag());
+  DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "NUMA:    ",
+                 "id:",      ld.hwinfo().numa_id,
+                 "domains:", ld.hwinfo().num_numa);
   DASH_LOG_DEBUG("TeamLocalityTest.print_domain", indent + "unit ids:",
                  ld.units());
 
@@ -50,6 +53,10 @@ void print_locality_domain(
 
 TEST_F(TeamLocalityTest, GlobalAll)
 {
+  if (_dash_id != 0) {
+    return;
+  }
+
   dash::Team & team = dash::Team::All();
 
   dash::util::TeamLocality tloc(team);
@@ -74,6 +81,10 @@ TEST_F(TeamLocalityTest, GlobalAll)
 
 TEST_F(TeamLocalityTest, SplitCore)
 {
+  if (_dash_id != 0) {
+    return;
+  }
+
   dash::Team & team = dash::Team::All();
   int num_split     = std::min<int>(dash::size(), 3);
 
@@ -100,6 +111,10 @@ TEST_F(TeamLocalityTest, SplitCore)
 
 TEST_F(TeamLocalityTest, SplitNUMA)
 {
+  if (_dash_id != 0) {
+    return;
+  }
+
   dash::Team & team = dash::Team::All();
 
   dash::util::TeamLocality tloc(team);
@@ -125,6 +140,9 @@ TEST_F(TeamLocalityTest, SplitNUMA)
 TEST_F(TeamLocalityTest, GroupUnits)
 {
   if (dash::size() < 4) {
+    return;
+  }
+  if (_dash_id != 0) {
     return;
   }
 
@@ -220,6 +238,9 @@ TEST_F(TeamLocalityTest, GroupUnits)
 TEST_F(TeamLocalityTest, SplitGroups)
 {
   if (dash::size() < 4) {
+    return;
+  }
+  if (_dash_id != 0) {
     return;
   }
 

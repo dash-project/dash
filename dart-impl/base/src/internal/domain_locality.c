@@ -816,9 +816,12 @@ dart_ret_t dart__base__locality__domain__create_module_subdomain(
     dart__base__unit_locality__at(
       unit_mapping, module_unit_id, &module_unit_loc);
     int module_unit_numa_id = module_unit_loc->hwinfo.numa_id;
-    /* TODO: assuming that rel_idx corresponds to NUMA id: */
+    /*
+     * TODO: assuming that rel_idx corresponds to NUMA id:
+     */
     DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
-                   "unit %d numa id: %d", mu, module_unit_numa_id);
+                   "unit %d numa id: %d module numa id: %d",
+                   mu, module_unit_numa_id, subdomain->hwinfo.numa_id);
     if (module_unit_numa_id == rel_idx) {
       ++num_numa_units;
     }

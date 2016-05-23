@@ -10,6 +10,7 @@
 #include "../locality_utils.h"
 
 using namespace std;
+using namespace dash;
 
 
 int main(int argc, char * argv[])

@@ -8,21 +8,26 @@
 #include <dash/dart/base/internal/unit_locality.h>
 
 
-typedef struct {
-  char          host[DART_LOCALITY_HOST_MAX_SIZE];
-  char          parent[DART_LOCALITY_HOST_MAX_SIZE];
-  dart_unit_t * units;
-  int           num_units;
-  int           level;
-} dart_node_units_t;
+typedef struct
+{
+  char                host[DART_LOCALITY_HOST_MAX_SIZE];
+  char                parent[DART_LOCALITY_HOST_MAX_SIZE];
+  dart_unit_t       * units;
+  int                 num_units;
+  int                 num_numa;
+  int                 level;
+}
+dart_node_units_t;
 
-typedef struct {
+typedef struct
+{
   int                 num_nodes;
   int                 num_hosts;
   int                 num_host_levels;
   char **             host_names;
   dart_node_units_t * node_units;
-} dart_host_topology_t;
+}
+dart_host_topology_t;
 
 
 /**

@@ -1,12 +1,14 @@
 #ifndef DASH__EXAMPLES__LOCALITY__UTILS_H__INCLUDED
 #define DASH__EXAMPLES__LOCALITY__UTILS_H__INCLUDED
 
+#include <libdash.h>
+
 #include <sstream>
 #include <iostream>
 #include <iomanip>
 
-#include <libdash.h>
 
+namespace dash {
 
 void print_domain(
   dart_team_t              team,
@@ -31,16 +33,18 @@ void print_domain(
   } else {
     cout << indent << "NUMA id: " << domain->hwinfo.numa_id  << endl;
   }
-  cout << indent << "units:   " << "{ ";
-  for (int u = 0; u < domain->num_units; ++u) {
-    dart_unit_t g_unit_id;
-    dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
-    cout << g_unit_id;
-    if (u < domain->num_units-1) {
-      cout << ", ";
+  if (domain->num_units > 0) {
+    cout << indent << "units:   " << "{ ";
+    for (int u = 0; u < domain->num_units; ++u) {
+      dart_unit_t g_unit_id;
+      dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
+      cout << g_unit_id;
+      if (u < domain->num_units-1) {
+        cout << ", ";
+      }
     }
+    cout << " }" << endl;
   }
-  cout << " }" << endl;
 
   if (domain->scope == DART_LOCALITY_SCOPE_CORE) {
     std::string uindent = indent;
@@ -112,5 +116,7 @@ void print_domain(
     }
   }
 }
+
+} // namespace dash
 
 #endif // DASH__EXAMPLES__LOCALITY__UTILS_H__INCLUDED

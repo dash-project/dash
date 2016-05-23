@@ -45,7 +45,8 @@ dart__base__locality__global_domain_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
  * Private Functions                                                      *
  * ====================================================================== */
 
-static int cmpstr_(const void * p1, const void * p2) {
+static int cmpstr_(const void * p1, const void * p2)
+{
   return strcmp(* (char * const *) p1, * (char * const *) p2);
 }
 

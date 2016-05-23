@@ -164,6 +164,9 @@ std::ostream & operator<<(
   std::ostream & os,
   const typename dash::util::Locality::UnitPinning & upi);
 
+} // namespace util
+} // namespace dash
+
 std::ostream & operator<<(
   std::ostream                 & os,
   dash::util::Locality::Scope    scope);
@@ -171,8 +174,5 @@ std::ostream & operator<<(
 std::ostream & operator<<(
   std::ostream                 & os,
   dart_locality_scope_t          scope);
-
-} // namespace util
-} // namespace dash
 
 #endif // DASH__UTIL__LOCALITY_H__
