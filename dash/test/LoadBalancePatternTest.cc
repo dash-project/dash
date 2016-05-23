@@ -7,21 +7,12 @@
 #include <dash/LoadBalancePattern.h>
 
 
-TEST_F(LoadBalancePatternTest, LocalSizes)
+void mock_team_locality(
+  dash::util::TeamLocality & tloc)
 {
-  if (dash::size() < 2) {
-    return;
-  }
-
-  typedef dash::LoadBalancePattern<1> pattern_t;
-  typedef dash::util::TeamLocality    team_loc_t;
-
-  size_t       size = 2017;
-  dash::Team & team = dash::Team::All();
-  team_loc_t   tloc(team);
-
+  auto nunits = tloc.team().size();
   // Initialize identical hwinfo for all units:
-  for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(_dash_size); u++) {
+  for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(nunits); u++) {
     auto & unit_hwinfo      = tloc.unit_locality(u).hwinfo();
     unit_hwinfo.min_threads = 1;
     unit_hwinfo.max_threads = 2;
@@ -40,6 +31,24 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
   // Half min. number of threads and CPU capacity of unit 1:
   unit_1_hwinfo.min_cpu_mhz = unit_1_hwinfo.min_cpu_mhz / 2;
   unit_1_hwinfo.max_cpu_mhz = unit_1_hwinfo.min_cpu_mhz;
+}
+
+
+TEST_F(LoadBalancePatternTest, LocalSizes)
+{
+  if (_dash_size < 2) {
+    LOG_MESSAGE("LoadBalancePatternTest.LocalSizes "
+                "requires > 1 units");
+    return;
+  }
+
+  typedef dash::LoadBalancePattern<1> pattern_t;
+  typedef dash::util::TeamLocality    team_loc_t;
+
+  size_t     size = 2017;
+  team_loc_t tloc(dash::Team::All());
+
+  mock_team_locality(tloc);
 
   // Ratio unit 0 CPU capacity / unit 1 CPU capacity:
   double cpu_cap_ratio      = 8.0;
@@ -70,4 +79,77 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
   for (dart_unit_t u = 2; u < static_cast<dart_unit_t>(_dash_size); u++) {
     EXPECT_EQ_U(unit_x_lsize_exp, pat.local_size(u));
   }
+}
+
+TEST_F(LoadBalancePatternTest, IndexMapping)
+{
+  if (_dash_size < 2) {
+    LOG_MESSAGE("LoadBalancePatternTest.IndexMapping "
+                "requires > 1 units");
+    return;
+  }
+
+  typedef dash::LoadBalancePattern<1> pattern_t;
+  typedef pattern_t::index_type       index_t;
+  typedef dash::util::TeamLocality    team_loc_t;
+
+  size_t     size = 27;
+  team_loc_t tloc(dash::Team::All());
+
+  mock_team_locality(tloc);
+
+  pattern_t pattern(dash::SizeSpec<1>(size), tloc);
+
+  if (_dash_id == 0) {
+    dash::test::print_pattern_mapping(
+      "pattern.unit_at", pattern, 2,
+      [](const pattern_t & _pattern, int _x) -> dart_unit_t {
+          return _pattern.unit_at(std::array<index_t, 1> {{ _x }});
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.at", pattern, 2,
+      [](const pattern_t & _pattern, int _x) -> index_t {
+          return _pattern.at(std::array<index_t, 1> {{ _x }});
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.block_at", pattern, 2,
+      [](const pattern_t & _pattern, int _x) -> index_t {
+          return _pattern.block_at(
+                   std::array<index_t, 1> {{ _x }});
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.block.offset", pattern, 2,
+      [](const pattern_t & _pattern, int _x) -> std::string {
+          auto block_idx = _pattern.block_at(
+                             std::array<index_t, 1> {{ _x }});
+          auto block_vs  = _pattern.block(block_idx);
+          std::ostringstream ss;
+          ss << block_vs.offset(0);
+          return ss.str();
+      });
+    dash::test::print_pattern_mapping(
+      "pattern.local_index", pattern, 2,
+      [](const pattern_t & _pattern, int _x) -> index_t {
+          return _pattern.local_index(
+                   std::array<index_t, 1> {{ _x }}).index;
+      });
+  }
+
+  size_t  total_size = 0;
+  index_t g_index    = 0;
+  for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(_dash_size); u++) {
+    auto l_size = pattern.local_size(u);
+    for (index_t li = 0; li < l_size; li++) {
+      EXPECT_EQ_U(li, pattern.at(g_index));
+      EXPECT_EQ_U(li, pattern.local_index(
+                        std::array<index_t, 1> {{ g_index }}
+                      ).index);
+      EXPECT_EQ_U(u,  pattern.unit_at(g_index));
+      EXPECT_EQ_U(u,  pattern.block_at(
+                        std::array<index_t, 1> {{ g_index }}));
+      g_index++;
+    }
+    total_size += l_size;
+  }
+  EXPECT_EQ_U(pattern.size(), total_size);
 }

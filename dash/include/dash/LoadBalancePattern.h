@@ -23,6 +23,15 @@
 
 namespace dash {
 
+// ==========================================================================
+// TODO:
+//
+//   Should subclass or delegate to dash::CSRPattern as implementation is
+//   identical apart from comptation of _local_sizes.
+//
+// ==========================================================================
+
+
 /**
  * Irregular dynamic pattern.
  *
@@ -149,7 +158,6 @@ public:
     _myid(_team->myid()),
     _teamspec(*_team),
     _nunits(_team->size()),
-    _nblocks(_nunits),
     _local_size(
       initialize_local_extent(
         _team->myid(),
@@ -207,8 +215,7 @@ public:
     return(
       _size        == other._size &&
       _local_sizes == other._local_sizes &&
-      _teamspec    == other._teamspec &&
-      _nblocks     == other._nblocks
+      _teamspec    == other._teamspec
     );
   }
 
@@ -247,29 +254,66 @@ public:
   ////////////////////////////////////////////////////////////////////////////
 
   /**
+   * Convert given point in pattern to its assigned unit id.
+   *
+   * \see DashPatternConcept
+   */
+  dart_unit_t unit_at(
+    /// Absolute coordinates of the point
+    const std::array<IndexType, NumDimensions> & coords,
+    /// View specification (offsets) to apply on \c coords
+    const ViewSpec_t                           & viewspec) const
+  {
+    return unit_at(coords[0] + viewspec[0].offset);
+  }
+
+  /**
+   * Convert given coordinate in pattern to its assigned unit id.
+   *
+   * \see DashPatternConcept
+   */
+  dart_unit_t unit_at(
+    const std::array<IndexType, NumDimensions> & g_coords) const
+  {
+    return unit_at(g_coords[0]);
+  }
+
+  /**
    * Convert given global linear index to its assigned unit id.
    *
    * \see DashPatternConcept
    */
   dart_unit_t unit_at(
     /// Global linear element offset
-    IndexType global_pos,
+    IndexType          global_pos,
     /// View to apply global position
     const ViewSpec_t & viewspec) const
   {
-    DASH_LOG_TRACE_VAR("LoadBalancePattern.unit_at()", global_pos);
-    DASH_LOG_TRACE_VAR("LoadBalancePattern.unit_at()", viewspec);
-    dart_unit_t unit_idx = 0;
-    // Apply viewspec offsets to coordinates:
-    auto g_coord         = global_pos + viewspec[0].offset;
-    for (; unit_idx < _nunits - 1; ++unit_idx) {
-      if (_block_offsets[unit_idx+1] >= static_cast<size_type>(g_coord)) {
+    return unit_at(global_pos + viewspec[0].offset);
+  }
+
+  /**
+   * Convert given global linear index to its assigned unit id.
+   *
+   * \see DashPatternConcept
+   */
+  dart_unit_t unit_at(
+    /// Global linear element offset
+    IndexType g_index) const
+  {
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.unit_at()", g_index);
+
+    for (dart_unit_t unit_idx = 0; unit_idx < _nunits; ++unit_idx) {
+      if (g_index < _local_sizes[unit_idx]) {
         DASH_LOG_TRACE_VAR("LoadBalancePattern.unit_at >", unit_idx);
         return unit_idx;
       }
+      g_index -= _local_sizes[unit_idx];
     }
-    DASH_LOG_TRACE_VAR("LoadBalancePattern.unit_at >", _nunits-1);
-    return _nunits-1;
+    DASH_THROW(
+      dash::exception::InvalidArgument,
+      "LoadBalancePattern.unit_at: " <<
+      "global index " << g_index << " is out of bounds");
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -329,8 +373,9 @@ public:
     dart_unit_t unit) const
   {
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.local_extents()", unit);
-    DASH_LOG_DEBUG_VAR("LoadBalancePattern.local_extents >", _local_size);
-    return std::array<SizeType, 1> { _local_size };
+    DASH_LOG_DEBUG_VAR("LoadBalancePattern.local_extents >",
+                       _local_sizes[unit]);
+    return std::array<SizeType, 1> { _local_sizes[unit] };
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -353,6 +398,36 @@ public:
   }
 
   /**
+   * Convert given local coordinates to linear local offset (index).
+   *
+   * \see DashPatternConcept
+   */
+  IndexType local_at(
+    /// Point in local memory
+    const std::array<IndexType, NumDimensions> & local_coords) const
+  {
+    return local_coords[0];
+  }
+
+  /**
+   * Converts global coordinates to their associated unit and its respective
+   * local coordinates.
+   *
+   * NOTE: Same as \c local_index.
+   *
+   * \see  DashPatternConcept
+   */
+  local_coords_t local(
+    const std::array<IndexType, NumDimensions> & g_coords) const
+  {
+    local_index_t  l_index =  local(g_coords[0]);
+    local_coords_t l_coords;
+    l_coords.unit      = l_index.unit;
+    l_coords.coords[0] = l_index.index;
+    return l_coords;
+  }
+
+  /**
    * Converts global index to its associated unit and respective local index.
    *
    * NOTE: Same as \c local_index.
@@ -363,29 +438,23 @@ public:
     IndexType g_index) const
   {
     DASH_LOG_TRACE_VAR("LoadBalancePattern.local()", g_index);
-    DASH_LOG_TRACE_VAR("LoadBalancePattern.local", _block_offsets.size());
-    DASH_ASSERT_GT(_nunits, 0,
-                   "team size is 0");
-    DASH_ASSERT_GE(_block_offsets.size(), _nunits,
-                   "missing block offsets");
     local_index_t l_index;
-    index_type    unit_idx = static_cast<index_type>(_nunits-1);
-    for (; unit_idx >= 0; --unit_idx) {
-      DASH_LOG_TRACE_VAR("LoadBalancePattern.local", unit_idx);
-      index_type block_offset = _block_offsets[unit_idx];
-      DASH_LOG_TRACE_VAR("LoadBalancePattern.local", block_offset);
-      if (block_offset <= g_index) {
+
+    for (dart_unit_t unit_idx = 0; unit_idx < _nunits; ++unit_idx) {
+      if (g_index < _local_sizes[unit_idx]) {
         l_index.unit  = unit_idx;
-        l_index.index = g_index - block_offset;
-        DASH_LOG_TRACE_VAR("LoadBalancePattern.local >", l_index.unit);
-        DASH_LOG_TRACE_VAR("LoadBalancePattern.local >", l_index.index);
+        l_index.index = g_index;
+        DASH_LOG_TRACE("LoadBalancePattern.local >",
+                       "unit:",  l_index.unit,
+                       "index:", l_index.index);
         return l_index;
       }
+      g_index -= _local_sizes[unit_idx];
     }
     DASH_THROW(
       dash::exception::InvalidArgument,
-      "LoadBalancePattern.local: global index " << g_index << " " <<
-      "is out of bounds");
+      "LoadBalancePattern.local: " <<
+      "global index " << g_index << " is out of bounds");
   }
 
   /**
@@ -397,21 +466,20 @@ public:
   std::array<IndexType, NumDimensions> local_coords(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
-    DASH_LOG_TRACE_VAR("LoadBalancePattern.local_coords()", g_coords);
-    IndexType  g_index  = g_coords[0];
-    index_type unit_idx = static_cast<index_type>(_nunits-1);
-    for (; unit_idx >= 0; --unit_idx) {
-      index_type block_offset = _block_offsets[unit_idx];
-      if (block_offset <= g_index) {
-        auto l_coord = g_index - block_offset;
-        DASH_LOG_TRACE_VAR("LoadBalancePattern.local_coords >", l_coord);
-        return std::array<IndexType, 1> {{ l_coord }};
-      }
-    }
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "LoadBalancePattern.local_coords: global index " << g_index <<
-      " is out of bounds");
+    local_index_t l_index = local(g_coords[0]);
+    return std::array<IndexType, 1> {{ l_index.index }};
+  }
+
+  /**
+   * Converts global coordinates to their associated unit and their respective
+   * local index.
+   *
+   * \see  DashPatternConcept
+   */
+  local_index_t local_index(
+    const std::array<IndexType, NumDimensions> & g_coords) const
+  {
+    return local(g_coords[0]);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -546,6 +614,157 @@ public:
       value, (IndexType)values...
     };
     return at(inputindex);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// is_local
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Whether the given global index is local to the specified unit.
+   *
+   * \see  DashPatternConcept
+   */
+  inline bool is_local(
+    IndexType index,
+    dart_unit_t unit) const
+  {
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.is_local()", index);
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.is_local()", unit);
+    bool is_loc = index >= _block_offsets[unit] &&
+                  (unit == _nunits-1 ||
+                   index <  _block_offsets[unit+1]);
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.is_local >", is_loc);
+    return is_loc;
+  }
+
+  /**
+   * Whether the given global index is local to the unit that created
+   * this pattern instance.
+   *
+   * \see  DashPatternConcept
+   */
+  inline bool is_local(
+    IndexType index) const
+  {
+    auto unit = team().myid();
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.is_local()", index);
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.is_local", unit);
+    bool is_loc = index >= _block_offsets[unit] &&
+                  (unit == _nunits-1 ||
+                   index <  _block_offsets[unit+1]);
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.is_local >", is_loc);
+    return is_loc;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// block
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  const BlockSpec_t & blockspec() const
+  {
+    return _blockspec;
+  }
+
+  /**
+   * Index of block at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  index_type block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const
+  {
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.block_at()", g_coords);
+
+    index_type block_idx = static_cast<index_type>(unit_at(g_coords[0]));
+
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.block_at >", block_idx);
+    return block_idx;
+  }
+
+  /**
+   * View spec (offset and extents) of block at global linear block index in
+   * cartesian element space.
+   */
+  ViewSpec_t block(
+    index_type g_block_index) const
+  {
+    DASH_LOG_DEBUG_VAR("LoadBalancePattern<1>.block >", g_block_index);
+    index_type offset = _block_offsets[g_block_index];
+    auto block_size   = _local_sizes[g_block_index];
+    std::array<index_type, NumDimensions> offsets = {{ offset }};
+    std::array<size_type, NumDimensions>  extents = {{ block_size }};
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_DEBUG_VAR("LoadBalancePattern<1>.block >", block_vs);
+    return block_vs;
+  }
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * global cartesian element space.
+   */
+  ViewSpec_t local_block(
+    index_type l_block_index) const
+  {
+    DASH_LOG_DEBUG_VAR("LoadBalancePattern<1>.local_block()", l_block_index);
+    DASH_ASSERT_EQ(
+      0, l_block_index,
+      "LoadBalancePattern always assigns exactly 1 block to a single unit");
+    index_type block_offset = _block_offsets[_team->myid()];
+    size_type  block_size   = _local_sizes[_team->myid()];
+    std::array<index_type, NumDimensions> offsets = {{ block_offset }};
+    std::array<size_type, NumDimensions>  extents = {{ block_size }};
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_DEBUG_VAR("LoadBalancePattern<1>.local_block >", block_vs);
+    return block_vs;
+  }
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * local cartesian element space.
+   */
+  ViewSpec_t local_block_local(
+    index_type l_block_index) const
+  {
+    DASH_LOG_DEBUG_VAR("LoadBalancePattern<1>.local_block_local >",
+                       l_block_index);
+    size_type block_size = _local_sizes[_team->myid()];
+    std::array<index_type, NumDimensions> offsets = {{ 0 }};
+    std::array<size_type, NumDimensions>  extents = {{ block_size }};
+    ViewSpec_t block_vs(offsets, extents);
+    DASH_LOG_DEBUG_VAR("LoadBalancePattern<1>.local_block_local >", block_vs);
+    return block_vs;
+  }
+
+  /**
+   * Maximum number of elements in a single block in the given dimension.
+   *
+   * \return  The blocksize in the given dimension
+   *
+   * \see     DashPatternConcept
+   */
+  SizeType blocksize(
+    /// The dimension in the pattern
+    dim_t dimension) const
+  {
+    return _local_capacity;
+  }
+
+  /**
+   * Maximum number of elements in a single block in all dimensions.
+   *
+   * \return  The maximum number of elements in a single block assigned to
+   *          a unit.
+   *
+   * \see     DashPatternConcept
+   */
+  SizeType max_blocksize() const
+  {
+    return _local_capacity;
   }
 
   /**
@@ -908,8 +1127,6 @@ private:
   TeamSpec_t                  _teamspec;
   /// Total amount of units to which this pattern's elements are mapped
   SizeType                    _nunits          = 0;
-  /// Number of blocks in all dimensions
-  SizeType                    _nblocks         = 0;
   /// Actual number of local elements of the active unit.
   SizeType                    _local_size;
   /// Local memory layout of the pattern.

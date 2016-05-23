@@ -30,9 +30,8 @@ std::ostream & operator<<(
   std::ostream                 & os,
   const dart_domain_locality_t & domain_loc)
 {
-  std::ostringstream ss;
-  dash::util::print_domain(ss, domain_loc.team, &domain_loc);
-  return operator<<(os, ss.str());
+  dash::util::print_domain(os, domain_loc.team, &domain_loc);
+  return os;
 }
 
 std::ostream & operator<<(
