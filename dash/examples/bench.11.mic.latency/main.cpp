@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdlib>
 #include <sstream>
+#include <mpi.h>
+#include <cstdio>
 
 #include <libdash.h>
 
@@ -22,6 +24,7 @@ typedef struct benchmark_params_t {
   int size_min;
   std::string dom_tag_node0;
   std::string dom_tag_node1;
+  bool verify;
 } benchmark_params;
 
 void print_domain(
@@ -43,6 +46,7 @@ benchmark_params parse_args(int argc, char** argv)
   params.rep_base       = 0;
   params.num_repeats    = 7;
   params.size_min       = 1;
+  params.verify         = false;
 
   if (argc > 2)
   {
@@ -59,11 +63,15 @@ benchmark_params parse_args(int argc, char** argv)
       } else if (flag == "-rmax") {
         params.num_repeats    = atoi(argv[i+1]);
       } else if (flag == "-rb") {
+        if (dash::myid() == 0) cout << "params.rep_base str: " << argv[i+1] << endl;
         params.rep_base       = atoi(argv[i+1]);
+        if (dash::myid() == 0) cout << "params.rep_base int: " << params.rep_base << endl;
       } else if (flag == "-dt0") { 
         params.dom_tag_node0 = argv[i+1];
       } else if (flag == "-dt1") { 
         params.dom_tag_node1 = argv[i+1];
+      } else if (flag == "-verify") { 
+        params.verify = true;
       }
     }
   }
@@ -102,9 +110,6 @@ void perform_test(benchmark_params const& params, unit_info const& src_unit, uni
   auto sb = params.size_base;
   auto me = team.myid();
 
-
-  DASH_LOG_DEBUG("before barrier 1");
-
   team.barrier();
 
   char *src_mem = nullptr;
@@ -120,21 +125,14 @@ void perform_test(benchmark_params const& params, unit_info const& src_unit, uni
 
   for (auto rep = 0; rep < num_repeats; ++rep, rb += 2)
   {
-    //if (me == dst_unit.id || me == src_unit.id) {
     auto lmem_size = std::pow(sb, rb) * size_inc;
-    //}
-
     dash::GlobMem<char> *glob_mem = new dash::GlobMem<char>(lmem_size, team);
-    /*
     char *lbegin = glob_mem->lbegin();
 
     if (me == dst_unit.id) {
       std::fill(glob_mem->lbegin(), glob_mem->lend(), 'b');
     }
-    */
     
-    DASH_LOG_DEBUG("before barrier 2");
-
     team.barrier();
 
     if (me == src_unit.id) {
@@ -149,34 +147,33 @@ void perform_test(benchmark_params const& params, unit_info const& src_unit, uni
 
       duration_us = Timer::ElapsedSince(ts_start);
 
-      cout  << "NBYTES: "               << setw(10) << lmem_size
-            << " ITERATIONS: "          << setw(16) << num_iterations
-            << " AVG LATENCY [msec]: "  << setw(12) << (1.0e-3 * duration_us / num_iterations)
-            << " SRC_UNIT: "            << setw(17) << src_unit.id << "  (" << src_unit.hostname << ")"
-            << " DST_UNIT: "            << setw(17) << dst_unit.id << "  (" << dst_unit.hostname << ")"
+      std::ostringstream oss;
+      oss   << "NBYTES: "               << setw(10) << lmem_size
+            << " ITERATIONS: "          << setw(10) << num_iterations
+            << " AVG LATENCY [usec]: "  << setw(12) << (duration_us / num_iterations)
+            << " SRC_UNIT: "            << setw(4) << src_unit.id << "  (" << src_unit.hostname << ")"
+            << " DST_UNIT: "            << setw(4) << dst_unit.id << "  (" << dst_unit.hostname << ")"
             << endl;
-    }
-
-    /*
+      cout << oss.str();
+    } 
 
     team.barrier();
 
-    if (me == dst_unit.id) {
-      for (auto idx = 0; idx < mem_size; ++idx) {
+    if (params.verify && me == dst_unit.id) {
+      for (auto idx = 0; idx < lmem_size; ++idx) {
         DASH_ASSERT_EQ(glob_mem->lbegin()[idx], 'a', "invalid value");
       }
     }
-    */
-
-    DASH_LOG_DEBUG("before barrier 3");
 
     team.barrier();
 
     delete glob_mem;
 
-    DASH_LOG_DEBUG("before barrier 4");
-
     team.barrier();
+  }
+
+  if (me == src_unit.id) {
+    cout << "-----------------------------------------------------------------------------------------" << endl;
   }
 
   delete[] src_mem;
@@ -185,6 +182,7 @@ void perform_test(benchmark_params const& params, unit_info const& src_unit, uni
 int main(int argc, char ** argv)
 {
   Timer::Calibrate(0);
+
   benchmark_params params = parse_args(argc, argv);
 
   dash::init(&argc, &argv);
@@ -195,23 +193,28 @@ int main(int argc, char ** argv)
   print_params(bench_params, params);
 
   auto myid = dash::myid();
+  //int mpi_rank, length;
+  //char hostname[BUFSIZ];
+
+  //MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+  //MPI_Get_processor_name(hostname, &length);
 
   dart_domain_locality_t *dom_global;
-  dart_domain_locality(DART_TEAM_ALL, ".", &dom_global);
+  dart_domain_team_locality(DART_TEAM_ALL, ".", &dom_global);
 
   if (myid == 0) {
-    print_domain(DART_TEAM_ALL, dom_global);
+    cout << *dom_global << endl;
   }
 
   dart_domain_locality_t *dom_node0 = nullptr, *dom_node1 = nullptr;
 
   DASH_ASSERT_RETURNS(
-      dart_domain_locality(DART_TEAM_ALL, params.dom_tag_node0.c_str(), &dom_node0),
+      dart_domain_team_locality(DART_TEAM_ALL, params.dom_tag_node0.c_str(), &dom_node0),
       DART_OK);
 
   if (dom_global->num_domains > 1) {
     DASH_ASSERT_RETURNS(
-        dart_domain_locality(DART_TEAM_ALL, params.dom_tag_node1.c_str(), &dom_node1),
+        dart_domain_team_locality(DART_TEAM_ALL, params.dom_tag_node1.c_str(), &dom_node1),
         DART_OK);
   }
 
@@ -224,8 +227,8 @@ int main(int argc, char ** argv)
       cout << "The benchmark must run on a node with at least 3 modules, as on the SuperMIC (1 host, 2 MICS on each node)" << endl;
     }
 
-    //dash::finalize();
-    //return EXIT_FAILURE;
+    dash::finalize();
+    return EXIT_FAILURE;
   }
 
   /* within node boundary (node 0) */
@@ -246,10 +249,11 @@ int main(int argc, char ** argv)
   host0_mic1.id = dom_node0_mod2->unit_ids[0];
   host0_mic1.hostname.assign(dom_node0_mod2->host);
 
-  //perform_test(params, host0, host0_mic0, dash::Team::All());
-  //perform_test(params, host0_mic0, host0, dash::Team::All());
-  //perform_test(params, host0_mic0, host0_mic0, dash::Team::All());
-  //perform_test(params, host0_mic0, host0_mic1, dash::Team::All());
+  perform_test(params, host0, host0, dash::Team::All());
+  perform_test(params, host0, host0_mic0, dash::Team::All());
+  perform_test(params, host0_mic0, host0, dash::Team::All());
+  perform_test(params, host0_mic0, host0_mic0, dash::Team::All());
+  perform_test(params, host0_mic0, host0_mic1, dash::Team::All());
 
   dash::barrier();
 
@@ -267,9 +271,9 @@ int main(int argc, char ** argv)
     host1_mic0.hostname.assign(dom_node1_mod1->host);
 
     perform_test(params, host0, host1, dash::Team::All());
-    //perform_test(params, host0, host1_mic0, dash::Team::All());
-    //perform_test(params, host1_mic0, host0, dash::Team::All());
-    //perform_test(params, host0_mic0, host1_mic0, dash::Team::All());
+    perform_test(params, host0, host1_mic0, dash::Team::All());
+    perform_test(params, host1_mic0, host0, dash::Team::All());
+    perform_test(params, host0_mic0, host1_mic0, dash::Team::All());
   }
 
   dash::finalize();
@@ -277,84 +281,3 @@ int main(int argc, char ** argv)
   return EXIT_SUCCESS;
 }
 
-void print_domain(
-  dart_team_t              team,
-  dart_domain_locality_t * domain)
-{
-  const int max_level = 3;
-
-  std::string indent(domain->level * 4, ' ');
-
-  cout << indent << "scope:   " << domain->scope << " "
-                 << "(level "  << domain->level << ")"
-       << endl
-       << indent << "domain:  " << domain->domain_tag
-       << endl;
-
-  if (domain->level > max_level) {
-    return;
-  }
-
-  if (static_cast<int>(domain->scope) <
-      static_cast<int>(DART_LOCALITY_SCOPE_NODE)) {
-    cout << indent << "nodes:   " << domain->num_nodes << endl;
-  } else {
-    cout << indent << "host:    " << domain->host            << endl
-         << indent << "NUMAs:   " << domain->hwinfo.num_numa << endl;
-  }
-  cout << indent << "units:   " << domain->num_units << ": global ids { ";
-  for (int u = 0; u < domain->num_units; ++u) {
-    dart_unit_t g_unit_id;
-    dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
-    cout << g_unit_id;
-    if (u < domain->num_units-1) {
-      cout << ", ";
-    }
-  }
-  cout << " }" << endl;
-
-  if (domain->level == 3) {
-    std::string uindent((domain->level + 1) * 4, ' ');
-    for (int u = 0; u < domain->num_units; ++u) {
-      dart_unit_t            unit_id  = domain->unit_ids[u];
-      dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
-      dart_unit_locality_t * uloc;
-      dart_unit_locality(team, unit_id, &uloc);
-      dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
-      cout << uindent << "|-- units[" << setw(2) << u << "]: " << unit_id
-                      << endl;
-      cout << uindent << "|              unit:   "
-                                         << uloc->unit
-                                         << " in team "  << uloc->team
-                                         << ", global: " << unit_gid
-                      << endl;
-      cout << uindent << "|              domain: " << uloc->domain_tag
-                      << endl;
-      cout << uindent << "|              host:   " << uloc->host
-                      << endl;
-      cout << uindent << "|              hwinfo: "
-                            << "numa_id: "
-                               << uloc->hwinfo.numa_id << " "
-                            << "cpu_id: "
-                               << uloc->hwinfo.cpu_id  << " "
-                            << "threads: "
-                               << uloc->hwinfo.min_threads << "..."
-                               << uloc->hwinfo.max_threads << " "
-                            << "cpu_mhz: "
-                               << uloc->hwinfo.min_cpu_mhz << "..."
-                               << uloc->hwinfo.max_cpu_mhz
-                            << endl;
-    }
-  }
-  if (domain->level < max_level && domain->num_domains > 0) {
-    cout << indent << "domains: " << domain->num_domains << endl;
-    for (int d = 0; d < domain->num_domains; ++d) {
-      cout << indent << "|-- domains[" << setw(2) << d << "]: " << endl;
-
-      print_domain(team, &domain->domains[d]);
-
-      cout << indent << "'----------"
-           << endl;
-    }
-  }
-}
