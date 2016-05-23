@@ -163,28 +163,31 @@ public:
     plist_id = H5Pcreate(H5P_DATASET_XFER);
     H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
+    DASH_LOG_DEBUG("write completely filled blocks");
     // Write completely filled blocks by pattern
     H5Dwrite(dataset, internal_type, memspace, filespace,
              plist_id, array.lbegin());
 
     // write underfilled blocks
     ts = _get_pattern_hdf_spec_underfilled<1>(pattern);
-      memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
+    memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
 
-      H5Sselect_hyperslab(
-        filespace,
-        H5S_SELECT_SET,
-        ts.offset,
-        ts.stride,
-        ts.count,
-        ts.block);
+    H5Sselect_hyperslab(
+      filespace,
+      H5S_SELECT_SET,
+      ts.offset,
+      ts.stride,
+      ts.count,
+      ts.block);
 
-      H5Dwrite(dataset, internal_type, memspace, filespace,
-               plist_id, array.lbegin());
+    DASH_LOG_DEBUG("write partially filled blocks");
+    H5Dwrite(dataset, internal_type, memspace, filespace,
+             plist_id, array.lbegin());
 
 
     // Add Attributes
     if (foptions.store_pattern) {
+      DASH_LOG_DEBUG("write additional attributes to hdf file");
       auto pat_key = foptions.pattern_metadata_key.c_str();
       hid_t attrspace = H5Screate(H5S_SCALAR);
       long attr = (long) tilesize;
@@ -309,20 +312,19 @@ public:
              plist_id, array.lbegin());
 
     // write underfilled blocks
-      // get hdf pattern layout
-      ts = _get_pattern_hdf_spec_underfilled<ndim>(pattern);
-      memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
-			std::cout << "TEST: " << ts.data_dimsm[0] << std::endl;
-      H5Sselect_hyperslab(
-        filespace,
-        H5S_SELECT_SET,
-        ts.offset,
-        ts.stride,
-        ts.count,
-        ts.block);
+    // get hdf pattern layout
+    ts = _get_pattern_hdf_spec_underfilled<ndim>(pattern);
+    memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
+    H5Sselect_hyperslab(
+      filespace,
+      H5S_SELECT_SET,
+      ts.offset,
+      ts.stride,
+      ts.count,
+      ts.block);
 
-      H5Dwrite(dataset, internal_type, memspace, filespace,
-               plist_id, array.lbegin());
+    H5Dwrite(dataset, internal_type, memspace, filespace,
+             plist_id, array.lbegin());
 
     // Add Attributes
     if (foptions.store_pattern) {
@@ -368,19 +370,19 @@ public:
   * \param table     HDF5 Table in which the data is stored
    * \param foptions
   */
-  template<
-		typename value_t,
-		typename index_t,
-		class    pattern_t>
+  template <
+    typename value_t,
+    typename index_t,
+    class    pattern_t >
   typename std::enable_if <
   _compatible_pattern<pattern_t>() &&
   pattern_t::ndim() == 1,
             void >::type
-  static read(
-    dash::Array<value_t, index_t, pattern_t> & array,
-    std::string filename,
-    std::string table,
-    hdf5_file_options foptions = _get_fdefaults())
+            static read(
+              dash::Array<value_t, index_t, pattern_t> & array,
+              std::string filename,
+              std::string table,
+              hdf5_file_options foptions = _get_fdefaults())
   {
     long     tilesize;
     int			 rank;
@@ -432,13 +434,18 @@ public:
       H5Aread(attribute_id, H5T_NATIVE_LONG, &tilesize);
       H5Aclose(attribute_id);
       H5Sclose(attrspace);
+      // TODO: Array allocate(pattern) is currently not working.
+#if 1
+      const pattern_t pattern(
+        dash::SizeSpec<1>(static_cast<size_t>(data_dimsf[0])),
+        dash::DistributionSpec<1>(dash::TILE(tilesize)),
+        dash::TeamSpec<1>(),
+        dash::Team::All());
 
- 			const pattern_t pattern(
-								dash::SizeSpec<1>({data_dimsf[0]}),
-        				dash::DistributionSpec<1>(dash::TILE(tilesize)),
-        				dash::TeamSpec<1>(),
-								dash::Team::All());
-     array.allocate(pattern);
+      array.allocate(pattern);
+#else
+      array.allocate(data_dimsf[0], dash::TILE(tilesize));
+#endif
     } else if (is_alloc) {
       DASH_LOG_DEBUG("Array already allocated");
       // Check if array size matches data extents
@@ -448,12 +455,16 @@ public:
         "Array size does not match data extents");
     } else {
       // Auto deduce pattern
-			const pattern_t pattern(
-								dash::SizeSpec<1>({data_dimsf[0]}),
-        				dash::DistributionSpec<1>(),
-        				dash::TeamSpec<1>(),
-								dash::Team::All());
+#if 1
+      const pattern_t pattern(
+        dash::SizeSpec<1>(static_cast<size_t>(data_dimsf[0])),
+        dash::DistributionSpec<1>(),
+        dash::TeamSpec<1>(),
+        dash::Team::All());
       array.allocate(pattern);
+#else
+      array.allocate(data_dimsf[0], dash::TILE(tilesize));
+#endif
     }
     auto pattern    = array.pattern();
     h5datatype = _convertType(array[0]); // hack
@@ -479,25 +490,27 @@ public:
     H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
     // read data
+    DASH_LOG_DEBUG("read completely filled blocks");
     H5Dread(dataset, internal_type, memspace, filespace,
             plist_id, array.lbegin());
 
     // read underfilled blocks
     // get hdf pattern layout
     ts = _get_pattern_hdf_spec_underfilled<1>(pattern);
-      memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
+    memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
 
-      H5Sselect_hyperslab(
-        filespace,
-        H5S_SELECT_SET,
-        ts.offset,
-        ts.stride,
-        ts.count,
-        ts.block);
+    H5Sselect_hyperslab(
+      filespace,
+      H5S_SELECT_SET,
+      ts.offset,
+      ts.stride,
+      ts.count,
+      ts.block);
 
-      // Read underfilled blocks by pattern
-      H5Dread(dataset, internal_type, memspace, filespace,
-              plist_id, array.lbegin());
+    // Read underfilled blocks by pattern
+    DASH_LOG_DEBUG("read partially filled blocks");
+    H5Dread(dataset, internal_type, memspace, filespace,
+            plist_id, array.lbegin());
 
     // Close all
     H5Dclose(dataset);
@@ -522,30 +535,30 @@ public:
     typename value_t,
     dim_t    ndim,
     typename index_t,
-		class    pattern_t >
+    class    pattern_t >
   typename std::enable_if <
   _compatible_pattern<pattern_t>(),
                       void >::type
-  static read(
-    dash::Matrix <
-    value_t,
-    ndim,
-    index_t,
-		pattern_t> &matrix,
-    std::string filename,
-    std::string table,
-    hdf5_file_options foptions = _get_fdefaults())
+                      static read(
+                        dash::Matrix <
+                        value_t,
+                        ndim,
+                        index_t,
+                        pattern_t > &matrix,
+                        std::string filename,
+                        std::string table,
+                        hdf5_file_options foptions = _get_fdefaults())
   {
 
     // HDF5 definition
-    hid_t    file_id;
-    hid_t    dataset;
+    hid_t   file_id;
+    hid_t   dataset;
     hid_t   internal_type;
-    hid_t    plist_id; // property list identifier
+    hid_t   plist_id; // property list identifier
     hid_t   filespace;
-    hid_t    memspace;
+    hid_t   memspace;
     // global data dims
-    hsize_t  data_dimsf[ndim];
+    hsize_t data_dimsf[ndim];
     herr_t  status;
     // Map native types to HDF5 types
     hid_t h5datatype;
@@ -608,11 +621,11 @@ public:
       }
       DASH_LOG_DEBUG("Created pattern according to metadata");
 
-			const pattern_t pattern(
-								dash::SizeSpec<ndim>(size_extents),
-        				dash::DistributionSpec<ndim>(dist_extents),
-        				dash::TeamSpec<ndim>(team_extents),
-								dash::Team::All());
+      const pattern_t pattern(
+        dash::SizeSpec<ndim>(size_extents),
+        dash::DistributionSpec<ndim>(dist_extents),
+        dash::TeamSpec<ndim>(team_extents),
+        dash::Team::All());
 
       // Allocate DASH Matrix
       matrix.allocate(pattern);
@@ -630,10 +643,10 @@ public:
     } else {
       // Auto deduce pattern
       const pattern_t pattern(
-							dash::SizeSpec<ndim>(size_extents),
-							dash::DistributionSpec<ndim>(),
-							dash::TeamSpec<ndim>(),
-							dash::Team::All());
+        dash::SizeSpec<ndim>(size_extents),
+        dash::DistributionSpec<ndim>(),
+        dash::TeamSpec<ndim>(),
+        dash::Team::All());
 
       matrix.allocate(pattern);
     }
@@ -643,7 +656,7 @@ public:
 
     // setup extends per dimension
     auto pattern = matrix.pattern();
-    DASH_LOG_DEBUG("Pattern", pattern);
+    //DASH_LOG_DEBUG("Pattern", pattern);
     ts = _get_pattern_hdf_spec<ndim>(pattern);
 
     // Create dataspace
@@ -668,19 +681,19 @@ public:
     // read underfilled blocks
     // get hdf pattern layout
     ts = _get_pattern_hdf_spec_underfilled<ndim>(pattern);
-      memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
+    memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
 
-      H5Sselect_hyperslab(
-        filespace,
-        H5S_SELECT_SET,
-        ts.offset,
-        ts.stride,
-        ts.count,
-        ts.block);
+    H5Sselect_hyperslab(
+      filespace,
+      H5S_SELECT_SET,
+      ts.offset,
+      ts.stride,
+      ts.count,
+      ts.block);
 
-      // Read underfilled blocks by pattern
-      H5Dread(dataset, internal_type, memspace, filespace,
-              plist_id, matrix.lbegin());
+    // Read underfilled blocks by pattern
+    H5Dread(dataset, internal_type, memspace, filespace,
+            plist_id, matrix.lbegin());
 
     // Close all
     H5Dclose(dataset);
@@ -708,9 +721,9 @@ public:
   struct hdf5_pattern_spec {
     hsize_t data_dimsf[ndim];
     hsize_t data_dimsm[ndim];
-    hsize_t  count[ndim];
+    hsize_t count[ndim];
     hsize_t stride[ndim];
-    hsize_t  offset[ndim];
+    hsize_t offset[ndim];
     hsize_t block[ndim];
   };
 
@@ -744,7 +757,7 @@ private:
     hdf5_pattern_spec<ndim> ts;
     // setup extends per dimension
     for (int i = 0; i < ndim; ++i) {
-			auto tilesize    = pattern.blocksize(i);
+      auto tilesize    = pattern.blocksize(i);
       ts.data_dimsf[i] = pattern.extent(i);
       ts.data_dimsm[i] = (pattern.local_extent(i) / tilesize) * tilesize;
       // number of tiles in this dimension
@@ -764,7 +777,7 @@ private:
    * \return hdf5_pattern_spec<ndim>
    */
   template <
-		dim_t ndim,
+    dim_t ndim,
     class pattern_t >
   typename std::enable_if <
   _compatible_pattern<pattern_t>(),
@@ -774,25 +787,25 @@ private:
   {
     hdf5_pattern_spec<ndim> ts;
 
-		for(int i = 0; i < ndim ;i++){
-    long tilesize    = pattern.blocksize(i);
-    long localsize   = pattern.local_extent(i);
-    long localblocks = localsize / tilesize;
-    long lfullsize   = localblocks * tilesize;
+    for (int i = 0; i < ndim ; i++) {
+      long tilesize    = pattern.blocksize(i);
+      long localsize   = pattern.local_extent(i);
+      long localblocks = localsize / tilesize;
+      long lfullsize   = localblocks * tilesize;
 
-    ts.data_dimsf[i] = pattern.extent(i);
-    ts.data_dimsm[i] = localsize - lfullsize;
-    ts.stride[i]     = tilesize;
-    if (localsize != lfullsize) {
-      ts.count[i]    = 1;
-      ts.offset[i]   = pattern.local_block(localblocks).offset(i);
-      ts.block[i]    = localsize - lfullsize;
-    } else {
-      ts.count[i]    = 0;
-      ts.offset[i]   = 0;
-      ts.block[i]    = 0;
+      ts.data_dimsf[i] = pattern.extent(i);
+      ts.data_dimsm[i] = localsize - lfullsize;
+      ts.stride[i]     = tilesize;
+      if (localsize != lfullsize) {
+        ts.count[i]    = 1;
+        ts.offset[i]   = pattern.local_block(localblocks).offset(i);
+        ts.block[i]    = localsize - lfullsize;
+      } else {
+        ts.count[i]    = 0;
+        ts.offset[i]   = 0;
+        ts.block[i]    = 0;
+      }
     }
-		}
     return ts;
   }
 
