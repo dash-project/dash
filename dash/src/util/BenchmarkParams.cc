@@ -201,7 +201,7 @@ void BenchmarkParams::print_pinning()
     return;
   }
   auto line_w = _header_width;
-  auto host_w = line_w - 5 - 5 - 10 - 5;
+  auto host_w = line_w - 5 - 5 - 10 - 10 - 5;
   print_section_start("Process Pinning");
   cout << std::left         << "--   "
        << std::setw(5)      << "unit"

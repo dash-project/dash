@@ -102,7 +102,7 @@ public:
 
 private:
   bool               _myid;
-  int                _header_width = 72;
+  int                _header_width = 82;
   config_params_type _config;
   std::string        _name;
 };

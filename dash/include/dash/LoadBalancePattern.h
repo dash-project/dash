@@ -180,6 +180,8 @@ public:
   : LoadBalancePattern(sizespec, TeamLocality_t(team))
   { }
 
+  LoadBalancePattern(const self_t & other) = default;
+
   /**
    * Copy constructor using non-const lvalue reference parameter.
    *
@@ -384,6 +386,32 @@ public:
       dash::exception::InvalidArgument,
       "LoadBalancePattern.local: global index " << g_index << " " <<
       "is out of bounds");
+  }
+
+  /**
+   * Converts global coordinates to their associated unit's respective
+   * local coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  std::array<IndexType, NumDimensions> local_coords(
+    const std::array<IndexType, NumDimensions> & g_coords) const
+  {
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.local_coords()", g_coords);
+    IndexType  g_index  = g_coords[0];
+    index_type unit_idx = static_cast<index_type>(_nunits-1);
+    for (; unit_idx >= 0; --unit_idx) {
+      index_type block_offset = _block_offsets[unit_idx];
+      if (block_offset <= g_index) {
+        auto l_coord = g_index - block_offset;
+        DASH_LOG_TRACE_VAR("LoadBalancePattern.local_coords >", l_coord);
+        return std::array<IndexType, 1> {{ l_coord }};
+      }
+    }
+    DASH_THROW(
+      dash::exception::InvalidArgument,
+      "LoadBalancePattern.local_coords: global index " << g_index <<
+      " is out of bounds");
   }
 
   ////////////////////////////////////////////////////////////////////////////
