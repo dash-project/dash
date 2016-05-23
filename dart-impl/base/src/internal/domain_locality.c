@@ -865,6 +865,9 @@ dart_ret_t dart__base__locality__domain__create_module_subdomain(
     dart__base__unit_locality__at(
       unit_mapping, module_unit_id, &module_unit_loc);
     int module_unit_numa_id = module_unit_loc->hwinfo.numa_id;
+    /*
+     * TODO: assuming that rel_idx corresponds to NUMA id:
+     */
     if (module_unit_numa_id == rel_idx) {
       dart_unit_t numa_unit_id = module_unit_id;
       DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "

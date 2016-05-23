@@ -112,6 +112,9 @@ TEST_F(TeamLocalityTest, GroupUnits)
   if (dash::size() < 4) {
     return;
   }
+  if (_dash_id != 0) {
+    return;
+  }
 
   dash::Team & team = dash::Team::All();
 
@@ -120,8 +123,6 @@ TEST_F(TeamLocalityTest, GroupUnits)
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
                  "team locality in Global domain:");
   print_locality_domain("global", tloc.domain());
-
-  dash::barrier();
 
   std::vector<dart_unit_t> group_1_units;
   std::vector<dart_unit_t> group_2_units;
@@ -163,7 +164,6 @@ TEST_F(TeamLocalityTest, GroupUnits)
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_1_tags);
     auto & group_1 = tloc.group(group_1_tags);
     print_locality_domain("group_1", group_1);
-    dash::barrier();
 
     EXPECT_EQ_U(group_1_units, group_1.units());
   }
@@ -171,7 +171,6 @@ TEST_F(TeamLocalityTest, GroupUnits)
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_2_tags);
     auto & group_2 = tloc.group(group_2_tags);
     print_locality_domain("group_2", group_2);
-    dash::barrier();
 
     EXPECT_EQ_U(group_2_units, group_2.units());
   }
@@ -179,7 +178,6 @@ TEST_F(TeamLocalityTest, GroupUnits)
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_3_tags);
     auto & group_3 = tloc.group(group_3_tags);
     print_locality_domain("group_3", group_3);
-    dash::barrier();
 
     EXPECT_EQ_U(group_3_units, group_3.units());
   }
@@ -187,7 +185,6 @@ TEST_F(TeamLocalityTest, GroupUnits)
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
                  "Global domain after grouping:");
   print_locality_domain("global", tloc.domain());
-  dash::barrier();
 
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",
                  "team all, groups:", tloc.groups().size());
@@ -207,6 +204,9 @@ TEST_F(TeamLocalityTest, SplitGroups)
   if (dash::size() < 4) {
     return;
   }
+  if (_dash_id != 0) {
+    return;
+  }
 
   dash::Team & team = dash::Team::All();
 
@@ -215,8 +215,6 @@ TEST_F(TeamLocalityTest, SplitGroups)
   DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups",
                  "team locality in Global domain:");
   print_locality_domain("global", tloc.domain());
-
-  dash::barrier();
 
   std::vector<dart_unit_t> group_1_units;
   std::vector<dart_unit_t> group_2_units;
@@ -245,7 +243,6 @@ TEST_F(TeamLocalityTest, SplitGroups)
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_1_tags);
     auto & group_1 = tloc.group(group_1_tags);
     print_locality_domain("group_1", group_1);
-    dash::barrier();
 
     EXPECT_EQ_U(group_1_units, group_1.units());
   }
@@ -253,7 +250,6 @@ TEST_F(TeamLocalityTest, SplitGroups)
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_2_tags);
     auto & group_2 = tloc.group(group_2_tags);
     print_locality_domain("group_2", group_2);
-    dash::barrier();
 
     EXPECT_EQ_U(group_2_units, group_2.units());
   }
