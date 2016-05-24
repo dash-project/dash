@@ -78,14 +78,27 @@ GlobIter<ElementType, PatternType> min_element(
     auto  n_threads = dash::util::Locality::MinThreads();
 
     if (n_threads > 1) {
-      int min_idx_l         = 0;
-      ElementType min_val_l = *l_range_begin;
-      auto        l_size    = l_range_end - l_range_begin;
+      int           min_idx_l  = 0;
+      ElementType   min_val_l  = *l_range_begin;
+      auto          l_size     = l_range_end - l_range_begin;
+#if 0
+      // Should be possible to avoid critical section by using array of
+      // thread-local minimum values, aligned to prevent false sharing:
+      size_t        min_vals_t_size = n_threads + alignof(ElementType);
+      ElementType * min_vals_t_raw  = new ElementType[min_vals_t_size];
+      ElementType * min_vals_t      = std::align(alignof(ElementType),
+                                                 sizeof(ElementType),
+                                                 min_vals_t_raw,
+                                                 min_vals_t_size);
+      DASH_ASSERT_GE(min_vals_t_size, n_threads * sizeof(ElementType));
+#endif
       #pragma omp parallel num_threads(n_threads)
       {
          int         min_idx_t = min_idx_l;
          ElementType min_val_t = min_val_l;
-         #pragma omp for nowait private(min_val_l)
+         // Cannot use explicit private(min_val_t) as ElementType might
+         // not be default-constructible:
+         #pragma omp for nowait
          for (int i = 0; i < l_size; i++) {
            ElementType val_t = *(l_range_begin + i);
            if (compare(val_t, min_val_t)) {
@@ -103,9 +116,7 @@ GlobIter<ElementType, PatternType> min_element(
       }
       lmin = l_range_begin + min_idx_l;
     } else {
-      lmin = ::std::min_element(l_range_begin,
-                                l_range_end,
-                                compare);
+      lmin = ::std::min_element(l_range_begin, l_range_end, compare);
     }
     if (lmin != l_range_end) {
       DASH_LOG_TRACE_VAR("dash::min_element", *lmin);
