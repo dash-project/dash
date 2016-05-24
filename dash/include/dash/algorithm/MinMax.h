@@ -107,23 +107,36 @@ GlobIter<ElementType, PatternType> min_element(
                       : pattern.global(l_idx_lmin);
 
   DASH_LOG_TRACE("dash::min_element", "sending local minimum: {",
-                 "value:", local_min.value, "index:", local_min.l_index, "}");
+                 "value:",   local_min.value,
+                 "g.index:", local_min.g_index, "}");
 
-  DASH_LOG_DEBUG("dash::min_element: dart_allgather");
+  DASH_LOG_TRACE("dash::min_element", "dart_allgather()");
   DASH_ASSERT_RETURNS(
     dart_allgather(
       &local_min, local_min_values.data(), sizeof(local_min_t),
       team.dart_id()),
     DART_OK);
 
+#ifdef DASH_ENABLE_LOGGING
+  for (int lmin_u = 0; lmin_u < local_min_values.size(); lmin_u++) {
+    auto lmin_entry = local_min_values[lmin_u];
+    DASH_LOG_TRACE("dash::min_element", "dart_allgather >",
+                   "unit:",    lmin_u,
+                   "value:",   lmin_entry.value,
+                   "g_index:", lmin_entry.g_index);
+  }
+#endif
+
   auto gmin_elem_it  = ::std::min_element(
                            local_min_values.begin(),
                            local_min_values.end(),
-                           [&](local_min_t & a, local_min_t & b) {
+                           [&](const local_min_t & a,
+                               const local_min_t & b) {
                              // Ignore elements with global index -1 (no
                              // element found):
-                             return (a.g_index > 0 &&
-                                     compare(a.value, b.value));
+                             return (b.g_index < 0 ||
+                                     (a.g_index > 0 &&
+                                      compare(a.value, b.value)));
                            });
 
   if (gmin_elem_it == local_min_values.end()) {
@@ -141,7 +154,7 @@ GlobIter<ElementType, PatternType> min_element(
                  "global idx:", gi_minimum);
 
   DASH_LOG_TRACE_VAR("dash::min_element", gi_minimum);
-  if (gi_minimum == gi_last) {
+  if (gi_minimum < 0 || gi_minimum == gi_last) {
     DASH_LOG_DEBUG_VAR("dash::min_element >", last);
     return last;
   }

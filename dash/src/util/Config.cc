@@ -21,6 +21,8 @@ void Config::init()
   int    i          = 1;
   char * env_var_kv = *environ;
 
+  Config::callbacks_["DASH_ENABLE_LOGGING"] =
+    &Config::dash_enable_logging_callback;
   Config::callbacks_["DASH_ENABLE_LOGGING_BOOL"] =
     &Config::dash_enable_logging_callback;
 
