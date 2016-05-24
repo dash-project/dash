@@ -37,40 +37,40 @@ dart_host_topology_t;
  * in the array contains the host name of unit j.
  */
 dart_ret_t dart__base__host_topology__create(
-    char                  * unit_hostnames[],
-    dart_team_t             team,
-    dart_unit_mapping_t   * unit_mapping,
-    dart_host_topology_t  * topo);
+  char                  * unit_hostnames[],
+  dart_team_t             team,
+  dart_unit_mapping_t   * unit_mapping,
+  dart_host_topology_t  * topo);
 
 dart_ret_t dart__base__host_topology__destruct(
   dart_host_topology_t  * topo);
 
 
 dart_ret_t dart__base__host_topology__num_nodes(
-    dart_host_topology_t  * topo,
-    int                   * num_nodes);
+  dart_host_topology_t  * topo,
+  int                   * num_nodes);
 
 dart_ret_t dart__base__host_topology__node(
-    dart_host_topology_t  * topo,
-    int                     node_index,
-    const char           ** node_hostname);
+  dart_host_topology_t  * topo,
+  int                     node_index,
+  const char           ** node_hostname);
 
 dart_ret_t dart__base__host_topology__num_node_modules(
-    dart_host_topology_t  * topo,
-    const char            * node_hostname,
-    int                   * num_modules);
+  dart_host_topology_t  * topo,
+  const char            * node_hostname,
+  int                   * num_modules);
 
 dart_ret_t dart__base__host_topology__node_module(
-    dart_host_topology_t  * topo,
-    const char            * node_hostname,
-    int                     module_index,
-    const char           ** module_hostname);
+  dart_host_topology_t  * topo,
+  const char            * node_hostname,
+  int                     module_index,
+  const char           ** module_hostname);
 
 dart_ret_t dart__base__host_topology__node_units(
-    dart_host_topology_t  * topo,
-    const char            * node_hostname,
-    dart_unit_t          ** units,
-    int                   * num_units);
+  dart_host_topology_t  * topo,
+  const char            * node_hostname,
+  dart_unit_t          ** units,
+  int                   * num_units);
 
 dart_ret_t dart__base__host_topology__module_units(
   dart_host_topology_t  * topo,

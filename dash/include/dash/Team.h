@@ -41,40 +41,13 @@ class Team
 {
   template <typename U>
     friend class Shared;
-    template <typename U, class P, class GM, class Ptr, class Ref >
+  template <typename U, class P, class GM, class Ptr, class Ref >
     friend class GlobIter;
-    template <typename U>
+  template <typename U>
     friend class GlobRef;
-    friend std::ostream & operator<<(
-        std::ostream & os,
-        const Team & team);
-
-  public:
-    typedef struct iterator {
-        int val;
-
-        iterator(int v) : val(v) {}
-        iterator & operator+=(const iterator & rhs) {
-            val += rhs.val;
-            return *this;
-        }
-
-        inline iterator & operator++() {
-            return operator+=(1);
-        }
-
-        inline int operator*() const {
-            return val;
-        }
-
-        inline operator int() const {
-            return val;
-        }
-    } iterator;
-
-    inline iterator begin() {
-        return iterator(0);
-    }
+  friend std::ostream & operator<<(
+    std::ostream & os,
+    const Team & team);
 
 public:
   typedef struct iterator
@@ -543,8 +516,8 @@ private:
 }; // class Team
 
 bool operator==(
-    const Team::Deallocator & lhs,
-    const Team::Deallocator & rhs);
+  const Team::Deallocator & lhs,
+  const Team::Deallocator & rhs);
 
 }  // namespace dash
 

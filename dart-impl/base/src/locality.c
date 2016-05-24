@@ -72,17 +72,19 @@ dart_ret_t dart__base__locality__group_subdomains(
  * Init / Finalize                                                        *
  * ====================================================================== */
 
-dart_ret_t dart__base__locality__init() {
-    return dart__base__locality__create(DART_TEAM_ALL);
+dart_ret_t dart__base__locality__init()
+{
+  return dart__base__locality__create(DART_TEAM_ALL);
 }
 
-dart_ret_t dart__base__locality__finalize() {
-    for (dart_team_t t = 0; t < DART__BASE__LOCALITY__MAX_TEAM_DOMAINS; ++t) {
-        dart__base__locality__delete(t);
-    }
+dart_ret_t dart__base__locality__finalize()
+{
+  for (dart_team_t t = 0; t < DART__BASE__LOCALITY__MAX_TEAM_DOMAINS; ++t) {
+    dart__base__locality__delete(t);
+  }
 
-    dart_barrier(DART_TEAM_ALL);
-    return DART_OK;
+  dart_barrier(DART_TEAM_ALL);
+  return DART_OK;
 }
 
 /* ====================================================================== *
@@ -90,91 +92,92 @@ dart_ret_t dart__base__locality__finalize() {
  * ====================================================================== */
 
 dart_ret_t dart__base__locality__create(
-    dart_team_t team) {
-    DART_LOG_DEBUG("dart__base__locality__create() team(%d)", team);
+  dart_team_t team)
+{
+  DART_LOG_DEBUG("dart__base__locality__create() team(%d)", team);
 
-    dart_hwinfo_t * hwinfo;
-    DART_ASSERT_RETURNS(dart_hwinfo(&hwinfo), DART_OK);
+  dart_hwinfo_t * hwinfo;
+  DART_ASSERT_RETURNS(dart_hwinfo(&hwinfo), DART_OK);
 
-    for (int td = 0; td < DART__BASE__LOCALITY__MAX_TEAM_DOMAINS; ++td) {
-        dart__base__locality__global_domain_[td] = NULL;
-        dart__base__locality__host_topology_[td] = NULL;
-    }
+  for (int td = 0; td < DART__BASE__LOCALITY__MAX_TEAM_DOMAINS; ++td) {
+    dart__base__locality__global_domain_[td] = NULL;
+    dart__base__locality__host_topology_[td] = NULL;
+  }
 
-    dart_domain_locality_t * team_global_domain =
-        malloc(sizeof(dart_domain_locality_t));
-    dart__base__locality__global_domain_[team] =
-        team_global_domain;
+  dart_domain_locality_t * team_global_domain =
+    malloc(sizeof(dart_domain_locality_t));
+  dart__base__locality__global_domain_[team] =
+    team_global_domain;
 
-    /* Initialize the global domain as the root entry in the locality
-     * hierarchy: */
-    team_global_domain->scope          = DART_LOCALITY_SCOPE_GLOBAL;
-    team_global_domain->level          = 0;
-    team_global_domain->relative_index = 0;
-    team_global_domain->team           = team;
-    team_global_domain->parent         = NULL;
-    team_global_domain->num_domains    = 0;
-    team_global_domain->domains        = NULL;
-    team_global_domain->hwinfo         = *hwinfo;
-    team_global_domain->num_units      = 0;
-    team_global_domain->host[0]        = '\0';
-    team_global_domain->domain_tag[0]  = '.';
-    team_global_domain->domain_tag[1]  = '\0';
+  /* Initialize the global domain as the root entry in the locality
+   * hierarchy: */
+  team_global_domain->scope          = DART_LOCALITY_SCOPE_GLOBAL;
+  team_global_domain->level          = 0;
+  team_global_domain->relative_index = 0;
+  team_global_domain->team           = team;
+  team_global_domain->parent         = NULL;
+  team_global_domain->num_domains    = 0;
+  team_global_domain->domains        = NULL;
+  team_global_domain->hwinfo         = *hwinfo;
+  team_global_domain->num_units      = 0;
+  team_global_domain->host[0]        = '\0';
+  team_global_domain->domain_tag[0]  = '.';
+  team_global_domain->domain_tag[1]  = '\0';
 
-    size_t num_units = 0;
-    DART_ASSERT_RETURNS(dart_team_size(team, &num_units), DART_OK);
-    team_global_domain->num_units = num_units;
+  size_t num_units = 0;
+  DART_ASSERT_RETURNS(dart_team_size(team, &num_units), DART_OK);
+  team_global_domain->num_units = num_units;
 
-    team_global_domain->unit_ids =
-        malloc(num_units * sizeof(dart_unit_t));
-    for (size_t u = 0; u < num_units; ++u) {
-        team_global_domain->unit_ids[u] = u;
-    }
+  team_global_domain->unit_ids =
+    malloc(num_units * sizeof(dart_unit_t));
+  for (size_t u = 0; u < num_units; ++u) {
+    team_global_domain->unit_ids[u] = u;
+  }
 
-    /* Exchange unit locality information between all units: */
-    dart_unit_mapping_t * unit_mapping;
+  /* Exchange unit locality information between all units: */
+  dart_unit_mapping_t * unit_mapping;
+  DART_ASSERT_RETURNS(
+    dart__base__unit_locality__create(team, &unit_mapping),
+    DART_OK);
+  dart__base__locality__unit_mapping_[team] = unit_mapping;
+
+  /* Copy host names of all units into array: */
+  const int max_host_len = DART_LOCALITY_HOST_MAX_SIZE;
+  DART_LOG_TRACE("dart__base__locality__create: copying host names");
+  char ** hosts = malloc(sizeof(char *) * num_units);
+  for (size_t u = 0; u < num_units; ++u) {
+    hosts[u] = malloc(sizeof(char) * max_host_len);
+    dart_unit_locality_t * ul;
     DART_ASSERT_RETURNS(
-        dart__base__unit_locality__create(team, &unit_mapping),
-        DART_OK);
-    dart__base__locality__unit_mapping_[team] = unit_mapping;
+      dart__base__unit_locality__at(unit_mapping, u, &ul),
+      DART_OK);
+    strncpy(hosts[u], ul->host, max_host_len);
+  }
 
-    /* Copy host names of all units into array: */
-    const int max_host_len = DART_LOCALITY_HOST_MAX_SIZE;
-    DART_LOG_TRACE("dart__base__locality__create: copying host names");
-    char ** hosts = malloc(sizeof(char *) * num_units);
-    for (size_t u = 0; u < num_units; ++u) {
-        hosts[u] = malloc(sizeof(char) * max_host_len);
-        dart_unit_locality_t * ul;
-        DART_ASSERT_RETURNS(
-            dart__base__unit_locality__at(unit_mapping, u, &ul),
-            DART_OK);
-        strncpy(hosts[u], ul->host, max_host_len);
-    }
+  dart_host_topology_t * topo = malloc(sizeof(dart_host_topology_t));
+  DART_ASSERT_RETURNS(
+    dart__base__host_topology__create(
+      hosts, team, unit_mapping, topo),
+    DART_OK);
+  dart__base__locality__host_topology_[team] = topo;
+  size_t num_nodes = topo->num_nodes;
+  DART_LOG_TRACE("dart__base__locality__create: nodes: %d", num_nodes);
 
-    dart_host_topology_t * topo = malloc(sizeof(dart_host_topology_t));
-    DART_ASSERT_RETURNS(
-        dart__base__host_topology__create(
-            hosts, team, unit_mapping, topo),
-        DART_OK);
-    dart__base__locality__host_topology_[team] = topo;
-    size_t num_nodes = topo->num_nodes;
-    DART_LOG_TRACE("dart__base__locality__create: nodes: %d", num_nodes);
-
-    team_global_domain->num_nodes = num_nodes;
+  team_global_domain->num_nodes = num_nodes;
 
 #ifdef DART_ENABLE_LOGGING
-    for (int h = 0; h < topo->num_hosts; ++h) {
-        dart_node_units_t * node_units = &topo->node_units[h];
-        char * hostname = topo->host_names[h];
-        DART_LOG_TRACE("dart__base__locality__create: "
-                       "host %s: units:%d level:%d parent:%s", hostname,
-                       node_units->num_units, node_units->level,
-                       node_units->parent);
-        for (int u = 0; u < node_units->num_units; ++u) {
-            DART_LOG_TRACE("dart__base__locality__create: %s unit[%d]: %d",
-                           hostname, u, node_units->units[u]);
-        }
+  for (int h = 0; h < topo->num_hosts; ++h) {
+    dart_node_units_t * node_units = &topo->node_units[h];
+    char * hostname = topo->host_names[h];
+    DART_LOG_TRACE("dart__base__locality__create: "
+                   "host %s: units:%d level:%d parent:%s", hostname,
+                   node_units->num_units, node_units->level,
+                   node_units->parent);
+    for (int u = 0; u < node_units->num_units; ++u) {
+      DART_LOG_TRACE("dart__base__locality__create: %s unit[%d]: %d",
+                     hostname, u, node_units->units[u]);
     }
+  }
 #endif
 
   /* recursively create locality information of the global domain's
@@ -201,11 +204,7 @@ dart_ret_t dart__base__locality__delete(
     return ret;
   }
 
-    if (dart__base__locality__global_domain_[team] == NULL &&
-            dart__base__locality__host_topology_[team] == NULL &&
-            dart__base__locality__unit_mapping_[team]  == NULL) {
-        return ret;
-    }
+  DART_LOG_DEBUG("dart__base__locality__delete() team(%d)", team);
 
   if (NULL != dart__base__locality__global_domain_[team]) {
     ret = dart__base__locality__domain__destruct(
@@ -243,8 +242,8 @@ dart_ret_t dart__base__locality__delete(
     dart__base__locality__unit_mapping_[team] = NULL;
   }
 
-    DART_LOG_DEBUG("dart__base__locality__delete > team(%d)", team);
-    return DART_OK;
+  DART_LOG_DEBUG("dart__base__locality__delete > team(%d)", team);
+  return DART_OK;
 }
 
 /* ====================================================================== *
@@ -931,9 +930,16 @@ dart_ret_t dart__base__locality__scope_domains_rec(
                      "realloc failed");
       return DART_ERR_OTHER;
     }
-    if (*num_domains_out <= 0) {
-        DART_LOG_ERROR("dart__base__locality__scope_domains ! no domains found");
-        return DART_ERR_NOTFOUND;
+  } else {
+    for (int d = 0; d < domain->num_domains; ++d) {
+      ret = dart__base__locality__scope_domains_rec(
+              &domain->domains[d],
+              scope,
+              num_domains_out,
+              domain_tags_out);
+      if (ret != DART_OK) {
+        return ret;
+      }
     }
   }
   if (*num_domains_out <= 0) {

@@ -13,34 +13,36 @@
 #include <dash/dart/base/locality.h>
 
 
-dart_ret_t dart__mpi__locality_init() {
-    DART_LOG_DEBUG("dart__mpi__locality_init()");
-    dart_ret_t ret;
+dart_ret_t dart__mpi__locality_init()
+{
+  DART_LOG_DEBUG("dart__mpi__locality_init()");
+  dart_ret_t ret;
 
-    ret = dart__base__locality__init();
-    if (ret != DART_OK) {
-        DART_LOG_ERROR("dart__mpi__locality_init ! "
-                       "dart__base__locality__init failed: %d", ret);
-        return ret;
-    }
-    DART_LOG_DEBUG("dart__mpi__locality_init >");
-    return DART_OK;
+  ret = dart__base__locality__init();
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("dart__mpi__locality_init ! "
+                   "dart__base__locality__init failed: %d", ret);
+    return ret;
+  }
+  DART_LOG_DEBUG("dart__mpi__locality_init >");
+  return DART_OK;
 }
 
-dart_ret_t dart__mpi__locality_finalize() {
-    DART_LOG_DEBUG("dart__mpi__locality_finalize()");
-    dart_ret_t ret;
+dart_ret_t dart__mpi__locality_finalize()
+{
+  DART_LOG_DEBUG("dart__mpi__locality_finalize()");
+  dart_ret_t ret;
 
-    ret = dart__base__locality__finalize();
+  ret = dart__base__locality__finalize();
 
-    dart_barrier(DART_TEAM_ALL);
+  dart_barrier(DART_TEAM_ALL);
 
-    if (ret != DART_OK) {
-        DART_LOG_ERROR("dart__mpi__locality_finalize ! "
-                       "dart__base__locality__finalize failed: %d", ret);
-        return ret;
-    }
-    DART_LOG_DEBUG("dart__mpi__locality_finalize >");
-    return DART_OK;
+  if (ret != DART_OK) {
+    DART_LOG_ERROR("dart__mpi__locality_finalize ! "
+                   "dart__base__locality__finalize failed: %d", ret);
+    return ret;
+  }
+  DART_LOG_DEBUG("dart__mpi__locality_finalize >");
+  return DART_OK;
 }
 

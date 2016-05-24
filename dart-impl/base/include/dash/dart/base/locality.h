@@ -22,10 +22,10 @@ dart_ret_t dart__base__locality__finalize();
  * ======================================================================== */
 
 dart_ret_t dart__base__locality__create(
-    dart_team_t team);
+  dart_team_t team);
 
 dart_ret_t dart__base__locality__delete(
-    dart_team_t team);
+  dart_team_t team);
 
 /* ======================================================================== *
  * Domain Locality                                                          *

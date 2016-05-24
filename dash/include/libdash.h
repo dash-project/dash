@@ -46,6 +46,8 @@
 #include <dash/util/TeamLocality.h>
 #include <dash/util/UnitLocality.h>
 
+#include <dash/io/StoreHDF.h>
+
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 

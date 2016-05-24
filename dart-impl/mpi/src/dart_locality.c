@@ -212,8 +212,8 @@ dart_ret_t dart_unit_locality(
     return ret;
   }
 
-    DART_LOG_DEBUG("dart_unit_locality > team(%d) unit(%d) -> %p",
-                   team, unit, *locality);
-    return DART_OK;
+  DART_LOG_DEBUG("dart_unit_locality > team(%d) unit(%d) -> %p",
+                 team, unit, *locality);
+  return DART_OK;
 }
 
