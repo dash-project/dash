@@ -211,7 +211,9 @@ measurement perform_test(
                                   (arr.team().size() / 2) - 1);
 
   DASH_LOG_DEBUG("perform_test.verify",
-                 "array size:", arr.size(),
+                 "num.elem:",         NELEM,
+                 "pattern size:",     arr.size(),
+                 "array size:",       arr.size(),
                  "array local size:", arr.lsize());
 
   dash::util::Config::set("DASH_ENABLE_LOGGING", false);

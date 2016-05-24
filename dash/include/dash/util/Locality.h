@@ -87,6 +87,16 @@ public:
     return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_cores;
   }
 
+  static inline int MinThreads()
+  {
+    return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.min_threads;
+  }
+
+  static inline int MaxThreads()
+  {
+    return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.max_threads;
+  }
+
   static inline void SetNumNodes(int n)
   {
     _domain_loc->num_nodes = n;

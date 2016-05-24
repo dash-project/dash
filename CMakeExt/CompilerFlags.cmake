@@ -27,16 +27,19 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CXX_STD_FLAG "--std=c++11"
        CACHE STRING "C++ compiler std flag")
+  set (CXX_OMP_FLAG "-fopenmp")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
   set (CXX_STD_FLAG "--std=c++11"
        CACHE STRING "C++ compiler std flag")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
        CACHE STRING "C++ compiler GDB debug symbols flag")
+  set (CXX_OMP_FLAG "-fopenmp")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
   set (CXX_STD_FLAG "-std=c++11"
        CACHE STRING "C++ compiler std flag")
+  set (CXX_OMP_FLAG "-qopenmp")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
   # Cray compiler not supported for C++
   message(FATAL_ERROR,

@@ -74,9 +74,39 @@ GlobIter<ElementType, PatternType> min_element(
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
-    lmin = ::std::min_element(l_range_begin,
-                              l_range_end,
-                              compare);
+
+    auto  n_threads = dash::util::Locality::MinThreads();
+
+    if (n_threads > 1) {
+      int min_idx_l         = 0;
+      ElementType min_val_l = *l_range_begin;
+      auto        l_size    = l_range_end - l_range_begin;
+      #pragma omp parallel num_threads(n_threads)
+      {
+         int         min_idx_t = min_idx_l;
+         ElementType min_val_t = min_val_l;
+         #pragma omp for nowait private(min_val_l)
+         for (int i = 0; i < l_size; i++) {
+           ElementType val_t = *(l_range_begin + i);
+           if (compare(val_t, min_val_t)) {
+             min_val_t = val_t;
+             min_idx_t = i;
+           }
+         }
+         #pragma omp critical
+         {
+           if (compare(min_val_t, min_val_l)) {
+             min_val_l = min_val_t;
+             min_idx_l = min_idx_t;
+           }
+         }
+      }
+      lmin = l_range_begin + min_idx_l;
+    } else {
+      lmin = ::std::min_element(l_range_begin,
+                                l_range_end,
+                                compare);
+    }
     if (lmin != l_range_end) {
       DASH_LOG_TRACE_VAR("dash::min_element", *lmin);
       // Offset of local minimum in local memory:
