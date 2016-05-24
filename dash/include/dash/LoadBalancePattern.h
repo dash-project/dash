@@ -790,6 +790,9 @@ public:
   inline SizeType local_size(
     dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
   {
+    if (unit == DART_UNDEFINED_UNIT_ID) {
+      unit = _myid;
+    }
     return _local_sizes[unit];
   }
 
