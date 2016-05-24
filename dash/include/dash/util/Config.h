@@ -69,7 +69,15 @@ public:
   typename std::enable_if<std::is_integral<ValueT>::value, ValueT>::type
   get(const std::string & key)
   {
-    return atoi(get_str(key).c_str());
+    return std::strtoll(get_str(key).c_str(), nullptr, 10);
+  }
+
+  template<typename ValueT>
+  static
+  typename std::enable_if<std::is_floating_point<ValueT>::value, ValueT>::type
+  get(const std::string & key)
+  {
+    return std::stod(get_str(key).c_str());
   }
 
   template<typename ValueT>
@@ -91,22 +99,15 @@ public:
   static void
   set(
     const std::string & key,
-    bool                flag)
-  {
-    DASH_LOG_TRACE("util::Config::set(string,bool)", key, flag);
+    std::string         value);
 
-    std::ostringstream ss;
-    ss << flag;
-    std::string value = ss.str();
-
-    Config::config_values_[key] = value;
-    Config::on_change(key, value);
-  }
-
-  static void
+  static inline void
   set(
     const std::string & key,
-    std::string         value);
+    const char *        cstr)
+  {
+    set(key, std::string(cstr));
+  }
 
   static typename std::unordered_map<std::string, std::string>::iterator
   begin() {
@@ -147,7 +148,7 @@ private:
     if (value == "1") {
       dash::internal::logging::enable_log();
       DASH_LOG_TRACE("util::Config::set", "Log enabled");
-    } else {
+    } else if (value == "0") {
       DASH_LOG_TRACE("util::Config::set", "Disabling log");
       dash::internal::logging::disable_log();
     }
