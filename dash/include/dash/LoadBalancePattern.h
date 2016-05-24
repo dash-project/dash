@@ -148,7 +148,7 @@ public:
       initialize_block_offsets(
         _local_sizes)),
     _memory_layout(
-      std::array<SizeType, 1> { _size }),
+      std::array<SizeType, 1> {{ _size }}),
     _blockspec(
       initialize_blockspec(
         _size,
@@ -163,7 +163,7 @@ public:
         _team->myid(),
         _local_sizes)),
     _local_memory_layout(
-      std::array<SizeType, 1> { _local_size }),
+      std::array<SizeType, 1> {{ _local_size }}),
     _local_capacity(
       initialize_local_capacity(
         _local_sizes))
@@ -375,7 +375,7 @@ public:
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.local_extents()", unit);
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.local_extents >",
                        _local_sizes[unit]);
-    return std::array<SizeType, 1> { _local_sizes[unit] };
+    return std::array<SizeType, 1> {{ _local_sizes[unit] }};
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -504,7 +504,7 @@ public:
     // Initialize global index with element phase (= local coords):
     index_type glob_index = _block_offsets[unit] + local_coords[0];
     DASH_LOG_TRACE_VAR("LoadBalancePattern.global >", glob_index);
-    return std::array<IndexType, 1> { glob_index };
+    return std::array<IndexType, 1> {{ glob_index }};
   }
 
   /**
@@ -530,7 +530,7 @@ public:
     dart_unit_t unit,
     IndexType l_index) const
   {
-    return global(unit, std::array<IndexType, 1> { l_index })[0];
+    return global(unit, std::array<IndexType, 1> {{ l_index }})[0];
   }
 
   /**
@@ -544,7 +544,7 @@ public:
   IndexType global(
     IndexType l_index) const
   {
-    return global(_team->myid(), std::array<IndexType, 1> { l_index })[0];
+    return global(_team->myid(), std::array<IndexType, 1> {{ l_index }})[0];
   }
 
   /**
@@ -847,7 +847,7 @@ public:
    */
   SizeSpec_t sizespec() const
   {
-    return SizeSpec_t(std::array<SizeType, 1> { _size });
+    return SizeSpec_t(std::array<SizeType, 1> {{ _size }});
   }
 
   /**
@@ -857,7 +857,7 @@ public:
    */
   const std::array<SizeType, NumDimensions> & extents() const
   {
-    return std::array<SizeType, 1> { _size };
+    return std::array<SizeType, 1> {{ _size }};
   }
 
   /**
@@ -901,7 +901,7 @@ public:
   std::array<IndexType, NumDimensions> coords(
     IndexType index) const
   {
-    return std::array<IndexType, 1> { index };
+    return std::array<IndexType, 1> {{ index }};
   }
 
   /**
@@ -1013,9 +1013,9 @@ private:
     const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_blockspec", local_sizes);
-    BlockSpec_t blockspec({
+    BlockSpec_t blockspec({{
       static_cast<size_type>(local_sizes.size())
-	  });
+    }});
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_blockspec >", blockspec);
     return blockspec;
   }

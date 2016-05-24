@@ -64,11 +64,11 @@ void halo_swap2d(MatrixT & mat)
   */
 
   if (top >= 0) {
-    auto gidx = edge1.pattern().global(top, std::array<IndexT, 1> { 0 });
+    auto gidx = edge1.pattern().global(top, std::array<IndexT, 1> {{ 0 }});
     dash::copy( tl, tl + ext1, edge1.begin() + gidx[0] );
   }
   if (bot >= 0) {
-    auto gidx = edge1.pattern().global(bot, std::array<IndexT, 1> { 0 });
+    auto gidx = edge1.pattern().global(bot, std::array<IndexT, 1> {{ 0 }});
     dash::copy( tl, tl + ext1, edge1.begin() + gidx[0] + ext1 );
   }
   dash::barrier();
