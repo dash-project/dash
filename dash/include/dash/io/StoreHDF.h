@@ -463,7 +463,7 @@ public:
         dash::Team::All());
       array.allocate(pattern);
 #else
-      array.allocate(data_dimsf[0], dash::TILE(tilesize));
+      array.allocate(data_dimsf[0]);
 #endif
     }
     auto pattern    = array.pattern();
