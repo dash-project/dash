@@ -11,7 +11,7 @@ using std::setprecision;
 
 using dash::util::BenchmarkParams;
 
-// #define LOAD_BALANCE
+#define LOAD_BALANCE
 
 // ==========================================================================
 // Type definitions
@@ -90,6 +90,10 @@ void print_local_sizes(
   const BenchmarkParams  & bench_cfg,
   const PatternType      & pattern);
 
+void print_team_locality(
+  const dash::util::BenchmarkParams & bench_cfg,
+  const dash::util::TeamLocality    & tloc);
+
 // ==========================================================================
 // Benchmark Implementation
 // ==========================================================================
@@ -97,6 +101,9 @@ void print_local_sizes(
 int main(int argc, char **argv)
 {
   dash::init(&argc, &argv);
+
+  dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+
   Timer::Calibrate(0);
 
   measurement res;
@@ -114,8 +121,9 @@ int main(int argc, char **argv)
 
   auto   bench_cfg        = bench_params.config();
 
-#ifdef LOAD_BALANCE
   dash::util::TeamLocality tloc(dash::Team::All());
+
+#ifdef LOAD_BALANCE
   PatternType pattern(
     dash::SizeSpec<1>(size_inc),
     tloc);
@@ -123,8 +131,11 @@ int main(int argc, char **argv)
   PatternType pattern(size_inc);
 #endif
 
+  dash::barrier();
+
   print_params(bench_params, params);
   print_local_sizes(bench_params, pattern);
+  print_team_locality(bench_params, tloc);
 
   print_measurement_header();
 
@@ -134,6 +145,8 @@ int main(int argc, char **argv)
   for (size_t i = 0; i < num_iterations && num_repeats > 0;
        ++i, num_repeats /= params.rep_base)
   {
+    dash::barrier();
+
     size_t size = std::pow(params.size_base, i) * size_inc;
 
     num_repeats = std::max<size_t>(num_repeats, params.min_repeats);
@@ -141,6 +154,8 @@ int main(int argc, char **argv)
     ts_start = Timer::Now();
     res      = perform_test(size, num_repeats, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
+
+    dash::barrier();
     print_measurement_record(bench_cfg, size, num_repeats,
                              time_s, res, params);
   }
@@ -203,7 +218,9 @@ measurement perform_test(
                                   pattern.local_size());
     arr.local[min_value_lidx] = min_value_exp;
 
+    dash::util::Config::set("DASH_ENABLE_LOGGING", true);
     min_lidx_exp.set(min_value_lidx);
+    dash::util::Config::set("DASH_ENABLE_LOGGING", false);
   }
 
   dash::barrier();
@@ -308,19 +325,21 @@ measurement perform_test(
 void print_measurement_header()
 {
   if (dash::myid() == 0) {
-    cout << std::right
-         << std::setw(5)  << "units"       << ","
-         << std::setw(9)  << "mpi.impl"    << ","
-         << std::setw(8)  << "repeats"     << ","
-         << std::setw(12) << "size"        << ","
-         << std::setw(12) << "time.s"      << ","
-         << std::setw(12) << "time.min.us" << ","
-         << std::setw(12) << "time.med.us" << ","
-         << std::setw(12) << "time.max.us" << ","
-         << std::setw(12) << "time.sdv.us" << ","
-         << std::setw(12) << "total.s"     << ","
-         << std::setw(9)  << "mkeys/s"
-         << endl;
+    std::ostringstream oss;
+    oss << std::right
+        << std::setw(5)  << "units"       << ","
+        << std::setw(9)  << "mpi.impl"    << ","
+        << std::setw(8)  << "repeats"     << ","
+        << std::setw(12) << "size"        << ","
+        << std::setw(12) << "time.s"      << ","
+        << std::setw(12) << "time.min.us" << ","
+        << std::setw(12) << "time.med.us" << ","
+        << std::setw(12) << "time.max.us" << ","
+        << std::setw(12) << "time.sdv.us" << ","
+        << std::setw(12) << "total.s"     << ","
+        << std::setw(9)  << "mkeys/s"
+        << endl;
+    std::cout << oss.str();
   }
 }
 
@@ -332,28 +351,33 @@ void print_measurement_record(
   measurement              measurement,
   const benchmark_params & params)
 {
-  if (dash::myid() == 0) {
-    std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
-    double mkps        = measurement.mkeys_per_s;
-    double time_s      = measurement.time_s;
-    double time_min_us = measurement.time_min_us;
-    double time_max_us = measurement.time_max_us;
-    double time_med_us = measurement.time_med_us;
-    double time_sdv_us = measurement.time_sdv_us;
-    cout << std::right
-         << std::setw(5)  << dash::size() << ","
-         << std::setw(9)  << mpi_impl     << ","
-         << std::setw(8)  << num_repeats  << ","
-         << std::setw(12) << size         << ","
-         << std::fixed << setprecision(2) << setw(12) << time_s      << ","
-         << std::fixed << setprecision(2) << setw(12) << time_min_us << ","
-         << std::fixed << setprecision(2) << setw(12) << time_med_us << ","
-         << std::fixed << setprecision(2) << setw(12) << time_max_us << ","
-         << std::fixed << setprecision(2) << setw(12) << time_sdv_us << ","
-         << std::fixed << setprecision(2) << setw(12) << secs        << ","
-         << std::fixed << setprecision(2) << setw(9)  << mkps
-         << endl;
+  if (dash::myid() != 0) {
+    return;
   }
+
+  std::string mpi_impl = dash__toxstr(MPI_IMPL_ID);
+  double mkps        = measurement.mkeys_per_s;
+  double time_s      = measurement.time_s;
+  double time_min_us = measurement.time_min_us;
+  double time_max_us = measurement.time_max_us;
+  double time_med_us = measurement.time_med_us;
+  double time_sdv_us = measurement.time_sdv_us;
+
+  std::ostringstream oss;
+  oss << std::right
+      << std::setw(5)  << dash::size() << ","
+      << std::setw(9)  << mpi_impl     << ","
+      << std::setw(8)  << num_repeats  << ","
+      << std::setw(12) << size         << ","
+      << std::fixed << setprecision(2) << setw(12) << time_s      << ","
+      << std::fixed << setprecision(2) << setw(12) << time_min_us << ","
+      << std::fixed << setprecision(2) << setw(12) << time_med_us << ","
+      << std::fixed << setprecision(2) << setw(12) << time_max_us << ","
+      << std::fixed << setprecision(2) << setw(12) << time_sdv_us << ","
+      << std::fixed << setprecision(2) << setw(12) << secs        << ","
+      << std::fixed << setprecision(2) << setw(9)  << mkps
+      << endl;
+  std::cout << oss.str();
 }
 
 benchmark_params parse_args(int argc, char * argv[])
@@ -416,11 +440,31 @@ void print_local_sizes(
   const dash::util::BenchmarkParams & bench_cfg,
   const PatternType                 & pattern)
 {
+  if (dash::myid() != 0) {
+    return;
+  }
+
   bench_cfg.print_section_start("Data Partitioning");
   for (size_t u = 0; u < pattern.team().size(); u++) {
     std::ostringstream uss;
     uss << "unit " << setw(2) << u;
     bench_cfg.print_param(uss.str(), "local size", pattern.local_size(u));
   }
+  bench_cfg.print_section_end();
+}
+
+void print_team_locality(
+  const dash::util::BenchmarkParams & bench_cfg,
+  const dash::util::TeamLocality    & tloc)
+{
+  if (dash::myid() != 0) {
+    return;
+  }
+
+  std::stringstream ss;
+  ss << tloc.domain();
+
+  bench_cfg.print_section_start("Team Locality Domains");
+  bench_cfg.print(ss);
   bench_cfg.print_section_end();
 }

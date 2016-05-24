@@ -18,6 +18,8 @@ namespace dash {
 namespace internal {
 namespace logging {
 
+bool _log_enabled = true;
+
 void Log_Recursive(
   const char* level,
   const char* file,
@@ -25,19 +27,12 @@ void Log_Recursive(
   const char* context_tag,
   std::ostringstream & msg)
 {
-  std::string msg_str = msg.str();
-
-  if (msg_str.length() > 40) {
-    if (msg_str.find('\n') != std::string::npos) {
-      std::stringstream ss(msg_str);
-      std::string item;
-      while (std::getline(ss, item, '\n')) {
-        Log_Line(level, file, line, context_tag, item);
-      }
-    }
-  } else {
-    Log_Line(level, file, line, context_tag, msg_str);
+  std::istringstream ss(msg.str());
+  std::string item;
+  while (std::getline(ss, item)) {
+    Log_Line(level, file, line, context_tag, item);
   }
+  (DASH_LOG_OUTPUT_TARGET).flush();
 }
 
 } // namespace logging

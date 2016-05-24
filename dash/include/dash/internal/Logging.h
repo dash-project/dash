@@ -4,6 +4,8 @@
 #include <dash/internal/Macro.h>
 #include <dash/internal/StreamConversion.h>
 
+#include <dash/dart/if/dart_config.h>
+
 #include <array>
 #include <vector>
 #include <map>
@@ -93,6 +95,30 @@ namespace dash {
 namespace internal {
 namespace logging {
 
+extern bool _log_enabled;
+
+static inline bool log_enabled()
+{
+  return _log_enabled;
+}
+
+static inline void enable_log()
+{
+  _log_enabled = true;
+
+  dart_config_t * dart_cfg;
+  dart_config(&dart_cfg);
+  dart_cfg->log_enabled = 1;
+}
+
+static inline void disable_log()
+{
+  _log_enabled = false;
+
+  dart_config_t * dart_cfg;
+  dart_config(&dart_cfg);
+  dart_cfg->log_enabled = 0;
+}
 
 // Terminator
 void Log_Recursive(
@@ -125,7 +151,8 @@ inline void Log_Line(
       << std::left << std::setw(45)
       << context_tag << "| "
       << msg
-      << std::endl;
+      << '\n';
+
   DASH_LOG_OUTPUT_TARGET << buf.str();
 }
 
@@ -153,6 +180,10 @@ void LogWrapper(
   const char *     context_tag,
   const Args & ... args)
 {
+  if (!dash::internal::logging::log_enabled()) {
+    return;
+  }
+
   std::ostringstream msg;
   // Extract file name from path
   const char * filebase = strrchr(filepath, '/');
@@ -176,6 +207,10 @@ void LogVarWrapper(
   const T & var_value,
   const Args & ... args)
 {
+  if (!dash::internal::logging::log_enabled()) {
+    return;
+  }
+
   std::ostringstream msg;
   msg << "|- " << var_name << ": " << var_value;
   // Extract file name from path

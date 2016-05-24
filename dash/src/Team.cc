@@ -53,8 +53,6 @@ Team::Team(
   _parent(parent),
   _position(pos)
 {
-  DASH_LOG_DEBUG("Team()", "dart id:", id, "position:", pos);
-
   if (nullptr != parent) {
     if (parent->_child) {
       DASH_THROW(
@@ -72,8 +70,6 @@ Team::Team(
       DART_TEAM_ALL != id) {
     Team::register_team(this);
   }
-
-  DASH_LOG_DEBUG("Team >", "dart id:", id, "position:", pos);
 }
 
 Team &

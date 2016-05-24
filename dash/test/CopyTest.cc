@@ -557,22 +557,26 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
     dash::test::print_pattern_mapping(
       "matrix.pattern.unit_at", pattern, 3,
       [](const pattern_t & _pattern, int _x, int _y) -> dart_unit_t {
-          return _pattern.unit_at(std::array<index_t, 2> {_x, _y});
+          return _pattern.unit_at(
+                   std::array<index_t, 2> {{ _x, _y }});
       });
     dash::test::print_pattern_mapping(
       "matrix.pattern.at", pattern, 3,
       [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-          return _pattern.at(std::array<index_t, 2> {_x, _y});
+          return _pattern.at(
+                   std::array<index_t, 2> {{ _x, _y }});
       });
     dash::test::print_pattern_mapping(
       "matrix.pattern.block_at", pattern, 3,
       [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-          return _pattern.block_at(std::array<index_t, 2> {_x, _y});
+          return _pattern.block_at(
+                   std::array<index_t, 2> {{ _x, _y }});
       });
     dash::test::print_pattern_mapping(
       "matrix.pattern.block.offset", pattern, 5,
       [](const pattern_t & _pattern, int _x, int _y) -> std::string {
-          auto block_idx = _pattern.block_at(std::array<index_t, 2> {_x, _y});
+          auto block_idx = _pattern.block_at(
+                             std::array<index_t, 2> {{ _x, _y }});
           auto block_vs  = _pattern.block(block_idx);
           std::ostringstream ss;
           ss << block_vs.offset(0) << "," << block_vs.offset(1);
@@ -581,7 +585,8 @@ TEST_F(CopyTest, AsyncGlobalToLocalTiles)
     dash::test::print_pattern_mapping(
       "matrix.pattern.local_index", pattern, 3,
       [](const pattern_t & _pattern, int _x, int _y) -> index_t {
-          return _pattern.local_index(std::array<index_t, 2> {_x, _y}).index;
+          return _pattern.local_index(
+                   std::array<index_t, 2> {{ _x, _y }}).index;
       });
   }
 

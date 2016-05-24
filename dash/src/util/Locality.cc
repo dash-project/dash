@@ -30,9 +30,8 @@ std::ostream & operator<<(
   std::ostream                 & os,
   const dart_domain_locality_t & domain_loc)
 {
-  std::ostringstream ss;
-  dash::util::print_domain(ss, domain_loc.team, &domain_loc);
-  return operator<<(os, ss.str());
+  dash::util::print_domain(os, domain_loc.team, &domain_loc);
+  return os;
 }
 
 std::ostream & operator<<(
@@ -155,20 +154,20 @@ static void print_domain(
 
   ostr << indent << "scope:   " << domain->scope << " "
                                 << "(level " << domain->level << ")"
-       << endl
+       << '\n'
        << indent << "rel.idx: " << domain->relative_index
-       << endl;
+       << '\n';
 
   if (static_cast<int>(domain->scope) <
       static_cast<int>(DART_LOCALITY_SCOPE_NODE)) {
-    ostr << indent << "nodes:   " << domain->num_nodes << endl;
+    ostr << indent << "nodes:   " << domain->num_nodes << '\n';
   }
 
-  ostr << indent << "NUMAs:   " << domain->hwinfo.num_numa << endl;
+  ostr << indent << "NUMAs:   " << domain->hwinfo.num_numa << '\n';
 
   if (static_cast<int>(domain->scope) >=
       static_cast<int>(DART_LOCALITY_SCOPE_NUMA)) {
-    ostr << indent << "NUMA id: " << domain->hwinfo.numa_id  << endl;
+    ostr << indent << "NUMA id: " << domain->hwinfo.numa_id  << '\n';
   }
 
   if (domain->num_units > 0) {
@@ -181,7 +180,7 @@ static void print_domain(
         ostr << ", ";
       }
     }
-    ostr << " }" << endl;
+    ostr << " }" << '\n';
   }
 
   if (domain->scope == DART_LOCALITY_SCOPE_CORE) {
@@ -197,11 +196,11 @@ static void print_domain(
       ostr << uindent << "unit id:   " << uloc->unit << "  ("
                                        << "in team " << uloc->team << ", "
                                        << "global: " << unit_gid   << ")"
-                      << endl;
+                      << '\n';
       ostr << uindent << "domain:    " << uloc->domain_tag
-                      << endl;
+                      << '\n';
       ostr << uindent << "host:      " << uloc->host
-                      << endl;
+                      << '\n';
       ostr << uindent << "hwinfo:    " << "numa_id: "
                                           << uloc->hwinfo.numa_id << " "
                                        << "cpu_id: "
@@ -212,7 +211,7 @@ static void print_domain(
                                        << "cpu_mhz: "
                                           << uloc->hwinfo.min_cpu_mhz << "..."
                                           << uloc->hwinfo.max_cpu_mhz
-                                       << endl;
+                                       << '\n';
     }
   } else if (domain->scope == DART_LOCALITY_SCOPE_GROUP) {
     ostr << indent << "hwinfo:  " << "threads: "
@@ -221,11 +220,11 @@ static void print_domain(
                                   << "cpu_mhz: "
                                      << domain->hwinfo.min_cpu_mhz << "..."
                                      << domain->hwinfo.max_cpu_mhz
-                                  << endl;
+                                  << '\n';
   }
 
   if (domain->num_domains > 0) {
-    ostr << indent << "domains: " << domain->num_domains << endl;
+    ostr << indent << "domains: " << domain->num_domains << '\n';
 
     for (int d = 0; d < domain->num_domains; ++d) {
       if (static_cast<int>(domain->domains[d].scope) <=
@@ -245,7 +244,7 @@ static void print_domain(
 
         ostr << "-- [" << d << "]: "
              << "(" << domain->domains[d].domain_tag << ")"
-             << endl;
+             << '\n';
 
         print_domain(ostr, team, &domain->domains[d], sub_indent);
       }

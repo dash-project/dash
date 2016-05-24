@@ -5,6 +5,7 @@
 #include <dash/Array.h>
 
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <vector>
 #include <string>
@@ -66,6 +67,17 @@ public:
   void print_section_start(const std::string & section_name) const;
   void print_section_end() const;
 
+  void print(
+    std::stringstream & lines) const
+  {
+    std::ostringstream oss;
+    std::string line;
+    while(std::getline(lines, line)) {
+      oss << "--   " << line << '\n';
+    }
+    std::cout << oss.str();
+  }
+
   template <typename T>
   void print_param(
     const std::string & name,
@@ -75,10 +87,12 @@ public:
       return;
     }
     int value_w = _header_width - 6 - name.length();
-    std::cout << "--   "
-              << std::left  << name << " "
-              << std::right << std::setw(value_w) << value
-              << std::endl;
+    std::ostringstream oss;
+    oss << "--   "
+        << std::left  << name << " "
+        << std::right << std::setw(value_w) << value
+        << '\n';
+    std::cout << oss.str();
   }
 
   template <typename T>
@@ -93,11 +107,13 @@ public:
     int flag_w  =  7;
     int value_w = 10;
     int desc_w  = _header_width - value_w - flag_w - 6;
-    std::cout << "--   "
-              << std::left  << std::setw(flag_w)  << flag << " "
-              << std::right << std::setw(value_w) << value
-              << std::right << std::setw(desc_w)  << description
-              << std::endl;
+    std::ostringstream oss;
+    oss << "--   "
+        << std::left  << std::setw(flag_w)  << flag << " "
+        << std::right << std::setw(value_w) << value
+        << std::right << std::setw(desc_w)  << description
+        << '\n';
+    std::cout << oss.str();
   }
 
 private:
