@@ -1,8 +1,8 @@
 /**
  * \file dash/dart/if/dart_locality.h
  *
- * Functions for querying topology and node-level locality information of
- * teams and units.
+ * A set of routines to query and remodel the locality domain hierarchy
+ * and the logical arrangement of teams.
  *
  */
 #ifndef DART__LOCALITY_H_
@@ -12,7 +12,8 @@
 
 
 /**
- * \defgroup  DartLocality  Locality information routines in DART
+ * \defgroup  DartLocality  Locality- and topolgy discovery
+ * \ingroup   DartInterface
  */
 #ifdef __cplusplus
 extern "C" {

@@ -15,6 +15,8 @@
 
 /**
  * \defgroup  DartCommunication  Collective communication routines in DART
+ * \ingroup   DartInterface
+ *
  */
 #ifdef __cplusplus
 extern "C" {
