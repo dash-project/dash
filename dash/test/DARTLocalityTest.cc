@@ -32,29 +32,30 @@ TEST_F(DARTLocalityTest, UnitLocality) {
     EXPECT_GT_U(ul->hwinfo.min_threads, 0);
     EXPECT_GT_U(ul->hwinfo.max_threads, 0);
 
-    // Get domain locality from unit locality descriptor:
-    DASH_LOG_TRACE("DARTLocalityTest.UnitLocality",
-                   "get local unit's domain descriptor");
-    dart_domain_locality_t * dl;
-    ASSERT_EQ_U(
-        DART_OK,
-        dart_domain_locality(DART_TEAM_ALL, ul->domain_tag, &dl));
-    DASH_LOG_TRACE("DARTLocalityTest.UnitLocality",
-                   "pointer to local unit's domain descriptor:", dl);
-    DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", *dl);
+  // Get domain locality from unit locality descriptor:
+  DASH_LOG_TRACE("DARTLocalityTest.UnitLocality",
+                 "get local unit's domain descriptor");
+  dart_domain_locality_t * dl;
+  ASSERT_EQ_U(
+    DART_OK,
+    dart_domain_team_locality(DART_TEAM_ALL, ul->domain_tag, &dl));
+  DASH_LOG_TRACE("DARTLocalityTest.UnitLocality",
+                 "pointer to local unit's domain descriptor:", dl);
+  DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", *dl);
 
     EXPECT_GT_U(dl->level, 2);
     EXPECT_EQ_U(dl->scope, DART_LOCALITY_SCOPE_CORE);
 }
 
-TEST_F(DARTLocalityTest, Domains) {
-    DASH_LOG_TRACE("DARTLocalityTest.Domains",
-                   "get global domain descriptor");
-    dart_domain_locality_t * dl;
-    ASSERT_EQ_U(DART_OK, dart_domain_locality(DART_TEAM_ALL, ".", &dl));
-    DASH_LOG_TRACE("DARTLocalityTest.Domains",
-                   "pointer to global domain descriptor: ", dl);
-    DASH_LOG_TRACE_VAR("DARTLocalityTest.Domains", *dl);
+TEST_F(DARTLocalityTest, Domains)
+{
+  DASH_LOG_TRACE("DARTLocalityTest.Domains",
+                 "get global domain descriptor");
+  dart_domain_locality_t * dl;
+  ASSERT_EQ_U(DART_OK, dart_domain_team_locality(DART_TEAM_ALL, ".", &dl));
+  DASH_LOG_TRACE("DARTLocalityTest.Domains",
+                 "pointer to global domain descriptor: ", dl);
+  DASH_LOG_TRACE_VAR("DARTLocalityTest.Domains", *dl);
 
     DASH_LOG_TRACE_VAR("DARTLocalityTest.Domains", dl->domain_tag);
     DASH_LOG_TRACE_VAR("DARTLocalityTest.Domains", dl->level);

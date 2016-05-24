@@ -19,7 +19,7 @@ fi
 DART_IMPL="$1"
 BIN_PATH="$2"
 LOGFILE="$3"
-RUN_CMD=""
+BIND_CMD=""
 TEST_BINARY=""
 
 if [ "$LOGFILE" = "" ]; then
@@ -45,9 +45,15 @@ TOTAL_FAIL_COUNT=0
 TESTS_PASSED=true
 run_suite()
 {
+  BIND_CMD=""
   NUNITS=$1
-  echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${TEST_BINARY}" | tee -a $LOGFILE
-  $RUN_CMD -n $1 $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
+  MAX_RANK=$((NUNITS - 1))
+  if [ `which numactl` ]; then
+    BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
+  fi
+  echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${BIND_CMD} ${TEST_BINARY}" | \
+    tee -a $LOGFILE
+  $RUN_CMD -n $1 $BIND_CMD $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
     tee -a $LOGFILE
   TEST_RET=$?
   # Cannot use exit code as dartrun-shmem seems to always return 0

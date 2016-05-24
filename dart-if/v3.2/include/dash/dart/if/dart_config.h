@@ -1,13 +1,29 @@
-#ifndef DART_CONFIG_H_INCLUDED
-#define DART_CONFIG_H_INCLUDED
+#ifndef DART__IF__CONFIG_H__
+#define DART__IF__CONFIG_H__
 
+#include <dash/dart/if/dart_types.h>
+
+/**
+ * \file dart_config.h
+ *
+ * Interface to access the DART runtime configuration.
+ */
+
+/**
+ * \defgroup  DartConfig  DART runtime configuration interface
+ * \ingroup   DartInterface
+ */
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct
-{
-} dart_config_t;
+/**
+ * Access the DART runtime configuration descriptor.
+ *
+ * \ingroup DartConfig
+ */
+void dart_config(
+  dart_config_t ** config_out);
 
 #define DART_INTERFACE_OFF
 
@@ -17,4 +33,4 @@ typedef struct
 
 #define DART_INTERFACE_ON
 
-#endif /* DART_CONFIG_H_INCLUDED */
+#endif /* DART__IF__CONFIG_H__ */

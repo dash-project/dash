@@ -1,5 +1,5 @@
-#ifndef DASH__DYNAMIC_PATTERN_1D_H__INCLUDED
-#define DASH__DYNAMIC_PATTERN_1D_H__INCLUDED
+#ifndef DASH__DYNAMIC_PATTERN_H__INCLUDED
+#define DASH__DYNAMIC_PATTERN_H__INCLUDED
 
 #include <functional>
 #include <array>
@@ -429,30 +429,7 @@ public:
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & other)
-  {
-    DASH_LOG_TRACE("DynamicPattern.=(other)");
-    if (this != &other) {
-      _size                = other._size;
-      _local_sizes         = other._local_sizes;
-      _block_offsets       = other._block_offsets;
-      _memory_layout       = other._memory_layout;
-      _blockspec           = other._blockspec;
-      _distspec            = other._distspec;
-      _team                = other._team;
-      _teamspec            = other._teamspec;
-      _local_size          = other._local_size;
-      _local_memory_layout = other._local_memory_layout;
-      _blocksize           = other._blocksize;
-      _nblocks             = other._nblocks;
-      _local_capacity      = other._local_capacity;
-      _nunits              = other._nunits;
-      _lbegin              = other._lbegin;
-      _lend                = other._lend;
-      DASH_LOG_TRACE("DynamicPattern.=(other)", "DynamicPattern assigned");
-    }
-    return *this;
-  }
+  self_t & operator=(const self_t & other) = default;
 
   /**
    * Resolves the global index of the first local element in the pattern.
@@ -1515,4 +1492,4 @@ private:
 
 } // namespace dash
 
-#endif // DASH__DYNAMIC_PATTERN_1D_H__INCLUDED
+#endif // DASH__DYNAMIC_PATTERN_H__INCLUDED

@@ -67,11 +67,15 @@ dart_ret_t accumulate_impl(
  * Precondition: All elements in the input range are contained in a single
  * block so that
  *
+ * <tt>
  *   g_out_last == g_out_first + (l_in_last - l_in_first)
+ * </tt>
  *
  * Semantics:
  *
+ * <tt>
  *   unary_op(in_first[0]), unary_op(in_first[1]), ..., unary_op(in_first[n])
+ * </tt>
  *
  * \returns  Output iterator to the element past the last element transformed.
  *

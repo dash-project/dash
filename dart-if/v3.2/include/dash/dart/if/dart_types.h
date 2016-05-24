@@ -10,9 +10,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-
 /**
  * \defgroup  DartTypes  Types used in the DART interface
+ * \ingroup   DartInterface
  */
 #ifdef __cplusplus
 extern "C" {
@@ -95,77 +95,83 @@ typedef int32_t dart_team_t;
  *
  * \ingroup DartTypes
  */
-typedef enum {
-    DART_LOCALITY_SCOPE_UNDEFINED  =   -1,
-    /** Global locality scope, components may be heterogenous. */
-    DART_LOCALITY_SCOPE_GLOBAL     =    0,
-    /** Interconnect topology scope, components may be heterogenous. */
-    DART_LOCALITY_SCOPE_NETWORK    =   50,
-    /** Node-level locality scope, components may be heterogenous. */
-    DART_LOCALITY_SCOPE_NODE       =  100,
-    /** Locality in a group of hetereogenous components in different NUMA
-     *  domains. */
-    DART_LOCALITY_SCOPE_MODULE     =  200,
-    /** Locality of homogenous components in different NUMA domains. */
-    DART_LOCALITY_SCOPE_NUMA       =  300,
-    /** Locality of homogenous components in the same NUMA domain at
-     *  process-level, i.e. of a unit-addressable, homogenous entity.
-     *  A single unit corresponds to a DART (e.g. MPI) process and can
-     *  occupy multiple homogenous cores, e.g. for multithreading. */
-    DART_LOCALITY_SCOPE_UNIT       =  400,
-    /** Locality at level of physical processor package. Cannot be
-     *  referenced by DART directly. */
-    DART_LOCALITY_SCOPE_PACKAGE    =  500,
-    /** Locality at processor uncore (system agent) level. Intel only.
-     *  Cannot be referenced by DART directly. */
-    DART_LOCALITY_SCOPE_UNCORE     =  510,
-    /** Locality at physical processing core level. Cannot be referenced
-     *  by DART directly. */
-    DART_LOCALITY_SCOPE_CORE       =  550,
-    /** Locality at logical CPU level (SMT thread). Cannot be referenced
-     *  by DART directly. */
-    DART_LOCALITY_SCOPE_CPU        =  600
+typedef enum
+{
+  DART_LOCALITY_SCOPE_UNDEFINED  =   -1,
+  /** Global locality scope, components may be heterogenous. */
+  DART_LOCALITY_SCOPE_GLOBAL     =    0,
+  /** Group of domains in specific locality scope, used as parent scope of
+   *  domains in a user-defined group at any locality level. */
+  DART_LOCALITY_SCOPE_GROUP      =    1,
+  /** Interconnect topology scope, components may be heterogenous. */
+  DART_LOCALITY_SCOPE_NETWORK    =   50,
+  /** Node-level locality scope, components may be heterogenous. */
+  DART_LOCALITY_SCOPE_NODE       =  100,
+  /** Locality in a group of hetereogenous components in different NUMA
+   *  domains. */
+  DART_LOCALITY_SCOPE_MODULE     =  200,
+  /** Locality of homogenous components in different NUMA domains. */
+  DART_LOCALITY_SCOPE_NUMA       =  300,
+  /** Locality of homogenous components in the same NUMA domain at
+   *  process-level, i.e. of a unit-addressable, homogenous entity.
+   *  A single unit corresponds to a DART (e.g. MPI) process and can
+   *  occupy multiple homogenous cores, e.g. for multithreading. */
+  DART_LOCALITY_SCOPE_UNIT       =  400,
+  /** Locality at level of physical processor package. Cannot be
+   *  referenced by DART directly. */
+  DART_LOCALITY_SCOPE_PACKAGE    =  500,
+  /** Locality at processor uncore (system agent) level. Intel only.
+   *  Cannot be referenced by DART directly. */
+  DART_LOCALITY_SCOPE_UNCORE     =  510,
+  /** Locality at physical processing core level. Cannot be referenced
+   *  by DART directly. */
+  DART_LOCALITY_SCOPE_CORE       =  550,
+  /** Locality at logical CPU level (SMT thread). Cannot be referenced
+   *  by DART directly. */
+  DART_LOCALITY_SCOPE_CPU        =  600
 }
 dart_locality_scope_t;
 
 #define DART_LOCALITY_HOST_MAX_SIZE       ((int)(30))
 #define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(16))
 #define DART_LOCALITY_UNIT_MAX_CPUS       ((int)(8))
+#define DART_LOCALITY_MAX_NUMA_ID         ((int)(16))
 
 /**
  * \ingroup DartTypes
  */
-typedef struct {
-    /** Total number of sockets per node. */
-    int   num_sockets;
-    /** Total number of NUMA domains in the associated domain. */
-    int   num_numa;
-    /** Total number of CPUs in the associated domain. */
-    int   num_cores;
+typedef struct
+{
+  /** Total number of sockets per node. */
+  int   num_sockets;
+  /** Total number of NUMA domains in the associated domain. */
+  int   num_numa;
+  /** Total number of CPUs in the associated domain. */
+  int   num_cores;
 
-    /** The unit's affine core, unique identifier within a processing
-     *  module. */
-    int   numa_id;
-    /** The unit's affine core, unique identifier within a processing
-     *  module. */
-    int   cpu_id;
+  /** The unit's affine core, unique identifier within a processing
+   *  module. */
+  int   numa_id;
+  /** The unit's affine core, unique identifier within a processing
+   *  module. */
+  int   cpu_id;
 
-    /** Minimum clock frequency of CPUs in the domain. */
-    int   min_cpu_mhz;
-    /** Maximum clock frequency of CPUs in the domain. */
-    int   max_cpu_mhz;
+  /** Minimum clock frequency of CPUs in the domain. */
+  int   min_cpu_mhz;
+  /** Maximum clock frequency of CPUs in the domain. */
+  int   max_cpu_mhz;
 
-    /** Cache sizes by cache level (L1, L2, L3). */
-    int   cache_sizes[3];
-    /** Cache line sizes by cache level (L1, L2, L3). */
-    int   cache_line_sizes[3];
-    /** Flags indicating shared caches by cache level (L1, L2, L3). */
-    int   cache_shared[3];
+  /** Cache sizes by cache level (L1, L2, L3). */
+  int   cache_sizes[3];
+  /** Cache line sizes by cache level (L1, L2, L3). */
+  int   cache_line_sizes[3];
+  /** Flags indicating shared caches by cache level (L1, L2, L3). */
+  int   cache_shared[3];
 
-    /** Minimum number of CPU threads. */
-    int   min_threads;
-    /** Maximum number of CPU threads. */
-    int   max_threads;
+  /** Minimum number of CPU threads per core. */
+  int   min_threads;
+  /** Maximum number of CPU threads per core. */
+  int   max_threads;
 }
 dart_hwinfo_t;
 
@@ -332,15 +338,16 @@ dart_hwinfo_t;
  * </tt>
  *
  */
-struct dart_domain_locality_s {
-    /**
-     * Hierarchical domain identifier, represented as dot-separated list
-     * of relative indices on every level in the locality hierarchy.
-     */
-    char                            domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
+struct dart_domain_locality_s
+{
+  /**
+   * Hierarchical domain identifier, represented as dot-separated list
+   * of relative indices on every level in the locality hierarchy.
+   */
+  char domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 
-    /** Hostname of the domain's node or 0 if unspecified. */
-    char                            host[DART_LOCALITY_HOST_MAX_SIZE];
+  /** Hostname of the domain's node or 0 if unspecified. */
+  char host[DART_LOCALITY_HOST_MAX_SIZE];
 
     /** Locality scope of the domain. */
     dart_locality_scope_t           scope;
@@ -406,6 +413,15 @@ typedef struct {
     char          domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 }
 dart_unit_locality_t;
+
+/**
+ * \ingroup DartTypes
+ */
+typedef struct
+{
+  int log_enabled;
+}
+dart_config_t;
 
 #define DART_INTERFACE_OFF
 

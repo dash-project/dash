@@ -22,9 +22,9 @@
 
 #include <limits.h>
 
-/* ============================================================================= *
- * Private Functions                                                             *
- * ============================================================================= */
+/* ======================================================================= *
+ * Private Funtions                                                        *
+ * ======================================================================= */
 
 dart_ret_t dart_group_init(
     dart_group_t *group) {
@@ -232,55 +232,82 @@ dart_ret_t dart_group_split(
 }
 
 dart_ret_t dart_group_locality_split(
-    const dart_group_t      * group,
-    dart_domain_locality_t  * domain,
-    dart_locality_scope_t     scope,
-    size_t                    num_groups,
-    dart_group_t           ** gout) {
-    MPI_Group grouptem;
+  const dart_group_t      * group,
+  dart_domain_locality_t  * domain,
+  dart_locality_scope_t     scope,
+  size_t                    num_groups,
+  dart_group_t           ** gout)
+{
+  MPI_Group grouptem;
 
-    DART_LOG_TRACE("dart_group_locality_split: split at scope %d", scope);
+  DART_LOG_TRACE("dart_group_locality_split: split at scope %d", scope);
 
-    dart_team_t team = domain->team;
+  dart_team_t team = domain->team;
 
-    /* query domain tags of all domains in specified scope: */
-    int     num_domains;
-    char ** domain_tags;
+  /* query domain tags of all domains in specified scope: */
+  int     num_domains;
+  char ** domain_tags;
+  DART_ASSERT_RETURNS(
+    dart_domain_scope_tags(
+      domain,
+      scope,
+      &num_domains,
+      &domain_tags),
+    DART_OK);
+
+  DART_LOG_TRACE("dart_group_locality_split: %d domains at scope %d",
+                 num_domains, scope);
+
+  /* create a group for every domain in the specified scope: */
+
+  int total_domains_units           = 0;
+  dart_domain_locality_t ** domains = malloc(
+                                        num_domains *
+                                        sizeof(dart_domain_locality_t *));
+  for (int d = 0; d < num_domains; ++d) {
     DART_ASSERT_RETURNS(
-        dart_scope_domains(
-            team,
-            domain->domain_tag,
-            scope,
-            &num_domains,
-            &domain_tags),
-        DART_OK);
+      dart_domain_team_locality(team, domain_tags[d], &domains[d]),
+      DART_OK);
+    total_domains_units += domains[d]->num_units;
 
-    DART_LOG_TRACE("dart_group_locality_split: %d domains at scope %d",
-                   num_domains, scope);
+    DART_LOG_TRACE("dart_group_locality_split: domains[%d]: %s",
+                   d, domain_tags[d]);
+    DART_LOG_TRACE("dart_group_locality_split: - number of units: %d",
+                   domains[d]->num_units);
+  }
+  DART_LOG_TRACE("dart_group_locality_split: total number of units: %d",
+                 total_domains_units);
 
-    /* create a group for every domain in the specified scope: */
+  /* TODO: splitting into more groups than domains not supported yet: */
+  if (num_groups > (size_t)num_domains) {
+    num_groups = num_domains;
+  }
 
-    int total_domains_units           = 0;
-    dart_domain_locality_t ** domains = malloc(
-                                            num_domains *
-                                            sizeof(dart_domain_locality_t *));
-    for (int d = 0; d < num_domains; ++d) {
-        DART_ASSERT_RETURNS(
-            dart_domain_locality(team, domain_tags[d], &domains[d]),
-            DART_OK);
-        total_domains_units += domains[d]->num_units;
+  if (num_groups == (size_t)num_domains) {
+    /* one domain per group: */
+    for (size_t g = 0; g < num_groups; ++g) {
+      int   group_num_units       = domains[g]->num_units;
+      int * group_team_unit_ids   = domains[g]->unit_ids;
 
-        DART_LOG_TRACE("dart_group_locality_split: domains[%d]: %s",
-                       d, domain_tags[d]);
-        DART_LOG_TRACE("dart_group_locality_split: - number of units: %d",
-                       domains[d]->num_units);
-    }
-    DART_LOG_TRACE("dart_group_locality_split: total number of units: %d",
-                   total_domains_units);
+      /* convert relative unit ids from domain to global unit ids: */
+      int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
+      for (int u = 0; u < group_num_units; ++u) {
+        dart_team_unit_l2g(team,
+                           group_team_unit_ids[u],
+                           &group_global_unit_ids[u]);
+        DART_LOG_TRACE("dart_group_locality_split: group[%d].units[%d] "
+                       "global unit id: %d",
+                       g, u, group_global_unit_ids[u]);
+      }
 
-    /* TODO: splitting into more groups than domains not supported yet: */
-    if (num_groups > (size_t)num_domains) {
-        num_groups = num_domains;
+      MPI_Group_incl(
+        group->mpi_group,
+        group_num_units,
+        group_global_unit_ids,
+        &grouptem);
+      (*(gout + g))->mpi_group = grouptem;
+
+      free(group_global_unit_ids);
     }
 
     if (num_groups == (size_t)num_domains) {
@@ -352,53 +379,29 @@ dart_ret_t dart_group_locality_split(
             }
         }
 #else
-        /* Preliminary implementation */
-        int max_group_domains = (num_domains + (num_groups-1)) / num_groups;
-        DART_LOG_TRACE("dart_group_locality_split: max. domains per group: %d",
-                       max_group_domains);
-        for (size_t g = 0; g < num_groups; ++g) {
-            int   group_num_units     = 0;
-            int * group_team_unit_ids = NULL;
-            int   num_group_domains = max_group_domains;
-            if ((g+1) * max_group_domains > (size_t)num_domains) {
-                num_group_domains = (g * max_group_domains) - num_domains;
-            }
-            DART_LOG_TRACE("dart_group_locality_split: domains in group %d: %d",
-                           g, num_group_domains);
-            int group_first_dom_idx = g * num_group_domains;
-            int group_last_dom_idx  = group_first_dom_idx + num_group_domains;
-            for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
-                group_num_units += domains[d]->num_units;
-            }
-            group_team_unit_ids = malloc(sizeof(int) * group_num_units);
-            int group_unit_idx = 0;
-            for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
-                for (int u = 0; u < domains[d]->num_units; ++u) {
-                    group_team_unit_ids[group_unit_idx + u] = domains[d]->unit_ids[u];
-                }
-                group_unit_idx += domains[d]->num_units;
-            }
-
-            /* convert relative unit ids from domain to global unit ids: */
-            int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
-            for (int u = 0; u < group_num_units; ++u) {
-                dart_team_unit_l2g(team,
-                                   group_team_unit_ids[u],
-                                   &group_global_unit_ids[u]);
-                DART_LOG_TRACE("dart_group_locality_split: group[%d].units[%d] "
-                               "global unit id: %d",
-                               g, u, group_global_unit_ids[u]);
-            }
-
-            MPI_Group_incl(
-                group->mpi_group,
-                group_num_units,
-                group_global_unit_ids,
-                &grouptem);
-            (*(gout + g))->mpi_group = grouptem;
-
-            free(group_team_unit_ids);
-            free(group_global_unit_ids);
+    /* Preliminary implementation */
+    int max_group_domains = (num_domains + (num_groups-1)) / num_groups;
+    DART_LOG_TRACE("dart_group_locality_split: max. domains per group: %d",
+                   max_group_domains);
+    for (size_t g = 0; g < num_groups; ++g) {
+      int   group_num_units     = 0;
+      int * group_team_unit_ids = NULL;
+      int   num_group_domains   = max_group_domains;
+      if ((g+1) * max_group_domains > (size_t)num_domains) {
+        num_group_domains = (g * max_group_domains) - num_domains;
+      }
+      DART_LOG_TRACE("dart_group_locality_split: domains in group %d: %d",
+                     g, num_group_domains);
+      int group_first_dom_idx = g * num_group_domains;
+      int group_last_dom_idx  = group_first_dom_idx + num_group_domains;
+      for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
+        group_num_units += domains[d]->num_units;
+      }
+      group_team_unit_ids = malloc(sizeof(int) * group_num_units);
+      int group_unit_idx = 0;
+      for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
+        for (int u = 0; u < domains[d]->num_units; ++u) {
+          group_team_unit_ids[group_unit_idx + u] = domains[d]->unit_ids[u];
         }
 #endif
     }
@@ -433,9 +436,11 @@ dart_ret_t dart_group_ismember(
             break;
         }
     }
-    *ismember = (i!=size);
-    DART_LOG_DEBUG("%2d: GROUP_ISMEMBER - %s", unitid, (*ismember) ? "yes" : "no");
-    return DART_OK;
+  }
+  *ismember = (i!=size);
+  DART_LOG_DEBUG("dart_group_ismember : unit %2d: %s",
+                 unitid, (*ismember) ? "yes" : "no");
+  return DART_OK;
 }
 
 dart_ret_t dart_team_get_group(

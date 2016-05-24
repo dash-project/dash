@@ -55,15 +55,17 @@ GlobIter<ElementType, PatternType> min_element(
   dash::Team & team = pattern.team();
   DASH_LOG_DEBUG("dash::min_element()",
                  "allocate minarr, size", team.size());
-  dash::Array<index_t> minarr(team.size());
   // Global position of end element in range:
-  auto gi_last         = last.gpos();
+  auto    gi_last            = last.gpos();
   // Find the local min. element in parallel
   // Get local address range between global iterators:
-  auto local_idx_range = dash::local_index_range(first, last);
+  auto    local_idx_range    = dash::local_index_range(first, last);
+  // Pointer to local minimum element:
+  const   ElementType * lmin = nullptr;
+  // Local offset of local minimum element, or -1 if no element found:
+  index_t l_idx_lmin         = -1;
   if (local_idx_range.begin == local_idx_range.end) {
     // local range is empty
-    minarr[team.myid()] = gi_last;
     DASH_LOG_DEBUG("dash::min_element", "local range empty");
   } else {
     // Pointer to first element in local memory:
@@ -72,62 +74,128 @@ GlobIter<ElementType, PatternType> min_element(
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
-    const ElementType * lmin          = ::std::min_element(l_range_begin,
-                                                           l_range_end,
-                                                           compare);
-    // Offset of local minimum in local memory:
-    auto l_idx_lmin = lmin - lbegin;
-    DASH_LOG_TRACE_VAR("dash::min_element", l_idx_lmin);
+
+    auto  n_threads = dash::util::Locality::MinThreads();
+
+    if (n_threads > 1) {
+      int           min_idx_l  = 0;
+      ElementType   min_val_l  = *l_range_begin;
+      auto          l_size     = l_range_end - l_range_begin;
+#if 0
+      // Should be possible to avoid critical section by using array of
+      // thread-local minimum values, aligned to prevent false sharing:
+      size_t        min_vals_t_size = n_threads + alignof(ElementType);
+      ElementType * min_vals_t_raw  = new ElementType[min_vals_t_size];
+      ElementType * min_vals_t      = std::align(alignof(ElementType),
+                                                 sizeof(ElementType),
+                                                 min_vals_t_raw,
+                                                 min_vals_t_size);
+      DASH_ASSERT_GE(min_vals_t_size, n_threads * sizeof(ElementType));
+#endif
+      #pragma omp parallel num_threads(n_threads)
+      {
+         int         min_idx_t = min_idx_l;
+         ElementType min_val_t = min_val_l;
+         // Cannot use explicit private(min_val_t) as ElementType might
+         // not be default-constructible:
+         #pragma omp for nowait
+         for (int i = 0; i < l_size; i++) {
+           ElementType val_t = *(l_range_begin + i);
+           if (compare(val_t, min_val_t)) {
+             min_val_t = val_t;
+             min_idx_t = i;
+           }
+         }
+         #pragma omp critical
+         {
+           if (compare(min_val_t, min_val_l)) {
+             min_val_l = min_val_t;
+             min_idx_l = min_idx_t;
+           }
+         }
+      }
+      lmin = l_range_begin + min_idx_l;
+    } else {
+      lmin = ::std::min_element(l_range_begin, l_range_end, compare);
+    }
     if (lmin != l_range_end) {
       DASH_LOG_TRACE_VAR("dash::min_element", *lmin);
+      // Offset of local minimum in local memory:
+      l_idx_lmin = lmin - lbegin;
     }
-    // Global position of local minimum:
-    index_t gi_lmin = pattern.global(l_idx_lmin);
-    if (lmin != l_range_end) {
-      DASH_LOG_DEBUG("dash::min_element",
-                     "global index of local minimum:", gi_lmin);
-    }
-    minarr[team.myid()] = gi_lmin;
   }
+  DASH_LOG_TRACE("dash::min_element",
+                 "local index of local minimum:", l_idx_lmin);
   DASH_LOG_TRACE("dash::min_element",
                  "waiting for local min of other units");
   team.barrier();
-  // Shared global pointer referencing element with global minimum:
-  dash::Shared<index_t> shared_gi_min;
-  // Find the global min. element:
-  if (team.myid() == 0) {
-    DASH_LOG_TRACE("dash::min_element", "finding global min");
-    auto minloc = gi_last;
-    auto minval = ElementType();
-    for (extent_t i = 0; i < minarr.size(); ++i) {
-      DASH_LOG_TRACE("dash::min_element", "unit:", i);
-      index_t gi_lmin = minarr[i];
-      DASH_LOG_TRACE("dash::min_element", "gi_lmin:", gi_lmin);
-      // Local gptr of units might be null if unit had empty range:
-      if (gi_lmin != gi_last) {
-        ElementType val = *((first - first.gpos()) + gi_lmin);
-        DASH_LOG_TRACE("dash::min_element",
-                       "local min of unit", i, ": ", val);
-        if (minloc == gi_last || compare(val, minval)) {
-          DASH_LOG_TRACE("dash::min_element",
-                         "setting current minloc to", gi_lmin);
-          minloc = gi_lmin;
-          DASH_LOG_TRACE("dash::min_element",
-                         "setting current minval to", val);
-          minval = val;
-        }
-      }
-    }
-    DASH_LOG_TRACE("dash::min_element",
-                   "setting global min gptr to", minloc);
-    shared_gi_min.set(minloc);
+
+  typedef struct {
+    ElementType value;
+    index_t     g_index;
+  } local_min_t;
+
+  std::vector<local_min_t> local_min_values(team.size());
+
+  // Set global index of local minimum to -1 if no local minimum has been
+  // found:
+  local_min_t local_min;
+  local_min.value   = l_idx_lmin < 0
+                      ? ElementType()
+                      : *lmin;
+  local_min.g_index = l_idx_lmin < 0
+                      ? -1
+                      : pattern.global(l_idx_lmin);
+
+  DASH_LOG_TRACE("dash::min_element", "sending local minimum: {",
+                 "value:",   local_min.value,
+                 "g.index:", local_min.g_index, "}");
+
+  DASH_LOG_TRACE("dash::min_element", "dart_allgather()");
+  DASH_ASSERT_RETURNS(
+    dart_allgather(
+      &local_min, local_min_values.data(), sizeof(local_min_t),
+      team.dart_id()),
+    DART_OK);
+
+#ifdef DASH_ENABLE_LOGGING
+  for (int lmin_u = 0; lmin_u < local_min_values.size(); lmin_u++) {
+    auto lmin_entry = local_min_values[lmin_u];
+    DASH_LOG_TRACE("dash::min_element", "dart_allgather >",
+                   "unit:",    lmin_u,
+                   "value:",   lmin_entry.value,
+                   "g_index:", lmin_entry.g_index);
   }
-  // Wait for unit 0 to resolve global minimum
-  team.barrier();
-  // Minimum has been set by unit 0 at this point
-  auto gi_minimum = shared_gi_min.get();
+#endif
+
+  auto gmin_elem_it  = ::std::min_element(
+                           local_min_values.begin(),
+                           local_min_values.end(),
+                           [&](const local_min_t & a,
+                               const local_min_t & b) {
+                             // Ignore elements with global index -1 (no
+                             // element found):
+                             return (b.g_index < 0 ||
+                                     (a.g_index > 0 &&
+                                      compare(a.value, b.value)));
+                           });
+
+  if (gmin_elem_it == local_min_values.end()) {
+    DASH_LOG_DEBUG_VAR("dash::min_element >", last);
+    return last;
+  }
+
+  auto min_elem_unit = static_cast<dart_unit_t>(
+                         gmin_elem_it - local_min_values.begin());
+  auto gi_minimum    = gmin_elem_it->g_index;
+
+  DASH_LOG_TRACE("dash::min_element",
+                 "min. value:", gmin_elem_it->value,
+                 "at unit:",    min_elem_unit,
+                 "global idx:", gi_minimum);
+
   DASH_LOG_TRACE_VAR("dash::min_element", gi_minimum);
-  if (gi_minimum == gi_last) {
+  if (gi_minimum < 0 || gi_minimum == gi_last) {
     DASH_LOG_DEBUG_VAR("dash::min_element >", last);
     return last;
   }
@@ -136,7 +204,7 @@ GlobIter<ElementType, PatternType> min_element(
   // offset of minimum element:
   globiter_t minimum = (first - first.gpos()) + gi_minimum;
   DASH_LOG_DEBUG("dash::min_element >", minimum,
-                 "=", (ElementType)(*minimum));
+                 "=", static_cast<ElementType>(*minimum));
   return minimum;
 }
 

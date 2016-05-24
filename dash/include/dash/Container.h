@@ -14,8 +14,8 @@
  * \{
  * \par Description
  *
- * A container in DASH is a set of elements of a the same type that 
- * is distributed to units in a team according to a specified distribution 
+ * A container in DASH is a set of elements of a the same type that
+ * is distributed to units in a team according to a specified distribution
  * pattern. Container elements can be iterated canonically in global and
  * local memory.
  *

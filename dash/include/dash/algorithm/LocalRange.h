@@ -26,7 +26,7 @@ struct LocalIndexRange {
  *   Total range      | <tt>0 1 2 3 4 5 6 7 8 9</tt>
  *   ---------------- | --------------------------------
  *   Global iterators | <tt>first = 4; last = 7;</tt>
- *                    | <tt>0 1 2 3 [4 5 6 7] 8 9]</tt>
+ *   &nbsp;           | <tt>0 1 2 3 [4 5 6 7] 8 9]</tt>
  *   Local elements   | (local index:value) <tt>0:2 1:3 2:6 3:7</tt>
  *   Result           | (local indices) <tt>2 3</tt>
  *
@@ -247,7 +247,7 @@ local_range(
   DASH_LOG_TRACE("local_range()",
                  "gfirst.pos:", first.pos(),
                  "glast.pos:",  last.pos());
-  /// Global iterators to local index range, O(d):
+  // Global iterators to local index range, O(d):
   auto index_range   = dash::local_index_range(first, last);
   idx_t lbegin_index = index_range.begin;
   idx_t lend_index   = index_range.end;

@@ -133,6 +133,10 @@ print_pattern_mapping(
   typedef typename PatternT::index_type index_t;
   std::string pattern_name = PatternT::PatternName;
 
+  std::ostringstream name_ss;
+  name_ss << std::left << std::setw(25) << name;
+  std::string name_prefix = name_ss.str();
+
   std::vector<std::string> entries;
   entries.push_back("[");
   dart_unit_t last_unit = pattern.unit_at(0);
@@ -140,7 +144,7 @@ print_pattern_mapping(
     std::ostringstream ss;
     dart_unit_t entry_unit = pattern.unit_at(i);
     if (entry_unit != last_unit) {
-      entries.push_back("|");
+      entries.push_back("| ");
       last_unit = entry_unit;
     }
     ss << std::setw(field_width) << callback(pattern, i) << " ";
@@ -148,12 +152,12 @@ print_pattern_mapping(
   }
   entries.push_back("]");
 
-  DASH_LOG_DEBUG("print_pattern_mapping", name, pattern_name);
+  DASH_LOG_DEBUG("print_pattern_mapping", name_prefix, pattern_name);
   std::ostringstream ss;
   for (auto entry : entries) {
     ss << entry;
   }
-  DASH_LOG_DEBUG("print_pattern_mapping", name, ss.str());
+  DASH_LOG_DEBUG("print_pattern_mapping", name_prefix, ss.str());
 }
 
 /**

@@ -5,9 +5,9 @@
 #include <functional>
 
 /**
- * \defgroup DashReduceOperations
+ * \defgroup DashReduceOperations DASH Reduce Operations
  *
- * Distributed reduce operations.
+ * Distributed reduce operation types.
  *
  */
 

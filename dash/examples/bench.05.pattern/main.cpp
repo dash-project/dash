@@ -1,5 +1,6 @@
-#include "../bench.h"
 #include <libdash.h>
+
+#include "../bench.h"
 #include "MockPattern.h"
 
 #include <array>
@@ -18,7 +19,7 @@ typedef dash::util::Timer<
 
 #ifndef TYPE
 #define TYPE int
-#endif 
+#endif
 
 typedef dash::MockPattern<
   1,
@@ -132,10 +133,10 @@ void perform_test(
   }
 
   std::vector<unsigned> local_sizes;
-  for (auto u = 0; u < num_units; ++u) {
+  for (size_t u = 0; u < num_units; ++u) {
     local_sizes.push_back(ELEM_PER_UNIT);
   }
-  
+
   MockPattern_t mock_pat(
     // Local sizes
     local_sizes
@@ -157,13 +158,13 @@ void perform_test(
     dash::DistributionSpec<1>(
       dash::TILE(ELEM_PER_UNIT))
   );
-  
+
   double t_mock  = test_pattern_gups(arr_mock_dist,  ELEM_PER_UNIT, REPEAT);
   double t_irreg = test_pattern_gups(arr_irreg_dist, ELEM_PER_UNIT, REPEAT);
   double t_tiled = test_pattern_gups(arr_tiled_dist, ELEM_PER_UNIT, REPEAT);
 
   dash::barrier();
-  
+
   if (dash::myid() == 0) {
     double gups_mock  = gups(num_units, t_mock,  ELEM_PER_UNIT, REPEAT);
     double gups_irreg = gups(num_units, t_irreg, ELEM_PER_UNIT, REPEAT);
@@ -175,7 +176,7 @@ void perform_test(
          << std::setw(10)
          << ELEM_PER_UNIT
          << ", "
-         << std::setw(10) 
+         << std::setw(10)
          << REPEAT
          << ", "
          << std::setw(11) << std::fixed << std::setprecision(4)
@@ -206,7 +207,7 @@ template<
 >
 double test_pattern_gups(
   ArrayType & a,
-  unsigned ELEM_PER_UNIT, 
+  unsigned ELEM_PER_UNIT,
   unsigned REPEAT)
 {
   typedef typename ArrayType::pattern_type pattern_t;

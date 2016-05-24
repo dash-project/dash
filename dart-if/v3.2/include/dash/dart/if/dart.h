@@ -4,7 +4,7 @@
 /**
  * \file dart.h
  *
- * DART, The DASH Runtime interface, version 3.1.
+ * \defgroup   DartInterface  DART, the DASH Runtime Interface
  *
  * --- DASH/DART Terminology ---
  *
@@ -77,7 +77,6 @@
  * All functions in the DART interface shall be implemented in a thread
  * safe way.
  */
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -85,7 +84,7 @@ extern "C" {
 /*
    --- DART version and build date ---
  */
-#define DART_VERSION_STR     "3.1.0"
+#define DART_VERSION_STR     "3.2.0"
 #define DART_BUILD_STR       (__DATE__ " " __TIME__)
 
 /*

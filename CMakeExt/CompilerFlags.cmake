@@ -27,16 +27,19 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CXX_STD_FLAG "--std=c++11"
        CACHE STRING "C++ compiler std flag")
+  set (CXX_OMP_FLAG "-fopenmp")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
   set (CXX_STD_FLAG "--std=c++11"
        CACHE STRING "C++ compiler std flag")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
        CACHE STRING "C++ compiler GDB debug symbols flag")
+  set (CXX_OMP_FLAG "-fopenmp")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
   set (CXX_STD_FLAG "-std=c++11"
        CACHE STRING "C++ compiler std flag")
+  set (CXX_OMP_FLAG "-qopenmp")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
   # Cray compiler not supported for C++
   message(FATAL_ERROR,
@@ -77,12 +80,12 @@ set(CMAKE_CXX_FLAGS_RELEASE
 set(CMAKE_C_FLAGS_DEBUG
     "${CMAKE_C_FLAGS_DEBUG} ${CC_STD_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_DEBUG ${CC_GDB_FLAG}")
 set(CMAKE_CXX_FLAGS_DEBUG
-    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_DEBUG ${CXX_GDB_FLAG}")
+    "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_DEBUG ${CXX_GDB_FLAG}")
 
 set(CMAKE_C_FLAGS_RELEASE
     "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 
 if (ENABLE_ASSERTIONS)
   set(CMAKE_C_FLAGS_DEBUG

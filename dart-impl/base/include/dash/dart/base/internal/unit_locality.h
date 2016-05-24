@@ -16,8 +16,8 @@ dart_ret_t dart__base__unit_locality__create(
     dart_team_t             team,
     dart_unit_mapping_t  ** unit_mapping);
 
-dart_ret_t dart__base__unit_locality__delete(
-    dart_unit_mapping_t   * unit_mapping);
+dart_ret_t dart__base__unit_locality__destruct(
+  dart_unit_mapping_t   * unit_mapping);
 
 dart_ret_t dart__base__unit_locality__at(
     dart_unit_mapping_t   * unit_mapping,

@@ -713,7 +713,8 @@ public:
    * \see  DashPatternConcept
    */
   std::array<IndexType, NumDimensions> global(
-    const std::array<IndexType, NumDimensions> & l_coords) const {
+    const std::array<IndexType, NumDimensions> & l_coords) const
+  {
     return global(_team->myid(), l_coords);
   }
 
@@ -726,7 +727,8 @@ public:
    * \see  DashPatternConcept
    */
   IndexType global(
-    IndexType l_index) const {
+    IndexType l_index) const
+  {
     return global(_team->myid(), std::array<IndexType, 1> {{ l_index }})[0];
   }
 
@@ -740,9 +742,10 @@ public:
    */
   IndexType global_index(
     dart_unit_t unit,
-    const std::array<IndexType, NumDimensions> & l_coords) const {
+    const std::array<IndexType, NumDimensions> & l_coords) const
+  {
     DASH_LOG_TRACE_VAR("BlockPattern<1>.global_index()", l_coords);
-    auto g_index = global(unit, l_coords[0]);
+    auto g_index = global(unit, l_coords)[0];
     DASH_LOG_TRACE_VAR("BlockPattern<1>.global_index()", g_index);
     return g_index;
   }

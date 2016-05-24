@@ -169,14 +169,20 @@ TEST_F(MinElementTest, TestShrinkRange)
   arr.barrier();
   auto min_expected = 100;
   for (auto it = arr.begin(); it != arr.end(); ++it) {
-    LOG_MESSAGE("Begin at %d", it.pos());
+    dash::util::Config::set("DASH_ENABLE_LOGGING", true);
+
+    DASH_LOG_TRACE("MinElementTest.TestShrinkRange",
+                   "begin at", it.pos());
     auto it_min = dash::min_element(it, arr.end());
     // Test if a minimum element has been found:
     int  min    = *it_min;
-    LOG_MESSAGE("Begin at %d, minimum: %d", it.pos(), min);
+    DASH_LOG_TRACE("MinElementTest.TestShrinkRange",
+                   "begin at", it.pos(), "minimum:", min);
     EXPECT_NE_U(it_min, arr.end());
     EXPECT_EQ_U(min_expected, min);
     ++min_expected;
+
+    dash::util::Config::set("DASH_ENABLE_LOGGING", false);
   }
 
   arr.barrier();
@@ -190,14 +196,20 @@ TEST_F(MinElementTest, TestShrinkRange)
   arr.barrier();
   min_expected = 100;
   for (auto it = arr.end(); it != arr.begin(); --it) {
-    LOG_MESSAGE("End at %d", it.pos());
+    dash::util::Config::set("DASH_ENABLE_LOGGING", true);
+
+    DASH_LOG_TRACE("MinElementTest.TestShrinkRange",
+                   "end at %d", it.pos());
     auto it_min = dash::min_element(arr.begin(), it);
     // Test if a minimum element has been found:
     int  min    = *it_min;
-    LOG_MESSAGE("End at %d, minimum: %d", it.pos(), min);
+    DASH_LOG_TRACE("MinElementTest.TestShrinkRange",
+                   "end at", it.pos(), "minimum:", min);
     EXPECT_NE_U(it_min, arr.end());
     EXPECT_EQ_U(min_expected, min);
     ++min_expected;
+
+    dash::util::Config::set("DASH_ENABLE_LOGGING", false);
   }
   arr.barrier();
 }
