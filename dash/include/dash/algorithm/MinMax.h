@@ -38,9 +38,7 @@ GlobIter<ElementType, PatternType> min_element(
         = std::less<const ElementType &>())
 {
   typedef dash::GlobIter<ElementType, PatternType> globiter_t;
-  typedef dash::GlobPtr<ElementType, PatternType>   globptr_t;
   typedef PatternType                               pattern_t;
-  typedef typename pattern_t::size_type              extent_t;
   typedef typename pattern_t::index_type              index_t;
 
   // return last for empty array
