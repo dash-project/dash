@@ -1,6 +1,18 @@
 #ifndef DART_GLOBMEM_H_INCLUDED
 #define DART_GLOBMEM_H_INCLUDED
 
+/**
+ * \file dart_globmem.h
+ *
+ * Routines for allocation and reclamation of global memory regions and
+ * pointer semantics in partitioned global address space.
+ */
+
+/**
+ * \defgroup  DartGlobMem  Allocation of global memory and PGAS address
+ *                         semantics
+ * \ingroup   DartInterface
+ */
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -52,7 +64,11 @@ extern "C" {
 
   */
 
-
+/**
+ * Global pointer type.
+ *
+ * \ingroup DartGlobMem
+ */
 typedef struct
 {
   dart_unit_t unitid;
@@ -86,50 +102,72 @@ typedef struct
     gptr2_.addr_or_offs.offset) )
 
 
-/* get the local memory address for the specified global pointer
-   gptr. I.e., if the global pointer has affinity to the local unit,
-   return the local memory address.
-*/
+/**
+ * Get the local memory address for the specified global pointer
+ * gptr. I.e., if the global pointer has affinity to the local unit,
+ * return the local memory address.
+ *
+ * \ingroup DartGlobMem
+ */
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr);
 
-
-/* set the local memory address for the specified global pointer such
-   the the specified address
-*/
+/**
+ * Set the local memory address for the specified global pointer such
+ * the the specified address.
+ *
+ * \ingroup DartGlobMem
+ */
 dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
 
-/* add 'offs' to the address specified by the global pointer */
+/**
+ * Add 'offs' to the address specified by the global pointer
+ *
+ * \ingroup DartGlobMem
+ */
 dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int32_t offs);
 
-/* set the unit information for the specified global pointer */
+/**
+ * Set the unit information for the specified global pointer.
+ *
+ * \ingroup DartGlobMem
+ */
 dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t);
 
-
-/*
- Allocates nbytes of memory in the global address space of the calling
- unit and returns a global pointer to it.  This is *not* a collective
- function.
+/**
+ * Allocates nbytes of memory in the global address space of the calling
+ * unit and returns a global pointer to it.
+ * This is *not* a collective function.
+ *
+ * \ingroup DartGlobMem
  */
 dart_ret_t dart_memalloc(size_t nbytes, dart_gptr_t *gptr);
+
+/**
+ * Frees memory in the global address space allocated by a previous call
+ * of \c dart_memalloc.
+ * This is *not* a collective function.
+ *
+ * \ingroup DartGlobMem
+ */
 dart_ret_t dart_memfree(dart_gptr_t gptr);
 
-/*
-  Collective function on the specified team to allocate nbytes of
-  memory in each unit's global address space with a type_disp as the
-  local disposition (size in bytes) of the allocated type.
-  The allocated memory is team-aligned (i.e., a global pointer to
-  anywhere in the allocation can easily be formed locally. The global
-  pointer to the beginning of the allocation is is returned in gptr on
-  each participating unit. I.e., Each participating unit has to call
-  dart_team_memalloc_aligned with the same specification of teamid and
-  nbytes. Each unit will receive the a global pointer to the beginning
-  of the allocation (on unit 0) in gptr.
-
-  Accessibility of memory allocated with this function is limited to
-  those units that are part of the team allocating the memory. I.e.,
-  if unit X was not part of the team that allocated the memory M, then
-  X may not be able to acces a memory location in M.
-
+/**
+ * Collective function on the specified team to allocate nbytes of
+ * memory in each unit's global address space with a type_disp as the
+ * local disposition (size in bytes) of the allocated type.
+ * The allocated memory is team-aligned (i.e., a global pointer to
+ * anywhere in the allocation can easily be formed locally. The global
+ * pointer to the beginning of the allocation is is returned in gptr on
+ * each participating unit. I.e., Each participating unit has to call
+ * dart_team_memalloc_aligned with the same specification of teamid and
+ * nbytes. Each unit will receive the a global pointer to the beginning
+ * of the allocation (on unit 0) in gptr.
+ * Accessibility of memory allocated with this function is limited to
+ * those units that are part of the team allocating the memory. I.e.,
+ * if unit X was not part of the team that allocated the memory M, then
+ * X may not be able to acces a memory location in M.
+ *
+ * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memalloc_aligned(
   dart_team_t   teamid,
@@ -138,22 +176,34 @@ dart_ret_t dart_team_memalloc_aligned(
 
 dart_ret_t dart_team_memfree(dart_team_t teamid, dart_gptr_t gptr);
 
-/*
-  Collective functions similar to dart_team_memalloc_aligned() and
-  dart_team_memfree() but dart_team_memregister_aligned() and
-  dart_team_memderegister() work on previously externally allocated
-  memory and don't perform any memory allocation or de-allocation
-  themselves.
-*/
-
+/**
+ * Collective function similar to dart_team_memalloc_aligned() but on
+ * previously externally allocated memory.
+ * Does not perform any memory allocation.
+ *
+ * \ingroup DartGlobMem
+ */
 dart_ret_t dart_team_memregister_aligned(dart_team_t teamid,
 					 size_t nbytes,
 					 void *addr, dart_gptr_t *gptr);
 
+/**
+ * Attaches external memory previously allocated by the user.
+ * Does not perform any memory allocation.
+ *
+ * \ingroup DartGlobMem
+ */
 dart_ret_t dart_team_memregister(dart_team_t teamid,
 					 size_t nbytes,
 					 void *addr, dart_gptr_t *gptr);
 
+/**
+ * Collective function similar to dart_team_memfree() but on previously
+ * externally allocated memory.
+ * Does not perform any memory de-allocation.
+ *
+ * \ingroup DartGlobMem
+ */
 dart_ret_t dart_team_memderegister(dart_team_t teamid, dart_gptr_t gptr);
 
 

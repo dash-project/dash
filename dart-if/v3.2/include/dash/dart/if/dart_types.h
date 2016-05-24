@@ -10,9 +10,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-
 /**
  * \defgroup  DartTypes  Types used in the DART interface
+ * \ingroup   DartInterface
  */
 #ifdef __cplusplus
 extern "C" {
@@ -418,6 +418,9 @@ typedef struct
 }
 dart_unit_locality_t;
 
+/**
+ * \ingroup DartTypes
+ */
 typedef struct
 {
   int log_enabled;

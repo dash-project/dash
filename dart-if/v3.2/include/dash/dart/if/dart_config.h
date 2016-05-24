@@ -3,10 +3,25 @@
 
 #include <dash/dart/if/dart_types.h>
 
+/**
+ * \file dart_config.h
+ *
+ * Interface to access the DART runtime configuration.
+ */
+
+/**
+ * \defgroup  DartConfig  DART runtime configuration interface
+ * \ingroup   DartInterface
+ */
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/**
+ * Access the DART runtime configuration descriptor.
+ *
+ * \ingroup DartConfig
+ */
 void dart_config(
   dart_config_t ** config_out);
 
