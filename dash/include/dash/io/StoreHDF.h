@@ -130,8 +130,8 @@ public:
       // HD5 create file
       file_id = H5Fcreate( filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, plist_id );
     } else {
-      // Open file
-      file_id = H5Fopen( filename.c_str(), H5F_ACC_TRUNC, plist_id );
+      // Open file in RW mode
+      file_id = H5Fopen( filename.c_str(), H5F_ACC_RDWR, plist_id );
     }
     // close property list
     H5Pclose(plist_id);
@@ -141,10 +141,14 @@ public:
     memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
     internal_type = H5Tcopy(h5datatype);
 
-    // Create dataset
-    dataset = H5Dcreate(file_id, table.c_str(), internal_type, filespace,
+		if(foptions.overwrite_table){
+			// Open dataset in RW mode
+			dataset = H5Dopen(file_id, table.c_str(), H5P_DEFAULT);
+		} else {
+    	// Create dataset
+    	dataset = H5Dcreate(file_id, table.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
+		}
     // Close global dataspace
     H5Sclose(filespace);
 
@@ -274,8 +278,8 @@ public:
       // HD5 create file
       file_id = H5Fcreate( filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, plist_id );
     } else {
-      // Open file
-      file_id = H5Fopen( filename.c_str(), H5F_ACC_TRUNC, plist_id );
+      // Open file in RW mode
+      file_id = H5Fopen( filename.c_str(), H5F_ACC_RDWR, plist_id );
     }
 
     // close property list
@@ -286,9 +290,14 @@ public:
     memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
     internal_type = H5Tcopy(h5datatype);
 
-    // Create dataset
-    dataset = H5Dcreate(file_id, table.c_str(), internal_type, filespace,
+		if(foptions.overwrite_table){
+			// Open dataset in RW mode
+			dataset = H5Dopen(file_id, table.c_str(), H5P_DEFAULT);
+		} else {
+    	// Create dataset
+    	dataset = H5Dcreate(file_id, table.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+		}
 
     // Close global dataspace
     H5Sclose(filespace);

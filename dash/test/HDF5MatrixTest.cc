@@ -306,6 +306,42 @@ TEST_F(HDFMatrixTest, UnderfilledPattern)
   dash::Matrix<int, 2, long, pattern_t> matrix_b;
   dash::io::StoreHDF::read(matrix_b, _filename, _table);
 }
+
+TEST_F(HDFMatrixTest, MultipleDatasets)
+{
+	int    ext_x    = dash::size() * 5;
+	int    ext_y    = dash::size() * 3;
+	int    secret_a = 10;
+	double secret_b = 3;
+	{
+    auto matrix_a = dash::Matrix<int,2>(dash::SizeSpec<2>(ext_x,ext_y));
+		auto matrix_b = dash::Matrix<double,2>(dash::SizeSpec<2>(ext_x,ext_y));
+
+    // Fill
+    fill_matrix(matrix_a, secret_a);
+		fill_matrix(matrix_b, secret_b);
+    dash::barrier();
+
+    // Set option
+    auto fopts = dash::io::StoreHDF::get_default_options();
+    fopts.overwrite_file = false;
+
+    dash::io::StoreHDF::write(matrix_a, _filename, _table, fopts);
+		dash::io::StoreHDF::write(matrix_b, _filename, "tabletwo", fopts);
+    dash::barrier();
+  }
+  dash::Matrix<int,2>    matrix_c;
+	dash::Matrix<double,2> matrix_d;
+	dash::io::StoreHDF::read(matrix_c, _filename, _table);
+	dash::io::StoreHDF::read(matrix_d, _filename, "tabletwo");
+	
+  dash::barrier();
+
+  // Verify data
+  verify_matrix(matrix_c, secret_a);
+ 	verify_matrix(matrix_d, secret_b);
+}
+
 #endif
 #if 0
 // Test Conversion between dash::Array and dash::Matrix
