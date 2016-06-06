@@ -43,8 +43,8 @@ public:
   typedef struct hdf5_file_options_t {
     /// Overwrite HDF5 file if already existing
     bool          overwrite_file;
-    /// Overwrite HDF5 table if already existing
-    bool          overwrite_table;
+    /// Modify HDF5 dataset if already existing.
+    bool          modify_dataset;
     /// Store dash pattern characteristics as metadata in HDF5 file
     bool          store_pattern;
     /// Restore pattern from metadata if HDF5 file contains any.
@@ -75,7 +75,7 @@ public:
    * Collective operation.
    * \param array     Array to store
   	 * \param filename  Filename of HDF5 file including extension
-   * \param table     HDF5 Table in which the data is stored
+   * \param dataset     HDF5 Table in which the data is stored
   	 * \param foptions
    */
   template <
@@ -89,7 +89,7 @@ public:
             static write(
               dash::Array<value_t, index_t, pattern_t> & array,
               std::string filename,
-              std::string table,
+              std::string dataset,
               hdf5_file_options foptions = _get_fdefaults())
   {
     auto pattern    = array.pattern();
@@ -100,7 +100,7 @@ public:
 
     /* HDF5 definition */
     hid_t   file_id;
-    hid_t   dataset;
+    hid_t   h5dset;
     hid_t   internal_type;
     hid_t   plist_id; // property list identifier
     hid_t   filespace;
@@ -141,18 +141,18 @@ public:
     memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
     internal_type = H5Tcopy(h5datatype);
 
-		if(foptions.overwrite_table){
+		if(foptions.modify_dataset){
 			// Open dataset in RW mode
-			dataset = H5Dopen(file_id, table.c_str(), H5P_DEFAULT);
+			h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
 		} else {
     	// Create dataset
-    	dataset = H5Dcreate(file_id, table.c_str(), internal_type, filespace,
+    	h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 		}
     // Close global dataspace
     H5Sclose(filespace);
 
-    filespace = H5Dget_space(dataset);
+    filespace = H5Dget_space(h5dset);
 
     // Select Hyperslabs in file
     H5Sselect_hyperslab(
@@ -169,7 +169,7 @@ public:
 
     DASH_LOG_DEBUG("write completely filled blocks");
     // Write completely filled blocks by pattern
-    H5Dwrite(dataset, internal_type, memspace, filespace,
+    H5Dwrite(h5dset, internal_type, memspace, filespace,
              plist_id, array.lbegin());
 
     // write underfilled blocks
@@ -185,7 +185,7 @@ public:
       ts.block);
 
     DASH_LOG_DEBUG("write partially filled blocks");
-    H5Dwrite(dataset, internal_type, memspace, filespace,
+    H5Dwrite(h5dset, internal_type, memspace, filespace,
              plist_id, array.lbegin());
 
 
@@ -196,7 +196,7 @@ public:
       hid_t attrspace = H5Screate(H5S_SCALAR);
       long attr = (long) tilesize;
       hid_t attribute_id = H5Acreate(
-                             dataset, pat_key, H5T_NATIVE_LONG,
+                             h5dset, pat_key, H5T_NATIVE_LONG,
                              attrspace, H5P_DEFAULT, H5P_DEFAULT);
       H5Awrite(attribute_id, H5T_NATIVE_LONG, &attr);
       H5Aclose(attribute_id);
@@ -204,7 +204,7 @@ public:
     }
 
     // Close all
-    H5Dclose(dataset);
+    H5Dclose(h5dset);
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
@@ -216,7 +216,7 @@ public:
   	* Collective operation.
   * \param array     Array to store
    * \param filename  Filename of HDF5 file including extension
-  * \param table     HDF5 Table in which the data is stored
+  * \param dataset     HDF5 Table in which the data is stored
    * \param foptions
   */
   template <
@@ -231,7 +231,7 @@ public:
                       static write(
                         dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
                         std::string filename,
-                        std::string table,
+                        std::string dataset,
                         hdf5_file_options foptions = _get_fdefaults())
   {
     static_assert(
@@ -246,7 +246,7 @@ public:
 
     /* HDF5 definition */
     hid_t   file_id;
-    hid_t   dataset;
+    hid_t   h5dset;
     hid_t   internal_type;
     hid_t   plist_id; // property list identifier
     hid_t   filespace;
@@ -290,19 +290,19 @@ public:
     memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
     internal_type = H5Tcopy(h5datatype);
 
-		if(foptions.overwrite_table){
+		if(foptions.modify_dataset){
 			// Open dataset in RW mode
-			dataset = H5Dopen(file_id, table.c_str(), H5P_DEFAULT);
+			h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
 		} else {
     	// Create dataset
-    	dataset = H5Dcreate(file_id, table.c_str(), internal_type, filespace,
+    	h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 		}
 
     // Close global dataspace
     H5Sclose(filespace);
 
-    filespace = H5Dget_space(dataset);
+    filespace = H5Dget_space(h5dset);
 
     H5Sselect_hyperslab(
       filespace,
@@ -317,7 +317,7 @@ public:
     H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
     // Write completely filled blocks
-    H5Dwrite(dataset, internal_type, memspace, filespace,
+    H5Dwrite(h5dset, internal_type, memspace, filespace,
              plist_id, array.lbegin());
 
     // write underfilled blocks
@@ -332,7 +332,7 @@ public:
       ts.count,
       ts.block);
 
-    H5Dwrite(dataset, internal_type, memspace, filespace,
+    H5Dwrite(h5dset, internal_type, memspace, filespace,
              plist_id, array.lbegin());
 
     // Add Attributes
@@ -352,7 +352,7 @@ public:
       hsize_t attr_len[] = { static_cast<hsize_t> (ndim * 4) };
       hid_t attrspace = H5Screate_simple(1, attr_len, NULL);
       hid_t attribute_id = H5Acreate(
-                             dataset, pat_key, H5T_NATIVE_LONG,
+                             h5dset, pat_key, H5T_NATIVE_LONG,
                              attrspace, H5P_DEFAULT, H5P_DEFAULT);
       H5Awrite(attribute_id, H5T_NATIVE_LONG, &pattern_spec);
       H5Aclose(attribute_id);
@@ -360,7 +360,7 @@ public:
     }
 
     // Close all
-    H5Dclose(dataset);
+    H5Dclose(h5dset);
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
@@ -368,15 +368,15 @@ public:
   }
 
   /**
-  * Read an HDF5 table into a dash::Array using parallel IO
-  * if the array is already allocated, the size has to match the HDF5 table
+  * Read an HDF5 dataset into a dash::Array using parallel IO
+  * if the array is already allocated, the size has to match the HDF5 dataset
    * size and all data will be overwritten.
   * Otherwise the array will be allocated.
   *
   * Colletive operation.
   * \param array     Import data in this dash::Array
    * \param filename  Filename of HDF5 file including extension
-  * \param table     HDF5 Table in which the data is stored
+  * \param dataset     HDF5 Table in which the data is stored
    * \param foptions
   */
   template <
@@ -390,14 +390,14 @@ public:
             static read(
               dash::Array<value_t, index_t, pattern_t> & array,
               std::string filename,
-              std::string table,
+              std::string dataset,
               hdf5_file_options foptions = _get_fdefaults())
   {
     long     tilesize;
     int			 rank;
     // HDF5 definition
     hid_t    file_id;
-    hid_t    dataset;
+    hid_t    h5dset;
     hid_t    internal_type;
     hid_t    plist_id; // property list identifier
     hid_t    filespace;
@@ -419,13 +419,13 @@ public:
     H5Pclose(plist_id);
 
     // Create dataset
-    dataset = H5Dopen(file_id, table.c_str(), H5P_DEFAULT);
+    h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
 
     // Get dimensions of data
-    filespace     = H5Dget_space(dataset);
+    filespace     = H5Dget_space(h5dset);
     rank          = H5Sget_simple_extent_ndims(filespace);
 
-    DASH_ASSERT_EQ(rank, 1, "Data dimension of HDF5 table is not 1");
+    DASH_ASSERT_EQ(rank, 1, "Data dimension of HDF5 dataset is not 1");
 
     status        = H5Sget_simple_extent_dims(filespace, data_dimsf, NULL);
 
@@ -437,9 +437,9 @@ public:
 
     if (!is_alloc												  // not allocated
         && foptions.restore_pattern			  // pattern should be restored
-        && H5Aexists(dataset, pat_key)) { // hdf5 contains pattern
+        && H5Aexists(h5dset, pat_key)) { // hdf5 contains pattern
       hid_t attrspace      = H5Screate(H5S_SCALAR);
-      hid_t attribute_id  = H5Aopen(dataset, pat_key, H5P_DEFAULT);
+      hid_t attribute_id  = H5Aopen(h5dset, pat_key, H5P_DEFAULT);
       H5Aread(attribute_id, H5T_NATIVE_LONG, &tilesize);
       H5Aclose(attribute_id);
       H5Sclose(attrspace);
@@ -500,7 +500,7 @@ public:
 
     // read data
     DASH_LOG_DEBUG("read completely filled blocks");
-    H5Dread(dataset, internal_type, memspace, filespace,
+    H5Dread(h5dset, internal_type, memspace, filespace,
             plist_id, array.lbegin());
 
     // read underfilled blocks
@@ -518,11 +518,11 @@ public:
 
     // Read underfilled blocks by pattern
     DASH_LOG_DEBUG("read partially filled blocks");
-    H5Dread(dataset, internal_type, memspace, filespace,
+    H5Dread(h5dset, internal_type, memspace, filespace,
             plist_id, array.lbegin());
 
     // Close all
-    H5Dclose(dataset);
+    H5Dclose(h5dset);
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
@@ -530,14 +530,14 @@ public:
   }
 
   /**
-   * Read an HDF5 table into a dash::Matrix using parallel IO
+   * Read an HDF5 dataset into a dash::Matrix using parallel IO
    * if the matrix is already allocated, the sizes have to match
-  	 * the HDF5 table sizes and all data will be overwritten.
+  	 * the HDF5 dataset sizes and all data will be overwritten.
    * Otherwise the matrix will be allocated.
    * Collective operation
    * \param matrix    Import data in this dash::Matrix
   	 * \param filename  Filename of HDF5 file including extension
-   * \param table     HDF5 Table in which the data is stored
+   * \param dataset     HDF5 Table in which the data is stored
   	 * \param foptions
    */
   template <
@@ -555,13 +555,13 @@ public:
                         index_t,
                         pattern_t > &matrix,
                         std::string filename,
-                        std::string table,
+                        std::string dataset,
                         hdf5_file_options foptions = _get_fdefaults())
   {
 
     // HDF5 definition
     hid_t   file_id;
-    hid_t   dataset;
+    hid_t   h5dset;
     hid_t   internal_type;
     hid_t   plist_id; // property list identifier
     hid_t   filespace;
@@ -586,14 +586,14 @@ public:
     H5Pclose(plist_id);
 
     // Create dataset
-    dataset = H5Dopen(file_id, table.c_str(), H5P_DEFAULT);
+    h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
 
     // Get dimensions of data
-    filespace     = H5Dget_space(dataset);
+    filespace     = H5Dget_space(h5dset);
     rank          = H5Sget_simple_extent_ndims(filespace);
 
     DASH_ASSERT_EQ(rank, ndim,
-                   "Data dimension of HDF5 table does not match matrix dimension");
+                   "Data dimension of HDF5 dataset does not match matrix dimension");
 
     status        = H5Sget_simple_extent_dims(filespace, data_dimsf, NULL);
 
@@ -614,10 +614,10 @@ public:
 
     if (!is_alloc												// not allocated
         && foptions.restore_pattern			// pattern should be restored
-        && H5Aexists(dataset, pat_key)) { // hdf5 contains pattern
+        && H5Aexists(h5dset, pat_key)) { // hdf5 contains pattern
       hsize_t attr_len[]  = { ndim * 4};
       hid_t attrspace      = H5Screate_simple(1, attr_len, NULL);
-      hid_t attribute_id  = H5Aopen(dataset, pat_key, H5P_DEFAULT);
+      hid_t attribute_id  = H5Aopen(h5dset, pat_key, H5P_DEFAULT);
 
       H5Aread(attribute_id, H5T_NATIVE_LONG, hdf_dash_pattern);
       H5Aclose(attribute_id);
@@ -684,7 +684,7 @@ public:
     H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
     // read data
-    H5Dread(dataset, internal_type, memspace, filespace,
+    H5Dread(h5dset, internal_type, memspace, filespace,
             plist_id, matrix.lbegin());
 
     // read underfilled blocks
@@ -701,11 +701,11 @@ public:
       ts.block);
 
     // Read underfilled blocks by pattern
-    H5Dread(dataset, internal_type, memspace, filespace,
+    H5Dread(h5dset, internal_type, memspace, filespace,
             plist_id, matrix.lbegin());
 
     // Close all
-    H5Dclose(dataset);
+    H5Dclose(h5dset);
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
@@ -741,7 +741,7 @@ private:
   {
     hdf5_file_options fopt;
     fopt.overwrite_file = true;
-    fopt.overwrite_table = false;
+    fopt.modify_dataset = false;
     fopt.store_pattern = true;
     fopt.restore_pattern = true;
     fopt.pattern_metadata_key = "DASH_PATTERN";
