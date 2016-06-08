@@ -37,13 +37,13 @@ make_team_spec(
   auto n_sockets    = dash::util::Locality::NumSockets();
   // Number of NUMA domains per processing node:
   auto n_numa_dom   = dash::util::Locality::NumNUMANodes();
-  // Number of CPUs per processing node:
-  auto n_cpus       = dash::util::Locality::NumCPUs();
+  // Number of cores per processing node:
+  auto n_cores      = dash::util::Locality::NumCores();
 
   DASH_LOG_TRACE_VAR("dash::make_team_spec", n_nodes);
   DASH_LOG_TRACE_VAR("dash::make_team_spec", n_sockets);
   DASH_LOG_TRACE_VAR("dash::make_team_spec", n_numa_dom);
-  DASH_LOG_TRACE_VAR("dash::make_team_spec", n_cpus);
+  DASH_LOG_TRACE_VAR("dash::make_team_spec", n_cores);
 
   // Default team spec:
   std::array<extent_t, ndim> team_extents;
@@ -67,7 +67,7 @@ make_team_spec(
     team_extents = dash::math::balance_extents(team_extents, blocking);
   } else {
     // blocking by processing nodes:
-    blocking.insert(n_cpus);
+    blocking.insert(n_cores);
   }
   DASH_LOG_TRACE("dash::make_team_spec",
                  "step 2 - team extents after balancing on NUMA domains:",

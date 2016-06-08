@@ -82,7 +82,7 @@ public:
     return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_numa;
   }
 
-  static inline int NumCPUs()
+  static inline int NumCores()
   {
     return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_cores;
   }
@@ -118,9 +118,19 @@ public:
     _domain_loc->hwinfo.num_numa = n;
   }
 
-  static inline void SetNumCPUs(int n)
+  static inline void SetNumCores(int n)
   {
     _domain_loc->hwinfo.num_cores = n;
+  }
+
+  static inline void SetMinThreads(int n)
+  {
+    _domain_loc->hwinfo.min_threads = n;
+  }
+
+  static inline void SetMaxThreads(int n)
+  {
+    _domain_loc->hwinfo.max_threads = n;
   }
 
   static int UnitNUMAId()

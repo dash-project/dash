@@ -75,8 +75,12 @@ GlobIter<ElementType, PatternType> min_element(
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
 
-    auto  n_threads = dash::util::Locality::MinThreads();
-
+    auto  n_threads = dash::util::Locality::NumCores();
+    if (dash::util::Config::get<bool>("DASH_MAX_SMT")) {
+      n_threads *= dash::util::Locality::MaxThreads();
+    } else {
+      n_threads *= dash::util::Locality::MinThreads();
+    }
     if (n_threads > 1) {
       int           min_idx_l  = 0;
       ElementType   min_val_l  = *l_range_begin;

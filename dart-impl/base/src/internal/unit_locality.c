@@ -227,7 +227,6 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
   loc->unit             = myid;
   loc->team             = team;
   loc->hwinfo           = *hwinfo;
-  loc->hwinfo.num_cores = 1;
 
   char   hostname[DART_LOCALITY_HOST_MAX_SIZE];
   gethostname(hostname, DART_LOCALITY_HOST_MAX_SIZE);
@@ -238,10 +237,15 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
   hwloc_topology_init(&topology);
   hwloc_topology_load(topology);
   // Resolve number of threads per core:
+  loc->hwinfo.min_threads = 1;
   int n_cpus = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PU);
-  if (n_cpus > 0) {
-    loc->hwinfo.min_threads = 1;
+  if (n_cpus > 0 &&
+      loc->hwinfo.max_threads < 0 &&
+      dloc->hwinfo.num_cores  > 0) {
     loc->hwinfo.max_threads = n_cpus / dloc->hwinfo.num_cores;
+  }
+  if (loc->hwinfo.max_threads < 0) {
+    loc->hwinfo.max_threads = 1;
   }
   hwloc_topology_destroy(topology);
 #endif
@@ -250,14 +254,14 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
   DART_LOG_TRACE("dart__base__unit_locality__local_unit_new: "
                  "MIC architecture");
 
-  if (loc->hwinfo.numa_id     <  0) { loc->hwinfo.numa_id      = 0; }
-  if (loc->hwinfo.num_cores   <= 0) { loc->hwinfo.num_cores    = 1; }
-  if (loc->hwinfo.min_cpu_mhz <= 0 || loc->hwinfo.max_cpu_mhz <= 0) {
+  if (loc->hwinfo.numa_id     <  0) { loc->hwinfo.numa_id      =  0; }
+  if (loc->hwinfo.num_cores   <= 0) { loc->hwinfo.num_cores    = 60; }
+  if (loc->hwinfo.min_cpu_mhz <= 0 || loc->hwinfo.max_cpu_mhz <=  0) {
     loc->hwinfo.min_cpu_mhz = 1100;
     loc->hwinfo.max_cpu_mhz = 1100;
   }
-  loc->hwinfo.min_threads = loc->hwinfo.num_cores * 4;
-  loc->hwinfo.max_threads = loc->hwinfo.num_cores * 4;
+  loc->hwinfo.min_threads = 4;
+  loc->hwinfo.max_threads = 4;
 #endif
   if (loc->hwinfo.min_threads <= 0) {
     loc->hwinfo.min_threads = 1;
