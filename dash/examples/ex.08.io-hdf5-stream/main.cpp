@@ -57,7 +57,7 @@ int main(int argc, char * argv[])
 		}
 
 		dash::io::HDF5OutputStream os(FILENAME);
-		os << dash::io::HDF5Table("data") << array_a;
+		os << dash::io::HDF5Dataset("data") << array_a;
 
 		dash::barrier();
 		print_file();
@@ -74,7 +74,7 @@ int main(int argc, char * argv[])
 		array_t array_c;
 
 		dash::io::HDF5OutputStream os(FILENAME);
-		(os << dash::io::HDF5Table("data")) >> array_c;
+		(os << dash::io::HDF5Dataset("data")) >> array_c;
 	}
 
 	// OK, that was easy. Now let's have a slightly more complex setup
@@ -89,7 +89,7 @@ int main(int argc, char * argv[])
 		array_t array_c(pattern_b); // tilesize=7
 
 		dash::io::HDF5OutputStream os(FILENAME);
-		(os << dash::io::HDF5Table("data")) >> array_c;
+		(os << dash::io::HDF5Dataset("data")) >> array_c;
 
 		if(myid == 0){
 			cout << "Array A Pattern: Tilesize: " << array_a.pattern().blocksize(0) << endl;
@@ -109,7 +109,7 @@ int main(int argc, char * argv[])
 		fopts.overwrite_file = false; // Do not overwrite existing file
 
 		dash::io::HDF5OutputStream os(FILENAME);
-		os << dash::io::HDF5Table("temperature") 
+		os << dash::io::HDF5Dataset("temperature") 
        << fopts
        << array_b;
 
@@ -128,7 +128,7 @@ int main(int argc, char * argv[])
 		fopts.modify_dataset = true;
 
 		dash::io::HDF5OutputStream os(FILENAME);
-		os << dash::io::HDF5Table("temperature") 
+		os << dash::io::HDF5Dataset("temperature") 
        << fopts
        << array_a;
 

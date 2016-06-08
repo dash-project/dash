@@ -123,7 +123,7 @@ TEST_F(HDFMatrixTest, StoreMultiDimMatrix)
     }
     dash::barrier();
     DASH_LOG_DEBUG("BEGIN STORE HDF");
-    dash::io::StoreHDF::write(mat1, _filename, _table);
+    dash::io::StoreHDF::write(mat1, _filename, _dataset);
     DASH_LOG_DEBUG("END STORE HDF");
     dash::barrier();
   }
@@ -167,12 +167,12 @@ TEST_F(HDFMatrixTest, StoreSUMMAMatrix)
     dash::barrier();
 
     // Store Matrix
-    dash::io::StoreHDF::write(matrix_a, _filename, _table);
+    dash::io::StoreHDF::write(matrix_a, _filename, _dataset);
     dash::barrier();
   }
 
   dash::Matrix<double, 2> matrix_b;
-  dash::io::StoreHDF::read(matrix_b, _filename, _table);
+  dash::io::StoreHDF::read(matrix_b, _filename, _dataset);
   dash::barrier();
   verify_matrix(matrix_b, static_cast<double>(myid));
 }
@@ -192,11 +192,11 @@ TEST_F(HDFMatrixTest, AutoGeneratePattern)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.store_pattern = false;
 
-    dash::io::StoreHDF::write(matrix_a, _filename, _table, fopts);
+    dash::io::StoreHDF::write(matrix_a, _filename, _dataset, fopts);
     dash::barrier();
   }
   dash::Matrix<int, 2> matrix_b;
-  dash::io::StoreHDF::read(matrix_b, _filename, _table);
+  dash::io::StoreHDF::read(matrix_b, _filename, _dataset);
   dash::barrier();
 
   // Verify
@@ -223,14 +223,14 @@ TEST_F(HDFMatrixTest, PreAllocation)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.store_pattern = false;
 
-    dash::io::StoreHDF::write(matrix_a, _filename, _table, fopts);
+    dash::io::StoreHDF::write(matrix_a, _filename, _dataset, fopts);
     dash::barrier();
   }
   dash::Matrix<int, 2> matrix_b(
     dash::SizeSpec<2>(
       ext_x,
       ext_y));
-  dash::io::StoreHDF::read(matrix_b, _filename, _table);
+  dash::io::StoreHDF::read(matrix_b, _filename, _dataset);
   dash::barrier();
 
   // Verify
@@ -251,7 +251,7 @@ TEST_F(HDFMatrixTest, OutputStream)
 
     auto fopts = dash::io::StoreHDF::get_default_options();
     auto os  = dash::io::HDF5OutputStream(_filename);
-    os   << dash::io::HDF5Table(_table)
+    os   << dash::io::HDF5Dataset(_dataset)
          << fopts
          << matrix_a;
   }
@@ -259,7 +259,7 @@ TEST_F(HDFMatrixTest, OutputStream)
   // Import data
   dash::Matrix<long, 2> matrix_b;
   auto is = dash::io::HDF5OutputStream(_filename);
-  (is << dash::io::HDF5Table(_table)) >> matrix_b;
+  (is << dash::io::HDF5Dataset(_dataset)) >> matrix_b;
 
   verify_matrix(matrix_b);
 }
@@ -299,12 +299,12 @@ TEST_F(HDFMatrixTest, UnderfilledPattern)
 
     fill_matrix(matrix_a);
 
-    dash::io::StoreHDF::write(matrix_a, _filename, _table);
+    dash::io::StoreHDF::write(matrix_a, _filename, _dataset);
   }
   dash::barrier();
 
   dash::Matrix<int, 2, long, pattern_t> matrix_b;
-  dash::io::StoreHDF::read(matrix_b, _filename, _table);
+  dash::io::StoreHDF::read(matrix_b, _filename, _dataset);
 }
 
 TEST_F(HDFMatrixTest, MultipleDatasets)
@@ -326,14 +326,14 @@ TEST_F(HDFMatrixTest, MultipleDatasets)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.overwrite_file = false;
 
-    dash::io::StoreHDF::write(matrix_a, _filename, _table, fopts);
-		dash::io::StoreHDF::write(matrix_b, _filename, "tabletwo", fopts);
+    dash::io::StoreHDF::write(matrix_a, _filename, _dataset, fopts);
+		dash::io::StoreHDF::write(matrix_b, _filename, "datasettwo", fopts);
     dash::barrier();
   }
   dash::Matrix<int,2>    matrix_c;
 	dash::Matrix<double,2> matrix_d;
-	dash::io::StoreHDF::read(matrix_c, _filename, _table);
-	dash::io::StoreHDF::read(matrix_d, _filename, "tabletwo");
+	dash::io::StoreHDF::read(matrix_c, _filename, _dataset);
+	dash::io::StoreHDF::read(matrix_d, _filename, "datasettwo");
 	
   dash::barrier();
 
@@ -361,15 +361,15 @@ TEST_F(HDFMatrixTest, ModifyDataset)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.overwrite_file = false;
 
-    dash::io::StoreHDF::write(matrix_a, _filename, _table, fopts);
+    dash::io::StoreHDF::write(matrix_a, _filename, _dataset, fopts);
 		dash::barrier();
 		// overwrite first data
 		fopts.modify_dataset = true;
-		dash::io::StoreHDF::write(matrix_b, _filename, _table, fopts);
+		dash::io::StoreHDF::write(matrix_b, _filename, _dataset, fopts);
     dash::barrier();
   }
   dash::Matrix<double,2>    matrix_c;
-	dash::io::StoreHDF::read(matrix_c, _filename, _table);
+	dash::io::StoreHDF::read(matrix_c, _filename, _dataset);
 	
   dash::barrier();
 
@@ -396,11 +396,11 @@ TEST_F(HDFMatrixTest, ArrayToMatrix)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.store_pattern = false;
 
-    dash::io::StoreHDF::write(array, _filename, _table);
+    dash::io::StoreHDF::write(array, _filename, _dataset);
     dash::barrier();
   }
   dash::Matrix<int, 1> matrix;
-  dash::io::StoreHDF::read(matrix, _filename, _table);
+  dash::io::StoreHDF::read(matrix, _filename, _dataset);
   dash::barrier();
 
   // Verify

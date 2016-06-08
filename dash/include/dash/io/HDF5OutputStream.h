@@ -11,12 +11,12 @@ namespace io {
 
 typedef dash::io::StoreHDF::hdf5_file_options hdf5_file_options;
 
-class HDF5Table {
+class HDF5Dataset {
   public:
-    std::string _table;
+    std::string _dataset;
   public:
-    HDF5Table(std::string table) {
-        _table = table;
+    HDF5Dataset(std::string dataset) {
+        _dataset = dataset;
     }
 };
 
@@ -44,7 +44,7 @@ class HDF5Options {
 class HDF5OutputStream {
   private:
     std::string                _filename;
-    std::string                _table;
+    std::string                _dataset;
     hdf5_file_options					 _foptions;
     bool											 _flushed;
 
@@ -57,9 +57,9 @@ class HDF5OutputStream {
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
-        const HDF5Table & tbl) {
+        const HDF5Dataset & tbl) {
         os._assert_flush();
-        os._table = tbl._table;
+        os._dataset = tbl._dataset;
         return os;
     }
 

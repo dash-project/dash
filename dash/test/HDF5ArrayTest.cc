@@ -88,7 +88,7 @@ TEST_F(HDFArrayTest, StoreLargeDashArray)
     DASH_LOG_DEBUG("Estimated memory total: ", mbsize_total, "MB");
     DASH_LOG_DEBUG("Array filled, begin hdf5 store");
 
-    dash::io::StoreHDF::write(arr1, _filename, _table);
+    dash::io::StoreHDF::write(arr1, _filename, _dataset);
     dash::barrier();
   }
   DASH_LOG_DEBUG("Array successfully written ");
@@ -96,7 +96,7 @@ TEST_F(HDFArrayTest, StoreLargeDashArray)
   // Create second array
   dash::Array<value_t> arr2;
   dash::barrier();
-  dash::io::StoreHDF::read(arr2, _filename, _table);
+  dash::io::StoreHDF::read(arr2, _filename, _dataset);
 
   dash::barrier();
   verify_array(arr2, local_secret);
@@ -114,11 +114,11 @@ TEST_F(HDFArrayTest, AutoGeneratePattern)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.store_pattern = false;
 
-    dash::io::StoreHDF::write(array_a, _filename, _table, fopts);
+    dash::io::StoreHDF::write(array_a, _filename, _dataset, fopts);
     dash::barrier();
   }
   dash::Array<int> array_b;
-  dash::io::StoreHDF::read(array_b, _filename, _table);
+  dash::io::StoreHDF::read(array_b, _filename, _dataset);
   dash::barrier();
 
   // Verify
@@ -141,11 +141,11 @@ TEST_F(HDFArrayTest, PreAllocation)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.store_pattern = false;
 
-    dash::io::StoreHDF::write(array_a, _filename, _table, fopts);
+    dash::io::StoreHDF::write(array_a, _filename, _dataset, fopts);
     dash::barrier();
   }
   auto array_b = dash::Array<int>(ext_x);
-  dash::io::StoreHDF::read(array_b, _filename, _table);
+  dash::io::StoreHDF::read(array_b, _filename, _dataset);
   dash::barrier();
 
   // Verify
@@ -163,7 +163,7 @@ TEST_F(HDFArrayTest, OutputStream)
 
     auto fopts = dash::io::StoreHDF::get_default_options();
     auto os  = dash::io::HDF5OutputStream(_filename);
-    os   << dash::io::HDF5Table(_table)
+    os   << dash::io::HDF5Dataset(_dataset)
          << fopts
          << array_a;
   }
@@ -171,7 +171,7 @@ TEST_F(HDFArrayTest, OutputStream)
   // Import data
   dash::Array<long> array_b;
   auto is = dash::io::HDF5OutputStream(_filename);
-  (is << dash::io::HDF5Table(_table)) >> array_b;
+  (is << dash::io::HDF5Dataset(_dataset)) >> array_b;
 
   verify_array(array_b);
 }
@@ -191,11 +191,11 @@ TEST_F(HDFArrayTest, UnderfilledPattern)
     // Important as recreation should create equal pattern
     fopts.store_pattern = true;
 
-    dash::io::StoreHDF::write(array_a, _filename, _table, fopts);
+    dash::io::StoreHDF::write(array_a, _filename, _dataset, fopts);
     dash::barrier();
   }
   dash::Array<int> array_b;
-  dash::io::StoreHDF::read(array_b, _filename, _table);
+  dash::io::StoreHDF::read(array_b, _filename, _dataset);
   dash::barrier();
 
   // Verify
@@ -225,11 +225,11 @@ TEST_F(HDFArrayTest, UnderfilledPatPreAllocate)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.store_pattern = false;
 
-    dash::io::StoreHDF::write(array_a, _filename, _table, fopts);
+    dash::io::StoreHDF::write(array_a, _filename, _dataset, fopts);
     dash::barrier();
   }
   auto array_b = dash::Array<int>(ext_x);
-  dash::io::StoreHDF::read(array_b, _filename, _table);
+  dash::io::StoreHDF::read(array_b, _filename, _dataset);
   dash::barrier();
 
   // Verify
@@ -260,14 +260,14 @@ TEST_F(HDFArrayTest, MultipleDatasets)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.overwrite_file = false;
 
-    dash::io::StoreHDF::write(array_a, _filename, _table, fopts);
-		dash::io::StoreHDF::write(array_b, _filename, "tabletwo", fopts);
+    dash::io::StoreHDF::write(array_a, _filename, _dataset, fopts);
+		dash::io::StoreHDF::write(array_b, _filename, "datasettwo", fopts);
     dash::barrier();
   }
   dash::Array<int>    array_c;
 	dash::Array<double> array_d;
-	dash::io::StoreHDF::read(array_c, _filename, _table);
-	dash::io::StoreHDF::read(array_d, _filename, "tabletwo");
+	dash::io::StoreHDF::read(array_c, _filename, _dataset);
+	dash::io::StoreHDF::read(array_d, _filename, "datasettwo");
 	
   dash::barrier();
 
@@ -294,15 +294,15 @@ TEST_F(HDFArrayTest, ModifyDataset)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.overwrite_file = false;
 
-    dash::io::StoreHDF::write(array_a, _filename, _table, fopts);
+    dash::io::StoreHDF::write(array_a, _filename, _dataset, fopts);
 		dash::barrier();
 		// overwrite first data
 		fopts.modify_dataset = true;
-		dash::io::StoreHDF::write(array_b, _filename, _table, fopts);
+		dash::io::StoreHDF::write(array_b, _filename, _dataset, fopts);
     dash::barrier();
   }
   dash::Array<double>    array_c;
-	dash::io::StoreHDF::read(array_c, _filename, _table);
+	dash::io::StoreHDF::read(array_c, _filename, _dataset);
 	
   dash::barrier();
 

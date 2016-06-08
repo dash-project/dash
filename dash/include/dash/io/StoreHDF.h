@@ -78,7 +78,7 @@ public:
    * Collective operation.
    * \param array     Array to store
   	 * \param filename  Filename of HDF5 file including extension
-   * \param dataset     HDF5 Table in which the data is stored
+   * \param dataset     HDF5 Dataset in which the data is stored
   	 * \param foptions
    */
   template <
@@ -224,7 +224,7 @@ public:
   	* Collective operation.
   * \param array     Array to store
    * \param filename  Filename of HDF5 file including extension
-  * \param dataset     HDF5 Table in which the data is stored
+  * \param dataset     HDF5 Dataset in which the data is stored
    * \param foptions
   */
   template <
@@ -389,7 +389,7 @@ public:
   * Colletive operation.
   * \param array     Import data in this dash::Array
    * \param filename  Filename of HDF5 file including extension
-  * \param dataset     HDF5 Table in which the data is stored
+  * \param dataset     HDF5 Dataset in which the data is stored
    * \param foptions
   */
   template <
@@ -550,7 +550,7 @@ public:
    * Collective operation
    * \param matrix    Import data in this dash::Matrix
   	 * \param filename  Filename of HDF5 file including extension
-   * \param dataset     HDF5 Table in which the data is stored
+   * \param dataset     HDF5 Dataset in which the data is stored
   	 * \param foptions
    */
   template <
