@@ -772,7 +772,6 @@ dart_ret_t dart_myid(dart_unit_t *unitid)
 dart_ret_t dart_size(size_t *size)
 {
 	int s;
-	*size = -1;
 #ifdef SHAREDMEM_ENABLE
 #ifdef PROGRESS_ENABLE
 	if (user_comm_world != MPI_COMM_NULL){
