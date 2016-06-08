@@ -13,6 +13,7 @@ using std::endl;
 typedef dash::Pattern<1, dash::ROW_MAJOR, long> pattern_t;
 typedef dash::Array<int, long, pattern_t>       array_t;
 
+
 int main(int argc, char * argv[])
 {
   dash::init(&argc, &argv);
@@ -60,8 +61,8 @@ int main(int argc, char * argv[])
 		array_t array_c(pattern_b); // tilesize=7
 		dash::io::StoreHDF::read(array_c, FILENAME, "data");
 		if(myid == 0){
-			cout << "Array A Pattern: " << array_a.pattern() << endl;
-			cout << "Array C Pattern: " << array_c.pattern() << endl;
+			cout << "Array A Pattern: Tilesize: " << array_a.pattern().blocksize(0) << endl;
+			cout << "Array C Pattern: Tilesize: " << array_c.pattern().blocksize(0) << endl;
 		}
 	}
 
