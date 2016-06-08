@@ -43,7 +43,10 @@ public:
   typedef struct hdf5_file_options_t {
     /// Overwrite HDF5 file if already existing
     bool          overwrite_file;
-    /// Modify HDF5 dataset if already existing.
+    /**
+		 * Modify an already existing HDF5 dataset.
+     * If the dataset is not existing, throws a runtime error
+     */
     bool          modify_dataset;
     /// Store dash pattern characteristics as metadata in HDF5 file
     bool          store_pattern;
@@ -195,6 +198,11 @@ public:
       auto pat_key = foptions.pattern_metadata_key.c_str();
       hid_t attrspace = H5Screate(H5S_SCALAR);
       long attr = (long) tilesize;
+
+			// Delete old attribute when overwriting dataset
+			if(foptions.modify_dataset){
+				H5Adelete(h5dset, pat_key);
+			}
       hid_t attribute_id = H5Acreate(
                              h5dset, pat_key, H5T_NATIVE_LONG,
                              attrspace, H5P_DEFAULT, H5P_DEFAULT);
@@ -340,6 +348,11 @@ public:
       DASH_LOG_DEBUG("store pattern in hdf5 file");
       auto pat_key = foptions.pattern_metadata_key.c_str();
       long pattern_spec[ndim * 4];
+
+			// Delete old attribute when overwriting dataset
+			if(foptions.modify_dataset){
+				H5Adelete(h5dset, pat_key);
+			}
       // Structure is
       // sizespec, teamspec, blockspec, blocksize
       for (int i = 0; i < ndim; ++i) {
