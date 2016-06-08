@@ -342,6 +342,41 @@ TEST_F(HDFMatrixTest, MultipleDatasets)
  	verify_matrix(matrix_d, secret_b);
 }
 
+TEST_F(HDFMatrixTest, ModifyDataset)
+{
+	int    ext_x    = dash::size() * 5;
+	int    ext_y    = dash::size() * 3;
+	double secret_a = 10;
+	double secret_b = 3;
+	{
+    auto matrix_a = dash::Matrix<double,2>(dash::SizeSpec<2>(ext_x,ext_y));
+		auto matrix_b = dash::Matrix<double,2>(dash::SizeSpec<2>(ext_x,ext_y));
+
+    // Fill
+    fill_matrix(matrix_a, secret_a);
+		fill_matrix(matrix_b, secret_b);
+    dash::barrier();
+
+    // Set option
+    auto fopts = dash::io::StoreHDF::get_default_options();
+    fopts.overwrite_file = false;
+
+    dash::io::StoreHDF::write(matrix_a, _filename, _table, fopts);
+		dash::barrier();
+		// overwrite first data
+		fopts.modify_dataset = true;
+		dash::io::StoreHDF::write(matrix_b, _filename, _table, fopts);
+    dash::barrier();
+  }
+  dash::Matrix<double,2>    matrix_c;
+	dash::io::StoreHDF::read(matrix_c, _filename, _table);
+	
+  dash::barrier();
+
+  // Verify data
+  verify_matrix(matrix_c, secret_b);
+}
+
 #endif
 #if 0
 // Test Conversion between dash::Array and dash::Matrix

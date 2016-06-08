@@ -276,7 +276,39 @@ TEST_F(HDFArrayTest, MultipleDatasets)
  	verify_array(array_d, secret_b);
 }
 
+TEST_F(HDFArrayTest, ModifyDataset)
+{
+	int    ext_x    = dash::size() * 5;
+	double secret_a = 10;
+	double secret_b = 3;
+	{
+    auto array_a = dash::Array<double>(ext_x);
+		auto array_b = dash::Array<double>(ext_x);
 
+    // Fill
+    fill_array(array_a, secret_a);
+		fill_array(array_b, secret_b);
+    dash::barrier();
+
+    // Set option
+    auto fopts = dash::io::StoreHDF::get_default_options();
+    fopts.overwrite_file = false;
+
+    dash::io::StoreHDF::write(array_a, _filename, _table, fopts);
+		dash::barrier();
+		// overwrite first data
+		fopts.modify_dataset = true;
+		dash::io::StoreHDF::write(array_b, _filename, _table, fopts);
+    dash::barrier();
+  }
+  dash::Array<double>    array_c;
+	dash::io::StoreHDF::read(array_c, _filename, _table);
+	
+  dash::barrier();
+
+  // Verify data
+  verify_array(array_c, secret_b);
+}
 #endif // DASH_ENABLE_HDF5
 
 
