@@ -12,7 +12,7 @@ class HDFMatrixTest : public ::testing::Test {
     dart_unit_t _dash_id;
     size_t      _dash_size;
     std::string _filename = "test_matrix.hdf5";
-    std::string _table    = "data";
+    std::string _dataset  = "data";
 
     HDFMatrixTest()
         : _dash_id(0),

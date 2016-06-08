@@ -12,7 +12,7 @@ class HDFArrayTest : public ::testing::Test {
     dart_unit_t _dash_id;
     size_t      _dash_size;
     std::string _filename = "test_array.hdf5";
-    std::string _table    = "data";
+    std::string _dataset  = "data";
 
     HDFArrayTest()
         : _dash_id(0),
