@@ -23,14 +23,14 @@ inline HDF5OutputStream & operator<< (
     index_t,
     pattern_t > &array) {
 
-    // make stream immutable
+    // make stream immudataset
     os._flushed = true;
 
     array.barrier();
     dash::io::StoreHDF::write(
         array,
         os._filename,
-        os._table,
+        os._dataset,
         os._foptions);
     return os;
 }
@@ -46,14 +46,14 @@ inline HDF5OutputStream & operator>> (
     index_t,
     pattern_t > &array) {
 
-    // make stream immutable
+    // make stream immudataset
     os._flushed = true;
 
     array.barrier();
     dash::io::StoreHDF::read(
         array,
         os._filename,
-        os._table,
+        os._dataset,
         os._foptions);
     return os;
 }
@@ -72,14 +72,14 @@ inline HDF5OutputStream & operator<< (
     index_t,
     pattern_t > &matrix) {
 
-    // make stream immutable
+    // make stream immudataset
     os._flushed = true;
 
     matrix.barrier();
     dash::io::StoreHDF::write(
         matrix,
         os._filename,
-        os._table,
+        os._dataset,
         os._foptions);
     return os;
 }
@@ -97,14 +97,14 @@ inline HDF5OutputStream & operator>> (
     index_t,
     pattern_t > &matrix) {
 
-    // make stream immutable
+    // make stream immudataset
     os._flushed = true;
 
     matrix.barrier();
     dash::io::StoreHDF::read(
         matrix,
         os._filename,
-        os._table,
+        os._dataset,
         os._foptions);
     return os;
 }
