@@ -22,16 +22,17 @@ ifeq ($(DASH_ENABLE_ASSERTIONS),1)
 endif
 
 CXXFLAGS+=-DDASH_ENABLE_DEFAULT_INDEX_TYPE_LONG
+CXXFLAGS+=-std=c++11
 
 #CXXFLAGS+=-DDASH_DEBUG
 #CFLAGS+=-D_SVID_SOURCE
 
 LIBDASH = libdash.a
 
-FILES = Init Team Distribution Math GlobPtr Types util/Timer	\
+FILES = Init Team Distribution Math GlobPtr Types Logging util/Timer	\
 	util/TimestampClockPosix util/TimestampCounterPosix	\
 	util/TimestampPAPI util/Locality util/BenchmarkParams	\
-	util/Config util/Trace algorithm/SUMMA
+	util/Config util/Trace util/LocalityDomain util/TeamLocality algorithm/SUMMA
 
 
 OBJS = $(addsuffix .o, $(FILES))
