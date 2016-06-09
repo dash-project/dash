@@ -1,6 +1,8 @@
 #include <libdash.h>
 #include <iostream>
 
+#ifdef DASH_ENABLE_HDF5
+
 // For more information on HDF5 files see
 // https://www.hdfgroup.org/HDF5
 
@@ -130,3 +132,13 @@ int main(int argc, char * argv[])
 
   return EXIT_SUCCESS;
 }
+
+#else 
+
+int main(int argc, char * argv[])
+{
+	std::cout << "To run this example build DASH with HDF5 support" << std::endl;
+	return EXIT_SUCCESS;
+}
+
+#endif // DASH_ENABLE_HDF5
