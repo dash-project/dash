@@ -854,7 +854,7 @@ private:
 } // namespace io
 } // namespace dash
 
-#include <dash/io/HDF5OutputStream.h>
+#include <dash/io/HDF5Stream.h>
 
 #endif // DASH_ENABLE_HDF5
 

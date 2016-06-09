@@ -9,31 +9,6 @@
 namespace dash {
 namespace io {
 
-typedef dash::io::StoreHDF::hdf5_file_options hdf5_file_options;
-
-class HDF5Dataset {
-  public:
-    std::string _dataset;
-  public:
-    HDF5Dataset(std::string dataset) {
-        _dataset = dataset;
-    }
-};
-
-class HDF5Options {
-  public:
-    hdf5_file_options _foptions;
-    std::string  _test;
-
-  public:
-    HDF5Options() {
-    }
-
-    HDF5Options(hdf5_file_options opts) {
-        _foptions = opts;
-    }
-};
-
 /**
  * DASH stream API to store an dash::Array or dash::Matrix
  * in an HDF5 file using parallel IO.
@@ -46,12 +21,10 @@ class HDF5OutputStream {
     std::string                _filename;
     std::string                _dataset;
     hdf5_file_options					 _foptions;
-    bool											 _flushed;
 
   public:
     HDF5OutputStream(std::string filename) {
         _filename = filename;
-        _flushed  = false;
         _foptions = dash::io::StoreHDF::get_default_options();
     }
 

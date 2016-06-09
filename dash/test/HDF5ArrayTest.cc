@@ -170,8 +170,8 @@ TEST_F(HDFArrayTest, OutputStream)
   dash::barrier();
   // Import data
   dash::Array<long> array_b;
-  auto is = dash::io::HDF5OutputStream(_filename);
-  (is << dash::io::HDF5Dataset(_dataset)) >> array_b;
+  auto is = dash::io::HDF5InputStream(_filename);
+  is >> dash::io::HDF5Dataset(_dataset) >> array_b;
 
   verify_array(array_b);
 }
