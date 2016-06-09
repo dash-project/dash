@@ -58,7 +58,6 @@ class HDF5OutputStream {
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
         const HDF5Dataset & tbl) {
-        os._assert_flush();
         os._dataset = tbl._dataset;
         return os;
     }
@@ -66,7 +65,6 @@ class HDF5OutputStream {
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
         hdf5_file_options opts) {
-        os._assert_flush();
         os._foptions = opts;
         return os;
     }
@@ -116,14 +114,6 @@ class HDF5OutputStream {
         ndim,
         index_t,
         pattern_t > &matrix);
-
-  private:
-    void _assert_flush() {
-        if(_flushed) {
-            dash::exception::AssertionFailed(
-                "cannot modify HDF5 parameters because matrix is already written");
-        }
-    }
 };
 
 
