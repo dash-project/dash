@@ -261,6 +261,15 @@ public:
   { }
 
   /**
+   * Constructor, creates a new instance of Matrix
+   * of given extents.
+   */
+  template<typename... Args>
+  inline Matrix(SizeType arg, Args... args)
+  : Matrix(PatternT(arg, args... ))
+  { }
+
+  /**
    * Destructor, frees underlying memory.
    */
   inline ~Matrix();

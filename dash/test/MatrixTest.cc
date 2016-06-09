@@ -932,3 +932,16 @@ TEST_F(MatrixTest, DelayedAlloc)
   }
 }
 
+TEST_F(MatrixTest, SimpleConstructor)
+{
+	size_t ext_x = 10;
+	size_t ext_y = 100;
+	dash::Matrix<int, 2> matrix(ext_x, ext_y);
+
+	dash::fill(matrix.begin(), matrix.end(), dash::myid());
+
+	matrix.barrier();
+
+	ASSERT_EQ_U(ext_x, matrix.extent(0));
+	ASSERT_EQ_U(ext_y, matrix.extent(1));
+}
