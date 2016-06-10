@@ -7,20 +7,20 @@
 #include <libdash.h>
 #include <stdio.h>
 
-class HDFArrayTest : public ::testing::Test {
+class HDF5ArrayTest : public ::testing::Test {
   protected:
     dart_unit_t _dash_id;
     size_t      _dash_size;
     std::string _filename = "test_array.hdf5";
     std::string _dataset  = "data";
 
-    HDFArrayTest()
+    HDF5ArrayTest()
         : _dash_id(0),
           _dash_size(0) {
         LOG_MESSAGE(">>> Test suite: HDFTest");
     }
 
-    virtual ~HDFArrayTest() {
+    virtual ~HDF5ArrayTest() {
         LOG_MESSAGE("<<< Closing test suite: HDFTest");
     }
 

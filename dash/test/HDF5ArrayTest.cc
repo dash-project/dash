@@ -60,7 +60,7 @@ void verify_array(dash::Array<T, IndexT, PatternT> & array,
     f);
 }
 
-TEST_F(HDFArrayTest, StoreLargeDashArray)
+TEST_F(HDF5ArrayTest, StoreLargeDashArray)
 {
   // Pattern for arr2 array
   size_t nunits           = dash::Team::All().size();
@@ -102,7 +102,7 @@ TEST_F(HDFArrayTest, StoreLargeDashArray)
   verify_array(arr2, local_secret);
 }
 
-TEST_F(HDFArrayTest, AutoGeneratePattern)
+TEST_F(HDF5ArrayTest, AutoGeneratePattern)
 {
   {
     auto array_a = dash::Array<int>(dash::size() * 2);
@@ -128,7 +128,7 @@ TEST_F(HDFArrayTest, AutoGeneratePattern)
 // Import data into a already allocated array
 // because array_a and array_b are allocated the same way
 // it is expected that each unit remains its local ranges
-TEST_F(HDFArrayTest, PreAllocation)
+TEST_F(HDF5ArrayTest, PreAllocation)
 {
   int ext_x = dash::size() * 2;
   {
@@ -153,7 +153,7 @@ TEST_F(HDFArrayTest, PreAllocation)
 }
 
 // Test Stream API
-TEST_F(HDFArrayTest, OutputStream)
+TEST_F(HDF5ArrayTest, OutputStream)
 {
   {
     auto array_a = dash::Array<long>(dash::size() * 2);
@@ -174,7 +174,7 @@ TEST_F(HDFArrayTest, OutputStream)
   verify_array(array_b);
 }
 
-TEST_F(HDFArrayTest, UnderfilledPattern)
+TEST_F(HDF5ArrayTest, UnderfilledPattern)
 {
   int   ext_x = dash::size() * 5 + 1;
   long  tilesize;
@@ -211,7 +211,7 @@ TEST_F(HDFArrayTest, UnderfilledPattern)
   verify_array(array_b);
 }
 
-TEST_F(HDFArrayTest, UnderfilledPatPreAllocate)
+TEST_F(HDF5ArrayTest, UnderfilledPatPreAllocate)
 {
   int ext_x = dash::size() * 5 + 1;
   {
@@ -240,7 +240,7 @@ TEST_F(HDFArrayTest, UnderfilledPatPreAllocate)
   verify_array(array_b);
 }
 
-TEST_F(HDFArrayTest, MultipleDatasets)
+TEST_F(HDF5ArrayTest, MultipleDatasets)
 {
 	int    ext_x    = dash::size() * 5;
 	int    secret_a = 10;
@@ -274,7 +274,7 @@ TEST_F(HDFArrayTest, MultipleDatasets)
  	verify_array(array_d, secret_b);
 }
 
-TEST_F(HDFArrayTest, ModifyDataset)
+TEST_F(HDF5ArrayTest, ModifyDataset)
 {
 	int    ext_x    = dash::size() * 5;
 	double secret_a = 10;
@@ -308,7 +308,7 @@ TEST_F(HDFArrayTest, ModifyDataset)
   verify_array(array_c, secret_b);
 }
 
-TEST_F(HDFArrayTest, StreamCreationFlags)
+TEST_F(HDF5ArrayTest, StreamCreationFlags)
 {
 	int    ext_x    = dash::size() * 5;
 	double secret = 10;

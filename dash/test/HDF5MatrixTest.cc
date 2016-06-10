@@ -79,7 +79,7 @@ void verify_matrix(dash::Matrix<T, ndim, IndexT, PatternT> & matrix,
     f);
 }
 
-TEST_F(HDFMatrixTest, StoreMultiDimMatrix)
+TEST_F(HDF5MatrixTest, StoreMultiDimMatrix)
 {
   typedef dash::TilePattern<2>  pattern_t;
   typedef dash::Matrix <
@@ -130,7 +130,7 @@ TEST_F(HDFMatrixTest, StoreMultiDimMatrix)
   dash::barrier();
 }
 
-TEST_F(HDFMatrixTest, StoreSUMMAMatrix)
+TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
 {
   typedef double  value_t;
   typedef long    index_t;
@@ -177,7 +177,7 @@ TEST_F(HDFMatrixTest, StoreSUMMAMatrix)
   verify_matrix(matrix_b, static_cast<double>(myid));
 }
 
-TEST_F(HDFMatrixTest, AutoGeneratePattern)
+TEST_F(HDF5MatrixTest, AutoGeneratePattern)
 {
   {
     auto matrix_a = dash::Matrix<int, 2>(
@@ -206,7 +206,7 @@ TEST_F(HDFMatrixTest, AutoGeneratePattern)
 // Import data into a already allocated matrix
 // because matrix_a and matrix_b are allocated the same way
 // it is expected that each unit remains its local ranges
-TEST_F(HDFMatrixTest, PreAllocation)
+TEST_F(HDF5MatrixTest, PreAllocation)
 {
   int ext_x = dash::size();
   int ext_y = ext_x * 2 + 1;
@@ -238,7 +238,7 @@ TEST_F(HDFMatrixTest, PreAllocation)
 }
 
 // Test Stream API
-TEST_F(HDFMatrixTest, OutputStream)
+TEST_F(HDF5MatrixTest, OutputStream)
 {
   {
     auto matrix_a = dash::Matrix<long, 2>(
@@ -266,7 +266,7 @@ TEST_F(HDFMatrixTest, OutputStream)
  * Allocate a matrix with extents that cannot fit into full blocks
  */
 #if 1
-TEST_F(HDFMatrixTest, UnderfilledPattern)
+TEST_F(HDF5MatrixTest, UnderfilledPattern)
 {
   typedef dash::Pattern<2, dash::ROW_MAJOR> pattern_t;
 
@@ -305,7 +305,7 @@ TEST_F(HDFMatrixTest, UnderfilledPattern)
   dash::io::StoreHDF::read(matrix_b, _filename, _dataset);
 }
 
-TEST_F(HDFMatrixTest, MultipleDatasets)
+TEST_F(HDF5MatrixTest, MultipleDatasets)
 {
 	int    ext_x    = dash::size() * 5;
 	int    ext_y    = dash::size() * 3;
@@ -340,7 +340,7 @@ TEST_F(HDFMatrixTest, MultipleDatasets)
  	verify_matrix(matrix_d, secret_b);
 }
 
-TEST_F(HDFMatrixTest, ModifyDataset)
+TEST_F(HDF5MatrixTest, ModifyDataset)
 {
 	int    ext_x    = dash::size() * 5;
 	int    ext_y    = dash::size() * 3;
@@ -380,7 +380,7 @@ TEST_F(HDFMatrixTest, ModifyDataset)
 // Test Conversion between dash::Array and dash::Matrix
 // Currently not possible as matrix has to be at least
 // two dimensional
-TEST_F(HDFMatrixTest, ArrayToMatrix)
+TEST_F(HDF5MatrixTest, ArrayToMatrix)
 {
   {
     auto array = dash::Array<int>(100, dash::CYCLIC);

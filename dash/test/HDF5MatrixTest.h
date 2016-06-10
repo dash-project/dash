@@ -7,20 +7,20 @@
 #include <libdash.h>
 #include <stdio.h>
 
-class HDFMatrixTest : public ::testing::Test {
+class HDF5MatrixTest : public ::testing::Test {
   protected:
     dart_unit_t _dash_id;
     size_t      _dash_size;
     std::string _filename = "test_matrix.hdf5";
     std::string _dataset  = "data";
 
-    HDFMatrixTest()
+    HDF5MatrixTest()
         : _dash_id(0),
           _dash_size(0) {
         LOG_MESSAGE(">>> Test suite: HDFTest");
     }
 
-    virtual ~HDFMatrixTest() {
+    virtual ~HDF5MatrixTest() {
         LOG_MESSAGE("<<< Closing test suite: HDFTest");
     }
 
