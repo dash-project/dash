@@ -75,8 +75,8 @@ int main(int argc, char * argv[])
 		// Use delayed allocation
 		array_t array_c;
 
-		dash::io::HDF5OutputStream os(FILENAME);
-		(os << dash::io::HDF5Dataset("data")) >> array_c;
+		dash::io::HDF5InputStream is(FILENAME);
+		is >> dash::io::HDF5Dataset("data") >> array_c;
 	}
 
 	// OK, that was easy. Now let's have a slightly more complex setup
@@ -90,8 +90,8 @@ int main(int argc, char * argv[])
 		// pass allocated array to define custom pattern
 		array_t array_c(pattern_b); // tilesize=7
 
-		dash::io::HDF5OutputStream os(FILENAME);
-		(os << dash::io::HDF5Dataset("data")) >> array_c;
+		dash::io::HDF5InputStream is(FILENAME);
+		is >> dash::io::HDF5Dataset("data") >> array_c;
 
 		if(myid == 0){
 			cout << "Array A Pattern: Tilesize: " << array_a.pattern().blocksize(0) << endl;
@@ -107,12 +107,11 @@ int main(int argc, char * argv[])
 			print_separator();
 			cout << "Add dataset temperature to " << FILENAME << endl;
 		}
-		auto fopts = dash::io::StoreHDF::get_default_options();
-		fopts.overwrite_file = false; // Do not overwrite existing file
 
-		dash::io::HDF5OutputStream os(FILENAME);
+		dash::io::HDF5OutputStream os(FILENAME,
+			dash::io::HDF5FileOptions::Append);
+
 		os << dash::io::HDF5Dataset("temperature") 
-       << fopts
        << array_b;
 
 		dash::barrier();
@@ -125,13 +124,12 @@ int main(int argc, char * argv[])
 			print_separator();
 			cout << "Modify " << FILENAME << " / temperature dataset" << endl;
 		}
-		auto fopts = dash::io::StoreHDF::get_default_options();
-		fopts.overwrite_file = false;
-		fopts.modify_dataset = true;
 
-		dash::io::HDF5OutputStream os(FILENAME);
+		dash::io::HDF5OutputStream os(FILENAME,
+			dash::io::HDF5FileOptions::Append);
+
 		os << dash::io::HDF5Dataset("temperature") 
-       << fopts
+       << dash::io::HDF5modify_dataset() 
        << array_a;
 
 		dash::barrier();
