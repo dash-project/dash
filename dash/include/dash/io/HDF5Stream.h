@@ -11,8 +11,8 @@ namespace io {
 typedef StoreHDF::hdf5_file_options hdf5_file_options;
 typedef uint32_t hdf5_file_creation_options;
 
-enum HDF5FileOptions {
-	Append = 1 // << 0
+enum HDF5FileOptions : hdf5_file_creation_options { 
+	Append = 1 << 0
 };
 
 class HDF5Dataset {

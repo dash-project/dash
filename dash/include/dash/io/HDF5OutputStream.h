@@ -31,10 +31,10 @@ class HDF5OutputStream {
  				: _filename(filename),
 				_foptions(StoreHDF::get_default_options())
 		{
-			if(fcopts && HDF5FileOptions::Append != 0){
+			if((fcopts & HDF5FileOptions::Append) != 0){
 					_foptions.overwrite_file = false;
 				}
-			}
+		}
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,

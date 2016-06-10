@@ -42,6 +42,23 @@ class HDF5InputStream {
         return is;
     }
 
+		// IO Manipulators
+		friend HDF5InputStream & operator>> (
+			HDF5InputStream & is,
+			HDF5setpattern_key pk) {
+			is._foptions.pattern_metadata_key = pk._key;
+			return is;
+		}
+
+		friend HDF5InputStream & operator>> (
+			HDF5InputStream & is,
+			HDF5restore_pattern rs) {
+			is._foptions.restore_pattern = rs._restore;
+			return is;
+		}
+
+
+
     // Array Implementation
     template <
         typename value_t,

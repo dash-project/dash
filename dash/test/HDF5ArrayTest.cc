@@ -309,6 +309,44 @@ TEST_F(HDFArrayTest, ModifyDataset)
   // Verify data
   verify_array(array_c, secret_b);
 }
+
+TEST_F(HDFArrayTest, StreamCreationFlags)
+{
+	int    ext_x    = dash::size() * 5;
+	double secret = 10;
+	{
+    auto array_a = dash::Array<double>(ext_x);
+
+    // Fill
+    fill_array(array_a, secret);
+    dash::barrier();
+
+    // Set option
+
+		dash::io::HDF5OutputStream os(_filename, dash::io::HDF5FileOptions::Append);
+		os << dash::io::HDF5Dataset("settwo")
+			 << dash::io::HDF5setpattern_key("custom_dash_pattern")
+       << dash::io::HDF5store_pattern()
+			 << array_a
+			 << dash::io::HDF5modify_dataset()
+			 << array_a;
+
+		dash::barrier();
+  }
+  dash::Array<double>    array_b;
+	dash::io::HDF5InputStream is(_filename);
+	is >> dash::io::HDF5Dataset("settwo")
+		 >> dash::io::HDF5setpattern_key("custom_dash_pattern")
+     >> dash::io::HDF5restore_pattern()
+     >> array_b;
+	
+  dash::barrier();
+
+  // Verify data
+  verify_array(array_b, secret);
+}
+
+
 #endif // DASH_ENABLE_HDF5
 
 
