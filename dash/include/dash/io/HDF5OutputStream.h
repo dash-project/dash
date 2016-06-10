@@ -9,13 +9,15 @@
 namespace dash {
 namespace io {
 
+
+// Manipulators
+
 /**
  * DASH stream API to store an dash::Array or dash::Matrix
  * in an HDF5 file using parallel IO.
  *
  * All operations are collective.
  */
-
 class HDF5OutputStream {
   private:
     std::string                _filename;
@@ -23,10 +25,16 @@ class HDF5OutputStream {
     hdf5_file_options					 _foptions;
 
   public:
-    HDF5OutputStream(std::string filename) {
-        _filename = filename;
-        _foptions = dash::io::StoreHDF::get_default_options();
-    }
+    HDF5OutputStream(
+				std::string filename,
+				hdf5_file_creation_options fcopts = 0)
+ 				: _filename(filename),
+				_foptions(StoreHDF::get_default_options())
+		{
+			if(fcopts && HDF5FileOptions::Append != 0){
+					_foptions.overwrite_file = false;
+				}
+			}
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
@@ -41,6 +49,29 @@ class HDF5OutputStream {
         os._foptions = opts;
         return os;
     }
+
+		// IO Manipulators
+    friend HDF5OutputStream & operator<< (
+        HDF5OutputStream & os,
+        HDF5setpattern_key pk) {
+        os._foptions.pattern_metadata_key = pk._key;
+        return os;
+    }
+
+    friend HDF5OutputStream & operator<< (
+        HDF5OutputStream & os,
+        HDF5store_pattern sp) {
+        os._foptions.store_pattern = sp._store;
+        return os;
+    }
+
+    friend HDF5OutputStream & operator<< (
+        HDF5OutputStream & os,
+        HDF5modify_dataset md) {
+        os._foptions.modify_dataset = md._modify;
+        return os;
+    }
+
 
     // Array Implementation
     template <

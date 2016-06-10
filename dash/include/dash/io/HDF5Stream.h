@@ -8,7 +8,12 @@
 namespace dash {
 namespace io {
 
-typedef dash::io::StoreHDF::hdf5_file_options hdf5_file_options;
+typedef StoreHDF::hdf5_file_options hdf5_file_options;
+typedef uint32_t hdf5_file_creation_options;
+
+enum HDF5FileOptions {
+	Append = 1 // << 0
+};
 
 class HDF5Dataset {
   public:
@@ -32,6 +37,38 @@ class HDF5Options {
         _foptions = opts;
     }
 };
+
+class HDF5setpattern_key {
+	public:
+		std::string _key;
+	public:
+		HDF5setpattern_key(std::string name):
+			_key(name){ }
+};
+
+class HDF5restore_pattern {
+	public:
+		bool _restore;
+	public:
+		HDF5restore_pattern(bool restore = true):
+			_restore(restore){ }
+	};
+
+class HDF5store_pattern {
+	public:
+		bool _store;
+	public:
+		HDF5store_pattern(bool store = true):
+			_store(store){ }
+	};
+
+class HDF5modify_dataset {
+	public:
+		bool _modify;
+	public:
+		HDF5modify_dataset(bool modify = true):
+			_modify(modify){ }
+	};
 
 }
 }
