@@ -53,16 +53,6 @@ class HDF5OutputStream {
         index_t,
         pattern_t > &array);
 
-    template <
-        typename value_t,
-        typename index_t,
-        class    pattern_t >
-    friend HDF5OutputStream & operator>> (
-        HDF5OutputStream & os,
-        dash::Array < value_t,
-        index_t,
-        pattern_t > &array);
-
     // Matrix Implementation
     template <
         typename value_t,
@@ -76,20 +66,7 @@ class HDF5OutputStream {
         index_t,
         pattern_t > &matrix);
 
-    template <
-        typename value_t,
-        dim_t    ndim,
-        typename index_t,
-        class    pattern_t >
-    friend HDF5OutputStream & operator>> (
-        HDF5OutputStream & os,
-        dash::Matrix < value_t,
-        ndim,
-        index_t,
-        pattern_t > &matrix);
 };
-
-
 
 } // namespace io
 } // namespace dash
