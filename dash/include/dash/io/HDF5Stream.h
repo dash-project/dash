@@ -24,6 +24,7 @@ class HDF5Dataset {
     }
 };
 
+#if 0
 class HDF5Options {
   public:
     hdf5_file_options _foptions;
@@ -37,6 +38,7 @@ class HDF5Options {
         _foptions = opts;
     }
 };
+#endif
 
 class HDF5setpattern_key {
 	public:

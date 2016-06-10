@@ -249,10 +249,8 @@ TEST_F(HDFMatrixTest, OutputStream)
     fill_matrix(matrix_a);
     dash::barrier();
 
-    auto fopts = dash::io::StoreHDF::get_default_options();
     auto os  = dash::io::HDF5OutputStream(_filename);
     os   << dash::io::HDF5Dataset(_dataset)
-         << fopts
          << matrix_a;
   }
   dash::barrier();

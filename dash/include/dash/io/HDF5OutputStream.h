@@ -42,13 +42,14 @@ class HDF5OutputStream {
         os._dataset = tbl._dataset;
         return os;
     }
-
+#if 0
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
         hdf5_file_options opts) {
         os._foptions = opts;
         return os;
     }
+#endif
 
 		// IO Manipulators
     friend HDF5OutputStream & operator<< (

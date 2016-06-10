@@ -35,12 +35,14 @@ class HDF5InputStream {
         return is;
     }
 
+#if 0
     friend HDF5InputStream & operator>> (
         HDF5InputStream & is,
         hdf5_file_options opts) {
         is._foptions = opts;
         return is;
     }
+#endif
 
 		// IO Manipulators
 		friend HDF5InputStream & operator>> (
@@ -56,7 +58,6 @@ class HDF5InputStream {
 			is._foptions.restore_pattern = rs._restore;
 			return is;
 		}
-
 
 
     // Array Implementation
