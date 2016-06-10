@@ -15,6 +15,11 @@ enum HDF5FileOptions : hdf5_file_creation_options {
 	Append = 1 << 0
 };
 
+
+/**
+ * Stream manipulator class to specify
+ * the hdf5 dataset
+ */
 class HDF5Dataset {
   public:
     std::string _dataset;
@@ -24,6 +29,10 @@ class HDF5Dataset {
     }
 };
 
+/**
+ * Stream manipulator class to set the dash
+ * pattern key of the dataset.
+ */
 class HDF5setpattern_key {
 	public:
 		std::string _key;
@@ -32,6 +41,11 @@ class HDF5setpattern_key {
 			_key(name){ }
 };
 
+/**
+ * Stream manipulator class to set whether
+ * the pattern should be restored from the
+ * hdf5 dataset metadata or not.
+ */
 class HDF5restore_pattern {
 	public:
 		bool _restore;
@@ -40,6 +54,11 @@ class HDF5restore_pattern {
 			_restore(restore){ }
 	};
 
+/**
+ * Stream manipulator class to set whether
+ * the pattern should be stored as metadata
+ * of the hdf5 dataset or not.
+ */
 class HDF5store_pattern {
 	public:
 		bool _store;
@@ -48,6 +67,12 @@ class HDF5store_pattern {
 			_store(store){ }
 	};
 
+/**
+ * Stream manipulator class to set whether
+ * the selected dataset should be overwritten.
+ * The element type and the extents in each dimension
+ * have to match the extends of the dataset
+ */
 class HDF5modify_dataset {
 	public:
 		bool _modify;
