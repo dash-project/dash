@@ -24,22 +24,6 @@ class HDF5Dataset {
     }
 };
 
-#if 0
-class HDF5Options {
-  public:
-    hdf5_file_options _foptions;
-    std::string  _test;
-
-  public:
-    HDF5Options() {
-    }
-
-    HDF5Options(hdf5_file_options opts) {
-        _foptions = opts;
-    }
-};
-#endif
-
 class HDF5setpattern_key {
 	public:
 		std::string _key;
