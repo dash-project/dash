@@ -116,7 +116,10 @@ measurement store_matrix(long size, benchmark_params params)
 
   // Store Matrix
   auto ts_start_write    = Timer::Now();
-  dash::io::StoreHDF::write(matrix_a, "test.hdf5", "data");
+
+	dash::io::HDF5OutputStream os("test.hdf5");
+	os << matrix_a;
+
   dash::barrier();
   mes.time_write_s = 1e-6 * Timer::ElapsedSince(ts_start_write);
 
@@ -126,7 +129,10 @@ measurement store_matrix(long size, benchmark_params params)
   auto ts_start_read    = Timer::Now();
   // Read Matrix
   dash::Matrix<double, 2> matrix_b;
-  dash::io::StoreHDF::read(matrix_b, "test.hdf5", "data");
+
+	dash::io::HDF5InputStream is("test.hdf5");
+	is >> matrix_b;
+
   dash::barrier();
 
   mes.time_read_s  = 1e-6 * Timer::ElapsedSince(ts_start_read);
