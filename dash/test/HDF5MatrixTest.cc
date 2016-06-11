@@ -250,14 +250,14 @@ TEST_F(HDF5MatrixTest, OutputStream)
     dash::barrier();
 
     auto os  = dash::io::HDF5OutputStream(_filename);
-    os   << dash::io::HDF5Dataset(_dataset)
+    os   << dash::io::HDF5dataset(_dataset)
          << matrix_a;
   }
   dash::barrier();
   // Import data
   dash::Matrix<long, 2> matrix_b;
   auto is = dash::io::HDF5InputStream(_filename);
-  is >> dash::io::HDF5Dataset(_dataset) >> matrix_b;
+  is >> dash::io::HDF5dataset(_dataset) >> matrix_b;
 
   verify_matrix(matrix_b);
 }

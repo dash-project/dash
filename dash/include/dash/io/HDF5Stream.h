@@ -20,11 +20,11 @@ enum HDF5FileOptions : hdf5_file_options {
  * Stream manipulator class to specify
  * the hdf5 dataset
  */
-class HDF5Dataset {
+class HDF5dataset {
   public:
     std::string _dataset;
   public:
-    HDF5Dataset(std::string dataset) {
+    HDF5dataset(std::string dataset) {
         _dataset = dataset;
     }
 };

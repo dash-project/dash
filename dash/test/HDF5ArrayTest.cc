@@ -162,14 +162,14 @@ TEST_F(HDF5ArrayTest, OutputStream)
     dash::barrier();
 
     auto os  = dash::io::HDF5OutputStream(_filename);
-    os   << dash::io::HDF5Dataset(_dataset)
+    os   << dash::io::HDF5dataset(_dataset)
          << array_a;
   }
   dash::barrier();
   // Import data
   dash::Array<long> array_b;
   auto is = dash::io::HDF5InputStream(_filename);
-  is >> dash::io::HDF5Dataset(_dataset) >> array_b;
+  is >> dash::io::HDF5dataset(_dataset) >> array_b;
 
   verify_array(array_b);
 }
@@ -322,7 +322,7 @@ TEST_F(HDF5ArrayTest, StreamCreationFlags)
     // Set option
 
 		dash::io::HDF5OutputStream os(_filename, dash::io::HDF5FileOptions::Append);
-		os << dash::io::HDF5Dataset("settwo")
+		os << dash::io::HDF5dataset("settwo")
 			 << dash::io::HDF5setpattern_key("custom_dash_pattern")
        << dash::io::HDF5store_pattern()
 			 << array_a
@@ -333,7 +333,7 @@ TEST_F(HDF5ArrayTest, StreamCreationFlags)
   }
   dash::Array<double>    array_b;
 	dash::io::HDF5InputStream is(_filename);
-	is >> dash::io::HDF5Dataset("settwo")
+	is >> dash::io::HDF5dataset("settwo")
 		 >> dash::io::HDF5setpattern_key("custom_dash_pattern")
      >> dash::io::HDF5restore_pattern()
      >> array_b;

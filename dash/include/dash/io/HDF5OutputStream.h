@@ -38,7 +38,7 @@ class HDF5OutputStream {
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
-        const HDF5Dataset & tbl) {
+        const HDF5dataset & tbl) {
         os._dataset = tbl._dataset;
         return os;
     }

@@ -30,7 +30,7 @@ class HDF5InputStream {
 
     friend HDF5InputStream & operator>> (
         HDF5InputStream & is,
-        const HDF5Dataset & tbl) {
+        const HDF5dataset & tbl) {
         is._dataset = tbl._dataset;
         return is;
     }
