@@ -1040,9 +1040,32 @@ public:
     return ret;
   }
 
-bool allocate(const PatternType & pattern)
+  void deallocate()
   {
-    DASH_LOG_TRACE("Array._allocate()", "pattern",
+    DASH_LOG_TRACE_VAR("Array.deallocate()", this);
+    DASH_LOG_TRACE_VAR("Array.deallocate()", m_size);
+    // Assure all units are synchronized before deallocation, otherwise
+    // other units might still be working on the array:
+    if (dash::is_initialized()) {
+      barrier();
+    }
+    // Remove this function from team deallocator list to avoid
+    // double-free:
+    m_pattern.team().unregister_deallocator(
+      this, std::bind(&Array::deallocate, this));
+    // Actual destruction of the array instance:
+    DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem);
+    if (m_globmem != nullptr) {
+      delete m_globmem;
+      m_globmem = nullptr;
+    }
+    m_size = 0;
+    DASH_LOG_TRACE_VAR("Array.deallocate >", this);
+  }
+
+  bool allocate(const PatternType & pattern)
+  {
+		DASH_LOG_TRACE("Array._allocate()", "pattern",
                    pattern.memory_layout().extents());
     // Check requested capacity:
     m_size      = pattern.capacity();
@@ -1083,34 +1106,13 @@ bool allocate(const PatternType & pattern)
                      "waiting for allocation of all units");
       m_team->barrier();
     }
+    m_pattern = pattern;
     DASH_LOG_TRACE("Array._allocate >", "finished");
     return true;
   }
 
-  void deallocate()
-  {
-    DASH_LOG_TRACE_VAR("Array.deallocate()", this);
-    DASH_LOG_TRACE_VAR("Array.deallocate()", m_size);
-    // Assure all units are synchronized before deallocation, otherwise
-    // other units might still be working on the array:
-    if (dash::is_initialized()) {
-      barrier();
-    }
-    // Remove this function from team deallocator list to avoid
-    // double-free:
-    m_pattern.team().unregister_deallocator(
-      this, std::bind(&Array::deallocate, this));
-    // Actual destruction of the array instance:
-    DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem);
-    if (m_globmem != nullptr) {
-      delete m_globmem;
-      m_globmem = nullptr;
-    }
-    m_size = 0;
-    DASH_LOG_TRACE_VAR("Array.deallocate >", this);
-  }
-
 private:
+
 #if 0
   typename std::enable_if<
     std::is_move_constructible<value_type>::value &&

@@ -456,8 +456,7 @@ public:
       H5Aread(attribute_id, H5T_NATIVE_LONG, &tilesize);
       H5Aclose(attribute_id);
       H5Sclose(attrspace);
-      // TODO: Array allocate(pattern) is currently not working.
-#if 0
+
       const pattern_t pattern(
         dash::SizeSpec<1>(static_cast<size_t>(data_dimsf[0])),
         dash::DistributionSpec<1>(dash::TILE(tilesize)),
@@ -465,9 +464,6 @@ public:
         dash::Team::All());
 
       array.allocate(pattern);
-#else
-      array.allocate(data_dimsf[0], dash::TILE(tilesize));
-#endif
     } else if (is_alloc) {
       DASH_LOG_DEBUG("Array already allocated");
       // Check if array size matches data extents
@@ -477,18 +473,14 @@ public:
         "Array size does not match data extents");
     } else {
       // Auto deduce pattern
-#if 0
       const pattern_t pattern(
         dash::SizeSpec<1>(static_cast<size_t>(data_dimsf[0])),
         dash::DistributionSpec<1>(),
         dash::TeamSpec<1>(),
         dash::Team::All());
       array.allocate(pattern);
-#else
-      array.allocate(data_dimsf[0], dash::CYCLIC);
-#endif
     }
-    auto pattern    = array.pattern();
+    pattern_t pattern    = array.pattern();
     h5datatype = _convertType(array[0]); // hack
 
     // get hdf pattern layout
