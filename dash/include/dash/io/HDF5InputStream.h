@@ -20,7 +20,7 @@ class HDF5InputStream {
   private:
     std::string                _filename;
     std::string                _dataset;
-    hdf5_file_options					 _foptions;
+    hdf5_options							 _foptions;
 
   public:
     HDF5InputStream(std::string filename) {

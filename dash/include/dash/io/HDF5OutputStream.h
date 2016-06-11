@@ -22,12 +22,12 @@ class HDF5OutputStream {
   private:
     std::string                _filename;
     std::string                _dataset;
-    hdf5_file_options					 _foptions;
+    hdf5_options							 _foptions;
 
   public:
     HDF5OutputStream(
 				std::string filename,
-				hdf5_file_creation_options fcopts = 0)
+				hdf5_file_options fcopts = 0)
  				: _filename(filename),
 				_foptions(StoreHDF::get_default_options())
 		{

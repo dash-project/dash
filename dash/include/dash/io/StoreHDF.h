@@ -40,7 +40,7 @@ public:
   *
   * Collective operation.
   */
-  typedef struct hdf5_file_options_t {
+  typedef struct hdf5_options_t {
     /// Overwrite HDF5 file if already existing
     bool          overwrite_file;
     /**
@@ -54,7 +54,7 @@ public:
     bool          restore_pattern;
     /// Metadata attribute key in HDF5 file.
     std::string   pattern_metadata_key;
-  } hdf5_file_options;
+  } hdf5_options;
 
   /**
    * test at compile time if pattern is compatible
@@ -93,7 +93,7 @@ public:
               dash::Array<value_t, index_t, pattern_t> & array,
               std::string filename,
               std::string dataset,
-              hdf5_file_options foptions = _get_fdefaults())
+              hdf5_options foptions = _get_fdefaults())
   {
     auto pattern    = array.pattern();
     auto pat_dims   = pattern.ndim();
@@ -240,7 +240,7 @@ public:
                         dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
                         std::string filename,
                         std::string dataset,
-                        hdf5_file_options foptions = _get_fdefaults())
+                        hdf5_options foptions = _get_fdefaults())
   {
     static_assert(
       array.ndim() == pattern_t::ndim(),
@@ -404,7 +404,7 @@ public:
               dash::Array<value_t, index_t, pattern_t> & array,
               std::string filename,
               std::string dataset,
-              hdf5_file_options foptions = _get_fdefaults())
+              hdf5_options foptions = _get_fdefaults())
   {
     long     tilesize;
     int			 rank;
@@ -569,7 +569,7 @@ public:
                         pattern_t > &matrix,
                         std::string filename,
                         std::string dataset,
-                        hdf5_file_options foptions = _get_fdefaults())
+                        hdf5_options foptions = _get_fdefaults())
   {
 
     // HDF5 definition
@@ -728,9 +728,9 @@ public:
 public:
   /**
   * Returns default file options
-   * \return hdf5_file_options struct
+   * \return hdf5_options struct
   */
-  static inline hdf5_file_options get_default_options()
+  static inline hdf5_options get_default_options()
   {
     return _get_fdefaults();
   }
@@ -750,9 +750,9 @@ public:
   };
 
 private:
-  static inline hdf5_file_options _get_fdefaults()
+  static inline hdf5_options _get_fdefaults()
   {
-    hdf5_file_options fopt;
+    hdf5_options fopt;
     fopt.overwrite_file = true;
     fopt.modify_dataset = false;
     fopt.store_pattern = true;

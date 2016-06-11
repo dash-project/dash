@@ -8,10 +8,10 @@
 namespace dash {
 namespace io {
 
-typedef StoreHDF::hdf5_file_options hdf5_file_options;
-typedef uint32_t hdf5_file_creation_options;
+typedef StoreHDF::hdf5_options hdf5_options;
+typedef uint32_t hdf5_file_options;
 
-enum HDF5FileOptions : hdf5_file_creation_options { 
+enum HDF5FileOptions : hdf5_file_options { 
 	Append = 1 << 0
 };
 
