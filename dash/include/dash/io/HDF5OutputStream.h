@@ -29,7 +29,8 @@ class HDF5OutputStream {
 				std::string filename,
 				hdf5_file_options fcopts = 0)
  				: _filename(filename),
-				_foptions(StoreHDF::get_default_options())
+  				_dataset("data"),
+  				_foptions(StoreHDF::get_default_options())
 		{
 			if((fcopts & HDF5FileOptions::Append) != 0){
 					_foptions.overwrite_file = false;

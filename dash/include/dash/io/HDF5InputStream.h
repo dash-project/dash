@@ -23,10 +23,11 @@ class HDF5InputStream {
     hdf5_options							 _foptions;
 
   public:
-    HDF5InputStream(std::string filename) {
-        _filename = filename;
-        _foptions = dash::io::StoreHDF::get_default_options();
-    }
+    HDF5InputStream(std::string filename)
+				: _filename(filename),
+					_dataset("data"),
+					_foptions(dash::io::StoreHDF::get_default_options())
+		{ }
 
     friend HDF5InputStream & operator>> (
         HDF5InputStream & is,
