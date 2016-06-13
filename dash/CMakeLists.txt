@@ -230,7 +230,8 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
       ${MPI_INCLUDE_PATH})
     target_link_libraries(
       ${DASH_LIBRARY}
-      ${MPI_C_LIBRARIES})
+      ${MPI_C_LIBRARIES}
+      ${MPI_CXX_LIBRARIES})
   endif()
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
