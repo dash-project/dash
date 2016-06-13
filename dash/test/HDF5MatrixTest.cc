@@ -10,6 +10,7 @@
 #include "limits.h"
 
 typedef int value_t;
+namespace dio = dash::io;
 
 /**
  * Cantors pairing function to map n-tuple to single number
@@ -79,6 +80,7 @@ void verify_matrix(dash::Matrix<T, ndim, IndexT, PatternT> & matrix,
     f);
 }
 
+
 TEST_F(HDF5MatrixTest, StoreMultiDimMatrix)
 {
   typedef dash::TilePattern<2>  pattern_t;
@@ -123,7 +125,10 @@ TEST_F(HDF5MatrixTest, StoreMultiDimMatrix)
     }
     dash::barrier();
     DASH_LOG_DEBUG("BEGIN STORE HDF");
-    dash::io::StoreHDF::write(mat1, _filename, _dataset);
+
+		dio::HDF5OutputStream os(_filename);
+    os << dio::HDF5dataset(_dataset) << mat1;
+
     DASH_LOG_DEBUG("END STORE HDF");
     dash::barrier();
   }
@@ -167,12 +172,17 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
     dash::barrier();
 
     // Store Matrix
-    dash::io::StoreHDF::write(matrix_a, _filename, _dataset);
+		dio::HDF5OutputStream os(_filename);
+    os << dio::HDF5dataset(_dataset) << matrix_a;
+
     dash::barrier();
   }
 
   dash::Matrix<double, 2> matrix_b;
-  dash::io::StoreHDF::read(matrix_b, _filename, _dataset);
+
+	dio::HDF5InputStream is(_filename);
+	is >> dio::HDF5dataset(_dataset) >> matrix_b;
+
   dash::barrier();
   verify_matrix(matrix_b, static_cast<double>(myid));
 }
@@ -192,11 +202,18 @@ TEST_F(HDF5MatrixTest, AutoGeneratePattern)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.store_pattern = false;
 
-    dash::io::StoreHDF::write(matrix_a, _filename, _dataset, fopts);
+		dio::HDF5OutputStream os(_filename);
+		os << dio::HDF5store_pattern(false)
+       << dio::HDF5dataset(_dataset)
+			 << matrix_a;
+
     dash::barrier();
   }
   dash::Matrix<int, 2> matrix_b;
-  dash::io::StoreHDF::read(matrix_b, _filename, _dataset);
+
+	dio::HDF5InputStream is(_filename);
+	is >> dio::HDF5dataset(_dataset) >> matrix_b;
+
   dash::barrier();
 
   // Verify
@@ -220,46 +237,25 @@ TEST_F(HDF5MatrixTest, PreAllocation)
     dash::barrier();
 
     // Set option
-    auto fopts = dash::io::StoreHDF::get_default_options();
-    fopts.store_pattern = false;
+		dio::HDF5OutputStream os(_filename);
+		os << dio::HDF5store_pattern(false)
+       << dio::HDF5dataset(_dataset)
+			 << matrix_a;
 
-    dash::io::StoreHDF::write(matrix_a, _filename, _dataset, fopts);
     dash::barrier();
   }
   dash::Matrix<int, 2> matrix_b(
     dash::SizeSpec<2>(
       ext_x,
       ext_y));
-  dash::io::StoreHDF::read(matrix_b, _filename, _dataset);
+
+	dio::HDF5InputStream is(_filename);
+	is >> dio::HDF5dataset(_dataset) >> matrix_b;
+
   dash::barrier();
 
   // Verify
   verify_matrix(matrix_b, dash::myid());
-}
-
-// Test Stream API
-TEST_F(HDF5MatrixTest, OutputStream)
-{
-  {
-    auto matrix_a = dash::Matrix<long, 2>(
-                      dash::SizeSpec<2>(
-                        dash::size(),
-                        dash::size()));
-
-    fill_matrix(matrix_a);
-    dash::barrier();
-
-    auto os  = dash::io::HDF5OutputStream(_filename);
-    os   << dash::io::HDF5dataset(_dataset)
-         << matrix_a;
-  }
-  dash::barrier();
-  // Import data
-  dash::Matrix<long, 2> matrix_b;
-  auto is = dash::io::HDF5InputStream(_filename);
-  is >> dash::io::HDF5dataset(_dataset) >> matrix_b;
-
-  verify_matrix(matrix_b);
 }
 
 /**
@@ -297,12 +293,16 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
 
     fill_matrix(matrix_a);
 
-    dash::io::StoreHDF::write(matrix_a, _filename, _dataset);
+		dio::HDF5OutputStream os(_filename);
+		os << dio::HDF5dataset(_dataset)
+       << matrix_a;		
   }
   dash::barrier();
 
   dash::Matrix<int, 2, long, pattern_t> matrix_b;
-  dash::io::StoreHDF::read(matrix_b, _filename, _dataset);
+	dio::HDF5InputStream is(_filename);
+	is >> dio::HDF5dataset(_dataset)
+     >> matrix_b;
 }
 
 TEST_F(HDF5MatrixTest, MultipleDatasets)
@@ -324,14 +324,21 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.overwrite_file = false;
 
-    dash::io::StoreHDF::write(matrix_a, _filename, _dataset, fopts);
-		dash::io::StoreHDF::write(matrix_b, _filename, "datasettwo", fopts);
+		dio::HDF5OutputStream os(_filename);
+		os << dio::HDF5dataset(_dataset)
+       << matrix_a
+			 << dio::HDF5dataset("datasettwo")
+       << matrix_b;
     dash::barrier();
   }
   dash::Matrix<int,2>    matrix_c;
 	dash::Matrix<double,2> matrix_d;
-	dash::io::StoreHDF::read(matrix_c, _filename, _dataset);
-	dash::io::StoreHDF::read(matrix_d, _filename, "datasettwo");
+
+	dio::HDF5InputStream is(_filename);
+	is >> dio::HDF5dataset(_dataset)
+     >> matrix_c
+		 >> dio::HDF5dataset("datasettwo")
+		 >> matrix_d;
 	
   dash::barrier();
 
@@ -359,15 +366,25 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
     auto fopts = dash::io::StoreHDF::get_default_options();
     fopts.overwrite_file = false;
 
-    dash::io::StoreHDF::write(matrix_a, _filename, _dataset, fopts);
+		{
+			dio::HDF5OutputStream os(_filename);
+			os << dio::HDF5dataset(_dataset)
+    	   << matrix_a;
+		}
+
 		dash::barrier();
 		// overwrite first data
-		fopts.modify_dataset = true;
-		dash::io::StoreHDF::write(matrix_b, _filename, _dataset, fopts);
+		dio::HDF5OutputStream os(_filename, dio::HDF5FileOptions::Append);
+		os << dio::HDF5dataset(_dataset)
+       << dio::HDF5modify_dataset()
+       << matrix_b;
     dash::barrier();
   }
   dash::Matrix<double,2>    matrix_c;
-	dash::io::StoreHDF::read(matrix_c, _filename, _dataset);
+
+	dio::HDF5InputStream is(_filename);
+	is >> dio::HDF5dataset(_dataset)
+     >> matrix_c;
 	
   dash::barrier();
 
