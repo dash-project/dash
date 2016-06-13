@@ -4,11 +4,12 @@
  * on a parallel file system like GPFS
  */
 
+#ifdef DASH_ENABLE_HDF5
+
 #include <libdash.h>
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <stdio.h>
 
 using std::cout;
 using std::endl;
@@ -67,7 +68,6 @@ int main(int argc, char** argv)
   Timer::Calibrate(0);
 
   measurement res;
-  double time_s;
 
   dash::util::BenchmarkParams bench_params("bench.11.hdf-io");
   bench_params.print_header();
@@ -244,3 +244,5 @@ void print_params(
   bench_cfg.print_param("-verify","verification",        params.verify);
   bench_cfg.print_section_end();
 }
+
+#endif // DASH_ENABLE_HDF5

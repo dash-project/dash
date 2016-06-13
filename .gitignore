@@ -1,6 +1,8 @@
 config.defs
 build
 build.dev
+build.rel
+build.mic
 build-ci
 *.o
 *.a

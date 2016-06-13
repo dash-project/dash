@@ -46,6 +46,7 @@
 #include <dash/util/TeamLocality.h>
 #include <dash/util/UnitLocality.h>
 
+#include <dash/IO.h>
 #include <dash/io/HDF5.h>
 
 #include <dash/internal/Math.h>
