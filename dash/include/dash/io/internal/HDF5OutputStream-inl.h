@@ -29,6 +29,9 @@ inline HDF5OutputStream & operator<< (
         os._filename,
         os._dataset,
         os._foptions);
+
+		// Append future data in this stream
+		os._foptions.overwrite_file = false;
     return os;
 }
 
@@ -51,7 +54,10 @@ inline HDF5OutputStream & operator<< (
         os._filename,
         os._dataset,
         os._foptions);
-    return os;
+
+   // Append future data in this stream
+	 os._foptions.overwrite_file = false;
+   return os;
 }
 
 } // namespace io
