@@ -23,7 +23,6 @@ inline HDF5InputStream & operator>> (
     index_t,
     pattern_t > &array) {
 
-    array.barrier();
     dash::io::StoreHDF::read(
         array,
         is._filename,
@@ -45,7 +44,6 @@ inline HDF5InputStream & operator>> (
     index_t,
     pattern_t > &matrix) {
 
-    matrix.barrier();
     dash::io::StoreHDF::read(
         matrix,
         is._filename,

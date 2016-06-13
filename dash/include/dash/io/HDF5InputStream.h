@@ -28,6 +28,8 @@ class HDF5InputStream {
 					_dataset("data"),
 					_foptions(dash::io::StoreHDF::get_default_options())
 		{ }
+		
+		// IO Manipulators
 
     friend HDF5InputStream & operator>> (
         HDF5InputStream & is,
@@ -36,8 +38,6 @@ class HDF5InputStream {
         return is;
     }
 
-
-		// IO Manipulators
 		friend HDF5InputStream & operator>> (
 			HDF5InputStream & is,
 			HDF5setpattern_key pk) {
