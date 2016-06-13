@@ -5,6 +5,7 @@
 
 #include <string>
 #include <dash/Matrix.h>
+#include <dash/Array.h>
 
 namespace dash {
 namespace io {
@@ -15,7 +16,6 @@ namespace io {
  *
  * All operations are collective.
  */
-
 class HDF5InputStream {
   private:
     std::string                _filename;

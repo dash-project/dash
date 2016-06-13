@@ -5,12 +5,10 @@
 
 #include <string>
 #include <dash/Matrix.h>
+#include <dash/Array.h>
 
 namespace dash {
 namespace io {
-
-
-// Manipulators
 
 /**
  * DASH stream API to store an dash::Array or dash::Matrix
@@ -37,6 +35,8 @@ class HDF5OutputStream {
 				}
 		}
 
+		// IO Manipulators
+
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
         const HDF5dataset & tbl) {
@@ -44,7 +44,6 @@ class HDF5OutputStream {
         return os;
     }
 
-		// IO Manipulators
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
         HDF5setpattern_key pk) {
