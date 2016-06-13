@@ -12,14 +12,20 @@
 
 if(NOT HDF5_PREFIX AND NOT $ENV{HDF5_BASE} STREQUAL "")
 	set(HDF5_PREFIX $ENV{HDF5_BASE})
+  message(STATUS "Searching for HDF5 library in path " ${HDF5_PREFIX})
+endif()
+if(NOT HDF5_PREFIX)
+	set(HDF5_PREFIX "/usr/")
 endif()
 
-message(STATUS "Searching for HDF5 library in path " ${HDF5_PREFIX})
 
 message(STATUS "Try to find HDF5 cmake package")
+
+# set(HDF5_USE_STATIC_LIBRARIES ON)
+set(HDF5_PREFER_PARALLEL ON)
 find_package (
-	HDF5
-	NAMES hdf5 COMPONENTS C
+  HDF5
+# NAMES hdf5 COMPONENTS C
 )
 
 if(NOT HDF5_FOUND)

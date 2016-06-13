@@ -25,7 +25,7 @@ inline HDF5OutputStream & operator<< (
     pattern_t > &array) {
 
     array.barrier();
-    dash::io::StoreHDF::write(
+    dash::io::hdf5::StoreHDF::write(
         array,
         os._filename,
         os._dataset,
@@ -50,7 +50,7 @@ inline HDF5OutputStream & operator<< (
     pattern_t > &matrix) {
 
     matrix.barrier();
-    dash::io::StoreHDF::write(
+    dash::io::hdf5::StoreHDF::write(
         matrix,
         os._filename,
         os._dataset,

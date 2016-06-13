@@ -15,6 +15,10 @@ using std::endl;
 using std::setw;
 using std::setprecision;
 
+using dash::io::hdf5::HDF5InputStream;
+using dash::io::hdf5::HDF5OutputStream;
+
+
 typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
         > Timer;
@@ -117,7 +121,7 @@ measurement store_matrix(long size, benchmark_params params)
   // Store Matrix
   auto ts_start_write    = Timer::Now();
 
-	dash::io::HDF5OutputStream os("test.hdf5");
+	HDF5OutputStream os("test.hdf5");
 	os << matrix_a;
 
   dash::barrier();
@@ -130,7 +134,7 @@ measurement store_matrix(long size, benchmark_params params)
   // Read Matrix
   dash::Matrix<double, 2> matrix_b;
 
-	dash::io::HDF5InputStream is("test.hdf5");
+	HDF5InputStream is("test.hdf5");
 	is >> matrix_b;
 
   dash::barrier();

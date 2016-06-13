@@ -1,11 +1,13 @@
-#ifdef DASH_ENABLE_HDF5
-
 #ifndef DASH__TEST__HDF5_ARRAY_TEST_H__INCLUDED
 #define DASH__TEST__HDF5_ARRAY_TEST_H__INCLUDED
 
+#ifdef DASH_ENABLE_HDF5
+
 #include <gtest/gtest.h>
 #include <libdash.h>
-#include <stdio.h>
+
+#include "TestBase.h"
+
 
 class HDF5ArrayTest : public ::testing::Test {
   protected:
@@ -45,5 +47,6 @@ class HDF5ArrayTest : public ::testing::Test {
     }
 };
 
-#endif // DASH__TEST__HDF5_ARRAY_TEST_H__INCLUDED
 #endif // DASH_ENABLE_HDF5
+
+#endif // DASH__TEST__HDF5_ARRAY_TEST_H__INCLUDED

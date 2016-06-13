@@ -24,7 +24,7 @@ inline HDF5InputStream & operator>> (
                  index_t,
                  pattern_t > & array) {
 
-    dash::io::StoreHDF::read(
+    dash::io::hdf5::StoreHDF::read(
         array,
         is._filename,
         is._dataset,
@@ -45,7 +45,7 @@ inline HDF5InputStream & operator>> (
                   index_t,
                   pattern_t > & matrix) {
 
-    dash::io::StoreHDF::read(
+    dash::io::hdf5::StoreHDF::read(
         matrix,
         is._filename,
         is._dataset,

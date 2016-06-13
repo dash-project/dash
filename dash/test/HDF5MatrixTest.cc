@@ -10,7 +10,7 @@
 
 
 typedef int value_t;
-namespace dio = dash::io;
+namespace dio = dash::io::hdf5;
 
 /**
  * Cantors pairing function to map n-tuple to single number
@@ -199,7 +199,7 @@ TEST_F(HDF5MatrixTest, AutoGeneratePattern)
     dash::barrier();
 
     // Set option
-    auto fopts = dash::io::StoreHDF::get_default_options();
+    auto fopts = dio::StoreHDF::get_default_options();
     fopts.store_pattern = false;
 
 		dio::HDF5OutputStream os(_filename);
@@ -295,7 +295,7 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
 
 		dio::HDF5OutputStream os(_filename);
 		os << dio::HDF5dataset(_dataset)
-       << matrix_a;		
+       << matrix_a;
   }
   dash::barrier();
 
@@ -321,7 +321,7 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
     dash::barrier();
 
     // Set option
-    auto fopts = dash::io::StoreHDF::get_default_options();
+    auto fopts = dio::StoreHDF::get_default_options();
     fopts.overwrite_file = false;
 
 		dio::HDF5OutputStream os(_filename);
@@ -339,7 +339,7 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
      >> matrix_c
 		 >> dio::HDF5dataset("datasettwo")
 		 >> matrix_d;
-	
+
   dash::barrier();
 
   // Verify data
@@ -363,7 +363,7 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
     dash::barrier();
 
     // Set option
-    auto fopts = dash::io::StoreHDF::get_default_options();
+    auto fopts = dio::StoreHDF::get_default_options();
     fopts.overwrite_file = false;
 
 		{
@@ -385,7 +385,7 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
 	dio::HDF5InputStream is(_filename);
 	is >> dio::HDF5dataset(_dataset)
      >> matrix_c;
-	
+
   dash::barrier();
 
   // Verify data
@@ -408,14 +408,14 @@ TEST_F(HDF5MatrixTest, ArrayToMatrix)
     }
 
     // Do not store pattern
-    auto fopts = dash::io::StoreHDF::get_default_options();
+    auto fopts = dio::StoreHDF::get_default_options();
     fopts.store_pattern = false;
 
-    dash::io::StoreHDF::write(array, _filename, _dataset);
+    dio::StoreHDF::write(array, _filename, _dataset);
     dash::barrier();
   }
   dash::Matrix<int, 1> matrix;
-  dash::io::StoreHDF::read(matrix, _filename, _dataset);
+  dio::StoreHDF::read(matrix, _filename, _dataset);
   dash::barrier();
 
   // Verify
