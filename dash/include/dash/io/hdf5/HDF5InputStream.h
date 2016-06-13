@@ -1,5 +1,5 @@
-#ifndef DASH__IO__HDF5_INPUT_STREAM_H__
-#define DASH__IO__HDF5_INPUT_STREAM_H__
+#ifndef DASH__IO__HDF5__HDF5_INPUT_STREAM_H__
+#define DASH__IO__HDF5__HDF5_INPUT_STREAM_H__
 
 #ifdef DASH_ENABLE_HDF5
 
@@ -9,6 +9,7 @@
 
 namespace dash {
 namespace io {
+namespace hdf5 {
 
 /**
  * DASH stream API to store an dash::Array or dash::Matrix
@@ -20,16 +21,16 @@ class HDF5InputStream {
   private:
     std::string                _filename;
     std::string                _dataset;
-    hdf5_options							 _foptions;
+    hdf5_options               _foptions;
 
   public:
     HDF5InputStream(std::string filename)
-				: _filename(filename),
-					_dataset("data"),
-					_foptions(StoreHDF::get_default_options())
-		{ }
-		
-		// IO Manipulators
+        : _filename(filename),
+          _dataset("data"),
+          _foptions(StoreHDF::get_default_options())
+    { }
+
+    // IO Manipulators
 
     friend HDF5InputStream & operator>> (
         HDF5InputStream & is,
@@ -38,19 +39,19 @@ class HDF5InputStream {
         return is;
     }
 
-		friend HDF5InputStream & operator>> (
-			HDF5InputStream & is,
-			HDF5setpattern_key pk) {
-			is._foptions.pattern_metadata_key = pk._key;
-			return is;
-		}
+    friend HDF5InputStream & operator>> (
+      HDF5InputStream & is,
+      HDF5setpattern_key pk) {
+      is._foptions.pattern_metadata_key = pk._key;
+      return is;
+    }
 
-		friend HDF5InputStream & operator>> (
-			HDF5InputStream & is,
-			HDF5restore_pattern rs) {
-			is._foptions.restore_pattern = rs._restore;
-			return is;
-		}
+    friend HDF5InputStream & operator>> (
+      HDF5InputStream & is,
+      HDF5restore_pattern rs) {
+      is._foptions.restore_pattern = rs._restore;
+      return is;
+    }
 
 
     // Array Implementation
@@ -59,10 +60,10 @@ class HDF5InputStream {
         typename index_t,
         class    pattern_t >
     friend HDF5InputStream & operator>> (
-        HDF5InputStream & is,
+        HDF5InputStream           & is,
         dash::Array < value_t,
-        index_t,
-        pattern_t > &array);
+                      index_t,
+                      pattern_t > & array);
 
     // Matrix Implementation
     template <
@@ -71,18 +72,19 @@ class HDF5InputStream {
         typename index_t,
         class    pattern_t >
     friend HDF5InputStream & operator>> (
-        HDF5InputStream & is,
-        dash::Matrix < value_t,
-        ndim,
-        index_t,
-        pattern_t > &matrix);
+        HDF5InputStream           & is,
+        dash::Matrix< value_t,
+                      ndim,
+                      index_t,
+                      pattern_t > & matrix);
 };
 
+} // namespace hfd5
 } // namespace io
 } // namespace dash
 
-#include <dash/io/internal/HDF5InputStream-inl.h>
+#include <dash/io/hdf5/internal/HDF5InputStream-inl.h>
 
 #endif // DASH_ENABLE_HDF5
 
-#endif // DASH__IO__HDF5_INPUT_STREAM_H__
+#endif // DASH__IO__HDF5__HDF5_INPUT_STREAM_H__

@@ -1,5 +1,5 @@
-#ifndef DASH__IO__HDF5_OUTPUT_STREAM_H__
-#define DASH__IO__HDF5_OUTPUT_STREAM_H__
+#ifndef DASH__IO__HDF5__HDF5_OUTPUT_STREAM_H__
+#define DASH__IO__HDF5__HDF5_OUTPUT_STREAM_H__
 
 #ifdef DASH_ENABLE_HDF5
 
@@ -9,6 +9,7 @@
 
 namespace dash {
 namespace io {
+namespace hdf5 {
 
 /**
  * DASH stream API to store an dash::Array or dash::Matrix
@@ -20,22 +21,22 @@ class HDF5OutputStream {
   private:
     std::string                _filename;
     std::string                _dataset;
-    hdf5_options							 _foptions;
+    hdf5_options               _foptions;
 
   public:
     HDF5OutputStream(
-				std::string filename,
-				hdf5_file_options fcopts = 0)
- 				: _filename(filename),
-  				_dataset("data"),
-  				_foptions(StoreHDF::get_default_options())
-		{
-			if((fcopts & HDF5FileOptions::Append) != 0){
-					_foptions.overwrite_file = false;
-				}
-		}
+        std::string filename,
+        hdf5_file_options fcopts = 0)
+        : _filename(filename),
+          _dataset("data"),
+          _foptions(StoreHDF::get_default_options())
+    {
+      if((fcopts & HDF5FileOptions::Append) != 0){
+          _foptions.overwrite_file = false;
+        }
+    }
 
-		// IO Manipulators
+    // IO Manipulators
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
@@ -92,11 +93,12 @@ class HDF5OutputStream {
 
 };
 
+} // namespace hdf5
 } // namespace io
 } // namespace dash
 
-#include <dash/io/internal/HDF5OutputStream-inl.h>
+#include <dash/io/hdf5/internal/HDF5OutputStream-inl.h>
 
 #endif // DASH_ENABLE_HDF5
 
-#endif // DASH__IO__HDF5_OUTPUT_STREAM_H__
+#endif // DASH__IO__HDF5__HDF5_OUTPUT_STREAM_H__

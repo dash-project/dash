@@ -1,5 +1,5 @@
-#ifndef DASH__IO__HDF5_STREAM_H__
-#define DASH__IO__HDF5_STREAM_H__
+#ifndef DASH__IO__HDF5__HDF5_STREAM_H__
+#define DASH__IO__HDF5__HDF5_STREAM_H__
 
 #ifdef DASH_ENABLE_HDF5
 
@@ -7,12 +7,13 @@
 
 namespace dash {
 namespace io {
+namespace hdf5 {
 
 typedef StoreHDF::hdf5_options hdf5_options;
 typedef uint32_t hdf5_file_options;
 
-enum HDF5FileOptions : hdf5_file_options { 
-	Append = 1 << 0
+enum HDF5FileOptions : hdf5_file_options {
+  Append = 1 << 0
 };
 
 
@@ -34,11 +35,11 @@ class HDF5dataset {
  * pattern key of the dataset.
  */
 class HDF5setpattern_key {
-	public:
-		std::string _key;
-	public:
-		HDF5setpattern_key(std::string name):
-			_key(name){ }
+  public:
+    std::string _key;
+  public:
+    HDF5setpattern_key(std::string name):
+      _key(name){ }
 };
 
 /**
@@ -47,12 +48,12 @@ class HDF5setpattern_key {
  * hdf5 dataset metadata or not.
  */
 class HDF5restore_pattern {
-	public:
-		bool _restore;
-	public:
-		HDF5restore_pattern(bool restore = true):
-			_restore(restore){ }
-	};
+  public:
+    bool _restore;
+  public:
+    HDF5restore_pattern(bool restore = true):
+      _restore(restore){ }
+  };
 
 /**
  * Stream manipulator class to set whether
@@ -60,12 +61,12 @@ class HDF5restore_pattern {
  * of the hdf5 dataset or not.
  */
 class HDF5store_pattern {
-	public:
-		bool _store;
-	public:
-		HDF5store_pattern(bool store = true):
-			_store(store){ }
-	};
+  public:
+    bool _store;
+  public:
+    HDF5store_pattern(bool store = true):
+      _store(store){ }
+  };
 
 /**
  * Stream manipulator class to set whether
@@ -74,19 +75,20 @@ class HDF5store_pattern {
  * have to match the extends of the dataset
  */
 class HDF5modify_dataset {
-	public:
-		bool _modify;
-	public:
-		HDF5modify_dataset(bool modify = true):
-			_modify(modify){ }
-	};
+  public:
+    bool _modify;
+  public:
+    HDF5modify_dataset(bool modify = true):
+      _modify(modify){ }
+  };
 
-}
-}
+} // namespace hdf5
+} // namespace io
+} // namespace dash
 
-#include <dash/io/HDF5OutputStream.h>
-#include <dash/io/HDF5InputStream.h>
+#include <dash/io/hdf5/HDF5OutputStream.h>
+#include <dash/io/hdf5/HDF5InputStream.h>
 
 #endif // DASH_ENABLE_HDF5
 
-#endif // DASH__IO__HDF5_STREAM_H__
+#endif // DASH__IO__HDF5__HDF5_STREAM_H__

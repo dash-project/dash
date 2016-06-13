@@ -1,17 +1,17 @@
-#ifndef DASH__IO__INTERNAL__HDF5_OUTPUT_STREAM_H__
-#define DASH__IO__INTERNAL__HDF5_OUTPUT_STREAM_H__
+#ifndef DASH__IO__INTERNAL__HDF5__HDF5_OUTPUT_STREAM_INL_H__INCLUDED
+#define DASH__IO__INTERNAL__HDF5__HDF5_OUTPUT_STREAM_INL_H__INCLUDED
 
 
-#include <dash/io/HDF5OutputStream.h>
-#include <dash/io/StoreHDF.h>
+#include <dash/io/hdf5/HDF5OutputStream.h>
+#include <dash/io/hdf5/StoreHDF.h>
 
 #include <dash/Matrix.h>
 #include <dash/Array.h>
 
 
-
 namespace dash {
 namespace io {
+namespace hdf5 {
 
 // Array implementation
 template <
@@ -61,7 +61,8 @@ inline HDF5OutputStream & operator<< (
    return os;
 }
 
+} // namespace hdf5
 } // namespace io
 } // namespace dash
 
-#endif // DASH__IO__INTERNAL__HDF5_OUTPUT_STREAM_H__
+#endif // DASH__IO__INTERNAL__HDF5__HDF5_OUTPUT_STREAM_INL_H__INCLUDED

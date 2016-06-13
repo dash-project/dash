@@ -1,5 +1,6 @@
 config.defs
 build
+build.dev
 build-ci
 *.o
 *.a

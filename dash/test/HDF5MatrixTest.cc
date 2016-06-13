@@ -1,13 +1,13 @@
 #ifdef DASH_ENABLE_HDF5
 
-#include <libdash.h>
-#include <gtest/gtest.h>
-
 #include "TestBase.h"
 #include "TestLogHelpers.h"
 #include "HDF5MatrixTest.h"
 
-#include "limits.h"
+#include <libdash.h>
+#include <gtest/gtest.h>
+#include <limits.h>
+
 
 typedef int value_t;
 namespace dio = dash::io;
@@ -84,11 +84,11 @@ void verify_matrix(dash::Matrix<T, ndim, IndexT, PatternT> & matrix,
 TEST_F(HDF5MatrixTest, StoreMultiDimMatrix)
 {
   typedef dash::TilePattern<2>  pattern_t;
-  typedef dash::Matrix <
-  value_t,
-  2,
-  long,
-  pattern_t >          matrix_t;
+  typedef dash::Matrix<
+            value_t,
+            2,
+            long,
+            pattern_t >         matrix_t;
 
   auto numunits =  dash::Team::All().size();
   dash::TeamSpec<2> team_spec(numunits, 1);
@@ -426,6 +426,5 @@ TEST_F(HDF5MatrixTest, ArrayToMatrix)
   }
 }
 #endif
+
 #endif // DASH_ENABLE_HDF5
-
-

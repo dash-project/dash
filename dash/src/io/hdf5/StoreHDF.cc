@@ -1,5 +1,5 @@
 
-#include <dash/io/StoreHDF.h>
+#include <dash/io/hdf5/StoreHDF.h>
 
 #ifdef DASH_ENABLE_HDF5
 
@@ -14,6 +14,7 @@
 
 namespace dash {
 namespace io {
+namespace hdf5 {
 
 /*
  * \see https://www.hdfgroup.org/HDF5/doc/H5.user/Datatypes.html
@@ -39,7 +40,6 @@ void StoreHDF::write(
   std::string filename,
   std::string table)
 {
-
   auto    globalsize = array.size();
   auto    localsize   = array.pattern().local_size();
   auto    tilesize   = array.pattern().blocksize(0);
@@ -108,9 +108,9 @@ void StoreHDF::write(
 
   // Select Hyperslabs in file
   count[0]  = (hsize_t) (localsize/tilesize); // tiles per node
-  stride[0]  = (hsize_t) tiledist;   // space between two tiles of same node
+  stride[0] = (hsize_t) tiledist;  // space between two tiles of same node
   offset[0] = (hsize_t) lbegindex; // offset in positions
-  block[0]  = (hsize_t) tilesize;   // size of a tile
+  block[0]  = (hsize_t) tilesize;  // size of a tile
 
   filespace = H5Dget_space(dataset);
   H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, stride, count, block);
@@ -259,6 +259,7 @@ void StoreHDF::read(
 
 #endif // __OLD__
 
+} // namespace hdf5
 } // namespace io
 } // namespace dash
 

@@ -21,10 +21,15 @@
 #include <vector>
 #include <array>
 
+#ifdef MPI_IMPL_ID
 #include <mpi.h>
+#else
+#pragma error "HDF5 module requires dart-mpi"
+#endif
 
 namespace dash {
 namespace io {
+namespace hdf5 {
 
 /**
  * DASH wrapper to store an dash::Array or dash::Matrix
@@ -44,7 +49,7 @@ public:
     /// Overwrite HDF5 file if already existing
     bool          overwrite_file;
     /**
-		 * Modify an already existing HDF5 dataset.
+     * Modify an already existing HDF5 dataset.
      * If the dataset is not existing, throws a runtime error
      */
     bool          modify_dataset;
@@ -76,10 +81,11 @@ public:
   /**
    * Store all dash::Array values in an HDF5 file using parallel IO.
    * Collective operation.
-   * \param array     Array to store
-  	 * \param filename  Filename of HDF5 file including extension
-   * \param dataset     HDF5 Dataset in which the data is stored
-  	 * \param foptions
+   *
+   * \param  array     Array to store
+   * \param  filename  Filename of HDF5 file including extension
+   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  foptions
    */
   template <
     typename value_t,
@@ -144,14 +150,14 @@ public:
     memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
     internal_type = H5Tcopy(h5datatype);
 
-		if(foptions.modify_dataset){
-			// Open dataset in RW mode
-			h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
-		} else {
-    	// Create dataset
-    	h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
+    if(foptions.modify_dataset){
+      // Open dataset in RW mode
+      h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+    } else {
+      // Create dataset
+      h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-		}
+    }
     // Close global dataspace
     H5Sclose(filespace);
 
@@ -199,10 +205,10 @@ public:
       hid_t attrspace = H5Screate(H5S_SCALAR);
       long attr = (long) tilesize;
 
-			// Delete old attribute when overwriting dataset
-			if(foptions.modify_dataset){
-				H5Adelete(h5dset, pat_key);
-			}
+      // Delete old attribute when overwriting dataset
+      if(foptions.modify_dataset){
+        H5Adelete(h5dset, pat_key);
+      }
       hid_t attribute_id = H5Acreate(
                              h5dset, pat_key, H5T_NATIVE_LONG,
                              attrspace, H5P_DEFAULT, H5P_DEFAULT);
@@ -220,27 +226,27 @@ public:
   }
 
   /**
-  * Store all dash::Matrix values in an HDF5 file using parallel IO
-  	* Collective operation.
-  * \param array     Array to store
-   * \param filename  Filename of HDF5 file including extension
-  * \param dataset     HDF5 Dataset in which the data is stored
-   * \param foptions
-  */
+   * Store all dash::Matrix values in an HDF5 file using parallel IO.
+   *
+   * Collective operation.
+   *
+   * \param  array     Array to store
+   * \param  filename  Filename of HDF5 file including extension
+   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  foptions
+   */
   template <
     typename value_t,
     dim_t    ndim,
     typename index_t,
-    typename pattern_t
-    >
+    typename pattern_t >
   typename std::enable_if <
-  _compatible_pattern<pattern_t>(),
-                      void >::type
-                      static write(
-                        dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
-                        std::string filename,
-                        std::string dataset,
-                        hdf5_options foptions = _get_fdefaults())
+    _compatible_pattern<pattern_t>(), void >::type
+        static write(
+          dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
+          std::string filename,
+          std::string dataset,
+          hdf5_options foptions = _get_fdefaults())
   {
     static_assert(
       array.ndim() == pattern_t::ndim(),
@@ -284,10 +290,13 @@ public:
 
     if (foptions.overwrite_file || (f_exists.get() <= 0)) {
       // HD5 create file
-      file_id = H5Fcreate( filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, plist_id );
+      file_id = H5Fcreate(filename.c_str(),
+                          H5F_ACC_TRUNC,
+                          H5P_DEFAULT,
+                          plist_id);
     } else {
       // Open file in RW mode
-      file_id = H5Fopen( filename.c_str(), H5F_ACC_RDWR, plist_id );
+      file_id = H5Fopen(filename.c_str(), H5F_ACC_RDWR, plist_id );
     }
 
     // close property list
@@ -298,14 +307,14 @@ public:
     memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
     internal_type = H5Tcopy(h5datatype);
 
-		if(foptions.modify_dataset){
-			// Open dataset in RW mode
-			h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
-		} else {
-    	// Create dataset
-    	h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
+    if(foptions.modify_dataset){
+      // Open dataset in RW mode
+      h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+    } else {
+      // Create dataset
+      h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-		}
+    }
 
     // Close global dataspace
     H5Sclose(filespace);
@@ -349,10 +358,10 @@ public:
       auto pat_key = foptions.pattern_metadata_key.c_str();
       long pattern_spec[ndim * 4];
 
-			// Delete old attribute when overwriting dataset
-			if(foptions.modify_dataset){
-				H5Adelete(h5dset, pat_key);
-			}
+      // Delete old attribute when overwriting dataset
+      if(foptions.modify_dataset){
+        H5Adelete(h5dset, pat_key);
+      }
       // Structure is
       // sizespec, teamspec, blockspec, blocksize
       for (int i = 0; i < ndim; ++i) {
@@ -381,17 +390,18 @@ public:
   }
 
   /**
-  * Read an HDF5 dataset into a dash::Array using parallel IO
-  * if the array is already allocated, the size has to match the HDF5 dataset
+   * Read an HDF5 dataset into a dash::Array using parallel IO
+   * if the array is already allocated, the size has to match the HDF5 dataset
    * size and all data will be overwritten.
-  * Otherwise the array will be allocated.
-  *
-  * Colletive operation.
-  * \param array     Import data in this dash::Array
+   * Otherwise the array will be allocated.
+   *
+   * Colletive operation.
+   *
+   * \param array     Import data in this dash::Array
    * \param filename  Filename of HDF5 file including extension
-  * \param dataset     HDF5 Dataset in which the data is stored
+   * \param dataset   HDF5 Dataset in which the data is stored
    * \param foptions
-  */
+   */
   template <
     typename value_t,
     typename index_t,
@@ -407,7 +417,7 @@ public:
               hdf5_options foptions = _get_fdefaults())
   {
     long     tilesize;
-    int			 rank;
+    int       rank;
     // HDF5 definition
     hid_t    file_id;
     hid_t    h5dset;
@@ -448,8 +458,8 @@ public:
     // Check if matrix is already allocated
     bool is_alloc  = (array.size() != 0);
 
-    if (!is_alloc												  // not allocated
-        && foptions.restore_pattern			  // pattern should be restored
+    if (!is_alloc                          // not allocated
+        && foptions.restore_pattern        // pattern should be restored
         && H5Aexists(h5dset, pat_key)) { // hdf5 contains pattern
       hid_t attrspace      = H5Screate(H5S_SCALAR);
       hid_t attribute_id  = H5Aopen(h5dset, pat_key, H5P_DEFAULT);
@@ -537,13 +547,15 @@ public:
   /**
    * Read an HDF5 dataset into a dash::Matrix using parallel IO
    * if the matrix is already allocated, the sizes have to match
-  	 * the HDF5 dataset sizes and all data will be overwritten.
+   * the HDF5 dataset sizes and all data will be overwritten.
    * Otherwise the matrix will be allocated.
-   * Collective operation
-   * \param matrix    Import data in this dash::Matrix
-  	 * \param filename  Filename of HDF5 file including extension
-   * \param dataset     HDF5 Dataset in which the data is stored
-  	 * \param foptions
+   *
+   * Collective operation.
+   *
+   * \param  matrix    Import data in this dash::Matrix
+   * \param  filename  Filename of HDF5 file including extension
+   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  foptions
    */
   template <
     typename value_t,
@@ -563,7 +575,6 @@ public:
                         std::string dataset,
                         hdf5_options foptions = _get_fdefaults())
   {
-
     // HDF5 definition
     hid_t   file_id;
     hid_t   h5dset;
@@ -598,7 +609,8 @@ public:
     rank          = H5Sget_simple_extent_ndims(filespace);
 
     DASH_ASSERT_EQ(rank, ndim,
-                   "Data dimension of HDF5 dataset does not match matrix dimension");
+                   "Data dimension of HDF5 dataset does not match matrix "
+                   "dimension");
 
     status        = H5Sget_simple_extent_dims(filespace, data_dimsf, NULL);
 
@@ -617,8 +629,8 @@ public:
     // Check if matrix is already allocated
     bool is_alloc  = (matrix.size() != 0);
 
-    if (!is_alloc												// not allocated
-        && foptions.restore_pattern			// pattern should be restored
+    if (!is_alloc                        // not allocated
+        && foptions.restore_pattern      // pattern should be restored
         && H5Aexists(h5dset, pat_key)) { // hdf5 contains pattern
       hsize_t attr_len[]  = { ndim * 4};
       hid_t attrspace      = H5Screate_simple(1, attr_len, NULL);
@@ -719,17 +731,18 @@ public:
 
 public:
   /**
-  * Returns default file options
+   * Default file options.
+   *
    * \return hdf5_options struct
-  */
+   */
   static inline hdf5_options get_default_options()
   {
     return _get_fdefaults();
   }
 
   /**
-  * hdf5 pattern specification for parallel IO
-  */
+   * hdf5 pattern specification for parallel IO
+   */
   template <
     dim_t ndim >
   struct hdf5_pattern_spec {
@@ -742,6 +755,7 @@ public:
   };
 
 private:
+
   static inline hdf5_options _get_fdefaults()
   {
     hdf5_options fopt;
@@ -824,6 +838,7 @@ private:
   }
 
 private:
+
   static inline hid_t _convertType(int t)
   {
     return H5T_NATIVE_INT;
@@ -843,10 +858,11 @@ private:
 
 };
 
+} // namespace hdf5
 } // namespace io
 } // namespace dash
 
-#include <dash/io/HDF5Stream.h>
+#include <dash/io/hdf5/HDF5Stream.h>
 
 #endif // DASH_ENABLE_HDF5
 
