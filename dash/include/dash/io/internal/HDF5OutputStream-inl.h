@@ -6,6 +6,7 @@
 #include <dash/io/StoreHDF.h>
 
 #include <dash/Matrix.h>
+#include <dash/Array.h>
 
 
 

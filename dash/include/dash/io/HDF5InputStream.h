@@ -26,7 +26,7 @@ class HDF5InputStream {
     HDF5InputStream(std::string filename)
 				: _filename(filename),
 					_dataset("data"),
-					_foptions(dash::io::StoreHDF::get_default_options())
+					_foptions(StoreHDF::get_default_options())
 		{ }
 		
 		// IO Manipulators
