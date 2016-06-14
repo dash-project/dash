@@ -39,12 +39,12 @@ namespace hdf5 {
 class StoreHDF {
 public:
   /**
-  * Options which can be passed to dash::io::StoreHDF::write
-  * to specify how existing structures are treated and what
-  * metadata is stored.
-  *
-  * Collective operation.
-  */
+   * Options which can be passed to dash::io::StoreHDF::write
+   * to specify how existing structures are treated and what
+   * metadata is stored.
+   *
+   * Collective operation.
+   */
   typedef struct hdf5_options_t {
     /// Overwrite HDF5 file if already existing
     bool          overwrite_file;

@@ -20,10 +20,38 @@ namespace hdf5 {
  * All operations are collective.
  */
 class HDF5OutputStream {
-  private:
-    std::string                _filename;
-    std::string                _dataset;
-    hdf5_options               _foptions;
+
+public:
+  /**
+   * Options which can be passed to dash::io::HDF5OutputStream::write
+   * to specify how existing structures are treated and what
+   * metadata is stored.
+   */
+  typedef struct hdf5_writemode_t
+  {
+    /// Overwrite HDF5 file if already existing
+    bool          overwrite_file;
+
+    /// Modify an already existing HDF5 dataset.
+    /// If the dataset is not existing, throws a runtime error
+    bool          modify_dataset;
+
+    /// Store dash pattern characteristics as metadata in HDF5 file
+    bool          store_pattern;
+
+    /// Restore pattern from metadata if HDF5 file contains any.
+    bool          restore_pattern;
+
+    /// Metadata attribute key in HDF5 file.
+    std::string   pattern_metadata_key;
+
+  } hdf5_writemode;
+
+private:
+
+  std::string                _filename;
+  std::string                _dataset;
+  hdf5_writemode             _foptions;
 
   public:
     HDF5OutputStream(
@@ -40,30 +68,33 @@ class HDF5OutputStream {
 
     // IO Manipulators
 
-    friend HDF5OutputStream & operator<< (
+    friend HDF5OutputStream & operator<<(
         HDF5OutputStream & os,
-        const dataset & tbl) {
+        const dataset    & tbl)
+    {
         os._dataset = tbl._dataset;
         return os;
     }
 
-    friend HDF5OutputStream & operator<< (
+    friend HDF5OutputStream & operator<<(
         HDF5OutputStream & os,
-        setpattern_key pk) {
+        setpattern_key     pk)
+    {
         os._foptions.pattern_metadata_key = pk._key;
         return os;
     }
 
-    friend HDF5OutputStream & operator<< (
+    friend HDF5OutputStream & operator<<(
         HDF5OutputStream & os,
-        store_pattern sp) {
+        store_pattern      sp) {
         os._foptions.store_pattern = sp._store;
         return os;
     }
 
-    friend HDF5OutputStream & operator<< (
+    friend HDF5OutputStream & operator<<(
         HDF5OutputStream & os,
-        modify_dataset md) {
+        modify_dataset     md)
+    {
         os._foptions.modify_dataset = md._modify;
         return os;
     }
@@ -74,11 +105,11 @@ class HDF5OutputStream {
         typename value_t,
         typename index_t,
         class    pattern_t >
-    friend HDF5OutputStream & operator<< (
-        HDF5OutputStream & os,
-        dash::Array < value_t,
-        index_t,
-        pattern_t > &array);
+    friend HDF5OutputStream & operator<<(
+        HDF5OutputStream         & os,
+        dash::Array< value_t,
+                     index_t,
+                     pattern_t > & array);
 
     // Matrix Implementation
     template <
@@ -86,12 +117,12 @@ class HDF5OutputStream {
         dim_t    ndim,
         typename index_t,
         class    pattern_t >
-    friend HDF5OutputStream & operator<< (
-        HDF5OutputStream & os,
-        dash::Matrix < value_t,
-        ndim,
-        index_t,
-        pattern_t > &matrix);
+    friend HDF5OutputStream & operator<<(
+        HDF5OutputStream          & os,
+        dash::Matrix< value_t,
+                      ndim,
+                      index_t,
+                      pattern_t > & matrix);
 
 };
 

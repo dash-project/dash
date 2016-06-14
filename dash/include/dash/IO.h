@@ -1,6 +1,8 @@
 #ifndef DASH__IO_H__INCLUDED
 #define DASH__IO_H__INCLUDED
 
+#include <dash/io/IOStream.h>
+
 namespace dash {
 
 /**
