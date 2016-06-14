@@ -29,9 +29,9 @@
  *
  * Like all DASH containers, \c dash::Array is initialized by specifying
  * an arrangement of units in a team (\c dash::TeamSpec) and a
- * distribution pattern (\see dash::Pattern).
+ * distribution pattern (\c dash::Pattern).
  *
- * DASH arrays support delayed allocation (\see dash::Array::allocate),
+ * DASH arrays support delayed allocation (\c dash::Array::allocate),
  * so global memory of an array instance can be allocated any time after
  * declaring a \c dash::Array variable.
  *
