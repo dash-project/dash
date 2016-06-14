@@ -22,7 +22,7 @@
 namespace dash {
 
 /**
- * \defgroup  DashUnorderedMapConcept  Unordered Map Container Concept
+ * \defgroup  DashUnorderedMapConcept  Unordered Map Concept
  * Concept of a distributed unordered map container.
  *
  * \ingroup DashContainerConcept
