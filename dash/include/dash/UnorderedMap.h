@@ -127,8 +127,6 @@ namespace dash {
 /**
  * A dynamic map container with support for workload balancing.
  *
- * \concept{DashContainerConcept}
- * \concept{DashSequentialContainerConcept}
  * \concept{DashUnorderedMapConcept}
  */
 template<
@@ -138,10 +136,10 @@ template<
   typename Pred    = std::equal_to<Key>,
   typename Alloc   = dash::allocator::DynamicAllocator<
                        std::pair<const Key, Mapped> > >
-class UnorderedMapConcept
+class UnorderedMap
 {
 public:
-  typedef UnorderedMapConcept<Key, Mapped, Hash, Pred, Alloc>      self_type;
+  typedef UnorderedMap<Key, Mapped, Hash, Pred, Alloc>             self_type;
 
   typedef Key                                                       key_type;
   typedef Mapped                                                 mapped_type;
@@ -653,7 +651,7 @@ public:
    */
   hasher hash_function() const;
 
-}; // class UnorderedMapConcept
+}; // class UnorderedMap
 
 } // namespace dash
 

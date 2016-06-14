@@ -1,6 +1,8 @@
 #ifndef DASH__TILE_PATTERN_1D_H_
 #define DASH__TILE_PATTERN_1D_H_
 
+#ifndef DOXYGEN
+
 #include <functional>
 #include <array>
 #include <type_traits>
@@ -1219,5 +1221,7 @@ public:
 };
 
 } // namespace dash
+
+#endif // DOXYGEN
 
 #endif // DASH__BLOCK_PATTERN_1D_H_

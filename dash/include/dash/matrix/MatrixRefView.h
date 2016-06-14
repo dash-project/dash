@@ -41,7 +41,6 @@ class LocalMatrixRef;
  * multi-subscripting.
  *
  * \ingroup DashMatrixConcept
- * \ingroup DashContainerConcept
  */
 template <
   typename T,

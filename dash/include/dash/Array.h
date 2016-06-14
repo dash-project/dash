@@ -73,9 +73,6 @@
  *
  * \}
  *
- * \concept{DashConcept}
- * \concept{DashContainerConcept}
- * \concept{DashSequentialContainerConcept}
  */
 
 namespace dash {

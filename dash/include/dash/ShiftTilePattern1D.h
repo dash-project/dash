@@ -1,6 +1,8 @@
 #ifndef DASH__SHIFT_TILE_PATTERN_1D_H_
 #define DASH__SHIFT_TILE_PATTERN_1D_H_
 
+#ifndef DOXYGEN
+
 #include <functional>
 #include <array>
 #include <type_traits>
@@ -1229,5 +1231,7 @@ public:
 };
 
 } // namespace dash
+
+#endif // DOXYGEN
 
 #endif // DASH__SHIFT_TILE_PATTERN_1D_H_

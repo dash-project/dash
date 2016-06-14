@@ -66,25 +66,7 @@ private:
   dart_unit_t  _myid   = DART_UNDEFINED_UNIT_ID;
 }; // class HashLocal
 
-#ifdef DOXYGEN
-
-/**
- * A dynamic map container with support for workload balancing.
- *
- * \concept{DashContainerConcept}
- * \concept{DashSequentialContainerConcept}
- * \concept{DashUnorderedMapConcept}
- */
-template<
-  typename Key,
-  typename Mapped,
-  typename Hash    = dash::HashLocal<Key>,
-  typename Pred    = std::equal_to<Key>,
-  typename Alloc   = dash::allocator::DynamicAllocator<
-                       std::pair<const Key, Mapped> > >
-class UnorderedMap;
-
-#else // ifdef DOXYGEN
+#ifndef DOXYGEN
 
 template<
   typename Key,
@@ -829,7 +811,7 @@ private:
 
 }; // class UnorderedMap
 
-#endif // ifdef DOXYGEN
+#endif // ifndef DOXYGEN
 
 } // namespace dash
 
