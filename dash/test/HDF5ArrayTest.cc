@@ -199,12 +199,12 @@ TEST_F(HDF5ArrayTest, OutputStreamAppend)
     dash::barrier();
 
     // Write new dataset:
-    auto os  = HDF5OutputStream(_filename);
-    os   << dio::dataset(_dataset)
+    auto os_w  = HDF5OutputStream(_filename);
+    os_w << dio::dataset(_dataset)
          << array_o_1;
     // Append to dataset:
-    auto os  = HDF5OutputStream(_filename, HDF5FileOptions::Append);
-    os   << dio::dataset(_dataset)
+    auto os_a  = HDF5OutputStream(_filename, HDF5FileOptions::Append);
+    os_a << dio::dataset(_dataset)
          << array_o_2;
   }
   dash::barrier();

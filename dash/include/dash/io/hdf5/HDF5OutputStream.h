@@ -21,37 +21,11 @@ namespace hdf5 {
  */
 class HDF5OutputStream {
 
-public:
-  /**
-   * Options which can be passed to dash::io::HDF5OutputStream::write
-   * to specify how existing structures are treated and what
-   * metadata is stored.
-   */
-  typedef struct hdf5_writemode_t
-  {
-    /// Overwrite HDF5 file if already existing
-    bool          overwrite_file;
-
-    /// Modify an already existing HDF5 dataset.
-    /// If the dataset is not existing, throws a runtime error
-    bool          modify_dataset;
-
-    /// Store dash pattern characteristics as metadata in HDF5 file
-    bool          store_pattern;
-
-    /// Restore pattern from metadata if HDF5 file contains any.
-    bool          restore_pattern;
-
-    /// Metadata attribute key in HDF5 file.
-    std::string   pattern_metadata_key;
-
-  } hdf5_writemode;
-
 private:
 
   std::string                _filename;
   std::string                _dataset;
-  hdf5_writemode             _foptions;
+  hdf5_options               _foptions;
 
   public:
     HDF5OutputStream(
