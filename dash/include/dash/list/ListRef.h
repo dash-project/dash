@@ -35,7 +35,6 @@ class LocalListRef;
 /**
  * Proxy type referencing a \c dash::List.
  *
- * \concept{DashContainerConcept}
  * \concept{DashListConcept}
  */
 template<

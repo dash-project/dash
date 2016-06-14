@@ -2,11 +2,12 @@
 #define DASH__GLOB_STENCIL_ITER_H_
 
 #include <dash/Pattern.h>
-#include <dash/Halo.h>
 #include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
 #include <dash/GlobMem.h>
+
+#include <dash/iterator/GlobIter.h>
 
 #include <iterator>
 #include <array>
@@ -16,6 +17,10 @@
 #include <cstdlib>
 
 namespace dash {
+
+// Forward-declaration
+template<dim_t NumDimensions>
+class HaloSpec;
 
 template<
   typename GlobIterType,
@@ -304,8 +309,12 @@ public:
    */
   template<class PtrT, class RefT>
   GlobStencilIter(
-    const GlobViewIter<ElementType, PatternType, PtrT, RefT> & other,
-    const HaloSpecType                                       & halospec)
+    const GlobViewIter<ElementType,
+                       PatternType,
+                       GlobMemType,
+                       PtrT,
+                       RefT> & other,
+    const HaloSpecType       & halospec)
   : _globmem(other._globmem),
     _pattern(other._pattern),
     _viewspec(other._viewspec),

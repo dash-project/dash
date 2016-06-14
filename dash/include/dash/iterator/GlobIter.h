@@ -11,6 +11,7 @@
 namespace dash {
 
 #ifndef DOXYGEN
+
 // Forward-declaration
 template<
   typename ElementType,
@@ -27,6 +28,7 @@ template<
   class    PointerType,
   class    ReferenceType >
 class GlobViewIter;
+
 #endif // DOXYGEN
 
 /**

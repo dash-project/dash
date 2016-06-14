@@ -161,7 +161,6 @@ namespace dash {
 /**
  * A dynamic bi-directional list with support for workload balancing.
  *
- * \concept{DashContainerConcept}
  * \concept{DashListConcept}
  */
 template<

@@ -3,6 +3,9 @@
 
 #include <dash/Allocator.h>
 #include <dash/GlobMem.h>
+
+#include <dash/iterator/GlobIter.h>
+
 #include <dash/internal/Logging.h>
 
 #include <functional>
@@ -554,7 +557,7 @@ public:
   /**
    * Map iterator to global index domain by projecting the iterator's view.
    */
-  inline GlobIter<ElementType, PatternType> global() const
+  inline dash::GlobIter<ElementType, PatternType> global() const
   {
     auto g_idx = gpos();
     return dash::GlobIter<ElementType, PatternType>(
