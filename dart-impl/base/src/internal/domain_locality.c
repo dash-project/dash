@@ -775,8 +775,8 @@ dart_ret_t dart__base__locality__domain__create_node_subdomain(
     subdomain->unit_ids = NULL;
   }
 
-  /* Resolve the number of NUMA nodes in the module and distribute number of
-   * cores in the module among its units: */
+  /* Resolve the number of units in the module and distribute number of
+   * cores in the module among them: */
   subdomain->hwinfo.num_numa = 1;
   for (int nu = 0; nu < num_module_units; ++nu) {
     subdomain->unit_ids[nu] = module_unit_ids[nu];
@@ -785,9 +785,19 @@ dart_ret_t dart__base__locality__domain__create_node_subdomain(
       dart__base__unit_locality__at(
         unit_mapping, module_unit_ids[nu], &module_unit_loc),
       DART_OK);
-    module_unit_loc->hwinfo.num_cores /= num_module_units;
-    /* as the number of NUMA domains is identical within a module, simply obtain
-     * it from hwinfo of first unit in the module: */
+    int num_parent_cores     = module_unit_loc->hwinfo.num_cores;
+    int num_unit_cores       = num_parent_cores / num_module_units;
+    int num_unbalanced_cores = num_parent_cores -
+                               (num_unit_cores * num_module_units);
+    if (num_unbalanced_cores > 0 && nu < num_unbalanced_cores) {
+      /* Unbalanced split of cores to units, e.g. 12 cores / 10 units.
+       * First units ordered by unit id get additional core assigned, e.g.
+       * unit 0 and 1: */
+      num_unit_cores++;
+    }
+    module_unit_loc->hwinfo.num_cores = num_unit_cores;
+    /* as the number of NUMA domains is identical within a module, simply
+     * obtain it from hwinfo of first unit in the module: */
     subdomain->hwinfo.num_numa = module_unit_loc->hwinfo.num_numa;
   }
   return DART_OK;

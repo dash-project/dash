@@ -46,7 +46,6 @@ int main(int argc, char ** argv)
   bench_params.print_pinning();
 
   dart_barrier(DART_TEAM_ALL);
-  sleep(2);
 
   auto myid = dash::myid();
   auto size = dash::size();
