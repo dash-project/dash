@@ -1,5 +1,5 @@
 #include <dash/Exception.h>
-#include <dash/Enums.h>
+#include <dash/Types.h>
 #include <dash/Pattern.h>
 #include <dash/algorithm/SUMMA.h>
 

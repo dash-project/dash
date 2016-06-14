@@ -7,11 +7,12 @@
 
 #include <dash/Team.h>
 #include <dash/Pattern.h>
-#include <dash/GlobIter.h>
-#include <dash/GlobViewIter.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
 #include <dash/Container.h>
+
+#include <dash/iterator/GlobIter.h>
+#include <dash/iterator/GlobViewIter.h>
 
 
 namespace dash {

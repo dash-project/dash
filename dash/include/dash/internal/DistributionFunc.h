@@ -1,7 +1,7 @@
 #ifndef DASH__INTERNAL__DISTRIBUTION_FUNC_H_
 #define DASH__INTERNAL__DISTRIBUTION_FUNC_H_
 
-#include <dash/Enums.h>
+#include <dash/Types.h>
 
 namespace dash {
 namespace internal {

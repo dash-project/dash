@@ -2,7 +2,8 @@
 #define DASH__DISTRIBUTION_H_
 
 #include <dash/Types.h>
-#include <dash/Enums.h>
+#include <dash/Exception.h>
+#include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 
 namespace dash {

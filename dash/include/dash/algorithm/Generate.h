@@ -1,7 +1,7 @@
 #ifndef DASH__ALGORITHM__GENERATE_H__
 #define DASH__ALGORITHM__GENERATE_H__
 
-#include <dash/GlobIter.h>
+#include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 #include <dash/dart/if/dart_communication.h>

@@ -2,7 +2,7 @@
 #define DASH__ALGORITHM__SUMMA_H_
 
 #include <dash/Exception.h>
-#include <dash/Enums.h>
+#include <dash/Types.h>
 #include <dash/Pattern.h>
 #include <dash/Future.h>
 #include <dash/algorithm/Copy.h>

@@ -4,10 +4,11 @@
 #include <dash/dart/if/dart_types.h>
 
 #include <dash/GlobMem.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/Allocator.h>
 #include <dash/Atomic.h>
+
+#include <dash/iterator/GlobIter.h>
 
 #include <memory>
 

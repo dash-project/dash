@@ -3,7 +3,8 @@
 
 #include <dash/GlobPtr.h>
 #include <dash/GlobRef.h>
-#include <dash/internal/list/ListTypes.h>
+
+#include <dash/list/internal/ListTypes.h>
 
 #include <iterator>
 

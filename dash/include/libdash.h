@@ -24,13 +24,15 @@ namespace dash {
 #include <dash/View.h>
 #include <dash/GlobMem.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 
+#include <dash/iterator/GlobIter.h>
+#include <dash/iterator/GlobViewIter.h>
+#include <dash/iterator/GlobStencilIter.h>
+
 #include <dash/Onesided.h>
 
-#include <dash/Enums.h>
 #include <dash/Container.h>
 #include <dash/Shared.h>
 #include <dash/SharedCounter.h>

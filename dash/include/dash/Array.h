@@ -1,11 +1,10 @@
 #ifndef ARRAY_H_INCLUDED
 #define ARRAY_H_INCLUDED
 
-#include <dash/Types.h>
 #include <dash/GlobMem.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
+#include <dash/Types.h>
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/HView.h>
@@ -14,9 +13,12 @@
 #include <dash/Cartesian.h>
 #include <dash/Dimensional.h>
 
+#include <dash/iterator/GlobIter.h>
+
 #include <iterator>
 #include <initializer_list>
 #include <type_traits>
+
 
 /**
  * \defgroup  DashArrayConcept  Array Concept

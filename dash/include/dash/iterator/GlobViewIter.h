@@ -5,8 +5,9 @@
 #include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobMem.h>
+
+#include <dash/iterator/GlobIter.h>
 
 #include <cstddef>
 #include <functional>

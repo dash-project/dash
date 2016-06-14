@@ -6,7 +6,6 @@
 #include <type_traits>
 
 #include <dash/Types.h>
-#include <dash/Enums.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
 #include <dash/Dimensional.h>

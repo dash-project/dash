@@ -1,12 +1,15 @@
 #ifndef DASH__ALGORITHM__MIN_MAX_H__
 #define DASH__ALGORITHM__MIN_MAX_H__
 
-#include <dash/GlobIter.h>
-#include <dash/algorithm/LocalRange.h>
-#include <dash/internal/Logging.h>
 #include <dash/Array.h>
+#include <dash/algorithm/LocalRange.h>
+
+#include <dash/iterator/GlobIter.h>
+
+#include <dash/internal/Logging.h>
 
 #include <algorithm>
+
 
 namespace dash {
 

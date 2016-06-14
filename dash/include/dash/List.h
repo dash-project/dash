@@ -12,7 +12,7 @@
 #include <dash/list/ListRef.h>
 #include <dash/list/LocalListRef.h>
 #include <dash/list/GlobListIter.h>
-#include <dash/internal/list/ListTypes.h>
+#include <dash/list/internal/ListTypes.h>
 
 #include <iterator>
 #include <limits>
