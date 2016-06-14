@@ -12,6 +12,19 @@ namespace dash {
  * \{
  * \par Description
  *
+ * The Pattern property system is based on type traits that provide a
+ * classification of pattern types by their properties.
+ *
+ * All patterns realize a mapping of elements to addresses in physical memory
+ * in three stages:
+ *
+ * - Partitioning: how elements are partitioned into blocks
+ * - Mapping: how blocks are mapped to units
+ * - Layout: how elements are arranged in the units' local memory
+ *
+ * Semantics of a pattern type are fully described by its properties in these
+ * categories.
+ *
  * \}
  *
  * \todo
