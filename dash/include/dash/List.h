@@ -24,9 +24,11 @@ namespace dash {
  * \defgroup  DashListConcept  List Concept
  * Concept of a distributed one-dimensional list container.
  *
- * \ingroup DashConcept
+ * \ingroup DashContainerConcept
  * \{
  * \par Description
+ *
+ * A dynamic double-linked list.
  *
  * \par Member types
  *
