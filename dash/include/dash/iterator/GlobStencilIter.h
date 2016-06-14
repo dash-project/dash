@@ -310,8 +310,8 @@ public:
   template<class PtrT, class RefT>
   GlobStencilIter(
     const GlobViewIter<ElementType,
-                       GlobMemType,
                        PatternType,
+                       GlobMemType,
                        PtrT,
                        RefT> & other,
     const HaloSpecType       & halospec)
