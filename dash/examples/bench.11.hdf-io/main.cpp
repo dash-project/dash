@@ -4,12 +4,12 @@
  * on a parallel file system like GPFS
  */
 
-#ifdef DASH_ENABLE_HDF5
-
 #include <libdash.h>
 #include <iostream>
 #include <iomanip>
 #include <string>
+
+#ifdef DASH_ENABLE_HDF5
 
 using std::cout;
 using std::endl;
@@ -243,6 +243,15 @@ void print_params(
   bench_cfg.print_param("-sb",    "initial matrix size", params.size_base);
   bench_cfg.print_param("-verify","verification",        params.verify);
   bench_cfg.print_section_end();
+}
+
+#else // DASH_ENABLE_HDF5
+
+int main(int argc, char** argv)
+{
+  std::cerr << "Example requires HDF5 support" << std::endl;
+
+  return EXIT_FAILURE;
 }
 
 #endif // DASH_ENABLE_HDF5
