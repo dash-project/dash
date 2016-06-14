@@ -46,6 +46,13 @@ class GlobViewIter;
  *
  * \}
  */
+
+
+/**
+ * Iterator on Partitioned Global Address Space.
+ *
+ * \concept{DashGlobalIteratorConcept}
+ */
 template<
   typename ElementType,
   class    PatternType,
