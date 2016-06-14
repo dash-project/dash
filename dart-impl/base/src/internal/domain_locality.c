@@ -896,17 +896,45 @@ dart_ret_t dart__base__locality__domain__create_numa_subdomain(
   DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                  "== SPLIT NUMA ==");
   DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
-                 "== %d of %d", rel_idx, numa_domain->num_domains);
+                 "== %d of #%d", rel_idx, numa_domain->num_domains);
   /*
    * TODO: Assuming that segments are homogenous such that total number
    *       of cores and units is evenly distributed among subdomains.
    */
-  size_t num_uma_units          = numa_domain->num_units /
-                                  numa_domain->num_domains;
+  size_t num_domains            = numa_domain->num_domains;
+  size_t num_uma_units          = numa_domain->num_units / num_domains;
+  size_t num_parent_cores       = numa_domain->hwinfo.num_cores;
+  size_t num_uma_cores          = num_parent_cores / num_domains;
+  size_t num_unbalanced_cores   = num_parent_cores -
+                                  (num_uma_cores * num_domains);
   subdomain->num_nodes          = 1;
   subdomain->hwinfo.num_numa    = 1;
-  subdomain->hwinfo.num_cores  /= numa_domain->num_domains;
   subdomain->num_units          = num_uma_units;
+
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
+                 "num_parent_cores:%d num_uma_units:%d num_domains:%d "
+                 "num_unbalanced_cores:%d",
+                 num_parent_cores, num_uma_units, num_domains,
+                 num_unbalanced_cores);
+
+  if (num_uma_cores < 1) {
+    /* Underflow split of cores to UMA nodes, e.g. 10/12.
+     * TODO: Clarify if this case occurs and if defaulting to 1 is
+     *       sufficient. */
+    num_uma_cores = 1;
+  } else if (num_unbalanced_cores > 0) {
+    /* Unbalanced split of cores to UMA nodes, e.g. 12 units / 10 nodes.
+     * First units ordered by unit id get additional core assigned, e.g.
+     * unit 0 and 1: */
+    if ((size_t)(rel_idx) < num_unbalanced_cores) {
+      num_uma_cores++;
+    }
+  }
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
+                 "=> num_uma_cores:%d", num_uma_cores);
+
+  subdomain->hwinfo.num_cores   = num_uma_cores;
+
   if (subdomain->num_units > 0) {
     subdomain->unit_ids = malloc(subdomain->num_units * sizeof(dart_unit_t));
   } else {

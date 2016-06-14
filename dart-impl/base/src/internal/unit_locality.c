@@ -48,10 +48,18 @@
 #include <dash/dart/base/internal/unit_locality.h>
 #include <dash/dart/base/internal/host_topology.h>
 
+/**
+ * Functions for exchanging and collecting locality information of units
+ * in a team.
+ */
+
 
 /* ======================================================================== *
  * Private Functions                                                        *
  * ======================================================================== */
+
+dart_ret_t dart__base__unit_locality__unit_locality_init(
+  dart_unit_locality_t  * loc);
 
 dart_ret_t dart__base__unit_locality__local_unit_new(
   dart_team_t             team,
@@ -61,6 +69,16 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
  * Init / Finalize                                                          *
  * ======================================================================== */
 
+/**
+ * Exchange and collect all locality information of all units in the
+ * specified team in an array of \c dart_unit_mapping_t objects.
+ *
+ * Note that locality information does not contain the units' locality
+ * domain tags.
+ *
+ * \note
+ * This is a collective N-to-N (allgather) operation.
+ */
 dart_ret_t dart__base__unit_locality__create(
   dart_team_t             team,
   dart_unit_mapping_t  ** unit_mapping)
@@ -151,6 +169,10 @@ dart_ret_t dart__base__unit_locality__destruct(
  * Lookup                                                                   *
  * ======================================================================== */
 
+/**
+ * Get the specified unit's locality information from a set of unit
+ * mappings.
+ */
 dart_ret_t dart__base__unit_locality__at(
   dart_unit_mapping_t   * unit_mapping,
   dart_unit_t             unit,
@@ -170,6 +192,54 @@ dart_ret_t dart__base__unit_locality__at(
  * Private Functions                                                        *
  * ======================================================================== */
 
+/**
+ * Initialize unit locality information from HW locality.
+ */
+dart_ret_t dart__base__unit_locality__local_unit_new(
+  dart_team_t             team,
+  dart_unit_locality_t  * loc)
+{
+  DART_LOG_DEBUG("dart__base__unit_locality__local_unit_new() loc(%p)", loc);
+  if (loc == NULL) {
+    DART_LOG_ERROR("dart__base__unit_locality__local_unit_new ! null");
+    return DART_ERR_INVAL;
+  }
+  dart_unit_t myid = DART_UNDEFINED_UNIT_ID;
+
+  DART_ASSERT_RETURNS(
+    dart__base__unit_locality__unit_locality_init(loc),
+    DART_OK);
+  DART_ASSERT_RETURNS(
+    dart_team_myid(team, &myid),
+    DART_OK);
+
+  dart_hwinfo_t * hwinfo = malloc(sizeof(dart_hwinfo_t));
+  DART_ASSERT_RETURNS(dart_hwinfo(hwinfo), DART_OK);
+
+  /* assign global domain to unit locality descriptor: */
+  strncpy(loc->domain_tag, ".", 1);
+  loc->domain_tag[1] = '\0';
+
+  dart_domain_locality_t * dloc;
+  DART_ASSERT_RETURNS(
+    dart_domain_team_locality(team, ".", &dloc),
+    DART_OK);
+
+  loc->unit          = myid;
+  loc->team          = team;
+  loc->hwinfo        = *hwinfo;
+
+  char   hostname[DART_LOCALITY_HOST_MAX_SIZE];
+  gethostname(hostname, DART_LOCALITY_HOST_MAX_SIZE);
+  strncpy(loc->host, hostname, DART_LOCALITY_HOST_MAX_SIZE);
+
+  DART_LOG_DEBUG("dart__base__unit_locality__local_unit_new > loc(%p)", loc);
+  return DART_OK;
+}
+
+/**
+ * Default constructor of dart_unit_locality_t.
+ */
 dart_ret_t dart__base__unit_locality__unit_locality_init(
   dart_unit_locality_t  * loc)
 {
@@ -191,89 +261,6 @@ dart_ret_t dart__base__unit_locality__unit_locality_init(
   loc->hwinfo.max_cpu_mhz = -1;
   loc->hwinfo.min_cpu_mhz = -1;
   DART_LOG_TRACE("dart__base__unit_locality__unit_locality_init >");
-  return DART_OK;
-}
-
-dart_ret_t dart__base__unit_locality__local_unit_new(
-  dart_team_t             team,
-  dart_unit_locality_t  * loc)
-{
-  DART_LOG_DEBUG("dart__base__unit_locality__local_unit_new() loc(%p)", loc);
-  if (loc == NULL) {
-    DART_LOG_ERROR("dart__base__unit_locality__local_unit_new ! null");
-    return DART_ERR_INVAL;
-  }
-  dart_unit_t myid = DART_UNDEFINED_UNIT_ID;
-
-  DART_ASSERT_RETURNS(
-    dart__base__unit_locality__unit_locality_init(loc),
-    DART_OK);
-  DART_ASSERT_RETURNS(
-    dart_team_myid(team, &myid),
-    DART_OK);
-
-  dart_hwinfo_t * hwinfo;
-  DART_ASSERT_RETURNS(dart_hwinfo(&hwinfo), DART_OK);
-
-  /* assign global domain to unit locality descriptor: */
-  strncpy(loc->domain_tag, ".", 1);
-  loc->domain_tag[1] = '\0';
-
-  dart_domain_locality_t * dloc;
-  DART_ASSERT_RETURNS(
-    dart_domain_team_locality(team, ".", &dloc),
-    DART_OK);
-
-  loc->unit             = myid;
-  loc->team             = team;
-  loc->hwinfo           = *hwinfo;
-
-  char   hostname[DART_LOCALITY_HOST_MAX_SIZE];
-  gethostname(hostname, DART_LOCALITY_HOST_MAX_SIZE);
-  strncpy(loc->host, hostname, DART_LOCALITY_HOST_MAX_SIZE);
-
-#ifdef DART_ENABLE_HWLOC
-  hwloc_topology_t topology;
-  hwloc_topology_init(&topology);
-  hwloc_topology_load(topology);
-  // Resolve number of threads per core:
-  loc->hwinfo.min_threads = 1;
-  int n_cpus = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PU);
-  if (n_cpus > 0 &&
-      loc->hwinfo.max_threads < 0 &&
-      dloc->hwinfo.num_cores  > 0) {
-    loc->hwinfo.max_threads = n_cpus / dloc->hwinfo.num_cores;
-  }
-  if (loc->hwinfo.max_threads < 0) {
-    loc->hwinfo.max_threads = 1;
-  }
-  hwloc_topology_destroy(topology);
-#endif
-
-#ifdef DART__ARCH__IS_MIC
-  DART_LOG_TRACE("dart__base__unit_locality__local_unit_new: "
-                 "MIC architecture");
-
-  if (loc->hwinfo.numa_id     <  0) { loc->hwinfo.numa_id      =  0; }
-  if (loc->hwinfo.num_cores   <= 0) { loc->hwinfo.num_cores    = 60; }
-  if (loc->hwinfo.min_cpu_mhz <= 0 || loc->hwinfo.max_cpu_mhz <=  0) {
-    loc->hwinfo.min_cpu_mhz = 1100;
-    loc->hwinfo.max_cpu_mhz = 1100;
-  }
-  loc->hwinfo.min_threads = 4;
-  loc->hwinfo.max_threads = 4;
-#endif
-  if (loc->hwinfo.min_threads <= 0) {
-    loc->hwinfo.min_threads = 1;
-  }
-  if (loc->hwinfo.max_threads <= 0) {
-    loc->hwinfo.max_threads = 1;
-  }
-  if (loc->hwinfo.numa_id     <  0) {
-    loc->hwinfo.numa_id     = 0;
-  }
-
-  DART_LOG_DEBUG("dart__base__unit_locality__local_unit_new > loc(%p)", loc);
   return DART_OK;
 }
 

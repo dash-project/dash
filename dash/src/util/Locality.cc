@@ -131,9 +131,9 @@ std::ostream & operator<<(
      << "host:"         << upi.host         << " "
      << "domain:"       << upi.domain       << " "
      << "numa_id:"      << upi.numa_id      << " "
-     << "core_id:"      << upi.cpu_id       << " "
+     << "cpu_id:"       << upi.cpu_id       << " "
      << "num_cores:"    << upi.num_cores    << " "
-     << "max_threads:"  << upi.num_threads  << ")";
+     << "num_threads:"  << upi.num_threads  << ")";
   return os;
 }
 

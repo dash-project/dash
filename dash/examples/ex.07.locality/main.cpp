@@ -42,6 +42,10 @@ int main(int argc, char * argv[])
 
   dash::init(&argc, &argv);
 
+  dash::util::BenchmarkParams bench_params("ex.07.locality");
+  bench_params.print_header();
+  bench_params.print_pinning();
+
   dart_barrier(DART_TEAM_ALL);
   sleep(5);
 

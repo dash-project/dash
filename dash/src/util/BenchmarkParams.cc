@@ -244,9 +244,8 @@ void BenchmarkParams::print_section_end() const
     return;
   }
   std::string separator(_header_width, '-');
-  separator += '\n';
 
-  std::cout << separator;
+  std::cout << separator << std::endl;
 }
 
 } // namespace util
