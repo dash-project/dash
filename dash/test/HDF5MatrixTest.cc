@@ -198,10 +198,6 @@ TEST_F(HDF5MatrixTest, AutoGeneratePattern)
     fill_matrix(matrix_a);
     dash::barrier();
 
-    // Set option
-    auto fopts = dio::StoreHDF::get_default_options();
-    fopts.store_pattern = false;
-
 		dio::HDF5OutputStream os(_filename);
 		os << dio::store_pattern(false)
        << dio::dataset(_dataset)
@@ -238,7 +234,6 @@ TEST_F(HDF5MatrixTest, PreAllocation)
     fill_matrix(matrix_a, dash::myid());
     dash::barrier();
 
-    // Set option
 		dio::HDF5OutputStream os(_filename);
 		os << dio::store_pattern(false)
        << dio::dataset(_dataset)
@@ -321,10 +316,6 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
 		fill_matrix(matrix_b, secret_b);
     dash::barrier();
 
-    // Set option
-    auto fopts = dio::StoreHDF::get_default_options();
-    fopts.overwrite_file = false;
-
 		dio::HDF5OutputStream os(_filename);
 		os << dio::dataset(_dataset)
        << matrix_a
@@ -362,10 +353,6 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
     fill_matrix(matrix_a, secret_a);
 		fill_matrix(matrix_b, secret_b);
     dash::barrier();
-
-    // Set option
-    auto fopts = dio::StoreHDF::get_default_options();
-    fopts.overwrite_file = false;
 
 		{
 			dio::HDF5OutputStream os(_filename);
