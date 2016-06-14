@@ -2,6 +2,14 @@
 #define DASH__LIBDASH_H_
 
 /**
+ * The DASH C++ Library Interface
+ *
+ */
+namespace dash {
+
+}
+
+/**
  * \defgroup DashConcept Dash C++ Concepts
  * Concepts for C++ components in DASH
  */

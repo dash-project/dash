@@ -9,8 +9,7 @@
  */
 
 /**
- * \defgroup  DartGlobMem  Allocation of global memory and PGAS address
- *                         semantics
+ * \defgroup  DartGlobMem    Global memory and PGAS address semantics
  * \ingroup   DartInterface
  */
 #ifdef __cplusplus
