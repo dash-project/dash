@@ -78,7 +78,7 @@ void BenchmarkParams::print_header()
   size_t box_width        = _header_width;
   size_t numa_nodes       = dash::util::Locality::NumNUMANodes();
   size_t num_nodes        = dash::util::Locality::NumNodes();
-  size_t local_cpus       = dash::util::Locality::NumCPUs();
+  size_t num_local_cores  = dash::util::Locality::NumCores();
   int    cpu_max_mhz      = dash::util::Locality::CPUMaxMhz();
   int    cpu_min_mhz      = dash::util::Locality::CPUMinMhz();
   auto   cache_sizes      = dash::util::Locality::CacheSizes();
@@ -96,8 +96,8 @@ void BenchmarkParams::print_header()
   print_section_end();
 
   print_section_start("Hardware Locality");
-  print_param("Processing nodes",  num_nodes);
-  print_param("CPUs/node",         local_cpus);
+  print_param("processing nodes",  num_nodes);
+  print_param("cores/node",        num_local_cores);
   print_param("NUMA domains/node", numa_nodes);
   print_param("CPU max MHz",       cpu_max_mhz);
   print_param("CPU min MHz",       cpu_min_mhz);

@@ -123,18 +123,36 @@ void Locality::init()
 }
 
 std::ostream & operator<<(
-    std::ostream        & os,
-    const typename Locality::UnitPinning & upi) {
-    std::ostringstream ss;
-    ss << "dash::util::Locality::UnitPinning("
-       << "unit:"         << upi.unit         << " "
-       << "host:"         << upi.host         << " "
-       << "domain:"       << upi.domain       << " "
-       << "numa_id:"      << upi.numa_id      << " "
-       << "core_id:"      << upi.cpu_id       << " "
-       << "num_cores:"    << upi.num_cores    << " "
-       << "max_threads:"  << upi.num_threads  << ")";
-    return operator<<(os, ss.str());
+  std::ostream        & os,
+  const typename Locality::UnitPinning & upi)
+{
+  os << "dash::util::Locality::UnitPinning("
+     << "unit:"         << upi.unit         << " "
+     << "host:"         << upi.host         << " "
+     << "domain:"       << upi.domain       << " "
+     << "numa_id:"      << upi.numa_id      << " "
+     << "core_id:"      << upi.cpu_id       << " "
+     << "num_cores:"    << upi.num_cores    << " "
+     << "max_threads:"  << upi.num_threads  << ")";
+  return os;
+}
+
+std::ostream & operator<<(
+  std::ostream        & os,
+  const dart_hwinfo_t & hwinfo)
+{
+  os << "dart_hwinfo_t("
+     << "numa_id:"     << hwinfo.numa_id     << " "
+     << "num_numa:"    << hwinfo.num_numa    << " "
+     << "num_sockets:" << hwinfo.num_sockets << " "
+     << "num_cores:"   << hwinfo.num_cores   << " "
+     << "cpu_id:"      << hwinfo.cpu_id      << " "
+     << "threads("     << hwinfo.min_threads << "..."
+                       << hwinfo.max_threads << ") "
+     << "cpu_mhz("     << hwinfo.min_cpu_mhz << "..."
+                       << hwinfo.max_cpu_mhz << ")"
+     << ")";
+  return os;
 }
 
 dart_unit_locality_t   * Locality::_unit_loc   = nullptr;
@@ -161,8 +179,6 @@ static void print_domain(
       static_cast<int>(DART_LOCALITY_SCOPE_NODE)) {
     ostr << indent << "nodes:   " << domain->num_nodes << '\n';
   }
-
-  ostr << indent << "NUMAs:   " << domain->hwinfo.num_numa << '\n';
 
   if (static_cast<int>(domain->scope) >=
       static_cast<int>(DART_LOCALITY_SCOPE_NUMA)) {
@@ -196,30 +212,12 @@ static void print_domain(
                                        << "in team " << uloc->team << ", "
                                        << "global: " << unit_gid   << ")"
                       << '\n';
-      ostr << uindent << "domain:    " << uloc->domain_tag
-                      << '\n';
-      ostr << uindent << "host:      " << uloc->host
-                      << '\n';
-      ostr << uindent << "hwinfo:    " << "numa_id: "
-                                          << uloc->hwinfo.numa_id << " "
-                                       << "cpu_id: "
-                                          << uloc->hwinfo.cpu_id  << " "
-                                       << "threads: "
-                                          << uloc->hwinfo.min_threads << "..."
-                                          << uloc->hwinfo.max_threads << " "
-                                       << "cpu_mhz: "
-                                          << uloc->hwinfo.min_cpu_mhz << "..."
-                                          << uloc->hwinfo.max_cpu_mhz
-                                       << '\n';
+      ostr << uindent << "domain:    " << uloc->domain_tag << '\n';
+      ostr << uindent << "host:      " << uloc->host       << '\n';
+      ostr << uindent << "hwinfo:    " << uloc->hwinfo     << '\n';
     }
-  } else if (domain->scope == DART_LOCALITY_SCOPE_GROUP) {
-    ostr << indent << "hwinfo:  " << "threads: "
-                                     << domain->hwinfo.min_threads << "..."
-                                     << domain->hwinfo.max_threads << " "
-                                  << "cpu_mhz: "
-                                     << domain->hwinfo.min_cpu_mhz << "..."
-                                     << domain->hwinfo.max_cpu_mhz
-                                  << '\n';
+  } else {
+    ostr << indent << "hwinfo:  " << domain->hwinfo << '\n';
   }
 
   if (domain->num_domains > 0) {
