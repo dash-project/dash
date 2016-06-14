@@ -22,7 +22,6 @@ print_matrix(
   int                 precision = 1)
 {
   typedef typename MatrixT::value_type value_t;
-  typedef typename MatrixT::index_type index_t;
   // Print local copy of matrix to avoid interleaving of matrix values
   // and log messages:
   std::vector< std::vector<value_t> > values;
@@ -72,7 +71,6 @@ print_matrix(
   int                 precision = 1)
 {
   typedef typename MatrixT::value_type value_t;
-  typedef typename MatrixT::index_type index_t;
 
   std::vector< std::vector< std::vector<value_t> > > values;
   /// Offset of two-dimensional slice in third dimension to print
