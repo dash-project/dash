@@ -1,17 +1,22 @@
 #ifndef DASH__MAKE_PATTERN_H_
 #define DASH__MAKE_PATTERN_H_
 
-#include <dash/PatternProperties.h>
-#include <dash/BlockPattern.h>
-#include <dash/TilePattern.h>
-#include <dash/ShiftTilePattern.h>
+#include <dash/pattern/PatternProperties.h>
+#include <dash/pattern/BlockPattern.h>
+#include <dash/pattern/TilePattern.h>
+#include <dash/pattern/ShiftTilePattern.h>
+
 #include <dash/util/Locality.h>
 #include <dash/util/Config.h>
+
 #include <dash/Distribution.h>
 #include <dash/Dimensional.h>
 
 namespace dash {
 
+/**
+ * \ingroup{DashPatternConcept}
+ */
 template<
   typename PartitioningTags,
   typename MappingTags,
@@ -180,6 +185,9 @@ make_team_spec(
 /**
  * Generic Abstract Factory for instances of \c dash::DistributionSpec.
  * Creates a DistributionSpec object from given pattern traits.
+ *
+ * \ingroup{DashPatternConcept}
+ *
  */
 template<
   typename PartitioningTags,
@@ -291,6 +299,8 @@ make_distribution_spec(
  * Creates an instance of a Pattern model that satisfies the contiguos
  * linearization property from given pattern traits.
  *
+ * \ingroup{DashPatternConcept}
+ *
  * \returns  An instance of \c dash::TilePattern if the following
  *           constraints are specified:
  *           (Partitioning: minimal)
@@ -349,6 +359,8 @@ make_pattern(
  *
  * Creates an instance of a Pattern model that satisfies the contiguos
  * linearization property from given pattern traits.
+ *
+ * \ingroup{DashPatternConcept}
  *
  * \returns  An instance of \c dash::ShiftTilePattern if the following
  *           constraints are specified:
@@ -413,6 +425,8 @@ make_pattern(
  *
  * Creates an instance of a Pattern model that satisfies the canonical
  * (strided) layout property from given pattern traits.
+ *
+ * \ingroup{DashPatternConcept}
  *
  * \returns  An instance of \c dash::BlockPattern if the following constraints
  *           are specified:

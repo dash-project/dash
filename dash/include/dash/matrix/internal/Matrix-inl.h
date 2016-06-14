@@ -6,11 +6,12 @@
 #include <dash/Team.h>
 #include <dash/Pattern.h>
 #include <dash/GlobMem.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
 #include <dash/Exception.h>
 #include <dash/internal/Logging.h>
+
+#include <dash/iterator/GlobIter.h>
 
 #include <type_traits>
 

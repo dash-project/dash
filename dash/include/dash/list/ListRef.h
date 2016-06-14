@@ -5,7 +5,6 @@
 #include <limits>
 
 #include <dash/Types.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/Team.h>
 #include <dash/Exception.h>
@@ -14,7 +13,9 @@
 #include <dash/GlobDynamicMem.h>
 #include <dash/Allocator.h>
 
-#include <dash/internal/list/ListTypes.h>
+#include <dash/iterator/GlobIter.h>
+
+#include <dash/list/internal/ListTypes.h>
 
 
 namespace dash {
@@ -34,7 +35,6 @@ class LocalListRef;
 /**
  * Proxy type referencing a \c dash::List.
  *
- * \concept{DashContainerConcept}
  * \concept{DashListConcept}
  */
 template<

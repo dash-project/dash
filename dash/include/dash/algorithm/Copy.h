@@ -1,9 +1,10 @@
 #ifndef DASH__ALGORITHM__COPY_H__
 #define DASH__ALGORITHM__COPY_H__
 
-#include <dash/GlobIter.h>
 #include <dash/Future.h>
+#include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
+
 #include <dash/dart/if/dart_communication.h>
 
 #include <algorithm>

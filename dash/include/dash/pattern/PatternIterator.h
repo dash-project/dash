@@ -5,6 +5,8 @@ namespace dash {
 
 /**
  *
+ * \ingroup{DashPatternConcept}
+ *
  * Usage:
  *
  * \code
@@ -14,7 +16,7 @@ namespace dash {
  *   for(auto global_index : pattern) {
  *     // ...
  *   }
- *   // Same as 
+ *   // Same as
  *   for(auto gi_it  = pattern.begin(),
  *            gi_end = pattern.end();
  *       gi_it != gi_end;
@@ -27,7 +29,7 @@ namespace dash {
  *   for(auto local_index : pattern.local) {
  *     // ...
  *   }
- *   // Same as 
+ *   // Same as
  *   for(auto li_it  = pattern.lbegin(),
  *            li_end = pattern.lend();
  *       li_it != li_end;

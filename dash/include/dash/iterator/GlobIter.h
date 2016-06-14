@@ -11,6 +11,7 @@
 namespace dash {
 
 #ifndef DOXYGEN
+
 // Forward-declaration
 template<
   typename ElementType,
@@ -27,6 +28,7 @@ template<
   class    PointerType,
   class    ReferenceType >
 class GlobViewIter;
+
 #endif // DOXYGEN
 
 /**
@@ -43,6 +45,13 @@ class GlobViewIter;
  * <tt>dart_gptr_t</tt>    | <tt>dart_gptr</tt>     | &nbsp;         | DART global pointer on the iterator's current position. |
  *
  * \}
+ */
+
+
+/**
+ * Iterator on Partitioned Global Address Space.
+ *
+ * \concept{DashGlobalIteratorConcept}
  */
 template<
   typename ElementType,
@@ -639,7 +648,7 @@ std::ostream & operator<<(
 
 } // namespace dash
 
-#include <dash/GlobViewIter.h>
-#include <dash/GlobStencilIter.h>
+#include <dash/iterator/GlobViewIter.h>
+#include <dash/iterator/GlobStencilIter.h>
 
 #endif // DASH__GLOB_ITER_H_

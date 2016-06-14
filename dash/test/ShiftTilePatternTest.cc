@@ -5,7 +5,6 @@
 #include "TestLogHelpers.h"
 #include "ShiftTilePatternTest.h"
 
-#include <dash/ShiftTilePattern.h>
 
 TEST_F(ShiftTilePatternTest, Distribute1DimTile)
 {

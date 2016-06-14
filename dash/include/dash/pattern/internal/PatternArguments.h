@@ -2,7 +2,6 @@
 #define DASH__INTERNAL__PATTERN_ARGUMENTS_H_
 
 #include <dash/Types.h>
-#include <dash/Enums.h>
 #include <dash/Team.h>
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>

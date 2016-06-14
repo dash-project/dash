@@ -5,10 +5,11 @@
 
 #include <dash/Team.h>
 #include <dash/Pattern.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/HView.h>
 #include <dash/Container.h>
+
+#include <dash/iterator/GlobIter.h>
 
 
 namespace dash {

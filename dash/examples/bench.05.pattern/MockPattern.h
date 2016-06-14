@@ -7,7 +7,6 @@
 #include <type_traits>
 
 #include <dash/Types.h>
-#include <dash/Enums.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
 #include <dash/Dimensional.h>
@@ -17,7 +16,8 @@
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
-#include <dash/internal/PatternArguments.h>
+
+#include <dash/pattern/internal/PatternArguments.h>
 
 namespace dash {
 

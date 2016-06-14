@@ -3,12 +3,20 @@
 
 #include <dash/GlobPtr.h>
 #include <dash/GlobRef.h>
-#include <dash/internal/list/ListTypes.h>
+
+#include <dash/list/internal/ListTypes.h>
 
 #include <iterator>
 
+
 namespace dash {
 
+/**
+ * Bi-directional global iterator on elements of a \c dash::List instance.
+ *
+ * \concept{DashListConcept}
+ * \concept{DashGlobalIteratorConcept}
+ */
 template<
   typename ElementType,
   class    GlobMemType,

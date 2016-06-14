@@ -22,13 +22,16 @@ std::ostream & operator<<(
   const dart_unit_locality_t   & unit_loc);
 
 namespace dash {
-namespace util {
 
+#ifndef DOXYGEN
 template<
     typename ElementType,
     typename IndexType,
-    class PatternType>
+    class    PatternType>
 class Array;
+#endif // DOXYGEN
+
+namespace util {
 
 class Locality
 {

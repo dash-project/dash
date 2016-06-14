@@ -5,12 +5,13 @@
 
 #include <dash/Team.h>
 #include <dash/Pattern.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobMem.h>
 #include <dash/Allocator.h>
 #include <dash/HView.h>
 #include <dash/Container.h>
+
+#include <dash/iterator/GlobIter.h>
 
 #include <dash/matrix/MatrixRefView.h>
 #include <dash/matrix/MatrixRef.h>

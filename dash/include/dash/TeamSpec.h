@@ -1,7 +1,7 @@
 #ifndef DASH__TEAM_SPEC_H_
 #define DASH__TEAM_SPEC_H_
 
-#include <dash/Enums.h>
+#include <dash/Types.h>
 #include <dash/Dimensional.h>
 #include <dash/Exception.h>
 #include <dash/Cartesian.h>

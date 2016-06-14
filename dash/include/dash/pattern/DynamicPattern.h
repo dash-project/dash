@@ -6,7 +6,6 @@
 #include <type_traits>
 
 #include <dash/Types.h>
-#include <dash/Enums.h>
 #include <dash/Distribution.h>
 #include <dash/Exception.h>
 #include <dash/Dimensional.h>
@@ -20,6 +19,8 @@
 
 namespace dash {
 
+#ifndef DOXYGEN
+
 /**
  * Irregular dynamic pattern.
  *
@@ -30,6 +31,8 @@ template<
   MemArrange Arrangement  = dash::ROW_MAJOR,
   typename   IndexType    = dash::default_index_t >
 class DynamicPattern;
+
+#endif // DOXYGEN
 
 /**
  * Irregular dynamic pattern.

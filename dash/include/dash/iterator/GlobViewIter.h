@@ -5,8 +5,9 @@
 #include <dash/Allocator.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobMem.h>
+
+#include <dash/iterator/GlobIter.h>
 
 #include <cstddef>
 #include <functional>
@@ -26,6 +27,11 @@ template<
 class GlobStencilIter;
 #endif
 
+/**
+ * Global iterator on an index set specified by a view modifier.
+ *
+ * \concept{DashGlobalIteratorConcept}
+ */
 template<
   typename ElementType,
   class    PatternType,

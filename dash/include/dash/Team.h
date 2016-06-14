@@ -4,7 +4,7 @@
 #include <dash/dart/if/dart.h>
 
 #include <dash/Init.h>
-#include <dash/Enums.h>
+#include <dash/Types.h>
 #include <dash/Exception.h>
 
 #include <dash/util/Locality.h>
