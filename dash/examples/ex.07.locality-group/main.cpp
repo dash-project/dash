@@ -20,8 +20,6 @@ int main(int argc, char ** argv)
 
   pid_t pid;
   char buf[100];
-  int  split_num_groups = 3;
-  dart_locality_scope_t split_scope = DART_LOCALITY_SCOPE_NODE;
 
   std::vector<std::vector<std::string>> groups_subdomain_tags;
 
@@ -36,8 +34,8 @@ int main(int argc, char ** argv)
     }
   } else {
     std::vector<std::string> group_1_domain_tags;
-    group_1_domain_tags.push_back(".0.0.0");
-    group_1_domain_tags.push_back(".0.0.1");
+    group_1_domain_tags.push_back(".0.0.0.0");
+    group_1_domain_tags.push_back(".0.0.0.1");
     groups_subdomain_tags.push_back(group_1_domain_tags);
   }
 

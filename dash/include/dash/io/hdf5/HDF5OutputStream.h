@@ -4,8 +4,10 @@
 #ifdef DASH_ENABLE_HDF5
 
 #include <string>
+
 #include <dash/Matrix.h>
 #include <dash/Array.h>
+
 
 namespace dash {
 namespace io {
@@ -40,28 +42,28 @@ class HDF5OutputStream {
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
-        const HDF5dataset & tbl) {
+        const dataset & tbl) {
         os._dataset = tbl._dataset;
         return os;
     }
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
-        HDF5setpattern_key pk) {
+        setpattern_key pk) {
         os._foptions.pattern_metadata_key = pk._key;
         return os;
     }
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
-        HDF5store_pattern sp) {
+        store_pattern sp) {
         os._foptions.store_pattern = sp._store;
         return os;
     }
 
     friend HDF5OutputStream & operator<< (
         HDF5OutputStream & os,
-        HDF5modify_dataset md) {
+        modify_dataset md) {
         os._foptions.modify_dataset = md._modify;
         return os;
     }

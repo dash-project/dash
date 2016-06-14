@@ -12,6 +12,7 @@ build-ci
 *.swo
 *#
 *.log
+*.out
 ipm/*/GEN.*
 my.*.sh
 .syntastic*

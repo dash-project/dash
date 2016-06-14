@@ -127,7 +127,7 @@ TEST_F(HDF5MatrixTest, StoreMultiDimMatrix)
     DASH_LOG_DEBUG("BEGIN STORE HDF");
 
 		dio::HDF5OutputStream os(_filename);
-    os << dio::HDF5dataset(_dataset) << mat1;
+    os << dio::dataset(_dataset) << mat1;
 
     DASH_LOG_DEBUG("END STORE HDF");
     dash::barrier();
@@ -173,7 +173,7 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
 
     // Store Matrix
 		dio::HDF5OutputStream os(_filename);
-    os << dio::HDF5dataset(_dataset) << matrix_a;
+    os << dio::dataset(_dataset) << matrix_a;
 
     dash::barrier();
   }
@@ -181,7 +181,7 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
   dash::Matrix<double, 2> matrix_b;
 
 	dio::HDF5InputStream is(_filename);
-	is >> dio::HDF5dataset(_dataset) >> matrix_b;
+	is >> dio::dataset(_dataset) >> matrix_b;
 
   dash::barrier();
   verify_matrix(matrix_b, static_cast<double>(myid));
@@ -203,8 +203,8 @@ TEST_F(HDF5MatrixTest, AutoGeneratePattern)
     fopts.store_pattern = false;
 
 		dio::HDF5OutputStream os(_filename);
-		os << dio::HDF5store_pattern(false)
-       << dio::HDF5dataset(_dataset)
+		os << dio::store_pattern(false)
+       << dio::dataset(_dataset)
 			 << matrix_a;
 
     dash::barrier();
@@ -212,7 +212,7 @@ TEST_F(HDF5MatrixTest, AutoGeneratePattern)
   dash::Matrix<int, 2> matrix_b;
 
 	dio::HDF5InputStream is(_filename);
-	is >> dio::HDF5dataset(_dataset) >> matrix_b;
+	is >> dio::dataset(_dataset) >> matrix_b;
 
   dash::barrier();
 
@@ -220,9 +220,11 @@ TEST_F(HDF5MatrixTest, AutoGeneratePattern)
   verify_matrix(matrix_b);
 }
 
-// Import data into a already allocated matrix
-// because matrix_a and matrix_b are allocated the same way
-// it is expected that each unit remains its local ranges
+/**
+ * Import data into a already allocated matrix
+ * because matrix_a and matrix_b are allocated the same way
+ * it is expected that each unit remains its local ranges
+ */
 TEST_F(HDF5MatrixTest, PreAllocation)
 {
   int ext_x = dash::size();
@@ -238,8 +240,8 @@ TEST_F(HDF5MatrixTest, PreAllocation)
 
     // Set option
 		dio::HDF5OutputStream os(_filename);
-		os << dio::HDF5store_pattern(false)
-       << dio::HDF5dataset(_dataset)
+		os << dio::store_pattern(false)
+       << dio::dataset(_dataset)
 			 << matrix_a;
 
     dash::barrier();
@@ -250,7 +252,7 @@ TEST_F(HDF5MatrixTest, PreAllocation)
       ext_y));
 
 	dio::HDF5InputStream is(_filename);
-	is >> dio::HDF5dataset(_dataset) >> matrix_b;
+	is >> dio::dataset(_dataset) >> matrix_b;
 
   dash::barrier();
 
@@ -261,7 +263,6 @@ TEST_F(HDF5MatrixTest, PreAllocation)
 /**
  * Allocate a matrix with extents that cannot fit into full blocks
  */
-#if 1
 TEST_F(HDF5MatrixTest, UnderfilledPattern)
 {
   typedef dash::Pattern<2, dash::ROW_MAJOR> pattern_t;
@@ -294,14 +295,14 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
     fill_matrix(matrix_a);
 
 		dio::HDF5OutputStream os(_filename);
-		os << dio::HDF5dataset(_dataset)
+		os << dio::dataset(_dataset)
        << matrix_a;
   }
   dash::barrier();
 
   dash::Matrix<int, 2, long, pattern_t> matrix_b;
 	dio::HDF5InputStream is(_filename);
-	is >> dio::HDF5dataset(_dataset)
+	is >> dio::dataset(_dataset)
      >> matrix_b;
 }
 
@@ -325,9 +326,9 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
     fopts.overwrite_file = false;
 
 		dio::HDF5OutputStream os(_filename);
-		os << dio::HDF5dataset(_dataset)
+		os << dio::dataset(_dataset)
        << matrix_a
-			 << dio::HDF5dataset("datasettwo")
+			 << dio::dataset("datasettwo")
        << matrix_b;
     dash::barrier();
   }
@@ -335,16 +336,16 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
 	dash::Matrix<double,2> matrix_d;
 
 	dio::HDF5InputStream is(_filename);
-	is >> dio::HDF5dataset(_dataset)
+	is >> dio::dataset(_dataset)
      >> matrix_c
-		 >> dio::HDF5dataset("datasettwo")
+		 >> dio::dataset("datasettwo")
 		 >> matrix_d;
 
   dash::barrier();
 
   // Verify data
   verify_matrix(matrix_c, secret_a);
- 	verify_matrix(matrix_d, secret_b);
+	verify_matrix(matrix_d, secret_b);
 }
 
 TEST_F(HDF5MatrixTest, ModifyDataset)
@@ -368,22 +369,22 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
 
 		{
 			dio::HDF5OutputStream os(_filename);
-			os << dio::HDF5dataset(_dataset)
-    	   << matrix_a;
+			os << dio::dataset(_dataset)
+         << matrix_a;
 		}
 
 		dash::barrier();
 		// overwrite first data
 		dio::HDF5OutputStream os(_filename, dio::HDF5FileOptions::Append);
-		os << dio::HDF5dataset(_dataset)
-       << dio::HDF5modify_dataset()
+		os << dio::dataset(_dataset)
+       << dio::modify_dataset()
        << matrix_b;
     dash::barrier();
   }
   dash::Matrix<double,2>    matrix_c;
 
 	dio::HDF5InputStream is(_filename);
-	is >> dio::HDF5dataset(_dataset)
+	is >> dio::dataset(_dataset)
      >> matrix_c;
 
   dash::barrier();
@@ -392,7 +393,6 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
   verify_matrix(matrix_c, secret_b);
 }
 
-#endif
 #if 0
 // Test Conversion between dash::Array and dash::Matrix
 // Currently not possible as matrix has to be at least

@@ -13,15 +13,17 @@
 typedef int value_t;
 typedef dash::Array<value_t, long> array_t;
 
+namespace dio = dash::io::hdf5;
+
 using dash::io::hdf5::StoreHDF;
 using dash::io::hdf5::HDF5FileOptions;
 using dash::io::hdf5::HDF5InputStream;
 using dash::io::hdf5::HDF5OutputStream;
-using dash::io::hdf5::HDF5dataset;
-using dash::io::hdf5::HDF5modify_dataset;
-using dash::io::hdf5::HDF5store_pattern;
-using dash::io::hdf5::HDF5restore_pattern;
-using dash::io::hdf5::HDF5setpattern_key;
+using dash::io::hdf5::dataset;
+using dash::io::hdf5::modify_dataset;
+using dash::io::hdf5::store_pattern;
+using dash::io::hdf5::restore_pattern;
+using dash::io::hdf5::setpattern_key;
 
 /**
  * Fill an dash array with a signatures that contains
@@ -173,14 +175,14 @@ TEST_F(HDF5ArrayTest, OutputStream)
     dash::barrier();
 
     auto os  = HDF5OutputStream(_filename);
-    os   << HDF5dataset(_dataset)
+    os   << dio::dataset(_dataset)
          << array_a;
   }
   dash::barrier();
   // Import data
   dash::Array<long> array_b;
   auto is = HDF5InputStream(_filename);
-  is >> HDF5dataset(_dataset) >> array_b;
+  is >> dio::dataset(_dataset) >> array_b;
 
   verify_array(array_b);
 }
@@ -191,7 +193,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPattern)
   long  tilesize;
   {
     auto array_a = dash::Array<int>(ext_x);
-    tilesize = array_a.pattern().blocksize(0);
+    tilesize     = array_a.pattern().blocksize(0);
     // Fill
     fill_array(array_a);
     dash::barrier();
@@ -277,12 +279,12 @@ TEST_F(HDF5ArrayTest, MultipleDatasets)
 	dash::Array<double> array_d;
 	StoreHDF::read(array_c, _filename, _dataset);
 	StoreHDF::read(array_d, _filename, "datasettwo");
-	
+
   dash::barrier();
 
   // Verify data
   verify_array(array_c, secret_a);
- 	verify_array(array_d, secret_b);
+  verify_array(array_d, secret_b);
 }
 
 TEST_F(HDF5ArrayTest, ModifyDataset)
@@ -312,7 +314,7 @@ TEST_F(HDF5ArrayTest, ModifyDataset)
   }
   dash::Array<double>    array_c;
 	StoreHDF::read(array_c, _filename, _dataset);
-	
+
   dash::barrier();
 
   // Verify data
@@ -333,22 +335,22 @@ TEST_F(HDF5ArrayTest, StreamCreationFlags)
     // Set option
 
 		HDF5OutputStream os(_filename, HDF5FileOptions::Append);
-		os << HDF5dataset("settwo")
-			 << HDF5setpattern_key("custom_dash_pattern")
-       << HDF5store_pattern()
+		os << dio::dataset("settwo")
+			 << dio::setpattern_key("custom_dash_pattern")
+       << dio::store_pattern()
 			 << array_a
-			 << HDF5modify_dataset()
+			 << dio::modify_dataset()
 			 << array_a;
 
 		dash::barrier();
   }
   dash::Array<double>    array_b;
 	HDF5InputStream is(_filename);
-	is >> HDF5dataset("settwo")
-		 >> HDF5setpattern_key("custom_dash_pattern")
-     >> HDF5restore_pattern()
+	is >> dio::dataset("settwo")
+		 >> dio::setpattern_key("custom_dash_pattern")
+     >> dio::restore_pattern()
      >> array_b;
-	
+
   dash::barrier();
 
   // Verify data
