@@ -27,6 +27,11 @@ template<
 class GlobStencilIter;
 #endif
 
+/**
+ * Global iterator on an index set specified by a view modifier.
+ *
+ * \concept{DashGlobalIteratorConcept}
+ */
 template<
   typename ElementType,
   class    PatternType,

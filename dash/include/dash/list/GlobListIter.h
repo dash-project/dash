@@ -8,8 +8,15 @@
 
 #include <iterator>
 
+
 namespace dash {
 
+/**
+ * Bi-directional global iterator on elements of a \c dash::List instance.
+ *
+ * \concept{DashListConcept}
+ * \concept{DashGlobalIteratorConcept}
+ */
 template<
   typename ElementType,
   class    GlobMemType,

@@ -28,7 +28,6 @@ class List;
 /**
  * Proxy type representing a local view on a referenced \c dash::List.
  *
- * \concept{DashContainerConcept}
  * \concept{DashListConcept}
  */
 template<
