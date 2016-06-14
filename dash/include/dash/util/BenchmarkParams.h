@@ -30,8 +30,10 @@ public:
   typedef struct dash_config_params_t {
     env_flags_type env_mpi_config;
     env_flags_type env_dash_config;
-    bool           env_hwloc;
     bool           env_mpi_shared_win;
+    bool           env_papi;
+    bool           env_hwloc;
+    bool           env_numalib;
     bool           env_mkl;
     bool           env_blas;
     bool           env_lapack;
