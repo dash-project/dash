@@ -12,7 +12,8 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/PatternProperties.h>
+
+#include <dash/pattern/PatternProperties.h>
 
 #include <dash/util/TeamLocality.h>
 #include <dash/util/LocalityDomain.h>
@@ -23,17 +24,12 @@
 
 namespace dash {
 
-// ==========================================================================
-// TODO:
-//
-//   Should subclass or delegate to dash::CSRPattern as implementation is
-//   identical apart from comptation of _local_sizes.
-//
-// ==========================================================================
-
-
 /**
  * Irregular dynamic pattern.
+ *
+ * \todo
+ * Should subclass or delegate to dash::CSRPattern as implementation is
+ * identical apart from comptation of _local_sizes.
  *
  * \concept{DashPatternConcept}
  */
@@ -46,6 +42,10 @@ class LoadBalancePattern;
 /**
  * Irregular dynamic pattern.
  * Specialization for 1-dimensional data.
+ *
+ * \todo
+ * Should subclass or delegate to dash::CSRPattern as implementation is
+ * identical apart from comptation of _local_sizes.
  *
  * \concept{DashPatternConcept}
  */

@@ -4,8 +4,6 @@
 #include "LoadBalancePatternTest.h"
 #include "TestBase.h"
 
-#include <dash/LoadBalancePattern.h>
-
 
 void mock_team_locality(
   dash::util::TeamLocality & tloc)

@@ -16,7 +16,8 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/PatternProperties.h>
+
+#include <dash/pattern/PatternProperties.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
@@ -1681,6 +1682,6 @@ std::ostream & operator<<(
 
 } // namespace dash
 
-// #include <dash/SeqTilePattern1D.h>
+// #include <dash/pattern/SeqTilePattern1D.h>
 
 #endif // DASH__SEQ_TILE_PATTERN_H_

@@ -7,7 +7,6 @@
 #include <dash/Future.h>
 #include <dash/algorithm/Copy.h>
 #include <dash/util/Trace.h>
-#include <dash/MakePattern.h>
 
 #include <utility>
 

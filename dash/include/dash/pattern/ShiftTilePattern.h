@@ -14,7 +14,8 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/PatternProperties.h>
+
+#include <dash/pattern/PatternProperties.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
@@ -1632,6 +1633,6 @@ private:
 
 } // namespace dash
 
-#include <dash/ShiftTilePattern1D.h>
+#include <dash/pattern/ShiftTilePattern1D.h>
 
 #endif // DASH__SHIFT_TILE_PATTERN_H_

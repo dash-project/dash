@@ -12,13 +12,16 @@
 #include <dash/Dimensional.h>
 #include <dash/Cartesian.h>
 #include <dash/Team.h>
-#include <dash/PatternProperties.h>
+
+#include <dash/pattern/PatternProperties.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 #include <dash/internal/PatternArguments.h>
 
 namespace dash {
+
+#ifndef DOXYGEN
 
 /**
  * Defines how a list of global indices is mapped to single units
@@ -1603,6 +1606,8 @@ private:
 
 } // namespace dash
 
-#include <dash/BlockPattern1D.h>
+#include <dash/pattern/BlockPattern1D.h>
+
+#endif // DOXYGEN
 
 #endif // DASH__BLOCK_PATTERN_H_

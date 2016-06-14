@@ -7,7 +7,14 @@
 
 namespace dash {
 
-/* TODO:
+/**
+ * \defgroup{DashPatternProperties}
+ * \{
+ * \par Description
+ *
+ * \}
+ *
+ * \todo
  * Properties should not be specified as boolean (satisfiable: yes/no) but
  * as one of the states:
  *
@@ -32,6 +39,9 @@ namespace dash {
 // Pattern linearization properties
 //////////////////////////////////////////////////////////////////////////////
 
+/**
+ * \ingroup{DashPatternProperties}
+ */
 struct pattern_layout_tag
 {
   typedef enum {
@@ -58,6 +68,9 @@ struct pattern_layout_tag
   } type;
 };
 
+/**
+ * \ingroup{DashPatternProperties}
+ */
 template<pattern_layout_tag::type ... Tags>
 struct pattern_layout_properties
 {
@@ -86,6 +99,9 @@ struct pattern_layout_properties
 /**
  * Specialization of \c dash::pattern_layout_properties to process tag
  * \c dash::pattern_layout_tag::type::blocked in template parameter list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_layout_tag::type ... Tags>
 struct pattern_layout_properties<
@@ -112,6 +128,9 @@ pattern_layout_properties<
 /**
  * Specialization of \c dash::pattern_layout_properties to process tag
  * \c dash::pattern_layout_tag::type::canonical in template parameter list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_layout_tag::type ... Tags>
 struct pattern_layout_properties<
@@ -138,6 +157,9 @@ pattern_layout_properties<
 /**
  * Specialization of \c dash::pattern_layout_properties to process tag
  * \c dash::pattern_layout_tag::type::linear in template parameter list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_layout_tag::type ... Tags>
 struct pattern_layout_properties<
@@ -163,6 +185,9 @@ pattern_layout_properties<
 /**
  * Container type for mapping properties of models satisfying the Pattern
  * concept.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 struct pattern_mapping_tag
 {
@@ -218,6 +243,9 @@ struct pattern_mapping_tag
  *
  * Template parameter list is processed recursively by specializations of
  * \c dash::pattern_mapping_properties.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties
@@ -254,6 +282,9 @@ struct pattern_mapping_properties
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::balanced in template parameter list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties<
@@ -273,6 +304,9 @@ pattern_mapping_properties<
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::unbalanced in template parameter list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties<
@@ -292,6 +326,9 @@ pattern_mapping_properties<
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::neighbor in template parameter list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties<
@@ -311,6 +348,9 @@ pattern_mapping_properties<
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::shifted in template parameter list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties<
@@ -331,6 +371,9 @@ pattern_mapping_properties<
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::diagonal in template parameter list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties<
@@ -350,6 +393,9 @@ pattern_mapping_properties<
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::multiple in template parameter list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties<
@@ -370,6 +416,9 @@ pattern_mapping_properties<
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::cyclic in template parameter list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_mapping_tag::type ... Tags>
 struct pattern_mapping_properties<
@@ -391,6 +440,9 @@ pattern_mapping_properties<
 // Pattern partitioning properties
 //////////////////////////////////////////////////////////////////////////////
 
+/**
+ * \ingroup{DashPatternProperties}
+ */
 struct pattern_partitioning_tag
 {
   typedef enum {
@@ -420,6 +472,9 @@ struct pattern_partitioning_tag
   } type;
 };
 
+/**
+ * \ingroup{DashPatternProperties}
+ */
 template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties
 {
@@ -454,6 +509,9 @@ struct pattern_partitioning_properties
  * Specialization of \c dash::pattern_partitioning_properties to process tag
  * \c dash::pattern_partitioning_tag::type::rectangular in template parameter
  * list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties<
@@ -475,6 +533,9 @@ pattern_partitioning_properties<
  * Specialization of \c dash::pattern_partitioning_properties to process tag
  * \c dash::pattern_partitioning_tag::type::minimal in template parameter
  * list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties<
@@ -496,6 +557,9 @@ pattern_partitioning_properties<
  * Specialization of \c dash::pattern_partitioning_properties to process tag
  * \c dash::pattern_partitioning_tag::type::regular in template parameter
  * list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties<
@@ -516,6 +580,9 @@ pattern_partitioning_properties<
  * Specialization of \c dash::pattern_partitioning_properties to process tag
  * \c dash::pattern_partitioning_tag::type::balanced in template parameter
  * list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties<
@@ -536,6 +603,9 @@ pattern_partitioning_properties<
  * Specialization of \c dash::pattern_partitioning_properties to process tag
  * \c dash::pattern_partitioning_tag::type::unbalanced in template parameter
  * list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties<
@@ -556,6 +626,9 @@ pattern_partitioning_properties<
  * Specialization of \c dash::pattern_partitioning_properties to process tag
  * \c dash::pattern_partitioning_tag::type::ndimensional in template parameter
  * list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties<
@@ -576,6 +649,9 @@ pattern_partitioning_properties<
  * Specialization of \c dash::pattern_partitioning_properties to process tag
  * \c dash::pattern_partitioning_tag::type::dynamic in template parameter
  * list.
+ *
+ * \ingroup{DashPatternProperties}
+ *
  */
 template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties<
@@ -639,6 +715,8 @@ struct pattern_traits
 /**
  * Traits for compile- and run-time pattern constraints checking, suitable for
  * property checks where detailed error reporting is desired.
+ *
+ * \ingroup{DashPatternProperties}
  *
  */
 template<
@@ -716,6 +794,8 @@ bool check_pattern_constraints(
  * Traits for compile-time pattern constraints checking, suitable as a helper
  * for template definitions employing SFINAE where no verbose error reporting
  * is required.
+ *
+ * \ingroup{DashPatternProperties}
  *
  */
 template<
@@ -811,6 +891,8 @@ typedef dash::pattern_layout_properties<
         pattern_layout_default_properties;
 
 
+#ifndef DOXYGEN
+
 template<pattern_layout_tag::type ... Tags>
 std::ostream & operator<<(
     std::ostream & os,
@@ -891,6 +973,8 @@ std::ostream & operator<<(
   ss << ">";
   return operator<<(os, ss.str());
 }
+
+#endif
 
 } // namespace dash
 

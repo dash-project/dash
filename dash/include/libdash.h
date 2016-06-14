@@ -41,7 +41,6 @@ namespace dash {
 #include <dash/Atomic.h>
 
 #include <dash/Pattern.h>
-#include <dash/DynamicPattern.h>
 
 #include <dash/util/BenchmarkParams.h>
 #include <dash/util/Config.h>
