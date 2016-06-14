@@ -8,7 +8,10 @@
 namespace dash {
 
 /**
- * \defgroup{DashPatternProperties}
+ * \defgroup  DashPatternProperties  Pattern Properties
+ * Property system for specification and deduction of pattern types.
+ *
+ * \ingroup DashPatternConcept
  * \{
  * \par Description
  *
@@ -27,6 +30,7 @@ namespace dash {
  *
  * \}
  *
+ *
  * \todo
  * Properties should not be specified as boolean (satisfiable: yes/no) but
  * as one of the states:
@@ -35,7 +39,7 @@ namespace dash {
  * - satisfiable
  * - unsatisfiable
  *
- * And constraints as one of the states:
+ * ... and constraints as one of the states:
  *
  * - strong
  * - weak
