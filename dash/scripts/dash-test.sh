@@ -45,8 +45,12 @@ TOTAL_FAIL_COUNT=0
 TESTS_PASSED=true
 run_suite()
 {
-  BIND_CMD=""
+  NCORES=`cat /proc/cpuinfo | grep -c 'core id'`
   NUNITS=$1
+  if [ $NCORES -lt $NUNITS ]; then
+    exit 0
+  fi
+  BIND_CMD=""
   MAX_RANK=$((NUNITS - 1))
   if [ `which numactl` ]; then
     BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"

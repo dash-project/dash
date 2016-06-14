@@ -19,8 +19,7 @@ if(NOT HDF5_PREFIX)
 endif()
 
 
-message(STATUS "Try to find HDF5 cmake package")
-
+message(STATUS "Trying to find HDF5 using cmake package")
 # set(HDF5_USE_STATIC_LIBRARIES ON)
 set(HDF5_PREFER_PARALLEL ON)
 find_package (
