@@ -1,8 +1,12 @@
 #ifndef DASH__GLOB_ASYNC_ITER_H__
 #define DASH__GLOB_ASYNC_ITER_H__
 
-#include <dash/Pattern.h>
 #include <dash/GlobAsyncRef.h>
+#include <dash/GlobAsyncPtr.h>
+#include <dash/Pattern.h>
+
+#include <dash/iterator/GlobIter.h>
+
 #include <dash/dart/if/dart_communication.h>
 
 #include <iostream>
