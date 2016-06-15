@@ -1,6 +1,7 @@
 #ifndef DASH__ALGORITHM__MIN_MAX_H__
 #define DASH__ALGORITHM__MIN_MAX_H__
 
+#include <dash/internal/Config.h>
 #include <dash/Array.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/Allocator.h>
@@ -101,13 +102,14 @@ GlobIter<ElementType, PatternType> min_element(
       typedef struct min_pos_t { ElementType val; size_t idx; } min_pos;
 
       DASH_LOG_DEBUG("dash::min_element", "local range size:", l_size);
-#if DASH__OPENMP_VERSION >= 40
-      // User-defined reduction, available since OpenMP 4.0:
+#if 0 && DASH__OPENMP_VERSION >= 40
+      // Cannot use user-defined reduction (OpenMP 4.0) as the compare
+      // predicate cannot be used in `omp declare reduction`.
       #pragma omp declare reduction( \
-                            min_idx : min_pos : omp_out = \
+                            min_elem_reduce : min_pos : omp_out = \
                               omp_in.val < omp_out.val ? omp_in : omp_out)
       min_pos min { l_range_begin[0], 0 };
-      #pragma omp parallel for schedule(static) reduction(min_idx:min)
+      #pragma omp parallel for schedule(static) reduction(min_elem_reduce:min)
       for (size_t i = 1; i < l_size; i++) {
         ElementType val_t = *(l_range_begin + i);
         if (compare(val_t, min.val)) {
