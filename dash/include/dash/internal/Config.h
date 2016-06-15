@@ -173,6 +173,15 @@
 #  define DASH__PLATFORM__POSIX
 #endif
 
+#ifdef _OPENMP
+#  define DASH_ENABLE_OPENMP
+#  if _OPENMP >= 201307
+#    define DASH__OPENMP_VERSION 40
+#  else
+#    define DASH__OPENMP_VERSION 30
+#  endif
+#endif
+
 #endif // DOXYGEN
 
 #endif // DASH__INTERNAL__CONFIG_H_
