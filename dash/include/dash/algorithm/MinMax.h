@@ -11,7 +11,9 @@
 #include <algorithm>
 #include <memory>
 
+#ifdef DASH_ENABLE_OPENMP
 #include <omp.h>
+#endif
 
 
 namespace dash {
@@ -88,6 +90,9 @@ GlobIter<ElementType, PatternType> min_element(
       n_threads *= dash::util::Locality::MinThreads();
     }
     DASH_LOG_DEBUG("dash::min_element", "thread capacity:",  n_threads);
+
+    // TODO: Should also restrict on elements/units > ~10240.
+    //       Find a model for the minimum work laod.
     if (n_threads > 1) {
       auto          l_size     = l_range_end - l_range_begin;
       int           min_idx_l  = 0;
@@ -96,7 +101,7 @@ GlobIter<ElementType, PatternType> min_element(
       typedef struct min_pos_t { ElementType val; size_t idx; } min_pos;
 
       DASH_LOG_DEBUG("dash::min_element", "local range size:", l_size);
-#if _OPENMP >= 201307
+#if DASH__OPENMP_VERSION >= 40
       // User-defined reduction, available since OpenMP 4.0:
       #pragma omp declare reduction( \
                             min_idx : min_pos : omp_out = \
