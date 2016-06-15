@@ -3,11 +3,13 @@
 
 #include <dash/Array.h>
 #include <dash/algorithm/LocalRange.h>
+#include <dash/Allocator.h>
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/internal/Logging.h>
 
 #include <algorithm>
+#include <memory>
 
 #include <omp.h>
 
@@ -78,52 +80,85 @@ GlobIter<ElementType, PatternType> min_element(
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
 
     auto  n_threads = dash::util::Locality::NumCores();
-    if (dash::util::Config::get<bool>("DASH_MAX_SMT")) {
+    if (dash::util::Config::get<bool>("DASH_DISABLE_THREADS")) {
+      n_threads  = 1;
+    } else if (dash::util::Config::get<bool>("DASH_MAX_SMT")) {
       n_threads *= dash::util::Locality::MaxThreads();
     } else {
       n_threads *= dash::util::Locality::MinThreads();
     }
     DASH_LOG_DEBUG("dash::min_element", "thread capacity:", n_threads);
     if (n_threads > 1) {
-      int           min_idx_l  = 0;
-      ElementType   min_val_l  = *l_range_begin;
       auto          l_size     = l_range_end - l_range_begin;
-#if 0
-      // Should be possible to avoid critical section by using array of
-      // thread-local minimum values, aligned to prevent false sharing:
-      size_t        min_vals_t_size = n_threads + alignof(ElementType);
-      ElementType * min_vals_t_raw  = new ElementType[min_vals_t_size];
-      ElementType * min_vals_t      = std::align(alignof(ElementType),
-                                                 sizeof(ElementType),
-                                                 min_vals_t_raw,
-                                                 min_vals_t_size);
-      DASH_ASSERT_GE(min_vals_t_size, n_threads * sizeof(ElementType));
-#endif
-      #pragma omp parallel num_threads(n_threads)
-      {
-        DASH_LOG_DEBUG("dash::min_element", "starting OMP thread",
-                       omp_get_thread_num());
-        int         min_idx_t = min_idx_l;
-        ElementType min_val_t = min_val_l;
-        // Cannot use explicit private(min_val_t) as ElementType might
-        // not be default-constructible:
-        #pragma omp for nowait
-        for (int i = 0; i < l_size; i++) {
-          ElementType val_t = *(l_range_begin + i);
-          if (compare(val_t, min_val_t)) {
-            min_val_t = val_t;
-            min_idx_t = i;
-          }
-        }
-        #pragma omp critical
-        {
-          if (compare(min_val_t, min_val_l)) {
-            min_val_l = min_val_t;
-            min_idx_l = min_idx_t;
-          }
+
+      typedef struct min_pos_t { ElementType val; size_t idx; } min_pos;
+
+#if _OPENMP >= 201307
+      // User-defined reduction, available since OpenMP 4.0:
+      #pragma omp declare reduction( \
+                            min_idx : min_pos : omp_out = \
+                              omp_in.val < omp_out.val ? omp_in : omp_out)
+      min_pos min { l_range_begin[0], 0 };
+      #pragma omp parallel for schedule(static) reduction(min_idx:min)
+      for (size_t i = 1; i < l_size; i++) {
+        ElementType val_t = *(l_range_begin + i);
+        if (compare(val_t, min.val)) {
+          min.val = val_t;
+          min.idx = i;
         }
       }
-      lmin = l_range_begin + min_idx_l;
+      lmin = l_range_begin + min.idx;
+#else
+      // Avoid omp for + omp critical section by using array of
+      // thread-local minimum values, aligned to prevent false sharing:
+      size_t    min_vals_t_size  = n_threads + 1 +
+                                   (alignof(min_pos) / sizeof(min_pos));
+      size_t    min_vals_t_bytes = min_vals_t_size * sizeof(min_pos);
+      min_pos * min_vals_t_raw   = new min_pos[min_vals_t_size];
+      void    * min_vals_t_alg   = min_vals_t_raw;
+      min_pos * min_vals_t       = static_cast<min_pos *>(
+                                     dash::align(
+                                       alignof(min_pos),
+                                       sizeof(min_pos),
+                                       min_vals_t_alg,
+                                       min_vals_t_bytes));
+      DASH_LOG_TRACE("dash::min_element", "min * alloc:",   min_vals_t_raw);
+      DASH_LOG_TRACE("dash::min_element", "min * aligned:", min_vals_t);
+      DASH_LOG_TRACE("dash::min_element", "min * size:",    min_vals_t_size);
+      DASH_ASSERT_GE(min_vals_t_bytes, n_threads * sizeof(min_pos),
+                     "Aligned buffer of min_pos has insufficient size");
+      DASH_ASSERT_MSG(nullptr != min_vals_t,
+                      "Aligned allocation of min_pos returned nullptr");
+      int t_id;
+      #pragma omp parallel num_threads(n_threads) private(t_id)
+      {
+        t_id = omp_get_thread_num();
+        min_vals_t[t_id].idx = 0;
+        min_vals_t[t_id].val = l_range_begin[0];
+        // Cannot use explicit private(min_val_t) as ElementType might
+        // not be default-constructible:
+        #pragma omp for schedule(static)
+        for (int i = 0; i < l_size; i++) {
+          const ElementType & val_t = *(l_range_begin + i);
+          if (compare(val_t, min_vals_t[t_id].val)) {
+            min_vals_t[t_id].val = val_t;
+            min_vals_t[t_id].idx = i;
+          }
+        }
+        DASH_LOG_TRACE("dash::min_element", "local minimum at thread", t_id,
+                       "idx:", min_vals_t[t_id].idx,
+                       "val:", min_vals_t[t_id].val);
+      }
+      min_pos min_pos_l = min_vals_t[0];
+      for (int t = 1; t < n_threads; t++) {
+        const min_pos & mpt = min_vals_t[t];
+        if (compare(mpt.val, min_pos_l.val)) {
+          min_pos_l = mpt;
+        }
+      }
+      lmin = l_range_begin + min_pos_l.idx;
+      delete[] min_vals_t_raw;
+#endif
     } else {
       lmin = ::std::min_element(l_range_begin, l_range_end, compare);
     }
