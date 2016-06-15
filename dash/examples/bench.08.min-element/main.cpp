@@ -219,7 +219,7 @@ measurement perform_test(
 //dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
   for (size_t li = 0; li < arr.lsize(); li++) {
-    arr.local[li] = (42 * li) % 1024;
+    arr.local[li] = min_value_exp + 1 + ((42 * (li + 1)) % 1024);
   }
 
   if (myid == min_value_unit) {

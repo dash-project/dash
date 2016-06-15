@@ -151,7 +151,7 @@ inline void Log_Line(
       << std::left << std::setw(45)
       << context_tag << "| "
       << msg
-      << std::endl;
+      << "\n";
 
   DASH_LOG_OUTPUT_TARGET << buf.str();
 }
