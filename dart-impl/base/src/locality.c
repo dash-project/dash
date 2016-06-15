@@ -535,6 +535,11 @@ dart_ret_t dart__base__locality__domain_group(
 
     dart__base__locality__domain__init(group_domain);
 
+    /* TODO: hwinfo of group domain is not correctly initialized, and doing
+     *       so is not trivial.
+     *       Using parent domain's hwinfo as an intermediate solution.
+     */
+    group_domain->hwinfo         = group_parent_domain->hwinfo;
     group_domain->team           = group_parent_domain->team;
     group_domain->scope          = DART_LOCALITY_SCOPE_GROUP;
     group_domain->level          = group_parent_domain->level + 1;
@@ -550,6 +555,12 @@ dart_ret_t dart__base__locality__domain_group(
     strncpy(group_domain->domain_tag, group_parent_domain_tag,
             group_parent_domain_tag_len);
     group_domain->domain_tag[group_parent_domain_tag_len] = '\0';
+
+    /* TODO: Check if this implementation is correct.
+             Incrementing an existing domain's relative index could result
+             in naming collisions as the relative index of the subdomain can
+             differ from the last place in their domain tag.
+    */
     int group_domain_tag_len =
       sprintf(group_domain->domain_tag + group_parent_domain_tag_len,
               ".%d", group_domain->relative_index) +
@@ -726,8 +737,19 @@ dart_ret_t dart__base__locality__group_subdomains(
   int num_grouped         = num_group_subdomain_tags;
   int num_ungrouped       = domain->num_domains - num_grouped;
   int num_subdomains_new  = num_ungrouped + 1;
+
+  /* The domain tag of the group to be added must be a successor of the last
+   * subdomain's (the group domain's last sibling) tag to avoid collisions.
+   * Relative index of last subdomain can differ from its last domain tag
+   * segment, so we need to read and increment the suffix of its domain tag
+   * to obtain the group's domain tag. */
+#if 0
   int domain_last_rel_idx = domain->domains[domain->num_domains - 1]
                               .relative_index;
+#endif
+  char * domain_last_tag_suffix_pos =
+           strrchr(domain->domains[domain->num_domains - 1].domain_tag, '.');
+  int    domain_last_tag_suffix     = atoi(domain_last_tag_suffix_pos + 1);
 
   /* Child nodes are ordered by domain tag.
    * Create sorted copy of subdomain tags to partition child nodes in a
@@ -820,6 +842,8 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   dart__base__locality__domain__init(group_domain);
 
+  /* TODO: hwinfo of group domain is not initialized.
+   */
   group_domain->parent         = domain;
   group_domain->relative_index = group_domain_rel_idx;
   group_domain->level          = domain->level + 1;
@@ -830,7 +854,7 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   int tag_len      = sprintf(group_domain->domain_tag, "%s",
                              domain->domain_tag);
-  int tag_last_idx = domain_last_rel_idx + 1;
+  int tag_last_idx = domain_last_tag_suffix + 1;
   sprintf(group_domain->domain_tag + tag_len, ".%d", tag_last_idx);
   DART_LOG_TRACE("dart__base__locality__group_subdomains: "
                  "group_domain.tag: %s relative index: %d grouped: %d "
