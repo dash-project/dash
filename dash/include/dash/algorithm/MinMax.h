@@ -5,10 +5,11 @@
 #include <dash/algorithm/LocalRange.h>
 
 #include <dash/iterator/GlobIter.h>
-
 #include <dash/internal/Logging.h>
 
 #include <algorithm>
+
+#include <omp.h>
 
 
 namespace dash {
@@ -82,6 +83,7 @@ GlobIter<ElementType, PatternType> min_element(
     } else {
       n_threads *= dash::util::Locality::MinThreads();
     }
+    DASH_LOG_DEBUG("dash::min_element", "thread capacity:", n_threads);
     if (n_threads > 1) {
       int           min_idx_l  = 0;
       ElementType   min_val_l  = *l_range_begin;
@@ -99,25 +101,27 @@ GlobIter<ElementType, PatternType> min_element(
 #endif
       #pragma omp parallel num_threads(n_threads)
       {
-         int         min_idx_t = min_idx_l;
-         ElementType min_val_t = min_val_l;
-         // Cannot use explicit private(min_val_t) as ElementType might
-         // not be default-constructible:
-         #pragma omp for nowait
-         for (int i = 0; i < l_size; i++) {
-           ElementType val_t = *(l_range_begin + i);
-           if (compare(val_t, min_val_t)) {
-             min_val_t = val_t;
-             min_idx_t = i;
-           }
-         }
-         #pragma omp critical
-         {
-           if (compare(min_val_t, min_val_l)) {
-             min_val_l = min_val_t;
-             min_idx_l = min_idx_t;
-           }
-         }
+        DASH_LOG_DEBUG("dash::min_element", "starting OMP thread",
+                       omp_get_thread_num());
+        int         min_idx_t = min_idx_l;
+        ElementType min_val_t = min_val_l;
+        // Cannot use explicit private(min_val_t) as ElementType might
+        // not be default-constructible:
+        #pragma omp for nowait
+        for (int i = 0; i < l_size; i++) {
+          ElementType val_t = *(l_range_begin + i);
+          if (compare(val_t, min_val_t)) {
+            min_val_t = val_t;
+            min_idx_t = i;
+          }
+        }
+        #pragma omp critical
+        {
+          if (compare(min_val_t, min_val_l)) {
+            min_val_l = min_val_t;
+            min_idx_l = min_idx_t;
+          }
+        }
       }
       lmin = l_range_begin + min_idx_l;
     } else {

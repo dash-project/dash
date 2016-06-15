@@ -109,14 +109,6 @@ public:
     set(key, std::string(cstr));
   }
 
-  static inline void
-  set(
-    const std::string & key,
-    bool                value)
-  {
-    set(key, value ? "true" : "false");
-  }
-
   static typename std::unordered_map<std::string, std::string>::iterator
   begin() {
     return Config::config_values_.begin();

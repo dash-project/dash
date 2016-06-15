@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 {
   dash::init(&argc, &argv);
 
-  dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+//dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
   Timer::Calibrate(0);
 
@@ -202,7 +202,7 @@ measurement perform_test(
   PatternType pattern(NELEM);
 #endif
 
-  dash::util::Config::set("DASH_ENABLE_LOGGING", true);
+//dash::util::Config::set("DASH_ENABLE_LOGGING", true);
 
   ArrayType arr(pattern);
 
@@ -216,7 +216,7 @@ measurement perform_test(
                  "array size:",       arr.size(),
                  "array local size:", arr.lsize());
 
-  dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+//dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
   for (size_t li = 0; li < arr.lsize(); li++) {
     arr.local[li] = 42;
@@ -240,9 +240,9 @@ measurement perform_test(
 
     auto ts_start  = Timer::Now();
 
-    dash::util::Config::set("DASH_ENABLE_LOGGING", true);
+//  dash::util::Config::set("DASH_ENABLE_LOGGING", true);
     auto min_git   = dash::min_element(arr.begin(), arr.end());
-    dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+//  dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
     auto time_us   = Timer::ElapsedSince(ts_start);
     total_time_us += time_us;
@@ -253,14 +253,14 @@ measurement perform_test(
       IndexType   lidx_exp   = min_lidx_exp.get();
       ElementType min_actual = *min_git;
 
-      dash::util::Config::set("DASH_ENABLE_LOGGING", true);
+//    dash::util::Config::set("DASH_ENABLE_LOGGING", true);
       DASH_LOG_DEBUG("perform_test.verify", "actual value:", min_actual);
       DASH_LOG_DEBUG("perform_test.verify", "actual unit:",  lpos.unit);
       DASH_LOG_DEBUG("perform_test.verify", "actual lpos:",  lpos.index);
       DASH_LOG_DEBUG("perform_test.verify", "exp. value:",   min_value_exp);
       DASH_LOG_DEBUG("perform_test.verify", "exp. unit:",    min_value_unit);
       DASH_LOG_DEBUG("perform_test.verify", "exp. lpos:",    lidx_exp);
-      dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+//    dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
       if (min_git == arr.end()) {
         DASH_THROW(
