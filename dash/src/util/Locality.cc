@@ -119,6 +119,16 @@ void Locality::init()
   _cache_line_sizes[1] = _domain_loc->hwinfo.cache_line_sizes[1];
   _cache_line_sizes[2] = _domain_loc->hwinfo.cache_line_sizes[2];
 
+  if (_cache_line_sizes[0] < 0) {
+    _cache_line_sizes[0] = 64;
+  }
+  if (_cache_line_sizes[1] < 0) {
+    _cache_line_sizes[1] = _cache_line_sizes[0];
+  }
+  if (_cache_line_sizes[2] < 0) {
+    _cache_line_sizes[2] = _cache_line_sizes[1];
+  }
+
   DASH_LOG_DEBUG("dash::util::Locality::init >");
 }
 

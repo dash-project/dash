@@ -70,12 +70,13 @@ public:
   void print_section_end() const;
 
   void print(
-    std::stringstream & lines) const
+    std::stringstream & lines,
+    std::string         prefix = "") const
   {
     std::ostringstream oss;
     std::string line;
     while(std::getline(lines, line)) {
-      oss << "--   " << line << '\n';
+      oss << "--   " << prefix << line << '\n';
     }
     std::cout << oss.str();
   }

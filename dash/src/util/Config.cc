@@ -1,5 +1,9 @@
-#include <dash/util/Config.h>
+
+#include <dash/internal/Config.h>
 #include <dash/internal/Logging.h>
+
+#include <dash/util/Config.h>
+#include <dash/util/Config.h>
 
 #include <unordered_map>
 #include <string>
@@ -50,6 +54,9 @@ void Config::init()
   }
 #ifndef DART_MPI_DISABLE_SHARED_WINDOWS
   set("DASH_ENABLE_MPI_SHWIN", true);
+#endif
+#ifdef DASH_ENABLE_OPENMP
+  set("DASH_ENABLE_OPENMP",    true);
 #endif
 #ifdef DASH_ENABLE_PAPI
   set("DASH_ENABLE_PAPI",      true);

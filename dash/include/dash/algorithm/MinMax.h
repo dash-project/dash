@@ -69,11 +69,7 @@ const ElementType * min_element(
     typedef struct min_pos_t { ElementType val; size_t idx; } min_pos;
 
     DASH_LOG_DEBUG("dash::min_element", "local range size:", l_size);
-    // Cannot use user-defined reduction (OpenMP 4.0) as the compare
-    // predicate cannot be used in `omp declare reduction`.
-    // Avoid omp for + omp critical section by using array of
-    // thread-local minimum values, aligned to prevent false sharing:
-    int       align_bytes      = 64;
+    int       align_bytes      = dash::util::Locality::CacheLineSizes()[0];
     size_t    min_vals_t_size  = n_threads + 1 +
                                  (align_bytes / sizeof(min_pos));
     size_t    min_vals_t_bytes = min_vals_t_size * sizeof(min_pos);
@@ -92,6 +88,11 @@ const ElementType * min_element(
                    "Aligned buffer of min_pos has insufficient size");
     DASH_ASSERT_MSG(nullptr != min_vals_t,
                     "Aligned allocation of min_pos returned nullptr");
+
+    // Cannot use user-defined reduction (OpenMP 4.0) as the compare
+    // predicate cannot be used in `omp declare reduction`.
+    // Avoid omp for + omp critical section by using array of
+    // thread-local minimum values, aligned to prevent false sharing:
     int t_id;
     #pragma omp parallel num_threads(n_threads) private(t_id)
     {
