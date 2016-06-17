@@ -57,6 +57,11 @@ const ElementType * min_element(
     // Start one thread on every physical core assigned to this unit:
     n_threads *= dash::util::Locality::MinThreads();
   }
+  if (dash::util::Config::is_set("DASH_MAX_UNIT_THREADS")) {
+    n_threads  = std::min(dash::util::Config::get<int>(
+                            "DASH_MAX_UNIT_THREADS"),
+                          n_threads);
+  }
   DASH_LOG_DEBUG("dash::min_element", "thread capacity:",  n_threads);
 
   // TODO: Should also restrict on elements/units > ~10240.
