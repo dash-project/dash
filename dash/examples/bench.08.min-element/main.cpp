@@ -207,8 +207,10 @@ measurement perform_test(
   ArrayType arr(pattern);
 
   ElementType min_value_exp   = 17;
-  dart_unit_t min_value_unit  = static_cast<dart_unit_t>(
-                                  (arr.team().size() / 2) - 1);
+  dart_unit_t min_value_unit  = std::max<dart_unit_t>(
+                                  static_cast<dart_unit_t>(
+                                    (arr.team().size() / 2) - 1),
+                                  0);
 
   DASH_LOG_DEBUG("perform_test.verify",
                  "num.elem:",         NELEM,
@@ -396,11 +398,11 @@ benchmark_params parse_args(int argc, char * argv[])
 {
   benchmark_params params;
   params.size_base      = 2;
-  params.num_iterations = 4;
+  params.num_iterations = 8;
   params.rep_base       = 2;
   params.num_repeats    = 0;
-  params.min_repeats    = 1;
-  params.size_min       = 1024;
+  params.min_repeats    = 10;
+  params.size_min       = 8.0e+6; // 800k elements
   params.verify         = false;
 
   for (auto i = 1; i < argc; i += 2) {
@@ -423,7 +425,7 @@ benchmark_params parse_args(int argc, char * argv[])
     }
   }
   if (params.num_repeats == 0) {
-    params.num_repeats = params.size_min *
+    params.num_repeats = params.min_repeats *
                          std::pow(params.rep_base, params.num_iterations);
   }
   return params;
@@ -477,6 +479,6 @@ void print_team_locality(
   ss << tloc.domain();
 
   bench_cfg.print_section_start("Team Locality Domains");
-  bench_cfg.print(ss);
+  bench_cfg.print(ss, "#");
   bench_cfg.print_section_end();
 }
