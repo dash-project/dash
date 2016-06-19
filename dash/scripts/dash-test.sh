@@ -45,12 +45,18 @@ TOTAL_FAIL_COUNT=0
 TESTS_PASSED=true
 run_suite()
 {
-  BIND_CMD=""
+  NCORES=`cat /proc/cpuinfo | grep -c 'core id'`
   NUNITS=$1
+  if [ $NCORES -lt $NUNITS ]; then
+    exit 0
+  fi
+  BIND_CMD=""
   MAX_RANK=$((NUNITS - 1))
   if [ `which numactl` ]; then
     BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
   fi
+  echo "[[== START ====================================================]]" | \
+    tee -a $LOGFILE
   echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${BIND_CMD} ${TEST_BINARY}" | \
     tee -a $LOGFILE
   $RUN_CMD -n $1 $BIND_CMD $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
@@ -72,6 +78,9 @@ run_suite()
     echo "[[   FAIL ]] $THIS_FAIL_COUNT failed tests, returned ${TEST_RET}" | \
       tee -a $LOGFILE
   fi
+  sleep 3
+  echo "[[== FINISHED =================================================]]" | \
+    tee -a $LOGFILE
 }
 
 run_suite 1

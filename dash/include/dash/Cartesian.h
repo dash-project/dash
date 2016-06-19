@@ -1,7 +1,7 @@
 #ifndef DASH__CARTESIAN_H_
 #define DASH__CARTESIAN_H_
 
-#include <dash/Enums.h>
+#include <dash/Types.h>
 #include <dash/Dimensional.h>
 #include <dash/Exception.h>
 #include <dash/internal/Logging.h>

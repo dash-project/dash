@@ -70,17 +70,576 @@ namespace dash {
 } // namespace dash
 
 // Static regular pattern types:
-#include <dash/BlockPattern.h>
-#include <dash/TilePattern.h>
-#include <dash/ShiftTilePattern.h>
-#include <dash/SeqTilePattern.h>
+#include <dash/pattern/BlockPattern.h>
+#include <dash/pattern/TilePattern.h>
+#include <dash/pattern/ShiftTilePattern.h>
+#include <dash/pattern/SeqTilePattern.h>
 
 // Static irregular pattern types:
-#include <dash/CSRPattern.h>
-#include <dash/LoadBalancePattern.h>
+#include <dash/pattern/CSRPattern.h>
+#include <dash/pattern/LoadBalancePattern.h>
 
-#include <dash/PatternIterator.h>
-#include <dash/PatternProperties.h>
-#include <dash/MakePattern.h>
+#include <dash/pattern/PatternIterator.h>
+#include <dash/pattern/PatternProperties.h>
+#include <dash/pattern/MakePattern.h>
+
+#ifdef DOXYGEN
+
+namespace dash {
+
+/**
+ * Defines how a list of global indices is mapped to single units
+ * within a Team.
+ *
+ * \tparam  NumDimensions  The number of dimensions of the pattern
+ * \tparam  Arrangement    The memory order of the pattern (ROW_MAJOR
+ *                         or COL_MAJOR), defaults to ROW_MAJOR.
+ *                         Memory order defines how elements in the
+ *                         pattern will be iterated predominantly
+ *                         \see MemArrange
+ *
+ * \concept{DashPatternConcept}
+ */
+template<
+  dim_t      NumDimensions,
+  MemArrange Arrangement   = ROW_MAJOR,
+  typename   IndexType     = dash::default_index_t
+>
+class Pattern
+{
+  typedef typename std::make_unsigned<IndexType>::type      SizeType;
+  typedef ViewSpec<NumDimensions, IndexType>            ViewSpecType;
+
+public:
+  static constexpr char const * PatternName = "TheConcretePatternTypeName";
+
+public:
+  typedef IndexType        index_type;
+  typedef SizeType          size_type;
+  typedef ViewSpecType  viewspec_type;
+
+  typedef struct {
+    dart_unit_t unit;
+    index_type  index;
+  } local_index_type;
+
+  typedef struct {
+    dart_unit_t unit;
+    std::array<index_type, NumDimensions> coords;
+  } local_coords_type;
+
+public:
+  /**
+   * Copy constructor using non-const lvalue reference parameter.
+   *
+   * Introduced so variadic constructor is not a better match for
+   * copy-construction.
+   */
+  Pattern(self_t & other);
+
+  /**
+   * Equality comparison operator.
+   */
+  bool operator==(
+    /// Pattern instance to compare for equality
+    const self_t & other) const;
+
+  /**
+   * Inquality comparison operator.
+   */
+  bool operator!=(
+    /// Pattern instance to compare for inequality
+    const self_t & other) const;
+
+  /**
+   * Assignment operator.
+   */
+  Pattern & operator=(const Pattern & other);
+
+  /**
+   * Resolves the global index of the first local element in the pattern.
+   *
+   * \see DashPatternConcept
+   */
+  index_type lbegin() const;
+
+  /**
+   * Resolves the global index past the last local element in the pattern.
+   *
+   * \see DashPatternConcept
+   */
+  index_type lend() const;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// unit_at
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Convert given point in pattern to its assigned unit id.
+   *
+   * \see DashPatternConcept
+   */
+  dart_unit_t unit_at(
+    /// Absolute coordinates of the point
+    const std::array<index_type, NumDimensions> & coords,
+    /// View specification (offsets) to apply on \c coords
+    const ViewSpec_t & viewspec) const;
+
+  /**
+   * Convert given coordinate in pattern to its assigned unit id.
+   *
+   * \see DashPatternConcept
+   */
+  dart_unit_t unit_at(
+    const std::array<index_type, NumDimensions> & coords) const;
+
+  /**
+   * Convert given global linear index to its assigned unit id.
+   *
+   * \see DashPatternConcept
+   */
+  dart_unit_t unit_at(
+    /// Global linear element offset
+    index_type global_pos,
+    /// View to apply global position
+    const ViewSpec_t & viewspec) const;
+
+  /**
+   * Convert given global linear index to its assigned unit id.
+   *
+   * \see  blocksize()
+   * \see  blockspec()
+   * \see  blocksizespec()
+   *
+   * \see DashPatternConcept
+   */
+  dart_unit_t unit_at(
+    /// Global linear element offset
+    index_type global_pos) const;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// extent
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * The number of elements in this pattern in the given dimension.
+   *
+   * \see  blocksize()
+   * \see  local_size()
+   * \see  local_extent()
+   *
+   * \see  DashPatternConcept
+   */
+  index_type extent(dim_t dim) const;
+
+  /**
+   * The actual number of elements in this pattern that are local to the
+   * calling unit in the given dimension.
+   *
+   * \see  local_extents()
+   * \see  blocksize()
+   * \see  local_size()
+   * \see  extent()
+   *
+   * \see  DashPatternConcept
+   */
+  index_type local_extent(dim_t dim) const;
+
+  /**
+   * The actual number of elements in this pattern that are local to the
+   * active unit, by dimension.
+   *
+   * \see  local_extent()
+   * \see  blocksize()
+   * \see  local_size()
+   * \see  extent()
+   *
+   * \see  DashPatternConcept
+   */
+  std::array<size_type, NumDimensions> local_extents() const;
+
+  /**
+   * The actual number of elements in this pattern that are local to the
+   * given unit, by dimension.
+   *
+   * \see  local_extent()
+   * \see  blocksize()
+   * \see  local_size()
+   * \see  extent()
+   *
+   * \see  DashPatternConcept
+   */
+  std::array<size_type, NumDimensions> local_extents(
+    dart_unit_t unit) const;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// local
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Convert given local coordinates and viewspec to linear local offset
+   * (index).
+   *
+   * \see DashPatternConcept
+   */
+  index_type local_at(
+    /// Point in local memory
+    const std::array<index_type, NumDimensions> & local_coords,
+    /// View specification (offsets) to apply on \c coords
+    const ViewSpec_t & viewspec) const;
+
+  /**
+   * Convert given local coordinates to linear local offset (index).
+   *
+   * \see DashPatternConcept
+   */
+  index_type local_at(
+    /// Point in local memory
+    const std::array<index_type, NumDimensions> & local_coords) const;
+
+  /**
+   * Converts global coordinates to their associated unit and its respective
+   * local coordinates.
+   *
+   * TODO: Unoptimized
+   *
+   * \see  DashPatternConcept
+   */
+  local_coords_t local(
+    const std::array<index_type, NumDimensions> & global_coords) const;
+
+  /**
+   * Converts global index to its associated unit and respective local index.
+   *
+   * TODO: Unoptimized
+   *
+   * \see  DashPatternConcept
+   */
+  local_index_t local(
+    index_type g_index) const;
+
+  /**
+   * Converts global coordinates to their associated unit's respective
+   * local coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  std::array<index_type, NumDimensions> local_coords(
+    const std::array<index_type, NumDimensions> & global_coords) const;
+
+  /**
+   * Resolves the unit and the local index from global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  local_index_t local_index(
+    const std::array<index_type, NumDimensions> & global_coords) const;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// global
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Converts local coordinates of a given unit to global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  std::array<index_type, NumDimensions> global(
+    dart_unit_t unit,
+    const std::array<index_type, NumDimensions> & local_coords) const;
+
+  /**
+   * Converts local coordinates of active unit to global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  std::array<index_type, NumDimensions> global(
+    const std::array<index_type, NumDimensions> & local_coords) const;
+
+  /**
+   * Resolve an element's linear global index from the calling unit's local
+   * index of that element.
+   *
+   * \see  at  Inverse of global()
+   *
+   * \see  DashPatternConcept
+   */
+  index_type global(
+    index_type local_index) const;
+
+  /**
+   * Resolve an element's linear global index from a given unit's local
+   * coordinates of that element.
+   *
+   * \see  at
+   *
+   * \see  DashPatternConcept
+   */
+  index_type global_index(
+    dart_unit_t unit,
+    const std::array<index_type, NumDimensions> & local_coords) const;
+
+  /**
+   * Global coordinates and viewspec to global position in the pattern's
+   * iteration order.
+   *
+   * \see  at
+   * \see  local_at
+   *
+   * \see  DashPatternConcept
+   */
+  index_type global_at(
+    const std::array<index_type, NumDimensions> & view_coords,
+    const ViewSpec_t                           & viewspec) const;
+
+  /**
+   * Global coordinates to global position in the pattern's iteration order.
+   *
+   * NOTE:
+   * Expects extent[d] to be a multiple of blocksize[d] * nunits[d]
+   * to ensure the balanced property.
+   *
+   * \see  at
+   * \see  local_at
+   *
+   * \see  DashPatternConcept
+   */
+  index_type global_at(
+    const std::array<index_type, NumDimensions> & global_coords) const;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// at
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Global coordinates to local index.
+   *
+   * Convert given global coordinates in pattern to their respective
+   * linear local index.
+   *
+   * \see  DashPatternConcept
+   */
+  index_type at(
+    const std::array<index_type, NumDimensions> & global_coords) const;
+
+  /**
+   * Global coordinates and viewspec to local index.
+   *
+   * Convert given global coordinate in pattern to its linear local index.
+   *
+   * \see  DashPatternConcept
+   */
+  index_type at(
+    const std::array<index_type, NumDimensions> & global_coords,
+    const ViewSpec_t & viewspec) const;
+
+  /**
+   * Global coordinates to local index.
+   *
+   * Convert given coordinate in pattern to its linear local index.
+   *
+   * \see  DashPatternConcept
+   */
+  template<typename ... Values>
+  index_type at(index_type value, Values ... values) const;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// is_local
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Whether the given global index is local to the specified unit.
+   *
+   * \see  DashPatternConcept
+   */
+  bool is_local(
+    index_type index,
+    dart_unit_t unit) const;
+
+  /**
+   * Whether the given global index is local to the unit that created
+   * this pattern instance.
+   *
+   * \see  DashPatternConcept
+   */
+  bool is_local(
+    index_type index) const;
+
+  ////////////////////////////////////////////////////////////////////////////
+  /// block
+  ////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Cartesian arrangement of pattern blocks.
+   */
+  const BlockSpec_t & blockspec() const;
+
+  /**
+   * Index of block at given global coordinates.
+   *
+   * \see  DashPatternConcept
+   */
+  index_type block_at(
+    /// Global coordinates of element
+    const std::array<index_type, NumDimensions> & g_coords) const;
+
+  /**
+   * View spec (offset and extents) of block at global linear block index in
+   * cartesian element space.
+   */
+  ViewSpec_t block(
+    index_type global_block_index) const;
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * global cartesian element space.
+   */
+  ViewSpec_t local_block(
+    index_type local_block_index) const;
+
+  /**
+   * View spec (offset and extents) of block at local linear block index in
+   * local cartesian element space.
+   */
+  ViewSpec_t local_block_local(
+    index_type local_block_index) const;
+
+  /**
+   * Maximum number of elements in a single block in the given dimension.
+   *
+   * \return  The blocksize in the given dimension
+   *
+   * \see     DashPatternConcept
+   */
+  size_type blocksize(
+    /// The dimension in the pattern
+    dim_t dimension) const;
+
+  /**
+   * Maximum number of elements in a single block in all dimensions.
+   *
+   * \return  The maximum number of elements in a single block assigned to
+   *          a unit.
+   *
+   * \see     DashPatternConcept
+   */
+  size_type max_blocksize() const;
+
+  /**
+   * Maximum number of elements assigned to a single unit in total,
+   * equivalent to the local capacity of every unit in this pattern.
+   *
+   * \see  DashPatternConcept
+   */
+  inline size_type local_capacity(
+    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const;
+
+  /**
+   * The actual number of elements in this pattern that are local to the
+   * calling unit in total.
+   *
+   * \see  blocksize()
+   * \see  local_extent()
+   * \see  local_capacity()
+   *
+   * \see  DashPatternConcept
+   */
+  inline size_type local_size(
+    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const;
+
+  /**
+   * The maximum number of elements arranged in this pattern.
+   *
+   * \see  DashPatternConcept
+   */
+  inline index_type capacity() const;
+
+  /**
+   * The number of elements arranged in this pattern.
+   *
+   * \see  DashPatternConcept
+   */
+  inline index_type size() const;
+
+  /**
+   * The Team containing the units to which this pattern's elements are
+   * mapped.
+   */
+  inline dash::Team & team() const;
+
+  /**
+   * Distribution specification of this pattern.
+   */
+  const DistributionSpec_t & distspec() const;
+
+  /**
+   * Size specification of the index space mapped by this pattern.
+   *
+   * \see DashPatternConcept
+   */
+  SizeSpec_t sizespec() const;
+
+  /**
+   * Size specification of the index space mapped by this pattern.
+   *
+   * \see DashPatternConcept
+   */
+  const std::array<size_type, NumDimensions> & extents() const;
+
+  /**
+   * Cartesian index space representing the underlying memory model of the
+   * pattern.
+   *
+   * \see DashPatternConcept
+   */
+  const MemoryLayout_t & memory_layout() const;
+
+  /**
+   * Cartesian index space representing the underlying local memory model
+   * of this pattern for the calling unit.
+   * Not part of DASH Pattern concept.
+   */
+  const LocalMemoryLayout_t & local_memory_layout() const;
+
+  /**
+   * Cartesian arrangement of the Team containing the units to which this
+   * pattern's elements are mapped.
+   *
+   * \see DashPatternConcept
+   */
+  const TeamSpec_t & teamspec() const;
+
+  /**
+   * Convert given global linear offset (index) to global cartesian
+   * coordinates.
+   *
+   * \see DashPatternConcept
+   */
+  std::array<index_type, NumDimensions> coords(
+    index_type index) const;
+
+  /**
+   * Memory order followed by the pattern.
+   */
+  constexpr static MemArrange memory_order();
+
+  /**
+   * Number of dimensions of the cartesian space partitioned by the pattern.
+   */
+  constexpr static dim_t ndim();
+
+  /**
+   * Number of elements missing in the overflow block of given dimension
+   * compared to the regular blocksize (\see blocksize(d)), with
+   * 0 <= \c underfilled_blocksize(d) < blocksize(d).
+   */
+  size_type underfilled_blocksize(
+    dim_t dimension) const;
+
+};
+
+} // namespace dash
+
+#endif // DOXYGEN
 
 #endif // DASH__PATTERN_H_

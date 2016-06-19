@@ -6,6 +6,8 @@
 
 #include <vector>
 #include <algorithm>
+#include <numeric>
+
 
 TEST_F(AtomicTest, FetchAndOp)
 {

@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 {
   dash::init(&argc, &argv);
 
-  dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+//dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
   Timer::Calibrate(0);
 
@@ -202,13 +202,15 @@ measurement perform_test(
   PatternType pattern(NELEM);
 #endif
 
-  dash::util::Config::set("DASH_ENABLE_LOGGING", true);
+//dash::util::Config::set("DASH_ENABLE_LOGGING", true);
 
   ArrayType arr(pattern);
 
   ElementType min_value_exp   = 17;
-  dart_unit_t min_value_unit  = static_cast<dart_unit_t>(
-                                  (arr.team().size() / 2) - 1);
+  dart_unit_t min_value_unit  = std::max<dart_unit_t>(
+                                  static_cast<dart_unit_t>(
+                                    (arr.team().size() / 2) - 1),
+                                  0);
 
   DASH_LOG_DEBUG("perform_test.verify",
                  "num.elem:",         NELEM,
@@ -216,10 +218,10 @@ measurement perform_test(
                  "array size:",       arr.size(),
                  "array local size:", arr.lsize());
 
-  dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+//dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
   for (size_t li = 0; li < arr.lsize(); li++) {
-    arr.local[li] = 42;
+    arr.local[li] = min_value_exp + 1 + ((42 * (li + 1)) % 1024);
   }
 
   if (myid == min_value_unit) {
@@ -240,9 +242,9 @@ measurement perform_test(
 
     auto ts_start  = Timer::Now();
 
-    dash::util::Config::set("DASH_ENABLE_LOGGING", true);
+//  dash::util::Config::set("DASH_ENABLE_LOGGING", true);
     auto min_git   = dash::min_element(arr.begin(), arr.end());
-    dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+//  dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
     auto time_us   = Timer::ElapsedSince(ts_start);
     total_time_us += time_us;
@@ -253,14 +255,14 @@ measurement perform_test(
       IndexType   lidx_exp   = min_lidx_exp.get();
       ElementType min_actual = *min_git;
 
-      dash::util::Config::set("DASH_ENABLE_LOGGING", true);
+//    dash::util::Config::set("DASH_ENABLE_LOGGING", true);
       DASH_LOG_DEBUG("perform_test.verify", "actual value:", min_actual);
       DASH_LOG_DEBUG("perform_test.verify", "actual unit:",  lpos.unit);
       DASH_LOG_DEBUG("perform_test.verify", "actual lpos:",  lpos.index);
       DASH_LOG_DEBUG("perform_test.verify", "exp. value:",   min_value_exp);
       DASH_LOG_DEBUG("perform_test.verify", "exp. unit:",    min_value_unit);
       DASH_LOG_DEBUG("perform_test.verify", "exp. lpos:",    lidx_exp);
-      dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+//    dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
       if (min_git == arr.end()) {
         DASH_THROW(
@@ -396,11 +398,11 @@ benchmark_params parse_args(int argc, char * argv[])
 {
   benchmark_params params;
   params.size_base      = 2;
-  params.num_iterations = 4;
+  params.num_iterations = 8;
   params.rep_base       = 2;
   params.num_repeats    = 0;
-  params.min_repeats    = 1;
-  params.size_min       = 1024;
+  params.min_repeats    = 10;
+  params.size_min       = 8.0e+6; // 800k elements
   params.verify         = false;
 
   for (auto i = 1; i < argc; i += 2) {
@@ -423,7 +425,7 @@ benchmark_params parse_args(int argc, char * argv[])
     }
   }
   if (params.num_repeats == 0) {
-    params.num_repeats = params.size_min *
+    params.num_repeats = params.min_repeats *
                          std::pow(params.rep_base, params.num_iterations);
   }
   return params;
@@ -477,6 +479,6 @@ void print_team_locality(
   ss << tloc.domain();
 
   bench_cfg.print_section_start("Team Locality Domains");
-  bench_cfg.print(ss);
+  bench_cfg.print(ss, "#");
   bench_cfg.print_section_end();
 }

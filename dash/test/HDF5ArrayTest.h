@@ -1,11 +1,13 @@
-#ifdef DASH_ENABLE_HDF5
+#ifndef DASH__TEST__HDF5_ARRAY_TEST_H__INCLUDED
+#define DASH__TEST__HDF5_ARRAY_TEST_H__INCLUDED
 
-#ifndef DASH__TEST_HDF5Array_H
-#define DASH__TEST_HDF5Array_H
+#ifdef DASH_ENABLE_HDF5
 
 #include <gtest/gtest.h>
 #include <libdash.h>
-#include <stdio.h>
+
+#include "TestBase.h"
+
 
 class HDF5ArrayTest : public ::testing::Test {
   protected:
@@ -44,5 +46,7 @@ class HDF5ArrayTest : public ::testing::Test {
                     _dash_size);
     }
 };
-#endif
-#endif
+
+#endif // DASH_ENABLE_HDF5
+
+#endif // DASH__TEST__HDF5_ARRAY_TEST_H__INCLUDED

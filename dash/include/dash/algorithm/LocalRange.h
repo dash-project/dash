@@ -1,7 +1,7 @@
 #ifndef DASH__ALGORITHM__LOCAL_RANGE_H__
 #define DASH__ALGORITHM__LOCAL_RANGE_H__
 
-#include <dash/GlobIter.h>
+#include <dash/iterator/GlobIter.h>
 #include <dash/internal/Logging.h>
 
 namespace dash {

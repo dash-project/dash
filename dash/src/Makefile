@@ -29,11 +29,26 @@ CXXFLAGS+=-std=c++11
 
 LIBDASH = libdash.a
 
-FILES = Init Team Distribution Math GlobPtr Types Logging util/Timer	\
-	util/TimestampClockPosix util/TimestampCounterPosix	\
-	util/TimestampPAPI util/Locality util/BenchmarkParams	\
-	util/Config util/Trace util/LocalityDomain util/TeamLocality algorithm/SUMMA
-
+FILES = Distribution \
+				GlobPtr \
+				Init \
+				Logging \
+				Math \
+				Team \
+				Types \
+				algorithm/SUMMA \
+				exception/StackTrace \
+				io/hdf5/StoreHDF \
+				util/BenchmarkParams	\
+				util/Config \
+				util/Locality \
+				util/LocalityDomain \
+				util/TeamLocality \
+				util/Timer\
+				util/TimestampClockPosix \
+				util/TimestampCounterPosix	\
+				util/TimestampPAPI \
+				util/Trace
 
 OBJS = $(addsuffix .o, $(FILES))
 

@@ -5,14 +5,14 @@ namespace dash {
 
 #ifdef DOXYGEN
 
+
 /**
  * Local view specifier of a dynamic map container with support for
  * workload balancing.
  *
- * \concept{DashContainerConcept}
- * \concept{DashSequentialContainerConcept}
- * \concept{DashDynamicContainerConcept}
  * \concept{DashUnorderedMapConcept}
+ *
+ * \ingroup{dash::UnorderedMap}
  */
 template<
   typename Key,
@@ -105,7 +105,7 @@ public:
   // Distributed container
   //////////////////////////////////////////////////////////////////////////
 
-  inline const Team & team() const noexcept
+  inline const dash::Team & team() const noexcept
   {
     return _map->team();
   }

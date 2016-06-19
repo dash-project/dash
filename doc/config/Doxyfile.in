@@ -41,7 +41,7 @@ MARKDOWN_SUPPORT        = YES
 DISTRIBUTE_GROUP_DOC    = YES
 SUBGROUPING             = YES
 SOURCE_BROWSER          = YES
-INLINE_SOURCES          = NO
+INLINE_SOURCES          = YES
 STRIP_CODE_COMMENTS     = YES
 REFERENCED_BY_RELATION  = YES
 REFERENCES_RELATION     = YES
@@ -59,6 +59,9 @@ ALIASES += blocking="\b Calls to this routine are blocking"
 ALIASES += async="\b Calls to this routine are non-blocking"
 ALIASES += complexity="\n@par Time complexity\n"
 ALIASES += commtype="\n@par Communication model\n"
+ALIASES += collective_op="\b Collective operation\n"
+ALIASES += local_op="\b Local operation\n"
+ALIASES += onesided_op="\b One-sided operation\n"
 
 # Graphs
 
@@ -99,7 +102,17 @@ SEARCH_INCLUDES         = YES
 INCLUDE_PATH            = 
 INCLUDE_FILE_PATTERNS   = 
 PREDEFINED              = protected=private \
-                          DOXYGEN
+                          DOXYGEN \
+                          DASH_ENABLE_HWLOC \
+                          DASH_ENABLE_PAPI \
+                          DASH_ENABLE_HDF5 \
+                          DASH_ENABLE_NUMALIB \
+                          DASH_ENABLE_LIKWID \
+                          DASH_ENABLE_MKL \
+                          DASH_ENABLE_SCALAPACK \
+                          DASH_ENABLE_ASSERTIONS \
+                          DART_IMPLEMENTATIONS="mpi" \
+                          MPI_IMPL_ID="mpi_imp_id"
 EXPAND_AS_DEFINED       = 
 SKIP_FUNCTION_MACROS    = YES
 
@@ -113,6 +126,10 @@ WARN_NO_PARAMDOC        = YES
 GENERATE_HTML           = YES
 HTML_OUTPUT             = html
 HTML_FILE_EXTENSION     = .html
+HTML_EXTRA_STYLESHEET   = "@PROJECT_SOURCE_DIR@/doc/config/css/dash-doxygen.css" \
+                          "@PROJECT_SOURCE_DIR@/doc/config/css/dash-navtree.css" \
+                          "@PROJECT_SOURCE_DIR@/doc/config/css/dash-tabs.css" \
+                          "@PROJECT_SOURCE_DIR@/doc/config/css/dash-search.css"
 
 # LaTex options
 GENERATE_LATEX          = YES

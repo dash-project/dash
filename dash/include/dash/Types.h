@@ -6,6 +6,25 @@
 
 namespace dash {
 
+typedef enum MemArrange {
+  MEM_ARRANGE_UNDEFINED = 0,
+  ROW_MAJOR,
+  COL_MAJOR
+} MemArrange;
+
+namespace internal {
+
+typedef enum DistributionType {
+  DIST_UNDEFINED = 0,
+  DIST_NONE,
+  DIST_BLOCKED,      // = BLOCKCYCLIC(ceil(nelem/nunits))
+  DIST_CYCLIC,       // = BLOCKCYCLIC(1) Will be removed
+  DIST_BLOCKCYCLIC,
+  DIST_TILE
+} DistributionType; // general blocked distribution
+
+} // namespace internal
+
 /**
  * Scalar type for a dimension value, with 0 indicating
  * the first dimension.
@@ -13,6 +32,7 @@ namespace dash {
 typedef int dim_t;
 
 namespace internal {
+
 #ifdef DASH_ENABLE_DEFAULT_INDEX_TYPE_LONG
   typedef int64_t   default_signed_index;
   typedef uint64_t  default_unsigned_index;
@@ -20,6 +40,7 @@ namespace internal {
   typedef int32_t   default_signed_index;
   typedef uint32_t  default_unsigned_index;
 #endif
+
 }
 
 /**

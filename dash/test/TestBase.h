@@ -3,7 +3,9 @@
 
 #include <gtest/gtest.h>
 #include <dash/internal/Logging.h>
-#include "./TestLogHelpers.h"
+
+#include "TestLogHelpers.h"
+
 
 namespace testing {
 namespace internal {

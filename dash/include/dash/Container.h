@@ -6,6 +6,7 @@
  * Concept of a distributed container.
  *
  * \see DashArrayConcept
+ * \see DashMapConcept
  * \see DashMatrixConcept
  * \see DashViewConcept
  * \see DashIteratorConcept

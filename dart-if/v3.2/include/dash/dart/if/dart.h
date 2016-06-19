@@ -4,7 +4,10 @@
 /**
  * \file dart.h
  *
- * \defgroup   DartInterface  DART, the DASH Runtime Interface
+ * \defgroup   DartInterface  DART - The DASH Runtime Interface
+ *
+ * Common C interface of the underlying communication back-end.
+ *
  *
  * --- DASH/DART Terminology ---
  *

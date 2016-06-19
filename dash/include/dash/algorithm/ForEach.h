@@ -1,7 +1,7 @@
 #ifndef DASH__ALGORITHM__FOR_EACH_H__
 #define DASH__ALGORITHM__FOR_EACH_H__
 
-#include <dash/GlobIter.h>
+#include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/internal/Logging.h>
 

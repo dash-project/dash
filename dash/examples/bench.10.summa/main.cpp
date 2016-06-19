@@ -8,6 +8,8 @@
 #define DASH__ALGORITHM__COPY__USE_WAIT
 #endif
 
+#include <omp.h>
+
 #ifndef MPI_IMPL_ID
 #define MPI_IMPL_ID unknown
 #endif
@@ -48,6 +50,9 @@
 extern "C" {
 #include <cblas.h>
 }
+#    if defined(DASH_ENABLE_LAPACK)
+// #include <clapack.h>
+#    endif
 #endif
 
 extern "C" {
@@ -202,6 +207,8 @@ int main(int argc, char* argv[])
 #else
       DASH_THROW(dash::exception::RuntimeError, "MKL not enabled");
 #endif
+    } else {
+      omp_set_num_threads(params.threads);
     }
 
     if (variant == "plasma") {

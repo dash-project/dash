@@ -16,9 +16,9 @@
 
 #include <dash/allocator/LocalBucketIter.h>
 #include <dash/allocator/GlobBucketIter.h>
+#include <dash/allocator/internal/GlobDynamicMemTypes.h>
 
 #include <dash/internal/Logging.h>
-#include <dash/internal/allocator/GlobDynamicMemTypes.h>
 
 #include <list>
 #include <vector>

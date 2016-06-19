@@ -1,4 +1,4 @@
-#include <dash/Enums.h>
+#include <dash/Types.h>
 #include <dash/Distribution.h>
 
 const dash::Distribution dash::BLOCKED =

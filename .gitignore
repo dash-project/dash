@@ -1,5 +1,9 @@
 config.defs
 build
+build.dev
+build.rel
+build.mkl
+build.mic
 build-ci
 *.o
 *.a
@@ -9,6 +13,7 @@ build-ci
 *.swo
 *#
 *.log
+*.out
 ipm/*/GEN.*
 my.*.sh
 .syntastic*

@@ -20,8 +20,6 @@ int main(int argc, char ** argv)
 
   pid_t pid;
   char buf[100];
-  int  split_num_groups = 3;
-  dart_locality_scope_t split_scope = DART_LOCALITY_SCOPE_NODE;
 
   std::vector<std::vector<std::string>> groups_subdomain_tags;
 
@@ -36,15 +34,18 @@ int main(int argc, char ** argv)
     }
   } else {
     std::vector<std::string> group_1_domain_tags;
-    group_1_domain_tags.push_back(".0.0.0");
-    group_1_domain_tags.push_back(".0.0.1");
+    group_1_domain_tags.push_back(".0.0.0.0");
+    group_1_domain_tags.push_back(".0.0.0.1");
     groups_subdomain_tags.push_back(group_1_domain_tags);
   }
 
   dash::init(&argc, &argv);
 
+  dash::util::BenchmarkParams bench_params("ex.07.locality-group");
+  bench_params.print_header();
+  bench_params.print_pinning();
+
   dart_barrier(DART_TEAM_ALL);
-  sleep(2);
 
   auto myid = dash::myid();
   auto size = dash::size();
@@ -138,13 +139,18 @@ int main(int argc, char ** argv)
 
       group_domain_tags.push_back(
         std::string(group_domain_tag));
-    }
 
-    cout << endl
-         << "grouped domain:"
-         << endl
-         << grouped_domain
-         << endl;
+      cout << endl
+           << "grouped domains:" << endl;
+      for (auto group_subdom_tag : groups_subdomain_tags[g]) {
+        cout << "       subdomain: " << group_subdom_tag
+             << endl;
+      }
+      cout << endl
+           << grouped_domain
+           << endl
+           << separator << endl;
+    }
 
     for (int g = 0; g < num_groups; g++) {
       cout << separator

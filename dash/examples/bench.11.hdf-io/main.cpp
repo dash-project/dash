@@ -8,12 +8,17 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
-#include <stdio.h>
+
+#ifdef DASH_ENABLE_HDF5
 
 using std::cout;
 using std::endl;
 using std::setw;
 using std::setprecision;
+
+using dash::io::hdf5::HDF5InputStream;
+using dash::io::hdf5::HDF5OutputStream;
+
 
 typedef dash::util::Timer<
           dash::util::TimeMeasure::Clock
@@ -63,7 +68,6 @@ int main(int argc, char** argv)
   Timer::Calibrate(0);
 
   measurement res;
-  double time_s;
 
   dash::util::BenchmarkParams bench_params("bench.11.hdf-io");
   bench_params.print_header();
@@ -116,7 +120,10 @@ measurement store_matrix(long size, benchmark_params params)
 
   // Store Matrix
   auto ts_start_write    = Timer::Now();
-  dash::io::StoreHDF::write(matrix_a, "test.hdf5", "data");
+
+	HDF5OutputStream os("test.hdf5");
+	os << matrix_a;
+
   dash::barrier();
   mes.time_write_s = 1e-6 * Timer::ElapsedSince(ts_start_write);
 
@@ -126,7 +133,10 @@ measurement store_matrix(long size, benchmark_params params)
   auto ts_start_read    = Timer::Now();
   // Read Matrix
   dash::Matrix<double, 2> matrix_b;
-  dash::io::StoreHDF::read(matrix_b, "test.hdf5", "data");
+
+	HDF5InputStream is("test.hdf5");
+	is >> matrix_b;
+
   dash::barrier();
 
   mes.time_read_s  = 1e-6 * Timer::ElapsedSince(ts_start_read);
@@ -234,3 +244,14 @@ void print_params(
   bench_cfg.print_param("-verify","verification",        params.verify);
   bench_cfg.print_section_end();
 }
+
+#else // DASH_ENABLE_HDF5
+
+int main(int argc, char** argv)
+{
+  std::cerr << "Example requires HDF5 support" << std::endl;
+
+  return EXIT_FAILURE;
+}
+
+#endif // DASH_ENABLE_HDF5

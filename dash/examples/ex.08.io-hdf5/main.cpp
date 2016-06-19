@@ -12,6 +12,8 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+using dash::io::hdf5::StoreHDF;
+
 typedef dash::Pattern<1, dash::ROW_MAJOR, long> pattern_t;
 typedef dash::Array<int, long, pattern_t>       array_t;
 
@@ -57,7 +59,7 @@ int main(int argc, char * argv[])
 			print_separator();
 			cout << "Write Array A to " << FILENAME << " / data" << endl;
 		}
-		dash::io::StoreHDF::write(array_a, FILENAME, "data");
+		StoreHDF::write(array_a, FILENAME, "data");
 		dash::barrier();
 		print_file();
 	}
@@ -66,12 +68,12 @@ int main(int argc, char * argv[])
 	{
 		if(myid == 0){
 			print_separator();
-			cout << "Read " << FILENAME << " / data into Array C," 
+			cout << "Read " << FILENAME << " / data into Array C,"
 					 << " reconstruct pattern" << endl;
 		}
 		// Use delayed allocation
 		array_t array_c;
-		dash::io::StoreHDF::read(array_c, FILENAME, "data");
+		StoreHDF::read(array_c, FILENAME, "data");
 	}
 
 	// OK, that was easy. Now let's have a slightly more complex setup
@@ -84,7 +86,7 @@ int main(int argc, char * argv[])
 		}
 		// pass allocated array to define custom pattern
 		array_t array_c(pattern_b); // tilesize=7
-		dash::io::StoreHDF::read(array_c, FILENAME, "data");
+		StoreHDF::read(array_c, FILENAME, "data");
 		if(myid == 0){
 			cout << "Array A Pattern: Tilesize: " << array_a.pattern().blocksize(0) << endl;
 			cout << "Array C Pattern: Tilesize: " << array_c.pattern().blocksize(0) << endl;
@@ -99,10 +101,10 @@ int main(int argc, char * argv[])
 			print_separator();
 			cout << "Add dataset temperature to " << FILENAME << endl;
 		}
-		auto fopts = dash::io::StoreHDF::get_default_options();
+		auto fopts = StoreHDF::get_default_options();
 		fopts.overwrite_file = false; // Do not overwrite existing file
 
-		dash::io::StoreHDF::write(array_b, FILENAME, "temperature", fopts);
+		StoreHDF::write(array_b, FILENAME, "temperature", fopts);
 		dash::barrier();
 		print_file();
 	}
@@ -113,11 +115,11 @@ int main(int argc, char * argv[])
 			print_separator();
 			cout << "Modify " << FILENAME << " / temperature dataset" << endl;
 		}
-		auto fopts = dash::io::StoreHDF::get_default_options();
+		auto fopts = StoreHDF::get_default_options();
 		fopts.overwrite_file = false;
 		fopts.modify_dataset = true;
 
-		dash::io::StoreHDF::write(array_a, FILENAME, "temperature", fopts);
+		StoreHDF::write(array_a, FILENAME, "temperature", fopts);
 		dash::barrier();
 		print_file();
 	}
@@ -133,7 +135,7 @@ int main(int argc, char * argv[])
   return EXIT_SUCCESS;
 }
 
-#else 
+#else
 
 int main(int argc, char * argv[])
 {

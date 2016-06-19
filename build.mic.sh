@@ -1,5 +1,7 @@
 #!/bin/sh
 
+BUILD_DIR=./build.mic
+
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
   FORCE_BUILD=true
@@ -15,7 +17,7 @@ await_confirm() {
 
 exit_message() {
   echo "------------------------------------------------------------"
-  echo "Done. To install DASH, run    make install    in ./build.mic"
+  echo "Done. To install DASH, run    make install    in $BUILD_DIR"
 }
 
 if [ "${PAPI_HOME}" = "" ]; then
@@ -40,35 +42,44 @@ fi
 # To build with MKL support, set environment variables MKLROOT and INTELROOT.
 
 # Configure with default release build settings:
-mkdir -p build.mic
-rm -Rf ./build.mic/*
-(cd ./build.mic && cmake -DCMAKE_BUILD_TYPE=Release \
-                         -DENVIRONMENT_TYPE=supermic \
-                         -DCMAKE_C_COMPILER=mpiicc \
-                         -DCMAKE_CXX_COMPILER=mpiicc \
-                         -DDART_IF_VERSION=3.2 \
-                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-mic/ \
-                         -DDART_IMPLEMENTATIONS=mpi \
-                         -DENABLE_COMPILER_WARNINGS=ON \
-                         -DENABLE_ASSERTIONS=OFF \
-                         -DENABLE_SHARED_WINDOWS=ON \
-                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
-                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
-                         -DENABLE_LOGGING=OFF \
-                         -DENABLE_TRACE_LOGGING=OFF \
-                         -DENABLE_DART_LOGGING=OFF \
-                         -DENABLE_SCALAPACK=OFF \
-                         -DENABLE_MKL=ON \
-                         -DENABLE_LIBNUMA=OFF \
-                         -DENABLE_PAPI=OFF \
-                         -DENABLE_HWLOC=OFF \
-                         -DENABLE_LIKWID=OFF \
-                         -DBUILD_EXAMPLES=ON \
-                         -DBUILD_TESTS=OFF \
-                         -DBUILD_DOCS=OFF \
-                         -DPAPI_PREFIX=${PAPI_HOME} \
-                         -DIPM_PREFIX=${IPM_BASE} \
-                         ../ && \
+mkdir -p $BUILD_DIR
+rm -Rf $BUILD_DIR/*
+(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
+                        -DENVIRONMENT_TYPE=supermic \
+                        -DCMAKE_C_COMPILER=mpiicc \
+                        -DCMAKE_CXX_COMPILER=mpiicc \
+                        -DDART_IF_VERSION=3.2 \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-mic/ \
+                        -DDART_IMPLEMENTATIONS=mpi \
+                        -DENABLE_COMPILER_WARNINGS=ON \
+                        -DENABLE_ASSERTIONS=OFF \
+                        \
+                        -DENABLE_SHARED_WINDOWS=ON \
+                        -DENABLE_UNIFIED_MEMORY_MODEL=ON \
+                        -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
+                        \
+                        -DENABLE_LOGGING=OFF \
+                        -DENABLE_TRACE_LOGGING=OFF \
+                        -DENABLE_DART_LOGGING=OFF \
+                        \
+                        -DENABLE_LIBNUMA=OFF \
+                        -DENABLE_LIKWID=OFF \
+                        -DENABLE_HWLOC=OFF \
+                        -DENABLE_PAPI=OFF \
+                        -DENABLE_MKL=ON \
+                        -DENABLE_BLAS=OFF \
+                        -DENABLE_LAPACK=OFF \
+                        -DENABLE_SCALAPACK=OFF \
+                        -DENABLE_PLASMA=OFF \
+                        -DENABLE_HDF5=OFF \
+                        \
+                        -DBUILD_EXAMPLES=ON \
+                        -DBUILD_TESTS=OFF \
+                        -DBUILD_DOCS=OFF \
+                        \
+                        -DPAPI_PREFIX=${PAPI_HOME} \
+                        -DIPM_PREFIX=${IPM_BASE} \
+                        ../ && \
  await_confirm && \
  make -j 5) && \
 exit_message

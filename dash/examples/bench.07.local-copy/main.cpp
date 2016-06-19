@@ -116,9 +116,9 @@ int main(int argc, char** argv)
   double time_s;
   auto   ts_start        = Timer::Now();
   size_t num_numa_nodes  = dash::util::Locality::NumNUMANodes();
-  size_t num_local_cpus  = dash::util::Locality::NumCPUs();
+  size_t num_local_cores = dash::util::Locality::NumCores();
   // Number of physical cores in a single NUMA domain (7 on SuperMUC):
-  size_t numa_node_cores = num_local_cpus / num_numa_nodes;
+  size_t numa_node_cores = num_local_cores / num_numa_nodes;
   // Number of physical cores on a single socket (14 on SuperMUC):
   size_t socket_cores    = numa_node_cores * 2;
   // Number of processing nodes:
@@ -160,7 +160,7 @@ int main(int argc, char** argv)
 
     u_src    = u_loc;
     u_dst    = u_loc;
-    u_init   = (u_dst + num_local_cpus) % dash::size();
+    u_init   = (u_dst + num_local_cores) % dash::size();
     ts_start = Timer::Now();
     res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,
                                    params, STD_COPY);
@@ -183,7 +183,7 @@ int main(int argc, char** argv)
 
     u_src    = u_loc;
     u_dst    = u_loc;
-    u_init   = (u_dst + num_local_cpus) % dash::size();
+    u_init   = (u_dst + num_local_cores) % dash::size();
     ts_start = Timer::Now();
     res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,
                                    params);
@@ -206,7 +206,7 @@ int main(int argc, char** argv)
 
     u_src    = u_loc;
     u_dst    = (u_src + numa_node_cores) % dash::size();
-    u_init   = (u_dst + num_local_cpus) % dash::size();
+    u_init   = (u_dst + num_local_cores) % dash::size();
     ts_start = Timer::Now();
     res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,
                                    params, DASH_COPY);
@@ -228,7 +228,7 @@ int main(int argc, char** argv)
     num_repeats     = std::max<size_t>(num_repeats, params.min_repeats);
 
     u_src    = u_loc;
-    u_dst    = (u_src + num_local_cpus) % dash::size();
+    u_dst    = (u_src + num_local_cores) % dash::size();
     u_init   = (u_src + numa_node_cores) % dash::size();
     ts_start = Timer::Now();
     res      = copy_block_to_local(size, i, num_repeats, u_src, u_dst, u_init,

@@ -5,12 +5,13 @@
 
 #include <dash/Team.h>
 #include <dash/Pattern.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobMem.h>
 #include <dash/Allocator.h>
 #include <dash/HView.h>
 #include <dash/Container.h>
+
+#include <dash/iterator/GlobIter.h>
 
 #include <dash/matrix/MatrixRefView.h>
 #include <dash/matrix/MatrixRef.h>
@@ -29,7 +30,7 @@
  * \see DashArrayConcept
  * \see DashViewConcept
  *
- * \ingroup DashConcept
+ * \ingroup DashContainerConcept
  * \{
  * \par Description
  *
@@ -115,17 +116,16 @@ class LocalMatrixRef;
  * An n-dimensional array supporting subranges and sub-dimensional
  * projection.
  *
- * TODO:
+ * \concept{DashMatrixConcept}
+ *
+ * \todo
  * Projection order matrix.sub().local() is not fully implemented yet.
  * Currently only matrix.local().sub() is supported.
  *
- *
+ * \note
  * Roughly follows the design presented in
  *   "The C++ Programming Language" (Bjarne Stroustrup)
  *   Chapter 29: A Matrix Design
- *
- * \ingroup  DashMatrixConcept
- * \ingroup  DashContainerConcept
  *
  */
 template<

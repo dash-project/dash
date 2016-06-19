@@ -11,7 +11,8 @@
 #include <dash/tools/PatternBlockVisualizer.h>
 
 #include <dash/util/PatternMetrics.h>
-#include <dash/internal/PatternLogging.h>
+
+#include <dash/pattern/internal/PatternLogging.h>
 
 using std::cout;
 using std::cerr;

@@ -74,6 +74,11 @@ dart_ret_t dart__base__locality__group_subdomains(
 
 dart_ret_t dart__base__locality__init()
 {
+  for (int td = 0; td < DART__BASE__LOCALITY__MAX_TEAM_DOMAINS; ++td) {
+    dart__base__locality__global_domain_[td] = NULL;
+    dart__base__locality__host_topology_[td] = NULL;
+    dart__base__locality__unit_mapping_[td]  = NULL;
+  }
   return dart__base__locality__create(DART_TEAM_ALL);
 }
 
@@ -91,18 +96,31 @@ dart_ret_t dart__base__locality__finalize()
  * Create / Delete                                                        *
  * ====================================================================== */
 
+/**
+ * Exchange and collect locality information of all units in the specified
+ * team.
+ *
+ * The team's unit locality information is stored in private array
+ * \c dart__base__locality__unit_mapping_[team] with a capacity for
+ * \c DART__BASE__LOCALITY__MAX_TEAM_DOMAINS teams.
+ *
+ */
 dart_ret_t dart__base__locality__create(
   dart_team_t team)
 {
   DART_LOG_DEBUG("dart__base__locality__create() team(%d)", team);
 
-  dart_hwinfo_t * hwinfo;
-  DART_ASSERT_RETURNS(dart_hwinfo(&hwinfo), DART_OK);
+  /*
+   * TODO: Clarify if returning would be sufficient instead of failing
+   *       assertion.
+   */
+  DART_ASSERT_MSG(
+    NULL == dart__base__locality__unit_mapping_[team],
+    "dash__base__locality__create(): "
+    "locality data of team is already initialized");
 
-  for (int td = 0; td < DART__BASE__LOCALITY__MAX_TEAM_DOMAINS; ++td) {
-    dart__base__locality__global_domain_[td] = NULL;
-    dart__base__locality__host_topology_[td] = NULL;
-  }
+  dart_hwinfo_t * hwinfo = malloc(sizeof(dart_hwinfo_t));
+  DART_ASSERT_RETURNS(dart_hwinfo(hwinfo), DART_OK);
 
   dart_domain_locality_t * team_global_domain =
     malloc(sizeof(dart_domain_locality_t));
@@ -110,7 +128,8 @@ dart_ret_t dart__base__locality__create(
     team_global_domain;
 
   /* Initialize the global domain as the root entry in the locality
-   * hierarchy: */
+   * hierarchy:
+   */
   team_global_domain->scope          = DART_LOCALITY_SCOPE_GLOBAL;
   team_global_domain->level          = 0;
   team_global_domain->relative_index = 0;
@@ -134,14 +153,16 @@ dart_ret_t dart__base__locality__create(
     team_global_domain->unit_ids[u] = u;
   }
 
-  /* Exchange unit locality information between all units: */
+  /* Exchange unit locality information between all units:
+   */
   dart_unit_mapping_t * unit_mapping;
   DART_ASSERT_RETURNS(
     dart__base__unit_locality__create(team, &unit_mapping),
     DART_OK);
   dart__base__locality__unit_mapping_[team] = unit_mapping;
 
-  /* Copy host names of all units into array: */
+  /* Copy host names of all units into array:
+   */
   const int max_host_len = DART_LOCALITY_HOST_MAX_SIZE;
   DART_LOG_TRACE("dart__base__locality__create: copying host names");
   char ** hosts = malloc(sizeof(char *) * num_units);
@@ -154,6 +175,8 @@ dart_ret_t dart__base__locality__create(
     strncpy(hosts[u], ul->host, max_host_len);
   }
 
+  /* Resolve host topology from the unit's host names:
+   */
   dart_host_topology_t * topo = malloc(sizeof(dart_host_topology_t));
   DART_ASSERT_RETURNS(
     dart__base__host_topology__create(
@@ -180,8 +203,11 @@ dart_ret_t dart__base__locality__create(
   }
 #endif
 
-  /* recursively create locality information of the global domain's
-   * sub-domains: */
+  DART_LOG_DEBUG("dart__base__locality__create: "
+                 "constructing domain hierarchy");
+  /* Recursively create locality information of the global domain's
+   * sub-domains:
+   */
   DART_ASSERT_RETURNS(
     dart__base__locality__domain__create_subdomains(
       dart__base__locality__global_domain_[team],
@@ -509,6 +535,11 @@ dart_ret_t dart__base__locality__domain_group(
 
     dart__base__locality__domain__init(group_domain);
 
+    /* TODO: hwinfo of group domain is not correctly initialized, and doing
+     *       so is not trivial.
+     *       Using parent domain's hwinfo as an intermediate solution.
+     */
+    group_domain->hwinfo         = group_parent_domain->hwinfo;
     group_domain->team           = group_parent_domain->team;
     group_domain->scope          = DART_LOCALITY_SCOPE_GROUP;
     group_domain->level          = group_parent_domain->level + 1;
@@ -524,6 +555,12 @@ dart_ret_t dart__base__locality__domain_group(
     strncpy(group_domain->domain_tag, group_parent_domain_tag,
             group_parent_domain_tag_len);
     group_domain->domain_tag[group_parent_domain_tag_len] = '\0';
+
+    /* TODO: Check if this implementation is correct.
+             Incrementing an existing domain's relative index could result
+             in naming collisions as the relative index of the subdomain can
+             differ from the last place in their domain tag.
+    */
     int group_domain_tag_len =
       sprintf(group_domain->domain_tag + group_parent_domain_tag_len,
               ".%d", group_domain->relative_index) +
@@ -676,8 +713,11 @@ dart_ret_t dart__base__locality__unit(
  */
 dart_ret_t dart__base__locality__group_subdomains(
   dart_domain_locality_t           * domain,
+  /** Domain tags of child nodes to move into group subdomain. */
   const char                      ** group_subdomain_tags,
+  /** Number of child nodes to move into group subdomain. */
   int                                num_group_subdomain_tags,
+  /** Domain tag of the created group subdomain. */
   char                             * group_domain_tag_out)
 {
   DART_LOG_TRACE("dart__base__locality__group_subdomains() "
@@ -697,8 +737,19 @@ dart_ret_t dart__base__locality__group_subdomains(
   int num_grouped         = num_group_subdomain_tags;
   int num_ungrouped       = domain->num_domains - num_grouped;
   int num_subdomains_new  = num_ungrouped + 1;
+
+  /* The domain tag of the group to be added must be a successor of the last
+   * subdomain's (the group domain's last sibling) tag to avoid collisions.
+   * Relative index of last subdomain can differ from its last domain tag
+   * segment, so we need to read and increment the suffix of its domain tag
+   * to obtain the group's domain tag. */
+#if 0
   int domain_last_rel_idx = domain->domains[domain->num_domains - 1]
                               .relative_index;
+#endif
+  char * domain_last_tag_suffix_pos =
+           strrchr(domain->domains[domain->num_domains - 1].domain_tag, '.');
+  int    domain_last_tag_suffix     = atoi(domain_last_tag_suffix_pos + 1);
 
   /* Child nodes are ordered by domain tag.
    * Create sorted copy of subdomain tags to partition child nodes in a
@@ -791,6 +842,8 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   dart__base__locality__domain__init(group_domain);
 
+  /* TODO: hwinfo of group domain is not initialized.
+   */
   group_domain->parent         = domain;
   group_domain->relative_index = group_domain_rel_idx;
   group_domain->level          = domain->level + 1;
@@ -801,7 +854,7 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   int tag_len      = sprintf(group_domain->domain_tag, "%s",
                              domain->domain_tag);
-  int tag_last_idx = domain_last_rel_idx + 1;
+  int tag_last_idx = domain_last_tag_suffix + 1;
   sprintf(group_domain->domain_tag + tag_len, ".%d", tag_last_idx);
   DART_LOG_TRACE("dart__base__locality__group_subdomains: "
                  "group_domain.tag: %s relative index: %d grouped: %d "

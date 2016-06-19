@@ -2,6 +2,14 @@
 #define DASH__LIBDASH_H_
 
 /**
+ * The DASH C++ Library Interface
+ *
+ */
+namespace dash {
+
+}
+
+/**
  * \defgroup DashConcept Dash C++ Concepts
  * Concepts for C++ components in DASH
  */
@@ -16,13 +24,15 @@
 #include <dash/View.h>
 #include <dash/GlobMem.h>
 #include <dash/GlobPtr.h>
-#include <dash/GlobIter.h>
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
 
+#include <dash/iterator/GlobIter.h>
+#include <dash/iterator/GlobViewIter.h>
+#include <dash/iterator/GlobStencilIter.h>
+
 #include <dash/Onesided.h>
 
-#include <dash/Enums.h>
 #include <dash/Container.h>
 #include <dash/Shared.h>
 #include <dash/SharedCounter.h>
@@ -33,7 +43,6 @@
 #include <dash/Atomic.h>
 
 #include <dash/Pattern.h>
-#include <dash/DynamicPattern.h>
 
 #include <dash/util/BenchmarkParams.h>
 #include <dash/util/Config.h>
@@ -46,7 +55,8 @@
 #include <dash/util/TeamLocality.h>
 #include <dash/util/UnitLocality.h>
 
-#include <dash/io/StoreHDF.h>
+#include <dash/IO.h>
+#include <dash/io/HDF5.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
