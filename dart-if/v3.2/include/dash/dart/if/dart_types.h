@@ -21,6 +21,8 @@ extern "C" {
 #define DART_INTERFACE_ON
 
 /**
+ * Return values of functions in the DART interface.
+ *
  * \ingroup DartTypes
  */
 typedef enum {
@@ -30,7 +32,6 @@ typedef enum {
     DART_ERR_NOTFOUND =   3,
     DART_ERR_NOTINIT  =   4,
     DART_ERR_OTHER    = 999
-                        /* add error codes as needed */
 } dart_ret_t;
 
 /**
@@ -51,6 +52,8 @@ typedef enum {
 } dart_operation_t;
 
 /**
+ * Raw data types supported by the DART interface.
+ *
  * \ingroup DartTypes
  */
 typedef enum {
@@ -88,6 +91,7 @@ typedef int32_t dart_team_t;
 
 /**
  * Scopes of locality domains.
+ *
  * Enum values are ordered by scope level in the locality hierarchy.
  * Consequently, the comparison \c (scope_a > scope_b) is valid
  * and evaluates to \c true if \c scope_a is a parent scope of
@@ -227,7 +231,7 @@ dart_hwinfo_t;
  *
  * Illustrating example:
  *
- * <tt>
+ * <pre>
  *   domain (top level, heterogenous)
  *   domain_tag:  "."
  *   host:        "number-crunch-9000"
@@ -335,7 +339,7 @@ dart_hwinfo_t;
  *   :   ...
  *   '
  *   ...
- * </tt>
+ * </pre>
  *
  */
 struct dart_domain_locality_s

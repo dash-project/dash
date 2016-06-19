@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
   }
 
   if (dash::myid() == 0) {
-    cout << "dash::multiply example (n:" << n << " repeat:" << nrepeat << ")"
+    cout << "dash::mmult example (n:" << n << " repeat:" << nrepeat << ")"
          << endl;
   }
 
@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
     }
 
     auto ts_start = Timer::Now();
-    dash::multiply(matrix_a, matrix_b, matrix_c);
+    dash::mmult(matrix_a, matrix_b, matrix_c);
     time_total_s += Timer::ElapsedSince(ts_start) * 1.0e-6;
   }
   time_total_s /= nrepeat;

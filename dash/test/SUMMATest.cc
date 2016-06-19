@@ -48,7 +48,6 @@ TEST_F(SUMMATest, Deduction)
   typedef double                value_t;
   typedef decltype(pattern)     pattern_t;
   typedef pattern_t::index_type index_t;
-  typedef pattern_t::size_type  extent_t;
 
   if (_dash_id == 0) {
     dash::test::print_pattern_mapping(
@@ -124,9 +123,9 @@ TEST_F(SUMMATest, Deduction)
   LOG_MESSAGE("Waiting for initialization of matrices ...");
   dash::barrier();
 
-  // Expected to be resolved to SUMMA version of dash::multiply:
-  LOG_MESSAGE("Calling dash::multiply ...");
-  dash::multiply(matrix_a,
+  // Expected to be resolved to SUMMA version of dash::mmult:
+  LOG_MESSAGE("Calling dash::mmult ...");
+  dash::mmult(matrix_a,
                  matrix_b,
                  matrix_c);
 
@@ -210,13 +209,13 @@ TEST_F(SUMMATest, SeqTilePatternMatrix)
   LOG_MESSAGE("Waiting for initialization of matrices ...");
   dash::barrier();
 
-  // Expected to be resolved to SUMMA version of dash::multiply:
-  LOG_MESSAGE("Calling dash::multiply ...");
+  // Expected to be resolved to SUMMA version of dash::mmult:
+  LOG_MESSAGE("Calling dash::mmult ...");
 
   dash::util::TraceStore::on();
   dash::util::TraceStore::clear();
   dash::util::Trace trace("SUMMATest.SeqTilePatternMatrix");
-  dash::multiply(matrix_a,
+  dash::mmult(matrix_a,
                  matrix_b,
                  matrix_c);
 

@@ -9,6 +9,7 @@ namespace dash {
 
 /**
  * \defgroup  DashPatternProperties  Pattern Properties
+ *
  * Property system for specification and deduction of pattern types.
  *
  * \ingroup DashPatternConcept
@@ -53,11 +54,27 @@ namespace dash {
 
 
 //////////////////////////////////////////////////////////////////////////////
-// Pattern linearization properties
+// Pattern Layout Properties
 //////////////////////////////////////////////////////////////////////////////
 
 /**
- * \ingroup{DashPatternProperties}
+ * \defgroup  DashPatternLayoutProperties  Pattern Layout Properties
+ *
+ * Pattern layout property category for specification and deduction of
+ * pattern types.
+ *
+ * \ingroup DashPatternProperties
+ * \{
+ * \par Description
+ *
+ * Pattern properties describing the arrangement of distributed elements in
+ * the units' physical memory.
+ *
+ * \}
+ */
+
+/**
+ * \ingroup{DashPatternLayoutProperties}
  */
 struct pattern_layout_tag
 {
@@ -86,7 +103,7 @@ struct pattern_layout_tag
 };
 
 /**
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternLayoutProperties}
  */
 template<pattern_layout_tag::type ... Tags>
 struct pattern_layout_properties
@@ -113,11 +130,13 @@ struct pattern_layout_properties
   static const bool linear    = false;
 };
 
+#ifndef DOXYGEN
+
 /**
  * Specialization of \c dash::pattern_layout_properties to process tag
  * \c dash::pattern_layout_tag::type::blocked in template parameter list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternLayoutProperties}
  *
  */
 template<pattern_layout_tag::type ... Tags>
@@ -146,7 +165,7 @@ pattern_layout_properties<
  * Specialization of \c dash::pattern_layout_properties to process tag
  * \c dash::pattern_layout_tag::type::canonical in template parameter list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternLayoutProperties}
  *
  */
 template<pattern_layout_tag::type ... Tags>
@@ -175,7 +194,7 @@ pattern_layout_properties<
  * Specialization of \c dash::pattern_layout_properties to process tag
  * \c dash::pattern_layout_tag::type::linear in template parameter list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternLayoutProperties}
  *
  */
 template<pattern_layout_tag::type ... Tags>
@@ -195,15 +214,33 @@ pattern_layout_properties<
   pattern_layout_tag::type::linear, Tags ...
 >::linear = true;
 
+#endif // DOXYGEN
+
 //////////////////////////////////////////////////////////////////////////////
-// Pattern mapping properties
+// Pattern Mapping Properties
 //////////////////////////////////////////////////////////////////////////////
+
+/**
+ * \defgroup  DashPatternMappingProperties  Pattern Layout Properties
+ *
+ * Pattern mapping property category for specification and deduction of
+ * pattern types.
+ *
+ * \ingroup DashPatternProperties
+ * \{
+ * \par Description
+ *
+ * Pattern properties describing the mapping element blocks to units in a
+ * team.
+ *
+ * \}
+ */
 
 /**
  * Container type for mapping properties of models satisfying the Pattern
  * concept.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternMappingProperties}
  *
  */
 struct pattern_mapping_tag
@@ -261,7 +298,7 @@ struct pattern_mapping_tag
  * Template parameter list is processed recursively by specializations of
  * \c dash::pattern_mapping_properties.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternMappingProperties}
  *
  */
 template<pattern_mapping_tag::type ... Tags>
@@ -296,11 +333,13 @@ struct pattern_mapping_properties
   static const bool cyclic     = false;
 };
 
+#ifndef DOXYGEN
+
 /**
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::balanced in template parameter list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternMappingProperties}
  *
  */
 template<pattern_mapping_tag::type ... Tags>
@@ -322,7 +361,7 @@ pattern_mapping_properties<
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::unbalanced in template parameter list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternMappingProperties}
  *
  */
 template<pattern_mapping_tag::type ... Tags>
@@ -344,7 +383,7 @@ pattern_mapping_properties<
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::neighbor in template parameter list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternMappingProperties}
  *
  */
 template<pattern_mapping_tag::type ... Tags>
@@ -366,7 +405,7 @@ pattern_mapping_properties<
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::shifted in template parameter list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternMappingProperties}
  *
  */
 template<pattern_mapping_tag::type ... Tags>
@@ -389,7 +428,7 @@ pattern_mapping_properties<
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::diagonal in template parameter list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternMappingProperties}
  *
  */
 template<pattern_mapping_tag::type ... Tags>
@@ -411,7 +450,7 @@ pattern_mapping_properties<
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::multiple in template parameter list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternMappingProperties}
  *
  */
 template<pattern_mapping_tag::type ... Tags>
@@ -434,7 +473,7 @@ pattern_mapping_properties<
  * Specialization of \c dash::pattern_mapping_properties to process tag
  * \c dash::pattern_mapping_tag::type::cyclic in template parameter list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternMappingProperties}
  *
  */
 template<pattern_mapping_tag::type ... Tags>
@@ -453,12 +492,30 @@ pattern_mapping_properties<
   pattern_mapping_tag::type::cyclic, Tags ...
 >::cyclic = true;
 
+#endif // DOXYGEN
+
 //////////////////////////////////////////////////////////////////////////////
 // Pattern partitioning properties
 //////////////////////////////////////////////////////////////////////////////
 
 /**
- * \ingroup{DashPatternProperties}
+ * \defgroup DashPatternPartitioningProperties Pattern Partitioning Properties
+ *
+ * Pattern partitioning property category for specification and deduction of
+ * pattern types.
+ *
+ * \ingroup DashPatternProperties
+ * \{
+ * \par Description
+ *
+ * Pattern properties describing the partitioning of distributed elements
+ * into blocks.
+ *
+ * \}
+ */
+
+/**
+ * \ingroup{DashPatternPartitioningProperties}
  */
 struct pattern_partitioning_tag
 {
@@ -490,7 +547,7 @@ struct pattern_partitioning_tag
 };
 
 /**
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternPartitioningProperties}
  */
 template<pattern_partitioning_tag::type ... Tags>
 struct pattern_partitioning_properties
@@ -522,12 +579,14 @@ struct pattern_partitioning_properties
   static const bool dynamic      = false;
 };
 
+#ifndef DOXYGEN
+
 /**
  * Specialization of \c dash::pattern_partitioning_properties to process tag
  * \c dash::pattern_partitioning_tag::type::rectangular in template parameter
  * list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternPartitioningProperties}
  *
  */
 template<pattern_partitioning_tag::type ... Tags>
@@ -551,7 +610,7 @@ pattern_partitioning_properties<
  * \c dash::pattern_partitioning_tag::type::minimal in template parameter
  * list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternPartitioningProperties}
  *
  */
 template<pattern_partitioning_tag::type ... Tags>
@@ -575,7 +634,7 @@ pattern_partitioning_properties<
  * \c dash::pattern_partitioning_tag::type::regular in template parameter
  * list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternPartitioningProperties}
  *
  */
 template<pattern_partitioning_tag::type ... Tags>
@@ -598,7 +657,7 @@ pattern_partitioning_properties<
  * \c dash::pattern_partitioning_tag::type::balanced in template parameter
  * list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternPartitioningProperties}
  *
  */
 template<pattern_partitioning_tag::type ... Tags>
@@ -621,7 +680,7 @@ pattern_partitioning_properties<
  * \c dash::pattern_partitioning_tag::type::unbalanced in template parameter
  * list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternPartitioningProperties}
  *
  */
 template<pattern_partitioning_tag::type ... Tags>
@@ -644,7 +703,7 @@ pattern_partitioning_properties<
  * \c dash::pattern_partitioning_tag::type::ndimensional in template parameter
  * list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternPartitioningProperties}
  *
  */
 template<pattern_partitioning_tag::type ... Tags>
@@ -667,7 +726,7 @@ pattern_partitioning_properties<
  * \c dash::pattern_partitioning_tag::type::dynamic in template parameter
  * list.
  *
- * \ingroup{DashPatternProperties}
+ * \ingroup{DashPatternPartitioningProperties}
  *
  */
 template<pattern_partitioning_tag::type ... Tags>
@@ -684,6 +743,8 @@ const bool
 pattern_partitioning_properties<
   pattern_partitioning_tag::type::dynamic, Tags ...
 >::dynamic = true;
+
+#endif // DOXYGEN
 
 //////////////////////////////////////////////////////////////////////////////
 // Pattern Traits Default Definitions
