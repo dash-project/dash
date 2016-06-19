@@ -91,8 +91,10 @@ TEST_F(LocalRangeTest, View2DimRange)
               _dash_size, num_elem_total,
               num_elem_per_unit, num_blocks_per_unit);
 
-  typedef dash::TilePattern<2>           pattern_t;
-  typedef typename pattern_t::index_type index_t;
+  typedef int                                            element_t;
+  typedef dash::TilePattern<2>                           pattern_t;
+  typedef typename pattern_t::index_type                 index_t;
+  typedef dash::Matrix<element_t, 2, index_t, pattern_t> matrix_t;
 
   pattern_t pattern(
     dash::SizeSpec<2>(
@@ -103,7 +105,7 @@ TEST_F(LocalRangeTest, View2DimRange)
       dash::TILE(block_size_y))
   );
 
-  dash::Matrix<int, 2> matrix(pattern);
+  matrix_t matrix(pattern);
 
   int lb = 0;
   for (auto b = 0; b < num_blocks_total; ++b) {
