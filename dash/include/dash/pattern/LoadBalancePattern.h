@@ -939,7 +939,7 @@ private:
     for (auto u : tloc.units()) {
       auto & unit_hwinfo   = tloc.unit_locality(u).hwinfo();
       size_t unit_cpu_cap  = unit_hwinfo.min_threads *
-                             unit_hwinfo.min_cpu_mhz;
+                             unit_hwinfo.max_cpu_mhz;
       total_cpu_capacity  += unit_cpu_cap;
       unit_cpu_capacities.push_back(unit_cpu_cap);
     }

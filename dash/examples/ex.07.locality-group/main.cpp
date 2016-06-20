@@ -41,8 +41,11 @@ int main(int argc, char ** argv)
 
   dash::init(&argc, &argv);
 
+  dash::util::BenchmarkParams bench_params("ex.07.locality-group");
+  bench_params.print_header();
+  bench_params.print_pinning();
+
   dart_barrier(DART_TEAM_ALL);
-  sleep(2);
 
   auto myid = dash::myid();
   auto size = dash::size();
@@ -136,13 +139,18 @@ int main(int argc, char ** argv)
 
       group_domain_tags.push_back(
         std::string(group_domain_tag));
-    }
 
-    cout << endl
-         << "grouped domain:"
-         << endl
-         << grouped_domain
-         << endl;
+      cout << endl
+           << "grouped domains:" << endl;
+      for (auto group_subdom_tag : groups_subdomain_tags[g]) {
+        cout << "       subdomain: " << group_subdom_tag
+             << endl;
+      }
+      cout << endl
+           << grouped_domain
+           << endl
+           << separator << endl;
+    }
 
     for (int g = 0; g < num_groups; g++) {
       cout << separator

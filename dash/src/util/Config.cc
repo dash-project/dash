@@ -1,5 +1,9 @@
-#include <dash/util/Config.h>
+
+#include <dash/internal/Config.h>
 #include <dash/internal/Logging.h>
+
+#include <dash/util/Config.h>
+#include <dash/util/Config.h>
 
 #include <unordered_map>
 #include <string>
@@ -48,6 +52,39 @@ void Config::init()
     }
     env_var_kv = *(environ + i);
   }
+#ifndef DART_MPI_DISABLE_SHARED_WINDOWS
+  set("DASH_ENABLE_MPI_SHWIN", true);
+#endif
+#ifdef DASH_ENABLE_OPENMP
+  set("DASH_ENABLE_OPENMP",    true);
+#endif
+#ifdef DASH_ENABLE_PAPI
+  set("DASH_ENABLE_PAPI",      true);
+#endif
+#ifdef DASH_ENABLE_HWLOC
+  set("DASH_ENABLE_HWLOC",     true);
+#endif
+#ifdef DASH_ENABLE_NUMA
+  set("DASH_ENABLE_NUMA",      true);
+#endif
+#ifdef DASH_ENABLE_MKL
+  set("DASH_ENABLE_MKL",       true);
+#endif
+#ifdef DASH_ENABLE_BLAS
+  set("DASH_ENABLE_BLAS",      true);
+#endif
+#ifdef DASH_ENABLE_LAPACK
+  set("DASH_ENABLE_LAPACK",    true);
+#endif
+#ifdef DASH_ENABLE_SCALAPACK
+  set("DASH_ENABLE_SCALAPACK", true);
+#endif
+#ifdef DASH_ENABLE_PLASMA
+  set("DASH_ENABLE_PLASMA",    true);
+#endif
+#ifdef DASH_ENABLE_HDF5
+  set("DASH_ENABLE_HDF5",      true);
+#endif
 }
 
 void Config::set(

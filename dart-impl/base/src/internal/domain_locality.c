@@ -639,7 +639,6 @@ dart_ret_t dart__base__locality__domain__create_subdomains(
         break;
       case DART_LOCALITY_SCOPE_CORE:
         subdomain->hwinfo.num_numa  = 1;
-        subdomain->hwinfo.num_cores = 1;
         subdomain->num_nodes        = 1;
         subdomain->num_units        = 1;
         subdomain->unit_ids         = malloc(sizeof(dart_unit_t));
@@ -767,29 +766,40 @@ dart_ret_t dart__base__locality__domain__create_node_subdomain(
     DART_OK);
   subdomain->num_nodes        = 1;
   subdomain->num_units        = num_module_units;
-//subdomain->hwinfo.num_numa  = num_module_numa_domains;
+/*
+  subdomain->hwinfo.num_numa  = num_module_numa_domains;
+*/
   if (subdomain->num_units > 0) {
     subdomain->unit_ids = malloc(subdomain->num_units * sizeof(dart_unit_t));
   } else {
     subdomain->unit_ids = NULL;
   }
+
+  /* Resolve the number of units in the module and distribute number of
+   * cores in the module among them: */
+  subdomain->hwinfo.num_numa = 1;
   for (int nu = 0; nu < num_module_units; ++nu) {
     subdomain->unit_ids[nu] = module_unit_ids[nu];
-  }
-
-  /* resolve the number of NUMA nodes in the module: */
-  subdomain->hwinfo.num_numa  = 1;
-  /* as the number of NUMA domains is identical within a module, simply obtain
-   * it from hwinfo of first unit in the module: */
-  if (num_module_units > 0) {
     dart_unit_locality_t * module_unit_loc;
     DART_ASSERT_RETURNS(
       dart__base__unit_locality__at(
-        unit_mapping, module_unit_ids[0], &module_unit_loc),
+        unit_mapping, module_unit_ids[nu], &module_unit_loc),
       DART_OK);
+    int num_parent_cores     = module_unit_loc->hwinfo.num_cores;
+    int num_unit_cores       = num_parent_cores / num_module_units;
+    int num_unbalanced_cores = num_parent_cores -
+                               (num_unit_cores * num_module_units);
+    if (num_unbalanced_cores > 0 && nu < num_unbalanced_cores) {
+      /* Unbalanced split of cores to units, e.g. 12 cores / 10 units.
+       * First units ordered by unit id get additional core assigned, e.g.
+       * unit 0 and 1: */
+      num_unit_cores++;
+    }
+    module_unit_loc->hwinfo.num_cores = num_unit_cores;
+    /* as the number of NUMA domains is identical within a module, simply
+     * obtain it from hwinfo of first unit in the module: */
     subdomain->hwinfo.num_numa = module_unit_loc->hwinfo.num_numa;
   }
-
   return DART_OK;
 }
 
@@ -849,7 +859,6 @@ dart_ret_t dart__base__locality__domain__create_module_subdomain(
                   rel_idx, num_numa_units);
   subdomain->num_nodes          = 1;
   subdomain->hwinfo.num_numa    = 1;
-  subdomain->hwinfo.num_cores   = num_numa_units;
   subdomain->num_units          = num_numa_units;
   if (subdomain->num_units > 0) {
     subdomain->unit_ids = malloc(subdomain->num_units * sizeof(dart_unit_t));
@@ -891,21 +900,51 @@ dart_ret_t dart__base__locality__domain__create_numa_subdomain(
   int                              rel_idx)
 {
   /* Loop splits into UMA segments within a NUMA domain or module.
-   * Using balanced split, segments are assumed to be homogenous at
-   * this level. */
+   */
   dart__unused(host_topology);
 
   DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
                  "== SPLIT NUMA ==");
   DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
-                 "== %d of %d", rel_idx, numa_domain->num_domains);
-  size_t num_uma_units          = numa_domain->num_units /
-                                  numa_domain->num_domains;
+                 "== %d of #%d", rel_idx, numa_domain->num_domains);
+  /*
+   * TODO: Assuming that segments are homogenous such that total number
+   *       of cores and units is evenly distributed among subdomains.
+   */
+  size_t num_domains            = numa_domain->num_domains;
+  size_t num_uma_units          = numa_domain->num_units / num_domains;
+  size_t num_parent_cores       = numa_domain->hwinfo.num_cores;
+  size_t num_uma_cores          = num_parent_cores / num_domains;
+  size_t num_unbalanced_cores   = num_parent_cores -
+                                  (num_uma_cores * num_domains);
   subdomain->num_nodes          = 1;
   subdomain->hwinfo.num_numa    = 1;
-  subdomain->hwinfo.num_cores   = numa_domain->hwinfo.num_cores /
-                                  numa_domain->num_domains;
   subdomain->num_units          = num_uma_units;
+
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
+                 "num_parent_cores:%d num_uma_units:%d num_domains:%d "
+                 "num_unbalanced_cores:%d",
+                 num_parent_cores, num_uma_units, num_domains,
+                 num_unbalanced_cores);
+
+  if (num_uma_cores < 1) {
+    /* Underflow split of cores to UMA nodes, e.g. 10/12.
+     * TODO: Clarify if this case occurs and if defaulting to 1 is
+     *       sufficient. */
+    num_uma_cores = 1;
+  } else if (num_unbalanced_cores > 0) {
+    /* Unbalanced split of cores to UMA nodes, e.g. 12 units / 10 nodes.
+     * First units ordered by unit id get additional core assigned, e.g.
+     * unit 0 and 1: */
+    if ((size_t)(rel_idx) < num_unbalanced_cores) {
+      num_uma_cores++;
+    }
+  }
+  DART_LOG_TRACE("dart__base__locality__domain__create_subdomains: "
+                 "=> num_uma_cores:%d", num_uma_cores);
+
+  subdomain->hwinfo.num_cores   = num_uma_cores;
+
   if (subdomain->num_units > 0) {
     subdomain->unit_ids = malloc(subdomain->num_units * sizeof(dart_unit_t));
   } else {

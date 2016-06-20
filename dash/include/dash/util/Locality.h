@@ -72,32 +72,38 @@ public:
 
   static inline int NumNodes()
   {
-    return (_domain_loc == nullptr) ? -1 : _domain_loc->num_nodes;
+    return (_domain_loc == nullptr)
+           ? -1 : std::max<int>(_domain_loc->num_nodes, 1);
   }
 
   static inline int NumSockets()
   {
-    return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_sockets;
+    return (_domain_loc == nullptr)
+           ? -1 : std::max<int>(_domain_loc->hwinfo.num_sockets, 1);
   }
 
   static inline int NumNUMANodes()
   {
-    return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_numa;
+    return (_domain_loc == nullptr)
+           ? -1 : std::max<int>(_domain_loc->hwinfo.num_numa, 1);
   }
 
-  static inline int NumCPUs()
+  static inline int NumCores()
   {
-    return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.num_cores;
+    return (_domain_loc == nullptr)
+           ? -1 : std::max<int>(_domain_loc->hwinfo.num_cores, 1);
   }
 
   static inline int MinThreads()
   {
-    return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.min_threads;
+    return (_domain_loc == nullptr)
+           ? -1 : std::max<int>(_domain_loc->hwinfo.min_threads, 1);
   }
 
   static inline int MaxThreads()
   {
-    return (_domain_loc == nullptr) ? -1 : _domain_loc->hwinfo.max_threads;
+    return (_domain_loc == nullptr)
+           ? -1 : std::max<int>(_domain_loc->hwinfo.max_threads, 1);
   }
 
   static inline void SetNumNodes(int n)
@@ -121,9 +127,19 @@ public:
     _domain_loc->hwinfo.num_numa = n;
   }
 
-  static inline void SetNumCPUs(int n)
+  static inline void SetNumCores(int n)
   {
     _domain_loc->hwinfo.num_cores = n;
+  }
+
+  static inline void SetMinThreads(int n)
+  {
+    _domain_loc->hwinfo.min_threads = n;
+  }
+
+  static inline void SetMaxThreads(int n)
+  {
+    _domain_loc->hwinfo.max_threads = n;
   }
 
   static int UnitNUMAId()
@@ -138,12 +154,14 @@ public:
 
   static inline int CPUMaxMhz()
   {
-    return (_unit_loc == nullptr) ? -1 : _unit_loc->hwinfo.max_cpu_mhz;
+    return (_unit_loc == nullptr)
+           ? -1 : std::max<int>(_unit_loc->hwinfo.max_cpu_mhz, 1);
   }
 
   static inline int CPUMinMhz()
   {
-    return (_unit_loc == nullptr) ? -1 : _unit_loc->hwinfo.min_cpu_mhz;
+    return (_unit_loc == nullptr)
+           ? -1 : std::max<int>(_unit_loc->hwinfo.min_cpu_mhz, 1);
   }
 
   static inline std::string Hostname()

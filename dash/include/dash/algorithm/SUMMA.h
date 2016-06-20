@@ -36,7 +36,7 @@ namespace internal {
  * Matrix multiplication for local multiplication of matrix blocks via MKL.
  */
 template<typename  ValueType>
-void multiply_local(
+void mmult_local(
   /// Matrix to multiply, m rows by k columns.
   const ValueType * A,
   /// Matrix to multiply, k rows by n columns.
@@ -53,7 +53,7 @@ void multiply_local(
  * used only for tests and where MKL is not available.
  */
 template<typename ValueType>
-void multiply_local(
+void mmult_local(
   /// Matrix to multiply, extents n x m
   const ValueType * A,
   /// Matrix to multiply, extents m x p
@@ -508,7 +508,7 @@ void summa(
                      "view:", l_block_c_comp.begin().viewspec());
 
       trace.enter_state("multiply");
-      dash::internal::multiply_local<value_type>(
+      dash::internal::mmult_local<value_type>(
           local_block_a_comp,
           local_block_b_comp,
           l_block_c_comp.begin().local(),
@@ -589,7 +589,7 @@ void summa(
  * Registration of \c dash::summa as an implementation of matrix-matrix
  * multiplication (xDGEMM).
  *
- * Delegates  \c dash::multiply<MatrixType>
+ * Delegates  \c dash::mmult<MatrixType>
  * to         \c dash::summa<MatrixType>
  * if         \c MatrixType::pattern_type
  * satisfies the pattern property constraints of the SUMMA implementation.
@@ -620,7 +620,7 @@ typename std::enable_if<
   >::satisfied::value,
   void
 >::type
-multiply(
+mmult(
   /// Matrix to multiply, extents n x m
   MatrixTypeA & A,
   /// Matrix to multiply, extents m x p

@@ -7,6 +7,7 @@
 #ifdef DART__PLATFORM__LINUX
 #  define _GNU_SOURCE
 #  include <utmpx.h>
+#  include <sched.h>
 #endif
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
@@ -26,7 +27,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
-#include <sched.h>
 #include <limits.h>
 
 #ifdef DART_ENABLE_LIKWID
@@ -49,7 +49,7 @@
 
 
 dart_ret_t dart_hwinfo(
-  dart_hwinfo_t ** hwinfo)
+  dart_hwinfo_t * hwinfo)
 {
   DART_LOG_DEBUG("dart_hwinfo()");
 
@@ -70,9 +70,9 @@ dart_ret_t dart_hwinfo(
   hw.cache_line_sizes[0] = -1;
   hw.cache_line_sizes[1] = -1;
   hw.cache_line_sizes[2] = -1;
-  hw.cache_shared[0]     =  0;
-  hw.cache_shared[1]     =  0;
-  hw.cache_shared[2]     =  0;
+  hw.cache_shared[0]     = -1;
+  hw.cache_shared[1]     = -1;
+  hw.cache_shared[2]     = -1;
 
 #ifdef DART_ENABLE_LIKWID
   DART_LOG_TRACE("dart_hwinfo: using likwid");
@@ -148,7 +148,7 @@ dart_ret_t dart_hwinfo(
 	}
   if (hw.num_cores > 0 && hw.max_threads < 0) {
     // Resolve number of threads per core:
-    int n_cpus          = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PU);
+    int n_cpus     = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PU);
     hw.min_threads = 1;
     hw.max_threads = n_cpus / hw.num_cores;
   }
@@ -209,7 +209,9 @@ dart_ret_t dart_hwinfo(
 #endif
 
 #ifdef DART__PLATFORM__LINUX
-  hw.cpu_id = sched_getcpu();
+  if (hw.cpu_id < 0) {
+    hw.cpu_id = sched_getcpu();
+  }
 #else
   DART_LOG_ERROR("dart_hwinfo: "
                  "Linux platform required");
@@ -227,12 +229,12 @@ dart_ret_t dart_hwinfo(
   DART_LOG_TRACE("dart_hwinfo: numalib: "
                  "num_sockets:%d num_numa:%d numa_id:%d num_cores:%d",
                  hw.num_sockets, hw.num_numa, hw.numa_id, hw.num_cores);
-#else
+#endif
+
+#if 0
   if (hw.num_numa < 0) {
     hw.num_numa = 1;
   }
-#endif
-
   if (hw.num_cores   < 0) {
     hw.num_cores     = 1;
   }
@@ -242,6 +244,7 @@ dart_ret_t dart_hwinfo(
   if (hw.max_threads < 0) {
     hw.max_threads   = 1;
   }
+#endif
 
   DART_LOG_TRACE("dart_hwinfo: finished: "
                  "num_sockets:%d num_numa:%d "
@@ -251,9 +254,7 @@ dart_ret_t dart_hwinfo(
                  hw.numa_id, hw.cpu_id, hw.num_cores,
                  hw.min_threads, hw.max_threads);
 
-  dart_hwinfo_t * hw_ptr = malloc(sizeof(dart_hwinfo_t));
-  *hw_ptr = hw;
-  *hwinfo = hw_ptr;
+  *hwinfo = hw;
 
   DART_LOG_DEBUG("dart_hwinfo >");
   return DART_OK;

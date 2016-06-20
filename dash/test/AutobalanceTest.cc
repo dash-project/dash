@@ -87,7 +87,7 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNUMA)
   dash::util::Locality::SetNumNodes(1);
   dash::util::Locality::SetNumSockets(2);
   dash::util::Locality::SetNumNUMANodes(4);
-  dash::util::Locality::SetNumCPUs(28);
+  dash::util::Locality::SetNumCores(28);
 
   std::vector<extents_t> exp_team_extents;
   exp_team_extents.push_back({{ 2,  2 }}); //  4 units
@@ -137,7 +137,7 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
 
   dash::util::Locality::SetNumSockets(2);
   dash::util::Locality::SetNumNUMANodes(4);
-  dash::util::Locality::SetNumCPUs(28);
+  dash::util::Locality::SetNumCores(28);
 
   std::vector<extents_t> exp_team_extents;
   exp_team_extents.push_back({{ 28,  4 }});
@@ -157,7 +157,7 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
   for (size_t n = 0; n < exp_team_extents.size(); ++n) {
     exp_extents    = exp_team_extents[n];
     int  num_units = exp_extents[0] * exp_extents[1];
-    auto n_nodes   = num_units / dash::util::Locality::NumCPUs();
+    auto n_nodes   = num_units / dash::util::Locality::NumCores();
     dash::util::Locality::SetNumNodes(n_nodes);
 
     auto size_d    = 57344;

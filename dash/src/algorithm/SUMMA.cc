@@ -27,7 +27,7 @@ namespace internal {
  * Matrix multiplication for local multiplication of matrix blocks via MKL.
  */
 template<>
-void multiply_local<float>(
+void mmult_local<float>(
   /// Matrix to multiply, m rows by k columns.
   const float * A,
   /// Matrix to multiply, k rows by n columns.
@@ -92,7 +92,7 @@ void multiply_local<float>(
  * Matrix multiplication for local multiplication of matrix blocks via MKL.
  */
 template<>
-void multiply_local<double>(
+void mmult_local<double>(
   /// Matrix to multiply, m rows by k columns.
   const double * A,
   /// Matrix to multiply, k rows by n columns.

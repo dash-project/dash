@@ -140,12 +140,13 @@ dart_ret_t dart__base__host_topology__create(
       DART_LOG_TRACE("dart__base__host_topology__init: shrinking node unit "
                      "array from %d to %d elements",
                      max_host_units, node_units->num_units);
-      node_units->units = realloc(node_units->units, node_units->num_units);
+//    node_units->units = realloc(node_units->units, node_units->num_units);
       DART_ASSERT(node_units->units != NULL);
     }
   }
   topo->num_hosts  = num_hosts;
-  topo->host_names = (char **)(realloc(hostnames, num_hosts));
+//topo->host_names = (char **)(realloc(hostnames, num_hosts));
+  topo->host_names = hostnames;
   DART_ASSERT(topo->host_names != NULL);
 
   /* Classify hostnames into categories 'node' and 'module'.

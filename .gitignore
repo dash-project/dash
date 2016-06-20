@@ -2,6 +2,7 @@ config.defs
 build
 build.dev
 build.rel
+build.mkl
 build.mic
 build-ci
 *.o
