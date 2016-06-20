@@ -328,8 +328,12 @@ endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
 ## Tests
 #
 if (BUILD_TESTS)
-  include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
-  foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
+include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
+  if(CMAKE_BUILD_TYPE STREQUAL "Profile")
+    include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
+  endif()
+
+ foreach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
     set(DASH_LIBRARY "dash-${dart_variant}")
     set(DART_LIBRARY "dart-${dart_variant}")
     set(DASH_TEST "dash-test-${dart_variant}")
@@ -371,6 +375,11 @@ if (BUILD_TESTS)
       ${DASH_TEST} PROPERTIES
       CXX_STANDARD_REQUIRED 11
     )
+
+  # Code Coverage
+  if(CMAKE_BUILD_TYPE STREQUAL "Profile")
+    setup_target_for_coverage(coverage "${DASH_TEST}" coverage)
+  endif()
 
     # Installation
     DeployBinary(${DASH_TEST})
