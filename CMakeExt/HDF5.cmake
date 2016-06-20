@@ -18,7 +18,6 @@ if(NOT HDF5_PREFIX)
 	set(HDF5_PREFIX "/usr/")
 endif()
 
-
 message(STATUS "Trying to find HDF5 using cmake package")
 # set(HDF5_USE_STATIC_LIBRARIES ON)
 set(HDF5_PREFER_PARALLEL ON)
@@ -27,20 +26,29 @@ find_package (
 # NAMES hdf5 COMPONENTS C
 )
 
+if(NOT HDF5_IS_PARALLEL)
+	message(STATUS "HDF5 cmake module provides only serial version")
+	set(HDF5_FOUND OFF CACHE BOOL "HDF5_FOUND" FORCE)
+	unset(HDF5_LIBRARIES)
+	unset(HDF5_INCLUDE_DIRS)
+endif()
+
 if(NOT HDF5_FOUND)
-	message(STATUS "HDF5 Package not found, try to find libs")
+	message(STATUS "HDF5 package not found, try to find libs")
 endif()
 
 find_library(
 	HDF5_LIBRARIES
-	NAMES hdf5
+	NAMES hdf5 libhdf5
 	HINTS ${HDF5_PREFIX}/lib
+# NO_DEFAULT_PATH
 )
 
 find_path(
 	HDF5_INCLUDE_DIRS
 	NAMES hdf5.h
 	HINTS ${HDF5_PREFIX}/include
+# NO_DEFAULT_PATH
 )
 
 include(FindPackageHandleStandardArgs)

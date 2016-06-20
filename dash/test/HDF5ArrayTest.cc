@@ -187,36 +187,6 @@ TEST_F(HDF5ArrayTest, OutputStreamOpen)
   verify_array(array_b);
 }
 
-TEST_F(HDF5ArrayTest, OutputStreamAppend)
-{
-  // Write array data
-  {
-    auto array_o_1 = dash::Array<long>(dash::size() * 2);
-    auto array_o_2 = dash::Array<long>(dash::size() * 2);
-
-    fill_array(array_o_1);
-    fill_array(array_o_2);
-    dash::barrier();
-
-    // Write new dataset:
-    auto os_w  = HDF5OutputStream(_filename);
-    os_w << dio::dataset(_dataset)
-         << array_o_1;
-    // Append to dataset:
-    auto os_a  = HDF5OutputStream(_filename, HDF5FileOptions::Append);
-    os_a << dio::dataset(_dataset)
-         << array_o_2;
-  }
-  dash::barrier();
-
-  // Read array data
-  dash::Array<long> array_i;
-  auto is = HDF5InputStream(_filename);
-  is >> dio::dataset(_dataset) >> array_i;
-
-  verify_array(array_i);
-}
-
 TEST_F(HDF5ArrayTest, UnderfilledPattern)
 {
   int   ext_x = dash::size() * 5 + 1;
