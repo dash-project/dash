@@ -5,6 +5,7 @@ build.rel
 build.mkl
 build.mic
 build-ci
+compile_commands.json
 *.o
 *.a
 *.so
