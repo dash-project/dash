@@ -816,7 +816,11 @@ TEST_F(MatrixTest, DelayedAlloc)
   DASH_LOG_DEBUG("MatrixTest.DelayedAlloc",
                  "Calling dash::Matrix default constructor");
 
-  dash::Matrix<value_t, 3, index_t> mx;
+  dash::Matrix<
+          value_t,
+          3,
+          index_t,
+          dash::TilePattern<3> > mx;
 
   ASSERT_EQ_U(num_units, teamspec.size());
 
