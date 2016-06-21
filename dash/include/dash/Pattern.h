@@ -105,7 +105,7 @@ template<
   MemArrange Arrangement   = ROW_MAJOR,
   typename   IndexType     = dash::default_index_t
 >
-class Pattern
+class PatternConcept
 {
   typedef typename std::make_unsigned<IndexType>::type      SizeType;
   typedef ViewSpec<NumDimensions, IndexType>            ViewSpecType;
@@ -135,7 +135,7 @@ public:
    * Introduced so variadic constructor is not a better match for
    * copy-construction.
    */
-  Pattern(self_t & other);
+  PatternConcept(self_t & other);
 
   /**
    * Equality comparison operator.
@@ -154,7 +154,7 @@ public:
   /**
    * Assignment operator.
    */
-  Pattern & operator=(const Pattern & other);
+  PatternConcept & operator=(const PatternConcept & other);
 
   /**
    * Resolves the global index of the first local element in the pattern.
