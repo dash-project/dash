@@ -107,8 +107,16 @@ typedef enum
   /** Group of domains in specific locality scope, used as parent scope of
    *  domains in a user-defined group at any locality level. */
   DART_LOCALITY_SCOPE_GROUP      =    1,
-  /** Interconnect topology scope, components may be heterogenous. */
-  DART_LOCALITY_SCOPE_NETWORK    =   50,
+  /** First network level locality scope, components may be heterogenous. */
+  DART_LOCALITY_SCOPE_NETLEVEL1    =   20,
+  /** Second network level locality scope, components may be heterogenous. */
+  DART_LOCALITY_SCOPE_NETLEVEL2    =   30,
+  /** Third network level locality scope, components may be heterogenous. */
+  DART_LOCALITY_SCOPE_NETLEVEL3    =   40,
+  /** Fourth network level locality scope, components may be heterogenous. */
+  DART_LOCALITY_SCOPE_NETLEVEL4    =   50,
+  /** Fifth network level locality scope, components may be heterogenous. */
+  DART_LOCALITY_SCOPE_NETLEVEL5    =   60,
   /** Node-level locality scope, components may be heterogenous. */
   DART_LOCALITY_SCOPE_NODE       =  100,
   /** Locality in a group of hetereogenous components in different NUMA
@@ -140,6 +148,64 @@ dart_locality_scope_t;
 #define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(16))
 #define DART_LOCALITY_UNIT_MAX_CPUS       ((int)(8))
 #define DART_LOCALITY_MAX_NUMA_ID         ((int)(16))
+
+
+/**
+ * Enumerated type for the classification of the network topology.
+ *
+ * \ingroup DartTypes
+ */
+typedef enum
+{
+  DART_TOPOLOGY_CLASS_UNDEFINED         =   -1000,
+  /** Chain: one-dimensional network, too slow for large N */
+  DART_TOPOLOGY_CLASS_CHAIN             =    1000,
+  /** Ring: two-dimensional network, too slow for large N */
+  DART_TOPOLOGY_CLASS_RING              =    1001,
+  /** Chordal Ring: two-dimensional network, higher cost */
+  DART_TOPOLOGY_CLASS_CHORDALRING       =    1002,
+  /** Completely connected: too expensive for large number of nodes */
+  DART_TOPOLOGY_CLASS_COMPLETECONNECTED =    1003,
+  /** Star: two-dimensional network, central node is bottleneck */
+  DART_TOPOLOGY_CLASS_STAR              =    1004,
+  /** Binary Tree: two-dimensional network, bottleneck in the direction of root */
+  DART_TOPOLOGY_CLASS_BINARYTREE        =    1005,
+  /** Fat Tree: two-dimensional network, binary tree with the resolved bottleneck in direction of root */
+  DART_TOPOLOGY_CLASS_FATTREE           =    1006,
+  /** Hypercube: k-dimensional network, drawback of scalability (only doubling of nodes allowed) */
+  DART_TOPOLOGY_CLASS_HYPERCUBE         =    1007,
+  /** Mesh: k-dimensional network, expensive */
+  DART_TOPOLOGY_CLASS_MESH              =    1008,
+  /** Global locality scope, components may be heterogenous. */
+  DART_TOPOLOGY_CLASS_TORUS             =    1009,
+    /** Global locality scope, components may be heterogenous. */
+  DART_TOPOLOGY_CLASS_DRAGONFLY         =    1010
+}
+dart_topology_class_t;
+
+/**
+ * \ingroup DartTypes
+ */
+typedef struct
+{
+  /** Total number of network levels */
+  int   num_net_levels;
+  /** Pointer to array storing the value of each network level (e.g. group, 
+  *   cabinet, chassis, compute blade etc.) for a particular node. 
+  *   Concatenating the values of all levels for a particular node resolves to  
+  *   its fixed position in the network hierarchy of HPC machine */
+  int * value_net_level;
+  /** Bandwidth at each level */
+  int * bw_at_level;
+  /**  Maximum transmission performance of a network over the bisection line */
+  int * bw_bisection;
+  /**  Time for transmitting an entire message (of particular size) between two nodes */
+  int * msg_transmit_time_at_level;  
+  
+  /** Topology class of the network. Can be used for re-ordering (re-mapping) of the units */
+  dart_topology_class_t topology_spec;
+}
+dart_netinfo_t;
 
 /**
  * \ingroup DartTypes
@@ -374,6 +440,9 @@ struct dart_domain_locality_s
      *  subdomains are specified. */
     struct dart_domain_locality_s * domains;
 
+    /** Network specification of the domains's affinity. */
+    dart_netinfo_t                  netinfo;
+
     /** Hardware specification of the domains's affinity. */
     dart_hwinfo_t                   hwinfo;
 
@@ -409,6 +478,9 @@ typedef struct {
 
     /** Hostname of the domain's node or 0 if unspecified. */
     char          host[DART_LOCALITY_HOST_MAX_SIZE];
+
+    /** Network specification of the unit's affinity. */
+    dart_netinfo_t netinfo;
 
     /** Hardware specification of the unit's affinity. */
     dart_hwinfo_t hwinfo;
