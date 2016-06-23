@@ -19,6 +19,6 @@
  * \c -1 or an empty string.
  */
 dart_ret_t dart_netinfo(
-  dart_hwinfo_t * netinfo);
+  dart_netinfo_t * netinfo);
 
-#endif /* DART__BASE__NETINFO_H__
+#endif /* DART__BASE__NETINFO_H__ */
