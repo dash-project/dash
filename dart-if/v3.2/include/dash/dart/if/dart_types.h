@@ -188,6 +188,9 @@ dart_topology_class_t;
  */
 typedef struct
 {
+  
+  /** Globally unique node identifier  */
+  int   global_node_id;
   /** Total number of network levels */
   int   num_net_levels;
   /** Pointer to array storing the value of each network level (e.g. group, 
@@ -198,7 +201,7 @@ typedef struct
   /** Bandwidth at each level */
   int * bw_at_level;
   /**  Maximum transmission performance of a network over the bisection line */
-  int * bw_bisection;
+  int   bw_bisection;
   /**  Time for transmitting an entire message (of particular size) between two nodes */
   int * msg_transmit_time_at_level;  
   
