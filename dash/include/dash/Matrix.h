@@ -580,6 +580,20 @@ private:
   view_type<NumDimensions>     _ref;
 };
 
+/**
+ * Template alias for dash::Matrix with the same default template
+ * arguments
+ *
+ * \see Matrix
+ */
+template <
+  typename T,
+  dim_t NumDimensions,
+  typename IndexT   = dash::default_index_t,
+  class    PatternT = Pattern<NumDimensions, ROW_MAJOR, IndexT> >
+using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT>;
+
+
 }  // namespace dash
 
 #include <dash/matrix/internal/Matrix-inl.h>
