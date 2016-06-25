@@ -163,10 +163,35 @@ TEST_F(LocalRangeTest, View2DimRange)
 
 TEST_F(LocalRangeTest, LargeArray)
 {
-  auto num_units = dash::Team::All().size();
+  typedef long long     index_t;
+  typedef int           element_t;
+
+  // Check system memory size
+  // Skip ranges larger than half the system memory
+  auto num_units      = dash::Team::All().size();
+  int  units_per_node = dash::util::Locality::NumNodes();
+  long pages          = sysconf(_SC_PHYS_PAGES);
+  long page_size      = sysconf(_SC_PAGE_SIZE);
+  // avail. mem in bytes per host
+  size_t mem_host      = pages * page_size;
+  size_t mem_total     = ((num_units - 1) / units_per_node + 1) * mem_host;
+  long max_index      = (mem_total / 2) / sizeof(element_t);
+
+#if 0
+  std::cout << "Units:" << num_units
+            << ", per node:" << units_per_node
+            << std::endl;
+#endif
 
   for (long long size = 20000000l; size < 100000000000l; size *= 2) {
-    dash::Array<int, long long> arr(size);
+    // estimated size
+    if(size > max_index){
+      std::cout << "Skip Range of size " << size
+                << " due to limited memory" << std::endl;
+      continue;
+    }
+
+    dash::Array<element_t, long long> arr(size);
 
     if (dash::myid() == 0) {
       auto local_idx_range = dash::local_index_range(arr.begin(), arr.end());
