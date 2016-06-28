@@ -22,7 +22,8 @@ my @files;
 	  "CMakeLists.txt",
 	  "CMakeExt/*.cmake",
 	  "build.sh",
-	  "build-dev.sh",
+	  "build.dev.sh",
+	  "build.minimal.sh",
 	  "config/*.cmake",
 	  #
 	  # DART interface specification
