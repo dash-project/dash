@@ -5,7 +5,7 @@ use File::Basename;
 #use File::Slurp;
 
 my $rdir    = "RELEASE";
-my $version = "0.2.0";
+my $version = "0.3.0";
 my $base    = "$rdir/dash-$version";
 
 if( -e "$base" ) {
@@ -33,7 +33,9 @@ my @files;
 	  # DART base implementation
 	  #
 	  "dart-impl/base/include/dash/dart/base/*.h",
+	  "dart-impl/base/include/dash/dart/base/internal/*.h",
 	  "dart-impl/base/src/*.c",
+	  "dart-impl/base/src/internal/*.c",
 	  "dart-impl/base/CMakeLists.txt",
 	  #
 	  # DART MPI implementation
@@ -49,17 +51,33 @@ my @files;
 	  "dash/include/*.h",
 	  "dash/include/dash/*.h",
 	  "dash/include/dash/algorithm/*.h",
+	  "dash/include/dash/algorithm/internal/*.h",
+	  "dash/include/dash/allocator/*.h",
+	  "dash/include/dash/allocator/internal/*.h",
 	  "dash/include/dash/bindings/*.h",
 	  "dash/include/dash/exception/*.h",
+	  "dash/include/dash/internal/*.h",
+	  "dash/include/dash/io/*.h",
+	  "dash/include/dash/io/hdf5/*.h",
+	  "dash/include/dash/io/hdf5/internal/*.h",
+	  "dash/include/dash/iterator/*.h",
+	  "dash/include/dash/list/*.h",
+	  "dash/include/dash/list/internal/*.h",
+	  "dash/include/dash/map/*.h",
 	  "dash/include/dash/matrix/*.h",
 	  "dash/include/dash/matrix/internal/*.h",
+	  "dash/include/dash/pattern/*.h",
+	  "dash/include/dash/pattern/internal/*.h",
 	  "dash/include/dash/tools/*.h",
 	  "dash/include/dash/internal/*.h",
 	  "dash/include/dash/util/*.h",
 	  "dash/include/dash/util/internal/*.h",
 	  "dash/src/*.cc",
-	  "dash/src/util/*.cc",
 	  "dash/src/algorithm/*.cc",
+	  "dash/src/exception/*.cc",
+	  "dash/src/io/*.cc",
+	  "dash/src/io/hdf5/*.cc",
+	  "dash/src/util/*.cc",
 	  "dash/src/Makefile",
 	  "dash/make.defs",
 	  "dash/CMakeLists.txt",
