@@ -9,6 +9,8 @@ set(BUILD_EXAMPLES ${BUILD_EXAMPLES}
     PARENT_SCOPE)
 set(BUILD_TESTS ${BUILD_TESTS}
     PARENT_SCOPE)
+set(BUILD_COVERAGE_TESTS ${BUILD_COVERAGE_TESTS}
+    PARENT_SCOPE)
 set(ENABLE_LOGGING ${ENABLE_LOGGING}
     PARENT_SCOPE)
 set(ENABLE_TRACE_LOGGING ${ENABLE_TRACE_LOGGING}
@@ -329,7 +331,7 @@ endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
 #
 if (BUILD_TESTS)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
-  if(CMAKE_BUILD_TYPE STREQUAL "Profile")
+  if (BUILD_COVERAGE_TESTS)
     include(${CMAKE_SOURCE_DIR}/CMakeExt/CodeCoverage.cmake)
   endif()
 
@@ -376,10 +378,10 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
       CXX_STANDARD_REQUIRED 11
     )
 
-  # Code Coverage
-  if(CMAKE_BUILD_TYPE STREQUAL "Profile")
-    setup_target_for_coverage(coverage "${DASH_TEST}" coverage)
-  endif()
+    # Code Coverage
+    if (BUILD_COVERAGE_TESTS)
+      setup_target_for_coverage(coverage "${DASH_TEST}" coverage)
+    endif()
 
     # Installation
     DeployBinary(${DASH_TEST})

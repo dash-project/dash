@@ -51,7 +51,7 @@ TEST_F(TeamLocalityTest, GlobalAll)
 
 TEST_F(TeamLocalityTest, SplitCore)
 {
-  if (_dash_id != 0) {
+  if (_dash_id != 0 || _dash_size < 2) {
     return;
   }
 

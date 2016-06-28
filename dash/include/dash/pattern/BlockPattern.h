@@ -1138,9 +1138,9 @@ public:
     index_type local_block_index) const
   {
     // Initialize viewspec result with block extents:
-    std::array<SizeType, NumDimensions> block_vs_extents =
+    std::array<SizeType, NumDimensions>  block_vs_extents =
       _blocksize_spec.extents();
-    std::array<IndexType, NumDimensions>  block_vs_offsets { };
+    std::array<IndexType, NumDimensions> block_vs_offsets {{ }};
     // Local block index to local block coords:
     auto l_block_coords = _local_blockspec.coords(local_block_index);
     auto l_elem_coords  = l_block_coords;

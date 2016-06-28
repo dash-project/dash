@@ -54,7 +54,7 @@ fi
 # Configure with default release build settings:
 mkdir -p $BUILD_DIR
 rm -Rf $BUILD_DIR/*
-(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Profile\
+(cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Debug \
                         -DENVIRONMENT_TYPE=default \
                         -DDART_IF_VERSION=3.2 \
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
@@ -82,12 +82,12 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_HDF5=ON \
                         \
                         -DBUILD_EXAMPLES=OFF \
-                        -DBUILD_TESTS=ON \
+                        -DBUILD_COVERAGE_TESTS=ON \
                         -DBUILD_DOCS=OFF \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         ../ && \
  await_confirm && \
- make) && \
+ make -j 4) && \
 exit_message

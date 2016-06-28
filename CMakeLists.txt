@@ -20,10 +20,16 @@ endif(POLICY CMP0060)
 if(POLICY CMP0004)
   cmake_policy(SET CMP0004 OLD)
 endif(POLICY CMP0004)
+if(POLICY CMP0016)
+  cmake_policy(SET CMP0016 OLD)
+endif(POLICY CMP0016)
 
 ## Build options
 option(BUILD_TESTS
        "Whether tests should be built" on)
+option(BUILD_COVERAGE_TESTS
+       "Whether tests are built with code coverage (lcov) support.
+        Implies BUILD_TESTS. Requires GCC." on)
 option(BUILD_DOCS
        "Whether doxygen documentation should be installed" off)
 option(BUILD_EXAMPLES
@@ -67,6 +73,11 @@ option(ENABLE_PLASMA
 option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
 
+if (BUILD_COVERAGE_TESTS)
+  set(BUILD_TESTS TRUE CACHE BOOLEAN
+      "Whether tests are built with code coverage (lcov) support.
+       Implies BUILD_TESTS. Requires GCC." on)
+endif()
 
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MessageColor.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)

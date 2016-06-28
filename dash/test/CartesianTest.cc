@@ -5,7 +5,7 @@
 #include "TestBase.h"
 #include "CartesianTest.h"
 
-TEST_F(CartesianTest, DefaultConstrutor) {
+TEST_F(CartesianTest, DefaultConstructor) {
   DASH_TEST_LOCAL_ONLY();
   // 1-dimensional:
   dash::CartesianIndexSpace<1> cartesian1d;

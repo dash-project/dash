@@ -4,6 +4,7 @@ build.dev
 build.rel
 build.mkl
 build.mic
+build.cov
 build-ci
 compile_commands.json
 *.o
