@@ -29,7 +29,7 @@ option(BUILD_TESTS
        "Whether tests should be built" on)
 option(BUILD_COVERAGE_TESTS
        "Whether tests are built with code coverage (lcov) support.
-        Implies BUILD_TESTS. Requires GCC." on)
+        Implies BUILD_TESTS. Requires GCC." off)
 option(BUILD_DOCS
        "Whether doxygen documentation should be installed" off)
 option(BUILD_EXAMPLES
