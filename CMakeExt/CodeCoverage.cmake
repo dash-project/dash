@@ -136,6 +136,8 @@ FUNCTION(SETUP_TARGET_FOR_COVERAGE _targetname _testrunner _outputname)
 	SET(coverage_info "${CMAKE_BINARY_DIR}/${_outputname}.info")
 	SET(coverage_cleaned "${coverage_info}.cleaned")
 
+  separate_arguments(test_command UNIX_COMMAND "${_testrunner}")
+
 	# Setup target
 	ADD_CUSTOM_TARGET(${_targetname}
 
@@ -143,7 +145,7 @@ FUNCTION(SETUP_TARGET_FOR_COVERAGE _targetname _testrunner _outputname)
 		${LCOV_PATH} --directory . --zerocounters --config-file ${LCOV_CONFIG_PATH}
 
 		# Run tests
-		COMMAND ${_testrunner} ${ARGV3}
+		COMMAND ${test_command} ${ARGV3}
 
 		# Capturing lcov counters and generating report
 		COMMAND ${LCOV_PATH} --directory . --capture --output-file ${coverage_info}

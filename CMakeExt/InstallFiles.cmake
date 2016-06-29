@@ -1,7 +1,7 @@
 
 function(DeployBinary
          bin
-         )         
+         )
     add_custom_command(
       TARGET ${bin}
       POST_BUILD
@@ -11,7 +11,7 @@ endfunction(DeployBinary)
 
 function(DeployLibrary
          lib
-         )         
+         )
     add_custom_command(
       TARGET ${lib}
       POST_BUILD

@@ -378,16 +378,21 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
       CXX_STANDARD_REQUIRED 11
     )
 
-    # Code Coverage
-    if (BUILD_COVERAGE_TESTS)
-      setup_target_for_coverage(coverage "${DASH_TEST}" coverage)
-    endif()
-
     # Installation
     DeployBinary(${DASH_TEST})
     install(
       TARGETS ${DASH_TEST}
       DESTINATION bin/dash/test/${dart_variant})
+
+    # Code Coverage
+    if (BUILD_COVERAGE_TESTS)
+      if (${dart_variant} STREQUAL "mpi")
+        setup_target_for_coverage(coverage "mpirun -n 4 ${CMAKE_BINARY_DIR}/bin/${DASH_TEST}" coverage)
+      else()
+        setup_target_for_coverage(coverage "${DASH_TEST}" coverage)
+      endif()
+    endif()
+
   endforeach(dart_variant ${DART_IMPLEMENTATIONS_LIST})
 endif()
 

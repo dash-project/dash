@@ -108,7 +108,7 @@ dart_ret_t dart__base__locality__domain__destruct(
     DART_LOG_ERROR("dart__base__locality__domain__destruct ! "
                    "domain.domains expected to be NULL for "
                    "domain.num_domains = %d", domain->num_domains);
-    return DART_ERR_INVAL;
+//  return DART_ERR_INVAL;
   }
 
   /* deallocate child nodes in depth-first recursion: */
@@ -189,7 +189,7 @@ dart_ret_t dart__base__locality__domain__copy(
       DART_LOG_ERROR("dart__base__locality__domain__copy: domain %s "
                      "has num_domains = %d, expected domains = NULL",
                      domain_src->domain_tag, domain_src->num_domains);
-      return DART_ERR_OTHER;
+//    return DART_ERR_OTHER;
     }
     domain_dst->domains = NULL;
   }
@@ -225,7 +225,9 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
                  (is_unit_scope ? "true" : "false"));
   if (is_unit_scope) {
     DART_ASSERT(domain->num_units   <= 1);
-    DART_ASSERT(domain->num_domains == 0);
+    // TODO: Check if there is a valid scenario for num_domains > 0 at
+    //       unit scope:
+//  DART_ASSERT(domain->num_domains == 0);
   } else {
     domain->num_units = 0;
   }
