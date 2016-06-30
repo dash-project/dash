@@ -43,27 +43,24 @@ static int16_t dart_registermemid = -1;
 
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
 {
-  int16_t seg_id = gptr.segid;
-  uint64_t offset = gptr.addr_or_offs.offset;
-  dart_unit_t myid;
-  dart_myid(&myid);
+	int16_t seg_id = gptr.segid;
+	uint64_t offset = gptr.addr_or_offs.offset;
+	dart_unit_t myid;
+	dart_myid (&myid);
 
-  if (myid == gptr.unitid) {
-    if (seg_id) {
-      if (dart_segment_get_selfbaseptr(seg_id, (char **)addr) != DART_OK) {
-        return DART_ERR_INVAL;
-      }
+	if (myid == gptr.unitid) {
+		if (seg_id) {
+			if (dart_adapt_transtable_get_selfbaseptr(seg_id, (char **)addr) == -1) {
+				return DART_ERR_INVAL;}
 
-      *addr = offset + (char *)(*addr);
-    } else {
-      if (myid == gptr.unitid) {
-        *addr = offset + dart_mempool_localalloc;
-      }
-    }
-  } else {
-    *addr = NULL;
-  }
-  return DART_OK;
+			*addr = offset + (char *)(*addr);
+		} else {
+			*addr = offset + dart_mempool_localalloc;
+		}
+	} else {
+		*addr = NULL;
+	}
+	return DART_OK;
 }
 
 dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
