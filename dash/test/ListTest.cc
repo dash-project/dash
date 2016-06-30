@@ -9,7 +9,7 @@
 TEST_F(ListTest, Initialization)
 {
   typedef int                   value_t;
-  typedef dash::default_index_t index_t;
+  //typedef dash::default_index_t index_t;
 
   auto nunits    = dash::size();
   auto myid      = dash::myid();
