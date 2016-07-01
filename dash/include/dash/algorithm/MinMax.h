@@ -2,9 +2,13 @@
 #define DASH__ALGORITHM__MIN_MAX_H__
 
 #include <dash/internal/Config.h>
+
 #include <dash/Array.h>
-#include <dash/algorithm/LocalRange.h>
 #include <dash/Allocator.h>
+
+#include <dash/algorithm/LocalRange.h>
+
+#include <dash/util/Config.h>
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/internal/Logging.h>

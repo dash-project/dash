@@ -76,7 +76,7 @@ public:
     std::ostringstream oss;
     std::string line;
     while(std::getline(lines, line)) {
-      oss << "--   " << prefix << line << '\n';
+      oss << "--  " << prefix << " " << line << '\n';
     }
     std::cout << oss.str();
   }

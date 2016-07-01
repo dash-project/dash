@@ -17,6 +17,7 @@
 
 #include <dash/util/TeamLocality.h>
 #include <dash/util/LocalityDomain.h>
+#include <dash/util/Config.h>
 
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
@@ -936,10 +937,15 @@ private:
     std::vector<size_t> unit_cpu_capacities;
     size_t total_cpu_capacity = 0;
 
+    bool hyperthreads = dash::util::Config::is_set("DASH_MAX_SMT");
+
     for (auto u : tloc.units()) {
       auto & unit_hwinfo   = tloc.unit_locality(u).hwinfo();
-      size_t unit_cpu_cap  = unit_hwinfo.min_threads *
-                             unit_hwinfo.max_cpu_mhz;
+      size_t unit_cpu_cap  = unit_hwinfo.num_cores
+                             * (hyperthreads
+                                 ? unit_hwinfo.max_threads
+                                 : unit_hwinfo.min_threads)
+                             * unit_hwinfo.max_cpu_mhz;
       total_cpu_capacity  += unit_cpu_cap;
       unit_cpu_capacities.push_back(unit_cpu_cap);
     }

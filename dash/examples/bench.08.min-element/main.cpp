@@ -459,6 +459,7 @@ void print_local_sizes(
   }
 
   bench_cfg.print_section_start("Data Partitioning");
+  bench_cfg.print_param("global", "total size", pattern.size());
   for (size_t u = 0; u < pattern.team().size(); u++) {
     std::ostringstream uss;
     uss << "unit " << setw(2) << u;
