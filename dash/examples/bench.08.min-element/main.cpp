@@ -103,9 +103,6 @@ int main(int argc, char **argv)
   dash::init(&argc, &argv);
 
 //dash::util::Config::set("DASH_ENABLE_LOGGING", false);
-  if (!dash::util::Config::get<bool>("DASH_ENABLE_TRACE")) {
-    std::cout << "Trace log enabled" << std::endl;
-  }
 
   Timer::Calibrate(0);
 
@@ -155,9 +152,6 @@ int main(int argc, char **argv)
     num_repeats = std::max<size_t>(num_repeats, params.min_repeats);
 
     dash::util::TraceStore::on();
-    if (dash::util::TraceStore::enabled()) {
-      std::cout << "Recording trace" << std::endl;
-    }
     dash::util::TraceStore::clear();
 
     ts_start = Timer::Now();
@@ -166,9 +160,6 @@ int main(int argc, char **argv)
 
     dash::barrier();
 
-    if (dash::util::TraceStore::enabled()) {
-      std::cout << "Writing trace" << std::endl;
-    }
     dash::util::TraceStore::write(std::cout);
     dash::util::TraceStore::clear();
     dash::util::TraceStore::off();

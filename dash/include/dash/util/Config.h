@@ -47,38 +47,87 @@ private:
   static std::unordered_map<std::string, std::string>   config_values_;
 
 private:
-  static std::string get_str(const std::string & key)
+  static std::string get_str(
+    const std::string & key)
   {
+    std::string value;
     auto kv = Config::config_values_.find(key);
-    if (kv == Config::config_values_.end()) {
-      return std::string("");
+    if (kv != Config::config_values_.end()) {
+      value = kv->second;
     }
-    std::string value = kv->second;
+    DASH_LOG_TRACE("util::Config::get_str >", key, "->", value);
     return value;
   }
 
+  static void set_str(
+    const std::string & key,
+    const std::string & value)
+  {
+    DASH_LOG_TRACE("util::Config::set_str >", key, "->", value);
+    Config::config_values_[key] = value;
+  }
+
+
 public:
 
-  template<typename ValueT>
-  static
-  typename std::enable_if<!std::is_integral<ValueT>::value, ValueT>::type
-  get(const std::string & key);
+  ///////////////////////////////////////////////////////////////////////////
+  // Config::get<T>(key)
+  ///////////////////////////////////////////////////////////////////////////
 
   template<typename ValueT>
   static
-  typename std::enable_if<std::is_integral<ValueT>::value, ValueT>::type
+  typename std::enable_if<
+    std::is_same<ValueT, bool>::value, ValueT>::type
   get(const std::string & key)
   {
-    return std::strtoll(get_str(key).c_str(), nullptr, 10);
+    bool value = (get_str(key)           == "1") ||
+                 (get_str(key + "_BOOL") == "1");
+
+    DASH_LOG_TRACE("util::Config::get<bool>", key, "->", value);
+    return value;
   }
 
   template<typename ValueT>
   static
-  typename std::enable_if<std::is_floating_point<ValueT>::value, ValueT>::type
+  typename std::enable_if<
+    std::is_floating_point<ValueT>::value, ValueT>::type
   get(const std::string & key)
   {
-    return std::stod(get_str(key).c_str());
+    ValueT value = std::stod(get_str(key).c_str());
+    DASH_LOG_TRACE("util::Config::get<fp>", key, "->", value);
+    return value;
   }
+
+  template<typename ValueT>
+  static
+  typename std::enable_if<
+    !std::is_same<ValueT, bool>::value &&
+    std::is_integral<ValueT>::value, ValueT >::type
+  get(const std::string & key)
+  {
+    ValueT value = std::strtoll(get_str(key).c_str(), nullptr, 10);
+    DASH_LOG_TRACE("util::Config::get<integral>", key, "->", value);
+    return value;
+  }
+
+  template<typename ValueT>
+  static
+  typename std::enable_if<
+    !std::is_floating_point<ValueT>::value &&
+    !std::is_integral<ValueT>::value, ValueT>::type
+  get(const std::string & key)
+  {
+    std::istringstream ss(get_str(key));
+    ValueT value;
+    ss >> value;
+
+    DASH_LOG_TRACE("util::Config::get<T>", key, "->", value);
+    return value;
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // Config::set(key, T)
+  ///////////////////////////////////////////////////////////////////////////
 
   template<typename ValueT>
   static
@@ -108,6 +157,10 @@ public:
   {
     set(key, std::string(cstr));
   }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // Config::begin(), Config::end()
+  ///////////////////////////////////////////////////////////////////////////
 
   static typename std::unordered_map<std::string, std::string>::iterator
   begin() {

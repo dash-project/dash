@@ -102,17 +102,13 @@ void Config::set(
   if (value_lowercase == "true" || value_lowercase == "yes" ||
       value_lowercase == "t"    || value_lowercase == "y"   ||
       value_lowercase == "on") {
-    DASH_LOG_TRACE("util::Config::set", key, "= bool(true)");
-    std::string key_name_bool = key + "_BOOL";
-    set(key_name_bool, 1);
+    set_str(key + "_BOOL", "1");
     return;
   }
   else if (value_lowercase == "false" || value_lowercase == "no" ||
            value_lowercase == "f"     || value_lowercase == "n"  ||
            value_lowercase == "off") {
-    DASH_LOG_TRACE("util::Config::set", key, "= bool(false)");
-    std::string key_name_bool = key + "_BOOL";
-    set(key_name_bool, 0);
+    set_str(key + "_BOOL", "0");
     return;
   }
 
@@ -151,16 +147,9 @@ template<>
 std::string Config::get<std::string>(
   const std::string & key)
 {
-  return get_str(key);
+  std::string value = get_str(key);
+  return value;
 }
-
-template<>
-bool Config::get<bool>(
-  const std::string & key)
-{
-  return (get_str(key + "_BOOL") == "1") || (get_str(key) == "1");
-}
-
 
 } // namespace util
 } // namespace dash

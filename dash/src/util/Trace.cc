@@ -21,20 +21,11 @@ bool dash::util::TraceStore::_trace_enabled
 bool dash::util::TraceStore::on()
 {
   _trace_enabled = dash::util::Config::get<bool>("DASH_ENABLE_TRACE");
-
-	// To avoid compiler optimization from eliminating this call:
-  std::ostringstream os;
-  os << _trace_enabled << std::endl;
-
   return _trace_enabled;
 }
 
 void dash::util::TraceStore::off()
 {
-  // To avoid compiler optimization from eliminating this call:
-  std::ostringstream os;
-  os << _trace_enabled << std::endl;
-
   _trace_enabled = false;
 }
 
@@ -106,8 +97,8 @@ void dash::util::TraceStore::write(std::ostream & out)
     }
   }
   // Print trace events of units sequentially:
-  for (int trace_unit = 0; trace_unit < nunits; ++trace_unit) {
-    if (trace_unit == unit) {
+  for (size_t trace_unit = 0; trace_unit < nunits; ++trace_unit) {
+    if (trace_unit == static_cast<size_t>(unit)) {
       out << os.str();
     }
     dash::barrier();
