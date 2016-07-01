@@ -59,7 +59,7 @@ public:
   ValueType get() const
   {
     ValueType acc = 0;
-    for (size_t i = 0; i < _num_units; ++i) {
+    for (dart_unit_t i = 0; i < static_cast<dart_unit_t>(_num_units); ++i) {
       // use local access on own counter value:
       acc += (i == _myid
                 ? _local_counts.local[0]
