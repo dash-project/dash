@@ -1,8 +1,12 @@
 #include "TestBase.h"
+#include "TestPrinter.h"
 
 #include <gtest/gtest.h>
 #include <libdash.h>
 #include <iostream>
+
+using ::testing::UnitTest;
+using ::testing::TestEventListeners;
 
 int main(int argc, char * argv[])
 {
@@ -20,6 +24,15 @@ int main(int argc, char * argv[])
             << "(" << host << " PID: " << getpid() << ")"
             << std::endl;
   dash::barrier();
+
+	// Change Test Printer
+	UnitTest& unit_test = *UnitTest::GetInstance();
+	TestEventListeners& listeners = unit_test.listeners();
+
+	delete listeners.Release(listeners.default_result_printer());
+
+	listeners.Append(new TestPrinter);
+
   // Run Tests
   int ret = RUN_ALL_TESTS();
   // Finalize DASH
