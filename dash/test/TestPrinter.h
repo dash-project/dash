@@ -1,7 +1,10 @@
 #ifndef DASH__UTIL__TEST_PRINTER_H_
 #define DASH__UTIL__TEST_PRINTER_H_
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+
+#include <libdash.h>
+#include <list>
 
 #define TEST_NEUTRAL "\033[0;32m[----------] \033[m"
 #define TEST_SUM     "\033[0;32m[==========] \033[m"
@@ -21,7 +24,7 @@ using ::testing::UnitTest;
 using ::testing::TestResult;
 
 class TestPrinter : public EmptyTestEventListener {
-	private:
+  private:
   int  _myid;
   int  _size;
   bool _testcase_passed = true;
@@ -37,39 +40,39 @@ class TestPrinter : public EmptyTestEventListener {
   // Called before any test activity starts.
   virtual void OnTestProgramStart(const UnitTest& unit_test) {
     if(_myid == 0){
-			std::cout << TEST_NEUTRAL 
-							<< unit_test.total_test_case_count()
-							<< " tests will be run."
-							<< std::endl;
+      std::cout << TEST_NEUTRAL
+              << unit_test.total_test_case_count()
+              << " tests will be run."
+              << std::endl;
     }
-	}
+  }
 
-	virtual void OnTestCaseStart(const TestCase& test_case){
+  virtual void OnTestCaseStart(const TestCase& test_case){
     if(_myid == 0){
-			std::cout << TEST_NEUTRAL 
-							<< "run "
-							<< test_case.test_to_run_count()
-							<< " out of "
-							<< test_case.total_test_count()
-							<< " tests from "
-  						<< test_case.name()
-							<< std::endl;
+      std::cout << TEST_NEUTRAL
+              << "run "
+              << test_case.test_to_run_count()
+              << " out of "
+              << test_case.total_test_count()
+              << " tests from "
+              << test_case.name()
+              << std::endl;
     }
-	}
+  }
 
   // Called after all test activities have ended.
   virtual void OnTestProgramEnd(const UnitTest& unit_test) {
     if(_myid == 0){
       bool passed = unit_test.Passed() && _testcase_passed;
 
-			std::cout << TEST_SUM 
-								<< unit_test.test_to_run_count()
-								<< " tests from "
-								<< unit_test.test_case_to_run_count()
-								<< " test cases ran. ("
-								<< unit_test.elapsed_time()
-								<< " ms total)"
-								<< std::endl;
+      std::cout << TEST_SUM
+                << unit_test.test_to_run_count()
+                << " tests from "
+                << unit_test.test_case_to_run_count()
+                << " test cases ran. ("
+                << unit_test.elapsed_time()
+                << " ms total)"
+                << std::endl;
 
       if (passed) {
         std::cout << TEST_SUCCESS
@@ -77,10 +80,10 @@ class TestPrinter : public EmptyTestEventListener {
                   << " tests passed"
                   << std::endl;
       } else {
-			  std::cout << TEST_FAILURE
-								<< unit_test.failed_test_count()
-								<< " tests, listed below"
-								<< std::endl;
+        std::cout << TEST_FAILURE
+                << unit_test.failed_test_count()
+                << " tests, listed below"
+                << std::endl;
         for(auto el : _failed_tests){
           std::cout << el << std::endl;
         }
@@ -91,9 +94,9 @@ class TestPrinter : public EmptyTestEventListener {
   // Called before a test starts.
   virtual void OnTestStart(const TestInfo& test_info) {
     if(_myid == 0){
-		  std::cout << TEST_RUN 
-              << test_info.test_case_name() << "."
-							<< test_info.name() << std::endl;
+      std::cout << TEST_RUN
+                << test_info.test_case_name() << "."
+                << test_info.name() << std::endl;
     }
   }
 
@@ -114,7 +117,7 @@ class TestPrinter : public EmptyTestEventListener {
       res += (passed ? TEST_OK : TEST_FAILURE );
       res += test_info.test_case_name();
       res += ".";
-			res += test_info.name();
+      res += test_info.name();
       std::cout << res << std::endl;
 
       if(!_testcase_passed){
@@ -127,4 +130,3 @@ class TestPrinter : public EmptyTestEventListener {
 };
 
 #endif // DASH__UTIL__TEST_PRINTER_H_
- 
