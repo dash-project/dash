@@ -15,41 +15,54 @@ using ::testing::UnitTest;
 class TestPrinter : public EmptyTestEventListener {
 	private:
   // Called before any test activity starts.
-  virtual void OnTestProgramStart(const UnitTest& /* unit_test */) {}
+  virtual void OnTestProgramStart(const UnitTest& unit_test) {
+			std::cout << "[----------] "
+							<< unit_test.total_test_case_count()
+							<< " tests will be run."
+							<< std::endl;
+	}
+
+	virtual void OnTestCaseStart(const TestCase& test_case){
+			std::cout << "[----------]"
+							<< " run "
+							<< test_case.test_to_run_count()
+							<< " out of "
+							<< test_case.total_test_count()
+							<< " tests from "
+  						<< test_case.name()
+							<< std::endl;
+	}
 
   // Called after all test activities have ended.
   virtual void OnTestProgramEnd(const UnitTest& unit_test) {
-    fprintf(stdout, "TEST %s\n", unit_test.Passed() ? "PASSED" : "FAILED");
-    fflush(stdout);
+			std::cout << "[==========] "
+								<< unit_test.test_to_run_count()
+								<< " tests from "
+								<< unit_test.test_case_to_run_count()
+								<< " test cases ran. ("
+								<< unit_test.elapsed_time()
+								<< " ms total)"
+								<< std::endl;
+
+			std::cout << (unit_test.Passed() ? "[  PASSED  ]" : "[  FAILED  ]") << " "
+								<< unit_test.failed_test_count()
+								<< " tests, listed below"
+								<< std::endl;
+			// TODO: Print failed tests
   }
 
   // Called before a test starts.
   virtual void OnTestStart(const TestInfo& test_info) {
-    fprintf(stdout,
-            "*** Test %s.%s starting.\n",
-            test_info.test_case_name(),
-            test_info.name());
-    fflush(stdout);
-  }
-
-  // Called after a failed assertion or a SUCCEED() invocation.
-  virtual void OnTestPartResult(const TestPartResult& test_part_result) {
-    fprintf(stdout,
-            "%s in %s:%d\n%s\n",
-            test_part_result.failed() ? "*** Failure" : "Success",
-            test_part_result.file_name(),
-            test_part_result.line_number(),
-            test_part_result.summary());
-    fflush(stdout);
+		std::cout << "[ RUN      ] "
+              << test_info.test_case_name() << "."
+							<< test_info.name() << std::endl;
   }
 
   // Called after a test ends.
   virtual void OnTestEnd(const TestInfo& test_info) {
-    fprintf(stdout,
-            "*** Test %s.%s ending.\n",
-            test_info.test_case_name(),
-            test_info.name());
-    fflush(stdout);
+		std::cout << (test_info.result()->Passed() ? "[       OK ] " : "[  FAILED  ] ")
+              << test_info.test_case_name() << "."
+							<< test_info.name() << std::endl;
   }
 };
 
