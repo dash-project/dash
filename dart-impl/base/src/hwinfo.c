@@ -193,6 +193,9 @@ dart_ret_t dart_hwinfo(
     hw.min_threads = 4;
     hw.max_threads = 4;
   }
+  if (hw.numa_id < 0) {
+    hw.numa_id = 0;
+  }
 #endif
 
 #ifdef DART__PLATFORM__POSIX
