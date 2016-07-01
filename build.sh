@@ -81,9 +81,9 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         \
-                        -DBUILD_EXAMPLES=OFF \
+                        -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
-                        -DBUILD_DOCS=OFF \
+                        -DBUILD_DOCS=ON \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
