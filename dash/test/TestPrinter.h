@@ -18,12 +18,14 @@ using ::testing::TestEventListeners;
 using ::testing::TestInfo;
 using ::testing::TestPartResult;
 using ::testing::UnitTest;
+using ::testing::TestResult;
 
 class TestPrinter : public EmptyTestEventListener {
 	private:
   int  _myid;
   int  _size;
   bool _testcase_passed = true;
+  std::list<std::string> _failed_tests;
 
   public:
   TestPrinter():
@@ -69,11 +71,20 @@ class TestPrinter : public EmptyTestEventListener {
 								<< " ms total)"
 								<< std::endl;
 
-			std::cout << (passed ? TEST_SUCCESS : TEST_FAILURE )
+      if (passed) {
+        std::cout << TEST_SUCCESS
+                  << unit_test.successful_test_count()
+                  << " tests passed"
+                  << std::endl;
+      } else {
+			  std::cout << TEST_FAILURE
 								<< unit_test.failed_test_count()
 								<< " tests, listed below"
 								<< std::endl;
-			// TODO: Print failed tests
+        for(auto el : _failed_tests){
+          std::cout << el << std::endl;
+        }
+      }
     }
   }
 
@@ -99,9 +110,16 @@ class TestPrinter : public EmptyTestEventListener {
       passed            = (success_units.get() == _size);
       _testcase_passed &= passed;
 
-		  std::cout << (passed ? TEST_OK : TEST_FAILURE )
-              << test_info.test_case_name() << "."
-							<< test_info.name() << std::endl;
+      std::string res;
+      res += (passed ? TEST_OK : TEST_FAILURE );
+      res += test_info.test_case_name();
+      res += ".";
+			res += test_info.name();
+      std::cout << res << std::endl;
+
+      if(!_testcase_passed){
+        _failed_tests.push_front(res);
+      }
     }
     // prevent overlapping of tests
     dash::barrier();
