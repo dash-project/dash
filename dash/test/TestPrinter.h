@@ -3,6 +3,13 @@
 
 #include "gtest/gtest.h"
 
+#define TEST_NEUTRAL "\033[0;32m[----------] \033[m"
+#define TEST_SUM     "\033[0;32m[==========] \033[m"
+#define TEST_SUCCESS "\033[0;32m[  PASSED  ] \033[m"
+#define TEST_FAILURE "\033[0;31m[  FAILED  ] \033[m"
+#define TEST_OK      "\033[0;32m[      OK  ] \033[m"
+#define TEST_RUN     "\033[0;32m[  RUN     ] \033[m"
+
 using ::testing::EmptyTestEventListener;
 using ::testing::InitGoogleTest;
 using ::testing::Test;
@@ -14,28 +21,46 @@ using ::testing::UnitTest;
 
 class TestPrinter : public EmptyTestEventListener {
 	private:
+  int  _myid;
+  int  _size;
+  bool _testcase_passed = true;
+
+  public:
+  TestPrinter():
+    _myid(dash::myid()),
+    _size(dash::size())
+  { }
+
+  private:
   // Called before any test activity starts.
   virtual void OnTestProgramStart(const UnitTest& unit_test) {
-			std::cout << "[----------] "
+    if(_myid == 0){
+			std::cout << TEST_NEUTRAL 
 							<< unit_test.total_test_case_count()
 							<< " tests will be run."
 							<< std::endl;
+    }
 	}
 
 	virtual void OnTestCaseStart(const TestCase& test_case){
-			std::cout << "[----------]"
-							<< " run "
+    if(_myid == 0){
+			std::cout << TEST_NEUTRAL 
+							<< "run "
 							<< test_case.test_to_run_count()
 							<< " out of "
 							<< test_case.total_test_count()
 							<< " tests from "
   						<< test_case.name()
 							<< std::endl;
+    }
 	}
 
   // Called after all test activities have ended.
   virtual void OnTestProgramEnd(const UnitTest& unit_test) {
-			std::cout << "[==========] "
+    if(_myid == 0){
+      bool passed = unit_test.Passed() && _testcase_passed;
+
+			std::cout << TEST_SUM 
 								<< unit_test.test_to_run_count()
 								<< " tests from "
 								<< unit_test.test_case_to_run_count()
@@ -44,25 +69,42 @@ class TestPrinter : public EmptyTestEventListener {
 								<< " ms total)"
 								<< std::endl;
 
-			std::cout << (unit_test.Passed() ? "[  PASSED  ]" : "[  FAILED  ]") << " "
+			std::cout << (passed ? TEST_SUCCESS : TEST_FAILURE )
 								<< unit_test.failed_test_count()
 								<< " tests, listed below"
 								<< std::endl;
 			// TODO: Print failed tests
+    }
   }
 
   // Called before a test starts.
   virtual void OnTestStart(const TestInfo& test_info) {
-		std::cout << "[ RUN      ] "
+    if(_myid == 0){
+		  std::cout << TEST_RUN 
               << test_info.test_case_name() << "."
 							<< test_info.name() << std::endl;
+    }
   }
 
   // Called after a test ends.
   virtual void OnTestEnd(const TestInfo& test_info) {
-		std::cout << (test_info.result()->Passed() ? "[       OK ] " : "[  FAILED  ] ")
+    dash::SharedCounter<int> success_units;
+    bool passed = test_info.result()->Passed();
+
+    if(passed){
+      success_units.inc(1);
+    }
+    dash::barrier();
+    if(_myid == 0){
+      passed            = (success_units.get() == _size);
+      _testcase_passed &= passed;
+
+		  std::cout << (passed ? TEST_OK : TEST_FAILURE )
               << test_info.test_case_name() << "."
 							<< test_info.name() << std::endl;
+    }
+    // prevent overlapping of tests
+    dash::barrier();
   }
 };
 
