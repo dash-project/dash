@@ -3,6 +3,7 @@
 
 #include <dash/util/Locality.h>
 #include <dash/util/LocalityDomain.h>
+#include <dash/util/Config.h>
 
 #include <dash/algorithm/internal/String.h>
 
@@ -97,6 +98,26 @@ public:
     const std::string & hostname)
   {
     strcpy(_unit_locality->host, hostname.c_str());
+  }
+
+  inline int num_cores() const
+  {
+    DASH_ASSERT(nullptr != _unit_locality);
+    return (_unit_locality->hwinfo.num_cores);
+  }
+
+  inline int num_threads() const
+  {
+    DASH_ASSERT(nullptr != _unit_locality);
+    return (dash::util::Config::get<bool>("DASH_MAX_SMT")
+               ? _unit_locality->hwinfo.max_threads
+               : _unit_locality->hwinfo.min_threads);
+  }
+
+  inline int cpu_mhz() const
+  {
+    DASH_ASSERT(nullptr != _unit_locality);
+    return (_unit_locality->hwinfo.max_cpu_mhz);
   }
 
 private:

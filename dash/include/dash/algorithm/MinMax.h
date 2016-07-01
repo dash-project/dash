@@ -9,6 +9,7 @@
 #include <dash/algorithm/LocalRange.h>
 
 #include <dash/util/Config.h>
+#include <dash/util/Trace.h>
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/internal/Logging.h>
@@ -175,6 +176,8 @@ GlobIter<ElementType, PatternType> min_element(
     return last;
   }
 
+  dash::util::Trace trace("min_element");
+
   auto & pattern = first.pattern();
 
   dash::Team & team = pattern.team();
@@ -193,6 +196,8 @@ GlobIter<ElementType, PatternType> min_element(
     // local range is empty
     DASH_LOG_DEBUG("dash::min_element", "local range empty");
   } else {
+    trace.enter_state("local");
+
     // Pointer to first element in local memory:
     const ElementType * lbegin        = first.globmem().lbegin(
                                           pattern.team().myid());
@@ -207,12 +212,17 @@ GlobIter<ElementType, PatternType> min_element(
       // Offset of local minimum in local memory:
       l_idx_lmin = lmin - lbegin;
     }
+
+    trace.exit_state("local");
   }
   DASH_LOG_TRACE("dash::min_element",
                  "local index of local minimum:", l_idx_lmin);
   DASH_LOG_TRACE("dash::min_element",
                  "waiting for local min of other units");
+
+  trace.enter_state("barrier");
   team.barrier();
+  trace.exit_state("barrier");
 
   typedef struct {
     ElementType value;
@@ -236,11 +246,13 @@ GlobIter<ElementType, PatternType> min_element(
                  "g.index:", local_min.g_index, "}");
 
   DASH_LOG_TRACE("dash::min_element", "dart_allgather()");
+  trace.enter_state("allgather");
   DASH_ASSERT_RETURNS(
     dart_allgather(
       &local_min, local_min_values.data(), sizeof(local_min_t),
       team.dart_id()),
     DART_OK);
+  trace.exit_state("allgather");
 
 #ifdef DASH_ENABLE_LOGGING
   for (int lmin_u = 0; lmin_u < local_min_values.size(); lmin_u++) {
@@ -252,6 +264,7 @@ GlobIter<ElementType, PatternType> min_element(
   }
 #endif
 
+  trace.enter_state("finalize");
   auto gmin_elem_it  = ::std::min_element(
                            local_min_values.begin(),
                            local_min_values.end(),
@@ -289,6 +302,8 @@ GlobIter<ElementType, PatternType> min_element(
   globiter_t minimum = (first - first.gpos()) + gi_minimum;
   DASH_LOG_DEBUG("dash::min_element >", minimum,
                  "=", static_cast<ElementType>(*minimum));
+
+  trace.exit_state("finalize");
   return minimum;
 }
 

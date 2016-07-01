@@ -11,7 +11,8 @@
 
 #include <unistd.h>
 
-std::map<std::string, dash::util::TraceStore::trace_events_t> dash::util::TraceStore::_traces
+std::map<std::string, dash::util::TraceStore::trace_events_t>
+dash::util::TraceStore::_traces
   = {{ }};
 
 bool dash::util::TraceStore::_trace_enabled

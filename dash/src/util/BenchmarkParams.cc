@@ -72,7 +72,7 @@ void BenchmarkParams::parse_args(
 void BenchmarkParams::print_header()
 {
   if (_myid != 0) {
-      return;
+    return;
   }
 
   size_t box_width        = _header_width;

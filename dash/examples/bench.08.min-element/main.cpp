@@ -103,6 +103,9 @@ int main(int argc, char **argv)
   dash::init(&argc, &argv);
 
 //dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+  if (!dash::util::Config::get<bool>("DASH_ENABLE_TRACE")) {
+    std::cout << "Trace log enabled" << std::endl;
+  }
 
   Timer::Calibrate(0);
 
@@ -151,11 +154,25 @@ int main(int argc, char **argv)
 
     num_repeats = std::max<size_t>(num_repeats, params.min_repeats);
 
+    dash::util::TraceStore::on();
+    if (dash::util::TraceStore::enabled()) {
+      std::cout << "Recording trace" << std::endl;
+    }
+    dash::util::TraceStore::clear();
+
     ts_start = Timer::Now();
     res      = perform_test(size, num_repeats, params);
     time_s   = Timer::ElapsedSince(ts_start) * 1.0e-06;
 
     dash::barrier();
+
+    if (dash::util::TraceStore::enabled()) {
+      std::cout << "Writing trace" << std::endl;
+    }
+    dash::util::TraceStore::write(std::cout);
+    dash::util::TraceStore::clear();
+    dash::util::TraceStore::off();
+
     print_measurement_record(bench_cfg, size, num_repeats,
                              time_s, res, params);
   }
@@ -235,6 +252,8 @@ measurement perform_test(
 
   dash::barrier();
 
+  dash::util::TraceStore::off();
+
   double total_time_us = 0;
   std::vector<double> history_time_us;
   for (size_t i = 0; i < REPEAT; i++) {
@@ -242,9 +261,17 @@ measurement perform_test(
 
     auto ts_start  = Timer::Now();
 
+    if (i == 0) {
+      dash::util::TraceStore::on();
+    }
+
 //  dash::util::Config::set("DASH_ENABLE_LOGGING", true);
     auto min_git   = dash::min_element(arr.begin(), arr.end());
 //  dash::util::Config::set("DASH_ENABLE_LOGGING", false);
+
+    if (i == 0) {
+      dash::util::TraceStore::off();
+    }
 
     auto time_us   = Timer::ElapsedSince(ts_start);
     total_time_us += time_us;
