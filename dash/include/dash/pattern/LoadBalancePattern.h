@@ -964,7 +964,7 @@ private:
     for (auto u : tloc.units()) {
       auto & unit_loc      = tloc.unit_locality(u);
       size_t unit_cpu_cap  = unit_loc.num_cores() *
-                          // unit_loc.num_threads() *
+                             unit_loc.num_threads() *
                              unit_loc.cpu_mhz();
       total_cpu_capacity  += unit_cpu_cap;
       unit_cpu_capacities.push_back(unit_cpu_cap);
@@ -993,23 +993,17 @@ private:
     const TeamLocality_t & tloc) const
   {
     std::vector<double> unit_mem_perc;
+
+#if 0
     std::vector<size_t> unit_mem_capacities;
     size_t total_mem_capacity = 0;
 
+    // Calculate average memory bandwidth first:
     for (auto u : tloc.units()) {
       auto & unit_loc     = tloc.unit_locality(u);
       size_t unit_mem_cap = std::max<int>(0, unit_loc.max_shmem_mbps());
-      unit_mem_perc.push_back(1.0e-3 * unit_mem_cap);
-    }
-    return unit_mem_perc;
-
-
-    // Calculate average memory bandwidth first:
-    for (auto u : tloc.units()) {
-      auto & unit_loc      = tloc.unit_locality(u);
-      size_t unit_mem_cap  = std::max<int>(0, unit_loc.max_shmem_mbps());
       if (unit_mem_cap > 0) {
-        total_mem_capacity  += unit_mem_cap;
+        total_mem_capacity += unit_mem_cap;
       }
       unit_mem_capacities.push_back(unit_mem_cap);
     }
@@ -1025,17 +1019,32 @@ private:
                               tloc.units().size();
 
     // Use average value for units with unknown memory bandwidth:
-    for (auto u : tloc.units()) {
-      auto & unit_loc     = tloc.unit_locality(u);
-      size_t unit_mem_cap = unit_loc.max_shmem_mbps();
-      if (unit_mem_cap <= 0) {
-        unit_mem_capacities[u] = avg_mem_capacity;
+    for (auto membw = unit_mem_capacities.begin();
+         membw != unit_mem_capacities.end(); ++membw) {
+      if (*membw <= 0) {
+        *membw = avg_mem_capacity;
       }
     }
+#endif
 
-    for (auto unit_mem_capacity : unit_mem_capacities) {
-      unit_mem_perc.push_back(static_cast<double>(unit_mem_capacity) /
-                              avg_mem_capacity);
+    std::vector<double> unit_bytes_per_cycle;
+    double total_bytes_per_cycle = 0;
+
+    // Calculating bytes/cycle for every units:
+    for (auto u : tloc.units()) {
+      auto & unit_loc     = tloc.unit_locality(u);
+      double unit_mem_bw  = std::max<int>(0, unit_loc.max_shmem_mbps());
+      double unit_cpu_fq  = unit_loc.cpu_mhz();
+      double unit_bps     = unit_mem_bw / unit_cpu_fq;
+      unit_bytes_per_cycle.push_back(unit_bps);
+      total_bytes_per_cycle += unit_bps;
+    }
+
+    double avg_bytes_per_cycle =
+      static_cast<double>(total_bytes_per_cycle) / tloc.units().size();
+
+    for (auto unit_bps : unit_bytes_per_cycle) {
+      unit_mem_perc.push_back(unit_bps / avg_bytes_per_cycle);
     }
     return unit_mem_perc;
   }
@@ -1044,14 +1053,16 @@ private:
     const std::vector<double> & cpu_weights,
     const std::vector<double> & membw_weights) const
   {
-    return cpu_weights;
-
     std::vector<double> load_weights;
     if (cpu_weights.size() != membw_weights.size()) {
       DASH_THROW(
         dash::exception::InvalidArgument,
         "Number of CPU weights and SHMEM weights differ");
     }
+    // Trying to resolve the "inverse Roofline model" here:
+    // We do not know if the operations on the data that is distributed
+    // using this pattern is memory-bound or computation-bound.
+    //
     // Most basic model:
     // weight[u] = cpu_weight[u] * membw_weight[u]
     load_weights.reserve(cpu_weights.size());
