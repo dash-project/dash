@@ -122,6 +122,8 @@ int main(int argc, char * argv[])
                 << std::endl;
       u++;
     }
+  } else {
+    sleep(2);
   }
   dart_barrier(DART_TEAM_ALL);
 
