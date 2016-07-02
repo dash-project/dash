@@ -985,9 +985,32 @@ private:
   }
 
   /**
-   * Returns unit shared memory bandwidth capacities as percentage of
-   * the team's total shared memory capacity average, e.g. vector of 1's
-   * if all units have identical bandwidth;
+   * Shared memory bandwidth capacities of every unit factored by the
+   * mean memory bandwidth capacity of all units in the team.
+   * Consequently, a vector of 1's is returned if all units have identical
+   * memory bandwidth.
+   *
+   * The memory bandwidth balancing weight for a unit is relative to the
+   * bytes/cycle measure of its affine core and considers the
+   * lower bound ("maximum of minimal") throughput between the unit to
+   * any other unit in the host system's shared memory domain.
+   *
+   * This is mostly relevant for accelerators that have no direct access
+   * to the host system's shared memory.
+   * For example, Intel MIC accelerators are connected to the host with a
+   * 6.2 GB/s PCIE bus and a single MIC core operates at 1.1 Ghz with 4
+   * hardware threads.
+   * The resulting measure \BpC (bytes/cycle) is calculated as:
+   *
+   *   Mpk = 6.2 GB/s
+   *   Cpk = 1.1 Ghz * 4 = 4.4 G cycles/s
+   *   BpC = Mpk / Cpk   = 5.63 bytes/cycle
+   *
+   * The principal idea is that any data used in operations on the MIC
+   * target must be moved over the slow PCIE interconnect first.
+   * The offload overhead therefore reduces the amount of data assigned to
+   * a MIC accelerator, despite its superior ops/s performance.
+   *
    */
   std::vector<double> initialize_mem_bandwidth_weights(
     const TeamLocality_t & tloc) const
@@ -995,6 +1018,9 @@ private:
     std::vector<double> unit_mem_perc;
 
 #if 0
+    // TODO: Calculate and assign neutral weights for units located at
+    //       cores with unknown memory bandwidth.
+
     std::vector<size_t> unit_mem_capacities;
     size_t total_mem_capacity = 0;
 
@@ -1034,9 +1060,9 @@ private:
     for (auto u : tloc.units()) {
       auto & unit_loc     = tloc.unit_locality(u);
       double unit_mem_bw  = std::max<int>(0, unit_loc.max_shmem_mbps());
-      double unit_cpu_fq  = unit_loc.num_threads() *
+      double unit_core_fq = unit_loc.num_threads() *
                             unit_loc.cpu_mhz();
-      double unit_bps     = unit_mem_bw / unit_cpu_fq;
+      double unit_bps     = unit_mem_bw / unit_core_fq;
       unit_bytes_per_cycle.push_back(unit_bps);
       total_bytes_per_cycle += unit_bps;
     }
