@@ -105,7 +105,7 @@ void dash::util::TraceStore::write(std::ostream & out)
   }
 
   // To help synchronization of writes:
-  sleep(2);
+  sleep(1);
 
   dash::barrier();
 }
@@ -117,9 +117,20 @@ void dash::util::TraceStore::write(
 	if (!dash::util::Config::get<bool>("DASH_ENABLE_TRACE")) {
     return;
   }
+
+  std::string trace_log_dir;
+  if (dash::util::Config::is_set("DASH_TRACE_LOG_PATH")) {
+    trace_log_dir = dash::util::Config::get<std::string>(
+                      "DASH_TRACE_LOG_PATH");
+    if (path.length() > 0) {
+      trace_log_dir += "/";
+    }
+  }
+  trace_log_dir += path;
+
   auto unit = dash::myid();
   std::ostringstream fn;
-  fn << path << "/"
+  fn << trace_log_dir << "/"
      << "u" << std::setfill('0') << std::setw(5) << unit
      << "." << filename;
   std::string trace_file = fn.str();

@@ -938,8 +938,8 @@ private:
 
     for (auto u : tloc.units()) {
       auto & unit_loc      = tloc.unit_locality(u);
-      size_t unit_cpu_cap  = // unit_loc.num_cores() *
-                             unit_loc.num_threads() *
+      size_t unit_cpu_cap  = unit_loc.num_cores() *
+                          // unit_loc.num_threads() *
                              unit_loc.cpu_mhz();
       total_cpu_capacity  += unit_cpu_cap;
       unit_cpu_capacities.push_back(unit_cpu_cap);

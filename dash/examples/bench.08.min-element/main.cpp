@@ -163,7 +163,7 @@ int main(int argc, char **argv)
     std::ostringstream ss;
     ss << "min-element.iteration-" << i;
 
-    dash::util::TraceStore::write(ss.str(), "traces");
+    dash::util::TraceStore::write(ss.str());
     dash::util::TraceStore::clear();
     dash::util::TraceStore::off();
 
