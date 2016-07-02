@@ -73,6 +73,8 @@ public:
               pattern_partitioning_tag::unbalanced,
               // Partitioning is dynamic.
               pattern_partitioning_tag::dynamic
+              // Partitioning is load-balanced.
+//            pattern_partitioning_tag::load_balanced
           > partitioning_properties;
   /// Satisfiable properties in pattern property category Mapping:
   typedef pattern_mapping_properties<
@@ -139,6 +141,14 @@ public:
     /// Locality hierarchy of the team.
     TeamLocality_t       & team_loc)
   : _size(sizespec.size()),
+    _unit_cpu_weights(
+       initialize_cpu_capacity_weights(team_loc)),
+    _unit_membw_weights(
+       initialize_mem_bandwidth_weights(team_loc)),
+    _unit_load_weights(
+       initialize_load_weights(
+         _unit_cpu_weights,
+         _unit_membw_weights)),
     _local_sizes(
       initialize_local_sizes(
         sizespec.size(),
@@ -922,6 +932,21 @@ public:
     return 1;
   }
 
+  const std::vector<double> & unit_cpu_weights() const
+  {
+    return _unit_cpu_weights;
+  }
+
+  const std::vector<double> & unit_membw_weights() const
+  {
+    return _unit_membw_weights;
+  }
+
+  const std::vector<double> & unit_load_weights() const
+  {
+    return _unit_load_weights;
+  }
+
 private:
 
   /**
@@ -960,6 +985,84 @@ private:
   }
 
   /**
+   * Returns unit shared memory bandwidth capacities as percentage of
+   * the team's total shared memory capacity average, e.g. vector of 1's
+   * if all units have identical bandwidth;
+   */
+  std::vector<double> initialize_mem_bandwidth_weights(
+    const TeamLocality_t & tloc) const
+  {
+    std::vector<double> unit_mem_perc;
+    std::vector<size_t> unit_mem_capacities;
+    size_t total_mem_capacity = 0;
+
+    for (auto u : tloc.units()) {
+      auto & unit_loc     = tloc.unit_locality(u);
+      size_t unit_mem_cap = std::max<int>(0, unit_loc.max_shmem_mbps());
+      unit_mem_perc.push_back(1.0e-3 * unit_mem_cap);
+    }
+    return unit_mem_perc;
+
+
+    // Calculate average memory bandwidth first:
+    for (auto u : tloc.units()) {
+      auto & unit_loc      = tloc.unit_locality(u);
+      size_t unit_mem_cap  = std::max<int>(0, unit_loc.max_shmem_mbps());
+      if (unit_mem_cap > 0) {
+        total_mem_capacity  += unit_mem_cap;
+      }
+      unit_mem_capacities.push_back(unit_mem_cap);
+    }
+    if (total_mem_capacity == 0) {
+      total_mem_capacity = tloc.units().size();
+    }
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_mem_bandwidth_weights",
+                       total_mem_capacity);
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_mem_bandwidth_weights",
+                       unit_mem_capacities);
+
+    double avg_mem_capacity = static_cast<double>(total_mem_capacity) /
+                              tloc.units().size();
+
+    // Use average value for units with unknown memory bandwidth:
+    for (auto u : tloc.units()) {
+      auto & unit_loc     = tloc.unit_locality(u);
+      size_t unit_mem_cap = unit_loc.max_shmem_mbps();
+      if (unit_mem_cap <= 0) {
+        unit_mem_capacities[u] = avg_mem_capacity;
+      }
+    }
+
+    for (auto unit_mem_capacity : unit_mem_capacities) {
+      unit_mem_perc.push_back(static_cast<double>(unit_mem_capacity) /
+                              avg_mem_capacity);
+    }
+    return unit_mem_perc;
+  }
+
+  std::vector<double> initialize_load_weights(
+    const std::vector<double> & cpu_weights,
+    const std::vector<double> & membw_weights) const
+  {
+    return cpu_weights;
+
+    std::vector<double> load_weights;
+    if (cpu_weights.size() != membw_weights.size()) {
+      DASH_THROW(
+        dash::exception::InvalidArgument,
+        "Number of CPU weights and SHMEM weights differ");
+    }
+    // Most basic model:
+    // weight[u] = cpu_weight[u] * membw_weight[u]
+    load_weights.reserve(cpu_weights.size());
+    std::transform(cpu_weights.begin(), cpu_weights.end(),
+                   membw_weights.begin(),
+                   std::back_inserter(load_weights),
+                   std::multiplies<double>());
+    return load_weights;
+  }
+
+  /**
    * Initialize local sizes from pattern size, team and team locality
    * hierarchy.
    */
@@ -978,11 +1081,10 @@ private:
       return l_sizes;
     }
 
-    std::vector<double> capacity_weights =
-      initialize_cpu_capacity_weights(locality);
-
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_local_sizes",
-                       capacity_weights);
+                       _unit_cpu_weights);
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_local_sizes",
+                       _unit_membw_weights);
 
     double balanced_lsize = static_cast<double>(total_size) / nunits;
 
@@ -992,7 +1094,8 @@ private:
     // Maximum CPU capacity found:
     size_t      unit_max_cpu_cap  = 0;
     for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(nunits); u++) {
-      double weight         = capacity_weights[u];
+      double weight         = _unit_cpu_weights[u] *
+                              _unit_membw_weights[u];
       size_t unit_capacity  = weight > 1
                               ? std::ceil(weight * balanced_lsize)
                               : std::floor(weight * balanced_lsize);
@@ -1113,6 +1216,13 @@ private:
   PatternArguments_t          _arguments;
   /// Extent of the linear pattern.
   SizeType                    _size;
+  /// Load balance weight by CPU capacity of every unit in the team.
+  std::vector<double>         _unit_cpu_weights;
+  /// Load balance weight by shared memory bandwidth of every unit in the
+  /// team.
+  std::vector<double>         _unit_membw_weights;
+  /// Load balance weight of every unit in the team.
+  std::vector<double>         _unit_load_weights;
   /// Number of local elements for every unit in the active team.
   std::vector<size_type>      _local_sizes;
   /// Block offsets for every unit. Prefix sum of local sizes.

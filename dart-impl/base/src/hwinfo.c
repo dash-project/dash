@@ -27,6 +27,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <limits.h>
 
 #ifdef DART_ENABLE_LIKWID
@@ -73,6 +74,19 @@ dart_ret_t dart_hwinfo(
   hw.cache_shared[0]     = -1;
   hw.cache_shared[1]     = -1;
   hw.cache_shared[2]     = -1;
+  hw.max_shmem_mbps      = -1;
+
+  char * max_shmem_mbps_str = getenv("DASH_MAX_SHMEM_MBPS");
+  if (NULL != max_shmem_mbps_str) {
+    hw.max_shmem_mbps = (int)(atoi(max_shmem_mbps_str));
+    DART_LOG_TRACE("dart_hwinfo: DASH_MAX_SHMEM_MBPS set: %d",
+                   hw.max_shmem_mbps);
+    if (hw.max_shmem_mbps <= 0) {
+      hw.max_shmem_mbps = -1;
+    }
+  } else {
+    DART_LOG_TRACE("dart_hwinfo: DASH_MAX_SHMEM_MBPS not set");
+  }
 
 #ifdef DART_ENABLE_LIKWID
   DART_LOG_TRACE("dart_hwinfo: using likwid");

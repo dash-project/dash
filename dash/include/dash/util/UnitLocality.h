@@ -120,6 +120,12 @@ public:
     return (_unit_locality->hwinfo.max_cpu_mhz);
   }
 
+  inline int max_shmem_mbps() const
+  {
+    DASH_ASSERT(nullptr != _unit_locality);
+    return (_unit_locality->hwinfo.max_shmem_mbps);
+  }
+
 private:
 
   dash::Team             * _team          = nullptr;

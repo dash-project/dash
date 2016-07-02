@@ -216,7 +216,7 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
   dart_hwinfo_t * hwinfo = malloc(sizeof(dart_hwinfo_t));
   DART_ASSERT_RETURNS(dart_hwinfo(hwinfo), DART_OK);
 
-  /* assign global domain to unit locality descriptor: */
+  /* Domain tag is unknown at this point, initialize with global domain: */
   strncpy(loc->domain_tag, ".", 1);
   loc->domain_tag[1] = '\0';
 
@@ -225,11 +225,11 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
     dart_domain_team_locality(team, ".", &dloc),
     DART_OK);
 
-  loc->unit          = myid;
-  loc->team          = team;
-  loc->hwinfo        = *hwinfo;
+  loc->unit   = myid;
+  loc->team   = team;
+  loc->hwinfo = *hwinfo;
 
-  char   hostname[DART_LOCALITY_HOST_MAX_SIZE];
+  char hostname[DART_LOCALITY_HOST_MAX_SIZE];
   gethostname(hostname, DART_LOCALITY_HOST_MAX_SIZE);
   strncpy(loc->host, hostname, DART_LOCALITY_HOST_MAX_SIZE);
 
@@ -249,17 +249,18 @@ dart_ret_t dart__base__unit_locality__unit_locality_init(
     DART_LOG_ERROR("dart__base__unit_locality__unit_locality_init ! null");
     return DART_ERR_INVAL;
   }
-  loc->unit               = DART_UNDEFINED_UNIT_ID;
-  loc->team               = DART_UNDEFINED_TEAM_ID;
-  loc->domain_tag[0]      = '\0';
-  loc->host[0]            = '\0';
-  loc->hwinfo.numa_id     = -1;
-  loc->hwinfo.cpu_id      = -1;
-  loc->hwinfo.num_cores   = -1;
-  loc->hwinfo.min_threads = -1;
-  loc->hwinfo.max_threads = -1;
-  loc->hwinfo.max_cpu_mhz = -1;
-  loc->hwinfo.min_cpu_mhz = -1;
+  loc->unit                  = DART_UNDEFINED_UNIT_ID;
+  loc->team                  = DART_UNDEFINED_TEAM_ID;
+  loc->domain_tag[0]         = '\0';
+  loc->host[0]               = '\0';
+  loc->hwinfo.numa_id        = -1;
+  loc->hwinfo.cpu_id         = -1;
+  loc->hwinfo.num_cores      = -1;
+  loc->hwinfo.min_threads    = -1;
+  loc->hwinfo.max_threads    = -1;
+  loc->hwinfo.max_cpu_mhz    = -1;
+  loc->hwinfo.min_cpu_mhz    = -1;
+  loc->hwinfo.max_shmem_mbps = -1;
   DART_LOG_TRACE("dart__base__unit_locality__unit_locality_init >");
   return DART_OK;
 }

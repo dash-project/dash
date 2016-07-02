@@ -48,7 +48,8 @@ std::ostream & operator<<(
      <<   "n_cores:"   << unit_loc.hwinfo.num_cores   << " "
      <<   "cpu_mhz:"   << unit_loc.hwinfo.min_cpu_mhz << ".."
                        << unit_loc.hwinfo.max_cpu_mhz << " "
-     <<   "threads:"   << unit_loc.hwinfo.max_threads
+     <<   "threads:"   << unit_loc.hwinfo.max_threads << " "
+     <<   "mem_mbps:"  << unit_loc.hwinfo.max_shmem_mbps
      << ")";
   return operator<<(os, ss.str());
 }
@@ -160,7 +161,8 @@ std::ostream & operator<<(
      << "threads("     << hwinfo.min_threads << "..."
                        << hwinfo.max_threads << ") "
      << "cpu_mhz("     << hwinfo.min_cpu_mhz << "..."
-                       << hwinfo.max_cpu_mhz << ")"
+                       << hwinfo.max_cpu_mhz << ") "
+     << "mem_mbps:"    << hwinfo.max_shmem_mbps
      << ")";
   return os;
 }

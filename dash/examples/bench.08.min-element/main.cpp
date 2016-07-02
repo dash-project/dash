@@ -11,7 +11,7 @@ using std::setprecision;
 
 using dash::util::BenchmarkParams;
 
-// #define LOAD_BALANCE
+#define LOAD_BALANCE
 
 // ==========================================================================
 // Type definitions
@@ -480,11 +480,24 @@ void print_local_sizes(
   }
 
   bench_cfg.print_section_start("Data Partitioning");
-  bench_cfg.print_param("global", "total size", pattern.size());
+  bench_cfg.print_param("global", "cpu  mbw  lwd", pattern.size());
   for (size_t u = 0; u < pattern.team().size(); u++) {
     std::ostringstream uss;
-    uss << "unit " << setw(2) << u;
-    bench_cfg.print_param(uss.str(), "local size", pattern.local_size(u));
+    uss << "u:" << setw(4) << u;
+
+    std::ostringstream lss;
+#ifdef LOAD_BALANCE
+    double cpu_weight   = pattern.unit_cpu_weights()[u];
+    double membw_weight = pattern.unit_membw_weights()[u];
+    double load_weight  = pattern.unit_load_weights()[u];
+    lss << std::fixed << std::setprecision(2) << cpu_weight   << " "
+        << std::fixed << std::setprecision(2) << membw_weight << " "
+        << std::fixed << std::setprecision(2) << load_weight;
+#else
+    lss << 1.0;
+#endif
+
+    bench_cfg.print_param(uss.str(), lss.str(), pattern.local_size(u));
   }
   bench_cfg.print_section_end();
 }

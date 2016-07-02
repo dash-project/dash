@@ -176,6 +176,9 @@ typedef struct
   int   min_threads;
   /** Maximum number of CPU threads per core. */
   int   max_threads;
+
+  /** Maximum local shared memory bandwidth in MB/s. */
+  int   max_shmem_mbps;
 }
 dart_hwinfo_t;
 
