@@ -7,6 +7,8 @@
 #include <set>
 #include <array>
 #include <utility>
+#include <algorithm>
+#include <functional>
 #include <cmath>
 
 
@@ -21,7 +23,7 @@ namespace math {
  *           remainder.
  */
 template<typename T1, typename T2>
-constexpr T1 div_ceil(
+inline T1 div_ceil(
   /// Dividend
   T1 a,
   /// Divisor
@@ -30,8 +32,24 @@ constexpr T1 div_ceil(
   return (a / b) + static_cast<T1>(a % b > 0);
 }
 
+template<typename Iter>
+inline void div_mean(Iter begin, Iter end)
+{
+  auto   nvals = std::distance(begin, end);
+  double sum   = std::accumulate(begin, end, 0.0);
+  if (nvals <= 0 || sum <= 0) {
+    return;
+  }
+  double mean  = sum / nvals;
+
+  typedef typename Iter::value_type value_t;
+  // range[i] /= mean
+  std::transform(begin, end, begin,
+                 [=](value_t v) { return v / mean; });
+}
+
 template<typename T>
-constexpr T max(T a, T b)
+inline T max(T a, T b)
 {
   return (a > b) ? a : b;
 }
@@ -39,8 +57,7 @@ constexpr T max(T a, T b)
 /**
  * Calculates the standard deviation of given values.
  */
-template<
-  typename Iter>
+template<typename Iter>
 double sigma(
   const Iter & begin,
   const Iter & end)

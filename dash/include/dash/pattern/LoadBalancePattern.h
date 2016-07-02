@@ -1030,11 +1030,12 @@ private:
     std::vector<double> unit_bytes_per_cycle;
     double total_bytes_per_cycle = 0;
 
-    // Calculating bytes/cycle for every units:
+    // Calculating bytes/cycle per core for every unit:
     for (auto u : tloc.units()) {
       auto & unit_loc     = tloc.unit_locality(u);
       double unit_mem_bw  = std::max<int>(0, unit_loc.max_shmem_mbps());
-      double unit_cpu_fq  = unit_loc.cpu_mhz();
+      double unit_cpu_fq  = unit_loc.num_threads() *
+                            unit_loc.cpu_mhz();
       double unit_bps     = unit_mem_bw / unit_cpu_fq;
       unit_bytes_per_cycle.push_back(unit_bps);
       total_bytes_per_cycle += unit_bps;
@@ -1070,6 +1071,7 @@ private:
                    membw_weights.begin(),
                    std::back_inserter(load_weights),
                    std::multiplies<double>());
+    dash::math::div_mean(load_weights.begin(), load_weights.end());
     return load_weights;
   }
 
@@ -1093,9 +1095,7 @@ private:
     }
 
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_local_sizes",
-                       _unit_cpu_weights);
-    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_local_sizes",
-                       _unit_membw_weights);
+                       _unit_load_weights);
 
     double balanced_lsize = static_cast<double>(total_size) / nunits;
 
@@ -1105,8 +1105,7 @@ private:
     // Maximum CPU capacity found:
     size_t      unit_max_cpu_cap  = 0;
     for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(nunits); u++) {
-      double weight         = _unit_cpu_weights[u] *
-                              _unit_membw_weights[u];
+      double weight         = _unit_load_weights[u];
       size_t unit_capacity  = weight > 1
                               ? std::ceil(weight * balanced_lsize)
                               : std::floor(weight * balanced_lsize);
@@ -1175,8 +1174,8 @@ private:
       return 0;
     }
     DASH_LOG_TRACE_VAR("LoadBalancePattern.init_lcapacity", _nunits);
-    // Local capacity is maximum number of elements assigned to a single unit,
-    // i.e. the maximum local size:
+    // Local capacity is maximum number of elements assigned to a single
+    // unit, i.e. the maximum local size:
     l_capacity = *(std::max_element(local_sizes.begin(),
                                     local_sizes.end()));
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.init_lcapacity >", l_capacity);

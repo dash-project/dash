@@ -81,11 +81,11 @@ dart_ret_t dart_hwinfo(
     hw.max_shmem_mbps = (int)(atoi(max_shmem_mbps_str));
     DART_LOG_TRACE("dart_hwinfo: DASH_MAX_SHMEM_MBPS set: %d",
                    hw.max_shmem_mbps);
-    if (hw.max_shmem_mbps <= 0) {
-      hw.max_shmem_mbps = -1;
-    }
   } else {
     DART_LOG_TRACE("dart_hwinfo: DASH_MAX_SHMEM_MBPS not set");
+  }
+  if (hw.max_shmem_mbps <= 0) {
+    hw.max_shmem_mbps = 1235;
   }
 
 #ifdef DART_ENABLE_LIKWID
