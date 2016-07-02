@@ -18,7 +18,7 @@ class TraceStore
 public:
   typedef std::string
     state_t;
-  typedef dash::util::Timer<dash::util::TimeMeasure::Counter>
+  typedef dash::util::Timer<dash::util::TimeMeasure::Clock>
     timer_t;
   typedef typename timer_t::timestamp_t
     timestamp_t;
@@ -77,7 +77,9 @@ public:
   /**
    * Write trace data to file.
    */
-  static void write(const std::string & filename);
+  static void write(
+    const std::string & filename,
+    const std::string & path = "");
 
 private:
   static std::map<std::string, trace_events_t> _traces;
@@ -103,18 +105,15 @@ private:
   timestamp_t _ts_start;
 
 public:
-  Trace()
-  : _context("global")
-  {
-    TraceStore::add_context(_context);
-    timer_t::Calibrate(0);
-    dash::barrier();
-    _ts_start = timer_t::Now();
-  }
+  Trace() : Trace("global")
+  { }
 
   Trace(const std::string & context)
   : _context(context)
   {
+    if (!TraceStore::enabled()) {
+      return;
+    }
     TraceStore::add_context(_context);
     timer_t::Calibrate(0);
     dash::barrier();

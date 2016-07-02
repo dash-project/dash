@@ -160,7 +160,10 @@ int main(int argc, char **argv)
 
     dash::barrier();
 
-    dash::util::TraceStore::write(std::cout);
+    std::ostringstream ss;
+    ss << "min-element.iteration-" << i;
+
+    dash::util::TraceStore::write(ss.str(), "traces");
     dash::util::TraceStore::clear();
     dash::util::TraceStore::off();
 
@@ -252,7 +255,7 @@ measurement perform_test(
 
     auto ts_start  = Timer::Now();
 
-    if (i == 0) {
+    if (REPEAT == 1 || i == 1) {
       dash::util::TraceStore::on();
     }
 
@@ -260,7 +263,7 @@ measurement perform_test(
     auto min_git   = dash::min_element(arr.begin(), arr.end());
 //  dash::util::Config::set("DASH_ENABLE_LOGGING", false);
 
-    if (i == 0) {
+    if (REPEAT == 1 || i == 1) {
       dash::util::TraceStore::off();
     }
 

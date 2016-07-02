@@ -264,7 +264,6 @@ GlobIter<ElementType, PatternType> min_element(
   }
 #endif
 
-  trace.enter_state("finalize");
   auto gmin_elem_it  = ::std::min_element(
                            local_min_values.begin(),
                            local_min_values.end(),
@@ -303,7 +302,6 @@ GlobIter<ElementType, PatternType> min_element(
   DASH_LOG_DEBUG("dash::min_element >", minimum,
                  "=", static_cast<ElementType>(*minimum));
 
-  trace.exit_state("finalize");
   return minimum;
 }
 

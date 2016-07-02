@@ -73,7 +73,7 @@ void dash::util::TraceStore::write(std::ostream & out)
     // Master prints CSV headers:
     if (unit == 0) {
       os << "-- [TRACE] "
-         << std::setw(10) << "context"  << ","
+         << std::setw(15) << "context"  << ","
          << std::setw(5)  << "unit"     << ","
          << std::setw(15) << "start"    << ","
          << std::setw(15) << "end"      << ","
@@ -88,7 +88,7 @@ void dash::util::TraceStore::write(std::ostream & out)
       auto   end      = state_timespan.end;
       auto   state    = state_timespan.state;
       os << "-- [TRACE] "
-         << std::setw(10) << std::fixed << context  << ","
+         << std::setw(15) << std::fixed << context  << ","
          << std::setw(5)  << std::fixed << unit     << ","
          << std::setw(15) << std::fixed << start    << ","
          << std::setw(15) << std::fixed << end      << ","
@@ -110,14 +110,18 @@ void dash::util::TraceStore::write(std::ostream & out)
   dash::barrier();
 }
 
-void dash::util::TraceStore::write(const std::string & filename)
+void dash::util::TraceStore::write(
+  const std::string & filename,
+  const std::string & path)
 {
 	if (!dash::util::Config::get<bool>("DASH_ENABLE_TRACE")) {
     return;
   }
   auto unit = dash::myid();
   std::ostringstream fn;
-  fn << "trace_" << unit << "." << filename;
+  fn << path << "/"
+     << "u" << std::setfill('0') << std::setw(5) << unit
+     << "." << filename;
   std::string trace_file = fn.str();
   std::ofstream out(trace_file);
   write(out);
