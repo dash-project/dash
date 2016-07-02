@@ -11,7 +11,7 @@ using std::setprecision;
 
 using dash::util::BenchmarkParams;
 
-#define LOAD_BALANCE
+// #define LOAD_BALANCE
 
 // ==========================================================================
 // Type definitions
@@ -365,14 +365,14 @@ void print_measurement_header()
         << std::setw(5)  << "units"       << ","
         << std::setw(9)  << "mpi.impl"    << ","
         << std::setw(8)  << "repeats"     << ","
-        << std::setw(12) << "size"        << ","
-        << std::setw(12) << "time.s"      << ","
+        << std::setw(11) << "size"        << ","
+        << std::setw( 8) << "time.s"      << ","
         << std::setw(12) << "time.min.us" << ","
         << std::setw(12) << "time.med.us" << ","
         << std::setw(12) << "time.max.us" << ","
         << std::setw(12) << "time.sdv.us" << ","
-        << std::setw(12) << "total.s"     << ","
-        << std::setw(9)  << "mkeys/s"
+        << std::setw( 8) << "total.s"     << ","
+        << std::setw(10) << "mkeys/s"
         << endl;
     std::cout << oss.str();
   }
@@ -403,14 +403,14 @@ void print_measurement_record(
       << std::setw(5)  << dash::size() << ","
       << std::setw(9)  << mpi_impl     << ","
       << std::setw(8)  << num_repeats  << ","
-      << std::setw(12) << size         << ","
-      << std::fixed << setprecision(2) << setw(12) << time_s      << ","
+      << std::setw(11) << size         << ","
+      << std::fixed << setprecision(2) << setw( 8) << time_s      << ","
       << std::fixed << setprecision(2) << setw(12) << time_min_us << ","
       << std::fixed << setprecision(2) << setw(12) << time_med_us << ","
       << std::fixed << setprecision(2) << setw(12) << time_max_us << ","
       << std::fixed << setprecision(2) << setw(12) << time_sdv_us << ","
-      << std::fixed << setprecision(2) << setw(12) << secs        << ","
-      << std::fixed << setprecision(2) << setw(9)  << mkps
+      << std::fixed << setprecision(2) << setw( 8) << secs        << ","
+      << std::fixed << setprecision(2) << setw(10) << mkps
       << endl;
   std::cout << oss.str();
 }

@@ -53,7 +53,10 @@ BenchmarkParams::BenchmarkParams(
         strstr(env_var_kv, "MV2_")   == env_var_kv ||
         strstr(env_var_kv, "MPICH")  == env_var_kv ||
         strstr(env_var_kv, "OMPI_")  == env_var_kv ||
-        strstr(env_var_kv, "MP_")    == env_var_kv)
+        strstr(env_var_kv, "MP_")    == env_var_kv ||
+        strstr(env_var_kv, "OMP_")   == env_var_kv ||
+        strstr(env_var_kv, "KMP_")   == env_var_kv ||
+        strstr(env_var_kv, "MIC_")   == env_var_kv)
     {
       params.env_mpi_config.push_back(
         std::make_pair(flag_name, flag_value));

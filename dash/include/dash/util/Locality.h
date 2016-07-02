@@ -3,6 +3,8 @@
 
 #include <dash/Init.h>
 
+#include <dash/util/Config.h>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
 
@@ -104,6 +106,74 @@ public:
   {
     return (_domain_loc == nullptr)
            ? -1 : std::max<int>(_domain_loc->hwinfo.max_threads, 1);
+  }
+
+  /**
+   * Number of threads currently available to the active unit.
+   *
+   * The returned value is calculated from unit locality data and hardware
+   * specifications and can, for example, be used to set the \c num_threads
+   * parameter of OpenMP sections:
+   *
+   * \code
+   * #ifdef DASH_ENABLE_OPENMP
+   *   auto n_threads = dash::util::Locality::NumUnitDomainThreads();
+   *   if (n_threads > 1) {
+   *     #pragma omp parallel num_threads(n_threads) private(t_id)
+   *     {
+   *        // ...
+   *     }
+   * #endif
+   * \endcode
+   *
+   * The following configuration keys affect the number of available
+   * threads:
+   *
+   * - <tt>DASH_DISABLE_THREADS</tt>:
+   *   If set, disables multi-threading at unit scope and this method
+   *   returns 1.
+   * - <tt>DASH_MAX_SMT</tt>:
+   *   If set, virtual SMT CPUs (hyperthreads) instead of physical cores
+   *   are used to determine availble threads.
+   * - <tt>DASH_MAX_UNIT_THREADS</tt>:
+   *   Specifies the maximum number of threads available to a single
+   *   unit.
+   *
+   * Note that these settings may differ between hosts.
+   *
+   * Example for MPI:
+   *
+   * <tt>
+   * mpirun -host node.0 -env DASH_MAX_UNIT_THREADS 4 -n 16 myprogram
+   *      : -host node.1 -env DASH_MAX_UNIT_THREADS 2 -n 32 myprogram
+   * </tt>
+   *
+   * The DASH configuration can also be changed at run time with the
+   * \c dash::util::Config interface.
+   *
+   * \see dash::util::Config
+   * \see dash::util::TeamLocality
+   *
+   */
+  static inline int NumUnitDomainThreads()
+  {
+    auto n_threads = dash::util::Locality::NumCores();
+    if (dash::util::Config::get<bool>("DASH_DISABLE_THREADS")) {
+      // Threads disabled in unit scope:
+      n_threads  = 1;
+    } else if (dash::util::Config::get<bool>("DASH_MAX_SMT")) {
+      // Configured to use SMT (hyperthreads):
+      n_threads *= dash::util::Locality::MaxThreads();
+    } else {
+      // Start one thread on every physical core assigned to this unit:
+      n_threads *= dash::util::Locality::MinThreads();
+    }
+    if (dash::util::Config::is_set("DASH_MAX_UNIT_THREADS")) {
+      n_threads  = std::min(dash::util::Config::get<int>(
+                              "DASH_MAX_UNIT_THREADS"),
+                            n_threads);
+    }
+    return n_threads;
   }
 
   static inline void SetNumNodes(int n)

@@ -51,22 +51,7 @@ const ElementType * min_element(
         = std::less<const ElementType &>())
 {
 #ifdef DASH_ENABLE_OPENMP
-  auto n_threads = dash::util::Locality::NumCores();
-  if (dash::util::Config::get<bool>("DASH_DISABLE_THREADS")) {
-    // Threads disabled in unit scope:
-    n_threads  = 1;
-  } else if (dash::util::Config::get<bool>("DASH_MAX_SMT")) {
-    // Configured to use SMT (hyperthreads):
-    n_threads *= dash::util::Locality::MaxThreads();
-  } else {
-    // Start one thread on every physical core assigned to this unit:
-    n_threads *= dash::util::Locality::MinThreads();
-  }
-  if (dash::util::Config::is_set("DASH_MAX_UNIT_THREADS")) {
-    n_threads  = std::min(dash::util::Config::get<int>(
-                            "DASH_MAX_UNIT_THREADS"),
-                          n_threads);
-  }
+  auto n_threads = dash::util::Locality::NumUnitDomainThreads();
   DASH_LOG_DEBUG("dash::min_element", "thread capacity:",  n_threads);
 
   // TODO: Should also restrict on elements/units > ~10240.
