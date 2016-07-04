@@ -233,12 +233,12 @@ measurement perform_test(
       dash::util::TraceStore::on();
     }
 
-    auto ts_start = Timer::Now();
-    auto min_git  = dash::transform(arr_a.begin(), arr_a.end(),
-                                    arr_b.begin(),
-                                    arr_c.begin(),
-                                    dash::plus<ElementType>());
-    auto time_us  = Timer::ElapsedSince(ts_start);
+    auto ts_start  = Timer::Now();
+    auto min_git   = dash::transform(arr_a.begin(), arr_a.end(),
+                                     arr_b.begin(),
+                                     arr_c.begin(),
+                                     dash::plus<ElementType>());
+    auto time_us   = Timer::ElapsedSince(ts_start);
 
     if (REPEAT == 1 || i == 1) {
       dash::util::TraceStore::off();
@@ -248,22 +248,7 @@ measurement perform_test(
     history_time_us.push_back(time_us);
 
     if (params.verify) {
-      // Test first local 1000 values only:
-      for (size_t li = 0; li < std::min<size_t>(1000, arr_a.lsize()); li++) {
-        auto expected = arr_a.local[li] + arr_b.local[li];
-        auto actual   = arr_c.local[li];
-        if (actual != expected) {
-          std::cout <<
-            "dash::transform: " <<
-            "expected (" << expected << ") != " <<
-            "actual ("   << expected << ")"     <<
-            "at unit:"   << dash::myid() << " " <<
-            "lidx:"      << li           << " " <<
-            "in repeat " << i
-            << std::endl;
-          break;
-        }
-      }
+      // TODO
     }
 
     dash::barrier();

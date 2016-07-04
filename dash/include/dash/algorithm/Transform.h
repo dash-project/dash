@@ -223,7 +223,7 @@ OutputIt transform_local(
     // https://software.intel.com/de-de/node/523387
     #pragma omp parallel for num_threads(n_threads) schedule(static)
     for (int i = 0; i < l_size; i++) {
-      *lbegin_out[i] = binary_op(*lbegin_a[i], *lbegin_b[i]);
+      lbegin_out[i] = binary_op(lbegin_a[i], lbegin_b[i]);
     }
     return out_first + num_gvalues;
   }
