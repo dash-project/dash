@@ -21,7 +21,144 @@
 #include <dash/internal/Math.h>
 #include <dash/internal/Logging.h>
 
+
 namespace dash {
+
+class UnitClockFreqMeasure
+{
+private:
+  typedef dash::util::TeamLocality     TeamLocality_t;
+  typedef dash::util::LocalityDomain   LocalityDomain_t;
+
+public:
+  /**
+   * Returns unit CPU capacities as percentage of the team's total CPU
+   * capacity average, e.g. vector of 1's if all units have identical
+   * CPU capacity.
+   */
+  static std::vector<double> unit_weights(
+    const TeamLocality_t & tloc)
+  {
+    std::vector<double> unit_cpu_capacities;
+    double sum = 0;
+
+    for (auto u : tloc.units()) {
+      auto & unit_loc      = tloc.unit_locality(u);
+      double unit_cpu_cap  = unit_loc.num_cores() *
+                             unit_loc.num_threads() *
+                             unit_loc.cpu_mhz();
+      sum += unit_cpu_cap;
+      unit_cpu_capacities.push_back(unit_cpu_cap);
+    }
+    double mean = sum / tloc.units().size();
+    std::transform(unit_cpu_capacities.begin(),
+                   unit_cpu_capacities.end(),
+                   unit_cpu_capacities.begin(),
+
+                   [&](double v) { return v / mean; });
+    return unit_cpu_capacities;
+  }
+};
+
+class BytesPerCycleMeasure
+{
+private:
+  typedef dash::util::TeamLocality     TeamLocality_t;
+  typedef dash::util::LocalityDomain   LocalityDomain_t;
+
+public:
+  /**
+   * Shared memory bandwidth capacities of every unit factored by the
+   * mean memory bandwidth capacity of all units in the team.
+   * Consequently, a vector of 1's is returned if all units have identical
+   * memory bandwidth.
+   *
+   * The memory bandwidth balancing weight for a unit is relative to the
+   * bytes/cycle measure of its affine core and considers the
+   * lower bound ("maximum of minimal") throughput between the unit to
+   * any other unit in the host system's shared memory domain.
+   *
+   * This is mostly relevant for accelerators that have no direct access
+   * to the host system's shared memory.
+   * For example, Intel MIC accelerators are connected to the host with a
+   * 6.2 GB/s PCIE bus and a single MIC core operates at 1.1 Ghz with 4
+   * hardware threads.
+   * The resulting measure \BpC (bytes/cycle) is calculated as:
+   *
+   *   Mpk = 6.2 GB/s
+   *   Cpk = 1.1 Ghz * 4 = 4.4 G cycles/s
+   *   BpC = Mpk / Cpk   = 5.63 bytes/cycle
+   *
+   * The principal idea is that any data used in operations on the MIC
+   * target must be moved over the slow PCIE interconnect first.
+   * The offload overhead therefore reduces the amount of data assigned to
+   * a MIC accelerator, despite its superior ops/s performance.
+   *
+   */
+  static std::vector<double> unit_weights(
+    const TeamLocality_t & tloc)
+  {
+    std::vector<double> unit_mem_perc;
+
+#if 0
+    // TODO: Calculate and assign neutral weights for units located at
+    //       cores with unknown memory bandwidth.
+
+    std::vector<size_t> unit_mem_capacities;
+    size_t total_mem_capacity = 0;
+
+    // Calculate average memory bandwidth first:
+    for (auto u : tloc.units()) {
+      auto & unit_loc     = tloc.unit_locality(u);
+      size_t unit_mem_cap = std::max<int>(0, unit_loc.max_shmem_mbps());
+      if (unit_mem_cap > 0) {
+        total_mem_capacity += unit_mem_cap;
+      }
+      unit_mem_capacities.push_back(unit_mem_cap);
+    }
+    if (total_mem_capacity == 0) {
+      total_mem_capacity = tloc.units().size();
+    }
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_mem_bandwidth_weights",
+                       total_mem_capacity);
+    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_mem_bandwidth_weights",
+                       unit_mem_capacities);
+
+    double avg_mem_capacity = static_cast<double>(total_mem_capacity) /
+                              tloc.units().size();
+
+    // Use average value for units with unknown memory bandwidth:
+    for (auto membw = unit_mem_capacities.begin();
+         membw != unit_mem_capacities.end(); ++membw) {
+      if (*membw <= 0) {
+        *membw = avg_mem_capacity;
+      }
+    }
+#endif
+
+    std::vector<double> unit_bytes_per_cycle;
+    double total_bytes_per_cycle = 0;
+
+    // Calculating bytes/cycle per core for every unit:
+    for (auto u : tloc.units()) {
+      auto & unit_loc     = tloc.unit_locality(u);
+      double unit_mem_bw  = std::max<int>(0, unit_loc.max_shmem_mbps());
+      double unit_core_fq = unit_loc.num_threads() *
+                            unit_loc.cpu_mhz();
+      double unit_bps     = unit_mem_bw / unit_core_fq;
+      unit_bytes_per_cycle.push_back(unit_bps);
+      total_bytes_per_cycle += unit_bps;
+    }
+
+    double avg_bytes_per_cycle =
+      static_cast<double>(total_bytes_per_cycle) / tloc.units().size();
+
+    for (auto unit_bps : unit_bytes_per_cycle) {
+      unit_mem_perc.push_back(unit_bps / avg_bytes_per_cycle);
+    }
+    return unit_mem_perc;
+  }
+};
 
 /**
  * Irregular dynamic pattern.
@@ -34,8 +171,10 @@ namespace dash {
  */
 template<
   dim_t      NumDimensions,
-  MemArrange Arrangement  = dash::ROW_MAJOR,
-  typename   IndexType    = dash::default_index_t >
+  typename   CompBasedMeasure = UnitClockFreqMeasure,
+  typename   MemBasedMeasure  = BytesPerCycleMeasure,
+  MemArrange Arrangement      = dash::ROW_MAJOR,
+  typename   IndexType        = dash::default_index_t >
 class LoadBalancePattern;
 
 /**
@@ -46,12 +185,22 @@ class LoadBalancePattern;
  * Should subclass or delegate to dash::CSRPattern as implementation is
  * identical apart from comptation of _local_sizes.
  *
+ * \todo
+ * Performance measures used for load balance weights (CPU capacity, memory
+ * bandwidth, ...) should be policies, template parameters implementing
+ * well-defined concepts, so this class does not have to be re-implemented
+ * for every load-balance scheme.
+ * Using CompBasedMeasure, MemBasedMeasure for now.
+ *
  * \concept{DashPatternConcept}
  */
 template<
+  typename   CompBasedMeasure,
+  typename   MemBasedMeasure,
   MemArrange Arrangement,
   typename   IndexType >
-class LoadBalancePattern<1, Arrangement, IndexType>
+class LoadBalancePattern<
+        1, CompBasedMeasure, MemBasedMeasure, Arrangement, IndexType>
 {
 private:
   static const dim_t NumDimensions = 1;
@@ -92,7 +241,12 @@ public:
 
 private:
   /// Fully specified type definition of self
-  typedef LoadBalancePattern<NumDimensions, Arrangement, IndexType>
+  typedef LoadBalancePattern<
+            NumDimensions,
+            CompBasedMeasure,
+            MemBasedMeasure,
+            Arrangement,
+            IndexType>
     self_t;
   /// Derive size type from given signed index / ptrdiff type
   typedef typename std::make_unsigned<IndexType>::type
@@ -142,9 +296,9 @@ public:
     TeamLocality_t       & team_loc)
   : _size(sizespec.size()),
     _unit_cpu_weights(
-       initialize_cpu_capacity_weights(team_loc)),
+       CompBasedMeasure::unit_weights(team_loc)),
     _unit_membw_weights(
-       initialize_mem_bandwidth_weights(team_loc)),
+       MemBasedMeasure::unit_weights(team_loc)),
     _unit_load_weights(
        initialize_load_weights(
          _unit_cpu_weights,
@@ -480,8 +634,8 @@ public:
   }
 
   /**
-   * Converts global coordinates to their associated unit and their respective
-   * local index.
+   * Converts global coordinates to their associated unit and their
+   * respective local index.
    *
    * \see  DashPatternConcept
    */
@@ -948,133 +1102,6 @@ public:
   }
 
 private:
-
-  /**
-   * Returns unit CPU capacities as percentage of the team's total CPU
-   * capacity average, e.g. vector of 1's if all units have identical
-   * CPU capacity.
-   */
-  std::vector<double> initialize_cpu_capacity_weights(
-    const TeamLocality_t & tloc) const
-  {
-    std::vector<double> unit_cpu_perc;
-    std::vector<size_t> unit_cpu_capacities;
-    size_t total_cpu_capacity = 0;
-
-    for (auto u : tloc.units()) {
-      auto & unit_loc      = tloc.unit_locality(u);
-      size_t unit_cpu_cap  = unit_loc.num_cores() *
-                             unit_loc.num_threads() *
-                             unit_loc.cpu_mhz();
-      total_cpu_capacity  += unit_cpu_cap;
-      unit_cpu_capacities.push_back(unit_cpu_cap);
-    }
-    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_cpu_capacity_weights",
-                       total_cpu_capacity);
-    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_cpu_capacity_weights",
-                       unit_cpu_capacities);
-
-    double avg_cpu_capacity = static_cast<double>(total_cpu_capacity) /
-                              tloc.units().size();
-
-    for (auto unit_cpu_capacity : unit_cpu_capacities) {
-      unit_cpu_perc.push_back(static_cast<double>(unit_cpu_capacity) /
-                              avg_cpu_capacity);
-    }
-    return unit_cpu_perc;
-  }
-
-  /**
-   * Shared memory bandwidth capacities of every unit factored by the
-   * mean memory bandwidth capacity of all units in the team.
-   * Consequently, a vector of 1's is returned if all units have identical
-   * memory bandwidth.
-   *
-   * The memory bandwidth balancing weight for a unit is relative to the
-   * bytes/cycle measure of its affine core and considers the
-   * lower bound ("maximum of minimal") throughput between the unit to
-   * any other unit in the host system's shared memory domain.
-   *
-   * This is mostly relevant for accelerators that have no direct access
-   * to the host system's shared memory.
-   * For example, Intel MIC accelerators are connected to the host with a
-   * 6.2 GB/s PCIE bus and a single MIC core operates at 1.1 Ghz with 4
-   * hardware threads.
-   * The resulting measure \BpC (bytes/cycle) is calculated as:
-   *
-   *   Mpk = 6.2 GB/s
-   *   Cpk = 1.1 Ghz * 4 = 4.4 G cycles/s
-   *   BpC = Mpk / Cpk   = 5.63 bytes/cycle
-   *
-   * The principal idea is that any data used in operations on the MIC
-   * target must be moved over the slow PCIE interconnect first.
-   * The offload overhead therefore reduces the amount of data assigned to
-   * a MIC accelerator, despite its superior ops/s performance.
-   *
-   */
-  std::vector<double> initialize_mem_bandwidth_weights(
-    const TeamLocality_t & tloc) const
-  {
-    std::vector<double> unit_mem_perc;
-
-#if 0
-    // TODO: Calculate and assign neutral weights for units located at
-    //       cores with unknown memory bandwidth.
-
-    std::vector<size_t> unit_mem_capacities;
-    size_t total_mem_capacity = 0;
-
-    // Calculate average memory bandwidth first:
-    for (auto u : tloc.units()) {
-      auto & unit_loc     = tloc.unit_locality(u);
-      size_t unit_mem_cap = std::max<int>(0, unit_loc.max_shmem_mbps());
-      if (unit_mem_cap > 0) {
-        total_mem_capacity += unit_mem_cap;
-      }
-      unit_mem_capacities.push_back(unit_mem_cap);
-    }
-    if (total_mem_capacity == 0) {
-      total_mem_capacity = tloc.units().size();
-    }
-    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_mem_bandwidth_weights",
-                       total_mem_capacity);
-    DASH_LOG_TRACE_VAR("LoadBalancePattern.init_mem_bandwidth_weights",
-                       unit_mem_capacities);
-
-    double avg_mem_capacity = static_cast<double>(total_mem_capacity) /
-                              tloc.units().size();
-
-    // Use average value for units with unknown memory bandwidth:
-    for (auto membw = unit_mem_capacities.begin();
-         membw != unit_mem_capacities.end(); ++membw) {
-      if (*membw <= 0) {
-        *membw = avg_mem_capacity;
-      }
-    }
-#endif
-
-    std::vector<double> unit_bytes_per_cycle;
-    double total_bytes_per_cycle = 0;
-
-    // Calculating bytes/cycle per core for every unit:
-    for (auto u : tloc.units()) {
-      auto & unit_loc     = tloc.unit_locality(u);
-      double unit_mem_bw  = std::max<int>(0, unit_loc.max_shmem_mbps());
-      double unit_core_fq = unit_loc.num_threads() *
-                            unit_loc.cpu_mhz();
-      double unit_bps     = unit_mem_bw / unit_core_fq;
-      unit_bytes_per_cycle.push_back(unit_bps);
-      total_bytes_per_cycle += unit_bps;
-    }
-
-    double avg_bytes_per_cycle =
-      static_cast<double>(total_bytes_per_cycle) / tloc.units().size();
-
-    for (auto unit_bps : unit_bytes_per_cycle) {
-      unit_mem_perc.push_back(unit_bps / avg_bytes_per_cycle);
-    }
-    return unit_mem_perc;
-  }
 
   std::vector<double> initialize_load_weights(
     const std::vector<double> & cpu_weights,
