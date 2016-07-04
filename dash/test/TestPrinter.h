@@ -122,6 +122,8 @@ class TestPrinter : public EmptyTestEventListener {
 
       if(!_testcase_passed){
         _failed_tests.push_front(res);
+        // Mark test as failed on each units
+        ADD_FAILURE() << "Testcase failed at least on one unit";
       }
     }
     // prevent overlapping of tests

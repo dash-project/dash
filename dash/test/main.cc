@@ -25,6 +25,7 @@ int main(int argc, char * argv[])
             << "(" << host << " PID: " << getpid() << ")"
             << std::endl;
   dash::barrier();
+  sleep(1);
 
 	// Change Test Printer
 	UnitTest& unit_test = *UnitTest::GetInstance();
