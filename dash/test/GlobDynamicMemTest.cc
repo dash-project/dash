@@ -173,20 +173,10 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
                    "testing basic iterator arithmetic");
 
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_first");
-    auto git_first  = gdmem.begin();
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_second");
-    auto git_second = git_first + 1;
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_remote");
-    auto git_remote = git_first + gdmem.local_size() + 1;
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_last");
-    auto git_last   = git_first + gdmem.size() - 1;
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_end");
-    auto git_end    = git_first + gdmem.size();
-
-    dash__unused(git_second);
-    dash__unused(git_remote);
-    dash__unused(git_last);
-    dash__unused(git_end);
   }
   dash::barrier();
   DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
@@ -328,7 +318,6 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   std::string unit_1_host = dash::util::UnitLocality(1).hostname();
 
   size_t expected_visible_size = initial_global_capacity;
-  size_t expected_global_size  = initial_global_capacity;
   if (dash::myid() == 0) {
     expected_visible_size += unit_0_lsize_diff;
     if (my_host == unit_1_host) {
@@ -585,4 +574,30 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
       }
     }
   }
+}
+
+
+TEST_F(GlobDynamicMemTest, PersistentMemAlloc)
+{
+  typedef int value_t;
+  typedef dash::allocator::PersistentMemoryAllocator<value_t> persistent_allocator;
+
+  size_t initial_local_capacity  = 10;
+  size_t initial_global_capacity = dash::size() * initial_local_capacity;
+  dash::GlobDynamicMem<value_t, persistent_allocator> gdmem(initial_local_capacity);
+
+  LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
+              initial_global_capacity, initial_local_capacity);
+
+  EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
+  EXPECT_EQ_U(initial_local_capacity,  gdmem.lend(dash::myid()) -
+                                       gdmem.lbegin(dash::myid()));
+  EXPECT_EQ_U(initial_global_capacity, gdmem.size());
+
+  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "initial local:",
+                 gdmem.local_size());
+  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "initial global:",
+                 gdmem.size());
+  // Wait for validation of initial capacity at all units:
+  dash::barrier();
 }
