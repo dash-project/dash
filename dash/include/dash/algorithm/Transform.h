@@ -3,9 +3,14 @@
 
 #include <dash/GlobRef.h>
 #include <dash/GlobAsyncRef.h>
+
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
+
 #include <dash/iterator/GlobIter.h>
+
+#include <dash/util/Trace.h>
+
 #include <dash/dart/if/dart_communication.h>
 
 #ifdef DASH_ENABLE_OPENMP
@@ -217,7 +222,7 @@ OutputIt transform_local(
     // https://software.intel.com/de-de/node/523387
     #pragma omp parallel for num_threads(n_threads) schedule(static)
     for (int i = 0; i < l_size; i++) {
-      *lbegin_out[i] = binary_op(*lbegin_a[i], *lbegin_b[i]);
+      lbegin_out[i] = binary_op(lbegin_a[i], lbegin_b[i]);
     }
     return out_first + num_gvalues;
   }
@@ -246,6 +251,9 @@ GlobOutputIt transform(
   DASH_LOG_DEBUG("dash::transform(af, al, bf, outf, binop)");
   // Outut range different from rhs input range is not supported yet
   DASH_ASSERT(in_b_first == out_first);
+
+  dash::util::Trace trace("transform");
+
   // Resolve team from global iterator:
   dash::Team & team             = out_first.pattern().team();
   // Resolve local range from global range:
@@ -254,12 +262,14 @@ GlobOutputIt transform(
   // Global iterator to dart_gptr_t:
   dart_gptr_t dest_gptr         = out_first.dart_gptr();
   // Send accumulate message:
+  trace.enter_state("accumulate_blocking");
   dash::internal::accumulate_blocking_impl(
       dest_gptr,
       in_a_first,
       num_local_elements,
       binary_op.dart_operation(),
       team.dart_id());
+  trace.exit_state("accumulate_blocking");
   // The position past the last element transformed in global element space
   // cannot be resolved from the size of the local range if the local range
   // spans over more than one block. Otherwise, the difference of two global
@@ -295,8 +305,11 @@ GlobOutputIt transform(
   BinaryOperation                  binary_op = dash::plus<ValueType>())
 {
   DASH_LOG_DEBUG("dash::transform(gaf, gal, gbf, goutf, binop)");
-  // Outut range different from rhs input range is not supported yet
+  // Output range different from rhs input range is not supported yet
   DASH_ASSERT(in_b_first == out_first);
+
+  dash::util::Trace trace("transform");
+
   // Pattern of input ranges a and b, and output range:
   auto pattern_in_a = in_a_first.pattern();
   auto pattern_in_b = in_b_first.pattern();
@@ -307,13 +320,16 @@ GlobOutputIt transform(
     // Identical pattern in all ranges
     if (in_a_first.pos() == in_b_first.pos() &&
         in_a_first.pos() == out_first.pos()) {
+      trace.enter_state("local");
       // All units operate on local ranges that have identical distribution:
-      return dash::transform_local<ValueType>(
-               in_a_first,
-               in_a_last,
-               in_b_first,
-               out_first,
-               binary_op);
+      auto out_last = dash::transform_local<ValueType>(
+                        in_a_first,
+                        in_a_last,
+                        in_b_first,
+                        out_first,
+                        binary_op);
+      trace.exit_state("local");
+      return out_last;
     }
   }
   // Resolve teams from global iterators:
@@ -341,12 +357,15 @@ GlobOutputIt transform(
   // Native pointer to local sub-range:
   ValueType * l_values          = (in_a_first + global_offset).local();
   // Send accumulate message:
+  trace.enter_state("accumulate_blocking");
   dash::internal::accumulate_blocking_impl(
       dest_gptr,
       l_values,
       num_local_elements,
       binary_op.dart_operation(),
       team_in_a.dart_id());
+  trace.exit_state("accumulate_blocking");
+
   return out_first + global_offset + num_local_elements;
 }
 
