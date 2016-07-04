@@ -8,6 +8,10 @@
 #include <dash/iterator/GlobIter.h>
 #include <dash/dart/if/dart_communication.h>
 
+#ifdef DASH_ENABLE_OPENMP
+#include <omp.h>
+#endif
+
 namespace dash {
 
 namespace internal {
@@ -152,12 +156,13 @@ OutputIt transform(
  * In this case, no communication is needed as all output values can be
  * obtained from input values in local memory:
  *
+ * <pre>
  *   input a: [ u0 | u1 | u2 | ... ]
  *              op   op   op   ...
  *   input b: [ u0 | u1 | u2 | ... ]
  *              =    =    =    ...
  *   output:  [ u0 | u1 | u2 | ... ]
- *
+ * </pre>
  */
 template<
   typename ValueType,
@@ -199,8 +204,25 @@ OutputIt transform_local(
   // Local subrange of input range b:
   ValueType * lbegin_b   = dash::local(in_b_first + g_offset_first);
   // Local pointer of initial output element:
-  ValueType * lbegin_out = dash::local(out_first + g_offset_first);
+  ValueType * lbegin_out = dash::local(out_first  + g_offset_first);
   // Generate output values:
+#ifdef DASH_ENABLE_OPENMP
+  auto n_threads = dash::util::Locality::NumUnitDomainThreads();
+  DASH_LOG_DEBUG("dash::transform_local", "thread capacity:",  n_threads);
+  if (n_threads > 1) {
+    auto l_size = lend_a - lbegin_a;
+    // TODO: Vectorize.
+    // Documentation of Intel MIC intrinsics, see:
+    // https://software.intel.com/de-de/node/523533
+    // https://software.intel.com/de-de/node/523387
+    #pragma omp parallel for num_threads(n_threads) schedule(static)
+    for (int i = 0; i < l_size; i++) {
+      *lbegin_out[i] = binary_op(*lbegin_a[i], *lbegin_b[i]);
+    }
+    return out_first + num_gvalues;
+  }
+#endif
+  // No OpenMP or insufficient number of threads for parallelization:
   for (; lbegin_a != lend_a; ++lbegin_a, ++lbegin_b, ++lbegin_out) {
     *lbegin_out = binary_op(*lbegin_a, *lbegin_b);
   }

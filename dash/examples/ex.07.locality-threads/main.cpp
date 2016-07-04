@@ -145,7 +145,7 @@ unit_threading_t get_local_threading()
 {
   unit_threading_t ut;
   ut.num_threads  = dash::util::Locality::NumCores();
-  ut.max_threads  = -1;
+  ut.max_threads  = dash::util::Locality::MaxThreads();
   ut.hyperthreads = false;
 #ifdef DASH_ENABLE_OPENMP
   ut.openmp       = true;

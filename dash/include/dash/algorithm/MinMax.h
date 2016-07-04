@@ -91,6 +91,9 @@ const ElementType * min_element(
     int t_id;
     #pragma omp parallel num_threads(n_threads) private(t_id)
     {
+      // Documentation of Intel MIC intrinsics, see:
+      // https://software.intel.com/de-de/node/523533
+      // https://software.intel.com/de-de/node/523387
       t_id = omp_get_thread_num();
       DASH_LOG_TRACE("dash::min_element", "starting thread", t_id);
       min_vals_t[t_id].idx = min_idx_l;
@@ -98,6 +101,8 @@ const ElementType * min_element(
       // Cannot use explicit private(min_val_t) as ElementType might
       // not be default-constructible:
       #pragma omp for schedule(static)
+//    #pragma ivdep
+//    #pragma vector aligned nontemporal
       for (int i = 0; i < l_size; i++) {
         const ElementType & val_t = *(l_range_begin + i);
         if (compare(val_t, min_vals_t[t_id].val)) {
