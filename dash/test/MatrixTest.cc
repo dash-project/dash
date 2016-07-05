@@ -993,3 +993,31 @@ TEST_F(MatrixTest, SimpleConstructor)
 }
 
 
+TEST_F(MatrixTest, MatrixLBegin)
+{
+  int myid = dash::myid();
+  size_t ext_x = dash::size();
+  size_t ext_y = 5*dash::size();
+  dash::Matrix<int, 2> matrix(ext_x, ext_y);
+
+  dash::fill(matrix.begin(), matrix.end(), myid);
+  matrix.barrier();
+
+  ASSERT_EQ_U(myid, static_cast<int>(*(matrix.lbegin())));
+}
+
+
+TEST_F(MatrixTest, MatrixLocalBegin)
+{
+  int myid = dash::myid();
+  size_t ext_x = dash::size();
+  size_t ext_y = 5*dash::size();
+  dash::Matrix<int, 2> matrix(ext_x, ext_y);
+
+  dash::fill(matrix.begin(), matrix.end(), myid);
+  matrix.barrier();
+
+  ASSERT_EQ_U(myid, static_cast<int>(*(matrix.local.begin())));
+}
+
+
