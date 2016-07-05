@@ -992,7 +992,6 @@ TEST_F(MatrixTest, SimpleConstructor)
 	ASSERT_EQ_U(ext_y, matrix.extent(1));
 }
 
-
 TEST_F(MatrixTest, MatrixLBegin)
 {
   int myid = dash::myid();
@@ -1003,21 +1002,10 @@ TEST_F(MatrixTest, MatrixLBegin)
   dash::fill(matrix.begin(), matrix.end(), myid);
   matrix.barrier();
 
-  ASSERT_EQ_U(myid, static_cast<int>(*(matrix.lbegin())));
+  int * l_first = matrix.lbegin();
+
+  EXPECT_EQ_U(myid, static_cast<int>(*(matrix.lbegin())));
+  EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.block(0).begin())));
+  EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.begin())));
 }
-
-
-TEST_F(MatrixTest, MatrixLocalBegin)
-{
-  int myid = dash::myid();
-  size_t ext_x = dash::size();
-  size_t ext_y = 5*dash::size();
-  dash::Matrix<int, 2> matrix(ext_x, ext_y);
-
-  dash::fill(matrix.begin(), matrix.end(), myid);
-  matrix.barrier();
-
-  ASSERT_EQ_U(myid, static_cast<int>(*(matrix.local.begin())));
-}
-
 

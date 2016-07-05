@@ -32,7 +32,11 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
                    *(mat->_ref._refview));
   auto local_extents = mat->_pattern.local_extents();
   DASH_LOG_TRACE_VAR("LocalMatrixRef(mat)", local_extents);
-  _refview->_viewspec.resize(local_extents);
+  // Global offset to first local element is missing:
+  // _refview->_viewspec.resize(local_extents);
+  std::array<index_type, NumDim> local_begin_coords = {{ }};
+  auto local_offsets = mat->_pattern.global(local_begin_coords);
+  _refview->_viewspec = ViewSpec_t(local_offsets, local_extents);
   DASH_LOG_TRACE_VAR("LocalMatrixRef(mat)", _refview->_viewspec);
 }
 
@@ -216,6 +220,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
                           _refview->_l_viewspec);
   DASH_LOG_TRACE("LocalMatrixRef.begin=()",
                  "viewspec:",        _refview->_viewspec,
+                 "l_viewspec:",      _refview->_l_viewspec,
                  "iterator offset:", l_vs_begin_idx);
   iterator gv_it(
     _refview->_mat->_glob_mem,
@@ -240,6 +245,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
                           _refview->_l_viewspec);
   DASH_LOG_TRACE("LocalMatrixRef.begin()",
                  "viewspec:",        _refview->_viewspec,
+                 "l_viewspec:",      _refview->_l_viewspec,
                  "iterator offset:", l_vs_begin_idx);
   const_iterator gv_it(
     _refview->_mat->_glob_mem,
