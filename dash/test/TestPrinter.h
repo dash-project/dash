@@ -120,7 +120,7 @@ class TestPrinter : public EmptyTestEventListener {
       res += test_info.name();
       std::cout << res << std::endl;
 
-      if(!_testcase_passed){
+      if(!passed){
         _failed_tests.push_front(res);
         // Mark test as failed on each units
         ADD_FAILURE() << "Testcase failed at least on one unit";
