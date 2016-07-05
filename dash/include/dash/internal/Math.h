@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <functional>
 #include <cmath>
-
+#include <numeric>
 
 namespace dash {
 namespace math {
