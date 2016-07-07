@@ -10,6 +10,7 @@
 #define TEST_SUM     "\033[0;32m[==========] \033[m"
 #define TEST_SUCCESS "\033[0;32m[  PASSED  ] \033[m"
 #define TEST_FAILURE "\033[0;31m[  FAILED  ] \033[m"
+#define TEST_ERROR   "\033[0;31m[  ERROR   ] \033[m"
 #define TEST_OK      "\033[0;32m[      OK  ] \033[m"
 #define TEST_RUN     "\033[0;32m[  RUN     ] \033[m"
 
@@ -57,6 +58,18 @@ class TestPrinter : public EmptyTestEventListener {
               << " tests from "
               << test_case.name()
               << std::endl;
+    }
+  }
+
+  // Called after a failed assertion or a SUCCEED() invocation.
+  virtual void OnTestPartResult(const TestPartResult& test_part_result) {
+    if(test_part_result.failed()){
+      std::cout << TEST_ERROR 
+                << "[UNIT " << _myid << "]" << " in "
+                << test_part_result.file_name() << ":"
+                << test_part_result.line_number() << std::endl
+                << test_part_result.summary()
+                << std::endl;
     }
   }
 
