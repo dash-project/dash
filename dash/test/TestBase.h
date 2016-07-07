@@ -10,16 +10,16 @@
 namespace testing {
 namespace internal {
 
-#define ASSERT_FAIL() ASSERT_EQ(0, 1) << "ASSERT_FAIL"
+#define ASSERT_FAIL() EXPECT_EQ(0, 1) << "ASSERT_FAIL"
 
-#define ASSERT_TRUE_U(b)  ASSERT_TRUE(b)  << "Unit " << dash::myid()
-#define ASSERT_FALSE_U(b) ASSERT_FALSE(b) << "Unit " << dash::myid()
-#define ASSERT_EQ_U(e,a)  ASSERT_EQ(e,a)  << "Unit " << dash::myid()
-#define ASSERT_NE_U(e,a)  ASSERT_NE(e,a)  << "Unit " << dash::myid()
-#define ASSERT_LT_U(e,a)  ASSERT_LT(e,a)  << "Unit " << dash::myid()
-#define ASSERT_GT_U(e,a)  ASSERT_GT(e,a)  << "Unit " << dash::myid()
-#define ASSERT_LE_U(e,a)  ASSERT_LE(e,a)  << "Unit " << dash::myid()
-#define ASSERT_GE_U(e,a)  ASSERT_GE(e,a)  << "Unit " << dash::myid()
+#define ASSERT_TRUE_U(b)  EXPECT_TRUE(b)  << "Unit " << dash::myid()
+#define ASSERT_FALSE_U(b) EXPECT_FALSE(b) << "Unit " << dash::myid()
+#define ASSERT_EQ_U(e,a)  EXPECT_EQ(e,a)  << "Unit " << dash::myid()
+#define ASSERT_NE_U(e,a)  EXPECT_NE(e,a)  << "Unit " << dash::myid()
+#define ASSERT_LT_U(e,a)  EXPECT_LT(e,a)  << "Unit " << dash::myid()
+#define ASSERT_GT_U(e,a)  EXPECT_GT(e,a)  << "Unit " << dash::myid()
+#define ASSERT_LE_U(e,a)  EXPECT_LE(e,a)  << "Unit " << dash::myid()
+#define ASSERT_GE_U(e,a)  EXPECT_GE(e,a)  << "Unit " << dash::myid()
 
 #define EXPECT_TRUE_U(b)  EXPECT_TRUE(b)  << "Unit " << dash::myid()
 #define EXPECT_FALSE_U(b) EXPECT_FALSE(b) << "Unit " << dash::myid()
