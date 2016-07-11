@@ -6,6 +6,7 @@
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/assert.h>
 #include <dash/dart/base/hwinfo.h>
+#include <dash/dart/base/netinfo.h>
 
 #include <dash/dart/base/string.h>
 #include <dash/dart/base/math.h>

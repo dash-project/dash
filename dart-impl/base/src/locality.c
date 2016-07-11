@@ -8,6 +8,7 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 #include <dash/dart/base/hwinfo.h>
+#include <dash/dart/base/netinfo.h>
 
 #include <dash/dart/base/internal/host_topology.h>
 #include <dash/dart/base/internal/unit_locality.h>
@@ -121,6 +122,9 @@ dart_ret_t dart__base__locality__create(
 
   dart_hwinfo_t * hwinfo = malloc(sizeof(dart_hwinfo_t));
   DART_ASSERT_RETURNS(dart_hwinfo(hwinfo), DART_OK);
+  
+  dart_netinfo_t * netinfo = malloc(sizeof(dart_netinfo_t));
+  DART_ASSERT_RETURNS(dart_netinfo(netinfo), DART_OK);
 
   dart_domain_locality_t * team_global_domain =
     malloc(sizeof(dart_domain_locality_t));
@@ -137,6 +141,7 @@ dart_ret_t dart__base__locality__create(
   team_global_domain->parent         = NULL;
   team_global_domain->num_domains    = 0;
   team_global_domain->domains        = NULL;
+  team_global_domain->netinfo        = *netinfo;
   team_global_domain->hwinfo         = *hwinfo;
   team_global_domain->num_units      = 0;
   team_global_domain->host[0]        = '\0';

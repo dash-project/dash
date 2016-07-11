@@ -184,26 +184,38 @@ typedef enum
 dart_topology_class_t;
 
 /**
+  *   Temporarily, number of off node levels in network hierarchy is set to 5.
+  *   This is because, this struct is sent to other MPI process when exchanging
+  *   the locality data. Due to virtual addressing, the pointer will likely point 
+  *   to an invalid memory location on the receiving machine, and even if not, 
+  *   you haven't actually sent the data that it was pointing to.
+  *
+  *   ALTERNATIVES: 1. Use of MPI_Pack and MPI_Unpack
+  *                 2. Use of MPI_Address() and an MPI_Hindexed datatype
+*/
+static const int NUM_NET_LEVELS = 5;
+
+/**
  * \ingroup DartTypes
  */
 typedef struct
 {
-  
   /** Globally unique node identifier  */
   int   global_node_id;
-  /** Total number of network levels */
-  int   num_net_levels;
-  /** Pointer to array storing the value of each network level (e.g. group, 
+  /** Array storing the value of each network level (e.g. group, 
   *   cabinet, chassis, compute blade etc.) for a particular node. 
   *   Concatenating the values of all levels for a particular node resolves to  
-  *   its fixed position in the network hierarchy of HPC machine */
-  int * value_net_level;
+  *   its fixed position in the network hierarchy of HPC machine 
+  *   The concatenation of these level values resolves to a 
+  *   unique position of node in the machine hierarchy. 
+  */
+  int  value_net_level[NUM_NET_LEVELS];
   /** Bandwidth at each level */
-  int * bw_at_level;
+  int   bw_at_level[NUM_NET_LEVELS];
   /**  Maximum transmission performance of a network over the bisection line */
   int   bw_bisection;
   /**  Time for transmitting an entire message (of particular size) between two nodes */
-  int * msg_transmit_time_at_level;  
+  int   msg_transmit_time_at_level[NUM_NET_LEVELS];  
   
   /** Topology class of the network. Can be used for re-ordering (re-mapping) of the units */
   dart_topology_class_t topology_spec;

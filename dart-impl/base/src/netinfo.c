@@ -37,11 +37,22 @@ dart_ret_t dart_netinfo(
   dart_netinfo_t net;
 
   net.global_node_id                = -1;
-  net.num_net_levels                = -1;
-  net.value_net_level               = NULL;
-  net.bw_at_level                   = NULL;
+  net.value_net_level[0]            = -1;
+  net.value_net_level[1]            = -1;
+  net.value_net_level[2]            = -1;
+  net.value_net_level[3]            = -1;
+  net.value_net_level[5]            = -1;
+  net.bw_at_level[0]                = -1;
+  net.bw_at_level[1]                = -1;
+  net.bw_at_level[2]                = -1;
+  net.bw_at_level[3]                = -1;
+  net.bw_at_level[5]                = -1;
   net.bw_bisection                  = -1;
-  net.msg_transmit_time_at_level    = NULL;
+  net.msg_transmit_time_at_level[0] = -1;
+  net.msg_transmit_time_at_level[1] = -1;
+  net.msg_transmit_time_at_level[2] = -1;
+  net.msg_transmit_time_at_level[3] = -1;
+  net.msg_transmit_time_at_level[5] = -1;
 
 
 #ifdef DART_ENABLE_NETLOC
@@ -106,8 +117,6 @@ dart_ret_t dart_netinfo(
   *   The concatenation of these 5 level values resolves to a 
   *   unique position of node in the machine hierarchy.
   */
-  net.num_net_levels    = 5;
-  net.value_net_level   = (int *) malloc(net.num_net_levels * sizeof(int));
   
   /** Parse topology information and save it to topology structure 
   *   of each node.
@@ -134,13 +143,13 @@ dart_ret_t dart_netinfo(
 #endif /* _CRAYC */
 
   DART_LOG_TRACE("dart_netinfo: finished: "
-                 "global node id:%d num_net_levels:%d "
+                 "global node id:%d "
                  "value_net_level[%d]:%d "
                  "value_net_level[%d]:%d "
                  "value_net_level[%d]:%d "
                  "value_net_level[%d]:%d "
                  "value_net_level[%d]:%d ",
-                 net.global_node_id, net.num_net_levels,
+                 net.global_node_id,
                  0, net.value_net_level[0],
                  1, net.value_net_level[1],
                  2, net.value_net_level[2],
