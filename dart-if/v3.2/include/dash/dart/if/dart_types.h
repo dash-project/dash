@@ -193,7 +193,7 @@ dart_topology_class_t;
   *   ALTERNATIVES: 1. Use of MPI_Pack and MPI_Unpack
   *                 2. Use of MPI_Address() and an MPI_Hindexed datatype
 */
-static const int NUM_NET_LEVELS = 5;
+#define NUM_NET_LEVELS 5
 
 /**
  * \ingroup DartTypes
