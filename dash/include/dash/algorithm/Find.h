@@ -22,6 +22,8 @@ GlobIter<ElementType, PatternType> find(
     /// Value which will be assigned to the elements in range [first, last)
     const ElementType                  & value)
 {
+  typedef dash::default_index_t index_t;
+
   auto myid          = dash::myid();
   /// Global iterators to local range:
   auto index_range   = dash::local_range(first, last);
@@ -34,7 +36,7 @@ GlobIter<ElementType, PatternType> find(
     l_offset = -1;
   }
 
-  dash::Array<dash::default_index_t> l_results(dash::size());
+  dash::Array<index_t> l_results(dash::size());
 
   l_results.local[0] = l_offset;
 
@@ -43,11 +45,11 @@ GlobIter<ElementType, PatternType> find(
   // All local offsets stored in l_results
 
   for (auto u = 0; u < dash::size(); u++) {
-    if (static_cast<dash::default_index_x>(l_results[u]) >= 0) {
+    if (static_cast<index_x>(l_results[u]) >= 0) {
       auto g_offset = first.pattern()
                            .global_index(
                               u,
-                              static_cast<dash::default_index_t>(
+                              static_cast<index_t>(
                                 l_results[u]));
       return first + g_offset - first.pos();
     }
