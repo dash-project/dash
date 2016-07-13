@@ -159,6 +159,7 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
                  >(size_spec,
                    team_spec);
   DASH_LOG_DEBUG("Pattern", pattern);
+  typedef dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_t;
 
   typedef double                         value_t;
   typedef decltype(pattern)              pattern_t;
