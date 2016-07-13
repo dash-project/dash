@@ -162,10 +162,11 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
                    size_spec,
                    team_spec);
   DASH_LOG_DEBUG("Pattern", pattern);
+  typedef dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_t;
 
   {
     // Instantiate Matrix
-    dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_a(pattern);
+    matrix_t matrix_a(pattern);
     dash::barrier();
 
     fill_matrix(matrix_a, static_cast<double>(myid));
@@ -178,7 +179,7 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
     dash::barrier();
   }
 
-  dash::Matrix<double, 2> matrix_b;
+  matrix_t matrix_b;
 
 	dio::HDF5InputStream is(_filename);
 	is >> dio::dataset(_dataset) >> matrix_b;
