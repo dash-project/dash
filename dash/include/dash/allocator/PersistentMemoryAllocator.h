@@ -197,7 +197,7 @@ public:
    * Collective operation.
    * The number of allocated elements may differ between units.
    *
-   * \see DashPersistentMemoryAllocatorConcept
+   * \see DashDynamicAllocatorConcept
    */
   pointer attach(local_pointer lptr, size_type num_local_elem) {
     size_type num_local_bytes = sizeof(ElementType) * num_local_elem;
@@ -216,7 +216,7 @@ public:
    *
    * Collective operation.
    *
-   * \see DashPersistentMemoryAllocatorConcept
+   * \see DashDynamicAllocatorConcept
    */
   void detach(pointer gptr) {
     DASH_LOG_DEBUG("PersistentMemoryAllocator.detach()", "gptr:", gptr);
@@ -248,7 +248,7 @@ public:
    *
    * Local operation.
    *
-   * \see DashPersistentMemoryAllocatorConcept
+   * \see DashDynamicAllocatorConcept
    */
   local_pointer allocate_local(size_type num_local_elem) {
     //TODO: call pmem_map_file...
@@ -262,7 +262,7 @@ public:
    *
    * Local operation.
    *
-   * \see DashPersistentMemoryAllocatorConcept
+   * \see DashDynamicAllocatorConcept
    */
   void deallocate_local(local_pointer lptr) {
     DASH_THROW(

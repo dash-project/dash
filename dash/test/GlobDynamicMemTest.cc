@@ -594,9 +594,9 @@ TEST_F(GlobDynamicMemTest, PersistentMemAlloc)
                                        gdmem.lbegin(dash::myid()));
   EXPECT_EQ_U(initial_global_capacity, gdmem.size());
 
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "initial local:",
+  DASH_LOG_TRACE("GlobDynamicMemTest.PersistentMemAlloc", "initial local:",
                  gdmem.local_size());
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "initial global:",
+  DASH_LOG_TRACE("GlobDynamicMemTest.PersistentMemAlloc", "initial global:",
                  gdmem.size());
   // Wait for validation of initial capacity at all units:
   dash::barrier();
