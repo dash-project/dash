@@ -48,6 +48,8 @@
 #  include <numa.h>
 #endif
 
+#define UNIT_BYTE_TO_MB 1024*1024
+
 
 dart_ret_t dart_hwinfo(
   dart_hwinfo_t * hwinfo)
@@ -170,17 +172,16 @@ dart_ret_t dart_hwinfo(
   }
   
   // Byte to MB
-  int unit_b_to_mb = 1024 * 1024;
   if(hw.system_memory < 0) {
     hwloc_obj_t obj;
     obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_MACHINE, 0);
-    hw.system_memory = obj->memory.total_memory / unit_b_to_mb;
+    hw.system_memory = obj->memory.total_memory / UNIT_BYTE_TO_MB;
   }
   if(hw.numa_memory < 0) {
     hwloc_obj_t obj;
     obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_NUMANODE, 0);
     if(obj != NULL){
-      hw.numa_memory = obj->memory.total_memory / unit_b_to_mb;
+      hw.numa_memory = obj->memory.total_memory / UNIT_BYTE_TO_MB;
     } else {
       // No NUMA domain
       hw.numa_memory = hw.system_memory;
@@ -243,6 +244,18 @@ dart_ret_t dart_hwinfo(
       "dart_hwinfo: POSIX: hw.num_cores = %d",
       hw.num_cores);
   }
+
+	/* More a guess than reliable data */
+	if(hw.system_memory < 0) {
+	  long pages     = sysconf(_SC_PHYS_PAGES);
+	  long page_size = sysconf(_SC_PAGE_SIZE);
+    hw.system_memory = (int) ((pages * page_size) / UNIT_BYTE_TO_MB);
+  }
+  if((hw.numa_memory < 0) && (hw.num_numa > 0)) {
+    // Assume that memory is evenly distributed to numa nodes
+    hw.numa_memory = hw.system_memory / hw.num_numa;
+  }
+
 #endif
 
 #ifdef DART__PLATFORM__LINUX
