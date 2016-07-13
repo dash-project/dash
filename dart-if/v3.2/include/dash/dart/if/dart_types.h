@@ -181,7 +181,10 @@ typedef struct
   int   max_shmem_mbps;
 
   /** Maximum allocatable memory per node in MB */
-  int   memory_size;
+  int   system_memory;
+
+  /** Maximum memory per numa node in MB */
+  int   numa_memory;
 }
 dart_hwinfo_t;
 

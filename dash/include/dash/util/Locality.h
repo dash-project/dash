@@ -271,6 +271,21 @@ public:
     return _cache_line_sizes;
   }
 
+  /**
+   * Get local memory of system in MB
+   */
+  static inline int SystemMemory(){
+    return _domain_loc->hwinfo.system_memory; 
+  }
+
+  /**
+   * Get local memory per NUMA node in MB.
+   * If system has no NUMA domains, returns
+   * system memory.
+   */
+  static inline int NUMAMemory(){
+    return _domain_loc->hwinfo.numa_memory;
+  }
 private:
   static void init();
 

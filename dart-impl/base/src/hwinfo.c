@@ -75,7 +75,8 @@ dart_ret_t dart_hwinfo(
   hw.cache_shared[1]     = -1;
   hw.cache_shared[2]     = -1;
   hw.max_shmem_mbps      = -1;
-  hw.memory_size         = -1;
+  hw.system_memory       = -1;
+  hw.numa_memory         = -1;
 
   char * max_shmem_mbps_str = getenv("DASH_MAX_SHMEM_MBPS");
   if (NULL != max_shmem_mbps_str) {
@@ -167,12 +168,23 @@ dart_ret_t dart_hwinfo(
     hw.min_threads = 1;
     hw.max_threads = n_cpus / hw.num_cores;
   }
-  if(hw.memory_size < 0) {
-    // Byte to MB
-    int unit_b_to_mb = 1024 * 1024;
+  
+  // Byte to MB
+  int unit_b_to_mb = 1024 * 1024;
+  if(hw.system_memory < 0) {
     hwloc_obj_t obj;
     obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_MACHINE, 0);
-    hw.memory_size = obj->memory.local_memory / unit_b_to_mb;
+    hw.system_memory = obj->memory.local_memory / unit_b_to_mb;
+  }
+  if(hw.numa_memory < 0) {
+    hwloc_obj_t obj;
+    obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_NUMANODE, 0);
+    if(obj != NULL){
+      hw.numa_memory = obj->memory.local_memory / unit_b_to_mb;
+    } else {
+      // No NUMA domain
+      hw.numa_memory = hw.system_memory;
+    }
   }
   hwloc_topology_destroy(topology);
   DART_LOG_TRACE("dart_hwinfo: hwloc: "
