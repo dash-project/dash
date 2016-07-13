@@ -170,12 +170,17 @@ TEST_F(LocalRangeTest, LargeArray)
   // Skip ranges larger than half the system memory
   auto num_units      = dash::Team::All().size();
   int  units_per_node = dash::util::Locality::NumNodes();
-  long pages          = sysconf(_SC_PHYS_PAGES);
-  long page_size      = sysconf(_SC_PAGE_SIZE);
-  // avail. mem in bytes per host
-  size_t mem_host      = pages * page_size;
-  size_t mem_total     = ((num_units - 1) / units_per_node + 1) * mem_host;
-  long max_index      = (mem_total / 2) / sizeof(element_t);
+
+  long mb_to_byte     = 1024 * 1024;
+  long mem_host       = dash::util::Locality::SystemMemory() * mb_to_byte;
+  long mem_total;
+  long max_index;
+  if(mem_host > 0){
+    mem_total      = ((num_units - 1) / units_per_node + 1) * mem_host;
+    max_index      = (mem_total / 2) / sizeof(element_t);
+  } else {
+    max_index      = 100000000000l; 
+  }
 
 #if 0
   std::cout << "Units:" << num_units
