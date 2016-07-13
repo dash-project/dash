@@ -49,7 +49,7 @@
 #  include <numa.h>
 #endif
 
-#define UNIT_BYTE_TO_MB 1024*1024
+#define UNIT_BYTE_TO_MB (1024*1024)
 
 
 dart_ret_t dart_hwinfo_init(
