@@ -86,13 +86,13 @@ template<dim_t NumDimensions>
 class HaloSpec
 {
 public:
-  typedef int
-    offset_type;
+  using offset_type = unsigned int;
 
-  typedef struct {
-    offset_type min;
-    offset_type max;
-  } offset_range_type;
+  struct offset_range_type
+  {
+    offset_type minus;
+    offset_type plus;
+  };
 
 private:
   /// The stencil's offset range (min, max) in every dimension.
@@ -103,12 +103,12 @@ private:
 public:
   /**
    * Creates a new instance of class HaloSpec with the given offset ranges
-   * (pair of minimum offset, maximum offset) in the stencil's dimensions.
+   * (pair of minus offset, plus offset) in the stencil's dimensions.
    *
    * For example, a two-dimensional five-point stencil has offset ranges
-   * { (-1, 1), (-1, 1) }
+   * { (1, 1), (1, 1) }
    * and a stencil with only north and east halo cells has offset ranges
-   * { (-1, 0), ( 0, 1) }.
+   * { (1, 0), ( 0, 1) }.
    */
   HaloSpec(
     const std::array<offset_range_type, NumDimensions> & offset_ranges)
@@ -117,18 +117,18 @@ public:
     // minimum stencil size when containing center element only:
     _points = 1;
     for (dim_t d = 0; d < NumDimensions; ++d) {
-      _points += std::abs(_offset_ranges[d].max - _offset_ranges[d].min);
+      _points += _offset_ranges[d].plus + _offset_ranges[d].minus;
     }
   }
 
   /**
    * Creates a new instance of class HaloSpec with the given offset ranges
-   * (pair of minimum offset, maximum offset) in the stencil's dimensions.
+   * (pair of minus offset, plus offset) in the stencil's dimensions.
    *
    * For example, a two-dimensional five-point stencil has offset ranges
-   * { (-1, 1), (-1, 1) }
+   * { (1, 1), (1, 1) }
    * and a stencil with only north and east halo cells has offset ranges
-   * { (-1, 0), ( 0, 1) }.
+   * { (1, 0), ( 0, 1) }.
    */
   template<typename... Args>
   HaloSpec(offset_range_type arg, Args... args)
@@ -139,7 +139,7 @@ public:
     // minimum stencil size when containing center element only:
     _points = 1;
     for (dim_t d = 0; d < NumDimensions; ++d) {
-      _points += std::abs(_offset_ranges[d].max - _offset_ranges[d].min);
+      _points += _offset_ranges[d].plus + _offset_ranges[d].minus;
     }
   }
 
@@ -194,8 +194,8 @@ public:
   inline int width(dim_t dimension) const
   {
     auto offset_range = _offset_ranges[dimension];
-    return std::max(std::abs(offset_range.max),
-                    std::abs(offset_range.min));
+    return std::max(offset_range.plus,
+                    offset_range.minus);
   }
 };
 
@@ -208,8 +208,8 @@ std::ostream & operator<<(
   ss << "dash::HaloSpec<" << NumDimensions << ">(";
   for (dim_t d = 0; d < NumDimensions; ++d) {
     auto offset_range = halospec.offset_range(d);
-    ss << "{ " << offset_range.min
-       << ", " << offset_range.max
+    ss << "{ " << offset_range.minus
+       << ", " << offset_range.plus
        << " }";
   }
   ss << ")";
@@ -1311,7 +1311,7 @@ public:
           auto off_min = std::abs(halospec.offset_range(tmp_d).min);
           bnd_region_offsets[tmp_d] += off_min;
           bnd_region_extents[tmp_d] -= std::abs(halospec.offset_range(tmp_d).max) + off_min;
-        }
+
         _boundary_views.push_back(viewspec_type(bnd_region_offsets, bnd_region_extents));
       }
 
