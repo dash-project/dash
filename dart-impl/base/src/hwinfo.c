@@ -75,6 +75,7 @@ dart_ret_t dart_hwinfo(
   hw.cache_shared[1]     = -1;
   hw.cache_shared[2]     = -1;
   hw.max_shmem_mbps      = -1;
+  hw.memory_size         = -1;
 
   char * max_shmem_mbps_str = getenv("DASH_MAX_SHMEM_MBPS");
   if (NULL != max_shmem_mbps_str) {
@@ -165,6 +166,13 @@ dart_ret_t dart_hwinfo(
     int n_cpus     = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PU);
     hw.min_threads = 1;
     hw.max_threads = n_cpus / hw.num_cores;
+  }
+  if(hw.memory_size < 0) {
+    // Byte to MB
+    int unit_b_to_mb = 1024 * 1024;
+    hwloc_obj_t obj;
+    obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_MACHINE, 0);
+    hw.memory_size = obj->memory.local_memory / unit_b_to_mb;
   }
   hwloc_topology_destroy(topology);
   DART_LOG_TRACE("dart_hwinfo: hwloc: "
