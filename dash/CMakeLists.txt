@@ -256,11 +256,11 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
 
   # Install library
   install(TARGETS ${DASH_LIBRARY}
-          EXPORT ${DASH_LIBRARY}
+          EXPORT "${DASH_LIBRARY}-config"
           DESTINATION lib)
 
   # exports
-  install(EXPORT ${DASH_LIBRARY} DESTINATION ${CMAKE_INSTALL_PREFIX})
+  install(EXPORT "${DASH_LIBRARY}-config" DESTINATION ${CMAKE_INSTALL_PREFIX})
 
   # Examples
   if (BUILD_EXAMPLES)
