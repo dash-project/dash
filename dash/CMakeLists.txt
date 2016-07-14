@@ -255,7 +255,12 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   DeployLibrary(${DASH_LIBRARY})
 
   # Install library
-  install(TARGETS ${DASH_LIBRARY} DESTINATION lib)
+  install(TARGETS ${DASH_LIBRARY}
+          EXPORT ${DASH_LIBRARY}
+          DESTINATION lib)
+
+  # exports
+  install(EXPORT ${DASH_LIBRARY} DESTINATION lib)
 
   # Examples
   if (BUILD_EXAMPLES)
