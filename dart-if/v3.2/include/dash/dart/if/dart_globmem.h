@@ -71,7 +71,13 @@ extern "C" {
 typedef struct
 {
   dart_unit_t unitid;
+  /* in case of local allocation (buddy allocator): segid = 0 */
+  /* in case of dart_team_memalloc: segid = dart_memid (positive counter) */
+  /* in case of dart_team_memregister: segid = dart_memregisterid (negative counter) */
   int16_t     segid;
+  /* in case of local allocation (buddy allocator): flags = 0 */
+  /* in case of dart_team_memalloc: flags = teamlist index */
+  /* in case of dart_team_memregister: flags = teamlist index */
   uint16_t    flags;
   union
   {

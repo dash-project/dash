@@ -148,7 +148,6 @@ public:
         DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", bucket_cumul_size);
         if (position < bucket_cumul_size) {
           DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", position);
-          _idx_bucket_phase -= bucket_cumul_size;
           position           = 0;
           _idx_local_idx     = position;
           _idx_bucket_phase  = position - bucket_cumul_size_prev;

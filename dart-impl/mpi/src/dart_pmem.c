@@ -207,7 +207,16 @@ dart_ret_t  dart__pmem__alloc(
     return DART_ERR_OTHER;
   }
 
-  return dart_team_memregister(teamid, nbytes, mem, gptr);
+  int myid;
+  DART_ASSERT_RETURNS(dart_team_myid(teamid, &myid), DART_OK);
+  DART_ASSERT_RETURNS(dart_gptr_setunit(gptr, myid), DART_OK);
+
+  //TODO: add some infos to segid and flags of dart_gptr_t
+  //
+  gptr->addr_or_offs.addr = mem;
+  gptr->addr_or_offs.offset = 0;
+
+  return DART_OK;
 }
 
 dart_ret_t dart__pmem__close(
