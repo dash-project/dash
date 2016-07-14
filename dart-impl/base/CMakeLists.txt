@@ -138,3 +138,5 @@ install(TARGETS ${DASH_DART_BASE_LIBRARY}
 install(EXPORT "${DASH_DART_BASE_LIBRARY}-config"
         DESTINATION cmake)
 
+# Export dependencies
+install(EXPORT ${DASH_DART_BASE_LIBRARY} DESTINATION lib)

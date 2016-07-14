@@ -2,8 +2,6 @@
 
 ## DASH Template Library
 
-Features:
-
 - Introduced locality domain concepts and unit locality discovery
   (`dash::util::Locality`, `dash::util::LocalityDomain`).
 - Global dynamic memory allocation: concepts and reference implementations
