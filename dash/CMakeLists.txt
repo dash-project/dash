@@ -260,7 +260,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
           DESTINATION lib)
 
   # exports
-  install(EXPORT ${DASH_LIBRARY} DESTINATION lib)
+  install(EXPORT ${DASH_LIBRARY} DESTINATION ${CMAKE_INSTALL_PREFIX})
 
   # Examples
   if (BUILD_EXAMPLES)
