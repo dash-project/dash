@@ -1,22 +1,42 @@
 # DASH 0.3.0
 
+## New Features
+
+- Introduced locality domain concepts and unit locality discovery
+  (`dash::util::Locality`, `dash::util::LocalityDomain`).
+- Global dynamic memory allocation: concepts and reference implementations
+  (`dash::GlobDynamicMem`, `dash::DynamicAllocator`).
+- Dynamic data structures: `dash::list`, `dash::unordered_map`.
+- Added load balance patterns and automatic data distribution based on
+  locality information to aid in load balancing.
+- Introduced parallel IO concepts for DASH containers (`dash::io`),
+  currently implemented based on HDF5.
+- Using new DASH locality domain concept to provide automatic configuration
+  of OpenMP for node-level parallelization.
+- Drastic performance improvements in algorithms, e.g. `dash::min_element`,
+  `dash::transform`.
+- Additional benchmark applications.
+- Runtime configuration utility (`dash::util::Config`).
+
 ## Build System
 
-Features:
-
-- Added support for likwid.
-- Added build for Intel MIC (tested on SuperMIC).
+- Support for likwid.
+- Support for HDF5.
+- Build for Intel MIC accelerator targets (tested on SuperMIC).
 
 - New compiler flags:
 
     - `DASH_ENABLE_LIKWID`: Whether DASH has been compiled with likwid
       support.
+    - `DASH_ENABLE_HDF5`: Whether DASH has been compiled with HDF5 support.
+
     - `DASH__ARCH__HAS_RDTSC`: Whether the target architecture provides
       an RDTSC micro-instruction.
 
 Bugfixes:
 
 - Fixed compiler errors for Intel MIC compiler (`icc -mmic`, `mpiicc -mic`).
+- Fixed element access of `.local.begin()` in `dash::Matrix`.
 
 ## DART Interface
 
