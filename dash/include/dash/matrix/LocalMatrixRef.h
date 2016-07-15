@@ -61,6 +61,8 @@ private:
     Extents_t;
   typedef std::array<typename PatternT::index_type, NumDimensions>
     Offsets_t;
+  typedef dash::ViewSpec<NumDimensions,typename PatternT::index_type>
+    ViewSpec_t;
   template <dim_t NumViewDim>
     using LocalMatrixRef_t =
           LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT>;
