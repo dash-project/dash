@@ -11,32 +11,18 @@
   locality information to aid in load balancing.
 - Introduced parallel IO concepts for DASH containers (`dash::io`),
   currently implemented based on HDF5.
-- Introduced stencil iterator and halo block concepts.
 - Using new DASH locality domain concept to provide automatic configuration
   of OpenMP for node-level parallelization.
-- New algorithms, including `dash::fill`, `dash::generate`, `dash::find`.
 - Drastic performance improvements in algorithms, e.g. `dash::min_element`,
   `dash::transform`.
 - Additional benchmark applications.
-- Additional example applications, including histogram sort and radix sort
-  implementations.
 - Runtime configuration utility (`dash::util::Config`).
-- Better textual output of unit tests
-- Added support for HDF5 groups
-- Support patterns with underfilled blocks in dash::io::hdf5
-
-Bugfixes:
-
-- Fixed element access of `.local.begin()` in `dash::Matrix`.
-- Numerous stability fixes and performance improvements.
 
 ## Build System
 
-- Intel MIC architecture build targets (tested on SuperMIC, Knights Corner).
 - Support for likwid.
 - Support for HDF5.
-- Generate cmake package for DASH and DART
-- Added code coverage tests
+- Build for Intel MIC accelerator targets (tested on SuperMIC).
 
 - New compiler flags:
 
@@ -50,8 +36,7 @@ Bugfixes:
 Bugfixes:
 
 - Fixed compiler errors for Intel MIC compiler (`icc -mmic`, `mpiicc -mic`).
-- Fixed compiler errors for Intel Compiler 16.0.
-- Disable hdf5 support if only serial version of hdf5 lib is loaded
+- Fixed element access of `.local.begin()` in `dash::Matrix`.
 
 ## DART Interface
 
