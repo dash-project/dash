@@ -13,8 +13,8 @@
  * such as PAPI, hwloc, likwid, libnuma and platform-dependent system
  * functions, depending on libraries enabled in the DART build configuration.
  *
- * If a locality property cannot be resolved, the respective entry is set to
- * \c -1 or an empty string.
+ * If a locality property cannot be reliably resolved or deduced, the
+ * respective entry is set to \c -1 or an empty string.
  */
 dart_ret_t dart_hwinfo(
   dart_hwinfo_t * hwinfo);
