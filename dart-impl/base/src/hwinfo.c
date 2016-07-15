@@ -49,8 +49,26 @@
 #  include <numa.h>
 #endif
 
-#define UNIT_BYTE_TO_MB (1024*1024)
+static const int BYTES_PER_MB = (1024 * 1024);
 
+/* NOTE: The dart_hwinfo function must only return reliable information,
+ *       typically obtained from system functions or libraries such as
+ *       hwloc, PAPI, likwid etc.
+ *       Hardware locality attributes that cannot be obtained or deduced
+ *       are initialized with -1.
+ *       Assumptions and approximations based on the common case
+ *       are specific to the use case and must be decided in client code.
+ *       Otherwise, users of this function would consider a possibly
+ *       incorrect hwinfo attribute setting as actual system information.
+ *
+ *       For example, assuming
+ *
+ *         (numa node memory) = (system memory) / (num numa)
+ *
+ *       to derive default values for memory capacity is viable in most
+ *       cases but harmful for compute nodes with accelerator components
+ *       where this would lead to drastic host/target load imbalance.
+ */
 
 dart_ret_t dart_hwinfo_init(
   dart_hwinfo_t * hw)
