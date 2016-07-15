@@ -109,6 +109,14 @@ public:
   }
 
   /**
+   * Number of CPU cores currently available to the active unit.
+   */
+  static inline int NumUnitDomainCores()
+  {
+    return dash::util::Locality::NumCores();
+  }
+
+  /**
    * Number of threads currently available to the active unit.
    *
    * The returned value is calculated from unit locality data and hardware
