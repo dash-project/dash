@@ -111,40 +111,40 @@ TEST_F(ArrayTest, TileSize)
 
 TEST_F(ArrayTest, PatternAllocate)
 {
-	typedef long            													 index_t;
-	typedef dash::Pattern<1, dash::ROW_MAJOR, index_t> pattern_t;
-	const size_t size     = 115;
-	const size_t tilesize = 10;
-	dash::Array<int, index_t, pattern_t> array;
+  typedef dash::default_index_t                        index_t;
+  typedef dash::Pattern<1, dash::ROW_MAJOR, index_t> pattern_t;
+  const size_t size     = 115;
+  const size_t tilesize = 10;
+  dash::Array<int, index_t, pattern_t> array;
 
-	// Fill
+  // Fill
   std::function< void(const int &, index_t)>
   fill = [&array](int el, index_t i) {
     auto coords = array.pattern().coords(i);
     array[i] = coords[0];
   };
 
-	// Verify
-	std::function< void(const int &, index_t)>
-  	verify = [&array](int el, index_t i) {
-    	auto coords  = array.pattern().coords(i);
-    	auto desired = coords[0];
-    	ASSERT_EQ_U(
-      	desired,
-      	el);
-  	};
+  // Verify
+  std::function< void(const int &, index_t)>
+    verify = [&array](int el, index_t i) {
+      auto coords  = array.pattern().coords(i);
+      auto desired = coords[0];
+      ASSERT_EQ_U(
+        desired,
+        el);
+    };
 
-	{
+  {
     const pattern_t pattern(
        dash::SizeSpec<1>(size),
        dash::DistributionSpec<1>(dash::TILE(tilesize)),
        dash::TeamSpec<1>(),
        dash::Team::All());
 
-		array.allocate(pattern);
-	}
+    array.allocate(pattern);
+  }
 
-	// Fill
+  // Fill
   dash::for_each_with_index(
     array.begin(),
     array.end(),

@@ -14,8 +14,8 @@ TEST_F(MatrixTest, OddSize)
 
   dash::Matrix<int, 2, index_t, pattern_t> matrix(dash::SizeSpec<2>(8, 15));
 
-  for (int i = 0; i < matrix.extent(0); i++) {
-    for (int j = 0; j < matrix.extent(1); j++) {
+  for (size_t i = 0; i < matrix.extent(0); i++) {
+    for (size_t j = 0; j < matrix.extent(1); j++) {
       if (matrix(i,j).is_local()) {
         DASH_LOG_TRACE("MatrixText.OddSize", "(", i, ",", j, ")",
                        "unit:", _dash_id);
@@ -953,9 +953,13 @@ TEST_F(MatrixTest, UnderfilledPattern)
   auto ext_x        = (block_size_x * teamspec_2d.num_units(0)) - 3;
   auto ext_y        = (block_size_y * teamspec_2d.num_units(1)) - 1;
 
-  auto size_spec = dash::SizeSpec<2>(ext_x, ext_y);
+  auto size_spec    = dash::SizeSpec<2>(ext_x, ext_y);
 
-  auto matrix_a = dash::Matrix<int, 2, long, pattern_t>(size_spec);
+  dash::Matrix<
+    int, 2,
+    typename pattern_t::index_type,
+    pattern_t
+  > matrix_a(size_spec);
 
   // test bottom right corner
   if (dash::myid() == 0) {
@@ -974,7 +978,12 @@ TEST_F(MatrixTest, UnderfilledPattern)
     teamspec_2d,
     dash::Team::All());
 
-  dash::Matrix<int, 2, long, pattern_t> matrix_b;
+  dash::Matrix<
+    int, 2,
+    typename pattern_t::index_type,
+    pattern_t
+  > matrix_b;
+
   matrix_b.allocate(pattern);
 }
 

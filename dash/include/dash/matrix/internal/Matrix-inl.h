@@ -13,6 +13,8 @@
 
 #include <dash/iterator/GlobIter.h>
 
+#include <dash/Matrix.h>
+
 #include <type_traits>
 
 

@@ -588,11 +588,10 @@ private:
  */
 template <
   typename T,
-  dim_t NumDimensions,
+  dim_t    NumDimensions,
   typename IndexT   = dash::default_index_t,
   class    PatternT = Pattern<NumDimensions, ROW_MAJOR, IndexT> >
 using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT>;
-
 
 }  // namespace dash
 
