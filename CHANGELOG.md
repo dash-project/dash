@@ -1,6 +1,8 @@
 # DASH 0.3.0
 
-## New Features
+## DASH Template Library
+
+Features:
 
 - Introduced locality domain concepts and unit locality discovery
   (`dash::util::Locality`, `dash::util::LocalityDomain`).
@@ -11,18 +13,27 @@
   locality information to aid in load balancing.
 - Introduced parallel IO concepts for DASH containers (`dash::io`),
   currently implemented based on HDF5.
+- Introduced stencil iterator and halo block concepts.
 - Using new DASH locality domain concept to provide automatic configuration
   of OpenMP for node-level parallelization.
+- New algorithms, including `dash::fill`, `dash::generate`, `dash::find`.
 - Drastic performance improvements in algorithms, e.g. `dash::min_element`,
   `dash::transform`.
 - Additional benchmark applications.
+- Additional example applications, including histogram sort and radix sort
+  implementations.
 - Runtime configuration utility (`dash::util::Config`).
+
+Bugfixes:
+
+- Fixed element access of `.local.begin()` in `dash::Matrix`.
+- Numerous stability fixes and performance improvements.
 
 ## Build System
 
+- Intel MIC architecture build targets (tested on SuperMIC, Knights Corner).
 - Support for likwid.
 - Support for HDF5.
-- Build for Intel MIC accelerator targets (tested on SuperMIC).
 
 - New compiler flags:
 
@@ -36,7 +47,7 @@
 Bugfixes:
 
 - Fixed compiler errors for Intel MIC compiler (`icc -mmic`, `mpiicc -mic`).
-- Fixed element access of `.local.begin()` in `dash::Matrix`.
+- Fixed compiler errors for Intel Compiler 16.0.
 
 ## DART Interface
 
