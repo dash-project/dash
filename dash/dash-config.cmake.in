@@ -1,0 +1,21 @@
+# - Config file for the dash package
+# - provides compiler flags of dash installation
+# - as well as all transitive dependencies
+#
+# - Automatically locates DART-BASE
+# - DART-IMPL is not imported, as the user should be
+# - able to select the implementation
+
+@PACKAGE_INIT@
+
+set(DASH_VERSION_MAJOR "@DASH_VERSION_MAJOR@")
+set(DASH_VERSION_MINOR "@DASH_VERSION_MINOR@")
+set(DASH_VERSION_PATCH "@DASH_VERSION_PATCH@")
+
+set(DASH_LIBRARY "@DASH_LIBRARY@")
+set(DASH_CXX_FLAGS "@VARIANT_ADDITIONAL_COMPILE_FLAGS@")
+set(DASH_INSTALL_PREFIX "@CMAKE_INSTALL_PREFIX@")
+
+find_package(DART-BASE REQUIRED HINTS "${DASH_INSTALL_PREFIX}")
+
+include("${DASH_INSTALL_PREFIX}/${DASH_LIBRARY}Targets.cmake")
