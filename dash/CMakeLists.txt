@@ -267,11 +267,11 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # Install library
   install(TARGETS ${DASH_LIBRARY}
           DESTINATION lib
-          EXPORT "${DASH_LIBRARY}Targets")
+          EXPORT "${DASH_LIBRARY}-targets")
 
   # exports
   install(
-    EXPORT "${DASH_LIBRARY}Targets"
+    EXPORT "${DASH_LIBRARY}-targets"
     DESTINATION ${CMAKE_INSTALL_PREFIX})
 
   # install custom config
