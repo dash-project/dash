@@ -261,7 +261,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   configure_package_config_file(
       "dash-config.cmake.in"
       "${DASH_LIBRARY}-config.cmake"
-      INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX}
+      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake"
       PATH_VARS CMAKE_INSTALL_PREFIX)
 
   # Install library
@@ -272,11 +272,11 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # exports
   install(
     EXPORT "${DASH_LIBRARY}-targets"
-    DESTINATION ${CMAKE_INSTALL_PREFIX})
+    DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
 
   # install custom config
   install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
-          DESTINATION ${CMAKE_INSTALL_PREFIX})
+          DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
 
   # Examples
   if (BUILD_EXAMPLES)
