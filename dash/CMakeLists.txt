@@ -174,7 +174,7 @@ endif()
 if (DASH_ENV_HOST_SYSTEM_ID)
   set (HOST_ID ${DASH_ENV_HOST_SYSTEM_ID})
   set (ADDITIONAL_COMPILE_FLAGS
-       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENV_HOST_SYSTEM_ID=\"${HOST_ID}\")
+       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENV_HOST_SYSTEM_ID='${HOST_ID}')
 endif()
 
 set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
@@ -212,7 +212,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
            "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
     endif()
     set (VARIANT_ADDITIONAL_COMPILE_FLAGS
-         "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID=\"${MPI_IMPL_ID}\"")
+         "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID='${MPI_IMPL_ID}'")
   endif()
   message(STATUS "Building DASH library    " ${DASH_LIBRARY})
 
@@ -254,8 +254,29 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
 
   DeployLibrary(${DASH_LIBRARY})
 
+  include(CMakePackageConfigHelpers)
+  target_include_directories("${DASH_LIBRARY}" INTERFACE
+                             $<INSTALL_INTERFACE:include>)
+
+  configure_package_config_file(
+      "dash-config.cmake.in"
+      "${DASH_LIBRARY}-config.cmake"
+      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake"
+      PATH_VARS CMAKE_INSTALL_PREFIX)
+
   # Install library
-  install(TARGETS ${DASH_LIBRARY} DESTINATION lib)
+  install(TARGETS ${DASH_LIBRARY}
+          DESTINATION lib
+          EXPORT "${DASH_LIBRARY}-targets")
+
+  # exports
+  install(
+    EXPORT "${DASH_LIBRARY}-targets"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+
+  # install custom config
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
+          DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
 
   # Examples
   if (BUILD_EXAMPLES)

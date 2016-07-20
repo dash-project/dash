@@ -124,5 +124,8 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
         DESTINATION include FILES_MATCHING PATTERN "*.h")
 
 # Install library
-install(TARGETS ${DASH_DART_BASE_LIBRARY} DESTINATION lib)
+install(TARGETS ${DASH_DART_BASE_LIBRARY} DESTINATION lib
+        EXPORT "${DASH_DART_BASE_LIBRARY}-config")
 
+# Export dependencies
+install(EXPORT "${DASH_DART_BASE_LIBRARY}-config" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
