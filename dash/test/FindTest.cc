@@ -41,7 +41,7 @@ TEST_F(FindTest, TestSimpleFind)
   LOG_MESSAGE("Completed dash::find");
   // Run find on complete array
   EXPECT_NE_U(found_gptr, array.end());
-  // Check minimum value found
+  // Check value found
   Element_t found_v = *found_gptr;
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
@@ -49,7 +49,7 @@ TEST_F(FindTest, TestSimpleFind)
 }
 
 
-TEST_F(FindTest, Simple)
+TEST_F(FindTest, SimpleVaryingTest)
 {
     typedef long value_t;
 	int num_of_units = dash::Team::All().size();
@@ -106,3 +106,217 @@ TEST_F(FindTest, Simple)
 	
 	
 }
+
+TEST_F(FindTest, AllElementsEqualNoneMatches)
+{
+    
+    _num_elem = dash::Team::All().size();
+    Element_t init_fill = 0;
+    Element_t find_me	  = 24;
+    
+    // Initialize global array and fill it with init_fill:
+    Array_t array(_num_elem);
+    if (dash::myid() == 0) 
+    {	 
+      for (auto i = 0; i < array.size(); ++i) 
+  	{
+        LOG_MESSAGE("Setting array[%d] with init_fill", i, init_fill);
+        array[i] = init_fill;
+      }
+      
+      // Wait for array initialization
+      LOG_MESSAGE("Waiting for other units to initialize array values");
+      array.barrier();
+      LOG_MESSAGE("Finished initialization of array values");
+  
+      // Run find on complete array
+      auto found_gptr = dash::find(array.begin(), array.end(), find_me);
+  
+      // Check that the element find_me has not been found (found == last):
+      LOG_MESSAGE("Completed dash::find");
+      
+      ASSERT_EQ(found_gptr, array.end());
+	
+    
+}
+
+TEST_F(FindTest, AllElementsEqual_All_Match)
+{
+    _num_elem = dash::Team::All().size();
+    Element_t init_fill = 0;
+    
+    // Initialize global array and fill it with init_fill:
+    Array_t array(_num_elem);
+    if (dash::myid() == 0) 
+    {	 
+      for (auto i = 0; i < array.size(); ++i) 
+      {
+        LOG_MESSAGE("Setting array[%d] with init_fill", i, init_fill);
+        array[i] = init_fill;
+      }
+    }
+      
+    // Wait for array initialization
+    LOG_MESSAGE("Waiting for other units to initialize array values");
+    array.barrier();
+    LOG_MESSAGE("Finished initialization of array values");
+  
+    // Run find on complete array
+    auto found_gptr = dash::find(array.begin(), array.end(), find_me);
+  
+    // Check that the element find_me has been found (found == first):
+    LOG_MESSAGE("Completed dash::find");
+      
+    // Run find on complete array
+    ASSERT_EQ(found_gptr, array.begin());
+    
+}
+
+
+TEST_F(FindTest, SingleMatchInSingleUnit){
+    
+    typedef long        value_t;
+	int       num_of_units  = dash::Team::All().size();
+	Element_t find_me	    = 1;
+	index_t   find_pos      = 5;
+    Element_t init_fill     = 0;
+    auto unit_cntng_find    = dash::Team::All().size() %2;
+
+	
+    dash::Array<value_t> array;
+	
+	// Array should have same length as num_of_units. Therefore, array.local.size() should be 1
+    array.allocate(num_of_units * 7, dash::BLOCKED);
+    
+    if (dash::myid() == 0) 
+    {	 
+      for (auto i = 0; i < array.size(); ++i) 
+      {
+        LOG_MESSAGE("Setting array[%d] with init_fill", i, init_fill);
+        array[i] = init_fill;
+      }
+  }
+      
+      array.barrier();
+      
+      if (dash::myid() == unit_cntng_find)
+      {
+          array.local[find_pos] = find_me;    
+      }
+      array.barrier();
+      
+      array.barrier();
+      LOG_MESSAGE("Finished initialization of array values");
+  
+      // Run find on complete array
+      auto found_gptr = dash::find(array.begin(), array.end(), find_me);
+      
+      LOG_MESSAGE("Completed dash::find");
+      
+      // Run find on complete array
+      
+      Element_t found_v = *found_gptr;
+      LOG_MESSAGE("Expected find value: %d, found find value %d",
+                  find_me, found_v);
+      EXPECT_EQ(find_me, found_v);
+      
+}
+
+}
+/***
+This TEST_F does not yet make sense to test what it is supposed to test.
+*/
+TEST_F(FindTest, SingleMatchInEveryUnit)
+{
+    
+    typedef long        value_t;
+	int       num_of_units  = dash::Team::All().size();
+	Element_t find_me	    = 1;
+	index_t   find_pos      = 5;
+    Element_t init_fill     = 0;
+    auto unit_cntng_find    = dash::Team::All().size() %2;
+
+	
+    dash::Array<value_t> array;
+	array.allocate(num_of_units * 7, dash::BLOCKED);
+    
+    if (dash::myid() == 0) 
+    {	 
+      for (auto i = 0; i < array.size(); ++i) 
+      {
+        LOG_MESSAGE("Setting array[%d] with init_fill", i, init_fill);
+        array[i] = init_fill;
+      }
+    }
+    array.barrier();
+    LOG_MESSAGE("Finished initialization of array values");
+    
+    array.local[find_pos] = find_me;
+    
+    array.barrier();
+    LOG_MESSAGE("In every local array postion %d set to value %d", find_pos, find_me);    
+    
+        
+      // Run find on complete array
+      auto found_gptr = dash::find(array.begin(), array.end(), find_me);
+      
+      LOG_MESSAGE("Completed dash::find");
+      
+      // Run find on complete array
+      
+      Element_t found_v = *found_gptr;
+      LOG_MESSAGE("Expected find value: %d, found find value %d",
+                  find_me, found_v);
+      EXPECT_EQ(find_me, found_v);
+}
+
+TEST_F(FindTest, Empty_Container){
+    
+    typedef   long            value_t;
+	int       num_of_units  = dash::Team::All().size();
+	Element_t find_me	    = 1;
+	
+    dash::Array<value_t> array;
+    
+    array.allocate(0, dash::BLOCKED);
+    array.barrier();
+
+    // Run find on complete array
+    auto found_gptr = dash::find(array.begin(), array.end(), find_me);
+      
+    LOG_MESSAGE("Completed dash::find");
+      
+    // Run find on complete array
+    EXPECT_EQ(array.end(), found_gptr);
+}
+
+TEST_F(FindTest, LessElementsThanUnits){
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
