@@ -5,6 +5,8 @@
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 #include <dash/dart/if/dart_communication.h>
+#include <dash/algorithm/Find_if.h>
+
 
 namespace dash {
 
