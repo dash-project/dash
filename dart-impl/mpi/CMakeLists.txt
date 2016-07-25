@@ -198,10 +198,27 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
 # Generated headers, if any
 # install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/dash
 #         DESTINATION include FILES_MATCHING PATTERN "*.h")
+
+include(CMakePackageConfigHelpers)
+target_include_directories("${DASH_DART_IMPL_MPI_LIBRARY}" INTERFACE
+                             $<INSTALL_INTERFACE:include>)
+
+configure_package_config_file(
+      "dart-config.cmake.in"
+      "${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
+      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake"
+      PATH_VARS CMAKE_INSTALL_PREFIX)
+
 # Library
 install(TARGETS ${DASH_DART_IMPL_MPI_LIBRARY}
         DESTINATION lib
-        EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-config")
+        EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-targets")
 
 # exports
-install(EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-config" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+install(EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-targets" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+
+# install custom config
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+
+
