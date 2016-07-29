@@ -215,10 +215,11 @@ install(TARGETS ${DASH_DART_IMPL_MPI_LIBRARY}
         EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-targets")
 
 # exports
-install(EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-targets" DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+install(EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-targets"
+        DESTINATION cmake)
 
 # install custom config
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
-        DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+        DESTINATION cmake)
 
 

@@ -285,7 +285,7 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   # exports
   install(
     EXPORT "${DASH_LIBRARY}-targets"
-    DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+    DESTINATION cmake)
 
   configure_package_config_file(
       "dash-config.cmake.in"
@@ -427,9 +427,11 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
     # Code Coverage
     if (BUILD_COVERAGE_TESTS)
       if (${dart_variant} STREQUAL "mpi")
-        setup_target_for_coverage(coverage "mpirun -n 4 ${CMAKE_BINARY_DIR}/bin/${DASH_TEST}" coverage)
+        setup_target_for_coverage(
+          coverage "mpirun -n 4 ${CMAKE_BINARY_DIR}/bin/${DASH_TEST}" coverage)
       else()
-        setup_target_for_coverage(coverage "${DASH_TEST}" coverage)
+        setup_target_for_coverage(
+          coverage "${DASH_TEST}" coverage)
       endif()
     endif()
 
