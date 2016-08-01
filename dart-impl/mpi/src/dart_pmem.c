@@ -8,16 +8,35 @@
 #include <linux/limits.h>
 #include <sys/stat.h>
 
+#include <mpi.h>
+
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_pmem.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 
+extern char *strdup(const char *s);
 
+void * alloc_mem(size_t size)
+{
+  char * baseptr;
+  DART_ASSERT_RETURNS(MPI_Alloc_mem(size, MPI_INFO_NULL, &baseptr), MPI_SUCCESS);
+  return baseptr;
+}
+
+void free_mem(void * ptr)
+{
+  DART_ASSERT_RETURNS(MPI_Free_mem(ptr), MPI_SUCCESS);
+}
+
+dart_ret_t dart_pmem_init(void)
+{
+  pmemobj_set_funcs(alloc_mem, free_mem, NULL, NULL);
+  return DART_OK;
+}
 
 int _dart_pmem_list_new(PMEMobjpool * pop, void * ptr, void * arg)
-
 {
   int ret = 0;
   TOID(struct dart_pmem_bucket_list) * list = ptr;
@@ -60,32 +79,68 @@ static char * _tempname(const char * layout, int myid)
   return prefix;
 }
 
+void * _dart_pmem_bucket_alloc(PMEMobjpool * pop,
+                              TOID(struct dart_pmem_bucket_list) list,
+                              struct dart_pmem_bucket_alloc_args args)
+{
+  if (TOID_IS_NULL(list)) {
+    return NULL;
+  }
+
+  void * ret = NULL;
+
+  struct dart_pmem_list_head * head = &D_RW(list)->head;
+
+  TOID(struct dart_pmem_bucket) node;
+  TX_BEGIN(pop) {
+    node = TX_NEW(struct dart_pmem_bucket);
+    if (TOID_IS_NULL(node)) {
+      pmemobj_tx_abort(1);
+    }
+    D_RW(node)->element_size = args.element_size;
+    D_RW(node)->length = args.nelements;
+    D_RW(node)->data = pmemobj_tx_zalloc(args.element_size * args.nelements,
+                                         TYPE_NUM_BYTE);
+    if (OID_IS_NULL(D_RO(node)->data)) {
+      pmemobj_tx_abort(1);
+    }
+    DART_PMEM_SLIST_INSERT_HEAD(head, node, next);
+  }
+  TX_ONCOMMIT {
+    ret = pmemobj_direct(D_RW(node)->data);
+  }
+  TX_ONABORT {
+    DART_LOG_ERROR("%s: transaction aborted: %s\n", __func__, pmemobj_errormsg());
+    ret = NULL;
+  } TX_END
+
+  return ret;
+}
+
 #define DART_PMEM_ALL_FLAGS\
   (DART_PMEM_FILE_CREATE)
 
-dart_ret_t dart__pmem__open(
+dart_pmem_pool_t * dart__pmem__open(
   dart_team_t   team,
   const char  * name,
   int           flags,
-  mode_t        mode,
-  dart_pmem_pool_t * poolp)
+  mode_t        mode)
 {
-  DART_ASSERT(poolp);
   DART_ASSERT(name);
 
   if (flags & ~(DART_PMEM_ALL_FLAGS)) {
     DART_LOG_ERROR("invalid flag specified: %d", flags);
-    return DART_ERR_INVAL;
+    return NULL;
   }
 
   if (DART_TEAM_NULL == team) {
     DART_LOG_ERROR("invalid team specified: %d", team);
-    return DART_ERR_INVAL;
+    return NULL;
   }
 
   if (strlen(name) >= DART_NVM_POOL_NAME ) {
     DART_LOG_ERROR("invalid pool name: %s", name);
-    return DART_ERR_INVAL;
+    return NULL;
   }
 
   int myid;
@@ -94,13 +149,14 @@ dart_ret_t dart__pmem__open(
   PMEMobjpool * pop;
 
   char * full_path = _tempname(name, myid);
+  const size_t poolsize = DART_PMEM_MIN_POOL;
 
   if ((flags & DART_PMEM_FILE_CREATE) && access(full_path, F_OK) != 0) {
 
-    if ((pop = pmemobj_create(full_path, name, DART_PMEM_MIN_POOL,
+    if ((pop = pmemobj_create(full_path, name, poolsize,
                               mode)) == NULL) {
       DART_LOG_ERROR("failed to create pmem pool: %s", name);
-      return DART_ERR_INVAL;
+      return NULL;
     }
 
     struct dart_pmem_slist_constr_args args = {
@@ -115,72 +171,30 @@ dart_ret_t dart__pmem__open(
   } else {
     if ((pop = pmemobj_open(full_path, name)) == NULL) {
       DART_LOG_ERROR("failed to open pmem pool: %s", name);
-      return DART_ERR_INVAL;
+      return NULL;
     }
 
     DART_ASSERT(pmemobj_root_size(pop));
   }
 
+  dart_pmem_pool_t * poolp = malloc(sizeof(dart_pmem_pool_t));
   //TODO: record actual size
-  poolp->size = 0;
+  poolp->poolsize = poolsize;
   poolp->path = full_path;
   poolp->layout = strdup(name);
   poolp->pop = pop;
   poolp->teamid = team;
 
-  return DART_OK;
-}
-
-char * dart_pmem_bucket_alloc(PMEMobjpool * pop,
-                              TOID(struct dart_pmem_bucket_list) list,
-                              struct dart_pmem_bucket_alloc_args args)
-{
-  if (TOID_IS_NULL(list)) {
-    return NULL;
-  }
-
-  char * ret = NULL;
-
-  struct dart_pmem_list_head * head = &D_RW(list)->head;
-
-  TOID(struct dart_pmem_bucket) node;
-  TX_BEGIN(pop) {
-    node = TX_NEW(struct dart_pmem_bucket);
-    if (TOID_IS_NULL(node)) {
-      abort();
-    }
-    D_RW(node)->element_size = args.element_size;
-    D_RW(node)->length = args.nelements;
-    D_RW(node)->data = pmemobj_tx_zalloc(args.element_size * args.nelements, TYPE_NUM_BYTE);
-    if (OID_IS_NULL(D_RO(node)->data)) {
-      abort();
-    }
-    DART_PMEM_SLIST_INSERT_HEAD(head, node, next);
-  }
-  TX_ONCOMMIT {
-    ret = pmemobj_direct(D_RW(node)->data);
-  }
-  TX_ONABORT {
-    fprintf(stderr, "%s: transaction aborted: %s\n", __func__, pmemobj_errormsg());
-    ret = NULL;
-  } TX_END
-
-  return ret;
+  return poolp;
 }
 
 dart_ret_t  dart__pmem__alloc(
-  dart_team_t         teamid,
   dart_pmem_pool_t    pool,
   size_t              nbytes,
   dart_gptr_t    *    gptr)
 {
   if (NULL == pool.pop) {
     DART_LOG_ERROR("invalid pmem pool");
-    return DART_ERR_INVAL;
-  }
-
-  if (teamid != pool.teamid) {
-    DART_LOG_ERROR("invalid teamid for pool %s", pool.layout);
     return DART_ERR_INVAL;
   }
 
@@ -192,7 +206,8 @@ dart_ret_t  dart__pmem__alloc(
     return DART_ERR_INVAL;
   }
 
-  TOID(struct dart_pmem_bucket_list) list = POBJ_ROOT(pool.pop, struct dart_pmem_bucket_list);
+  TOID(struct dart_pmem_bucket_list) list = POBJ_ROOT(pool.pop,
+      struct dart_pmem_bucket_list);
 
   struct dart_pmem_bucket_alloc_args args = {
     .element_size = sizeof(char),
@@ -200,7 +215,7 @@ dart_ret_t  dart__pmem__alloc(
   };
 
 
-  char * mem = dart_pmem_bucket_alloc(pool.pop, list, args);
+  char * mem = _dart_pmem_bucket_alloc(pool.pop, list, args);
 
   if (NULL == mem) {
     DART_LOG_ERROR("could not allocate persistent memory");
@@ -208,7 +223,7 @@ dart_ret_t  dart__pmem__alloc(
   }
 
   int myid;
-  DART_ASSERT_RETURNS(dart_team_myid(teamid, &myid), DART_OK);
+  DART_ASSERT_RETURNS(dart_team_myid(pool.teamid, &myid), DART_OK);
   DART_ASSERT_RETURNS(dart_gptr_setunit(gptr, myid), DART_OK);
 
   //TODO: add some infos to segid and flags of dart_gptr_t

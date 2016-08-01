@@ -397,7 +397,7 @@ private:
       for (; _bucket_it != _bucket_last; ++_bucket_it) {
         if (offset >= _bucket_it->size) {
           offset -= _bucket_it->size;
-        } else if (offset < _bucket_it->size) {
+        } else {
           _bucket_phase = offset;
           break;
         }

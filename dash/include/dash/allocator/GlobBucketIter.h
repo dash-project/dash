@@ -99,8 +99,7 @@ public:
   } local_index;
 
 private:
-  typedef std::vector<std::vector<size_type> >
-    bucket_cumul_sizes_map;
+  using bucket_cumul_sizes_map = typename globmem_type::bucket_cumul_sizes_map;
 
 public:
   /**
@@ -148,9 +147,9 @@ public:
         DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", bucket_cumul_size);
         if (position < bucket_cumul_size) {
           DASH_LOG_TRACE_VAR("GlobBucketIter(gmem,idx)", position);
-          position           = 0;
           _idx_local_idx     = position;
           _idx_bucket_phase  = position - bucket_cumul_size_prev;
+          position           = 0;
           break;
         }
         bucket_cumul_size_prev = bucket_cumul_size;
@@ -628,7 +627,7 @@ private:
           // offset refers to current unit:
           // iterate the unit's bucket sizes:
           for (; _idx_bucket_idx >= 0; --_idx_bucket_idx) {
-            auto bucket_size = unit_bkt_sizes[_idx_bucket_idx];
+            //auto bucket_size = unit_bkt_sizes[_idx_bucket_idx];
             if (offset <= _idx_bucket_phase) {
               // offset refers to current bucket:
               _idx_local_idx    -= offset;

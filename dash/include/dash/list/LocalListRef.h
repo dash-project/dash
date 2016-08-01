@@ -54,9 +54,10 @@ private:
     list_type;
   typedef ViewSpec<NumDimensions, index_type>
     ViewSpec_t;
-  typedef internal::ListNode<T>
+  //ListNode<T>
+  typedef typename list_type::node_type
     ListNode_t;
-  typedef typename allocator_type::template rebind<ListNode_t>::other
+  typedef typename list_type::node_allocator_type
     node_allocator_type;
   typedef typename list_type::glob_mem_type
     glob_mem_type;
@@ -126,8 +127,8 @@ public:
     ListNode_t node;
     node.lprev = nullptr;
     node.lnext = nullptr;
-    node.gprev = _gprev;
-    node.gnext = _gnext;
+    //node.gprev = _gprev;
+    //node.gnext = _gnext;
     iterator it_insert_end = _list->_end;
     DASH_THROW(dash::exception::NotImplemented,
                "dash::LocalListRef.pop_back is not implemented");
@@ -152,8 +153,8 @@ public:
     node.value = value;
     node.lprev = nullptr;
     node.lnext = nullptr;
-    node.gprev = _gprev;
-    node.gnext = _gnext;
+    //node.gprev = _gprev;
+    //node.gnext = _gnext;
     // Local capacity before operation:
     auto l_cap_old  = _list->_globmem->local_size();
     // Number of local elements before operation:
@@ -184,8 +185,9 @@ public:
                    "node target address:", node_lptr);
     if (l_size_old > 0) {
       // Set node predecessor (cast from LocalBucketIter<T> to T *):
+      auto prev_node_idx = l_size_old - 1;
       node.lprev = static_cast<ListNode_t *>(
-                     _list->_globmem->lbegin() + (l_size_old - 1));
+                     _list->_globmem->lbegin() + prev_node_idx);
       // Set successor of node predecessor to new node:
       DASH_ASSERT(node.lprev->lnext == nullptr);
       node.lprev->lnext = node_lptr;
@@ -277,8 +279,8 @@ private:
   /// The view's offset and extent within the referenced list.
   ViewSpec_t        _viewspec;
 
-  dart_gptr_t       _gprev;
-  dart_gptr_t       _gnext;
+  //dart_gptr_t       _gprev;
+  //dart_gptr_t       _gnext;
 };
 
 } // namespace dash

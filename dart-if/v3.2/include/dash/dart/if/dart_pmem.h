@@ -6,6 +6,8 @@
 extern "C" {
 #endif
 
+#include <sys/types.h>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
 
@@ -33,12 +35,18 @@ typedef struct dart_pmem_pool dart_pmem_pool_t;
  * Open and Close                                                           *
  * ======================================================================== */
 
-dart_ret_t dart__pmem__open(
+dart_ret_t dart__pmem__init(void);
+dart_ret_t dart__pmem__finalize(void);
+
+/* ======================================================================== *
+ * Open and Close                                                           *
+ * ======================================================================== */
+
+dart_pmem_pool_t * dart__pmem__open(
   dart_team_t         team,
   const char        * name,
   int                 flags,
-  mode_t              mode,
-  dart_pmem_pool_t  * poolp);
+  mode_t              mode);
 
 dart_ret_t dart__pmem__close(
   dart_pmem_pool_t * pool);
@@ -48,7 +56,6 @@ dart_ret_t dart__pmem__close(
  * ======================================================================== */
 
 dart_ret_t  dart__pmem__alloc(
-  dart_team_t         teamid,
   dart_pmem_pool_t    pool,
   size_t              nbytes,
   dart_gptr_t    *    gptr);
@@ -71,7 +78,7 @@ dart_ret_t  dart__pmem__free(
 #define DART_PMEM_MIN_POOL PMEMOBJ_MIN_POOL
 
 struct dart_pmem_pool {
-  size_t          size;
+  size_t          poolsize;
   dart_team_t     teamid;
   char const   *  path;
   char const   *  layout;

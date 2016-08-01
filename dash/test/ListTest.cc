@@ -26,9 +26,11 @@ TEST_F(ListTest, Initialization)
   auto nlocal    = lcap_init + nalloc;
   // Total number of elements to be added:
   auto nglobal   = nlocal * nunits;
+  // Total number of dynamic memory allocations
+  auto ngrow_steps = dash::math::div_ceil(nalloc, lbuf_size);
   // Local capacity after local insert operations:
   auto lcap_new  = lcap_init +
-                   lbuf_size * dash::math::div_ceil(nalloc, lbuf_size);
+                   lbuf_size * ngrow_steps;
   // Global capacity after committing all insert operations:
   auto gcap_new  = gcap_init + nunits * (lcap_new - lcap_init);
   // Global capacity visible to local unit after local insert operations:

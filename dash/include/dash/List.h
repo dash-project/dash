@@ -163,18 +163,17 @@ namespace dash {
  *
  * \concept{DashListConcept}
  */
-template<
-  typename ElementType,
-  class    AllocatorType = dash::allocator::DynamicAllocator<ElementType> >
-class List
-{
+template <
+typename ElementType,
+         class    AllocatorType = dash::allocator::DynamicAllocator<ElementType> >
+class List {
   template<typename T_, class A_>
   friend class LocalListRef;
 
 private:
   typedef List<ElementType, AllocatorType> self_t;
 
-/// Public types as required by DASH list concept
+  /// Public types as required by DASH list concept
 public:
   typedef ElementType                                             value_type;
   typedef typename dash::default_index_t                          index_type;
@@ -185,21 +184,20 @@ public:
   typedef LocalListRef<ElementType, AllocatorType>                local_type;
 
 private:
-  typedef internal::ListNode<value_type>
-    node_type;
+  typedef internal::ListNode<value_type> node_type;
 
-  typedef typename AllocatorType::template rebind<
-                     internal::ListNode<ElementType> >::other
-    node_allocator_type;
+  typedef typename AllocatorType::template rebind<internal::ListNode<ElementType> >::other node_allocator_type;
+  //using allocator_traits = std::allocator_traits<allocator_type>;
+  //using node_allocator_type = typename allocator_traits::template rebind_alloc<node_type>;
 
   typedef dash::GlobDynamicMem<node_type, node_allocator_type>
-    glob_mem_type;
+  glob_mem_type;
 
-  typedef dash::Array<
-            size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
-    local_sizes_map;
+  typedef dash::Array <
+  size_type, int, dash::CSRPattern<1, dash::ROW_MAJOR, int> >
+  local_sizes_map;
 
-/// Public types as required by STL list concept
+  /// Public types as required by STL list concept
 public:
   typedef index_type                                         difference_type;
 
@@ -212,25 +210,25 @@ public:
   typedef GlobRef<value_type>                                      reference;
   typedef GlobRef<const value_type>                          const_reference;
 
-  typedef       value_type &                                 local_reference;
-  typedef const value_type &                           const_local_reference;
+  typedef       value_type                 &                 local_reference;
+  typedef const value_type              &              const_local_reference;
 
   typedef       iterator                                             pointer;
   typedef const_iterator                                       const_pointer;
 
   typedef typename glob_mem_type::local_iterator
-    local_node_iterator;
+  local_node_iterator;
   typedef typename glob_mem_type::const_local_iterator
-    const_local_node_iterator;
+  const_local_node_iterator;
   typedef typename glob_mem_type::reverse_local_iterator
-    reverse_local_node_iterator;
+  reverse_local_node_iterator;
   typedef typename glob_mem_type::const_reverse_local_iterator
-    const_reverse_local_node_iterator;
+  const_reverse_local_node_iterator;
 
   typedef typename glob_mem_type::local_reference
-    local_node_reference;
+  local_node_reference;
   typedef typename glob_mem_type::const_local_reference
-    const_local_node_reference;
+  const_local_node_reference;
 
   // TODO: define ListLocalIter to dereference node iterators
   typedef               local_node_iterator                   local_iterator;
@@ -251,11 +249,10 @@ public:
    */
   List(
     Team & team = dash::Team::Null())
-  : local(this),
-    _team(&team),
-    _myid(team.myid()),
-    _remote_size(0)
-  {
+    : local(this),
+      _team(&team),
+      _myid(team.myid()),
+      _remote_size(0) {
     DASH_LOG_TRACE("List() >", "default constructor");
   }
 
@@ -265,12 +262,11 @@ public:
    */
   List(
     size_type   nelem = 0,
-    Team      & team  = dash::Team::All())
-  : local(this),
-    _team(&team),
-    _myid(team.myid()),
-    _remote_size(0)
-  {
+    Team    &   team  = dash::Team::All())
+    : local(this),
+      _team(&team),
+      _myid(team.myid()),
+      _remote_size(0) {
     DASH_LOG_TRACE("List(nelem,team)", "nelem:", nelem);
     if (_team->size() > 0) {
       _local_sizes.allocate(team.size(), dash::BLOCKED, team);
@@ -288,13 +284,12 @@ public:
   List(
     size_type   nelem,
     size_type   nlbuf,
-    Team      & team   = dash::Team::All())
-  : local(this),
-    _team(&team),
-    _myid(team.myid()),
-    _remote_size(0),
-    _local_buffer_size(nlbuf)
-  {
+    Team    &   team   = dash::Team::All())
+    : local(this),
+      _team(&team),
+      _myid(team.myid()),
+      _remote_size(0),
+      _local_buffer_size(nlbuf) {
     DASH_LOG_TRACE("List(nelem,nlbuf,team)",
                    "nelem:", nelem, "nlbuf:", nlbuf);
     if (_team->size() > 0) {
@@ -310,8 +305,7 @@ public:
    * Destructor, deallocates local and global memory acquired by the
    * container instance.
    */
-  ~List()
-  {
+  ~List() {
     DASH_LOG_TRACE_VAR("List.~List()", this);
     deallocate();
     DASH_LOG_TRACE_VAR("List.~List >", this);
@@ -330,23 +324,20 @@ public:
    * with most DART communication backends, the new list element is allocated
    * locally and moved to its final position in global memory in \c barrier.
    */
-  void push_back(const value_type & element)
-  {
+  void push_back(const value_type & element) {
   }
 
   /**
    * Removes and destroys the last element in the list, reducing the
    * container size by one.
    */
-  void pop_back()
-  {
+  void pop_back() {
   }
 
   /**
    * Accesses the last element in the list.
    */
-  reference back()
-  {
+  reference back() {
   }
 
   /**
@@ -362,86 +353,75 @@ public:
    * with most DART communication backends, the new list element is allocated
    * locally and moved to its final position in global memory in \c barrier.
    */
-  void push_front(const value_type & value)
-  {
+  void push_front(const value_type & value) {
   }
 
   /**
    * Removes and destroys the first element in the list, reducing the
    * container size by one.
    */
-  void pop_front()
-  {
+  void pop_front() {
   }
 
   /**
    * Accesses the first element in the list.
    */
-  reference front()
-  {
+  reference front() {
   }
 
   /**
    * Global pointer to the beginning of the list.
    */
-  iterator begin() noexcept
-  {
+  iterator begin() noexcept {
     return _begin;
   }
 
   /**
    * Global pointer to the beginning of the list.
    */
-  const_iterator begin() const noexcept
-  {
+  const_iterator begin() const noexcept {
     return _begin;
   }
 
   /**
    * Global pointer to the end of the list.
    */
-  iterator end() noexcept
-  {
+  iterator end() noexcept {
     return _end;
   }
 
   /**
    * Global pointer to the end of the list.
    */
-  const_iterator end() const noexcept
-  {
+  const_iterator end() const noexcept {
     return _end;
   }
 
   /**
    * Native pointer to the first local element in the list.
    */
-  local_iterator lbegin() noexcept
-  {
+  local_iterator lbegin() noexcept {
     return _lbegin;
   }
 
   /**
    * Native pointer to the first local element in the list.
    */
-  const_local_iterator lbegin() const noexcept
-  {
+  const_local_iterator lbegin() const noexcept {
     return _lbegin;
   }
 
   /**
    * Native pointer to the end of the list.
    */
-  local_iterator lend() noexcept
-  {
+  local_iterator lend() noexcept {
     return _lend;
   }
 
   /**
    * Native pointer to the end of the list.
    */
-  const_local_iterator lend() const noexcept
-  {
+  const_local_iterator lend() const noexcept {
     return _lend;
   }
 
@@ -450,8 +430,7 @@ public:
    * system limitations.
    * The maximum size is not guaranteed.
    */
-  constexpr size_type max_size() const noexcept
-  {
+  constexpr size_type max_size() const noexcept {
     return std::numeric_limits<index_type>::max();
   }
 
@@ -460,8 +439,7 @@ public:
    *
    * \return  The number of elements in the list.
    */
-  inline size_type size() const noexcept
-  {
+  inline size_type size() const noexcept {
     return _remote_size + _local_sizes.local[0];
   }
 
@@ -470,8 +448,7 @@ public:
    * elements. Elements are removed and destroying elements from the back,
    * if necessary.
    */
-  void resize(size_t num_elements)
-  {
+  void resize(size_t num_elements) {
   }
 
   /**
@@ -480,8 +457,7 @@ public:
    *
    * \return  The number of elements in the list.
    */
-  inline size_type capacity() const noexcept
-  {
+  inline size_type capacity() const noexcept {
     return _globmem->size();
   }
 
@@ -492,8 +468,7 @@ public:
    * \return  iterator to the element that follows the last element removed,
    *          or \c end() if the last element was removed.
    */
-  inline iterator erase(const_iterator position)
-  {
+  inline iterator erase(const_iterator position) {
     return _begin;
   }
 
@@ -504,8 +479,7 @@ public:
    * \return  iterator to the element that follows the last element removed,
    *          or \c end() if the last element was removed.
    */
-  inline iterator erase(const_iterator first, const_iterator last)
-  {
+  inline iterator erase(const_iterator first, const_iterator last) {
     return _end;
   }
 
@@ -515,8 +489,7 @@ public:
    * \return  A reference to the Team containing the units associated with
    *          the container instance.
    */
-  inline const Team & team() const noexcept
-  {
+  inline const Team & team() const noexcept {
     return *_team;
   }
 
@@ -526,8 +499,7 @@ public:
    * \return  The number of elements in the list that are local to the
    *          calling unit.
    */
-  inline size_type lsize() const noexcept
-  {
+  inline size_type lsize() const noexcept {
     return _local_sizes.local[0];
   }
 
@@ -537,8 +509,7 @@ public:
    * \return  The number of allocated elements in the list that are local
    *          to the calling unit.
    */
-  inline size_type lcapacity() const noexcept
-  {
+  inline size_type lcapacity() const noexcept {
     return _globmem != nullptr
            ? _globmem->local_size()
            : 0;
@@ -549,8 +520,7 @@ public:
    *
    * \return  true if \c size() is 0, otherwise false
    */
-  inline bool empty() const noexcept
-  {
+  inline bool empty() const noexcept {
     return size() == 0;
   }
 
@@ -558,8 +528,7 @@ public:
    * Establish a barrier for all units operating on the list, publishing all
    * changes to all units.
    */
-  void barrier()
-  {
+  void barrier() {
     DASH_LOG_TRACE_VAR("List.barrier()", _team);
     // Apply changes in local memory spaces to global memory space:
     if (_globmem != nullptr) {
@@ -586,8 +555,7 @@ public:
     /// Initial global capacity of the container.
     size_type    nelem = 0,
     /// Team containing all units associated with the container.
-    dash::Team & team  = dash::Team::All())
-  {
+    dash::Team & team  = dash::Team::All()) {
     DASH_LOG_TRACE("List.allocate()");
     DASH_LOG_TRACE_VAR("List.allocate", nelem);
     DASH_LOG_TRACE_VAR("List.allocate", _local_buffer_size);
@@ -624,7 +592,7 @@ public:
     // Register deallocator of this list instance at the team
     // instance that has been used to initialized it:
     _team->register_deallocator(
-             this, std::bind(&List::deallocate, this));
+      this, std::bind(&List::deallocate, this));
     // Assure all units are synchronized after allocation, otherwise
     // other units might start working on the list before allocation
     // completed at all units:
@@ -643,8 +611,7 @@ public:
    * Calls implicit barrier on the team associated with the container
    * instance.
    */
-  void deallocate()
-  {
+  void deallocate() {
     DASH_LOG_TRACE_VAR("List.deallocate()", this);
     // Assure all units are synchronized before deallocation, otherwise
     // other units might still be working on the list:
@@ -668,20 +635,20 @@ public:
 
 private:
   /// Team containing all units interacting with the list.
-  dash::Team         * _team
-                         = nullptr;
+  dash::Team     *     _team
+    = nullptr;
   /// DART id of the unit that created the list.
   dart_unit_t          _myid;
   /// Global memory allocation and -access.
-  glob_mem_type      * _globmem
-                         = nullptr;
+  glob_mem_type    *   _globmem
+    = nullptr;
   /// Iterator to initial element in the list.
   iterator             _begin;
   /// Iterator past the last element in the list.
   iterator             _end;
   /// Number of elements in the list.
   size_type            _remote_size
-                         = 0;
+    = 0;
   /// Native pointer to first local element in the list.
   local_iterator       _lbegin;
   /// Native pointer past the last local element in the list.
@@ -694,7 +661,7 @@ private:
   /// have not been committed to global memory yet.
   /// Default is 4 KB.
   size_type            _local_buffer_size
-                         = 4096 / sizeof(value_type);
+    = 4096 / sizeof(value_type);
 
 };
 

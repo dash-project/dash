@@ -9,10 +9,14 @@ template<
   typename ElementType >
 struct glob_dynamic_mem_bucket_type
 {
-  SizeType      size;
-  ElementType * lptr;
-  dart_gptr_t   gptr;
-  bool          attached;
+  SizeType            size;
+  ElementType       * lptr;
+  dart_gptr_t         gptr;
+  bool                attached = false;
+
+  //Persistent Memory Info
+  //bool                is_persistent;
+  //dart_pmem_pool_t  * pool;
 };
 
 } // namespace internal

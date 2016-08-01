@@ -16,8 +16,8 @@ public:
   ElementType  value;
   self_t     * lprev = nullptr;
   self_t     * lnext = nullptr;
-  dart_gptr_t  gprev = DART_GPTR_NULL;
-  dart_gptr_t  gnext = DART_GPTR_NULL;
+  //dart_gptr_t  gprev = DART_GPTR_NULL;
+  //dart_gptr_t  gnext = DART_GPTR_NULL;
 };
 
 } // namespace internal
