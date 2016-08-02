@@ -298,6 +298,28 @@ public:
     DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem >");
   }
 
+  explicit GlobDynamicMem(
+    /// Initial number of local elements to allocate in global memory space
+    allocator_type const & alloc)
+    : _allocator(alloc),
+      _team(&_allocator.team()),
+      _teamid(_team->dart_id()),
+      _nunits(_team->size()),
+      _myid(_team->myid()),
+      _unattached_buckets_first(_buckets.end()),
+      _local_sizes(_nunits),
+      _bucket_cumul_sizes(_nunits),
+      _num_attach_buckets(_nunits),
+      _num_detach_buckets(_nunits),
+      _remote_size(0) {
+
+    _local_sizes.local[0]        = 0;
+    _num_attach_buckets.local[0] = 0;
+    _num_detach_buckets.local[0] = 0;
+
+    DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem >");
+  }
+
   /**
    * Destructor, collectively frees underlying global memory.
    */

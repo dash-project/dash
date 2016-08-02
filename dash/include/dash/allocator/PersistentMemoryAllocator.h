@@ -72,10 +72,11 @@ public:
    * Creates a new instance of \c dash::PersistentMemoryAllocator for a given team.
    */
   PersistentMemoryAllocator(
-    Team & team = dash::Team::All()) noexcept
+    Team & team = dash::Team::All(),
+    std::string const & area_name = "") noexcept
 :
   _team(&team),
-        _team_id(team.dart_id()),
+  _team_id(team.dart_id()),
   _nunits(team.size()) {
   }
 
@@ -252,7 +253,10 @@ public:
    * \see DashDynamicAllocatorConcept
    */
   local_pointer allocate_local(size_type num_local_elem) {
-    //TODO: call pmem_map_file...
+
+    DASH_THROW(
+      dash::exception::NotImplemented,
+      "PersistentMemoryAllocator.allocate_local is not implemented!");
     
   }
 
@@ -327,6 +331,10 @@ public:
       detach(gptr);
     }
     DASH_LOG_DEBUG("PersistentMemoryAllocator.deallocate >");
+  }
+
+  dash::Team & team() {
+    return *_team;
   }
 
 private:

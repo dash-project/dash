@@ -579,12 +579,13 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
 
 TEST_F(GlobDynamicMemTest, PersistentMemAlloc)
 {
-  typedef int value_t;
-  typedef dash::allocator::PersistentMemoryAllocator<value_t> persistent_allocator;
+  using value_t = int;
+  using persistent_allocator_type = dash::allocator::PersistentMemoryAllocator<value_t>;
 
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
-  dash::GlobDynamicMem<value_t, persistent_allocator> gdmem(initial_local_capacity);
+  persistent_allocator_type alloc(dash::Team::All(), "pmem_pool");
+  dash::GlobDynamicMem<value_t, persistent_allocator_type> gdmem(alloc);
 
   LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
               initial_global_capacity, initial_local_capacity);
