@@ -117,6 +117,7 @@ void * _dart_pmem_bucket_alloc(PMEMobjpool * pop,
   return ret;
 }
 
+
 #define DART_PMEM_ALL_FLAGS\
   (DART_PMEM_FILE_CREATE)
 
@@ -191,7 +192,7 @@ dart_pmem_pool_t * dart__pmem__open(
 dart_ret_t  dart__pmem__alloc(
   dart_pmem_pool_t    pool,
   size_t              nbytes,
-  dart_gptr_t    *    gptr)
+  void    **    addr)
 {
   if (NULL == pool.pop) {
     DART_LOG_ERROR("invalid pmem pool");
@@ -215,21 +216,12 @@ dart_ret_t  dart__pmem__alloc(
   };
 
 
-  char * mem = _dart_pmem_bucket_alloc(pool.pop, list, args);
+  *addr = _dart_pmem_bucket_alloc(pool.pop, list, args);
 
-  if (NULL == mem) {
+  if (NULL == *addr) {
     DART_LOG_ERROR("could not allocate persistent memory");
     return DART_ERR_OTHER;
   }
-
-  int myid;
-  DART_ASSERT_RETURNS(dart_team_myid(pool.teamid, &myid), DART_OK);
-  DART_ASSERT_RETURNS(dart_gptr_setunit(gptr, myid), DART_OK);
-
-  //TODO: add some infos to segid and flags of dart_gptr_t
-  //
-  gptr->addr_or_offs.addr = mem;
-  gptr->addr_or_offs.offset = 0;
 
   return DART_OK;
 }

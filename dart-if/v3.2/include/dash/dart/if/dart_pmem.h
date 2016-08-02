@@ -30,6 +30,7 @@ extern "C" {
 typedef struct dart_pmem_pool dart_pmem_pool_t;
 
 #define DART_PMEM_FILE_CREATE (1 << 0)
+#define DART_PMEM_FILE_OPEN   (1 << 1)
 
 /* ======================================================================== *
  * Open and Close                                                           *
@@ -58,7 +59,7 @@ dart_ret_t dart__pmem__close(
 dart_ret_t  dart__pmem__alloc(
   dart_pmem_pool_t    pool,
   size_t              nbytes,
-  dart_gptr_t    *    gptr);
+  void    **    addr);
 
 dart_ret_t  dart__pmem__free(
   dart_gptr_t    *    gptr);

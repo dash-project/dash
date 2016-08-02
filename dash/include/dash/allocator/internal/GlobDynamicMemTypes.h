@@ -13,10 +13,6 @@ struct glob_dynamic_mem_bucket_type
   ElementType       * lptr;
   dart_gptr_t         gptr;
   bool                attached = false;
-
-  //Persistent Memory Info
-  //bool                is_persistent;
-  //dart_pmem_pool_t  * pool;
 };
 
 } // namespace internal

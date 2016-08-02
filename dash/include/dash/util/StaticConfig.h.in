@@ -6,7 +6,7 @@
  * the available and build in modules of DASH
  */
 
-namespace dash
+namespace dash {
 namespace util {
   struct StaticConfig {
     bool avail_papi      = @CONF_AVAIL_PAPI@;
@@ -20,5 +20,6 @@ namespace util {
     bool avail_lapack    = @CONF_AVAIL_LAPACK@;
     bool avail_scalapack = @CONF_AVAIL_SCALAPACK@;
   } DashConfig;
+}
 }
 #endif // DASH__UTIL__STATIC_CONFIG_H_

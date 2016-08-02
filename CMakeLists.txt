@@ -76,6 +76,9 @@ option(ENABLE_PLASMA
        "Specify whether PLASMA features are enabled" on)
 option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
+option(ENABLE_PMEM
+  "Specify whether Persistent Memory features are enabled" on)
+
 
 if (BUILD_COVERAGE_TESTS)
   set(BUILD_TESTS TRUE CACHE BOOLEAN
@@ -102,6 +105,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/PMEM.cmake)
 if (NOT MKL_FOUND)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/SCALAPACK.cmake)
@@ -243,6 +247,8 @@ message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
 message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
+message(INFO "PMEM support:             (ENABLE_PMEM)                    "
+  ${ENABLE_PMEM})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
@@ -333,6 +339,15 @@ if (ENABLE_HDF5)
   endif()
 else()
   message(NOTE "HDF5                      disabled")
+endif()
+if (ENABLE_PMEM)
+  if (PMEM_FOUND)
+    message(INFO "PMEM                      enabled")
+  else()
+    message(NOTE "PMEM                      not found")
+  endif()
+else()
+  message(NOTE "PMEM                      disabled")
 endif()
 if (ENABLE_LIBNUMA)
   if (NUMA_FOUND)

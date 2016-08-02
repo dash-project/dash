@@ -7,6 +7,7 @@
 #include <dash/Team.h>
 
 #include <dash/internal/Logging.h>
+#include <dash/util/String.h>
 
 #include <vector>
 #include <algorithm>
@@ -252,9 +253,7 @@ public:
    */
   local_pointer allocate_local(size_type num_local_elem) {
     //TODO: call pmem_map_file...
-    DASH_THROW(
-      dash::exception::NotImplemented,
-      "PersistentMemoryAllocator.allocate_local is not implemented!");
+    
   }
 
   /**

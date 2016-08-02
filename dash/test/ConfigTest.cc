@@ -8,7 +8,7 @@
 TEST_F(ConfigTest, BasicSetGet) {
   DASH_TEST_LOCAL_ONLY();
 
-  using dash::util::Config;
+  using namespace dash::util;
 
   EXPECT_FALSE(Config::is_set("CONFIG_TEST_INT"));
   Config::set("CONFIG_TEST_INT", 123);

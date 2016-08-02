@@ -126,6 +126,11 @@ extern "C" {
 */
 #include "dart_synchronization.h"
 
+/*
+   --- DART persistent memory management ---
+ */
+#include "dart_pmem.h"
+
 
 #ifdef __cplusplus
 } // extern "C"
