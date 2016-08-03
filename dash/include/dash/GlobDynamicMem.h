@@ -299,7 +299,7 @@ public:
   }
 
   explicit GlobDynamicMem(
-    /// Initial number of local elements to allocate in global memory space
+    //the allocator
     allocator_type const & alloc)
     : _allocator(alloc),
       _team(&_allocator.team()),
@@ -1202,8 +1202,8 @@ private:
                        attach_buckets_sizes);
 
     // Use same allocator type as used for values in global memory:
-    typedef typename allocator_type::template rebind<size_type>::other
-    size_type_allocator_t;
+    // We always have to use the DynamicAllocator for this temporary stuff
+    using size_type_allocator_t = dash::allocator::DynamicAllocator<size_type> ;
     size_type_allocator_t attach_buckets_sizes_allocator(_allocator.team());
     auto unattached_buckets_sizes_gptr = attach_buckets_sizes_allocator.attach(
                                            &attach_buckets_sizes[0],

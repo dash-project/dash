@@ -7,9 +7,9 @@
 #include <functional> //for std::function
 #include <algorithm>  //for std::generate_n
 
-/*
 namespace dash {
 namespace util {
+  /*
 
 std::string random_string( size_t length, std::function<char(void)> rand_char )
 {
@@ -42,9 +42,9 @@ std::string random_string_uniform(size_t length)
   };
   return random_string(length, randchar);
 }
+*/
 
 } //util
 } //dash
-*/
 #endif //DASH__UTIL__STRING_H_
 

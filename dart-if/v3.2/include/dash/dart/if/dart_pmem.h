@@ -45,19 +45,19 @@ dart_ret_t dart__pmem__finalize(void);
 
 dart_pmem_pool_t * dart__pmem__open(
   dart_team_t         team,
-  const char        * name,
+  const char     *    name,
   int                 flags,
   mode_t              mode);
 
 dart_ret_t dart__pmem__close(
-  dart_pmem_pool_t * pool);
+  dart_pmem_pool_t ** pool);
 
 /* ======================================================================== *
  * Persistent Memory Allocation                                             *
  * ======================================================================== */
 
 dart_ret_t  dart__pmem__alloc(
-  dart_pmem_pool_t    pool,
+  dart_pmem_pool_t  * pool,
   size_t              nbytes,
   void    **    addr);
 

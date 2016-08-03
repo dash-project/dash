@@ -584,8 +584,7 @@ TEST_F(GlobDynamicMemTest, PersistentMemAlloc)
 
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
-  persistent_allocator_type alloc(dash::Team::All(), "pmem_pool");
-  dash::GlobDynamicMem<value_t, persistent_allocator_type> gdmem(alloc);
+  dash::GlobDynamicMem<value_t, persistent_allocator_type> gdmem(initial_local_capacity);
 
   LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
               initial_global_capacity, initial_local_capacity);

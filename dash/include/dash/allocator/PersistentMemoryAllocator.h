@@ -1,6 +1,8 @@
 #ifndef DASH__ALLOCATOR__PERSISTENT_MEMORY_ALLOCATOR_H_INCLUDED
 #define DASH__ALLOCATOR__PERSISTENT_MEMORY_ALLOCATOR_H__INCLUDED
 
+#include <sys/stat.h>
+
 #include <dash/dart/if/dart.h>
 
 #include <dash/Types.h>
@@ -41,7 +43,7 @@ class PersistentMemoryAllocator {
     const PersistentMemoryAllocator<U> & rhs);
 
 private:
-  typedef PersistentMemoryAllocator<ElementType> self_t;
+  using self_t = PersistentMemoryAllocator<ElementType>;
 
   /// Type definitions required for std::allocator concept:
 public:
@@ -71,21 +73,32 @@ public:
    * Constructor.
    * Creates a new instance of \c dash::PersistentMemoryAllocator for a given team.
    */
-  PersistentMemoryAllocator(
-    Team & team = dash::Team::All(),
-    std::string const & area_name = "") noexcept
-:
+  explicit PersistentMemoryAllocator(
+  Team & team = dash::Team::All()) noexcept :
   _team(&team),
-  _team_id(team.dart_id()),
+        _team_id(team.dart_id()),
   _nunits(team.size()) {
+    DASH_LOG_TRACE("PersistentMemoryAllocator.PersistentMemoryAllocator(nunits)",
+                   team.size());
+    _pmem_pool = dart__pmem__open(_team_id, "pool.pmem", DART_PMEM_FILE_CREATE,
+                                  S_IRWXU);
+    DASH_LOG_TRACE("PersistentMemoryAllocator.PersistentMemoryAllocator >");
+  }
+
+  PersistentMemoryAllocator(
+    Team & team,
+  std::string const & objectId) noexcept:
+  _team(&team),
+  _team_id(team.dart_id())
+  //TODO: save objectid
+  {
   }
 
   /**
    * Move-constructor.
    * Takes ownership of the moved instance's allocation.
    */
-  PersistentMemoryAllocator(self_t && other) noexcept
-:
+PersistentMemoryAllocator(self_t && other) noexcept:
   _allocated(other._allocated) {
     other._allocated.clear();
   }
@@ -101,8 +114,7 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  PersistentMemoryAllocator(const self_t & other) noexcept
-:
+PersistentMemoryAllocator(const self_t & other) noexcept :
   _team(other._team),
         _team_id(other._team_id),
   _nunits(other._nunits) {
@@ -113,8 +125,8 @@ public:
    * Does not take ownership of the copied instance's allocation.
    */
   template<class U>
-  PersistentMemoryAllocator(const PersistentMemoryAllocator<U> & other) noexcept
-:
+  PersistentMemoryAllocator(
+  const PersistentMemoryAllocator<U> & other) noexcept:
   _team(other._team),
         _team_id(other._team_id),
   _nunits(other._nunits) {
@@ -125,7 +137,11 @@ public:
    * Frees all global memory regions allocated by this allocator instance.
    */
   ~PersistentMemoryAllocator() noexcept {
-    clear();
+    //clear();
+    //closing the pool and free the pool handle
+    DASH_LOG_TRACE("PersistentMemoryAllocator.~PersistentMemoryAllocator(nunits)",
+                   _team->size());
+    dart__pmem__close(&_pmem_pool);
   }
 
   /**
@@ -253,11 +269,13 @@ public:
    * \see DashDynamicAllocatorConcept
    */
   local_pointer allocate_local(size_type num_local_elem) {
-
-    DASH_THROW(
-      dash::exception::NotImplemented,
-      "PersistentMemoryAllocator.allocate_local is not implemented!");
-    
+    local_pointer mem;
+    DASH_ASSERT_RETURNS(
+      dart__pmem__alloc(_pmem_pool,
+                        sizeof(value_type) * num_local_elem,
+                        (void **) &mem),
+      DART_OK);
+    return mem;
   }
 
   /**
@@ -370,6 +388,7 @@ private:
   dart_team_t                                     _team_id   = DART_TEAM_NULL;
   size_t                                          _nunits    = 0;
   std::vector< std::pair<value_type *, pointer> > _allocated;
+  dart_pmem_pool_t                *               _pmem_pool = nullptr;
 
 }; // class PersistentMemoryAllocator
 
