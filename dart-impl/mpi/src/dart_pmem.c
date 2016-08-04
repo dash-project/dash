@@ -16,6 +16,7 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 
+//define this function as extern since some compilers complain about implicit declaration
 extern char * strdup(const char * s);
 
 void * alloc_mem(size_t size)
@@ -30,15 +31,15 @@ void free_mem(void * ptr)
   DART_ASSERT_RETURNS(MPI_Free_mem(ptr), MPI_SUCCESS);
 }
 
-dart_ret_t dart_pmem_init(void)
+dart_ret_t dart__pmem__init(void)
 {
   pmemobj_set_funcs(alloc_mem, free_mem, NULL, NULL);
   return DART_OK;
 }
 
 int _dart_pmem_list_new(PMEMobjpool * pop,
-                               TOID(struct dart_pmem_bucket_list) * list,
-                               struct dart_pmem_slist_constr_args * args)
+                        TOID(struct dart_pmem_bucket_list) * list,
+                        struct dart_pmem_slist_constr_args * args)
 {
   int ret = DART_OK;
   TX_BEGIN(pop) {
@@ -78,15 +79,15 @@ static char * _tempname(const char * layout, int myid)
   return prefix;
 }
 
-void * _dart_pmem_bucket_alloc(PMEMobjpool * pop,
-                               TOID(struct dart_pmem_bucket_list) * list,
-                               struct dart_pmem_bucket_alloc_args args)
+dart_pmem_oid_t _dart_pmem_bucket_alloc(PMEMobjpool * pop,
+                                        TOID(struct dart_pmem_bucket_list) * list,
+                                        struct dart_pmem_bucket_alloc_args args)
 {
   if (TOID_IS_NULL(*list)) {
-    return NULL;
+    return DART_PMEM_OID_NULL;
   }
 
-  void * ret = NULL;
+  dart_pmem_oid_t ret = DART_PMEM_OID_NULL;
 
   struct dart_pmem_list_head * head = &D_RW(*list)->head;
 
@@ -99,19 +100,19 @@ void * _dart_pmem_bucket_alloc(PMEMobjpool * pop,
     D_RW(node)->element_size = args.element_size;
     D_RW(node)->length = args.nelements;
     D_RW(node)->data = pmemobj_tx_alloc(args.element_size * args.nelements,
-                                         TYPE_NUM_BYTE);
+                                        TYPE_NUM_BYTE);
     if (OID_IS_NULL(D_RO(node)->data)) {
       pmemobj_tx_abort(1);
     }
     DART_PMEM_SLIST_INSERT_HEAD(head, node, next);
   }
   TX_ONCOMMIT {
-    ret = pmemobj_direct(D_RW(node)->data);
+    ret.oid = D_RW(node)->data;
     DART_LOG_DEBUG("%s: successfully allocated %d bytes", __func__, args.nelements * args.element_size);
   }
   TX_ONABORT {
-    DART_LOG_ERROR("%s: transaction aborted: %s", __func__, pmemobj_errormsg());
-    ret = NULL;
+    DART_LOG_ERROR("%s: could not allocation persistent memory: %s", __func__, pmemobj_errormsg());
+    //ret = NULL;
   } TX_END
 
   return ret;
@@ -191,16 +192,15 @@ dart_pmem_pool_t * dart__pmem__open(
   return poolp;
 }
 
-dart_ret_t  dart__pmem__alloc(
-  dart_pmem_pool_t  * pool,
-  size_t              nbytes,
-  void    **    addr)
+dart_pmem_oid_t dart__pmem__alloc(
+  dart_pmem_pool_t  const * pool,
+  size_t              nbytes)
 {
   DART_ASSERT(pool);
 
   if (NULL == pool->pop) {
     DART_LOG_ERROR("invalid pmem pool");
-    return DART_ERR_INVAL;
+    return DART_PMEM_OID_NULL;
   }
 
   size_t root_size = pmemobj_root_size(pool->pop);
@@ -208,7 +208,7 @@ dart_ret_t  dart__pmem__alloc(
   if (root_size < sizeof(struct dart_pmem_bucket_list)) {
     //TODO: apply better consistency check
     DART_LOG_ERROR("improperly initialized pool");
-    return DART_ERR_INVAL;
+    return DART_PMEM_OID_NULL;
   }
 
   TOID(struct dart_pmem_bucket_list) list = POBJ_ROOT(pool->pop,
@@ -220,13 +220,31 @@ dart_ret_t  dart__pmem__alloc(
   };
 
 
-  *addr = _dart_pmem_bucket_alloc(pool->pop, &list, args);
+  dart_pmem_oid_t ret = _dart_pmem_bucket_alloc(pool->pop, &list, args);
 
-  if (NULL == *addr) {
-    DART_LOG_ERROR("could not allocate persistent memory");
-    return DART_ERR_OTHER;
+  return ret;
+}
+
+dart_ret_t dart__pmem__getaddr(
+  dart_pmem_oid_t oid,
+  void ** addr)
+{
+  *addr = pmemobj_direct(oid.oid);
+  return DART_OK;
+}
+
+dart_ret_t dart__pmem__persist(
+  dart_pmem_pool_t * pool,
+  void * addr,
+  size_t nbytes)
+{
+  if (NULL == pool->pop) {
+    DART_LOG_ERROR("invalid pmem pool");
+    return DART_ERR_INVAL;
   }
 
+  pmemobj_persist(pool->pop, addr, nbytes);
+  DART_LOG_DEBUG(__func__, " >");
   return DART_OK;
 }
 

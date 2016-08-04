@@ -2,6 +2,7 @@
 #define DASH__ALLOCATOR__PERSISTENT_MEMORY_ALLOCATOR_H__INCLUDED
 
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <dash/dart/if/dart.h>
 
@@ -42,8 +43,6 @@ class PersistentMemoryAllocator {
     const PersistentMemoryAllocator<T> & lhs,
     const PersistentMemoryAllocator<U> & rhs);
 
-private:
-  using self_t = PersistentMemoryAllocator<ElementType>;
 
   /// Type definitions required for std::allocator concept:
 public:
@@ -67,6 +66,18 @@ public:
   struct rebind {
     typedef PersistentMemoryAllocator<U> other;
   };
+
+private:
+  using self_t = PersistentMemoryAllocator<ElementType>;
+
+  struct pmem_bucket_info {
+    dart_pmem_oid_t pmem_addr;
+    size_t          nbytes;
+    dart_gptr_t gptr = DART_GPTR_NULL;
+  };
+
+  using pmem_bucket_info_t = struct pmem_bucket_info;
+  using pmem_bucket_item_t = std::pair<local_pointer, pmem_bucket_info_t>;
 
 public:
   /**
@@ -137,11 +148,19 @@ PersistentMemoryAllocator(const self_t & other) noexcept :
    * Frees all global memory regions allocated by this allocator instance.
    */
   ~PersistentMemoryAllocator() noexcept {
-    //clear();
+    clear();
+
+    if (dash::myid() == 0) {
+      std::cout << "myid is " << getpid();
+      int DebugWait = 0;
+      while(DebugWait);
+
+
+    }
     //closing the pool and free the pool handle
+    DASH_ASSERT_RETURNS(dart__pmem__close(&_pmem_pool), DART_OK);
     DASH_LOG_TRACE("PersistentMemoryAllocator.~PersistentMemoryAllocator(nunits)",
-                   _team->size());
-    dart__pmem__close(&_pmem_pool);
+    _team->size());
   }
 
   /**
@@ -219,11 +238,24 @@ PersistentMemoryAllocator(const self_t & other) noexcept :
    */
   pointer attach(local_pointer lptr, size_type num_local_elem) {
     size_type num_local_bytes = sizeof(ElementType) * num_local_elem;
-    pointer   gptr;
+
+    auto bucket_it =
+      std::find_if(_allocated.begin(), _allocated.end(),
+    [lptr] (pmem_bucket_item_t const & i) {
+      return i.first == lptr;
+    });
+
+    if (bucket_it == _allocated.end()) {
+      DASH_LOG_ERROR("local_pointer ", lptr,
+                     " has never been allocated in persistent memory");
+      return DART_GPTR_NULL;
+    }
+
     if (dart_team_memregister(
-          _team_id, num_local_bytes, lptr, &gptr) == DART_OK) {
-      _allocated.push_back(std::make_pair(lptr, gptr));
-      return gptr;
+          _team_id, num_local_bytes, lptr, &bucket_it->second.gptr) == DART_OK) {
+      DASH_LOG_TRACE("PersistentMemoryAllocator.attach ", num_local_bytes,
+                     " bytes >");
+      return bucket_it->second.gptr;
     }
     return DART_GPTR_NULL;
   }
@@ -246,18 +278,11 @@ PersistentMemoryAllocator(const self_t & other) noexcept :
                      "DASH not initialized, abort");
       return;
     }
-    DASH_ASSERT_RETURNS(
-      dart_team_memderegister(_team_id, gptr),
-      DART_OK);
-    _allocated.erase(
-      std::remove_if(
-        _allocated.begin(),
-        _allocated.end(),
-    [&](std::pair<value_type *, pointer> e) {
-      return e.second == gptr;
-    }),
-    _allocated.end());
+
     DASH_LOG_DEBUG("PersistentMemoryAllocator.detach >");
+
+    detach_bucket_by_gptr(gptr, false);
+
   }
 
   /**
@@ -269,13 +294,28 @@ PersistentMemoryAllocator(const self_t & other) noexcept :
    * \see DashDynamicAllocatorConcept
    */
   local_pointer allocate_local(size_type num_local_elem) {
-    local_pointer mem;
-    DASH_ASSERT_RETURNS(
-      dart__pmem__alloc(_pmem_pool,
-                        sizeof(value_type) * num_local_elem,
-                        (void **) &mem),
-      DART_OK);
-    return mem;
+    local_pointer lptr = nullptr;
+    size_t nbytes =  sizeof(value_type) * num_local_elem;
+
+    //allocate persistent memory
+    dart_pmem_oid_t oid = dart__pmem__alloc(_pmem_pool, nbytes);
+
+    //convert it to a native address
+    dart_ret_t success = dart__pmem__getaddr(oid,
+                         reinterpret_cast<void **>(&lptr));
+
+    if (success == DART_OK) {
+      pmem_bucket_info_t bucket;
+      bucket.pmem_addr = oid;
+      bucket.nbytes = nbytes;
+      _allocated.push_back(std::make_pair(lptr, bucket));
+    }
+
+
+    DASH_LOG_DEBUG("PersistentMemoryAllocator.allocate_local: ",
+                   sizeof(value_type) * num_local_elem, " bytes");
+
+    return lptr;
   }
 
   /**
@@ -331,23 +371,9 @@ PersistentMemoryAllocator(const self_t & other) noexcept :
     // Free local memory:
     DASH_LOG_DEBUG("PersistentMemoryAllocator.deallocate",
                    "deallocate local memory");
-    bool do_detach = false;
-    std::for_each(
-      _allocated.begin(),
-      _allocated.end(),
-    [&](std::pair<value_type *, pointer> e) mutable {
-      if (e.second == gptr) {
-        deallocate_local(e.first);
-        e.first   = nullptr;
-        do_detach = true;
-        DASH_LOG_DEBUG("PersistentMemoryAllocator.deallocate",
-        "gptr", e.second, "marked for detach");
-      }
-    });
-    // Unregister from global memory space, removes gptr from _allocated:
-    if (do_detach) {
-      detach(gptr);
-    }
+
+    detach_bucket_by_gptr(gptr, true);
+
     DASH_LOG_DEBUG("PersistentMemoryAllocator.deallocate >");
   }
 
@@ -360,24 +386,55 @@ private:
    * Frees and detaches all global memory regions allocated by this allocator
    * instance.
    */
+
+  void detach_bucket_by_gptr(dart_gptr_t const & gptr, bool deallocate = false) {
+    auto bucket_it =
+      std::find_if(_allocated.begin(), _allocated.end(),
+        [&gptr] (pmem_bucket_item_t const & i) {
+          return i.second.gptr == gptr;
+        });
+
+    if (bucket_it == _allocated.end()) {
+      DASH_LOG_ERROR("PersistentMemoryAllocator.detach: cannot detach gptr");
+      return;
+    }
+
+    if (dart_team_memderegister(_team_id, gptr) == DART_OK) {
+      //persist all changes in persistent memory
+      DASH_ASSERT_RETURNS(
+        dart__pmem__persist(_pmem_pool, bucket_it->first, bucket_it->second.nbytes),
+        DART_OK);
+
+      if (deallocate) {
+        bucket_it->first = nullptr;
+        bucket_it->second.gptr = DART_GPTR_NULL;
+        bucket_it->second.nbytes = 0;
+
+        //TODO: free persistent memory region
+      }
+
+      _allocated.erase(bucket_it);
+    }
+  }
   void clear() noexcept {
     DASH_LOG_DEBUG("PersistentMemoryAllocator.clear()");
     for (auto e : _allocated) {
 
-      if (!DART_GPTR_EQUAL(e.second, DART_GPTR_NULL)) {
+      if (!DART_GPTR_EQUAL(e.second.gptr, DART_GPTR_NULL)) {
         DASH_LOG_DEBUG("PersistentMemoryAllocator.clear",
         "detach local persistent memory:",
-        e.second);
-        DASH_ASSERT_RETURNS(
-          dart_team_memderegister(_team_id, e.second),
-          DART_OK);
+        e.second.gptr);
+
+        detach_bucket_by_gptr(e.second.gptr, true);
       }
       // Null-buckets have lptr set to nullptr
+      /*
       if (e.first != nullptr) {
         DASH_LOG_DEBUG("PersistentMemoryAllocator.clear", "deallocate local memory:",
                        e.first);
         deallocate_local(e.first);
       }
+      */
     }
     _allocated.clear();
     DASH_LOG_DEBUG("PersistentMemoryAllocator.clear >");
@@ -387,8 +444,10 @@ private:
   dash::Team                   *                  _team      = nullptr;
   dart_team_t                                     _team_id   = DART_TEAM_NULL;
   size_t                                          _nunits    = 0;
-  std::vector< std::pair<value_type *, pointer> > _allocated;
+  std::vector<pmem_bucket_item_t> _allocated;
   dart_pmem_pool_t                *               _pmem_pool = nullptr;
+
+private:
 
 }; // class PersistentMemoryAllocator
 

@@ -584,6 +584,7 @@ TEST_F(GlobDynamicMemTest, PersistentMemAlloc)
 
   size_t initial_local_capacity  = 10;
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
+  //persistent_allocator_type alloc(dash::Team::All(), "pmem_pool");
   dash::GlobDynamicMem<value_t, persistent_allocator_type> gdmem(initial_local_capacity);
 
   LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
@@ -600,4 +601,42 @@ TEST_F(GlobDynamicMemTest, PersistentMemAlloc)
                  gdmem.size());
   // Wait for validation of initial capacity at all units:
   dash::barrier();
+
+  size_t bucket_1_size = 5;
+  size_t bucket_2_size = 7;
+
+  gdmem.grow(3);
+  gdmem.grow(bucket_1_size);
+  gdmem.grow(bucket_2_size);
+  gdmem.shrink(3);
+
+  size_t precommit_local_capacity  = initial_local_capacity +
+                                     bucket_1_size + bucket_2_size;
+  size_t precommit_global_capacity = initial_global_capacity +
+                                     bucket_1_size + bucket_2_size;
+  EXPECT_EQ_U(precommit_local_capacity,  gdmem.local_size());
+  EXPECT_EQ_U(precommit_local_capacity,  gdmem.lend(dash::myid()) -
+                                         gdmem.lbegin(dash::myid()));
+  EXPECT_EQ_U(precommit_global_capacity, gdmem.size());
+
+  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "pre-commit local:",
+                 gdmem.local_size());
+  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "pre-commit global:",
+                 gdmem.size());
+  // Wait for validation of changes of local capacity at all units:
+  dash::barrier();
+
+  gdmem.commit();
+
+  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "post-commit local:",
+                 gdmem.local_size());
+  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "post-commit global:",
+                 gdmem.size());
+  size_t postcommit_local_capacity  = precommit_local_capacity;
+  size_t postcommit_global_capacity = dash::size() *
+                                      postcommit_local_capacity;
+  EXPECT_EQ_U(postcommit_local_capacity,  gdmem.local_size());
+  EXPECT_EQ_U(postcommit_local_capacity,  gdmem.lend(dash::myid()) -
+                                          gdmem.lbegin(dash::myid()));
+  EXPECT_EQ_U(postcommit_global_capacity, gdmem.size());
 }

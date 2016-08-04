@@ -27,7 +27,10 @@ extern "C" {
  */
 
 
+struct dart_pmem_pool;
 typedef struct dart_pmem_pool dart_pmem_pool_t;
+struct dart_pmem_oid;
+typedef struct dart_pmem_oid  dart_pmem_oid_t;
 
 #define DART_PMEM_FILE_CREATE (1 << 0)
 #define DART_PMEM_FILE_OPEN   (1 << 1)
@@ -45,7 +48,7 @@ dart_ret_t dart__pmem__finalize(void);
 
 dart_pmem_pool_t * dart__pmem__open(
   dart_team_t         team,
-  const char     *    name,
+  char const     *    name,
   int                 flags,
   mode_t              mode);
 
@@ -56,13 +59,21 @@ dart_ret_t dart__pmem__close(
  * Persistent Memory Allocation                                             *
  * ======================================================================== */
 
-dart_ret_t  dart__pmem__alloc(
-  dart_pmem_pool_t  * pool,
-  size_t              nbytes,
-  void    **    addr);
+dart_pmem_oid_t dart__pmem__alloc(
+  dart_pmem_pool_t  const * pool,
+  size_t              nbytes);
 
 dart_ret_t  dart__pmem__free(
-  dart_gptr_t    *    gptr);
+  dart_pmem_oid_t    *    poid);
+
+dart_ret_t dart__pmem__getaddr(
+  dart_pmem_oid_t oid,
+  void ** addr);
+
+dart_ret_t dart__pmem__persist(
+  dart_pmem_pool_t * pool,
+  void * addr,
+  size_t nbytes);
 
 
 
@@ -86,7 +97,11 @@ struct dart_pmem_pool {
   PMEMobjpool  *  pop;
 };
 
-static struct dart_pmem_pool DART_PMEM_POOL_NULL = {0, DART_TEAM_NULL, NULL, NULL, NULL};
+struct dart_pmem_oid {
+  PMEMoid     oid;
+};
+
+static struct dart_pmem_oid const DART_PMEM_OID_NULL = {{0, 0}};
 
 struct dart_pmem_slist_constr_args {
   char const * name;
