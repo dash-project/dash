@@ -559,7 +559,7 @@ public:
   {
     ::std::array<IndexType, NumDimensions> pos = coords(index);
     for(auto i = 0; i < NumDimensions; ++i) {
-      pos[i] += viewspec.dim(i).offset;
+      pos[i] += viewspec.offset(i);
     }
     return pos;
   }
