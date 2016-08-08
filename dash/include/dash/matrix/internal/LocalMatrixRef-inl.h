@@ -614,6 +614,13 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
   return value;
 }
 
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+inline const PatternT&
+LocalMatrixRef<T, NumDim, CUR, PatternT>::pattern() const
+{
+	return _refview->_mat->_pattern;
+}
+
 } // namespace dash
 
 #endif  // DASH__MATRIX__INTERNAL__LOCAL_MATRIX_REF_INL_H_INCLUDED
