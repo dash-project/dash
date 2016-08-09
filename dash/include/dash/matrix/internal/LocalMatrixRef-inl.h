@@ -614,6 +614,17 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
   return value;
 }
 
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+LocalMatrixRef<T, NumDim, 0, PatternT>
+::operator+(
+  const T & value)
+{
+	auto res  = self_t(*this);
+	res      += value;
+	return res;
+}
+
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 inline const PatternT&
 LocalMatrixRef<T, NumDim, CUR, PatternT>::pattern() const
