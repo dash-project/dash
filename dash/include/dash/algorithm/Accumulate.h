@@ -39,7 +39,8 @@ ValueType accumulate(
         
         auto myid           = dash::myid();
         
-        auto index_range    = dash::local_range(first, last);
+
+        auto index_range    = dash::local_range(in_first, in_last);
         auto l_first        = index_range.begin;
         auto l_last         = index_range.end;
         
@@ -88,7 +89,8 @@ ValueType accumulate(
     
     auto myid           = dash::myid();
     
-    auto index_range    = dash::local_range(first, last);
+    auto index_range    = dash::local_range(in_first, in_last);
+
     auto l_first        = index_range.begin;
     auto l_last         = index_range.end;
     
