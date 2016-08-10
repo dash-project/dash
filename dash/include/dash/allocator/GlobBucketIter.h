@@ -629,7 +629,6 @@ private:
           // offset refers to current unit:
           // iterate the unit's bucket sizes:
           for (; _idx_bucket_idx >= 0; --_idx_bucket_idx) {
-            auto bucket_size = unit_bkt_sizes[_idx_bucket_idx];
             if (offset <= _idx_bucket_phase) {
               // offset refers to current bucket:
               _idx_local_idx    -= offset;

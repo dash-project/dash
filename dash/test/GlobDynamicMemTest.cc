@@ -20,6 +20,24 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
   dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
 
+  auto & team_all = dash::Team::All();
+  auto & nasty_team = team_all.split(2);
+
+
+  if (!dash::myid()) {
+    int DebugWait = 1;
+    LOG_MESSAGE("my pid is: %d",
+              getpid());
+    while (DebugWait);
+  }
+
+  dash::GlobDynamicMem<value_t> gdmem_nasty(5, nasty_team);
+  gdmem_nasty.grow(2);
+  gdmem_nasty.grow(3);
+  dash::barrier();
+  gdmem_nasty.commit();
+
+
   LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
               initial_global_capacity, initial_local_capacity);
 
@@ -173,15 +191,10 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
                    "testing basic iterator arithmetic");
 
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_first");
-    auto git_first  = gdmem.begin();
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_second");
-    auto git_second = git_first + 1;
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_remote");
-    auto git_remote = git_first + gdmem.local_size() + 1;
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_last");
-    auto git_last   = git_first + gdmem.size() - 1;
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_end");
-    auto git_end    = git_first + gdmem.size();
   }
   dash::barrier();
   DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
@@ -320,7 +333,6 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   std::string unit_1_host = dash::util::Locality::Hostname(1);
 
   size_t expected_visible_size = initial_global_capacity;
-  size_t expected_global_size  = initial_global_capacity;
   if (dash::myid() == 0) {
     expected_visible_size += unit_0_lsize_diff;
     if (my_host == unit_1_host) {
