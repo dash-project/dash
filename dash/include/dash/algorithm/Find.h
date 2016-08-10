@@ -27,10 +27,17 @@ GlobIter<ElementType, PatternType> find(
   /// Value which will be assigned to the elements in range [first, last)
   const ElementType                  & value)
 {
-  using p_index_t = typename PatternType::index_type;
-  
-  if(first >= last){
-    return last;
+  typedef dash::default_index_t index_t;
+
+  /// Global iterators to local range:
+  auto index_range   = dash::local_range(first, last);
+  auto l_first       = index_range.begin;
+  auto l_last        = index_range.end;
+
+  auto l_result      = std::find(l_first, l_last, value);
+  auto l_offset      = std::distance(l_first, l_result);
+  if (l_result == l_last) {
+    l_offset = -1;
   }
 
   p_index_t g_index;
