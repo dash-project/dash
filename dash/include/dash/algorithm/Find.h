@@ -53,8 +53,7 @@ GlobIter<ElementType, PatternType> find(
       auto g_offset = first.pattern()
                            .global_index(
                               u,
-                              static_cast<index_t>(
-                                l_results[u]));
+                              { static_cast<index_t>(l_results[u]) });
       return first + g_offset - first.pos();
     }
   }
@@ -104,8 +103,7 @@ GlobIter<ElementType, PatternType> find_if(
       auto g_offset = first.pattern()
                            .global_index(
                               u,
-                              static_cast<index_t>(
-                                l_results[u]));
+                              { static_cast<index_t>(l_results[u]) });
       return first + g_offset - first.pos();
     }
   }
