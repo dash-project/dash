@@ -251,11 +251,13 @@ dart_ret_t dart__pmem__persist(
 dart_ret_t dart__pmem__close(
   dart_pmem_pool_t ** pool)
 {
+  DART_LOG_DEBUG("dart__pmem__close");
   pmemobj_close((*pool)->pop);
   free((char *) (*pool)->path);
   free((char *) (*pool)->layout);
   free(*pool);
   *pool = NULL;
+  DART_LOG_DEBUG("dart__pmem__close >");
 
   return DART_OK;
 }

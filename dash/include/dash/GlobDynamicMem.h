@@ -300,8 +300,8 @@ public:
 
   explicit GlobDynamicMem(
     //the allocator
-    allocator_type const & alloc)
-    : _allocator(alloc),
+    allocator_type && alloc)
+    : _allocator(std::move(alloc)),
       _team(&_allocator.team()),
       _teamid(_team->dart_id()),
       _nunits(_team->size()),
