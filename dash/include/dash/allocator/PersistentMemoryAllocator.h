@@ -110,12 +110,6 @@ public:
     _pmem_pool = dart__pmem__open(_team_id, _poolId.c_str(), DART_PMEM_FILE_CREATE,
                                   S_IRWXU);
     DASH_LOG_TRACE("PersistentMemoryAllocator.PersistentMemoryAllocator(team, poolId) >");
-
-    if (dash::myid() == 0) {
-      int DebugWait = 0;
-      std::cout << "processId: " << getpid();
-      while (DebugWait);
-    }
   }
 
   /**
@@ -123,19 +117,16 @@ public:
    * Takes ownership of the moved instance's allocation.
    */
   PersistentMemoryAllocator(self_t && other) noexcept:
-    _team(nullptr),
-    _poolId(""),
-    _pmem_pool(nullptr)
+    _poolId("")
   {
-
-    DASH_LOG_TRACE("PersistentMemoryAllocator.PersistentMemoryAllocator(&&)");
-
     std::swap(_team, other._team);
+    std::swap(_team_id, other._team_id);
+    std::swap(_nunits, other._nunits);
     std::swap(_poolId, other._poolId);
     std::swap(_pmem_pool, other._pmem_pool);
     std::swap(_allocated, other._allocated);
-    other._team_id = DART_TEAM_NULL;
-    other._nunits = 0;
+
+    DASH_LOG_TRACE("PersistentMemoryAllocator.PersistentMemoryAllocator(&&) >");
   }
 
   /**
@@ -155,7 +146,15 @@ public:
     _nunits(other._nunits),
     _poolId(other._poolId)
   {
-    DASH_LOG_TRACE("PersistentMemoryAllocator.PersistentMemoryAllocator(selt_t const &)");
+
+    /*
+    _pmem_pool = dart__pmem__open(_team_id, _poolId.c_str(), DART_PMEM_FILE_CREATE,
+                                  S_IRWXU);
+    */
+
+    DASH_THROW(
+      dash::exception::NotImplemented,
+      "PersistentMemoryAllocator.PersistentMemoryAllocator(self_t const &) is not implemented!");
   }
 
   /**
