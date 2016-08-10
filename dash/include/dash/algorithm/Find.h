@@ -1,6 +1,7 @@
 #ifndef DASH__ALGORITHM__FIND_H__
 #define DASH__ALGORITHM__FIND_H__
 
+#include <dash/Array.h>
 #include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
@@ -9,18 +10,22 @@
 namespace dash {
 
 /**
+ * Returns an iterator to the first element in the range \c [first,last) that
+ * compares equal to \c val.
+ * If no such element is found, the function returns \c last.
+ *
  * \ingroup     DashAlgorithms
  */
 template<
-    typename ElementType,
-    class PatternType>
+  typename ElementType,
+  class    PatternType>
 GlobIter<ElementType, PatternType> find(
-    /// Iterator to the initial position in the sequence
-    GlobIter<ElementType, PatternType>   first,
-    /// Iterator to the final position in the sequence
-    GlobIter<ElementType, PatternType>   last,
-    /// Value which will be assigned to the elements in range [first, last)
-    const ElementType                  & value)
+  /// Iterator to the initial position in the sequence
+  GlobIter<ElementType, PatternType>   first,
+  /// Iterator to the final position in the sequence
+  GlobIter<ElementType, PatternType>   last,
+  /// Value which will be assigned to the elements in range [first, last)
+  const ElementType                  & value)
 {
   typedef dash::default_index_t index_t;
 
@@ -36,7 +41,56 @@ GlobIter<ElementType, PatternType> find(
     l_offset = -1;
   }
 
-  dash::Array<index_t> l_results(dash::size());
+  dash::Array<dart_unit_t> l_results(dash::size());
+
+  l_results.local[0] = l_offset;
+
+  dash::barrier();
+
+  // All local offsets stored in l_results
+  for (auto u = 0; u < dash::size(); u++) {
+    if (static_cast<index_t>(l_results[u]) >= 0) {
+      auto g_offset = first.pattern()
+                           .global_index(
+                              u,
+                              { static_cast<index_t>(l_results[u]) });
+      return first + g_offset - first.pos();
+    }
+  }
+
+  return last;
+}
+
+/**
+ * \ingroup     DashAlgorithms
+ */
+template<
+  typename ElementType,
+  class    PatternType,
+	class    UnaryPredicate >
+GlobIter<ElementType, PatternType> find_if(
+  /// Iterator to the initial position in the sequence
+  GlobIter<ElementType, PatternType>   first,
+  /// Iterator to the final position in the sequence
+  GlobIter<ElementType, PatternType>   last,
+  /// Predicate which will be applied to the elements in range [first, last)
+	UnaryPredicate                       predicate)
+{
+  typedef dash::default_index_t index_t;
+
+  auto myid          = dash::myid();
+  /// Global iterators to local range:
+  auto index_range   = dash::local_range(first, last);
+  auto l_first       = index_range.begin;
+  auto l_last        = index_range.end;
+
+  auto l_result      = std::find_if(l_first, l_last, predicate);
+  auto l_offset      = std::distance(l_first, l_result);
+  if (l_result == l_last) {
+    l_offset = -1;
+  }
+
+  dash::Array<dart_unit_t> l_results(dash::size());
 
   l_results.local[0] = l_offset;
 
@@ -45,17 +99,34 @@ GlobIter<ElementType, PatternType> find(
   // All local offsets stored in l_results
 
   for (auto u = 0; u < dash::size(); u++) {
-    if (static_cast<index_x>(l_results[u]) >= 0) {
+    if (static_cast<index_t>(l_results[u]) >= 0) {
       auto g_offset = first.pattern()
                            .global_index(
                               u,
-                              static_cast<index_t>(
-                                l_results[u]));
+                              { static_cast<index_t>(l_results[u]) });
       return first + g_offset - first.pos();
     }
   }
 
   return last;
+}
+
+/**
+ * \ingroup     DashAlgorithms
+ */
+template<
+  typename ElementType,
+  class    PatternType,
+	class    UnaryPredicate>
+GlobIter<ElementType, PatternType> find_if_not(
+  /// Iterator to the initial position in the sequence
+  GlobIter<ElementType, PatternType>   first,
+  /// Iterator to the final position in the sequence
+  GlobIter<ElementType, PatternType>   last,
+  /// Predicate which will be applied to the elements in range [first, last)
+	UnaryPredicate                       predicate)
+{
+  return find_if(first, last, std::not1(predicate));
 }
 
 } // namespace dash
