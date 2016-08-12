@@ -344,8 +344,7 @@ T & LocalMatrixRef<T, NumDim, CUR, PatternT>
   }
   return local_at(
            _refview->_mat->_pattern.local_at(
-             _refview->_coord,
-             _refview->_viewspec));
+             _refview->_coord));
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
