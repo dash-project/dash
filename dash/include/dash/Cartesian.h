@@ -557,10 +557,33 @@ public:
     IndexType          index,
     const ViewSpec_t & viewspec) const
   {
-    ::std::array<IndexType, NumDimensions> pos = coords(index);
-    for(auto i = 0; i < NumDimensions; ++i) {
-      pos[i] += viewspec.offset(i);
+    std::array<IndexType, NumDimensions> pos;
+    extents_type offset;
+    if (CoordArrangement == ROW_MAJOR)
+    {
+      offset[NumDimensions-1] = 1;
+      for(auto i = NumDimensions-2; i >= 0; --i)
+        offset[i] = offset[i+1] * viewspec.extent(i+1);
+
+      for(auto i = 0; i < NumDimensions; ++i)
+      {
+        pos[i] = index / offset[i] + viewspec.offset(i);
+        index  = index % offset[i];
+      }
     }
+    else if (CoordArrangement == COL_MAJOR)
+    {
+      offset[0] = 1;
+      for(auto i = 1; i < NumDimensions; ++i)
+        offset[i] = offset[i-1] * viewspec.extent(i-1);
+
+      for(auto i = NumDimensions-1; i >= 0; --i)
+      {
+        pos[i] = index / offset[i] + viewspec.offset(i);
+        index  = index % offset[i];
+      }
+    }
+
     return pos;
   }
 
