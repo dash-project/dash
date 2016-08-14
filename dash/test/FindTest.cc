@@ -328,31 +328,3 @@ TEST_F(FindTest, LessElementsThanUnits){
 	              find_me, found_v);
 	EXPECT_EQ(find_me, found_v);    
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
