@@ -23,7 +23,7 @@
 #include <limits.h>
 
 /* ======================================================================= *
- * Private Funtions                                                        *
+ * Private Functions                                                        *
  * ======================================================================= */
 
 dart_ret_t dart_group_init(
@@ -130,25 +130,28 @@ dart_ret_t dart_group_intersect(
   return DART_OK;
 }
 
+/**
+ * TODO: [JS] This function is likely to be incorrect since dart_group_copy
+ *            does not do a deep-copy and hence the call to dart_group_union
+ *            has the same MPI_Group as input and output.
+ */
 dart_ret_t dart_group_addmember(
   dart_group_t *g,
   dart_unit_t unitid)
 {
   int array[1];
-  dart_group_t* group_copy, *group;
+  dart_group_t group_copy, group;
   MPI_Group     newgroup, group_all;
   /* Group_all comprises all the running units. */
   MPI_Comm_group(MPI_COMM_WORLD, &group_all);
-  group_copy = (dart_group_t*)malloc(sizeof(dart_group_t));
-  group      = (dart_group_t*)malloc(sizeof(dart_group_t));
-  dart_group_copy(g, group_copy);
+//  group_copy = (dart_group_t *)malloc(sizeof(dart_group_t));
+//  group      = (dart_group_t *)malloc(sizeof(dart_group_t));
+  dart_group_copy(g, &group_copy);
   array[0]   = unitid;
   MPI_Group_incl(group_all, 1, array, &newgroup);
   group->mpi_group = newgroup;
   /* Make the new group being an ordered group. */
-  dart_group_union (group_copy, group, g);
-  free (group_copy);
-  free (group);
+  dart_group_union(&group_copy, &group, g);
   return DART_OK;
 }
 
