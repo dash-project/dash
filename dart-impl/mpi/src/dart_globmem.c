@@ -18,6 +18,7 @@
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_team_private.h>
+#include <dash/dart/mpi/dart_segment.h>
 
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS
@@ -92,19 +93,17 @@ dart_ret_t dart_gptr_setunit (dart_gptr_t* gptr, dart_unit_t unit_id)
 
 dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
 {
-	dart_unit_t unitid;
-	dart_myid (&unitid);
-	gptr->unitid = unitid;
-	gptr->segid = 0; /* For local allocation, the segid is marked as '0'. */
-	gptr->flags = 0; /* For local allocation, the flag is marked as '0'. */
-	gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
-	if (gptr->addr_or_offs.offset == (uint64_t)(-1)) {
-		DART_LOG_ERROR("dart_memalloc: Out of bounds "
-                   "(dart_buddy_alloc %zu bytes): global memory exhausted",
-                   nbytes);
-		return DART_ERR_OTHER;
-	}
-	DART_LOG_DEBUG("dart_memalloc: local alloc nbytes:%lu offset:%"PRIu64"",
+  dart_unit_t unitid;
+  dart_myid(&unitid);
+  gptr->unitid = unitid;
+  gptr->segid = 0; /* For local allocation, the segid is marked as '0'. */
+  gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
+  if (gptr->addr_or_offs.offset == (uint64_t)(-1)) {
+    DART_LOG_ERROR("dart_memalloc: Out of bounds "
+                   "(dart_buddy_alloc %zu bytes): global memory exhausted", nbytes);
+    return DART_ERR_OTHER;
+  }
+  DART_LOG_DEBUG("dart_memalloc: local alloc nbytes:%lu offset:%"PRIu64"",
                  nbytes, gptr->addr_or_offs.offset);
 	return DART_OK;
 }
@@ -276,12 +275,19 @@ dart_team_memalloc_aligned(
 	gptr->unitid = gptr_unitid;
   /* Segid equals to dart_memid (always a positive integer), identifies an
    * unique collective global memory. */
-	gptr->segid  = dart_memid;
-  /* For collective allocation, the flag is marked as 'index' */
-	gptr->flags  = index;
-	gptr->addr_or_offs.offset = 0;
+  gptr->segid = dart_memid;
+  gptr->addr_or_offs.offset = 0;
 
-	/* Updating the translation table of teamid with the created
+  dart_segment_t *segment = dart_segment_alloc(dart_memid);
+  if (segment == NULL) {
+    DART_LOG_ERROR(
+        "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
+        nbytes);
+    return DART_ERR_OTHER;
+  }
+  segment->team_idx = index;
+
+  /* Updating the translation table of teamid with the created
    * (offset, win) infos */
 	info_t item;
 	item.seg_id  = dart_memid;
@@ -315,11 +321,18 @@ dart_ret_t dart_team_memfree(
   dart_team_t teamid,
   dart_gptr_t gptr)
 {
-	dart_unit_t unitid;
-	uint16_t    index  = gptr.flags;
-  int16_t     seg_id = gptr.segid;
-	char *      sub_mem;
-	MPI_Win     win;
+  dart_unit_t unitid;
+  int16_t seg_id = gptr.segid;
+  char * sub_mem;
+  MPI_Win win;
+
+  uint16_t index;
+  dart_segment_t *segment = dart_segment_get(seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    return DART_ERR_INVAL;
+  }
+  index = segment->team_idx;
 
   dart_team_myid(teamid, &unitid);
 
@@ -355,10 +368,13 @@ dart_ret_t dart_team_memfree(
                  unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 	/* Remove the related correspondence relation record from the related
    * translation table. */
-	if (dart_adapt_transtable_remove(seg_id) == -1) {
-		return DART_ERR_INVAL;
-	}
-	return DART_OK;
+  if (dart_adapt_transtable_remove(seg_id) == -1) {
+    return DART_ERR_INVAL;
+  }
+
+  dart_segment_dealloc(seg_id);
+
+  return DART_OK;
 }
 
 dart_ret_t
@@ -401,8 +417,17 @@ dart_team_memregister_aligned(
   MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
   gptr->unitid = gptr_unitid;
   gptr->segid = dart_registermemid;
-  gptr->flags = index;
   gptr->addr_or_offs.offset = 0;
+
+  dart_segment_t *segment = dart_segment_alloc(dart_registermemid);
+  if (segment == NULL) {
+    DART_LOG_ERROR(
+        "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
+        nbytes);
+    return DART_ERR_OTHER;
+  }
+  segment->team_idx = index;
+
   info_t item;
   item.seg_id = dart_registermemid;
   item.size = nbytes;
@@ -465,8 +490,17 @@ dart_team_memregister(
   MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
   gptr->unitid = gptr_unitid;
   gptr->segid = dart_registermemid;
-  gptr->flags = index;
   gptr->addr_or_offs.offset = 0;
+
+  dart_segment_t *segment = dart_segment_alloc(dart_registermemid);
+  if (segment == NULL) {
+    DART_LOG_ERROR(
+        "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
+        nbytes);
+    return DART_ERR_OTHER;
+  }
+  segment->team_idx = index;
+
   info_t item;
   item.seg_id = dart_registermemid;
   item.size = nbytes;
@@ -489,29 +523,38 @@ dart_team_memderegister(
    dart_team_t teamid,
    dart_gptr_t gptr)
 {
-	dart_unit_t unitid;
-	uint16_t    index  = gptr.flags;
-	int16_t     seg_id = gptr.segid;
-	char *      sub_mem;
+  dart_unit_t unitid;
+  int16_t seg_id = gptr.segid;
+  char * sub_mem;
+  MPI_Win win;
 
-	MPI_Win win;
+  uint16_t index;
+  dart_segment_t *segment = dart_segment_get(seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    return DART_ERR_INVAL;
+  }
+  index = segment->team_idx;
 
-	dart_team_myid(teamid, &unitid);
+  dart_team_myid(teamid, &unitid);
 
   win = dart_team_data[index].window;
 
 	if (dart_adapt_transtable_get_selfbaseptr (seg_id, &sub_mem) == -1) {
 		return DART_ERR_INVAL;
   }
-	MPI_Win_detach(win, sub_mem);
-	if (dart_adapt_transtable_remove (seg_id) == -1){
-		return DART_ERR_INVAL;
-	}
-  DART_LOG_DEBUG("dart_team_memderegister: collective free, "
-                 "team unit %2d offset:%"PRIu64" gptr_unitid:%d"
-                 "across team %d",
-                 unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
-	return DART_OK;
+  MPI_Win_detach(win, sub_mem);
+  if (dart_adapt_transtable_remove(seg_id) == -1) {
+    return DART_ERR_INVAL;
+  }
+
+  dart_segment_dealloc(seg_id);
+
+  DART_LOG_DEBUG(
+    "dart_team_memderegister: collective free, "
+    "team unit %2d offset:%"PRIu64" gptr_unitid:%d" "across team %d",
+    unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
+  return DART_OK;
 }
 
 

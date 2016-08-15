@@ -17,6 +17,7 @@
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_synchronization_priv.h>
+#include <dash/dart/mpi/dart_segment.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,11 +100,18 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 	DART_GPTR_COPY(gptr_tail, lock -> gptr_tail);
 	DART_GPTR_COPY(gptr_list, lock -> gptr_list);
 
-	uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
-	int16_t seg_id = gptr_list.segid;
-	dart_unit_t tail = gptr_tail.unitid;
-	uint16_t index = gptr_list.flags;
-	MPI_Aint disp_list;
+  uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
+  int16_t seg_id = gptr_list.segid;
+  dart_unit_t tail = gptr_tail.unitid;
+  MPI_Aint disp_list;
+
+  uint16_t index;
+  dart_segment_t *segment = dart_segment_get(seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    return DART_ERR_INVAL;
+  }
+  index = segment->team_idx;
 
 
 	/* MPI-3 newly added feature: atomic operation*/
@@ -196,8 +204,15 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
   uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
   int16_t  seg_id      = gptr_list.segid;
   dart_unit_t tail     = gptr_tail.unitid;
-  uint16_t index       = gptr_list.flags;
   dart_gptr_getaddr(gptr_list, (void *)&addr2);
+
+  uint16_t index;
+  dart_segment_t *segment = dart_segment_get(seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    return DART_ERR_INVAL;
+  }
+  index = segment->team_idx;
 
   win = dart_team_data[index].window;
 

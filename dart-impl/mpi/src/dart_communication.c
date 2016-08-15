@@ -16,6 +16,7 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
+#include <dash/dart/mpi/dart_segment.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/math.h>
@@ -58,7 +59,14 @@ dart_ret_t dart_get(
   dart_unit_t  target_unitid_rel = target_unitid_abs;
   uint64_t     offset            = gptr.addr_or_offs.offset;
   int16_t      seg_id            = gptr.segid;
-  uint16_t     index             = gptr.flags;
+
+  uint16_t index;
+  dart_segment_t *segment = dart_segment_get(seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    return DART_ERR_INVAL;
+  }
+  index = segment->team_idx;
 
   dart_team_data_t *team_data = &dart_team_data[index];
 
@@ -164,7 +172,15 @@ dart_ret_t dart_put(
   int16_t  seg_id   = gptr.segid;
   target_unitid_abs = gptr.unitid;
   if (seg_id) {
-    uint16_t index = gptr.flags;
+
+    uint16_t index;
+    dart_segment_t *segment = dart_segment_get(seg_id);
+    if (segment == NULL) {
+      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+      return DART_ERR_INVAL;
+    }
+    index = segment->team_idx;
+
     dart_unit_t target_unitid_rel;
     win = dart_team_data[index].window;
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
@@ -230,7 +246,15 @@ dart_ret_t dart_accumulate(
                  nelem, dtype, op, target_unitid_abs);
   if (seg_id) {
     dart_unit_t target_unitid_rel;
-    uint16_t index = gptr.flags;
+
+    uint16_t index;
+    dart_segment_t *segment = dart_segment_get(seg_id);
+    if (segment == NULL) {
+      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+      return DART_ERR_INVAL;
+    }
+    index = segment->team_idx;
+
     MPI_Win win = dart_team_data[index].window;
     unit_g2l(index,
              target_unitid_abs,
@@ -305,7 +329,15 @@ dart_ret_t dart_fetch_and_op(
                  dtype, op, target_unitid_abs);
   if (seg_id) {
     dart_unit_t target_unitid_rel;
-    uint16_t index = gptr.flags;
+
+    uint16_t index;
+    dart_segment_t *segment = dart_segment_get(seg_id);
+    if (segment == NULL) {
+      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+      return DART_ERR_INVAL;
+    }
+    index = segment->team_idx;
+
     unit_g2l(index,
              target_unitid_abs,
              &target_unitid_rel);
@@ -367,8 +399,16 @@ dart_ret_t dart_get_handle(
   dart_unit_t  target_unitid_rel = target_unitid_abs;
   int          mpi_ret;
   uint64_t     offset = gptr.addr_or_offs.offset;
-  uint16_t     index  = gptr.flags;
   int16_t      seg_id = gptr.segid;
+
+  uint16_t index;
+  dart_segment_t *segment = dart_segment_get(seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    return DART_ERR_INVAL;
+  }
+  index = segment->team_idx;
+
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -543,7 +583,15 @@ dart_ret_t dart_put_handle(
   target_unitid_abs = gptr.unitid;
 
   if (seg_id != 0) {
-    uint16_t index = gptr.flags;
+
+    uint16_t index;
+    dart_segment_t *segment = dart_segment_get(seg_id);
+    if (segment == NULL) {
+      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+      return DART_ERR_INVAL;
+    }
+    index = segment->team_idx;
+
     dart_unit_t target_unitid_rel;
     win = dart_team_data[index].window;
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
@@ -620,7 +668,14 @@ dart_ret_t dart_put_blocking(
   dart_unit_t target_unitid_rel = target_unitid_abs;
   uint64_t    offset = gptr.addr_or_offs.offset;
   int16_t     seg_id = gptr.segid;
-  uint16_t    index  = gptr.flags;
+
+  uint16_t index;
+  dart_segment_t *segment = dart_segment_get(seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    return DART_ERR_INVAL;
+  }
+  index = segment->team_idx;
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -740,7 +795,14 @@ dart_ret_t dart_get_blocking(
   dart_unit_t target_unitid_rel = target_unitid_abs;
   uint64_t    offset            = gptr.addr_or_offs.offset;
   int16_t     seg_id            = gptr.segid;
-  uint16_t    index             = gptr.flags;
+
+  uint16_t index;
+  dart_segment_t *segment = dart_segment_get(seg_id);
+  if (segment == NULL) {
+    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    return DART_ERR_INVAL;
+  }
+  index = segment->team_idx;
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -860,7 +922,15 @@ dart_ret_t dart_flush(
                  gptr.segid,  gptr.flags);
   if (seg_id) {
     dart_unit_t target_unitid_rel;
-    uint16_t    index = gptr.flags;
+
+    uint16_t index;
+    dart_segment_t *segment = dart_segment_get(seg_id);
+    if (segment == NULL) {
+      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+      return DART_ERR_INVAL;
+    }
+    index = segment->team_idx;
+
     win = dart_team_data[index].window;
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
     DART_LOG_TRACE("dart_flush: MPI_Win_flush");
@@ -885,7 +955,15 @@ dart_ret_t dart_flush_all(
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
   if (seg_id) {
-    uint16_t index = gptr.flags;
+
+    uint16_t index;
+    dart_segment_t *segment = dart_segment_get(seg_id);
+    if (segment == NULL) {
+      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+      return DART_ERR_INVAL;
+    }
+    index = segment->team_idx;
+
     win = dart_team_data[index].window;
   } else {
     win = dart_win_local_alloc;
@@ -908,7 +986,14 @@ dart_ret_t dart_flush_local(
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
   if (seg_id) {
-    uint16_t index = gptr.flags;
+    uint16_t index;
+    dart_segment_t *segment = dart_segment_get(seg_id);
+    if (segment == NULL) {
+      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+      return DART_ERR_INVAL;
+    }
+    index = segment->team_idx;
+
     dart_unit_t target_unitid_rel;
     win = dart_team_data[index].window;
     DART_LOG_DEBUG("dart_flush_local() win:%"PRIu64" seg:%d unit:%d",
@@ -937,7 +1022,15 @@ dart_ret_t dart_flush_local_all(
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
   if (seg_id) {
-    uint16_t index = gptr.flags;
+
+    uint16_t index;
+    dart_segment_t *segment = dart_segment_get(seg_id);
+    if (segment == NULL) {
+      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+      return DART_ERR_INVAL;
+    }
+    index = segment->team_idx;
+
     win = dart_team_data[index].window;
   } else {
     win = dart_win_local_alloc;

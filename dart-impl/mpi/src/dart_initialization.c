@@ -16,6 +16,7 @@
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_locality_priv.h>
+#include <dash/dart/mpi/dart_segment.h>
 
 #define DART_BUDDY_ORDER 24
 
@@ -92,9 +93,11 @@ dart_ret_t dart_init(
    * the collective global memory */
 	dart_adapt_transtable_create();
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	dart_localpool = dart_buddy_new(DART_BUDDY_ORDER);
+  dart_segment_init();
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  dart_localpool = dart_buddy_new(DART_BUDDY_ORDER);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	int i;
 
@@ -308,7 +311,9 @@ dart_ret_t dart_exit()
 #endif
 	dart_adapt_teamlist_destroy();
 
-	if (_init_by_dart) {
+  dart_segment_clear();
+
+  if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();
   }
