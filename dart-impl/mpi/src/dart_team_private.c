@@ -29,8 +29,8 @@ int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 dart_team_data_t dart_team_data[DART_MAX_TEAM_NUMBER];
 
 struct dart_free_teamlist_entry {
-  uint16_t index;
   struct dart_free_teamlist_entry * next;
+  uint16_t index;
 };
 typedef struct dart_free_teamlist_entry dart_free_entry;
 typedef dart_free_entry* dart_free_teamlist_ptr;
