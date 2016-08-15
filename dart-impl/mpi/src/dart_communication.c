@@ -38,7 +38,7 @@ int unit_g2l(
   else {
     MPI_Comm comm;
     MPI_Group group, group_all;
-    comm = dart_teams[index];
+    comm = dart_team_data[index].comm;
     MPI_Comm_group(comm, &group);
     MPI_Comm_group(MPI_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks (group_all, 1, &abs_id, group, rel_id);
@@ -59,6 +59,8 @@ dart_ret_t dart_get(
   uint64_t     offset            = gptr.addr_or_offs.offset;
   int16_t      seg_id            = gptr.segid;
   uint16_t     index             = gptr.flags;
+
+  dart_team_data_t *team_data = &dart_team_data[index];
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -84,7 +86,7 @@ dart_ret_t dart_get(
     /*
      * Use memcpy if the target is in the same node as the calling unit:
      */
-    i = dart_sharedmem_table[index][gptr.unitid];
+    i = team_data->sharedmem_tab[gptr.unitid];
     if (i >= 0) {
       DART_LOG_DEBUG("dart_get: shared memory segment, seg_id:%d",
                      seg_id);
@@ -117,7 +119,7 @@ dart_ret_t dart_get(
           &disp_s) == -1) {
       return DART_ERR_INVAL;
     }
-    win      = dart_win_lists[index];
+    win = team_data->window;
     disp_rel = disp_s + offset;
     DART_LOG_TRACE("dart_get:  nbytes:%zu "
                    "source (coll.): win:%"PRIu64" unit:%d disp:%"PRId64" "
@@ -164,8 +166,8 @@ dart_ret_t dart_put(
   if (seg_id) {
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
-    win = dart_win_lists[index];
-    unit_g2l (index, target_unitid_abs, &target_unitid_rel);
+    win = dart_team_data[index].window;
+    unit_g2l(index, target_unitid_abs, &target_unitid_rel);
     if (dart_adapt_transtable_get_disp(
           seg_id,
           target_unitid_rel,
@@ -213,7 +215,6 @@ dart_ret_t dart_accumulate(
 {
   MPI_Aint     disp_s,
                disp_rel;
-  MPI_Win      win;
   MPI_Datatype mpi_dtype;
   MPI_Op       mpi_op;
   dart_unit_t  target_unitid_abs;
@@ -230,7 +231,7 @@ dart_ret_t dart_accumulate(
   if (seg_id) {
     dart_unit_t target_unitid_rel;
     uint16_t index = gptr.flags;
-    win            = dart_win_lists[index];
+    MPI_Win win = dart_team_data[index].window;
     unit_g2l(index,
              target_unitid_abs,
              &target_unitid_rel);
@@ -258,7 +259,7 @@ dart_ret_t dart_accumulate(
                    "target unit: %d offset: %"PRIu64"",
                    nelem, target_unitid_abs, offset);
   } else {
-    win = dart_win_local_alloc;
+    MPI_Win win = dart_win_local_alloc;
     MPI_Accumulate(
       values,            // Origin address
       nelem,             // Number of entries in buffer
@@ -305,7 +306,6 @@ dart_ret_t dart_fetch_and_op(
   if (seg_id) {
     dart_unit_t target_unitid_rel;
     uint16_t index = gptr.flags;
-    win            = dart_win_lists[index];
     unit_g2l(index,
              target_unitid_abs,
              &target_unitid_rel);
@@ -318,6 +318,7 @@ dart_ret_t dart_fetch_and_op(
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
+    win = dart_team_data[index].window;
     MPI_Fetch_and_op(
       value,             // Origin address
       result,            // Result address
@@ -398,7 +399,7 @@ dart_ret_t dart_get_handle(
     /*
      * Use memcpy if the target is in the same node as the calling unit:
      */
-    i = dart_sharedmem_table[index][gptr.unitid];
+    i = dart_team_data[index].sharedmem_tab[gptr.unitid];
     if (i >= 0) {
       DART_LOG_DEBUG("dart_get_handle: shared memory segment, seg_id:%d",
                      seg_id);
@@ -421,7 +422,7 @@ dart_ret_t dart_get_handle(
       (*handle)->request = MPI_REQUEST_NULL;
       if (seg_id != 0) {
         (*handle)->dest = target_unitid_rel;
-        (*handle)->win  = dart_win_lists[index];
+        (*handle)->win = dart_team_data[index].window;
       } else {
         (*handle)->dest = target_unitid_abs;
         (*handle)->win  = dart_win_local_alloc;
@@ -441,7 +442,7 @@ dart_ret_t dart_get_handle(
      * The memory accessed is allocated with collective allocation.
      */
     DART_LOG_TRACE("dart_get_handle:  collective, segment:%d", seg_id);
-    win = dart_win_lists[index];
+    win = dart_team_data[index].window;
     /* Translate local unitID (relative to teamid) into global unitID
      * (relative to DART_TEAM_ALL).
      *
@@ -544,8 +545,8 @@ dart_ret_t dart_put_handle(
   if (seg_id != 0) {
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
-    win = dart_win_lists[index];
-    unit_g2l (index, target_unitid_abs, &target_unitid_rel);
+    win = dart_team_data[index].window;
+    unit_g2l(index, target_unitid_abs, &target_unitid_rel);
     if (dart_adapt_transtable_get_disp(
           seg_id,
           target_unitid_rel,
@@ -646,7 +647,7 @@ dart_ret_t dart_put_blocking(
      * Use memcpy if the target is in the same node as the calling unit:
      * The value of i will be the target's relative ID in teamid.
      */
-    i = dart_sharedmem_table[index][gptr.unitid];
+    i = dart_team_data[index].sharedmem_tab[gptr.unitid];
     if (i >= 0) {
       DART_LOG_DEBUG("dart_put_blocking: shared memory segment, seg_id:%d",
                      seg_id);
@@ -681,7 +682,7 @@ dart_ret_t dart_put_blocking(
                      "dart_adapt_transtable_get_disp failed");
       return DART_ERR_INVAL;
     }
-    win      = dart_win_lists[index];
+    win = dart_team_data[index].window;
     disp_rel = disp_s + offset;
     DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
                    "target (coll.): win:%"PRIu64" unit:%d offset:%"PRIu64" "
@@ -766,7 +767,7 @@ dart_ret_t dart_get_blocking(
      * Use memcpy if the target is in the same node as the calling unit:
      * The value of i will be the target's relative ID in teamid.
      */
-    i = dart_sharedmem_table[index][gptr.unitid];
+    i = dart_team_data[index].sharedmem_tab[gptr.unitid];
     if (i >= 0) {
       DART_LOG_DEBUG("dart_get_blocking: shared memory segment, seg_id:%d",
                      seg_id);
@@ -801,7 +802,7 @@ dart_ret_t dart_get_blocking(
                      "dart_adapt_transtable_get_disp failed");
       return DART_ERR_INVAL;
     }
-    win      = dart_win_lists[index];
+    win = dart_team_data[index].window;
     disp_rel = disp_s + offset;
     DART_LOG_DEBUG("dart_get_blocking:  nbytes:%zu "
                    "source (coll.): win:%p unit:%d offset:%p"
@@ -860,7 +861,7 @@ dart_ret_t dart_flush(
   if (seg_id) {
     dart_unit_t target_unitid_rel;
     uint16_t    index = gptr.flags;
-    win               = dart_win_lists[index];
+    win = dart_team_data[index].window;
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
     DART_LOG_TRACE("dart_flush: MPI_Win_flush");
     MPI_Win_flush(target_unitid_rel, win);
@@ -885,7 +886,7 @@ dart_ret_t dart_flush_all(
                  gptr.segid,  gptr.flags);
   if (seg_id) {
     uint16_t index = gptr.flags;
-    win = dart_win_lists[index];
+    win = dart_team_data[index].window;
   } else {
     win = dart_win_local_alloc;
   }
@@ -909,7 +910,7 @@ dart_ret_t dart_flush_local(
   if (seg_id) {
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
-    win = dart_win_lists[index];
+    win = dart_team_data[index].window;
     DART_LOG_DEBUG("dart_flush_local() win:%"PRIu64" seg:%d unit:%d",
                    (uint64_t)win, seg_id, target_unitid_abs);
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
@@ -937,7 +938,7 @@ dart_ret_t dart_flush_local_all(
                  gptr.segid,  gptr.flags);
   if (seg_id) {
     uint16_t index = gptr.flags;
-    win = dart_win_lists[index];
+    win = dart_team_data[index].window;
   } else {
     win = dart_win_local_alloc;
   }
@@ -1346,7 +1347,7 @@ dart_ret_t dart_barrier(
     return DART_ERR_INVAL;
   }
   /* Fetch proper communicator from teams. */
-  comm = dart_teams[index];
+  comm = dart_team_data[index].comm;
   if (MPI_Barrier(comm) == MPI_SUCCESS) {
     DART_LOG_DEBUG("dart_barrier > finished");
     return DART_OK;
@@ -1367,7 +1368,7 @@ dart_ret_t dart_bcast(
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[index];
+  comm = dart_team_data[index].comm;
   if (MPI_Bcast(buf, nbytes, MPI_BYTE, root, comm) != MPI_SUCCESS) {
     return DART_ERR_INVAL;
   }
@@ -1387,7 +1388,7 @@ dart_ret_t dart_scatter(
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[index];
+  comm = dart_team_data[index].comm;
   if (MPI_Scatter(
            sendbuf,
            nbytes,
@@ -1415,7 +1416,7 @@ dart_ret_t dart_gather(
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[index];
+  comm = dart_team_data[index].comm;
   if (MPI_Gather(
            sendbuf,
            nbytes,
@@ -1446,7 +1447,7 @@ dart_ret_t dart_allgather(
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[index];
+  comm = dart_team_data[index].comm;
   if (MPI_Allgather(
            sendbuf,
            nbytes,
@@ -1475,13 +1476,13 @@ dart_ret_t dart_allreduce(
   MPI_Comm     comm;
   MPI_Op       mpi_op    = dart_mpi_op(op);
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
-  uint16_t     team_idx;
-  int          result    = dart_adapt_teamlist_convert(team, &team_idx);
+  uint16_t index;
+  int result = dart_adapt_teamlist_convert(team, &index);
 
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[team_idx];
+  comm = dart_team_data[index].comm;
   if (MPI_Allreduce(
            sendbuf,   // send buffer
            recvbuf,   // receive buffer
@@ -1505,7 +1506,7 @@ dart_ret_t dart_reduce_double(
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[index];
+  comm = dart_team_data[index].comm;
   if (MPI_Reduce(
            sendbuf,
            recvbuf,

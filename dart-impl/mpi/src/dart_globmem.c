@@ -151,14 +151,14 @@ dart_team_memalloc_aligned(
     "dart_team_memalloc_aligned: dart_adapt_teamlist_convert completed, "
     "index:%d", index);
 
-	if (result == -1) {
-		return DART_ERR_INVAL;
-	}
-	comm = dart_teams[index];
+  if (result == -1) {
+    return DART_ERR_INVAL;
+  }
+  comm = dart_team_data[index].comm;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-	MPI_Win  sharedmem_win;
-	MPI_Comm sharedmem_comm;
-	sharedmem_comm = dart_sharedmem_comm_list[index];
+  MPI_Win sharedmem_win;
+  MPI_Comm sharedmem_comm;
+  sharedmem_comm = dart_team_data[index].sharedmem_comm;
 #endif
 	dart_unit_t localid = 0;
 	if (index == 0) {
@@ -230,20 +230,21 @@ dart_team_memalloc_aligned(
     return DART_ERR_OTHER;
   }
 
-	int         sharedmem_unitid;
-	MPI_Aint    winseg_size;
-	char     ** baseptr_set;
-	char      * baseptr;
-	int         disp_unit, i;
-	MPI_Comm_rank (sharedmem_comm, &sharedmem_unitid);
-	baseptr_set = (char**)malloc(sizeof(char*) * dart_sharedmemnode_size[index]);
+  int sharedmem_unitid;
+  MPI_Aint winseg_size;
+  char ** baseptr_set;
+  char * baseptr;
+  int disp_unit, i;
+  MPI_Comm_rank(sharedmem_comm, &sharedmem_unitid);
+  baseptr_set = (char **)malloc(
+      sizeof(char *) * dart_team_data[index].sharedmem_nodesize);
 
-	for (i = 0; i < dart_sharedmemnode_size[index]; i++) {
-		if (sharedmem_unitid != i) {
-			MPI_Win_shared_query(sharedmem_win, i,
-                           &winseg_size, &disp_unit, &baseptr);
-			baseptr_set[i] = baseptr;
-		} else {
+  for (i = 0; i < dart_team_data[index].sharedmem_nodesize; i++) {
+    if (sharedmem_unitid != i) {
+      MPI_Win_shared_query(sharedmem_win, i, &winseg_size, &disp_unit,
+                           &baseptr);
+      baseptr_set[i] = baseptr;
+    } else {
       baseptr_set[i] = sub_mem;
     }
 	}
@@ -255,9 +256,9 @@ dart_team_memalloc_aligned(
   }
 #endif
 
-	win = dart_win_lists[index];
-	/* Attach the allocated shared memory to win */
-	if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
+  win = dart_team_data[index].window;
+  /* Attach the allocated shared memory to win */
+  if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
     DART_LOG_ERROR(
       "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
     return DART_ERR_OTHER;
@@ -322,7 +323,7 @@ dart_ret_t dart_team_memfree(
 
   dart_team_myid(teamid, &unitid);
 
-	win = dart_win_lists[index];
+  win = dart_team_data[index].window;
 
   if (dart_adapt_transtable_get_selfbaseptr(seg_id, &sub_mem) == -1) {
 	  return DART_ERR_INVAL;
@@ -370,53 +371,52 @@ dart_team_memregister_aligned(
 	size_t size;
 	dart_unit_t unitid;
   dart_unit_t gptr_unitid = -1;
-	dart_team_myid(teamid, &unitid);
-	dart_team_size(teamid, &size);
+  dart_team_myid(teamid, &unitid);
+  dart_team_size(teamid, &size);
 
-	MPI_Win    win;
-	MPI_Comm   comm;
-	MPI_Aint   disp;
-	MPI_Aint * disp_set = (MPI_Aint*)malloc(size * sizeof (MPI_Aint));
-	uint16_t   index;
-	int        result   = dart_adapt_teamlist_convert(teamid, &index);
+  MPI_Win win;
+  MPI_Comm comm;
+  MPI_Aint disp;
+  MPI_Aint * disp_set = (MPI_Aint *)malloc(size * sizeof(MPI_Aint));
+  uint16_t index;
+  int result = dart_adapt_teamlist_convert(teamid, &index);
 
-	if (result == -1) {
-		return DART_ERR_INVAL;
-	}
-	comm = dart_teams[index];
-	dart_unit_t localid = 0;
-	if (index == 0) {
-		gptr_unitid = localid;
-	} else {
-		MPI_Group group;
-		MPI_Group group_all;
-		MPI_Comm_group(comm, &group);
-		MPI_Comm_group(MPI_COMM_WORLD, &group_all);
-		MPI_Group_translate_ranks(group, 1, &localid,
-				group_all, &gptr_unitid);
-	}
-	win = dart_win_lists[index];
-	MPI_Win_attach(win, (char*)addr, nbytes);
-	MPI_Get_address((char*)addr, &disp);
-	MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
-	gptr->unitid              = gptr_unitid;
-	gptr->segid               = dart_registermemid;
-	gptr->flags               = index;
-	gptr->addr_or_offs.offset = 0;
-	info_t item;
-	item.seg_id               = dart_registermemid;
-	item.size                 = nbytes;
-	item.disp                 = disp_set;
-	item.win                  = MPI_WIN_NULL;
-	item.baseptr              = NULL;
-	item.selfbaseptr          = (char*)addr;
-	dart_adapt_transtable_add(item);
-	dart_registermemid--;
-	DART_LOG_DEBUG("dart_team_memregister_aligned: collective alloc, "
-                 "unit:%2d, nbytes:%lu offset:%d gptr_unitid:%d "
-                 "across team %d",
-                 unitid, nbytes, 0, gptr_unitid, teamid);
-	return DART_OK;
+  if (result == -1) {
+    return DART_ERR_INVAL;
+  }
+  comm = dart_team_data[index].comm;
+  dart_unit_t localid = 0;
+  if (index == 0) {
+    gptr_unitid = localid;
+  } else {
+    MPI_Group group;
+    MPI_Group group_all;
+    MPI_Comm_group(comm, &group);
+    MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+    MPI_Group_translate_ranks(group, 1, &localid, group_all, &gptr_unitid);
+  }
+  win = dart_team_data[index].window;
+  MPI_Win_attach(win, (char *)addr, nbytes);
+  MPI_Get_address((char *)addr, &disp);
+  MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
+  gptr->unitid = gptr_unitid;
+  gptr->segid = dart_registermemid;
+  gptr->flags = index;
+  gptr->addr_or_offs.offset = 0;
+  info_t item;
+  item.seg_id = dart_registermemid;
+  item.size = nbytes;
+  item.disp = disp_set;
+  item.win = MPI_WIN_NULL;
+  item.baseptr = NULL;
+  item.selfbaseptr = (char *)addr;
+  dart_adapt_transtable_add(item);
+  dart_registermemid--;
+  DART_LOG_DEBUG(
+    "dart_team_memregister_aligned: collective alloc, "
+    "unit:%2d, nbytes:%lu offset:%d gptr_unitid:%d " "across team %d",
+    unitid, nbytes, 0, gptr_unitid, teamid);
+  return DART_OK;
 }
 
 dart_ret_t
@@ -445,43 +445,42 @@ dart_team_memregister(
     addr = (void*)(&nil);
   }
 
-	if (result == -1) {
-		return DART_ERR_INVAL;
-	}
-	comm = dart_teams[index];
-	dart_unit_t localid = 0;
-	if (index == 0) {
-		gptr_unitid = localid;
-	} else {
-		MPI_Group group;
-		MPI_Group group_all;
-		MPI_Comm_group(comm, &group);
-		MPI_Comm_group(MPI_COMM_WORLD, &group_all);
-		MPI_Group_translate_ranks(group, 1, &localid,
-				group_all, &gptr_unitid);
-	}
-	win = dart_win_lists[index];
-	MPI_Win_attach(win, (char*)addr, nbytes);
-	MPI_Get_address((char*)addr, &disp);
-	MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
-	gptr->unitid              = gptr_unitid;
-	gptr->segid               = dart_registermemid;
-	gptr->flags               = index;
-	gptr->addr_or_offs.offset = 0;
-	info_t item;
-	item.seg_id               = dart_registermemid;
-	item.size                 = nbytes;
-	item.disp                 = disp_set;
-	item.win                  = MPI_WIN_NULL;
-	item.baseptr              = NULL;
-	item.selfbaseptr          = (char*)addr;
-	dart_adapt_transtable_add(item);
-	dart_registermemid--;
+  if (result == -1) {
+    return DART_ERR_INVAL;
+  }
+  comm = dart_team_data[index].comm;
+  dart_unit_t localid = 0;
+  if (index == 0) {
+    gptr_unitid = localid;
+  } else {
+    MPI_Group group;
+    MPI_Group group_all;
+    MPI_Comm_group(comm, &group);
+    MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+    MPI_Group_translate_ranks(group, 1, &localid, group_all, &gptr_unitid);
+  }
+  win = dart_team_data[index].window;
+  MPI_Win_attach(win, (char *)addr, nbytes);
+  MPI_Get_address((char *)addr, &disp);
+  MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
+  gptr->unitid = gptr_unitid;
+  gptr->segid = dart_registermemid;
+  gptr->flags = index;
+  gptr->addr_or_offs.offset = 0;
+  info_t item;
+  item.seg_id = dart_registermemid;
+  item.size = nbytes;
+  item.disp = disp_set;
+  item.win = MPI_WIN_NULL;
+  item.baseptr = NULL;
+  item.selfbaseptr = (char *)addr;
+  dart_adapt_transtable_add(item);
+  dart_registermemid--;
 
-	DART_LOG_DEBUG("dart_team_memregister: collective alloc, "
-                 "unit:%2d, nbytes:%lu offset:%d gptr_unitid:%d "
-                 "across team %d",
-                 unitid, nbytes, 0, gptr_unitid, teamid);
+  DART_LOG_DEBUG(
+    "dart_team_memregister: collective alloc, "
+    "unit:%2d, nbytes:%lu offset:%d gptr_unitid:%d " "across team %d",
+    unitid, nbytes, 0, gptr_unitid, teamid);
   return DART_OK;
 }
 
@@ -499,7 +498,7 @@ dart_team_memderegister(
 
 	dart_team_myid(teamid, &unitid);
 
-	win = dart_win_lists[index];
+  win = dart_team_data[index].window;
 
 	if (dart_adapt_transtable_get_selfbaseptr (seg_id, &sub_mem) == -1) {
 		return DART_ERR_INVAL;

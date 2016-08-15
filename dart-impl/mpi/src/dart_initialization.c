@@ -27,9 +27,9 @@ char* dart_mempool_localalloc;
 char**dart_sharedmem_local_baseptr_set;
 #endif
 /* Help to do memory management work for local allocation/free */
-struct dart_buddy   * dart_localpool;
-int                   _init_by_dart     = 0;
-int                   _dart_initialized = 0;
+struct dart_buddy  *  dart_localpool;
+static int _init_by_dart = 0;
+static int _dart_initialized = 0;
 
 dart_ret_t dart_init(
   int*    argc,
@@ -76,15 +76,19 @@ dart_ret_t dart_init(
                  &index);
 	if (result == -1) {
     DART_LOG_ERROR("dart_adapt_teamlist_alloc failed");
-		return DART_ERR_OTHER;
-	}
-	dart_teams[index] = MPI_COMM_WORLD;
+    return DART_ERR_OTHER;
+  }
+
+  dart_team_data_t *team_data = &dart_team_data[index];
 
   DART_LOG_DEBUG("dart_init: dart_adapt_teamlist_alloc completed, index:%d",
                  index);
 	dart_next_availteamid++;
 
-	/* Create a global translation table for all
+  //  dart_teams[index] = MPI_COMM_WORLD;
+  team_data->comm = MPI_COMM_WORLD;
+
+  /* Create a global translation table for all
    * the collective global memory */
 	dart_adapt_transtable_create();
 
@@ -111,7 +115,8 @@ dart_ret_t dart_init(
     return DART_ERR_OTHER;
   }
 
-	dart_sharedmem_comm_list[index] = sharedmem_comm;
+//  dart_sharedmem_comm_list[index] = sharedmem_comm;
+  team_data->sharedmem_comm = sharedmem_comm;
 
 	MPI_Group group_all, sharedmem_group;
 	char *baseptr;
@@ -139,18 +144,19 @@ dart_ret_t dart_init(
 		int sharedmem_unitid;
 		MPI_Comm_size(
       sharedmem_comm,
-      &(dart_sharedmemnode_size[index]));
-		MPI_Comm_rank(
+      &(team_data->sharedmem_nodesize));
+    MPI_Comm_rank(
       sharedmem_comm,
       &sharedmem_unitid);
-		dart_sharedmem_local_baseptr_set =
-      (char**)malloc(sizeof(char*) * dart_sharedmemnode_size[index]);
-		MPI_Aint winseg_size;
+    dart_sharedmem_local_baseptr_set =
+      (char **)malloc(
+        sizeof(char *) * team_data->sharedmem_nodesize);
+    MPI_Aint winseg_size;
 
-		int disp_unit;
-		for(i = 0; i < dart_sharedmemnode_size[index]; i++) {
-			if (sharedmem_unitid != i) {
-				MPI_Win_shared_query(
+    int disp_unit;
+    for (i = 0; i < team_data->sharedmem_nodesize; i++) {
+      if (sharedmem_unitid != i) {
+        MPI_Win_shared_query(
           dart_sharedmem_win_local_alloc,
           i,
           &winseg_size,
@@ -168,26 +174,26 @@ dart_ret_t dart_init(
 
 		/* The length of this table is set to be the size
      * of DART_TEAM_ALL. */
-		dart_sharedmem_table[index] = (int *)malloc (sizeof (int) * size);
+    team_data->sharedmem_tab = (int *)malloc(sizeof(int) * size);
 
-		int* dart_unit_mapping = (int*) malloc(
-                               sizeof(int) * dart_sharedmemnode_size[index]);
-		int* sharedmem_ranks   = (int*) malloc(
-                               sizeof(int) * dart_sharedmemnode_size[index]);
+    int * dart_unit_mapping = (int *) malloc(
+        sizeof(int) * team_data->sharedmem_nodesize);
+    int * sharedmem_ranks   = (int *) malloc(
+        sizeof(int) * team_data->sharedmem_nodesize);
 
-		for (i = 0; i < dart_sharedmemnode_size[index]; i++) {
-			sharedmem_ranks[i] = i;
-		}
-		for (i = 0; i < size; i++) {
-			dart_sharedmem_table[index][i] = -1;
-		}
+    for (i = 0; i < team_data->sharedmem_nodesize; i++) {
+      sharedmem_ranks[i] = i;
+    }
+    for (i = 0; i < size; i++) {
+      team_data->sharedmem_tab[i] = -1;
+    }
 
-		/* Generate the set (dart_unit_mapping) of units with absolute IDs,
-		 * which are located in the same node
-		 */
-		if (MPI_Group_translate_ranks(
+    /* Generate the set (dart_unit_mapping) of units with absolute IDs,
+     * which are located in the same node
+     */
+    if (MPI_Group_translate_ranks(
           sharedmem_group,
-          dart_sharedmemnode_size[index],
+        team_data->sharedmem_nodesize,
           sharedmem_ranks,
           group_all,
           dart_unit_mapping) != MPI_SUCCESS)
@@ -201,13 +207,13 @@ dart_ret_t dart_init(
      * which are in the same node and they can communicate via
      * shared memory and i is the relative position in the node
      * for unit dart_unit_mapping[i].
-		 */
-		for (i = 0; i < dart_sharedmemnode_size[index]; i++) {
-			dart_sharedmem_table[index][dart_unit_mapping[i]] = i;
-		}
-		free(sharedmem_ranks);
-		free(dart_unit_mapping);
-	}
+     */
+    for (i = 0; i < team_data->sharedmem_nodesize; i++) {
+      team_data->sharedmem_tab[dart_unit_mapping[i]] = i;
+    }
+    free(sharedmem_ranks);
+    free(dart_unit_mapping);
+  }
 #else
 	MPI_Alloc_mem(
     DART_MAX_LENGTH,
@@ -230,7 +236,7 @@ dart_ret_t dart_init(
    * allocation based on MPI_COMM_WORLD. Return in win. */
 	MPI_Win_create_dynamic(
     MPI_INFO_NULL, MPI_COMM_WORLD, &win);
-	dart_win_lists[index] = win;
+  team_data->window = win;
 
 	/* Start an access epoch on dart_win_local_alloc, and later
    * on all the units can access the memory region allocated
@@ -276,7 +282,9 @@ dart_ret_t dart_exit()
     return DART_ERR_OTHER;
   }
 
-	if (MPI_Win_unlock_all(dart_win_lists[index]) != MPI_SUCCESS) {
+  dart_team_data_t *team_data = &dart_team_data[index];
+
+  if (MPI_Win_unlock_all(team_data->window) != MPI_SUCCESS) {
     DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid);
     return DART_ERR_OTHER;
   }
@@ -290,13 +298,13 @@ dart_ret_t dart_exit()
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Win_free(&dart_sharedmem_win_local_alloc);
 #endif
-	MPI_Win_free(&dart_win_lists[index]);
+  MPI_Win_free(&team_data->window);
 
 	dart_adapt_transtable_destroy();
 	dart_buddy_delete(dart_localpool);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-	free(dart_sharedmem_table[index]);
-	free(dart_sharedmem_local_baseptr_set);
+  free(team_data->sharedmem_tab);
+  free(dart_sharedmem_local_baseptr_set);
 #endif
 	dart_adapt_teamlist_destroy();
 
