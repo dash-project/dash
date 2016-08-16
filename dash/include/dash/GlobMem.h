@@ -119,9 +119,11 @@ public:
       // TODO: Should be 0
       _nunits = 1;
     } else {
+      size_t nunits;
       DASH_ASSERT_RETURNS(
-        dart_team_size(_teamid, (size_t *) &_nunits),
+        dart_team_size(_teamid, &nunits),
         DART_OK);
+      _nunits = nunits;
     }
     _lbegin = lbegin(dash::myid());
     _lend   = lend(dash::myid());
@@ -150,9 +152,11 @@ public:
     if (_teamid == DART_TEAM_NULL) {
       _nunits = 1;
     } else {
+      size_t nunits;
       DASH_ASSERT_RETURNS(
-        dart_team_size(_teamid, (size_t *) &_nunits),
+        dart_team_size(_teamid, &nunits),
         DART_OK);
+      _nunits = nunits;
     }
     _lbegin = lbegin(dash::myid());
     _lend   = lend(dash::myid());
