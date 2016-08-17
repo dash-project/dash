@@ -1,5 +1,5 @@
-#ifndef DASH__ALGORITHM__ALL_OF_H__
-#define DASH__ALGORITHM__ALL_OF_H__
+#ifndef DASH__ALGORITHM__ALLOF_H__
+#define DASH__ALGORITHM__ALLOF_H__
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/Find.h>
@@ -22,9 +22,9 @@ GlobIter<ElementType, PatternType> all_of(
   /// Predicate applied to the elements in range [first, last)
   UnaryPredicate p)
 {
-  return find_if_not(first, last, p) == last;
+  return (find_if_not(first, last, p) == last);
 }
 
 } // namespace dash
 
-#endif // DASH__ALGORITHM__ALL_OF_H__
+#endif // DASH__ALGORITHM__ALLOF_H__

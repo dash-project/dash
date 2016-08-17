@@ -1,5 +1,5 @@
-#ifndef DASH__ALGORITHM__NONE_OF_H__
-#define DASH__ALGORITHM__NONE_OF_H__
+#ifndef DASH__ALGORITHM__NONEOF_H__
+#define DASH__ALGORITHM__NONEOF_H__
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
@@ -24,8 +24,8 @@ GlobIter<ElementType, PatternType> any_of(
     UnaryPredicate p)
 {
     
-    return find_if(first, last, p) == last;
+    return (find_if(first, last, p) == last);
 
 } // namespace dash
 
-#endif // DASH__ALGORITHM__NONE_OF_H__
+#endif // DASH__ALGORITHM__NONEOF_H__
