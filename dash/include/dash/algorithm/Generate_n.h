@@ -27,7 +27,15 @@ void generate_n(
  GlobIter<ElementType, PatternType> first,
  Size                               count,
  Generator g) {
- 
+
+   /***********************************************************
+    *  To-do: 
+    *  This is a sequential implemenation
+    *  of generate_n. Implement generate_n by using local_range.
+    *  Is there a possiblity to use dash::localrange(first)
+    *  without second ("last") parameter?
+    ***********************************************************/
+
    for (Size i = 0; i < count; i++) {
    
      *first++ = g();
