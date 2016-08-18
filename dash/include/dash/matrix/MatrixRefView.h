@@ -92,6 +92,9 @@ class MatrixRefView
   MatrixRefView<T, NumDimensions, PatternT>(
     const MatrixRefView<T, NumDimensions, PatternT> & other);
 
+  MatrixRefView<T, NumDimensions, PatternT>& operator=(
+  const MatrixRefView<T, NumDimensions, PatternT> & other);
+
   GlobRef<T> global_reference() const;
 };
 
