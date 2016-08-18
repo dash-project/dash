@@ -44,6 +44,23 @@ MatrixRefView<T, NumDim, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRefView(other)", _l_viewspec);
 }
 
+
+template<typename T, dim_t NumDim, class PatternT>
+MatrixRefView<T, NumDim, PatternT>&
+MatrixRefView<T, NumDim, PatternT>
+::operator=(
+  const MatrixRefView<T, NumDim, PatternT> & other)
+{
+  if (this != &other) {
+    _dim = other._dim;
+    _mat = other._mat;
+    _coord = other._coord;
+    _viewspec = other._viewspec;
+    _l_viewspec = other._l_viewspec;
+  }
+  return *this;
+}
+
 template<typename T, dim_t NumDim, class PatternT>
 GlobRef<T>
 MatrixRefView<T, NumDim, PatternT>
