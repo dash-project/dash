@@ -96,6 +96,9 @@ class MatrixRefView
   const MatrixRefView<T, NumDimensions, PatternT> & other);
 
   GlobRef<T> global_reference() const;
+
+  GlobRef<T> global_reference(
+      const ::std::array<typename PatternT::index_type, NumDimensions> & coords) const;
 };
 
 } // namespace dash
