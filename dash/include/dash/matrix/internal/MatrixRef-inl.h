@@ -402,11 +402,8 @@ MatrixRef<T, NumDim, CUR, PatternT>
       "expected " << (NumDim - _refview._dim) << " " <<
       "got " << sizeof...(Args));
   }
-  ::std::array<index_type, NumDim> coord = {{ args... }};
-  for(auto i = _refview._dim; i < NumDim; ++i) {
-    _refview._coord[i] = coord[i-_refview._dim];
-  }
-  return _refview.global_reference();
+  ::std::array<index_type, NumDim> coords = {{ args... }};
+  return at(coords);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -414,10 +411,7 @@ inline typename MatrixRef<T, NumDim, CUR, PatternT>::reference
 MatrixRef<T, NumDim, CUR, PatternT>
 ::at(const ::std::array<typename PatternT::index_type, NumDim> & coords)
 {
-  for(auto i = _refview._dim; i < NumDim; ++i) {
-    _refview._coord[i] = coords[i-_refview._dim];
-  }
-  return _refview.global_reference();
+  return _refview.global_reference(coords);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
