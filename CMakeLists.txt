@@ -79,6 +79,7 @@ if (BUILD_COVERAGE_TESTS)
        Implies BUILD_TESTS. Requires GCC." on)
 endif()
 
+include(${CMAKE_SOURCE_DIR}/CMakeExt/CMakeEnvCheck.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MessageColor.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
