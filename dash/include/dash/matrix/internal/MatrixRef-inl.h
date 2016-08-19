@@ -498,8 +498,6 @@ inline MatrixRef<T, NumDim, 0, PatternT>
 {
   DASH_LOG_TRACE_VAR("MatrixRef<0>.T()", _refview._coord);
   GlobRef<T> ref = _refview.global_reference();
-  DASH_LOG_TRACE("MatrixRef<0>.T()", "delete _refview", _refview);
-//  delete _refview;
   DASH_LOG_TRACE_VAR("MatrixRef<0>.T() >", ref);
   return ref;
 }
@@ -523,8 +521,6 @@ MatrixRef<T, NumDim, 0, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRef<0>.=", _refview._coord);
   GlobRef<T> ref = _refview.global_reference();
   ref = value;
-//  DASH_LOG_TRACE("MatrixRef<0>.=", "delete _refview", _refview);
-//  delete _refview;
   return value;
 }
 
@@ -538,8 +534,6 @@ MatrixRef<T, NumDim, 0, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRef<0>.+=", _refview._coord);
   GlobRef<T> ref = _refview.global_reference();
   ref += value;
-//  DASH_LOG_TRACE("MatrixRef<0>.+=", "delete _refview", _refview);
-//  delete _refview;
   return value;
 }
 
@@ -564,8 +558,6 @@ MatrixRef<T, NumDim, 0, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRef<0>.-=", _refview._coord);
   GlobRef<T> ref = _refview.global_reference();
   ref -= value;
-//  DASH_LOG_TRACE("MatrixRef<0>.-=", "delete _refview", _refview);
-//  delete _refview;
   return value;
 }
 
@@ -590,8 +582,6 @@ MatrixRef<T, NumDim, 0, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRef<0>.*=", _refview._coord);
   GlobRef<T> ref = _refview.global_reference();
   ref *= value;
-//  DASH_LOG_TRACE("MatrixRef<0>.*=", "delete _refview", _refview);
-//  delete _refview;
   return value;
 }
 
@@ -616,8 +606,6 @@ MatrixRef<T, NumDim, 0, PatternT>
   DASH_LOG_TRACE_VAR("MatrixRef<0>./=", _refview._coord);
   GlobRef<T> ref = _refview.global_reference();
   ref /= value;
-//  DASH_LOG_TRACE("MatrixRef<0>./=", "delete _refview", _refview);
-//  delete _refview;
   return value;
 }
 
