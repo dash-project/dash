@@ -275,9 +275,6 @@ if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
 	  target_include_directories("${DASH_LIBRARY}"
 	                              PUBLIC $<INSTALL_INTERFACE:include>
 	                              PUBLIC ${ADDITIONAL_INCLUDES})
-else()
-		include_directories("${DASH_LIBRARY}"
-	  											PUBLIC ${ADDITIONAL_INCLUDES})
 endif()
 	
   string(TOUPPER ${dart_variant} DART_VARIANT)
