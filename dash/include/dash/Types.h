@@ -12,6 +12,11 @@ typedef enum MemArrange {
   COL_MAJOR
 } MemArrange;
 
+typedef enum {
+  DASH_THREAD_SINGLE   = 0,
+  DASH_THREAD_MULTIPLE = 1
+} dash_concurrency_t;
+
 namespace internal {
 
 typedef enum DistributionType {

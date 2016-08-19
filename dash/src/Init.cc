@@ -25,6 +25,29 @@ void dash::init(int *argc, char ***argv)
   DASH_LOG_DEBUG("dash::init >");
 }
 
+void dash::init_thread(int *argc, char ***argv, int *concurrency)
+{
+  DASH_LOG_DEBUG("dash::init()");
+
+  DASH_LOG_DEBUG("dash::init", "dash::util::Config::init()");
+  dash::util::Config::init();
+
+  DASH_LOG_DEBUG("dash::init", "dart_init()");
+  dart_concurrency_t provided;
+  dart_init_thread(argc,argv, &provided);
+  dash::_initialized = true;
+
+  if (provided == DART_THREAD_SINGLE) {
+    *concurrency = DASH_THREAD_SINGLE;
+  } else {
+    *concurrency = DASH_THREAD_MULTIPLE;
+  }
+
+  DASH_LOG_DEBUG("dash::init", "dash::util::Locality::init()");
+  dash::util::Locality::init();
+  DASH_LOG_DEBUG("dash::init >");
+}
+
 void dash::finalize()
 {
   DASH_LOG_DEBUG("dash::finalize()");
