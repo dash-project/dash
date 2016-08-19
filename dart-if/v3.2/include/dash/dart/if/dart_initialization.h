@@ -19,6 +19,7 @@ extern "C" {
 
 #define DART_INTERFACE_ON
 
+
 /**
  * Initialize the DART runtime
  *
@@ -28,6 +29,16 @@ extern "C" {
  * \ingroup DartInitialization
 */
 dart_ret_t dart_init(int *argc, char ***argv);
+
+/**
+ * Initialize the DART runtime with support for multiple concurrent threads.
+ *
+ * No other DART function may be called before dart_init() or after
+ * dart_exit().
+ *
+ * \ingroup DartInitialization
+*/
+dart_ret_t dart_init_thread(int *argc, char ***argv, dart_concurrency_t *concurrency);
 
 /**
  * Finalize the DASH runtime.
