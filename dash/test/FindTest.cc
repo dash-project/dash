@@ -69,7 +69,7 @@ TEST_F(FindTest, SimpleVaryingTest)
   auto l_size = array.local.size();
   for (size_t l_i = 0; l_i < l_size; l_i++) {
     array.local[l_i] = dash::myid();
-    LOG_MESSAGE("array.local[%d] = %d", l_i, value);
+    LOG_MESSAGE("array.local[%d] = %d", l_i, array.local[l_i]);
 
   }
 
