@@ -34,6 +34,11 @@ typedef enum {
     DART_ERR_OTHER    = 999
 } dart_ret_t;
 
+typedef enum {
+  DART_THREAD_SINGLE   = 0,
+  DART_THREAD_MULTIPLE = 1
+} dart_concurrency_t;
+
 /**
  * \ingroup DartTypes
  */
