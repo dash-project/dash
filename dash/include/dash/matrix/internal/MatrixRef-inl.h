@@ -498,11 +498,6 @@ inline MatrixRef<T, NumDim, 0, PatternT>
 {
   DASH_LOG_TRACE_VAR("MatrixRef<0>.T()", _refview._coord);
   GlobRef<T> ref = _refview.global_reference();
-<<<<<<< HEAD
-=======
-  DASH_LOG_TRACE("MatrixRef<0>.T()", "delete _refview", _refview);
-//  delete _refview;
->>>>>>> f5b80b4128b976bd88b7cfee1332870d9f729bf3
   DASH_LOG_TRACE_VAR("MatrixRef<0>.T() >", ref);
   return ref;
 }
