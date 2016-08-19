@@ -6,6 +6,7 @@
 namespace dash
 {
   void   init(int *argc, char ***argv);
+  void   init_thread(int *argc, char ***argv, int *concurrency);
   void   finalize();
   bool   is_initialized();
   int    myid();
