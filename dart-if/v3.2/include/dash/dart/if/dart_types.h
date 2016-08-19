@@ -34,9 +34,21 @@ typedef enum {
     DART_ERR_OTHER    = 999
 } dart_ret_t;
 
+/**
+ * Thread-parallelism options to be returned by dart_init_thread().
+ *
+ * \ingroup DartTypes
+ */
 typedef enum {
-  DART_THREAD_SINGLE   = 0,
-  DART_THREAD_MULTIPLE = 1
+  /* DART may only be used from one thread */
+  DART_THREAD_SINGLE       = 0,
+  /* DART may be called by multiple threads at the same time but access
+   * to the underlying commnication library will be serialized.
+   * Note that this might incure additional overhead due to locking.
+   * Also note that this notion differs from other communication libraries, e.g., MPI_THREAD_SERIALIZED. */
+  DART_THREAD_SERIALIZED   = 1,
+  /* DART may be called by multiple threads at the same time without additional locking. */
+  DART_THREAD_MULTIPLE     = 2
 } dart_concurrency_t;
 
 /**
