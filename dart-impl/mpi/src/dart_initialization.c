@@ -257,7 +257,10 @@ dart_ret_t dart_init(
 	if (!mpi_initialized) {
 		_init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
-		MPI_Init(argc, argv);
+		if (MPI_Init(argc, argv) != MPI_SUCCESS) {
+	    DART_LOG_ERROR("dart_init(): MPI_Init failed");
+		  return DART_ERR_OTHER;
+		}
 	}
 
 	return init_internal();
@@ -283,10 +286,13 @@ dart_ret_t dart_init_thread(
 
   if (!mpi_initialized) {
     _init_by_dart = 1;
-    DART_LOG_DEBUG("dart_init: MPI_Init");
+    DART_LOG_DEBUG("dart_init: MPI_Init_thread");
     int required = MPI_THREAD_MULTIPLE;
     int provided;
-    MPI_Init_thread(argc, argv, required, &provided);
+    if (MPI_Init_thread(argc, argv, required, &provided) != MPI_SUCCESS) {
+      DART_LOG_ERROR("dart_init(): MPI_Init_thread failed");
+      return DART_ERR_OTHER;
+    }
     if (provided == MPI_THREAD_SINGLE || provided == MPI_THREAD_FUNNELED) {
       *concurrency = DART_THREAD_SINGLE;
     } else {
