@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <mpi.h>
+#include <stdbool.h>
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_communication.h>
@@ -20,6 +21,9 @@ struct dart_handle_struct
 	dart_unit_t dest;
 };
 
+void dash_set_serialcomm(bool flag);
+
+static inline
 MPI_Op dart_mpi_op(dart_operation_t dart_op) {
   switch (dart_op) {
     case DART_OP_MIN  : return MPI_MIN;
@@ -36,6 +40,7 @@ MPI_Op dart_mpi_op(dart_operation_t dart_op) {
   }
 }
 
+static inline
 MPI_Datatype dart_mpi_datatype(dart_datatype_t dart_datatype) {
   switch (dart_datatype) {
     case DART_TYPE_BYTE     : return MPI_BYTE;
@@ -51,6 +56,7 @@ MPI_Datatype dart_mpi_datatype(dart_datatype_t dart_datatype) {
   }
 }
 
+static inline
 int dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {
   switch (dart_datatype) {
     case DART_TYPE_BYTE     : return 1;
