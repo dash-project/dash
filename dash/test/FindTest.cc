@@ -6,7 +6,6 @@
 #include "TestBase.h"
 #include "FindTest.h"
 
-#if 1
 
 TEST_F(FindTest, TestSimpleFind)
 {
@@ -300,5 +299,3 @@ TEST_F(FindTest, LessElementsThanUnits)
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
 }
-
-#endif
