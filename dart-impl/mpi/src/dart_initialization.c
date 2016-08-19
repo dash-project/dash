@@ -28,8 +28,8 @@ char**dart_sharedmem_local_baseptr_set;
 #endif
 /* Help to do memory management work for local allocation/free */
 struct dart_buddy   * dart_localpool;
-int                  _init_by_dart     = 0;
-int                  _dart_initialized = 0;
+static int           _init_by_dart     = 0;
+static int           _dart_initialized = 0;
 
 static dart_ret_t
 init_internal()
