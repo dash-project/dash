@@ -2,6 +2,6 @@
 # otherwise print warnings
 
 # target exports for using findPackage(dash)
-if("${CMAKE_VERSION}" VERSION_GREATER 3.0.0)
+if("${CMAKE_VERSION}" VERSION_LESS 3.0.0)
 	message(WARNING "To use target exports use at least CMake 3.0.0")
 endif()
