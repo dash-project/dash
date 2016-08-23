@@ -133,7 +133,7 @@ inline LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::operator LocalMatrixRef<T, NumDim, CUR-1, PatternT> && ()
 {
   LocalMatrixRef<T, NumDim, CUR-1, PatternT> ref;
-  ref._refview = _refview;
+  ref._refview = std::move(_refview);
   DASH_LOG_TRACE("LocalMatrixRef.&& move");
   return ::std::move(ref);
 }
