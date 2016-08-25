@@ -26,8 +26,11 @@ TEST_F(MismatchTest, TestSimpleMismatch)
   }
   array_1.barrier();
 
-  //Copy array and modify it
-  Array_t array_2      = array_1;
+  // Copy array and modify it
+  Array_t array_2(_num_elem);
+  dash::copy(array_1.begin(), array_1.end(),
+             array_2.begin());
+
   array_2.barrier();
 
   Element_t mismatch_t = _num_elem / 2;

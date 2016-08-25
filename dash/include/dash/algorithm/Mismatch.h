@@ -61,7 +61,7 @@ mismatch(
     }
   }
 
-  return std::make_pair(index_1.end(), index_2.end());
+  return std::make_pair(index_1.end, index_2.end);
 }
 
 } // namespace dash
