@@ -1107,6 +1107,47 @@ copy_async(
  * operation.
  */
 template <
+  class GlobInputIt,
+  class GlobOutputIt >
+typename std::enable_if<
+  std::is_same<typename GlobInputIt::value_type,
+               typename GlobOutputIt::value_type>::value,
+  GlobOutputIt >::type
+copy(
+  GlobInputIt   in_first,
+  GlobInputIt   in_last,
+  GlobOutputIt  out_first)
+{
+  DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
+
+  typedef typename GlobInputIt::index_type index_t;
+
+  auto range_size = dash::distance(in_first, in_last);
+  auto out_last   = out_first + range_size;
+
+  // TODO: Only works for BLOCKED distribution
+
+  if (in_first.pattern() == out_first.pattern()) {
+    auto lrange_in   = dash::local_range(in_first, in_last);
+    auto lrange_out  = dash::local_range(out_first, out_last);
+    auto lrange_size = lrange_in.end - lrange_in.begin;
+    for (index_t l = 0; l < lrange_size; l++) {
+      lrange_out.begin[l] = lrange_in.begin[l];
+    }
+  } else {
+    DASH_THROW(
+      dash::exception::InvalidArgument,
+      "Patterns of source and destination range differ");
+  }
+
+  return out_last;
+}
+
+/**
+ * Specialization of \c dash::copy as global-to-global blocking copy
+ * operation.
+ */
+template <
   typename ValueType,
   class GlobInputIt,
   class GlobOutputIt >

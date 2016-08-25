@@ -6,8 +6,6 @@
 #include "TestBase.h"
 #include "FindTest.h"
 
-#if 0
-
 TEST_F(FindTest, TestSimpleFind)
 {
   _num_elem           = dash::Team::All().size();
@@ -215,6 +213,25 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
       LOG_MESSAGE("Setting array[%d] with init_fill %d", i, init_fill);
       array[i] = init_fill;
     }
+
+    array.barrier();
+
+    // Run find on complete array
+
+    auto found_gptr = dash::find(array.begin(), array.end(), find_me);
+
+    // Check that the element find_me has been found
+
+    LOG_MESSAGE("Completed dash::find");
+
+    // Run find on complete array
+    EXPECT_NE_U(found_gptr, array.end());
+
+    // Check minimum value found
+    Element_t found_v = *found_gptr;
+    LOG_MESSAGE("Expected find value: %d, found find value %d",
+                find_me, found_v);
+    EXPECT_EQ(find_me, found_v);
   }
   array.barrier();
   LOG_MESSAGE("Finished initialization of array values");
@@ -300,4 +317,3 @@ TEST_F(FindTest, LessElementsThanUnits)
   EXPECT_EQ(find_me, found_v);
 }
 
-#endif
