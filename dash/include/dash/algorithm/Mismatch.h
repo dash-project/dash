@@ -30,8 +30,6 @@ mismatch(
  BinaryPredicate p)
 {
  typedef default_index_t index_t;
- typedef std::pair<GlobIter<ElementType, PatternType>,
-                   GlobIter<ElementType, PatternType>> PairType;
 
  auto myid      = dash::myid();
 
@@ -47,21 +45,24 @@ mismatch(
     l_offset = -1;
   }
 
-  dash::Array<PairType> l_results_return(dash::size());
-  dash::Array<index_t>  l_results(dash::size());
+  dash::Array<decltype(l_result)> l_results_return(dash::size());
+  dash::Array<index_t>            l_results(dash::size());
   l_results.local[0]        = l_offset;
   l_results_return.local[0] = l_result;
 
   dash::barrier();
 
   for (int u = 0; u < dash::size(); u++) {
-    index_t i = l_results[u];
-    if (i != -1) {
-      return l_results_return[u];
+    index_t l_offs = l_results[u];
+    if (l_offs != -1) {
+      // Local offset to global offset:
+      auto g_offset = input_1_f.pattern().global(l_offs);
+      return std::make_pair(input_1_f + g_offset,
+                            input_2_f + g_offset);
     }
   }
 
-  return std::make_pair(index_1.end, index_2.end);
+  return std::make_pair(input_1_l, input_2_l);
 }
 
 } // namespace dash
