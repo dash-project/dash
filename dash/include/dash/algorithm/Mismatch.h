@@ -8,6 +8,7 @@
 #include <dash/dart/if/dart_communication.h>
 
 #include <utility>
+#include <algorithm>
 
 namespace dash {
 
@@ -38,11 +39,11 @@ mismatch(
  auto index_2   = dash::local_range(input_2_f, input_2_l);
 
  auto l_result  = std::mismatch(index_1.begin, index_1.end,
-                                index_2.begin, index_2.end,
+                                index_2.begin,
                                 p);
  auto l_offset  = std::distance(index_1.begin, index_1.end);
 
-  if (l_result == index_1.end) {
+  if (l_result.second == index_1.end) {
     l_offset = -1;
   }
 
@@ -60,7 +61,7 @@ mismatch(
     }
   }
 
-  return std::make_pair(index_1.end, index_2.end);
+  return std::make_pair(index_1.end(), index_2.end());
 }
 
 } // namespace dash
