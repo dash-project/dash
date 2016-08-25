@@ -54,7 +54,8 @@ mismatch(
   dash::barrier();
 
   for (int u = 0; u < dash::size(); u++) {
-    if (l_results[u] != -1) {
+    index_t i = l_results[u];
+    if (i != -1) {
       return l_results_return[u];
     }
   }
