@@ -1,12 +1,15 @@
 #ifndef DASH__ALGORITHM__MISMATCH_H__
 #define DASH__ALGORTIHM__MISMATCH_H__
 
+#include <dash/Array.h>
 #include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/Operation.h>
 #include <dash/dart/if/dart_communication.h>
 
-namspace dash {
+#include <utility>
+
+namespace dash {
 
 /**
  * \ingroup DashAlgorithms
@@ -15,18 +18,19 @@ namspace dash {
 template<
  typename ElementType,
  class    PatternType,
- class    BinaryPredicate>
+ class    BinaryPredicate >
 std::pair<GlobIter<ElementType, PatternType>,
-          GlobIter<ElementType, PatternType> mismatch(
- GlobIter<ElementType, PatternType> input_1_f, 
- GlobIter<ElementType, PatternType> input_1_l, 
+          GlobIter<ElementType, PatternType> >
+mismatch(
+ GlobIter<ElementType, PatternType> input_1_f,
+ GlobIter<ElementType, PatternType> input_1_l,
  GlobIter<ElementType, PatternType> input_2_f,
  GlobIter<ElementType, PatternType> input_2_l,
- BinaryPredicate p){
-
- typedef default_index_t index_t; 
+ BinaryPredicate p)
+{
+ typedef default_index_t index_t;
  typedef std::pair<GlobIter<ElementType, PatternType>,
-                    GlobIter<ElementType, PatternType>> PairType;
+                   GlobIter<ElementType, PatternType>> PairType;
 
  auto myid      = dash::myid();
 
@@ -35,25 +39,29 @@ std::pair<GlobIter<ElementType, PatternType>,
 
  auto l_result  = std::mismatch(index_1.begin, index_1.end,
                                 index_2.begin, index_2.end,
-                                 p);
+                                p);
  auto l_offset  = std::distance(index_1.begin, index_1.end);
-  
+
   if (l_result == index_1.end) {
-    l_offset     = -1;
+    l_offset = -1;
   }
 
   dash::Array<PairType> l_results_return(dash::size());
-  dash::Array<index_t> l_results;
-  l_results.local[0]  = l_offset;
+  dash::Array<index_t>  l_results(dash::size());
+  l_results.local[0]        = l_offset;
   l_results_return.local[0] = l_result;
 
   dash::barrier();
-  
+
   for (int u = 0; u < dash::size(); u++) {
-    if (l_results[u].first != -1) {
+    if (l_results[u] != -1) {
       return l_results_return[u];
     }
   }
 
- return std::make_pair(index_1.end, index_2.end);
+  return std::make_pair(index_1.end, index_2.end);
 }
+
+} // namespace dash
+
+#endif // DASH__ALGORTIHM__MISMATCH_H__
