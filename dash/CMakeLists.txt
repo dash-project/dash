@@ -72,6 +72,7 @@ if (ENABLE_TRACE_LOGGING)
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_TRACE_LOGGING)
 endif()
 if (PAPI_FOUND AND ENABLE_PAPI)
+  set (CONF_AVAIL_PAPI "true")
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_PAPI)
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
@@ -83,6 +84,7 @@ else()
        rt)
 endif()
 if (HWLOC_FOUND AND ENABLE_HWLOC)
+  set (CONF_AVAIL_HWLOC "true")
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_HWLOC)
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
@@ -91,6 +93,7 @@ if (HWLOC_FOUND AND ENABLE_HWLOC)
        ${HWLOC_LIBRARIES})
 endif()
 if (LIKWID_FOUND AND ENABLE_LIKWID)
+  set (CONF_AVAIL_LIKWID "true")
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_LIKWID)
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
@@ -99,6 +102,7 @@ if (LIKWID_FOUND AND ENABLE_LIKWID)
        ${LIKWID_LIBRARIES})
 endif()
 if (NUMA_FOUND AND ENABLE_LIBNUMA)
+  set (CONF_AVAIL_NUMA "true")
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_NUMA)
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
@@ -108,6 +112,7 @@ if (NUMA_FOUND AND ENABLE_LIBNUMA)
 endif()
 
 if (ENABLE_PLASMA AND PLASMA_FOUND)
+  set (CONF_AVAIL_PLASMA "true")
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_PLASMA)
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
@@ -117,6 +122,7 @@ if (ENABLE_PLASMA AND PLASMA_FOUND)
 endif()
 
 if (ENABLE_HDF5 AND HDF5_FOUND)
+  set (CONF_AVAIL_HDF5 "true")
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_HDF5)
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
@@ -128,6 +134,7 @@ if (ENABLE_HDF5 AND HDF5_FOUND)
 endif()
 
 if (ENABLE_MKL AND MKL_FOUND)
+  set (CONF_AVAIL_MKL "true")
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_MKL)
   set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
@@ -140,6 +147,7 @@ if (ENABLE_MKL AND MKL_FOUND)
   endif()
 else()
   if (ENABLE_BLAS AND BLAS_FOUND)
+    set (CONF_AVAIL_BLAS "true")
     set (ADDITIONAL_COMPILE_FLAGS
          ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_BLAS)
     set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
@@ -155,6 +163,7 @@ else()
   endif()
 
   if (ENABLE_LAPACK AND LAPACK_FOUND)
+    set (CONF_AVAIL_LAPACK "true")
     set (ADDITIONAL_COMPILE_FLAGS
          ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_LAPACK)
     set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
@@ -165,6 +174,7 @@ else()
 endif()
 
 if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
+  set (CONF_AVAIL_SCALAPACK "true")
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_SCALAPACK)
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
@@ -174,7 +184,7 @@ endif()
 if (DASH_ENV_HOST_SYSTEM_ID)
   set (HOST_ID ${DASH_ENV_HOST_SYSTEM_ID})
   set (ADDITIONAL_COMPILE_FLAGS
-       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENV_HOST_SYSTEM_ID=\"${HOST_ID}\")
+       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENV_HOST_SYSTEM_ID='${HOST_ID}')
 endif()
 
 set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
@@ -212,9 +222,13 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
            "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DDART_MPI_DISABLE_SHARED_WINDOWS")
     endif()
     set (VARIANT_ADDITIONAL_COMPILE_FLAGS
-         "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID=\"${MPI_IMPL_ID}\"")
+         "${VARIANT_ADDITIONAL_COMPILE_FLAGS} -DMPI_IMPL_ID='${MPI_IMPL_ID}'")
   endif()
   message(STATUS "Building DASH library    " ${DASH_LIBRARY})
+
+  # generate dash StaticConfig.h
+  configure_file("include/dash/util/StaticConfig.h.in"
+                 "${CMAKE_SOURCE_DIR}/dash/include/dash/util/StaticConfig.h")
 
   # Library compilation sources
   add_library(
@@ -254,8 +268,38 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
 
   DeployLibrary(${DASH_LIBRARY})
 
+  # cmake packaging
+if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
+	  include(CMakePackageConfigHelpers)
+	
+	  target_include_directories("${DASH_LIBRARY}"
+	                              PUBLIC $<INSTALL_INTERFACE:include>
+	                              PUBLIC ${ADDITIONAL_INCLUDES})
+endif()
+	
+  string(TOUPPER ${dart_variant} DART_VARIANT)
+
   # Install library
-  install(TARGETS ${DASH_LIBRARY} DESTINATION lib)
+  install(TARGETS ${DASH_LIBRARY}
+          DESTINATION lib
+          EXPORT "${DASH_LIBRARY}-targets")
+
+  # exports
+  install(
+    EXPORT "${DASH_LIBRARY}-targets"
+    DESTINATION cmake)
+
+	if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
+  	configure_package_config_file(
+      "dash-config.cmake.in"
+      "${DASH_LIBRARY}-config.cmake"
+      INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake"
+      PATH_VARS CMAKE_INSTALL_PREFIX)
+
+  	# install custom config
+  	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
+          DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+	endif()
 
   # Examples
   if (BUILD_EXAMPLES)
@@ -387,9 +431,11 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
     # Code Coverage
     if (BUILD_COVERAGE_TESTS)
       if (${dart_variant} STREQUAL "mpi")
-        setup_target_for_coverage(coverage "mpirun -n 4 ${CMAKE_BINARY_DIR}/bin/${DASH_TEST}" coverage)
+        setup_target_for_coverage(
+          coverage "mpirun -n 4 ${CMAKE_BINARY_DIR}/bin/${DASH_TEST}" coverage)
       else()
-        setup_target_for_coverage(coverage "${DASH_TEST}" coverage)
+        setup_target_for_coverage(
+          coverage "${DASH_TEST}" coverage)
       endif()
     endif()
 

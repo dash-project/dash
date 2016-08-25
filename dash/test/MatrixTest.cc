@@ -953,9 +953,13 @@ TEST_F(MatrixTest, UnderfilledPattern)
   auto ext_x        = (block_size_x * teamspec_2d.num_units(0)) - 3;
   auto ext_y        = (block_size_y * teamspec_2d.num_units(1)) - 1;
 
-  auto size_spec = dash::SizeSpec<2>(ext_x, ext_y);
+  auto size_spec    = dash::SizeSpec<2>(ext_x, ext_y);
 
-  auto matrix_a = dash::Matrix<int, 2, long, pattern_t>(size_spec);
+  dash::Matrix<
+    int, 2,
+    typename pattern_t::index_type,
+    pattern_t
+  > matrix_a(size_spec);
 
   // test bottom right corner
   if (dash::myid() == 0) {
@@ -974,7 +978,12 @@ TEST_F(MatrixTest, UnderfilledPattern)
     teamspec_2d,
     dash::Team::All());
 
-  dash::Matrix<int, 2, long, pattern_t> matrix_b;
+  dash::Matrix<
+    int, 2,
+    typename pattern_t::index_type,
+    pattern_t
+  > matrix_b;
+
   matrix_b.allocate(pattern);
 }
 
@@ -992,4 +1001,20 @@ TEST_F(MatrixTest, SimpleConstructor)
 	ASSERT_EQ_U(ext_y, matrix.extent(1));
 }
 
+TEST_F(MatrixTest, MatrixLBegin)
+{
+  int myid = dash::myid();
+  size_t ext_x = dash::size();
+  size_t ext_y = 5*dash::size();
+  dash::Matrix<int, 2> matrix(ext_x, ext_y);
+
+  dash::fill(matrix.begin(), matrix.end(), myid);
+  matrix.barrier();
+
+  int * l_first = matrix.lbegin();
+
+  EXPECT_EQ_U(myid, static_cast<int>(*(matrix.lbegin())));
+  EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.block(0).begin())));
+  EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.begin())));
+}
 

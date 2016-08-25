@@ -24,3 +24,5 @@ tags
 *.orig*
 *.bac*
 RELEASE/*
+dash/include/dash/util/StaticConfig.h
+.includes

@@ -108,7 +108,7 @@ std::map<Integer, int> factorize(Integer n)
     }
   }
   Integer sqrt_n = std::ceil(std::sqrt(n));
-  for (int i = 3; i <= sqrt_n; i = i + 2) {
+  for (Integer i = 3; i <= sqrt_n; i = i + 2) {
     while (n  % i == 0) {
       auto it = factors.find(i);
       if (it == factors.end()) {
@@ -161,7 +161,7 @@ std::set<Integer> factors(Integer n)
     }
   }
   Integer sqrt_n = std::ceil(std::sqrt(n));
-  for (int i = 3; i <= sqrt_n; i = i + 2) {
+  for (Integer i = 3; i <= sqrt_n; i = i + 2) {
     while (n  % i == 0) {
       auto it = primes.find(i);
       if (it == primes.end()) {

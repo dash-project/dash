@@ -32,7 +32,11 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
                    *(mat->_ref._refview));
   auto local_extents = mat->_pattern.local_extents();
   DASH_LOG_TRACE_VAR("LocalMatrixRef(mat)", local_extents);
-  _refview->_viewspec.resize(local_extents);
+  // Global offset to first local element is missing:
+  // _refview->_viewspec.resize(local_extents);
+  std::array<index_type, NumDim> local_begin_coords = {{ }};
+  auto local_offsets = mat->_pattern.global(local_begin_coords);
+  _refview->_viewspec = ViewSpec_t(local_offsets, local_extents);
   DASH_LOG_TRACE_VAR("LocalMatrixRef(mat)", _refview->_viewspec);
 }
 
@@ -216,6 +220,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
                           _refview->_l_viewspec);
   DASH_LOG_TRACE("LocalMatrixRef.begin=()",
                  "viewspec:",        _refview->_viewspec,
+                 "l_viewspec:",      _refview->_l_viewspec,
                  "iterator offset:", l_vs_begin_idx);
   iterator gv_it(
     _refview->_mat->_glob_mem,
@@ -240,6 +245,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
                           _refview->_l_viewspec);
   DASH_LOG_TRACE("LocalMatrixRef.begin()",
                  "viewspec:",        _refview->_viewspec,
+                 "l_viewspec:",      _refview->_l_viewspec,
                  "iterator offset:", l_vs_begin_idx);
   const_iterator gv_it(
     _refview->_mat->_glob_mem,
@@ -338,8 +344,7 @@ T & LocalMatrixRef<T, NumDim, CUR, PatternT>
   }
   return local_at(
            _refview->_mat->_pattern.local_at(
-             _refview->_coord,
-             _refview->_viewspec));
+             _refview->_coord));
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -606,6 +611,24 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
   DASH_LOG_TRACE("LocalMatrixRef<0>.+=", "delete _refview");
 //delete _refview;
   return value;
+}
+
+template <typename T, dim_t NumDim, class PatternT>
+inline T
+LocalMatrixRef<T, NumDim, 0, PatternT>
+::operator+(
+  const T & value)
+{
+	auto res  = self_t(*this);
+	res      += value;
+	return res;
+}
+
+template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
+inline const PatternT&
+LocalMatrixRef<T, NumDim, CUR, PatternT>::pattern() const
+{
+	return _refview->_mat->_pattern;
 }
 
 } // namespace dash

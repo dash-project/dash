@@ -79,6 +79,7 @@ if (BUILD_COVERAGE_TESTS)
        Implies BUILD_TESTS. Requires GCC." on)
 endif()
 
+include(${CMAKE_SOURCE_DIR}/CMakeExt/CMakeEnvCheck.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/MessageColor.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/InstallFiles.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
@@ -101,6 +102,9 @@ if (NOT MKL_FOUND)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/SCALAPACK.cmake)
 endif()
+
+# prepare StaticConfig.h generation
+include(${CMAKE_SOURCE_DIR}/CMakeExt/GenerateConfig.cmake)
 
 ## Version number
 set(DASH_VERSION_MAJOR 0 CACHE STRING "DASH major version number.")

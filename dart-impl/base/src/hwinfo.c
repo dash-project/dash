@@ -48,6 +48,26 @@
 #  include <numa.h>
 #endif
 
+static const int BYTES_PER_MB = (1024 * 1024);
+
+/* NOTE: The dart_hwinfo function must only return reliable information,
+ *       typically obtained from system functions or libraries such as
+ *       hwloc, PAPI, likwid etc.
+ *       Hardware locality attributes that cannot be obtained or deduced
+ *       are initialized with -1.
+ *       Assumptions and approximations based on the common case
+ *       are specific to the use case and must be decided in client code.
+ *       Otherwise, users of this function would consider a possibly
+ *       incorrect hwinfo attribute setting as actual system information.
+ *
+ *       For example, assuming
+ *
+ *         (numa node memory) = (system memory) / (num numa)
+ *
+ *       to derive default values for memory capacity is viable in most
+ *       cases but harmful for compute nodes with accelerator components
+ *       where this would lead to drastic host/target load imbalance.
+ */
 
 dart_ret_t dart_hwinfo(
   dart_hwinfo_t * hwinfo)
@@ -75,6 +95,8 @@ dart_ret_t dart_hwinfo(
   hw.cache_shared[1]     = -1;
   hw.cache_shared[2]     = -1;
   hw.max_shmem_mbps      = -1;
+  hw.system_memory       = -1;
+  hw.numa_memory         = -1;
 
   char * max_shmem_mbps_str = getenv("DASH_MAX_SHMEM_MBPS");
   if (NULL != max_shmem_mbps_str) {
@@ -85,6 +107,8 @@ dart_ret_t dart_hwinfo(
     DART_LOG_TRACE("dart_hwinfo: DASH_MAX_SHMEM_MBPS not set");
   }
   if (hw.max_shmem_mbps <= 0) {
+    /* TODO: Intermediate workaround for load balancing, use -1
+     *       instead: */
     hw.max_shmem_mbps = 1235;
   }
 
@@ -112,7 +136,7 @@ dart_ret_t dart_hwinfo(
       hw.num_numa    = hw.num_sockets;
     }
     if (hw.num_cores < 0) {
-      hw.num_cores    = topo->numCoresPerSocket * hw.num_sockets;
+      hw.num_cores   = topo->numCoresPerSocket * hw.num_sockets;
     }
     topology_finalize();
     DART_LOG_TRACE("dart_hwinfo: likwid: "
@@ -147,24 +171,53 @@ dart_ret_t dart_hwinfo(
     }
   }
   if (hw.num_numa < 0) {
-    // Resolve number of NUMA nodes:
+    /* NOTE:
+     * Do not use HWLOC_OBJ_NUMANODE (requires >= hwloc-1.11.0).
+     * HWLOC_OBJ_NODE is renamed to HWLOC_OBJ_NUMANODE in recent
+     * distribution hwloc-1.11.0 but still supported for backward
+     * compatibility and therefore works in all versions of hwloc.
+     * When HWLOC_OBJ_NODE is marked as deprecated, add a condition
+     * on hwloc version here.
+     */
     int n_numa_nodes = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_NODE);
     if (n_numa_nodes > 0) {
       hw.num_numa = n_numa_nodes;
     }
   }
   if (hw.num_cores < 0) {
-    // Resolve number of cores:
     int n_cores = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_CORE);
     if (n_cores > 0) {
       hw.num_cores = n_cores;
     }
 	}
   if (hw.num_cores > 0 && hw.max_threads < 0) {
-    // Resolve number of threads per core:
     int n_cpus     = hwloc_get_nbobjs_by_type(topology, HWLOC_OBJ_PU);
     hw.min_threads = 1;
     hw.max_threads = n_cpus / hw.num_cores;
+  }
+
+  if(hw.system_memory < 0) {
+    hwloc_obj_t obj;
+    obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_MACHINE, 0);
+    hw.system_memory = obj->memory.total_memory / BYTES_PER_MB;
+  }
+  if(hw.numa_memory < 0) {
+    hwloc_obj_t obj;
+    /* NOTE:
+     * Do not use HWLOC_OBJ_NUMANODE (requires >= hwloc-1.11.0).
+     * HWLOC_OBJ_NODE is renamed to HWLOC_OBJ_NUMANODE in recent
+     * distribution hwloc-1.11.0 but still supported for backward
+     * compatibility and therefore works in all versions of hwloc.
+     * When HWLOC_OBJ_NODE is marked as deprecated, add a condition
+     * on hwloc version here.
+     */
+    obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_NODE, 0);
+    if(obj != NULL) {
+      hw.numa_memory = obj->memory.total_memory / BYTES_PER_MB;
+    } else {
+      /* No NUMA domain: */
+      hw.numa_memory = hw.system_memory;
+    }
   }
   hwloc_topology_destroy(topology);
   DART_LOG_TRACE("dart_hwinfo: hwloc: "
@@ -194,6 +247,10 @@ dart_ret_t dart_hwinfo(
 #endif /* DART_ENABLE_PAPI */
 
 #ifdef DART__ARCH__IS_MIC
+  /*
+   * Hardware information for Intel MIC can be hard-coded as hardware
+   * specs of MIC model variants are invariant:
+   */
   DART_LOG_TRACE("dart_hwinfo: MIC architecture");
 
   if (hw.num_sockets < 0) { hw.num_sockets =  1; }
@@ -223,6 +280,15 @@ dart_ret_t dart_hwinfo(
       "dart_hwinfo: POSIX: hw.num_cores = %d",
       hw.num_cores);
   }
+
+	if(hw.system_memory < 0) {
+	  long pages     = sysconf(_SC_AVPHYS_PAGES);
+	  long page_size = sysconf(_SC_PAGE_SIZE);
+    if (pages > 0 && page_size > 0) {
+      hw.system_memory = (int) ((pages * page_size) / BYTES_PER_MB);
+    }
+  }
+
 #endif
 
 #ifdef DART__PLATFORM__LINUX
@@ -246,21 +312,6 @@ dart_ret_t dart_hwinfo(
   DART_LOG_TRACE("dart_hwinfo: numalib: "
                  "num_sockets:%d num_numa:%d numa_id:%d num_cores:%d",
                  hw.num_sockets, hw.num_numa, hw.numa_id, hw.num_cores);
-#endif
-
-#if 0
-  if (hw.num_numa < 0) {
-    hw.num_numa = 1;
-  }
-  if (hw.num_cores   < 0) {
-    hw.num_cores     = 1;
-  }
-  if (hw.min_threads < 0) {
-    hw.min_threads   = 1;
-  }
-  if (hw.max_threads < 0) {
-    hw.max_threads   = 1;
-  }
 #endif
 
   DART_LOG_TRACE("dart_hwinfo: finished: "

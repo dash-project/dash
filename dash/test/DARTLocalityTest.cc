@@ -78,12 +78,17 @@ TEST_F(DARTLocalityTest, Domains)
                        dl->hwinfo.cache_line_sizes[1]);
     DASH_LOG_TRACE_VAR("DARTLocalityTest.Domains",
                        dl->hwinfo.cache_line_sizes[2]);
+    DASH_LOG_TRACE_VAR("DARTLocalityTest.Domains", dl->hwinfo.system_memory);
+    DASH_LOG_TRACE_VAR("DARTLocalityTest.Domains", dl->hwinfo.numa_memory);
 
-    EXPECT_GT_U(dl->hwinfo.num_sockets, 0);
-    EXPECT_GT_U(dl->hwinfo.num_numa,    0);
-    EXPECT_GT_U(dl->hwinfo.num_cores,   0);
-    EXPECT_GT_U(dl->hwinfo.min_threads, 0);
-    EXPECT_GT_U(dl->hwinfo.max_threads, 0);
+
+    EXPECT_GT_U(dl->hwinfo.num_sockets,  0);
+    EXPECT_GT_U(dl->hwinfo.num_numa,     0);
+    EXPECT_GT_U(dl->hwinfo.num_cores,    0);
+    EXPECT_GT_U(dl->hwinfo.min_threads,  0);
+    EXPECT_GT_U(dl->hwinfo.max_threads,  0);
+    EXPECT_GT_U(dl->hwinfo.system_memory,0);
+    EXPECT_GT_U(dl->hwinfo.numa_memory,  0);
 
     // Global domain has locality level 0 (DART_LOCALITY_SCOPE_GLOBAL):
     EXPECT_EQ_U(dl->level, 0);

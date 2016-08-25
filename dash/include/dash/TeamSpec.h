@@ -289,7 +289,7 @@ public:
       }
       ++d;
     }
-    return at(neighbor_coords);
+    return this->at(neighbor_coords);
   }
 
   /**

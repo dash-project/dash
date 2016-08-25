@@ -132,7 +132,7 @@ template<
   typename ElementT,
   dim_t    NumDimensions,
   typename IndexT         = dash::default_index_t,
-  class    PatternT       = Pattern<NumDimensions, ROW_MAJOR, IndexT> >
+  class    PatternT       = TilePattern<NumDimensions, ROW_MAJOR, IndexT> >
 class Matrix
 {
   static_assert(std::is_trivial<ElementT>::value,
@@ -588,11 +588,10 @@ private:
  */
 template <
   typename T,
-  dim_t NumDimensions,
+  dim_t    NumDimensions,
   typename IndexT   = dash::default_index_t,
   class    PatternT = Pattern<NumDimensions, ROW_MAJOR, IndexT> >
 using NArray = dash::Matrix<T, NumDimensions, IndexT, PatternT>;
-
 
 }  // namespace dash
 

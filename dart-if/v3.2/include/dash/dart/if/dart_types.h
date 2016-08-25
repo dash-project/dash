@@ -179,6 +179,12 @@ typedef struct
 
   /** Maximum local shared memory bandwidth in MB/s. */
   int   max_shmem_mbps;
+
+  /** Maximum allocatable memory per node in MB */
+  int   system_memory;
+
+  /** Maximum memory per numa node in MB */
+  int   numa_memory;
 }
 dart_hwinfo_t;
 

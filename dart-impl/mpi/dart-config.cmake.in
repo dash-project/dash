@@ -1,0 +1,14 @@
+# - Config file for the dart package
+# - provides support for all transitive dependencies
+#
+# - Automatically locates DART-BASE
+# - DART-IMPL is not imported, as the user should be
+# - able to select the implementation
+
+@PACKAGE_INIT@
+
+set(DART_INSTALL_PREFIX "@CMAKE_INSTALL_PREFIX@")
+
+find_package(DART-BASE REQUIRED HINTS "${DASH_INSTALL_PREFIX}/cmake")
+
+include("${DASH_INSTALL_PREFIX}/cmake/@DASH_DART_IMPL_MPI_LIBRARY@-targets.cmake")

@@ -6,6 +6,10 @@
 #include <sstream>
 #include <iostream>
 
+#include <dash/Exception.h>
+#include <dash/internal/Logging.h>
+
+
 namespace dash {
 
 template<typename ResultT>

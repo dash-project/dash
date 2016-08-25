@@ -79,7 +79,7 @@ TEST_F(AutobalanceTest, BalanceExtents)
 
 TEST_F(AutobalanceTest, BalanceTeamSpecNUMA)
 {
-  typedef std::array<size_t, 2> extents_t;
+  typedef std::array<dash::default_size_t, 2> extents_t;
 
   size_t size_base    = 1680;
   int    size_exp_max = 7;
@@ -133,7 +133,7 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNUMA)
 
 TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
 {
-  typedef std::array<size_t, 2> extents_t;
+  typedef std::array<dash::default_size_t, 2> extents_t;
 
   dash::util::Locality::SetNumSockets(2);
   dash::util::Locality::SetNumNUMANodes(4);
