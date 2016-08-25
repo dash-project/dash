@@ -1121,6 +1121,31 @@ copy_async(
  * operation.
  */
 template <
+  class GlobInputIt,
+  class GlobOutputIt >
+typename std::enable_if<
+  std::is_same<typename GlobInputIt::value_type,
+               typename GlobOutputIt::value_type>::value,
+  GlobOutputIt >::type
+copy(
+  GlobInputIt   in_first,
+  GlobInputIt   in_last,
+  GlobOutputIt  out_first)
+{
+  DASH_LOG_TRACE("dash::copy()", "blocking, global to global");
+
+  // TODO:
+  // - Implement adapter for local-to-global dash::copy here
+  // - Return if global input range has no local sub-range
+
+  return GlobOutputIt();
+}
+
+/**
+ * Specialization of \c dash::copy as global-to-global blocking copy
+ * operation.
+ */
+template <
   typename ValueType,
   class GlobInputIt,
   class GlobOutputIt >

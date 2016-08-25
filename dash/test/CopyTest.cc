@@ -800,3 +800,24 @@ TEST_F(CopyTest, AsyncAllToLocalVector)
   }
 }
 #endif
+
+
+TEST_F(CopyTest, BlockingGlobalToGlobal)
+{
+  auto   nunits         = dash::size();
+  size_t nelem_per_unit = 12;
+
+  dash::Array<int> array_1(nunits * nelem_per_unit);
+  dash::Array<int> array_2(nunits * nelem_per_unit);
+
+  dash::fill(array_1.begin(), array_1.end(), dash::myid());
+
+  dash::copy(array_1.begin(), array_1.end(), array_2.begin());
+
+  for (size_t l = 0; l < array_1.lsize(); l++) {
+    EXPECT_EQ_U(array_1.local[l], array_2.local[l]);
+  }
+
+}
+
+
