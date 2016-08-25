@@ -461,6 +461,11 @@ GlobOutputIt copy_impl(
   ValueType    * in_last,
   GlobOutputIt   out_first)
 {
+  DASH_LOG_TRACE("dash::copy_impl()",
+                 "l_in_first:",  in_first,
+                 "l_in_last:",   in_last,
+                 "g_out_first:", out_first.pos());
+
   auto num_elements = std::distance(in_first, in_last);
   auto num_bytes    = num_elements * sizeof(ValueType);
   DASH_ASSERT_RETURNS(
@@ -470,7 +475,11 @@ GlobOutputIt copy_impl(
       num_bytes),
     DART_OK);
 
-  return out_first + num_elements;
+  auto out_last = out_first + num_elements;
+  DASH_LOG_TRACE("dash::copy_impl >",
+                 "g_out_last:", out_last.dart_gptr());
+
+  return out_last;
 }
 
 /**
@@ -485,6 +494,11 @@ dash::Future<GlobOutputIt> copy_async_impl(
   ValueType    * in_last,
   GlobOutputIt   out_first)
 {
+  DASH_LOG_TRACE("dash::copy_async_impl()",
+                 "l_in_first:",  in_first,
+                 "l_in_last:",   in_last,
+                 "g_out_first:", out_first.dart_gptr());
+
   // Accessed global pointers to be flushed:
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
   std::vector<dart_gptr_t>   req_handles;
@@ -524,22 +538,22 @@ dash::Future<GlobOutputIt> copy_async_impl(
     // Wait for all get requests to complete:
     GlobOutputIt _out = out_first + num_copy_elem;
     DASH_LOG_TRACE("dash::copy_async_impl [Future]()",
-                   "  wait for", req_handles.size(), "async get request");
+                   "  wait for", req_handles.size(), "async put request");
     DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  flush:", req_handles);
     DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  _out:", _out);
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
     for (auto gptr : req_handles) {
-      dart_flush_local_all(gptr);
+      dart_flush_all(gptr);
     }
 #else
     if (req_handles.size() > 0) {
-      if (dart_waitall_local(&req_handles[0], req_handles.size())
+      if (dart_waitall(&req_handles[0], req_handles.size())
           != DART_OK) {
         DASH_LOG_ERROR("dash::copy_async_impl [Future]",
-                       "  dart_waitall_local failed");
+                       "  dart_waitall failed");
         DASH_THROW(
           dash::exception::RuntimeError,
-          "dash::copy_async_impl [Future]: dart_waitall_local failed");
+          "dash::copy_async_impl [Future]: dart_waitall failed");
       }
     } else {
       DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  No pending handles");
