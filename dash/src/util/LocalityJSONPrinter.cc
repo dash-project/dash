@@ -44,7 +44,10 @@ LocalityJSONPrinter & LocalityJSONPrinter::operator<<(
      << "'cpu_mhz': { "
      << "'min': "         << hwinfo.min_cpu_mhz    << ","
      << "'max': "         << hwinfo.max_cpu_mhz    << " }, "
-     << "'mem_mbps': "    << hwinfo.max_shmem_mbps << " }";
+     << "'mem_mbps': "    << hwinfo.max_shmem_mbps << ", "
+     << "'system_mb': "   << hwinfo.system_memory  << ", "
+     << "'numa_mb': "     << hwinfo.numa_memory
+     << " }";
   return (*this << os.str());
 }
 
@@ -83,7 +86,18 @@ LocalityJSONPrinter & LocalityJSONPrinter::print_domain(
     *this << indent << "'nodes': " << domain->num_nodes << ",\n";
   }
 
-  if (static_cast<int>(domain->scope) >=
+  if ((static_cast<int>(domain->scope) ==
+       static_cast<int>(DART_LOCALITY_SCOPE_NODE)) ||
+      (static_cast<int>(domain->scope) ==
+       static_cast<int>(DART_LOCALITY_SCOPE_MODULE))) {
+    *this << indent << "'host': "    << domain->host    << ",\n";
+  }
+
+  if (static_cast<int>(domain->scope) ==
+      static_cast<int>(DART_LOCALITY_SCOPE_NODE)) {
+    *this << indent << "'node_id': " << domain->node_id << ",\n";
+  }
+  else if (static_cast<int>(domain->scope) >=
       static_cast<int>(DART_LOCALITY_SCOPE_NUMA)) {
     *this << indent << "'numa_id': " << domain->hwinfo.numa_id  << ",\n";
   }
