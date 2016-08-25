@@ -56,7 +56,8 @@ int main(int argc, char * argv[])
     dart_domain_team_locality(
       DART_TEAM_ALL, ".", &global_domain_locality);
 
-    cout << *global_domain_locality
+    cout << ((dash::util::LocalityJSONPrinter()
+              << *global_domain_locality)).str()
          << endl
          << separator
          << endl;

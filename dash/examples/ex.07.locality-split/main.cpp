@@ -106,10 +106,9 @@ int main(int argc, char * argv[])
     dart_domain_team_locality(
       DART_TEAM_ALL, ".", &global_domain_locality);
 
-//  cout << *global_domain_locality
     cout << ((dash::util::LocalityJSONPrinter()
-              << *global_domain_locality)).str();
-    cout << endl
+              << *global_domain_locality)).str()
+         << endl
          << separator
          << endl;
   } else {
@@ -141,10 +140,9 @@ int main(int argc, char * argv[])
       dart_domain_team_locality(
         split_team.dart_id(), ".", &global_domain_locality);
 
-//    cout << *global_domain_locality
       cout << ((dash::util::LocalityJSONPrinter()
-                << *global_domain_locality)).str();
-      cout << endl
+                << *global_domain_locality)).str()
+           << endl
            << separator
            << endl;
     } else {
