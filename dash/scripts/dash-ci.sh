@@ -6,12 +6,12 @@ CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
 CMD_TEST=$BASEPATH/dash/scripts/dash-test.sh
 FAILED=false
 
-typeset -f module > /dev/null
-if [ $? != 0 -a -r /etc/profile.d/modules.sh ] ; then
-  source /etc/profile.d/modules.sh
-
-  module load intel
-fi
+# typeset -f module > /dev/null
+# if [ $? != 0 -a -r /etc/profile.d/modules.sh ] ; then
+#   source /etc/profile.d/modules.sh
+#
+#   module load intel
+# fi
 
 
 run_ci()
