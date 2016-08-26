@@ -19,7 +19,7 @@ LocalityJSONPrinter & LocalityJSONPrinter::operator<<(
   std::ostringstream os;
   os << "'unit_pinning' : {"
      << "'unit': "         << upi.unit         << ", "
-     << "'host': "         << upi.host         << ", "
+     << "'host': '"        << upi.host         << "', "
      << "'domain': "       << upi.domain       << ", "
      << "'numa_id': "      << upi.numa_id      << ", "
      << "'cpu_id': "       << upi.cpu_id       << ", "
@@ -90,7 +90,7 @@ LocalityJSONPrinter & LocalityJSONPrinter::print_domain(
        static_cast<int>(DART_LOCALITY_SCOPE_NODE)) ||
       (static_cast<int>(domain->scope) ==
        static_cast<int>(DART_LOCALITY_SCOPE_MODULE))) {
-    *this << indent << "'host': "    << domain->host    << ",\n";
+    *this << indent << "'host': '"   << domain->host    << "',\n";
   }
 
   if (static_cast<int>(domain->scope) ==
