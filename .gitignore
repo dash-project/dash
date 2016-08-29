@@ -20,8 +20,10 @@ dash/include/dash/util/StaticConfig.h
 ipm/*/GEN.*
 my.*.sh
 .syntastic*
+.clang*
 tags
 *.orig*
 *.bac*
 RELEASE/*
 dash/include/dash/util/StaticConfig.h
+.includes

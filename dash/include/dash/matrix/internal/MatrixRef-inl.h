@@ -406,7 +406,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
       "expected " << (NumDim - _refview->_dim) << " " <<
       "got " << sizeof...(Args));
   }
-  ::std::array<index_type, NumDim> coord = {{ args... }};
+  ::std::array<index_type, NumDim> coord = {{ static_cast<index_type>(args)... }};
   for(auto i = _refview->_dim; i < NumDim; ++i) {
     _refview->_coord[i] = coord[i-_refview->_dim];
   }
