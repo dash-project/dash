@@ -129,7 +129,6 @@ TEST_F(FindTest, AllElementsEqualNoneMatches)
 TEST_F(FindTest, AllElementsEqualAllMatch)
 {
   _num_elem           = dash::Team::All().size();
-  Element_t find_me	  = 24;
   Element_t init_fill = 0;
 
   // Initialize global array and fill it with init_fill:
@@ -148,14 +147,14 @@ TEST_F(FindTest, AllElementsEqualAllMatch)
   LOG_MESSAGE("Finished initialization of array values");
 
   // Run find on complete array
-  auto found_gptr = dash::find(array.begin(), array.end(), find_me);
+  auto found_gptr = dash::find(array.begin(), array.end(), init_fill);
 
   // As every element is equal, array.begin() should be return value by
   // definition.
   LOG_MESSAGE("Completed dash::find");
 
   // Run find on complete array
-  ASSERT_EQ(found_gptr, array.begin());
+  EXPECT_EQ(found_gptr, array.begin());
 }
 
 TEST_F(FindTest, SingleMatchInSingleUnit)
@@ -311,7 +310,7 @@ TEST_F(FindTest, LessElementsThanUnits)
   LOG_MESSAGE("Completed dash::find");
 
   // Run find on complete array
-  EXPECT_NE_U(found_gptr, array.end());
+  EXPECT_NE(found_gptr, array.end());
 
   // Check minimum value found
   Element_t found_v = *found_gptr;
