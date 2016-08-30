@@ -52,7 +52,7 @@ TEST_F(FindTest, SimpleVaryingTest)
   Element_t find_me	     = 24;
   index_t   find_pos     = num_of_units / 2;
 
-  ASSERT_TRUE(num_of_units < find_me);
+  //ASSERT_TRUE(num_of_units < find_me);
 
   dash::Array<Element_t> array;
 
@@ -73,9 +73,9 @@ TEST_F(FindTest, SimpleVaryingTest)
   }
 
   array.barrier();
-
-  array.local[find_pos] = find_me;
-
+  if (dash::myid() == 0) {
+    array[find_pos] = find_me;
+  }
   array.barrier();
 
   // Run find on complete array
@@ -86,7 +86,7 @@ TEST_F(FindTest, SimpleVaryingTest)
 
   // Run find on complete array
  if (dash::myid() == 0){
-  EXPECT_NE_U(found_gptr, array.end());
+  EXPECT_NE(found_gptr, array.end());
 
   // Check minimum value found
   Element_t found_v = *found_gptr;
