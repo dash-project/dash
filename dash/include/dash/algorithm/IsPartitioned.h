@@ -50,6 +50,7 @@ bool is_partitioned(
     }
   }
   return true;
-} // namespace dash
+}
+}// namespace dash
 
 #endif // DASH__ALGORITHM__IS_PARTITIONED_H__
