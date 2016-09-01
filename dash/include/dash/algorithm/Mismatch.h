@@ -61,8 +61,10 @@ mismatch(
  index_t no_mismatch  = -1;
 
  for (index_t u = 0; u < dash::size(); u++) {
-   if (g_reference[u] != no_mismatch) {
-     return l_results[u];
+   auto ref = g_reference[u];
+   if (ref != no_mismatch) {
+     auto ret = l_results[u];
+     return ret;
    }
  }
  return std::make_pair(input_1_l, input_2_l);
