@@ -26,7 +26,7 @@ template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
 LocalMatrixRef<T, NumDim, CUR, PatternT>
 ::LocalMatrixRef(
   Matrix<T, NumDim, index_type, PatternT> * mat)
-  : _refview(*(mat->_ref._refview))
+  : _refview(mat->_ref._refview)
 {
   auto local_extents = mat->_pattern.local_extents();
   DASH_LOG_TRACE_VAR("LocalMatrixRef(mat)", local_extents);

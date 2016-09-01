@@ -97,8 +97,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   auto block_view = pattern().block(block_gindex);
   // Return a view specified by the block's viewspec:
   view_type<NumDim> view;
-  view._refview            = new MatrixRefView_t(this);
-  view._refview->_viewspec = block_view;
+  view._refview._viewspec = block_view;
   DASH_LOG_TRACE("Matrix.block >", block_view);
   return view;
 }
@@ -119,8 +118,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   auto block_view = pattern().block(block_gindex);
   // Return a view specified by the block's viewspec:
   view_type<NumDim> view;
-  view._refview            = new MatrixRefView_t(this);
-  view._refview->_viewspec = block_view;
+  view._refview._viewspec = block_view;
   DASH_LOG_TRACE("Matrix.block >", block_view);
   return view;
 }
@@ -144,8 +142,7 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   DASH_LOG_TRACE_VAR("Matrix.allocate", _size);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lsize);
   DASH_LOG_TRACE_VAR("Matrix.allocate", _lcapacity);
-  // Allocate and initialize memory ranges:
-  _ref._refview    = new MatrixRefView_t(this);
+  // Allocate and initialize memory
   _glob_mem        = new GlobMem_t(_lcapacity, _pattern.team());
   _begin           = GlobIter_t(_glob_mem, _pattern);
   _lbegin          = _glob_mem->lbegin();
