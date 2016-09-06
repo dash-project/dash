@@ -30,6 +30,25 @@ typedef struct dart_task_dep {
 
 
 /**
+ * \brief Initialize the tasking environment, i.e., create the a thread-pool waiting for tasks.
+ */
+dart_ret_t
+dart_tasking_init();
+
+/**
+ * \brief Returns the current thread's number.
+ */
+int
+dart_tasking_thread_num();
+
+/**
+ * \brief Returns the number of worker threads.
+ */
+int
+dart_tasking_num_threads();
+
+
+/**
  * \brief Add a task the local task graph with dependencies. Tasks may define new tasks if necessary.
  */
 dart_ret_t
@@ -42,6 +61,12 @@ dart_task_create(void (*fn) (void *), void *data, dart_task_dep_t *deps, size_t 
 dart_ret_t
 dart_task_complete();
 
+
+/**
+ * \brief Finalize and release all resource acquired during initialization.
+ */
+dart_ret_t
+dart_tasking_fini();
 
 #ifdef __cplusplus
 }

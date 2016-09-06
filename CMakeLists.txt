@@ -59,7 +59,7 @@ option(ENABLE_HWLOC
 option(ENABLE_LIKWID
        "Specify whether likwid support is enabled" off)
 option(ENABLE_NANOS
-       "Specify whether likwid support is enabled" on)
+       "Specify whether Nanos support is enabled" off)
 option(ENABLE_PAPI
        "Specify whether PAPI features are enabled" on)
 option(ENABLE_MKL
@@ -240,8 +240,8 @@ message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
 message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
-message(INFO "Nanos support:            (ENABLE_HDF5)                    "
-        ${ENABLE_Nanos})
+message(INFO "Nanos support:            (ENABLE_NANOS)                    "
+        ${ENABLE_NANOS})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")

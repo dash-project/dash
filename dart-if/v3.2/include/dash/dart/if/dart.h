@@ -126,6 +126,12 @@ extern "C" {
 */
 #include "dart_synchronization.h"
 
+/*
+   --- DART tasking ---
+*/
+#include "dart_tasking.h"
+
+
 
 #ifdef __cplusplus
 } // extern "C"

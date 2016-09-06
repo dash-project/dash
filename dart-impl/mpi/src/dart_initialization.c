@@ -31,6 +31,7 @@ char**dart_sharedmem_local_baseptr_set;
 struct dart_buddy   * dart_localpool;
 static int           _init_by_dart     = 0;
 static int           _dart_initialized = 0;
+static int           _dart_initialized_thread = 0;
 
 static dart_ret_t
 init_internal()
@@ -273,6 +274,7 @@ dart_ret_t dart_init_thread(
   char                *** argv,
   dart_concurrency_t  *   concurrency)
 {
+  dart_ret_t ret;
   if (_dart_initialized) {
     DART_LOG_ERROR("dart_init(): DART is already initialized");
     return DART_ERR_OTHER;
@@ -305,7 +307,20 @@ dart_ret_t dart_init_thread(
     }
   }
 
-  return init_internal();
+  ret = init_internal();
+
+  if (ret != DART_OK) {
+    return ret;
+  }
+
+  ret = dart_tasking_init();
+  if (ret != DART_OK) {
+    return ret;
+  }
+
+  _dart_initialized_thread = true;
+
+  return ret;
 }
 
 dart_ret_t dart_exit()
