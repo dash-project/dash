@@ -107,7 +107,9 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_amsg_t *msg)
 
   while (1) {
     // Spinlock the message queue at the target
+    result = 1;
     while (result == 1) {
+      DART_LOG_DEBUG("Locking queue");
       MPI_Compare_and_swap(&lock_locked, &lock_free, &result, MPI_INT32_T, target, lock_disp, win);
       MPI_Win_flush(target, win);
     }
@@ -128,8 +130,7 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_amsg_t *msg)
     MPI_Fetch_and_op(&remote_offset, &tmp, MPI_INT32_T, target, tailpos_disp, MPI_REPLACE, win);
     MPI_Compare_and_swap(&lock_free, &lock_locked, &result, MPI_INT32_T, target, lock_disp, win);
     MPI_Win_flush(target, win);
-    // wait for 10ms to avoid hammering the lock unnecessarily
-    usleep(10);
+    return DART_ERR_AGAIN;
   }
 
   // we now have a slot in the message queue
@@ -183,6 +184,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
   while (*tailpos_addr > 0) {
 
     // Spinlock the local message queue
+    result = 1;
     while (result == 1) {
       MPI_Compare_and_swap(&lock_locked, &lock_free, &result, MPI_INT32_T, unitid, lock_disp, win);
       MPI_Win_flush(unitid, win);

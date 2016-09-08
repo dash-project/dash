@@ -31,6 +31,7 @@ typedef enum {
     DART_ERR_INVAL    =   2,
     DART_ERR_NOTFOUND =   3,
     DART_ERR_NOTINIT  =   4,
+    DART_ERR_AGAIN    =   5,
     DART_ERR_OTHER    = 999
 } dart_ret_t;
 
