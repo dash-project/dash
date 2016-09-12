@@ -200,7 +200,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
       int startpos = pos;
 #endif
       // unpack the message
-      function_t *fn = *(function_t**)(dbuf + pos);
+      rfunc_t *fn = *(rfunc_t**)(dbuf + pos);
       pos += sizeof(fn);
       int data_size  = *(int*)(dbuf + pos);
       pos += sizeof(int);

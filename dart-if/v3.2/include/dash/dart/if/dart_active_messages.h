@@ -8,10 +8,10 @@ struct dart_amsgq;
 
 typedef struct dart_amsgq* dart_amsgq_t;
 
-typedef void (function_t) (void *);
+typedef void (rfunc_t) (void *);
 
 typedef struct dart_amsg {
-  function_t *fn;         // the function to be invoked
+  rfunc_t *fn;         // the function to be invoked
   void       *data;       // the data to be passed to fn
   int         data_size;  // the size of the data to passed to fn
 } dart_amsg_t;

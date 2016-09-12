@@ -1,5 +1,6 @@
 
 #include <dash/dart/if/dart_tasking.h>
+#include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/hwinfo.h>
 
@@ -7,7 +8,7 @@
 #include <stdbool.h>
 
 
-typedef void (function_t) (void *);
+typedef void (tfunc_t) (void *);
 typedef struct task_list task_list_t;
 
 static pthread_cond_t task_avail_cond = PTHREAD_COND_INITIALIZER;
@@ -17,12 +18,13 @@ static pthread_mutex_t tasks_done_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_key_t thr_id_key;
 
+static dart_amsgq_t amsgq;
 
 pthread_t *thread_pool;
 
 typedef struct task_data {
   struct task_data *next; // next entry in the runnable task list
-  function_t *fn;
+  tfunc_t *fn;
   void *data;
   size_t unresolved_deps;
   dart_task_dep_t *deps;
@@ -35,6 +37,12 @@ struct task_list {
   struct task_list *next; // next entry on the same level of the task graph
 };
 
+struct remote_task {
+  dart_gptr_t gptr;
+  dart_unit_t runit;
+};
+
+#define DART_RTASK_QLEN 256
 
 // TODO: access the list through head and tail
 static task_t *runq_head = NULL;
@@ -69,6 +77,7 @@ static void release_task(task_t *task);
 
 static void destroy_tsd(void *tsd);
 
+static void rdep_request(dart_gptr_t gptr);
 
 /**
  * Take a task from the task queue and execute it.
@@ -84,7 +93,7 @@ static void handle_task()
     DART_LOG_INFO("Thread %i executing task %p", dart__base__tasking__thread_num(), task);
     pthread_mutex_unlock(&thread_pool_mutex);
 
-    function_t *fn = task->fn;
+    rfunc_t *fn = task->fn;
     void *data = task->data;
 
     //invoke the task function
@@ -164,6 +173,9 @@ dart__base__tasking__init()
     }
   }
 
+  // set up the active message queue
+  amsgq = dart_amsg_openq(sizeof(struct remote_task) * DART_RTASK_QLEN, DART_TEAM_ALL);
+
   return DART_OK;
 }
 
@@ -204,6 +216,8 @@ dart__base__tasking__fini()
     free(free_task_list);
     free_task_list = next;
   }
+
+  dart_amsg_closeq(amsgq);
 
   return DART_OK;
 }
@@ -252,9 +266,12 @@ static task_t * find_parent_in_list(task_list_t *list, const dart_task_dep_t *de
 dart_ret_t
 dart__base__tasking__create_task(void (*fn) (void *), void *data, dart_task_dep_t *deps, size_t ndeps)
 {
+  dart_unit_t myid;
   size_t i;
   bool in_dep = false;
   pthread_mutex_lock(&thread_pool_mutex);
+
+  dart_myid(&myid);
 
   task_t *task = allocate_task();
 
@@ -268,21 +285,37 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, dart_task_dep_
     for (i = 0; i < ndeps; i++) {
       if (deps[i].type == DART_DEP_IN || deps[i].type == DART_DEP_INOUT) {
         // put the task into the dependency graph
-        task_t *parent = find_parent_in_list(dep_graph, &deps[i]);
-        if (parent != NULL) {
-          // enqueue as child
+
+        if (deps[i].gptr.unitid != myid) {
+          // create a dependency request at the remote unit
+          rdep_request(deps[i].gptr);
+          task->unresolved_deps++;
+          // enqueue this task at the top level of the task graph
           task_list_t *tl = allocate_task_list_elem();
           tl->task = task;
-          tl->next = parent->children;
-          parent->children = tl;
+          tl->next = dep_graph;
+          dep_graph = tl;
 
           in_dep = true;
-          task->unresolved_deps++;
-          DART_LOG_INFO("Task %p depends on task %p", task, parent);
+
         } else {
-          // Do nothing, consider the parent as solved already
-          DART_LOG_INFO("Could not find a parent for task with IN dep (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
-              deps[i].gptr.addr_or_offs.addr, deps[i].gptr.segid, deps[i].gptr.unitid);
+
+          task_t *parent = find_parent_in_list(dep_graph, &deps[i]);
+          if (parent != NULL) {
+            // enqueue as child
+            task_list_t *tl = allocate_task_list_elem();
+            tl->task = task;
+            tl->next = parent->children;
+            parent->children = tl;
+
+            in_dep = true;
+            task->unresolved_deps++;
+            DART_LOG_INFO("Task %p depends on task %p", task, parent);
+          } else {
+            // Do nothing, consider the parent as solved already
+            DART_LOG_INFO("Could not find a parent for task with IN dep (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
+                deps[i].gptr.addr_or_offs.addr, deps[i].gptr.segid, deps[i].gptr.unitid);
+          }
         }
       } else if (deps[i].type == DART_DEP_OUT) {
         DART_LOG_INFO("Found task %p with OUT dep (dart_gptr = {addr=%p, seg=%i, unit=%i}})", task,
@@ -458,4 +491,103 @@ static void release_task(task_t *task)
 static void destroy_tsd(void *tsd)
 {
   free(tsd);
+}
+
+/**
+ * Remote tasking data structures and functionality
+ */
+
+static void release_remote(void *data)
+{
+  dart_gptr_t gptr = *(dart_gptr_t*)data;
+  // remote dependent tasks are all enqeued at the top level of the dependency graph
+  task_list_t *tl = dep_graph;
+  while(tl != NULL) {
+    size_t i;
+    for (i = 0; i < tl->task->ndeps; i++) {
+      if (tl->task->deps[i].type == DART_DEP_IN && DART_GPTR_EQUAL(tl->task->deps[i].gptr, gptr)) {
+        // release this dependency
+        if (tl->task->unresolved_deps > 0) {
+          tl->task->unresolved_deps--;
+        } else {
+          DART_LOG_ERROR("ERROR: task with remote dependency does not seem to have unresolved dependencies!");
+        }
+        if (tl->task->unresolved_deps == 0) {
+          // release this task
+          enqeue_runnable(tl->task);
+        }
+      }
+    }
+    tl = tl->next;
+  }
+}
+
+static void send_release(void *data)
+{
+  dart_ret_t ret;
+  dart_amsg_t msg;
+  struct remote_task *rtask = (struct remote_task *)data;
+
+  msg.fn = &release_remote;
+  msg.data = &(rtask->gptr);
+  msg.data_size = sizeof(rtask->gptr);
+
+  while (1) {
+    ret = dart_amsg_trysend(rtask->runit, amsgq, &msg);
+    if (ret == DART_OK) {
+      // the message was successfully sent
+      break;
+    } else  if (ret == DART_ERR_AGAIN) {
+      // cannot be send at the moment, just try again
+      // TODO: anything more sensible to do here?
+      continue;
+    } else {
+      DART_LOG_ERROR("Failed to send active message to unit %i", rtask->gptr.unitid);
+      break;
+    }
+  }
+
+  free(data);
+
+}
+
+static void
+enqueue_from_remote(void *data)
+{
+  struct remote_task *rtask = (struct remote_task *)data;
+  struct remote_task *response = malloc(sizeof(*response));
+  response->gptr = rtask->gptr;
+  response->runit = rtask->runit;
+  dart_task_dep_t dep;
+  dep.gptr = rtask->gptr;
+  dep.type = DART_DEP_IN;
+  dart__base__tasking__create_task(&send_release, response, &dep, 1);
+}
+
+static void rdep_request(dart_gptr_t gptr)
+{
+  dart_ret_t ret;
+  dart_amsg_t msg;
+  struct remote_task rtask;
+  rtask.gptr = gptr;
+  dart_myid(&rtask.runit);
+
+  msg.fn = &enqueue_from_remote;
+  msg.data = &rtask;
+  msg.data_size = sizeof(rtask);
+
+  while (1) {
+    ret = dart_amsg_trysend(gptr.unitid, amsgq, &msg);
+    if (ret == DART_OK) {
+      // the message was successfully sent
+      break;
+    } else  if (ret == DART_ERR_AGAIN) {
+      // cannot be send at the moment, just try again
+      // TODO: anything more sensible to do here?
+      continue;
+    } else {
+      DART_LOG_ERROR("Failed to send active message to unit %i", gptr.unitid);
+      break;
+    }
+  }
 }
