@@ -133,10 +133,12 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_amsg_t *msg)
     DART_LOG_INFO("Not enough space for message of size %i at unit %i (current offset %i)", msg_size, target, remote_offset);
     return DART_ERR_AGAIN;
   }
+
+  // lock the target queue before releasing the tailpos window to avoid potential race conditions
+  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target, 0, queue_win);
   MPI_Win_unlock(target, tailpos_win);
 
   // we now have a slot in the message queue
-  MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target, 0, queue_win);
   queue_disp += remote_offset;
   size_t fnptr_size = sizeof(msg->fn);
   MPI_Put((void*)&(msg->fn), fnptr_size, MPI_BYTE, target, queue_disp, fnptr_size, MPI_BYTE, win);
