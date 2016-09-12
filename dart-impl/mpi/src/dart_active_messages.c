@@ -23,15 +23,11 @@
 
 struct dart_amsgq {
   dart_gptr_t  queue;     // the active message queue
-  dart_gptr_t  lock;      // a lock to prevent race-conditions during processing
   dart_gptr_t  tailpos;   // the current position of the queue's tail
   char        *dbuf;      // a double buffer used during message processing to shorten lock times
   int          size;      // the size (in byte) of the message queue
   dart_team_t  team;
 };
-
-static const int lock_locked = 1;
-static const int lock_free   = 0;
 
 dart_amsgq_t
 dart_amsg_openq(int size, dart_team_t team)
@@ -58,17 +54,6 @@ dart_amsg_openq(int size, dart_team_t team)
   dart_gptr_getaddr (queue, (void**)&addr);
   memset(addr, 0, size);
 
-  // allocate the lock
-  if (dart_team_memalloc_aligned(team, sizeof(int), &(res->lock)) != DART_OK) {
-    DART_LOG_ERROR("Failed to allocate %i byte for lock", sizeof(int));
-  }
-  DART_GPTR_COPY(lock, res->lock);
-  lock.unitid = unitid;
-  if (dart_gptr_getaddr (lock, (void**)&addr) != DART_OK) {
-    DART_LOG_ERROR("Failed to get local address for lock");
-  }
-  *addr = lock_free;
-
   // allocate the tailpos pointer
   dart_team_memalloc_aligned(team, sizeof(int), &(res->tailpos));
   DART_GPTR_COPY(tailpos, res->tailpos);
@@ -88,10 +73,9 @@ dart_amsg_openq(int size, dart_team_t team)
 dart_ret_t
 dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_amsg_t *msg)
 {
-  MPI_Aint lock_disp;
   MPI_Aint tailpos_disp;
   MPI_Aint queue_disp;
-  uint16_t index = amsgq->lock.flags; // TODO: this needs fixing, see branch freeflags
+  uint16_t index = amsgq->queue.flags; // TODO: this needs fixing, see branch freeflags
   MPI_Win win = dart_win_lists[index];
   MPI_Win tailpos_win;
   int msg_size = (sizeof(msg->fn) + sizeof(msg->data_size) + msg->data_size);
@@ -99,15 +83,14 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_amsg_t *msg)
   MPI_Win queue_win;
 
 
-  if (dart_adapt_transtable_get_disp (amsgq->lock.segid, target, &lock_disp) == -1
-   || dart_adapt_transtable_get_disp (amsgq->tailpos.segid, target, &tailpos_disp) == -1
+  if (dart_adapt_transtable_get_disp (amsgq->tailpos.segid, target, &tailpos_disp) == -1
    || dart_adapt_transtable_get_disp (amsgq->queue.segid, target, &queue_disp) == -1)
   {
     return DART_ERR_INVAL;
   }
 
   // TODO: implement an alternative that works without shared memory support
-  if (dart_adapt_transtable_get_win(amsgq->lock.segid, &tailpos_win) == -1 || tailpos_win == MPI_WIN_NULL)
+  if (dart_adapt_transtable_get_win(amsgq->tailpos.segid, &tailpos_win) == -1 || tailpos_win == MPI_WIN_NULL)
   {
     DART_LOG_ERROR("Failed to query shared memory window. Shared memory support disabled in DART?");
     return DART_ERR_INVAL;
@@ -159,16 +142,8 @@ dart_ret_t
 dart_amsg_process(dart_amsgq_t amsgq)
 {
   int unitid;
-  dart_gptr_t tailposg;
-  dart_gptr_t queueg;
-  MPI_Aint lock_disp;
-  MPI_Aint tailpos_disp;
-  MPI_Aint queue_disp;
-  uint16_t index = amsgq->lock.flags; // TODO: this needs fixing, see branch freeflags
-//  MPI_Win win = dart_win_lists[index];
   MPI_Win tailpos_win;
   MPI_Win queue_win;
-  int  *tailpos_addr;
   int   zero = 0;
   int   tailpos;
   void *queue;
@@ -176,17 +151,11 @@ dart_amsg_process(dart_amsgq_t amsgq)
 
   dart_team_myid (amsgq->team, &unitid);
 
-  if (dart_adapt_transtable_get_disp(amsgq->lock.segid, unitid, &lock_disp) == -1
-   || dart_adapt_transtable_get_disp(amsgq->tailpos.segid, unitid, &tailpos_disp) == -1
-   || dart_adapt_transtable_get_disp(amsgq->queue.segid, unitid, &queue_disp) == -1)
-  {
-    return DART_ERR_INVAL;
-  }
 
   // TODO: implement an alternative that works without shared memory support
-  if (dart_adapt_transtable_get_win(amsgq->lock.segid, &tailpos_win) == -1 || tailpos_win == MPI_WIN_NULL)
+  if (dart_adapt_transtable_get_win(amsgq->tailpos.segid, &tailpos_win) == -1 || tailpos_win == MPI_WIN_NULL)
   {
-    DART_LOG_ERROR("Failed to query shared memory window of tailpos. Shared memory support disabled in DART?");
+    DART_LOG_ERROR("Failed to query shared memory window. Shared memory support disabled in DART?");
     return DART_ERR_INVAL;
   }
 
@@ -209,6 +178,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
    * repeat if messages come in while processing previous messages
    */
   if (tailpos > 0) {
+    dart_gptr_t queueg;
 
     // lock the tailpos window
     MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid, 0, queue_win);
@@ -225,9 +195,10 @@ dart_amsg_process(dart_amsgq_t amsgq)
 
     // process the messages by invoking the functions on the data supplied
     int pos = 0;
-    int startpos = pos;
     while (pos < tailpos) {
-      startpos = pos;
+#ifdef DART_ENABLE_LOGGING
+      int startpos = pos;
+#endif
       // unpack the message
       function_t *fn = *(function_t**)(dbuf + pos);
       pos += sizeof(fn);
@@ -259,7 +230,6 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
   amsgq->dbuf = NULL;
 
   dart_team_memfree(amsgq->team, amsgq->queue);
-  dart_team_memfree(amsgq->team, amsgq->lock);
   dart_team_memfree(amsgq->team, amsgq->tailpos);
 
   free(amsgq);
