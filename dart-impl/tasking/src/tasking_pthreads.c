@@ -3,6 +3,7 @@
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/hwinfo.h>
+#include <dash/dart/tasking/dart_tasking_priv.h>
 
 #include <pthread.h>
 #include <stdbool.h>

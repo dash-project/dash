@@ -189,6 +189,8 @@ if (";${DART_IMPLEMENTATIONS_LIST};" MATCHES ";shmem;")
   add_subdirectory(dart-impl/shmem)
 endif()
 
+
+add_subdirectory(dart-impl/tasking)
 add_subdirectory(dash)
 
 ## Documentation

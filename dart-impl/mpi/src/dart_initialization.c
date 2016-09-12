@@ -270,7 +270,7 @@ dart_ret_t dart_init(
 }
 
 
-dart_ret_t dart_init_thread(
+dart_ret_t dart_mpi_init_thread(
   int                 *   argc,
   char                *** argv,
   dart_concurrency_t  *   concurrency)
@@ -310,11 +310,6 @@ dart_ret_t dart_init_thread(
 
   ret = init_internal();
 
-  if (ret != DART_OK) {
-    return ret;
-  }
-
-  ret = dart_tasking_init();
   if (ret != DART_OK) {
     return ret;
   }
