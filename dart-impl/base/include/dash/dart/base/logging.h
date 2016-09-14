@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_config.h>
@@ -38,9 +39,15 @@
 #endif
 
 /* GNU variant of basename.3 */
-inline char * dart_base_logging_basename(char *path) {
+static inline char * dart_base_logging_basename(char *path) {
     char *base = strrchr(path, '/');
     return base ? base+1 : path;
+}
+
+static inline double dart_base_logging_timestamp() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return ((double)ts.tv_sec) + ((double)ts.tv_nsec / 1E9);
 }
 
 //
@@ -59,8 +66,9 @@ inline char * dart_base_logging_basename(char *path) {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d ERROR ] [ %*d ] %-*s:%-*d !!! DART: %s\n", \
+      "[ %*d ERROR ] [ %f ] [ %*d ] %-*s:%-*d !!! DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      dart_base_logging_timestamp(), \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
@@ -90,8 +98,9 @@ inline char * dart_base_logging_basename(char *path) {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d TRACE ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
+      "[ %*d TRACE ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      dart_base_logging_timestamp(), \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
@@ -116,8 +125,9 @@ inline char * dart_base_logging_basename(char *path) {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d DEBUG ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
+      "[ %*d DEBUG ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      dart_base_logging_timestamp(), \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
@@ -142,8 +152,9 @@ inline char * dart_base_logging_basename(char *path) {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d INFO  ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
+      "[ %*d INFO  ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      dart_base_logging_timestamp(), \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
