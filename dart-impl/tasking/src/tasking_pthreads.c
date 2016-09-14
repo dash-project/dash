@@ -1,4 +1,4 @@
-
+#define _XOPEN_SOURCE 700
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/base/logging.h>
@@ -7,6 +7,8 @@
 
 #include <pthread.h>
 #include <stdbool.h>
+#include <time.h>
+#include <errno.h>
 
 
 typedef void (tfunc_t) (void *);
@@ -78,7 +80,7 @@ static void release_task(task_t *task);
 
 static void destroy_tsd(void *tsd);
 
-static void rdep_request(dart_gptr_t gptr);
+static void remote_dependency_request(dart_gptr_t gptr);
 
 /**
  * Take a task from the task queue and execute it.
@@ -107,6 +109,19 @@ static void handle_task()
   }
 }
 
+/**
+ * Adds the time specified in b to a, i.e., a += b;
+ */
+static inline struct timespec add_timespec(const struct timespec a, const struct timespec b)
+{
+  struct timespec res = a;
+  res.tv_sec  += b.tv_sec;
+  res.tv_nsec += b.tv_nsec;
+  res.tv_sec  += res.tv_nsec / (long int)1E9;
+  res.tv_nsec %= (long int)1E9;
+  return res;
+}
+
 static void* thread_main(void *data)
 {
   int *thread_id = (int*)data;
@@ -119,6 +134,8 @@ static void* thread_main(void *data)
 
   // enter work loop
   while (parallel) {
+    // look for remote tasks coming in
+    dart_amsg_process(amsgq);
     pthread_mutex_lock(&thread_pool_mutex);
     if (runq_head == NULL) {
       threads_running--;
@@ -127,8 +144,24 @@ static void* thread_main(void *data)
         pthread_cond_signal(&tasks_done_cond);
       }
       DART_LOG_INFO("Thread %i waiting for signal", dart__base__tasking__thread_num());
-      pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
-      DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
+      if (dart__base__tasking__thread_num() == (dart__base__tasking__num_threads() - 1)) {
+        // the last thread uses a timed wait to ensure progress on remote requests coming in
+        int ret;
+        struct timespec time;
+        clock_gettime(CLOCK_MONOTONIC, &time);
+        struct timespec timeout = {0, 1E6};
+        struct timespec abstimeout = add_timespec(time, timeout);
+        ret = pthread_cond_timedwait(&task_avail_cond, &thread_pool_mutex, &abstimeout);
+        if (ret == ETIMEDOUT) {
+          DART_LOG_INFO("Thread %i woken up after %f ms", dart__base__tasking__thread_num(),
+              ((double)timeout.tv_sec * 1E3) + ((double)timeout.tv_nsec / 1E6));
+        } else {
+          DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
+        }
+      } else {
+        pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
+        DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
+      }
       threads_running++;
     }
     handle_task();
@@ -157,6 +190,10 @@ dart__base__tasking__init()
     num_threads = 2;
   }
 
+  // set up the active message queue
+  amsgq = dart_amsg_openq(sizeof(struct remote_task) * DART_RTASK_QLEN, DART_TEAM_ALL);
+  DART_LOG_INFO("Created active message queue (%p)", amsgq);
+
   pthread_key_create(&thr_id_key, &destroy_tsd);
   // set master thread id
   int *thread_id = malloc(sizeof(int));
@@ -173,9 +210,6 @@ dart__base__tasking__init()
       DART_LOG_ERROR("Failed to create thread %i of %i!", (i+1), num_threads);
     }
   }
-
-  // set up the active message queue
-  amsgq = dart_amsg_openq(sizeof(struct remote_task) * DART_RTASK_QLEN, DART_TEAM_ALL);
 
   return DART_OK;
 }
@@ -289,7 +323,7 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, dart_task_dep_
 
         if (deps[i].gptr.unitid != myid) {
           // create a dependency request at the remote unit
-          rdep_request(deps[i].gptr);
+          remote_dependency_request(deps[i].gptr);
           task->unresolved_deps++;
           // enqueue this task at the top level of the task graph
           task_list_t *tl = allocate_task_list_elem();
@@ -346,6 +380,8 @@ dart_ret_t
 dart__base__tasking__task_complete()
 {
   while (dep_graph != NULL || runq_head != NULL ){
+    // look for remote tasks coming in
+    dart_amsg_process(amsgq);
     // participate in the task completion
     pthread_mutex_lock(&thread_pool_mutex);
     handle_task();
@@ -384,13 +420,15 @@ static inline task_t * deqeue_runnable(void) {
   if (runq_head == NULL) {
     runq_tail = NULL;
   }
+
+  DART_LOG_INFO("Dequeued task %p from runnable list (fn=%p, data=%p)", task, task->fn, task->data);
   return task;
 }
 
 static inline void enqeue_runnable(task_t *task)
 {
   // todo: append this task to the tail
-  DART_LOG_INFO("Enqueuing task %p into runnable list", task);
+  DART_LOG_INFO("Enqueuing task %p into runnable list (fn=%p, data=%p)", task, task->fn, task->data);
   task->next = NULL;
   if (runq_tail != NULL) {
     runq_tail->next = task;
@@ -562,10 +600,12 @@ enqueue_from_remote(void *data)
   dart_task_dep_t dep;
   dep.gptr = rtask->gptr;
   dep.type = DART_DEP_IN;
+  DART_LOG_INFO("Creating task for remote dependency request (unit=%i, segid=%i, offset=%i)",
+                      rtask->gptr.unitid, rtask->gptr.segid, rtask->gptr.addr_or_offs.offset);
   dart__base__tasking__create_task(&send_release, response, &dep, 1);
 }
 
-static void rdep_request(dart_gptr_t gptr)
+static void remote_dependency_request(dart_gptr_t gptr)
 {
   dart_ret_t ret;
   dart_amsg_t msg;
@@ -581,6 +621,7 @@ static void rdep_request(dart_gptr_t gptr)
     ret = dart_amsg_trysend(gptr.unitid, amsgq, &msg);
     if (ret == DART_OK) {
       // the message was successfully sent
+      DART_LOG_INFO("Sent remote dependency request (unit=%i, segid=%i, offset=%i)", gptr.unitid, gptr.segid, gptr.addr_or_offs.offset);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be send at the moment, just try again
