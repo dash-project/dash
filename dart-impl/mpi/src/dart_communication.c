@@ -16,6 +16,7 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
+#include <dash/dart/mpi/dart_mpi_serialization.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/math.h>
@@ -25,48 +26,6 @@
 #include <string.h>
 #include <limits.h>
 #include <math.h>
-
-/* TODO: This should be determined by CMake */
-#define HAVE_PTHREADS 1
-
-#if defined(HAVE_PTHREADS) && HAVE_PTHREADS
-#include <pthread.h>
-static bool serialcomm = true;
-
-static pthread_mutex_t comm_mtx = PTHREAD_MUTEX_INITIALIZER;
-
-static inline void comm_down()
-{
-  if (serialcomm)
-    pthread_mutex_lock(&comm_mtx);
-}
-
-static inline void comm_up()
-{
-  if (serialcomm)
-    pthread_mutex_unlock(&comm_mtx);
-}
-
-
-#else
-static bool serialcomm = false;
-
-static inline void comm_down()
-{
-  // do nothing
-}
-
-static inline void comm_up()
-{
-  // do nothing
-}
-
-#endif
-
-void dash_set_serialcomm(bool flag) {
-  serialcomm = flag;
-}
-
 
 int unit_g2l(
   uint16_t      index,
@@ -80,11 +39,11 @@ int unit_g2l(
     MPI_Comm comm;
     MPI_Group group, group_all;
     comm = dart_teams[index];
-    comm_down();
+    dart_comm_down();
     MPI_Comm_group(comm, &group);
     MPI_Comm_group(MPI_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks (group_all, 1, &abs_id, group, rel_id);
-    comm_up();
+    dart_comm_up();
   }
   return 0;
 }
@@ -176,7 +135,7 @@ dart_ret_t dart_get(
                    nbytes, (uint64_t)win, target_unitid_rel, disp_rel, dest);
   }
   DART_LOG_TRACE("dart_get:  MPI_Get");
-  comm_down();
+  dart_comm_down();
   ret = MPI_Get(dest,
               nbytes,
               MPI_BYTE,
@@ -185,7 +144,7 @@ dart_ret_t dart_get(
               nbytes,
               MPI_BYTE,
               win);
-  comm_up();
+  dart_comm_up();
   if (ret != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_get ! MPI_Rget failed");
     return DART_ERR_INVAL;
@@ -220,7 +179,7 @@ dart_ret_t dart_put(
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
-    comm_down();
+    dart_comm_down();
     MPI_Put(
       src,
       nbytes,
@@ -230,13 +189,13 @@ dart_ret_t dart_put(
       nbytes,
       MPI_BYTE,
       win);
-    comm_up();
+    dart_comm_up();
     DART_LOG_DEBUG("dart_put: nbytes:%zu (from collective allocation) "
                    "target unit: %d offset: %"PRIu64"",
                    nbytes, target_unitid_abs, offset);
   } else {
     win = dart_win_local_alloc;
-    comm_down();
+    dart_comm_down();
     MPI_Put(
       src,
       nbytes,
@@ -246,7 +205,7 @@ dart_ret_t dart_put(
       nbytes,
       MPI_BYTE,
       win);
-    comm_up();
+    dart_comm_up();
     DART_LOG_DEBUG("dart_put: nbytes:%zu (from local allocation) "
                    "target unit: %d offset: %"PRIu64"",
                    nbytes, target_unitid_abs, offset);
@@ -294,7 +253,7 @@ dart_ret_t dart_accumulate(
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
-    comm_down();
+    dart_comm_down();
     MPI_Accumulate(
       values,            // Origin address
       nelem,             // Number of entries in buffer
@@ -306,13 +265,13 @@ dart_ret_t dart_accumulate(
       mpi_dtype,         // Data type of each entry in target buffer
       mpi_op,            // Reduce operation
       win);
-    comm_up();
+    dart_comm_up();
     DART_LOG_TRACE("dart_accumulate:  nelem:%zu (from collective allocation) "
                    "target unit: %d offset: %"PRIu64"",
                    nelem, target_unitid_abs, offset);
   } else {
     win = dart_win_local_alloc;
-    comm_down();
+    dart_comm_down();
     MPI_Accumulate(
       values,            // Origin address
       nelem,             // Number of entries in buffer
@@ -324,7 +283,7 @@ dart_ret_t dart_accumulate(
       mpi_dtype,         // Data type of each entry in target buffer
       mpi_op,            // Reduce operation
       win);
-    comm_up();
+    dart_comm_up();
     DART_LOG_TRACE("dart_accumulate:  nelem:%zu (from local allocation) "
                    "target unit: %d offset: %"PRIu64"",
                    nelem, target_unitid_abs, offset);
@@ -373,7 +332,7 @@ dart_ret_t dart_fetch_and_op(
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
-    comm_down();
+    dart_comm_down();
     MPI_Fetch_and_op(
       value,             // Origin address
       result,            // Result address
@@ -383,13 +342,13 @@ dart_ret_t dart_fetch_and_op(
                          // of target buffer
       mpi_op,            // Reduce operation
       win);
-    comm_up();
+    dart_comm_up();
     DART_LOG_TRACE("dart_fetch_and_op:  (from coll. allocation) "
                    "target unit: %d offset: %"PRIu64"",
                    target_unitid_abs, offset);
   } else {
     win = dart_win_local_alloc;
-    comm_down();
+    dart_comm_down();
     MPI_Fetch_and_op(
       value,             // Origin address
       result,            // Result address
@@ -399,7 +358,7 @@ dart_ret_t dart_fetch_and_op(
                          // of target buffer
       mpi_op,            // Reduce operation
       win);
-    comm_up();
+    dart_comm_up();
     DART_LOG_TRACE("dart_fetch_and_op:  (from local allocation) "
                    "target unit: %d offset: %"PRIu64"",
                    target_unitid_abs, offset);
@@ -533,7 +492,7 @@ dart_ret_t dart_get_handle(
                    "from %d at offset %"PRIu64"",
                    n_count, target_unitid_rel, offset);
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
-    comm_down();
+    dart_comm_down();
     mpi_ret = MPI_Rget(
                 dest,              // origin address
                 n_count,           // origin count
@@ -544,7 +503,7 @@ dart_ret_t dart_get_handle(
                 mpi_type,          // target data type
                 win,               // window
                 &mpi_req);
-    comm_up();
+    dart_comm_up();
     if (mpi_ret != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
       free(*handle);
@@ -561,7 +520,7 @@ dart_ret_t dart_get_handle(
                    n_count, target_unitid_abs, offset);
     win     = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
-    comm_down();
+    dart_comm_down();
     mpi_ret = MPI_Rget(
                 dest,              // origin address
                 n_count,           // origin count
@@ -572,7 +531,7 @@ dart_ret_t dart_get_handle(
                 mpi_type,          // target data type
                 win,               // window
                 &mpi_req);
-    comm_up();
+    dart_comm_up();
     if (mpi_ret != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
       free(*handle);
@@ -625,7 +584,7 @@ dart_ret_t dart_put_handle(
      * ... could be a better alternative?
      */
     DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
-    comm_down();
+    dart_comm_down();
     MPI_Rput(
       src,
       nbytes,
@@ -636,7 +595,7 @@ dart_ret_t dart_put_handle(
       MPI_BYTE,
       win,
       &mpi_req);
-    comm_up();
+    dart_comm_up();
     (*handle) -> dest = target_unitid_rel;
     DART_LOG_DEBUG("dart_put_handle: nbytes:%zu "
                    "(from collective allocation) "
@@ -645,7 +604,7 @@ dart_ret_t dart_put_handle(
   } else {
     DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
     win = dart_win_local_alloc;
-    comm_down();
+    dart_comm_down();
     MPI_Rput(
       src,
       nbytes,
@@ -656,7 +615,7 @@ dart_ret_t dart_put_handle(
       MPI_BYTE,
       win,
       &mpi_req);
-    comm_up();
+    dart_comm_up();
     DART_LOG_DEBUG("dart_put_handle: nbytes:%zu "
                    "(from local allocation) "
                    "target_unit:%d offset:%"PRIu64"",
@@ -769,7 +728,7 @@ dart_ret_t dart_put_blocking(
    * Using MPI_Put as MPI_Win_flush is required to ensure remote completion.
    */
   DART_LOG_DEBUG("dart_put_blocking: MPI_Put");
-  comm_down();
+  dart_comm_down();
   int ret = MPI_Put(src,
                nbytes,
                MPI_BYTE,
@@ -779,17 +738,17 @@ dart_ret_t dart_put_blocking(
                MPI_BYTE,
                win);
   if (ret != MPI_SUCCESS) {
-    comm_up();
+    dart_comm_up();
     DART_LOG_ERROR("dart_put_blocking ! MPI_Put failed");
     return DART_ERR_INVAL;
   }
   DART_LOG_DEBUG("dart_put_blocking: MPI_Win_flush");
   if (MPI_Win_flush(target_unitid_rel, win) != MPI_SUCCESS) {
-    comm_up();
+    dart_comm_up();
     DART_LOG_ERROR("dart_put_blocking ! MPI_Win_flush failed");
     return DART_ERR_INVAL;
   }
-  comm_up();
+  dart_comm_up();
 
   DART_LOG_DEBUG("dart_put_blocking > finished");
   return DART_OK;
@@ -893,7 +852,7 @@ dart_ret_t dart_get_blocking(
    * Using MPI_Get as MPI_Win_flush is required to ensure remote completion.
    */
   DART_LOG_DEBUG("dart_get_blocking: MPI_Get");
-  comm_down();
+  dart_comm_down();
   if (MPI_Get(dest,
               nbytes,
               MPI_BYTE,
@@ -903,17 +862,17 @@ dart_ret_t dart_get_blocking(
               MPI_BYTE,
               win)
       != MPI_SUCCESS) {
-    comm_up();
+    dart_comm_up();
     DART_LOG_ERROR("dart_get_blocking ! MPI_Get failed");
     return DART_ERR_INVAL;
   }
   DART_LOG_DEBUG("dart_get_blocking: MPI_Win_flush");
   if (MPI_Win_flush(target_unitid_rel, win) != MPI_SUCCESS) {
-    comm_up();
+    dart_comm_up();
     DART_LOG_ERROR("dart_get_blocking ! MPI_Win_flush failed");
     return DART_ERR_INVAL;
   }
-  comm_up();
+  dart_comm_up();
 
   DART_LOG_DEBUG("dart_get_blocking > finished");
   return DART_OK;
@@ -932,7 +891,7 @@ dart_ret_t dart_flush(
                  "unitid:%d offset:%"PRIu64" segid:%d index:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
-  comm_down();
+  dart_comm_down();
   if (seg_id) {
     dart_unit_t target_unitid_rel;
     uint16_t    index = gptr.flags;
@@ -945,7 +904,7 @@ dart_ret_t dart_flush(
     DART_LOG_TRACE("dart_flush: MPI_Win_flush");
     MPI_Win_flush(target_unitid_abs, win);
   }
-  comm_up();
+  dart_comm_up();
   DART_LOG_DEBUG("dart_flush > finished");
   return DART_OK;
 }
@@ -967,9 +926,9 @@ dart_ret_t dart_flush_all(
     win = dart_win_local_alloc;
   }
   DART_LOG_TRACE("dart_flush_all: MPI_Win_flush_all");
-  comm_down();
+  dart_comm_down();
   MPI_Win_flush_all(win);
-  comm_up();
+  dart_comm_up();
   DART_LOG_DEBUG("dart_flush_all > finished");
   return DART_OK;
 }
@@ -985,7 +944,7 @@ dart_ret_t dart_flush_local(
                  "unitid:%d offset:%"PRIu64" segid:%d index:%d",
                  gptr.unitid, gptr.addr_or_offs.offset,
                  gptr.segid,  gptr.flags);
-  comm_down();
+  dart_comm_down();
   if (seg_id) {
     uint16_t index = gptr.flags;
     dart_unit_t target_unitid_rel;
@@ -1002,7 +961,7 @@ dart_ret_t dart_flush_local(
     DART_LOG_TRACE("dart_flush_local: MPI_Win_flush_local");
     MPI_Win_flush_local(target_unitid_abs, win);
   }
-  comm_up();
+  dart_comm_up();
   DART_LOG_DEBUG("dart_flush_local > finished");
   return DART_OK;
 }
@@ -1022,9 +981,9 @@ dart_ret_t dart_flush_local_all(
   } else {
     win = dart_win_local_alloc;
   }
-  comm_down();
+  dart_comm_down();
   MPI_Win_flush_local_all(win);
-  comm_up();
+  dart_comm_up();
   DART_LOG_DEBUG("dart_flush_local_all > finished");
   return DART_OK;
 }
@@ -1043,9 +1002,9 @@ dart_ret_t dart_wait_local(
                    (int64_t)handle->request);
     if (handle->request != MPI_REQUEST_NULL) {
       MPI_Status mpi_sta;
-      comm_down();
+      dart_comm_down();
       mpi_ret = MPI_Wait(&(handle->request), &mpi_sta);
-      comm_up();
+      dart_comm_up();
       DART_LOG_TRACE("dart_wait_local:        -- mpi_sta.MPI_SOURCE = %d",
                      mpi_sta.MPI_SOURCE);
       DART_LOG_TRACE("dart_wait_local:        -- mpi_sta.MPI_ERROR  = %d (%s)",
@@ -1082,7 +1041,7 @@ dart_ret_t dart_wait(
     if (handle->request != MPI_REQUEST_NULL) {
       MPI_Status mpi_sta;
       DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");
-      comm_down();
+      dart_comm_down();
       mpi_ret = MPI_Wait(&(handle->request), &mpi_sta);
       DART_LOG_TRACE("dart_wait:        -- mpi_sta.MPI_SOURCE: %d",
                      mpi_sta.MPI_SOURCE);
@@ -1091,12 +1050,12 @@ dart_ret_t dart_wait(
                      DART__MPI__ERROR_STR(mpi_sta.MPI_ERROR));
       if (mpi_ret != MPI_SUCCESS) {
         DART_LOG_DEBUG("dart_wait ! MPI_Wait failed");
-        comm_up();
+        dart_comm_up();
         return DART_ERR_INVAL;
       }
       DART_LOG_DEBUG("dart_wait:     -- MPI_Win_flush");
       mpi_ret = MPI_Win_flush(handle->dest, handle->win);
-      comm_up();
+      dart_comm_up();
       if (mpi_ret != MPI_SUCCESS) {
         DART_LOG_DEBUG("dart_wait ! MPI_Win_flush failed");
         return DART_ERR_INVAL;
@@ -1153,9 +1112,9 @@ dart_ret_t dart_waitall_local(
                    "MPI_Waitall, %"PRIu64" requests from %"PRIu64" handles",
                    r_n, num_handles);
     if (r_n > 0) {
-      comm_down();
+      dart_comm_down();
       int ret = MPI_Waitall(r_n, mpi_req, mpi_sta);
-      comm_up();
+      dart_comm_up();
       if (ret == MPI_SUCCESS) {
         DART_LOG_DEBUG("dart_waitall_local: MPI_Waitall completed");
       } else {
@@ -1189,9 +1148,9 @@ dart_ret_t dart_waitall_local(
         if (mpi_req[r_n] != MPI_REQUEST_NULL) {
           if (mpi_sta[r_n].MPI_ERROR == MPI_SUCCESS) {
             DART_LOG_TRACE("dart_waitall_local: -- MPI_Request_free");
-            comm_down();
+            dart_comm_down();
             int ret = MPI_Request_free(&mpi_req[r_n]);
-            comm_up();
+            dart_comm_up();
             if (ret != MPI_SUCCESS) {
               DART_LOG_TRACE("dart_waitall_local ! MPI_Request_free failed");
               free(mpi_req);
@@ -1278,9 +1237,9 @@ dart_ret_t dart_waitall(
      * The call sets to empty the status of each such entry.
      */
     if (r_n > 0) {
-      comm_down();
+      dart_comm_down();
       int ret = MPI_Waitall(r_n, mpi_req, mpi_sta);
-      comm_up();
+      dart_comm_up();
       if (ret == MPI_SUCCESS) {
         DART_LOG_DEBUG("dart_waitall: MPI_Waitall completed");
       } else {
@@ -1341,10 +1300,10 @@ dart_ret_t dart_waitall(
           /*
            * MPI_Win_flush to wait for remote completion:
            */
-          comm_down();
+          dart_comm_down();
           ret = MPI_Win_flush(handle[i]->dest, handle[i]->win);
           if (ret != MPI_SUCCESS) {
-            comm_up();
+            dart_comm_up();
             DART_LOG_ERROR("dart_waitall: MPI_Win_flush failed");
             DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
             free(mpi_req);
@@ -1354,7 +1313,7 @@ dart_ret_t dart_waitall(
           }
           DART_LOG_TRACE("dart_waitall: -- MPI_Request_free");
           ret = MPI_Request_free(&handle[i]->request);
-          comm_up();
+          dart_comm_up();
           if (MPI_Request_free(&handle[i]->request) != MPI_SUCCESS) {
             DART_LOG_ERROR("dart_waitall: MPI_Request_free failed");
             DART_LOG_TRACE("dart_waitall: free MPI_Request temporaries");
@@ -1398,9 +1357,9 @@ dart_ret_t dart_test_local(
     return DART_OK;
   }
   MPI_Status mpi_sta;
-  comm_down();
+  dart_comm_down();
   MPI_Test (&(handle->request), is_finished, &mpi_sta);
-  comm_up();
+  dart_comm_up();
   DART_LOG_DEBUG("dart_test_local > finished");
   return DART_OK;
 }
@@ -1423,9 +1382,9 @@ dart_ret_t dart_testall_local(
       r_n++;
     }
   }
-  comm_down();
+  dart_comm_down();
   MPI_Testall(r_n, mpi_req, is_finished, mpi_sta);
-  comm_up();
+  dart_comm_up();
   r_n = 0;
   for (i = 0; i < n; i++) {
     if (handle[i]) {
@@ -1455,9 +1414,9 @@ dart_ret_t dart_barrier(
   }
   /* Fetch proper communicator from teams. */
   comm = dart_teams[index];
-  comm_down();
+  dart_comm_down();
   ret = MPI_Barrier(comm);
-  comm_up();
+  dart_comm_up();
   if (ret == MPI_SUCCESS) {
     DART_LOG_DEBUG("dart_barrier > finished");
     return DART_OK;
@@ -1480,9 +1439,9 @@ dart_ret_t dart_bcast(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  comm_down();
+  dart_comm_down();
   ret = MPI_Bcast(buf, nbytes, MPI_BYTE, root, comm);
-  comm_up();
+  dart_comm_up();
   if (ret != MPI_SUCCESS) {
     return DART_ERR_INVAL;
   }
@@ -1504,7 +1463,7 @@ dart_ret_t dart_scatter(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  comm_down();
+  dart_comm_down();
   ret = MPI_Scatter(
            sendbuf,
            nbytes,
@@ -1514,7 +1473,7 @@ dart_ret_t dart_scatter(
            MPI_BYTE,
            root,
            comm);
-  comm_up();
+  dart_comm_up();
   if (ret != MPI_SUCCESS) {
     return DART_ERR_INVAL;
   }
@@ -1536,7 +1495,7 @@ dart_ret_t dart_gather(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  comm_down();
+  dart_comm_down();
   ret = MPI_Gather(
            sendbuf,
            nbytes,
@@ -1546,7 +1505,7 @@ dart_ret_t dart_gather(
            MPI_BYTE,
            root,
            comm);
-  comm_up();
+  dart_comm_up();
   if (ret != MPI_SUCCESS) {
     return DART_ERR_INVAL;
   }
@@ -1570,7 +1529,7 @@ dart_ret_t dart_allgather(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  comm_down();
+  dart_comm_down();
   ret = MPI_Allgather(
       sendbuf,
       nbytes,
@@ -1579,7 +1538,7 @@ dart_ret_t dart_allgather(
       nbytes,
       MPI_BYTE,
       comm);
-  comm_up();
+  dart_comm_up();
   if (ret != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_allgather ! team:%d nbytes:%"PRIu64" failed",
                    teamid, nbytes);
@@ -1608,7 +1567,7 @@ dart_ret_t dart_allreduce(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[team_idx];
-  comm_down();
+  dart_comm_down();
   ret = MPI_Allreduce(
            sendbuf,   // send buffer
            recvbuf,   // receive buffer
@@ -1616,7 +1575,7 @@ dart_ret_t dart_allreduce(
            mpi_dtype, // datatype
            mpi_op,    // reduce operation
            comm);
-  comm_up();
+  dart_comm_up();
   if (ret != MPI_SUCCESS) {
     return DART_ERR_INVAL;
   }
@@ -1635,7 +1594,7 @@ dart_ret_t dart_reduce_double(
     return DART_ERR_INVAL;
   }
   comm = dart_teams[index];
-  comm_down();
+  dart_comm_down();
   ret = MPI_Reduce(
            sendbuf,
            recvbuf,
@@ -1644,7 +1603,7 @@ dart_ret_t dart_reduce_double(
            MPI_MAX,
            0,
            comm);
-  comm_up();
+  dart_comm_up();
   if (ret != MPI_SUCCESS) {
     return DART_ERR_INVAL;
   }

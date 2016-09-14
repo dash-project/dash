@@ -13,6 +13,7 @@
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
+#include <dash/dart/mpi/dart_mpi_serialization.h>
 
 /**
  * TODO:
@@ -30,6 +31,7 @@ struct dart_amsgq {
   MPI_Win      tailpos_win;
   MPI_Win      queue_win;
   char        *queue_ptr;
+  int         *tailpos_ptr;
   char        *dbuf;      // a double buffer used during message processing to shorten lock times
   int          size;      // the size (in byte) of the message queue
   dart_team_t  team;
@@ -38,7 +40,6 @@ struct dart_amsgq {
 dart_amsgq_t
 dart_amsg_openq(int size, dart_team_t team)
 {
-  int *addr;
   dart_unit_t unitid;
   MPI_Comm tcomm;
   struct dart_amsgq *res = calloc(1, sizeof(struct dart_amsgq));
@@ -46,6 +47,7 @@ dart_amsg_openq(int size, dart_team_t team)
   res->dbuf = malloc(size);
   res->team = team;
 
+  dart_comm_down();
 
   dart_team_myid (team, &unitid);
 
@@ -75,13 +77,14 @@ dart_amsg_openq(int size, dart_team_t team)
   dart_adapt_teamlist_convert(team, &index);
   tcomm = dart_teams[index];
 
-  MPI_Win_allocate(sizeof(int), 1, MPI_INFO_NULL, tcomm, (void*)&addr, &(res->tailpos_win));
-  *addr = 0;
+  MPI_Win_allocate(sizeof(int), 1, MPI_INFO_NULL, tcomm, (void*)&(res->tailpos_ptr), &(res->tailpos_win));
+  *(res->tailpos_ptr) = 0;
   MPI_Win_flush(unitid, res->tailpos_win);
   MPI_Win_allocate(size, 1, MPI_INFO_NULL, tcomm, (void*)&(res->queue_ptr), &(res->queue_win));
   memset(res->queue_ptr, 0, size);
   MPI_Win_fence(0, res->queue_win);
 
+  dart_comm_up();
   return res;
 }
 
@@ -93,22 +96,9 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_amsg_t *msg)
   int msg_size = (sizeof(unitid) + sizeof(msg->fn) + sizeof(msg->data_size) + msg->data_size);
   int remote_offset;
 
+  dart_comm_down();
+
   dart_myid(&unitid);
-
-  // TODO: implement an alternative that works without shared memory support
-  /*
-  if (dart_adapt_transtable_get_win(amsgq->tailpos_win.segid, &tailpos_win) == -1 || tailpos_win == MPI_WIN_NULL)
-  {
-    DART_LOG_ERROR("Failed to query shared memory window. Shared memory support disabled in DART?");
-    return DART_ERR_INVAL;
-  }
-
-  if (dart_adapt_transtable_get_win(amsgq->queue_win.segid, &queue_win) == -1 || queue_win == MPI_WIN_NULL)
-  {
-    DART_LOG_ERROR("Failed to query shared memory window of queue. Shared memory support disabled in DART?");
-    return DART_ERR_INVAL;
-  }
-  */
 
   //lock the tailpos window
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target, 0, amsgq->tailpos_win);
@@ -121,6 +111,7 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_amsg_t *msg)
     // if not, revert the operation and free the lock to try again.
     MPI_Fetch_and_op(&remote_offset, &tmp, MPI_INT32_T, target, 0, MPI_REPLACE, amsgq->tailpos_win);
     MPI_Win_unlock(target, amsgq->tailpos_win);
+    dart_comm_up();
     DART_LOG_INFO("Not enough space for message of size %i at unit %i (current offset %i)", msg_size, target, remote_offset);
     return DART_ERR_AGAIN;
   }
@@ -139,11 +130,11 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_amsg_t *msg)
   MPI_Put(&(msg->data_size), sizeof(msg->data_size), MPI_BYTE, target, queue_disp, msg->data_size, MPI_BYTE, amsgq->queue_win);
   queue_disp += sizeof(msg->data_size);
   MPI_Put(msg->data, msg->data_size, MPI_BYTE, target, queue_disp, msg->data_size, MPI_BYTE, amsgq->queue_win);
-//  MPI_Win_flush(target, win);
   MPI_Win_unlock(target, amsgq->queue_win);
 
   DART_LOG_INFO("Sent message of size %i to unit %i starting at offset %i", msg_size, target, remote_offset);
 
+  dart_comm_up();
   return DART_OK;
 }
 
@@ -156,23 +147,9 @@ dart_amsg_process(dart_amsgq_t amsgq)
   int   tailpos;
   char *dbuf = amsgq->dbuf;
 
+  dart_comm_down();
+
   dart_team_myid (amsgq->team, &unitid);
-
-
-  // TODO: implement an alternative that works without shared memory support
-  /*
-  if (dart_adapt_transtable_get_win(amsgq->tailpos_win.segid, &tailpos_win) == -1 || tailpos_win == MPI_WIN_NULL)
-  {
-    DART_LOG_ERROR("Failed to query shared memory window. Shared memory support disabled in DART?");
-    return DART_ERR_INVAL;
-  }
-
-  if (dart_adapt_transtable_get_win(amsgq->queue_win.segid, &queue_win) == -1 || queue_win == MPI_WIN_NULL)
-  {
-    DART_LOG_ERROR("Failed to query shared memory window of queue. Shared memory support disabled in DART?");
-    return DART_ERR_INVAL;
-  }
-  */
 
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid, 0, amsgq->tailpos_win);
 //
@@ -180,7 +157,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
 //  tailposg.unitid = unitid;
 //  dart_gptr_getaddr (tailposg, (void**)&tailpos_addr);
   MPI_Get(&tailpos, 1, MPI_INT32_T, unitid, 0, 1, MPI_INT32_T, amsgq->tailpos_win);
-  DART_LOG_INFO("Checking for new active messages (tailpos=%i)", amsgq->tailpos_win);
+  DART_LOG_INFO("Checking for new active messages (tailpos=%i)", tailpos);
 
   /**
    * process messages while they are available, i.e.,
@@ -201,6 +178,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
     // reset the tailpos and release the lock on the message queue
     MPI_Put(&zero, 1, MPI_INT32_T, unitid, 0, 1, MPI_INT32_T, amsgq->tailpos_win);
     MPI_Win_unlock(unitid, amsgq->tailpos_win);
+    dart_comm_up();
 
     // process the messages by invoking the functions on the data supplied
     int pos = 0;
@@ -230,6 +208,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
     }
   } else {
     MPI_Win_unlock(unitid, amsgq->tailpos_win);
+    dart_comm_up();
     DART_LOG_INFO("No messages to process.");
   }
   return DART_OK;
@@ -241,8 +220,10 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
   free(amsgq->dbuf);
   amsgq->dbuf = NULL;
   amsgq->queue_ptr = NULL;
+  dart_comm_down();
   MPI_Win_free(&(amsgq->tailpos_win));
   MPI_Win_free(&(amsgq->queue_win));
+  dart_comm_up();
 
   /*
   dart_team_memfree(amsgq->team, amsgq->queue_win);
