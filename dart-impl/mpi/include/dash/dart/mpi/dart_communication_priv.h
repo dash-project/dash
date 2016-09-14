@@ -21,8 +21,6 @@ struct dart_handle_struct
 	dart_unit_t dest;
 };
 
-void dash_set_serialcomm(bool flag);
-
 static inline
 MPI_Op dart_mpi_op(dart_operation_t dart_op) {
   switch (dart_op) {
