@@ -1,7 +1,6 @@
 
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/base/logging.h>
-#include <dash/dart/mpi/dart_initialization.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 
 
