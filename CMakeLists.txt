@@ -58,8 +58,8 @@ option(ENABLE_HWLOC
        "Specify whether hwloc features are enabled" on)
 option(ENABLE_LIKWID
        "Specify whether likwid support is enabled" off)
-option(ENABLE_NANOS
-       "Specify whether Nanos support is enabled" off)
+option(ENABLE_AYUDAME
+       "Specify whether Ayudame support is enabled" off)
 option(ENABLE_PAPI
        "Specify whether PAPI features are enabled" on)
 option(ENABLE_MKL
@@ -100,7 +100,7 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/MKL.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/IPM.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/PLASMA.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
-include(${CMAKE_SOURCE_DIR}/CMakeExt/Nanos.cmake)
+include(${CMAKE_SOURCE_DIR}/CMakeExt/Ayudame.cmake)
 if (NOT MKL_FOUND)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/SCALAPACK.cmake)
@@ -242,8 +242,8 @@ message(INFO "PLASMA support:           (ENABLE_PLASMA)                  "
         ${ENABLE_PLASMA})
 message(INFO "HDF5 support:             (ENABLE_HDF5)                    "
         ${ENABLE_HDF5})
-message(INFO "Nanos support:            (ENABLE_NANOS)                    "
-        ${ENABLE_NANOS})
+message(INFO "Ayudame support:            (ENABLE_AYUDAME)               "
+        ${ENABLE_AYUDAME})
 message(INFO "Enabled DART backends:    (DART_IMPLEMENTATIONS)           "
         ${DART_IMPLEMENTATIONS})
 message(INFO "C   compiler id:          ${CMAKE_C_COMPILER_ID}")
@@ -344,12 +344,12 @@ if (ENABLE_LIBNUMA)
 else()
   message(NOTE "libnuma                   disabled")
 endif()
-if (ENABLE_NANOS)
-  if (NANOS_FOUND)
-    message(INFO "Nanos                   enabled")
+if (ENABLE_AYUDAME)
+  if (AYUDAME_FOUND)
+    message(INFO "Ayudame                   enabled")
   else()
-    message(NOTE "Nanos                   not found")
+    message(NOTE "Ayudame                   not found")
   endif()
 else()
-  message(NOTE "Nanos                   disabled")
+  message(NOTE "Ayudame                   disabled")
 endif()

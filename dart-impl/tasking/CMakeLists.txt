@@ -10,6 +10,13 @@ set(DASH_DART_BASE_LIBRARY dart-base)
 
 set(DASH_DART_MPI_INCLUDE_DIR 
     ${CMAKE_CURRENT_SOURCE_DIR}/../mpi/include)
+    
+if (AYUDAME_FOUND AND ENABLE_AYUDAME)
+  set (ADDITIONAL_COMPILE_FLAGS
+       ${ADDITIONAL_COMPILE_FLAGS} -DDART_ENABLE_AYUDAME)
+  set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+       ${AYUDAME_INCLUDE_DIRS})
+endif()
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_DART_IMPL_TASKING_SOURCES "src/*.c" "src/*.h" "src/*.cc")
@@ -32,6 +39,7 @@ include_directories(
   ${DASH_DART_IMPL_MPI_INCLUDE_DIRS}
   ${DASH_DART_MPI_INCLUDE_DIR}
   ${DASH_DART_BASE_INCLUDE_DIR}
+  ${ADDITIONAL_INCLUDES}
 )
 # Library compilation sources
 add_library(

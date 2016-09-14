@@ -3,6 +3,7 @@
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/hwinfo.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
+#include <dash/dart/tasking/dart_tasking_ayudame.h>
 
 #include <pthread.h>
 #include <stdbool.h>
@@ -210,6 +211,8 @@ dart__base__tasking__init()
     }
   }
 
+  dart__tasking__ayudame_init();
+
   return DART_OK;
 }
 
@@ -308,7 +311,7 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, dart_task_dep_
   dart_myid(&myid);
 
   task_t *task = allocate_task();
-
+  dart__tasking__ayudame_create_task(task, NULL); // TODO: how to get the parent?
   task->data = data;
   task->fn = fn;
   task->ndeps = ndeps;
@@ -344,6 +347,7 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, dart_task_dep_
 
             in_dep = true;
             task->unresolved_deps++;
+            dart__tasking__ayudame_add_dependency(parent, task);
             DART_LOG_INFO("Task %p depends on task %p", task, parent);
           } else {
             // Do nothing, consider the parent as solved already
@@ -524,6 +528,7 @@ static void release_task(task_t *task)
 
   // remove the task itself from the task dependency graph
   remove_from_depgraph(task);
+  dart__tasking__ayudame_close_task(task);
 }
 
 static void destroy_tsd(void *tsd)
