@@ -1,4 +1,3 @@
-#define _XOPEN_SOURCE 700
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/base/logging.h>
