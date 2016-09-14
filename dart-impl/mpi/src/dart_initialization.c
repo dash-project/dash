@@ -18,6 +18,7 @@
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_communication_priv.h>
+#include <dash/dart/mpi/dart_mpi_serialization.h>
 
 #define DART_BUDDY_ORDER 24
 
@@ -270,7 +271,7 @@ dart_ret_t dart_init(
 }
 
 
-dart_ret_t dart_mpi_init_thread(
+dart_ret_t dart_init_thread(
   int                 *   argc,
   char                *** argv,
   dart_concurrency_t  *   concurrency)

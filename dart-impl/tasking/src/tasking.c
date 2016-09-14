@@ -5,26 +5,6 @@
 #include <dash/dart/tasking/dart_tasking_priv.h>
 
 
-dart_ret_t dart_init_thread(
-  int                 *   argc,
-  char                *** argv,
-  dart_concurrency_t  *   concurrency)
-{
-  int ret;
-
-  ret = dart_mpi_init_thread(argc, argv, concurrency);
-  if (ret != DART_OK) {
-    return ret;
-  }
-
-  ret = dart_tasking_init();
-  if (ret != DART_OK) {
-    return ret;
-  }
-
-  return DART_OK;
-}
-
 /**
  * \brief Initialize the tasking environment, i.e., create the a thread-pool waiting for tasks.
  */
