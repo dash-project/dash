@@ -12,11 +12,11 @@
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/mpi/dart_communication_priv.h>
-#include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
 #include <dash/dart/mpi/dart_segment.h>
+#include <dash/dart/mpi/dart_globmem_priv.h>
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/math.h>
@@ -61,12 +61,10 @@ dart_ret_t dart_get(
   int16_t      seg_id            = gptr.segid;
 
   uint16_t index;
-  dart_segment_t *segment = dart_segment_get(seg_id);
-  if (segment == NULL) {
+  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
     DART_LOG_ERROR("dart_get ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
-  index = segment->team_idx;
 
   dart_team_data_t *team_data = &dart_team_data[index];
 
@@ -99,7 +97,7 @@ dart_ret_t dart_get(
       DART_LOG_DEBUG("dart_get: shared memory segment, seg_id:%d",
                      seg_id);
       if (seg_id) {
-        if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr) == -1) {
+        if (dart_segment_get_baseptr(seg_id, i, &baseptr) != DART_OK) {
           DART_LOG_ERROR("dart_get ! "
                          "dart_adapt_transtable_get_baseptr failed");
           return DART_ERR_INVAL;
@@ -121,10 +119,10 @@ dart_ret_t dart_get(
    * nodes, use MPI_Get:
    */
   if (seg_id) {
-    if (dart_adapt_transtable_get_disp(
+    if (dart_segment_get_disp(
           seg_id,
           target_unitid_rel,
-          &disp_s) == -1) {
+          &disp_s) != DART_OK) {
       return DART_ERR_INVAL;
     }
     win = team_data->window;
@@ -174,20 +172,19 @@ dart_ret_t dart_put(
   if (seg_id) {
 
     uint16_t index;
-    dart_segment_t *segment = dart_segment_get(seg_id);
-    if (segment == NULL) {
-      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_put ! failed: Unknown segment %i!", seg_id);
       return DART_ERR_INVAL;
     }
-    index = segment->team_idx;
+
 
     dart_unit_t target_unitid_rel;
     win = dart_team_data[index].window;
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
-    if (dart_adapt_transtable_get_disp(
+    if (dart_segment_get_disp(
           seg_id,
           target_unitid_rel,
-          &disp_s) == -1) {
+          &disp_s) != DART_OK) {
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
@@ -248,21 +245,19 @@ dart_ret_t dart_accumulate(
     dart_unit_t target_unitid_rel;
 
     uint16_t index;
-    dart_segment_t *segment = dart_segment_get(seg_id);
-    if (segment == NULL) {
-      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_accumulate ! failed: Unknown segment %i!", seg_id);
       return DART_ERR_INVAL;
     }
-    index = segment->team_idx;
 
     MPI_Win win = dart_team_data[index].window;
     unit_g2l(index,
              target_unitid_abs,
              &target_unitid_rel);
-    if (dart_adapt_transtable_get_disp(
+    if (dart_segment_get_disp(
           seg_id,
           target_unitid_rel,
-          &disp_s) == -1) {
+          &disp_s) != DART_OK) {
       DART_LOG_ERROR("dart_accumulate ! "
                      "dart_adapt_transtable_get_disp failed");
       return DART_ERR_INVAL;
@@ -331,20 +326,18 @@ dart_ret_t dart_fetch_and_op(
     dart_unit_t target_unitid_rel;
 
     uint16_t index;
-    dart_segment_t *segment = dart_segment_get(seg_id);
-    if (segment == NULL) {
-      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_fetch_and_op ! failed: Unknown segment %i!", seg_id);
       return DART_ERR_INVAL;
     }
-    index = segment->team_idx;
 
     unit_g2l(index,
              target_unitid_abs,
              &target_unitid_rel);
-    if (dart_adapt_transtable_get_disp(
+    if (dart_segment_get_disp(
           seg_id,
           target_unitid_rel,
-          &disp_s) == -1) {
+          &disp_s) != DART_OK) {
       DART_LOG_ERROR("dart_fetch_and_op ! "
                      "dart_adapt_transtable_get_disp failed");
       return DART_ERR_INVAL;
@@ -402,12 +395,11 @@ dart_ret_t dart_get_handle(
   int16_t      seg_id = gptr.segid;
 
   uint16_t index;
-  dart_segment_t *segment = dart_segment_get(seg_id);
-  if (segment == NULL) {
-    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_get_handle ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
-  index = segment->team_idx;
+
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -444,7 +436,7 @@ dart_ret_t dart_get_handle(
       DART_LOG_DEBUG("dart_get_handle: shared memory segment, seg_id:%d",
                      seg_id);
       if (seg_id) {
-        if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr) == -1) {
+        if (dart_segment_get_baseptr(seg_id, i, &baseptr) != DART_OK) {
           DART_LOG_ERROR("dart_get_handle ! "
                          "dart_adapt_transtable_get_baseptr failed");
           return DART_ERR_INVAL;
@@ -490,11 +482,10 @@ dart_ret_t dart_get_handle(
      * local unitID relative to the team associated with the specified win
      * object.
      */
-    if (dart_adapt_transtable_get_disp(
+    if (dart_segment_get_disp(
           seg_id,
           target_unitid_rel,
-          &disp_s) == -1)
-    {
+          &disp_s) != DART_OK) {
       DART_LOG_ERROR(
         "dart_get_handle ! dart_adapt_transtable_get_disp failed");
       free(*handle);
@@ -585,20 +576,18 @@ dart_ret_t dart_put_handle(
   if (seg_id != 0) {
 
     uint16_t index;
-    dart_segment_t *segment = dart_segment_get(seg_id);
-    if (segment == NULL) {
-      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_put_handle ! failed: Unknown segment %i!", seg_id);
       return DART_ERR_INVAL;
     }
-    index = segment->team_idx;
 
     dart_unit_t target_unitid_rel;
     win = dart_team_data[index].window;
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
-    if (dart_adapt_transtable_get_disp(
+    if (dart_segment_get_disp(
           seg_id,
           target_unitid_rel,
-          &disp_s) == -1) {
+          &disp_s) != DART_OK) {
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
@@ -670,12 +659,10 @@ dart_ret_t dart_put_blocking(
   int16_t     seg_id = gptr.segid;
 
   uint16_t index;
-  dart_segment_t *segment = dart_segment_get(seg_id);
-  if (segment == NULL) {
+  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
     DART_LOG_ERROR("dart_put_blocking ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
-  index = segment->team_idx;
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -707,7 +694,7 @@ dart_ret_t dart_put_blocking(
       DART_LOG_DEBUG("dart_put_blocking: shared memory segment, seg_id:%d",
                      seg_id);
       if (seg_id) {
-        if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr) == -1) {
+        if (dart_segment_get_baseptr(seg_id, i, &baseptr) != DART_OK) {
           DART_LOG_ERROR("dart_put_blocking ! "
                          "dart_adapt_transtable_get_baseptr failed");
           return DART_ERR_INVAL;
@@ -729,10 +716,10 @@ dart_ret_t dart_put_blocking(
    * nodes, use MPI_Rput:
    */
   if (seg_id) {
-    if (dart_adapt_transtable_get_disp(
+    if (dart_segment_get_disp(
           seg_id,
           target_unitid_rel,
-          &disp_s) == -1) {
+          &disp_s) != DART_OK) {
       DART_LOG_ERROR("dart_put_blocking ! "
                      "dart_adapt_transtable_get_disp failed");
       return DART_ERR_INVAL;
@@ -797,12 +784,10 @@ dart_ret_t dart_get_blocking(
   int16_t     seg_id            = gptr.segid;
 
   uint16_t index;
-  dart_segment_t *segment = dart_segment_get(seg_id);
-  if (segment == NULL) {
+  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
     DART_LOG_ERROR("dart_get_blocking ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
-  index = segment->team_idx;
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -834,7 +819,7 @@ dart_ret_t dart_get_blocking(
       DART_LOG_DEBUG("dart_get_blocking: shared memory segment, seg_id:%d",
                      seg_id);
       if (seg_id) {
-        if (dart_adapt_transtable_get_baseptr(seg_id, i, &baseptr) == -1) {
+        if (dart_segment_get_baseptr(seg_id, i, &baseptr) != DART_OK) {
           DART_LOG_ERROR("dart_get_blocking ! "
                          "dart_adapt_transtable_get_baseptr failed");
           return DART_ERR_INVAL;
@@ -856,10 +841,10 @@ dart_ret_t dart_get_blocking(
    * nodes, use MPI_Rget:
    */
   if (seg_id) {
-    if (dart_adapt_transtable_get_disp(
+    if (dart_segment_get_disp(
           seg_id,
           target_unitid_rel,
-          &disp_s) == -1) {
+          &disp_s) != DART_OK) {
       DART_LOG_ERROR("dart_get_blocking ! "
                      "dart_adapt_transtable_get_disp failed");
       return DART_ERR_INVAL;
@@ -924,12 +909,10 @@ dart_ret_t dart_flush(
     dart_unit_t target_unitid_rel;
 
     uint16_t index;
-    dart_segment_t *segment = dart_segment_get(seg_id);
-    if (segment == NULL) {
-      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_flush ! failed: Unknown segment %i!", seg_id);
       return DART_ERR_INVAL;
     }
-    index = segment->team_idx;
 
     win = dart_team_data[index].window;
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
@@ -957,12 +940,10 @@ dart_ret_t dart_flush_all(
   if (seg_id) {
 
     uint16_t index;
-    dart_segment_t *segment = dart_segment_get(seg_id);
-    if (segment == NULL) {
-      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_flush_all ! failed: Unknown segment %i!", seg_id);
       return DART_ERR_INVAL;
     }
-    index = segment->team_idx;
 
     win = dart_team_data[index].window;
   } else {
@@ -987,12 +968,10 @@ dart_ret_t dart_flush_local(
                  gptr.segid,  gptr.flags);
   if (seg_id) {
     uint16_t index;
-    dart_segment_t *segment = dart_segment_get(seg_id);
-    if (segment == NULL) {
-      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_flush_local ! failed: Unknown segment %i!", seg_id);
       return DART_ERR_INVAL;
     }
-    index = segment->team_idx;
 
     dart_unit_t target_unitid_rel;
     win = dart_team_data[index].window;
@@ -1024,12 +1003,10 @@ dart_ret_t dart_flush_local_all(
   if (seg_id) {
 
     uint16_t index;
-    dart_segment_t *segment = dart_segment_get(seg_id);
-    if (segment == NULL) {
-      DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+      DART_LOG_ERROR("dart_flush_local_all ! failed: Unknown segment %i!", seg_id);
       return DART_ERR_INVAL;
     }
-    index = segment->team_idx;
 
     win = dart_team_data[index].window;
   } else {

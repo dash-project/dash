@@ -17,7 +17,6 @@
 #include <dash/dart/base/locality.h>
 
 #include <dash/dart/mpi/dart_team_private.h>
-#include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_group_priv.h>
 
 #include <limits.h>

@@ -12,7 +12,6 @@
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_synchronization.h>
 
-#include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
@@ -106,12 +105,10 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
   MPI_Aint disp_list;
 
   uint16_t index;
-  dart_segment_t *segment = dart_segment_get(seg_id);
-  if (segment == NULL) {
-    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_lock_acquire ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
-  index = segment->team_idx;
 
 
 	/* MPI-3 newly added feature: atomic operation*/
@@ -121,7 +118,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
   /* If there was a previous tail (predecessor), update the previous tail's next pointer with unitid
    * and wait for notification from its predecessor. */
   if (*predecessor != -1) {
-    if (dart_adapt_transtable_get_disp(seg_id, *predecessor, &disp_list) == -1) {
+    if (dart_segment_get_disp(seg_id, *predecessor, &disp_list) != DART_OK) {
       return DART_ERR_INVAL;
     }
     win = dart_team_data[index].window;
@@ -207,12 +204,10 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
   dart_gptr_getaddr(gptr_list, (void *)&addr2);
 
   uint16_t index;
-  dart_segment_t *segment = dart_segment_get(seg_id);
-  if (segment == NULL) {
-    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_lock_release ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
-  index = segment->team_idx;
 
   win = dart_team_data[index].window;
 
@@ -227,7 +222,7 @@ dart_ret_t dart_lock_release (dart_lock_t lock)
     DART_LOG_DEBUG("%2d: UNLOCK	- waiting for next pointer (tail = %d) in team %d",
                    unitid, *result, (lock -> teamid));
 
-    if (dart_adapt_transtable_get_disp(seg_id, unitid, &disp_list) == -1) {
+    if (dart_segment_get_disp(seg_id, unitid, &disp_list) != DART_OK) {
       return DART_ERR_INVAL;
     }
 

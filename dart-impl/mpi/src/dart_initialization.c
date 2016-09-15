@@ -13,7 +13,6 @@
 #include <dash/dart/mpi/dart_mpi_util.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_team_private.h>
-#include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_locality_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
@@ -80,9 +79,12 @@ dart_ret_t dart_init(
   }
 
   dart_team_data_t *team_data = &dart_team_data[index];
+
+  /* Create a global translation table for all
+   * the collective global memory segments */
+  dart_segment_init();
   // Segment ID zero is reserved for non-global memory allocations
-  dart_segment_t *local_segment = dart_segment_alloc(0);
-  local_segment->team_idx = DART_TEAM_ALL;
+  dart_segment_alloc(0, DART_TEAM_ALL);
 
   DART_LOG_DEBUG("dart_init: dart_adapt_teamlist_alloc completed, index:%d",
                  index);
@@ -91,9 +93,6 @@ dart_ret_t dart_init(
   //  dart_teams[index] = MPI_COMM_WORLD;
   team_data->comm = MPI_COMM_WORLD;
 
-  /* Create a global translation table for all
-   * the collective global memory */
-	dart_adapt_transtable_create();
 
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -304,8 +303,8 @@ dart_ret_t dart_exit()
 #endif
   MPI_Win_free(&team_data->window);
 
-	dart_adapt_transtable_destroy();
-	dart_buddy_delete(dart_localpool);
+  dart_segment_clear();
+  dart_buddy_delete(dart_localpool);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   free(team_data->sharedmem_tab);
   free(dart_sharedmem_local_baseptr_set);
