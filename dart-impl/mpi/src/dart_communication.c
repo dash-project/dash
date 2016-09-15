@@ -63,7 +63,7 @@ dart_ret_t dart_get(
   uint16_t index;
   dart_segment_t *segment = dart_segment_get(seg_id);
   if (segment == NULL) {
-    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    DART_LOG_ERROR("dart_get ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
   index = segment->team_idx;
@@ -672,7 +672,7 @@ dart_ret_t dart_put_blocking(
   uint16_t index;
   dart_segment_t *segment = dart_segment_get(seg_id);
   if (segment == NULL) {
-    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    DART_LOG_ERROR("dart_put_blocking ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
   index = segment->team_idx;
@@ -799,7 +799,7 @@ dart_ret_t dart_get_blocking(
   uint16_t index;
   dart_segment_t *segment = dart_segment_get(seg_id);
   if (segment == NULL) {
-    DART_LOG_ERROR("dart_get ! failed: Unknown segment!");
+    DART_LOG_ERROR("dart_get_blocking ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
   index = segment->team_idx;
