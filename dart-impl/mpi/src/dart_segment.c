@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #define DART_SEGMENT_HASH_SIZE 256
-#define DART_SEGMENT_INVALID   ((int)-1)
+#define DART_SEGMENT_INVALID   ((int)0)
 
 // forward declaration to make the compiler happy
 typedef struct dart_seghash_elem dart_seghash_elem_t;

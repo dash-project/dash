@@ -65,8 +65,9 @@ dart_ret_t dart_init(
 	MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
 #endif
 
-	/* Initialize the teamlist. */
-	dart_adapt_teamlist_init();
+  /* Initialize the teamlist. */
+  dart_adapt_teamlist_init();
+  dart_segment_init();
 
   dart_next_availteamid = DART_TEAM_ALL;
 
@@ -79,6 +80,9 @@ dart_ret_t dart_init(
   }
 
   dart_team_data_t *team_data = &dart_team_data[index];
+  // Segment ID zero is reserved for non-global memory allocations
+  dart_segment_t *local_segment = dart_segment_alloc(0);
+  local_segment->team_idx = DART_TEAM_ALL;
 
   DART_LOG_DEBUG("dart_init: dart_adapt_teamlist_alloc completed, index:%d",
                  index);
@@ -91,7 +95,6 @@ dart_ret_t dart_init(
    * the collective global memory */
 	dart_adapt_transtable_create();
 
-  dart_segment_init();
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
