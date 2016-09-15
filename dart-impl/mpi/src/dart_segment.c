@@ -1,12 +1,6 @@
-/*
- * dart_segment.c
- *
- *  Created on: Aug 12, 2016
- *      Author: joseph
- */
-
 #include <string.h>
 #include <dash/dart/mpi/dart_segment.h>
+#include <stdlib.h>
 
 #define DART_SEGMENT_HASH_SIZE 256
 #define DART_SEGMENT_INVALID   ((int)-1)
@@ -29,7 +23,7 @@ static inline int hash_segid(dart_segid_t segid)
    * collisions starting at (segment number == DART_SEGMENT_HASH_SIZE)
    * TODO: come up with a random distribution to account for random free'd segments?
    * */
-  return (segid % DART_SEGMENT_HASH_SIZE);
+  return (abs(segid) % DART_SEGMENT_HASH_SIZE);
 }
 
 /**
