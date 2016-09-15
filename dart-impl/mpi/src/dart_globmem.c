@@ -32,9 +32,10 @@
  * the displacement relative to
  * the base address of memory region reserved for the dart local
  * allocation/free.
+ * @note Segment ID zero is reserved.
  */
-int16_t dart_memid;
-int16_t dart_registermemid;
+static int16_t dart_memid = 1;
+static int16_t dart_registermemid = -1;
 
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
 {

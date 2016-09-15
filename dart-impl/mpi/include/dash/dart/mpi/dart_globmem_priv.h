@@ -3,9 +3,6 @@
 
 #include <stdint.h>
 
-extern int16_t dart_memid;
-extern int16_t dart_registermemid;
-
 #define DART_GPTR_COPY(gptr_, gptrt_)                       \
   do {                                                      \
     gptr_.unitid = gptrt_.unitid;                           \

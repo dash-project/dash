@@ -68,9 +68,7 @@ dart_ret_t dart_init(
 	/* Initialize the teamlist. */
 	dart_adapt_teamlist_init();
 
-	dart_next_availteamid = DART_TEAM_ALL;
-	dart_memid = 1;
-	dart_registermemid = -1;
+  dart_next_availteamid = DART_TEAM_ALL;
 
 	int result = dart_adapt_teamlist_alloc(
                  DART_TEAM_ALL,
