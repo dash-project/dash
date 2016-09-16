@@ -17,13 +17,12 @@
 #include <dash/dart/base/locality.h>
 
 #include <dash/dart/mpi/dart_team_private.h>
-#include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_group_priv.h>
 
 #include <limits.h>
 
 /* ======================================================================= *
- * Private Funtions                                                        *
+ * Private Functions                                                        *
  * ======================================================================= */
 
 dart_ret_t dart_group_init(
@@ -130,25 +129,28 @@ dart_ret_t dart_group_intersect(
   return DART_OK;
 }
 
+/**
+ * TODO: [JS] This function is likely to be incorrect since dart_group_copy
+ *            does not do a deep-copy and hence the call to dart_group_union
+ *            has the same MPI_Group as input and output.
+ */
 dart_ret_t dart_group_addmember(
   dart_group_t *g,
   dart_unit_t unitid)
 {
   int array[1];
-  dart_group_t* group_copy, *group;
+  dart_group_t group_copy, group;
   MPI_Group     newgroup, group_all;
   /* Group_all comprises all the running units. */
   MPI_Comm_group(MPI_COMM_WORLD, &group_all);
-  group_copy = (dart_group_t*)malloc(sizeof(dart_group_t));
-  group      = (dart_group_t*)malloc(sizeof(dart_group_t));
-  dart_group_copy(g, group_copy);
+//  group_copy = (dart_group_t *)malloc(sizeof(dart_group_t));
+//  group      = (dart_group_t *)malloc(sizeof(dart_group_t));
+  dart_group_copy(g, &group_copy);
   array[0]   = unitid;
   MPI_Group_incl(group_all, 1, array, &newgroup);
-  group->mpi_group = newgroup;
+  group.mpi_group = newgroup;
   /* Make the new group being an ordered group. */
-  dart_group_union (group_copy, group, g);
-  free (group_copy);
-  free (group);
+  dart_group_union(&group_copy, &group, g);
   return DART_OK;
 }
 
@@ -464,7 +466,7 @@ dart_ret_t dart_team_get_group(
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[index];
+  comm = dart_team_data[index].comm;
   MPI_Comm_group(comm, &(group->mpi_group));
   return DART_OK;
 }
@@ -493,6 +495,8 @@ dart_ret_t dart_team_create(
   dart_unit_t sub_unit,
               unit;
 
+  dart_team_data_t *team_data;
+
   dart_myid(&unit);
   dart_size(&size);
   dart_team_myid(teamid, &sub_unit);
@@ -501,7 +505,7 @@ dart_ret_t dart_team_create(
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm    = dart_teams[unique_id];
+  comm = dart_team_data[unique_id].comm;
   subcomm = MPI_COMM_NULL;
 
   MPI_Comm_create(comm, group -> mpi_group, &subcomm);
@@ -526,10 +530,12 @@ dart_ret_t dart_team_create(
     }
     /* max_teamid is thought to be the new created team ID. */
     *newteam = max_teamid;
-    dart_teams[index] = subcomm;
+    team_data = &dart_team_data[index];
+    team_data->comm = subcomm;
     MPI_Win_create_dynamic(MPI_INFO_NULL, subcomm, &win);
-    dart_win_lists[index] = win;
+    team_data->window = win;
   }
+
 #if 0
   /* Another way of generating the available teamID for the newly crated team. */
   if (subcomm != MPI_COMM_NULL)
@@ -596,12 +602,12 @@ dart_ret_t dart_team_create(
       1,
       MPI_INFO_NULL,
       &sharedmem_comm);
-    dart_sharedmem_comm_list[index] = sharedmem_comm;
+    team_data->sharedmem_comm = sharedmem_comm;
 
     if (sharedmem_comm != MPI_COMM_NULL) {
       MPI_Comm_size(
         sharedmem_comm,
-        &(dart_sharedmemnode_size[index]));
+          &(team_data->sharedmem_nodesize));
 
 //    dart_unit_mapping[index] = (int*)malloc (
 //      dart_sharedmem_size[index] * sizeof (int));
@@ -609,13 +615,13 @@ dart_ret_t dart_team_create(
       MPI_Comm_group(sharedmem_comm, &sharedmem_group);
       MPI_Comm_group(MPI_COMM_WORLD, &group_all);
 
-      int * dart_unit_mapping     = malloc(dart_sharedmemnode_size[index] *
-                                           sizeof(int));
-      int * sharedmem_ranks       = malloc(dart_sharedmemnode_size[index] *
-                                           sizeof (int));
-      dart_sharedmem_table[index] = malloc(size * sizeof(int));
+      int * dart_unit_mapping = malloc(
+          team_data->sharedmem_nodesize * sizeof(int));
+      int * sharedmem_ranks = malloc(
+          team_data->sharedmem_nodesize * sizeof(int));
+      team_data->sharedmem_tab = malloc(size * sizeof(int));
 
-      for (i = 0; i < dart_sharedmemnode_size[index]; i++) {
+      for (i = 0; i < team_data->sharedmem_nodesize; i++) {
         sharedmem_ranks[i] = i;
       }
 
@@ -623,16 +629,16 @@ dart_ret_t dart_team_create(
 //        sharedmem_ranks, group_all, dart_unit_mapping[index]);
       MPI_Group_translate_ranks(
         sharedmem_group,
-        dart_sharedmemnode_size[index],
+        team_data->sharedmem_nodesize,
         sharedmem_ranks,
         group_all,
         dart_unit_mapping);
 
       for (n = 0; n < size; n++) {
-        dart_sharedmem_table[index][n] = -1;
+        team_data->sharedmem_tab[n] = -1;
       }
-      for (i = 0; i < dart_sharedmemnode_size[index]; i++) {
-        dart_sharedmem_table[index][dart_unit_mapping[i]] = i;
+      for (i = 0; i < team_data->sharedmem_nodesize; i++) {
+        team_data->sharedmem_tab[dart_unit_mapping[i]] = i;
       }
       free(sharedmem_ranks);
       free(dart_unit_mapping);
@@ -662,7 +668,10 @@ dart_ret_t dart_team_destroy(
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[index];
+
+  dart_team_data_t *team_data = &dart_team_data[index];
+
+  comm = team_data->comm;
 
   dart_myid (&id);
 
@@ -670,9 +679,9 @@ dart_ret_t dart_team_destroy(
 
 //  MPI_Win_free (&(sharedmem_win_list[index]));
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  free(dart_sharedmem_table[index]);
+  free(team_data->sharedmem_tab);
 #endif
-  win = dart_win_lists[index];
+  win = team_data->window;
   MPI_Win_unlock_all(win);
   MPI_Win_free(&win);
   dart_adapt_teamlist_recycle(index, result);
@@ -713,8 +722,8 @@ dart_ret_t dart_team_myid(
   {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[index];
-  MPI_Comm_rank (comm, unitid);
+  comm = dart_team_data[index].comm;
+  MPI_Comm_rank(comm, unitid);
 
   return DART_OK;
 }
@@ -732,7 +741,7 @@ dart_ret_t dart_team_size(
   if (result == -1) {
     return DART_ERR_INVAL;
   }
-  comm = dart_teams[index];
+  comm = dart_team_data[index].comm;
   // TODO: This should be a local operation.
   //       Team sizes could be cached and updated in dart_team_create.
   int s;
