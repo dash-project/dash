@@ -338,14 +338,13 @@ T & LocalMatrixRef<T, NumDim, CUR, PatternT>
       "expected " << (NumDim - _refview->_dim) << " " <<
       "got " << sizeof...(Args));
   }
-  std::array<long long, NumDim> coord = { args... };
+  std::array<index_type, NumDim> coord = { static_cast<index_type>(args)... };
   for(auto i = _refview->_dim; i < NumDim; ++i) {
     _refview->_coord[i] = coord[i-_refview->_dim];
   }
   return local_at(
            _refview->_mat->_pattern.local_at(
-             _refview->_coord,
-             _refview->_viewspec));
+             _refview->_coord));
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>

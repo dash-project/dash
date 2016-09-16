@@ -283,7 +283,7 @@ public:
    * Get local memory of system in MB
    */
   static inline int SystemMemory(){
-    return _domain_loc->hwinfo.system_memory; 
+    return _domain_loc->hwinfo.system_memory;
   }
 
   /**

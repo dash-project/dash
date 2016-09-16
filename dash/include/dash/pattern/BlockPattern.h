@@ -985,7 +985,7 @@ public:
   {
     auto coords = global_coords;
     for (auto d = 0; d < NumDimensions; ++d) {
-      coords[d] += viewspec[d].offset;
+      coords[d] += viewspec.offset(d);
     }
     DASH_LOG_TRACE_VAR("BlockPattern.at()", coords);
     DASH_LOG_TRACE_VAR("BlockPattern.at()", viewspec);

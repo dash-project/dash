@@ -394,9 +394,16 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
       size_t filter_tag_len    = strlen(subdomain_tags[dt]);
       size_t common_prefix_len = dart__base__strcommonprefix(
                                    subdomain_tag, subdomain_tags[dt], NULL);
-      size_t min_tag_match_len = filter_tag_len < subdomain_tag_len
-                                   ? filter_tag_len
-                                   : subdomain_tag_len;
+      /* When removing matches: Match domains with full domain tag filter in
+       * prefix, e.g. ".0.1" matches ".0.1.0"
+       * -> minimum match length is length of filter tag
+       * When selecting matches: Match domain tags that are fully included
+       * in filter tag
+       * -> minimum match length is length of subdomain:
+       */
+      size_t min_tag_match_len = (remove_matches == 1)
+                                 ? filter_tag_len
+                                 : subdomain_tag_len;
 
       if (common_prefix_len >= min_tag_match_len) {
         matched = 1;

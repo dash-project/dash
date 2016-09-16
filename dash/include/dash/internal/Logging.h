@@ -24,10 +24,10 @@ namespace dash {
 int myid();
 }
 
-#ifdef DASH_LOG_OUTPUT_STDERR
-#  define DASH_LOG_OUTPUT_TARGET std::cerr
-#else
+#ifdef DASH_LOG_OUTPUT_STDOUT
 #  define DASH_LOG_OUTPUT_TARGET std::cout
+#else
+#  define DASH_LOG_OUTPUT_TARGET std::clog
 #endif
 
 //
