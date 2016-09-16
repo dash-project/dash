@@ -1176,15 +1176,15 @@ dart_ret_t dart_waitall_local(
               return DART_ERR_INVAL;
             }
           } else {
-            DART_LOG_TRACE("dart_waitall_local: cannot free request %d "
-                           "mpi_sta[%d] = %d (%s)",
+            DART_LOG_TRACE("dart_waitall_local: cannot free request %zu "
+                           "mpi_sta[%zu] = %d (%s)",
                            r_n,
                            r_n,
                            mpi_sta[r_n].MPI_ERROR,
                            DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
           }
         }
-        DART_LOG_DEBUG("dart_waitall_local: free handle[%d] %p",
+        DART_LOG_DEBUG("dart_waitall_local: free handle[%zu] %p",
                        i, (void*)(handle[i]));
         free(handle[i]);
         handle[i] = NULL;
@@ -1204,8 +1204,7 @@ dart_ret_t dart_waitall(
   dart_handle_t * handle,
   size_t          n)
 {
-  int i, r_n;
-  int num_handles = (int)n;
+  size_t i, r_n;
   DART_LOG_DEBUG("dart_waitall()");
   if (n == 0) {
     DART_LOG_ERROR("dart_waitall > number of handles = 0");
@@ -1215,20 +1214,20 @@ dart_ret_t dart_waitall(
     DART_LOG_ERROR("dart_waitall ! number of handles > INT_MAX");
     return DART_ERR_INVAL;
   }
-  DART_LOG_DEBUG("dart_waitall: number of handles: %d", num_handles);
+  DART_LOG_DEBUG("dart_waitall: number of handles: %zu", n);
   if (*handle) {
     MPI_Status  *mpi_sta;
     MPI_Request *mpi_req;
-    mpi_req = (MPI_Request *) malloc(num_handles * sizeof(MPI_Request));
-    mpi_sta = (MPI_Status *)  malloc(num_handles * sizeof(MPI_Status));
+    mpi_req = (MPI_Request *) malloc(n * sizeof(MPI_Request));
+    mpi_sta = (MPI_Status *)  malloc(n * sizeof(MPI_Status));
     /*
      * copy requests from DART handles to MPI request array:
      */
     DART_LOG_TRACE("dart_waitall: copying DART handles to MPI request array");
     r_n = 0;
-    for (i = 0; i < num_handles; i++) {
+    for (i = 0; i < n; i++) {
       if (handle[i] != NULL) {
-        DART_LOG_DEBUG("dart_waitall: -- handle[%d](%p): "
+        DART_LOG_DEBUG("dart_waitall: -- handle[%zu](%p): "
                        "dest:%d win:%"PRIu64" req:%"PRIu64"",
                        i, (void*)handle[i],
                        handle[i]->dest,
@@ -1241,8 +1240,8 @@ dart_ret_t dart_waitall(
     /*
      * wait for communication of MPI requests:
      */
-    DART_LOG_DEBUG("dart_waitall: MPI_Waitall, %d requests from %d handles",
-                   r_n, num_handles);
+    DART_LOG_DEBUG("dart_waitall: MPI_Waitall, %zu requests from %zu handles",
+                   r_n, n);
     /* From the MPI 3.1 standard:
      *
      * The i-th entry in array_of_statuses is set to the return
@@ -1274,18 +1273,17 @@ dart_ret_t dart_waitall(
      */
     DART_LOG_TRACE("dart_waitall: copying MPI requests back to DART handles");
     r_n = 0;
-    for (i = 0; i < num_handles; i++) {
+    for (i = 0; i < n; i++) {
       if (handle[i]) {
         if (mpi_req[r_n] == MPI_REQUEST_NULL) {
-          DART_LOG_TRACE("dart_waitall: -- mpi_req[%d] = MPI_REQUEST_NULL",
+          DART_LOG_TRACE("dart_waitall: -- mpi_req[%zu] = MPI_REQUEST_NULL",
                          r_n);
         } else {
-          DART_LOG_TRACE("dart_waitall: -- mpi_req[%d] = %d",
-                         r_n, mpi_req[r_n]);
+          DART_LOG_TRACE("dart_waitall: -- mpi_req[%zu]", r_n);
         }
-        DART_LOG_TRACE("dart_waitall: -- mpi_sta[%d].MPI_SOURCE: %d",
+        DART_LOG_TRACE("dart_waitall: -- mpi_sta[%zu].MPI_SOURCE: %d",
                        r_n, mpi_sta[r_n].MPI_SOURCE);
-        DART_LOG_TRACE("dart_waitall: -- mpi_sta[%d].MPI_ERROR:  %d:%s",
+        DART_LOG_TRACE("dart_waitall: -- mpi_sta[%zu].MPI_ERROR:  %d:%s",
                        r_n,
                        mpi_sta[r_n].MPI_ERROR,
                        DART__MPI__ERROR_STR(mpi_sta[r_n].MPI_ERROR));
@@ -1297,19 +1295,19 @@ dart_ret_t dart_waitall(
      * wait for completion of MPI requests at origins and targets:
      */
     DART_LOG_DEBUG("dart_waitall: waiting for remote completion");
-    for (i = 0; i < num_handles; i++) {
+    for (i = 0; i < n; i++) {
       if (handle[i]) {
         if (handle[i]->request == MPI_REQUEST_NULL) {
-          DART_LOG_TRACE("dart_waitall: -- handle[%d] done (MPI_REQUEST_NULL)",
+          DART_LOG_TRACE("dart_waitall: -- handle[%zu] done (MPI_REQUEST_NULL)",
                          i);
         } else {
-          DART_LOG_DEBUG("dart_waitall: -- MPI_Win_flush(handle[%d]: %p))",
+          DART_LOG_DEBUG("dart_waitall: -- MPI_Win_flush(handle[%zu]: %p))",
                          i, (void*)handle[i]);
-          DART_LOG_TRACE("dart_waitall:      handle[%d]->dest: %d",
+          DART_LOG_TRACE("dart_waitall:      handle[%zu]->dest: %d",
                          i, handle[i]->dest);
-          DART_LOG_TRACE("dart_waitall:      handle[%d]->win:  %"PRIu64"",
+          DART_LOG_TRACE("dart_waitall:      handle[%zu]->win:  %"PRIu64"",
                          i, (uint64_t)handle[i]->win);
-          DART_LOG_TRACE("dart_waitall:      handle[%d]->req:  %"PRIu64"",
+          DART_LOG_TRACE("dart_waitall:      handle[%zu]->req:  %"PRIu64"",
                          i, (uint64_t)handle[i]->request);
           /*
            * MPI_Win_flush to wait for remote completion:
@@ -1338,10 +1336,10 @@ dart_ret_t dart_waitall(
      * free memory:
      */
     DART_LOG_DEBUG("dart_waitall: free handles");
-    for (i = 0; i < num_handles; i++) {
+    for (i = 0; i < n; i++) {
       if (handle[i]) {
         /* Free handle resource */
-        DART_LOG_TRACE("dart_waitall: -- free handle[%d]: %p",
+        DART_LOG_TRACE("dart_waitall: -- free handle[%zu]: %p",
                        i, (void*)(handle[i]));
         free(handle[i]);
         handle[i] = NULL;

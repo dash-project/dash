@@ -159,13 +159,10 @@ dart_team_memalloc_aligned(
   if (result == -1) {
     return DART_ERR_INVAL;
   }
+
   comm = dart_team_data[index].comm;
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  MPI_Win sharedmem_win;
-  MPI_Comm sharedmem_comm;
-  sharedmem_comm = dart_team_data[index].sharedmem_comm;
-#endif
 	dart_unit_t localid = 0;
+
 	if (index == 0) {
 		gptr_unitid = localid;
 	} else {
@@ -176,13 +173,9 @@ dart_team_memalloc_aligned(
 		MPI_Group_translate_ranks(group, 1, &localid, group_all, &gptr_unitid);
 	}
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-	MPI_Info win_info;
-	MPI_Info_create(&win_info);
-	MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
 
 	/* Allocate shared memory on sharedmem_comm, and create the related
    * sharedmem_win */
-
   /* NOTE:
    * Windows should definitely be optimized for the concrete value type i.e.
    * via MPI_Type_create_index_block as this greatly improves performance of
@@ -212,8 +205,16 @@ dart_team_memalloc_aligned(
    * Related support ticket of MPICH:
    * http://trac.mpich.org/projects/mpich/ticket/2178
    */
+  MPI_Win sharedmem_win;
+  MPI_Comm sharedmem_comm = sharedmem_comm = dart_team_data[index].sharedmem_comm;
+
+	MPI_Info win_info;
+	MPI_Info_create(&win_info);
+	MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
+
   DART_LOG_DEBUG("dart_team_memalloc_aligned: "
                  "MPI_Win_allocate_shared(nbytes:%ld)", nbytes);
+
 	if (sharedmem_comm != MPI_COMM_NULL) {
     int ret = MPI_Win_allocate_shared(
                 nbytes,
