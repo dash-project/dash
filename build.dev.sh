@@ -91,6 +91,9 @@ rm -Rf $BUILD_DIR/*
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                        -DBUILD_SHARED_LIBS=ON \
+			-DENABLE_AYUDAME=ON \
+			-DAYUDAME_PREFIX=${HOME}/local/temanejo \
                         ../ && \
  await_confirm && \
  make) && (cp $BUILD_DIR/compile_commands.json .) && \
