@@ -2,6 +2,7 @@
 #include <dash/dart/mpi/dart_segment.h>
 #include <dash/dart/base/logging.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #define DART_SEGMENT_HASH_SIZE 256
 #define DART_SEGMENT_INVALID   (INT32_MAX)
@@ -316,7 +317,7 @@ dart_ret_t dart_segment_dealloc(dart_segid_t segid)
   // shortcut: the bucket head is not moved to the freelist
   if (elem->seg_id == segid) {
     elem->seg_id = DART_SEGMENT_INVALID;
-    return 0;
+    return DART_OK;
   }
 
   // find the correct entry in this bucket
