@@ -94,6 +94,7 @@ static void handle_task()
   if (task != NULL)
   {
     DART_LOG_INFO("Thread %i executing task %p", dart__base__tasking__thread_num(), task);
+    printf("Thread %i executing task %p\n", dart__base__tasking__thread_num(), task);
     pthread_mutex_unlock(&thread_pool_mutex);
 
     rfunc_t *fn = task->fn;
@@ -234,10 +235,11 @@ dart__base__tasking__fini()
   int i;
 
   parallel = false;
-  pthread_cond_broadcast(&task_avail_cond);
 
-  for (i = 0; i < num_threads; i++) {
-    pthread_join(thread_pool[i], (void**)NULL);
+  for (i = 0; i < num_threads -1; i++) {
+    pthread_cancel(thread_pool[i]);
+    // TODO: Fix thread teardown!
+//    pthread_join(thread_pool[i], (void**)NULL);
   }
 
   while (free_tasks != NULL) {
