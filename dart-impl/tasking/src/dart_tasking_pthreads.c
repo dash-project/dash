@@ -19,7 +19,7 @@ static pthread_cond_t tasks_done_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t tasks_done_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static pthread_key_t thr_id_key;
+static pthread_key_t tpd_key;
 
 static dart_amsgq_t amsgq;
 
@@ -34,6 +34,7 @@ typedef struct task_data {
   dart_task_dep_t *deps;
   size_t ndeps;
   task_list_t *children;
+  struct task_data *parent;
 } task_t;
 
 struct task_list {
@@ -45,6 +46,12 @@ struct remote_task {
   dart_gptr_t gptr;
   dart_unit_t runit;
 };
+
+typedef struct {
+  task_t *current_task;
+  int     thread_id;
+} tpd_t;
+
 
 #define DART_RTASK_QLEN 256
 
@@ -81,6 +88,11 @@ static void release_task(task_t *task);
 
 static void destroy_tsd(void *tsd);
 
+static void wait_for_work();
+
+static void set_current_task(task_t *t);
+static task_t * get_current_task();
+
 static void remote_dependency_request(dart_gptr_t gptr);
 
 /**
@@ -92,6 +104,7 @@ static void handle_task()
 {
   // remove from runnable queue and execute
   task_t *task = deqeue_runnable();
+  set_current_task(task);
   if (task != NULL)
   {
     DART_LOG_INFO("Thread %i executing task %p", dart__base__tasking__thread_num(), task);
@@ -110,7 +123,7 @@ static void handle_task()
 }
 
 /**
- * Adds the time specified in b to a, i.e., a += b;
+ * Adds the two timespecs
  */
 static inline struct timespec add_timespec(const struct timespec a, const struct timespec b)
 {
@@ -124,8 +137,8 @@ static inline struct timespec add_timespec(const struct timespec a, const struct
 
 static void* thread_main(void *data)
 {
-  int *thread_id = (int*)data;
-  pthread_setspecific(thr_id_key, thread_id);
+  tpd_t *tpd = (tpd_t*)data;
+  pthread_setspecific(tpd_key, tpd);
 
   // this is only done once upon thread creation
   pthread_mutex_lock(&thread_pool_mutex);
@@ -143,25 +156,7 @@ static void* thread_main(void *data)
         // signal that all threads are done
         pthread_cond_signal(&tasks_done_cond);
       }
-      DART_LOG_INFO("Thread %i waiting for signal", dart__base__tasking__thread_num());
-      if (dart__base__tasking__thread_num() == (dart__base__tasking__num_threads() - 1)) {
-        // the last thread uses a timed wait to ensure progress on remote requests coming in
-        int ret;
-        struct timespec time;
-        clock_gettime(CLOCK_MONOTONIC, &time);
-        struct timespec timeout = {0, 1E6};
-        struct timespec abstimeout = add_timespec(time, timeout);
-        ret = pthread_cond_timedwait(&task_avail_cond, &thread_pool_mutex, &abstimeout);
-        if (ret == ETIMEDOUT) {
-          DART_LOG_INFO("Thread %i woken up after %f ms", dart__base__tasking__thread_num(),
-              ((double)timeout.tv_sec * 1E3) + ((double)timeout.tv_nsec / 1E6));
-        } else {
-          DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
-        }
-      } else {
-        pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
-        DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
-      }
+      wait_for_work();
       threads_running++;
     }
     handle_task();
@@ -194,18 +189,20 @@ dart__base__tasking__init()
   amsgq = dart_amsg_openq(sizeof(struct remote_task) * DART_RTASK_QLEN, DART_TEAM_ALL);
   DART_LOG_INFO("Created active message queue (%p)", amsgq);
 
-  pthread_key_create(&thr_id_key, &destroy_tsd);
+  pthread_key_create(&tpd_key, &destroy_tsd);
   // set master thread id
-  int *thread_id = malloc(sizeof(int));
-  *thread_id = 0;
-  pthread_setspecific(thr_id_key, thread_id);
+  tpd_t *tpd = malloc(sizeof(tpd_t));
+  tpd->thread_id = 0;
+  tpd->current_task = NULL;
+  pthread_setspecific(tpd_key, tpd);
 
   thread_pool = malloc(sizeof(pthread_t) * num_threads);
   for (i = 0; i < num_threads-1; i++)
   {
-    thread_id = malloc(sizeof(int));
-    *thread_id = i + 1; // 0 is reserved for master thread
-    int ret = pthread_create(&thread_pool[i], NULL, &thread_main, thread_id);
+    tpd = malloc(sizeof(tpd_t));
+    tpd->thread_id = i + 1; // 0 is reserved for master thread
+    tpd->current_task = NULL;
+    int ret = pthread_create(&thread_pool[i], NULL, &thread_main, tpd);
     if (ret != 0) {
       DART_LOG_ERROR("Failed to create thread %i of %i!", (i+1), num_threads);
     }
@@ -219,7 +216,7 @@ dart__base__tasking__init()
 int
 dart__base__tasking__thread_num()
 {
-  return *(int*)(pthread_getspecific(thr_id_key));
+  return ((tpd_t*)pthread_getspecific(tpd_key))->thread_id;
 }
 
 int
@@ -276,7 +273,7 @@ static inline task_t * find_parent(task_t *parent, const dart_task_dep_t *dep)
         t = parent;
       } else {
         DART_LOG_INFO("Ignoring task with DEP (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
-            parent->deps[i].gptr.addr_or_offs.addr, parent->deps[i].gptr.segid, parent->deps[i].gptr.unitid);
+            current_task->deps[i].gptr.addr_or_offs.addr, current_task->deps[i].gptr.segid, current_task->deps[i].gptr.unitid);
       }
     }
 
@@ -311,12 +308,16 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
 
   dart_myid(&myid);
 
+  /**
+   * Set up the task data structure
+   */
   task_t *task = allocate_task();
-  dart__tasking__ayudame_create_task(task, NULL); // TODO: how to get the parent?
   task->fn = fn;
+  task->parent = get_current_task();
   task->ndeps = ndeps;
   task->deps = malloc(sizeof(dart_task_dep_t) * ndeps);
   memcpy(task->deps, deps, sizeof(dart_task_dep_t) * ndeps);
+  dart__tasking__ayudame_create_task(task, task->parent);
 
   if (data != NULL && data_size > 0) {
     task->data_size = data_size;
@@ -327,6 +328,9 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
     task->data_size = 0;
   }
 
+  /**
+   * Handle dependencies
+   */
   if (ndeps > 0) {
     for (i = 0; i < ndeps; i++) {
       if (deps[i].type == DART_DEP_IN || deps[i].type == DART_DEP_INOUT) {
@@ -357,7 +361,7 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
             in_dep = true;
             task->unresolved_deps++;
             dart__tasking__ayudame_add_dependency(parent, task);
-            DART_LOG_INFO("Task %p depends on task %p", task, parent);
+            DART_LOG_INFO("Task %p depends on task %p", task, current_task);
           } else {
             // Do nothing, consider the parent as solved already
             DART_LOG_INFO("Could not find a parent for task with IN dep (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
@@ -547,6 +551,38 @@ static void release_task(task_t *task)
 static void destroy_tsd(void *tsd)
 {
   free(tsd);
+}
+
+static void wait_for_work()
+{
+  int ret;
+  DART_LOG_INFO("Thread %i waiting for signal", dart__base__tasking__thread_num());
+  if (dart__base__tasking__thread_num() == (dart__base__tasking__num_threads() - 1)) {
+    // the last thread uses a timed wait to ensure progress on remote requests coming in
+    struct timespec time;
+    clock_gettime(CLOCK_MONOTONIC, &time);
+    struct timespec timeout = {0, 1E6};
+    struct timespec abstimeout = add_timespec(time, timeout);
+    ret = pthread_cond_timedwait(&task_avail_cond, &thread_pool_mutex, &abstimeout);
+    if (ret == ETIMEDOUT) {
+      DART_LOG_INFO("Thread %i woken up after %f ms", dart__base__tasking__thread_num(),
+          ((double)timeout.tv_sec * 1E3) + ((double)timeout.tv_nsec / 1E6));
+    } else {
+      DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
+    }
+  } else {
+    pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
+    DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
+  }
+}
+
+static void set_current_task(task_t *t)
+{
+  ((tpd_t*)pthread_getspecific(tpd_key))->current_task = t;
+}
+static task_t * get_current_task()
+{
+  return ((tpd_t*)pthread_getspecific(tpd_key))->current_task;
 }
 
 /**
