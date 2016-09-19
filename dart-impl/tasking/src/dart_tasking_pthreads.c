@@ -33,7 +33,7 @@ typedef struct task_data {
   size_t unresolved_deps;
   dart_task_dep_t *deps;
   size_t ndeps;
-  task_list_t *children;
+  task_list_t *dependents;
   struct task_data *parent;
 } task_t;
 
@@ -184,6 +184,7 @@ dart__base__tasking__init()
     DART_LOG_INFO("Failed to get number of cores! Playing it safe with 2 threads...");
     num_threads = 2;
   }
+  DART_LOG_INFO("Creating %i threads", num_threads);
 
   // set up the active message queue
   amsgq = dart_amsg_openq(sizeof(struct remote_task) * DART_RTASK_QLEN, DART_TEAM_ALL);
@@ -257,20 +258,20 @@ dart__base__tasking__fini()
   return DART_OK;
 }
 
-static task_t * find_parent_in_list(task_list_t *parent, const dart_task_dep_t *dep);
-static inline task_t * find_parent(task_t *parent, const dart_task_dep_t *dep)
+static task_t * find_outdep_in_list(task_list_t *parent, const dart_task_dep_t *dep);
+static inline task_t * find_outdep(task_t *task, const dart_task_dep_t *dep)
 {
   size_t i;
   task_t *t = NULL;
 
-  if (parent != NULL)
+  if (task != NULL)
   {
     // does this task satisfy the dependency?
-    for (i = 0; i < parent->ndeps; i++) {
-      if ((parent->deps[i].type == DART_DEP_OUT || parent->deps[i].type == DART_DEP_INOUT)
-          && DART_GPTR_EQUAL(parent->deps[i].gptr, dep->gptr)) {
+    for (i = 0; i < task->ndeps; i++) {
+      if ((task->deps[i].type == DART_DEP_OUT || task->deps[i].type == DART_DEP_INOUT)
+          && DART_GPTR_EQUAL(task->deps[i].gptr, dep->gptr)) {
         // this parent will resolve the dependency
-        t = parent;
+        t = task;
       } else {
         DART_LOG_INFO("Ignoring task with DEP (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
             current_task->deps[i].gptr.addr_or_offs.addr, current_task->deps[i].gptr.segid, current_task->deps[i].gptr.unitid);
@@ -278,21 +279,21 @@ static inline task_t * find_parent(task_t *parent, const dart_task_dep_t *dep)
     }
 
     if (t == NULL) {
-      t = find_parent_in_list(parent->children, dep);
+      t = find_outdep_in_list(task->dependents, dep);
     }
   }
   return t;
 }
 
-static task_t * find_parent_in_list(task_list_t *list, const dart_task_dep_t *dep)
+static task_t * find_outdep_in_list(task_list_t *list, const dart_task_dep_t *dep)
 {
   task_t *task = NULL;
   if (list != NULL) {
-    // look at the task and it's children first
-    task = find_parent(list->task, dep);
+    // look at the task and it's dependents first
+    task = find_outdep(list->task, dep);
 
     if (task == NULL) {
-      task = find_parent_in_list(list->next, dep);
+      task = find_outdep_in_list(list->next, dep);
     }
   }
   return task;
@@ -350,21 +351,21 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
 
         } else {
 
-          task_t *parent = find_parent_in_list(dep_graph, &deps[i]);
-          if (parent != NULL) {
-            // enqueue as child
+          task_t *dependee = find_outdep_in_list(dep_graph, &deps[i]);
+          if (dependee != NULL) {
+            // enqueue as dependent of this task
             task_list_t *tl = allocate_task_list_elem();
             tl->task = task;
-            tl->next = parent->children;
-            parent->children = tl;
+            tl->next = dependee->dependents;
+            dependee->dependents = tl;
 
             in_dep = true;
             task->unresolved_deps++;
-            dart__tasking__ayudame_add_dependency(parent, task);
+            dart__tasking__ayudame_add_dependency(dependee, task);
             DART_LOG_INFO("Task %p depends on task %p", task, current_task);
           } else {
-            // Do nothing, consider the parent as solved already
-            DART_LOG_INFO("Could not find a parent for task with IN dep (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
+            // Do nothing, consider the dependence as solved already
+            DART_LOG_INFO("Could not find a dependee for task with IN dep (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
                 deps[i].gptr.addr_or_offs.addr, deps[i].gptr.segid, deps[i].gptr.unitid);
           }
         }
@@ -374,7 +375,7 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
       }
     }
     if (!in_dep) {
-      // no parent task required
+      // no dependee task required
       // -> enqueue on top level of dependency graph
       task_list_t *tl = allocate_task_list_elem();
       tl->task = task;
@@ -519,8 +520,8 @@ static void remove_from_depgraph(task_t *task)
 
 static void release_task(task_t *task)
 {
-  // first release the task's dependent children
-  task_list_t *child = task->children;
+  // release the task's dependents
+  task_list_t *child = task->dependents;
   while (child != NULL)
   {
     child->task->unresolved_deps--;
