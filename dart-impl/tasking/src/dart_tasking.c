@@ -38,9 +38,9 @@ dart_tasking_num_threads()
  * \brief Add a task the local task graph with dependencies. Tasks may define new tasks if necessary.
  */
 dart_ret_t
-dart_task_create(void (*fn) (void *), void *data, dart_task_dep_t *deps, size_t ndeps)
+dart_task_create(void (*fn) (void *), void *data, size_t data_size, dart_task_dep_t *deps, size_t ndeps)
 {
-  return dart__base__tasking__create_task(fn, data, deps, ndeps);
+  return dart__base__tasking__create_task(fn, data, data_size, deps, ndeps);
 }
 
 /**

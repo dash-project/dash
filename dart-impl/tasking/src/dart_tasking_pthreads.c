@@ -29,6 +29,7 @@ typedef struct task_data {
   struct task_data *next; // next entry in the runnable task list
   tfunc_t *fn;
   void *data;
+  size_t data_size;
   size_t unresolved_deps;
   dart_task_dep_t *deps;
   size_t ndeps;
@@ -94,7 +95,6 @@ static void handle_task()
   if (task != NULL)
   {
     DART_LOG_INFO("Thread %i executing task %p", dart__base__tasking__thread_num(), task);
-    printf("Thread %i executing task %p\n", dart__base__tasking__thread_num(), task);
     pthread_mutex_unlock(&thread_pool_mutex);
 
     rfunc_t *fn = task->fn;
@@ -105,7 +105,6 @@ static void handle_task()
 
     pthread_mutex_lock(&thread_pool_mutex);
     release_task(task);
-    free(task->deps);
     deallocate_task(task);
   }
 }
@@ -303,7 +302,7 @@ static task_t * find_parent_in_list(task_list_t *list, const dart_task_dep_t *de
 }
 
 dart_ret_t
-dart__base__tasking__create_task(void (*fn) (void *), void *data, dart_task_dep_t *deps, size_t ndeps)
+dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_size, dart_task_dep_t *deps, size_t ndeps)
 {
   dart_unit_t myid;
   size_t i;
@@ -314,11 +313,19 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, dart_task_dep_
 
   task_t *task = allocate_task();
   dart__tasking__ayudame_create_task(task, NULL); // TODO: how to get the parent?
-  task->data = data;
   task->fn = fn;
   task->ndeps = ndeps;
   task->deps = malloc(sizeof(dart_task_dep_t) * ndeps);
   memcpy(task->deps, deps, sizeof(dart_task_dep_t) * ndeps);
+
+  if (data != NULL && data_size > 0) {
+    task->data_size = data_size;
+    task->data = malloc(data_size);
+    memcpy(task->data, data, data_size);
+  } else {
+    task->data = data;
+    task->data_size = 0;
+  }
 
   if (ndeps > 0) {
     for (i = 0; i < ndeps; i++) {
@@ -478,6 +485,10 @@ static inline task_t * allocate_task() {
 }
 
 static inline void deallocate_task(task_t *t) {
+  if (t->data_size > 0) {
+    free(t->data);
+  }
+  free(t->deps);
   memset(t, 0, sizeof(task_t));
   t->next = free_tasks;
   free_tasks = t;
@@ -608,7 +619,7 @@ enqueue_from_remote(void *data)
   dep.type = DART_DEP_IN;
   DART_LOG_INFO("Creating task for remote dependency request (unit=%i, segid=%i, offset=%i)",
                       rtask->gptr.unitid, rtask->gptr.segid, rtask->gptr.addr_or_offs.offset);
-  dart__base__tasking__create_task(&send_release, response, &dep, 1);
+  dart__base__tasking__create_task(&send_release, response, 0, &dep, 1);
 }
 
 static void remote_dependency_request(dart_gptr_t gptr)
