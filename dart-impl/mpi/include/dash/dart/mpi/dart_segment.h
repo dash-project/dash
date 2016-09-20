@@ -16,11 +16,11 @@ typedef int16_t dart_segid_t;
 typedef struct
 {
   dart_segid_t seg_id; /* seg_id determines a global pointer uniquely */
-  size_t       size;
+  size_t       size; /* number of bytes allocated in this segment */
   MPI_Aint   * disp;   /* address set of memory location of all units in certain team. */
-  char      ** baseptr;
-  char       * selfbaseptr;
-  MPI_Win      win;
+  char      ** baseptr; /* address set of base pointers on a shared memory node */
+  char       * selfbaseptr /* base address of locally allocated memory */;
+  MPI_Win      win; /* dynamically created shared memory window. In case of */
 } dart_segment_info_t;
 
 
