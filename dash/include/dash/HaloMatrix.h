@@ -35,7 +35,7 @@ public:
   using const_iterator       = const iterator;
   using iterator_inner       = HaloMatrixIterator<value_t, pattern_t, StencilViewScope::INNER>;
   using const_iterator_inner = const iterator_inner;
-  using iterator_bnd         = HaloMatrixIterator<value_t, pattern_t, StencilViewScope::INNER>;
+  using iterator_bnd         = HaloMatrixIterator<value_t, pattern_t, StencilViewScope::BOUNDARY>;
   using const_iterator_bnd   = const iterator_inner;
 
 private:
@@ -58,9 +58,9 @@ public:
       _begin(_haloblock, _halomemory, 0),
       _end(_haloblock, _halomemory, _haloblock.view_save().size()),
       _ibegin(_haloblock, _halomemory, 0),
-      _iend(_haloblock, _halomemory, _haloblock.view_inner().size())
-//      _bbegin(_haloblock, _halomemory, 0),
-//      _bend(_haloblock, _halomemory, _haloblock.boundary_size())
+      _iend(_haloblock, _halomemory, _haloblock.view_inner().size()),
+      _bbegin(_haloblock, _halomemory, 0),
+      _bend(_haloblock, _halomemory, _haloblock.boundary_size())
   {
   }
 
@@ -104,7 +104,7 @@ public:
     return _iend;
   }
 
-  /*iterator_bnd bbegin() noexcept
+  iterator_bnd bbegin() noexcept
   {
     return _bbegin;
   }
@@ -122,7 +122,7 @@ public:
   const_iterator_bnd bend() const noexcept
   {
     return _bend;
-  }*/
+  }
 
   const HaloBlockView_t & haloRegion(dim_t dim, HaloRegion halo_region)
   {
@@ -156,9 +156,6 @@ public:
           copyHalos(dim, halo_region, region);
       }
     }
-    for(const auto & elem : _halomemory.haloBuffer())
-      std::cout << (int)elem << " ";
-    std::cout << std::endl;
   }
 
 private:
@@ -195,8 +192,8 @@ private:
   iterator                _end;
   iterator_inner          _ibegin;
   iterator_inner          _iend;
-  //iterator_bnd            _bbegin;
-  //iterator_bnd            _bend;
+  iterator_bnd            _bbegin;
+  iterator_bnd            _bend;
 
 };
 

@@ -55,14 +55,14 @@ public:
       setViewLocal(_haloblock.view_save());
 
     if(Scope == StencilViewScope::BOUNDARY)
-    {
-      setViewLocal(_haloblock.view_save());
-    }
+      setViewLocal(_haloblock.view());
+
+    if(Scope == StencilViewScope::BOUNDARY)
+      _size = _haloblock.boundary_size();
     else
-    {
       _size = _view_local.size();
-      _coords = _pattern.local_memory_layout().coords(_idx, _view_local);
-    }
+
+    setCoords();
   }
 
   /**
@@ -106,6 +106,16 @@ public:
   reference operator[](index_type idx) const
   {
     return _local_memory[_pattern.local_memory_layout().at(_coords)];
+  }
+
+  index_type rpos() const
+  {
+    return _idx;
+  }
+
+  index_type lpos() const
+  {
+    return _pattern.local_memory_layout().at(_coords);
   }
 
   ElementT halo_value(dim_t dim, offset_t offset)
@@ -172,7 +182,7 @@ public:
   self_t & operator++()
   {
     ++_idx;
-    _coords = _pattern.local_memory_layout().coords(_idx, _view_local);
+    setCoords();
 
     return *this;
   }
@@ -184,6 +194,8 @@ public:
   {
     self_t result = *this;
     ++_idx;
+    setCoords();
+
     return result;
   }
 
@@ -193,6 +205,8 @@ public:
   self_t & operator--()
   {
     --_idx;
+    setCoords();
+
     return *this;
   }
 
@@ -203,18 +217,24 @@ public:
   {
     self_t result = *this;
     --_idx;
+    setCoords();
+
     return result;
   }
 
   self_t & operator+=(index_type n)
   {
     _idx += n;
+    setCoords();
+
     return *this;
   }
 
   self_t & operator-=(index_type n)
   {
     _idx -= n;
+    setCoords();
+
     return *this;
   }
 
@@ -306,14 +326,53 @@ private:
   }
   void setViewLocal(const viewspec_t & view_tmp)
   {
-    const auto & view_offsets = _haloblock.view().offsets();
-    auto off = view_tmp.offsets();
-    for(int d = 0; d < NumDimensions; ++d)
-      off[d] -= view_offsets[d];
+    if(Scope == StencilViewScope::BOUNDARY)
+    {
+      const auto & bnd_elems = _haloblock.boundary_elements();
+      _bnd_elements.reserve(bnd_elems.size());
+      const auto & view_offs = view_tmp.offsets();
+      for(const auto & region : bnd_elems)
+      {
+        auto off = region.offsets();
+        for(int d = 0; d < NumDimensions; ++d)
+          off[d] -= view_offs[d];
 
-    _view_local = viewspec_t(off, view_tmp.extents());
+        _bnd_elements.push_back(viewspec_t(off, region.extents()));
+      }
+
+      _view_local = viewspec_t(view_tmp.extents());
+    }
+    else
+    {
+      const auto & view_offsets = _haloblock.view().offsets();
+      auto off = view_tmp.offsets();
+      for(int d = 0; d < NumDimensions; ++d)
+        off[d] -= view_offsets[d];
+
+      _view_local = viewspec_t(off, view_tmp.extents());
+    }
 
   }
+
+  void setCoords()
+  {
+    if(Scope == StencilViewScope::BOUNDARY)
+    {
+      auto local_idx = _idx;
+      for(const auto & region : _bnd_elements)
+      {
+        if(local_idx < region.size())
+        {
+          _coords = _pattern.local_memory_layout().coords(local_idx, region);
+          return;
+        }
+        local_idx -= region.size();
+      }
+    }
+    else
+      _coords = _pattern.local_memory_layout().coords(_idx, _view_local);
+  }
+
 private:
   const HaloBlock_t &                _haloblock;
   HaloMemory_t &                     _halomemory;
@@ -321,6 +380,7 @@ private:
   const PatternT &                   _pattern;
   const HaloSpec_t &                 _halospec;
   viewspec_t                         _view_local;
+  std::vector<viewspec_t>            _bnd_elements;
 
   index_type                         _idx{0};
   index_type                         _size{0};

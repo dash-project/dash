@@ -713,7 +713,7 @@ public:
       auto view_offset    = view.offset(d);
       auto view_extent    = view.extent(d);
 
-      if(view_offset < halo_offs_minus)
+      if(halo_offs_minus == 0 || view_offset < halo_offs_minus)
       {
         _view_save.resize_dim(d, view_offset + halo_offs_minus, view_extent - halo_offs_minus);
         _view_inner.resize_dim(d, view_offset + halo_offs_minus, view_extent - halo_offs_minus);
@@ -729,13 +729,15 @@ public:
         region_extents[d]      = halo_offs_minus;
         _boundary_regions.push_back(viewspec_t(region_offsets,  region_extents));
 
+        setBndElems(d, region_offsets, region_extents);
 
         region_offsets[d]   = view_offset - halo_offs_minus;
         region_extents[d]   = halo_offs_minus;
         _halo_regions.push_back(viewspec_t(region_offsets, region_extents));
       }
 
-      if(std::abs(view_offset + view_extent + halo_offs_plus) > _pattern.extent(d))
+      if(halo_offs_plus == 0 ||
+          std::abs(view_offset + view_extent + halo_offs_plus) > _pattern.extent(d))
       {
         _view_save.resize_dim(d, _view_save.offset(d), _view_save.extent(d) - halo_offs_plus);
         _view_inner.resize_dim(d, _view_inner.offset(d), _view_inner.extent(d) - halo_offs_plus);
@@ -751,6 +753,8 @@ public:
         region_offsets[d]  = view_offset + view_extent - halo_offs_plus;
         region_extents[d]  = halo_offs_plus;
         _boundary_regions.push_back(viewspec_t(region_offsets, region_extents));
+
+        setBndElems(d, region_offsets, region_extents);
 
         region_offsets[d]  = view_offset + view_extent;
         region_extents[d]  = halo_offs_plus;
@@ -819,6 +823,11 @@ public:
     return block_view_t(_globmem, _pattern, _boundary_regions[region_index]);
   }
 
+  const std::vector<viewspec_t> & boundary_elements() const
+  {
+    return _boundary_elements;
+  }
+
   size_type halo_size() const
   {
     return std::accumulate(_halo_regions.begin(),_halo_regions.end(), 0,
@@ -828,6 +837,11 @@ public:
   size_type halo_size(dim_t dimension, HaloRegion region) const
   {
     return _halo_regions[2 * dimension + static_cast<uint8_t>(region)].size();
+  }
+
+  size_type boundary_size() const
+  {
+    return _size_bnd_elems;
   }
 
   const viewspec_t & view() const
@@ -858,6 +872,39 @@ public:
   }
 
 private:
+  void setBndElems(dim_t dim, std::array<index_type, NumDimensions> offsets,
+      std::array<size_type, NumDimensions> extents)
+  {
+    if(dim == 0)
+    {
+      for(auto d = 0; d < NumDimensions; ++d)
+      {
+        auto halo_off_minus = std::abs(_halospec.halo_offset(d).minus);
+        auto halo_off_plus = _halospec.halo_offset(d).plus;
+
+        if(offsets[d] < halo_off_minus)
+        {
+          offsets[d] += halo_off_minus;
+          extents[d] -= halo_off_minus;
+        }
+        if(offsets[d] + extents[d] + halo_off_plus > _pattern.extent(d))
+          extents[d] -= halo_off_plus;
+      }
+    }
+    else
+    {
+      for(auto d = 0; d < dim; ++d)
+      {
+        offsets[d] -= _halospec.halo_offset(d).minus;
+        extents[d] -= _halospec.width(d);
+      }
+    }
+    viewspec_t boundary(offsets, extents);
+    _size_bnd_elems += boundary.size();
+    _boundary_elements.push_back(std::move(boundary));
+  }
+
+private:
   GlobMem_t &               _globmem;
 
   const PatternT &          _pattern;
@@ -877,6 +924,8 @@ private:
   std::vector<viewspec_t>   _boundary_regions;
 
   std::vector<viewspec_t>   _boundary_elements;
+
+  size_type                 _size_bnd_elems = 0;
 
 }; // class HaloBlock
 
