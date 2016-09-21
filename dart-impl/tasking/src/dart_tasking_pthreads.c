@@ -23,7 +23,9 @@ static pthread_key_t tpd_key;
 
 static dart_amsgq_t amsgq;
 
-pthread_t *thread_pool;
+static pthread_t *thread_pool;
+
+static bool processing = false;
 
 typedef struct task_data {
   struct task_data *next; // next entry in the runnable task list
@@ -102,6 +104,9 @@ static void remote_dependency_request(dart_gptr_t gptr);
  */
 static void handle_task()
 {
+  // stop immediately if we are not yet processing tasks
+  if (!processing)
+    return;
   // remove from runnable queue and execute
   task_t *task = deqeue_runnable();
   set_current_task(task);
@@ -255,6 +260,8 @@ dart__base__tasking__fini()
 
   dart_amsg_closeq(amsgq);
 
+  dart__tasking__ayudame_fini();
+
   return DART_OK;
 }
 
@@ -393,9 +400,19 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
   return DART_OK;
 }
 
+/**
+ * This function is only called by the master thread and
+ * starts the actual processing of tasks.
+ */
 dart_ret_t
 dart__base__tasking__task_complete()
 {
+  // wake up all threads and start processing
+  processing = true;
+  if (dep_graph != NULL || runq_head != NULL ) {
+    pthread_cond_broadcast(&task_avail_cond);
+  }
+
   while (dep_graph != NULL || runq_head != NULL ){
     // look for remote tasks coming in
     dart_amsg_process(amsgq);
@@ -421,6 +438,8 @@ dart__base__tasking__task_complete()
       break;
     }
   }
+  // stop processing until we hit this function again
+  processing = false;
   return DART_OK;
 }
 
@@ -675,7 +694,7 @@ static void remote_dependency_request(dart_gptr_t gptr)
     ret = dart_amsg_trysend(gptr.unitid, amsgq, &msg);
     if (ret == DART_OK) {
       // the message was successfully sent
-      DART_LOG_INFO("Sent remote dependency request (unit=%i, segid=%i, offset=%i)", gptr.unitid, gptr.segid, gptr.addr_or_offs.offset);
+      DART_LOG_INFO("Sent remote dependency request (unit=%i, segid=%i, offset=%i, fn=%p)", gptr.unitid, gptr.segid, gptr.addr_or_offs.offset, &enqueue_from_remote);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be send at the moment, just try again

@@ -25,6 +25,17 @@ void dart__tasking__ayudame_init()
   }
 }
 
+void dart__tasking__ayudame_fini()
+{
+  if (ayu_event) {
+    ayu_event_data_t data;
+    ayu_wipe_data(&data);
+    data.common.client_id = client_id;
+
+    ayu_event(AYU_FINISH, data);
+  }
+}
+
 /**
  * Pass information on a started task
  */
@@ -72,6 +83,7 @@ void dart__tasking__ayudame_close_task(void *task)
 void dart__tasking__ayudame_add_dependency(void *srctask, void *dsttask)
 {
   if (ayu_event) {
+    char buf[128];
     taskid_t srcid = task_map[srctask];
     taskid_t dstid = task_map[dsttask];
 
@@ -82,6 +94,8 @@ void dart__tasking__ayudame_add_dependency(void *srctask, void *dsttask)
     data.add_dependency.dependency_id = dependency_id++;
     data.add_dependency.from_id = srcid;
     data.add_dependency.to_id = dstid;
+    snprintf(buf, sizeof(buf), "dep_%i", data.add_dependency.dependency_id);
+    data.add_dependency.dependency_label = buf;
 
     ayu_event(AYU_ADDDEPENDENCY, data);
   }

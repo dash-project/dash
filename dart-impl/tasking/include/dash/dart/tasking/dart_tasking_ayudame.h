@@ -13,6 +13,8 @@ extern "C" {
 
 void dart__tasking__ayudame_init();
 
+void dart__tasking__ayudame_fini();
+
 void dart__tasking__ayudame_create_task(void *task, void *parent);
 
 void dart__tasking__ayudame_close_task(void *task);
@@ -22,6 +24,8 @@ void dart__tasking__ayudame_add_dependency(void *srctask, void *dsttask);
 #else
 
 static inline void dart__tasking__ayudame_init() {}
+
+static inline void dart__tasking__ayudame_fini() {}
 
 static inline void dart__tasking__ayudame_create_task(void *task, void *parent) {}
 
