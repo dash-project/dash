@@ -11,9 +11,8 @@ typedef struct dart_amsgq* dart_amsgq_t;
 typedef void (rfunc_t) (void *);
 
 typedef struct dart_amsg {
-  rfunc_t *fn;         // the function to be invoked
-  void       *data;       // the data to be passed to fn
-  int         data_size;  // the size of the data to passed to fn
+  void       *data;       // the data to be passed to to the handler specified during queue setup
+  int         data_size;  // the size of the data to passed to the handler
 } dart_amsg_t;
 
 /**
@@ -22,7 +21,7 @@ typedef struct dart_amsg {
  * This is a collective operation involving all units in team.
  */
 dart_amsgq_t
-dart_amsg_openq(int size, dart_team_t team);
+dart_amsg_openq(int size, dart_team_t team, rfunc_t *handler);
 
 /**
  * Try to send an active message to unit \c target through message queue \c amsgq.
@@ -42,7 +41,7 @@ dart_amsg_openq(int size, dart_team_t team);
  *       i.e., no external references can be handled at the moment.
  */
 dart_ret_t
-dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_amsg_t *msg);
+dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, const void *data, size_t data_size);
 
 /**
  * If available, dequeue all messages in the local queue by calling the function and on the supplied data argument (see dart_amsg_t).
