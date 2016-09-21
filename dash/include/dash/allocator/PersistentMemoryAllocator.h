@@ -300,9 +300,9 @@ public:
       return;
     }
 
-    DASH_LOG_DEBUG("PersistentMemoryAllocator.detach >");
-
     detach_bucket_by_gptr(gptr, false);
+
+    DASH_LOG_DEBUG("PersistentMemoryAllocator.detach >");
 
   }
 
@@ -405,6 +405,7 @@ private:
    */
 
   void detach_bucket_by_gptr(dart_gptr_t const & gptr, bool deallocate = false) {
+    DASH_LOG_DEBUG("PersistentMemoryAllocator.detach_bucket_by_gptr", "deallocate: ", deallocate);
     auto bucket_it =
       std::find_if(_allocated.begin(), _allocated.end(),
         [&gptr] (pmem_bucket_item_t const & i) {
@@ -432,6 +433,7 @@ private:
 
       _allocated.erase(bucket_it);
     }
+    DASH_LOG_DEBUG("PersistentMemoryAllocator.detach_bucket_by_gptr >");
   }
 
   void clear() noexcept {

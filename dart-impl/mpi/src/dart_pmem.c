@@ -39,7 +39,7 @@ dart_ret_t dart__pmem__init(void)
 
 int _dart_pmem_list_new(PMEMobjpool * pop,
                         TOID(struct dart_pmem_bucket_list) * list,
-                        struct dart_pmem_slist_constr_args * args)
+                        struct dart_pmem_list_constr_args * args)
 {
   int ret = DART_OK;
   TX_BEGIN(pop) {
@@ -48,8 +48,9 @@ int _dart_pmem_list_new(PMEMobjpool * pop,
       pmemobj_tx_abort(1);
     }
 
-    DART_PMEM_SLIST_INIT(&D_RW(*list)->head);
+    DART_PMEM_TAILQ_INIT(&D_RW(*list)->head);
     TX_MEMCPY(D_RW(*list)->name, args->name, strlen(args->name) + 1);
+    TX_SET(*list, size, 0);
   }
   TX_ONABORT {
     DART_LOG_ERROR("%s: transaction aborted: %s", __func__, pmemobj_errormsg());
@@ -104,11 +105,12 @@ dart_pmem_oid_t _dart_pmem_bucket_alloc(PMEMobjpool * pop,
     if (OID_IS_NULL(D_RO(node)->data)) {
       pmemobj_tx_abort(1);
     }
-    DART_PMEM_SLIST_INSERT_HEAD(head, node, next);
+    DART_PMEM_TAILQ_INSERT_TAIL(head, node, next);
+
   }
   TX_ONCOMMIT {
     ret.oid = D_RW(node)->data;
-    DART_LOG_DEBUG("%s: successfully allocated %d bytes", __func__, args.nelements * args.element_size);
+    DART_LOG_DEBUG("%s: successfully allocated %zu bytes", __func__, args.nelements * args.element_size);
   }
   TX_ONABORT {
     DART_LOG_ERROR("%s: could not allocation persistent memory: %s", __func__, pmemobj_errormsg());
@@ -162,7 +164,7 @@ dart_pmem_pool_t * dart__pmem__open(
       return NULL;
     }
 
-    struct dart_pmem_slist_constr_args args = {
+    struct dart_pmem_list_constr_args args = {
       .name = name
     };
 
@@ -244,7 +246,7 @@ dart_ret_t dart__pmem__persist(
   }
 
   pmemobj_persist(pool->pop, addr, nbytes);
-  DART_LOG_DEBUG(__func__, " >");
+  DART_LOG_DEBUG("%s >", __func__);
   return DART_OK;
 }
 

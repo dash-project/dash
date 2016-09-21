@@ -103,7 +103,7 @@ struct dart_pmem_oid {
 
 static struct dart_pmem_oid const DART_PMEM_OID_NULL = {{0, 0}};
 
-struct dart_pmem_slist_constr_args {
+struct dart_pmem_list_constr_args {
   char const * name;
 };
 
@@ -136,8 +136,9 @@ TOID_DECLARE(char, DART_PMEM_TYPES_OFFSET + 0);
 
 struct dart_pmem_bucket_list {
   char                name[MAX_BUFFLEN];
+  size_t              size;
   //Head Node
-  DART_PMEM_SLIST_HEAD(dart_pmem_list_head, struct dart_pmem_bucket) head;
+  DART_PMEM_TAILQ_HEAD(dart_pmem_list_head, struct dart_pmem_bucket) head;
 };
 
 struct dart_pmem_bucket {
@@ -147,8 +148,8 @@ struct dart_pmem_bucket {
   size_t    length;
   //Persistent Memory Buffer
   PMEMoid    data;
-  //Pointer to next node
-  DART_PMEM_SLIST_ENTRY(struct dart_pmem_bucket) next;
+  //Pointer to next bucket
+  DART_PMEM_TAILQ_ENTRY(struct dart_pmem_bucket) next;
 };
 
 #define DART_INTERFACE_OFF
