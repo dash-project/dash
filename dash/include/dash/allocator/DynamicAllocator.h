@@ -336,6 +336,10 @@ public:
     DASH_LOG_DEBUG("DynamicAllocator.deallocate >");
   }
 
+  inline bool isPersistent() const noexcept {
+    return false;
+  }
+
 private:
   /**
    * Frees and detaches all global memory regions allocated by this allocator
