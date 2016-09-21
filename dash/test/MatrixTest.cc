@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 
+#if 0
 TEST_F(MatrixTest, OddSize)
 {
   typedef dash::Pattern<2>                 pattern_t;
@@ -1017,4 +1018,37 @@ TEST_F(MatrixTest, MatrixLBegin)
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.block(0).begin())));
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.begin())));
 }
+#endif
 
+TEST_F(MatrixTest, ColRowCopy)
+{
+    size_t team_size = dash::Team::All().size();
+    size_t myid = dash::Team::All().myid();
+
+    dash::TeamSpec<2> teamspec_2d(team_size, 1);
+    teamspec_2d.balance_extents();
+
+    dash::SizeSpec<2> sspec(20, 20);
+    dash::DistributionSpec<2> dspec(dash::BLOCKED, dash::BLOCKED);
+
+    dash::Matrix<double, 2> matrix(sspec,dspec, dash::Team::All(), teamspec_2d);
+
+    dash::fill(matrix.begin(), matrix.end(), 1.0);
+    dash::barrier();
+
+    auto row = matrix.local.row(0);
+    std::vector<double> tmp(row.end() - row.begin());
+    std::cout << "SIZE: " << row.end() - row.begin() << std::endl;
+
+    dash::util::TraceStore::on();
+    dash::util::TraceStore::clear();
+
+    dash::util::Config::set("DASH_ENABLE_TRACE", true);
+    // doesn't work
+    dash::copy(row.begin(), row.end(), tmp.data());
+    dash::util::Config::set("DASH_ENABLE_TRACE", false);
+    dash::util::TraceStore::off();
+    dash::util::TraceStore::write("tracedata");
+    // works
+//    std::copy(row.begin(), row.end(), tmp.data());
+}
