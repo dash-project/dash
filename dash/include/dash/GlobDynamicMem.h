@@ -282,6 +282,7 @@ public:
       _bucket_cumul_sizes(team.size()),
       _num_attach_buckets(team.size()),
       _num_detach_buckets(team.size()),
+      _is_persistent(_allocator.isPersistent()),
       _remote_size(0) {
     DASH_LOG_TRACE("GlobDynamicMem.(ninit,nunits)",
                    n_local_elem, team.size());
@@ -311,12 +312,32 @@ public:
       _bucket_cumul_sizes(_nunits),
       _num_attach_buckets(_nunits),
       _num_detach_buckets(_nunits),
+      _is_persistent(_allocator.isPersistent()),
       _remote_size(0) {
 
     _local_sizes.local[0]        = 0;
     _num_attach_buckets.local[0] = 0;
     _num_detach_buckets.local[0] = 0;
 
+    if (_is_persistent) {
+      auto ptrs = _allocator.get_local_pointers();
+      for (auto &ptr_info : ptrs) {
+        bucket_type bucket;
+        bucket.lptr     = ptr_info.first;
+        bucket.size     = ptr_info.second;
+        bucket.gptr     = DART_GPTR_NULL;
+        bucket.attached = false;
+
+        DASH_LOG_DEBUG_VAR("GlobDynamicMem.GlobDynamicMem(allocator)", "reattach persistent buckets");
+
+        grow_internal(bucket);
+      }
+
+      if (ptrs.size() > 0) {
+        commit();
+      }
+    }
+      
     DASH_LOG_TRACE("GlobDynamicMem.GlobDynamicMem >");
   }
 
@@ -430,50 +451,23 @@ public:
    */
   local_iterator grow(size_type num_elements) {
     DASH_LOG_DEBUG_VAR("GlobDynamicMem.grow()", num_elements);
-    size_type local_size_old = _local_sizes.local[0];
-    DASH_LOG_TRACE("GlobDynamicMem.grow",
-                   "current local size:", local_size_old);
+
     if (num_elements == 0) {
       DASH_LOG_DEBUG("GlobDynamicMem.grow >", "no grow");
       return _lend;
     }
-    // Update size of local memory space:
-    _local_sizes.local[0]        += num_elements;
-    // Update number of local buckets marked for attach:
-    _num_attach_buckets.local[0] += 1;
 
     // Create new unattached bucket:
     DASH_LOG_TRACE("GlobDynamicMem.grow", "creating new unattached bucket:",
                    "size:", num_elements);
+
     bucket_type bucket;
     bucket.size     = num_elements;
     bucket.lptr     = _allocator.allocate_local(bucket.size);
     bucket.gptr     = DART_GPTR_NULL;
     bucket.attached = false;
-    // Add bucket to local memory space:
-    _buckets.push_back(bucket);
-    if (_unattached_buckets_first == _buckets.end()) {
-      // Move iterator to first unattached bucket to position of new bucket:
-      _unattached_buckets_first = _buckets.begin();
-      std::advance(_unattached_buckets_first,  _buckets.size() - 1);
-    }
-    _bucket_cumul_sizes[_myid].push_back(_local_sizes.local[0]);
-    DASH_LOG_TRACE("GlobDynamicMem.grow", "added unattached bucket:",
-                   "size:", bucket.size,
-                   "lptr:", bucket.lptr);
-    // Update local iteration space:
-    _lbegin = lbegin(_myid);
-    _lend   = lend(_myid);
-    DASH_ASSERT_EQ(_local_sizes.local[0], _lend - _lbegin,
-                   "local size differs from local iteration space size");
-    DASH_LOG_TRACE("GlobDynamicMem.grow",
-                   "new local size:",     _local_sizes.local[0]);
-    DASH_LOG_TRACE("GlobDynamicMem.grow",
-                   "local buckets:",      _buckets.size(),
-                   "unattached buckets:", _num_attach_buckets.local[0]);
-    DASH_LOG_TRACE("GlobDynamicMem.grow >");
-    // Return local iterator to start of allocated memory:
-    return _lbegin + local_size_old;
+
+    return grow_internal(bucket);
   }
 
   /**
@@ -581,6 +575,7 @@ public:
         _num_attach_buckets.local[0] -= 1;
       } else if (bucket_last.size > num_dealloc) {
         // TODO: Clarify if shrinking unattached buckets is allowed
+        // TODO: we need also to resize the allocated memory --> Allocator.resize()??
         DASH_LOG_TRACE("GlobDynamicMem.shrink", "shrink unattached bucket:",
                        "old size:", bucket_last.size,
                        "new size:", bucket_last.size - num_dealloc);
@@ -1002,6 +997,62 @@ public:
 
 private:
   /**
+   * Increase capacity of local segment of global memory region by the given
+   * number of elements.
+   * Same as \c resize(size() + num_elements).
+   *
+   * Local operation.
+   * Newly allocated memory is attached to global memory space by calling
+   * the collective operation \c attach().
+   *
+   * \return  Native pointer to beginning of new allocated memory.
+   *
+   * \see resize
+   * \see shrink
+   * \see commit
+   */
+  local_iterator grow_internal(bucket_type & bucket) {
+    if (bucket.size == 0) {
+      return _lend;
+    }
+
+    // Add bucket to local memory space:
+    _buckets.push_back(bucket);
+    auto num_elements = bucket.size;
+
+    size_type local_size_old = _local_sizes.local[0];
+    DASH_LOG_TRACE("GlobDynamicMem.grow_internal",
+                   "current local size:", local_size_old);
+    
+    // Update size of local memory space:
+    _local_sizes.local[0]        += num_elements;
+    // Update number of local buckets marked for attach:
+    _num_attach_buckets.local[0] += 1;
+
+    if (_unattached_buckets_first == _buckets.end()) {
+      // Move iterator to first unattached bucket to position of new bucket:
+      _unattached_buckets_first = _buckets.begin();
+      std::advance(_unattached_buckets_first,  _buckets.size() - 1);
+    }
+    _bucket_cumul_sizes[_myid].push_back(_local_sizes.local[0]);
+    DASH_LOG_TRACE("GlobDynamicMem.grow_internal", "added unattached bucket:",
+                   "size:", bucket.size,
+                   "lptr:", bucket.lptr);
+    // Update local iteration space:
+    _lbegin = lbegin(_myid);
+    _lend   = lend(_myid);
+    DASH_ASSERT_EQ(_local_sizes.local[0], _lend - _lbegin,
+                   "local size differs from local iteration space size");
+    DASH_LOG_TRACE("GlobDynamicMem.grow_internal",
+                   "new local size:",     _local_sizes.local[0]);
+    DASH_LOG_TRACE("GlobDynamicMem.grow_internal",
+                   "local buckets:",      _buckets.size(),
+                   "unattached buckets:", _num_attach_buckets.local[0]);
+    DASH_LOG_TRACE("GlobDynamicMem.grow_internal >");
+    // Return local iterator to start of allocated memory:
+    return _lbegin + local_size_old;
+  }
+  /**
    * Commit global deallocation of buffers marked for detach.
    */
   size_type commit_detach() {
@@ -1407,6 +1458,7 @@ private:
   global_iterator            _begin;
   /// Global iterator referencing the final position in global memory space.
   global_iterator            _end;
+  bool                       _is_persistent = false;
 
 }; // class GlobDynamicMem
 

@@ -37,9 +37,9 @@ dart_ret_t dart__pmem__init(void)
   return DART_OK;
 }
 
-int _dart_pmem_list_new(PMEMobjpool * pop,
-                        TOID(struct dart_pmem_bucket_list) * list,
-                        struct dart_pmem_list_constr_args * args)
+static int _dart_pmem_list_new(PMEMobjpool * pop,
+                               TOID(struct dart_pmem_bucket_list) * list,
+                               struct dart_pmem_list_constr_args * args)
 {
   int ret = DART_OK;
   TX_BEGIN(pop) {
@@ -50,7 +50,7 @@ int _dart_pmem_list_new(PMEMobjpool * pop,
 
     DART_PMEM_TAILQ_INIT(&D_RW(*list)->head);
     TX_MEMCPY(D_RW(*list)->name, args->name, strlen(args->name) + 1);
-    TX_SET(*list, size, 0);
+    TX_SET(*list, num_buckets, 0);
   }
   TX_ONABORT {
     DART_LOG_ERROR("%s: transaction aborted: %s", __func__, pmemobj_errormsg());
@@ -61,7 +61,7 @@ int _dart_pmem_list_new(PMEMobjpool * pop,
 }
 
 
-static char * _tempname(const char * layout, int myid)
+static inline char * _tempname(const char * layout, int myid)
 {
   char suffix[3];
   snprintf(suffix, sizeof(suffix), ".%d", myid);
@@ -80,9 +80,9 @@ static char * _tempname(const char * layout, int myid)
   return prefix;
 }
 
-dart_pmem_oid_t _dart_pmem_bucket_alloc(PMEMobjpool * pop,
-                                        TOID(struct dart_pmem_bucket_list) * list,
-                                        struct dart_pmem_bucket_alloc_args args)
+static dart_pmem_oid_t _dart_pmem_bucket_alloc(PMEMobjpool * pop,
+    TOID(struct dart_pmem_bucket_list) * list,
+    struct dart_pmem_bucket_alloc_args args)
 {
   if (TOID_IS_NULL(*list)) {
     return DART_PMEM_OID_NULL;
@@ -98,19 +98,20 @@ dart_pmem_oid_t _dart_pmem_bucket_alloc(PMEMobjpool * pop,
     if (TOID_IS_NULL(node)) {
       pmemobj_tx_abort(1);
     }
-    D_RW(node)->element_size = args.element_size;
-    D_RW(node)->length = args.nelements;
-    D_RW(node)->data = pmemobj_tx_alloc(args.element_size * args.nelements,
+    //D_RW(node)->element_size = args.element_size;
+    D_RW(node)->nbytes = args.nbytes;
+    D_RW(node)->data = pmemobj_tx_alloc(args.nbytes,
                                         TYPE_NUM_BYTE);
     if (OID_IS_NULL(D_RO(node)->data)) {
       pmemobj_tx_abort(1);
     }
     DART_PMEM_TAILQ_INSERT_TAIL(head, node, next);
+    TX_SET(*list, num_buckets, D_RO(*list)->num_buckets + 1);
 
   }
   TX_ONCOMMIT {
     ret.oid = D_RW(node)->data;
-    DART_LOG_DEBUG("%s: successfully allocated %zu bytes", __func__, args.nelements * args.element_size);
+    DART_LOG_DEBUG("%s: successfully allocated %zu bytes", __func__, args.nbytes);
   }
   TX_ONABORT {
     DART_LOG_ERROR("%s: could not allocation persistent memory: %s", __func__, pmemobj_errormsg());
@@ -120,9 +121,23 @@ dart_pmem_oid_t _dart_pmem_bucket_alloc(PMEMobjpool * pop,
   return ret;
 }
 
+static inline PMEMobjpool * _open_pool_intern(char const * path,
+    char const * name)
+{
+  PMEMobjpool * pop;
+
+  if ((pop = pmemobj_open(path, name)) == NULL) {
+    DART_LOG_ERROR("dart__pmem_open: failed to open pmem pool(%s)", name);
+    return NULL;
+  }
+
+  DART_ASSERT(pmemobj_root_size(pop));
+  DART_LOG_DEBUG("dart__pmem__open: pool opened (%s)", path);
+  return pop;
+}
 
 #define DART_PMEM_ALL_FLAGS\
-  (DART_PMEM_FILE_CREATE | DART_PMEM_FILE_OPEN)
+  (DART_PMEM_FILE_CREATE | DART_PMEM_FILE_EXCL)
 
 dart_pmem_pool_t * dart__pmem__open(
   dart_team_t   team,
@@ -152,35 +167,43 @@ dart_pmem_pool_t * dart__pmem__open(
 
   PMEMobjpool * pop;
 
-  char * full_path = _tempname(name, myid);
+  char const * full_path = _tempname(name, myid);
   const size_t poolsize = DART_PMEM_MIN_POOL;
 
-  if ((flags & DART_PMEM_FILE_CREATE) && access(full_path, F_OK) != 0) {
+  if (flags & DART_PMEM_FILE_CREATE) {
+    if (0 == access(full_path, F_OK)) {
+      //pool already exists
+      if (flags & DART_PMEM_FILE_EXCL) {
+        DART_LOG_ERROR("%s: cannot create pool (%s) because it already exists",
+                       __func__, full_path);
+        return NULL;
+      }
 
+      pop = _open_pool_intern(full_path, name);
+    } else {
 
-    if ((pop = pmemobj_create(full_path, name, poolsize,
-                              mode)) == NULL) {
-      DART_LOG_ERROR("dart__pmem__open: failed to create pmem pool (%s)", name);
-      return NULL;
+      if ((pop = pmemobj_create(full_path, name, poolsize,
+                                mode)) == NULL) {
+        DART_LOG_ERROR("dart__pmem__open: failed to create pmem pool (%s)", name);
+        return NULL;
+      }
+
+      struct dart_pmem_list_constr_args args = {
+        .name = name
+      };
+
+      TOID(struct dart_pmem_bucket_list) root;
+      DART_ASSERT_RETURNS(_dart_pmem_list_new(pop, &root, &args), DART_OK);
+
+      DART_LOG_DEBUG("dart__pmem__open: pool created (%s), poolsize (%zu)",
+                     full_path, poolsize);
     }
-
-    struct dart_pmem_list_constr_args args = {
-      .name = name
-    };
-
-    TOID(struct dart_pmem_bucket_list) root;
-    DART_ASSERT_RETURNS(_dart_pmem_list_new(pop, &root, &args), DART_OK);
-
-    DART_LOG_DEBUG("dart__pmem__open: pool created (%s), poolsize (%zu)",
-                   full_path, poolsize);
   } else {
-    if ((pop = pmemobj_open(full_path, name)) == NULL) {
-      DART_LOG_ERROR("dart__pmem_open: failed to open pmem pool(%s)", name);
-      return NULL;
-    }
+    pop = _open_pool_intern(full_path, name);
+  }
 
-    DART_ASSERT(pmemobj_root_size(pop));
-    DART_LOG_DEBUG("dart__pmem__open: pool opened (%s)", full_path);
+  if (pop == NULL) {
+    return NULL;
   }
 
   dart_pmem_pool_t * poolp = malloc(sizeof(dart_pmem_pool_t));
@@ -194,15 +217,15 @@ dart_pmem_pool_t * dart__pmem__open(
   return poolp;
 }
 
-dart_pmem_oid_t dart__pmem__alloc(
-  dart_pmem_pool_t  const * pool,
-  size_t              nbytes)
+static inline dart_ret_t _check_pool(
+  dart_pmem_pool_t const * pool
+)
 {
   DART_ASSERT(pool);
 
   if (NULL == pool->pop) {
     DART_LOG_ERROR("invalid pmem pool");
-    return DART_PMEM_OID_NULL;
+    return DART_ERR_INVAL;
   }
 
   size_t root_size = pmemobj_root_size(pool->pop);
@@ -210,6 +233,19 @@ dart_pmem_oid_t dart__pmem__alloc(
   if (root_size < sizeof(struct dart_pmem_bucket_list)) {
     //TODO: apply better consistency check
     DART_LOG_ERROR("improperly initialized pool");
+    return DART_ERR_INVAL;
+  }
+
+  return DART_OK;
+}
+
+dart_pmem_oid_t dart__pmem__alloc(
+  dart_pmem_pool_t  const * pool,
+  size_t              nbytes)
+{
+
+  if (_check_pool(pool) != DART_OK) {
+    DART_LOG_ERROR("%s: improperly initialized pool", __func__);
     return DART_PMEM_OID_NULL;
   }
 
@@ -217,10 +253,8 @@ dart_pmem_oid_t dart__pmem__alloc(
       struct dart_pmem_bucket_list);
 
   struct dart_pmem_bucket_alloc_args args = {
-    .element_size = sizeof(char),
-    .nelements = nbytes,
+    .nbytes = nbytes,
   };
-
 
   dart_pmem_oid_t ret = _dart_pmem_bucket_alloc(pool->pop, &list, args);
 
@@ -240,13 +274,96 @@ dart_ret_t dart__pmem__persist(
   void * addr,
   size_t nbytes)
 {
-  if (NULL == pool->pop) {
-    DART_LOG_ERROR("invalid pmem pool");
+  if (_check_pool(pool) != DART_OK) {
+    DART_LOG_ERROR("%s: improperly initialized pool", __func__);
     return DART_ERR_INVAL;
   }
 
   pmemobj_persist(pool->pop, addr, nbytes);
   DART_LOG_DEBUG("%s >", __func__);
+  return DART_OK;
+}
+
+dart_ret_t dart__pmem__pool_stat(
+  dart_pmem_pool_t * pool,
+  struct dart_pmem_pool_stat * stat
+)
+{
+  if (_check_pool(pool) != DART_OK) {
+    DART_LOG_ERROR("%s: improperly initialized pool", __func__);
+    return DART_ERR_INVAL;
+  }
+
+  DART_ASSERT(stat);
+
+  TOID(struct dart_pmem_bucket_list) list = POBJ_ROOT(pool->pop,
+      struct dart_pmem_bucket_list);
+
+  stat->num_buckets = D_RO(list)->num_buckets;
+  //TODO: add info over total number of bytes
+
+  return DART_OK;
+}
+
+dart_ret_t dart__pmem__fetch_all(
+  dart_pmem_pool_t * pool,
+  dart_pmem_oid_t * buf
+)
+{
+  if (_check_pool(pool) != DART_OK) {
+    DART_LOG_ERROR("%s: improperly initialized pool", __func__);
+    return DART_ERR_INVAL;
+  }
+
+  DART_ASSERT(buf);
+
+  TOID(struct dart_pmem_bucket_list) list = POBJ_ROOT(pool->pop,
+      struct dart_pmem_bucket_list);
+
+  struct dart_pmem_list_head * head = &D_RW(list)->head;
+
+  TOID(struct dart_pmem_bucket) node;
+
+  size_t idx = 0;
+
+  dart_pmem_oid_t objectId;
+
+  DART_PMEM_TAILQ_FOREACH(node, head, next) {
+    objectId.oid = D_RO(node)->data;
+    buf[idx] = objectId;
+    ++idx;
+  }
+
+  return DART_OK;
+}
+
+dart_ret_t dart__pmem__oid_size(
+  dart_pmem_pool_t const * pool,
+  dart_pmem_oid_t oid,
+  size_t * size
+)
+{
+  if (_check_pool(pool) != DART_OK) {
+    DART_LOG_ERROR("%s: improperly initialized pool", __func__);
+    return DART_ERR_INVAL;
+  }
+
+  DART_ASSERT(size);
+
+  TOID(struct dart_pmem_bucket_list) list = POBJ_ROOT(pool->pop,
+      struct dart_pmem_bucket_list);
+
+  struct dart_pmem_list_head * head = &D_RW(list)->head;
+
+  TOID(struct dart_pmem_bucket) node;
+
+  DART_PMEM_TAILQ_FOREACH(node, head, next) {
+    if (OID_EQUALS(oid.oid, D_RO(node)->data)) {
+      *size = D_RO(node)->nbytes;
+      break;
+    }
+  }
+
   return DART_OK;
 }
 

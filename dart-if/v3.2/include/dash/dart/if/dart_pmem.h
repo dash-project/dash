@@ -32,8 +32,13 @@ typedef struct dart_pmem_pool dart_pmem_pool_t;
 struct dart_pmem_oid;
 typedef struct dart_pmem_oid  dart_pmem_oid_t;
 
+struct dart_pmem_pool_stat {
+  size_t num_buckets;
+  size_t total;
+};
+
 #define DART_PMEM_FILE_CREATE (1 << 0)
-#define DART_PMEM_FILE_OPEN   (1 << 1)
+#define DART_PMEM_FILE_EXCL   (1 << 1)
 
 /* ======================================================================== *
  * Open and Close                                                           *
@@ -75,7 +80,25 @@ dart_ret_t dart__pmem__persist(
   void * addr,
   size_t nbytes);
 
+dart_ret_t dart__pmem__fetch_all(
+    dart_pmem_pool_t * pool,
+    dart_pmem_oid_t * buf
+);
 
+/* ======================================================================== *
+ * Other functions                                                          *
+ * ======================================================================== */
+
+dart_ret_t dart__pmem__pool_stat(
+  dart_pmem_pool_t * pool,
+  struct dart_pmem_pool_stat * stat
+);
+
+dart_ret_t dart__pmem__oid_size(
+  dart_pmem_pool_t const * pool,
+  dart_pmem_oid_t oid,
+  size_t * size
+);
 
 //TODO: move to dart base
 //
@@ -108,8 +131,8 @@ struct dart_pmem_list_constr_args {
 };
 
 struct dart_pmem_bucket_alloc_args {
-  size_t element_size;
-  size_t nelements;
+  //size_t element_size;
+  size_t nbytes;
 };
 
 
@@ -135,18 +158,20 @@ TOID_DECLARE(char, DART_PMEM_TYPES_OFFSET + 0);
 #endif
 
 struct dart_pmem_bucket_list {
+  //name of pmem pool
   char                name[MAX_BUFFLEN];
-  size_t              size;
-  //Head Node
+  //Number of allocated buckets
+  size_t              num_buckets;
+  //Number of bytes for a single element
+  size_t              element_size;
+  //Head node to the first bucket
   DART_PMEM_TAILQ_HEAD(dart_pmem_list_head, struct dart_pmem_bucket) head;
 };
 
 struct dart_pmem_bucket {
-  //Number of bytes for a single element
-  size_t    element_size;
   //Number of elements in this bucket
-  size_t    length;
-  //Persistent Memory Buffer
+  size_t     nbytes;
+  //Persistent Data Buffer
   PMEMoid    data;
   //Pointer to next bucket
   DART_PMEM_TAILQ_ENTRY(struct dart_pmem_bucket) next;
