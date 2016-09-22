@@ -81,9 +81,9 @@ namespace dash {
 
 
 enum class HaloRegion: std::uint8_t{
-  minus,
-  plus,
-  count //number of regions
+  MINUS,
+  PLUS,
+  COUNT //number of regions
 };
 
 
@@ -802,7 +802,7 @@ public:
   /**
    * Creates view on halo region for a given dimension and halo region.
    * For example, the east halo region in a two-dimensional block
-   * has (1, dash::HaloRegion::plus).
+   * has (1, dash::HaloRegion::PLUS).
    */
   const block_view_t halo_region(dim_t dimension, HaloRegion region) const
   {
@@ -814,7 +814,7 @@ public:
   /**
    * Creates view on boundary region for a given dimension and boundary region.
    * For example, the east boundary region in a two-dimensional block
-   * has (1, dash::HaloRegion::plus).
+   * has (1, dash::HaloRegion::PLUS).
    */
   const block_view_t boundary_region(dim_t dimension, HaloRegion region) const
   {
@@ -945,17 +945,17 @@ public:
     for(auto d = 0; d < NumDimensions; ++d)
     {
       auto off_pos = d * 2;
-      auto region_size = _haloblock.halo_size(d, HaloRegion::minus);
+      auto region_size = _haloblock.halo_size(d, HaloRegion::MINUS);
       if(region_size > 0)
       {
-        _halo_offsets[off_pos + static_cast<uint8_t>(HaloRegion::minus)] = offset;
+        _halo_offsets[off_pos + static_cast<uint8_t>(HaloRegion::MINUS)] = offset;
         offset += region_size;
       }
 
-      region_size = _haloblock.halo_size(d, HaloRegion::plus);
+      region_size = _haloblock.halo_size(d, HaloRegion::PLUS);
       if(region_size > 0)
       {
-        _halo_offsets[off_pos + static_cast<uint8_t>(HaloRegion::plus)] = offset;
+        _halo_offsets[off_pos + static_cast<uint8_t>(HaloRegion::PLUS)] = offset;
         offset += region_size;
       }
     }

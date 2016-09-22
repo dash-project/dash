@@ -28,7 +28,7 @@ public:
   using ViewSpec_t = ViewSpec<MatrixT::ndim(),index_type>;
   using self_t     = HaloMatrix<MatrixT, HaloSpecT>;
   using HaloBlock_t = HaloBlock<value_t, pattern_t>;
-  using HaloBlockView_t  = HaloBlockView<value_t, pattern_t>;
+  using HaloBlockView_t  = typename HaloBlock_t::block_view_t;
   using HaloMemory_t   = HaloMemory<HaloBlock_t>;
 
   using iterator             = HaloMatrixIterator<value_t, pattern_t, StencilViewScope::ALL>;
@@ -50,8 +50,10 @@ public:
    * that are declared before \c dash::Init().
    */
   //TODO adapt to more than one local block
-  HaloMatrix(MatrixT & matrix, HaloSpecT & halospec)
-    : _matrix(matrix), _halospec(halospec),_view_local(matrix.local.extents()),
+  HaloMatrix(MatrixT & matrix, const HaloSpecT & halospec)
+    : _matrix(matrix),
+      _halospec(halospec),
+      _view_local(matrix.local.extents()),
       _view_global(ViewSpec_t(matrix.local.offsets(), matrix.local.extents())),
       _haloblock(matrix.begin().globmem(), matrix.pattern(), _view_global, halospec),
       _halomemory(_haloblock),
@@ -62,6 +64,22 @@ public:
       _bbegin(_haloblock, _halomemory, 0),
       _bend(_haloblock, _halomemory, _haloblock.boundary_size())
   {
+    const auto & offsets = halospec.halo_offsets();
+
+    for(auto d = 0; d < NumDimensions; ++d)
+    {
+      if(offsets[d].minus)
+        initBlockViewData(d, HaloRegion::MINUS);
+
+      if(offsets[d].plus)
+        initBlockViewData(d, HaloRegion::PLUS);
+    }
+  }
+
+  ~HaloMatrix()
+  {
+    for(auto & view : _blockview_data)
+      free(view.second.handle);
   }
 
   iterator begin() noexcept
@@ -134,59 +152,93 @@ public:
     return _haloblock;
   }
 
-  void fillHalo(dim_t dim, HaloRegion halo_region)
+  void updateHalosAsync()
   {
-    const auto & region = _haloblock.halo_region(dim, halo_region);
-    if(region.size() > 0 )
+    for(auto & view : _blockview_data)
+      updateHaloIntern(view.first.first, view.first.second, true);
+  }
+
+  void waitHalosAsync()
+  {
+
+    for(auto & view : _blockview_data)
+      dart_waitall(view.second.handle, view.second.num_handles);
+  }
+
+  void updateHalo()
+  {
+    for(auto & view : _blockview_data)
+      updateHaloIntern(view.first.first, view.first.second, false);
+  }
+
+  void updateHalo(dim_t dim, HaloRegion region)
+  {
+    updateHaloIntern(dim, region, false);
+  }
+
+private:
+  void initBlockViewData(dim_t dim, HaloRegion region)
+  {
+    const auto blockview = _haloblock.halo_region(dim, region);
+    if(blockview.size() == 0)
+      return;
+
+    // number of contiguous elements
+    size_type cont_elems;
+    size_type num_handle;
+    if((MemoryArrange == ROW_MAJOR && dim == 0) ||
+       (MemoryArrange == COL_MAJOR && dim == NumDimensions - 1))
     {
-      if(MemoryArrange == ROW_MAJOR)
-      {
-        if(dim == 0)
-          dart_get_blocking(_halomemory.haloPos(dim, halo_region), region.begin().dart_gptr(),
-              region.size() * sizeof(value_t));
-        else
-          copyHalos(dim, halo_region, region);
-      }
-      else
-      {
-        if(dim == NumDimensions)
-          dart_get_blocking(_halomemory.haloPos(dim, halo_region), region.begin().dart_gptr(),
-              region.size() * sizeof(value_t));
-        else
-          copyHalos(dim, halo_region, region);
-      }
+      cont_elems = blockview.size();
+      num_handle = 1;
+    }
+    else
+    {
+      cont_elems = blockview.region_view().extent(dim);
+      num_handle = blockview.size() / cont_elems;
+    }
+
+    auto nbytes = cont_elems * sizeof(value_t);
+    dart_handle_t * handle = (dart_handle_t*) malloc (sizeof (dart_handle_t) * num_handle);
+    for(auto i = 0; i < num_handle; ++i)
+      handle[i] = nullptr;
+    _blockview_data.insert(std::make_pair(
+          std::make_pair(dim, region), Data{ std::move(blockview), handle, num_handle, cont_elems, nbytes }));
+  }
+
+  void updateHaloIntern(dim_t dim, HaloRegion region, bool async)
+  {
+    auto it_find = _blockview_data.find(std::make_pair(dim, region));
+    if(it_find != _blockview_data.end())
+    {
+      auto & data = it_find->second;
+      auto off = _halomemory.haloPos(dim, region);
+      auto it = data.blockview.begin();
+      for(auto i = 0; i < data.num_handles; ++i, it += data.cont_elems)
+        dart_get_handle (off + data.cont_elems * i, it.dart_gptr(), data.nbytes, &(data.handle[i]));
+
+      if(!async)
+        dart_waitall(data.handle, data.num_handles);
     }
   }
 
 private:
-
-  void copyHalos(dim_t dim, HaloRegion halo_region, const HaloBlockView_t & region)
-  {
-    //contiguous elements
-    size_type cont_elems = region.region_view().extent(dim);
-    size_type num_handle = region.size() / cont_elems;
-    auto nbytes = cont_elems * sizeof(value_t);
-    dart_handle_t *handle = (dart_handle_t*) malloc (sizeof (dart_handle_t) * num_handle);
-    auto it = region.begin();
-
-    auto off = _halomemory.haloPos(dim, halo_region);
-    for(auto i = 0; i < num_handle; ++i, it += cont_elems)
-      dart_get_handle (off + cont_elems * i, it.dart_gptr(), nbytes, &handle[i]);
-
-    dart_waitall (handle, num_handle);
-
-    for(auto i = 0; i < num_handle; ++i)
-      free(handle[i]);
-    free(handle);
-  }
-
-private:
-  const MatrixT &         _matrix;
+  MatrixT &               _matrix;
   const ViewSpec_t        _view_local;
   const ViewSpec_t        _view_global;
   const HaloBlock_t       _haloblock;
   const HaloSpecT &       _halospec;
   HaloMemory_t            _halomemory;
+
+  struct Data
+  {
+    const HaloBlockView_t blockview;
+    dart_handle_t *       handle = nullptr;
+    size_type             num_handles = 0;
+    size_type             cont_elems = 0;
+    std::uint64_t         nbytes;
+  };
+  std::map<std::pair<dim_t, HaloRegion>, Data> _blockview_data;
 
   iterator                _begin;
   iterator                _end;

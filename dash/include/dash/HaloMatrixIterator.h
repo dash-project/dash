@@ -94,7 +94,7 @@ public:
    */
   reference operator*() const
   {
-    return operator[](_idx);
+    return _local_memory[_pattern.local_memory_layout().at(_coords)];
   }
 
   /**
@@ -105,7 +105,8 @@ public:
    */
   reference operator[](index_type idx) const
   {
-    return _local_memory[_pattern.local_memory_layout().at(_coords)];
+    auto coords = setCoords(idx);
+    return _local_memory[_pattern.local_memory_layout().at(coords)];
   }
 
   index_type rpos() const
@@ -143,7 +144,7 @@ public:
       }
       else
       {
-        HaloRegion halo_region = HaloRegion::minus;
+        HaloRegion halo_region = HaloRegion::MINUS;
 
         if(diff < 0)
         {
@@ -152,7 +153,7 @@ public:
         else
         {
           halo_coords[dim] = offset - 1;
-          halo_region = HaloRegion::plus;
+          halo_region = HaloRegion::PLUS;
         }
 
         const auto & extents = _haloblock.halo_region(dim, halo_region).region_view().extents();
@@ -356,21 +357,25 @@ private:
 
   void setCoords()
   {
+      _coords = setCoords(_idx);
+  }
+
+  std::array<index_type, NumDimensions> setCoords(index_type idx) const
+  {
     if(Scope == StencilViewScope::BOUNDARY)
     {
-      auto local_idx = _idx;
+      auto local_idx = idx;
       for(const auto & region : _bnd_elements)
       {
         if(local_idx < region.size())
-        {
-          _coords = _pattern.local_memory_layout().coords(local_idx, region);
-          return;
-        }
+          return _pattern.local_memory_layout().coords(local_idx, region);
+
         local_idx -= region.size();
       }
+      //TODO return value for idx >= size
     }
     else
-      _coords = _pattern.local_memory_layout().coords(_idx, _view_local);
+      return _pattern.local_memory_layout().coords(_idx, _view_local);
   }
 
 private:
