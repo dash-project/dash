@@ -124,10 +124,11 @@ public:
     long tilesize   = pattern.blocksize(0);
     // Map native types to HDF5 types
     auto h5datatype = _convertType(array[0]);
+    // for tracking opened groups
+    std::list<hid_t> open_groups;
     // Split path in groups and dataset
     auto path_vec   = _split_string(datapath, '/');
     auto dataset    = path_vec.back();
-    std::list<hid_t> group_ids;
     // remove dataset from path
     path_vec.pop_back();
 
@@ -139,6 +140,7 @@ public:
     hid_t   filespace;
     hid_t   memspace;
     hid_t   attr_id;
+    hid_t   loc_id;
     herr_t  status;
 
     // get hdf pattern layout
@@ -170,7 +172,7 @@ public:
     H5Pclose(plist_id);
 
     // Traverse path
-    hid_t loc_id = file_id;
+    loc_id = file_id;
     for(std::string elem : path_vec){
           if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
             // open group
@@ -182,7 +184,7 @@ public:
             loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
           }
           if(loc_id != file_id){
-            group_ids.push_front(loc_id);
+            open_groups.push_front(loc_id);
           }
     }
 
@@ -263,8 +265,8 @@ public:
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
-    for(auto id : group_ids){
-      H5Gclose(id);
+    for(auto group_id : open_groups){
+      H5Gclose(group_id);
     }
     H5Fclose(file_id);
   }
