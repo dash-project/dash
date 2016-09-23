@@ -8,19 +8,21 @@
 
 namespace dash {
 namespace util {
-  struct StaticConfig {
-    bool avail_papi      = @CONF_AVAIL_PAPI@;
-    bool avail_hwloc     = @CONF_AVAIL_HWLOC@;
-    bool avail_likwid    = @CONF_AVAIL_LIKWID@;
-    bool avail_numa      = @CONF_AVAIL_NUMA@;
-    bool avail_plasma    = @CONF_AVAIL_PLASMA@;
-    bool avail_hdf5      = @CONF_AVAIL_HDF5@;
-    bool avail_mkl       = @CONF_AVAIL_MKL@;
-    bool avail_blas      = @CONF_AVAIL_BLAS@;
-    bool avail_lapack    = @CONF_AVAIL_LAPACK@;
-    bool avail_scalapack = @CONF_AVAIL_SCALAPACK@;
-    bool avail_pmem      = @CONF_AVAIL_PMEM@;
-  } DashConfig;
+static struct StaticConfig {
+  bool avail_papi      = @CONF_AVAIL_PAPI@;
+  bool avail_hwloc     = @CONF_AVAIL_HWLOC@;
+  bool avail_likwid    = @CONF_AVAIL_LIKWID@;
+  bool avail_numa      = @CONF_AVAIL_NUMA@;
+  bool avail_plasma    = @CONF_AVAIL_PLASMA@;
+  bool avail_hdf5      = @CONF_AVAIL_HDF5@;
+  bool avail_mkl       = @CONF_AVAIL_MKL@;
+  bool avail_blas      = @CONF_AVAIL_BLAS@;
+  bool avail_lapack    = @CONF_AVAIL_LAPACK@;
+  bool avail_scalapack = @CONF_AVAIL_SCALAPACK@;
+  bool avail_pmem      = @CONF_AVAIL_PMEM@;
+  /* Available Algorithms */
+  bool avail_algo_summa      = @CONF_AVAIL_ALGO_SUMMA@;
+} DashConfig;
 }
 }
 #endif // DASH__UTIL__STATIC_CONFIG_H_
