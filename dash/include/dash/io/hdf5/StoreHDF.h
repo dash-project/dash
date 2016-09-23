@@ -302,10 +302,13 @@ public:
     auto pat_dims    = pattern.ndim();
     // Map native types to HDF5 types
     auto h5datatype = _convertType(*array.lbegin());
+    // for tracking opened groups
+    std::list<hid_t> open_groups;
     // Split path in groups and dataset
     auto path_vec   = _split_string(datapath, '/');
     auto dataset    = path_vec.back();
-
+    // remove dataset from path
+    path_vec.pop_back();
 
     /* HDF5 definition */
     hid_t   file_id;
@@ -315,6 +318,7 @@ public:
     hid_t   filespace;
     hid_t   memspace;
     hid_t   attr_id;
+    hid_t   loc_id;
     herr_t  status;
 
     hdf5_pattern_spec<ndim> ts;
@@ -350,6 +354,23 @@ public:
 
     // close property list
     H5Pclose(plist_id);
+
+    // Traverse path
+    loc_id = file_id;
+    for(std::string elem : path_vec){
+          if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
+            // open group
+            DASH_LOG_DEBUG("Open Group" elem);
+            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT); 
+          } else {
+            // create group
+            DASH_LOG_DEBUG("Create Group" elem);
+            loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+          }
+          if(loc_id != file_id){
+            open_groups.push_front(loc_id);
+          }
+    }
 
     // Create dataspace
     filespace     = H5Screate_simple(ndim, ts.data_dimsf, NULL);
@@ -435,6 +456,9 @@ public:
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
+    for(auto group_id : open_groups){
+      H5Gclose(group_id);
+    }
     H5Fclose(file_id);
   }
 
