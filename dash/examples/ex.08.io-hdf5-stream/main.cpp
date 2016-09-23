@@ -59,7 +59,7 @@ int main(int argc, char * argv[])
 		}
 
 		dash::io::hdf5::HDF5OutputStream os(FILENAME);
-		os << dash::io::hdf5::dataset("data") << array_a;
+		os << dash::io::hdf5::dataset("group/data") << array_a;
 
 		dash::barrier();
 		print_file();
@@ -76,7 +76,7 @@ int main(int argc, char * argv[])
 		array_t array_c;
 
 		dash::io::hdf5::HDF5InputStream is(FILENAME);
-		is >> dash::io::hdf5::dataset("data") >> array_c;
+		is >> dash::io::hdf5::dataset("group/data") >> array_c;
 	}
 
 	// OK, that was easy. Now let's have a slightly more complex setup
@@ -91,7 +91,7 @@ int main(int argc, char * argv[])
 		array_t array_c(pattern_b); // tilesize=7
 
 		dash::io::hdf5::HDF5InputStream is(FILENAME);
-		is >> dash::io::hdf5::dataset("data") >> array_c;
+		is >> dash::io::hdf5::dataset("group/data") >> array_c;
 
 		if(myid == 0){
 			cout << "Array A Pattern: Tilesize: " << array_a.pattern().blocksize(0) << endl;
