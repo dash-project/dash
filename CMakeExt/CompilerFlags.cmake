@@ -50,11 +50,11 @@ endif()
 # Set C compiler flags:
 if ("${CMAKE_C_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
-  set (CC_STD_FLAG "--std=c99"
+  set (CC_STD_FLAG "--std=c99 -fPIC"
        CACHE STRING "C compiler std flag")
 elseif ("${CMAKE_C_COMPILER_ID}" MATCHES "GNU")
   # using GCC
-  set (CC_STD_FLAG "--std=c99"
+  set (CC_STD_FLAG "--std=c99 -fPIC"
        CACHE STRING "C compiler std flag")
   set (CC_GDB_FLAG "-ggdb3"
        CACHE STRING "C compiler GDB debug symbols flag")
@@ -83,9 +83,9 @@ set(CMAKE_CXX_FLAGS_DEBUG
     "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_WARN_FLAG} -O0 -DDASH_DEBUG ${CXX_GDB_FLAG}")
 
 set(CMAKE_C_FLAGS_RELEASE
-    "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CC_WARN_FLAG} -Ofast ${CC_GDB_FLAG} -DDASH_RELEASE")
+    "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CC_WARN_FLAG} -O1 ${CC_GDB_FLAG} -DDASH_RELEASE")
 set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_WARN_FLAG} -Ofast ${CXX_GDB_FLAG} -DDASH_RELEASE")
+    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_WARN_FLAG} -O1 ${CXX_GDB_FLAG} -DDASH_RELEASE")
 
 if (BUILD_COVERAGE_TESTS)
   # Profiling is only supported for Debug builds:
@@ -107,9 +107,9 @@ if (ENABLE_ASSERTIONS)
       "${CMAKE_CXX_FLAGS_RELEASE} -DDASH_ENABLE_ASSERTIONS -DDART_ENABLE_ASSERTIONS")
 endif()
 
-# Enable support for clock_gettime and snprintf in C code (required in DART)
-set(CMAKE_C_FLAGS_DEBUG "-D_XOPEN_SOURCE=500")
-set(CMAKE_C_FLAGS_RELEASE "-D_XOPEN_SOURCE=500")
+# Enable support for clock_gettime, spinlocks and snprintf in C code (required in DART)
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_XOPEN_SOURCE=600 -D_GNU_SOURCE")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -D_XOPEN_SOURCE=600 -D_GNU_SOURCE")
 
 message(STATUS "CC  flags (Debug):   ${CMAKE_C_FLAGS_DEBUG}")
 message(STATUS "CXX flags (Debug):   ${CMAKE_CXX_FLAGS_DEBUG}")
