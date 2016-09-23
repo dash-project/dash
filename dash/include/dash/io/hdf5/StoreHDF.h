@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <sstream>
 
 #ifdef MPI_IMPL_ID
 #include <mpi.h>
@@ -77,6 +78,20 @@ private:
     // TODO: check if mapping is regular by checking pattern property
   }
 
+  static std::vector<std::string> _split_string(
+                                    const std::string str,
+                                    const char delim)
+  {
+    std::vector<std::string> elems; 
+    std::stringstream ss;
+    ss.str(str);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+      elems.push_back(item);
+    }
+    return elems;
+  }
+
 public:
   /**
    * Store all dash::Array values in an HDF5 file using parallel IO.
@@ -84,7 +99,7 @@ public:
    *
    * \param  array     Array to store
    * \param  filename  Filename of HDF5 file including extension
-   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
   template <
@@ -98,7 +113,7 @@ public:
             static write(
               dash::Array<value_t, index_t, pattern_t> & array,
               std::string filename,
-              std::string dataset,
+              std::string datapath,
               hdf5_options foptions = _get_fdefaults())
   {
     auto pattern    = array.pattern();
@@ -106,6 +121,9 @@ public:
     long tilesize   = pattern.blocksize(0);
     // Map native types to HDF5 types
     auto h5datatype = _convertType(array[0]);
+    // Split path in groups and dataset
+    auto path_vec   = _split_string(datapath, '/');
+    auto dataset    = path_vec.back();
 
     /* HDF5 definition */
     hid_t   file_id;
@@ -232,7 +250,7 @@ public:
    *
    * \param  array     Array to store
    * \param  filename  Filename of HDF5 file including extension
-   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
   template <
@@ -245,7 +263,7 @@ public:
         static write(
           dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
           std::string filename,
-          std::string dataset,
+          std::string datapath,
           hdf5_options foptions = _get_fdefaults())
   {
     static_assert(
@@ -256,6 +274,9 @@ public:
     auto pat_dims    = pattern.ndim();
     // Map native types to HDF5 types
     auto h5datatype = _convertType(*array.lbegin());
+    // Split path in groups and dataset
+    auto path_vec   = _split_string(datapath, '/');
+    auto dataset    = path_vec.back();
 
 
     /* HDF5 definition */
@@ -399,7 +420,7 @@ public:
    *
    * \param array     Import data in this dash::Array
    * \param filename  Filename of HDF5 file including extension
-   * \param dataset   HDF5 Dataset in which the data is stored
+   * \param datapath   HDF5 Dataset in which the data is stored
    * \param foptions
    */
   template <
@@ -413,11 +434,15 @@ public:
             static read(
               dash::Array<value_t, index_t, pattern_t> & array,
               std::string filename,
-              std::string dataset,
+              std::string datapath,
               hdf5_options foptions = _get_fdefaults())
   {
-    long     tilesize;
-    int       rank;
+    long tilesize;
+    int  rank;
+    // Split path in groups and dataset
+    auto path_vec   = _split_string(datapath, '/');
+    auto dataset    = path_vec.back();
+
     // HDF5 definition
     hid_t    file_id;
     hid_t    h5dset;
@@ -554,7 +579,7 @@ public:
    *
    * \param  matrix    Import data in this dash::Matrix
    * \param  filename  Filename of HDF5 file including extension
-   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
   template <
@@ -572,9 +597,13 @@ public:
                         index_t,
                         pattern_t > &matrix,
                         std::string filename,
-                        std::string dataset,
+                        std::string datapath,
                         hdf5_options foptions = _get_fdefaults())
   {
+    // Split path in groups and dataset
+    auto path_vec   = _split_string(datapath, '/');
+    auto dataset    = path_vec.back();
+
     // HDF5 definition
     hid_t   file_id;
     hid_t   h5dset;
