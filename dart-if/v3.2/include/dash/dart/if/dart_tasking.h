@@ -20,7 +20,8 @@ extern "C" {
 typedef enum dart_task_deptype {
   DART_DEP_IN,
   DART_DEP_OUT,
-  DART_DEP_INOUT
+  DART_DEP_INOUT,
+  DART_DEP_RES
 } dart_task_deptype_t;
 
 typedef struct dart_task_dep {
@@ -39,7 +40,7 @@ dart_tasking_init();
  * \brief Returns the current thread's number.
  */
 int
-dart_tasking_thread_num();
+dart_tasking_thread_num() __attribute__((weak));
 
 /**
  * \brief Returns the number of worker threads.
@@ -61,12 +62,20 @@ dart_task_create(void (*fn) (void *), void *data, size_t data_size, dart_task_de
 dart_ret_t
 dart_task_complete();
 
+/**
+ * \brief Wait for all remote dependency requests to be processed.
+ */
+dart_ret_t
+dart_taskgraph_sync();
 
 /**
  * \brief Finalize and release all resource acquired during initialization.
  */
 dart_ret_t
 dart_tasking_fini();
+
+void
+dart_taskgraph_print();
 
 #ifdef __cplusplus
 }

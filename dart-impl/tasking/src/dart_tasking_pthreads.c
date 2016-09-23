@@ -1,6 +1,7 @@
+
+#include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/if/dart_active_messages.h>
-#include <dash/dart/base/logging.h>
 #include <dash/dart/base/hwinfo.h>
 #include <dash/dart/tasking/dart_tasking_priv.h>
 #include <dash/dart/tasking/dart_tasking_ayudame.h>
@@ -9,6 +10,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <errno.h>
+#include <dlfcn.h>
 
 
 typedef void (tfunc_t) (void *);
@@ -27,6 +29,7 @@ static dart_amsgq_t responseq;
 static pthread_t *thread_pool;
 
 static bool processing = false;
+static bool initialized = false;
 
 typedef struct task_data {
   struct task_data *next; // next entry in the runnable task list
@@ -45,9 +48,10 @@ struct task_list {
   struct task_list *next; // next entry on the same level of the task graph
 };
 
-struct remote_task {
+struct remote_dep {
   dart_gptr_t gptr;
   dart_unit_t runit;
+  task_t     *rtask; // pointer to a task on the origin unit, do not derefernce remotely!
 };
 
 typedef struct {
@@ -58,9 +62,12 @@ typedef struct {
 
 #define DART_RTASK_QLEN 256
 
-// TODO: access the list through head and tail
+// the queue of runnable tasks
 static task_t *runq_head = NULL;
 static task_t *runq_tail = NULL;
+
+// the queue of remote dependency requests waiting for release
+static task_t *rdepq_head = NULL;
 
 // free-list for tasks
 static task_t *free_tasks = NULL;
@@ -96,9 +103,9 @@ static void wait_for_work();
 static void set_current_task(task_t *t);
 static task_t * get_current_task();
 
-static void release_remote(void *data);
+static void release_remote_dependency(void *data);
 static void enqueue_from_remote(void *data);
-static void remote_dependency_request(dart_gptr_t gptr);
+static void remote_dependency_request(task_t *task, dart_gptr_t gptr);
 
 /**
  * Take a task from the task queue and execute it.
@@ -196,10 +203,11 @@ dart__base__tasking__init()
   }
   DART_LOG_INFO("Creating %i threads", num_threads);
 
+
   // set up the active message queue
-  requestq  = dart_amsg_openq(sizeof(struct remote_task) * DART_RTASK_QLEN, DART_TEAM_ALL, &enqueue_from_remote);
+  requestq  = dart_amsg_openq(sizeof(struct remote_dep) * DART_RTASK_QLEN, DART_TEAM_ALL, &enqueue_from_remote);
   DART_LOG_INFO("Created active message queue for requests (%p)", requestq);
-  responseq = dart_amsg_openq(sizeof(dart_gptr_t) * DART_RTASK_QLEN, DART_TEAM_ALL, &release_remote);
+  responseq = dart_amsg_openq(sizeof(struct remote_dep) * DART_RTASK_QLEN, DART_TEAM_ALL, &release_remote_dependency);
   DART_LOG_INFO("Created active message queue for responses (%p)", responseq);
 
   pthread_key_create(&tpd_key, &destroy_tsd);
@@ -223,19 +231,21 @@ dart__base__tasking__init()
 
   dart__tasking__ayudame_init();
 
+  initialized = true;
+
   return DART_OK;
 }
 
 int
 dart__base__tasking__thread_num()
 {
-  return ((tpd_t*)pthread_getspecific(tpd_key))->thread_id;
+  return (initialized ? ((tpd_t*)pthread_getspecific(tpd_key))->thread_id : 0);
 }
 
 int
 dart__base__tasking__num_threads()
 {
-  return num_threads;
+  return (initialized ? num_threads : 1);
 }
 
 dart_ret_t
@@ -270,11 +280,13 @@ dart__base__tasking__fini()
 
   dart__tasking__ayudame_fini();
 
+  initialized = false;
+
   return DART_OK;
 }
 
-static task_t * find_outdep_in_list(task_list_t *parent, const dart_task_dep_t *dep);
-static inline task_t * find_outdep(task_t *task, const dart_task_dep_t *dep)
+static task_t * find_dependency_in_list(task_list_t *parent, const dart_task_dep_t *dep, dart_task_deptype_t deptype);
+static inline task_t * find_dependency(task_t *task, const dart_task_dep_t *dep, dart_task_deptype_t deptype)
 {
   size_t i;
   task_t *t = NULL;
@@ -283,32 +295,32 @@ static inline task_t * find_outdep(task_t *task, const dart_task_dep_t *dep)
   {
     // does this task satisfy the dependency?
     for (i = 0; i < task->ndeps; i++) {
-      if ((task->deps[i].type == DART_DEP_OUT || task->deps[i].type == DART_DEP_INOUT)
-          && DART_GPTR_EQUAL(task->deps[i].gptr, dep->gptr)) {
+      if ((task->deps[i].type == deptype || task->deps[i].type == DART_DEP_INOUT)
+//          && DART_GPTR_EQUAL(task->deps[i].gptr, dep->gptr)) {
+          && task->deps[i].gptr.addr_or_offs.offset == dep->gptr.addr_or_offs.offset
+          && task->deps[i].gptr.unitid == dep->gptr.unitid) {
         // this parent will resolve the dependency
         t = task;
-      } else {
-        DART_LOG_INFO("Ignoring task with DEP (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
-            current_task->deps[i].gptr.addr_or_offs.addr, current_task->deps[i].gptr.segid, current_task->deps[i].gptr.unitid);
+        break;
       }
     }
 
     if (t == NULL) {
-      t = find_outdep_in_list(task->dependents, dep);
+      t = find_dependency_in_list(task->dependents, dep, deptype);
     }
   }
   return t;
 }
 
-static task_t * find_outdep_in_list(task_list_t *list, const dart_task_dep_t *dep)
+static task_t * find_dependency_in_list(task_list_t *list, const dart_task_dep_t *dep, dart_task_deptype_t deptype)
 {
   task_t *task = NULL;
   if (list != NULL) {
     // look at the task and it's dependents first
-    task = find_outdep(list->task, dep);
+    task = find_dependency(list->task, dep, deptype);
 
     if (task == NULL) {
-      task = find_outdep_in_list(list->next, dep);
+      task = find_dependency_in_list(list->next, dep, deptype);
     }
   }
   return task;
@@ -354,7 +366,7 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
 
         if (deps[i].gptr.unitid != myid) {
           // create a dependency request at the remote unit
-          remote_dependency_request(deps[i].gptr);
+          remote_dependency_request(task, deps[i].gptr);
           task->unresolved_deps++;
           // enqueue this task at the top level of the task graph
           task_list_t *tl = allocate_task_list_elem();
@@ -366,9 +378,9 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
 
         } else {
 
-          task_t *dependee = find_outdep_in_list(dep_graph, &deps[i]);
+          task_t *dependee = find_dependency_in_list(dep_graph, &deps[i], DART_DEP_OUT);
           if (dependee != NULL) {
-            // enqueue as dependent of this task
+            // enqueue as dependant of this task
             task_list_t *tl = allocate_task_list_elem();
             tl->task = task;
             tl->next = dependee->dependents;
@@ -377,11 +389,11 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
             in_dep = true;
             task->unresolved_deps++;
             dart__tasking__ayudame_add_dependency(dependee, task);
-            DART_LOG_INFO("Task %p depends on task %p", task, current_task);
+            DART_LOG_INFO("Task %p depends on task %p", task, dependee);
           } else {
             // Do nothing, consider the dependence as solved already
-            DART_LOG_INFO("Could not find a dependee for task with IN dep (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
-                deps[i].gptr.addr_or_offs.addr, deps[i].gptr.segid, deps[i].gptr.unitid);
+            DART_LOG_INFO("Could not find a dependee for task %p with IN dep (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
+                task, deps[i].gptr.addr_or_offs.addr, deps[i].gptr.segid, deps[i].gptr.unitid);
           }
         }
       } else if (deps[i].type == DART_DEP_OUT) {
@@ -390,7 +402,7 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
       }
     }
     if (!in_dep) {
-      // no dependee task required
+      // no input dependency required
       // -> enqueue on top level of dependency graph
       task_list_t *tl = allocate_task_list_elem();
       tl->task = task;
@@ -421,32 +433,36 @@ dart__base__tasking__task_complete()
     pthread_cond_broadcast(&task_avail_cond);
   }
 
-  while (dep_graph != NULL || runq_head != NULL ){
+  while (dep_graph != NULL || runq_head != NULL || threads_running > 0){
     // look for remote tasks coming in
-    dart_amsg_process(requestq);
+//    dart_amsg_process(requestq);
     // look for responses coming in
-    dart_amsg_process(responseq);
+//    dart_amsg_process(responseq);
     // participate in the task completion
     pthread_mutex_lock(&thread_pool_mutex);
     handle_task();
-    if (dep_graph != NULL || runq_head != NULL) {
-      pthread_mutex_unlock(&thread_pool_mutex);
-      continue;
-    }
-    if (threads_running > 0) {
-      // threads are still running, wait for them to signal completion
-      pthread_mutex_unlock(&thread_pool_mutex);
-
-      pthread_mutex_lock(&tasks_done_mutex);
-      DART_LOG_INFO("Master: waiting for all tasks to finish");
-      pthread_cond_wait(&tasks_done_cond, &tasks_done_mutex);
-      DART_LOG_INFO("Master: all tasks finished");
-      pthread_mutex_unlock(&tasks_done_mutex);
-    } else {
-      DART_LOG_INFO("Master: no active tasks running");
-      pthread_mutex_unlock(&thread_pool_mutex);
-      break;
-    }
+//    if (dep_graph != NULL || runq_head != NULL) {
+//      pthread_mutex_unlock(&thread_pool_mutex);
+//      continue;
+//    }
+//    if (threads_running > 0) {
+//      // threads are still running, wait for them to signal completion
+//      pthread_mutex_unlock(&thread_pool_mutex);
+//
+//      pthread_mutex_lock(&tasks_done_mutex);
+//      DART_LOG_INFO("Master: waiting for all tasks to finish");
+//      pthread_cond_wait(&tasks_done_cond, &tasks_done_mutex);
+//      DART_LOG_INFO("Master: all tasks finished");
+//      pthread_mutex_unlock(&tasks_done_mutex);
+//    } else {
+//      DART_LOG_INFO("Master: no active tasks running");
+//
+//    }
+    pthread_mutex_unlock(&thread_pool_mutex);
+    // before exiting, check for remote messages one last time
+    dart_amsg_process(requestq);
+    // look for responses coming in
+    dart_amsg_process(responseq);
   }
   // stop processing until we hit this function again
   processing = false;
@@ -462,12 +478,12 @@ static inline task_t * deqeue_runnable(void) {
   if (runq_head != NULL) {
     task = runq_head;
     runq_head = runq_head->next;
+    DART_LOG_INFO("Dequeued task %p from runnable list (fn=%p, data=%p)", task, task->fn, task->data);
   }
   if (runq_head == NULL) {
     runq_tail = NULL;
   }
 
-  DART_LOG_INFO("Dequeued task %p from runnable list (fn=%p, data=%p)", task, task->fn, task->data);
   return task;
 }
 
@@ -573,6 +589,38 @@ static void release_task(task_t *task)
     }
   }
 
+  if (rdepq_head == NULL) {
+    DART_LOG_INFO("release_task: rdepq_head is NULL");
+  }
+
+  // release remote dependency requests
+  int i;
+  for (i = 0; i < task->ndeps; i++) {
+    if (task->deps[i].type == DART_DEP_IN) {
+      continue;
+    }
+    task_t *rt = rdepq_head;
+    task_t *rt_prev = rdepq_head;
+    while (rt != NULL)
+    {
+      // use absolute address
+      void *addr;
+      dart_gptr_getaddr(task->deps[i].gptr, &addr);
+      DART_LOG_INFO("release_task: comparing gptr %p and %p", rt->deps[0].gptr.addr_or_offs.addr, addr);
+      if (rt->deps[0].gptr.addr_or_offs.addr == addr) {
+        if (rt == rdepq_head) {
+          rdepq_head = rt->next;
+        } else {
+          rt_prev->next = rt->next;
+        }
+        enqeue_runnable(rt);
+        break;
+      }
+      rt_prev = rt;
+      rt = rt->next;
+    }
+  }
+
   // remove the task itself from the task dependency graph
   remove_from_depgraph(task);
   dart__tasking__ayudame_close_task(task);
@@ -586,21 +634,19 @@ static void destroy_tsd(void *tsd)
 static void wait_for_work()
 {
   int ret;
-  DART_LOG_INFO("Thread %i waiting for signal", dart__base__tasking__thread_num());
-  if (dart__base__tasking__thread_num() == (dart__base__tasking__num_threads() - 1)) {
-    // the last thread uses a timed wait to ensure progress on remote requests coming in
-    struct timespec time;
-    clock_gettime(CLOCK_MONOTONIC, &time);
-    struct timespec timeout = {0, 1E6};
-    struct timespec abstimeout = add_timespec(time, timeout);
-    ret = pthread_cond_timedwait(&task_avail_cond, &thread_pool_mutex, &abstimeout);
-    if (ret == ETIMEDOUT) {
-      DART_LOG_INFO("Thread %i woken up after %f ms", dart__base__tasking__thread_num(),
-          ((double)timeout.tv_sec * 1E3) + ((double)timeout.tv_nsec / 1E6));
-    } else {
-      DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
-    }
-  } else {
+//  DART_LOG_INFO("Thread %i waiting for signal", dart__base__tasking__thread_num());
+//  if (dart__base__tasking__thread_num() == (dart__base__tasking__num_threads() - 1)) {
+//    // the last thread uses a timed wait to ensure progress on remote requests coming in
+//    struct timespec time;
+//    clock_gettime(CLOCK_MONOTONIC, &time);
+//    struct timespec timeout = {0, 1E6};
+//    struct timespec abstimeout = add_timespec(time, timeout);
+//    ret = pthread_cond_timedwait(&task_avail_cond, &thread_pool_mutex, &abstimeout);
+//    if (ret != ETIMEDOUT) {
+//      DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
+//    }
+//  } else
+  {
     pthread_cond_wait(&task_avail_cond, &thread_pool_mutex);
     DART_LOG_INFO("Thread %i received signal", dart__base__tasking__thread_num());
   }
@@ -619,43 +665,68 @@ static task_t * get_current_task()
  * Remote tasking data structures and functionality
  */
 
-static void release_remote(void *data)
+static void release_remote_dependency(void *data)
 {
-  dart_gptr_t gptr = *(dart_gptr_t*)data;
+  struct remote_dep *response = (struct remote_dep *)data;
   // remote dependent tasks are all enqeued at the top level of the dependency graph
-  task_list_t *tl = dep_graph;
-  while(tl != NULL) {
-    size_t i;
-    for (i = 0; i < tl->task->ndeps; i++) {
-      if (tl->task->deps[i].type == DART_DEP_IN && DART_GPTR_EQUAL(tl->task->deps[i].gptr, gptr)) {
-        // release this dependency
-        if (tl->task->unresolved_deps > 0) {
-          tl->task->unresolved_deps--;
-        } else {
-          DART_LOG_ERROR("ERROR: task with remote dependency does not seem to have unresolved dependencies!");
-        }
-        if (tl->task->unresolved_deps == 0) {
-          // release this task
-          enqeue_runnable(tl->task);
-        }
+  pthread_mutex_lock(&thread_pool_mutex);
+
+  DART_LOG_INFO("Received remote dependency release from unit %i for task %p (segid=%i, offset=%i)",
+    response->gptr.unitid, response->rtask, response->gptr.segid, response->gptr.addr_or_offs.offset);
+  if (response->rtask->unresolved_deps > 0)
+  {
+    int i;
+    for (i = 0; i < response->rtask->ndeps; i++) {
+      if (DART_GPTR_EQUAL(response->rtask->deps[i].gptr, response->gptr)) {
+        response->rtask->deps[i].type = DART_DEP_RES;
+        break;
       }
     }
-    tl = tl->next;
+    response->rtask->unresolved_deps--;
+  } else {
+    DART_LOG_ERROR("ERROR: task with remote dependency does not seem to have unresolved dependencies!");
   }
+
+  if (response->rtask->unresolved_deps == 0) {
+    // release this task
+    enqeue_runnable(response->rtask);
+  }
+//  task_list_t *tl = dep_graph;
+//  while(tl != NULL) {
+//    size_t i;
+//    for (i = 0; i < tl->task->ndeps; i++) {
+//      if (tl->task->deps[i].type == DART_DEP_IN && DART_GPTR_EQUAL(tl->task->deps[i].gptr, rtask->gptr)) {
+//        // release this dependency
+//        if (tl->task->unresolved_deps > 0) {
+//          tl->task->unresolved_deps--;
+//        } else {
+//          DART_LOG_ERROR("ERROR: task with remote dependency does not seem to have unresolved dependencies!");
+//        }
+//        if (tl->task->unresolved_deps == 0) {
+//          // release this task
+//          enqeue_runnable(tl->task);
+//        }
+//      }
+//    }
+//    tl = tl->next;
+//  }
+  pthread_mutex_unlock(&thread_pool_mutex);
 }
 
 static void send_release(void *data)
 {
-  dart_ret_t ret;
-  struct remote_task *rtask = (struct remote_task *)data;
+  struct remote_dep *rtask = (struct remote_dep *)data;
 
   while (1) {
-    ret = dart_amsg_trysend(rtask->runit, responseq, &(rtask->gptr), sizeof(rtask->gptr));
+    dart_ret_t ret;
+    ret = dart_amsg_trysend(rtask->runit, responseq, rtask, sizeof(*rtask));
     if (ret == DART_OK) {
       // the message was successfully sent
+      DART_LOG_INFO("Sent remote dependency release to unit %i (segid=%i, offset=%i, fn=%p)",
+          rtask->runit, rtask->gptr.segid, rtask->gptr.addr_or_offs.offset, &enqueue_from_remote);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
-      // cannot be send at the moment, just try again
+      // cannot be sent at the moment, just try again
       // TODO: anything more sensible to do here?
       continue;
     } else {
@@ -665,29 +736,54 @@ static void send_release(void *data)
   }
 
   free(data);
-
 }
 
 static void
 enqueue_from_remote(void *data)
 {
-  struct remote_task *rtask = (struct remote_task *)data;
-  struct remote_task *response = malloc(sizeof(*response));
+  struct remote_dep *rtask = (struct remote_dep *)data;
+  struct remote_dep *response = malloc(sizeof(*response));
   response->gptr = rtask->gptr;
   response->runit = rtask->runit;
+  response->rtask = rtask->rtask;
   dart_task_dep_t dep;
   dep.gptr = rtask->gptr;
   dep.type = DART_DEP_IN;
-  DART_LOG_INFO("Creating task for remote dependency request (unit=%i, segid=%i, offset=%i)",
-                      rtask->gptr.unitid, rtask->gptr.segid, rtask->gptr.addr_or_offs.offset);
-  dart__base__tasking__create_task(&send_release, response, 0, &dep, 1);
+  // we cannot guarantee the order of incoming dependencies so we have to keep them separate for now
+  pthread_mutex_lock(&thread_pool_mutex);
+  task_t *t = allocate_task();
+  t->fn = &send_release;
+  t->data = response;
+  t->data_size = 0;
+  t->ndeps = 1;
+  t->deps = malloc(sizeof(dart_task_dep_t));
+  memcpy(t->deps, &dep, sizeof(dart_task_dep_t));
+  t->next = rdepq_head;
+  rdepq_head = t;
+  pthread_mutex_unlock(&thread_pool_mutex);
+
+  DART_LOG_INFO("Created task %p for remote dependency request from unit %i (unit=%i, segid=%i, addr=%p)",
+                      t, response->runit, rtask->gptr.unitid, rtask->gptr.segid, rtask->gptr.addr_or_offs.addr);
+  //  dart__base__tasking__create_task(&send_release, response, 0, &dep, 1);
 }
 
-static void remote_dependency_request(dart_gptr_t gptr)
+static void remote_dependency_request(task_t *task, dart_gptr_t gptr)
 {
   dart_ret_t ret;
-  struct remote_task rtask;
-  rtask.gptr = gptr;
+  struct remote_dep rtask;
+
+  // We have to compute the absolute address at the target since segment IDs are not
+  // guaranteed to be the same on all units.
+  rtask.gptr.unitid = gptr.unitid;
+  rtask.gptr.flags = 0;
+  rtask.gptr.segid = 0;
+  void *addr;
+  dart_gptr_getaddr(gptr, &addr);
+  rtask.gptr.addr_or_offs.addr = addr;
+  DART_LOG_INFO("remote_dependency_request: converted remote dependency gptr={u=%i, s=%i, f=%i, o=%llu} to local address %p",
+    gptr.unitid, gptr.segid, gptr.flags, gptr.addr_or_offs.offset, rtask.gptr.addr_or_offs.addr);
+
+  rtask.rtask = task;
   dart_myid(&rtask.runit);
 
   while (1) {
@@ -705,4 +801,81 @@ static void remote_dependency_request(dart_gptr_t gptr)
       break;
     }
   }
+}
+
+
+dart_ret_t
+dart__base__tasking_sync_taskgraph()
+{
+  dart_amsg_sync(requestq);
+  dart_amsg_sync(responseq);
+
+  return DART_OK;
+}
+
+/*
+ * Functions for printing the dependency graph
+ */
+static void * dlhandle;
+
+static void print_subgraph(task_list_t *tl, int level)
+{
+  task_list_t *elem = tl;
+  while (elem != NULL)
+  {
+    int i;
+//    Dl_info info;
+    // print a preamble
+    int indent = level *2;
+    for (i = 0; i < indent - 2; i++) {
+      printf(" ");
+    }
+    if (level > 0) {
+      printf("|-");
+    }
+
+//    dladdr(elem->task->fn, &info);
+
+    // print the task
+    printf("task@%p{fn=%p, parent@%p, ndeps=%i, unresolved_deps=%i",
+        elem->task, elem->task->fn, elem->task->parent, elem->task->ndeps, elem->task->unresolved_deps);
+    if (elem->task->ndeps > 0) {
+      printf(", deps={");
+      for (i = 0; i < elem->task->ndeps; i++) {
+        printf("  {type=%i, gptr={unitid=%i, segid=%i, offset=%llu}}", elem->task->deps[i].type,
+            elem->task->deps[i].gptr.unitid, elem->task->deps[i].gptr.segid, elem->task->deps[i].gptr.addr_or_offs.offset);
+      }
+      printf("  }");
+    }
+    printf(", dependants={");
+    task_list_t *dep = elem->task->dependents;
+    while (dep != NULL) {
+      printf("  {t@%p}", dep->task);
+      dep = dep->next;
+    }
+    printf("}");
+    printf("}\n");
+
+    // print its children
+    if (elem->task->dependents) {
+      print_subgraph(elem->task->dependents, level + 1);
+    }
+
+    elem = elem->next;
+  }
+}
+
+void dart__base__tasking_print_taskgraph()
+{
+  pthread_mutex_lock(&thread_pool_mutex);
+
+//  dlhandle = dlopen(NULL, RTLD_LAZY);
+
+  sync();
+  print_subgraph(dep_graph, 0);
+  sync();
+
+//  dlclose(dlhandle);
+
+  pthread_mutex_unlock(&thread_pool_mutex);
 }

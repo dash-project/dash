@@ -16,6 +16,12 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
 dart_ret_t
 dart__base__tasking__task_complete();
 
+void
+dart__base__tasking_print_taskgraph();
+
+dart_ret_t
+dart__base__tasking_sync_taskgraph();
+
 dart_ret_t
 dart__base__tasking__fini();
 
