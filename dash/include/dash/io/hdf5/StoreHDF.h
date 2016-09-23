@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
+#include <list>
 #include <array>
 #include <sstream>
 
@@ -79,7 +80,7 @@ private:
   }
 
   static std::vector<std::string> _split_string(
-                                    const std::string str,
+                                    const std::string & str,
                                     const char delim)
   {
     std::vector<std::string> elems; 
@@ -87,7 +88,9 @@ private:
     ss.str(str);
     std::string item;
     while (std::getline(ss, item, delim)) {
-      elems.push_back(item);
+      if(item != ""){
+        elems.push_back(item);
+      }
     }
     return elems;
   }
@@ -124,6 +127,9 @@ public:
     // Split path in groups and dataset
     auto path_vec   = _split_string(datapath, '/');
     auto dataset    = path_vec.back();
+    std::list<hid_t> group_ids;
+    // remove dataset from path
+    path_vec.pop_back();
 
     /* HDF5 definition */
     hid_t   file_id;
@@ -163,6 +169,23 @@ public:
     // close property list
     H5Pclose(plist_id);
 
+    // Traverse path
+    hid_t loc_id = file_id;
+    for(std::string elem : path_vec){
+          if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
+            // open group
+            DASH_LOG_DEBUG("Open Group" elem);
+            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT); 
+          } else {
+            // create group
+            DASH_LOG_DEBUG("Create Group" elem);
+            loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+          }
+          if(loc_id != file_id){
+            group_ids.push_front(loc_id);
+          }
+    }
+
     // Create dataspace
     filespace     = H5Screate_simple(1, ts.data_dimsf, NULL);
     memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
@@ -170,10 +193,10 @@ public:
 
     if(foptions.modify_dataset){
       // Open dataset in RW mode
-      h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+      h5dset = H5Dopen(loc_id, dataset.c_str(), H5P_DEFAULT);
     } else {
       // Create dataset
-      h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
+      h5dset = H5Dcreate(loc_id, dataset.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     }
     // Close global dataspace
@@ -240,6 +263,9 @@ public:
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
+    for(auto id : group_ids){
+      H5Gclose(id);
+    }
     H5Fclose(file_id);
   }
 
@@ -440,8 +466,8 @@ public:
     long tilesize;
     int  rank;
     // Split path in groups and dataset
-    auto path_vec   = _split_string(datapath, '/');
-    auto dataset    = path_vec.back();
+    //auto path_vec   = _split_string(datapath, '/');
+    //auto dataset    = path_vec.back();
 
     // HDF5 definition
     hid_t    file_id;
@@ -467,7 +493,7 @@ public:
     H5Pclose(plist_id);
 
     // Create dataset
-    h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+    h5dset = H5Dopen(file_id, datapath.c_str(), H5P_DEFAULT);
 
     // Get dimensions of data
     filespace     = H5Dget_space(h5dset);
@@ -601,8 +627,8 @@ public:
                         hdf5_options foptions = _get_fdefaults())
   {
     // Split path in groups and dataset
-    auto path_vec   = _split_string(datapath, '/');
-    auto dataset    = path_vec.back();
+    //auto path_vec   = _split_string(datapath, '/');
+    //auto dataset    = path_vec.back();
 
     // HDF5 definition
     hid_t   file_id;
@@ -631,7 +657,7 @@ public:
     H5Pclose(plist_id);
 
     // Create dataset
-    h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+    h5dset = H5Dopen(file_id, datapath.c_str(), H5P_DEFAULT);
 
     // Get dimensions of data
     filespace     = H5Dget_space(h5dset);
