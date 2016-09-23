@@ -10,11 +10,6 @@ typedef struct dart_amsgq* dart_amsgq_t;
 
 typedef void (rfunc_t) (void *);
 
-typedef struct dart_amsg {
-  void       *data;       // the data to be passed to to the handler specified during queue setup
-  int         data_size;  // the size of the data to passed to the handler
-} dart_amsg_t;
-
 /**
  * Initialize an active message queue of size \c size on all units in team.
  *
@@ -51,6 +46,13 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, const void *data, size
  */
 dart_ret_t
 dart_amsg_process(dart_amsgq_t amsgq);
+
+/**
+ * Collective operation on all members of the team involved in the active message queue.
+ * Synchronizes all units in the team and processes all remaining messages.
+ */
+dart_ret_t
+dart_amsg_sync(dart_amsgq_t amsgq);
 
 /**
  * Close the queue, discarding all remaining messages and deallocating all allocated memory.

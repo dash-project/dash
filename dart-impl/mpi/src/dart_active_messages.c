@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <mpi.h>
+#include <errno.h>
 
 #include <dash/dart/if/dart_active_messages.h>
+#include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_team_private.h>
@@ -15,6 +17,8 @@
  *  2) Should we allow for return values to be passed back?
  *  3) Use a distributed double buffer to allow for overlapping read/writes
  */
+
+static pthread_mutex_t processing_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct dart_amsgq {
   MPI_Win      tailpos_win;
@@ -133,22 +137,28 @@ dart_amsg_process(dart_amsgq_t amsgq)
   dart_unit_t unitid;
   int   zero = 0;
   int   tailpos;
-  char *dbuf = amsgq->dbuf;
 
-  dart_comm_down();
+  int ret = pthread_mutex_lock(&processing_mutex);
+  if (ret != 0) {
+    // another thread is currently processing the active message queue
+    return DART_ERR_AGAIN;
+  }
+
+  char *dbuf = amsgq->dbuf;
 
   dart_team_myid (amsgq->team, &unitid);
 
+  dart_comm_down();
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid, 0, amsgq->tailpos_win);
 
   MPI_Get(&tailpos, 1, MPI_INT32_T, unitid, 0, 1, MPI_INT32_T, amsgq->tailpos_win);
-  DART_LOG_INFO("Checking for new active messages (tailpos=%i)", tailpos);
 
   /**
    * process messages while they are available, i.e.,
    * repeat if messages come in while processing previous messages
    */
   if (tailpos > 0) {
+    DART_LOG_INFO("Checking for new active messages (tailpos=%i)", tailpos);
     // lock the tailpos window
     MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid, 0, amsgq->queue_win);
     // copy the content of the queue for processing
@@ -163,10 +173,11 @@ dart_amsg_process(dart_amsgq_t amsgq)
     // reset the tailpos and release the lock on the message queue
     MPI_Put(&zero, 1, MPI_INT32_T, unitid, 0, 1, MPI_INT32_T, amsgq->tailpos_win);
     MPI_Win_unlock(unitid, amsgq->tailpos_win);
+
     dart_comm_up();
 
     // process the messages by invoking the functions on the data supplied
-    size_t pos = 0;
+    int pos = 0;
     while (pos < tailpos) {
 #ifdef DART_ENABLE_LOGGING
       int startpos = pos;
@@ -181,6 +192,7 @@ dart_amsg_process(dart_amsgq_t amsgq)
 
       if (pos > tailpos) {
         DART_LOG_ERROR("Message out of bounds (expected %i but saw %i)\n", tailpos, pos);
+        pthread_mutex_unlock(&processing_mutex);
         return DART_ERR_INVAL;
       }
 
@@ -192,9 +204,17 @@ dart_amsg_process(dart_amsgq_t amsgq)
   } else {
     MPI_Win_unlock(unitid, amsgq->tailpos_win);
     dart_comm_up();
-    DART_LOG_INFO("No messages to process.");
   }
+  pthread_mutex_unlock(&processing_mutex);
   return DART_OK;
+}
+
+
+dart_ret_t
+dart_amsg_sync(dart_amsgq_t amsgq)
+{
+  dart_barrier(amsgq->team);
+  return dart_amsg_process(amsgq);
 }
 
 dart_ret_t
