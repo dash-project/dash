@@ -55,7 +55,7 @@ int main(int argc, char * argv[])
 	{
 		if(myid == 0) {
 			print_separator();
-			cout << "Write Array A to " << FILENAME << " / data" << endl;
+			cout << "Write Array A to " << FILENAME << " / group/data" << endl;
 		}
 
 		dash::io::hdf5::HDF5OutputStream os(FILENAME);
@@ -69,7 +69,7 @@ int main(int argc, char * argv[])
 	{
 		if(myid == 0){
 			print_separator();
-			cout << "Read " << FILENAME << " / data into Array C,"
+			cout << "Read " << FILENAME << " / group/data into Array C,"
 					 << " reconstruct pattern" << endl;
 		}
 		// Use delayed allocation
@@ -85,7 +85,7 @@ int main(int argc, char * argv[])
 	{
 		if(myid == 0){
 			print_separator();
-			cout << "Read " << FILENAME << " / data into already allocated Array C" << endl;
+			cout << "Read " << FILENAME << " / group/data into already allocated Array C" << endl;
 		}
 		// pass allocated array to define custom pattern
 		array_t array_c(pattern_b); // tilesize=7
