@@ -15,6 +15,7 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_config.h>
 #include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_tasking.h>
 
 #ifdef DART_ENABLE_ASSERTIONS
 #include <assert.h>
@@ -66,8 +67,8 @@ static inline double dart_base_logging_timestamp() {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d ERROR ] [ %f ] [ %*d ] %-*s:%-*d !!! DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      "[ %*d:%d ERROR ] [ %f ] [ %*d ] %-*s:%-*d !!! DART: %s\n", \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
       dart_base_logging_timestamp(), \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -98,8 +99,8 @@ static inline double dart_base_logging_timestamp() {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d TRACE ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      "[ %*d:%d TRACE ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
       dart_base_logging_timestamp(), \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -125,8 +126,8 @@ static inline double dart_base_logging_timestamp() {
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d DEBUG ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      "[ %*d:%d DEBUG ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
       dart_base_logging_timestamp(), \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -148,8 +149,8 @@ static inline double dart_base_logging_timestamp() {
         dart_unit_t unit_id = -1; \
         dart_myid(&unit_id); \
         fprintf(DART_LOG_OUTPUT_TARGET, \
-          "[ %*d INFO  ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-          DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+          "[ %*d:%d INFO  ] [ %f ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
+          DASH__DART_LOGGING__UNIT__WIDTH, unit_id, dart_tasking_thread_num ? dart_tasking_thread_num() : 0, \
           dart_base_logging_timestamp(), \
           DASH__DART_LOGGING__PROC__WIDTH, pid, \
           DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
