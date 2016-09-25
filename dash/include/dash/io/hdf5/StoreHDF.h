@@ -33,6 +33,27 @@ namespace dash {
 namespace io {
 namespace hdf5 {
 
+/** Pseudo type traits to map the native c datatype to an hdf5 type.
+ * This has to be implemented using a function, as the H5T_NATIVE_*
+ * is a macro that expands to a non constant function
+ */
+template < typename T > hid_t get_h5_datatype() {
+  static_assert(false, "datatype not supported");
+  return;
+}
+template <> hid_t get_h5_datatype<int>(){
+  return H5T_NATIVE_INT;
+}
+template <> hid_t get_h5_datatype<long>(){
+  return H5T_NATIVE_LONG;
+}
+template <> hid_t get_h5_datatype<float>(){
+  return H5T_NATIVE_FLOAT;
+}
+template <> hid_t get_h5_datatype<double>(){
+  return H5T_NATIVE_DOUBLE;
+}
+
 /**
  * DASH wrapper to store an dash::Array or dash::Matrix
  * in an HDF5 file using parallel IO.
@@ -123,7 +144,7 @@ public:
     auto pat_dims   = pattern.ndim();
     long tilesize   = pattern.blocksize(0);
     // Map native types to HDF5 types
-    auto h5datatype = _convertType(array[0]);
+    auto h5datatype = get_h5_datatype<value_t>();
     // for tracking opened groups
     std::list<hid_t> open_groups;
     // Split path in groups and dataset
@@ -301,7 +322,7 @@ public:
     auto pattern    = array.pattern();
     auto pat_dims    = pattern.ndim();
     // Map native types to HDF5 types
-    auto h5datatype = _convertType(*array.lbegin());
+    auto h5datatype = get_h5_datatype<value_t>();
     // for tracking opened groups
     std::list<hid_t> open_groups;
     // Split path in groups and dataset
@@ -568,7 +589,7 @@ public:
       array.allocate(pattern);
     }
     pattern_t pattern    = array.pattern();
-    h5datatype = _convertType(array[0]); // hack
+    h5datatype = get_h5_datatype<value_t>(); // hack
 
     // get hdf pattern layout
     hdf5_pattern_spec<1> ts = _get_pattern_hdf_spec<1>(pattern);
@@ -758,7 +779,7 @@ public:
       matrix.allocate(pattern);
     }
 
-    h5datatype = _convertType(*matrix.lbegin()); // hack
+    h5datatype = get_h5_datatype<value_t>();
     internal_type = H5Tcopy(h5datatype);
 
     // setup extends per dimension
@@ -916,25 +937,6 @@ private:
       }
     }
     return ts;
-  }
-
-private:
-
-  static inline hid_t _convertType(int t)
-  {
-    return H5T_NATIVE_INT;
-  }
-  static inline hid_t _convertType(long t)
-  {
-    return H5T_NATIVE_LONG;
-  }
-  static inline hid_t _convertType(float t)
-  {
-    return H5T_NATIVE_FLOAT;
-  }
-  static inline hid_t _convertType(double t)
-  {
-    return H5T_NATIVE_DOUBLE;
   }
 
 };
