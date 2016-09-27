@@ -179,6 +179,8 @@ public:
       node_lptr = static_cast<ListNode_t *>(
                     _list->_globmem->lbegin() + l_size_old);
     }
+
+    _list->_lend = _list->_globmem->lbegin() + l_size_new;
     // Local capacity before operation:
     auto l_cap_new = _list->_globmem->local_size();
     DASH_LOG_TRACE("LocalListRef.push_back",
@@ -273,6 +275,11 @@ public:
     return true;
   }
 
+private:
+  void relocate()
+  {
+    (void) 5;
+  }
 private:
   /// Pointer to list instance referenced by this view.
   list_type * const _list;

@@ -29,6 +29,7 @@ extern "C" {
 
 struct dart_pmem_pool;
 typedef struct dart_pmem_pool dart_pmem_pool_t;
+
 struct dart_pmem_oid;
 typedef struct dart_pmem_oid  dart_pmem_oid_t;
 
@@ -128,6 +129,7 @@ static struct dart_pmem_oid const DART_PMEM_OID_NULL = {{0, 0}};
 
 struct dart_pmem_list_constr_args {
   char const * name;
+  size_t team_size;
 };
 
 struct dart_pmem_bucket_alloc_args {
@@ -160,10 +162,12 @@ TOID_DECLARE(char, DART_PMEM_TYPES_OFFSET + 0);
 struct dart_pmem_bucket_list {
   //name of pmem pool
   char                name[MAX_BUFFLEN];
+  //Team size
+  size_t              team_size;
   //Number of allocated buckets
   size_t              num_buckets;
   //Number of bytes for a single element
-  size_t              element_size;
+  //size_t              element_size;
   //Head node to the first bucket
   DART_PMEM_TAILQ_HEAD(dart_pmem_list_head, struct dart_pmem_bucket) head;
 };

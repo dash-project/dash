@@ -6,9 +6,10 @@
 #include "TestBase.h"
 #include "ListTest.h"
 
+using  value_t = int;
+
 TEST_F(ListTest, Initialization)
 {
-  typedef int                   value_t;
   //typedef dash::default_index_t index_t;
 
   auto nunits    = dash::size();
@@ -35,6 +36,13 @@ TEST_F(ListTest, Initialization)
   auto gcap_new  = gcap_init + nunits * (lcap_new - lcap_init);
   // Global capacity visible to local unit after local insert operations:
   auto gcap_loc  = gcap_init + (lcap_new - lcap_init);
+
+  /*
+  using persistent_allocator =
+    dash::allocator::PersistentMemoryAllocator<value_t>;
+
+  using persistent_list = dash::List<value_t, persistent_allocator>;
+  */
 
   dash::List<value_t> list(gcap_init, lbuf_size);
   DASH_LOG_DEBUG("ListTest.Initialization", "list initialized");
@@ -100,3 +108,75 @@ TEST_F(ListTest, Initialization)
   }
 }
 
+#define PMEM_POOL "ListTest.pmem"
+
+TEST_F(ListTest, PersistentMemory)
+{
+  auto me = dash::myid();
+  auto nunits = dash::size();
+
+  using persistent_allocator =
+    dash::allocator::PersistentMemoryAllocator<value_t>;
+
+  using persistent_list = dash::List<value_t, persistent_allocator>;
+
+  //local capacity is initially set to 4Kb --> 1024 integer values
+  auto lcap = 32;
+  auto gcap = lcap * nunits;
+  auto nel  = lcap + 10;
+  auto poolId = dash::util::random_str(8) + ".pmem";
+
+  {
+    persistent_allocator alloc = persistent_allocator{dash::Team::All(), poolId};
+
+    persistent_list list(alloc);
+
+    // no elements added yet, size is 0:
+    EXPECT_EQ_U(0, list.size());
+    EXPECT_EQ_U(0, list.lsize());
+    EXPECT_TRUE_U(list.empty());
+    // capacities have initial setting:
+    EXPECT_EQ_U(gcap, list.capacity());
+    EXPECT_EQ_U(lcap, list.lcapacity());
+
+    dash::barrier();
+
+    for (auto li = 0; li < nel; ++li) {
+      value_t v = 1000 * (me + 1) + li;
+      list.local.push_back(v);
+    }
+
+    list.barrier();
+  }
+
+  {
+    persistent_allocator alloc = persistent_allocator{dash::Team::All(), poolId};
+
+    persistent_list list(alloc);
+
+    EXPECT_EQ_U(nel * nunits,    list.size());
+    EXPECT_EQ_U(nel,    list.lsize());
+    EXPECT_EQ_U(nel,    list.local.size());
+    EXPECT_EQ_U(list.lbegin() + list.lsize(),  list.lend());
+    DASH_LOG_DEBUG_VAR("ListTest.PersistentMemory", list.lcapacity());
+    DASH_LOG_DEBUG_VAR("ListTest.PersistentMemory", list.capacity());
+    EXPECT_EQ_U(lcap * 2,  list.lcapacity());
+    EXPECT_EQ_U(lcap * 2 * nunits,  list.capacity());
+
+    for (auto li = 0; li < list.lsize(); ++li) {
+      DASH_LOG_DEBUG("ListTest.PersistentMemory",
+                     "validate list.local[", li, "]");
+      auto    l_node_attached = *(list.local.begin() + li);
+      DASH_LOG_DEBUG_VAR("ListTest.PersistentMemory", l_node_attached.value);
+      DASH_LOG_DEBUG_VAR("ListTest.PersistentMemory", l_node_attached.lprev);
+      DASH_LOG_DEBUG_VAR("ListTest.PersistentMemory", l_node_attached.lnext);
+      value_t expect = 1000 * (me + 1) + li;
+      value_t actual = l_node_attached.value;
+      EXPECT_EQ_U(expect, actual);
+    }
+  }
+  /*
+  auto last_node = *(list.lend() - 1);
+  EXPECT_EQ_U(list.lsize() - 1 + 1000 * (me + 1), last_node.value);
+  */
+}

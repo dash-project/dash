@@ -50,6 +50,7 @@ static int _dart_pmem_list_new(PMEMobjpool * pop,
 
     DART_PMEM_TAILQ_INIT(&D_RW(*list)->head);
     TX_MEMCPY(D_RW(*list)->name, args->name, strlen(args->name) + 1);
+    TX_SET(*list, team_size, args->team_size);
     TX_SET(*list, num_buckets, 0);
   }
   TX_ONABORT {
@@ -59,7 +60,6 @@ static int _dart_pmem_list_new(PMEMobjpool * pop,
 
   return ret;
 }
-
 
 static inline char * _tempname(const char * layout, int myid)
 {
@@ -100,7 +100,7 @@ static dart_pmem_oid_t _dart_pmem_bucket_alloc(PMEMobjpool * pop,
     }
     //D_RW(node)->element_size = args.element_size;
     D_RW(node)->nbytes = args.nbytes;
-    D_RW(node)->data = pmemobj_tx_alloc(args.nbytes,
+    D_RW(node)->data = pmemobj_tx_zalloc(args.nbytes,
                                         TYPE_NUM_BYTE);
     if (OID_IS_NULL(D_RO(node)->data)) {
       pmemobj_tx_abort(1);
@@ -122,7 +122,7 @@ static dart_pmem_oid_t _dart_pmem_bucket_alloc(PMEMobjpool * pop,
 }
 
 static inline PMEMobjpool * _open_pool_intern(char const * path,
-    char const * name)
+    char const * name, size_t team_size)
 {
   PMEMobjpool * pop;
 
@@ -132,6 +132,17 @@ static inline PMEMobjpool * _open_pool_intern(char const * path,
   }
 
   DART_ASSERT(pmemobj_root_size(pop));
+
+  //TODO: this is a current workaround since we only support synchronous pool allocation and relocation
+  TOID(struct dart_pmem_bucket_list) list = POBJ_ROOT(pop,
+      struct dart_pmem_bucket_list);
+
+  size_t size = D_RO(list)->team_size;
+
+  if (size != team_size) {
+    DART_LOG_ERROR("dart__pmem_open: failed to open pmem pool(%s) | team sizes do not match", name);
+  }
+
   DART_LOG_DEBUG("dart__pmem__open: pool opened (%s)", path);
   return pop;
 }
@@ -147,13 +158,18 @@ dart_pmem_pool_t * dart__pmem__open(
 {
   DART_ASSERT(name);
 
-  if (flags & ~(DART_PMEM_ALL_FLAGS)) {
-    DART_LOG_ERROR("invalid flag specified: %d", flags);
-    return NULL;
-  }
 
   if (DART_TEAM_NULL == team) {
     DART_LOG_ERROR("invalid team specified: %d", team);
+    return NULL;
+  }
+
+  size_t team_size = 0;
+
+  DART_ASSERT_RETURNS(dart_team_size(team, &team_size), DART_OK); 
+
+  if (flags & ~(DART_PMEM_ALL_FLAGS)) {
+    DART_LOG_ERROR("invalid flag specified: %d", flags);
     return NULL;
   }
 
@@ -179,7 +195,7 @@ dart_pmem_pool_t * dart__pmem__open(
         return NULL;
       }
 
-      pop = _open_pool_intern(full_path, name);
+      pop = _open_pool_intern(full_path, name, team_size);
     } else {
 
       if ((pop = pmemobj_create(full_path, name, poolsize,
@@ -189,7 +205,8 @@ dart_pmem_pool_t * dart__pmem__open(
       }
 
       struct dart_pmem_list_constr_args args = {
-        .name = name
+        .name = name,
+        .team_size = team_size
       };
 
       TOID(struct dart_pmem_bucket_list) root;
@@ -199,7 +216,7 @@ dart_pmem_pool_t * dart__pmem__open(
                      full_path, poolsize);
     }
   } else {
-    pop = _open_pool_intern(full_path, name);
+    pop = _open_pool_intern(full_path, name, team_size);
   }
 
   if (pop == NULL) {

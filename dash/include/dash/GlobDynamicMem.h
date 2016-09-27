@@ -301,7 +301,7 @@ public:
 
   explicit GlobDynamicMem(
     //the allocator
-    allocator_type && alloc)
+    allocator_type & alloc)
     : _allocator(std::move(alloc)),
       _team(&_allocator.team()),
       _teamid(_team->dart_id()),
@@ -1452,13 +1452,15 @@ private:
   /// memory space.
   /// Dash Array
   local_sizes_map            _num_detach_buckets;
+  /// true if we allocate persistent memory.
+  bool                       _is_persistent = false;
   /// Total number of elements in attached memory space of remote units.
   size_type                  _remote_size = 0;
   /// Global iterator referencing start of global memory space.
   global_iterator            _begin;
   /// Global iterator referencing the final position in global memory space.
   global_iterator            _end;
-  bool                       _is_persistent = false;
+
 
 }; // class GlobDynamicMem
 

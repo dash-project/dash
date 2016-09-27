@@ -187,8 +187,6 @@ private:
   typedef internal::ListNode<value_type> node_type;
 
   typedef typename AllocatorType::template rebind<internal::ListNode<ElementType> >::other node_allocator_type;
-  //using allocator_traits = std::allocator_traits<allocator_type>;
-  //using node_allocator_type = typename allocator_traits::template rebind_alloc<node_type>;
 
   typedef dash::GlobDynamicMem<node_type, node_allocator_type>
   glob_mem_type;
@@ -272,7 +270,7 @@ public:
       _local_sizes.allocate(team.size(), dash::BLOCKED, team);
       _local_sizes.local[0] = 0;
     }
-    allocate(nelem);
+    allocate(nelem, team);
     barrier();
     DASH_LOG_TRACE("List(nelem,team) >");
   }
@@ -296,10 +294,72 @@ public:
       _local_sizes.allocate(team.size(), dash::BLOCKED, team);
       _local_sizes.local[0] = 0;
     }
-    allocate(nelem);
+    allocate(nelem, team);
     barrier();
     DASH_LOG_TRACE("List(nelem,nlbuf,team) >");
   }
+
+  explicit List(
+      allocator_type const & alloc):
+    local(this),
+    _team(&alloc.team()),
+    _myid(_team->myid()),
+    _remote_size(0)
+  {
+    DASH_LOG_TRACE("List(alloc) >");
+
+    _is_persistent = alloc.isPersistent();
+
+    if (_is_persistent) {
+      node_allocator_type node_alloc = node_allocator_type(alloc);
+
+      if (_team->size() > 0) {
+        _local_sizes.allocate(_team->size(), dash::BLOCKED, *_team);
+      }
+
+      _globmem = new glob_mem_type(node_alloc);
+
+      _local_sizes.local[0] = 0;
+
+      if (_globmem->local_size() == 0) {
+        auto nelem = _team->size() * _local_buffer_size;
+        auto lcap = dash::math::div_ceil(nelem, _team->size());
+        _lbegin = _globmem->grow(lcap);
+        _lend = _lbegin;
+      } else {
+        DASH_LOG_DEBUG_VAR("List.List(alloc)", _globmem->local_size());
+        _lbegin = _globmem->lbegin(_myid);
+        _lend = _globmem->lend(_myid);
+        for (auto ii = 0; ii < _globmem->local_size(); ++ii) {
+          auto iter = _lbegin + ii;
+          _local_sizes.local[0]++;
+
+          if ((*iter).lnext == 0 || (*iter).lnext == nullptr) {
+            _lend = iter + 1;
+            break;
+          }
+        }
+
+        DASH_LOG_DEBUG_VAR("List.List(alloc)", lsize());
+      }
+
+      _begin = iterator(_globmem, _nil_node);
+      _end = _begin; 
+    }
+
+    _team->register_deallocator(
+      this, std::bind(&List::deallocate, this));
+
+    // Assure all units are synchronized after allocation, otherwise
+    // other units might start working on the list before allocation
+    // completed at all units:
+    if (dash::is_initialized()) {
+      DASH_LOG_TRACE("List.allocate",
+                     "waiting for allocation of all units");
+      barrier();
+    }
+  }
+
 
   /**
    * Destructor, deallocates local and global memory acquired by the
@@ -661,7 +721,9 @@ private:
   /// have not been committed to global memory yet.
   /// Default is 4 KB.
   size_type            _local_buffer_size
-    = 4096 / sizeof(value_type);
+    = 128 / sizeof(value_type);
+
+  bool                _is_persistent = false;
 
 };
 

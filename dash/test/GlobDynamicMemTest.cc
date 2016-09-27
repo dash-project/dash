@@ -25,7 +25,7 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
 
   EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
   EXPECT_EQ_U(initial_local_capacity,  gdmem.lend(dash::myid()) -
-                                       gdmem.lbegin(dash::myid()));
+              gdmem.lbegin(dash::myid()));
   EXPECT_EQ_U(initial_global_capacity, gdmem.size());
 
   DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "initial local:",
@@ -49,7 +49,7 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
                                      bucket_1_size + bucket_2_size;
   EXPECT_EQ_U(precommit_local_capacity,  gdmem.local_size());
   EXPECT_EQ_U(precommit_local_capacity,  gdmem.lend(dash::myid()) -
-                                         gdmem.lbegin(dash::myid()));
+              gdmem.lbegin(dash::myid()));
   EXPECT_EQ_U(precommit_global_capacity, gdmem.size());
 
   DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "pre-commit local:",
@@ -70,7 +70,7 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
                                       postcommit_local_capacity;
   EXPECT_EQ_U(postcommit_local_capacity,  gdmem.local_size());
   EXPECT_EQ_U(postcommit_local_capacity,  gdmem.lend(dash::myid()) -
-                                          gdmem.lbegin(dash::myid()));
+              gdmem.lbegin(dash::myid()));
   EXPECT_EQ_U(postcommit_global_capacity, gdmem.size());
 }
 
@@ -95,7 +95,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
 
   EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
   EXPECT_EQ_U(initial_local_capacity,  gdmem.lend(dash::myid()) -
-                                       gdmem.lbegin(dash::myid()));
+              gdmem.lbegin(dash::myid()));
   EXPECT_EQ_U(initial_global_capacity, gdmem.size());
 
   dash::barrier();
@@ -115,8 +115,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
     gdmem.grow(unit_0_lsize_diff);
     EXPECT_EQ_U(initial_local_capacity + unit_0_lsize_diff,
                 gdmem.local_size());
-  }
-  else if (dash::myid() == 1) {
+  } else if (dash::myid() == 1) {
     gdmem.grow(unit_1_lsize_diff);
     EXPECT_EQ_U(initial_local_capacity + unit_1_lsize_diff,
                 gdmem.local_size());
@@ -128,12 +127,12 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
 
   dash::barrier();
   LOG_MESSAGE("before commit: global size: %d, local size: %d",
-               gdmem.size(), gdmem.local_size());
+              gdmem.size(), gdmem.local_size());
 
   gdmem.commit();
 
   LOG_MESSAGE("after commit: global size: %d, local size: %d",
-               gdmem.size(), gdmem.local_size());
+              gdmem.size(), gdmem.local_size());
 
   // Global size should be updated after commit:
   EXPECT_EQ_U(initial_global_capacity + gsize_diff, gdmem.size());
@@ -142,8 +141,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
   if (dash::myid() == 0) {
     EXPECT_EQ_U(initial_local_capacity + unit_0_lsize_diff,
                 gdmem.local_size());
-  }
-  else if (dash::myid() == 1) {
+  } else if (dash::myid() == 1) {
     EXPECT_EQ_U(initial_local_capacity + unit_1_lsize_diff,
                 gdmem.local_size());
   } else {
@@ -204,7 +202,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
       EXPECT_EQ_U(exp_l_capacity, gdmem.local_size(unit));
       EXPECT_EQ_U(exp_l_capacity, unit_git_end - unit_git_begin);
       int l_idx = 0;
-      for(auto it = unit_git_begin; it != unit_git_end; ++it, ++l_idx) {
+      for (auto it = unit_git_begin; it != unit_git_end; ++it, ++l_idx) {
         DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
                        "requesting element at",
                        "local offset", l_idx,
@@ -305,7 +303,7 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
 
   dash::barrier();
   LOG_MESSAGE("global size: %d, local size: %d",
-               gdmem.size(), gdmem.local_size());
+              gdmem.size(), gdmem.local_size());
 
   // Global memory space has not been updated yet, changes are only
   // visible locally.
@@ -554,8 +552,12 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
     if (dash::myid() != static_cast<dart_unit_t>(u)) {
       size_t  nlocal_elem   = gdmem.local_size(u);
       size_t  nlocal_expect = initial_local_capacity;
-      if (u == 0) { nlocal_expect += unit_0_num_grow; }
-      if (u == 1) { nlocal_expect -= unit_1_num_shrink; }
+      if (u == 0) {
+        nlocal_expect += unit_0_num_grow;
+      }
+      if (u == 1) {
+        nlocal_expect -= unit_1_num_shrink;
+      }
 
       EXPECT_EQ_U(nlocal_expect, nlocal_elem);
       DASH_LOG_DEBUG("GlobDynamicMemTest.RemoteAccess",
@@ -576,22 +578,34 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
   }
 }
 
+#define PMEM_POOL "GlobDynamicMemTest.pmem"
 
 TEST_F(GlobDynamicMemTest, PersistentMemAlloc)
 {
   using value_t = int;
-  using persistent_allocator_type = dash::allocator::PersistentMemoryAllocator<value_t>;
+  using persistent_allocator =
+    dash::allocator::PersistentMemoryAllocator<value_t>;
 
-  size_t initial_local_capacity  = 10;
-  size_t initial_global_capacity = dash::size() * initial_local_capacity;
+  size_t grow_step  = 10;
+  size_t initial_local_capacity;
+  size_t initial_global_capacity;
 
   //Possibility 1:
-  //dash::GlobDynamicMem<value_t, persistent_allocator_type> gdmem(initial_local_capacity);
-  
+  //dash::GlobDynamicMem<value_t, persistent_allocator> gdmem(initial_local_capacity);
+
   //Possibility 2:
-  dash::GlobDynamicMem<value_t, persistent_allocator_type> gdmem(persistent_allocator_type{dash::Team::All(), "mypool.pmem"});
-  gdmem.grow(initial_local_capacity);
-  dash::barrier();
+  persistent_allocator alloc = persistent_allocator{dash::Team::All(), PMEM_POOL};
+  dash::GlobDynamicMem<value_t, persistent_allocator> gdmem(alloc);
+
+  if (gdmem.size() > 0) {
+    initial_local_capacity  = gdmem.local_size();
+    initial_global_capacity = gdmem.size();
+  } else {
+    initial_local_capacity = grow_step;
+    initial_global_capacity = dash::size() * initial_local_capacity;
+    gdmem.grow(grow_step);
+  }
+
   gdmem.commit();
 
   LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
@@ -599,7 +613,7 @@ TEST_F(GlobDynamicMemTest, PersistentMemAlloc)
 
   EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
   EXPECT_EQ_U(initial_local_capacity,  gdmem.lend(dash::myid()) -
-                                       gdmem.lbegin(dash::myid()));
+              gdmem.lbegin(dash::myid()));
   EXPECT_EQ_U(initial_global_capacity, gdmem.size());
 
   DASH_LOG_TRACE("GlobDynamicMemTest.PersistentMemAlloc", "initial local:",
@@ -611,39 +625,83 @@ TEST_F(GlobDynamicMemTest, PersistentMemAlloc)
 
   size_t bucket_1_size = 5;
   size_t bucket_2_size = 7;
+  size_t bucket_3_size = 10;
 
-  gdmem.grow(3);
   gdmem.grow(bucket_1_size);
   gdmem.grow(bucket_2_size);
-  gdmem.shrink(3);
+  gdmem.grow(bucket_3_size);
 
   size_t precommit_local_capacity  = initial_local_capacity +
-                                     bucket_1_size + bucket_2_size;
+                                     bucket_1_size + bucket_2_size
+                                     + bucket_3_size;
   size_t precommit_global_capacity = initial_global_capacity +
-                                     bucket_1_size + bucket_2_size;
+                                     bucket_1_size + bucket_2_size
+                                     + bucket_3_size;
   EXPECT_EQ_U(precommit_local_capacity,  gdmem.local_size());
   EXPECT_EQ_U(precommit_local_capacity,  gdmem.lend(dash::myid()) -
-                                         gdmem.lbegin(dash::myid()));
+              gdmem.lbegin(dash::myid()));
   EXPECT_EQ_U(precommit_global_capacity, gdmem.size());
 
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "pre-commit local:",
+  DASH_LOG_TRACE("GlobDynamicMemTest.PersistentMemAlloc", "pre-commit local:",
                  gdmem.local_size());
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "pre-commit global:",
+  DASH_LOG_TRACE("GlobDynamicMemTest.PersistentMemAlloc", "pre-commit global:",
                  gdmem.size());
   // Wait for validation of changes of local capacity at all units:
   dash::barrier();
 
-  gdmem.commit();
-
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "post-commit local:",
+  DASH_LOG_TRACE("GlobDynamicMemTest.PersistentMemAlloc", "post-commit local:",
                  gdmem.local_size());
-  DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "post-commit global:",
+  DASH_LOG_TRACE("GlobDynamicMemTest.PersistentMemAlloc", "post-commit global:",
                  gdmem.size());
   size_t postcommit_local_capacity  = precommit_local_capacity;
   size_t postcommit_global_capacity = dash::size() *
                                       postcommit_local_capacity;
+  gdmem.commit();
+
   EXPECT_EQ_U(postcommit_local_capacity,  gdmem.local_size());
   EXPECT_EQ_U(postcommit_local_capacity,  gdmem.lend(dash::myid()) -
-                                          gdmem.lbegin(dash::myid()));
+              gdmem.lbegin(dash::myid()));
   EXPECT_EQ_U(postcommit_global_capacity, gdmem.size());
+
+  // Initialize values in reallocated memory:
+  if (dash::myid() == 0) {
+    auto lmem = gdmem.lbegin();
+    auto lcap = gdmem.local_size();
+    for (int li = 0; li < lcap; ++li) {
+      auto value = 1000 * (dash::myid() + 1) + li;
+      DASH_LOG_TRACE("GlobDynamicMemTest.PersistentMemAlloc",
+                     "setting local offset", li, "at unit", dash::myid(),
+                     "value:", value);
+      lmem[li] = value;
+    }
+  }
+}
+
+TEST_F(GlobDynamicMemTest, PersistentMemRelocate)
+{
+  using value_t = int;
+  using persistent_allocator_type =
+    dash::allocator::PersistentMemoryAllocator<value_t>;
+
+  persistent_allocator_type alloc = persistent_allocator_type{dash::Team::All(), PMEM_POOL};
+  dash::GlobDynamicMem<value_t, persistent_allocator_type> gdmem(alloc);
+
+
+  DASH_LOG_DEBUG("GlobDynamicMemTest.PersistentMemRelocate", "local capacity:",
+                 gdmem.local_size());
+  DASH_LOG_DEBUG("GlobDynamicMemTest.PersistentMemRelocate", "global capacity:",
+                 gdmem.size());
+
+  // Initialize values in reallocated memory:
+  auto lmem = gdmem.lbegin();
+  auto lcap = gdmem.local_size();
+  if (dash::myid() == 0) {
+    for (int li = 0; li < lcap; ++li) {
+      auto value = 1000 * (dash::myid() + 1) + li;
+      DASH_LOG_TRACE("GlobDynamicMemTest.PersistentMemRelocate",
+                     "reading local offset", li, "at unit", dash::myid(),
+                     "value:", lmem[li]);
+      EXPECT_EQ_U(lmem[li], value);
+    }
+  }
 }
