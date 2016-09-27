@@ -1,10 +1,11 @@
-#ifndef DART__PMEM_LIST_H__INCLUDED
-#define DART__PMEM_LIST_H__INCLUDED
+#ifndef DART__MPI__PMEM_PRIVATE_H__INCLUDED
+#define DART__MPI__PMEM_PRIVATE_H__INCLUDED
 
-/* Adapted from sys/queue.h 
+/*
+ * Adapted from sys/queue.h
  *
  * See https://raw.githubusercontent.com/freebsd/freebsd/master/sys/sys/queue.h
-*/ 
+ */
 
 
 #include <libpmemobj.h>
@@ -313,4 +314,4 @@ struct name {\
 	}	\
 } while (0)
 
-#endif
+#endif /* DART__MPI__PMEM_PRIVATE_H__INCLUDED */

@@ -1,4 +1,9 @@
 
+#include <string>
+#include <random>
+#include <algorithm>
+
+
 namespace dash {
 namespace util {
 static std::string const default_chars =
@@ -6,7 +11,11 @@ static std::string const default_chars =
 
 static std::string random_str(size_t len)
 {
+#if defined(__POSIX_SOURCE)
   std::mt19937_64 gen { std::random_device()() };
+#else
+  std::mt19937 gen { std::random_device()() };
+#endif
 
   std::uniform_int_distribution<size_t> dist { 0, default_chars.length() - 1 };
 

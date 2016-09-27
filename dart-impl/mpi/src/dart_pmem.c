@@ -8,39 +8,59 @@
 #include <linux/limits.h>
 #include <sys/stat.h>
 
+#if defined(DART_MPI)
 #include <mpi.h>
+#endif
 
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_pmem.h>
 
+#include <dash/dart/mpi/dart_pmem_private.h>
+
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 
-//define this function as extern since some compilers complain about implicit declaration
+
+
+void * alloc_mem(size_t size);
+void free_mem(void * ptr);
+
+
+// define this function as extern since some compilers complain about
+// implicit declaration
 extern char * strdup(const char * s);
 
-void * alloc_mem(size_t size)
-{
+void * alloc_mem(size_t size) {
   char * baseptr;
+
+#if defined(DART_MPI)
   DART_ASSERT_RETURNS(MPI_Alloc_mem(size, MPI_INFO_NULL, &baseptr), MPI_SUCCESS);
+#else
+#warn "dart__pmem: requires MPI"
+#endif
   return baseptr;
 }
 
-void free_mem(void * ptr)
-{
+void free_mem(void * ptr) {
+#if defined(DART_MPI)
   DART_ASSERT_RETURNS(MPI_Free_mem(ptr), MPI_SUCCESS);
+#else
+#warn "dart__pmem: requires MPI"
+#endif
 }
 
-dart_ret_t dart__pmem__init(void)
-{
+dart_ret_t dart__pmem__init(void) {
   pmemobj_set_funcs(alloc_mem, free_mem, NULL, NULL);
   return DART_OK;
 }
 
+/* ----------------------------------------------------------------------- *
+ * Private Function Definitions                                            *
+ * ----------------------------------------------------------------------- */
+
 static int _dart_pmem_list_new(PMEMobjpool * pop,
                                TOID(struct dart_pmem_bucket_list) * list,
-                               struct dart_pmem_list_constr_args * args)
-{
+                               struct dart_pmem_list_constr_args * args) {
   int ret = DART_OK;
   TX_BEGIN(pop) {
     *list = POBJ_ROOT(pop, struct dart_pmem_bucket_list);
@@ -61,8 +81,7 @@ static int _dart_pmem_list_new(PMEMobjpool * pop,
   return ret;
 }
 
-static inline char * _tempname(const char * layout, int myid)
-{
+static inline char * _tempname(const char * layout, int myid) {
   char suffix[3];
   snprintf(suffix, sizeof(suffix), ".%d", myid);
 
@@ -80,10 +99,10 @@ static inline char * _tempname(const char * layout, int myid)
   return prefix;
 }
 
-static dart_pmem_oid_t _dart_pmem_bucket_alloc(PMEMobjpool * pop,
-    TOID(struct dart_pmem_bucket_list) * list,
-    struct dart_pmem_bucket_alloc_args args)
-{
+static dart_pmem_oid_t _dart_pmem_bucket_alloc(
+  PMEMobjpool * pop,
+  TOID(struct dart_pmem_bucket_list) * list,
+  struct dart_pmem_bucket_alloc_args args) {
   if (TOID_IS_NULL(*list)) {
     return DART_PMEM_OID_NULL;
   }
@@ -121,9 +140,10 @@ static dart_pmem_oid_t _dart_pmem_bucket_alloc(PMEMobjpool * pop,
   return ret;
 }
 
-static inline PMEMobjpool * _open_pool_intern(char const * path,
-    char const * name, size_t team_size)
-{
+static inline PMEMobjpool * _open_pool_intern(
+  char const * path,
+  char const * name,
+  size_t       team_size) {
   PMEMobjpool * pop;
 
   if ((pop = pmemobj_open(path, name)) == NULL) {
@@ -147,15 +167,38 @@ static inline PMEMobjpool * _open_pool_intern(char const * path,
   return pop;
 }
 
+static inline dart_ret_t _check_pool(
+  dart_pmem_pool_t const * pool) {
+  DART_ASSERT(pool);
+
+  if (NULL == pool->pop) {
+    DART_LOG_ERROR("invalid pmem pool");
+    return DART_ERR_INVAL;
+  }
+
+  size_t root_size = pmemobj_root_size(pool->pop);
+
+  if (root_size < sizeof(struct dart_pmem_bucket_list)) {
+    //TODO: apply better consistency check
+    DART_LOG_ERROR("improperly initialized pool");
+    return DART_ERR_INVAL;
+  }
+
+  return DART_OK;
+}
+
 #define DART_PMEM_ALL_FLAGS\
   (DART_PMEM_FILE_CREATE | DART_PMEM_FILE_EXCL)
+
+/* ----------------------------------------------------------------------- *
+ * Implementation of DART PMEM Interface                                   *
+ * ----------------------------------------------------------------------- */
 
 dart_pmem_pool_t * dart__pmem__open(
   dart_team_t   team,
   const char  * name,
   int           flags,
-  mode_t        mode)
-{
+  mode_t        mode) {
   DART_ASSERT(name);
 
 
@@ -234,32 +277,9 @@ dart_pmem_pool_t * dart__pmem__open(
   return poolp;
 }
 
-static inline dart_ret_t _check_pool(
-  dart_pmem_pool_t const * pool
-)
-{
-  DART_ASSERT(pool);
-
-  if (NULL == pool->pop) {
-    DART_LOG_ERROR("invalid pmem pool");
-    return DART_ERR_INVAL;
-  }
-
-  size_t root_size = pmemobj_root_size(pool->pop);
-
-  if (root_size < sizeof(struct dart_pmem_bucket_list)) {
-    //TODO: apply better consistency check
-    DART_LOG_ERROR("improperly initialized pool");
-    return DART_ERR_INVAL;
-  }
-
-  return DART_OK;
-}
-
 dart_pmem_oid_t dart__pmem__alloc(
   dart_pmem_pool_t  const * pool,
-  size_t              nbytes)
-{
+  size_t                    nbytes) {
 
   if (_check_pool(pool) != DART_OK) {
     DART_LOG_ERROR("%s: improperly initialized pool", __func__);
@@ -280,8 +300,7 @@ dart_pmem_oid_t dart__pmem__alloc(
 
 dart_ret_t dart__pmem__getaddr(
   dart_pmem_oid_t oid,
-  void ** addr)
-{
+  void ** addr) {
   *addr = pmemobj_direct(oid.oid);
   return DART_OK;
 }
@@ -289,8 +308,7 @@ dart_ret_t dart__pmem__getaddr(
 dart_ret_t dart__pmem__persist(
   dart_pmem_pool_t * pool,
   void * addr,
-  size_t nbytes)
-{
+  size_t nbytes) {
   if (_check_pool(pool) != DART_OK) {
     DART_LOG_ERROR("%s: improperly initialized pool", __func__);
     return DART_ERR_INVAL;
@@ -303,9 +321,7 @@ dart_ret_t dart__pmem__persist(
 
 dart_ret_t dart__pmem__pool_stat(
   dart_pmem_pool_t * pool,
-  struct dart_pmem_pool_stat * stat
-)
-{
+  struct dart_pmem_pool_stat * stat) {
   if (_check_pool(pool) != DART_OK) {
     DART_LOG_ERROR("%s: improperly initialized pool", __func__);
     return DART_ERR_INVAL;
@@ -324,9 +340,7 @@ dart_ret_t dart__pmem__pool_stat(
 
 dart_ret_t dart__pmem__fetch_all(
   dart_pmem_pool_t * pool,
-  dart_pmem_oid_t * buf
-)
-{
+  dart_pmem_oid_t * buf) {
   if (_check_pool(pool) != DART_OK) {
     DART_LOG_ERROR("%s: improperly initialized pool", __func__);
     return DART_ERR_INVAL;
@@ -357,9 +371,7 @@ dart_ret_t dart__pmem__fetch_all(
 dart_ret_t dart__pmem__oid_size(
   dart_pmem_pool_t const * pool,
   dart_pmem_oid_t oid,
-  size_t * size
-)
-{
+  size_t * size) {
   if (_check_pool(pool) != DART_OK) {
     DART_LOG_ERROR("%s: improperly initialized pool", __func__);
     return DART_ERR_INVAL;
@@ -385,8 +397,7 @@ dart_ret_t dart__pmem__oid_size(
 }
 
 dart_ret_t dart__pmem__close(
-  dart_pmem_pool_t ** pool)
-{
+  dart_pmem_pool_t ** pool) {
   DART_LOG_DEBUG("dart__pmem__close");
   pmemobj_close((*pool)->pop);
   free((char *) (*pool)->path);
