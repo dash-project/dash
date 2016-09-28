@@ -108,6 +108,7 @@ TEST_F(ListTest, Initialization)
   }
 }
 
+#ifdef DASH_ENABLE_PMEM
 #define PMEM_POOL "ListTest.pmem"
 
 TEST_F(ListTest, PersistentMemory)
@@ -180,3 +181,4 @@ TEST_F(ListTest, PersistentMemory)
   EXPECT_EQ_U(list.lsize() - 1 + 1000 * (me + 1), last_node.value);
   */
 }
+#endif //DASH_ENABLE_PMEM

@@ -1,6 +1,8 @@
 #ifndef DASH__ALLOCATOR__PERSISTENT_MEMORY_ALLOCATOR_H_INCLUDED
 #define DASH__ALLOCATOR__PERSISTENT_MEMORY_ALLOCATOR_H__INCLUDED
 
+#ifdef DASH_ENABLE_PMEM
+
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -166,7 +168,7 @@ public:
     clear();
     // closing the pool and free the pool handle
     if (_pmem_pool != nullptr) {
-      DASH_ASSERT_RETURNS(dart__pmem__close(&_pmem_pool), DART_OK);
+      DASH_ASSERT_RETURNS(dart__pmem__pool_close(&_pmem_pool), DART_OK);
     }
     DASH_LOG_TRACE("PersistentMemoryAllocator.~PersistentMemoryAllocator >");
   }
@@ -330,7 +332,7 @@ public:
     dart_pmem_oid_t oid = dart__pmem__alloc(_pmem_pool, nbytes);
 
     //convert it to a native address
-    dart_ret_t success = dart__pmem__getaddr(oid,
+    dart_ret_t success = dart__pmem__get_addr(oid,
                          reinterpret_cast<void **>(&lptr));
 
     if (success == DART_OK) {
@@ -445,7 +447,7 @@ private:
     if (dart_team_memderegister(_team_id, gptr) == DART_OK) {
       //persist all changes in persistent memory
       DASH_ASSERT_RETURNS(
-        dart__pmem__persist(_pmem_pool, bucket_it->first, bucket_it->second.nbytes),
+        dart__pmem__persist_addr(_pmem_pool, bucket_it->first, bucket_it->second.nbytes),
         DART_OK);
 
       if (deallocate) {
@@ -492,8 +494,8 @@ private:
 
     dart__pmem__pool_stat(_pmem_pool, &stats);
 
-    if (stats.num_buckets > 0) {
-      std::vector<dart_pmem_oid_t> bucket_ptrs{stats.num_buckets, DART_PMEM_OID_NULL};
+    if (stats.num_objects > 0) {
+      std::vector<dart_pmem_oid_t> bucket_ptrs{stats.num_objects, DART_PMEM_OID_NULL};
 
       dart__pmem__fetch_all(_pmem_pool, bucket_ptrs.data());
 
@@ -503,12 +505,12 @@ private:
         local_pointer lptr = nullptr;
         //convert it to a native address
         DASH_ASSERT_RETURNS(
-            dart__pmem__getaddr(poid, reinterpret_cast<void **>(&lptr)),
+            dart__pmem__get_addr(poid, reinterpret_cast<void **>(&lptr)),
             DART_OK);
 
         pmem_bucket_info_t bucket;
         //bucket.pmem_addr = oid;
-        DASH_ASSERT_RETURNS(dart__pmem__oid_size(pool, poid, &bucket.nbytes),
+        DASH_ASSERT_RETURNS(dart__pmem__sizeof_oid(pool, poid, &bucket.nbytes),
                             DART_OK);
         DASH_LOG_TRACE(__func__, "relocated bucket, nbytes", bucket.nbytes);
         return std::make_pair(lptr, bucket);
@@ -540,7 +542,7 @@ private:
 
     mode_t mode = S_IRWXU;
 
-    _pmem_pool = dart__pmem__open(_team_id, poolId.c_str(), flags, mode);
+    _pmem_pool = dart__pmem__pool_open(_team_id, poolId.c_str(), flags, mode);
 
     relocate_pmem_buckets();
 
@@ -576,5 +578,7 @@ bool operator!=(
 
 } // namespace allocator
 } // namespace dash
+
+#endif // DASH_ENABLE_PMEM
 
 #endif // DASH__ALLOCATOR__PERSISTENT_MEMORY_ALLOCATOR_H__INCLUDED

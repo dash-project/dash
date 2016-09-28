@@ -578,6 +578,8 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
   }
 }
 
+#ifdef DASH_ENABLE_PMEM
+
 #define PMEM_POOL "GlobDynamicMemTest.pmem"
 
 TEST_F(GlobDynamicMemTest, PersistentMemAlloc)
@@ -705,3 +707,5 @@ TEST_F(GlobDynamicMemTest, PersistentMemRelocate)
     }
   }
 }
+
+#endif //DASH_ENABLE_PMEM

@@ -1,5 +1,5 @@
-#ifndef DART__MPI__PMEM_PRIVATE_H__INCLUDED
-#define DART__MPI__PMEM_PRIVATE_H__INCLUDED
+#ifndef DART__BASE__PMEM_QUEUE_H__INCLUDED
+#define DART__BASE__PMEM_QUEUE_H__INCLUDED
 
 /*
  * Adapted from sys/queue.h
@@ -314,4 +314,4 @@ struct name {\
 	}	\
 } while (0)
 
-#endif /* DART__MPI__PMEM_PRIVATE_H__INCLUDED */
+#endif /* DART__BASE__PMEM_QUEUE_H__INCLUDED */

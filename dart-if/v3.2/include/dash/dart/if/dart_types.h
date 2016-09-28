@@ -481,6 +481,49 @@ typedef struct
 }
 dart_config_t;
 
+#ifdef DASH_ENABLE_PMEM
+#include <libpmemobj.h>
+
+/**
+ * Persistent Memory ObjectId which is a handle to a
+ * persistent memory buffer
+ *
+ * \ingroup DartTypes
+ */
+typedef struct dart_pmem_oid{
+  PMEMoid     oid;
+} dart_pmem_oid_t;
+
+/**
+ * Persistent Memory Pool which is handle to allocate
+ * persistent objects
+ * memory buffer
+ *
+ * \ingroup DartTypes
+ */
+typedef struct dart_pmem_pool {
+  size_t          poolsize;
+  dart_team_t     teamid;
+  char const   *  path;
+  char const   *  layout;
+  PMEMobjpool  *  pop;
+} dart_pmem_pool_t;
+
+/**
+ * Information about the Persistent Memory Pool  
+ *
+ * \ingroup DartTypes
+ */
+typedef struct dart_pmem_pool_stat {
+  /** Number of persistent objects **/
+  size_t      num_objects;
+  /** Accumulated size of all persistent objects **/
+  size_t      poolsize;
+} dart_pmem_pool_stat_t;
+
+
+#endif
+
 #define DART_INTERFACE_OFF
 
 #ifdef __cplusplus

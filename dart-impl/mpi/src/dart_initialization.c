@@ -15,6 +15,7 @@
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_locality_priv.h>
+#include <dash/dart/mpi/dart_pmem_priv.h>
 #include <dash/dart/mpi/dart_segment.h>
 
 #define DART_BUDDY_ORDER 24
@@ -260,6 +261,9 @@ dart_ret_t dart_init(
   _dart_initialized = 1;
 
   dart__mpi__locality_init();
+#ifdef DASH_ENABLE_PMEM
+  dart__mpi__pmem_init();
+#endif
 
   _dart_initialized = 2;
 
@@ -278,6 +282,9 @@ dart_ret_t dart_exit()
 	dart_myid(&unitid);
 
   dart__mpi__locality_finalize();
+#ifdef DASH_ENABLE_PMEM
+  dart__mpi__pmem_finalize();
+#endif
 
   _dart_initialized = 0;
 
