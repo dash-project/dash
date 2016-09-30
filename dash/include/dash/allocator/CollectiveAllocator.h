@@ -202,7 +202,7 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  void deallocate(pointer gptr)
+  void deallocate(pointer gptr) noexcept
   {
     if (!dash::is_initialized()) {
       // If a DASH container is deleted after dash::finalize(), global
@@ -212,12 +212,14 @@ public:
                      "DASH not initialized, abort");
       return;
     }
-    DASH_ASSERT_RETURNS(
-      dart_team_memfree(_team_id, gptr),
-      DART_OK);
-    _allocated.erase(
-        std::remove(_allocated.begin(), _allocated.end(), gptr),
-        _allocated.end());
+    if (dart_team_memfree(_team_id, gptr) == DART_OK) {
+      _allocated.erase(
+          std::remove(_allocated.begin(), _allocated.end(), gptr),
+          _allocated.end());
+    } else {
+      DASH_LOG_ERROR("CollectiveAllocator.deallocate !",
+                     "dart_team_memfree failed");
+    }
   }
 
 private:

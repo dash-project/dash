@@ -22,6 +22,7 @@
 #include <list>
 #include <array>
 #include <sstream>
+#include <typeinfo>
 
 #ifdef MPI_IMPL_ID
 #include <mpi.h>
@@ -38,8 +39,8 @@ namespace hdf5 {
  * is a macro that expands to a non constant function
  */
 template < typename T > hid_t get_h5_datatype() {
-  static_assert(false, "datatype not supported");
-  return;
+//  static_assert(false, typeid(T).name());
+  return -1;
 }
 template <> hid_t get_h5_datatype<int>(){
   return H5T_NATIVE_INT;
