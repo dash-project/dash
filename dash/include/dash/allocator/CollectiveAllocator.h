@@ -11,6 +11,8 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <cassert>
+
 
 namespace dash {
 namespace allocator {
@@ -66,9 +68,8 @@ public:
     Team & team = dash::Team::Null()) noexcept
   : _team_id(team.dart_id())
   {
-    DASH_ASSERT_RETURNS(
-      dart_team_size(_team_id, &_nunits),
-      DART_OK);
+    // Cannot use DASH_ASSERT due to noexcept qualifier:
+    assert(dart_team_size(_team_id, &_nunits) == DART_OK);
   }
 
   /**
@@ -202,7 +203,7 @@ public:
    *
    * \see DashAllocatorConcept
    */
-  void deallocate(pointer gptr) noexcept
+  void deallocate(pointer gptr)
   {
     if (!dash::is_initialized()) {
       // If a DASH container is deleted after dash::finalize(), global
@@ -212,14 +213,12 @@ public:
                      "DASH not initialized, abort");
       return;
     }
-    if (dart_team_memfree(_team_id, gptr) == DART_OK) {
-      _allocated.erase(
-          std::remove(_allocated.begin(), _allocated.end(), gptr),
-          _allocated.end());
-    } else {
-      DASH_LOG_ERROR("CollectiveAllocator.deallocate !",
-                     "dart_team_memfree failed");
-    }
+    DASH_ASSERT_RETURNS(
+      dart_team_memfree(_team_id, gptr),
+      DART_OK);
+    _allocated.erase(
+        std::remove(_allocated.begin(), _allocated.end(), gptr),
+        _allocated.end());
   }
 
 private:
