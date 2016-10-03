@@ -181,6 +181,11 @@ if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
        ${MKL_SCALAPACK_LIBRARIES})
 endif()
 
+# enable algorithms which are supported by current build config
+if(CONF_AVAIL_MKL OR CONF_AVAIL_BLAS OR (CMAKE_BUILD_TYPE MATCHES DEBUG))
+  set(CONF_AVAIL_ALGO_SUMMA "true")
+endif()
+
 if (DASH_ENV_HOST_SYSTEM_ID)
   set (HOST_ID ${DASH_ENV_HOST_SYSTEM_ID})
   set (ADDITIONAL_COMPILE_FLAGS

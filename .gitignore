@@ -27,3 +27,5 @@ tags
 RELEASE/*
 dash/include/dash/util/StaticConfig.h
 .includes
+.ctagsignore
+.gutctags

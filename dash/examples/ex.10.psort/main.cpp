@@ -1,23 +1,3 @@
-/*
- * psort/main.cpp
- *
- * author(s)/ Abhishek Pasari
- */
-/* @DASH_HEADER@ */
-
-/* Redirect log output to file:
- *
- *   mpirun -n 4 ./bin/ex.10.psort.mpi 100 10 > file.log 2>&
- *
- * Scan log file for strings 'foo' and 'bar:'
- *
- *   cat file.log | grep 'foo\|bar' | vim -
- *
- * Print output of every process to separate log file:
- *
- *   mpirun -n 4 -outfile-pattern summa.%r.log
- *
- */
 
 #include <unistd.h>
 #include <iostream>
@@ -158,24 +138,6 @@ int main(int argc, char * argv[])
 
       // Accumulate and broadcast (allreduce) local histograms:
       //
-#if __OLD__
-      if (myid != 0) {
-        // Add local histogram values to result histogram at unit 0:
-        // C[i] = A[i] + B[i]
-        dash::transform<key_type>(key_histo.lbegin(), // A begin
-                                  key_histo.lend(),   // A end
-                                  key_histo.begin(),  // B begin
-                                  key_histo.begin(),  // C begin
-                                  dash::plus<key_type>());
-        // Overwrite local histogram result with result histogram from unit 0:
-        dash::copy(
-          key_histo.begin(),           // Begin of block at unit 0
-          key_histo.begin() + max_key, // End of block at unit 0
-          key_histo.lbegin());
-      }
-      // Wait for all units to obtain the result histogram:
-      dash::barrier();
-#else
       std::vector<key_type> key_histo_res(key_histo.lsize());
       dart_allreduce(
         key_histo.lbegin(),                      // send buffer
@@ -188,18 +150,7 @@ int main(int argc, char * argv[])
       // Overwrite local histogram with sum of all local histograms:
       std::copy(key_histo_res.begin(), key_histo_res.end(),
                 key_histo.lbegin());
-#endif
 
-#ifdef __OLD__
-      if (myid == 0) {
-        key_type value = key_histo[0];
-        pre_sum[0] = value;
-        for (size_t i = 0; i < pre_sum.size(); i++) {
-          pre_sum[i + 1] = pre_sum[i] + key_histo[i + 1];
-        }
-      }
-      dash::barrier();
-#else
       // Prefix sum in local sections of histogram:
       pre_sum.local[0] = key_histo.local[0];
       for (size_t li = 0; li < pre_sum.lsize() - 1; ++li) {
@@ -215,7 +166,6 @@ int main(int argc, char * argv[])
       for (size_t li = 0; li < pre_sum.lsize() - 1; ++li) {
         pre_sum.local[li] += pre_sum_pred;
       }
-#endif
 
       /*
         As the prefix sum offset is generated in the prefix_sum array what we

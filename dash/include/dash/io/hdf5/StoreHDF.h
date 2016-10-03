@@ -19,7 +19,10 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
+#include <list>
 #include <array>
+#include <sstream>
+#include <typeinfo>
 
 #ifdef MPI_IMPL_ID
 #include <mpi.h>
@@ -30,6 +33,27 @@
 namespace dash {
 namespace io {
 namespace hdf5 {
+
+/** Pseudo type traits to map the native c datatype to an hdf5 type.
+ * This has to be implemented using a function, as the H5T_NATIVE_*
+ * is a macro that expands to a non constant function
+ */
+template < typename T > hid_t get_h5_datatype() {
+  std::exception("datatype not supported");
+  return;
+}
+template <> hid_t get_h5_datatype<int>(){
+  return H5T_NATIVE_INT;
+}
+template <> hid_t get_h5_datatype<long>(){
+  return H5T_NATIVE_LONG;
+}
+template <> hid_t get_h5_datatype<float>(){
+  return H5T_NATIVE_FLOAT;
+}
+template <> hid_t get_h5_datatype<double>(){
+  return H5T_NATIVE_DOUBLE;
+}
 
 /**
  * DASH wrapper to store an dash::Array or dash::Matrix
@@ -77,6 +101,22 @@ private:
     // TODO: check if mapping is regular by checking pattern property
   }
 
+  static std::vector<std::string> _split_string(
+                                    const std::string & str,
+                                    const char delim)
+  {
+    std::vector<std::string> elems; 
+    std::stringstream ss;
+    ss.str(str);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+      if(item != ""){
+        elems.push_back(item);
+      }
+    }
+    return elems;
+  }
+
 public:
   /**
    * Store all dash::Array values in an HDF5 file using parallel IO.
@@ -84,7 +124,7 @@ public:
    *
    * \param  array     Array to store
    * \param  filename  Filename of HDF5 file including extension
-   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
   template <
@@ -98,14 +138,21 @@ public:
             static write(
               dash::Array<value_t, index_t, pattern_t> & array,
               std::string filename,
-              std::string dataset,
+              std::string datapath,
               hdf5_options foptions = _get_fdefaults())
   {
     auto pattern    = array.pattern();
     auto pat_dims   = pattern.ndim();
     long tilesize   = pattern.blocksize(0);
     // Map native types to HDF5 types
-    auto h5datatype = _convertType(array[0]);
+    auto h5datatype = get_h5_datatype<value_t>();
+    // for tracking opened groups
+    std::list<hid_t> open_groups;
+    // Split path in groups and dataset
+    auto path_vec   = _split_string(datapath, '/');
+    auto dataset    = path_vec.back();
+    // remove dataset from path
+    path_vec.pop_back();
 
     /* HDF5 definition */
     hid_t   file_id;
@@ -115,6 +162,7 @@ public:
     hid_t   filespace;
     hid_t   memspace;
     hid_t   attr_id;
+    hid_t   loc_id;
     herr_t  status;
 
     // get hdf pattern layout
@@ -145,6 +193,23 @@ public:
     // close property list
     H5Pclose(plist_id);
 
+    // Traverse path
+    loc_id = file_id;
+    for(std::string elem : path_vec){
+          if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
+            // open group
+            DASH_LOG_DEBUG("Open Group" elem);
+            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT); 
+          } else {
+            // create group
+            DASH_LOG_DEBUG("Create Group" elem);
+            loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+          }
+          if(loc_id != file_id){
+            open_groups.push_front(loc_id);
+          }
+    }
+
     // Create dataspace
     filespace     = H5Screate_simple(1, ts.data_dimsf, NULL);
     memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
@@ -152,10 +217,10 @@ public:
 
     if(foptions.modify_dataset){
       // Open dataset in RW mode
-      h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+      h5dset = H5Dopen(loc_id, dataset.c_str(), H5P_DEFAULT);
     } else {
       // Create dataset
-      h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
+      h5dset = H5Dcreate(loc_id, dataset.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     }
     // Close global dataspace
@@ -222,6 +287,9 @@ public:
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
+    for(auto group_id : open_groups){
+      H5Gclose(group_id);
+    }
     H5Fclose(file_id);
   }
 
@@ -232,7 +300,7 @@ public:
    *
    * \param  array     Array to store
    * \param  filename  Filename of HDF5 file including extension
-   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
   template <
@@ -245,7 +313,7 @@ public:
         static write(
           dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
           std::string filename,
-          std::string dataset,
+          std::string datapath,
           hdf5_options foptions = _get_fdefaults())
   {
     static_assert(
@@ -255,8 +323,14 @@ public:
     auto pattern    = array.pattern();
     auto pat_dims    = pattern.ndim();
     // Map native types to HDF5 types
-    auto h5datatype = _convertType(*array.lbegin());
-
+    auto h5datatype = get_h5_datatype<value_t>();
+    // for tracking opened groups
+    std::list<hid_t> open_groups;
+    // Split path in groups and dataset
+    auto path_vec   = _split_string(datapath, '/');
+    auto dataset    = path_vec.back();
+    // remove dataset from path
+    path_vec.pop_back();
 
     /* HDF5 definition */
     hid_t   file_id;
@@ -266,6 +340,7 @@ public:
     hid_t   filespace;
     hid_t   memspace;
     hid_t   attr_id;
+    hid_t   loc_id;
     herr_t  status;
 
     hdf5_pattern_spec<ndim> ts;
@@ -301,6 +376,23 @@ public:
 
     // close property list
     H5Pclose(plist_id);
+
+    // Traverse path
+    loc_id = file_id;
+    for(std::string elem : path_vec){
+          if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
+            // open group
+            DASH_LOG_DEBUG("Open Group" elem);
+            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT); 
+          } else {
+            // create group
+            DASH_LOG_DEBUG("Create Group" elem);
+            loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+          }
+          if(loc_id != file_id){
+            open_groups.push_front(loc_id);
+          }
+    }
 
     // Create dataspace
     filespace     = H5Screate_simple(ndim, ts.data_dimsf, NULL);
@@ -386,6 +478,9 @@ public:
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
+    for(auto group_id : open_groups){
+      H5Gclose(group_id);
+    }
     H5Fclose(file_id);
   }
 
@@ -399,7 +494,7 @@ public:
    *
    * \param array     Import data in this dash::Array
    * \param filename  Filename of HDF5 file including extension
-   * \param dataset   HDF5 Dataset in which the data is stored
+   * \param datapath   HDF5 Dataset in which the data is stored
    * \param foptions
    */
   template <
@@ -413,11 +508,15 @@ public:
             static read(
               dash::Array<value_t, index_t, pattern_t> & array,
               std::string filename,
-              std::string dataset,
+              std::string datapath,
               hdf5_options foptions = _get_fdefaults())
   {
-    long     tilesize;
-    int       rank;
+    long tilesize;
+    int  rank;
+    // Split path in groups and dataset
+    //auto path_vec   = _split_string(datapath, '/');
+    //auto dataset    = path_vec.back();
+
     // HDF5 definition
     hid_t    file_id;
     hid_t    h5dset;
@@ -442,7 +541,7 @@ public:
     H5Pclose(plist_id);
 
     // Create dataset
-    h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+    h5dset = H5Dopen(file_id, datapath.c_str(), H5P_DEFAULT);
 
     // Get dimensions of data
     filespace     = H5Dget_space(h5dset);
@@ -491,7 +590,7 @@ public:
       array.allocate(pattern);
     }
     pattern_t pattern    = array.pattern();
-    h5datatype = _convertType(array[0]); // hack
+    h5datatype = get_h5_datatype<value_t>(); // hack
 
     // get hdf pattern layout
     hdf5_pattern_spec<1> ts = _get_pattern_hdf_spec<1>(pattern);
@@ -554,7 +653,7 @@ public:
    *
    * \param  matrix    Import data in this dash::Matrix
    * \param  filename  Filename of HDF5 file including extension
-   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
   template <
@@ -572,9 +671,13 @@ public:
                         index_t,
                         pattern_t > &matrix,
                         std::string filename,
-                        std::string dataset,
+                        std::string datapath,
                         hdf5_options foptions = _get_fdefaults())
   {
+    // Split path in groups and dataset
+    //auto path_vec   = _split_string(datapath, '/');
+    //auto dataset    = path_vec.back();
+
     // HDF5 definition
     hid_t   file_id;
     hid_t   h5dset;
@@ -602,7 +705,7 @@ public:
     H5Pclose(plist_id);
 
     // Create dataset
-    h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+    h5dset = H5Dopen(file_id, datapath.c_str(), H5P_DEFAULT);
 
     // Get dimensions of data
     filespace     = H5Dget_space(h5dset);
@@ -677,7 +780,7 @@ public:
       matrix.allocate(pattern);
     }
 
-    h5datatype = _convertType(*matrix.lbegin()); // hack
+    h5datatype = get_h5_datatype<value_t>();
     internal_type = H5Tcopy(h5datatype);
 
     // setup extends per dimension
@@ -835,25 +938,6 @@ private:
       }
     }
     return ts;
-  }
-
-private:
-
-  static inline hid_t _convertType(int t)
-  {
-    return H5T_NATIVE_INT;
-  }
-  static inline hid_t _convertType(long t)
-  {
-    return H5T_NATIVE_LONG;
-  }
-  static inline hid_t _convertType(float t)
-  {
-    return H5T_NATIVE_FLOAT;
-  }
-  static inline hid_t _convertType(double t)
-  {
-    return H5T_NATIVE_DOUBLE;
   }
 
 };

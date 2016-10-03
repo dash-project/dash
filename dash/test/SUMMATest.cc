@@ -5,8 +5,17 @@
 #include "TestLogHelpers.h"
 #include "SUMMATest.h"
 
+#define SKIP_TEST_IF_NO_SUMMA()\
+  auto conf = dash::util::DashConfig;\
+  if(!conf.avail_algo_summa){\
+    SKIP_TEST()\
+  }
+
+
 TEST_F(SUMMATest, Deduction)
 {
+  SKIP_TEST_IF_NO_SUMMA()
+
   size_t num_units   = dash::Team::All().size();
   size_t team_size_x = num_units;
   size_t team_size_y = 1;
@@ -157,6 +166,8 @@ TEST_F(SUMMATest, Deduction)
 
 TEST_F(SUMMATest, SeqTilePatternMatrix)
 {
+  SKIP_TEST_IF_NO_SUMMA()
+
   typedef dash::SeqTilePattern<2> pattern_t;
   typedef double                  value_t;
   typedef pattern_t::index_type   index_t;

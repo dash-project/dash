@@ -381,6 +381,52 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
   verify_matrix(matrix_c, secret_b);
 }
 
+TEST_F(HDF5MatrixTest, GroupTest)
+{
+  int    ext_x    = dash::size() * 5;
+  int    ext_y    = dash::size() * 2;
+  double secret[] = {10,11,12};
+  {
+    auto matrix_a = dash::Matrix<double, 2>(ext_x, ext_y);
+    auto matrix_b = dash::Matrix<double, 2>(ext_x, ext_y);
+    auto matrix_c = dash::Matrix<double, 2>(ext_x, ext_y);
+  
+    // Fill
+    fill_matrix(matrix_a, secret[0]);
+    fill_matrix(matrix_b, secret[1]);
+    fill_matrix(matrix_c, secret[2]);
+    dash::barrier();
+  
+    // Set option
+  
+    dio::HDF5OutputStream os(_filename);
+    os << dio::dataset("matrix_a")
+       << matrix_a
+       << dio::dataset("g1/matrix_b")
+       << matrix_b
+       << dio::dataset("g1/g2/matrix_c")
+       << matrix_c;
+  
+    dash::barrier();
+  }
+  dash::Matrix<double, 2> matrix_a;
+  dash::Matrix<double, 2> matrix_b;
+  dash::Matrix<double, 2> matrix_c;
+  dio::HDF5InputStream is(_filename);
+  is >> dio::dataset("matrix_a")
+     >> matrix_a
+     >> dio::dataset("g1/matrix_b")
+     >> matrix_b
+     >> dio::dataset("g1/g2/matrix_c")
+     >> matrix_c;
+  
+  dash::barrier();
+  
+  // Verify data
+  verify_matrix(matrix_a, secret[0]);
+  verify_matrix(matrix_b, secret[1]);
+  verify_matrix(matrix_c, secret[2]);
+}
 #if 0
 // Test Conversion between dash::Array and dash::Matrix
 // Currently not possible as matrix has to be at least

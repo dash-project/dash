@@ -55,11 +55,11 @@ int main(int argc, char * argv[])
 	{
 		if(myid == 0) {
 			print_separator();
-			cout << "Write Array A to " << FILENAME << " / data" << endl;
+			cout << "Write Array A to " << FILENAME << " / group/data" << endl;
 		}
 
 		dash::io::hdf5::HDF5OutputStream os(FILENAME);
-		os << dash::io::hdf5::dataset("data") << array_a;
+		os << dash::io::hdf5::dataset("group/data") << array_a;
 
 		dash::barrier();
 		print_file();
@@ -69,14 +69,14 @@ int main(int argc, char * argv[])
 	{
 		if(myid == 0){
 			print_separator();
-			cout << "Read " << FILENAME << " / data into Array C,"
+			cout << "Read " << FILENAME << " / group/data into Array C,"
 					 << " reconstruct pattern" << endl;
 		}
 		// Use delayed allocation
 		array_t array_c;
 
 		dash::io::hdf5::HDF5InputStream is(FILENAME);
-		is >> dash::io::hdf5::dataset("data") >> array_c;
+		is >> dash::io::hdf5::dataset("group/data") >> array_c;
 	}
 
 	// OK, that was easy. Now let's have a slightly more complex setup
@@ -85,13 +85,13 @@ int main(int argc, char * argv[])
 	{
 		if(myid == 0){
 			print_separator();
-			cout << "Read " << FILENAME << " / data into already allocated Array C" << endl;
+			cout << "Read " << FILENAME << " / group/data into already allocated Array C" << endl;
 		}
 		// pass allocated array to define custom pattern
 		array_t array_c(pattern_b); // tilesize=7
 
 		dash::io::hdf5::HDF5InputStream is(FILENAME);
-		is >> dash::io::hdf5::dataset("data") >> array_c;
+		is >> dash::io::hdf5::dataset("group/data") >> array_c;
 
 		if(myid == 0){
 			cout << "Array A Pattern: Tilesize: " << array_a.pattern().blocksize(0) << endl;
