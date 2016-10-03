@@ -39,8 +39,8 @@ namespace hdf5 {
  * is a macro that expands to a non constant function
  */
 template < typename T > hid_t get_h5_datatype() {
-//  static_assert(false, typeid(T).name());
-  return -1;
+  std::exception("datatype not supported");
+  return;
 }
 template <> hid_t get_h5_datatype<int>(){
   return H5T_NATIVE_INT;
