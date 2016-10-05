@@ -9,6 +9,50 @@ namespace dash {
 
 /**
  * Invoke a function on every element in a range distributed by a pattern.
+ * This function has the same signature as std::for_each but is slightly
+ * slower than dash::for_each
+ * Being a collaborative operation, each unit will invoke the given
+ * function on its local elements only.
+ *
+ * \tparam      ElementType  Type of the elements in the sequence
+ * \tparam      IndexType    Parameter type expected by function to
+ *                           invoke, deduced from parameter \c func
+ * \complexity  O(d) + O(nl), with \c d dimensions in the global iterators'
+ *              pattern and \c nl local elements within the global range
+ *
+ * \ingroup     DashAlgorithms
+ */
+template<
+    typename ElementType,
+    class PatternType>
+void stl_for_each(
+    /// Iterator to the initial position in the sequence
+    const GlobIter<ElementType, PatternType> & first,
+    /// Iterator to the final position in the sequence
+    const GlobIter<ElementType, PatternType> & last,
+    /// Function to invoke on every index in the range
+    ::std::function<void(const ElementType &)> & func) {
+    /// Global iterators to local index range:
+    auto index_range  = dash::local_index_range(first, last);
+    auto lbegin_index = index_range.begin;
+    auto lend_index   = index_range.end;
+    if (lbegin_index == lend_index) {
+        // Local range is empty
+        return;
+    }
+    // Pattern from global begin iterator:
+    auto pattern = first.pattern();
+    // Iterate local index range:
+    for (auto lindex = lbegin_index;
+            lindex != lend_index;
+            ++lindex) {
+        auto gindex = pattern.global(lindex);
+        func(first[gindex]);
+    }
+}
+
+/**
+ * Invoke a function on every element in a range distributed by a pattern.
  * Being a collaborative operation, each unit will invoke the given
  * function on its local elements only.
  *

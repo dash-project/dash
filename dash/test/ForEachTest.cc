@@ -69,3 +69,24 @@ TEST_F(ForEachTest, ForEachWithIndex) {
         dummy_fct
     );
 }
+
+TEST_F(ForEachTest, ForEachStdSyntax) {
+  Element_t sum = 0;
+  dash::NArray<Element_t, 2> matrix(10,20);
+  Element_t lsize = 
+    static_cast<Element_t>(matrix.local.size());
+
+  std::function<void(const Element_t &)> fun = 
+    [&sum](Element_t el) {
+      sum+=el;
+    };
+
+  dash::fill(
+      matrix.begin(),
+      matrix.end(),
+      static_cast<Element_t>(1));
+
+  dash::stl_for_each(matrix.begin(), matrix.end(), fun);
+
+  EXPECT_EQ_U(sum, lsize);
+}
