@@ -39,20 +39,11 @@ namespace hdf5 {
  * is a macro that expands to a non constant function
  */
 template < typename T > hid_t get_h5_datatype() {
-  std::exception("datatype not supported");
-  return;
-}
-template <> hid_t get_h5_datatype<int>(){
-  return H5T_NATIVE_INT;
-}
-template <> hid_t get_h5_datatype<long>(){
-  return H5T_NATIVE_LONG;
-}
-template <> hid_t get_h5_datatype<float>(){
-  return H5T_NATIVE_FLOAT;
-}
-template <> hid_t get_h5_datatype<double>(){
-  return H5T_NATIVE_DOUBLE;
+  DASH_THROW(
+    dash::exception::InvalidArgument,
+    "Datatype not supported");
+  // To avoid compiler warning:
+  return -1;
 }
 
 /**
@@ -198,11 +189,11 @@ public:
     for(std::string elem : path_vec){
           if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
             // open group
-            DASH_LOG_DEBUG("Open Group" elem);
-            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT); 
+            DASH_LOG_DEBUG("Open Group", elem);
+            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT);
           } else {
             // create group
-            DASH_LOG_DEBUG("Create Group" elem);
+            DASH_LOG_DEBUG("Create Group", elem);
             loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
           }
           if(loc_id != file_id){
@@ -382,11 +373,11 @@ public:
     for(std::string elem : path_vec){
           if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
             // open group
-            DASH_LOG_DEBUG("Open Group" elem);
-            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT); 
+            DASH_LOG_DEBUG("Open Group", elem);
+            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT);
           } else {
             // create group
-            DASH_LOG_DEBUG("Create Group" elem);
+            DASH_LOG_DEBUG("Create Group", elem);
             loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
           }
           if(loc_id != file_id){
