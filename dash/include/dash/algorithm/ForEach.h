@@ -40,15 +40,15 @@ void stl_for_each(
         return;
     }
     // Pattern from global begin iterator:
-    auto pattern = first.pattern();
-    auto gindex  = pattern.global(lbegin_index);
-    auto lptr    = (first + gindex).local();
+    auto pattern       = first.pattern();
+    auto gbegin_index  = pattern.global(lbegin_index);
+    auto lbegin_ptr    = (first + gbegin_index).local();
     // Iterate local index range:
     for (auto lindex = lbegin_index;
             lindex != lend_index;
             ++lindex) {
-        func(* lptr);
-        lptr++;
+        func(* lbegin_ptr);
+        lbegin_ptr++;
     }
 }
 
