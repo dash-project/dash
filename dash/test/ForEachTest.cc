@@ -9,7 +9,7 @@ TEST_F(ForEachTest, TestArrayAllInvoked) {
     // Shared variable for total number of invoked callbacks:
     dash::SharedCounter<size_t> count_invokes;
     // Create for_each callback from member function:
-    std::function<void(index_t)> invoke =
+    std::function<void(const Array_t::value_type &)> invoke =
         std::bind(&ForEachTest::count_invoke, this, std::placeholders::_1);
     // Ensure value global counter is published to all units
     dash::Team::All().barrier();
@@ -69,3 +69,4 @@ TEST_F(ForEachTest, ForEachWithIndex) {
         dummy_fct
     );
 }
+

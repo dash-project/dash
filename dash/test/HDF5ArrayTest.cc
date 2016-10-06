@@ -323,41 +323,85 @@ TEST_F(HDF5ArrayTest, ModifyDataset)
 
 TEST_F(HDF5ArrayTest, StreamCreationFlags)
 {
-	int    ext_x    = dash::size() * 5;
-	double secret = 10;
-	{
-    auto array_a = dash::Array<double>(ext_x);
+int    ext_x    = dash::size() * 5;
+double secret = 10;
+{
+  auto array_a = dash::Array<double>(ext_x);
 
-    // Fill
-    fill_array(array_a, secret);
-    dash::barrier();
-
-    // Set option
-
-		HDF5OutputStream os(_filename, HDF5FileOptions::Append);
-		os << dio::dataset("settwo")
-			 << dio::setpattern_key("custom_dash_pattern")
-       << dio::store_pattern()
-			 << array_a
-			 << dio::modify_dataset()
-			 << array_a;
-
-		dash::barrier();
-  }
-  dash::Array<double>    array_b;
-	HDF5InputStream is(_filename);
-	is >> dio::dataset("settwo")
-		 >> dio::setpattern_key("custom_dash_pattern")
-     >> dio::restore_pattern()
-     >> array_b;
-
+  // Fill
+  fill_array(array_a, secret);
   dash::barrier();
 
-  // Verify data
-  verify_array(array_b, secret);
+  // Set option
+
+  HDF5OutputStream os(_filename, HDF5FileOptions::Append);
+  os << dio::dataset("settwo")
+     << dio::setpattern_key("custom_dash_pattern")
+     << dio::store_pattern()
+     << array_a
+     << dio::modify_dataset()
+     << array_a;
+
+  dash::barrier();
+}
+dash::Array<double>    array_b;
+HDF5InputStream is(_filename);
+is >> dio::dataset("settwo")
+   >> dio::setpattern_key("custom_dash_pattern")
+   >> dio::restore_pattern()
+   >> array_b;
+
+dash::barrier();
+
+// Verify data
+verify_array(array_b, secret);
 }
 
-
+TEST_F(HDF5ArrayTest, GroupTest)
+{
+  int    ext_x    = dash::size() * 5;
+  double secret[] = {10,11,12};
+  {
+    auto array_a = dash::Array<double>(ext_x);
+    auto array_b = dash::Array<double>(ext_x);
+    auto array_c = dash::Array<double>(ext_x);
+  
+    // Fill
+    fill_array(array_a, secret[0]);
+    fill_array(array_b, secret[1]);
+    fill_array(array_c, secret[2]);
+    dash::barrier();
+  
+    // Set option
+  
+    HDF5OutputStream os(_filename);
+    os << dio::dataset("array_a")
+       << array_a
+       << dio::dataset("g1/array_b")
+       << array_b
+       << dio::dataset("g1/g2/array_c")
+       << array_c;
+  
+    dash::barrier();
+  }
+  dash::Array<double> array_a;
+  dash::Array<double> array_b;
+  dash::Array<double> array_c;
+  HDF5InputStream is(_filename);
+  is >> dio::dataset("array_a")
+     >> array_a
+     >> dio::dataset("g1/array_b")
+     >> array_b
+     >> dio::dataset("g1/g2/array_c")
+     >> array_c;
+  
+  dash::barrier();
+  
+  // Verify data
+  verify_array(array_a, secret[0]);
+  verify_array(array_b, secret[1]);
+  verify_array(array_c, secret[2]);
+}
 #endif // DASH_ENABLE_HDF5
 
 

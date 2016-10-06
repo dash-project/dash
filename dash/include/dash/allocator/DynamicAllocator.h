@@ -354,9 +354,8 @@ private:
       if (!DART_GPTR_EQUAL(e.second, DART_GPTR_NULL)) {
         DASH_LOG_DEBUG("DynamicAllocator.clear", "detach global memory:",
                        e.second);
-        DASH_ASSERT_RETURNS(
-          dart_team_memderegister(_team_id, e.second),
-          DART_OK);
+        // Cannot use DASH_ASSERT due to noexcept qualifier:
+        assert(dart_team_memderegister(_team_id, e.second) == DART_OK);
       }
     }
     _allocated.clear();

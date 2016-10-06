@@ -93,6 +93,6 @@ rm -Rf $BUILD_DIR/*
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                         ../ && \
  await_confirm && \
- make) && (cp $BUILD_DIR/compile_commands.json .) && \
+ make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \
 exit_message
 
