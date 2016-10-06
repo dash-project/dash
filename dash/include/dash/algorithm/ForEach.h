@@ -40,7 +40,7 @@ void stl_for_each(
         return;
     }
     // Pattern from global begin iterator:
-    auto pattern       = first.pattern();
+    auto & pattern     = first.pattern();
     auto gbegin_index  = pattern.global(lbegin_index);
     auto lbegin_ptr    = (first + gbegin_index).local();
     // Iterate local index range:
