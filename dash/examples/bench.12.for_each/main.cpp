@@ -27,11 +27,12 @@ typedef struct benchmark_params_t {
 
 typedef struct measurement_t {
   std::string testcase;
-  double      local_elems_ns;
+  double      local_elems_s;
   double      local_size_mb;
   double      time_fill_s;
   double      time_foreach_s;
   double      time_total_s;
+  bool        uses_local_ptr;
 } measurement;
 
 void print_measurement_header();
@@ -146,7 +147,7 @@ measurement evaluate(long size, std::string testcase, benchmark_params params)
 
   mes.time_foreach_s = Timer::ElapsedSince(ts_foreach_start) / (1000 * 1000);
   mes.time_total_s   = Timer::ElapsedSince(ts_tot_start) / (1000 * 1000);
-  mes.local_elems_ns = lsize / mes.time_foreach_s;
+  mes.local_elems_s = lsize / mes.time_foreach_s;
   mes.local_size_mb  = static_cast<double>((lsize * sizeof(int))/(1024*1024));
   mes.testcase       = testcase;
   return mes;
@@ -158,8 +159,8 @@ void print_measurement_header()
     cout << std::right
          << std::setw(5)  << "units"          << ","
          << std::setw(9)  << "mpi.impl"       << ","
-         << std::setw(12) << "l. size mb"     << ","
-         << std::setw(13) << "l. elems.ns"    << ","
+         << std::setw(12) << "l. size.mb"     << ","
+         << std::setw(13) << "l. elems.s"     << ","
          << std::setw(25) << "impl."          << ","
          << std::setw(12) << "time fill.s"    << ","
          << std::setw(14) << "time foreach.s" << ","
@@ -180,7 +181,7 @@ void print_measurement_record(
          << std::setw(5) << dash::size() << ","
          << std::setw(9) << mpi_impl     << ","
          << std::fixed << setprecision(2) << setw(12) << mes.local_size_mb  << ","
-         << std::fixed << setprecision(2) << setw(12) << (mes.local_elems_ns / 1000) << "k,"
+         << std::fixed << setprecision(2) << setw(12) << (mes.local_elems_s / 1000) << "k,"
          << std::fixed << setprecision(2) << setw(25) << mes.testcase       << ","
          << std::fixed << setprecision(2) << setw(12) << mes.time_fill_s    << ","
          << std::fixed << setprecision(2) << setw(14) << mes.time_foreach_s << ","
@@ -217,6 +218,6 @@ void print_params(
 
   bench_cfg.print_section_start("Runtime arguments");
   bench_cfg.print_param("-sb",    "initial matrix size", params.size_base);
-  bench_cfg.print_param("-tmax",  "max time in s per iteration", params.size_base);
+  bench_cfg.print_param("-tmax",  "max time in s per iteration", params.max_time);
   bench_cfg.print_section_end();
 }
