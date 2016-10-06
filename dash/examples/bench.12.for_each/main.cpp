@@ -74,27 +74,22 @@ int main(int argc, char** argv)
 
   int     multiplier = 1;
   double  round_time = 0;
-  std::array<std::string, 4> testcases {{
-                            "std::for_each l.",
-                            "dash::for_each",
-                            "dash::stl_for_each",
-                            "dash::for_each_with_index" }};
+  std::array<std::string, 3> testcases {{
+                            "std::for_each.l",
+                            "dash::for_each.g",
+                            "dash::for_each_with_index.g" }};
 
-  while(round_time < params.max_time){
-    auto    time_start = Timer::Now();
+  while(round_time < params.max_time) {
+    auto time_start = Timer::Now();
     for(auto testcase : testcases){
       res = evaluate(params.size_base*multiplier, testcase, params);
       print_measurement_record(bench_cfg, res, params);
     }
-    multiplier*=2;
+    multiplier *= 2;
     round_time = Timer::ElapsedSince(time_start) / (1000 * 1000);
   }
 
-//  res = evaluate(params.size_base, "dash::stl_for_each", params);
-//  print_measurement_record(bench_cfg, res, params);
-
-
-  if( dash::myid()==0 ) {
+  if (dash::myid() == 0) {
     cout << "Benchmark finished" << endl;
   }
 
@@ -112,9 +107,9 @@ measurement evaluate(long size, std::string testcase, benchmark_params params)
   auto end    = container.end();
   auto lend   = container.lend();
   auto lsize  = container.local.size();
- 
+
   // inefficient sum
-  std::function<void(const int &)> stl_for_each =
+  std::function<void(const int &)> for_each =
       [&sum](int el){
         sum+=el;
       };
@@ -122,11 +117,6 @@ measurement evaluate(long size, std::string testcase, benchmark_params params)
     [&sum](int el, long idx) {
       sum+=el;
     };
-  std::function<void(long)> for_each =
-    [&sum, &container](long idx) {
-      sum+= *(container.begin() + idx);
-    };
-
 
   dash::barrier();
   auto ts_tot_start = Timer::Now();
@@ -135,19 +125,17 @@ measurement evaluate(long size, std::string testcase, benchmark_params params)
 
   auto ts_foreach_start = Timer::Now();
 
-  if(testcase == "dash::stl_for_each"){
-    dash::stl_for_each(begin, end, stl_for_each);
-  } else if(testcase == "dash::for_each"){
+  if(testcase == "dash::for_each.g") {
     dash::for_each(begin, end, for_each);
-  } else if(testcase == "dash::for_each_with_index"){
+  } else if(testcase == "dash::for_each_with_index.g") {
     dash::for_each_with_index(begin, end, for_each_index);
-  } else if(testcase == "std::for_each l."){
-    std::for_each(lbegin, lend, stl_for_each);
+  } else if(testcase == "std::for_each.l") {
+    std::for_each(lbegin, lend, for_each);
   }
 
   mes.time_foreach_s = Timer::ElapsedSince(ts_foreach_start) / (1000 * 1000);
   mes.time_total_s   = Timer::ElapsedSince(ts_tot_start) / (1000 * 1000);
-  mes.local_elems_s = lsize / mes.time_foreach_s;
+  mes.local_elems_s  = lsize / mes.time_foreach_s;
   mes.local_size_mb  = static_cast<double>((lsize * sizeof(int))/(1024*1024));
   mes.testcase       = testcase;
   return mes;
@@ -157,14 +145,14 @@ void print_measurement_header()
 {
   if (dash::myid() == 0) {
     cout << std::right
-         << std::setw(5)  << "units"          << ","
-         << std::setw(9)  << "mpi.impl"       << ","
-         << std::setw(12) << "l. size.mb"     << ","
-         << std::setw(13) << "l. elems.s"     << ","
-         << std::setw(25) << "impl."          << ","
-         << std::setw(12) << "time fill.s"    << ","
-         << std::setw(14) << "time foreach.s" << ","
-         << std::setw(12) << "time total.s" 
+         << std::setw( 5) << "units"      << ","
+         << std::setw( 9) << "mpi.impl"   << ","
+         << std::setw(12) << "l.size.mb"  << ","
+         << std::setw(13) << "l.elems/s"  << ","
+         << std::setw(30) << "impl"       << ","
+         << std::setw( 8) << "fill.s"     << ","
+         << std::setw( 8) << "foreach.s"  << ","
+         << std::setw( 8) << "total.s"
          << endl;
   }
 }
@@ -182,7 +170,7 @@ void print_measurement_record(
          << std::setw(9) << mpi_impl     << ","
          << std::fixed << setprecision(2) << setw(12) << mes.local_size_mb  << ","
          << std::fixed << setprecision(2) << setw(12) << (mes.local_elems_s / 1000) << "k,"
-         << std::fixed << setprecision(2) << setw(25) << mes.testcase       << ","
+         << std::fixed << setprecision(2) << setw(30) << mes.testcase       << ","
          << std::fixed << setprecision(2) << setw(12) << mes.time_fill_s    << ","
          << std::fixed << setprecision(2) << setw(14) << mes.time_foreach_s << ","
          << std::fixed << setprecision(2) << setw(12) << mes.time_total_s

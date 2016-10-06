@@ -9,7 +9,7 @@ TEST_F(ForEachTest, TestArrayAllInvoked) {
     // Shared variable for total number of invoked callbacks:
     dash::SharedCounter<size_t> count_invokes;
     // Create for_each callback from member function:
-    std::function<void(index_t)> invoke =
+    std::function<void(const Array_t::value_type &)> invoke =
         std::bind(&ForEachTest::count_invoke, this, std::placeholders::_1);
     // Ensure value global counter is published to all units
     dash::Team::All().barrier();
@@ -70,23 +70,3 @@ TEST_F(ForEachTest, ForEachWithIndex) {
     );
 }
 
-TEST_F(ForEachTest, ForEachStdSyntax) {
-  Element_t sum = 0;
-  dash::NArray<Element_t, 2> matrix(10,20);
-  Element_t lsize = 
-    static_cast<Element_t>(matrix.local.size());
-
-  std::function<void(const Element_t &)> fun = 
-    [&sum](Element_t el) {
-      sum+=el;
-    };
-
-  dash::fill(
-      matrix.begin(),
-      matrix.end(),
-      static_cast<Element_t>(1));
-
-  dash::stl_for_each(matrix.begin(), matrix.end(), fun);
-
-  EXPECT_EQ_U(sum, lsize);
-}
