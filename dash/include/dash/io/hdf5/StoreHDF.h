@@ -46,6 +46,18 @@ template < typename T > hid_t get_h5_datatype() {
   // To avoid compiler warning:
   return -1;
 }
+template <> hid_t get_h5_datatype<int>() {
+  return H5T_NATIVE_INT;
+}
+template <> hid_t get_h5_datatype<long>() {
+  return H5T_NATIVE_LONG;
+}
+template <> hid_t get_h5_datatype<float>() {
+  return H5T_NATIVE_FLOAT;
+}
+template <> hid_t get_h5_datatype<double>() {
+  return H5T_NATIVE_DOUBLE;
+}
 
 /**
  * DASH wrapper to store an dash::Array or dash::Matrix
