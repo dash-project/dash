@@ -78,8 +78,14 @@ int main(int argc, char** argv)
                             "std::for_each.l",
                             "dash::for_each.g",
                             "dash::for_each_with_index.g" }};
+  // Get locality information
+  long num_nodes          = dash::util::Locality::NumNodes();
+  long mb_per_node        = dash::util::Locality::SystemMemory();
+  long global_avail_bytes = num_nodes * mb_per_node * 1024 * 1024;
+  long global_req_bytes   = params.size_base * params.size_base * sizeof(int);
 
-  while(round_time < params.max_time) {
+  while((round_time < params.max_time) &&
+        (global_avail_bytes > global_req_bytes)) {
     auto time_start = Timer::Now();
     for(auto testcase : testcases){
       res = evaluate(params.size_base*multiplier, testcase, params);
@@ -87,6 +93,8 @@ int main(int argc, char** argv)
     }
     multiplier *= 2;
     round_time = Timer::ElapsedSince(time_start) / (1000 * 1000);
+    global_req_bytes = (params.size_base * params.size_base) *
+                      multiplier * sizeof(int);
   }
 
   if (dash::myid() == 0) {
