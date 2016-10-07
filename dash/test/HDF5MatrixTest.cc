@@ -83,12 +83,12 @@ void verify_matrix(dash::Matrix<T, ndim, IndexT, PatternT> & matrix,
 
 TEST_F(HDF5MatrixTest, StoreMultiDimMatrix)
 {
-  typedef dash::TilePattern<2>  pattern_t;
+  typedef dash::TilePattern<2>                pattern_t;
   typedef dash::Matrix<
             value_t,
             2,
-            long,
-            pattern_t >         matrix_t;
+            typename pattern_t::index_type,
+            pattern_t >                       matrix_t;
 
   auto numunits =  dash::Team::All().size();
   dash::TeamSpec<2> team_spec(numunits, 1);
@@ -137,10 +137,7 @@ TEST_F(HDF5MatrixTest, StoreMultiDimMatrix)
 
 TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
 {
-  typedef double  value_t;
-  typedef long    index_t;
-
-  auto myid         = dash::myid();
+  auto myid        = dash::myid();
   auto num_units   = dash::Team::All().size();
   auto extent_cols = num_units;
   auto extent_rows = num_units;
@@ -155,14 +152,19 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
   team_spec.balance_extents();
 
   LOG_MESSAGE("Initialize matrix pattern ...");
-  auto pattern = dash::make_pattern <
-                 dash::summa_pattern_partitioning_constraints,
-                 dash::summa_pattern_mapping_constraints,
-                 dash::summa_pattern_layout_constraints > (
-                   size_spec,
+  auto pattern = dash::make_pattern<
+                   dash::summa_pattern_partitioning_constraints,
+                   dash::summa_pattern_mapping_constraints,
+                   dash::summa_pattern_layout_constraints
+                 >(size_spec,
                    team_spec);
   DASH_LOG_DEBUG("Pattern", pattern);
-  typedef dash::Matrix<value_t, 2, index_t, decltype(pattern)> matrix_t;
+
+  typedef double                         value_t;
+  typedef decltype(pattern)              pattern_t;
+  typedef typename pattern_t::index_type index_t;
+
+  typedef dash::Matrix<value_t, 2, index_t, pattern_t> matrix_t;
 
   {
     // Instantiate Matrix
@@ -262,8 +264,9 @@ TEST_F(HDF5MatrixTest, PreAllocation)
 TEST_F(HDF5MatrixTest, UnderfilledPattern)
 {
   typedef dash::Pattern<2, dash::ROW_MAJOR> pattern_t;
+  typedef typename pattern_t::index_type    index_t;
 
-  size_t team_size    = dash::Team::All().size();
+  size_t team_size  = dash::Team::All().size();
 
   dash::TeamSpec<2> teamspec_2d(team_size, 1);
   teamspec_2d.balance_extents();
@@ -273,7 +276,7 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
   auto ext_x        = (block_size_x * teamspec_2d.num_units(0)) - 3;
   auto ext_y        = (block_size_y * teamspec_2d.num_units(1)) - 1;
 
-  auto size_spec = dash::SizeSpec<2>(ext_x, ext_y);
+  auto size_spec    = dash::SizeSpec<2>(ext_x, ext_y);
 
   // Check TilePattern
   const pattern_t pattern(
@@ -285,7 +288,7 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
     dash::Team::All());
 
   {
-    dash::Matrix<int, 2, long, pattern_t> matrix_a;
+    dash::Matrix<int, 2, index_t, pattern_t> matrix_a;
     matrix_a.allocate(pattern);
 
     fill_matrix(matrix_a);
@@ -296,7 +299,7 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
   }
   dash::barrier();
 
-  dash::Matrix<int, 2, long, pattern_t> matrix_b;
+  dash::Matrix<int, 2, index_t, pattern_t> matrix_b;
 	dio::HDF5InputStream is(_filename);
 	is >> dio::dataset(_dataset)
      >> matrix_b;
@@ -308,9 +311,10 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
 	int    ext_y    = dash::size() * 3;
 	int    secret_a = 10;
 	double secret_b = 3;
+
 	{
-    auto matrix_a = dash::Matrix<int,2>(dash::SizeSpec<2>(ext_x,ext_y));
-		auto matrix_b = dash::Matrix<double,2>(dash::SizeSpec<2>(ext_x,ext_y));
+    auto matrix_a = dash::Matrix<int,    2>(dash::SizeSpec<2>(ext_x,ext_y));
+		auto matrix_b = dash::Matrix<double, 2>(dash::SizeSpec<2>(ext_x,ext_y));
 
     // Fill
     fill_matrix(matrix_a, secret_a);
@@ -324,8 +328,9 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
        << matrix_b;
     dash::barrier();
   }
-  dash::Matrix<int,2>    matrix_c;
-	dash::Matrix<double,2> matrix_d;
+
+  dash::Matrix<int,    2> matrix_c;
+	dash::Matrix<double, 2> matrix_d;
 
 	dio::HDF5InputStream is(_filename);
 	is >> dio::dataset(_dataset)
@@ -369,7 +374,7 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
        << matrix_b;
     dash::barrier();
   }
-  dash::Matrix<double,2>    matrix_c;
+  dash::Matrix<double,2> matrix_c;
 
 	dio::HDF5InputStream is(_filename);
 	is >> dio::dataset(_dataset)
@@ -390,15 +395,14 @@ TEST_F(HDF5MatrixTest, GroupTest)
     auto matrix_a = dash::Matrix<double, 2>(ext_x, ext_y);
     auto matrix_b = dash::Matrix<double, 2>(ext_x, ext_y);
     auto matrix_c = dash::Matrix<double, 2>(ext_x, ext_y);
-  
+
     // Fill
     fill_matrix(matrix_a, secret[0]);
     fill_matrix(matrix_b, secret[1]);
     fill_matrix(matrix_c, secret[2]);
     dash::barrier();
-  
+
     // Set option
-  
     dio::HDF5OutputStream os(_filename);
     os << dio::dataset("matrix_a")
        << matrix_a
@@ -406,7 +410,7 @@ TEST_F(HDF5MatrixTest, GroupTest)
        << matrix_b
        << dio::dataset("g1/g2/matrix_c")
        << matrix_c;
-  
+
     dash::barrier();
   }
   dash::Matrix<double, 2> matrix_a;
@@ -419,9 +423,9 @@ TEST_F(HDF5MatrixTest, GroupTest)
      >> matrix_b
      >> dio::dataset("g1/g2/matrix_c")
      >> matrix_c;
-  
+
   dash::barrier();
-  
+
   // Verify data
   verify_matrix(matrix_a, secret[0]);
   verify_matrix(matrix_b, secret[1]);

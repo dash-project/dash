@@ -23,6 +23,7 @@
 #include <array>
 #include <sstream>
 #include <typeinfo>
+#include <type_traits>
 
 #ifdef MPI_IMPL_ID
 #include <mpi.h>
@@ -39,20 +40,11 @@ namespace hdf5 {
  * is a macro that expands to a non constant function
  */
 template < typename T > hid_t get_h5_datatype() {
-  std::exception("datatype not supported");
-  return;
-}
-template <> hid_t get_h5_datatype<int>(){
-  return H5T_NATIVE_INT;
-}
-template <> hid_t get_h5_datatype<long>(){
-  return H5T_NATIVE_LONG;
-}
-template <> hid_t get_h5_datatype<float>(){
-  return H5T_NATIVE_FLOAT;
-}
-template <> hid_t get_h5_datatype<double>(){
-  return H5T_NATIVE_DOUBLE;
+  DASH_THROW(
+    dash::exception::InvalidArgument,
+    "Datatype not supported");
+  // To avoid compiler warning:
+  return -1;
 }
 
 /**
@@ -105,7 +97,7 @@ private:
                                     const std::string & str,
                                     const char delim)
   {
-    std::vector<std::string> elems; 
+    std::vector<std::string> elems;
     std::stringstream ss;
     ss.str(str);
     std::string item;
@@ -141,6 +133,10 @@ public:
               std::string datapath,
               hdf5_options foptions = _get_fdefaults())
   {
+    static_assert(std::is_same<index_t,
+                               typename pattern_t::index_type>::value,
+                  "Specified index_t differs from pattern_t::index_type");
+
     auto pattern    = array.pattern();
     auto pat_dims   = pattern.ndim();
     long tilesize   = pattern.blocksize(0);
@@ -198,11 +194,11 @@ public:
     for(std::string elem : path_vec){
           if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
             // open group
-            DASH_LOG_DEBUG("Open Group" elem);
-            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT); 
+            DASH_LOG_DEBUG("Open Group", elem);
+            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT);
           } else {
             // create group
-            DASH_LOG_DEBUG("Create Group" elem);
+            DASH_LOG_DEBUG("Create Group", elem);
             loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
           }
           if(loc_id != file_id){
@@ -309,26 +305,34 @@ public:
     typename index_t,
     typename pattern_t >
   typename std::enable_if <
-    _compatible_pattern<pattern_t>(), void >::type
-        static write(
-          dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
-          std::string filename,
-          std::string datapath,
-          hdf5_options foptions = _get_fdefaults())
+    _compatible_pattern<pattern_t>(),
+    void
+  >::type
+  static write(
+    dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
+    std::string                                       filename,
+    std::string                                       datapath,
+    hdf5_options                                      foptions
+                                                        = _get_fdefaults())
   {
-    static_assert(
-      array.ndim() == pattern_t::ndim(),
-      "Pattern dimension has to match matrix dimension");
+    static_assert(array.ndim() == pattern_t::ndim(),
+                  "Pattern dimension has to match matrix dimension");
 
-    auto pattern    = array.pattern();
+    static_assert(std::is_same<index_t,
+                               typename pattern_t::index_type>::value,
+                  "Specified index_t differs from pattern_t::index_type");
+
+    typedef typename pattern_t::size_type extent_t;
+
+    auto pattern     = array.pattern();
     auto pat_dims    = pattern.ndim();
     // Map native types to HDF5 types
-    auto h5datatype = get_h5_datatype<value_t>();
+    auto h5datatype  = get_h5_datatype<value_t>();
     // for tracking opened groups
     std::list<hid_t> open_groups;
     // Split path in groups and dataset
-    auto path_vec   = _split_string(datapath, '/');
-    auto dataset    = path_vec.back();
+    auto path_vec    = _split_string(datapath, '/');
+    auto dataset     = path_vec.back();
     // remove dataset from path
     path_vec.pop_back();
 
@@ -382,11 +386,11 @@ public:
     for(std::string elem : path_vec){
           if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
             // open group
-            DASH_LOG_DEBUG("Open Group" elem);
-            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT); 
+            DASH_LOG_DEBUG("Open Group", elem);
+            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT);
           } else {
             // create group
-            DASH_LOG_DEBUG("Create Group" elem);
+            DASH_LOG_DEBUG("Create Group", elem);
             loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
           }
           if(loc_id != file_id){
@@ -448,7 +452,7 @@ public:
     if (foptions.store_pattern) {
       DASH_LOG_DEBUG("store pattern in hdf5 file");
       auto pat_key = foptions.pattern_metadata_key.c_str();
-      long pattern_spec[ndim * 4];
+      extent_t pattern_spec[ndim * 4];
 
       // Delete old attribute when overwriting dataset
       if(foptions.modify_dataset){
@@ -502,17 +506,23 @@ public:
     typename index_t,
     class    pattern_t >
   typename std::enable_if <
-  _compatible_pattern<pattern_t>() &&
-  pattern_t::ndim() == 1,
-            void >::type
-            static read(
-              dash::Array<value_t, index_t, pattern_t> & array,
-              std::string filename,
-              std::string datapath,
-              hdf5_options foptions = _get_fdefaults())
+    _compatible_pattern<pattern_t>() && pattern_t::ndim() == 1,
+    void
+  >::type
+  static read(
+    dash::Array<value_t, index_t, pattern_t> & array,
+    std::string                                filename,
+    std::string                                datapath,
+    hdf5_options                               foptions = _get_fdefaults())
   {
-    long tilesize;
-    int  rank;
+    typedef typename pattern_t::size_type extent_t;
+
+    static_assert(std::is_same<index_t,
+                               typename pattern_t::index_type>::value,
+                  "Specified index_t differs from pattern_t::index_type");
+
+    extent_t tilesize;
+    int      rank;
     // Split path in groups and dataset
     //auto path_vec   = _split_string(datapath, '/');
     //auto dataset    = path_vec.back();
@@ -567,9 +577,9 @@ public:
       H5Sclose(attrspace);
 
       const pattern_t pattern(
-        dash::SizeSpec<1>(static_cast<size_t>(data_dimsf[0])),
+        dash::SizeSpec<1, extent_t>(static_cast<extent_t>(data_dimsf[0])),
         dash::DistributionSpec<1>(dash::TILE(tilesize)),
-        dash::TeamSpec<1>(),
+        dash::TeamSpec<1, index_t>(),
         dash::Team::All());
 
       array.allocate(pattern);
@@ -583,9 +593,9 @@ public:
     } else {
       // Auto deduce pattern
       const pattern_t pattern(
-        dash::SizeSpec<1>(static_cast<size_t>(data_dimsf[0])),
+        dash::SizeSpec<1, extent_t>(static_cast<extent_t>(data_dimsf[0])),
         dash::DistributionSpec<1>(),
-        dash::TeamSpec<1>(),
+        dash::TeamSpec<1, index_t>(),
         dash::Team::All());
       array.allocate(pattern);
     }
@@ -665,15 +675,21 @@ public:
   _compatible_pattern<pattern_t>(),
                       void >::type
                       static read(
-                        dash::Matrix <
-                        value_t,
-                        ndim,
-                        index_t,
-                        pattern_t > &matrix,
-                        std::string filename,
-                        std::string datapath,
-                        hdf5_options foptions = _get_fdefaults())
+                        dash::Matrix<
+                          value_t,
+                          ndim,
+                          index_t,
+                          pattern_t> & matrix,
+                        std::string    filename,
+                        std::string    datapath,
+                        hdf5_options   foptions = _get_fdefaults())
   {
+    typedef typename pattern_t::size_type extent_t;
+
+    static_assert(std::is_same<index_t,
+                               typename pattern_t::index_type>::value,
+                  "Specified index_t differs from pattern_t::index_type");
+
     // Split path in groups and dataset
     //auto path_vec   = _split_string(datapath, '/');
     //auto dataset    = path_vec.back();
@@ -717,10 +733,10 @@ public:
 
     status        = H5Sget_simple_extent_dims(filespace, data_dimsf, NULL);
 
-    std::array<size_t, ndim>             size_extents;
-    std::array<size_t, ndim>              team_extents;
+    std::array<extent_t, ndim>           size_extents;
+    std::array<extent_t, ndim>           team_extents;
     std::array<dash::Distribution, ndim> dist_extents;
-    long hdf_dash_pattern[ndim * 4];
+    extent_t hdf_dash_pattern[ndim * 4];
 
     // set matrix size according to hdf5 dataset dimensions
     for (int i = 0; i < ndim; ++i) {
@@ -744,8 +760,8 @@ public:
       H5Sclose(attrspace);
 
       for (int i = 0; i < ndim; ++i) {
-        size_extents[i]  = static_cast<size_t> (hdf_dash_pattern[i]);
-        team_extents[i]  = static_cast<size_t> (hdf_dash_pattern[i + ndim]);
+        size_extents[i]  = static_cast<extent_t> (hdf_dash_pattern[i]);
+        team_extents[i]  = static_cast<extent_t> (hdf_dash_pattern[i + ndim]);
         dist_extents[i]  = dash::TILE(hdf_dash_pattern[i + (ndim * 3)]);
       }
       DASH_LOG_DEBUG("Created pattern according to metadata");
@@ -862,10 +878,10 @@ private:
   static inline hdf5_options _get_fdefaults()
   {
     hdf5_options fopt;
-    fopt.overwrite_file = true;
-    fopt.modify_dataset = false;
-    fopt.store_pattern = true;
-    fopt.restore_pattern = true;
+    fopt.overwrite_file       = true;
+    fopt.modify_dataset       = false;
+    fopt.store_pattern        = true;
+    fopt.restore_pattern      = true;
     fopt.pattern_metadata_key = "DASH_PATTERN";
 
     return fopt;
@@ -919,10 +935,10 @@ private:
     hdf5_pattern_spec<ndim> ts;
 
     for (int i = 0; i < ndim ; i++) {
-      long tilesize    = pattern.blocksize(i);
-      long localsize   = pattern.local_extent(i);
-      long localblocks = localsize / tilesize;
-      long lfullsize   = localblocks * tilesize;
+      auto tilesize    = pattern.blocksize(i);
+      auto localsize   = pattern.local_extent(i);
+      auto localblocks = localsize / tilesize;
+      auto lfullsize   = localblocks * tilesize;
 
       ts.data_dimsf[i] = pattern.extent(i);
       ts.data_dimsm[i] = localsize - lfullsize;
