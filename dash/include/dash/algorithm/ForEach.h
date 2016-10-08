@@ -83,16 +83,14 @@ void for_each_with_index(
     }
     // Pattern from global begin iterator:
     auto pattern = first.pattern();
-    auto gindex  = first.pos();
-    // Local range to native pointers:
-    auto lrange_begin = (first + pattern.global(lbegin_index)).local();
-    auto lrange_size  = lend_index - lbegin_index;
-
-    for (IndexType lrange_offs = 0;
-         lrange_offs != lrange_size;
-         lrange_offs++) {
-        auto lelem = lrange_begin + lrange_offs;
-        func(*lelem, gindex + lrange_offs);
+    // Iterate local index range:
+    for (IndexType lindex = lbegin_index;
+            lindex != lend_index;
+            ++lindex) {
+        IndexType gindex  = pattern.global(lindex);
+        auto first_offset = first.pos();
+        auto element_it   = first + (gindex - first_offset);
+        func(*element_it, gindex);
     }
     dash::barrier();
 }

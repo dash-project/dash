@@ -70,3 +70,36 @@ TEST_F(ForEachTest, ForEachWithIndex) {
     );
 }
 
+TEST_F(ForEachTest, ForEachWithIndexPos){
+  
+  dash::Array<int> array(100, dash::CYCLIC);
+
+  // Fill
+  std::function< void(const int &, index_t)>
+  fill = [&array](int el, index_t i) {
+    auto coords = array.pattern().coords(i);
+    array[i] = coords[0];
+  };
+
+  // Verify
+  std::function< void(const int &, index_t)>
+    verify = [&array](int el, index_t i) {
+      auto coords  = array.pattern().coords(i);
+      auto desired = coords[0];
+      ASSERT_EQ_U(
+        desired,
+        el);
+    };
+
+  // Fill
+  dash::for_each_with_index(
+    array.begin(),
+    array.end(),
+    fill);
+
+  dash::for_each_with_index(
+    array.begin(),
+    array.end(),
+    verify);
+
+}
