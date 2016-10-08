@@ -1020,18 +1020,21 @@ TEST_F(MatrixTest, MatrixLBegin)
 
 TEST_F(MatrixTest, DelayedPatternAllocation)
 {
-  int block_size_x = 10;
-  int block_size_y = 5;
-  dash::Matrix<int, 2, long, dash::Pattern<2> > matrix;
-
+  typedef dash::TilePattern<2> pattern_t;
+  long block_size_x = dash::size();
+  long block_size_y = dash::size();
+  dash::Matrix<int, 2, long, pattern_t > matrix;
+  
   {
-    dash::Pattern<2> pattern(95, 20);
+    dash::TeamSpec<2> ts;
+    pattern_t pattern(
+          dash::SizeSpec<2>(block_size_x, block_size_y),
+          dash::DistributionSpec<2>(dash::TILE(1),dash::TILE(1)),
+          ts,
+          dash::Team::All());
     matrix.allocate(pattern);
   }
-  if(dash::myid() == 0){
-    matrix(0,0) = 1;
-    matrix(94,19) = 10;
-    EXPECT_EQ(1, matrix[0][0]);
-    EXPECT_EQ(10, matrix[94][19]);
-  }
+  auto id = dash::myid();
+  matrix(id,id) =id;
+  EXPECT_EQ(id, matrix[id][id]);
 }
