@@ -1018,3 +1018,20 @@ TEST_F(MatrixTest, MatrixLBegin)
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.begin())));
 }
 
+TEST_F(MatrixTest, DelayedPatternAllocation)
+{
+  int block_size_x = 10;
+  int block_size_y = 5;
+  dash::Matrix<int, 2, long, dash::Pattern<2> > matrix;
+
+  {
+    dash::Pattern<2> pattern(95, 20);
+    matrix.allocate(pattern);
+  }
+  if(dash::myid() == 0){
+    matrix(0,0) = 1;
+    matrix(94,19) = 10;
+    EXPECT_EQ(1, matrix[0][0]);
+    EXPECT_EQ(10, matrix[94][19]);
+  }
+}
