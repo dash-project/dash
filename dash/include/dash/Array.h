@@ -1148,42 +1148,57 @@ public:
 
   bool allocate(const PatternType & pattern)
   {
-		DASH_LOG_TRACE("Array._allocate()", "pattern",
+    return allocate(pattern, AllocatorType{pattern.team()});
+  }
+
+
+private:
+
+#if 0
+  typename std::enable_if<
+    std::is_move_constructible<value_type>::value &&
+    std::is_move_assignable<value_type>::value,
+    bool
+  >::type
+#else
+  bool
+#endif
+  allocate(
+    const PatternType                 & pattern,
+    std::initializer_list<value_type>   local_elements)
+  {
+    DASH_LOG_TRACE("Array._allocate()", "pattern",
                    pattern.memory_layout().extents());
-    if (&m_pattern != &pattern) {
-      DASH_LOG_TRACE("Array.allocate()", "using specified pattern");
-      m_pattern = pattern;
-    }
     // Check requested capacity:
-    m_size      = m_pattern.capacity();
-    m_team      = &(m_pattern.team());
+    m_size      = pattern.capacity();
+    m_team      = &pattern.team();
     if (m_size == 0) {
       DASH_THROW(
         dash::exception::InvalidArgument,
         "Tried to allocate dash::Array with size 0");
     }
     // Initialize members:
-    m_lsize     = m_pattern.local_size();
-    m_lcapacity = m_pattern.local_capacity();
-    m_myid      = m_team->myid();
+    m_lsize     = pattern.local_size();
+    m_lcapacity = pattern.local_capacity();
+    m_myid      = pattern.team().myid();
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new glob_mem_type(m_lcapacity, m_pattern.team());
+    m_globmem   = new glob_mem_type(local_elements, pattern.team());
     // Global iterators:
-    m_begin     = iterator(m_globmem, m_pattern);
+    m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
     m_lbegin    = m_globmem->lbegin(m_myid);
     // More efficient than using m_globmem->lend as this a second mapping
     // of the local memory segment:
-    m_lend      = m_lbegin + m_lsize;
+    m_lend      = m_lbegin + pattern.local_size();
     DASH_LOG_TRACE_VAR("Array._allocate", m_myid);
     DASH_LOG_TRACE_VAR("Array._allocate", m_size);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
     // Register deallocator of this array instance at the team
     // instance that has been used to initialized it:
-    m_team->register_deallocator(
+    pattern.team().register_deallocator(
       this, std::bind(&Array::deallocate, this));
     // Assure all units are synchronized after allocation, otherwise
     // other units might start working on the array before allocation
@@ -1240,66 +1255,6 @@ public:
     // Register deallocator of this array instance at the team
     // instance that has been used to initialized it:
     m_team->register_deallocator(
-      this, std::bind(&Array::deallocate, this));
-    // Assure all units are synchronized after allocation, otherwise
-    // other units might start working on the array before allocation
-    // completed at all units:
-    if (dash::is_initialized()) {
-      DASH_LOG_TRACE("Array._allocate",
-                     "waiting for allocation of all units");
-      m_team->barrier();
-    }
-    DASH_LOG_TRACE("Array._allocate >", "finished");
-    return true;
-  }
-
-private:
-
-#if 0
-  typename std::enable_if<
-    std::is_move_constructible<value_type>::value &&
-    std::is_move_assignable<value_type>::value,
-    bool
-  >::type
-#else
-  bool
-#endif
-  allocate(
-    const PatternType                 & pattern,
-    std::initializer_list<value_type>   local_elements)
-  {
-    DASH_LOG_TRACE("Array._allocate()", "pattern",
-                   pattern.memory_layout().extents());
-    // Check requested capacity:
-    m_size      = pattern.capacity();
-    m_team      = &pattern.team();
-    if (m_size == 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Tried to allocate dash::Array with size 0");
-    }
-    // Initialize members:
-    m_lsize     = pattern.local_size();
-    m_lcapacity = pattern.local_capacity();
-    m_myid      = pattern.team().myid();
-    // Allocate local memory of identical size on every unit:
-    DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
-    DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new glob_mem_type(local_elements, pattern.team());
-    // Global iterators:
-    m_begin     = iterator(m_globmem, pattern);
-    m_end       = iterator(m_begin) + m_size;
-    // Local iterators:
-    m_lbegin    = m_globmem->lbegin(m_myid);
-    // More efficient than using m_globmem->lend as this a second mapping
-    // of the local memory segment:
-    m_lend      = m_lbegin + pattern.local_size();
-    DASH_LOG_TRACE_VAR("Array._allocate", m_myid);
-    DASH_LOG_TRACE_VAR("Array._allocate", m_size);
-    DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    // Register deallocator of this array instance at the team
-    // instance that has been used to initialized it:
-    pattern.team().register_deallocator(
       this, std::bind(&Array::deallocate, this));
     // Assure all units are synchronized after allocation, otherwise
     // other units might start working on the array before allocation

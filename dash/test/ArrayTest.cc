@@ -171,8 +171,9 @@ TEST_F(ArrayTest, PersistentAllocator)
 
   using value_t = int;
   using allocator_t = dash::allocator::CollectivePersistentAllocator<value_t>;
-  allocator_t alloc{dash::Team::All()};
-  dash::Array<int, index_t, pattern_t, allocator_t> array{pattern, alloc};
+
+  {
+  dash::Array<int, index_t, pattern_t, allocator_t> array{pattern};
   // Fill
   std::function< void(const int &, index_t)>
   fill = [&array](int el, index_t i) {
@@ -189,11 +190,6 @@ TEST_F(ArrayTest, PersistentAllocator)
         desired,
         el);
     };
-
-  {
-
-    //array.allocate(pattern);
-  }
 
   // Fill
   dash::for_each_with_index(

@@ -256,7 +256,7 @@ public:
       DASH_ASSERT(_allocated.size() == 1);
       auto & bucket = _allocated.front();
       if (bucket.second.nbytes != num_local_bytes) {
-        DASH_THROW(dash::exception::RuntimeError,
+        DASH_THROW(dash::exception::InvalidArgument,
                    "PersistentCollectiveAllocator.allocate(): trying to reallocate static memory of different size");
       } else {
         lptr = bucket.first;
