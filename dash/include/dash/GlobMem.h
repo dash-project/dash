@@ -171,6 +171,44 @@ public:
   }
 
   /**
+   * Constructor, collectively allocates the given number of elements in
+   * local memory of every unit in a team.
+   */
+  explicit GlobMem(
+    /// Number of local elements to allocate in global memory space
+    size_type   n_local_elem,
+    /// The associated allocator to gain local address space
+    allocator_type const & alloc)
+  : _allocator(alloc),
+    _teamid(alloc.dart_team_id()),
+    _nlelem(0)
+  {
+
+    if (_teamid == DART_TEAM_NULL) {
+      _nunits = 1;
+    } else {
+      size_t nunits;
+      DASH_ASSERT_RETURNS(
+        dart_team_size(_teamid, &nunits),
+        DART_OK);
+      _nunits = nunits;
+      DASH_LOG_TRACE("GlobMem(lvals,team)",
+                     "number of local values:", _nlelem,
+                     "team size:",              _nunits);
+    }
+    DASH_ASSERT(n_local_elem > 0);
+
+    if (n_local_elem > 0) {
+      _begptr = _allocator.allocate(n_local_elem);
+      DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
+
+      _lbegin = lbegin(dash::myid());
+      _lend   = lend(dash::myid());
+    }
+    DASH_LOG_TRACE("GlobMem(lvals,team) >");
+  }
+
+  /**
    * Destructor, collectively frees underlying global memory.
    */
   ~GlobMem()
@@ -468,7 +506,7 @@ public:
 
 private:
   allocator_type          _allocator;
-  dart_gptr_t             _begptr;
+  dart_gptr_t             _begptr    = DART_GPTR_NULL;
   dart_team_t             _teamid;
   size_type               _nunits;
   size_type               _nlelem;

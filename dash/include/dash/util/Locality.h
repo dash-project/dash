@@ -29,7 +29,8 @@ namespace dash {
 template<
     typename ElementType,
     typename IndexType,
-    class    PatternType>
+    class    PatternType,
+    class    AllocatorType>
 class Array;
 #endif // DOXYGEN
 

@@ -76,7 +76,6 @@ private:
   using self_t = PersistentMemoryAllocator<ElementType>;
 
   struct pmem_bucket_info {
-    //dart_pmem_oid_t pmem_addr;
     size_t          nbytes = 0;
     dart_gptr_t gptr = DART_GPTR_NULL;
   };
@@ -104,7 +103,7 @@ public:
   : _team(&team),
     _team_id(team.dart_id()),
     _nunits(team.size()),
-    _poolId(poolId) {
+    _poolID(poolId) {
     DASH_LOG_TRACE("PersistentMemoryAllocator.PersistentMemoryAllocator(team, poolId) >");
   }
 
@@ -117,7 +116,7 @@ public:
     _team_id(other._team_id),
     _nunits(other._nunits),
     _allocated(other._allocated),
-    _poolId(other._poolId),
+    _poolID(other._poolID),
     _pmem_pool(other._pmem_pool) {
     other._allocated.clear();
     other._pmem_pool = nullptr;
@@ -142,7 +141,7 @@ public:
   : _team(other._team),
     _team_id(other._team_id),
     _nunits(other._nunits),
-    _poolId(other._poolId) {
+    _poolID(other._poolID) {
     DASH_LOG_TRACE("PersistentMemoryAllocator.PersistentMemoryAllocator(&) >");
   }
 
@@ -156,7 +155,7 @@ public:
   : _team(&other.team()),
     _team_id(_team->dart_id()),
     _nunits(_team->size()),
-    _poolId(other.poolId()) {
+    _poolID(other.poolId()) {
     DASH_LOG_TRACE("PersistentMemoryAllocator.PersistentMemoryAllocator(U other)");
   }
 
@@ -190,8 +189,12 @@ public:
     DASH_LOG_DEBUG("PersistentMemoryAllocator.=(&&)()");
     // Take ownership of other instance's allocation vector:
     clear();
-    _allocated = other._allocated;
-    other._allocated.clear();
+    std::swap(_allocated, other._allocated);
+    std::swap(_poolID, other._poolID);
+    std::swap(_nunits, other._nunits);
+    std::swap(_team, other._team);
+    std::swap(_team_id, other._team_id);
+    std::swap(_pmem_pool, other._pmem_pool);
     DASH_LOG_DEBUG("PersistentMemoryAllocator.=(&&) >");
     return *this;
   }
@@ -208,7 +211,7 @@ public:
    * \see DashAllocatorConcept
    */
   bool operator==(const self_t & rhs) const noexcept {
-    return (_team_id == rhs._team_id);
+    return (_team_id == rhs._team_id) && (_poolID == rhs._poolID);
   }
 
   /**
@@ -412,7 +415,7 @@ public:
    *
    */
   inline std::string poolId() const noexcept {
-    return _poolId;
+    return _poolID;
   }
 
   /**
@@ -465,7 +468,7 @@ private:
 
   void clear() noexcept {
     DASH_LOG_DEBUG("PersistentMemoryAllocator.clear()");
-    for (auto e : _allocated) {
+    for (auto &e : _allocated) {
 
       if (!DART_GPTR_EQUAL(e.second.gptr, DART_GPTR_NULL)) {
         DASH_LOG_DEBUG("PersistentMemoryAllocator.clear",
@@ -530,19 +533,19 @@ private:
     int flags;
     std::string poolId;
 
-    if (_poolId.empty()) {
-      poolId = dash::util::random_str(objectID_MAXLEN);
+    if (_poolID.empty()) {
+      _poolID = dash::util::random_str(objectID_MAXLEN) + ".pmem";
       //Ensure that this file is exclusively created
       //If the path already exists it raises an error
       flags = DART_PMEM_FILE_CREATE | DART_PMEM_FILE_EXCL;
     } else {
       flags = DART_PMEM_FILE_CREATE;
-      poolId = _poolId;
     }
 
     mode_t mode = S_IRWXU;
 
-    _pmem_pool = dart__pmem__pool_open(_team_id, poolId.c_str(), flags, mode);
+    _pmem_pool = dart__pmem__pool_open(_team_id, _poolID.c_str(), flags, mode);
+    DASH_ASSERT(_pmem_pool);
 
     relocate_pmem_buckets();
 
@@ -554,7 +557,7 @@ private:
   dart_team_t                                     _team_id   = DART_TEAM_NULL;
   size_t                                          _nunits    = 0;
   std::vector<pmem_bucket_item_t>                 _allocated;
-  std::string                                     _poolId = "";
+  std::string                                     _poolID = "";
   dart_pmem_pool_t                              * _pmem_pool = nullptr;
 
 }; // class PersistentMemoryAllocator
@@ -565,7 +568,7 @@ bool operator==(
   const PersistentMemoryAllocator<U> & rhs) {
   return (sizeof(T)    == sizeof(U) &&
           lhs._team_id == rhs._team_id &&
-          lhs._poolId == rhs._poolId &&
+          lhs._poolID == rhs._poolID &&
           lhs._nunits  == rhs._nunits );
 }
 

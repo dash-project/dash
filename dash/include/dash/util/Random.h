@@ -1,3 +1,5 @@
+#ifndef DASH__UTIL__RANDOM_H__
+#define DASH__UTIL__RANDOM_H__
 
 #include <string>
 #include <random>
@@ -27,3 +29,4 @@ static std::string random_str(size_t len)
 }
 }
 }
+#endif //DASH__UTIL__RANDOM_

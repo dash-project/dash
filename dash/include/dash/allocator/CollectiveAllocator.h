@@ -198,6 +198,13 @@ public:
   }
 
   /**
+   * Returns the associated DART Team ID
+   */
+  dart_team_t dart_team_id() const noexcept {
+    return _team_id;
+  }
+
+  /**
    * Deallocates memory in global memory space previously allocated across
    * local memory of all units in the team.
    *

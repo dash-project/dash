@@ -36,7 +36,10 @@ int main(int argc, char * argv[])
 	listeners.Append(new TestPrinter);
 
   // Run Tests
-  int ret = RUN_ALL_TESTS();
+  int ret;
+  {
+    ret = RUN_ALL_TESTS();
+  }
   // Finalize DASH
   dash::finalize();
   return ret;

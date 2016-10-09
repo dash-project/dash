@@ -498,13 +498,13 @@ dart_ret_t dart__base__pmem__sizeof_oid(
 
 dart_ret_t dart__base__pmem__pool_close(
   dart_pmem_pool_t ** pool) {
-  DART_LOG_DEBUG("dart__pmem__close");
+  DART_LOG_DEBUG("dart__pmem__pool_close");
   pmemobj_close((*pool)->pop);
   free((char *) (*pool)->path);
   free((char *) (*pool)->layout);
   free(*pool);
   *pool = NULL;
-  DART_LOG_DEBUG("dart__pmem__close >");
+  DART_LOG_DEBUG("dart__pmem__pool_close >");
 
   return DART_OK;
 }

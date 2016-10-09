@@ -65,12 +65,13 @@ void for_each(
 template<
     typename ElementType,
     typename IndexType,
-    class PatternType>
+//    class PatternType,
+    class GlobIterType>
 void for_each_with_index(
     /// Iterator to the initial position in the sequence
-    const GlobIter<ElementType, PatternType> & first,
+    const GlobIterType & first,
     /// Iterator to the final position in the sequence
-    const GlobIter<ElementType, PatternType> & last,
+    const GlobIterType & last,
     /// Function to invoke on every index in the range
     ::std::function<void(const ElementType &, IndexType)> & func) {
     /// Global iterators to local index range:

@@ -5,6 +5,7 @@
 #include <dash/allocator/CollectiveAllocator.h>
 #include <dash/allocator/DynamicAllocator.h>
 #include <dash/allocator/PersistentMemoryAllocator.h>
+#include <dash/allocator/PersistentCollectiveAllocator.h>
 
 namespace dash {
 
