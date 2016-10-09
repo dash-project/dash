@@ -173,7 +173,7 @@ TEST_F(ArrayTest, PersistentAllocator)
      dash::Team::All());
 
 
-  std::string poolID = dash::util::random_str(8);
+  std::string poolID = dash::util::random_str(8) + ".pmem";
 
   {
     allocator_t alloc = allocator_t{pattern.team(), poolID};
@@ -183,12 +183,16 @@ TEST_F(ArrayTest, PersistentAllocator)
     fill = [&array](int el, index_t i) {
       auto coords = array.pattern().coords(i);
       array[i] = coords[0];
+      DASH_LOG_TRACE("writing value to array", coords[0], " at index array[", i, "]");
     };
 
     dash::for_each_with_index(
       array.begin(),
       array.end(),
       fill);
+    
+    dash::barrier();
+
   }
 
   {
@@ -200,6 +204,7 @@ TEST_F(ArrayTest, PersistentAllocator)
       verify = [&array](const int el, index_t i) {
         auto coords  = array.pattern().coords(i);
         auto desired = coords[0];
+        DASH_LOG_TRACE("reading value from array", "array[", coords[0], "]", " == ", el);
         ASSERT_EQ_U(
           desired,
           el);

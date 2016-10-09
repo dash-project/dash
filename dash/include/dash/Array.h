@@ -798,6 +798,25 @@ public:
     allocate(m_pattern, alloc);
   }
 
+  //TODO: this does not work at the moment
+  /*
+  explicit Array(
+      AllocatorType const & alloc)
+  : local(this)
+    async(this),
+    m_team(&alloc.team()),
+    m_pattern(
+      SizeSpec_t(0),
+      DistributionSpec_t(dash::BLOCKED),
+      team),
+    m_size(0),
+    m_lsize(0),
+    m_lcapacity(0)
+  {
+    DASH_LOG_TRACE("Array() >", "finished default constructor");
+  }
+  */
+
   /**
    * Destructor, deallocates array elements.
    */
