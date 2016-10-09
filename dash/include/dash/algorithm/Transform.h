@@ -70,7 +70,7 @@ dart_ret_t accumulate_impl(
 /**
  * Apply a given function to elements in a range and store the result in
  * another range, beginning at \c out_first.
- * Corresponding to \c MPI_Accumulate, the binary operation is executed
+ * Corresponding to \c MPI_Accumulate, the unary operation is executed
  * atomically on single elements.
  *
  * Precondition: All elements in the input range are contained in a single
