@@ -6,7 +6,7 @@
 #include "TestBase.h"
 #include "FindTest.h"
 
-#if 0
+#if 1
 
 TEST_F(FindTest, TestSimpleFind)
 {
@@ -46,7 +46,7 @@ TEST_F(FindTest, TestSimpleFind)
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
 }
-
+#if 0
 TEST_F(FindTest, SimpleVaryingTest)
 {
   typedef long Element_t;
@@ -95,6 +95,7 @@ TEST_F(FindTest, SimpleVaryingTest)
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
 }
+#endif 
 
 TEST_F(FindTest, AllElementsEqualNoneMatches)
 {
@@ -129,7 +130,7 @@ TEST_F(FindTest, AllElementsEqualAllMatch)
 {
   _num_elem           = dash::Team::All().size();
   Element_t find_me	  = 24;
-  Element_t init_fill = 0;
+  Element_t init_fill = 24;
 
   // Initialize global array and fill it with init_fill:
   Array_t array(_num_elem);
@@ -238,7 +239,7 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
 }
-
+#if 0
 TEST_F(FindTest, Empty_Container)
 {
   Element_t find_me = 1;
@@ -256,13 +257,13 @@ TEST_F(FindTest, Empty_Container)
   // Run find on complete array
   EXPECT_EQ(array.end(), found_gptr);
 }
-
+#endif
 TEST_F(FindTest, LessElementsThanUnits)
 {
   int num_of_units  = dash::Team::All().size();
 
   LOG_MESSAGE("Number of units is %d", num_of_units);
-  ASSERT_EQ(num_of_units, 0);
+  ASSERT_NE(num_of_units, 1);
 
   Element_t find_me	    = 1;
   Element_t init_fill     = 0;
