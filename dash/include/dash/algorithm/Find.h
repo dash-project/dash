@@ -27,7 +27,7 @@ GlobIter<ElementType, PatternType> find(
   /// Value which will be assigned to the elements in range [first, last)
   const ElementType                  & value)
 {
-  typedef long p_index_t;
+  using p_index_t = typename PatternType::index_type;
   
   if(first >= last){
     return last;
