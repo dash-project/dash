@@ -46,15 +46,14 @@ TEST_F(FindTest, TestSimpleFind)
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
 }
-#if 0
+
+#if 1
 TEST_F(FindTest, SimpleVaryingTest)
 {
   typedef long Element_t;
   int       num_of_units = dash::Team::All().size();
-  Element_t find_me	     = 24;
-  index_t   find_pos     = 5;
-
-  ASSERT_TRUE(num_of_units < find_me);
+  Element_t find_me	     = num_of_units + 24;
+  index_t   find_pos     = dash::size() - 1;
 
   dash::Array<Element_t> array;
 
@@ -62,9 +61,8 @@ TEST_F(FindTest, SimpleVaryingTest)
   // Therefore, array.local.size() should be 1.
   array.allocate(num_of_units, dash::BLOCKED);
 
-  if (dash::myid() == 0) {
-    ASSERT_EQ(array.local.size(), 1);
-  }
+  ASSERT_EQ_U(array.local.size(), 1);
+
   array.barrier();
 
   auto l_size = array.local.size();
@@ -76,7 +74,9 @@ TEST_F(FindTest, SimpleVaryingTest)
 
   array.barrier();
 
-  array.local[find_pos] = find_me;
+  if(dash::myid() == 0){
+    array[find_pos] = find_me;
+  }
 
   array.barrier();
 
@@ -87,7 +87,7 @@ TEST_F(FindTest, SimpleVaryingTest)
   LOG_MESSAGE("Completed dash::find");
 
   // Run find on complete array
-  EXPECT_NE_U(found_gptr, array.end());
+  EXPECT_EQ_U(found_gptr, array.begin() + find_pos);
 
   // Check minimum value found
   Element_t found_v = *found_gptr;
