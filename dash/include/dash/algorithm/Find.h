@@ -63,49 +63,20 @@ GlobIter<ElementType, PatternType> find(
       g_index = pattern.global(l_hit_index); 
     }
   }
-  // dist array containing local results
-  std::vector<p_index_t> local_min_indices(team.size());
+  // recieve buffer for global maximal index
+  p_index_t g_hit_idx;
+
   DASH_ASSERT_RETURNS(
-      dart_allgather(&g_index,
-                      local_min_indices.data(),
-                      sizeof(p_index_t),
-                      team.dart_id()),
+      dart_allreduce(&g_index, &g_hit_idx, sizeof(p_index_t),
+        dart_datatype<p_index_t>::value, DART_OP_MIN, team.dart_id()),
       DART_OK);
 
-  auto g_min_it = std::min_element(local_min_indices.begin(), local_min_indices.end());
-  if((*g_min_it) == std::numeric_limits<p_index_t>::max()){
+  if(g_hit_idx == std::numeric_limits<p_index_t>::max()){
     DASH_LOG_DEBUG("element not found");
     return last;
   }
 
-  return first + (*g_min_it);
-
-#if 0
-  typedef dash::default_index_t index_t;
-
-  auto myid          = dash::myid();
-  /// Global iterators to local range:
-  auto index_range   = dash::local_range(first, last);
-  auto l_first       = index_range.begin;
-  auto l_last        = index_range.end;
-  auto first_offset  = first.pos();
-  auto pattern       = first.pattern();
-
-  auto l_result      = std::find(l_first, l_last, value);
-  auto l_offset      = std::distance(l_first, l_result);
-  if (l_result == l_last) {
-    l_offset = -1;
-  }
-  auto g_offset      = pattern.global(l_offset);
-  dash::Array<decltype(g_offset)> l_results(first.pattern().team().size(), first.pattern().team());
-
-  l_results.local[0] = g_offset;
-  l_results.barrier();
-
-  auto g_result_idx = dash::min_element(l_results.begin(), l_results.end());
-
-  return l_result; //(first + (g_result_idx - first_offset)).get();
-#endif
+  return first + g_hit_idx;
 }
 
 /**
