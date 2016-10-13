@@ -424,82 +424,6 @@ TEST_F(CopyTest, AsyncLocalToGlobPtr)
   }
 }
 
-TEST_F(CopyTest, AsyncLocalToGlobPtr)
-{
-  // Copy all elements contained in a single, continuous block.
-  const int num_elem_per_unit = 20;
-  size_t num_elem_total       = _dash_size * num_elem_per_unit;
-
-  // Global target range:
-  dash::Array<int> array(num_elem_total, dash::BLOCKED);
-  // Local range to copy:
-  int local_range[num_elem_per_unit];
-
-  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (auto l = 0; l < num_elem_per_unit; ++l) {
-    array.local[l] = 0;
-    local_range[l] = ((dash::myid() + 1) * 1000) + l;
-  }
-  array.barrier();
-
-  // Copy values from local range to remote global range.
-  // All units (u) copy into block (nblocks-1-u), so unit 0 copies into
-  // last block.
-  auto block_offset  = _dash_size - 1 - dash::myid();
-  auto global_offset = block_offset * num_elem_per_unit;
-  dash::GlobPtr<int> gptr_dest((array.begin() + global_offset).dart_gptr());
-  dash::copy_async(local_range,
-                   local_range + num_elem_per_unit,
-                   gptr_dest);
-
-  array.barrier();
-
-  for (auto l = 0; l < num_elem_per_unit; ++l) {
-    // Compare local buffer and global array dest range:
-    ASSERT_EQ_U(local_range[l],
-                static_cast<int>(array[global_offset + l]));
-    // Verify local array range:
-  }
-}
-
-TEST_F(CopyTest, AsyncLocalToGlobPtr)
-{
-  // Copy all elements contained in a single, continuous block.
-  const int num_elem_per_unit = 20;
-  size_t num_elem_total       = _dash_size * num_elem_per_unit;
-
-  // Global target range:
-  dash::Array<int> array(num_elem_total, dash::BLOCKED);
-  // Local range to copy:
-  int local_range[num_elem_per_unit];
-
-  // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
-  for (auto l = 0; l < num_elem_per_unit; ++l) {
-    array.local[l] = 0;
-    local_range[l] = ((dash::myid() + 1) * 1000) + l;
-  }
-  array.barrier();
-
-  // Copy values from local range to remote global range.
-  // All units (u) copy into block (nblocks-1-u), so unit 0 copies into
-  // last block.
-  auto block_offset  = _dash_size - 1 - dash::myid();
-  auto global_offset = block_offset * num_elem_per_unit;
-  dash::GlobPtr<int> gptr_dest((array.begin() + global_offset).dart_gptr());
-  dash::copy_async(local_range,
-                   local_range + num_elem_per_unit,
-                   gptr_dest);
-
-  array.barrier();
-
-  for (auto l = 0; l < num_elem_per_unit; ++l) {
-    // Compare local buffer and global array dest range:
-    ASSERT_EQ_U(local_range[l],
-                static_cast<int>(array[global_offset + l]));
-    // Verify local array range:
-  }
-}
-
 TEST_F(CopyTest, BlockingGlobalToLocalSubBlock)
 {
   // Copy all elements contained in a single, continuous block,
@@ -876,24 +800,3 @@ TEST_F(CopyTest, AsyncAllToLocalVector)
   }
 }
 #endif
-
-
-TEST_F(CopyTest, BlockingGlobalToGlobal)
-{
-  auto   nunits         = dash::size();
-  size_t nelem_per_unit = 12;
-
-  dash::Array<int> array_1(nunits * nelem_per_unit);
-  dash::Array<int> array_2(nunits * nelem_per_unit);
-
-  dash::fill(array_1.begin(), array_1.end(), dash::myid());
-
-  dash::copy(array_1.begin(), array_1.end(), array_2.begin());
-
-  for (size_t l = 0; l < array_1.lsize(); l++) {
-    EXPECT_EQ_U(array_1.local[l], array_2.local[l]);
-  }
-
-}
-
-
