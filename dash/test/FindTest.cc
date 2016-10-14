@@ -159,6 +159,12 @@ TEST_F(FindTest, AllElementsEqualAllMatch)
 TEST_F(FindTest, SingleMatchInSingleUnit)
 {
   int       num_of_units      = dash::Team::All().size();
+
+  if (num_of_units < 2) {
+    LOG_MESSAGE("Test case requires nunits > 1");
+    return;
+  }
+
   Element_t find_me	          = 1;
   index_t   find_pos          = 5;
   Element_t init_fill         = 0;
