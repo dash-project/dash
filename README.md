@@ -132,7 +132,8 @@ Available options for IPM are documented in the
 Links
 -----
 
-The DART project homepage: http://www.dart-project.org
+The DASH project homepage: http://www.dash-project.org 
+
 The Munich Network Management homepage: http://www.mnm-team.org
 
 Developer Notes
