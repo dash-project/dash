@@ -39,6 +39,8 @@ namespace dash {
 #include <dash/Exception.h>
 #include <dash/Algorithm.h>
 #include <dash/Halo.h>
+#include <dash/HaloMatrix.h>
+#include <dash/HaloMatrixIterator.h>
 #include <dash/Allocator.h>
 #include <dash/Atomic.h>
 
