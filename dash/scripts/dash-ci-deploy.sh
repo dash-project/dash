@@ -111,5 +111,5 @@ mkdir -p build
 rm -Rf ./build/*
 (cd ./build && cmake $BASEPATH $BUILD_SETTINGS | nocolor && \
  await_confirm && \
- make -j $MAKE_PROCS $MAKE_TARGET) && \
+ make -j $MAKE_PROCS VERBOSE=1 $MAKE_TARGET) && \
 exit_message
