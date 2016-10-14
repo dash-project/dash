@@ -19,4 +19,4 @@ script:
     - chmod a+x dash/scripts/dash-ci.sh
     - ./dash/scripts/dash-ci.sh
 after_failure:
-    - cat ./dash/build-ci/*/*/*.log
+    - cat ./build-ci/*/*/*.log
