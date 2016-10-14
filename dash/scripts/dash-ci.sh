@@ -75,3 +75,7 @@ if [ $# != 0 ]; then
 else
   run_ci Release
 fi
+
+if $FAILED; then
+  exit -1
+fi
