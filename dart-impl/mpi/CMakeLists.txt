@@ -220,10 +220,8 @@ if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
 	# exports
 	install(EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-targets"
 	        DESTINATION cmake)
-endif()
 
-# install custom config
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
+  # install custom config
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
         DESTINATION cmake)
-
-
+endif()
