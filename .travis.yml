@@ -1,29 +1,17 @@
 sudo: required
 dist: trusty
 os:   linux
+services:
+    - docker
 language: cpp
 compiler:
     - gcc
-    - clang
 before_install:
-    - test -n $CC && unset CC
-    - test -n $CXX && unset CXX
-install:
-    - sudo apt-get -qq update
-    - sudo apt-get install cmake
-    - sudo apt-get install libpapi-dev
-    - sudo apt-get install libhwloc-plugins
-    - sudo apt-get install libhwloc-dev
-    - sudo apt-get install libopenmpi-dev
-    - sudo apt-get install openmpi-bin
-    - sudo apt-get install openmpi-common
-    - sudo apt-get install libhdf5-openmpi-dev
-    - sudo apt-get install libblas-dev
-    - sudo apt-get install libblas-doc
-    - sudo apt-get install liblapacke-dev
-    - sudo apt-get install liblapack-doc
+    - docker build --tag=dash/testing ./dash/scripts/docker-testing/
 script:
-    - chmod a+x dash/scripts/dash-ci.sh
-    - ./dash/scripts/dash-ci.sh
-after_failure:
+    - docker run -v $PWD:/opt/dash dash/testing /bin/sh -c "cd /opt/dash; sh dash/scripts/dash-ci.sh > /opt/dash/dash-ci.log 2> /opt/dash/dash-ci.err;"
+    - cat ./dash-ci.log | grep "PASSED" || exit 1
+after_script:
+    - cat ./dash-ci.log
+    - cat ./dash-ci.err
     - cat ./build-ci/*/*/*.log

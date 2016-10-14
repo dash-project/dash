@@ -1,0 +1,9 @@
+# Dockerfile for the DASH project
+FROM          ubuntu:latest
+
+MAINTAINER    Felix Moessbauer <felix.moessbauer@campus.lmu.de>
+
+RUN           apt-get update -y
+RUN           apt-get install -y cmake libhwloc-plugins libhwloc-dev \
+                          libopenmpi-dev openmpi-bin openmpi-common \
+                          git build-essential
