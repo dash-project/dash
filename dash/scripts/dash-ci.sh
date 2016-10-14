@@ -23,9 +23,11 @@ run_ci()
     cd $DEPLOY_PATH
 
   echo "[ BUILD  ] Deploying build $BUILD_TYPE to $DEPLOY_PATH ..."
+  echo "[ >> LOG ] $DEPLOY_PATH/build.log"
   $CMD_DEPLOY "--b=$BUILD_TYPE" -f "--i=$DEPLOY_PATH" >> $DEPLOY_PATH/build.log 2>&1
 
   if [ "$?" = "0" ]; then
+      echo "[     OK ]"
 
 ### Test DASH using DART SHMEM backend:
 #   echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (SHMEM) ..."
@@ -40,31 +42,32 @@ run_ci()
 #   echo "[ <!>    ]   $DEPLOY_PATH/test_shmem.log"
 
 ### Test DASH using DART MPI backend:
-    echo -n "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
+    echo "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
     $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
+    echo "[ >> LOG ] $DEPLOY_PATH/test_mpi.log"
     if [ "$?" = "0" ]; then
-      echo " OK"
+      echo "[     OK ]"
     else
-      echo " FAILED"
       FAILED=true
+      echo "[ FAILED ]"
+      head -n 100000 $DEPLOY_PATH/test_mpi.log
     fi
-    echo "[ <!>    ] Review the test log:"
-    echo "[ <!>    ]   $DEPLOY_PATH/test_mpi.log"
   else
-    echo "[ FAIL   ] Build failed, see $DEPLOY_PATH/build.log for details"
     FAILED=true
+    echo "[ FAILED ] Build failed"
+    cat $DEPLOY_PATH/build.log
   fi
 
   if $FAILED; then
-    echo "[ FAIL   ] Integration test on $BUILD_TYPE failed"
+    echo "[ FAILED ] Integration test on $BUILD_TYPE build failed"
   else
     echo "[ PASSED ] Build and test suite passed"
   fi
 }
 
-run_ci Development
-run_ci Debug
-run_ci Release
+for buildtype in "$@" ; do
+  run_ci $buildtype
+done
 
 if $FAILED; then
   exit -1

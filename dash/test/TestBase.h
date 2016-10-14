@@ -46,7 +46,7 @@ extern void ColoredPrintf(
 } // namespace internal
 } // namespace testing
 
-#if defined(DASH_ENABLE_LOGGING)
+#if defined(DASH_ENABLE_TEST_LOGGING)
 
 #define LOG_MESSAGE(...) do { \
   char buffer[300]; \
@@ -61,11 +61,11 @@ extern void ColoredPrintf(
     buffer); \
 } while(0)
 
-#else  // DASH_ENABLE_LOGGING
+#else  // DASH_ENABLE_TEST_LOGGING
 
 #define LOG_MESSAGE(...) do {  } while(0)
 
-#endif // DASH_ENABLE_LOGGING
+#endif // DASH_ENABLE_TEST_LOGGING
 
 #define DASH_TEST_LOCAL_ONLY() do { \
   if (dash::myid() > 0) { \
