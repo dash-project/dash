@@ -62,8 +62,9 @@ run_ci()
   fi
 }
 
-run_ci Release
+run_ci Development
 run_ci Debug
+run_ci Release
 
 if $FAILED; then
   exit -1
