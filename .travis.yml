@@ -18,6 +18,10 @@ install:
     - sudo apt-get install openmpi-bin
     - sudo apt-get install openmpi-common
     - sudo apt-get install libhdf5-openmpi-dev
+    - sudo apt-get install libblas-dev
+    - sudo apt-get install libblas-doc
+    - sudo apt-get install liblapacke-dev
+    - sudo apt-get install liblapack-doc
 script:
     - chmod a+x dash/scripts/dash-ci.sh
     - ./dash/scripts/dash-ci.sh
