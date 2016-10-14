@@ -65,9 +65,13 @@ run_ci()
   fi
 }
 
-for buildtype in "$@" ; do
-  run_ci $buildtype
-done
+if [ $# != 0 ]; then
+  for buildtype in "$@" ; do
+    run_ci $buildtype
+  done
+else
+  run_ci Release
+fi
 
 if $FAILED; then
   exit -1
