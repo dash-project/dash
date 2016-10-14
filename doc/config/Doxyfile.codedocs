@@ -10,15 +10,12 @@
 # Project related
 
 PROJECT_NAME            = "DASH"
-PROJECT_NUMBER          = 0.3.0
+PROJECT_NUMBER          = "0.3.0"
 STRIP_FROM_PATH         = src \
                           bin
-INPUT                   = "doc/config/mainpage.dox" \
-                          "dart-if/v3.2/include" \
-                          "dash/include"
-#                         "dart-impl/mpi/include" \
-#                         "dart-impl/shmem/dart-shmem/include" \
-#                         "dart-impl/cuda/dart-cuda/include" \
+INPUT                   = "./doc/config/mainpage.dox" \
+                          "./dart-if/v3.2/include" \
+                          "./dash/include"
 OUTPUT_DIRECTORY        = "doc"
 FILE_PATTERNS           = *.h \
                         = *.c \
@@ -33,7 +30,7 @@ EXCLUDE_SYMBOLS         = *::test::* \
                           *::examples::* \
                           *::internal::*
 RECURSIVE               = YES
-USE_MDFILE_AS_MAINPAGE  = doc/config/mainpage.dox
+USE_MDFILE_AS_MAINPAGE  = "./doc/config/mainpage.dox"
 ALWAYS_DETAILED_SEC     = YES
 INLINE_INHERITED_MEMB   = YES
 FULL_PATH_NAMES         = YES
@@ -135,10 +132,10 @@ WARN_NO_PARAMDOC        = YES
 GENERATE_HTML           = YES
 HTML_OUTPUT             = html
 HTML_FILE_EXTENSION     = .html
-HTML_EXTRA_STYLESHEET   = "doc/config/css/dash-doxygen.css" \
-                          "doc/config/css/dash-navtree.css" \
-                          "doc/config/css/dash-tabs.css" \
-                          "doc/config/css/dash-search.css"
+HTML_EXTRA_STYLESHEET   = "./doc/config/css/dash-doxygen.css" \
+                          "./doc/config/css/dash-navtree.css" \
+                          "./doc/config/css/dash-tabs.css" \
+                          "./doc/config/css/dash-search.css"
 
 # LaTex options
 GENERATE_LATEX          = NO
