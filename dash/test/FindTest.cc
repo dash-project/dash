@@ -68,7 +68,6 @@ TEST_F(FindTest, SimpleVaryingTest)
   for (size_t l_i = 0; l_i < l_size; l_i++) {
     array.local[l_i] = dash::myid();
     LOG_MESSAGE("array.local[%d] = %d", l_i, array.local[l_i]);
-
   }
 
   array.barrier();
@@ -94,7 +93,7 @@ TEST_F(FindTest, SimpleVaryingTest)
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
 }
-#endif 
+#endif
 
 TEST_F(FindTest, AllElementsEqualNoneMatches)
 {
@@ -238,6 +237,7 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
 }
+
 #if 0
 TEST_F(FindTest, Empty_Container)
 {
@@ -257,12 +257,17 @@ TEST_F(FindTest, Empty_Container)
   EXPECT_EQ(array.end(), found_gptr);
 }
 #endif
+
 TEST_F(FindTest, LessElementsThanUnits)
 {
   int num_of_units  = dash::Team::All().size();
 
   LOG_MESSAGE("Number of units is %d", num_of_units);
-  ASSERT_NE(num_of_units, 1);
+
+  if (num_of_units < 2) {
+    LOG_MESSAGE("Test case requires nunits > 1");
+    return;
+  }
 
   Element_t find_me	    = 1;
   Element_t init_fill     = 0;
