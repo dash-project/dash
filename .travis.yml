@@ -14,7 +14,7 @@ install:
     - sudo apt-get install libopenmpi-dev
     - sudo apt-get install openmpi-bin
     - sudo apt-get install openmpi-common
-		- sudo apt-get install libhdf5-openmpi-dev
+    - sudo apt-get install libhdf5-openmpi-dev
 script:
     - chmod a+x dash/scripts/dash-ci.sh
     - ./dash/scripts/dash-ci.sh
