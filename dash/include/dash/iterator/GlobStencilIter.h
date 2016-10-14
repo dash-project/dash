@@ -168,7 +168,7 @@ public:
 
   typedef       HaloSpecType                    stencil_spec;
 
-  typedef typename HaloSpecType::offset_type     offset_type;
+  typedef typename HaloSpecType::offset_t        offset_type;
 
 public:
   typedef std::integral_constant<bool, true>        has_view;
