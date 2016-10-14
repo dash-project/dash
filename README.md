@@ -1,3 +1,7 @@
+
+[![Build Status](https://travis-ci.org/dash-project/dash.svg?branch=development)](https://travis-ci.org/dash-project/dash)
+
+
 DASH
 ====
 
