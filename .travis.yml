@@ -6,7 +6,6 @@ compiler:
     - gcc
     - clang
 install:
-    - sudo add-apt-repository --yes universe
     - sudo apt-get -qq update
     - sudo apt-get install -y cmake
     - sudo apt-get install -y libpapi-dev
