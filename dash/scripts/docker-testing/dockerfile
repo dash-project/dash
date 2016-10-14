@@ -7,5 +7,5 @@ RUN           apt-get update -y
 RUN           apt-get install -y cmake libhwloc-plugins libhwloc-dev \
                           libopenmpi-dev openmpi-bin openmpi-common \
                           git build-essential
-
+RUN           apt-get remove libblas-dev -y
 
