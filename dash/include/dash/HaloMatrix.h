@@ -160,12 +160,11 @@ public:
 
   void waitHalosAsync()
   {
-
     for(auto & view : _blockview_data)
       dart_waitall(view.second.handle, view.second.num_handles);
   }
 
-  void updateHalo()
+  void updateHalos()
   {
     for(auto & view : _blockview_data)
       updateHaloIntern(view.first.first, view.first.second, false);
@@ -174,6 +173,11 @@ public:
   void updateHalo(dim_t dim, HaloRegion region)
   {
     updateHaloIntern(dim, region, false);
+  }
+
+  const ViewSpec_t & getLocalView()
+  {
+    return _view_local;
   }
 
 private:

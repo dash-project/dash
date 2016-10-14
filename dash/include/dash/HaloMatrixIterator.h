@@ -38,14 +38,15 @@ private:
   using HaloMemory_t = HaloMemory<HaloBlock_t>;
   using viewspec_t   = typename PatternT::viewspec_type;
   using offset_t     = typename HaloSpec_t::offset_t;
-
+  using local_layout_t = CartesianIndexSpace<NumDimensions, MemoryArrange, index_type>;
 
 public:
 
   HaloMatrixIterator(const HaloBlock_t & haloblock, HaloMemory_t & halomemory,
       index_type idx)
   : _haloblock(haloblock), _halomemory(halomemory), _local_memory(_haloblock.globmem().lbegin()),
-    _pattern(_haloblock.pattern()), _halospec(_haloblock.halospec()), _idx(idx)
+    _pattern(_haloblock.pattern()), _halospec(_haloblock.halospec()), _idx(idx),
+    _local_layout(_pattern.local_memory_layout())
 
   {
     if(Scope == StencilViewScope::INNER)
@@ -94,7 +95,7 @@ public:
    */
   reference operator*() const
   {
-    return _local_memory[_pattern.local_memory_layout().at(_coords)];
+    return _local_memory[_local_layout.at(_coords)];
   }
 
   /**
@@ -106,7 +107,7 @@ public:
   reference operator[](index_type idx) const
   {
     auto coords = setCoords(idx);
-    return _local_memory[_pattern.local_memory_layout().at(coords)];
+    return _local_memory[_local_layout.at(coords)];
   }
 
   index_type rpos() const
@@ -116,21 +117,20 @@ public:
 
   index_type lpos() const
   {
-    return _pattern.local_memory_layout().at(_coords);
+    return _local_layout().at(_coords);
   }
 
   ElementT halo_value(dim_t dim, offset_t offset)
   {
     //TODO: is the given offset in halospec range?
 
-    const auto & layout = _pattern.local_memory_layout();
 
     if(Scope == StencilViewScope::INNER)
     {
         auto halo_coords = _coords;
         halo_coords[dim] += offset;
 
-        return _local_memory[layout.at(halo_coords)];
+        return _local_memory[_local_layout.at(halo_coords)];
     }
     else
     {
@@ -140,7 +140,7 @@ public:
       {
         halo_coords[dim] += offset;
 
-        return _local_memory[layout.at(halo_coords)];
+        return _local_memory[_local_layout.at(halo_coords)];
       }
       else
       {
@@ -368,14 +368,14 @@ private:
       for(const auto & region : _bnd_elements)
       {
         if(local_idx < region.size())
-          return _pattern.local_memory_layout().coords(local_idx, region);
+          return _local_layout.coords(local_idx, region);
 
         local_idx -= region.size();
       }
       //TODO return value for idx >= size
     }
     else
-      return _pattern.local_memory_layout().coords(_idx, _view_local);
+      return _local_layout.coords(_idx, _view_local);
   }
 
 private:
@@ -387,6 +387,7 @@ private:
   viewspec_t                         _view_local;
   std::vector<viewspec_t>            _bnd_elements;
 
+  const local_layout_t &             _local_layout;
   index_type                         _idx{0};
   index_type                         _size{0};
   dart_unit_t                        _myid;
