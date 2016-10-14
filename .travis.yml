@@ -9,9 +9,9 @@ compiler:
 before_install:
     - docker build --tag=dash/testing ./dash/scripts/docker-testing/
 script:
-    - docker run -d -v $PWD:/opt/dash dash/testing /bin/sh -c "cd /opt/dash; sh dash/scripts/dash-ci.sh >dash-ci.log 2>dash-ci.err;"
-    - cat dash-ci.log | grep "PASSED" || exit 1
+    - docker run -d -v $PWD:/opt/dash dash/testing /bin/sh -c "cd /opt/dash; sh dash/scripts/dash-ci.sh > /opt/dash/dash-ci.log 2> /opt/dash/dash-ci.err;"
+    - cat ./dash-ci.log | grep "PASSED" || exit 1
 after_script:
-    - cat dash-ci.log
-    - cat dash-ci.err
+    - cat ./dash-ci.log
+    - cat ./dash-ci.err
     - cat ./build-ci/*/*/*.log
