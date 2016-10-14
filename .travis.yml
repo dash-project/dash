@@ -7,13 +7,14 @@ compiler:
     - clang
 install:
     - sudo apt-get -qq update
-    - sudo apt-get install -y cmake
-    - sudo apt-get install -y libpapi-dev
-    - sudo apt-get install -y libhwloc-plugins
-    - sudo apt-get install -y libhwloc-dev
-    - sudo apt-get install -y libopenmpi-dev
-    - sudo apt-get install -y openmpi-bin
-    - sudo apt-get install -y openmpi-common
+    - sudo apt-get install cmake
+    - sudo apt-get install libpapi-dev
+    - sudo apt-get install libhwloc-plugins
+    - sudo apt-get install libhwloc-dev
+    - sudo apt-get install libopenmpi-dev
+    - sudo apt-get install openmpi-bin
+    - sudo apt-get install openmpi-common
+		- sudo apt-get install libhdf5-openmpi-dev
 script:
     - chmod a+x dash/scripts/dash-ci.sh
     - ./dash/scripts/dash-ci.sh
