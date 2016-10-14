@@ -67,13 +67,11 @@ run_ci()
 
 if [ $# != 0 ]; then
   for buildtype in "$@" ; do
+    if $FAILED; then
+      exit -1
+    fi
     run_ci $buildtype
   done
 else
   run_ci Release
 fi
-
-if $FAILED; then
-  exit -1
-fi
-
