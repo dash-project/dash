@@ -50,7 +50,7 @@ run_ci()
     else
       FAILED=true
       echo "[ FAILED ]"
-      head -n 100000 $DEPLOY_PATH/test_mpi.log
+      tail -n 100000 $DEPLOY_PATH/test_mpi.log
     fi
   else
     FAILED=true
