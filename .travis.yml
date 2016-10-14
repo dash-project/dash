@@ -7,7 +7,7 @@ language: cpp
 compiler:
     - gcc
 before_install:
-    - docker build --tag=dash/testing ./docker-testing
+    - docker build --tag=dash/testing ./dash/scripts/docker-testing/
 script:
     - docker run -d dash/testing -v .:/opt/dash /bin/sh -c "cd /opt/dash; sh dash/scripts/dash-ci.sh;"
 after_failure:
