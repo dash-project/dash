@@ -156,17 +156,3 @@ TEST_F(ArrayTest, PatternAllocate)
     verify);
 }
 
-TEST_F(ArrayTest, ConstructorNelemInitializer_list)
-{
-  DASH_LOG_TRACE("AralllArray(nglobal,lvals,team) >",
-		 "TESTTESTTESTfinished delegating constructor");
-  dash::Array<int> target (4, {0,1,2,3});
-  
-  if(dash::myid() == 0) {
-    ASSERT_EQ_U(target[0], 0);
-    ASSERT_EQ_U(target[1], 1);
-    ASSERT_EQ_U(target[2], 2);    
-    ASSERT_EQ_U(target[3], 3);   
-  }  
-}
-
