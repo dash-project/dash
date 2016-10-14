@@ -1,0 +1,21 @@
+
+os:   linux
+dist: precise
+language: cpp
+compiler:
+    - gcc
+    - clang
+install:
+    - sudo add-apt-repository --yes ppa:kalakris/cmake
+    - sudo apt-get -qq update
+    - sudo apt-get install -y cmake
+    - sudo apt-get install -y libpapi-dev
+    - sudo apt-get install -y libhwloc-plugins
+    - sudo apt-get install -y libhwloc-dev
+    - sudo apt-get install -y libopenmpi-dev
+    - sudo apt-get install -y openmpi-bin
+    - sudo apt-get install -y openmpi-common
+script:
+    - chmod a+x dash/scripts/dash-ci.sh
+    - ./dash/scripts/dash-ci.sh
+
