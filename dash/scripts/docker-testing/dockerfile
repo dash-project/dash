@@ -1,0 +1,11 @@
+# Dockerfile for the DASH project
+FROM          ubuntu:latest
+
+MAINTAINER    Felix Moessbauer <felix.moessbauer@campus.lmu.de>
+
+RUN           apt-get update -y
+RUN           apt-get install -y cmake libpapi-dev libhwloc-plugins libhwloc-dev \
+                          libopenmpi-dev openmpi-bin openmpi-common libhdf5-openmpi-dev \
+                          libblas-dev libblas-doc liblapacke-dev liblapack-doc
+
+
