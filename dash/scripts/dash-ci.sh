@@ -45,7 +45,8 @@ run_ci()
     echo "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
     $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
     echo "[ >> LOG ] $DEPLOY_PATH/test_mpi.log"
-    if [ "$?" = "0" ]; then
+    ERROR_PATTERNS=`grep -c -i "error\|terminate" $DEPLOY_PATH/test_mpi.log`
+    if [ "$?" = "0" && "$ERROR_PATTERNS" -eq "0" ]; then
       echo "[     OK ]"
     else
       FAILED=true

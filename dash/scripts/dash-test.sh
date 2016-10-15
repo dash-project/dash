@@ -34,7 +34,7 @@ if [ $DART_IMPL = "shmem" ]; then
   RUN_CMD="$BIN_PATH/dartrun-shmem"
   TEST_BINARY="$BIN_PATH/dash/test/shmem/dash-test-shmem"
 elif [ $DART_IMPL = "mpi" ]; then
-  RUN_CMD="mpirun --allow-run-as-root"
+  RUN_CMD="mpirun ${MPI_EXEC_FLAGS}"
   TEST_BINARY="$BIN_PATH/dash/test/mpi/dash-test-mpi"
 else
   usage
