@@ -47,6 +47,9 @@ run_suite()
 {
   NCORES=`cat /proc/cpuinfo | grep -c 'core id'`
   NUNITS=$1
+  if [ "$DASH_MAX_UNITS" -ne "" ]; then
+    NCORES=$DASH_MAX_UNITS
+  fi
   if [ $NCORES -lt $NUNITS ]; then
     exit 0
   fi
