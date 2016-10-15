@@ -6,7 +6,7 @@
 #include "TestBase.h"
 #include "FindTest.h"
 
-
+#if 0
 TEST_F(FindTest, TestSimpleFind)
 {
   _num_elem           = dash::Team::All().size();
@@ -310,3 +310,4 @@ TEST_F(FindTest, LessElementsThanUnits)
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
 }
+#endif
