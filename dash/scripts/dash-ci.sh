@@ -50,7 +50,7 @@ run_ci()
     else
       FAILED=true
       echo "[ FAILED ]"
-      head -n 100000 $DEPLOY_PATH/test_mpi.log
+      tail -n 100000 $DEPLOY_PATH/test_mpi.log
     fi
   else
     FAILED=true
@@ -67,6 +67,9 @@ run_ci()
 
 if [ $# != 0 ]; then
   for buildtype in "$@" ; do
+    if $FAILED; then
+      exit -1
+    fi
     run_ci $buildtype
   done
 else
@@ -76,4 +79,3 @@ fi
 if $FAILED; then
   exit -1
 fi
-
