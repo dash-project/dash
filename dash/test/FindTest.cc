@@ -34,7 +34,10 @@ TEST_F(FindTest, TestSimpleFind)
 
   // Run find on complete array
   auto found_gptr = dash::find(array.begin(), array.end(), find_me);
-
+  if(found_gptr == array.end()){
+    FAIL();
+    return;
+  }
   // Check that the element find_me has been found (found != last):
   LOG_MESSAGE("Completed dash::find");
   // Run find on complete array
