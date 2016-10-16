@@ -21,14 +21,14 @@ template<
   class    PatternType>
 GlobIter<ElementType, PatternType> find(
   /// Iterator to the initial position in the sequence
-  GlobIter<ElementType, PatternType> first,
+  const GlobIter<ElementType, PatternType> & first,
   /// Iterator to the final position in the sequence
-  GlobIter<ElementType, PatternType> last,
+  const GlobIter<ElementType, PatternType> & last,
   /// Value which will be assigned to the elements in range [first, last)
   const ElementType                  & value)
 {
-  using p_index_t = typename PatternType::index_type;
-  
+  using p_index_t  = typename PatternType::index_type;
+  using globIter_t = GlobIter<ElementType, PatternType>; 
   if(first >= last){
     return last;
   }
@@ -38,12 +38,13 @@ GlobIter<ElementType, PatternType> find(
   auto l_begin_index = index_range.begin;
   auto l_end_index   = index_range.end;
   auto & pattern     = first.pattern();
-  auto & team        = pattern.team();
-  auto first_offset  = first.pos();
+  dash::Team & team        = pattern.team();
+  auto first_offset  = first.gpos();
+
   if(l_begin_index == l_end_index){
     g_index = std::numeric_limits<p_index_t>::max();
   } else {
-   auto g_begin_index = pattern.global(l_begin_index);
+    auto g_begin_index = pattern.global(l_begin_index);
   
     // Pointer to first element in local memory:
     const ElementType * lbegin        = first.globmem().lbegin(
@@ -57,7 +58,7 @@ GlobIter<ElementType, PatternType> find(
     auto l_result = std::find(l_range_begin, l_range_end, value);
     DASH_LOG_DEBUG("local result", (l_result-l_range_begin));
 
-    auto l_hit_index  = l_result - lbegin;
+    p_index_t l_hit_index  = l_result - lbegin;
     if(l_result == l_range_end){
       DASH_LOG_DEBUG("Not found in local range");
       g_index = std::numeric_limits<p_index_t>::max();
@@ -77,7 +78,7 @@ GlobIter<ElementType, PatternType> find(
     DASH_LOG_DEBUG("element not found");
     return last;
   }
-  auto result_it = first + g_hit_idx;
+  globIter_t result_it = (first - first.gpos()) + g_hit_idx;
   DASH_LOG_DEBUG("global result iterator", result_it);
   DASH_LOG_DEBUG("result value", static_cast<ElementType> (*result_it));
   return result_it;
