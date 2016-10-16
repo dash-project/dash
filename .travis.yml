@@ -9,9 +9,10 @@ compiler:
 before_install:
     - docker build --tag=dash/testing ./dash/scripts/docker-testing/
 script:
-    - docker run -v $PWD:/opt/dash dash/testing /bin/sh -c "export MPI_EXEC_FLAGS='--allow-run-as-root'; cd /opt/dash; sh dash/scripts/dash-ci.sh > /opt/dash/dash-ci.log 2> /opt/dash/dash-ci.err;"
+    - docker run -v $PWD:/opt/dash dash/testing /bin/sh -c "export MPI_EXEC_FLAGS='--allow-run-as-root'; export DASH_MAX_UNITS='2'; cd /opt/dash; sh dash/scripts/dash-ci.sh | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
     - cat ./dash-ci.log | grep "PASSED" || return 1
 after_script:
-    - cat ./dash-ci.log | grep -v "LOG"
+    - cat ./build-ci/*/*/test_mpi.log | grep -v "LOG"
+after_failure:
     - cat ./dash-ci.err
-    - cat ./build-ci/*/*/*.log
+    - cat ./build-ci/*/*/build.log

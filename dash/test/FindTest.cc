@@ -6,7 +6,6 @@
 #include "TestBase.h"
 #include "FindTest.h"
 
-
 TEST_F(FindTest, TestSimpleFind)
 {
   _num_elem           = dash::Team::All().size();
