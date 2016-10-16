@@ -48,7 +48,6 @@ TEST_F(FindTest, TestSimpleFind)
   EXPECT_EQ(find_me, found_v);
 }
 
-#if 1
 TEST_F(FindTest, SimpleVaryingTest)
 {
   typedef long Element_t;
@@ -66,11 +65,8 @@ TEST_F(FindTest, SimpleVaryingTest)
 
   array.barrier();
 
-  auto l_size = array.local.size();
-  for (size_t l_i = 0; l_i < l_size; l_i++) {
-    array.local[l_i] = dash::myid();
-    LOG_MESSAGE("array.local[%d] = %d", l_i, array.local[l_i]);
-  }
+  array.local[0] = dash::myid();
+  LOG_MESSAGE("array.local[0] = %d", array.local[0]);
 
   array.barrier();
 
@@ -86,8 +82,8 @@ TEST_F(FindTest, SimpleVaryingTest)
   // Check that the element find_me has been found (found != last)
   LOG_MESSAGE("Completed dash::find");
 
-  // Run find on complete array
-  EXPECT_EQ_U(found_gptr, array.begin() + find_pos);
+  auto expected_gptr = array.begin() + find_pos;
+  EXPECT_EQ_U(found_gptr, expected_gptr);
 
   // Check minimum value found
   Element_t found_v = *found_gptr;
@@ -95,7 +91,6 @@ TEST_F(FindTest, SimpleVaryingTest)
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
 }
-#endif
 
 TEST_F(FindTest, AllElementsEqualNoneMatches)
 {
