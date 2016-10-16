@@ -4,6 +4,7 @@
 #include "TestBase.h"
 #include "DARTLocalityTest.h"
 
+#if 0
 TEST_F(DARTLocalityTest, UnitLocality) {
     DASH_LOG_TRACE("DARTLocalityTest.Domains",
                    "get local unit locality descriptor");
@@ -46,6 +47,7 @@ TEST_F(DARTLocalityTest, UnitLocality) {
     EXPECT_GT_U(dl->level, 2);
     EXPECT_EQ_U(dl->scope, DART_LOCALITY_SCOPE_CORE);
 }
+#endif
 
 TEST_F(DARTLocalityTest, Domains)
 {

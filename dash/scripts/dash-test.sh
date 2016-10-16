@@ -34,7 +34,7 @@ if [ $DART_IMPL = "shmem" ]; then
   RUN_CMD="$BIN_PATH/dartrun-shmem"
   TEST_BINARY="$BIN_PATH/dash/test/shmem/dash-test-shmem"
 elif [ $DART_IMPL = "mpi" ]; then
-  RUN_CMD="mpirun --allow-run-as-root"
+  RUN_CMD="mpirun ${MPI_EXEC_FLAGS}"
   TEST_BINARY="$BIN_PATH/dash/test/mpi/dash-test-mpi"
 else
   usage
@@ -47,6 +47,9 @@ run_suite()
 {
   NCORES=`cat /proc/cpuinfo | grep -c 'core id'`
   NUNITS=$1
+  if [ "$DASH_MAX_UNITS" -ne "" ]; then
+    NCORES=$DASH_MAX_UNITS
+  fi
   if [ $NCORES -lt $NUNITS ]; then
     exit 0
   fi
