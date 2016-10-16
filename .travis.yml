@@ -14,4 +14,5 @@ script:
 after_script:
     - cat ./dash-ci.log
     - cat ./dash-ci.err
-    - cat ./build-ci/*/*/*.log
+after_failure:
+    - cat ./build-ci/*/*/build.log
