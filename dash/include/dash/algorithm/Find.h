@@ -55,6 +55,8 @@ GlobIter<ElementType, PatternType> find(
     DASH_LOG_DEBUG("local index range", l_begin_index, l_end_index);
   
     auto l_result = std::find(l_range_begin, l_range_end, value);
+    DASH_LOG_DEBUG("local result", (l_result-l_range_begin));
+
     auto l_hit_index  = l_result - lbegin;
     if(l_result == l_range_end){
       DASH_LOG_DEBUG("Not found in local range");
@@ -75,8 +77,10 @@ GlobIter<ElementType, PatternType> find(
     DASH_LOG_DEBUG("element not found");
     return last;
   }
-
-  return first + g_hit_idx;
+  auto result_it = first + g_hit_idx;
+  DASH_LOG_DEBUG("global result iterator", result_it);
+  DASH_LOG_DEBUG("result value", static_cast<ElementType> (*result_it));
+  return result_it;
 }
 
 /**
