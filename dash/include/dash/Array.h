@@ -952,7 +952,7 @@ public:
    * \return  The instance of Team that this array has been instantiated
    *          with
    */
-  inline const Team & team() const noexcept
+  inline Team & team() const noexcept
   {
     return *m_team;
   }
