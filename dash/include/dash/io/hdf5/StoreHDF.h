@@ -571,7 +571,7 @@ public:
         dash::SizeSpec<1, extent_t>(static_cast<extent_t>(data_dimsf[0])),
         dash::DistributionSpec<1>(dash::TILE(tilesize)),
         dash::TeamSpec<1, index_t>(),
-        dash::Team::All());
+        array.team());
 
       array.allocate(pattern);
     } else if (is_alloc) {
@@ -587,7 +587,7 @@ public:
         dash::SizeSpec<1, extent_t>(static_cast<extent_t>(data_dimsf[0])),
         dash::DistributionSpec<1>(),
         dash::TeamSpec<1, index_t>(),
-        dash::Team::All());
+        array.team());
       array.allocate(pattern);
     }
     pattern_t pattern    = array.pattern();
@@ -761,7 +761,7 @@ public:
         dash::SizeSpec<ndim>(size_extents),
         dash::DistributionSpec<ndim>(dist_extents),
         dash::TeamSpec<ndim>(team_extents),
-        dash::Team::All());
+        matrix.team());
 
       // Allocate DASH Matrix
       matrix.allocate(pattern);
@@ -782,7 +782,7 @@ public:
         dash::SizeSpec<ndim>(size_extents),
         dash::DistributionSpec<ndim>(),
         dash::TeamSpec<ndim>(),
-        dash::Team::All());
+        matrix.team());
 
       matrix.allocate(pattern);
     }
