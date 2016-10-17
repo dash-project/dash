@@ -86,7 +86,7 @@ run_suite()
     tee -a $LOGFILE
 }
 
-run_suite 1
+# run_suite 1
 run_suite 2
 run_suite 3
 run_suite 4
