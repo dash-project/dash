@@ -1022,15 +1022,19 @@ TEST_F(MatrixTest, DelayedPatternAllocation)
   typedef dash::TilePattern<2> pattern_t;
   long block_size_x = dash::size();
   long block_size_y = dash::size();
-  dash::Matrix<int, 2, long, pattern_t > matrix;
+  dash::NArray<int, 2, long, pattern_t > matrix;
   
   {
-    dash::TeamSpec<2> ts;
+    auto & team = dash::Team::All();
+    dash::TeamSpec<2>         ts(team);
+    dash::SizeSpec<2>         ss(block_size_x, block_size_y);
+    dash::DistributionSpec<2> ds(dash::TILE(1),dash::TILE(1));
+
     pattern_t pattern(
-          dash::SizeSpec<2>(block_size_x, block_size_y),
-          dash::DistributionSpec<2>(dash::TILE(1),dash::TILE(1)),
+          ss,
+          ds,
           ts,
-          dash::Team::All());
+          team);
     matrix.allocate(pattern);
   }
   auto id = dash::myid();
