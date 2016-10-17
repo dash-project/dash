@@ -1,5 +1,5 @@
-#ifndef DASH__IO__STORE_HDF5_H__
-#define DASH__IO__STORE_HDF5_H__
+#ifndef DASH__IO__STORE_HDF_H__
+#define DASH__IO__STORE_HDF_H__
 
 #include <dash/internal/Config.h>
 
@@ -35,29 +35,8 @@ namespace dash {
 namespace io {
 namespace hdf5 {
 
-/** Pseudo type traits to map the native c datatype to an hdf5 type.
- * This has to be implemented using a function, as the H5T_NATIVE_*
- * is a macro that expands to a non constant function
- */
-template < typename T > hid_t get_h5_datatype() {
-  DASH_THROW(
-    dash::exception::InvalidArgument,
-    "Datatype not supported");
-  // To avoid compiler warning:
-  return -1;
-}
-template <> hid_t get_h5_datatype<int>() {
-  return H5T_NATIVE_INT;
-}
-template <> hid_t get_h5_datatype<long>() {
-  return H5T_NATIVE_LONG;
-}
-template <> hid_t get_h5_datatype<float>() {
-  return H5T_NATIVE_FLOAT;
-}
-template <> hid_t get_h5_datatype<double>() {
-  return H5T_NATIVE_DOUBLE;
-}
+/** forward declaration */
+template < typename T > hid_t get_h5_datatype();
 
 /**
  * DASH wrapper to store an dash::Array or dash::Matrix
@@ -974,6 +953,7 @@ private:
 } // namespace io
 } // namespace dash
 
+#include <dash/io/hdf5/internal/StoreHDF.h>
 #include <dash/io/hdf5/HDF5IOManip.h>
 
 #endif // DASH_ENABLE_HDF5
