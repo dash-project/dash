@@ -14,8 +14,8 @@ TEST_F(MatrixTest, OddSize)
 
   dash::Matrix<int, 2, index_t, pattern_t> matrix(dash::SizeSpec<2>(8, 15));
 
-  for (int i = 0; i < matrix.extent(0); i++) {
-    for (int j = 0; j < matrix.extent(1); j++) {
+  for (size_t i = 0; i < matrix.extent(0); i++) {
+    for (size_t j = 0; j < matrix.extent(1); j++) {
       if (matrix(i,j).is_local()) {
         DASH_LOG_TRACE("MatrixText.OddSize", "(", i, ",", j, ")",
                        "unit:", _dash_id);
@@ -46,7 +46,6 @@ TEST_F(MatrixTest, Views)
               num_elem_per_unit, num_blocks_per_unit);
 
   typedef dash::default_index_t                 index_t;
-  typedef dash::default_size_t                  extent_t;
   typedef dash::TilePattern<2, dash::COL_MAJOR> pattern_t;
 
   pattern_t pattern(

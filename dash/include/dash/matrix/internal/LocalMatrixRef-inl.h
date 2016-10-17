@@ -343,7 +343,8 @@ T & LocalMatrixRef<T, NumDim, CUR, PatternT>
   }
   return local_at(
            _refview->_mat->_pattern.local_at(
-             _refview->_coord));
+             _refview->_coord,
+             _refview->_viewspec));
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -621,13 +622,6 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
 	auto res  = self_t(*this);
 	res      += value;
 	return res;
-}
-
-template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline const PatternT&
-LocalMatrixRef<T, NumDim, CUR, PatternT>::pattern() const
-{
-	return _refview->_mat->_pattern;
 }
 
 } // namespace dash

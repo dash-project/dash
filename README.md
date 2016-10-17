@@ -1,3 +1,6 @@
+
+[![Build Status](https://travis-ci.org/dash-project/dash.svg?branch=development)](https://travis-ci.org/dash-project/dash) [![Documentation Status](https://readthedocs.org/projects/dash/badge/?version=latest)](http://dash.readthedocs.io/en/latest/?badge=latest) [![Documentation](https://codedocs.xyz/dash-project/dash.svg)](http://doc.dash-project.org/api/latest/html/)
+
 DASH
 ====
 
@@ -132,7 +135,8 @@ Available options for IPM are documented in the
 Links
 -----
 
-The DART project homepage: http://www.dart-project.org
+The DASH project homepage: http://www.dash-project.org 
+
 The Munich Network Management homepage: http://www.mnm-team.org
 
 Developer Notes

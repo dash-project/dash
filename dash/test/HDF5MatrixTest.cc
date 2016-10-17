@@ -167,27 +167,36 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
   typedef dash::Matrix<value_t, 2, index_t, pattern_t> matrix_t;
 
   {
-    // Instantiate Matrix
+    LOG_MESSAGE("instantiate matrix");
     matrix_t matrix_a(pattern);
+    LOG_MESSAGE("matrix instantiated");
     dash::barrier();
 
+    DASH_LOG_DEBUG("fill matrix");
     fill_matrix(matrix_a, static_cast<double>(myid));
+    DASH_LOG_DEBUG("matrix filled");
     dash::barrier();
 
     // Store Matrix
+    DASH_LOG_DEBUG("store matrix");
 		dio::HDF5OutputStream os(_filename);
     os << dio::dataset(_dataset) << matrix_a;
-
+    DASH_LOG_DEBUG("matrix stored");
     dash::barrier();
   }
 
   matrix_t matrix_b;
 
+  DASH_LOG_DEBUG("restore matrix");
 	dio::HDF5InputStream is(_filename);
 	is >> dio::dataset(_dataset) >> matrix_b;
+  DASH_LOG_DEBUG("matrix restored");
 
   dash::barrier();
+  DASH_LOG_DEBUG("verify matrix");
   verify_matrix(matrix_b, static_cast<double>(myid));
+  DASH_LOG_DEBUG("matrix verified");
+
 }
 
 TEST_F(HDF5MatrixTest, AutoGeneratePattern)

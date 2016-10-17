@@ -240,8 +240,11 @@ balance_extents(
 
   // Test if size is divisible by blocking factors:
   for (auto block_size : blocking) {
+    if (block_size < 2 || size % block_size != 0) {
+      continue;
+    }
     auto n_combinations = size_factors[block_size];
-    if (n_combinations == 0 && size % block_size == 0) {
+    if (n_combinations == 0) {
       n_combinations = size / block_size;
     }
     DASH_LOG_TRACE("dash::math::balance_extents",
