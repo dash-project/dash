@@ -117,7 +117,7 @@ public:
 
   index_type lpos() const
   {
-    return _local_layout().at(_coords);
+    return _local_layout.at(_coords);
   }
 
   ElementT halo_value(dim_t dim, offset_t offset)
