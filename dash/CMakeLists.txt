@@ -188,8 +188,13 @@ if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
 endif()
 
 # enable algorithms which are supported by current build config
-if(CONF_AVAIL_MKL OR CONF_AVAIL_BLAS OR (CMAKE_BUILD_TYPE MATCHES DEBUG))
+if (CONF_AVAIL_MKL OR CONF_AVAIL_BLAS OR (CMAKE_BUILD_TYPE MATCHES DEBUG))
   set(CONF_AVAIL_ALGO_SUMMA "true")
+endif()
+
+if (CMAKE_BUILD_TYPE MATCHES DEBUG)
+  set (ADDITIONAL_COMPILE_FLAGS
+    ${ADDITIONAL_COMPILE_FLAGS} -DDASH_DEBUG)
 endif()
 
 if (DASH_ENV_HOST_SYSTEM_ID)
@@ -287,7 +292,7 @@ if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
 	                              PUBLIC $<INSTALL_INTERFACE:include>
 	                              PUBLIC ${ADDITIONAL_INCLUDES})
 endif()
-	
+
   string(TOUPPER ${dart_variant} DART_VARIANT)
 
   # Install library

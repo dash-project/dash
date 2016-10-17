@@ -80,9 +80,14 @@ int main(int argc, char** argv)
                             "dash::for_each_with_index.g" }};
   // Get locality information
   long num_nodes          = dash::util::Locality::NumNodes();
-  long mb_per_node        = dash::util::Locality::SystemMemory();
+  long mb_per_node        = 8; // Intermediate, should be
+                               //   dash::util::Locality::SystemMemory();
   long global_avail_bytes = num_nodes * mb_per_node * 1024 * 1024;
   long global_req_bytes   = params.size_base * params.size_base * sizeof(int);
+
+  std::cout << "#nodes:   " << num_nodes   << std::endl
+            << "node mem: " << mb_per_node << " MiB" << std::endl
+            << std::endl;
 
   while((round_time < params.max_time) &&
         (global_avail_bytes > global_req_bytes)) {

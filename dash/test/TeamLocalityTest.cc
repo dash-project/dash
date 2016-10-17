@@ -95,7 +95,7 @@ TEST_F(TeamLocalityTest, SplitNUMA)
 
   // Split via constructor parameter:
   dash::util::TeamLocality tloc_numa(
-      team, dash::util::Locality::Scope::NUMA);
+      team, dash::util::Locality::Scope::Cache);
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
                  "team all, NUMA parts:", tloc_numa.parts().size());
@@ -135,11 +135,11 @@ TEST_F(TeamLocalityTest, GroupUnits)
   group_1_units.push_back(0);
   group_1_units.push_back(1);
   // Put every third unit in group 2, starting at rank 3:
-  for (dart_unit_t u = 3; u < dash::size(); u += 3) {
+  for (size_t u = 3; u < dash::size(); u += 3) {
     group_2_units.push_back(u);
   }
   // Put every second unit in group 3, starting at center:
-  for (dart_unit_t u = dash::size() / 2; u < dash::size(); u += 2) {
+  for (size_t u = dash::size() / 2; u < dash::size(); u += 2) {
     // Domains must not be members of more than one group:
     if (u % 3 != 0) {
       group_3_units.push_back(u);
@@ -227,7 +227,7 @@ TEST_F(TeamLocalityTest, SplitGroups)
   group_1_units.push_back(0);
   group_1_units.push_back(1);
   // Put every third unit in group 2, starting at rank 3:
-  for (dart_unit_t u = 3; u < dash::size(); u += 3) {
+  for (size_t u = 3; u < dash::size(); u += 3) {
     group_2_units.push_back(u);
   }
 

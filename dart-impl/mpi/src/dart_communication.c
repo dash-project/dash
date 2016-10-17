@@ -1432,14 +1432,24 @@ dart_ret_t dart_bcast(
 {
   MPI_Comm comm;
   uint16_t index;
-  int result = dart_adapt_teamlist_convert (teamid, &index);
+
+  DART_LOG_TRACE("dart_bcast() root:%d team:%d nbytes:%"PRIu64"",
+                 root, teamid, nbytes);
+
+  int result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
+    DART_LOG_ERROR("dart_bcast ! root:%d -> team:%d "
+                   "dart_adapt_teamlist_convert failed", root, teamid);
     return DART_ERR_INVAL;
   }
   comm = dart_team_data[index].comm;
   if (MPI_Bcast(buf, nbytes, MPI_BYTE, root, comm) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_bcast ! root:%d -> team:%d "
+                   "MPI_Bcast failed", root, teamid);
     return DART_ERR_INVAL;
   }
+  DART_LOG_TRACE("dart_bcast > root:%d team:%d nbytes:%"PRIu64" finished",
+                 root, teamid, nbytes);
   return DART_OK;
 }
 
@@ -1513,7 +1523,12 @@ dart_ret_t dart_allgather(
 
   result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
+    DART_LOG_ERROR("dart_allgather ! team:%d "
+                   "dart_adapt_teamlist_convert failed", teamid);
     return DART_ERR_INVAL;
+  }
+  if (sendbuf == recvbuf || NULL == sendbuf) {
+    sendbuf = MPI_IN_PLACE;
   }
   comm = dart_team_data[index].comm;
   if (MPI_Allgather(
@@ -1530,6 +1545,48 @@ dart_ret_t dart_allgather(
   }
   DART_LOG_TRACE("dart_allgather > team:%d nbytes:%"PRIu64"",
                  teamid, nbytes);
+  return DART_OK;
+}
+
+dart_ret_t dart_allgatherv(
+  void        * sendbuf,
+  size_t        nsendbytes,
+  void        * recvbuf,
+  int         * nrecvcounts,
+  int         * recvdispls,
+  dart_team_t   teamid)
+{
+  MPI_Comm comm;
+  uint16_t index;
+  int      result;
+  DART_LOG_TRACE("dart_allgatherv() team:%d nsendbytes:%"PRIu64"",
+                 teamid, nsendbytes);
+
+  result = dart_adapt_teamlist_convert(teamid, &index);
+  if (result == -1) {
+    DART_LOG_ERROR("dart_allgatherv ! team:%d "
+                   "dart_adapt_teamlist_convert failed", teamid);
+    return DART_ERR_INVAL;
+  }
+  if (sendbuf == recvbuf || NULL == sendbuf) {
+    sendbuf = MPI_IN_PLACE;
+  }
+  comm = dart_team_data[index].comm;
+  if (MPI_Allgatherv(
+           sendbuf,
+           nsendbytes,
+           MPI_BYTE,
+           recvbuf,
+           nrecvcounts,
+           recvdispls,
+           MPI_BYTE,
+           comm) != MPI_SUCCESS) {
+    DART_LOG_ERROR("dart_allgatherv ! team:%d nsendbytes:%"PRIu64" failed",
+                   teamid, nsendbytes);
+    return DART_ERR_INVAL;
+  }
+  DART_LOG_TRACE("dart_allgatherv > team:%d nsendbytes:%"PRIu64"",
+                 teamid, nsendbytes);
   return DART_OK;
 }
 

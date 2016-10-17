@@ -587,9 +587,11 @@ dash::Future<ValueType *> copy_async(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
+  dash::util::UnitLocality uloc(dash::Team::All().myid());
   // Size of L2 data cache line:
-  size_t l2_line_size = dash::util::Locality::CacheLineSizes()[1];
-  bool use_memcpy = ((in_last - in_first) * sizeof(ValueType) <= l2_line_size);
+  int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
+  bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
+                      <= l2_line_size;
 
   DASH_LOG_TRACE("dash::copy_async()", "async, global to local");
   if (in_first == in_last) {
@@ -791,9 +793,11 @@ ValueType * copy(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
+  dash::util::UnitLocality uloc(dash::Team::All().myid());
   // Size of L2 data cache line:
-  size_t l2_line_size = dash::util::Locality::CacheLineSizes()[1];
-  bool use_memcpy = ((in_last - in_first) * sizeof(ValueType) <= l2_line_size);
+  int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
+  bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
+                      <= l2_line_size;
 
   DASH_LOG_TRACE("dash::copy()", "blocking, global to local");
 

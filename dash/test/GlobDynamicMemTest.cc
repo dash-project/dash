@@ -20,7 +20,7 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
   dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
 
-  LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
+  LOG_MESSAGE("initial global capacity: %ld, initial local capacity: %ld",
               initial_global_capacity, initial_local_capacity);
 
   EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
@@ -90,7 +90,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
   dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
 
-  LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
+  LOG_MESSAGE("initial global capacity: %ld, initial local capacity: %ld",
               initial_global_capacity, initial_local_capacity);
 
   EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
@@ -157,7 +157,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
   // Initialize values in reallocated memory:
   auto lmem = gdmem.lbegin();
   auto lcap = gdmem.local_size();
-  for (int li = 0; li < lcap; ++li) {
+  for (size_t li = 0; li < lcap; ++li) {
     auto value = 1000 * (dash::myid() + 1) + li;
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
                    "setting local offset", li, "at unit", dash::myid(),
@@ -182,13 +182,19 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
     auto git_last   = git_first + gdmem.size() - 1;
     DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc", "git_end");
     auto git_end    = git_first + gdmem.size();
+
+    dash__unused(git_second);
+    dash__unused(git_remote);
+    dash__unused(git_last);
+    dash__unused(git_end);
   }
   dash::barrier();
   DASH_LOG_TRACE("GlobDynamicMemTest.UnbalancedRealloc",
                  "testing basic iterator arithmetic completed");
 
   // Test memory space of units separately:
-  for (dart_unit_t unit = 0; unit < dash::size(); ++unit) {
+  for (dart_unit_t unit = 0; unit < static_cast<dart_unit_t>(dash::size());
+       ++unit) {
     if (dash::myid() != unit) {
       auto unit_git_begin = gdmem.at(unit, 0);
       auto unit_git_end   = gdmem.at(unit, gdmem.local_size(unit));
@@ -219,11 +225,13 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
         // request value via DART global pointer:
         value_t dart_gptr_value;
         dart_get_blocking(&dart_gptr_value, gptr, sizeof(value_t));
-        DASH_LOG_TRACE_VAR("GlobDynamicMemTest.UnbalancedRealloc", dart_gptr_value);
+        DASH_LOG_TRACE_VAR("GlobDynamicMemTest.UnbalancedRealloc",
+                           dart_gptr_value);
 
         // request value via DASH global iterator:
         value_t git_value = *it;
-        DASH_LOG_TRACE_VAR("GlobDynamicMemTest.UnbalancedRealloc", git_value);
+        DASH_LOG_TRACE_VAR("GlobDynamicMemTest.UnbalancedRealloc",
+                           git_value);
 
         value_t expected = 1000 * (unit + 1) + l_idx;
         EXPECT_EQ_U(expected, dart_gptr_value);
@@ -282,7 +290,7 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   size_t initial_global_capacity = dash::size() * initial_local_capacity;
   dash::GlobDynamicMem<value_t> gdmem(initial_local_capacity);
 
-  LOG_MESSAGE("initial global capacity: %d, initial local capacity: %d",
+  LOG_MESSAGE("initial global capacity: %ld, initial local capacity: %ld",
               initial_global_capacity, initial_local_capacity);
   dash::barrier();
 
@@ -315,16 +323,16 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   // NOTE:
   // Local changes at units in same shared memory domain are visible
   // even when not committed yet.
-  std::string my_host     = dash::util::Locality::Hostname(dash::myid());
-  std::string unit_0_host = dash::util::Locality::Hostname(0);
-  std::string unit_1_host = dash::util::Locality::Hostname(1);
+  std::string my_host     = dash::util::UnitLocality(dash::myid()).hostname();
+  std::string unit_0_host = dash::util::UnitLocality(0).hostname();
+  std::string unit_1_host = dash::util::UnitLocality(1).hostname();
 
   size_t expected_visible_size = initial_global_capacity;
   size_t expected_global_size  = initial_global_capacity;
   if (dash::myid() == 0) {
     expected_visible_size += unit_0_lsize_diff;
     if (my_host == unit_1_host) {
-      LOG_MESSAGE("expected visible size: %d (locally) or %d (shmem)",
+      LOG_MESSAGE("expected visible size: %ld (locally) or %ld (shmem)",
                   expected_visible_size,
                   expected_visible_size + unit_1_lsize_diff);
       // same shared memory domain as unit 1, changes at unit 1 might already
@@ -339,7 +347,7 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   if (dash::myid() == 1) {
     expected_visible_size += unit_1_lsize_diff;
     if (my_host == unit_0_host) {
-      LOG_MESSAGE("expected visible size: %d (locally) or %d (shmem)",
+      LOG_MESSAGE("expected visible size: %ld (locally) or %ld (shmem)",
                   expected_visible_size,
                   expected_visible_size + unit_0_lsize_diff);
       // same shared memory domain as unit 0, changes at unit 0 might already
@@ -522,8 +530,8 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
   // Wait for initialization of local values of all units:
   dash::barrier();
 
-  for (int u = 0; u < dash::size(); ++u) {
-    if (dash::myid() != u) {
+  for (size_t u = 0; u < dash::size(); ++u) {
+    if (dash::myid() != static_cast<dart_unit_t>(u)) {
       size_t  nlocal_expect = initial_local_capacity;
       size_t  nlocal_elem   = gdmem.local_size(u);
 
@@ -553,8 +561,8 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
               gdmem.local_size(1));
 
   // Validate values after commit:
-  for (int u = 0; u < dash::size(); ++u) {
-    if (dash::myid() != u) {
+  for (size_t u = 0; u < dash::size(); ++u) {
+    if (dash::myid() != static_cast<dart_unit_t>(u)) {
       size_t  nlocal_elem   = gdmem.local_size(u);
       size_t  nlocal_expect = initial_local_capacity;
       if (u == 0) { nlocal_expect += unit_0_num_grow; }

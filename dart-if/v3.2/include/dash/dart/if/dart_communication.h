@@ -74,6 +74,19 @@ dart_ret_t dart_allgather(
 	dart_team_t team);
 
 /**
+ * DART Equivalent to MPI allgatherv.
+ *
+ * \ingroup DartCommuncation
+ */
+dart_ret_t dart_allgatherv(
+  void        * sendbuf,
+  size_t        nsendbytes,
+  void        * recvbuf,
+  int         * nrecvcounts,
+  int         * recvdispls,
+  dart_team_t   teamid);
+
+/**
  * DART Equivalent to MPI allreduce.
  *
  * \ingroup DartCommuncation

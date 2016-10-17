@@ -22,6 +22,18 @@
  * Domain Locality                                                          *
  * ======================================================================== */
 
+dart_ret_t dart_team_locality_init(
+  dart_team_t                     team)
+{
+  return dart__base__locality__create(team);
+}
+
+dart_ret_t dart_team_locality_finalize(
+  dart_team_t                     team)
+{
+  return dart__base__locality__delete(team);
+}
+
 dart_ret_t dart_domain_team_locality(
   dart_team_t                     team,
   const char                    * domain_tag,
@@ -46,7 +58,8 @@ dart_ret_t dart_domain_team_locality(
             team_domain, domain_tag, &team_subdomain);
     if (ret != DART_OK) {
       DART_LOG_ERROR("dart_domain_locality: "
-                     "dart__base__locality__domain failed (%d)", ret);
+                     "dart__base__locality__domain failed "
+                     "for domain tag '%s' -> (%d)", domain_tag, ret);
       return ret;
     }
     *team_domain_out = team_subdomain;
