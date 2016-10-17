@@ -33,10 +33,10 @@
 /* Maximum length of a single log message in number of characters */
 #define DASH__DART_LOGGING__MAX_MESSAGE_LENGTH 256;
 
-#ifdef DART_LOG_OUTPUT_STDERR
-#define DART_LOG_OUTPUT_TARGET stderr
-#else
+#ifdef DART_LOG_OUTPUT_STDOUT
 #define DART_LOG_OUTPUT_TARGET stdout
+#else
+#define DART_LOG_OUTPUT_TARGET stderr
 #endif
 
 /* GNU variant of basename.3 */

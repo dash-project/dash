@@ -472,7 +472,7 @@ inline dash::HView<Matrix<T, NumDim, IndexT, PatternT>, level>
 Matrix<T, NumDim, IndexT, PatternT>
 ::hview()
 {
-  return _ref.hview<level>();
+  return _ref.template hview<level>();
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>

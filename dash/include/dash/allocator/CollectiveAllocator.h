@@ -11,6 +11,8 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <cassert>
+
 
 namespace dash {
 namespace allocator {
@@ -66,9 +68,8 @@ public:
     Team & team = dash::Team::Null()) noexcept
   : _team_id(team.dart_id())
   {
-    DASH_ASSERT_RETURNS(
-      dart_team_size(_team_id, &_nunits),
-      DART_OK);
+    // Cannot use DASH_ASSERT due to noexcept qualifier:
+    assert(dart_team_size(_team_id, &_nunits) == DART_OK);
   }
 
   /**

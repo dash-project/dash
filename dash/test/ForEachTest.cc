@@ -9,7 +9,7 @@ TEST_F(ForEachTest, TestArrayAllInvoked) {
     // Shared variable for total number of invoked callbacks:
     dash::SharedCounter<size_t> count_invokes;
     // Create for_each callback from member function:
-    std::function<void(index_t)> invoke =
+    std::function<void(const Array_t::value_type &)> invoke =
         std::bind(&ForEachTest::count_invoke, this, std::placeholders::_1);
     // Ensure value global counter is published to all units
     dash::Team::All().barrier();
@@ -68,4 +68,38 @@ TEST_F(ForEachTest, ForEachWithIndex) {
         matrix.end(),
         dummy_fct
     );
+}
+
+TEST_F(ForEachTest, ForEachWithIndexPos){
+  
+  dash::Array<int> array(100, dash::CYCLIC);
+
+  // Fill
+  std::function< void(const int &, index_t)>
+  fill = [&array](int el, index_t i) {
+    auto coords = array.pattern().coords(i);
+    array[i] = coords[0];
+  };
+
+  // Verify
+  std::function< void(const int &, index_t)>
+    verify = [&array](int el, index_t i) {
+      auto coords  = array.pattern().coords(i);
+      auto desired = coords[0];
+      ASSERT_EQ_U(
+        desired,
+        el);
+    };
+
+  // Fill
+  dash::for_each_with_index(
+    array.begin(),
+    array.end(),
+    fill);
+
+  dash::for_each_with_index(
+    array.begin(),
+    array.end(),
+    verify);
+
 }

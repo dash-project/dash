@@ -180,6 +180,10 @@ public:
   /**
    * The pattern used to distribute matrix elements to units in its
    * associated team.
+   *
+   * NOTE: This method is not implemented as local matrix views do
+   *       not have a pattern. The pattern of the referenced matrix
+   *       refers to the global data domain.
    */
   inline const PatternT    & pattern()             const;
 

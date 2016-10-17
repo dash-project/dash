@@ -77,15 +77,15 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_HWLOC=ON \
                         -DENABLE_PAPI=ON \
                         -DENABLE_MKL=ON \
-                        -DENABLE_BLAS=ON \
+                        -DENABLE_BLAS=OFF \
                         -DENABLE_LAPACK=ON \
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
-                        -DENABLE_HDF5=ON \
+                        -DENABLE_HDF5=OFF \
                         \
-                        -DBUILD_EXAMPLES=ON \
+                        -DBUILD_EXAMPLES=OFF \
                         -DBUILD_TESTS=ON \
-                        -DBUILD_DOCS=ON \
+                        -DBUILD_DOCS=OFF \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
@@ -96,6 +96,6 @@ rm -Rf $BUILD_DIR/*
 			-DAYUDAME_PREFIX=${HOME}/local/temanejo \
                         ../ && \
  await_confirm && \
- make) && (cp $BUILD_DIR/compile_commands.json .) && \
+ make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \
 exit_message
 

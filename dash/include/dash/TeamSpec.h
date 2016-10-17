@@ -231,18 +231,18 @@ public:
     SizeType num_units = 1;
     for (auto d = 0; d < MaxDimensions; ++d) {
       num_units *= this->_extents[d];
+      this->_extents[d] = 1;
     }
     _is_linear = false;
+
     // Find best surface-to-volume for two-dimensional team:
-    this->_extents[0]  = num_units;
-    this->_extents[1]  = 1;
     auto teamsize_prime_factors = dash::math::factorize(num_units);
     SizeType surface = 0;
     for (auto it : teamsize_prime_factors) {
       DASH_LOG_TRACE("TeamSpec.balance_extents",
                      "factor:", it.first, "x", it.second);
       for (auto i = 1; i < it.second + 1; ++i) {
-        SizeType extent_x = it.first * i;
+        SizeType extent_x = it.first * this->_extents[0];
         SizeType extent_y = num_units / extent_x;
         SizeType surface_new = (2 * extent_x) + (2 * extent_y);
         DASH_LOG_TRACE("TeamSpec.balance_extents", "Testing extents",

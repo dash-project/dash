@@ -12,11 +12,11 @@
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_synchronization.h>
 
-#include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_synchronization_priv.h>
+#include <dash/dart/mpi/dart_segment.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,8 +60,8 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
                              sizeof(int32_t), // number of bytes
                              &gptr_list);
 
-	MPI_Win win;
-	win = dart_win_lists[index];//this window object is used for atomic operations
+  MPI_Win win;
+  win = dart_team_data[index].window; //this window object is used for atomic operations
 
 	dart_gptr_setunit (&gptr_list, myid);
 	dart_gptr_getaddr (gptr_list, (void*)&addr);
@@ -99,26 +99,29 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 	DART_GPTR_COPY(gptr_tail, lock -> gptr_tail);
 	DART_GPTR_COPY(gptr_list, lock -> gptr_list);
 
-	uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
-	int16_t seg_id = gptr_list.segid;
-	dart_unit_t tail = gptr_tail.unitid;
-	uint16_t index = gptr_list.flags;
-	MPI_Aint disp_list;
+  uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
+  int16_t seg_id = gptr_list.segid;
+  dart_unit_t tail = gptr_tail.unitid;
+  MPI_Aint disp_list;
+
+  uint16_t index;
+  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_lock_acquire ! failed: Unknown segment %i!", seg_id);
+    return DART_ERR_INVAL;
+  }
 
 
 	/* MPI-3 newly added feature: atomic operation*/
 	MPI_Fetch_and_op (&unitid, predecessor, MPI_INT32_T, tail, offset_tail, MPI_REPLACE, dart_win_local_alloc);
 	MPI_Win_flush (tail, dart_win_local_alloc);
 
-	/* If there was a previous tail (predecessor), update the previous tail's next pointer with unitid
-	 * and wait for notification from its predecessor. */
-	if (*predecessor != -1)
-	{
-		if (dart_adapt_transtable_get_disp (seg_id, *predecessor, &disp_list) == -1)
-		{
-			return DART_ERR_INVAL;
-		}
-		win = dart_win_lists[index];
+  /* If there was a previous tail (predecessor), update the previous tail's next pointer with unitid
+   * and wait for notification from its predecessor. */
+  if (*predecessor != -1) {
+    if (dart_segment_get_disp(seg_id, *predecessor, &disp_list) != DART_OK) {
+      return DART_ERR_INVAL;
+    }
+    win = dart_team_data[index].window;
 
 		/* Atomicity: Update its predecessor's next pointer */
 		MPI_Fetch_and_op (&unitid, result, MPI_INT32_T, *predecessor, disp_list, MPI_REPLACE, win);
@@ -129,8 +132,9 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 		DART_LOG_DEBUG ("%2d: LOCK	- waiting for notification from %d in team %d",
 				unitid, *predecessor, (lock -> teamid));
 
-		MPI_Recv (NULL, 0, MPI_INT, *predecessor, 0, dart_teams[index], &status);
-	}
+    MPI_Recv(NULL, 0, MPI_INT, *predecessor, 0, dart_team_data[index].comm,
+        &status);
+  }
 
 	DART_LOG_DEBUG ("%2d: LOCK	- lock required in team %d", unitid, (lock -> teamid));
 	lock -> is_acquired = 1;
@@ -177,68 +181,74 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 
 dart_ret_t dart_lock_release (dart_lock_t lock)
 {
-	dart_unit_t unitid;
-	dart_team_myid (lock -> teamid, &unitid);
-	if (lock -> is_acquired == 0)
-	{
-		printf ("Warning: RELEASE	- %2d has not yet required the lock\n", unitid);
-		return DART_OK;
-	}
-	dart_gptr_t gptr_tail;
-	dart_gptr_t gptr_list;
-	MPI_Win win;
-	int32_t *addr2, next, result[1];
+  dart_unit_t unitid;
+  dart_team_myid(lock -> teamid, &unitid);
+  if (lock -> is_acquired == 0) {
+    printf("Warning: RELEASE	- %2d has not yet required the lock\n", unitid);
+    return DART_OK;
+  }
+  dart_gptr_t gptr_tail;
+  dart_gptr_t gptr_list;
+  MPI_Win win;
+  int32_t * addr2, next, result[1];
 
-	MPI_Aint disp_list;
-	int32_t origin[1] = {-1};
+  MPI_Aint disp_list;
+  int32_t origin[1] = { -1};
 
-	DART_GPTR_COPY(gptr_tail, lock -> gptr_tail);
-	DART_GPTR_COPY(gptr_list, lock -> gptr_list);
+  DART_GPTR_COPY(gptr_tail, lock -> gptr_tail);
+  DART_GPTR_COPY(gptr_list, lock -> gptr_list);
 
-	uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
-	int16_t  seg_id      = gptr_list.segid;
-	dart_unit_t tail     = gptr_tail.unitid;
-	uint16_t index       = gptr_list.flags;
-	dart_gptr_getaddr(gptr_list, (void*)&addr2);
+  uint64_t offset_tail = gptr_tail.addr_or_offs.offset;
+  int16_t  seg_id      = gptr_list.segid;
+  dart_unit_t tail     = gptr_tail.unitid;
+  dart_gptr_getaddr(gptr_list, (void *)&addr2);
 
-	win = dart_win_lists[index];
+  uint16_t index;
+  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_lock_release ! failed: Unknown segment %i!", seg_id);
+    return DART_ERR_INVAL;
+  }
 
-	/* Atomicity: Check if we are at the tail of this lock queue, if so, we are done.
-	 * Otherwise, we still need to send notification. */
-	MPI_Compare_and_swap (origin, &unitid, result, MPI_INT32_T, tail, offset_tail, dart_win_local_alloc);
-	MPI_Win_flush (tail, dart_win_local_alloc);
+  win = dart_team_data[index].window;
 
-	/* We are not at the tail of this lock queue. */
-	if (*result != unitid)
-	{
-		DART_LOG_DEBUG ("%2d: UNLOCK	- waiting for next pointer (tail = %d) in team %d",
-				unitid, *result, (lock -> teamid));
+  /* Atomicity: Check if we are at the tail of this lock queue, if so, we are done.
+   * Otherwise, we still need to send notification. */
+  MPI_Compare_and_swap(origin, &unitid, result, MPI_INT32_T, tail, offset_tail,
+                       dart_win_local_alloc);
+  MPI_Win_flush(tail, dart_win_local_alloc);
 
-		if (dart_adapt_transtable_get_disp (seg_id, unitid, &disp_list) == -1)
-		{
-			return DART_ERR_INVAL;
-		}
+  /* We are not at the tail of this lock queue. */
+  if (*result != unitid) {
+    DART_LOG_DEBUG("%2d: UNLOCK	- waiting for next pointer (tail = %d) in team %d",
+                   unitid, *result, (lock -> teamid));
 
-		/* Waiting for the update of my next pointer finished. */
-		while (1)
-		{
-			MPI_Fetch_and_op (NULL, &next, MPI_INT, unitid, disp_list, MPI_NO_OP, win);
-			MPI_Win_flush (unitid, win);
+    if (dart_segment_get_disp(seg_id, unitid, &disp_list) != DART_OK) {
+      return DART_ERR_INVAL;
+    }
 
-			if (next != -1) break;
-		}
+    /* Waiting for the update of my next pointer finished. */
+    while (1) {
+      MPI_Fetch_and_op(NULL, &next, MPI_INT, unitid, disp_list, MPI_NO_OP, win);
+      MPI_Win_flush(unitid, win);
 
-		DART_LOG_DEBUG ("%2d: UNLOCK	- notifying %d in team %d", unitid, next, (lock -> teamid));
+      if (next != -1) {
+        break;
+      }
+    }
 
-		/* Notifying the next unit waiting on the lock queue. */
+    DART_LOG_DEBUG("%2d: UNLOCK	- notifying %d in team %d", unitid, next,
+                   (lock -> teamid));
 
-		MPI_Send (NULL, 0, MPI_INT, next, 0, dart_teams[index]);
-		*addr2 = -1;
-		MPI_Win_sync (win);
-	}
-	lock -> is_acquired = 0;
-	DART_LOG_DEBUG ("%2d: UNLOCK	- release lock in team %d", unitid, (lock -> teamid));
-	return DART_OK;
+    /* Notifying the next unit waiting on the lock queue. */
+
+    MPI_Send(NULL, 0, MPI_INT, next, 0, dart_team_data[index].comm);
+    *addr2 = -1;
+    MPI_Win_sync(win);
+  }
+  lock -> is_acquired = 0;
+  DART_LOG_DEBUG("%2d: UNLOCK	- release lock in team %d", unitid,
+                 (lock -> teamid));
+  return DART_OK;
 }
 
 dart_ret_t dart_team_lock_free (dart_team_t teamid, dart_lock_t* lock)

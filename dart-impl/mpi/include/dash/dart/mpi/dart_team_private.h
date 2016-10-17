@@ -144,6 +144,45 @@
 
 extern dart_team_t dart_next_availteamid;
 
+
+typedef struct dart_team_data {
+  /**
+   * @brief The communicator corresponding to this team.
+   */
+  MPI_Comm comm;
+
+  /**
+   * @brief MPI dynamic window object corresponding this team.
+   */
+  MPI_Win window;
+
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+  /**
+   * @brief Store the sub-communicator with regard to certain node, where the units can
+   * communicate via shared memory.
+   */
+  MPI_Comm sharedmem_comm;
+
+  /**
+   * @brief Hash table to determine the units who are located in the same node.
+   */
+  int *sharedmem_tab;
+
+  /**
+   *  @brief Size of the node's communicator.
+   */
+  int sharedmem_nodesize;
+
+#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+
+} dart_team_data_t;
+
+extern dart_team_data_t dart_team_data[DART_MAX_TEAM_NUMBER];
+
+
+
+#if 0
+
 /* @brief Translate the given teamid (indicated uniquely by the index) into its corresponding communicator.
  *
  * After locating the given teamid in the teamlist,
@@ -185,6 +224,8 @@ extern int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 
 /* @brief Set of MPI dynamic window objects corresponding to MAX_TEAM_NUMBER teams. */
 extern MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
+
+#endif // 0
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 

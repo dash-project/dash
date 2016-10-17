@@ -6,7 +6,6 @@
 #include <dash/dart/if/dart_active_messages.h>
 #include <dash/dart/if/dart_communication.h>
 #include <dash/dart/if/dart_globmem.h>
-#include <dash/dart/mpi/dart_translation.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_globmem_priv.h>
 #include <dash/dart/mpi/dart_mpi_serialization.h>
@@ -70,7 +69,7 @@ dart_amsg_openq(int size, dart_team_t team, rfunc_t *handler)
 
   uint16_t index;
   dart_adapt_teamlist_convert(team, &index);
-  tcomm = dart_teams[index];
+  tcomm = dart_team_data[index].comm;
 
   MPI_Win_allocate(sizeof(int), 1, MPI_INFO_NULL, tcomm, (void*)&(res->tailpos_ptr), &(res->tailpos_win));
   *(res->tailpos_ptr) = 0;

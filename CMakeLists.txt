@@ -40,6 +40,8 @@ option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
+option(ENABLE_TEST_LOGGING
+       "Specify whether logging of unit test messages is enabled" on)
 option(ENABLE_TRACE_LOGGING
        "Specify whether trace messages should be logged" off)
 option(ENABLE_DART_LOGGING

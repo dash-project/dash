@@ -2,6 +2,7 @@
 #define DASH__MATRIX__INTERNAL__LOCAL_MATRIX_REF_INL_H_INCLUDED
 
 #include <dash/matrix/LocalMatrixRef.h>
+#include <cassert>
 
 
 namespace dash {
@@ -157,11 +158,10 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   dim_t dim) const noexcept
 {
   if(dim >= NumDim || dim < 0) {
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "LocalMatrixRef.extent(): Invalid dimension, " <<
-      "expected 0.." << (NumDim - 1) << " " <<
-      "got " << dim);
+    DASH_LOG_ERROR(
+      "LocalMatrixRef.offset(): Invalid dimension, expected 0..",
+      (NumDim - 1), "got ", dim);
+    assert(false);
   }
   return _refview._mat->_pattern.local_extent(dim);
 //return _refview._viewspec.extent(dim);
@@ -182,11 +182,10 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   dim_t dim) const noexcept
 {
   if(dim >= NumDim || dim < 0) {
-    DASH_THROW(
-      dash::exception::InvalidArgument,
-      "LocalMatrixRef.offset(): Invalid dimension, " <<
-      "expected 0.." << (NumDim - 1) << " " <<
-      "got " << dim);
+    DASH_LOG_ERROR(
+      "LocalMatrixRef.offset(): Invalid dimension, expected 0..",
+      (NumDim - 1), "got ", dim);
+    assert(false);
   }
   return _refview._viewspec.offset(dim);
 }
@@ -342,8 +341,9 @@ T & LocalMatrixRef<T, NumDim, CUR, PatternT>
     _refview._coord[i] = coord[i-_refview._dim];
   }
   return local_at(
-           _refview._mat->_pattern.local_at(
-             _refview._coord));
+           _refview->_mat->_pattern.local_at(
+             _refview->_coord,
+             _refview->_viewspec));
 }
 
 template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -618,13 +618,6 @@ LocalMatrixRef<T, NumDim, 0, PatternT>
 	auto res  = self_t(*this);
 	res      += value;
 	return res;
-}
-
-template<typename T, dim_t NumDim, dim_t CUR, class PatternT>
-inline const PatternT&
-LocalMatrixRef<T, NumDim, CUR, PatternT>::pattern() const
-{
-	return _refview._mat->_pattern;
 }
 
 } // namespace dash

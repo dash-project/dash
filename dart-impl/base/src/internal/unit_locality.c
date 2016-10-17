@@ -233,6 +233,16 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
   gethostname(hostname, DART_LOCALITY_HOST_MAX_SIZE);
   strncpy(loc->host, hostname, DART_LOCALITY_HOST_MAX_SIZE);
 
+#if defined(DART__BASE__LOCALITY__SIMULATE_MICS)
+  /* Assigns every second unit to a MIC host name.
+   * Useful for simulating a heterogeneous node-level topology
+   * for debugging.
+   */
+  if (myid % 2 == 1) {
+    strncpy(loc->host + strlen(hostname), "-mic0", 5);
+  }
+#endif
+
   DART_LOG_DEBUG("dart__base__unit_locality__local_unit_new > loc(%p)", loc);
   return DART_OK;
 }

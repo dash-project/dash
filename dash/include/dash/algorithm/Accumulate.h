@@ -27,8 +27,7 @@ namespace dash {
     
 template<
     class GlobInputIt,
-    class ValueType,
-    class BinaryOperation >
+    class ValueType>
 ValueType accumulate(
     GlobInputIt     in_first,
     GlobInputIt     in_last,

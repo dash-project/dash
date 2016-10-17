@@ -6,6 +6,7 @@
 #include <dash/pattern/TilePattern.h>
 #include <dash/pattern/ShiftTilePattern.h>
 
+#include <dash/util/UnitLocality.h>
 #include <dash/util/Locality.h>
 #include <dash/util/Config.h>
 
@@ -32,21 +33,20 @@ make_team_spec(
   typedef typename SizeSpecType::size_type  extent_t;
   typedef typename SizeSpecType::index_type index_t;
 
+  dash::util::UnitLocality uloc(dash::Team::All(), dash::myid());
+
   DASH_LOG_TRACE_VAR("dash::make_team_spec()", sizespec.extents());
   DASH_LOG_TRACE_VAR("dash::make_team_spec", n_team_units);
   // Deduce number of dimensions from size spec:
   const dim_t ndim  = SizeSpecType::ndim();
   // Number of processing nodes:
   auto n_nodes      = dash::util::Locality::NumNodes();
-  // Number of sockets per processing node:
-  auto n_sockets    = dash::util::Locality::NumSockets();
   // Number of NUMA domains per processing node:
   auto n_numa_dom   = dash::util::Locality::NumNUMANodes();
   // Number of cores per processing node:
   auto n_cores      = dash::util::Locality::NumCores();
 
   DASH_LOG_TRACE_VAR("dash::make_team_spec", n_nodes);
-  DASH_LOG_TRACE_VAR("dash::make_team_spec", n_sockets);
   DASH_LOG_TRACE_VAR("dash::make_team_spec", n_numa_dom);
   DASH_LOG_TRACE_VAR("dash::make_team_spec", n_cores);
 
@@ -68,7 +68,7 @@ make_team_spec(
   std::set<extent_t> blocking;
   if (n_nodes == 1) {
     // blocking by NUMA domains:
-    blocking.insert(n_sockets);
+    blocking.insert(n_numa_dom);
     team_extents = dash::math::balance_extents(team_extents, blocking);
   } else {
     // blocking by processing nodes:
@@ -396,7 +396,7 @@ make_pattern(
   // Deduce number of dimensions from size spec:
   const dim_t ndim = SizeSpecType::ndim();
   // Deduce index type from size spec:
-  typedef typename SizeSpecType::index_type                 index_t;
+  typedef typename SizeSpecType::index_type                      index_t;
   typedef dash::ShiftTilePattern<ndim, dash::ROW_MAJOR, index_t> pattern_t;
   DASH_LOG_TRACE("dash::make_pattern", PartitioningTags());
   DASH_LOG_TRACE("dash::make_pattern", MappingTags());
@@ -415,8 +415,8 @@ make_pattern(
       teamspec);
   // Make pattern from template- and run time parameters:
   pattern_t pattern(sizespec,
-		    distspec,
-		    teamspec);
+        distspec,
+        teamspec);
   return pattern;
 }
 
