@@ -97,6 +97,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   auto block_view = pattern().block(block_gindex);
   // Return a view specified by the block's viewspec:
   view_type<NumDim> view;
+  view._refview = MatrixRefView_t(this);
   view._refview._viewspec = block_view;
   DASH_LOG_TRACE("Matrix.block >", block_view);
   return view;
@@ -118,6 +119,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   auto block_view = pattern().block(block_gindex);
   // Return a view specified by the block's viewspec:
   view_type<NumDim> view;
+  view._refview = MatrixRefView_t(this);
   view._refview._viewspec = block_view;
   DASH_LOG_TRACE("Matrix.block >", block_view);
   return view;
@@ -151,6 +153,7 @@ bool Matrix<T, NumDim, IndexT, PatternT>
   _team->register_deallocator(
     this, std::bind(&Matrix::deallocate, this));
   // Initialize local proxy object:
+  _ref._refview    = MatrixRefView_t(this);
   local            = local_type(this);
   DASH_LOG_TRACE("Matrix.allocate() finished");
   return true;

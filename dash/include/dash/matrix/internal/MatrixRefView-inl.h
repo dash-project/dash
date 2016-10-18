@@ -9,7 +9,7 @@ namespace dash {
 template<typename T, dim_t NumDim, class PatternT>
 MatrixRefView<T, NumDim, PatternT>
 ::MatrixRefView()
-: _dim(0)
+: _dim(0), _mat(NULL)
 {
   DASH_LOG_TRACE("MatrixRefView()");
 }
