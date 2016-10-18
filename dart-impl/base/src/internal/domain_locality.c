@@ -932,6 +932,9 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
                 DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
         unit_loc->hwinfo.num_cores = subdomain->num_cores /
                                      subdomain->num_units;
+        if (unit_loc->hwinfo.num_cores < 1) {
+          unit_loc->hwinfo.num_cores = 1;
+        }
       }
     } else {
       /* Recurse to next scope level in the module domain: */
