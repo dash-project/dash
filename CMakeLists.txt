@@ -58,6 +58,8 @@ option(ENABLE_LIBNUMA
        "Specify whether libnuma features are enabled" on)
 option(ENABLE_HWLOC
        "Specify whether hwloc features are enabled" on)
+option(ENABLE_HWLOC_PCI
+       "Specify whether hwloc PCI features are enabled" on)
 option(ENABLE_LIKWID
        "Specify whether likwid support is enabled" off)
 option(ENABLE_PAPI
@@ -225,6 +227,8 @@ message(INFO "libnuma support:          (ENABLE_LIBNUMA)                 "
         ${ENABLE_LIBNUMA})
 message(INFO "hwloc support:            (ENABLE_HWLOC)                   "
         ${ENABLE_HWLOC})
+message(INFO "hwloc PCI support:        (ENABLE_HWLOC_PCI)               "
+        ${ENABLE_HWLOC_PCI})
 message(INFO "PAPI support:             (ENABLE_PAPI)                    "
         ${ENABLE_PAPI})
 message(INFO "MKL support:              (ENABLE_MKL)                     "
