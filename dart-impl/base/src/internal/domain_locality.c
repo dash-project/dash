@@ -897,11 +897,11 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
      */
     int balanced_cores_per_subdomain = module_domain->num_cores /
                                        module_domain->num_units;
-    if (balanced_cores_per_subdomain < 1) {
-      balanced_cores_per_subdomain = 1;
-    }
     subdomain->num_cores             = balanced_cores_per_subdomain *
                                        subdomain->num_units;
+    if (subdomain->num_cores < 1) {
+      subdomain->num_cores = 1;
+    }
 
     if (module_gid_idx <= 1) {
 
@@ -930,7 +930,8 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
 
         strncpy(unit_loc->domain_tag, subdomain->domain_tag,
                 DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
-        unit_loc->hwinfo.num_cores = subdomain->num_cores;
+        unit_loc->hwinfo.num_cores = subdomain->num_cores /
+                                     subdomain->num_units;
       }
     } else {
       /* Recurse to next scope level in the module domain: */
