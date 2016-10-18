@@ -21,6 +21,9 @@
 #  PAPI_LIBRARIES          The PAPI library
 #  PAPI_INCLUDE_DIRS       The location of PAPI headers
 
+# Official PAPI source code repository:
+# - git clone https://icl.cs.utk.edu/git/papi.git
+
 find_path(
   PAPI_PREFIX
   NAMES include/papi.h
