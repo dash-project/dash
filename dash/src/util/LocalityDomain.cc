@@ -35,6 +35,12 @@ std::ostream & operator<<(
 // Public Constructors
 // -------------------------------------------------------------------------
 
+
+dash::util::LocalityDomain::LocalityDomain()
+: _domain(nullptr),
+  _subdomains(nullptr)
+{ }
+
 dash::util::LocalityDomain::LocalityDomain(
   const dart_domain_locality_t     & domain
 ) : _is_owner(true)
@@ -99,7 +105,7 @@ dash::util::LocalityDomain::LocalityDomain(
   const dash::util::LocalityDomain & other
 ) : _domain_tag(other._domain_tag),
     _unit_ids(other._unit_ids),
-    _unit_localities(other._unit_localities),
+//  _unit_localities(other._unit_localities),
     _group_domain_tags(other._group_domain_tags)
 {
   DASH_LOG_TRACE_VAR("LocalityDomain(other)()", other._domain_tag);
@@ -151,7 +157,7 @@ dash::util::LocalityDomain::operator=(
 
   _is_owner          = other._is_owner;
   _unit_ids          = other._unit_ids;
-  _unit_localities   = other._unit_localities;
+//_unit_localities   = other._unit_localities;
   _domain_tag        = other._domain_tag;
   _group_domain_tags = other._group_domain_tags;
 
@@ -299,7 +305,10 @@ dash::util::LocalityDomain::split(
       &num_scope_parts,
       &domain_tags),
     DART_OK);
-  free(domain_tags);
+  for (int sd = 0; sd < num_scope_parts; ++sd) {
+    DASH_LOG_DEBUG("LocalityDomain.split", "scope domain:", domain_tags[sd]);
+  }
+  // free(domain_tags);
 
   if (num_split_parts < 1 || num_scope_parts <= num_split_parts) {
     DASH_LOG_DEBUG("LocalityDomain.split",
@@ -498,16 +507,19 @@ dash::util::LocalityDomain::init(
   }
 
   _unit_ids.clear();
+#if 0
   _unit_localities.clear();
+#endif
 
+  DASH_LOG_TRACE("LocalityDomain.init",
+                 "num_units:", _domain->num_units);
   if (_domain->num_units > 0) {
-    DASH_LOG_TRACE("LocalityDomain.init",
-                   "num_units:", _domain->num_units);
     _unit_ids.insert(_unit_ids.end(),
                      _domain->unit_ids,
                      _domain->unit_ids + _domain->num_units);
   }
 
+#if 0
   if (nullptr == _parent) {
     DASH_LOG_TRACE("LocalityDomain.init",
                    "root domain, get unit locality descriptors");
@@ -522,6 +534,7 @@ dash::util::LocalityDomain::init(
       );
     }
   }
+#endif
 
   _begin = iterator(*this, 0);
   _end   = iterator(*this, _domain->num_domains);

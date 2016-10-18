@@ -1,6 +1,8 @@
 #ifndef DASH__TEST__LOCAL_RANGE_TEST_H_
 #define DASH__TEST__LOCAL_RANGE_TEST_H_
 
+#include "TestBase.h"
+
 #include <gtest/gtest.h>
 #include <libdash.h>
 
@@ -12,7 +14,7 @@ protected:
   size_t _dash_id;
   size_t _dash_size;
 
-  LocalRangeTest() 
+  LocalRangeTest()
   : _dash_id(0),
     _dash_size(0) {
     LOG_MESSAGE(">>> Test suite: LocalRangeTest");
@@ -25,13 +27,13 @@ protected:
   virtual void SetUp() {
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-    LOG_MESSAGE("===> Running test case with %d units ...",
+    LOG_MESSAGE("===> Running test case with %ld units ...",
                 _dash_size);
   }
 
   virtual void TearDown() {
     dash::Team::All().barrier();
-    LOG_MESSAGE("<=== Finished test case with %d units",
+    LOG_MESSAGE("<=== Finished test case with %ld units",
                 _dash_size);
   }
 };

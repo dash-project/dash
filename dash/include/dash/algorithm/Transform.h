@@ -212,7 +212,8 @@ OutputIt transform_local(
   ValueType * lbegin_out = dash::local(out_first  + g_offset_first);
   // Generate output values:
 #ifdef DASH_ENABLE_OPENMP
-  auto n_threads = dash::util::Locality::NumUnitDomainThreads();
+  dash::util::UnitLocality uloc;
+  auto n_threads = uloc.num_domain_threads();
   DASH_LOG_DEBUG("dash::transform_local", "thread capacity:",  n_threads);
   if (n_threads > 1) {
     auto l_size = lend_a - lbegin_a;

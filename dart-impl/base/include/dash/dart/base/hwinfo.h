@@ -7,6 +7,12 @@
 #include <dash/dart/if/dart_types.h>
 
 /**
+ * Initializes hwinfo object with uninitialized defaults.
+ */
+dart_ret_t dart_hwinfo_init(
+  dart_hwinfo_t * hwinfo);
+
+/**
  * Resolves the current unit's hardware locality information.
  *
  * Locality information is obtained from a series of specializes libraries

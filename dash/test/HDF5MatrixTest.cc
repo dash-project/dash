@@ -394,7 +394,7 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
   // Verify data
   verify_matrix(matrix_c, secret_b);
 }
-
+#if 0
 TEST_F(HDF5MatrixTest, GroupTest)
 {
   int    ext_x    = dash::size() * 5;
@@ -440,6 +440,7 @@ TEST_F(HDF5MatrixTest, GroupTest)
   verify_matrix(matrix_b, secret[1]);
   verify_matrix(matrix_c, secret[2]);
 }
+#endif
 #if 0
 // Test Conversion between dash::Array and dash::Matrix
 // Currently not possible as matrix has to be at least

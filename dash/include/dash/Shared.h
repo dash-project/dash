@@ -21,11 +21,10 @@ namespace dash {
  * \tparam  ElementType  The type of the shared value.
  */
 template<typename ElementType>
-class Shared
-{
+class Shared {
 private:
   typedef Shared<ElementType>
-    self_t;
+  self_t;
 
 public:
   typedef ElementType                                value_type;
@@ -39,13 +38,13 @@ public:
   typedef const GlobPtr<value_type>               const_pointer;
 
   typedef dash::Atomic<ElementType>
-    atomic_type;
+  atomic_type;
 
 private:
-  typedef dash::GlobMem<
-            value_type,
-            dash::allocator::LocalAllocator<value_type> >
-    GlobMem_t;
+  typedef dash::GlobMem <
+  value_type,
+  dash::allocator::LocalAllocator<value_type> >
+  GlobMem_t;
 
   template<typename T_>
   friend void swap(Shared<T_> & a, Shared<T_> & b);
@@ -61,10 +60,10 @@ public:
     /// Unit id of the shared value's owner.
     dart_unit_t   owner = 0,
     /// Team containing all units accessing the element in shared memory
-    Team        & team  = dash::Team::All())
-  : _team(&team),
-    _owner(owner),
-    _ptr(DART_GPTR_NULL)
+    Team     &    team  = dash::Team::All())
+    : _team(&team),
+      _owner(owner),
+      _ptr(DART_GPTR_NULL)
   {
     DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner)()", owner);
     // Shared value is only allocated at unit 0:
@@ -78,7 +77,7 @@ public:
     dart_bcast(
       &_ptr,
       sizeof(pointer),
-	    _owner,
+      _owner,
       _team->dart_id());
     atomic = atomic_type(_ptr.dart_gptr(), team);
     DASH_LOG_DEBUG_VAR("Shared.Shared(team,owner) >", _ptr);
@@ -179,7 +178,7 @@ public:
   }
 
 private:
-  dash::Team                   * _team    = nullptr;
+  dash::Team          *          _team    = nullptr;
   dart_unit_t                    _owner   = DART_UNDEFINED_UNIT_ID;
   std::shared_ptr<GlobMem_t>     _globmem = nullptr;
   pointer                        _ptr;

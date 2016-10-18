@@ -261,6 +261,8 @@ dart_ret_t dart_init(
 
   dart__mpi__locality_init();
 
+  _dart_initialized = 2;
+
 	DART_LOG_DEBUG("dart_init > initialization finished");
 	return DART_OK;
 }

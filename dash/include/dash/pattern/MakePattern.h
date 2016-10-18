@@ -7,11 +7,15 @@
 #include <dash/pattern/ShiftTilePattern.h>
 
 #include <dash/util/UnitLocality.h>
+#include <dash/util/TeamLocality.h>
 #include <dash/util/Locality.h>
 #include <dash/util/Config.h>
 
 #include <dash/Distribution.h>
 #include <dash/Dimensional.h>
+
+#include <set>
+
 
 namespace dash {
 
@@ -27,28 +31,20 @@ template<
 TeamSpec<SizeSpecType::ndim(), typename SizeSpecType::index_type>
 make_team_spec(
   /// Size spec of cartesian space to be distributed by the pattern.
-  const SizeSpecType & sizespec,
-  unsigned             n_team_units = dash::Team::All().size())
+  const SizeSpecType               & sizespec,
+  unsigned                           n_team_units = dash::Team::All().size(),
+  typename SizeSpecType::size_type   n_nodes      = 0,
+  typename SizeSpecType::size_type   n_numa_dom   = 0,
+  typename SizeSpecType::size_type   n_cores      = 0)
 {
   typedef typename SizeSpecType::size_type  extent_t;
   typedef typename SizeSpecType::index_type index_t;
 
-  dash::util::UnitLocality uloc(dash::Team::All(), dash::myid());
+  // Deduce number of dimensions from size spec:
+  const dim_t ndim  = SizeSpecType::ndim();
 
   DASH_LOG_TRACE_VAR("dash::make_team_spec()", sizespec.extents());
   DASH_LOG_TRACE_VAR("dash::make_team_spec", n_team_units);
-  // Deduce number of dimensions from size spec:
-  const dim_t ndim  = SizeSpecType::ndim();
-  // Number of processing nodes:
-  auto n_nodes      = dash::util::Locality::NumNodes();
-  // Number of NUMA domains per processing node:
-  auto n_numa_dom   = dash::util::Locality::NumNUMANodes();
-  // Number of cores per processing node:
-  auto n_cores      = dash::util::Locality::NumCores();
-
-  DASH_LOG_TRACE_VAR("dash::make_team_spec", n_nodes);
-  DASH_LOG_TRACE_VAR("dash::make_team_spec", n_numa_dom);
-  DASH_LOG_TRACE_VAR("dash::make_team_spec", n_cores);
 
   // Default team spec:
   std::array<extent_t, ndim> team_extents;
@@ -58,6 +54,17 @@ make_team_spec(
 
   DASH_LOG_TRACE("dash::make_team_spec",
                  "step 1 - initial team extents:", team_extents);
+
+  dash::util::TeamLocality tloc(dash::Team::All());
+  if (0 >= n_nodes) {
+    n_nodes    = tloc.num_nodes();
+  }
+  if (0 >= n_numa_dom) {
+    n_numa_dom = 1;
+  }
+  if (0 >= n_cores) {
+    n_cores    = tloc.num_cores();
+  }
 
   // Check for trivial case first:
   if (ndim == 1) {
@@ -71,9 +78,9 @@ make_team_spec(
     blocking.insert(n_numa_dom);
     team_extents = dash::math::balance_extents(team_extents, blocking);
   } else {
-    // blocking by processing nodes:
     blocking.insert(n_cores);
   }
+
   DASH_LOG_TRACE("dash::make_team_spec",
                  "step 2 - team extents after balancing on NUMA domains:",
                  team_extents);

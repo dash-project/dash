@@ -33,7 +33,7 @@ ValueType accumulate(
     GlobInputIt     in_last,
     ValueType       init)
     {
-        typedef dash::default_index_t index_t;
+        typedef typename GlobInputIt::index_type index_t;
         
         
         auto myid           = dash::myid();
@@ -83,7 +83,7 @@ ValueType accumulate(
   BinaryOperation binary_op = dash::plus<ValueType>())
 {
     
-    typedef dash::default_index_t index_t;
+    typedef typename GlobInputIt::index_type index_t;
     
     
     auto myid           = dash::myid();
