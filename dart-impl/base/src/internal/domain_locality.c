@@ -901,24 +901,34 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
                                        subdomain->num_units;
 
     if (module_gid_idx <= 1) {
+
       /* Reached CORE scope: */
-      dart_unit_t unit_id = subdomain->unit_ids[0];
       DART_LOG_TRACE(
         "dart__base__locality__domain__create_module_subdomains: "
-        "reached CORE scope (num_units:%d), setting domain tag for "
-        "unit_id:%d to %s",
-        subdomain->num_units, unit_id, subdomain->domain_tag);
+        "reached CORE scope (num_units:%d)",
+        subdomain->num_units);
 
-      dart_unit_locality_t * unit_loc;
-      DART_ASSERT_RETURNS(
-        dart__base__unit_locality__at(
-          unit_mapping, unit_id, &unit_loc),
-        DART_OK);
+      /* TODO: Travis might map multiple MPI processes to the same
+       *       physical core.
+       */
+      for (int u_idx = 0; u_idx < subdomain->num_units; u_idx++) {
+        dart_unit_t unit_id = subdomain->unit_ids[u_idx];
+        DART_LOG_TRACE(
+          "dart__base__locality__domain__create_module_subdomains: "
+          "reached CORE scope (num_units:%d), setting domain tag for "
+          "unit_id:%d to %s",
+          subdomain->num_units, unit_id, subdomain->domain_tag);
 
-      strncpy(unit_loc->domain_tag, subdomain->domain_tag,
-              DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
-      unit_loc->hwinfo.num_cores = subdomain->num_cores;
+        dart_unit_locality_t * unit_loc;
+        DART_ASSERT_RETURNS(
+          dart__base__unit_locality__at(
+            unit_mapping, unit_id, &unit_loc),
+          DART_OK);
 
+        strncpy(unit_loc->domain_tag, subdomain->domain_tag,
+                DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
+        unit_loc->hwinfo.num_cores = subdomain->num_cores;
+      }
     } else {
       /* Recurse to next scope level in the module domain: */
       DART_ASSERT_RETURNS(
