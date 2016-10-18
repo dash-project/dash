@@ -989,6 +989,11 @@ public:
     return size() == 0;
   }
 
+  inline View local_in(dash::util::Locality::Scope scope)
+  {
+    return View(); // TODO
+  }
+
   /**
    * Checks whether the given global index is local to the calling unit.
    *

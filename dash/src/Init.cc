@@ -1,7 +1,9 @@
 #include <dash/Init.h>
 #include <dash/Team.h>
+#include <dash/Shared.h>
 #include <dash/util/Locality.h>
 #include <dash/util/Config.h>
+
 
 namespace dash {
   static int  _myid        = -1;
@@ -9,7 +11,7 @@ namespace dash {
   static bool _initialized = false;
 }
 
-void dash::init(int *argc, char ***argv)
+void dash::init(int * argc, char ** *argv)
 {
   DASH_LOG_DEBUG("dash::init()");
 
@@ -17,8 +19,16 @@ void dash::init(int *argc, char ***argv)
   dash::util::Config::init();
 
   DASH_LOG_DEBUG("dash::init", "dart_init()");
-  dart_init(argc,argv);
+  dart_init(argc, argv);
   dash::_initialized = true;
+
+#if DASH_DEBUG
+  if (dash::util::Config::get<bool>("DASH_INIT_BREAKPOINT")) {
+    dash::Shared<int> breakpoint;
+    breakpoint.set(1);
+    while (breakpoint.get()) { }
+  }
+#endif
 
   DASH_LOG_DEBUG("dash::init", "dash::util::Locality::init()");
   dash::util::Locality::init();

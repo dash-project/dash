@@ -158,7 +158,7 @@ inline void Log_Line(
 
 // "Recursive" variadic function
 template<typename T, typename... Args>
-void Log_Recursive(
+inline void Log_Recursive(
   const char         * level,
   const char         * file,
   int                  line,
@@ -173,7 +173,7 @@ void Log_Recursive(
 
 // Log_Recursive wrapper that creates the ostringstream
 template<typename... Args>
-void LogWrapper(
+inline void LogWrapper(
   const char *     level,
   const char *     filepath,
   int              line,
@@ -198,13 +198,13 @@ void LogWrapper(
 
 // Log_Recursive wrapper that creates the ostringstream
 template<typename T, typename... Args>
-void LogVarWrapper(
+inline void LogVarWrapper(
   const char* level,
   const char* filepath,
-  int line,
+  int         line,
   const char* context_tag,
   const char* var_name,
-  const T & var_value,
+  const T &   var_value,
   const Args & ... args)
 {
   if (!dash::internal::logging::log_enabled()) {

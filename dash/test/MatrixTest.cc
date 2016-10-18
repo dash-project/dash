@@ -63,13 +63,15 @@ TEST_F(MatrixTest, Views)
   if (dash::myid() == 0) {
     LOG_MESSAGE("Testing viewspecs of blocks in global index domain");
     for (size_t b = 0; b < num_blocks_total; ++b) {
-      LOG_MESSAGE("Testing viewspec of block %d", b);
+      DASH_LOG_TRACE("MatrixTest.Views", "Testing viewspec of block", b);
       auto g_block       = matrix.block(b);
       auto g_block_first = g_block.begin();
       auto g_block_view  = g_block_first.viewspec();
-      LOG_MESSAGE("Block viewspec: offset:(%d,%d) extent:(%d,%d)",
-                  g_block_view.offset(0), g_block_view.offset(1),
-                  g_block_view.extent(0), g_block_view.extent(1));
+      DASH_LOG_TRACE("MatrixTest.Views", "block viewspec:",
+                     "offset: (", g_block_view.offset(0), ",",
+                                  g_block_view.offset(1), ")",
+                     "extent: (", g_block_view.extent(0), ",",
+                                  g_block_view.extent(1), ")");
       // Global block coordinates:
       auto g_block_x     = b % num_blocks_x;
       auto g_block_y     = b / num_blocks_x;
@@ -100,12 +102,16 @@ TEST_F(MatrixTest, Views)
       auto l_block       = matrix.local.block(lb);
       auto l_block_first = l_block.begin();
       auto l_block_view  = l_block_first.viewspec();
-      LOG_MESSAGE("Global block viewspec: offset:(%d,%d) extent:(%d,%d)",
-                  g_block_view.offset(0), g_block_view.offset(1),
-                  g_block_view.extent(0), g_block_view.extent(1));
-      LOG_MESSAGE("Local block viewspec: offset:(%d,%d) extent:(%d,%d)",
-                  l_block_view.offset(0), l_block_view.offset(1),
-                  l_block_view.extent(0), l_block_view.extent(1));
+      DASH_LOG_TRACE("MatrixTest.Views", "global block viewspec:",
+                     "offset: (", g_block_view.offset(0), ",",
+                                  g_block_view.offset(1), ")",
+                     "extent: (", g_block_view.extent(0), ",",
+                                  g_block_view.extent(1), ")");
+      DASH_LOG_TRACE("MatrixTest.Views", "local block viewspec:",
+                     "offset: (", l_block_view.offset(0), ",",
+                                  l_block_view.offset(1), ")",
+                     "extent: (", l_block_view.extent(0), ",",
+                                  l_block_view.extent(1), ")");
       // Verify matrix.block(b) == matrix.local.block(lb):
       ASSERT_EQ_U(g_block_view, l_block_view);
       ++lb;
@@ -189,8 +195,6 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 11) + (k * 97);
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    i, k, value);
         matrix[i][k] = value;
       }
     }
@@ -203,7 +207,6 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
   // Read and assert values in matrix
   for(size_t i = 0; i < matrix.extent(0); ++i) {
     for(size_t k = 0; k < matrix.extent(1); ++k) {
-      LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
       ASSERT_EQ_U(expected, value);
@@ -247,8 +250,6 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 11) + (k * 97);
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    i, k, value);
         matrix[i][k] = value;
       }
     }
@@ -262,7 +263,6 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
   // Read and assert values in matrix
   for(size_t i = 0; i < matrix.extent(0); ++i) {
     for(size_t k = 0; k < matrix.extent(1); ++k) {
-      LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
       ASSERT_EQ_U(expected, value);
@@ -308,8 +308,6 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 11) + (k * 97);
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    i, k, value);
         matrix[i][k] = value;
       }
     }
@@ -322,7 +320,6 @@ TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
   // Read and assert values in matrix
   for(size_t i = 0; i < matrix.extent(0); ++i) {
     for(size_t k = 0; k < matrix.extent(1); ++k) {
-      LOG_MESSAGE("Testing matrix[%d][%d]", i, k);
       int value    = matrix[i][k];
       int expected = (i * 11) + (k * 97);
       ASSERT_EQ_U(expected, value);
@@ -424,8 +421,6 @@ TEST_F(MatrixTest, Sub2DimDefault)
   for (index_t lidx = 0; lit != lend; ++lidx, ++lit) {
     ASSERT_LT_U(lidx, matrix.local_size());
     auto value = ((dash::myid() + 1) * 1000) + lidx;
-    LOG_MESSAGE("Assigning local address (%p) %d = %d",
-                lit, lidx, value);
     *lit = value;
   }
 
@@ -445,12 +440,6 @@ TEST_F(MatrixTest, Sub2DimDefault)
       auto global_idx = pattern.memory_layout().at(g_coords);
       auto exp_value  = ((unit_id + 1) * 1000) + local_idx;
       bool is_local   = unit_id == dash::myid();
-      LOG_MESSAGE("Testing g(%d,%d) l(%d,%d) u(%d) li(%d) == %d",
-                  col, row,
-                  l_coords[0], l_coords[1],
-                  unit_id,
-                  local_idx,
-                  exp_value);
       element_t value = column[row];
       ASSERT_EQ_U(exp_value, value);
       ASSERT_EQ_U(is_local, matrix.is_local(global_idx));
@@ -493,8 +482,6 @@ TEST_F(MatrixTest, BlockViews)
     for(size_t col = 0; col < matrix.extent(0); ++col) {
       for(size_t row = 0; row < matrix.extent(1); ++row) {
         auto value = (row * matrix.extent(0)) + col;
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    col, row, value);
         matrix[col][row] = value;
       }
     }
@@ -568,8 +555,6 @@ TEST_F(MatrixTest, ViewIteration)
     for(size_t i = 0; i < matrix.extent(0); ++i) {
       for(size_t k = 0; k < matrix.extent(1); ++k) {
         auto value = (i * 1000) + (k * 1);
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    i, k, value);
         matrix[i][k] = value;
       }
     }
@@ -617,12 +602,6 @@ TEST_F(MatrixTest, ViewIteration)
     int phase_y  = phase / view_size_x;
     int gcoord_x = block_base_coord_x + phase_x;
     int gcoord_y = block_base_coord_y + phase_y;
-    LOG_MESSAGE("phase:%d = %d,%d it_pos:%d end_pos:%d gcoord:%d,%d",
-                phase,
-                phase_x, phase_y,
-                b_it.pos(),
-                b_end.pos(),
-                gcoord_x, gcoord_y);
     ASSERT_EQ_U(phase, (b_it.pos() - block_index_offset));
     // Apply view projection by converting to GlobPtr:
     dash::GlobPtr<int, pattern_t> block_elem_gptr =
@@ -676,8 +655,6 @@ TEST_F(MatrixTest, BlockCopy)
     for(size_t col = 0; col < matrix_a.extent(0); ++col) {
       for(size_t row = 0; row < matrix_a.extent(1); ++row) {
         auto value = (row * matrix_a.extent(0)) + col;
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    col, row, value);
         matrix_a[col][row] = value;
         matrix_b[col][row] = value;
       }

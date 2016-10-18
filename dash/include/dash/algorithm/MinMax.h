@@ -51,7 +51,8 @@ const ElementType * min_element(
         = std::less<const ElementType &>())
 {
 #ifdef DASH_ENABLE_OPENMP
-  auto n_threads = dash::util::Locality::NumUnitDomainThreads();
+  dash::util::UnitLocality uloc;
+  auto n_threads = uloc.num_domain_threads();
   DASH_LOG_DEBUG("dash::min_element", "thread capacity:",  n_threads);
 
   // TODO: Should also restrict on elements/units > ~10240.
@@ -64,7 +65,7 @@ const ElementType * min_element(
     typedef struct min_pos_t { ElementType val; size_t idx; } min_pos;
 
     DASH_LOG_DEBUG("dash::min_element", "local range size:", l_size);
-    int       align_bytes      = dash::util::Locality::CacheLineSizes()[0];
+    int       align_bytes      = uloc.cache_line_size(0);
     size_t    min_vals_t_size  = n_threads + 1 +
                                  (align_bytes / sizeof(min_pos));
     size_t    min_vals_t_bytes = min_vals_t_size * sizeof(min_pos);

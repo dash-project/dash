@@ -43,7 +43,7 @@ public:
     double sum = 0;
 
     for (auto u : tloc.units()) {
-      auto & unit_loc      = tloc.unit_locality(u);
+      auto   unit_loc      = tloc.unit_locality(u);
       double unit_cpu_cap  = unit_loc.num_cores() *
                              unit_loc.num_threads() *
                              unit_loc.cpu_mhz();
@@ -141,7 +141,7 @@ public:
 
     // Calculating bytes/cycle per core for every unit:
     for (auto u : tloc.units()) {
-      auto & unit_loc     = tloc.unit_locality(u);
+      auto   unit_loc     = tloc.unit_locality(u);
       double unit_mem_bw  = std::max<int>(0, unit_loc.max_shmem_mbps());
       double unit_core_fq = unit_loc.num_threads() *
                             unit_loc.cpu_mhz();

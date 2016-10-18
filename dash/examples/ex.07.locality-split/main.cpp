@@ -50,7 +50,7 @@ int main(int argc, char * argv[])
 
   dash::init(&argc, &argv);
 
-  dash::util::BenchmarkParams bench_params("ex.07.locality");
+  dash::util::BenchmarkParams bench_params("ex.07.locality-split");
   bench_params.print_header();
   bench_params.print_pinning();
 

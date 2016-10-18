@@ -22,6 +22,22 @@ extern "C" {
 #define DART_INTERFACE_ON
 
 /**
+ * Initialize information of the specified team.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_team_locality_init(
+  dart_team_t                     team);
+
+/**
+ * Initialize information of the specified team.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_team_locality_finalize(
+  dart_team_t                     team);
+
+/**
  * Locality information of the team domain with the specified id tag.
  *
  * \ingroup DartLocality
