@@ -192,7 +192,7 @@ dart_ret_t dart__base__locality__domain__copy(
       DART_LOG_ERROR("dart__base__locality__domain__copy: domain %s "
                      "has num_domains = %d, expected domains = NULL",
                      domain_src->domain_tag, domain_src->num_domains);
-      return DART_ERR_OTHER;
+      // return DART_ERR_OTHER;
     }
     domain_dst->domains = NULL;
   }

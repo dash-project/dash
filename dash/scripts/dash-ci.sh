@@ -40,8 +40,9 @@ run_ci()
       if [ "$ERROR_PATTERNS" -ne "0" ]; then
         FAILED=true
         echo "[  ERROR ] error pattern detected. Check logs"
+      else
+        echo "[     OK ]"
       fi
-      echo "[     OK ]"
     else
       FAILED=true
       echo "[ FAILED ]"
