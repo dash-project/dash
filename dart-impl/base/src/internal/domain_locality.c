@@ -733,8 +733,6 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
   } else {
   }
 
-  int module_gid_idx = num_scopes - module_scope_level - 1;
-
   for (int s = 0; s < num_scopes; s++) {
     module_scopes[s] = module_leader_unit_loc->hwinfo.scopes[s].scope;
   }
@@ -742,23 +740,19 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
     "dart__base__locality__domain__create_module_subdomains", "%d",
     module_scopes, num_scopes);
 
-  dart_locality_scope_t module_locality_scope
-    = module_scopes[module_gid_idx];
+  int subdomain_gid_idx = num_scopes - (module_scope_level + 1);
+
+  dart_locality_scope_t subdomain_scope = module_scopes[subdomain_gid_idx];
 
   DART_LOG_TRACE("dart__base__locality__domain__create_module_subdomains: "
-                 "module_gid_idx:%d "
-                 "module_locality_scope (module level:%d): %d",
-                 module_gid_idx,
-                 module_scope_level,
-                 module_locality_scope);
+                 "-- module_scope_level:%d subdomain_gid_idx:%d "
+                 "-> subdomain_scope:%d",
+                 module_scope_level, subdomain_gid_idx, subdomain_scope);
 
   /* Array of the global indices of the current module subdomains.
    * Maximum number of global indices, including duplicates, is number of
-   * units: */
-  /*
-  int * module_subdomain_gids = calloc(module_domain->num_units,
-                                       sizeof(int));
-  */
+   * units:
+   */
   int module_subdomain_gids[module_domain->num_units];
 
   /* Copy global indices from scopes list of all units U at the module
@@ -774,24 +768,23 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
       DART_OK);
     dart_hwinfo_t * unit_hwinfo = &module_unit_loc->hwinfo;
 
-    int unit_level_gid = unit_hwinfo->scopes[module_gid_idx].index;
+    int unit_level_gid = unit_hwinfo->scopes[subdomain_gid_idx+1].index;
     int unit_sub_gid   = -1;
-    if (module_gid_idx > 0) {
-      unit_sub_gid = unit_hwinfo->scopes[module_gid_idx-1].index;
+    if (subdomain_gid_idx >= 0) {
+      unit_sub_gid = unit_hwinfo->scopes[subdomain_gid_idx].index;
     }
     DART_LOG_TRACE(
-      "dart__base__locality__domain__create_module_subdomains: "
+      "dart__base__locality__domain__create_module_subdomains: ---- "
       "module_domain.unit_ids[%d] => unit:%d sub_gid:%d level_gid:%d "
       "module_domain.global_index:%d",
       u_idx, unit_id, unit_sub_gid, unit_level_gid,
       module_domain->global_index);
     /* Ignore units that are not contained in current module domain: */
-    if (// unit_sub_gid < 0 ||
-        module_scope_level == 0 ||
+    if (module_scope_level == 0 ||
         unit_level_gid == module_domain->global_index) {
       module_subdomain_gids[gid_idx] = unit_sub_gid;
       DART_LOG_TRACE(
-        "dart__base__locality__domain__create_module_subdomains: "
+        "dart__base__locality__domain__create_module_subdomains: ---- "
         "level:%d unit:%d module_subdomain_gids[%d]:%d",
         module_scope_level, u_idx, gid_idx, module_subdomain_gids[gid_idx]);
       gid_idx++;
@@ -827,7 +820,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
     dart__base__locality__domain__init(subdomain);
 
     subdomain->level          = module_domain->level + 1;
-    subdomain->scope          = module_scopes[module_gid_idx-1];
+    subdomain->scope          = module_scopes[subdomain_gid_idx];
     subdomain->relative_index = sd;
     subdomain->global_index   = module_subdomain_gids[sd];
     subdomain->parent         = module_domain;
@@ -839,7 +832,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
             subdomain->relative_index);
 
     DART_LOG_TRACE("dart__base__locality__domain__create_module_subdomains: "
-                   "module->domains[%d].domain_tag:%s",
+                   "-- module->domains[%d].domain_tag:%s",
                    sd, subdomain->domain_tag);
 
     /* Set module subdomain hostname: */
@@ -855,7 +848,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
               DART_LOCALITY_HOST_MAX_SIZE);
     }
     DART_LOG_TRACE("dart__base__locality__domain__create_module_subdomains: "
-                   "module->domains[%d].host:%s",
+                   "-- module->domains[%d].host:%s",
                    sd, subdomain->host);
 
     /* Set module subdomain units. Filter units in module domain by
@@ -871,21 +864,21 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
           unit_mapping, unit_id, &unit_loc),
         DART_OK);
       DART_LOG_TRACE(
-        "dart__base__locality__domain__create_module_subdomains: "
+        "dart__base__locality__domain__create_module_subdomains: ---- "
         "module_unit[%d](= unit:%d).scopes[%d].index:%d =?= "
         "subdomain.global_index:%d",
-        u_idx, unit_id, module_gid_idx,
-        unit_loc->hwinfo.scopes[module_gid_idx].index,
+        u_idx, unit_id, subdomain_gid_idx,
+        unit_loc->hwinfo.scopes[subdomain_gid_idx].index,
         subdomain->global_index);
 
-      if (unit_loc->hwinfo.scopes[module_gid_idx-1].index ==
+      if (unit_loc->hwinfo.scopes[subdomain_gid_idx].index ==
           subdomain->global_index) {
         subdomain->unit_ids[subdomain->num_units] = unit_id;
         subdomain->num_units++;
       }
     }
     DART_LOG_TRACE("dart__base__locality__domain__create_module_subdomains: "
-                   "module->domains[%d].num_units:%d",
+                   "-- module->domains[%d].num_units:%d",
                    sd, subdomain->num_units);
 
     subdomain->unit_ids = realloc(subdomain->unit_ids,
@@ -903,7 +896,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
       subdomain->num_cores = 1;
     }
 
-    if (module_gid_idx <= 1) {
+    if (subdomain_gid_idx <= 0) {
 
       /* Reached CORE scope: */
       DART_LOG_TRACE(
