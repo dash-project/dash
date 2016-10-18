@@ -219,20 +219,15 @@ dart_ret_t dart__base__locality__domain__copy(
 dart_ret_t dart__base__locality__domain__update_subdomains(
   dart_domain_locality_t         * domain)
 {
-  int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_UNIT);
+  int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_CORE);
   DART_LOG_TRACE("dart__base__locality__domain__update_subdomains() "
                  "domain: %s, scope: %d, subdomains: %d, units: %d, "
                  "in unit scope: %s",
                  domain->domain_tag,  domain->scope,
                  domain->num_domains, domain->num_units,
                  (is_unit_scope ? "true" : "false"));
-  if (is_unit_scope) {
-    // DART_ASSERT(domain->num_units   <= 1);
 
-    // TODO: Check if there is a valid scenario for num_domains > 0 at
-    //       unit scope:
-    // DART_ASSERT(domain->num_domains == 0);
-  } else {
+  if (!is_unit_scope) {
     domain->num_units = 0;
   }
   for (int sd = 0; sd < domain->num_domains; sd++) {
@@ -244,8 +239,8 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
 
     sprintf(subdomain->domain_tag, "%s.%d", domain->domain_tag, sd);
 
-    /* Recursively update subdomains: */
     DART_LOG_TRACE("dart__base__locality__domain__update_subdomains --v");
+    /* Recursively update subdomains: */
     dart__base__locality__domain__update_subdomains(
       subdomain);
     DART_LOG_TRACE("dart__base__locality__domain__update_subdomains --^");
@@ -284,6 +279,9 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
       }
     }
   } else {
+    if (NULL != domain->unit_ids) {
+      free(domain->unit_ids);
+    }
     domain->unit_ids = NULL;
   }
   DART_LOG_TRACE("dart__base__locality__domain__update_subdomains > "
@@ -890,7 +888,8 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
      */
     int balanced_cores_per_subdomain = module_domain->num_cores /
                                        module_domain->num_units;
-    subdomain->num_cores             = balanced_cores_per_subdomain;
+    subdomain->num_cores             = balanced_cores_per_subdomain *
+                                       subdomain->num_units;
 
     if (subdomain->num_cores < 1) {
       subdomain->num_cores = 1;
