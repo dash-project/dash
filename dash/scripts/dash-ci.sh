@@ -32,9 +32,9 @@ run_ci()
     ### Test DASH using DART MPI backend:
     #
     echo "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
+    echo "[ >> LOG ] $DEPLOY_PATH/test_mpi.log"
     $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
     TEST_STATUS=$?
-    echo "[ >> LOG ] $DEPLOY_PATH/test_mpi.log"
     ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat" $DEPLOY_PATH/test_mpi.log`
     if [ "$TEST_STATUS" = "0" ]; then
       if [ "$ERROR_PATTERNS" -ne "0" ]; then

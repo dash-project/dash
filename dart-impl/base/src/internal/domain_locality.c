@@ -897,8 +897,8 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
      */
     int balanced_cores_per_subdomain = module_domain->num_cores /
                                        module_domain->num_units;
-    subdomain->num_cores             = balanced_cores_per_subdomain *
-                                       subdomain->num_units;
+    subdomain->num_cores             = balanced_cores_per_subdomain;
+
     if (subdomain->num_cores < 1) {
       subdomain->num_cores = 1;
     }
