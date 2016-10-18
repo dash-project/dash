@@ -207,7 +207,7 @@ private:
     for(auto i = 0; i < num_handle; ++i)
       handle[i] = nullptr;
     _blockview_data.insert(std::make_pair(
-          std::make_pair(dim, region), Data{ std::move(blockview), handle, num_handle, cont_elems, nbytes }));
+          std::move(std::make_pair(dim, region)), Data{std::move(blockview), handle, num_handle, cont_elems, nbytes}));
   }
 
   void updateHaloIntern(dim_t dim, HaloRegion region, bool async)
@@ -237,9 +237,9 @@ private:
   struct Data
   {
     const HaloBlockView_t blockview;
-    dart_handle_t *       handle = nullptr;
-    size_type             num_handles = 0;
-    size_type             cont_elems = 0;
+    dart_handle_t *       handle;
+    size_type             num_handles;
+    size_type             cont_elems;
     std::uint64_t         nbytes;
   };
   std::map<std::pair<dim_t, HaloRegion>, Data> _blockview_data;
