@@ -68,7 +68,7 @@ if [ $# != 0 ]; then
     run_ci $buildtype
   done
 else
-  run_ci Development
+  run_ci Debug
 fi
 
 if $FAILED; then
