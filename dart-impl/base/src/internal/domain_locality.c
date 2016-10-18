@@ -375,7 +375,7 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
 {
   dart_ret_t ret;
 
-  int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_UNIT);
+  int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_CORE);
   int matched       = 0;
   int unit_idx      = 0;
   int subdomain_idx = 0;
@@ -385,6 +385,14 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
                  "domain: %s, level: %d, domains: %d, units: %d",
                  domain->domain_tag,  domain->level,
                  domain->num_domains, domain->num_units);
+
+#ifdef DART_ENABLE_LOGGING
+    for (int gsd = 0; gsd < num_subdomain_tags; gsd++) {
+      DART_LOG_TRACE("dart__base__locality__domain__filter_subdomains: "
+                     "subdomain_tags[%d]: %s",
+                     gsd, subdomain_tags[gsd]);
+    }
+#endif
 
   if (is_unit_scope) {
     return DART_OK;
@@ -459,6 +467,7 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
                sizeof(dart_unit_t));
       unit_idx += domain->domains[subdomain_idx].num_units;
     }
+
     // num_numa += domain->domains[subdomain_idx].hwinfo.num_numa;
     subdomain_idx++;
   }
