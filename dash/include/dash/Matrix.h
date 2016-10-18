@@ -137,6 +137,8 @@ class Matrix
 {
   static_assert(std::is_trivial<ElementT>::value,
     "Element type must be trivial copyable");
+  static_assert(std::is_same<IndexT, typename PatternT::index_type>::value,
+    "Index type IndexT must be the same for Matrix and specified pattern");
 
 private:
   typedef Matrix<ElementT, NumDimensions, IndexT, PatternT>

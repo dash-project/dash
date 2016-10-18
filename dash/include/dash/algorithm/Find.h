@@ -94,7 +94,7 @@ GlobIter<ElementType, PatternType> find_if(
   /// Predicate which will be applied to the elements in range [first, last)
 	UnaryPredicate                       predicate)
 {
-  typedef dash::default_index_t index_t;
+  typedef typename PatternType::index_type index_t;
 
   auto myid          = dash::myid();
   /// Global iterators to local range:

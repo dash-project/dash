@@ -33,13 +33,17 @@ typedef int dim_t;
 
 namespace internal {
 
-#ifdef DASH_ENABLE_DEFAULT_INDEX_TYPE_LONG
+#if defined(DASH_ENABLE_DEFAULT_INDEX_TYPE_LONG)
   typedef int64_t   default_signed_index;
   typedef uint64_t  default_unsigned_index;
-#else
+#elif defined(DASH_ENABLE_DEFAULT_INDEX_TYPE_INT)
   typedef int32_t   default_signed_index;
   typedef uint32_t  default_unsigned_index;
+#else
+  typedef ssize_t   default_signed_index;
+  typedef size_t    default_unsigned_index;
 #endif
+
 
 }
 

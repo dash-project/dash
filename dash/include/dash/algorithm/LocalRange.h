@@ -92,7 +92,11 @@ local_index_range(
   auto lbegin_index   = pattern.at(lbegin_gcoords);
   // Add 1 to local end index to it points one coordinate past the
   // last index:
-  auto lend_index     = pattern.at(lend_gcoords)+1;
+  auto lend_index     = pattern.at(lend_gcoords);
+  if (lend_index == std::numeric_limits<typename pattern_t::index_type>::max()) {
+    DASH_LOG_ERROR("local_index_range -> index type too small for for local index range");
+  }
+  lend_index += 1;
   // Return local index range
   DASH_LOG_TRACE("local_index_range ->", lbegin_index, lend_index);
   return LocalIndexRange<idx_t> { lbegin_index, lend_index };
@@ -203,7 +207,11 @@ local_index_range(
   auto lbegin_index   = pattern.at(lbegin_gcoords);
   // Add 1 to local end index to it points one coordinate past the
   // last index:
-  auto lend_index     = pattern.at(lend_gcoords)+1;
+  auto lend_index     = pattern.at(lend_gcoords);
+  if (lend_index == std::numeric_limits<typename pattern_t::index_type>::max()) {
+    DASH_LOG_ERROR("local_index_range -> index type too small for for local index range");
+  }
+  lend_index += 1;
   // Return local index range
   DASH_LOG_TRACE("local_index_range ->", lbegin_index, lend_index);
   return LocalIndexRange<idx_t> { lbegin_index, lend_index };
