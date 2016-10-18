@@ -85,7 +85,7 @@ However there are some situations where this is not desired. Therefor DASH provi
 
 In this cases, the pattern creation is handled as described in Figure.
 
-![Flowchart of pattern creation](uml_hdf5_pattern_creation.pdf)
+![Flowchart of pattern creation](uml_hdf5_pattern_creation.svg)
 *Flowchart of pattern creation for various scenarios`*
 
 
