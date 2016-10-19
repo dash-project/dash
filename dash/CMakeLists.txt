@@ -306,7 +306,6 @@ if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
 	                              PUBLIC $<INSTALL_INTERFACE:include>
 	                              PUBLIC ${ADDITIONAL_INCLUDES})
 endif()
-
   string(TOUPPER ${dart_variant} DART_VARIANT)
 
   # Install library

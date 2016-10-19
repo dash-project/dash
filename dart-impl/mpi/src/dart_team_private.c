@@ -10,20 +10,17 @@
 
 dart_team_t dart_next_availteamid;
 
-//Team -> MPI_Comm Mapping
+#if 0
 MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-//Team -> MPI_Comm Mapping for shared memory windows
 MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
 #endif
 
-//Team -> MPI Windows List
 MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
-//Map Teamid to number of shared memory node size 
 int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
 #endif
 

@@ -2,7 +2,7 @@
 #define DASH__UTIL__CONFIG_H__
 
 #include <dash/internal/Logging.h>
-//#include <dash/util/StaticConfig.h>
+#include <dash/util/StaticConfig.h>
 
 #include <string>
 #include <sstream>

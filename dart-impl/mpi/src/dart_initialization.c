@@ -262,7 +262,7 @@ dart_ret_t dart_init(
 
   dart__mpi__locality_init();
 #ifdef DASH_ENABLE_PMEM
-  dart__mpi__pmem_init();
+  //dart__mpi__pmem_init();
 #endif
 
   _dart_initialized = 2;
@@ -283,7 +283,7 @@ dart_ret_t dart_exit()
 
   dart__mpi__locality_finalize();
 #ifdef DASH_ENABLE_PMEM
-  dart__mpi__pmem_finalize();
+  //dart__mpi__pmem_finalize();
 #endif
 
   _dart_initialized = 0;
