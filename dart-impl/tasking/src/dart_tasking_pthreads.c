@@ -1,4 +1,6 @@
 
+//#if defined(DAT_TASKING_PTHREADS)
+
 #include <dash/dart/base/logging.h>
 #include <dash/dart/if/dart_tasking.h>
 #include <dash/dart/if/dart_active_messages.h>
@@ -32,15 +34,15 @@ static bool processing = false;
 static bool initialized = false;
 
 typedef struct task_data {
-  struct task_data *next; // next entry in the runnable task list
-  tfunc_t *fn;
-  void *data;
-  size_t data_size;
-  size_t unresolved_deps;
-  dart_task_dep_t *deps;
-  size_t ndeps;
-  task_list_t *dependents;
-  struct task_data *parent;
+  struct task_data *next;   // next entry in the runnable task list
+  tfunc_t *fn;              // the action to be invoked
+  void *data;               // the data to be passed to passed to the action
+  size_t data_size;         // the size of the data; data will be freed if data_size > 0
+  size_t unresolved_deps;   // the number of unresolved task dependencies
+  dart_task_dep_t *deps;    // list of dependencies (TODO: do we really need to store this list?)
+  size_t ndeps;             // the number of total dependencies (TODO: do we really need to store this?)
+  task_list_t *successor;   // the list of tasks that have a dependency to this task
+  struct task_data *parent; // the task that created this task
 } task_t;
 
 struct task_list {
@@ -201,6 +203,7 @@ dart__base__tasking__init()
     DART_LOG_INFO("Failed to get number of cores! Playing it safe with 2 threads...");
     num_threads = 2;
   }
+  num_threads=1;
   DART_LOG_INFO("Creating %i threads", num_threads);
 
 
@@ -299,14 +302,14 @@ static inline task_t * find_dependency(task_t *task, const dart_task_dep_t *dep,
 //          && DART_GPTR_EQUAL(task->deps[i].gptr, dep->gptr)) {
           && task->deps[i].gptr.addr_or_offs.offset == dep->gptr.addr_or_offs.offset
           && task->deps[i].gptr.unitid == dep->gptr.unitid) {
-        // this parent will resolve the dependency
+        // this task will resolve the dependency
         t = task;
         break;
       }
     }
 
     if (t == NULL) {
-      t = find_dependency_in_list(task->dependents, dep, deptype);
+      t = find_dependency_in_list(task->successor, dep, deptype);
     }
   }
   return t;
@@ -344,7 +347,19 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
   task->parent = get_current_task();
   task->ndeps = ndeps;
   task->deps = malloc(sizeof(dart_task_dep_t) * ndeps);
-  memcpy(task->deps, deps, sizeof(dart_task_dep_t) * ndeps);
+//  memcpy(task->deps, deps, sizeof(dart_task_dep_t) * ndeps);
+  // store dependencies using absolute addresses
+  for (i = 0; i < ndeps; i++) {
+    task->deps[i].type = deps[i].type;
+    task->deps[i].gptr.flags = deps[i].gptr.flags;
+    task->deps[i].gptr.segid = 0;
+    task->deps[i].gptr.unitid = deps[i].gptr.unitid;
+    if (dart_gptr_getoffset(deps[i].gptr, &(task->deps[i].gptr.addr_or_offs.offset)) != DART_OK) {
+      DART_LOG_ERROR("Failed to get offset for gptr={f=%i, s=%i, u=%i, o=%p}", deps[i].gptr.flags, deps[i].gptr.segid, deps[i].gptr.unitid, deps[i].gptr.addr_or_offs.addr);
+      task->deps[i].gptr.addr_or_offs.offset = 0;
+    }
+  }
+
   dart__tasking__ayudame_create_task(task, task->parent);
 
   if (data != NULL && data_size > 0) {
@@ -361,12 +376,12 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
    */
   if (ndeps > 0) {
     for (i = 0; i < ndeps; i++) {
-      if (deps[i].type == DART_DEP_IN || deps[i].type == DART_DEP_INOUT) {
+      if (task->deps[i].type == DART_DEP_IN || task->deps[i].type == DART_DEP_INOUT) {
         // put the task into the dependency graph
 
-        if (deps[i].gptr.unitid != myid) {
+        if (task->deps[i].gptr.unitid != myid) {
           // create a dependency request at the remote unit
-          remote_dependency_request(task, deps[i].gptr);
+          remote_dependency_request(task, task->deps[i].gptr);
           task->unresolved_deps++;
           // enqueue this task at the top level of the task graph
           task_list_t *tl = allocate_task_list_elem();
@@ -378,13 +393,13 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
 
         } else {
 
-          task_t *dependee = find_dependency_in_list(dep_graph, &deps[i], DART_DEP_OUT);
+          task_t *dependee = find_dependency_in_list(dep_graph, &task->deps[i], DART_DEP_OUT);
           if (dependee != NULL) {
             // enqueue as dependant of this task
             task_list_t *tl = allocate_task_list_elem();
             tl->task = task;
-            tl->next = dependee->dependents;
-            dependee->dependents = tl;
+            tl->next = dependee->successor;
+            dependee->successor = tl;
 
             in_dep = true;
             task->unresolved_deps++;
@@ -393,12 +408,12 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
           } else {
             // Do nothing, consider the dependence as solved already
             DART_LOG_INFO("Could not find a dependee for task %p with IN dep (dart_gptr = {addr=%p, seg=%i, unit=%i}})",
-                task, deps[i].gptr.addr_or_offs.addr, deps[i].gptr.segid, deps[i].gptr.unitid);
+                task, task->deps[i].gptr.addr_or_offs.addr, task->deps[i].gptr.segid, task->deps[i].gptr.unitid);
           }
         }
-      } else if (deps[i].type == DART_DEP_OUT) {
+      } else if (task->deps[i].type == DART_DEP_OUT) {
         DART_LOG_INFO("Found task %p with OUT dep (dart_gptr = {addr=%p, seg=%i, unit=%i}})", task,
-            deps[i].gptr.addr_or_offs.addr, deps[i].gptr.segid, deps[i].gptr.unitid);
+            task->deps[i].gptr.addr_or_offs.addr, task->deps[i].gptr.segid, task->deps[i].gptr.unitid);
       }
     }
     if (!in_dep) {
@@ -566,7 +581,7 @@ static void remove_from_depgraph(task_t *task)
 static void release_task(task_t *task)
 {
   // release the task's dependents
-  task_list_t *child = task->dependents;
+  task_list_t *child = task->successor;
   while (child != NULL)
   {
     child->task->unresolved_deps--;
@@ -603,17 +618,30 @@ static void release_task(task_t *task)
     task_t *rt_prev = rdepq_head;
     while (rt != NULL)
     {
-      // use absolute address
-      void *addr;
-      dart_gptr_getaddr(task->deps[i].gptr, &addr);
-      DART_LOG_INFO("release_task: comparing gptr %p and %p", rt->deps[0].gptr.addr_or_offs.addr, addr);
-      if (rt->deps[0].gptr.addr_or_offs.addr == addr) {
+      DART_LOG_INFO("release_task: comparing gptr={u=%i, s=%i, f=%i, o=%p} and gptr={u=%i, s=%i, f=%i, o=%p} (%p and %p)",
+        rt->deps[0].gptr.unitid,
+        rt->deps[0].gptr.segid,
+        rt->deps[0].gptr.flags,
+        rt->deps[0].gptr.addr_or_offs.addr,
+        task->deps[i].gptr.unitid,
+        task->deps[i].gptr.segid,
+        task->deps[i].gptr.flags,
+        task->deps[i].gptr.addr_or_offs.addr);
+      if (task->deps[i].gptr.unitid == rt->deps[0].gptr.unitid
+          && task->deps[i].gptr.addr_or_offs.offset == rt->deps[0].gptr.addr_or_offs.offset) {
         if (rt == rdepq_head) {
           rdepq_head = rt->next;
         } else {
           rt_prev->next = rt->next;
         }
-        enqeue_runnable(rt);
+//        enqeue_runnable(rt);
+
+        // send the release in-place
+        rfunc_t *fn = rt->fn;
+        void *data = rt->data;
+        //invoke the task function
+        fn(data);
+        deallocate_task(rt);
         break;
       }
       rt_prev = rt;
@@ -722,7 +750,7 @@ static void send_release(void *data)
     ret = dart_amsg_trysend(rtask->runit, responseq, rtask, sizeof(*rtask));
     if (ret == DART_OK) {
       // the message was successfully sent
-      DART_LOG_INFO("Sent remote dependency release to unit %i (segid=%i, offset=%i, fn=%p)",
+      DART_LOG_INFO("Sent remote dependency release to unit %i (segid=%i, offset=%p, fn=%p)",
           rtask->runit, rtask->gptr.segid, rtask->gptr.addr_or_offs.offset, &enqueue_from_remote);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
@@ -764,7 +792,8 @@ enqueue_from_remote(void *data)
 
   DART_LOG_INFO("Created task %p for remote dependency request from unit %i (unit=%i, segid=%i, addr=%p)",
                       t, response->runit, rtask->gptr.unitid, rtask->gptr.segid, rtask->gptr.addr_or_offs.addr);
-  //  dart__base__tasking__create_task(&send_release, response, 0, &dep, 1);
+  // not required since we have a seperate queue for remote dependencies
+//  dart__base__tasking__create_task(&send_release, response, 0, &dep, 1);
 }
 
 static void remote_dependency_request(task_t *task, dart_gptr_t gptr)
@@ -772,16 +801,19 @@ static void remote_dependency_request(task_t *task, dart_gptr_t gptr)
   dart_ret_t ret;
   struct remote_dep rtask;
 
-  // We have to compute the absolute address at the target since segment IDs are not
-  // guaranteed to be the same on all units.
-  rtask.gptr.unitid = gptr.unitid;
-  rtask.gptr.flags = 0;
-  rtask.gptr.segid = 0;
-  void *addr;
-  dart_gptr_getaddr(gptr, &addr);
-  rtask.gptr.addr_or_offs.addr = addr;
-  DART_LOG_INFO("remote_dependency_request: converted remote dependency gptr={u=%i, s=%i, f=%i, o=%llu} to local address %p",
-    gptr.unitid, gptr.segid, gptr.flags, gptr.addr_or_offs.offset, rtask.gptr.addr_or_offs.addr);
+  // gptr has already been converted to offset representation
+  rtask.gptr = gptr;
+
+//   We have to compute the absolute address at the target since segment IDs are not
+//   guaranteed to be the same on all units.
+//  rtask.gptr.unitid = gptr.unitid;
+//  rtask.gptr.flags = 0;
+//  rtask.gptr.segid = 0;
+//  void *addr;
+//  dart_gptr_getaddr(gptr, &addr);
+//  rtask.gptr.addr_or_offs.addr = addr;
+//  DART_LOG_INFO("remote_dependency_request: converted remote dependency gptr={u=%i, s=%i, f=%i, o=%llu} to local address %p",
+//    gptr.unitid, gptr.segid, gptr.flags, gptr.addr_or_offs.offset, rtask.gptr.addr_or_offs.addr);
 
   rtask.rtask = task;
   dart_myid(&rtask.runit);
@@ -790,7 +822,7 @@ static void remote_dependency_request(task_t *task, dart_gptr_t gptr)
     ret = dart_amsg_trysend(gptr.unitid, requestq, &rtask, sizeof(rtask));
     if (ret == DART_OK) {
       // the message was successfully sent
-      DART_LOG_INFO("Sent remote dependency request (unit=%i, segid=%i, offset=%i, fn=%p)", gptr.unitid, gptr.segid, gptr.addr_or_offs.offset, &enqueue_from_remote);
+      DART_LOG_INFO("Sent remote dependency request (unit=%i, segid=%i, offset=%p, fn=%p)", gptr.unitid, gptr.segid, gptr.addr_or_offs.offset, &enqueue_from_remote);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be send at the moment, just try again
@@ -816,8 +848,6 @@ dart__base__tasking_sync_taskgraph()
 /*
  * Functions for printing the dependency graph
  */
-static void * dlhandle;
-
 static void print_subgraph(task_list_t *tl, int level)
 {
   task_list_t *elem = tl;
@@ -848,7 +878,7 @@ static void print_subgraph(task_list_t *tl, int level)
       printf("  }");
     }
     printf(", dependants={");
-    task_list_t *dep = elem->task->dependents;
+    task_list_t *dep = elem->task->successor;
     while (dep != NULL) {
       printf("  {t@%p}", dep->task);
       dep = dep->next;
@@ -857,8 +887,8 @@ static void print_subgraph(task_list_t *tl, int level)
     printf("}\n");
 
     // print its children
-    if (elem->task->dependents) {
-      print_subgraph(elem->task->dependents, level + 1);
+    if (elem->task->successor) {
+      print_subgraph(elem->task->successor, level + 1);
     }
 
     elem = elem->next;
@@ -869,13 +899,11 @@ void dart__base__tasking_print_taskgraph()
 {
   pthread_mutex_lock(&thread_pool_mutex);
 
-//  dlhandle = dlopen(NULL, RTLD_LAZY);
-
   sync();
   print_subgraph(dep_graph, 0);
   sync();
 
-//  dlclose(dlhandle);
-
   pthread_mutex_unlock(&thread_pool_mutex);
 }
+
+//#endif // defined(DART_TASKING_PTHREADS)
