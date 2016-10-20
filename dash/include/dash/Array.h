@@ -14,6 +14,7 @@
 #include <dash/Dimensional.h>
 
 #include <dash/iterator/GlobIter.h>
+#include <dash/algorithm/LocalCopy.h>
 
 #include <iterator>
 #include <initializer_list>
@@ -737,7 +738,9 @@ public:
     DASH_LOG_TRACE("Array(nglobal,lvals,dist,team)()",
                    "size:",   nelem,
                    "nlocal:", local_elements.size());
-    allocate(m_pattern, local_elements);
+    allocate(m_pattern);
+    dash::local_copy(local_elements.begin(), local_elements.end(), this->begin());
+
     DASH_LOG_TRACE("Array(nglobal,lvals,dist,team) >");
   }
 
@@ -1061,39 +1064,6 @@ public:
     }
     bool ret = allocate(m_pattern);
     DASH_LOG_TRACE("Array.allocate(nlocal,ds,team) >");
-    return ret;
-  }
-
-  bool allocate(
-    size_type                           nelem,
-    std::initializer_list<value_type>   local_elements,
-    dash::DistributionSpec<1>           distribution,
-    dash::Team                        & team = dash::Team::All())
-  {
-    DASH_LOG_TRACE_VAR("Array.allocate(lvals,ds,team)",
-                       local_elements.size());
-    DASH_LOG_TRACE_VAR("Array.allocate", m_team->dart_id());
-    DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
-    // Check requested capacity:
-    if (nelem == 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Tried to allocate dash::Array with size 0");
-    }
-    if (m_team == nullptr || *m_team == dash::Team::Null()) {
-      DASH_LOG_TRACE("Array.allocate",
-                     "initializing pattern with Team::All()");
-      m_team    = &team;
-      m_pattern = PatternType(nelem, distribution, team);
-      DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
-      DASH_LOG_TRACE_VAR("Array.allocate", m_pattern.team().dart_id());
-    } else {
-      DASH_LOG_TRACE("Array.allocate",
-                     "initializing pattern with initial team");
-      m_pattern = PatternType(nelem, distribution, *m_team);
-    }
-    bool ret = allocate(m_pattern, local_elements);
-    DASH_LOG_TRACE("Array.allocate(lvals,ds,team) >");
     return ret;
   }
 

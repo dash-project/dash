@@ -156,3 +156,12 @@ TEST_F(ArrayTest, PatternAllocate)
     verify);
 }
 
+TEST_F(ArrayTest, InitializerList)
+{
+  int size = 5;
+  dash::Array<int> array(size, {0,1,2,3,4});
+  dash::barrier();
+  for(int i=0; i<size; ++i){
+    ASSERT_EQ_U(i, static_cast<int>(array[i]));
+  }
+}
