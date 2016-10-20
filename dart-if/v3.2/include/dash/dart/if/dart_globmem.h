@@ -111,6 +111,17 @@ typedef struct
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr);
 
 /**
+ * Get the memory offset for the specified global pointer
+ * gptr, i.e., an offset to the start of the unit's memory.
+ * In contrast to \c dart_gptr_getaddr this function also returns
+ * the offset for non-local units. The memory should not be accessed
+ * through this function.
+ *
+ * \ingroup DartGlobMem
+ */
+dart_ret_t dart_gptr_getoffset(const dart_gptr_t gptr, uint64_t *offset);
+
+/**
  * Set the local memory address for the specified global pointer such
  * the the specified address.
  *

@@ -66,6 +66,25 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr)
   return DART_OK;
 }
 
+dart_ret_t dart_gptr_getoffset(const dart_gptr_t gptr, uint64_t *offset)
+{
+  int16_t seg_id = gptr.segid;
+  *offset = 0;
+  MPI_Aint displ;
+  dart_unit_t myid;
+  dart_myid(&myid);
+
+  if (seg_id) {
+    if (dart_segment_get_disp(seg_id, gptr.unitid, &displ) != DART_OK) {
+      return DART_ERR_INVAL;
+    }
+    *offset = gptr.addr_or_offs.offset + displ;
+  } else if (myid == gptr.unitid) {
+    *offset = gptr.addr_or_offs.offset + dart_mempool_localalloc;
+  }
+  return DART_OK;
+}
+
 dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
 {
 	int16_t seg_id = gptr->segid;
