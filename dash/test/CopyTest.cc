@@ -768,6 +768,18 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
   }
 }
 
+TEST_F(CopyTest, LocalCopy)
+{
+  std::vector<int> v({0, 1, 2, 3, 4, 5});
+  dash::Array<int> arr(v.size());
+
+  dash::local_copy(v.begin(), v.end(), arr.begin());
+
+  for(int i=0; i<arr.size(); ++i){
+    ASSERT_EQ_U(i, static_cast<int>(arr[i]));
+  }
+}
+
 #if 0
 // TODO
 TEST_F(CopyTest, AsyncAllToLocalVector)
