@@ -18,8 +18,8 @@ template <
     typename value_t,
     typename index_t,
     class    pattern_t >
-inline HDF5OutputStream & operator<< (
-    HDF5OutputStream & os,
+inline OutputStream & operator<< (
+    OutputStream & os,
     dash::Array< value_t,
     index_t,
     pattern_t > &array) {
@@ -42,8 +42,8 @@ template <
     dim_t    ndim,
     typename index_t,
     class    pattern_t >
-inline HDF5OutputStream & operator<< (
-    HDF5OutputStream & os,
+inline OutputStream & operator<< (
+    OutputStream & os,
     dash::Matrix < value_t,
     ndim,
     index_t,
