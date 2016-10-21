@@ -20,7 +20,10 @@ namespace hdf5 {
  * All operations are collective.
  */
 
-class InputStream {
+using IOStreamMode = dash::io::IOStreamMode<dash::io::IOSBaseMode::openmode_type>;
+
+class InputStream
+: public ::dash::io::IOSBase<IOStreamMode> {
   private:
     std::string                _filename;
     std::string                _dataset;

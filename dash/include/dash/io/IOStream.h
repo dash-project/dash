@@ -15,9 +15,11 @@ namespace io {
  */
 class IOSBaseMode
 {
-protected:
+public:
 
   typedef uint32_t openmode_type;
+
+protected:
 
   enum iosbase_openmode_ : openmode_type {
     /// Append: set the stream position to the end of the stream before
@@ -190,9 +192,9 @@ public:
 
 public:
 
-  IOSBase()
-  : _io_stream_mode(0)
-  { }
+//  IOSBase()
+//  : _io_stream_mode(0)
+//  { }
 
 protected:
 
