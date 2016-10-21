@@ -25,8 +25,7 @@ static pthread_mutex_t tasks_done_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_key_t tpd_key;
 
-static dart_amsgq_t requestq;
-static dart_amsgq_t responseq;
+static dart_amsgq_t amsgq;
 
 static pthread_t *thread_pool;
 
@@ -127,7 +126,7 @@ static void handle_task()
     DART_LOG_INFO("Thread %i executing task %p", dart__base__tasking__thread_num(), task);
     pthread_mutex_unlock(&thread_pool_mutex);
 
-    rfunc_t *fn = task->fn;
+    dart_task_action_t *fn = task->fn;
     void *data = task->data;
 
     //invoke the task function
@@ -164,10 +163,8 @@ static void* thread_main(void *data)
 
   // enter work loop
   while (parallel) {
-    // look for remote tasks coming in
-    dart_amsg_process(requestq);
-    // look for incoming responses
-    dart_amsg_process(responseq);
+    // look for incoming remote tasks and responses
+    dart_amsg_process(amsgq);
     pthread_mutex_lock(&thread_pool_mutex);
     if (runq_head == NULL) {
       threads_running--;
@@ -206,12 +203,11 @@ dart__base__tasking__init()
   num_threads=1;
   DART_LOG_INFO("Creating %i threads", num_threads);
 
+  dart_amsg_init();
 
   // set up the active message queue
-  requestq  = dart_amsg_openq(sizeof(struct remote_dep) * DART_RTASK_QLEN, DART_TEAM_ALL, &enqueue_from_remote);
-  DART_LOG_INFO("Created active message queue for requests (%p)", requestq);
-  responseq = dart_amsg_openq(sizeof(struct remote_dep) * DART_RTASK_QLEN, DART_TEAM_ALL, &release_remote_dependency);
-  DART_LOG_INFO("Created active message queue for responses (%p)", responseq);
+  amsgq  = dart_amsg_openq(sizeof(struct remote_dep) * DART_RTASK_QLEN, DART_TEAM_ALL);
+  DART_LOG_INFO("Created active message queue for remote tasking (%p)", amsgq);
 
   pthread_key_create(&tpd_key, &destroy_tsd);
   // set master thread id
@@ -278,8 +274,7 @@ dart__base__tasking__fini()
     free_task_list = next;
   }
 
-  dart_amsg_closeq(requestq);
-  dart_amsg_closeq(responseq);
+  dart_amsg_closeq(amsgq);
 
   dart__tasking__ayudame_fini();
 
@@ -474,10 +469,8 @@ dart__base__tasking__task_complete()
 //
 //    }
     pthread_mutex_unlock(&thread_pool_mutex);
-    // before exiting, check for remote messages one last time
-    dart_amsg_process(requestq);
-    // look for responses coming in
-    dart_amsg_process(responseq);
+    // look for requests and responses coming in
+    dart_amsg_process(amsgq);
   }
   // stop processing until we hit this function again
   processing = false;
@@ -580,6 +573,11 @@ static void remove_from_depgraph(task_t *task)
 
 static void release_task(task_t *task)
 {
+  // TODO: we cannot release local dependencies with OUT dependencies matching remote IN dependencies
+  //       to avoid overwriting the same data elements. We have to wait for a signal that the remote
+  //       task actually finished. Instead of going through data dependencies again, we could directly
+  //       define a task-dependency.
+
   // release the task's dependents
   task_list_t *child = task->successor;
   while (child != NULL)
@@ -637,7 +635,7 @@ static void release_task(task_t *task)
 //        enqeue_runnable(rt);
 
         // send the release in-place
-        rfunc_t *fn = rt->fn;
+        dart_task_action_t *fn = rt->fn;
         void *data = rt->data;
         //invoke the task function
         fn(data);
@@ -699,7 +697,7 @@ static void release_remote_dependency(void *data)
   // remote dependent tasks are all enqeued at the top level of the dependency graph
   pthread_mutex_lock(&thread_pool_mutex);
 
-  DART_LOG_INFO("Received remote dependency release from unit %i for task %p (segid=%i, offset=%i)",
+  DART_LOG_INFO("Received remote dependency release from unit %i for task %p (segid=%i, offset=%p)",
     response->gptr.unitid, response->rtask, response->gptr.segid, response->gptr.addr_or_offs.offset);
   if (response->rtask->unresolved_deps > 0)
   {
@@ -747,7 +745,7 @@ static void send_release(void *data)
 
   while (1) {
     dart_ret_t ret;
-    ret = dart_amsg_trysend(rtask->runit, responseq, rtask, sizeof(*rtask));
+    ret = dart_amsg_trysend(rtask->runit, amsgq, &release_remote_dependency, rtask, sizeof(*rtask));
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent remote dependency release to unit %i (segid=%i, offset=%p, fn=%p)",
@@ -819,7 +817,7 @@ static void remote_dependency_request(task_t *task, dart_gptr_t gptr)
   dart_myid(&rtask.runit);
 
   while (1) {
-    ret = dart_amsg_trysend(gptr.unitid, requestq, &rtask, sizeof(rtask));
+    ret = dart_amsg_trysend(gptr.unitid, amsgq, &enqueue_from_remote, &rtask, sizeof(rtask));
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent remote dependency request (unit=%i, segid=%i, offset=%p, fn=%p)", gptr.unitid, gptr.segid, gptr.addr_or_offs.offset, &enqueue_from_remote);
@@ -839,8 +837,7 @@ static void remote_dependency_request(task_t *task, dart_gptr_t gptr)
 dart_ret_t
 dart__base__tasking_sync_taskgraph()
 {
-  dart_amsg_sync(requestq);
-  dart_amsg_sync(responseq);
+  dart_amsg_sync(amsgq);
 
   return DART_OK;
 }
@@ -872,7 +869,7 @@ static void print_subgraph(task_list_t *tl, int level)
     if (elem->task->ndeps > 0) {
       printf(", deps={");
       for (i = 0; i < elem->task->ndeps; i++) {
-        printf("  {type=%i, gptr={unitid=%i, segid=%i, offset=%llu}}", elem->task->deps[i].type,
+        printf("  {type=%i, gptr={unitid=%i, segid=%i, offset=%p}}", elem->task->deps[i].type,
             elem->task->deps[i].gptr.unitid, elem->task->deps[i].gptr.segid, elem->task->deps[i].gptr.addr_or_offs.offset);
       }
       printf("  }");
