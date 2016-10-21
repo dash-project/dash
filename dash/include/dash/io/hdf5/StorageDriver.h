@@ -1,5 +1,5 @@
-#ifndef DASH__IO__STORE_HDF_H__
-#define DASH__IO__STORE_HDF_H__
+#ifndef DASH__IO__HDF5__STORAGEDRIVER_H__
+#define DASH__IO__HDF5__STORAGEDRIVER_H__
 
 #include <dash/internal/Config.h>
 
@@ -953,9 +953,9 @@ private:
 } // namespace io
 } // namespace dash
 
-#include <dash/io/hdf5/internal/StoreHDF.h>
+#include <dash/io/hdf5/internal/StorageDriver-inl.h>
 #include <dash/io/hdf5/HDF5IOManip.h>
 
 #endif // DASH_ENABLE_HDF5
 
-#endif
+#endif // DASH__IO__HDF5__STORAGEDRIVER_H__

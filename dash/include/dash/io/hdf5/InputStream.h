@@ -1,5 +1,5 @@
-#ifndef DASH__IO__HDF5__HDF5_INPUT_STREAM_H__
-#define DASH__IO__HDF5__HDF5_INPUT_STREAM_H__
+#ifndef DASH__IO__HDF5__INPUT_STREAM_H__
+#define DASH__IO__HDF5__INPUT_STREAM_H__
 
 #ifdef DASH_ENABLE_HDF5
 
@@ -85,8 +85,8 @@ class HDF5InputStream {
 } // namespace io
 } // namespace dash
 
-#include <dash/io/hdf5/internal/HDF5InputStream-inl.h>
+#include <dash/io/hdf5/internal/InputStream-inl.h>
 
 #endif // DASH_ENABLE_HDF5
 
-#endif // DASH__IO__HDF5__HDF5_INPUT_STREAM_H__
+#endif // DASH__IO__HDF5__INPUT_STREAM_H__
