@@ -18,8 +18,8 @@ template <
     typename value_t,
     typename index_t,
     class    pattern_t >
-inline HDF5InputStream & operator>> (
-    HDF5InputStream          & is,
+inline InputStream & operator>> (
+    InputStream          & is,
     dash::Array< value_t,
                  index_t,
                  pattern_t > & array) {
@@ -38,8 +38,8 @@ template <
     dim_t    ndim,
     typename index_t,
     class    pattern_t >
-inline HDF5InputStream & operator>> (
-    HDF5InputStream           & is,
+inline InputStream & operator>> (
+    InputStream           & is,
     dash::Matrix< value_t,
                   ndim,
                   index_t,

@@ -19,7 +19,7 @@ namespace hdf5 {
  *
  * All operations are collective.
  */
-class HDF5OutputStream {
+class OutputStream {
 
 private:
 
@@ -28,45 +28,45 @@ private:
   hdf5_options               _foptions;
 
   public:
-    HDF5OutputStream(
+    OutputStream(
         std::string filename,
         hdf5_file_options fcopts = 0)
         : _filename(filename),
           _dataset("data"),
           _foptions(StoreHDF::get_default_options())
     {
-      if((fcopts & HDF5FileOptions::Append) != 0){
+      if((fcopts & FileOptions::Append) != 0){
           _foptions.overwrite_file = false;
         }
     }
 
     // IO Manipulators
 
-    friend HDF5OutputStream & operator<<(
-        HDF5OutputStream & os,
+    friend OutputStream & operator<<(
+        OutputStream & os,
         const dataset    & tbl)
     {
         os._dataset = tbl._dataset;
         return os;
     }
 
-    friend HDF5OutputStream & operator<<(
-        HDF5OutputStream & os,
+    friend OutputStream & operator<<(
+        OutputStream & os,
         setpattern_key     pk)
     {
         os._foptions.pattern_metadata_key = pk._key;
         return os;
     }
 
-    friend HDF5OutputStream & operator<<(
-        HDF5OutputStream & os,
+    friend OutputStream & operator<<(
+        OutputStream & os,
         store_pattern      sp) {
         os._foptions.store_pattern = sp._store;
         return os;
     }
 
-    friend HDF5OutputStream & operator<<(
-        HDF5OutputStream & os,
+    friend OutputStream & operator<<(
+        OutputStream & os,
         modify_dataset     md)
     {
         os._foptions.modify_dataset = md._modify;
@@ -79,8 +79,8 @@ private:
         typename value_t,
         typename index_t,
         class    pattern_t >
-    friend HDF5OutputStream & operator<<(
-        HDF5OutputStream         & os,
+    friend OutputStream & operator<<(
+        OutputStream         & os,
         dash::Array< value_t,
                      index_t,
                      pattern_t > & array);
@@ -91,8 +91,8 @@ private:
         dim_t    ndim,
         typename index_t,
         class    pattern_t >
-    friend HDF5OutputStream & operator<<(
-        HDF5OutputStream          & os,
+    friend OutputStream & operator<<(
+        OutputStream          & os,
         dash::Matrix< value_t,
                       ndim,
                       index_t,

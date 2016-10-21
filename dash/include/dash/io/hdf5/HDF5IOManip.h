@@ -12,7 +12,7 @@ namespace hdf5 {
 typedef StoreHDF::hdf5_options hdf5_options;
 typedef uint32_t hdf5_file_options;
 
-enum HDF5FileOptions : hdf5_file_options {
+enum FileOptions : hdf5_file_options {
   Append = 1 << 0
 };
 
