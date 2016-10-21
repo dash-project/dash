@@ -37,13 +37,6 @@ TEST_F(ListTest, Initialization)
   // Global capacity visible to local unit after local insert operations:
   auto gcap_loc  = gcap_init + (lcap_new - lcap_init);
 
-  /*
-  using persistent_allocator =
-    dash::allocator::PersistentMemoryAllocator<value_t>;
-
-  using persistent_list = dash::List<value_t, persistent_allocator>;
-  */
-
   dash::List<value_t> list(gcap_init, lbuf_size);
   DASH_LOG_DEBUG("ListTest.Initialization", "list initialized");
 
@@ -122,7 +115,7 @@ TEST_F(ListTest, PersistentMemory)
   using persistent_list = dash::List<value_t, persistent_allocator>;
 
   //local capacity is initially set to 4Kb --> 1024 integer values
-  auto lcap = 32;
+  auto lcap = 1024;
   auto gcap = lcap * nunits;
   auto nel  = lcap + 10;
   auto poolId = dash::util::random_str(8) + ".pmem";
@@ -176,9 +169,5 @@ TEST_F(ListTest, PersistentMemory)
       EXPECT_EQ_U(expect, actual);
     }
   }
-  /*
-  auto last_node = *(list.lend() - 1);
-  EXPECT_EQ_U(list.lsize() - 1 + 1000 * (me + 1), last_node.value);
-  */
 }
 #endif //DASH_ENABLE_PMEM

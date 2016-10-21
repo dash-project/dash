@@ -261,10 +261,8 @@ public:
   List(
     size_type   nelem = 0,
     Team    &   team  = dash::Team::All())
-    : local(this),
-      _team(&team),
-      _myid(team.myid()),
-      _remote_size(0) {
+    : List(allocator_type(team)) {
+
     DASH_LOG_TRACE("List(nelem,team)", "nelem:", nelem);
     if (_team->size() > 0) {
       _local_sizes.allocate(team.size(), dash::BLOCKED, team);
@@ -300,66 +298,27 @@ public:
   }
 
   explicit List(
-      allocator_type const & alloc):
-    local(this),
+      allocator_type const & alloc)
+  : local(this),
     _team(&alloc.team()),
     _myid(_team->myid()),
     _remote_size(0)
   {
-    DASH_LOG_TRACE("List(alloc) >");
-
-    _is_persistent = alloc.isPersistent();
-
-    if (_is_persistent) {
-      node_allocator_type node_alloc = node_allocator_type(alloc);
-
-      if (_team->size() > 0) {
-        _local_sizes.allocate(_team->size(), dash::BLOCKED, *_team);
-      }
-
-      _globmem = new glob_mem_type(node_alloc);
-
-      _local_sizes.local[0] = 0;
-
-      if (_globmem->local_size() == 0) {
-        auto nelem = _team->size() * _local_buffer_size;
-        auto lcap = dash::math::div_ceil(nelem, _team->size());
-        _lbegin = _globmem->grow(lcap);
-        _lend = _lbegin;
-      } else {
-        DASH_LOG_DEBUG_VAR("List.List(alloc)", _globmem->local_size());
-        _lbegin = _globmem->lbegin(_myid);
-        _lend = _globmem->lend(_myid);
-        for (auto ii = 0; ii < _globmem->local_size(); ++ii) {
-          auto iter = _lbegin + ii;
-          _local_sizes.local[0]++;
-
-          if ((*iter).lnext == 0 || (*iter).lnext == nullptr) {
-            _lend = iter + 1;
-            break;
-          }
-        }
-
-        DASH_LOG_DEBUG_VAR("List.List(alloc)", lsize());
-      }
-
-      _begin = iterator(_globmem, _nil_node);
-      _end = _begin; 
-    }
-
-    _team->register_deallocator(
-      this, std::bind(&List::deallocate, this));
-
-    // Assure all units are synchronized after allocation, otherwise
-    // other units might start working on the list before allocation
-    // completed at all units:
-    if (dash::is_initialized()) {
-      DASH_LOG_TRACE("List.allocate",
-                     "waiting for allocation of all units");
-      barrier();
-    }
+    allocate(0, alloc);
+    barrier();
   }
 
+  explicit List(
+      size_type nelem,
+      allocator_type const & alloc)
+  : local(this),
+    _team(&alloc.team()),
+    _myid(_team->myid()),
+    _remote_size(0)
+  {
+    allocate(nelem, alloc);
+    barrier();
+  }
 
   /**
    * Destructor, deallocates local and global memory acquired by the
@@ -616,39 +575,97 @@ public:
     size_type    nelem = 0,
     /// Team containing all units associated with the container.
     dash::Team & team  = dash::Team::All()) {
+
+    return allocate(nelem, allocator_type(team));
+  }
+
+  bool allocate(
+    /// Initial global capacity of the container.
+    size_type    nelem = 0,
+    /// Team containing all units associated with the container.
+    allocator_type alloc = allocator_type()) {
+    
+    auto & team = alloc.team();
+
     DASH_LOG_TRACE("List.allocate()");
     DASH_LOG_TRACE_VAR("List.allocate", nelem);
     DASH_LOG_TRACE_VAR("List.allocate", _local_buffer_size);
     if (_team == nullptr || *_team == dash::Team::Null()) {
       DASH_LOG_TRACE("List.allocate",
-                     "initializing with Team::All()");
+                     "initializing with allocator team)");
       _team = &team;
       DASH_LOG_TRACE_VAR("List.allocate", team.dart_id());
     } else {
+      if (team.dart_id() != _team->dart_id()) {
+        DASH_THROW(dash::exception::InvalidArgument,
+            "List._team and alloc.team do not match");
+        return false;
+      }
       DASH_LOG_TRACE("List.allocate",
                      "initializing with initial team");
     }
     DASH_ASSERT_GT(_local_buffer_size, 0, "local buffer size must not be 0");
+
+    // Initialize members:
+    _myid        = _team->myid();
+    DASH_LOG_TRACE_VAR("List.allocate", _myid);
+
+    if (_team->size() == 0) {
+      DASH_LOG_ERROR("List.allocate",
+                     "cannot initialize List with team size 0");
+      return false;
+    }
+
+    if (_local_sizes.size() != _team->size()) {
+      _local_sizes.allocate(_team->size(), dash::BLOCKED, *_team);
+    } 
+
     if (nelem < _team->size() * _local_buffer_size) {
       nelem = _team->size() * _local_buffer_size;
     }
-    _remote_size = 0;
+
+    //_remote_size = 0;
     auto lcap    = dash::math::div_ceil(nelem, _team->size());
-    // Initialize members:
-    _myid        = _team->myid();
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("List.allocate", lcap);
 
-    _globmem     = new glob_mem_type(lcap, *_team);
+    node_allocator_type node_alloc(alloc);
+
+    _globmem     = new glob_mem_type(node_alloc);
+
+    if (_globmem->local_size() > 0)
+    {
+      //recover
+      DASH_LOG_DEBUG("List.allocate(nelem, alloc)", "recovering persistent memory buckets");
+      _lbegin = _globmem->lbegin(_myid);
+      _lend = _globmem->lend(_myid);
+      auto lsize = _globmem->local_size();
+      auto last = _lbegin;
+      size_t nel = 0;
+      for (; nel < lsize; ++nel, ++last) {
+        if ((*last).lnext == 0 || (*last).lnext == nullptr) {
+          break;
+        }
+      }
+      ::std::advance(last, 1);
+      _lend = last;
+      _local_sizes.local[0] = nel;
+    } else {
+      //new allocation
+      auto lcap = dash::math::div_ceil(nelem, _team->size());
+      // Local iterators:
+      _lbegin = _globmem->grow(lcap);
+      _lend = _lbegin;
+      ::std::advance(_lend, 1);
+      _local_sizes.local[0] = 0;
+    }
+
     // Global iterators:
-    _begin       = iterator(_globmem, _nil_node);
-    _end         = _begin;
-    // Local iterators:
-    _lbegin      = _globmem->lbegin(_myid);
-    // More efficient than using _globmem->lend as this a second mapping
-    // of the local memory segment:
-    _lend        = _lbegin;
+    _begin = iterator(_globmem, _nil_node);
+    _end = _begin; 
+
     DASH_LOG_TRACE_VAR("List.allocate", _myid);
+    DASH_LOG_TRACE_VAR("List.allocate", lsize());
     // Register deallocator of this list instance at the team
     // instance that has been used to initialized it:
     _team->register_deallocator(
@@ -721,10 +738,7 @@ private:
   /// have not been committed to global memory yet.
   /// Default is 4 KB.
   size_type            _local_buffer_size
-    = 128 / sizeof(value_type);
-
-  bool                _is_persistent = false;
-
+    = 4096 / sizeof(value_type);
 };
 
 } // namespace dash
