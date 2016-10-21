@@ -126,7 +126,7 @@ TEST_F(HDF5MatrixTest, StoreMultiDimMatrix)
     dash::barrier();
     DASH_LOG_DEBUG("BEGIN STORE HDF");
 
-		dio::HDF5OutputStream os(_filename);
+		dio::OutputStream os(_filename);
     os << dio::dataset(_dataset) << mat1;
 
     DASH_LOG_DEBUG("END STORE HDF");
@@ -179,7 +179,7 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
 
     // Store Matrix
     DASH_LOG_DEBUG("store matrix");
-		dio::HDF5OutputStream os(_filename);
+		dio::OutputStream os(_filename);
     os << dio::dataset(_dataset) << matrix_a;
     DASH_LOG_DEBUG("matrix stored");
     dash::barrier();
@@ -188,7 +188,7 @@ TEST_F(HDF5MatrixTest, StoreSUMMAMatrix)
   matrix_t matrix_b;
 
   DASH_LOG_DEBUG("restore matrix");
-	dio::HDF5InputStream is(_filename);
+	dio::InputStream is(_filename);
 	is >> dio::dataset(_dataset) >> matrix_b;
   DASH_LOG_DEBUG("matrix restored");
 
@@ -210,7 +210,7 @@ TEST_F(HDF5MatrixTest, AutoGeneratePattern)
     fill_matrix(matrix_a);
     dash::barrier();
 
-		dio::HDF5OutputStream os(_filename);
+		dio::OutputStream os(_filename);
 		os << dio::store_pattern(false)
        << dio::dataset(_dataset)
 			 << matrix_a;
@@ -219,7 +219,7 @@ TEST_F(HDF5MatrixTest, AutoGeneratePattern)
   }
   dash::Matrix<int, 2> matrix_b;
 
-	dio::HDF5InputStream is(_filename);
+	dio::InputStream is(_filename);
 	is >> dio::dataset(_dataset) >> matrix_b;
 
   dash::barrier();
@@ -246,7 +246,7 @@ TEST_F(HDF5MatrixTest, PreAllocation)
     fill_matrix(matrix_a, dash::myid());
     dash::barrier();
 
-		dio::HDF5OutputStream os(_filename);
+		dio::OutputStream os(_filename);
 		os << dio::store_pattern(false)
        << dio::dataset(_dataset)
 			 << matrix_a;
@@ -258,7 +258,7 @@ TEST_F(HDF5MatrixTest, PreAllocation)
       ext_x,
       ext_y));
 
-	dio::HDF5InputStream is(_filename);
+	dio::InputStream is(_filename);
 	is >> dio::dataset(_dataset) >> matrix_b;
 
   dash::barrier();
@@ -302,14 +302,14 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
 
     fill_matrix(matrix_a);
 
-		dio::HDF5OutputStream os(_filename);
+		dio::OutputStream os(_filename);
 		os << dio::dataset(_dataset)
        << matrix_a;
   }
   dash::barrier();
 
   dash::Matrix<int, 2, index_t, pattern_t> matrix_b;
-	dio::HDF5InputStream is(_filename);
+	dio::InputStream is(_filename);
 	is >> dio::dataset(_dataset)
      >> matrix_b;
 }
@@ -330,7 +330,7 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
 		fill_matrix(matrix_b, secret_b);
     dash::barrier();
 
-		dio::HDF5OutputStream os(_filename);
+		dio::OutputStream os(_filename);
 		os << dio::dataset(_dataset)
        << matrix_a
 			 << dio::dataset("datasettwo")
@@ -341,7 +341,7 @@ TEST_F(HDF5MatrixTest, MultipleDatasets)
   dash::Matrix<int,    2> matrix_c;
 	dash::Matrix<double, 2> matrix_d;
 
-	dio::HDF5InputStream is(_filename);
+	dio::InputStream is(_filename);
 	is >> dio::dataset(_dataset)
      >> matrix_c
 		 >> dio::dataset("datasettwo")
@@ -370,14 +370,14 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
     dash::barrier();
 
 		{
-			dio::HDF5OutputStream os(_filename);
+			dio::OutputStream os(_filename);
 			os << dio::dataset(_dataset)
          << matrix_a;
 		}
 
 		dash::barrier();
 		// overwrite first data
-		dio::HDF5OutputStream os(_filename, dio::HDF5FileOptions::Append);
+		dio::OutputStream os(_filename, dio::FileOptions::Append);
 		os << dio::dataset(_dataset)
        << dio::modify_dataset()
        << matrix_b;
@@ -385,7 +385,7 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
   }
   dash::Matrix<double,2> matrix_c;
 
-	dio::HDF5InputStream is(_filename);
+	dio::InputStream is(_filename);
 	is >> dio::dataset(_dataset)
      >> matrix_c;
 
@@ -412,7 +412,7 @@ TEST_F(HDF5MatrixTest, GroupTest)
     dash::barrier();
 
     // Set option
-    dio::HDF5OutputStream os(_filename);
+    dio::OutputStream os(_filename);
     os << dio::dataset("matrix_a")
        << matrix_a
        << dio::dataset("g1/matrix_b")
@@ -425,7 +425,7 @@ TEST_F(HDF5MatrixTest, GroupTest)
   dash::Matrix<double, 2> matrix_a;
   dash::Matrix<double, 2> matrix_b;
   dash::Matrix<double, 2> matrix_c;
-  dio::HDF5InputStream is(_filename);
+  dio::InputStream is(_filename);
   is >> dio::dataset("matrix_a")
      >> matrix_a
      >> dio::dataset("g1/matrix_b")
