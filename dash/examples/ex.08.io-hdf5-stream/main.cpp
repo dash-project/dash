@@ -58,7 +58,7 @@ int main(int argc, char * argv[])
 			cout << "Write Array A to " << FILENAME << " / group/data" << endl;
 		}
 
-		dash::io::hdf5::HDF5OutputStream os(FILENAME);
+		dash::io::hdf5::OutputStream os(FILENAME);
 		os << dash::io::hdf5::dataset("group/data") << array_a;
 
 		dash::barrier();
@@ -75,7 +75,7 @@ int main(int argc, char * argv[])
 		// Use delayed allocation
 		array_t array_c;
 
-		dash::io::hdf5::HDF5InputStream is(FILENAME);
+		dash::io::hdf5::InputStream is(FILENAME);
 		is >> dash::io::hdf5::dataset("group/data") >> array_c;
 	}
 
@@ -90,7 +90,7 @@ int main(int argc, char * argv[])
 		// pass allocated array to define custom pattern
 		array_t array_c(pattern_b); // tilesize=7
 
-		dash::io::hdf5::HDF5InputStream is(FILENAME);
+		dash::io::hdf5::InputStream is(FILENAME);
 		is >> dash::io::hdf5::dataset("group/data") >> array_c;
 
 		if(myid == 0){
@@ -108,8 +108,8 @@ int main(int argc, char * argv[])
 			cout << "Add dataset temperature to " << FILENAME << endl;
 		}
 
-		dash::io::hdf5::HDF5OutputStream os(FILENAME,
-			dash::io::hdf5::HDF5FileOptions::Append);
+		dash::io::hdf5::OutputStream os(FILENAME,
+			dash::io::hdf5::FileOptions::Append);
 
 		os << dash::io::hdf5::dataset("temperature")
        << array_b;
@@ -125,8 +125,8 @@ int main(int argc, char * argv[])
 			cout << "Modify " << FILENAME << " / temperature dataset" << endl;
 		}
 
-		dash::io::hdf5::HDF5OutputStream os(FILENAME,
-			dash::io::hdf5::HDF5FileOptions::Append);
+		dash::io::hdf5::OutputStream os(FILENAME,
+			dash::io::hdf5::FileOptions::Append);
 
 		os << dash::io::hdf5::dataset("temperature")
        << dash::io::hdf5::modify_dataset()
