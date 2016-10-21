@@ -1,8 +1,8 @@
 #ifndef DASH__IO__HDF5_H__INCLUDED
 #define DASH__IO__HDF5_H__INCLUDED
 
-#include <dash/io/hdf5/StoreHDF.h>
-#include <dash/io/hdf5/HDF5InputStream.h>
-#include <dash/io/hdf5/HDF5OutputStream.h>
+#include <dash/io/hdf5/StorageDriver.h>
+#include <dash/io/hdf5/InputStream.h>
+#include <dash/io/hdf5/OutputStream.h>
 
 #endif

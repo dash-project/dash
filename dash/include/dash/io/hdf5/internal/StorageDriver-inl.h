@@ -1,5 +1,5 @@
-#ifndef DASH__IO__HDF5__INTERNAL__STOREHDF_H__INCLUDED
-#define DASH__IO__HDF5__INTERNAL__STOREHDF_H__INCLUDED
+#ifndef DASH__IO__HDF5__INTERNAL__STORAGEDRIVER_H__INCLUDED
+#define DASH__IO__HDF5__INTERNAL__STORAGEDRIVER_H__INCLUDED
 
 namespace dash {
 namespace io {
@@ -40,4 +40,4 @@ inline hid_t get_h5_datatype<double>() {
 }
 }
 }
-#endif // DASH__IO__HDF5__INTERNAL__STOREHDF_H__INCLUDED
+#endif // DASH__IO__HDF5__INTERNAL__STORAGEDRIVER_H__INCLUDED

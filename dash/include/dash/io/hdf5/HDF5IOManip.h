@@ -89,8 +89,8 @@ public:
 } // namespace io
 } // namespace dash
 
-#include <dash/io/hdf5/HDF5OutputStream.h>
-#include <dash/io/hdf5/HDF5InputStream.h>
+#include <dash/io/hdf5/OutputStream.h>
+#include <dash/io/hdf5/InputStream.h>
 
 #endif // DASH_ENABLE_HDF5
 

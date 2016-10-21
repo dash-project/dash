@@ -1,9 +1,9 @@
-#ifndef DASH__IO__INTERNAL__HDF5__HDF5_OUTPUT_STREAM_INL_H__INCLUDED
-#define DASH__IO__INTERNAL__HDF5__HDF5_OUTPUT_STREAM_INL_H__INCLUDED
+#ifndef DASH__IO__INTERNAL__HDF5__OUTPUT_STREAM_INL_H__INCLUDED
+#define DASH__IO__INTERNAL__HDF5__OUTPUT_STREAM_INL_H__INCLUDED
 
 
-#include <dash/io/hdf5/HDF5OutputStream.h>
-#include <dash/io/hdf5/StoreHDF.h>
+#include <dash/io/hdf5/OutputStream.h>
+#include <dash/io/hdf5/StorageDriver.h>
 
 #include <dash/Matrix.h>
 #include <dash/Array.h>
@@ -65,4 +65,4 @@ inline HDF5OutputStream & operator<< (
 } // namespace io
 } // namespace dash
 
-#endif // DASH__IO__INTERNAL__HDF5__HDF5_OUTPUT_STREAM_INL_H__INCLUDED
+#endif // DASH__IO__INTERNAL__HDF5__OUTPUT_STREAM_INL_H__INCLUDED
