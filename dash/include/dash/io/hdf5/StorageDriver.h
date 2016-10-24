@@ -954,7 +954,6 @@ private:
 } // namespace dash
 
 #include <dash/io/hdf5/internal/StorageDriver-inl.h>
-#include <dash/io/hdf5/HDF5IOManip.h>
 
 #endif // DASH_ENABLE_HDF5
 
