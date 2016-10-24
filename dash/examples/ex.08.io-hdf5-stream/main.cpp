@@ -109,7 +109,7 @@ int main(int argc, char * argv[])
 		}
 
 		dash::io::hdf5::OutputStream os(FILENAME,
-			dash::io::hdf5::FileOptions::Append);
+			dash::io::hdf5::DeviceMode::app);
 
 		os << dash::io::hdf5::dataset("temperature")
        << array_b;
@@ -126,7 +126,7 @@ int main(int argc, char * argv[])
 		}
 
 		dash::io::hdf5::OutputStream os(FILENAME,
-			dash::io::hdf5::FileOptions::Append);
+			dash::io::hdf5::DeviceMode::app);
 
 		os << dash::io::hdf5::dataset("temperature")
        << dash::io::hdf5::modify_dataset()
