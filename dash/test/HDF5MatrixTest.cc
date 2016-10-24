@@ -377,7 +377,7 @@ TEST_F(HDF5MatrixTest, ModifyDataset)
 
 		dash::barrier();
 		// overwrite first data
-		dio::OutputStream os(_filename, dio::FileOptions::Append);
+		dio::OutputStream os(_filename, dio::DeviceMode::app);
 		os << dio::dataset(_dataset)
        << dio::modify_dataset()
        << matrix_b;

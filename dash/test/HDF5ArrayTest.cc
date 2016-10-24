@@ -17,6 +17,7 @@ namespace dio = dash::io::hdf5;
 
 using dash::io::hdf5::StoreHDF;
 using dash::io::hdf5::FileOptions;
+using dash::io::hdf5::DeviceMode;
 using dash::io::hdf5::InputStream;
 using dash::io::hdf5::OutputStream;
 using dash::io::hdf5::dataset;
@@ -334,7 +335,7 @@ double secret = 10;
 
   // Set option
 
-  OutputStream os(_filename, FileOptions::Append);
+  OutputStream os(_filename, DeviceMode::app);
   os << dio::dataset("settwo")
      << dio::setpattern_key("custom_dash_pattern")
      << dio::store_pattern()
