@@ -81,7 +81,7 @@ dart_ret_t dart__base__host_topology__module_locations(
         DART_LOG_TRACE("dart__base__host_topology__module_locations: "
                        "hwloc: Xeon Phi device");
         if (coproc_obj->arity > 0) {
-          for (int pd_i = 0; pd_i < coproc_obj->arity; pd_i++) {
+          for (int pd_i = 0; pd_i < (int)coproc_obj->arity; pd_i++) {
             hwloc_obj_t coproc_child_obj = coproc_obj->children[pd_i];
             DART_LOG_TRACE("dart__base__host_topology__module_locations: "
                            "hwloc: Xeon Phi child node: (name:%s arity:%d)",

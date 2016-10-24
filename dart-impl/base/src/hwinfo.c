@@ -186,8 +186,11 @@ dart_ret_t dart_hwinfo(
   /* Get PU of active thread: */
   hwloc_cpuset_t cpuset = hwloc_bitmap_alloc();
   int flags     = 0; // HWLOC_CPUBIND_PROCESS;
+  int cpu_os_id = -1;
   int ret       = hwloc_get_last_cpu_location(topology, cpuset, flags);
-  int cpu_os_id = hwloc_bitmap_first(cpuset);
+  if (!ret) {
+    cpu_os_id = hwloc_bitmap_first(cpuset);
+  }
   hwloc_bitmap_free(cpuset);
 
   hwloc_obj_t cpu_obj;
@@ -195,7 +198,7 @@ dart_ret_t dart_hwinfo(
          hwloc_get_obj_by_type(topology, HWLOC_OBJ_PU, 0);
        cpu_obj;
        cpu_obj = cpu_obj->next_cousin) {
-    if (cpu_obj->os_index == cpu_os_id) {
+    if ((int)cpu_obj->os_index == cpu_os_id) {
       hw.cpu_id = cpu_obj->logical_index;
       break;
     }
@@ -224,7 +227,6 @@ dart_ret_t dart_hwinfo(
     for (obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_CORE, hw.core_id);
          obj;
          obj = obj->parent) {
-      int num_scopes_prev = hw.num_scopes;
 
       if (obj->type == HWLOC_OBJ_MACHINE) { break; }
       hw.scopes[hw.num_scopes].scope =

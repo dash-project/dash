@@ -130,14 +130,14 @@ dart_ret_t dart_get(
     DART_LOG_TRACE("dart_get:  nbytes:%zu "
                    "source (coll.): win:%"PRIu64" unit:%d disp:%"PRId64" "
                    "-> dest:%p",
-                   nbytes, (uint64_t)win, target_unitid_rel, disp_rel, dest);
+                   nbytes, (unsigned long)win, target_unitid_rel, disp_rel, dest);
   } else {
     win      = dart_win_local_alloc;
     disp_rel = offset;
     DART_LOG_TRACE("dart_get:  nbytes:%zu "
                    "source (local): win:%"PRIu64" unit:%d disp:%"PRId64" "
                    "-> dest:%p",
-                   nbytes, (uint64_t)win, target_unitid_rel, disp_rel, dest);
+                   nbytes, (unsigned long)win, target_unitid_rel, disp_rel, dest);
   }
   DART_LOG_TRACE("dart_get:  MPI_Get");
   if (MPI_Get(dest,
@@ -553,7 +553,7 @@ dart_ret_t dart_get_handle(
   (*handle)->win     = win;
   DART_LOG_TRACE("dart_get_handle > handle(%p) dest:%d win:%"PRIu64" req:%ld",
                  (void*)(*handle), (*handle)->dest,
-                 (uint64_t)win, (int64_t)mpi_req);
+                 (unsigned long)win, (long)mpi_req);
   return DART_OK;
 }
 
@@ -729,16 +729,16 @@ dart_ret_t dart_put_blocking(
     DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
                    "target (coll.): win:%"PRIu64" unit:%d offset:%"PRIu64" "
                    "<- source: %p",
-                   nbytes, (uint64_t)win, target_unitid_rel,
-                   (uint64_t)disp_rel, src);
+                   nbytes, (unsigned long)win, target_unitid_rel,
+                   (unsigned long)disp_rel, src);
   } else {
     win      = dart_win_local_alloc;
     disp_rel = offset;
     DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
                    "target (local): win:%"PRIu64" unit:%d offset:%"PRIu64" "
                    "<- source: %p",
-                   nbytes, (uint64_t)win, target_unitid_rel,
-                   (uint64_t)disp_rel, src);
+                   nbytes, (unsigned long)win, target_unitid_rel,
+                   (unsigned long)disp_rel, src);
   }
 
   /*
@@ -854,7 +854,7 @@ dart_ret_t dart_get_blocking(
     DART_LOG_DEBUG("dart_get_blocking:  nbytes:%zu "
                    "source (coll.): win:%p unit:%d offset:%p"
                    "-> dest: %p",
-                   nbytes, (void*)((uint64_t)win), target_unitid_rel,
+                   nbytes, (void*)((unsigned long)win), target_unitid_rel,
                    (void*)disp_rel, dest);
   } else {
     win      = dart_win_local_alloc;
@@ -862,7 +862,7 @@ dart_ret_t dart_get_blocking(
     DART_LOG_DEBUG("dart_get_blocking:  nbytes:%zu "
                    "source (local): win:%p unit:%d offset:%p "
                    "-> dest: %p",
-                   nbytes, (void*)((uint64_t)win), target_unitid_rel,
+                   nbytes, (void*)((unsigned long)win), target_unitid_rel,
                    (void*)disp_rel, dest);
   }
 
@@ -976,14 +976,14 @@ dart_ret_t dart_flush_local(
     dart_unit_t target_unitid_rel;
     win = dart_team_data[index].window;
     DART_LOG_DEBUG("dart_flush_local() win:%"PRIu64" seg:%d unit:%d",
-                   (uint64_t)win, seg_id, target_unitid_abs);
+                   (unsigned long)win, seg_id, target_unitid_abs);
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
     DART_LOG_TRACE("dart_flush_local: MPI_Win_flush_local");
     MPI_Win_flush_local(target_unitid_rel, win);
   } else {
     win = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_flush_local() lwin:%"PRIu64" seg:%d unit:%d",
-                   (uint64_t)win, seg_id, target_unitid_abs);
+                   (unsigned long)win, seg_id, target_unitid_abs);
     DART_LOG_TRACE("dart_flush_local: MPI_Win_flush_local");
     MPI_Win_flush_local(target_unitid_abs, win);
   }
@@ -1026,9 +1026,9 @@ dart_ret_t dart_wait_local(
     DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
                    handle->dest);
     DART_LOG_TRACE("dart_wait_local:     handle->win:  %p",
-                   (void*)(uint64_t)(handle->win));
+                   (void*)(unsigned long)(handle->win));
     DART_LOG_TRACE("dart_wait_local:     handle->req:  %ld",
-                   (int64_t)handle->request);
+                   (long)handle->request);
     if (handle->request != MPI_REQUEST_NULL) {
       MPI_Status mpi_sta;
       mpi_ret = MPI_Wait(&(handle->request), &mpi_sta);
@@ -1062,9 +1062,9 @@ dart_ret_t dart_wait(
     DART_LOG_TRACE("dart_wait_local:     handle->dest: %d",
                    handle->dest);
     DART_LOG_TRACE("dart_wait_local:     handle->win:  %"PRIu64"",
-                   (uint64_t)handle->win);
+                   (unsigned long)handle->win);
     DART_LOG_TRACE("dart_wait_local:     handle->req:  %ld",
-                   (uint64_t)handle->request);
+                   (unsigned long)handle->request);
     if (handle->request != MPI_REQUEST_NULL) {
       MPI_Status mpi_sta;
       DART_LOG_DEBUG("dart_wait:     -- MPI_Wait");
@@ -1122,9 +1122,9 @@ dart_ret_t dart_waitall_local(
         DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->dest: %d",
                        i, handle[i]->dest);
         DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->win:  %p",
-                       i, (void*)((uint64_t)(handle[i]->win)));
+                       i, (void*)((unsigned long)(handle[i]->win)));
         DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->req:  %p",
-                       i, (void*)((uint64_t)(handle[i]->request)));
+                       i, (void*)((unsigned long)(handle[i]->request)));
         mpi_req[r_n] = handle[i]->request;
         r_n++;
       }
@@ -1231,8 +1231,8 @@ dart_ret_t dart_waitall(
                        "dest:%d win:%"PRIu64" req:%"PRIu64"",
                        i, (void*)handle[i],
                        handle[i]->dest,
-                       (uint64_t)handle[i]->win,
-                       (uint64_t)handle[i]->request);
+                       (unsigned long)handle[i]->win,
+                       (unsigned long)handle[i]->request);
         mpi_req[r_n] = handle[i]->request;
         r_n++;
       }
@@ -1306,9 +1306,9 @@ dart_ret_t dart_waitall(
           DART_LOG_TRACE("dart_waitall:      handle[%zu]->dest: %d",
                          i, handle[i]->dest);
           DART_LOG_TRACE("dart_waitall:      handle[%zu]->win:  %"PRIu64"",
-                         i, (uint64_t)handle[i]->win);
+                         i, (unsigned long)handle[i]->win);
           DART_LOG_TRACE("dart_waitall:      handle[%zu]->req:  %"PRIu64"",
-                         i, (uint64_t)handle[i]->request);
+                         i, (unsigned long)handle[i]->request);
           /*
            * MPI_Win_flush to wait for remote completion:
            */

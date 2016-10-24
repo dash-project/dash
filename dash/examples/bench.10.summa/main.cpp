@@ -83,8 +83,8 @@ typedef double  value_t;
 #else
 typedef float   value_t;
 #endif
-typedef int64_t index_t;
-typedef size_t  extent_t;
+typedef dash::default_index_t   index_t;
+typedef dash::default_extent_t  extent_t;
 
 typedef std::vector< std::pair< std::string, std::string > >
   env_flags;
