@@ -20,16 +20,12 @@ namespace hdf5 {
  * All operations are collective.
  */
 
-  
-using HDF5DeviceMode = dash::io::IOSBaseMode;
-using HDF5StreamMode = dash::io::IOStreamMode<HDF5DeviceMode>;
-
 class OutputStream
-: public ::dash::io::IOSBase<HDF5StreamMode> {
+: public ::dash::io::IOSBase<StreamMode> {
 
-  typedef OutputStream                       self_t;
-  typedef dash::io::IOSBase<HDF5StreamMode>  base_t;
-  typedef HDF5StreamMode                     mode_t;
+  typedef OutputStream                   self_t;
+  typedef dash::io::IOSBase<StreamMode>  base_t;
+  typedef StreamMode                     mode_t;
 
   private:
 
@@ -40,12 +36,12 @@ class OutputStream
   public:
     OutputStream(
         std::string filename,
-        mode_t open_mode = HDF5DeviceMode::no_flags)
+        mode_t open_mode = DeviceMode::no_flags)
         : _filename(filename),
           _dataset("data"),
           _foptions(StoreHDF::get_default_options())
     {
-      if((open_mode & HDF5DeviceMode::app)){
+      if((open_mode & DeviceMode::app)){
           _foptions.overwrite_file = false;
         }
     }
