@@ -83,12 +83,6 @@ public:
   }
 
   /**
-   * Default constructor, deleted.
-   */
-  CollectiveAllocator() noexcept
-    = delete;
-
-  /**
    * Copy constructor.
    *
    * \see DashAllocatorConcept
