@@ -21,7 +21,7 @@ namespace hdf5 {
  */
 
   
-using HDF5DeviceMode = dash::io::IOSBaseMode::openmode_type;
+using HDF5DeviceMode = dash::io::IOSBaseMode;
 using HDF5StreamMode = dash::io::IOStreamMode<HDF5DeviceMode>;
 
 class OutputStream
@@ -40,14 +40,14 @@ class OutputStream
   public:
     OutputStream(
         std::string filename,
-        mode_t open_mode = 0x0)
+        mode_t open_mode = HDF5DeviceMode::no_flags)
         : _filename(filename),
           _dataset("data"),
           _foptions(StoreHDF::get_default_options())
     {
-//      if((open_mode & IOSBaseMode::app) != 0){
-//          _foptions.overwrite_file = false;
-//        }
+      if((open_mode & HDF5DeviceMode::app)){
+          _foptions.overwrite_file = false;
+        }
     }
 
     // IO Manipulators
