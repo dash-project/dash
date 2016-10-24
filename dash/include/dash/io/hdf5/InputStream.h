@@ -20,7 +20,7 @@ namespace hdf5 {
  * All operations are collective.
  */
 
-using IOStreamMode = dash::io::IOStreamMode<dash::io::IOSBaseMode::openmode_type>;
+using IOStreamMode = dash::io::IOStreamMode<dash::io::IOSBaseMode>;
 
 class InputStream
 : public ::dash::io::IOSBase<IOStreamMode> {
