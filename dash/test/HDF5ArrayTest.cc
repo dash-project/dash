@@ -16,7 +16,6 @@ typedef dash::Array<value_t, long> array_t;
 namespace dio = dash::io::hdf5;
 
 using dash::io::hdf5::StoreHDF;
-using dash::io::hdf5::FileOptions;
 using dash::io::hdf5::DeviceMode;
 using dash::io::hdf5::InputStream;
 using dash::io::hdf5::OutputStream;
