@@ -84,7 +84,7 @@ struct Extent {
 /**
  * Type traits for mapping to DART data types.
  */
-template< typename Type >
+template<typename Type>
 struct dart_datatype {
   static const dart_datatype_t value;
 };
@@ -105,17 +105,17 @@ struct dart_datatype<unsigned int> {
 };
 
 template<>
+struct dart_datatype<float> {
+  static const dart_datatype_t value;
+};
+
+template<>
 struct dart_datatype<long> {
   static const dart_datatype_t value;
 };
 
 template<>
-struct dart_datatype<size_t> {
-  static const dart_datatype_t value;
-};
-
-template<>
-struct dart_datatype<float> {
+struct dart_datatype<unsigned long> {
   static const dart_datatype_t value;
 };
 
