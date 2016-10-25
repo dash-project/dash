@@ -733,6 +733,8 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
     DART_OK);
   num_scopes = module_leader_unit_loc->hwinfo.num_scopes;
 
+  DART_ASSERT(num_scopes > 0);
+
   if (module_scope_level == 0) {
     /* At module level, get number of cores from leader unit: */
     int num_module_cores     = module_leader_unit_loc->hwinfo.num_cores;

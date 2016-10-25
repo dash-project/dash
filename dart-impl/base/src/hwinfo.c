@@ -420,6 +420,14 @@ dart_ret_t dart_hwinfo(
   }
 #endif
 
+  if (hw.num_scopes < 1) {
+    /* No domain hierarchy could be resolved.
+     * Use flat topology, with all units assigned to domains in CORE scope: */
+    hw.num_scopes = 1;
+    hw.scopes[0].scope = DART_LOCALITY_SCOPE_CORE;
+    hw.scopes[0].index = (hw.core_id >= 0) ? hw.core_id : hw.cpu_id;
+  }
+
   DART_LOG_TRACE("dart_hwinfo: finished: "
                  "num_numa:%d numa_id:%d cpu_id:%d, num_cores:%d "
                  "min_threads:%d max_threads:%d",
