@@ -35,7 +35,8 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
        CACHE STRING "C++ compiler GDB debug symbols flag")
   set (CXX_OMP_FLAG "-fopenmp")
-  set (CXX_LTO_FLAG "-flto")
+  # currently not compatible
+  #  set (CXX_LTO_FLAG "-flto -fwhole-program")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
   set (CXX_STD_FLAG "-std=c++11"
