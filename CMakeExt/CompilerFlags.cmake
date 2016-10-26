@@ -35,14 +35,17 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
        CACHE STRING "C++ compiler GDB debug symbols flag")
   set (CXX_OMP_FLAG "-fopenmp")
-  # currently not compatible
-  #  set (CXX_LTO_FLAG "-flto -fwhole-program")
+  if(ENABLE_LT_OPTIMIZATION)
+    set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
+  endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
   set (CXX_STD_FLAG "-std=c++11"
        CACHE STRING "C++ compiler std flag")
   set (CXX_OMP_FLAG "-qopenmp")
-  set (CXX_LTO_FLAG "-ipo")
+  if(ENABLE_LT_OPTIMIZATION)
+    set (CXX_LTO_FLAG "-ipo")
+  endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
   # Cray compiler not supported for C++
   message(FATAL_ERROR,
