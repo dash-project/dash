@@ -50,11 +50,11 @@ run_suite()
 {
   NCORES=`cat /proc/cpuinfo | grep -c 'core id'`
   NUNITS=$1
-  if [ "$DASH_MAX_UNITS" -ne "" ]; then
+  if ! [[ "${DASH_MAX_UNITS}" == "" ]]; then
     NCORES=$DASH_MAX_UNITS
   fi
   if [ $NCORES -lt $NUNITS ]; then
-    exit 0
+    return 0
   fi
   BIND_CMD=""
   MAX_RANK=$((NUNITS - 1))

@@ -23,5 +23,8 @@ RUN           cd papi*/src/                                  \
               && make install
 ENV           PAPI_BASE=/opt/papi
 ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib
+ENV           MPI_EXEC_FLAGS='--allow-run-as-root'
+ENV           VERBOSE_CI='true'
+
 # Set workdir to dash home
 WORKDIR       /opt/dash

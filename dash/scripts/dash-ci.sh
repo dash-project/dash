@@ -13,7 +13,6 @@ FAILED=false
 #   module load intel
 # fi
 
-
 run_ci()
 {
   BUILD_TYPE=${1}
@@ -33,7 +32,11 @@ run_ci()
     #
     echo "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
     echo "[ >> LOG ] $DEPLOY_PATH/test_mpi.log"
-    $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
+    if [[ "$VERBOSE_CI" == "" ]]; then
+      $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
+    else
+      $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log | grep -v "LOG"
+    fi
     TEST_STATUS=$?
     ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat" $DEPLOY_PATH/test_mpi.log`
     if [ "$TEST_STATUS" = "0" ]; then
