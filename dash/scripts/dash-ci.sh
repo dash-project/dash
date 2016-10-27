@@ -32,7 +32,7 @@ run_ci()
     #
     echo "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
     echo "[ >> LOG ] $DEPLOY_PATH/test_mpi.log"
-    if [[ "$VERBOSE_CI" == "" ]]; then
+    if [ "$VERBOSE_CI" = "" ]; then
       $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
     else
       $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log | grep -v "LOG ="
