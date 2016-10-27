@@ -10,9 +10,9 @@ dependencies:
 test:
   override:
     - sh ./dash/scripts/circleci/run-docker.sh:
-        parallel:true
+        parallel: true
     - cat ./dash-ci.log | grep "PASSED" || exit 1:
-        parallel:true
+        parallel: true
   post:
     - cat ./build-ci/*/*/test_mpi.log | grep -v "LOG"
     - cat ./dash-ci.err
