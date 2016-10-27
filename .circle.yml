@@ -1,0 +1,17 @@
+machine:
+  services:
+    - docker
+
+dependencies:
+  override:
+    - docker info
+    - docker build --rm=false --tag=dash/testing ./dash/scripts/docker-testing/
+
+test:
+  override:
+    - docker run -v $PWD:/opt/dash dash/testing /bin/sh -c "export MPI_EXEC_FLAGS='--allow-run-as-root'; export DASH_MAX_UNITS='2'; cd /opt/dash; sh dash/scripts/dash-ci.sh | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
+    - cat ./dash-ci.log | grep "PASSED" || return 1
+  post:
+    - cat ./build-ci/*/*/test_mpi.log | grep -v "LOG"
+    - cat ./dash-ci.err
+    - cat ./build-ci/*/*/build.log
