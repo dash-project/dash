@@ -9,9 +9,9 @@ dependencies:
 
 test:
   override:
-    - docker run -v $PWD:/opt/dash dash/testing /bin/sh -c "export DASH_MAX_UNITS='8'; export GTEST_TOTAL_SHARDS=$CIRCLE_NODE_TOTAL; export GTEST_SHARD_INDEX=CIRCLE_NODE_INDEX; sh dash/scripts/dash-ci.sh | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
-    - cat ./dash-ci.log | grep "FAILED" > /dev/null && return 1 
-    - cat ./dash-ci.log | grep "PASSED" || return 1
+    - docker run -v $PWD:/opt/dash dash/testing /bin/sh -c "export DASH_MAX_UNITS='4'; export GTEST_TOTAL_SHARDS=$CIRCLE_NODE_TOTAL; export GTEST_SHARD_INDEX=$CIRCLE_NODE_INDEX; sh dash/scripts/dash-ci.sh | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
+    - cat ./dash-ci.log | grep "FAILED" > /dev/null && exit 1 
+    - cat ./dash-ci.log | grep "PASSED" || exit 1
   post:
     - cat ./build-ci/*/*/test_mpi.log | grep -v "LOG"
     - cat ./dash-ci.err
