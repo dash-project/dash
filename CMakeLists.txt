@@ -39,7 +39,7 @@ option(ENABLE_COMPILER_WARNINGS
 option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LT_OPTIMIZATION
-       "Specify whether link-time-optimization should be used" on)
+       "Specify whether link-time-optimization should be used" off)
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
 option(ENABLE_TEST_LOGGING
