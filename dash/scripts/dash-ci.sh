@@ -35,7 +35,7 @@ run_ci()
     if [[ "$VERBOSE_CI" == "" ]]; then
       $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
     else
-      $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log | grep -v "LOG"
+      $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log | grep -v "LOG ="
     fi
     TEST_STATUS=$?
     ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat" $DEPLOY_PATH/test_mpi.log`
