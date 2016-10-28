@@ -6,6 +6,7 @@ docker run -v $PWD:/opt/dash dash/testing /bin/sh -c "export DASH_MAX_UNITS='4';
 
 TARGETS=`ls -d ./build-ci/*/* | xargs -n1 basename`
 for TARGET in ${TARGETS[@]}; do
+  mkdir -p $CIRCLE_TEST_REPORTS/$TARGET
   cp ./build-ci/*/$TARGET/dash-tests-*.xml $CIRCLE_TEST_REPORTS/$TARGET/
 done
 
