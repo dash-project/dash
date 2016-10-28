@@ -76,5 +76,5 @@ else
 fi
 
 if $FAILED; then
-  exit -1
+  exit 1
 fi
