@@ -61,6 +61,7 @@ run_suite()
 # if [ `which numactl` ]; then
 #   BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
 # fi
+  export GTEST_OUTPUT="xml:dash-tests-${NUNITS}.xml"
   echo "[[== START ====================================================]]" | \
     tee -a $LOGFILE
   echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${BIND_CMD} ${TEST_BINARY}" | \
