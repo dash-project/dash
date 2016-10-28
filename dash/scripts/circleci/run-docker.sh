@@ -2,7 +2,7 @@
 
 echo "Starting docker container ..."
 
-docker run -v $PWD:/opt/dash dash/testing /bin/sh -c "export DASH_MAX_UNITS='4'; export GTEST_TOTAL_SHARDS=${CIRCLE_NODE_TOTAL}; export GTEST_SHARD_INDEX=${CIRCLE_NODE_INDEX}; sh dash/scripts/dash-ci.sh | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
+docker run -v $PWD:/opt/dash dash/testing /bin/sh -c "export DASH_MAX_UNITS='2'; export GTEST_TOTAL_SHARDS=${CIRCLE_NODE_TOTAL}; export GTEST_SHARD_INDEX=${CIRCLE_NODE_INDEX}; sh dash/scripts/dash-ci.sh | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
 
 TARGETS=`ls -d ./build-ci/*/* | xargs -n1 basename`
 for TARGET in $TARGETS; do
