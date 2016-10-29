@@ -5,7 +5,7 @@ machine:
 dependencies:
   override:
     - docker info
-    - docker build --rm=false --tag=dash/testing ./dash/scripts/docker-testing/mpich/
+    - docker build --rm=false --tag=dash/testing ./dash/scripts/docker-testing/openmpi/
 
 test:
   override:
