@@ -259,13 +259,13 @@ public:
    */
   TilePattern(
     /// TilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
+    const SizeSpec_t         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist,
+    const DistributionSpec_t dist,
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t         & teamspec,
+    const TeamSpec_t         teamspec,
     /// Team containing units to which this pattern maps its elements
     dash::Team               & team     = dash::Team::All())
   : _distspec(dist),
@@ -334,11 +334,11 @@ public:
    */
   TilePattern(
     /// TilePattern size (extent, number of elements) in every dimension
-    const SizeSpec_t         & sizespec,
+    const SizeSpec_t         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(),
+    const DistributionSpec_t dist = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
     Team                     & team = dash::Team::All())
   : _distspec(dist),

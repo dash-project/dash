@@ -1027,3 +1027,27 @@ TEST_F(MatrixTest, MatrixLBegin)
   EXPECT_EQ_U(myid, static_cast<int>(*(matrix.local.begin())));
 }
 
+TEST_F(MatrixTest, DelayedPatternAllocation)
+{
+  typedef dash::TilePattern<2> pattern_t;
+  long block_size_x = dash::size();
+  long block_size_y = dash::size();
+  dash::NArray<int, 2, long, pattern_t > matrix;
+  
+  {
+    auto & team = dash::Team::All();
+    dash::TeamSpec<2>         ts(team);
+    dash::SizeSpec<2>         ss(block_size_x, block_size_y);
+    dash::DistributionSpec<2> ds(dash::TILE(1),dash::TILE(1));
+
+    pattern_t pattern(
+          ss,
+          ds,
+          ts,
+          team);
+    matrix.allocate(pattern);
+  }
+  auto id = dash::myid();
+  matrix(id,id) =id;
+  EXPECT_EQ(id, matrix[id][id]);
+}

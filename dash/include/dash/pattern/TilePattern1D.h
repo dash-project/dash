@@ -225,14 +225,14 @@ public:
    */
   TilePattern(
     /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t &         sizespec,
+    const SizeSpec_t         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE).
     /// Defaults to BLOCKED.
-    const DistributionSpec_t & dist     = DistributionSpec_t(),
+    const DistributionSpec_t dist     = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t &         teamspec = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t         teamspec = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
-    dash::Team &               team     = dash::Team::All())
+    dash::Team &             team     = dash::Team::All())
   : _size(sizespec.size()),
     _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _distspec(dist),
