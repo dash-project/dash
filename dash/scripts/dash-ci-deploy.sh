@@ -12,6 +12,13 @@ INSTALL_PATH=""
 BUILD_TYPE="Release"
 MAKE_TARGET=""
 MAKE_PROCS=`cat /proc/cpuinfo | grep --count 'processor'`
+if ! [ "$DASH_MAKE_PROCS" = "" ]; then
+  if [ "$MAKE_PROCS" -gt "$DASH_MAKE_PROCS" ]; then
+    echo "Use at most $MAKE_PROCS processors for building"
+    MAKE_PROCS="$DASH_MAKE_PROCS"
+  fi
+fi
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -f)    FORCE_BUILD=true;
