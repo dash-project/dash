@@ -255,16 +255,16 @@ TEST_F(HDF5ArrayTest, UnderfilledPatPreAllocate)
 
 TEST_F(HDF5ArrayTest, MultipleDatasets)
 {
-	int    ext_x    = dash::size() * 5;
-	int    secret_a = 10;
-	double secret_b = 3;
-	{
+  int    ext_x    = dash::size() * 5;
+  int    secret_a = 10;
+  double secret_b = 3;
+  {
     auto array_a = dash::Array<int>(ext_x);
-		auto array_b = dash::Array<double>(ext_x*2);
+    auto array_b = dash::Array<double>(ext_x*2);
 
     // Fill
     fill_array(array_a, secret_a);
-		fill_array(array_b, secret_b);
+    fill_array(array_b, secret_b);
     dash::barrier();
 
     // Set option
@@ -272,13 +272,13 @@ TEST_F(HDF5ArrayTest, MultipleDatasets)
     fopts.overwrite_file = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
-		StoreHDF::write(array_b, _filename, "datasettwo", fopts);
+    StoreHDF::write(array_b, _filename, "datasettwo", fopts);
     dash::barrier();
   }
   dash::Array<int>    array_c;
-	dash::Array<double> array_d;
-	StoreHDF::read(array_c, _filename, _dataset);
-	StoreHDF::read(array_d, _filename, "datasettwo");
+  dash::Array<double> array_d;
+  StoreHDF::read(array_c, _filename, _dataset);
+  StoreHDF::read(array_d, _filename, "datasettwo");
 
   dash::barrier();
 
@@ -289,16 +289,16 @@ TEST_F(HDF5ArrayTest, MultipleDatasets)
 
 TEST_F(HDF5ArrayTest, ModifyDataset)
 {
-	int    ext_x    = dash::size() * 5;
-	double secret_a = 10;
-	double secret_b = 3;
-	{
+  int    ext_x    = dash::size() * 5;
+  double secret_a = 10;
+  double secret_b = 3;
+  {
     auto array_a = dash::Array<double>(ext_x);
-		auto array_b = dash::Array<double>(ext_x);
+    auto array_b = dash::Array<double>(ext_x);
 
     // Fill
     fill_array(array_a, secret_a);
-		fill_array(array_b, secret_b);
+    fill_array(array_b, secret_b);
     dash::barrier();
 
     // Set option
@@ -306,14 +306,14 @@ TEST_F(HDF5ArrayTest, ModifyDataset)
     fopts.overwrite_file = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
-		dash::barrier();
-		// overwrite first data
-		fopts.modify_dataset = true;
-		StoreHDF::write(array_b, _filename, _dataset, fopts);
+    dash::barrier();
+    // overwrite first data
+    fopts.modify_dataset = true;
+    StoreHDF::write(array_b, _filename, _dataset, fopts);
     dash::barrier();
   }
   dash::Array<double>    array_c;
-	StoreHDF::read(array_c, _filename, _dataset);
+  StoreHDF::read(array_c, _filename, _dataset);
 
   dash::barrier();
 
