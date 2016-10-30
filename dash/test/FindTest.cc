@@ -6,7 +6,6 @@
 #include "TestBase.h"
 #include "FindTest.h"
 
-#if 0
 TEST_F(FindTest, TestSimpleFind)
 {
   _num_elem           = dash::Team::All().size();
@@ -44,9 +43,11 @@ TEST_F(FindTest, TestSimpleFind)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
+
+  array.barrier();
 }
 
-#if 1
+#if 0
 TEST_F(FindTest, SimpleVaryingTest)
 {
   typedef long Element_t;
@@ -92,6 +93,8 @@ TEST_F(FindTest, SimpleVaryingTest)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
+
+  array.barrier();
 }
 #endif
 
@@ -121,7 +124,9 @@ TEST_F(FindTest, AllElementsEqualNoneMatches)
   // Check that the element find_me has not been found (found == last):
   LOG_MESSAGE("Completed dash::find");
 
-  ASSERT_EQ(found_gptr, array.end());
+  EXPECT_EQ(found_gptr, array.end());
+
+  array.barrier();
 }
 
 TEST_F(FindTest, AllElementsEqualAllMatch)
@@ -200,6 +205,8 @@ TEST_F(FindTest, SingleMatchInSingleUnit)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
+
+  array.barrier();
 }
 
 /*
@@ -242,6 +249,8 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
+
+  array.barrier();
 }
 
 #if 0
@@ -309,5 +318,7 @@ TEST_F(FindTest, LessElementsThanUnits)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
+
+  array.barrier();
 }
-#endif
+

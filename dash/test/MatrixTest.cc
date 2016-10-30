@@ -912,6 +912,39 @@ TEST_F(MatrixTest, DelayedAlloc)
   }
 }
 
+TEST_F(MatrixTest, PatternScope)
+{
+  typedef dash::TilePattern<2>            pattern_t;
+  typedef typename pattern_t::index_type  index_t;
+  typedef int                             value_t;
+
+  value_t block_size_x = 5;
+  value_t block_size_y = 5;
+
+  auto & team = dash::Team::All();
+  dash::TeamSpec<2>         ts(team);
+  dash::SizeSpec<2>         ss(block_size_x, block_size_y);
+  dash::DistributionSpec<2> ds(dash::TILE(1),dash::TILE(1));
+
+  dash::NArray<value_t, 2, index_t, pattern_t> matrix;
+
+  {
+    pattern_t pattern(
+         ss,
+         ds,
+         ts,
+         team);
+    matrix.allocate(pattern);
+  }
+  if (dash::myid() == 0) {
+    matrix[0][0] = 123;
+  }
+
+  matrix.barrier();
+
+  EXPECT_EQ(static_cast<int>(matrix[0][0]), 123);
+}
+
 /**
  * Allocate a matrix with extents that cannot fit into full blocks
  */
@@ -965,16 +998,16 @@ TEST_F(MatrixTest, UnderfilledPattern)
 
 TEST_F(MatrixTest, SimpleConstructor)
 {
-	size_t ext_x = dash::size();
-	size_t ext_y = 5*dash::size();
-	dash::Matrix<int, 2> matrix(ext_x, ext_y);
+  size_t ext_x = dash::size();
+  size_t ext_y = 5*dash::size();
+  dash::Matrix<int, 2> matrix(ext_x, ext_y);
 
-	dash::fill(matrix.begin(), matrix.end(), dash::myid());
+  dash::fill(matrix.begin(), matrix.end(), dash::myid());
 
-	matrix.barrier();
+  matrix.barrier();
 
-	ASSERT_EQ_U(ext_x, matrix.extent(0));
-	ASSERT_EQ_U(ext_y, matrix.extent(1));
+  ASSERT_EQ_U(ext_x, matrix.extent(0));
+  ASSERT_EQ_U(ext_y, matrix.extent(1));
 }
 
 TEST_F(MatrixTest, MatrixLBegin)
