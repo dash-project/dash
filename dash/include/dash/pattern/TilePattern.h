@@ -372,21 +372,7 @@ public:
   /**
    * Copy constructor.
    */
-  TilePattern(const self_t & other)
-  : _distspec(other._distspec),
-    _team(other._team),
-    _myid(_team->myid()),
-    _teamspec(other._teamspec),
-    _memory_layout(other._memory_layout),
-    _nunits(other._nunits),
-    _blocksize_spec(other._blocksize_spec),
-    _blockspec(other._blockspec),
-    _local_blockspec(other._local_blockspec),
-    _local_memory_layout(other._local_memory_layout),
-    _local_capacity(other._local_capacity),
-    _lbegin(other._lbegin),
-    _lend(other._lend) {
-  }
+  TilePattern(const self_t & other) = default;
 
   /**
    * Copy constructor using non-const lvalue reference parameter.
@@ -438,14 +424,15 @@ public:
     if (this != &other) {
       _distspec            = other._distspec;
       _team                = other._team;
+      _myid                = other._myid;
       _teamspec            = other._teamspec;
       _memory_layout       = other._memory_layout;
-      _local_memory_layout = other._local_memory_layout;
+      _nunits              = other._nunits;
       _blocksize_spec      = other._blocksize_spec;
       _blockspec           = other._blockspec;
       _local_blockspec     = other._local_blockspec;
+      _local_memory_layout = other._local_memory_layout;
       _local_capacity      = other._local_capacity;
-      _nunits              = other._nunits;
       _lbegin              = other._lbegin;
       _lend                = other._lend;
     }

@@ -1,0 +1,29 @@
+# Dockerfile for the DASH project
+FROM          ubuntu:latest
+
+MAINTAINER    Felix Moessbauer <felix.moessbauer@campus.lmu.de>
+
+RUN           apt-get update -y
+RUN           apt-get install -y cmake libhwloc-plugins libhwloc-dev \
+                          libmpich-dev \
+                          libhdf5-mpich-dev \
+                          git build-essential
+
+# Install PAPI 5.5.0 from source
+WORKDIR       /tmp
+
+# Latest version of PAPI is not compatible
+# ADD           http://icl.cs.utk.edu/projects/papi/downloads/papi-5.5.0.tar.gz papi.tgz
+
+ADD           http://icl.cs.utk.edu/projects/papi/downloads/papi-5.4.1.tar.gz papi.tgz
+RUN           tar -xf papi.tgz
+RUN           cd papi*/src/                                  \
+              && ./configure --prefix=/opt/papi --with-ffsll \
+              && make                                        \
+              && make install
+ENV           PAPI_BASE=/opt/papi
+ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib
+ENV           VERBOSE_CI='true'
+
+# Set workdir to dash home
+WORKDIR       /opt/dash

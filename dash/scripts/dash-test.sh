@@ -50,17 +50,18 @@ run_suite()
 {
   NCORES=`cat /proc/cpuinfo | grep -c 'core id'`
   NUNITS=$1
-  if [ "$DASH_MAX_UNITS" -ne "" ]; then
+  if ! [ "$DASH_MAX_UNITS" = "" ]; then
     NCORES=$DASH_MAX_UNITS
   fi
   if [ $NCORES -lt $NUNITS ]; then
-    exit 0
+    return 0
   fi
   BIND_CMD=""
   MAX_RANK=$((NUNITS - 1))
 # if [ `which numactl` ]; then
 #   BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
 # fi
+  export GTEST_OUTPUT="xml:dash-tests-${NUNITS}.xml"
   echo "[[== START ====================================================]]" | \
     tee -a $LOGFILE
   echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${BIND_CMD} ${TEST_BINARY}" | \

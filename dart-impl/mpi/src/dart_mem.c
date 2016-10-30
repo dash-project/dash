@@ -41,7 +41,10 @@ next_pow_of_2(size_t x) {
 	x |= x >> 4;
 	x |= x >> 8;
 	x |= x >> 16;
-	x |= x >> 32;
+  if (sizeof(size_t) > 4) {
+    /* to avoid compiler warning on 32-bit targets */
+	  x |= x >> (8 * sizeof(size_t) / 2);
+  }
 	return x + 1;
 }
 
