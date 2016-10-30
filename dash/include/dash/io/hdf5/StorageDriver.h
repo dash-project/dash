@@ -396,10 +396,10 @@ public:
 
     if(foptions.modify_dataset){
       // Open dataset in RW mode
-      h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+      h5dset = H5Dopen(loc_id, dataset.c_str(), H5P_DEFAULT);
     } else {
       // Create dataset
-      h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
+      h5dset = H5Dcreate(loc_id, dataset.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     }
 
