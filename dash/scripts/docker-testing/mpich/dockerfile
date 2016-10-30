@@ -5,8 +5,8 @@ MAINTAINER    Felix Moessbauer <felix.moessbauer@campus.lmu.de>
 
 RUN           apt-get update -y
 RUN           apt-get install -y cmake libhwloc-plugins libhwloc-dev \
-                          libopenmpi-dev openmpi-bin openmpi-common \
-                          libhdf5-openmpi-dev \
+                          libmpich-dev \
+                          libhdf5-mpich-dev \
                           git build-essential
 
 # Install PAPI 5.5.0 from source
@@ -23,5 +23,7 @@ RUN           cd papi*/src/                                  \
               && make install
 ENV           PAPI_BASE=/opt/papi
 ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib
+ENV           VERBOSE_CI='true'
+
 # Set workdir to dash home
 WORKDIR       /opt/dash
