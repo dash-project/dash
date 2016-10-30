@@ -109,8 +109,8 @@ dart_ret_t dart__base__unit_locality__create(
                    ret);
     return ret;
   }
-  DART_LOG_TRACE("dart__base__unit_locality__create: unit %d of %"PRIu64": "
-                 "sending %"PRIu64" bytes: "
+  DART_LOG_TRACE("dart__base__unit_locality__create: unit %d of %ld: "
+                 "sending %ld bytes: "
                  "host:'%s' core_id:%d numa_id:%d nthreads:%d",
                  myid, nunits, nbytes,
                  uloc->hwinfo.host,
@@ -185,7 +185,7 @@ dart_ret_t dart__base__unit_locality__at(
 {
   if ((size_t)(unit) >= unit_mapping->num_units) {
     DART_LOG_ERROR("dart__base__unit_locality__get ! "
-                   "unit id %d out of bounds, team size: %"PRIu64"",
+                   "unit id %d out of bounds, team size: %u",
                    unit, unit_mapping->num_units);
     return DART_ERR_INVAL;
   }

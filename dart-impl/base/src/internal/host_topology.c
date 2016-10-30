@@ -81,7 +81,7 @@ dart_ret_t dart__base__host_topology__module_locations(
         DART_LOG_TRACE("dart__base__host_topology__module_locations: "
                        "hwloc: Xeon Phi device");
         if (coproc_obj->arity > 0) {
-          for (int pd_i = 0; pd_i < coproc_obj->arity; pd_i++) {
+          for (int pd_i = 0; pd_i < (int)coproc_obj->arity; pd_i++) {
             hwloc_obj_t coproc_child_obj = coproc_obj->children[pd_i];
             DART_LOG_TRACE("dart__base__host_topology__module_locations: "
                            "hwloc: Xeon Phi child node: (name:%s arity:%d)",
@@ -149,9 +149,9 @@ dart_ret_t dart__base__host_topology__update_module_locations(
   dart_group_sizeof(&group_t_size);
 
   dart_unit_locality_t * my_uloc;
-  dart_unit_t            local_leader_unit_id;
-  dart_unit_t            my_id        = DART_UNDEFINED_UNIT_ID;
-  dart_group_t         * leader_group = malloc(sizeof(group_t_size));
+  dart_unit_t            local_leader_unit_id = DART_UNDEFINED_UNIT_ID;
+  dart_unit_t            my_id                = DART_UNDEFINED_UNIT_ID;
+  dart_group_t         * leader_group         = malloc(sizeof(group_t_size));
   dart_team_t            leader_team;
 
   DART_ASSERT_RETURNS(
@@ -353,30 +353,33 @@ dart_ret_t dart__base__host_topology__update_module_locations(
                  "broadcasting module locations from leader unit %d "
                  "to units in team %d",
                  local_leader_unit_id, team);
-  /*
-   * TODO: Use local_team instead of team if num_hosts > 1
-   */
-  DART_ASSERT_RETURNS(
-    dart_bcast(
-      topo->host_domains,
-      sizeof(dart_host_domain_t) * num_hosts,
-      local_leader_unit_id,
-      team),
-    DART_OK);
 
-  DART_LOG_TRACE("dart__base__host_topology__init: updated host topology:");
-  topo->num_nodes = num_hosts;
-  for (int h = 0; h < num_hosts; ++h) {
-    /* Get unit ids at local unit's host */
-    dart_host_domain_t * hdom = &topo->host_domains[h];
-    if (hdom->level > 0) {
-      topo->num_nodes--;
+  if (DART_UNDEFINED_UNIT_ID != local_leader_unit_id) {
+    /*
+     * TODO: Use local_team instead of team if num_hosts > 1
+     */
+    DART_ASSERT_RETURNS(
+      dart_bcast(
+        topo->host_domains,
+        sizeof(dart_host_domain_t) * num_hosts,
+        local_leader_unit_id,
+        team),
+      DART_OK);
+
+    DART_LOG_TRACE("dart__base__host_topology__init: updated host topology:");
+    topo->num_nodes = num_hosts;
+    for (int h = 0; h < num_hosts; ++h) {
+      /* Get unit ids at local unit's host */
+      dart_host_domain_t * hdom = &topo->host_domains[h];
+      if (hdom->level > 0) {
+        topo->num_nodes--;
+      }
+      DART_LOG_TRACE("dart__base__host_topology__init: "
+                     "host[%d]: (host:%s parent:%s level:%d, scope_pos:"
+                     "(scope:%d rel.idx:%d))",
+                     h, hdom->host, hdom->parent, hdom->level,
+                     hdom->scope_pos.scope, hdom->scope_pos.index);
     }
-    DART_LOG_TRACE("dart__base__host_topology__init: "
-                   "host[%d]: (host:%s parent:%s level:%d, scope_pos:"
-                   "(scope:%d rel.idx:%d))",
-                   h, hdom->host, hdom->parent, hdom->level,
-                   hdom->scope_pos.scope, hdom->scope_pos.index);
   }
 
 #if 1

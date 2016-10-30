@@ -74,7 +74,6 @@ public:
       return 2;
     }
 #else // Fallback for architectures that do not provide any low-level counter:
-#pragma message "Fallback to generic performance counter implementation"
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return static_cast<uint64_t>(
