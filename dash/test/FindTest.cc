@@ -83,7 +83,7 @@ TEST_F(FindTest, SimpleVaryingTest)
 
   // Check that the element find_me has been found (found != last)
   LOG_MESSAGE("Completed dash::find");
-#if 0
+
   auto expected_gptr = array.begin() + find_pos;
   EXPECT_EQ_U(found_gptr, expected_gptr);
 
@@ -92,7 +92,6 @@ TEST_F(FindTest, SimpleVaryingTest)
   LOG_MESSAGE("Expected find value: %d, found find value %d",
               find_me, found_v);
   EXPECT_EQ(find_me, found_v);
-#endif
 }
 
 TEST_F(FindTest, AllElementsEqualNoneMatches)
@@ -245,6 +244,7 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
 }
 
 #if 0
+// dash::array does not support 0 elements
 TEST_F(FindTest, Empty_Container)
 {
   Element_t find_me = 1;
