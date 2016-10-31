@@ -21,7 +21,6 @@ typedef struct task_list task_list_t;
 static pthread_cond_t task_avail_cond = PTHREAD_COND_INITIALIZER;
 static pthread_cond_t tasks_done_cond = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t thread_pool_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t tasks_done_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_key_t tpd_key;
 
@@ -42,17 +41,25 @@ typedef struct task_data {
   size_t ndeps;             // the number of total dependencies (TODO: do we really need to store this?)
   task_list_t *successor;   // the list of tasks that have a dependency to this task
   struct task_data *parent; // the task that created this task
+  task_list_t *remote_successor;
 } task_t;
 
 struct task_list {
   task_t *task;
+  dart_unit_t unit;
   struct task_list *next; // next entry on the same level of the task graph
 };
 
-struct remote_dep {
+struct remote_data_dep {
   dart_gptr_t gptr;
   dart_unit_t runit;
-  task_t     *rtask; // pointer to a task on the origin unit, do not derefernce remotely!
+  task_t     *rtask; // pointer to a task on the origin unit, do not dereference remotely!
+};
+
+struct remote_task_dep {
+  task_t     *task;
+  task_t     *followup;
+  dart_unit_t runit;
 };
 
 typedef struct {
@@ -206,7 +213,7 @@ dart__base__tasking__init()
   dart_amsg_init();
 
   // set up the active message queue
-  amsgq  = dart_amsg_openq(sizeof(struct remote_dep) * DART_RTASK_QLEN, DART_TEAM_ALL);
+  amsgq  = dart_amsg_openq(sizeof(struct remote_data_dep) * DART_RTASK_QLEN, DART_TEAM_ALL);
   DART_LOG_INFO("Created active message queue for remote tasking (%p)", amsgq);
 
   pthread_key_create(&tpd_key, &destroy_tsd);
@@ -571,6 +578,39 @@ static void remove_from_depgraph(task_t *task)
   }
 }
 
+static void
+request_direct_task_dependency(void *data) {
+  dart_unit_t myid;
+  dart_myid(&myid);
+  struct remote_task_dep *taskdep = (struct remote_task_dep *)data;
+
+  pthread_mutex_lock(&thread_pool_mutex);
+
+  DART_LOG_INFO("Received direct task dependency request %p -> %p from unit %i", taskdep->task, taskdep->followup, taskdep->runit);
+  task_list_t *list = allocate_task_list_elem();
+  list->task = taskdep->followup;
+  list->next = taskdep->task->remote_successor;
+  list->unit = taskdep->runit;
+  taskdep->task->remote_successor = list;
+  pthread_mutex_unlock(&thread_pool_mutex);
+}
+
+static void
+release_direct_task_dependency(void *data)
+{
+  struct remote_task_dep *taskdep = (struct remote_task_dep *)data;
+  pthread_mutex_lock(&thread_pool_mutex);
+  DART_LOG_INFO("Received direct task dependency release for task %p from unit %i", taskdep->task, taskdep->runit);
+
+  taskdep->task->unresolved_deps--;
+
+  if(taskdep->task->unresolved_deps == 0){
+    enqeue_runnable(taskdep->task);
+  }
+
+  pthread_mutex_unlock(&thread_pool_mutex);
+}
+
 static void release_task(task_t *task)
 {
   // TODO: we cannot release local dependencies with OUT dependencies matching remote IN dependencies
@@ -578,29 +618,8 @@ static void release_task(task_t *task)
   //       task actually finished. Instead of going through data dependencies again, we could directly
   //       define a task-dependency.
 
-  // release the task's dependents
-  task_list_t *child = task->successor;
-  while (child != NULL)
-  {
-    child->task->unresolved_deps--;
-    if (child->task->unresolved_deps == 0) {
-      // enqueue in runnable list
-      enqeue_runnable(child->task);
-      // enqueue the child at the top level of the dependency graph
-      task_list_t *next = child->next;
-      child->next = dep_graph;
-      dep_graph = child;
-      DART_LOG_INFO("Enqueued child task %p into dependency graph top level", child->task);
-      // advance
-      child = next;
-    } else {
-      // enqeue this task_list element in the list of free task_list elements
-      task_list_t *next = child->next;
-      deallocate_task_list_elem(child);
-      // advance
-      child = next;
-    }
-  }
+  dart_unit_t myid;
+  dart_myid(&myid);
 
   if (rdepq_head == NULL) {
     DART_LOG_INFO("release_task: rdepq_head is NULL");
@@ -632,12 +651,44 @@ static void release_task(task_t *task)
         } else {
           rt_prev->next = rt->next;
         }
-//        enqeue_runnable(rt);
+        // enqeue_runnable(rt);
 
         // send the release in-place
         dart_task_action_t *fn = rt->fn;
         void *data = rt->data;
-        //invoke the task function
+
+        // send direct task dependency requests for all relevant tasks before sending the actual release
+        struct remote_data_dep *datadep = (struct remote_data_dep *)data;
+
+        task_list_t *child = task->successor;
+        while (child != NULL)
+        {
+          task_list_t *next = child->next;
+          for (int i = 0; i < child->task->ndeps; i++) {
+            if (child->task->deps[i].gptr.addr_or_offs.addr == datadep->gptr.addr_or_offs.addr
+                || child->task->deps[i].gptr.unitid == datadep->gptr.unitid) {
+              int ret;
+              // send a direct task dependency request
+              // TODO: This code is not executed?!
+              struct remote_task_dep taskdep;
+              taskdep.task     = datadep->rtask;
+              taskdep.followup = child->task;
+              child->task->unresolved_deps++;
+              taskdep.runit    = myid;
+              DART_LOG_INFO("Sending direct task dependency request %p -> %p to unit %i", taskdep.task, taskdep.followup, datadep->runit);
+              while ((ret = dart_amsg_trysend(datadep->runit, amsgq, &request_direct_task_dependency, &taskdep, sizeof(taskdep))) != DART_OK) {
+                if (ret != DART_ERR_AGAIN) {
+                  DART_LOG_ERROR("Failed to send direct task dependency to unit %i", datadep->runit);
+                  break;
+                }
+              }
+              break;
+            }
+          }
+          child = next;
+        }
+
+        //invoke the task that releases the remote data dependency
         fn(data);
         deallocate_task(rt);
         break;
@@ -645,6 +696,47 @@ static void release_task(task_t *task)
       rt_prev = rt;
       rt = rt->next;
     }
+  }
+
+  // release direct task dependencies
+  task_list_t *child = task->remote_successor;
+  while (child != NULL)
+  {
+    task_list_t *next = child->next;
+    int ret;
+    // send a direct task dependency
+    struct remote_task_dep taskdep;
+    taskdep.task = child->task;
+    taskdep.followup = NULL;
+    while ((ret = dart_amsg_trysend(child->unit, amsgq, &release_direct_task_dependency, &taskdep, sizeof(taskdep))) != DART_OK) {
+      if (ret != DART_ERR_AGAIN) {
+        DART_LOG_ERROR("Failed to send direct task dependency to unit %i", child->unit);
+        break;
+      }
+    }
+    child = next;
+  }
+
+  // release the task's local dependents
+  child = task->successor;
+  while (child != NULL)
+  {
+    task_list_t *next = child->next;
+    child->task->unresolved_deps--;
+    if (child->task->unresolved_deps == 0) {
+      // enqueue in runnable list
+      enqeue_runnable(child->task);
+      // enqueue the child at the top level of the dependency graph
+      child->next = dep_graph;
+      dep_graph = child;
+      DART_LOG_INFO("Enqueued child task %p into dependency graph top level", child->task);
+      // advance
+    } else {
+      // enqeue this task_list element in the list of free task_list elements
+      deallocate_task_list_elem(child);
+      // advance
+    }
+    child = next;
   }
 
   // remove the task itself from the task dependency graph
@@ -693,7 +785,7 @@ static task_t * get_current_task()
 
 static void release_remote_dependency(void *data)
 {
-  struct remote_dep *response = (struct remote_dep *)data;
+  struct remote_data_dep *response = (struct remote_data_dep *)data;
   // remote dependent tasks are all enqeued at the top level of the dependency graph
   pthread_mutex_lock(&thread_pool_mutex);
 
@@ -741,7 +833,7 @@ static void release_remote_dependency(void *data)
 
 static void send_release(void *data)
 {
-  struct remote_dep *rtask = (struct remote_dep *)data;
+  struct remote_data_dep *rtask = (struct remote_data_dep *)data;
 
   while (1) {
     dart_ret_t ret;
@@ -767,8 +859,8 @@ static void send_release(void *data)
 static void
 enqueue_from_remote(void *data)
 {
-  struct remote_dep *rtask = (struct remote_dep *)data;
-  struct remote_dep *response = malloc(sizeof(*response));
+  struct remote_data_dep *rtask = (struct remote_data_dep *)data;
+  struct remote_data_dep *response = malloc(sizeof(*response));
   response->gptr = rtask->gptr;
   response->runit = rtask->runit;
   response->rtask = rtask->rtask;
@@ -797,7 +889,7 @@ enqueue_from_remote(void *data)
 static void remote_dependency_request(task_t *task, dart_gptr_t gptr)
 {
   dart_ret_t ret;
-  struct remote_dep rtask;
+  struct remote_data_dep rtask;
 
   // gptr has already been converted to offset representation
   rtask.gptr = gptr;
