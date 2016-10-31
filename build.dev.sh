@@ -77,13 +77,13 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_HWLOC=ON \
                         -DENABLE_PAPI=ON \
                         -DENABLE_MKL=ON \
-                        -DENABLE_BLAS=OFF \
+                        -DENABLE_BLAS=ON \
                         -DENABLE_LAPACK=ON \
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=OFF \
                         \
-                        -DBUILD_EXAMPLES=OFF \
+                        -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
                         -DBUILD_DOCS=OFF \
                         \

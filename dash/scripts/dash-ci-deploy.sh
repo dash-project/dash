@@ -12,6 +12,13 @@ INSTALL_PATH=""
 BUILD_TYPE="Release"
 MAKE_TARGET=""
 MAKE_PROCS=`cat /proc/cpuinfo | grep --count 'processor'`
+if ! [ "$DASH_MAKE_PROCS" = "" ]; then
+  if [ "$MAKE_PROCS" -gt "$DASH_MAKE_PROCS" ]; then
+    echo "Use at most $MAKE_PROCS processors for building"
+    MAKE_PROCS="$DASH_MAKE_PROCS"
+  fi
+fi
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -f)    FORCE_BUILD=true;
@@ -64,7 +71,8 @@ if [ "$BUILD_TYPE" = "Release" ]; then
   -DENABLE_TRACE_LOGGING=OFF \
   -DENABLE_DART_LOGGING=OFF \
   -DENABLE_SCALAPACK=OFF \
-  -DENABLE_HDF5=OFF \
+  -DENABLE_HWLOC_PCI=OFF \
+  -DENABLE_HDF5=ON \
   -DBUILD_EXAMPLES=ON \
   -DBUILD_TESTS=ON \
   -DPAPI_PREFIX=${PAPI_HOME}"
@@ -83,7 +91,8 @@ elif [ "$BUILD_TYPE" = "Debug" ]; then
   -DENABLE_TRACE_LOGGING=OFF \
   -DENABLE_DART_LOGGING=OFF \
   -DENABLE_SCALAPACK=OFF \
-  -DENABLE_HDF5=OFF \
+  -DENABLE_HWLOC_PCI=OFF \
+  -DENABLE_HDF5=ON \
   -DBUILD_EXAMPLES=ON \
   -DBUILD_TESTS=ON \
   -DPAPI_PREFIX=${PAPI_HOME}"
@@ -102,7 +111,8 @@ elif [ "$BUILD_TYPE" = "Development" ]; then
   -DENABLE_TRACE_LOGGING=ON \
   -DENABLE_DART_LOGGING=ON \
   -DENABLE_SCALAPACK=OFF \
-  -DENABLE_HDF5=OFF \
+  -DENABLE_HWLOC_PCI=OFF \
+  -DENABLE_HDF5=ON \
   -DBUILD_EXAMPLES=ON \
   -DBUILD_TESTS=ON \
   -DPAPI_PREFIX=${PAPI_HOME}"

@@ -166,7 +166,7 @@ dart_ret_t dart_segment_add_info(const dart_segment_info_t *item)
   DART_LOG_TRACE(
     "dart_adapt_transtable_add() item: "
     "seg_id:%d size:%zu disp:%"PRIu64" win:%"PRIu64"",
-    item->seg_id, item->size, (uint64_t)item->disp, (uint64_t)item->win);
+    item->seg_id, item->size, (unsigned long)item->disp, (unsigned long)item->win);
   segment->seg_info.seg_id  = item->seg_id;
   segment->seg_info.size    = item->size;
   segment->seg_info.disp    = item->disp;
@@ -253,7 +253,7 @@ dart_ret_t dart_segment_get_disp(int16_t seg_id,
   trans_disp = segment->seg_info.disp[rel_unitid];
   *disp_s    = trans_disp;
   DART_LOG_TRACE("dart_adapt_transtable_get_disp > dist:%"PRIu64"",
-                 (uint64_t)trans_disp);
+                 (unsigned long)trans_disp);
   return DART_OK;
 }
 

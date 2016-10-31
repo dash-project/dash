@@ -13,7 +13,6 @@ FAILED=false
 #   module load intel
 # fi
 
-
 run_ci()
 {
   BUILD_TYPE=${1}
@@ -32,16 +31,21 @@ run_ci()
     ### Test DASH using DART MPI backend:
     #
     echo "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
-    $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
-    TEST_STATUS=$?
     echo "[ >> LOG ] $DEPLOY_PATH/test_mpi.log"
+    if [ "$VERBOSE_CI" = "" ]; then
+      $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
+    else
+      $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log | grep -v "LOG ="
+    fi
+    TEST_STATUS=$?
     ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat" $DEPLOY_PATH/test_mpi.log`
     if [ "$TEST_STATUS" = "0" ]; then
       if [ "$ERROR_PATTERNS" -ne "0" ]; then
         FAILED=true
         echo "[  ERROR ] error pattern detected. Check logs"
+      else
+        echo "[     OK ]"
       fi
-      echo "[     OK ]"
     else
       FAILED=true
       echo "[ FAILED ]"
@@ -72,5 +76,5 @@ else
 fi
 
 if $FAILED; then
-  exit -1
+  exit 1
 fi

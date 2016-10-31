@@ -1,6 +1,6 @@
 # The DASH HDF5 API
 The HDF data format is commonly used to store (possibily) heterogeneus data in binary format.
-As the file contains an index, the data is portable between different systems, even if the data types on source and target systems vary in length. Hence, the data can be easily processed later on with a variety of tools. Each file consits of zero to many datasets holding the data and additional metadata. See (https://www.hdfgroup.org/HDF5/).
+As the file contains an index, the data is portable between different systems, even if the data types on source and target systems vary in length. Hence, the data can be easily processed later on with a variety of tools. Each file consits of zero to many datasets holding the data and additional metadata. For detailed information on the HDF5 format, see [www.hdfgroup.org](https://www.hdfgroup.org/HDF5/).
 
 As DASH arrays provide well-defined distributed memory, the containing data can be directly passed to the parallel hdf5 API. For that, the distribution pattern is queried from the array and reverse engineered as an hdf5 pattern. The DASH HDF5 API automates this process and provides a simple user interface for loading and storing data.
 

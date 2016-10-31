@@ -3,33 +3,33 @@
 
 ##Concepts in the DASH Library
 
-- [Container](/Userguide/ContainerConcept)
+- [Container](/Containers/ContainerConcept)
 
-  - [Static Container](/Userguide/StaticContainerConcept)
+  - [Static Container](/Containers/StaticContainerConcept)
 
-    - [Array](/Userguide/Array)
-    - [NArray, Matrix](/Userguide/NArray)
+    - [Array](/Containers/Array)
+    - [NArray, Matrix](/Containers/NArray)
 
-  - [Dynamic Container](/Userguide/DynamicContainerConcept)
+  - [Dynamic Container](/Containers/DynamicContainerConcept)
 
-    - [List](/Userguide/List)
-    - [Unordered Map](/Userguide/UnorderedMap)
+    - [List](/Containers/List)
+    - [Unordered Map](/Containers/UnorderedMap)
 
-  - [Global Iterator Concept](/Userguide/GlobIterConcept)
+  - [Global Iterator Concept](/Containers/GlobIterConcept)
 
     - [GlobIter]()
     - [GlobStencilIter]()
     - [GlobViewIter]()
     - [GlobListIter]()
 
-  - [Input / Output](/Userguide/InputOutput)
+- [Input / Output](/InputOutput)
   
-    - [HDF5 Driver](/Userguide/HDF5Driver)
+  - [HDF5 Driver](/InputOutput/HDF5)
 
-- [Pattern Concept](/Userguide/Pattern)
+- [Pattern Concept](/Pattern)
 
-- [Algorithms](/Userguide/Algorithms)
+- [Algorithms](/Algorithms)
 
-- [Utilities](/Userguide/Utilities)
+- [Utilities](/Utilities)
 
-    - [Locality Hierarchies](/Userguide/LocalityHierarchies)
+    - [Locality Hierarchies](/Utilities/LocalityHierarchies)

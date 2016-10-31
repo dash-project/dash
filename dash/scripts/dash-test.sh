@@ -34,6 +34,9 @@ if [ $DART_IMPL = "shmem" ]; then
   RUN_CMD="$BIN_PATH/dartrun-shmem"
   TEST_BINARY="$BIN_PATH/dash/test/shmem/dash-test-shmem"
 elif [ $DART_IMPL = "mpi" ]; then
+  if (mpirun --help | grep -ic "open\(.\)\?mpi" >/dev/null 2>&1) ; then
+    MPI_EXEC_FLAGS="--map-by core ${MPI_EXEC_FLAGS}"
+  fi
   RUN_CMD="mpirun ${MPI_EXEC_FLAGS}"
   TEST_BINARY="$BIN_PATH/dash/test/mpi/dash-test-mpi"
 else
@@ -47,17 +50,18 @@ run_suite()
 {
   NCORES=`cat /proc/cpuinfo | grep -c 'core id'`
   NUNITS=$1
-  if [ "$DASH_MAX_UNITS" -ne "" ]; then
+  if ! [ "$DASH_MAX_UNITS" = "" ]; then
     NCORES=$DASH_MAX_UNITS
   fi
   if [ $NCORES -lt $NUNITS ]; then
-    exit 0
+    return 0
   fi
   BIND_CMD=""
   MAX_RANK=$((NUNITS - 1))
 # if [ `which numactl` ]; then
 #   BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
 # fi
+  export GTEST_OUTPUT="xml:dash-tests-${NUNITS}.xml"
   echo "[[== START ====================================================]]" | \
     tee -a $LOGFILE
   echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${BIND_CMD} ${TEST_BINARY}" | \

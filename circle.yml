@@ -1,0 +1,19 @@
+machine:
+  services:
+    - docker
+
+dependencies:
+  override:
+    - docker info
+    - docker build --rm=false --tag=dash/testing ./dash/scripts/docker-testing/openmpi/
+
+test:
+  override:
+    - sh ./dash/scripts/circleci/run-docker.sh:
+        parallel: true
+    - cat ./dash-ci.log | grep "PASSED" || exit 1:
+        parallel: true
+  post:
+    - cat ./build-ci/*/*/test_mpi.log | grep -v "LOG"
+    - cat ./dash-ci.err
+    - cat ./build-ci/*/*/build.log
