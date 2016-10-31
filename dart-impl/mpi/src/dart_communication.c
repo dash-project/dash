@@ -751,7 +751,7 @@ dart_ret_t dart_put_blocking(
     win = dart_team_data[index].window;
     disp_rel = disp_s + offset;
     DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
-                   "target (coll.): win:%"PRIu64" unit:%d offset:%"PRIu64" "
+                   "target (coll.): win:%"PRIu64" unit:%d offset:%p "
                    "<- source: %p",
                    nbytes, (uint64_t)win, target_unitid_rel,
                    (uint64_t)disp_rel, src);
@@ -759,7 +759,7 @@ dart_ret_t dart_put_blocking(
     win      = dart_win_local_alloc;
     disp_rel = offset;
     DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
-                   "target (local): win:%"PRIu64" unit:%d offset:%"PRIu64" "
+                   "target (local): win:%"PRIu64" unit:%d offset:%p "
                    "<- source: %p",
                    nbytes, (uint64_t)win, target_unitid_rel,
                    (uint64_t)disp_rel, src);
@@ -787,6 +787,12 @@ dart_ret_t dart_put_blocking(
   if (MPI_Win_flush(target_unitid_rel, win) != MPI_SUCCESS) {
     dart_comm_up();
     DART_LOG_ERROR("dart_put_blocking ! MPI_Win_flush failed");
+    return DART_ERR_INVAL;
+  }
+  DART_LOG_DEBUG("dart_put_blocking: MPI_Win_sync");
+  if (MPI_Win_sync(win) != MPI_SUCCESS) {
+    dart_comm_up();
+    DART_LOG_ERROR("dart_put_blocking ! MPI_Win_sync failed");
     return DART_ERR_INVAL;
   }
   dart_comm_up();
@@ -829,7 +835,7 @@ dart_ret_t dart_get_blocking(
   }
 
   DART_LOG_DEBUG("dart_get_blocking() uid_abs:%d uid_rel:%d "
-                 "o:%"PRIu64" s:%d i:%u, nbytes:%zu",
+                 "o:%p s:%d i:%u, nbytes:%zu",
                  target_unitid_abs, target_unitid_rel,
                  offset, seg_id, index, nbytes);
 
