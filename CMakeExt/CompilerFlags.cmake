@@ -35,11 +35,17 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   set (CXX_GDB_FLAG "-ggdb3 -rdynamic"
        CACHE STRING "C++ compiler GDB debug symbols flag")
   set (CXX_OMP_FLAG "-fopenmp")
+  if(ENABLE_LT_OPTIMIZATION)
+    set (CXX_LTO_FLAG "-flto -fwhole-program -fno-use-linker-plugin")
+  endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Intel")
   # using Intel C++
   set (CXX_STD_FLAG "-std=c++11"
        CACHE STRING "C++ compiler std flag")
   set (CXX_OMP_FLAG "-qopenmp")
+  if(ENABLE_LT_OPTIMIZATION)
+    set (CXX_LTO_FLAG "-ipo")
+  endif()
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Cray")
   # Cray compiler not supported for C++
   message(FATAL_ERROR,
@@ -83,9 +89,9 @@ set(CMAKE_CXX_FLAGS_DEBUG
     "${CMAKE_CXX_FLAGS_DEBUG} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_WARN_FLAG} -O0 -DDASH_DEBUG ${CXX_GDB_FLAG}")
 
 set(CMAKE_C_FLAGS_RELEASE
-    "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
+  "${CMAKE_C_FLAGS_RELEASE} ${CC_STD_FLAG} ${CXX_OMP_FLAG} ${CXX_LTO_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 set(CMAKE_CXX_FLAGS_RELEASE
-    "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
+  "${CMAKE_CXX_FLAGS_RELEASE} ${CXX_STD_FLAG} ${CXX_OMP_FLAG} ${CXX_LTO_FLAG} ${CC_WARN_FLAG} -Ofast -DDASH_RELEASE")
 
 if (BUILD_COVERAGE_TESTS)
   # Profiling is only supported for Debug builds:

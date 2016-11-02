@@ -54,6 +54,7 @@ rm -Rf $BUILD_DIR/*
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_COMPILER_WARNINGS=ON \
+                        -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_ASSERTIONS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
