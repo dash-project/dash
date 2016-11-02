@@ -8,8 +8,9 @@ TEST_F(GlobMemTest, ConstructorInitializerList)
   std::vector<int> glob_values;
   for (int u = 0; u < dash::size(); u++) {
     for (int l = 0; l < target_local_elements.size(); l++) {
-      glob_values.push_back(static_cast<int>(*(target.at(u,l))));
-      EXPECT_EQ_U(l+1, glob_values.back());
+      int val = *(target.at(u,l));
+      EXPECT_EQ_U(l+1, val);
+      glob_values.push_back(val);
     }
   }
   for (auto val : glob_values) {
@@ -27,7 +28,7 @@ TEST_F(GlobMemTest, LocalBegin)
 {
   auto   target_local_elements = { 1, 2, 3, 4 };
 
-  auto & sub_team = dash::size() < 2
+  auto & sub_team = dash::size() < 4
                     ? dash::Team::All()
                     : dash::Team::All().split(2);
 
