@@ -20,22 +20,20 @@ namespace dash {
  *
  * \ingroup     DashAlgorithms
  */
-template<
-    typename ElementType,
-    class PatternType>
+template<typename GlobIterT>
 void fill(
-    /// Iterator to the initial position in the sequence
-    GlobIter<ElementType, PatternType>  first,
-    /// Iterator to the final position in the sequence
-    GlobIter<ElementType, PatternType>  last,
-    /// Value which will be assigned to the elements in range [first, last)
-    const ElementType & value) {
-    /// Global iterators to local range:
-    auto index_range  = dash::local_range(first, last);
-    auto lfirst = index_range.begin;
-    auto llast = index_range.end;
+  /// Iterator to the initial position in the sequence
+  GlobIterT           first,
+  /// Iterator to the final position in the sequence
+  GlobIterT           last,
+  /// Value which will be assigned to the elements in range [first, last)
+  const ElementType & value) {
+  /// Global iterators to local range:
+  auto index_range  = dash::local_range(first, last);
+  auto lfirst       = index_range.begin;
+  auto llast        = index_range.end;
 
-    std::fill(lfirst, llast, value);
+  std::fill(lfirst, llast, value);
 }
 
 } // namespace dash
