@@ -16,8 +16,8 @@ auto array = dash::Array<double>(1000);
 dash::io:StoreHDF::write(array, "file.hdf5", "dataset");
 
 // Same as
-dash::io::HDF5OutputStream os("file.hdf5");
-os << dash::io::HDF5dataset("dataset") << array;
+dash::io::hdf5::OutputStream os("file.hdf5");
+os << dash::io::hdf5::dataset("dataset") << array;
 ```
 
 Data from and hdf5 file can be easily read in a similar way:
@@ -27,17 +27,17 @@ dash::Array<double> array;
 dash::io:StoreHDF::read(array, "file.hdf5", "dataset");
 
 // Same as
-dash::io::HDF5InputStream is("file.hdf5");
-is >> dash::io::HDF5dataset("dataset") >> array;
+dash::io::hdf5::InputStream is("file.hdf5");
+is >> dash::io::hdf5::dataset("dataset") >> array;
 ```
 
 ## Options
 To specify how to deal with already existing files, datasets and pattern metadata, the API provides stream modifiers:
 
 ```cpp
-dash::io::HDF5OutputStream os("file.hdf5");
-os   << dash::io::HDF5dataset("dataset")
-     << dash::io::HDF5store_pattern(false)
+dash::io::hdf5::OutputStream os("file.hdf5");
+os   << dash::io::hdf5::dataset("dataset")
+     << dash::io::hdf5::store_pattern(false)
      << matrix;
 ```
 
@@ -51,10 +51,10 @@ It is possible to add more datasets to a single hdf5 file. To this, the append o
 auto matrix_a = dash::Matrix<int,2>(100, 100);
 auto matrix_b = dash::Matrix<int,3>(10, 15, 20);
 
-dash::io::HDF5OutputStream os("file.hdf5", dash::io::HDF5FileOptions::Append);
-os << dash::io::HDF5dataset("pressure")
+dash::io::hdf5::OutputStream os("file.hdf5", dash::io::hdf5::DeviceMode::App);
+os << dash::io::hdf5::dataset("pressure")
    << matrix_a
-   << dash::io::HDF5dataset("temperature")
+   << dash::io::hdf5::dataset("temperature")
    << matrix_b;
 ```
 
@@ -66,10 +66,10 @@ Hence, the option `modify_dataset` has to be set if and only if an already exist
 // Modify dataset
 auto matrix_a = dash::Matrix<int,2>(100, 100);
 auto matrix_b = dash::Matrix<int,2>(100, 100);
-dash::io::HDF5OutputStream os("file.hdf5", dash::io::HDF5FileOptions::Append);
-os << dash::io::HDF5dataset("temperature")
+dash::io::hdf5::OutputStream os("file.hdf5", dash::io::hdf5::DeviceMode::App);
+os << dash::io::hdf5::dataset("temperature")
    << matrix_a
-   << dash::io::HDF5modify_dataset()
+   << dash::io::hdf5::modify_dataset()
    << matrix_b;
 ```
 

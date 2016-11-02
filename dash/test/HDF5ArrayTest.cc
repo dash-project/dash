@@ -16,9 +16,9 @@ typedef dash::Array<value_t, long> array_t;
 namespace dio = dash::io::hdf5;
 
 using dash::io::hdf5::StoreHDF;
-using dash::io::hdf5::HDF5FileOptions;
-using dash::io::hdf5::HDF5InputStream;
-using dash::io::hdf5::HDF5OutputStream;
+using dash::io::hdf5::DeviceMode;
+using dash::io::hdf5::InputStream;
+using dash::io::hdf5::OutputStream;
 using dash::io::hdf5::dataset;
 using dash::io::hdf5::modify_dataset;
 using dash::io::hdf5::store_pattern;
@@ -174,14 +174,14 @@ TEST_F(HDF5ArrayTest, OutputStreamOpen)
     fill_array(array_a);
     dash::barrier();
 
-    auto os  = HDF5OutputStream(_filename);
+    auto os  = OutputStream(_filename);
     os   << dio::dataset(_dataset)
          << array_a;
   }
   dash::barrier();
   // Import data
   dash::Array<long> array_b;
-  auto is = HDF5InputStream(_filename);
+  auto is = InputStream(_filename);
   is >> dio::dataset(_dataset) >> array_b;
 
   verify_array(array_b);
@@ -255,16 +255,16 @@ TEST_F(HDF5ArrayTest, UnderfilledPatPreAllocate)
 
 TEST_F(HDF5ArrayTest, MultipleDatasets)
 {
-	int    ext_x    = dash::size() * 5;
-	int    secret_a = 10;
-	double secret_b = 3;
-	{
+  int    ext_x    = dash::size() * 5;
+  int    secret_a = 10;
+  double secret_b = 3;
+  {
     auto array_a = dash::Array<int>(ext_x);
-		auto array_b = dash::Array<double>(ext_x*2);
+    auto array_b = dash::Array<double>(ext_x*2);
 
     // Fill
     fill_array(array_a, secret_a);
-		fill_array(array_b, secret_b);
+    fill_array(array_b, secret_b);
     dash::barrier();
 
     // Set option
@@ -272,13 +272,13 @@ TEST_F(HDF5ArrayTest, MultipleDatasets)
     fopts.overwrite_file = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
-		StoreHDF::write(array_b, _filename, "datasettwo", fopts);
+    StoreHDF::write(array_b, _filename, "datasettwo", fopts);
     dash::barrier();
   }
   dash::Array<int>    array_c;
-	dash::Array<double> array_d;
-	StoreHDF::read(array_c, _filename, _dataset);
-	StoreHDF::read(array_d, _filename, "datasettwo");
+  dash::Array<double> array_d;
+  StoreHDF::read(array_c, _filename, _dataset);
+  StoreHDF::read(array_d, _filename, "datasettwo");
 
   dash::barrier();
 
@@ -289,16 +289,16 @@ TEST_F(HDF5ArrayTest, MultipleDatasets)
 
 TEST_F(HDF5ArrayTest, ModifyDataset)
 {
-	int    ext_x    = dash::size() * 5;
-	double secret_a = 10;
-	double secret_b = 3;
-	{
+  int    ext_x    = dash::size() * 5;
+  double secret_a = 10;
+  double secret_b = 3;
+  {
     auto array_a = dash::Array<double>(ext_x);
-		auto array_b = dash::Array<double>(ext_x);
+    auto array_b = dash::Array<double>(ext_x);
 
     // Fill
     fill_array(array_a, secret_a);
-		fill_array(array_b, secret_b);
+    fill_array(array_b, secret_b);
     dash::barrier();
 
     // Set option
@@ -306,14 +306,14 @@ TEST_F(HDF5ArrayTest, ModifyDataset)
     fopts.overwrite_file = false;
 
     StoreHDF::write(array_a, _filename, _dataset, fopts);
-		dash::barrier();
-		// overwrite first data
-		fopts.modify_dataset = true;
-		StoreHDF::write(array_b, _filename, _dataset, fopts);
+    dash::barrier();
+    // overwrite first data
+    fopts.modify_dataset = true;
+    StoreHDF::write(array_b, _filename, _dataset, fopts);
     dash::barrier();
   }
   dash::Array<double>    array_c;
-	StoreHDF::read(array_c, _filename, _dataset);
+  StoreHDF::read(array_c, _filename, _dataset);
 
   dash::barrier();
 
@@ -334,7 +334,7 @@ double secret = 10;
 
   // Set option
 
-  HDF5OutputStream os(_filename, HDF5FileOptions::Append);
+  OutputStream os(_filename, DeviceMode::app);
   os << dio::dataset("settwo")
      << dio::setpattern_key("custom_dash_pattern")
      << dio::store_pattern()
@@ -345,7 +345,7 @@ double secret = 10;
   dash::barrier();
 }
 dash::Array<double>    array_b;
-HDF5InputStream is(_filename);
+InputStream is(_filename);
 is >> dio::dataset("settwo")
    >> dio::setpattern_key("custom_dash_pattern")
    >> dio::restore_pattern()
@@ -374,7 +374,7 @@ TEST_F(HDF5ArrayTest, GroupTest)
   
     // Set option
   
-    HDF5OutputStream os(_filename);
+    OutputStream os(_filename);
     os << dio::dataset("array_a")
        << array_a
        << dio::dataset("g1/array_b")
@@ -387,7 +387,7 @@ TEST_F(HDF5ArrayTest, GroupTest)
   dash::Array<double> array_a;
   dash::Array<double> array_b;
   dash::Array<double> array_c;
-  HDF5InputStream is(_filename);
+  InputStream is(_filename);
   is >> dio::dataset("array_a")
      >> array_a
      >> dio::dataset("g1/array_b")
