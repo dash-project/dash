@@ -24,6 +24,12 @@ if(POLICY CMP0016)
   cmake_policy(SET CMP0016 OLD)
 endif(POLICY CMP0016)
 
+if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+  set(DEFAULT_COMPTIME_RED on)
+else()
+  set(DEFAULT_COMPTIME_RED off)
+endif()
+
 ## Build options
 option(BUILD_TESTS
        "Whether tests should be built" on)
@@ -41,7 +47,7 @@ option(WARNINGS_AS_ERRORS
 option(ENABLE_LT_OPTIMIZATION
        "Specify whether link-time-optimization should be used" off)
 option(ENABLE_COMPTIME_RED
-       "Specify whether opts to reduce the build time should be used" on)
+  "Specify whether opts to reduce the build time should be used" ${DEFAULT_COMPTIME_RED})
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
 option(ENABLE_TEST_LOGGING
