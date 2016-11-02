@@ -1,8 +1,12 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
+
 #include "TestBase.h"
 #include "ArrayLargeStructTest.h"
+
 #include <iostream>
+#include <memory>
+
 
 using namespace std;
 
@@ -20,19 +24,17 @@ TEST_F(ArrayLargeStruct, LocalArrayTest)
 
   if(_dash_id == 0) {
     LOG_MESSAGE("Assigning array values");
-    DGNode *write = new DGNode();
-    DGNode *read = new DGNode();
+    auto write = std::unique_ptr<DGNode>(new DGNode());
+    auto read  = std::unique_ptr<DGNode>(new DGNode());
 
     for(size_t i = 0; i < array_size; ++i) {
       write->len = 10000;
       //Blocking Write
-      arr1[i].put(write);
+      arr1[i].put(write.get());
       //Blocking Read
-      arr1[i].get(read);
+      arr1[i].get(read.get());
       ASSERT_EQ(read->len, 10000);
     }
-    delete write;
-    delete read;
   }
 
   // Units waiting for value initialization
