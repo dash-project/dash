@@ -64,12 +64,16 @@ public:
    * Constructor.
    * Creates a new instance of \c dash::CollectiveAllocator for a given team.
    */
-  CollectiveAllocator(
+  explicit CollectiveAllocator(
     Team & team = dash::Team::Null()) noexcept
   : _team_id(team.dart_id())
   {
     // Cannot use DASH_ASSERT due to noexcept qualifier:
-    assert(dart_team_size(_team_id, &_nunits) == DART_OK);
+    if (team == dash::Team::Null()) {
+      _nunits = 0;
+    } else {
+      assert(dart_team_size(_team_id, &_nunits) == DART_OK);
+    }
   }
 
   /**
