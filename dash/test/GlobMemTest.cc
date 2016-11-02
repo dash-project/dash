@@ -22,3 +22,26 @@ TEST_F(GlobMemTest, ConstructorInitializer_list)
   ASSERT_EQ_U(5, target_element);
 }
 
+TEST_F(GlobMemTest, lbegin)
+{
+  auto target_local_elements = {1,2,3,4};
+  auto target = dash::GlobMem<int>(target_local_elements, dash::Team::All());
+
+  auto element = target.lbegin(dash::myid());
+
+  if(0 == dash::myid()) {
+    ASSERT_EQ(*element, 1);
+  }
+  
+  if(1 == dash::myid()) {
+    ASSERT_EQ(*element, 2);
+  }
+
+  if(2 == dash::myid()) {
+    ASSERT_EQ(*element, 3);
+  }
+
+  if(3 == dash::myid()) {
+    ASSERT_EQ(*element, 4);
+  }
+}
