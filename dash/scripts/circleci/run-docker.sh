@@ -22,7 +22,7 @@ for MPIENV in ${MPIENVS[@]}; do
     cat $PWD/dash-ci.log | grep "FAILED"
     if [ "$?" -eq "0" ]; then
       echo "Log contains errors"
-      return 1
+      exit 1
     fi
   fi
   
