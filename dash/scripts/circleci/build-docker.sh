@@ -12,4 +12,3 @@ for MPIENV in ${MPIENVS[@]}; do
   fi
   i=$((i + 1))
 done
-exit 0
