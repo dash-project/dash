@@ -149,6 +149,8 @@ public:
                               _lbegin);
     DASH_ASSERT_EQ(_lend, copy_end,
                    "initialization of specified local values failed");
+    // Wait for initialization of local values at all units:
+    team.barrier();
 
     DASH_LOG_TRACE("GlobMem(lvals,team) >",
                    "_lbegin:", _lbegin, "_lend:", _lend);
