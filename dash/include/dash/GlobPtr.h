@@ -33,6 +33,24 @@ std::ostream & operator<<(
   std::ostream               & os,
   const GlobPtr<T, PatternT> & it);
 
+/**
+ * Pointer in global memory space.
+ *
+ * \note
+ * For performance considerations, the iteration space of \c GlobPtr
+ * is restricted to *local address space*.
+ * If an instance of \c GlobPtr is incremented past the last address
+ * of the underlying local memory range, it is not advanced to the
+ * next unit's local address range.
+ * Iteration over unit borders is implemented by \c GlobalIterator
+ * types which perform a mapping of local and global index sets
+ * specified by a \c Pattern.
+ *
+ * \see GlobIter
+ * \see GlobViewIter
+ * \see DashPatternConcept
+ *
+ */
 template<
   typename ElementType,
   class    PatternType  = Pattern<1> >
@@ -91,8 +109,8 @@ public:
    * Constructor, creates a new instance of dash::GlobPtr from a global
    * reference.
    */
-  GlobPtr(const dash::GlobRef<ElementType> & globref)
-  : _dart_gptr(globref.gptr().dart_gptr())
+  explicit GlobPtr(const dash::GlobRef<ElementType> & globref)
+  : _dart_gptr(globref.dart_gptr())
   {
     DASH_LOG_TRACE("GlobPtr()", "GlobRef<T> globref");
   }

@@ -57,14 +57,23 @@ public:
    * Constructor, creates an GlobRef object referencing an element in global
    * memory.
    */
-  template<class PatternT>
+  template<typename PatternT>
   GlobRef(
     /// Pointer to referenced object in global memory
     GlobPtr<T, PatternT> & gptr)
-  : _gptr(gptr.dart_gptr())
-  {
-    DASH_LOG_TRACE_VAR("GlobRef(GlobPtr<T>)", gptr);
-  }
+  : GlobRef(gptr.dart_gptr())
+  { }
+
+  /**
+   * Constructor, creates an GlobRef object referencing an element in global
+   * memory.
+   */
+  template<typename PatternT>
+  GlobRef(
+    /// Pointer to referenced object in global memory
+    const GlobPtr<T, PatternT> & gptr)
+  : GlobRef(gptr.dart_gptr())
+  { }
 
   /**
    * Constructor, creates an GlobRef object referencing an element in global
