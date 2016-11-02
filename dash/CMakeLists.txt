@@ -35,6 +35,9 @@ set(ENABLE_LIKWID ${ENABLE_LIKWID}
     PARENT_SCOPE)
 set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
+set(ENABLE_COMPTIME_RED ${ENABLE_COMPTIME_RED}
+    PARENT_SCOPE)
+
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
@@ -274,6 +277,11 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${DASH_LIBRARY} PROPERTIES
     CXX_STANDARD 11
   )
+
+  if(ENABLE_COMPTIME_RED)
+    cotire(${DASH_LIBRARY})
+  endif()
+
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
     CXX_STANDARD_REQUIRED 11
@@ -433,6 +441,11 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
       ${DASH_TEST} PROPERTIES
       CXX_STANDARD 11
     )
+
+    if(ENABLE_COMPTIME_RED)
+      cotire(${DASH_TEST})
+    endif()
+
     set_target_properties(
       ${DASH_TEST} PROPERTIES
       CXX_STANDARD_REQUIRED 11

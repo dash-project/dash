@@ -24,6 +24,12 @@ if(POLICY CMP0016)
   cmake_policy(SET CMP0016 OLD)
 endif(POLICY CMP0016)
 
+if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+  set(DEFAULT_COMPTIME_RED on)
+else()
+  set(DEFAULT_COMPTIME_RED off)
+endif()
+
 ## Build options
 option(BUILD_TESTS
        "Whether tests should be built" on)
@@ -40,6 +46,8 @@ option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LT_OPTIMIZATION
        "Specify whether link-time-optimization should be used" off)
+option(ENABLE_COMPTIME_RED
+  "Specify whether opts to reduce the build time should be used" ${DEFAULT_COMPTIME_RED})
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
 option(ENABLE_TEST_LOGGING
@@ -92,6 +100,9 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
+if (ENABLE_COMPTIME_RED)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
+endif()
 
 # Load build modules to locate libraries after environment setup
 # has been loaded:
@@ -213,6 +224,8 @@ message(INFO "Strict compiler warnings: (ENABLE_COMPILER_WARNINGS)       "
         ${ENABLE_COMPILER_WARNINGS})
 message(INFO "Link Time Optimization:   (ENABLE_LT_OPTIMIZATION)         "
         ${ENABLE_LT_OPTIMIZATION})
+message(INFO "Compile Time Reduction:   (ENABLE_COMPTIME_RED)            "
+        ${ENABLE_COMPTIME_RED})
 message(INFO "Debug log messages:       (ENABLE_LOGGING)                 "
         ${ENABLE_LOGGING})
 message(INFO "Trace log messages:       (ENABLE_TRACE_LOGGING)           "
