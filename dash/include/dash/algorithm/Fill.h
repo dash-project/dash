@@ -20,12 +20,14 @@ namespace dash {
  *
  * \ingroup     DashAlgorithms
  */
-template<typename GlobIterT>
+template<
+  typename GlobIterType,
+  typename ElementType>
 void fill(
   /// Iterator to the initial position in the sequence
-  GlobIterT           first,
+  GlobIterType        first,
   /// Iterator to the final position in the sequence
-  GlobIterT           last,
+  GlobIterType        last,
   /// Value which will be assigned to the elements in range [first, last)
   const ElementType & value) {
   /// Global iterators to local range:

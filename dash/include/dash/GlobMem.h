@@ -113,6 +113,10 @@ public:
     DASH_LOG_TRACE("GlobMem(nlocal,team)",
                    "number of local values:", _nlelem,
                    "team size:",              team.size());
+    if (_nlelem == 0 || _nunits == 0) {
+      DASH_LOG_DEBUG("GlobMem(lvals,team)", "nothing to allocate");
+      return;
+    }
     _begptr = _allocator.allocate(_nlelem);
     DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
 
@@ -135,9 +139,13 @@ public:
     _nlelem(local_elements.size()),
     _nunits(team.size())
   {
-    DASH_LOG_TRACE("GlobMem(lvals,team)",
+    DASH_LOG_DEBUG("GlobMem(lvals,team)",
                    "number of local values:", _nlelem,
                    "team size:",              team.size());
+    if (_nlelem == 0 || _nunits == 0) {
+      DASH_LOG_DEBUG("GlobMem(lvals,team)", "nothing to allocate");
+      return;
+    }
     _begptr = _allocator.allocate(_nlelem);
     DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
 
@@ -152,7 +160,7 @@ public:
     // Wait for initialization of local values at all units:
     team.barrier();
 
-    DASH_LOG_TRACE("GlobMem(lvals,team) >",
+    DASH_LOG_DEBUG("GlobMem(lvals,team) >",
                    "_lbegin:", _lbegin, "_lend:", _lend);
   }
 
@@ -368,6 +376,9 @@ public:
    */
   void barrier() const
   {
+    if (DART_TEAM_NULL == _team_id) {
+      return;
+    }
     DASH_ASSERT_RETURNS(
       dart_barrier(_teamid),
       DART_OK);
@@ -404,9 +415,6 @@ public:
   /**
    * Resolve the global pointer from an element position in a unit's
    * local memory.
-   *
-   * TODO: Should return GlobPtr<T> as dart_gptr_t is not an iterator.
-   *       See GlobDynamicMem in comparison.
    */
   template<typename IndexType>
   dash::GlobPtr<value_type> at(
@@ -416,7 +424,9 @@ public:
     IndexType   local_index) const
   {
     DASH_LOG_DEBUG("GlobMem.at(unit,l_idx)", unit, local_index);
-    if (_nunits <= 0) {
+    if (_nunits == 0 || DART_GPTR_NULL == _begptr) {
+      DASH_LOG_DEBUG("GlobMem.at(unit,l_idx) >",
+                     "global memory not allocated");
       return dash::GlobPtr<value_type>(nullptr);
     }
     // Initialize with global pointer to start address:
@@ -450,12 +460,12 @@ public:
 
 private:
   allocator_type          _allocator;
-  dart_gptr_t             _begptr;
-  dart_team_t             _teamid;
-  size_type               _nunits;
-  size_type               _nlelem;
-  ElementType           * _lbegin    = nullptr;
-  ElementType           * _lend      = nullptr;
+  dart_gptr_t             _begptr     = DART_GPTR_NULL;
+  dart_team_t             _teamid     = DART_TEAM_NULL;
+  size_type               _nunits     = 0;
+  size_type               _nlelem     = 0;
+  ElementType           * _lbegin     = nullptr;
+  ElementType           * _lend       = nullptr;
 };
 
 template<typename T>
