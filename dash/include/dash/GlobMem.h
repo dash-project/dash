@@ -376,7 +376,7 @@ public:
    */
   void barrier() const
   {
-    if (DART_TEAM_NULL == _team_id) {
+    if (DART_TEAM_NULL == _teamid) {
       return;
     }
     DASH_ASSERT_RETURNS(
