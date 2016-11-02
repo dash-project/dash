@@ -131,18 +131,11 @@ private:
  * Example:
  *
  * \code
- * class MyDeviceModes : public dash::io::IOSBaseMode {
- * public:
- *   typedef enum mydevice_openmode_
- *   : dash::io::IOSBaseMode::openmode {
+ * enum class MyDeviceModes : public dash::io::IOSBaseMode {
  *     // device-specific modes:
  *     mydevice_foo_mode_ = 1 << 8,
  *     mydevice_bar_mode_ = 1 << 9
- *   }
- *   typedef mydevice_openmode_ openmode;
- *
- *   static const openmode foo = mydevice_foo_mode_;
- * };
+ * }
  *
  * typedef dash::io::IOStreamMode<MyDeviceModes>
  *         MyDeviceStreamMode;
