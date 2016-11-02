@@ -6,7 +6,7 @@ MPIENVS=(openmpi mpich)
 
 i=0
 for MPIENV in ${MPIENVS[@]}; do
-  if [[ "$i % ${CIRCLE_NODE_TOTAL} == ${CIRCLE_NODE_INDEX}" ]]; then
+  if [[ $(( $i % ${CIRCLE_NODE_TOTAL} )) -eq ${CIRCLE_NODE_INDEX} ]]; then
     echo "Building docker container $MPIENV"
     docker build --rm=false --tag=dash/ci-$MPIENV ./dash/scripts/docker-testing/$MPIENV/
   fi

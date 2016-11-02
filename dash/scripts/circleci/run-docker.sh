@@ -5,7 +5,7 @@ MPIENVS=(openmpi mpich)
 # run tests 
 i=0
 for MPIENV in ${MPIENVS[@]}; do
-  if [[ "$i % ${CIRCLE_NODE_TOTAL} == ${CIRCLE_NODE_INDEX}" ]]; then
+  if [[ $(( $i % ${CIRCLE_NODE_TOTAL} )) -eq ${CIRCLE_NODE_INDEX} ]]; then
     
     echo "Starting docker container: $MPIENV"
     
