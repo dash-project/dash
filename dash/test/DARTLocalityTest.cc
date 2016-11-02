@@ -42,18 +42,52 @@ bool domains_are_equal(
   return true;
 }
 
+bool domains_find_each_recursive(
+  const dart_domain_locality_t * root_domain,
+  const dart_domain_locality_t * domain)
+{
+  dart_domain_locality_t * domain_found;
+  if (dart_domain_find(root_domain, domain->domain_tag, &domain_found)
+      != DART_OK) {
+    DASH_LOG_TRACE("DARTLocalityTest.domains_find_each",
+                   "domain not found:", domain->domain_tag);
+    return false;
+  }
+  if (!domains_are_equal(domain, domain_found)) {
+    DASH_LOG_TRACE("DARTLocalityTest.domains_find_each",
+                   "domain",       domain->domain_tag,
+                   "differs from", domain_found->domain_tag);
+    return false;
+  }
+  for (int d = 0; d < domain->num_domains; d++) {
+    const dart_domain_locality_t * subdomain = domain->domains + d;
+    if (!domains_find_each_recursive(root_domain, subdomain)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool domains_find_each(
+  const dart_domain_locality_t * domain)
+{
+  return domains_find_each_recursive(domain, domain);
+}
+
+
+
 TEST_F(DARTLocalityTest, CloneLocalityDomain)
 {
   dart_domain_locality_t * loc_team_all_orig;
   EXPECT_EQ_U(
-    dart_domain_team_locality(DART_TEAM_ALL, ".", &loc_team_all_orig),
-    DART_OK);
+    DART_OK,
+    dart_domain_team_locality(DART_TEAM_ALL, ".", &loc_team_all_orig));
 
   // Create copy of global locality domain:
   dart_domain_locality_t * loc_team_all_copy;
   EXPECT_EQ_U(
-    dart_domain_clone(loc_team_all_orig, &loc_team_all_copy),
-    DART_OK);
+    DART_OK,
+    dart_domain_clone(loc_team_all_orig, &loc_team_all_copy));
 
   // Compare attributes of original and copied locality domains:
   EXPECT_EQ_U(true, domains_are_equal(loc_team_all_orig, loc_team_all_copy));
@@ -65,17 +99,50 @@ TEST_F(DARTLocalityTest, FindLocalityDomain)
 {
   dart_domain_locality_t * loc_team_all_orig;
   EXPECT_EQ_U(
-    dart_domain_team_locality(DART_TEAM_ALL, ".", &loc_team_all_orig),
-    DART_OK);
+    DART_OK,
+    dart_domain_team_locality(DART_TEAM_ALL, ".", &loc_team_all_orig));
+
+  EXPECT_EQ_U(true, domains_find_each(loc_team_all_orig));
 }
 
+TEST_F(DARTLocalityTest, ExcludeLocalityDomain)
+{
+  dart_domain_locality_t * loc_team_all_orig;
+  EXPECT_EQ_U(
+    DART_OK,
+    dart_domain_team_locality(DART_TEAM_ALL, ".", &loc_team_all_orig));
+
+  // Create copy of global locality domain:
+  dart_domain_locality_t * loc_team_all_copy;
+  EXPECT_EQ_U(
+    DART_OK,
+    dart_domain_clone(loc_team_all_orig, &loc_team_all_copy));
+
+  dart_unit_locality_t * ul;
+  EXPECT_EQ_U(DART_OK, dart_unit_locality(DART_TEAM_ALL, _dash_id, &ul));
+
+  // Remove the active unit's domain:
+  const char * excluded_domain = ul->domain_tag;
+  dart_domain_exclude(
+    loc_team_all_copy, 1, &excluded_domain);
+
+  // Lookup of excluded domain should fail and return null pointer:
+  dart_domain_locality_t * no_domain;
+  EXPECT_EQ_U(
+    DART_ERR_NOTFOUND,
+    dart_domain_find(loc_team_all_copy, ul->domain_tag, &no_domain));
+  EXPECT_EQ_U(
+    NULL, no_domain);
+
+  dart_domain_destruct(loc_team_all_copy);
+}
 
 TEST_F(DARTLocalityTest, UnitLocality)
 {
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "get local unit locality descriptor");
   dart_unit_locality_t * ul;
-  ASSERT_EQ_U(DART_OK, dart_unit_locality(DART_TEAM_ALL, _dash_id, &ul));
+  EXPECT_EQ_U(DART_OK, dart_unit_locality(DART_TEAM_ALL, _dash_id, &ul));
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "pointer to local unit locality descriptor:", ul);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", *ul);
@@ -103,7 +170,7 @@ TEST_F(DARTLocalityTest, UnitLocality)
   DASH_LOG_TRACE("DARTLocalityTest.UnitLocality",
                  "get local unit's domain descriptor");
   dart_domain_locality_t * dl;
-  ASSERT_EQ_U(
+  EXPECT_EQ_U(
     DART_OK,
     dart_domain_team_locality(DART_TEAM_ALL, ul->domain_tag, &dl));
   DASH_LOG_TRACE("DARTLocalityTest.UnitLocality",
@@ -119,7 +186,7 @@ TEST_F(DARTLocalityTest, Domains)
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "get global domain descriptor");
   dart_domain_locality_t * dl;
-  ASSERT_EQ_U(DART_OK, dart_domain_team_locality(DART_TEAM_ALL, ".", &dl));
+  EXPECT_EQ_U(DART_OK, dart_domain_team_locality(DART_TEAM_ALL, ".", &dl));
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "pointer to global domain descriptor: ", dl);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.Domains", *dl);

@@ -36,7 +36,7 @@ dart_ret_t dart__base__locality__create_domain(
   dart_domain_locality_t          ** domain_out)
 {
   *domain_out = malloc(sizeof(dart_domain_locality_t));
-  return dart__base__locality__init(*domain_out);
+  return dart__base__locality__domain__init(*domain_out);
 }
 
 static inline
@@ -50,11 +50,13 @@ dart_ret_t dart__base__locality__clone_domain(
 }
 
 static inline
-dart_ret_t dart__base__locality__copy_domain(
-  const dart_domain_locality_t     * domain_in,
-  dart_domain_locality_t           * domain_out)
+dart_ret_t dart__base__locality__assign_domain(
+  dart_domain_locality_t           * domain_lhs,
+  const dart_domain_locality_t     * domain_rhs)
 {
-  return dart__base__locality__domain__copy(domain_in, domain_out);
+  dart_ret_t ret = dart__base__locality__domain__destruct(domain_lhs);
+  if (DART_OK != ret) { return ret; }
+  return dart__base__locality__domain__copy(domain_rhs, domain_lhs);
 }
 
 static inline
