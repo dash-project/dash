@@ -226,8 +226,9 @@ TEST_F(TeamLocalityTest, SplitGroups)
   // Put the first 2 units in group 1:
   group_1_units.push_back(0);
   group_1_units.push_back(1);
-  // Put every third unit in group 2, starting at rank 3:
-  for (size_t u = 3; u < dash::size(); u += 3) {
+  // Put every second unit in group 2, starting at rank 2:
+  int unit_skip = dash::size() > 4 ? 2 : 1;
+  for (size_t u = 2; u < dash::size(); u += unit_skip) {
     group_2_units.push_back(u);
   }
 
@@ -241,7 +242,7 @@ TEST_F(TeamLocalityTest, SplitGroups)
   DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group 1:", group_1_tags);
   DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group 2:", group_2_tags);
 
-  if (group_1_tags.size() > 1) {
+  if (group_1_tags.size() > 0) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_1_tags);
     auto & group_1 = tloc.group(group_1_tags);
     print_locality_domain("group_1", group_1);
@@ -250,7 +251,7 @@ TEST_F(TeamLocalityTest, SplitGroups)
     //       failure:
 //  EXPECT_EQ_U(group_1_units, group_1.units());
   }
-  if (group_2_tags.size() > 1) {
+  if (group_2_tags.size() > 0) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_2_tags);
     auto & group_2 = tloc.group(group_2_tags);
     print_locality_domain("group_2", group_2);

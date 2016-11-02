@@ -299,6 +299,10 @@ dart_ret_t dart__base__locality__domain__child(
   const char                     * subdomain_tag,
   dart_domain_locality_t        ** subdomain_out)
 {
+  DART_LOG_TRACE("dart__base__locality__domain__child() "
+                 "domain:%s, subdomain_tag:%s",
+                 (NULL != domain) ? domain->domain_tag : "?",
+                 subdomain_tag);
   if (strcmp(domain->domain_tag, subdomain_tag) == 0) {
     *subdomain_out = (dart_domain_locality_t *)(domain);
     return DART_OK;
@@ -313,6 +317,7 @@ dart_ret_t dart__base__locality__domain__child(
       return DART_OK;
     }
   }
+  DART_LOG_TRACE("dart__base__locality__domain__child ! not found");
   return DART_ERR_NOTFOUND;
 }
 

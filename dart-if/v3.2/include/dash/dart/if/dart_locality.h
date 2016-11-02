@@ -48,6 +48,35 @@ dart_ret_t dart_domain_team_locality(
   dart_domain_locality_t       ** team_domain_out);
 
 /**
+ * Default constructor.
+ * Create an empty locality domain object.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_create(
+  dart_domain_locality_t       ** domain_out);
+
+/**
+ * Copy-constructor.
+ * Create a new locality domain object as a deep copy of a specified
+ * locality domain.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_clone(
+  const dart_domain_locality_t  * domain_in,
+  dart_domain_locality_t       ** domain_out);
+
+/**
+ * Destructor.
+ * Delete a locality domain object.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_destruct(
+  dart_domain_locality_t        * domain);
+
+/**
  * Locality information of the subdomain with the specified id tag.
  *
  * \ingroup DartLocality
@@ -56,23 +85,6 @@ dart_ret_t dart_domain_find(
   const dart_domain_locality_t  * domain_in,
   const char                    * domain_tag,
   dart_domain_locality_t       ** subdomain_out);
-
-/**
- * Copy a locality domain object.
- *
- * \ingroup DartLocality
- */
-dart_ret_t dart_domain_copy(
-  const dart_domain_locality_t  * domain_in,
-  dart_domain_locality_t        * domain_out);
-
-/**
- * Delete a locality domain object.
- *
- * \ingroup DartLocality
- */
-dart_ret_t dart_domain_destruct(
-  dart_domain_locality_t        * domain);
 
 /**
  * Remove domains in locality domain hierarchy that do not match the
