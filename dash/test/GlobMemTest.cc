@@ -1,15 +1,7 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
 #include "GlobMemTest.h"
 
 TEST_F(GlobMemTest, ConstructorInitializer_list)
 {
-  DASH_LOG_TRACE("GlobMemTestxxx >",
-		 " Constructor");
-
-  ASSERT_EQ_U(7, 2);
-
   auto target_local_elements = {1,2,3,4,5,6};
   auto target = dash::GlobMem<int>(target_local_elements);
   
