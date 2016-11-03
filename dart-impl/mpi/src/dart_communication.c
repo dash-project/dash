@@ -1403,13 +1403,18 @@ dart_ret_t dart_testall_local(
 
 /* -- Dart collective operations -- */
 
+static int _dart_barrier_count = 0;
+
 dart_ret_t dart_barrier(
   dart_team_t teamid)
 {
   MPI_Comm comm;
   uint16_t index;
   int      result;
-  DART_LOG_DEBUG("dart_barrier()");
+
+  DART_LOG_DEBUG("dart_barrier() barrier count: %d", _dart_barrier_count);
+  _dart_barrier_count++;
+
   result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
     return DART_ERR_INVAL;

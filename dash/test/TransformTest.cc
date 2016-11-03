@@ -81,7 +81,7 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     int expected = global_acc + ((l_idx + 1) * _dash_size);
     DASH_LOG_TRACE("TransformTest.ArrayGlobalPlusLocalBlocking",
-                   "array_dest.local[", l_lidx, "]:",
+                   "array_dest.local[", l_idx, "]:",
                    &array_dest.local[l_idx]);
     EXPECT_EQ_U(expected, array_dest.local[l_idx]);
   }
