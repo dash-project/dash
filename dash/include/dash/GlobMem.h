@@ -144,19 +144,19 @@ public:
                    "team size:",              team.size());
     if (_nlelem == 0 || _nunits == 0) {
       DASH_LOG_DEBUG("GlobMem(lvals,team)", "nothing to allocate");
-      return;
-    }
-    _begptr = _allocator.allocate(_nlelem);
-    DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
+    } else {
+      _begptr = _allocator.allocate(_nlelem);
+      DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
 
-    _lbegin = lbegin(dash::myid());
-    _lend   = lend(dash::myid());
-    // Initialize allocated local elements with specified values:
-    auto copy_end = std::copy(local_elements.begin(),
-                              local_elements.end(),
-                              _lbegin);
-    DASH_ASSERT_EQ(_lend, copy_end,
-                   "initialization of specified local values failed");
+      _lbegin = lbegin(dash::myid());
+      _lend   = lend(dash::myid());
+      // Initialize allocated local elements with specified values:
+      auto copy_end = std::copy(local_elements.begin(),
+                                local_elements.end(),
+                                _lbegin);
+      DASH_ASSERT_EQ(_lend, copy_end,
+                     "initialization of specified local values failed");
+    }
     // Wait for initialization of local values at all units:
     barrier();
 
