@@ -7,7 +7,10 @@
 
 TEST_F(FillTest, TestAllItemsFilled)
 {
-  SKIP_TEST();
+  if (dash::size() == 3) {
+    // TODO: Fix this
+    SKIP_TEST();
+  }
 
   typedef typename Array_t::value_type value_t;
 
