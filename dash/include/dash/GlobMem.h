@@ -107,8 +107,8 @@ public:
     Team      & team = dash::Team::All())
   : _allocator(team),
     _teamid(team.dart_id()),
-    _nlelem(n_local_elem),
-    _nunits(team.size())
+    _nunits(team.size()),
+    _nlelem(n_local_elem)
   {
     DASH_LOG_TRACE("GlobMem(nlocal,team)",
                    "number of local values:", _nlelem,
@@ -132,8 +132,8 @@ public:
     Team                              & team = dash::Team::All())
   : _allocator(team),
     _teamid(team.dart_id()),
-    _nlelem(local_elements.size()),
-    _nunits(team.size())
+    _nunits(team.size()),
+    _nlelem(local_elements.size())
   {
     DASH_LOG_TRACE("GlobMem(lvals,team)",
                    "number of local values:", _nlelem,
