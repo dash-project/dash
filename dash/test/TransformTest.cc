@@ -49,6 +49,9 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
   std::array<int, num_elem_local> local;
 
+  EXPECT_EQ_U(num_elem_total, array_dest.size());
+  EXPECT_EQ_U(num_elem_local, array_dest.lend() - array_dest.lbegin());
+
   // Initialize result array: [ 100, 100, ... | 200, 200, ... ]
   for (auto l_it = array_dest.lbegin(); l_it != array_dest.lend(); ++l_it) {
     *l_it = (dash::myid() + 1) * 100;
@@ -73,13 +76,21 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
 
   dash::barrier();
 
+  if (dash::myid() == 0) {
+    for (size_t g = 0; g < array_dest.size(); ++g) {
+      int val = array_dest[g];
+      LOG_MESSAGE("TransformTest.ArrayGlobalPlusLocalBlocking: "
+                  "array_dest[%d] = %d", g, val);
+    }
+  }
+
+  dash::barrier();
+
   // Verify values in local partition of array:
 
-  // Gaussian sum of all local values accumulated = 1100 + 1200 + ...
-  int global_acc = ((dash::myid() + 1) * 100) +
-                   ((_dash_size + 1) * _dash_size * 1000) / 2;
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
-    int expected = global_acc + ((l_idx + 1) * _dash_size);
+    int expected = ((dash::myid() + 1) * 100) +
+                   ((dash::myid() + 1) * 1000) + (l_idx + 1);
     DASH_LOG_TRACE("TransformTest.ArrayGlobalPlusLocalBlocking",
                    "array_dest.local[", l_idx, "]:",
                    &array_dest.local[l_idx]);
@@ -163,8 +174,6 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
     for(size_t i = 0; i < matrix_a.extent(0); ++i) {
       for(size_t k = 0; k < matrix_a.extent(1); ++k) {
         auto value = (i * 1000) + (k * 1);
-        LOG_MESSAGE("Setting matrix[%d][%d] = %d",
-                    i, k, value);
         matrix_a[i][k] = value * 100000;
         matrix_b[i][k] = value;
       }
