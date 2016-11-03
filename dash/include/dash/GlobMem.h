@@ -170,8 +170,6 @@ public:
   inline ~GlobMem()
   {
     DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", _begptr);
-    // Wait for all units to leave the scope of this instance:
-    barrier();
     _allocator.deallocate(_begptr);
     DASH_LOG_TRACE("GlobMem.~GlobMem >");
   }
