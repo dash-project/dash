@@ -46,7 +46,7 @@ TEST_F(AtomicTest, ArrayElements)
   dash::Array<value_t> array(dash::size());
   value_t my_val = dash::myid() + 1;
   array.local[0] = my_val;
-  DASH_LOG_DEBUG("AtomicTest.ArrayElement", "barrier #0");
+  DASH_LOG_ERROR("AtomicTest.ArrayElement", "barrier #0");
   array.barrier();
 
   value_t expect_init_acc = (dash::size() * (dash::size() + 1)) / 2;
@@ -63,7 +63,7 @@ TEST_F(AtomicTest, ArrayElements)
     EXPECT_EQ_U(expect_init_acc, actual_init_acc);
     delete[] l_copy;
   }
-  DASH_LOG_DEBUG("AtomicTest.ArrayElements", "barrier #1");
+  DASH_LOG_ERROR("AtomicTest.ArrayElements", "barrier #1");
   array.barrier();
 
   dart_unit_t remote_prev = dash::myid() == 0
@@ -74,15 +74,15 @@ TEST_F(AtomicTest, ArrayElements)
                             : dash::myid() + 1;
   // Add own value to previous and next unit in the array's iteration order.
   // In effect, sum of all array values should have tripled.
-  DASH_LOG_DEBUG("AtomicTest.ArrayElements",
+  DASH_LOG_ERROR("AtomicTest.ArrayElements",
                  "prev: array @ unit(", remote_prev, ") +=", my_val);
   dash::Atomic<value_t>(array[remote_prev]).add(my_val);
 
-  DASH_LOG_DEBUG("AtomicTest.ArrayElements",
+  DASH_LOG_ERROR("AtomicTest.ArrayElements",
                  "next: array @ unit(", remote_next, ") +=", my_val);
   dash::Atomic<value_t>(array[remote_next]).fetch_and_add(my_val);
 
-  DASH_LOG_DEBUG("AtomicTest.ArrayElements", "barrier #2");
+  DASH_LOG_ERROR("AtomicTest.ArrayElements", "barrier #2");
   array.barrier();
 
   value_t expect_local = my_val + remote_prev + 1 + remote_next + 1;

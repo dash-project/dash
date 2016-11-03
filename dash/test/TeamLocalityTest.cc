@@ -51,6 +51,8 @@ TEST_F(TeamLocalityTest, GlobalAll)
 
 TEST_F(TeamLocalityTest, SplitCore)
 {
+  SKIP_TEST();
+
   if (_dash_id != 0 || _dash_size < 2) {
     return;
   }
@@ -81,6 +83,8 @@ TEST_F(TeamLocalityTest, SplitCore)
 
 TEST_F(TeamLocalityTest, SplitNUMA)
 {
+  SKIP_TEST();
+
   if (_dash_id != 0) {
     return;
   }
@@ -109,6 +113,8 @@ TEST_F(TeamLocalityTest, SplitNUMA)
 
 TEST_F(TeamLocalityTest, GroupUnits)
 {
+  SKIP_TEST();
+
   if (dash::size() < 4) {
     return;
   }
@@ -167,7 +173,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
 
     // TODO: If requested split was not possible, this yields an incorrect
     //       failure:
-//  EXPECT_EQ_U(group_1_units, group_1.units());
+    // EXPECT_EQ_U(group_1_units, group_1.units());
   }
   if (group_2_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_2_tags);
@@ -203,6 +209,8 @@ TEST_F(TeamLocalityTest, GroupUnits)
 
 TEST_F(TeamLocalityTest, SplitGroups)
 {
+  SKIP_TEST();
+
   if (dash::size() < 4) {
     return;
   }
