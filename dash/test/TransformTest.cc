@@ -83,6 +83,8 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
     LOG_MESSAGE("array_dest.local[%d]: %p", l_idx, &array_dest.local[l_idx]);
     ASSERT_EQ_U(expected, array_dest.local[l_idx]);
   }
+
+  dash::barrier();
 }
 
 TEST_F(TransformTest, ArrayGlobalPlusGlobalBlocking)

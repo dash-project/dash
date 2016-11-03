@@ -10,7 +10,7 @@ TEST_F(FillTest, TestAllItemsFilled)
   typedef typename Array_t::value_type value_t;
 
   // Initialize global array:
-  Array_t array(_num_elem);
+  Array_t array(_num_elem * dash::size());
   // arbitrary value
   value_t val = 17;
   // Fill array with value

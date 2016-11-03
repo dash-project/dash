@@ -158,7 +158,7 @@ public:
     DASH_ASSERT_EQ(_lend, copy_end,
                    "initialization of specified local values failed");
     // Wait for initialization of local values at all units:
-    team.barrier();
+    barrier();
 
     DASH_LOG_DEBUG("GlobMem(lvals,team) >",
                    "_lbegin:", _lbegin, "_lend:", _lend);
@@ -170,6 +170,8 @@ public:
   inline ~GlobMem()
   {
     DASH_LOG_TRACE_VAR("GlobMem.~GlobMem()", _begptr);
+    // Wait for all units to leave the scope of this instance:
+    barrier();
     _allocator.deallocate(_begptr);
     DASH_LOG_TRACE("GlobMem.~GlobMem >");
   }
