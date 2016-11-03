@@ -157,9 +157,15 @@ OutputIt transform(
   BinaryOperation binary_op);
 
 /**
- * Transform operation on ranges with identical distribution and start offset.
+ * Transform operation on ranges with identical distribution and start
+ * offset.
  * In this case, no communication is needed as all output values can be
  * obtained from input values in local memory:
+ *
+ * \note
+ * This function does not execute the transformation as atomic operation
+ * on elements. Use \c dash::transform if concurrent access to elements is
+ * possible.
  *
  * <pre>
  *   input a: [ u0 | u1 | u2 | ... ]
@@ -315,6 +321,8 @@ GlobOutputIt transform(
   auto pattern_in_a = in_a_first.pattern();
   auto pattern_in_b = in_b_first.pattern();
   auto pattern_out  = out_first.pattern();
+
+#if __NON_ATOMIC__
   // Fast path: check if transform operation is local-only:
   if (pattern_in_a == pattern_in_b &&
       pattern_in_a == pattern_out) {
@@ -333,6 +341,7 @@ GlobOutputIt transform(
       return out_last;
     }
   }
+#endif
   // Resolve teams from global iterators:
   dash::Team & team_in_a        = pattern_in_a.team();
   DASH_ASSERT_MSG(
