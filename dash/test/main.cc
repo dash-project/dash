@@ -1,10 +1,9 @@
-#include "TestBase.h"
-#include "TestPrinter.h"
-
 #include <gtest/gtest.h>
 
-#include <libdash.h>
-#include <iostream>
+#include <dash/Init.h>
+
+#include "TestBase.h"
+#include "TestPrinter.h"
 
 using ::testing::UnitTest;
 using ::testing::TestEventListeners;
