@@ -7,6 +7,8 @@
 
 TEST_F(FillTest, TestAllItemsFilled)
 {
+  SKIP_TEST();
+
   typedef typename Array_t::value_type value_t;
 
   /// Using a prime to cause inconvenient strides
