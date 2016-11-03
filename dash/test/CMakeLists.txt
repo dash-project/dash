@@ -22,11 +22,6 @@ set(PAPI_INCLUDE_DIRS ${PAPI_INCLUDE_DIRS}
 set(PAPI_LIBRARIES ${PAPI_LIBRARIES}
     PARENT_SCOPE)
 
-# Source- and header files to be compiled (OBJ):
-file(GLOB_RECURSE DASH_TEST_SOURCES
-     "./*.c" "./*.h" "./*.cc" "./*.cpp")
-
-
 set (ADDITIONAL_COMPILE_FLAGS "-DDASH")
 set (ADDITIONAL_INCLUDES      "")
 set (ADDITIONAL_LIBRARIES     "")
