@@ -77,7 +77,7 @@ dart_ret_t dart__base__host_topology__module_locations(
       DART_LOG_TRACE("dart__base__host_topology__module_locations: "
                      "hwloc: PCI device: (name:%s arity:%d)",
                      coproc_obj->name, coproc_obj->arity);
-      if (strstr(coproc_obj->name, "Xeon Phi") != NULL) {
+      if (coproc_obj->name != NULL && strstr(coproc_obj->name, "Xeon Phi") != NULL) {
         DART_LOG_TRACE("dart__base__host_topology__module_locations: "
                        "hwloc: Xeon Phi device");
         if (coproc_obj->arity > 0) {
