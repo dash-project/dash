@@ -3,7 +3,9 @@
 
 #include <gtest/gtest.h>
 
-#include <libdash.h>
+#include <dash/Init.h>
+#include <dash/SharedCounter.h>
+
 #include <list>
 
 #define TEST_NEUTRAL "\033[0;32m[----------] \033[m"

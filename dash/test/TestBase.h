@@ -2,6 +2,7 @@
 #define DASH__TEST__TEST_BASE_H_
 
 #include <gtest/gtest.h>
+
 #include <dash/internal/Logging.h>
 
 #include "TestPrinter.h"
