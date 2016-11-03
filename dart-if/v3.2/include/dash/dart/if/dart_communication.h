@@ -120,9 +120,9 @@ typedef struct dart_handle_struct * dart_handle_t;
  * \ingroup DartCommuncation
  */
 dart_ret_t dart_get(
-  void *dest,
-  dart_gptr_t ptr,
-  size_t nbytes);
+  void        * dest,
+  dart_gptr_t   ptr,
+  size_t        nbytes);
 /**
  * 'REGULAR' variant of dart_put.
  * When this functions returns, neither local nor remote completion
@@ -132,9 +132,9 @@ dart_ret_t dart_get(
  * \ingroup DartCommuncation
  */
 dart_ret_t dart_put(
-  dart_gptr_t  ptr,
-  const void * src,
-  size_t       nbytes);
+  dart_gptr_t   ptr,
+  const void  * src,
+  size_t        nbytes);
 
 /**
  * DART Equivalent to MPI_Accumulate.
@@ -143,7 +143,7 @@ dart_ret_t dart_put(
  */
 dart_ret_t dart_accumulate(
   dart_gptr_t      gptr,
-  char  *          values,
+  void  *          values,
   size_t           nelem,
   dart_datatype_t  dtype,
   dart_operation_t op,

@@ -160,8 +160,8 @@ int main(int argc, char **argv)
 
   if (dash::myid() != 0) {
     // Add local histogram values to result histogram at unit 0:
-    dash::transform<int>(key_histo.lbegin(),          // A begin
-                         key_histo.lend(),            // A end
+    dash::transform<int>(key_histo.lbegin(), // A begin
+                         key_histo.lend(),   // A end
                          key_histo.begin(),  // B
                          key_histo.begin(),  // C = plus(A,B)
                          dash::plus<int>());

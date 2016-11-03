@@ -192,21 +192,28 @@ TEST_F(HDF5ArrayTest, UnderfilledPattern)
   int   ext_x = dash::size() * 5 + 1;
   long  tilesize;
   {
+    DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "alloc array_a");
     auto array_a = dash::Array<int>(ext_x);
     tilesize     = array_a.pattern().blocksize(0);
     // Fill
+    DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "fill array_a");
     fill_array(array_a);
+    DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "barrier #1");
     dash::barrier();
     // Set option
     auto fopts = StoreHDF::get_default_options();
     // Important as recreation should create equal pattern
     fopts.store_pattern = true;
 
+    DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "StoreHDF::write");
     StoreHDF::write(array_a, _filename, _dataset, fopts);
+    DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "barrier #2");
     dash::barrier();
   }
   dash::Array<int> array_b;
+  DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "StoreHDF::read");
   StoreHDF::read(array_b, _filename, _dataset);
+  DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "barrier #3");
   dash::barrier();
 
   // Verify
@@ -221,6 +228,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPattern)
     array_b.pattern().blocksize(0),
     "Tilesizes do not match");
   // Verify data
+  DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "verify array_b");
   verify_array(array_b);
 }
 

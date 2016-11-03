@@ -190,7 +190,8 @@ public:
           } else {
             // create group
             DASH_LOG_DEBUG("Create Group", elem);
-            loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            loc_id = H5Gcreate2(loc_id, elem.c_str(),
+                                H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
           }
           if(loc_id != file_id){
             open_groups.push_front(loc_id);

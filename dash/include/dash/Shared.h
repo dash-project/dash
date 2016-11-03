@@ -41,10 +41,10 @@ public:
   atomic_type;
 
 private:
-  typedef dash::GlobMem <
-  value_type,
-  dash::allocator::LocalAllocator<value_type> >
-  GlobMem_t;
+  typedef dash::GlobMem<
+            value_type,
+            dash::allocator::LocalAllocator<value_type> >
+          GlobMem_t;
 
   template<typename T_>
   friend void swap(Shared<T_> & a, Shared<T_> & b);

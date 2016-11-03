@@ -920,11 +920,14 @@ TEST_F(MatrixTest, PatternScope)
 
   value_t block_size_x = 5;
   value_t block_size_y = 5;
+  value_t extent_x     = dash::size() * block_size_x;
+  value_t extent_y     = dash::size() * block_size_y;
 
   auto & team = dash::Team::All();
   dash::TeamSpec<2>         ts(team);
-  dash::SizeSpec<2>         ss(block_size_x, block_size_y);
-  dash::DistributionSpec<2> ds(dash::TILE(1),dash::TILE(1));
+  dash::SizeSpec<2>         ss(extent_y, extent_x);
+  dash::DistributionSpec<2> ds(dash::TILE(block_size_y),
+                               dash::TILE(block_size_x));
 
   dash::NArray<value_t, 2, index_t, pattern_t> matrix;
 

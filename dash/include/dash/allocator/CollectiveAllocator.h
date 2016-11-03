@@ -207,6 +207,10 @@ public:
                      "DASH not initialized, abort");
       return;
     }
+
+    DASH_ASSERT_RETURNS(
+      dart_barrier(_team_id),
+      DART_OK);
     DASH_ASSERT_RETURNS(
       dart_team_memfree(_team_id, gptr),
       DART_OK);

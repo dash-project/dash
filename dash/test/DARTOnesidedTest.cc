@@ -20,8 +20,6 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
   dart_unit_t unit_src  = (dash::myid() + 1) % _dash_size;
   // Global start index of block to copy:
   int g_src_index       = unit_src * block_size;
-  LOG_MESSAGE("Copy from unit %d -> offset %d",
-              unit_src, g_src_index);
   // Copy values:
   dart_get_blocking(
     local_array,                                // lptr dest
@@ -29,7 +27,6 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
     block_size * sizeof(value_t)                // nbytes
   );
   for (size_t l = 0; l < block_size; ++l) {
-    LOG_MESSAGE("Testing local element %d = %d", l, local_array[l]);
     value_t expected = array[g_src_index + l];
     ASSERT_EQ_U(expected, local_array[l]);
   }
@@ -60,7 +57,6 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
   );
   // Fails for elements in second block, i.e. for l < num_elem_copy:
   for (size_t l = 0; l < block_size; ++l) {
-    LOG_MESSAGE("Testing local element %d = %d", l, local_array[l]);
     value_t expected = array[l];
     ASSERT_EQ_U(expected, local_array[l]);
   }
@@ -115,8 +111,6 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
   for (size_t g = 0; g < array.size(); ++g) {
     auto unit = array.pattern().unit_at(g);
     if (unit != dash::myid()) {
-      LOG_MESSAGE("Testing local element %d (g:%d u:%d) = %d",
-                  l, g, unit, local_array[l]);
       value_t expected = array[g];
       ASSERT_EQ_U(expected, local_array[l]);
       ++l;
