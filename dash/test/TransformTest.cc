@@ -53,8 +53,10 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   EXPECT_EQ_U(num_elem_local, array_dest.lend() - array_dest.lbegin());
 
   // Initialize result array: [ 100, 100, ... | 200, 200, ... ]
+  int loffs = 0;
   for (auto l_it = array_dest.lbegin(); l_it != array_dest.lend(); ++l_it) {
-    *l_it = (dash::myid() + 1) * 100;
+    *l_it = 10000 + loffs;
+    loffs++;
   }
 
   // Every unit adds a local range of elements to every block in a global
@@ -62,16 +64,17 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
 
   // Initialize local values, e.g. unit 2: [ 2000, 2001, 2002, ... ]
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
-    local[l_idx] = ((dash::myid() + 1) * 1000) + (l_idx + 1);
+    local[l_idx] = (dash::myid() + 1);
   }
 
   // Accumulate local range to every block in the array:
   for (size_t block_idx = 0; block_idx < _dash_size; ++block_idx) {
-    auto block_offset = block_idx * num_elem_local;
-    dash::transform<int>(&(*local.begin()), &(*local.end()), // A
-                         array_dest.begin() + block_offset,  // B
-                         array_dest.begin() + block_offset,  // B = op(B, A)
-                         dash::plus<int>());                 // op
+    auto block_offset  = block_idx * num_elem_local;
+    auto transform_end =
+      dash::transform<int>(&(*local.begin()), &(*local.end()), // A
+                           array_dest.begin() + block_offset,  // B
+                           array_dest.begin() + block_offset,  // B = op(B,A)
+                           dash::plus<int>());                 // op
   }
 
   dash::barrier();
@@ -89,8 +92,8 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
   // Verify values in local partition of array:
 
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
-    int expected = ((dash::myid() + 1) * 100) +
-                   ((dash::myid() + 1) * 1000) + (l_idx + 1);
+    int expected = (10000 + l_idx) +
+                   ((dash::size() * (dash::size() + 1)) / 2);
     DASH_LOG_TRACE("TransformTest.ArrayGlobalPlusLocalBlocking",
                    "array_dest.local[", l_idx, "]:",
                    &array_dest.local[l_idx]);
