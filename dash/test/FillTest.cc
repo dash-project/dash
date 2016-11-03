@@ -9,9 +9,12 @@ TEST_F(FillTest, TestAllItemsFilled)
 {
   typedef typename Array_t::value_type value_t;
 
+  /// Using a prime to cause inconvenient strides
+  size_t num_local_elem = 251;
+
   LOG_MESSAGE("FillTest.TestAllItemsFilled: allocate array");
   // Initialize global array:
-  Array_t array(_num_elem * dash::size());
+  Array_t array(num_local_elem * dash::size());
   // arbitrary value
   value_t val = 17;
   // Fill array with value

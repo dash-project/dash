@@ -11,32 +11,29 @@ TEST_F(TransformTest, ArrayLocalPlusLocal)
   const size_t num_elem_local = 5;
   size_t num_elem_total       = _dash_size * num_elem_local;
   // Identical distribution in all ranges:
-  dash::Array<int> array_in_a(num_elem_total, dash::BLOCKED);
-  dash::Array<int> array_in_b(num_elem_total, dash::BLOCKED);
+  dash::Array<int> array_in(num_elem_total, dash::BLOCKED);
   dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
 
   // Fill ranges with initial values:
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
-    array_dest.local[l_idx] = 1;
-    array_in_a.local[l_idx] = l_idx;
-    array_in_b.local[l_idx] = 2 * l_idx;
+    array_in.local[l_idx]   = l_idx;
+    array_dest.local[l_idx] = 23;
   }
 
   dash::barrier();
 
   // Identical start offsets in all ranges (begin() = 0):
   dash::transform<int>(
-      array_in_a.begin(), array_in_a.end(), // A
-      array_in_b.begin(),                   // B
-      array_dest.begin(),                   // C = op(A,B)
-      dash::plus<int>());                   // op
+      array_in.begin(), array_in.end(), // A
+      array_dest.begin(),               // B
+      array_dest.begin(),               // C = op(A,B)
+      dash::plus<int>());               // op
 
   dash::barrier();
 
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
-    EXPECT_EQ_U(array_in_a.local[l_idx], l_idx);
-    EXPECT_EQ_U(array_in_b.local[l_idx], 2 * l_idx);
-    EXPECT_EQ_U(array_dest.local[l_idx], 3 * l_idx);
+    EXPECT_EQ_U(array_in.local[l_idx], l_idx);
+    EXPECT_EQ_U(array_dest.local[l_idx], l_idx + 23);
   }
 
 }

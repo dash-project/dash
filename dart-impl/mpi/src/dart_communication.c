@@ -220,7 +220,7 @@ dart_ret_t dart_put(
 
 dart_ret_t dart_accumulate(
   dart_gptr_t      gptr,
-  char  *          values,
+  void  *          values,
   size_t           nelem,
   dart_datatype_t  dtype,
   dart_operation_t op,
