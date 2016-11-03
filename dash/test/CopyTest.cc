@@ -212,9 +212,9 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
                              ((bx + 1) * 100) +
                              by + 1
                            ));
-        LOG_MESSAGE("Validating block %d at block coords (%d,%d), "
-                    "local offset: %d = %f",
-                    lb, bx, by, l_offset, expected);
+//      LOG_MESSAGE("Validating block %d at block coords (%d,%d), "
+//                  "local offset: %d = %f",
+//                  lb, bx, by, l_offset, expected);
         EXPECT_EQ_U(expected, local_copy[l_offset]);
       }
     }
@@ -303,8 +303,8 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
     for (size_t g = 0; g < array.size(); ++g) {
       if (array.pattern().unit_at(g) != dash::myid()) {
         int expected = array[g];
-        LOG_MESSAGE("Validating value at global index %d (local: %d) = %d",
-                    g, l, expected);
+//      LOG_MESSAGE("Validating value at global index %d (local: %d) = %d",
+//                  g, l, expected);
         EXPECT_EQ_U(expected, local_copy[l]);
         ++l;
       }
@@ -338,9 +338,9 @@ TEST_F(CopyTest, BlockingGlobalToLocalBarrierUnaligned)
              array.begin() + start_index + num_elems_copy,
              local_array);
 
-  for(size_t i = 0; i < num_elems_copy; ++i) {
-    LOG_MESSAGE("Testing local element %lu = %d", i, local_array[i]);
-  }
+// for(size_t i = 0; i < num_elems_copy; ++i) {
+//   LOG_MESSAGE("Testing local element %lu = %d", i, local_array[i]);
+// }
 
   array.barrier();
 
@@ -495,9 +495,9 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockTwoUnits)
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
-  for (size_t l = 0; l < num_elems_copy; ++l) {
-    LOG_MESSAGE("Testing local element %d = %d", l, local_array[l]);
-  }
+// for (size_t l = 0; l < num_elems_copy; ++l) {
+//   LOG_MESSAGE("Testing local element %d = %d", l, local_array[l]);
+// }
   for (size_t l = 0; l < num_elems_copy; ++l) {
     EXPECT_EQ_U(static_cast<int>(array[l+start_index]), local_array[l]);
   }
@@ -538,9 +538,9 @@ TEST_F(CopyTest, BlockingGlobalToLocalSubBlockThreeUnits)
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
-  for (size_t l = 0; l < num_elems_copy; ++l) {
-    LOG_MESSAGE("Testing local element %d = %d", l, local_array[l]);
-  }
+// for (size_t l = 0; l < num_elems_copy; ++l) {
+//   LOG_MESSAGE("Testing local element %d = %d", l, local_array[l]);
+// }
   for (size_t l = 0; l < num_elems_copy; ++l) {
     EXPECT_EQ_U(static_cast<int>(array[l+start_index]), local_array[l]);
   }

@@ -34,9 +34,9 @@ TEST_F(TransformTest, ArrayLocalPlusLocal)
   dash::barrier();
 
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
-    ASSERT_EQ_U(array_in_a.local[l_idx], l_idx);
-    ASSERT_EQ_U(array_in_b.local[l_idx], 2 * l_idx);
-    ASSERT_EQ_U(array_dest.local[l_idx], 3 * l_idx);
+    EXPECT_EQ_U(array_in_a.local[l_idx], l_idx);
+    EXPECT_EQ_U(array_in_b.local[l_idx], 2 * l_idx);
+    EXPECT_EQ_U(array_dest.local[l_idx], 3 * l_idx);
   }
 
 }
@@ -80,8 +80,10 @@ TEST_F(TransformTest, ArrayGlobalPlusLocalBlocking)
                    ((_dash_size + 1) * _dash_size * 1000) / 2;
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     int expected = global_acc + ((l_idx + 1) * _dash_size);
-    LOG_MESSAGE("array_dest.local[%d]: %p", l_idx, &array_dest.local[l_idx]);
-    ASSERT_EQ_U(expected, array_dest.local[l_idx]);
+    DASH_LOG_TRACE("TransformTest.ArrayGlobalPlusLocalBlocking",
+                   "array_dest.local[", l_lidx, "]:",
+                   &array_dest.local[l_idx]);
+    EXPECT_EQ_U(expected, array_dest.local[l_idx]);
   }
 
   dash::barrier();
@@ -121,7 +123,7 @@ TEST_F(TransformTest, ArrayGlobalPlusGlobalBlocking)
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
     int expected = (dash::myid() + 1) * 100 +               // initial value
                    (dash::myid() + 1) * 1000 + (l_idx + 1); // added value
-    ASSERT_EQ_U(expected, array_dest.local[l_idx]);
+    EXPECT_EQ_U(expected, array_dest.local[l_idx]);
   }
 }
 
@@ -150,9 +152,9 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
                            dash::TILE(tilesize_x),
                            dash::TILE(tilesize_y)));
   size_t matrix_size = extent_cols * extent_rows;
-  ASSERT_EQ(matrix_size, matrix_a.size());
-  ASSERT_EQ(extent_cols, matrix_a.extent(0));
-  ASSERT_EQ(extent_rows, matrix_a.extent(1));
+  EXPECT_EQ(matrix_size, matrix_a.size());
+  EXPECT_EQ(extent_cols, matrix_a.extent(0));
+  EXPECT_EQ(extent_rows, matrix_a.extent(1));
   LOG_MESSAGE("Matrix size: %d", matrix_size);
 
   // Fill matrix
@@ -178,7 +180,7 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   // Global coordinates of first element in first global block:
   std::array<index_t, 2> first_g_block_a_begin   = { 0, 0 };
 //std::array<index_t, 2> first_g_block_a_offsets = first_g_block_a.offsets();
-  ASSERT_EQ_U(first_g_block_a_begin,
+  EXPECT_EQ_U(first_g_block_a_begin,
               first_g_block_a.offsets());
 
   LOG_MESSAGE("Test first local block");
@@ -188,6 +190,6 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
   std::array<index_t, 2> first_l_block_a_begin   = {
                            static_cast<index_t>(myid * tilesize_x), 0 };
   std::array<index_t, 2> first_l_block_a_offsets = first_l_block_a.offsets();
-  ASSERT_EQ_U(first_l_block_a_begin,
+  EXPECT_EQ_U(first_l_block_a_begin,
               first_l_block_a_offsets);
 }
