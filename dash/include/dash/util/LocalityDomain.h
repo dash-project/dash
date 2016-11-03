@@ -3,8 +3,9 @@
 
 #include <dash/util/Locality.h>
 
-#include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
+#include <dash/dart/if/dart_team_group.h>
+#include <dash/dart/if/dart_types.h>
 
 #include <dash/algorithm/internal/String.h>
 

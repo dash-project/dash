@@ -1,7 +1,7 @@
 #ifndef DASH__INIT_H_
 #define DASH__INIT_H_
 
-#include <dash/dart/if/dart.h>
+#include<dash/Types.h>
 
 namespace dash
 {
