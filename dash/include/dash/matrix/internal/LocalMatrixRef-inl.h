@@ -35,7 +35,7 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   std::array<index_type, NumDim> local_begin_coords = {{ }};
   auto local_offsets = mat->_pattern.global(local_begin_coords);
   _refview._viewspec = ViewSpec_t(local_offsets, local_extents);
-  DASH_LOG_TRACE_VAR("LocalMatrixRef(mat)", _refview._viewspec);
+  DASH_LOG_TRACE_VAR("LocalMatrixRef(mat) >", _refview._viewspec);
 }
 
 #if 0

@@ -82,6 +82,8 @@ dart_ret_t dart_init(
 
   /* Create a global translation table for all
    * the collective global memory segments */
+
+  /* <fuchsto>: Why calling dart_segment_init twice (see above)? */
   dart_segment_init();
   // Segment ID zero is reserved for non-global memory allocations
   dart_segment_alloc(0, DART_TEAM_ALL);
@@ -92,8 +94,6 @@ dart_ret_t dart_init(
 
   //  dart_teams[index] = MPI_COMM_WORLD;
   team_data->comm = MPI_COMM_WORLD;
-
-
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -298,6 +298,7 @@ dart_ret_t dart_exit()
     DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid);
     return DART_ERR_OTHER;
   }
+
 	/* -- Free up all the resources for dart programme -- */
 	MPI_Win_free(&dart_win_local_alloc);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -305,7 +306,10 @@ dart_ret_t dart_exit()
 #endif
   MPI_Win_free(&team_data->window);
 
+  /* <fuchsto>: Why calling dart_segment_clear twice? */
+/*
   dart_segment_clear();
+*/
   dart_buddy_delete(dart_localpool);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   free(team_data->sharedmem_tab);
@@ -313,8 +317,10 @@ dart_ret_t dart_exit()
 #endif
 	dart_adapt_teamlist_destroy();
 
+  /* <fuchsto>: deactivated, currently segfaults when running with 3 units:
+/*
   dart_segment_clear();
-
+*/
   if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();

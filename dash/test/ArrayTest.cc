@@ -51,9 +51,9 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
     ASSERT_EQ(array_size, arr5.size());
     ASSERT_EQ(array_size, arr6.size());
     // Fill arrays with incrementing values
-    if(_dash_id == 0) {
+    if (_dash_id == 0) {
       LOG_MESSAGE("Assigning array values");
-      for(size_t i = 0; i < array_size; ++i) {
+      for (size_t i = 0; i < array_size; ++i) {
         arr1[i] = i;
         arr2[i] = i;
         arr3[i] = i;
@@ -65,7 +65,7 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
     // Units waiting for value initialization
     dash::Team::All().barrier();
     // Read and assert values in arrays
-    for(size_t i = 0; i < array_size; ++i) {
+    for (size_t i = 0; i < array_size; ++i) {
       ASSERT_EQ_U(i, static_cast<value_t>(arr1[i]));
       ASSERT_EQ_U(i, static_cast<value_t>(arr2[i]));
       ASSERT_EQ_U(i, static_cast<value_t>(arr3[i]));
@@ -126,20 +126,20 @@ TEST_F(ArrayTest, PatternAllocate)
 
   // Verify
   std::function< void(const int &, index_t)>
-    verify = [&array](int el, index_t i) {
-      auto coords  = array.pattern().coords(i);
-      auto desired = coords[0];
-      ASSERT_EQ_U(
-        desired,
-        el);
-    };
+  verify = [&array](int el, index_t i) {
+    auto coords  = array.pattern().coords(i);
+    auto desired = coords[0];
+    ASSERT_EQ_U(
+      desired,
+      el);
+  };
 
   {
     const pattern_t pattern(
-       dash::SizeSpec<1>(size),
-       dash::DistributionSpec<1>(dash::TILE(tilesize)),
-       dash::TeamSpec<1>(),
-       dash::Team::All());
+      dash::SizeSpec<1>(size),
+      dash::DistributionSpec<1>(dash::TILE(tilesize)),
+      dash::TeamSpec<1>(),
+      dash::Team::All());
 
     array.allocate(pattern);
   }
@@ -155,4 +155,17 @@ TEST_F(ArrayTest, PatternAllocate)
     array.end(),
     verify);
 }
+
+TEST_F(ArrayTest, ConstructorNelemInitializerList)
+{
+  dash::Array<int> target (4 * dash::size(), {0, 1, 2, 3});
+
+  if (dash::myid() == 0) {
+    ASSERT_EQ_U(target[0], 0);
+    ASSERT_EQ_U(target[1], 1);
+    ASSERT_EQ_U(target[2], 2);
+    ASSERT_EQ_U(target[3], 3);
+  }
+}
+
 

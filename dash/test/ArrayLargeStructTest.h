@@ -6,11 +6,16 @@
 
 #include "TestBase.h"
 
-#define FEAT_MAX_LEN 10000000
+#if defined (DASH_ENABLE_REGRESSION_TEST)
+#  define FEAT_MAX_LEN 10000000
+#else
+#  define FEAT_MAX_LEN 100
+#endif
+
 #define MAX_LEN 15
 
 typedef struct DGNode_s {
-  int len;
+  int    len;
   double val[FEAT_MAX_LEN];
 } DGNode;
 

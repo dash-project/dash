@@ -64,29 +64,23 @@ public:
    * Constructor.
    * Creates a new instance of \c dash::CollectiveAllocator for a given team.
    */
-  CollectiveAllocator(
-    Team & team = dash::Team::Null()) noexcept
-  : _team_id(team.dart_id())
-  {
-    // Cannot use DASH_ASSERT due to noexcept qualifier:
-    assert(dart_team_size(_team_id, &_nunits) == DART_OK);
-  }
+  explicit CollectiveAllocator(
+    Team & team = dash::Team::All()) noexcept
+  : _team_id(team.dart_id()),
+    _nunits(team.size())
+  { }
 
   /**
    * Move-constructor.
    * Takes ownership of the moved instance's allocation.
    */
   CollectiveAllocator(self_t && other) noexcept
-  : _allocated(other._allocated)
+  : _team_id(other._team_id),
+    _nunits(other._nunits),
+    _allocated(other._allocated)
   {
     other._allocated.clear();
   }
-
-  /**
-   * Default constructor, deleted.
-   */
-  CollectiveAllocator() noexcept
-    = delete;
 
   /**
    * Copy constructor.
@@ -213,6 +207,10 @@ public:
                      "DASH not initialized, abort");
       return;
     }
+
+    DASH_ASSERT_RETURNS(
+      dart_barrier(_team_id),
+      DART_OK);
     DASH_ASSERT_RETURNS(
       dart_team_memfree(_team_id, gptr),
       DART_OK);

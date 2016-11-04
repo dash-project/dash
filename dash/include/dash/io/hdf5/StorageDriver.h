@@ -1,5 +1,5 @@
-#ifndef DASH__IO__STORE_HDF_H__
-#define DASH__IO__STORE_HDF_H__
+#ifndef DASH__IO__HDF5__STORAGEDRIVER_H__
+#define DASH__IO__HDF5__STORAGEDRIVER_H__
 
 #include <dash/internal/Config.h>
 
@@ -190,7 +190,8 @@ public:
           } else {
             // create group
             DASH_LOG_DEBUG("Create Group", elem);
-            loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+            loc_id = H5Gcreate2(loc_id, elem.c_str(),
+                                H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
           }
           if(loc_id != file_id){
             open_groups.push_front(loc_id);
@@ -953,9 +954,8 @@ private:
 } // namespace io
 } // namespace dash
 
-#include <dash/io/hdf5/internal/StoreHDF.h>
-#include <dash/io/hdf5/HDF5IOManip.h>
+#include <dash/io/hdf5/internal/StorageDriver-inl.h>
 
 #endif // DASH_ENABLE_HDF5
 
-#endif
+#endif // DASH__IO__HDF5__STORAGEDRIVER_H__

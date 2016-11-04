@@ -2,7 +2,7 @@
 #define DASH__IO__IOSTREM_H__INCLUDED
 
 #include <cstdint>
-
+#include <type_traits>
 
 namespace dash {
 namespace io {
@@ -13,41 +13,22 @@ namespace io {
  * \concept{DashIOConcept}
  *
  */
-class IOSBaseMode
+enum class IOSBaseMode : uint32_t
 {
-protected:
-
-  typedef uint32_t openmode_type;
-
-  enum iosbase_openmode_ : openmode_type {
+    no_flags        = 0,
     /// Append: set the stream position to the end of the stream before
     /// output operations.
-    iosbase_app_    = 1 << 0,
+    app             = 1 << 0,
     /// At End: set the stream position to the end of the stream on open.
-    iosbase_ate_    = 1 << 1,
+    ate             = 1 << 1,
     /// Binary: Consider stream as raw data.
-    iosbase_binary_ = 1 << 2,
+    binary          = 1 << 2,
     /// Allow input operations on the stream.
-    iosbase_in_     = 1 << 3,
+    in              = 1 << 3,
     /// Allow output operations on the stream.
-    iosbase_out_    = 1 << 4,
+    out             = 1 << 4,
     /// Truncate: discard content of the stream on open.
-    iosbase_trunk_  = 1 << 5
-  };
-
-public:
-
-  typedef iosbase_openmode_      openmode;
-
-public:
-
-  static const openmode app    = iosbase_app_;
-  static const openmode ate    = iosbase_ate_;
-  static const openmode binary = iosbase_binary_;
-  static const openmode in     = iosbase_in_;
-  static const openmode out    = iosbase_out_;
-  static const openmode trunk  = iosbase_trunk_;
-
+    trunk           = 1 << 5
 }; // class IOStream
 
 /**
@@ -66,13 +47,14 @@ class IOStreamMode
 {
 private:
 
-  typedef IOStreamMode<IOSModeType> self_t;
+  typedef IOStreamMode<IOSModeType>              self_t;
+  using   UT = std::underlying_type<IOSBaseMode>::type;
 
 public:
 
   /// Constructors
 
-  IOStreamMode(IOSModeType ios_base = 0x0)
+  IOStreamMode(IOSModeType ios_base = IOSBaseMode::no_flags)
   : _ios_mode(ios_base)
   { }
 
@@ -80,6 +62,13 @@ public:
 
   inline operator IOSModeType() const {
     return _ios_mode;
+  }
+ 
+  /**
+   * Returns false if and only if no flags are set.
+   */
+  inline operator bool() const {
+    return _ios_mode != IOSBaseMode::no_flags;
   }
 
   /// Binary operators
@@ -104,15 +93,24 @@ public:
   }
 
   inline self_t operator|(const self_t & rhs) {
-    return self_t(_ios_mode | rhs._ios_mode);
+    return self_t(static_cast<IOSModeType>(
+                    static_cast<UT>(_ios_mode)
+                    | static_cast<UT>(rhs._ios_mode))
+                 );
   }
 
   inline self_t operator&(const self_t & rhs) {
-    return self_t(_ios_mode & rhs._ios_mode);
+    return self_t(static_cast<IOSModeType>(
+                    static_cast<UT>(_ios_mode)
+                    & static_cast<UT>(rhs._ios_mode))
+                 );
   }
 
   inline self_t operator^(const self_t & rhs) {
-    return self_t(_ios_mode ^ rhs._ios_mode);
+    return self_t(static_cast<IOSModeType>(
+                    static_cast<UT>(_ios_mode)
+                    ^ static_cast<UT>(rhs._ios_mode))
+                 );
   }
 
 private:
@@ -133,18 +131,11 @@ private:
  * Example:
  *
  * \code
- * class MyDeviceModes : public dash::io::IOSBaseMode {
- * public:
- *   typedef enum mydevice_openmode_
- *   : dash::io::IOSBaseMode::openmode {
+ * enum class MyDeviceModes : public dash::io::IOSBaseMode {
  *     // device-specific modes:
  *     mydevice_foo_mode_ = 1 << 8,
  *     mydevice_bar_mode_ = 1 << 9
- *   }
- *   typedef mydevice_openmode_ openmode;
- *
- *   static const openmode foo = mydevice_foo_mode_;
- * };
+ * }
  *
  * typedef dash::io::IOStreamMode<MyDeviceModes>
  *         MyDeviceStreamMode;
@@ -191,7 +182,7 @@ public:
 public:
 
   IOSBase()
-  : _io_stream_mode(0)
+  : _io_stream_mode(IOSBaseMode::no_flags)
   { }
 
 protected:
