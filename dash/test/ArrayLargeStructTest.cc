@@ -1,8 +1,7 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
 #include "TestBase.h"
 #include "ArrayLargeStructTest.h"
-#include <iostream>
+
+#include <dash/Array.h>
 
 using namespace std;
 
