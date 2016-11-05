@@ -1,13 +1,15 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-
-#include "TestBase.h"
 #include "AtomicTest.h"
+#include "TestBase.h"
 
-#include <vector>
+#include <dash/Atomic.h>
+#include <dash/Init.h>
+#include <dash/Shared.h>
+#include <dash/algorithm/Copy.h>
+#include <dash/internal/Logging.h>
+
 #include <algorithm>
 #include <numeric>
-
+#include <vector>
 
 TEST_F(AtomicTest, FetchAndOp)
 {

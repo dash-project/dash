@@ -1,10 +1,10 @@
 #ifndef DASH__TEST__ATOMIC_TEST_H_
 #define DASH__TEST__ATOMIC_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
-
 #include "TestBase.h"
+
+#include <dash/Init.h>
+#include <dash/internal/Logging.h>
 
 /**
  * Test fixture for class dash::Atomic
