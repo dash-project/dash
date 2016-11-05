@@ -1,8 +1,11 @@
 #ifndef DASH__TEST__ACCUMULATE_TEST_H_
 #define DASH__TEST__ACCUMULATE_TEST_H_
 
+#include "TestBase.h"
+
+#include <dash/internal/Logging.h>
+
 #include <gtest/gtest.h>
-#include <libdash.h>
 
 /**
  * Test fixture for class dash::accumulate
