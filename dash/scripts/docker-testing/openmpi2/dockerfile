@@ -29,6 +29,7 @@ RUN           cd openmpi*                           \
 # Prepare env
 ENV           PAPI_BASE=/opt/papi
 ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib:/opt/openmpi/lib
+ENV           PATH=${PATH}:/opt/openmpi/bin
 ENV           MPI_EXEC_FLAGS='--allow-run-as-root --map-by core'
 ENV           VERBOSE_CI='true'
 
