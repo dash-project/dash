@@ -41,8 +41,14 @@ file(GLOB_RECURSE DASH_LIBRARY_SOURCES
      "src/*.c" "src/*.h" "src/*.cc" "src/*.cpp" )
 file(GLOB_RECURSE DASH_LIBRARY_HEADERS
      "include/*.h")
+
 file(GLOB_RECURSE DASH_TEST_SOURCES
-     "test/*.c" "test/*.h" "test/*.cc" "src/*.cpp")
+  "test/TestBase.h" "test/TestPrinter.h" "test/main.cc")
+
+foreach(TESTCASE ${TESTCASES_LIST})
+file(GLOB_RECURSE DASH_TEST_SOURCES
+  ${DASH_TEST_SOURCES} "test/${TESTCASE}.h" "test/${TESTCASE}.cc")
+endforeach()
 
 # Directories containing the implementation of the library (-I):
 set(DASH_LIBRARY_INCLUDE_DIRS
