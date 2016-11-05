@@ -156,6 +156,16 @@ if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+## Tests
+set(TESTCASES
+    "*" CACHE STRING
+    "Comma-separated list of test cases to build.
+     Default is 'ALL'")
+
+string(REPLACE "," ";"
+       TESTCASES_LIST
+       ${TESTCASES})
+
 ## Subprojects, one for each deliverable
 
 set(DART_IMPLEMENTATIONS
