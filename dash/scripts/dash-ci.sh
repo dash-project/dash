@@ -73,6 +73,7 @@ if [ $# != 0 ]; then
   done
 else
   run_ci Release
+  run_ci Minimal
 fi
 
 if $FAILED; then
