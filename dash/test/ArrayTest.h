@@ -1,10 +1,11 @@
 #ifndef DASH__TEST__ARRAY_TEST_H_
 #define DASH__TEST__ARRAY_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
-
 #include "TestBase.h"
+
+#include <dash/internal/Logging.h>
+
+#include <dash/Init.h>
 
 /**
  * Test fixture for class dash::Array

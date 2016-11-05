@@ -1,7 +1,10 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
 #include "ArrayTest.h"
+#include "TestBase.h"
+
+#include <dash/Array.h>
+#include <dash/internal/Logging.h>
+#include <dash/Init.h>
+#include <dash/algorithm/ForEach.h>
 
 // global var
 dash::Array<int> array_global;
