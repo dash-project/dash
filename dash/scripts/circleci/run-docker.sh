@@ -9,7 +9,7 @@ for MPIENV in ${MPIENVS[@]}; do
     
     echo "Starting docker container: $MPIENV"
     
-    docker run -v $PWD:/opt/dash dash/ci-$MPIENV /bin/sh -c "export DASH_MAKE_PROCS='4'; export DASH_MAX_UNITS='3'; export DASH_BUILDEX='OFF'; sh dash/scripts/dash-ci.sh | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
+    docker run -v $PWD:/opt/dash dashproject/ci:$MPIENV /bin/sh -c "export DASH_MAKE_PROCS='4'; export DASH_MAX_UNITS='3'; export DASH_BUILDEX='OFF'; sh dash/scripts/dash-ci.sh | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
     
     TARGETS=`ls -d ./build-ci/*/* | xargs -n1 basename`
     for TARGET in $TARGETS; do
