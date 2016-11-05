@@ -1,9 +1,14 @@
-#include <libdash.h>
+#include "AutobalanceTest.h"
+#include "TestBase.h"
+
+#include <dash/Exception.h>
+#include <dash/internal/Logging.h>
+#include <dash/internal/Math.h>
+#include <dash/util/Timer.h>
+#include <dash/algorithm/SUMMA.h>
+
 #include <array>
 #include <sstream>
-
-#include "TestBase.h"
-#include "AutobalanceTest.h"
 
 typedef dash::util::Timer<dash::util::TimeMeasure::Clock> Timer;
 
