@@ -7,8 +7,8 @@ MPIENVS=(openmpi openmpi2 mpich)
 i=0
 for MPIENV in ${MPIENVS[@]}; do
   if [[ $(( $i % ${CIRCLE_NODE_TOTAL} )) -eq ${CIRCLE_NODE_INDEX} ]]; then
-    echo "Building docker container $MPIENV"
-    docker build --rm=false --tag=dashproject/ci-testing:$MPIENV ./dash/scripts/docker-testing/$MPIENV/
+    echo "Pulling docker container $MPIENV"
+    docker pull dashproject/ci-testing:$MPIENV
   fi
   i=$((i + 1))
 done

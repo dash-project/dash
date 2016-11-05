@@ -7,7 +7,7 @@ language: cpp
 compiler:
     - gcc
 before_install:
-    - docker build --tag=dash/testing ./dash/scripts/docker-testing/mpich/
+    - docker pull dashproject/ci-testing:mpich
 script:
     - sh ./dash/scripts/travisci/run-docker.sh 
     - cat ./dash-ci.log | grep "PASSED" || return 1
