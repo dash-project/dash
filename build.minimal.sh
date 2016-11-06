@@ -82,6 +82,8 @@ rm -Rf $BUILD_DIR/*
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
+                        \
+                        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                         ../ && \
  await_confirm && \
  make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \
