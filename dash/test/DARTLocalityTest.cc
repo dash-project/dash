@@ -29,9 +29,9 @@ TEST_F(DARTLocalityTest, UnitLocality)
 
   // Units may group multiple cores:
   EXPECT_GE_U(ul->hwinfo.cpu_id,      -1); // -1 if unknown, >= 0 if set
-  EXPECT_GT_U(ul->hwinfo.num_cores,   -1); // -1 if unknown, >  0 if set
-  EXPECT_GT_U(ul->hwinfo.min_threads, -1); // -1 if unknown, >  0 if set
-  EXPECT_GT_U(ul->hwinfo.max_threads, -1); // -1 if unknown, >  0 if set
+  EXPECT_GE_U(ul->hwinfo.num_cores,   -1); // -1 if unknown, >  0 if set
+  EXPECT_GE_U(ul->hwinfo.min_threads, -1); // -1 if unknown, >  0 if set
+  EXPECT_GE_U(ul->hwinfo.max_threads, -1); // -1 if unknown, >  0 if set
 
   EXPECT_NE_U(ul->hwinfo.num_cores,    0); // must be either -1 or > 0
   EXPECT_NE_U(ul->hwinfo.min_threads,  0); // must be either -1 or > 0
