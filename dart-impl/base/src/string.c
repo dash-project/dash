@@ -109,3 +109,20 @@ int dart__base__strsunique(
   return last_unique + 1;
 }
 
+char * dart__base__strappend(
+  char        * str_lhs,
+  const char  * str_rhs,
+  int         * str_lhs_len,
+  int         * str_lhs_remaining_cap)
+{
+  if (*str_lhs_remaining_cap > 0) {
+    int str_rhs_len = strlen(str_rhs);
+    if (str_rhs_len <= *str_lhs_remaining_cap) {
+      strcat(str_lhs, str_rhs);
+      *str_lhs_remaining_cap -= str_rhs_len;
+      *str_lhs_len           += str_rhs_len;
+    }
+  }
+  return str_lhs;
+}
+

@@ -84,5 +84,5 @@ rm -Rf $BUILD_DIR/*
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         ../ && \
  await_confirm && \
- make) && \
+ make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \
 exit_message
