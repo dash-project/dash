@@ -19,12 +19,18 @@
 
 struct dart_amsgq {
   MPI_Win      tailpos_win;
+  uint64_t    *tailpos_ptr;
   MPI_Win      queue_win;
   char        *queue_ptr;
-  uint64_t    *tailpos_ptr;
   char        *dbuf;      // a double buffer used during message processing to shorten lock times
   uint64_t     size;      // the size (in byte) of the message queue
   dart_team_t  team;
+};
+
+struct dart_amsg_header {
+  dart_task_action_t *fn;
+  size_t data_size;
+  dart_unit_t remote;
 };
 
 static pthread_mutex_t processing_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -32,6 +38,9 @@ static pthread_mutex_t processing_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool initialized = false;
 static bool needs_translation = false;
 static int64_t *offsets = NULL;
+
+static inline uint64_t translate_fnptr(dart_task_action_t *fnptr, dart_unit_t target, dart_amsgq_t amsgq);
+static inline dart_ret_t exchange_fnoffsets();
 
 /**
  * Initialize the active messaging subsystem, mainly to determine the offsets of function pointers
@@ -44,40 +53,8 @@ dart_amsg_init()
 {
   if (initialized) return DART_OK;
 
-  size_t numunits;
-  dart_size(&numunits);
-  uint64_t  base  = (uint64_t)&dart_amsg_openq;
-  uint64_t *bases = calloc(numunits, sizeof(uint64_t));
-  if (!bases) {
-    return DART_ERR_INVAL;
-  }
-
-  DART_LOG_TRACE("Exchanging offsets (dart_amsg_openq = %p)", &dart_amsg_openq);
-  if (MPI_Allgather(&base, 1, MPI_UINT64_T, bases, 1, MPI_UINT64_T, MPI_COMM_WORLD) != MPI_SUCCESS) {
-    DART_LOG_ERROR("Failed to exchange base pointer offsets!");
-    return DART_ERR_NOTINIT;
-  }
-
-  // check whether we need to use offsets at all
-  for (size_t i = 0; i < numunits; i++) {
-    if (bases[i] != base) {
-      needs_translation = true;
-      DART_LOG_INFO("Using base pointer offsets for active messages (%llu against %llu on unit %i).", base, bases[i], i);
-      break;
-    }
-  }
-
-  if (needs_translation) {
-    offsets = malloc(numunits * sizeof(uint64_t));
-    if (!offsets) {
-      return DART_ERR_INVAL;
-    }
-    for (size_t i = 0; i < numunits; i++) {
-      offsets[i] = ((uint64_t)&dart_amsg_openq) - bases[i];
-    }
-  }
-
-  free(bases);
+  int ret = exchange_fnoffsets();
+  if (ret != DART_OK) return ret;
 
   initialized = true;
 
@@ -140,19 +117,11 @@ dart_ret_t
 dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t *fn, const void *data, size_t data_size)
 {
   dart_unit_t unitid;
-  int msg_size = (sizeof(unitid) + sizeof(dart_task_action_t*) + sizeof(data_size) + data_size);
-  uint64_t remote_offset;
+  uint64_t msg_size = (sizeof(struct dart_amsg_header) + data_size);
+  uint64_t remote_offset = 0;
 
   dart_task_action_t *remote_fn_ptr = fn;
-  // we do the translation everytime we send a message as it saves space
-  // TODO: would it be more efficient to store the translation data per message queue?
-  if (needs_translation) {
-    int64_t  remote_fn_offset;
-    dart_unit_t global_target_id;
-    dart_team_unit_l2g(amsgq->team, target, &global_target_id);
-    remote_fn_offset = offsets[global_target_id];
-    remote_fn_ptr += remote_fn_offset;
-  }
+  translate_fnptr(fn, target, amsgq);
 
   dart_comm_down();
 
@@ -162,15 +131,25 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t *fn
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target, 0, amsgq->tailpos_win);
 
   // Add the size of the message to the tailpos at the target
-  MPI_Fetch_and_op(&msg_size, &remote_offset, MPI_INT64_T, target, 0, MPI_SUM, amsgq->tailpos_win);
+  if (MPI_Fetch_and_op(&msg_size, &remote_offset, MPI_UINT64_T, target, 0, MPI_SUM, amsgq->tailpos_win) != MPI_SUCCESS) {
+    DART_LOG_ERROR("MPI_Fetch_and_op failed!");
+    return DART_ERR_NOTINIT;
+  }
+
+  DART_LOG_INFO("MPI_Fetch_and_op returned offset %llu at unit %i", remote_offset, target);
+
+  if (remote_offset >= amsgq->size) {
+    DART_LOG_ERROR("Received offset larger than message queue size from unit %i (%llu but expected < %llu)", target, remote_offset, amsgq->size);
+    return DART_ERR_INVAL;
+  }
 
   if ((remote_offset + msg_size) >= amsgq->size) {
-    int tmp;
+    uint64_t tmp;
     // if not, revert the operation and free the lock to try again.
-    MPI_Fetch_and_op(&remote_offset, &tmp, MPI_INT64_T, target, 0, MPI_REPLACE, amsgq->tailpos_win);
+    MPI_Fetch_and_op(&remote_offset, &tmp, MPI_UINT64_T, target, 0, MPI_REPLACE, amsgq->tailpos_win);
     MPI_Win_unlock(target, amsgq->tailpos_win);
     dart_comm_up();
-    DART_LOG_INFO("Not enough space for message of size %i at unit %i (current offset %i)", msg_size, target, remote_offset);
+    DART_LOG_INFO("Not enough space for message of size %i at unit %i (current offset %llu of %llu)", msg_size, target, remote_offset, amsgq->size);
     return DART_ERR_AGAIN;
   }
 
@@ -178,14 +157,15 @@ dart_amsg_trysend(dart_unit_t target, dart_amsgq_t amsgq, dart_task_action_t *fn
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, target, 0, amsgq->queue_win);
   MPI_Win_unlock(target, amsgq->tailpos_win);
 
+  struct dart_amsg_header header;
+  header.remote = unitid;
+  header.fn = remote_fn_ptr;
+  header.data_size = data_size;
+
   // we now have a slot in the message queue
   MPI_Aint queue_disp = remote_offset;
-  MPI_Put(&unitid, sizeof(unitid), MPI_BYTE, target, queue_disp, sizeof(unitid), MPI_BYTE, amsgq->queue_win);
-  queue_disp += sizeof(unitid);
-  MPI_Put(&remote_fn_ptr, sizeof(dart_task_action_t*), MPI_BYTE, target, queue_disp, sizeof(dart_task_action_t*), MPI_BYTE, amsgq->queue_win);
-  queue_disp += sizeof(dart_task_action_t*);
-  MPI_Put(&data_size, sizeof(data_size), MPI_BYTE, target, queue_disp, data_size, MPI_BYTE, amsgq->queue_win);
-  queue_disp += sizeof(data_size);
+  MPI_Put(&header, sizeof(header), MPI_BYTE, target, queue_disp, sizeof(header), MPI_BYTE, amsgq->queue_win);
+  queue_disp += sizeof(header);
   MPI_Put(data, data_size, MPI_BYTE, target, queue_disp, data_size, MPI_BYTE, amsgq->queue_win);
   MPI_Win_unlock(target, amsgq->queue_win);
 
@@ -200,8 +180,7 @@ dart_ret_t
 dart_amsg_process(dart_amsgq_t amsgq)
 {
   dart_unit_t unitid;
-  int   zero = 0;
-  int   tailpos;
+  uint64_t   tailpos;
 
   int ret = pthread_mutex_lock(&processing_mutex);
   if (ret != 0) {
@@ -216,13 +195,14 @@ dart_amsg_process(dart_amsgq_t amsgq)
   dart_comm_down();
   MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid, 0, amsgq->tailpos_win);
 
-  MPI_Get(&tailpos, 1, MPI_INT32_T, unitid, 0, 1, MPI_INT32_T, amsgq->tailpos_win);
+  MPI_Get(&tailpos, 1, MPI_UINT64_T, unitid, 0, 1, MPI_UINT64_T, amsgq->tailpos_win);
 
   /**
    * process messages while they are available, i.e.,
    * repeat if messages come in while processing previous messages
    */
   if (tailpos > 0) {
+    uint64_t   zero = 0;
     DART_LOG_INFO("Checking for new active messages (tailpos=%i)", tailpos);
     // lock the tailpos window
     MPI_Win_lock(MPI_LOCK_EXCLUSIVE, unitid, 0, amsgq->queue_win);
@@ -237,26 +217,31 @@ dart_amsg_process(dart_amsgq_t amsgq)
     MPI_Win_unlock(unitid, amsgq->queue_win);
 
     // reset the tailpos and release the lock on the message queue
-    MPI_Put(&zero, 1, MPI_INT32_T, unitid, 0, 1, MPI_INT32_T, amsgq->tailpos_win);
+    MPI_Put(&zero, 1, MPI_INT64_T, unitid, 0, 1, MPI_INT64_T, amsgq->tailpos_win);
     MPI_Win_unlock(unitid, amsgq->tailpos_win);
 
     dart_comm_up();
 
     // process the messages by invoking the functions on the data supplied
-    int pos = 0;
+    uint64_t pos = 0;
     while (pos < tailpos) {
 #ifdef DART_ENABLE_LOGGING
       int startpos = pos;
 #endif
       // unpack the message
-      dart_unit_t remote = *(dart_unit_t*)(dbuf + pos);
-      pos += sizeof(dart_unit_t);
-      dart_task_action_t *fn = *(dart_task_action_t**)(dbuf + pos);
-      pos += sizeof(dart_task_action_t*);
-      size_t data_size  = *(size_t*)(dbuf + pos);
-      pos += sizeof(data_size);
+//      dart_unit_t remote = *(dart_unit_t*)(dbuf + pos);
+//      pos += sizeof(dart_unit_t);
+//      dart_task_action_t *fn = *(dart_task_action_t**)(dbuf + pos);
+//      pos += sizeof(dart_task_action_t*);
+//      size_t data_size  = *(size_t*)(dbuf + pos);
+//      pos += sizeof(data_size);
+//      void *data     = dbuf + pos;
+//      pos += data_size;
+
+      struct dart_amsg_header *header = (struct dart_amsg_header *)(dbuf + pos);
+      pos += sizeof(struct dart_amsg_header);
       void *data     = dbuf + pos;
-      pos += data_size;
+      pos += header->data_size;
 
       if (pos > tailpos) {
         DART_LOG_ERROR("Message out of bounds (expected %i but saw %i)\n", tailpos, pos);
@@ -266,8 +251,8 @@ dart_amsg_process(dart_amsgq_t amsgq)
 
       // invoke the message
       DART_LOG_INFO("Invoking active message %p from %i on data %p of size %i starting from tailpos %i",
-                        fn, remote, data, data_size, startpos);
-      fn(data);
+                        header->fn, header->remote, data, header->data_size, startpos);
+      header->fn(data);
     }
   } else {
     MPI_Win_unlock(unitid, amsgq->tailpos_win);
@@ -304,3 +289,66 @@ dart_amsg_closeq(dart_amsgq_t amsgq)
 
   return DART_OK;
 }
+
+
+/**
+ * Private functions
+ */
+
+
+/**
+ * Translate the function pointer to make it suitable for the target rank using a static translation table.
+ * we do the translation everytime we send a message as it saves space
+ * TODO: would it be more efficient to store the translation data per message queue?
+ */
+static inline uint64_t translate_fnptr(dart_task_action_t *fnptr, dart_unit_t target, dart_amsgq_t amsgq) {
+  dart_task_action_t *remote_fnptr = fnptr;
+  if (needs_translation) {
+    int64_t  remote_fn_offset;
+    dart_unit_t global_target_id;
+    dart_team_unit_l2g(amsgq->team, target, &global_target_id);
+    remote_fn_offset = offsets[global_target_id];
+    remote_fnptr += remote_fn_offset;
+  }
+  return remote_fnptr;
+}
+
+static inline dart_ret_t exchange_fnoffsets() {
+
+  size_t numunits;
+  dart_size(&numunits);
+  uint64_t  base  = (uint64_t)&dart_amsg_openq;
+  uint64_t *bases = calloc(numunits, sizeof(uint64_t));
+  if (!bases) {
+    return DART_ERR_INVAL;
+  }
+
+  DART_LOG_TRACE("Exchanging offsets (dart_amsg_openq = %p)", &dart_amsg_openq);
+  if (MPI_Allgather(&base, 1, MPI_UINT64_T, bases, 1, MPI_UINT64_T, MPI_COMM_WORLD) != MPI_SUCCESS) {
+    DART_LOG_ERROR("Failed to exchange base pointer offsets!");
+    return DART_ERR_NOTINIT;
+  }
+
+  // check whether we need to use offsets at all
+  for (size_t i = 0; i < numunits; i++) {
+    if (bases[i] != base) {
+      needs_translation = true;
+      DART_LOG_INFO("Using base pointer offsets for active messages (%p against %p on unit %i).", base, bases[i], i);
+      break;
+    }
+  }
+
+  if (needs_translation) {
+    offsets = malloc(numunits * sizeof(uint64_t));
+    if (!offsets) {
+      return DART_ERR_INVAL;
+    }
+    for (size_t i = 0; i < numunits; i++) {
+      offsets[i] = bases[i] - ((uint64_t)&dart_amsg_openq);
+    }
+  }
+
+  free(bases);
+  return DART_OK;
+}
+
