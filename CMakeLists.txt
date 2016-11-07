@@ -86,6 +86,8 @@ option(ENABLE_PLASMA
        "Specify whether PLASMA features are enabled" on)
 option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
+option(ENABLE_NASTYMPI
+       "Specify whether the NastyMPI proxy should be enabled" off)
 
 if (BUILD_COVERAGE_TESTS)
   set(BUILD_TESTS TRUE CACHE BOOLEAN
@@ -118,6 +120,9 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
 if (NOT MKL_FOUND)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/SCALAPACK.cmake)
+endif()
+if (ENABLE_NASTYMPI)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/NastyMPI.cmake)
 endif()
 
 # prepare StaticConfig.h generation
@@ -369,5 +374,8 @@ if (ENABLE_LIBNUMA)
   endif()
 else()
   message(NOTE "libnuma                   disabled")
+endif()
+if (ENABLE_NASTYMPI)
+    message(INFO "NastyMPI                  enabled")
 endif()
 
