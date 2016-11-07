@@ -88,15 +88,14 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         \
-                        -DBUILD_EXAMPLES=ON \
+                        -DBUILD_EXAMPLES=OFF \
                         -DBUILD_TESTS=ON \
-                        -DBUILD_DOCS=ON \
+                        -DBUILD_DOCS=OFF \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
                         \
                         -DENABLE_NASTYMPI=ON \
-                        -DNASTYMPI_LIBRARY_PATH=${HOME}/opt/nastympi/lib \
                         \
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                         ../ && \
