@@ -10,7 +10,7 @@ for Hierarchical Locality for HPC and Data-Driven Science
 Docker Containers
 -----------------
 
-For pre-build Docker container images, see [https://hub.docker.com/r/dashproject]().
+For pre-build Docker container images, see the [https://hub.docker.com/r/dashproject](DASH project on Docker Hub).
 
 Build and Installation
 ----------------------
