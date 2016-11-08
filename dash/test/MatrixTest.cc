@@ -717,23 +717,6 @@ TEST_F(MatrixTest, StorageOrder)
   }
 
   dash::barrier();
-
-  if (dash::myid() == 0) {
-    std::cout << "row major:" << std::endl;
-    for (int row = 0; row < static_cast<int>(nrows); ++row) {
-      for (int col = 0; col < static_cast<int>(ncols); ++col) {
-        std::cout << std::setw(5) << (int)(mat_row[row][col]) << " ";
-      }
-      std::cout << std::endl;
-    }
-    std::cout << "column major:" << std::endl;
-    for (int row = 0; row < static_cast<int>(nrows); ++row) {
-      for (int col = 0; col < static_cast<int>(ncols); ++col) {
-        std::cout << std::setw(5) << (int)(mat_col[row][col]) << " ";
-      }
-      std::cout << std::endl;
-    }
-  }
 }
 
 TEST_F(MatrixTest, DelayedAlloc)
@@ -1036,7 +1019,7 @@ TEST_F(MatrixTest, DelayedPatternAllocation)
   long block_size_x = dash::size();
   long block_size_y = dash::size();
   dash::NArray<int, 2, long, pattern_t > matrix;
-  
+
   {
     auto & team = dash::Team::All();
     dash::TeamSpec<2>         ts(team);
