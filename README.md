@@ -7,6 +7,11 @@ DASH
 A C++ Template Library for Distributed Data Structures with Support
 for Hierarchical Locality for HPC and Data-Driven Science
 
+Docker Containers
+-----------------
+
+For pre-build Docker container images, see [https://hub.docker.com/r/dashproject]().
+
 Build and Installation
 ----------------------
 
