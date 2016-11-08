@@ -45,9 +45,9 @@ if [ "$INSTALL_PATH" = "" ]; then
 fi
 
 await_confirm() {
+  echo    "$BUILD_SETTINGS"
+  echo    ""
   if ! $FORCE_BUILD; then
-    echo    "$BUILD_SETTINGS"
-    echo    ""
     read -p "   To build using these settings, hit ENTER"
   fi
 }
@@ -148,7 +148,7 @@ elif [ "$BUILD_TYPE" = "Minimal" ]; then
   -DENABLE_PLASMA=OFF \
   -DENABLE_HDF5=OFF \
   -DBUILD_EXAMPLES=$BUILDEXAMPLES \
-  -DBUILD_TESTS=OFF \
+  -DBUILD_TESTS=ON \
   -DBUILD_DOCS=OFF \
   -DPAPI_PREFIX=${PAPI_HOME}"
 elif [ "$BUILD_TYPE" = "Nasty" ]; then
