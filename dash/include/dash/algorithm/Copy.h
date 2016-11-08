@@ -627,6 +627,7 @@ dash::Future<ValueType *> copy_async(
       std::memcpy(out_first,        // destination
                   in_first.local(), // source
                   num_local_elem * sizeof(ValueType));
+      out_last = out_first + num_local_elem;
     } else {
       ValueType * l_in_first = in_first.local();
       ValueType * l_in_last  = l_in_first + num_local_elem;
@@ -744,6 +745,7 @@ dash::Future<ValueType *> copy_async(
       std::memcpy(local_out_first, // destination
                   l_in_first,      // source
                   num_local_elem * sizeof(ValueType));
+      local_out_last = local_out_first + num_local_elem;
     } else {
       local_out_last = std::copy(l_in_first,
                                  l_in_last,
@@ -827,6 +829,7 @@ ValueType * copy(
       std::memcpy(out_first,        // destination
                   in_first.local(), // source
                   num_local_elem * sizeof(ValueType));
+      out_last = out_first + num_local_elem;
     } else {
       ValueType * l_in_first = in_first.local();
       ValueType * l_in_last  = l_in_first + num_local_elem;
