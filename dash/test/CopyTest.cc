@@ -745,6 +745,9 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
 
   dash::Array<int> array(num_elem_total, dash::BLOCKED);
 
+  EXPECT_EQ_U(num_elem_per_unit, array.local.size());
+  EXPECT_EQ_U(num_elem_per_unit, array.lsize());
+
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
   for (auto l = 0; l < num_elem_per_unit; ++l) {
     array.local[l] = ((dash::myid() + 1) * 1000) + l;
@@ -761,7 +764,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
                                    local_copy);
   dest_end.wait();
 
-  EXPECT_EQ_U(local_copy + num_elem_per_unit, dest_end.get());
+  EXPECT_EQ_U(num_elem_per_unit, dest_end.get() - local_copy);
   for (auto l = 0; l < num_elem_per_unit; ++l) {
     EXPECT_EQ_U(static_cast<int>(array[l]),
                 local_copy[l]);
