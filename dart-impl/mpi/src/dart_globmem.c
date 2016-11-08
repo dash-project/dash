@@ -104,6 +104,7 @@ dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
   gptr->unitid = unitid;
   gptr->segid = 0; /* For local allocation, the segid is marked as '0'. */
   gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
+  gptr->flags = 0;
   if (gptr->addr_or_offs.offset == (uint64_t)(-1)) {
     DART_LOG_ERROR("dart_memalloc: Out of bounds "
                    "(dart_buddy_alloc %zu bytes): global memory exhausted", nbytes);
@@ -284,6 +285,7 @@ dart_team_memalloc_aligned(
    * unique collective global memory. */
   gptr->segid = dart_memid;
   gptr->addr_or_offs.offset = 0;
+  gptr->flags = 0;
 
   if (dart_segment_alloc(dart_memid, index) != DART_OK) {
     DART_LOG_ERROR(
@@ -421,6 +423,7 @@ dart_team_memregister_aligned(
   gptr->unitid = gptr_unitid;
   gptr->segid = dart_registermemid;
   gptr->addr_or_offs.offset = 0;
+  gptr->flags = 0;
 
   if (dart_segment_alloc(dart_registermemid, index) != DART_OK) {
     DART_LOG_ERROR(
@@ -492,6 +495,7 @@ dart_team_memregister(
   gptr->unitid = gptr_unitid;
   gptr->segid = dart_registermemid;
   gptr->addr_or_offs.offset = 0;
+  gptr->flags = 0;
 
   if (dart_segment_alloc(dart_registermemid, index) != DART_OK) {
     DART_LOG_ERROR(
