@@ -317,7 +317,9 @@ dart_ret_t dart_exit()
 #endif
 	dart_adapt_teamlist_destroy();
 
-  /* <fuchsto>: deactivated, currently segfaults when running with 3 units:
+  /* <fuchsto>: deactivated, currently segfaults when running
+   *            with 3 units:
+   */
 /*
   dart_segment_clear();
 */

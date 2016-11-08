@@ -46,6 +46,8 @@ option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
 option(ENABLE_LT_OPTIMIZATION
        "Specify whether link-time-optimization should be used" off)
+option(ENABLE_CC_REPORTS
+       "Specify whether compiler reports should be generated" on)
 option(ENABLE_COMPTIME_RED
   "Specify whether opts to reduce the build time should be used" ${DEFAULT_COMPTIME_RED})
 option(ENABLE_LOGGING
@@ -239,7 +241,9 @@ message(INFO "Strict compiler warnings: (ENABLE_COMPILER_WARNINGS)       "
         ${ENABLE_COMPILER_WARNINGS})
 message(INFO "Link Time Optimization:   (ENABLE_LT_OPTIMIZATION)         "
         ${ENABLE_LT_OPTIMIZATION})
-message(INFO "Compile Time Reduction:   (ENABLE_COMPTIME_RED)            "
+message(INFO "Compiler reports:         (ENABLE_CC_REPORTS)              "
+        ${ENABLE_CC_REPORTS})
+message(INFO "Compile time reduction:   (ENABLE_COMPTIME_RED)            "
         ${ENABLE_COMPTIME_RED})
 message(INFO "Debug log messages:       (ENABLE_LOGGING)                 "
         ${ENABLE_LOGGING})

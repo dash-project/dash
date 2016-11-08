@@ -24,6 +24,7 @@
 #include <dash/dart/base/internal/unit_locality.h>
 #include <dash/dart/base/internal/hwloc.h>
 
+#include <dash/dart/base/string.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 
@@ -95,12 +96,20 @@ dart_ret_t dart__base__host_topology__module_locations(
 
             char * hostname     = module_loc->host;
             char * mic_hostname = module_loc->module;
+            char * mic_dev_name = coproc_child_obj->name;
+
             gethostname(hostname, DART_LOCALITY_HOST_MAX_SIZE);
 
-            char * mic_dev_name = coproc_child_obj->name;
-            strncpy(mic_hostname, hostname,     DART_LOCALITY_HOST_MAX_SIZE);
-            strncat(mic_hostname, "-",          DART_LOCALITY_HOST_MAX_SIZE);
-            strncat(mic_hostname, mic_dev_name, DART_LOCALITY_HOST_MAX_SIZE);
+            int n_chars_written = snprintf(
+                                    mic_hostname, DART_LOCALITY_HOST_MAX_SIZE,
+                                    "%s-%s", hostname, mic_dev_name);
+            if (n_chars_written < 0 ||
+                n_chars_written >= DART_LOCALITY_HOST_MAX_SIZE) {
+              DART_LOG_ERROR("dart__base__host_topology__module_locations: "
+                             "MIC host name '%s-%s could not be assigned",
+                             hostname, mic_dev_name);
+            }
+
             DART_LOG_TRACE("dart__base__host_topology__module_locations: "
                            "hwloc: Xeon Phi module hostname: %s "
                            "node hostname: %s",
