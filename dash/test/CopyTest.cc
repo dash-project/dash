@@ -761,7 +761,7 @@ TEST_F(CopyTest, AsyncGlobalToLocalBlock)
                                    local_copy);
   dest_end.wait();
 
-  EXPECT_EQ_U(local_copy + num_elem_per_unit, dest_end.get());
+  EXPECT_EQ_U(num_elem_per_unit, dest_end.get() - local_copy);
   for (auto l = 0; l < num_elem_per_unit; ++l) {
     EXPECT_EQ_U(static_cast<int>(array[l]),
                 local_copy[l]);

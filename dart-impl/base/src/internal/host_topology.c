@@ -24,6 +24,7 @@
 #include <dash/dart/base/internal/unit_locality.h>
 #include <dash/dart/base/internal/hwloc.h>
 
+#include <dash/dart/base/string.h>
 #include <dash/dart/base/logging.h>
 #include <dash/dart/base/assert.h>
 
@@ -98,9 +99,20 @@ dart_ret_t dart__base__host_topology__module_locations(
             gethostname(hostname, DART_LOCALITY_HOST_MAX_SIZE);
 
             char * mic_dev_name = coproc_child_obj->name;
-            strncpy(mic_hostname, hostname,     DART_LOCALITY_HOST_MAX_SIZE);
-            strncat(mic_hostname, "-",          DART_LOCALITY_HOST_MAX_SIZE);
-            strncat(mic_hostname, mic_dev_name, DART_LOCALITY_HOST_MAX_SIZE);
+            // Length of MIC host name:
+            int    mic_hostname_len  = strncpy(mic_hostname, hostname,
+                                               DART_LOCALITY_HOST_MAX_SIZE) -
+                                       mic_hostname;
+            // Remaining capacity in MIC host name string:
+            int    mic_hostname_rcap = DART_LOCALITY_HOST_MAX_SIZE -
+                                       mic_hostname_len;
+
+            dart__base__strappend(mic_hostname, "-",
+                                  &mic_hostname_len, &mic_hostname_rcap);
+
+            dart__base__strappend(mic_hostname, mic_dev_name,
+                                  &mic_hostname_len, &mic_hostname_rcap);
+
             DART_LOG_TRACE("dart__base__host_topology__module_locations: "
                            "hwloc: Xeon Phi module hostname: %s "
                            "node hostname: %s",
