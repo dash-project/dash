@@ -256,7 +256,7 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
 
 TEST_F(FindTest, Empty_Container)
 {
-  SKIP_TEST()
+  SKIP_TEST();
 
   Element_t find_me = 1;
 
