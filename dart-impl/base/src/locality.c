@@ -262,7 +262,6 @@ dart_ret_t dart__base__locality__delete(
     }
     DART_LOG_DEBUG("dart__base__locality__delete: "
                    "free(dart__base__locality__unit_mapping_[%d])", team);
-    free(dart__base__locality__unit_mapping_[team]);
     dart__base__locality__unit_mapping_[team] = NULL;
   }
 

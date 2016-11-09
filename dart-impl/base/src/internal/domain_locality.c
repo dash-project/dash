@@ -201,7 +201,7 @@ dart_ret_t dart__base__locality__domain__copy(
    */
   for (int sd = 0; sd < domain_src->num_domains; sd++) {
     const dart_domain_locality_t * subdomain_src = domain_src->domains + sd;
-    dart_domain_locality_t * subdomain_dst       = domain_dst->domains + sd;
+    dart_domain_locality_t       * subdomain_dst = domain_dst->domains + sd;
 
     ret = dart__base__locality__domain__copy(
             subdomain_src,
@@ -525,27 +525,29 @@ dart_ret_t dart__base__locality__domain__create_subdomains(
                  "num_nodes:%d", num_nodes);
 
   /* Child domains of root are at node level: */
-  global_domain->num_cores      = 0;
-  global_domain->num_domains    = num_nodes;
-  global_domain->scope          = DART_LOCALITY_SCOPE_GLOBAL;
-  global_domain->level          = 0;
-  global_domain->global_index   = 0;
-  global_domain->relative_index = 0;
-  global_domain->domains        = malloc(num_nodes *
-                                         sizeof(dart_domain_locality_t));
+  global_domain->num_cores        = 0;
+  global_domain->num_domains      = num_nodes;
+  global_domain->scope            = DART_LOCALITY_SCOPE_GLOBAL;
+  global_domain->level            = 0;
+  global_domain->shared_mem_bytes = 0;
+  global_domain->global_index     = 0;
+  global_domain->relative_index   = 0;
+  global_domain->domains          = malloc(num_nodes *
+                                           sizeof(dart_domain_locality_t));
   strcpy(global_domain->domain_tag, ".");
 
   for (int n = 0; n < num_nodes; n++) {
     dart_domain_locality_t * node_domain = &global_domain->domains[n];
     dart__base__locality__domain__init(node_domain);
 
-    node_domain->scope          = DART_LOCALITY_SCOPE_NODE;
-    node_domain->level          = global_domain->level + 1;
-    node_domain->global_index   = n;
-    node_domain->relative_index = n;
-    node_domain->parent         = global_domain;
-    node_domain->team           = global_domain->team;
-    node_domain->num_units      = 0;
+    node_domain->scope            = DART_LOCALITY_SCOPE_NODE;
+    node_domain->level            = global_domain->level + 1;
+    node_domain->shared_mem_bytes = -1;
+    node_domain->global_index     = n;
+    node_domain->relative_index   = n;
+    node_domain->parent           = global_domain;
+    node_domain->team             = global_domain->team;
+    node_domain->num_units        = 0;
     sprintf(node_domain->domain_tag, ".%d", node_domain->relative_index);
 
     const char * node_hostname;
@@ -612,12 +614,13 @@ dart_ret_t dart__base__locality__domain__create_node_subdomains(
     dart_domain_locality_t * module_domain = &node_domain->domains[m];
     dart__base__locality__domain__init(module_domain);
 
-    module_domain->scope          = DART_LOCALITY_SCOPE_MODULE;
-    module_domain->level          = node_domain->level + 1;
-    module_domain->global_index   = m;
-    module_domain->relative_index = m;
-    module_domain->parent         = node_domain;
-    module_domain->team           = node_domain->team;
+    module_domain->scope            = DART_LOCALITY_SCOPE_MODULE;
+    module_domain->level            = node_domain->level + 1;
+    module_domain->shared_mem_bytes = -1;
+    module_domain->global_index     = m;
+    module_domain->relative_index   = m;
+    module_domain->parent           = node_domain;
+    module_domain->team             = node_domain->team;
     sprintf(module_domain->domain_tag, "%s.%d",
             node_domain->domain_tag,
             module_domain->relative_index);
