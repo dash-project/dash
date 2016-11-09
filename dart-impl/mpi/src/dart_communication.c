@@ -1100,7 +1100,10 @@ dart_ret_t dart_waitall_local(
   dart_handle_t * handle,
   size_t          num_handles)
 {
-  size_t i, r_n = 0;
+  size_t     i,
+             r_n = 0;
+  dart_ret_t ret = DART_OK;
+
   DART_LOG_DEBUG("dart_waitall_local()");
   if (num_handles == 0) {
     DART_LOG_DEBUG("dart_waitall_local > number of handles = 0");
@@ -1171,9 +1174,8 @@ dart_ret_t dart_waitall_local(
             DART_LOG_TRACE("dart_waitall_local: -- MPI_Request_free");
             if (MPI_Request_free(&mpi_req[r_n]) != MPI_SUCCESS) {
               DART_LOG_TRACE("dart_waitall_local ! MPI_Request_free failed");
-              free(mpi_req);
-              free(mpi_sta);
-              return DART_ERR_INVAL;
+              ret = DART_ERR_INVAL;
+              break;
             }
           } else {
             DART_LOG_TRACE("dart_waitall_local: cannot free request %zu "
@@ -1186,7 +1188,9 @@ dart_ret_t dart_waitall_local(
         }
         DART_LOG_DEBUG("dart_waitall_local: free handle[%zu] %p",
                        i, (void*)(handle[i]));
-        free(handle[i]);
+        if (NULL != handle[i]) {
+          free(handle[i]);
+        }
         handle[i] = NULL;
         r_n++;
       }
@@ -1196,8 +1200,8 @@ dart_ret_t dart_waitall_local(
     DART_LOG_TRACE("dart_waitall_local: free MPI_Status temporaries");
     free(mpi_sta);
   }
-  DART_LOG_DEBUG("dart_waitall_local > finished");
-  return DART_OK;
+  DART_LOG_DEBUG("dart_waitall_local > %d", ret);
+  return ret;
 }
 
 dart_ret_t dart_waitall(
