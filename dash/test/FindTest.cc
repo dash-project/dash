@@ -6,7 +6,6 @@
 #include "TestBase.h"
 #include "FindTest.h"
 
-#if 0
 
 TEST_F(FindTest, TestSimpleFind)
 {
@@ -255,15 +254,15 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
   array.barrier();
 }
 
-#if 0
 TEST_F(FindTest, Empty_Container)
 {
+  SKIP_TEST()
+
   Element_t find_me = 1;
 
   dash::Array<Element_t> array;
 
   array.allocate(0, dash::BLOCKED);
-  array.barrier();
 
   // Run find on complete array
   auto found_gptr = dash::find(array.begin(), array.end(), find_me);
@@ -273,7 +272,6 @@ TEST_F(FindTest, Empty_Container)
   // Run find on complete array
   EXPECT_EQ(array.end(), found_gptr);
 }
-#endif
 
 TEST_F(FindTest, LessElementsThanUnits)
 {
@@ -323,6 +321,4 @@ TEST_F(FindTest, LessElementsThanUnits)
 
   array.barrier();
 }
-
-#endif
 
