@@ -221,6 +221,9 @@ dart_ret_t dart__base__host_topology__update_module_locations(
   } else {
     leader_team = team;
   }
+
+  free(leader_group);
+
   if (my_id == local_leader_unit_id) {
     dart_module_location_t * module_locations = NULL;
     dart_unit_t my_leader_id;
@@ -611,7 +614,9 @@ dart_ret_t dart__base__host_topology__create(
       DART_LOG_TRACE("dart__base__host_topology__init: shrinking node unit "
                      "array from %d to %d elements",
                      max_host_units, host_units->num_units);
-//    host_units->units = realloc(host_units->units, host_units->num_units);
+      host_units->units = realloc(host_units->units,
+                                  host_units->num_units *
+                                    sizeof(dart_unit_t));
       DART_ASSERT(host_units->units != NULL);
     }
   }
@@ -641,17 +646,37 @@ dart_ret_t dart__base__host_topology__destruct(
   dart_host_topology_t * topo)
 {
   DART_LOG_DEBUG("dart__base__host_topology__destruct()");
-  if (topo->host_domains != NULL) {
+  if (NULL != topo->host_domains) {
     DART_LOG_DEBUG("dart__base__host_topology__init: "
                    "free(topo->host_domains)");
     free(topo->host_domains);
     topo->host_domains = NULL;
   }
-  if (topo->host_names != NULL) {
+  if (NULL != topo->host_names) {
+    for (int h = 0; h < topo->num_hosts; ++h) {
+      if (NULL != topo->host_names[h]) {
+        DART_LOG_DEBUG("dart__base__host_topology__init: "
+                       "free(topo->host_names[%d])", h);
+        free(topo->host_names[h]);
+        topo->host_names[h] = NULL;
+      }
+    }
     DART_LOG_DEBUG("dart__base__host_topology__init: "
                    "free(topo->host_names)");
     free(topo->host_names);
     topo->host_names = NULL;
+  }
+  if (NULL != topo->host_units) {
+    if (NULL != topo->host_units->units) {
+      DART_LOG_DEBUG("dart__base__host_topology__init: "
+                     "free(topo->host_units->units)");
+      free(topo->host_units->units);
+      topo->host_units->units = NULL;
+    }
+    DART_LOG_DEBUG("dart__base__host_topology__init: "
+                   "free(topo->host_units)");
+    free(topo->host_units);
+    topo->host_units = NULL;
   }
   DART_LOG_DEBUG("dart__base__host_topology__destruct >");
   return DART_OK;

@@ -462,8 +462,8 @@ private:
   allocator_type          _allocator;
   dart_gptr_t             _begptr     = DART_GPTR_NULL;
   dart_team_t             _teamid     = DART_TEAM_NULL;
-  size_type               _nunits     = 0;
   size_type               _nlelem     = 0;
+  size_type               _nunits     = 0;
   ElementType           * _lbegin     = nullptr;
   ElementType           * _lend       = nullptr;
 };
