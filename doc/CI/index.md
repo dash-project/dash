@@ -1,0 +1,92 @@
+# Continuous Integration
+Taking care of the various differences in HPC software and architectures is not an easy task. For a seamless integration of both new features and bugfixes DASH provides support for continuous integration (CI).
+If CI passes, there is a high change that your changes do not hurt other parts of the code. However always keep in mind that a CI is only able to falsify but not to verify code.
+
+## Unit Tests
+For unit testing DASH uses the widely used GoogleTest framework.
+For each feature of DASH there should be a corresponding unit test `dash/test`. It is recommended that the developer of the feature does not write the tests himself.
+Whether the tests should be build is set in the build script using `-DBUILD_TESTS=ON`. The testsuite can then be easily executed using `mpirun -n <procs> ./build/bin/dash-test-mpi`. The output should be self explaining.
+
+### Code Coverage
+Code coverage tests are useful to verify if the whole public API is covered by the unit tests.
+
+#### Dependencies
+
+-   gcc / g++
+-   gcov
+-   lcov
+
+#### How to get the results?
+
+``` {.bash}
+./build.cov.sh
+
+cd build.cov
+# build tests
+make
+# execute coverage measurement and generate reports
+make coverage
+
+# open results in browser
+firefox coverage/index.html
+```
+
+If some tests do not work with just one unit, they can be excluded using
+the filter string. Multiple tests can be separated by “:”. The pattern
+is as follows:
+
+``` {.bash}
+# export GTEST_FILTER="POSTIVE_PATTERNS[-NEGATIVE_PATTERNS]"
+
+# Run all tests which start with S or L,
+# but not LocalRangeTest.LargeArray and not SUMMA tests
+export GTEST_FILTER="S*:L*:-LocalRangeTest.LargeArray:SUMMA*"
+
+# more common example
+export GTEST_FILTER="-LocalRangeTest.LargeArray"
+```
+
+#### CMake Bug
+
+The best solution would be to use the coverage integration in cmake by
+setting `CMAKE\_BUILD\_TYPE=Coverage`. This is not possible as the
+coverage flags are inserted before the `-fopenmp` flag. In modern
+versions of gcc this is not allowed and leads to an linker error.
+
+Currently `CMAKE\_BUILD\_TYPE=Profile` is used.
+
+## CI Scripts
+
+The DASH CI scripts located in `dash/scripts` automate the process of building DASH in various configuration and executing the tests.
+There are three main scripts:
+
+- `dash-ci-deploy.sh`: deploys various DASH configurations.
+- `dash-test.sh`: runs a given target with a varying number of nodes and parses the output.
+- `dash-ci.sh`: calls `dash-ci-deploy.sh` and executes the tests using `dash-test.sh`.
+
+### Deployment 
+
+Each CI configuration is identified by `$BUILD_TYPE`. If you intend to add another config, just add another case in the if/else statement.
+The `$BUILD_SETTINGS` holds the settings which are passed to cmake.
+
+There are some environment variables that are used to modify the build settings. This is especially useful to customize or speedup the deployment if using the online CI providers.
+If you intend to add another environment variable always add a default value if it is not set.
+
+- `$DASH_BUILDEX`: ("ON"|"OFF") specifies if the examples should be build in this deployment run.
+- `$DASH_MAKE_PROCS`: max number of parallelism in make. Limit this value to reduce memory consumption during compilation. If not set the number of available processors is used.
+
+### Execute Tests
+In `dash-test.sh` the environment is checked (TODO DOC) and the tests are executed using a specified set of mpi processes per run. This is specified using `run_suite <nprocs>`.
+There are never more processes spin up than the host provides CPU cores. Furthermore some characteristics can be specified using environment variables:
+
+- `$DASH_MAX_UNITS`: use at most this number of processes.
+- `$MPI_EXEC_FLAGS`: pass these flags to the mpirun command.
+
+### Execute CI 
+
+Call `dash-ci.sh <target> ..` to run the CI for a list of targets. The target configuration has to be set in the deployment script. If no targets are given, a list of default targets is build and executed.
+If the logs of each target contain no errors, the CI return exit code 0, otherwise 1.
+
+## CI Environments
+
+## Online CI providers
