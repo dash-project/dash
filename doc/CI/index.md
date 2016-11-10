@@ -89,4 +89,29 @@ If the logs of each target contain no errors, the CI return exit code 0, otherwi
 
 ## CI Environments
 
+To simulate different common environments DASH uses Docker containers. For further information on Docker see the [vendor documentation](https://docs.docker.com/). The containers are build using the dockerfiles located in `dash/scripts/docker-testing/<env>`. This can be done either locally or by using the pre build images located on [Dockerhub](https://hub.docker.com/u/dashproject/). The containers hosted on Dockerhub are automatically build from the official development branch of DASH.
+
+### Build from Dockerfile
+
+A docker container image named `dashproject/ci-testing:<env>` can be build using the following command. `env` has to be substituted with the name of the environment. 
+
+```
+# build container
+docker build --tag dashproject/ci-testing:<env> dash/scripts/docker-testing/<env>
+# alternatively pull official image
+docker pull dashproject/ci-testing:<env>
+```
+
+Note
+
+These containers can also be used as a good starting point for developing DASH applications.
+
+As the containers only provide an environment but no DASH installation, a DASH repository should be mounted as shared folder.
+The following command starts an interactive container with DASH located in /opt/dash, assumed that the command is at the top level of the DASH repository.
+
+```bash
+# mount current folder to /opt/dash
+docker run -it -v $(pwd):/opt/dash dashproject/ci-testing:<env>
+```
+
 ## Online CI providers
