@@ -38,7 +38,7 @@ run_ci()
       $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log | grep -v "LOG ="
     fi
     TEST_STATUS=$?
-    ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat" $DEPLOY_PATH/test_mpi.log`
+    ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat\|uninitialised value\|Invalid read\|Invalid write" $DEPLOY_PATH/test_mpi.log`
     if [ "$TEST_STATUS" = "0" ]; then
       if [ "$ERROR_PATTERNS" -ne "0" ]; then
         FAILED=true
