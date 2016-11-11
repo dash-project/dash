@@ -7,6 +7,7 @@ BUILD_CONFIG=$1
 i=0
 for MPIENV in ${MPIENVS[@]}; do
   if [[ $(( $i % ${CIRCLE_NODE_TOTAL} )) -eq ${CIRCLE_NODE_INDEX} ]]; then
+    i=$((i + 1))
 
     # specify combinations which are not inteded to run here.
     # run valgrind container only if target is debug
@@ -36,5 +37,4 @@ for MPIENV in ${MPIENVS[@]}; do
     fi
   fi
 
-  i=$((i + 1))
 done
