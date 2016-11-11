@@ -8,6 +8,13 @@ i=0
 for MPIENV in ${MPIENVS[@]}; do
   if [[ $(( $i % ${CIRCLE_NODE_TOTAL} )) -eq ${CIRCLE_NODE_INDEX} ]]; then
 
+    # specify combinations which are not inteded to run here.
+    # run valgrind container only if target is debug
+    if [ "$MPIENV" == "openmpi2_vg" ] && [ "$BUILD_CONFIG" != "Debug" ]; then
+      echo "Skipping target $BUILD_CONF in ENV $MPIENV"
+      continue
+    fi
+
     echo "Starting docker container: $MPIENV"
 
     docker run -v $PWD:/opt/dash dashproject/ci:$MPIENV /bin/sh -c "export DASH_MAKE_PROCS='4'; export DASH_MAX_UNITS='3'; export DASH_BUILDEX='OFF'; sh dash/scripts/dash-ci.sh $BUILD_CONFIG | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
