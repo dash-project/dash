@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MPIENVS=(openmpi mpich)
+MPIENVS=(openmpi mpich openmpi2_vg)
 BUILD_CONFIG=$1
 
 # run tests
