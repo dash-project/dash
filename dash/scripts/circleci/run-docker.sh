@@ -10,13 +10,18 @@ for MPIENV in ${MPIENVS[@]}; do
     i=$((i + 1))
 
     # specify combinations which are not inteded to run here.
-    # run valgrind container only if target is debug
-    if [ "$MPIENV" == "openmpi2_vg" ] && [ "$BUILD_CONFIG" != "Debug" ]; then
-      echo "Skipping target $BUILD_CONF in ENV $MPIENV"
-      continue
-    elif [ "$BUILD_CONFIG" == "Debug" ]; then
-      echo "Skipping target $BUILD_CONF in ENV $MPIENV"
-      continue
+    if [ "$MPIENV" == "openmpi2_vg" ]; then
+      # run valgrind container only if target is debug
+      if [ "$BUILD_CONFIG" != "Debug" ]; then
+        echo "Skipping target $BUILD_CONF in ENV $MPIENV"
+        continue
+      fi
+    else # all other containers
+      # skip debug target
+      if [ "$BUILD_CONFIG" == "Debug" ]; then
+        echo "Skipping target $BUILD_CONF in ENV $MPIENV"
+        continue
+      fi
     fi
 
     echo "Starting docker container: $MPIENV"
