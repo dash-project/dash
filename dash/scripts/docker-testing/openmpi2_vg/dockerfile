@@ -1,11 +1,11 @@
 # Dockerfile for the DASH project
 FROM          ubuntu:latest
 
-MAINTAINER    Joseph Schuchart <schuchart@hlrs.de>
+MAINTAINER    The DASH Team <team@dash-project.org>
 
 RUN           apt-get update -y
 RUN           apt-get install -y cmake libhwloc-plugins libhwloc-dev \
-                          git build-essential valgrind
+                          git build-essential valgrind valgrind-mpi
 
 # Install PAPI 5.5.0 from source
 WORKDIR       /tmp
