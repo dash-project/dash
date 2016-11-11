@@ -5,7 +5,7 @@ MAINTAINER    The DASH Team <team@dash-project.org>
 
 RUN           apt-get update -y
 RUN           apt-get install -y cmake libhwloc-plugins libhwloc-dev \
-                          git build-essential valgrind valgrind-mpi
+                          git build-essential valgrind
 
 # Install PAPI 5.5.0 from source
 WORKDIR       /tmp
