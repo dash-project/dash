@@ -14,6 +14,9 @@ for MPIENV in ${MPIENVS[@]}; do
     if [ "$MPIENV" == "openmpi2_vg" ] && [ "$BUILD_CONFIG" != "Debug" ]; then
       echo "Skipping target $BUILD_CONF in ENV $MPIENV"
       continue
+    elif [ "$BUILD_CONFIG" == "Debug" ]; then
+      echo "Skipping target $BUILD_CONF in ENV $MPIENV"
+      continue
     fi
 
     echo "Starting docker container: $MPIENV"
