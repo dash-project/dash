@@ -36,6 +36,8 @@ ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib:/opt/openmpi/l
 ENV           PATH=${PATH}:/opt/openmpi/bin
 ENV           MPI_EXEC_FLAGS='--allow-run-as-root --map-by core'
 ENV           VERBOSE_CI='true'
+# Workaround for issue #63
+ENV           GTEST_FILTER="-SharedTest.AtomicAdd:TransformTest.Array*:CopyTest.AsyncLocalToGlobPtr"
 
 # Set workdir to dash home
 WORKDIR       /opt/dash
