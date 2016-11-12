@@ -37,6 +37,7 @@ RUN           cd openmpi*                                     \
 # Prepare env
 ENV           EXEC_PREFIX="LD_PRELOAD=${VALGRIND_BASE}/lib/valgrind/libmpiwrap-amd64-linux.so"
 ENV           EXEC_WRAP="valgrind --track-origins=yes --leak-check=full"
+ENV           GTEST_FILTER="-SharedTest.AtomicAdd:TransformTest.Array*:CopyTest.AsyncLocalToGlobPtr"
 
 # Set workdir to dash home
 WORKDIR       /opt/dash
