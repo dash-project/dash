@@ -1602,7 +1602,7 @@ dart_ret_t dart_allgatherv(
 dart_ret_t dart_allreduce(
   void           * sendbuf,
   void           * recvbuf,
-  size_t           nbytes,
+  size_t           nelem,
   dart_datatype_t  dtype,
   dart_operation_t op,
   dart_team_t      team)
@@ -1620,7 +1620,7 @@ dart_ret_t dart_allreduce(
   if (MPI_Allreduce(
            sendbuf,   // send buffer
            recvbuf,   // receive buffer
-           nbytes,    // buffer size
+           nelem,     // buffer size
            mpi_dtype, // datatype
            mpi_op,    // reduce operation
            comm) != MPI_SUCCESS) {
