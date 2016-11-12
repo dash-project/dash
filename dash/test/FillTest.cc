@@ -7,10 +7,13 @@
 
 TEST_F(FillTest, TestAllItemsFilled)
 {
-  typedef typename Array_t::value_type value_t;
+  typedef double                                      Element_t;
+  typedef dash::Array<Element_t>                        Array_t;
+  typedef typename Array_t::pattern_type::index_type    index_t;
+  typedef typename Array_t::value_type                  value_t;
 
   /// Using a prime to cause inconvenient strides
-  size_t num_local_elem = 251;
+  size_t num_local_elem = 513;
 
   LOG_MESSAGE("FillTest.TestAllItemsFilled: allocate array");
   // Initialize global array:

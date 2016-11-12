@@ -289,8 +289,8 @@ dart_team_memalloc_aligned(
 
   if (dart_segment_alloc(dart_memid, index) != DART_OK) {
     DART_LOG_ERROR(
-        "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
-        nbytes);
+        "dart_team_memalloc_aligned: "
+        "bytes:%lu Allocation of segment data failed", nbytes);
     return DART_ERR_OTHER;
   }
 
