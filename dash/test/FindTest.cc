@@ -254,7 +254,7 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
   array.barrier();
 }
 
-TEST_F(FindTest, Empty_Container)
+TEST_F(FindTest, EmptyContainer)
 {
   SKIP_TEST();
 
