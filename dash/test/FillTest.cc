@@ -7,11 +7,6 @@
 
 TEST_F(FillTest, TestAllItemsFilled)
 {
-  if (dash::size() == 3) {
-    // TODO: Fix this
-    SKIP_TEST();
-  }
-
   typedef typename Array_t::value_type value_t;
 
   /// Using a prime to cause inconvenient strides
@@ -38,7 +33,6 @@ TEST_F(FillTest, TestAllItemsFilled)
 
   for(int l = 0; lbegin != lend; ++lbegin, l++)
   {
-    LOG_MESSAGE("FillTest.TestAllItemsFilled: test lbegin[%d]", l);
     EXPECT_EQ_U(17, static_cast<value_t>(*lbegin));
   }
 }
