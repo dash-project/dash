@@ -72,7 +72,7 @@ GlobIter<ElementType, PatternType> find(
       dart_allreduce(
         &g_index,
         &g_hit_idx,
-        sizeof(p_index_t),
+        1,
         dart_datatype<p_index_t>::value,
         DART_OP_MIN,
         team.dart_id()),
