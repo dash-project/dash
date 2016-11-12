@@ -1,4 +1,8 @@
 # Dockerfile for the DASH project
+# This container is based on the openmpi2 container
+# and pre configured for valgrind tests
+# do NOT use this container for anything else
+
 FROM          dashproject/ci:openmpi2
 
 MAINTAINER    The DASH Team <team@dash-project.org>
@@ -16,7 +20,9 @@ RUN           cd valgrind-3*                        \
               && make install
 
 # Prepare env
-ENV           PATH=${PATH}:/opt/valgrind/bin
+ENV           VALGRIND_BASE=/opt/valgrind
+ENV           PATH=${PATH}:${VALGRIND_BASE}/bin
+ENV           EXEC_PREFIX="LD_PRELOAD=${VALGRIND_BASE}/lib/valgrind/libmpiwrap-amd64-linux.so"
 ENV           EXEC_WRAP="valgrind --track-origins=yes --leak-check=full"
 
 # Set workdir to dash home
