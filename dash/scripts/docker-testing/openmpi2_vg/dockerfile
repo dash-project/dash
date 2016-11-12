@@ -3,14 +3,20 @@ FROM          dashproject/ci:openmpi2
 
 MAINTAINER    The DASH Team <team@dash-project.org>
 
+RUN           apt-get update -y
+RUN           apt-get install libc6-dbg
+
 # Build valgrind from source
+WORKDIR       /tmp
+ADD           http://valgrind.org/downloads/valgrind-3.12.0.tar.bz2 vg.tar.bz2
+RUN           tar -xf vg.tar.bz2
+RUN           cd valgrind-3*                        \
+              && ./configure --prefix=/opt/valgrind \
+              && make                               \
+              && make install
 
 # Prepare env
-ENV           PAPI_BASE=/opt/papi
-ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib:/opt/openmpi/lib
-ENV           PATH=${PATH}:/opt/openmpi/bin
-ENV           MPI_EXEC_FLAGS='--allow-run-as-root --map-by core'
-ENV           VERBOSE_CI='true'
+ENV           PATH=${PATH}:/opt/valgrind/bin
 ENV           EXEC_WRAP="valgrind --track-origins=yes --leak-check=full"
 
 # Set workdir to dash home
