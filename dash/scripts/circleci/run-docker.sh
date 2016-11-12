@@ -11,14 +11,14 @@ for MPIENV in ${MPIENVS[@]}; do
     if [ "$MPIENV" == "openmpi2_vg" ]; then
       # run valgrind container only if target is debug
       if [ "$BUILD_CONFIG" != "Debug" ]; then
-        echo "Skipping target $BUILD_CONF in ENV $MPIENV"
+        echo "Skipping target $BUILD_CONFIG in ENV $MPIENV"
         i=$((i + 1))
         continue
       fi
     else # all other containers
       # skip debug target
       if [ "$BUILD_CONFIG" == "Debug" ]; then
-        echo "Skipping target $BUILD_CONF in ENV $MPIENV"
+        echo "Skipping target $BUILD_CONFIG in ENV $MPIENV"
         i=$((i + 1))
         continue
       fi
