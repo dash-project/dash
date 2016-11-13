@@ -132,8 +132,12 @@ TEST_F(SharedTest, AtomicAdd)
   if (_dash_id == 0) {
     shared.set(0);
   }
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 0");
+  shared.barrier();
 
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.atomic.add");
   shared.atomic.add(my_val);
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 1");
   shared.barrier();
 
   // Expected total is Gaussian sum:
@@ -144,5 +148,6 @@ TEST_F(SharedTest, AtomicAdd)
 
   // Ensure completion of test at all units before destroying shared
   // variable:
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 2");
   shared.barrier();
 }
