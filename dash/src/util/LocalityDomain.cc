@@ -49,11 +49,10 @@ dash::util::LocalityDomain::LocalityDomain(
                  "domain:", domain.domain_tag);
 
   // Create deep copy of the domain object:
-  _domain = new dart_domain_locality_t();
   DASH_ASSERT_RETURNS(
-    dart_domain_copy(
+    dart_domain_clone(
       &domain,
-      _domain),
+      &_domain),
     DART_OK);
 
   init(_domain);
@@ -115,11 +114,10 @@ dash::util::LocalityDomain::LocalityDomain(
   _is_owner    = other._is_owner;
 
   if (_is_owner) {
-    _domain = new dart_domain_locality_t();
     DASH_ASSERT_RETURNS(
-      dart_domain_copy(
+      dart_domain_clone(
         other._domain,
-        _domain),
+        &_domain),
       DART_OK);
   } else {
     _domain = other._domain;
@@ -157,16 +155,15 @@ dash::util::LocalityDomain::operator=(
 
   _is_owner          = other._is_owner;
   _unit_ids          = other._unit_ids;
-//_unit_localities   = other._unit_localities;
+  //_unit_localities   = other._unit_localities;
   _domain_tag        = other._domain_tag;
   _group_domain_tags = other._group_domain_tags;
 
   if (_is_owner) {
-    _domain = new dart_domain_locality_t();
     DASH_ASSERT_RETURNS(
-      dart_domain_copy(
+      dart_domain_clone(
         other._domain,
-        _domain),
+        &_domain),
       DART_OK);
   } else {
     _domain = other._domain;
@@ -355,9 +352,9 @@ dash::util::LocalityDomain::split_groups()
     DASH_LOG_TRACE_VAR("LocalityDomain.split_groups",
                        group_domain_tag);
     // Copy the base domain:
-    dart_domain_locality_t group;
+    dart_domain_locality_t * group;
     DASH_ASSERT_RETURNS(
-      dart_domain_copy(
+      dart_domain_clone(
         _domain,
         &group),
       DART_OK);
@@ -365,13 +362,15 @@ dash::util::LocalityDomain::split_groups()
     const char * group_domain_tag_cstr = group_domain_tag.c_str();
     DASH_ASSERT_RETURNS(
       dart_domain_select(
-        &group, 1, &group_domain_tag_cstr),
+        group, 1, &group_domain_tag_cstr),
       DART_OK);
 
     _parts.push_back(
         dash::util::LocalityDomain(
-          group
+          *group
         ));
+
+    dart_domain_destruct(group);
   }
   DASH_LOG_DEBUG("LocalityDomain.split_groups >");
 

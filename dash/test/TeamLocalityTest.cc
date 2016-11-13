@@ -51,10 +51,8 @@ TEST_F(TeamLocalityTest, GlobalAll)
 
 TEST_F(TeamLocalityTest, SplitCore)
 {
-  SKIP_TEST();
-
-  if (_dash_id != 0 || _dash_size < 2) {
-    return;
+  if (_dash_size < 2) {
+    SKIP_TEST();
   }
 
   dash::Team & team = dash::Team::All();
@@ -79,14 +77,14 @@ TEST_F(TeamLocalityTest, SplitCore)
                    "team locality in Core domain:");
     print_locality_domain("CORE split", part);
   }
+
+  dash::barrier();
 }
 
 TEST_F(TeamLocalityTest, SplitNUMA)
 {
-  SKIP_TEST();
-
   if (_dash_id != 0) {
-    return;
+    SKIP_TEST();
   }
 
   dash::Team & team = dash::Team::All();
@@ -173,7 +171,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
 
     // TODO: If requested split was not possible, this yields an incorrect
     //       failure:
-    // EXPECT_EQ_U(group_1_units, group_1.units());
+    //  EXPECT_EQ_U(group_1_units, group_1.units());
   }
   if (group_2_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_2_tags);
@@ -234,8 +232,8 @@ TEST_F(TeamLocalityTest, SplitGroups)
   // Put the first 2 units in group 1:
   group_1_units.push_back(0);
   group_1_units.push_back(1);
-  // Put every third unit in group 2, starting at rank 3:
-  for (size_t u = 3; u < dash::size(); u += 3) {
+  // Put every second unit in group 2, starting at rank 2:
+  for (size_t u = 3; u < dash::size(); u += 2) {
     group_2_units.push_back(u);
   }
 
@@ -256,7 +254,7 @@ TEST_F(TeamLocalityTest, SplitGroups)
 
     // TODO: If requested split was not possible, this yields an incorrect
     //       failure:
-//  EXPECT_EQ_U(group_1_units, group_1.units());
+    //  EXPECT_EQ_U(group_1_units, group_1.units());
   }
   if (group_2_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.SplitGroups", "group:", group_2_tags);

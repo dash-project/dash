@@ -130,8 +130,8 @@ int main(int argc, char ** argv)
          << endl
          << separator << endl;
 
-    dart_domain_locality_t grouped_domain;
-    dart_domain_copy(
+    dart_domain_locality_t * grouped_domain;
+    dart_domain_clone(
       global_domain,
       &grouped_domain);
 
@@ -151,7 +151,7 @@ int main(int argc, char ** argv)
       char group_domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE] = "";
 
       dart_domain_group(
-        &grouped_domain,
+        grouped_domain,
         group_size,
         group_subdomain_tags.data(),
         group_domain_tag);
@@ -167,7 +167,7 @@ int main(int argc, char ** argv)
       }
       cout << endl
            << ((dash::util::LocalityJSONPrinter()
-                << grouped_domain)).str()
+                << *grouped_domain)).str()
            << endl
            << separator << endl;
     }
@@ -188,7 +188,7 @@ int main(int argc, char ** argv)
 
       dart_domain_locality_t * group_domain;
       dart_domain_find(
-        &grouped_domain,
+        grouped_domain,
         group_domain_tags[g].c_str(),
         &group_domain);
 
@@ -198,7 +198,7 @@ int main(int argc, char ** argv)
     }
 
     dart_domain_destruct(
-      &grouped_domain);
+      grouped_domain);
 
     cout << separator << endl;
 

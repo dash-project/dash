@@ -70,26 +70,43 @@ dart_ret_t dart_domain_team_locality(
   return DART_OK;
 }
 
-dart_ret_t dart_domain_find(
-  const dart_domain_locality_t  * domain_in,
-  const char                    * domain_tag,
-  dart_domain_locality_t       ** subdomain_out)
+dart_ret_t dart_domain_create(
+  dart_domain_locality_t       ** domain_out)
 {
-  return dart__base__locality__domain(
-           domain_in, domain_tag, subdomain_out);
+  return dart__base__locality__create_domain(domain_out);
 }
 
-dart_ret_t dart_domain_copy(
+dart_ret_t dart_domain_clone(
   const dart_domain_locality_t  * domain_in,
-  dart_domain_locality_t        * domain_out)
+  dart_domain_locality_t       ** domain_out)
 {
-  return dart__base__locality__copy_domain(domain_in, domain_out);
+  return dart__base__locality__clone_domain(domain_in, domain_out);
 }
 
 dart_ret_t dart_domain_destruct(
   dart_domain_locality_t        * domain)
 {
   return dart__base__locality__destruct_domain(domain);
+}
+
+dart_ret_t dart_domain_assign(
+  dart_domain_locality_t        * domain_lhs,
+  const dart_domain_locality_t  * domain_rhs)
+{
+  return dart__base__locality__assign_domain(domain_lhs, domain_rhs);
+}
+
+dart_ret_t dart_domain_find(
+  const dart_domain_locality_t  * domain_in,
+  const char                    * domain_tag,
+  dart_domain_locality_t       ** subdomain_out)
+{
+  DART_LOG_DEBUG("dart_domain_find() domain_in(%p) domain_tag(%s)",
+                 (void*)domain_in, domain_tag);
+  dart_ret_t ret = dart__base__locality__domain(
+                     domain_in, domain_tag, subdomain_out);
+  DART_LOG_DEBUG("dart_domain_find > %d", ret);
+  return ret;
 }
 
 dart_ret_t dart_domain_select(
@@ -157,9 +174,13 @@ dart_ret_t dart_domain_split(
      * groups for every split group : */
     DART_LOG_TRACE("dart_domain_split: copying input domain");
     DART_ASSERT_RETURNS(
-      dart__base__locality__copy_domain(
-        domain_in,
+      dart__base__locality__domain__init(
         domains_out + p),
+      DART_OK);
+    DART_ASSERT_RETURNS(
+      dart__base__locality__assign_domain(
+        domains_out + p,
+        domain_in),
       DART_OK);
 
     /* Drop domains that are not in split group: */
