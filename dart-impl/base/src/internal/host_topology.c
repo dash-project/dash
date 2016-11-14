@@ -396,7 +396,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
       DART_ASSERT_RETURNS(
         dart_team_create(team, local_group, &local_team),
         DART_OK);
-      dart_team_t host_topo_bcast_team = local_team;
+      host_topo_bcast_team = local_team;
     }
 
     DART_ASSERT_RETURNS(

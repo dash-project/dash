@@ -475,13 +475,9 @@ dart_ret_t dart_team_get_group(
 }
 
 /**
- *  TODO: Differentiate units belonging to team_id and that not
- *  belonging to team_id
- *  within the function or outside it?
- *  FIX: Outside it.
+ * Create a team as child of the specified team with units in
+ * given group.
  *
- *  The teamid stands for a superteam related to the new generated
- *  newteam.
  */
 dart_ret_t dart_team_create(
   dart_team_t          teamid,

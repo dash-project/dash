@@ -207,10 +207,8 @@ TEST_F(TeamLocalityTest, GroupUnits)
 
 TEST_F(TeamLocalityTest, SplitGroups)
 {
-  SKIP_TEST();
-
   if (dash::size() < 4) {
-    return;
+    SKIP_TEST();
   }
   if (_dash_id != 0) {
     return;

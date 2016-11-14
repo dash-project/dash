@@ -11,6 +11,11 @@ namespace dash {
   static bool _initialized = false;
 }
 
+void dash::wait_breakpoint()
+{
+  sleep(1);
+}
+
 void dash::init(int * argc, char ** *argv)
 {
   DASH_LOG_DEBUG("dash::init()");
@@ -24,9 +29,11 @@ void dash::init(int * argc, char ** *argv)
 
 #if DASH_DEBUG
   if (dash::util::Config::get<bool>("DASH_INIT_BREAKPOINT")) {
-    dash::Shared<int> breakpoint;
-    breakpoint.set(1);
-    while (breakpoint.get()) { }
+    dash::Shared<int> blockvar;
+    blockvar.set(1);
+    while (blockvar.get()) {
+      dash::wait_breakpoint();
+    }
   }
 #endif
 
