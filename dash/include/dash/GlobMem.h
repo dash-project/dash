@@ -99,6 +99,11 @@ public:
   /**
    * Constructor, collectively allocates the given number of elements in
    * local memory of every unit in a team.
+   *
+   * \note Must not lead to implicit barrier:
+   *       Synchronization depends on underlying allocator.
+   *       For example, \c dash::LocalAllocator is used in \c dash::Shared
+   *       and only called at owner unit.
    */
   inline GlobMem(
     /// Number of local elements to allocate in global memory space
@@ -128,6 +133,11 @@ public:
   /**
    * Constructor, collectively allocates the given number of elements in
    * local memory of every unit in a team.
+   *
+   * \note Must not lead to implicit barrier:
+   *       Synchronization depends on underlying allocator.
+   *       For example, \c dash::LocalAllocator is used in \c dash::Shared
+   *       and only called at owner unit.
    */
   inline GlobMem(
     /// Local elements to allocate in global memory space
@@ -157,8 +167,16 @@ public:
       DASH_ASSERT_EQ(_lend, copy_end,
                      "initialization of specified local values failed");
     }
-    // Wait for initialization of local values at all units:
-    barrier();
+    if (_nunits > 1) {
+      // Wait for initialization of local values at all units.
+      // Barrier synchronization is okay here as multiple units are
+      // involved in initialization of values in global memory:
+      //
+      // TODO: Should depend on allocator trait
+      //         dash::allocator_traits<Alloc>::is_collective()
+      DASH_LOG_DEBUG("GlobMem(lvals,team)", "barrier");
+      barrier();
+    }
 
     DASH_LOG_DEBUG("GlobMem(lvals,team) >",
                    "_lbegin:", _lbegin, "_lend:", _lend);

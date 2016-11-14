@@ -1,11 +1,15 @@
 # Dockerfile for the DASH project
 FROM          ubuntu:latest
 
-MAINTAINER    Felix Moessbauer <felix.moessbauer@campus.lmu.de>
+MAINTAINER    The DASH Team <team@dash-project.org>
 
 RUN           apt-get update -y
-RUN           apt-get install -y cmake libhwloc-plugins libhwloc-dev \
-                          git build-essential
+RUN           apt-get install -y \
+                  git \
+                  build-essential \
+                  cmake \
+                  libhwloc-plugins \
+                  libhwloc-dev
 
 # Install PAPI 5.5.0 from source
 WORKDIR       /tmp
@@ -32,6 +36,8 @@ ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib:/opt/openmpi/l
 ENV           PATH=${PATH}:/opt/openmpi/bin
 ENV           MPI_EXEC_FLAGS='--allow-run-as-root --map-by core'
 ENV           VERBOSE_CI='true'
+# Workaround for issue #63
+ENV           GTEST_FILTER="-SharedTest.AtomicAdd:TransformTest.Array*:CopyTest.AsyncLocalToGlobPtr"
 
 # Set workdir to dash home
 WORKDIR       /opt/dash
