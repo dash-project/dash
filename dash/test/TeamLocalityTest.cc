@@ -84,12 +84,22 @@ TEST_F(TeamLocalityTest, SplitCore)
 TEST_F(TeamLocalityTest, SplitNUMA)
 {
   if (_dash_id != 0) {
-    SKIP_TEST();
+    return;
   }
 
   dash::Team & team = dash::Team::All();
 
   dash::util::TeamLocality tloc(team);
+
+  auto numa_domains = tloc.domain().scope_domains(
+                        dash::util::Locality::Scope::NUMA);
+  DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
+                 "number of NUMA domains:", numa_domains.size());
+
+  if (numa_domains.size() < 2) {
+    DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA", "skipping test");
+    return;
+  }
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
                  "team locality in Global domain:");
@@ -97,7 +107,7 @@ TEST_F(TeamLocalityTest, SplitNUMA)
 
   // Split via constructor parameter:
   dash::util::TeamLocality tloc_numa(
-      team, dash::util::Locality::Scope::Cache);
+      team, dash::util::Locality::Scope::NUMA);
 
   DASH_LOG_DEBUG("TeamLocalityTest.SplitNUMA",
                  "team all, NUMA parts:", tloc_numa.parts().size());

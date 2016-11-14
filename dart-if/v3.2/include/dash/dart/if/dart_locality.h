@@ -144,7 +144,7 @@ dart_ret_t dart_domain_split(
   dart_domain_locality_t        * split_domain_out);
 
 /**
- * Domain tags of all domains with the specified locality scope.
+ * Domain tags of all domains at the specified locality scope.
  *
  * \ingroup DartLocality
  */
@@ -153,6 +153,17 @@ dart_ret_t dart_domain_scope_tags(
   dart_locality_scope_t           scope,
   int                           * num_domains_out,
   char                        *** domain_tags_out);
+
+/**
+ * Locality domains at the specified locality scope.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_scope_domains(
+  const dart_domain_locality_t  * domain_in,
+  dart_locality_scope_t           scope,
+  int                           * num_domains_out,
+  dart_domain_locality_t      *** domains_out);
 
 /**
  * Adds entries to locality hierarchy to group locality domains.

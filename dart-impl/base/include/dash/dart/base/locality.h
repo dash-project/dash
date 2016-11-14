@@ -114,6 +114,12 @@ dart_ret_t dart__base__locality__scope_domains(
   const dart_domain_locality_t     * domain_in,
   dart_locality_scope_t              scope,
   int                              * num_domains_out,
+  dart_domain_locality_t         *** domains_out);
+
+dart_ret_t dart__base__locality__scope_domain_tags(
+  const dart_domain_locality_t     * domain_in,
+  dart_locality_scope_t              scope,
+  int                              * num_domains_out,
   char                           *** domain_tags_out);
 
 /* ======================================================================== *

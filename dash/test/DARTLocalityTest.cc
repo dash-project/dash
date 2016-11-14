@@ -190,7 +190,8 @@ TEST_F(DARTLocalityTest, Domains)
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "get global domain descriptor");
   dart_domain_locality_t * dl;
-  EXPECT_EQ_U(DART_OK, dart_domain_team_locality(DART_TEAM_ALL, ".", &dl));
+  EXPECT_EQ_U(DART_OK,
+              dart_domain_team_locality(DART_TEAM_ALL, ".", &dl));
   DASH_LOG_TRACE("DARTLocalityTest.Domains",
                  "pointer to global domain descriptor: ", dl);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.Domains", *dl);
@@ -204,3 +205,42 @@ TEST_F(DARTLocalityTest, Domains)
   EXPECT_EQ_U(dl->level, 0);
   EXPECT_EQ_U(dl->level, DART_LOCALITY_SCOPE_GLOBAL);
 }
+
+TEST_F(DARTLocalityTest, ScopeDomains)
+{
+  if (0 != dash::myid()) {
+    return;
+  }
+
+  DASH_LOG_TRACE("DARTLocalityTest.ScopeDomains");
+
+  dart_locality_scope_t scopes[2] = {
+    DART_LOCALITY_SCOPE_NUMA,
+    DART_LOCALITY_SCOPE_CORE
+  };
+
+  for (int si = 0; si < 2; si++) {
+    int                       num_scope_domains;
+    dart_domain_locality_t ** scope_domains;
+
+    dart_domain_locality_t * dl;
+    EXPECT_EQ_U(DART_OK,
+                dart_domain_team_locality(DART_TEAM_ALL, ".", &dl));
+    EXPECT_EQ_U(DART_OK,
+                dart_domain_scope_domains(
+                  dl,
+                  scopes[si],
+                  &num_scope_domains,
+                  &scope_domains));
+
+    DASH_LOG_TRACE_VAR("DARTLocalityTest.ScopeDomains", num_scope_domains);
+    for (int sd = 0; sd < num_scope_domains; sd++) {
+      dart_domain_locality_t * scope_dom = scope_domains[sd];
+      DASH_LOG_TRACE_VAR("DARTLocalityTest.ScopeDomains",
+                         scope_dom->domain_tag);
+      EXPECT_EQ_U(scopes[si], scope_dom->scope);
+    }
+    free(scope_domains);
+  }
+}
+

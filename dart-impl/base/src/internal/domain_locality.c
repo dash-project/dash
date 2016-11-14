@@ -744,12 +744,13 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
 
   int subdomain_gid_idx = num_scopes - (module_scope_level + 1);
 
+#if defined(DART_ENABLE_LOGGING)
   dart_locality_scope_t subdomain_scope = module_scopes[subdomain_gid_idx];
-
   DART_LOG_TRACE("dart__base__locality__domain__create_module_subdomains: "
                  "-- module_scope_level:%d subdomain_gid_idx:%d "
                  "-> subdomain_scope:%d",
                  module_scope_level, subdomain_gid_idx, subdomain_scope);
+#endif
 
   /* Array of the global indices of the current module subdomains.
    * Maximum number of global indices, including duplicates, is number of
