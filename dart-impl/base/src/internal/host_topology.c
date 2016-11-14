@@ -163,7 +163,6 @@ dart_ret_t dart__base__host_topology__update_module_locations(
   dart_group_t         * leader_group         = malloc(sizeof(group_t_size));
   dart_group_t         * local_group          = malloc(sizeof(group_t_size));
   dart_team_t            leader_team; /* team of all node leaders   */
-  dart_team_t            local_team;  /* team of units at this node */
 
   DART_ASSERT_RETURNS(
     dart_team_myid(team, &my_id),
@@ -383,26 +382,32 @@ dart_ret_t dart__base__host_topology__update_module_locations(
    * Broadcast updated host topology data from leader to all units at
    * local node:
    */
-  DART_LOG_TRACE("dart__base__host_topology__init: "
-                 "broadcasting module locations from leader unit %d "
-                 "to units in team %d",
-                 local_leader_unit_id, team);
-
   if (DART_UNDEFINED_UNIT_ID != local_leader_unit_id) {
+    dart_team_t local_team; 
+    dart_unit_t host_topo_bcast_root = local_leader_unit_id;
     dart_team_t host_topo_bcast_team = team;
     if (num_hosts > 1) {
       DART_LOG_TRACE("dart__base__host_topology__init: create local team");
       DART_ASSERT_RETURNS(
         dart_team_create(team, local_group, &local_team),
         DART_OK);
-      dart_team_t host_topo_bcast_team = local_team;
+      host_topo_bcast_team = local_team;
+      DART_ASSERT_RETURNS(
+        dart_team_unit_g2l(local_team, local_leader_unit_id, &host_topo_bcast_root),
+        DART_OK);
     }
+
+   DART_LOG_TRACE("dart__base__host_topology__init: "
+                  "broadcasting module locations from leader unit %d "
+                  "to units in team %d",
+                  local_leader_unit_id, host_topo_bcast_team);
+
 
     DART_ASSERT_RETURNS(
       dart_bcast(
         topo->host_domains,
         sizeof(dart_host_domain_t) * num_hosts,
-        local_leader_unit_id,
+        host_topo_bcast_root,
         host_topo_bcast_team),
       DART_OK);
 
