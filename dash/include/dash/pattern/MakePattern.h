@@ -201,6 +201,10 @@ make_team_spec(
   if (0 >= n_numa_dom) {
     n_numa_dom = tloc.domain().scope_domains(
                    dash::util::Locality::Scope::NUMA).size() / n_nodes;
+    if (0 >= n_numa_dom) {
+      n_numa_dom = tloc.domain().scope_domains(
+                     dash::util::Locality::Scope::Package).size() / n_nodes;
+    }
     if (0 >= n_numa_dom) { n_numa_dom = 1; }
   }
   if (0 >= n_cores) {
