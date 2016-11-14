@@ -160,18 +160,28 @@ public:
   }
 
   /**
-   * Synchronize units associated with the shared value.
+   * Flush global memory of shared value.
    */
-  void barrier()
+  void flush()
   {
     DASH_ASSERT(
       !DART_GPTR_EQUAL(
         _ptr.dart_gptr(),
         DART_GPTR_NULL));
-    dart_flush(_ptr.dart_gptr());
+    DASH_ASSERT_RETURNS(
+      dart_flush(_ptr.dart_gptr()),
+      DART_OK);
+  }
 
-//  DASH_ASSERT(_team != nullptr);
-//  _team->barrier();
+  /**
+   * Flush global memory of shared value and synchronize its associated
+   * units.
+   */
+  void barrier()
+  {
+    flush();
+    DASH_ASSERT(_team != nullptr);
+    _team->barrier();
   }
 
   /**
