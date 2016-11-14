@@ -226,12 +226,16 @@ TEST_F(DARTLocalityTest, ScopeDomains)
     dart_domain_locality_t * dl;
     EXPECT_EQ_U(DART_OK,
                 dart_domain_team_locality(DART_TEAM_ALL, ".", &dl));
-    EXPECT_EQ_U(DART_OK,
-                dart_domain_scope_domains(
-                  dl,
-                  scopes[si],
-                  &num_scope_domains,
-                  &scope_domains));
+
+    dart_ret_t ret = dart_domain_scope_domains(
+                       dl,
+                       scopes[si],
+                       &num_scope_domains,
+                       &scope_domains);
+    if (ret == DART_ERR_NOTFOUND) {
+      continue;
+    }
+    EXPECT_EQ_U(DART_OK, ret);
 
     DASH_LOG_TRACE_VAR("DARTLocalityTest.ScopeDomains", num_scope_domains);
     for (int sd = 0; sd < num_scope_domains; sd++) {
