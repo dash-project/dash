@@ -1037,3 +1037,55 @@ TEST_F(MatrixTest, DelayedPatternAllocation)
   matrix(id,id) =id;
   EXPECT_EQ(id, matrix[id][id]);
 }
+
+TEST_F(MatrixTest, CopyRow)
+{
+  typedef int value_t;
+
+  auto team_size = dash::Team::All().size();
+  auto myid      = dash::Team::All().myid();
+
+  size_t n_lextent = 10;
+
+  dash::TeamSpec<2> teamspec_2d(team_size, 1);
+  teamspec_2d.balance_extents();
+
+  DASH_LOG_DEBUG("MatrixTest.CopyRow", "balanced team spec:",
+                 teamspec_2d.extents()[0], "x", teamspec_2d.extents()[1]);
+
+  dash::SizeSpec<2>         sspec(team_size * n_lextent,
+                                  team_size * n_lextent);
+  dash::DistributionSpec<2> dspec(dash::BLOCKED,
+                                  dash::BLOCKED);
+
+  dash::Matrix<value_t, 2>  matrix(sspec, dspec,
+                                   dash::Team::All(), teamspec_2d);
+
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", matrix.lend() - matrix.lbegin());
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", matrix.local.size());
+  for (value_t * lp = matrix.lbegin(); lp != matrix.lend(); ++lp) {
+    *lp = myid;
+  }
+  dash::barrier();
+
+  if (myid == 0) {
+    dash::test::print_matrix("Matrix<2>", matrix, 2);
+  }
+  dash::barrier();
+
+  auto row      = matrix.local.row(0);
+  auto row_size = row.size();
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row_size);
+  EXPECT_EQ_U(n_lextent, row_size);
+
+  for (auto l_row_val : row) {
+    EXPECT_EQ_U(myid, l_row_val);
+  }
+
+  std::vector<value_t> tmp(row_size);
+  auto copy_end = dash::copy(row.begin(), row.end(),
+                             tmp.data());
+
+  EXPECT_EQ_U(row_size, copy_end - tmp.data());
+}
+

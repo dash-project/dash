@@ -789,7 +789,7 @@ dash::Future<ValueType *> copy_async(
  */
 template <
   typename ValueType,
-  class GlobInputIt >
+  class    GlobInputIt >
 ValueType * copy(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
@@ -865,6 +865,7 @@ ValueType * copy(
     DASH_LOG_TRACE("dash::copy",
                    "global index range of local subrange:",
                    "begin:", g_l_offset_begin, "end:", g_l_offset_end);
+
     // Global position of input start iterator:
     auto g_offset_begin   = g_in_first.pos();
     // Convert local subrange to global iterators:
@@ -873,12 +874,16 @@ ValueType * copy(
     DASH_LOG_TRACE("dash::copy", "global it. range of local subrange:",
                    "begin:", g_l_in_first.pos(), "end:", g_l_in_last.pos());
     DASH_LOG_TRACE_VAR("dash::copy", g_l_in_last.pos());
+
+    auto num_prelocal_elem  = g_l_in_first.pos() - g_in_first.pos();
+    auto num_postlocal_elem = in_last.pos() - g_l_offset_end;
+    DASH_LOG_TRACE_VAR("dash::copy", num_prelocal_elem);
+    DASH_LOG_TRACE_VAR("dash::copy", num_postlocal_elem);
+
     //
     // -----------------------------------------------------------------------
     // Copy remote elements preceding the local subrange:
     //
-    auto num_prelocal_elem = g_l_in_first.pos() - g_in_first.pos();
-    DASH_LOG_TRACE_VAR("dash::copy", num_prelocal_elem);
     if (num_prelocal_elem > 0) {
       DASH_LOG_TRACE("dash::copy",
                      "copy global range preceding local subrange",
@@ -937,8 +942,6 @@ ValueType * copy(
     // -----------------------------------------------------------------------
     // Copy remote elements succeeding the local subrange:
     //
-    auto num_postlocal_elem = in_last.pos() - g_l_offset_end;
-    DASH_LOG_TRACE_VAR("dash::copy", num_postlocal_elem);
     if (num_postlocal_elem > 0) {
       DASH_LOG_TRACE("dash::copy",
                      "copy global range succeeding local subrange",
