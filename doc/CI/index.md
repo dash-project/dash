@@ -73,15 +73,15 @@ For example, the `Minimal` target creates a folder `dash-ci/Minimal` where dash 
 There are some environment variables that are used to modify the build settings. This is especially useful to customize or speedup the deployment if using the online CI providers.
 If you intend to add another environment variable always add a default value if it is not set.
 
-- `$DASH_BUILDEX`: ("ON"|"OFF") specifies if the examples should be build in this deployment run.
-- `$DASH_MAKE_PROCS`: max number of parallelism in make. Limit this value to reduce memory consumption during compilation. If not set the number of available processors is used.
+- `$DASH_BUILDEX="ON"|"OFF"` specifies if the examples should be build in this deployment run.
+- `$DASH_MAKE_PROCS` max number of parallelism in make. Limit this value to reduce memory consumption during compilation. If not set the number of available processors is used.
 
 ### Execute Tests
 In `dash-test.sh` the environment is checked (TODO DOC) and the tests are executed using a specified set of mpi processes per run. This is specified using `run_suite <nprocs>`.
 There are never more processes spin up than the host provides CPU cores. Furthermore some characteristics can be specified using environment variables:
 
-- `$DASH_MAX_UNITS`: use at most this number of processes.
-- `$MPI_EXEC_FLAGS`: pass these flags to the mpirun command.
+- `$DASH_MAX_UNITS` use at most this number of processes.
+- `$MPI_EXEC_FLAGS` pass these flags to the mpirun command.
 
 ### Execute CI 
 
@@ -90,7 +90,7 @@ If the logs of each target contain no errors, the CI return exit code 0, otherwi
 
 ## CI Environments
 
-To simulate different common environments DASH uses Docker containers. For further information on Docker see the [vendor documentation](https://docs.docker.com/). The containers are build using the dockerfiles located in `dash/scripts/docker-testing/<env>`. This can be done either locally or by using the pre build images located on [Dockerhub](https://hub.docker.com/u/dashproject/). The containers hosted on Dockerhub are automatically build from the official development branch of DASH.
+To simulate different common environments DASH uses Docker containers. For further information on Docker see the [vendor documentation](https://docs.docker.com/). The containers are build using the dockerfiles located in `dash/scripts/docker-testing/<env>`. This can be done either locally or by using the pre build images located on [Dockerhub](https://hub.docker.com/u/dashproject/). The containers hosted on Dockerhub are automatically build from the development branch of the official DASH repository.
 
 ### Build from Dockerfile
 
@@ -103,9 +103,7 @@ docker build --tag dashproject/ci-testing:<env> dash/scripts/docker-testing/<env
 docker pull dashproject/ci-testing:<env>
 ```
 
-Note
-
-These containers can also be used as a good starting point for developing DASH applications.
+.. note:: These containers can also be used as a good starting point for developing DASH applications.
 
 As the containers only provide an environment but no DASH installation, a DASH repository should be mounted as shared folder.
 The following command starts an interactive container with DASH located in /opt/dash, assumed that the command is at the top level of the DASH repository.
@@ -121,15 +119,21 @@ Currently we use the two online CI providers [Travis](https://travis-ci.org/dash
 
 1. pull docker image for specified env
 2. run tests inside docker
-3. analyze logfile for errors
+3. analyze logfiles for errors
 4. copy artefacts / print output messages
 
-Note
-
-As the exit code of a Docker container is not reliable, the output is parsed for errors outside docker. This is done by the `run-docker.sh` script.
+.. note:: As the exit code of a Docker container is not reliable, the output is parsed for errors outside docker. This is done by the `run-docker.sh` script.
 
 To limit the complexity in the yml files, each ci folder (`dash/scripts/<ci>`) contains shell scripts for building / pulling and starting the docker containers. The file names should be self-explaining.
-In the `run-docker.sh` file are also the environment variables for the Docker container set. These are then accessed by the `dash-ci.sh` script which is executed inside the container. 
+In the `run-docker.sh` file are also the environment variables for the Docker container set. These are then accessed by the `dash-ci.sh` script which is executed inside the container.
+If you intend to run only a subset of build targets in a specific environment, just skip the environment loop:
+
+```bash
+if [ "$MPIENV" == "openmpi2_vg" ] && [ "$BUILD_CONFIG" != "Debug" ]; then
+  echo "Skipping target $BUILD_CONF in ENV $MPIENV"
+  continue
+fi
+```
 
 The following command is taken from `travisci/run-docker.sh` and annotated to explain the basic logic:
 ```bash
@@ -149,6 +153,6 @@ The main advantage of CircleCI is that multiple (up to 4) environments can be te
 Another advantage is that the xml output of googletest is parsed and the failed tests are presented nicely.
 The basic logic is specified in `circle.yml`.
 
-The `run-docker.sh` file is worth taking a closer look at. In `$MPIENVS` a list of environments is specified. These are then evenly split over the available CircleCI instances. If more environments are specified than instances available, the containers are executed sequentally. This affects only the time for the CI to complete, but has no effect on the test results.
+The `run-docker.sh` file is worth taking a closer look at. In `$MPIENVS` a list of environments is specified. These are then evenly split over the available CircleCI instances. If more environments are specified than instances available, the containers are executed sequentially. This affects only the time for the CI to complete, but has no effect on the test conditions and results.
 
 After the completion of each Docker container, the test results are gathered and copied to the artifacts directory. The directory/file structure is as follows: `<env>/<build_type>/dash-test-<nprocs>.xml`. For further information on CircleCI artifacts see the [official documentation](https://circleci.com/docs/build-artifacts/).

@@ -48,6 +48,44 @@ dart_ret_t dart_domain_team_locality(
   dart_domain_locality_t       ** team_domain_out);
 
 /**
+ * Default constructor.
+ * Create an empty locality domain object.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_create(
+  dart_domain_locality_t       ** domain_out);
+
+/**
+ * Copy-constructor.
+ * Create a new locality domain object as a deep copy of a specified
+ * locality domain.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_clone(
+  const dart_domain_locality_t  * domain_in,
+  dart_domain_locality_t       ** domain_out);
+
+/**
+ * Destructor.
+ * Delete a locality domain object.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_destruct(
+  dart_domain_locality_t        * domain);
+
+/**
+ * Assignment operator.
+ * Overwrites domain object \c domain_lhs with a deep copy of domain object
+ * \c domain_rhs.
+ */
+dart_ret_t dart_domain_assign(
+  dart_domain_locality_t        * domain_lhs,
+  const dart_domain_locality_t  * domain_rhs);
+
+/**
  * Locality information of the subdomain with the specified id tag.
  *
  * \ingroup DartLocality
@@ -56,23 +94,6 @@ dart_ret_t dart_domain_find(
   const dart_domain_locality_t  * domain_in,
   const char                    * domain_tag,
   dart_domain_locality_t       ** subdomain_out);
-
-/**
- * Copy a locality domain object.
- *
- * \ingroup DartLocality
- */
-dart_ret_t dart_domain_copy(
-  const dart_domain_locality_t  * domain_in,
-  dart_domain_locality_t        * domain_out);
-
-/**
- * Delete a locality domain object.
- *
- * \ingroup DartLocality
- */
-dart_ret_t dart_domain_destruct(
-  dart_domain_locality_t        * domain);
 
 /**
  * Remove domains in locality domain hierarchy that do not match the
@@ -97,6 +118,20 @@ dart_ret_t dart_domain_exclude(
   const char                   ** subdomain_tags);
 
 /**
+ * Insert locality domain into subdomains of a domain at the specified
+ * relative index.
+ *
+ * Tags of inserted subdomains are updated according to the parent domain.
+ * Units mapped to inserted subdomains are added to ancestor domains
+ * recursively. Units mapped to inserted subdomains must not be mapped
+ * to the target domain hierarchy already.
+ */
+dart_ret_t dart_domain_add_subdomain(
+  dart_domain_locality_t        * domain,
+  dart_domain_locality_t        * subdomain,
+  int                             subdomain_rel_id);
+
+/**
  * Split locality domain hierarchy at given domain tag into \c num_parts
  * groups at specified scope.
  *
@@ -109,7 +144,7 @@ dart_ret_t dart_domain_split(
   dart_domain_locality_t        * split_domain_out);
 
 /**
- * Domain tags of all domains with the specified locality scope.
+ * Domain tags of all domains at the specified locality scope.
  *
  * \ingroup DartLocality
  */
@@ -118,6 +153,17 @@ dart_ret_t dart_domain_scope_tags(
   dart_locality_scope_t           scope,
   int                           * num_domains_out,
   char                        *** domain_tags_out);
+
+/**
+ * Locality domains at the specified locality scope.
+ *
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_scope_domains(
+  const dart_domain_locality_t  * domain_in,
+  dart_locality_scope_t           scope,
+  int                           * num_domains_out,
+  dart_domain_locality_t      *** domains_out);
 
 /**
  * Adds entries to locality hierarchy to group locality domains.

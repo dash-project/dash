@@ -830,6 +830,7 @@ dart_ret_t dart_get_blocking(
       baseptr += offset;
       DART_LOG_DEBUG("dart_get_blocking: memcpy %zu bytes", nbytes);
       memcpy((char*)dest, baseptr, nbytes);
+      DART_LOG_DEBUG("dart_get_blocking > ");
       return DART_OK;
     }
   }

@@ -37,8 +37,7 @@ public:
   typedef       GlobPtr<value_type>                     pointer;
   typedef const GlobPtr<value_type>               const_pointer;
 
-  typedef dash::Atomic<ElementType>
-  atomic_type;
+  typedef dash::Atomic<ElementType>                 atomic_type;
 
 private:
   typedef dash::GlobMem<
@@ -161,10 +160,26 @@ public:
   }
 
   /**
-   * Synchronize units associated with the shared value.
+   * Flush global memory of shared value.
+   */
+  void flush()
+  {
+    DASH_ASSERT(
+      !DART_GPTR_EQUAL(
+        _ptr.dart_gptr(),
+        DART_GPTR_NULL));
+    DASH_ASSERT_RETURNS(
+      dart_flush(_ptr.dart_gptr()),
+      DART_OK);
+  }
+
+  /**
+   * Flush global memory of shared value and synchronize its associated
+   * units.
    */
   void barrier()
   {
+    flush();
     DASH_ASSERT(_team != nullptr);
     _team->barrier();
   }

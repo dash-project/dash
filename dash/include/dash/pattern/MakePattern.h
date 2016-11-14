@@ -19,20 +19,17 @@
 
 namespace dash {
 
-/**
- * \ingroup{DashPatternConcept}
- */
 template<
   typename PartitioningTags,
   typename MappingTags,
   typename LayoutTags,
-  class SizeSpecType
+  class    SizeSpecType
 >
 TeamSpec<SizeSpecType::ndim(), typename SizeSpecType::index_type>
 make_team_spec(
   /// Size spec of cartesian space to be distributed by the pattern.
   const SizeSpecType               & sizespec,
-  unsigned                           n_team_units = dash::Team::All().size(),
+  int                                n_units,
   typename SizeSpecType::size_type   n_nodes      = 0,
   typename SizeSpecType::size_type   n_numa_dom   = 0,
   typename SizeSpecType::size_type   n_cores      = 0)
@@ -43,33 +40,20 @@ make_team_spec(
   // Deduce number of dimensions from size spec:
   const dim_t ndim  = SizeSpecType::ndim();
 
-  DASH_LOG_TRACE_VAR("dash::make_team_spec()", sizespec.extents());
-  DASH_LOG_TRACE_VAR("dash::make_team_spec", n_team_units);
-
   // Default team spec:
   std::array<extent_t, ndim> team_extents;
   team_extents.fill(1);
-  team_extents[1]   = n_team_units;
+  team_extents[1] = n_units;
   dash::TeamSpec<ndim, index_t> teamspec(team_extents);
 
   DASH_LOG_TRACE("dash::make_team_spec",
                  "step 1 - initial team extents:", team_extents);
 
-  dash::util::TeamLocality tloc(dash::Team::All());
-  if (0 >= n_nodes) {
-    n_nodes    = tloc.num_nodes();
-  }
-  if (0 >= n_numa_dom) {
-    n_numa_dom = 1;
-  }
-  if (0 >= n_cores) {
-    n_cores    = tloc.num_cores();
-  }
-
   // Check for trivial case first:
   if (ndim == 1) {
     return teamspec;
   }
+
   auto n_elem_total = sizespec.size();
   // Configure preferable blocking factors:
   std::set<extent_t> blocking;
@@ -97,7 +81,7 @@ make_team_spec(
     DASH_LOG_TRACE("dash::make_team_spec",
                    "- optimizing for minimal number of blocks");
     team_extents = dash::math::balance_extents(team_extents, blocking);
-    if (team_extents[0] == n_team_units) {
+    if (team_extents[0] == n_units) {
       // Could not balance with preferred blocking factors.
       DASH_LOG_TRACE("dash::make_team_spec",
                      "- minimize number of blocks for blocking", blocking);
@@ -159,7 +143,7 @@ make_team_spec(
   if (bulk_min > 0) {
     DASH_LOG_TRACE("dash::make_team_spec",
                    "- optimizing for bulk min size", bulk_min);
-    auto team_factors = dash::math::factorize(n_team_units);
+    auto team_factors = dash::math::factorize(n_units);
     extent_t block_size = 1;
     for (auto d = 0; d < ndim; ++d) {
       auto block_extent_d = sizespec.extent(d) / team_extents[d];
@@ -183,6 +167,61 @@ make_team_spec(
   // Make distribution spec from template- and run time parameters:
   teamspec.resize(team_extents);
   return teamspec;
+}
+
+/**
+ * \ingroup{DashPatternConcept}
+ */
+template<
+  typename PartitioningTags,
+  typename MappingTags,
+  typename LayoutTags,
+  class    SizeSpecType
+>
+TeamSpec<SizeSpecType::ndim(), typename SizeSpecType::index_type>
+make_team_spec(
+  /// Size spec of cartesian space to be distributed by the pattern.
+  const SizeSpecType               & sizespec,
+  dash::Team &                       team         = dash::Team::All(),
+  typename SizeSpecType::size_type   n_nodes      = 0,
+  typename SizeSpecType::size_type   n_numa_dom   = 0,
+  typename SizeSpecType::size_type   n_cores      = 0)
+{
+  // Deduce number of dimensions from size spec:
+  const dim_t ndim  = SizeSpecType::ndim();
+
+  DASH_LOG_TRACE_VAR("dash::make_team_spec()", sizespec.extents());
+  DASH_LOG_TRACE_VAR("dash::make_team_spec", team.size());
+
+  dash::util::TeamLocality tloc(dash::Team::All());
+  if (0 >= n_nodes) {
+    n_nodes    = tloc.num_nodes();
+    if (0 >= n_nodes) { n_nodes = 1; }
+  }
+  if (0 >= n_numa_dom) {
+    n_numa_dom = tloc.domain().scope_domains(
+                   dash::util::Locality::Scope::NUMA).size() / n_nodes;
+    if (0 >= n_numa_dom) {
+      n_numa_dom = tloc.domain().scope_domains(
+                     dash::util::Locality::Scope::Package).size() / n_nodes;
+    }
+    if (0 >= n_numa_dom) { n_numa_dom = 1; }
+  }
+  if (0 >= n_cores) {
+    n_cores    = tloc.num_cores();
+    if (0 >= n_cores) { n_cores = 1; }
+  }
+
+  return make_team_spec<
+           PartitioningTags,
+           MappingTags,
+           LayoutTags,
+           SizeSpecType>(
+             sizespec,
+             team.size(),
+             n_nodes,
+             n_numa_dom,
+             n_cores);
 }
 
 //////////////////////////////////////////////////////////////////////////////
