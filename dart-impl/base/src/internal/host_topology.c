@@ -78,7 +78,8 @@ dart_ret_t dart__base__host_topology__module_locations(
       DART_LOG_TRACE("dart__base__host_topology__module_locations: "
                      "hwloc: PCI device: (name:%s arity:%d)",
                      coproc_obj->name, coproc_obj->arity);
-      if (coproc_obj->name != NULL && strstr(coproc_obj->name, "Xeon Phi") != NULL) {
+      if (NULL != coproc_obj->name &&
+          NULL != strstr(coproc_obj->name, "Xeon Phi")) {
         DART_LOG_TRACE("dart__base__host_topology__module_locations: "
                        "hwloc: Xeon Phi device");
         if (coproc_obj->arity > 0) {
@@ -395,7 +396,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
       DART_ASSERT_RETURNS(
         dart_team_create(team, local_group, &local_team),
         DART_OK);
-      dart_team_t host_topo_bcast_team = local_team;
+      host_topo_bcast_team = local_team;
     }
 
     DART_ASSERT_RETURNS(
