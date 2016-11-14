@@ -77,7 +77,7 @@ If you intend to add another environment variable always add a default value if 
 - `$DASH_MAKE_PROCS` max number of parallelism in make. Limit this value to reduce memory consumption during compilation. If not set the number of available processors is used.
 
 ### Execute Tests
-In `dash-test.sh` the environment is checked (TODO DOC) and the tests are executed using a specified set of mpi processes per run. This is specified using `run_suite <nprocs>`.
+In `dash-test.sh` the environment is checked and for example OpenMPI specific settings like `--map-by-core` can be set. After that the tests are executed using a specified set of mpi processes per run. This is specified using `run_suite <nprocs>`.
 There are never more processes spin up than the host provides CPU cores. Furthermore some characteristics can be specified using environment variables:
 
 - `$DASH_MAX_UNITS` use at most this number of processes.
