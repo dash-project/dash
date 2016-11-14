@@ -63,7 +63,10 @@ static inline
 dart_ret_t dart__base__locality__destruct_domain(
   dart_domain_locality_t           * domain)
 {
-  return dart__base__locality__domain__destruct(domain);
+  int ret = dart__base__locality__domain__destruct(domain);
+  if (ret != DART_OK) { return ret; }
+  free(domain);
+  return DART_OK;
 }
 
 static inline
