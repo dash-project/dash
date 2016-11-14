@@ -16,6 +16,7 @@ namespace dash {
 template<typename ValueType>
 class Atomic
 {
+  typedef Atomic<ValueType>                              self_t;
 
 public:
   typedef ValueType                                  value_type;
@@ -59,6 +60,10 @@ public:
     dash::Team       & team   = dash::Team::All())
   : Atomic(global.dart_gptr(), team)
   { }
+
+  Atomic(const self_t & other)           = default;
+
+  self_t & operator=(const self_t & rhs) = default;
 
   /**
    * Set the value of the shared atomic variable.
@@ -112,11 +117,13 @@ public:
   {
     DASH_LOG_DEBUG_VAR("Atomic.add()", value);
     DASH_LOG_TRACE_VAR("Atomic.add",   _gptr);
+    DASH_LOG_TRACE_VAR("Atomic.add",   _team);
     DASH_ASSERT(_team != nullptr);
     DASH_ASSERT(
       !DART_GPTR_EQUAL(
         _gptr, DART_GPTR_NULL));
     value_type acc = value;
+    DASH_LOG_TRACE("Atomic.add", "dart_accumulate");
     dart_ret_t ret = dart_accumulate(
                        _gptr,
                        reinterpret_cast<char *>(&acc),
@@ -125,7 +132,9 @@ public:
                        binary_op.dart_operation(),
                        _team->dart_id());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
-    dart_flush(_gptr);
+    DASH_LOG_TRACE("Atomic.add", "dart_flush_local");
+//  dart_flush(_gptr);
+    dart_flush_local(_gptr);
     DASH_LOG_DEBUG_VAR("Atomic.add >", acc);
   }
 
@@ -156,7 +165,9 @@ public:
                        op.dart_operation(),
                        _team->dart_id());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
-    dart_flush(_gptr);
+    DASH_LOG_TRACE("Atomic.fetch_and_op", "dart_flush_local");
+//  dart_flush(_gptr);
+    dart_flush_local(_gptr);
     DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op >", acc);
     return acc;
   }

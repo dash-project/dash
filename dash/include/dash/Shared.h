@@ -37,8 +37,7 @@ public:
   typedef       GlobPtr<value_type>                     pointer;
   typedef const GlobPtr<value_type>               const_pointer;
 
-  typedef dash::Atomic<ElementType>
-  atomic_type;
+  typedef dash::Atomic<ElementType>                 atomic_type;
 
 private:
   typedef dash::GlobMem<
@@ -165,8 +164,14 @@ public:
    */
   void barrier()
   {
-    DASH_ASSERT(_team != nullptr);
-    _team->barrier();
+    DASH_ASSERT(
+      !DART_GPTR_EQUAL(
+        _ptr.dart_gptr(),
+        DART_GPTR_NULL));
+    dart_flush(_ptr.dart_gptr());
+
+//  DASH_ASSERT(_team != nullptr);
+//  _team->barrier();
   }
 
   /**
