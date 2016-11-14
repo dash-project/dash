@@ -1036,7 +1036,7 @@ dart_ret_t dart__base__locality__scope_domains_rec(
     }
   }
   if (*num_domains_out <= 0) {
-    DART_LOG_ERROR("dart__base__locality__scope_domains ! "
+    DART_LOG_DEBUG("dart__base__locality__scope_domains ! "
                    "no domains found");
     return DART_ERR_NOTFOUND;
   }
