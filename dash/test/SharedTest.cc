@@ -125,27 +125,34 @@ TEST_F(SharedTest, AtomicAdd)
   }
 
   shared_t shared;
-  value_t  my_val = 1 + dash::myid();
+  value_t  init_val = 123;
+  value_t  my_val   = 1 + dash::myid();
 
   if (_dash_id == 0) {
-    shared.set(0);
+    shared.set(init_val);
   }
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 0");
   shared.barrier();
 
-  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.atomic.add");
-  shared.atomic.add(my_val);
+  EXPECT_EQ_U(init_val, static_cast<value_t>(shared.get()));
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 1");
   shared.barrier();
 
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "sleep");
+  sleep(3);
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.atomic.add");
+  shared.atomic.add(my_val);
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 2");
+  shared.barrier();
+
   // Expected total is Gaussian sum:
-  value_t exp_acc = ((dash::size() + 1) * dash::size()) / 2;
+  value_t exp_acc = init_val + ((dash::size() + 1) * dash::size()) / 2;
   value_t actual  = shared.get();
 
   EXPECT_EQ_U(exp_acc, actual);
 
   // Ensure completion of test at all units before destroying shared
   // variable:
-  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 2");
+  DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 3");
   shared.barrier();
 }

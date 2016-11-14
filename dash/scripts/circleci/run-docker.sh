@@ -29,8 +29,12 @@ for MPIENV in ${MPIENVS[@]}; do
 
     docker run -v $PWD:/opt/dash dashproject/ci:$MPIENV /bin/sh -c "export DASH_MAKE_PROCS='4'; export DASH_MAX_UNITS='3'; export DASH_BUILDEX='OFF'; sh dash/scripts/dash-ci.sh $BUILD_CONFIG | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
 
+    # upload xml test-results
     mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG
     cp ./build-ci/*/$BUILD_CONFIG/dash-tests-*.xml $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG/
+    # upload build and test logs 
+    mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG/logs
+    cp ./build-ci/*/$BUILD_CONFIG/*.log $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG/logs
 
     echo "checking logs"
 
