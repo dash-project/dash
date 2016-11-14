@@ -42,13 +42,11 @@ TEST_F(SharedTest, SingleWriteMultiRead)
 
 TEST_F(SharedTest, SpecifyOwner)
 {
-  return;
-
   typedef int                   value_t;
   typedef dash::Shared<value_t> shared_t;
 
   if (dash::size() < 2) {
-    return;
+    SKIP_TEST();
   }
 
   dart_unit_t owner_a  = dash::size() < 3
@@ -123,7 +121,7 @@ TEST_F(SharedTest, AtomicAdd)
   typedef dash::Shared<value_t> shared_t;
 
   if (dash::size() < 2) {
-    return;
+    SKIP_TEST();
   }
 
   shared_t shared;

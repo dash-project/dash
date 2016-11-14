@@ -280,7 +280,7 @@ dart_module_location_t;
  *
  * Illustrating example:
  *
- * <pre>
+ * \code
  *   domain (top level, heterogenous)
  *   domain_tag:  "."
  *   host:        "number-crunch-9000"
@@ -388,7 +388,7 @@ dart_module_location_t;
  *   :   ...
  *   '
  *   ...
- * </pre>
+ * \endcode
  *
  */
 struct dart_domain_locality_s
@@ -402,46 +402,50 @@ struct dart_domain_locality_s
      */
     char domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 
+    struct dart_domain_locality_s ** aliases;
+
+    int                              num_aliases;
+
     /** Locality scope of the domain. */
-    dart_locality_scope_t           scope;
+    dart_locality_scope_t            scope;
     /** Level in the domain locality hierarchy. */
-    int                             level;
+    int                              level;
 
     /** The domain's global index within its scope. */
-    int                             global_index;
+    int                              global_index;
     /** The domain's index within its parent domain. */
-    int                             relative_index;
+    int                              relative_index;
 
     /** Pointer to descriptor of parent domain or 0 if no parent domain
      *  is specified. */
-    struct dart_domain_locality_s * parent;
+    struct dart_domain_locality_s  * parent;
 
     /** Number of subordinate domains. */
-    int                             num_domains;
+    int                              num_domains;
     /** Array of subordinate domains of size \c num_domains or 0 if no
      *  subdomains are specified. */
-    struct dart_domain_locality_s * domains;
+    struct dart_domain_locality_s  * domains;
 
     /** Whether sub-domains have identical hardware configuration. */
-    int                             is_symmetric;
+    int                              is_symmetric;
 
     /** Team associated with the domain. */
-    dart_team_t                     team;
+    dart_team_t                      team;
     /** Number of units in the domain. */
-    int                             num_units;
+    int                              num_units;
     /** IDs of units in the domain. */
-    dart_unit_t                   * unit_ids;
+    dart_unit_t                    * unit_ids;
 
     /* The number of compute nodes in the domain. */
-    int                             num_nodes;
+    int                              num_nodes;
     /* Number of cores in the domain. Cores may be heterogeneous unless
      * `is_symmetric` is different from 0. */
-    int                             num_cores;
+    int                              num_cores;
 
     /* The minimum size of the physical or logical shared memory
      * accessible by all units in the domain.
      */
-    int                             shared_mem_bytes;
+    int                              shared_mem_bytes;
 };
 struct dart_domain_locality_s;
 typedef struct dart_domain_locality_s
