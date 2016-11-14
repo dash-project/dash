@@ -339,7 +339,7 @@ dart_ret_t dart__base__locality__scope_domain_tags(
   for (int sd = 0; sd < *num_domains_out; sd++) {
     (*domain_tags_out)[sd] = (char *)(malloc(
                                sizeof(char) *
-                               strlen(dart_scope_domains[sd]->domain_tag)));
+                               (strlen(dart_scope_domains[sd]->domain_tag) + 1)));
     strcpy((*domain_tags_out)[sd],
            dart_scope_domains[sd]->domain_tag);
   }

@@ -89,7 +89,6 @@ dash::util::LocalityDomain::~LocalityDomain()
   }
   if (_is_owner && _domain != nullptr) {
     dart_domain_destruct(_domain);
-    delete _domain;
   }
   _domain = nullptr;
 
