@@ -19,6 +19,4 @@ test:
     - cat ./dash-ci.log | grep "PASSED" || (echo "Full log:" ; cat ./dash-ci.log ; exit 1):
         parallel: true
   post:
-    - cat ./build-ci/*/*/test_mpi.log
     - cat ./dash-ci.err
-    - cat ./build-ci/*/*/build.log
