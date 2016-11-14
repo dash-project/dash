@@ -11,10 +11,16 @@ namespace dash {
   static bool _initialized = false;
 }
 
-void dash::wait_breakpoint()
+namespace dash {
+namespace internal {
+
+void wait_breakpoint()
 {
   sleep(1);
 }
+
+} // namespace internal
+} // namespace dash
 
 void dash::init(int * argc, char ** *argv)
 {
@@ -32,7 +38,7 @@ void dash::init(int * argc, char ** *argv)
     dash::Shared<int> blockvar;
     blockvar.set(1);
     while (blockvar.get()) {
-      dash::wait_breakpoint();
+      dash::internal::wait_breakpoint();
     }
   }
 #endif
