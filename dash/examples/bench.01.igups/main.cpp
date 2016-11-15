@@ -446,11 +446,11 @@ double test_raw_array(
   }
   auto time_elapsed = timer.Elapsed();
 
-  delete[] arr;
-
   validate(
     arr, arr + ELEM_PER_UNIT,
     ELEM_PER_UNIT, REPEAT);
+
+  delete[] arr;
   return time_elapsed;
 }
 
