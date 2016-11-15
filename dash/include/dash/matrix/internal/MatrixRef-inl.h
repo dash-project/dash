@@ -327,7 +327,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::col(
   size_type column_offset)
 {
-  return sub<0>(column_offset);
+  return sub<1>(column_offset);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -336,7 +336,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::row(
   size_type row_offset)
 {
-  return sub<1>(row_offset);
+  return sub<0>(row_offset);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -373,7 +373,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return sub<1>(offset, extent);
+  return sub<0>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -383,7 +383,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return sub<0>(offset, extent);
+  return sub<1>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>

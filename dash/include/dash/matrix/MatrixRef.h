@@ -133,6 +133,13 @@ class MatrixRef
     MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT> && ();
 
 public:
+
+  static constexpr dim_t ndim() {
+    return NumViewDim;
+  }
+
+public:
+
   MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>()
   {
     DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumDimensions);
