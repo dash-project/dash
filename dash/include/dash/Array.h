@@ -1042,9 +1042,7 @@ public:
     DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
     // Check requested capacity:
     if (nelem == 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Tried to allocate dash::Array with size 0");
+      DASH_LOG_WARN("Array.allocate", "allocating dash::Array with size 0");
     }
     if (m_team == nullptr || *m_team == dash::Team::Null()) {
       DASH_LOG_TRACE("Array.allocate",
@@ -1132,9 +1130,7 @@ public:
     m_size      = m_pattern.capacity();
     m_team      = &(m_pattern.team());
     if (m_size == 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Tried to allocate dash::Array with size 0");
+      DASH_LOG_WARN("Array.allocate", "allocating dash::Array with size 0");
     }
     // Initialize members:
     m_lsize     = m_pattern.local_size();

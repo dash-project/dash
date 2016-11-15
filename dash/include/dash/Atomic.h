@@ -83,9 +83,7 @@ public:
   {
     DASH_LOG_DEBUG("Atomic.get()");
     DASH_LOG_TRACE_VAR("Atomic.get", _gptr);
-    DASH_ASSERT(
-      !DART_GPTR_EQUAL(
-        _gptr, DART_GPTR_NULL));
+    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     reference ref(_gptr);
     DASH_LOG_DEBUG_VAR("Atomic.get >", static_cast<ValueType>(ref));
     return ref;
@@ -98,9 +96,7 @@ public:
   {
     DASH_LOG_DEBUG("Atomic.cget()");
     DASH_LOG_TRACE_VAR("Atomic.cget", _gptr);
-    DASH_ASSERT(
-      !DART_GPTR_EQUAL(
-        _gptr, DART_GPTR_NULL));
+    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     const_reference cref(_gptr);
     DASH_LOG_DEBUG_VAR("Atomic.cget >", static_cast<ValueType>(cref));
     return cref;
@@ -119,9 +115,7 @@ public:
     DASH_LOG_TRACE_VAR("Atomic.add",   _gptr);
     DASH_LOG_TRACE_VAR("Atomic.add",   _team);
     DASH_ASSERT(_team != nullptr);
-    DASH_ASSERT(
-      !DART_GPTR_EQUAL(
-        _gptr, DART_GPTR_NULL));
+    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type acc = value;
     DASH_LOG_TRACE("Atomic.add", "dart_accumulate");
     dart_ret_t ret = dart_accumulate(
@@ -153,9 +147,7 @@ public:
     DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op()", val);
     DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   _gptr);
     DASH_ASSERT(_team != nullptr);
-    DASH_ASSERT(
-      !DART_GPTR_EQUAL(
-        _gptr, DART_GPTR_NULL));
+    DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type acc;
     dart_ret_t ret = dart_fetch_and_op(
                        _gptr,

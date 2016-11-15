@@ -39,7 +39,7 @@ int myid();
 #endif
 
 //
-// Always log error messages:
+// Always log error and warning messages:
 //
 #define DASH_LOG_ERROR(...) \
   dash::internal::logging::LogWrapper(\
@@ -48,6 +48,14 @@ int myid();
 #define DASH_LOG_ERROR_VAR(context, var) \
   dash::internal::logging::LogVarWrapper(\
     "ERROR", __FILE__, __LINE__, context, #var, (var))
+
+#define DASH_LOG_WARN(...) \
+  dash::internal::logging::LogWrapper(\
+    "WARN ", __FILE__, __LINE__, __VA_ARGS__)
+
+#define DASH_LOG_WARN_VAR(context, var) \
+  dash::internal::logging::LogVarWrapper(\
+    "WARN ", __FILE__, __LINE__, context, #var, (var))
 
 //
 // Debug and trace log messages:

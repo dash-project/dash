@@ -220,6 +220,7 @@ public:
     _allocated.erase(
         std::remove(_allocated.begin(), _allocated.end(), gptr),
         _allocated.end());
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate >");
   }
 
 private:

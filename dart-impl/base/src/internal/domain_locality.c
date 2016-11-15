@@ -130,13 +130,7 @@ dart_ret_t dart__base__locality__domain__copy(
 
   dart__base__locality__domain__init(domain_dst);
 
-  *domain_dst = *domain_src;
-
-  strncpy(domain_dst->domain_tag, domain_src->domain_tag,
-          DART_LOCALITY_DOMAIN_TAG_MAX_SIZE);
-
-  strncpy(domain_dst->host, domain_src->host,
-          DART_LOCALITY_HOST_MAX_SIZE);
+  memcpy(domain_dst, domain_src, sizeof(dart_domain_locality_t));
 
   /* Copy unit ids:
    */
@@ -178,7 +172,7 @@ dart_ret_t dart__base__locality__domain__copy(
       DART_LOG_ERROR("dart__base__locality__domain__copy: domain %s "
                      "has num_domains = %d, expected domains = NULL",
                      domain_src->domain_tag, domain_src->num_domains);
-      // return DART_ERR_OTHER;
+      return DART_ERR_OTHER;
     }
     domain_dst->domains = NULL;
   }

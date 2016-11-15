@@ -123,7 +123,7 @@ public:
       return;
     }
     _begptr = _allocator.allocate(_nlelem);
-    DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
+    DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
     _lbegin = lbegin(dash::myid());
     _lend   = lend(dash::myid());
@@ -156,7 +156,7 @@ public:
       DASH_LOG_DEBUG("GlobMem(lvals,team)", "nothing to allocate");
     } else {
       _begptr = _allocator.allocate(_nlelem);
-      DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
+      DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
       _lbegin = lbegin(dash::myid());
       _lend   = lend(dash::myid());
@@ -442,7 +442,7 @@ public:
     IndexType   local_index) const
   {
     DASH_LOG_DEBUG("GlobMem.at(unit,l_idx)", unit, local_index);
-    if (_nunits == 0 || DART_GPTR_NULL == _begptr) {
+    if (_nunits == 0 || DART_GPTR_ISNULL(_begptr)) {
       DASH_LOG_DEBUG("GlobMem.at(unit,l_idx) >",
                      "global memory not allocated");
       return dash::GlobPtr<value_type>(nullptr);

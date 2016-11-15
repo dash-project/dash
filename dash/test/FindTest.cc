@@ -256,13 +256,13 @@ TEST_F(FindTest, SingleMatchInEveryUnit)
 
 TEST_F(FindTest, EmptyContainer)
 {
-  SKIP_TEST();
-
   Element_t find_me = 1;
 
   dash::Array<Element_t> array;
 
   array.allocate(0, dash::BLOCKED);
+
+  return;
 
   // Run find on complete array
   auto found_gptr = dash::find(array.begin(), array.end(), find_me);
