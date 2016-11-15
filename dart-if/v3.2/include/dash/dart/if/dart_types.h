@@ -21,42 +21,63 @@ extern "C" {
 #define DART_INTERFACE_ON
 
 /**
- * Return values of functions in the DART interface.
+ * \brief Return values of functions in the DART interface.
  *
  * \ingroup DartTypes
  */
-typedef enum {
-    DART_OK           =   0,
-    DART_PENDING      =   1,
-    DART_ERR_INVAL    =   2,
-    DART_ERR_NOTFOUND =   3,
-    DART_ERR_NOTINIT  =   4,
-    DART_ERR_OTHER    = 999
+typedef enum
+{
+  /** Signals success */
+  DART_OK           =   0,
+  /** An operation is still pending */
+  DART_PENDING      =   1,
+  /** Invalid operation or parameters */
+  DART_ERR_INVAL    =   2,
+  /** Missing data encountered */
+  DART_ERR_NOTFOUND =   3,
+  /** DART has not been initialized */
+  DART_ERR_NOTINIT  =   4,
+  /** Unspecified error */
+  DART_ERR_OTHER    = 999
 } dart_ret_t;
 
 /**
+ * \brief Operations to be used for certain RMA and collective operations.
  * \ingroup DartTypes
  */
-typedef enum {
-    DART_OP_UNDEFINED = 0,
-    DART_OP_MIN,
-    DART_OP_MAX,
-    DART_OP_SUM,
-    DART_OP_PROD,
-    DART_OP_BAND,
-    DART_OP_LAND,
-    DART_OP_BOR,
-    DART_OP_LOR,
-    DART_OP_BXOR,
-    DART_OP_LXOR
+typedef enum
+{
+  /** Undefined, do not use */
+  DART_OP_UNDEFINED = 0,
+  /** Minimum */
+  DART_OP_MIN,
+  /** Maximum */
+  DART_OP_MAX,
+  /** Summation */
+  DART_OP_SUM,
+  /** Product */
+  DART_OP_PROD,
+  /** Binary AND */
+  DART_OP_BAND,
+  /** Logical AND */
+  DART_OP_LAND,
+  /** Binary OR */
+  DART_OP_BOR,
+  /** Logical OR */
+  DART_OP_LOR,
+  /** Binary XOR */
+  DART_OP_BXOR,
+  /** Logical XOR */
+  DART_OP_LXOR
 } dart_operation_t;
 
 /**
- * Raw data types supported by the DART interface.
+ * \brief Raw data types supported by the DART interface.
  *
  * \ingroup DartTypes
  */
-typedef enum {
+typedef enum
+{
     DART_TYPE_UNDEFINED = 0,
     DART_TYPE_BYTE,
     DART_TYPE_SHORT,
@@ -70,11 +91,13 @@ typedef enum {
 } dart_datatype_t;
 
 /**
+ * \brief Data type for storing a unit ID
  * \ingroup DartTypes
  */
 typedef int32_t dart_unit_t;
 
 /**
+ * \brief Data type for storing a team ID
  * \ingroup DartTypes
  */
 typedef int32_t dart_team_t;
@@ -90,7 +113,7 @@ typedef int32_t dart_team_t;
 #define DART_UNDEFINED_TEAM_ID ((dart_team_t)(-1))
 
 /**
- * Scopes of locality domains.
+ * \brief Scopes of locality domains.
  *
  * Enum values are ordered by scope level in the locality hierarchy.
  * Consequently, the comparison \c (scope_a > scope_b) is valid

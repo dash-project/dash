@@ -7,9 +7,10 @@
 /**
  * \file dart_communication.h
  *
- * A set of basic collective communication routines in DART.
+ * \brief A set of basic collective communication routines in DART.
+ *
  * The semantics of the routines below are the same as with MPI. The only
- * difference is that DART doesn't specify data types and the operates on
+ * difference is that DART doesn't specify data types but operates on
  * raw buffers instead. Message size is thus specified in bytes.
  */
 
@@ -30,7 +31,7 @@ dart_ret_t dart_barrier(
 /**
  * DART Equivalent to MPI broadcast.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_bcast(
   void *buf,
@@ -41,7 +42,7 @@ dart_ret_t dart_bcast(
 /**
  * DART Equivalent to MPI scatter.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_scatter(
   void *sendbuf,
@@ -53,7 +54,7 @@ dart_ret_t dart_scatter(
 /**
  * DART Equivalent to MPI gather.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_gather(
   void *sendbuf,
@@ -65,7 +66,7 @@ dart_ret_t dart_gather(
 /**
  * DART Equivalent to MPI allgather.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_allgather(
   void *sendbuf,
@@ -76,7 +77,7 @@ dart_ret_t dart_allgather(
 /**
  * DART Equivalent to MPI allgatherv.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_allgatherv(
   void        * sendbuf,
@@ -89,7 +90,7 @@ dart_ret_t dart_allgatherv(
 /**
  * DART Equivalent to MPI allreduce.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_allreduce(
   void           * sendbuf,
@@ -102,7 +103,7 @@ dart_ret_t dart_allreduce(
 /**
  * DART Equivalent to MPI reduce.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_reduce_double(
   double *sendbuf,
@@ -117,7 +118,7 @@ typedef struct dart_handle_struct * dart_handle_t;
  * is guaranteed. A later fence/flush operation is needed to guarantee
  * local and remote completion.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_get(
   void        * dest,
@@ -129,7 +130,7 @@ dart_ret_t dart_get(
  * is guaranteed. A later fence/flush operation is needed to guarantee
  * local and remote completion.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_put(
   dart_gptr_t   ptr,
@@ -139,7 +140,7 @@ dart_ret_t dart_put(
 /**
  * DART Equivalent to MPI_Accumulate.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_accumulate(
   dart_gptr_t      gptr,
@@ -152,7 +153,7 @@ dart_ret_t dart_accumulate(
 /**
  * DART Equivalent to MPI_Fetch_and_op.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_fetch_and_op(
   dart_gptr_t      gptr,
@@ -168,7 +169,7 @@ dart_ret_t dart_fetch_and_op(
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_get_handle(
   void            * dest,
@@ -184,7 +185,7 @@ dart_ret_t dart_get_handle(
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_put_handle(
   dart_gptr_t     ptr,
@@ -198,7 +199,7 @@ dart_ret_t dart_put_handle(
  * 'BLOCKING' variant of dart_get.
  * Both local and remote completion is guaranteed.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_get_blocking(
   void *dest,
@@ -208,7 +209,7 @@ dart_ret_t dart_get_blocking(
  * 'BLOCKING' variant of dart_put.
  * Both local and remote completion is guaranteed.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_put_blocking(
   dart_gptr_t  ptr,
@@ -220,7 +221,7 @@ dart_ret_t dart_put_blocking(
  * gets on a certain memory allocation / window / segment for the
  * target unit specified in gptr. -> MPI_Win_flush()
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_flush(
   dart_gptr_t gptr);
@@ -230,7 +231,7 @@ dart_ret_t dart_flush(
  * gets on a certain memory allocation / window / segment for all
  * target units. -> MPI_Win_flush_all()
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_all(
   dart_gptr_t gptr);
@@ -240,7 +241,7 @@ dart_ret_t dart_flush_all(
  * gets on a certain memory allocation / window / segment for the
  * target unit specified in gptr. -> MPI_Win_flush_local()
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_local(
   dart_gptr_t gptr);
@@ -250,7 +251,7 @@ dart_ret_t dart_flush_local(
  * gets on a certain memory allocation / window / segment for the
  * all units. -> MPI_Win_flush_local_all()
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_local_all(
   dart_gptr_t gptr);
@@ -258,14 +259,14 @@ dart_ret_t dart_flush_local_all(
 /**
  * Wait for the local and remote completion of an operation.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_wait(
   dart_handle_t handle);
 /**
  * Wait for the local and remote completion of operationis.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall(
   dart_handle_t *handle,
@@ -274,14 +275,14 @@ dart_ret_t dart_waitall(
 /**
  * Wait for the local completion of an operation.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_wait_local(
     dart_handle_t handle);
 /**
  * Wait for the local completion of operations.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall_local(
     dart_handle_t *handle,
@@ -290,7 +291,7 @@ dart_ret_t dart_waitall_local(
 /**
  * Wait for the local completion of an operation.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_test_local(
   dart_handle_t handle,
@@ -298,7 +299,7 @@ dart_ret_t dart_test_local(
 /**
  * Wait for the local completion of operations.
  *
- * \ingroup DartCommuncation
+ * \ingroup DartCommunication
  */
 dart_ret_t dart_testall_local(
   dart_handle_t *handle,
