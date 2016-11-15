@@ -383,7 +383,7 @@ public:
   /**
    * Equality comparison operator.
    */
-  bool operator==(
+  inline bool operator==(
     /// Pattern instance to compare for equality
     const self_t & other) const
   {
@@ -404,7 +404,7 @@ public:
   /**
    * Inquality comparison operator.
    */
-  bool operator!=(
+  inline bool operator!=(
     /// Pattern instance to compare for inequality
     const self_t & other) const
   {
@@ -442,7 +442,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  IndexType lbegin() const
+  inline IndexType lbegin() const
   {
     return _lbegin;
   }
@@ -452,7 +452,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  IndexType lend() const
+  inline IndexType lend() const
   {
     return _lend;
   }
@@ -466,7 +466,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  inline dart_unit_t unit_at(
     /// Absolute coordinates of the point
     const std::array<IndexType, NumDimensions> & coords,
     /// View specification (offsets) to apply on \c coords
@@ -480,7 +480,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  inline dart_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
     return unit_at(g_coords[0]);
@@ -491,7 +491,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  inline dart_unit_t unit_at(
     /// Global linear element offset
     IndexType          global_pos,
     /// View to apply global position
@@ -537,7 +537,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType extent(dim_t dim) const
+  inline IndexType extent(dim_t dim) const
   {
     DASH_ASSERT_EQ(
       0, dim,
@@ -557,7 +557,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType local_extent(dim_t dim) const
+  inline IndexType local_extent(dim_t dim) const
   {
     DASH_ASSERT_EQ(
       0, dim,
@@ -577,7 +577,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<SizeType, NumDimensions> local_extents(
+  inline std::array<SizeType, NumDimensions> local_extents(
     dart_unit_t unit) const
   {
     DASH_LOG_DEBUG_VAR("CSRPattern.local_extents()", unit);
@@ -595,7 +595,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  IndexType local_at(
+  inline IndexType local_at(
     /// Point in local memory
     const std::array<IndexType, NumDimensions> & local_coords,
     /// View specification (offsets) to apply on \c coords
@@ -609,7 +609,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  IndexType local_at(
+  inline IndexType local_at(
     /// Point in local memory
     const std::array<IndexType, NumDimensions> & local_coords) const
   {
@@ -624,7 +624,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  local_coords_t local(
+  inline local_coords_t local(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
     local_index_t  l_index =  local(g_coords[0]);
@@ -641,7 +641,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  local_index_t local(
+  inline local_index_t local(
     IndexType g_index) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.local()", g_index);
@@ -670,7 +670,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> local_coords(
+  inline std::array<IndexType, NumDimensions> local_coords(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
     local_index_t l_index = local(g_coords[0]);
@@ -683,7 +683,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  local_index_t local_index(
+  inline local_index_t local_index(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
     return local(g_coords[0]);
@@ -698,7 +698,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> global(
+  inline std::array<IndexType, NumDimensions> global(
     dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const
   {
@@ -719,7 +719,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> global(
+  inline std::array<IndexType, NumDimensions> global(
     const std::array<IndexType, NumDimensions> & l_coords) const
   {
     return global(_team->myid(), l_coords);
@@ -733,7 +733,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType global(
+  inline IndexType global(
     dart_unit_t unit,
     IndexType l_index) const
   {
@@ -748,7 +748,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType global(
+  inline IndexType global(
     IndexType l_index) const
   {
     return global(_team->myid(), std::array<IndexType, 1> {{ l_index }})[0];
@@ -762,7 +762,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType global_index(
+  inline IndexType global_index(
     dart_unit_t unit,
     const std::array<IndexType, NumDimensions> & l_coords) const
   {
@@ -782,7 +782,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType at(
+  inline IndexType at(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
     return local_coords(g_coords)[0];
@@ -795,7 +795,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  IndexType at(
+  inline IndexType at(
     const std::array<IndexType, NumDimensions> & g_coords,
     const ViewSpec_t & viewspec) const
   {
@@ -812,7 +812,7 @@ public:
    * \see  DashPatternConcept
    */
   template<typename ... Values>
-  IndexType at(IndexType value, Values ... values) const
+  inline IndexType at(IndexType value, Values ... values) const
   {
     static_assert(
       sizeof...(values) == NumDimensions-1,
@@ -823,9 +823,9 @@ public:
     return at(inputindex);
   }
 
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
   /// is_local
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   /**
    * Whether the given global index is local to the specified unit.
@@ -864,9 +864,9 @@ public:
     return is_loc;
   }
 
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
   /// block
-  ////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
 
   /**
    * Cartesian arrangement of pattern blocks.
@@ -894,8 +894,8 @@ public:
   }
 
   /**
-   * View spec (offset and extents) of block at global linear block index in
-   * cartesian element space.
+   * View spec (offset and extents) of block at global linear block index 
+   * in cartesian element space.
    */
   ViewSpec_t block(
     index_type g_block_index) const
@@ -911,8 +911,8 @@ public:
   }
 
   /**
-   * View spec (offset and extents) of block at local linear block index in
-   * global cartesian element space.
+   * View spec (offset and extents) of block at local linear block index
+   * in global cartesian element space.
    */
   ViewSpec_t local_block(
     index_type l_block_index) const
@@ -934,7 +934,7 @@ public:
    * View spec (offset and extents) of block at local linear block index in
    * local cartesian element space.
    */
-  ViewSpec_t local_block_local(
+  inline ViewSpec_t local_block_local(
     index_type l_block_index) const
   {
     DASH_LOG_DEBUG_VAR("CSRPattern<1>.local_block_local >", l_block_index);
@@ -953,7 +953,7 @@ public:
    *
    * \see     DashPatternConcept
    */
-  SizeType blocksize(
+  inline SizeType blocksize(
     /// The dimension in the pattern
     dim_t dimension) const
   {
@@ -968,7 +968,7 @@ public:
    *
    * \see     DashPatternConcept
    */
-  SizeType max_blocksize() const
+  inline SizeType max_blocksize() const
   {
     return _local_capacity;
   }
@@ -1053,7 +1053,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  SizeSpec_t sizespec() const
+  inline SizeSpec_t sizespec() const
   {
     return SizeSpec_t(std::array<SizeType, 1> {{ _size }});
   }
@@ -1063,7 +1063,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const std::array<SizeType, NumDimensions> & extents() const
+  inline const std::array<SizeType, NumDimensions> & extents() const
   {
     return std::array<SizeType, 1> {{ _size }};
   }
@@ -1074,7 +1074,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const MemoryLayout_t & memory_layout() const
+  inline const MemoryLayout_t & memory_layout() const
   {
     return _memory_layout;
   }
@@ -1084,7 +1084,7 @@ public:
    * of this pattern for the calling unit.
    * Not part of DASH Pattern concept.
    */
-  const LocalMemoryLayout_t & local_memory_layout() const
+  inline const LocalMemoryLayout_t & local_memory_layout() const
   {
     return _local_memory_layout;
   }
@@ -1095,7 +1095,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const TeamSpec_t & teamspec() const
+  inline const TeamSpec_t & teamspec() const
   {
     return _teamspec;
   }
@@ -1106,7 +1106,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  std::array<IndexType, NumDimensions> coords(
+  inline std::array<IndexType, NumDimensions> coords(
     IndexType index) const
   {
     return std::array<IndexType, 1> {{ index }};
@@ -1115,13 +1115,14 @@ public:
   /**
    * Memory order followed by the pattern.
    */
-  constexpr static MemArrange memory_order()
+  inline constexpr static MemArrange memory_order()
   {
     return Arrangement;
   }
 
   /**
-   * Number of dimensions of the cartesian space partitioned by the pattern.
+   * Number of dimensions of the cartesian space partitioned by the 
+   * pattern.
    */
   constexpr static dim_t ndim()
   {
@@ -1131,12 +1132,13 @@ public:
   /**
    * Initialize the size (number of mapped elements) of the Pattern.
    */
-  SizeType initialize_size(
+  inline SizeType initialize_size(
     const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.init_size()", local_sizes);
     size_type size = 0;
-    for (size_type unit_idx = 0; unit_idx < local_sizes.size(); ++unit_idx) {
+    for (size_type unit_idx = 0; unit_idx < local_sizes.size(); ++
+         unit_idx) {
       size += local_sizes[unit_idx];
     }
     DASH_LOG_TRACE_VAR("CSRPattern.init_size >", size);
