@@ -428,7 +428,9 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   ref._refview._coord[target_dim] = 0;
 
   ref._refview._viewspec = _refview._viewspec;
-  // Offset specified by user is relative to existing offset of the view:
+  // Offset specified by user is relative to existing offset of the view
+  // so slice offset must be applied on the view's current offset in the
+  // sub-dimension:
   ref._refview._viewspec.resize_dim(
                            target_dim,
                            _refview._viewspec.offset(target_dim) + n, 1);
