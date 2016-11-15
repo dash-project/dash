@@ -1082,10 +1082,8 @@ TEST_F(MatrixTest, CopyRow)
   DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row.extent(0));
   DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row.extent(1));
 
-  if (myid == 0) {
-    dash::test::print_matrix("Matrix<2>.local.row(0)", row, 2);
-  }
   dash::barrier();
+  dash::test::print_matrix("Matrix<2>.local.row(0)", row, 2);
 
   auto l_prange = dash::local_range(row.begin(), row.end());
   DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow",
@@ -1096,8 +1094,6 @@ TEST_F(MatrixTest, CopyRow)
   DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", static_cast<int>(l_irange.begin));
   DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", static_cast<int>(l_irange.end));
 
-  dash::barrier();
-
   EXPECT_EQ_U(row_size, l_irange.end - l_irange.begin);
   EXPECT_EQ_U(row_size, l_prange.end - l_prange.begin);
 
@@ -1105,8 +1101,6 @@ TEST_F(MatrixTest, CopyRow)
   EXPECT_EQ_U(n_lextent, row_size);
 
   EXPECT_EQ_U(n_lextent, row.extents()[1]);
-
-  dash::barrier();
 
   // Check values and test for each expression:
   int li = 0;
@@ -1122,5 +1116,13 @@ TEST_F(MatrixTest, CopyRow)
                              tmp.data());
 
   EXPECT_EQ_U(row_size, copy_end - tmp.data());
+
+  li = 0;
+  for (auto l_copy_val : tmp) {
+    value_t expected = ((myid + 1) * 1000) + li;
+    value_t actual   = l_copy_val;
+    EXPECT_EQ_U(expected, actual);
+    li++;
+  }
 }
 

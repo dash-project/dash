@@ -428,7 +428,10 @@ LocalMatrixRef<T, NumDim, CUR, PatternT>
   ref._refview._coord[target_dim] = 0;
 
   ref._refview._viewspec = _refview._viewspec;
-  ref._refview._viewspec.resize_dim(target_dim, n, 1);
+  // Offset specified by user is relative to existing offset of the view:
+  ref._refview._viewspec.resize_dim(
+                           target_dim,
+                           _refview._viewspec.offset(target_dim) + n, 1);
   ref._refview._viewspec.set_rank(NumDim-1);
 
   DASH_LOG_TRACE("LocalMatrixRef<N>.sub(n)", "n:", n,
