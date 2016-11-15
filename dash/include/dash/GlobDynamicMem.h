@@ -1125,7 +1125,7 @@ private:
       bucket.lptr     = nullptr;
       bucket.attached = true;
       bucket.gptr     = _allocator.attach(bucket.lptr, bucket.size);
-      DASH_ASSERT(bucket.gptr != DART_GPTR_NULL);
+      DASH_ASSERT(!DART_GPTR_ISNULL(bucket.gptr));
       _buckets.push_back(bucket);
       num_attached_buckets++;
       DASH_LOG_TRACE("GlobDynamicMem.commit_attach", "attached null bucket:",
@@ -1333,7 +1333,7 @@ private:
       DASH_ASSERT_LT(bucket_phase, bucket_it->size,
                      "bucket phase out of bounds");
     }
-    if (DART_GPTR_EQUAL(dart_gptr, DART_GPTR_NULL)) {
+    if (DART_GPTR_ISNULL(dart_gptr)) {
       DASH_LOG_TRACE("GlobDynamicMem.dart_gptr_at",
                      "bucket.gptr is DART_GPTR_NULL");
       dart_gptr = DART_GPTR_NULL;

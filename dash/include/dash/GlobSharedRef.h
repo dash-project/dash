@@ -163,7 +163,7 @@ public:
     if (_lptr != nullptr) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _lptr);
       return *_lptr;
-    } else if (!DART_GPTR_EQUAL(DART_GPTR_NULL, _gptr)) {
+    } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
       T t;
       dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
@@ -188,7 +188,7 @@ public:
     if (_lptr != nullptr) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _lptr);
       t = *_lptr;
-    } else if (!DART_GPTR_EQUAL(DART_GPTR_NULL, _gptr)) {
+    } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
       dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
     }
@@ -200,7 +200,7 @@ public:
     if (_lptr != nullptr) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _lptr);
       *_lptr = val;
-    } else if (!DART_GPTR_EQUAL(DART_GPTR_NULL, _gptr)) {
+    } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
       dart_put_blocking(_gptr, static_cast<void *>(&val), sizeof(T));
     }
@@ -218,7 +218,7 @@ public:
     if (_lptr != nullptr) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.=", _lptr);
       *_lptr = val;
-    } else if (!DART_GPTR_EQUAL(DART_GPTR_NULL, _gptr)) {
+    } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.=", _gptr);
       dart_put_blocking(_gptr, static_cast<const void *>(&val), sizeof(T));
     }

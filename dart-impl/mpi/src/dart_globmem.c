@@ -339,6 +339,11 @@ dart_ret_t dart_team_memfree(
     return DART_ERR_INVAL;
   }
 
+  if (DART_GPTR_ISNULL(gptr)) {
+    /* corresponds to free(NULL) which is a valid operation */
+    return DART_OK;
+  }
+
   dart_team_myid(teamid, &unitid);
 
   win = dart_team_data[index].window;

@@ -288,7 +288,7 @@ public:
   {
     local_pointer lmem = allocate_local(num_local_elem);
     pointer       gmem = attach(lmem, num_local_elem);
-    if (DART_GPTR_EQUAL(gmem, DART_GPTR_NULL)) {
+    if (DART_GPTR_ISNULL(gmem)) {
       // Attach failed, free requested local memory:
       deallocate_local(lmem);
     }
@@ -351,7 +351,7 @@ private:
                        e.first);
         delete[] e.first;
       }
-      if (!DART_GPTR_EQUAL(e.second, DART_GPTR_NULL)) {
+      if (!DART_GPTR_ISNULL(e.second)) {
         DASH_LOG_DEBUG("DynamicAllocator.clear", "detach global memory:",
                        e.second);
         // Cannot use DASH_ASSERT due to noexcept qualifier:
