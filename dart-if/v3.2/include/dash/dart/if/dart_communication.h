@@ -7,11 +7,11 @@
 /**
  * \file dart_communication.h
  *
- * \brief A set of basic collective communication routines in DART.
+ * \brief A set of basic communication routines in DART.
  *
  * The semantics of the routines below are the same as with MPI. The only
  * difference is that DART doesn't specify data types but operates on
- * raw buffers instead. Message size is thus specified in bytes.
+ * raw buffers instead. Message sizes are thus specified in bytes.
  */
 
 /**
@@ -31,6 +31,13 @@ dart_ret_t dart_barrier(
 /**
  * DART Equivalent to MPI broadcast.
  *
+ * \param buf    Buffer that is the source (on \c root) or the destination of the broadcast.
+ * \param nbytes The number of bytes to broadcast/receive.
+ * \param root   The unit that broadcasts data to all other members in \c team
+ * \param team   The team to participate in the broadcast.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_bcast(
@@ -41,6 +48,14 @@ dart_ret_t dart_bcast(
 
 /**
  * DART Equivalent to MPI scatter.
+ *
+ * \param sendbuf The buffer containing the data to be sent by unit \c root.
+ * \param recvbuf The buffer to hold the received data.
+ * \param nbytes  Number of bytes sent to each process and received by each unit.
+ * \param root    The unit that scatters data to all units in \c team.
+ * \param team    The team to participate in the scatter.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
  *
  * \ingroup DartCommunication
  */
@@ -54,6 +69,14 @@ dart_ret_t dart_scatter(
 /**
  * DART Equivalent to MPI gather.
  *
+ * \param sendbuf The buffer containing the data to be sent by each unit.
+ * \param recvbuf The buffer to hold the received data on unit \c root.
+ * \param nbytes  Number of bytes sent by each process and received from each unit at unit \c root.
+ * \param root    The unit that gathers all data from units in \c team.
+ * \param team    The team to participate in the gather.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_gather(
@@ -66,6 +89,13 @@ dart_ret_t dart_gather(
 /**
  * DART Equivalent to MPI allgather.
  *
+ * \param sendbuf The buffer containing the data to be sent by each unit.
+ * \param recvbuf The buffer to hold the received data.
+ * \param nbytes  Number of bytes sent by each process and received from each unit.
+ * \param team    The team to participate in the allgather.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgather(
@@ -77,18 +107,36 @@ dart_ret_t dart_allgather(
 /**
  * DART Equivalent to MPI allgatherv.
  *
+ * \param sendbuf     The buffer containing the data to be sent by each unit.
+ * \param nsendbytes  Number of bytes to be sent by this unit.
+ * \param recvbuf     The buffer to hold the received data.
+ * \param nrecvcounts Array containing the number of bytes to receive from each unit.
+ * \param recvdispls  Array containing the displacements of data received from each unit in \c recvbuf.
+ * \param team        The team to participate in the allgatherv.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgatherv(
   void        * sendbuf,
   size_t        nsendbytes,
   void        * recvbuf,
-  int         * nrecvcounts,
+  int         * nrecvbytes,
   int         * recvdispls,
   dart_team_t   teamid);
 
 /**
  * DART Equivalent to MPI allreduce.
+ *
+ * \param sendbuf The buffer containing the data to be sent by each unit.
+ * \param recvbuf The buffer to hold the received data.
+ * \param nbytes  Number of bytes sent by each process and received from each unit.
+ * \param dtype   The data type to use in the reduction operation \c op.
+ * \param op      The reduction operation to perform.
+ * \param team The team to participate in the allreduce.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
  *
  * \ingroup DartCommunication
  */
@@ -102,6 +150,8 @@ dart_ret_t dart_allreduce(
 
 /**
  * DART Equivalent to MPI reduce.
+ *
+ * \todo Why is this not generic?
  *
  * \ingroup DartCommunication
  */
@@ -118,6 +168,12 @@ typedef struct dart_handle_struct * dart_handle_t;
  * is guaranteed. A later fence/flush operation is needed to guarantee
  * local and remote completion.
  *
+ * \param dest The local destination buffer to store the data to.
+ * \param ptr  A global pointer determining the source of the get operation.
+ * \param nbytes The number of bytes to transfer.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get(
@@ -130,6 +186,12 @@ dart_ret_t dart_get(
  * is guaranteed. A later fence/flush operation is needed to guarantee
  * local and remote completion.
  *
+ * \param ptr  A global pointer determining the target of the put operation.
+ * \param src  The local source buffer to load the data from.
+ * \param nbytes The number of bytes to transfer.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put(
@@ -139,6 +201,8 @@ dart_ret_t dart_put(
 
 /**
  * DART Equivalent to MPI_Accumulate.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
  *
  * \ingroup DartCommunication
  */
@@ -152,6 +216,8 @@ dart_ret_t dart_accumulate(
 
 /**
  * DART Equivalent to MPI_Fetch_and_op.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
  *
  * \ingroup DartCommunication
  */
@@ -169,6 +235,8 @@ dart_ret_t dart_fetch_and_op(
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_handle(
@@ -185,6 +253,8 @@ dart_ret_t dart_get_handle(
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_handle(
@@ -199,6 +269,8 @@ dart_ret_t dart_put_handle(
  * 'BLOCKING' variant of dart_get.
  * Both local and remote completion is guaranteed.
  *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_blocking(
@@ -208,6 +280,8 @@ dart_ret_t dart_get_blocking(
 /**
  * 'BLOCKING' variant of dart_put.
  * Both local and remote completion is guaranteed.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
  *
  * \ingroup DartCommunication
  */
@@ -221,6 +295,8 @@ dart_ret_t dart_put_blocking(
  * gets on a certain memory allocation / window / segment for the
  * target unit specified in gptr. -> MPI_Win_flush()
  *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush(
@@ -230,6 +306,8 @@ dart_ret_t dart_flush(
  * Guarantees local and remote completion of all pending puts and
  * gets on a certain memory allocation / window / segment for all
  * target units. -> MPI_Win_flush_all()
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
  *
  * \ingroup DartCommunication
  */
@@ -241,6 +319,8 @@ dart_ret_t dart_flush_all(
  * gets on a certain memory allocation / window / segment for the
  * target unit specified in gptr. -> MPI_Win_flush_local()
  *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_local(
@@ -250,6 +330,8 @@ dart_ret_t dart_flush_local(
  * Guarantees local completion of all pending puts and
  * gets on a certain memory allocation / window / segment for the
  * all units. -> MPI_Win_flush_local_all()
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
  *
  * \ingroup DartCommunication
  */
@@ -266,6 +348,8 @@ dart_ret_t dart_wait(
 /**
  * Wait for the local and remote completion of operationis.
  *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall(
@@ -275,12 +359,16 @@ dart_ret_t dart_waitall(
 /**
  * Wait for the local completion of an operation.
  *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_wait_local(
     dart_handle_t handle);
 /**
  * Wait for the local completion of operations.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
  *
  * \ingroup DartCommunication
  */
@@ -291,6 +379,8 @@ dart_ret_t dart_waitall_local(
 /**
  * Wait for the local completion of an operation.
  *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
+ *
  * \ingroup DartCommunication
  */
 dart_ret_t dart_test_local(
@@ -298,6 +388,8 @@ dart_ret_t dart_test_local(
   int32_t *result);
 /**
  * Wait for the local completion of operations.
+ *
+ * \return \c DART_OK on success, any of \ref dart_ret_t otherwise.
  *
  * \ingroup DartCommunication
  */
