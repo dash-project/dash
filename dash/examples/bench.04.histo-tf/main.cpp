@@ -19,12 +19,12 @@ typedef dash::util::Timer<
 //   https://www.nas.nasa.gov/assets/pdf/techreports/1994/rnr-94-007.pdf
 
 // NOTE:
-//   In the NBP reference implementation, keys are first sorted to buckets to
-//   determine their coarse distribution.
+//   In the NBP reference implementation, keys are first sorted to buckets 
+//   to determine their coarse distribution.
 //   For example, for key range (0, 2^23) and buckset size s_b = 2^10, a
-//   histogram with n_b = 2^(23-10) = 2^13 bins of size 2^10 = 1024 is created
-//   so that bucket[b] holds the number of keys with values between (b * s_b)
-//   and ((b+1) * s_b).
+//   histogram with n_b = 2^(23-10) = 2^13 bins of size 2^10 = 1024 is 
+//   created so that bucket[b] holds the number of keys with values
+//   between (b * s_b) and ((b+1) * s_b).
 
 #if   defined(DASH__BENCH__HISTO__CLASS_A)
 #  define TOTAL_KEYS_LOG_2    23
@@ -40,8 +40,8 @@ typedef dash::util::Timer<
 #  define SEED                314159265
 #else
 // Debug configuration
-#  define TOTAL_KEYS_LOG_2    23
-#  define MAX_KEY_LOG_2       21
+#  define TOTAL_KEYS_LOG_2    29
+#  define MAX_KEY_LOG_2       22
 #  define NUM_BUCKETS_LOG_2   3
 #  define I_MAX               1
 #  define SEED                314159265
@@ -62,11 +62,6 @@ double find_my_seed(int, int, long, double, double);
 int main(int argc, char **argv)
 {
   dash::init(&argc, &argv);
-
-  bool verbose = false;
-  if (argc > 1 && std::string(argv[1]) == "-v") {
-    verbose = true;
-  }
 
   Timer::Calibrate(0);
 
@@ -89,7 +84,7 @@ int main(int argc, char **argv)
   // result histograms, one per unit
   dash::Array<int> key_histo(MAX_KEY * num_units, dash::BLOCKED);
 
-  // PROCEDURE STEP 1 --------------------------------------------------------
+  // PROCEDURE STEP 1 ----------------------------------------------------
   // "In a scalar sequential manner and using the key generation algorithm
   //  described above, generate the sequence of N keys."
   //
@@ -113,42 +108,38 @@ int main(int argc, char **argv)
     key_array.local[l] = k * x;
   }
 
-  // PROCEDURE STEP 2 --------------------------------------------------------
-  // "Using the appropriate memory mapping described above, load the N keys
-  //  into the memory system."
+  // PROCEDURE STEP 2 ----------------------------------------------------
+  // "Using the appropriate memory mapping described above, load the
+  //  N keys into the memory system."
   //
 
   if (myid == 0) {
-    cout << "Number of keys: " << key_array.size()
+    cout << std::setw(25) << "Number of keys: "
+         << std::setw(18) << key_array.size()
          << endl
-         << "Max key:        " << MAX_KEY
+         << std::setw(25) << "Max key: "
+         << std::setw(18) << MAX_KEY
          << endl;
-    if (verbose) {
-      for (size_t i = 0; i < std::min<size_t>(200, key_array.size()); i++) {
-        cout << key_array[i] << " ";
-      }
-      cout << endl;
-    }
   }
 
   // Wait for initialization of input values:
   dash::barrier();
 
-  // PROCEDURE STEP 3 --------------------------------------------------------
+  // PROCEDURE STEP 3 ----------------------------------------------------
   // "Begin timing."
   //
   auto ts_start = Timer::Now();
 
-  // PROCEDURE STEP 4 --------------------------------------------------------
+  // PROCEDURE STEP 4 ----------------------------------------------------
   // "Do, for i = 1 to I_max"
   //
-  // PROCEDURE STEP 4.a ------------------------------------------------------
+  // PROCEDURE STEP 4.a --------------------------------------------------
   // "Modify the sequence of keys by making the following two changes:
   //   - K[i]          <- i
   //   - K[i + I_max]  <- B_max - i"
   //
 
-  // PROCEDURE STEP 4.b ------------------------------------------------------
+  // PROCEDURE STEP 4.b --------------------------------------------------
   // "Compute the rank of each key."
   //
 
@@ -166,8 +157,8 @@ int main(int argc, char **argv)
                          key_histo.begin(),  // C = plus(A,B)
                          dash::plus<int>());
   }
-  // Wait for all units to accumulate their local results to local histogram
-  // of unit 0:
+  // Wait for all units to accumulate their local results to local
+  // histogram of unit 0:
   dash::barrier();
 
   if (dash::myid() != 0) {
@@ -180,28 +171,19 @@ int main(int argc, char **argv)
   // Wait for all units to obtain the result histogram:
   dash::barrier();
 
-  // PROCEDURE STEP 5 --------------------------------------------------------
+  // PROCEDURE STEP 5 ----------------------------------------------------
   // "End timing."
   //
 
   auto time_elapsed_usec = Timer::ElapsedSince(ts_start);
   auto mkeys_per_sec     = static_cast<double>(TOTAL_KEYS) /
                              time_elapsed_usec;
-  if (verbose && myid == 0) {
-    cout << "Histogram size: " << key_histo.local.size()
-         << endl
-         << "------------------------"
-         << endl;
-    for(size_t i = 0; i < key_histo.local.size(); ++i) {
-      cout << std::setw(5) << i << ": " << key_histo.local[i]
-           << endl;
-    }
-  }
 
   if (myid == 0) {
-    cout << "------------------------"
+    cout << "-------------------------------------------"
          << endl
-         << "MKeys/sec:      " << mkeys_per_sec
+         << std::setw(25) << "MKeys/sec: "
+         << std::setw(18) << mkeys_per_sec
          << endl;
   }
 
@@ -211,7 +193,8 @@ int main(int argc, char **argv)
 }
 
 /**
- * Implementation from NAS Parallel Benchmark MPI implementation of Kernel IS.
+ * Implementation from NAS Parallel Benchmark MPI implementation of
+ * Kernel IS.
  *
  * See NBP3.3-MPI/IS/is.c
  */
@@ -269,7 +252,8 @@ double randlc(double * X, double * A)
 }
 
 /**
- * Implementation from NAS Parallel Benchmark MPI implementation of Kernel IS.
+ * Implementation from NAS Parallel Benchmark MPI implementation of
+ * Kernel IS.
  *
  * See NBP3.3-MPI/IS/is.c
  *
@@ -279,11 +263,11 @@ double randlc(double * X, double * A)
  * number which is the first random number for the subsequence belonging
  * to processor rank kn, and which is used as seed for proc kn ran # gen.
  */
-double find_my_seed(int    kn,     /* my processor rank, 0<=kn<=num procs */
-                    int    np,     /* np = num procs                      */
-                    long   nn,     /* total num of ran numbers, all procs */
-                    double s,      /* Ran num seed, for ex.: 314159265.00 */
-                    double a)      /* Ran num gen mult, try 1220703125.00 */
+double find_my_seed(int    kn,   /* my processor rank, 0<=kn<=num procs */
+                    int    np,   /* np = num procs                      */
+                    long   nn,   /* total num of ran numbers, all procs */
+                    double s,    /* Ran num seed, for ex.: 314159265.00 */
+                    double a)    /* Ran num gen mult, try 1220703125.00 */
 {
   long   i;
   double t1,t2,t3,an;

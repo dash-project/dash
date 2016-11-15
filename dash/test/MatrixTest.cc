@@ -1054,7 +1054,7 @@ TEST_F(MatrixTest, CopyRow)
   auto tspec_nx = teamspec_2d.extents()[1];
 
   DASH_LOG_DEBUG("MatrixTest.CopyRow", "balanced team spec:",
-                 tspec_ny, "x", tspec_ny);
+                 tspec_ny, "x", tspec_nx);
 
   dash::SizeSpec<2>         sspec(tspec_ny * n_lextent,
                                   tspec_nx * n_lextent);
@@ -1079,18 +1079,28 @@ TEST_F(MatrixTest, CopyRow)
   auto row      = matrix.local.row(0);
   auto row_size = row.size();
   DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row_size);
-  EXPECT_EQ_U(n_lextent, row_size);
-
-  auto l_prange = dash::local_range(row.begin(), row.end());
-  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", l_prange.begin);
-  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", l_prange.end);
-  auto l_irange = dash::local_index_range(row.begin(), row.end());
-  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", l_irange.begin);
-  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", l_irange.end);
-
-  return;
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row.extent(0));
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row.extent(1));
 
   dash::barrier();
+  dash::test::print_matrix("Matrix<2>.local.row(0)", row, 2);
+
+  auto l_prange = dash::local_range(row.begin(), row.end());
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow",
+                     static_cast<const value_t *>(l_prange.begin));
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow",
+                     static_cast<const value_t *>(l_prange.end));
+  auto l_irange = dash::local_index_range(row.begin(), row.end());
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", static_cast<int>(l_irange.begin));
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", static_cast<int>(l_irange.end));
+
+  EXPECT_EQ_U(row_size, l_irange.end - l_irange.begin);
+  EXPECT_EQ_U(row_size, l_prange.end - l_prange.begin);
+
+  EXPECT_EQ_U(1,         decltype(row)::ndim());
+  EXPECT_EQ_U(n_lextent, row_size);
+
+  EXPECT_EQ_U(n_lextent, row.extents()[1]);
 
   // Check values and test for each expression:
   int li = 0;
@@ -1106,5 +1116,13 @@ TEST_F(MatrixTest, CopyRow)
                              tmp.data());
 
   EXPECT_EQ_U(row_size, copy_end - tmp.data());
+
+  li = 0;
+  for (auto l_copy_val : tmp) {
+    value_t expected = ((myid + 1) * 1000) + li;
+    value_t actual   = l_copy_val;
+    EXPECT_EQ_U(expected, actual);
+    li++;
+  }
 }
 
