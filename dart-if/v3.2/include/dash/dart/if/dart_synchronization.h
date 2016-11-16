@@ -2,7 +2,7 @@
 #define DART_SYNCHRONIZATION_H_INCLUDED
 
 /**
- * \file dart_communication.h
+ * \file dart_synchronization.h
  *
  * \brief Synchronization primitives for mutual exclusion of units.
  *
