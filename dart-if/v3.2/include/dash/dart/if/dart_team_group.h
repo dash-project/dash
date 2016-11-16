@@ -53,15 +53,21 @@ typedef struct dart_group_struct dart_group_t;
 
 
 /**
+ * Initialize a DART group object.
  * Must be called before any other function on the group object.
  *
+ * \param group Pointer to a group to be initialized.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_init(dart_group_t *group);
 
 /**
- * Reclaims resources that might be associated with the group.
+ * Reclaim resources that might be associated with the group.
  *
+ * \param group Pointer to a group to be finalized.
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_fini(dart_group_t *group);
@@ -70,6 +76,10 @@ dart_ret_t dart_group_fini(dart_group_t *group);
 /**
  * Create a copy of the group
  *
+ * \param gin  Pointer to a group to be copied.
+ * \param gout Pointer to the target group object.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_copy(const dart_group_t *gin,
@@ -79,6 +89,10 @@ dart_ret_t dart_group_copy(const dart_group_t *gin,
 /**
  * Creation a union of the two groups
  *
+ * \param g1   Pointer to the first group to join.
+ * \param g2   Pointer to the second group to join.
+ * \param gout Pointer to the target group object.
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_union(const dart_group_t *g1,
@@ -89,6 +103,10 @@ dart_ret_t dart_group_union(const dart_group_t *g1,
 /**
  * Create an intersection of the two groups
  *
+ * \param g1   Pointer to the first group to intersect.
+ * \param g2   Pointer to the second group to intersect.
+ * \param gout Pointer to the target group object.
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_intersect(const dart_group_t *g1,
@@ -99,14 +117,20 @@ dart_ret_t dart_group_intersect(const dart_group_t *g1,
 /**
  * Add a member to the group.
  *
+ * \param unitid Unit to add to group \c g.
+ * \param g      Pointer to the target group object.
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_addmember(dart_group_t *g, dart_unit_t unitid);
 
 
 /**
- * Delete a member from the group.
+ * Remove a member from the group.
  *
+ * \param unitid Unit to remove from group \c g.
+ * \param g      Pointer to the target group object.
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_delmember(dart_group_t *g, dart_unit_t unitid);
@@ -115,6 +139,10 @@ dart_ret_t dart_group_delmember(dart_group_t *g, dart_unit_t unitid);
 /**
  * Test if a unit is a member of the group.
  *
+ * \param unitid Unit to test in group \c g.
+ * \param g      Pointer to the target group object.
+ * \param[out] ismember  True if \c unitid is member of group \c g, false otherwise.
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_ismember(const dart_group_t *g,
@@ -124,6 +152,10 @@ dart_ret_t dart_group_ismember(const dart_group_t *g,
 /**
  * Determine the size of the group.
  *
+ * \param g         Pointer to the group object.
+ * \param[out] size The number of units in the group.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_size(const dart_group_t *g,
@@ -134,6 +166,10 @@ dart_ret_t dart_group_size(const dart_group_t *g,
  * Get all the members of the group, \c unitids must be large enough
  * to hold the number of members returned by \ref dart_group_size.
  *
+ * \param g Pointer to the group object.
+ * \param[out] unitids An array large enough to hold the number of units as returned by \ref dart_group_size.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_getmembers(const dart_group_t *g,
@@ -144,7 +180,11 @@ dart_ret_t dart_group_getmembers(const dart_group_t *g,
  * Split the group into \c n groups of approx. the same size,
  * \c gout must be an array of \c dart_group_t objects of size at least \c n.
  *
- * \todo Why is \c gout a double pointer?
+ * \param g Pointer to the group object.
+ * \param n The number of groups to split \c g into.
+ * \param[out] gout An array of at least \c n pointers to the opaque \ref dart_group_t
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_split(const dart_group_t  * g,
@@ -152,14 +192,20 @@ dart_ret_t dart_group_split(const dart_group_t  * g,
                             dart_group_t       ** gout);
 
 /**
- * split the group \c g into \c n groups by the specified locality scope.
+ * Split the group \c g into \c n groups by the specified locality scope.
  * For example, a locality split in socket scope creates at least one new
  * group for every socket containing all units in the original group that
  * have affinity with the respective socket.
  * Size of array \c gout must have a capacity of at least \c n
  * \c dart_group_t objects.
  *
- * \todo Why is \c gout a double pointer?
+ * \param g      Pointer to the group object.
+ * \param domain The domain to use for the split.
+ * \param scope  The scope to use for the split.
+ * \param n      The number of groups to split \c g into.
+ * \param[out] gout   An array of at least \c n pointers to the opaque \ref dart_group_t
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
 */
 dart_ret_t dart_group_locality_split(const dart_group_t      * g,
@@ -171,6 +217,9 @@ dart_ret_t dart_group_locality_split(const dart_group_t      * g,
 /**
  * Get the size of an opaque \ref dart_group_t object.
  *
+ * \param[out] size The size of the opaque \ref dart_group_t object.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_group_sizeof(size_t *size);
@@ -180,6 +229,7 @@ dart_ret_t dart_group_sizeof(size_t *size);
  * The default team consisting of all units
  * that run the application.
  *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 #define DART_TEAM_ALL   ((dart_team_t)0)
@@ -189,8 +239,12 @@ dart_ret_t dart_group_sizeof(size_t *size);
 
 
 /**
- * Returns the group associated with the specified team
+ * Query the group associated with the specified team
  *
+ * \param teamid The team to use.
+ * \param group  Pointer to a group object.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group);
@@ -231,6 +285,11 @@ dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group);
  *
  * (2,3 are unique with respect to the parent team (1)).
  *
+ * \param teamid The parent team to use whose units participate in the collective operation.
+ * \param group  The group object to build the new team from.
+ * \param[out] newteam Will contain the new team ID upon successful return.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_create(dart_team_t          teamid,
@@ -240,6 +299,9 @@ dart_ret_t dart_team_create(dart_team_t          teamid,
 /**
  * Free up resources associated with the specified team
  *
+ * \param teamid The team to deallocate.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_destroy(dart_team_t teamid);
@@ -278,6 +340,10 @@ dart_ret_t dart_team_destroy(dart_team_t teamid);
  * be useful to know the new master (local ID 0) of a newly created
  * team before actually creating it.x
  *
+ * \param teamid The team for which the unit ID should be determined.
+ * \param[out] myid The unit ID of the calling unit in the respective team.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid);
@@ -285,6 +351,10 @@ dart_ret_t dart_team_myid(dart_team_t teamid, dart_unit_t *myid);
 /**
  * Return the size of the specified team.
  *
+ * \param teamid The team for which the size should  be determined.
+ * \param[out] size The size of the team.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_size(dart_team_t teamid, size_t *size);
@@ -292,6 +362,9 @@ dart_ret_t dart_team_size(dart_team_t teamid, size_t *size);
 /**
  * Return the id in the default team \ref DART_TEAM_ALL
  *
+ * \param[out] myid The global unit ID of the calling unit.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_myid(dart_unit_t *myid);
@@ -299,6 +372,9 @@ dart_ret_t dart_myid(dart_unit_t *myid);
 /**
  * Return the size of the default team \ref DART_TEAM_ALL
  *
+ * \param[out] size The size of the team.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_size(size_t *size);
@@ -312,6 +388,7 @@ dart_ret_t dart_size(size_t *size);
  *
  * This call is *not collective* on the specified team.
  *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_unit_l2g(dart_team_t team,
@@ -326,6 +403,7 @@ dart_ret_t dart_team_unit_l2g(dart_team_t team,
  *
  * This call is *not collective* on the specified team.
  *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_unit_g2l(dart_team_t team,
