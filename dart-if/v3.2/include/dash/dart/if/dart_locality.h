@@ -19,7 +19,9 @@
 extern "C" {
 #endif
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_ON
+/** \endcond */
 
 /**
  * Initialize information of the specified team.
@@ -184,7 +186,9 @@ dart_ret_t dart_unit_locality(
   dart_unit_t                     unit,
   dart_unit_locality_t         ** loc);
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
+/** \endcond */
 
 #ifdef __cplusplus
 } /* extern "C" */

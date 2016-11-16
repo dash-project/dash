@@ -19,7 +19,9 @@
 extern "C" {
 #endif
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_ON
+/** \endcond */
 
 /**
  * \brief Initialize the DART runtime
@@ -48,7 +50,9 @@ dart_ret_t dart_exit();
  */
 char       dart_initialized();
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
+/** \endcond */
 
 #ifdef __cplusplus
 }

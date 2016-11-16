@@ -7,7 +7,9 @@
 extern "C" {
 #endif
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_ON
+/** \endcond */
 
 /*
   DART groups are objects with local meaning only. They are
@@ -227,7 +229,9 @@ dart_ret_t dart_team_unit_g2l(dart_team_t team,
 
 
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
+/** \endcond */
 
 #ifdef __cplusplus
 }

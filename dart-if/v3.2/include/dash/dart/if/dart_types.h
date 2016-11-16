@@ -18,7 +18,9 @@
 extern "C" {
 #endif
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_ON
+/** \endcond */
 
 /**
  * \brief Return values of functions in the DART interface.
@@ -508,7 +510,9 @@ typedef struct
 }
 dart_config_t;
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
+/** \endcond */
 
 #ifdef __cplusplus
 }

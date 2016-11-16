@@ -23,7 +23,9 @@
 extern "C" {
 #endif
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_ON
+/** \endcond */
 
 /**
  * \name Collective operations
@@ -522,7 +524,9 @@ dart_ret_t dart_put_blocking(
 
 /** \} */
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
+/** \endcond */
 
 #ifdef __cplusplus
 }

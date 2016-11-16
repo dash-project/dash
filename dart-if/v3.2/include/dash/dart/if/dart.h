@@ -87,8 +87,10 @@ extern "C" {
 /*
    --- DART version and build date ---
  */
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_VERSION_STR     "3.2.0"
 #define DART_BUILD_STR       (__DATE__ " " __TIME__)
+/** \endcond */
 
 /*
    --- DART types and return values
