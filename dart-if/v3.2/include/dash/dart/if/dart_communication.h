@@ -347,7 +347,10 @@ dart_ret_t dart_flush_local_all(
 
 /** \{ */
 
-
+/**
+ * Handle returned by \c dart_get_handle and the like used to wait for a specific
+ * operation to complete using \c dart_wait etc.
+ */
 typedef struct dart_handle_struct * dart_handle_t;
 
 /**
