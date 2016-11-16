@@ -65,6 +65,16 @@ public:
 
   self_t & operator=(const self_t & rhs) = default;
 
+  void flush_local() const
+  {
+    dart_flush_local(_gptr);
+  }
+
+  void flush() const
+  {
+    dart_flush(_gptr);
+  }
+
   /**
    * Set the value of the shared atomic variable.
    */
@@ -127,8 +137,8 @@ public:
                        _team->dart_id());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_TRACE("Atomic.add", "flush");
-    dart_flush(_gptr);
- // dart_flush_local(_gptr);
+//  dart_flush(_gptr);
+//  dart_flush_local(_gptr);
     DASH_LOG_DEBUG_VAR("Atomic.add >", acc);
   }
 
@@ -158,7 +168,7 @@ public:
                        _team->dart_id());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_TRACE("Atomic.fetch_and_op", "flush");
-    dart_flush(_gptr);
+//  dart_flush(_gptr);
 //  dart_flush_local(_gptr);
     DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op >", acc);
     return acc;

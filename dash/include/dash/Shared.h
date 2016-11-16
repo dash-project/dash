@@ -161,6 +161,7 @@ public:
     DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
     DASH_ASSERT_RETURNS(
       dart_flush(_ptr.dart_gptr()),
+  //  dart_flush_all(_ptr.dart_gptr()),
       DART_OK);
   }
 

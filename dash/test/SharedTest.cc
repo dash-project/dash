@@ -139,14 +139,17 @@ TEST_F(SharedTest, AtomicAdd)
   shared.barrier();
 
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "sleep");
-  sleep(3);
+  sleep(1);
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.atomic.add");
   shared.atomic.add(my_val);
   DASH_LOG_DEBUG("SharedTest.AtomicAdd", "shared.barrier - 2");
-  shared.barrier();
+  shared.flush();
+  // Alternatives:
+  // -- shared.atomic.flush();
+  // -- shared.barrier();
 
   // Expected total is Gaussian sum:
-  value_t exp_acc = init_val + ((dash::size() + 1) * dash::size()) / 2;
+  value_t exp_acc = init_val - 1 + ((dash::size() + 1) * dash::size()) / 2;
   value_t actual  = shared.get();
 
   EXPECT_EQ_U(exp_acc, actual);
