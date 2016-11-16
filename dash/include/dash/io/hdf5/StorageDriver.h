@@ -31,6 +31,8 @@
 #pragma error "HDF5 module requires dart-mpi"
 #endif
 
+#include <dash/dart/if/dart_io.h>
+
 namespace dash {
 namespace io {
 namespace hdf5 {
@@ -129,6 +131,7 @@ public:
                   "Specified index_t differs from pattern_t::index_type");
 
     auto pattern    = array.pattern();
+    auto & team     = pattern.team();
     auto pat_dims   = pattern.ndim();
     long tilesize   = pattern.blocksize(0);
     // Map native types to HDF5 types
@@ -157,7 +160,7 @@ public:
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
 
     dash::Shared<int> f_exists;
     if (dash::myid() == 0) {
@@ -317,6 +320,7 @@ public:
     typedef typename pattern_t::size_type extent_t;
 
     auto pattern     = array.pattern();
+    auto & team      = pattern.team();
     auto pat_dims    = pattern.ndim();
     // Map native types to HDF5 types
     auto h5datatype  = get_h5_datatype<value_t>();
@@ -346,7 +350,7 @@ public:
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
 
     dash::Shared<int> f_exists;
     if (dash::myid() == 0) {
@@ -515,6 +519,8 @@ public:
 
     extent_t tilesize;
     int      rank;
+    auto &   team = array.team();
+
     // Split path in groups and dataset
     //auto path_vec   = _split_string(datapath, '/');
     //auto dataset    = path_vec.back();
@@ -534,7 +540,7 @@ public:
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
 
     // HD5 create file
     file_id = H5Fopen(filename.c_str(), H5P_DEFAULT, plist_id );
@@ -700,11 +706,12 @@ public:
     hid_t h5datatype;
     // rank of hdf5 dataset
     int      rank;
+    auto &   team = matrix.team();
     hdf5_pattern_spec<ndim> ts;
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
 
     // HD5 create file
     file_id = H5Fopen(filename.c_str(), H5P_DEFAULT, plist_id );
