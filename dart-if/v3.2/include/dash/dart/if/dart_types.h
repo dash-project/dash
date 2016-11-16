@@ -105,11 +105,13 @@ typedef int32_t dart_unit_t;
 typedef int32_t dart_team_t;
 
 /**
+ * \brief Undefined unit ID.
  * \ingroup DartTypes
  */
 #define DART_UNDEFINED_UNIT_ID ((dart_unit_t)(-1))
 
 /**
+ * \brief Undefined team ID.
  * \ingroup DartTypes
  */
 #define DART_UNDEFINED_TEAM_ID ((dart_team_t)(-1))
@@ -164,11 +166,18 @@ typedef enum
 }
 dart_locality_scope_t;
 
+/** Maximum size of a host name string in \ref dart_hwinfo_t */
 #define DART_LOCALITY_HOST_MAX_SIZE       ((int)(30))
+/** Maximum size of a domain tag string in \ref dart_hwinfo_t */
 #define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(32))
+/** Maximum number of domain scopes in \ref dart_hwinfo_t */
 #define DART_LOCALITY_MAX_DOMAIN_SCOPES   ((int)(12))
+/** Maximum size of a domain tag string in \ref dart_hwinfo_t
+ * \todo Unused? */
 #define DART_LOCALITY_UNIT_MAX_CPUS       ((int)(64))
+/** Maximum number of NUMA domains supported */
 #define DART_LOCALITY_MAX_NUMA_ID         ((int)(16))
+/** Maximum number of cache levels supported in \ref dart_hwinfo_t */
 #define DART_LOCALITY_MAX_CACHE_LEVELS    ((int)( 5))
 
 typedef struct {

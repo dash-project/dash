@@ -4,7 +4,7 @@
 #include "dart_types.h"
 
 /**
- * \file dart_init.h
+ * \file dart_initialization.h
  *
  * \brief Initialization and finalization of the DASH runtime backend. No other DART function may be called before \see dart_init() or after
  * \see dart_exit().
@@ -25,6 +25,9 @@ extern "C" {
 
 /**
  * \brief Initialize the DART runtime
+ *
+ * \param argc Pointer to the number of command line arguments.
+ * \param argv Pointer to the array of command line arguments.
  *
  * \return \c DART_OK on sucess or an error code from \see dart_ret_t otherwise.
  *

@@ -128,9 +128,9 @@ dart_ret_t dart_allgather(
  * \param sendbuf     The buffer containing the data to be sent by each unit.
  * \param nsendbytes  Number of bytes to be sent by this unit.
  * \param recvbuf     The buffer to hold the received data.
- * \param nrecvcounts Array containing the number of bytes to receive from each unit.
+ * \param nrecvbytes  Array containing the number of bytes to receive from each unit.
  * \param recvdispls  Array containing the displacements of data received from each unit in \c recvbuf.
- * \param team        The team to participate in the allgatherv.
+ * \param teamid      The team to participate in the allgatherv.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -183,7 +183,7 @@ dart_ret_t dart_reduce_double(
  * DART Equivalent to MPI_Accumulate.
  *
  * \param gptr    A global pointer determining the target of the accumulate operation.
- * \param src     The local buffer holding the elements to accumulate.
+ * \param values  The local buffer holding the elements to accumulate.
  * \param nelem   The number of local elements to accumulate per unit.
  * \param dtype   The data type to use in the accumulate operation \c op.
  * \param op      The accumulation operation to perform.
@@ -206,7 +206,7 @@ dart_ret_t dart_accumulate(
  *
  * \param gptr    A global pointer determining the target of the fetch-and-op operation.
  * \param value   Pointer to an element of type \c dtype to be involved in operation \c op on the value referenced by \c gptr.
- * \param nelem   Pointer to an element of type \c dtype to hold the value of the element referenced by \c gptr before the operation \c op.
+ * \param result  Pointer to an element of type \c dtype to hold the value of the element referenced by \c gptr before the operation \c op.
  * \param dtype   The data type to use in the operation \c op.
  * \param op      The operation to perform.
  * \param team    The team to participate in the operation.
@@ -241,8 +241,8 @@ dart_ret_t dart_fetch_and_op(
  * is guaranteed. A later flush operation is needed to guarantee
  * local and remote completion.
  *
- * \param dest The local destination buffer to store the data to.
- * \param ptr  A global pointer determining the source of the get operation.
+ * \param dest   The local destination buffer to store the data to.
+ * \param gptr   A global pointer determining the source of the get operation.
  * \param nbytes The number of bytes to transfer.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
@@ -385,7 +385,7 @@ dart_ret_t dart_get_handle(
  * \param gptr Global pointer being the target of the data transfer.
  * \param src  Local source memory to transfer data from.
  * \param nbytes The number of bytes to transfer.
- * \param[out] Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
+ * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
