@@ -163,7 +163,7 @@ public:
     dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
 
     dash::Shared<int> f_exists;
-    if (dash::myid() == 0) {
+    if (team.myid() == 0) {
       if (access( filename.c_str(), F_OK ) != -1) {
         // check if file exists
         f_exists.set(static_cast<int> (H5Fis_hdf5( filename.c_str())));
@@ -171,7 +171,7 @@ public:
         f_exists.set(-1);
       }
     }
-    array.barrier();
+    team.barrier();
 
     if (foptions.overwrite_file || (f_exists.get() <= 0)) {
       // HD5 create file
@@ -353,7 +353,7 @@ public:
     dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
 
     dash::Shared<int> f_exists;
-    if (dash::myid() == 0) {
+    if (team.myid() == 0) {
       if (access( filename.c_str(), F_OK ) != -1) {
         // check if file exists
         f_exists.set(static_cast<int> (H5Fis_hdf5( filename.c_str())));
@@ -361,7 +361,7 @@ public:
         f_exists.set(-1);
       }
     }
-    array.barrier();
+    team.barrier();
 
     if (foptions.overwrite_file || (f_exists.get() <= 0)) {
       // HD5 create file

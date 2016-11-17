@@ -4,6 +4,7 @@
 
 #include <limits.h>
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include "HDF5ArrayTest.h"
 #include "TestBase.h"
@@ -418,9 +419,9 @@ TEST_F(HDF5ArrayTest, TeamSplit)
   }
 
   auto & team = dash::Team::All();
-  int num_split     = std::min<int>(dash::size(), 3);
+  int num_split     = std::min<int>(dash::size(), 2);
   auto & myteam = team.locality_split(dash::util::Locality::Scope::Core, num_split);
-  LOG_MESSAGE("Splitted team in 3 parts, I am %d", myteam.dart_id());
+  LOG_MESSAGE("Splitted team in %d parts, I am %d", num_split, myteam.dart_id());
 
   int    ext_x  = dash::size() * 5;
   double secret = 10;
@@ -434,12 +435,13 @@ TEST_F(HDF5ArrayTest, TeamSplit)
       OutputStream os(_filename);
       os << dio::dataset("array_a") << array_a;
       LOG_MESSAGE("Team %d: array written", myteam.dart_id());
+      myteam.barrier();
     }
   }
 
-  myteam.parent().barrier();
+  team.barrier();
 
-  if(myteam.dart_id() == 2){
+  if(myteam.dart_id() == 1){
     dash::Array<double> array_a(ext_x, myteam);
     LOG_MESSAGE("Team %d: read array", myteam.dart_id());
     InputStream is(_filename);
@@ -448,7 +450,7 @@ TEST_F(HDF5ArrayTest, TeamSplit)
     myteam.barrier();
     verify_array(array_a, secret);
   }
-  myteam.parent().barrier();
+  team.barrier();
 }
 #endif // DASH_ENABLE_HDF5
 
