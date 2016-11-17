@@ -9,7 +9,7 @@ namespace dash {
 
 /**
  * Invoke a function on every element in a range distributed by a pattern.
- * This function has the same signature as std::for_each but
+ * This function has the same signature as \c std::for_each but
  * Being a collaborative operation, each unit will invoke the given
  * function on its local elements only.
  *
