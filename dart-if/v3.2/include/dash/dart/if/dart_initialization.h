@@ -31,6 +31,7 @@ extern "C" {
  *
  * \return \c DART_OK on sucess or an error code from \see dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartInitialization
 */
 dart_ret_t dart_init(int *argc, char ***argv);
@@ -40,6 +41,7 @@ dart_ret_t dart_init(int *argc, char ***argv);
  *
  * \return \c DART_OK on sucess or an error code from \c dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartInitialization
  */
 dart_ret_t dart_exit();
@@ -49,6 +51,7 @@ dart_ret_t dart_exit();
  *
  * \return 0 if DART has not been initialized or has been shut down already, >0 otherwise.
  *
+ * \threadsafe
  * \ingroup DartInitialization
  */
 char       dart_initialized();

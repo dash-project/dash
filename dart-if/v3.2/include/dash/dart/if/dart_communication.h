@@ -54,6 +54,7 @@ dart_ret_t dart_barrier(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_bcast(
@@ -73,6 +74,7 @@ dart_ret_t dart_bcast(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_scatter(
@@ -93,6 +95,7 @@ dart_ret_t dart_scatter(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_gather(
@@ -112,6 +115,7 @@ dart_ret_t dart_gather(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgather(
@@ -132,6 +136,7 @@ dart_ret_t dart_allgather(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgatherv(
@@ -154,6 +159,7 @@ dart_ret_t dart_allgatherv(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allreduce(
@@ -169,6 +175,7 @@ dart_ret_t dart_allreduce(
  *
  * \todo Why is this not generic?
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_reduce_double(
@@ -189,6 +196,7 @@ dart_ret_t dart_reduce_double(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_accumulate(
@@ -211,6 +219,7 @@ dart_ret_t dart_accumulate(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_fetch_and_op(
@@ -245,6 +254,7 @@ dart_ret_t dart_fetch_and_op(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get(
@@ -265,6 +275,7 @@ dart_ret_t dart_get(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put(
@@ -284,6 +295,7 @@ dart_ret_t dart_put(
  * \param gptr Global pointer identifying the segment and unit to complete outstanding operations for.
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush(
@@ -300,6 +312,7 @@ dart_ret_t dart_flush(
  * \param gptr Global pointer identifying the segment to complete outstanding operations for.
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_all(
@@ -316,6 +329,7 @@ dart_ret_t dart_flush_all(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_local(
@@ -332,6 +346,7 @@ dart_ret_t dart_flush_local(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_flush_local_all(
@@ -366,6 +381,7 @@ typedef struct dart_handle_struct * dart_handle_t;
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_handle(
@@ -387,6 +403,7 @@ dart_ret_t dart_get_handle(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_handle(
@@ -415,6 +432,7 @@ dart_ret_t dart_wait(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall(
@@ -428,6 +446,7 @@ dart_ret_t dart_waitall(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_wait_local(
@@ -441,6 +460,7 @@ dart_ret_t dart_wait_local(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_waitall_local(
@@ -455,6 +475,7 @@ dart_ret_t dart_waitall_local(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_test_local(
@@ -470,6 +491,7 @@ dart_ret_t dart_test_local(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_testall_local(
@@ -496,6 +518,7 @@ dart_ret_t dart_testall_local(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_blocking(
@@ -513,6 +536,7 @@ dart_ret_t dart_get_blocking(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_blocking(
