@@ -77,8 +77,10 @@
  * A note on thread safety:
  * ------------------------
  *
- * All functions in the DART interface shall be implemented in a thread
- * safe way.
+ * At the moment, the DART API specification does not guarantee the correctness
+ * of thread-parallel access. It is thus erroneous to use DART or DASH functionality
+ * from within a multi-threaded context.
+ * The specification of thread-safety will be added in the next release.
  */
 #ifdef __cplusplus
 extern "C" {
