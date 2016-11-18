@@ -49,8 +49,9 @@ dart_ret_t dart_barrier(
 /**
  * DART Equivalent to MPI broadcast.
  *
- * \param buf    Buffer that is the source (on \c root) or the destination of the broadcast.
- * \param nbytes The number of bytes to broadcast/receive.
+ * \param buf    Buffer that is the source (on \c root) or the destination of
+ *               the broadcast.
+ * \param nelem  The number of values to broadcast/receive.
  * \param root   The unit that broadcasts data to all other members in \c team
  * \param team   The team to participate in the broadcast.
  *
@@ -59,17 +60,19 @@ dart_ret_t dart_barrier(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_bcast(
-  void *buf,
-  size_t nbytes,
-	dart_unit_t root,
-  dart_team_t team);
+  void        * buf,
+  size_t        nbytes,
+	dart_unit_t   root,
+  dart_team_t   team);
 
 /**
  * DART Equivalent to MPI scatter.
  *
  * \param sendbuf The buffer containing the data to be sent by unit \c root.
  * \param recvbuf The buffer to hold the received data.
- * \param nbytes  Number of bytes sent to each process and received by each unit.
+ * \param nelem   Number of values sent to each process and received by each
+ *                unit.
+ * \param dtype   The data type of values in \c sendbuf and \c recvbuf.
  * \param root    The unit that scatters data to all units in \c team.
  * \param team    The team to participate in the scatter.
  *
@@ -78,18 +81,21 @@ dart_ret_t dart_bcast(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_scatter(
-  void *sendbuf,
-  void *recvbuf,
-  size_t nbytes,
-	dart_unit_t root,
-  dart_team_t team);
+  void            * sendbuf,
+  void            * recvbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+	dart_unit_t       root,
+  dart_team_t       team);
 
 /**
  * DART Equivalent to MPI gather.
  *
  * \param sendbuf The buffer containing the data to be sent by each unit.
  * \param recvbuf The buffer to hold the received data on unit \c root.
- * \param nbytes  Number of bytes sent by each process and received from each unit at unit \c root.
+ * \param nelem   Number of bytes sent by each process and received from
+ *                each unit at unit \c root.
+ * \param dtype   The data type of values in \c sendbuf and \c recvbuf.
  * \param root    The unit that gathers all data from units in \c team.
  * \param team    The team to participate in the gather.
  *
@@ -98,18 +104,21 @@ dart_ret_t dart_scatter(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_gather(
-  void *sendbuf,
-  void *recvbuf,
-  size_t nbytes,
-	dart_unit_t root,
-  dart_team_t team);
+  void            * sendbuf,
+  void            * recvbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+	dart_unit_t       root,
+  dart_team_t       team);
 
 /**
  * DART Equivalent to MPI allgather.
  *
  * \param sendbuf The buffer containing the data to be sent by each unit.
  * \param recvbuf The buffer to hold the received data.
- * \param nbytes  Number of bytes sent by each process and received from each unit.
+ * \param nelem   Number of values sent by each process and received from
+ *                each unit.
+ * \param dtype   The data type of values in \c sendbuf and \c recvbuf.
  * \param team    The team to participate in the allgather.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
@@ -117,19 +126,23 @@ dart_ret_t dart_gather(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgather(
-  void *sendbuf,
-  void *recvbuf,
-  size_t nbytes,
-	dart_team_t team);
+  void            * sendbuf,
+  void            * recvbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+	dart_team_t       team);
 
 /**
  * DART Equivalent to MPI allgatherv.
  *
  * \param sendbuf     The buffer containing the data to be sent by each unit.
- * \param nsendbytes  Number of bytes to be sent by this unit.
+ * \param nsendelem   Number of values to be sent by this unit.
+ * \param dtype       The data type of values in \c sendbuf and \c recvbuf.
  * \param recvbuf     The buffer to hold the received data.
- * \param nrecvbytes  Array containing the number of bytes to receive from each unit.
- * \param recvdispls  Array containing the displacements of data received from each unit in \c recvbuf.
+ * \param nrecvelem   Array containing the number of values to receive from
+ *                    each unit.
+ * \param recvdispls  Array containing the displacements of data received
+ *                    from each unit in \c recvbuf.
  * \param teamid      The team to participate in the allgatherv.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
@@ -137,12 +150,13 @@ dart_ret_t dart_allgather(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgatherv(
-  void        * sendbuf,
-  size_t        nsendbytes,
-  void        * recvbuf,
-  int         * nrecvbytes,
-  int         * recvdispls,
-  dart_team_t   teamid);
+  void            * sendbuf,
+  size_t            nsendelem,
+  dart_datatype_t   dtype,
+  void            * recvbuf,
+  int             * nrecvelem,
+  int             * recvdispls,
+  dart_team_t       teamid);
 
 /**
  * DART Equivalent to MPI allreduce.
@@ -173,11 +187,18 @@ dart_ret_t dart_allreduce(
  *
  * \ingroup DartCommunication
  */
+#if 0
 dart_ret_t dart_reduce_double(
-  double *sendbuf,
-  double *recvbuf,
-  dart_team_t team);
-
+  double      * sendbuf,
+  double      * recvbuf,
+  dart_team_t   team);
+#else
+dart_ret_t dart_reduce(
+  double          * sendbuf,
+  double          * recvbuf,
+  dart_datatype_t   dtype,
+  dart_team_t       team);
+#endif
 
 /**
  * DART Equivalent to MPI_Accumulate.
@@ -204,9 +225,13 @@ dart_ret_t dart_accumulate(
 /**
  * DART Equivalent to MPI_Fetch_and_op.
  *
- * \param gptr    A global pointer determining the target of the fetch-and-op operation.
- * \param value   Pointer to an element of type \c dtype to be involved in operation \c op on the value referenced by \c gptr.
- * \param result  Pointer to an element of type \c dtype to hold the value of the element referenced by \c gptr before the operation \c op.
+ * \param gptr    A global pointer determining the target of the fetch-and-op
+ *                operation.
+ * \param value   Pointer to an element of type \c dtype to be involved in
+ *                operation \c op on the value referenced by \c gptr.
+ * \param result  Pointer to an element of type \c dtype to hold the value of
+ *                the element referenced by \c gptr before the operation
+ *                \c op.
  * \param dtype   The data type to use in the operation \c op.
  * \param op      The operation to perform.
  * \param team    The team to participate in the operation.
@@ -229,7 +254,8 @@ dart_ret_t dart_fetch_and_op(
 
 /**
  * \name Non-blocking single-sided communication routines
- * DART single-sided communication routines that return without guaranteeing completion.
+ * DART single-sided communication routines that return without guaranteeing
+ * completion.
  * Completion will be guaranteed after a flush operation.
  */
 /** \{ */

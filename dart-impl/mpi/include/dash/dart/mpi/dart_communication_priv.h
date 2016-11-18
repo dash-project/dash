@@ -7,12 +7,12 @@
 
 #include <stdio.h>
 #include <mpi.h>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_communication.h>
 
-/** @brief Dart handle type for non-blocking one-sided operations.
- */
+/** DART handle type for non-blocking one-sided operations. */
 struct dart_handle_struct
 {
 	MPI_Request request;
@@ -49,6 +49,15 @@ MPI_Datatype dart_mpi_datatype(dart_datatype_t dart_datatype) {
     case DART_TYPE_DOUBLE   : return MPI_DOUBLE;
     default                 : return (MPI_Datatype)(-1);
   }
+}
+
+inline int dart_mpi_sizeof_datatype(dart_datatype_t dart_datatype) {
+  int native_size;
+  if (MPI_Type_size(dart_mpi_datatype(dart_datatype), &native_size)
+      == MPI_SUCCESS) {
+    return native_size;
+  }
+  return 0;
 }
 
 int dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {
