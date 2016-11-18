@@ -10,7 +10,7 @@
  * \defgroup  DartCommunication  Communication routines in DART
  * \ingroup   DartInterface
  *
- * \brief A set of basic communication routines in DART.
+ * A set of basic communication routines in DART.
  *
  * The semantics of the routines below are the same as with MPI. The only
  * difference is that DART doesn't specify data types but operates on

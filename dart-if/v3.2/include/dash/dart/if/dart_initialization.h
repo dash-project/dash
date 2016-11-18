@@ -8,7 +8,7 @@
  * \defgroup  DartInitialization  DART Initialization and Finalization
  * \ingroup   DartInterface
  *
- * \brief Initialization and finalization of the DASH runtime backend.
+ * Initialization and finalization of the DASH runtime backend.
  *
  * No other DART function may be called before \ref dart_init or after \ref dart_exit.
  *
@@ -24,7 +24,7 @@ extern "C" {
 /** \endcond */
 
 /**
- * \brief Initialize the DART runtime
+ * Initialize the DART runtime
  *
  * \param argc Pointer to the number of command line arguments.
  * \param argv Pointer to the array of command line arguments.
@@ -36,7 +36,7 @@ extern "C" {
 dart_ret_t dart_init(int *argc, char ***argv);
 
 /**
- * \brief Finalize the DASH runtime.
+ * Finalize the DASH runtime.
  *
  * \return \c DART_OK on sucess or an error code from \c dart_ret_t otherwise.
  *
@@ -45,7 +45,7 @@ dart_ret_t dart_init(int *argc, char ***argv);
 dart_ret_t dart_exit();
 
 /**
- * \brief Whether the DASH runtime has been initialized.
+ * Whether the DASH runtime has been initialized.
  *
  * \return 0 if DART has not been initialized or has been shut down already, >0 otherwise.
  *

@@ -6,7 +6,7 @@
  * \defgroup  DartSync    Synchronization primitives for mutual exclusion of units.
  * \ingroup   DartInterface
  *
- * \brief Synchronization primitives for mutual exclusion of units.
+ * Synchronization primitives for mutual exclusion of units.
  *
  */
 
