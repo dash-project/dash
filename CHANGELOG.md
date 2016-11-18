@@ -94,6 +94,9 @@ Features:
         - `dart__base__locality__domain`
         - `dart__base__locality__unit`
 
+Fixes:
+- Added clarification that DART currently does not provide thread-safe access. 
+
 # DASH 0.2.0 (2016-03-03)
 
 ## Build System
