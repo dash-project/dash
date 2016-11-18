@@ -9,7 +9,8 @@
  * Common C interface of the underlying communication back-end.
  *
  *
- * --- DASH/DART Terminology ---
+ * DASH/DART Terminology
+ * =====================
  *
  * DASH is a realization of the PGAS (partitioned global address space)
  * programming model. Below is an attempt to define some of the
