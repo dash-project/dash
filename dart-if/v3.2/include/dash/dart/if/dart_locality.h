@@ -28,6 +28,7 @@ extern "C" {
 /**
  * Initialize information of the specified team.
  *
+ * \threadsafe_none
  * \ingroup DartLocality
  */
 dart_ret_t dart_team_locality_init(
@@ -36,6 +37,7 @@ dart_ret_t dart_team_locality_init(
 /**
  * Initialize information of the specified team.
  *
+ * \threadsafe_none
  * \ingroup DartLocality
  */
 dart_ret_t dart_team_locality_finalize(
@@ -44,6 +46,7 @@ dart_ret_t dart_team_locality_finalize(
 /**
  * Locality information of the team domain with the specified id tag.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_team_locality(
@@ -55,6 +58,7 @@ dart_ret_t dart_domain_team_locality(
  * Default constructor.
  * Create an empty locality domain object.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_create(
@@ -65,6 +69,7 @@ dart_ret_t dart_domain_create(
  * Create a new locality domain object as a deep copy of a specified
  * locality domain.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_clone(
@@ -75,6 +80,7 @@ dart_ret_t dart_domain_clone(
  * Destructor.
  * Delete a locality domain object.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_destruct(
@@ -84,6 +90,9 @@ dart_ret_t dart_domain_destruct(
  * Assignment operator.
  * Overwrites domain object \c domain_lhs with a deep copy of domain object
  * \c domain_rhs.
+ *
+ * \threadsafe
+ * \ingroup DartLocality
  */
 dart_ret_t dart_domain_assign(
   dart_domain_locality_t        * domain_lhs,
@@ -92,6 +101,7 @@ dart_ret_t dart_domain_assign(
 /**
  * Locality information of the subdomain with the specified id tag.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_find(
@@ -103,6 +113,7 @@ dart_ret_t dart_domain_find(
  * Remove domains in locality domain hierarchy that do not match the
  * specified domain tags and are not a parent of a matched domain.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_select(
@@ -114,6 +125,7 @@ dart_ret_t dart_domain_select(
  * Remove domains in locality domain hierarchy matching the specified domain
  * tags.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_exclude(
@@ -129,6 +141,9 @@ dart_ret_t dart_domain_exclude(
  * Units mapped to inserted subdomains are added to ancestor domains
  * recursively. Units mapped to inserted subdomains must not be mapped
  * to the target domain hierarchy already.
+ *
+ * \threadsafe
+ * \ingroup DartLocality
  */
 dart_ret_t dart_domain_add_subdomain(
   dart_domain_locality_t        * domain,
@@ -139,6 +154,7 @@ dart_ret_t dart_domain_add_subdomain(
  * Split locality domain hierarchy at given domain tag into \c num_parts
  * groups at specified scope.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_split(
@@ -150,6 +166,7 @@ dart_ret_t dart_domain_split(
 /**
  * Domain tags of all domains at the specified locality scope.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_scope_tags(
@@ -161,6 +178,7 @@ dart_ret_t dart_domain_scope_tags(
 /**
  * Locality domains at the specified locality scope.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_domain_scope_domains(
@@ -171,6 +189,9 @@ dart_ret_t dart_domain_scope_domains(
 
 /**
  * Adds entries to locality hierarchy to group locality domains.
+ *
+ * \threadsafe
+ * \ingroup DartLocality
  */
 dart_ret_t dart_domain_group(
   dart_domain_locality_t        * domain_in,
@@ -181,6 +202,7 @@ dart_ret_t dart_domain_group(
 /**
  * Locality information of the unit with the specified global id.
  *
+ * \threadsafe
  * \ingroup DartLocality
  */
 dart_ret_t dart_unit_locality(
