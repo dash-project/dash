@@ -7,6 +7,9 @@
 /**
  * \file dart_communication.h
  *
+ * \defgroup  DartCommunication  Communication routines in DART
+ * \ingroup   DartInterface
+ *
  * \brief A set of basic communication routines in DART.
  *
  * The semantics of the routines below are the same as with MPI. The only
@@ -14,11 +17,6 @@
  * raw buffers instead. Message sizes are thus specified in bytes.
  */
 
-/**
- * \defgroup  DartCommunication  Communication routines in DART
- * \ingroup   DartInterface
- *
- */
 #ifdef __cplusplus
 extern "C" {
 #endif

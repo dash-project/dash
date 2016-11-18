@@ -5,16 +5,16 @@
 
 /**
  * \file dart_initialization.h
+ * \defgroup  DartInitialization  DART Initialization and Finalization
+ * \ingroup   DartInterface
  *
- * \brief Initialization and finalization of the DASH runtime backend. No other DART function may be called before \see dart_init() or after
- * \see dart_exit().
+ * \brief Initialization and finalization of the DASH runtime backend.
+ *
+ * No other DART function may be called before \ref dart_init or after \ref dart_exit.
+ *
  *
  */
 
-/**
- * \defgroup  DartInitialization  DART Initialization and Finalization
- * \ingroup   DartInterface
- */
 #ifdef __cplusplus
 extern "C" {
 #endif

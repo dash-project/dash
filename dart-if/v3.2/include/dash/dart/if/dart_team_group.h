@@ -6,6 +6,8 @@
 
 /**
  * \file dart_team_group.h
+ * \defgroup  DartGroupTeam    Management of groups and teams
+ * \ingroup   DartInterface
  *
  * Routines for managing groups of units and to form teams.
  *
@@ -30,10 +32,6 @@
  *
  */
 
-/**
- * \defgroup  DartGroupTeam    Management of groups and teams
- * \ingroup   DartInterface
- */
 
 #ifdef __cplusplus
 extern "C" {

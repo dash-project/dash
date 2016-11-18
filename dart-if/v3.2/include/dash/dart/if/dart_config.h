@@ -6,13 +6,13 @@
 /**
  * \file dart_config.h
  *
- * Interface to access the DART runtime configuration.
- */
-
-/**
  * \defgroup  DartConfig  DART runtime configuration interface
  * \ingroup   DartInterface
+ *
+ * Interface to access the DART runtime configuration.
+ *
  */
+
 #ifdef __cplusplus
 extern "C" {
 #endif

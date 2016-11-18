@@ -4,14 +4,13 @@
 /**
  * \file dart_globmem.h
  *
- * Routines for allocation and reclamation of global memory regions and
- * pointer semantics in partitioned global address space.
- */
-
-/**
  * \defgroup  DartGlobMem    Global memory and PGAS address semantics
  * \ingroup   DartInterface
+ *
+ * Routines for allocation and reclamation of global memory regions and pointer semantics in partitioned global address space.
+ *
  */
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -3,16 +3,13 @@
 
 /**
  * \file dart_synchronization.h
+ * \defgroup  DartSync    Synchronization primitives for mutual exclusion of units.
+ * \ingroup   DartInterface
  *
  * \brief Synchronization primitives for mutual exclusion of units.
  *
  */
 
-
-/**
- * \defgroup  DartSync    Synchronization primitives for mutual exclusion of units.
- * \ingroup   DartInterface
- */
 
 #ifdef __cplusplus
 extern "C" {

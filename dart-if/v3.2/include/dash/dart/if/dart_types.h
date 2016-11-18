@@ -1,5 +1,7 @@
 /**
- * \file dash/dart/if/dart_types.h
+ * \file dart_types.h
+ * \defgroup  DartTypes  Types used in the DART interface
+ * \ingroup   DartInterface
  *
  * Definitions of types used in the DART interface.
  *
@@ -10,10 +12,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-/**
- * \defgroup  DartTypes  Types used in the DART interface
- * \ingroup   DartInterface
- */
 #ifdef __cplusplus
 extern "C" {
 #endif

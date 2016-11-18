@@ -1,10 +1,12 @@
 /**
- * \file dash/dart/if/dart_locality.h
+ * \file dart_locality.h
+ * \defgroup  DartLocality  Locality- and topolgy discovery
+ * \ingroup   DartInterface
  *
- * A set of routines to query and remodel the locality domain hierarchy
- * and the logical arrangement of teams.
+ * A set of routines to query and remodel the locality domain hierarchy and the logical arrangement of teams.
  *
  */
+
 #ifndef DART__LOCALITY_H_
 #define DART__LOCALITY_H_
 
