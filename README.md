@@ -48,6 +48,27 @@ DASH is funded by the German Research Foundation (DFG) under the priority
 programme "Software for Exascale Computing - SPPEXA" (2013-2018).
 
 
+Community
+---------
+
+**Project Website:**
+
+http://www.dash-project.org
+
+**GitHub:**
+
+https://github.com/dash-project
+
+**Repository:**
+
+SSH: https://github.com/dash-project/dash.git
+HTTPS: git@github.com:dash-project/dash.git
+
+**Contact:**
+
+team@dash-project.org
+
+
 
 Installation
 ============
@@ -68,16 +89,31 @@ DASH is build using CMake.
 Build scripts are provided for typical DASH configurations and can serve
 as starting points for custom builds:
 
-`build.sh`
-: Standard release build
 
-`build.dev.sh`
-: Development / debug build
-
-`build.mic.sh`
-: Release build for Intel MIC
+Script file name | Description 
+---------------- | --------------------------------------
+`build.sh`       | Standard release build
+`build.dev.sh`   | Development / debug build
+`build.mic.sh`   | Release build for Intel MIC (Xeon Phi)
 
 
+### Prerequisites
+
+- CMake version 2.8.5 or greater (3.0.0 or greater recommended)
+- C compiler supporting the C99 standard
+- C++ compiler supporting the C++11 standard
+
+Optional third-party libraries directly supported by DASH:
+
+- PAPI
+- libnuma
+- hwloc
+- BLAS implementation like Intel MKL, ATLAS
+- LIKWID
+- HDF5
+
+
+### Building DASH from Source
 
 To build the DASH project using CMake with default build settings, run:
 
