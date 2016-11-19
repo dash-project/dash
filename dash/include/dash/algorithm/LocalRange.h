@@ -157,7 +157,7 @@ local_index_range(
     if (first.viewspec() == last.viewspec()) {
       DASH_LOG_TRACE("local_index_range", "input iterators in same view");
       auto l_first        = first.lpos();
-      bool first_is_local = l_first.unit == dash::myid();
+      bool first_is_local = l_first.unit == first.team().myid();
       // No need to check if last is local as both are relative to the
       // same view.
       if (first_is_local) {

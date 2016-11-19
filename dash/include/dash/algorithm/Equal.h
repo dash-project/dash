@@ -25,23 +25,22 @@ bool equal(
   GlobIter<ElementType, PatternType>   last_1,
   GlobIter<ElementType, PatternType>   first_2)
 {
-  auto myid          = dash::myid();
+  auto & team        = first_1.team();
+  auto myid          = team.myid();
   // Global iterators to local range:
   auto index_range   = dash::local_range(first_1, last_1);
   auto l_first_1     = index_range.begin;
   auto l_last_1      = index_range.end;
   auto l_result      = std::equal(l_first_1, l_last_1, first_2);
 
-  dash::Array<dart_unit_t> l_results(dash::size());
+  dash::Array<dart_unit_t> l_results(team.size());
 
   l_results.local[0] = l_result;
   bool return_result = true;
 
-  first_1.pattern().team().barrier();
-
   // All local offsets stored in l_results
   if (myid == 0) {
-    for (int u = 0; u < dash::size(); u++) {
+    for (int u = 0; u < team.size(); u++) {
       return_result &= l_results.local[u];
     }
   }
@@ -67,24 +66,25 @@ bool equal(
   GlobIter<ElementType, PatternType>   first_2,
   BinaryPredicate                      pred)
 {
-  auto myid          = dash::myid();
+  auto & team        = first_1.team();
+  auto myid          = team.myid();
   // Global iterators to local range:
   auto index_range   = dash::local_range(first_1, last_1);
   auto l_first_1     = index_range.begin;
   auto l_last_1      = index_range.end;
   auto l_result      = std::equal(l_first_1, l_last_1, first_2, pred);
 
-  dash::Array<dart_unit_t> l_results(dash::size());
+  dash::Array<dart_unit_t> l_results(team.size());
 
   l_results.local[0] = l_result;
 
   bool return_result = true;
 
-  first_1.pattern().team().barrier();
+  team.barrier();
 
   // All local offsets stored in l_results
   if (myid == 0) {
-    for (int u = 0; u < dash::size(); u++) {
+    for (int u = 0; u < team.size(); u++) {
       return_result &= l_results.local[u];
     }
   }
