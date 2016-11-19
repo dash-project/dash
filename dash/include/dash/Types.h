@@ -4,6 +4,7 @@
 #include <array>
 #include <dash/dart/if/dart_types.h>
 
+
 namespace dash {
 
 typedef enum MemArrange {
@@ -128,11 +129,6 @@ template<>
 struct dart_datatype<double> {
   static const dart_datatype_t value;
 };
-
-typedef struct {
-  dart_datatype_t dtype;
-  int             nelem;
-} dart_storage_t;
 
 template <typename T>
 inline dart_storage_t dart_storage(int nvalues) {

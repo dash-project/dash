@@ -230,7 +230,7 @@ dart_team_memalloc_aligned(
 
 	if (sharedmem_comm != MPI_COMM_NULL) {
     int ret = MPI_Win_allocate_shared(
-                nbytes,
+                nelem,
                 dtype_size,
                 win_info,
                 sharedmem_comm,
@@ -249,11 +249,11 @@ dart_team_memalloc_aligned(
     return DART_ERR_OTHER;
   }
 
-  int sharedmem_unitid;
   MPI_Aint winseg_size;
-  char ** baseptr_set;
-  char * baseptr;
-  int disp_unit, i;
+  int      sharedmem_unitid;
+  char **  baseptr_set;
+  char *   baseptr;
+  int      disp_unit, i;
   MPI_Comm_rank(sharedmem_comm, &sharedmem_unitid);
   baseptr_set = (char **)malloc(
       sizeof(char *) * dart_team_data[index].sharedmem_nodesize);

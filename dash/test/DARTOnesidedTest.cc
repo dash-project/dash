@@ -93,7 +93,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
       dart_handle_t handle;
       handles.push_back(handle);
 
-      dash::dart_storage_t ds = dash::dart_storage<value_t>(block_size);
+      dart_storage_t ds = dash::dart_storage<value_t>(block_size);
       LOG_MESSAGE("DART storage: dtype:%d nelem:%d", ds.dtype, ds.nelem);
       dart_get_handle(
         local_array + (block * block_size),

@@ -541,8 +541,8 @@ dart_ret_t dart_get_handle(
                 mpi_type,          // origin data type
                 target_unitid_abs, // target rank
                 offset,            // target disp in window
-                n_count,           // target count
-                nelem,             // target data type
+                nelem,             // target count
+                mpi_type,          // target data type
                 win,               // window
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {
@@ -561,17 +561,21 @@ dart_ret_t dart_get_handle(
 }
 
 dart_ret_t dart_put_handle(
-  dart_gptr_t  gptr,
-  const void * src,
-  size_t       nbytes,
-  dart_handle_t *handle)
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_handle_t   * handle)
 {
-  MPI_Request mpi_req;
-  MPI_Aint disp_s, disp_rel;
-  dart_unit_t target_unitid_abs;
-  uint64_t offset = gptr.addr_or_offs.offset;
-  int16_t seg_id = gptr.segid;
-  MPI_Win win;
+  MPI_Request  mpi_req;
+  MPI_Datatype mpi_type = dart_mpi_datatype(dtype);
+  MPI_Aint     disp_s,
+               disp_rel;
+  dart_unit_t  target_unitid_abs;
+  size_t       nbytes   = nelem * dart_mpi_sizeof_datatype(dtype);
+  uint64_t     offset   = gptr.addr_or_offs.offset;
+  int16_t      seg_id   = gptr.segid;
+  MPI_Win      win;
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;
@@ -605,36 +609,36 @@ dart_ret_t dart_put_handle(
     DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
     MPI_Rput(
       src,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_type,
       target_unitid_rel,
       disp_rel,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_type,
       win,
       &mpi_req);
     (*handle) -> dest = target_unitid_rel;
-    DART_LOG_DEBUG("dart_put_handle: nbytes:%zu "
+    DART_LOG_DEBUG("dart_put_handle: nelem:%zu dtype:%d"
                    "(from collective allocation) "
                    "target_unit:%d offset:%"PRIu64"",
-                   nbytes, target_unitid_abs, offset);
+                   nelem, dtype, target_unitid_abs, offset);
   } else {
     DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
     win = dart_win_local_alloc;
     MPI_Rput(
       src,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_type,
       target_unitid_abs,
       offset,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_type,
       win,
       &mpi_req);
-    DART_LOG_DEBUG("dart_put_handle: nbytes:%zu "
+    DART_LOG_DEBUG("dart_put_handle: nlem:%zu dtype:%d"
                    "(from local allocation) "
                    "target_unit:%d offset:%"PRIu64"",
-                   nbytes, target_unitid_abs, offset);
+                   nelem, dtype, target_unitid_abs, offset);
     (*handle) -> dest = target_unitid_abs;
   }
   (*handle) -> request = mpi_req;

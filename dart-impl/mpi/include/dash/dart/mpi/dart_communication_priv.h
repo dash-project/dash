@@ -57,9 +57,10 @@ static inline int dart_mpi_sizeof_datatype(dart_datatype_t dart_datatype) {
       == MPI_SUCCESS) {
     return native_size;
   }
-  return 0;
+  return -1;
 }
 
+#if 0
 static inline int dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {
   switch (dart_datatype) {
     case DART_TYPE_BYTE     : return 1;
@@ -74,5 +75,6 @@ static inline int dart_mpi_datatype_disp_unit(dart_datatype_t dart_datatype) {
     default                 : return 1;
   }
 }
+#endif
 
 #endif /* DART_ADAPT_COMMUNICATION_PRIV_H_INCLUDED */

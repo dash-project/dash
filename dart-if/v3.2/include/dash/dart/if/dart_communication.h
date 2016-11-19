@@ -419,10 +419,11 @@ dart_ret_t dart_get_handle(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_handle(
-  dart_gptr_t     gptr,
-  const void    * src,
-  size_t          nbytes,
-  dart_handle_t * handle);
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_handle_t   * handle);
 
 /**
  * Wait for the local and remote completion of an operation.
