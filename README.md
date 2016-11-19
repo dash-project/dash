@@ -70,7 +70,7 @@ team@dash-project.org
 
 **Contributing**
 
-See guidelines in [CONTRIBUTING.md]().
+See guidelines in [CONTRIBUTING.md](https://github.com/dash-project/dash/blob/master/CONTRIBUTING.md).
 
 
 Installation
@@ -230,8 +230,8 @@ and respectively
 Running Tests
 -------------
 
-Launch the DASH unit test suite using <code>dash-test-shmem</code> or
-<code>dash-test-mpi</code>:
+Launch the DASH unit test suite using `dash-test-shmem` or
+`dash-test-mpi`:
 
     (dash/shmem/bin/)$ dartrun-shmem <dartrun args> dash-test-shmem <gtest args>
 
