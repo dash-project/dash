@@ -127,8 +127,7 @@ public:
                        _team->dart_id());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_TRACE("Atomic.add", "flush");
-    dart_flush(_gptr);
- // dart_flush_local(_gptr);
+    dart_flush_all(_gptr);
     DASH_LOG_DEBUG_VAR("Atomic.add >", acc);
   }
 
@@ -158,8 +157,7 @@ public:
                        _team->dart_id());
     DASH_ASSERT_EQ(DART_OK, ret, "dart_accumulate failed");
     DASH_LOG_TRACE("Atomic.fetch_and_op", "flush");
-    dart_flush(_gptr);
-//  dart_flush_local(_gptr);
+    dart_flush_all(_gptr);
     DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op >", acc);
     return acc;
   }

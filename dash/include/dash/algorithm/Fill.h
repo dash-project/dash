@@ -47,6 +47,11 @@ void fill(
   value_t * llast       = index_range.end;
   auto      nlocal      = llast - lfirst;
 
+#if 0
+  for (index_t lt = 0; lt < nlocal; lt++) {
+    lfirst[lt] = value;
+  }
+#else
 #ifdef DASH_ENABLE_OPENMP
   dash::util::UnitLocality uloc;
   auto n_threads = uloc.num_domain_threads();
@@ -66,6 +71,7 @@ void fill(
   for (index_t lt = 1; lt < nlocal; lt += 2) {
     lfirst[lt] = value;
   }
+#endif
 #endif
 }
 

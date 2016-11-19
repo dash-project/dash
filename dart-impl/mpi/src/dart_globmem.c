@@ -7,17 +7,21 @@
  * one-sided runtime system.
  */
 
-#include <stdio.h>
-#include <mpi.h>
 #include <dash/dart/base/logging.h>
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_communication.h>
+
+#include <dash/dart/mpi/dart_communication_priv.h>
 #include <dash/dart/mpi/dart_mpi_util.h>
 #include <dash/dart/mpi/dart_mem.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_segment.h>
+
+#include <stdio.h>
+#include <mpi.h>
 
 /* For PRIu64, uint64_t in printf */
 #define __STDC_FORMAT_MACROS
@@ -84,30 +88,35 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t* gptr, void* addr)
 	return DART_OK;
 }
 
-dart_ret_t dart_gptr_incaddr (dart_gptr_t* gptr, int offs)
+dart_ret_t dart_gptr_incaddr(dart_gptr_t* gptr, int offs)
 {
 	gptr -> addr_or_offs.offset += offs;
 	return DART_OK;
 }
 
 
-dart_ret_t dart_gptr_setunit (dart_gptr_t* gptr, dart_unit_t unit_id)
+dart_ret_t dart_gptr_setunit(dart_gptr_t* gptr, dart_unit_t unit_id)
 {
 	gptr->unitid = unit_id;
 	return DART_OK;
 }
 
-dart_ret_t dart_memalloc (size_t nbytes, dart_gptr_t *gptr)
+dart_ret_t dart_memalloc(
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_gptr_t     * gptr)
 {
+  size_t      nbytes = nelem * dart_mpi_sizeof_datatype(dtype);
   dart_unit_t unitid;
   dart_myid(&unitid);
   gptr->unitid = unitid;
-  gptr->segid = 0; /* For local allocation, the segid is marked as '0'. */
+  gptr->segid  = 0; /* For local allocation, the segid is marked as '0'. */
   gptr->addr_or_offs.offset = dart_buddy_alloc(dart_localpool, nbytes);
-  gptr->flags = 0;
+  gptr->flags  = 0;
   if (gptr->addr_or_offs.offset == (uint64_t)(-1)) {
     DART_LOG_ERROR("dart_memalloc: Out of bounds "
-                   "(dart_buddy_alloc %zu bytes): global memory exhausted", nbytes);
+                   "(dart_buddy_alloc %zu bytes): global memory exhausted",
+                   nbytes);
     return DART_ERR_OTHER;
   }
   DART_LOG_DEBUG("dart_memalloc: local alloc nbytes:%lu offset:%"PRIu64"",
@@ -130,10 +139,13 @@ dart_ret_t dart_memfree (dart_gptr_t gptr)
 
 dart_ret_t
 dart_team_memalloc_aligned(
-  dart_team_t   teamid,
-  size_t        nbytes,
-  dart_gptr_t * gptr)
+  dart_team_t       teamid,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_gptr_t     * gptr)
 {
+  int    dtype_size = dart_mpi_sizeof_datatype(dtype);
+  size_t nbytes     = nelem * dtype_size;
 	size_t team_size;
 	dart_unit_t unitid;
   dart_unit_t gptr_unitid = -1;
@@ -206,8 +218,8 @@ dart_team_memalloc_aligned(
    * Related support ticket of MPICH:
    * http://trac.mpich.org/projects/mpich/ticket/2178
    */
-  MPI_Win sharedmem_win;
-  MPI_Comm sharedmem_comm = sharedmem_comm = dart_team_data[index].sharedmem_comm;
+  MPI_Win  sharedmem_win;
+  MPI_Comm sharedmem_comm = dart_team_data[index].sharedmem_comm;
 
 	MPI_Info win_info;
 	MPI_Info_create(&win_info);
@@ -218,8 +230,8 @@ dart_team_memalloc_aligned(
 
 	if (sharedmem_comm != MPI_COMM_NULL) {
     int ret = MPI_Win_allocate_shared(
-                nbytes,
-                sizeof(char),
+                nbytes,     // number of bytes
+                dtype_size, // displacement unit
                 win_info,
                 sharedmem_comm,
                 &sub_mem,
@@ -237,11 +249,11 @@ dart_team_memalloc_aligned(
     return DART_ERR_OTHER;
   }
 
-  int sharedmem_unitid;
   MPI_Aint winseg_size;
-  char ** baseptr_set;
-  char * baseptr;
-  int disp_unit, i;
+  int      sharedmem_unitid;
+  char **  baseptr_set;
+  char *   baseptr;
+  int      disp_unit, i;
   MPI_Comm_rank(sharedmem_comm, &sharedmem_unitid);
   baseptr_set = (char **)malloc(
       sizeof(char *) * dart_team_data[index].sharedmem_nodesize);
@@ -297,9 +309,9 @@ dart_team_memalloc_aligned(
   /* Updating the translation table of teamid with the created
    * (offset, win) infos */
   dart_segment_info_t item;
-  item.seg_id = dart_memid;
-  item.size = nbytes;
-  item.disp = disp_set;
+  item.seg_id  = dart_memid;
+  item.size    = nbytes;
+  item.disp    = disp_set;
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	item.win     = sharedmem_win;
 	item.baseptr = baseptr_set;
@@ -389,12 +401,15 @@ dart_ret_t dart_team_memfree(
 
 dart_ret_t
 dart_team_memregister_aligned(
-   dart_team_t   teamid,
-   size_t        nbytes,
-   void        * addr,
-   dart_gptr_t * gptr)
+   dart_team_t       teamid,
+   size_t            nelem,
+   dart_datatype_t   dtype,
+   void            * addr,
+   dart_gptr_t     * gptr)
 {
 	size_t size;
+  int    dtype_size = dart_mpi_sizeof_datatype(dtype);
+  size_t nbytes     = nelem * dtype_size;
 	dart_unit_t unitid;
   dart_unit_t gptr_unitid = -1;
   dart_team_myid(teamid, &unitid);
@@ -455,12 +470,15 @@ dart_team_memregister_aligned(
 
 dart_ret_t
 dart_team_memregister(
-   dart_team_t   teamid,
-   size_t        nbytes,
-   void        * addr,
-   dart_gptr_t * gptr)
+   dart_team_t       teamid,
+   size_t            nelem,
+   dart_datatype_t   dtype,
+   void            * addr,
+   dart_gptr_t     * gptr)
 {
 	size_t size;
+  int    dtype_size = dart_mpi_sizeof_datatype(dtype);
+  size_t nbytes     = nelem * dtype_size;
 	dart_unit_t unitid;
   dart_unit_t gptr_unitid = -1;
 	dart_team_myid(teamid, &unitid);
