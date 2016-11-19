@@ -418,40 +418,49 @@ TEST_F(HDF5ArrayTest, TeamSplit)
     SKIP_TEST();
   }
 
-  auto & team = dash::Team::All();
-  int num_split     = std::min<int>(dash::size(), 2);
-  auto & myteam = team.locality_split(dash::util::Locality::Scope::Core, num_split);
-  LOG_MESSAGE("Splitted team in %d parts, I am %d", num_split, myteam.dart_id());
+  auto & team_all  = dash::Team::All();
+  int    num_split = std::min<int>(team_all.size(), 2);
+  auto & myteam    = team_all.split(num_split);
+  LOG_MESSAGE("Splitted team in %d parts, I am %d", num_split, myteam.position());
 
-  int    ext_x  = dash::size() * 5;
+  int    ext_x  = team_all.size() * 5;
   double secret = 10;
   
-  if(myteam.dart_id() == 1){
+  if(myteam.position() == 0){
     {
       auto array_a = dash::Array<double>(ext_x, myteam);
+      // Array has to be allocated
+      EXPECT_NE_U(array_a.lbegin() , nullptr); 
+
       fill_array(array_a, secret);
       myteam.barrier();
-      LOG_MESSAGE("Team %d: write array", myteam.dart_id());
+      LOG_MESSAGE("Team %d: write array", myteam.position());
       OutputStream os(_filename);
       os << dio::dataset("array_a") << array_a;
-      LOG_MESSAGE("Team %d: array written", myteam.dart_id());
+      LOG_MESSAGE("Team %d: array written", myteam.position());
       myteam.barrier();
     }
   }
 
-  team.barrier();
+  team_all.barrier();
 
-  if(myteam.dart_id() == 1){
-    dash::Array<double> array_a(ext_x, myteam);
-    LOG_MESSAGE("Team %d: read array", myteam.dart_id());
-    InputStream is(_filename);
-    is >> dio::dataset("array_a") >> array_a;
-    LOG_MESSAGE("Team %d: array read", myteam.dart_id());
-    myteam.barrier();
-    verify_array(array_a, secret);
+  if(myteam.position() == 1){
+    auto array_a = dash::Array<double>(ext_x, myteam);
+    array_a.barrier();
+    fill_array(array_a, secret);
+
+    // Array has to be allocated
+    EXPECT_NE_U(array_a.lbegin() , nullptr); 
+
+    if(array_a.lbegin() != nullptr){
+      LOG_MESSAGE("Team %d: read array", myteam.position());
+      InputStream is(_filename);
+      is >> dio::dataset("array_a") >> array_a;
+      LOG_MESSAGE("Team %d: array read", myteam.position());
+      myteam.barrier();
+      verify_array(array_a, secret);
+    }
   }
-  team.barrier();
+  team_all.barrier();
 }
 #endif // DASH_ENABLE_HDF5
-
-
