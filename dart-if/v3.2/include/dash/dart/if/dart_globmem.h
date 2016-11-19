@@ -4,14 +4,13 @@
 /**
  * \file dart_globmem.h
  *
- * Routines for allocation and reclamation of global memory regions and
- * pointer semantics in partitioned global address space.
- */
-
-/**
  * \defgroup  DartGlobMem    Global memory and PGAS address semantics
  * \ingroup   DartInterface
+ *
+ * Routines for allocation and reclamation of global memory regions and pointer semantics in partitioned global address space.
+ *
  */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -93,10 +92,11 @@ typedef struct
 #ifdef __cplusplus
 #define DART_GPTR_NULL (dart_gptr_t { -1, 0, 0, { 0 } })
 #else
-#define DART_GPTR_NULL ((dart_gptr_t)({ .unitid = -1, \
-                                        .segid  =  0, \
-                                        .flags  =  0, \
-                                        .addr_or_offs.offset = 0 }))
+#define DART_GPTR_NULL \
+((dart_gptr_t)({ .unitid = -1, \
+                 .segid  =  0, \
+                 .flags  =  0, \
+                 .addr_or_offs.offset = 0 }))
 #endif
 
 /**
@@ -131,6 +131,7 @@ typedef struct
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr);
@@ -144,6 +145,7 @@ dart_ret_t dart_gptr_getaddr(const dart_gptr_t gptr, void **addr);
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
@@ -155,6 +157,8 @@ dart_ret_t dart_gptr_setaddr(dart_gptr_t *gptr, void *addr);
  * \param offs Offset by which to increment \c gptr
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int32_t offs);
@@ -166,6 +170,8 @@ dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int32_t offs);
  * \param unit The unit to set in \c gptr
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t unit);
@@ -182,6 +188,7 @@ dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t unit);
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_memalloc(
@@ -197,6 +204,8 @@ dart_ret_t dart_memalloc(
  * \param gptr Global pointer to the memory allocation to free
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_none
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_memfree(dart_gptr_t gptr);
@@ -227,6 +236,7 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
  * \return            \c DART_OK on success,
  *                    any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memalloc_aligned(
@@ -248,6 +258,8 @@ dart_ret_t dart_team_memalloc_aligned(
  * \see DART_GPTR_NULL
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_none
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memfree(
@@ -268,6 +280,8 @@ dart_ret_t dart_team_memfree(
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \see dart_team_memalloc_aligned
+ *
+ * \threadsafe_none
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memregister_aligned(
@@ -289,6 +303,7 @@ dart_ret_t dart_team_memregister_aligned(
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
+ * \threadsafe_none
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memregister(
@@ -310,6 +325,8 @@ dart_ret_t dart_team_memregister(
  *
  * \see dart_team_memregister
  * \see dart_team_memregister_aligned
+ *
+ * \threadsafe_none
  * \ingroup DartGlobMem
  */
 dart_ret_t dart_team_memderegister(dart_team_t teamid, dart_gptr_t gptr);
