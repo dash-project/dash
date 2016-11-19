@@ -47,7 +47,7 @@ void fill(
   value_t * llast       = index_range.end;
   auto      nlocal      = llast - lfirst;
 
-#if 1
+#if 0
   for (index_t lt = 0; lt < nlocal; lt++) {
     lfirst[lt] = value;
   }
