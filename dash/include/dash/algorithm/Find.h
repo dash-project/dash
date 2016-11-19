@@ -63,7 +63,7 @@ GlobIter<ElementType, PatternType> find(
       g_index = pattern.global(l_hit_index);
     }
   }
-  dash::barrier();
+  team.barrier();
 
   // receive buffer for global maximal index
   p_index_t g_hit_idx;
@@ -108,6 +108,7 @@ GlobIter<ElementType, PatternType> find_if(
   auto index_range   = dash::local_range(first, last);
   auto l_first       = index_range.begin;
   auto l_last        = index_range.end;
+  auto & team        = first.pattern().team();
 
   auto l_result      = std::find_if(l_first, l_last, predicate);
   auto l_offset      = std::distance(l_first, l_result);
@@ -119,10 +120,9 @@ GlobIter<ElementType, PatternType> find_if(
 
   l_results.local[0] = l_offset;
 
-  dash::barrier();
+  team.barrier();
 
   // All local offsets stored in l_results
-
   auto result = last;
 
   for (auto u = 0; u < dash::size(); u++) {
@@ -136,7 +136,7 @@ GlobIter<ElementType, PatternType> find_if(
     }
   }
 
-  dash::barrier();
+  team.barrier();
   return result;
 }
 

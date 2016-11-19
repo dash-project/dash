@@ -30,16 +30,14 @@ bool equal(
   auto index_range   = dash::local_range(first_1, last_1);
   auto l_first_1     = index_range.begin;
   auto l_last_1      = index_range.end;
-
   auto l_result      = std::equal(l_first_1, l_last_1, first_2);
 
   dash::Array<dart_unit_t> l_results(dash::size());
 
   l_results.local[0] = l_result;
-
   bool return_result = true;
 
-  dash::barrier();
+  first_1.pattern().team().barrier();
 
   // All local offsets stored in l_results
   if (myid == 0) {
@@ -47,7 +45,6 @@ bool equal(
       return_result &= l_results.local[u];
     }
   }
-
   return return_result;
 }
 
@@ -75,7 +72,6 @@ bool equal(
   auto index_range   = dash::local_range(first_1, last_1);
   auto l_first_1     = index_range.begin;
   auto l_last_1      = index_range.end;
-
   auto l_result      = std::equal(l_first_1, l_last_1, first_2, pred);
 
   dash::Array<dart_unit_t> l_results(dash::size());
@@ -84,7 +80,7 @@ bool equal(
 
   bool return_result = true;
 
-  dash::barrier();
+  first_1.pattern().team().barrier();
 
   // All local offsets stored in l_results
   if (myid == 0) {
@@ -92,7 +88,6 @@ bool equal(
       return_result &= l_results.local[u];
     }
   }
-
   return return_result;
 }
 

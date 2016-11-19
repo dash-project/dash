@@ -8,6 +8,52 @@
 namespace dash {
 
 /**
+ * Accumulate values in range \c [first, last) as the sum of all values
+ * in the range.
+ *
+ * Note: For equivalent of semantics of \c MPI_Accumulate, see
+ * \c dash::transform.
+ *
+ * Semantics:
+ *
+ *     acc = init (+) in[0] (+) in[1] (+) ... (+) in[n]
+ *
+ * \see      dash::transform
+ *
+ * \ingroup  DashAlgorithms
+ */
+template <
+  class GlobInputIt,
+  class ValueType >
+ValueType accumulate(
+  GlobInputIt     in_first,
+  GlobInputIt     in_last,
+  ValueType       init)
+{
+  typedef typename GlobInputIt::index_type index_t;
+
+  auto myid           = dash::myid();
+  auto index_range    = dash::local_range(in_first, in_last);
+  auto l_first        = index_range.begin;
+  auto l_last         = index_range.end;
+  auto l_result = std::accumulate(l_first, l_last, init);
+
+  dash::Array<index_t> l_results(dash::size());
+
+  l_results.local[0] = l_result;
+
+  in_first.pattern().team().barrier();
+  auto result        = 0;
+
+  if (myid == 0) {
+    for (int i = 0; i < dash::size(); i++) {
+      result += l_results[i];
+    }
+  }
+  return result;
+}
+
+/**
  * Accumulate values in range \c [first, last) using the given binary
  * reduce function \c op.
  *
@@ -24,55 +70,7 @@ namespace dash {
  *
  * \ingroup  DashAlgorithms
  */
-    
-template<
-    class GlobInputIt,
-    class ValueType>
-ValueType accumulate(
-    GlobInputIt     in_first,
-    GlobInputIt     in_last,
-    ValueType       init)
-    {
-        typedef typename GlobInputIt::index_type index_t;
-        
-        
-        auto myid           = dash::myid();
-        
-
-        auto index_range    = dash::local_range(in_first, in_last);
-        auto l_first        = index_range.begin;
-        auto l_last         = index_range.end;
-        
-        auto l_result =std::accumulate(l_first, l_last, init);
-
-        dash::Array<index_t> l_results(dash::size());
-        
-        l_results.local[0] = l_result;
-        
-        dash::barrier();
-        auto result        = 0;
-        
-        if (myid == 0){
-            
-            for (int i = 0; i < dash::size(); i++) {
-                
-                result += l_results[i];
-            
-            }
-            
-        }
-        
-        return result;
-        
-            
-        
-    
-     }
-        
-        
-      
-    
-template<
+template <
   class GlobInputIt,
   class ValueType,
   class BinaryOperation >
@@ -82,42 +80,27 @@ ValueType accumulate(
   ValueType       init,
   BinaryOperation binary_op = dash::plus<ValueType>())
 {
-    
-    typedef typename GlobInputIt::index_type index_t;
-    
-    
-    auto myid           = dash::myid();
-    
-    auto index_range    = dash::local_range(in_first, in_last);
+  typedef typename GlobInputIt::index_type index_t;
 
-    auto l_first        = index_range.begin;
-    auto l_last         = index_range.end;
-    
-    auto l_result =std::accumulate(l_first, l_last, init, binary_op);
+  auto myid           = dash::myid();
+  auto index_range    = dash::local_range(in_first, in_last);
+  auto l_first        = index_range.begin;
+  auto l_last         = index_range.end;
+  auto l_result = std::accumulate(l_first, l_last, init, binary_op);
 
-    dash::Array<index_t> l_results(dash::size());
-    
-    l_results.local[0] = l_result;
-    
-    dash::barrier();
-    auto result        = 0;
-    
-    if (myid == 0){
-        
-        for (int i = 0; i < dash::size(); i++) {
-            
-            result = binary_op(result, l_results[i]);
-        
-        }
-        
+  dash::Array<index_t> l_results(dash::size());
+
+  l_results.local[0] = l_result;
+
+  in_first.pattern().team().barrier();
+  auto result        = 0;
+
+  if (myid == 0) {
+    for (int i = 0; i < dash::size(); i++) {
+      result = binary_op(result, l_results[i]);
     }
-    
-    return result;
-    
-        
-  
-  
-    
+  }
+  return result;
 }
 
 } // namespace dash
