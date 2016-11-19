@@ -218,8 +218,8 @@ dart_team_memalloc_aligned(
    * Related support ticket of MPICH:
    * http://trac.mpich.org/projects/mpich/ticket/2178
    */
-  MPI_Win sharedmem_win;
-  MPI_Comm sharedmem_comm = sharedmem_comm = dart_team_data[index].sharedmem_comm;
+  MPI_Win  sharedmem_win;
+  MPI_Comm sharedmem_comm = dart_team_data[index].sharedmem_comm;
 
 	MPI_Info win_info;
 	MPI_Info_create(&win_info);
@@ -230,7 +230,7 @@ dart_team_memalloc_aligned(
 
 	if (sharedmem_comm != MPI_COMM_NULL) {
     int ret = MPI_Win_allocate_shared(
-                nelem,
+                nbytes,
                 dtype_size,
                 win_info,
                 sharedmem_comm,

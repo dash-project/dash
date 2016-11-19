@@ -82,9 +82,6 @@ struct Extent {
 };
 
 
-template<typename Type>
-const dart_datatype_t dart_datatype<Type>::value = DART_TYPE_UNDEFINED;
-
 /**
  * Type traits for mapping to DART data types.
  */
@@ -92,6 +89,10 @@ template<typename Type>
 struct dart_datatype {
   static const dart_datatype_t value;
 };
+
+template<typename Type>
+const dart_datatype_t dart_datatype<Type>::value = DART_TYPE_UNDEFINED;
+
 
 template<>
 struct dart_datatype<char> {
