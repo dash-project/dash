@@ -61,8 +61,8 @@ https://github.com/dash-project
 
 **Repository:**
 
-SSH: https://github.com/dash-project/dash.git
-HTTPS: git@github.com:dash-project/dash.git
+- HTTPS: [https://github.com/dash-project/dash.git]()
+- SSH: [git@github.com:dash-project/dash.git]()
 
 **Contact:**
 
@@ -72,6 +72,9 @@ team@dash-project.org
 
 Installation
 ============
+
+DASH installations are available as Docker containers or build from source
+using CMake.
 
 
 Docker Containers
@@ -91,7 +94,7 @@ as starting points for custom builds:
 
 
 Script file name | Description 
----------------- | --------------------------------------
+:--------------- | :-------------------------------------
 `build.sh`       | Standard release build
 `build.dev.sh`   | Development / debug build
 `build.mic.sh`   | Release build for Intel MIC (Xeon Phi)
