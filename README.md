@@ -70,7 +70,7 @@ team@dash-project.org
 
 **Contributing**
 
-See guidelines in [CONTRIBUTING.md](https://github.com/dash-project/dash/blob/master/CONTRIBUTING.md).
+See guidelines in [CONTRIBUTING.md](https://github.com/dash-project/dash/blob/development/CONTRIBUTING.md).
 
 
 Installation
