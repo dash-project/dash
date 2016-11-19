@@ -35,6 +35,7 @@ void for_each(
     auto index_range  = dash::local_index_range(first, last);
     auto lbegin_index = index_range.begin;
     auto lend_index   = index_range.end;
+    auto & team       = first.pattern().team();
     if (lbegin_index != lend_index) {
       // Pattern from global begin iterator:
       auto pattern      = first.pattern();
@@ -43,7 +44,7 @@ void for_each(
       auto lrange_end   = lrange_begin + lend_index;
       std::for_each(lrange_begin, lrange_end, func);
     }
-    dash::barrier();
+    team.barrier();
 }
 
 /**
@@ -75,6 +76,7 @@ void for_each_with_index(
     auto index_range  = dash::local_index_range(first, last);
     auto lbegin_index = index_range.begin;
     auto lend_index   = index_range.end;
+    auto & team       = first.pattern().team();
     if (lbegin_index != lend_index) {
       // Pattern from global begin iterator:
       auto pattern = first.pattern();
@@ -88,7 +90,7 @@ void for_each_with_index(
           func(*element_it, gindex);
       }
     }
-    dash::barrier();
+    team.barrier();
 }
 
 } // namespace dash
