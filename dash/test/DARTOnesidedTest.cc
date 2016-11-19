@@ -1,7 +1,9 @@
+
 #include <libdash.h>
 #include <gtest/gtest.h>
 #include "TestBase.h"
 #include "DARTOnesidedTest.h"
+
 
 TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
 {
@@ -90,10 +92,13 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
       LOG_MESSAGE("Requesting block %d from unit %d", block, u);
       dart_handle_t handle;
       handles.push_back(handle);
+
+      dash::dart_storage_t ds = dash::dart_storage<value_t>(block_size);
       dart_get_handle(
         local_array + (block * block_size),
         (array.begin() + (u * block_size)).dart_gptr(),
-        block_size * sizeof(value_t),
+        ds.nelem,
+        ds.dtype,
         &handles[block]
       );
       ++block;

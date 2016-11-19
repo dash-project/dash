@@ -327,12 +327,14 @@ dash::Future<ValueType *> copy_async_impl(
         DART_OK);
       req_handles.push_back(in_first.dart_gptr());
 #else
-      dart_handle_t get_handle;
+      dart_handle_t  get_handle;
+      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
       DASH_ASSERT_RETURNS(
         dart_get_handle(
           cur_out_first,
           cur_in_first.dart_gptr(),
-          num_copy_elem * sizeof(ValueType),
+          ds.nelem,
+          ds.dtype,
           &get_handle),
         DART_OK);
       if (get_handle != NULL) {
@@ -397,13 +399,15 @@ dash::Future<ValueType *> copy_async_impl(
       }
       req_handles.push_back(src_gptr);
 #else
-      dart_handle_t get_handle;
+      dart_handle_t  get_handle;
+      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
       DASH_ASSERT_RETURNS(
         dart_get_handle(
-            dest_ptr,
-            src_gptr,
-            num_copy_elem * sizeof(ValueType),
-            &get_handle),
+          dest_ptr,
+          src_gptr,
+          ds.nelem,
+          ds.dtype,
+          &get_handle),
         DART_OK);
       if (get_handle != NULL) {
         req_handles.push_back(get_handle);

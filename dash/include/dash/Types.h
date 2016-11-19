@@ -81,6 +81,10 @@ struct Extent {
   ::std::array<SizeType, NumDimensions> sizes;
 };
 
+
+template<typename Type>
+const dart_datatype_t dart_datatype<Type>::value = DART_TYPE_UNDEFINED;
+
 /**
  * Type traits for mapping to DART data types.
  */
@@ -123,6 +127,23 @@ template<>
 struct dart_datatype<double> {
   static const dart_datatype_t value;
 };
+
+typedef struct {
+  dart_datatype_t dtype;
+  int             nelem;
+} dart_storage_t;
+
+template <typename T>
+inline dart_storage_t dart_storage(int nvalues) {
+  dart_storage_t ds;
+  ds.dtype = dart_datatype<T>::value;
+  ds.nelem = nvalues;
+  if (DART_TYPE_UNDEFINED == ds.dtype) {
+    ds.dtype = DART_TYPE_BYTE;
+    ds.nelem = nvalues * sizeof(T);
+  }
+  return ds;
+}
 
 } // namespace dash
 

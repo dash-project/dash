@@ -383,16 +383,18 @@ dart_ret_t dart_fetch_and_op(
 dart_ret_t dart_get_handle(
   void          * dest,
   dart_gptr_t     gptr,
-  size_t          nbytes,
+  size_t          nelem,
+  dart_datatype_t dtype,
   dart_handle_t * handle)
 {
   MPI_Request  mpi_req;
   MPI_Aint     disp_s,
                disp_rel;
-  MPI_Datatype mpi_type;
+  MPI_Datatype mpi_type = dart_mpi_datatype(dtype);
   MPI_Win      win;
   dart_unit_t  target_unitid_abs = gptr.unitid;
   dart_unit_t  target_unitid_rel = target_unitid_abs;
+  size_t       nbytes = nelem * dart_mpi_sizeof_datatype(dtype);
   int          mpi_ret;
   uint64_t     offset = gptr.addr_or_offs.offset;
   int16_t      seg_id = gptr.segid;
@@ -412,8 +414,6 @@ dart_ret_t dart_get_handle(
     return DART_ERR_INVAL;
   }
   int n_count = (int)(nbytes);
-
-  mpi_type = MPI_BYTE;
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
 
@@ -511,11 +511,11 @@ dart_ret_t dart_get_handle(
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
                 dest,              // origin address
-                n_count,           // origin count
+                nelem,             // origin count
                 mpi_type,          // origin data type
                 target_unitid_rel, // target rank
                 disp_rel,          // target disp in window
-                n_count,           // target count
+                nelem,             // target count
                 mpi_type,          // target data type
                 win,               // window
                 &mpi_req);
@@ -537,12 +537,12 @@ dart_ret_t dart_get_handle(
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
                 dest,              // origin address
-                n_count,           // origin count
+                nelem,             // origin count
                 mpi_type,          // origin data type
                 target_unitid_abs, // target rank
                 offset,            // target disp in window
                 n_count,           // target count
-                mpi_type,          // target data type
+                nelem,             // target data type
                 win,               // window
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {

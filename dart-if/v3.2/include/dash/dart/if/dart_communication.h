@@ -399,7 +399,8 @@ typedef struct dart_handle_struct * dart_handle_t;
 dart_ret_t dart_get_handle(
   void            * dest,
   dart_gptr_t       gptr,
-  size_t            nbytes,
+  size_t            nelem,
+  dart_datatype_t   dtype,
   dart_handle_t   * handle);
 
 /**

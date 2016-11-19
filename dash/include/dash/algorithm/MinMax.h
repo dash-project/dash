@@ -241,7 +241,10 @@ GlobIter<ElementType, PatternType> min_element(
   trace.enter_state("allgather");
   DASH_ASSERT_RETURNS(
     dart_allgather(
-      &local_min, local_min_values.data(), sizeof(local_min_t),
+      &local_min,
+      local_min_values.data(),
+      sizeof(local_min_t),
+      DART_TYPE_BYTE,
       team.dart_id()),
     DART_OK);
   trace.exit_state("allgather");
