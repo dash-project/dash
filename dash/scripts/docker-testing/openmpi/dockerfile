@@ -15,17 +15,14 @@ RUN           apt-get install -y \
                   openmpi-common \
                   libhdf5-openmpi-dev
 
-# Install PAPI 5.5.0 from source
+# Install PAPI from source
 WORKDIR       /tmp
 
-# Latest version of PAPI is not compatible
-# ADD           http://icl.cs.utk.edu/projects/papi/downloads/papi-5.5.0.tar.gz papi.tgz
-
-ADD           http://icl.cs.utk.edu/projects/papi/downloads/papi-5.4.1.tar.gz papi.tgz
+ADD           http://icl.utk.edu/projects/papi/downloads/papi-5.5.1.tar.gz papi.tgz
 RUN           tar -xf papi.tgz
-RUN           cd papi*/src/                                  \
-              && ./configure --prefix=/opt/papi --with-ffsll \
-              && make                                        \
+RUN           cd papi*/src/                     \
+              && ./configure --prefix=/opt/papi \
+              && make                           \
               && make install
 ENV           PAPI_BASE=/opt/papi
 ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib
