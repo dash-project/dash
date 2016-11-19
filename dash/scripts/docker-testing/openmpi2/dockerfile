@@ -14,7 +14,9 @@ RUN           apt-get install -y \
 # Install PAPI from source
 WORKDIR       /tmp
 
-ADD           http://icl.utk.edu/projects/papi/downloads/papi-5.5.1.tar.gz papi.tgz
+# Compiler error when compiling with -pedantic for papi > 5.4.1
+# ADD         http://icl.utk.edu/projects/papi/downloads/papi-5.5.1.tar.gz papi.tgz
+ADD           http://icl.cs.utk.edu/projects/papi/downloads/papi-5.4.1.tar.gz papi.tgz
 RUN           tar -xf papi.tgz
 RUN           cd papi*/src/                     \
               && ./configure --prefix=/opt/papi \
