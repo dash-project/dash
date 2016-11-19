@@ -90,6 +90,11 @@ typedef enum
     DART_TYPE_DOUBLE
 } dart_datatype_t;
 
+typedef struct {
+    dart_datatype_t dtype;
+    int             nelem;
+} dart_storage_t;
+
 /**
  * Data type for storing a unit ID
  * \ingroup DartTypes

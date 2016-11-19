@@ -4,6 +4,7 @@
 #include <array>
 #include <dash/dart/if/dart_types.h>
 
+
 namespace dash {
 
 typedef enum MemArrange {
@@ -81,6 +82,7 @@ struct Extent {
   ::std::array<SizeType, NumDimensions> sizes;
 };
 
+
 /**
  * Type traits for mapping to DART data types.
  */
@@ -88,6 +90,10 @@ template<typename Type>
 struct dart_datatype {
   static const dart_datatype_t value;
 };
+
+template<typename Type>
+const dart_datatype_t dart_datatype<Type>::value = DART_TYPE_UNDEFINED;
+
 
 template<>
 struct dart_datatype<char> {
@@ -123,6 +129,18 @@ template<>
 struct dart_datatype<double> {
   static const dart_datatype_t value;
 };
+
+template <typename T>
+inline dart_storage_t dart_storage(int nvalues) {
+  dart_storage_t ds;
+  ds.dtype = dart_datatype<T>::value;
+  ds.nelem = nvalues;
+  if (DART_TYPE_UNDEFINED == ds.dtype) {
+    ds.dtype = DART_TYPE_BYTE;
+    ds.nelem = nvalues * sizeof(T);
+  }
+  return ds;
+}
 
 } // namespace dash
 

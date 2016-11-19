@@ -490,9 +490,8 @@ template<typename T>
 GlobPtr<T> memalloc(size_t nelem)
 {
   dart_gptr_t gptr;
-  size_t lsize = sizeof(T) * nelem;
-
-  dart_memalloc(lsize, &gptr);
+  dart_storage_t ds = dart_storage<T>(nelem);
+  dart_memalloc(ds.nelem, ds.dtype, &gptr);
   return GlobPtr<T>(gptr);
 }
 
