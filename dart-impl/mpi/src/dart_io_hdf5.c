@@ -1,5 +1,5 @@
 /**
- * \file dash/dart/mpi/internal/io_hdf5.c
+ * \file dash/dart/mpi/internal/dart_io_hdf5.c
  */
 
 #ifdef DART_ENABLE_HDF5
@@ -9,7 +9,6 @@
 
 #include <dash/dart/base/logging.h>
 #include <dash/dart/mpi/dart_team_private.h>
-//#include <dash/dart/if/dart_communication.h>
 
 
 dart_ret_t dart__io__hdf5__prep_mpio(
@@ -19,7 +18,7 @@ dart_ret_t dart__io__hdf5__prep_mpio(
   MPI_Comm comm;
   uint16_t index;
   int      result;
-  DART_LOG_TRACE("dart__base__io__hdf5__prep_mpio() team:%d", teamid);
+  DART_LOG_TRACE("dart__io__hdf5__prep_mpio() team:%d", teamid);
 
   result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {

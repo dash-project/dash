@@ -1,5 +1,5 @@
 /**
- * \file dash/dart/base/internal/io_hdf5.h
+ * \file dash/dart/mpi/internal/dart_io_hdf5.h
  */
 #ifndef DART__MPI__INTERNAL__IO_HDF5_H__
 #define DART__MPI__INTERNAL__IO_HDF5_H__
