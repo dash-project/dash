@@ -546,6 +546,11 @@ public:
     return *_pattern;
   }
 
+  inline dash::Team & team() const
+  {
+    return _pattern->team();
+  }
+
 }; // class GlobIter
 
 /**
