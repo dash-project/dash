@@ -86,9 +86,10 @@
  * Improvements to thread-safety of DART are scheduled for the next release.
  *
  * Note that this also affects global operations in DASH as they rely on DART functionality.
- * However, all operations on local data can be considered thread-safe, i.e., they adhere
- * to the C++ STL thread-safety rules (see http://en.cppreference.com/w/cpp/container
- * for details). Thus, the following code is valid:
+ * However, all operations on local data can be considered thread-safe, e.g., `Container.local` or
+ * `Container.lbegin`. The local access operators adhere to the C++ STL thread-safety
+ * rules (see http://en.cppreference.com/w/cpp/container for details).
+ * Thus, the following code is valid:
  *
  * \code{.cc}
 dash::Array<int> arr(...);
