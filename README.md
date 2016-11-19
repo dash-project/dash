@@ -68,6 +68,9 @@ https://github.com/dash-project
 
 team@dash-project.org
 
+**Contributing**
+
+See guidelines in [CONTRIBUTING.md]().
 
 
 Installation
@@ -267,107 +270,3 @@ The DASH project homepage: http://www.dash-project.org
 The Munich Network Management homepage: http://www.mnm-team.org
 
 
-Developer Notes
-===============
-
-This section is only relevant to contributors in the DASH project.
-
-
-Code Style
-----------
-
-We follow the
-[Google C++ Style Guide](http://google.github.io/styleguide/cppguide.html)
-which is widely accepted in established open source projects.
-
-The
-[standards defined by the LLVM team](http://llvm.org/docs/CodingStandards.html)
-are worth mentioning, too.
-
-
-
-Contributing Code
------------------
-
-The DASH software development process is kept as simple as possible,
-balancing pragmatism and QA.
-
-**1. Create a new, dedicated branch for any task.**
-
-We follow the naming convention:
-
-- `feat-<issue-id>-<shortname>` for implementing and testing features
-- `bug-<issue-id>-<shortname>`  for bugfix branches
-- `sup-<issue-id>-<shortname>`  for support tasks (e.g. build system,
-  														  documentation)
-
-For example, when fixing a bug in team allocation, you could name your branch
-*bug-team-alloc*.
-
-**2. Submit an issue on GitHub**
-
-- State the name of your branch in the ticket description.
-- Choose appropriate tags (support, bug, feature, ...).
-- As a member in the DASH project, assign the ticket to the owner of the
-  affected module.
-
-
-**3. For features and bugfixes, implement unit tests**
-
-The integration test script can be used to run tests in Debug and
-Release builds with varying number of processes automatically:
-
-    (dash-root)$ ./dash/scripts/dash-ci.sh
-
-Check if CI succeeded on
-[Travis](https://travis-ci.org/dash-project/dash)
-and
-[CircleCI](https://circleci.com/gh/dash-project/dash).
-
-
-**4. Once you are finished with your implementation and unit tests:**
-
-- Create a new pull request on GitHub.
-- Assign the pull request to one or more members in the DASH team
-  for review.
-
-
-**5. Reviewing**
-
-After you merged your changes to master, choose a reviewer:
-
-- Edit the ticket in Redmine
-- Set state to "Resolved"
-- Set "Assigned to" to the team member that will review your code
-
-For now, we chose to merge to development branch before reviewing so
-everyone can contribute to development snapshots without depending on other
-team members.
-
-**6. Closing a ticket**
-
-Tickets are closed by reviewers once the related pull request passed
-review and has been merged.
-
-
-
-**7. Merging to master**
-
-The development branch of DASH is merged to master periodically once all
-issues in the development branch associated with the next stable release
-are closed.
-
-Before merging:
-
-- Update CHANGELOG in development branch.
-- Announce the merge: send the updated changelog to the DASH mailing
-  list and set a deadline for review, testing, and pending issue reports.
-
-After merging:
-
-- Tag the merge commit with the version number of the release, e.g.
-  `dash-0.5.0`
-- Increment the DASH version number in the development branch, e.g from
-  0.5.0 to 0.6.0.
-- Publish a new release: create a tarball distribution by running
- `release.pl` and add a link on the DASH project website.
