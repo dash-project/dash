@@ -327,12 +327,14 @@ dash::Future<ValueType *> copy_async_impl(
         DART_OK);
       req_handles.push_back(in_first.dart_gptr());
 #else
-      dart_handle_t get_handle;
+      dart_handle_t  get_handle;
+      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
       DASH_ASSERT_RETURNS(
         dart_get_handle(
           cur_out_first,
           cur_in_first.dart_gptr(),
-          num_copy_elem * sizeof(ValueType),
+          ds.nelem,
+          ds.dtype,
           &get_handle),
         DART_OK);
       if (get_handle != NULL) {
@@ -397,13 +399,15 @@ dash::Future<ValueType *> copy_async_impl(
       }
       req_handles.push_back(src_gptr);
 #else
-      dart_handle_t get_handle;
+      dart_handle_t  get_handle;
+      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
       DASH_ASSERT_RETURNS(
         dart_get_handle(
-            dest_ptr,
-            src_gptr,
-            num_copy_elem * sizeof(ValueType),
-            &get_handle),
+          dest_ptr,
+          src_gptr,
+          ds.nelem,
+          ds.dtype,
+          &get_handle),
         DART_OK);
       if (get_handle != NULL) {
         req_handles.push_back(get_handle);
@@ -581,13 +585,14 @@ dash::Future<GlobOutputIt> copy_async_impl(
  */
 template <
   typename ValueType,
-  class GlobInputIt >
+  class    GlobInputIt >
 dash::Future<ValueType *> copy_async(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  dash::util::UnitLocality uloc(dash::Team::All().myid());
+  auto & team = in_first.team();
+  dash::util::UnitLocality uloc(team.myid());
   // Size of L2 data cache line:
   int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
   bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
@@ -795,7 +800,8 @@ ValueType * copy(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  dash::util::UnitLocality uloc(dash::Team::All().myid());
+  auto & team = in_first.team();
+  dash::util::UnitLocality uloc(team.myid());
   // Size of L2 data cache line:
   int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
   bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))

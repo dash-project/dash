@@ -121,8 +121,6 @@ TEST_F(TeamLocalityTest, SplitNUMA)
 
 TEST_F(TeamLocalityTest, GroupUnits)
 {
-  SKIP_TEST();
-
   if (dash::size() < 4) {
     return;
   }

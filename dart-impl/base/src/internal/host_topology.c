@@ -282,7 +282,8 @@ dart_ret_t dart__base__host_topology__update_module_locations(
         dart_allgather(
           NULL,
           recvcounts,
-          sizeof(int),
+          1,
+          DART_TYPE_INT,
           leader_team),
         DART_OK);
 
@@ -298,6 +299,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
         dart_allgatherv(
           local_module_locations,
           recvcounts[my_leader_id],
+          DART_TYPE_BYTE,
           module_locations,
           recvcounts,
           displs,

@@ -463,6 +463,16 @@ public:
     return _dartid;
   }
 
+  inline size_t global_id() const
+  {
+    return _dartid;
+  }
+
+  inline size_t relative_id() const
+  {
+    return _position;
+  }
+
   inline dart_unit_t global_id(
     dart_unit_t local_id)
   {
