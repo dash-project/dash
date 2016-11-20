@@ -37,5 +37,5 @@ TEST_F(GlobMemTest, LocalBegin)
   for (int l = 0; l < target_local_elements.size(); l++) {
     EXPECT_EQ_U(*(target_local_elements.begin() + l), target.lbegin()[l]);
   }
+  EXPECT_NE_U(target.lbegin(), nullptr);
 }
-
