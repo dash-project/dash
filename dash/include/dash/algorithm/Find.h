@@ -109,7 +109,6 @@ GlobIter<ElementType, PatternType> find_if(
   auto index_range   = dash::local_range(first, last);
   auto l_first       = index_range.begin;
   auto l_last        = index_range.end;
-  auto & team        = first.pattern().team();
 
   auto l_result      = std::find_if(l_first, l_last, predicate);
   auto l_offset      = std::distance(l_first, l_result);
