@@ -171,8 +171,7 @@ GlobIter<ElementType, PatternType> min_element(
   dash::util::Trace trace("min_element");
 
   auto & pattern = first.pattern();
-
-  dash::Team & team = pattern.team();
+  auto & team    = pattern.team();
   DASH_LOG_DEBUG("dash::min_element()",
                  "allocate minarr, size", team.size());
   // Global position of end element in range:
@@ -192,7 +191,7 @@ GlobIter<ElementType, PatternType> min_element(
 
     // Pointer to first element in local memory:
     const ElementType * lbegin        = first.globmem().lbegin(
-                                          pattern.team().myid());
+                                          team.myid());
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;

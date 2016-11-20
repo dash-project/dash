@@ -32,13 +32,14 @@ ValueType accumulate(
 {
   typedef typename GlobInputIt::index_type index_t;
 
-  auto myid           = dash::myid();
+  auto & team         = in_first.team();
+  auto myid           = team.myid();
   auto index_range    = dash::local_range(in_first, in_last);
   auto l_first        = index_range.begin;
   auto l_last         = index_range.end;
   auto l_result = std::accumulate(l_first, l_last, init);
 
-  dash::Array<index_t> l_results(dash::size());
+  dash::Array<index_t> l_results(team.size());
 
   l_results.local[0] = l_result;
 
@@ -46,7 +47,7 @@ ValueType accumulate(
   auto result        = 0;
 
   if (myid == 0) {
-    for (int i = 0; i < dash::size(); i++) {
+    for (int i = 0; i < team.size(); i++) {
       result += l_results[i];
     }
   }
@@ -82,13 +83,14 @@ ValueType accumulate(
 {
   typedef typename GlobInputIt::index_type index_t;
 
-  auto myid           = dash::myid();
+  auto & team         = in_first.team();
+  auto myid           = team.myid();
   auto index_range    = dash::local_range(in_first, in_last);
   auto l_first        = index_range.begin;
   auto l_last         = index_range.end;
   auto l_result = std::accumulate(l_first, l_last, init, binary_op);
 
-  dash::Array<index_t> l_results(dash::size());
+  dash::Array<index_t> l_results(team.size());
 
   l_results.local[0] = l_result;
 
@@ -96,7 +98,7 @@ ValueType accumulate(
   auto result        = 0;
 
   if (myid == 0) {
-    for (int i = 0; i < dash::size(); i++) {
+    for (int i = 0; i < team.size(); i++) {
       result = binary_op(result, l_results[i]);
     }
   }

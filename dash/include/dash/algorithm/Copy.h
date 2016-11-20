@@ -585,13 +585,14 @@ dash::Future<GlobOutputIt> copy_async_impl(
  */
 template <
   typename ValueType,
-  class GlobInputIt >
+  class    GlobInputIt >
 dash::Future<ValueType *> copy_async(
   GlobInputIt   in_first,
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  dash::util::UnitLocality uloc(dash::Team::All().myid());
+  auto & team = in_first.team();
+  dash::util::UnitLocality uloc(team.myid());
   // Size of L2 data cache line:
   int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
   bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
@@ -799,7 +800,8 @@ ValueType * copy(
   GlobInputIt   in_last,
   ValueType   * out_first)
 {
-  dash::util::UnitLocality uloc(dash::Team::All().myid());
+  auto & team = in_first.team();
+  dash::util::UnitLocality uloc(team.myid());
   // Size of L2 data cache line:
   int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
   bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))

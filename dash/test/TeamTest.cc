@@ -36,7 +36,7 @@ TEST_F(TeamTest, SplitTeamSync)
   }
   LOG_MESSAGE("team_all contains %d units", team_all.size());
 
-  auto & team_core = team_all.locality_split(dash::util::Locality::Scope::Core, 2);
+  auto & team_core = team_all.split(2);
   LOG_MESSAGE("team_core (%d) contains %d units", team_core.dart_id(), team_core.size());
 
   ASSERT_EQ_U(team_all, dash::Team::All());
@@ -50,8 +50,13 @@ TEST_F(TeamTest, SplitTeamSync)
   }
   LOG_MESSAGE("team_all.myid(): %d, team_core.myid(): %d, dash::myid(): %d",
                team_all.myid(),     team_core.myid(),     dash::myid());
+  LOG_MESSAGE("team_all.position(): %d, team_core.position(): %d",
+               team_all.position(),     team_core.position());
+  LOG_MESSAGE("team_all.dart_id(): %d, team_core.dart_id(): %d",
+               team_all.dart_id(),     team_core.dart_id());
+
   team_all.barrier();
-  if(team_core.dart_id() == 2){
+  if(team_core.position() == 0){
     LOG_MESSAGE("Unit %d: I am in team %d", team_core.myid(), team_core.dart_id());
     if(team_core.myid() == 0){
       std::ifstream infile("test.txt");

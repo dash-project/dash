@@ -34,11 +34,11 @@ GlobIter<ElementType, PatternType> find(
   }
 
   p_index_t g_index;
+  auto & pattern     = first.pattern();
+  auto & team        = pattern.team();
   auto index_range   = dash::local_index_range(first, last);
   auto l_begin_index = index_range.begin;
   auto l_end_index   = index_range.end;
-  auto & pattern     = first.pattern();
-  auto & team        = pattern.team();
   auto first_offset  = first.pos();
   if(l_begin_index == l_end_index){
     g_index = std::numeric_limits<p_index_t>::max();
@@ -103,7 +103,8 @@ GlobIter<ElementType, PatternType> find_if(
 {
   typedef typename PatternType::index_type index_t;
 
-  auto myid          = dash::myid();
+  auto & team        = first.pattern().team();
+  auto myid          = team.myid();
   /// Global iterators to local range:
   auto index_range   = dash::local_range(first, last);
   auto l_first       = index_range.begin;
@@ -116,7 +117,7 @@ GlobIter<ElementType, PatternType> find_if(
     l_offset = -1;
   }
 
-  dash::Array<dart_unit_t> l_results(dash::size());
+  dash::Array<dart_unit_t> l_results(team.size());
 
   l_results.local[0] = l_offset;
 
@@ -125,7 +126,7 @@ GlobIter<ElementType, PatternType> find_if(
   // All local offsets stored in l_results
   auto result = last;
 
-  for (auto u = 0; u < dash::size(); u++) {
+  for (auto u = 0; u < team.size(); u++) {
     if (static_cast<index_t>(l_results[u]) >= 0) {
       auto g_offset = first.pattern()
                            .global_index(
