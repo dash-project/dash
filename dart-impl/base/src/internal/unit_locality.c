@@ -124,7 +124,10 @@ dart_ret_t dart__base__unit_locality__create(
   /* all-to-all exchange of locality data across all units:
    * (send, recv, nbytes, team) */
   DART_LOG_DEBUG("dart__base__unit_locality__create: dart_allgather");
-  ret = dart_allgather(uloc, mapping->unit_localities, nbytes,
+  ret = dart_allgather(uloc,
+                       mapping->unit_localities,
+                       nbytes,
+                       DART_TYPE_BYTE,
                        team);
 
   dart_barrier(team);

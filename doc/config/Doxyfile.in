@@ -62,6 +62,11 @@ ALIASES += commtype="\n@par Communication model\n"
 ALIASES += collective_op="\b Collective operation\n"
 ALIASES += local_op="\b Local operation\n"
 ALIASES += onesided_op="\b One-sided operation\n"
+ALIASES += thread_safety{1}="\par Thread safety\n\1"
+ALIASES += threadsafe="\thread_safety{This function is safe to be called by <i>multiple threads in parallel</i>.}"
+ALIASES += threadsafe_serial="\thread_safety{This function is safe to be called from a multi-threaded context by <i>at most one thread</i>.}"
+ALIASES += threadsafe_none="\thread_safety{This function is <i>not thread-safe</i>.}"
+
 
 # Graphs
 

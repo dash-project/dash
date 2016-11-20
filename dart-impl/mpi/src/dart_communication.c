@@ -6,11 +6,13 @@
  * All the following functions are implemented with the underling *MPI-3*
  * one-sided runtime system.
  */
+
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_initialization.h>
 #include <dash/dart/if/dart_globmem.h>
 #include <dash/dart/if/dart_team_group.h>
 #include <dash/dart/if/dart_communication.h>
+
 #include <dash/dart/mpi/dart_communication_priv.h>
 #include <dash/dart/mpi/dart_team_private.h>
 #include <dash/dart/mpi/dart_mem.h>
@@ -327,7 +329,8 @@ dart_ret_t dart_fetch_and_op(
 
     uint16_t index;
     if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-      DART_LOG_ERROR("dart_fetch_and_op ! failed: Unknown segment %i!", seg_id);
+      DART_LOG_ERROR("dart_fetch_and_op ! failed: Unknown segment %i!",
+                     seg_id);
       return DART_ERR_INVAL;
     }
 
@@ -380,16 +383,18 @@ dart_ret_t dart_fetch_and_op(
 dart_ret_t dart_get_handle(
   void          * dest,
   dart_gptr_t     gptr,
-  size_t          nbytes,
+  size_t          nelem,
+  dart_datatype_t dtype,
   dart_handle_t * handle)
 {
   MPI_Request  mpi_req;
   MPI_Aint     disp_s,
                disp_rel;
-  MPI_Datatype mpi_type;
+  MPI_Datatype mpi_type = dart_mpi_datatype(dtype);
   MPI_Win      win;
   dart_unit_t  target_unitid_abs = gptr.unitid;
   dart_unit_t  target_unitid_rel = target_unitid_abs;
+  size_t       nbytes = nelem * dart_mpi_sizeof_datatype(dtype);
   int          mpi_ret;
   uint64_t     offset = gptr.addr_or_offs.offset;
   int16_t      seg_id = gptr.segid;
@@ -409,8 +414,6 @@ dart_ret_t dart_get_handle(
     return DART_ERR_INVAL;
   }
   int n_count = (int)(nbytes);
-
-  mpi_type = MPI_BYTE;
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
 
@@ -508,11 +511,11 @@ dart_ret_t dart_get_handle(
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
                 dest,              // origin address
-                n_count,           // origin count
+                nelem,             // origin count
                 mpi_type,          // origin data type
                 target_unitid_rel, // target rank
                 disp_rel,          // target disp in window
-                n_count,           // target count
+                nelem,             // target count
                 mpi_type,          // target data type
                 win,               // window
                 &mpi_req);
@@ -534,11 +537,11 @@ dart_ret_t dart_get_handle(
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
                 dest,              // origin address
-                n_count,           // origin count
+                nelem,             // origin count
                 mpi_type,          // origin data type
                 target_unitid_abs, // target rank
                 offset,            // target disp in window
-                n_count,           // target count
+                nelem,             // target count
                 mpi_type,          // target data type
                 win,               // window
                 &mpi_req);
@@ -558,17 +561,21 @@ dart_ret_t dart_get_handle(
 }
 
 dart_ret_t dart_put_handle(
-  dart_gptr_t  gptr,
-  const void * src,
-  size_t       nbytes,
-  dart_handle_t *handle)
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_handle_t   * handle)
 {
-  MPI_Request mpi_req;
-  MPI_Aint disp_s, disp_rel;
-  dart_unit_t target_unitid_abs;
-  uint64_t offset = gptr.addr_or_offs.offset;
-  int16_t seg_id = gptr.segid;
-  MPI_Win win;
+  MPI_Request  mpi_req;
+  MPI_Datatype mpi_type = dart_mpi_datatype(dtype);
+  MPI_Aint     disp_s,
+               disp_rel;
+  dart_unit_t  target_unitid_abs;
+  size_t       nbytes   = nelem * dart_mpi_sizeof_datatype(dtype);
+  uint64_t     offset   = gptr.addr_or_offs.offset;
+  int16_t      seg_id   = gptr.segid;
+  MPI_Win      win;
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;
@@ -602,36 +609,36 @@ dart_ret_t dart_put_handle(
     DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
     MPI_Rput(
       src,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_type,
       target_unitid_rel,
       disp_rel,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_type,
       win,
       &mpi_req);
     (*handle) -> dest = target_unitid_rel;
-    DART_LOG_DEBUG("dart_put_handle: nbytes:%zu "
+    DART_LOG_DEBUG("dart_put_handle: nelem:%zu dtype:%d"
                    "(from collective allocation) "
                    "target_unit:%d offset:%"PRIu64"",
-                   nbytes, target_unitid_abs, offset);
+                   nelem, dtype, target_unitid_abs, offset);
   } else {
     DART_LOG_DEBUG("dart_put_handle: MPI_RPut");
     win = dart_win_local_alloc;
     MPI_Rput(
       src,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_type,
       target_unitid_abs,
       offset,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_type,
       win,
       &mpi_req);
-    DART_LOG_DEBUG("dart_put_handle: nbytes:%zu "
+    DART_LOG_DEBUG("dart_put_handle: nlem:%zu dtype:%d"
                    "(from local allocation) "
                    "target_unit:%d offset:%"PRIu64"",
-                   nbytes, target_unitid_abs, offset);
+                   nelem, dtype, target_unitid_abs, offset);
     (*handle) -> dest = target_unitid_abs;
   }
   (*handle) -> request = mpi_req;
@@ -642,8 +649,7 @@ dart_ret_t dart_put_handle(
 /* -- Blocking dart one-sided operations -- */
 
 /**
- * TODO: Check if MPI_Get_accumulate (MPI_NO_OP) can bring better
- * performance?
+ * \todo Check if MPI_Get_accumulate (MPI_NO_OP) yields better performance
  */
 dart_ret_t dart_put_blocking(
   dart_gptr_t  gptr,
@@ -768,7 +774,7 @@ dart_ret_t dart_put_blocking(
 }
 
 /**
- * TODO: Check if MPI_Accumulate (REPLACE) can bring better performance?
+ * \todo Check if MPI_Accumulate (REPLACE) yields better performance
  */
 dart_ret_t dart_get_blocking(
   void        * dest,
@@ -1464,14 +1470,16 @@ dart_ret_t dart_bcast(
 }
 
 dart_ret_t dart_scatter(
-  void *sendbuf,
-  void *recvbuf,
-  size_t nbytes,
-  int root,
-  dart_team_t teamid)
+  void            * sendbuf,
+  void            * recvbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  int               root,
+  dart_team_t       teamid)
 {
-  MPI_Comm comm;
-  uint16_t index;
+  MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
+  MPI_Comm     comm;
+  uint16_t     index;
   int result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
     return DART_ERR_INVAL;
@@ -1479,11 +1487,11 @@ dart_ret_t dart_scatter(
   comm = dart_team_data[index].comm;
   if (MPI_Scatter(
            sendbuf,
-           nbytes,
-           MPI_BYTE,
+           nelem,
+           mpi_dtype,
            recvbuf,
-           nbytes,
-           MPI_BYTE,
+           nelem,
+           mpi_dtype,
            root,
            comm) != MPI_SUCCESS) {
     return DART_ERR_INVAL;
@@ -1492,14 +1500,16 @@ dart_ret_t dart_scatter(
 }
 
 dart_ret_t dart_gather(
-  void *sendbuf,
-  void *recvbuf,
-  size_t nbytes,
-  int root,
-  dart_team_t teamid)
+  void            * sendbuf,
+  void            * recvbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  int               root,
+  dart_team_t       teamid)
 {
-  MPI_Comm comm;
-  uint16_t index;
+  MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
+  MPI_Comm     comm;
+  uint16_t     index;
   int result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
     return DART_ERR_INVAL;
@@ -1507,11 +1517,11 @@ dart_ret_t dart_gather(
   comm = dart_team_data[index].comm;
   if (MPI_Gather(
            sendbuf,
-           nbytes,
-           MPI_BYTE,
+           nelem,
+           mpi_dtype,
            recvbuf,
-           nbytes,
-           MPI_BYTE,
+           nelem,
+           mpi_dtype,
            root,
            comm) != MPI_SUCCESS) {
     return DART_ERR_INVAL;
@@ -1520,16 +1530,18 @@ dart_ret_t dart_gather(
 }
 
 dart_ret_t dart_allgather(
-  void        * sendbuf,
-  void        * recvbuf,
-  size_t        nbytes,
-  dart_team_t   teamid)
+  void            * sendbuf,
+  void            * recvbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  dart_team_t       teamid)
 {
-  MPI_Comm comm;
-  uint16_t index;
-  int      result;
-  DART_LOG_TRACE("dart_allgather() team:%d nbytes:%"PRIu64"",
-                 teamid, nbytes);
+  MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
+  MPI_Comm     comm;
+  uint16_t     index;
+  int          result;
+  DART_LOG_TRACE("dart_allgather() team:%d nelem:%"PRIu64"",
+                 teamid, nelem);
 
   result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
@@ -1543,34 +1555,36 @@ dart_ret_t dart_allgather(
   comm = dart_team_data[index].comm;
   if (MPI_Allgather(
            sendbuf,
-           nbytes,
-           MPI_BYTE,
+           nelem,
+           mpi_dtype,
            recvbuf,
-           nbytes,
-           MPI_BYTE,
+           nelem,
+           mpi_dtype,
            comm) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_allgather ! team:%d nbytes:%"PRIu64" failed",
-                   teamid, nbytes);
+    DART_LOG_ERROR("dart_allgather ! team:%d nelem:%"PRIu64" failed",
+                   teamid, nelem);
     return DART_ERR_INVAL;
   }
-  DART_LOG_TRACE("dart_allgather > team:%d nbytes:%"PRIu64"",
-                 teamid, nbytes);
+  DART_LOG_TRACE("dart_allgather > team:%d nelem:%"PRIu64"",
+                 teamid, nelem);
   return DART_OK;
 }
 
 dart_ret_t dart_allgatherv(
-  void        * sendbuf,
-  size_t        nsendbytes,
-  void        * recvbuf,
-  int         * nrecvcounts,
-  int         * recvdispls,
-  dart_team_t   teamid)
+  void            * sendbuf,
+  size_t            nsendelem,
+  dart_datatype_t   dtype,
+  void            * recvbuf,
+  int             * nrecvcounts,
+  int             * recvdispls,
+  dart_team_t       teamid)
 {
-  MPI_Comm comm;
-  uint16_t index;
-  int      result;
-  DART_LOG_TRACE("dart_allgatherv() team:%d nsendbytes:%"PRIu64"",
-                 teamid, nsendbytes);
+  MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
+  MPI_Comm     comm;
+  uint16_t     index;
+  int          result;
+  DART_LOG_TRACE("dart_allgatherv() team:%d nsendelem:%"PRIu64"",
+                 teamid, nsendelem);
 
   result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
@@ -1584,29 +1598,29 @@ dart_ret_t dart_allgatherv(
   comm = dart_team_data[index].comm;
   if (MPI_Allgatherv(
            sendbuf,
-           nsendbytes,
-           MPI_BYTE,
+           nsendelem,
+           mpi_dtype,
            recvbuf,
            nrecvcounts,
            recvdispls,
-           MPI_BYTE,
+           mpi_dtype,
            comm) != MPI_SUCCESS) {
-    DART_LOG_ERROR("dart_allgatherv ! team:%d nsendbytes:%"PRIu64" failed",
-                   teamid, nsendbytes);
+    DART_LOG_ERROR("dart_allgatherv ! team:%d nsendelem:%"PRIu64" failed",
+                   teamid, nsendelem);
     return DART_ERR_INVAL;
   }
-  DART_LOG_TRACE("dart_allgatherv > team:%d nsendbytes:%"PRIu64"",
-                 teamid, nsendbytes);
+  DART_LOG_TRACE("dart_allgatherv > team:%d nsendelem:%"PRIu64"",
+                 teamid, nsendelem);
   return DART_OK;
 }
 
 dart_ret_t dart_allreduce(
-  void           * sendbuf,
-  void           * recvbuf,
-  size_t           nelem,
-  dart_datatype_t  dtype,
-  dart_operation_t op,
-  dart_team_t      team)
+  void             * sendbuf,
+  void             * recvbuf,
+  size_t             nelem,
+  dart_datatype_t    dtype,
+  dart_operation_t   op,
+  dart_team_t        team)
 {
   MPI_Comm     comm;
   MPI_Op       mpi_op    = dart_mpi_op(op);

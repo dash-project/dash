@@ -11,17 +11,16 @@ RUN           apt-get install -y \
                   libhwloc-plugins \
                   libhwloc-dev
 
-# Install PAPI 5.5.0 from source
+# Install PAPI from source
 WORKDIR       /tmp
 
-# Latest version of PAPI is not compatible
-# ADD           http://icl.cs.utk.edu/projects/papi/downloads/papi-5.5.0.tar.gz papi.tgz
-
+# Compiler error when compiling with -pedantic for papi > 5.4.1
+# ADD         http://icl.utk.edu/projects/papi/downloads/papi-5.5.1.tar.gz papi.tgz
 ADD           http://icl.cs.utk.edu/projects/papi/downloads/papi-5.4.1.tar.gz papi.tgz
 RUN           tar -xf papi.tgz
-RUN           cd papi*/src/                                  \
-              && ./configure --prefix=/opt/papi --with-ffsll \
-              && make                                        \
+RUN           cd papi*/src/                     \
+              && ./configure --prefix=/opt/papi \
+              && make                           \
               && make install
 # Openmpi 2.0
 ADD           https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.1.tar.gz ompi.tgz

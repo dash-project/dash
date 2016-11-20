@@ -125,8 +125,8 @@ public:
     _begptr = _allocator.allocate(_nlelem);
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
-    _lbegin = lbegin(dash::myid());
-    _lend   = lend(dash::myid());
+    _lbegin = lbegin(team.myid());
+    _lend   = lend(team.myid());
     DASH_LOG_TRACE("GlobMem(nlocal,team) >");
   }
 
@@ -158,8 +158,8 @@ public:
       _begptr = _allocator.allocate(_nlelem);
       DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
-      _lbegin = lbegin(dash::myid());
-      _lend   = lend(dash::myid());
+      _lbegin = lbegin(team.myid());
+      _lend   = lend(team.myid());
       // Initialize allocated local elements with specified values:
       auto copy_end = std::copy(local_elements.begin(),
                                 local_elements.end(),
@@ -490,9 +490,8 @@ template<typename T>
 GlobPtr<T> memalloc(size_t nelem)
 {
   dart_gptr_t gptr;
-  size_t lsize = sizeof(T) * nelem;
-
-  dart_memalloc(lsize, &gptr);
+  dart_storage_t ds = dart_storage<T>(nelem);
+  dart_memalloc(ds.nelem, ds.dtype, &gptr);
   return GlobPtr<T>(gptr);
 }
 
