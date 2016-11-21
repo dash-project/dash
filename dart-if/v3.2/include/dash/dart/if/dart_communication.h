@@ -189,23 +189,27 @@ dart_ret_t dart_allreduce(
 /**
  * DART Equivalent to MPI reduce.
  *
- * \todo Why is this not generic?
+ * \param sendbuf Buffer containing \c nelem elements to reduce using \c op.
+ * \param recvbuf Buffer of size \c nelem to store the result of the element-wise operation \c op in.
+ * \param nelem   The number of elements of type \c dtype in \c sendbuf and \c recvbuf.
+ * \param dtype   The data type of values stored in \c sendbuf and \c recvbuf.
+ * \param op      The reduce operation to perform.
+ * \param root    The unit receiving the reduced values.
+ * \param team    The team to perform the reduction on.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe_none
  * \ingroup DartCommunication
  */
-#if 0
-dart_ret_t dart_reduce_double(
-  double      * sendbuf,
-  double      * recvbuf,
-  dart_team_t   team);
-#else
 dart_ret_t dart_reduce(
-  double          * sendbuf,
-  double          * recvbuf,
-  dart_datatype_t   dtype,
-  dart_team_t       team);
-#endif
+  const void     * sendbuf,
+  void           * recvbuf,
+  size_t           nelem,
+  dart_datatype_t  dtype,
+  dart_operation_t op,
+  dart_unit_t      root,
+  dart_team_t      team);
 
 /**
  * DART Equivalent to MPI_Accumulate.

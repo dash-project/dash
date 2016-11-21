@@ -1753,14 +1753,29 @@ dart_ret_t dart_allreduce(
   return DART_OK;
 }
 
-dart_ret_t dart_reduce_double(
-  double *sendbuf,
-  double *recvbuf,
-  dart_team_t teamid)
+dart_ret_t dart_reduce(
+  const void     * sendbuf,
+  void           * recvbuf,
+  size_t           nelem,
+  dart_datatype_t  dtype,
+  dart_operation_t op,
+  dart_unit_t      root,
+  dart_team_t      team)
 {
-  MPI_Comm comm;
-  uint16_t index;
-  int result = dart_adapt_teamlist_convert (teamid, &index);
+  uint16_t     index;
+  MPI_Comm     comm;
+  MPI_Op       mpi_op    = dart_mpi_op(op);
+  MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_allreduce ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
+  int result = dart_adapt_teamlist_convert (team, &index);
   if (result == -1) {
     return DART_ERR_INVAL;
   }
@@ -1768,10 +1783,10 @@ dart_ret_t dart_reduce_double(
   if (MPI_Reduce(
            sendbuf,
            recvbuf,
-           1,
-           MPI_DOUBLE,
-           MPI_MAX,
-           0,
+           nelem,
+           mpi_dtype,
+           mpi_op,
+           root,
            comm) != MPI_SUCCESS) {
     return DART_ERR_INVAL;
   }
