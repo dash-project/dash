@@ -1479,7 +1479,7 @@ dart_ret_t dart_bcast(
   void            * buf,
   size_t            nelem,
   dart_datatype_t   dtype,
-  int               root,
+  dart_unit_t       root,
   dart_team_t       teamid)
 {
   MPI_Comm comm;
@@ -1519,7 +1519,7 @@ dart_ret_t dart_scatter(
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
-  int               root,
+  dart_unit_t       root,
   dart_team_t       teamid)
 {
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
@@ -1558,7 +1558,7 @@ dart_ret_t dart_gather(
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
-  int               root,
+  dart_unit_t       root,
   dart_team_t       teamid)
 {
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
