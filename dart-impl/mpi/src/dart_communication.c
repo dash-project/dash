@@ -1441,16 +1441,18 @@ dart_ret_t dart_barrier(
 }
 
 dart_ret_t dart_bcast(
-  void        * buf,
-  size_t        nbytes,
-  int           root,
-  dart_team_t   teamid)
+  void            * buf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  int               root,
+  dart_team_t       teamid)
 {
   MPI_Comm comm;
   uint16_t index;
+  MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
 
-  DART_LOG_TRACE("dart_bcast() root:%d team:%d nbytes:%"PRIu64"",
-                 root, teamid, nbytes);
+  DART_LOG_TRACE("dart_bcast() root:%d team:%d nelem:%"PRIu64"",
+                 root, teamid, nelem);
 
   int result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
@@ -1459,13 +1461,13 @@ dart_ret_t dart_bcast(
     return DART_ERR_INVAL;
   }
   comm = dart_team_data[index].comm;
-  if (MPI_Bcast(buf, nbytes, MPI_BYTE, root, comm) != MPI_SUCCESS) {
+  if (MPI_Bcast(buf, nelem, mpi_dtype, root, comm) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_bcast ! root:%d -> team:%d "
                    "MPI_Bcast failed", root, teamid);
     return DART_ERR_INVAL;
   }
-  DART_LOG_TRACE("dart_bcast > root:%d team:%d nbytes:%"PRIu64" finished",
-                 root, teamid, nbytes);
+  DART_LOG_TRACE("dart_bcast > root:%d team:%d nelem:%"PRIu64" finished",
+                 root, teamid, nelem);
   return DART_OK;
 }
 

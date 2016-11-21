@@ -51,7 +51,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 		MPI_Win_sync (dart_win_local_alloc);
 	}
 
-	dart_bcast(&gptr_tail, sizeof (dart_gptr_t), 0, teamid);
+	dart_bcast(&gptr_tail, sizeof(dart_gptr_t), DART_TYPE_BYTE, 0, teamid);
 
 	/* Create a global memory region across the teamid,
 	 * and every local memory segment related certain unit

@@ -59,10 +59,11 @@ dart_ret_t dart_barrier(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_bcast(
-  void        * buf,
-  size_t        nbytes,
-	dart_unit_t   root,
-  dart_team_t   team);
+  void            * buf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+	dart_unit_t       root,
+  dart_team_t       team);
 
 /**
  * DART Equivalent to MPI scatter.

@@ -410,6 +410,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
       dart_bcast(
         topo->host_domains,
         sizeof(dart_host_domain_t) * num_hosts,
+        DART_TYPE_BYTE,
         host_topo_bcast_root,
         host_topo_bcast_team),
       DART_OK);
