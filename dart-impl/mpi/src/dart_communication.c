@@ -50,13 +50,15 @@ int unit_g2l(
 }
 
 dart_ret_t dart_get(
-  void        * dest,
-  dart_gptr_t   gptr,
-  size_t        nbytes)
+  void            * dest,
+  dart_gptr_t       gptr,
+  size_t            nelem,
+  dart_datatype_t   dtype)
 {
   MPI_Aint     disp_s,
                disp_rel;
   MPI_Win      win;
+  MPI_Datatype mpi_dtype         = dart_mpi_datatype(dtype);
   dart_unit_t  target_unitid_abs = gptr.unitid;
   dart_unit_t  target_unitid_rel = target_unitid_abs;
   uint64_t     offset            = gptr.addr_or_offs.offset;
@@ -73,8 +75,8 @@ dart_ret_t dart_get(
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nbytes > INT_MAX) {
-    DART_LOG_ERROR("dart_get ! failed: nbytes > INT_MAX");
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_get ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
   if (seg_id) {
@@ -82,9 +84,9 @@ dart_ret_t dart_get(
   }
 
   DART_LOG_DEBUG("dart_get() uid_abs:%d uid_rel:%d "
-                 "o:%"PRIu64" s:%d i:%u nbytes:%zu",
+                 "o:%"PRIu64" s:%d i:%u nelem:%zu",
                  target_unitid_abs, target_unitid_rel,
-                 offset, seg_id, index, nbytes);
+                 offset, seg_id, index, nelem);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get: shared windows enabled");
@@ -108,8 +110,8 @@ dart_ret_t dart_get(
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
       baseptr += offset;
-      DART_LOG_DEBUG("dart_get: memcpy %zu bytes", nbytes);
-      memcpy((char*)dest, baseptr, nbytes);
+      DART_LOG_DEBUG("dart_get: memcpy %zu bytes", nelem * dart_mpi_sizeof_datatype(dtype));
+      memcpy((char*)dest, baseptr, nelem * dart_mpi_sizeof_datatype(dtype));
       return DART_OK;
     }
   }
@@ -129,26 +131,26 @@ dart_ret_t dart_get(
     }
     win = team_data->window;
     disp_rel = disp_s + offset;
-    DART_LOG_TRACE("dart_get:  nbytes:%zu "
+    DART_LOG_TRACE("dart_get:  nelem:%zu "
                    "source (coll.): win:%"PRIu64" unit:%d disp:%"PRId64" "
                    "-> dest:%p",
-                   nbytes, (unsigned long)win, target_unitid_rel, disp_rel, dest);
+                   nelem, (unsigned long)win, target_unitid_rel, disp_rel, dest);
   } else {
     win      = dart_win_local_alloc;
     disp_rel = offset;
-    DART_LOG_TRACE("dart_get:  nbytes:%zu "
+    DART_LOG_TRACE("dart_get:  nelem:%zu "
                    "source (local): win:%"PRIu64" unit:%d disp:%"PRId64" "
                    "-> dest:%p",
-                   nbytes, (unsigned long)win, target_unitid_rel, disp_rel, dest);
+                   nelem, (unsigned long)win, target_unitid_rel, disp_rel, dest);
   }
   DART_LOG_TRACE("dart_get:  MPI_Get");
   if (MPI_Get(dest,
-              nbytes,
-              MPI_BYTE,
+              nelem,
+              mpi_dtype,
               target_unitid_rel,
               disp_rel,
-              nbytes,
-              MPI_BYTE,
+              nelem,
+              mpi_dtype,
               win)
       != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_get ! MPI_Rget failed");
@@ -160,17 +162,28 @@ dart_ret_t dart_get(
 }
 
 dart_ret_t dart_put(
-  dart_gptr_t  gptr,
-  const void * src,
-  size_t       nbytes)
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   dtype)
 {
-  MPI_Aint    disp_s,
-              disp_rel;
-  MPI_Win     win;
+  MPI_Aint     disp_s,
+               disp_rel;
+  MPI_Win      win;
+  MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
   dart_unit_t target_unitid_abs;
   uint64_t offset   = gptr.addr_or_offs.offset;
   int16_t  seg_id   = gptr.segid;
   target_unitid_abs = gptr.unitid;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_put ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
   if (seg_id) {
 
     uint16_t index;
@@ -178,7 +191,6 @@ dart_ret_t dart_put(
       DART_LOG_ERROR("dart_put ! failed: Unknown segment %i!", seg_id);
       return DART_ERR_INVAL;
     }
-
 
     dart_unit_t target_unitid_rel;
     win = dart_team_data[index].window;
@@ -189,33 +201,34 @@ dart_ret_t dart_put(
           &disp_s) != DART_OK) {
       return DART_ERR_INVAL;
     }
+
     disp_rel = disp_s + offset;
     MPI_Put(
       src,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_dtype,
       target_unitid_rel,
       disp_rel,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_dtype,
       win);
-    DART_LOG_DEBUG("dart_put: nbytes:%zu (from collective allocation) "
+    DART_LOG_DEBUG("dart_put: nelem:%zu (from collective allocation) "
                    "target unit: %d offset: %"PRIu64"",
-                   nbytes, target_unitid_abs, offset);
+                   nelem, target_unitid_abs, offset);
   } else {
     win = dart_win_local_alloc;
     MPI_Put(
       src,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_dtype,
       target_unitid_abs,
       offset,
-      nbytes,
-      MPI_BYTE,
+      nelem,
+      mpi_dtype,
       win);
-    DART_LOG_DEBUG("dart_put: nbytes:%zu (from local allocation) "
+    DART_LOG_DEBUG("dart_put: nelem:%zu (from local allocation) "
                    "target unit: %d offset: %"PRIu64"",
-                   nbytes, target_unitid_abs, offset);
+                   nelem, target_unitid_abs, offset);
   }
   return DART_OK;
 }
@@ -572,7 +585,6 @@ dart_ret_t dart_put_handle(
   MPI_Aint     disp_s,
                disp_rel;
   dart_unit_t  target_unitid_abs;
-  size_t       nbytes   = nelem * dart_mpi_sizeof_datatype(dtype);
   uint64_t     offset   = gptr.addr_or_offs.offset;
   int16_t      seg_id   = gptr.segid;
   MPI_Win      win;
@@ -652,17 +664,19 @@ dart_ret_t dart_put_handle(
  * \todo Check if MPI_Get_accumulate (MPI_NO_OP) yields better performance
  */
 dart_ret_t dart_put_blocking(
-  dart_gptr_t  gptr,
-  const void * src,
-  size_t       nbytes)
+  dart_gptr_t     gptr,
+  const void    * src,
+  size_t          nelem,
+  dart_datatype_t dtype)
 {
-  MPI_Win     win;
-  MPI_Aint    disp_s,
-              disp_rel;
-  dart_unit_t target_unitid_abs = gptr.unitid;
-  dart_unit_t target_unitid_rel = target_unitid_abs;
-  uint64_t    offset = gptr.addr_or_offs.offset;
-  int16_t     seg_id = gptr.segid;
+  MPI_Win      win;
+  MPI_Aint     disp_s,
+               disp_rel;
+  MPI_Datatype mpi_dtype         = dart_mpi_datatype(dtype);
+  dart_unit_t  target_unitid_abs = gptr.unitid;
+  dart_unit_t  target_unitid_rel = target_unitid_abs;
+  uint64_t     offset = gptr.addr_or_offs.offset;
+  int16_t      seg_id = gptr.segid;
 
   uint16_t index;
   if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
@@ -673,8 +687,8 @@ dart_ret_t dart_put_blocking(
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nbytes > INT_MAX) {
-    DART_LOG_ERROR("dart_put_blocking ! failed: nbytes > INT_MAX");
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_put_blocking ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
   if (seg_id > 0) {
@@ -682,9 +696,9 @@ dart_ret_t dart_put_blocking(
   }
 
   DART_LOG_DEBUG("dart_put_blocking() uid_abs:%d uid_rel:%d "
-                 "o:%"PRIu64" s:%d i:%d, nbytes:%zu",
+                 "o:%"PRIu64" s:%d i:%d, nelem:%zu",
                  target_unitid_abs, target_unitid_rel,
-                 offset, seg_id, index, nbytes);
+                 offset, seg_id, index, nelem);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_put_blocking: shared windows enabled");
@@ -709,8 +723,8 @@ dart_ret_t dart_put_blocking(
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
       baseptr += offset;
-      DART_LOG_DEBUG("dart_put_blocking: memcpy %zu bytes", nbytes);
-      memcpy(baseptr, (char*)src, nbytes);
+      DART_LOG_DEBUG("dart_put_blocking: memcpy %zu bytes", nelem * dart_mpi_sizeof_datatype(dtype));
+      memcpy(baseptr, (char*)src, nelem * dart_mpi_sizeof_datatype(dtype));
       return DART_OK;
     }
   }
@@ -732,18 +746,18 @@ dart_ret_t dart_put_blocking(
     }
     win = dart_team_data[index].window;
     disp_rel = disp_s + offset;
-    DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
+    DART_LOG_DEBUG("dart_put_blocking:  nelem:%zu "
                    "target (coll.): win:%"PRIu64" unit:%d offset:%"PRIu64" "
                    "<- source: %p",
-                   nbytes, (unsigned long)win, target_unitid_rel,
+                   nelem, (unsigned long)win, target_unitid_rel,
                    (unsigned long)disp_rel, src);
   } else {
     win      = dart_win_local_alloc;
     disp_rel = offset;
-    DART_LOG_DEBUG("dart_put_blocking:  nbytes:%zu "
+    DART_LOG_DEBUG("dart_put_blocking:  nelem:%zu "
                    "target (local): win:%"PRIu64" unit:%d offset:%"PRIu64" "
                    "<- source: %p",
-                   nbytes, (unsigned long)win, target_unitid_rel,
+                   nelem, (unsigned long)win, target_unitid_rel,
                    (unsigned long)disp_rel, src);
   }
 
@@ -752,12 +766,12 @@ dart_ret_t dart_put_blocking(
    */
   DART_LOG_DEBUG("dart_put_blocking: MPI_Put");
   if (MPI_Put(src,
-               nbytes,
-               MPI_BYTE,
+               nelem,
+               mpi_dtype,
                target_unitid_rel,
                disp_rel,
-               nbytes,
-               MPI_BYTE,
+               nelem,
+               mpi_dtype,
                win)
       != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_put_blocking ! MPI_Put failed");
@@ -777,17 +791,19 @@ dart_ret_t dart_put_blocking(
  * \todo Check if MPI_Accumulate (REPLACE) yields better performance
  */
 dart_ret_t dart_get_blocking(
-  void        * dest,
-  dart_gptr_t   gptr,
-  size_t        nbytes)
+  void          * dest,
+  dart_gptr_t     gptr,
+  size_t          nelem,
+  dart_datatype_t dtype)
 {
-  MPI_Win     win;
-  MPI_Aint    disp_s,
-              disp_rel;
-  dart_unit_t target_unitid_abs = gptr.unitid;
-  dart_unit_t target_unitid_rel = target_unitid_abs;
-  uint64_t    offset            = gptr.addr_or_offs.offset;
-  int16_t     seg_id            = gptr.segid;
+  MPI_Win      win;
+  MPI_Aint     disp_s,
+               disp_rel;
+  MPI_Datatype mpi_dtype         = dart_mpi_datatype(dtype);
+  dart_unit_t  target_unitid_abs = gptr.unitid;
+  dart_unit_t  target_unitid_rel = target_unitid_abs;
+  uint64_t     offset            = gptr.addr_or_offs.offset;
+  int16_t      seg_id            = gptr.segid;
 
   uint16_t index;
   if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
@@ -798,8 +814,8 @@ dart_ret_t dart_get_blocking(
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
-  if (nbytes > INT_MAX) {
-    DART_LOG_ERROR("dart_get_blocking ! failed: nbytes > INT_MAX");
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_get_blocking ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
   if (seg_id) {
@@ -807,9 +823,9 @@ dart_ret_t dart_get_blocking(
   }
 
   DART_LOG_DEBUG("dart_get_blocking() uid_abs:%d uid_rel:%d "
-                 "o:%"PRIu64" s:%d i:%u, nbytes:%zu",
+                 "o:%"PRIu64" s:%d i:%u, nelem:%zu",
                  target_unitid_abs, target_unitid_rel,
-                 offset, seg_id, index, nbytes);
+                 offset, seg_id, index, nelem);
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   DART_LOG_DEBUG("dart_get_blocking: shared windows enabled");
@@ -834,8 +850,8 @@ dart_ret_t dart_get_blocking(
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
       baseptr += offset;
-      DART_LOG_DEBUG("dart_get_blocking: memcpy %zu bytes", nbytes);
-      memcpy((char*)dest, baseptr, nbytes);
+      DART_LOG_DEBUG("dart_get_blocking: memcpy %zu bytes", nelem * dart_mpi_sizeof_datatype(dtype));
+      memcpy((char*)dest, baseptr, nelem * dart_mpi_sizeof_datatype(dtype));
       DART_LOG_DEBUG("dart_get_blocking > ");
       return DART_OK;
     }
@@ -858,18 +874,18 @@ dart_ret_t dart_get_blocking(
     }
     win = dart_team_data[index].window;
     disp_rel = disp_s + offset;
-    DART_LOG_DEBUG("dart_get_blocking:  nbytes:%zu "
+    DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
                    "source (coll.): win:%p unit:%d offset:%p"
                    "-> dest: %p",
-                   nbytes, (void*)((unsigned long)win), target_unitid_rel,
+                   nelem, (void*)((unsigned long)win), target_unitid_rel,
                    (void*)disp_rel, dest);
   } else {
     win      = dart_win_local_alloc;
     disp_rel = offset;
-    DART_LOG_DEBUG("dart_get_blocking:  nbytes:%zu "
+    DART_LOG_DEBUG("dart_get_blocking:  nelem:%zu "
                    "source (local): win:%p unit:%d offset:%p "
                    "-> dest: %p",
-                   nbytes, (void*)((unsigned long)win), target_unitid_rel,
+                   nelem, (void*)((unsigned long)win), target_unitid_rel,
                    (void*)disp_rel, dest);
   }
 
@@ -878,12 +894,12 @@ dart_ret_t dart_get_blocking(
    */
   DART_LOG_DEBUG("dart_get_blocking: MPI_Get");
   if (MPI_Get(dest,
-              nbytes,
-              MPI_BYTE,
+              nelem,
+              mpi_dtype,
               target_unitid_rel,
               disp_rel,
-              nbytes,
-              MPI_BYTE,
+              nelem,
+              mpi_dtype,
               win)
       != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_get_blocking ! MPI_Get failed");

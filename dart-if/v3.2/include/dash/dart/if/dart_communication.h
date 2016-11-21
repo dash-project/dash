@@ -277,7 +277,8 @@ dart_ret_t dart_fetch_and_op(
  *
  * \param dest   The local destination buffer to store the data to.
  * \param gptr   A global pointer determining the source of the get operation.
- * \param nbytes The number of bytes to transfer.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c dest (\ref dart_datatype_t)
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -285,9 +286,10 @@ dart_ret_t dart_fetch_and_op(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get(
-  void        * dest,
-  dart_gptr_t   gptr,
-  size_t        nbytes);
+  void            * dest,
+  dart_gptr_t       gptr,
+  size_t            nelem,
+  dart_datatype_t   dtype);
 
 /**
  * 'REGULAR' variant of dart_put.
@@ -306,9 +308,10 @@ dart_ret_t dart_get(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put(
-  dart_gptr_t   gptr,
-  const void  * src,
-  size_t        nbytes);
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   dtype);
 
 
 /**
@@ -551,9 +554,10 @@ dart_ret_t dart_testall_local(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_blocking(
-  void *dest,
-  dart_gptr_t gptr,
-  size_t nbytes);
+  void         *  dest,
+  dart_gptr_t     gptr,
+  size_t          nelem,
+  dart_datatype_t dtype);
 
 /**
  * 'BLOCKING' variant of dart_put.
@@ -569,9 +573,10 @@ dart_ret_t dart_get_blocking(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_blocking(
-  dart_gptr_t  gptr,
-  const void * src,
-  size_t       nbytes);
+  dart_gptr_t     gptr,
+  const void    * src,
+  size_t          nelem,
+  dart_datatype_t dtype);
 
 /** \} */
 
