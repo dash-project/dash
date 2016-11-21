@@ -1727,3 +1727,45 @@ dart_ret_t dart_recv(
   }
   return DART_OK;
 }
+
+dart_ret_t dart_sendrecv(
+  void * sendbuf,
+  size_t send_nelem,
+  dart_datatype_t send_dtype,
+  int send_tag,
+  dart_unit_t dest,
+  void * recvbuf,
+  size_t recv_nelem,
+  dart_datatype_t recv_dtype,
+  int recv_tag,
+  dart_unit_t src)
+{
+  MPI_Comm comm;
+  MPI_Datatype mpi_send_dtype = dart_mpi_datatype(send_dtype);
+  MPI_Datatype mpi_recv_dtype = dart_mpi_datatype(recv_dtype);
+  dart_team_t team = DART_TEAM_ALL;
+  uint16_t index;
+  int result = dart_adapt_teamlist_convert(team, &index);
+  if(result == -1) {
+    return DART_ERR_INVAL;
+  }
+  comm = dart_team_data[index].comm;
+  if(MPI_Sendrecv(
+        sendbuf,
+        send_nelem,
+        mpi_send_dtype,
+        dest,
+        send_tag,
+        recvbuf,
+        recv_nelem,
+        mpi_recv_dtype,
+        src,
+        recv_tag,
+        comm,
+        MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
+}
+
+
