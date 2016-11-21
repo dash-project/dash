@@ -177,11 +177,12 @@ dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int32_t offs);
 dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t unit);
 
 /**
- * Allocates nbytes of memory in the global address space of the calling
- * unit and returns a global pointer to it.
+ * Allocates memory for \c nelem elements of type \c dtype in the global
+ * address space of the calling unit and returns a global pointer to it.
  * This is *not* a collective function.
  *
- * \param nbytes The number of bytes to allocate.
+ * \param nelem The number of elements of type \c dtype to allocate.
+ * \param dtype The type to use.
  * \param[out] gptr Global Pointer to hold the allocation
  *
  * \todo Does dart_memalloc really allocate in _global_ memory?
@@ -211,15 +212,15 @@ dart_ret_t dart_memalloc(
 dart_ret_t dart_memfree(dart_gptr_t gptr);
 
 /**
- * Collective function on the specified team to allocate \c nbytes of
- * memory in each unit's global address space with a type_disp as the
- * local disposition (size in bytes) of the allocated type.
+ * Collective function on the specified team to allocate \c nelem elements
+ * of type \c dtype of memory in each unit's global address space with a
+ * local displacement of the specified type.
  * The allocated memory is team-aligned, i.e., a global pointer to
  * anywhere in the allocation can easily be formed locally. The global
  * pointer to the beginning of the allocation is returned in \c gptr on
  * each participating unit. Each participating unit has to call
- * \c dart_team_memalloc_aligned with the same specification of \c teamid and
- * \c nbytes. Each unit will receive the a global pointer to the beginning
+ * \c dart_team_memalloc_aligned with the same specification of \c teamid, \c dtype and
+ * \c nelem. Each unit will receive the a global pointer to the beginning
  * of the allocation (on unit 0) in \c gptr.
  * Accessibility of memory allocated with this function is limited to
  * those units that are part of the team allocating the memory. I.e.,
@@ -228,8 +229,8 @@ dart_ret_t dart_memfree(dart_gptr_t gptr);
  *
  * \param teamid      The team participating in the collective memory
  *                    allocation.
- * \param nelem       The number of values to allocate per unit.
- * \param dtype       The data type of values in \c addr.
+ * \param nelem       The number of elements to allocate per unit.
+ * \param dtype       The data type of elements in \c addr.
  *
  * \param[out]  gptr  Global pointer to store information on the allocation.
  *
@@ -272,8 +273,8 @@ dart_ret_t dart_team_memfree(
  * Does not perform any memory allocation.
  *
  * \param teamid The team to participate in the collective operation.
- * \param nelem  The number of values already allocated in \c addr.
- * \param dtype  The data type of values in \c addr.
+ * \param nelem  The number of elements already allocated in \c addr.
+ * \param dtype  The data type of elements in \c addr.
  * \param addr   Pointer to pre-allocated memory to be registered.
  * \param gptr   Pointer to a global pointer object to set up.
  *
@@ -296,8 +297,8 @@ dart_ret_t dart_team_memregister_aligned(
  * Does not perform any memory allocation.
  *
  * \param teamid The team to participate in the collective operation.
- * \param nelem  The number of values already allocated in \c addr.
- * \param dtype  The data type of values in \c addr.
+ * \param nelem  The number of elements already allocated in \c addr.
+ * \param dtype  The data type of elements in \c addr.
  * \param addr   Pointer to pre-allocated memory to be registered.
  * \param gptr   Pointer to a global pointer object to set up.
  *
