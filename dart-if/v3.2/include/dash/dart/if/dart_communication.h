@@ -83,7 +83,7 @@ dart_ret_t dart_bcast(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_scatter(
-  void            * sendbuf,
+  const void      * sendbuf,
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -107,7 +107,7 @@ dart_ret_t dart_scatter(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_gather(
-  void            * sendbuf,
+  const void      * sendbuf,
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -130,7 +130,7 @@ dart_ret_t dart_gather(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgather(
-  void            * sendbuf,
+  const void      * sendbuf,
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -155,12 +155,12 @@ dart_ret_t dart_allgather(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgatherv(
-  void            * sendbuf,
+  const void      * sendbuf,
   size_t            nsendelem,
   dart_datatype_t   dtype,
   void            * recvbuf,
-  size_t          * nrecvelem,
-  size_t          * recvdispls,
+  const size_t    * nrecvelem,
+  const size_t    * recvdispls,
   dart_team_t       teamid);
 
 /**
@@ -179,7 +179,7 @@ dart_ret_t dart_allgatherv(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allreduce(
-  void           * sendbuf,
+  const void     * sendbuf,
   void           * recvbuf,
   size_t           nelem,
   dart_datatype_t  dtype,
@@ -224,7 +224,7 @@ dart_ret_t dart_reduce(
  */
 dart_ret_t dart_accumulate(
   dart_gptr_t      gptr,
-  void  *          values,
+  const void     * values,
   size_t           nelem,
   dart_datatype_t  dtype,
   dart_operation_t op,

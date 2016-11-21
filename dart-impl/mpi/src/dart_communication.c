@@ -236,7 +236,7 @@ dart_ret_t dart_put(
 
 dart_ret_t dart_accumulate(
   dart_gptr_t      gptr,
-  void  *          values,
+  const void     * values,
   size_t           nelem,
   dart_datatype_t  dtype,
   dart_operation_t op,
@@ -1515,7 +1515,7 @@ dart_ret_t dart_bcast(
 }
 
 dart_ret_t dart_scatter(
-  void            * sendbuf,
+  const void      * sendbuf,
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -1554,7 +1554,7 @@ dart_ret_t dart_scatter(
 }
 
 dart_ret_t dart_gather(
-  void            * sendbuf,
+  const void      * sendbuf,
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -1593,7 +1593,7 @@ dart_ret_t dart_gather(
 }
 
 dart_ret_t dart_allgather(
-  void            * sendbuf,
+  const void      * sendbuf,
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -1642,12 +1642,12 @@ dart_ret_t dart_allgather(
 }
 
 dart_ret_t dart_allgatherv(
-  void            * sendbuf,
+  const void      * sendbuf,
   size_t            nsendelem,
   dart_datatype_t   dtype,
   void            * recvbuf,
-  size_t          * nrecvcounts,
-  size_t          * recvdispls,
+  const size_t    * nrecvcounts,
+  const size_t    * recvdispls,
   dart_team_t       teamid)
 {
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
@@ -1715,7 +1715,7 @@ dart_ret_t dart_allgatherv(
 }
 
 dart_ret_t dart_allreduce(
-  void             * sendbuf,
+  const void       * sendbuf,
   void             * recvbuf,
   size_t             nelem,
   dart_datatype_t    dtype,
