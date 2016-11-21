@@ -28,20 +28,20 @@
 dart_ret_t dart_group_init(
   dart_group_t *group)
 {
-  group -> mpi_group = MPI_GROUP_EMPTY;
+  // Initialize the group as empty but not directly assign MPI_GROUP_EMPTY as it might lead to invalid free later
+  MPI_Group g;
+  MPI_Comm_group(MPI_COMM_WORLD, &g);
+  MPI_Group_incl(g, 0, NULL, &group->mpi_group);
   return DART_OK;
 }
 
 dart_ret_t dart_group_fini(
   dart_group_t *group)
 {
-  /*
-   * TODO[JS]: With OpenMPI 3.0.0a, passing MPI_GROUP_EMPTY to MPI_Group_free causes an invalid free. This seems erroneous.
-   */
-  if (group->mpi_group != MPI_GROUP_NULL && group->mpi_group != MPI_GROUP_EMPTY) {
+  if (group->mpi_group != MPI_GROUP_NULL) {
     MPI_Group_free(&group->mpi_group);
+    group->mpi_group = MPI_GROUP_NULL;
   }
-  group -> mpi_group = MPI_GROUP_NULL;
   return DART_OK;
 }
 
@@ -49,7 +49,7 @@ dart_ret_t dart_group_copy(
   const dart_group_t *gin,
   dart_group_t *gout)
 {
-  gout -> mpi_group = gin -> mpi_group;
+  gout->mpi_group = gin -> mpi_group;
   return DART_OK;
 }
 
@@ -108,7 +108,6 @@ dart_ret_t dart_group_union(
         post_unitidsout[k++] = pre_unitidsout[j++];
       }
       MPI_Group_free(&gout->mpi_group);
-      gout->mpi_group = MPI_GROUP_EMPTY;
       MPI_Group_incl(
         group_all,
         size_out,
@@ -251,7 +250,7 @@ dart_ret_t dart_group_split(
         &grouptem);
       (*(gout + i))->mpi_group = grouptem;
     } else {
-      (*(gout + i))->mpi_group = MPI_GROUP_EMPTY;
+      (*(gout + i))->mpi_group = MPI_GROUP_NULL;
     }
   }
   return DART_OK;
