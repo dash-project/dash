@@ -1668,3 +1668,62 @@ dart_ret_t dart_reduce_double(
   }
   return DART_OK;
 }
+
+dart_ret_t dart_send(
+  void * sendbuf,
+  size_t nelem,
+  dart_datatype_t dtype,
+  int tag,
+  dart_unit_t unit) 
+{
+  MPI_Comm comm;
+  MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
+  dart_team_t team = DART_TEAM_ALL;
+  uint16_t index;
+  int result = dart_adapt_teamlist_convert(team, &index);
+  if(result == -1) {
+    return DART_ERR_INVAL;
+  }
+  comm = dart_team_data[index].comm;
+  // dart_unit = MPI rank in comm_world
+  if(MPI_Send(
+        sendbuf,
+        nelem,
+        mpi_dtype,
+        unit,
+        tag,
+        comm) != MPI_SUCCESS) {
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
+}
+
+dart_ret_t dart_recv(
+  void * recvbuf,
+  size_t nelem,
+  dart_datatype_t dtype,
+  int tag,
+  dart_unit_t unit) 
+{
+  MPI_Comm comm;
+  MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
+  dart_team_t team = DART_TEAM_ALL;
+  uint16_t index;
+  int result = dart_adapt_teamlist_convert(team, &index);
+  if(result == -1) {
+    return DART_ERR_INVAL;
+  }
+  comm = dart_team_data[index].comm;
+  // dart_unit = MPI rank in comm_world
+  if(MPI_Recv(
+        recvbuf,
+        nelem,
+        mpi_dtype,
+        unit,
+        tag,
+        comm,
+        MPI_STATUS_IGNORE) != MPI_SUCCESS) {
+    return DART_ERR_INVAL;
+  }
+  return DART_OK;
+}
