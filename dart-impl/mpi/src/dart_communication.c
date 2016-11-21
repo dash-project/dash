@@ -30,7 +30,7 @@
 #include <math.h>
 
 
-int unit_g2l(
+static int unit_g2l(
   uint16_t      index,
   dart_unit_t   abs_id,
   dart_unit_t * rel_id)
