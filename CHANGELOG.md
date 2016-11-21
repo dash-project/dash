@@ -61,6 +61,13 @@ Features:
 
 - Added function `dart_allreduce`.
 
+- Added function `dart_reduce`
+
+- Made global memory allocation and communication operations aware of the underlying 
+  data type to improve stability and performance. 
+
+- Extended use of `const` specifier in DART communication interface 
+
 - Added interface component `dart_locality` implementing topology discovery
   and hierarchical locality description
 

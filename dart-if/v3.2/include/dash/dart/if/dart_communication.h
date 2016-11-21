@@ -12,9 +12,9 @@
  *
  * A set of basic communication routines in DART.
  *
- * The semantics of the routines below are the same as with MPI. The only
- * difference is that DART doesn't specify data types but operates on
- * raw buffers instead. Message sizes are thus specified in bytes.
+ * The semantics of the routines below are the same as with MPI.
+ * DART data types specified using \ref dart_datatype_t are directly
+ * mapped to MPI data types.
  */
 
 #ifdef __cplusplus
@@ -50,6 +50,7 @@ dart_ret_t dart_barrier(
  * \param buf    Buffer that is the source (on \c root) or the destination of
  *               the broadcast.
  * \param nelem  The number of values to broadcast/receive.
+ * \param dtype  The data type of values in \c buf.
  * \param root   The unit that broadcasts data to all other members in \c team
  * \param team   The team to participate in the broadcast.
  *
@@ -59,10 +60,11 @@ dart_ret_t dart_barrier(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_bcast(
-  void        * buf,
-  size_t        nbytes,
-	dart_unit_t   root,
-  dart_team_t   team);
+  void            * buf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+	dart_unit_t       root,
+  dart_team_t       team);
 
 /**
  * DART Equivalent to MPI scatter.
@@ -81,7 +83,7 @@ dart_ret_t dart_bcast(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_scatter(
-  void            * sendbuf,
+  const void      * sendbuf,
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -93,8 +95,8 @@ dart_ret_t dart_scatter(
  *
  * \param sendbuf The buffer containing the data to be sent by each unit.
  * \param recvbuf The buffer to hold the received data on unit \c root.
- * \param nelem   Number of bytes sent by each process and received from
- *                each unit at unit \c root.
+ * \param nelem   Number of elements of type \c dtype sent by each process
+ *                and received from each unit at unit \c root.
  * \param dtype   The data type of values in \c sendbuf and \c recvbuf.
  * \param root    The unit that gathers all data from units in \c team.
  * \param team    The team to participate in the gather.
@@ -105,7 +107,7 @@ dart_ret_t dart_scatter(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_gather(
-  void            * sendbuf,
+  const void      * sendbuf,
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -128,7 +130,7 @@ dart_ret_t dart_gather(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgather(
-  void            * sendbuf,
+  const void      * sendbuf,
   void            * recvbuf,
   size_t            nelem,
   dart_datatype_t   dtype,
@@ -153,12 +155,12 @@ dart_ret_t dart_allgather(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allgatherv(
-  void            * sendbuf,
+  const void      * sendbuf,
   size_t            nsendelem,
   dart_datatype_t   dtype,
   void            * recvbuf,
-  int             * nrecvelem,
-  int             * recvdispls,
+  const size_t    * nrecvelem,
+  const size_t    * recvdispls,
   dart_team_t       teamid);
 
 /**
@@ -167,7 +169,7 @@ dart_ret_t dart_allgatherv(
  * \param sendbuf The buffer containing the data to be sent by each unit.
  * \param recvbuf The buffer to hold the received data.
  * \param nelem   Number of elements sent by each process and received from each unit.
- * \param dtype   The data type to use in the reduction operation \c op.
+ * \param dtype   The data type of values in \c sendbuf and \c recvbuf to use in \c op.
  * \param op      The reduction operation to perform.
  * \param team The team to participate in the allreduce.
  *
@@ -177,7 +179,7 @@ dart_ret_t dart_allgatherv(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_allreduce(
-  void           * sendbuf,
+  const void     * sendbuf,
   void           * recvbuf,
   size_t           nelem,
   dart_datatype_t  dtype,
@@ -187,23 +189,27 @@ dart_ret_t dart_allreduce(
 /**
  * DART Equivalent to MPI reduce.
  *
- * \todo Why is this not generic?
+ * \param sendbuf Buffer containing \c nelem elements to reduce using \c op.
+ * \param recvbuf Buffer of size \c nelem to store the result of the element-wise operation \c op in.
+ * \param nelem   The number of elements of type \c dtype in \c sendbuf and \c recvbuf.
+ * \param dtype   The data type of values stored in \c sendbuf and \c recvbuf.
+ * \param op      The reduce operation to perform.
+ * \param root    The unit receiving the reduced values.
+ * \param team    The team to perform the reduction on.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe_none
  * \ingroup DartCommunication
  */
-#if 0
-dart_ret_t dart_reduce_double(
-  double      * sendbuf,
-  double      * recvbuf,
-  dart_team_t   team);
-#else
 dart_ret_t dart_reduce(
-  double          * sendbuf,
-  double          * recvbuf,
-  dart_datatype_t   dtype,
-  dart_team_t       team);
-#endif
+  const void     * sendbuf,
+  void           * recvbuf,
+  size_t           nelem,
+  dart_datatype_t  dtype,
+  dart_operation_t op,
+  dart_unit_t      root,
+  dart_team_t      team);
 
 /**
  * DART Equivalent to MPI_Accumulate.
@@ -222,7 +228,7 @@ dart_ret_t dart_reduce(
  */
 dart_ret_t dart_accumulate(
   dart_gptr_t      gptr,
-  void  *          values,
+  const void     * values,
   size_t           nelem,
   dart_datatype_t  dtype,
   dart_operation_t op,
@@ -276,7 +282,8 @@ dart_ret_t dart_fetch_and_op(
  *
  * \param dest   The local destination buffer to store the data to.
  * \param gptr   A global pointer determining the source of the get operation.
- * \param nbytes The number of bytes to transfer.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c dest.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -284,9 +291,10 @@ dart_ret_t dart_fetch_and_op(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get(
-  void        * dest,
-  dart_gptr_t   gptr,
-  size_t        nbytes);
+  void            * dest,
+  dart_gptr_t       gptr,
+  size_t            nelem,
+  dart_datatype_t   dtype);
 
 /**
  * 'REGULAR' variant of dart_put.
@@ -295,9 +303,10 @@ dart_ret_t dart_get(
  * is guaranteed. A later flush operation is needed to guarantee
  * local and remote completion.
  *
- * \param gptr  A global pointer determining the target of the put operation.
- * \param src  The local source buffer to load the data from.
- * \param nbytes The number of bytes to transfer.
+ * \param gptr   A global pointer determining the target of the put operation.
+ * \param src    The local source buffer to load the data from.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c src.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -305,9 +314,10 @@ dart_ret_t dart_get(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put(
-  dart_gptr_t   gptr,
-  const void  * src,
-  size_t        nbytes);
+  dart_gptr_t       gptr,
+  const void      * src,
+  size_t            nelem,
+  dart_datatype_t   dtype);
 
 
 /**
@@ -400,9 +410,10 @@ typedef struct dart_handle_struct * dart_handle_t;
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
- * \param dest Local target memory to store the data.
- * \param gptr Global pointer being the source of the data transfer.
- * \param nbytes The number of bytes to transfer.
+ * \param dest   Local target memory to store the data.
+ * \param gptr   Global pointer being the source of the data transfer.
+ * \param nelem  The number of elements of \c dtype in buffer \c dest.
+ * \param dtype  The data type of the values in buffer \c dest.
  * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
@@ -423,9 +434,10 @@ dart_ret_t dart_get_handle(
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
- * \param gptr Global pointer being the target of the data transfer.
- * \param src  Local source memory to transfer data from.
- * \param nbytes The number of bytes to transfer.
+ * \param gptr   Global pointer being the target of the data transfer.
+ * \param src    Local source memory to transfer data from.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c dest.
  * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
@@ -540,9 +552,10 @@ dart_ret_t dart_testall_local(
  * 'BLOCKING' variant of dart_get.
  * Both local and remote completion is guaranteed.
  *
- * \param dest Local target memory to store the data.
- * \param gptr Global pointer being the source of the data transfer.
- * \param nbytes The number of bytes to transfer.
+ * \param dest   Local target memory to store the data.
+ * \param gptr   Global pointer being the source of the data transfer.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c dest.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -550,17 +563,19 @@ dart_ret_t dart_testall_local(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_get_blocking(
-  void *dest,
-  dart_gptr_t gptr,
-  size_t nbytes);
+  void         *  dest,
+  dart_gptr_t     gptr,
+  size_t          nelem,
+  dart_datatype_t dtype);
 
 /**
  * 'BLOCKING' variant of dart_put.
  * Both local and remote completion is guaranteed.
  *
- * \param gptr Global pointer being the target of the data transfer.
- * \param src  Local source memory to transfer data from.
- * \param nbytes The number of bytes to transfer.
+ * \param gptr   Global pointer being the target of the data transfer.
+ * \param src    Local source memory to transfer data from.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c dest.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -568,9 +583,10 @@ dart_ret_t dart_get_blocking(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_put_blocking(
-  dart_gptr_t  gptr,
-  const void * src,
-  size_t       nbytes);
+  dart_gptr_t     gptr,
+  const void    * src,
+  size_t          nelem,
+  dart_datatype_t dtype);
 
 /** \} */
 
