@@ -158,8 +158,8 @@ dart_ret_t dart_allgatherv(
   size_t            nsendelem,
   dart_datatype_t   dtype,
   void            * recvbuf,
-  int             * nrecvelem,
-  int             * recvdispls,
+  size_t          * nrecvelem,
+  size_t          * recvdispls,
   dart_team_t       teamid);
 
 /**

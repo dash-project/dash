@@ -1646,16 +1646,25 @@ dart_ret_t dart_allgatherv(
   size_t            nsendelem,
   dart_datatype_t   dtype,
   void            * recvbuf,
-  int             * nrecvcounts,
-  int             * recvdispls,
+  size_t          * nrecvcounts,
+  size_t          * recvdispls,
   dart_team_t       teamid)
 {
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
   MPI_Comm     comm;
   uint16_t     index;
   int          result;
+  int          comm_size;
   DART_LOG_TRACE("dart_allgatherv() team:%d nsendelem:%"PRIu64"",
                  teamid, nsendelem);
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nsendelem > INT_MAX) {
+    DART_LOG_ERROR("dart_allgather ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
 
   result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
@@ -1667,19 +1676,39 @@ dart_ret_t dart_allgatherv(
     sendbuf = MPI_IN_PLACE;
   }
   comm = dart_team_data[index].comm;
+
+  // convert nrecvcounts and recvdispls
+  MPI_Comm_size(comm, &comm_size);
+  int *inrecvcounts = malloc(sizeof(int) * comm_size);
+  int *irecvdispls  = malloc(sizeof(int) * comm_size);
+  for (int i = 0; i < comm_size; i++) {
+    if (nrecvcounts[i] > INT_MAX || recvdispls[i] > INT_MAX) {
+      DART_LOG_ERROR("dart_allgatherv ! failed: nrecvcounts[%i] > INT_MAX || recvdispls[%i] > INT_MAX", i, i);
+      free(inrecvcounts);
+      free(irecvdispls);
+      return DART_ERR_INVAL;
+    }
+    inrecvcounts[i] = nrecvcounts[i];
+    irecvdispls[i]  = recvdispls[i];
+  }
+
   if (MPI_Allgatherv(
            sendbuf,
            nsendelem,
            mpi_dtype,
            recvbuf,
-           nrecvcounts,
-           recvdispls,
+           inrecvcounts,
+           irecvdispls,
            mpi_dtype,
            comm) != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_allgatherv ! team:%d nsendelem:%"PRIu64" failed",
                    teamid, nsendelem);
+    free(inrecvcounts);
+    free(irecvdispls);
     return DART_ERR_INVAL;
   }
+  free(inrecvcounts);
+  free(irecvdispls);
   DART_LOG_TRACE("dart_allgatherv > team:%d nsendelem:%"PRIu64"",
                  teamid, nsendelem);
   return DART_OK;
