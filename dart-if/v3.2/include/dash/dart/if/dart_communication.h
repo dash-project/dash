@@ -12,9 +12,9 @@
  *
  * A set of basic communication routines in DART.
  *
- * The semantics of the routines below are the same as with MPI. The only
- * difference is that DART doesn't specify data types but operates on
- * raw buffers instead. Message sizes are thus specified in bytes.
+ * The semantics of the routines below are the same as with MPI.
+ * DART data types specified using \ref dart_datatype_t are directly
+ * mapped to MPI data types.
  */
 
 #ifdef __cplusplus
@@ -50,6 +50,7 @@ dart_ret_t dart_barrier(
  * \param buf    Buffer that is the source (on \c root) or the destination of
  *               the broadcast.
  * \param nelem  The number of values to broadcast/receive.
+ * \param dtype  The data type of values in \c buf.
  * \param root   The unit that broadcasts data to all other members in \c team
  * \param team   The team to participate in the broadcast.
  *
@@ -94,8 +95,8 @@ dart_ret_t dart_scatter(
  *
  * \param sendbuf The buffer containing the data to be sent by each unit.
  * \param recvbuf The buffer to hold the received data on unit \c root.
- * \param nelem   Number of bytes sent by each process and received from
- *                each unit at unit \c root.
+ * \param nelem   Number of elements of type \c dtype sent by each process
+ *                and received from each unit at unit \c root.
  * \param dtype   The data type of values in \c sendbuf and \c recvbuf.
  * \param root    The unit that gathers all data from units in \c team.
  * \param team    The team to participate in the gather.
@@ -168,7 +169,7 @@ dart_ret_t dart_allgatherv(
  * \param sendbuf The buffer containing the data to be sent by each unit.
  * \param recvbuf The buffer to hold the received data.
  * \param nelem   Number of elements sent by each process and received from each unit.
- * \param dtype   The data type to use in the reduction operation \c op.
+ * \param dtype   The data type of values in \c sendbuf and \c recvbuf to use in \c op.
  * \param op      The reduction operation to perform.
  * \param team The team to participate in the allreduce.
  *
@@ -278,7 +279,7 @@ dart_ret_t dart_fetch_and_op(
  * \param dest   The local destination buffer to store the data to.
  * \param gptr   A global pointer determining the source of the get operation.
  * \param nelem  The number of elements of type \c dtype to transfer.
- * \param dtype  The data type of the values in buffer \c dest (\ref dart_datatype_t)
+ * \param dtype  The data type of the values in buffer \c dest.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -298,9 +299,10 @@ dart_ret_t dart_get(
  * is guaranteed. A later flush operation is needed to guarantee
  * local and remote completion.
  *
- * \param gptr  A global pointer determining the target of the put operation.
- * \param src  The local source buffer to load the data from.
- * \param nbytes The number of bytes to transfer.
+ * \param gptr   A global pointer determining the target of the put operation.
+ * \param src    The local source buffer to load the data from.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c src.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -404,9 +406,10 @@ typedef struct dart_handle_struct * dart_handle_t;
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
- * \param dest Local target memory to store the data.
- * \param gptr Global pointer being the source of the data transfer.
- * \param nbytes The number of bytes to transfer.
+ * \param dest   Local target memory to store the data.
+ * \param gptr   Global pointer being the source of the data transfer.
+ * \param nelem  The number of elements of \c dtype in buffer \c dest.
+ * \param dtype  The data type of the values in buffer \c dest.
  * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
@@ -427,9 +430,10 @@ dart_ret_t dart_get_handle(
  * dart_wait*() call or a fence/flush operation is needed to guarantee
  * completion.
  *
- * \param gptr Global pointer being the target of the data transfer.
- * \param src  Local source memory to transfer data from.
- * \param nbytes The number of bytes to transfer.
+ * \param gptr   Global pointer being the target of the data transfer.
+ * \param src    Local source memory to transfer data from.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c dest.
  * \param[out] handle Pointer to DART handle to instantiate for later use with \c dart_wait, \c dart_wait_all etc.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
@@ -544,9 +548,10 @@ dart_ret_t dart_testall_local(
  * 'BLOCKING' variant of dart_get.
  * Both local and remote completion is guaranteed.
  *
- * \param dest Local target memory to store the data.
- * \param gptr Global pointer being the source of the data transfer.
- * \param nbytes The number of bytes to transfer.
+ * \param dest   Local target memory to store the data.
+ * \param gptr   Global pointer being the source of the data transfer.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c dest.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -563,9 +568,10 @@ dart_ret_t dart_get_blocking(
  * 'BLOCKING' variant of dart_put.
  * Both local and remote completion is guaranteed.
  *
- * \param gptr Global pointer being the target of the data transfer.
- * \param src  Local source memory to transfer data from.
- * \param nbytes The number of bytes to transfer.
+ * \param gptr   Global pointer being the target of the data transfer.
+ * \param src    Local source memory to transfer data from.
+ * \param nelem  The number of elements of type \c dtype to transfer.
+ * \param dtype  The data type of the values in buffer \c dest.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
