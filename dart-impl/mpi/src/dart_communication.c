@@ -64,6 +64,14 @@ dart_ret_t dart_get(
   uint64_t     offset            = gptr.addr_or_offs.offset;
   int16_t      seg_id            = gptr.segid;
 
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_get ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
   uint16_t index;
   if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
     DART_LOG_ERROR("dart_get ! failed: Unknown segment %i!", seg_id);
@@ -72,13 +80,6 @@ dart_ret_t dart_get(
 
   dart_team_data_t *team_data = &dart_team_data[index];
 
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (nelem > INT_MAX) {
-    DART_LOG_ERROR("dart_get ! failed: nelem > INT_MAX");
-    return DART_ERR_INVAL;
-  }
   if (seg_id) {
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
@@ -256,6 +257,15 @@ dart_ret_t dart_accumulate(
 
   DART_LOG_DEBUG("dart_accumulate() nelem:%zu dtype:%d op:%d unit:%d",
                  nelem, dtype, op, target_unitid_abs);
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_accumulate ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
   if (seg_id) {
     dart_unit_t target_unitid_rel;
 
@@ -407,10 +417,17 @@ dart_ret_t dart_get_handle(
   MPI_Win      win;
   dart_unit_t  target_unitid_abs = gptr.unitid;
   dart_unit_t  target_unitid_rel = target_unitid_abs;
-  size_t       nbytes = nelem * dart_mpi_sizeof_datatype(dtype);
   int          mpi_ret;
   uint64_t     offset = gptr.addr_or_offs.offset;
   int16_t      seg_id = gptr.segid;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_get_handle ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
 
   uint16_t index;
   if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
@@ -418,25 +435,15 @@ dart_ret_t dart_get_handle(
     return DART_ERR_INVAL;
   }
 
-
-  /*
-   * MPI uses offset type int, do not copy more than INT_MAX elements:
-   */
-  if (nbytes > INT_MAX) {
-    DART_LOG_ERROR("dart_get_handle ! failed: nbytes > INT_MAX");
-    return DART_ERR_INVAL;
-  }
-  int n_count = (int)(nbytes);
-
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
 
   if (seg_id > 0) {
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
   DART_LOG_DEBUG("dart_get_handle() uid_abs:%d uid_rel:%d "
-                 "o:%"PRIu64" s:%d i:%d, nbytes:%zu",
+                 "o:%"PRIu64" s:%d i:%d, nelem:%zu",
                  target_unitid_abs, target_unitid_rel,
-                 offset, seg_id, index, nbytes);
+                 offset, seg_id, index, nelem);
   DART_LOG_TRACE("dart_get_handle:  allocated handle:%p", (void *)(*handle));
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -460,6 +467,7 @@ dart_ret_t dart_get_handle(
       } else {
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
+      size_t       nbytes = nelem * dart_mpi_sizeof_datatype(dtype);
       baseptr += offset;
       DART_LOG_DEBUG("dart_get_handle: memcpy %zu bytes", nbytes);
       memcpy((char*)dest, baseptr, nbytes);
@@ -520,7 +528,7 @@ dart_ret_t dart_get_handle(
      */
     DART_LOG_DEBUG("dart_get_handle:  -- %d elements (collective allocation) "
                    "from %d at offset %"PRIu64"",
-                   n_count, target_unitid_rel, offset);
+                   nelem, target_unitid_rel, offset);
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
                 dest,              // origin address
@@ -545,7 +553,7 @@ dart_ret_t dart_get_handle(
     DART_LOG_TRACE("dart_get_handle:  -- local, segment:%d", seg_id);
     DART_LOG_DEBUG("dart_get_handle:  -- %d elements (local allocation) "
                    "from %d at offset %"PRIu64"",
-                   n_count, target_unitid_abs, offset);
+                   nelem, target_unitid_abs, offset);
     win     = dart_win_local_alloc;
     DART_LOG_DEBUG("dart_get_handle:  -- MPI_Rget");
     mpi_ret = MPI_Rget(
@@ -588,6 +596,14 @@ dart_ret_t dart_put_handle(
   uint64_t     offset   = gptr.addr_or_offs.offset;
   int16_t      seg_id   = gptr.segid;
   MPI_Win      win;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_put_handle ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
 
   *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;
@@ -678,12 +694,6 @@ dart_ret_t dart_put_blocking(
   uint64_t     offset = gptr.addr_or_offs.offset;
   int16_t      seg_id = gptr.segid;
 
-  uint16_t index;
-  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-    DART_LOG_ERROR("dart_put_blocking ! failed: Unknown segment %i!", seg_id);
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -691,6 +701,14 @@ dart_ret_t dart_put_blocking(
     DART_LOG_ERROR("dart_put_blocking ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
+
+  uint16_t index;
+  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_put_blocking ! failed: Unknown segment %i!", seg_id);
+    return DART_ERR_INVAL;
+  }
+
+
   if (seg_id > 0) {
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
@@ -805,12 +823,6 @@ dart_ret_t dart_get_blocking(
   uint64_t     offset            = gptr.addr_or_offs.offset;
   int16_t      seg_id            = gptr.segid;
 
-  uint16_t index;
-  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
-    DART_LOG_ERROR("dart_get_blocking ! failed: Unknown segment %i!", seg_id);
-    return DART_ERR_INVAL;
-  }
-
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -818,6 +830,13 @@ dart_ret_t dart_get_blocking(
     DART_LOG_ERROR("dart_get_blocking ! failed: nelem > INT_MAX");
     return DART_ERR_INVAL;
   }
+
+  uint16_t index;
+  if (dart_segment_get_teamidx(seg_id, &index) != DART_OK) {
+    DART_LOG_ERROR("dart_get_blocking ! failed: Unknown segment %i!", seg_id);
+    return DART_ERR_INVAL;
+  }
+
   if (seg_id) {
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
   }
@@ -1470,6 +1489,14 @@ dart_ret_t dart_bcast(
   DART_LOG_TRACE("dart_bcast() root:%d team:%d nelem:%"PRIu64"",
                  root, teamid, nelem);
 
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_bcast ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
   int result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
     DART_LOG_ERROR("dart_bcast ! root:%d -> team:%d "
@@ -1498,6 +1525,15 @@ dart_ret_t dart_scatter(
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
   MPI_Comm     comm;
   uint16_t     index;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_scatter ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
   int result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
     return DART_ERR_INVAL;
@@ -1528,6 +1564,15 @@ dart_ret_t dart_gather(
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
   MPI_Comm     comm;
   uint16_t     index;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_gather ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
   int result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
     return DART_ERR_INVAL;
@@ -1560,6 +1605,14 @@ dart_ret_t dart_allgather(
   int          result;
   DART_LOG_TRACE("dart_allgather() team:%d nelem:%"PRIu64"",
                  teamid, nelem);
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_allgather ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
 
   result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
@@ -1643,6 +1696,15 @@ dart_ret_t dart_allreduce(
   MPI_Comm     comm;
   MPI_Op       mpi_op    = dart_mpi_op(op);
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_allreduce ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
   uint16_t index;
   int result = dart_adapt_teamlist_convert(team, &index);
 
