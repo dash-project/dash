@@ -33,7 +33,6 @@
 #  include <hwloc/helper.h>
 #endif
 
-
 /* ===================================================================== *
  * Private Functions                                                     *
  * ===================================================================== */
@@ -265,9 +264,9 @@ dart_ret_t dart__base__host_topology__update_module_locations(
         &local_module_locations, &num_local_modules),
       DART_OK);
     /* Number of bytes to receive from each leader unit in allgatherv: */
-    int * recvcounts         = calloc(num_leaders, sizeof(int));
+    size_t * recvcounts      = calloc(num_leaders, sizeof(size_t));
     /* Displacement at which to place data received from each leader:  */
-    int * displs             = calloc(num_leaders, sizeof(int));
+    size_t * displs          = calloc(num_leaders, sizeof(size_t));
     recvcounts[my_leader_id] = num_local_modules *
                                  sizeof(dart_module_location_t);
     /*
@@ -283,14 +282,14 @@ dart_ret_t dart__base__host_topology__update_module_locations(
           NULL,
           recvcounts,
           1,
-          DART_TYPE_INT,
+          DART_TYPE_SIZET,
           leader_team),
         DART_OK);
 
       displs[0] = 0;
       for (size_t lu = 1; lu < num_leaders; lu++) {
         DART_LOG_TRACE("dart__base__host_topology__init: "
-                       "allgather: leader unit %d sent %d",
+                       "allgather: leader unit %sz sent %sz",
                        lu, recvcounts[lu]);
         displs[lu] = displs[lu-1] + recvcounts[lu];
       }
@@ -410,6 +409,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
       dart_bcast(
         topo->host_domains,
         sizeof(dart_host_domain_t) * num_hosts,
+        DART_TYPE_BYTE,
         host_topo_bcast_root,
         host_topo_bcast_team),
       DART_OK);

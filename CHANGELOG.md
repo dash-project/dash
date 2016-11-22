@@ -61,6 +61,13 @@ Features:
 
 - Added function `dart_allreduce`.
 
+- Added function `dart_reduce`
+
+- Made global memory allocation and communication operations aware of the underlying 
+  data type to improve stability and performance. 
+
+- Extended use of `const` specifier in DART communication interface 
+
 - Added interface component `dart_locality` implementing topology discovery
   and hierarchical locality description
 
@@ -93,6 +100,9 @@ Features:
         - `dart__base__locality__finalize`
         - `dart__base__locality__domain`
         - `dart__base__locality__unit`
+
+Fixes:
+- Added clarification that DART currently does not provide thread-safe access. 
 
 # DASH 0.2.0 (2016-03-03)
 

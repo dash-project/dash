@@ -7,7 +7,7 @@
 #include <dash/dart/if/dart_communication.h>
 
 
-namspace dash {
+namespace dash {
 
 /**
  * \ingroup DashAlgorithms
@@ -57,5 +57,4 @@ mismatch(
   return std::make_pair(index_1.end, index_2.end);
 }
 
-
-
+} // namespace dash

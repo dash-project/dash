@@ -28,6 +28,11 @@ TEST_F(GlobMemTest, LocalBegin)
 {
   auto   target_local_elements = { 1, 2, 3, 4 };
 
+  if(!dash::Team::All().is_leaf()){
+    LOG_MESSAGE("team is already splitted. Skip test");
+    SKIP_TEST();
+  }
+
   auto & sub_team = dash::size() < 4
                     ? dash::Team::All()
                     : dash::Team::All().split(2);
@@ -37,5 +42,5 @@ TEST_F(GlobMemTest, LocalBegin)
   for (int l = 0; l < target_local_elements.size(); l++) {
     EXPECT_EQ_U(*(target_local_elements.begin() + l), target.lbegin()[l]);
   }
+  EXPECT_NE_U(target.lbegin(), nullptr);
 }
-

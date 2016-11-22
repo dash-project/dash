@@ -3,16 +3,13 @@
 
 /**
  * \file dart_synchronization.h
- *
- * \brief Synchronization primitives for mutual exclusion of units.
- *
- */
-
-
-/**
  * \defgroup  DartSync    Synchronization primitives for mutual exclusion of units.
  * \ingroup   DartInterface
+ *
+ * Synchronization primitives for mutual exclusion of units.
+ *
  */
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,6 +33,8 @@ typedef struct dart_lock_struct *dart_lock_t;
  * \param lock   The lock to initialize.
  *
  * \return \c DART_OK on sucess or an error code from \see dart_ret_t otherwise.
+ *
+ * \threadsafe_none
  * \ingroup DartSync
  */
 dart_ret_t dart_team_lock_init(dart_team_t teamid,
@@ -47,6 +46,8 @@ dart_ret_t dart_team_lock_init(dart_team_t teamid,
  * \param teamid The team this lock is used on.
  * \param lock   The \c lock to free.
  * \return \c DART_OK on sucess or an error code from \see dart_ret_t otherwise.
+ *
+ * \threadsafe_none
  * \ingroup DartSync
  */
 dart_ret_t dart_team_lock_free(dart_team_t teamid,
@@ -57,6 +58,8 @@ dart_ret_t dart_team_lock_free(dart_team_t teamid,
  *
  * \param lock The lock to acquire
  * \return \c DART_OK on sucess or an error code from \see dart_ret_t otherwise.
+ *
+ * \threadsafe_none
  * \ingroup DartSync
  */
 dart_ret_t dart_lock_acquire(dart_lock_t lock);
@@ -68,6 +71,8 @@ dart_ret_t dart_lock_acquire(dart_lock_t lock);
  * \param[out] result \c True if the lock was successfully acquired, false otherwise.
  *
  * \return \c DART_OK on success or an error code from \see dart_ret_t otherwise.
+ *
+ * \threadsafe_none
  * \ingroup DartSync
  */
 dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *result);
@@ -77,6 +82,8 @@ dart_ret_t dart_lock_try_acquire(dart_lock_t lock, int32_t *result);
  *
  * \param lock The lock to release.
  * \return \c DART_OK on sucess or an error code from \see dart_ret_t otherwise.
+ *
+ * \threadsafe_none
  * \ingroup DartSync
  */
 dart_ret_t dart_lock_release(dart_lock_t lock);
