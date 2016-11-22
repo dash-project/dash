@@ -320,9 +320,7 @@ dart_ret_t dart_exit()
   /* <fuchsto>: deactivated, currently segfaults when running
    *            with 3 units:
    */
-/*
   dart_segment_clear();
-*/
   if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();
