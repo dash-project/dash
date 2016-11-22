@@ -97,7 +97,7 @@ run_suite()
       echo "[[   FAIL ]] $THIS_FAIL_COUNT failed tests, returned ${TEST_RET}" | \
         tee -a $LOGFILE
     fi
-    sleep 1
+    sleep 3
   done
 }
 
