@@ -176,6 +176,10 @@ TEST_F(ArrayTest, TeamSplit)
   if(team_all.size() < 2){
     SKIP_TEST();
   }
+  if(!team_all.is_leaf()){
+    LOG_MESSAGE("team is already splitted. Skip test");
+    SKIP_TEST();
+  }
 
   auto & myteam = team_all.split(2);
   auto array_a = dash::Array<double>(ext_x, myteam);

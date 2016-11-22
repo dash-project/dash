@@ -34,6 +34,11 @@ TEST_F(TeamTest, SplitTeamSync)
   if(team_all.size() < 2){
     SKIP_TEST();
   }
+  if(!team_all.is_leaf()){
+    LOG_MESSAGE("team is already splitted. Skip test");
+    SKIP_TEST();
+  }
+
   LOG_MESSAGE("team_all contains %d units", team_all.size());
 
   auto & team_core = team_all.split(2);
