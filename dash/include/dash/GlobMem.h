@@ -159,6 +159,7 @@ public:
       _begptr = _allocator.allocate(_nlelem);
       DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
+      // Use id's of team all
       _lbegin = lbegin(dash::myid());
       _lend   = lend(dash::myid());
       // Initialize allocated local elements with specified values:
