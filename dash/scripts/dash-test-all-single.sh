@@ -56,6 +56,8 @@ TEST_SUITES=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests | grep -v '^\s' | gre
 TOTAL_FAIL_COUNT=0
 TESTS_PASSED=true
 
+TIMEOUT="5m"
+
 run_suite()
 {
   NUNITS=$1
@@ -77,7 +79,7 @@ run_suite()
          | tee -a $LOGFILE
     echo "[[ RUN    ]] $RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='$TEST_PATTERN'" \
          | tee -a $LOGFILE
-    eval $RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter="$TEST_PATTERN" 2>&1 \
+    eval timeout -s 15 -k $TIMEOUT $TIMEOUT $RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter="$TEST_PATTERN" 2>&1 \
          | nocolor \
          | tee -a $LOGFILE \
          | grep 'RUN\|PASSED\|OK\|FAILED\|ERROR\|SKIPPED'
