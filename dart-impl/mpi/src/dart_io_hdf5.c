@@ -22,7 +22,7 @@ dart_ret_t dart__io__hdf5__prep_mpio(
 
   result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
-    DART_LOG_ERROR("dart_allgather ! team:%d "
+    DART_LOG_ERROR("ddart__io__hdf5__prep_mpio ! team:%d "
                    "dart_adapt_teamlist_convert failed", teamid);
     return DART_ERR_INVAL;
   }
