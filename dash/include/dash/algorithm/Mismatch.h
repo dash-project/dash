@@ -1,5 +1,5 @@
-#ifndef DASH__ALGORITHM__MISMATCH_H__
-#define DASH__ALGORTIHM__MISMATCH_H__
+#ifndef DASH__ALGORITHM__MISMATCH_H__INCLUDED
+#define DASH__ALGORITHM__MISMATCH_H__INCLUDED
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/algorithm/LocalRange.h>
@@ -58,3 +58,5 @@ mismatch(
 }
 
 } // namespace dash
+
+#endif // DASH__ALGORITHM__MISMATCH_H__INCLUDED

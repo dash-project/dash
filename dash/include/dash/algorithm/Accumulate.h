@@ -32,19 +32,18 @@ ValueType accumulate(
 {
   typedef typename GlobInputIt::index_type index_t;
 
-  auto & team         = in_first.team();
-  auto myid           = team.myid();
-  auto index_range    = dash::local_range(in_first, in_last);
-  auto l_first        = index_range.begin;
-  auto l_last         = index_range.end;
-  auto l_result = std::accumulate(l_first, l_last, init);
+  auto & team      = in_first.team();
+  auto myid        = team.myid();
+  auto index_range = dash::local_range(in_first, in_last);
+  auto l_first     = index_range.begin;
+  auto l_last      = index_range.end;
+  auto l_result    = std::accumulate(l_first, l_last, init);
+  auto result      = 0;
 
   dash::Array<index_t> l_results(team.size());
-
   l_results.local[0] = l_result;
 
-  in_first.pattern().team().barrier();
-  auto result        = 0;
+  team.barrier();
 
   if (myid == 0) {
     for (int i = 0; i < team.size(); i++) {
@@ -83,19 +82,18 @@ ValueType accumulate(
 {
   typedef typename GlobInputIt::index_type index_t;
 
-  auto & team         = in_first.team();
-  auto myid           = team.myid();
-  auto index_range    = dash::local_range(in_first, in_last);
-  auto l_first        = index_range.begin;
-  auto l_last         = index_range.end;
-  auto l_result = std::accumulate(l_first, l_last, init, binary_op);
+  auto & team      = in_first.team();
+  auto myid        = team.myid();
+  auto index_range = dash::local_range(in_first, in_last);
+  auto l_first     = index_range.begin;
+  auto l_last      = index_range.end;
+  auto l_result    = std::accumulate(l_first, l_last, init, binary_op);
+  auto result      = 0;
 
   dash::Array<index_t> l_results(team.size());
-
   l_results.local[0] = l_result;
 
-  in_first.pattern().team().barrier();
-  auto result        = 0;
+  team.barrier();
 
   if (myid == 0) {
     for (int i = 0; i < team.size(); i++) {
