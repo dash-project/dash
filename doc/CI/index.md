@@ -156,3 +156,20 @@ The basic logic is specified in `circle.yml`.
 The `run-docker.sh` file is worth taking a closer look at. In `$MPIENVS` a list of environments is specified. These are then evenly split over the available CircleCI instances. If more environments are specified than instances available, the containers are executed sequentially. This affects only the time for the CI to complete, but has no effect on the test conditions and results.
 
 After the completion of each Docker container, the test results are gathered and copied to the artifacts directory. The directory/file structure is as follows: `<env>/<build_type>/dash-test-<nprocs>.xml`. For further information on CircleCI artifacts see the [official documentation](https://circleci.com/docs/build-artifacts/).
+
+#### Debugging
+CircleCI supports direct debugging inside the CI container / VM. Therfor click on the `Debug via SSH` button on a running build and ssh into the desired container. As we use Docker inside CircleCI to run our tests, all pathes printed in the CI output refer to internal pathes inside the Docker container.
+
+.. note:: Attaching to a running container is problematic, as the containers are not run in interactive mode. Hence your terminal might hang.
+
+The best way to debug is to spin up a interactive container using the corresponding environment. For example, if a problem occured in env `openmpi2` use the following command to start the container. As the current working directory is mounted to `/opt/dash`, run the command inside the DASH repository folder.
+
+```bash
+docker run -it -v $( pwd ):/opt/dash dashproject/ci:openmpi2
+```
+
+Inside the container, `cd` to `/opt/dash` and execute `/bin/bash /opt/dash/scripts/dash-ci.sh` to run the CI. If you are only interessted in a single target, pass it to the CI as described above: `dash-ci.sh $TARGET`.
+
+To leave the container again, just type `exit`.
+
+.. note:: Your SSH access is automatically terminated after 30 minutes.
