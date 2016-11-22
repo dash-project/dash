@@ -1144,7 +1144,7 @@ public:
     m_begin     = iterator(m_globmem, m_pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
-    m_lbegin    = m_globmem->lbegin(m_myid);
+    m_lbegin    = m_globmem->lbegin();
     // More efficient than using m_globmem->lend as this a second mapping
     // of the local memory segment:
     m_lend      = m_lbegin + m_lsize;
@@ -1204,7 +1204,7 @@ private:
     m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
-    m_lbegin    = m_globmem->lbegin(m_myid);
+    m_lbegin    = m_globmem->lbegin();
     // More efficient than using m_globmem->lend as this a second mapping
     // of the local memory segment:
     m_lend      = m_lbegin + pattern.local_size();

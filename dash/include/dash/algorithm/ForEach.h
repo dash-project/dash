@@ -66,26 +66,26 @@ template <
   typename ElementType,
   class    PatternType >
 void for_each(
-  /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
-  /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
-  /// Function to invoke on every index in the range
-  ::std::function<void(ElementType &)> & func)
-{
-  /// Global iterators to local index range:
-  auto index_range  = dash::local_index_range(first, last);
-  auto lbegin_index = index_range.begin;
-  auto lend_index   = index_range.end;
-  if (lbegin_index != lend_index) {
-    // Pattern from global begin iterator:
-    auto pattern      = first.pattern();
-    // Local range to native pointers:
-    auto lrange_begin = (first + pattern.global(lbegin_index)).local();
-    auto lrange_end   = lrange_begin + lend_index;
-    std::for_each(lrange_begin, lrange_end, func);
-  }
-  first.pattern().team().barrier();
+    /// Iterator to the initial position in the sequence
+    const GlobIter<ElementType, PatternType> & first,
+    /// Iterator to the final position in the sequence
+    const GlobIter<ElementType, PatternType> & last,
+    /// Function to invoke on every index in the range
+    ::std::function<void(ElementType &)> & func) {
+    /// Global iterators to local index range:
+    auto index_range  = dash::local_index_range(first, last);
+    auto lbegin_index = index_range.begin;
+    auto lend_index   = index_range.end;
+    auto & team       = first.pattern().team();
+    if (lbegin_index != lend_index) {
+      // Pattern from global begin iterator:
+      auto pattern      = first.pattern();
+      // Local range to native pointers:
+      auto lrange_begin = (first + pattern.global(lbegin_index)).local();
+      auto lrange_end   = lrange_begin + lend_index;
+      std::for_each(lrange_begin, lrange_end, func);
+    }
+    team.barrier();
 }
 
 /**
@@ -107,31 +107,31 @@ template <
   typename IndexType,
   class    PatternType >
 void for_each_with_index(
-  /// Iterator to the initial position in the sequence
-  const GlobIter<ElementType, PatternType> & first,
-  /// Iterator to the final position in the sequence
-  const GlobIter<ElementType, PatternType> & last,
-  /// Function to invoke on every index in the range
-  ::std::function<void(const ElementType &, IndexType)> & func)
-{
-  /// Global iterators to local index range:
-  auto index_range  = dash::local_index_range(first, last);
-  auto lbegin_index = index_range.begin;
-  auto lend_index   = index_range.end;
-  if (lbegin_index != lend_index) {
-    // Pattern from global begin iterator:
-    auto pattern = first.pattern();
-    // Iterate local index range:
-    for (IndexType lindex = lbegin_index;
-         lindex != lend_index;
-         ++lindex) {
-      IndexType gindex  = pattern.global(lindex);
-      auto first_offset = first.pos();
-      auto element_it   = first + (gindex - first_offset);
-      func(*element_it, gindex);
+    /// Iterator to the initial position in the sequence
+    const GlobIter<ElementType, PatternType> & first,
+    /// Iterator to the final position in the sequence
+    const GlobIter<ElementType, PatternType> & last,
+    /// Function to invoke on every index in the range
+    ::std::function<void(const ElementType &, IndexType)> & func) {
+    /// Global iterators to local index range:
+    auto index_range  = dash::local_index_range(first, last);
+    auto lbegin_index = index_range.begin;
+    auto lend_index   = index_range.end;
+    auto & team       = first.pattern().team();
+    if (lbegin_index != lend_index) {
+      // Pattern from global begin iterator:
+      auto pattern = first.pattern();
+      // Iterate local index range:
+      for (IndexType lindex = lbegin_index;
+              lindex != lend_index;
+              ++lindex) {
+          IndexType gindex  = pattern.global(lindex);
+          auto first_offset = first.pos();
+          auto element_it   = first + (gindex - first_offset);
+          func(*element_it, gindex);
+      }
     }
-  }
-  first.pattern().team().barrier();
+    team.barrier();
 }
 
 } // namespace dash
