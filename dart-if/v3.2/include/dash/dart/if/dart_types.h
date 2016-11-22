@@ -90,6 +90,16 @@ typedef enum
     DART_TYPE_DOUBLE
 } dart_datatype_t;
 
+
+#if (UINT32_MAX == SIZE_MAX)
+#define DART_TYPE_SIZET DART_TYPE_UINT
+#elif (UINT64_MAX == SIZE_MAX)
+#define DART_TYPE_SIZET DART_TYPE_LONGLONG
+#else
+#error "Cannot determine DART type for size_t!"
+#endif
+
+
 typedef struct {
     dart_datatype_t dtype;
     int             nelem;

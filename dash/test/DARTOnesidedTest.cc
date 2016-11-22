@@ -23,10 +23,13 @@ TEST_F(DARTOnesidedTest, GetBlockingSingleBlock)
   // Global start index of block to copy:
   int g_src_index       = unit_src * block_size;
   // Copy values:
+  dart_storage_t ds = dash::dart_storage<value_t>(block_size);
+  LOG_MESSAGE("DART storage: dtype:%d nelem:%d", ds.dtype, ds.nelem);
   dart_get_blocking(
     local_array,                                // lptr dest
     (array.begin() + g_src_index).dart_gptr(),  // gptr start
-    block_size * sizeof(value_t)                // nbytes
+    ds.nelem,
+    ds.dtype
   );
   for (size_t l = 0; l < block_size; ++l) {
     value_t expected = array[g_src_index + l];
@@ -52,10 +55,13 @@ TEST_F(DARTOnesidedTest, GetBlockingTwoBlocks)
   }
   array.barrier();
   // Copy values from first two blocks:
+  dart_storage_t ds = dash::dart_storage<value_t>(num_elem_copy);
+  LOG_MESSAGE("DART storage: dtype:%d nelem:%d", ds.dtype, ds.nelem);
   dart_get_blocking(
     local_array,                      // lptr dest
     array.begin().dart_gptr(),        // gptr start
-    num_elem_copy * sizeof(value_t)   // nbytes
+    ds.nelem,                         // number of elements
+    ds.dtype                          // data type
   );
   // Fails for elements in second block, i.e. for l < num_elem_copy:
   for (size_t l = 0; l < block_size; ++l) {
