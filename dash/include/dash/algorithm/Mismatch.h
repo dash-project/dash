@@ -12,12 +12,12 @@ namespace dash {
 /**
  * \ingroup DashAlgorithms
  */
-template<
+template <
   typename ElementType,
   class    PatternType,
-  class    BinaryPredicate>
-std::pair<GlobIter<ElementType, PatternType>,
-          GlobIter<ElementType, PatternType>
+  class    BinaryPredicate >
+std::pair <GlobIter<ElementType, PatternType>,
+GlobIter<ElementType, PatternType>
 mismatch(
   GlobIter<ElementType, PatternType> input_1_f,
   GlobIter<ElementType, PatternType> input_1_l,
@@ -27,7 +27,7 @@ mismatch(
 {
   typedef default_index_t index_t;
   typedef std::pair<GlobIter<ElementType, PatternType>,
-                  GlobIter<ElementType, PatternType>> PairType;
+          GlobIter<ElementType, PatternType>> PairType;
 
   auto & team    = input_1_f.team();
   auto myid      = team.myid();
@@ -35,10 +35,10 @@ mismatch(
   auto index_2   = dash::local_range(input_2_f, input_2_l);
   auto l_result  = std::mismatch(index_1.begin, index_1.end,
                                  index_2.begin, index_2.end,
-			                           p);
+                                 p);
   auto l_offset  = std::distance(index_1.begin, index_1.end);
-  
-  if (l_result == index_1.end){
+
+  if (l_result == index_1.end) {
     l_offset = -1;
   }
 
@@ -47,9 +47,9 @@ mismatch(
   l_results.local[0]        = l_offset;
   l_results_return.local[0] = l_result;
 
-  input_1_f.pattern().team().barrier();
-  
-  for(int u = 0; u < team.size(); u++) {
+  team.barrier();
+
+  for (int u = 0; u < team.size(); u++) {
     if (l_results[u].first != -1) {
       return l_results_return[u];
     }
