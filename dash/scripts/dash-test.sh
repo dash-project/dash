@@ -9,6 +9,7 @@ usage()
   echo ""
   echo "... with <bin path> pointing to the directory where the"
   echo "DASH binaries have been installed, e.g. ~/opt/dash/bin"
+  echo ""
 }
 
 if [ $# -lt 2 ]; then
@@ -16,6 +17,7 @@ if [ $# -lt 2 ]; then
   exit -1
 fi
 
+TIMESTAMP=`date +%Y%m%d-%H%M%S`
 DART_IMPL="$1"
 BIN_PATH="$2"
 LOGFILE="$3"
