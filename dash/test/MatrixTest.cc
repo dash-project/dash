@@ -1015,10 +1015,12 @@ TEST_F(MatrixTest, MatrixLBegin)
 
 TEST_F(MatrixTest, DelayedPatternAllocation)
 {
-  typedef dash::TilePattern<2> pattern_t;
-  long block_size_x = dash::size();
-  long block_size_y = dash::size();
-  dash::NArray<int, 2, long, pattern_t > matrix;
+  typedef dash::TilePattern<2>           pattern_t;
+  typedef typename pattern_t::index_type index_t;
+
+  auto block_size_x = dash::size();
+  auto block_size_y = dash::size();
+  dash::NArray<int, 2, index_t, pattern_t > matrix;
 
   {
     auto & team = dash::Team::All();
