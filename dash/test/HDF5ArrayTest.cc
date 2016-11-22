@@ -420,6 +420,12 @@ TEST_F(HDF5ArrayTest, TeamSplit)
 
   auto & team_all  = dash::Team::All();
   int    num_split = std::min<int>(team_all.size(), 2);
+
+  if(!team_all.is_leaf()){
+    LOG_MESSAGE("team is already splitted. Skip test");
+    SKIP_TEST();
+  }
+
   auto & myteam    = team_all.split(num_split);
   LOG_MESSAGE("Splitted team in %d parts, I am %d", num_split, myteam.position());
 
