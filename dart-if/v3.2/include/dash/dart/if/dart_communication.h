@@ -588,6 +588,83 @@ dart_ret_t dart_put_blocking(
   size_t          nelem,
   dart_datatype_t dtype);
 
+/**
+ * DART Equivalent to MPI send.
+ *
+ * \param sendbuf Buffer containing the data to be sent by the unit.
+ * \param nelem   Number of values sent to the specified unit.
+ * \param dtype   The data type of values in \c sendbuf.
+ * \param tag     Message tag for the distinction between different messages.
+ * \param unit    Unit the message is sent to.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_none
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_send(
+  void            * sendbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+	int               tag,
+  dart_unit_t       unit);
+
+/**
+ * DART Equivalent to MPI recv.
+ *
+ * \param recvbuf Buffer for the incoming data.
+ * \param nelem   Number of values received by the unit
+ * \param dtype   The data type of values in \c recvbuf.
+ * \param tag     Message tag for the distinction between different messages.
+ * \param unit    Unit sending the message.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_none
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_recv(
+  void            * recvbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+	int               tag,
+  dart_unit_t       unit);
+
+/**
+ * DART Equivalent to MPI recv.
+ *
+ * \param sendbuf      Buffer containing the data to be sent by the 
+ *                     source unit.
+ * \param send_nelem   Number of values sentby the source unit.
+ * \param send_dtype   The data type of values in \c sendbuf.
+ * \param dest         Unitthe message is sent to.
+ * \param send_tag     Message tag for the distinction between different 
+ *                     messages of the source unit.
+ * \param recvbuf      Buffer for the incoming data.
+ * \param recv_nelem   Number of values received by the destination unit.
+ * \param recv_dtype   The data type of values in \c recvbuf.
+ * \param src          Unit sending the message.
+ * \param recv_tag     Message tag for the distinction between different 
+ *                     messages of the destination unit.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe_none
+ * \ingroup DartCommunication
+ */
+dart_ret_t dart_sendrecv(
+  void * sendbuf,
+  size_t send_nelem,
+  dart_datatype_t send_dtype,
+  int send_tag,
+  dart_unit_t dest,
+  void * recvbuf,
+  size_t recv_nelem,
+  dart_datatype_t recv_dtype,
+  int recv_tag,
+  dart_unit_t src);
+
+
 /** \} */
 
 /** \cond DART_HIDDEN_SYMBOLS */
