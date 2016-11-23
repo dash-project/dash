@@ -123,8 +123,8 @@ TEST_F(DARTLocalityTest, ExcludeLocalityDomain)
 
   // Remove the active unit's domain:
   const char * excluded_domain = ul->domain_tag;
-  dart_domain_exclude(
-    loc_team_all_copy, 1, &excluded_domain);
+  EXPECT_EQ_U(DART_OK, dart_domain_exclude(
+    loc_team_all_copy, 1, &excluded_domain));
 
   // Lookup of excluded domain should fail and return null pointer:
   dart_domain_locality_t * no_domain;

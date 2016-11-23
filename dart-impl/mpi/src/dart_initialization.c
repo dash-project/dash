@@ -305,6 +305,7 @@ dart_ret_t dart_exit()
 	MPI_Win_free(&dart_sharedmem_win_local_alloc);
 #endif
   MPI_Win_free(&team_data->window);
+  MPI_Comm_free(&(team_data->sharedmem_comm));
 
   /* <fuchsto>: Why calling dart_segment_clear twice? */
 /*
@@ -315,6 +316,7 @@ dart_ret_t dart_exit()
   free(team_data->sharedmem_tab);
   free(dart_sharedmem_local_baseptr_set);
 #endif
+
 	dart_adapt_teamlist_destroy();
 
   /* <fuchsto>: deactivated, currently segfaults when running
