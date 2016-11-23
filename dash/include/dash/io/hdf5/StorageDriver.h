@@ -31,6 +31,8 @@
 #pragma error "HDF5 module requires dart-mpi"
 #endif
 
+#include <dash/dart/if/dart_io.h>
+
 namespace dash {
 namespace io {
 namespace hdf5 {
@@ -129,6 +131,7 @@ public:
                   "Specified index_t differs from pattern_t::index_type");
 
     auto pattern    = array.pattern();
+    auto & team     = array.team();
     auto pat_dims   = pattern.ndim();
     long tilesize   = pattern.blocksize(0);
     // Map native types to HDF5 types
@@ -157,10 +160,10 @@ public:
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
 
     dash::Shared<int> f_exists;
-    if (dash::myid() == 0) {
+    if (team.myid() == 0) {
       if (access( filename.c_str(), F_OK ) != -1) {
         // check if file exists
         f_exists.set(static_cast<int> (H5Fis_hdf5( filename.c_str())));
@@ -168,7 +171,7 @@ public:
         f_exists.set(-1);
       }
     }
-    array.barrier();
+    team.barrier();
 
     if (foptions.overwrite_file || (f_exists.get() <= 0)) {
       // HD5 create file
@@ -317,6 +320,7 @@ public:
     typedef typename pattern_t::size_type extent_t;
 
     auto pattern     = array.pattern();
+    auto & team      = array.team();
     auto pat_dims    = pattern.ndim();
     // Map native types to HDF5 types
     auto h5datatype  = get_h5_datatype<value_t>();
@@ -346,10 +350,10 @@ public:
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
 
     dash::Shared<int> f_exists;
-    if (dash::myid() == 0) {
+    if (team.myid() == 0) {
       if (access( filename.c_str(), F_OK ) != -1) {
         // check if file exists
         f_exists.set(static_cast<int> (H5Fis_hdf5( filename.c_str())));
@@ -357,7 +361,7 @@ public:
         f_exists.set(-1);
       }
     }
-    array.barrier();
+    team.barrier();
 
     if (foptions.overwrite_file || (f_exists.get() <= 0)) {
       // HD5 create file
@@ -515,9 +519,6 @@ public:
 
     extent_t tilesize;
     int      rank;
-    // Split path in groups and dataset
-    //auto path_vec   = _split_string(datapath, '/');
-    //auto dataset    = path_vec.back();
 
     // HDF5 definition
     hid_t    file_id;
@@ -532,9 +533,16 @@ public:
     // Map native types to HDF5 types
     hid_t    h5datatype;
 
+    // Check if matrix is already allocated
+    bool is_alloc  = (array.size() != 0);
+
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    if(is_alloc){
+      dart__io__hdf5__prep_mpio(plist_id, array.team().dart_id());
+    } else {
+      dart__io__hdf5__prep_mpio(plist_id, dash::Team::All().dart_id());
+    }
 
     // HD5 create file
     file_id = H5Fopen(filename.c_str(), H5P_DEFAULT, plist_id );
@@ -556,8 +564,6 @@ public:
     // Initialize DASH Array
     // no explicit pattern specified / try to load pattern from hdf5 file
     auto pat_key = foptions.pattern_metadata_key.c_str();
-    // Check if matrix is already allocated
-    bool is_alloc  = (array.size() != 0);
 
     if (!is_alloc                          // not allocated
         && foptions.restore_pattern        // pattern should be restored
@@ -598,7 +604,7 @@ public:
     hdf5_pattern_spec<1> ts = _get_pattern_hdf_spec<1>(pattern);
 
     // Create HDF5 memspace
-    memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
+    memspace       = H5Screate_simple(1, ts.data_dimsm, NULL);
     internal_type  = H5Tcopy(h5datatype);
 
     // Select Hyperslabs in file
@@ -702,9 +708,16 @@ public:
     int      rank;
     hdf5_pattern_spec<ndim> ts;
 
-    // setup mpi access
+    // Check if matrix is already allocated
+    bool is_alloc  = (matrix.size() != 0);
+
+    // Setup MPI IO
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    if(is_alloc){
+      dart__io__hdf5__prep_mpio(plist_id, matrix.team().dart_id());
+    } else {
+      dart__io__hdf5__prep_mpio(plist_id, dash::Team::All().dart_id());
+    }
 
     // HD5 create file
     file_id = H5Fopen(filename.c_str(), H5P_DEFAULT, plist_id );
@@ -737,8 +750,6 @@ public:
 
     // Check if file contains DASH metadata and recreate the pattern
     auto pat_key   = foptions.pattern_metadata_key.c_str();
-    // Check if matrix is already allocated
-    bool is_alloc  = (matrix.size() != 0);
 
     if (!is_alloc                        // not allocated
         && foptions.restore_pattern      // pattern should be restored

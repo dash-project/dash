@@ -9,7 +9,8 @@
  * Common C interface of the underlying communication back-end.
  *
  *
- * --- DASH/DART Terminology ---
+ * DASH/DART Terminology
+ * =====================
  *
  * DASH is a realization of the PGAS (partitioned global address space)
  * programming model. Below is an attempt to define some of the
@@ -40,7 +41,7 @@
  * Local/Global/Private/Shared
  * ---------------------------
  *
- * 1) Local and Global:
+ * ### 1) Local and Global: #####
  * The terms local and global are adjectives to describe the address
  * spaces in a DASH program. The local address space of a dash unit is
  * managed by the regular OS mechanisms (malloc, free), and data items
@@ -50,17 +51,17 @@
  * of the global address space. Data items in the global memory are
  * addressed by global pointers provided by the DART runtime.
  *
- * 2) Private and Shared:
+ * ### 2) Private and Shared: ###
  * The adjectives private and shared describe the accessibility of data
  * items in DASH. A shared datum is one that can be accessed by more
  * than one unit (by means of the DART runtime).  A private datum is one
  * that is not shared.
  *
- * 3) Partitions, Affinity, Ownership
+ * ### 3) Partitions, Affinity, Ownership ###
  * ... to be written...
  * idea: we might use the term affinity to express hierarchical locality
  *
- * 4) Team-Alignment and Symmetricity:
+ * ### 4) Team-Alignment and Symmetricity: ###
  * Team-aligned and symmetric are terms describing memory allocations.
  * A memory allocation is symmetric (with respect to a team), if the
  * same amount of memory (in bytes) is allocated by each member of the
@@ -77,8 +78,26 @@
  * A note on thread safety:
  * ------------------------
  *
- * All functions in the DART interface shall be implemented in a thread
- * safe way.
+ * In this release, most of DART's functionality cannot be called from within
+ * multiple threads in parallel. This is especially true for
+ * \ref DartGroupTeam "group and team management" and \ref DartGlobMem "global memory management"
+ * functionality as well as \ref DartCommunication "communication operations".
+ * All exceptions from this rule have been marked accordingly in the documentation.
+ * Improvements to thread-safety of DART are scheduled for the next release.
+ *
+ * Note that this also affects global operations in DASH as they rely on DART functionality.
+ * However, all operations on local data can be considered thread-safe, e.g., `Container.local` or
+ * `Container.lbegin`. The local access operators adhere to the C++ STL thread-safety
+ * rules (see http://en.cppreference.com/w/cpp/container for details).
+ * Thus, the following code is valid:
+ *
+ * \code{.cc}
+dash::Array<int> arr(...);
+#pragma omp parallel for // OK to parallelize since we're working on .local
+for( auto i=0; i<arr.local.size(); i++ ) [
+ arr.local[i]=foo(i);
+}
+ * \endcode
  */
 #ifdef __cplusplus
 extern "C" {

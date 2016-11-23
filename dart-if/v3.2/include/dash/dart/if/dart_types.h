@@ -1,5 +1,7 @@
 /**
- * \file dash/dart/if/dart_types.h
+ * \file dart_types.h
+ * \defgroup  DartTypes  Types used in the DART interface
+ * \ingroup   DartInterface
  *
  * Definitions of types used in the DART interface.
  *
@@ -10,10 +12,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-/**
- * \defgroup  DartTypes  Types used in the DART interface
- * \ingroup   DartInterface
- */
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -23,7 +21,7 @@ extern "C" {
 /** \endcond */
 
 /**
- * \brief Return values of functions in the DART interface.
+ * Return values of functions in the DART interface.
  *
  * \ingroup DartTypes
  */
@@ -44,7 +42,7 @@ typedef enum
 } dart_ret_t;
 
 /**
- * \brief Operations to be used for certain RMA and collective operations.
+ * Operations to be used for certain RMA and collective operations.
  * \ingroup DartTypes
  */
 typedef enum
@@ -74,7 +72,7 @@ typedef enum
 } dart_operation_t;
 
 /**
- * \brief Raw data types supported by the DART interface.
+ * Raw data types supported by the DART interface.
  *
  * \ingroup DartTypes
  */
@@ -92,32 +90,47 @@ typedef enum
     DART_TYPE_DOUBLE
 } dart_datatype_t;
 
+
+#if (UINT32_MAX == SIZE_MAX)
+#define DART_TYPE_SIZET DART_TYPE_UINT
+#elif (UINT64_MAX == SIZE_MAX)
+#define DART_TYPE_SIZET DART_TYPE_LONGLONG
+#else
+#error "Cannot determine DART type for size_t!"
+#endif
+
+
+typedef struct {
+    dart_datatype_t dtype;
+    int             nelem;
+} dart_storage_t;
+
 /**
- * \brief Data type for storing a unit ID
+ * Data type for storing a unit ID
  * \ingroup DartTypes
  */
 typedef int32_t dart_unit_t;
 
 /**
- * \brief Data type for storing a team ID
+ * Data type for storing a team ID
  * \ingroup DartTypes
  */
 typedef int32_t dart_team_t;
 
 /**
- * \brief Undefined unit ID.
+ * Undefined unit ID.
  * \ingroup DartTypes
  */
 #define DART_UNDEFINED_UNIT_ID ((dart_unit_t)(-1))
 
 /**
- * \brief Undefined team ID.
+ * Undefined team ID.
  * \ingroup DartTypes
  */
 #define DART_UNDEFINED_TEAM_ID ((dart_team_t)(-1))
 
 /**
- * \brief Scopes of locality domains.
+ * Scopes of locality domains.
  *
  * Enum values are ordered by scope level in the locality hierarchy.
  * Consequently, the comparison \c (scope_a > scope_b) is valid

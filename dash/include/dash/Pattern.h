@@ -1,6 +1,8 @@
 #ifndef DASH__PATTERN_H_
 #define DASH__PATTERN_H_
 
+#ifdef DOXYGEN
+
 namespace dash {
 
 /**
@@ -65,29 +67,8 @@ namespace dash {
  * <tt>size</tt>            | <tt>local_extent</tt>      | <tt>dim d</tt>                  | Number of elements local to the calling unit in dimension <i>d</i>                                         |
  *
  * \}
- */
-
-} // namespace dash
-
-// Static regular pattern types:
-#include <dash/pattern/BlockPattern.h>
-#include <dash/pattern/TilePattern.h>
-#include <dash/pattern/ShiftTilePattern.h>
-#include <dash/pattern/SeqTilePattern.h>
-
-// Static irregular pattern types:
-#include <dash/pattern/CSRPattern.h>
-#include <dash/pattern/LoadBalancePattern.h>
-
-#include <dash/pattern/PatternIterator.h>
-#include <dash/pattern/PatternProperties.h>
-#include <dash/pattern/MakePattern.h>
-
-#ifdef DOXYGEN
-
-namespace dash {
-
-/**
+ *
+ *
  * Defines how a list of global indices is mapped to single units
  * within a Team.
  *
@@ -97,8 +78,6 @@ namespace dash {
  *                         Memory order defines how elements in the
  *                         pattern will be iterated predominantly
  *                         \see MemArrange
- *
- * \concept{DashPatternConcept}
  */
 template<
   dim_t      NumDimensions,
@@ -111,9 +90,11 @@ class PatternConcept
   typedef ViewSpec<NumDimensions, IndexType>            ViewSpecType;
 
 public:
+
   static constexpr char const * PatternName = "TheConcretePatternTypeName";
 
 public:
+
   typedef IndexType        index_type;
   typedef SizeType          size_type;
   typedef ViewSpecType  viewspec_type;
@@ -129,6 +110,7 @@ public:
   } local_coords_type;
 
 public:
+
   /**
    * Copy constructor using non-const lvalue reference parameter.
    *
@@ -301,8 +283,6 @@ public:
    * Converts global coordinates to their associated unit and its respective
    * local coordinates.
    *
-   * TODO: Unoptimized
-   *
    * \see  DashPatternConcept
    */
   local_coords_t local(
@@ -310,8 +290,6 @@ public:
 
   /**
    * Converts global index to its associated unit and respective local index.
-   *
-   * TODO: Unoptimized
    *
    * \see  DashPatternConcept
    */
@@ -641,5 +619,19 @@ public:
 } // namespace dash
 
 #endif // DOXYGEN
+
+// Static regular pattern types:
+#include <dash/pattern/BlockPattern.h>
+#include <dash/pattern/TilePattern.h>
+#include <dash/pattern/ShiftTilePattern.h>
+#include <dash/pattern/SeqTilePattern.h>
+
+// Static irregular pattern types:
+#include <dash/pattern/CSRPattern.h>
+#include <dash/pattern/LoadBalancePattern.h>
+
+#include <dash/pattern/PatternIterator.h>
+#include <dash/pattern/PatternProperties.h>
+#include <dash/pattern/MakePattern.h>
 
 #endif // DASH__PATTERN_H_

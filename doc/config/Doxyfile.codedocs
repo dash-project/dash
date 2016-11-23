@@ -15,19 +15,20 @@ STRIP_FROM_PATH         = src \
                           bin
 INPUT                   = "./doc/config/mainpage.dox" \
                           "./dart-if/v3.2/include" \
-                          "./dash/include"
+                          "./dash/include" \
+                          "./dash/examples"
 OUTPUT_DIRECTORY        = "doc"
 FILE_PATTERNS           = *.h \
                         = *.c \
                         = *.cpp \
                           *.cc
+EXAMPLE_PATH            = "./dash/examples"
+EXAMPLE_RECURSIVE       = YES
 EXCLUDE_PATTERNS        = */test/* \
                           */gtest/* \
-                          */examples/* \
                           */internal/*
 EXCLUDE_SYMBOLS         = *::test::* \
                           *::testing::* \
-                          *::examples::* \
                           *::internal::*
 RECURSIVE               = YES
 USE_MDFILE_AS_MAINPAGE  = "./doc/config/mainpage.dox"
@@ -36,7 +37,7 @@ INLINE_INHERITED_MEMB   = YES
 FULL_PATH_NAMES         = YES
 STRIP_FROM_PATH         = ""
 STRIP_FROM_INC_PATH     =
-SHORT_NAMES             = NO
+SHORT_NAMES             = YES
 JAVADOC_AUTOBRIEF       = YES
 QT_AUTOBRIEF            = NO
 MULTILINE_CPP_IS_BRIEF  = NO
@@ -58,40 +59,20 @@ VERBATIM_HEADERS        = YES
 
 GENERATE_TREEVIEW       = YES
 
-# Custom commands
-
-ALIASES += concept{1}="@ingroup \1\n@par Implemented concept:\n@ref \1"
-ALIASES += blocking="\b Calls to this routine are blocking"
-ALIASES += async="\b Calls to this routine are non-blocking"
-ALIASES += complexity="\n@par Time complexity\n"
-ALIASES += commtype="\n@par Communication model\n"
-ALIASES += collective_op="\b Collective operation\n"
-ALIASES += local_op="\b Local operation\n"
-ALIASES += onesided_op="\b One-sided operation\n"
-
-# Graphs
-
-HAVE_DOT                = YES
-COLLABORATION_GRAPH     = YES
-CLASS_GRAPH             = YES
-UML_LOOK                = YES
-TEMPLATE_RELATIONS      = YES
-INTERACTIVE_SVG         = YES
-
-
 # Build related
 
 EXTRACT_ALL             = NO
 EXTRACT_PRIVATE         = NO
-EXTRACT_PACKAGE         = NO
+EXTRACT_PACKAGE         = YES
 EXTRACT_STATIC          = YES
 EXTRACT_LOCAL_CLASSES   = YES
-EXTRACT_LOCAL_METHODS   = NO
+EXTRACT_LOCAL_METHODS   = YES
 EXTRACT_ANON_NSPACES    = NO
 HIDE_UNDOC_MEMBERS      = NO
 SHOW_FILES              = YES
 SHOW_INCLUDE_FILES      = YES
 SHOW_NAMESPACES         = YES
+SHOW_GROUPED_MEMB_INC   = YES
 HIDE_UNDOC_CLASSES      = NO
 HIDE_FRIEND_COMPOUNDS   = YES
 GENERATE_TODOLIST       = YES
@@ -105,7 +86,8 @@ ENABLE_PREPROCESSING    = YES
 MACRO_EXPANSION         = YES
 EXPAND_ONLY_PREDEF      = NO
 SEARCH_INCLUDES         = YES
-INCLUDE_PATH            = 
+INCLUDE_PATH            = "./dart-if/v3.2/include" \
+                          "./dash/include"
 INCLUDE_FILE_PATTERNS   = 
 PREDEFINED              = protected=private \
                           DOXYGEN \
@@ -139,3 +121,28 @@ HTML_EXTRA_STYLESHEET   = "./doc/config/css/dash-doxygen.css" \
 
 # LaTex options
 GENERATE_LATEX          = NO
+
+# Custom commands
+
+ALIASES                 = concept{1}="@ingroup \1\n@par Implemented concept:\n@ref \1" \
+                          blocking="\b Calls to this routine are blocking" \
+                          async="\b Calls to this routine are non-blocking" \
+                          complexity="\n@par Time complexity\n" \
+                          commtype="\n@par Communication model\n" \
+                          collective_op="\b Collective operation\n" \
+                          local_op="\b Local operation\n" \
+                          onesided_op="\b One-sided operation\n" \
+                          thread_safety{1}="\par Thread safety\n\1" \
+                          threadsafe="\thread_safety{This function is safe to be called by <i>multiple threads in parallel</i>.}" \
+                          threadsafe_serial="\thread_safety{This function is safe to be called from a multi-threaded context by <i>at most one thread</i>.}" \
+                          threadsafe_none="\thread_safety{This function is <i>not thread-safe</i>.}"
+
+# Graphs
+
+HAVE_DOT                = NO
+COLLABORATION_GRAPH     = NO
+CLASS_GRAPH             = NO
+UML_LOOK                = NO
+TEMPLATE_RELATIONS      = NO
+INTERACTIVE_SVG         = NO
+
