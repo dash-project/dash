@@ -66,7 +66,8 @@ https://github.com/dash-project
 
 **Contact:**
 
-team@dash-project.org
+- Support: support@dash-project.org 
+- Developer mailing list: team@dash-project.org
 
 **Contributing**
 
@@ -84,7 +85,7 @@ Docker Containers
 -----------------
 
 For pre-build Docker container images, see the
-[DASH project on Docker Hub](https://hub.docker.com/r/dashproject)
+[DASH project on Docker Hub](https://hub.docker.com/r/dashproject).
 
 
 Building from Source

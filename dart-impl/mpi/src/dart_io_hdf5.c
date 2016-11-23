@@ -35,4 +35,8 @@ dart_ret_t dart__io__hdf5__prep_mpio(
   return DART_OK;
 }
 
-#endif //DART_ENABLE_HDF5
+#else // DART_ENABLE_HDF5
+
+const int dart__io__hdf5__disabled = 1;
+
+#endif // DART_ENABLE_HDF5

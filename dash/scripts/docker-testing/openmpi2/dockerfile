@@ -8,6 +8,7 @@ RUN           apt-get install -y \
                   git \
                   build-essential \
                   cmake \
+                  uuid-runtime \
                   libhwloc-plugins \
                   libhwloc-dev
 
@@ -33,7 +34,7 @@ RUN           cd openmpi*                           \
 ENV           PAPI_BASE=/opt/papi
 ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib:/opt/openmpi/lib
 ENV           PATH=${PATH}:/opt/openmpi/bin
-ENV           MPI_EXEC_FLAGS='--allow-run-as-root --map-by core'
+ENV           MPI_EXEC_FLAGS='--allow-run-as-root'
 ENV           VERBOSE_CI='true'
 # Workaround for issue #63
 ENV           GTEST_FILTER="-SharedTest.AtomicAdd:TransformTest.Array*:CopyTest.AsyncLocalToGlobPtr"
