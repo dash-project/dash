@@ -32,12 +32,11 @@ run_ci()
     #
     echo "[-> TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
     echo "[-> LOG    ] $DEPLOY_PATH/test_mpi.log"
-    if [ "$VERBOSE_CI" = "" ]; then
-      $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
-    else
-      $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log | grep -v "LOG ="
-    fi
+    echo "[-> RUN    ] $CMD_TEST mpi $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log"
+
+    $CMD_TEST mpi $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log
     TEST_STATUS=$?
+
     ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat\|uninitialised value\|Invalid read\|Invalid write" $DEPLOY_PATH/test_mpi.log`
     if [ "$TEST_STATUS" = "0" ]; then
       if [ "$ERROR_PATTERNS" -ne "0" ]; then

@@ -58,6 +58,8 @@ TESTS_PASSED=true
 
 TIMEOUT="5m"
 
+RUN_CMD="timeout --foreground $TIMEOUT $RUN_CMD"
+
 run_suite()
 {
   NUNITS=$1
@@ -74,29 +76,28 @@ run_suite()
 # fi
   export GTEST_OUTPUT="xml:dash-tests-${NUNITS}.xml"
   for TESTSUITE in $TEST_SUITES ; do
+    TESTSUITE_LOG="test.${TESTSUITE}${NUNITS}.log"
     TEST_PATTERN="$TESTSUITE*"
     echo "[[ SUITE  ]] $TEST_PATTERN" \
          | tee -a $LOGFILE
     echo "[[ RUN    ]] $RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='$TEST_PATTERN'" \
          | tee -a $LOGFILE
-    eval timeout -s 15 -k $TIMEOUT $TIMEOUT $RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter="$TEST_PATTERN" 2>&1 \
+    eval "$RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='$TEST_PATTERN'" 2>&1 \
          | nocolor \
          | tee -a $LOGFILE \
-         | grep 'RUN\|PASSED\|OK\|FAILED\|ERROR\|SKIPPED'
+         | grep 'RUN\|PASSED\|OK\|FAILED\|ERROR\|SKIPPED' \
+         | tee $TESTSUITE_LOG
 
     TEST_RET="$?"
 
-    NEW_FAIL_COUNT=`grep --count 'FAILED TEST' $LOGFILE`
-    # Number of failed tests in this run
-    THIS_FAIL_COUNT=$(($NEW_FAIL_COUNT-$TOTAL_FAIL_COUNT))
-    TOTAL_FAIL_COUNT=$NEW_FAIL_COUNT
+    TESTSUITE_FAIL_COUNT=`grep --count 'FAILED TEST' $TESTSUITE_LOG`
 
-    if [ "$THIS_FAIL_COUNT" = "0" -a "$TEST_RET" = "0" ]; then
+    if [ "$TESTSUITE_FAIL_COUNT" = "0" -a "$TEST_RET" = "0" ]; then
       echo "[[     OK ]] Tests passed, returned ${TEST_RET}" | \
         tee -a $LOGFILE
     else
       TESTS_PASSED=false
-      echo "[[   FAIL ]] $THIS_FAIL_COUNT failed tests, returned ${TEST_RET}" | \
+      echo "[[   FAIL ]] $TESTSUITE_FAIL_COUNT failed tests, returned ${TEST_RET}" | \
         tee -a $LOGFILE
     fi
     sleep 3
