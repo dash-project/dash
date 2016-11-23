@@ -85,24 +85,20 @@ run_suite()
     eval "$RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='$TEST_PATTERN'" 2>&1 \
          | nocolor \
          | tee -a $LOGFILE \
-         | grep -v 'LOG' \
+         | grep -v 'LOG' | grep -v '^#' \
          | tee $TESTSUITE_LOG
 
     TEST_RET="$?"
 
     TESTSUITE_FAIL_COUNT=`grep --count 'FAILED TEST' $TESTSUITE_LOG`
+    TESTSUITE_PASS_COUNT=`grep --count "PASSED" $TESTSUITE_LOG`
 
-    TESTSUITE_COMPLETED=false
-    if [ `grep -c "PASSED" $TESTSUITE_LOG` -gt 0 ] ; then
-      TESTSUITE_COMPLETED=true
-    fi
-
-    if [ $TESTSUITE_COMPLETED ] && [ "$TESTSUITE_FAIL_COUNT" -eq "0" ] && [ "$TEST_RET" -eq "0" ] ; then
+    if [ "$TESTSUITE_PASS_COUNT" -gt 0 ] && [ "$TESTSUITE_FAIL_COUNT" -eq "0" ] && [ "$TEST_RET" -eq "0" ] ; then
       echo "[[     OK ]] [ $(date +%Y%m%d-%H%M%S) ] Tests passed, returned ${TEST_RET}" | \
         tee -a $LOGFILE
     else
       TESTS_PASSED=false
-      echo "[[   FAIL ]] [ $(date +%Y%m%d-%H%M%S) ] $TESTSUITE_FAIL_COUNT failed, returned ${TEST_RET}, completed: ${TESTSUITE_COMPLETED}" | \
+      echo "[[   FAIL ]] [ $(date +%Y%m%d-%H%M%S) ] $TESTSUITE_FAIL_COUNT failed, returned ${TEST_RET}, completed: ${TESTSUITE_PASS_COUNT}" | \
         tee -a $LOGFILE
     fi
   done
