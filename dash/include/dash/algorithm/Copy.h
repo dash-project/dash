@@ -12,9 +12,10 @@
 #include <memory>
 #include <future>
 
-#ifndef DASH__ALGORITHM__COPY__USE_WAIT
+// #ifndef DASH__ALGORITHM__COPY__USE_WAIT
 #define DASH__ALGORITHM__COPY__USE_FLUSH
-#endif
+// #define DASH__ALGORITHM__COPY__USE_WAIT
+// #endif
 
 namespace dash {
 
@@ -425,6 +426,11 @@ dash::Future<ValueType *> copy_async_impl(
       num_elem_copied += num_copy_elem;
     }
   }
+#ifdef DASH_ENABLE_TRACE_LOGGING
+  for (auto gptr : req_handles) {
+    DASH_LOG_TRACE("dash::copy_async_impl", "  req_handle:", gptr);
+  }
+#endif
   dash::Future<ValueType *> result([=]() mutable {
     // Wait for all get requests to complete:
     ValueType * _out = out_first + num_elem_copied;
@@ -432,6 +438,12 @@ dash::Future<ValueType *> copy_async_impl(
                    "  wait for", req_handles.size(), "async get request");
     DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  flush:", req_handles);
     DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  _out:", _out);
+#ifdef DASH_ENABLE_TRACE_LOGGING
+    for (auto gptr : req_handles) {
+      DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  req_handle:",
+                     gptr);
+    }
+#endif
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
     for (auto gptr : req_handles) {
       dart_flush_local_all(gptr);
@@ -552,6 +564,11 @@ dash::Future<GlobOutputIt> copy_async_impl(
   }
 #endif
 
+#ifdef DASH_ENABLE_TRACE_LOGGING
+  for (auto gptr : req_handles) {
+    DASH_LOG_TRACE("dash::copy_async_impl", "  req_handle:", gptr);
+  }
+#endif
   dash::Future<GlobOutputIt> result([=]() mutable {
     // Wait for all get requests to complete:
     GlobOutputIt _out = out_first + num_copy_elem;
@@ -559,6 +576,12 @@ dash::Future<GlobOutputIt> copy_async_impl(
                    "  wait for", req_handles.size(), "async put request");
     DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  flush:", req_handles);
     DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  _out:", _out);
+#ifdef DASH_ENABLE_TRACE_LOGGING
+    for (auto gptr : req_handles) {
+      DASH_LOG_TRACE("dash::copy_async_impl [Future]", "  req_handle:",
+                     gptr);
+    }
+#endif
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
     for (auto gptr : req_handles) {
       dart_flush_all(gptr);
