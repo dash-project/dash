@@ -93,7 +93,7 @@ run_suite()
     TESTSUITE_FAIL_COUNT=`grep --count 'FAILED TEST' $TESTSUITE_LOG`
 
     TESTSUITE_COMPLETED=false
-    if [ `grep -c "PASSED" $TESTSUITE_LOG` -gt 0 ]
+    if [ `grep -c "PASSED" $TESTSUITE_LOG` -gt 0 ] ; then
       TESTSUITE_COMPLETED=true
     fi
 
