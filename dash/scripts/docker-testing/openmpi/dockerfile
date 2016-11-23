@@ -8,6 +8,7 @@ RUN           apt-get install -y \
                   git \
                   build-essential \
                   cmake \
+                  uuid-runtime \
                   libhwloc-plugins \
                   libhwloc-dev \
                   libopenmpi-dev \
@@ -28,7 +29,7 @@ RUN           cd papi*/src/                     \
               && make install
 ENV           PAPI_BASE=/opt/papi
 ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib
-ENV           MPI_EXEC_FLAGS='--allow-run-as-root --map-by core'
+ENV           MPI_EXEC_FLAGS='--allow-run-as-root'
 ENV           VERBOSE_CI='true'
 
 # Set workdir to dash home

@@ -73,9 +73,11 @@ public:
       _ptr     = _globmem->begin();
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
+    dart_storage_t ds = dash::dart_storage<pointer>(1);
     dart_bcast(
       &_ptr,
-      sizeof(pointer),
+      ds.nelem,
+      ds.dtype,
       _owner,
       _team->dart_id());
     atomic = atomic_type(_ptr.dart_gptr(), team);

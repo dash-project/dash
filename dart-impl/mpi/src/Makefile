@@ -12,18 +12,19 @@ CFLAGS+=-I.. -I../$(DART_IF)/include -I../include -I../../base/include -L/usr/li
 LIBDART  = libdart.a
 
 BASE_SRC_PATH=../../base/src
-FILES = dart_communication    	\
+FILES = dart_communication    		\
 	dart_config			\
-	dart_globmem		\
-	dart_initialization	\
-	dart_locality	\
-	dart_locality_priv	\
+	dart_globmem			\
+	dart_initialization		\
+	dart_locality			\
+	dart_locality_priv		\
 	dart_mem			\
-	dart_synchronization	\
-	dart_team_group		\
+	dart_segment 			\
+	dart_synchronization		\
+	dart_team_group			\
 	dart_team_private		\
-	dart_translation		\
-	$(BASE_SRC_PATH)/hwinfo	\
+	$(BASE_SRC_PATH)/array	        \
+	$(BASE_SRC_PATH)/hwinfo	        \
 	$(BASE_SRC_PATH)/locality	\
 	$(BASE_SRC_PATH)/logging	\
 	$(BASE_SRC_PATH)/string		\
@@ -34,12 +35,12 @@ FILES = dart_communication    	\
 
 OBJS = $(addsuffix .o, $(FILES))
 
-all : $(LIBDART) 
+all : $(LIBDART)
 
 $(LIBDART) : $(OBJS)
 	ar rcs $(LIBDART) $(OBJS)
 
-clean : 
+clean :
 	rm -f *~
 	rm -f *.o
 	rm -f $(LIBDART)

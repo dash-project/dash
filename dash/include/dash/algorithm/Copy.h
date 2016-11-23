@@ -27,24 +27,23 @@ namespace dash {
  * In terms of data distribution, source and destination ranges passed to
  * \c dash::copy can be local (\c *ValueType) or global (\c GlobIter<ValueType>).
  *
- * For a non-blocking variant of \c dash::copy, see \c dash::async_copy.
+ * For a non-blocking variant of \c dash::copy, see \c dash::copy_async.
  *
  * Example:
  *
  * \code
- *     // Start asynchronous copying
- *     GlobAsyncIter<T> dest_last =
+ *     // Start blocking copy
+ *     auto copy_last =
  *       dash::copy(array_a.lbegin(),
  *                  array_a.lend(),
- *                  array_b.async[200]);
- *     // Overlapping computation here
- *     // ...
- *     // Wait for completion of asynchronous copying:
- *     dest_last.fence();
+ *                  array_b.begin() + 200);
+ *     auto ncopied = dash::distance(array_b.begin() + 200, copy_last);
  * \endcode
  *
- * \returns  The output range end iterator that is created on completion of the
- *           copy operation.
+ * \returns  The output range end iterator that is created on completion
+ *           of the copy operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -82,6 +81,8 @@ OutputIt copy(
  * \returns  An instance of \c dash::Future providing the output range end
  *           iterator that is created on completion of the asynchronous copy
  *           operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -170,11 +171,13 @@ ValueType * copy_impl(
                      "left:",           total_elem_left);
       auto cur_in_first  = g_in_first + num_elem_copied;
       auto cur_out_first = out_first  + num_elem_copied;
+      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
       DASH_ASSERT_RETURNS(
         dart_get_blocking(
           cur_out_first,
           cur_in_first.dart_gptr(),
-          num_copy_elem * sizeof(ValueType)),
+          ds.nelem,
+          ds.dtype),
         DART_OK);
       num_elem_copied += num_copy_elem;
     }
@@ -222,10 +225,12 @@ ValueType * copy_impl(
                      "left:",           total_elem_left);
       auto dest_ptr = out_first + num_elem_copied;
       auto src_gptr = cur_in_first.dart_gptr();
+      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
       if (dart_get_blocking(
             dest_ptr,
             src_gptr,
-            num_copy_elem * sizeof(ValueType))
+            ds.nelem,
+            ds.dtype)
           != DART_OK) {
         DASH_LOG_ERROR("dash::copy_impl", "dart_get failed");
         DASH_THROW(
@@ -319,11 +324,13 @@ dash::Future<ValueType *> copy_async_impl(
       auto cur_in_first  = g_in_first + num_elem_copied;
       auto cur_out_first = out_first  + num_elem_copied;
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
+      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
       DASH_ASSERT_RETURNS(
         dart_get(
           cur_out_first,
           cur_in_first.dart_gptr(),
-          num_copy_elem * sizeof(ValueType)),
+          ds.nelem,
+          ds.dtype),
         DART_OK);
       req_handles.push_back(in_first.dart_gptr());
 #else
@@ -388,10 +395,12 @@ dash::Future<ValueType *> copy_async_impl(
       auto src_gptr = cur_in_first.dart_gptr();
       auto dest_ptr = out_first + num_elem_copied;
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
+      dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
       if (dart_get(
             dest_ptr,
             src_gptr,
-            num_copy_elem * sizeof(ValueType))
+            ds.nelem,
+            ds.dtype)
           != DART_OK) {
         DASH_LOG_ERROR("dash::copy_async_impl", "dart_get failed");
         DASH_THROW(
@@ -471,12 +480,13 @@ GlobOutputIt copy_impl(
                  "g_out_first:", out_first.pos());
 
   auto num_elements = std::distance(in_first, in_last);
-  auto num_bytes    = num_elements * sizeof(ValueType);
+  dart_storage_t ds = dash::dart_storage<ValueType>(num_elements);
   DASH_ASSERT_RETURNS(
     dart_put_blocking(
       out_first.dart_gptr(),
       in_first,
-      num_bytes),
+      ds.nelem,
+      ds.dtype),
     DART_OK);
 
   auto out_last = out_first + num_elements;
@@ -514,10 +524,12 @@ dash::Future<GlobOutputIt> copy_async_impl(
   auto src_ptr       = in_first;
   auto dest_gptr     = out_first.dart_gptr();
 #ifdef DASH__ALGORITHM__COPY__USE_FLUSH
+  dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
   if (dart_put(
         dest_gptr,
         src_ptr,
-        num_copy_elem * sizeof(ValueType))
+        ds.nelem,
+        ds.dtype)
       != DART_OK) {
     DASH_LOG_ERROR("dash::copy_async_impl", "dart_put failed");
     DASH_THROW(
@@ -525,12 +537,14 @@ dash::Future<GlobOutputIt> copy_async_impl(
   }
   req_handles.push_back(dest_gptr);
 #else
-  dart_handle_t put_handle;
+  dart_handle_t  put_handle;
+  dart_storage_t ds = dash::dart_storage<ValueType>(num_copy_elem);
   DASH_ASSERT_RETURNS(
     dart_put_handle(
         dest_gptr,
         src_ptr,
-        num_copy_elem * sizeof(ValueType),
+        ds.nelem,
+        ds.dtype,
         &put_handle),
     DART_OK);
   if (put_handle != NULL) {
@@ -582,6 +596,8 @@ dash::Future<GlobOutputIt> copy_async_impl(
 
 /**
  * Variant of \c dash::copy as asynchronous global-to-local copy operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -791,6 +807,8 @@ dash::Future<ValueType *> copy_async(
 
 /*
  * Specialization of \c dash::copy as global-to-local blocking copy operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -979,6 +997,8 @@ ValueType * copy(
 
 /**
  * Variant of \c dash::copy as asynchronous local-to-global copy operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -996,6 +1016,8 @@ dash::Future<GlobOutputIt> copy_async(
 
 /**
  * Specialization of \c dash::copy as local-to-global blocking copy operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -1135,6 +1157,8 @@ copy_async(
 /**
  * Specialization of \c dash::copy as global-to-global blocking copy
  * operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,

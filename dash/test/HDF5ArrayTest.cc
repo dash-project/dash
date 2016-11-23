@@ -4,6 +4,7 @@
 
 #include <limits.h>
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include "HDF5ArrayTest.h"
 #include "TestBase.h"
@@ -410,6 +411,67 @@ TEST_F(HDF5ArrayTest, GroupTest)
   verify_array(array_b, secret[1]);
   verify_array(array_c, secret[2]);
 }
+
+TEST_F(HDF5ArrayTest, TeamSplit)
+{
+  // TODO: Fix
+  SKIP_TEST();
+
+  if (dash::size() < 2) {
+    SKIP_TEST();
+  }
+
+  auto & team_all  = dash::Team::All();
+  int    num_split = std::min<int>(team_all.size(), 2);
+
+  if(!team_all.is_leaf()){
+    LOG_MESSAGE("team is already splitted. Skip test");
+    SKIP_TEST();
+  }
+
+  auto & myteam    = team_all.split(num_split);
+  LOG_MESSAGE("Splitted team in %d parts, I am %d",
+              num_split, myteam.position());
+
+  int    ext_x  = team_all.size() * 5;
+  double secret = 10;
+  
+  if (myteam.position() == 0) {
+    {
+      auto array_a = dash::Array<double>(ext_x, myteam);
+      // Array has to be allocated
+      EXPECT_NE_U(array_a.lbegin() , nullptr); 
+
+      fill_array(array_a, secret);
+      myteam.barrier();
+      LOG_MESSAGE("Team %d: write array", myteam.position());
+      OutputStream os(_filename);
+      os << dio::dataset("array_a") << array_a;
+      LOG_MESSAGE("Team %d: array written", myteam.position());
+      myteam.barrier();
+    }
+  }
+
+  team_all.barrier();
+
+  if (myteam.position() == 1) {
+    auto array_a = dash::Array<double>(ext_x, myteam);
+    array_a.barrier();
+    fill_array(array_a, secret);
+
+    // Array has to be allocated
+    EXPECT_NE_U(array_a.lbegin() , nullptr); 
+
+    if(array_a.lbegin() != nullptr){
+      LOG_MESSAGE("Team %d: read array", myteam.position());
+      InputStream is(_filename);
+      is >> dio::dataset("array_a") >> array_a;
+      LOG_MESSAGE("Team %d: array read", myteam.position());
+      myteam.barrier();
+      verify_array(array_a, secret);
+    }
+  }
+
+  team_all.barrier();
+}
 #endif // DASH_ENABLE_HDF5
-
-

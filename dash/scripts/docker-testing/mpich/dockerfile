@@ -8,6 +8,7 @@ RUN           apt-get install -y \
                   git \
                   build-essential \
                   cmake \
+                  uuid-runtime \
                   libhwloc-plugins \
                   libhwloc-dev \
                   libmpich-dev \

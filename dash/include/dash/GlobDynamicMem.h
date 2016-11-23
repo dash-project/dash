@@ -1263,6 +1263,7 @@ private:
                                  u_num_attach_buckets, 0);
         dart_gptr_t u_attach_buckets_sizes_gptr = attach_buckets_sizes_gptr;
         dart_gptr_setunit(&u_attach_buckets_sizes_gptr, u);
+        dart_storage_t ds = dash::dart_storage<size_type>(u_num_attach_buckets);
         DASH_ASSERT_RETURNS(
           dart_get_blocking(
             // local dest:
@@ -1270,7 +1271,7 @@ private:
             // global source:
             u_attach_buckets_sizes_gptr,
             // request bytes (~= number of sizes) from unit u:
-            u_num_attach_buckets * sizeof(size_type)),
+            ds.nelem, ds.dtype),
           DART_OK);
         // Update local snapshot of cumulative bucket sizes at unit u:
         for (int bi = 0; bi < u_num_attach_buckets; ++bi) {
