@@ -58,31 +58,6 @@ VERBATIM_HEADERS        = YES
 
 GENERATE_TREEVIEW       = YES
 
-# Custom commands
-
-ALIASES                 = concept{1}="@ingroup \1\n@par Implemented concept:\n@ref \1" \
-                          blocking="\b Calls to this routine are blocking" \
-                          async="\b Calls to this routine are non-blocking" \
-                          complexity="\n@par Time complexity\n" \
-                          commtype="\n@par Communication model\n" \
-                          collective_op="\b Collective operation\n" \
-                          local_op="\b Local operation\n" \
-                          onesided_op="\b One-sided operation\n" \
-                          thread_safety{1}="\par Thread safety\n\1" \
-                          threadsafe="\thread_safety{This function is safe to be called by <i>multiple threads in parallel</i>.}" \
-                          threadsafe_serial="\thread_safety{This function is safe to be called from a multi-threaded context by <i>at most one thread</i>.}" \
-                          threadsafe_none="\thread_safety{This function is <i>not thread-safe</i>.}"
-
-# Graphs
-
-HAVE_DOT                = YES
-COLLABORATION_GRAPH     = YES
-CLASS_GRAPH             = YES
-UML_LOOK                = YES
-TEMPLATE_RELATIONS      = YES
-INTERACTIVE_SVG         = YES
-
-
 # Build related
 
 EXTRACT_ALL             = NO
@@ -143,3 +118,28 @@ HTML_EXTRA_STYLESHEET   = "./doc/config/css/dash-doxygen.css" \
 
 # LaTex options
 GENERATE_LATEX          = NO
+
+# Custom commands
+
+ALIASES                 = concept{1}="@ingroup \1\n@par Implemented concept:\n@ref \1" \
+                          blocking="\b Calls to this routine are blocking" \
+                          async="\b Calls to this routine are non-blocking" \
+                          complexity="\n@par Time complexity\n" \
+                          commtype="\n@par Communication model\n" \
+                          collective_op="\b Collective operation\n" \
+                          local_op="\b Local operation\n" \
+                          onesided_op="\b One-sided operation\n" \
+                          thread_safety{1}="\par Thread safety\n\1" \
+                          threadsafe="\thread_safety{This function is safe to be called by <i>multiple threads in parallel</i>.}" \
+                          threadsafe_serial="\thread_safety{This function is safe to be called from a multi-threaded context by <i>at most one thread</i>.}" \
+                          threadsafe_none="\thread_safety{This function is <i>not thread-safe</i>.}"
+
+# Graphs
+
+HAVE_DOT                = NO
+COLLABORATION_GRAPH     = NO
+CLASS_GRAPH             = NO
+UML_LOOK                = NO
+TEMPLATE_RELATIONS      = NO
+INTERACTIVE_SVG         = NO
+
