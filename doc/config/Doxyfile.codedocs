@@ -62,15 +62,16 @@ GENERATE_TREEVIEW       = YES
 
 EXTRACT_ALL             = NO
 EXTRACT_PRIVATE         = NO
-EXTRACT_PACKAGE         = NO
+EXTRACT_PACKAGE         = YES
 EXTRACT_STATIC          = YES
 EXTRACT_LOCAL_CLASSES   = YES
-EXTRACT_LOCAL_METHODS   = NO
+EXTRACT_LOCAL_METHODS   = YES
 EXTRACT_ANON_NSPACES    = NO
 HIDE_UNDOC_MEMBERS      = NO
 SHOW_FILES              = YES
 SHOW_INCLUDE_FILES      = YES
 SHOW_NAMESPACES         = YES
+SHOW_GROUPED_MEMB_INC   = YES
 HIDE_UNDOC_CLASSES      = NO
 HIDE_FRIEND_COMPOUNDS   = YES
 GENERATE_TODOLIST       = YES
@@ -84,7 +85,8 @@ ENABLE_PREPROCESSING    = YES
 MACRO_EXPANSION         = YES
 EXPAND_ONLY_PREDEF      = NO
 SEARCH_INCLUDES         = YES
-INCLUDE_PATH            = 
+INCLUDE_PATH            = "./dart-if/v3.2/include" \
+                          "./dash/include"
 INCLUDE_FILE_PATTERNS   = 
 PREDEFINED              = protected=private \
                           DOXYGEN \
