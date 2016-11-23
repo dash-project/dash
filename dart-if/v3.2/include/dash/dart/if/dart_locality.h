@@ -150,6 +150,11 @@ dart_ret_t dart_domain_add_subdomain(
   dart_domain_locality_t        * subdomain,
   int                             subdomain_rel_id);
 
+dart_ret_t dart_domain_move_subdomain(
+  dart_domain_locality_t        * domain,
+  dart_domain_locality_t        * new_parent_domain,
+  int                             new_domain_rel_id);
+
 /**
  * Split locality domain hierarchy at given domain tag into \c num_parts
  * groups at specified scope.

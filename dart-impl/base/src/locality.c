@@ -303,10 +303,10 @@ dart_ret_t dart__base__locality__domain(
 
 
 dart_ret_t dart__base__locality__scope_domains(
-  const dart_domain_locality_t   * domain_in,
-  dart_locality_scope_t            scope,
-  int                            * num_domains_out,
-  dart_domain_locality_t       *** domains_out)
+  const dart_domain_locality_t     * domain_in,
+  dart_locality_scope_t              scope,
+  int                              * num_domains_out,
+  dart_domain_locality_t         *** domains_out)
 {
   *num_domains_out = 0;
   *domains_out     = NULL;
@@ -648,7 +648,7 @@ dart_ret_t dart__base__locality__domain_group(
     DART_LOG_TRACE("dart__base__locality__domain_group: "
                    "select %d subdomains in group = %s",
                    group_size, group_domain->domain_tag);
-    ret = dart__base__locality__domain_select_subdomains(
+    ret = dart__base__locality__select_subdomains(
             group_domain,
             group_subdomain_tags,
             group_size);
@@ -681,7 +681,7 @@ dart_ret_t dart__base__locality__domain_group(
         DART_LOG_TRACE("dart__base__locality__domain_group: "
                        "remove grouped domains from %s",
                        group_parent_subdomain->domain_tag);
-        ret = dart__base__locality__domain_exclude_subdomains(
+        ret = dart__base__locality__exclude_subdomains(
                 group_parent_subdomain,
                 group_subdomain_tags,
                 group_size);
