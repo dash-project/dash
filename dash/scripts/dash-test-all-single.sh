@@ -50,7 +50,11 @@ else
   exit -1
 fi
 
-TEST_SUITES=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests --gtest_filter=$GTEST_FILTER | grep -v '^\s' | grep -v '^#'`
+if [ "$GTEST_FILTER" = "" ] ; then
+  TEST_SUITES=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests | grep -v '^\s' | grep -v '^#'`
+else
+  TEST_SUITES=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests --gtest_filter=$GTEST_FILTER | grep -v '^\s' | grep -v '^#'`
+fi
 
 # Number of failed tests in total
 TOTAL_FAIL_COUNT=0
@@ -79,7 +83,7 @@ run_suite()
     TESTSUITE_LOG="test.${TESTSUITE}${NUNITS}.log"
     TEST_PATTERN="$TESTSUITE*"
     if [ "$GTEST_FILTER" != "" ] ; then
-      TEST_PATTERN="${TESTSUITE}*:${GTEST_FILTER}"
+      TEST_PATTERN="${TEST_PATTERN}*:${GTEST_FILTER}"
     fi
     echo "[[ SUITE  ]] [ $(date +%Y%m%d-%H%M%S) ] $TESTSUITE" \
          | tee -a $LOGFILE
