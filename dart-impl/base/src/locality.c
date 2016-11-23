@@ -144,7 +144,7 @@ dart_ret_t dart__base__locality__create(
   team_global_domain->team           = team;
   team_global_domain->parent         = NULL;
   team_global_domain->num_domains    = 0;
-  team_global_domain->domains        = NULL;
+  team_global_domain->children       = NULL;
   team_global_domain->num_units      = 0;
   team_global_domain->host[0]        = '\0';
   team_global_domain->domain_tag[0]  = '.';
@@ -558,12 +558,12 @@ dart_ret_t dart__base__locality__domain_group(
      *       parent's subdomain list to ensure that tags of domains not
      *       included in group remain valid.
      */
-    group_parent_domain->domains =
-      realloc(group_parent_domain->domains,
-              sizeof(dart_domain_locality_t) *
+    group_parent_domain->children =
+      realloc(group_parent_domain->children,
+              sizeof(dart_domain_locality_t *) *
                 (group_parent_domain->num_domains + 1));
     dart_domain_locality_t * group_domain =
-      group_parent_domain->domains + group_parent_domain->num_domains;
+      group_parent_domain->children[group_parent_domain->num_domains];
 
     dart__base__locality__domain__init(group_domain);
 
@@ -576,7 +576,7 @@ dart_ret_t dart__base__locality__domain_group(
     group_domain->num_units      = 0;
     group_domain->unit_ids       = NULL;
     group_domain->num_domains    = 0;
-    group_domain->domains        = malloc(sizeof(dart_domain_locality_t) *
+    group_domain->children       = malloc(sizeof(dart_domain_locality_t *) *
                                                  num_group_subdomains);
     group_domain->num_aliases    = 1;
     group_domain->aliases        = malloc(sizeof(dart_domain_locality_t *));
@@ -629,10 +629,10 @@ dart_ret_t dart__base__locality__domain_group(
                      immediate_subdomain_tags[gsd], gsd);
       ret = dart__base__locality__domain__copy(
               group_subdomain_in,
-              group_domain->domains + gsd);
+              group_domain->children[gsd]);
       if (ret != DART_OK) { break; }
 
-      group_domain->domains[gsd].parent = group_domain;
+      group_domain->children[gsd]->parent = group_domain;
       group_domain->num_domains++;
       group_domain->num_units += group_domain[gsd].num_units;
 
@@ -665,7 +665,7 @@ dart_ret_t dart__base__locality__domain_group(
      */
     for (int sd = 0; sd < group_parent_domain->num_domains; sd++) {
       dart_domain_locality_t * group_parent_subdomain =
-                                 group_parent_domain->domains + sd;
+                                 group_parent_domain->children[sd];
       /* Whether this sibling of the group domain contains subdomains
        * affected by the group:
        */
@@ -778,11 +778,11 @@ dart_ret_t dart__base__locality__group_subdomains(
    * segment, so we need to read and increment the suffix of its domain tag
    * to obtain the group's domain tag. */
 #if 0
-  int domain_last_rel_idx = domain->domains[domain->num_domains - 1]
+  int domain_last_rel_idx = domain->children[domain->num_domains - 1]
                               .relative_index;
 #endif
   char * domain_last_tag_suffix_pos =
-           strrchr(domain->domains[domain->num_domains - 1].domain_tag, '.');
+           strrchr(domain->children[domain->num_domains - 1]->domain_tag, '.');
   int    domain_last_tag_suffix     = atoi(domain_last_tag_suffix_pos + 1);
 
   /* Child nodes are ordered by domain tag.
@@ -801,7 +801,7 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   int num_existing_domain_groups = 0;
   for (int sd = 0; sd < domain->num_domains; sd++) {
-    if (domain->domains[sd].scope == DART_LOCALITY_SCOPE_GROUP) {
+    if (domain->children[sd]->scope == DART_LOCALITY_SCOPE_GROUP) {
       num_existing_domain_groups++;
     }
   }
@@ -826,7 +826,7 @@ dart_ret_t dart__base__locality__group_subdomains(
   int group_domain_rel_idx = num_ungrouped + num_existing_domain_groups;
 
   for (int sd = 0; sd < domain->num_domains; sd++) {
-    dart_domain_locality_t * subdom        = &domain->domains[sd];
+    dart_domain_locality_t * subdom  = domain->children[sd];
     dart_domain_locality_t * domain_copy;
 
     if (subdom->scope == DART_LOCALITY_SCOPE_GROUP) {
@@ -865,10 +865,10 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   /* Append group domain to subdomains:
    */
-  domain->domains =
-    realloc(domain->domains,
-            sizeof(dart_domain_locality_t) * num_subdomains_new);
-  DART_ASSERT(domain->domains != NULL);
+  domain->children =
+    realloc(domain->children,
+            sizeof(dart_domain_locality_t *) * num_subdomains_new);
+  DART_ASSERT(domain->children != NULL);
 
   domain->num_domains = num_subdomains_new;
 
@@ -876,7 +876,7 @@ dart_ret_t dart__base__locality__group_subdomains(
    * node:
    */
   dart_domain_locality_t * group_domain =
-    &domain->domains[group_domain_rel_idx];
+    domain->children[group_domain_rel_idx];
 
   dart__base__locality__domain__init(group_domain);
 
@@ -887,7 +887,7 @@ dart_ret_t dart__base__locality__group_subdomains(
   group_domain->level          = domain->level + 1;
   group_domain->scope          = DART_LOCALITY_SCOPE_GROUP;
   group_domain->num_domains    = num_grouped;
-  group_domain->domains        = malloc(sizeof(dart_domain_locality_t) *
+  group_domain->children       = malloc(sizeof(dart_domain_locality_t *) *
                                         num_grouped);
 
   int tag_len      = sprintf(group_domain->domain_tag, "%s",
@@ -908,7 +908,7 @@ dart_ret_t dart__base__locality__group_subdomains(
   group_domain->num_units = 0;
   group_domain->num_nodes = 0;
   for (int gd = 0; gd < num_grouped; gd++) {
-    memcpy(&group_domain->domains[gd], &grouped_domains[gd],
+    memcpy(group_domain->children[gd], &grouped_domains[gd],
            sizeof(dart_domain_locality_t));
   }
   dart__base__locality__domain__update_subdomains(
@@ -921,7 +921,7 @@ dart_ret_t dart__base__locality__group_subdomains(
                                   group_domain->num_units);
   int group_domain_unit_idx = 0;
   for (int gd = 0; gd < num_grouped; gd++) {
-    dart_domain_locality_t * group_subdomain = group_domain->domains + gd;
+    dart_domain_locality_t * group_subdomain = group_domain->children[gd];
     memcpy(group_domain->unit_ids + group_domain_unit_idx,
            group_subdomain->unit_ids,
            sizeof(dart_unit_t) * group_subdomain->num_units);
@@ -930,30 +930,30 @@ dart_ret_t dart__base__locality__group_subdomains(
 
   for (int sd = 0; sd < num_ungrouped; sd++) {
     DART_LOG_TRACE(
-      "dart__base__locality__group_subdomains: ==> domains[%d] u: %s",
-      sd, domain->domains[sd].domain_tag);
-    memcpy(&domain->domains[sd],
+      "dart__base__locality__group_subdomains: ==> children[%d] u: %s",
+      sd, domain->children[sd]->domain_tag);
+    memcpy(domain->children[sd],
            &ungrouped_domains[sd],
            sizeof(dart_domain_locality_t));
 
     /* Pointers are invalidated by realloc, update parent pointers of
      * subdomains: */
-    domain->domains[sd].parent         = domain;
-    domain->domains[sd].relative_index = sd;
+    domain->children[sd]->parent         = domain;
+    domain->children[sd]->relative_index = sd;
   }
 
   for (int g = 0; g < num_existing_domain_groups; g++) {
     int abs_g = g + num_ungrouped;
     DART_LOG_TRACE(
       "dart__base__locality__group_subdomains: ==> domains[%d] g: %s",
-      abs_g, domain->domains[abs_g].domain_tag);
-    memcpy(&domain->domains[abs_g], &group_domains[g],
+      abs_g, domain->children[abs_g]->domain_tag);
+    memcpy(domain->children[abs_g], &group_domains[g],
            sizeof(dart_domain_locality_t));
 
     /* Pointers are invalidated by realloc, update parent pointers of
      * subdomains: */
-    domain->domains[abs_g].parent         = domain;
-    domain->domains[abs_g].relative_index = abs_g;
+    domain->children[abs_g]->parent         = domain;
+    domain->children[abs_g]->relative_index = abs_g;
   }
   DART_LOG_TRACE(
     "dart__base__locality__group_subdomains: ==> domains[%d] *: %s",
@@ -962,15 +962,15 @@ dart_ret_t dart__base__locality__group_subdomains(
 #ifdef DART_ENABLE_LOGGING
   int g_idx = 0;
   for (int sd = 0; sd < domain->num_domains; sd++) {
-    dart_domain_locality_t * subdom = domain->domains + sd;
+    dart_domain_locality_t * subdom = domain->children[sd];
     DART_LOG_TRACE(
-      "dart__base__locality__group_subdomains: --> domains[%d:%d]: "
+      "dart__base__locality__group_subdomains: --> children[%d:%d]: "
       "tag:'%s' scope:%d subdomains:%d ADDR[%p]",
       sd, subdom->relative_index, subdom->domain_tag,
       subdom->scope, subdom->num_domains, (void *)subdom);
     if (subdom->scope == DART_LOCALITY_SCOPE_GROUP) {
       for (int gsd = 0; gsd < subdom->num_domains; gsd++) {
-        dart_domain_locality_t * group_subdom = &(subdom->domains[gsd]);
+        dart_domain_locality_t * group_subdom = subdom->children[gsd];
         dart__unused(group_subdom);
         DART_LOG_TRACE(
           "dart__base__locality__group_subdomains: -->   groups[%d:%d]."
@@ -1029,7 +1029,7 @@ dart_ret_t dart__base__locality__scope_domains_rec(
   } else {
     for (int d = 0; d < domain->num_domains; ++d) {
       ret = dart__base__locality__scope_domains_rec(
-              &domain->domains[d],
+              domain->children[d],
               scope,
               num_domains_out,
               domains_out);
