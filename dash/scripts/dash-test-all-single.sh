@@ -60,7 +60,7 @@ fi
 TOTAL_FAIL_COUNT=0
 TESTS_PASSED=true
 
-TIMEOUT="1m"
+TIMEOUT="5m"
 
 RUN_CMD="timeout -s 15 -k $TIMEOUT --foreground $TIMEOUT $RUN_CMD"
 
@@ -81,11 +81,11 @@ run_suite()
   export GTEST_OUTPUT="xml:dash-tests-${NUNITS}.xml"
   for TESTSUITE in $TEST_SUITES ; do
     TESTSUITE_LOG="test.${TESTSUITE}${NUNITS}.log"
-    TEST_PATTERN="$TESTSUITE*"
+    TEST_PATTERN="${TESTSUITE}*"
     if [ "$GTEST_FILTER" != "" ] ; then
-      TEST_PATTERN="${TEST_PATTERN}*:${GTEST_FILTER}"
+      TEST_PATTERN="${TEST_PATTERN}:${GTEST_FILTER}"
     fi
-    echo "[[ SUITE  ]] [ $(date +%Y%m%d-%H%M%S) ] $TESTSUITE" \
+    echo "[[ SUITE  ]] [ $(date +%Y%m%d-%H%M%S) ] ${TESTSUITE}*" \
          | tee -a $LOGFILE
     echo "[[ RUN    ]] [ $(date +%Y%m%d-%H%M%S) ] $RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='${TEST_PATTERN}'" \
          | tee -a $LOGFILE
