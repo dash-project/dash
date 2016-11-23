@@ -6,22 +6,20 @@ STRIP_FROM_PATH         = @PROJECT_SOURCE_DIR@ \
                           @PROJECT_BINARY_DIR@
 INPUT                   = "@PROJECT_SOURCE_DIR@/doc/config/mainpage.dox" \
                           "@PROJECT_SOURCE_DIR@/dart-if/v3.2/include" \
-                          "@PROJECT_SOURCE_DIR@/dash/include"
-#                         "@PROJECT_SOURCE_DIR@/dart-impl/mpi/include" \
-#                         "@PROJECT_SOURCE_DIR@/dart-impl/shmem/dart-shmem/include" \
-#                         "@PROJECT_SOURCE_DIR@/dart-impl/cuda/dart-cuda/include" \
+                          "@PROJECT_SOURCE_DIR@/dash/include" \
+                          "@PROJECT_SOURCE_DIR@/dash/examples"
 OUTPUT_DIRECTORY        = "doc"
 FILE_PATTERNS           = *.h \
                         = *.c \
                         = *.cpp \
                           *.cc
+EXAMPLE_PATH            = "@PROJECT_SOURCE_DIR@/dash/examples"
+EXAMPLE_RECURSIVE       = YES
 EXCLUDE_PATTERNS        = */test/* \
                           */gtest/* \
-                          */examples/* \
                           */internal/*
 EXCLUDE_SYMBOLS         = *::test::* \
                           *::testing::* \
-                          *::examples::* \
                           *::internal::*
 RECURSIVE               = YES
 USE_MDFILE_AS_MAINPAGE  = @doxy_main_page@
