@@ -588,6 +588,8 @@ dart_ret_t dart_put_blocking(
   size_t          nelem,
   dart_datatype_t dtype);
 
+/** \} */
+
 
 /**
  * \name Blocking two-sided communication operations
