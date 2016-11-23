@@ -58,7 +58,7 @@ TESTS_PASSED=true
 
 TIMEOUT="5m"
 
-RUN_CMD="timeout --foreground $TIMEOUT $RUN_CMD"
+RUN_CMD="timeout -s 15 -k $TIMEOUT --foreground $TIMEOUT $RUN_CMD"
 
 run_suite()
 {
@@ -92,7 +92,7 @@ run_suite()
 
     TESTSUITE_FAIL_COUNT=`grep --count 'FAILED TEST' $TESTSUITE_LOG`
 
-    if [ "$TESTSUITE_FAIL_COUNT" = "0" -a "$TEST_RET" = "0" ]; then
+    if [[ `grep -c "PASSED" $TESTSUITE_LOG` && "$TESTSUITE_FAIL_COUNT" -eq "0" && "$TEST_RET" -eq "0" ]]; then
       echo "[[     OK ]] [ $(date +%Y%m%d-%H%M%S) ] Tests passed, returned ${TEST_RET}" | \
         tee -a $LOGFILE
     else
