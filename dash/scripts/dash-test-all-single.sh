@@ -78,9 +78,9 @@ run_suite()
   for TESTSUITE in $TEST_SUITES ; do
     TESTSUITE_LOG="test.${TESTSUITE}${NUNITS}.log"
     TEST_PATTERN="$TESTSUITE*"
-    echo "[[ SUITE  ]] $TEST_PATTERN" \
+    echo "[[ SUITE  ]] [ $(date +%Y%m%d-%H%M%S) ] $TEST_PATTERN" \
          | tee -a $LOGFILE
-    echo "[[ RUN    ]] $RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='$TEST_PATTERN'" \
+    echo "[[ RUN    ]] [ $(date +%Y%m%d-%H%M%S) ] $RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='$TEST_PATTERN'" \
          | tee -a $LOGFILE
     eval "$RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='$TEST_PATTERN'" 2>&1 \
          | nocolor \
@@ -88,18 +88,16 @@ run_suite()
          | grep 'RUN\|PASSED\|OK\|FAILED\|ERROR\|SKIPPED' \
          | tee $TESTSUITE_LOG
 
-    echo "[[ TIME   ]] timestamp: $(date +%Y%m%d-%H%M%S)"
-
     TEST_RET="$?"
 
     TESTSUITE_FAIL_COUNT=`grep --count 'FAILED TEST' $TESTSUITE_LOG`
 
     if [ "$TESTSUITE_FAIL_COUNT" = "0" -a "$TEST_RET" = "0" ]; then
-      echo "[[     OK ]] Tests passed, returned ${TEST_RET}" | \
+      echo "[[     OK ]] [ $(date +%Y%m%d-%H%M%S) ] Tests passed, returned ${TEST_RET}" | \
         tee -a $LOGFILE
     else
       TESTS_PASSED=false
-      echo "[[   FAIL ]] $TESTSUITE_FAIL_COUNT failed tests, returned ${TEST_RET}" | \
+      echo "[[   FAIL ]] [ $(date +%Y%m%d-%H%M%S) ] $TESTSUITE_FAIL_COUNT failed tests, returned ${TEST_RET}" | \
         tee -a $LOGFILE
     fi
   done
