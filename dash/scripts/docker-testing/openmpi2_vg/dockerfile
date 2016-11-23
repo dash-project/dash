@@ -8,8 +8,14 @@ FROM          ubuntu:latest
 MAINTAINER    The DASH Team <team@dash-project.org>
 
 RUN           apt-get update -y
-RUN           apt-get install -y cmake libhwloc-plugins libhwloc-dev \
-                          git build-essential libc6-dbg
+RUN           apt-get install -y \
+                git \
+                build-essential \
+                cmake \
+                uuid-runtime \
+                libhwloc-plugins \
+                libhwloc-dev \
+                libc6-dbg
 
 WORKDIR       /tmp
 
