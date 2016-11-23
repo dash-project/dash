@@ -342,7 +342,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalBarrierUnaligned)
 
   array.barrier();
 
-  for (size_t l = 0; l < num_elems_unit; ++l) {
+  for (size_t l = 0; l < num_elems_copy; ++l) {
     EXPECT_EQ_U(local_array[l],
                 static_cast<int>(array[start_index + l]));
   }
