@@ -50,7 +50,7 @@ else
   exit -1
 fi
 
-TEST_SUITES=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests | grep -v '^\s' | grep -v '^#'`
+TEST_SUITES=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests --gtest_filter=$GTEST_FILTER | grep -v '^\s' | grep -v '^#'`
 
 # Number of failed tests in total
 TOTAL_FAIL_COUNT=0
@@ -78,9 +78,12 @@ run_suite()
   for TESTSUITE in $TEST_SUITES ; do
     TESTSUITE_LOG="test.${TESTSUITE}${NUNITS}.log"
     TEST_PATTERN="$TESTSUITE*"
-    echo "[[ SUITE  ]] [ $(date +%Y%m%d-%H%M%S) ] $TEST_PATTERN" \
+    if [ "$GTEST_FILTER" != "" ] ; then
+      TEST_PATTERN="${TESTSUITE}*:${GTEST_FILTER}"
+    fi
+    echo "[[ SUITE  ]] [ $(date +%Y%m%d-%H%M%S) ] $TESTSUITE" \
          | tee -a $LOGFILE
-    echo "[[ RUN    ]] [ $(date +%Y%m%d-%H%M%S) ] $RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='$TEST_PATTERN'" \
+    echo "[[ RUN    ]] [ $(date +%Y%m%d-%H%M%S) ] $RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='${TEST_PATTERN}'" \
          | tee -a $LOGFILE
     eval "$RUN_CMD -n $NUNITS $BIND_CMD $TEST_BINARY --gtest_filter='$TEST_PATTERN'" 2>&1 \
          | nocolor \
