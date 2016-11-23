@@ -3,7 +3,7 @@
 TIMESTAMP=`date +%Y%m%d-%H%M%S`
 BASEPATH=`git rev-parse --show-toplevel`
 CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
-CMD_TEST=$BASEPATH/dash/scripts/dash-test.sh
+CMD_TEST=$BASEPATH/dash/scripts/dash-test-all-single.sh
 FAILED=false
 
 # typeset -f module > /dev/null
@@ -16,51 +16,51 @@ FAILED=false
 run_ci()
 {
   BUILD_TYPE=${1}
-  DEPLOY_PATH=$BASEPATH/build-ci/$TIMESTAMP/${BUILD_TYPE}
+  BUILD_UUID=`uuidgen | awk -F '-' '{print $1}'`
+  DEPLOY_PATH=$BASEPATH/build-ci/${TIMESTAMP}--uuid-${BUILD_UUID}/${BUILD_TYPE}
 
   mkdir -p $DEPLOY_PATH && \
     cd $DEPLOY_PATH
 
-  echo "[ BUILD  ] Deploying build $BUILD_TYPE to $DEPLOY_PATH ..."
-  echo "[ >> LOG ] $DEPLOY_PATH/build.log"
+  echo "[-> BUILD  ] Deploying build $BUILD_TYPE to $DEPLOY_PATH ..."
+  echo "[-> LOG    ] $DEPLOY_PATH/build.log"
   $CMD_DEPLOY "--b=$BUILD_TYPE" -f "--i=$DEPLOY_PATH" >> $DEPLOY_PATH/build.log 2>&1
 
   if [ "$?" = "0" ]; then
-    echo "[     OK ]"
+    echo "[->     OK ]"
 
     ### Test DASH using DART MPI backend:
     #
-    echo "[ TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
-    echo "[ >> LOG ] $DEPLOY_PATH/test_mpi.log"
-    if [ "$VERBOSE_CI" = "" ]; then
-      $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log > /dev/null 2>&1
-    else
-      $CMD_TEST mpi   $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log | grep -v "LOG ="
-    fi
+    echo "[-> TEST   ] Running tests on build $BUILD_TYPE (MPI)   ..."
+    echo "[-> LOG    ] $DEPLOY_PATH/test_mpi.log"
+    echo "[-> RUN    ] $CMD_TEST mpi $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log"
+
+    $CMD_TEST mpi $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log
     TEST_STATUS=$?
+
     ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat\|uninitialised value\|Invalid read\|Invalid write" $DEPLOY_PATH/test_mpi.log`
     if [ "$TEST_STATUS" = "0" ]; then
       if [ "$ERROR_PATTERNS" -ne "0" ]; then
         FAILED=true
-        echo "[  ERROR ] error pattern detected. Check logs"
+        echo "[->  ERROR ] error pattern detected. Check logs"
       else
-        echo "[     OK ]"
+        echo "[->     OK ]"
       fi
     else
       FAILED=true
-      echo "[ FAILED ]"
+      echo "[-> FAILED ]"
       tail -n 100000 $DEPLOY_PATH/test_mpi.log
     fi
   else
     FAILED=true
-    echo "[ FAILED ] Build failed"
+    echo "[-> FAILED ] Build failed"
     cat $DEPLOY_PATH/build.log
   fi
 
   if $FAILED; then
-    echo "[ FAILED ] Integration test on $BUILD_TYPE build failed"
+    echo "[-> FAILED ] Integration test on $BUILD_TYPE build failed"
   else
-    echo "[ PASSED ] Build and test suite passed"
+    echo "[-> PASSED ] Build and test suite passed"
   fi
 }
 
