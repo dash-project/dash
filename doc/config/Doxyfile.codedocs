@@ -36,7 +36,7 @@ INLINE_INHERITED_MEMB   = YES
 FULL_PATH_NAMES         = YES
 STRIP_FROM_PATH         = ""
 STRIP_FROM_INC_PATH     =
-SHORT_NAMES             = NO
+SHORT_NAMES             = YES
 JAVADOC_AUTOBRIEF       = YES
 QT_AUTOBRIEF            = NO
 MULTILINE_CPP_IS_BRIEF  = NO
@@ -60,14 +60,18 @@ GENERATE_TREEVIEW       = YES
 
 # Custom commands
 
-ALIASES += concept{1}="@ingroup \1\n@par Implemented concept:\n@ref \1"
-ALIASES += blocking="\b Calls to this routine are blocking"
-ALIASES += async="\b Calls to this routine are non-blocking"
-ALIASES += complexity="\n@par Time complexity\n"
-ALIASES += commtype="\n@par Communication model\n"
-ALIASES += collective_op="\b Collective operation\n"
-ALIASES += local_op="\b Local operation\n"
-ALIASES += onesided_op="\b One-sided operation\n"
+ALIASES                 = concept{1}="@ingroup \1\n@par Implemented concept:\n@ref \1" \
+                          blocking="\b Calls to this routine are blocking" \
+                          async="\b Calls to this routine are non-blocking" \
+                          complexity="\n@par Time complexity\n" \
+                          commtype="\n@par Communication model\n" \
+                          collective_op="\b Collective operation\n" \
+                          local_op="\b Local operation\n" \
+                          onesided_op="\b One-sided operation\n" \
+                          thread_safety{1}="\par Thread safety\n\1" \
+                          threadsafe="\thread_safety{This function is safe to be called by <i>multiple threads in parallel</i>.}" \
+                          threadsafe_serial="\thread_safety{This function is safe to be called from a multi-threaded context by <i>at most one thread</i>.}" \
+                          threadsafe_none="\thread_safety{This function is <i>not thread-safe</i>.}"
 
 # Graphs
 
