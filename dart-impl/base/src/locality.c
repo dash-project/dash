@@ -535,7 +535,7 @@ dart_ret_t dart__base__locality__domain_group(
 
     group_domain->team           = group_parent_domain->team;
     group_domain->scope          = DART_LOCALITY_SCOPE_GROUP;
-    group_domain->level          = group_parent_domain->level + 1;
+    group_domain->level          = group_parent_domain->level;
     group_domain->parent         = group_parent_domain;
     group_domain->relative_index = group_parent_domain->num_domains;
     group_domain->num_nodes      = group_parent_domain->num_nodes;
@@ -543,7 +543,10 @@ dart_ret_t dart__base__locality__domain_group(
     group_domain->unit_ids       = NULL;
     group_domain->num_domains    = 0;
     group_domain->domains        = malloc(sizeof(dart_domain_locality_t) *
-                                          num_group_subdomains);
+                                                 num_group_subdomains);
+    group_domain->num_aliases    = 1;
+    group_domain->aliases        = malloc(sizeof(dart_domain_locality_t *));
+    group_domain->aliases[0]     = group_parent_domain;
 
     strncpy(group_domain->domain_tag, group_parent_domain_tag,
             group_parent_domain_tag_len);
