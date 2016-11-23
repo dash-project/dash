@@ -27,24 +27,23 @@ namespace dash {
  * In terms of data distribution, source and destination ranges passed to
  * \c dash::copy can be local (\c *ValueType) or global (\c GlobIter<ValueType>).
  *
- * For a non-blocking variant of \c dash::copy, see \c dash::async_copy.
+ * For a non-blocking variant of \c dash::copy, see \c dash::copy_async.
  *
  * Example:
  *
  * \code
- *     // Start asynchronous copying
- *     GlobAsyncIter<T> dest_last =
+ *     // Start blocking copy
+ *     auto copy_last =
  *       dash::copy(array_a.lbegin(),
  *                  array_a.lend(),
- *                  array_b.async[200]);
- *     // Overlapping computation here
- *     // ...
- *     // Wait for completion of asynchronous copying:
- *     dest_last.fence();
+ *                  array_b.begin() + 200);
+ *     auto ncopied = dash::distance(array_b.begin() + 200, copy_last);
  * \endcode
  *
- * \returns  The output range end iterator that is created on completion of the
- *           copy operation.
+ * \returns  The output range end iterator that is created on completion
+ *           of the copy operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -82,6 +81,8 @@ OutputIt copy(
  * \returns  An instance of \c dash::Future providing the output range end
  *           iterator that is created on completion of the asynchronous copy
  *           operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -595,6 +596,8 @@ dash::Future<GlobOutputIt> copy_async_impl(
 
 /**
  * Variant of \c dash::copy as asynchronous global-to-local copy operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -804,6 +807,8 @@ dash::Future<ValueType *> copy_async(
 
 /*
  * Specialization of \c dash::copy as global-to-local blocking copy operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -992,6 +997,8 @@ ValueType * copy(
 
 /**
  * Variant of \c dash::copy as asynchronous local-to-global copy operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -1009,6 +1016,8 @@ dash::Future<GlobOutputIt> copy_async(
 
 /**
  * Specialization of \c dash::copy as local-to-global blocking copy operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
@@ -1148,6 +1157,8 @@ copy_async(
 /**
  * Specialization of \c dash::copy as global-to-global blocking copy
  * operation.
+ *
+ * \ingroup  DashAlgorithms
  */
 template <
   typename ValueType,
