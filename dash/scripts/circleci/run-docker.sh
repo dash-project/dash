@@ -12,7 +12,7 @@ for MPIENV in ${MPIENVS[@]}; do
     echo "Starting docker container: $MPIENV"
 
     docker run -v $PWD:/opt/dash dashproject/ci:$MPIENV \
-                  /bin/sh -c "$DASH_ENV_EXPORTS sh dash/scripts/dash-ci.sh $BUILD_CONFIG | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
+                  /bin/sh -c "$DASH_ENV_EXPORTS sh dash/scripts/dash-ci.sh $BUILD_CONFIG | tee dash-ci.log 2> dash-ci.err;"
 
     # upload xml test-results
     mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG

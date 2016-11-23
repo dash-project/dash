@@ -88,6 +88,8 @@ run_suite()
          | grep 'RUN\|PASSED\|OK\|FAILED\|ERROR\|SKIPPED' \
          | tee $TESTSUITE_LOG
 
+    echo "[[ TIME   ]] timestamp: $(date +%Y%m%d-%H%M%S)"
+
     TEST_RET="$?"
 
     TESTSUITE_FAIL_COUNT=`grep --count 'FAILED TEST' $TESTSUITE_LOG`
@@ -100,7 +102,6 @@ run_suite()
       echo "[[   FAIL ]] $TESTSUITE_FAIL_COUNT failed tests, returned ${TEST_RET}" | \
         tee -a $LOGFILE
     fi
-    sleep 3
   done
 }
 

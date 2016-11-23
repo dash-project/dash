@@ -36,9 +36,9 @@ if [ $DART_IMPL = "shmem" ]; then
   RUN_CMD="$BIN_PATH/dartrun-shmem"
   TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash/test/shmem/dash-test-shmem"
 elif [ $DART_IMPL = "mpi" ]; then
-  if (mpirun --help | grep -ic "open\(.\)\?mpi" >/dev/null 2>&1) ; then
-    MPI_EXEC_FLAGS="--map-by core ${MPI_EXEC_FLAGS}"
-  fi
+#  if (mpirun --help | grep -ic "open\(.\)\?mpi" >/dev/null 2>&1) ; then
+#   MPI_EXEC_FLAGS="--map-by core ${MPI_EXEC_FLAGS}"
+#  fi
   RUN_CMD="${EXEC_PREFIX} mpirun ${MPI_EXEC_FLAGS}"
   TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash/test/mpi/dash-test-mpi"
 else
