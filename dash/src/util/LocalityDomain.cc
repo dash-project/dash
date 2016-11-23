@@ -89,7 +89,6 @@ dash::util::LocalityDomain::~LocalityDomain()
   }
   if (_is_owner && _domain != nullptr) {
     dart_domain_destruct(_domain);
-    delete _domain;
   }
   _domain = nullptr;
 
@@ -290,22 +289,23 @@ dash::util::LocalityDomain::split(
                  "parts:",  num_split_parts);
 
   // Actual number of subdomains created in the split:
-  int     num_parts = num_split_parts;
+  int                       num_parts = num_split_parts;
   // Number of domains at specified scope:
-  int     num_scope_parts;
+  int                       num_scope_parts;
   // Tags of domains at specified scope:
-  char ** domain_tags;
+  dart_domain_locality_t ** scope_domains;
   DASH_ASSERT_RETURNS(
-    dart_domain_scope_tags(
+    dart_domain_scope_domains(
       _domain,
       static_cast<dart_locality_scope_t>(scope),
       &num_scope_parts,
-      &domain_tags),
+      &scope_domains),
     DART_OK);
   for (int sd = 0; sd < num_scope_parts; ++sd) {
-    DASH_LOG_DEBUG("LocalityDomain.split", "scope domain:", domain_tags[sd]);
+    DASH_LOG_DEBUG("LocalityDomain.split", "scope domain:",
+                   scope_domains[sd]->domain_tag);
   }
-  // free(domain_tags);
+  free(scope_domains);
 
   if (num_split_parts < 1 || num_scope_parts <= num_split_parts) {
     DASH_LOG_DEBUG("LocalityDomain.split",

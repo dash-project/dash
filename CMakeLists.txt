@@ -24,6 +24,12 @@ if(POLICY CMP0016)
   cmake_policy(SET CMP0016 OLD)
 endif(POLICY CMP0016)
 
+if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+  set(DEFAULT_COMPTIME_RED on)
+else()
+  set(DEFAULT_COMPTIME_RED off)
+endif()
+
 ## Build options
 option(BUILD_TESTS
        "Whether tests should be built" on)
@@ -38,6 +44,12 @@ option(ENABLE_COMPILER_WARNINGS
        "Specify whether strict compiler warnings should be enabled" on)
 option(WARNINGS_AS_ERRORS
        "Specify whether warnings should be treated as errors" off)
+option(ENABLE_LT_OPTIMIZATION
+       "Specify whether link-time-optimization should be used" off)
+option(ENABLE_CC_REPORTS
+       "Specify whether compiler reports should be generated" on)
+option(ENABLE_COMPTIME_RED
+  "Specify whether opts to reduce the build time should be used" ${DEFAULT_COMPTIME_RED})
 option(ENABLE_LOGGING
        "Specify whether logging should be enabled" off)
 option(ENABLE_TEST_LOGGING
@@ -76,6 +88,8 @@ option(ENABLE_PLASMA
        "Specify whether PLASMA features are enabled" on)
 option(ENABLE_HDF5
        "Specify whether HDF5 features are enabled" on)
+option(ENABLE_NASTYMPI
+       "Specify whether the NastyMPI proxy should be enabled" off)
 
 if (BUILD_COVERAGE_TESTS)
   set(BUILD_TESTS TRUE CACHE BOOLEAN
@@ -90,6 +104,9 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/FileSystem.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Doxygen.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Platform.cmake)
 include(${CMAKE_SOURCE_DIR}/CMakeExt/Environment.cmake)
+if (ENABLE_COMPTIME_RED)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/cotire.cmake)
+endif()
 
 # Load build modules to locate libraries after environment setup
 # has been loaded:
@@ -105,6 +122,9 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/HDF5.cmake)
 if (NOT MKL_FOUND)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/LAPACK.cmake)
   include(${CMAKE_SOURCE_DIR}/CMakeExt/SCALAPACK.cmake)
+endif()
+if (ENABLE_NASTYMPI)
+  include(${CMAKE_SOURCE_DIR}/CMakeExt/NastyMPI.cmake)
 endif()
 
 # prepare StaticConfig.h generation
@@ -142,6 +162,16 @@ endif()
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif()
+
+## Tests
+set(TESTCASES
+    "*" CACHE STRING
+    "Comma-separated list of test cases to build.
+     Default is 'ALL'")
+
+string(REPLACE "," ";"
+       TESTCASES_LIST
+       ${TESTCASES})
 
 ## Subprojects, one for each deliverable
 
@@ -209,6 +239,12 @@ message(INFO "Host system identifier:   (ENVIRONMENT_TYPE)               "
         ${DASH_ENV_HOST_SYSTEM_ID})
 message(INFO "Strict compiler warnings: (ENABLE_COMPILER_WARNINGS)       "
         ${ENABLE_COMPILER_WARNINGS})
+message(INFO "Link Time Optimization:   (ENABLE_LT_OPTIMIZATION)         "
+        ${ENABLE_LT_OPTIMIZATION})
+message(INFO "Compiler reports:         (ENABLE_CC_REPORTS)              "
+        ${ENABLE_CC_REPORTS})
+message(INFO "Compile time reduction:   (ENABLE_COMPTIME_RED)            "
+        ${ENABLE_COMPTIME_RED})
 message(INFO "Debug log messages:       (ENABLE_LOGGING)                 "
         ${ENABLE_LOGGING})
 message(INFO "Trace log messages:       (ENABLE_TRACE_LOGGING)           "
@@ -342,5 +378,8 @@ if (ENABLE_LIBNUMA)
   endif()
 else()
   message(NOTE "libnuma                   disabled")
+endif()
+if (ENABLE_NASTYMPI)
+    message(INFO "NastyMPI                  enabled")
 endif()
 

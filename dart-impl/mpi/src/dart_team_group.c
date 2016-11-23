@@ -213,12 +213,18 @@ dart_ret_t dart_group_getmembers(
 dart_ret_t dart_group_split(
   const dart_group_t  * g,
   size_t                n,
+  size_t              * nout,
   dart_group_t       ** gout)
 {
   MPI_Group grouptem;
   int size, length, i, ranges[1][3];
 
   MPI_Group_size(g->mpi_group, &size);
+  *nout = size;
+
+  if (size < (int)n) {
+    DART_LOG_DEBUG("dart_group_split: requested:%d split:%d", n, *nout);
+  }
 
   /* Ceiling division. */
   length = (size + (int)(n-1)) / ((int)(n));
@@ -253,6 +259,7 @@ dart_ret_t dart_group_locality_split(
   dart_domain_locality_t  * domain,
   dart_locality_scope_t     scope,
   size_t                    num_groups,
+  size_t                  * nout,
   dart_group_t           ** gout)
 {
   MPI_Group grouptem;
@@ -295,9 +302,10 @@ dart_ret_t dart_group_locality_split(
   DART_LOG_TRACE("dart_group_locality_split: total number of units: %d",
                  total_domains_units);
 
-  /* TODO: splitting into more groups than domains not supported yet: */
+  /* Splitting into more groups than domains not supported: */
   if (num_groups > (size_t)num_domains) {
     num_groups = num_domains;
+    *nout      = num_groups;
   }
 
   if (num_groups == (size_t)num_domains) {
@@ -475,13 +483,9 @@ dart_ret_t dart_team_get_group(
 }
 
 /**
- *  TODO: Differentiate units belonging to team_id and that not
- *  belonging to team_id
- *  within the function or outside it?
- *  FIX: Outside it.
+ * Create a team as child of the specified team with units in
+ * given group.
  *
- *  The teamid stands for a superteam related to the new generated
- *  newteam.
  */
 dart_ret_t dart_team_create(
   dart_team_t          teamid,

@@ -205,14 +205,18 @@ public:
    */
   pointer attach(local_pointer lptr, size_type num_local_elem)
   {
-    size_type num_local_bytes = sizeof(ElementType) * num_local_elem;
-    pointer   gptr;
+    DASH_LOG_DEBUG("DynamicAllocator.allocate(nlocal)",
+                   "number of local values:", num_local_elem);
+    pointer gptr      = DART_GPTR_NULL;
+    dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
     if (dart_team_memregister(
-          _team_id, num_local_bytes, lptr, &gptr) == DART_OK) {
+          _team_id, ds.nelem, ds.dtype, lptr, &gptr) == DART_OK) {
       _allocated.push_back(std::make_pair(lptr, gptr));
-      return gptr;
+    } else {
+      gptr = DART_GPTR_NULL;
     }
-    return DART_GPTR_NULL;
+    DASH_LOG_DEBUG("DynamicAllocator.allocate > ", gptr);
+    return gptr;
   }
 
   /**
@@ -288,7 +292,7 @@ public:
   {
     local_pointer lmem = allocate_local(num_local_elem);
     pointer       gmem = attach(lmem, num_local_elem);
-    if (DART_GPTR_EQUAL(gmem, DART_GPTR_NULL)) {
+    if (DART_GPTR_ISNULL(gmem)) {
       // Attach failed, free requested local memory:
       deallocate_local(lmem);
     }
@@ -351,7 +355,7 @@ private:
                        e.first);
         delete[] e.first;
       }
-      if (!DART_GPTR_EQUAL(e.second, DART_GPTR_NULL)) {
+      if (!DART_GPTR_ISNULL(e.second)) {
         DASH_LOG_DEBUG("DynamicAllocator.clear", "detach global memory:",
                        e.second);
         // Cannot use DASH_ASSERT due to noexcept qualifier:

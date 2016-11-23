@@ -1,19 +1,33 @@
-#!/bin/sh
+#!/bin/bash
 
-echo "Starting docker container ..."
+MPIENVS=(mpich openmpi openmpi2)
+BUILD_CONFIG=$1
+DASH_ENV_EXPORTS="export DASH_MAKE_PROCS='4'; export DASH_MAX_UNITS='3'; export DASH_BUILDEX='OFF';"
 
-docker run -v $PWD:/opt/dash dash/testing /bin/sh -c "export DASH_MAX_UNITS='2'; export GTEST_TOTAL_SHARDS=${CIRCLE_NODE_TOTAL}; export GTEST_SHARD_INDEX=${CIRCLE_NODE_INDEX}; sh dash/scripts/dash-ci.sh | grep -v 'LOG =' | tee dash-ci.log 2> dash-ci.err;"
+# run tests
+i=0
+for MPIENV in ${MPIENVS[@]}; do
+  if [[ $(( $i % ${CIRCLE_NODE_TOTAL} )) -eq ${CIRCLE_NODE_INDEX} ]]; then
 
-TARGETS=`ls -d ./build-ci/*/* | xargs -n1 basename`
-for TARGET in $TARGETS; do
-  mkdir -p $CIRCLE_TEST_REPORTS/$TARGET
-  cp ./build-ci/*/$TARGET/dash-tests-*.xml $CIRCLE_TEST_REPORTS/$TARGET/
+    echo "Starting docker container: $MPIENV"
+
+    docker run -v $PWD:/opt/dash dashproject/ci:$MPIENV \
+                  /bin/sh -c "$DASH_ENV_EXPORTS sh dash/scripts/dash-ci.sh $BUILD_CONFIG | tee dash-ci.log 2> dash-ci.err;"
+
+    # upload xml test-results
+    mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG
+    cp ./build-ci/*/$BUILD_CONFIG/dash-tests-*.xml $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG/
+    # upload build and test logs 
+    mkdir -p $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG/logs
+    cp ./build-ci/*/$BUILD_CONFIG/*.log $CIRCLE_TEST_REPORTS/$MPIENV/$BUILD_CONFIG/logs
+
+    echo "checking logs"
+
+    cat $PWD/dash-ci.log | grep -i "FAILED\|ERROR"
+    if [ "$?" -eq "0" ]; then
+      echo "Log contains errors"
+      exit 1
+    fi
+  fi
+  i=$((i + 1))
 done
-
-echo "checking logs"
-
-cat $PWD/dash-ci.log | grep "FAILED"
-if [ "$?" -eq "0" ]; then
-  echo "Log contains errors"
-  return 1
-fi

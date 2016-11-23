@@ -147,7 +147,9 @@ int dart_adapt_teamlist_recycle (uint16_t index, int pos)
 	return 0;
 }
 
-int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index)
+int dart_adapt_teamlist_convert(
+  dart_team_t   teamid,
+  uint16_t    * index)
 {
 	if (teamid == DART_TEAM_ALL) {
 		*index = 0;

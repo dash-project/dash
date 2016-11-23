@@ -37,14 +37,13 @@ public:
   typedef       GlobPtr<value_type>                     pointer;
   typedef const GlobPtr<value_type>               const_pointer;
 
-  typedef dash::Atomic<ElementType>
-  atomic_type;
+  typedef dash::Atomic<ElementType>                 atomic_type;
 
 private:
-  typedef dash::GlobMem <
-  value_type,
-  dash::allocator::LocalAllocator<value_type> >
-  GlobMem_t;
+  typedef dash::GlobMem<
+            value_type,
+            dash::allocator::LocalAllocator<value_type> >
+          GlobMem_t;
 
   template<typename T_>
   friend void swap(Shared<T_> & a, Shared<T_> & b);
@@ -74,9 +73,11 @@ public:
       _ptr     = _globmem->begin();
     }
     // Broadcast global pointer of shared value at unit 0 to all units:
+    dart_storage_t ds = dash::dart_storage<pointer>(1);
     dart_bcast(
       &_ptr,
-      sizeof(pointer),
+      ds.nelem,
+      ds.dtype,
       _owner,
       _team->dart_id());
     atomic = atomic_type(_ptr.dart_gptr(), team);
@@ -121,9 +122,7 @@ public:
     DASH_LOG_DEBUG_VAR("Shared.set()", val);
     DASH_LOG_DEBUG_VAR("Shared.set",   _owner);
     DASH_LOG_DEBUG_VAR("Shared.set",   _ptr);
-    DASH_ASSERT(
-      !DART_GPTR_EQUAL(
-        _ptr.dart_gptr(), DART_GPTR_NULL));
+    DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
     *_ptr = val;
     DASH_LOG_DEBUG("Shared.set >");
   }
@@ -136,9 +135,7 @@ public:
     DASH_LOG_DEBUG("Shared.cget()");
     DASH_LOG_DEBUG_VAR("Shared.cget", _owner);
     DASH_LOG_DEBUG_VAR("Shared.cget", _ptr);
-    DASH_ASSERT(
-      !DART_GPTR_EQUAL(
-        _ptr.dart_gptr(), DART_GPTR_NULL));
+    DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
     const_reference ref = *_ptr;
     DASH_LOG_DEBUG_VAR("Shared.cget >", static_cast<ElementType>(ref));
     return ref;
@@ -152,19 +149,30 @@ public:
     DASH_LOG_DEBUG("Shared.get()");
     DASH_LOG_DEBUG_VAR("Shared.get", _owner);
     DASH_LOG_DEBUG_VAR("Shared.get", _ptr);
-    DASH_ASSERT(
-      !DART_GPTR_EQUAL(
-        _ptr.dart_gptr(), DART_GPTR_NULL));
+    DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
     reference ref = *_ptr;
     DASH_LOG_DEBUG_VAR("Shared.get >", static_cast<ElementType>(ref));
     return ref;
   }
 
   /**
-   * Synchronize units associated with the shared value.
+   * Flush global memory of shared value.
+   */
+  void flush()
+  {
+    DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
+    DASH_ASSERT_RETURNS(
+      dart_flush(_ptr.dart_gptr()),
+      DART_OK);
+  }
+
+  /**
+   * Flush global memory of shared value and synchronize its associated
+   * units.
    */
   void barrier()
   {
+    flush();
     DASH_ASSERT(_team != nullptr);
     _team->barrier();
   }

@@ -1,5 +1,5 @@
-#ifndef DASH__IO__HDF5__HDF5_IO_MANIP_H__
-#define DASH__IO__HDF5__HDF5_IO_MANIP_H__
+#ifndef DASH__IO__HDF5__IO_MANIP_H__
+#define DASH__IO__HDF5__IO_MANIP_H__
 
 #ifdef DASH_ENABLE_HDF5
 
@@ -10,11 +10,6 @@ namespace io {
 namespace hdf5 {
 
 typedef StoreHDF::hdf5_options hdf5_options;
-typedef uint32_t hdf5_file_options;
-
-enum HDF5FileOptions : hdf5_file_options {
-  Append = 1 << 0
-};
 
 /**
  * Stream manipulator class to specify
@@ -89,9 +84,8 @@ public:
 } // namespace io
 } // namespace dash
 
-#include <dash/io/hdf5/HDF5OutputStream.h>
-#include <dash/io/hdf5/HDF5InputStream.h>
+#include <dash/io/hdf5/IOStream.h>
 
 #endif // DASH_ENABLE_HDF5
 
-#endif // DASH__IO__HDF5__HDF5_IO_MANIP_H__
+#endif // DASH__IO__HDF5__IO_MANIP_H__

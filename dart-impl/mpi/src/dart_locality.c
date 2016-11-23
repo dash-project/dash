@@ -206,11 +206,27 @@ dart_ret_t dart_domain_scope_tags(
   *num_domains_out = 0;
   *domain_tags_out = NULL;
 
-  return dart__base__locality__scope_domains(
+  return dart__base__locality__scope_domain_tags(
            domain_in,
            scope,
            num_domains_out,
            domain_tags_out);
+}
+
+dart_ret_t dart_domain_scope_domains(
+  const dart_domain_locality_t  * domain_in,
+  dart_locality_scope_t           scope,
+  int                           * num_domains_out,
+  dart_domain_locality_t      *** domains_out)
+{
+  *num_domains_out = 0;
+  *domains_out     = NULL;
+
+  return dart__base__locality__scope_domains(
+           domain_in,
+           scope,
+           num_domains_out,
+           domains_out);
 }
 
 dart_ret_t dart_domain_group(

@@ -46,6 +46,7 @@ TEST_F(AtomicTest, ArrayElements)
   dash::Array<value_t> array(dash::size());
   value_t my_val = dash::myid() + 1;
   array.local[0] = my_val;
+  DASH_LOG_TRACE("AtomicTest.ArrayElement", "barrier #0");
   array.barrier();
 
   value_t expect_init_acc = (dash::size() * (dash::size() + 1)) / 2;
@@ -57,11 +58,12 @@ TEST_F(AtomicTest, ArrayElements)
     std::copy(l_copy, l_copy + array.size(), v_copy.begin());
     DASH_LOG_DEBUG_VAR("AtomicTest.ArrayElement", v_copy);
 
-    value_t actual_init_acc = std::accumulate(l_copy, l_copy + array.size(),
-                                              0);
+    value_t actual_init_acc = std::accumulate(
+                                l_copy, l_copy + array.size(), 0);
     EXPECT_EQ_U(expect_init_acc, actual_init_acc);
     delete[] l_copy;
   }
+  DASH_LOG_TRACE("AtomicTest.ArrayElements", "barrier #1");
   array.barrier();
 
   dart_unit_t remote_prev = dash::myid() == 0
@@ -72,9 +74,15 @@ TEST_F(AtomicTest, ArrayElements)
                             : dash::myid() + 1;
   // Add own value to previous and next unit in the array's iteration order.
   // In effect, sum of all array values should have tripled.
+  DASH_LOG_TRACE("AtomicTest.ArrayElements",
+                 "prev: array @ unit(", remote_prev, ") +=", my_val);
   dash::Atomic<value_t>(array[remote_prev]).add(my_val);
+
+  DASH_LOG_TRACE("AtomicTest.ArrayElements",
+                 "next: array @ unit(", remote_next, ") +=", my_val);
   dash::Atomic<value_t>(array[remote_next]).fetch_and_add(my_val);
 
+  DASH_LOG_TRACE("AtomicTest.ArrayElements", "barrier #2");
   array.barrier();
 
   value_t expect_local = my_val + remote_prev + 1 + remote_next + 1;
@@ -87,11 +95,11 @@ TEST_F(AtomicTest, ArrayElements)
     std::vector<value_t> v_copy(array.size());
     dash::copy(array.begin(), array.end(), l_copy);
     std::copy(l_copy, l_copy + array.size(), v_copy.begin());
-    DASH_LOG_DEBUG_VAR("AtomicTest.ArrayElement", v_copy);
+    DASH_LOG_DEBUG_VAR("AtomicTest.ArrayElements", v_copy);
 
     value_t expect_res_acc = expect_init_acc * 3;
-    value_t actual_res_acc = std::accumulate(l_copy, l_copy + array.size(),
-                                             0);
+    value_t actual_res_acc = std::accumulate(
+                               l_copy, l_copy + array.size(), 0);
     EXPECT_EQ_U(expect_res_acc, actual_res_acc);
     delete[] l_copy;
   }

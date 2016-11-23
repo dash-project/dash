@@ -43,7 +43,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 
 	/* Unit 0 is the process holding the gptr_tail by default. */
 	if (unitid == 0) {
-		dart_memalloc (sizeof (int32_t), &gptr_tail);
+		dart_memalloc(1, DART_TYPE_INT, &gptr_tail);
 		dart_gptr_getaddr (gptr_tail, (void*)&addr);
 
 		/* Local store is safe and effective followed by the sync call. */
@@ -51,13 +51,13 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 		MPI_Win_sync (dart_win_local_alloc);
 	}
 
-	dart_bcast(&gptr_tail, sizeof (dart_gptr_t), 0, teamid);
+	dart_bcast(&gptr_tail, sizeof(dart_gptr_t), DART_TYPE_BYTE, 0, teamid);
 
 	/* Create a global memory region across the teamid,
 	 * and every local memory segment related certain unit
 	 * hold the next blocking unit info waiting on the lock. */
 	dart_team_memalloc_aligned(teamid,
-                             sizeof(int32_t), // number of bytes
+                             1, DART_TYPE_INT,
                              &gptr_list);
 
   MPI_Win win;

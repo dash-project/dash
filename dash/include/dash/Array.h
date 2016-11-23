@@ -1042,9 +1042,7 @@ public:
     DASH_LOG_TRACE_VAR("Array.allocate", team.dart_id());
     // Check requested capacity:
     if (nelem == 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Tried to allocate dash::Array with size 0");
+      DASH_LOG_WARN("Array.allocate", "allocating dash::Array with size 0");
     }
     if (m_team == nullptr || *m_team == dash::Team::Null()) {
       DASH_LOG_TRACE("Array.allocate",
@@ -1132,9 +1130,7 @@ public:
     m_size      = m_pattern.capacity();
     m_team      = &(m_pattern.team());
     if (m_size == 0) {
-      DASH_THROW(
-        dash::exception::InvalidArgument,
-        "Tried to allocate dash::Array with size 0");
+      DASH_LOG_WARN("Array.allocate", "allocating dash::Array with size 0");
     }
     // Initialize members:
     m_lsize     = m_pattern.local_size();
@@ -1148,7 +1144,7 @@ public:
     m_begin     = iterator(m_globmem, m_pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
-    m_lbegin    = m_globmem->lbegin(m_myid);
+    m_lbegin    = m_globmem->lbegin();
     // More efficient than using m_globmem->lend as this a second mapping
     // of the local memory segment:
     m_lend      = m_lbegin + m_lsize;
@@ -1208,7 +1204,7 @@ private:
     m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
     // Local iterators:
-    m_lbegin    = m_globmem->lbegin(m_myid);
+    m_lbegin    = m_globmem->lbegin();
     // More efficient than using m_globmem->lend as this a second mapping
     // of the local memory segment:
     m_lend      = m_lbegin + pattern.local_size();
