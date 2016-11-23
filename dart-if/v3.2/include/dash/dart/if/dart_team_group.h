@@ -149,7 +149,8 @@ dart_ret_t dart_group_addmember(dart_group_t *g, dart_unit_t unitid);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_delmember(dart_group_t *g, dart_unit_t unitid);
+dart_ret_t dart_group_delmember(dart_group_t * g,
+                                dart_unit_t    unitid);
 
 
 /**
@@ -164,8 +165,9 @@ dart_ret_t dart_group_delmember(dart_group_t *g, dart_unit_t unitid);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_ismember(const dart_group_t *g,
-                               dart_unit_t unitid, int32_t *ismember);
+dart_ret_t dart_group_ismember(const dart_group_t * g,
+                               dart_unit_t          unitid,
+                               int32_t            * ismember);
 
 
 /**
@@ -179,33 +181,37 @@ dart_ret_t dart_group_ismember(const dart_group_t *g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_size(const dart_group_t *g,
-                           size_t *size);
+dart_ret_t dart_group_size(const dart_group_t * g,
+                           size_t             * size);
 
 
 /**
  * Get all the members of the group, \c unitids must be large enough
  * to hold the number of members returned by \ref dart_group_size.
  *
- * \param g Pointer to the group object.
- * \param[out] unitids An array large enough to hold the number of units as returned by \ref dart_group_size.
+ * \param       g        Pointer to the group object.
+ * \param[out]  unitids  An array large enough to hold the number of units
+ *                       as returned by \ref dart_group_size.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_getmembers(const dart_group_t *g,
-                                 dart_unit_t *unitids);
+dart_ret_t dart_group_getmembers(const dart_group_t * g,
+                                 dart_unit_t        * unitids);
 
 
 /**
  * Split the group into \c n groups of approx. the same size,
  * \c gout must be an array of \c dart_group_t objects of size at least \c n.
  *
- * \param g Pointer to the group object.
- * \param n The number of groups to split \c g into.
- * \param[out] gout An array of at least \c n pointers to the opaque \ref dart_group_t
+ * \param       g      Pointer to the group object.
+ * \param       n      The requested number of groups to split \c g into.
+ * \param[out]  nout   The actual number of groups that \c g has been split
+ *                     into.
+ * \param[out]  gout   An array of at least \c n pointers to the opaque
+ *                     \ref dart_group_t
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -214,6 +220,7 @@ dart_ret_t dart_group_getmembers(const dart_group_t *g,
  */
 dart_ret_t dart_group_split(const dart_group_t  * g,
                             size_t                n,
+                            size_t              * nout,
                             dart_group_t       ** gout);
 
 /**
@@ -224,11 +231,14 @@ dart_ret_t dart_group_split(const dart_group_t  * g,
  * Size of array \c gout must have a capacity of at least \c n
  * \c dart_group_t objects.
  *
- * \param g      Pointer to the group object.
- * \param domain The domain to use for the split.
- * \param scope  The scope to use for the split.
- * \param n      The number of groups to split \c g into.
- * \param[out] gout   An array of at least \c n pointers to the opaque \ref dart_group_t
+ * \param g           Pointer to the group object.
+ * \param domain      The domain to use for the split.
+ * \param scope       The scope to use for the split.
+ * \param n           The requested number of groups to split \c g into.
+ * \param[out] nout   The actual number of groups that \c g has been split
+ *                    into.
+ * \param[out] gout   An array of at least \c n pointers to the opaque
+ *                    \ref dart_group_t
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -239,6 +249,7 @@ dart_ret_t dart_group_locality_split(const dart_group_t      * g,
                                      dart_domain_locality_t  * domain,
                                      dart_locality_scope_t     scope,
                                      size_t                    n,
+                                     size_t                  * nout,
                                      dart_group_t           ** gout);
 
 /**
@@ -251,7 +262,7 @@ dart_ret_t dart_group_locality_split(const dart_group_t      * g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_sizeof(size_t *size);
+dart_ret_t dart_group_sizeof(size_t * size);
 
 
 /**
