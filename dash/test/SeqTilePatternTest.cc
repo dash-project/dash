@@ -26,10 +26,6 @@ TEST_F(SeqTilePatternTest, Distribute2DimTile)
   size_t size_rows    = (team_size+1) * 3 * block_rows;
   size_t size_cols    = (team_size-1) * 2 * block_cols;
   size_t size         = size_rows * size_cols;
-  LOG_MESSAGE("e:%d,%d, bs:%d,%d, nu:%d, mpu:%d",
-              size_rows,  size_cols,
-              block_rows, block_cols,
-              team_size);
 
   dash::SizeSpec<2> sizespec(size_rows, size_cols);
   auto teamspec = dash::make_team_spec<
