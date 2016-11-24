@@ -136,10 +136,6 @@ dart_ret_t dart_group_intersect(
 }
 
 /**
- * TODO: [JS] This function is likely to be incorrect since dart_group_copy
- *            does not do a deep-copy and hence the call to dart_group_union
- *            has the same MPI_Group as input and output.
- *
  * <fuchst>   Does this function expect global or local unit ids (relative
  *            to a team)?
  */
@@ -152,8 +148,6 @@ dart_ret_t dart_group_addmember(
   MPI_Group     group_all;
   /* Group_all comprises all the running units. */
   MPI_Comm_group(MPI_COMM_WORLD, &group_all);
-//  group_copy = (dart_group_t *)malloc(sizeof(dart_group_t));
-//  group      = (dart_group_t *)malloc(sizeof(dart_group_t));
   dart_group_copy(g, &group_copy);
   array[0]   = unitid;
   MPI_Group_incl(group_all, 1, array, &group.mpi_group);
@@ -224,12 +218,16 @@ dart_ret_t dart_group_split(
   size_t              * nout,
   dart_group_t       ** gout)
 {
-  MPI_Group grouptem;
   int size, length, i, ranges[1][3];
 
   MPI_Group_size(g->mpi_group, &size);
-  *nout = size;
 
+  if (n > INT_MAX) {
+    DART_LOG_ERROR("dart_group_split: n > INT_MAX", n, *nout);
+    return DART_ERR_INVAL;
+  }
+
+  *nout = size;
   if (size < (int)n) {
     DART_LOG_DEBUG("dart_group_split: requested:%d split:%d", n, *nout);
   }
@@ -253,10 +251,9 @@ dart_ret_t dart_group_split(
         g->mpi_group,
         1,
         ranges,
-        &grouptem);
-      (*(gout + i))->mpi_group = grouptem;
+        &(gout[i]->mpi_group));
     } else {
-      (*(gout + i))->mpi_group = MPI_GROUP_NULL;
+      gout[i]->mpi_group = MPI_GROUP_NULL;
     }
   }
   return DART_OK;
@@ -338,7 +335,7 @@ dart_ret_t dart_group_locality_split(
         group_num_units,
         group_global_unit_ids,
         &grouptem);
-      (*(gout + g))->mpi_group = grouptem;
+      gout[g]->mpi_group = grouptem;
 
       free(group_global_unit_ids);
     }
