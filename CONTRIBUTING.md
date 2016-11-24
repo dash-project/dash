@@ -7,6 +7,14 @@ bug reports and code contributions. To simplify cooperation, we follow the
 guidelines described in the following.
 
 
+Developer Notes
+---------------
+
+Consult the [Contributor Primer](http://doc.dash-project.org/ContributorPrimer)
+in the [DASH Documentation Wiki](http://doc.dash-project.org/) for useful hints
+on the code base, build configurations, debugging, HPC system setups etc.
+
+
 Code Style
 ----------
 

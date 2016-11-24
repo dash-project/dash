@@ -6,22 +6,20 @@ STRIP_FROM_PATH         = @PROJECT_SOURCE_DIR@ \
                           @PROJECT_BINARY_DIR@
 INPUT                   = "@PROJECT_SOURCE_DIR@/doc/config/mainpage.dox" \
                           "@PROJECT_SOURCE_DIR@/dart-if/v3.2/include" \
-                          "@PROJECT_SOURCE_DIR@/dash/include"
-#                         "@PROJECT_SOURCE_DIR@/dart-impl/mpi/include" \
-#                         "@PROJECT_SOURCE_DIR@/dart-impl/shmem/dart-shmem/include" \
-#                         "@PROJECT_SOURCE_DIR@/dart-impl/cuda/dart-cuda/include" \
+                          "@PROJECT_SOURCE_DIR@/dash/include" \
+                          "@PROJECT_SOURCE_DIR@/dash/examples"
 OUTPUT_DIRECTORY        = "doc"
 FILE_PATTERNS           = *.h \
                         = *.c \
                         = *.cpp \
                           *.cc
+EXAMPLE_PATH            = "@PROJECT_SOURCE_DIR@/dash/examples"
+EXAMPLE_RECURSIVE       = YES
 EXCLUDE_PATTERNS        = */test/* \
                           */gtest/* \
-                          */examples/* \
                           */internal/*
 EXCLUDE_SYMBOLS         = *::test::* \
                           *::testing::* \
-                          *::examples::* \
                           *::internal::*
 RECURSIVE               = YES
 USE_MDFILE_AS_MAINPAGE  = @doxy_main_page@
@@ -30,7 +28,7 @@ INLINE_INHERITED_MEMB   = YES
 FULL_PATH_NAMES         = YES
 STRIP_FROM_PATH         = "@CMAKE_SOURCE_DIR@"
 STRIP_FROM_INC_PATH     =
-SHORT_NAMES             = NO
+SHORT_NAMES             = YES
 JAVADOC_AUTOBRIEF       = YES
 QT_AUTOBRIEF            = NO
 MULTILINE_CPP_IS_BRIEF  = NO
@@ -54,19 +52,18 @@ GENERATE_TREEVIEW       = YES
 
 # Custom commands
 
-ALIASES += concept{1}="@ingroup \1\n@par Implemented concept:\n@ref \1"
-ALIASES += blocking="\b Calls to this routine are blocking"
-ALIASES += async="\b Calls to this routine are non-blocking"
-ALIASES += complexity="\n@par Time complexity\n"
-ALIASES += commtype="\n@par Communication model\n"
-ALIASES += collective_op="\b Collective operation\n"
-ALIASES += local_op="\b Local operation\n"
-ALIASES += onesided_op="\b One-sided operation\n"
-ALIASES += thread_safety{1}="\par Thread safety\n\1"
-ALIASES += threadsafe="\thread_safety{This function is safe to be called by <i>multiple threads in parallel</i>.}"
-ALIASES += threadsafe_serial="\thread_safety{This function is safe to be called from a multi-threaded context by <i>at most one thread</i>.}"
-ALIASES += threadsafe_none="\thread_safety{This function is <i>not thread-safe</i>.}"
-
+ALIASES                 = concept{1}="@ingroup \1\n@par Implemented concept:\n@ref \1" \
+                          blocking="\b Calls to this routine are blocking" \
+                          async="\b Calls to this routine are non-blocking" \
+                          complexity="\n@par Time complexity\n" \
+                          commtype="\n@par Communication model\n" \
+                          collective_op="\b Collective operation\n" \
+                          local_op="\b Local operation\n" \
+                          onesided_op="\b One-sided operation\n" \
+                          thread_safety{1}="\par Thread safety\n\1" \
+                          threadsafe="\thread_safety{This function is safe to be called by <i>multiple threads in parallel</i>.}" \
+                          threadsafe_serial="\thread_safety{This function is safe to be called from a multi-threaded context by <i>at most one thread</i>.}" \
+                          threadsafe_none="\thread_safety{This function is <i>not thread-safe</i>.}"
 
 # Graphs
 
@@ -117,7 +114,7 @@ PREDEFINED              = protected=private \
                           DASH_ENABLE_SCALAPACK \
                           DASH_ENABLE_ASSERTIONS \
                           DART_IMPLEMENTATIONS="mpi" \
-                          MPI_IMPL_ID="mpi_imp_id"
+                          MPI_IMPL_ID="mpi_impl_id"
 EXPAND_AS_DEFINED       = 
 SKIP_FUNCTION_MACROS    = YES
 

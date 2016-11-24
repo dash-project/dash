@@ -217,12 +217,6 @@ dart_ret_t dart__base__locality__delete(
 {
   dart_ret_t ret = DART_OK;
 
-  if (NULL == dart__base__locality__global_domain_[team] &&
-      NULL == dart__base__locality__host_topology_[team] &&
-      NULL == dart__base__locality__unit_mapping_[team]) {
-    return ret;
-  }
-
   DART_LOG_DEBUG("dart__base__locality__delete() team(%d)", team);
 
   if (NULL != dart__base__locality__global_domain_[team]) {

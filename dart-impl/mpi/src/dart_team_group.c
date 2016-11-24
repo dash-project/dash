@@ -28,14 +28,20 @@
 dart_ret_t dart_group_init(
   dart_group_t *group)
 {
-  group -> mpi_group = MPI_GROUP_EMPTY;
+  // Initialize the group as empty but not directly assign MPI_GROUP_EMPTY as it might lead to invalid free later
+  MPI_Group g;
+  MPI_Comm_group(MPI_COMM_WORLD, &g);
+  MPI_Group_incl(g, 0, NULL, &group->mpi_group);
   return DART_OK;
 }
 
 dart_ret_t dart_group_fini(
   dart_group_t *group)
 {
-  group -> mpi_group = MPI_GROUP_NULL;
+  if (group->mpi_group != MPI_GROUP_NULL) {
+    MPI_Group_free(&group->mpi_group);
+    group->mpi_group = MPI_GROUP_NULL;
+  }
   return DART_OK;
 }
 
@@ -43,7 +49,7 @@ dart_ret_t dart_group_copy(
   const dart_group_t *gin,
   dart_group_t *gout)
 {
-  gout -> mpi_group = gin -> mpi_group;
+  gout->mpi_group = gin -> mpi_group;
   return DART_OK;
 }
 
@@ -101,7 +107,7 @@ dart_ret_t dart_group_union(
       while (j <= size_out -1) {
         post_unitidsout[k++] = pre_unitidsout[j++];
       }
-      gout -> mpi_group = MPI_GROUP_EMPTY;
+      MPI_Group_free(&gout->mpi_group);
       MPI_Group_incl(
         group_all,
         size_out,
@@ -130,10 +136,6 @@ dart_ret_t dart_group_intersect(
 }
 
 /**
- * TODO: [JS] This function is likely to be incorrect since dart_group_copy
- *            does not do a deep-copy and hence the call to dart_group_union
- *            has the same MPI_Group as input and output.
- *
  * <fuchst>   Does this function expect global or local unit ids (relative
  *            to a team)?
  */
@@ -143,17 +145,16 @@ dart_ret_t dart_group_addmember(
 {
   int array[1];
   dart_group_t group_copy, group;
-  MPI_Group     newgroup, group_all;
+  MPI_Group     group_all;
   /* Group_all comprises all the running units. */
   MPI_Comm_group(MPI_COMM_WORLD, &group_all);
-//  group_copy = (dart_group_t *)malloc(sizeof(dart_group_t));
-//  group      = (dart_group_t *)malloc(sizeof(dart_group_t));
   dart_group_copy(g, &group_copy);
   array[0]   = unitid;
-  MPI_Group_incl(group_all, 1, array, &newgroup);
-  group.mpi_group = newgroup;
+  MPI_Group_incl(group_all, 1, array, &group.mpi_group);
   /* Make the new group being an ordered group. */
   dart_group_union(&group_copy, &group, g);
+  dart_group_fini(&group);
+  dart_group_fini(&group_copy);
   return DART_OK;
 }
 
@@ -174,6 +175,7 @@ dart_ret_t dart_group_delmember(
     g -> mpi_group,
     newgroup,
     &(g -> mpi_group));
+  MPI_Group_free(&newgroup);
   return DART_OK;
 }
 
@@ -213,12 +215,22 @@ dart_ret_t dart_group_getmembers(
 dart_ret_t dart_group_split(
   const dart_group_t  * g,
   size_t                n,
+  size_t              * nout,
   dart_group_t       ** gout)
 {
-  MPI_Group grouptem;
   int size, length, i, ranges[1][3];
 
   MPI_Group_size(g->mpi_group, &size);
+
+  if (n > INT_MAX) {
+    DART_LOG_ERROR("dart_group_split: n > INT_MAX", n, *nout);
+    return DART_ERR_INVAL;
+  }
+
+  *nout = size;
+  if (size < (int)n) {
+    DART_LOG_DEBUG("dart_group_split: requested:%d split:%d", n, *nout);
+  }
 
   /* Ceiling division. */
   length = (size + (int)(n-1)) / ((int)(n));
@@ -239,10 +251,9 @@ dart_ret_t dart_group_split(
         g->mpi_group,
         1,
         ranges,
-        &grouptem);
-      (*(gout + i))->mpi_group = grouptem;
+        &(gout[i]->mpi_group));
     } else {
-      (*(gout + i))->mpi_group = MPI_GROUP_EMPTY;
+      gout[i]->mpi_group = MPI_GROUP_NULL;
     }
   }
   return DART_OK;
@@ -253,6 +264,7 @@ dart_ret_t dart_group_locality_split(
   dart_domain_locality_t  * domain,
   dart_locality_scope_t     scope,
   size_t                    num_groups,
+  size_t                  * nout,
   dart_group_t           ** gout)
 {
   MPI_Group grouptem;
@@ -295,9 +307,10 @@ dart_ret_t dart_group_locality_split(
   DART_LOG_TRACE("dart_group_locality_split: total number of units: %d",
                  total_domains_units);
 
-  /* TODO: splitting into more groups than domains not supported yet: */
+  /* Splitting into more groups than domains not supported: */
   if (num_groups > (size_t)num_domains) {
     num_groups = num_domains;
+    *nout      = num_groups;
   }
 
   if (num_groups == (size_t)num_domains) {
@@ -322,7 +335,7 @@ dart_ret_t dart_group_locality_split(
         group_num_units,
         group_global_unit_ids,
         &grouptem);
-      (*(gout + g))->mpi_group = grouptem;
+      gout[g]->mpi_group = grouptem;
 
       free(group_global_unit_ids);
     }
