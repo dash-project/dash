@@ -31,11 +31,11 @@ bool domains_are_equal(
     if (loc_a->unit_ids[u] != loc_b->unit_ids[u]) { return false; }
   }
   for (int d = 0; d < loc_a->num_domains; d++) {
-    EXPECT_EQ_U(loc_a, loc_a->domains[d].parent);
-    EXPECT_EQ_U(loc_b, loc_b->domains[d].parent);
-    EXPECT_EQ_U(d, loc_a->domains[d].relative_index);
-    EXPECT_EQ_U(d, loc_b->domains[d].relative_index);
-    if (!domains_are_equal(&loc_a->domains[d], &loc_b->domains[d])) {
+    EXPECT_EQ_U(loc_a, loc_a->children[d]->parent);
+    EXPECT_EQ_U(loc_b, loc_b->children[d]->parent);
+    EXPECT_EQ_U(d, loc_a->children[d]->relative_index);
+    EXPECT_EQ_U(d, loc_b->children[d]->relative_index);
+    if (!domains_are_equal(loc_a->children[d], loc_b->children[d])) {
       return false;
     }
   }
@@ -60,7 +60,7 @@ bool domains_find_each_recursive(
     return false;
   }
   for (int d = 0; d < domain->num_domains; d++) {
-    const dart_domain_locality_t * subdomain = domain->domains + d;
+    const dart_domain_locality_t * subdomain = domain->children[d];
     if (!domains_find_each_recursive(root_domain, subdomain)) {
       return false;
     }

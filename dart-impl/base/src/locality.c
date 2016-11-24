@@ -331,9 +331,9 @@ dart_ret_t dart__base__locality__scope_domain_tags(
 
   *domain_tags_out = (char **)(malloc(sizeof(char *) * (*num_domains_out)));
   for (int sd = 0; sd < *num_domains_out; sd++) {
-    (*domain_tags_out)[sd] = (char *)(malloc(
-                               sizeof(char) *
-                               (strlen(dart_scope_domains[sd]->domain_tag) + 1)));
+    (*domain_tags_out)[sd] =
+      (char *)(malloc(sizeof(char) *
+                      (strlen(dart_scope_domains[sd]->domain_tag) + 1)));
     strcpy((*domain_tags_out)[sd],
            dart_scope_domains[sd]->domain_tag);
   }
@@ -621,6 +621,8 @@ dart_ret_t dart__base__locality__domain_group(
                      "copy domain.domains[domain_tag = %s] to "
                      "group.domains[%d]",
                      immediate_subdomain_tags[gsd], gsd);
+
+      group_domain->children[gsd] = malloc(sizeof(dart_domain_locality_t));
       ret = dart__base__locality__domain__copy(
               group_subdomain_in,
               group_domain->children[gsd]);

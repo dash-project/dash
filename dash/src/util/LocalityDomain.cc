@@ -404,7 +404,7 @@ dash::util::LocalityDomain::at(
                          relative_index,
                          dash::util::LocalityDomain(
                            *this,
-                           &(_domain->domains[relative_index]))
+                           (_domain->children[relative_index]))
                        ));
     DASH_LOG_DEBUG("LocalityDomain.at", " <-- created subdomain instance");
     DASH_LOG_DEBUG("LocalityDomain.at >",

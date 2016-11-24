@@ -147,6 +147,19 @@ static void print_domain(
 {
   using namespace std;
 
+  ostr << "(" << domain->domain_tag;
+
+  if (domain->num_aliases > 0) {
+    ostr << " = ";
+    for (int a = 0; a < domain->num_aliases; a++) {
+      ostr << domain->aliases[a]->domain_tag;
+      if (a+1 < domain->num_aliases) {
+        ostr << ", ";
+      }
+    }
+  }
+  ostr << ")\n";
+
   ostr << indent << "scope:   " << domain->scope << " "
                                 << "(level " << domain->level << ")"
        << '\n'
@@ -195,7 +208,7 @@ static void print_domain(
     ostr << indent << "domains: " << domain->num_domains << '\n';
 
     for (int d = 0; d < domain->num_domains; ++d) {
-      if (static_cast<int>(domain->domains[d].scope) <=
+      if (static_cast<int>(domain->children[d]->scope) <=
           static_cast<int>(DART_LOCALITY_SCOPE_CORE)) {
 
         ostr << indent;
@@ -210,11 +223,9 @@ static void print_domain(
         }
         sub_indent += std::string(8, ' ');
 
-        ostr << "-- [" << d << "]: "
-             << "(" << domain->domains[d].domain_tag << ")"
-             << '\n';
+        ostr << "-- [" << d << "]: ";
 
-        print_domain(ostr, team, &domain->domains[d], sub_indent);
+        print_domain(ostr, team, domain->children[d], sub_indent);
       }
     }
   }
