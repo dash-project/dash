@@ -160,8 +160,8 @@ dart_ret_t dart__base__host_topology__update_module_locations(
   dart_unit_locality_t * my_uloc;
   dart_unit_t            local_leader_unit_id = DART_UNDEFINED_UNIT_ID;
   dart_unit_t            my_id                = DART_UNDEFINED_UNIT_ID;
-  dart_group_t         * leader_group         = malloc(sizeof(group_t_size));
-  dart_group_t         * local_group          = malloc(sizeof(group_t_size));
+  dart_group_t         * leader_group         = malloc(group_t_size);
+  dart_group_t         * local_group          = malloc(group_t_size);
   dart_team_t            leader_team; /* team of all node leaders   */
 
   DART_ASSERT_RETURNS(
@@ -673,6 +673,7 @@ dart_ret_t dart__base__host_topology__create(
   topo->num_host_levels = 0;
   topo->num_nodes       = num_hosts;
   topo->num_hosts       = num_hosts;
+  topo->num_units       = num_units;
   topo->host_names      = hostnames;
 
   DART_ASSERT_RETURNS(
@@ -702,7 +703,7 @@ dart_ret_t dart__base__host_topology__destruct(
     topo->host_domains = NULL;
   }
   if (NULL != topo->host_names) {
-    for (int h = 0; h < topo->num_hosts; ++h) {
+    for (size_t h = 0; h < topo->num_units; ++h) {
       if (NULL != topo->host_names[h]) {
         DART_LOG_DEBUG("dart__base__host_topology__init: "
                        "free(topo->host_names[%d])", h);

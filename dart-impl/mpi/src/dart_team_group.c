@@ -28,14 +28,20 @@
 dart_ret_t dart_group_init(
   dart_group_t *group)
 {
-  group -> mpi_group = MPI_GROUP_EMPTY;
+  // Initialize the group as empty but not directly assign MPI_GROUP_EMPTY as it might lead to invalid free later
+  MPI_Group g;
+  MPI_Comm_group(MPI_COMM_WORLD, &g);
+  MPI_Group_incl(g, 0, NULL, &group->mpi_group);
   return DART_OK;
 }
 
 dart_ret_t dart_group_fini(
   dart_group_t *group)
 {
-  group -> mpi_group = MPI_GROUP_NULL;
+  if (group->mpi_group != MPI_GROUP_NULL) {
+    MPI_Group_free(&group->mpi_group);
+    group->mpi_group = MPI_GROUP_NULL;
+  }
   return DART_OK;
 }
 
@@ -43,7 +49,7 @@ dart_ret_t dart_group_copy(
   const dart_group_t *gin,
   dart_group_t *gout)
 {
-  gout -> mpi_group = gin -> mpi_group;
+  gout->mpi_group = gin -> mpi_group;
   return DART_OK;
 }
 
@@ -101,7 +107,7 @@ dart_ret_t dart_group_union(
       while (j <= size_out -1) {
         post_unitidsout[k++] = pre_unitidsout[j++];
       }
-      gout -> mpi_group = MPI_GROUP_EMPTY;
+      MPI_Group_free(&gout->mpi_group);
       MPI_Group_incl(
         group_all,
         size_out,
@@ -143,17 +149,18 @@ dart_ret_t dart_group_addmember(
 {
   int array[1];
   dart_group_t group_copy, group;
-  MPI_Group     newgroup, group_all;
+  MPI_Group     group_all;
   /* Group_all comprises all the running units. */
   MPI_Comm_group(MPI_COMM_WORLD, &group_all);
 //  group_copy = (dart_group_t *)malloc(sizeof(dart_group_t));
 //  group      = (dart_group_t *)malloc(sizeof(dart_group_t));
   dart_group_copy(g, &group_copy);
   array[0]   = unitid;
-  MPI_Group_incl(group_all, 1, array, &newgroup);
-  group.mpi_group = newgroup;
+  MPI_Group_incl(group_all, 1, array, &group.mpi_group);
   /* Make the new group being an ordered group. */
   dart_group_union(&group_copy, &group, g);
+  dart_group_fini(&group);
+  dart_group_fini(&group_copy);
   return DART_OK;
 }
 
@@ -174,6 +181,7 @@ dart_ret_t dart_group_delmember(
     g -> mpi_group,
     newgroup,
     &(g -> mpi_group));
+  MPI_Group_free(&newgroup);
   return DART_OK;
 }
 
@@ -248,7 +256,7 @@ dart_ret_t dart_group_split(
         &grouptem);
       (*(gout + i))->mpi_group = grouptem;
     } else {
-      (*(gout + i))->mpi_group = MPI_GROUP_EMPTY;
+      (*(gout + i))->mpi_group = MPI_GROUP_NULL;
     }
   }
   return DART_OK;

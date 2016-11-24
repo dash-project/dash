@@ -59,6 +59,10 @@ http://www.dash-project.org
 
 https://github.com/dash-project
 
+**Documentation Wiki**
+
+http://doc.dash-project.org
+
 **Repository:**
 
 - HTTPS: [https://github.com/dash-project/dash.git]()

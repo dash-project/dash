@@ -1794,16 +1794,25 @@ dart_ret_t dart_reduce(
 }
 
 dart_ret_t dart_send(
-  void * sendbuf,
-  size_t nelem,
-  dart_datatype_t dtype,
-  int tag,
-  dart_unit_t unit) 
+  const void      * sendbuf,
+  size_t            nelem,
+  dart_datatype_t   dtype,
+  int               tag,
+  dart_unit_t       unit)
 {
   MPI_Comm comm;
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
   dart_team_t team = DART_TEAM_ALL;
   uint16_t index;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_send ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
   int result = dart_adapt_teamlist_convert(team, &index);
   if(result == -1) {
     return DART_ERR_INVAL;
@@ -1823,16 +1832,25 @@ dart_ret_t dart_send(
 }
 
 dart_ret_t dart_recv(
-  void * recvbuf,
-  size_t nelem,
-  dart_datatype_t dtype,
-  int tag,
-  dart_unit_t unit) 
+  void           * recvbuf,
+  size_t           nelem,
+  dart_datatype_t  dtype,
+  int              tag,
+  dart_unit_t      unit)
 {
   MPI_Comm comm;
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
   dart_team_t team = DART_TEAM_ALL;
   uint16_t index;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_recv ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
   int result = dart_adapt_teamlist_convert(team, &index);
   if(result == -1) {
     return DART_ERR_INVAL;
@@ -1853,22 +1871,31 @@ dart_ret_t dart_recv(
 }
 
 dart_ret_t dart_sendrecv(
-  void * sendbuf,
-  size_t send_nelem,
-  dart_datatype_t send_dtype,
-  int send_tag,
-  dart_unit_t dest,
-  void * recvbuf,
-  size_t recv_nelem,
-  dart_datatype_t recv_dtype,
-  int recv_tag,
-  dart_unit_t src)
+  const void     * sendbuf,
+  size_t           send_nelem,
+  dart_datatype_t  send_dtype,
+  int              send_tag,
+  dart_unit_t      dest,
+  void           * recvbuf,
+  size_t           recv_nelem,
+  dart_datatype_t  recv_dtype,
+  int              recv_tag,
+  dart_unit_t      src)
 {
   MPI_Comm comm;
   MPI_Datatype mpi_send_dtype = dart_mpi_datatype(send_dtype);
   MPI_Datatype mpi_recv_dtype = dart_mpi_datatype(recv_dtype);
   dart_team_t team = DART_TEAM_ALL;
   uint16_t index;
+
+  /*
+   * MPI uses offset type int, do not copy more than INT_MAX elements:
+   */
+  if (send_nelem > INT_MAX || recv_nelem > INT_MAX) {
+    DART_LOG_ERROR("dart_sendrecv ! failed: nelem > INT_MAX");
+    return DART_ERR_INVAL;
+  }
+
   int result = dart_adapt_teamlist_convert(team, &index);
   if(result == -1) {
     return DART_ERR_INVAL;
