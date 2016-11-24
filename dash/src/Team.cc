@@ -79,9 +79,12 @@ Team::split(
   unsigned num_parts)
 {
   DASH_LOG_DEBUG_VAR("Team.split()", num_parts);
+
+  std::vector<dart_group_t *> sub_group_v(num_parts);
+
   dart_group_t *  group;
-  dart_group_t ** sub_groups = static_cast<dart_group_t**>(
-                                 malloc(sizeof(dart_group_t*) * num_parts));
+  dart_group_t ** sub_groups = sub_group_v.data();
+
   size_t size;
   size_t num_split = 0;
 
@@ -124,6 +127,9 @@ Team::split(
       DART_OK);
     if(newteam != DART_TEAM_NULL) {
       // Create team instance of child team:
+      DASH_ASSERT_EQ(
+        &(dash::Team::Null()), result,
+        "Team.split assigned unit assigned to more than one team");
       result = new Team(newteam, this, i, num_split);
     }
   }
@@ -210,6 +216,9 @@ Team::locality_split(
         &newteam),
       DART_OK);
     if(newteam != DART_TEAM_NULL) {
+      DASH_ASSERT_EQ(
+        &(dash::Team::Null()), result,
+        "Team.split assigned unit assigned to more than one team");
       result = new Team(newteam, this, i, num_split);
     }
   }

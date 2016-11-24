@@ -83,8 +83,16 @@ extern void ColoredPrintf(
 
 #define SKIP_TEST()\
     if(dash::myid() == 0) {\
-      std::cout << TEST_SKIPPED << "Warning: test skipped" << std::endl;\
+      std::cout << TEST_SKIPPED << "Warning: test skipped" \
+                << std::endl;\
     }\
-    return;
+    return
+
+#define SKIP_TEST_MSG(msg)\
+    if(dash::myid() == 0) {\
+      std::cout << TEST_SKIPPED << "Warning: test skipped: " << msg \
+                << std::endl;\
+    }\
+    return
 
 #endif // DASH__TEST__TEST_BASE_H_
