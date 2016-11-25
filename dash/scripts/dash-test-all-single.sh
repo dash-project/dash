@@ -29,13 +29,15 @@ usage()
   echo ""
 }
 
+nocolor()
+{
+  sed 's/\x1b\[[0-9;]*m//g'
+}
 
 if [ $# -lt 2 ]; then
   usage
   exit -1
 fi
-
-alias nocolor="sed 's/\x1b\[[0-9;]*m//g'"
 
 if [ "$LOGFILE" = "" ]; then
   # Use temporary log file
@@ -70,7 +72,7 @@ if [[ $ret != 0 ]] ; then
   echo "$OUTPUT"
   exit  $ret 
 fi
-TEST_SUITES=$(echo $OUTPUT | grep -v '^\s' | grep -v '^#')
+TEST_SUITES=$(echo "$OUTPUT" | grep -v '^\s' | grep -v '^#')
 
 # Number of failed tests in total
 TOTAL_FAIL_COUNT=0
