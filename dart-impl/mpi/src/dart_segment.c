@@ -191,37 +191,6 @@ dart_ret_t dart_segment_add_info(const dart_segment_info_t *item)
   return DART_OK;
 }
 
-/** <fuchsto>: what are semantics of
- *             - dart_segment_remove
- *             vs.
- *             - dart_segment_dealloc
- *             vs.
- *             - dart_segment_clear
- *             ?
- */
-dart_ret_t dart_segment_remove(int16_t seg_id)
-{
-  DART_LOG_DEBUG("dart_segment_remove() segid:%d", seg_id);
-
-  dart_segment_t *segment = get_segment(seg_id);
-  if (segment == NULL || segment->seg_info.seg_id != seg_id) {
-    DART_LOG_ERROR("Invalid segment ID %i", seg_id);
-    return DART_ERR_INVAL;
-  }
-  free(segment->seg_info.disp);
-  segment->seg_info.disp = NULL;
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-  if (segment->seg_info.baseptr) {
-    free(segment->seg_info.baseptr);
-    segment->seg_info.baseptr = NULL;
-  }
-#endif
-  memset(&segment->seg_info, 0, sizeof(segment->seg_info));
-
-  DART_LOG_DEBUG("dart_segment_remove > segid:%d", seg_id);
-  return DART_OK;
-}
-
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_segment_get_win(int16_t seg_id, MPI_Win * win)
 {
@@ -330,11 +299,25 @@ dart_ret_t dart_segment_get_size(
   return DART_OK;
 }
 
+static inline void free_segment_info(dart_segment_info_t *seg_info){
+  if (seg_info->disp != NULL) {
+    free(seg_info->disp);
+    seg_info->disp = NULL;
+  }
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+  if (seg_info->baseptr) {
+    free(seg_info->baseptr);
+    seg_info->baseptr = NULL;
+  }
+#endif
+  memset(seg_info, 0, sizeof(dart_segment_info_t));
+}
+
 /**
  * @brief Deallocates the segment identified by the segment ID.
  *
- * @return 0 on success.
- *        <0 if the segment was not found.
+ * @return DART_OK on success.
+ *         DART_ERR_INVAL if the segment was not found.
  */
 dart_ret_t dart_segment_dealloc(dart_segid_t segid)
 {
@@ -354,15 +337,8 @@ dart_ret_t dart_segment_dealloc(dart_segid_t segid)
   while (elem != NULL) {
 
     if (elem->data.segid == segid) {
+      free_segment_info(&elem->data.seg_info);
       elem->seg_id = DART_SEGMENT_INVALID;
-      free(elem->data.seg_info.disp);
-      elem->data.seg_info.disp = NULL;
-  #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-      if (elem->data.seg_info.baseptr) {
-        free(elem->data.seg_info.baseptr);
-        elem->data.seg_info.baseptr = NULL;
-      }
-  #endif
       if (freelist_head == NULL) {
         // make it the new freelist head
         freelist_head = elem;
@@ -391,13 +367,7 @@ static void clear_segdata_list(dart_seghash_elem_t *listhead)
     dart_seghash_elem_t *tmp = elem;
     elem = tmp->next;
     tmp->next = NULL;
-    free(tmp->data.seg_info.disp);
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-    if (tmp->data.seg_info.baseptr) {
-      free(elem->data.seg_info.baseptr);
-      elem->data.seg_info.baseptr = NULL;
-    }
-#endif
+    free_segment_info(&tmp->data.seg_info);
     free(tmp);
   }
   listhead->next = NULL;

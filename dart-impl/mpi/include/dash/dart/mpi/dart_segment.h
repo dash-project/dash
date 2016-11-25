@@ -44,11 +44,6 @@ dart_ret_t dart_segment_get_teamidx(dart_segid_t segid, uint16_t *team_idx);
  */
 dart_ret_t dart_segment_add_info(const dart_segment_info_t *item);
 
-/**
- * @brief Remove the segment with ID seg_id from the segment hash table.
- */
-dart_ret_t dart_segment_remove(int16_t seg_id);
-
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 /** @brief Query the shared memory window object associated with the specified seg_id.
  *
