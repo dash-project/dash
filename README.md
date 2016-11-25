@@ -1,4 +1,4 @@
-[![CI Status](https://circleci.com/gh/dash-project/dash.svg?style=shield&circle-token=cd221e93159f5c97477c9699f3b7adc54d344ae6)](https://circleci.com/dashboard)
+[![CI Status](https://circleci.com/gh/dash-project/dash.svg?style=shield&circle-token=cd221e93159f5c97477c9699f3b7adc54d344ae6)](https://circleci.com/gh/dash-project/dash)
 [![Build Status](https://travis-ci.org/dash-project/dash.svg?branch=development)](https://travis-ci.org/dash-project/dash) [![Documentation Status](https://readthedocs.org/projects/dash/badge/?version=latest)](http://dash.readthedocs.io/en/latest/?badge=latest) [![Documentation](https://codedocs.xyz/dash-project/dash.svg)](https://codedocs.xyz/dash-project/dash/)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/491/badge)](https://bestpractices.coreinfrastructure.org/projects/491)
 
@@ -59,6 +59,10 @@ http://www.dash-project.org
 
 https://github.com/dash-project
 
+**Documentation Wiki**
+
+http://doc.dash-project.org
+
 **Repository:**
 
 - HTTPS: [https://github.com/dash-project/dash.git]()
@@ -66,7 +70,8 @@ https://github.com/dash-project
 
 **Contact:**
 
-team@dash-project.org
+- Support: support@dash-project.org 
+- Developer mailing list: team@dash-project.org
 
 **Contributing**
 
@@ -84,7 +89,7 @@ Docker Containers
 -----------------
 
 For pre-build Docker container images, see the
-[DASH project on Docker Hub](https://hub.docker.com/r/dashproject)
+[DASH project on Docker Hub](https://hub.docker.com/r/dashproject).
 
 
 Building from Source

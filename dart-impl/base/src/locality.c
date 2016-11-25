@@ -217,12 +217,6 @@ dart_ret_t dart__base__locality__delete(
 {
   dart_ret_t ret = DART_OK;
 
-  if (NULL == dart__base__locality__global_domain_[team] &&
-      NULL == dart__base__locality__host_topology_[team] &&
-      NULL == dart__base__locality__unit_mapping_[team]) {
-    return ret;
-  }
-
   DART_LOG_DEBUG("dart__base__locality__delete() team(%d)", team);
 
   if (NULL != dart__base__locality__global_domain_[team]) {
@@ -523,8 +517,7 @@ dart_ret_t dart__base__locality__domain_group(
     for (int sd = 0; sd < group_size; sd++) {
       /* Resolve relative index of subdomain: */
       immediate_subdomain_tags[sd] =
-        calloc(sizeof(char) * DART_LOCALITY_DOMAIN_TAG_MAX_SIZE,
-               sizeof(char));
+        calloc(DART_LOCALITY_DOMAIN_TAG_MAX_SIZE, sizeof(char));
 
       char * dot_pos = strchr(group_subdomain_tags[sd] +
                               group_parent_domain_tag_len + 1, '.');
