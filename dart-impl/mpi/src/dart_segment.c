@@ -337,6 +337,7 @@ dart_ret_t dart_segment_free(dart_segid_t segid)
   while (elem != NULL) {
 
     if (elem->data.segid == segid) {
+      pred->next = elem->next;
       free_segment_info(&elem->data.seg_info);
       elem->seg_id = DART_SEGMENT_INVALID;
       if (freelist_head == NULL) {
@@ -348,7 +349,6 @@ dart_ret_t dart_segment_free(dart_segid_t segid)
         elem->next = freelist_head->next;
         freelist_head->next = elem;
       }
-      pred->next = elem->next;
       return DART_OK;
     }
 
