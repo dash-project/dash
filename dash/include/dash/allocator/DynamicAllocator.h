@@ -238,9 +238,13 @@ public:
                      "DASH not initialized, abort");
       return;
     }
+/*
+ *  Temporarily disabled for CI debugging:
+ * 
     DASH_ASSERT_RETURNS(
       dart_team_memderegister(_team_id, gptr),
       DART_OK);
+*/
     _allocated.erase(
       std::remove_if(
         _allocated.begin(),
