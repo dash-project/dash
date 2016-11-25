@@ -448,9 +448,6 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
 {
   typedef int value_t;
 
-  // Temporarily disabled for CI debugging
-  SKIP_TEST();
-
   if (dash::size() < 3) {
     SKIP_TEST_MSG("Test case requires at least three units");
   }
