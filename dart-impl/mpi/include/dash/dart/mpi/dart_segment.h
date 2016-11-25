@@ -88,13 +88,13 @@ dart_ret_t dart_segment_get_size(
 /**
  * @brief Deallocates the segment identified by the segment ID.
  */
-dart_ret_t dart_segment_dealloc(dart_segid_t segid);
+dart_ret_t dart_segment_free(dart_segid_t segid);
 
 
 /**
  * @brief Clear the segment data hash table.
  */
-dart_ret_t dart_segment_clear();
+dart_ret_t dart_segment_fini();
 
 
 #endif /* DART_SEGMENT_H_ */

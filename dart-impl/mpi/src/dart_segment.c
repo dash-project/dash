@@ -319,7 +319,7 @@ static inline void free_segment_info(dart_segment_info_t *seg_info){
  * @return DART_OK on success.
  *         DART_ERR_INVAL if the segment was not found.
  */
-dart_ret_t dart_segment_dealloc(dart_segid_t segid)
+dart_ret_t dart_segment_free(dart_segid_t segid)
 {
   int slot = hash_segid(segid);
   dart_seghash_elem_t *pred = NULL;
@@ -376,7 +376,7 @@ static void clear_segdata_list(dart_seghash_elem_t *listhead)
 /**
  * @brief Clear the segment data hash table.
  */
-dart_ret_t dart_segment_clear()
+dart_ret_t dart_segment_fini()
 {
   int i;
   // clear the hash table

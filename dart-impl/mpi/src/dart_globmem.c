@@ -390,7 +390,7 @@ dart_ret_t dart_team_memfree(
                  unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 	/* Remove the related correspondence relation record from the related
    * translation table. */
-  if (dart_segment_dealloc(seg_id) != DART_OK) {
+  if (dart_segment_free(seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }
 
@@ -566,7 +566,7 @@ dart_team_memderegister(
     return DART_ERR_INVAL;
   }
   MPI_Win_detach(win, sub_mem);
-  if (dart_segment_dealloc(seg_id) != DART_OK) {
+  if (dart_segment_free(seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }
 
