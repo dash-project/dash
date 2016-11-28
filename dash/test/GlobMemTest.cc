@@ -29,8 +29,7 @@ TEST_F(GlobMemTest, LocalBegin)
   auto   target_local_elements = { 1, 2, 3, 4 };
 
   if(!dash::Team::All().is_leaf()){
-    LOG_MESSAGE("team is already splitted. Skip test");
-    SKIP_TEST();
+    SKIP_TEST_MSG("Team is already split");
   }
 
   auto & sub_team = dash::size() < 4
