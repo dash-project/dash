@@ -218,6 +218,7 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
   }
   for (int sd = 0; sd < domain->num_domains; sd++) {
     dart_domain_locality_t * subdomain = domain->children[sd];
+
     subdomain->team           = domain->team;
     subdomain->level          = domain->level + 1;
     subdomain->relative_index = sd;

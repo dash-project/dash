@@ -83,7 +83,7 @@ dart_ret_t dart_domain_clone(
   return dart__base__locality__clone_domain(domain_in, domain_out);
 }
 
-dart_ret_t dart_domain_destruct(
+dart_ret_t dart_domain_destroy(
   dart_domain_locality_t        * domain)
 {
   return dart__base__locality__destruct_domain(domain);

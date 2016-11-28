@@ -92,7 +92,7 @@ TEST_F(DARTLocalityTest, CloneLocalityDomain)
   // Compare attributes of original and copied locality domains:
   EXPECT_EQ_U(true, domains_are_equal(loc_team_all_orig, loc_team_all_copy));
 
-  dart_domain_destruct(loc_team_all_copy);
+  dart_domain_destroy(loc_team_all_copy);
 }
 
 TEST_F(DARTLocalityTest, FindLocalityDomain)
@@ -134,7 +134,7 @@ TEST_F(DARTLocalityTest, ExcludeLocalityDomain)
   EXPECT_EQ_U(
     NULL, no_domain);
 
-  dart_domain_destruct(loc_team_all_copy);
+  dart_domain_destroy(loc_team_all_copy);
 }
 
 TEST_F(DARTLocalityTest, UnitLocality)
