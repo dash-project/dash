@@ -28,6 +28,8 @@ RUN           cd papi*/src/                     \
 ENV           PAPI_BASE=/opt/papi
 ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib
 ENV           VERBOSE_CI='true'
+# DEBUG: enable core dumps 
+RUN           ulimit -c unlimited
 
 # Set workdir to dash home
 WORKDIR       /opt/dash
