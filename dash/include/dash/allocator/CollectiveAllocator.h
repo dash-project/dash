@@ -179,9 +179,9 @@ public:
                    "number of local values:", num_local_elem);
     pointer gptr = DART_GPTR_NULL;
     if (num_local_elem > 0) {
-      size_type num_local_bytes = sizeof(ElementType) * num_local_elem;
-      if (dart_team_memalloc_aligned(
-            _team_id, num_local_bytes, &gptr) == DART_OK) {
+      dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
+      if (dart_team_memalloc_aligned(_team_id, ds.nelem, ds.dtype, &gptr)
+          == DART_OK) {
         _allocated.push_back(gptr);
       } else {
         gptr = DART_GPTR_NULL;
@@ -208,15 +208,19 @@ public:
       return;
     }
 
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "barrier");
     DASH_ASSERT_RETURNS(
       dart_barrier(_team_id),
       DART_OK);
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "dart_team_memfree");
     DASH_ASSERT_RETURNS(
       dart_team_memfree(_team_id, gptr),
       DART_OK);
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "_allocated.erase");
     _allocated.erase(
         std::remove(_allocated.begin(), _allocated.end(), gptr),
         _allocated.end());
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate >");
   }
 
 private:

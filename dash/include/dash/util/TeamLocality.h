@@ -115,17 +115,17 @@ public:
     return _domain;
   }
 
-//inline const dash::util::UnitLocality & unit_locality(
-//  dart_unit_t unit) const
-//{
-//  return _domain.unit_locality(unit);
-//}
-//
-//inline dash::util::UnitLocality & unit_locality(
-//  dart_unit_t unit)
-//{
-//  return _domain.unit_locality(unit);
-//}
+  //inline const dash::util::UnitLocality & unit_locality(
+  //  dart_unit_t unit) const
+  //{
+  //  return _domain.unit_locality(unit);
+  //}
+  //
+  //inline dash::util::UnitLocality & unit_locality(
+  //  dart_unit_t unit)
+  //{
+  //  return _domain.unit_locality(unit);
+  //}
 
   /**
    * Split the team locality domain into the given number of parts on the

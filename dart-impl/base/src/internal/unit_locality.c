@@ -124,7 +124,10 @@ dart_ret_t dart__base__unit_locality__create(
   /* all-to-all exchange of locality data across all units:
    * (send, recv, nbytes, team) */
   DART_LOG_DEBUG("dart__base__unit_locality__create: dart_allgather");
-  ret = dart_allgather(uloc, mapping->unit_localities, nbytes,
+  ret = dart_allgather(uloc,
+                       mapping->unit_localities,
+                       nbytes,
+                       DART_TYPE_BYTE,
                        team);
 
   dart_barrier(team);
@@ -164,7 +167,13 @@ dart_ret_t dart__base__unit_locality__destruct(
   DART_LOG_DEBUG("dart__base__unit_locality__destruct() team: %d",
                  unit_mapping->team);
 
-  free(unit_mapping->unit_localities);
+  if (NULL != unit_mapping) {
+    if (NULL != unit_mapping->unit_localities) {
+      free(unit_mapping->unit_localities);
+      unit_mapping->unit_localities = NULL;
+    }
+    free(unit_mapping);
+  }
 
   DART_LOG_DEBUG("dart__base__unit_locality__destruct >");
   return DART_OK;
@@ -219,8 +228,8 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
     dart_team_myid(team, &myid),
     DART_OK);
 
-  dart_hwinfo_t * hwinfo = malloc(sizeof(dart_hwinfo_t));
-  DART_ASSERT_RETURNS(dart_hwinfo(hwinfo), DART_OK);
+  dart_hwinfo_t hwinfo;
+  DART_ASSERT_RETURNS(dart_hwinfo(&hwinfo), DART_OK);
 
 #if 1 || __TODO__CLARIFY__
   /* Is this call required? */
@@ -232,7 +241,7 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
 
   uloc->unit   = myid;
   uloc->team   = team;
-  uloc->hwinfo = *hwinfo;
+  uloc->hwinfo = hwinfo;
 
 #if defined(DART__BASE__LOCALITY__SIMULATE_MICS)
   /* Assigns every second unit to a MIC host name.

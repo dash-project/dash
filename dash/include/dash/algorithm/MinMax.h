@@ -10,6 +10,7 @@
 
 #include <dash/util/Config.h>
 #include <dash/util/Trace.h>
+#include <dash/util/UnitLocality.h>
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/internal/Logging.h>
@@ -170,8 +171,7 @@ GlobIter<ElementType, PatternType> min_element(
   dash::util::Trace trace("min_element");
 
   auto & pattern = first.pattern();
-
-  dash::Team & team = pattern.team();
+  auto & team    = pattern.team();
   DASH_LOG_DEBUG("dash::min_element()",
                  "allocate minarr, size", team.size());
   // Global position of end element in range:
@@ -191,7 +191,7 @@ GlobIter<ElementType, PatternType> min_element(
 
     // Pointer to first element in local memory:
     const ElementType * lbegin        = first.globmem().lbegin(
-                                          pattern.team().myid());
+                                          team.myid());
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
@@ -240,7 +240,10 @@ GlobIter<ElementType, PatternType> min_element(
   trace.enter_state("allgather");
   DASH_ASSERT_RETURNS(
     dart_allgather(
-      &local_min, local_min_values.data(), sizeof(local_min_t),
+      &local_min,
+      local_min_values.data(),
+      sizeof(local_min_t),
+      DART_TYPE_BYTE,
       team.dart_id()),
     DART_OK);
   trace.exit_state("allgather");

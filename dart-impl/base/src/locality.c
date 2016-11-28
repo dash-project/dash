@@ -2,6 +2,14 @@
  * \file dash/dart/base/locality.c
  */
 
+#define _GNU_SOURCE
+#include <string.h>
+#include <inttypes.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <sched.h>
+#include <limits.h>
+
 #include <dash/dart/base/locality.h>
 #include <dash/dart/base/macro.h>
 #include <dash/dart/base/logging.h>
@@ -18,13 +26,6 @@
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_locality.h>
 #include <dash/dart/if/dart_communication.h>
-
-#include <inttypes.h>
-#include <string.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <sched.h>
-#include <limits.h>
 
 /* ====================================================================== *
  * Private Data                                                           *
@@ -54,7 +55,7 @@ dart_ret_t dart__base__locality__scope_domains_rec(
   const dart_domain_locality_t   * domain,
   dart_locality_scope_t            scope,
   int                            * num_domains_out,
-  char                         *** domain_tags_out);
+  dart_domain_locality_t       *** domains_out);
 
 dart_ret_t dart__base__locality__group_subdomains(
   dart_domain_locality_t         * domain,
@@ -216,12 +217,6 @@ dart_ret_t dart__base__locality__delete(
 {
   dart_ret_t ret = DART_OK;
 
-  if (NULL == dart__base__locality__global_domain_[team] &&
-      NULL == dart__base__locality__host_topology_[team] &&
-      NULL == dart__base__locality__unit_mapping_[team]) {
-    return ret;
-  }
-
   DART_LOG_DEBUG("dart__base__locality__delete() team(%d)", team);
 
   if (NULL != dart__base__locality__global_domain_[team]) {
@@ -262,7 +257,6 @@ dart_ret_t dart__base__locality__delete(
     }
     DART_LOG_DEBUG("dart__base__locality__delete: "
                    "free(dart__base__locality__unit_mapping_[%d])", team);
-    free(dart__base__locality__unit_mapping_[team]);
     dart__base__locality__unit_mapping_[team] = NULL;
   }
 
@@ -301,7 +295,20 @@ dart_ret_t dart__base__locality__domain(
            domain_in, domain_tag, domain_out);
 }
 
+
 dart_ret_t dart__base__locality__scope_domains(
+  const dart_domain_locality_t   * domain_in,
+  dart_locality_scope_t            scope,
+  int                            * num_domains_out,
+  dart_domain_locality_t       *** domains_out)
+{
+  *num_domains_out = 0;
+  *domains_out     = NULL;
+  return dart__base__locality__scope_domains_rec(
+           domain_in, scope, num_domains_out, domains_out);
+}
+
+dart_ret_t dart__base__locality__scope_domain_tags(
   const dart_domain_locality_t     * domain_in,
   dart_locality_scope_t              scope,
   int                              * num_domains_out,
@@ -309,8 +316,29 @@ dart_ret_t dart__base__locality__scope_domains(
 {
   *num_domains_out = 0;
   *domain_tags_out = NULL;
-  return dart__base__locality__scope_domains_rec(
-           domain_in, scope, num_domains_out, domain_tags_out);
+
+  dart_domain_locality_t ** dart_scope_domains;
+  dart_ret_t ret = dart__base__locality__scope_domains(
+      domain_in,
+      scope,
+      num_domains_out,
+      &dart_scope_domains);
+
+  if (ret != DART_OK) {
+    free(dart_scope_domains);
+    return ret;
+  }
+
+  *domain_tags_out = (char **)(malloc(sizeof(char *) * (*num_domains_out)));
+  for (int sd = 0; sd < *num_domains_out; sd++) {
+    (*domain_tags_out)[sd] = (char *)(malloc(
+                               sizeof(char) *
+                               (strlen(dart_scope_domains[sd]->domain_tag) + 1)));
+    strcpy((*domain_tags_out)[sd],
+           dart_scope_domains[sd]->domain_tag);
+  }
+
+  return DART_OK;
 }
 
 dart_ret_t dart__base__locality__domain_split_tags(
@@ -343,7 +371,7 @@ dart_ret_t dart__base__locality__domain_split_tags(
   int     num_domains;
   char ** domain_tags;
   DART_ASSERT_RETURNS(
-    dart__base__locality__scope_domains(
+    dart__base__locality__scope_domain_tags(
       domain_in, scope, &num_domains, &domain_tags),
     DART_OK);
 
@@ -489,8 +517,7 @@ dart_ret_t dart__base__locality__domain_group(
     for (int sd = 0; sd < group_size; sd++) {
       /* Resolve relative index of subdomain: */
       immediate_subdomain_tags[sd] =
-        calloc(sizeof(char) * DART_LOCALITY_DOMAIN_TAG_MAX_SIZE,
-               sizeof(char));
+        calloc(DART_LOCALITY_DOMAIN_TAG_MAX_SIZE, sizeof(char));
 
       char * dot_pos = strchr(group_subdomain_tags[sd] +
                               group_parent_domain_tag_len + 1, '.');
@@ -963,7 +990,7 @@ dart_ret_t dart__base__locality__scope_domains_rec(
   const dart_domain_locality_t     * domain,
   dart_locality_scope_t              scope,
   int                              * num_domains_out,
-  char                           *** domain_tags_out)
+  dart_domain_locality_t         *** domains_out)
 {
   dart_ret_t ret;
   DART_LOG_TRACE("dart__base__locality__scope_domains() level %d",
@@ -974,21 +1001,16 @@ dart_ret_t dart__base__locality__scope_domains_rec(
                    domain->domain_tag);
     int     dom_idx           = *num_domains_out;
     *num_domains_out         += 1;
-    char ** domain_tags_temp  = (char **)(
-                                  realloc(*domain_tags_out,
-                                            sizeof(char *) *
-                                            (*num_domains_out)));
-    if (domain_tags_temp != NULL) {
-      int domain_tag_size         = strlen(domain->domain_tag);
-      *domain_tags_out            = domain_tags_temp;
-      (*domain_tags_out)[dom_idx] = malloc(sizeof(char) *
-                                      (domain_tag_size + 1));
-      strncpy((*domain_tags_out)[dom_idx], domain->domain_tag,
-              domain_tag_size);
-      (*domain_tags_out)[dom_idx][domain_tag_size] = '\0';
+    dart_domain_locality_t ** domains_temp =
+      (dart_domain_locality_t **)(realloc(*domains_out,
+                                         sizeof(dart_domain_locality_t *) *
+                                         (*num_domains_out)));
+    if (domains_temp != NULL) {
+      *domains_out            = domains_temp;
+      (*domains_out)[dom_idx] = (dart_domain_locality_t *)(domain);
       DART_LOG_TRACE("dart__base__locality__scope_domains: "
-                     "domain %d: %s (length: %d)",
-                     dom_idx, (*domain_tags_out)[dom_idx], domain_tag_size);
+                     "domain %d: %s",
+                     dom_idx, (*domains_out)[dom_idx]);
     } else {
       DART_LOG_ERROR("dart__base__locality__scope_domains ! "
                      "realloc failed");
@@ -1000,14 +1022,14 @@ dart_ret_t dart__base__locality__scope_domains_rec(
               &domain->domains[d],
               scope,
               num_domains_out,
-              domain_tags_out);
+              domains_out);
       if (ret != DART_OK) {
         return ret;
       }
     }
   }
   if (*num_domains_out <= 0) {
-    DART_LOG_ERROR("dart__base__locality__scope_domains ! "
+    DART_LOG_DEBUG("dart__base__locality__scope_domains ! "
                    "no domains found");
     return DART_ERR_NOTFOUND;
   }

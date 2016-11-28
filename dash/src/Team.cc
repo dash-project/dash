@@ -48,10 +48,12 @@ bool operator==(
 Team::Team(
   dart_team_t id,
   Team      * parent,
-  size_t      pos)
+  size_t      pos,
+  size_t      nsiblings)
 : _dartid(id),
   _parent(parent),
-  _position(pos)
+  _position(pos),
+  _num_siblings(nsiblings)
 {
   if (nullptr != parent) {
     if (parent->_child) {
@@ -74,18 +76,22 @@ Team::Team(
 
 Team &
 Team::split(
-  unsigned nParts)
+  unsigned num_parts)
 {
-  DASH_LOG_DEBUG_VAR("Team.split()", nParts);
+  DASH_LOG_DEBUG_VAR("Team.split()", num_parts);
+
+  std::vector<dart_group_t *> sub_group_v(num_parts);
+
   dart_group_t *  group;
-  dart_group_t ** sub_groups = static_cast<dart_group_t**>(
-                                 malloc(sizeof(dart_group_t*) * nParts));
+  dart_group_t ** sub_groups = sub_group_v.data();
+
   size_t size;
+  size_t num_split = 0;
 
   dart_group_sizeof(&size);
 
   group = static_cast<dart_group_t *>(malloc(size));
-  for (unsigned i = 0; i < nParts; i++) {
+  for (unsigned i = 0; i < num_parts; i++) {
     sub_groups[i] = static_cast<dart_group_t *>(malloc(size));
     DASH_ASSERT_RETURNS(
       dart_group_init(sub_groups[i]),
@@ -98,6 +104,7 @@ Team::split(
     DASH_LOG_DEBUG("Team.split >", "Team size is 1, cannot split");
     return *result;
   }
+
   DASH_ASSERT_RETURNS(
     dart_group_init(group),
     DART_OK);
@@ -105,12 +112,12 @@ Team::split(
     dart_team_get_group(_dartid, group),
     DART_OK);
   DASH_ASSERT_RETURNS(
-    dart_group_split(group, nParts, sub_groups),
+    dart_group_split(group, num_parts, &num_split, sub_groups),
     DART_OK);
   dart_team_t oldteam = _dartid;
   // Create a child Team for every part with parent set to
   // this instance:
-  for(unsigned i = 0; i < nParts; i++) {
+  for(unsigned i = 0; i < num_parts; i++) {
     dart_team_t newteam = DART_TEAM_NULL;
     DASH_ASSERT_RETURNS(
       dart_team_create(
@@ -120,7 +127,10 @@ Team::split(
       DART_OK);
     if(newteam != DART_TEAM_NULL) {
       // Create team instance of child team:
-      result = new Team(newteam, this, i);
+      DASH_ASSERT_EQ(
+        &(dash::Team::Null()), result,
+        "Team.split assigned unit assigned to more than one team");
+      result = new Team(newteam, this, i, num_split);
     }
   }
   DASH_LOG_DEBUG("Team.split >");
@@ -151,6 +161,7 @@ Team::locality_split(
                                  malloc(sizeof(dart_group_t *) *
                                         num_parts));
   size_t group_t_size;
+  size_t num_split     = 0;
 
   dart_group_sizeof(&group_t_size);
 
@@ -181,7 +192,7 @@ Team::locality_split(
     DART_OK);
   DASH_ASSERT_RETURNS(
     dart_group_locality_split(
-      group, domain, dart_scope, num_parts, sub_groups),
+      group, domain, dart_scope, num_parts, &num_split, sub_groups),
     DART_OK);
   dart_team_t oldteam = _dartid;
 #if DASH_ENABLE_TRACE_LOGGING
@@ -205,7 +216,10 @@ Team::locality_split(
         &newteam),
       DART_OK);
     if(newteam != DART_TEAM_NULL) {
-      result = new Team(newteam, this, i);
+      DASH_ASSERT_EQ(
+        &(dash::Team::Null()), result,
+        "Team.split assigned unit assigned to more than one team");
+      result = new Team(newteam, this, i, num_split);
     }
   }
   DASH_LOG_DEBUG("Team.locality_split >");

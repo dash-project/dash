@@ -33,3 +33,6 @@
 - [Utilities](/Utilities)
 
     - [Locality Hierarchies](/Utilities/LocalityHierarchies)
+
+##Developer Notes
+- [Continuous Integration](/CI)

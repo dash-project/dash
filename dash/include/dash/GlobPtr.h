@@ -274,7 +274,7 @@ public:
    */
   bool operator==(const self_t & other) const
   {
-    return _dart_gptr == other._dart_gptr;
+    return DART_GPTR_EQUAL(_dart_gptr, other._dart_gptr);
   }
 
   /**
@@ -282,7 +282,7 @@ public:
    */
   bool operator!=(const self_t & other) const
   {
-    return _dart_gptr != other._dart_gptr;
+    return !(*this == other);
   }
 
   /**

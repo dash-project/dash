@@ -21,6 +21,8 @@ namespace internal {
 #define ASSERT_GT_U(e,a)  EXPECT_GT(e,a)  << "Unit " << dash::myid()
 #define ASSERT_LE_U(e,a)  EXPECT_LE(e,a)  << "Unit " << dash::myid()
 #define ASSERT_GE_U(e,a)  EXPECT_GE(e,a)  << "Unit " << dash::myid()
+#define ASSERT_DOUBLE_EQ_U(e,a) EXPECT_DOUBLE_EQ(e,a) << "Unit " << dash::myid()
+#define ASSERT_FLOAT_EQ_U(e,a)  EXPECT_FLOAT_EQ(e,a)  << "Unit " << dash::myid()
 
 #define EXPECT_TRUE_U(b)  EXPECT_TRUE(b)  << "Unit " << dash::myid()
 #define EXPECT_FALSE_U(b) EXPECT_FALSE(b) << "Unit " << dash::myid()
@@ -30,6 +32,8 @@ namespace internal {
 #define EXPECT_GT_U(e,a)  EXPECT_GT(e,a)  << "Unit " << dash::myid()
 #define EXPECT_LE_U(e,a)  EXPECT_LE(e,a)  << "Unit " << dash::myid()
 #define EXPECT_GE_U(e,a)  EXPECT_GE(e,a)  << "Unit " << dash::myid()
+#define EXPECT_DOUBLE_EQ_U(e,a) EXPECT_DOUBLE_EQ(e,a) << "Unit " << dash::myid()
+#define EXPECT_FLOAT_EQ_U(e,a)  EXPECT_FLOAT_EQ(e,a)  << "Unit " << dash::myid()
 
 enum GTestColor {
     COLOR_DEFAULT,
@@ -79,8 +83,16 @@ extern void ColoredPrintf(
 
 #define SKIP_TEST()\
     if(dash::myid() == 0) {\
-      std::cout << TEST_SKIPPED << "Warning: test skipped" << std::endl;\
+      std::cout << TEST_SKIPPED << "Warning: test skipped" \
+                << std::endl;\
     }\
-    return;
+    return
+
+#define SKIP_TEST_MSG(msg)\
+    if(dash::myid() == 0) {\
+      std::cout << TEST_SKIPPED << "Warning: test skipped: " << msg \
+                << std::endl;\
+    }\
+    return
 
 #endif // DASH__TEST__TEST_BASE_H_

@@ -305,22 +305,18 @@ dart_ret_t dart_exit()
 	MPI_Win_free(&dart_sharedmem_win_local_alloc);
 #endif
   MPI_Win_free(&team_data->window);
+  MPI_Comm_free(&(team_data->sharedmem_comm));
 
-  /* <fuchsto>: Why calling dart_segment_clear twice? */
-/*
-  dart_segment_clear();
-*/
   dart_buddy_delete(dart_localpool);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
   free(team_data->sharedmem_tab);
   free(dart_sharedmem_local_baseptr_set);
 #endif
+
 	dart_adapt_teamlist_destroy();
 
-  /* <fuchsto>: deactivated, currently segfaults when running with 3 units:
-/*
-  dart_segment_clear();
-*/
+  dart_segment_fini();
+
   if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
 		MPI_Finalize();

@@ -263,6 +263,24 @@ public:
     return _parts;
   }
 
+  inline std::vector<self_t> scope_domains(
+    dash::util::Locality::Scope scope) const
+  {
+    std::vector<self_t>       scope_domains;
+    int                       num_scope_domains;
+    dart_domain_locality_t ** dart_scope_domains;
+    dart_domain_scope_domains(
+      _domain,
+      static_cast<dart_locality_scope_t>(scope),
+      &num_scope_domains,
+      &dart_scope_domains);
+    for (int sd = 0; sd < num_scope_domains; sd++) {
+      scope_domains.push_back(self_t((*dart_scope_domains)[sd]));
+    }
+    free(dart_scope_domains);
+    return scope_domains;
+  }
+
 #if 0
   inline const UnitLocality_t & unit_locality(
       dart_unit_t unit) const

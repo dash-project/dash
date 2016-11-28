@@ -1113,7 +1113,9 @@ public:
   SizeType underfilled_blocksize(
     dim_t dimension) const {
     // Underflow blocksize = regular blocksize - overflow blocksize:
-    auto ovf_blocksize = _size % _blocksize;
+    auto ovf_blocksize = (_blocksize == 0)
+                         ? 0
+                         : _size % _blocksize;
     if (ovf_blocksize == 0) {
       return 0;
     } else {

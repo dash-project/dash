@@ -1,5 +1,7 @@
 /**
- * \file dash/dart/if/dart_types.h
+ * \file dart_types.h
+ * \defgroup  DartTypes  Types used in the DART interface
+ * \ingroup   DartInterface
  *
  * Definitions of types used in the DART interface.
  *
@@ -10,45 +12,63 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-/**
- * \defgroup  DartTypes  Types used in the DART interface
- * \ingroup   DartInterface
- */
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_ON
+/** \endcond */
 
 /**
  * Return values of functions in the DART interface.
  *
  * \ingroup DartTypes
  */
-typedef enum {
-    DART_OK           =   0,
-    DART_PENDING      =   1,
-    DART_ERR_INVAL    =   2,
-    DART_ERR_NOTFOUND =   3,
-    DART_ERR_NOTINIT  =   4,
-    DART_ERR_OTHER    = 999
+typedef enum
+{
+  /** Signals success */
+  DART_OK           =   0,
+  /** An operation is still pending */
+  DART_PENDING      =   1,
+  /** Invalid operation or parameters */
+  DART_ERR_INVAL    =   2,
+  /** Missing data encountered */
+  DART_ERR_NOTFOUND =   3,
+  /** DART has not been initialized */
+  DART_ERR_NOTINIT  =   4,
+  /** Unspecified error */
+  DART_ERR_OTHER    = 999
 } dart_ret_t;
 
 /**
+ * Operations to be used for certain RMA and collective operations.
  * \ingroup DartTypes
  */
-typedef enum {
-    DART_OP_UNDEFINED = 0,
-    DART_OP_MIN,
-    DART_OP_MAX,
-    DART_OP_SUM,
-    DART_OP_PROD,
-    DART_OP_BAND,
-    DART_OP_LAND,
-    DART_OP_BOR,
-    DART_OP_LOR,
-    DART_OP_BXOR,
-    DART_OP_LXOR
+typedef enum
+{
+  /** Undefined, do not use */
+  DART_OP_UNDEFINED = 0,
+  /** Minimum */
+  DART_OP_MIN,
+  /** Maximum */
+  DART_OP_MAX,
+  /** Summation */
+  DART_OP_SUM,
+  /** Product */
+  DART_OP_PROD,
+  /** Binary AND */
+  DART_OP_BAND,
+  /** Logical AND */
+  DART_OP_LAND,
+  /** Binary OR */
+  DART_OP_BOR,
+  /** Logical OR */
+  DART_OP_LOR,
+  /** Binary XOR */
+  DART_OP_BXOR,
+  /** Logical XOR */
+  DART_OP_LXOR
 } dart_operation_t;
 
 /**
@@ -56,7 +76,8 @@ typedef enum {
  *
  * \ingroup DartTypes
  */
-typedef enum {
+typedef enum
+{
     DART_TYPE_UNDEFINED = 0,
     DART_TYPE_BYTE,
     DART_TYPE_SHORT,
@@ -69,22 +90,41 @@ typedef enum {
     DART_TYPE_DOUBLE
 } dart_datatype_t;
 
+
+#if (UINT32_MAX == SIZE_MAX)
+#define DART_TYPE_SIZET DART_TYPE_UINT
+#elif (UINT64_MAX == SIZE_MAX)
+#define DART_TYPE_SIZET DART_TYPE_LONGLONG
+#else
+#error "Cannot determine DART type for size_t!"
+#endif
+
+
+typedef struct {
+    dart_datatype_t dtype;
+    int             nelem;
+} dart_storage_t;
+
 /**
+ * Data type for storing a unit ID
  * \ingroup DartTypes
  */
 typedef int32_t dart_unit_t;
 
 /**
+ * Data type for storing a team ID
  * \ingroup DartTypes
  */
 typedef int32_t dart_team_t;
 
 /**
+ * Undefined unit ID.
  * \ingroup DartTypes
  */
 #define DART_UNDEFINED_UNIT_ID ((dart_unit_t)(-1))
 
 /**
+ * Undefined team ID.
  * \ingroup DartTypes
  */
 #define DART_UNDEFINED_TEAM_ID ((dart_team_t)(-1))
@@ -139,11 +179,18 @@ typedef enum
 }
 dart_locality_scope_t;
 
+/** Maximum size of a host name string in \ref dart_hwinfo_t */
 #define DART_LOCALITY_HOST_MAX_SIZE       ((int)(30))
+/** Maximum size of a domain tag string in \ref dart_hwinfo_t */
 #define DART_LOCALITY_DOMAIN_TAG_MAX_SIZE ((int)(32))
+/** Maximum number of domain scopes in \ref dart_hwinfo_t */
 #define DART_LOCALITY_MAX_DOMAIN_SCOPES   ((int)(12))
+/** Maximum size of a domain tag string in \ref dart_hwinfo_t
+ * \todo Unused? */
 #define DART_LOCALITY_UNIT_MAX_CPUS       ((int)(64))
+/** Maximum number of NUMA domains supported */
 #define DART_LOCALITY_MAX_NUMA_ID         ((int)(16))
+/** Maximum number of cache levels supported in \ref dart_hwinfo_t */
 #define DART_LOCALITY_MAX_CACHE_LEVELS    ((int)( 5))
 
 typedef struct {
@@ -280,7 +327,7 @@ dart_module_location_t;
  *
  * Illustrating example:
  *
- * <pre>
+ * \code
  *   domain (top level, heterogenous)
  *   domain_tag:  "."
  *   host:        "number-crunch-9000"
@@ -388,7 +435,7 @@ dart_module_location_t;
  *   :   ...
  *   '
  *   ...
- * </pre>
+ * \endcode
  *
  */
 struct dart_domain_locality_s
@@ -402,46 +449,50 @@ struct dart_domain_locality_s
      */
     char domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE];
 
+    struct dart_domain_locality_s ** aliases;
+
+    int                              num_aliases;
+
     /** Locality scope of the domain. */
-    dart_locality_scope_t           scope;
+    dart_locality_scope_t            scope;
     /** Level in the domain locality hierarchy. */
-    int                             level;
+    int                              level;
 
     /** The domain's global index within its scope. */
-    int                             global_index;
+    int                              global_index;
     /** The domain's index within its parent domain. */
-    int                             relative_index;
+    int                              relative_index;
 
     /** Pointer to descriptor of parent domain or 0 if no parent domain
      *  is specified. */
-    struct dart_domain_locality_s * parent;
+    struct dart_domain_locality_s  * parent;
 
     /** Number of subordinate domains. */
-    int                             num_domains;
+    int                              num_domains;
     /** Array of subordinate domains of size \c num_domains or 0 if no
      *  subdomains are specified. */
-    struct dart_domain_locality_s * domains;
+    struct dart_domain_locality_s  * domains;
 
     /** Whether sub-domains have identical hardware configuration. */
-    int                             is_symmetric;
+    int                              is_symmetric;
 
     /** Team associated with the domain. */
-    dart_team_t                     team;
+    dart_team_t                      team;
     /** Number of units in the domain. */
-    int                             num_units;
+    int                              num_units;
     /** IDs of units in the domain. */
-    dart_unit_t                   * unit_ids;
+    dart_unit_t                    * unit_ids;
 
     /* The number of compute nodes in the domain. */
-    int                             num_nodes;
+    int                              num_nodes;
     /* Number of cores in the domain. Cores may be heterogeneous unless
      * `is_symmetric` is different from 0. */
-    int                             num_cores;
+    int                              num_cores;
 
     /* The minimum size of the physical or logical shared memory
      * accessible by all units in the domain.
      */
-    int                             shared_mem_bytes;
+    int                              shared_mem_bytes;
 };
 struct dart_domain_locality_s;
 typedef struct dart_domain_locality_s
@@ -481,7 +532,9 @@ typedef struct
 }
 dart_config_t;
 
+/** \cond DART_HIDDEN_SYMBOLS */
 #define DART_INTERFACE_OFF
+/** \endcond */
 
 #ifdef __cplusplus
 }
