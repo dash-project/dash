@@ -41,6 +41,16 @@ extern "C" {
 #define DART_INTERFACE_ON
 /** \endcond */
 
+/**
+ * \name Group management operations
+ * Non-collectove operations to create, destroy, and manipulate teams.
+ *
+ * Note that \c dart_group_t is an opaque datastructure that is allocated by all
+ * functions creating a group (marked as \c [out]).
+ * This memory has to be released by calling \ref dart_group_destroy after use.
+ */
+
+/** \{ */
 
 /**
  * DART groups are represented by an opaque struct \c dart_group_struct
@@ -51,10 +61,10 @@ typedef struct dart_group_struct* dart_group_t;
 
 
 /**
- * Initialize a DART group object.
+ * Allocate and initialize a DART group object.
  * Must be called before any other function on the group object.
  *
- * \param group Pointer to a group to be initialized.
+ * \param[out] group Pointer to a group to be created.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -67,6 +77,7 @@ dart_ret_t dart_group_create(dart_group_t *group);
  * Reclaim resources that might be associated with the group.
  *
  * \param group Pointer to a group to be finalized.
+ *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
@@ -78,8 +89,8 @@ dart_ret_t dart_group_destroy(dart_group_t *group);
 /**
  * Create a copy of the group \c gin, allocating resources for \c gout.
  *
- * \param gin  Pointer to a group to be copied.
- * \param gout Pointer to the target group object (will be allocated).
+ * \param      gin  Pointer to a group to be copied.
+ * \param[out] gout Pointer to the target group object (will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -91,11 +102,11 @@ dart_ret_t dart_group_clone(const dart_group_t   gin,
 
 
 /**
- * Creation a union of the two groups
+ * Create a union of two groups
  *
- * \param g1   Pointer to the first group to join.
- * \param g2   Pointer to the second group to join.
- * \param gout Pointer to the target group object.
+ * \param      g1   Pointer to the first group to join.
+ * \param      g2   Pointer to the second group to join.
+ * \param[out] gout Pointer to the target group object (will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -110,9 +121,9 @@ dart_ret_t dart_group_union(const dart_group_t   g1,
 /**
  * Create an intersection of the two groups
  *
- * \param g1   Pointer to the first group to intersect.
- * \param g2   Pointer to the second group to intersect.
- * \param gout Pointer to the target group object.
+ * \param      g1   Pointer to the first group to intersect.
+ * \param      g2   Pointer to the second group to intersect.
+ * \param[out] gout Pointer to the target group object (will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -127,8 +138,8 @@ dart_ret_t dart_group_intersect(const dart_group_t   g1,
 /**
  * Add a member to the group.
  *
- * \param unitid Unit to add to group \c g.
  * \param g      Pointer to the target group object.
+ * \param unitid Unit to add to group \c g.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -211,7 +222,7 @@ dart_ret_t dart_group_getmembers(const dart_group_t   g,
  * \param[out]  nout   The actual number of groups that \c g has been split
  *                     into.
  * \param[out]  gout   An array of at least \c n pointers to the opaque
- *                     \ref dart_group_t
+ *                     \ref dart_group_t (the first \c nout objects will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -238,7 +249,7 @@ dart_ret_t dart_group_split(const dart_group_t    g,
  * \param[out] nout   The actual number of groups that \c g has been split
  *                    into.
  * \param[out] gout   An array of at least \c n pointers to the opaque
- *                    \ref dart_group_t
+ *                    \ref dart_group_t (the first \c nout will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -252,6 +263,21 @@ dart_ret_t dart_group_locality_split(const dart_group_t        g,
                                      size_t                  * nout,
                                      dart_group_t            * gout);
 
+/** \} */
+
+/**
+ * \name Team management operations
+ * Operations to create, destroy, and query team information.
+ *
+ * Teams are created based on DART groups.
+ *
+ * Note that team creation and destruction are collective operations.
+ *
+ * Functions returning DART groups allocate these opaque objects, which
+ * then have to be destroyed by the user using \ref dart_group_destroy.
+ */
+
+/** \{ */
 
 /**
  * The default team consisting of all units
@@ -269,8 +295,8 @@ dart_ret_t dart_group_locality_split(const dart_group_t        g,
 /**
  * Query the group associated with the specified team
  *
- * \param teamid The team to use.
- * \param group  Pointer to a group object.
+ * \param      teamid The team to use.
+ * \param[out] group  Pointer to a group object (will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -469,6 +495,7 @@ dart_ret_t dart_team_unit_g2l(dart_team_t team,
                               dart_unit_t globalid,
                               dart_unit_t *localid);
 
+/** \} */
 
 
 /** \cond DART_HIDDEN_SYMBOLS */
