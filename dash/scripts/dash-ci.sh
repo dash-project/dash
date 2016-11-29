@@ -17,12 +17,21 @@ run_ci()
 {
   BUILD_TYPE=${1}
   BUILD_UUID=`uuidgen | awk -F '-' '{print $1}'`
+
   DEPLOY_PATH=$BASEPATH/build-ci/${TIMESTAMP}--uuid-${BUILD_UUID}/${BUILD_TYPE}
 
   mkdir -p $DEPLOY_PATH && \
     cd $DEPLOY_PATH
 
   echo "[-> BUILD  ] Deploying build $BUILD_TYPE to $DEPLOY_PATH ..."
+
+  if [ "$BUILD_TYPE" = "Nasty" ]; then
+    # make sure that Nasty-MPI can be found at runtime
+    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$DEPLOY_PATH/build/nastympi/lib"
+    # FIXME: Building the examples does currently not work with Nasty-MPI
+    export DASH_BUILDEX="OFF"
+  fi
+
   echo "[-> LOG    ] $DEPLOY_PATH/build.log"
   $CMD_DEPLOY "--b=$BUILD_TYPE" -f "--i=$DEPLOY_PATH" >> $DEPLOY_PATH/build.log 2>&1
 
