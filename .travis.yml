@@ -13,8 +13,6 @@ script:
     - cat ./dash-ci.log | (grep "FAIL" || return 0) || return 1
     - sh ./dash/scripts/travisci/run-docker.sh Minimal
     - cat ./dash-ci.log | (grep "FAIL" || return 0) || return 1
-    - sh ./dash/scripts/travisci/run-docker.sh Nasty
-    - cat ./dash-ci.log | (grep "FAIL" || return 0) || return 1
 after_script:
     - cat ./build-ci/*/*/test_mpi.log | grep -v "LOG"
 after_failure:
