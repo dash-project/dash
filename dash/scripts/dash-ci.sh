@@ -6,13 +6,6 @@ CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
 CMD_TEST=$BASEPATH/dash/scripts/dash-test-all-single.sh
 FAILED=false
 
-# typeset -f module > /dev/null
-# if [ $? != 0 -a -r /etc/profile.d/modules.sh ] ; then
-#   source /etc/profile.d/modules.sh
-#
-#   module load intel
-# fi
-
 run_ci()
 {
   BUILD_TYPE=${1}
@@ -23,17 +16,20 @@ run_ci()
   mkdir -p $DEPLOY_PATH && \
     cd $DEPLOY_PATH
 
-  echo "[-> BUILD  ] Deploying build $BUILD_TYPE to $DEPLOY_PATH ..."
+  echo "[-> BUILD  ] Deploying $BUILD_TYPE build to $DEPLOY_PATH ..."
 
   if [ "$BUILD_TYPE" = "Nasty" ]; then
+    LD_LIBRARY_PATH_ORIG=${LD_LIBRARY_PATH}
     # make sure that Nasty-MPI can be found at runtime
-    export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$DEPLOY_PATH/build/nastympi/lib"
+    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${DEPLOY_PATH}/build/nastympi/lib"
     # FIXME: Building the examples does currently not work with Nasty-MPI
     export DASH_BUILDEX="OFF"
+    echo "[-> ENV    ] LD_LIBRARY_PATH: ${LD_LIBRARY_PATH}"
   fi
 
   echo "[-> LOG    ] $DEPLOY_PATH/build.log"
-  $CMD_DEPLOY "--b=$BUILD_TYPE" -f "--i=$DEPLOY_PATH" >> $DEPLOY_PATH/build.log 2>&1
+  $CMD_DEPLOY "--b=$BUILD_TYPE" -f "--i=$DEPLOY_PATH" \
+              >> $DEPLOY_PATH/build.log 2>&1
 
   if [ "$?" = "0" ]; then
     echo "[->     OK ]"
@@ -47,11 +43,12 @@ run_ci()
     $CMD_TEST mpi $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log
     TEST_STATUS=$?
 
-    ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat\|uninitialised value\|Invalid read\|Invalid write" $DEPLOY_PATH/test_mpi.log`
+    ERROR_PATTERN="segmentation\|segfault\|terminat\|uninitialized value\|invalid read\|invalid write"
+    ERROR_PATTERN_MATCHED=`grep -c -i "${ERROR_PATTERN}" $DEPLOY_PATH/test_mpi.log`
     if [ "$TEST_STATUS" = "0" ]; then
-      if [ "$ERROR_PATTERNS" -ne "0" ]; then
+      if [ "$ERROR_PATTERN_MATCHED" -ne "0" ]; then
         FAILED=true
-        echo "[->  ERROR ] error pattern detected. Check logs"
+        echo "[->  ERROR ] Error pattern detected. Check logs"
       else
         echo "[->     OK ]"
       fi
@@ -67,9 +64,13 @@ run_ci()
   fi
 
   if $FAILED; then
-    echo "[-> FAILED ] Integration test on $BUILD_TYPE build failed"
+    echo "[-> FAILED ] Integration test in $BUILD_TYPE build failed"
   else
     echo "[-> PASSED ] Build and test suite passed"
+  fi
+
+  if [ "$LD_LIBRARY_PATH_ORIG" -ne "" ]; then
+    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH_ORIG}
   fi
 }
 
@@ -86,5 +87,5 @@ else
 fi
 
 if $FAILED; then
-  exit 1
+  exit -1
 fi
