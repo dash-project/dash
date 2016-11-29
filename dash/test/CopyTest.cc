@@ -1,9 +1,7 @@
+#include <dash/algorithm/Copy.h>
+#include <dash/Array.h>
+#include <dash/Matrix.h>
 
-#include <libdash.h>
-#include <gtest/gtest.h>
-
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "CopyTest.h"
 
 TEST_F(CopyTest, BlockingGlobalToLocalBlock)
