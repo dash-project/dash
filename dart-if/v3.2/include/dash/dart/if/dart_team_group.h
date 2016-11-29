@@ -41,101 +41,112 @@ extern "C" {
 #define DART_INTERFACE_ON
 /** \endcond */
 
+/**
+ * \name Group management operations
+ * Non-collectove operations to create, destroy, and manipulate teams.
+ *
+ * Note that \c dart_group_t is an opaque datastructure that is allocated by all
+ * functions creating a group (marked as \c [out]).
+ * This memory has to be released by calling \ref dart_group_destroy after use.
+ */
+
+/** \{ */
 
 /**
  * DART groups are represented by an opaque struct \c dart_group_struct
  *
  * \ingroup DartGroupTeam
  */
-typedef struct dart_group_struct dart_group_t;
+typedef struct dart_group_struct* dart_group_t;
 
 
 /**
- * Initialize a DART group object.
+ * Allocate and initialize a DART group object.
  * Must be called before any other function on the group object.
  *
- * \param group Pointer to a group to be initialized.
+ * \param[out] group Pointer to a group to be created.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_init(dart_group_t *group);
+dart_ret_t dart_group_create(dart_group_t *group);
 
 /**
  * Reclaim resources that might be associated with the group.
  *
  * \param group Pointer to a group to be finalized.
- * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
- *
- * \threadsafe
- * \ingroup DartGroupTeam
- */
-dart_ret_t dart_group_fini(dart_group_t *group);
-
-
-/**
- * Create a copy of the group
- *
- * \param gin  Pointer to a group to be copied.
- * \param gout Pointer to the target group object.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_copy(const dart_group_t *gin,
-                           dart_group_t *gout);
+dart_ret_t dart_group_destroy(dart_group_t *group);
 
 
 /**
- * Creation a union of the two groups
+ * Create a copy of the group \c gin, allocating resources for \c gout.
  *
- * \param g1   Pointer to the first group to join.
- * \param g2   Pointer to the second group to join.
- * \param gout Pointer to the target group object.
+ * \param      gin  Pointer to a group to be copied.
+ * \param[out] gout Pointer to the target group object (will be allocated).
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ *
+ * \threadsafe
+ * \ingroup DartGroupTeam
+ */
+dart_ret_t dart_group_clone(const dart_group_t   gin,
+                            dart_group_t       * gout);
+
+
+/**
+ * Create a union of two groups
+ *
+ * \param      g1   Pointer to the first group to join.
+ * \param      g2   Pointer to the second group to join.
+ * \param[out] gout Pointer to the target group object (will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_union(const dart_group_t *g1,
-                            const dart_group_t *g2,
-                            dart_group_t *gout);
+dart_ret_t dart_group_union(const dart_group_t   g1,
+                            const dart_group_t   g2,
+                            dart_group_t       * gout);
 
 
 /**
  * Create an intersection of the two groups
  *
- * \param g1   Pointer to the first group to intersect.
- * \param g2   Pointer to the second group to intersect.
- * \param gout Pointer to the target group object.
+ * \param      g1   Pointer to the first group to intersect.
+ * \param      g2   Pointer to the second group to intersect.
+ * \param[out] gout Pointer to the target group object (will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_intersect(const dart_group_t *g1,
-                                const dart_group_t *g2,
-                                dart_group_t *gout);
+dart_ret_t dart_group_intersect(const dart_group_t   g1,
+                                const dart_group_t   g2,
+                                dart_group_t       * gout);
 
 
 /**
  * Add a member to the group.
  *
- * \param unitid Unit to add to group \c g.
  * \param g      Pointer to the target group object.
+ * \param unitid Unit to add to group \c g.
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_addmember(dart_group_t *g, dart_unit_t unitid);
+dart_ret_t dart_group_addmember(dart_group_t g, dart_unit_t unitid);
 
 
 /**
@@ -149,8 +160,8 @@ dart_ret_t dart_group_addmember(dart_group_t *g, dart_unit_t unitid);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_delmember(dart_group_t * g,
-                                dart_unit_t    unitid);
+dart_ret_t dart_group_delmember(dart_group_t g,
+                                dart_unit_t  unitid);
 
 
 /**
@@ -165,7 +176,7 @@ dart_ret_t dart_group_delmember(dart_group_t * g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_ismember(const dart_group_t * g,
+dart_ret_t dart_group_ismember(const dart_group_t   g,
                                dart_unit_t          unitid,
                                int32_t            * ismember);
 
@@ -181,7 +192,7 @@ dart_ret_t dart_group_ismember(const dart_group_t * g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_size(const dart_group_t * g,
+dart_ret_t dart_group_size(const dart_group_t   g,
                            size_t             * size);
 
 
@@ -198,7 +209,7 @@ dart_ret_t dart_group_size(const dart_group_t * g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_getmembers(const dart_group_t * g,
+dart_ret_t dart_group_getmembers(const dart_group_t   g,
                                  dart_unit_t        * unitids);
 
 
@@ -211,17 +222,17 @@ dart_ret_t dart_group_getmembers(const dart_group_t * g,
  * \param[out]  nout   The actual number of groups that \c g has been split
  *                     into.
  * \param[out]  gout   An array of at least \c n pointers to the opaque
- *                     \ref dart_group_t
+ *                     \ref dart_group_t (the first \c nout objects will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_split(const dart_group_t  * g,
+dart_ret_t dart_group_split(const dart_group_t    g,
                             size_t                n,
                             size_t              * nout,
-                            dart_group_t       ** gout);
+                            dart_group_t        * gout);
 
 /**
  * Split the group \c g into \c n groups by the specified locality scope.
@@ -238,32 +249,35 @@ dart_ret_t dart_group_split(const dart_group_t  * g,
  * \param[out] nout   The actual number of groups that \c g has been split
  *                    into.
  * \param[out] gout   An array of at least \c n pointers to the opaque
- *                    \ref dart_group_t
+ *                    \ref dart_group_t (the first \c nout will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe_none
  * \ingroup DartGroupTeam
 */
-dart_ret_t dart_group_locality_split(const dart_group_t      * g,
+dart_ret_t dart_group_locality_split(const dart_group_t        g,
                                      dart_domain_locality_t  * domain,
                                      dart_locality_scope_t     scope,
                                      size_t                    n,
                                      size_t                  * nout,
-                                     dart_group_t           ** gout);
+                                     dart_group_t            * gout);
+
+/** \} */
 
 /**
- * Get the size of an opaque \ref dart_group_t object.
+ * \name Team management operations
+ * Operations to create, destroy, and query team information.
  *
- * \param[out] size The size of the opaque \ref dart_group_t object.
+ * Teams are created based on DART groups.
  *
- * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ * Note that team creation and destruction are collective operations.
  *
- * \threadsafe_none
- * \ingroup DartGroupTeam
+ * Functions returning DART groups allocate these opaque objects, which
+ * then have to be destroyed by the user using \ref dart_group_destroy.
  */
-dart_ret_t dart_group_sizeof(size_t * size);
 
+/** \{ */
 
 /**
  * The default team consisting of all units
@@ -281,8 +295,8 @@ dart_ret_t dart_group_sizeof(size_t * size);
 /**
  * Query the group associated with the specified team
  *
- * \param teamid The team to use.
- * \param group  Pointer to a group object.
+ * \param      teamid The team to use.
+ * \param[out] group  Pointer to a group object (will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
@@ -337,7 +351,7 @@ dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group);
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_create(dart_team_t          teamid,
-                            const dart_group_t * group,
+                            const dart_group_t   group,
                             dart_team_t        * newteam);
 
 /**
@@ -350,7 +364,20 @@ dart_ret_t dart_team_create(dart_team_t          teamid,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_team_destroy(dart_team_t teamid);
+dart_ret_t dart_team_destroy(dart_team_t * teamid);
+
+
+/**
+ * Clone a DART team object by duplicating the underlying team information.
+ *
+ * \param      team     The source team to duplicate
+ * \param[out] newteam  The target team to duplicate to.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ * \threadsafe_none
+ * \ingroup DartGroupTeam
+ */
+dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam);
 
 /**
  * Return the unit id of the caller in the specified team.
@@ -468,6 +495,7 @@ dart_ret_t dart_team_unit_g2l(dart_team_t team,
                               dart_unit_t globalid,
                               dart_unit_t *localid);
 
+/** \} */
 
 
 /** \cond DART_HIDDEN_SYMBOLS */

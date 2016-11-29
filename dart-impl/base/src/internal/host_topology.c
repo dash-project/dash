@@ -154,14 +154,12 @@ dart_ret_t dart__base__host_topology__update_module_locations(
    *
    * Select one leader unit per node for communication:
    */
-  size_t group_t_size;
-  dart_group_sizeof(&group_t_size);
 
   dart_unit_locality_t * my_uloc;
   dart_unit_t            local_leader_unit_id = DART_UNDEFINED_UNIT_ID;
   dart_unit_t            my_id                = DART_UNDEFINED_UNIT_ID;
-  dart_group_t         * leader_group         = malloc(group_t_size);
-  dart_group_t         * local_group          = malloc(group_t_size);
+  dart_group_t           leader_group;
+  dart_group_t           local_group;
   dart_team_t            leader_team; /* team of all node leaders   */
 
   DART_ASSERT_RETURNS(
@@ -172,10 +170,10 @@ dart_ret_t dart__base__host_topology__update_module_locations(
       unit_mapping, my_id, &my_uloc),
     DART_OK);
   DART_ASSERT_RETURNS(
-    dart_group_init(leader_group),
+    dart_group_create(&leader_group),
     DART_OK);
   DART_ASSERT_RETURNS(
-    dart_group_init(local_group),
+    dart_group_create(&local_group),
     DART_OK);
 
   dart_unit_locality_t * unit_locality;
@@ -241,9 +239,8 @@ dart_ret_t dart__base__host_topology__update_module_locations(
   }
 
   DART_ASSERT_RETURNS(
-    dart_group_fini(leader_group),
+    dart_group_destroy(&leader_group),
     DART_OK);
-  free(leader_group);
 
   if (my_id == local_leader_unit_id) {
     dart_module_location_t * module_locations = NULL;
@@ -374,7 +371,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
     if (num_leaders > 1) {
       DART_LOG_TRACE("dart__base__host_topology__init: finalize leader team");
       DART_ASSERT_RETURNS(
-        dart_team_destroy(leader_team),
+        dart_team_destroy(&leader_team),
         DART_OK);
     }
   }
@@ -417,7 +414,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
     if (num_hosts > 1) {
       DART_LOG_TRACE("dart__base__host_topology__init: finalize local team");
       DART_ASSERT_RETURNS(
-        dart_team_destroy(local_team),
+        dart_team_destroy(&local_team),
         DART_OK);
     }
 
@@ -439,9 +436,8 @@ dart_ret_t dart__base__host_topology__update_module_locations(
 
 
   DART_ASSERT_RETURNS(
-    dart_group_fini(local_group),
+    dart_group_destroy(&local_group),
     DART_OK);
-  free(local_group);
 
 #if 1
   /* Classify hostnames into categories 'node' and 'module'.

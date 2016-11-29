@@ -310,13 +310,13 @@ dart_ret_t dart_shmem_team_init(
   teams[slot].teamid=team;
   
   // build the group for this team
-  dart_group_init(&(teams[slot].group));
+  dart_group_create(&(teams[slot].group));
   if( slot==0 && !group ) {
     for( i=0; i<tsize; i++ ) {
       dart_group_addmember(&(teams[slot].group), i);
     }
   } else  {
-    dart_group_copy(group,
+    dart_group_clone(group,
 		    &(teams[slot].group));
   }
     
@@ -397,7 +397,7 @@ dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group)
   }
       
   if( SLOT_IS_VALID(slot) ) {
-    ret = dart_group_copy( &(teams[slot].group),
+    ret = dart_group_clone( &(teams[slot].group),
 			   group);
   } else {
     ret = DART_ERR_INVAL;
