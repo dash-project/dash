@@ -338,7 +338,20 @@ dart_ret_t dart_team_create(dart_team_t          teamid,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_team_destroy(dart_team_t teamid);
+dart_ret_t dart_team_destroy(dart_team_t * teamid);
+
+
+/**
+ * Clone a DART team object by duplicating the underlying team information.
+ *
+ * \param      team     The source team to duplicate
+ * \param[out] newteam  The target team to duplicate to.
+ *
+ * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
+ * \threadsafe_none
+ * \ingroup DartGroupTeam
+ */
+dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam);
 
 /**
  * Return the unit id of the caller in the specified team.

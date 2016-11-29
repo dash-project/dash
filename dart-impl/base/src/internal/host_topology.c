@@ -371,7 +371,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
     if (num_leaders > 1) {
       DART_LOG_TRACE("dart__base__host_topology__init: finalize leader team");
       DART_ASSERT_RETURNS(
-        dart_team_destroy(leader_team),
+        dart_team_destroy(&leader_team),
         DART_OK);
     }
   }
@@ -414,7 +414,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
     if (num_hosts > 1) {
       DART_LOG_TRACE("dart__base__host_topology__init: finalize local team");
       DART_ASSERT_RETURNS(
-        dart_team_destroy(local_team),
+        dart_team_destroy(&local_team),
         DART_OK);
     }
 

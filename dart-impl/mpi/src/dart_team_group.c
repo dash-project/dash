@@ -693,14 +693,18 @@ dart_ret_t dart_team_create(
 }
 
 dart_ret_t dart_team_destroy(
-  dart_team_t teamid)
+  dart_team_t * teamid)
 {
   MPI_Comm    comm;
   MPI_Win     win;
   uint16_t    index;
   dart_unit_t id;
 
-  int result = dart_adapt_teamlist_convert(teamid, &index);
+  if (*teamid == DART_TEAM_NULL) {
+    return DART_OK;
+  }
+
+  int result = dart_adapt_teamlist_convert(*teamid, &index);
   if (result == -1) {
     return DART_ERR_INVAL;
   }
@@ -725,8 +729,21 @@ dart_ret_t dart_team_destroy(
   /* -- Release the communicator associated with teamid -- */
   MPI_Comm_free (&comm);
 
-  DART_LOG_DEBUG("%2d: TEAMDESTROY  - destroy team %d", id, teamid);
+  DART_LOG_DEBUG("%2d: TEAMDESTROY  - destroy team %d", id, *teamid);
+
+  *teamid = DART_TEAM_NULL;
+
   return DART_OK;
+}
+
+
+dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam)
+{
+  dart_group_t group;
+  dart_team_get_group(team, &group);
+  int ret = dart_team_create(team, group, newteam);
+  dart_group_destroy(&group);
+  return ret;
 }
 
 dart_ret_t dart_myid(dart_unit_t *unitid)
