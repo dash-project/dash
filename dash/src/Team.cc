@@ -80,21 +80,16 @@ Team::split(
 {
   DASH_LOG_DEBUG_VAR("Team.split()", num_parts);
 
-  std::vector<dart_group_t *> sub_group_v(num_parts);
+  std::vector<dart_group_t> sub_group_v(num_parts);
 
-  dart_group_t *  group;
-  dart_group_t ** sub_groups = sub_group_v.data();
+  dart_group_t   group;
+  dart_group_t * sub_groups = sub_group_v.data();
 
-  size_t size;
   size_t num_split = 0;
 
-  dart_group_sizeof(&size);
-
-  group = static_cast<dart_group_t *>(malloc(size));
   for (unsigned i = 0; i < num_parts; i++) {
-    sub_groups[i] = static_cast<dart_group_t *>(malloc(size));
     DASH_ASSERT_RETURNS(
-      dart_group_init(sub_groups[i]),
+      dart_group_create(&sub_groups[i]),
       DART_OK);
   }
 
@@ -106,10 +101,7 @@ Team::split(
   }
 
   DASH_ASSERT_RETURNS(
-    dart_group_init(group),
-    DART_OK);
-  DASH_ASSERT_RETURNS(
-    dart_team_get_group(_dartid, group),
+    dart_team_get_group(_dartid, &group),
     DART_OK);
   DASH_ASSERT_RETURNS(
     dart_group_split(group, num_parts, &num_split, sub_groups),
@@ -125,6 +117,7 @@ Team::split(
         sub_groups[i],
         &newteam),
       DART_OK);
+    dart_group_destroy(&sub_groups[i]);
     if(newteam != DART_TEAM_NULL) {
       // Create team instance of child team:
       DASH_ASSERT_EQ(
@@ -156,22 +149,11 @@ Team::locality_split(
 
   // TODO: Replace dynamic arrays with vectors.
 
-  dart_group_t *  group;
-  dart_group_t ** sub_groups = static_cast<dart_group_t**>(
-                                 malloc(sizeof(dart_group_t *) *
-                                        num_parts));
-  size_t group_t_size;
+  dart_group_t   group;
+  std::vector<dart_group_t> sub_group_v(num_parts);
+  dart_group_t * sub_groups = sub_group_v.data();
+
   size_t num_split     = 0;
-
-  dart_group_sizeof(&group_t_size);
-
-  group = static_cast<dart_group_t *>(malloc(group_t_size));
-  for (unsigned i = 0; i < num_parts; i++) {
-    sub_groups[i] = static_cast<dart_group_t *>(malloc(group_t_size));
-    DASH_ASSERT_RETURNS(
-      dart_group_init(sub_groups[i]),
-      DART_OK);
-  }
 
   Team * result = &(dash::Team::Null());
 
@@ -180,15 +162,18 @@ Team::locality_split(
     return *result;
   }
 
+  for (unsigned i = 0; i < num_parts; i++) {
+    DASH_ASSERT_RETURNS(
+      dart_group_create(&sub_groups[i]),
+      DART_OK);
+  }
+
   dart_domain_locality_t * domain;
   DASH_ASSERT_RETURNS(
     dart_domain_team_locality(_dartid, ".", &domain),
     DART_OK);
   DASH_ASSERT_RETURNS(
-    dart_group_init(group),
-    DART_OK);
-  DASH_ASSERT_RETURNS(
-    dart_team_get_group(_dartid, group),
+    dart_team_get_group(_dartid, &group),
     DART_OK);
   DASH_ASSERT_RETURNS(
     dart_group_locality_split(
@@ -207,6 +192,7 @@ Team::locality_split(
 #endif
   // Create a child Team for every part with parent set to
   // this instance:
+  // TODO [JS]: the memory allocated is likely to be lost if num_parts > 2
   for(unsigned i = 0; i < num_parts; i++) {
     dart_team_t newteam = DART_TEAM_NULL;
     DASH_ASSERT_RETURNS(
@@ -215,6 +201,7 @@ Team::locality_split(
         sub_groups[i],
         &newteam),
       DART_OK);
+    dart_group_destroy(&sub_groups[i]);
     if(newteam != DART_TEAM_NULL) {
       DASH_ASSERT_EQ(
         &(dash::Team::Null()), result,
