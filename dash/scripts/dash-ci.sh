@@ -74,7 +74,6 @@ if [ $# != 0 ]; then
 else
   run_ci Release
   run_ci Minimal
-  run_ci Nasty
 fi
 
 if $FAILED; then
