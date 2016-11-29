@@ -47,7 +47,7 @@ extern "C" {
  *
  * \ingroup DartGroupTeam
  */
-typedef struct dart_group_struct dart_group_t;
+typedef struct dart_group_struct* dart_group_t;
 
 
 /**
@@ -61,7 +61,7 @@ typedef struct dart_group_struct dart_group_t;
  * \threadsafe
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_init(dart_group_t *group);
+dart_ret_t dart_group_create(dart_group_t *group);
 
 /**
  * Reclaim resources that might be associated with the group.
@@ -72,22 +72,22 @@ dart_ret_t dart_group_init(dart_group_t *group);
  * \threadsafe
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_fini(dart_group_t *group);
+dart_ret_t dart_group_destroy(dart_group_t *group);
 
 
 /**
- * Create a copy of the group
+ * Create a copy of the group \c gin, allocating resources for \c gout.
  *
  * \param gin  Pointer to a group to be copied.
- * \param gout Pointer to the target group object.
+ * \param gout Pointer to the target group object (will be allocated).
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_copy(const dart_group_t *gin,
-                           dart_group_t *gout);
+dart_ret_t dart_group_clone(const dart_group_t   gin,
+                            dart_group_t       * gout);
 
 
 /**
@@ -102,9 +102,9 @@ dart_ret_t dart_group_copy(const dart_group_t *gin,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_union(const dart_group_t *g1,
-                            const dart_group_t *g2,
-                            dart_group_t *gout);
+dart_ret_t dart_group_union(const dart_group_t   g1,
+                            const dart_group_t   g2,
+                            dart_group_t       * gout);
 
 
 /**
@@ -119,9 +119,9 @@ dart_ret_t dart_group_union(const dart_group_t *g1,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_intersect(const dart_group_t *g1,
-                                const dart_group_t *g2,
-                                dart_group_t *gout);
+dart_ret_t dart_group_intersect(const dart_group_t   g1,
+                                const dart_group_t   g2,
+                                dart_group_t       * gout);
 
 
 /**
@@ -135,7 +135,7 @@ dart_ret_t dart_group_intersect(const dart_group_t *g1,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_addmember(dart_group_t *g, dart_unit_t unitid);
+dart_ret_t dart_group_addmember(dart_group_t g, dart_unit_t unitid);
 
 
 /**
@@ -149,8 +149,8 @@ dart_ret_t dart_group_addmember(dart_group_t *g, dart_unit_t unitid);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_delmember(dart_group_t * g,
-                                dart_unit_t    unitid);
+dart_ret_t dart_group_delmember(dart_group_t g,
+                                dart_unit_t  unitid);
 
 
 /**
@@ -165,7 +165,7 @@ dart_ret_t dart_group_delmember(dart_group_t * g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_ismember(const dart_group_t * g,
+dart_ret_t dart_group_ismember(const dart_group_t   g,
                                dart_unit_t          unitid,
                                int32_t            * ismember);
 
@@ -181,7 +181,7 @@ dart_ret_t dart_group_ismember(const dart_group_t * g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_size(const dart_group_t * g,
+dart_ret_t dart_group_size(const dart_group_t   g,
                            size_t             * size);
 
 
@@ -198,7 +198,7 @@ dart_ret_t dart_group_size(const dart_group_t * g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_getmembers(const dart_group_t * g,
+dart_ret_t dart_group_getmembers(const dart_group_t   g,
                                  dart_unit_t        * unitids);
 
 
@@ -218,10 +218,10 @@ dart_ret_t dart_group_getmembers(const dart_group_t * g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_group_split(const dart_group_t  * g,
+dart_ret_t dart_group_split(const dart_group_t    g,
                             size_t                n,
                             size_t              * nout,
-                            dart_group_t       ** gout);
+                            dart_group_t        * gout);
 
 /**
  * Split the group \c g into \c n groups by the specified locality scope.
@@ -245,24 +245,12 @@ dart_ret_t dart_group_split(const dart_group_t  * g,
  * \threadsafe_none
  * \ingroup DartGroupTeam
 */
-dart_ret_t dart_group_locality_split(const dart_group_t      * g,
+dart_ret_t dart_group_locality_split(const dart_group_t        g,
                                      dart_domain_locality_t  * domain,
                                      dart_locality_scope_t     scope,
                                      size_t                    n,
                                      size_t                  * nout,
-                                     dart_group_t           ** gout);
-
-/**
- * Get the size of an opaque \ref dart_group_t object.
- *
- * \param[out] size The size of the opaque \ref dart_group_t object.
- *
- * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
- *
- * \threadsafe_none
- * \ingroup DartGroupTeam
- */
-dart_ret_t dart_group_sizeof(size_t * size);
+                                     dart_group_t            * gout);
 
 
 /**
@@ -337,7 +325,7 @@ dart_ret_t dart_team_get_group(dart_team_t teamid, dart_group_t *group);
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_create(dart_team_t          teamid,
-                            const dart_group_t * group,
+                            const dart_group_t   group,
                             dart_team_t        * newteam);
 
 /**

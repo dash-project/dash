@@ -109,11 +109,7 @@ private:
   {
     if (dash::is_initialized() && !_has_group) {
       DASH_LOG_DEBUG("Team.get_group()");
-      size_t sz;
-      dart_group_sizeof(&sz);
-      _group = (dart_group_t*)malloc(sz);
-      dart_group_init(_group);
-      dart_team_get_group(_dartid, _group);
+      dart_team_get_group(_dartid, &_group);
       _has_group = true;
     }
     return _has_group;
@@ -173,6 +169,9 @@ public:
     DASH_LOG_DEBUG_VAR("Team.~Team()", this);
 
     Team::unregister_team(this);
+
+    if (_has_group)
+      dart_group_destroy(&_group);
 
     if (_child) {
       delete(_child);
@@ -545,7 +544,7 @@ private:
   mutable size_t          _size         = 0;
   mutable dart_unit_t     _myid         = -1;
   mutable bool            _has_group    = false;
-  mutable dart_group_t  * _group        = nullptr;
+  mutable dart_group_t    _group        = nullptr;
 
   /// Deallocation list for freeing memory acquired via
   /// team-aligned allocation
