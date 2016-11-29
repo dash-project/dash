@@ -1,9 +1,3 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include <iomanip>
-
-#include "TestBase.h"
-#include "TestLogHelpers.h"
 #include "TilePatternTest.h"
 
 using std::endl;

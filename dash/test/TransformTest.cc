@@ -1,9 +1,14 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-#include "TestBase.h"
-#include "TransformTest.h"
-
 #include <array>
+
+#include <dash/Array.h>
+#include <dash/Distribution.h>
+#include <dash/Init.h>
+#include <dash/Matrix.h>
+#include <dash/Team.h>
+#include <dash/algorithm/Operation.h>
+#include <dash/algorithm/Transform.h>
+
+#include "TransformTest.h"
 
 TEST_F(TransformTest, ArrayLocalPlusLocal)
 {

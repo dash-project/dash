@@ -1,8 +1,8 @@
 #ifndef DASH__TEST__UNORDERED_MAP_TEST_H_
 #define DASH__TEST__UNORDERED_MAP_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
+#include <dash/Init.h>
+#include <dash/internal/Logging.h>
 
 #include "TestBase.h"
 

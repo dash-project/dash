@@ -1,12 +1,10 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
-
-#include "TestBase.h"
-#include "UnorderedMapTest.h"
-
-#include <vector>
 #include <algorithm>
+#include <vector>
 
+#include <dash/Init.h>
+#include <dash/UnorderedMap.h>
+
+#include "UnorderedMapTest.h"
 
 TEST_F(UnorderedMapTest, Initialization)
 {

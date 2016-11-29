@@ -1,8 +1,6 @@
-#include <libdash.h>
 #include <array>
 #include <sstream>
 
-#include "TestBase.h"
 #include "ConfigTest.h"
 
 TEST_F(ConfigTest, BasicSetGet) {

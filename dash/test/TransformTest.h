@@ -1,8 +1,10 @@
 #ifndef DASH__TEST__TRANSFORM_TEST_H_
 #define DASH__TEST__TRANSFORM_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
+#include <dash/Init.h>
+#include <dash/UnorderedMap.h>
+
+#include "UnorderedMapTest.h"
 
 /**
  * Test fixture for class dash::transform

@@ -1,8 +1,7 @@
-#include <libdash.h>
-#include <array>
-#include <sstream>
+#include <dash/Array.h>
+#include <dash/Init.h>
+#include <dash/Team.h>
 
-#include "TestBase.h"
 #include "TeamTest.h"
 
 TEST_F(TeamTest, Deallocate) {

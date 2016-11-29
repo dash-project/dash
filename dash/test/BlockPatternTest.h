@@ -1,8 +1,7 @@
 #ifndef DASH__TEST__BLOCK_PATTERN_TEST_H_
 #define DASH__TEST__BLOCK_PATTERN_TEST_H_
 
-#include <gtest/gtest.h>
-#include <libdash.h>
+#include "TestBase.h"
 
 /**
  * Test fixture for class dash::Pattern

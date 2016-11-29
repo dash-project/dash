@@ -1,7 +1,5 @@
-#include <libdash.h>
-#include <gtest/gtest.h>
+#include <dash/Init.h>
 
-#include "TestBase.h"
 #include "TestPrinterTest.h"
 
 void failOnOneUnit(){

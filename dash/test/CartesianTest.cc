@@ -1,8 +1,9 @@
-#include <libdash.h>
 #include <array>
 #include <numeric>
 #include <functional>
-#include "TestBase.h"
+
+#include <dash/Cartesian.h>
+
 #include "CartesianTest.h"
 
 TEST_F(CartesianTest, DefaultConstructor) {
