@@ -6,13 +6,6 @@ CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
 CMD_TEST=$BASEPATH/dash/scripts/dash-test-all-single.sh
 FAILED=false
 
-# typeset -f module > /dev/null
-# if [ $? != 0 -a -r /etc/profile.d/modules.sh ] ; then
-#   source /etc/profile.d/modules.sh
-#
-#   module load intel
-# fi
-
 run_ci()
 {
   BUILD_TYPE=${1}
@@ -38,18 +31,23 @@ run_ci()
     $CMD_TEST mpi $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log
     TEST_STATUS=$?
 
-    ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat\|uninitialised value\|Invalid read\|Invalid write" $DEPLOY_PATH/test_mpi.log`
-    if [ "$TEST_STATUS" = "0" ]; then
-      if [ "$ERROR_PATTERNS" -ne "0" ]; then
-        FAILED=true
-        echo "[->  ERROR ] error pattern detected. Check logs"
+    if [[ -f $DEPLOY_PATH/test_mpi.log ]] ; then
+      ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat\|uninitialised value\|Invalid read\|Invalid write" $DEPLOY_PATH/test_mpi.log`
+      if [ "$TEST_STATUS" = "0" ]; then
+        if [ "$ERROR_PATTERNS" -ne "0" ]; then
+          FAILED=true
+          echo "[->  ERROR ] error pattern detected. Check logs"
+        else
+          echo "[->     OK ]"
+        fi
       else
-        echo "[->     OK ]"
+        FAILED=true
+        echo "[-> FAILED ]"
+        tail -n 100000 $DEPLOY_PATH/test_mpi.log
       fi
     else
       FAILED=true
-      echo "[-> FAILED ]"
-      tail -n 100000 $DEPLOY_PATH/test_mpi.log
+      echo "[->  ERROR ] No test log found"
     fi
   else
     FAILED=true

@@ -7,7 +7,7 @@ BIN_PATH="$2"
 LOGFILE="$3"
 BIND_CMD=""
 TEST_BINARY=""
-TIMEOUT="5m"
+TIMEOUT="1m"
 TIMEOUT_ADD_KILL="-k $TIMEOUT"
 TIMEOUT_FG="--foreground"
 
@@ -60,8 +60,8 @@ if [ $DART_IMPL = "shmem" ]; then
   TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash/test/shmem/dash-test-shmem"
 elif [ $DART_IMPL = "mpi" ]; then
 # if (mpirun --help | grep -ic "open\(.\)\?mpi" >/dev/null 2>&1) ; then
-#   MPI_EXEC_FLAGS="--map-by core ${MPI_EXEC_FLAGS}"
 # fi
+  MPI_EXEC_FLAGS="-map-by core -bind-to core ${MPI_EXEC_FLAGS}"
   RUN_CMD="${EXEC_PREFIX} mpirun ${MPI_EXEC_FLAGS}"
   TEST_BINARY="${EXEC_WRAP} $BIN_PATH/dash/test/mpi/dash-test-mpi"
 else
@@ -103,10 +103,13 @@ run_suite()
 # if [ `which numactl` ]; then
 #   BIND_CMD="numactl --physcpubind=0-${MAX_RANK}"
 # fi
-  export GTEST_OUTPUT="xml:dash-tests-${NUNITS}.xml"
+  TESTREPORT_XML="dash-tests-${NUNITS}.xml"
   for TESTSUITE in $TEST_SUITES ; do
+    TESTSUITE_XML="dash-tests-${TESTSUITE}${NUNITS}.xml"
     TESTSUITE_LOG="test.${TESTSUITE}${NUNITS}.log"
     TEST_PATTERN="${TESTSUITE}*"
+
+    export GTEST_OUTPUT="xml:$TESTSUITE_XML"
     if [ "$GTEST_FILTER" != "" ] ; then
       TEST_PATTERN="${TEST_PATTERN}:${GTEST_FILTER}"
     fi
@@ -119,6 +122,8 @@ run_suite()
          | tee -a $LOGFILE \
          | grep -v 'LOG' | grep -v '^#' \
          | tee $TESTSUITE_LOG
+
+    cat $TESTSUITE_XML >> $TESTREPORT_XML
 
     TEST_RET="$?"
 
