@@ -103,7 +103,9 @@ docker build --tag dashproject/ci-testing:<env> dash/scripts/docker-testing/<env
 docker pull dashproject/ci-testing:<env>
 ```
 
-.. note:: These containers can also be used as a good starting point for developing DASH applications.
+!!! Note
+
+    These containers can also be used as a good starting point for developing DASH applications.
 
 As the containers only provide an environment but no DASH installation, a DASH repository should be mounted as shared folder.
 The following command starts an interactive container with DASH located in /opt/dash, assumed that the command is at the top level of the DASH repository.
@@ -122,7 +124,9 @@ Currently we use the two online CI providers [Travis](https://travis-ci.org/dash
 3. analyze logfiles for errors
 4. copy artefacts / print output messages
 
-.. note:: As the exit code of a Docker container is not reliable, the output is parsed for errors outside docker. This is done by the `run-docker.sh` script.
+!!! Note
+
+    As the exit code of a Docker container is not reliable, the output is parsed for errors outside docker. This is done by the `run-docker.sh` script.
 
 To limit the complexity in the yml files, each ci folder (`dash/scripts/<ci>`) contains shell scripts for building / pulling and starting the docker containers. The file names should be self-explaining.
 In the `run-docker.sh` file are also the environment variables for the Docker container set. These are then accessed by the `dash-ci.sh` script which is executed inside the container.
@@ -160,7 +164,9 @@ After the completion of each Docker container, the test results are gathered and
 #### Debugging
 CircleCI supports direct debugging inside the CI container / VM. Therfor click on the `Debug via SSH` button on a running build and ssh into the desired container. As we use Docker inside CircleCI to run our tests, all pathes printed in the CI output refer to internal pathes inside the Docker container.
 
-.. note:: Attaching to a running container is problematic, as the containers are not run in interactive mode. Hence your terminal might hang.
+!!! Note
+
+    Attaching to a running container is problematic, as the containers are not run in interactive mode. Hence your terminal might hang.
 
 The best way to debug is to spin up a interactive container using the corresponding environment. For example, if a problem occured in env `openmpi2` use the following command to start the container. As the current working directory is mounted to `/opt/dash`, run the command inside the DASH repository folder.
 
@@ -172,4 +178,6 @@ Inside the container, `cd` to `/opt/dash` and execute `/bin/bash /opt/dash/scrip
 
 To leave the container again, just type `exit`.
 
-.. note:: Your SSH access is automatically terminated after 30 minutes.
+!!! Note
+
+    Your SSH access is automatically terminated after 30 minutes.
