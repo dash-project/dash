@@ -154,6 +154,6 @@ run_suite 12
 if $TESTS_PASSED; then
   exit 0
 else
-  exit -1
+  exit 127
 fi
 

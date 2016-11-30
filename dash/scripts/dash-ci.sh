@@ -31,19 +31,18 @@ run_ci()
     $CMD_TEST mpi $DEPLOY_PATH/bin $DEPLOY_PATH/test_mpi.log
     TEST_STATUS=$?
 
-    if [[ -f $DEPLOY_PATH/test_mpi.log ]] ; then
+    if [ -f $DEPLOY_PATH/test_mpi.log ] ; then
       ERROR_PATTERNS=`grep -c -i "segmentation\|segfault\|terminat\|uninitialised value\|Invalid read\|Invalid write" $DEPLOY_PATH/test_mpi.log`
       if [ "$TEST_STATUS" = "0" ]; then
         if [ "$ERROR_PATTERNS" -ne "0" ]; then
           FAILED=true
-          echo "[->  ERROR ] error pattern detected. Check logs"
+          echo "[->  ERROR ] Error pattern detected. Check logs"
         else
           echo "[->     OK ]"
         fi
       else
         FAILED=true
-        echo "[-> FAILED ]"
-        tail -n 100000 $DEPLOY_PATH/test_mpi.log
+        echo "[-> FAILED ] Test run failed"
       fi
     else
       FAILED=true
@@ -52,7 +51,6 @@ run_ci()
   else
     FAILED=true
     echo "[-> FAILED ] Build failed"
-    cat $DEPLOY_PATH/build.log
   fi
 
   if $FAILED; then
