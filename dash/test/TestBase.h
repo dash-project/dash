@@ -60,8 +60,8 @@ extern void ColoredPrintf(
   sprintf(buffer, __VA_ARGS__); \
   testing::internal::ColoredPrintf( \
     testing::internal::COLOR_YELLOW, \
-    "[= %*d  LOG =] %*s :%*d | %s \n", \
-    3, dash::myid(), 24, filename, 4, __LINE__, \
+    "[= %*d LOG =] %*s :%*d | %s \n", \
+    2, dash::myid(), 24, filename, 4, __LINE__, \
     buffer); \
 } while(0)
 
