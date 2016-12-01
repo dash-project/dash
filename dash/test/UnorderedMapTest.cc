@@ -285,7 +285,7 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   int gidx = 0;
   int unit = 0;
   for (auto git = map.begin(); git != map.end(); ++git) {
-    int      lidx;
+    int      lidx = -1;
     int      nlocal = 0;
     if (unit == 0) {
       lidx   = gidx;

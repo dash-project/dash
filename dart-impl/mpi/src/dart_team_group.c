@@ -151,6 +151,7 @@ dart_ret_t dart_group_intersect(
            g1 -> mpi_group,
            g2 -> mpi_group,
            &(res->mpi_group)) != MPI_SUCCESS) {
+    free(res);
     return DART_ERR_INVAL;
   }
   *gout = res;
@@ -506,6 +507,7 @@ dart_ret_t dart_team_get_group(
   struct dart_group_struct* res = allocate_group();
   int result = dart_adapt_teamlist_convert(teamid, &index);
   if (result == -1) {
+    free(res);
     return DART_ERR_INVAL;
   }
   comm = dart_team_data[index].comm;
