@@ -521,7 +521,7 @@ dart_ret_t dart__base__locality__domain_group(
 
       int group_subdomain_tag_len = strlen(group_subdomain_tags[sd]);
 
-      if (group_subdomain_tag_len < group_parent_domain_tag_len) {
+      if (group_subdomain_tag_len <= group_parent_domain_tag_len) {
         /* Indicates invalid parameters, usually caused by multiple units
          * mapped to the same domain to be grouped.
          */
