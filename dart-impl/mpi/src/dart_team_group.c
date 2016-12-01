@@ -743,7 +743,7 @@ dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam)
 {
   dart_group_t group;
   dart_team_get_group(team, &group);
-  int ret = dart_team_create(team, group, newteam);
+  dart_ret_t ret = dart_team_create(team, group, newteam);
   dart_group_destroy(&group);
   return ret;
 }
