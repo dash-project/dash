@@ -170,6 +170,7 @@ dart_team_memalloc_aligned(
     "index:%d", index);
 
   if (result == -1) {
+    free(disp_set);
     return DART_ERR_INVAL;
   }
 
@@ -240,12 +241,14 @@ dart_team_memalloc_aligned(
       DART_LOG_ERROR("dart_team_memalloc_aligned: "
                      "MPI_Win_allocate_shared failed, error %d (%s)",
                      ret, DART__MPI__ERROR_STR(ret));
+      free(disp_set);
       return DART_ERR_OTHER;
     }
   } else {
     DART_LOG_ERROR("dart_team_memalloc_aligned: "
                    "Shared memory communicator is MPI_COMM_NULL, "
                    "cannot call MPI_Win_allocate_shared");
+    free(disp_set);
     return DART_ERR_OTHER;
   }
 
@@ -280,11 +283,15 @@ dart_team_memalloc_aligned(
   if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
     DART_LOG_ERROR(
       "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
+    free(baseptr_set);
+    free(disp_set);
     return DART_ERR_OTHER;
   }
 	if (MPI_Get_address(sub_mem, &disp) != MPI_SUCCESS) {
     DART_LOG_ERROR(
       "dart_team_memalloc_aligned: bytes:%lu MPI_Get_address failed", nbytes);
+    free(disp_set);
+    free(baseptr_set);
     return DART_ERR_OTHER;
   }
 
@@ -303,6 +310,7 @@ dart_team_memalloc_aligned(
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: "
         "bytes:%lu Allocation of segment data failed", nbytes);
+    free(baseptr_set);
     return DART_ERR_OTHER;
   }
 
@@ -421,6 +429,7 @@ dart_team_memregister_aligned(
   int result = dart_adapt_teamlist_convert(teamid, &index);
 
   if (result == -1) {
+    free(disp_set);
     return DART_ERR_INVAL;
   }
   comm = dart_team_data[index].comm;
@@ -496,6 +505,7 @@ dart_team_memregister(
   }
 
   if (result == -1) {
+    free(disp_set);
     return DART_ERR_INVAL;
   }
   comm = dart_team_data[index].comm;
