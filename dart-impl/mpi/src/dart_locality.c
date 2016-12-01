@@ -83,7 +83,7 @@ dart_ret_t dart_domain_clone(
   return dart__base__locality__clone_domain(domain_in, domain_out);
 }
 
-dart_ret_t dart_domain_destruct(
+dart_ret_t dart_domain_destroy(
   dart_domain_locality_t        * domain)
 {
   return dart__base__locality__destruct_domain(domain);
@@ -114,7 +114,7 @@ dart_ret_t dart_domain_select(
   int                             num_subdomain_tags,
   const char                   ** subdomain_tags)
 {
-  return dart__base__locality__domain_select_subdomains(
+  return dart__base__locality__select_subdomains(
            domain_in, subdomain_tags, num_subdomain_tags);
 }
 
@@ -123,8 +123,34 @@ dart_ret_t dart_domain_exclude(
   int                             num_subdomain_tags,
   const char                   ** subdomain_tags)
 {
-  return dart__base__locality__domain_exclude_subdomains(
+  return dart__base__locality__exclude_subdomains(
            domain_in, subdomain_tags, num_subdomain_tags);
+}
+
+dart_ret_t dart_domain_add_subdomain(
+  dart_domain_locality_t        * domain,
+  dart_domain_locality_t        * subdomain,
+  int                             subdomain_rel_id)
+{
+  return dart__base__locality__add_subdomain(
+           domain, subdomain, subdomain_rel_id);
+}
+
+dart_ret_t dart_domain_remove_subdomain(
+  dart_domain_locality_t        * domain,
+  int                             subdomain_rel_id)
+{
+  return dart__base__locality__remove_subdomain(
+           domain, subdomain_rel_id);
+}
+
+dart_ret_t dart_domain_move_subdomain(
+  dart_domain_locality_t        * domain,
+  dart_domain_locality_t        * new_parent_domain,
+  int                             new_domain_rel_id)
+{
+  return dart__base__locality__move_subdomain(
+           domain, new_parent_domain, new_domain_rel_id);
 }
 
 dart_ret_t dart_domain_split(
@@ -186,7 +212,7 @@ dart_ret_t dart_domain_split(
     /* Drop domains that are not in split group: */
     DART_LOG_TRACE("dart_domain_split: selecting subdomains");
     DART_ASSERT_RETURNS(
-      dart__base__locality__domain_select_subdomains(
+      dart__base__locality__select_subdomains(
         domains_out + p,
         (const char **)(group_domain_tags[p]),
         group_sizes[p]),

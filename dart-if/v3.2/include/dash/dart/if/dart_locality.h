@@ -83,7 +83,7 @@ dart_ret_t dart_domain_clone(
  * \threadsafe
  * \ingroup DartLocality
  */
-dart_ret_t dart_domain_destruct(
+dart_ret_t dart_domain_destroy(
   dart_domain_locality_t        * domain);
 
 /**
@@ -149,6 +149,25 @@ dart_ret_t dart_domain_add_subdomain(
   dart_domain_locality_t        * domain,
   dart_domain_locality_t        * subdomain,
   int                             subdomain_rel_id);
+
+/**
+ * Move locality domain in the locality hierarchy.
+ *
+ * The specified domain is added to the children of another domain in the
+ * same locality hierarchy at the specified relative index.
+ *
+ * Tags of inserted subdomains are updated according to the parent domain.
+ * Units mapped to inserted subdomains are added to ancestor domains
+ * recursively. Units mapped to inserted subdomains must not be mapped
+ * to the target domain hierarchy already.
+ *
+ * \threadsafe
+ * \ingroup DartLocality
+ */
+dart_ret_t dart_domain_move_subdomain(
+  dart_domain_locality_t        * domain,
+  dart_domain_locality_t        * new_parent_domain,
+  int                             new_domain_rel_id);
 
 /**
  * Split locality domain hierarchy at given domain tag into \c num_parts

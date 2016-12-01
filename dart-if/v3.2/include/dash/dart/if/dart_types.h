@@ -437,6 +437,11 @@ dart_module_location_t;
  *   ...
  * \endcode
  *
+ * \todo  Storing sub-domains as array of pointers would simplify adding,
+ *        removing and moving (-> splitting, grouping) of domains but
+ *        makes copying, initialization and destruction more expensive and
+ *        might increase heap fragmentation.
+ *        Clarify for which operations we should optimize.
  */
 struct dart_domain_locality_s
 {
@@ -471,7 +476,7 @@ struct dart_domain_locality_s
     int                              num_domains;
     /** Array of subordinate domains of size \c num_domains or 0 if no
      *  subdomains are specified. */
-    struct dart_domain_locality_s  * domains;
+    struct dart_domain_locality_s ** children;
 
     /** Whether sub-domains have identical hardware configuration. */
     int                              is_symmetric;

@@ -1,5 +1,8 @@
 /**
  * \file dash/dart/base/locality.h
+ *
+ * Fundamental algorithms on DART locality types independent from a concrete
+ * implementation of the DART interface.
  */
 #ifndef DART__BASE__LOCALITY_H__
 #define DART__BASE__LOCALITY_H__
@@ -70,7 +73,7 @@ dart_ret_t dart__base__locality__destruct_domain(
 }
 
 static inline
-dart_ret_t dart__base__locality__domain_select_subdomains(
+dart_ret_t dart__base__locality__select_subdomains(
   dart_domain_locality_t           * domain,
   const char                      ** subdomain_tags,
   int                                num_subdomain_tags)
@@ -81,7 +84,7 @@ dart_ret_t dart__base__locality__domain_select_subdomains(
 }
 
 static inline
-dart_ret_t dart__base__locality__domain_exclude_subdomains(
+dart_ret_t dart__base__locality__exclude_subdomains(
   dart_domain_locality_t           * domain,
   const char                      ** subdomain_tags,
   int                                num_subdomain_tags)
@@ -89,6 +92,35 @@ dart_ret_t dart__base__locality__domain_exclude_subdomains(
   static const int remove_matches = 1;
   return dart__base__locality__domain__filter_subdomains(
            domain, subdomain_tags, num_subdomain_tags, remove_matches);
+}
+
+static inline
+dart_ret_t dart__base__locality__add_subdomain(
+  dart_domain_locality_t           * domain,
+  dart_domain_locality_t           * subdomain,
+  int                                subdomain_rel_id)
+{
+  return dart__base__locality__domain__add_subdomain(
+           domain, subdomain, subdomain_rel_id);
+}
+
+static inline
+dart_ret_t dart__base__locality__remove_subdomain(
+  dart_domain_locality_t           * domain,
+  int                                subdomain_rel_id)
+{
+  return dart__base__locality__domain__remove_subdomain(
+           domain, subdomain_rel_id);
+}
+
+static inline
+dart_ret_t dart__base__locality__move_subdomain(
+  dart_domain_locality_t           * subdomain,
+  dart_domain_locality_t           * new_parent_domain,
+  int                                new_subdomain_rel_id)
+{
+  return dart__base__locality__domain__move_subdomain(
+           subdomain, new_parent_domain, new_subdomain_rel_id);
 }
 
 dart_ret_t dart__base__locality__team_domain(

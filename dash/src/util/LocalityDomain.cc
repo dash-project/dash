@@ -88,7 +88,7 @@ dash::util::LocalityDomain::~LocalityDomain()
     _subdomains = nullptr;
   }
   if (_is_owner && _domain != nullptr) {
-    dart_domain_destruct(_domain);
+    dart_domain_destroy(_domain);
   }
   _domain = nullptr;
 
@@ -370,7 +370,7 @@ dash::util::LocalityDomain::split_groups()
           *group
         ));
 
-    dart_domain_destruct(group);
+    dart_domain_destroy(group);
   }
   DASH_LOG_DEBUG("LocalityDomain.split_groups >");
 
@@ -404,7 +404,7 @@ dash::util::LocalityDomain::at(
                          relative_index,
                          dash::util::LocalityDomain(
                            *this,
-                           &(_domain->domains[relative_index]))
+                           (_domain->children[relative_index]))
                        ));
     DASH_LOG_DEBUG("LocalityDomain.at", " <-- created subdomain instance");
     DASH_LOG_DEBUG("LocalityDomain.at >",
