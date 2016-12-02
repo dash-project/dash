@@ -2,7 +2,9 @@
 #define DASH__TYPES_H_
 
 #include <array>
+#include <type_traits>
 #include <dash/dart/if/dart_types.h>
+#include <dash/internal/Unit.h>
 
 
 namespace dash {
@@ -141,6 +143,9 @@ inline dart_storage_t dart_storage(int nvalues) {
   }
   return ds;
 }
+
+typedef struct dash::internal::unit::unit_id<dash::internal::unit::local_unit>   local_unit_t;
+typedef struct dash::internal::unit::unit_id<dash::internal::unit::global_unit>  global_unit_t;
 
 } // namespace dash
 
