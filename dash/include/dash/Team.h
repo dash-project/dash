@@ -438,7 +438,7 @@ public:
     }
   }
 
-  inline dart_unit_t myid() const
+  inline local_unit_t myid() const
   {
     if (_myid == -1 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
@@ -492,14 +492,6 @@ public:
   }
 
   /**
-   * Index of this team relative to global team \c dash::Team::All().
-   */
-  inline size_t global_id() const
-  {
-    return _dartid;
-  }
-
-  /**
    * Index of this team relative to parent team.
    */
   inline size_t relative_id() const
@@ -510,10 +502,10 @@ public:
   /**
    * Global unit id of specified local unit id.
    */
-  inline dart_unit_t global_id(
-    dart_unit_t local_id)
+  inline global_unit_t global_id(
+    local_unit_t local_id)
   {
-    dart_unit_t g_id;
+    global_unit_t g_id;
     DASH_ASSERT_RETURNS(
       dart_team_unit_l2g(
         _dartid,
@@ -558,7 +550,7 @@ private:
   size_t                  _position     = 0;
   size_t                  _num_siblings = 0;
   mutable size_t          _size         = 0;
-  mutable dart_unit_t     _myid         = -1;
+  mutable local_unit_t     _myid{-1};
   mutable bool            _has_group    = false;
   mutable dart_group_t    _group        = nullptr;
 

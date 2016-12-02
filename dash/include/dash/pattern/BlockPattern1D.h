@@ -97,11 +97,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    dart_unit_t unit;
+    local_unit_t unit;
     IndexType   index;
   } local_index_t;
   typedef struct {
-    dart_unit_t unit;
+    local_unit_t unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -661,7 +661,7 @@ public:
     // Global coords to local coords:
     auto l_index = at(g_coords);
     DASH_LOG_TRACE_VAR("BlockPattern<1>.local_index >", l_index);
-    return local_index_t { unit, l_index };
+    return local_index_t { local_unit_t(unit), l_index };
   }
 
   ////////////////////////////////////////////////////////////////////////////

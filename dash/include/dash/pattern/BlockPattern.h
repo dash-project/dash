@@ -103,11 +103,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    dart_unit_t unit;
+    local_unit_t unit;
     IndexType   index;
   } local_index_t;
   typedef struct {
-    dart_unit_t unit;
+    local_unit_t unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -748,7 +748,8 @@ public:
     // Local offset of the element within all of the unit's local
     // elements:
     SizeType local_elem_offset = 0;
-    auto unit = unit_at(global_coords);
+    // TODO[JS]: unit_at should return a local_unitid
+    auto unit = local_unit_t(unit_at(global_coords));
     DASH_LOG_TRACE_VAR("BlockPattern.local_index", unit);
     // Global coords to local coords:
     std::array<IndexType, NumDimensions> l_coords =

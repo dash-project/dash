@@ -98,11 +98,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    dart_unit_t                           unit;
+    local_unit_t                           unit;
     IndexType                             index;
   } local_index_t;
   typedef struct {
-    dart_unit_t                           unit;
+    local_unit_t                           unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -621,7 +621,7 @@ public:
     index_type  g_block_index = g_index / _blocksize;
     index_type  l_phase       = g_index % _blocksize;
     index_type  l_block_index = g_block_index / _nunits;
-    dart_unit_t unit          = g_block_index % _nunits;
+    local_unit_t unit(g_block_index % _nunits);
     DASH_LOG_TRACE_VAR("TilePattern<1>.local >", unit);
     index_type  l_index       = (l_block_index * _blocksize) + l_phase;
     DASH_LOG_TRACE_VAR("TilePattern<1>.local >", l_index);
@@ -657,7 +657,7 @@ public:
     index_type  g_block_index = g_coords[0] / _blocksize;
     index_type  l_phase       = g_coords[0] % _blocksize;
     index_type  l_block_index = g_block_index / _nunits;
-    dart_unit_t unit          = g_block_index % _nunits;
+    local_unit_t unit(g_block_index % _nunits);
     DASH_LOG_TRACE_VAR("TilePattern<1>.local_index >", unit);
     // Global coords to local coords:
     index_type  l_index       = (l_block_index * _blocksize) + l_phase;

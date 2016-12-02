@@ -117,7 +117,7 @@ public:
   }
 
 private:
-  bool               _myid;
+  global_unit_t _myid;
   int                _header_width = 82;
   config_params_type _config;
   std::string        _name;
