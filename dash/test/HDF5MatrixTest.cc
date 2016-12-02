@@ -243,7 +243,7 @@ TEST_F(HDF5MatrixTest, PreAllocation)
                         ext_x,
                         ext_y));
     // Fill
-    fill_matrix(matrix_a, dash::myid());
+    fill_matrix(matrix_a, static_cast<int>(dash::myid()));
     dash::barrier();
 
     dio::OutputStream os(_filename);
@@ -264,7 +264,7 @@ TEST_F(HDF5MatrixTest, PreAllocation)
   dash::barrier();
 
   // Verify
-  verify_matrix(matrix_b, dash::myid());
+  verify_matrix(matrix_b, static_cast<int>(dash::myid()));
 }
 
 /**
