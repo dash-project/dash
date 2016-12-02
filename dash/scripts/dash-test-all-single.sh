@@ -20,7 +20,7 @@ fi
 
 if [ $TIMEOUT_MAJOR -lt 8 -o $TIMEOUT_MAJOR -eq 8 -a $TIMEOUT_MINOR -lt 13  ] ; then
   TIMEOUT_FG=""
-  echo "[[ LOG    ]] Cannot handle TTY signals (requires GNU timeout version >8.13)"
+  echo "[[ WARN   ]] Cannot handle TTY signals (requires GNU timeout version >8.13)"
 fi
 
 
