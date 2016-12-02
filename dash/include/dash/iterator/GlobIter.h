@@ -222,7 +222,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.index);
     // Create global pointer from unit and local offset:
     PointerType gptr(
-      _globmem->at(local_pos.unit, local_pos.index)
+      _globmem->at(local_unit_t(local_pos.unit), local_pos.index)
     );
     return gptr + offset;
   }
@@ -258,7 +258,7 @@ public:
     // Global pointer to element at given position:
     dash::GlobPtr<ElementType, PatternType> gptr(
       _globmem->at(
-        local_pos.unit,
+        local_unit_t(local_pos.unit),
         local_pos.index)
     );
     DASH_LOG_TRACE_VAR("GlobIter.dart_gptr >", gptr);
@@ -282,7 +282,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
     // Global reference to element at given position:
     return ReferenceType(
-             _globmem->at(local_pos.unit,
+             _globmem->at(local_unit_t(local_pos.unit),
                           local_pos.index));
   }
 
@@ -304,7 +304,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.index);
     // Global reference to element at given position:
     return ReferenceType(
-             _globmem->at(local_pos.unit,
+             _globmem->at(dash::local_unit_t(local_pos.unit),
                           local_pos.index));
   }
 

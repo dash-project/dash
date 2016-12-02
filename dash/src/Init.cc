@@ -1,13 +1,14 @@
 #include <dash/Init.h>
 #include <dash/Team.h>
+#include <dash/Types.h>
 #include <dash/Shared.h>
 #include <dash/util/Locality.h>
 #include <dash/util/Config.h>
 
 
 namespace dash {
-  static int  _myid        = -1;
-  static int  _size        = -1;
+  static global_unit_t  _myid(-1);
+  static ssize_t             _size        = -1;
   static bool _initialized = false;
 }
 
@@ -88,7 +89,7 @@ void dash::barrier()
   dash::Team::All().barrier();
 }
 
-int dash::myid()
+dash::global_unit_t dash::myid()
 {
   if (dash::_myid < 0 && dash::is_initialized()) {
     // First call of dash::myid() after dash::init():
@@ -102,7 +103,7 @@ int dash::myid()
   return dash::_myid;
 }
 
-size_t dash::size()
+ssize_t dash::size()
 {
   if (dash::_size < 0 && dash::is_initialized()) {
     // First call of dash::size() after dash::init():

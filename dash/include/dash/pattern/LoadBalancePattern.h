@@ -277,11 +277,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    dart_unit_t                           unit;
+    local_unit_t                           unit;
     IndexType                             index;
   } local_index_t;
   typedef struct {
-    dart_unit_t                           unit;
+    local_unit_t                           unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 

@@ -5,6 +5,7 @@
 
 #include <libdash.h>
 #include <dash/GlobMem.h>
+#include <dash/Types.h>
 
 #include "TestBase.h"
 

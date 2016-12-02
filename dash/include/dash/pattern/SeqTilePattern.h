@@ -110,11 +110,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    dart_unit_t unit;
+    local_unit_t unit;
     IndexType   index;
   } local_index_t;
   typedef struct {
-    dart_unit_t unit;
+    local_unit_t unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -810,7 +810,7 @@ public:
                          _blocksize_spec.at(phase_coords);        // elem. phase
     DASH_LOG_TRACE_VAR("SeqTilePattern.local_index >", l_index);
 
-    return local_index_t { unit, l_index };
+    return local_index_t { local_unit_t(unit), l_index };
   }
 
   ////////////////////////////////////////////////////////////////////////
