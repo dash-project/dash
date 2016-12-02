@@ -69,7 +69,7 @@ run_ci()
     echo "[-> PASSED ] Build and test suite passed"
   fi
 
-  if [ "$LD_LIBRARY_PATH_ORIG" -ne "" ]; then
+  if [ "$LD_LIBRARY_PATH_ORIG" != "" ]; then
     export LD_LIBRARY_PATH=${LD_LIBRARY_PATH_ORIG}
   fi
 }
