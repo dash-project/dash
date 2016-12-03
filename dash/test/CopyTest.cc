@@ -409,6 +409,7 @@ TEST_F(CopyTest, AsyncLocalToGlobPtr)
 
   dash::GlobPtr<int> gptr_dest((array.begin() + global_offset).dart_gptr());
   LOG_MESSAGE("CopyTest.AsyncLocalToGlobPtr: call copy_async");
+
   auto copy_fut = dash::copy_async(local_range,
                                    local_range + num_elem_per_unit,
                                    gptr_dest);

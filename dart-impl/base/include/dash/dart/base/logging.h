@@ -55,20 +55,20 @@ enum dart__base__term_color_code {
 
 static int dart__base__term_colors[DART_LOG_TCOL_NUM_CODES] = {
   39, // default
-  97, // white
-  91, // red
-  92, // green
-  93, // yellow
-  94, // blue
-  95, // magenta
-  96  // cyan
+  37, // white
+  31, // red
+  32, // green
+  33, // yellow
+  34, // blue
+  35, // magenta
+  36  // cyan
 };
 
 static int
 dart__base__unit_term_colors[DART_LOG_TCOL_NUM_CODES-1] = {
   DART_LOG_TCOL_CYAN,
-  DART_LOG_TCOL_MAGENTA,
   DART_LOG_TCOL_YELLOW,
+  DART_LOG_TCOL_MAGENTA,
   DART_LOG_TCOL_WHITE,
   DART_LOG_TCOL_GREEN,
   DART_LOG_TCOL_RED,
