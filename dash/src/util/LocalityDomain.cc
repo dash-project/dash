@@ -35,12 +35,6 @@ std::ostream & operator<<(
 // Public Constructors
 // -------------------------------------------------------------------------
 
-
-dash::util::LocalityDomain::LocalityDomain()
-: _domain(nullptr),
-  _subdomains(nullptr)
-{ }
-
 dash::util::LocalityDomain::LocalityDomain(
   const dart_domain_locality_t     & domain
 ) : _is_owner(true)

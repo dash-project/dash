@@ -35,11 +35,22 @@ void dash::init(int * argc, char ** *argv)
 
 #if DASH_DEBUG
   if (dash::util::Config::get<bool>("DASH_INIT_BREAKPOINT")) {
+#if 0
     dash::Shared<int> blockvar;
     blockvar.set(1);
     while (blockvar.get()) {
       dash::internal::wait_breakpoint();
     }
+#else
+    int blockvar = 0;
+    if (dash::myid() == 0) {
+      blockvar = 1;
+    }
+    while (blockvar) {
+      dash::internal::wait_breakpoint();
+    }
+    dash::barrier();
+#endif
   }
 #endif
 

@@ -22,51 +22,23 @@
 namespace dash {
 namespace util {
 
-/**
- * Wrapper of a single \c dart_domain_locality_t object.
- *
- * Usage examples:
- *
- * \code
- * dash::util::TeamLocality     team_locality(dash::Team::All());
- * dash::util::LocalityDomain & domain = team_locality.domain();
- *
- * // Leader unit in second subdomain:
- * dart_unit_t leader_id = domain[1].leader_unit();
- *
- * // Unit locality data of leader unit:
- * dash::util::UnitLocality & leader_loc = domain[1].unit_locality(leader_id);
- * auto leader_ncores = leader_loc.num_cores();
- *
- * domain.split_groups(dash::util::Locality::Scope::Module);
- *
- * for (auto part : domain.groups()) {
- *   // Iterate over all domains in Module locality scope
- * }
- * \endcode
- */
-class LocalityDomain
-{
-private:
-  typedef LocalityDomain                           self_t;
-  typedef dash::util::Locality::Scope             Scope_t;
+namespace internal {
 
-private:
   /**
    * Iterator on subdomains of the locality domain.
    */
   template< typename LocalityDomainT >
-  class domain_iterator
+  class LocalityDomainIterator
   : public std::iterator< std::random_access_iterator_tag, LocalityDomainT >
   {
     template< typename LocalityDomainT_ >
-    friend class domain_iterator;
+    friend class LocalityDomainIterator;
 
   private:
-    typedef domain_iterator<LocalityDomainT>          self_t;
+    typedef LocalityDomainIterator<LocalityDomainT>          self_t;
 
   public:
-    typedef domain_iterator<LocalityDomainT>       self_type;
+    typedef LocalityDomainIterator<LocalityDomainT>       self_type;
     typedef int                              difference_type;
 
     typedef       LocalityDomainT                 value_type;
@@ -75,18 +47,18 @@ private:
 
   public:
 
-    domain_iterator(
+    LocalityDomainIterator(
       LocalityDomainT & domain,
       int               subdomain_idx = 0)
     : _domain(&domain),
       _idx(subdomain_idx)
     { }
 
-    domain_iterator() = default;
+    LocalityDomainIterator() = default;
 
     template< typename LocalityDomainT_Other >
-    domain_iterator(
-      const domain_iterator<LocalityDomainT_Other> & other)
+    LocalityDomainIterator(
+      const LocalityDomainIterator<LocalityDomainT_Other> & other)
     : _domain(const_cast<LocalityDomainT *>(other._domain)),
       _idx(other._idx)
     { }
@@ -133,10 +105,43 @@ private:
 
   }; // class LocalityDomain::iterator
 
+}
+
+/**
+ * Wrapper of a single \c dart_domain_locality_t object.
+ *
+ * Usage examples:
+ *
+ * \code
+ * dash::util::TeamLocality     team_locality(dash::Team::All());
+ * dash::util::LocalityDomain & domain = team_locality.domain();
+ *
+ * // Leader unit in second subdomain:
+ * dart_unit_t leader_id = domain[1].leader_unit();
+ *
+ * // Unit locality data of leader unit:
+ * dash::util::UnitLocality & leader_loc = domain[1].unit_locality(leader_id);
+ * auto leader_ncores = leader_loc.num_cores();
+ *
+ * domain.split_groups(dash::util::Locality::Scope::Module);
+ *
+ * for (auto part : domain.groups()) {
+ *   // Iterate over all domains in Module locality scope
+ * }
+ * \endcode
+ */
+class LocalityDomain
+{
+private:
+  typedef LocalityDomain               self_t;
+  typedef dash::util::Locality::Scope Scope_t;
+
+private:
+
 public:
 
-  typedef domain_iterator<self_t>                iterator;
-  typedef domain_iterator<const self_t>    const_iterator;
+  typedef internal::LocalityDomainIterator<self_t>              iterator;
+  typedef internal::LocalityDomainIterator<const self_t>  const_iterator;
 
 private:
 
@@ -146,7 +151,7 @@ private:
 
 public:
 
-  LocalityDomain();
+  LocalityDomain() = default;
 
   explicit LocalityDomain(
     const dart_domain_locality_t & domain);

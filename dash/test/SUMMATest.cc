@@ -44,20 +44,20 @@ TEST_F(SUMMATest, Deduction)
   team_spec.balance_extents();
 
   LOG_MESSAGE("Initialize matrix pattern ...");
-  auto pattern = dash::make_pattern <
-                 dash::summa_pattern_partitioning_constraints,
-                 dash::summa_pattern_mapping_constraints,
-                 dash::summa_pattern_layout_constraints >(
-                   size_spec,
+  auto pattern = dash::make_pattern<
+                   dash::summa_pattern_partitioning_constraints,
+                   dash::summa_pattern_mapping_constraints,
+                   dash::summa_pattern_layout_constraints
+                 >(size_spec,
                    team_spec);
 
   LOG_MESSAGE("SizeSpec(%lu,%lu) TeamSpec(%lu,%lu)",
               size_spec.extent(0), size_spec.extent(1),
               team_spec.extent(0), team_spec.extent(1));
 
-  typedef double                value_t;
-  typedef decltype(pattern)     pattern_t;
-  typedef pattern_t::index_type index_t;
+  typedef double                         value_t;
+  typedef decltype(pattern)              pattern_t;
+  typedef typename pattern_t::index_type index_t;
 
   if (_dash_id == 0) {
     dash::test::print_pattern_mapping(
@@ -172,10 +172,10 @@ TEST_F(SUMMATest, SeqTilePatternMatrix)
 {
   SKIP_TEST_IF_NO_SUMMA();
 
-  typedef dash::SeqTilePattern<2> pattern_t;
-  typedef double                  value_t;
-  typedef pattern_t::index_type   index_t;
-  typedef pattern_t::size_type    extent_t;
+  typedef dash::SeqTilePattern<2>        pattern_t;
+  typedef double                         value_t;
+  typedef typename pattern_t::index_type index_t;
+  typedef typename pattern_t::size_type  extent_t;
 
   extent_t tile_size   = 7;
   extent_t base_size   = tile_size * 3;

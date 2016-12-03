@@ -27,7 +27,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES ".*Clang")
   # using Clang
   set (CXX_STD_FLAG "--std=c++11"
        CACHE STRING "C++ compiler std flag")
-  set (CXX_OMP_FLAG "-fopenmp")
+  set (CXX_OMP_FLAG "-fopenmp=libomp")
 elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
   # using GCC
   set (CXX_STD_FLAG "--std=c++11"

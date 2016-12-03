@@ -627,8 +627,8 @@ dash::default_index_t distance(
   /// Global pointer to the final position in the global sequence
   dart_gptr_t last)
 {
-  GlobPtr<ElementType> & gptr_first(dart_gptr_t(first));
-  GlobPtr<ElementType> & gptr_last(dart_gptr_t(last));
+  GlobPtr<ElementType> & gptr_first((dart_gptr_t(first)));
+  GlobPtr<ElementType> & gptr_last((dart_gptr_t(last)));
   return gptr_last - gptr_first;
 }
 
