@@ -386,7 +386,7 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlock)
 TEST_F(CopyTest, AsyncLocalToGlobPtr)
 {
   // Copy all elements contained in a single, continuous block.
-  const int num_elem_per_unit = 50;
+  const int num_elem_per_unit = 5;
   size_t num_elem_total       = _dash_size * num_elem_per_unit;
 
   // Global target range:
@@ -408,12 +408,16 @@ TEST_F(CopyTest, AsyncLocalToGlobPtr)
   auto global_offset = block_offset * num_elem_per_unit;
 
   dash::GlobPtr<int> gptr_dest((array.begin() + global_offset).dart_gptr());
+  LOG_MESSAGE("CopyTest.AsyncLocalToGlobPtr: call copy_async");
   auto copy_fut = dash::copy_async(local_range,
                                    local_range + num_elem_per_unit,
                                    gptr_dest);
 
   // Blocks until remote completion:
+  LOG_MESSAGE("CopyTest.AsyncLocalToGlobPtr: call fut.wait");
   copy_fut.wait();
+
+  array.barrier();
 
   for (auto l = 0; l < num_elem_per_unit; ++l) {
     // Compare local buffer and global array dest range:

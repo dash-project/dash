@@ -105,6 +105,55 @@ namespace logging {
 
 extern bool _log_enabled;
 
+
+enum term_color_code {
+  TCOL_DEFAULT = 0,
+  TCOL_WHITE,
+  TCOL_RED,
+  TCOL_GREEN,
+  TCOL_YELLOW,
+  TCOL_BLUE,
+  TCOL_MAGENTA,
+  TCOL_CYAN,
+  TCOL_NUM_CODES
+};
+
+static int term_colors[TCOL_NUM_CODES] {
+  39, // default
+  97, // white
+  91, // red
+  92, // green
+  93, // yellow
+  94, // blue
+  95, // magenta
+  96  // cyan
+};
+
+static term_color_code unit_term_colors[TCOL_NUM_CODES-1] {
+  TCOL_CYAN,
+  TCOL_MAGENTA,
+  TCOL_YELLOW,
+  TCOL_WHITE,
+  TCOL_GREEN,
+  TCOL_RED,
+  TCOL_BLUE
+};
+
+class TermColorMod {
+  term_color_code tcol;
+
+public:
+  TermColorMod(term_color_code code)
+  : tcol(code)
+  { }
+
+  friend std::ostream & operator<<(
+    std::ostream & os, const TermColorMod & mod) {
+    return os << "\033[" << term_colors[mod.tcol] << "m";
+  }
+};
+
+
 static inline bool log_enabled()
 {
   return _log_enabled;
@@ -144,9 +193,13 @@ inline void Log_Line(
   const std::string & msg)
 {
   pid_t pid = getpid();
+  int   uid = dash::myid();
   std::stringstream buf;
+  
+  buf << TermColorMod(uid < 0 ? TCOL_DEFAULT : unit_term_colors[uid % 7]);
+
   buf << "[ "
-      << std::setw(4) << dash::myid()
+      << std::setw(4) << uid
       << " "
       << level
       << " ] [ "
@@ -158,8 +211,11 @@ inline void Log_Line(
       << line << " | "
       << std::left << std::setw(45)
       << context_tag << "| "
-      << msg
-      << "\n";
+      << msg;
+
+  buf << TermColorMod(TCOL_DEFAULT);
+  
+  buf << "\n";
 
   DASH_LOG_OUTPUT_TARGET << buf.str();
 }

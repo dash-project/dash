@@ -41,6 +41,40 @@
 #define DART_LOG_OUTPUT_TARGET stderr
 #endif
 
+enum dart__base__term_color_code {
+  DART_LOG_TCOL_DEFAULT = 0,
+  DART_LOG_TCOL_WHITE,
+  DART_LOG_TCOL_RED,
+  DART_LOG_TCOL_GREEN,
+  DART_LOG_TCOL_YELLOW,
+  DART_LOG_TCOL_BLUE,
+  DART_LOG_TCOL_MAGENTA,
+  DART_LOG_TCOL_CYAN,
+  DART_LOG_TCOL_NUM_CODES
+};
+
+static int dart__base__term_colors[DART_LOG_TCOL_NUM_CODES] = {
+  39, // default
+  97, // white
+  91, // red
+  92, // green
+  93, // yellow
+  94, // blue
+  95, // magenta
+  96  // cyan
+};
+
+static int
+dart__base__unit_term_colors[DART_LOG_TCOL_NUM_CODES-1] = {
+  DART_LOG_TCOL_CYAN,
+  DART_LOG_TCOL_MAGENTA,
+  DART_LOG_TCOL_YELLOW,
+  DART_LOG_TCOL_WHITE,
+  DART_LOG_TCOL_GREEN,
+  DART_LOG_TCOL_RED,
+  DART_LOG_TCOL_BLUE
+};
+
 /* GNU variant of basename.3 */
 inline char * dart_base_logging_basename(char *path) {
     char *base = strrchr(path, '/');
@@ -93,8 +127,12 @@ inline char * dart_base_logging_basename(char *path) {
     } \
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
+    int tcol = unit_id < 0  \
+               ? DART_LOG_TCOL_DEFAULT \
+               : dart__base__unit_term_colors[unit_id % 7]; \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d TRACE ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
+      "\033[%dm[ %*d TRACE ] [ %*d ] %-*s:%-*d :   DART: %s\033[39m\n", \
+      dart__base__term_colors[tcol], \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -119,8 +157,12 @@ inline char * dart_base_logging_basename(char *path) {
     } \
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
+    int tcol = unit_id < 0  \
+               ? DART_LOG_TCOL_DEFAULT \
+               : dart__base__unit_term_colors[unit_id % 7]; \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "[ %*d DEBUG ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
+      "\033[%dm[ %*d DEBUG ] [ %*d ] %-*s:%-*d :   DART: %s\033[39m\n", \
+      dart__base__term_colors[tcol], \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
