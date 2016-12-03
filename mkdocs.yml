@@ -1,0 +1,26 @@
+site_name: DASH
+site_url: http://dash-project.org/
+site_description: Project documentation of DASH
+site_author: DASH-Team
+
+repo_url: https://github.com/dash-project/dash/
+
+extra_javascript: 
+    - https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML
+    - config/mathjaxhelper.js
+
+markdown_extensions:
+    - toc:
+        permalink: True
+    - admonition:
+    - extra:
+
+theme: readthedocs
+
+pages:
+  - Home: index.md
+  - Container:
+    - NArray: Containers/NArray.md
+  - Input Output:
+    - HDF5 Driver: InputOutput/HDF5.md
+  - Continuous Integration: CI.md

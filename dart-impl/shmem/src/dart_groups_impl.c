@@ -10,7 +10,7 @@ dart_ret_t dart_group_sizeof(size_t *size)
   return DART_OK;
 }
 
-dart_ret_t dart_group_init(dart_group_t *group)
+dart_ret_t dart_group_create(dart_group_t *group)
 {
   int i;
   
@@ -23,13 +23,13 @@ dart_ret_t dart_group_init(dart_group_t *group)
   return DART_OK; 
 }
 
-dart_ret_t dart_group_fini(dart_group_t *group)
+dart_ret_t dart_group_destroy(dart_group_t *group)
 {
   group->nmem = 0;
   return DART_OK;
 }
 
-dart_ret_t dart_group_copy(const dart_group_t *g, dart_group_t *gout)
+dart_ret_t dart_group_clone(const dart_group_t *g, dart_group_t *gout)
 {
   int i;
   
@@ -166,7 +166,7 @@ dart_ret_t dart_group_split(const dart_group_t *g, size_t nsplits,
   for (i = 0; i < nsplits; i++)
     {
       bsize = (i < brem) ? (bdiv + 1) : bdiv;
-      dart_group_init(gsplit[i]);
+      dart_group_create(gsplit[i]);
 
       for (k = 0; (k < bsize) && (j < nmem); k++, j++)
 	{
