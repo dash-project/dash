@@ -20,6 +20,19 @@ void print_locality_domain(
   DASH_LOG_DEBUG(context_pref.c_str(), ld);
 }
 
+void test_locality_hierarchy_integrity(
+  const dash::util::LocalityDomain & ld)
+{
+  if (ld.dart_type().num_domains == 0) {
+    EXPECT_EQ_U(ld.dart_type().children, nullptr);
+  } else {
+    EXPECT_NE_U(ld.dart_type().children, nullptr);
+  }
+  for (auto & sd : ld) {
+    test_locality_hierarchy_integrity(sd);
+  }
+}
+
 
 TEST_F(TeamLocalityTest, GlobalAll)
 {
