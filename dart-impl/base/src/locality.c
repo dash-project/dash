@@ -568,13 +568,12 @@ dart_ret_t dart__base__locality__domain_group(
                    "group parent domain arity: %d",
                    group_parent_domain->num_domains);
 
+    /* Create group domain:
+     */
     dart_domain_locality_t * group_domain =
       malloc(sizeof(dart_domain_locality_t));
 
     dart__base__locality__domain__init(group_domain);
-
-    group_parent_domain->children[group_parent_domain->num_domains] =
-      group_domain;
 
     group_domain->team           = group_parent_domain->team;
     group_domain->scope          = DART_LOCALITY_SCOPE_GROUP;
@@ -582,16 +581,17 @@ dart_ret_t dart__base__locality__domain_group(
     group_domain->parent         = group_parent_domain;
     group_domain->relative_index = group_parent_domain->num_domains;
     group_domain->num_nodes      = group_parent_domain->num_nodes;
-    group_domain->num_units      = 0;
-    group_domain->unit_ids       = NULL;
-    group_domain->num_domains    = 0;
-    group_domain->children       = malloc(sizeof(dart_domain_locality_t *) *
-                                                 num_group_subdomains);
     group_domain->num_aliases    = 1;
     group_domain->aliases        = malloc(sizeof(dart_domain_locality_t *));
     group_domain->aliases[0]     = group_parent_domain;
+    group_domain->num_units      = 0;
+    group_domain->unit_ids       = NULL;
+    group_domain->num_domains    = num_group_subdomains;
+    group_domain->children       = calloc(num_group_subdomains, 
+                                          sizeof(dart_domain_locality_t *));
 
-    /*
+    /* Add group domain to lowest common ancestor of grouped domains:
+     *
      * Note: Required to append group domain at the end of the group
      *       parent's subdomain list to ensure that tags of domains not
      *       included in group remain valid.
@@ -604,19 +604,26 @@ dart_ret_t dart__base__locality__domain_group(
             group_parent_domain_tag_len);
     group_domain->domain_tag[group_parent_domain_tag_len] = '\0';
 
-    DART_LOG_TRACE("dart__base__locality__domain_group: "
-                   "group domain tag: %s", group_domain->domain_tag);
-
     /* TODO: Check if this implementation is correct.
              Incrementing an existing domain's relative index could result
              in naming collisions as the relative index of the subdomain
              can differ from the last place in their domain tag.
+
+             Possible solutions:
+
+             - parse last index in domain tag to int and increment (obviously
+               not a formally sound solution)
+             - proof that invariant rel.index = last index in tag can be
+               maintained and enforce it in locality functions
     */
     int group_domain_tag_len =
       sprintf(group_domain->domain_tag + group_parent_domain_tag_len,
               ".%d", group_domain->relative_index) +
       group_parent_domain_tag_len;
     group_domain->domain_tag[group_domain_tag_len] = '\0';
+
+    DART_LOG_TRACE("dart__base__locality__domain_group: "
+                   "group domain tag: %s", group_domain->domain_tag);
 
     strcpy(group_domain_tag_out, group_domain->domain_tag);
 
@@ -640,12 +647,14 @@ dart_ret_t dart__base__locality__domain_group(
                      "(group.immediate_subdomain_tags[%d] = %s])",
                      gsd, immediate_subdomain_tags[gsd]);
 
+      /* Query instance of the group domain's immediate subdomain:
+       *
+       */
       ret = dart__base__locality__domain(
               domain, immediate_subdomain_tags[gsd],
               &group_subdomain_in);
       if (ret != DART_OK) { break; }
 
-#if 0
       DART_LOG_TRACE("dart__base__locality__domain_group: "
                      "copy domain.domains[domain_tag = %s] to "
                      "group.domains[%d]",
@@ -658,14 +667,7 @@ dart_ret_t dart__base__locality__domain_group(
       if (ret != DART_OK) { break; }
 
       group_domain->children[gsd]->parent = group_domain;
-      group_domain->num_domains++;
-      group_domain->num_units += group_domain[gsd].num_units;
-#else
-      dart__base__locality__domain__move_subdomain(
-        group_subdomain_in, /* subdomain to move */
-        group_domain,       /* new parent, new relative index */
-        gsd);
-#endif
+      group_domain->num_units += group_domain->children[gsd]->num_units;
     } /* for group_domain.domains */
 
     if (ret != DART_OK) { return ret; }
@@ -673,7 +675,6 @@ dart_ret_t dart__base__locality__domain_group(
     group_domain->unit_ids = malloc(sizeof(dart_unit_t) *
                                     group_domain->num_units);
 
-#if 0
     /* Remove entries from group domain that are not part of the group:
      */
     DART_LOG_TRACE("dart__base__locality__domain_group: "
@@ -684,7 +685,6 @@ dart_ret_t dart__base__locality__domain_group(
             group_subdomain_tags,
             group_size);
     if (ret != DART_OK) { return ret; }
-#endif
 
     DART_LOG_TRACE("dart__base__locality__domain_group: "
                    "update group (%s) after adding subdomains",
@@ -695,7 +695,6 @@ dart_ret_t dart__base__locality__domain_group(
 
     /* Remove grouped domains from parent's subdomains:
      */
-#if 0
     for (int sd = 0; sd < group_parent_domain->num_domains; sd++) {
       dart_domain_locality_t * group_parent_subdomain =
                                  group_parent_domain->children[sd];
@@ -714,6 +713,7 @@ dart_ret_t dart__base__locality__domain_group(
         DART_LOG_TRACE("dart__base__locality__domain_group: "
                        "remove grouped domains from %s",
                        group_parent_subdomain->domain_tag);
+
         ret = dart__base__locality__exclude_subdomains(
                 group_parent_subdomain,
                 group_subdomain_tags,
@@ -721,7 +721,13 @@ dart_ret_t dart__base__locality__domain_group(
         if (ret != DART_OK) { break; }
       }
     }
-#endif
+
+    ret = dart__base__locality__domain__update_subdomains(
+            group_parent_domain);
+
+    /* Cleanup temporaries:
+     *
+     */
     for (int sd = 0; sd < group_size; sd++) {
       DART_LOG_TRACE("dart__base__locality__domain_group: "
                      "free(immediate_subdomain_tags[%d])", sd);
