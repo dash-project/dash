@@ -358,19 +358,40 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlock)
   dash::Array<int> array(num_elem_total, dash::BLOCKED);
   // Local range to copy:
   int local_range[num_elem_per_unit];
+  int target_range[num_elem_per_unit];
 
   // Assign initial values: [ 1000, 1001, 1002, ... 2000, 2001, ... ]
   for (auto l = 0; l < num_elem_per_unit; ++l) {
-    array.local[l] = 0;
+    array.local[l] = ((dash::myid() + 1) * 10000) + (l * 10);
     local_range[l] = ((dash::myid() + 1) * 1000) + l;
+  }
+  array.barrier();
+
+  // Block- and global offset of target range:
+  auto block_offset  = _dash_size - 1 - dash::myid();
+  auto global_offset = block_offset * num_elem_per_unit;
+
+  // First, create local copy of remote target region and check
+  // its initial values:
+  dash::copy(array.begin() + global_offset,
+             array.begin() + global_offset + num_elem_per_unit,
+             target_range);
+
+  for (auto l = 0; l < num_elem_per_unit; ++l) {
+    int target_unit_id = _dash_size - 1 - dash::myid();
+    int expected_value = ((target_unit_id + 1) * 10000) + (l * 10);
+    // Test values when obtained from dash::copy:
+    EXPECT_EQ_U(expected_value,
+                target_range[l]);
+    // Test values when obtained from single dart_get requests:
+    EXPECT_EQ_U(expected_value,
+                static_cast<int>(array[global_offset + l]));
   }
   array.barrier();
 
   // Copy values from local range to remote global range.
   // All units (u) copy into block (nblocks-1-u), so unit 0 copies into
   // last block.
-  auto block_offset  = _dash_size - 1 - dash::myid();
-  auto global_offset = block_offset * num_elem_per_unit;
   dash::copy(local_range,
              local_range + num_elem_per_unit,
              array.begin() + global_offset);
@@ -381,6 +402,8 @@ TEST_F(CopyTest, BlockingLocalToGlobalBlock)
     EXPECT_EQ_U(local_range[l],
                 static_cast<int>(array[global_offset + l]));
   }
+
+  array.barrier();
 }
 
 TEST_F(CopyTest, AsyncLocalToGlobPtr)

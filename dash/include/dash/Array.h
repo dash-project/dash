@@ -1014,6 +1014,7 @@ public:
   void barrier() const
   {
     DASH_LOG_TRACE_VAR("Array.barrier()", m_team);
+    m_globmem->flush_all();
     m_team->barrier();
     DASH_LOG_TRACE("Array.barrier >", "passed barrier");
   }
