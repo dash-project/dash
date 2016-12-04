@@ -33,10 +33,13 @@ bool equal(
   auto l_last_1      = index_range.end;
   auto l_result      = std::equal(l_first_1, l_last_1, first_2);
 
-  dash::Array<dart_unit_t> l_results(team.size());
+  dash::Array<bool> l_results(team.size());
 
   l_results.local[0] = l_result;
   bool return_result = true;
+
+  // wait for all units to contribute their data
+  team.barrier();
 
   // All local offsets stored in l_results
   if (myid == 0) {
@@ -74,7 +77,7 @@ bool equal(
   auto l_last_1      = index_range.end;
   auto l_result      = std::equal(l_first_1, l_last_1, first_2, pred);
 
-  dash::Array<dart_unit_t> l_results(team.size());
+  dash::Array<bool> l_results(team.size());
 
   l_results.local[0] = l_result;
 
