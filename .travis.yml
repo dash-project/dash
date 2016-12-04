@@ -15,7 +15,7 @@ before_install:
 script:
     - sh ./dash/scripts/travisci/run-docker.sh Release
     - cat ./dash-ci.log | (grep "FAIL" || return 0) || return 1
-    - sh ./dash/scripts/travisci/run-docker.sh Release_NoSW
+    - sh ./dash/scripts/travisci/run-docker.sh ReleaseNoSW
     - cat ./dash-ci.log | (grep "FAIL" || return 0) || return 1
     - sh ./dash/scripts/travisci/run-docker.sh Minimal
     - cat ./dash-ci.log | (grep "FAIL" || return 0) || return 1
