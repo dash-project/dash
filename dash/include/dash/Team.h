@@ -50,6 +50,7 @@ class Team
     const Team & team);
 
 public:
+
   typedef struct iterator
   {
     int val;
@@ -185,6 +186,14 @@ public:
   inline static Team & All()
   {
     return Team::_team_all;
+  }
+
+  /**
+   * The invariant unit ID in \c dash::Team::All().
+   */
+  inline static global_unit_t GlobalUnitID()
+  {
+    return global_unit_t(Team::_team_all.myid());
   }
 
   /**
@@ -534,7 +543,7 @@ private:
   size_t                  _position     = 0;
   size_t                  _num_siblings = 0;
   mutable size_t          _size         = 0;
-  mutable local_unit_t     _myid{-1};
+  mutable local_unit_t    _myid{-1};
   mutable bool            _has_group    = false;
   mutable dart_group_t    _group        = nullptr;
 
