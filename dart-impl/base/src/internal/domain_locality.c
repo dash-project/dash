@@ -376,7 +376,12 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
   int                                num_subdomain_tags,
   int                                remove_matches)
 {
-  dart_ret_t ret;
+// TODO DEBUG: check if memory operations on domains are correct in
+//      this function:
+//
+  dart_ret_t ret    = DART_OK;
+
+  return ret;
 
   int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_CORE);
   int matched       = 0;
@@ -494,6 +499,7 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
       domain->num_units = unit_idx;
     }
   }
+
   if (NULL != domain->children) {
     if (domain->num_domains != subdomain_idx) {
       if (subdomain_idx > domain->num_domains) {
@@ -515,6 +521,10 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
         domain->children = NULL;
       } else if (tmp != NULL) {
         domain->children = tmp;
+      } else {
+        DART_ASSERT_MSG(
+          0, "dart__base__locality__domain__filter_subdomains: "
+             "realloc failed");
       }
       domain->num_domains = subdomain_idx;
     }

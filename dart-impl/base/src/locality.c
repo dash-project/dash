@@ -590,15 +590,6 @@ dart_ret_t dart__base__locality__domain_group(
     group_domain->children       = calloc(num_group_subdomains, 
                                           sizeof(dart_domain_locality_t *));
 
-    /* Add group domain to lowest common ancestor of grouped domains:
-     *
-     * Note: Required to append group domain at the end of the group
-     *       parent's subdomain list to ensure that tags of domains not
-     *       included in group remain valid.
-     */
-    dart__base__locality__add_subdomain(
-      group_parent_domain, group_domain, -1);
-
     DART_LOG_TRACE("dart__base__locality__domain_group: tag group domain");
     strncpy(group_domain->domain_tag, group_parent_domain_tag,
             group_parent_domain_tag_len);
@@ -668,6 +659,7 @@ dart_ret_t dart__base__locality__domain_group(
 
       group_domain->children[gsd]->parent = group_domain;
       group_domain->num_units += group_domain->children[gsd]->num_units;
+      group_domain->num_cores += group_domain->children[gsd]->num_cores;
     } /* for group_domain.domains */
 
     if (ret != DART_OK) { return ret; }
@@ -680,6 +672,9 @@ dart_ret_t dart__base__locality__domain_group(
     DART_LOG_TRACE("dart__base__locality__domain_group: "
                    "select %d subdomains in group = %s",
                    group_size, group_domain->domain_tag);
+
+// TODO DEBUG: check if removed subdomains are correctly destroyed 
+//
     ret = dart__base__locality__select_subdomains(
             group_domain,
             group_subdomain_tags,
@@ -692,6 +687,15 @@ dart_ret_t dart__base__locality__domain_group(
     ret = dart__base__locality__domain__update_subdomains(
             group_domain);
     if (ret != DART_OK) { return ret; }
+
+    /* Add group domain to lowest common ancestor of grouped domains:
+     *
+     * Note: Required to append group domain at the end of the group
+     *       parent's subdomain list to ensure that tags of domains not
+     *       included in group remain valid.
+     */
+    dart__base__locality__add_subdomain(
+      group_parent_domain, group_domain, -1);
 
     /* Remove grouped domains from parent's subdomains:
      */
