@@ -7,8 +7,6 @@
 
 
 namespace dash {
-  static global_unit_t  _myid(-1);
-  static ssize_t             _size        = -1;
   static bool _initialized = false;
 }
 
@@ -91,29 +89,11 @@ void dash::barrier()
 
 dash::global_unit_t dash::myid()
 {
-  if (dash::_myid < 0 && dash::is_initialized()) {
-    // First call of dash::myid() after dash::init():
-    dart_unit_t myid;
-    dart_myid(&myid);
-    dash::_myid = myid;
-  } else if (!dash::is_initialized()) {
-    // First call of dash::myid() after dash::finalize():
-    dash::_myid = -1;
-  }
-  return dash::_myid;
+  return dash::Team::GlobalUnitID();
 }
 
 ssize_t dash::size()
 {
-  if (dash::_size < 0 && dash::is_initialized()) {
-    // First call of dash::size() after dash::init():
-    size_t size;
-    dart_size(&size);
-    dash::_size = size;
-  } else if (!dash::is_initialized()) {
-    // First call of dash::size() after dash::finalize():
-    dash::_size = -1;
-  }
-  return dash::_size;
+  return dash::Team::All().size();
 }
 
