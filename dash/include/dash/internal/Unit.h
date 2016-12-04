@@ -19,6 +19,27 @@ enum unit_scope {
 
 template <unit_scope IdScope>
 struct unit_id {
+public:
+
+  template<unit_scope U>
+  friend std::ostream & operator<<(std::ostream& os, unit_id<U> id);
+
+  template <unit_scope U>
+  friend constexpr unit_id<U> operator+(unit_id<U> lhs, unit_id<U> rhs);
+
+  template <unit_scope U>
+  friend constexpr unit_id<U> operator-(unit_id<U> lhs, unit_id<U> rhs);
+
+  template <unit_scope U>
+  friend constexpr bool operator==(unit_id<U> lhs, unit_id<U> rhs);
+
+  template <unit_scope U>
+  friend constexpr bool operator<(unit_id<U> lhs, unit_id<U> rhs);
+
+  template <unit_scope U>
+  friend constexpr bool operator>(unit_id<U> lhs, unit_id<U> rhs);
+
+
   /** default initialization to zero */
   constexpr explicit unit_id() noexcept : id(0) {}
 
@@ -26,15 +47,15 @@ struct unit_id {
    * initialization using a dart_unit_t
    * Note that it is explicit to prevent implicit conversion from existing dart_unit_t variables.
    * However, it prevents the following from working:
-   * dash::global_unitid unit = 0;
+   * dash::global_unit_t unit = 0;
    * Instead, use:
-   * dash::global_unitid unit{0};
+   * dash::global_unit_t unit{0};
    */
   constexpr explicit unit_id(dart_unit_t id) noexcept : id(id) {}
 
   /** copy-ctor: explicit conversion from another unit_id type */
   template<unit_scope S>
-  constexpr explicit unit_id<IdScope>(const unit_id<S>& uid) noexcept : id(uid.id) {}
+  constexpr explicit unit_id<IdScope>(const unit_id<S>& uid) noexcept : id(uid) {}
 
   /** TODO [JS]: the following are not constexpr since C++11 does not allow
    *             for multi-statement constexpr functions (C++14 does).
@@ -110,6 +131,7 @@ struct unit_id {
     return &this->id;
   }
 
+private:
   dart_unit_t id;
 };
 
@@ -121,16 +143,6 @@ constexpr unit_id<IdScope> operator+(unit_id<IdScope> lhs, unit_id<IdScope> rhs)
 template <unit_scope IdScope>
 constexpr unit_id<IdScope> operator-(unit_id<IdScope> lhs, unit_id<IdScope> rhs) {
   return unit_id<IdScope>(lhs.id - rhs.id);
-}
-
-template <unit_scope IdScope>
-constexpr unit_id<IdScope> operator/(dart_unit_t lhs, unit_id<IdScope> rhs) {
-  return unit_id<IdScope>(lhs / rhs.rhs);
-}
-
-template <unit_scope IdScope>
-constexpr unit_id<IdScope> operator/(unit_id<IdScope> lhs, dart_unit_t rhs) {
-  return unit_id<IdScope>(lhs.id / rhs);
 }
 
 template <unit_scope IdScope>
