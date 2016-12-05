@@ -3,7 +3,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <iostream>
-#include <fstream>  
+#include <fstream>
 
 #include "TestBase.h"
 #include "TeamTest.h"
@@ -51,7 +51,7 @@ TEST_F(TeamTest, SplitTeamSync)
     usleep(1000 * 1000);
     if(team_core.myid() == 0){
       std::ofstream outfile ("test.txt");
-    }  
+    }
   }
   LOG_MESSAGE("team_all.myid(): %d, team_core.myid(): %d, dash::myid(): %d",
                team_all.myid(),     team_core.myid(),     dash::myid());
