@@ -721,7 +721,7 @@ TEST_F(MatrixTest, StorageOrder)
 
 TEST_F(MatrixTest, DelayedAlloc)
 {
-  dart_unit_t myid = dash::myid();
+  dash::local_unit_t myid(dash::myid());
   auto num_units   = dash::size();
 
   if (num_units < 4) {

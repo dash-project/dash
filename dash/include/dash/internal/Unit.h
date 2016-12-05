@@ -71,7 +71,7 @@ public:
   template<
     typename T,
     typename std::enable_if<
-               std::is_integral<T>::value >::type = 0>
+               std::is_integral<T>::value, int >::type = 0>
   const unit_id operator+=(T id) noexcept {
     this->id += id;
     return *this;
@@ -79,7 +79,7 @@ public:
   template<
     typename T,
     typename std::enable_if<
-               std::is_integral<T>::value >::type = 0>
+               std::is_integral<T>::value, int >::type = 0>
   const unit_id operator-=(T id) noexcept {
     this->id -= id;
     return *this;
@@ -87,7 +87,7 @@ public:
   template<
     typename T,
     typename std::enable_if<
-               std::is_integral<T>::value >::type = 0>
+               std::is_integral<T>::value, int >::type = 0>
   const unit_id operator*=(T id) noexcept {
     this->id *= id;
     return *this;
@@ -95,9 +95,17 @@ public:
   template<
     typename T,
     typename std::enable_if<
-               std::is_integral<T>::value >::type = 0>
+               std::is_integral<T>::value, int >::type = 0>
   const unit_id operator/=(T id) noexcept {
     this->id /= id;
+    return *this;
+  }
+  template<
+    typename T,
+    typename std::enable_if<
+               std::is_integral<T>::value, int >::type = 0>
+  const unit_id operator%=(T id) noexcept {
+    this->id %= id;
     return *this;
   }
 
@@ -110,12 +118,14 @@ public:
     return *this;
   }
   const unit_id operator++(int) noexcept {
+    unit_id<IdScope> tmp(*this);
     this->id++;
-    return *this;
+    return tmp;
   }
   const unit_id operator--(int) noexcept {
+    unit_id<IdScope> tmp(*this);
     this->id--;
-    return *this;
+    return tmp;
   }
 
   /** allow cast to dart_unit_t */

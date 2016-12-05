@@ -71,12 +71,12 @@ TEST_F(LoadBalancePatternTest, LocalSizes)
 
   EXPECT_EQ_U(cpu_cap_ratio,
               std::floor(
-                pat.local_size(0) / pat.local_size(1)));
+                pat.local_size(dash::local_unit_t{0}) / pat.local_size(dash::local_unit_t{1})));
 
-  EXPECT_EQ_U(unit_0_lsize_exp, pat.local_size(0));
-  EXPECT_EQ_U(unit_1_lsize_exp, pat.local_size(1));
+  EXPECT_EQ_U(unit_0_lsize_exp, pat.local_size(dash::local_unit_t{0}));
+  EXPECT_EQ_U(unit_1_lsize_exp, pat.local_size(dash::local_unit_t{1}));
 
-  for (dart_unit_t u = 2; u < static_cast<dart_unit_t>(_dash_size); u++) {
+  for (dash::local_unit_t u{2}; u < _dash_size; u++) {
     EXPECT_EQ_U(unit_x_lsize_exp, pat.local_size(u));
   }
 }
@@ -137,7 +137,7 @@ TEST_F(LoadBalancePatternTest, IndexMapping)
 
   size_t  total_size = 0;
   index_t g_index    = 0;
-  for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(_dash_size); u++) {
+  for (dash::local_unit_t u{0}; u < _dash_size; ++u) {
     index_t l_size = pattern.local_size(u);
     for (index_t li = 0; li < l_size; li++) {
       EXPECT_EQ_U(li, pattern.at(g_index));
