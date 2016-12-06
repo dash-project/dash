@@ -47,11 +47,11 @@ run_ci()
       ERROR_PATTERN="segmentation\|segfault\|terminat\|uninitialized value\|invalid read\|invalid write"
       ERROR_PATTERN_MATCHED=`grep -c -i "${ERROR_PATTERN}" $DEPLOY_PATH/test_mpi.log`
       if [ "$TEST_STATUS" = "0" ]; then
-        if [ "$ERROR_PATTERNS_MATCHED" -ne "0" ]; then
+        if [ "$ERROR_PATTERNS_MATCHED" = "0" ]; then
+          echo "[->     OK ]"
+        else
           FAILED=true
           echo "[->  ERROR ] Error pattern detected. Check logs"
-        else
-          echo "[->     OK ]"
         fi
       else
         FAILED=true
