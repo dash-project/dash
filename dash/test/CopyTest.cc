@@ -150,7 +150,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   //
   // Create local copy of all blocks from a single remote unit:
   //
-  dart_unit_t remote_unit_id = (dash::myid() + 1) % _dash_size;
+  dash::local_unit_t remote_unit_id((dash::Team::All().myid() + 1) % _dash_size);
   LOG_MESSAGE("Creating local copy of blocks at remote unit %d",
               remote_unit_id);
   int rb = 0;
@@ -313,7 +313,7 @@ TEST_F(CopyTest, BlockingGlobalToLocalMasterOnlyAllRemote)
 
 TEST_F(CopyTest, BlockingGlobalToLocalBarrierUnaligned)
 {
-  dart_unit_t myid       = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units       = dash::Team::All().size();
   size_t num_elems_unit  = 20;
   size_t start_index     = 7;
