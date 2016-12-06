@@ -253,13 +253,13 @@ public:
    * \param global_unit_id id of unit in \c dash::Team::All()
    */
   const ElementType * lbegin(
-    dart_unit_t global_unit_id) const
+    global_unit_t unit_id) const
   {
     void *addr;
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", global_unit_id);
+    DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", unit_id);
     dart_gptr_t gptr = _begptr;
     DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, global_unit_id),
+      dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
@@ -274,15 +274,15 @@ public:
    * \param global_unit_id id of unit in \c dash::Team::All()
    */
   ElementType * lbegin(
-    dart_unit_t global_unit_id)
+    global_unit_t unit_id)
   {
     void *addr;
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin()", global_unit_id);
+    DASH_LOG_TRACE_VAR("GlobMem.lbegin()", unit_id);
     dart_gptr_t gptr = _begptr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin",
                        GlobPtr<ElementType>((dart_gptr_t)gptr));
     DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, global_unit_id),
+      dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
@@ -314,7 +314,7 @@ public:
    * a unit.
    */
   const ElementType * lend(
-    dart_unit_t unit_id) const
+    global_unit_t unit_id) const
   {
     void *addr;
     dart_gptr_t gptr = _begptr;
@@ -335,7 +335,7 @@ public:
    * a unit.
    */
   ElementType * lend(
-    dart_unit_t unit_id)
+    global_unit_t unit_id)
   {
     void *addr;
     dart_gptr_t gptr = _begptr;
@@ -445,7 +445,7 @@ public:
   template<typename IndexType>
   dash::GlobPtr<value_type> at(
     /// The unit id
-    dart_unit_t unit,
+    local_unit_t unit,
     /// The unit's local address offset
     IndexType   local_index) const
   {
@@ -458,7 +458,8 @@ public:
     // Initialize with global pointer to start address:
     dart_gptr_t gptr = _begptr;
     // Resolve global unit id
-    dart_unit_t lunit, gunit;
+    local_unit_t lunit;
+    global_unit_t gunit;
     DASH_LOG_TRACE_VAR("GlobMem.at (=g_begptr)", gptr);
     DASH_LOG_TRACE_VAR("GlobMem.at", gptr.unitid);
     // Resolve local unit id from global unit id in global pointer:
@@ -472,7 +473,7 @@ public:
     } else {
       // Unit is member of top level team, no conversion to global unit id
       // necessary:
-      gunit = lunit;
+      gunit = global_unit_t(lunit);
     }
     DASH_LOG_TRACE_VAR("GlobMem.at", gunit);
     // Apply global unit to global pointer:

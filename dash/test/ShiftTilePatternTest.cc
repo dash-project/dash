@@ -39,7 +39,7 @@ TEST_F(ShiftTilePatternTest, Distribute1DimTile)
   std::array<index_t, 1> expected_coord;
   for (int x = 0; x < static_cast<int>(extent); ++x) {
     expected_coord[0]         = x;
-    index_t expected_unit_id  = (x / block_size) % team_size;
+    dash::local_unit_t expected_unit_id((x / block_size) % team_size);
     index_t block_index       = x / block_size;
     index_t block_base_offset = block_size * (block_index / team_size);
     index_t expected_offset   = (x % block_size) + block_base_offset;
@@ -188,7 +188,7 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
       int num_l_blocks_y      = num_blocks_y / team_size;
       int block_index_x       = x / block_size_x;
       int block_index_y       = y / block_size_y;
-      int unit_id             = (block_index_x + block_index_y) % team_size;
+      dash::local_unit_t unit_id((block_index_x + block_index_y) % team_size);
 //    int l_block_index_x     = block_index_x / team_size;
       int l_block_index_y     = block_index_y / team_size;
 //    int l_block_index_col   = (block_index_y * num_l_blocks_x) +
@@ -275,8 +275,8 @@ TEST_F(ShiftTilePatternTest, Tile2DimTeam1Dim)
 
   dash::TeamSpec<2> teamspec_1d(dash::Team::All());
   ASSERT_EQ(1,            teamspec_1d.rank());
-  ASSERT_EQ(dash::size(), teamspec_1d.num_units(0));
-  ASSERT_EQ(1,            teamspec_1d.num_units(1));
+  ASSERT_EQ(dash::size(), teamspec_1d.num_units(dash::local_unit_t{0}));
+  ASSERT_EQ(1,            teamspec_1d.num_units(dash::local_unit_t{1}));
   ASSERT_EQ(dash::size(), teamspec_1d.size());
 
   dash::ShiftTilePattern<2, dash::ROW_MAJOR> pattern(

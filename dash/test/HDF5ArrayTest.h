@@ -11,7 +11,7 @@
 
 class HDF5ArrayTest : public ::testing::Test {
 protected:
-  dart_unit_t _dash_id;
+  dash::global_unit_t _dash_id;
   size_t      _dash_size;
   std::string _filename = "test_array.hdf5";
   std::string _dataset  = "data";

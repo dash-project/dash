@@ -631,7 +631,7 @@ dash::Future<ValueType *> copy_async(
   ValueType   * out_first)
 {
   auto & team = in_first.team();
-  dash::util::UnitLocality uloc(team.myid());
+  dash::util::UnitLocality uloc(team, team.myid());
   // Size of L2 data cache line:
   int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
   bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))
@@ -842,7 +842,7 @@ ValueType * copy(
   ValueType   * out_first)
 {
   auto & team = in_first.team();
-  dash::util::UnitLocality uloc(team.myid());
+  dash::util::UnitLocality uloc(team, team.myid());
   // Size of L2 data cache line:
   int  l2_line_size = uloc.hwinfo().cache_line_sizes[1];
   bool use_memcpy   = ((in_last - in_first) * sizeof(ValueType))

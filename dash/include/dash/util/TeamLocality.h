@@ -200,13 +200,13 @@ public:
     return (nullptr == _team) ? dash::Team::Null() : *_team;
   }
 
-  inline const std::vector<dart_unit_t> & units() const
+  inline const std::vector<local_unit_t> & units() const
   {
     return _domain.units();
   }
 
   inline dash::util::UnitLocality unit_locality(
-    dart_unit_t unit_id) const
+    local_unit_t unit_id) const
   {
     return dash::util::UnitLocality(*_team, unit_id);
   }
