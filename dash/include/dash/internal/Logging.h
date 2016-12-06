@@ -118,7 +118,7 @@ enum term_color_code {
   TCOL_NUM_CODES
 };
 
-static int term_colors[TCOL_NUM_CODES] {
+const int term_colors[TCOL_NUM_CODES] = {
   39, // default
   37, // white
   31, // red
@@ -129,7 +129,7 @@ static int term_colors[TCOL_NUM_CODES] {
   36  // cyan
 };
 
-static term_color_code unit_term_colors[TCOL_NUM_CODES-1] {
+const term_color_code unit_term_colors[TCOL_NUM_CODES-1] = {
   TCOL_CYAN,
   TCOL_YELLOW,
   TCOL_MAGENTA,
@@ -196,7 +196,7 @@ inline void Log_Line(
   int   uid = dash::myid();
   std::stringstream buf;
   
-  buf << TermColorMod(uid < 0 ? TCOL_DEFAULT : unit_term_colors[uid % 7]);
+//  buf << TermColorMod(uid < 0 ? TCOL_DEFAULT : unit_term_colors[uid % 7]);
 
   buf << "[ "
       << std::setw(4) << uid
@@ -213,7 +213,7 @@ inline void Log_Line(
       << context_tag << "| "
       << msg;
 
-  buf << TermColorMod(TCOL_DEFAULT);
+//  buf << TermColorMod(TCOL_DEFAULT);
   
   buf << "\n";
 

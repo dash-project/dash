@@ -117,12 +117,8 @@ inline char * dart_base_logging_basename(char *path) {
     } \
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
-    int tcol = unit_id < 0  \
-               ? DART_LOG_TCOL_DEFAULT \
-               : dart__base__unit_term_colors[unit_id % 7]; \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "\033[%dm[ %*d TRACE ] [ %*d ] %-*s:%-*d :   DART: %s\033[39m\n", \
-      dart__base__term_colors[tcol], \
+      "[ %*d TRACE ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
@@ -147,12 +143,8 @@ inline char * dart_base_logging_basename(char *path) {
     } \
     dart_unit_t unit_id = -1; \
     dart_myid(&unit_id); \
-    int tcol = unit_id < 0  \
-               ? DART_LOG_TCOL_DEFAULT \
-               : dart__base__unit_term_colors[unit_id % 7]; \
     fprintf(DART_LOG_OUTPUT_TARGET, \
-      "\033[%dm[ %*d DEBUG ] [ %*d ] %-*s:%-*d :   DART: %s\033[39m\n", \
-      dart__base__term_colors[tcol], \
+      "[ %*d DEBUG ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
       DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
