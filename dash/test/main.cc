@@ -35,6 +35,11 @@ int main(int argc, char * argv[])
   MPI_Comm_rank(MPI_COMM_WORLD, &team_myid);
   MPI_Comm_size(MPI_COMM_WORLD, &team_size);
 
+  // only unit 0 writes xml file
+  if(team_myid != 0){
+    ::testing::GTEST_FLAG(output) = "";
+  }
+
   MPI_Barrier(MPI_COMM_WORLD);
   #endif
 
