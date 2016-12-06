@@ -319,8 +319,8 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   // Local changes at units in same shared memory domain are visible
   // even when not committed yet.
   std::string my_host     = dash::util::UnitLocality(dash::myid()).hostname();
-  std::string unit_0_host = dash::util::UnitLocality(0).hostname();
-  std::string unit_1_host = dash::util::UnitLocality(1).hostname();
+  std::string unit_0_host = dash::util::UnitLocality(dash::global_unit_t{0}).hostname();
+  std::string unit_1_host = dash::util::UnitLocality(dash::global_unit_t{1}).hostname();
 
   size_t expected_visible_size = initial_global_capacity;
   size_t expected_global_size  = initial_global_capacity;

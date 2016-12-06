@@ -359,12 +359,12 @@ public:
            : _domain->num_domains;
   }
 
-  inline const std::vector<dart_unit_t> & units() const
+  inline const std::vector<local_unit_t> & units() const
   {
     return _unit_ids;
   }
 
-  inline std::vector<dart_unit_t> & units()
+  inline std::vector<local_unit_t> & units()
   {
     return _unit_ids;
   }
@@ -372,14 +372,14 @@ public:
   /**
    * ID of leader unit in the locality domain.
    */
-  inline dart_unit_t leader_unit() const
+  inline local_unit_t leader_unit() const
   {
     // TODO: Optimize
 
     // Unit 0 is default leader if contained in the domain:
-    if (std::find(_unit_ids.begin(), _unit_ids.end(), 0)
+    if (std::find(_unit_ids.begin(), _unit_ids.end(), local_unit_t(0))
         != _unit_ids.end()) {
-      return 0;
+      return local_unit_t(0);
     }
     return _unit_ids.front();
   }
@@ -445,7 +445,7 @@ private:
   /// cycle.
   mutable std::unordered_map<int, self_t>         * _subdomains = nullptr;
   /// Units in the domain.
-  std::vector<dart_unit_t>                          _unit_ids;
+  std::vector<local_unit_t>                          _unit_ids;
 #if 0
   /// Locality descriptors of units in the domain. Only specified in root
   /// locality domain and resolved from parent in upward recursion otherwise.

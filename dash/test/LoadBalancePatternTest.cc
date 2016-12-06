@@ -10,7 +10,7 @@ void mock_team_locality(
 {
   auto nunits = tloc.team().size();
   // Initialize identical hwinfo for all units:
-  for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(nunits); u++) {
+  for (dash::local_unit_t u{0}; u < nunits; u++) {
     auto & unit_hwinfo      = tloc.unit_locality(u).hwinfo();
     unit_hwinfo.min_threads = 1;
     unit_hwinfo.max_threads = 2;
@@ -18,8 +18,8 @@ void mock_team_locality(
     unit_hwinfo.max_cpu_mhz = 1600;
   }
 
-  auto & unit_0_hwinfo      = tloc.unit_locality(0).hwinfo();
-  auto & unit_1_hwinfo      = tloc.unit_locality(1).hwinfo();
+  auto & unit_0_hwinfo      = tloc.unit_locality(dash::local_unit_t{0}).hwinfo();
+  auto & unit_1_hwinfo      = tloc.unit_locality(dash::local_unit_t{1}).hwinfo();
 
   // Double min. number of threads and CPU capacity of unit 0:
   unit_0_hwinfo.min_threads = 2;
