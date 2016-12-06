@@ -29,21 +29,6 @@ BIN_PATH="$2"
 LOGFILE="$3"
 BIND_CMD=""
 TEST_BINARY=""
-TIMEOUT="3m"
-TIMEOUT_ADD_KILL="-k $TIMEOUT"
-TIMEOUT_FG="--foreground"
-
-# check for version of timeout 
-TIMEOUT_MAJOR=$(timeout --version | grep timeout | cut -d ' ' -f 4 | cut -d '.' -f 1)
-TIMEOUT_MINOR=$(timeout --version | grep timeout | cut -d ' ' -f 4 | cut -d '.' -f 2)
-if [ $TIMEOUT_MAJOR -lt 8 -o $TIMEOUT_MAJOR -eq 8 -a $TIMEOUT_MINOR -lt 5  ] ; then
-  TIMEOUT_ADD_KILL=""
-fi
-
-if [ $TIMEOUT_MAJOR -lt 8 -o $TIMEOUT_MAJOR -eq 8 -a $TIMEOUT_MINOR -lt 13  ] ; then
-  TIMEOUT_FG=""
-  echo "[[ WARN   ]] Cannot handle TTY signals (requires GNU timeout version >8.13)"
-fi
 
 if [ "$LOGFILE" = "" ]; then
   # Use temporary log file
@@ -65,8 +50,6 @@ elif [ $DART_IMPL = "mpi" ]; then
 else
   usage
 fi
-
-RUN_CMD="timeout -s 15 $TIMEOUT_ADD_KILL $TIMEOUT_FG $TIMEOUT $RUN_CMD"
 
 # Number of failed tests in total
 TOTAL_FAIL_COUNT=0
