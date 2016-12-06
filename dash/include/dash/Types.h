@@ -150,8 +150,8 @@ inline dart_storage_t dart_storage(int nvalues) {
 typedef struct dash::internal::unit::unit_id<dash::internal::unit::local_unit>   local_unit_t;
 typedef struct dash::internal::unit::unit_id<dash::internal::unit::global_unit>  global_unit_t;
 
-constexpr local_unit_t DASH_UNDEFINED_LOCAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
-constexpr local_unit_t DASH_UNDEFINED_GLOBAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
+constexpr local_unit_t UNDEFINED_LOCAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
+constexpr global_unit_t UNDEFINED_GLOBAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
 
 } // namespace dash
 

@@ -951,9 +951,9 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_size(
-    local_unit_t unit = DASH_UNDEFINED_LOCAL_UNIT_ID) const
+    local_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const
   {
-    if (unit == DASH_UNDEFINED_LOCAL_UNIT_ID) {
+    if (unit == UNDEFINED_LOCAL_UNIT_ID) {
       unit = _myid;
     }
     return _local_sizes[unit];

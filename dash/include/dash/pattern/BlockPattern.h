@@ -1229,7 +1229,7 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_capacity(
-    local_unit_t unit = DASH_UNDEFINED_LOCAL_UNIT_ID) const
+    local_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const
   {
     return _local_capacity;
   }
@@ -1245,9 +1245,9 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_size(
-    local_unit_t unit = DASH_UNDEFINED_LOCAL_UNIT_ID) const
+    local_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const
   {
-    return (unit == DASH_UNDEFINED_LOCAL_UNIT_ID)
+    return (unit == UNDEFINED_LOCAL_UNIT_ID)
            ? _local_memory_layout.size()
            : initialize_local_extents(unit).size();
   }
