@@ -672,9 +672,12 @@ public:
       SizeSpec_t(0),
       DistributionSpec_t(dash::BLOCKED),
       team),
+    m_globmem(nullptr),
     m_size(0),
     m_lsize(0),
-    m_lcapacity(0)
+    m_lcapacity(0),
+    m_lbegin(nullptr),
+    m_lend(nullptr)
   {
     DASH_LOG_TRACE("Array() >", "finished default constructor");
   }
@@ -726,6 +729,7 @@ public:
   : local(this),
     async(this),
     m_team(&team),
+    m_myid(team.myid()),
     m_pattern(
       SizeSpec_t(nelem),
       distribution,
@@ -763,6 +767,7 @@ public:
   : local(this),
     async(this),
     m_team(&pattern.team()),
+    m_myid(m_team->myid()),
     m_pattern(pattern),
     m_size(0),
     m_lsize(0),
@@ -1288,7 +1293,7 @@ private:
   /// Team containing all units interacting with the array
   dash::Team         * m_team      = nullptr;
   /// DART id of the unit that created the array
-  dart_unit_t          m_myid;
+  local_unit_t         m_myid;
   /// Element distribution pattern
   PatternType          m_pattern;
   /// Global memory allocation and -access
