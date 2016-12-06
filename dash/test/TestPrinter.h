@@ -1,3 +1,5 @@
+#ifdef MPI_IMPL_ID
+
 #ifndef DASH__UTIL__TEST_PRINTER_H_
 #define DASH__UTIL__TEST_PRINTER_H_
 
@@ -5,6 +7,8 @@
 
 #include <libdash.h>
 #include <list>
+
+#include <mpi.h>
 
 #define TEST_NEUTRAL "\033[0;32m[----------] \033[m"
 #define TEST_SUM     "\033[0;32m[==========] \033[m"
@@ -33,10 +37,10 @@ class TestPrinter : public EmptyTestEventListener {
   std::list<std::string> _failed_tests;
 
   public:
-  TestPrinter():
-    _myid(dash::myid()),
-    _size(dash::size())
-  { }
+  TestPrinter() {
+    MPI_Comm_rank(MPI_COMM_WORLD, &_myid);
+    MPI_Comm_size(MPI_COMM_WORLD, &_size);
+  }
 
   private:
   // Called before any test activity starts.
@@ -116,6 +120,7 @@ class TestPrinter : public EmptyTestEventListener {
 
   // Called after a test ends.
   virtual void OnTestEnd(const TestInfo& test_info) {
+#if 0
     dash::SharedCounter<int> success_units;
     bool passed = test_info.result()->Passed();
 
@@ -142,7 +147,10 @@ class TestPrinter : public EmptyTestEventListener {
     }
     // prevent overlapping of tests
     dash::barrier();
+#endif
   }
 };
 
 #endif // DASH__UTIL__TEST_PRINTER_H_
+
+#endif // MPI_IMPL_ID
