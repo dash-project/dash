@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <dash/internal/Logging.h>
 
+#include "TestGlobals.h"
 #include "TestPrinter.h"
 #include "TestLogHelpers.h"
 

@@ -27,6 +27,7 @@ protected:
   }
 
   virtual void SetUp() {
+    dash::init(&TESTENV.argc, &TESTENV.argv);
     _dash_id   = dash::myid();
     _dash_size = dash::size();
     _num_elem  = 100;
@@ -38,6 +39,7 @@ protected:
     dash::Team::All().barrier();
     LOG_MESSAGE("<=== Finished test case with %d units",
                 _dash_size);
+    dash::finalize();
   }
 };
 
