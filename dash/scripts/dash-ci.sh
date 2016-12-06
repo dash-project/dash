@@ -80,7 +80,7 @@ run_ci()
 if [ $# != 0 ]; then
   for buildtype in "$@" ; do
     if $FAILED; then
-      exit -1
+      exit 127
     fi
     run_ci $buildtype
   done
@@ -91,5 +91,5 @@ else
 fi
 
 if $FAILED; then
-  exit -1
+  exit 127
 fi
