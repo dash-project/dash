@@ -616,7 +616,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<SizeType, NumDimensions> local_extents(
-      local_unit_t unit = DASH_UNDEFINED_LOCAL_UNIT_ID) const {
+      local_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const {
     // Same local memory layout for all units:
     return _local_memory_layout.extents();
   }
@@ -1336,7 +1336,7 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_size(
-    local_unit_t unit = DASH_UNDEFINED_LOCAL_UNIT_ID) const
+    local_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const
   {
     return _local_memory_layout.size();
   }
@@ -1539,7 +1539,7 @@ private:
    * ignoring underfilled blocks.
    */
   SizeType initialize_local_capacity(
-    local_unit_t unit = DASH_UNDEFINED_LOCAL_UNIT_ID) const
+    local_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const
   {
     // Assumes balanced distribution property, i.e.
     // range = k * blocksz * nunits
