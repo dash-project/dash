@@ -49,10 +49,10 @@ TEST_F(SharedTest, SpecifyOwner)
     SKIP_TEST();
   }
 
-  dart_unit_t owner_a  = dash::size() < 3
+  dash::local_unit_t owner_a(dash::size() < 3
                          ? 0
-                         : dash::size() / 2;
-  dart_unit_t owner_b  = dash::size() - 1;
+                         : dash::size() / 2);
+  dash::local_unit_t owner_b(dash::size() - 1);
 
   value_t  value_a     = 1000;
   value_t  value_b     = 2000;

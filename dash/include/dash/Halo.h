@@ -507,6 +507,8 @@ public:
   /**
    * Checks whether the element referenced by this global iterator is in
    * the calling unit's local memory.
+   *
+   * TODO[JS] This should lead to a compile-time error due to type mis-match
    */
   inline bool is_local() const
   {
