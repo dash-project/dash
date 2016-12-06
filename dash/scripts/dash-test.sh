@@ -74,7 +74,7 @@ run_suite()
     tee -a $LOGFILE
   echo "[[ RUN    ]] ${RUN_CMD} -n ${NUNITS} ${BIND_CMD} ${TEST_BINARY}" | \
     tee -a $LOGFILE
-  eval $RUN_CMD -n $1 $BIND_CMD $TEST_BINARY 2>&1 | sed 's/\x1b\[[0-9;]*m//g' | \
+  eval $RUN_CMD -n $1 $BIND_CMD $TEST_BINARY 2>&1 | nocolor | \
     tee -a $LOGFILE | grep -v 'LOG' | grep -v '^#'
   TEST_RET=$?
   # Cannot use exit code as dartrun-shmem seems to always return 0
