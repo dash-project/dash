@@ -135,7 +135,7 @@ protected:
   /// Maximum position allowed for this iterator.
   index_type             _max_idx         = 0;
   /// Unit id of the active unit
-  dart_unit_t            _myid;
+  local_unit_t           _myid;
   /// Pointer to first element in local memory
   local_pointer          _lbegin          = nullptr;
 
@@ -148,7 +148,7 @@ public:
     _pattern(nullptr),
     _idx(0),
     _max_idx(0),
-    _myid(dash::myid()),
+    _myid(dash::Team::All().myid()),
     _lbegin(nullptr)
   {
     DASH_LOG_TRACE_VAR("GlobIter()", _idx);
@@ -167,7 +167,7 @@ public:
     _pattern(&pat),
     _idx(position),
     _max_idx(pat.size() - 1),
-    _myid(dash::myid()),
+    _myid(pat.team().myid()),
     _lbegin(_globmem->lbegin())
   {
     DASH_LOG_TRACE_VAR("GlobIter(gmem,pat,idx,abs)", _idx);
