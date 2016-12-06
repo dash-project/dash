@@ -22,5 +22,3 @@ after_script:
 after_failure:
     - cat ./dash-ci.err
     - cat ./build-ci/*/*/build.log
-after_success:
-    - bash <(curl -s https://codecov.io/bash)
