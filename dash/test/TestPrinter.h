@@ -80,6 +80,7 @@ class TestPrinter : public EmptyTestEventListener {
 
   // Called after all test activities have ended.
   virtual void OnTestProgramEnd(const UnitTest& unit_test) {
+    MPI_Barrier(MPI_COMM_WORLD);
     if(_myid == 0){
       bool passed = unit_test.Passed() && _testcase_passed;
 
@@ -120,16 +121,15 @@ class TestPrinter : public EmptyTestEventListener {
 
   // Called after a test ends.
   virtual void OnTestEnd(const TestInfo& test_info) {
-#if 0
-    dash::SharedCounter<int> success_units;
-    bool passed = test_info.result()->Passed();
+    int success_units = 0;
+    bool passed       = test_info.result()->Passed();
+    int unit_passed   = passed ? 1 : 0; 
 
-    if(passed){
-      success_units.inc(1);
-    }
-    dash::barrier();
+    MPI_Reduce(&unit_passed, &success_units, 1,
+               MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
     if(_myid == 0){
-      passed            = (success_units.get() == _size);
+      passed            = (success_units == _size);
       _testcase_passed &= passed;
 
       std::string res;
@@ -146,8 +146,7 @@ class TestPrinter : public EmptyTestEventListener {
       }
     }
     // prevent overlapping of tests
-    dash::barrier();
-#endif
+    MPI_Barrier(MPI_COMM_WORLD);
   }
 };
 
