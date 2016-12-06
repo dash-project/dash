@@ -147,7 +147,7 @@ TEST_F(TransformTest, MatrixGlobalPlusGlobalBlocking)
 {
   // Block-wise addition (a += b) of two matrices
   typedef typename dash::Matrix<int, 2>::index_type index_t;
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 7;
   size_t tilesize_y  = 3;

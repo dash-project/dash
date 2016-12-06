@@ -9,8 +9,8 @@
  */
 class GlobAsyncRefTest : public ::testing::Test {
 protected:
-  dart_unit_t _dash_id;
-  size_t      _dash_size;
+  dash::global_unit_t _dash_id;
+  size_t              _dash_size;
 
   GlobAsyncRefTest()
   : _dash_id(0),

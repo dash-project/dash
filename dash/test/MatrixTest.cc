@@ -216,7 +216,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
 
 TEST_F(MatrixTest, Distribute2DimTileXY)
 {
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -272,7 +272,7 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
 
 TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
 {
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t blocksize_x = 3;
   size_t blocksize_y = 2;
@@ -457,7 +457,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
 TEST_F(MatrixTest, BlockViews)
 {
   typedef int element_t;
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -531,7 +531,7 @@ TEST_F(MatrixTest, ViewIteration)
   typedef int                                   element_t;
   typedef dash::TilePattern<2, dash::COL_MAJOR> pattern_t;
 
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -620,7 +620,7 @@ TEST_F(MatrixTest, ViewIteration)
 TEST_F(MatrixTest, BlockCopy)
 {
   typedef int element_t;
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;

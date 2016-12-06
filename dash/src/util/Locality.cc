@@ -160,7 +160,7 @@ static void print_domain(
 
   if (domain->num_units > 0) {
     ostr << indent << "units:   " << "{ ";
-    for (int u = 0; u < domain->num_units; ++u) {
+    for (local_unit_t u{0}; u < domain->num_units; ++u) {
       dart_unit_t g_unit_id;
       dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
       ostr << g_unit_id;
