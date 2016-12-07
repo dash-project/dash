@@ -5,6 +5,7 @@ build.rel
 build.mkl
 build.mic
 build.min
+build.minimal
 build.nasty
 build.cov
 build-ci
