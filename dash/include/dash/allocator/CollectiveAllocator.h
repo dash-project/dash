@@ -171,6 +171,9 @@ public:
    * Allocates \c num_local_elem local elements at every unit in global
    * memory space.
    *
+   * \return  Global pointer to allocated memory range, or \c DART_GPTR_NULL
+   *          if \c num_local_elem is 0 or less.
+   *
    * \see DashAllocatorConcept
    */
   pointer allocate(size_type num_local_elem)
@@ -208,10 +211,6 @@ public:
       return;
     }
 
-    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "barrier");
-    DASH_ASSERT_RETURNS(
-      dart_barrier(_team_id),
-      DART_OK);
     DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "dart_team_memfree");
     DASH_ASSERT_RETURNS(
       dart_team_memfree(_team_id, gptr),
@@ -220,6 +219,10 @@ public:
     _allocated.erase(
         std::remove(_allocated.begin(), _allocated.end(), gptr),
         _allocated.end());
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "barrier");
+    DASH_ASSERT_RETURNS(
+      dart_barrier(_team_id),
+      DART_OK);
     DASH_LOG_DEBUG("CollectiveAllocator.deallocate >");
   }
 

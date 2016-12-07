@@ -70,7 +70,8 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
     ASSERT_EQ(array_size, arr6.size());
     // Fill arrays with incrementing values
     if (_dash_id == 0) {
-      LOG_MESSAGE("Assigning array values");
+      DASH_LOG_DEBUG("ArrayTest.SingleWriteMultipleRead",
+                     "writing array values");
       for (size_t i = 0; i < array_size; ++i) {
         arr1[i] = i;
         arr2[i] = i;
@@ -81,6 +82,8 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
       }
     }
     // Units waiting for value initialization
+    DASH_LOG_DEBUG("ArrayTest.SingleWriteMultipleRead",
+                   "waiting for unit 0 to write array values");
     dash::Team::All().barrier();
     // Read and assert values in arrays
     for (size_t i = 0; i < array_size; ++i) {

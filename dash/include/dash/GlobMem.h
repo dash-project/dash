@@ -118,12 +118,14 @@ public:
     DASH_LOG_TRACE("GlobMem(nlocal,team)",
                    "number of local values:", _nlelem,
                    "team size:",              team.size());
-    if (_nlelem == 0 || _nunits == 0) {
+    if (_nunits == 0) {
       DASH_LOG_DEBUG("GlobMem(lvals,team)", "nothing to allocate");
       return;
     }
+
     _begptr = _allocator.allocate(_nlelem);
-    DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
+    DASH_ASSERT_MSG(_nlelem <= 0 || !DART_GPTR_ISNULL(_begptr),
+                    "allocation failed");
 
     // Use id's of team all
     _lbegin = lbegin(dash::myid());
@@ -153,11 +155,12 @@ public:
     DASH_LOG_DEBUG("GlobMem(lvals,team)",
                    "number of local values:", _nlelem,
                    "team size:",              team.size());
-    if (_nlelem == 0 || _nunits == 0) {
+    if (_nunits == 0) {
       DASH_LOG_DEBUG("GlobMem(lvals,team)", "nothing to allocate");
     } else {
       _begptr = _allocator.allocate(_nlelem);
-      DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
+      DASH_ASSERT_MSG(_nlelem <= 0 || !DART_GPTR_ISNULL(_begptr),
+                      "allocation failed");
 
       // Use id's of team all
       _lbegin = lbegin(dash::myid());
@@ -172,8 +175,7 @@ public:
                                 _lbegin);
       DASH_ASSERT_EQ(_lend, copy_end,
                      "Initialization of specified local values failed");
-    }
-    if (_nunits > 1) {
+
       // Wait for initialization of local values at all units.
       // Barrier synchronization is okay here as multiple units are
       // involved in initialization of values in global memory:
@@ -181,7 +183,7 @@ public:
       // TODO: Should depend on allocator trait
       //         dash::allocator_traits<Alloc>::is_collective()
       DASH_LOG_DEBUG("GlobMem(lvals,team)", "barrier");
-      team.barrier();
+      barrier();
     }
 
     DASH_LOG_DEBUG("GlobMem(lvals,team) >",
@@ -255,8 +257,14 @@ public:
   const ElementType * lbegin(
     dart_unit_t global_unit_id) const
   {
+    DASH_LOG_TRACE_VAR("GlobMem.clbegin()", global_unit_id);
+
+    if (_nunits == 0 || DART_GPTR_ISNULL(_begptr)) {
+      DASH_LOG_TRACE_VAR("GlobMem.clbegin >", 0);
+      return nullptr;
+    }
+
     void *addr;
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", global_unit_id);
     dart_gptr_t gptr = _begptr;
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&gptr, global_unit_id),
@@ -264,7 +272,7 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
       DART_OK);
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin const >", addr);
+    DASH_LOG_TRACE_VAR("GlobMem.clbegin >", addr);
     return static_cast<const ElementType *>(addr);
   }
 
@@ -276,8 +284,14 @@ public:
   ElementType * lbegin(
     dart_unit_t global_unit_id)
   {
-    void *addr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin()", global_unit_id);
+
+    if (_nunits == 0 || DART_GPTR_ISNULL(_begptr)) {
+      DASH_LOG_TRACE_VAR("GlobMem.lbegin >", 0);
+      return nullptr;
+    }
+
+    void *addr;
     dart_gptr_t gptr = _begptr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin",
                        GlobPtr<ElementType>((dart_gptr_t)gptr));
@@ -316,6 +330,13 @@ public:
   const ElementType * lend(
     dart_unit_t unit_id) const
   {
+    DASH_LOG_TRACE_VAR("GlobMem.clend()", unit_id);
+
+    if (_nunits == 0 || DART_GPTR_ISNULL(_begptr)) {
+      DASH_LOG_TRACE_VAR("GlobMem.clend >", 0);
+      return nullptr;
+    }
+
     void *addr;
     dart_gptr_t gptr = _begptr;
     DASH_ASSERT_RETURNS(
@@ -327,6 +348,7 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
       DART_OK);
+    DASH_LOG_TRACE_VAR("GlobMem.clend >", addr);
     return static_cast<const ElementType *>(addr);
   }
 
@@ -337,6 +359,13 @@ public:
   ElementType * lend(
     dart_unit_t unit_id)
   {
+    DASH_LOG_TRACE_VAR("GlobMem.lend()", unit_id);
+
+    if (_nunits == 0 || DART_GPTR_ISNULL(_begptr)) {
+      DASH_LOG_TRACE_VAR("GlobMem.lend >", 0);
+      return nullptr;
+    }
+
     void *addr;
     dart_gptr_t gptr = _begptr;
     DASH_ASSERT_RETURNS(
@@ -348,6 +377,7 @@ public:
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
       DART_OK);
+    DASH_LOG_TRACE_VAR("GlobMem.lend >", addr);
     return static_cast<ElementType *>(addr);
   }
 
@@ -402,12 +432,13 @@ public:
    */
   void barrier() const
   {
-    if (DART_TEAM_NULL == _teamid) {
-      return;
+    DASH_LOG_DEBUG_VAR("GlobMem.barrier()", _teamid);
+    if (DART_TEAM_NULL != _teamid) {
+      DASH_ASSERT_RETURNS(
+        dart_barrier(_teamid),
+        DART_OK);
     }
-    DASH_ASSERT_RETURNS(
-      dart_barrier(_teamid),
-      DART_OK);
+    DASH_LOG_DEBUG_VAR("GlobMem.barrier >", _teamid);
   }
 
   /**
@@ -416,7 +447,9 @@ public:
    */
   void flush()
   {
+    DASH_LOG_DEBUG_VAR("GlobMem.flush()", _begptr);
     dart_flush(_begptr);
+    DASH_LOG_DEBUG_VAR("GlobMem.flush >", _begptr);
   }
 
   /**
@@ -425,17 +458,23 @@ public:
    */
   void flush_all()
   {
+    DASH_LOG_DEBUG_VAR("GlobMem.flush_all()", _begptr);
     dart_flush_all(_begptr);
+    DASH_LOG_DEBUG_VAR("GlobMem.flush_all >", _begptr);
   }
 
   void flush_local()
   {
+    DASH_LOG_DEBUG_VAR("GlobMem.flush_all()", _begptr);
     dart_flush_local(_begptr);
+    DASH_LOG_DEBUG_VAR("GlobMem.flush_all >", _begptr);
   }
 
   void flush_local_all()
   {
+    DASH_LOG_DEBUG_VAR("GlobMem.flush_local_all()", _begptr);
     dart_flush_local_all(_begptr);
+    DASH_LOG_DEBUG_VAR("GlobMem.flush_local_all >", _begptr);
   }
 
   /**
