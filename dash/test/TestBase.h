@@ -105,8 +105,9 @@ class TestBase : public ::testing::Test {
  protected:
 
   virtual void SetUp() {
-    dash::init(&TESTENV.argc, &TESTENV.argv);
     LOG_MESSAGE("===> Running test case with %d units ...", dash::size());
+    dash::init(&TESTENV.argc, &TESTENV.argv);
+    LOG_MESSAGE("-==- DASH initialized");
   }
 
   virtual void TearDown() {
