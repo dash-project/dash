@@ -119,7 +119,7 @@ TEST_F(HDF5ArrayTest, StoreLargeDashArray)
 TEST_F(HDF5ArrayTest, AutoGeneratePattern)
 {
   {
-    auto array_a = dash::Array<int>(dash::size() * 2);
+    dash::Array<int> array_a(dash::size() * 2);
     // Fill
     fill_array(array_a);
     dash::barrier();
@@ -146,7 +146,7 @@ TEST_F(HDF5ArrayTest, PreAllocation)
 {
   int ext_x = dash::size() * 2;
   {
-    auto array_a = dash::Array<int>(ext_x);
+    dash::Array<int> array_a(ext_x);
     // Fill
     fill_array(array_a, dash::myid());
     dash::barrier();
@@ -170,7 +170,7 @@ TEST_F(HDF5ArrayTest, PreAllocation)
 TEST_F(HDF5ArrayTest, OutputStreamOpen)
 {
   {
-    auto array_a = dash::Array<long>(dash::size() * 2);
+    dash::Array<long> array_a(dash::size() * 2);
 
     fill_array(array_a);
     dash::barrier();
@@ -194,7 +194,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPattern)
   long  tilesize;
   {
     DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "alloc array_a");
-    auto array_a = dash::Array<int>(ext_x);
+    dash::Array<int> array_a(ext_x);
     tilesize     = array_a.pattern().blocksize(0);
     // Fill
     DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "fill array_a");
@@ -237,7 +237,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPatPreAllocate)
 {
   int ext_x = dash::size() * 5 + 1;
   {
-    auto array_a = dash::Array<int>(ext_x);
+    dash::Array<int> array_a(ext_x);
     // Fill
     fill_array(array_a);
     dash::barrier();
@@ -268,8 +268,8 @@ TEST_F(HDF5ArrayTest, MultipleDatasets)
   int    secret_a = 10;
   double secret_b = 3;
   {
-    auto array_a = dash::Array<int>(ext_x);
-    auto array_b = dash::Array<double>(ext_x*2);
+    dash::Array<int>    array_a(ext_x);
+    dash::Array<double> array_b(ext_x*2);
 
     // Fill
     fill_array(array_a, secret_a);
@@ -302,8 +302,8 @@ TEST_F(HDF5ArrayTest, ModifyDataset)
   double secret_a = 10;
   double secret_b = 3;
   {
-    auto array_a = dash::Array<double>(ext_x);
-    auto array_b = dash::Array<double>(ext_x);
+    dash::Array<double> array_a(ext_x);
+    dash::Array<double> array_b(ext_x);
 
     // Fill
     fill_array(array_a, secret_a);
@@ -335,7 +335,7 @@ TEST_F(HDF5ArrayTest, StreamCreationFlags)
 int    ext_x    = dash::size() * 5;
 double secret = 10;
 {
-  auto array_a = dash::Array<double>(ext_x);
+  dash::Array<double> array_a(ext_x);
 
   // Fill
   fill_array(array_a, secret);
@@ -371,9 +371,9 @@ TEST_F(HDF5ArrayTest, GroupTest)
   int    ext_x    = dash::size() * 5;
   double secret[] = {10,11,12};
   {
-    auto array_a = dash::Array<double>(ext_x);
-    auto array_b = dash::Array<double>(ext_x);
-    auto array_c = dash::Array<double>(ext_x);
+    dash::Array<double> array_a(ext_x);
+    dash::Array<double> array_b(ext_x);
+    dash::Array<double> array_c(ext_x);
   
     // Fill
     fill_array(array_a, secret[0]);
