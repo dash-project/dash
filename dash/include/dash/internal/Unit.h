@@ -82,6 +82,10 @@ public:
     return *this;
   }
 
+
+  template<unit_scope Scope>
+  const unit_id<IdScope> operator=(const unit_id<Scope> & id) = delete;
+
   template<
     typename T,
     typename std::enable_if<
