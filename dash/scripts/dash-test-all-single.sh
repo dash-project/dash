@@ -74,12 +74,14 @@ if [ "$GTEST_FILTER" = "" ] ; then
 else
   OUTPUT=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests --gtest_filter=$GTEST_FILTER`
 fi
+
 ret=$?
-if [[ $ret != 0 ]] ; then 
+if [ $ret -ne 0 ] ; then 
   echo "[[   FAIL ]] [ $(date +%Y%m%d-%H%M%S) ]:"
   echo "$OUTPUT"
   exit  $ret 
 fi
+
 TEST_SUITES=$(echo "$OUTPUT" | grep -v '^\s' | grep -v '^#')
 
 # Number of failed tests in total
