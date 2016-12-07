@@ -3,11 +3,12 @@
 
 #include <gtest/gtest.h>
 #include <libdash.h>
+#include "TestBase.h"
 
 /**
  * Test fixture for class dash::accumulate
  */
-class AccumulateTest : public ::testing::Test {
+class AccumulateTest : public dash::test::TestBase {
 protected:
   size_t _dash_id;
   size_t _dash_size;
@@ -23,18 +24,13 @@ protected:
   }
 
   virtual void SetUp() {
-    dash::init(&TESTENV.argc, &TESTENV.argv);
+    dash::test::TestBase::SetUp();
     _dash_id   = dash::myid();
     _dash_size = dash::size();
-    LOG_MESSAGE("===> Running test case with %d units ...",
-                _dash_size);
   }
 
   virtual void TearDown() {
-    dash::Team::All().barrier();
-    LOG_MESSAGE("<=== Finished test case with %d units",
-                _dash_size);
-    dash::finalize();
+    dash::test::TestBase::TearDown();
   }
 };
 

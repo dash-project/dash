@@ -1,12 +1,30 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
+
 #include "TestBase.h"
 #include "ArrayTest.h"
+
 
 // global var
 dash::Array<int> array_global;
 
-TEST_F(ArrayTest, Allocation)
+TEST_F(ArrayTest, Declaration)
+{
+  dash::Array<int> array_local(19 * dash::size(), dash::BLOCKED);
+}
+
+TEST_F(ArrayTest, AllocateEmptyLocal)
+{
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("requires at least 2 units");
+  }
+
+  int block_size = 19;
+  dash::Array<int> array_local(block_size * (dash::size() - 1),
+                               dash::BLOCKCYCLIC(block_size));
+}
+
+TEST_F(ArrayTest, DelayedAllocation)
 {
   dash::Array<int> array_local;
 
@@ -141,9 +159,15 @@ TEST_F(ArrayTest, PatternAllocate)
       dash::TeamSpec<1>(),
       dash::Team::All());
 
+    DASH_LOG_DEBUG("ArrayTest.PatternAllocate",
+                   "allocating array from pattern");
     array.allocate(pattern);
+    DASH_LOG_DEBUG("ArrayTest.PatternAllocate",
+                   "array pattern leaving scope");
   }
 
+  DASH_LOG_DEBUG("ArrayTest.PatternAllocate",
+                 "filling array");
   // Fill
   dash::for_each_with_index(
     array.begin(),
@@ -182,10 +206,11 @@ TEST_F(ArrayTest, TeamSplit)
   }
 
   auto & myteam = team_all.split(2);
-  auto array_a = dash::Array<double>(ext_x, myteam);
+  dash::Array<double> array_a(ext_x, myteam);
 
   array_a.barrier();
   // Check if array is allocated
   ASSERT_NE_U(array_a.lbegin(), nullptr);
   team_all.barrier();
 }
+
