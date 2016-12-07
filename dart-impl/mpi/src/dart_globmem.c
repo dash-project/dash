@@ -152,7 +152,7 @@ dart_team_memalloc_aligned(
 	dart_team_myid(teamid, &unitid);
 	dart_team_size(teamid, &team_size);
 
-	char * sub_mem;
+	size_t * sub_mem;
 
 	/* The units belonging to the specified team are eligible to participate
 	 * below codes enclosed.
@@ -226,7 +226,8 @@ dart_team_memalloc_aligned(
 	MPI_Info_set(win_info, "alloc_shared_noncontig", "true");
 
   DART_LOG_DEBUG("dart_team_memalloc_aligned: "
-                 "MPI_Win_allocate_shared(nbytes:%ld)", nbytes);
+                 "MPI_Win_allocate_shared(nbytes:%ld, disp_unit:%d)",
+                 nbytes, dtype_size);
 
 	if (sharedmem_comm != MPI_COMM_NULL) {
     int ret = MPI_Win_allocate_shared(
@@ -248,6 +249,8 @@ dart_team_memalloc_aligned(
                    "cannot call MPI_Win_allocate_shared");
     return DART_ERR_OTHER;
   }
+  DART_LOG_DEBUG("dart_team_memalloc_aligned: "
+                 "MPI_Win_allocate_shared > %p", sub_mem);
 
   MPI_Aint winseg_size;
   int      sharedmem_unitid;
@@ -264,7 +267,7 @@ dart_team_memalloc_aligned(
                            &baseptr);
       baseptr_set[i] = baseptr;
     } else {
-      baseptr_set[i] = sub_mem;
+      baseptr_set[i] = (char *)sub_mem;
     }
 	}
 #else
@@ -319,7 +322,7 @@ dart_team_memalloc_aligned(
 	item.win     = MPI_WIN_NULL;
 	item.baseptr = NULL;
 #endif
-	item.selfbaseptr = sub_mem;
+	item.selfbaseptr = (char *)sub_mem;
 	/* Add this newly generated correspondence relationship record into the
    * translation table. */
   dart_segment_add_info(&item);
