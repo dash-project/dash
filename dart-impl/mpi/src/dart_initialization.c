@@ -304,6 +304,10 @@ dart_ret_t dart_exit()
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Win_free(&dart_sharedmem_win_local_alloc);
 	MPI_Comm_free(&(team_data->sharedmem_comm));
+#else
+  if (dart_mempool_localalloc) {
+    MPI_Free_mem(dart_mempool_localalloc);
+  }
 #endif
   MPI_Win_free(&team_data->window);
 
