@@ -773,6 +773,32 @@ public:
   }
 
   /**
+   * Copy constructor is deleted to prevent unintentional copies of - usually
+   * huge - distributed arrays.
+   *
+   * To create a copy of a \c dash::Array instance, instantiate the copy
+   * instance explicitly and use \c dash::copy to clone elements.
+   *
+   * Example:
+   *
+   * \code
+   * dash::Array<int> a1(1024 * dash::size());
+   * dash::fill(a1.begin(), a1.end(), 123);
+   * 
+   * // create copy of array a1:
+   * dash::Array<int> a2(a1.size());
+   * dash::copy(a1.begin(), a1.end(), a2.begin());
+   * \endcode
+   */
+  Array(const self_t & other) = delete;
+
+  /**
+   * Move constructor is deleted as move semantics are non-trivial for
+   * distributed arrays.
+   */
+  Array(self_t && other) = delete;
+
+  /**
    * Destructor, deallocates array elements.
    */
   ~Array()
@@ -781,6 +807,32 @@ public:
     deallocate();
     DASH_LOG_TRACE_VAR("Array.~Array >", this);
   }
+
+  /**
+   * Move assignment operator is deleted as move semantics are non-trivial
+   * for distributed arrays.
+   */
+  self_t & operator=(self_t && other) = delete;
+
+  /**
+   * Assignment operator is deleted to prevent unintentional copies of
+   * - usually huge - distributed arrays.
+   *
+   * To create a copy of a \c dash::Array instance, instantiate the copy
+   * instance explicitly and use \c dash::copy to clone elements.
+   *
+   * Example:
+   *
+   * \code
+   * dash::Array<int> a1(1024 * dash::size());
+   * dash::fill(a1.begin(), a1.end(), 123);
+   * 
+   * // create copy of array a1:
+   * dash::Array<int> a2(a1.size());
+   * dash::copy(a1.begin(), a1.end(), a2.begin());
+   * \endcode
+   */
+  self_t & operator=(const self_t & rhs) = delete;
 
   /**
    * View at block at given global block offset.

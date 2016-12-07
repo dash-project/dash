@@ -206,10 +206,11 @@ TEST_F(ArrayTest, TeamSplit)
   }
 
   auto & myteam = team_all.split(2);
-  auto array_a = dash::Array<double>(ext_x, myteam);
+  dash::Array<double> array_a(ext_x, myteam);
 
   array_a.barrier();
   // Check if array is allocated
   ASSERT_NE_U(array_a.lbegin(), nullptr);
   team_all.barrier();
 }
+
