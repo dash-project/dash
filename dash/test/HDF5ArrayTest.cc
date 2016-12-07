@@ -158,7 +158,7 @@ TEST_F(HDF5ArrayTest, PreAllocation)
     StoreHDF::write(array_a, _filename, _dataset, fopts);
     dash::barrier();
   }
-  auto array_b = dash::Array<int>(ext_x);
+  dash::Array<int> array_b(ext_x);
   StoreHDF::read(array_b, _filename, _dataset);
   dash::barrier();
 
@@ -195,7 +195,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPattern)
   {
     DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "alloc array_a");
     dash::Array<int> array_a(ext_x);
-    tilesize     = array_a.pattern().blocksize(0);
+    tilesize = array_a.pattern().blocksize(0);
     // Fill
     DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "fill array_a");
     fill_array(array_a);
@@ -248,7 +248,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPatPreAllocate)
     StoreHDF::write(array_a, _filename, _dataset, fopts);
     dash::barrier();
   }
-  auto array_b = dash::Array<int>(ext_x);
+  dash::Array<int> array_b(ext_x);
   StoreHDF::read(array_b, _filename, _dataset);
   dash::barrier();
 
@@ -332,38 +332,38 @@ TEST_F(HDF5ArrayTest, ModifyDataset)
 
 TEST_F(HDF5ArrayTest, StreamCreationFlags)
 {
-int    ext_x    = dash::size() * 5;
-double secret = 10;
-{
-  dash::Array<double> array_a(ext_x);
+  int    ext_x  = dash::size() * 5;
+  double secret = 10;
+  {
+    dash::Array<double> array_a(ext_x);
 
-  // Fill
-  fill_array(array_a, secret);
+    // Fill
+    fill_array(array_a, secret);
+    dash::barrier();
+
+    // Set option
+
+    OutputStream os(_filename, DeviceMode::app);
+    os << dio::dataset("settwo")
+       << dio::setpattern_key("custom_dash_pattern")
+       << dio::store_pattern()
+       << array_a
+       << dio::modify_dataset()
+       << array_a;
+
+    dash::barrier();
+  }
+  dash::Array<double> array_b;
+  InputStream is(_filename);
+  is >> dio::dataset("settwo")
+     >> dio::setpattern_key("custom_dash_pattern")
+     >> dio::restore_pattern()
+     >> array_b;
+
   dash::barrier();
 
-  // Set option
-
-  OutputStream os(_filename, DeviceMode::app);
-  os << dio::dataset("settwo")
-     << dio::setpattern_key("custom_dash_pattern")
-     << dio::store_pattern()
-     << array_a
-     << dio::modify_dataset()
-     << array_a;
-
-  dash::barrier();
-}
-dash::Array<double>    array_b;
-InputStream is(_filename);
-is >> dio::dataset("settwo")
-   >> dio::setpattern_key("custom_dash_pattern")
-   >> dio::restore_pattern()
-   >> array_b;
-
-dash::barrier();
-
-// Verify data
-verify_array(array_b, secret);
+  // Verify data
+  verify_array(array_b, secret);
 }
 
 TEST_F(HDF5ArrayTest, GroupTest)
