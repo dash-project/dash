@@ -7,6 +7,14 @@ bug reports and code contributions. To simplify cooperation, we follow the
 guidelines described in the following.
 
 
+Developer Notes
+---------------
+
+Consult the [Contributor Primer](http://doc.dash-project.org/ContributorPrimer)
+in the [DASH Documentation Wiki](http://doc.dash-project.org/) for useful hints
+on the code base, build configurations, debugging, HPC system setups etc.
+
+
 Code Style
 ----------
 
@@ -34,6 +42,7 @@ We follow the naming convention:
 - `bug-<issue-id>-<shortname>`  for bugfix branches
 - `sup-<issue-id>-<shortname>`  for support tasks (e.g. build system,
   														  documentation)
+- `doc-<issue-id>-<shortname>`  for doxygen and userguide documentation. Does not run through CI.
 
 For example, when fixing a bug in team allocation, you could name your branch
 *bug-team-alloc*.

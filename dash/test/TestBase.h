@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <dash/internal/Logging.h>
 
+#include "TestGlobals.h"
 #include "TestPrinter.h"
 #include "TestLogHelpers.h"
 
@@ -60,8 +61,8 @@ extern void ColoredPrintf(
   sprintf(buffer, __VA_ARGS__); \
   testing::internal::ColoredPrintf( \
     testing::internal::COLOR_YELLOW, \
-    "[= %*d  LOG =] %*s :%*d | %s \n", \
-    3, dash::myid(), 24, filename, 4, __LINE__, \
+    "[= %*d LOG =] %*s :%*d | %s \n", \
+    2, dash::myid(), 24, filename, 4, __LINE__, \
     buffer); \
 } while(0)
 
@@ -83,8 +84,43 @@ extern void ColoredPrintf(
 
 #define SKIP_TEST()\
     if(dash::myid() == 0) {\
-      std::cout << TEST_SKIPPED << "Warning: test skipped" << std::endl;\
+      std::cout << TEST_SKIPPED << "Warning: test skipped" \
+                << std::endl;\
     }\
-    return;
+    return
+
+#define SKIP_TEST_MSG(msg)\
+    if(dash::myid() == 0) {\
+      std::cout << TEST_SKIPPED << "Warning: test skipped: " << msg \
+                << std::endl;\
+    }\
+    return
+
+
+namespace dash {
+namespace test {
+
+class TestBase : public ::testing::Test {
+
+ protected:
+
+  virtual void SetUp() {
+    LOG_MESSAGE("===> Running test case with %d units ...", dash::size());
+    dash::init(&TESTENV.argc, &TESTENV.argv);
+    LOG_MESSAGE("-==- DASH initialized");
+  }
+
+  virtual void TearDown() {
+    LOG_MESSAGE("-==- Test case finished at unit %d",       dash::myid());
+    dash::Team::All().barrier();
+    LOG_MESSAGE("-==- Finalize DASH at unit %d",            dash::myid());
+    dash::finalize();
+    LOG_MESSAGE("<=== Finished test case with %d units",    dash::size());
+  }
+};
+
+} // namespace test
+} // namespace dash
+
 
 #endif // DASH__TEST__TEST_BASE_H_

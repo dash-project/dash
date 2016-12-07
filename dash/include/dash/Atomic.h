@@ -20,8 +20,8 @@ class Atomic
 
 public:
   typedef ValueType                                  value_type;
-  typedef size_t                                      size_type;
-  typedef size_t                                difference_type;
+  typedef dash::default_size_t                        size_type;
+  typedef dash::default_index_t                 difference_type;
 
   typedef       GlobRef<value_type>                   reference;
   typedef const GlobRef<value_type>             const_reference;
@@ -145,6 +145,7 @@ public:
   {
     DASH_LOG_DEBUG_VAR("Atomic.fetch_and_op()", val);
     DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   _gptr);
+    DASH_LOG_TRACE_VAR("Atomic.fetch_and_op",   typeid(val).name());
     DASH_ASSERT(_team != nullptr);
     DASH_ASSERT(!DART_GPTR_ISNULL(_gptr));
     value_type acc;

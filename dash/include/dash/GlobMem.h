@@ -162,12 +162,16 @@ public:
       // Use id's of team all
       _lbegin = lbegin(dash::myid());
       _lend   = lend(dash::myid());
+      DASH_ASSERT_EQ(std::distance(_lbegin, _lend), local_elements.size(),
+                     "Capacity of local memory range differs from number "
+                     "of specified local elements");
+                     
       // Initialize allocated local elements with specified values:
       auto copy_end = std::copy(local_elements.begin(),
                                 local_elements.end(),
                                 _lbegin);
       DASH_ASSERT_EQ(_lend, copy_end,
-                     "initialization of specified local values failed");
+                     "Initialization of specified local values failed");
     }
     if (_nunits > 1) {
       // Wait for initialization of local values at all units.

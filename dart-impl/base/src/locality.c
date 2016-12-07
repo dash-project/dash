@@ -517,15 +517,32 @@ dart_ret_t dart__base__locality__domain_group(
     for (int sd = 0; sd < group_size; sd++) {
       /* Resolve relative index of subdomain: */
       immediate_subdomain_tags[sd] =
-        calloc(sizeof(char) * DART_LOCALITY_DOMAIN_TAG_MAX_SIZE,
-               sizeof(char));
+        calloc(DART_LOCALITY_DOMAIN_TAG_MAX_SIZE, sizeof(char));
 
+      int group_subdomain_tag_len = strlen(group_subdomain_tags[sd]);
+
+      if (group_subdomain_tag_len <= group_parent_domain_tag_len) {
+        /* Indicates invalid parameters, usually caused by multiple units
+         * mapped to the same domain to be grouped.
+         */
+        DART_LOG_ERROR("dart__base__locality__domain_group ! "
+                       "group subdomain %s with invalid parent domain %s",
+                       group_subdomain_tags[sd], group_parent_domain_tag);
+        return DART_ERR_INVAL;
+      }
+
+      /* Position of second dot separator in tag of grouped domain after the
+       * end of the parent domain tag, for example:
+       *   parent:          .0.1
+       *   grouped domain:  .0.1.4.0
+       *   dot_pos: 6 ------------'
+       */
       char * dot_pos = strchr(group_subdomain_tags[sd] +
                               group_parent_domain_tag_len + 1, '.');
       int immediate_subdomain_tag_len;
       if (dot_pos == NULL) {
         /* subdomain is immediate child of parent: */
-        immediate_subdomain_tag_len = strlen(group_subdomain_tags[sd]);
+        immediate_subdomain_tag_len = group_subdomain_tag_len;
       } else {
         /* subdomain is indirect child of parent: */
         immediate_subdomain_tag_len = dot_pos -

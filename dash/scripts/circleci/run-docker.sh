@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MPIENVS=(mpich openmpi openmpi2)
+MPIENVS=(mpich openmpi)
 BUILD_CONFIG=$1
 DASH_ENV_EXPORTS="export DASH_MAKE_PROCS='4'; export DASH_MAX_UNITS='3'; export DASH_BUILDEX='OFF';"
 

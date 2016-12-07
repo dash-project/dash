@@ -348,12 +348,13 @@ private:
   void clear() noexcept
   {
     DASH_LOG_DEBUG("DynamicAllocator.clear()");
-    for (auto e : _allocated) {
+    for (auto & e : _allocated) {
       // Null-buckets have lptr set to nullptr
       if (e.first != nullptr) {
         DASH_LOG_DEBUG("DynamicAllocator.clear", "deallocate local memory:",
                        e.first);
         delete[] e.first;
+        e.first = nullptr;
       }
       if (!DART_GPTR_ISNULL(e.second)) {
         DASH_LOG_DEBUG("DynamicAllocator.clear", "detach global memory:",

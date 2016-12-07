@@ -170,6 +170,7 @@ dart_team_memalloc_aligned(
     "index:%d", index);
 
   if (result == -1) {
+    free(disp_set);
     return DART_ERR_INVAL;
   }
 
@@ -241,12 +242,14 @@ dart_team_memalloc_aligned(
       DART_LOG_ERROR("dart_team_memalloc_aligned: "
                      "MPI_Win_allocate_shared failed, error %d (%s)",
                      ret, DART__MPI__ERROR_STR(ret));
+      free(disp_set);
       return DART_ERR_OTHER;
     }
   } else {
     DART_LOG_ERROR("dart_team_memalloc_aligned: "
                    "Shared memory communicator is MPI_COMM_NULL, "
                    "cannot call MPI_Win_allocate_shared");
+    free(disp_set);
     return DART_ERR_OTHER;
   }
   DART_LOG_DEBUG("dart_team_memalloc_aligned: "
@@ -283,11 +286,19 @@ dart_team_memalloc_aligned(
   if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
     DART_LOG_ERROR(
       "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+    free(baseptr_set);
+#endif
+    free(disp_set);
     return DART_ERR_OTHER;
   }
 	if (MPI_Get_address(sub_mem, &disp) != MPI_SUCCESS) {
     DART_LOG_ERROR(
       "dart_team_memalloc_aligned: bytes:%lu MPI_Get_address failed", nbytes);
+    free(disp_set);
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+    free(baseptr_set);
+#endif
     return DART_ERR_OTHER;
   }
 
@@ -306,6 +317,9 @@ dart_team_memalloc_aligned(
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: "
         "bytes:%lu Allocation of segment data failed", nbytes);
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+    free(baseptr_set);
+#endif
     return DART_ERR_OTHER;
   }
 
@@ -393,11 +407,9 @@ dart_ret_t dart_team_memfree(
                  unitid, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 	/* Remove the related correspondence relation record from the related
    * translation table. */
-  if (dart_segment_remove(seg_id) != DART_OK) {
+  if (dart_segment_free(seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }
-
-  dart_segment_dealloc(seg_id);
 
   return DART_OK;
 }
@@ -426,6 +438,7 @@ dart_team_memregister_aligned(
   int result = dart_adapt_teamlist_convert(teamid, &index);
 
   if (result == -1) {
+    free(disp_set);
     return DART_ERR_INVAL;
   }
   comm = dart_team_data[index].comm;
@@ -501,6 +514,7 @@ dart_team_memregister(
   }
 
   if (result == -1) {
+    free(disp_set);
     return DART_ERR_INVAL;
   }
   comm = dart_team_data[index].comm;
@@ -571,11 +585,9 @@ dart_team_memderegister(
     return DART_ERR_INVAL;
   }
   MPI_Win_detach(win, sub_mem);
-  if (dart_segment_remove(seg_id) != DART_OK) {
+  if (dart_segment_free(seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }
-
-  dart_segment_dealloc(seg_id);
 
   DART_LOG_DEBUG(
     "dart_team_memderegister: collective free, "
