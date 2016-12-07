@@ -3,7 +3,7 @@
 TIMESTAMP=`date +%Y%m%d-%H%M%S`
 BASEPATH=`git rev-parse --show-toplevel`
 CMD_DEPLOY=$BASEPATH/dash/scripts/dash-ci-deploy.sh
-CMD_TEST=$BASEPATH/dash/scripts/dash-test.sh
+CMD_TEST=$BASEPATH/dash/scripts/dash-test-all-single.sh
 FAILED=false
 
 run_ci()
