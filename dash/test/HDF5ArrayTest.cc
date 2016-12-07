@@ -438,7 +438,7 @@ TEST_F(HDF5ArrayTest, TeamSplit)
   
   if (myteam.position() == 0) {
     {
-      auto array_a = dash::Array<double>(ext_x, myteam);
+      dash::Array<double> array_a(ext_x, myteam);
       // Array has to be allocated
       EXPECT_NE_U(array_a.lbegin() , nullptr); 
 
@@ -455,7 +455,7 @@ TEST_F(HDF5ArrayTest, TeamSplit)
   team_all.barrier();
 
   if (myteam.position() == 1) {
-    auto array_a = dash::Array<double>(ext_x, myteam);
+    dash::Array<double> array_a(ext_x, myteam);
     array_a.barrier();
     fill_array(array_a, secret);
 
