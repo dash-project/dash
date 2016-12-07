@@ -32,6 +32,13 @@ TEST_F(TeamTest, SplitTeamSync)
 {
   auto & team_all = dash::Team::All();
 
+  // TODO: This test case has portability issues and fails in
+  //       distributed test environments and NastyMPI.
+  //       Clarify use case and find variant without writing to
+  //       file in `pwd`.
+  //
+  SKIP_TEST_MSG("not writing to pwd");
+
   if (team_all.size() < 2) {
     SKIP_TEST_MSG("requires at least 2 units");
   }
