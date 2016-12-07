@@ -4,10 +4,13 @@
 #include <gtest/gtest.h>
 #include <libdash.h>
 
+#include "TestBase.h"
+
+
 /**
  * Test fixture for class dash::Team
  */
-class TeamTest : public ::testing::Test {
+class TeamTest : public dash::test::TestBase {
 protected:
 
   TeamTest() {
@@ -16,11 +19,6 @@ protected:
   virtual ~TeamTest() {
   }
 
-  virtual void SetUp() {
-  }
-
-  virtual void TearDown() {
-  }
 };
 
 #endif // DASH__TEST__TEAM_TEST_H_

@@ -2,9 +2,6 @@
 [![Build Status](https://travis-ci.org/dash-project/dash.svg?branch=development)](https://travis-ci.org/dash-project/dash) [![Documentation Status](https://readthedocs.org/projects/dash/badge/?version=latest)](http://dash.readthedocs.io/en/latest/?badge=latest) [![Documentation](https://codedocs.xyz/dash-project/dash.svg)](https://codedocs.xyz/dash-project/dash/)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/491/badge)](https://bestpractices.coreinfrastructure.org/projects/491)
 
-<a target="_blank" href="https://www.openhub.net/p/dash-project?ref=sample"><img alt="Open Hub project report for DASH C++" border="0" src="https://www.openhub.net/p/dash-project/widgets/project_thin_badge?format=gif&amp;ref=sample">
-</a>
-
 
 DASH
 ====
