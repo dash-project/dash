@@ -741,7 +741,8 @@ dart_ret_t dart_put_blocking(
         baseptr = dart_sharedmem_local_baseptr_set[i];
       }
       baseptr += offset;
-      DART_LOG_DEBUG("dart_put_blocking: memcpy %zu bytes", nelem * dart_mpi_sizeof_datatype(dtype));
+      DART_LOG_DEBUG("dart_put_blocking: memcpy %zu bytes",
+                     nelem * dart_mpi_sizeof_datatype(dtype));
       memcpy(baseptr, (char*)src, nelem * dart_mpi_sizeof_datatype(dtype));
       return DART_OK;
     }
@@ -784,13 +785,13 @@ dart_ret_t dart_put_blocking(
    */
   DART_LOG_DEBUG("dart_put_blocking: MPI_Put");
   if (MPI_Put(src,
-               nelem,
-               mpi_dtype,
-               target_unitid_rel,
-               disp_rel,
-               nelem,
-               mpi_dtype,
-               win)
+              nelem,
+              mpi_dtype,
+              target_unitid_rel,
+              disp_rel,
+              nelem,
+              mpi_dtype,
+              win)
       != MPI_SUCCESS) {
     DART_LOG_ERROR("dart_put_blocking ! MPI_Put failed");
     return DART_ERR_INVAL;

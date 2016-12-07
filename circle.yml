@@ -21,6 +21,8 @@ test:
         parallel: true
     - bash ./dash/scripts/circleci/run-docker.sh Minimal:
         parallel: true
+    - bash ./dash/scripts/circleci/run-docker.sh Nasty:
+        parallel: true
     - grep "FAIL" ./dash-ci.log && (echo "Full log:" ; cat ./dash-ci.log ; exit 1) || exit 0:
         parallel: true
   post:
