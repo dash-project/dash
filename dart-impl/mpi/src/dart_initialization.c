@@ -283,7 +283,8 @@ dart_ret_t dart_exit()
 
 	DART_LOG_DEBUG("%2d: dart_exit()", unitid);
 	if (dart_adapt_teamlist_convert(DART_TEAM_ALL, &index) == -1) {
-    DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed", unitid);
+    DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed",
+                   unitid);
     return DART_ERR_OTHER;
   }
 
@@ -303,11 +304,13 @@ dart_ret_t dart_exit()
 	MPI_Win_free(&dart_win_local_alloc);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Win_free(&dart_sharedmem_win_local_alloc);
+	MPI_Comm_free(&(team_data->sharedmem_comm));
+#else
+  if (dart_mempool_localalloc) {
+    MPI_Free_mem(dart_mempool_localalloc);
+  }
 #endif
   MPI_Win_free(&team_data->window);
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-	MPI_Comm_free(&(team_data->sharedmem_comm));
-#endif
 
   dart_buddy_delete(dart_localpool);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
