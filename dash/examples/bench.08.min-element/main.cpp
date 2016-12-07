@@ -185,7 +185,6 @@ measurement perform_test(
   result.time_max_us   = 0;
   result.mkeys_per_s   = 0;
 
-  auto myid = dash::myid();
 
   // Total time:
   dash::Shared<double> time_us;
@@ -212,6 +211,7 @@ measurement perform_test(
 #endif
 
   ArrayType arr(pattern);
+  auto myid = pattern.team().myid();
 
   ElementType min_value_exp   = 17;
   dash::local_unit_t min_value_unit(std::max((arr.team().size() / 2) - 1, size_t(0)));
