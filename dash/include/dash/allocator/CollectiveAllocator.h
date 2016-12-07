@@ -211,6 +211,10 @@ public:
       return;
     }
 
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "barrier");
+    DASH_ASSERT_RETURNS(
+      dart_barrier(_team_id),
+      DART_OK);
     DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "dart_team_memfree");
     DASH_ASSERT_RETURNS(
       dart_team_memfree(_team_id, gptr),
@@ -219,10 +223,6 @@ public:
     _allocated.erase(
         std::remove(_allocated.begin(), _allocated.end(), gptr),
         _allocated.end());
-    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "barrier");
-    DASH_ASSERT_RETURNS(
-      dart_barrier(_team_id),
-      DART_OK);
     DASH_LOG_DEBUG("CollectiveAllocator.deallocate >");
   }
 
