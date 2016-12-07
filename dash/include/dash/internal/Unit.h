@@ -9,8 +9,6 @@
 #include <dash/dart/if/dart_types.h>
 
 namespace dash {
-namespace internal {
-namespace unit {
 
 enum unit_scope {
   local_unit,
@@ -204,8 +202,6 @@ std::ostream & operator<<(std::ostream& os, unit_id<IdScope> id)
   return os<<id.id;
 }
 
-} // namespace unit
-} // namespace internal
 } // namespace dash
 
 #endif
