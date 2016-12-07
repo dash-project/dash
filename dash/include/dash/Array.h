@@ -773,6 +773,32 @@ public:
   }
 
   /**
+   * Copy constructor is deleted to prevent unintentional copies of - usually
+   * huge - distributed arrays.
+   *
+   * To create a copy of a \c dash::Array instance, instantiate the copy
+   * instance explicitly and use \c dash::copy to clone elements.
+   *
+   * Example:
+   *
+   * \code
+   * dash::Array<int> a1(1024 * dash::size());
+   * dash::fill(a1.begin(), a1.end(), 123);
+   * 
+   * // create copy of array a1:
+   * dash::Array<int> a2(a1.size());
+   * dash::copy(a1.begin(), a1.end(), a2.begin());
+   * \endcode
+   */
+  Array(const self_t & other) = delete;
+
+  /**
+   * Move constructor is deleted as move semantics are non-trivial for
+   * distributed arrays.
+   */
+  Array(self_t && other) = delete;
+
+  /**
    * Destructor, deallocates array elements.
    */
   ~Array()
@@ -781,6 +807,32 @@ public:
     deallocate();
     DASH_LOG_TRACE_VAR("Array.~Array >", this);
   }
+
+  /**
+   * Move assignment operator is deleted as move semantics are non-trivial
+   * for distributed arrays.
+   */
+  self_t & operator=(self_t && other) = delete;
+
+  /**
+   * Assignment operator is deleted to prevent unintentional copies of
+   * - usually huge - distributed arrays.
+   *
+   * To create a copy of a \c dash::Array instance, instantiate the copy
+   * instance explicitly and use \c dash::copy to clone elements.
+   *
+   * Example:
+   *
+   * \code
+   * dash::Array<int> a1(1024 * dash::size());
+   * dash::fill(a1.begin(), a1.end(), 123);
+   * 
+   * // create copy of array a1:
+   * dash::Array<int> a2(a1.size());
+   * dash::copy(a1.begin(), a1.end(), a2.begin());
+   * \endcode
+   */
+  self_t & operator=(const self_t & rhs) = delete;
 
   /**
    * View at block at given global block offset.
@@ -954,7 +1006,7 @@ public:
    */
   inline const Team & team() const noexcept
   {
-    return (nullptr == m_team) ? dash::Team::Null() : *m_team;
+    return *m_team;
   }
 
   /**
@@ -1014,7 +1066,10 @@ public:
   void barrier() const
   {
     DASH_LOG_TRACE_VAR("Array.barrier()", m_team);
-    if (nullptr != m_team && dash::Team::Null() != *m_team) {
+    if (nullptr != m_globmem) {
+      m_globmem->flush_all();
+    }
+    if (nullptr != m_team && *m_team != dash::Team::Null()) {
       m_team->barrier();
     }
     DASH_LOG_TRACE("Array.barrier >", "passed barrier");
@@ -1215,7 +1270,7 @@ private:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
     // Register deallocator of this array instance at the team
     // instance that has been used to initialized it:
-    pattern.team().register_deallocator(
+    m_team->register_deallocator(
       this, std::bind(&Array::deallocate, this));
     // Assure all units are synchronized after allocation, otherwise
     // other units might start working on the array before allocation
@@ -1237,7 +1292,7 @@ private:
   /// Element distribution pattern
   PatternType          m_pattern;
   /// Global memory allocation and -access
-  glob_mem_type      * m_globmem;
+  glob_mem_type      * m_globmem   = nullptr;
   /// Iterator to initial element in the array
   iterator             m_begin;
   /// Iterator to final element in the array
@@ -1249,9 +1304,9 @@ private:
   /// Number allocated local elements in the array
   size_type            m_lcapacity;
   /// Native pointer to first local element in the array
-  ElementType        * m_lbegin;
+  ElementType        * m_lbegin    = nullptr;
   /// Native pointer past last local element in the array
-  ElementType        * m_lend;
+  ElementType        * m_lend      = nullptr;
 
 };
 
