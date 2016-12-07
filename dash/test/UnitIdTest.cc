@@ -12,5 +12,6 @@ TEST_F(UnitIdTest, TypeCompatibility) {
   dash::local_unit_t  l_uid { 12 };
   dash::global_unit_t g_uid { 12 };
 
-  l_uid = g_uid;
+  // this will fail to compile
+//  l_uid = g_uid;
 }
