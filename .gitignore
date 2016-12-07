@@ -30,3 +30,4 @@ dash/include/dash/util/StaticConfig.h
 .ctagsignore
 .gutctags
 cscope.files
+.ycm_*

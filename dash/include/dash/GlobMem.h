@@ -464,6 +464,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobMem.at", lunit);
     if (_teamid != dash::Team::All().dart_id()) {
       // Unit is member of a split team, resolve global unit id:
+      DASH_LOG_TRACE_VAR("GlobMem.at", _teamid);
       dart_team_unit_l2g(_teamid, lunit, &gunit);
     } else {
       // Unit is member of top level team, no conversion to global unit id

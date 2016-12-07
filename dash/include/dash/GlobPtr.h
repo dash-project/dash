@@ -99,7 +99,7 @@ public:
   /**
    * Constructor for conversion of std::nullptr_t.
    */
-  GlobPtr(std::nullptr_t p)
+  explicit GlobPtr(std::nullptr_t p)
   {
     DASH_LOG_TRACE("GlobPtr()", "nullptr");
     _dart_gptr = DART_GPTR_NULL;
@@ -202,13 +202,12 @@ public:
   /**
    * Pointer increment operator.
    */
-  self_t operator+=(gptrdiff_t n)
+  self_t & operator+=(gptrdiff_t n)
   {
-    self_t result = *this;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&_dart_gptr, n * sizeof(ElementType)),
       DART_OK);
-    return result;
+    return *this;
   }
 
   /**
@@ -240,7 +239,7 @@ public:
    * TODO: Distance between two global pointers is not well-defined yet.
    *       This method is only provided to comply to the pointer concept.
    */
-  index_type operator-(const self_t & rhs)
+  index_type operator-(const self_t & rhs) const
   {
     return _dart_gptr - rhs.m_dart_ptr;
   }
@@ -260,13 +259,12 @@ public:
   /**
    * Pointer decrement operator.
    */
-  self_t operator-=(index_type n)
+  self_t & operator-=(index_type n)
   {
-    self_t result = *this;
     DASH_ASSERT_RETURNS(
       dart_gptr_incaddr(&_dart_gptr, -(n * sizeof(ElementType))),
       DART_OK);
-    return result;
+    return *this;
   }
 
   /**
