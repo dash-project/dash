@@ -96,4 +96,30 @@ extern void ColoredPrintf(
     }\
     return
 
+
+namespace dash {
+namespace test {
+
+class TestBase : public ::testing::Test {
+
+ protected:
+
+  virtual void SetUp() {
+    dash::init(&TESTENV.argc, &TESTENV.argv);
+    LOG_MESSAGE("===> Running test case with %d units ...", dash::size());
+  }
+
+  virtual void TearDown() {
+    LOG_MESSAGE("-==- Test case finished at unit %d",       dash::myid());
+    dash::Team::All().barrier();
+    LOG_MESSAGE("-==- Finalize DASH at unit %d",            dash::myid());
+    dash::finalize();
+    LOG_MESSAGE("<=== Finished test case with %d units",    dash::size());
+  }
+};
+
+} // namespace test
+} // namespace dash
+
+
 #endif // DASH__TEST__TEST_BASE_H_
