@@ -440,7 +440,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
       auto local_idx  = pattern.local_at(l_coords);
       auto global_idx = pattern.memory_layout().at(g_coords);
       auto exp_value  = ((unit_id + 1) * 1000) + local_idx;
-      bool is_local   = unit_id == dash::myid();
+      bool is_local   = unit_id == pattern.team().myid();
       element_t value = column[row];
       ASSERT_EQ_U(exp_value, value);
       ASSERT_EQ_U(is_local, matrix.is_local(global_idx));

@@ -49,15 +49,17 @@ TEST_F(SharedTest, SpecifyOwner)
     SKIP_TEST();
   }
 
-  dash::local_unit_t owner_a(dash::size() < 3
+  dash::global_unit_t owner_a(dash::size() < 3
                          ? 0
                          : dash::size() / 2);
-  dash::local_unit_t owner_b(dash::size() - 1);
+  dash::global_unit_t owner_b(dash::size() - 1);
 
   value_t  value_a     = 1000;
   value_t  value_b     = 2000;
-  shared_t shared_at_a(owner_a);
-  shared_t shared_at_b(owner_b);
+  dash::local_unit_t l_owner_a(owner_a);
+  dash::local_unit_t l_owner_b(owner_b);
+  shared_t shared_at_a(l_owner_a);
+  shared_t shared_at_b(l_owner_b);
 
   // Initialize shared values:
   if (dash::myid() == owner_a) {

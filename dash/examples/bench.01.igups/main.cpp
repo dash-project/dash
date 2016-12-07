@@ -253,7 +253,7 @@ double test_dash_pattern(
       auto local_pos = pattern.local(g_idx);
       auto unit_id   = local_pos.unit;
       auto l_index   = local_pos.index;
-      if (unit_id == dash::myid()) {
+      if (unit_id == pattern.team().myid()) {
         ++loc[l_index];
       }
     }
