@@ -954,7 +954,7 @@ public:
    */
   inline const Team & team() const noexcept
   {
-    return *m_team;
+    return (nullptr == m_team) ? dash::Team::Null() : *m_team;
   }
 
   /**
@@ -1014,7 +1014,9 @@ public:
   void barrier() const
   {
     DASH_LOG_TRACE_VAR("Array.barrier()", m_team);
-    m_team->barrier();
+    if (nullptr != m_team && dash::Team::Null() != *m_team) {
+      m_team->barrier();
+    }
     DASH_LOG_TRACE("Array.barrier >", "passed barrier");
   }
 
@@ -1106,7 +1108,7 @@ public:
     }
     // Remove this function from team deallocator list to avoid
     // double-free:
-    m_pattern.team().unregister_deallocator(
+    m_team->unregister_deallocator(
       this, std::bind(&Array::deallocate, this));
     // Actual destruction of the array instance:
     DASH_LOG_TRACE_VAR("Array.deallocate()", m_globmem);
@@ -1139,7 +1141,7 @@ public:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new glob_mem_type(m_lcapacity, m_pattern.team());
+    m_globmem   = new glob_mem_type(m_lcapacity, *m_team);
     // Global iterators:
     m_begin     = iterator(m_globmem, m_pattern);
     m_end       = iterator(m_begin) + m_size;
@@ -1199,7 +1201,7 @@ private:
     // Allocate local memory of identical size on every unit:
     DASH_LOG_TRACE_VAR("Array._allocate", m_lcapacity);
     DASH_LOG_TRACE_VAR("Array._allocate", m_lsize);
-    m_globmem   = new glob_mem_type(local_elements, pattern.team());
+    m_globmem   = new glob_mem_type(local_elements, *m_team);
     // Global iterators:
     m_begin     = iterator(m_globmem, pattern);
     m_end       = iterator(m_begin) + m_size;
