@@ -27,8 +27,6 @@ int main(int argc, char * argv[])
   gethostname(hostname, 100);
   std::string host(hostname);
 
-  // Init GoogleTest (strips gtest arguments from argv)
-  ::testing::InitGoogleTest(&argc, argv);
   // Init MPI
   #ifdef MPI_SUPPORT
   MPI_Init(&argc, &argv);
@@ -40,6 +38,10 @@ int main(int argc, char * argv[])
     ::testing::GTEST_FLAG(output) = "";
   }
 
+  #endif
+  // Init GoogleTest (strips gtest arguments from argv)
+  ::testing::InitGoogleTest(&argc, argv);
+  #ifdef MPI_SUPPORT
   MPI_Barrier(MPI_COMM_WORLD);
   #endif
 
