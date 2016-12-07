@@ -41,33 +41,47 @@ public:
 
 
   /** default initialization to zero */
-  constexpr explicit unit_id() noexcept : id(0) {}
+  constexpr explicit unit_id() noexcept : id(0) { }
 
   /**
-   * initialization using a dart_unit_t
-   * Note that it is explicit to prevent implicit conversion from existing dart_unit_t variables.
+   * Initialization using a dart_unit_t
+   * 
+   * Note that declaration explicit to prevent implicit conversion from
+   * existing \c dart_unit_t variables.
    * However, it prevents the following from working:
+   *
+   * \code
    * dash::global_unit_t unit = 0;
+   * \endcode
+   *
    * Instead, use:
-   * dash::global_unit_t unit{0};
+   *
+   * \code
+   * dash::global_unit_t unit {0};
+   * \endcode
    */
-  constexpr explicit unit_id(dart_unit_t id) noexcept : id(id) {}
+  constexpr explicit unit_id(dart_unit_t id) noexcept
+  : id(id) { }
 
   /** copy-ctor: explicit conversion from another unit_id type */
-  template<unit_scope S>
-  constexpr explicit unit_id<IdScope>(const unit_id<S>& uid) noexcept : id(uid) {}
+  template<unit_scope Scope>
+  constexpr explicit unit_id<IdScope>(const unit_id<Scope> & uid) noexcept
+  : id(uid) { }
 
-  /** TODO [JS]: the following are not constexpr since C++11 does not allow
-   *             for multi-statement constexpr functions (C++14 does).
+  /**
+   * \todo Not constexpr since C++11 does not allow for multi-statement
+   *       constexpr functions (C++14 does).
    */
   const unit_id<IdScope> operator=(unit_id<IdScope> uid) noexcept {
     this->id = uid.id;
     return *this;
   }
+  
   const unit_id operator=(dart_unit_t id) noexcept {
     this->id = id;
     return *this;
   }
+
   template<
     typename T,
     typename std::enable_if<
@@ -76,6 +90,7 @@ public:
     this->id += id;
     return *this;
   }
+  
   template<
     typename T,
     typename std::enable_if<
@@ -113,15 +128,18 @@ public:
     this->id++;
     return *this;
   }
+
   const unit_id operator--() noexcept {
     this->id--;
     return *this;
   }
+
   const unit_id operator++(int) noexcept {
     unit_id<IdScope> tmp(*this);
     this->id++;
     return tmp;
   }
+
   const unit_id operator--(int) noexcept {
     unit_id<IdScope> tmp(*this);
     this->id--;
