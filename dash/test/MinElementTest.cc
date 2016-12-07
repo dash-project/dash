@@ -15,13 +15,10 @@ TEST_F(MinElementTest, TestFindArrayDefault)
   if (dash::myid() == 0) {
     for (auto i = 0; i < array.size(); ++i) {
       Element_t value = (i + 1) * 41;
-      LOG_MESSAGE("Setting array[%d] = %d", i, value);
       array[i] = value;
     }
     // Set minimum element in the center position:
     index_t min_pos = array.size() / 2;
-    LOG_MESSAGE("Setting array[%d] = %d (min)",
-                min_pos, min_value);
     array[min_pos] = min_value;
   }
   // Wait for array initialization
@@ -91,13 +88,10 @@ TEST_F(MinElementTest, TestFindArrayDistributeBlockcyclic)
   if (dash::myid() == 0) {
     for (auto i = 0; i < array.size(); ++i) {
       Element_t value = (i + 1) * 23;
-      LOG_MESSAGE("Setting array[%d] = %d", i, value);
       array[i] = value;
     }
     // Set minimum element somewhere in the first half:
     index_t min_pos = array.size() / 3;
-    LOG_MESSAGE("Setting array[%d] = %d (min)",
-                min_pos, min_value);
     array[min_pos] = min_value;
   }
   // Wait for array initialization
@@ -133,14 +127,11 @@ TEST_F(MinElementTest, TestFindArrayUnderfilled)
   if (dash::myid() == 0) {
     for (auto i = 0; i < array.size(); ++i) {
       Element_t value = (i + 1) * 23;
-      LOG_MESSAGE("Setting array[%d] = %d", i, value);
       array[i] = value;
     }
     // Set minimum element in the last position which is located
     // in the underfilled block, for extra nastyness:
     index_t min_pos = array.size() - 1;
-    LOG_MESSAGE("Setting array[%d] = %d (min)",
-                min_pos, min_value);
     array[min_pos] = min_value;
   }
   // Wait for array initialization
