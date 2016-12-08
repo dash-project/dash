@@ -174,6 +174,14 @@ option
 Programs using DASH select a runtime implementation by linking against the
 respective library.
 
+#### Specifying the MPI implementation for the DART-MPI runtime
+
+The most reliable method to build DART-MPI with a specific MPI installation
+is to specify the CMake options `MPI_<lang>_COMPILER`:
+
+    (build/) $ cmake -DMPI_C_COMPILER=/path/to/mpi/bin/mpicc \
+                     -DMPI_CXX_COMPILER=/path/to/mpi/bin/mpiCC \
+                     ...
 
 ### 3. Examples and Unit Tests
 
