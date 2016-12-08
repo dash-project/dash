@@ -283,7 +283,9 @@ dart_team_memalloc_aligned(
   if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
     DART_LOG_ERROR(
       "dart_team_memalloc_aligned: bytes:%lu MPI_Win_attach failed", nbytes);
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     free(baseptr_set);
+#endif
     free(disp_set);
     return DART_ERR_OTHER;
   }
@@ -291,7 +293,9 @@ dart_team_memalloc_aligned(
     DART_LOG_ERROR(
       "dart_team_memalloc_aligned: bytes:%lu MPI_Get_address failed", nbytes);
     free(disp_set);
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     free(baseptr_set);
+#endif
     return DART_ERR_OTHER;
   }
 
@@ -310,7 +314,9 @@ dart_team_memalloc_aligned(
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: "
         "bytes:%lu Allocation of segment data failed", nbytes);
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     free(baseptr_set);
+#endif
     return DART_ERR_OTHER;
   }
 

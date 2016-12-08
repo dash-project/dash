@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 #include <dash/internal/Logging.h>
 
+#include "TestGlobals.h"
 #include "TestPrinter.h"
 #include "TestLogHelpers.h"
 
@@ -94,5 +95,32 @@ extern void ColoredPrintf(
                 << std::endl;\
     }\
     return
+
+
+namespace dash {
+namespace test {
+
+class TestBase : public ::testing::Test {
+
+ protected:
+
+  virtual void SetUp() {
+    LOG_MESSAGE("===> Running test case with %d units ...", dash::size());
+    dash::init(&TESTENV.argc, &TESTENV.argv);
+    LOG_MESSAGE("-==- DASH initialized");
+  }
+
+  virtual void TearDown() {
+    LOG_MESSAGE("-==- Test case finished at unit %d",       dash::myid());
+    dash::Team::All().barrier();
+    LOG_MESSAGE("-==- Finalize DASH at unit %d",            dash::myid());
+    dash::finalize();
+    LOG_MESSAGE("<=== Finished test case with %d units",    dash::size());
+  }
+};
+
+} // namespace test
+} // namespace dash
+
 
 #endif // DASH__TEST__TEST_BASE_H_

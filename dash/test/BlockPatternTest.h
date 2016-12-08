@@ -23,6 +23,7 @@ protected:
   }
 
   virtual void SetUp() {
+    dash::init(&TESTENV.argc, &TESTENV.argv);
     _num_elem  = 250;
     _dash_size = dash::size();
     LOG_MESSAGE("===> Running test case with %d units ...",
@@ -32,6 +33,7 @@ protected:
   virtual void TearDown() {
     LOG_MESSAGE("<=== Finished test case with %d units",
                 _dash_size);
+    dash::finalize();
   }
 };
 

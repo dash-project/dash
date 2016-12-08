@@ -42,6 +42,7 @@ We follow the naming convention:
 - `bug-<issue-id>-<shortname>`  for bugfix branches
 - `sup-<issue-id>-<shortname>`  for support tasks (e.g. build system,
   														  documentation)
+- `doc-<issue-id>-<shortname>`  for doxygen and userguide documentation. Does not run through CI.
 
 For example, when fixing a bug in team allocation, you could name your branch
 *bug-team-alloc*.

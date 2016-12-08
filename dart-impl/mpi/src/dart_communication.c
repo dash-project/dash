@@ -421,6 +421,8 @@ dart_ret_t dart_get_handle(
   uint64_t     offset = gptr.addr_or_offs.offset;
   int16_t      seg_id = gptr.segid;
 
+  *handle = NULL;
+
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
    */
@@ -434,8 +436,6 @@ dart_ret_t dart_get_handle(
     DART_LOG_ERROR("dart_get_handle ! failed: Unknown segment %i!", seg_id);
     return DART_ERR_INVAL;
   }
-
-  *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
 
   if (seg_id > 0) {
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
@@ -472,17 +472,6 @@ dart_ret_t dart_get_handle(
       DART_LOG_DEBUG("dart_get_handle: memcpy %zu bytes", nbytes);
       memcpy((char*)dest, baseptr, nbytes);
 
-      /*
-       * Mark request as completed:
-       */
-      (*handle)->request = MPI_REQUEST_NULL;
-      if (seg_id != 0) {
-        (*handle)->dest = target_unitid_rel;
-        (*handle)->win = dart_team_data[index].window;
-      } else {
-        (*handle)->dest = target_unitid_abs;
-        (*handle)->win  = dart_win_local_alloc;
-      }
       return DART_OK;
     }
   }
@@ -512,7 +501,6 @@ dart_ret_t dart_get_handle(
           &disp_s) != DART_OK) {
       DART_LOG_ERROR(
         "dart_get_handle ! dart_adapt_transtable_get_disp failed");
-      free(*handle);
       return DART_ERR_INVAL;
     }
     disp_rel = disp_s + offset;
@@ -542,10 +530,8 @@ dart_ret_t dart_get_handle(
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
-      free(*handle);
       return DART_ERR_INVAL;
     }
-    (*handle)->dest = target_unitid_rel;
   } else {
     /*
      * The memory accessed is allocated with local allocation.
@@ -568,9 +554,14 @@ dart_ret_t dart_get_handle(
                 &mpi_req);
     if (mpi_ret != MPI_SUCCESS) {
       DART_LOG_ERROR("dart_get_handle ! MPI_Rget failed");
-      free(*handle);
       return DART_ERR_INVAL;
     }
+  }
+
+  *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
+  if (seg_id != 0) {
+    (*handle)->dest = target_unitid_rel;
+  }  else {
     (*handle)->dest = target_unitid_abs;
   }
   (*handle)->request = mpi_req;
@@ -593,9 +584,12 @@ dart_ret_t dart_put_handle(
   MPI_Aint     disp_s,
                disp_rel;
   dart_unit_t  target_unitid_abs;
+  dart_unit_t  target_unitid_rel;
   uint64_t     offset   = gptr.addr_or_offs.offset;
   int16_t      seg_id   = gptr.segid;
   MPI_Win      win;
+
+  *handle = NULL;
 
   /*
    * MPI uses offset type int, do not copy more than INT_MAX elements:
@@ -605,7 +599,6 @@ dart_ret_t dart_put_handle(
     return DART_ERR_INVAL;
   }
 
-  *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
   target_unitid_abs = gptr.unitid;
 
   if (seg_id != 0) {
@@ -616,7 +609,6 @@ dart_ret_t dart_put_handle(
       return DART_ERR_INVAL;
     }
 
-    dart_unit_t target_unitid_rel;
     win = dart_team_data[index].window;
     unit_g2l(index, target_unitid_abs, &target_unitid_rel);
     if (dart_segment_get_disp(
@@ -645,7 +637,6 @@ dart_ret_t dart_put_handle(
       mpi_type,
       win,
       &mpi_req);
-    (*handle) -> dest = target_unitid_rel;
     DART_LOG_DEBUG("dart_put_handle: nelem:%zu dtype:%d"
                    "(from collective allocation) "
                    "target_unit:%d offset:%"PRIu64"",
@@ -667,7 +658,13 @@ dart_ret_t dart_put_handle(
                    "(from local allocation) "
                    "target_unit:%d offset:%"PRIu64"",
                    nelem, dtype, target_unitid_abs, offset);
-    (*handle) -> dest = target_unitid_abs;
+  }
+
+  *handle = (dart_handle_t) malloc(sizeof(struct dart_handle_struct));
+  if (seg_id != 0) {
+    (*handle)->dest = target_unitid_rel;
+  } else {
+    (*handle)->dest = target_unitid_abs;
   }
   (*handle) -> request = mpi_req;
   (*handle) -> win     = win;
@@ -1142,8 +1139,6 @@ dart_ret_t dart_waitall_local(
   dart_handle_t * handle,
   size_t          num_handles)
 {
-  size_t     i,
-             r_n = 0;
   dart_ret_t ret = DART_OK;
 
   DART_LOG_DEBUG("dart_waitall_local()");
@@ -1155,13 +1150,15 @@ dart_ret_t dart_waitall_local(
     DART_LOG_ERROR("dart_waitall_local ! number of handles > INT_MAX");
     return DART_ERR_INVAL;
   }
-  if (*handle != NULL) {
+  if (handle != NULL) {
+    size_t      i,
+                r_n = 0;
     MPI_Status  *mpi_sta;
     MPI_Request *mpi_req;
     mpi_req = (MPI_Request *) malloc(num_handles * sizeof(MPI_Request));
     mpi_sta = (MPI_Status  *) malloc(num_handles * sizeof(MPI_Status));
     for (i = 0; i < num_handles; i++)  {
-      if (handle[i] != NULL) {
+      if (handle[i] != NULL && handle[i]->request != MPI_REQUEST_NULL) {
         DART_LOG_TRACE("dart_waitall_local: -- handle[%"PRIu64"]: %p)",
                        i, (void*)handle[i]);
         DART_LOG_TRACE("dart_waitall_local:    handle[%"PRIu64"]->dest: %d",
@@ -1230,9 +1227,7 @@ dart_ret_t dart_waitall_local(
         }
         DART_LOG_DEBUG("dart_waitall_local: free handle[%zu] %p",
                        i, (void*)(handle[i]));
-        if (NULL != handle[i]) {
-          free(handle[i]);
-        }
+        free(handle[i]);
         handle[i] = NULL;
         r_n++;
       }
@@ -1261,7 +1256,7 @@ dart_ret_t dart_waitall(
     return DART_ERR_INVAL;
   }
   DART_LOG_DEBUG("dart_waitall: number of handles: %zu", n);
-  if (*handle) {
+  if (handle) {
     MPI_Status  *mpi_sta;
     MPI_Request *mpi_req;
     mpi_req = (MPI_Request *) malloc(n * sizeof(MPI_Request));
