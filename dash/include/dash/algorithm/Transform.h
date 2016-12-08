@@ -41,7 +41,7 @@ inline dart_ret_t accumulate_blocking_impl(
                         dash::dart_datatype<ValueType>::value,
                         op,
                         team);
-  dart_flush(dest);
+//dart_flush(dest);
   return result;
 }
 
@@ -360,7 +360,7 @@ GlobOutputIt transform(
   auto pattern_in_b = in_b_first.pattern();
   auto pattern_out  = out_first.pattern();
 
-#if __NON_ATOMIC__
+#if NOTE__NOT_ATOMIC__
   // Fast path: check if transform operation is local-only:
   if (pattern_in_a == pattern_in_b &&
       pattern_in_a == pattern_out) {

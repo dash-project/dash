@@ -11,8 +11,8 @@ TEST_F(TransformTest, ArrayLocalPlusLocal)
   const size_t num_elem_local = 5;
   size_t num_elem_total       = _dash_size * num_elem_local;
   // Identical distribution in all ranges:
-  dash::Array<int> array_in(num_elem_total, dash::BLOCKED);
-  dash::Array<int> array_dest(num_elem_total, dash::BLOCKED);
+  dash::Array<long> array_in(num_elem_total, dash::BLOCKED);
+  dash::Array<long> array_dest(num_elem_total, dash::BLOCKED);
 
   // Fill ranges with initial values:
   for (size_t l_idx = 0; l_idx < num_elem_local; ++l_idx) {
@@ -23,11 +23,11 @@ TEST_F(TransformTest, ArrayLocalPlusLocal)
   dash::barrier();
 
   // Identical start offsets in all ranges (begin() = 0):
-  dash::transform<int>(
+  dash::transform<long>(
       array_in.begin(), array_in.end(), // A
       array_dest.begin(),               // B
-      array_dest.begin(),               // C = op(A,B)
-      dash::plus<int>());               // op
+      array_dest.begin(),               // C = op(A,B) => B += A
+      dash::plus<long>());              // op
 
   dash::barrier();
 

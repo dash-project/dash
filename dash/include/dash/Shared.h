@@ -162,7 +162,7 @@ public:
   {
     DASH_ASSERT(!DART_GPTR_ISNULL(_ptr.dart_gptr()));
     DASH_ASSERT_RETURNS(
-      dart_flush(_ptr.dart_gptr()),
+      dart_flush_all(_ptr.dart_gptr()),
       DART_OK);
   }
 
@@ -172,7 +172,6 @@ public:
    */
   void barrier()
   {
-    flush();
     DASH_ASSERT(_team != nullptr);
     _team->barrier();
   }
@@ -186,7 +185,7 @@ public:
   }
 
 private:
-  dash::Team          *          _team    = nullptr;
+  dash::Team                   * _team    = nullptr;
   dart_unit_t                    _owner   = DART_UNDEFINED_UNIT_ID;
   std::shared_ptr<GlobMem_t>     _globmem = nullptr;
   pointer                        _ptr;
