@@ -289,6 +289,8 @@ dart_ret_t dart_group_locality_split(const dart_group_t        g,
 #define DART_TEAM_ALL   ((dart_team_t)0)
 /** \cond DART_HIDDEN_SYMBOLS */
 #define DART_TEAM_NULL  ((dart_team_t)-1)
+
+#define DART_GROUP_NULL ((struct dart_group_struct*)NULL)
 /** \endcond */
 
 

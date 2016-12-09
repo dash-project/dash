@@ -543,9 +543,9 @@ private:
   size_t                  _position     = 0;
   size_t                  _num_siblings = 0;
   mutable size_t          _size         = 0;
-  mutable local_unit_t    _myid{-1};
+  mutable local_unit_t    _myid         = UNDEFINED_LOCAL_UNIT_ID;
   mutable bool            _has_group    = false;
-  mutable dart_group_t    _group        = nullptr;
+  mutable dart_group_t    _group        = DART_GROUP_NULL;
 
   /// Deallocation list for freeing memory acquired via
   /// team-aligned allocation
