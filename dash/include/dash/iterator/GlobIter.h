@@ -282,7 +282,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.*", local_pos.index);
     // Global reference to element at given position:
     return ReferenceType(
-             _globmem->at(local_unit_t(local_pos.unit),
+             _globmem->at(local_pos.unit,
                           local_pos.index));
   }
 
@@ -304,7 +304,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.[]", local_pos.index);
     // Global reference to element at given position:
     return ReferenceType(
-             _globmem->at(dash::local_unit_t(local_pos.unit),
+             _globmem->at(local_pos.unit,
                           local_pos.index));
   }
 
