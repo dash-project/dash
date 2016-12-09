@@ -92,29 +92,32 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
 
   LOG_MESSAGE("Requesting remote blocks");
   // Copy values from all non-local blocks:
-  int block = 0;
+  size_t block = 0;
   for (size_t u = 0; u < _dash_size; ++u) {
     if (u != static_cast<size_t>(dash::myid())) {
       LOG_MESSAGE("Requesting block %d from unit %d", block, u);
       dart_handle_t handle;
-      handles.push_back(handle);
 
       dart_storage_t ds = dash::dart_storage<value_t>(block_size);
       LOG_MESSAGE("DART storage: dtype:%d nelem:%d", ds.dtype, ds.nelem);
-      dart_get_handle(
-        local_array + (block * block_size),
-        (array.begin() + (u * block_size)).dart_gptr(),
-        ds.nelem,
-        ds.dtype,
-        &handles[block]
+      EXPECT_EQ_U(
+        DART_OK,
+        dart_get_handle(
+            local_array + (block * block_size),
+            (array.begin() + (u * block_size)).dart_gptr(),
+            ds.nelem,
+            ds.dtype,
+            &handle)
       );
+      std::cout << "dart_get_handle returned handle " << handle << std::endl;
+      handles.push_back(handle);
       ++block;
     }
   }
   // Wait for completion of get operations:
   LOG_MESSAGE("Waiting for completion of async requests");
   dart_waitall_local(
-    &handles[0],
+    handles.data(),
     handles.size()
   );
 
