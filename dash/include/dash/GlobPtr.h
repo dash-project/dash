@@ -462,7 +462,7 @@ public:
    * address space the pointer's associated unit.
    */
   bool is_local() const {
-    return _dart_gptr.unitid == dash::myid();
+    return _dart_gptr.unitid == dash::Team::GlobalUnitID();
   }
 };
 

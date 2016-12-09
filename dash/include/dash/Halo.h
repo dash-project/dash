@@ -316,7 +316,7 @@ public:
     _view_idx_offset(view_index_offset),
     _size(size),
     _max_idx(_size-1),
-    _myid(dash::myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _lbegin(_globmem->lbegin()),
     _position_to_coords(position_mapping_fun)
   {
@@ -353,7 +353,7 @@ public:
     _view_idx_offset(view_index_offset),
     _size(size),
     _max_idx(_size-1),
-    _myid(dash::myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _lbegin(_globmem->lbegin()),
     _position_to_coords(
       std::bind(&self_t::coords, this, std::placeholders::_1))

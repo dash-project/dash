@@ -90,17 +90,17 @@ void Locality::init()
 {
   DASH_LOG_DEBUG("dash::util::Locality::init()");
 
-  if (dart_unit_locality(DART_TEAM_ALL, dash::myid(), &_unit_loc)
+  if (dart_unit_locality(DART_TEAM_ALL, dash::Team::GlobalUnitID(), &_unit_loc)
       != DART_OK) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_unit_locality failed " <<
-               "for unit " << dash::myid());
+               "for unit " << dash::Team::GlobalUnitID());
   }
   DASH_LOG_TRACE_VAR("dash::util::Locality::init", _unit_loc);
   if (_unit_loc == nullptr) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_unit_locality returned nullptr " <<
-               "for unit " << dash::myid());
+               "for unit " << dash::Team::GlobalUnitID());
   }
   if (dart_domain_team_locality(
         DART_TEAM_ALL, _unit_loc->domain_tag, &_team_loc)
