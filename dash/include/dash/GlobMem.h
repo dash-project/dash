@@ -126,8 +126,8 @@ public:
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
     // Use id's of team all
-    _lbegin = lbegin(dash::myid());
-    _lend   = lend(dash::myid());
+    _lbegin = lbegin(dash::Team::GlobalUnitID());
+    _lend   = lend(dash::Team::GlobalUnitID());
     DASH_LOG_TRACE("GlobMem(nlocal,team) >");
   }
 
@@ -160,8 +160,8 @@ public:
       DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
       // Use id's of team all
-      _lbegin = lbegin(dash::myid());
-      _lend   = lend(dash::myid());
+      _lbegin = lbegin(dash::Team::GlobalUnitID());
+      _lend   = lend(dash::Team::GlobalUnitID());
       DASH_ASSERT_EQ(std::distance(_lbegin, _lend), local_elements.size(),
                      "Capacity of local memory range differs from number "
                      "of specified local elements");

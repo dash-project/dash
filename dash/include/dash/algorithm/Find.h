@@ -47,7 +47,7 @@ GlobIter<ElementType, PatternType> find(
 
     // Pointer to first element in local memory:
     const ElementType * lbegin        = first.globmem().lbegin(
-                                           dash::myid());
+                                          dash::Team::GlobalUnitID());
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + l_begin_index;
     const ElementType * l_range_end   = lbegin + l_end_index;

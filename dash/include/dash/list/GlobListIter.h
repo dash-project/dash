@@ -66,7 +66,7 @@ public:
     node_type    & node)
   : _globmem(gmem),
     _node(&node),
-    _myid(dash::myid())
+    _myid(dash::Team::GlobalUnitID())
   {
     DASH_LOG_TRACE("GlobListIter(gmem,node,pat)");
   }

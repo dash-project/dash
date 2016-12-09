@@ -147,7 +147,7 @@ inline void Log_Line(
   pid_t pid = getpid();
   std::stringstream buf;
   buf << "[ "
-      << std::setw(4) << dash::myid()
+      << std::setw(4) << dash::Team::GlobalUnitID()
       << " "
       << level
       << " ] [ "

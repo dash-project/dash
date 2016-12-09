@@ -83,7 +83,7 @@ public:
     const std::string & name,
     T value) const
   {
-    if (dash::myid() != 0) {
+    if (dash::Team::GlobalUnitID() != 0) {
       return;
     }
     int value_w = _header_width - 6 - name.length();
@@ -101,7 +101,7 @@ public:
     const std::string & description,
     T value) const
   {
-    if (dash::myid() != 0) {
+    if (dash::Team::GlobalUnitID() != 0) {
       return;
     }
     int flag_w  =  7;

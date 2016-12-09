@@ -21,11 +21,9 @@ namespace util {
 
 BenchmarkParams::BenchmarkParams(
   const std::string & benchmark_name)
-: _name(benchmark_name)
+: _myid(dash::Team::GlobalUnitID()), _name(benchmark_name)
 {
   using conf = dash::util::Config;
-
-  _myid = dash::myid();
 
   config_params_type params;
   params.env_mpi_shared_win = conf::get<bool>("DASH_ENABLE_MPI_SHWIN");

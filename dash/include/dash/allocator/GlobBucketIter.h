@@ -111,7 +111,7 @@ public:
     _bucket_cumul_sizes(nullptr),
     _idx(0),
     _max_idx(0),
-    _myid(dash::myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _idx_unit_id(DART_UNDEFINED_UNIT_ID),
     _idx_local_idx(-1),
     _idx_bucket_idx(-1),
