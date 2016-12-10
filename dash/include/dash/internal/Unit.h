@@ -316,7 +316,7 @@ public:
    * }
    * \endcode
    */
-  constexpr operator dart_unit_t() noexcept { return id; }
+  constexpr operator dart_unit_t() const noexcept { return id; }
 
   /**
    * Address-of operator that returns the address of the unit ID
