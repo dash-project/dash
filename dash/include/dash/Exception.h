@@ -19,7 +19,7 @@
 
 #define DASH_THROW(excep_type, msg_stream) do { \
     ::std::ostringstream os; \
-    os << "[ Unit " << dash::Team::GlobalUnitID() << " ] "; \
+    os << "[ Unit " << dash::myid() << " ] "; \
     os << msg_stream; \
     DASH_LOG_ERROR(dash__toxstr(excep_type), os.str()); \
     throw(excep_type(os.str())); \
