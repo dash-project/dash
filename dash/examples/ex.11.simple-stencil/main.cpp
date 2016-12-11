@@ -91,14 +91,14 @@ void smooth(Array_t & data_old, Array_t & data_new){
   auto pattern = data_old.pattern();
   auto local_gidx   = pattern.coords(pattern.global(0));
 
-  auto lext_x = pattern.local_extent(1)-1;
-  auto lext_y = pattern.local_extent(0)-1;
+  auto lext_x = pattern.local_extent(1);
+  auto lext_y = pattern.local_extent(0);
 
   auto olptr = data_old.lbegin();
   auto nlptr = data_new.lbegin();
 
-  for( index_t x=1; x<lext_x; x++ ) {
-    for( index_t y=1; y<lext_y; y++ ) {
+  for( index_t x=1; x<lext_x-1; x++ ) {
+    for( index_t y=1; y<lext_y-1; y++ ) {
       nlptr[y*lext_x+x] =
         ( 0.40 * olptr[y*lext_x+x] +
         0.15 * olptr[(y-1)*lext_x+x] +
