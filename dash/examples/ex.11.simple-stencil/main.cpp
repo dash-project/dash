@@ -30,10 +30,10 @@ void write_pgm(const std::string & filename, const Array_t & data){
 //    std::vector<element_t> buffer(ext_x);
 
     for(long y=0; y<ext_y; ++y){
-//      auto first = data.begin()+ext_x*y; 
-//      auto last  = data.begin()+(ext_x*(y+1));
+      auto first = data.begin()+ext_x*y; 
+      auto last  = data.begin()+(ext_x*(y+1));
 
-      // BUG!!!!
+//      BUG!!!!
 //      dash::copy(first, last, buffer.data());
 
       for(long x=0; x<ext_x; ++x){
@@ -103,8 +103,8 @@ void smooth(Array_t & data_old, Array_t & data_new){
   auto gext_x = data_old.extent(0);
   auto gext_y = data_old.extent(1);
 
-  auto lext_x = pattern.local_extent(1);
-  auto lext_y = pattern.local_extent(0);
+  auto lext_x = pattern.local_extent(0);
+  auto lext_y = pattern.local_extent(1);
   auto local_beg_gidx = pattern.coords(pattern.global(0));
   auto local_end_gidx = pattern.coords(pattern.global(pattern.local_size()-1));
 
@@ -114,12 +114,12 @@ void smooth(Array_t & data_old, Array_t & data_new){
   // Inner cell
   for( index_t x=1; x<lext_x-1; x++ ) {
     for( index_t y=1; y<lext_y-1; y++ ) {
-      nlptr[y*lext_x+x] =
-        ( 0.40 * olptr[y*lext_x+x] +
-        0.15 * olptr[(y-1)*lext_x+x] +
-        0.15 * olptr[(y+1)*lext_x+x] +
-        0.15 * olptr[y*lext_x+x-1] +
-        0.15 * olptr[y*lext_x+x+1]);
+      nlptr[x*lext_y+y] =
+        ( 0.40 * olptr[x*lext_y+y] +
+        0.15 * olptr[(x-1)*lext_y+y] +
+        0.15 * olptr[(x+1)*lext_y+y] +
+        0.15 * olptr[x*lext_y+y-1] +
+        0.15 * olptr[x*lext_y+y+1]);
     }
   }
   // Boundary
@@ -135,8 +135,8 @@ void smooth(Array_t & data_old, Array_t & data_new){
   // inner-top
   if(!is_top){
     for( auto x=begin_idx_x; x<end_idx_x; ++x){
-      nlptr[x] = 
-        ( 0.40 * olptr[x] +
+      nlptr[lext_y*x] =
+        ( 0.40 * olptr[lext_y*x] +
         0.15 * data_old.at(local_beg_gidx[0] + x,   local_beg_gidx[1]-1) +
         0.15 * data_old.at(local_beg_gidx[0] + x,   local_beg_gidx[1]+1) +
         0.15 * data_old.at(local_beg_gidx[0] + x+1, local_beg_gidx[1]) +
@@ -145,8 +145,8 @@ void smooth(Array_t & data_old, Array_t & data_new){
   }
   if(!is_bottom){
     for( auto x=begin_idx_x; x<end_idx_x; ++x){
-      nlptr[end_idx_y*lext_y + x] = 
-        ( 0.40 * olptr[end_idx_y*lext_y + x] +
+      nlptr[lext_y*x + end_idx_y] =
+        ( 0.40 * olptr[lext_y*x + end_idx_y] +
         0.15 * data_old.at(local_beg_gidx[0] + x,   local_end_gidx[1]-1) +
         0.15 * data_old.at(local_beg_gidx[0] + x,   local_end_gidx[1]+1) +
         0.15 * data_old.at(local_beg_gidx[0] + x+1, local_end_gidx[1]) +
@@ -154,9 +154,9 @@ void smooth(Array_t & data_old, Array_t & data_new){
     }
   }
   if(!is_left){
-    for( auto y=begin_idx_y+1; y<end_idx_y-1; ++y){
-      nlptr[y*lext_x] = 
-        ( 0.40 * olptr[y*lext_x] +
+    for( auto y=begin_idx_y; y<end_idx_y; ++y){
+      nlptr[y] =
+        ( 0.40 * olptr[y] +
         0.15 * data_old.at(local_beg_gidx[0]-1, local_beg_gidx[1] + y) +
         0.15 * data_old.at(local_beg_gidx[0]+1, local_beg_gidx[1] + y) +
         0.15 * data_old.at(local_beg_gidx[0],   local_beg_gidx[1] + y-1) +
@@ -164,13 +164,13 @@ void smooth(Array_t & data_old, Array_t & data_new){
     }
   }
   if(!is_right){
-    for( auto y=begin_idx_y+1; y<end_idx_y-1; ++y){
-      nlptr[(y+1)*lext_x-1] = 
-        ( 0.40 * olptr[(y+1)*lext_x-1] +
-        0.15 * data_old.at(local_end_gidx[0]-1, local_beg_gidx[0] + y) +
-        0.15 * data_old.at(local_end_gidx[0]+1, local_beg_gidx[0] + y) +
-        0.15 * data_old.at(local_end_gidx[0],   local_beg_gidx[0] + y-1) +
-        0.15 * data_old.at(local_end_gidx[0],   local_beg_gidx[0] + y+1));
+    for( auto y=begin_idx_y; y<end_idx_y; ++y){
+      nlptr[lext_y * end_idx_x + y] =
+        ( 0.40 * olptr[lext_y * end_idx_x + y] +
+        0.15 * data_old.at(local_end_gidx[0]-1, local_beg_gidx[1] + y) +
+        0.15 * data_old.at(local_end_gidx[0]+1, local_beg_gidx[1] + y) +
+        0.15 * data_old.at(local_end_gidx[0],   local_beg_gidx[1] + y-1) +
+        0.15 * data_old.at(local_end_gidx[0],   local_beg_gidx[1] + y+1));
     }
   }
 }
