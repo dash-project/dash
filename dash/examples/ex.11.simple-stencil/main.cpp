@@ -1,3 +1,19 @@
+/**
+ * \example ex.11.simple-stencil/main.cpp
+ *
+ * Stencil codes are iterative kernels on arrays of at least 2 dimensions
+ * where the value of an array element at iteration i+1 depends on the values
+ * of its neighbors in iteration i.
+ *
+ * Calculations of this kind are very common in scientific applications, e.g.
+ * in iterative solvers and filters in image processing.
+ *
+ * This example implements a very simple blur filter. For simplicity
+ * no real image is used, but an image containg circles is generated.
+ * 
+ * \TODO fix \cdash::copy problem
+ */
+
 #include <dash/Init.h>
 #include <dash/Matrix.h>
 #include <dash/Dimensional.h>
