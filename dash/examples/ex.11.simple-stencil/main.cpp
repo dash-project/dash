@@ -1,5 +1,7 @@
 #include <dash/Init.h>
 #include <dash/Matrix.h>
+#include <dash/Dimensional.h>
+#include <dash/TeamSpec.h>
 #include <dash/algorithm/Fill.h>
 #include <dash/algorithm/Copy.h>
 
@@ -89,14 +91,19 @@ template<typename Array_t>
 void smooth(Array_t & data_old, Array_t & data_new){
   // Todo: use stencil iterator
   auto pattern = data_old.pattern();
-  auto local_gidx   = pattern.coords(pattern.global(0));
+
+  auto gext_x = data_old.extent(0);
+  auto gext_y = data_old.extent(1);
 
   auto lext_x = pattern.local_extent(1);
   auto lext_y = pattern.local_extent(0);
+  auto local_beg_gidx = pattern.coords(pattern.global(0));
+  auto local_end_gidx = pattern.coords(pattern.global(pattern.local_size()-1));
 
   auto olptr = data_old.lbegin();
   auto nlptr = data_new.lbegin();
 
+  // Inner cell
   for( index_t x=1; x<lext_x-1; x++ ) {
     for( index_t y=1; y<lext_y-1; y++ ) {
       nlptr[y*lext_x+x] =
@@ -108,7 +115,56 @@ void smooth(Array_t & data_old, Array_t & data_new){
     }
   }
   // Boundary
-  // TODO
+  index_t begin_idx_x = (local_beg_gidx[0] == 0) ? 1 : 0;
+  index_t end_idx_x   = (local_end_gidx[0] == gext_x-1) ? lext_x-2 : lext_x-1;
+  index_t begin_idx_y = (local_beg_gidx[1] == 0) ? 1 : 0;
+  index_t end_idx_y   = (local_end_gidx[1] == gext_y-1) ? lext_y-2 : lext_y-1;
+  bool is_top    =(local_beg_gidx[1] == 0) ? true : false;
+  bool is_bottom =(local_end_gidx[1] == (gext_y-1)) ? true : false;
+  bool is_left   =(local_beg_gidx[0] == 0) ? true : false;
+  bool is_right  =(local_end_gidx[0] == (gext_x-1)) ? true : false;
+
+  // inner-top
+  if(!is_top){
+    for( auto x=begin_idx_x; x<end_idx_x; ++x){
+      nlptr[x] = 
+        ( 0.40 * olptr[x] +
+        0.15 * data_old.at(local_beg_gidx[0] + x,   local_beg_gidx[1]-1) +
+        0.15 * data_old.at(local_beg_gidx[0] + x,   local_beg_gidx[1]+1) +
+        0.15 * data_old.at(local_beg_gidx[0] + x+1, local_beg_gidx[1]) +
+        0.15 * data_old.at(local_beg_gidx[0] + x-1, local_beg_gidx[1]));
+    }
+  }
+  if(!is_bottom){
+    for( auto x=begin_idx_x; x<end_idx_x; ++x){
+      nlptr[end_idx_y*lext_y + x] = 
+        ( 0.40 * olptr[end_idx_y*lext_y + x] +
+        0.15 * data_old.at(local_beg_gidx[0] + x,   local_end_gidx[1]-1) +
+        0.15 * data_old.at(local_beg_gidx[0] + x,   local_end_gidx[1]+1) +
+        0.15 * data_old.at(local_beg_gidx[0] + x+1, local_end_gidx[1]) +
+        0.15 * data_old.at(local_beg_gidx[0] + x-1, local_end_gidx[1]));
+    }
+  }
+  if(!is_left){
+    for( auto y=begin_idx_y+1; y<end_idx_y-1; ++y){
+      nlptr[y*lext_x] = 
+        ( 0.40 * olptr[y*lext_x] +
+        0.15 * data_old.at(local_beg_gidx[0]-1, local_beg_gidx[1] + y) +
+        0.15 * data_old.at(local_beg_gidx[0]+1, local_beg_gidx[1] + y) +
+        0.15 * data_old.at(local_beg_gidx[0], local_beg_gidx[1] + y-1) +
+        0.15 * data_old.at(local_beg_gidx[0], local_beg_gidx[1] + y+1));
+    }
+  }
+  if(!is_right){
+    for( auto y=begin_idx_y+1; y<end_idx_y-1; ++y){
+      nlptr[(y+1)*lext_x-1] = 
+        ( 0.40 * olptr[(y+1)*lext_x-1] +
+        0.15 * data_old.at(local_end_gidx[0]-1, local_beg_gidx[0] + y) +
+        0.15 * data_old.at(local_end_gidx[0]+1, local_beg_gidx[0] + y) +
+        0.15 * data_old.at(local_end_gidx[0], local_beg_gidx[0] + y-1) +
+        0.15 * data_old.at(local_end_gidx[0], local_beg_gidx[0] + y+1));
+    }
+  }
 }
 
 int main(int argc, char* argv[])
@@ -118,9 +174,17 @@ int main(int argc, char* argv[])
   int niter = 20;
 
   dash::init(&argc, &argv);
+  
+  // Prepare grid
+  dash::TeamSpec<2> ts;
+  dash::SizeSpec<2> ss(sizex, sizey);
+  dash::DistributionSpec<2> ds(dash::BLOCKED, dash::BLOCKED);
+  ts.balance_extents();
 
-  Array_t data_old(sizex, sizey, dash::BLOCKED, dash::BLOCKED);
-  Array_t data_new(sizex, sizey, dash::BLOCKED, dash::BLOCKED);
+  dash::Pattern<2> pattern(ss, ds, ts);
+
+  Array_t data_old(pattern);
+  Array_t data_new(pattern);
 
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
