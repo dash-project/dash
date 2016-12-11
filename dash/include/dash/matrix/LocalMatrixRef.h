@@ -108,6 +108,12 @@ public:
           LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT>;
 
 public:
+
+  static constexpr dim_t ndim() {
+    return CUR;
+  }
+
+public:
   /**
    * Default constructor.
    */

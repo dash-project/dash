@@ -519,6 +519,45 @@ public:
   }
 
   /**
+   * Slice the view in the specified dimension at the given offset. 
+   * This is different from resizing the dimension to extent 1
+   * (\c resize_dim) which does not affect the view dimensionality or
+   * rank.
+   * Slicing removes the specified dimension and reduces the view
+   * dimensionality by 1.
+   *
+   * All dimensions higher than the sliced dimension are projected
+   * downwards.
+   * Example:
+   *
+   *   dimensions: 0 1 2 3
+   *               : : : :
+   *   extents:    3 4 5 6
+   *                  |
+   *            slice_dim(1, 2)
+   *                  |
+   *                  v
+   *   dimensions: 0 x 1 2
+   *               :   : :
+   *   extents:    3   5 6
+   *
+   * \return A copy if this view spec as a new instance of `ViewSpec<NDim-1>`
+   *         with the sliced dimension removed
+   */
+  ViewSpec<NumDimensions-1, IndexType>
+  slice(dim_t dimension)
+  {
+    std::array<SizeType, NumDimensions-1>  slice_extents;
+    std::array<IndexType, NumDimensions-1> slice_offsets;
+    for (dim_t d = dimension; d < _rank-1; d++) {
+      slice_offsets[d] = _offsets[d+1];
+      slice_extents[d] = _extents[d+1];
+    }
+    return ViewSpec<NumDimensions-1, IndexType>(slice_offsets,
+                                                slice_extents);
+  }
+
+  /**
    * Set rank of the view spec to a dimensionality between 1 and
    * \c NumDimensions.
    */
@@ -580,7 +619,7 @@ private:
   void update_size()
   {
     _size = 1;
-    for (SizeType d = 0; d < _rank; ++d) {
+    for (SizeType d = 0; d < NumDimensions; ++d) {
       _size *= _extents[d];
     }
   }

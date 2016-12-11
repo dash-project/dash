@@ -99,19 +99,17 @@ private:
   Team(
     dart_team_t id,
     /// Parent team, or \c nullptr for none
-    Team      * parent = nullptr,
+    Team      * parent    = nullptr,
     /// Position within the team's group
-    size_t      pos    = 0);
+    size_t      pos       = 0,
+    /// Number of siblings in parent group
+    size_t      nsiblings = 0);
 
   bool get_group() const
   {
     if (dash::is_initialized() && !_has_group) {
       DASH_LOG_DEBUG("Team.get_group()");
-      size_t sz;
-      dart_group_sizeof(&sz);
-      _group = (dart_group_t*)malloc(sz);
-      dart_group_init(_group);
-      dart_team_get_group(_dartid, _group);
+      dart_team_get_group(_dartid, &_group);
       _has_group = true;
     }
     return _has_group;
@@ -171,6 +169,9 @@ public:
     DASH_LOG_DEBUG_VAR("Team.~Team()", this);
 
     Team::unregister_team(this);
+
+    if (_has_group)
+      dart_group_destroy(&_group);
 
     if (_child) {
       delete(_child);
@@ -453,16 +454,49 @@ public:
     return _size;
   }
 
+  /**
+   * Index of this team relative to parent team.
+   */
   inline size_t position() const
   {
     return _position;
   }
 
+  /**
+   * Number of sibling teams relative to parent team.
+   */
+  inline size_t num_siblings() const
+  {
+    return _num_siblings;
+  }
+
+  /**
+   * Index of this team relative to global team \c dash::Team::All().
+   */
   inline dart_team_t dart_id() const
   {
     return _dartid;
   }
 
+  /**
+   * Index of this team relative to global team \c dash::Team::All().
+   */
+  inline size_t global_id() const
+  {
+    return _dartid;
+  }
+
+  /**
+   * Index of this team relative to parent team.
+   */
+  inline size_t relative_id() const
+  {
+    return _position;
+  }
+
+  /**
+   * Global unit id of specified local unit id.
+   */
   inline dart_unit_t global_id(
     dart_unit_t local_id)
   {
@@ -501,14 +535,16 @@ private:
   }
 
 private:
-  dart_team_t             _dartid    = DART_TEAM_NULL;
-  Team                  * _parent    = nullptr;
-  Team                  * _child     = nullptr;
-  size_t                  _position  = 0;
-  mutable size_t          _size      = 0;
-  mutable dart_unit_t     _myid      = -1;
-  mutable bool            _has_group = false;
-  mutable dart_group_t  * _group     = nullptr;
+
+  dart_team_t             _dartid       = DART_TEAM_NULL;
+  Team                  * _parent       = nullptr;
+  Team                  * _child        = nullptr;
+  size_t                  _position     = 0;
+  size_t                  _num_siblings = 0;
+  mutable size_t          _size         = 0;
+  mutable dart_unit_t     _myid         = -1;
+  mutable bool            _has_group    = false;
+  mutable dart_group_t    _group        = nullptr;
 
   /// Deallocation list for freeing memory acquired via
   /// team-aligned allocation

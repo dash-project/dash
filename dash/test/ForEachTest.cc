@@ -107,3 +107,23 @@ TEST_F(ForEachTest, ForEachWithIndexPos)
     array.end(),
     verify);
 }
+
+TEST_F(ForEachTest, ModifyValues)
+{
+  dash::Array<int> array(100, dash::TILE(10));
+  dash::fill(array.begin(), array.end(), dash::myid());
+
+  std::function< void(int &)>
+    incr = [](int & el) {
+      el = el+1;
+  };
+  std::function< void(const int & )>
+    verify = [](const int & el){
+      ASSERT_EQ_U(el, dash::myid()+1);
+  };
+
+  // Increment by one
+  dash::for_each(array.begin(), array.end(), incr);
+  // Verify
+  dash::for_each(array.begin(), array.end(), verify);
+}

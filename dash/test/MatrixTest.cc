@@ -717,23 +717,6 @@ TEST_F(MatrixTest, StorageOrder)
   }
 
   dash::barrier();
-
-  if (dash::myid() == 0) {
-    std::cout << "row major:" << std::endl;
-    for (int row = 0; row < static_cast<int>(nrows); ++row) {
-      for (int col = 0; col < static_cast<int>(ncols); ++col) {
-        std::cout << std::setw(5) << (int)(mat_row[row][col]) << " ";
-      }
-      std::cout << std::endl;
-    }
-    std::cout << "column major:" << std::endl;
-    for (int row = 0; row < static_cast<int>(nrows); ++row) {
-      for (int col = 0; col < static_cast<int>(ncols); ++col) {
-        std::cout << std::setw(5) << (int)(mat_col[row][col]) << " ";
-      }
-      std::cout << std::endl;
-    }
-  }
 }
 
 TEST_F(MatrixTest, DelayedAlloc)
@@ -905,7 +888,7 @@ TEST_F(MatrixTest, DelayedAlloc)
                          "phase:",       phase_coords, "=", phase,
                          "expected:",    expected,
                          "actual:",      actual);
-          ASSERT_EQ_U(expected, actual);
+          EXPECT_DOUBLE_EQ_U(expected, actual);
         }
       }
     }
@@ -1032,11 +1015,13 @@ TEST_F(MatrixTest, MatrixLBegin)
 
 TEST_F(MatrixTest, DelayedPatternAllocation)
 {
-  typedef dash::TilePattern<2> pattern_t;
-  long block_size_x = dash::size();
-  long block_size_y = dash::size();
-  dash::NArray<int, 2, long, pattern_t > matrix;
-  
+  typedef dash::TilePattern<2>           pattern_t;
+  typedef typename pattern_t::index_type index_t;
+
+  auto block_size_x = dash::size();
+  auto block_size_y = dash::size();
+  dash::NArray<int, 2, index_t, pattern_t > matrix;
+
   {
     auto & team = dash::Team::All();
     dash::TeamSpec<2>         ts(team);
@@ -1054,3 +1039,92 @@ TEST_F(MatrixTest, DelayedPatternAllocation)
   matrix(id,id) =id;
   EXPECT_EQ(id, matrix[id][id]);
 }
+
+TEST_F(MatrixTest, CopyRow)
+{
+  typedef int value_t;
+
+  auto team_size = dash::Team::All().size();
+  auto myid      = dash::Team::All().myid();
+
+  size_t n_lextent = 10;
+
+  dash::TeamSpec<2> teamspec_2d(team_size, 1);
+  teamspec_2d.balance_extents();
+
+  auto tspec_ny = teamspec_2d.extents()[0];
+  auto tspec_nx = teamspec_2d.extents()[1];
+
+  DASH_LOG_DEBUG("MatrixTest.CopyRow", "balanced team spec:",
+                 tspec_ny, "x", tspec_nx);
+
+  dash::SizeSpec<2>         sspec(tspec_ny * n_lextent,
+                                  tspec_nx * n_lextent);
+  dash::DistributionSpec<2> dspec(dash::BLOCKED,
+                                  dash::BLOCKED);
+
+  dash::Matrix<value_t, 2>  matrix(sspec, dspec,
+                                   dash::Team::All(), teamspec_2d);
+
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", matrix.lend() - matrix.lbegin());
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", matrix.local.size());
+  for (int l = 0; l < matrix.local.size(); l++) {
+    matrix.local.begin()[l] = ((myid + 1) * 1000) + l;
+  }
+  dash::barrier();
+
+  if (myid == 0) {
+    dash::test::print_matrix("Matrix<2>", matrix, 2);
+  }
+  dash::barrier();
+
+  auto row      = matrix.local.row(0);
+  auto row_size = row.size();
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row_size);
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row.extent(0));
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", row.extent(1));
+
+  dash::barrier();
+  dash::test::print_matrix("Matrix<2>.local.row(0)", row, 2);
+
+  auto l_prange = dash::local_range(row.begin(), row.end());
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow",
+                     static_cast<const value_t *>(l_prange.begin));
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow",
+                     static_cast<const value_t *>(l_prange.end));
+  auto l_irange = dash::local_index_range(row.begin(), row.end());
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", static_cast<int>(l_irange.begin));
+  DASH_LOG_DEBUG_VAR("MatrixTest.CopyRow", static_cast<int>(l_irange.end));
+
+  EXPECT_EQ_U(row_size, l_irange.end - l_irange.begin);
+  EXPECT_EQ_U(row_size, l_prange.end - l_prange.begin);
+
+  EXPECT_EQ_U(1,         decltype(row)::ndim());
+  EXPECT_EQ_U(n_lextent, row_size);
+
+  EXPECT_EQ_U(n_lextent, row.extents()[1]);
+
+  // Check values and test for each expression:
+  int li = 0;
+  for (auto l_row_val : row) {
+    value_t expected = ((myid + 1) * 1000) + li;
+    value_t actual   = l_row_val;
+    EXPECT_EQ_U(expected, actual);
+    li++;
+  }
+
+  std::vector<value_t> tmp(row_size);
+  auto copy_end = dash::copy(row.begin(), row.end(),
+                             tmp.data());
+
+  EXPECT_EQ_U(row_size, copy_end - tmp.data());
+
+  li = 0;
+  for (auto l_copy_val : tmp) {
+    value_t expected = ((myid + 1) * 1000) + li;
+    value_t actual   = l_copy_val;
+    EXPECT_EQ_U(expected, actual);
+    li++;
+  }
+}
+

@@ -25,9 +25,11 @@ protected:
   }
 
   virtual void SetUp() {
+    dash::init(&TESTENV.argc, &TESTENV.argv);
   }
 
   virtual void TearDown() {
+    dash::finalize();
   }
 };
 #endif // DASH__TEST__GENERATE_TEST_H_

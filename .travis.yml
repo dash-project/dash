@@ -1,3 +1,7 @@
+branches:
+  except:
+    - /^doc-.*$/
+
 sudo: required
 dist: trusty
 os:   linux
@@ -7,10 +11,12 @@ language: cpp
 compiler:
     - gcc
 before_install:
-    - docker build --tag=dash/testing ./dash/scripts/docker-testing/mpich/
+    - docker pull dashproject/ci:mpich
 script:
-    - sh ./dash/scripts/travisci/run-docker.sh 
-    - cat ./dash-ci.log | grep "PASSED" || return 1
+    - sh ./dash/scripts/travisci/run-docker.sh Release
+    - cat ./dash-ci.log | (grep "FAIL" || return 0) || return 1
+    - sh ./dash/scripts/travisci/run-docker.sh Minimal
+    - cat ./dash-ci.log | (grep "FAIL" || return 0) || return 1
 after_script:
     - cat ./build-ci/*/*/test_mpi.log | grep -v "LOG"
 after_failure:

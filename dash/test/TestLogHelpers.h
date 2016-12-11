@@ -10,6 +10,55 @@ namespace dash {
 namespace test {
 
 /**
+ * Log the values of a one-dimensional submatrix.
+ */
+template<typename MatrixT>
+typename std::enable_if<MatrixT::ndim() == 1, void>::type
+print_matrix(
+  /// Log message prefix.
+  const std::string & name,
+  /// Matrix instance to log.
+  MatrixT           & matrix,
+  int                 precision = 1)
+{
+  typedef typename MatrixT::value_type value_t;
+  // Print local copy of matrix to avoid interleaving of matrix values
+  // and log messages:
+  std::vector< std::vector<value_t> > values;
+  std::vector<value_t> col_header;
+  for (auto col = 0; col < matrix.extent(1); ++col) {
+    col_header.push_back(col);
+  }
+  values.push_back(col_header);
+  for (auto row = 0; row < matrix.extent(0); ++row) {
+    std::vector<value_t> row_values;
+    for (auto col = 0; col < matrix.extent(1); ++col) {
+      value_t value = matrix.begin()[row * matrix.extent(1) + col];
+      row_values.push_back(value);
+    }
+    values.push_back(row_values);
+  }
+  DASH_LOG_DEBUG("print_matrix", name);
+  int row_idx = -1;
+  for (auto row : values) {
+    std::ostringstream ss;
+    if (row_idx < 0) {
+      // do not print row index for column header:
+      ss << std::setw(5) << " ";
+    } else {
+      ss << std::setw(3) << row_idx << ":  ";
+    }
+    row_idx++;
+    for (auto val : row) {
+      ss << std::setprecision(row_idx == 0 ? 0 : precision)
+         << std::fixed << std::setw(precision + 3)
+         << val << " ";
+    }
+    DASH_LOG_DEBUG("print_matrix", name, ss.str());
+  }
+}
+
+/**
  * Log the values of a two-dimensional matrix.
  */
 template<typename MatrixT>

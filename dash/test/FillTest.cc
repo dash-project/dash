@@ -7,15 +7,13 @@
 
 TEST_F(FillTest, TestAllItemsFilled)
 {
-  if (dash::size() == 3) {
-    // TODO: Fix this
-    SKIP_TEST();
-  }
-
-  typedef typename Array_t::value_type value_t;
+  typedef double                                      Element_t;
+  typedef dash::Array<Element_t>                        Array_t;
+  typedef typename Array_t::pattern_type::index_type    index_t;
+  typedef typename Array_t::value_type                  value_t;
 
   /// Using a prime to cause inconvenient strides
-  size_t num_local_elem = 251;
+  size_t num_local_elem = 513;
 
   LOG_MESSAGE("FillTest.TestAllItemsFilled: allocate array");
   // Initialize global array:
@@ -38,7 +36,6 @@ TEST_F(FillTest, TestAllItemsFilled)
 
   for(int l = 0; lbegin != lend; ++lbegin, l++)
   {
-    LOG_MESSAGE("FillTest.TestAllItemsFilled: test lbegin[%d]", l);
     EXPECT_EQ_U(17, static_cast<value_t>(*lbegin));
   }
 }

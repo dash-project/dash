@@ -9,9 +9,7 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
   typedef int value_t;
 
   if (dash::size() < 2) {
-    LOG_MESSAGE(
-      "GlobDynamicMemTest.BalancedAlloc requires at least two units");
-    return;
+    SKIP_TEST_MSG("Test case requires at least two units");
   }
 
   LOG_MESSAGE("initializing GlobDynamicMem<T>");
@@ -79,9 +77,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
   typedef int value_t;
 
   if (dash::size() < 2) {
-    LOG_MESSAGE(
-      "GlobDynamicMemTest.UnbalancedRealloc requires at least two units");
-    return;
+    SKIP_TEST_MSG("Test case requires at least two units");
   }
 
   LOG_MESSAGE("initializing GlobDynamicMem<T>");
@@ -224,7 +220,8 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
 
         // request value via DART global pointer:
         value_t dart_gptr_value;
-        dart_get_blocking(&dart_gptr_value, gptr, sizeof(value_t));
+        dart_storage_t ds = dash::dart_storage<value_t>(1);
+        dart_get_blocking(&dart_gptr_value, gptr, ds.nelem, ds.dtype);
         DASH_LOG_TRACE_VAR("GlobDynamicMemTest.UnbalancedRealloc",
                            dart_gptr_value);
 
@@ -279,9 +276,7 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   typedef int value_t;
 
   if (dash::size() < 2) {
-    LOG_MESSAGE(
-      "GlobDynamicMemTest.LocalVisibility requires at least two units");
-    return;
+    SKIP_TEST_MSG("Test case requires at least two units");
   }
 
   LOG_MESSAGE("initializing GlobDynamicMem<T>");
@@ -454,9 +449,7 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
   typedef int value_t;
 
   if (dash::size() < 3) {
-    LOG_MESSAGE(
-      "GlobDynamicMemTest.RemoteAccess requires at least three units");
-    return;
+    SKIP_TEST_MSG("Test case requires at least three units");
   }
 
   /* Illustration of the test case:

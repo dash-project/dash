@@ -4,6 +4,8 @@ build.dev
 build.rel
 build.mkl
 build.mic
+build.min
+build.nasty
 build.cov
 build-ci
 compile_commands.json
@@ -29,3 +31,5 @@ dash/include/dash/util/StaticConfig.h
 .includes
 .ctagsignore
 .gutctags
+cscope.files
+.ycm_*

@@ -33,11 +33,11 @@ CXXFLAGS+=-std=c++11
 
 LIBDASH = libdash.a
 
-FILES = Distribution GlobPtr Init Logging Math Team Types	\
-	algorithm/SUMMA exception/StackTrace io/hdf5/StoreHDF	\
-	util/BenchmarkParams util/Config util/Locality		\
-	util/LocalityDomain util/TeamLocality util/Timer	\
-	util/TimestampClockPosix util/TimestampCounterPosix	\
+FILES = Distribution GlobPtr Init Logging Math Team Types		\
+	algorithm/SUMMA exception/StackTrace util/BenchmarkParams	\
+	util/Config util/Locality util/LocalityDomain			\
+	util/LocalityJSONPrinter util/TeamLocality util/Timer		\
+	util/TimestampClockPosix util/TimestampCounterPosix		\
 	util/TimestampPAPI util/Trace
 
 OBJS = $(addsuffix .o, $(FILES))
@@ -49,16 +49,17 @@ $(LIBDASH) : $(STATIC_CONFIG_H) $(OBJS)
 
 
 $(STATIC_CONFIG_H) : $(STATIC_CONFIG_H_IN)
-	cat $(STATIC_CONFIG_H_IN)             | \
-	sed "s/@CONF_AVAIL_PAPI@/false/"      | \
-	sed "s/@CONF_AVAIL_HWLOC@/false/"     | \
-	sed "s/@CONF_AVAIL_LIKWID@/false/"    | \
-	sed "s/@CONF_AVAIL_NUMA@/false/"      | \
-	sed "s/@CONF_AVAIL_PLASMA@/false/"    | \
-	sed "s/@CONF_AVAIL_HDF5@/false/"      | \
-	sed "s/@CONF_AVAIL_MKL@/false/"       | \
-	sed "s/@CONF_AVAIL_BLAS@/false/"      | \
-	sed "s/@CONF_AVAIL_LAPACK@/false/"    | \
+	cat $(STATIC_CONFIG_H_IN)                 | \
+	sed "s/@CONF_AVAIL_PAPI@/false/"          | \
+	sed "s/@CONF_AVAIL_HWLOC@/false/"         | \
+	sed "s/@CONF_AVAIL_LIKWID@/false/"        | \
+	sed "s/@CONF_AVAIL_NUMA@/false/"          | \
+	sed "s/@CONF_AVAIL_PLASMA@/false/"        | \
+	sed "s/@CONF_AVAIL_HDF5@/false/"          | \
+	sed "s/@CONF_AVAIL_MKL@/false/"           | \
+	sed "s/@CONF_AVAIL_BLAS@/false/"          | \
+	sed "s/@CONF_AVAIL_LAPACK@/false/"        | \
+	sed "s/@CONF_AVAIL_ALGO_SUMMA@/false/"    | \
 	sed "s/@CONF_AVAIL_SCALAPACK@/false/"  > $(STATIC_CONFIG_H)
 
 

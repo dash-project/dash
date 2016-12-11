@@ -1,12 +1,30 @@
 #include <libdash.h>
 #include <gtest/gtest.h>
+
 #include "TestBase.h"
 #include "ArrayTest.h"
+
 
 // global var
 dash::Array<int> array_global;
 
-TEST_F(ArrayTest, Allocation)
+TEST_F(ArrayTest, Declaration)
+{
+  dash::Array<int> array_local(19 * dash::size(), dash::BLOCKED);
+}
+
+TEST_F(ArrayTest, AllocateEmptyLocal)
+{
+  if (dash::size() < 2) {
+    SKIP_TEST_MSG("requires at least 2 units");
+  }
+
+  int block_size = 19;
+  dash::Array<int> array_local(block_size * (dash::size() - 1),
+                               dash::BLOCKCYCLIC(block_size));
+}
+
+TEST_F(ArrayTest, DelayedAllocation)
 {
   dash::Array<int> array_local;
 
@@ -52,7 +70,8 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
     ASSERT_EQ(array_size, arr6.size());
     // Fill arrays with incrementing values
     if (_dash_id == 0) {
-      LOG_MESSAGE("Assigning array values");
+      DASH_LOG_DEBUG("ArrayTest.SingleWriteMultipleRead",
+                     "writing array values");
       for (size_t i = 0; i < array_size; ++i) {
         arr1[i] = i;
         arr2[i] = i;
@@ -63,6 +82,8 @@ TEST_F(ArrayTest, SingleWriteMultipleRead)
       }
     }
     // Units waiting for value initialization
+    DASH_LOG_DEBUG("ArrayTest.SingleWriteMultipleRead",
+                   "waiting for unit 0 to write array values");
     dash::Team::All().barrier();
     // Read and assert values in arrays
     for (size_t i = 0; i < array_size; ++i) {
@@ -141,9 +162,15 @@ TEST_F(ArrayTest, PatternAllocate)
       dash::TeamSpec<1>(),
       dash::Team::All());
 
+    DASH_LOG_DEBUG("ArrayTest.PatternAllocate",
+                   "allocating array from pattern");
     array.allocate(pattern);
+    DASH_LOG_DEBUG("ArrayTest.PatternAllocate",
+                   "array pattern leaving scope");
   }
 
+  DASH_LOG_DEBUG("ArrayTest.PatternAllocate",
+                 "filling array");
   // Fill
   dash::for_each_with_index(
     array.begin(),
@@ -168,4 +195,25 @@ TEST_F(ArrayTest, ConstructorNelemInitializerList)
   }
 }
 
+TEST_F(ArrayTest, TeamSplit)
+{
+  auto & team_all = dash::Team::All();
+  auto   ext_x    = team_all.size();
+
+  if(team_all.size() < 2){
+    SKIP_TEST();
+  }
+  if(!team_all.is_leaf()){
+    LOG_MESSAGE("team is already splitted. Skip test");
+    SKIP_TEST();
+  }
+
+  auto & myteam = team_all.split(2);
+  dash::Array<double> array_a(ext_x, myteam);
+
+  array_a.barrier();
+  // Check if array is allocated
+  ASSERT_NE_U(array_a.lbegin(), nullptr);
+  team_all.barrier();
+}
 

@@ -213,7 +213,7 @@ public:
       // Convert to mapped type pointer:
       lptr_mapped           = reinterpret_cast<mapped_type *>(b_lptr_mapped);
     }
-    if (!DART_GPTR_EQUAL(DART_GPTR_NULL, gptr_mapped)) {
+    if (!DART_GPTR_ISNULL(gptr_mapped)) {
       DASH_ASSERT_RETURNS(
         dart_gptr_incaddr(&gptr_mapped, mapped_offs),
         DART_OK);

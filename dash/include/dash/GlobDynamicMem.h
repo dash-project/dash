@@ -1125,7 +1125,7 @@ private:
       bucket.lptr     = nullptr;
       bucket.attached = true;
       bucket.gptr     = _allocator.attach(bucket.lptr, bucket.size);
-      DASH_ASSERT(bucket.gptr != DART_GPTR_NULL);
+      DASH_ASSERT(!DART_GPTR_ISNULL(bucket.gptr));
       _buckets.push_back(bucket);
       num_attached_buckets++;
       DASH_LOG_TRACE("GlobDynamicMem.commit_attach", "attached null bucket:",
@@ -1263,6 +1263,7 @@ private:
                                  u_num_attach_buckets, 0);
         dart_gptr_t u_attach_buckets_sizes_gptr = attach_buckets_sizes_gptr;
         dart_gptr_setunit(&u_attach_buckets_sizes_gptr, u);
+        dart_storage_t ds = dash::dart_storage<size_type>(u_num_attach_buckets);
         DASH_ASSERT_RETURNS(
           dart_get_blocking(
             // local dest:
@@ -1270,7 +1271,7 @@ private:
             // global source:
             u_attach_buckets_sizes_gptr,
             // request bytes (~= number of sizes) from unit u:
-            u_num_attach_buckets * sizeof(size_type)),
+            ds.nelem, ds.dtype),
           DART_OK);
         // Update local snapshot of cumulative bucket sizes at unit u:
         for (int bi = 0; bi < u_num_attach_buckets; ++bi) {
@@ -1333,7 +1334,7 @@ private:
       DASH_ASSERT_LT(bucket_phase, bucket_it->size,
                      "bucket phase out of bounds");
     }
-    if (DART_GPTR_EQUAL(dart_gptr, DART_GPTR_NULL)) {
+    if (DART_GPTR_ISNULL(dart_gptr)) {
       DASH_LOG_TRACE("GlobDynamicMem.dart_gptr_at",
                      "bucket.gptr is DART_GPTR_NULL");
       dart_gptr = DART_GPTR_NULL;

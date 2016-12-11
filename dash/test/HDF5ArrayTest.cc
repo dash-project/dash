@@ -4,6 +4,7 @@
 
 #include <limits.h>
 #include <gtest/gtest.h>
+#include <unistd.h>
 
 #include "HDF5ArrayTest.h"
 #include "TestBase.h"
@@ -118,7 +119,7 @@ TEST_F(HDF5ArrayTest, StoreLargeDashArray)
 TEST_F(HDF5ArrayTest, AutoGeneratePattern)
 {
   {
-    auto array_a = dash::Array<int>(dash::size() * 2);
+    dash::Array<int> array_a(dash::size() * 2);
     // Fill
     fill_array(array_a);
     dash::barrier();
@@ -145,7 +146,7 @@ TEST_F(HDF5ArrayTest, PreAllocation)
 {
   int ext_x = dash::size() * 2;
   {
-    auto array_a = dash::Array<int>(ext_x);
+    dash::Array<int> array_a(ext_x);
     // Fill
     fill_array(array_a, dash::myid());
     dash::barrier();
@@ -157,7 +158,7 @@ TEST_F(HDF5ArrayTest, PreAllocation)
     StoreHDF::write(array_a, _filename, _dataset, fopts);
     dash::barrier();
   }
-  auto array_b = dash::Array<int>(ext_x);
+  dash::Array<int> array_b(ext_x);
   StoreHDF::read(array_b, _filename, _dataset);
   dash::barrier();
 
@@ -169,7 +170,7 @@ TEST_F(HDF5ArrayTest, PreAllocation)
 TEST_F(HDF5ArrayTest, OutputStreamOpen)
 {
   {
-    auto array_a = dash::Array<long>(dash::size() * 2);
+    dash::Array<long> array_a(dash::size() * 2);
 
     fill_array(array_a);
     dash::barrier();
@@ -193,8 +194,8 @@ TEST_F(HDF5ArrayTest, UnderfilledPattern)
   long  tilesize;
   {
     DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "alloc array_a");
-    auto array_a = dash::Array<int>(ext_x);
-    tilesize     = array_a.pattern().blocksize(0);
+    dash::Array<int> array_a(ext_x);
+    tilesize = array_a.pattern().blocksize(0);
     // Fill
     DASH_LOG_TRACE("HDF5ArrayTest.UnderfilledPattern", "fill array_a");
     fill_array(array_a);
@@ -236,7 +237,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPatPreAllocate)
 {
   int ext_x = dash::size() * 5 + 1;
   {
-    auto array_a = dash::Array<int>(ext_x);
+    dash::Array<int> array_a(ext_x);
     // Fill
     fill_array(array_a);
     dash::barrier();
@@ -247,7 +248,7 @@ TEST_F(HDF5ArrayTest, UnderfilledPatPreAllocate)
     StoreHDF::write(array_a, _filename, _dataset, fopts);
     dash::barrier();
   }
-  auto array_b = dash::Array<int>(ext_x);
+  dash::Array<int> array_b(ext_x);
   StoreHDF::read(array_b, _filename, _dataset);
   dash::barrier();
 
@@ -267,8 +268,8 @@ TEST_F(HDF5ArrayTest, MultipleDatasets)
   int    secret_a = 10;
   double secret_b = 3;
   {
-    auto array_a = dash::Array<int>(ext_x);
-    auto array_b = dash::Array<double>(ext_x*2);
+    dash::Array<int>    array_a(ext_x);
+    dash::Array<double> array_b(ext_x*2);
 
     // Fill
     fill_array(array_a, secret_a);
@@ -301,8 +302,8 @@ TEST_F(HDF5ArrayTest, ModifyDataset)
   double secret_a = 10;
   double secret_b = 3;
   {
-    auto array_a = dash::Array<double>(ext_x);
-    auto array_b = dash::Array<double>(ext_x);
+    dash::Array<double> array_a(ext_x);
+    dash::Array<double> array_b(ext_x);
 
     // Fill
     fill_array(array_a, secret_a);
@@ -331,38 +332,38 @@ TEST_F(HDF5ArrayTest, ModifyDataset)
 
 TEST_F(HDF5ArrayTest, StreamCreationFlags)
 {
-int    ext_x    = dash::size() * 5;
-double secret = 10;
-{
-  auto array_a = dash::Array<double>(ext_x);
+  int    ext_x  = dash::size() * 5;
+  double secret = 10;
+  {
+    dash::Array<double> array_a(ext_x);
 
-  // Fill
-  fill_array(array_a, secret);
+    // Fill
+    fill_array(array_a, secret);
+    dash::barrier();
+
+    // Set option
+
+    OutputStream os(_filename, DeviceMode::app);
+    os << dio::dataset("settwo")
+       << dio::setpattern_key("custom_dash_pattern")
+       << dio::store_pattern()
+       << array_a
+       << dio::modify_dataset()
+       << array_a;
+
+    dash::barrier();
+  }
+  dash::Array<double> array_b;
+  InputStream is(_filename);
+  is >> dio::dataset("settwo")
+     >> dio::setpattern_key("custom_dash_pattern")
+     >> dio::restore_pattern()
+     >> array_b;
+
   dash::barrier();
 
-  // Set option
-
-  OutputStream os(_filename, DeviceMode::app);
-  os << dio::dataset("settwo")
-     << dio::setpattern_key("custom_dash_pattern")
-     << dio::store_pattern()
-     << array_a
-     << dio::modify_dataset()
-     << array_a;
-
-  dash::barrier();
-}
-dash::Array<double>    array_b;
-InputStream is(_filename);
-is >> dio::dataset("settwo")
-   >> dio::setpattern_key("custom_dash_pattern")
-   >> dio::restore_pattern()
-   >> array_b;
-
-dash::barrier();
-
-// Verify data
-verify_array(array_b, secret);
+  // Verify data
+  verify_array(array_b, secret);
 }
 
 TEST_F(HDF5ArrayTest, GroupTest)
@@ -370,9 +371,9 @@ TEST_F(HDF5ArrayTest, GroupTest)
   int    ext_x    = dash::size() * 5;
   double secret[] = {10,11,12};
   {
-    auto array_a = dash::Array<double>(ext_x);
-    auto array_b = dash::Array<double>(ext_x);
-    auto array_c = dash::Array<double>(ext_x);
+    dash::Array<double> array_a(ext_x);
+    dash::Array<double> array_b(ext_x);
+    dash::Array<double> array_c(ext_x);
   
     // Fill
     fill_array(array_a, secret[0]);
@@ -410,6 +411,67 @@ TEST_F(HDF5ArrayTest, GroupTest)
   verify_array(array_b, secret[1]);
   verify_array(array_c, secret[2]);
 }
+
+TEST_F(HDF5ArrayTest, TeamSplit)
+{
+  // TODO: Fix
+  SKIP_TEST();
+
+  if (dash::size() < 2) {
+    SKIP_TEST();
+  }
+
+  auto & team_all  = dash::Team::All();
+  int    num_split = std::min<int>(team_all.size(), 2);
+
+  if(!team_all.is_leaf()){
+    LOG_MESSAGE("team is already splitted. Skip test");
+    SKIP_TEST();
+  }
+
+  auto & myteam    = team_all.split(num_split);
+  LOG_MESSAGE("Splitted team in %d parts, I am %d",
+              num_split, myteam.position());
+
+  int    ext_x  = team_all.size() * 5;
+  double secret = 10;
+  
+  if (myteam.position() == 0) {
+    {
+      dash::Array<double> array_a(ext_x, myteam);
+      // Array has to be allocated
+      EXPECT_NE_U(array_a.lbegin() , nullptr); 
+
+      fill_array(array_a, secret);
+      myteam.barrier();
+      LOG_MESSAGE("Team %d: write array", myteam.position());
+      OutputStream os(_filename);
+      os << dio::dataset("array_a") << array_a;
+      LOG_MESSAGE("Team %d: array written", myteam.position());
+      myteam.barrier();
+    }
+  }
+
+  team_all.barrier();
+
+  if (myteam.position() == 1) {
+    dash::Array<double> array_a(ext_x, myteam);
+    array_a.barrier();
+    fill_array(array_a, secret);
+
+    // Array has to be allocated
+    EXPECT_NE_U(array_a.lbegin() , nullptr); 
+
+    if(array_a.lbegin() != nullptr){
+      LOG_MESSAGE("Team %d: read array", myteam.position());
+      InputStream is(_filename);
+      is >> dio::dataset("array_a") >> array_a;
+      LOG_MESSAGE("Team %d: array read", myteam.position());
+      myteam.barrier();
+      verify_array(array_a, secret);
+    }
+  }
+
+  team_all.barrier();
+}
 #endif // DASH_ENABLE_HDF5
-
-

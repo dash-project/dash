@@ -305,13 +305,21 @@ MatrixRef<T, NumDim, CUR, PatternT>
                  "dim:",    SubDimension,
                  "offset:", offset);
   dim_t target_dim = SubDimension + _refview._dim;
+  DASH_LOG_TRACE("MatrixRef<N>.sub(n)", "n:", offset,
+                 "target_dim:", target_dim, "refview.dim:", _refview._dim);
 
   MatrixRef<T, NumDim, NumDim-1, PatternT> ref;
 
   ref._refview._coord[target_dim] = 0;
 
   ref._refview._viewspec = _refview._viewspec;
-  ref._refview._viewspec.resize_dim(target_dim, offset, 1);
+  // Offset specified by user is relative to existing offset of the view
+  // so slice offset must be applied on the view's current offset in the
+  // sub-dimension:
+  ref._refview._viewspec.resize_dim(
+                           target_dim,
+                           _refview._viewspec.offset(target_dim) + offset, 1);
+  ref._refview._viewspec.set_rank(NumDim-1);
 
   ref._refview._mat = _refview._mat;
   ref._refview._dim = _refview._dim + 1;
@@ -327,7 +335,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::col(
   size_type column_offset)
 {
-  return sub<0>(column_offset);
+  return sub<1>(column_offset);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -336,7 +344,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
 ::row(
   size_type row_offset)
 {
-  return sub<1>(row_offset);
+  return sub<0>(row_offset);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -373,7 +381,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return sub<1>(offset, extent);
+  return sub<0>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -383,7 +391,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   size_type offset,
   size_type extent)
 {
-  return sub<0>(offset, extent);
+  return sub<1>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>

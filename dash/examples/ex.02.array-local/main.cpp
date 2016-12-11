@@ -1,3 +1,9 @@
+/**
+ * \example ex.02.array-local/main.cpp
+ * Example illustrating access to elements in a \c dash::Array by
+ * local index.
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <cstddef>

@@ -99,6 +99,11 @@ public:
   /**
    * Constructor, collectively allocates the given number of elements in
    * local memory of every unit in a team.
+   *
+   * \note Must not lead to implicit barrier:
+   *       Synchronization depends on underlying allocator.
+   *       For example, \c dash::LocalAllocator is used in \c dash::Shared
+   *       and only called at owner unit.
    */
   inline GlobMem(
     /// Number of local elements to allocate in global memory space
@@ -118,8 +123,9 @@ public:
       return;
     }
     _begptr = _allocator.allocate(_nlelem);
-    DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
+    DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
+    // Use id's of team all
     _lbegin = lbegin(dash::myid());
     _lend   = lend(dash::myid());
     DASH_LOG_TRACE("GlobMem(nlocal,team) >");
@@ -128,6 +134,11 @@ public:
   /**
    * Constructor, collectively allocates the given number of elements in
    * local memory of every unit in a team.
+   *
+   * \note Must not lead to implicit barrier:
+   *       Synchronization depends on underlying allocator.
+   *       For example, \c dash::LocalAllocator is used in \c dash::Shared
+   *       and only called at owner unit.
    */
   inline GlobMem(
     /// Local elements to allocate in global memory space
@@ -146,19 +157,32 @@ public:
       DASH_LOG_DEBUG("GlobMem(lvals,team)", "nothing to allocate");
     } else {
       _begptr = _allocator.allocate(_nlelem);
-      DASH_ASSERT_NE(DART_GPTR_NULL, _begptr, "allocation failed");
+      DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
+      // Use id's of team all
       _lbegin = lbegin(dash::myid());
       _lend   = lend(dash::myid());
+      DASH_ASSERT_EQ(std::distance(_lbegin, _lend), local_elements.size(),
+                     "Capacity of local memory range differs from number "
+                     "of specified local elements");
+                     
       // Initialize allocated local elements with specified values:
       auto copy_end = std::copy(local_elements.begin(),
                                 local_elements.end(),
                                 _lbegin);
       DASH_ASSERT_EQ(_lend, copy_end,
-                     "initialization of specified local values failed");
+                     "Initialization of specified local values failed");
     }
-    // Wait for initialization of local values at all units:
-    barrier();
+    if (_nunits > 1) {
+      // Wait for initialization of local values at all units.
+      // Barrier synchronization is okay here as multiple units are
+      // involved in initialization of values in global memory:
+      //
+      // TODO: Should depend on allocator trait
+      //         dash::allocator_traits<Alloc>::is_collective()
+      DASH_LOG_DEBUG("GlobMem(lvals,team)", "barrier");
+      team.barrier();
+    }
 
     DASH_LOG_DEBUG("GlobMem(lvals,team) >",
                    "_lbegin:", _lbegin, "_lend:", _lend);
@@ -226,15 +250,16 @@ public:
   /**
    * Native pointer of the initial address of the local memory of
    * a unit.
+   * \param global_unit_id id of unit in \c dash::Team::All()
    */
   const ElementType * lbegin(
-    dart_unit_t unit_id) const
+    dart_unit_t global_unit_id) const
   {
     void *addr;
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", unit_id);
+    DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", global_unit_id);
     dart_gptr_t gptr = _begptr;
     DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, unit_id),
+      dart_gptr_setunit(&gptr, global_unit_id),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
@@ -246,17 +271,18 @@ public:
   /**
    * Native pointer of the initial address of the local memory of
    * a unit.
+   * \param global_unit_id id of unit in \c dash::Team::All()
    */
   ElementType * lbegin(
-    dart_unit_t unit_id)
+    dart_unit_t global_unit_id)
   {
     void *addr;
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin()", unit_id);
+    DASH_LOG_TRACE_VAR("GlobMem.lbegin()", global_unit_id);
     dart_gptr_t gptr = _begptr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin",
                        GlobPtr<ElementType>((dart_gptr_t)gptr));
     DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, unit_id),
+      dart_gptr_setunit(&gptr, global_unit_id),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
@@ -424,7 +450,7 @@ public:
     IndexType   local_index) const
   {
     DASH_LOG_DEBUG("GlobMem.at(unit,l_idx)", unit, local_index);
-    if (_nunits == 0 || DART_GPTR_NULL == _begptr) {
+    if (_nunits == 0 || DART_GPTR_ISNULL(_begptr)) {
       DASH_LOG_DEBUG("GlobMem.at(unit,l_idx) >",
                      "global memory not allocated");
       return dash::GlobPtr<value_type>(nullptr);
@@ -462,8 +488,8 @@ private:
   allocator_type          _allocator;
   dart_gptr_t             _begptr     = DART_GPTR_NULL;
   dart_team_t             _teamid     = DART_TEAM_NULL;
-  size_type               _nunits     = 0;
   size_type               _nlelem     = 0;
+  size_type               _nunits     = 0;
   ElementType           * _lbegin     = nullptr;
   ElementType           * _lend       = nullptr;
 };
@@ -472,9 +498,8 @@ template<typename T>
 GlobPtr<T> memalloc(size_t nelem)
 {
   dart_gptr_t gptr;
-  size_t lsize = sizeof(T) * nelem;
-
-  dart_memalloc(lsize, &gptr);
+  dart_storage_t ds = dart_storage<T>(nelem);
+  dart_memalloc(ds.nelem, ds.dtype, &gptr);
   return GlobPtr<T>(gptr);
 }
 
