@@ -8,6 +8,7 @@
 #include <fstream>
 #include <string>
 #include <iostream>
+#include <vector>
 
 using namespace std;
 
@@ -26,11 +27,18 @@ void write_pgm(const std::string & filename, const Array_t & data){
 
     file << "P2\n" << ext_x << " " << ext_y << std::endl;
     // Data
-    // TODO: currently very inefficient
-    for(long x=0; x<ext_x; ++x){
-      for(long y=0; y<ext_y; ++y){
-        int el = data[x][y];
-        file << el << " ";
+//    std::vector<element_t> buffer(ext_x);
+
+    for(long y=0; y<ext_y; ++y){
+//      auto first = data.begin()+ext_x*y; 
+//      auto last  = data.begin()+(ext_x*(y+1));
+
+      // BUG!!!!
+//      dash::copy(first, last, buffer.data());
+
+      for(long x=0; x<ext_x; ++x){
+//        file << buffer[x] << " ";
+        file << static_cast<int>(data[x][y]) << " ";
       }
       file << std::endl;
     }
@@ -151,8 +159,8 @@ void smooth(Array_t & data_old, Array_t & data_new){
         ( 0.40 * olptr[y*lext_x] +
         0.15 * data_old.at(local_beg_gidx[0]-1, local_beg_gidx[1] + y) +
         0.15 * data_old.at(local_beg_gidx[0]+1, local_beg_gidx[1] + y) +
-        0.15 * data_old.at(local_beg_gidx[0], local_beg_gidx[1] + y-1) +
-        0.15 * data_old.at(local_beg_gidx[0], local_beg_gidx[1] + y+1));
+        0.15 * data_old.at(local_beg_gidx[0],   local_beg_gidx[1] + y-1) +
+        0.15 * data_old.at(local_beg_gidx[0],   local_beg_gidx[1] + y+1));
     }
   }
   if(!is_right){
@@ -161,8 +169,8 @@ void smooth(Array_t & data_old, Array_t & data_new){
         ( 0.40 * olptr[(y+1)*lext_x-1] +
         0.15 * data_old.at(local_end_gidx[0]-1, local_beg_gidx[0] + y) +
         0.15 * data_old.at(local_end_gidx[0]+1, local_beg_gidx[0] + y) +
-        0.15 * data_old.at(local_end_gidx[0], local_beg_gidx[0] + y-1) +
-        0.15 * data_old.at(local_end_gidx[0], local_beg_gidx[0] + y+1));
+        0.15 * data_old.at(local_end_gidx[0],   local_beg_gidx[0] + y-1) +
+        0.15 * data_old.at(local_end_gidx[0],   local_beg_gidx[0] + y+1));
     }
   }
 }
