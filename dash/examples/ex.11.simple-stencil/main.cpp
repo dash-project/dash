@@ -19,7 +19,6 @@
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
 #include <dash/algorithm/Fill.h>
-#include <dash/algorithm/Copy.h>
 
 #include <fstream>
 #include <string>
@@ -41,7 +40,8 @@ void write_pgm(const std::string & filename, const Array_t & data){
     std::ofstream file;
     file.open(filename);
 
-    file << "P2\n" << ext_x << " " << ext_y << std::endl;
+    file << "P2\n" << ext_x << " " << ext_y << "\n"
+         << "255" << std::endl;
     // Data
 //    std::vector<element_t> buffer(ext_x);
 
@@ -54,7 +54,8 @@ void write_pgm(const std::string & filename, const Array_t & data){
 
       for(long x=0; x<ext_x; ++x){
 //        file << buffer[x] << " ";
-        file << static_cast<int>(data[x][y]) << " ";
+        file << setfill(' ') << setw(3)
+             << static_cast<int>(data[x][y]) << " ";
       }
       file << std::endl;
     }
@@ -111,7 +112,6 @@ void draw_circle(Array_t & data, index_t x0, index_t y0, int r){
   }
 }
 
-template<typename Array_t>
 void smooth(Array_t & data_old, Array_t & data_new){
   // Todo: use stencil iterator
   auto pattern = data_old.pattern();
@@ -148,7 +148,6 @@ void smooth(Array_t & data_old, Array_t & data_new){
   bool is_left   =(local_beg_gidx[0] == 0) ? true : false;
   bool is_right  =(local_end_gidx[0] == (gext_x-1)) ? true : false;
 
-  // inner-top
   if(!is_top){
     for( auto x=begin_idx_x; x<end_idx_x; ++x){
       nlptr[lext_y*x] =
@@ -226,12 +225,15 @@ int main(int argc, char* argv[])
   dash::barrier();
 
   for(int i=0; i<niter; ++i){
-    smooth(data_old, data_new);
-    dash::barrier();
-    std::copy(data_new.lbegin(), data_new.lend(), data_old.lbegin());
+    // switch references
+    auto & data_prev = i%2 ? data_new : data_old;
+    auto & data_next = i%2 ? data_old : data_new;
+
+    smooth(data_prev, data_next);
     dash::barrier();
   }
 
+  // Assume niter is even
   write_pgm("testimg_output.pgm", data_new);
   dash::finalize();
 }
