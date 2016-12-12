@@ -34,7 +34,7 @@ double calcEnergy(const matrix_t * m, array_t & a)
 {
   a[dash::myid()] = std::accumulate((*m).local.lbegin(), (*m).local.lend(), 0.0);
   m->barrier();
-  return std::accumulate(a.begin(), a.end(), 0.0);
+  return dash::accumulate(a.begin(), a.end(), 0.0);
 }
 
 int main(int argc, char* argv[]) {
