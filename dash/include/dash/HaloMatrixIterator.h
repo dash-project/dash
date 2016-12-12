@@ -373,9 +373,11 @@ private:
         local_idx -= region.size();
       }
       //TODO return value for idx >= size
+      DASH_ASSERT("idx >= size not implemented yet");
     }
-    else
+    else {
       return _local_layout.coords(_idx, _view_local);
+    }
   }
 
 private:
