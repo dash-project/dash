@@ -108,11 +108,16 @@ public:
           LocalMatrixRef<T, NumDimensions, NumViewDim, PatternT>;
 
 public:
+
+  static constexpr dim_t ndim() {
+    return CUR;
+  }
+
+public:
   /**
    * Default constructor.
    */
   LocalMatrixRef<T, NumDimensions, CUR, PatternT>()
-  : _refview(nullptr)
   {
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", NumDimensions);
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,C>()", CUR);
@@ -180,6 +185,10 @@ public:
   /**
    * The pattern used to distribute matrix elements to units in its
    * associated team.
+   *
+   * NOTE: This method is not implemented as local matrix views do
+   *       not have a pattern. The pattern of the referenced matrix
+   *       refers to the global data domain.
    */
   inline const PatternT    & pattern()             const;
 
@@ -202,7 +211,7 @@ public:
    *           coordinates.
    */
   template<typename ... Args>
-  T & at(
+  inline T & at(
     /// Global coordinates
     Args... args);
 
@@ -216,7 +225,7 @@ public:
    * \see  at
    */
   template<typename... Args>
-  T & operator()(
+  inline T & operator()(
     /// Coordinates of element in global cartesian index space.
     Args... args);
 
@@ -278,7 +287,7 @@ public:
     size_type extent);
 
 private:
-  MatrixRefView_t * _refview;
+  MatrixRefView_t _refview;
 };
 
 /**
@@ -319,7 +328,6 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
    * Default constructor.
    */
   LocalMatrixRef<T, NumDimensions, 0, PatternT>()
-  : _refview(nullptr)
   {
     DASH_LOG_TRACE_VAR("LocalMatrixRef<T,D,0>()", NumDimensions);
   }
@@ -360,7 +368,7 @@ class LocalMatrixRef<T, NumDimensions, 0, PatternT>
   inline T operator/ (const T & value);
 
  private:
-  MatrixRefView<T, NumDimensions, PatternT> * _refview;
+  MatrixRefView<T, NumDimensions, PatternT> _refview;
 };
 
 } // namespace dash

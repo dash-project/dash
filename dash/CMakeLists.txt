@@ -13,6 +13,8 @@ set(BUILD_COVERAGE_TESTS ${BUILD_COVERAGE_TESTS}
     PARENT_SCOPE)
 set(ENABLE_LOGGING ${ENABLE_LOGGING}
     PARENT_SCOPE)
+set(ENABLE_TEST_LOGGING ${ENABLE_TEST_LOGGING}
+    PARENT_SCOPE)
 set(ENABLE_TRACE_LOGGING ${ENABLE_TRACE_LOGGING}
     PARENT_SCOPE)
 set(ENABLE_UNIFIED_MEMORY_MODEL ${ENABLE_UNIFIED_MEMORY_MODEL}
@@ -33,14 +35,23 @@ set(ENABLE_LIKWID ${ENABLE_LIKWID}
     PARENT_SCOPE)
 set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
+set(ENABLE_COMPTIME_RED ${ENABLE_COMPTIME_RED}
+    PARENT_SCOPE)
+
 
 # Source- and header files to be compiled (OBJ):
 file(GLOB_RECURSE DASH_LIBRARY_SOURCES
      "src/*.c" "src/*.h" "src/*.cc" "src/*.cpp" )
 file(GLOB_RECURSE DASH_LIBRARY_HEADERS
      "include/*.h")
+
 file(GLOB_RECURSE DASH_TEST_SOURCES
-     "test/*.c" "test/*.h" "test/*.cc" "src/*.cpp")
+  "test/TestBase.h" "test/TestPrinter.h" "test/main.cc")
+
+foreach(TESTCASE ${TESTCASES_LIST})
+file(GLOB_RECURSE DASH_TEST_SOURCES
+  ${DASH_TEST_SOURCES} "test/${TESTCASE}.h" "test/${TESTCASE}.cc")
+endforeach()
 
 # Directories containing the implementation of the library (-I):
 set(DASH_LIBRARY_INCLUDE_DIRS
@@ -66,6 +77,10 @@ endif()
 if (ENABLE_LOGGING)
   set (ADDITIONAL_COMPILE_FLAGS
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_LOGGING)
+endif()
+if (ENABLE_TEST_LOGGING)
+  set (ADDITIONAL_COMPILE_FLAGS
+       ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_TEST_LOGGING)
 endif()
 if (ENABLE_TRACE_LOGGING)
   set (ADDITIONAL_COMPILE_FLAGS
@@ -158,8 +173,8 @@ else()
          ${BLAS95_LIBRARIES})
     set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
          ${BLAS_LINKER_FLAGS})
-    set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
-         cblas)
+#   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+#        cblas)
   endif()
 
   if (ENABLE_LAPACK AND LAPACK_FOUND)
@@ -179,6 +194,16 @@ if (ENABLE_SCALAPACK AND MKL_SCALAPACK_FOUND)
        ${ADDITIONAL_COMPILE_FLAGS} -DDASH_ENABLE_SCALAPACK)
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${MKL_SCALAPACK_LIBRARIES})
+endif()
+
+# enable algorithms which are supported by current build config
+if (CONF_AVAIL_MKL OR CONF_AVAIL_BLAS OR (CMAKE_BUILD_TYPE MATCHES DEBUG))
+  set(CONF_AVAIL_ALGO_SUMMA "true")
+endif()
+
+if (CMAKE_BUILD_TYPE MATCHES DEBUG)
+  set (ADDITIONAL_COMPILE_FLAGS
+    ${ADDITIONAL_COMPILE_FLAGS} -DDASH_DEBUG)
 endif()
 
 if (DASH_ENV_HOST_SYSTEM_ID)
@@ -258,6 +283,11 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     ${DASH_LIBRARY} PROPERTIES
     CXX_STANDARD 11
   )
+
+  if(ENABLE_COMPTIME_RED)
+    cotire(${DASH_LIBRARY})
+  endif()
+
   set_target_properties(
     ${DASH_LIBRARY} PROPERTIES
     CXX_STANDARD_REQUIRED 11
@@ -269,11 +299,13 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
   DeployLibrary(${DASH_LIBRARY})
 
   # cmake packaging
-  include(CMakePackageConfigHelpers)
-
-  target_include_directories("${DASH_LIBRARY}"
-                              PUBLIC $<INSTALL_INTERFACE:include>
-                              PUBLIC ${ADDITIONAL_INCLUDES})
+if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
+	  include(CMakePackageConfigHelpers)
+	
+	  target_include_directories("${DASH_LIBRARY}"
+	                              PUBLIC $<INSTALL_INTERFACE:include>
+	                              PUBLIC ${ADDITIONAL_INCLUDES})
+endif()
 
   string(TOUPPER ${dart_variant} DART_VARIANT)
 
@@ -287,15 +319,17 @@ foreach (dart_variant ${DART_IMPLEMENTATIONS_LIST})
     EXPORT "${DASH_LIBRARY}-targets"
     DESTINATION cmake)
 
-  configure_package_config_file(
+	if(${CMAKE_VERSION} VERSION_GREATER 3.0.0 )
+  	configure_package_config_file(
       "dash-config.cmake.in"
       "${DASH_LIBRARY}-config.cmake"
       INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake"
       PATH_VARS CMAKE_INSTALL_PREFIX)
 
-  # install custom config
-  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
+  	# install custom config
+  	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_LIBRARY}-config.cmake"
           DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake")
+	endif()
 
   # Examples
   if (BUILD_EXAMPLES)
@@ -413,6 +447,11 @@ include(${CMAKE_SOURCE_DIR}/CMakeExt/GoogleTest.cmake)
       ${DASH_TEST} PROPERTIES
       CXX_STANDARD 11
     )
+
+    if(ENABLE_COMPTIME_RED)
+      cotire(${DASH_TEST})
+    endif()
+
     set_target_properties(
       ${DASH_TEST} PROPERTIES
       CXX_STANDARD_REQUIRED 11

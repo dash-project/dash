@@ -221,7 +221,7 @@ pattern_layout_properties<
 //////////////////////////////////////////////////////////////////////////////
 
 /**
- * \defgroup  DashPatternMappingProperties  Pattern Layout Properties
+ * \defgroup  DashPatternMappingProperties  Pattern Mapping Properties
  *
  * Pattern mapping property category for specification and deduction of
  * pattern types.

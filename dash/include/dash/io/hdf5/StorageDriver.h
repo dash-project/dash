@@ -1,5 +1,5 @@
-#ifndef DASH__IO__STORE_HDF5_H__
-#define DASH__IO__STORE_HDF5_H__
+#ifndef DASH__IO__HDF5__STORAGEDRIVER_H__
+#define DASH__IO__HDF5__STORAGEDRIVER_H__
 
 #include <dash/internal/Config.h>
 
@@ -19,7 +19,11 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
+#include <list>
 #include <array>
+#include <sstream>
+#include <typeinfo>
+#include <type_traits>
 
 #ifdef MPI_IMPL_ID
 #include <mpi.h>
@@ -27,9 +31,14 @@
 #pragma error "HDF5 module requires dart-mpi"
 #endif
 
+#include <dash/dart/if/dart_io.h>
+
 namespace dash {
 namespace io {
 namespace hdf5 {
+
+/** forward declaration */
+template < typename T > hid_t get_h5_datatype();
 
 /**
  * DASH wrapper to store an dash::Array or dash::Matrix
@@ -77,6 +86,22 @@ private:
     // TODO: check if mapping is regular by checking pattern property
   }
 
+  static std::vector<std::string> _split_string(
+                                    const std::string & str,
+                                    const char delim)
+  {
+    std::vector<std::string> elems;
+    std::stringstream ss;
+    ss.str(str);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+      if(item != ""){
+        elems.push_back(item);
+      }
+    }
+    return elems;
+  }
+
 public:
   /**
    * Store all dash::Array values in an HDF5 file using parallel IO.
@@ -84,7 +109,7 @@ public:
    *
    * \param  array     Array to store
    * \param  filename  Filename of HDF5 file including extension
-   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
   template <
@@ -98,14 +123,26 @@ public:
             static write(
               dash::Array<value_t, index_t, pattern_t> & array,
               std::string filename,
-              std::string dataset,
+              std::string datapath,
               hdf5_options foptions = _get_fdefaults())
   {
+    static_assert(std::is_same<index_t,
+                               typename pattern_t::index_type>::value,
+                  "Specified index_t differs from pattern_t::index_type");
+
     auto pattern    = array.pattern();
+    auto & team     = array.team();
     auto pat_dims   = pattern.ndim();
     long tilesize   = pattern.blocksize(0);
     // Map native types to HDF5 types
-    auto h5datatype = _convertType(array[0]);
+    auto h5datatype = get_h5_datatype<value_t>();
+    // for tracking opened groups
+    std::list<hid_t> open_groups;
+    // Split path in groups and dataset
+    auto path_vec   = _split_string(datapath, '/');
+    auto dataset    = path_vec.back();
+    // remove dataset from path
+    path_vec.pop_back();
 
     /* HDF5 definition */
     hid_t   file_id;
@@ -115,6 +152,7 @@ public:
     hid_t   filespace;
     hid_t   memspace;
     hid_t   attr_id;
+    hid_t   loc_id;
     herr_t  status;
 
     // get hdf pattern layout
@@ -122,10 +160,10 @@ public:
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
 
     dash::Shared<int> f_exists;
-    if (dash::myid() == 0) {
+    if (team.myid() == 0) {
       if (access( filename.c_str(), F_OK ) != -1) {
         // check if file exists
         f_exists.set(static_cast<int> (H5Fis_hdf5( filename.c_str())));
@@ -133,7 +171,7 @@ public:
         f_exists.set(-1);
       }
     }
-    array.barrier();
+    team.barrier();
 
     if (foptions.overwrite_file || (f_exists.get() <= 0)) {
       // HD5 create file
@@ -145,6 +183,24 @@ public:
     // close property list
     H5Pclose(plist_id);
 
+    // Traverse path
+    loc_id = file_id;
+    for(std::string elem : path_vec){
+          if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
+            // open group
+            DASH_LOG_DEBUG("Open Group", elem);
+            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT);
+          } else {
+            // create group
+            DASH_LOG_DEBUG("Create Group", elem);
+            loc_id = H5Gcreate2(loc_id, elem.c_str(),
+                                H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+          }
+          if(loc_id != file_id){
+            open_groups.push_front(loc_id);
+          }
+    }
+
     // Create dataspace
     filespace     = H5Screate_simple(1, ts.data_dimsf, NULL);
     memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
@@ -152,10 +208,10 @@ public:
 
     if(foptions.modify_dataset){
       // Open dataset in RW mode
-      h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+      h5dset = H5Dopen(loc_id, dataset.c_str(), H5P_DEFAULT);
     } else {
       // Create dataset
-      h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
+      h5dset = H5Dcreate(loc_id, dataset.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     }
     // Close global dataspace
@@ -222,6 +278,9 @@ public:
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
+    for(auto group_id : open_groups){
+      H5Gclose(group_id);
+    }
     H5Fclose(file_id);
   }
 
@@ -232,7 +291,7 @@ public:
    *
    * \param  array     Array to store
    * \param  filename  Filename of HDF5 file including extension
-   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
   template <
@@ -241,22 +300,37 @@ public:
     typename index_t,
     typename pattern_t >
   typename std::enable_if <
-    _compatible_pattern<pattern_t>(), void >::type
-        static write(
-          dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
-          std::string filename,
-          std::string dataset,
-          hdf5_options foptions = _get_fdefaults())
+    _compatible_pattern<pattern_t>(),
+    void
+  >::type
+  static write(
+    dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
+    std::string                                       filename,
+    std::string                                       datapath,
+    hdf5_options                                      foptions
+                                                        = _get_fdefaults())
   {
-    static_assert(
-      array.ndim() == pattern_t::ndim(),
-      "Pattern dimension has to match matrix dimension");
+    static_assert(array.ndim() == pattern_t::ndim(),
+                  "Pattern dimension has to match matrix dimension");
 
-    auto pattern    = array.pattern();
+    static_assert(std::is_same<index_t,
+                               typename pattern_t::index_type>::value,
+                  "Specified index_t differs from pattern_t::index_type");
+
+    typedef typename pattern_t::size_type extent_t;
+
+    auto pattern     = array.pattern();
+    auto & team      = array.team();
     auto pat_dims    = pattern.ndim();
     // Map native types to HDF5 types
-    auto h5datatype = _convertType(*array.lbegin());
-
+    auto h5datatype  = get_h5_datatype<value_t>();
+    // for tracking opened groups
+    std::list<hid_t> open_groups;
+    // Split path in groups and dataset
+    auto path_vec    = _split_string(datapath, '/');
+    auto dataset     = path_vec.back();
+    // remove dataset from path
+    path_vec.pop_back();
 
     /* HDF5 definition */
     hid_t   file_id;
@@ -266,6 +340,7 @@ public:
     hid_t   filespace;
     hid_t   memspace;
     hid_t   attr_id;
+    hid_t   loc_id;
     herr_t  status;
 
     hdf5_pattern_spec<ndim> ts;
@@ -275,10 +350,10 @@ public:
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
 
     dash::Shared<int> f_exists;
-    if (dash::myid() == 0) {
+    if (team.myid() == 0) {
       if (access( filename.c_str(), F_OK ) != -1) {
         // check if file exists
         f_exists.set(static_cast<int> (H5Fis_hdf5( filename.c_str())));
@@ -286,7 +361,7 @@ public:
         f_exists.set(-1);
       }
     }
-    array.barrier();
+    team.barrier();
 
     if (foptions.overwrite_file || (f_exists.get() <= 0)) {
       // HD5 create file
@@ -302,6 +377,23 @@ public:
     // close property list
     H5Pclose(plist_id);
 
+    // Traverse path
+    loc_id = file_id;
+    for(std::string elem : path_vec){
+          if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
+            // open group
+            DASH_LOG_DEBUG("Open Group", elem);
+            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT);
+          } else {
+            // create group
+            DASH_LOG_DEBUG("Create Group", elem);
+            loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+          }
+          if(loc_id != file_id){
+            open_groups.push_front(loc_id);
+          }
+    }
+
     // Create dataspace
     filespace     = H5Screate_simple(ndim, ts.data_dimsf, NULL);
     memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
@@ -309,10 +401,10 @@ public:
 
     if(foptions.modify_dataset){
       // Open dataset in RW mode
-      h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+      h5dset = H5Dopen(loc_id, dataset.c_str(), H5P_DEFAULT);
     } else {
       // Create dataset
-      h5dset = H5Dcreate(file_id, dataset.c_str(), internal_type, filespace,
+      h5dset = H5Dcreate(loc_id, dataset.c_str(), internal_type, filespace,
                         H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     }
 
@@ -356,7 +448,7 @@ public:
     if (foptions.store_pattern) {
       DASH_LOG_DEBUG("store pattern in hdf5 file");
       auto pat_key = foptions.pattern_metadata_key.c_str();
-      long pattern_spec[ndim * 4];
+      extent_t pattern_spec[ndim * 4];
 
       // Delete old attribute when overwriting dataset
       if(foptions.modify_dataset){
@@ -386,6 +478,9 @@ public:
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
+    for(auto group_id : open_groups){
+      H5Gclose(group_id);
+    }
     H5Fclose(file_id);
   }
 
@@ -399,7 +494,7 @@ public:
    *
    * \param array     Import data in this dash::Array
    * \param filename  Filename of HDF5 file including extension
-   * \param dataset   HDF5 Dataset in which the data is stored
+   * \param datapath   HDF5 Dataset in which the data is stored
    * \param foptions
    */
   template <
@@ -407,17 +502,24 @@ public:
     typename index_t,
     class    pattern_t >
   typename std::enable_if <
-  _compatible_pattern<pattern_t>() &&
-  pattern_t::ndim() == 1,
-            void >::type
-            static read(
-              dash::Array<value_t, index_t, pattern_t> & array,
-              std::string filename,
-              std::string dataset,
-              hdf5_options foptions = _get_fdefaults())
+    _compatible_pattern<pattern_t>() && pattern_t::ndim() == 1,
+    void
+  >::type
+  static read(
+    dash::Array<value_t, index_t, pattern_t> & array,
+    std::string                                filename,
+    std::string                                datapath,
+    hdf5_options                               foptions = _get_fdefaults())
   {
-    long     tilesize;
-    int       rank;
+    typedef typename pattern_t::size_type extent_t;
+
+    static_assert(std::is_same<index_t,
+                               typename pattern_t::index_type>::value,
+                  "Specified index_t differs from pattern_t::index_type");
+
+    extent_t tilesize;
+    int      rank;
+
     // HDF5 definition
     hid_t    file_id;
     hid_t    h5dset;
@@ -431,9 +533,16 @@ public:
     // Map native types to HDF5 types
     hid_t    h5datatype;
 
+    // Check if matrix is already allocated
+    bool is_alloc  = (array.size() != 0);
+
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    if(is_alloc){
+      dart__io__hdf5__prep_mpio(plist_id, array.team().dart_id());
+    } else {
+      dart__io__hdf5__prep_mpio(plist_id, dash::Team::All().dart_id());
+    }
 
     // HD5 create file
     file_id = H5Fopen(filename.c_str(), H5P_DEFAULT, plist_id );
@@ -442,7 +551,7 @@ public:
     H5Pclose(plist_id);
 
     // Create dataset
-    h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+    h5dset = H5Dopen(file_id, datapath.c_str(), H5P_DEFAULT);
 
     // Get dimensions of data
     filespace     = H5Dget_space(h5dset);
@@ -455,8 +564,6 @@ public:
     // Initialize DASH Array
     // no explicit pattern specified / try to load pattern from hdf5 file
     auto pat_key = foptions.pattern_metadata_key.c_str();
-    // Check if matrix is already allocated
-    bool is_alloc  = (array.size() != 0);
 
     if (!is_alloc                          // not allocated
         && foptions.restore_pattern        // pattern should be restored
@@ -468,9 +575,9 @@ public:
       H5Sclose(attrspace);
 
       const pattern_t pattern(
-        dash::SizeSpec<1>(static_cast<size_t>(data_dimsf[0])),
+        dash::SizeSpec<1, extent_t>(static_cast<extent_t>(data_dimsf[0])),
         dash::DistributionSpec<1>(dash::TILE(tilesize)),
-        dash::TeamSpec<1>(),
+        dash::TeamSpec<1, index_t>(),
         dash::Team::All());
 
       array.allocate(pattern);
@@ -484,20 +591,20 @@ public:
     } else {
       // Auto deduce pattern
       const pattern_t pattern(
-        dash::SizeSpec<1>(static_cast<size_t>(data_dimsf[0])),
+        dash::SizeSpec<1, extent_t>(static_cast<extent_t>(data_dimsf[0])),
         dash::DistributionSpec<1>(),
-        dash::TeamSpec<1>(),
+        dash::TeamSpec<1, index_t>(),
         dash::Team::All());
       array.allocate(pattern);
     }
     pattern_t pattern    = array.pattern();
-    h5datatype = _convertType(array[0]); // hack
+    h5datatype = get_h5_datatype<value_t>(); // hack
 
     // get hdf pattern layout
     hdf5_pattern_spec<1> ts = _get_pattern_hdf_spec<1>(pattern);
 
     // Create HDF5 memspace
-    memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
+    memspace       = H5Screate_simple(1, ts.data_dimsm, NULL);
     internal_type  = H5Tcopy(h5datatype);
 
     // Select Hyperslabs in file
@@ -554,7 +661,7 @@ public:
    *
    * \param  matrix    Import data in this dash::Matrix
    * \param  filename  Filename of HDF5 file including extension
-   * \param  dataset   HDF5 Dataset in which the data is stored
+   * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
   template <
@@ -566,15 +673,25 @@ public:
   _compatible_pattern<pattern_t>(),
                       void >::type
                       static read(
-                        dash::Matrix <
-                        value_t,
-                        ndim,
-                        index_t,
-                        pattern_t > &matrix,
-                        std::string filename,
-                        std::string dataset,
-                        hdf5_options foptions = _get_fdefaults())
+                        dash::Matrix<
+                          value_t,
+                          ndim,
+                          index_t,
+                          pattern_t> & matrix,
+                        std::string    filename,
+                        std::string    datapath,
+                        hdf5_options   foptions = _get_fdefaults())
   {
+    typedef typename pattern_t::size_type extent_t;
+
+    static_assert(std::is_same<index_t,
+                               typename pattern_t::index_type>::value,
+                  "Specified index_t differs from pattern_t::index_type");
+
+    // Split path in groups and dataset
+    //auto path_vec   = _split_string(datapath, '/');
+    //auto dataset    = path_vec.back();
+
     // HDF5 definition
     hid_t   file_id;
     hid_t   h5dset;
@@ -591,9 +708,16 @@ public:
     int      rank;
     hdf5_pattern_spec<ndim> ts;
 
-    // setup mpi access
+    // Check if matrix is already allocated
+    bool is_alloc  = (matrix.size() != 0);
+
+    // Setup MPI IO
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+    if(is_alloc){
+      dart__io__hdf5__prep_mpio(plist_id, matrix.team().dart_id());
+    } else {
+      dart__io__hdf5__prep_mpio(plist_id, dash::Team::All().dart_id());
+    }
 
     // HD5 create file
     file_id = H5Fopen(filename.c_str(), H5P_DEFAULT, plist_id );
@@ -602,7 +726,7 @@ public:
     H5Pclose(plist_id);
 
     // Create dataset
-    h5dset = H5Dopen(file_id, dataset.c_str(), H5P_DEFAULT);
+    h5dset = H5Dopen(file_id, datapath.c_str(), H5P_DEFAULT);
 
     // Get dimensions of data
     filespace     = H5Dget_space(h5dset);
@@ -614,10 +738,10 @@ public:
 
     status        = H5Sget_simple_extent_dims(filespace, data_dimsf, NULL);
 
-    std::array<size_t, ndim>             size_extents;
-    std::array<size_t, ndim>              team_extents;
+    std::array<extent_t, ndim>           size_extents;
+    std::array<extent_t, ndim>           team_extents;
     std::array<dash::Distribution, ndim> dist_extents;
-    long hdf_dash_pattern[ndim * 4];
+    extent_t hdf_dash_pattern[ndim * 4];
 
     // set matrix size according to hdf5 dataset dimensions
     for (int i = 0; i < ndim; ++i) {
@@ -626,8 +750,6 @@ public:
 
     // Check if file contains DASH metadata and recreate the pattern
     auto pat_key   = foptions.pattern_metadata_key.c_str();
-    // Check if matrix is already allocated
-    bool is_alloc  = (matrix.size() != 0);
 
     if (!is_alloc                        // not allocated
         && foptions.restore_pattern      // pattern should be restored
@@ -641,8 +763,8 @@ public:
       H5Sclose(attrspace);
 
       for (int i = 0; i < ndim; ++i) {
-        size_extents[i]  = static_cast<size_t> (hdf_dash_pattern[i]);
-        team_extents[i]  = static_cast<size_t> (hdf_dash_pattern[i + ndim]);
+        size_extents[i]  = static_cast<extent_t> (hdf_dash_pattern[i]);
+        team_extents[i]  = static_cast<extent_t> (hdf_dash_pattern[i + ndim]);
         dist_extents[i]  = dash::TILE(hdf_dash_pattern[i + (ndim * 3)]);
       }
       DASH_LOG_DEBUG("Created pattern according to metadata");
@@ -677,7 +799,7 @@ public:
       matrix.allocate(pattern);
     }
 
-    h5datatype = _convertType(*matrix.lbegin()); // hack
+    h5datatype = get_h5_datatype<value_t>();
     internal_type = H5Tcopy(h5datatype);
 
     // setup extends per dimension
@@ -759,10 +881,10 @@ private:
   static inline hdf5_options _get_fdefaults()
   {
     hdf5_options fopt;
-    fopt.overwrite_file = true;
-    fopt.modify_dataset = false;
-    fopt.store_pattern = true;
-    fopt.restore_pattern = true;
+    fopt.overwrite_file       = true;
+    fopt.modify_dataset       = false;
+    fopt.store_pattern        = true;
+    fopt.restore_pattern      = true;
     fopt.pattern_metadata_key = "DASH_PATTERN";
 
     return fopt;
@@ -816,10 +938,10 @@ private:
     hdf5_pattern_spec<ndim> ts;
 
     for (int i = 0; i < ndim ; i++) {
-      long tilesize    = pattern.blocksize(i);
-      long localsize   = pattern.local_extent(i);
-      long localblocks = localsize / tilesize;
-      long lfullsize   = localblocks * tilesize;
+      auto tilesize    = pattern.blocksize(i);
+      auto localsize   = pattern.local_extent(i);
+      auto localblocks = localsize / tilesize;
+      auto lfullsize   = localblocks * tilesize;
 
       ts.data_dimsf[i] = pattern.extent(i);
       ts.data_dimsm[i] = localsize - lfullsize;
@@ -837,33 +959,14 @@ private:
     return ts;
   }
 
-private:
-
-  static inline hid_t _convertType(int t)
-  {
-    return H5T_NATIVE_INT;
-  }
-  static inline hid_t _convertType(long t)
-  {
-    return H5T_NATIVE_LONG;
-  }
-  static inline hid_t _convertType(float t)
-  {
-    return H5T_NATIVE_FLOAT;
-  }
-  static inline hid_t _convertType(double t)
-  {
-    return H5T_NATIVE_DOUBLE;
-  }
-
 };
 
 } // namespace hdf5
 } // namespace io
 } // namespace dash
 
-#include <dash/io/hdf5/HDF5IOManip.h>
+#include <dash/io/hdf5/internal/StorageDriver-inl.h>
 
 #endif // DASH_ENABLE_HDF5
 
-#endif
+#endif // DASH__IO__HDF5__STORAGEDRIVER_H__

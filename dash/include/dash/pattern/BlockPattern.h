@@ -251,15 +251,15 @@ public:
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t &         sizespec,
+    const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
     const DistributionSpec_t & dist     = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t &         teamspec = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t         & teamspec = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
-    dash::Team &               team     = dash::Team::All())
+    dash::Team               & team     = dash::Team::All())
   : _distspec(dist),
     _team(&team),
     _teamspec(
@@ -328,13 +328,13 @@ public:
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t &         sizespec,
+    const SizeSpec_t         & sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
     const DistributionSpec_t & dist = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
-    Team &                     team = dash::Team::All())
+    Team                     & team = dash::Team::All())
   : _distspec(dist),
     _team(&team),
     _teamspec(_distspec, *_team),
@@ -985,7 +985,7 @@ public:
   {
     auto coords = global_coords;
     for (auto d = 0; d < NumDimensions; ++d) {
-      coords[d] += viewspec[d].offset;
+      coords[d] += viewspec.offset(d);
     }
     DASH_LOG_TRACE_VAR("BlockPattern.at()", coords);
     DASH_LOG_TRACE_VAR("BlockPattern.at()", viewspec);

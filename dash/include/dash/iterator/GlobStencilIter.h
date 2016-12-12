@@ -1043,6 +1043,11 @@ public:
     return *_pattern;
   }
 
+  inline dash::Team & team() const
+  {
+    return _pattern->team();
+  }
+
 private:
   /**
    * Compare position of this global iterator to the position of another

@@ -6,9 +6,13 @@
 #ifndef DART__BASE__LOGGING_H__
 #define DART__BASE__LOGGING_H__
 
+#include <dash/dart/base/config.h>
+#if defined(DART__PLATFORM__LINUX) && !defined(_GNU_SOURCE)
+#  define _GNU_SOURCE
+#endif
+#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <string.h>
 #include <stdio.h>
 
 #include <dash/dart/if/dart_types.h>
@@ -31,10 +35,10 @@
 /* Maximum length of a single log message in number of characters */
 #define DASH__DART_LOGGING__MAX_MESSAGE_LENGTH 256;
 
-#ifdef DART_LOG_OUTPUT_STDERR
-#define DART_LOG_OUTPUT_TARGET stderr
-#else
+#ifdef DART_LOG_OUTPUT_STDOUT
 #define DART_LOG_OUTPUT_TARGET stdout
+#else
+#define DART_LOG_OUTPUT_TARGET stderr
 #endif
 
 /* GNU variant of basename.3 */
@@ -150,11 +154,27 @@ inline char * dart_base_logging_basename(char *path) {
       msg_buf); \
   } while (0)
 
+#define DART_LOG_TRACE_ARRAY(context, fmt, array, nelem) \
+  do { \
+    int  nchars = (nelem) * 10 + (nelem) * 2; \
+    char array_buf[nchars]; \
+    array_buf[0] = '\0'; \
+    for (int i = 0; i < nelem; i++) { \
+      char value_buf[32]; \
+      value_buf[0] = '\0'; \
+      snprintf(value_buf, 32, fmt " ", (array)[i]); \
+      strncat(array_buf, value_buf, 32); \
+    } \
+    DART_LOG_TRACE(context ": %s = { %s}", #array, array_buf); \
+  } while (0)
+
 #else /* DART_ENABLE_LOGGING */
 
 #define DART_LOG_TRACE(...) do { } while(0)
 #define DART_LOG_DEBUG(...) do { } while(0)
 #define DART_LOG_INFO(...)  do { } while(0)
+
+#define DART_LOG_TRACE_ARRAY(...) do { } while(0)
 
 #endif /* DART_ENABLE_LOGGING */
 

@@ -1,3 +1,9 @@
+/**
+ * \example ex.02.array-ctors/main.cpp
+ * Example illustrating several variants of the construction of
+ * a \c dash::Array.
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <libdash.h>

@@ -37,6 +37,8 @@ set(ENABLE_LIKWID ${ENABLE_LIKWID}
     PARENT_SCOPE)
 set(ENABLE_PAPI ${ENABLE_PAPI}
     PARENT_SCOPE)
+set(ENABLE_HDF5 ${ENABLE_HDF5}
+    PARENT_SCOPE)
 
 message(STATUS "MPI include path:         " ${MPI_INCLUDE_PATH})
 message(STATUS "MPI libraries:")
@@ -122,6 +124,18 @@ if (NUMA_FOUND AND ENABLE_LIBNUMA)
   set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
        ${NUMA_LIBRARIES})
 endif()
+if (HDF5_FOUND AND ENABLE_HDF5)
+  set (ADDITIONAL_COMPILE_FLAGS
+    ${ADDITIONAL_COMPILE_FLAGS} -DDART_ENABLE_HDF5)
+  set (ADDITIONAL_INCLUDES ${ADDITIONAL_INCLUDES}
+       ${HDF5_INCLUDE_DIRS})
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${HDF5_LIBRARIES})
+endif()
+if (NASTYMPI_FOUND AND ENABLE_NASTYMPI)
+  set (ADDITIONAL_LIBRARIES ${ADDITIONAL_LIBRARIES}
+       ${NASTYMPI_LIBRARIES})
+endif()
 
 if (NOT ENABLE_SHARED_WINDOWS)
   set (ADDITIONAL_COMPILE_FLAGS
@@ -199,27 +213,29 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/dash
 # install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/dash
 #         DESTINATION include FILES_MATCHING PATTERN "*.h")
 
-include(CMakePackageConfigHelpers)
-target_include_directories("${DASH_DART_IMPL_MPI_LIBRARY}" INTERFACE
+if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
+	include(CMakePackageConfigHelpers)
+	target_include_directories("${DASH_DART_IMPL_MPI_LIBRARY}" INTERFACE
                              $<INSTALL_INTERFACE:include>)
 
-configure_package_config_file(
+	configure_package_config_file(
       "dart-config.cmake.in"
       "${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
       INSTALL_DESTINATION "${CMAKE_INSTALL_PREFIX}/cmake"
       PATH_VARS CMAKE_INSTALL_PREFIX)
+endif()
 
 # Library
 install(TARGETS ${DASH_DART_IMPL_MPI_LIBRARY}
         DESTINATION lib
         EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-targets")
 
-# exports
-install(EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-targets"
+if(${CMAKE_VERSION} VERSION_GREATER 3.0.0)
+	# exports
+	install(EXPORT "${DASH_DART_IMPL_MPI_LIBRARY}-targets"
+	        DESTINATION cmake)
+
+  # install custom config
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
         DESTINATION cmake)
-
-# install custom config
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${DASH_DART_IMPL_MPI_LIBRARY}-config.cmake"
-        DESTINATION cmake)
-
-
+endif()

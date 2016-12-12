@@ -23,6 +23,11 @@ int multithread_task(int n_threads);
 
 int main(int argc, char * argv[])
 {
+  float fsleep = 1;
+  if (argc > 1 && std::string(argv[1]) == "-nw") {
+    fsleep = 0;
+  }
+
   // Note: barriers and sleeps are only required to prevent output of
   //       different units to interleave.
 
@@ -36,7 +41,7 @@ int main(int argc, char * argv[])
   bench_params.print_pinning();
 
   dart_barrier(DART_TEAM_ALL);
-  sleep(3);
+  sleep(3 * fsleep);
 
   auto myid = dash::myid();
   auto size = dash::size();
@@ -50,7 +55,7 @@ int main(int argc, char * argv[])
   std::string separator(80, '=');
 
   dart_barrier(DART_TEAM_ALL);
-  sleep(1);
+  sleep(1 * fsleep);
 
   // To prevent interleaving output:
   std::ostringstream i_os;
@@ -61,7 +66,7 @@ int main(int argc, char * argv[])
   cout << i_os.str();
 
   dart_barrier(DART_TEAM_ALL);
-  sleep(2);
+  sleep(2 * fsleep);
 
   if (myid == 0) {
     cout << separator << endl;
@@ -69,12 +74,13 @@ int main(int argc, char * argv[])
     dart_domain_team_locality(
       DART_TEAM_ALL, ".", &global_domain_locality);
 
-    cout << *global_domain_locality
+    cout << ((dash::util::LocalityJSONPrinter()
+              << *global_domain_locality)).str()
          << endl
          << separator
          << endl;
   } else {
-    sleep(2);
+    sleep(2 * fsleep);
   }
   dart_barrier(DART_TEAM_ALL);
 
@@ -123,7 +129,7 @@ int main(int argc, char * argv[])
       u++;
     }
   } else {
-    sleep(2);
+    sleep(2 * fsleep);
   }
   dart_barrier(DART_TEAM_ALL);
 
@@ -143,9 +149,11 @@ int main(int argc, char * argv[])
 
 unit_threading_t get_local_threading()
 {
+  dash::util::UnitLocality uloc;
+
   unit_threading_t ut;
-  ut.num_threads  = dash::util::Locality::NumCores();
-  ut.max_threads  = dash::util::Locality::MaxThreads();
+  ut.num_threads  = uloc.num_cores();
+  ut.max_threads  = uloc.max_threads();
   ut.hyperthreads = false;
 #ifdef DASH_ENABLE_OPENMP
   ut.openmp       = true;
@@ -158,11 +166,11 @@ unit_threading_t get_local_threading()
     ut.num_threads  = 1;
   } else if (dash::util::Config::get<bool>("DASH_MAX_SMT")) {
     // Configured to use SMT (hyperthreads):
-    ut.num_threads *= dash::util::Locality::MaxThreads();
+    ut.num_threads *= uloc.max_threads();
     ut.hyperthreads = true;
   } else {
     // Start one thread on every physical core assigned to this unit:
-    ut.num_threads *= dash::util::Locality::MinThreads();
+    ut.num_threads *= uloc.min_threads();
   }
   if (dash::util::Config::is_set("DASH_MAX_UNIT_THREADS")) {
     ut.max_threads  = dash::util::Config::get<int>(

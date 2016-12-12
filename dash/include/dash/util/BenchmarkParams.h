@@ -41,9 +41,6 @@ public:
     bool           env_plasma;
   } config_params_type;
 
-  typedef dash::util::Locality::UnitPinning
-    unit_pinning_type;
-
 public:
   BenchmarkParams(const std::string & benchmark_name);
 

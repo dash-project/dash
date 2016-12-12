@@ -23,6 +23,9 @@ Features:
 - Additional example applications, including histogram sort and radix sort
   implementations.
 - Runtime configuration utility (`dash::util::Config`).
+- Better textual output of unit tests
+- Added support for HDF5 groups
+- Support patterns with underfilled blocks in dash::io::hdf5
 
 Bugfixes:
 
@@ -34,6 +37,8 @@ Bugfixes:
 - Intel MIC architecture build targets (tested on SuperMIC, Knights Corner).
 - Support for likwid.
 - Support for HDF5.
+- Generate cmake package for DASH and DART
+- Added code coverage tests
 
 - New compiler flags:
 
@@ -48,12 +53,20 @@ Bugfixes:
 
 - Fixed compiler errors for Intel MIC compiler (`icc -mmic`, `mpiicc -mic`).
 - Fixed compiler errors for Intel Compiler 16.0.
+- Disable hdf5 support if only serial version of hdf5 lib is loaded
 
 ## DART Interface
 
 Features:
 
 - Added function `dart_allreduce`.
+
+- Added function `dart_reduce`
+
+- Made global memory allocation and communication operations aware of the underlying 
+  data type to improve stability and performance. 
+
+- Extended use of `const` specifier in DART communication interface 
 
 - Added interface component `dart_locality` implementing topology discovery
   and hierarchical locality description
@@ -87,6 +100,9 @@ Features:
         - `dart__base__locality__finalize`
         - `dart__base__locality__domain`
         - `dart__base__locality__unit`
+
+Fixes:
+- Added clarification that DART currently does not provide thread-safe access. 
 
 # DASH 0.2.0 (2016-03-03)
 

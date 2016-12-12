@@ -1,12 +1,15 @@
 #ifndef DASH__UTIL__INTERNAL__TIMESTAMP_PAPI_H_
 #define DASH__UTIL__INTERNAL__TIMESTAMP_PAPI_H_
 
+#include <string.h> /* must be included before papi.h to
+                       prevent ffsll compiler error when
+                       compiling with -pedantic */
+#include <papi.h>
+
 #include <dash/internal/Config.h>
 
 #include <dash/util/TimeMeasure.h>
 #include <dash/util/Timestamp.h>
-
-#include <papi.h>
 
 #include <stdint.h>
 #include <iostream>

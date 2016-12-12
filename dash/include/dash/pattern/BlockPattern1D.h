@@ -224,14 +224,14 @@ public:
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t &         sizespec,
+    const SizeSpec_t         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC or NONE).
     /// Defaults to BLOCKED.
-    const DistributionSpec_t & dist     = DistributionSpec_t(),
+    const DistributionSpec_t dist     = DistributionSpec_t(),
     /// Cartesian arrangement of units within the team
-    const TeamSpec_t &         teamspec = TeamSpec_t::TeamSpec(),
+    const TeamSpec_t         teamspec = TeamSpec_t::TeamSpec(),
     /// Team containing units to which this pattern maps its elements
-    dash::Team &               team     = dash::Team::All())
+    dash::Team &             team     = dash::Team::All())
   : _size(sizespec.size()),
     _memory_layout(std::array<SizeType, 1> {{ _size }}),
     _distspec(dist),
@@ -291,11 +291,11 @@ public:
    */
   Pattern(
     /// Pattern size (extent, number of elements) in every dimension
-    const SizeSpec_t &         sizespec,
+    const SizeSpec_t         sizespec,
     /// Distribution type (BLOCKED, CYCLIC, BLOCKCYCLIC, TILE or NONE) of
     /// all dimensions. Defaults to BLOCKED in first, and NONE in higher
     /// dimensions
-    const DistributionSpec_t & dist = DistributionSpec_t(),
+    const DistributionSpec_t dist = DistributionSpec_t(),
     /// Team containing units to which this pattern maps its elements
     Team &                     team = dash::Team::All())
   : _size(sizespec.size()),
@@ -1113,7 +1113,9 @@ public:
   SizeType underfilled_blocksize(
     dim_t dimension) const {
     // Underflow blocksize = regular blocksize - overflow blocksize:
-    auto ovf_blocksize = _size % _blocksize;
+    auto ovf_blocksize = (_blocksize == 0)
+                         ? 0
+                         : _size % _blocksize;
     if (ovf_blocksize == 0) {
       return 0;
     } else {

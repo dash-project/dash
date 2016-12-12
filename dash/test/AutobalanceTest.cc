@@ -79,17 +79,23 @@ TEST_F(AutobalanceTest, BalanceExtents)
 
 TEST_F(AutobalanceTest, BalanceTeamSpecNUMA)
 {
-  typedef std::array<dash::default_size_t, 2> extents_t;
+  typedef dash::default_size_t     extent_t;
+  typedef std::array<extent_t, 2>  extents_t;
 
   size_t size_base    = 1680;
   int    size_exp_max = 7;
 
-  dash::util::Locality::SetNumNodes(1);
-  dash::util::Locality::SetNumSockets(2);
-  dash::util::Locality::SetNumNUMANodes(4);
-  dash::util::Locality::SetNumCores(28);
+  const extent_t n_numa_per_node  =  2;
+  const extent_t n_cores_per_node = 28;
+
+  if (dash::myid() != 0) {
+    return;
+  }
 
   std::vector<extents_t> exp_team_extents;
+  // For node-level team domain, units should be grouped by
+  // NUMA domains (unit grid of <num_numa> x <num_units / num_numa>
+  // if no square arrangement is possible):
   exp_team_extents.push_back({{ 2,  2 }}); //  4 units
   exp_team_extents.push_back({{ 2,  4 }}); //  8 units
   exp_team_extents.push_back({{ 2,  6 }}); // 12 units
@@ -113,7 +119,9 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNUMA)
                          dash::summa_pattern_partitioning_constraints,
                          dash::summa_pattern_mapping_constraints,
                          dash::summa_pattern_layout_constraints >(
-                           sizespec, num_units);
+                           sizespec,
+                           num_units,
+                           1, n_numa_per_node, n_cores_per_node);
       auto bal_extents = teamspec.extents();
       DASH_LOG_TRACE("AutobalanceTest::BalanceTeamSpec",
                      "balanced", num_units, "units",
@@ -133,11 +141,20 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNUMA)
 
 TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
 {
-  typedef std::array<dash::default_size_t, 2> extents_t;
+  typedef dash::default_size_t     extent_t;
+  typedef std::array<extent_t, 2>  extents_t;
 
-  dash::util::Locality::SetNumSockets(2);
-  dash::util::Locality::SetNumNUMANodes(4);
-  dash::util::Locality::SetNumCores(28);
+  if (dash::myid() != 0) {
+    return;
+  }
+
+  const extent_t n_numa_per_node  =  4;
+  const extent_t n_cores_per_node = 28;
+
+  dash::util::UnitLocality uloc(dash::Team::All(), dash::myid());
+  uloc.hwinfo().num_numa  = n_numa_per_node;
+  uloc.hwinfo().num_cores = n_cores_per_node;
+
 
   std::vector<extents_t> exp_team_extents;
   exp_team_extents.push_back({{ 28,  4 }});
@@ -157,8 +174,7 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
   for (size_t n = 0; n < exp_team_extents.size(); ++n) {
     exp_extents    = exp_team_extents[n];
     int  num_units = exp_extents[0] * exp_extents[1];
-    auto n_nodes   = num_units / dash::util::Locality::NumCores();
-    dash::util::Locality::SetNumNodes(n_nodes);
+    auto n_nodes   = num_units / n_cores_per_node;
 
     auto size_d    = 57344;
     dash::SizeSpec<2> sizespec(size_d, size_d);
@@ -169,7 +185,9 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
                        dash::summa_pattern_partitioning_constraints,
                        dash::summa_pattern_mapping_constraints,
                        dash::summa_pattern_layout_constraints >(
-                         sizespec, num_units);
+                         sizespec,
+                         num_units,
+                         n_nodes, n_numa_per_node, n_cores_per_node);
     auto bal_extents = teamspec.extents();
     DASH_LOG_TRACE("AutobalanceTest::BalanceTeamSpec",
                    "balanced", num_units, "units",

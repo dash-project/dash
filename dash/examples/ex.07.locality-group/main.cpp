@@ -15,11 +15,19 @@ using namespace dash;
 
 int main(int argc, char ** argv)
 {
+  float fsleep = 1;
+  if (argc > 1 && std::string(argv[1]) == "-nw") {
+    fsleep = 0;
+  }
+
   // Note: barriers and sleeps are only required to prevent output of
   //       different units to interleave.
 
   pid_t pid;
   char buf[100];
+
+  dash::init(&argc, &argv);
+
 
   std::vector<std::vector<std::string>> groups_subdomain_tags;
 
@@ -34,12 +42,22 @@ int main(int argc, char ** argv)
     }
   } else {
     std::vector<std::string> group_1_domain_tags;
-    group_1_domain_tags.push_back(".0.0.0.0");
-    group_1_domain_tags.push_back(".0.0.0.1");
+
+    dart_unit_t group_unit_0 = dash::size() / 2;
+    dart_unit_t group_unit_1 = dash::size() / 3;
+
+    group_1_domain_tags.push_back(
+      dash::util::UnitLocality(group_unit_0).domain().parent->domain_tag);
+    group_1_domain_tags.push_back(
+      dash::util::UnitLocality(group_unit_1).domain().parent->domain_tag);
+
     groups_subdomain_tags.push_back(group_1_domain_tags);
   }
 
-  dash::init(&argc, &argv);
+  if (dash::size() < 3) {
+    std::cerr << "require least 3 units" << std::endl;
+    return EXIT_FAILURE;
+  }
 
   dash::util::BenchmarkParams bench_params("ex.07.locality-group");
   bench_params.print_header();
@@ -57,7 +75,7 @@ int main(int argc, char ** argv)
 
   {
     dart_barrier(DART_TEAM_ALL);
-    sleep(1);
+    sleep(1 * fsleep);
     if (myid == 0) {
       if (argc < 3 || std::string(argv[1]) != "-g") {
         cout << "Usage:"
@@ -82,7 +100,7 @@ int main(int argc, char ** argv)
       }
       cout << separator << endl;
     } else {
-      sleep(1);
+      sleep(1 * fsleep);
     }
     dart_barrier(DART_TEAM_ALL);
   }
@@ -96,7 +114,7 @@ int main(int argc, char ** argv)
   cout << i_os.str();
 
   dart_barrier(DART_TEAM_ALL);
-  sleep(1);
+  sleep(1 * fsleep);
 
   if (myid == 0) {
     cout << separator << endl;
@@ -107,12 +125,13 @@ int main(int argc, char ** argv)
     cout << endl
          << "global domain:"
          << endl
-         << *global_domain
+         << ((dash::util::LocalityJSONPrinter()
+              << *global_domain)).str()
          << endl
          << separator << endl;
 
-    dart_domain_locality_t grouped_domain;
-    dart_domain_copy(
+    dart_domain_locality_t * grouped_domain;
+    dart_domain_clone(
       global_domain,
       &grouped_domain);
 
@@ -132,7 +151,7 @@ int main(int argc, char ** argv)
       char group_domain_tag[DART_LOCALITY_DOMAIN_TAG_MAX_SIZE] = "";
 
       dart_domain_group(
-        &grouped_domain,
+        grouped_domain,
         group_size,
         group_subdomain_tags.data(),
         group_domain_tag);
@@ -147,7 +166,8 @@ int main(int argc, char ** argv)
              << endl;
       }
       cout << endl
-           << grouped_domain
+           << ((dash::util::LocalityJSONPrinter()
+                << *grouped_domain)).str()
            << endl
            << separator << endl;
     }
@@ -168,21 +188,22 @@ int main(int argc, char ** argv)
 
       dart_domain_locality_t * group_domain;
       dart_domain_find(
-        &grouped_domain,
+        grouped_domain,
         group_domain_tags[g].c_str(),
         &group_domain);
 
-      cout << *group_domain
+      cout << ((dash::util::LocalityJSONPrinter()
+                << *group_domain)).str()
            << endl;
     }
 
     dart_domain_destruct(
-      &grouped_domain);
+      grouped_domain);
 
     cout << separator << endl;
 
   } else {
-    sleep(2);
+    sleep(2 * fsleep);
   }
 
   // To prevent interleaving output:

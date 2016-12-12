@@ -30,22 +30,18 @@
 namespace dash {
 
 /**
- * Global memory region with dynamic size.
+ * \defgroup  DashGlobalDynamicMemoryConcept  Global Dynamic Memory Concept
+ * Concept of distributed dynamic global memory space shared by units in a
+ * specified team.
  *
- * Conventional global memory (see \c dash::GlobMem) allocates a single
- * contiguous range of fixed size in local memory at every unit.
- * Iterating static memory space is trivial as native pointer arithmetics
- * can be used to traverse elements in canonical storage order.
+ * \ingroup DashGlobalMemoryConcept
+ * \{
+ * \par Description
  *
- * In global dynamic memory, units allocate multiple heap-allocated buckets
- * in local memory.
- * The number of local buckets and their sizes may differ between units.
- * In effect, elements in local memory are distributed in non-contiguous
- * address ranges and a custom iterator is used to access elements in
- * logical storage order.
+ * Extends the Global Memory concept by dynamic address spaces.
  *
- * Any unit can change the capacity of the global memory space by resizing
- * its own local segment of the global memory space.
+ * Units can change the capacity of the global memory space by resizing
+ * their own local segment of the global memory space.
  * Resizing local memory segments (methods \c resize, \c grow and \c shrink)
  * is non-collective, however the resulting changes to local and global
  * memory space are only immediately visible to the unit that executed the
@@ -66,6 +62,58 @@ namespace dash {
  * An iterators referencing a remote element in global dynamic memory is only
  * invalidated in the \c commit operation following the deallocation of the
  * element's memory segment.
+ *
+ * \par Types
+ *
+ * Type Name            | Description                                            |
+ * -------------------- | ------------------------------------------------------ |
+ * \c GlobalRAI         | Random access iterator on global address space         |
+ * \c LocalRAI          | Random access iterator on a single local address space |
+ *
+ *
+ * \par Methods
+ *
+ * Return Type          | Method             | Parameters                  | Description                                                                                                |
+ * -------------------- | ------------------ | --------------------------- | ---------------------------------------------------------------------------------------------------------- |
+ * <tt>void</tt>        | <tt>resize</tt>    | <tt>size lsize_new</tt>     | Resize the local segment of the global memory space to the specified number of values.                     |
+ * <tt>void</tt>        | <tt>grow</tt>      | <tt>size lsize_diff</tt>    | Extend the size of the local segment of the global memory space by the specified number of values.         |
+ * <tt>void</tt>        | <tt>shrink</tt>    | <tt>size lsize_diff</tt>    | Reduce the size of the local segment of the global memory space by the specified number of values.         |
+ * <tt>void</tt>        | <tt>commit</tt>    | nbsp;                       | Publish changes to local memory across all units.                                                          |
+ *
+ *
+ * \par Methods inherited from Global Memory concept
+ *
+ * Return Type          | Method             | Parameters                         | Description                                                                                                |
+ * -------------------- | ------------------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+ * <tt>GlobalRAI</tt>   | <tt>begin</tt>     | &nbsp;                             | Global pointer to the initial address of the global memory space                                           |
+ * <tt>GlobalRAI</tt>   | <tt>end</tt>       | &nbsp;                             | Global pointer past the final element in the global memory space                                           |
+ * <tt>LocalRAI</tt>    | <tt>lbegin</tt>    | &nbsp;                             | Local pointer to the initial address in the local segment of the global memory space                       |
+ * <tt>LocalRAI</tt>    | <tt>lbegin</tt>    | <tt>unit u</tt>                    | Local pointer to the initial address in the local segment at unit \c u of the global memory space          |
+ * <tt>LocalRAI</tt>    | <tt>lend</tt>      | &nbsp;                             | Local pointer past the final element in the local segment of the global memory space                       |
+ * <tt>LocalRAI</tt>    | <tt>lend</tt>      | <tt>unit u</tt>                    | Local pointer past the final element in the local segment at unit \c u of the global memory space          |
+ * <tt>GlobalRAI</tt>   | <tt>at</tt>        | <tt>index gidx</tt>                | Global pointer to the element at canonical global offset \c gidx in the global memory space                |
+ * <tt>void</tt>        | <tt>put_value</tt> | <tt>value & v_in, index gidx</tt>  | Stores value specified in parameter \c v_in to address in global memory at canonical global offset \c gidx |
+ * <tt>void</tt>        | <tt>get_value</tt> | <tt>value * v_out, index gidx</tt> | Loads value from address in global memory at canonical global offset \c gidx into local address \c v_out   |
+ * <tt>void</tt>        | <tt>barrier</tt>   | &nbsp;                             | Blocking synchronization of all units associated with the global memory instance                           |
+ *
+ * \}
+ */
+
+
+/**
+ * Global memory region with dynamic size.
+ *
+ * Conventional global memory (see \c dash::GlobMem) allocates a single
+ * contiguous range of fixed size in local memory at every unit.
+ * Iterating static memory space is trivial as native pointer arithmetics
+ * can be used to traverse elements in canonical storage order.
+ *
+ * In global dynamic memory, units allocate multiple heap-allocated buckets
+ * in local memory.
+ * The number of local buckets and their sizes may differ between units.
+ * In effect, elements in local memory are distributed in non-contiguous
+ * address ranges and a custom iterator is used to access elements in
+ * logical storage order.
  *
  * Usage examples:
  *
@@ -136,6 +184,8 @@ namespace dash {
  *   assert(unit_0_local_size == 1024 + 512);
  *   assert(unit_1_local_size == 1024 - 128);
  * \endcode
+ *
+ * \concept{DashGlobalDynamicMemoryConcept}
  */
 template<
   /// Type of values allocated in the global memory space
@@ -1075,7 +1125,7 @@ private:
       bucket.lptr     = nullptr;
       bucket.attached = true;
       bucket.gptr     = _allocator.attach(bucket.lptr, bucket.size);
-      DASH_ASSERT(bucket.gptr != DART_GPTR_NULL);
+      DASH_ASSERT(!DART_GPTR_ISNULL(bucket.gptr));
       _buckets.push_back(bucket);
       num_attached_buckets++;
       DASH_LOG_TRACE("GlobDynamicMem.commit_attach", "attached null bucket:",
@@ -1213,6 +1263,7 @@ private:
                                  u_num_attach_buckets, 0);
         dart_gptr_t u_attach_buckets_sizes_gptr = attach_buckets_sizes_gptr;
         dart_gptr_setunit(&u_attach_buckets_sizes_gptr, u);
+        dart_storage_t ds = dash::dart_storage<size_type>(u_num_attach_buckets);
         DASH_ASSERT_RETURNS(
           dart_get_blocking(
             // local dest:
@@ -1220,7 +1271,7 @@ private:
             // global source:
             u_attach_buckets_sizes_gptr,
             // request bytes (~= number of sizes) from unit u:
-            u_num_attach_buckets * sizeof(size_type)),
+            ds.nelem, ds.dtype),
           DART_OK);
         // Update local snapshot of cumulative bucket sizes at unit u:
         for (int bi = 0; bi < u_num_attach_buckets; ++bi) {
@@ -1283,7 +1334,7 @@ private:
       DASH_ASSERT_LT(bucket_phase, bucket_it->size,
                      "bucket phase out of bounds");
     }
-    if (DART_GPTR_EQUAL(dart_gptr, DART_GPTR_NULL)) {
+    if (DART_GPTR_ISNULL(dart_gptr)) {
       DASH_LOG_TRACE("GlobDynamicMem.dart_gptr_at",
                      "bucket.gptr is DART_GPTR_NULL");
       dart_gptr = DART_GPTR_NULL;

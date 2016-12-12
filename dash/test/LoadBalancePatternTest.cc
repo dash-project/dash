@@ -138,7 +138,7 @@ TEST_F(LoadBalancePatternTest, IndexMapping)
   size_t  total_size = 0;
   index_t g_index    = 0;
   for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(_dash_size); u++) {
-    auto l_size = pattern.local_size(u);
+    index_t l_size = pattern.local_size(u);
     for (index_t li = 0; li < l_size; li++) {
       EXPECT_EQ_U(li, pattern.at(g_index));
       EXPECT_EQ_U(li, pattern.local_index(

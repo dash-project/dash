@@ -7,12 +7,20 @@
 
 #include <libdash.h>
 
+#include <dash/util/LocalityJSONPrinter.h>
+
+
 using namespace std;
 using namespace dash;
 
 
 int main(int argc, char * argv[])
 {
+  float fsleep = 1;
+  if (argc > 1 && std::string(argv[1]) == "-nw") {
+    fsleep = 0;
+  }
+
   // Note: barriers and sleeps are only required to prevent output of
   //       different units to interleave.
 
@@ -33,6 +41,8 @@ int main(int argc, char * argv[])
         split_scope = DART_LOCALITY_SCOPE_MODULE;
       } else if (std::string(argv[2]) == "numa") {
         split_scope = DART_LOCALITY_SCOPE_NUMA;
+      } else if (std::string(argv[2]) == "core") {
+        split_scope = DART_LOCALITY_SCOPE_CORE;
       }
       if (argc >= 4) {
         split_num_groups = static_cast<int>(strtol(argv[3], NULL, 10));
@@ -42,12 +52,12 @@ int main(int argc, char * argv[])
 
   dash::init(&argc, &argv);
 
-  dash::util::BenchmarkParams bench_params("ex.07.locality");
+  dash::util::BenchmarkParams bench_params("ex.07.locality-split");
   bench_params.print_header();
   bench_params.print_pinning();
 
   dart_barrier(DART_TEAM_ALL);
-  sleep(5);
+  sleep(5 * fsleep);
 
   auto myid = dash::myid();
   auto size = dash::size();
@@ -58,7 +68,7 @@ int main(int argc, char * argv[])
   std::string separator(80, '=');
 
   dart_barrier(DART_TEAM_ALL);
-  sleep(2);
+  sleep(2 * fsleep);
   if (myid == 0) {
     cout << "Usage:" << endl
          << "  ex.07.locality [-s <num_split_groups> | -ls <split_scope>]"
@@ -71,14 +81,15 @@ int main(int argc, char * argv[])
            << "at scope " << split_scope << endl;
     } else {
       cout << "-s " << split_num_groups << ": "
-           << "regular split into " << split_num_groups << " groups" << endl;
+           << "regular split into " << split_num_groups << " groups"
+           << endl;
     }
     cout << separator << endl;
   } else {
-    sleep(2);
+    sleep(2 * fsleep);
   }
   dart_barrier(DART_TEAM_ALL);
-  sleep(1);
+  sleep(1 * fsleep);
 
   // To prevent interleaving output:
   std::ostringstream i_os;
@@ -89,7 +100,7 @@ int main(int argc, char * argv[])
   cout << i_os.str();
 
   dart_barrier(DART_TEAM_ALL);
-  sleep(5);
+  sleep(5 * fsleep);
 
   if (myid == 0) {
     cout << separator << endl;
@@ -97,12 +108,13 @@ int main(int argc, char * argv[])
     dart_domain_team_locality(
       DART_TEAM_ALL, ".", &global_domain_locality);
 
-    cout << *global_domain_locality
+    cout << ((dash::util::LocalityJSONPrinter()
+              << *global_domain_locality)).str()
          << endl
          << separator
          << endl;
   } else {
-    sleep(2);
+    sleep(2 * fsleep);
   }
 
   auto & split_team = locality_split
@@ -118,7 +130,7 @@ int main(int argc, char * argv[])
   cout << t_os.str();
 
   dart_barrier(DART_TEAM_ALL);
-  sleep(2);
+  sleep(2 * fsleep);
 
   for (int g = 0; g < split_num_groups; ++g) {
     if (split_team.dart_id() == 1+g && split_team.myid() == 0) {
@@ -130,15 +142,16 @@ int main(int argc, char * argv[])
       dart_domain_team_locality(
         split_team.dart_id(), ".", &global_domain_locality);
 
-      cout << *global_domain_locality
+      cout << ((dash::util::LocalityJSONPrinter()
+                << *global_domain_locality)).str()
            << endl
            << separator
            << endl;
     } else {
-      sleep(2);
+      sleep(2 * fsleep);
     }
     dart_barrier(DART_TEAM_ALL);
-    sleep(2);
+    sleep(2 * fsleep);
   }
 
   // To prevent interleaving output:

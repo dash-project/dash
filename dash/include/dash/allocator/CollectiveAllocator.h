@@ -11,6 +11,8 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <cassert>
+
 
 namespace dash {
 namespace allocator {
@@ -62,30 +64,23 @@ public:
    * Constructor.
    * Creates a new instance of \c dash::CollectiveAllocator for a given team.
    */
-  CollectiveAllocator(
-    Team & team = dash::Team::Null()) noexcept
-  : _team_id(team.dart_id())
-  {
-    DASH_ASSERT_RETURNS(
-      dart_team_size(_team_id, &_nunits),
-      DART_OK);
-  }
+  explicit CollectiveAllocator(
+    Team & team = dash::Team::All()) noexcept
+  : _team_id(team.dart_id()),
+    _nunits(team.size())
+  { }
 
   /**
    * Move-constructor.
    * Takes ownership of the moved instance's allocation.
    */
   CollectiveAllocator(self_t && other) noexcept
-  : _allocated(other._allocated)
+  : _team_id(other._team_id),
+    _nunits(other._nunits),
+    _allocated(other._allocated)
   {
     other._allocated.clear();
   }
-
-  /**
-   * Default constructor, deleted.
-   */
-  CollectiveAllocator() noexcept
-    = delete;
 
   /**
    * Copy constructor.
@@ -176,6 +171,9 @@ public:
    * Allocates \c num_local_elem local elements at every unit in global
    * memory space.
    *
+   * \return  Global pointer to allocated memory range, or \c DART_GPTR_NULL
+   *          if \c num_local_elem is 0 or less.
+   *
    * \see DashAllocatorConcept
    */
   pointer allocate(size_type num_local_elem)
@@ -184,9 +182,9 @@ public:
                    "number of local values:", num_local_elem);
     pointer gptr = DART_GPTR_NULL;
     if (num_local_elem > 0) {
-      size_type num_local_bytes = sizeof(ElementType) * num_local_elem;
-      if (dart_team_memalloc_aligned(
-            _team_id, num_local_bytes, &gptr) == DART_OK) {
+      dart_storage_t ds = dart_storage<ElementType>(num_local_elem);
+      if (dart_team_memalloc_aligned(_team_id, ds.nelem, ds.dtype, &gptr)
+          == DART_OK) {
         _allocated.push_back(gptr);
       } else {
         gptr = DART_GPTR_NULL;
@@ -212,12 +210,20 @@ public:
                      "DASH not initialized, abort");
       return;
     }
+
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "barrier");
+    DASH_ASSERT_RETURNS(
+      dart_barrier(_team_id),
+      DART_OK);
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "dart_team_memfree");
     DASH_ASSERT_RETURNS(
       dart_team_memfree(_team_id, gptr),
       DART_OK);
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate", "_allocated.erase");
     _allocated.erase(
         std::remove(_allocated.begin(), _allocated.end(), gptr),
         _allocated.end());
+    DASH_LOG_DEBUG("CollectiveAllocator.deallocate >");
   }
 
 private:

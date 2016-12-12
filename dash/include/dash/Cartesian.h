@@ -583,7 +583,6 @@ public:
         index  = index % offset[i];
       }
     }
-
     return pos;
   }
 

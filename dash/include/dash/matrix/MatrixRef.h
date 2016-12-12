@@ -133,8 +133,14 @@ class MatrixRef
     MatrixRef<ElementT, NumDimensions, NumViewDim-1, PatternT> && ();
 
 public:
+
+  static constexpr dim_t ndim() {
+    return NumViewDim;
+  }
+
+public:
+
   MatrixRef<ElementT, NumDimensions, NumViewDim, PatternT>()
-  : _refview(nullptr)
   {
     DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumDimensions);
     DASH_LOG_TRACE_VAR("MatrixRef<T,D,C>()", NumViewDim);
@@ -281,7 +287,7 @@ public:
   inline bool is_local(index_type n) const;
 
   inline const ViewSpec<NumDimensions, index_type> & viewspec() const {
-    return _refview->_viewspec;
+    return _refview._viewspec;
   }
 
   template <int level>
@@ -289,7 +295,7 @@ public:
   inline hview();
 
  private:
-  MatrixRefView<ElementT, NumDimensions, PatternT> * _refview;
+  MatrixRefView<ElementT, NumDimensions, PatternT> _refview;
 };
 
 /**
@@ -331,7 +337,7 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
    * Default constructor.
    */
   MatrixRef<ElementT, NumDimensions, 0, PatternT>()
-  : _refview(nullptr) {
+  {
     DASH_LOG_TRACE_VAR("MatrixRef<T,D,0>()", NumDimensions);
   }
 
@@ -359,7 +365,7 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
   inline bool is_local() const;
 
   inline const ViewSpec<NumDimensions, index_type> & viewspec() const {
-    return _refview->_viewspec;
+    return _refview._viewspec;
   }
 
   operator ElementT() const;
@@ -379,7 +385,7 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
   inline ElementT operator/ (const ElementT & value);
 
  private:
-  MatrixRefView<ElementT, NumDimensions, PatternT> * _refview;
+  MatrixRefView<ElementT, NumDimensions, PatternT> _refview;
 };
 
 } // namespace dash

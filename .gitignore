@@ -4,9 +4,12 @@ build.dev
 build.rel
 build.mkl
 build.mic
+build.min
+build.nasty
 build.cov
 build-ci
 compile_commands.json
+dash/include/dash/util/StaticConfig.h
 *.o
 *.a
 *.so
@@ -19,8 +22,14 @@ compile_commands.json
 ipm/*/GEN.*
 my.*.sh
 .syntastic*
+.clang*
 tags
 *.orig*
 *.bac*
 RELEASE/*
 dash/include/dash/util/StaticConfig.h
+.includes
+.ctagsignore
+.gutctags
+cscope.files
+.ycm_*

@@ -62,6 +62,7 @@ rm -Rf $BUILD_DIR/*
                         -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-dev/ \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_ASSERTIONS=ON \
+                        -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_COMPILER_WARNINGS=ON \
                         \
                         -DENABLE_SHARED_WINDOWS=ON \
@@ -81,11 +82,11 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LAPACK=ON \
                         -DENABLE_SCALAPACK=ON \
                         -DENABLE_PLASMA=ON \
-                        -DENABLE_HDF5=ON \
+                        -DENABLE_HDF5=OFF \
                         \
                         -DBUILD_EXAMPLES=ON \
                         -DBUILD_TESTS=ON \
-                        -DBUILD_DOCS=ON \
+                        -DBUILD_DOCS=OFF \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
@@ -93,6 +94,6 @@ rm -Rf $BUILD_DIR/*
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                         ../ && \
  await_confirm && \
- make) && (cp $BUILD_DIR/compile_commands.json .) && \
+ make -j 4) && (cp $BUILD_DIR/compile_commands.json .) && \
 exit_message
 

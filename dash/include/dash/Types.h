@@ -4,6 +4,7 @@
 #include <array>
 #include <dash/dart/if/dart_types.h>
 
+
 namespace dash {
 
 typedef enum MemArrange {
@@ -33,12 +34,15 @@ typedef int dim_t;
 
 namespace internal {
 
-#ifdef DASH_ENABLE_DEFAULT_INDEX_TYPE_LONG
-  typedef int64_t   default_signed_index;
-  typedef uint64_t  default_unsigned_index;
+#if defined(DASH_ENABLE_DEFAULT_INDEX_TYPE_LONG)
+  typedef          long default_signed_index;
+  typedef unsigned long default_unsigned_index;
+#elif defined(DASH_ENABLE_DEFAULT_INDEX_TYPE_INT)
+  typedef          int  default_signed_index;
+  typedef unsigned int  default_unsigned_index;
 #else
-  typedef int32_t   default_signed_index;
-  typedef uint32_t  default_unsigned_index;
+  typedef ssize_t       default_signed_index;
+  typedef size_t        default_unsigned_index;
 #endif
 
 }
@@ -77,13 +81,18 @@ struct Extent {
   ::std::array<SizeType, NumDimensions> sizes;
 };
 
+
 /**
  * Type traits for mapping to DART data types.
  */
-template< typename Type >
+template<typename Type>
 struct dart_datatype {
   static const dart_datatype_t value;
 };
+
+template<typename Type>
+const dart_datatype_t dart_datatype<Type>::value = DART_TYPE_UNDEFINED;
+
 
 template<>
 struct dart_datatype<char> {
@@ -101,17 +110,17 @@ struct dart_datatype<unsigned int> {
 };
 
 template<>
+struct dart_datatype<float> {
+  static const dart_datatype_t value;
+};
+
+template<>
 struct dart_datatype<long> {
   static const dart_datatype_t value;
 };
 
 template<>
-struct dart_datatype<size_t> {
-  static const dart_datatype_t value;
-};
-
-template<>
-struct dart_datatype<float> {
+struct dart_datatype<unsigned long> {
   static const dart_datatype_t value;
 };
 
@@ -119,6 +128,18 @@ template<>
 struct dart_datatype<double> {
   static const dart_datatype_t value;
 };
+
+template <typename T>
+inline dart_storage_t dart_storage(int nvalues) {
+  dart_storage_t ds;
+  ds.dtype = dart_datatype<T>::value;
+  ds.nelem = nvalues;
+  if (DART_TYPE_UNDEFINED == ds.dtype) {
+    ds.dtype = DART_TYPE_BYTE;
+    ds.nelem = nvalues * sizeof(T);
+  }
+  return ds;
+}
 
 } // namespace dash
 
