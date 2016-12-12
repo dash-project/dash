@@ -40,7 +40,7 @@ if(ENABLE_NASTYMPI AND BUILD_TESTS)
   ExternalProject_Add(
     NastyMPIExternal
     GIT_REPOSITORY https://github.com/dash-project/nasty-MPI.git
-    GIT_TAG bug-win-get-attr
+    GIT_TAG master
     TIMEOUT 10
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/nastympi
     BUILD_IN_SOURCE 1
