@@ -25,7 +25,7 @@ run_ci()
     # FIXME: Building the examples does currently not work with Nasty-MPI
     export DASH_BUILDEX="OFF"
     # base delay of MPI operations in NastyMPI, in milliseconds:
-    export NASTY_SLEEP_INTERVAL=3
+    export NASTY_SLEEP_INTERVAL=0
     echo "[-> ENV    ] LD_LIBRARY_PATH: ${LD_LIBRARY_PATH}"
   fi
 
