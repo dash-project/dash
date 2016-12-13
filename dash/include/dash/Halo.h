@@ -2,6 +2,7 @@
 #define DASH__HALO_H__
 
 #include <dash/GlobMem.h>
+#include <dash/iterator/GlobIter.h>
 
 #include <dash/internal/Logging.h>
 

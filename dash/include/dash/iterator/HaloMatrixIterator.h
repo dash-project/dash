@@ -45,8 +45,8 @@ public:
   HaloMatrixIterator(const HaloBlock_t & haloblock, HaloMemory_t & halomemory,
       index_type idx)
   : _haloblock(haloblock), _halomemory(halomemory), _local_memory(_haloblock.globmem().lbegin()),
-    _pattern(_haloblock.pattern()), _halospec(_haloblock.halospec()), _idx(idx),
-    _local_layout(_pattern.local_memory_layout())
+    _pattern(_haloblock.pattern()), _halospec(_haloblock.halospec()), 
+    _local_layout(_pattern.local_memory_layout()), _idx(idx)
 
   {
     if(Scope == StencilViewScope::INNER)
