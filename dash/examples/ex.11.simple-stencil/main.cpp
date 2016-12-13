@@ -42,20 +42,18 @@ void write_pgm(const std::string & filename, const Array_t & data){
 
     file << "P2\n" << ext_x << " " << ext_y << "\n"
          << "255" << std::endl;
-    // Data
-//    std::vector<element_t> buffer(ext_x);
+
+    // Buffer of matrix rows
+    std::vector<element_t> buffer(ext_x);
 
     for(long y=0; y<ext_y; ++y){
-      auto first = data.begin()+ext_x*y; 
-      auto last  = data.begin()+(ext_x*(y+1));
+      auto & first = data.begin();
 
-//      BUG!!!!
-//      dash::copy(first, last, buffer.data());
+      dash::copy(first+ext_x*y, first+ext_x*(y+1), buffer.data());
 
       for(long x=0; x<ext_x; ++x){
-//        file << buffer[x] << " ";
         file << setfill(' ') << setw(3)
-             << static_cast<int>(data[x][y]) << " ";
+             << static_cast<int>(buffer[x]) << " ";
       }
       file << std::endl;
     }
