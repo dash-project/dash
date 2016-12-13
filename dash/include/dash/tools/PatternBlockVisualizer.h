@@ -8,8 +8,6 @@
 #include <iomanip>
 #include <string>
 
-#include <dash/tools/Colorspace.h>
-
 namespace dash {
 namespace tools {
 
@@ -133,8 +131,8 @@ public:
 
   void draw_axes(std::ostream & os,
                  int dimx, int dimy,
-                 int offsx = 0, int offsy = 0)
-  {
+                 int offsx = 0, int offsy = 0) {
+
     int startx, starty;
     int endx, endy;
 
@@ -171,8 +169,7 @@ public:
 
   void draw_tiles(std::ostream & os,
                   std::array<index_t, PatternT::ndim()> coords,
-                  int dimx, int dimy)
-  {
+                  int dimx, int dimy) {
     std::array<index_t, PatternT::ndim()> block_coords;
     std::array<index_t, PatternT::ndim()> block_begin_coords;
     auto blockspec = _pattern.blockspec();
@@ -210,28 +207,55 @@ public:
 
 private:
   RGB color(dart_unit_t unit) {
-    float min = 0;
-    float max = _pattern.num_units();
-    float nx  = _pattern.teamspec().extent(1);
-    float ny  = _pattern.teamspec().extent(0);
-    auto  unit_coord = _pattern.teamspec().coords(unit);
+    unsigned r = 0, g = 0, b = 0;
+    switch (unit % 8) {
+    case 0:
+      r = 0x00;
+      g = 0x72;
+      b = 0xBD;
+      break;
+    case 1:
+      r = 0xD9;
+      g = 0x53;
+      b = 0x19;
+      break;
+    case 2:
+      r = 0xEB;
+      g = 0xB1;
+      b = 0x20;
+      break;
+    case 3:
+      r = 0x7E;
+      g = 0x2F;
+      b = 0x8E;
+      break;
+    case 4:
+      r = 0x77;
+      g = 0xAC;
+      b = 0x30;
+      break;
+    case 5:
+      r = 0x4D;
+      g = 0xBE;
+      b = 0xEE;
+      break;
+    case 6:
+      r = 0xA2;
+      g = 0x14;
+      b = 0x2F;
+      break;
+    case 7:
+      r = 0x33;
+      g = 0x6F;
+      b = 0x45;
+      break;
+    }
 
-    // unit id to color wavelength:
-    float unit_h_perc = static_cast<float>(unit) / max;
-    float unit_s_perc = static_cast<float>(unit_coord[0]) / ny;
-    float unit_v_perc = static_cast<float>(unit_coord[1]) / nx;
+    r += 20 * (unit / 8);
+    g += 20 * (unit / 8);
+    b += 20 * (unit / 8);
 
-    dash::tools::color::hsv hsv;
-    hsv.h = 360.0 * unit_h_perc;
-    hsv.s = 0.3 + 0.5 * unit_s_perc;
-    hsv.v = 0.3 + 0.4 * unit_v_perc;
-
-    auto rgb = dash::tools::color::hsv2rgb(hsv);
-    int  r   = static_cast<int>(rgb.r * 255);
-    int  g   = static_cast<int>(rgb.g * 255);
-    int  b   = static_cast<int>(rgb.b * 255);
-
-    return RGB(r,g,b);
+    return RGB(r % 255, g % 255, b % 255);
   }
 
   std::string tilestyle(dart_unit_t unit)

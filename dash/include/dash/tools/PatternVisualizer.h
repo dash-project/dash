@@ -22,16 +22,21 @@ template<typename PatternT>
 class PatternVisualizer
 {
 private:
-  typedef typename PatternT::index_type index_t;
+  typedef PatternVisualizer<PatternT>      self_t;
+  typedef typename PatternT::index_type    index_t;
 
 private:
   const PatternT & _pattern;
-  int _tileszx, _tileszy;
-  int _gridx, _gridy;
+
+  int _tileszx,
+      _tileszy;
+  int _gridx,
+      _gridy;
   std::string _title;
   std::string _descr;
   int _fontsz;
   int _fontsz_title;
+
 
   class RGB {
   private:
@@ -56,19 +61,19 @@ public:
                     const std::string & descr = "")
   : _pattern(pat), _title(title), _descr(descr)
   {
-    _gridx = _gridy = 12;
-    _tileszx = _tileszy = 10;
-    _fontsz = 9;
+    _gridx        = _gridy   = 12;
+    _tileszx      = _tileszy = 10;
+    _fontsz       = 9;
     _fontsz_title = 11;
   }
 
   PatternVisualizer() = delete;
-  PatternVisualizer(const PatternVisualizer<PatternT> & other) = delete;
+  PatternVisualizer(const self_t & other) = delete;
 
   void set_description(const std::string & str) {
     _descr = str;
   }
-  void set_title (const std::string & str) {
+  void set_title(const std::string & str) {
     _title = str;
   }
 
@@ -190,9 +195,9 @@ public:
   }
 
   void draw_blocks(std::ostream & os,
-		   std::array<index_t, PatternT::ndim()> coords,
-		   int dimx, int dimy)
-  {
+                   std::array<index_t, PatternT::ndim()> coords,
+                   int dimx, int dimy) {
+
     std::array<index_t, PatternT::ndim()> block_coords = coords;
     std::array<index_t, PatternT::ndim()> block_begin_coords = coords;
 
@@ -206,29 +211,29 @@ public:
         auto block_idx = _pattern.blockspec().at(block_coords);
         auto block     = _pattern.block(block_idx);
 
-	block_begin_coords[dimx] = block.offset(dimx);
+        block_begin_coords[dimx] = block.offset(dimx);
         block_begin_coords[dimy] = block.offset(dimy);
         auto unit      = _pattern.unit_at(block_begin_coords);
 
-	if( unit==0 ) {
-	  int i_grid = block.offset(dimx)*_gridx - 1;
-	  int j_grid = block.offset(dimy)*_gridy - 1;
+        if( unit==0 ) {
+          int i_grid = block.offset(dimx)*_gridx - 1;
+          int j_grid = block.offset(dimy)*_gridy - 1;
 
-	  int width  = (block.extent(dimx)-1)*_gridx + _tileszx + 2;
-	  int height = (block.extent(dimy)-1)*_gridy + _tileszy + 2;
+          int width  = (block.extent(dimx)-1)*_gridx + _tileszx + 2;
+          int height = (block.extent(dimy)-1)*_gridy + _tileszy + 2;
 
-	  os << "<rect x=\"" << i_grid << "\" y=\"" << j_grid << "\" ";
-	  os << "height=\"" << height << "\" width=\"" << width << "\" ";
-	  os << "style=\"fill:#999999;stroke-width:0\" >";
-	  os << "</rect>" << std::endl;
-	}
+          os << "<rect x=\"" << i_grid << "\" y=\"" << j_grid << "\" ";
+          os << "height=\"" << height << "\" width=\"" << width << "\" ";
+          os << "style=\"fill:#999999;stroke-width:0\" >";
+          os << "</rect>" << std::endl;
+        }
       }
     }
   }
 
   void draw_tiles(std::ostream & os,
-		  std::array<index_t, PatternT::ndim()> coords,
-		  int dimx, int dimy) {
+                  std::array<index_t, PatternT::ndim()> coords,
+                  int dimx, int dimy) {
     for (int i = 0; i < _pattern.extent(dimx); i++) {
       for (int j = 0; j < _pattern.extent(dimy); j++) {
 
@@ -238,17 +243,17 @@ public:
         coords[dimx] = i;
         coords[dimy] = j;
 
-	auto unit  = _pattern.unit_at(coords);
-	auto loffs = _pattern.at(coords);
+        auto unit  = _pattern.unit_at(coords);
+        auto loffs = _pattern.at(coords);
 
         os << tilestyle(unit);
         os << " tooltip=\"enable\" > ";
-	os << " <title>Elem: (" << j << "," << i <<"),";
-	os << " Unit " << unit;
-	os << " Local offs. " << loffs;
-	os << "</title>";
+        os << " <title>Elem: (" << j << "," << i <<"),";
+        os << " Unit " << unit;
+        os << " Local offs. " << loffs;
+        os << "</title>";
 
-	  //os << "<!-- i=" << i << " j=" << j << "--> ";
+          //os << "<!-- i=" << i << " j=" << j << "--> ";
         os << "</rect>" << std::endl;
       }
     }
