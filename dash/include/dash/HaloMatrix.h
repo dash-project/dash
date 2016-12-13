@@ -8,7 +8,7 @@
 //#include <dash/GlobRef.h>
 #include <dash/GlobMem.h>
 //#include <dash/Allocator.h>
-#include <dash/HaloMatrixIterator.h>
+#include <dash/iterator/HaloMatrixIterator.h>
 #include <dash/Halo.h>
 #include <dash/Matrix.h>
 #include <type_traits>
@@ -229,10 +229,10 @@ private:
 
 private:
   MatrixT &               _matrix;
+  const HaloSpecT &       _halospec;
   const ViewSpec_t        _view_local;
   const ViewSpec_t        _view_global;
   const HaloBlock_t       _haloblock;
-  const HaloSpecT &       _halospec;
   HaloMemory_t            _halomemory;
 
   struct Data
