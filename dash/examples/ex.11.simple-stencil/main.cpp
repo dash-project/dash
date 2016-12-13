@@ -10,8 +10,6 @@
  *
  * This example implements a very simple blur filter. For simplicity
  * no real image is used, but an image containg circles is generated.
- * 
- * \TODO fix \cdash::copy problem
  */
 
 #include <dash/Init.h>
@@ -24,6 +22,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <thread>
 
 using namespace std;
 
@@ -73,8 +72,9 @@ void set_pixel(Array_t & data, index_t x, index_t y){
   data.at(x, y) = color;
 }
 
-void draw_circle(Array_t & data, index_t x0, index_t y0, int r){
+void draw_circle(Array_t * dataptr, index_t x0, index_t y0, int r){
   // Check who owns center, owner draws
+  auto & data = *dataptr;
   if(!data.at(x0, y0).is_local()){
     return;
   }
@@ -210,13 +210,19 @@ int main(int argc, char* argv[])
   dash::fill(data_old.begin(), data_old.end(), 255);
   dash::fill(data_new.begin(), data_new.end(), 255);
 
-  draw_circle(data_old, 0, 0, 40);
-  draw_circle(data_old, 0, 0, 30);
-  draw_circle(data_old, 100, 100, 10);
-  draw_circle(data_old, 100, 100, 20);
-  draw_circle(data_old, 100, 100, 30);
-  draw_circle(data_old, 100, 100, 40);
-  draw_circle(data_old, 100, 100, 50);
+  std::vector<std::thread> threads;
+  threads.push_back(std::thread(draw_circle, &data_old, 0, 0, 40));
+  threads.push_back(std::thread(draw_circle, &data_old, 0, 0, 30));
+  threads.push_back(std::thread(draw_circle, &data_old, 100, 100, 10));
+  threads.push_back(std::thread(draw_circle, &data_old, 100, 100, 20));
+  threads.push_back(std::thread(draw_circle, &data_old, 100, 100, 30));
+  threads.push_back(std::thread(draw_circle, &data_old, 100, 100, 40));
+  threads.push_back(std::thread(draw_circle, &data_old, 100, 100, 50));
+  threads.push_back(std::thread(draw_circle, &data_old, 500, 500, 400));
+
+  for(auto & t : threads){
+    t.join();
+  }
 
   dash::barrier();
   write_pgm("testimg_input.pgm", data_old);
