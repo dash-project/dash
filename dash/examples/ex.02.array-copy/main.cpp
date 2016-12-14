@@ -1,3 +1,8 @@
+/* 
+ * \example ex.02.array-copy\main.cpp
+ * Example illustrating the use of \c dash::copy with a local array as destination.
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <sstream>
@@ -13,15 +18,6 @@
 using std::cout;
 using std::endl;
 
-template<
-  template<typename, typename...> class ARRAY,
-  typename T,
-  typename... REST >
-void fill_array(ARRAY<T, REST...> &array, T value)
-{
-  std::fill(array.lbegin(), array.lend(), value);
-}
-
 int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
@@ -33,7 +29,7 @@ int main(int argc, char* argv[])
                            : 20;
   size_t start_index     = (argc > 2)
                            ? static_cast<size_t>(atoi(argv[2]))
-                           : 0;
+                           : 10;
   size_t num_elems_copy  = (argc > 3)
                            ? static_cast<size_t>(atoi(argv[3]))
                            : 20;
@@ -47,7 +43,9 @@ int main(int argc, char* argv[])
          << "Start index:       " << start_index     << endl
          << "Elements to copy:  " << num_elems_copy  << endl;
   }
-
+  
+  // fill the local part of the global array each unit is holding with
+  // it's DASH ID (\c dash::myid). 
   std::fill(array.lbegin(), array.lend(), myid);
 
   array.barrier();
@@ -56,6 +54,7 @@ int main(int argc, char* argv[])
     cout << "Array size:        " << array.size() << endl;
   }
 
+  // destination array
   int * local_array = new int[num_elems_copy];
 
 #ifdef DASH_ENABLE_IPM
@@ -63,6 +62,8 @@ int main(int argc, char* argv[])
   MPI_Pcontrol(0, "clear"); // clear all performance data
 #endif
 
+  // each unit copies from the global array into it's own local array
+  // note: each unit has the same data in it's local array at the end
   dash::copy(array.begin() + start_index,
              array.begin() + start_index + num_elems_copy,
              local_array);
