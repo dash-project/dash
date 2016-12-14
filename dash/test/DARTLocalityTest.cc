@@ -123,6 +123,9 @@ TEST_F(DARTLocalityTest, ExcludeLocalityDomain)
 
   // Remove the active unit's domain:
   const char * excluded_domain = ul->domain_tag;
+
+  DASH_LOG_TRACE("DARTLocalityTest.ExcludeLocalityDomain",
+                 "excluding domain", excluded_domain);
   EXPECT_EQ_U(DART_OK, dart_domain_exclude(
     loc_team_all_copy, 1, &excluded_domain));
 
