@@ -88,8 +88,8 @@ using CMake.
 Docker Containers
 -----------------
 
-[![](https://images.microbadger.com/badges/version/dashproject/dash:mpich.svg)](https://microbadger.com/images/dashproject/dash:mpich "Get your own version badge on microbadger.com")
-[![](https://images.microbadger.com/badges/version/dashproject/dash:openmpi.svg)](https://microbadger.com/images/dashproject/dash:openmpi "Get your own version badge on microbadger.com")
+[![](https://images.microbadger.com/badges/version/dashproject/dash:mpich.svg)](https://microbadger.com/images/dashproject/dash:mpich "DASH Docker Container (MPICH backend)")
+[![](https://images.microbadger.com/badges/version/dashproject/dash:openmpi.svg)](https://microbadger.com/images/dashproject/dash:openmpi "DASH Docker Container (OpenMPI backend)")
 
 For pre-build Docker container images, see the
 [DASH project on Docker Hub](https://hub.docker.com/r/dashproject).
