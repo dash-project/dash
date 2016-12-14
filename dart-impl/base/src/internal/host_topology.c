@@ -398,8 +398,9 @@ dart_ret_t dart__base__host_topology__update_module_locations(
 
    DART_LOG_TRACE("dart__base__host_topology__init: "
                   "broadcasting module locations from leader unit %d "
-                  "to units in team %d",
-                  local_leader_unit_id, host_topo_bcast_team);
+                  "to units in team %d on %d hosts",
+                  local_leader_unit_id, host_topo_bcast_team,
+                  num_hosts);
 
 
     DART_ASSERT_RETURNS(

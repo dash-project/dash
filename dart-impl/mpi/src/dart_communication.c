@@ -1481,7 +1481,7 @@ dart_ret_t dart_bcast(
   uint16_t index;
   MPI_Datatype mpi_dtype = dart_mpi_datatype(dtype);
 
-  DART_LOG_TRACE("dart_bcast() root:%d team:%d nelem:%"PRIu64"",
+  DART_LOG_TRACE("dart_bcast() root:%d team:%d nelem:%lu",
                  root, teamid, nelem);
 
   /*
@@ -1504,7 +1504,7 @@ dart_ret_t dart_bcast(
                    "MPI_Bcast failed", root, teamid);
     return DART_ERR_INVAL;
   }
-  DART_LOG_TRACE("dart_bcast > root:%d team:%d nelem:%"PRIu64" finished",
+  DART_LOG_TRACE("dart_bcast > root:%d team:%d nelem:%lu finished",
                  root, teamid, nelem);
   return DART_OK;
 }

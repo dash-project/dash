@@ -30,9 +30,9 @@
 #include <sched.h>
 #include <limits.h>
 
-/* ======================================================================== *
- * Private Functions: Declarations                                          *
- * ======================================================================== */
+/* ================================================================== *
+ * Private Functions: Declarations                                    *
+ * ================================================================== */
 
 dart_ret_t dart__base__locality__domain__create_node_subdomains(
   dart_domain_locality_t         * node_domain,
@@ -45,9 +45,9 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
   dart_unit_mapping_t            * unit_mapping,
   int                              module_scope_level);
 
-/* ===================================================================== *
- * Internal Functions                                                    *
- * ===================================================================== */
+/* ================================================================== *
+ * Internal Functions                                                 *
+ * ================================================================== */
 
 dart_ret_t dart__base__locality__domain__init(
   dart_domain_locality_t           * loc)
@@ -134,9 +134,10 @@ dart_ret_t dart__base__locality__domain__copy(
 {
   dart_ret_t ret = DART_ERR_OTHER;
 
-  dart__base__locality__domain__init(domain_dst);
+  // dart__base__locality__domain__init(domain_dst);
 
-  memcpy(domain_dst, domain_src, sizeof(dart_domain_locality_t));
+  // memcpy(domain_dst, domain_src, sizeof(dart_domain_locality_t));
+  *domain_dst = *domain_src;
 
   /* Copy unit ids:
    */
@@ -183,13 +184,22 @@ dart_ret_t dart__base__locality__domain__copy(
     domain_dst->children = NULL;
   }
 
+  // TODO: adjust domain aliases in domain_dst to corresponding 
+  //       pointers to subdomains of domain_dst (currently point
+  //       to subdomains in domain_src).
+  domain_dst->num_aliases = 0;
+  domain_dst->aliases     = NULL;
+
   /* Recursively copy subdomains:
    */
   for (int sd = 0; sd < domain_src->num_domains; sd++) {
-    domain_dst->children[sd] = malloc(sizeof(dart_domain_locality_t));
+    domain_dst->children[sd] = (dart_domain_locality_t *)(
+                                 malloc(sizeof(dart_domain_locality_t)));
 
-    const dart_domain_locality_t * subdomain_src = domain_src->children[sd];
-    dart_domain_locality_t       * subdomain_dst = domain_dst->children[sd];
+    const dart_domain_locality_t * subdomain_src =
+                                     domain_src->children[sd];
+    dart_domain_locality_t       * subdomain_dst =
+                                     domain_dst->children[sd];
 
     ret = dart__base__locality__domain__copy(
             subdomain_src,
@@ -381,9 +391,8 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
 //
   dart_ret_t ret    = DART_OK;
 
-  return ret;
-
-  int is_unit_scope = ((int)domain->scope >= (int)DART_LOCALITY_SCOPE_CORE);
+  int is_unit_scope = ((int)domain->scope >= 
+                       (int)DART_LOCALITY_SCOPE_CORE);
   int matched       = 0;
   int unit_idx      = 0;
   int subdomain_idx = 0;
@@ -407,22 +416,25 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
   }
 
   for (int sd = 0; sd < domain->num_domains; sd++) {
-    /* ---------------------------------------------------------------- *
-     * Selection predicate is just this block.                          *
-     * Could use functors to allow arbitrary selection functions.       *
-     *                                                                  */
+    /* -------------------------------------------------------------- *
+     * Selection predicate is just this block.                        *
+     * Could use functors to allow arbitrary selection functions.     *
+     *                                                                */
     char * subdomain_tag     = domain->children[sd]->domain_tag;
     size_t subdomain_tag_len = strlen(subdomain_tag);
     matched = 0;
     for (int dt = 0; dt < num_subdomain_tags; dt++) {
       size_t filter_tag_len    = strlen(subdomain_tags[dt]);
       size_t common_prefix_len = dart__base__strcommonprefix(
-                                   subdomain_tag, subdomain_tags[dt], NULL);
-      /* When removing matches: Match domains with full domain tag filter in
-       * prefix, e.g. ".0.1" matches ".0.1.0"
+                                   subdomain_tag,
+                                   subdomain_tags[dt], 
+                                   NULL);
+      /* When removing matches:
+       * Match domains with full domain tag filter in prefix,
+       * e.g. ".0.1" matches ".0.1.0"
        * -> minimum match length is length of filter tag
-       * When selecting matches: Match domain tags that are fully included
-       * in filter tag
+       * When selecting matches:
+       * Match domain tags that are fully included in filter tag
        * -> minimum match length is length of subdomain:
        */
       size_t min_tag_match_len = (remove_matches == 1)
@@ -434,14 +446,15 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
         break;
       }
     }
-    /*                                                                   *
-     * ----------------------------------------------------------------- */
+    /*                                                                *
+     * -------------------------------------------------------------- */
 
     if (matched == remove_matches) {
       continue;
     }
     DART_LOG_TRACE("dart__base__locality__domain__filter_subdomains : "
-                   "  --v  subdomain[%d] = %s matched", sd, subdomain_tag);
+                   "  --v  subdomain[%d] = %s matched",
+                   sd, subdomain_tag);
 
     if (subdomain_idx != sd) {
       domain->children[subdomain_idx] = domain->children[sd];
@@ -458,7 +471,8 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
     }
 
     DART_LOG_TRACE("dart__base__locality__domain__filter_subdomains : "
-                   "  --^  subdomain[%d] = %s: domains: %d, units: %d", sd,
+                   "  --^  subdomain[%d] = %s: domains: %d, units: %d", 
+                   sd,
                    domain->children[subdomain_idx]->domain_tag,
                    domain->children[subdomain_idx]->num_domains,
                    domain->children[subdomain_idx]->num_units);
@@ -503,6 +517,10 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
   if (NULL != domain->children) {
     if (domain->num_domains != subdomain_idx) {
       if (subdomain_idx > domain->num_domains) {
+        DART_LOG_WARN("dart__base__locality__domain__filter_subdomains: "
+                      "number of subdomains increased from",
+                      domain->num_domains, "to", subdomain_idx, "in",
+                      domain->domain_tag);
         for (int sd = domain->num_domains; sd < subdomain_idx; sd++) {
           domain->children[sd] = malloc(sizeof(dart_domain_locality_t));
         }
