@@ -56,9 +56,9 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_ASSERTIONS=ON \
                         \
-                        -DENABLE_SHARED_WINDOWS=ON \
+                        -DENABLE_SHARED_WINDOWS=OFF \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
-                        -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
+                        -DENABLE_DEFAULT_INDEX_TYPE_LONG=OFF \
                         \
                         -DENABLE_LOGGING=OFF \
                         -DENABLE_TRACE_LOGGING=OFF \

@@ -161,7 +161,8 @@ dart_ret_t dart_domain_split(
 {
   DART_LOG_DEBUG("dart_domain_split() team(%d) domain(%s) "
                  "into %d parts at scope %d",
-                 domain_in->team, domain_in->domain_tag, num_parts, scope);
+                 domain_in->team, domain_in->domain_tag, num_parts, 
+                 scope);
 
   int    * group_sizes       = NULL;
   char *** group_domain_tags = NULL;

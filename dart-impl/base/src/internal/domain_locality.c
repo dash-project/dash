@@ -134,10 +134,20 @@ dart_ret_t dart__base__locality__domain__copy(
 {
   dart_ret_t ret = DART_ERR_OTHER;
 
-  // dart__base__locality__domain__init(domain_dst);
+  dart__base__locality__domain__init(domain_dst);
 
-  // memcpy(domain_dst, domain_src, sizeof(dart_domain_locality_t));
-  *domain_dst = *domain_src;
+  memcpy(domain_dst, domain_src, sizeof(dart_domain_locality_t));
+  // *domain_dst = *domain_src;
+  
+  // TODO: adjust domain aliases in domain_dst to corresponding 
+  //       pointers to subdomains of domain_dst (currently point
+  //       to subdomains in domain_src).
+  domain_dst->num_aliases = 0;
+  domain_dst->aliases     = NULL;
+  domain_dst->num_domains = 0;
+  domain_dst->children    = NULL;
+  domain_dst->num_units   = 0;
+  domain_dst->unit_ids    = NULL;
 
   /* Copy unit ids:
    */
@@ -148,8 +158,9 @@ dart_ret_t dart__base__locality__domain__copy(
                      domain_src->domain_tag, domain_src->num_units);
       return DART_ERR_OTHER;
     }
-    domain_dst->unit_ids = malloc(sizeof(dart_unit_t) *
-                                  domain_src->num_units);
+    domain_dst->num_units = domain_src->num_units;
+    domain_dst->unit_ids  = malloc(sizeof(dart_unit_t) *
+                                     domain_src->num_units);
     for (int u = 0; u < domain_src->num_units; u++) {
       domain_dst->unit_ids[u] = domain_src->unit_ids[u];
     }
@@ -172,8 +183,9 @@ dart_ret_t dart__base__locality__domain__copy(
                      domain_src->domain_tag, domain_src->num_domains);
       return DART_ERR_OTHER;
     }
-    domain_dst->children = malloc(sizeof(dart_domain_locality_t *) *
-                                  domain_src->num_domains);
+    domain_dst->num_domains = domain_src->num_domains;
+    domain_dst->children    = malloc(sizeof(dart_domain_locality_t *) *
+                                      domain_src->num_domains);
   } else {
     if (NULL != domain_src->children) {
       DART_LOG_ERROR("dart__base__locality__domain__copy: domain %s "
@@ -182,6 +194,12 @@ dart_ret_t dart__base__locality__domain__copy(
       return DART_ERR_OTHER;
     }
     domain_dst->children = NULL;
+  }
+
+  if (domain_src->num_domains > 16) {
+    DART_LOG_WARN("dart__base__locality__domain__filter_subdomains: "
+                  "domain %s num_domains:%d is unusual",
+                  domain_src->domain_tag, domain_src->num_domains);
   }
 
   /* Recursively copy subdomains:
@@ -203,12 +221,6 @@ dart_ret_t dart__base__locality__domain__copy(
     }
     domain_dst->children[sd]->parent = domain_dst;
   }
-
-  // TODO: adjust domain aliases in domain_dst to corresponding 
-  //       pointers to subdomains of domain_dst (currently point
-  //       to subdomains in domain_src).
-  domain_dst->num_aliases = 0;
-  domain_dst->aliases     = NULL;
 
   return DART_OK;
 }

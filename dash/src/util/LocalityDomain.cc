@@ -311,8 +311,7 @@ dash::util::LocalityDomain::split(
     num_parts = num_split_parts;
   }
 
-  std::vector<dart_domain_locality_t> subdomains;
-  subdomains.resize(num_parts);
+  std::vector<dart_domain_locality_t> subdomains(num_parts);
 
   DASH_ASSERT_RETURNS(
     dart_domain_split(
