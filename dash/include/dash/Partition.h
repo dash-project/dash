@@ -24,4 +24,4 @@ namespace dash {
 
 #include <dash/graph/partition/VertexPartition.h>
 #include <dash/graph/partition/EdgePartition.h>
-#include <dash/graph/partition/LoadBalancePartition.h>
+#include <dash/graph/partition/LoadBalancedVertexPartition.h>
