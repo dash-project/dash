@@ -1,5 +1,5 @@
-#ifndef DASH__PARTITION_H_
-#define  DASH__PARTITION_H_
+#ifndef DASH__PARTITION_H__INCLUDED
+#define  DASH__PARTITION_H__INCLUDED
 
 namespace dash {
 
@@ -20,7 +20,7 @@ namespace dash {
 
 }
 
-#endif // DASH__PARTITION_H_
+#endif // DASH__PARTITION_H_INCLUDED
 
 #include <dash/graph/partition/VertexPartition.h>
 #include <dash/graph/partition/EdgePartition.h>
