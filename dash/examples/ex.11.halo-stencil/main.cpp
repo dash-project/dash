@@ -15,7 +15,7 @@
 
 #include <dash/Init.h>
 #include <dash/Matrix.h>
-#include <dash/HaloMatrix.h>
+#include <dash/experimental/HaloMatrix.h>
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
 #include <dash/algorithm/Fill.h>
