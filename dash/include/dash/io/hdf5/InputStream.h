@@ -59,30 +59,10 @@ class InputStream
       return is;
     }
 
-
-    // Array Implementation
-    template <
-        typename value_t,
-        typename index_t,
-        class    pattern_t >
+    template < typename Container_t >
     friend InputStream & operator>> (
-        InputStream           & is,
-        dash::Array < value_t,
-                      index_t,
-                      pattern_t > & array);
-
-    // Matrix Implementation
-    template <
-        typename value_t,
-        dim_t    ndim,
-        typename index_t,
-        class    pattern_t >
-    friend InputStream & operator>> (
-        InputStream           & is,
-        dash::Matrix< value_t,
-                      ndim,
-                      index_t,
-                      pattern_t > & matrix);
+        InputStream & is,
+        Container_t & matrix);
 };
 
 } // namespace hfd5

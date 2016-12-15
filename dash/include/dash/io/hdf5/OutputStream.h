@@ -80,29 +80,10 @@ class OutputStream
     }
 
 
-    // Array Implementation
-    template <
-        typename value_t,
-        typename index_t,
-        class    pattern_t >
+    template < typename Container_t >
     friend OutputStream & operator<<(
-        OutputStream         & os,
-        dash::Array< value_t,
-                     index_t,
-                     pattern_t > & array);
-
-    // Matrix Implementation
-    template <
-        typename value_t,
-        dim_t    ndim,
-        typename index_t,
-        class    pattern_t >
-    friend OutputStream & operator<<(
-        OutputStream          & os,
-        dash::Matrix< value_t,
-                      ndim,
-                      index_t,
-                      pattern_t > & matrix);
+        OutputStream & os,
+        Container_t  & container);
 
 };
 

@@ -13,45 +13,13 @@ namespace dash {
 namespace io {
 namespace hdf5 {
 
-// Array implementation
-template <
-  typename value_t,
-  typename index_t,
-  class    pattern_t >
-inline OutputStream & operator<< (
-  OutputStream & os,
-  dash::Array< value_t,
-  index_t,
-  pattern_t > &array) {
-
-  array.barrier();
-  dash::io::hdf5::StoreHDF::write(
-      array,
-      os._filename,
-      os._dataset,
-      os._foptions);
-
-  // Append future data in this stream
-  os._foptions.overwrite_file = false;
-  return os;
-}
-
-// Matrix implementation
-template <
-   typename value_t,
-   dim_t    ndim,
-   typename index_t,
-   class    pattern_t >
+template < typename Container_t >
 inline OutputStream & operator<< (
    OutputStream & os,
-   dash::Matrix < value_t,
-   ndim,
-   index_t,
-   pattern_t > &matrix) {
-
-   matrix.barrier();
+   Container_t  & container )
+{
    dash::io::hdf5::StoreHDF::write(
-       matrix,
+       container,
        os._filename,
        os._dataset,
        os._foptions);
