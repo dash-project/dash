@@ -30,6 +30,9 @@ private:
 
   int _tileszx,
       _tileszy;
+  int _block_base_size;
+  int _blockszx,
+      _blockszy;
   int _gridx,
       _gridy;
   std::string _title;
@@ -61,24 +64,24 @@ public:
                          const std::string & descr = "")
   : _pattern(pat), _title(title), _descr(descr)
   {
-    int tile_base_size = 26;
-    _gridx        = _gridy   = 27;
-    _tileszx      = _tileszy = tile_base_size;
+    _block_base_size = 26;
+    _tileszx      = _tileszy  = 10;
+    //_blockszx     = _blockszy = _block_base_size;
+    //_gridx        = _gridy    = _block_base_size + 2;
     _fontsz_tiny  =  8;
     _fontsz       = 10;
     _fontsz_title = 12;
 
+    /* Depends on the drawn dimensions
     // Adjust tile sizes proportional to block regions:
     float block_format = static_cast<float>(pat.blocksize(0)) /
                          static_cast<float>(pat.blocksize(1));
     if (block_format < 1) {
       block_format = 1.0 / block_format;
-      _tileszx *= block_format;
-      _gridx   *= block_format;
+      _blockszx *= block_format;
     } else {
-      _tileszy *= block_format;
-      _gridy   *= block_format;
-    }
+      _blockszy *= block_format;
+    } */
   }
 
   PatternBlockVisualizer() = delete;
@@ -94,6 +97,19 @@ public:
   void draw_pattern(std::ostream & os,
                     std::array<index_t, PatternT::ndim()> coords,
                     int dimx, int dimy) {
+    // Adjust tile sizes proportional to block regions:
+    _blockszx     = _blockszy = _block_base_size;
+    float block_format = static_cast<float>(_pattern.blocksize(dimy)) /
+                         static_cast<float>(_pattern.blocksize(dimx));
+    if (block_format < 1) {
+      block_format = 1.0 / block_format;
+      _blockszx *= block_format;
+    } else {
+      _blockszy *= block_format;
+    }
+    _gridx        = _blockszx + 2;
+    _gridy        = _blockszy + 2;
+
     std::string title = _title;
     replace_all(title, "<", "&lt;");
     replace_all(title, ">", "&gt;");
@@ -175,7 +191,7 @@ public:
     startx = offsx;
     for (int unit = 0; unit < _pattern.num_units(); unit++) {
       startx = offsx;
-      starty = offsy + (unit * _gridy);
+      starty = offsy + (unit * (_tileszy - 2));
       os << "<rect x=\"" << startx << "\" y=\"" << starty << "\" ";
       os << "height=\"" << _tileszy << "\" width=\"" << _tileszx << "\" ";
       os << tilestyle(unit);
@@ -210,13 +226,14 @@ public:
 
         int i_grid = i * _gridx;
         int j_grid = j * _gridy;
-        int t_x    = i_grid + (_tileszx / 5);
-        int t_y    = j_grid + (_tileszy / 2) + (_fontsz_tiny / 2);
+        int t_x    = i_grid + (_blockszx / 5);
+        int t_y    = j_grid + (_blockszy / 2) + (_fontsz_tiny / 2);
+
 
 
 
         os << "<rect x=\"" << i_grid << "\" y=\"" << j_grid << "\" ";
-        os << "height=\"" << _tileszy << "\" width=\"" << _tileszx << "\" ";
+        os << "height=\"" << _blockszy << "\" width=\"" << _blockszx << "\" ";
         os << tilestyle(unit);
         os << "> ";
         os << "<!-- i=" << i << " j=" << j << "--> ";

@@ -61,8 +61,9 @@ public:
                     const std::string & descr = "")
   : _pattern(pat), _title(title), _descr(descr)
   {
-    _gridx        = _gridy   = 12;
     _tileszx      = _tileszy = 10;
+    _gridx        = _tileszx + 2;
+    _gridy        = _tileszy + 2;
     _fontsz       = 9;
     _fontsz_title = 11;
   }
