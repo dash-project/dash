@@ -95,8 +95,8 @@ public:
   }
 
   void draw_pattern(std::ostream & os,
-                    std::array<index_t, PatternT::ndim()> coords,
-                    int dimx, int dimy) {
+                    std::array<index_t, PatternT::ndim()> coords = {},
+                    int dimx = 1, int dimy = 0) {
     // Adjust tile sizes proportional to block regions:
     _blockszx     = _blockszy = _block_base_size;
     float block_format = static_cast<float>(_pattern.blocksize(dimy)) /
@@ -191,7 +191,7 @@ public:
     startx = offsx;
     for (int unit = 0; unit < _pattern.num_units(); unit++) {
       startx = offsx;
-      starty = offsy + (unit * (_tileszy - 2));
+      starty = offsy + (unit * (_tileszy + 2));
       os << "<rect x=\"" << startx << "\" y=\"" << starty << "\" ";
       os << "height=\"" << _tileszy << "\" width=\"" << _tileszx << "\" ";
       os << tilestyle(unit);

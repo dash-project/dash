@@ -88,8 +88,8 @@ void print_example(
   std::ofstream out_b(fname_b);
 
   std::array<index_t, pat.ndim()> coords = {{0}};
-  pv.draw_pattern(out, coords, 1, 0);
-  pvb.draw_pattern(out_b, coords, 1, 0);
+  pv.draw_pattern(out);
+  pvb.draw_pattern(out_b);
   out.close();
   out_b.close();
 }

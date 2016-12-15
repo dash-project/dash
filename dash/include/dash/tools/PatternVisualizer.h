@@ -79,8 +79,8 @@ public:
   }
 
   void draw_pattern(std::ostream & os,
-                    std::array<index_t, PatternT::ndim()> coords,
-                    int dimx, int dimy) {
+                    std::array<index_t, PatternT::ndim()> coords = {},
+                    int dimx = 1, int dimy = 0) {
     std::string title = _title;
     replace_all(title, "<", "&lt;");
     replace_all(title, ">", "&gt;");
