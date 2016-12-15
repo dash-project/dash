@@ -8,8 +8,8 @@
 //#include <dash/GlobRef.h>
 #include <dash/GlobMem.h>
 //#include <dash/Allocator.h>
-#include <dash/iterator/HaloMatrixIterator.h>
-#include <dash/Halo.h>
+#include <dash/experimental/iterator/HaloMatrixIterator.h>
+#include <dash/experimental/Halo.h>
 #include <dash/Matrix.h>
 #include <type_traits>
 

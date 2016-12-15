@@ -654,6 +654,5 @@ std::ostream & operator<<(
 } // namespace dash
 
 #include <dash/iterator/GlobViewIter.h>
-#include <dash/iterator/GlobStencilIter.h>
 
 #endif // DASH__GLOB_ITER_H_

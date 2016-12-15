@@ -2,7 +2,7 @@
 #define DASH__HALOMATRIXITERATOR_H_INCLUDED
 
 #include <dash/Types.h>
-#include <dash/Halo.h>
+#include <dash/experimental/Halo.h>
 
 #include <vector>
 

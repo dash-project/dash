@@ -4,6 +4,8 @@
 #include <iomanip>
 #include <utility>
 
+#include <dash/experimental/HaloMatrix.h>
+
 using namespace std;
 
 using pattern_t   = dash::Pattern<2>;
