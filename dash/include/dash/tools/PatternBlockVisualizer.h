@@ -141,7 +141,7 @@ public:
     draw_blocks(os, coords, dimx, dimy);
     os << "</g>" << std::endl;
 
-    draw_key(os, dimx, dimy, (2 + _pattern.blockspec().extent(dimx))*_gridx, 0);
+    draw_key(os, dimx, dimy, _pattern.blockspec().extent(dimx)*_gridx + 2*(_block_base_size + 2), 0);
     os << "</g>" << std::endl;
   }
 
@@ -149,36 +149,52 @@ public:
                  int dimx, int dimy,
                  int offsx = 0, int offsy = 0) {
 
-    int startx, starty;
-    int endx, endy;
+    int startx = offsx;
+    int starty = offsy;
+    int lenx   = _pattern.blockspec().extent(dimx) * _gridx + _block_base_size + 2;
+    int leny   = _pattern.blockspec().extent(dimy) * _gridy + _block_base_size + 2;
 
-    startx = offsx;
-    starty = offsy;
-    endx = startx + (1 + _pattern.blockspec().extent(dimx)) * _gridx;
-    endy = starty;
+    os << "<defs>\n";
+    os << "<marker id=\"arrowhead\" orient=\"auto\"";
+    os << " markerWidth=\"6\" markerHeight=\"6\"";
+    os << " refX=\"0\" refY=\"0\"";
+    os << " viewBox=\"-10 -15 30 30\">\n";
+    os << "<path d=\"";
+    os << "M " << -10 << " " << -15 << " ";
+    os << "L " <<  20 << " " <<   0 << " ";
+    os << "L " << -10 << " " <<  15 << " ";
+    os << "L " <<   0 << " " <<   0 << " ";
+    os << "z ";
+    os << "\"";
+    os << " style=\"fill:#808080;stroke:#808080;stroke-width:1\"";
+    os << "/>";
+    os << "</marker>\n";
+    os << "</defs>\n";
 
-    os << "<line x1=\"" << startx << "\" y1=\"" << starty << "\"";
-    os << " x2=\"" << endx << "\" y2=\"" << endy << "\"";
-    os << " style=\"stroke:#808080;stroke-width:1\"/>";
+    os << "<path d=\"";
+    os << "M " << startx << " " << starty << " ";
+    os << "h " <<   lenx << " ";
+    os << "\"";
+    os << " style=\"fill:none;stroke:#808080;stroke-width:1\"";
+    os << " marker-end=\"url(#arrowhead)\"";
+    os << "/>";
 
-    os << "<text font-family=\"Verdana\" x=\"" << endx/3 << "\" y=\"" << starty - _fontsz/2 << "\" ";
+    os << "<text font-family=\"Verdana\" x=\"" << startx + lenx/3 << "\" y=\"" << starty - _fontsz/2 << "\" ";
     os << " fill=\"grey\" font-size=\"" << _fontsz << "\" >";
     os << "Dimension " << dimx << std::endl;
     os << "</text>" << std::endl;
 
-    startx = offsx;
-    starty = offsy;
-    endx = startx;
-    endy = starty + (1 + _pattern.blockspec().extent(dimy)) * _gridy;
+    os << "<path d=\"";
+    os << "M " << startx << " " << starty << " ";
+    os << "v " <<   leny << " ";
+    os << "\"";
+    os << " style=\"fill:none;stroke:#808080;stroke-width:1\"";
+    os << " marker-end=\"url(#arrowhead)\"";
+    os << "/>";
 
-    os << "<line x1=\"" << startx << "\" y1=\"" << starty << "\"";
-    os << " x2=\"" << endx << "\" y2=\"" << endy << "\"";
-    os << " style=\"stroke:#808080;stroke-width:1\"/>";
-
-    os << "<text font-family=\"Verdana\" x=\"" << startx - _fontsz/2 << "\" y=\"" << endy/3 << "\" ";
-    os << " fill=\"grey\" font-size=\"" << _fontsz << "\"";
-    os << " transform=\"rotate(-90," << startx - _fontsz/2 << "," << endy/3 << ")\" ";
-    os << " >";
+    os << "<text font-family=\"Verdana\" x=\"" << startx - _fontsz/2 << "\" y=\"" << starty + leny/3 << "\" ";
+    os << " transform=\"rotate(-90," << startx - _fontsz/2 << "," << starty + leny/3 << ")\" ";
+    os << " fill=\"grey\" font-size=\"" << _fontsz << "\" >";
     os << "Dimension " << dimy << std::endl;
     os << "</text>" << std::endl;
   }
@@ -200,7 +216,7 @@ public:
 
       starty += _tileszy - 2;
       startx += _tileszx + 1;
-      os << "<text x=\"" << startx << "\" y=\"" << starty << "\" ";
+      os << "<text font-family=\"Verdana\" x=\"" << startx << "\" y=\"" << starty << "\" ";
       os << " fill=\"grey\" font-size=\"" << _fontsz << "\"";
       os << " >";
       os << "Unit " << unit << std::endl;

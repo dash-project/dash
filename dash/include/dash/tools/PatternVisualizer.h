@@ -114,7 +114,7 @@ public:
     draw_local_memlayout(os, coords, dimx, dimy);
     os << "</g>" << std::endl;
 
-    draw_key(os, dimx, dimy, (2 + _pattern.extent(dimx))*_gridx, 0);
+    draw_key(os, dimx, dimy, _pattern.extent(dimx)*_gridx + 2*_gridx, 0);
     os << "</g>" << std::endl;
   }
 
@@ -124,19 +124,14 @@ public:
 
     int startx = offsx;
     int starty = offsy;
-    int lenx   = (1 + _pattern.extent(dimx)) * _gridx;
-    int leny   = (1 + _pattern.extent(dimy)) * _gridy;
-
-    os << "<path d=\"";
-    os << "M " << startx      << " " << starty+leny << " ";
-    os << "L " << startx      << " " << starty << " ";
-    os << "L " << startx+lenx << "  "<< starty << " ";
-    os << "\"";
-    os << " style=\"fill:none;stroke:#808080;stroke-width:1\"";
-    os << "/>";
+    int lenx   = _pattern.extent(dimx) * _gridx + _gridx;
+    int leny   = _pattern.extent(dimy) * _gridy + _gridy;
 
     os << "<defs>\n";
-    os << "<g transform=\"scale(0.20)\" id=\"arrowhead\">\n";
+    os << "<marker id=\"arrowhead\" orient=\"auto\"";
+    os << " markerWidth=\"6\" markerHeight=\"6\"";
+    os << " refX=\"0\" refY=\"0\"";
+    os << " viewBox=\"-10 -15 30 30\">\n";
     os << "<path d=\"";
     os << "M " << -10 << " " << -15 << " ";
     os << "L " <<  20 << " " <<   0 << " ";
@@ -146,26 +141,33 @@ public:
     os << "\"";
     os << " style=\"fill:#808080;stroke:#808080;stroke-width:1\"";
     os << "/>";
-    os << "</g>\n";
+    os << "</marker>\n";
     os << "</defs>\n";
 
-    os << "<use x=\"" << startx+lenx << "\" y=\"" << starty <<"\" ";
-    os << " xlink:href=\"#arrowhead\" />";
+    os << "<path d=\"";
+    os << "M " << startx << " " << starty << " ";
+    os << "h " <<   lenx << " ";
+    os << "\"";
+    os << " style=\"fill:none;stroke:#808080;stroke-width:1\"";
+    os << " marker-end=\"url(#arrowhead)\"";
+    os << "/>";
 
-    os << "<use x=\"" << startx << "\" y=\"" << starty+leny <<"\" ";
-    os << " transform=\"rotate(90," << startx << "," << starty+leny <<")\" ";
-    os << " xlink:href=\"#arrowhead\" />";
-
-    os << "<text x=\"" << startx+ lenx / 3 << "\" y=\"" << starty - 2 << "\" ";
-    os << " fill=\"grey\" font-size=\"" << _fontsz << "\"";
-    os << " >";
+    os << "<text x=\"" << startx + lenx/3 << "\" y=\"" << starty - _fontsz/2 << "\" ";
+    os << " fill=\"grey\" font-size=\"" << _fontsz << "\" >";
     os << "Dimension " << dimx << std::endl;
     os << "</text>" << std::endl;
 
-    os << "<text x=\"" << startx - 2 << "\" y=\"" << starty + leny / 3 << "\" ";
-    os << " fill=\"grey\" font-size=\"" << _fontsz << "\"";
-    os << " transform=\"rotate(-90," << startx - 2 << "," << starty + leny / 3 << ")\" ";
-    os << " >";
+    os << "<path d=\"";
+    os << "M " << startx << " " << starty << " ";
+    os << "v " <<   leny << " ";
+    os << "\"";
+    os << " style=\"fill:none;stroke:#808080;stroke-width:1\"";
+    os << " marker-end=\"url(#arrowhead)\"";
+    os << "/>";
+
+    os << "<text x=\"" << startx - _fontsz/2 << "\" y=\"" << starty + leny/3 << "\" ";
+    os << " transform=\"rotate(-90," << startx - _fontsz/2 << "," << starty + leny/3 << ")\" ";
+    os << " fill=\"grey\" font-size=\"" << _fontsz << "\" >";
     os << "Dimension " << dimy << std::endl;
     os << "</text>" << std::endl;
   }
