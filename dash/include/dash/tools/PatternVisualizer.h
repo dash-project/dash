@@ -108,12 +108,12 @@ public:
     draw_axes(os, dimx, dimy);
 
     os << "<g transform=\"translate(4,4)\">" << std::endl;
-    draw_blocks(os, coords, dimx, dimy);
+    draw_local_blocks(os, coords, dimx, dimy);
     draw_tiles(os, coords, dimx, dimy);
-    draw_memlayout(os, coords, dimx, dimy);
-    draw_key(os, dimx, dimy, (2 + _pattern.extent(dimx))*_gridx, 0);
+    draw_local_memlayout(os, coords, dimx, dimy);
     os << "</g>" << std::endl;
 
+    draw_key(os, dimx, dimy, (2 + _pattern.extent(dimx))*_gridx, 0);
     os << "</g>" << std::endl;
   }
 
@@ -194,7 +194,35 @@ public:
     }
   }
 
-  void draw_blocks(std::ostream & os,
+  void draw_tiles(std::ostream & os,
+                  std::array<index_t, PatternT::ndim()> coords,
+                  int dimx, int dimy) {
+    for (int i = 0; i < _pattern.extent(dimx); i++) {
+      for (int j = 0; j < _pattern.extent(dimy); j++) {
+
+        os << "<rect x=\"" << (i * _gridx) << "\" y=\"" << (j * _gridy) << "\" ";
+        os << "height=\"" << _tileszy << "\" width=\"" << _tileszx << "\" ";
+
+        coords[dimx] = i;
+        coords[dimy] = j;
+
+        auto unit  = _pattern.unit_at(coords);
+        auto loffs = _pattern.at(coords);
+
+        os << tilestyle(unit);
+        os << " tooltip=\"enable\" > ";
+        os << " <title>Elem: (" << j << "," << i <<"),";
+        os << " Unit " << unit;
+        os << " Local offs. " << loffs;
+        os << "</title>";
+
+          //os << "<!-- i=" << i << " j=" << j << "--> ";
+        os << "</rect>" << std::endl;
+      }
+    }
+  }
+
+  void draw_local_blocks(std::ostream & os,
                    std::array<index_t, PatternT::ndim()> coords,
                    int dimx, int dimy) {
 
@@ -231,35 +259,7 @@ public:
     }
   }
 
-  void draw_tiles(std::ostream & os,
-                  std::array<index_t, PatternT::ndim()> coords,
-                  int dimx, int dimy) {
-    for (int i = 0; i < _pattern.extent(dimx); i++) {
-      for (int j = 0; j < _pattern.extent(dimy); j++) {
-
-        os << "<rect x=\"" << (i * _gridx) << "\" y=\"" << (j * _gridy) << "\" ";
-        os << "height=\"" << _tileszy << "\" width=\"" << _tileszx << "\" ";
-
-        coords[dimx] = i;
-        coords[dimy] = j;
-
-        auto unit  = _pattern.unit_at(coords);
-        auto loffs = _pattern.at(coords);
-
-        os << tilestyle(unit);
-        os << " tooltip=\"enable\" > ";
-        os << " <title>Elem: (" << j << "," << i <<"),";
-        os << " Unit " << unit;
-        os << " Local offs. " << loffs;
-        os << "</title>";
-
-          //os << "<!-- i=" << i << " j=" << j << "--> ";
-        os << "</rect>" << std::endl;
-      }
-    }
-  }
-
-  void draw_memlayout(std::ostream & os,
+  void draw_local_memlayout(std::ostream & os,
                       std::array<index_t, PatternT::ndim()> coords,
                       int dimx, int dimy) {
     int startx, starty;

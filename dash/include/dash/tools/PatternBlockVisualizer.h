@@ -117,15 +117,15 @@ public:
 
   void draw_pane(std::ostream & os,
                  std::array<index_t, PatternT::ndim()> coords,
-                 int dimx, int dimy)
-  {
+                 int dimx, int dimy) {
     os << "<g transform=\"translate(10,10)\">" << std::endl;
     draw_axes(os, dimx, dimy);
 
     os << "<g transform=\"translate(4,4)\">" << std::endl;
-    draw_tiles(os, coords, dimx, dimy);
+    draw_blocks(os, coords, dimx, dimy);
     os << "</g>" << std::endl;
 
+    draw_key(os, dimx, dimy, (2 + _pattern.blockspec().extent(dimx))*_gridx, 0);
     os << "</g>" << std::endl;
   }
 
@@ -167,9 +167,34 @@ public:
     os << "</text>" << std::endl;
   }
 
-  void draw_tiles(std::ostream & os,
-                  std::array<index_t, PatternT::ndim()> coords,
-                  int dimx, int dimy) {
+  void draw_key(std::ostream & os,
+                int dimx, int dimy,
+                int offsx = 0, int offsy = 0) {
+    int startx, starty;
+
+    startx = offsx;
+    for (int unit = 0; unit < _pattern.num_units(); unit++) {
+      startx = offsx;
+      starty = offsy + (unit * _gridy);
+      os << "<rect x=\"" << startx << "\" y=\"" << starty << "\" ";
+      os << "height=\"" << _tileszy << "\" width=\"" << _tileszx << "\" ";
+      os << tilestyle(unit);
+      os << "> ";
+      os << "</rect>" << std::endl;
+
+      starty += _tileszy - 2;
+      startx += _tileszx + 1;
+      os << "<text x=\"" << startx << "\" y=\"" << starty << "\" ";
+      os << " fill=\"grey\" font-size=\"" << _fontsz << "\"";
+      os << " >";
+      os << "Unit " << unit << std::endl;
+      os << "</text>" << std::endl;
+    }
+  }
+
+  void draw_blocks(std::ostream & os,
+                   std::array<index_t, PatternT::ndim()> coords,
+                   int dimx, int dimy) {
     std::array<index_t, PatternT::ndim()> block_coords;
     std::array<index_t, PatternT::ndim()> block_begin_coords;
     auto blockspec = _pattern.blockspec();
@@ -187,6 +212,8 @@ public:
         int j_grid = j * _gridy;
         int t_x    = i_grid + (_tileszx / 5);
         int t_y    = j_grid + (_tileszy / 2) + (_fontsz_tiny / 2);
+
+
 
         os << "<rect x=\"" << i_grid << "\" y=\"" << j_grid << "\" ";
         os << "height=\"" << _tileszy << "\" width=\"" << _tileszx << "\" ";
