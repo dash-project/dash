@@ -9,6 +9,7 @@
 
 #include <dash/dart/if/dart_types.h>
 
+#include <dash/dart/base/logging.h>
 #include <dash/dart/base/internal/domain_locality.h>
 
 
@@ -39,7 +40,12 @@ dart_ret_t dart__base__locality__create_domain(
   dart_domain_locality_t          ** domain_out)
 {
   *domain_out = malloc(sizeof(dart_domain_locality_t));
-  return dart__base__locality__domain__init(*domain_out);
+  dart_ret_t ret = dart__base__locality__domain__init(*domain_out);
+  if (DART_OK != ret) {
+    free(*domain_out);
+    *domain_out = NULL;
+  }
+  return ret;
 }
 
 static inline
@@ -47,9 +53,20 @@ dart_ret_t dart__base__locality__clone_domain(
   const dart_domain_locality_t     * domain_in,
   dart_domain_locality_t          ** domain_out)
 {
+  DART_LOG_TRACE("dart__base__locality__clone_domain() "
+                 "domain %s (%p)",
+                 domain_in->domain_tag, domain_in);
+
+  *domain_out = NULL;
   dart_ret_t ret = dart__base__locality__create_domain(domain_out);
   if (DART_OK != ret) { return ret; }
-  return dart__base__locality__domain__copy(domain_in, *domain_out);
+  DART_LOG_TRACE("dart__base__locality__clone_domain: copy");
+  ret = dart__base__locality__domain__copy(domain_in, *domain_out);
+
+  DART_LOG_TRACE("dart__base__locality__clone_domain > "
+                 "domain %s (%p) -> (%p)",
+                 domain_in->domain_tag, domain_in, *domain_out);
+  return ret;
 }
 
 static inline
@@ -57,18 +74,32 @@ dart_ret_t dart__base__locality__assign_domain(
   dart_domain_locality_t           * domain_lhs,
   const dart_domain_locality_t     * domain_rhs)
 {
+  DART_LOG_TRACE("dart__base__locality__assign_domain() "
+                 "lhs (%p) <- rhs (%p): %s",
+                 domain_lhs, domain_rhs, domain_rhs->domain_tag);
+
   dart_ret_t ret = dart__base__locality__domain__destruct(domain_lhs);
   if (DART_OK != ret) { return ret; }
-  return dart__base__locality__domain__copy(domain_rhs, domain_lhs);
+  ret = dart__base__locality__domain__copy(domain_rhs, domain_lhs);
+
+  DART_LOG_TRACE("dart__base__locality__assign_domain > "
+                 "lhs (%p) <- rhs (%p): %s",
+                 domain_lhs, domain_rhs, domain_rhs->domain_tag);
+  return ret;
 }
 
 static inline
 dart_ret_t dart__base__locality__destruct_domain(
   dart_domain_locality_t           * domain)
 {
+  DART_LOG_TRACE("dart__base__locality__destruct_domain() "
+                 "domain %s (%p)",
+                 domain->domain_tag, domain);
   dart_ret_t ret = dart__base__locality__domain__destruct(domain);
   if (ret != DART_OK) { return ret; }
   free(domain);
+  DART_LOG_TRACE("dart__base__locality__destruct_domain > ~(%p)",
+                 domain);
   return DART_OK;
 }
 

@@ -158,7 +158,7 @@ static void print_domain(
       }
     }
   }
-  ostr << ")\n";
+  ostr << ") @ " << static_cast<const void *>(domain) << "\n";
 
   ostr << indent << "scope:   " << domain->scope << " "
                                 << "(level " << domain->level << ")"

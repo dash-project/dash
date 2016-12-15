@@ -176,14 +176,14 @@ dart_ret_t dart_domain_move_subdomain(
  * \threadsafe
  * \ingroup DartLocality
  */
-dart_ret_t dart_domain_split(
+dart_ret_t dart_domain_split_scope(
   const dart_domain_locality_t  * domain_in,
   dart_locality_scope_t           scope,
   int                             num_parts,
   dart_domain_locality_t        * split_domain_out);
 
 /**
- * Domain tags of all domains at the specified locality scope.
+ * Domain tags of domains at the specified locality scope.
  *
  * \threadsafe
  * \ingroup DartLocality
