@@ -1047,7 +1047,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  const std::array<SizeType, NumDimensions> & extents() const {
+  const std::array<SizeType, NumDimensions> extents() const {
     return std::array<SizeType, 1> {{ _size }};
   }
 
