@@ -414,8 +414,6 @@ TEST_F(HDF5ArrayTest, GroupTest)
 
 TEST_F(HDF5ArrayTest, TeamSplit)
 {
-  // TODO: Fix
-  SKIP_TEST();
 
   if (dash::size() < 2) {
     SKIP_TEST();

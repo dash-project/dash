@@ -75,8 +75,7 @@ public:
    * \return true if pattern is compatible
    */
 private:
-  template <
-    class pattern_t >
+  template < class pattern_t >
   static constexpr bool _compatible_pattern()
   {
     return dash::pattern_partitioning_traits<pattern_t>::type::rectangular &&
@@ -117,8 +116,7 @@ public:
  template <typename Container_t>
    typename std::enable_if <
     _compatible_pattern<typename Container_t::pattern_type>(),
-    void
-  >::type
+    void>::type
   static write(
     Container_t  & array,
     std::string   filename,
@@ -137,8 +135,9 @@ public:
     static_assert(std::is_same<index_t, typename pattern_t::index_type>::value,
                   "Specified index_t differs from pattern_t::index_type");
 
-    auto pattern     = array.pattern();
-    auto & team      = array.team();
+    auto pattern             = array.pattern();
+    const dash::Team & team  = array.team();
+
     // Map native types to HDF5 types
     auto h5datatype  = get_h5_datatype<value_t>();
     // for tracking opened groups
@@ -156,9 +155,7 @@ public:
     hid_t   plist_id; // property list identifier
     hid_t   filespace;
     hid_t   memspace;
-    hid_t   attr_id;
     hid_t   loc_id;
-    herr_t  status;
 
     hdf5_pattern_spec<ndim> ts;
 
@@ -291,6 +288,7 @@ public:
     }
 
     // Close all
+    H5Pclose(plist_id);
     H5Dclose(h5dset);
     H5Sclose(filespace);
     H5Sclose(memspace);
@@ -300,175 +298,6 @@ public:
     }
     H5Fclose(file_id);
   }
-
-#if 0
-  /**
-   * Read an HDF5 dataset into a dash::Array using parallel IO
-   * if the array is already allocated, the size has to match the HDF5 dataset
-   * size and all data will be overwritten.
-   * Otherwise the array will be allocated.
-   *
-   * Colletive operation.
-   *
-   * \param array     Import data in this dash::Array
-   * \param filename  Filename of HDF5 file including extension
-   * \param datapath   HDF5 Dataset in which the data is stored
-   * \param foptions
-   */
-  template <
-    typename value_t,
-    typename index_t,
-    class    pattern_t >
-  typename std::enable_if <
-    _compatible_pattern<pattern_t>() && pattern_t::ndim() == 1,
-    void
-  >::type
-  static read(
-    dash::Array<value_t, index_t, pattern_t> & array,
-    std::string                                filename,
-    std::string                                datapath,
-    hdf5_options                               foptions = _get_fdefaults())
-  {
-    typedef typename pattern_t::size_type extent_t;
-
-    static_assert(std::is_same<index_t,
-                               typename pattern_t::index_type>::value,
-                  "Specified index_t differs from pattern_t::index_type");
-
-    extent_t tilesize;
-    int      rank;
-
-    // HDF5 definition
-    hid_t    file_id;
-    hid_t    h5dset;
-    hid_t    internal_type;
-    hid_t    plist_id; // property list identifier
-    hid_t    filespace;
-    hid_t    memspace;
-    // global data dims
-    hsize_t  data_dimsf[1];
-    herr_t   status;
-    // Map native types to HDF5 types
-    hid_t    h5datatype;
-
-    // Check if matrix is already allocated
-    bool is_alloc  = (array.size() != 0);
-
-    // setup mpi access
-    plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    if(is_alloc){
-      dart__io__hdf5__prep_mpio(plist_id, array.team().dart_id());
-    } else {
-      dart__io__hdf5__prep_mpio(plist_id, dash::Team::All().dart_id());
-    }
-
-    // HD5 create file
-    file_id = H5Fopen(filename.c_str(), H5P_DEFAULT, plist_id );
-
-    // close property list
-    H5Pclose(plist_id);
-
-    // Create dataset
-    h5dset = H5Dopen(file_id, datapath.c_str(), H5P_DEFAULT);
-
-    // Get dimensions of data
-    filespace     = H5Dget_space(h5dset);
-    rank          = H5Sget_simple_extent_ndims(filespace);
-
-    DASH_ASSERT_EQ(rank, 1, "Data dimension of HDF5 dataset is not 1");
-
-    status        = H5Sget_simple_extent_dims(filespace, data_dimsf, NULL);
-
-    // Initialize DASH Array
-    // no explicit pattern specified / try to load pattern from hdf5 file
-    auto pat_key = foptions.pattern_metadata_key.c_str();
-
-    if (!is_alloc                          // not allocated
-        && foptions.restore_pattern        // pattern should be restored
-        && H5Aexists(h5dset, pat_key)) { // hdf5 contains pattern
-      hid_t attrspace      = H5Screate(H5S_SCALAR);
-      hid_t attribute_id  = H5Aopen(h5dset, pat_key, H5P_DEFAULT);
-      H5Aread(attribute_id, H5T_NATIVE_LONG, &tilesize);
-      H5Aclose(attribute_id);
-      H5Sclose(attrspace);
-
-      const pattern_t pattern(
-        dash::SizeSpec<1, extent_t>(static_cast<extent_t>(data_dimsf[0])),
-        dash::DistributionSpec<1>(dash::TILE(tilesize)),
-        dash::TeamSpec<1, index_t>(),
-        dash::Team::All());
-
-      array.allocate(pattern);
-    } else if (is_alloc) {
-      DASH_LOG_DEBUG("Array already allocated");
-      // Check if array size matches data extents
-      DASH_ASSERT_EQ(
-        data_dimsf[0],
-        array.size(),
-        "Array size does not match data extents");
-    } else {
-      // Auto deduce pattern
-      const pattern_t pattern(
-        dash::SizeSpec<1, extent_t>(static_cast<extent_t>(data_dimsf[0])),
-        dash::DistributionSpec<1>(),
-        dash::TeamSpec<1, index_t>(),
-        dash::Team::All());
-      array.allocate(pattern);
-    }
-    pattern_t pattern    = array.pattern();
-    h5datatype = get_h5_datatype<value_t>(); // hack
-
-    // get hdf pattern layout
-    hdf5_pattern_spec<1> ts = _get_pattern_hdf_spec(pattern);
-
-    // Create HDF5 memspace
-    memspace       = H5Screate_simple(1, ts.data_dimsm, NULL);
-    internal_type  = H5Tcopy(h5datatype);
-
-    // Select Hyperslabs in file
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    // Create property list for collective reads
-    plist_id = H5Pcreate(H5P_DATASET_XFER);
-    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
-    // read data
-    DASH_LOG_DEBUG("read completely filled blocks");
-    H5Dread(h5dset, internal_type, memspace, filespace,
-            plist_id, array.lbegin());
-
-    // read underfilled blocks
-    // get hdf pattern layout
-    ts = _get_pattern_hdf_spec_underfilled(pattern);
-    memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
-
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    // Read underfilled blocks by pattern
-    DASH_LOG_DEBUG("read partially filled blocks");
-    H5Dread(h5dset, internal_type, memspace, filespace,
-            plist_id, array.lbegin());
-
-    // Close all
-    H5Dclose(h5dset);
-    H5Sclose(filespace);
-    H5Sclose(memspace);
-    H5Tclose(internal_type);
-    H5Fclose(file_id);
-  }
-#endif
 
   /**
    * Read an HDF5 dataset into a dash::Matrix using parallel IO
@@ -516,13 +345,13 @@ public:
     hsize_t data_dimsf[ndim];
     herr_t  status;
     // Map native types to HDF5 types
-    hid_t h5datatype;
+    hid_t   h5datatype;
     // rank of hdf5 dataset
-    int      rank;
+    int     rank;
     hdf5_pattern_spec<ndim> ts;
 
     // Check if matrix is already allocated
-    bool is_alloc  = (matrix.size() != 0);
+    bool is_alloc = (matrix.size() != 0);
 
     // Setup MPI IO
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -621,7 +450,7 @@ public:
     ts = _get_pattern_hdf_spec(pattern);
 
     // Create dataspace
-    memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
+    memspace = H5Screate_simple(ndim, ts.data_dimsm, NULL);
 
     H5Sselect_hyperslab(
       filespace,
@@ -634,7 +463,7 @@ public:
     // Create property list for collective reads
     plist_id = H5Pcreate(H5P_DATASET_XFER);
     H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
+    
     // read data
     H5Dread(h5dset, internal_type, memspace, filespace,
             plist_id, matrix.lbegin());
@@ -657,6 +486,7 @@ public:
             plist_id, matrix.lbegin());
 
     // Close all
+    H5Pclose(plist_id);
     H5Dclose(h5dset);
     H5Sclose(filespace);
     H5Sclose(memspace);
