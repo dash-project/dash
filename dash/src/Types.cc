@@ -3,6 +3,7 @@
 
 namespace dash {
 
+const dart_datatype_t dart_datatype<unsigned char>::value = DART_TYPE_BYTE;
 const dart_datatype_t dart_datatype<char>::value          = DART_TYPE_BYTE;
 const dart_datatype_t dart_datatype<int>::value           = DART_TYPE_INT;
 const dart_datatype_t dart_datatype<unsigned int>::value  = DART_TYPE_UINT;
