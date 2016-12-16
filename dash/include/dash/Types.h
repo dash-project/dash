@@ -94,13 +94,12 @@ template<typename Type>
 const dart_datatype_t dart_datatype<Type>::value = DART_TYPE_UNDEFINED;
 
 template<>
-struct dart_datatype<unsigned char> {
+struct dart_datatype<char> {
   static const dart_datatype_t value;
 };
 
-
 template<>
-struct dart_datatype<char> {
+struct dart_datatype<unsigned char> {
   static const dart_datatype_t value;
 };
 
