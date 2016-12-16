@@ -25,9 +25,7 @@
 #include <typeinfo>
 #include <type_traits>
 
-#ifdef MPI_IMPL_ID
-#include <mpi.h>
-#else
+#ifndef MPI_IMPL_ID
 #pragma error "HDF5 module requires dart-mpi"
 #endif
 
