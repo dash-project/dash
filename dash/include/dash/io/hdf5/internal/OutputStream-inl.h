@@ -18,11 +18,20 @@ inline OutputStream & operator<< (
    OutputStream & os,
    Container_t  & container )
 {
-   dash::io::hdf5::StoreHDF::write(
-       container,
-       os._filename,
-       os._dataset,
-       os._foptions);
+    if(os._use_cust_conv){
+      dash::io::hdf5::StoreHDF::write(
+        container,
+        os._filename,
+        os._dataset,
+        os._foptions,
+        os._converter);
+    } else {
+      dash::io::hdf5::StoreHDF::write(
+        container,
+        os._filename,
+        os._dataset,
+        os._foptions);
+    }
 
   // Append future data in this stream
   os._foptions.overwrite_file = false;

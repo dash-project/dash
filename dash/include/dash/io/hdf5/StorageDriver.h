@@ -24,6 +24,7 @@
 #include <sstream>
 #include <typeinfo>
 #include <type_traits>
+#include <functional>
 
 #ifndef MPI_IMPL_ID
 #pragma error "HDF5 module requires dart-mpi"
@@ -37,6 +38,9 @@ namespace hdf5 {
 
 /** forward declaration */
 template < typename T > hid_t get_h5_datatype();
+
+/// Type of converter function from native type to hdf5 datatype
+using type_converter_fun_type = std::function<hid_t()>;
 
 /**
  * DASH wrapper to store an dash::Array or dash::Matrix
@@ -116,10 +120,17 @@ public:
     _compatible_pattern<typename Container_t::pattern_type>(),
     void>::type
   static write(
-    Container_t  & array,
-    std::string   filename,
-    std::string   datapath,
-    hdf5_options  foptions = _get_fdefaults())
+      /// Import data in this Container
+      Container_t &  array,
+      /// Filename of HDF5 file including extension
+      std::string    filename,
+      /// HDF5 Dataset in which the data is stored
+      std::string    datapath,
+      /// options how to open and modify data
+      hdf5_options   foptions = _get_fdefaults(),
+      /// \cstd::function to convert native type into h5 type
+      type_converter_fun_type  to_h5_dt_converter =
+                        get_h5_datatype<typename Container_t::value_type>)
   {
     using pattern_t = typename Container_t::pattern_type;
     using extent_t  = typename pattern_t::size_type;
@@ -137,7 +148,7 @@ public:
     const dash::Team & team  = array.team();
 
     // Map native types to HDF5 types
-    auto h5datatype  = get_h5_datatype<value_t>();
+    auto h5datatype  = to_h5_dt_converter();
     // for tracking opened groups
     std::list<hid_t> open_groups;
     // Split path in groups and dataset
@@ -304,11 +315,6 @@ public:
    * Otherwise the matrix will be allocated.
    *
    * Collective operation.
-   *
-   * \param  matrix    Import data in this dash::Matrix
-   * \param  filename  Filename of HDF5 file including extension
-   * \param  datapath   HDF5 Dataset in which the data is stored
-   * \param  foptions
    */
  template <typename Container_t>
    typename std::enable_if <
@@ -316,10 +322,17 @@ public:
     void
   >::type
   static read(
+      /// Import data in this Container
       Container_t &  matrix,
+      /// Filename of HDF5 file including extension
       std::string    filename,
+      /// HDF5 Dataset in which the data is stored
       std::string    datapath,
-      hdf5_options   foptions = _get_fdefaults())
+      /// options how to open and modify data
+      hdf5_options   foptions = _get_fdefaults(),
+      /// \cstd::function to convert native type into h5 type
+      type_converter_fun_type  to_h5_dt_converter =
+                        get_h5_datatype<typename Container_t::value_type>)
   {
     using pattern_t = typename Container_t::pattern_type;
     using extent_t  = typename pattern_t::size_type;
@@ -439,7 +452,7 @@ public:
       matrix.allocate(pattern);
     }
 
-    h5datatype = get_h5_datatype<value_t>();
+    h5datatype = to_h5_dt_converter();
     internal_type = H5Tcopy(h5datatype);
 
     // setup extends per dimension

@@ -18,11 +18,20 @@ inline InputStream & operator>> (
     InputStream & is,
     Container_t & container)
 {
-    dash::io::hdf5::StoreHDF::read(
+    if(is._use_cust_conv){
+      dash::io::hdf5::StoreHDF::read(
+        container,
+        is._filename,
+        is._dataset,
+        is._foptions,
+        is._converter);
+    } else {
+      dash::io::hdf5::StoreHDF::read(
         container,
         is._filename,
         is._dataset,
         is._foptions);
+    }
     return is;
 }
 

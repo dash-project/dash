@@ -8,6 +8,9 @@
 
 #include "TestBase.h"
 
+// for CustomType test
+#include "hdf5.h"
+
 
 class HDF5ArrayTest : public ::testing::Test {
 protected:
