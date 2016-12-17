@@ -248,7 +248,7 @@ dart_ret_t dart_domain_group(
 
 dart_ret_t dart_unit_locality(
   dart_team_t                     team,
-  dart_unit_t                     unit,
+  dart_local_unit_t               unit,
   dart_unit_locality_t         ** locality)
 {
   DART_LOG_DEBUG("dart_unit_locality() team(%d) unit(%d)", team, unit);
@@ -257,13 +257,13 @@ dart_ret_t dart_unit_locality(
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart_unit_locality: "
                    "dart__base__unit_locality__get(unit:%d) failed (%d)",
-                   unit, ret);
+                   unit.id, ret);
     *locality = NULL;
     return ret;
   }
 
   DART_LOG_DEBUG("dart_unit_locality > team(%d) unit(%d) -> %p",
-                 team, unit, *locality);
+                 team, unit.id, *locality);
   return DART_OK;
 }
 

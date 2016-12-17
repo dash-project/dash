@@ -177,7 +177,7 @@ dart_ret_t dart_init(
 
 		/* The length of this table is set to be the size
      * of DART_TEAM_ALL. */
-    team_data->sharedmem_tab = (int *)malloc(sizeof(int) * size);
+    team_data->sharedmem_tab = (dart_local_unit_t *)malloc(sizeof(dart_local_unit_t) * size);
 
     int * dart_unit_mapping = (int *) malloc(
         sizeof(int) * team_data->sharedmem_nodesize);
@@ -188,7 +188,7 @@ dart_ret_t dart_init(
       sharedmem_ranks[i] = i;
     }
     for (i = 0; i < size; i++) {
-      team_data->sharedmem_tab[i] = -1;
+      team_data->sharedmem_tab[i] = DART_UNDEFINED_LOCAL_UNIT_ID;
     }
 
     /* Generate the set (dart_unit_mapping) of units with absolute IDs,
@@ -212,7 +212,7 @@ dart_ret_t dart_init(
      * for unit dart_unit_mapping[i].
      */
     for (i = 0; i < team_data->sharedmem_nodesize; i++) {
-      team_data->sharedmem_tab[dart_unit_mapping[i]] = i;
+      team_data->sharedmem_tab[dart_unit_mapping[i]].id = i;
     }
     free(sharedmem_ranks);
     free(dart_unit_mapping);
@@ -274,7 +274,7 @@ dart_ret_t dart_exit()
     return DART_ERR_OTHER;
   }
 	uint16_t    index;
-	dart_unit_t unitid;
+	dart_global_unit_t unitid;
 	dart_myid(&unitid);
 
   dart__mpi__locality_finalize();
@@ -283,19 +283,19 @@ dart_ret_t dart_exit()
 
 	DART_LOG_DEBUG("%2d: dart_exit()", unitid);
 	if (dart_adapt_teamlist_convert(DART_TEAM_ALL, &index) == -1) {
-    DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed", unitid);
+    DART_LOG_ERROR("%2d: dart_exit: dart_adapt_teamlist_convert failed", unitid.id);
     return DART_ERR_OTHER;
   }
 
   dart_team_data_t *team_data = &dart_team_data[index];
 
   if (MPI_Win_unlock_all(team_data->window) != MPI_SUCCESS) {
-    DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid);
+    DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid.id);
     return DART_ERR_OTHER;
   }
 	/* End the shared access epoch in dart_win_local_alloc. */
 	if (MPI_Win_unlock_all(dart_win_local_alloc) != MPI_SUCCESS) {
-    DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid);
+    DART_LOG_ERROR("%2d: dart_exit: MPI_Win_unlock_all failed", unitid.id);
     return DART_ERR_OTHER;
   }
 
@@ -319,11 +319,11 @@ dart_ret_t dart_exit()
   dart_segment_fini();
 
   if (_init_by_dart) {
-    DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
+    DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid.id);
 		MPI_Finalize();
   }
 
-	DART_LOG_DEBUG("%2d: dart_exit: finalization finished", unitid);
+	DART_LOG_DEBUG("%2d: dart_exit: finalization finished", unitid.id);
 
 	return DART_OK;
 }

@@ -2,6 +2,7 @@
 #define DASH__INTERNAL__STREAM_CONVERSION_H_
 
 #include <dash/internal/Macro.h>
+#include <dash/dart/if/dart_types.h>
 
 #include <array>
 #include <vector>
@@ -104,6 +105,23 @@ std::ostream & operator<<(
   }
   ss << " }";
   operator<<(o, ss.str());
+  return o;
+}
+
+static
+std::ostream & operator<<(
+  std::ostream & o,
+  dart_global_unit_t uid)
+{
+  o << uid.id;
+  return o;
+}
+static
+std::ostream & operator<<(
+  std::ostream & o,
+  dart_local_unit_t uid)
+{
+  o << uid.id;
   return o;
 }
 

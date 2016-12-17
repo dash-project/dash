@@ -90,7 +90,7 @@ void Locality::init()
 {
   DASH_LOG_DEBUG("dash::util::Locality::init()");
 
-  if (dart_unit_locality(DART_TEAM_ALL, dash::Team::GlobalUnitID(), &_unit_loc)
+  if (dart_unit_locality(DART_TEAM_ALL, dash::Team::All().myid(), &_unit_loc)
       != DART_OK) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_unit_locality failed " <<
@@ -139,6 +139,8 @@ std::ostream & operator<<(
 dart_unit_locality_t   * Locality::_unit_loc = nullptr;
 dart_domain_locality_t * Locality::_team_loc = nullptr;
 
+// TODO[TF]: T'is to make the compiler happy. domain->unit_ids[u] is already a global ID!
+//             Please fix this function!
 static void print_domain(
   std::ostream                 & ostr,
   dart_team_t                    team,
@@ -162,7 +164,9 @@ static void print_domain(
     ostr << indent << "units:   " << "{ ";
     for (local_unit_t u{0}; u < domain->num_units; ++u) {
       dart_unit_t g_unit_id;
-      dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
+      // TODO[TF]: T'is to make the compiler happy. domain->unit_ids[u] is already a global ID!
+//      dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
+      g_unit_id = domain->unit_ids[u].id;
       ostr << g_unit_id;
       if (u < domain->num_units-1) {
         ostr << ", ";
@@ -176,11 +180,12 @@ static void print_domain(
     uindent += std::string(9, ' ');
 
     for (int u = 0; u < domain->num_units; ++u) {
-      dart_unit_t            unit_id  = domain->unit_ids[u];
+      dart_unit_t            unit_id  = domain->unit_ids[u].id;
       dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
-      dart_unit_locality_t * uloc;
-      dart_unit_locality(team, unit_id, &uloc);
-      dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
+      dart_unit_locality_t * uloc = (dart_unit_locality_t*)0xDEADBEEF;
+//      dart_unit_locality(team, unit_id, &uloc);
+//      dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
+      unit_gid = domain->unit_ids[u].id;
       ostr << uindent << "unit id:   " << uloc->unit << "  ("
                                        << "in team " << uloc->team << ", "
                                        << "global: " << unit_gid   << ")"

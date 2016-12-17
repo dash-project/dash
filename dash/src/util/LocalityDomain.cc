@@ -513,9 +513,14 @@ dash::util::LocalityDomain::init(
   DASH_LOG_TRACE("LocalityDomain.init",
                  "num_units:", _domain->num_units);
   if (_domain->num_units > 0) {
-    _unit_ids.insert(_unit_ids.end(),
-                     _domain->unit_ids,
-                     _domain->unit_ids + _domain->num_units);
+    //TODO[TF]: T'is to make the compiler happy, is the conversion local->global IDs correct?
+    //          Why do we even create a copy of the units?
+    for(size_t i = 0; i < _domain->num_units; i++) {
+      _unit_ids.push_back(local_unit_t(_domain->unit_ids[i].id));
+    }
+//    _unit_ids.insert(_unit_ids.end(),
+//                     _domain->unit_ids,
+//                     _domain->unit_ids + _domain->num_units);
   }
 
 #if 0
