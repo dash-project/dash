@@ -60,11 +60,11 @@ inline char * dart_base_logging_basename(char *path) {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d ERROR ] [ %*d ] %-*s:%-*d !!! DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
@@ -91,11 +91,11 @@ inline char * dart_base_logging_basename(char *path) {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d TRACE ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
@@ -117,11 +117,11 @@ inline char * dart_base_logging_basename(char *path) {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d DEBUG ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
@@ -143,11 +143,11 @@ inline char * dart_base_logging_basename(char *path) {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d INFO  ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \

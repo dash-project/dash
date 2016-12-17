@@ -157,7 +157,8 @@ dart_ret_t dart__base__locality__create(
   team_global_domain->unit_ids =
     malloc(num_units * sizeof(dart_unit_t));
   for (size_t u = 0; u < num_units; ++u) {
-    team_global_domain->unit_ids[u] = u;
+    /* TODO[TF] T'is to make the compiler happy, please fix! (u is local_unit_id) */
+    team_global_domain->unit_ids[u].id = u;
   }
 
   /* Exchange unit locality information between all units:
@@ -722,7 +723,7 @@ dart_ret_t dart__base__locality__domain_group(
 
 dart_ret_t dart__base__locality__unit(
   dart_team_t                        team,
-  dart_unit_t                        unit,
+  dart_local_unit_t                  unit,
   dart_unit_locality_t            ** locality)
 {
   DART_LOG_DEBUG("dart__base__locality__unit() team(%d) unit(%d)",
@@ -736,13 +737,13 @@ dart_ret_t dart__base__locality__unit(
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart_unit_locality: "
                    "dart__base__locality__unit(team:%d unit:%d) "
-                   "failed (%d)", team, unit, ret);
+                   "failed (%d)", team, unit.id, ret);
     return ret;
   }
   *locality = uloc;
 
   DART_LOG_DEBUG("dart__base__locality__unit > team(%d) unit(%d)",
-                 team, unit);
+                 team, unit.id);
   return DART_OK;
 }
 

@@ -158,7 +158,7 @@ inline dart_storage_t dart_storage(int nvalues) {
  * \see global_unit_t
  */
 typedef struct
-dash::unit_id<dash::local_unit>
+dash::unit_id<dash::local_unit, dart_local_unit_t>
 local_unit_t;
 
 /**
@@ -171,7 +171,7 @@ local_unit_t;
  * \see local_unit_t
  */
 typedef struct
-dash::unit_id<dash::global_unit>
+dash::unit_id<dash::global_unit, dart_global_unit_t>
 global_unit_t;
 
 /**

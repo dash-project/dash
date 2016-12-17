@@ -183,7 +183,7 @@ Team::locality_split(
   for(unsigned i = 0; i < num_parts; i++) {
     size_t sub_group_size = 0;
     dart_group_size(sub_groups[i], &sub_group_size);
-    std::vector<dart_unit_t> sub_group_unit_ids(sub_group_size);
+    std::vector<dart_global_unit_t> sub_group_unit_ids(sub_group_size);
     dart_group_getmembers(sub_groups[i], sub_group_unit_ids.data());
     DASH_LOG_TRACE("Team.locality_split", "child team", i, "units:",
                    sub_group_unit_ids);

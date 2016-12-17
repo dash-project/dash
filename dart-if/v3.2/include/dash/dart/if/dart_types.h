@@ -112,16 +112,48 @@ typedef struct {
 typedef int32_t dart_unit_t;
 
 /**
+ * Undefined unit ID.
+ * \ingroup DartTypes
+ */
+#define DART_UNDEFINED_UNIT_ID ((dart_unit_t)(-1))
+
+/**
+ * Data type for storing a global unit ID
+ * \ingroup DartTypes
+ */
+typedef struct dart_global_unit {
+#ifdef __cplusplus
+  constexpr dart_global_unit() : id(DART_UNDEFINED_UNIT_ID) { }
+  constexpr dart_global_unit(dart_unit_t uid) : id(uid) { }
+#endif
+  dart_unit_t id;
+} dart_global_unit_t;
+
+
+/**
+ * Data type for storing a unit ID
+ * relative to a team.
+ * \ingroup DartTypes
+ */
+typedef struct dart_local_unit {
+#ifdef __cplusplus
+  constexpr dart_local_unit() : id(DART_UNDEFINED_UNIT_ID) { }
+  constexpr dart_local_unit(dart_unit_t uid) : id(uid) { }
+#endif
+  dart_unit_t id;
+} dart_local_unit_t;
+
+/**
  * Data type for storing a team ID
  * \ingroup DartTypes
  */
 typedef int32_t dart_team_t;
 
-/**
- * Undefined unit ID.
- * \ingroup DartTypes
- */
-#define DART_UNDEFINED_UNIT_ID ((dart_unit_t)(-1))
+#define DART_LOCAL_UNIT_ID(__u) ((dart_local_unit_t){__u})
+#define DART_GLOBAL_UNIT_ID(__u) ((dart_global_unit_t){__u})
+
+#define DART_UNDEFINED_LOCAL_UNIT_ID DART_LOCAL_UNIT_ID(DART_UNDEFINED_UNIT_ID)
+#define DART_UNDEFINED_GLOBAL_UNIT_ID DART_GLOBAL_UNIT_ID(DART_UNDEFINED_UNIT_ID)
 
 /**
  * Undefined team ID.
@@ -481,7 +513,7 @@ struct dart_domain_locality_s
     /** Number of units in the domain. */
     int                              num_units;
     /** IDs of units in the domain. */
-    dart_unit_t                    * unit_ids;
+    dart_global_unit_t             * unit_ids;
 
     /* The number of compute nodes in the domain. */
     int                              num_nodes;
