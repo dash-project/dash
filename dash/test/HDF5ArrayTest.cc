@@ -415,7 +415,6 @@ TEST_F(HDF5ArrayTest, GroupTest)
 TEST_F(HDF5ArrayTest, CustomType)
 {
   int    ext_x    = dash::size() * 5;
-  double secret[] = {10,11};
   
   struct value_t { double a; int b; };
   
