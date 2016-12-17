@@ -1341,7 +1341,8 @@ private:
     } else {
       // Move dart_gptr to unit and local offset:
       DASH_ASSERT_RETURNS(
-        dart_gptr_setunit(&dart_gptr, unit),
+        dart_gptr_setunit(&dart_gptr,
+            _team->global_id(unit)),
         DART_OK);
       DASH_ASSERT_RETURNS(
         dart_gptr_incaddr(

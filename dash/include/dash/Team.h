@@ -393,11 +393,13 @@ public:
    * Whether this Team instance is a member of the group with given group
    * id.
    *
+   * TODO[TF]: Fix mismatch of documentation and code.
+   *
    * \param   groupId   The id of the group to test for membership
    * \return  True if and only if this Team instance is member of a group
    *          with given id
    */
-  bool is_member(size_t groupId) const
+  bool is_member(global_unit_t groupId) const
   {
     if(!get_group()) {
       return false;
@@ -506,6 +508,19 @@ public:
   inline size_t relative_id() const
   {
     return _position;
+  }
+
+  inline local_unit_t relative_id(
+    global_unit_t global_id)
+  {
+    local_unit_t luid;
+    DASH_ASSERT_RETURNS(
+      dart_team_unit_g2l(
+        _dartid,
+        global_id,
+        &luid),
+      DART_OK);
+    return luid;
   }
 
   /**
