@@ -111,7 +111,7 @@ public:
     /// Team containing all units operating on the global memory region
     Team      & team = dash::Team::All())
   : _allocator(team),
-    _teamid(team.dart_id()),
+    _team(team),
     _nlelem(n_local_elem),
     _nunits(team.size())
   {
@@ -146,7 +146,7 @@ public:
     /// Team containing all units operating on the global memory region
     Team                              & team = dash::Team::All())
   : _allocator(team),
-    _teamid(team.dart_id()),
+    _team(team),
     _nlelem(local_elements.size()),
     _nunits(team.size())
   {
@@ -216,7 +216,7 @@ public:
   inline bool operator==(const self_t & rhs) const
   {
     return (_begptr == rhs._begptr &&
-            _teamid == rhs._teamid &&
+            _team   == rhs._team   &&
             _nunits == rhs._nunits &&
             _nlelem == rhs._nlelem &&
             _lbegin == rhs._lbegin &&
@@ -402,12 +402,7 @@ public:
    */
   void barrier() const
   {
-    if (DART_TEAM_NULL == _teamid) {
-      return;
-    }
-    DASH_ASSERT_RETURNS(
-      dart_barrier(_teamid),
-      DART_OK);
+    _team.barrier();
   }
 
   /**
@@ -458,18 +453,18 @@ public:
     // Initialize with global pointer to start address:
     dart_gptr_t gptr = _begptr;
     // Resolve global unit id
-    local_unit_t lunit;
-    global_unit_t gunit;
+    global_unit_t gunit{gptr.unitid};
     DASH_LOG_TRACE_VAR("GlobMem.at (=g_begptr)", gptr);
     DASH_LOG_TRACE_VAR("GlobMem.at", gptr.unitid);
     // Resolve local unit id from global unit id in global pointer:
-    dart_team_unit_g2l(_teamid, gptr.unitid, &lunit);
+//    dart_team_unit_g2l(_teamid, gptr.unitid, &lunit);
+    local_unit_t lunit = _team.relative_id(gunit);
     DASH_LOG_TRACE_VAR("GlobMem.at", lunit);
     lunit = (lunit + unit) % _nunits;
     DASH_LOG_TRACE_VAR("GlobMem.at", lunit);
-    if (_teamid != dash::Team::All().dart_id()) {
+    if (!_team.is_all()) {
       // Unit is member of a split team, resolve global unit id:
-      dart_team_unit_l2g(_teamid, lunit, &gunit);
+      gunit = _team.global_id(lunit);
     } else {
       // Unit is member of top level team, no conversion to global unit id
       // necessary:
@@ -488,7 +483,7 @@ public:
 private:
   allocator_type          _allocator;
   dart_gptr_t             _begptr     = DART_GPTR_NULL;
-  dart_team_t             _teamid     = DART_TEAM_NULL;
+  dash::Team&             _team;
   size_type               _nlelem     = 0;
   size_type               _nunits     = 0;
   ElementType           * _lbegin     = nullptr;
