@@ -16,6 +16,23 @@
 
 namespace dash {
 
+static
+std::ostream & operator<<(
+  std::ostream & o,
+  dart_global_unit_t uid)
+{
+  o << uid.id;
+  return o;
+}
+static
+std::ostream & operator<<(
+  std::ostream & o,
+  dart_local_unit_t uid)
+{
+  o << uid.id;
+  return o;
+}
+
 // To print std::array to ostream
 template <typename T, std::size_t N>
 std::ostream & operator<<(
@@ -105,23 +122,6 @@ std::ostream & operator<<(
   }
   ss << " }";
   operator<<(o, ss.str());
-  return o;
-}
-
-static
-std::ostream & operator<<(
-  std::ostream & o,
-  dart_global_unit_t uid)
-{
-  o << uid.id;
-  return o;
-}
-static
-std::ostream & operator<<(
-  std::ostream & o,
-  dart_local_unit_t uid)
-{
-  o << uid.id;
   return o;
 }
 
