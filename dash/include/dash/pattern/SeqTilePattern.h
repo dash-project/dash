@@ -1663,7 +1663,7 @@ std::ostream & operator<<(
 
   std::ostringstream ss;
   ss << "dash::"
-     << pattern.PatternName
+     << SeqTilePattern<ND,Ar,Index>::PatternName
      << "<"
      << ndim << ","
      << storage_order << ","
