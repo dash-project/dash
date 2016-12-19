@@ -292,7 +292,7 @@ std::string pattern_to_string(
 
   std::ostringstream ss;
   ss << "dash::"
-     << pattern.PatternName
+     << PatternType::PatternName
      << "<"
      << ndim << ","
      << storage_order << ","
@@ -326,7 +326,7 @@ std::string pattern_to_filename(
   auto bspc = pattern.blockspec();
 
   std::ostringstream ss;
-  ss << pattern.PatternName
+  ss << PatternType::PatternName
      << "--"
      << ndim << "-"
      << storage_order << "-"
