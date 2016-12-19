@@ -291,7 +291,7 @@ public:
       neighbor_coords[d] += offset_d;
       if (neighbor_coords[d] < 0 ||
           neighbor_coords[d] >= this->_extents[d]) {
-        return DART_UNDEFINED_UNIT_ID;
+        return UNDEFINED_LOCAL_UNIT_ID;
       }
       ++d;
     }
