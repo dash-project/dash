@@ -315,7 +315,7 @@ public:
    * }
    * \endcode
    */
-  constexpr operator dart_unit_t() noexcept { return this->id; }
+  constexpr operator dart_unit_t() const noexcept { return this->id; }
 
 };
 
