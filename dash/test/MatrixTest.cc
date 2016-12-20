@@ -414,7 +414,8 @@ TEST_F(MatrixTest, Sub2DimDefault)
   element_t * lit  = matrix.lbegin();
   element_t * lend = matrix.lend();
   LOG_MESSAGE("Local range: lend(%p) - lbegin(%p) = %d",
-              (void*)lend, (void*)lit, lend - lit);
+              static_cast<void*>(lend), static_cast<void*>(lit),
+              lend - lit);
   ASSERT_EQ_U(matrix.lend() - matrix.lbegin(),
               matrix.local_size());
   // Assign unit-specific values in local matrix range:
