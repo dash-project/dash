@@ -144,6 +144,9 @@
 
 extern dart_team_t dart_next_availteamid;
 
+extern MPI_Comm dart_comm_world;
+#define DART_COMM_WORLD dart_comm_world
+
 
 typedef struct dart_team_data {
   /**
