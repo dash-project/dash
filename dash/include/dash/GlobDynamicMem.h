@@ -1355,7 +1355,7 @@ private:
 
 private:
   allocator_type             _allocator;
-  dash::Team               * _team   = nullptr;
+  dash::Team               * _team;
   dart_team_t                _teamid;
   size_type                  _nunits = 0;
   local_iterator             _lbegin = nullptr;
