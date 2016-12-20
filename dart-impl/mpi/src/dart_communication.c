@@ -43,7 +43,7 @@ static int unit_g2l(
     MPI_Group group, group_all;
     comm = dart_team_data[index].comm;
     MPI_Comm_group(comm, &group);
-    MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+    MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks (group_all, 1, &abs_id, group, rel_id);
   }
   return 0;

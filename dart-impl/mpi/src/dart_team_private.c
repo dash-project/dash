@@ -10,6 +10,8 @@
 
 dart_team_t dart_next_availteamid;
 
+MPI_Comm dart_comm_world;
+
 #if 0
 MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
 

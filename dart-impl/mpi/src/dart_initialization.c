@@ -70,6 +70,11 @@ dart_ret_t dart_init(
 
   dart_next_availteamid = DART_TEAM_ALL;
 
+  if (MPI_Comm_dup(MPI_COMM_WORLD, &dart_comm_world) != MPI_SUCCESS) {
+    DART_LOG_ERROR("Failed to duplicate MPI_COMM_WORLD");
+    return DART_ERR_OTHER;
+  }
+
 	int result = dart_adapt_teamlist_alloc(
                  DART_TEAM_ALL,
                  &index);
@@ -93,10 +98,10 @@ dart_ret_t dart_init(
 	dart_next_availteamid++;
 
   //  dart_teams[index] = MPI_COMM_WORLD;
-  team_data->comm = MPI_COMM_WORLD;
+  team_data->comm = DART_COMM_WORLD;
 
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  MPI_Comm_rank(DART_COMM_WORLD, &rank);
+  MPI_Comm_size(DART_COMM_WORLD, &size);
   dart_localpool = dart_buddy_new(DART_BUDDY_ORDER);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	int i;
@@ -108,7 +113,7 @@ dart_ret_t dart_init(
 	/* Splits the communicator into subcommunicators,
    * each of which can create a shared memory region */
 	if (MPI_Comm_split_type(
-        MPI_COMM_WORLD,
+        DART_COMM_WORLD,
         MPI_COMM_TYPE_SHARED,
         1,
         MPI_INFO_NULL,
@@ -173,7 +178,7 @@ dart_ret_t dart_init(
 		}
 
 		MPI_Comm_group(sharedmem_comm, &sharedmem_group);
-		MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+		MPI_Comm_group(DART_COMM_WORLD, &group_all);
 
 		/* The length of this table is set to be the size
      * of DART_TEAM_ALL. */
@@ -232,13 +237,13 @@ dart_ret_t dart_init(
     DART_MAX_LENGTH,
     sizeof(char),
     MPI_INFO_NULL,
-		MPI_COMM_WORLD,
+		DART_COMM_WORLD,
     &dart_win_local_alloc);
 
 	/* Create a dynamic win object for all the dart collective
    * allocation based on MPI_COMM_WORLD. Return in win. */
 	MPI_Win_create_dynamic(
-    MPI_INFO_NULL, MPI_COMM_WORLD, &win);
+    MPI_INFO_NULL, DART_COMM_WORLD, &win);
   team_data->window = win;
 
 	/* Start an access epoch on dart_win_local_alloc, and later
@@ -323,6 +328,8 @@ dart_ret_t dart_exit()
 	dart_adapt_teamlist_destroy();
 
   dart_segment_fini();
+
+  MPI_Comm_free(&dart_comm_world);
 
   if (_init_by_dart) {
     DART_LOG_DEBUG("%2d: dart_exit: MPI_Finalize", unitid);
