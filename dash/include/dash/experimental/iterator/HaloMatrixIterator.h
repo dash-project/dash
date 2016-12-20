@@ -2,7 +2,7 @@
 #define DASH__HALOMATRIXITERATOR_H_INCLUDED
 
 #include <dash/Types.h>
-#include <dash/experimental/Halo.h>
+#include <dash/Halo.h>
 
 #include <vector>
 
@@ -355,27 +355,26 @@ private:
 
   }
 
-  void setCoords()
+  inline void setCoords()
   {
       _coords = setCoords(_idx);
   }
 
   std::array<index_type, NumDimensions> setCoords(index_type idx) const
   {
-    if(Scope == StencilViewScope::BOUNDARY)
-    {
+    if (Scope == StencilViewScope::BOUNDARY) {
       auto local_idx = idx;
-      for(const auto & region : _bnd_elements)
+      for (const auto & region : _bnd_elements)
       {
-        if(local_idx < region.size())
+        if (local_idx < region.size()) {
           return _local_layout.coords(local_idx, region);
-
+        }
         local_idx -= region.size();
       }
-      //TODO return value for idx >= size
+      // TODO return value for idx >= size
       DASH_ASSERT("idx >= size not implemented yet");
-    }
-    else {
+      return std::array<index_type, NumDimensions> { };
+    } else {
       return _local_layout.coords(_idx, _view_local);
     }
   }
@@ -395,6 +394,7 @@ private:
   dart_unit_t                        _myid;
 
   std::array<index_type, NumDimensions> _coords;
+
 }; // class HaloMatrixIterator
 
 } // namespace dash

@@ -214,7 +214,7 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   ss << "dash::HaloSpec<" << NumDimensions << ">(";
-  for (const auto& offset : halospec.halo_offsets) {
+  for (const auto& offset : halospec.halo_offsets()) {
     ss << "{ " << offset.minus
        << ", " << offset.plus
        << " }";

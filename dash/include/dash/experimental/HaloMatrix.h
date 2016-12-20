@@ -3,15 +3,15 @@
 
 #include <dash/dart/if/dart.h>
 
-//#include <dash/Team.h>
 #include <dash/Pattern.h>
-//#include <dash/GlobRef.h>
 #include <dash/GlobMem.h>
-//#include <dash/Allocator.h>
-#include <dash/experimental/iterator/HaloMatrixIterator.h>
-#include <dash/experimental/Halo.h>
+#include <dash/Halo.h>
 #include <dash/Matrix.h>
+
+#include <dash/experimental/iterator/HaloMatrixIterator.h>
+
 #include <type_traits>
+
 
 namespace dash {
 
