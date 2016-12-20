@@ -183,7 +183,7 @@ dart_team_memalloc_aligned(
 		MPI_Group group;
 		MPI_Group group_all;
 		MPI_Comm_group(comm, &group);
-		MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+		MPI_Comm_group(DART_COMM_WORLD, &group_all);
 		MPI_Group_translate_ranks(group, 1, &localid, group_all, &gptr_unitid);
 	}
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
@@ -446,7 +446,7 @@ dart_team_memregister_aligned(
     MPI_Group group;
     MPI_Group group_all;
     MPI_Comm_group(comm, &group);
-    MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+    MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks(group, 1, &localid, group_all, &gptr_unitid);
   }
   win = dart_team_data[index].window;
@@ -522,7 +522,7 @@ dart_team_memregister(
     MPI_Group group;
     MPI_Group group_all;
     MPI_Comm_group(comm, &group);
-    MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+    MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks(group, 1, &localid, group_all, &gptr_unitid);
   }
   win = dart_team_data[index].window;

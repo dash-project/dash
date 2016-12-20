@@ -4,7 +4,7 @@
  * Definition of dart_lock_struct.
  */
 #ifndef DART_ADAPT_SYNCHRONIZATION_PRIV_H_INCLUDED
-#define DART_ADAPT_SYNCHRONZIATION_PRIV_H_INCLUDED
+#define DART_ADAPT_SYNCHRONIZATION_PRIV_H_INCLUDED
 
 #include <dash/dart/if/dart_types.h>
 #include <dash/dart/if/dart_globmem.h>

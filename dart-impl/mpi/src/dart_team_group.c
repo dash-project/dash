@@ -37,7 +37,7 @@ dart_ret_t dart_group_create(
   struct dart_group_struct* res = allocate_group();
   // Initialize the group as empty but not directly assign MPI_GROUP_EMPTY as it might lead to invalid free later
   MPI_Group g;
-  MPI_Comm_group(MPI_COMM_WORLD, &g);
+  MPI_Comm_group(DART_COMM_WORLD, &g);
   MPI_Group_incl(g, 0, NULL, &res->mpi_group);
   *group = res;
   return DART_OK;
@@ -99,7 +99,7 @@ dart_ret_t dart_group_union(
     dart_unit_t *pre_unitidsout, *post_unitidsout;;
 
     MPI_Group group_all;
-    MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+    MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_size(res->mpi_group, &size_out);
     if (size_out > 1) {
       MPI_Group_size(g1->mpi_group, &size_in);
@@ -171,7 +171,7 @@ dart_ret_t dart_group_addmember(
   dart_group_t  res;
   MPI_Group     group_all;
   /* Group_all comprises all the running units. */
-  MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+  MPI_Comm_group(DART_COMM_WORLD, &group_all);
   array[0]   = unitid;
   MPI_Group_incl(group_all, 1, array, &group.mpi_group);
   /* Make the new group being an ordered group. */
@@ -193,7 +193,7 @@ dart_ret_t dart_group_delmember(
 {
   int array[1];
   MPI_Group newgroup, group_all, resgroup;
-  MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+  MPI_Comm_group(DART_COMM_WORLD, &group_all);
   array[0] = unitid;
   MPI_Group_incl(
     group_all,
@@ -228,7 +228,7 @@ dart_ret_t dart_group_getmembers(
   int *array;
   MPI_Group group_all;
   MPI_Group_size(g->mpi_group, &size);
-  MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+  MPI_Comm_group(DART_COMM_WORLD, &group_all);
   array = (int*) malloc(sizeof (int) * size);
   for (int i = 0; i < size; i++) {
     array[i] = i;
@@ -655,7 +655,7 @@ dart_ret_t dart_team_create(
     // dart_sharedmem_size[index] * sizeof (int));
 
       MPI_Comm_group(sharedmem_comm, &sharedmem_group);
-      MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+      MPI_Comm_group(DART_COMM_WORLD, &group_all);
 
       int * dart_unit_mapping = malloc(
           team_data->sharedmem_nodesize * sizeof(int));
@@ -751,7 +751,7 @@ dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam)
 dart_ret_t dart_myid(dart_unit_t *unitid)
 {
   if (dart_initialized()) {
-    MPI_Comm_rank(MPI_COMM_WORLD, unitid);
+    MPI_Comm_rank(DART_COMM_WORLD, unitid);
   } else {
     *unitid = -1;
   }
@@ -761,7 +761,7 @@ dart_ret_t dart_myid(dart_unit_t *unitid)
 dart_ret_t dart_size(size_t *size)
 {
   int s;
-  MPI_Comm_size (MPI_COMM_WORLD, &s);
+  MPI_Comm_size (DART_COMM_WORLD, &s);
   (*size) = s;
   return DART_OK;
 }
@@ -847,7 +847,7 @@ dart_ret_t dart_team_unit_l2g(
   }
   else {
     MPI_Group group_all;
-    MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+    MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks(
       group->mpi_group,
       1,
@@ -895,7 +895,7 @@ dart_ret_t dart_team_unit_g2l(
     dart_group_t group;
     MPI_Group group_all;
     dart_team_get_group(teamid, &group);
-    MPI_Comm_group(MPI_COMM_WORLD, &group_all);
+    MPI_Comm_group(DART_COMM_WORLD, &group_all);
     MPI_Group_translate_ranks(
       group_all,
       1,

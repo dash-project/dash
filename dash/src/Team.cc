@@ -44,7 +44,6 @@ bool operator==(
   return lhs.object == rhs.object;
 }
 
-
 Team::Team(
   dart_team_t id,
   Team      * parent,

@@ -33,13 +33,13 @@
 
 #define DART__BASE__LOCALITY__MAX_TEAM_DOMAINS 32
 
-dart_host_topology_t *
+static dart_host_topology_t *
 dart__base__locality__host_topology_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
-dart_unit_mapping_t *
+static dart_unit_mapping_t *
 dart__base__locality__unit_mapping_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
-dart_domain_locality_t *
+static dart_domain_locality_t *
 dart__base__locality__global_domain_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
 /* ====================================================================== *

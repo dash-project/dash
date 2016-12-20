@@ -135,11 +135,15 @@ public:
       // Free existing resources
       free();
       // Take ownership of data from source
-      _dartid   = t._dartid;
-      _deallocs = t._deallocs;
-      // Release data from source
-      t._deallocs.clear();
-      t._dartid = DART_TEAM_NULL;
+      _deallocs = std::move(t._deallocs);
+      std::swap(_parent,    t._parent);
+      std::swap(_has_group, t._has_group);
+      std::swap(_group,     t._group);
+      std::swap(_dartid,    t._dartid);
+      _position     = t._position;
+      _num_siblings = t._num_siblings;
+      _myid         = t._myid;
+      _size         = t._size;
     }
   }
 
@@ -152,11 +156,15 @@ public:
       // Free existing resources
       free();
       // Take ownership of data from source
-      _dartid   = t._dartid;
-      _deallocs = t._deallocs;
-      // Release data from source
-      t._deallocs.clear();
-      t._dartid = DART_TEAM_NULL;
+      _deallocs = std::move(t._deallocs);
+      std::swap(_parent,    t._parent);
+      std::swap(_has_group, t._has_group);
+      std::swap(_group,     t._group);
+      std::swap(_dartid,    t._dartid);
+      _position     = t._position;
+      _num_siblings = t._num_siblings;
+      _myid         = t._myid;
+      _size         = t._size;
     }
     return *this;
   }
@@ -168,7 +176,12 @@ public:
   {
     DASH_LOG_DEBUG_VAR("Team.~Team()", this);
 
-    Team::unregister_team(this);
+    // Do not register static Team instances as static variable _team might
+    // not be initialized at the time of their instantiation, yet:
+    if (DART_TEAM_NULL != _dartid &&
+        DART_TEAM_ALL  != _dartid) {
+      Team::unregister_team(this);
+    }
 
     if (_has_group)
       dart_group_destroy(&_group);
@@ -527,16 +540,19 @@ private:
   {
     DASH_LOG_DEBUG("Team.unregister_team",
                    "team id:", team->_dartid);
-    DASH_ASSERT_RETURNS(
-      dart_team_locality_finalize(team->_dartid),
-      DART_OK);
-    dash::Team::_teams.erase(
-      team->_dartid);
+//    if (team->_dartid != DART_TEAM_NULL)
+    {
+      DASH_ASSERT_RETURNS(
+        dart_team_locality_finalize(team->_dartid),
+        DART_OK);
+      dash::Team::_teams.erase(
+        team->_dartid);
+    }
   }
 
 private:
 
-  dart_team_t             _dartid       = DART_TEAM_NULL;
+  dart_team_t             _dartid;
   Team                  * _parent       = nullptr;
   Team                  * _child        = nullptr;
   size_t                  _position     = 0;

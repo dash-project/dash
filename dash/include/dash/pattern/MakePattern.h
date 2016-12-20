@@ -187,9 +187,6 @@ make_team_spec(
   typename SizeSpecType::size_type   n_numa_dom   = 0,
   typename SizeSpecType::size_type   n_cores      = 0)
 {
-  // Deduce number of dimensions from size spec:
-  const dim_t ndim  = SizeSpecType::ndim();
-
   DASH_LOG_TRACE_VAR("dash::make_team_spec()", sizespec.extents());
   DASH_LOG_TRACE_VAR("dash::make_team_spec", team.size());
 
