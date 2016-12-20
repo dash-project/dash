@@ -33,6 +33,8 @@ namespace dash {
  *
  * Example for an outer block boundary iteration space (halo regions):
  *
+ * \code
+ *
  *                               .-- halo region 0
  *                              /
  *                .-------------------------. -.
@@ -52,9 +54,11 @@ namespace dash {
  *           '                  \
  *     halo region 2             '- halo region 1
  *
+ * \endcode
  *
  * Example for an inner block boundary iteration space:
  *
+ * \code
  *                      boundary region 0
  *                              :
  *          .-------------------'--------------------.
@@ -77,6 +81,8 @@ namespace dash {
  *    :                         :            '---.---'
  *  boundary region 2   boundary region 1        '-------- halo width in
  *                                                         dimension 1
+ * \endcode
+ *
  */
 
 
