@@ -144,16 +144,70 @@ typedef struct dart_local_unit {
 } dart_local_unit_t;
 
 /**
+ * Create a \c dart_local_unit_t from a \ref dart_unit_t.
+ * \ingroup DartTypes
+ */
+static inline
+dart_local_unit_t dart_create_local_unit(dart_unit_t unit)
+{
+  dart_local_unit_t tmp = {unit};
+  return tmp;
+}
+
+/**
+ * Create a \c dart_local_unit_t from a \ref dart_unit_t.
+ *
+ * This is a wrapper for \ref dart_create_local_unit.
+ *
+ * \ingroup DartTypes
+ */
+#define DART_LOCAL_UNIT_ID(__u) (dart_create_local_unit(__u))
+
+
+/**
+ * Create a \c dart_global_unit_t from a \ref dart_unit_t.
+ *
+ * \ingroup DartTypes
+ */
+static inline
+dart_global_unit_t dart_create_global_unit(dart_unit_t unit)
+{
+  dart_global_unit_t tmp = {unit};
+  return tmp;
+}
+
+/**
+ * Create a \c dart_global_unit_t from a \ref dart_unit_t.
+ *
+ * This is a wrapper for \ref dart_create_global_unit.
+ *
+ * \ingroup DartTypes
+ */
+#define DART_GLOBAL_UNIT_ID(__u) (dart_create_global_unit(__u))
+
+/**
+ * A \ref dart_local_unit_t representing an undefined team-relative unit.
+ *
+ * \see DART_UNDEFINED_UNIT_ID
+ *
+ * \ingroup DartTypes
+ */
+#define DART_UNDEFINED_LOCAL_UNIT_ID DART_LOCAL_UNIT_ID(DART_UNDEFINED_UNIT_ID)
+
+/**
+ * A \ref dart_global_unit_t representing an undefined global unit.
+ *
+ * \see DART_UNDEFINED_UNIT_ID
+ *
+ * \ingroup DartTypes
+ */
+#define DART_UNDEFINED_GLOBAL_UNIT_ID DART_GLOBAL_UNIT_ID(DART_UNDEFINED_UNIT_ID)
+
+/**
  * Data type for storing a team ID
  * \ingroup DartTypes
  */
 typedef int32_t dart_team_t;
-
-#define DART_LOCAL_UNIT_ID(__u) ((dart_local_unit_t){__u})
-#define DART_GLOBAL_UNIT_ID(__u) ((dart_global_unit_t){__u})
-
-#define DART_UNDEFINED_LOCAL_UNIT_ID DART_LOCAL_UNIT_ID(DART_UNDEFINED_UNIT_ID)
-#define DART_UNDEFINED_GLOBAL_UNIT_ID DART_GLOBAL_UNIT_ID(DART_UNDEFINED_UNIT_ID)
 
 /**
  * Undefined team ID.
