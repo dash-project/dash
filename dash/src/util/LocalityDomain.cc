@@ -475,8 +475,7 @@ dash::util::LocalityDomain::find(
 dash::util::LocalityDomain::LocalityDomain(
   const dash::util::LocalityDomain & parent,
   dart_domain_locality_t           * domain
-) : _parent(const_cast<dash::util::LocalityDomain *>(&parent)),
-    _domain(domain),
+) : _domain(domain),
     _is_owner(false)
 {
   DASH_LOG_TRACE("LocalityDomain(parent,sd)()",
