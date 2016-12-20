@@ -436,8 +436,6 @@ private:
   }
 
 private:
-  /// Parent locality domain.
-  mutable self_t                                  * _parent    = nullptr;
   /// Underlying \c dart_domain_locality_t object.
   dart_domain_locality_t                          * _domain    = nullptr;
   /// Copy of _domain->domain_tag to avoid string copying.

@@ -1759,7 +1759,7 @@ std::ostream & operator<<(
 
   std::ostringstream ss;
   ss << "dash::"
-     << pattern.PatternName
+     << TilePattern<ND,Ar,Index>::PatternName
      << "<"
      << ndim << ","
      << storage_order << ","

@@ -130,7 +130,7 @@ public:
 
   inline bool operator!=(const T & value) const
   {
-    return !(*this != value);
+    return !(*this == value);
   }
 
   friend void swap(GlobRef<T> a, GlobRef<T> b) {

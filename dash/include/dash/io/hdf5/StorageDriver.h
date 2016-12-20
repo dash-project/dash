@@ -310,7 +310,7 @@ public:
     hdf5_options                                      foptions
                                                         = _get_fdefaults())
   {
-    static_assert(array.ndim() == pattern_t::ndim(),
+    static_assert(ndim == pattern_t::ndim(),
                   "Pattern dimension has to match matrix dimension");
 
     static_assert(std::is_same<index_t,
