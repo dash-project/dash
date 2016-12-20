@@ -15,10 +15,12 @@
 
 #include <dash/Init.h>
 #include <dash/Matrix.h>
-#include <dash/experimental/HaloMatrix.h>
 #include <dash/Dimensional.h>
 #include <dash/TeamSpec.h>
+
 #include <dash/algorithm/Fill.h>
+
+#include <dash/experimental/HaloMatrix.h>
 
 #include <fstream>
 #include <string>
@@ -26,14 +28,16 @@
 #include <vector>
 #include <thread>
 
+
 using namespace std;
+using namespace dash::experimental;
 
 using element_t = unsigned char;
 using Pattern_t = dash::Pattern<2>;
 using index_t   = typename Pattern_t::index_type;
 using Array_t   = dash::NArray<element_t, 2, index_t, Pattern_t>;
-using Halo_t    = dash::HaloSpec<2>;
-using HArray_t  = dash::HaloMatrix<Array_t, Halo_t>;
+using Halo_t    = HaloSpec<2>;
+using HArray_t  = HaloMatrix<Array_t, Halo_t>;
 
 void write_pgm(const std::string & filename, const Array_t & data){
   if(dash::myid() == 0){

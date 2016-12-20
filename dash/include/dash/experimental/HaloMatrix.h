@@ -22,11 +22,6 @@ class HaloMatrix
   static_assert(MatrixT::ndim() == HaloSpecT::ndim(),
                 "Number of dimensions of Matrix and HaloSpec not equal.");
 
-  using dash::experimental::HaloRegion;
-  using dash::experimental::HaloSpec;
-  using dash::experimental::HaloBlock;
-  using dash::experimental::HaloBlockIter;
-
 public:
   using pattern_t            = typename MatrixT::pattern_type;
   using size_type            = typename MatrixT::size_type;

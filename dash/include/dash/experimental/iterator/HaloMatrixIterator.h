@@ -1,12 +1,15 @@
-#ifndef DASH__HALOMATRIXITERATOR_H_INCLUDED
-#define DASH__HALOMATRIXITERATOR_H_INCLUDED
+#ifndef DASH__EXPERIMENTAL__HALOMATRIXITERATOR_H__INCLUDED
+#define DASH__EXPERIMENTAL__HALOMATRIXITERATOR_H__INCLUDED
 
 #include <dash/Types.h>
-#include <dash/Halo.h>
+
+#include <dash/experimental/Halo.h>
 
 #include <vector>
 
+
 namespace dash {
+namespace experimental {
 
 enum class StencilViewScope: std::uint8_t{
   INNER,
@@ -14,9 +17,17 @@ enum class StencilViewScope: std::uint8_t{
   ALL
 };
 
-template<typename ElementT, typename PatternT, StencilViewScope Scope>
-class HaloMatrixIterator : public std::iterator< std::random_access_iterator_tag, ElementT,
-           typename PatternT::index_type, ElementT*, ElementT >
+template <
+  typename         ElementT,
+  typename         PatternT,
+  StencilViewScope Scope >
+class HaloMatrixIterator
+: public std::iterator<
+    std::random_access_iterator_tag,
+    ElementT,
+    typename PatternT::index_type,
+    ElementT*,
+    ElementT > // TODO: Clarify: Why no reference type?
 {
 public:
   using index_type  = typename PatternT::index_type;
@@ -31,13 +42,13 @@ private:
   static constexpr dim_t NumDimensions = PatternT::ndim();
   static constexpr MemArrange MemoryArrange = PatternT::memory_order();
 
-  using self_t = HaloMatrixIterator<ElementT, PatternT, Scope>;
-  using GlobMem_t    = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
-  using HaloBlock_t  = HaloBlock<ElementT, PatternT>;
-  using HaloSpec_t   = HaloSpec<NumDimensions>;
-  using HaloMemory_t = HaloMemory<HaloBlock_t>;
-  using viewspec_t   = typename PatternT::viewspec_type;
-  using offset_t     = typename HaloSpec_t::offset_t;
+  using self_t         = HaloMatrixIterator<ElementT, PatternT, Scope>;
+  using GlobMem_t      = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  using HaloBlock_t    = HaloBlock<ElementT, PatternT>;
+  using HaloSpec_t     = HaloSpec<NumDimensions>;
+  using HaloMemory_t   = HaloMemory<HaloBlock_t>;
+  using viewspec_t     = typename PatternT::viewspec_type;
+  using offset_t       = typename HaloSpec_t::offset_t;
   using local_layout_t = CartesianIndexSpace<NumDimensions, MemoryArrange, index_type>;
 
 public:
@@ -397,7 +408,8 @@ private:
 
 }; // class HaloMatrixIterator
 
+} // namespace experimental
 } // namespace dash
 
-#endif  // DASH__HALOMATRIXITERATOR_H_INCLUDED
+#endif  // DASH__EXPERIMENTAL__HALOMATRIXITERATOR_H__INCLUDED
 
