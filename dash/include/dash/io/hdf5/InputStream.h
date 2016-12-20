@@ -27,16 +27,32 @@ class InputStream
   private:
     std::string                _filename;
     std::string                _dataset;
-    hdf5_options               _foptions;
     type_converter             _converter;
-    bool           _use_cust_conv = false;
+    hdf5_options               _foptions = StoreHDF::get_default_options();
+    bool                       _use_cust_conv = false;
+    dash::launch               _launch_policy;
 
   public:
-    InputStream(std::string filename)
+    InputStream(
+        dash::launch lpolicy,
+        std::string filename)
         : _filename(filename),
           _dataset("data"),
-          _foptions(StoreHDF::get_default_options())
+          _launch_policy(lpolicy)
     { }
+
+    InputStream(std::string  filename)
+        : InputStream(dash::launch::sync, filename)
+    { }
+    
+    /**
+     * Synchronizes with the data source.
+     * If async IO is used, waits until all data is read
+     */
+    InputStream flush(){
+        // TODO implement it using waits on futures
+        return *this;
+    }
 
     // IO Manipulators
 

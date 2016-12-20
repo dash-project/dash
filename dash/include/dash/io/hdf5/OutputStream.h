@@ -8,6 +8,8 @@
 #include <dash/Matrix.h>
 #include <dash/Array.h>
 
+#include <dash/LaunchPolicy.h>
+
 
 namespace dash {
 namespace io {
@@ -30,21 +32,38 @@ class OutputStream
 private:
   std::string                _filename;
   std::string                _dataset;
-  hdf5_options               _foptions;
   type_converter             _converter;
-  bool           _use_cust_conv = false;
+  hdf5_options               _foptions = StoreHDF::get_default_options();
+  bool                       _use_cust_conv = false;
+  dash::launch               _launch_policy;
 
 public:
     OutputStream(
+        dash::launch lpolicy,
         std::string filename,
         mode_t open_mode = DeviceMode::no_flags)
         : _filename(filename),
           _dataset("data"),
-          _foptions(StoreHDF::get_default_options())
+          _launch_policy(lpolicy)
     {
-      if((open_mode & DeviceMode::app)){
+        if((open_mode & DeviceMode::app)){
           _foptions.overwrite_file = false;
-        }
+        }    
+    }
+    
+    OutputStream(
+        std::string filename,
+        mode_t open_mode = DeviceMode::no_flags)
+        : OutputStream(dash::launch::sync, filename, open_mode)
+    { }
+    
+    /**
+     * Synchronizes with the data sink.
+     * If async IO is used, waits until all data is read
+     */
+    OutputStream flush(){
+        // TODO implement it using waits on futures
+        return *this;
     }
 
     // IO Manipulators
