@@ -15,9 +15,9 @@ protected:
   std::string _dataset  = "data";
 
   HDF5MatrixTest()
-      : _dash_id(0),
-        _dash_size(0) {
-      LOG_MESSAGE(">>> Test suite: HDFTest");
+  : _dash_id(0),
+    _dash_size(0) {
+    LOG_MESSAGE(">>> Test suite: HDFTest");
   }
 
   virtual ~HDF5MatrixTest() {
