@@ -1,5 +1,5 @@
-#ifndef DASH__EXPERIMENTAL__GLOB_STENCIL_ITER_H_
-#define DASH__EXPERIMENTAL__GLOB_STENCIL_ITER_H_
+#ifndef DASH__GLOB_STENCIL_ITER_H_
+#define DASH__GLOB_STENCIL_ITER_H_
 
 #include <dash/Pattern.h>
 #include <dash/Allocator.h>
@@ -9,8 +9,6 @@
 
 #include <dash/iterator/GlobIter.h>
 
-#include <dash/experimental/Halo.h>
-
 #include <iterator>
 #include <array>
 #include <utility>
@@ -18,9 +16,7 @@
 #include <sstream>
 #include <cstdlib>
 
-
 namespace dash {
-namespace experimental {
 
 // Forward-declaration
 template<dim_t NumDimensions>
@@ -153,7 +149,7 @@ private:
     ViewSpecType;
   typedef typename PatternType::index_type
     IndexType;
-  typedef HaloSpec<NumDimensions>
+  typedef dash::HaloSpec<NumDimensions>
     HaloSpecType;
   typedef IteratorHalo<self_t, NumDimensions>
     IteratorHaloType;
@@ -172,7 +168,7 @@ public:
 
   typedef       HaloSpecType                    stencil_spec;
 
-  typedef typename HaloSpecType::offset_t        offset_type;
+  typedef typename HaloSpecType::offset_type     offset_type;
 
 public:
   typedef std::integral_constant<bool, true>        has_view;
@@ -1186,19 +1182,17 @@ template <
   class    Reference >
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::experimental::GlobStencilIter<
+  const dash::GlobStencilIter<
           ElementType, Pattern, GlobMem, Pointer, Reference> & it)
 {
   std::ostringstream ss;
   dash::GlobPtr<ElementType, Pattern> ptr(it);
-  ss << "dash::experimental::GlobStencilIter<"
-     << typeid(ElementType).name() << ">("
+  ss << "dash::GlobStencilIter<" << typeid(ElementType).name() << ">("
      << "idx:" << it._idx << ", "
      << "gptr:" << ptr << ")";
   return operator<<(os, ss.str());
 }
 
 } // namespace dash
-} // namespace experimental
 
-#endif // DASH__EXPERIMENTAL__GLOB_STENCIL_ITER_H_
+#endif // DASH__GLOB_STENCIL_ITER_H_

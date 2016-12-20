@@ -5,37 +5,53 @@
 
 #include <dash/Pattern.h>
 #include <dash/GlobMem.h>
-#include <dash/Halo.h>
 #include <dash/Matrix.h>
 
+#include <dash/experimental/Halo.h>
 #include <dash/experimental/iterator/HaloMatrixIterator.h>
 
 #include <type_traits>
 
 
 namespace dash {
+namespace experimental {
 
 template<typename MatrixT, typename HaloSpecT>
 class HaloMatrix
 {
-  static_assert(MatrixT::ndim() == HaloSpecT::ndim(), "Number of dimensions of Matrix and HaloSpec not equal.");
+  static_assert(MatrixT::ndim() == HaloSpecT::ndim(),
+                "Number of dimensions of Matrix and HaloSpec not equal.");
+
+  using dash::experimental::HaloRegion;
+  using dash::experimental::HaloSpec;
+  using dash::experimental::HaloBlock;
+  using dash::experimental::HaloBlockIter;
 
 public:
-  using pattern_t  = typename MatrixT::pattern_type;
-  using size_type  = typename MatrixT::size_type;
-  using index_type = typename MatrixT::index_type;
-  using value_t    = typename MatrixT::value_type;
-  using ViewSpec_t = ViewSpec<MatrixT::ndim(),index_type>;
-  using self_t     = HaloMatrix<MatrixT, HaloSpecT>;
-  using HaloBlock_t = HaloBlock<value_t, pattern_t>;
-  using HaloBlockView_t  = typename HaloBlock_t::block_view_t;
-  using HaloMemory_t   = HaloMemory<HaloBlock_t>;
+  using pattern_t            = typename MatrixT::pattern_type;
+  using size_type            = typename MatrixT::size_type;
+  using index_type           = typename MatrixT::index_type;
+  using value_t              = typename MatrixT::value_type;
+  using ViewSpec_t           = ViewSpec<MatrixT::ndim(),index_type>;
+  using self_t               = HaloMatrix<MatrixT, HaloSpecT>;
+  using HaloBlock_t          = HaloBlock<value_t, pattern_t>;
+  using HaloBlockView_t      = typename HaloBlock_t::block_view_t;
+  using HaloMemory_t         = HaloMemory<HaloBlock_t>;
 
-  using iterator             = HaloMatrixIterator<value_t, pattern_t, StencilViewScope::ALL>;
+  using iterator             = HaloMatrixIterator<
+                                 value_t,
+                                 pattern_t,
+                                 StencilViewScope::ALL>;
   using const_iterator       = const iterator;
-  using iterator_inner       = HaloMatrixIterator<value_t, pattern_t, StencilViewScope::INNER>;
+  using iterator_inner       = HaloMatrixIterator<
+                                 value_t,
+                                 pattern_t,
+                                 StencilViewScope::INNER>;
   using const_iterator_inner = const iterator_inner;
-  using iterator_bnd         = HaloMatrixIterator<value_t, pattern_t, StencilViewScope::BOUNDARY>;
+  using iterator_bnd         = HaloMatrixIterator<
+                                 value_t,
+                                 pattern_t,
+                                 StencilViewScope::BOUNDARY>;
   using const_iterator_bnd   = const iterator_inner;
 
 private:
@@ -255,5 +271,6 @@ private:
 };
 
 }  // namespace dash
+}  // namespace experimental
 
 #endif  // DASH__HALOMATRIX_H_INCLUDED

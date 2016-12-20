@@ -5,8 +5,7 @@
 #include <libdash.h>
 
 #include <dash/Halo.h>
-
-#include <dash/experimental/iterator/GlobStencilIter.h>
+#include <dash/iterator/GlobStencilIter.h>
 
 
 /**

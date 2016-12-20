@@ -1,25 +1,28 @@
 #ifndef DASH__HALO_H__
 #define DASH__HALO_H__
 
+#include <dash/Allocator.h>
 #include <dash/GlobMem.h>
+
 #include <dash/iterator/GlobIter.h>
 
 #include <dash/internal/Logging.h>
 
 #include <functional>
 
+
 namespace dash {
 
 /**
  * The concepts defined in the following extend the abstraction of
  * multidimensional block and views in DASH by halo- and stencil capabilities.
- * The \c HaloBlock type acts as a wrapper of blocks reminussented by any
+ * The \c HaloBlock type acts as a wrapper of blocks represented by any
  * implementation of the \c ViewSpec concept and extends these by boundary-
  * and halo regions.
  *
  * As known from classic stencil algorithms, *boundaries* are the outermost
  * elements within a block that are requested by neighoring units.
- * *Halos* reminussent additional outer regions of a block that contain ghost
+ * *Halos* represent additional outer regions of a block that contain ghost
  * cells with values copied from adjacent units' boundary regions.
  *
  * For this, halo blocks require the following index spaces:
@@ -32,8 +35,6 @@ namespace dash {
  *   halo regions
  *
  * Example for an outer block boundary iteration space (halo regions):
- *
- * \code
  *
  *                               .-- halo region 0
  *                              /
@@ -54,11 +55,9 @@ namespace dash {
  *           '                  \
  *     halo region 2             '- halo region 1
  *
- * \endcode
  *
  * Example for an inner block boundary iteration space:
  *
- * \code
  *                      boundary region 0
  *                              :
  *          .-------------------'--------------------.
@@ -81,74 +80,66 @@ namespace dash {
  *    :                         :            '---.---'
  *  boundary region 2   boundary region 1        '-------- halo width in
  *                                                         dimension 1
- * \endcode
- *
  */
-
-
-
-enum class HaloRegion: std::uint8_t{
-  MINUS,
-  PLUS,
-  COUNT //number of regions
-};
-
 
 template<dim_t NumDimensions>
 class HaloSpec
 {
 public:
-  using offset_t = int;
-  using points_size_t = unsigned int;
+  typedef int
+    offset_type;
 
-  struct halo_offset_pair_t
-  {
-    offset_t minus;
-    offset_t plus;
-  };
+  typedef struct {
+    offset_type min;
+    offset_type max;
+  } offset_range_type;
 
 private:
-  using halo_offsets_t = std::array<halo_offset_pair_t, NumDimensions>;
+  /// The stencil's offset range (min, max) in every dimension.
+  std::array<offset_range_type, NumDimensions> _offset_ranges;
+  /// Number of points in the stencil.
+  int                                          _points;
 
 public:
   /**
    * Creates a new instance of class HaloSpec with the given offset ranges
-   * (pair of minus offset, plus offset) in the stencil's dimensions.
+   * (pair of minimum offset, maximum offset) in the stencil's dimensions.
    *
    * For example, a two-dimensional five-point stencil has offset ranges
-   * { (1, 1), (1, 1) }
+   * { (-1, 1), (-1, 1) }
    * and a stencil with only north and east halo cells has offset ranges
-   * { (1, 0), ( 0, 1) }.
+   * { (-1, 0), ( 0, 1) }.
    */
-  HaloSpec(const halo_offsets_t& halo_offsets)
-  : _halo_offsets(halo_offsets)
+  HaloSpec(
+    const std::array<offset_range_type, NumDimensions> & offset_ranges)
+  : _offset_ranges(offset_ranges)
   {
     // minimum stencil size when containing center element only:
     _points = 1;
-    for(const auto& offset : _halo_offsets)
-      _points += std::abs(offset.minus) + offset.plus;
+    for (dim_t d = 0; d < NumDimensions; ++d) {
+      _points += std::abs(_offset_ranges[d].max - _offset_ranges[d].min);
+    }
   }
 
   /**
    * Creates a new instance of class HaloSpec with the given offset ranges
-   * (pair of minus offset, plus offset) in the stencil's dimensions.
+   * (pair of minimum offset, maximum offset) in the stencil's dimensions.
    *
    * For example, a two-dimensional five-point stencil has offset ranges
-   * { (1, 1), (1, 1) }
+   * { (-1, 1), (-1, 1) }
    * and a stencil with only north and east halo cells has offset ranges
-   * { (1, 0), ( 0, 1) }.
+   * { (-1, 0), ( 0, 1) }.
    */
   template<typename... Args>
-  HaloSpec(halo_offset_pair_t arg, Args... args)
+  HaloSpec(offset_range_type arg, Args... args)
   {
     static_assert(sizeof...(Args) == NumDimensions-1,
                   "Invalid number of offset ranges");
-    _halo_offsets = { arg, static_cast<halo_offset_pair_t>(args)... };
+    _offset_ranges = { arg, static_cast<offset_range_type>(args)... };
     // minimum stencil size when containing center element only:
     _points = 1;
-    for(const auto& offset : _halo_offsets)
-    {
-      _points += std::abs(offset.minus) + offset.plus;
+    for (dim_t d = 0; d < NumDimensions; ++d) {
+      _points += std::abs(_offset_ranges[d].max - _offset_ranges[d].min);
     }
   }
 
@@ -160,14 +151,15 @@ public:
   : _points(1)
   {
     // initialize offset ranges with (0,0) in all dimensions:
-    for(auto& offset : _halo_offsets)
-      offset = {0, 0};
+    for (dim_t d = 0; d < NumDimensions; ++d) {
+      _offset_ranges = {{ 0, 0 }};
+    }
   }
 
   /**
    * The stencil's number of dimensions.
    */
-  static constexpr dim_t ndim()
+  static dim_t ndim()
   {
     return NumDimensions;
   }
@@ -183,123 +175,272 @@ public:
   /**
    * Offset range (minimum and maximum offset) in the given dimension.
    */
-  const halo_offset_pair_t & halo_offset(dim_t dimension) const
+  const offset_range_type & offset_range(dim_t dimension) const
   {
-    return _halo_offsets[dimension];
+    return _offset_ranges[dimension];
   }
 
   /**
    * Offset ranges (minimum and maximum offset) all dimensions.
    */
-  const halo_offsets_t & halo_offsets() const
+  const std::array< offset_range_type, NumDimensions> & offset_ranges() const
   {
-    return _halo_offsets;
+    return _offset_ranges;
   }
 
   /**
    * Width of the halo in the given dimension.
    */
-  offset_t width(dim_t dimension) const
+  inline int width(dim_t dimension) const
   {
-    auto offset = _halo_offsets[dimension];
-    return std::abs(offset.minus) + offset.plus;
+    auto offset_range = _offset_ranges[dimension];
+    return std::max(std::abs(offset_range.max),
+                    std::abs(offset_range.min));
   }
-
-private:
-  /// The stencil's offset range (min, max) in every dimension.
-  halo_offsets_t                                _halo_offsets;
-  /// Number of points in the stencil.
-  points_size_t                                 _points;
-
 };
 
 template<dim_t NumDimensions>
 std::ostream & operator<<(
   std::ostream & os,
-  const dash::HaloSpec<NumDimensions>& halospec)
+  const dash::HaloSpec<NumDimensions> & halospec)
 {
   std::ostringstream ss;
   ss << "dash::HaloSpec<" << NumDimensions << ">(";
-  for (const auto& offset : halospec.halo_offsets()) {
-    ss << "{ " << offset.minus
-       << ", " << offset.plus
+  for (dim_t d = 0; d < NumDimensions; ++d) {
+    auto offset_range = halospec.offset_range(d);
+    ss << "{ " << offset_range.min
+       << ", " << offset_range.max
        << " }";
   }
   ss << ")";
   return operator<<(os, ss.str());
 }
 
-template< typename ElementT, typename PatternT,
-  typename PointerT   = GlobPtr<ElementT, PatternT>,
-  typename ReferenceT = GlobRef<ElementT> >
-class HaloBlockIter : public std::iterator< std::random_access_iterator_tag, ElementT,
-           typename PatternT::index_type, PointerT, ReferenceT >
+// Forward-declaration
+template<
+  typename ElementType,
+  typename PatternType>
+class HaloBlock;
+
+/**
+ * Iterator on block elements in internal (boundary) or external (halo)
+ * border regions.
+ */
+template<
+  typename ElementType,
+  class    PatternType,
+  class    PointerType   = GlobPtr<ElementType, PatternType>,
+  class    ReferenceType = GlobRef<ElementType> >
+class BlockBoundaryIter
+: public std::iterator<
+           std::random_access_iterator_tag,
+           ElementType,
+           typename PatternType::index_type,
+           PointerType,
+           ReferenceType >
 {
 private:
-  using self_t = HaloBlockIter<ElementT, PatternT, PointerT, ReferenceT>;
-  using GlobMem_t = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  typedef BlockBoundaryIter<
+            ElementType,
+            PatternType,
+            PointerType,
+            ReferenceType>
+    self_t;
 
-  static const dim_t      NumDimensions = PatternT::ndim();
-  //static const MemArrange Arrangement   = PatternT::memory_order();
+  typedef GlobMem<
+            ElementType,
+            dash::allocator::CollectiveAllocator<ElementType> >
+    GlobMem_t;
+
+private:
+  static const dim_t      NumDimensions = PatternType::ndim();
+  static const MemArrange Arrangement   = PatternType::memory_order();
 
 public:
-  using has_view = std::integral_constant<bool, true>;
-  using pattern_type = PatternT;
+  typedef PatternType                                pattern_type;
+  typedef typename PatternType::index_type             index_type;
+  typedef typename PatternType::size_type               size_type;
+  typedef typename PatternType::viewspec_type       viewspec_type;
+  typedef dash::HaloSpec<NumDimensions>             halospec_type;
+  typedef HaloBlock<ElementType, PatternType>     halo_block_type;
 
-  using index_type  = typename PatternT::index_type;
-  using size_type   = typename PatternT::size_type;
-  using viewspec_t  = typename PatternT::viewspec_type;
+  typedef       ReferenceType                           reference;
+  typedef const ReferenceType                     const_reference;
+  typedef       PointerType                               pointer;
+  typedef const PointerType                         const_pointer;
 
-  using reference       = ReferenceT;
-  using const_reference = const reference;
-  using pointer         = PointerT;
-  using const_pointer   = const pointer;
+  typedef std::function<std::array<index_type, NumDimensions>(index_type)>
+    position_mapping_function;
 
-  //using  position_mapping_function =
-  //  std::function<std::array<index_type, NumDimensions>(index_type)>;
+  typedef enum {
+    INNER,
+    OUTER
+  } boundary_scope;
+
+  // For ostream output
+  template <
+    typename T_,
+    class P_,
+    class Ptr_,
+    class Ref_ >
+  friend std::ostream & operator<<(
+      std::ostream & os,
+      const BlockBoundaryIter<T_, P_, Ptr_, Ref_> & it);
+
+public:
+  typedef std::integral_constant<bool, true> has_view;
 
 public:
   /**
    * Constructor, creates a block boundary iterator on multiple boundary
    * regions.
    */
-  HaloBlockIter(GlobMem_t & globmem, const PatternT & pattern,
-      const viewspec_t & halo_region, index_type pos, index_type size)
-  : _globmem(globmem),
-    _pattern(pattern),
-    _halo_region(halo_region),
+  BlockBoundaryIter(
+    halo_block_type                  & halo_block,
+    /// A block's inner or outer view. Iteration space is the view's boundary
+    /// specified by the halo.
+    const viewspec_type              & viewspec,
+    /// Function mapping iterator position to global coordintate space.
+    const position_mapping_function  & position_mapping_fun,
+    /// The iterator's position in the block boundary's iteration space
+    index_type                         pos,
+    /// The number of elements in the block boundary's iteration space.
+    index_type                         size,
+    /// The iterator's view index start offset in memory storage order.
+    index_type                         view_index_offset)
+  : _globmem(&halo_block.globmem()),
+    _viewspec(&viewspec),
+    _pattern(&halo_block.pattern()),
+    _halospec(&halo_block.halospec()),
     _idx(pos),
+    _view_idx_offset(view_index_offset),
     _size(size),
     _max_idx(_size-1),
     _myid(dash::myid()),
-    _lbegin(globmem.lbegin())
-    //_position_to_coords(position_mapping_func)
+    _lbegin(_globmem->lbegin()),
+    _position_to_coords(position_mapping_fun)
   {
-    DASH_LOG_TRACE_VAR("HaloBlockIter()", _idx);
-    DASH_LOG_TRACE_VAR("HaloBlockIter()", _max_idx);
-    DASH_LOG_TRACE_VAR("HaloBlockIter()", _size);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter()", _idx);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter()", _max_idx);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter()", _size);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter()", *_viewspec);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter()", *_halospec);
   }
+
+  /**
+   * Constructor, creates a block boundary iterator using a custom function
+   * for mapping iterator position to global coordinate space.
+   */
+  BlockBoundaryIter(
+    halo_block_type                  & halo_block,
+    /// A block's inner or outer view. Iteration space is the view's boundary
+    /// specified by the halo.
+    const viewspec_type              & viewspec,
+    /// Views of the block's adjacent boundary regions.
+    const std::vector<viewspec_type> * boundary_regions,
+    /// The iterator's position in the block boundary's iteration space
+    index_type                         pos,
+    /// The number of elements in the block boundary's iteration space.
+    index_type                         size,
+    /// The iterator's view index start offset in memory storage order.
+    index_type                         view_index_offset)
+  : _globmem(&halo_block.globmem()),
+    _viewspec(&viewspec),
+    _pattern(&halo_block.pattern()),
+    _halospec(&halo_block.halospec()),
+    _boundary_regions(boundary_regions),
+    _idx(pos),
+    _view_idx_offset(view_index_offset),
+    _size(size),
+    _max_idx(_size-1),
+    _myid(dash::myid()),
+    _lbegin(_globmem->lbegin()),
+    _position_to_coords(
+      std::bind(&self_t::coords, this, std::placeholders::_1))
+  {
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter()", _idx);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter()", _max_idx);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter()", _size);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter()", *_viewspec);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter()", *_halospec);
+  }
+
+  /**
+   * Default constructor.
+   */
+  BlockBoundaryIter() = default;
 
   /**
    * Copy constructor.
    */
-  HaloBlockIter(const self_t & other) = default;
+  BlockBoundaryIter(
+    const self_t & other) = default;
 
   /**
    * Assignment operator.
    *
    * \see DashGlobalIteratorConcept
    */
-  self_t & operator=(const self_t & other) = default;
+  self_t & operator=(
+    const self_t & other) = default;
 
   /**
    * The number of dimensions of the iterator's underlying pattern.
    *
    * \see DashGlobalIteratorConcept
    */
-  static constexpr dim_t ndim()
+  inline static dim_t ndim()
   {
     return NumDimensions;
+  }
+
+  /**
+   * Explicit conversion to \c dart_gptr_t.
+   *
+   * \see DashGlobalIteratorConcept
+   *
+   * \return  A DART global pointer to the element at the iterator's
+   *          position
+   */
+  dart_gptr_t dart_gptr() const
+  {
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter.dart_gptr()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    index_type idx    = _idx;
+    index_type offset = 0;
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.dart_gptr", _max_idx);
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.dart_gptr", idx);
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.dart_gptr", offset);
+    }
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(idx);
+    } else {
+      // Viewspec projection required:
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.dart_gptr", _viewspec);
+      auto glob_coords = _position_to_coords(idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE("BlockBoundaryIter.dart_gptr",
+                   "unit:",        local_pos.unit,
+                   "local index:", local_pos.index);
+    // Global pointer to element at given position:
+    dash::GlobPtr<ElementType, PatternType> gptr(
+      _globmem->at(
+        local_pos.unit,
+        local_pos.index)
+    );
+    DASH_LOG_TRACE_VAR("GlobIter.dart_gptr >", gptr);
+    return (gptr + offset).dart_gptr();
   }
 
   /**
@@ -309,7 +450,26 @@ public:
    */
   reference operator*() const
   {
-    return operator[](_idx);
+    DASH_LOG_TRACE("GlobStencilIter.*", _idx, _view_idx_offset);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    index_type idx = _idx;
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(idx);
+    } else {
+      // Viewspec projection required:
+      auto glob_coords = _position_to_coords(idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE_VAR("GlobStencilIter.*", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.*", local_pos.index);
+    // Global reference to element at given position:
+    return reference(
+             _globmem->at(local_pos.unit,
+                          local_pos.index));
   }
 
   /**
@@ -318,42 +478,93 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  reference operator[](index_type idx) const
+  reference operator[](
+    /// The global position of the element
+    index_type g_index) const
   {
-    auto local_pos = _pattern.local_index(glob_coords(idx));
-
-    return reference(_globmem.at(local_pos.unit, local_pos.index));
-  }
-
-  dart_gptr_t dart_gptr() const
-  {
-    return operator[](_idx).dart_gptr();
+    DASH_LOG_TRACE("GlobStencilIter.[]", g_index, _view_idx_offset);
+    index_type idx = g_index;
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(idx);
+    } else {
+      // Viewspec projection required:
+      auto glob_coords = _position_to_coords(idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE_VAR("GlobStencilIter.[]", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobStencilIter.[]", local_pos.index);
+    // Global reference to element at given position:
+    return reference(
+             _globmem->at(local_pos.unit,
+                          local_pos.index));
   }
 
   /**
    * Checks whether the element referenced by this global iterator is in
    * the calling unit's local memory.
    */
-  bool is_local() const
+  inline bool is_local() const
   {
     return (_myid == lpos().unit);
   }
 
-  GlobIter<ElementT, PatternT> global() const
+  /**
+   * Convert global iterator to native pointer.
+   */
+  ElementType * local() const
   {
-    auto g_idx = gpos();
-    return GlobIter<ElementT, PatternT>(&_globmem, _pattern, g_idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.local=()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    index_type idx    = _idx;
+    index_type offset = 0;
+    DASH_LOG_TRACE_VAR("GlobViewIter.local=", _max_idx);
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx     = _max_idx;
+      offset += _idx - _max_idx;
+    }
+    DASH_LOG_TRACE_VAR("GlobViewIter.local=", idx);
+    DASH_LOG_TRACE_VAR("GlobViewIter.local=", offset);
+
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(idx);
+    } else {
+      DASH_LOG_TRACE_VAR("GlobViewIter.local=", *_viewspec);
+      // Viewspec projection required:
+      auto glob_coords = coords(idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    DASH_LOG_TRACE_VAR("GlobViewIter.local= >", local_pos.unit);
+    DASH_LOG_TRACE_VAR("GlobViewIter.local= >", local_pos.index);
+    if (_myid != local_pos.unit) {
+      // Iterator position does not point to local element
+      return nullptr;
+    }
+    return (_lbegin + local_pos.index + offset);
   }
 
-  ElementT* local() const
+  /**
+   * Map iterator to global index domain by projecting the iterator's view.
+   */
+  inline dash::GlobIter<ElementType, PatternType> global() const
   {
-    auto local_pos = lpos();
-
-    if(_myid != local_pos.unit)
-      return nullptr;
-
-    //
-    return _lbegin + local_pos.index;
+    auto g_idx = gpos();
+    return dash::GlobIter<ElementType, PatternType>(
+             _globmem,
+             *_pattern,
+             g_idx
+           );
   }
 
   /**
@@ -361,9 +572,11 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  index_type pos() const
+  inline index_type pos() const
   {
-    return gpos();
+    DASH_LOG_TRACE("BlockBoundaryIter.pos()",
+                   "idx:", _idx, "vs_offset:", _view_idx_offset);
+    return _idx + _view_idx_offset;
   }
 
   /**
@@ -372,7 +585,7 @@ public:
    *
    * \see DashViewIteratorConcept
    */
-  index_type rpos() const
+  inline index_type rpos() const
   {
     return _idx;
   }
@@ -383,24 +596,104 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  index_type gpos() const
+  inline index_type gpos() const
   {
-    return _pattern.memory_layout().at(glob_coords(_idx));
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter.gpos()", _idx);
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.gpos >", _idx);
+      return _idx;
+    } else {
+      index_type idx    = _idx;
+      index_type offset = 0;
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.gpos", *_viewspec);
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.gpos", _max_idx);
+      // Convert iterator position (_idx) to local index and unit.
+      if (_idx > _max_idx) {
+        // Global iterator pointing past the range indexed by the pattern
+        // which is the case for .end() iterators.
+        idx    = _max_idx;
+        offset = _idx - _max_idx;
+      }
+      // Viewspec projection required:
+      auto g_coords = _position_to_coords(idx);
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.gpos", _idx);
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.gpos", g_coords);
+      auto g_idx    = _pattern->memory_layout().at(g_coords);
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.gpos", g_idx);
+      g_idx += offset;
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.gpos >", g_idx);
+      return g_idx;
+    }
   }
 
-  typename PatternT::local_index_t lpos() const
+  /**
+   * Unit and local offset at the iterator's position.
+   * Projects iterator position from its view spec to global index domain.
+   *
+   * \see DashGlobalIteratorConcept
+   */
+  inline typename pattern_type::local_index_t lpos() const
   {
-    return  _pattern.local_index(glob_coords(_idx));
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter.lpos()", _idx);
+    typedef typename pattern_type::local_index_t
+      local_pos_t;
+    index_type idx    = _idx;
+    index_type offset = 0;
+    // Convert iterator position (_idx) to local index and unit.
+    if (_idx > _max_idx) {
+      // Global iterator pointing past the range indexed by the pattern
+      // which is the case for .end() iterators.
+      idx    = _max_idx;
+      offset = _idx - _max_idx;
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.lpos", _max_idx);
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.lpos", idx);
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.lpos", offset);
+    }
+    // Global index to local index and unit:
+    local_pos_t local_pos;
+    if (_viewspec == nullptr) {
+      // No viewspec mapping required:
+      local_pos        = _pattern->local(idx);
+    } else {
+      // Viewspec projection required:
+      DASH_LOG_TRACE_VAR("BlockBoundaryIter.lpos", *_viewspec);
+      auto glob_coords = _position_to_coords(idx);
+      local_pos        = _pattern->local_index(glob_coords);
+    }
+    local_pos.index += offset;
+    DASH_LOG_TRACE("BlockBoundaryIter.lpos >",
+                   "unit:",        local_pos.unit,
+                   "local index:", local_pos.index);
+    return local_pos;
   }
 
-  viewspec_t viewspec() const
-  {
-    return _halo_region;
-  }
-
+  /**
+   * Whether the iterator's position is relative to a view.
+   *
+   * \see DashGlobalIteratorConcept
+   */
   inline bool is_relative() const noexcept
   {
-    return true;
+    return _viewspec != nullptr;
+  }
+
+  /**
+   * The view that specifies this iterator's index range.
+   *
+   * \see DashViewIteratorConcept
+   */
+  inline viewspec_type viewspec() const
+  {
+    if (_viewspec != nullptr) {
+      return *_viewspec;
+    }
+    return viewspec_type(_pattern->memory_layout().extents());
+  }
+
+  inline const halospec_type & halospec() const noexcept
+  {
+    return _halospec;
   }
 
   /**
@@ -409,9 +702,20 @@ public:
    *
    * \see DashGlobalIteratorConcept
    */
-  const GlobMem_t & globmem() const
+  inline const GlobMem_t & globmem() const
   {
-    return _globmem;
+    return *_globmem;
+  }
+
+  /**
+   * The instance of \c GlobMem used by this iterator to resolve addresses
+   * in global memory.
+   *
+   * \see DashGlobalIteratorConcept
+   */
+  inline GlobMem_t & globmem()
+  {
+    return *_globmem;
   }
 
   /**
@@ -466,63 +770,133 @@ public:
 
   self_t operator+(index_type n) const
   {
-    self_t res{*this};
-    res += n;
-
+    if (_viewspec == nullptr) {
+      self_t res(
+        _globmem,
+        *_pattern,
+        _idx + static_cast<index_type>(n),
+        _view_idx_offset);
+      return res;
+    }
+    self_t res(
+      _globmem,
+      *_pattern,
+      *_viewspec,
+      _idx + static_cast<index_type>(n),
+      _view_idx_offset);
     return res;
-  }
-
-  index_type operator+(const self_t & other) const
-  {
-    return _idx + other._idx;
   }
 
   self_t operator-(index_type n) const
   {
-    self_t res{*this};
-    res -= n;
-
+    if (_viewspec == nullptr) {
+      self_t res(
+        _globmem,
+        *_pattern,
+        _idx - static_cast<index_type>(n),
+        _view_idx_offset);
+      return res;
+    }
+    self_t res(
+      _globmem,
+      *_pattern,
+      *_viewspec,
+      _idx - static_cast<index_type>(n),
+      _view_idx_offset);
     return res;
   }
 
-  index_type operator-(const self_t & other) const
+  index_type operator+(
+    const self_t & other) const
+  {
+    return _idx + other._idx;
+  }
+
+  index_type operator-(
+    const self_t & other) const
   {
     return _idx - other._idx;
   }
 
-  bool operator<(const self_t & other) const
+  inline bool operator<(const self_t & other) const
   {
-    return compare(other, std::less<index_type>());
+    // NOTE:
+    // This function call is significantly slower than the explicit
+    // implementation in operator== and operator!=.
+    return compare(other,
+                   std::less<index_type>(),
+                   std::less<pointer>());
   }
 
-  bool operator<=(const self_t & other) const
+  inline bool operator<=(const self_t & other) const
   {
-    return compare(other, std::less_equal<index_type>());
+    // NOTE:
+    // This function call is significantly slower than the explicit
+    // implementation in operator== and operator!=.
+    return compare(other,
+                   std::less_equal<index_type>(),
+                   std::less_equal<pointer>());
   }
 
-  bool operator>(const self_t & other) const
+  inline bool operator>(const self_t & other) const
   {
-    return compare(other, std::greater<index_type>());
+    // NOTE:
+    // This function call is significantly slower than the explicit
+    // implementation in operator== and operator!=.
+    return compare(other,
+                   std::greater<index_type>(),
+                   std::greater<pointer>());
   }
 
-  bool operator>=(const self_t & other) const
+  inline bool operator>=(const self_t & other) const
   {
-    return compare(other, std::greater_equal<index_type>());
+    // NOTE:
+    // This function call is significantly slower than the explicit
+    // implementation in operator== and operator!=.
+    return compare(other,
+                   std::greater_equal<index_type>(),
+                   std::greater_equal<pointer>());
   }
 
-  bool operator==(const self_t & other) const
+  inline bool operator==(const self_t & other) const
   {
-    return compare(other, std::equal_to<index_type>());
+    // NOTE: See comments in method compare().
+    if (_viewspec == other._viewspec) {
+      // Same viewspec pointer
+      return _idx == other._idx;
+    }
+    if ((_viewspec != nullptr && other._viewspec != nullptr) &&
+        (*_viewspec) == *(other._viewspec)) {
+      // Viewspec instances are equal
+      return _idx == other._idx;
+    }
+    auto lhs_local = lpos();
+    auto rhs_local = other.lpos();
+    return (lhs_local.unit  == rhs_local.unit &&
+            lhs_local.index == rhs_local.index);
   }
 
-  bool operator!=(const self_t & other) const
+  inline bool operator!=(const self_t & other) const
   {
-    return compare(other, std::not_equal_to<index_type>());
+    // NOTE: See comments in method compare().
+    if (_viewspec == other._viewspec) {
+      // Same viewspec pointer
+      return _idx != other._idx;
+    }
+    if ((_viewspec != nullptr && other._viewspec != nullptr) &&
+        (*_viewspec) == *(other._viewspec)) {
+      // Viewspec instances are equal
+      return _idx != other._idx;
+    }
+    auto lhs_local = lpos();
+    auto rhs_local = other.lpos();
+    return (lhs_local.unit  != rhs_local.unit ||
+            lhs_local.index != rhs_local.index);
   }
 
-  const PatternT & pattern() const
+  inline const PatternType & pattern() const
   {
-    return _pattern;
+    return *_pattern;
   }
 
 private:
@@ -530,8 +904,13 @@ private:
    * Compare position of this global iterator to the position of another
    * global iterator with respect to viewspec projection.
    */
-  template<typename GlobIndexCmpFunc>
-  bool compare( const self_t & other, const GlobIndexCmpFunc & gidx_cmp) const
+  template<
+    class GlobIndexCmpFun,
+    class GlobPtrCmpFun >
+  bool compare(
+    const self_t & other,
+    const GlobIndexCmpFun & gidx_cmp,
+    const GlobPtrCmpFun   & gptr_cmp) const
   {
 #if __REMARK__
     // Usually this is a best practice check, but it's an infrequent case
@@ -540,110 +919,219 @@ private:
       return true;
     }
 #endif
-    if (&_halo_region == &(other._halo_region) ||
-        _halo_region == other._halo_region)
-    {
+    // NOTE:
+    // Do not check _idx first, as it would never match for comparison with
+    // an end iterator.
+    if (_viewspec == other._viewspec) {
+      // Same viewspec pointer
       return gidx_cmp(_idx, other._idx);
     }
-  // TODO not the best solution
-    return false;
+    if ((_viewspec != nullptr && other._viewspec != nullptr) &&
+        (*_viewspec) == *(other._viewspec)) {
+      // Viewspec instances are equal
+      return gidx_cmp(_idx, other._idx);
+    }
+    // View projection at lhs and/or rhs set.
+    // Convert both to GlobPtr (i.e. apply view projection) and compare.
+    //
+    // NOTE:
+    // This conversion is quite expensive but will never be necessary
+    // if both iterators have been created from the same range.
+    // Example:
+    //   a.block(1).begin() == a.block(1).end().
+    // does not require viewspace projection while
+    //   a.block(1).begin() == a.end()
+    // does. The latter case should be avoided for this reason.
+    const pointer lhs_dart_gptr(dart_gptr());
+    const pointer rhs_dart_gptr(other.dart_gptr());
+    return gptr_cmp(lhs_dart_gptr, rhs_dart_gptr);
   }
 
-  std::array<index_type, NumDimensions> glob_coords(index_type idx) const
+  /**
+   * Convert the given iterator position in border iteration space to
+   * coordinates in the block view.
+   *
+   * NOTE:
+   * This method could be specialized for NumDimensions = 1 for performance
+   * tuning.
+   */
+  std::array<index_type, NumDimensions> coords(
+    index_type boundary_pos) const
   {
-    return _pattern.memory_layout().coords(idx, _halo_region);
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter.coords<OUTER>()", boundary_pos);
+    // _halo_regions contains views of the boundary's halo regions in their
+    // canonical storage order. Subtract halo region size from boundary
+    // position until it is smaller than the current halo region. This
+    // yields the referenced helo and maps the boundary position to its
+    // offset in the halo region in the same pass.
+    // Some overhead for bookkeeping the halo regions, but this method also
+    // works for irregular halos.
+    int ri = 0;
+    // offset of boundary position in halo region (= phase):
+    auto halo_region_pos = boundary_pos;
+    for (; ri < _boundary_regions->size(); ++ri) {
+      auto halo_region_size = (*_boundary_regions)[ri].size();
+      if (halo_region_pos < halo_region_size) {
+        break;
+      }
+      halo_region_pos -= halo_region_size;
+    }
+    auto halo_region        = (*_boundary_regions)[ri];
+    // resolve coordinate in halo region from iterator boundary position:
+    auto halo_region_coords = CartesianIndexSpace<NumDimensions>(
+                                halo_region.extents())
+                              .coords(halo_region_pos);
+    // apply view offsets to resolve global cartesian coords of current
+    // iterator position:
+    std::array<index_type, NumDimensions> glob_coords = halo_region_coords;
+    for (dim_t d = 0; d < NumDimensions; ++d) {
+      glob_coords[d] += halo_region.offsets()[d];
+    }
+    DASH_LOG_TRACE_VAR("BlockBoundaryIter.coords >", glob_coords);
+    return glob_coords;
   }
 
 private:
   /// Global memory used to dereference iterated values.
-  GlobMem_t &                        _globmem;
+  GlobMem_t                        * _globmem          = nullptr;
+  /// View specifying the block region. Iteration space contains the view
+  /// elements within the boundary defined by the halo spec.
+  const viewspec_type              * _viewspec         = nullptr;
   /// Pattern that created the encapsulated block.
-  const PatternT &                   _pattern;
-
-  const viewspec_t &                 _halo_region;
+  const pattern_type               * _pattern          = nullptr;
+  /// Halo to apply to the encapsulated block.
+  const halospec_type              * _halospec         = nullptr;
+  /// Views of the block's adjacent boundary regions.
+  const std::vector<viewspec_type> * _boundary_regions = nullptr;
   /// Iterator's position relative to the block border's iteration space.
-  index_type                         _idx{0};
+  index_type                         _idx              = 0;
+  /// The iterator's view index start offset in memory storage order.
+  index_type                         _view_idx_offset  = 0;
   /// Number of elements in the block border's iteration space.
-  index_type                         _size{0};
+  index_type                         _size             = 0;
   /// Maximum iterator position in the block border's iteration space.
-  index_type                         _max_idx{0};
+  index_type                         _max_idx          = 0;
   /// Unit id of the active unit
   dart_unit_t                        _myid;
-
-  ElementT *                         _lbegin;
+  /// Pointer to first element in local memory
+  ElementType                      * _lbegin           = nullptr;
   /// Function implementing mapping of iterator position to global element
   /// coordinates.
-  //position_mapping_function          _position_to_coords;
+  std::function<std::array<index_type, NumDimensions>(index_type)>
+    _position_to_coords;
 
-}; // class HaloBlockIter
+}; // class BlockBoundaryIter
 
-template <typename ElementT, typename PatternT, typename PointerT, typename ReferenceT>
-std::ostream & operator<<(std::ostream & os,
-    const HaloBlockIter<ElementT, PatternT, PointerT, ReferenceT> & i)
+template <
+  typename ElementType,
+  class    Pattern,
+  class    Pointer,
+  class    Reference >
+std::ostream & operator<<(
+  std::ostream & os,
+  const dash::BlockBoundaryIter<ElementType, Pattern, Pointer, Reference> & i)
 {
   std::ostringstream ss;
-  dash::GlobPtr<ElementT, PatternT> ptr(i);
-  ss << "dash::HaloBlockIter<" << typeid(ElementT).name() << ">("
+  dash::GlobPtr<ElementType, Pattern> ptr(i);
+  ss << "dash::BlockBoundaryIter<" << typeid(ElementType).name() << ">("
      << "idx:"  << i._idx << ", "
      << "gptr:" << ptr << ")";
   return operator<<(os, ss.str());
 }
 
-template <typename ElementT, typename PatternT, typename PointerT, typename ReferenceT>
+template <
+  typename ElementType,
+  class    Pattern,
+  class    Pointer,
+  class    Reference >
 auto distance(
   /// Global iterator to the initial position in the global sequence
-  const HaloBlockIter<ElementT, PatternT, PointerT, ReferenceT> & first,
+  const BlockBoundaryIter<ElementType, Pattern, Pointer, Reference> & first,
   /// Global iterator to the final position in the global sequence
-  const HaloBlockIter<ElementT, PatternT, PointerT, ReferenceT> & last
-) -> typename PatternT::index_type
+  const BlockBoundaryIter<ElementType, Pattern, Pointer, Reference> & last
+) -> typename Pattern::index_type
 {
   return last - first;
 }
 
-template<typename ElementT, typename PatternT>
-class HaloBlockView
+
+template<
+  typename ElementType,
+  typename PatternType,
+  /// Whether the iteration space includes corners (inner scope, default) or
+  /// not (outer scope, face adjacent neighbors).
+  typename BlockBoundaryIter<ElementType, PatternType>::boundary_scope Scope>
+class BlockBoundaryView
 {
 private:
-  using self_t = HaloBlockView<ElementT, PatternT>;
-  using GlobMem_t = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  typedef BlockBoundaryView< ElementType, PatternType, Scope > self_t;
 
-  static const dim_t NumDimensions = PatternT::ndim();
-
-public:
-  using iterator       = HaloBlockIter<ElementT, PatternT>;
-  using iterator_const = const iterator;
-
-  using index_type  = typename PatternT::index_type;
-  using size_type   = typename PatternT::size_type;
-  using viewspec_t  = typename PatternT::viewspec_type;
+private:
+  static const dim_t NumDimensions = PatternType::ndim();
 
 public:
-  HaloBlockView(GlobMem_t & globmem, const PatternT & pattern, const viewspec_t &  halo_region)
-  : _halo_region(halo_region), _size(_halo_region.size()),
-    _beg(globmem, pattern, halo_region,     0, _size),
-    _end(globmem, pattern, halo_region, _size, _size)
-  {}
+  typedef       BlockBoundaryIter<ElementType, PatternType>         iterator;
+  typedef const BlockBoundaryIter<ElementType, PatternType>   const_iterator;
+
+  typedef PatternType                                           pattern_type;
+  typedef typename PatternType::index_type                        index_type;
+  typedef typename PatternType::size_type                          size_type;
+  typedef typename PatternType::viewspec_type                  viewspec_type;
+  typedef dash::HaloSpec<NumDimensions>                        halospec_type;
+  typedef typename iterator::boundary_scope                   boundary_scope;
+  typedef HaloBlock<ElementType, PatternType>                halo_block_type;
+
+  typedef std::function<std::array<index_type, NumDimensions>(index_type)>
+    position_mapping_function;
+
+public:
+  BlockBoundaryView(
+    halo_block_type                  & halo_block,
+    /// A block's inner or outer viewspec.
+    const viewspec_type              & viewspec,
+    /// Views of the block's adjacent boundary regions.
+    const std::vector<viewspec_type> * boundary_regions,
+    /// Offset of the view's first index in global memory storage space.
+    index_type                         view_idx_offs = 0)
+  : _size(initialize_size(viewspec, halo_block.halospec())),
+    _beg(halo_block, viewspec, boundary_regions, 0,     _size, view_idx_offs),
+    _end(halo_block, viewspec, boundary_regions, _size, _size, view_idx_offs)
+  { }
+
+  BlockBoundaryView(
+    halo_block_type                  & halo_block,
+    /// A block's inner or outer viewspec.
+    const viewspec_type              & viewspec,
+    /// Views of the block's adjacent boundary regions.
+    const viewspec_type              & boundary_region,
+    /// Offset of the view's first index in global memory storage space.
+    index_type                         view_idx_offs = 0)
+  : _size(boundary_region.size()),
+    _position_coords(
+      std::bind(&self_t::boundary_coords, this,
+                boundary_region, std::placeholders::_1)),
+    _beg(halo_block, viewspec, _position_coords,     0, _size, view_idx_offs),
+    _end(halo_block, viewspec, _position_coords, _size, _size, view_idx_offs)
+  { }
+
+  BlockBoundaryView() = default;
 
   /**
    * Copy constructor.
    */
-  HaloBlockView(const self_t & other) = default;
+  BlockBoundaryView(
+    const self_t & other) = default;
 
   /**
    * Assignment operator.
    */
-  self_t & operator=(const self_t & other) = default;
+  self_t & operator=(
+    const self_t & other) = default;
 
   /**
    * Iterator pointing at first element in the view.
    */
-
-  const viewspec_t & region_view() const
-  {
-    return _halo_region;
-  }
-
-  iterator begin() const
+  inline iterator begin() const
   {
     return _beg;
   }
@@ -651,7 +1139,7 @@ public:
   /**
    * Iterator pointing past the last element in the view.
    */
-  iterator_const end() const
+  inline const_iterator end() const
   {
     return _end;
   }
@@ -659,119 +1147,166 @@ public:
   /**
    * The number of elements in the view.
    */
-  const size_type size() const
+  inline size_type size() const
   {
-    return _size;
+    return static_cast<size_type>(_size);
   }
 
 private:
-  const viewspec_t &        _halo_region;
+  /**
+   * Convert the given iterator position in border iteration space to
+   * coordinates in the block view.
+   */
+  std::array<index_type, NumDimensions> boundary_coords(
+    const viewspec_type & boundary_region,
+    index_type            boundary_pos) const
+  {
+    DASH_LOG_TRACE_VAR("BlockBoundaryView.boundary_coords()", boundary_pos);
+    // resolve coordinate in halo region from iterator boundary position:
+    auto region_coords = CartesianIndexSpace<NumDimensions>(
+                           boundary_region.extents())
+                         .coords(boundary_pos);
+    // apply view offsets to resolve global cartesian coords of current
+    // iterator position:
+    std::array<index_type, NumDimensions> glob_coords = region_coords;
+    for (dim_t d = 0; d < NumDimensions; ++d) {
+      glob_coords[d] += boundary_region.offsets()[d];
+    }
+    DASH_LOG_TRACE_VAR("BlockBoundaryView.boundary_coords >", glob_coords);
+    return glob_coords;
+  }
+
+  index_type initialize_size(
+    const viewspec_type & viewspec,
+    /// The halo to apply to the block.
+    const halospec_type & halospec) const
+  {
+    DASH_LOG_TRACE_VAR("BlockBoundaryView.init_size()", viewspec.extents());
+    index_type size = 0;
+    dim_t d_v       = NumDimensions - 1;
+    for (dim_t d = 0; d < NumDimensions; ++d, --d_v) {
+      auto view_extent_dv = viewspec.extent(d_v);
+      auto halo_offs_neg  = std::abs(halospec.offset_range(d).min);
+      auto halo_offs_pos  = std::abs(halospec.offset_range(d).max);
+      if (Scope == boundary_scope::INNER) {
+        if (d == 0) {
+          size += (halo_offs_neg + halo_offs_pos) * view_extent_dv;
+        } else {
+          size += (halo_offs_neg  + halo_offs_pos) *
+                  (view_extent_dv - (halospec.width(d_v) * 2));
+        }
+      } else {
+        auto view_extent_dv = viewspec.extent(d_v) -
+                              (halospec.width(d_v) * 2);
+        size += (halo_offs_neg + halo_offs_pos) * view_extent_dv;
+      }
+    }
+    return size;
+  }
+
+private:
   /// The number of elements in this view.
-  size_type                 _size{0};
+  index_type                _size  = 0;
   /// Function mapping iterator position to global coordinates.
-  //position_mapping_function _position_coords;
+  position_mapping_function _position_coords;
   /// Iterator pointing at first element in the view.
   iterator                  _beg;
   /// Iterator pointing past the last element in the view.
   iterator                  _end;
 }; // class BlockBoundaryView
 
-template<typename ElementT, typename PatternT>
+/**
+ * View type that encapsulates pattern blocks in halo semantics.
+ *
+ * Example:
+ *
+ * \code
+ *   PatternType pattern(...);
+ *   HaloSpec<2> halospec({ -1,1 }, { -1,1});
+ *   HaloBlock<ValueType, PatternType> haloblock(
+ *                                       globmem,
+ *                                       pattern,
+ *                                       pattern.block({ 1,2 },
+ *                                       halospec);
+ *   // create local copy of elements in west boundary:
+ *   ValueType * boundary_copy = new ValueType[haloblock.boundary().size())];
+ *   dash::copy(haloblock.boundary().begin(),
+ *              haloblock.boundary().end(),
+ *              boundary_copy);
+ * \endcode
+ */
+template<
+  typename ElementType,
+  typename PatternType>
 class HaloBlock
 {
 private:
-  using self_t = HaloBlock<ElementT, PatternT>;
-  using GlobMem_t = GlobMem<ElementT, dash::allocator::CollectiveAllocator<ElementT>>;
+  static const dim_t NumDimensions = PatternType::ndim();
+
+private:
+  typedef HaloBlock<ElementType, PatternType>
+    self_t;
+
+  typedef GlobMem<
+            ElementType,
+            dash::allocator::CollectiveAllocator<ElementType> >
+    GlobMem_t;
 
 public:
-  static constexpr dim_t NumDimensions = PatternT::ndim();
+  typedef PatternType                                           pattern_type;
+  typedef typename PatternType::index_type                        index_type;
+  typedef typename PatternType::size_type                          size_type;
+  typedef typename PatternType::viewspec_type                  viewspec_type;
+  typedef dash::HaloSpec<NumDimensions>                        halospec_type;
+  typedef BlockBoundaryIter<ElementType, PatternType>               iterator;
+  typedef typename iterator::boundary_scope                   boundary_scope;
 
-  using index_type   = typename PatternT::index_type;
-  using size_type    = typename PatternT::size_type;
-  using value_t      = ElementT;
-  using viewspec_t   = typename PatternT::viewspec_type;
-  using halospec_t   = HaloSpec<NumDimensions>;
-  using block_view_t = HaloBlockView<ElementT, PatternT>;
+  typedef BlockBoundaryView<ElementType, PatternType, boundary_scope::INNER>
+    boundary_view_type;
+  typedef BlockBoundaryView<ElementType, PatternType, boundary_scope::OUTER>
+    halo_view_type;
 
 public:
   /**
    * Creates a new instance of HaloBlock that extends a given pattern block
    * by halo semantics.
    */
-  HaloBlock(GlobMem_t & globmem, const PatternT & pattern, const viewspec_t &  view,
-    const halospec_t & halospec)
-  : _globmem(globmem), _pattern(pattern), _view(view), _halospec(halospec)
-  {
-    _halo_regions.reserve(NumDimensions * 2);
-    _boundary_regions.reserve(NumDimensions * 2);
+  HaloBlock(
+    /// Global memory used to dereference iterated values.
+    GlobMem_t           * globmem,
+    // Pattern that created the encapsulated block.
+    const pattern_type  & pattern,
+    // View specifying the inner block region.
+    const viewspec_type & viewspec,
+    // The halo to apply to the block.
+    const halospec_type & halospec,
+    /// Offset of the view's first index in global memory storage space.
+    index_type            view_index_offset = 0)
+  : _globmem(globmem),
+    _pattern(&pattern),
+    _viewspec_inner(
+      &viewspec),
+    _viewspec_outer(
+      initialize_outer_viewspec(
+        viewspec,
+        halospec)),
+    _halospec(&halospec),
+    _boundary_regions(
+      initialize_boundary_regions(
+        pattern, viewspec, halospec)),
+    _halo_regions(
+      initialize_halo_regions(
+        pattern, viewspec, halospec)),
+    _boundary_view(
+        *this, *_viewspec_inner, &_boundary_regions, view_index_offset),
+    _halo_view(
+        *this, _viewspec_outer, &_halo_regions, view_index_offset)
+  { }
 
-    _view_outer = view;
-    _view_inner = view;
-    _view_save  = view;
-
-    for (dim_t d = 0; d < NumDimensions; ++d)
-    {
-      auto halo_offs_minus = std::abs(halospec.halo_offset(d).minus);
-      auto halo_offs_plus  = halospec.halo_offset(d).plus;
-
-
-      auto region_offsets = view.offsets();
-      auto region_extents = view.extents();
-      auto view_offset    = view.offset(d);
-      auto view_extent    = view.extent(d);
-
-      if(halo_offs_minus == 0 || view_offset < halo_offs_minus)
-      {
-        _view_save.resize_dim(d, view_offset + halo_offs_minus, view_extent - halo_offs_minus);
-        _view_inner.resize_dim(d, view_offset + halo_offs_minus, view_extent - halo_offs_minus);
-
-        _boundary_regions.push_back(viewspec_t{});
-        _halo_regions.push_back(viewspec_t{});
-      }
-      else
-      {
-        _view_outer.resize_dim(d, view_offset - halo_offs_minus, view_extent + halo_offs_minus);
-        _view_inner.resize_dim(d, view_offset + halo_offs_minus, view_extent - halo_offs_minus);
-
-        region_extents[d]      = halo_offs_minus;
-        _boundary_regions.push_back(viewspec_t(region_offsets,  region_extents));
-
-        setBndElems(d, region_offsets, region_extents);
-
-        region_offsets[d]   = view_offset - halo_offs_minus;
-        region_extents[d]   = halo_offs_minus;
-        _halo_regions.push_back(viewspec_t(region_offsets, region_extents));
-      }
-
-      if(halo_offs_plus == 0 ||
-          std::abs(view_offset + view_extent + halo_offs_plus) > _pattern.extent(d))
-      {
-        _view_save.resize_dim(d, _view_save.offset(d), _view_save.extent(d) - halo_offs_plus);
-        _view_inner.resize_dim(d, _view_inner.offset(d), _view_inner.extent(d) - halo_offs_plus);
-
-        _boundary_regions.push_back(viewspec_t{});
-        _halo_regions.push_back(viewspec_t{});
-      }
-      else
-      {
-        _view_outer.resize_dim(d, _view_outer.offset(d), _view_outer.extent(d) + halo_offs_plus);
-        _view_inner.resize_dim(d, _view_inner.offset(d), _view_inner.extent(d) - halo_offs_plus);
-
-        region_offsets[d]  = view_offset + view_extent - halo_offs_plus;
-        region_extents[d]  = halo_offs_plus;
-        _boundary_regions.push_back(viewspec_t(region_offsets, region_extents));
-
-        setBndElems(d, region_offsets, region_extents);
-
-        region_offsets[d]  = view_offset + view_extent;
-        region_extents[d]  = halo_offs_plus;
-        _halo_regions.push_back(viewspec_t(region_offsets, region_extents));
-      }
-    }
-
-  }
-
-  HaloBlock() = delete;
+  /**
+   * Default constructor.
+   */
+  HaloBlock() = default;
 
   /**
    * Copy constructor.
@@ -783,210 +1318,274 @@ public:
    */
   self_t & operator=(const self_t & other) = default;
 
-  static constexpr dim_t ndim()
+  /**
+   * Global memory accessor used to dereference iterated values.
+   */
+  inline GlobMem_t & globmem()
   {
-    return NumDimensions;
+    return *_globmem;
   }
 
   /**
    * The pattern instance that created the encapsulated block.
    */
-  const PatternT & pattern() const
+  inline const pattern_type & pattern() const
   {
-    return _pattern;
+    return *_pattern;
   }
 
-  const GlobMem_t & globmem() const
+  inline const halospec_type & halospec() const
   {
-    return _globmem;
-  }
-
-  const halospec_t & halospec() const
-  {
-    return _halospec;
+    return *_halospec;
   }
 
   /**
-   * Creates view on halo region for a given dimension and halo region.
-   * For example, the east halo region in a two-dimensional block
-   * has (1, dash::HaloRegion::PLUS).
+   * Creates view on halo region at given offset relative to this block.
+   * For example, the adjacent north halo region of a two-dimensional block
+   * has offsets (-1, 0).
    */
-  const block_view_t halo_region(dim_t dimension, HaloRegion region) const
+  boundary_view_type halo_region(std::initializer_list<int> offsets)
   {
-    auto region_index = 2 * dimension + static_cast<uint8_t>(region);
-
-    return block_view_t(_globmem, _pattern, _halo_regions[region_index]);
+    DASH_LOG_TRACE_VAR("BlockBoundaryView.halo_region()", offsets);
+    // convert offset to region index:
+    auto  region_index = 0;
+    dim_t d = 0;
+    for (auto offset_d : offsets) {
+      auto halo_ext_d = ( std::abs(_halospec->offset_range(d).min) +
+                          std::abs(_halospec->offset_range(d).max) );
+      DASH_LOG_TRACE("BlockBoundaryView.halo_region", "d:", d,
+                     "stencil_extent_d:", halo_ext_d,
+                     "offset_d:",         offset_d);
+      if (offset_d != 0) {
+        if (d > 0) {
+          auto halo_ext_di = ( std::abs(_halospec->offset_range(d-1).min) +
+                               std::abs(_halospec->offset_range(d-1).max) );
+          region_index += halo_ext_di;
+        }
+        region_index += _halospec->width(d) + offset_d;
+        if (offset_d > 0) {
+          region_index--;
+        }
+      }
+      d++;
+    }
+    DASH_LOG_TRACE("BlockBoundaryView.halo_region >",
+                   "region index:", region_index);
+    auto region = _halo_regions[region_index];
+    return boundary_view_type(
+             *this, *_viewspec_inner, region);
   }
 
   /**
-   * Creates view on boundary region for a given dimension and boundary region.
+   * Creates view on boundary region at given offset relative to this block.
    * For example, the east boundary region in a two-dimensional block
-   * has (1, dash::HaloRegion::PLUS).
+   * has offsets (0, 1).
    */
-  const block_view_t boundary_region(dim_t dimension, HaloRegion region) const
+  boundary_view_type boundary_region(std::initializer_list<int> offsets)
   {
-    auto region_index = 2 * dimension + static_cast<uint8_t>(region);
-
-    return block_view_t(_globmem, _pattern, _boundary_regions[region_index]);
-  }
-
-  const std::vector<viewspec_t> & boundary_elements() const
-  {
-    return _boundary_elements;
-  }
-
-  size_type halo_size() const
-  {
-    return std::accumulate(_halo_regions.begin(),_halo_regions.end(), 0,
-        [](size_type sum, viewspec_t region){return sum + region.size();});
-  }
-
-  size_type halo_size(dim_t dimension, HaloRegion region) const
-  {
-    return _halo_regions[2 * dimension + static_cast<uint8_t>(region)].size();
-  }
-
-  size_type boundary_size() const
-  {
-    return _size_bnd_elems;
-  }
-
-  const viewspec_t & view() const
-  {
-    return _view;
-  }
-
-  // TODO find useful name
-  const viewspec_t & view_save() const
-  {
-    return _view_save;
+    // convert offset to region index:
+    auto  region_index = 0;
+    dim_t d = 0;
+    for (auto offset_d : offsets) {
+      auto stencil_extent_d = ( std::abs(_halospec->offset_range(d-1).min) +
+                                std::abs(_halospec->offset_range(d-1).max) );
+      if (offset_d != 0) {
+        if (d > 0) {
+          region_index += d * stencil_extent_d;
+        }
+        region_index += stencil_extent_d + offset_d;
+      }
+      d++;
+    }
+    auto region = _boundary_regions[region_index];
+    return boundary_view_type(
+             *this, *_viewspec_inner, region);
   }
 
   /**
    * View specifying the inner block region.
    */
-  const viewspec_t & view_inner() const
-  {
-    return _view_inner;
+  inline const viewspec_type & inner() const {
+    return *_viewspec_inner;
   }
 
   /**
    * View specifying the outer block region including halo.
    */
-  const viewspec_t & view_outer() const
-  {
-    return _view_outer;
+  inline const viewspec_type & outer() const {
+    return _viewspec_outer;
+  }
+
+  /**
+   * Proxy accessor providing iteration space of the block's boundary
+   * cells.
+   */
+  inline const boundary_view_type & boundary() const {
+    return _boundary_view;
+  }
+
+  /**
+   * Proxy accessor providing iteration space of the block's halo cells.
+   */
+  inline const halo_view_type & halo() const {
+    return _halo_view;
   }
 
 private:
-  void setBndElems(dim_t dim, std::array<index_type, NumDimensions> offsets,
-      std::array<size_type, NumDimensions> extents)
+  std::vector<viewspec_type> initialize_boundary_regions(
+    // Pattern that created the encapsulated block.
+    const pattern_type  & pattern,
+    // View specifying the inner block region.
+    const viewspec_type & viewspec,
+    // The halo to apply to the block.
+    const halospec_type & halospec) const
   {
-    if(dim == 0)
-    {
-      for(auto d = 0; d < NumDimensions; ++d)
-      {
-        auto halo_off_minus = std::abs(_halospec.halo_offset(d).minus);
-        auto halo_off_plus = _halospec.halo_offset(d).plus;
+    std::vector<viewspec_type> boundary_regions;
+    // 0-2 regions per dimension:
+    dim_t di = NumDimensions - 1;
+    for (dim_t d = 0; d < NumDimensions; ++d, --di) {
+      auto view_extent_di = viewspec.extent(di);
+      auto halo_offs_neg  = std::abs(halospec.offset_range(d).min);
+      auto halo_offs_pos  = std::abs(halospec.offset_range(d).max);
+      if (d > 0) {
+        // subtract overlapping areas from view extents:
+        view_extent_di -= ( std::abs(halospec.offset_range(di).min) +
+                            std::abs(halospec.offset_range(di).min) );
+      }
+      if (halo_offs_neg > 0) {
+        // boundary extends to negative direction, e.g. west or north:
+        auto bnd_region_offsets = viewspec.offsets();
+        auto bnd_region_extents = viewspec.extents();
+        bnd_region_extents[d]   = halo_offs_neg;
+        bnd_region_extents[di]  = view_extent_di;
+        viewspec_type bnd_region(bnd_region_offsets, bnd_region_extents);
+        boundary_regions.push_back(bnd_region);
+        DASH_LOG_TRACE("HaloBlock.init_boundary_regions >", "d:", d,
+                       "offsets:", bnd_region_offsets,
+                       "extents:", bnd_region_extents);
+      }
+      if (halo_offs_pos > 0) {
+        // boundary extends to positive direction, e.g. east or south:
+        auto bnd_region_offsets = viewspec.offsets();
+        auto bnd_region_extents = viewspec.extents();
+        bnd_region_extents[d]   = halo_offs_pos;
+        bnd_region_extents[di]  = view_extent_di;
+        viewspec_type bnd_region(bnd_region_offsets, bnd_region_extents);
+        DASH_LOG_TRACE("HaloBlock.init_boundary_regions >", "d:", d,
+                       "offsets:", bnd_region_offsets,
+                       "extents:", bnd_region_extents);
+        boundary_regions.push_back(bnd_region);
+      }
+    }
+    return boundary_regions;
+  }
 
-        if(offsets[d] < halo_off_minus)
-        {
-          offsets[d] += halo_off_minus;
-          extents[d] -= halo_off_minus;
-        }
-        if(offsets[d] + extents[d] + halo_off_plus > _pattern.extent(d))
-          extents[d] -= halo_off_plus;
+  std::vector<viewspec_type> initialize_halo_regions(
+    // Pattern that created the encapsulated block.
+    const pattern_type   & pattern,
+    // View specifying the inner block region.
+    const viewspec_type  & viewspec,
+    // The halo to apply to the block.
+    const halospec_type  & halospec) const
+  {
+    std::vector<viewspec_type> halo_regions;
+    // 0-2 regions per dimension:
+    dim_t di = NumDimensions - 1;
+    for (dim_t d = 0; d < NumDimensions; ++d, --di) {
+      auto view_extent_di = viewspec.extent(di);
+      auto halo_offs_neg  = std::abs(halospec.offset_range(d).min);
+      auto halo_offs_pos  = std::abs(halospec.offset_range(d).max);
+      if (halo_offs_neg > 0) {
+        // halo extends to negative direction, e.g. west or north:
+        auto halo_region_offsets = viewspec.offsets();
+        halo_region_offsets[d]  -= halo_offs_neg;
+        auto halo_region_extents = viewspec.extents();
+        halo_region_extents[d]   = halo_offs_neg;
+        viewspec_type halo_region(halo_region_offsets, halo_region_extents);
+        DASH_LOG_TRACE("HaloBlock.init_halo_regions >", "d:", d,
+                       "offsets:", halo_region_offsets,
+                       "extents:", halo_region_extents);
+        halo_regions.push_back(halo_region);
+      }
+      if (halo_offs_pos > 0) {
+        // halo extends to positive direction, e.g. east or south:
+        auto halo_region_offsets = viewspec.offsets();
+        halo_region_offsets[d]  += viewspec.extent(d);
+        auto halo_region_extents = viewspec.extents();
+        halo_region_extents[d]   = halo_offs_pos;
+        viewspec_type halo_region(halo_region_offsets, halo_region_extents);
+        DASH_LOG_TRACE("HaloBlock.init_halo_regions >", "d:", d,
+                       "offsets:", halo_region_offsets,
+                       "extents:", halo_region_extents);
+        halo_regions.push_back(halo_region);
       }
     }
-    else
-    {
-      for(auto d = 0; d < dim; ++d)
-      {
-        offsets[d] -= _halospec.halo_offset(d).minus;
-        extents[d] -= _halospec.width(d);
-      }
+    return halo_regions;
+  }
+
+  /**
+   * Create outer viewspec (i.e. including halos) from original inner
+   * block viewspec.
+   */
+  viewspec_type initialize_outer_viewspec(
+    const viewspec_type & viewspec_inner,
+    const halospec_type & halospec) const
+  {
+    auto viewspec_outer = viewspec_inner;
+    for (dim_t d = 0; d < NumDimensions; ++d) {
+      auto view_outer_offset_d = viewspec_outer.offset(d) +
+                                 halospec.offset_range(d).min;
+      auto halo_offs_neg       = std::abs(halospec.offset_range(d).min);
+      auto halo_offs_pos       = std::abs(halospec.offset_range(d).max);
+      auto view_outer_extent_d = viewspec_outer.extent(d) +
+                                 halo_offs_neg + halo_offs_pos;
+      viewspec_outer.resize_dim(d, view_outer_offset_d, view_outer_extent_d);
     }
-    viewspec_t boundary(offsets, extents);
-    _size_bnd_elems += boundary.size();
-    _boundary_elements.push_back(std::move(boundary));
+    return viewspec_outer;
   }
 
 private:
-  GlobMem_t &               _globmem;
+  /// Global memory accessor used to dereference iterated values.
+  GlobMem_t               * _globmem        = nullptr;
 
-  const PatternT &          _pattern;
+  /// The pattern that created the encapsulated block.
+  const pattern_type      * _pattern        = nullptr;
 
-  const viewspec_t &        _view;
+  /// View specifying the original internal block region and its iteration
+  /// space.
+  const viewspec_type     * _viewspec_inner = nullptr;
 
-  const halospec_t &        _halospec;
+  /// Offsets of the inner viewspec are used as origin reference.
+  /// The outer viewspec is offset the halo's minimal neighbor offsets and
+  /// its extends are enlarged by halo width in every dimension.
+  /// For example, the outer view for a 9-point stencil for two-dimensional
+  /// Von Neumann neighborhood has halospec ((-2,2), (-2,2)).
+  /// If the inner view has offsets (12, 20) and extents (23,42), the outer
+  /// view has offsets
+  /// (12-2, 20-2) = (10,18)
+  /// and extents
+  /// (23+4, 42+4) = (27,46).
+  viewspec_type              _viewspec_outer;
 
-  viewspec_t                _view_save;
+  /// The halo to apply to the encapsulated block.
+  const halospec_type      * _halospec       = nullptr;
 
-  viewspec_t                _view_inner;
+  /// Viewspecs for all contiguous boundaries in the halo block.
+  std::vector<viewspec_type> _boundary_regions;
 
-  viewspec_t                _view_outer;
+  /// Viewspecs for all contiguous halo regions in the halo block.
+  std::vector<viewspec_type> _halo_regions;
 
-  std::vector<viewspec_t>   _halo_regions;
+  /// View proxy accessor providing iteration space of elements in inner
+  /// block boundaries.
+  boundary_view_type         _boundary_view;
 
-  std::vector<viewspec_t>   _boundary_regions;
-
-  std::vector<viewspec_t>   _boundary_elements;
-
-  size_type                 _size_bnd_elems = 0;
+  /// View proxy accessor providing iteration space of elements in outer
+  /// (halo) block boundaries.
+  halo_view_type             _halo_view;
 
 }; // class HaloBlock
 
-template<typename HaloBlockT>
-class HaloMemory
-{
-public:
-  static constexpr dim_t NumDimensions = HaloBlockT::ndim();
+} // namespace dash
 
-  using value_t    = typename HaloBlockT::value_t;
-
-  HaloMemory(const HaloBlockT & _haloblock)
-  {
-    _halobuffer.resize(_haloblock.halo_size());
-    _halo_offsets.resize(NumDimensions * 2, nullptr);
-    value_t* offset = _halobuffer.data();
-    for(auto d = 0; d < NumDimensions; ++d)
-    {
-      auto off_pos = d * 2;
-      auto region_size = _haloblock.halo_size(d, HaloRegion::MINUS);
-      if(region_size > 0)
-      {
-        _halo_offsets[off_pos + static_cast<uint8_t>(HaloRegion::MINUS)] = offset;
-        offset += region_size;
-      }
-
-      region_size = _haloblock.halo_size(d, HaloRegion::PLUS);
-      if(region_size > 0)
-      {
-        _halo_offsets[off_pos + static_cast<uint8_t>(HaloRegion::PLUS)] = offset;
-        offset += region_size;
-      }
-    }
-  }
-
-  value_t * haloPos(dim_t dim, HaloRegion halo_region)
-  {
-    return _halo_offsets[dim * 2 + static_cast<uint8_t>(halo_region)];
-  }
-
-  value_t * startPos()
-  {
-    return _halobuffer.data();
-  }
-
-  const std::vector<value_t> & haloBuffer()
-  {
-    return _halobuffer;
-  }
-
-private:
-  std::vector<value_t>    _halobuffer;
-  std::vector<value_t*>   _halo_offsets;
-};
-
-}//namespace dash
 #endif // DASH__HALO_H__
