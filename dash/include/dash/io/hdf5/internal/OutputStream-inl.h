@@ -8,6 +8,8 @@
 #include <dash/Matrix.h>
 #include <dash/Array.h>
 
+#include <future>
+
 
 namespace dash {
 namespace io {
@@ -18,19 +20,12 @@ inline OutputStream & operator<< (
    OutputStream & os,
    Container_t  & container )
 {
-    if(os._use_cust_conv){
-      dash::io::hdf5::StoreHDF::write(
-        container,
-        os._filename,
-        os._dataset,
-        os._foptions,
-        os._converter);
+    if(os._launch_policy == dash::launch::async){
+      std::shared_future<void> fut = std::async(std::launch::async, [&](){
+                   os._store_object_impl(container);});
+      os._async_ops.push_back(fut);
     } else {
-      dash::io::hdf5::StoreHDF::write(
-        container,
-        os._filename,
-        os._dataset,
-        os._foptions);
+      os._store_object_impl(container);
     }
 
   // Append future data in this stream

@@ -31,6 +31,8 @@ class InputStream
     hdf5_options               _foptions = StoreHDF::get_default_options();
     bool                       _use_cust_conv = false;
     dash::launch               _launch_policy;
+    
+    std::vector<std::shared_future<void> > _async_ops;
 
   public:
     InputStream(
@@ -50,7 +52,9 @@ class InputStream
      * If async IO is used, waits until all data is read
      */
     InputStream flush(){
-        // TODO implement it using waits on futures
+        for(auto & fut : _async_ops){
+            fut.wait();
+        }
         return *this;
     }
 
@@ -89,6 +93,25 @@ class InputStream
     friend InputStream & operator>> (
         InputStream & is,
         Container_t & matrix);
+    
+private:
+    template< typename Container_t>
+    void _load_object_impl(Container_t & container){
+      if(_use_cust_conv){
+        StoreHDF::read(
+          container,
+          _filename,
+          _dataset,
+          _foptions,
+          _converter);
+      } else {
+        StoreHDF::read(
+          container,
+          _filename,
+          _dataset,
+          _foptions);
+      }
+    }
 };
 
 } // namespace hfd5

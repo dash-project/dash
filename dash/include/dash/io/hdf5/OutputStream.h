@@ -36,6 +36,8 @@ private:
   hdf5_options               _foptions = StoreHDF::get_default_options();
   bool                       _use_cust_conv = false;
   dash::launch               _launch_policy;
+  
+  std::vector<std::shared_future<void> > _async_ops;
 
 public:
     OutputStream(
@@ -62,7 +64,9 @@ public:
      * If async IO is used, waits until all data is read
      */
     OutputStream flush(){
-        // TODO implement it using waits on futures
+        for(auto & fut : _async_ops){
+            fut.wait();
+        }
         return *this;
     }
 
@@ -112,6 +116,24 @@ public:
         OutputStream & os,
         Container_t  & container);
 
+private:
+    template< typename Container_t>
+    void _store_object_impl(Container_t & container){
+      if(_use_cust_conv){
+        StoreHDF::write(
+          container,
+          _filename,
+          _dataset,
+          _foptions,
+          _converter);
+      } else {
+        StoreHDF::write(
+          container,
+          _filename,
+          _dataset,
+          _foptions);
+      }
+    }
 };
 
 } // namespace hdf5

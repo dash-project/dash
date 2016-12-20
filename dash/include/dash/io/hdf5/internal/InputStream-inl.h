@@ -18,19 +18,12 @@ inline InputStream & operator>> (
     InputStream & is,
     Container_t & container)
 {
-    if(is._use_cust_conv){
-      dash::io::hdf5::StoreHDF::read(
-        container,
-        is._filename,
-        is._dataset,
-        is._foptions,
-        is._converter);
+    if(is._launch_policy == dash::launch::async){
+      std::shared_future<void> fut = std::async(std::launch::async, [&](){
+                   is._load_object_impl(container);});
+      is._async_ops.push_back(fut);
     } else {
-      dash::io::hdf5::StoreHDF::read(
-        container,
-        is._filename,
-        is._dataset,
-        is._foptions);
+      is._load_object_impl(container);
     }
     return is;
 }
