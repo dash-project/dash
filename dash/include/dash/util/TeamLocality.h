@@ -232,7 +232,7 @@ public:
   }
 
 private:
-  dash::Team                        * _team;
+  dash::Team                        * _team          = nullptr;
   /// Parent scope of the team locality domain hierarchy.
   Scope_t                             _scope         = Scope_t::Undefined;
   /// Locality domain of the team.
