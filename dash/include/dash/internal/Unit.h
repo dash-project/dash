@@ -24,6 +24,9 @@ enum unit_scope {
  */
 template <unit_scope IdScope, typename DARTType>
 struct unit_id : public DARTType {
+
+  typedef unit_id<IdScope, DARTType> self_t;
+
 public:
 
   template<unit_scope U, typename D>
@@ -46,7 +49,8 @@ public:
 
 
   /** default initialization to zero */
-  constexpr explicit unit_id() noexcept : DARTType(DART_UNDEFINED_UNIT_ID) { }
+  constexpr explicit unit_id() noexcept
+  : DARTType(DART_UNDEFINED_UNIT_ID) { }
 
   /**
    * Initialization using a \c dart_unit_t
@@ -66,7 +70,7 @@ public:
    * \endcode
    */
   constexpr explicit unit_id(dart_unit_t id) noexcept
-      : DARTType(id) {}
+  : DARTType(id) { }
 
 
   /**
@@ -77,7 +81,21 @@ public:
    * dash::global_unit_t unit = dash::myid();
    * \endcode
    */
-  constexpr unit_id(const unit_id<IdScope, DARTType>& uid) = default;
+  constexpr unit_id(const self_t & uid) = default;
+
+  /**
+   * Initialization from corresponding DART unit type in same scope.
+   *
+   * Allows to do:
+   *
+   * \code
+   * dart_global_unit_t  dart_guid { 34 }
+   * dash::global_unit_t g_unit(dart_guid);
+   * \endcode
+   *
+   */
+  constexpr unit_id(DARTType dart_scope_uid) noexcept
+  : DARTType(dart_scope_uid) { }
 
   /**
    * Explicit Initialization from another \c unit_id type
@@ -94,13 +112,9 @@ public:
    *
    */
   template<unit_scope Scope, typename DT>
-  constexpr explicit unit_id<IdScope, DARTType>(const unit_id<Scope, DT> & uid) noexcept
+  constexpr explicit unit_id<IdScope, DARTType>(
+    const unit_id<Scope, DT> & uid) noexcept
   : DARTType(uid.id) { }
-
-  /**
-   * \todo Not constexpr since C++11 does not allow for multi-statement
-   *       constexpr functions (C++14 does).
-   */
 
   /**
    * Type-safe assignment operator that let's you do the following:
@@ -112,8 +126,25 @@ public:
    * g_unit = 3;
    * g_unit2 = g_unit;
    * \endcode
+   *
+   * \todo Not constexpr since C++11 does not allow for multi-statement
+   *       constexpr functions (C++14 does).
+   *
+   * \todo
+   * fuchsto@devreal: Why not returning self_t & as required for
+   *                  operator= semantics?
+   *                  Otherwise, fundamental semantics would be broken.
+   *                  Consider:
+   *                  \code
+   *                    dart_unit_t   uid_a { 4 };
+   *                    dart_unit_t   uid_b { 5 };
+   *                    global_unit_t guid;
+   *                    (guid = uid_a) = uid_b;
+   *                    -> guid: { id: 4 }
+   *                  \endcode
    */
-  const unit_id<IdScope, DARTType> operator=(unit_id<IdScope, DARTType> uid) noexcept {
+  const unit_id<IdScope, DARTType> operator=(
+    unit_id<IdScope, DARTType> uid) noexcept {
     this->id = uid.id;
     return *this;
   }
@@ -121,6 +152,19 @@ public:
   /**
    * Mixed-type assignment is explicitely prohibited to prevent
    * accidental mistakes.
+   *
+   * \todo
+   * fuchsto@devreal: Why not returning self_t & as required for
+   *                  operator= semantics?
+   *                  Otherwise, fundamental semantics would be broken.
+   *                  Consider:
+   *                  \code
+   *                    dart_unit_t   uid_a { 4 };
+   *                    dart_unit_t   uid_b { 5 };
+   *                    global_unit_t guid;
+   *                    (guid = uid_a) = uid_b;
+   *                    -> guid: { id: 4 }
+   *                  \endcode
    */
   template<unit_scope Scope, typename D>
   const unit_id<IdScope, D> operator=(const unit_id<Scope, D> & id) = delete;
@@ -133,8 +177,21 @@ public:
    * dash::global_unit_t g_unit;
    * g_unit = 2;
    * \endcode
+   *
+   * \todo
+   * fuchsto@devreal: Why not returning self_t & as required for
+   *                  operator= semantics?
+   *                  Otherwise, fundamental semantics would be broken.
+   *                  Consider:
+   *                  \code
+   *                    dart_unit_t   uid_a { 4 };
+   *                    dart_unit_t   uid_b { 5 };
+   *                    global_unit_t guid;
+   *                    (guid = uid_a) = uid_b;
+   *                    -> guid: { id: 4 }
+   *                  \endcode
    */
-  const unit_id operator=(dart_unit_t id) noexcept {
+  const self_t operator=(dart_unit_t id) noexcept {
     this->id = id;
     return *this;
   }
@@ -314,6 +371,12 @@ public:
    *   // do something on root unit
    * }
    * \endcode
+   *
+   * \todo
+   * fuchsto@devreal: Sure that this shouldn't be marked explicit?
+   *                  In effect, this is an implicit conversion to int.
+   *                  Could be harmless, however, as unit_id(int) is marked
+   *                  explicit.
    */
   constexpr operator dart_unit_t() const noexcept { return this->id; }
 
@@ -329,7 +392,9 @@ public:
  * \endcode
  */
 template <unit_scope IdScope, typename DARTType>
-constexpr unit_id<IdScope, DARTType> operator+(unit_id<IdScope, DARTType> lhs, unit_id<IdScope, DARTType> rhs) {
+constexpr unit_id<IdScope, DARTType> operator+(
+    unit_id<IdScope, DARTType> lhs,
+    unit_id<IdScope, DARTType> rhs) {
   return unit_id<IdScope, DARTType>(lhs.id + rhs.id);
 }
 
@@ -343,7 +408,9 @@ constexpr unit_id<IdScope, DARTType> operator+(unit_id<IdScope, DARTType> lhs, u
  * \endcode
  */
 template <unit_scope IdScope, typename DARTType>
-constexpr unit_id<IdScope, DARTType> operator-(unit_id<IdScope, DARTType> lhs, unit_id<IdScope, DARTType> rhs) {
+constexpr unit_id<IdScope, DARTType> operator-(
+    unit_id<IdScope, DARTType> lhs,
+    unit_id<IdScope, DARTType> rhs) {
   return unit_id<IdScope, DARTType>(lhs.id - rhs.id);
 }
 
@@ -360,7 +427,9 @@ constexpr unit_id<IdScope, DARTType> operator-(unit_id<IdScope, DARTType> lhs, u
  * \endcode
  */
 template <unit_scope IdScope, typename DARTType>
-constexpr bool operator==(unit_id<IdScope, DARTType> lhs, unit_id<IdScope, DARTType> rhs) {
+constexpr bool operator==(
+    unit_id<IdScope, DARTType> lhs,
+    unit_id<IdScope, DARTType> rhs) {
   return lhs.id == rhs.id;
 }
 
@@ -378,7 +447,9 @@ constexpr bool operator==(unit_id<IdScope, DARTType> lhs, unit_id<IdScope, DARTT
  * \endcode
  */
 template <unit_scope IdScope, typename DARTType>
-constexpr bool operator!=(unit_id<IdScope, DARTType> lhs, unit_id<IdScope, DARTType> rhs) {
+constexpr bool operator!=(
+    unit_id<IdScope, DARTType> lhs,
+    unit_id<IdScope, DARTType> rhs) {
   return !(lhs == rhs);
 }
 
@@ -386,26 +457,48 @@ constexpr bool operator!=(unit_id<IdScope, DARTType> lhs, unit_id<IdScope, DARTT
 /**
  * Prevent mistakes from using mixed-type smaller-than operator.
  */
-template <unit_scope LHSScope,typename LHSDARTType, unit_scope RHSScope, typename RHSDARTType>
-constexpr bool operator<(unit_id<LHSScope, LHSDARTType> lhs, unit_id<RHSScope, RHSDARTType> rhs) = delete;
+template <
+  unit_scope LHSScope,
+  typename   LHSDARTType,
+  unit_scope RHSScope,
+  typename   RHSDARTType>
+constexpr bool operator<(
+    unit_id<LHSScope, LHSDARTType> lhs,
+    unit_id<RHSScope, RHSDARTType> rhs) = delete;
 
 /**
  * Prevent mistakes from using mixed-type larger-than operator.
  */
-template <unit_scope LHSScope,typename LHSDARTType, unit_scope RHSScope, typename RHSDARTType>
-constexpr bool operator>(unit_id<LHSScope, LHSDARTType> lhs, unit_id<RHSScope, RHSDARTType> rhs) = delete;
+template <
+  unit_scope LHSScope,
+  typename   LHSDARTType,
+  unit_scope RHSScope,
+  typename   RHSDARTType>
+constexpr bool operator>(
+    unit_id<LHSScope, LHSDARTType> lhs,
+    unit_id<RHSScope, RHSDARTType> rhs) = delete;
 
 /**
  * Prevent mistakes from using mixed-type equality operator.
  */
-template <unit_scope LHSScope,typename LHSDARTType, unit_scope RHSScope, typename RHSDARTType>
-constexpr bool operator==(unit_id<LHSScope, LHSDARTType> lhs, unit_id<RHSScope, RHSDARTType> rhs) = delete;
+template <
+  unit_scope LHSScope,
+  typename LHSDARTType,
+  unit_scope RHSScope,
+  typename RHSDARTType>
+constexpr bool operator==(
+    unit_id<LHSScope, LHSDARTType> lhs,
+    unit_id<RHSScope, RHSDARTType> rhs) = delete;
 
 /**
  * Less-than operator for same-type unit_id objects.
  */
-template <unit_scope IdScope, typename DARTType>
-constexpr bool operator<(unit_id<IdScope, DARTType> lhs, unit_id<IdScope, DARTType> rhs) {
+template <
+  unit_scope IdScope,
+  typename DARTType>
+constexpr bool operator<(
+    unit_id<IdScope, DARTType> lhs,
+    unit_id<IdScope, DARTType> rhs) {
   return lhs.id < rhs.id;
 }
 
@@ -413,7 +506,9 @@ constexpr bool operator<(unit_id<IdScope, DARTType> lhs, unit_id<IdScope, DARTTy
  * Larger-than operator for same-type unit_id objects.
  */
 template <unit_scope IdScope, typename DARTType>
-constexpr bool operator>(unit_id<IdScope, DARTType> lhs, unit_id<IdScope, DARTType> rhs) {
+constexpr bool operator>(
+    unit_id<IdScope, DARTType> lhs,
+    unit_id<IdScope, DARTType> rhs) {
   return lhs.id > rhs.id;
 }
 
@@ -427,9 +522,11 @@ constexpr bool operator>(unit_id<IdScope, DARTType> lhs, unit_id<IdScope, DARTTy
  * \endcode
  */
 template<unit_scope IdScope, typename DARTType>
-std::ostream & operator<<(std::ostream& os, unit_id<IdScope, DARTType> id)
+std::ostream & operator<<(
+    std::ostream &             os,
+    unit_id<IdScope, DARTType> id)
 {
-  return os<<id.id;
+  return os << id.id;
 }
 
 } // namespace dash
