@@ -164,8 +164,14 @@ public:
   LocalityDomain(
     const self_t & other);
 
+  LocalityDomain(
+    self_t && other);
+
   self_t & operator=(
     const self_t & other);
+
+  self_t & operator=(
+    self_t && other);
 
   inline bool operator==(
     const self_t & rhs) const
@@ -272,17 +278,26 @@ public:
     dash::util::Locality::Scope scope) const
   {
     std::vector<self_t>       scope_domains;
+    
     int                       num_scope_domains;
     dart_domain_locality_t ** dart_scope_domains;
-    dart_domain_scope_domains(
-      _domain,
-      static_cast<dart_locality_scope_t>(scope),
-      &num_scope_domains,
-      &dart_scope_domains);
-    for (int sd = 0; sd < num_scope_domains; sd++) {
-      scope_domains.push_back(self_t((*dart_scope_domains)[sd]));
+    dart_ret_t ret = dart_domain_scope_domains(
+                       _domain,
+                       static_cast<dart_locality_scope_t>(scope),
+                       &num_scope_domains,
+                       &dart_scope_domains);
+    DASH_ASSERT(DART_OK == ret || DART_ERR_NOTFOUND == ret);
+
+    DASH_LOG_TRACE_VAR("LocalityDomain.scope_domains", num_scope_domains);
+    if (num_scope_domains > 0) {
+      for (int sd = 0; sd < num_scope_domains; sd++) {
+        DASH_LOG_TRACE("LocalityDomain.scope_domains",
+                       "scope_domains[", sd, "]", ":",
+                       (*dart_scope_domains)[sd].domain_tag);
+        scope_domains.push_back(self_t((*dart_scope_domains)[sd]));
+      }
+      free(dart_scope_domains);
     }
-    free(dart_scope_domains);
     return scope_domains;
   }
 

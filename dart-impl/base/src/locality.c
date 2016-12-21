@@ -303,10 +303,28 @@ dart_ret_t dart__base__locality__scope_domains(
   int                              * num_domains_out,
   dart_domain_locality_t         *** domains_out)
 {
+  DART_LOG_TRACE("dart__base__locality__scope_domains() domain:%s scope:%d",
+                 domain_in->domain_tag, (int)scope);
+
   *num_domains_out = 0;
   *domains_out     = NULL;
-  return dart__base__locality__scope_domains_rec(
-           domain_in, scope, num_domains_out, domains_out);
+  
+  dart_ret_t ret = dart__base__locality__scope_domains_rec(
+                     domain_in, scope, num_domains_out, domains_out);
+  if (DART_OK == ret && *num_domains_out <= 0) {
+    DART_LOG_DEBUG("dart__base__locality__scope_domains ! "
+                   "no domains found");
+    return DART_ERR_NOTFOUND;
+  }
+#ifdef DART_ENABLE_LOGGING
+  for (int sd = 0; sd < *num_domains_out; sd++) {
+    DART_LOG_TRACE("dart__base__locality__scope_domains: "
+                   "scope_domain[%d]: %s",
+                   sd, (*domains_out)[sd]->domain_tag);
+  }
+#endif
+  DART_LOG_TRACE("dart__base__locality__scope_domains >");
+  return ret;
 }
 
 dart_ret_t dart__base__locality__scope_domain_tags(
@@ -1049,27 +1067,29 @@ dart_ret_t dart__base__locality__scope_domains_rec(
   dart_domain_locality_t         *** domains_out)
 {
   dart_ret_t ret;
-  DART_LOG_TRACE("dart__base__locality__scope_domains() level %d",
+  DART_LOG_TRACE("dart__base__locality__scope_domains_rec() domain.level:%d",
                  domain->level);
 
   if (domain->scope == scope) {
-    DART_LOG_TRACE("dart__base__locality__scope_domains: domain %s matched",
-                   domain->domain_tag);
+    DART_LOG_TRACE("dart__base__locality__scope_domains_rec: "
+                   "domain %s matched", domain->domain_tag);
     int     dom_idx           = *num_domains_out;
     *num_domains_out         += 1;
     dart_domain_locality_t ** domains_temp =
       (dart_domain_locality_t **)(realloc(*domains_out,
                                          sizeof(dart_domain_locality_t *) *
                                          (*num_domains_out)));
-    if (domains_temp != NULL) {
+    if (NULL != domains_temp) {
       *domains_out            = domains_temp;
       (*domains_out)[dom_idx] = (dart_domain_locality_t *)(domain);
-      DART_LOG_TRACE("dart__base__locality__scope_domains: "
+      DART_LOG_TRACE("dart__base__locality__scope_domains_rec: "
                      "domain %d: %s",
-                     dom_idx, (*domains_out)[dom_idx]);
+                     dom_idx, (*domains_out)[dom_idx]->domain_tag);
     } else {
-      DART_LOG_ERROR("dart__base__locality__scope_domains ! "
+      DART_LOG_ERROR("dart__base__locality__scope_domains_rec ! "
                      "realloc failed");
+      free(*domains_out);
+      *domains_out = NULL;
       return DART_ERR_OTHER;
     }
   } else {
@@ -1079,17 +1099,16 @@ dart_ret_t dart__base__locality__scope_domains_rec(
               scope,
               num_domains_out,
               domains_out);
+      /* not returning DART_ERR_NOTFOUND if no match in child domain
+       * as heterogeneous subdomains (child domains in different scopes)
+       * are to be supported.
+       */
       if (ret != DART_OK) {
         return ret;
       }
     }
   }
-  if (*num_domains_out <= 0) {
-    DART_LOG_DEBUG("dart__base__locality__scope_domains ! "
-                   "no domains found");
-    return DART_ERR_NOTFOUND;
-  }
-  DART_LOG_TRACE("dart__base__locality__scope_domains >");
+  DART_LOG_TRACE("dart__base__locality__scope_domains_rec >");
   return DART_OK;
 }
 

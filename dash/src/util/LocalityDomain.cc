@@ -51,7 +51,7 @@ dash::util::LocalityDomain::LocalityDomain(
 
   init(_domain);
 
-  DASH_LOG_TRACE("LocalityDomain(const & d) >");
+  DASH_LOG_TRACE_VAR("LocalityDomain(const & d) >", this);
 }
 
 dash::util::LocalityDomain::LocalityDomain(
@@ -66,7 +66,7 @@ dash::util::LocalityDomain::LocalityDomain(
                  "domain:", domain->domain_tag);
   init(domain);
 
-  DASH_LOG_TRACE("LocalityDomain(d) >", "domain:", _domain->domain_tag);
+  DASH_LOG_TRACE_VAR("LocalityDomain(d) >", this);
 }
 
 // -------------------------------------------------------------------------
@@ -75,18 +75,20 @@ dash::util::LocalityDomain::LocalityDomain(
 
 dash::util::LocalityDomain::~LocalityDomain()
 {
-  DASH_LOG_TRACE_VAR("LocalityDomain.~()", _domain->domain_tag);
+  DASH_LOG_TRACE_VAR("LocalityDomain.~()", _domain);
 
-  if (_subdomains != nullptr) {
+  if (nullptr != _subdomains) {
     delete _subdomains;
     _subdomains = nullptr;
   }
   if (_is_owner && _domain != nullptr) {
+    DASH_LOG_TRACE("LocalityDomain.~ :",
+                   "dart_domain_destroy(", _domain, ")");
     dart_domain_destroy(_domain);
   }
   _domain = nullptr;
 
-  DASH_LOG_TRACE("LocalityDomain.~ >");
+  DASH_LOG_TRACE_VAR("LocalityDomain.~ >", this);
 }
 
 // -------------------------------------------------------------------------
@@ -100,13 +102,15 @@ dash::util::LocalityDomain::LocalityDomain(
 //  _unit_localities(other._unit_localities),
     _group_domain_tags(other._group_domain_tags)
 {
-  DASH_LOG_TRACE_VAR("LocalityDomain(other)()", other._domain_tag);
+  DASH_LOG_TRACE_VAR("LocalityDomain(other)()", &other);
 
-  _subdomains  = new std::unordered_map<int, self_t>(
-                       *(other._subdomains));
-  _is_owner    = other._is_owner;
+  if (nullptr != other._subdomains) {
+    _subdomains  = new std::unordered_map<int, self_t>(
+                         *(other._subdomains));
+  }
+  _is_owner = other._is_owner;
 
-  if (_is_owner) {
+  if (_is_owner && nullptr != other._domain) {
     DASH_ASSERT_RETURNS(
       dart_domain_clone(
         other._domain,
@@ -124,7 +128,39 @@ dash::util::LocalityDomain::LocalityDomain(
 
   collect_groups(_group_domain_tags);
 
-  DASH_LOG_TRACE_VAR("LocalityDomain(other) >", other._domain_tag);
+  DASH_LOG_TRACE_VAR("LocalityDomain(other) >", this);
+}
+
+dash::util::LocalityDomain::LocalityDomain(
+  dash::util::LocalityDomain && other)
+{
+  DASH_LOG_TRACE_VAR("LocalityDomain(&& other)", &other);
+
+  // Move resources from source to target:
+  //
+  _is_owner          = other._is_owner;
+  _domain            = other._domain;
+  _subdomains        = other._subdomains;
+  _unit_ids          = std::move(other._unit_ids);
+//_unit_localities   = std::move(other._unit_localities);
+  _domain_tag        = std::move(other._domain_tag);
+  _group_domain_tags = std::move(other._group_domain_tags);
+
+  _begin = iterator(*this, 0);
+  if (_domain != nullptr) {
+    _end = iterator(*this, _domain->num_domains);
+  } else {
+    _end = iterator(*this, 0);
+  }
+
+  collect_groups(_group_domain_tags);
+
+  // Release resources at source:
+  //
+  other._domain     = nullptr;
+  other._subdomains = nullptr;
+
+  DASH_LOG_TRACE_VAR("LocalityDomain(&& other) >", this);
 }
 
 dash::util::LocalityDomain &
@@ -132,6 +168,13 @@ dash::util::LocalityDomain::operator=(
   const dash::util::LocalityDomain & other)
 {
   DASH_LOG_TRACE("LocalityDomain.=(other)");
+
+  if (_is_owner && _domain != nullptr) {
+    DASH_LOG_TRACE("LocalityDomain.=(other) :",
+                   "dart_domain_destroy(", _domain, ")");
+    dart_domain_destroy(_domain);
+  }
+  _domain = nullptr;
 
   if (nullptr == _subdomains) {
     if (nullptr != other._subdomains) {
@@ -148,7 +191,7 @@ dash::util::LocalityDomain::operator=(
 
   _is_owner          = other._is_owner;
   _unit_ids          = other._unit_ids;
-  //_unit_localities   = other._unit_localities;
+//_unit_localities   = other._unit_localities;
   _domain_tag        = other._domain_tag;
   _group_domain_tags = other._group_domain_tags;
 
@@ -170,8 +213,61 @@ dash::util::LocalityDomain::operator=(
 
   collect_groups(_group_domain_tags);
 
-  DASH_LOG_TRACE("LocalityDomain.= >");
+  DASH_LOG_TRACE("LocalityDomain.=(other) >");
   return *this;
+}
+
+dash::util::LocalityDomain &
+dash::util::LocalityDomain::operator=(
+  dash::util::LocalityDomain && other)
+{
+  if (this == &other) { return *this; }
+
+  DASH_LOG_TRACE_VAR("LocalityDomain.=(&& other)", &other);
+
+  // Release existing resources at target:
+  //
+  if (_is_owner && _domain != nullptr) {
+    DASH_LOG_TRACE("LocalityDomain.=(&& other) :",
+                   "dart_domain_destroy(", _domain, ")");
+    DASH_ASSERT_RETURNS(
+      dart_domain_destroy(_domain),
+      DART_OK);
+  }
+  _domain = nullptr;
+
+  if (nullptr != _subdomains) {
+    delete _subdomains;
+    other._subdomains = nullptr;
+  }
+
+  // Move resources from source to target:
+  //
+  _is_owner          = other._is_owner;
+  _domain            = other._domain;
+  _subdomains        = other._subdomains;
+  _unit_ids          = std::move(other._unit_ids);
+//_unit_localities   = std::move(other._unit_localities);
+  _domain_tag        = std::move(other._domain_tag);
+  _group_domain_tags = std::move(other._group_domain_tags);
+
+  _begin = iterator(*this, 0);
+  if (_domain != nullptr) {
+    _end = iterator(*this, _domain->num_domains);
+  } else {
+    _end = iterator(*this, 0);
+  }
+
+  collect_groups(_group_domain_tags);
+
+  // Release resources at source:
+  //
+  other._domain     = nullptr;
+  other._subdomains = nullptr;
+
+  return *this;
+
+  DASH_LOG_TRACE_VAR("LocalityDomain.=(&& other) >", this);
 }
 
 // -------------------------------------------------------------------------
