@@ -21,8 +21,8 @@
 #include <unistd.h>
 
 namespace dash {
-// forward-declaration
-global_unit_t myid();
+  // forward-declaration
+  global_unit_t myid();
 }
 
 #ifdef DASH_LOG_OUTPUT_STDOUT
@@ -147,7 +147,7 @@ inline void Log_Line(
   pid_t pid = getpid();
   std::stringstream buf;
   buf << "[ "
-      << std::setw(4) << myid() // Team::GlobalUnitID() not possible here
+      << std::setw(4) << myid().id // Team::GlobalUnitID() not possible here
       << " "
       << level
       << " ] [ "

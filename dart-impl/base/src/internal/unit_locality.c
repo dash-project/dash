@@ -239,7 +239,7 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
     DART_OK);
 #endif
 
-  uloc->unit   = myid.id;
+  uloc->unit   = myid;
   uloc->team   = team;
   uloc->hwinfo = hwinfo;
 
@@ -271,7 +271,7 @@ dart_ret_t dart__base__unit_locality__init(
     return DART_ERR_INVAL;
   }
 
-  loc->unit = DART_UNDEFINED_UNIT_ID;
+  loc->unit = DART_UNDEFINED_LOCAL_UNIT_ID;
   loc->team = DART_UNDEFINED_TEAM_ID;
 
   dart_hwinfo_init(&loc->hwinfo);

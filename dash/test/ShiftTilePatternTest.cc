@@ -214,11 +214,11 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
                                   std::array<index_t, 2> { x, y });
 //    auto local_coords_col   = pat_tile_col.local_coords(
 //                                std::array<index_t, 2> { x, y });
-      LOG_MESSAGE("R %d,%d, u:%d, b:%d,%d, nlb:%d,%d, lc: %d,%d, lbi:%d, p:%d",
+      LOG_MESSAGE("R %d,%d u:%d b:%d,%d nlb:%d,%d lc: %d,%d lbi:%d p:%d",
                   x, y,
-                  unit_id,
-                  block_index_x, block_index_y,
-                  num_l_blocks_x, num_l_blocks_y,
+                  unit_id.id,
+                  block_index_x,       block_index_y,
+                  num_l_blocks_x,      num_l_blocks_y,
                   local_coords_row[0], local_coords_row[1],
                   l_block_index_row,
                   phase_row);
@@ -234,10 +234,10 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
       auto glob_coords_row =
         pat_tile_row.global(
           unit_id,
-          std::array<index_t, 2> { local_coords_row[0], local_coords_row[1] });
+          std::array<index_t, 2> { local_coords_row[0],
+                                   local_coords_row[1] });
       ASSERT_EQ_U(
-        (std::array<index_t, 2> { x, y }),
-        glob_coords_row);
+        (std::array<index_t, 2> { x, y }), glob_coords_row);
     }
   }
 }

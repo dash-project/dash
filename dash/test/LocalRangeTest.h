@@ -28,6 +28,7 @@ protected:
     dash::init(&TESTENV.argc, &TESTENV.argv);
     _dash_id   = dash::myid();
     _dash_size = dash::size();
+    dash::barrier();
     LOG_MESSAGE("===> Running test case with %ld units ...",
                 _dash_size);
   }

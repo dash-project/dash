@@ -319,8 +319,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
                               sizeof(dart_module_location_t);
       for (size_t m = 0; m < lu_num_modules; m++) {
         int m_displ = displs[lu] / sizeof(dart_module_location_t);
-        dart_module_location_t * module_loc =
-          &module_locations[m_displ + m];
+        dart_module_location_t * module_loc = &module_locations[m_displ + m];
 #ifdef DART_ENABLE_LOGGING
         dart_local_unit_t  luid = {lu};
         dart_global_unit_t gu;
@@ -332,7 +331,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
                        "module_location { "
                        "host:%s module:%s scope:%d rel.idx:%d } "
                        "num_hosts:%d",
-                       lu.id, gu.id, module_loc->host, module_loc->module,
+                       luid.id, gu.id, module_loc->host, module_loc->module,
                        module_loc->pos.scope, module_loc->pos.index,
                        num_hosts);
 #endif // DART_ENABLE_LOGGING
@@ -632,15 +631,18 @@ dart_ret_t dart__base__host_topology__create(
     /* Iterate over all units: */
     for (size_t u = 0; u < num_units; ++u) {
       dart_unit_locality_t * ul;
-      dart_local_unit_t luid = {u};
+      dart_local_unit_t      luid = { u };
       DART_ASSERT_RETURNS(
         dart__base__unit_locality__at(unit_mapping, luid, &ul),
         DART_OK);
       if (strncmp(ul->hwinfo.host, hostnames[h], max_host_len) == 0) {
         /* Unit is local to host at index h: */
+        dart_global_unit_t unit_gid;
+        DART_ASSERT_RETURNS(
+          dart_team_unit_l2g(ul->team, ul->unit, &unit_gid),
+          DART_OK);
         /* TODO[TF] T'is to make the compiler happy, please fix! */
-        dart_global_unit_t guid = {ul->unit};
-        host_units->units[host_units->num_units] = guid;
+        host_units->units[host_units->num_units] = unit_gid;
         host_units->num_units++;
 
         int unit_numa_id = ul->hwinfo.numa_id;

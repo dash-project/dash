@@ -396,10 +396,10 @@ public:
            : static_cast<Scope_t>(_domain->scope);
   }
 
-//inline int node_id() const
-//{
-//  return (nullptr == _domain ? -1 : _domain->node_id);
-//}
+  inline int node_id() const
+  {
+    return (nullptr == _domain ? -1 : _domain->node_id);
+  }
 
   inline int num_nodes() const
   {

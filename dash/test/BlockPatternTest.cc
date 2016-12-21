@@ -130,7 +130,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
       local_extent_x = 0;
     }
     LOG_MESSAGE("local extents: u:%lu, le:%lu",
-      u, local_extent_x);
+      u.id, local_extent_x);
     EXPECT_EQ(local_extent_x, pat_blocked_row.local_extents(u)[0]);
     EXPECT_EQ(local_extent_x, pat_blocked_col.local_extents(u)[0]);
   }

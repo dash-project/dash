@@ -158,7 +158,7 @@ TEST_F(DARTLocalityTest, UnitLocality)
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", ul->hwinfo.min_threads);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", ul->hwinfo.max_threads);
 
-  EXPECT_EQ_U(_dash_id, ul->unit);
+  EXPECT_EQ_U(_dash_id, ul->unit.id);
 
   // Units may group multiple cores:
   EXPECT_GE_U(ul->hwinfo.cpu_id,      -1); // -1 if unknown, >= 0 if set

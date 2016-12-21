@@ -47,7 +47,7 @@ namespace internal {
   typedef size_t        default_unsigned_index;
 #endif
 
-}
+} // namespace internal
 
 /**
  * Signed integer type used as default for index values.

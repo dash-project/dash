@@ -40,7 +40,7 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   ss << "dart_unit_locality_t("
-     <<   "unit:"      << unit_loc.unit                << " "
+     <<   "unit:"      << unit_loc.unit.id             << " "
      <<   "domain:'"   << unit_loc.domain_tag          << "' "
      <<   "host:'"     << unit_loc.hwinfo.host         << "' "
      <<   "numa_id:'"  << unit_loc.hwinfo.numa_id      << "' "
@@ -180,15 +180,15 @@ static void print_domain(
     uindent += std::string(9, ' ');
 
     for (int u = 0; u < domain->num_units; ++u) {
-      dart_unit_t            unit_id  = domain->unit_ids[u].id;
-      dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
-      dart_unit_locality_t * uloc = (dart_unit_locality_t*)0xDEADBEEF;
-//      dart_unit_locality(team, unit_id, &uloc);
-//      dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
-      unit_gid = domain->unit_ids[u].id;
-      ostr << uindent << "unit id:   " << uloc->unit << "  ("
-                                       << "in team " << uloc->team << ", "
-                                       << "global: " << unit_gid   << ")"
+      dart_local_unit_t      unit_lid = domain->unit_ids[u];
+      dart_global_unit_t     unit_gid;
+      dart_unit_locality_t * uloc;
+      dart_unit_locality(domain->team, unit_lid, &uloc);
+      dart_team_unit_l2g(uloc->team, uloc->unit, &unit_gid);
+
+      ostr << uindent << "unit id:   " << uloc->unit.id << "  ("
+                                       << "in team " << uloc->team  << ", "
+                                       << "global: " << unit_gid.id << ")"
                       << '\n';
       ostr << uindent << "domain:    " << uloc->domain_tag  << '\n';
       ostr << uindent << "host:      " << uloc->hwinfo.host << '\n';
