@@ -536,8 +536,8 @@ TEST_F(MatrixTest, ViewIteration)
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
-  size_t extent_cols = tilesize_x * num_units * 4;
-  size_t extent_rows = tilesize_y * num_units * 4;
+  size_t extent_cols = tilesize_x * num_units * 2;
+  size_t extent_rows = tilesize_y * num_units * 2;
 
   LOG_MESSAGE("Initialize matrix ...");
   dash::TeamSpec<2> team_spec(num_units, 1);
