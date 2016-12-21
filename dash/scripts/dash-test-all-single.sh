@@ -7,23 +7,6 @@ BIN_PATH="$2"
 LOGFILE="$3"
 BIND_CMD=""
 TEST_BINARY=""
-TIMEOUT="1m"
-TIMEOUT_ADD_KILL="-k $TIMEOUT"
-TIMEOUT_FG="--foreground"
-
-# check for version of timeout 
-TIMEOUT_MAJOR=$(timeout --version | grep timeout | cut -d ' ' -f 4 | cut -d '.' -f 1)
-TIMEOUT_MINOR=$(timeout --version | grep timeout | cut -d ' ' -f 4 | cut -d '.' -f 2)
-if [ $TIMEOUT_MAJOR -lt 8 -o $TIMEOUT_MAJOR -eq 8 -a $TIMEOUT_MINOR -lt 5  ] ; then
-  TIMEOUT_ADD_KILL=""
-fi
-
-if [ $TIMEOUT_MAJOR -lt 8 -o $TIMEOUT_MAJOR -eq 8 -a $TIMEOUT_MINOR -lt 13  ] ; then
-  TIMEOUT_FG=""
-  echo "[[ LOG    ]] Cannot handle TTY signals (requires GNU timeout version >8.13)"
-fi
-
-
 
 usage()
 {
@@ -74,20 +57,20 @@ if [ "$GTEST_FILTER" = "" ] ; then
 else
   OUTPUT=`$RUN_CMD -n 1 $TEST_BINARY --gtest_list_tests --gtest_filter=$GTEST_FILTER`
 fi
+
 ret=$?
-if [[ $ret != 0 ]] ; then 
+if [ $ret -ne 0 ] ; then
   echo "[[   FAIL ]] [ $(date +%Y%m%d-%H%M%S) ]:"
   echo "$OUTPUT"
-  exit  $ret 
+  exit  $ret
 fi
+
 TEST_SUITES=$(echo "$OUTPUT" | grep -v '^\s' | grep -v '^#')
 
 # Number of failed tests in total
 TOTAL_FAIL_COUNT=0
 TESTS_PASSED=true
 
-
-RUN_CMD="timeout -s 15 $TIMEOUT_ADD_KILL $TIMEOUT_FG $TIMEOUT $RUN_CMD"
 
 run_suite()
 {

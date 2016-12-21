@@ -932,6 +932,10 @@ dart_ret_t dart_flush(
     DART_LOG_TRACE("dart_flush: MPI_Win_flush");
     MPI_Win_flush(target_unitid_abs.id, win);
   }
+  DART_LOG_TRACE("dart_flush: MPI_Win_sync");
+  if (MPI_Win_sync(win) != MPI_SUCCESS) {
+    return DART_ERR_OTHER;
+  }
   DART_LOG_DEBUG("dart_flush > finished");
   return DART_OK;
 }
@@ -958,8 +962,18 @@ dart_ret_t dart_flush_all(
   } else {
     win = dart_win_local_alloc;
   }
+  DART_LOG_TRACE("dart_flush_all: MPI_Win_sync");
+  if (MPI_Win_sync(win) != MPI_SUCCESS) {
+    return DART_ERR_OTHER;
+  }
   DART_LOG_TRACE("dart_flush_all: MPI_Win_flush_all");
-  MPI_Win_flush_all(win);
+  if (MPI_Win_flush_all(win) != MPI_SUCCESS) {
+    return DART_ERR_OTHER;
+  }
+  DART_LOG_TRACE("dart_flush_all: MPI_Win_sync");
+  if (MPI_Win_sync(win) != MPI_SUCCESS) {
+    return DART_ERR_OTHER;
+  }
   DART_LOG_DEBUG("dart_flush_all > finished");
   return DART_OK;
 }

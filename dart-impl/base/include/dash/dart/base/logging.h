@@ -41,6 +41,30 @@
 #define DART_LOG_OUTPUT_TARGET stderr
 #endif
 
+enum dart__base__term_color_code {
+  DART_LOG_TCOL_DEFAULT = 0,
+  DART_LOG_TCOL_WHITE,
+  DART_LOG_TCOL_RED,
+  DART_LOG_TCOL_GREEN,
+  DART_LOG_TCOL_YELLOW,
+  DART_LOG_TCOL_BLUE,
+  DART_LOG_TCOL_MAGENTA,
+  DART_LOG_TCOL_CYAN,
+  DART_LOG_TCOL_NUM_CODES
+};
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+const int dart__base__term_colors[DART_LOG_TCOL_NUM_CODES];
+
+const int dart__base__unit_term_colors[DART_LOG_TCOL_NUM_CODES-1];
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
 /* GNU variant of basename.3 */
 inline char * dart_base_logging_basename(char *path) {
     char *base = strrchr(path, '/');
