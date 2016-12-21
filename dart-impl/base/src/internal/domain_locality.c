@@ -716,7 +716,16 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
   int num_scopes = 0;
   dart_unit_locality_t * module_leader_unit_loc;
   /* TODO[TF] T'is to make the compiler happy, please fix! */
-  dart_local_unit_t unit_id = {module_domain->unit_ids[0].id};
+  dart_local_unit_t unit_id; // = {module_domain->unit_ids[0].id};
+  DART_ASSERT_RETURNS(
+    dart_team_unit_g2l(module_domain->team, module_domain->unit_ids[0],
+                       &unit_id),
+    DART_OK);
+  DART_LOG_TRACE(
+    "dart__base__locality__domain__create_module_subdomains: "
+    "module_domain->unit_ids[0]: %d -> local: %d",
+    module_domain->unit_ids[0].id, unit_id.id);
+
   DART_ASSERT_RETURNS(
     dart__base__unit_locality__at(
       unit_mapping, unit_id, &module_leader_unit_loc),
@@ -761,11 +770,16 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
   int gid_idx = 0;
   for (int u_idx = 0; u_idx < module_domain->num_units; u_idx++) {
     /* TODO[TF] T'is to make the compiler happy, please fix! */
-    dart_local_unit_t      unit_id = {module_domain->unit_ids[u_idx].id};
+    dart_global_unit_t unit_gid = module_domain->unit_ids[u_idx];
+    dart_local_unit_t  unit_lid;
+    DART_ASSERT_RETURNS(
+      dart_team_unit_g2l(module_domain->team, unit_gid, &unit_lid),
+      DART_OK);
+
     dart_unit_locality_t * module_unit_loc;
     DART_ASSERT_RETURNS(
       dart__base__unit_locality__at(
-        unit_mapping, unit_id, &module_unit_loc),
+        unit_mapping, unit_lid, &module_unit_loc),
       DART_OK);
     dart_hwinfo_t * unit_hwinfo = &module_unit_loc->hwinfo;
 
@@ -778,7 +792,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
       "dart__base__locality__domain__create_module_subdomains: ---- "
       "module_domain.unit_ids[%d] => unit:%d sub_gid:%d level_gid:%d "
       "module_domain.global_index:%d",
-      u_idx, unit_id, unit_sub_gid, unit_level_gid,
+      u_idx, unit_lid, unit_sub_gid, unit_level_gid,
       module_domain->global_index);
     /* Ignore units that are not contained in current module domain: */
     if (module_scope_level == 0 ||
@@ -859,24 +873,29 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
                                          sizeof(dart_unit_t));
     for (int u_idx = 0; u_idx < module_domain->num_units; u_idx++) {
       /* TODO[TF] T'is to make the compiler happy, please fix! */
-      dart_local_unit_t      unit_id = {module_domain->unit_ids[u_idx].id};
+      dart_global_unit_t unit_gid = module_domain->unit_ids[u_idx];
+      dart_local_unit_t  unit_lid;
+      DART_ASSERT_RETURNS(
+        dart_team_unit_g2l(module_domain->team, unit_gid, &unit_lid),
+        DART_OK);
+
       dart_unit_locality_t * unit_loc;
       DART_ASSERT_RETURNS(
         dart__base__unit_locality__at(
-          unit_mapping, unit_id, &unit_loc),
+          unit_mapping, unit_lid, &unit_loc),
         DART_OK);
       DART_LOG_TRACE(
         "dart__base__locality__domain__create_module_subdomains: ---- "
         "module_unit[%d](= unit:%d).scopes[%d].index:%d =?= "
         "subdomain.global_index:%d",
-        u_idx, unit_id, subdomain_gid_idx,
+        u_idx, unit_lid, subdomain_gid_idx,
         unit_loc->hwinfo.scopes[subdomain_gid_idx].index,
         subdomain->global_index);
 
       if (unit_loc->hwinfo.scopes[subdomain_gid_idx].index ==
           subdomain->global_index) {
         /* TODO[TF] T'is to make the compiler happy, please fix! */
-        subdomain->unit_ids[subdomain->num_units].id = unit_id.id;
+        subdomain->unit_ids[subdomain->num_units] = unit_gid;
         subdomain->num_units++;
       }
     }
@@ -913,17 +932,22 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
        */
       for (int u_idx = 0; u_idx < subdomain->num_units; u_idx++) {
         /* TODO[TF] T'is to make the compiler happy, please fix! */
-        dart_local_unit_t unit_id = {subdomain->unit_ids[u_idx].id};
+        dart_global_unit_t unit_gid = subdomain->unit_ids[u_idx];
+        dart_local_unit_t  unit_lid;
+        DART_ASSERT_RETURNS(
+          dart_team_unit_g2l(subdomain->team, unit_gid, &unit_lid),
+          DART_OK);
+
         DART_LOG_TRACE(
           "dart__base__locality__domain__create_module_subdomains: "
           "reached CORE scope (num_units:%d), setting domain tag for "
-          "unit_id:%d to %s",
-          subdomain->num_units, unit_id, subdomain->domain_tag);
+          "unit_lid:%d to %s",
+          subdomain->num_units, unit_lid, subdomain->domain_tag);
 
         dart_unit_locality_t * unit_loc;
         DART_ASSERT_RETURNS(
           dart__base__unit_locality__at(
-            unit_mapping, unit_id, &unit_loc),
+            unit_mapping, unit_lid, &unit_loc),
           DART_OK);
 
         strncpy(unit_loc->domain_tag, subdomain->domain_tag,
