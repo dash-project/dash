@@ -507,8 +507,6 @@ public:
   /**
    * Checks whether the element referenced by this global iterator is in
    * the calling unit's local memory.
-   *
-   * TODO[JS] This should lead to a compile-time error due to type mis-match
    */
   inline bool is_local() const
   {
@@ -1014,7 +1012,7 @@ private:
   /// Maximum iterator position in the block border's iteration space.
   index_type                         _max_idx          = 0;
   /// Unit id of the active unit
-  dart_unit_t                        _myid;
+  dart_global_unit_t                 _myid;
   /// Pointer to first element in local memory
   ElementType                      * _lbegin           = nullptr;
   /// Function implementing mapping of iterator position to global element

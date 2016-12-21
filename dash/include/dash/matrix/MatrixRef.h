@@ -355,7 +355,7 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
     index_type coord);
 
   /**
-   * TODO[JS] The following two functions don't seem to be implemented.
+   * TODO[TF] The following two functions don't seem to be implemented.
    */
   inline const GlobRef<ElementT> local_at(
     team_unit_t unit,
