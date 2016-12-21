@@ -566,11 +566,15 @@ struct dart_domain_locality_s
     dart_team_t                      team;
     /** Number of units in the domain. */
     int                              num_units;
-    /** IDs of units in the domain. */
-    dart_global_unit_t             * unit_ids;
+    /** Global IDs of units in the domain. */
+    dart_local_unit_t              * unit_ids;
 
     /* The number of compute nodes in the domain. */
     int                              num_nodes;
+    /* Node (machine) index of the domain or -1 if domain contains
+     * multiple compute nodes. */
+    int                              node_id;
+
     /* Number of cores in the domain. Cores may be heterogeneous unless
      * `is_symmetric` is different from 0. */
     int                              num_cores;
@@ -597,7 +601,7 @@ typedef struct dart_domain_locality_s
  */
 typedef struct {
     /** Unit ID relative to team. */
-    dart_unit_t              unit;
+    dart_local_unit_t        unit;
 
     /** Team ID. */
     dart_team_t              team;
