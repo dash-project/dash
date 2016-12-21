@@ -60,11 +60,11 @@ dart_ret_t dart_barrier(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_bcast(
-  void            * buf,
-  size_t            nelem,
-  dart_datatype_t   dtype,
-	dart_unit_t       root,
-  dart_team_t       team);
+  void              * buf,
+  size_t              nelem,
+  dart_datatype_t     dtype,
+  dart_team_unit_t    root,
+  dart_team_t         team);
 
 /**
  * DART Equivalent to MPI scatter.
@@ -83,12 +83,12 @@ dart_ret_t dart_bcast(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_scatter(
-  const void      * sendbuf,
-  void            * recvbuf,
-  size_t            nelem,
-  dart_datatype_t   dtype,
-	dart_unit_t       root,
-  dart_team_t       team);
+  const void         * sendbuf,
+  void               * recvbuf,
+  size_t               nelem,
+  dart_datatype_t      dtype,
+  dart_team_unit_t     root,
+  dart_team_t          team);
 
 /**
  * DART Equivalent to MPI gather.
@@ -107,12 +107,12 @@ dart_ret_t dart_scatter(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_gather(
-  const void      * sendbuf,
-  void            * recvbuf,
-  size_t            nelem,
-  dart_datatype_t   dtype,
-	dart_unit_t       root,
-  dart_team_t       team);
+  const void        * sendbuf,
+  void              * recvbuf,
+  size_t              nelem,
+  dart_datatype_t     dtype,
+  dart_team_unit_t    root,
+  dart_team_t         team);
 
 /**
  * DART Equivalent to MPI allgather.
@@ -203,13 +203,13 @@ dart_ret_t dart_allreduce(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_reduce(
-  const void     * sendbuf,
-  void           * recvbuf,
-  size_t           nelem,
-  dart_datatype_t  dtype,
-  dart_operation_t op,
-  dart_unit_t      root,
-  dart_team_t      team);
+  const void        * sendbuf,
+  void              * recvbuf,
+  size_t              nelem,
+  dart_datatype_t     dtype,
+  dart_operation_t    op,
+  dart_team_unit_t    root,
+  dart_team_t         team);
 
 /**
  * DART Equivalent to MPI_Accumulate.
@@ -614,11 +614,11 @@ dart_ret_t dart_put_blocking(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_send(
-  const void      * sendbuf,
-  size_t            nelem,
-  dart_datatype_t   dtype,
-	int               tag,
-  dart_unit_t       unit);
+  const void         * sendbuf,
+  size_t               nelem,
+  dart_datatype_t      dtype,
+	int                  tag,
+	dart_global_unit_t   unit);
 
 /**
  * DART Equivalent to MPI recv.
@@ -635,11 +635,11 @@ dart_ret_t dart_send(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_recv(
-  void            * recvbuf,
-  size_t            nelem,
-  dart_datatype_t   dtype,
-	int               tag,
-  dart_unit_t       unit);
+  void               * recvbuf,
+  size_t               nelem,
+  dart_datatype_t      dtype,
+	int                  tag,
+	dart_global_unit_t   unit);
 
 /**
  * DART Equivalent to MPI sendrecv.
@@ -664,16 +664,16 @@ dart_ret_t dart_recv(
  * \ingroup DartCommunication
  */
 dart_ret_t dart_sendrecv(
-  const void      * sendbuf,
-  size_t            send_nelem,
-  dart_datatype_t   send_dtype,
-  int               send_tag,
-  dart_unit_t       dest,
-  void            * recvbuf,
-  size_t            recv_nelem,
-  dart_datatype_t   recv_dtype,
-  int               recv_tag,
-  dart_unit_t       src);
+  const void         * sendbuf,
+  size_t               send_nelem,
+  dart_datatype_t      send_dtype,
+  int                  send_tag,
+  dart_global_unit_t   dest,
+  void               * recvbuf,
+  size_t               recv_nelem,
+  dart_datatype_t      recv_dtype,
+  int                  recv_tag,
+  dart_global_unit_t   src);
 
 
 /** \} */

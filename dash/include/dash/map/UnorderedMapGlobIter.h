@@ -93,7 +93,7 @@ public:
     local_pointer;
 
   typedef struct {
-    dart_unit_t unit;
+    team_unit_t unit;
     index_type  index;
   } local_index;
 
@@ -113,7 +113,7 @@ public:
     index_type    position)
   : _map(map),
     _idx(0),
-    _myid(dash::myid()),
+    _myid(map->team().myid()),
     _idx_unit_id(0),
     _idx_local_idx(0)
   {
@@ -127,12 +127,12 @@ public:
    * specified unit's local iteration space.
    */
   UnorderedMapGlobIter(
-    map_t       * map,
-    dart_unit_t   unit,
-    index_type    local_index)
+    map_t         * map,
+    team_unit_t     unit,
+    index_type      local_index)
   : _map(map),
     _idx(0),
-    _myid(dash::myid()),
+    _myid(map->team().myid()),
     _idx_unit_id(unit),
     _idx_local_idx(local_index)
   {
@@ -543,9 +543,9 @@ private:
   /// Current position of the iterator in global canonical index space.
   index_type               _idx           = -1;
   /// Unit id of the active unit.
-  dart_unit_t              _myid          = DART_UNDEFINED_UNIT_ID;
+  team_unit_t              _myid;
   /// Unit id at the iterator's current position.
-  dart_unit_t              _idx_unit_id   = DART_UNDEFINED_UNIT_ID;
+  team_unit_t              _idx_unit_id;
   /// Logical offset in local index space at the iterator's current position.
   index_type               _idx_local_idx = -1;
   /// Whether the iterator represents a null pointer.

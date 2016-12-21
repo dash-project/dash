@@ -137,7 +137,7 @@ TEST_F(GlobStencilIterTest, Conversion)
                 g_view_it.pos(),
                 g_view_it.gpos(),
                 g_view_it.rpos(),
-                g_view_it_lpos.unit,
+                g_view_it_lpos.unit.id,
                 g_view_it_lpos.index,
                 static_cast<value_t>(*g_stencil_it),
                 north, east, south, west);

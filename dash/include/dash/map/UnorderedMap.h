@@ -32,7 +32,7 @@ private:
 
 public:
   typedef Key          argument_type;
-  typedef dart_unit_t  result_type;
+  typedef team_unit_t result_type;
 
 public:
   /**
@@ -63,7 +63,7 @@ public:
 private:
   dash::Team * _team   = nullptr;
   size_type    _nunits = 0;
-  dart_unit_t  _myid   = DART_UNDEFINED_UNIT_ID;
+  team_unit_t   _myid;
 }; // class HashLocal
 
 #ifndef DOXYGEN
@@ -676,8 +676,7 @@ public:
 
   inline size_type bucket_size(size_type bucket_index) const
   {
-    dart_unit_t unit  = static_cast<dart_unit_t>(bucket_index);
-    size_type   bsize = _local_sizes[unit];
+    size_type   bsize = _local_sizes[bucket_index];
     return bsize;
   }
 
@@ -700,7 +699,7 @@ private:
    * Insert value at specified unit.
    */
   std::pair<iterator, bool> _insert_at(
-    dart_unit_t        unit,
+    team_unit_t        unit,
     /// The element to insert.
     const value_type & value)
   {
@@ -777,7 +776,7 @@ private:
   /// Team containing all units interacting with the map.
   dash::Team           * _team            = nullptr;
   /// DART id of the local unit.
-  dart_unit_t            _myid            = DART_UNDEFINED_UNIT_ID;
+  team_unit_t            _myid{DART_UNDEFINED_UNIT_ID};
   /// Global memory allocation and -access.
   glob_mem_type        * _globmem         = nullptr;
   /// Iterator to initial element in the map.

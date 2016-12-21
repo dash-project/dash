@@ -111,11 +111,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    dart_unit_t                           unit;
+    team_unit_t                            unit;
     IndexType                             index;
   } local_index_t;
   typedef struct {
-    dart_unit_t                           unit;
+    team_unit_t                            unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -466,7 +466,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  inline dart_unit_t unit_at(
+  inline team_unit_t unit_at(
     /// Absolute coordinates of the point
     const std::array<IndexType, NumDimensions> & coords,
     /// View specification (offsets) to apply on \c coords
@@ -480,7 +480,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  inline dart_unit_t unit_at(
+  inline team_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
     return unit_at(g_coords[0]);
@@ -491,7 +491,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  inline dart_unit_t unit_at(
+  inline team_unit_t unit_at(
     /// Global linear element offset
     IndexType          global_pos,
     /// View to apply global position
@@ -505,13 +505,13 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     /// Global linear element offset
     IndexType g_index) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.unit_at()", g_index);
 
-    for (dart_unit_t unit_idx = 0; unit_idx < _nunits; ++unit_idx) {
+    for (team_unit_t unit_idx{0}; unit_idx < _nunits; ++unit_idx) {
       if (g_index < _local_sizes[unit_idx]) {
         DASH_LOG_TRACE_VAR("CSRPattern.unit_at >", unit_idx);
         return unit_idx;
@@ -578,7 +578,7 @@ public:
    * \see  DashPatternConcept
    */
   inline std::array<SizeType, NumDimensions> local_extents(
-    dart_unit_t unit) const
+      team_unit_t unit) const
   {
     DASH_LOG_DEBUG_VAR("CSRPattern.local_extents()", unit);
     DASH_LOG_DEBUG_VAR("CSRPattern.local_extents >", _local_sizes[unit]);
@@ -647,7 +647,7 @@ public:
     DASH_LOG_TRACE_VAR("CSRPattern.local()", g_index);
     local_index_t l_index;
 
-    for (dart_unit_t unit_idx = 0; unit_idx < _nunits; ++unit_idx) {
+    for (team_unit_t unit_idx{0}; unit_idx < _nunits; ++unit_idx) {
       if (g_index < _local_sizes[unit_idx]) {
         l_index.unit  = unit_idx;
         l_index.index = g_index;
@@ -699,7 +699,7 @@ public:
    * \see  DashPatternConcept
    */
   inline std::array<IndexType, NumDimensions> global(
-    dart_unit_t unit,
+      team_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const
   {
     DASH_LOG_DEBUG_VAR("CSRPattern.global()", unit);
@@ -734,7 +734,7 @@ public:
    * \see  DashPatternConcept
    */
   inline IndexType global(
-    dart_unit_t unit,
+    team_unit_t unit,
     IndexType l_index) const
   {
     return global(unit, std::array<IndexType, 1> {{ l_index }})[0];
@@ -763,7 +763,7 @@ public:
    * \see  DashPatternConcept
    */
   inline IndexType global_index(
-    dart_unit_t unit,
+    team_unit_t unit,
     const std::array<IndexType, NumDimensions> & l_coords) const
   {
     auto g_index = global(unit, l_coords[0]);
@@ -834,7 +834,7 @@ public:
    */
   inline bool is_local(
     IndexType index,
-    dart_unit_t unit) const
+    team_unit_t unit) const
   {
     DASH_LOG_TRACE_VAR("CSRPattern.is_local()", index);
     DASH_LOG_TRACE_VAR("CSRPattern.is_local()", unit);
@@ -980,7 +980,7 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_capacity(
-    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
     return _local_capacity;
   }
@@ -996,7 +996,7 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_size(
-    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
     return _local_size;
   }
@@ -1302,7 +1302,7 @@ public:
    * Resolve extents of local memory layout for a specified unit.
    */
   SizeType initialize_local_extent(
-    dart_unit_t                    unit,
+    team_unit_t                    unit,
     const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_DEBUG_VAR("CSRPattern.init_local_extent()", unit);
