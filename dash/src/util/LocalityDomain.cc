@@ -196,11 +196,19 @@ dash::util::LocalityDomain::operator=(
   _group_domain_tags = other._group_domain_tags;
 
   if (_is_owner) {
-    DASH_ASSERT_RETURNS(
-      dart_domain_clone(
-        other._domain,
-        &_domain),
-      DART_OK);
+    if (nullptr == _domain) {
+      DASH_ASSERT_RETURNS(
+        dart_domain_clone(
+          other._domain,
+          &_domain),
+        DART_OK);
+    } else {
+      DASH_ASSERT_RETURNS(
+        dart_domain_assign(
+          _domain,
+          other._domain),
+        DART_OK);
+    }
   } else {
     _domain = other._domain;
   }
@@ -407,11 +415,10 @@ dash::util::LocalityDomain::split(
     num_parts = num_split_parts;
   }
 
-  std::vector<dart_domain_locality_t> subdomains;
-  subdomains.resize(num_parts);
+  std::vector<dart_domain_locality_t> subdomains(num_parts);
 
   DASH_ASSERT_RETURNS(
-    dart_domain_split(
+    dart_domain_split_scope(
       _domain,
       static_cast<dart_locality_scope_t>(scope),
       num_parts,
@@ -420,12 +427,14 @@ dash::util::LocalityDomain::split(
 
   _parts.clear();
   for (int sd = 0; sd < num_parts; ++sd) {
-    DASH_LOG_TRACE_VAR("LocalityDomain.split",
-                       subdomains[sd].domain_tag);
+    DASH_LOG_TRACE("LocalityDomain.split", "add subdomain at rel.index",
+                   sd, ":", subdomains[sd].domain_tag);
     _parts.push_back(
         dash::util::LocalityDomain(
           subdomains[sd]
         ));
+    DASH_LOG_TRACE("LocalityDomain.split", "added subdomain at rel.index",
+                   sd, ":", subdomains[sd].domain_tag);
   }
 
   DASH_LOG_DEBUG("LocalityDomain.split >");

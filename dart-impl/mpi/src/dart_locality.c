@@ -18,9 +18,9 @@
 #include <stdio.h>
 #include <sched.h>
 
-/* ======================================================================== *
- * Domain Locality                                                          *
- * ======================================================================== */
+/* ==================================================================== *
+ * Domain Locality                                                      *
+ * ==================================================================== */
 
 dart_ret_t dart_team_locality_init(
   dart_team_t                     team)
@@ -153,7 +153,7 @@ dart_ret_t dart_domain_move_subdomain(
            domain, new_parent_domain, new_domain_rel_id);
 }
 
-dart_ret_t dart_domain_split(
+dart_ret_t dart_domain_split_scope(
   const dart_domain_locality_t  * domain_in,
   dart_locality_scope_t           scope,
   int                             num_parts,
@@ -161,7 +161,8 @@ dart_ret_t dart_domain_split(
 {
   DART_LOG_DEBUG("dart_domain_split() team(%d) domain(%s) "
                  "into %d parts at scope %d",
-                 domain_in->team, domain_in->domain_tag, num_parts, scope);
+                 domain_in->team, domain_in->domain_tag, num_parts, 
+                 scope);
 
   int    * group_sizes       = NULL;
   char *** group_domain_tags = NULL;
@@ -268,9 +269,9 @@ dart_ret_t dart_domain_group(
            group_domain_tag_out);
 }
 
-/* ====================================================================== *
- * Unit Locality                                                          *
- * ====================================================================== */
+/* ==================================================================== *
+ * Unit Locality                                                        *
+ * ==================================================================== */
 
 dart_ret_t dart_unit_locality(
   dart_team_t                     team,

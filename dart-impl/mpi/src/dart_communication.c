@@ -1473,7 +1473,7 @@ dart_ret_t dart_bcast(
                    "MPI_Bcast failed", root.id, teamid);
     return DART_ERR_INVAL;
   }
-  DART_LOG_TRACE("dart_bcast > root:%d team:%d nelem:%"PRIu64" finished",
+  DART_LOG_TRACE("dart_bcast > root:%d team:%d nelem:%lu finished",
                  root, teamid, nelem);
   return DART_OK;
 }
