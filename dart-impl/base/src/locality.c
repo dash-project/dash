@@ -33,13 +33,13 @@
 
 #define DART__BASE__LOCALITY__MAX_TEAM_DOMAINS 32
 
-dart_host_topology_t *
+static dart_host_topology_t *
 dart__base__locality__host_topology_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
-dart_unit_mapping_t *
+static dart_unit_mapping_t *
 dart__base__locality__unit_mapping_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
-dart_domain_locality_t *
+static dart_domain_locality_t *
 dart__base__locality__global_domain_[DART__BASE__LOCALITY__MAX_TEAM_DOMAINS];
 
 /* ====================================================================== *
@@ -153,11 +153,12 @@ dart_ret_t dart__base__locality__create(
   size_t num_units = 0;
   DART_ASSERT_RETURNS(dart_team_size(team, &num_units), DART_OK);
   team_global_domain->num_units = num_units;
-
-  team_global_domain->unit_ids =
-    malloc(num_units * sizeof(dart_unit_t));
+  team_global_domain->unit_ids  = malloc(num_units * sizeof(dart_unit_t));
   for (size_t u = 0; u < num_units; ++u) {
-    team_global_domain->unit_ids[u] = u;
+    dart_team_unit_t luid = { u };
+    DART_ASSERT_RETURNS(
+      dart_team_unit_l2g(team, luid, &team_global_domain->unit_ids[u]),
+      DART_OK);
   }
 
   /* Exchange unit locality information between all units:
@@ -722,7 +723,7 @@ dart_ret_t dart__base__locality__domain_group(
 
 dart_ret_t dart__base__locality__unit(
   dart_team_t                        team,
-  dart_unit_t                        unit,
+  dart_team_unit_t                   unit,
   dart_unit_locality_t            ** locality)
 {
   DART_LOG_DEBUG("dart__base__locality__unit() team(%d) unit(%d)",
@@ -736,13 +737,13 @@ dart_ret_t dart__base__locality__unit(
   if (ret != DART_OK) {
     DART_LOG_ERROR("dart_unit_locality: "
                    "dart__base__locality__unit(team:%d unit:%d) "
-                   "failed (%d)", team, unit, ret);
+                   "failed (%d)", team, unit.id, ret);
     return ret;
   }
   *locality = uloc;
 
   DART_LOG_DEBUG("dart__base__locality__unit > team(%d) unit(%d)",
-                 team, unit);
+                 team, unit.id);
   return DART_OK;
 }
 

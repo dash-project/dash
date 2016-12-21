@@ -111,7 +111,7 @@ public:
     /// Team containing all units operating on the global memory region
     Team      & team = dash::Team::All())
   : _allocator(team),
-    _teamid(team.dart_id()),
+    _team(team),
     _nlelem(n_local_elem),
     _nunits(team.size())
   {
@@ -126,8 +126,8 @@ public:
     DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
     // Use id's of team all
-    _lbegin = lbegin(dash::myid());
-    _lend   = lend(dash::myid());
+    _lbegin = lbegin(dash::Team::GlobalUnitID());
+    _lend   = lend(dash::Team::GlobalUnitID());
     DASH_LOG_TRACE("GlobMem(nlocal,team) >");
   }
 
@@ -146,7 +146,7 @@ public:
     /// Team containing all units operating on the global memory region
     Team                              & team = dash::Team::All())
   : _allocator(team),
-    _teamid(team.dart_id()),
+    _team(team),
     _nlelem(local_elements.size()),
     _nunits(team.size())
   {
@@ -160,8 +160,8 @@ public:
       DASH_ASSERT_MSG(!DART_GPTR_ISNULL(_begptr), "allocation failed");
 
       // Use id's of team all
-      _lbegin = lbegin(dash::myid());
-      _lend   = lend(dash::myid());
+      _lbegin = lbegin(dash::Team::GlobalUnitID());
+      _lend   = lend(dash::Team::GlobalUnitID());
       DASH_ASSERT_EQ(std::distance(_lbegin, _lend), local_elements.size(),
                      "Capacity of local memory range differs from number "
                      "of specified local elements");
@@ -216,7 +216,7 @@ public:
   inline bool operator==(const self_t & rhs) const
   {
     return (_begptr == rhs._begptr &&
-            _teamid == rhs._teamid &&
+            _team   == rhs._team   &&
             _nunits == rhs._nunits &&
             _nlelem == rhs._nlelem &&
             _lbegin == rhs._lbegin &&
@@ -253,13 +253,13 @@ public:
    * \param global_unit_id id of unit in \c dash::Team::All()
    */
   const ElementType * lbegin(
-    dart_unit_t global_unit_id) const
+    global_unit_t unit_id) const
   {
     void *addr;
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", global_unit_id);
+    DASH_LOG_TRACE_VAR("GlobMem.lbegin const()", unit_id);
     dart_gptr_t gptr = _begptr;
     DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, global_unit_id),
+      dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
@@ -274,15 +274,15 @@ public:
    * \param global_unit_id id of unit in \c dash::Team::All()
    */
   ElementType * lbegin(
-    dart_unit_t global_unit_id)
+    global_unit_t unit_id)
   {
     void *addr;
-    DASH_LOG_TRACE_VAR("GlobMem.lbegin()", global_unit_id);
+    DASH_LOG_TRACE_VAR("GlobMem.lbegin()", unit_id);
     dart_gptr_t gptr = _begptr;
     DASH_LOG_TRACE_VAR("GlobMem.lbegin",
                        GlobPtr<ElementType>((dart_gptr_t)gptr));
     DASH_ASSERT_RETURNS(
-      dart_gptr_setunit(&gptr, global_unit_id),
+      dart_gptr_setunit(&gptr, unit_id),
       DART_OK);
     DASH_ASSERT_RETURNS(
       dart_gptr_getaddr(gptr, &addr),
@@ -314,7 +314,7 @@ public:
    * a unit.
    */
   const ElementType * lend(
-    dart_unit_t unit_id) const
+    global_unit_t unit_id) const
   {
     void *addr;
     dart_gptr_t gptr = _begptr;
@@ -335,7 +335,7 @@ public:
    * a unit.
    */
   ElementType * lend(
-    dart_unit_t unit_id)
+    global_unit_t unit_id)
   {
     void *addr;
     dart_gptr_t gptr = _begptr;
@@ -402,12 +402,7 @@ public:
    */
   void barrier() const
   {
-    if (DART_TEAM_NULL == _teamid) {
-      return;
-    }
-    DASH_ASSERT_RETURNS(
-      dart_barrier(_teamid),
-      DART_OK);
+    _team.barrier();
   }
 
   /**
@@ -445,7 +440,7 @@ public:
   template<typename IndexType>
   dash::GlobPtr<value_type> at(
     /// The unit id
-    dart_unit_t unit,
+    team_unit_t unit,
     /// The unit's local address offset
     IndexType   local_index) const
   {
@@ -458,21 +453,22 @@ public:
     // Initialize with global pointer to start address:
     dart_gptr_t gptr = _begptr;
     // Resolve global unit id
-    dart_unit_t lunit, gunit;
+    global_unit_t gunit{gptr.unitid};
     DASH_LOG_TRACE_VAR("GlobMem.at (=g_begptr)", gptr);
     DASH_LOG_TRACE_VAR("GlobMem.at", gptr.unitid);
     // Resolve local unit id from global unit id in global pointer:
-    dart_team_unit_g2l(_teamid, gptr.unitid, &lunit);
+//    dart_team_unit_g2l(_teamid, gptr.unitid, &lunit);
+    team_unit_t lunit = _team.relative_id(gunit);
     DASH_LOG_TRACE_VAR("GlobMem.at", lunit);
     lunit = (lunit + unit) % _nunits;
     DASH_LOG_TRACE_VAR("GlobMem.at", lunit);
-    if (_teamid != dash::Team::All().dart_id()) {
+    if (!_team.is_all()) {
       // Unit is member of a split team, resolve global unit id:
-      dart_team_unit_l2g(_teamid, lunit, &gunit);
+      gunit = _team.global_id(lunit);
     } else {
       // Unit is member of top level team, no conversion to global unit id
       // necessary:
-      gunit = lunit;
+      gunit = global_unit_t(lunit);
     }
     DASH_LOG_TRACE_VAR("GlobMem.at", gunit);
     // Apply global unit to global pointer:
@@ -487,7 +483,7 @@ public:
 private:
   allocator_type          _allocator;
   dart_gptr_t             _begptr     = DART_GPTR_NULL;
-  dart_team_t             _teamid     = DART_TEAM_NULL;
+  dash::Team&             _team;
   size_type               _nlelem     = 0;
   size_type               _nunits     = 0;
   ElementType           * _lbegin     = nullptr;

@@ -9,15 +9,15 @@
 
 class HDF5MatrixTest : public ::testing::Test {
 protected:
-  dart_unit_t _dash_id;
+  dash::global_unit_t _dash_id;
   size_t      _dash_size;
   std::string _filename = "test_matrix.hdf5";
   std::string _dataset  = "data";
 
   HDF5MatrixTest()
-      : _dash_id(0),
-        _dash_size(0) {
-      LOG_MESSAGE(">>> Test suite: HDFTest");
+  : _dash_id(0),
+    _dash_size(0) {
+    LOG_MESSAGE(">>> Test suite: HDFTest");
   }
 
   virtual ~HDF5MatrixTest() {

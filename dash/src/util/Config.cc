@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <cstring>
 #include <unistd.h>
+#include <limits>
+
 
 // Environment variables as array of strings, terminated by null pointer.
 extern char ** environ;
@@ -134,7 +136,7 @@ void Config::set(
         case 0:   sh = 0;  break;
         default:  sh = -1; break;
       }
-      if (sh > 0 && value_bytes < SIZE_MAX >> sh) {
+      if (sh > 0 && value_bytes < (std::numeric_limits<size_t>::max()) >> sh) {
         value_bytes <<= sh;
       }
     }

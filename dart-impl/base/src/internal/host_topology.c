@@ -148,6 +148,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
 {
   int num_hosts    = topo->num_hosts;
   dart_team_t team = unit_mapping->team;
+
   /*
    * Initiate all-to-all exchange of module locations like Xeon Phi
    * hostnames and their assiocated NUMA domain in their parent node.
@@ -156,8 +157,20 @@ dart_ret_t dart__base__host_topology__update_module_locations(
    */
 
   dart_unit_locality_t * my_uloc;
-  dart_unit_t            local_leader_unit_id = DART_UNDEFINED_UNIT_ID;
-  dart_unit_t            my_id                = DART_UNDEFINED_UNIT_ID;
+
+  /*
+   * unit ID of leader unit (relative to the team specified in unit_mapping)
+   * of the active unit's local compute node.
+   * Example:
+   *
+   *  node 0:                     node 1:
+   *    unit ids: { 0, 1, 2 }       unit ids: { 3, 4, 5 }
+   *
+   * leader unit at units 0,1,2: 0
+   * leader unit at units 3,4,5: 3
+   */
+  dart_team_unit_t       local_leader_unit_id = DART_UNDEFINED_TEAM_UNIT_ID;
+  dart_team_unit_t       my_id;
   dart_group_t           leader_group;
   dart_group_t           local_group;
   dart_team_t            leader_team; /* team of all node leaders   */
@@ -191,7 +204,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
     dart_host_units_t  * host_units  = &topo->host_units[h];
     dart_host_domain_t * host_domain = &topo->host_domains[h];
     /* Select first unit id at local host as leader: */
-    dart_unit_t leader_unit_id = host_units->units[0];
+    dart_global_unit_t leader_unit_id = host_units->units[0];
     dart_group_addmember(leader_group, leader_unit_id);
     DART_LOG_TRACE("dart__base__host_topology__init: "
                    "num. units on host %s: %d",
@@ -205,7 +218,10 @@ dart_ret_t dart__base__host_topology__update_module_locations(
     if (strncmp(host_domain->host, local_hostname,
                 DART_LOCALITY_HOST_MAX_SIZE) == 0) {
       /* set local leader: */
-      local_leader_unit_id = leader_unit_id;
+      DART_ASSERT_RETURNS(
+        dart_team_unit_g2l(team, leader_unit_id,
+                           &local_leader_unit_id),
+        DART_OK);
       /* collect units in local group: */
       for (int u_idx = 0; u_idx < host_units->num_units; u_idx++) {
         DART_LOG_TRACE("dart__base__host_topology__init: "
@@ -242,9 +258,9 @@ dart_ret_t dart__base__host_topology__update_module_locations(
     dart_group_destroy(&leader_group),
     DART_OK);
 
-  if (my_id == local_leader_unit_id) {
+  if (my_id.id == local_leader_unit_id.id) {
     dart_module_location_t * module_locations = NULL;
-    dart_unit_t my_leader_id;
+    dart_team_unit_t my_leader_id;
     DART_ASSERT_RETURNS(
       dart_team_myid(leader_team, &my_leader_id),
       DART_OK);
@@ -264,7 +280,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
     size_t * recvcounts      = calloc(num_leaders, sizeof(size_t));
     /* Displacement at which to place data received from each leader:  */
     size_t * displs          = calloc(num_leaders, sizeof(size_t));
-    recvcounts[my_leader_id] = num_local_modules *
+    recvcounts[my_leader_id.id] = num_local_modules *
                                  sizeof(dart_module_location_t);
     /*
      * Allgather of leaders is only required if there is more than
@@ -294,7 +310,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
       DART_ASSERT_RETURNS(
         dart_allgatherv(
           local_module_locations,
-          recvcounts[my_leader_id],
+          recvcounts[my_leader_id.id],
           DART_TYPE_BYTE,
           module_locations,
           recvcounts,
@@ -317,20 +333,23 @@ dart_ret_t dart__base__host_topology__update_module_locations(
                               sizeof(dart_module_location_t);
       for (size_t m = 0; m < lu_num_modules; m++) {
         int m_displ = displs[lu] / sizeof(dart_module_location_t);
-        dart_unit_t gu;
-        DART_ASSERT_RETURNS(
-          dart_team_unit_l2g(leader_team, lu, &gu),
-          DART_OK);
         dart_module_location_t * module_loc =
           &module_locations[m_displ + m];
+#ifdef DART_ENABLE_LOGGING
+        dart_team_unit_t   luid = {lu};
+        dart_global_unit_t gu;
+        DART_ASSERT_RETURNS(
+          dart_team_unit_l2g(leader_team, luid, &gu),
+          DART_OK);
         DART_LOG_TRACE("dart__base__host_topology__init: "
                        "leader unit id: %d (global unit id: %d) "
                        "module_location { "
                        "host:%s module:%s scope:%d rel.idx:%d } "
                        "num_hosts:%d",
-                       lu, gu, module_loc->host, module_loc->module,
+                       luid.id, gu.id, module_loc->host, module_loc->module,
                        module_loc->pos.scope, module_loc->pos.index,
                        num_hosts);
+#endif // DART_ENABLE_LOGGING
         for (int h = 0; h < num_hosts; ++h) {
           dart_host_domain_t * host_domain = &topo->host_domains[h];
           if (strncmp(host_domain->host, module_loc->module,
@@ -381,26 +400,24 @@ dart_ret_t dart__base__host_topology__update_module_locations(
    * Broadcast updated host topology data from leader to all units at
    * local node:
    */
-  if (DART_UNDEFINED_UNIT_ID != local_leader_unit_id) {
-    dart_team_t local_team; 
-    dart_unit_t host_topo_bcast_root = local_leader_unit_id;
-    dart_team_t host_topo_bcast_team = team;
+  if (DART_UNDEFINED_UNIT_ID != local_leader_unit_id.id) {
+    dart_team_t      local_team; 
+    dart_team_unit_t host_topo_bcast_root = local_leader_unit_id;
+    dart_team_t      host_topo_bcast_team = team;
     if (num_hosts > 1) {
       DART_LOG_TRACE("dart__base__host_topology__init: create local team");
       DART_ASSERT_RETURNS(
         dart_team_create(team, local_group, &local_team),
         DART_OK);
-      host_topo_bcast_team = local_team;
-      DART_ASSERT_RETURNS(
-        dart_team_unit_g2l(local_team, local_leader_unit_id, &host_topo_bcast_root),
-        DART_OK);
+      /* Leader unit ID local team is always 0: */
+      host_topo_bcast_team    = local_team;
+      host_topo_bcast_root.id = 0;
     }
 
-   DART_LOG_TRACE("dart__base__host_topology__init: "
-                  "broadcasting module locations from leader unit %d "
-                  "to units in team %d",
-                  local_leader_unit_id, host_topo_bcast_team);
-
+    DART_LOG_TRACE("dart__base__host_topology__init: "
+                   "broadcasting module locations from leader unit %d "
+                   "to units in team %d",
+                   local_leader_unit_id, host_topo_bcast_team);
 
     DART_ASSERT_RETURNS(
       dart_bcast(
@@ -542,8 +559,9 @@ dart_ret_t dart__base__host_topology__create(
   for (size_t u = 0; u < num_units; ++u) {
     hostnames[u] = malloc(sizeof(char) * max_host_len);
     dart_unit_locality_t * ul;
+    dart_team_unit_t luid = {u};
     DART_ASSERT_RETURNS(
-      dart__base__unit_locality__at(unit_mapping, u, &ul),
+      dart__base__unit_locality__at(unit_mapping, luid, &ul),
       DART_OK);
     strncpy(hostnames[u], ul->hwinfo.host, max_host_len);
   }
@@ -624,12 +642,17 @@ dart_ret_t dart__base__host_topology__create(
     /* Iterate over all units: */
     for (size_t u = 0; u < num_units; ++u) {
       dart_unit_locality_t * ul;
+      dart_team_unit_t luid = {u};
       DART_ASSERT_RETURNS(
-        dart__base__unit_locality__at(unit_mapping, u, &ul),
+        dart__base__unit_locality__at(unit_mapping, luid, &ul),
         DART_OK);
       if (strncmp(ul->hwinfo.host, hostnames[h], max_host_len) == 0) {
         /* Unit is local to host at index h: */
-        host_units->units[host_units->num_units] = ul->unit;
+        dart_global_unit_t guid;
+        DART_ASSERT_RETURNS(
+          dart_team_unit_l2g(team, ul->unit, &guid),
+          DART_OK);
+        host_units->units[host_units->num_units] = guid;
         host_units->num_units++;
 
         int unit_numa_id = ul->hwinfo.numa_id;
@@ -799,7 +822,7 @@ dart_ret_t dart__base__host_topology__node_module(
 dart_ret_t dart__base__host_topology__node_units(
   dart_host_topology_t  * topo,
   const char            * hostname,
-  dart_unit_t          ** units,
+  dart_global_unit_t   ** units,
   int                   * num_units)
 {
   DART_LOG_TRACE("dart__base__host_topolgoy__node_units() host: %s",
@@ -828,8 +851,9 @@ dart_ret_t dart__base__host_topology__node_units(
     return DART_ERR_NOTFOUND;
   }
   /* Second pass: Copy unit ids: */
-  dart_unit_t * node_unit_ids = malloc(*num_units * sizeof(dart_unit_t));
-  int           node_unit_idx = 0;
+  dart_global_unit_t * node_unit_ids = malloc(*num_units *
+                                              sizeof(dart_global_unit_t));
+  int node_unit_idx = 0;
   for (int h = 0; h < topo->num_hosts; ++h) {
     dart_host_domain_t * host_domain = &topo->host_domains[h];
     dart_host_units_t  * host_units  = &topo->host_units[h];
@@ -842,18 +866,19 @@ dart_ret_t dart__base__host_topology__node_units(
     }
   }
   *units = node_unit_ids;
-  DART_LOG_TRACE("dart__base__host_topology__node_units > num_units: %d",
-                 *num_units);
+
+  DART_LOG_TRACE_ARRAY(
+    "dart__base__host_topology__node_units >", "%d", *units, *num_units);
   return DART_OK;
 }
 
 dart_ret_t dart__base__host_topology__host_domain(
-  dart_host_topology_t  * topo,
-  const char            * hostname,
-  const dart_unit_t    ** units,
-  int                   * num_units,
-  const int            ** numa_ids,
-  int                   * num_numa_domains)
+  dart_host_topology_t      * topo,
+  const char                * hostname,
+  const dart_global_unit_t ** units,
+  int                       * num_units,
+  const int                ** numa_ids,
+  int                       * num_numa_domains)
 {
   DART_LOG_TRACE("dart__base__host_topolgoy__module_units() host: %s",
                  hostname);
@@ -883,8 +908,9 @@ dart_ret_t dart__base__host_topology__host_domain(
                    "no entry for host '%s')", hostname);
     return DART_ERR_NOTFOUND;
   }
-  DART_LOG_TRACE("dart__base__host_topology__module_units > num_units: %d",
-                 *num_units);
+
+  DART_LOG_TRACE_ARRAY(
+    "dart__base__host_topology__module_units >", "%d", *units, *num_units);
   return DART_OK;
 }
 

@@ -3,6 +3,7 @@
 
 #include <dash/internal/Macro.h>
 #include <dash/internal/StreamConversion.h>
+#include <dash/Types.h>
 
 #include <dash/dart/if/dart_config.h>
 
@@ -20,8 +21,8 @@
 #include <unistd.h>
 
 namespace dash {
-// forward-declaration
-int myid();
+  // forward-declaration
+  global_unit_t myid();
 }
 
 #ifdef DASH_LOG_OUTPUT_STDOUT
@@ -115,6 +116,7 @@ enum term_color_code {
   TCOL_BLUE,
   TCOL_MAGENTA,
   TCOL_CYAN,
+
   TCOL_NUM_CODES
 };
 
@@ -193,13 +195,13 @@ inline void Log_Line(
   const std::string & msg)
 {
   pid_t pid = getpid();
-  int   uid = dash::myid();
+  dash::global_unit_t uid = dash::myid();
   std::stringstream buf;
   
-//  buf << TermColorMod(uid < 0 ? TCOL_DEFAULT : unit_term_colors[uid % 7]);
+//  buf << TermColorMod(uid < 0 ? TCOL_DEFAULT : unit_term_colors[uid.id % 7]);
 
   buf << "[ "
-      << std::setw(4) << uid
+      << std::setw(4) << uid.id
       << " "
       << level
       << " ] [ "

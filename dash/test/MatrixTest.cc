@@ -216,7 +216,7 @@ TEST_F(MatrixTest, Distribute1DimBlockcyclicY)
 
 TEST_F(MatrixTest, Distribute2DimTileXY)
 {
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -272,7 +272,7 @@ TEST_F(MatrixTest, Distribute2DimTileXY)
 
 TEST_F(MatrixTest, Distribute2DimBlockcyclicXY)
 {
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t blocksize_x = 3;
   size_t blocksize_y = 2;
@@ -414,7 +414,8 @@ TEST_F(MatrixTest, Sub2DimDefault)
   element_t * lit  = matrix.lbegin();
   element_t * lend = matrix.lend();
   LOG_MESSAGE("Local range: lend(%p) - lbegin(%p) = %d",
-              lend, lit, lend - lit);
+              static_cast<void*>(lend), static_cast<void*>(lit),
+              lend - lit);
   ASSERT_EQ_U(matrix.lend() - matrix.lbegin(),
               matrix.local_size());
   // Assign unit-specific values in local matrix range:
@@ -439,7 +440,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
       auto local_idx  = pattern.local_at(l_coords);
       auto global_idx = pattern.memory_layout().at(g_coords);
       auto exp_value  = ((unit_id + 1) * 1000) + local_idx;
-      bool is_local   = unit_id == dash::myid();
+      bool is_local   = unit_id == pattern.team().myid();
       element_t value = column[row];
       ASSERT_EQ_U(exp_value, value);
       ASSERT_EQ_U(is_local, matrix.is_local(global_idx));
@@ -457,7 +458,7 @@ TEST_F(MatrixTest, Sub2DimDefault)
 TEST_F(MatrixTest, BlockViews)
 {
   typedef int element_t;
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -531,7 +532,7 @@ TEST_F(MatrixTest, ViewIteration)
   typedef int                                   element_t;
   typedef dash::TilePattern<2, dash::COL_MAJOR> pattern_t;
 
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -620,7 +621,7 @@ TEST_F(MatrixTest, ViewIteration)
 TEST_F(MatrixTest, BlockCopy)
 {
   typedef int element_t;
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 3;
   size_t tilesize_y  = 2;
@@ -721,7 +722,7 @@ TEST_F(MatrixTest, StorageOrder)
 
 TEST_F(MatrixTest, DelayedAlloc)
 {
-  dart_unit_t myid = dash::myid();
+  dash::team_unit_t myid(dash::myid());
   auto num_units   = dash::size();
 
   if (num_units < 4) {

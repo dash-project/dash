@@ -229,7 +229,7 @@ double test_pattern_gups(
 
   auto a_size   = a.size();
   auto ts_start = Timer::Now();
-  auto myid     = dash::myid();
+  auto myid     = pattern.team().myid();
   for (auto i = 0; i < REPEAT; ++i) {
     for (auto g_idx = 0; g_idx < a_size; ++g_idx) {
       auto local_pos = pattern.local(g_idx);

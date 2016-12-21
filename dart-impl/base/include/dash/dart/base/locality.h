@@ -131,7 +131,7 @@ dart_ret_t dart__base__locality__scope_domain_tags(
 
 dart_ret_t dart__base__locality__unit(
   dart_team_t                        team,
-  dart_unit_t                        unit,
+  dart_team_unit_t                   unit,
   dart_unit_locality_t            ** locality);
 
 #endif /* DART__BASE__LOCALITY_H__ */

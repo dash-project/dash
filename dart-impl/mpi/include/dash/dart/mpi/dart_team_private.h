@@ -144,6 +144,9 @@
 
 extern dart_team_t dart_next_availteamid;
 
+extern MPI_Comm dart_comm_world;
+#define DART_COMM_WORLD dart_comm_world
+
 
 typedef struct dart_team_data {
   /**
@@ -166,7 +169,7 @@ typedef struct dart_team_data {
   /**
    * @brief Hash table to determine the units who are located in the same node.
    */
-  int *sharedmem_tab;
+  dart_team_unit_t *sharedmem_tab;
 
   /**
    *  @brief Size of the node's communicator.

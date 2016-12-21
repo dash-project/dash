@@ -359,12 +359,12 @@ public:
            : _domain->num_domains;
   }
 
-  inline const std::vector<dart_unit_t> & units() const
+  inline const std::vector<global_unit_t> & units() const
   {
     return _unit_ids;
   }
 
-  inline std::vector<dart_unit_t> & units()
+  inline std::vector<global_unit_t> & units()
   {
     return _unit_ids;
   }
@@ -372,14 +372,14 @@ public:
   /**
    * ID of leader unit in the locality domain.
    */
-  inline dart_unit_t leader_unit() const
+  inline global_unit_t leader_unit() const
   {
     // TODO: Optimize
 
     // Unit 0 is default leader if contained in the domain:
-    if (std::find(_unit_ids.begin(), _unit_ids.end(), 0)
+    if (std::find(_unit_ids.begin(), _unit_ids.end(), global_unit_t(0))
         != _unit_ids.end()) {
-      return 0;
+      return global_unit_t(0);
     }
     return _unit_ids.front();
   }
@@ -396,10 +396,10 @@ public:
            : static_cast<Scope_t>(_domain->scope);
   }
 
-//inline int node_id() const
-//{
-//  return (nullptr == _domain ? -1 : _domain->node_id);
-//}
+  inline int node_id() const
+  {
+    return (nullptr == _domain ? -1 : _domain->node_id);
+  }
 
   inline int num_nodes() const
   {
@@ -436,8 +436,6 @@ private:
   }
 
 private:
-  /// Parent locality domain.
-  mutable self_t                                  * _parent    = nullptr;
   /// Underlying \c dart_domain_locality_t object.
   dart_domain_locality_t                          * _domain    = nullptr;
   /// Copy of _domain->domain_tag to avoid string copying.
@@ -447,7 +445,7 @@ private:
   /// cycle.
   mutable std::unordered_map<int, self_t>         * _subdomains = nullptr;
   /// Units in the domain.
-  std::vector<dart_unit_t>                          _unit_ids;
+  std::vector<global_unit_t>                        _unit_ids;
 #if 0
   /// Locality descriptors of units in the domain. Only specified in root
   /// locality domain and resolved from parent in upward recursion otherwise.

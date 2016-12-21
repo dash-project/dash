@@ -21,7 +21,7 @@ dart_host_domain_t;
 
 typedef struct
 {
-  dart_unit_t             * units;
+  dart_global_unit_t      * units;
   int                       num_units;
 }
 dart_host_units_t;
@@ -82,7 +82,7 @@ dart_ret_t dart__base__host_topology__node_module(
 dart_ret_t dart__base__host_topology__node_units(
   dart_host_topology_t  * topo,
   const char            * node_hostname,
-  dart_unit_t          ** units,
+  dart_global_unit_t   ** units,
   int                   * num_units);
 
 /* Queries domain data for host exactly matching the specified host
@@ -93,12 +93,12 @@ dart_ret_t dart__base__host_topology__node_units(
  *       the caller.
  */
 dart_ret_t dart__base__host_topology__host_domain(
-  dart_host_topology_t  * topo,
-  const char            * hostname,
-  const dart_unit_t    ** unit_ids,
-  int                   * num_units,
-  const int            ** numa_ids,
-  int                   * num_numa_domains);
+  dart_host_topology_t      * topo,
+  const char                * hostname,
+  const dart_global_unit_t ** unit_ids,
+  int                       * num_units,
+  const int                ** numa_ids,
+  int                       * num_numa_domains);
 
 
 #endif /* DART__BASE__INTERNAL__HOST_TOPOLOGY_H__ */

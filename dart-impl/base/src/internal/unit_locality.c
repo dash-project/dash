@@ -85,7 +85,7 @@ dart_ret_t dart__base__unit_locality__create(
   dart_unit_mapping_t  ** unit_mapping)
 {
   dart_ret_t  ret;
-  dart_unit_t myid   = DART_UNDEFINED_UNIT_ID;
+  dart_team_unit_t myid = DART_UNDEFINED_TEAM_UNIT_ID;
   size_t      nunits = 0;
   *unit_mapping      = NULL;
   DART_LOG_DEBUG("dart__base__unit_locality__create()");
@@ -112,7 +112,7 @@ dart_ret_t dart__base__unit_locality__create(
   DART_LOG_TRACE("dart__base__unit_locality__create: unit %d of %ld: "
                  "sending %ld bytes: "
                  "host:'%s' core_id:%d numa_id:%d nthreads:%d",
-                 myid, nunits, nbytes,
+                 myid.id, nunits, nbytes,
                  uloc->hwinfo.host,
                  uloc->hwinfo.cpu_id, uloc->hwinfo.numa_id,
                  uloc->hwinfo.max_threads);
@@ -189,16 +189,16 @@ dart_ret_t dart__base__unit_locality__destruct(
  */
 dart_ret_t dart__base__unit_locality__at(
   dart_unit_mapping_t   * unit_mapping,
-  dart_unit_t             unit,
+  dart_team_unit_t        unit,
   dart_unit_locality_t ** loc)
 {
-  if ((size_t)(unit) >= unit_mapping->num_units) {
+  if ((size_t)(unit.id) >= unit_mapping->num_units) {
     DART_LOG_ERROR("dart__base__unit_locality__get ! "
                    "unit id %d out of bounds, team size: %u",
-                   unit, unit_mapping->num_units);
+                   unit.id, unit_mapping->num_units);
     return DART_ERR_INVAL;
   }
-  *loc = (unit_mapping->unit_localities + unit);
+  *loc = &(unit_mapping->unit_localities[unit.id]);
   return DART_OK;
 }
 
@@ -219,7 +219,7 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
     DART_LOG_ERROR("dart__base__unit_locality__local_unit_new ! null");
     return DART_ERR_INVAL;
   }
-  dart_unit_t myid = DART_UNDEFINED_UNIT_ID;
+  dart_team_unit_t myid;
 
   DART_ASSERT_RETURNS(
     dart__base__unit_locality__init(uloc),
@@ -271,7 +271,7 @@ dart_ret_t dart__base__unit_locality__init(
     return DART_ERR_INVAL;
   }
 
-  loc->unit = DART_UNDEFINED_UNIT_ID;
+  loc->unit = DART_UNDEFINED_TEAM_UNIT_ID;
   loc->team = DART_UNDEFINED_TEAM_ID;
 
   dart_hwinfo_init(&loc->hwinfo);

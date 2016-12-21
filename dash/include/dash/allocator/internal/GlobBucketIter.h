@@ -84,8 +84,8 @@ public:
     local_pointer;
 
   typedef struct {
-    dart_unit_t unit;
-    index_type  index;
+    team_unit_t unit;
+    index_type   index;
   } local_index;
 
 private:
@@ -101,8 +101,8 @@ public:
     _bucket_cumul_sizes(nullptr),
     _idx(0),
     _max_idx(0),
-    _myid(dash::myid()),
-    _idx_unit_id(DART_UNDEFINED_UNIT_ID),
+    _myid(dash::Team::GlobalUnitID()),
+    _idx_unit_id(UNDEFINED_GLOBAL_UNIT_ID),
     _idx_local_idx(-1),
     _idx_bucket_idx(-1),
     _idx_bucket_phase(-1)
@@ -123,7 +123,7 @@ public:
     _lbegin(_globmem->lbegin()),
     _idx(position),
     _max_idx(gmem->size() - 1),
-    _myid(dash::myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _idx_unit_id(0),
     _idx_local_idx(0),
     _idx_bucket_idx(0),
@@ -159,14 +159,14 @@ public:
    */
   GlobBucketIter(
     GlobMemType * gmem,
-    dart_unit_t   unit,
+    team_unit_t   unit,
 	  index_type    local_index)
   : _globmem(gmem),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
     _lbegin(_globmem->lbegin()),
     _idx(0),
     _max_idx(gmem->size() - 1),
-    _myid(dash::myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _idx_unit_id(unit),
     _idx_local_idx(0),
     _idx_bucket_idx(0),
@@ -604,9 +604,9 @@ private:
   /// Maximum position allowed for this iterator.
   index_type               _max_idx            = 0;
   /// Unit id of the active unit.
-  dart_unit_t              _myid;
+  global_unit_t            _myid;
   /// Unit id at the iterator's current position.
-  dart_unit_t              _idx_unit_id        = DART_UNDEFINED_UNIT_ID;
+  global_unit_t            _idx_unit_id;
   /// Logical offset in local index space at the iterator's current position.
   index_type               _idx_local_idx      = -1;
   /// Local bucket index at the iterator's current position.

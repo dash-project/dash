@@ -66,8 +66,7 @@ public:
    */
   explicit CollectiveAllocator(
     Team & team = dash::Team::All()) noexcept
-  : _team_id(team.dart_id()),
-    _nunits(team.size())
+  : _team_id(team.dart_id())
   { }
 
   /**
@@ -76,11 +75,8 @@ public:
    */
   CollectiveAllocator(self_t && other) noexcept
   : _team_id(other._team_id),
-    _nunits(other._nunits),
-    _allocated(other._allocated)
-  {
-    other._allocated.clear();
-  }
+    _allocated(std::move(other._allocated))
+  { }
 
   /**
    * Copy constructor.
@@ -88,8 +84,7 @@ public:
    * \see DashAllocatorConcept
    */
   CollectiveAllocator(const self_t & other) noexcept
-  : _team_id(other._team_id),
-    _nunits(other._nunits)
+  : _team_id(other._team_id)
   { }
 
   /**
@@ -98,8 +93,7 @@ public:
    */
   template<class U>
   CollectiveAllocator(const CollectiveAllocator<U> & other) noexcept
-  : _team_id(other._team_id),
-    _nunits(other._nunits)
+  : _team_id(other._team_id)
   { }
 
   /**
@@ -128,9 +122,10 @@ public:
   self_t & operator=(const self_t && other) noexcept
   {
     // Take ownership of other instance's allocation vector:
-    clear();
-    _allocated = other._allocated;
-    other._allocated.clear();
+    if (this != &other) {
+      std::swap(_allocated, other._allocated);
+      _team_id = other._team_id;
+    }
     return *this;
   }
 
@@ -241,8 +236,7 @@ private:
   }
 
 private:
-  dart_team_t          _team_id   = DART_TEAM_NULL;
-  size_t               _nunits    = 0;
+  dart_team_t          _team_id;
   std::vector<pointer> _allocated;
 
 }; // class CollectiveAllocator
@@ -253,8 +247,7 @@ bool operator==(
   const CollectiveAllocator<U> & rhs)
 {
   return (sizeof(T)    == sizeof(U) &&
-          lhs._team_id == rhs._team_id &&
-          lhs._nunits  == rhs._nunits );
+          lhs._team_id == rhs._team_id );
 }
 
 template <class T, class U>

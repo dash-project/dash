@@ -6,7 +6,7 @@ TEST_F(GlobMemTest, ConstructorInitializerList)
   auto target = dash::GlobMem<int>(target_local_elements);
 
   std::vector<int> glob_values;
-  for (int u = 0; u < dash::size(); u++) {
+  for (dash::team_unit_t u{0}; u < dash::size(); u++) {
     for (int l = 0; l < target_local_elements.size(); l++) {
       int val = *(target.at(u,l));
       EXPECT_EQ_U(l+1, val);

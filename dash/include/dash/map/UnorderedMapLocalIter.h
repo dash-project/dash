@@ -93,7 +93,7 @@ public:
     index_type    local_position)
   : _map(map),
     _idx(local_position),
-    _myid(dash::myid())
+    _myid(dash::Team::GlobalUnitID())
   {
     DASH_LOG_TRACE("UnorderedMapLocalIter(map,lpos)()");
     DASH_LOG_TRACE_VAR("UnorderedMapLocalIter(map,lpos)", _idx);

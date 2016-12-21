@@ -560,8 +560,6 @@ private:
   /// Team containing all units that collectively instantiated the
   /// Matrix instance
   dash::Team                 * _team = nullptr;
-  /// DART id of the unit that owns this matrix instance
-  dart_unit_t                  _myid;
   /// Capacity (total number of elements) of the matrix
   size_type                    _size;
   /// Number of local elements in the array

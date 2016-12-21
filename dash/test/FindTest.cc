@@ -174,7 +174,7 @@ TEST_F(FindTest, SingleMatchInSingleUnit)
   Element_t find_me	          = 1;
   index_t   find_pos          = 5;
   Element_t init_fill         = 0;
-  dart_unit_t unit_cntng_find = dash::Team::All().size() % 2;
+  dash::global_unit_t unit_cntng_find(dash::Team::All().size() % 2);
 
   dash::Array<Element_t> array;
 

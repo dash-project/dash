@@ -208,7 +208,12 @@ TEST_F(ArrayTest, TeamSplit)
     SKIP_TEST();
   }
 
+  dash::barrier();
+
+  LOG_MESSAGE("Splitting team ...");
   auto & myteam = team_all.split(2);
+  LOG_MESSAGE("... Team split finished");
+
   dash::Array<double> array_a(ext_x, myteam);
 
   array_a.barrier();

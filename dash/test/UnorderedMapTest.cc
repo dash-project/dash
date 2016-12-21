@@ -337,8 +337,8 @@ struct HashCyclic
   : _nunits(team.size())
   { }
 
-  dart_unit_t operator()(const Key & key) {
-    return (key % _nunits);
+  dash::team_unit_t operator()(const Key & key) {
+    return dash::team_unit_t(key % _nunits);
   }
 
 private:

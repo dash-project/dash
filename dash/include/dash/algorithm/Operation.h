@@ -19,23 +19,20 @@ namespace dash {
  *
  * \ingroup  DashReduceOperations
  */
-template< typename ValueType >
+template< typename ValueType, dart_operation_t OP >
 class ReduceOperation {
 
 public:
   typedef ValueType value_type;
 
 public:
-  ReduceOperation(dart_operation_t op)
-  : _op(op) {
-  }
 
   constexpr dart_operation_t dart_operation() const {
     return _op;
   }
 
 private:
-  dart_operation_t _op;
+  static constexpr const dart_operation_t _op = OP;
 
 };
 
@@ -47,12 +44,9 @@ private:
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct min : public ReduceOperation<ValueType> {
+struct min : public ReduceOperation<ValueType, DART_OP_MIN> {
 
 public:
-  min()
-  : ReduceOperation<ValueType>(DART_OP_MIN) {
-  }
 
   ValueType operator()(
     const ValueType & lhs,
@@ -69,12 +63,9 @@ public:
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct max : public ReduceOperation<ValueType> {
+struct max : public ReduceOperation<ValueType, DART_OP_MAX> {
 
 public:
-  max()
-  : ReduceOperation<ValueType>(DART_OP_MAX) {
-  }
 
   ValueType operator()(
     const ValueType & lhs,
@@ -91,12 +82,9 @@ public:
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct plus : public ReduceOperation<ValueType> {
+struct plus : public ReduceOperation<ValueType, DART_OP_SUM> {
 
 public:
-  plus()
-  : ReduceOperation<ValueType>(DART_OP_SUM) {
-  }
 
   ValueType operator()(
     const ValueType & lhs,
@@ -113,12 +101,9 @@ public:
  * \ingroup  DashReduceOperations
  */
 template< typename ValueType >
-struct multiply : public ReduceOperation<ValueType> {
+struct multiply : public ReduceOperation<ValueType, DART_OP_PROD> {
 
 public:
-  multiply()
-  : ReduceOperation<ValueType>(DART_OP_PROD) {
-  }
 
   ValueType operator()(
     const ValueType & lhs,
