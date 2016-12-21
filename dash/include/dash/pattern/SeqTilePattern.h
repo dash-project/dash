@@ -613,9 +613,9 @@ public:
    * \see  DashPatternConcept
    */
   std::array<SizeType, NumDimensions> local_extents(
-      team_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const
+      team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
-    if (unit == UNDEFINED_LOCAL_UNIT_ID) {
+    if (unit == UNDEFINED_TEAM_UNIT_ID) {
       unit = _myid;
     }
     if (unit == _myid) {
@@ -1356,7 +1356,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_capacity(team_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const {
+  SizeType local_capacity(team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
     return local_size();
   }
 
@@ -1370,7 +1370,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_size(team_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const {
+  SizeType local_size(team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const {
     if (unit == DART_UNDEFINED_UNIT_ID) {
       return _local_memory_layout.size();
     }
@@ -1559,11 +1559,11 @@ private:
     const BlockSpec_t     & blockspec,
     const BlockSizeSpec_t & blocksizespec,
     const TeamSpec_t      & teamspec,
-    team_unit_t             unit_id = UNDEFINED_LOCAL_UNIT_ID) const
+    team_unit_t             unit_id = UNDEFINED_TEAM_UNIT_ID) const
   {
     DASH_LOG_TRACE_VAR("SeqTilePattern.init_local_blockspec()",
                        blockspec.extents());
-    if (unit_id == UNDEFINED_LOCAL_UNIT_ID) {
+    if (unit_id == UNDEFINED_TEAM_UNIT_ID) {
       unit_id = _myid;
     }
     // Number of blocks in total:

@@ -148,7 +148,7 @@ typedef struct dart_local_unit {
  * \ingroup DartTypes
  */
 static inline
-dart_team_unit_t dart_create_local_unit(dart_unit_t unit)
+dart_team_unit_t dart_create_team_unit(dart_unit_t unit)
 {
   dart_team_unit_t tmp = {unit};
   return tmp;
@@ -157,11 +157,11 @@ dart_team_unit_t dart_create_local_unit(dart_unit_t unit)
 /**
  * Create a \c dart_team_unit_t from a \ref dart_unit_t.
  *
- * This is a wrapper for \ref dart_create_local_unit.
+ * This is a wrapper for \ref dart_create_team_unit.
  *
  * \ingroup DartTypes
  */
-#define DART_LOCAL_UNIT_ID(__u) (dart_create_local_unit(__u))
+#define DART_TEAM_UNIT_ID(__u) (dart_create_team_unit(__u))
 
 
 /**
@@ -192,7 +192,7 @@ dart_global_unit_t dart_create_global_unit(dart_unit_t unit)
  *
  * \ingroup DartTypes
  */
-#define DART_UNDEFINED_LOCAL_UNIT_ID DART_LOCAL_UNIT_ID(DART_UNDEFINED_UNIT_ID)
+#define DART_UNDEFINED_TEAM_UNIT_ID DART_TEAM_UNIT_ID(DART_UNDEFINED_UNIT_ID)
 
 /**
  * A \ref dart_global_unit_t representing an undefined global unit.

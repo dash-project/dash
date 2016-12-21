@@ -968,7 +968,7 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_capacity(
-    team_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
     return _local_capacity;
   }
@@ -984,9 +984,9 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_size(
-    team_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
-    return (unit == UNDEFINED_LOCAL_UNIT_ID)
+    return (unit == UNDEFINED_TEAM_UNIT_ID)
            ? _local_size
            : initialize_local_extent(unit);
   }

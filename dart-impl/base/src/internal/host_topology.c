@@ -169,7 +169,7 @@ dart_ret_t dart__base__host_topology__update_module_locations(
    * leader unit at units 0,1,2: 0
    * leader unit at units 3,4,5: 3
    */
-  dart_team_unit_t       local_leader_unit_id = DART_UNDEFINED_LOCAL_UNIT_ID;
+  dart_team_unit_t       local_leader_unit_id = DART_UNDEFINED_TEAM_UNIT_ID;
   dart_team_unit_t       my_id;
   dart_group_t           leader_group;
   dart_group_t           local_group;

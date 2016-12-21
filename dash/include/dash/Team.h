@@ -572,7 +572,7 @@ private:
   size_t                  _position     = 0;
   size_t                  _num_siblings = 0;
   mutable size_t          _size         = 0;
-  mutable team_unit_t     _myid         = UNDEFINED_LOCAL_UNIT_ID;
+  mutable team_unit_t     _myid         = UNDEFINED_TEAM_UNIT_ID;
   mutable bool            _has_group    = false;
   mutable dart_group_t    _group        = DART_GROUP_NULL;
 

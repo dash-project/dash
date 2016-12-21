@@ -109,7 +109,7 @@ public:
   inline team_unit_t unit_id() const
   {
     return nullptr == _unit_locality
-           ? UNDEFINED_LOCAL_UNIT_ID
+           ? UNDEFINED_TEAM_UNIT_ID
            : team_unit_t(_unit_locality->unit);
   }
 

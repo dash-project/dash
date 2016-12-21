@@ -510,7 +510,7 @@ public:
    * \see  DashPatternConcept
    */
   inline size_type local_capacity(
-    team_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const;
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const;
 
   /**
    * The actual number of elements in this pattern that are local to the
@@ -523,7 +523,7 @@ public:
    * \see  DashPatternConcept
    */
   inline size_type local_size(
-    team_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const;
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const;
 
   /**
    * The maximum number of elements arranged in this pattern.

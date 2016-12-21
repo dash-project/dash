@@ -61,7 +61,7 @@ static dart_ret_t get_shared_mem(dart_team_data_t * team_data,
   int16_t      seg_id            = gptr.segid;
   uint64_t     offset            = gptr.addr_or_offs.offset;
   DART_LOG_DEBUG("dart_get: shared windows enabled");
-  dart_team_unit_t luid = DART_LOCAL_UNIT_ID(gptr.unitid);
+  dart_team_unit_t luid = DART_TEAM_UNIT_ID(gptr.unitid);
   char * baseptr;
   /*
    * Use memcpy if the target is in the same node as the calling unit:
@@ -95,7 +95,7 @@ dart_ret_t dart_get(
   MPI_Win      win;
   MPI_Datatype mpi_dtype         = dart_mpi_datatype(dtype);
   dart_global_unit_t  target_unitid_abs = DART_GLOBAL_UNIT_ID(gptr.unitid);
-  dart_team_unit_t    target_unitid_rel = DART_LOCAL_UNIT_ID(target_unitid_abs.id);
+  dart_team_unit_t    target_unitid_rel = DART_TEAM_UNIT_ID(target_unitid_abs.id);
   uint64_t     offset            = gptr.addr_or_offs.offset;
   int16_t      seg_id            = gptr.segid;
 
@@ -426,7 +426,7 @@ dart_ret_t dart_get_handle(
   MPI_Datatype mpi_type = dart_mpi_datatype(dtype);
   MPI_Win      win;
   dart_global_unit_t  target_unitid_abs = DART_GLOBAL_UNIT_ID(gptr.unitid);
-  dart_team_unit_t    target_unitid_rel = DART_LOCAL_UNIT_ID(target_unitid_abs.id);
+  dart_team_unit_t    target_unitid_rel = DART_TEAM_UNIT_ID(target_unitid_abs.id);
   int          mpi_ret;
   uint64_t     offset = gptr.addr_or_offs.offset;
   int16_t      seg_id = gptr.segid;
@@ -681,7 +681,7 @@ dart_ret_t dart_put_blocking(
                disp_rel;
   MPI_Datatype mpi_dtype         = dart_mpi_datatype(dtype);
   dart_global_unit_t  target_unitid_abs = DART_GLOBAL_UNIT_ID(gptr.unitid);
-  dart_team_unit_t    target_unitid_rel = DART_LOCAL_UNIT_ID(gptr.unitid);
+  dart_team_unit_t    target_unitid_rel = DART_TEAM_UNIT_ID(gptr.unitid);
   uint64_t     offset = gptr.addr_or_offs.offset;
   int16_t      seg_id = gptr.segid;
 
@@ -809,7 +809,7 @@ dart_ret_t dart_get_blocking(
                disp_rel;
   MPI_Datatype mpi_dtype         = dart_mpi_datatype(dtype);
   dart_global_unit_t  target_unitid_abs = DART_GLOBAL_UNIT_ID(gptr.unitid);
-  dart_team_unit_t    target_unitid_rel = DART_LOCAL_UNIT_ID(gptr.unitid);
+  dart_team_unit_t    target_unitid_rel = DART_TEAM_UNIT_ID(gptr.unitid);
   uint64_t     offset            = gptr.addr_or_offs.offset;
   int16_t      seg_id            = gptr.segid;
 

@@ -669,10 +669,10 @@ dart_ret_t dart_team_create(
         dart_unit_mapping);
 
       for (n = 0; n < size; n++) {
-        team_data->sharedmem_tab[n] = DART_UNDEFINED_LOCAL_UNIT_ID;
+        team_data->sharedmem_tab[n] = DART_UNDEFINED_TEAM_UNIT_ID;
       }
       for (i = 0; i < team_data->sharedmem_nodesize; i++) {
-        team_data->sharedmem_tab[dart_unit_mapping[i]] = DART_LOCAL_UNIT_ID(i);
+        team_data->sharedmem_tab[dart_unit_mapping[i]] = DART_TEAM_UNIT_ID(i);
       }
       free(sharedmem_ranks);
       free(dart_unit_mapping);

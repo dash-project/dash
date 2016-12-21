@@ -52,7 +52,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 		MPI_Win_sync (dart_win_local_alloc);
 	}
 
-	dart_bcast(&gptr_tail, sizeof(dart_gptr_t), DART_TYPE_BYTE, DART_LOCAL_UNIT_ID(0), teamid);
+	dart_bcast(&gptr_tail, sizeof(dart_gptr_t), DART_TYPE_BYTE, DART_TEAM_UNIT_ID(0), teamid);
 
 	/* Create a global memory region across the teamid,
 	 * and every local memory segment related certain unit
@@ -119,7 +119,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
   /* If there was a previous tail (predecessor), update the previous tail's next pointer with unitid
    * and wait for notification from its predecessor. */
   if (*predecessor != -1) {
-    if (dart_segment_get_disp(seg_id, DART_LOCAL_UNIT_ID(*predecessor), &disp_list) != DART_OK) {
+    if (dart_segment_get_disp(seg_id, DART_TEAM_UNIT_ID(*predecessor), &disp_list) != DART_OK) {
       return DART_ERR_INVAL;
     }
     win = dart_team_data[index].window;

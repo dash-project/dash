@@ -179,7 +179,7 @@ global_unit_t;
  *
  * This is a typed version of \ref DART_UNDEFINED_UNIT_ID.
  */
-constexpr team_unit_t    UNDEFINED_LOCAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
+constexpr team_unit_t    UNDEFINED_TEAM_UNIT_ID{DART_UNDEFINED_UNIT_ID};
 
 /**
  * Invalid global unit ID.

@@ -193,7 +193,7 @@ dart_ret_t dart_init(
       sharedmem_ranks[i] = i;
     }
     for (i = 0; i < size; i++) {
-      team_data->sharedmem_tab[i] = DART_UNDEFINED_LOCAL_UNIT_ID;
+      team_data->sharedmem_tab[i] = DART_UNDEFINED_TEAM_UNIT_ID;
     }
 
     /* Generate the set (dart_unit_mapping) of units with absolute IDs,
