@@ -94,7 +94,7 @@ public:
     local_pointer;
 
   typedef struct {
-    local_unit_t unit;
+    team_unit_t unit;
     index_type   index;
   } local_index;
 
@@ -179,7 +179,7 @@ public:
    */
   GlobBucketIter(
     globmem_type * gmem,
-    local_unit_t   unit,
+    team_unit_t    unit,
 	  index_type     local_index)
   : _globmem(gmem),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),
@@ -672,9 +672,9 @@ private:
   /// Maximum position allowed for this iterator.
   index_type                     _max_idx            = 0;
   /// Unit id of the active unit.
-  local_unit_t                   _myid;
+  team_unit_t                    _myid;
   /// Unit id at the iterator's current position.
-  local_unit_t                   _idx_unit_id;
+  team_unit_t                    _idx_unit_id;
   /// Logical offset in local index space at the iterator's current position.
   index_type                     _idx_local_idx      = -1;
   /// Local bucket index at the iterator's current position.

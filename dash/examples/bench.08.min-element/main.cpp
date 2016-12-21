@@ -214,7 +214,7 @@ measurement perform_test(
   auto myid = pattern.team().myid();
 
   ElementType min_value_exp   = 17;
-  dash::local_unit_t min_value_unit(std::max((arr.team().size() / 2) - 1, size_t(0)));
+  dash::team_unit_t min_value_unit(std::max((arr.team().size() / 2) - 1, size_t(0)));
 
   DASH_LOG_DEBUG("perform_test.verify",
                  "num.elem:",         NELEM,
@@ -467,7 +467,7 @@ void print_local_sizes(
 
   bench_cfg.print_section_start("Data Partitioning");
   bench_cfg.print_param("global", "cpu  mbw  ldw", pattern.size());
-  for (dash::local_unit_t u{0}; u < pattern.team().size(); u++) {
+  for (dash::team_unit_t u{0}; u < pattern.team().size(); u++) {
     std::ostringstream uss;
     uss << "u:" << setw(4) << u;
 

@@ -440,7 +440,7 @@ public:
   template<typename IndexType>
   dash::GlobPtr<value_type> at(
     /// The unit id
-    local_unit_t unit,
+    team_unit_t unit,
     /// The unit's local address offset
     IndexType   local_index) const
   {
@@ -458,7 +458,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobMem.at", gptr.unitid);
     // Resolve local unit id from global unit id in global pointer:
 //    dart_team_unit_g2l(_teamid, gptr.unitid, &lunit);
-    local_unit_t lunit = _team.relative_id(gunit);
+    team_unit_t lunit = _team.relative_id(gunit);
     DASH_LOG_TRACE_VAR("GlobMem.at", lunit);
     lunit = (lunit + unit) % _nunits;
     DASH_LOG_TRACE_VAR("GlobMem.at", lunit);

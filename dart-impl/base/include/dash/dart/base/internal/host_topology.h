@@ -82,7 +82,7 @@ dart_ret_t dart__base__host_topology__node_module(
 dart_ret_t dart__base__host_topology__node_units(
   dart_host_topology_t  * topo,
   const char            * node_hostname,
-  dart_unit_t          ** units,
+  dart_global_unit_t   ** units,
   int                   * num_units);
 
 /* Queries domain data for host exactly matching the specified host

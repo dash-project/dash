@@ -135,7 +135,7 @@ protected:
   /// Maximum position allowed for this iterator.
   index_type             _max_idx         = 0;
   /// Unit id of the active unit
-  local_unit_t           _myid;
+  team_unit_t            _myid;
   /// Pointer to first element in local memory
   local_pointer          _lbegin          = nullptr;
 
@@ -222,7 +222,7 @@ public:
     DASH_LOG_TRACE_VAR("GlobIter.GlobPtr >", local_pos.index);
     // Create global pointer from unit and local offset:
     PointerType gptr(
-      _globmem->at(local_unit_t(local_pos.unit), local_pos.index)
+      _globmem->at(team_unit_t(local_pos.unit), local_pos.index)
     );
     return gptr + offset;
   }
@@ -258,7 +258,7 @@ public:
     // Global pointer to element at given position:
     dash::GlobPtr<ElementType, PatternType> gptr(
       _globmem->at(
-        local_unit_t(local_pos.unit),
+        team_unit_t(local_pos.unit),
         local_pos.index)
     );
     DASH_LOG_TRACE_VAR("GlobIter.dart_gptr >", gptr);

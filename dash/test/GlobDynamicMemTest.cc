@@ -189,7 +189,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
                  "testing basic iterator arithmetic completed");
 
   // Test memory space of units separately:
-  for (dash::local_unit_t unit{0}; unit < dash::Team::All().size();
+  for (dash::team_unit_t unit{0}; unit < dash::Team::All().size();
        ++unit) {
     if (dash::myid() != unit) {
       auto unit_git_begin = gdmem.at(unit, 0);
@@ -242,7 +242,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
                  "testing reverse iteration");
 
   // Test memory space of all units by iterating global index space:
-  dash::local_unit_t unit(dash::Team::All().size() - 1);
+  dash::team_unit_t unit(dash::Team::All().size() - 1);
   auto local_offset = gdmem.local_size(unit) - 1;
   // Invert order to test reverse iterators:
   auto rgend        = gdmem.rend();
@@ -523,7 +523,7 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
   // Wait for initialization of local values of all units:
   dash::barrier();
 
-  for (dash::local_unit_t u{0}; u < dash::size(); ++u) {
+  for (dash::team_unit_t u{0}; u < dash::size(); ++u) {
     if (dash::myid() != dash::global_unit_t(u)) {
       size_t  nlocal_expect = initial_local_capacity;
       size_t  nlocal_elem   = gdmem.local_size(u);
@@ -549,12 +549,12 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
 
   // Changed sizes of memory spaces are visible to all units after commit:
   EXPECT_EQ_U(initial_local_capacity + unit_0_num_grow,
-              gdmem.local_size(dash::local_unit_t{0}));
+              gdmem.local_size(dash::team_unit_t{0}));
   EXPECT_EQ_U(initial_local_capacity - unit_1_num_shrink,
-              gdmem.local_size(dash::local_unit_t{1}));
+              gdmem.local_size(dash::team_unit_t{1}));
 
   // Validate values after commit:
-  for (dash::local_unit_t u{0}; u < dash::size(); ++u) {
+  for (dash::team_unit_t u{0}; u < dash::size(); ++u) {
     if (dash::myid() != dash::global_unit_t(u)) {
       size_t  nlocal_elem   = gdmem.local_size(u);
       size_t  nlocal_expect = initial_local_capacity;

@@ -512,13 +512,9 @@ dash::util::LocalityDomain::init(
   DASH_LOG_TRACE("LocalityDomain.init",
                  "num_units:", _domain->num_units);
   if (_domain->num_units > 0) {
-    // TODO[TF]: T'is to make the compiler happy,
-    //           is the conversion local->global IDs correct?
-    //           Why do we even create a copy of the units?
-    // fuchsto:  The underlying domain might be modified, but we
-    //           have to store the unit IDs in the original domain
-    //           configuration. So we save the initial unit IDs
-    //           here.
+    // The underlying domain might be modified, but we
+    // have to store the unit IDs in the original domain
+    // configuration. So we save the initial unit IDs here.
     _unit_ids.insert(_unit_ids.end(),
                      _domain->unit_ids,
                      _domain->unit_ids + _domain->num_units);

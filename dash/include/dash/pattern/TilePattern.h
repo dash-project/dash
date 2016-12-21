@@ -108,11 +108,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    local_unit_t unit;
+    team_unit_t unit;
     IndexType   index;
   } local_index_t;
   typedef struct {
-    local_unit_t unit;
+    team_unit_t unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -125,7 +125,7 @@ private:
   /// Team containing the units to which the patterns element are mapped
   dash::Team                * _team            = nullptr;
   /// The active unit's id.
-  local_unit_t                 _myid;
+  team_unit_t                  _myid;
   /// Cartesian arrangement of units within the team
   TeamSpec_t                  _teamspec;
   /// The global layout of the pattern's elements in memory respective to
@@ -466,7 +466,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  local_unit_t unit_at(
+  team_unit_t unit_at(
     /// Absolute coordinates of the point relative to the given view.
     const std::array<IndexType, NumDimensions> & coords,
     /// View specification (offsets) of the coordinates.
@@ -485,7 +485,7 @@ public:
       block_coords[d]   = vs_coord / _blocksize_spec.extent(d);
       unit_ts_coords[d] = block_coords[d] % _teamspec.extent(d);
     }
-    local_unit_t unit_id(_teamspec.at(unit_ts_coords));
+    team_unit_t unit_id(_teamspec.at(unit_ts_coords));
     DASH_LOG_TRACE_VAR("TilePattern.unit_at", block_coords);
     DASH_LOG_TRACE_VAR("TilePattern.unit_at", unit_ts_coords);
     DASH_LOG_TRACE_VAR("TilePattern.unit_at >", unit_id);
@@ -497,7 +497,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  local_unit_t unit_at(
+  team_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & coords) const
   {
     DASH_LOG_TRACE("TilePattern.unit_at()",
@@ -511,7 +511,7 @@ public:
       block_coords[d]   = coords[d] / _blocksize_spec.extent(d);
       unit_ts_coords[d] = block_coords[d] % _teamspec.extent(d);
     }
-    local_unit_t unit_id(_teamspec.at(unit_ts_coords));
+    team_unit_t unit_id(_teamspec.at(unit_ts_coords));
     DASH_LOG_TRACE_VAR("TilePattern.unit_at", block_coords);
     DASH_LOG_TRACE_VAR("TilePattern.unit_at", unit_ts_coords);
     DASH_LOG_TRACE_VAR("TilePattern.unit_at >", unit_id);
@@ -523,7 +523,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  local_unit_t unit_at(
+  team_unit_t unit_at(
     /// Global linear element offset
     IndexType global_pos,
     /// View to apply global position
@@ -538,7 +538,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  local_unit_t unit_at(
+  team_unit_t unit_at(
     /// Global linear element offset
     IndexType global_pos) const
   {
@@ -605,7 +605,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<SizeType, NumDimensions> local_extents(
-      local_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const
+      team_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const
   {
     if (unit == UNDEFINED_LOCAL_UNIT_ID) {
       unit = _myid;
@@ -826,7 +826,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<IndexType, NumDimensions> global(
-    local_unit_t unit,
+    team_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const
   {
     DASH_LOG_DEBUG("TilePattern.global()",
@@ -907,7 +907,7 @@ public:
    * \see  DashPatternConcept
    */
   IndexType global_index(
-    local_unit_t unit,
+    team_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const
   {
     DASH_LOG_TRACE("TilePattern.global_index()",
@@ -1119,7 +1119,7 @@ public:
     /// Offset in dimension
     IndexType dim_offset,
     /// DART id of the unit
-    local_unit_t unit,
+    team_unit_t unit,
     /// Viewspec to apply
     const ViewSpec_t & viewspec) const
   {
@@ -1150,7 +1150,7 @@ public:
    */
   bool is_local(
     IndexType    index,
-    local_unit_t unit) const
+    team_unit_t unit) const
   {
     auto glob_coords = coords(index);
     auto coords_unit = unit_at(glob_coords);
@@ -1301,7 +1301,7 @@ public:
    * \see  DashPatternConcept
    */
   ViewSpec_t local_block(
-    local_unit_t unit,
+    team_unit_t unit,
     index_type   local_block_index) const
   {
     DASH_LOG_TRACE("TilePattern.local_block()",
@@ -1402,7 +1402,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_capacity(local_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const {
+  SizeType local_capacity(team_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const {
     return local_size();
   }
 
@@ -1416,7 +1416,7 @@ public:
    *
    * \see  DashPatternConcept
    */
-  SizeType local_size(local_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const {
+  SizeType local_size(team_unit_t unit = UNDEFINED_LOCAL_UNIT_ID) const {
     if (unit == UNDEFINED_LOCAL_UNIT_ID) {
       return _local_memory_layout.size();
     }
@@ -1623,7 +1623,7 @@ private:
     const BlockSpec_t     & blockspec,
     const BlockSizeSpec_t & blocksizespec,
     const TeamSpec_t      & teamspec,
-    local_unit_t             unit_id = UNDEFINED_LOCAL_UNIT_ID) const
+    team_unit_t              unit_id = UNDEFINED_LOCAL_UNIT_ID) const
   {
     DASH_LOG_TRACE_VAR("TilePattern.init_local_blockspec()",
                        blockspec.extents());
@@ -1701,7 +1701,7 @@ private:
    * Resolve extents of local memory layout for a specified unit.
    */
   std::array<SizeType, NumDimensions> initialize_local_extents(
-    local_unit_t unit) const
+    team_unit_t unit) const
   {
     // Coordinates of local unit id in team spec:
     DASH_LOG_DEBUG_VAR("TilePattern.init_local_extents()", unit);

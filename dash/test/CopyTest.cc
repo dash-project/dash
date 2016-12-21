@@ -150,7 +150,7 @@ TEST_F(CopyTest, Blocking2DimGlobalToLocalBlock)
   //
   // Create local copy of all blocks from a single remote unit:
   //
-  dash::local_unit_t remote_unit_id(
+  dash::team_unit_t remote_unit_id(
                        (dash::Team::All().myid().id + 1) % _dash_size);
   LOG_MESSAGE("Creating local copy of blocks at remote unit %d",
               remote_unit_id.id);

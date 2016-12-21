@@ -722,7 +722,7 @@ TEST_F(MatrixTest, StorageOrder)
 
 TEST_F(MatrixTest, DelayedAlloc)
 {
-  dash::local_unit_t myid(dash::myid());
+  dash::team_unit_t myid(dash::myid());
   auto num_units   = dash::size();
 
   if (num_units < 4) {

@@ -158,8 +158,8 @@ inline dart_storage_t dart_storage(int nvalues) {
  * \see global_unit_t
  */
 typedef struct
-dash::unit_id<dash::local_unit, dart_local_unit_t>
-local_unit_t;
+dash::unit_id<dash::local_unit, dart_team_unit_t>
+team_unit_t;
 
 /**
  * Unit ID to use for global IDs.
@@ -168,7 +168,7 @@ local_unit_t;
  * and \c dash::Team::GlobalUnitID().
  *
  * \see unit_id
- * \see local_unit_t
+ * \see team_unit_t
  */
 typedef struct
 dash::unit_id<dash::global_unit, dart_global_unit_t>
@@ -179,7 +179,7 @@ global_unit_t;
  *
  * This is a typed version of \ref DART_UNDEFINED_UNIT_ID.
  */
-constexpr local_unit_t   UNDEFINED_LOCAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
+constexpr team_unit_t    UNDEFINED_LOCAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
 
 /**
  * Invalid global unit ID.

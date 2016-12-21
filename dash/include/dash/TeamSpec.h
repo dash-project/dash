@@ -274,16 +274,16 @@ public:
    * \code
    *   TeamSpec<2> teamspec(7,4);
    *   // west neighbor is offset -1 in column dimension:
-   *   local_unit_t neighbor_west = teamspec.neigbor({ 0, -1 });
+   *   team_unit_t neighbor_west = teamspec.neigbor({ 0, -1 });
    *   // second south neighbor is offset -2 in row dimension:
-   *   local_unit_t neighbor_west = teamspec.neigbor({ -2, 0 });
+   *   team_unit_t neighbor_west = teamspec.neigbor({ -2, 0 });
    * \endcode
    *
    * \returns  The unit id at given offset in the team grid, relative to the
    *           active unit's position in the team, or DART_UNDEFINED_UNIT_ID
    *           if the offset is out of bounds.
    */
-  local_unit_t neighbor(std::initializer_list<int> offsets) const
+  team_unit_t neighbor(std::initializer_list<int> offsets) const
   {
     auto neighbor_coords = this->coords(_myid);
     dim_t d = 0;
@@ -309,11 +309,11 @@ public:
    *   // assuming dash::myid() == 1, i.e. team spec coordinates are (0,1)
    *   TeamSpec<2> teamspec(2,2);
    *   // west neighbor is offset -1 in column dimension:
-   *   local_unit_t neighbor_west = teamspec.neigbor_periodic({ 0, -1 });
+   *   team_unit_t neighbor_west = teamspec.neigbor_periodic({ 0, -1 });
    *   // -> unit 0
    *   // second south neighbor at offset -2 in row dimension wraps around
    *   // to row coordinate 0:
-   *   local_unit_t neighbor_west = teamspec.neigbor_periodic({ -2, 0 });
+   *   team_unit_t neighbor_west = teamspec.neigbor_periodic({ -2, 0 });
    *   // -> unit 1
    * \endcode
    *
@@ -322,7 +322,7 @@ public:
    *           If an offset is out of bounds, it is wrapped around in the
    *           respective dimension as in a torus topology.
    */
-  local_unit_t periodic_neighbor(std::initializer_list<int> offsets) const
+  team_unit_t periodic_neighbor(std::initializer_list<int> offsets) const
   {
     auto neighbor_coords = this->coords(_myid);
     dim_t d = 0;
@@ -433,7 +433,7 @@ protected:
   /// Whether the team spec is linear
   bool  _is_linear  = false;
   /// Unit id of active unit
-  local_unit_t _myid;
+  team_unit_t _myid;
 
 }; // class TeamSpec
 

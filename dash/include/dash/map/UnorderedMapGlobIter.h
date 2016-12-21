@@ -93,7 +93,7 @@ public:
     local_pointer;
 
   typedef struct {
-    local_unit_t unit;
+    team_unit_t unit;
     index_type  index;
   } local_index;
 
@@ -128,7 +128,7 @@ public:
    */
   UnorderedMapGlobIter(
     map_t         * map,
-    local_unit_t    unit,
+    team_unit_t     unit,
     index_type      local_index)
   : _map(map),
     _idx(0),
@@ -543,9 +543,9 @@ private:
   /// Current position of the iterator in global canonical index space.
   index_type               _idx           = -1;
   /// Unit id of the active unit.
-  local_unit_t             _myid;
+  team_unit_t              _myid;
   /// Unit id at the iterator's current position.
-  local_unit_t             _idx_unit_id;
+  team_unit_t              _idx_unit_id;
   /// Logical offset in local index space at the iterator's current position.
   index_type               _idx_local_idx = -1;
   /// Whether the iterator represents a null pointer.

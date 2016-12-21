@@ -139,8 +139,6 @@ std::ostream & operator<<(
 dart_unit_locality_t   * Locality::_unit_loc = nullptr;
 dart_domain_locality_t * Locality::_team_loc = nullptr;
 
-// TODO[TF]: T'is to make the compiler happy. domain->unit_ids[u] is already a global ID!
-//             Please fix this function!
 static void print_domain(
   std::ostream                 & ostr,
   dart_team_t                    team,
@@ -162,12 +160,8 @@ static void print_domain(
 
   if (domain->num_units > 0) {
     ostr << indent << "units:   " << "{ ";
-    for (local_unit_t u{0}; u < domain->num_units; ++u) {
-      dart_unit_t g_unit_id;
-      // TODO[TF]: T'is to make the compiler happy. domain->unit_ids[u] is already a global ID!
-//      dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
-      g_unit_id = domain->unit_ids[u].id;
-      ostr << g_unit_id;
+    for (team_unit_t u{0}; u < domain->num_units; ++u) {
+      ostr << domain->unit_ids[u].id;
       if (u < domain->num_units-1) {
         ostr << ", ";
       }
@@ -180,7 +174,7 @@ static void print_domain(
     uindent += std::string(9, ' ');
 
     for (int u = 0; u < domain->num_units; ++u) {
-      dart_local_unit_t      unit_lid;
+      dart_team_unit_t        unit_lid;
       dart_global_unit_t     unit_gid = domain->unit_ids[u];
       dart_unit_locality_t * uloc;
 

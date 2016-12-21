@@ -248,7 +248,7 @@ dart_ret_t dart_domain_group(
 
 dart_ret_t dart_unit_locality(
   dart_team_t                     team,
-  dart_local_unit_t               unit,
+  dart_team_unit_t                unit,
   dart_unit_locality_t         ** locality)
 {
   DART_LOG_DEBUG("dart_unit_locality() team(%d) unit(%d)", team, unit.id);

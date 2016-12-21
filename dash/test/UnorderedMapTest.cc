@@ -337,8 +337,8 @@ struct HashCyclic
   : _nunits(team.size())
   { }
 
-  dash::local_unit_t operator()(const Key & key) {
-    return dash::local_unit_t(key % _nunits);
+  dash::team_unit_t operator()(const Key & key) {
+    return dash::team_unit_t(key % _nunits);
   }
 
 private:

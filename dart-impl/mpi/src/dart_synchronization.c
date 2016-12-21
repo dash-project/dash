@@ -27,7 +27,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 {
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
-	dart_local_unit_t unitid;
+	dart_team_unit_t unitid;
 	dart_global_unit_t myid;
 	int32_t *addr;
 
@@ -81,7 +81,7 @@ dart_ret_t dart_team_lock_init (dart_team_t teamid, dart_lock_t* lock)
 
 dart_ret_t dart_lock_acquire (dart_lock_t lock)
 {
-	dart_local_unit_t unitid;
+	dart_team_unit_t unitid;
 	dart_team_myid (lock->teamid, &unitid);
 
 	if (lock -> is_acquired == 1)
@@ -144,7 +144,7 @@ dart_ret_t dart_lock_acquire (dart_lock_t lock)
 
 dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 {
-	dart_local_unit_t unitid;
+	dart_team_unit_t unitid;
 	dart_team_myid(lock->teamid, &unitid);
 	if (lock -> is_acquired == 1)
 	{
@@ -182,7 +182,7 @@ dart_ret_t dart_lock_try_acquire (dart_lock_t lock, int32_t *is_acquired)
 
 dart_ret_t dart_lock_release (dart_lock_t lock)
 {
-  dart_local_unit_t unitid;
+  dart_team_unit_t unitid;
   dart_team_myid(lock->teamid, &unitid);
   if (lock -> is_acquired == 0) {
     printf("Warning: RELEASE	- %2d has not yet required the lock\n", unitid.id);
@@ -256,7 +256,7 @@ dart_ret_t dart_team_lock_free (dart_team_t teamid, dart_lock_t* lock)
 {
 	dart_gptr_t gptr_tail;
 	dart_gptr_t gptr_list;
-	dart_local_unit_t unitid;
+	dart_team_unit_t unitid;
 	DART_GPTR_COPY(gptr_tail, (*lock) -> gptr_tail);
 	DART_GPTR_COPY(gptr_list, (*lock) -> gptr_list);
 

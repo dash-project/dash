@@ -358,11 +358,11 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
    * TODO[JS] The following two functions don't seem to be implemented.
    */
   inline const GlobRef<ElementT> local_at(
-    local_unit_t unit,
+    team_unit_t unit,
     index_type   elem) const;
 
   inline GlobRef<ElementT> local_at(
-    local_unit_t unit,
+    team_unit_t unit,
     index_type   elem);
 
   inline bool is_local() const;

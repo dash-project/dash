@@ -169,7 +169,7 @@ typedef struct dart_team_data {
   /**
    * @brief Hash table to determine the units who are located in the same node.
    */
-  dart_local_unit_t *sharedmem_tab;
+  dart_team_unit_t *sharedmem_tab;
 
   /**
    *  @brief Size of the node's communicator.

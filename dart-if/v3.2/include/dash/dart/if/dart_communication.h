@@ -63,7 +63,7 @@ dart_ret_t dart_bcast(
   void              * buf,
   size_t              nelem,
   dart_datatype_t     dtype,
-  dart_local_unit_t   root,
+  dart_team_unit_t    root,
   dart_team_t         team);
 
 /**
@@ -87,7 +87,7 @@ dart_ret_t dart_scatter(
   void               * recvbuf,
   size_t               nelem,
   dart_datatype_t      dtype,
-  dart_local_unit_t    root,
+  dart_team_unit_t     root,
   dart_team_t          team);
 
 /**
@@ -111,7 +111,7 @@ dart_ret_t dart_gather(
   void              * recvbuf,
   size_t              nelem,
   dart_datatype_t     dtype,
-  dart_local_unit_t   root,
+  dart_team_unit_t    root,
   dart_team_t         team);
 
 /**
@@ -208,7 +208,7 @@ dart_ret_t dart_reduce(
   size_t              nelem,
   dart_datatype_t     dtype,
   dart_operation_t    op,
-  dart_local_unit_t   root,
+  dart_team_unit_t    root,
   dart_team_t         team);
 
 /**

@@ -715,8 +715,7 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
 
   int num_scopes = 0;
   dart_unit_locality_t * module_leader_unit_loc;
-  /* TODO[TF] T'is to make the compiler happy, please fix! */
-  dart_local_unit_t unit_id; // = {module_domain->unit_ids[0].id};
+  dart_team_unit_t unit_id;
   DART_ASSERT_RETURNS(
     dart_team_unit_g2l(module_domain->team, module_domain->unit_ids[0],
                        &unit_id),
@@ -769,9 +768,8 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
    */
   int gid_idx = 0;
   for (int u_idx = 0; u_idx < module_domain->num_units; u_idx++) {
-    /* TODO[TF] T'is to make the compiler happy, please fix! */
     dart_global_unit_t unit_gid = module_domain->unit_ids[u_idx];
-    dart_local_unit_t  unit_lid;
+    dart_team_unit_t   unit_lid;
     DART_ASSERT_RETURNS(
       dart_team_unit_g2l(module_domain->team, unit_gid, &unit_lid),
       DART_OK);
@@ -872,9 +870,8 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
     subdomain->unit_ids  = malloc(module_domain->num_units *
                                          sizeof(dart_unit_t));
     for (int u_idx = 0; u_idx < module_domain->num_units; u_idx++) {
-      /* TODO[TF] T'is to make the compiler happy, please fix! */
       dart_global_unit_t unit_gid = module_domain->unit_ids[u_idx];
-      dart_local_unit_t  unit_lid;
+      dart_team_unit_t   unit_lid;
       DART_ASSERT_RETURNS(
         dart_team_unit_g2l(module_domain->team, unit_gid, &unit_lid),
         DART_OK);
@@ -894,7 +891,6 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
 
       if (unit_loc->hwinfo.scopes[subdomain_gid_idx].index ==
           subdomain->global_index) {
-        /* TODO[TF] T'is to make the compiler happy, please fix! */
         subdomain->unit_ids[subdomain->num_units] = unit_gid;
         subdomain->num_units++;
       }
@@ -931,9 +927,8 @@ dart_ret_t dart__base__locality__domain__create_module_subdomains(
        *       physical core.
        */
       for (int u_idx = 0; u_idx < subdomain->num_units; u_idx++) {
-        /* TODO[TF] T'is to make the compiler happy, please fix! */
         dart_global_unit_t unit_gid = subdomain->unit_ids[u_idx];
-        dart_local_unit_t  unit_lid;
+        dart_team_unit_t   unit_lid;
         DART_ASSERT_RETURNS(
           dart_team_unit_g2l(subdomain->team, unit_gid, &unit_lid),
           DART_OK);

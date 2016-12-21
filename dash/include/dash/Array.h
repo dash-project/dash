@@ -1293,7 +1293,7 @@ private:
   /// Team containing all units interacting with the array
   dash::Team         * m_team      = nullptr;
   /// DART id of the unit that created the array
-  local_unit_t         m_myid;
+  team_unit_t          m_myid;
   /// Element distribution pattern
   PatternType          m_pattern;
   /// Global memory allocation and -access

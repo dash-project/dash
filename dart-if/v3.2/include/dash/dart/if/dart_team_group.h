@@ -424,7 +424,7 @@ dart_ret_t dart_team_clone(dart_team_t team, dart_team_t *newteam);
  * \threadsafe_none
  * \ingroup DartGroupTeam
  */
-dart_ret_t dart_team_myid(dart_team_t teamid, dart_local_unit_t *myid);
+dart_ret_t dart_team_myid(dart_team_t teamid, dart_team_unit_t *myid);
 
 /**
  * Return the size of the specified team.
@@ -478,7 +478,7 @@ dart_ret_t dart_size(size_t *size);
  * \ingroup DartGroupTeam
  */
 dart_ret_t dart_team_unit_l2g(dart_team_t          team,
-                              dart_local_unit_t    localid,
+                              dart_team_unit_t     localid,
                               dart_global_unit_t * globalid);
 
 /**
@@ -496,7 +496,7 @@ dart_ret_t dart_team_unit_l2g(dart_team_t          team,
  */
 dart_ret_t dart_team_unit_g2l(dart_team_t         team,
                               dart_global_unit_t  globalid,
-                              dart_local_unit_t * localid);
+                              dart_team_unit_t * localid);
 
 /** \} */
 

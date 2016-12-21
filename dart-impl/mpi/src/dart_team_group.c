@@ -759,7 +759,7 @@ dart_ret_t dart_size(size_t *size)
 
 dart_ret_t dart_team_myid(
   dart_team_t         teamid,
-  dart_local_unit_t * unitid)
+  dart_team_unit_t * unitid)
 {
   MPI_Comm comm;
   uint16_t index;
@@ -798,7 +798,7 @@ dart_ret_t dart_team_size(
 
 dart_ret_t dart_team_unit_l2g(
   dart_team_t          teamid,
-  dart_local_unit_t    localid,
+  dart_team_unit_t     localid,
   dart_global_unit_t * globalid)
 {
 #if 0
@@ -854,7 +854,7 @@ dart_ret_t dart_team_unit_l2g(
 dart_ret_t dart_team_unit_g2l(
   dart_team_t          teamid,
   dart_global_unit_t   globalid,
-  dart_local_unit_t  * localid)
+  dart_team_unit_t   * localid)
 {
 #if 0
   dart_unit_t *unitids;

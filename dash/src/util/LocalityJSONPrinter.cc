@@ -71,8 +71,6 @@ LocalityJSONPrinter & LocalityJSONPrinter::operator<<(
   return *this;
 }
 
-// TODO[TF]: T'is to make the compiler happy. domain->unit_ids[u] is already a global ID!
-//           Please fix this function!
 LocalityJSONPrinter & LocalityJSONPrinter::print_domain(
   dart_team_t                    team,
   const dart_domain_locality_t * domain,
@@ -115,7 +113,7 @@ LocalityJSONPrinter & LocalityJSONPrinter::print_domain(
 
   if (domain->scope == DART_LOCALITY_SCOPE_CORE) {
     for (int u = 0; u < domain->num_units; ++u) {
-      dart_local_unit_t      unit_lid;
+      dart_team_unit_t        unit_lid;
       dart_global_unit_t     unit_gid = domain->unit_ids[u];
       dart_unit_locality_t * uloc;
 

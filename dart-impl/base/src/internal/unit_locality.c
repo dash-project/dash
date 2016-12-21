@@ -85,7 +85,7 @@ dart_ret_t dart__base__unit_locality__create(
   dart_unit_mapping_t  ** unit_mapping)
 {
   dart_ret_t  ret;
-  dart_local_unit_t myid = DART_UNDEFINED_LOCAL_UNIT_ID;
+  dart_team_unit_t myid = DART_UNDEFINED_LOCAL_UNIT_ID;
   size_t      nunits = 0;
   *unit_mapping      = NULL;
   DART_LOG_DEBUG("dart__base__unit_locality__create()");
@@ -189,7 +189,7 @@ dart_ret_t dart__base__unit_locality__destruct(
  */
 dart_ret_t dart__base__unit_locality__at(
   dart_unit_mapping_t   * unit_mapping,
-  dart_local_unit_t       unit,
+  dart_team_unit_t        unit,
   dart_unit_locality_t ** loc)
 {
   if ((size_t)(unit.id) >= unit_mapping->num_units) {
@@ -219,7 +219,7 @@ dart_ret_t dart__base__unit_locality__local_unit_new(
     DART_LOG_ERROR("dart__base__unit_locality__local_unit_new ! null");
     return DART_ERR_INVAL;
   }
-  dart_local_unit_t myid;
+  dart_team_unit_t myid;
 
   DART_ASSERT_RETURNS(
     dart__base__unit_locality__init(uloc),

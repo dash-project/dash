@@ -32,7 +32,7 @@ private:
 
 public:
   typedef Key          argument_type;
-  typedef local_unit_t result_type;
+  typedef team_unit_t result_type;
 
 public:
   /**
@@ -63,7 +63,7 @@ public:
 private:
   dash::Team * _team   = nullptr;
   size_type    _nunits = 0;
-  local_unit_t  _myid;
+  team_unit_t   _myid;
 }; // class HashLocal
 
 #ifndef DOXYGEN
@@ -699,7 +699,7 @@ private:
    * Insert value at specified unit.
    */
   std::pair<iterator, bool> _insert_at(
-    local_unit_t       unit,
+    team_unit_t        unit,
     /// The element to insert.
     const value_type & value)
   {
@@ -776,7 +776,7 @@ private:
   /// Team containing all units interacting with the map.
   dash::Team           * _team            = nullptr;
   /// DART id of the local unit.
-  local_unit_t           _myid{DART_UNDEFINED_UNIT_ID};
+  team_unit_t            _myid{DART_UNDEFINED_UNIT_ID};
   /// Global memory allocation and -access.
   glob_mem_type        * _globmem         = nullptr;
   /// Iterator to initial element in the map.

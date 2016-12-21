@@ -41,7 +41,7 @@ TEST_F(SeqTilePatternTest, Distribute2DimTile)
     teamspec, dash::Team::All());
 
   dash::util::PatternMetrics<pattern_t> pm(pattern);
-  for (dash::local_unit_t unit{0}; unit < dash::size(); ++unit) {
+  for (dash::team_unit_t unit{0}; unit < dash::size(); ++unit) {
     auto unit_local_blocks = pattern.local_blockspec(unit).size();
     LOG_MESSAGE("Blocks mapped to unit %d: %d",
                 unit.id, unit_local_blocks);

@@ -27,7 +27,7 @@ std::ostream & operator<<(
 static
 std::ostream & operator<<(
   std::ostream & o,
-  dart_local_unit_t uid)
+  dart_team_unit_t uid)
 {
   o << uid.id;
   return o;

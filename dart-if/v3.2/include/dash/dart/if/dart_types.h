@@ -141,21 +141,21 @@ typedef struct dart_local_unit {
   constexpr dart_local_unit(dart_unit_t uid) : id(uid) { }
 #endif
   dart_unit_t id;
-} dart_local_unit_t;
+} dart_team_unit_t;
 
 /**
- * Create a \c dart_local_unit_t from a \ref dart_unit_t.
+ * Create a \c dart_team_unit_t from a \ref dart_unit_t.
  * \ingroup DartTypes
  */
 static inline
-dart_local_unit_t dart_create_local_unit(dart_unit_t unit)
+dart_team_unit_t dart_create_local_unit(dart_unit_t unit)
 {
-  dart_local_unit_t tmp = {unit};
+  dart_team_unit_t tmp = {unit};
   return tmp;
 }
 
 /**
- * Create a \c dart_local_unit_t from a \ref dart_unit_t.
+ * Create a \c dart_team_unit_t from a \ref dart_unit_t.
  *
  * This is a wrapper for \ref dart_create_local_unit.
  *
@@ -186,7 +186,7 @@ dart_global_unit_t dart_create_global_unit(dart_unit_t unit)
 #define DART_GLOBAL_UNIT_ID(__u) (dart_create_global_unit(__u))
 
 /**
- * A \ref dart_local_unit_t representing an undefined team-relative unit.
+ * A \ref dart_team_unit_t representing an undefined team-relative unit.
  *
  * \see DART_UNDEFINED_UNIT_ID
  *
@@ -601,7 +601,7 @@ typedef struct dart_domain_locality_s
  */
 typedef struct {
     /** Unit ID relative to team. */
-    dart_local_unit_t        unit;
+    dart_team_unit_t         unit;
 
     /** Team ID. */
     dart_team_t              team;

@@ -56,8 +56,8 @@ TEST_F(SharedTest, SpecifyOwner)
 
   value_t  value_a     = 1000;
   value_t  value_b     = 2000;
-  dash::local_unit_t l_owner_a(owner_a);
-  dash::local_unit_t l_owner_b(owner_b);
+  dash::team_unit_t l_owner_a(owner_a);
+  dash::team_unit_t l_owner_b(owner_b);
   shared_t shared_at_a(l_owner_a);
   shared_t shared_at_b(l_owner_b);
 

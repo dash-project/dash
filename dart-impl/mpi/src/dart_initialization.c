@@ -182,7 +182,7 @@ dart_ret_t dart_init(
 
 		/* The length of this table is set to be the size
      * of DART_TEAM_ALL. */
-    team_data->sharedmem_tab = (dart_local_unit_t *)malloc(sizeof(dart_local_unit_t) * size);
+    team_data->sharedmem_tab = (dart_team_unit_t *)malloc(sizeof(dart_team_unit_t) * size);
 
     int * dart_unit_mapping = (int *) malloc(
         sizeof(int) * team_data->sharedmem_nodesize);

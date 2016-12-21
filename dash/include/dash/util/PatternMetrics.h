@@ -86,7 +86,7 @@ public:
   /**
    * Number of blocks mapped to given unit.
    */
-  inline int unit_local_blocks(local_unit_t unit) const {
+  inline int unit_local_blocks(team_unit_t unit) const {
     return _unit_blocks[unit];
   }
 

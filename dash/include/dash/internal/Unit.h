@@ -20,7 +20,7 @@ enum unit_scope {
  * in different unit scopes, i.e., global and team-local unit IDs.
  *
  * \see global_unit_t
- * \see local_unit_t
+ * \see team_unit_t
  */
 template <unit_scope IdScope, typename DARTType>
 struct unit_id : public DARTType {
@@ -104,7 +104,7 @@ public:
    *
    * \code
    * dash::global_unit_t g_unit{0};
-   * dash::local_unit_t  l_unit(g_unit);
+   * dash::team_unit_t   l_unit(g_unit);
    * \endcode
    *
    * This explicit conversion is useful for example when

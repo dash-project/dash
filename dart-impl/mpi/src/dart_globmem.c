@@ -395,7 +395,7 @@ dart_ret_t dart_team_memfree(
 #endif
 
 #ifdef DART_ENABLE_LOGGING
-  dart_local_unit_t unitid;
+  dart_team_unit_t unitid;
   dart_team_myid(teamid, &unitid);
 #endif
   DART_LOG_DEBUG("dart_team_memfree: collective free, team unit id: %2d "
@@ -472,7 +472,7 @@ dart_team_memregister_aligned(
   dart_segment_add_info(&item);
   dart_registermemid--;
 #if DART_ENABLE_LOGGING
-  dart_local_unit_t unitid;
+  dart_team_unit_t unitid;
   dart_team_myid(teamid, &unitid);
 #endif
   DART_LOG_DEBUG(
@@ -551,7 +551,7 @@ dart_team_memregister(
   dart_registermemid--;
 
 #ifdef DART_ENABLE_LOGGING
-  dart_local_unit_t unitid;
+  dart_team_unit_t unitid;
   dart_team_myid(teamid, &unitid);
 #endif
   DART_LOG_DEBUG(
@@ -588,7 +588,7 @@ dart_team_memderegister(
   }
 
 #ifdef DART_ENABLE_LOGGING
-  dart_local_unit_t unitid;
+  dart_team_unit_t unitid;
   dart_team_myid(teamid, &unitid);
 #endif
   DART_LOG_DEBUG(

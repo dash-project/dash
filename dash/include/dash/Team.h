@@ -390,29 +390,27 @@ public:
   }
 
   /**
-   * Whether this Team instance is a member of the group with given group
+   * Whether the group associated with this \c Team instance contains
+   * the unit specified by global id.
    * id.
    *
-   * TODO[TF]: Fix mismatch of documentation and code.
-   *
-   * \param   groupId   The id of the group to test for membership
-   * \return  True if and only if this Team instance is member of a group
-   *          with given id
+   * \param   groupId  the id of the group to test for membership
+   * \return  true     if and only if this Team instance is member of a group
+   *                   with given id
    */
-  bool is_member(global_unit_t groupId) const
+  bool is_member(global_unit_t global_unit_id) const
   {
     if(!get_group()) {
       return false;
     }
-    DASH_LOG_DEBUG_VAR("Team.is_member()", groupId);
     int32_t ismember;
     DASH_ASSERT_RETURNS(
       dart_group_ismember(
         _group,
-        groupId,
+        global_unit_id,
         &ismember),
       DART_OK);
-    return ismember;
+    return (0 != ismember);
   }
 
   inline Team & parent()
@@ -449,7 +447,7 @@ public:
     }
   }
 
-  inline local_unit_t myid() const
+  inline team_unit_t myid() const
   {
     if (_myid == -1 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
@@ -510,10 +508,10 @@ public:
     return _position;
   }
 
-  inline local_unit_t relative_id(
+  inline team_unit_t relative_id(
     global_unit_t global_id)
   {
-    local_unit_t luid;
+    team_unit_t luid;
     DASH_ASSERT_RETURNS(
       dart_team_unit_g2l(
         _dartid,
@@ -527,7 +525,7 @@ public:
    * Global unit id of specified local unit id.
    */
   inline global_unit_t global_id(
-    local_unit_t local_id)
+    team_unit_t local_id)
   {
     global_unit_t g_id;
     DASH_ASSERT_RETURNS(
@@ -574,7 +572,7 @@ private:
   size_t                  _position     = 0;
   size_t                  _num_siblings = 0;
   mutable size_t          _size         = 0;
-  mutable local_unit_t    _myid         = UNDEFINED_LOCAL_UNIT_ID;
+  mutable team_unit_t     _myid         = UNDEFINED_LOCAL_UNIT_ID;
   mutable bool            _has_group    = false;
   mutable dart_group_t    _group        = DART_GROUP_NULL;
 

@@ -84,7 +84,7 @@ public:
     local_pointer;
 
   typedef struct {
-    local_unit_t unit;
+    team_unit_t unit;
     index_type   index;
   } local_index;
 
@@ -159,7 +159,7 @@ public:
    */
   GlobBucketIter(
     GlobMemType * gmem,
-    local_unit_t  unit,
+    team_unit_t   unit,
 	  index_type    local_index)
   : _globmem(gmem),
     _bucket_cumul_sizes(&_globmem->_bucket_cumul_sizes),

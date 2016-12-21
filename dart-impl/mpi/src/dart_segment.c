@@ -206,7 +206,7 @@ dart_ret_t dart_segment_get_win(int16_t seg_id, MPI_Win * win)
 #endif
 
 dart_ret_t dart_segment_get_disp(int16_t             seg_id,
-                                 dart_local_unit_t   rel_unitid,
+                                 dart_team_unit_t    rel_unitid,
                                  MPI_Aint          * disp_s)
 {
   MPI_Aint trans_disp = 0;
@@ -231,7 +231,7 @@ dart_ret_t dart_segment_get_disp(int16_t             seg_id,
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_segment_get_baseptr(
   int16_t               seg_id,
-  dart_local_unit_t     rel_unitid,
+  dart_team_unit_t      rel_unitid,
   char              **  baseptr_s)
 {
   dart_segment_t *segment = get_segment(seg_id);

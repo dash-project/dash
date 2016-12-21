@@ -27,7 +27,7 @@ private:
 
 public:
   typedef Key                argument_type;
-  typedef dash::local_unit_t result_type;
+  typedef dash::team_unit_t result_type;
 
 public:
   /**
@@ -61,7 +61,7 @@ public:
 private:
   dash::Team * _team   = nullptr;
   size_type    _nunits = 0;
-  dash::local_unit_t _myid;
+  dash::team_unit_t _myid;
 
 }; // class HashLocal
 

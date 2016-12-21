@@ -206,7 +206,7 @@ public:
   }
 
   inline dash::util::UnitLocality unit_locality(
-    local_unit_t unit_id) const
+    team_unit_t unit_id) const
   {
     return dash::util::UnitLocality(*_team, unit_id);
   }
@@ -214,7 +214,7 @@ public:
   inline dash::util::UnitLocality unit_locality(
     global_unit_t unit_id) const
   {
-    local_unit_t l_unit_id;
+    team_unit_t l_unit_id;
     dart_team_unit_g2l(_team->dart_id(), unit_id, &l_unit_id);
     return dash::util::UnitLocality(*_team, l_unit_id);
   }
