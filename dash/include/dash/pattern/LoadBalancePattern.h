@@ -42,7 +42,7 @@ public:
     std::vector<double> unit_cpu_capacities;
     double sum = 0;
 
-    for (auto u : tloc.units()) {
+    for (auto u : tloc.global_units()) {
       auto   unit_loc      = tloc.unit_locality(u);
       double unit_cpu_cap  = unit_loc.num_cores() *
                              unit_loc.num_threads() *
@@ -50,7 +50,7 @@ public:
       sum += unit_cpu_cap;
       unit_cpu_capacities.push_back(unit_cpu_cap);
     }
-    double mean = sum / tloc.units().size();
+    double mean = sum / tloc.global_units().size();
     std::transform(unit_cpu_capacities.begin(),
                    unit_cpu_capacities.end(),
                    unit_cpu_capacities.begin(),
@@ -140,7 +140,7 @@ public:
     double total_bytes_per_cycle = 0;
 
     // Calculating bytes/cycle per core for every unit:
-    for (auto u : tloc.units()) {
+    for (auto u : tloc.global_units()) {
       auto   unit_loc     = tloc.unit_locality(u);
       double unit_mem_bw  = std::max<int>(0, unit_loc.max_shmem_mbps());
       double unit_core_fq = unit_loc.num_threads() *
@@ -151,7 +151,7 @@ public:
     }
 
     double avg_bytes_per_cycle =
-      static_cast<double>(total_bytes_per_cycle) / tloc.units().size();
+      static_cast<double>(total_bytes_per_cycle) / tloc.global_units().size();
 
     for (auto unit_bps : unit_bytes_per_cycle) {
       unit_mem_perc.push_back(unit_bps / avg_bytes_per_cycle);
@@ -277,11 +277,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    dart_unit_t                           unit;
+    team_unit_t                            unit;
     IndexType                             index;
   } local_index_t;
   typedef struct {
-    dart_unit_t                           unit;
+    team_unit_t                            unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -421,7 +421,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     /// Absolute coordinates of the point
     const std::array<IndexType, NumDimensions> & coords,
     /// View specification (offsets) to apply on \c coords
@@ -435,7 +435,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & g_coords) const
   {
     return unit_at(g_coords[0]);
@@ -446,7 +446,7 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     /// Global linear element offset
     IndexType          global_pos,
     /// View to apply global position
@@ -460,13 +460,13 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  team_unit_t unit_at(
     /// Global linear element offset
     IndexType g_index) const
   {
     DASH_LOG_TRACE_VAR("LoadBalancePattern.unit_at()", g_index);
 
-    for (dart_unit_t unit_idx = 0; unit_idx < _nunits; ++unit_idx) {
+    for (team_unit_t unit_idx{0}; unit_idx < _nunits; ++unit_idx) {
       if (g_index < _local_sizes[unit_idx]) {
         DASH_LOG_TRACE_VAR("LoadBalancePattern.unit_at >", unit_idx);
         return unit_idx;
@@ -533,7 +533,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<SizeType, NumDimensions> local_extents(
-    dart_unit_t unit) const
+      team_unit_t unit) const
   {
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.local_extents()", unit);
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.local_extents >",
@@ -603,7 +603,7 @@ public:
     DASH_LOG_TRACE_VAR("LoadBalancePattern.local()", g_index);
     local_index_t l_index;
 
-    for (dart_unit_t unit_idx = 0; unit_idx < _nunits; ++unit_idx) {
+    for (team_unit_t unit_idx{0}; unit_idx < _nunits; ++unit_idx) {
       if (g_index < _local_sizes[unit_idx]) {
         l_index.unit  = unit_idx;
         l_index.index = g_index;
@@ -655,7 +655,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<IndexType, NumDimensions> global(
-    dart_unit_t unit,
+      team_unit_t unit,
     const std::array<IndexType, NumDimensions> & local_coords) const
   {
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.global()", unit);
@@ -690,7 +690,7 @@ public:
    * \see  DashPatternConcept
    */
   IndexType global(
-    dart_unit_t unit,
+    team_unit_t unit,
     IndexType l_index) const
   {
     return global(unit, std::array<IndexType, 1> {{ l_index }})[0];
@@ -719,7 +719,7 @@ public:
    * \see  DashPatternConcept
    */
   IndexType global_index(
-    dart_unit_t unit,
+    team_unit_t unit,
     const std::array<IndexType, NumDimensions> & l_coords) const
   {
     auto g_index = global(unit, l_coords[0]);
@@ -790,7 +790,7 @@ public:
    */
   inline bool is_local(
     IndexType index,
-    dart_unit_t unit) const
+    team_unit_t unit) const
   {
     DASH_LOG_TRACE_VAR("LoadBalancePattern.is_local()", index);
     DASH_LOG_TRACE_VAR("LoadBalancePattern.is_local()", unit);
@@ -951,9 +951,9 @@ public:
    * \see  DashPatternConcept
    */
   inline SizeType local_size(
-    dart_unit_t unit = DART_UNDEFINED_UNIT_ID) const
+    team_unit_t unit = UNDEFINED_TEAM_UNIT_ID) const
   {
-    if (unit == DART_UNDEFINED_UNIT_ID) {
+    if (unit == UNDEFINED_TEAM_UNIT_ID) {
       unit = _myid;
     }
     return _local_sizes[unit];
@@ -1154,10 +1154,11 @@ private:
 
     size_t      assigned_capacity = 0;
     // Unit with maximum CPU capacity in team:
-    dart_unit_t max_cpu_cap_unit  = 0;
+    team_unit_t max_cpu_cap_unit{0};
+
     // Maximum CPU capacity found:
     size_t      unit_max_cpu_cap  = 0;
-    for (dart_unit_t u = 0; u < static_cast<dart_unit_t>(nunits); u++) {
+    for (team_unit_t u{0}; u < nunits; u++) {
       double weight         = _unit_load_weights[u];
       size_t unit_capacity  = weight > 1
                               ? std::ceil(weight * balanced_lsize)
@@ -1262,7 +1263,7 @@ private:
    * Resolve extents of local memory layout for a specified unit.
    */
   SizeType initialize_local_extent(
-    dart_unit_t                    unit,
+    team_unit_t                    unit,
     const std::vector<size_type> & local_sizes) const
   {
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.init_local_extent()", unit);
@@ -1270,7 +1271,7 @@ private:
       return 0;
     }
     // Local size of given unit:
-    SizeType l_extent = local_sizes[static_cast<int>(unit)];
+    SizeType l_extent = local_sizes[unit];
     DASH_LOG_DEBUG_VAR("LoadBalancePattern.init_local_extent >", l_extent);
     return l_extent;
   }
@@ -1299,7 +1300,7 @@ private:
   /// Team containing the units to which the patterns element are mapped
   dash::Team *                _team            = nullptr;
   /// The active unit's id.
-  dart_unit_t                 _myid;
+  team_unit_t                 _myid;
   /// Cartesian arrangement of units within the team
   TeamSpec_t                  _teamspec;
   /// Total amount of units to which this pattern's elements are mapped

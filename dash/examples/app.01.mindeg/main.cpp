@@ -215,13 +215,14 @@ int read_mtx(const std::string & fname,
   std::ifstream infile;
   dash::Shared<int> nnodes;
   dash::Shared<int> ret;
-  int M, N, L;
+  int L = 0;
 
   if ( dash::myid() == 0 ) {
     infile.open(fname.c_str());
     if (!infile) {
       ret.set(-2);
     } else {
+      int M = 0, N = 0;
       while (infile.peek() == '%') {
         infile.ignore(2048, '\n');
       }

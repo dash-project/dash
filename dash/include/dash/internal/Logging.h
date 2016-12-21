@@ -3,6 +3,7 @@
 
 #include <dash/internal/Macro.h>
 #include <dash/internal/StreamConversion.h>
+#include <dash/Types.h>
 
 #include <dash/dart/if/dart_config.h>
 
@@ -20,8 +21,8 @@
 #include <unistd.h>
 
 namespace dash {
-// forward-declaration
-int myid();
+  // forward-declaration
+  global_unit_t myid();
 }
 
 #ifdef DASH_LOG_OUTPUT_STDOUT
@@ -146,7 +147,7 @@ inline void Log_Line(
   pid_t pid = getpid();
   std::stringstream buf;
   buf << "[ "
-      << std::setw(4) << dash::myid()
+      << std::setw(4) << myid().id // Team::GlobalUnitID() not possible here
       << " "
       << level
       << " ] [ "

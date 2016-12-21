@@ -64,7 +64,7 @@ void dash::util::TraceStore::write(std::ostream & out)
   }
 
   std::ostringstream os;
-  auto unit   = dash::myid();
+  auto unit   = dash::Team::GlobalUnitID();
   auto nunits = dash::size();
   for (auto context_traces : _traces) {
     std::string      context = context_traces.first;
@@ -128,7 +128,7 @@ void dash::util::TraceStore::write(
   }
   trace_log_dir += path;
 
-  auto unit = dash::myid();
+  auto unit = dash::Team::GlobalUnitID();
   std::ostringstream fn;
   fn << trace_log_dir << "/"
      << "u" << std::setfill('0') << std::setw(5) << unit

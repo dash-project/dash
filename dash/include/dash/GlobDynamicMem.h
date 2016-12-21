@@ -360,7 +360,7 @@ public:
    * \return  Local capacity as published by the specified unit in last
    *          commit.
    */
-  inline size_type local_size(dart_unit_t unit) const
+  inline size_type local_size(team_unit_t unit) const
   {
     DASH_LOG_TRACE("GlobDynamicMem.local_size(u)", "unit:", unit);
     DASH_ASSERT_RANGE(0, unit, _nunits-1, "unit id out of range");
@@ -784,7 +784,7 @@ public:
    *       local iterator from lbegin(u) is not possible if u is remote.
    */
   local_iterator lbegin(
-    dart_unit_t unit_id)
+    team_unit_t unit_id)
   {
     DASH_LOG_TRACE_VAR("GlobDynamicMem.lbegin()", unit_id);
     if (unit_id == _myid) {
@@ -812,7 +812,7 @@ public:
    * TODO: Should be removed once non-const lbegin(u) is refactored.
    */
   const_local_iterator lbegin(
-    dart_unit_t unit_id) const
+    team_unit_t unit_id) const
   {
     DASH_LOG_TRACE_VAR("GlobDynamicMem.lbegin const()", unit_id);
     if (unit_id == _myid) {
@@ -856,7 +856,7 @@ public:
    * a unit.
    */
   local_iterator lend(
-    dart_unit_t unit_id)
+    team_unit_t unit_id)
   {
     DASH_LOG_TRACE_VAR("GlobDynamicMem.lend()", unit_id);
     if (unit_id == _myid) {
@@ -882,7 +882,7 @@ public:
    * a unit.
    */
   const_local_iterator lend(
-    dart_unit_t unit_id) const
+    team_unit_t unit_id) const
   {
     DASH_LOG_TRACE_VAR("GlobDynamicMem.lend() const", unit_id);
     if (unit_id == _myid) {
@@ -973,7 +973,7 @@ public:
   template<typename IndexT>
   global_iterator at(
     /// The unit id
-    dart_unit_t unit,
+    team_unit_t unit,
     /// The unit's local address offset
     IndexT      local_index)
   {
@@ -994,7 +994,7 @@ public:
   template<typename IndexT>
   const_global_iterator at(
     /// The unit id
-    dart_unit_t unit,
+    team_unit_t unit,
     /// The unit's local address offset
     IndexT      local_index) const
   {
@@ -1311,7 +1311,7 @@ private:
    */
   dart_gptr_t dart_gptr_at(
     /// Unit id mapped to address in global memory space.
-    dart_unit_t unit,
+    team_unit_t unit,
     /// Index of bucket containing the referenced address.
     index_type  bucket_index,
     /// Offset of the referenced address in the bucket's memory space.
@@ -1341,7 +1341,8 @@ private:
     } else {
       // Move dart_gptr to unit and local offset:
       DASH_ASSERT_RETURNS(
-        dart_gptr_setunit(&dart_gptr, unit),
+        dart_gptr_setunit(&dart_gptr,
+            _team->global_id(unit)),
         DART_OK);
       DASH_ASSERT_RETURNS(
         dart_gptr_incaddr(
@@ -1355,12 +1356,12 @@ private:
 
 private:
   allocator_type             _allocator;
-  dash::Team               * _team   = nullptr;
+  dash::Team               * _team;
   dart_team_t                _teamid;
   size_type                  _nunits = 0;
   local_iterator             _lbegin = nullptr;
   local_iterator             _lend   = nullptr;
-  dart_unit_t                _myid   = DART_UNDEFINED_UNIT_ID;
+  team_unit_t                _myid{DART_UNDEFINED_UNIT_ID};
   /// Buckets in local memory space, partitioned by allocated state:
   ///   [ attached buckets, ... , unattached buckets, ... ]
   /// Buckets in this list represent the local iteration- and memory space.

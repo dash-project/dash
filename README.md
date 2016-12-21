@@ -88,6 +88,9 @@ using CMake.
 Docker Containers
 -----------------
 
+[![](https://images.microbadger.com/badges/version/dashproject/dash:mpich.svg)](https://microbadger.com/images/dashproject/dash:mpich "DASH Docker Container (MPICH backend)")
+[![](https://images.microbadger.com/badges/version/dashproject/dash:openmpi.svg)](https://microbadger.com/images/dashproject/dash:openmpi "DASH Docker Container (OpenMPI backend)")
+
 For pre-build Docker container images, see the
 [DASH project on Docker Hub](https://hub.docker.com/r/dashproject).
 
@@ -174,6 +177,14 @@ option
 Programs using DASH select a runtime implementation by linking against the
 respective library.
 
+#### Specifying the MPI implementation for the DART-MPI runtime
+
+The most reliable method to build DART-MPI with a specific MPI installation
+is to specify the CMake options `MPI_<lang>_COMPILER`:
+
+    (build/) $ cmake -DMPI_C_COMPILER=/path/to/mpi/bin/mpicc \
+                     -DMPI_CXX_COMPILER=/path/to/mpi/bin/mpiCC \
+                     ...
 
 ### 3. Examples and Unit Tests
 

@@ -103,9 +103,7 @@ LocalityJSONPrinter & LocalityJSONPrinter::print_domain(
     *this << indent << "'nunits'   : " << domain->num_units << ",\n";
     *this << indent << "'unit_ids' : " << "[ ";
     for (int u = 0; u < domain->num_units; ++u) {
-      dart_unit_t g_unit_id;
-      dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
-      *this << g_unit_id;
+      *this << domain->unit_ids[u].id;
       if (u < domain->num_units-1) {
         *this << ", ";
       }
@@ -115,16 +113,17 @@ LocalityJSONPrinter & LocalityJSONPrinter::print_domain(
 
   if (domain->scope == DART_LOCALITY_SCOPE_CORE) {
     for (int u = 0; u < domain->num_units; ++u) {
-      dart_unit_t            unit_id  = domain->unit_ids[u];
-      dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
+      dart_team_unit_t        unit_lid;
+      dart_global_unit_t     unit_gid = domain->unit_ids[u];
       dart_unit_locality_t * uloc;
-      dart_unit_locality(team, unit_id, &uloc);
-      dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
+
+      dart_team_unit_g2l(domain->team, unit_gid, &unit_lid);
+      dart_unit_locality(domain->team, unit_lid, &uloc);
 
       *this << indent << "'unit_id'  : { "
-                      << "'local_id':"  << uloc->unit << ", "
+                      << "'local_id':"  << uloc->unit.id << ", "
                       << "'team':"      << uloc->team << ", "
-                      << "'global_id':" << unit_gid
+                      << "'global_id':" << unit_gid.id
                       << " },\n"
             << indent << "'unit_loc' : { "
                       << "'domain':'"   << uloc->domain_tag  << "', "

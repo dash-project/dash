@@ -22,7 +22,7 @@ dart_ret_t dart__base__unit_locality__destruct(
 
 dart_ret_t dart__base__unit_locality__at(
   dart_unit_mapping_t   * unit_mapping,
-  dart_unit_t             unit,
+  dart_team_unit_t        unit,
   dart_unit_locality_t ** loc);
 
 #endif /* DART__BASE__INTERNAL__UNIT_LOCALITY_H__ */

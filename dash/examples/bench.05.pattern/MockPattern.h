@@ -103,11 +103,11 @@ public:
   typedef SizeType    size_type;
   typedef ViewSpec_t  viewspec_type;
   typedef struct {
-    dart_unit_t                           unit;
+    dash::team_unit_t                     unit;
     IndexType                             index;
   } local_index_t;
   typedef struct {
-    dart_unit_t                           unit;
+    dash::team_unit_t                     unit;
     std::array<index_type, NumDimensions> coords;
   } local_coords_t;
 
@@ -399,15 +399,15 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  dash::team_unit_t unit_at(
     /// Absolute coordinates of the point
     const std::array<IndexType, NumDimensions> & coords,
     /// View specification (offsets) to apply on \c coords
     const ViewSpec_t & viewspec) const {
     DASH_LOG_TRACE_VAR("MockPattern.unit_at()", coords);
     // Apply viewspec offsets to coordinates:
-    dart_unit_t unit_id = ((coords[0] + viewspec[0].offset) / _blocksize)
-                          % _nunits;
+    dash::team_unit_t unit_id{((coords[0] + viewspec[0].offset) / _blocksize)
+                          % _nunits};
     DASH_LOG_TRACE_VAR("MockPattern.unit_at >", unit_id);
     return unit_id;
   }
@@ -417,10 +417,10 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  dash::team_unit_t unit_at(
     const std::array<IndexType, NumDimensions> & g_coords) const {
     DASH_LOG_TRACE_VAR("MockPattern.unit_at()", g_coords);
-    dart_unit_t unit_idx = 0;
+    dash::team_unit_t unit_idx{0};
     auto g_coord         = g_coords[0];
     for (; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] >= g_coord) {
@@ -429,7 +429,7 @@ public:
       }
     }
     DASH_LOG_TRACE_VAR("MockPattern.unit_at >", _nunits-1);
-    return _nunits-1;
+    return dash::team_unit_t(_nunits-1);
   }
 
   /**
@@ -437,14 +437,14 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  dash::team_unit_t unit_at(
     /// Global linear element offset
     IndexType global_pos,
     /// View to apply global position
     const ViewSpec_t & viewspec) const {
     DASH_LOG_TRACE_VAR("MockPattern.unit_at()", global_pos);
     DASH_LOG_TRACE_VAR("MockPattern.unit_at()", viewspec);
-    dart_unit_t unit_idx = 0;
+    dash::team_unit_t unit_idx{0};
     // Apply viewspec offsets to coordinates:
     auto g_coord         = global_pos + viewspec[0].offset;
     for (; unit_idx < _nunits - 1; ++unit_idx) {
@@ -454,7 +454,7 @@ public:
       }
     }
     DASH_LOG_TRACE_VAR("MockPattern.unit_at >", _nunits-1);
-    return _nunits-1;
+    return dash::team_unit_t(_nunits-1);
   }
 
   /**
@@ -462,11 +462,11 @@ public:
    *
    * \see DashPatternConcept
    */
-  dart_unit_t unit_at(
+  dash::team_unit_t unit_at(
     /// Global linear element offset
     IndexType g_index) const {
     DASH_LOG_TRACE_VAR("MockPattern.unit_at()", g_index);
-    dart_unit_t unit_idx = 0;
+    dash::team_unit_t unit_idx{0};
     for (; unit_idx < _nunits - 1; ++unit_idx) {
       if (_block_offsets[unit_idx+1] >= g_index) {
         DASH_LOG_TRACE_VAR("MockPattern.unit_at >", unit_idx);
@@ -474,7 +474,7 @@ public:
       }
     }
     DASH_LOG_TRACE_VAR("MockPattern.unit_at >", _nunits-1);
-    return _nunits-1;
+    return dash::team_unit_t(_nunits-1);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -529,7 +529,7 @@ public:
    * \see  DashPatternConcept
    */
   std::array<SizeType, NumDimensions> local_extents(
-    dart_unit_t unit) const {
+      dash::team_unit_t unit) const {
     DASH_LOG_DEBUG_VAR("MockPattern.local_extents()", unit);
     DASH_LOG_DEBUG_VAR("MockPattern.local_extents >", _local_size);
     return std::array<SizeType, 1> {{ _local_size }};
@@ -662,7 +662,7 @@ public:
    * \see  DashPatternConcept
    */
   inline std::array<IndexType, NumDimensions> global(
-    dart_unit_t unit,
+    dash::team_unit_t unit,
     const std::array<IndexType, NumDimensions> & l_coords) const noexcept {
     DASH_LOG_DEBUG_VAR("MockPattern.global()", unit);
     DASH_LOG_DEBUG_VAR("MockPattern.global()", l_coords);
@@ -695,7 +695,7 @@ public:
    * \see  DashPatternConcept
    */
   inline IndexType global(
-    dart_unit_t unit,
+    dash::team_unit_t unit,
     IndexType l_index) const noexcept {
     return global(unit, std::array<IndexType, 1> {{ l_index }})[0];
   }
@@ -722,7 +722,7 @@ public:
    * \see  DashPatternConcept
    */
   IndexType global_index(
-    dart_unit_t unit,
+    dash::team_unit_t unit,
     const std::array<IndexType, NumDimensions> & l_coords) const {
     auto g_index = global(unit, l_coords[0]);
     return g_index;
@@ -790,7 +790,7 @@ public:
     /// Offset in dimension
     IndexType dim_offset,
     /// DART id of the unit
-    dart_unit_t unit,
+    dash::team_unit_t unit,
     /// Viewspec to apply
     const ViewSpec_t & viewspec) const {
     DASH_ASSERT_EQ(
@@ -812,7 +812,7 @@ public:
    */
   inline bool is_local(
     IndexType index,
-    dart_unit_t unit) const noexcept {
+    dash::team_unit_t unit) const noexcept {
     DASH_LOG_TRACE_VAR("MockPattern.is_local()", index);
     DASH_LOG_TRACE_VAR("MockPattern.is_local()", unit);
     bool is_loc = index >= _block_offsets[unit] &&
@@ -1152,14 +1152,14 @@ public:
    * Resolve extents of local memory layout for a specified unit.
    */
   SizeType initialize_local_extent(
-    dart_unit_t unit) const {
+    dash::team_unit_t unit) const {
     DASH_LOG_DEBUG_VAR("MockPattern.init_local_extent()", unit);
     DASH_LOG_DEBUG_VAR("MockPattern.init_local_extent()", _nunits);
     if (_nunits == 0) {
       return 0;
     }
     // Local size of given unit:
-    SizeType l_extent = _local_sizes[static_cast<int>(unit)];
+    SizeType l_extent = _local_sizes[unit];
     DASH_LOG_DEBUG_VAR("MockPattern.init_local_extent >", l_extent);
     return l_extent;
   }

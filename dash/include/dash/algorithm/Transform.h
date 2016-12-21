@@ -138,8 +138,8 @@ OutputIt transform(
  * \see      dash::accumulate
  * \see      DashReduceOperations
  *
- * \tparam   InputIt         Iterator on first (typically local) input range
- * \tparam   GlobInputIt     Iterator on second (typically global) input range
+ * \tparam   InputIt         Iterator on first (local) input range
+ * \tparam   GlobInputIt     Iterator on second (global) input range
  * \tparam   GlobOutputIt    Iterator on global result range
  * \tparam   BinaryOperation Reduce operation type
  *
@@ -147,15 +147,19 @@ OutputIt transform(
  */
 template<
   typename ValueType,
-  class InputAIt,
-  class InputBIt,
-  class OutputIt,
+  class InputIt,
+  class GlobInputIt,
+  class GlobOutputIt,
   class BinaryOperation >
-OutputIt transform(
-  InputAIt        in_a_first,
-  InputAIt        in_a_last,
-  InputBIt        in_b_first,
-  OutputIt        out_first,
+GlobOutputIt transform(
+  /// Iterator on begin of first local range
+  InputIt        in_a_first,
+  /// Iterator after last element of local range
+  InputIt        in_a_last,
+  /// Iterator on begin of second local range
+  GlobInputIt    in_b_first,
+  /// Iterator on first element of global output range 
+  GlobOutputIt   out_first,
   BinaryOperation binary_op);
 
 /**

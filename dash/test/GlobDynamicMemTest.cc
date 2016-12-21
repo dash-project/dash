@@ -22,8 +22,8 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
               initial_global_capacity, initial_local_capacity);
 
   EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
-  EXPECT_EQ_U(initial_local_capacity,  gdmem.lend(dash::myid()) -
-                                       gdmem.lbegin(dash::myid()));
+  EXPECT_EQ_U(initial_local_capacity,  gdmem.lend() -
+                                       gdmem.lbegin());
   EXPECT_EQ_U(initial_global_capacity, gdmem.size());
 
   DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "initial local:",
@@ -46,8 +46,8 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
   size_t precommit_global_capacity = initial_global_capacity +
                                      bucket_1_size + bucket_2_size;
   EXPECT_EQ_U(precommit_local_capacity,  gdmem.local_size());
-  EXPECT_EQ_U(precommit_local_capacity,  gdmem.lend(dash::myid()) -
-                                         gdmem.lbegin(dash::myid()));
+  EXPECT_EQ_U(precommit_local_capacity,  gdmem.lend() -
+                                         gdmem.lbegin());
   EXPECT_EQ_U(precommit_global_capacity, gdmem.size());
 
   DASH_LOG_TRACE("GlobDynamicMemTest.BalancedAlloc", "pre-commit local:",
@@ -67,8 +67,8 @@ TEST_F(GlobDynamicMemTest, BalancedAlloc)
   size_t postcommit_global_capacity = dash::size() *
                                       postcommit_local_capacity;
   EXPECT_EQ_U(postcommit_local_capacity,  gdmem.local_size());
-  EXPECT_EQ_U(postcommit_local_capacity,  gdmem.lend(dash::myid()) -
-                                          gdmem.lbegin(dash::myid()));
+  EXPECT_EQ_U(postcommit_local_capacity,  gdmem.lend() -
+                                          gdmem.lbegin());
   EXPECT_EQ_U(postcommit_global_capacity, gdmem.size());
 }
 
@@ -90,8 +90,8 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
               initial_global_capacity, initial_local_capacity);
 
   EXPECT_EQ_U(initial_local_capacity,  gdmem.local_size());
-  EXPECT_EQ_U(initial_local_capacity,  gdmem.lend(dash::myid()) -
-                                       gdmem.lbegin(dash::myid()));
+  EXPECT_EQ_U(initial_local_capacity,  gdmem.lend() -
+                                       gdmem.lbegin());
   EXPECT_EQ_U(initial_global_capacity, gdmem.size());
 
   dash::barrier();
@@ -189,7 +189,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
                  "testing basic iterator arithmetic completed");
 
   // Test memory space of units separately:
-  for (dart_unit_t unit = 0; unit < static_cast<dart_unit_t>(dash::size());
+  for (dash::team_unit_t unit{0}; unit < dash::Team::All().size();
        ++unit) {
     if (dash::myid() != unit) {
       auto unit_git_begin = gdmem.at(unit, 0);
@@ -242,7 +242,7 @@ TEST_F(GlobDynamicMemTest, UnbalancedRealloc)
                  "testing reverse iteration");
 
   // Test memory space of all units by iterating global index space:
-  auto unit         = dash::size() - 1;
+  dash::team_unit_t unit(dash::Team::All().size() - 1);
   auto local_offset = gdmem.local_size(unit) - 1;
   // Invert order to test reverse iterators:
   auto rgend        = gdmem.rend();
@@ -319,8 +319,8 @@ TEST_F(GlobDynamicMemTest, LocalVisibility)
   // Local changes at units in same shared memory domain are visible
   // even when not committed yet.
   std::string my_host     = dash::util::UnitLocality(dash::myid()).hostname();
-  std::string unit_0_host = dash::util::UnitLocality(0).hostname();
-  std::string unit_1_host = dash::util::UnitLocality(1).hostname();
+  std::string unit_0_host = dash::util::UnitLocality(dash::global_unit_t{0}).hostname();
+  std::string unit_1_host = dash::util::UnitLocality(dash::global_unit_t{1}).hostname();
 
   size_t expected_visible_size = initial_global_capacity;
   size_t expected_global_size  = initial_global_capacity;
@@ -523,8 +523,8 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
   // Wait for initialization of local values of all units:
   dash::barrier();
 
-  for (size_t u = 0; u < dash::size(); ++u) {
-    if (dash::myid() != static_cast<dart_unit_t>(u)) {
+  for (dash::team_unit_t u{0}; u < dash::size(); ++u) {
+    if (dash::myid() != dash::global_unit_t(u)) {
       size_t  nlocal_expect = initial_local_capacity;
       size_t  nlocal_elem   = gdmem.local_size(u);
 
@@ -549,13 +549,13 @@ TEST_F(GlobDynamicMemTest, RemoteAccess)
 
   // Changed sizes of memory spaces are visible to all units after commit:
   EXPECT_EQ_U(initial_local_capacity + unit_0_num_grow,
-              gdmem.local_size(0));
+              gdmem.local_size(dash::team_unit_t{0}));
   EXPECT_EQ_U(initial_local_capacity - unit_1_num_shrink,
-              gdmem.local_size(1));
+              gdmem.local_size(dash::team_unit_t{1}));
 
   // Validate values after commit:
-  for (size_t u = 0; u < dash::size(); ++u) {
-    if (dash::myid() != static_cast<dart_unit_t>(u)) {
+  for (dash::team_unit_t u{0}; u < dash::size(); ++u) {
+    if (dash::myid() != dash::global_unit_t(u)) {
       size_t  nlocal_elem   = gdmem.local_size(u);
       size_t  nlocal_expect = initial_local_capacity;
       if (u == 0) { nlocal_expect += unit_0_num_grow; }

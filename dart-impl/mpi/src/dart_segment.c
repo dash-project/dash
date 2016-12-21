@@ -205,39 +205,15 @@ dart_ret_t dart_segment_get_win(int16_t seg_id, MPI_Win * win)
 }
 #endif
 
-/*
-int dart_adapt_transtable_get_addr (uin16_t index, int offset, int* base, void **addr)
-{
-  node_t p, pre;
-  p = transtable_globalalloc [index];
-
-  while ((p != NULL) && (offset >= (p -> trans.offset)))
-  {
-    pre = p;
-    p = p -> next;
-  }
-
-  if (pre -> trans.offset + pre -> trans.size <= offset)
-  {
-    return -1;
-  }
-
-
-  *base = (pre -> trans).offset;
-  *addr = (pre -> trans).addr;
-  return 0;
-}
-*/
-
-dart_ret_t dart_segment_get_disp(int16_t seg_id,
-                                   int rel_unitid,
-                                   MPI_Aint * disp_s)
+dart_ret_t dart_segment_get_disp(int16_t             seg_id,
+                                 dart_team_unit_t    rel_unitid,
+                                 MPI_Aint          * disp_s)
 {
   MPI_Aint trans_disp = 0;
   *disp_s  = 0;
 
   DART_LOG_TRACE("dart_segment_get_disp() "
-                 "seq_id:%d rel_unitid:%d", seg_id, rel_unitid);
+                 "seq_id:%d rel_unitid:%d", seg_id, rel_unitid.id);
 
   dart_segment_t *segment = get_segment(seg_id);
   if (segment == NULL || segment->seg_info.seg_id != seg_id) {
@@ -245,7 +221,7 @@ dart_ret_t dart_segment_get_disp(int16_t seg_id,
     return DART_ERR_INVAL;
   }
 
-  trans_disp = segment->seg_info.disp[rel_unitid];
+  trans_disp = segment->seg_info.disp[rel_unitid.id];
   *disp_s    = trans_disp;
   DART_LOG_TRACE("dart_segment_get_disp > dist:%"PRIu64"",
                  (unsigned long)trans_disp);
@@ -254,9 +230,9 @@ dart_ret_t dart_segment_get_disp(int16_t seg_id,
 
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_segment_get_baseptr(
-  int16_t    seg_id,
-  int        rel_unitid,
-  char   **  baseptr_s)
+  int16_t               seg_id,
+  dart_team_unit_t      rel_unitid,
+  char              **  baseptr_s)
 {
   dart_segment_t *segment = get_segment(seg_id);
   if (segment == NULL || segment->seg_info.seg_id != seg_id) {
@@ -265,7 +241,7 @@ dart_ret_t dart_segment_get_baseptr(
     return DART_ERR_INVAL;
   }
 
-  *baseptr_s = segment->seg_info.baseptr[rel_unitid];
+  *baseptr_s = segment->seg_info.baseptr[rel_unitid.id];
   return DART_OK;
 }
 #endif

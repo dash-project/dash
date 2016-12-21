@@ -451,7 +451,7 @@ public:
   /**
    * Set the global pointer's associated unit.
    */
-  void set_unit(dart_unit_t unit_id) {
+  void set_unit(global_unit_t unit_id) {
     DASH_ASSERT_RETURNS(
       dart_gptr_setunit(&_dart_gptr, unit_id),
       DART_OK);
@@ -462,7 +462,7 @@ public:
    * address space the pointer's associated unit.
    */
   bool is_local() const {
-    return _dart_gptr.unitid == dash::myid();
+    return _dart_gptr.unitid == dash::Team::GlobalUnitID();
   }
 };
 

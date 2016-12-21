@@ -43,8 +43,8 @@ int main(int argc, char ** argv)
   } else {
     std::vector<std::string> group_1_domain_tags;
 
-    dart_unit_t group_unit_0 = dash::size() / 2;
-    dart_unit_t group_unit_1 = dash::size() / 3;
+    dash::global_unit_t group_unit_0(dash::size() / 2);
+    dash::global_unit_t group_unit_1(dash::size() / 3);
 
     group_1_domain_tags.push_back(
       dash::util::UnitLocality(group_unit_0).domain().parent->domain_tag);

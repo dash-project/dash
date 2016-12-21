@@ -119,7 +119,7 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
         auto lcoords = lpos.coords;
         std::ostringstream ss;
         ss << "u" << unit << "(";
-        if (unit == dash::myid()) {
+        if (unit == _pattern.team().myid()) {
           auto lindex = _pattern.local_at(lcoords);
           ss << std::setw(2) << lindex;
         } else {
@@ -143,7 +143,7 @@ TEST_F(TilePatternTest, Tile2DimTeam2Dim)
 
       ASSERT_EQ_U(unit_id_c, unit_id_i);
 
-      if (dash::myid() == unit_id_i) {
+      if (pattern.team().myid() == unit_id_i) {
         auto l_coords_idx = pattern.local_at(l_coords);
         ASSERT_EQ_U(l_index, l_coords_idx);
       }

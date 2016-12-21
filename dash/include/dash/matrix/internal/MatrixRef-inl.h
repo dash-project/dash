@@ -435,7 +435,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   index_type g_pos) const
 {
   return (_refview._mat->_pattern.unit_at(g_pos, _refview._viewspec) ==
-          _refview._mat->_myid);
+          _refview._mat->_team->myid());
 }
 
 template <typename T, dim_t NumDim, dim_t CUR, class PatternT>
@@ -448,7 +448,7 @@ MatrixRef<T, NumDim, CUR, PatternT>
   return _refview._mat->_pattern.has_local_elements(
            Dimension,
            g_pos,
-           _refview._mat->_myid,
+           _refview._mat->_team->myid(),
            _refview._viewspec);
 }
 
@@ -494,7 +494,7 @@ MatrixRef<T, NumDim, 0, PatternT>
   return (_refview._mat->_pattern.unit_at(
                                      _refview._coord,
                                      _refview._viewspec) ==
-          _refview._mat->_myid);
+          _refview._mat->_team->myid());
 }
 
 template <typename T, dim_t NumDim, class PatternT>

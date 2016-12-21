@@ -167,14 +167,14 @@ dart_ret_t dart_gptr_incaddr(dart_gptr_t *gptr, int32_t offs);
  * Set the unit information for the specified global pointer.
  *
  * \param gptr Global Pointer
- * \param unit The unit to set in \c gptr
+ * \param unit The global unit to set in \c gptr
  *
  * \return \c DART_OK on success, any other of \ref dart_ret_t otherwise.
  *
  * \threadsafe
  * \ingroup DartGlobMem
  */
-dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_unit_t unit);
+dart_ret_t dart_gptr_setunit(dart_gptr_t *gptr, dart_global_unit_t unit);
 
 /**
  * Allocates memory for \c nelem elements of type \c dtype in the global
