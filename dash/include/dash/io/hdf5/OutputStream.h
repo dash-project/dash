@@ -4,6 +4,7 @@
 #ifdef DASH_ENABLE_HDF5
 
 #include <string>
+#include <future>
 
 #include <dash/Matrix.h>
 #include <dash/Array.h>
@@ -59,15 +60,24 @@ public:
         : OutputStream(dash::launch::sync, filename, open_mode)
     { }
     
+    ~OutputStream(){
+      if(!_async_ops.empty()){
+        DASH_LOG_DEBUG("wait for outstanding tasks");
+        _async_ops.back().wait();
+      }
+    }
+    
     /**
      * Synchronizes with the data sink.
      * If async IO is used, waits until all data is read
      */
     OutputStream flush(){
-        for(auto & fut : _async_ops){
-            fut.wait();
-        }
-        return *this;
+      DASH_LOG_DEBUG("flush output stream", _async_ops.size());
+      if(!_async_ops.empty()){
+        _async_ops.back().wait();
+      }
+      DASH_LOG_DEBUG("output stream flushed");
+      return *this;
     }
 
     // IO Manipulators
@@ -117,7 +127,7 @@ public:
         Container_t  & container);
 
 private:
-    template< typename Container_t>
+    template< typename Container_t >
     void _store_object_impl(Container_t & container){
       if(_use_cust_conv){
         StoreHDF::write(
@@ -133,6 +143,27 @@ private:
           _dataset,
           _foptions);
       }
+    }
+    
+    template< typename Container_t >
+    void _store_object_impl_async(Container_t & container){
+      auto pos = _async_ops.size();
+      DASH_LOG_DEBUG("Get future at pos", pos);
+
+      // pass pos by value as it might be out of scope when function is called
+      std::shared_future<void> fut = std::async(std::launch::async, [&,pos](){
+        if(pos != 0){
+          // wait for previous tasks
+          auto last_task = _async_ops[pos-1];
+          last_task.wait();
+        }
+        DASH_LOG_DEBUG("execute async io task");
+        StoreHDF::write(
+          container,
+          _filename,
+          _dataset,
+          _foptions);});
+      _async_ops.push_back(fut);
     }
 };
 

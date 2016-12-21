@@ -8,8 +8,6 @@
 #include <dash/Matrix.h>
 #include <dash/Array.h>
 
-#include <future>
-
 
 namespace dash {
 namespace io {
@@ -21,9 +19,7 @@ inline OutputStream & operator<< (
    Container_t  & container )
 {
     if(os._launch_policy == dash::launch::async){
-      std::shared_future<void> fut = std::async(std::launch::async, [&](){
-                   os._store_object_impl(container);});
-      os._async_ops.push_back(fut);
+      os._store_object_impl_async(container);
     } else {
       os._store_object_impl(container);
     }

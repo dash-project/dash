@@ -457,6 +457,60 @@ TEST_F(HDF5ArrayTest, CustomType)
   });
 }
 
+/** TODO currently highly experimental */
+TEST_F(HDF5ArrayTest, AsyncIO)
+{
+  int ext_x = dash::size() * 1;
+  double secret[] = {10, 11, 12};
+  {
+    dash::Array<double> array_a(ext_x);
+    dash::Array<double> array_b(ext_x);
+    dash::Array<double> array_c(ext_x);
+
+    // Fill
+    fill_array(array_a, secret[0]);
+    fill_array(array_b, secret[1]);
+    fill_array(array_c, secret[2]);
+    dash::barrier();
+
+    // Set option
+
+    // Currently only works if just one container is passed
+    OutputStream os(dash::launch::async, _filename);
+    os << dio::dataset("array_a")
+      << array_a;
+//      << dio::dataset("g1/array_b")
+//      << array_b
+//      << dio::dataset("g1/g2/array_c")
+//      << array_c;
+    
+    LOG_MESSAGE("Async OS setup");
+    // Do some computation intense work
+    os.flush();
+    LOG_MESSAGE("Async OS flushed");
+  }
+#if 0
+  dash::Array<double> array_a;
+  dash::Array<double> array_b;
+  dash::Array<double> array_c;
+  InputStream is(dash::launch::async, _filename);
+  is >> dio::dataset("array_a")
+    >> array_a;
+//    >> dio::dataset("g1/array_b")
+//    >> array_b
+//    >> dio::dataset("g1/g2/array_c")
+//    >> array_c;
+  
+  is.flush();
+
+  // Verify data
+  verify_array(array_a, secret[0]);
+  verify_array(array_b, secret[1]);
+  verify_array(array_c, secret[2]);
+#endif
+}
+
+// Run this test after all other tests as it changes the team state
 TEST_F(HDF5ArrayTest, TeamSplit)
 {
   // TODO Hangs on travis CI
