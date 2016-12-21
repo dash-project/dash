@@ -109,7 +109,7 @@ TEST_F(DARTOnesidedTest, GetHandleAllRemote)
             ds.dtype,
             &handle)
       );
-      std::cout << "dart_get_handle returned handle " << handle << std::endl;
+      LOG_MESSAGE("dart_get_handle returned handle %p", handle);
       handles.push_back(handle);
       ++block;
     }
