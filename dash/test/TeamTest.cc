@@ -39,6 +39,12 @@ TEST_F(TeamTest, SplitTeamSync)
     SKIP_TEST_MSG("team is already splitted. Skip test");
   }
 
+  // Check if all units are on the same node
+  dash::util::TeamLocality tloc(dash::Team::All());
+  if(tloc.num_nodes() > 1){
+    SKIP_TEST_MSG("test supports only 1 node");
+  }
+
   LOG_MESSAGE("team_all contains %d units", team_all.size());
 
   auto & team_core = team_all.split(2);
