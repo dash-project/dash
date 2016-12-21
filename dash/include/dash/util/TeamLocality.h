@@ -200,7 +200,7 @@ public:
     return (nullptr == _team) ? dash::Team::Null() : *_team;
   }
 
-  inline const std::vector<local_unit_t> & units() const
+  inline const std::vector<global_unit_t> & global_units() const
   {
     return _domain.units();
   }
@@ -209,6 +209,14 @@ public:
     local_unit_t unit_id) const
   {
     return dash::util::UnitLocality(*_team, unit_id);
+  }
+
+  inline dash::util::UnitLocality unit_locality(
+    global_unit_t unit_id) const
+  {
+    local_unit_t l_unit_id;
+    dart_team_unit_g2l(_team->dart_id(), unit_id, &l_unit_id);
+    return dash::util::UnitLocality(*_team, l_unit_id);
   }
 
   inline LocalityDomain_t & group(

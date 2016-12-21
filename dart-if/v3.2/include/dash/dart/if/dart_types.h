@@ -567,7 +567,7 @@ struct dart_domain_locality_s
     /** Number of units in the domain. */
     int                              num_units;
     /** Global IDs of units in the domain. */
-    dart_local_unit_t              * unit_ids;
+    dart_global_unit_t             * unit_ids;
 
     /* The number of compute nodes in the domain. */
     int                              num_nodes;

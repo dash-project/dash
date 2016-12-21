@@ -239,7 +239,7 @@ dart_ret_t dart__base__locality__domain__update_subdomains(
   }
   if (domain->num_units > 0) {
     if (is_unit_scope) {
-      dart_local_unit_t unit_id = domain->unit_ids[0];
+      dart_global_unit_t unit_id = domain->unit_ids[0];
       DART_LOG_DEBUG("dart__base__locality__domain__destruct: "
                      "free(domain->unit_ids)");
       free(domain->unit_ids);
@@ -468,8 +468,8 @@ dart_ret_t dart__base__locality__domain__filter_subdomains(
 
   if (NULL != domain->unit_ids) {
     if (domain->num_units != unit_idx) {
-      dart_local_unit_t * tmp =
-        realloc(domain->unit_ids, unit_idx * sizeof(dart_local_unit_t));
+      dart_global_unit_t * tmp =
+        realloc(domain->unit_ids, unit_idx * sizeof(dart_global_unit_t));
       if (unit_idx == 0) {
         domain->unit_ids = NULL;
       } else if (tmp != NULL) {

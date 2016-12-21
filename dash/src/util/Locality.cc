@@ -180,11 +180,12 @@ static void print_domain(
     uindent += std::string(9, ' ');
 
     for (int u = 0; u < domain->num_units; ++u) {
-      dart_local_unit_t      unit_lid = domain->unit_ids[u];
-      dart_global_unit_t     unit_gid;
+      dart_local_unit_t      unit_lid;
+      dart_global_unit_t     unit_gid = domain->unit_ids[u];
       dart_unit_locality_t * uloc;
+
+      dart_team_unit_g2l(domain->team, unit_gid, &unit_lid);
       dart_unit_locality(domain->team, unit_lid, &uloc);
-      dart_team_unit_l2g(uloc->team, uloc->unit, &unit_gid);
 
       ostr << uindent << "unit id:   " << uloc->unit.id << "  ("
                                        << "in team " << uloc->team  << ", "

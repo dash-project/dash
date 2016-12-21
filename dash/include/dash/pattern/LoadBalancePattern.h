@@ -42,7 +42,7 @@ public:
     std::vector<double> unit_cpu_capacities;
     double sum = 0;
 
-    for (auto u : tloc.units()) {
+    for (auto u : tloc.global_units()) {
       auto   unit_loc      = tloc.unit_locality(u);
       double unit_cpu_cap  = unit_loc.num_cores() *
                              unit_loc.num_threads() *
@@ -50,7 +50,7 @@ public:
       sum += unit_cpu_cap;
       unit_cpu_capacities.push_back(unit_cpu_cap);
     }
-    double mean = sum / tloc.units().size();
+    double mean = sum / tloc.global_units().size();
     std::transform(unit_cpu_capacities.begin(),
                    unit_cpu_capacities.end(),
                    unit_cpu_capacities.begin(),
@@ -140,7 +140,7 @@ public:
     double total_bytes_per_cycle = 0;
 
     // Calculating bytes/cycle per core for every unit:
-    for (auto u : tloc.units()) {
+    for (auto u : tloc.global_units()) {
       auto   unit_loc     = tloc.unit_locality(u);
       double unit_mem_bw  = std::max<int>(0, unit_loc.max_shmem_mbps());
       double unit_core_fq = unit_loc.num_threads() *
@@ -151,7 +151,7 @@ public:
     }
 
     double avg_bytes_per_cycle =
-      static_cast<double>(total_bytes_per_cycle) / tloc.units().size();
+      static_cast<double>(total_bytes_per_cycle) / tloc.global_units().size();
 
     for (auto unit_bps : unit_bytes_per_cycle) {
       unit_mem_perc.push_back(unit_bps / avg_bytes_per_cycle);

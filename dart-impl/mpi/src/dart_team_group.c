@@ -347,20 +347,13 @@ dart_ret_t dart_group_locality_split(
   if (num_groups == (size_t)num_domains) {
     /* one domain per group: */
     for (size_t g = 0; g < num_groups; ++g) {
-      int                 group_num_units = domains[g]->num_units;
-      dart_local_unit_t * unit_ids        = domains[g]->unit_ids;
+      int                  group_num_units = domains[g]->num_units;
+      dart_global_unit_t * unit_ids        = domains[g]->unit_ids;
 
       /* convert relative unit ids from domain to global unit ids: */
       int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
-        // TODO[TF]: domains[g]->unit_ids should be global unit IDs already,
-        //           why is translation required?
-        // fuchsto:  No, unit ids in domains are local as domains are
-        //           specific to a team.
-        //                   
-        dart_global_unit_t u_gid;
-        dart_team_unit_l2g(team, unit_ids[u], &u_gid);
-        group_global_unit_ids[u] = u_gid.id;
+        group_global_unit_ids[u] = unit_ids[u].id;
         DART_LOG_TRACE("dart_group_locality_split: group[%d].units[%d] "
                        "global unit id: %d",
                        g, u, group_global_unit_ids[u]);
@@ -435,8 +428,8 @@ dart_ret_t dart_group_locality_split(
       for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
         group_num_units += domains[d]->num_units;
       }
-      dart_local_unit_t * group_team_unit_ids =
-                              malloc(sizeof(dart_local_unit_t) *
+      dart_global_unit_t * group_team_unit_ids =
+                              malloc(sizeof(dart_global_unit_t) *
                                      group_num_units);
       int group_unit_idx = 0;
       for (int d = group_first_dom_idx; d < group_last_dom_idx; ++d) {
@@ -449,14 +442,7 @@ dart_ret_t dart_group_locality_split(
       /* convert relative unit ids from domain to global unit ids: */
       int * group_global_unit_ids = malloc(group_num_units * sizeof(int));
       for (int u = 0; u < group_num_units; ++u) {
-        // TODO[TF]: domains[g]->unit_ids should be global unit IDs already,
-        //           why is translation required?
-        // fuchsto:  No, unit ids in domains are local as domains are
-        //           specific to a team.
-        //                   
-        dart_global_unit_t u_gid;
-        dart_team_unit_l2g(team, group_team_unit_ids[u], &u_gid);
-        group_global_unit_ids[u] = u_gid.id;
+        group_global_unit_ids[u] = group_team_unit_ids[u].id;
         DART_LOG_TRACE("dart_group_locality_split: group[%d].units[%d] "
                        "global unit id: %d",
                        g, u, group_global_unit_ids[u]);
