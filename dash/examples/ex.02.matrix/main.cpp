@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
   dash::TeamSpec<2> teamspec_2d(team_size, 1);
   teamspec_2d.balance_extents();
 
-  dart_unit_t myid   = dash::myid();
+  dash::global_unit_t myid   = dash::myid();
   size_t num_units   = dash::Team::All().size();
   size_t tilesize_x  = 4;
   size_t tilesize_y  = 6;

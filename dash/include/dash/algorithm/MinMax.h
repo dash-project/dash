@@ -10,6 +10,7 @@
 
 #include <dash/util/Config.h>
 #include <dash/util/Trace.h>
+#include <dash/util/UnitLocality.h>
 
 #include <dash/iterator/GlobIter.h>
 #include <dash/internal/Logging.h>
@@ -51,7 +52,8 @@ const ElementType * min_element(
         = std::less<const ElementType &>())
 {
 #ifdef DASH_ENABLE_OPENMP
-  auto n_threads = dash::util::Locality::NumUnitDomainThreads();
+  dash::util::UnitLocality uloc;
+  auto n_threads = uloc.num_domain_threads();
   DASH_LOG_DEBUG("dash::min_element", "thread capacity:",  n_threads);
 
   // TODO: Should also restrict on elements/units > ~10240.
@@ -64,7 +66,7 @@ const ElementType * min_element(
     typedef struct min_pos_t { ElementType val; size_t idx; } min_pos;
 
     DASH_LOG_DEBUG("dash::min_element", "local range size:", l_size);
-    int       align_bytes      = dash::util::Locality::CacheLineSizes()[0];
+    int       align_bytes      = uloc.cache_line_size(0);
     size_t    min_vals_t_size  = n_threads + 1 +
                                  (align_bytes / sizeof(min_pos));
     size_t    min_vals_t_bytes = min_vals_t_size * sizeof(min_pos);
@@ -169,8 +171,7 @@ GlobIter<ElementType, PatternType> min_element(
   dash::util::Trace trace("min_element");
 
   auto & pattern = first.pattern();
-
-  dash::Team & team = pattern.team();
+  auto & team    = pattern.team();
   DASH_LOG_DEBUG("dash::min_element()",
                  "allocate minarr, size", team.size());
   // Global position of end element in range:
@@ -190,7 +191,7 @@ GlobIter<ElementType, PatternType> min_element(
 
     // Pointer to first element in local memory:
     const ElementType * lbegin        = first.globmem().lbegin(
-                                          pattern.team().myid());
+                                          dash::Team::GlobalUnitID());
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
@@ -239,7 +240,10 @@ GlobIter<ElementType, PatternType> min_element(
   trace.enter_state("allgather");
   DASH_ASSERT_RETURNS(
     dart_allgather(
-      &local_min, local_min_values.data(), sizeof(local_min_t),
+      &local_min,
+      local_min_values.data(),
+      sizeof(local_min_t),
+      DART_TYPE_BYTE,
       team.dart_id()),
     DART_OK);
   trace.exit_state("allgather");
@@ -271,13 +275,11 @@ GlobIter<ElementType, PatternType> min_element(
     return last;
   }
 
-  auto min_elem_unit = static_cast<dart_unit_t>(
-                         gmin_elem_it - local_min_values.begin());
   auto gi_minimum    = gmin_elem_it->g_index;
 
   DASH_LOG_TRACE("dash::min_element",
                  "min. value:", gmin_elem_it->value,
-                 "at unit:",    min_elem_unit,
+                 "at unit:",    (gmin_elem_it - local_min_values.begin()),
                  "global idx:", gi_minimum);
 
   DASH_LOG_TRACE_VAR("dash::min_element", gi_minimum);

@@ -26,8 +26,8 @@ int main(int argc, char* argv[])
   dart_group_sizeof(&gsize);
   geven = malloc(gsize);
   godd = malloc(gsize);
-  dart_group_init(geven);
-  dart_group_init(godd);
+  dart_group_create(geven);
+  dart_group_create(godd);
 
   int i;
   for( i=0; i<size; i+=2 ) {

@@ -163,10 +163,11 @@ public:
     if (_lptr != nullptr) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _lptr);
       return *_lptr;
-    } else if (!DART_GPTR_EQUAL(DART_GPTR_NULL, _gptr)) {
+    } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
       T t;
-      dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
       return t;
     }
     DASH_THROW(
@@ -188,9 +189,10 @@ public:
     if (_lptr != nullptr) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _lptr);
       t = *_lptr;
-    } else if (!DART_GPTR_EQUAL(DART_GPTR_NULL, _gptr)) {
+    } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
-      dart_get_blocking(static_cast<void *>(&t), _gptr, sizeof(T));
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      dart_get_blocking(static_cast<void *>(&t), _gptr, ds.nelem, ds.dtype);
     }
     return t;
   }
@@ -200,9 +202,10 @@ public:
     if (_lptr != nullptr) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _lptr);
       *_lptr = val;
-    } else if (!DART_GPTR_EQUAL(DART_GPTR_NULL, _gptr)) {
+    } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.T()", _gptr);
-      dart_put_blocking(_gptr, static_cast<void *>(&val), sizeof(T));
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      dart_put_blocking(_gptr, static_cast<void *>(&val), ds.nelem, ds.dtype);
     }
     DASH_LOG_TRACE("GlobSharedRef.put >");
   }
@@ -218,9 +221,10 @@ public:
     if (_lptr != nullptr) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.=", _lptr);
       *_lptr = val;
-    } else if (!DART_GPTR_EQUAL(DART_GPTR_NULL, _gptr)) {
+    } else if (!DART_GPTR_ISNULL(_gptr)) {
       DASH_LOG_TRACE_VAR("GlobSharedRef.=", _gptr);
-      dart_put_blocking(_gptr, static_cast<const void *>(&val), sizeof(T));
+      dart_storage_t ds = dash::dart_storage<T>(1);
+      dart_put_blocking(_gptr, static_cast<const void *>(&val), ds.nelem, ds.dtype);
     }
     DASH_LOG_TRACE("GlobSharedRef.= >");
     return *this;

@@ -3,6 +3,7 @@
 
 #include <dash/internal/Macro.h>
 #include <dash/internal/StreamConversion.h>
+#include <dash/Types.h>
 
 #include <dash/dart/if/dart_config.h>
 
@@ -20,8 +21,8 @@
 #include <unistd.h>
 
 namespace dash {
-// forward-declaration
-int myid();
+  // forward-declaration
+  global_unit_t myid();
 }
 
 #ifdef DASH_LOG_OUTPUT_STDOUT
@@ -39,7 +40,7 @@ int myid();
 #endif
 
 //
-// Always log error messages:
+// Always log error and warning messages:
 //
 #define DASH_LOG_ERROR(...) \
   dash::internal::logging::LogWrapper(\
@@ -48,6 +49,14 @@ int myid();
 #define DASH_LOG_ERROR_VAR(context, var) \
   dash::internal::logging::LogVarWrapper(\
     "ERROR", __FILE__, __LINE__, context, #var, (var))
+
+#define DASH_LOG_WARN(...) \
+  dash::internal::logging::LogWrapper(\
+    "WARN ", __FILE__, __LINE__, __VA_ARGS__)
+
+#define DASH_LOG_WARN_VAR(context, var) \
+  dash::internal::logging::LogVarWrapper(\
+    "WARN ", __FILE__, __LINE__, context, #var, (var))
 
 //
 // Debug and trace log messages:
@@ -138,7 +147,7 @@ inline void Log_Line(
   pid_t pid = getpid();
   std::stringstream buf;
   buf << "[ "
-      << std::setw(4) << dash::myid()
+      << std::setw(4) << myid().id // Team::GlobalUnitID() not possible here
       << " "
       << level
       << " ] [ "
@@ -158,7 +167,7 @@ inline void Log_Line(
 
 // "Recursive" variadic function
 template<typename T, typename... Args>
-void Log_Recursive(
+inline void Log_Recursive(
   const char         * level,
   const char         * file,
   int                  line,
@@ -173,7 +182,7 @@ void Log_Recursive(
 
 // Log_Recursive wrapper that creates the ostringstream
 template<typename... Args>
-void LogWrapper(
+inline void LogWrapper(
   const char *     level,
   const char *     filepath,
   int              line,
@@ -198,13 +207,13 @@ void LogWrapper(
 
 // Log_Recursive wrapper that creates the ostringstream
 template<typename T, typename... Args>
-void LogVarWrapper(
+inline void LogVarWrapper(
   const char* level,
   const char* filepath,
-  int line,
+  int         line,
   const char* context_tag,
   const char* var_name,
-  const T & var_value,
+  const T &   var_value,
   const Args & ... args)
 {
   if (!dash::internal::logging::log_enabled()) {

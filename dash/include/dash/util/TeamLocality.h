@@ -115,17 +115,17 @@ public:
     return _domain;
   }
 
-  inline const dash::util::UnitLocality & unit_locality(
-    dart_unit_t unit) const
-  {
-    return _domain.unit_locality(unit);
-  }
-
-  inline dash::util::UnitLocality & unit_locality(
-    dart_unit_t unit)
-  {
-    return _domain.unit_locality(unit);
-  }
+  //inline const dash::util::UnitLocality & unit_locality(
+  //  dart_unit_t unit) const
+  //{
+  //  return _domain.unit_locality(unit);
+  //}
+  //
+  //inline dash::util::UnitLocality & unit_locality(
+  //  dart_unit_t unit)
+  //{
+  //  return _domain.unit_locality(unit);
+  //}
 
   /**
    * Split the team locality domain into the given number of parts on the
@@ -180,6 +180,16 @@ public:
     return _domain.parts();
   }
 
+  inline size_t num_nodes() const
+  {
+    return _domain.size();
+  }
+
+  inline size_t num_cores() const
+  {
+    return _domain.num_cores();
+  }
+
   inline dash::Team & team()
   {
     return (nullptr == _team) ? dash::Team::Null() : *_team;
@@ -190,9 +200,23 @@ public:
     return (nullptr == _team) ? dash::Team::Null() : *_team;
   }
 
-  inline const std::vector<dart_unit_t> & units() const
+  inline const std::vector<global_unit_t> & global_units() const
   {
     return _domain.units();
+  }
+
+  inline dash::util::UnitLocality unit_locality(
+    team_unit_t unit_id) const
+  {
+    return dash::util::UnitLocality(*_team, unit_id);
+  }
+
+  inline dash::util::UnitLocality unit_locality(
+    global_unit_t unit_id) const
+  {
+    team_unit_t l_unit_id;
+    dart_team_unit_g2l(_team->dart_id(), unit_id, &l_unit_id);
+    return dash::util::UnitLocality(*_team, l_unit_id);
   }
 
   inline LocalityDomain_t & group(

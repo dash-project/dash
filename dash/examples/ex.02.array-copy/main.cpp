@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 {
   dash::init(&argc, &argv);
 
-  dart_unit_t myid       = dash::myid();
+  dash::global_unit_t myid = dash::myid();
   size_t num_units       = dash::Team::All().size();
   size_t num_elems_unit  = (argc > 1)
                            ? static_cast<size_t>(atoi(argv[1]))

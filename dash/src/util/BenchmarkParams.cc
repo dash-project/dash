@@ -21,11 +21,9 @@ namespace util {
 
 BenchmarkParams::BenchmarkParams(
   const std::string & benchmark_name)
-: _name(benchmark_name)
+: _myid(dash::Team::GlobalUnitID()), _name(benchmark_name)
 {
   using conf = dash::util::Config;
-
-  _myid = dash::myid();
 
   config_params_type params;
   params.env_mpi_shared_win = conf::get<bool>("DASH_ENABLE_MPI_SHWIN");
@@ -78,14 +76,7 @@ void BenchmarkParams::print_header()
     return;
   }
 
-  size_t box_width        = _header_width;
-  size_t numa_nodes       = dash::util::Locality::NumNUMANodes();
-  size_t num_nodes        = dash::util::Locality::NumNodes();
-  size_t num_local_cores  = dash::util::Locality::NumCores();
-  int    cpu_max_mhz      = dash::util::Locality::CPUMaxMhz();
-  int    cpu_min_mhz      = dash::util::Locality::CPUMinMhz();
-  auto   cache_sizes      = dash::util::Locality::CacheSizes();
-  auto   cache_line_sizes = dash::util::Locality::CacheLineSizes();
+  size_t box_width  = _header_width;
   std::string separator(box_width, '-');
 
   std::time_t t_now = std::time(NULL);
@@ -98,38 +89,24 @@ void BenchmarkParams::print_header()
   print_param("date",   date_cstr);
   print_section_end();
 
-  print_section_start("Hardware Locality");
-  print_param("processing nodes",  num_nodes);
-  print_param("cores/node",        num_local_cores);
-  print_param("NUMA domains/node", numa_nodes);
-  print_param("CPU max MHz",       cpu_max_mhz);
-  print_param("CPU min MHz",       cpu_min_mhz);
-  for (size_t level = 0; level < cache_sizes.size(); ++level) {
-    auto cache_kb     = cache_sizes[level] / 1024;
-    auto cache_line_b = cache_line_sizes[level];
-    std::ostringstream cn;
-    cn << "L" << (level+1) << "d cache";
-    std::ostringstream cs;
-    cs << std::right << std::setw(5) << cache_kb << " KB, "
-       << std::right << std::setw(2) << cache_line_b << " B/line";
-    print_param(cn.str(), cs.str());
-  }
-  print_section_end();
-
-  std::ostringstream oss;
-
 #ifdef MPI_IMPL_ID
   print_section_start("MPI Environment Flags");
+
+  std::ostringstream mpi_ss;
   for (auto flag : _config.env_mpi_config) {
     int val_w  = box_width - flag.first.length() - 6;
-    oss << "--   " << std::left   << flag.first << " "
-                   << std::setw(val_w) << std::right << flag.second
-        << '\n';
+    mpi_ss << "--   " << std::left   << flag.first << " "
+                      << std::setw(val_w) << std::right << flag.second
+           << '\n';
   }
+  std::cout << mpi_ss.str();
+
   print_section_end();
 #endif
 
   print_section_start("DASH Environment Flags");
+
+  std::ostringstream oss;
   for (auto flag = dash::util::Config::begin();
        flag != dash::util::Config::end(); ++flag)
   {
@@ -138,7 +115,6 @@ void BenchmarkParams::print_header()
                    << std::setw(val_w) << std::right << flag->second
         << '\n';
   }
-
   std::cout << oss.str();
 
   print_section_end();
@@ -202,25 +178,27 @@ void BenchmarkParams::print_pinning()
   std::ostringstream oss;
 
   auto line_w = _header_width;
-  auto host_w = line_w - 5 - 5 - 10 - 10 - 5;
+  auto host_w = line_w - 5 - 5 - 20 - 10 - 5;
   print_section_start("Process Pinning");
   oss << std::left         << "--   "
-      << std::setw(5)      << "unit"
+      << std::setw( 5)     << "unit"
       << std::setw(host_w) << "host"
-      << std::setw(10)     << "domain"
+      << std::setw(20)     << "domain"
       << std::right
-      << std::setw(10)     << "NUMA"
-      << std::setw(5)      << "CPU"
+      << std::setw( 5)     << "NUMA"
+      << std::setw( 5)     << "core"
+      << std::setw( 5)     << "CPU"
       << '\n';
-  for (size_t unit = 0; unit < dash::size(); ++unit) {
-    unit_pinning_type pin_info = Locality::Pinning(unit);
+  for (global_unit_t unit{0}; unit < dash::size(); ++unit) {
+    auto uloc = dash::util::UnitLocality(unit);
     oss << std::left         << "--   "
-        << std::setw(5)      << pin_info.unit
-        << std::setw(host_w) << pin_info.host
-        << std::setw(10)     << pin_info.domain
+        << std::setw( 5)     << uloc.unit_id()
+        << std::setw(host_w) << uloc.host()
+        << std::setw(20)     << uloc.domain_tag()
         << std::right
-        << std::setw(10)     << pin_info.numa_id
-        << std::setw(5)      << pin_info.cpu_id
+        << std::setw( 5)     << uloc.hwinfo().numa_id
+        << std::setw( 5)     << uloc.hwinfo().core_id
+        << std::setw( 5)     << uloc.hwinfo().cpu_id
         << '\n';
   }
   std::cout << oss.str();

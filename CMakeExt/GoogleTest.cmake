@@ -43,8 +43,8 @@ else()
   set(GTEST_PREFIX "${CMAKE_BINARY_DIR}/gtest")
   ExternalProject_Add(
     GTestExternal
-    GIT_REPOSITORY https://github.com/google/googletest.git 
-    GIT_TAG master 
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG master
     TIMEOUT 10
     PREFIX "${GTEST_PREFIX}"
     INSTALL_COMMAND ""

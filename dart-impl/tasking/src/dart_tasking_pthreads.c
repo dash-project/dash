@@ -49,9 +49,9 @@ struct task_list {
 };
 
 struct remote_dep {
-  dart_gptr_t gptr;
-  dart_unit_t runit;
-  task_t     *rtask; // pointer to a task on the origin unit, do not derefernce remotely!
+  dart_gptr_t        gptr;
+  dart_global_unit_t runit;
+  task_t            *rtask; // pointer to a task on the origin unit, do not derefernce remotely!
 };
 
 typedef struct {
@@ -329,7 +329,7 @@ static task_t * find_dependency_in_list(task_list_t *list, const dart_task_dep_t
 dart_ret_t
 dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_size, dart_task_dep_t *deps, size_t ndeps)
 {
-  dart_unit_t myid;
+  dart_global_unit_t myid;
   size_t i;
   bool in_dep = false;
   pthread_mutex_lock(&thread_pool_mutex);
@@ -364,7 +364,7 @@ dart__base__tasking__create_task(void (*fn) (void *), void *data, size_t data_si
       if (deps[i].type == DART_DEP_IN || deps[i].type == DART_DEP_INOUT) {
         // put the task into the dependency graph
 
-        if (deps[i].gptr.unitid != myid) {
+        if (deps[i].gptr.unitid != myid.id) {
           // create a dependency request at the remote unit
           remote_dependency_request(task, deps[i].gptr);
           task->unresolved_deps++;
@@ -719,11 +719,11 @@ static void send_release(void *data)
 
   while (1) {
     dart_ret_t ret;
-    ret = dart_amsg_trysend(rtask->runit, responseq, rtask, sizeof(*rtask));
+    ret = dart_amsg_trysend(rtask->runit.id, responseq, rtask, sizeof(*rtask));
     if (ret == DART_OK) {
       // the message was successfully sent
       DART_LOG_INFO("Sent remote dependency release to unit %i (segid=%i, offset=%i, fn=%p)",
-          rtask->runit, rtask->gptr.segid, rtask->gptr.addr_or_offs.offset, &enqueue_from_remote);
+          rtask->runit.id, rtask->gptr.segid, rtask->gptr.addr_or_offs.offset, &enqueue_from_remote);
       break;
     } else  if (ret == DART_ERR_AGAIN) {
       // cannot be sent at the moment, just try again
@@ -816,7 +816,6 @@ dart__base__tasking_sync_taskgraph()
 /*
  * Functions for printing the dependency graph
  */
-static void * dlhandle;
 
 static void print_subgraph(task_list_t *tl, int level)
 {

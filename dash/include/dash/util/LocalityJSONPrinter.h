@@ -34,9 +34,6 @@ public:
   self_t & operator<<(const dart_unit_locality_t & unit_loc);
 
   self_t & operator<<(
-    const typename Locality::UnitPinning & upi);
-
-  self_t & operator<<(
     const dart_hwinfo_t & hwinfo);
 
   self_t & operator<<(

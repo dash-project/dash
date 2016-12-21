@@ -45,10 +45,12 @@ void put_value_async(
   /// [IN]  Global pointer referencing target address of value
   const GlobPtrType & gptr)
 {
+  dart_storage_t ds = dash::dart_storage<T>(1);
   DASH_ASSERT_RETURNS(
     dart_put(gptr.dart_gptr(),
              (void *)(&newval),
-             sizeof(T)),
+             ds.nelem,
+             ds.dtype),
     DART_OK);
 }
 
@@ -66,10 +68,12 @@ void get_value_async(
   /// [IN]  Global pointer to read
   const GlobPtrType & gptr)
 {
+  dart_storage_t ds = dash::dart_storage<T>(1);
   DASH_ASSERT_RETURNS(
     dart_get(ptr,
              gptr.dart_gptr(),
-             sizeof(T)),
+             ds.nelem,
+             ds.dtype),
     DART_OK);
 }
 
@@ -85,10 +89,12 @@ void put_value(
   /// [IN]  Global pointer referencing target address of value
   const GlobPtrType & gptr)
 {
+  dart_storage_t ds = dash::dart_storage<T>(1);
   DASH_ASSERT_RETURNS(
     dart_put_blocking(gptr.dart_gptr(),
                       (void *)(&newval),
-                      sizeof(T)),
+                      ds.nelem,
+                      ds.dtype),
     DART_OK);
 }
 
@@ -105,10 +111,12 @@ void get_value(
   /// [IN]  Global pointer to read
   const GlobPtrType & gptr)
 {
+  dart_storage_t ds = dash::dart_storage<T>(1);
   DASH_ASSERT_RETURNS(
     dart_get_blocking(ptr,
                       gptr.dart_gptr(),
-                      sizeof(T)),
+                      ds.nelem,
+                      ds.dtype),
     DART_OK);
 }
 

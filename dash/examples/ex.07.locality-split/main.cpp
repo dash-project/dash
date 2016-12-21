@@ -41,6 +41,8 @@ int main(int argc, char * argv[])
         split_scope = DART_LOCALITY_SCOPE_MODULE;
       } else if (std::string(argv[2]) == "numa") {
         split_scope = DART_LOCALITY_SCOPE_NUMA;
+      } else if (std::string(argv[2]) == "core") {
+        split_scope = DART_LOCALITY_SCOPE_CORE;
       }
       if (argc >= 4) {
         split_num_groups = static_cast<int>(strtol(argv[3], NULL, 10));
@@ -50,7 +52,7 @@ int main(int argc, char * argv[])
 
   dash::init(&argc, &argv);
 
-  dash::util::BenchmarkParams bench_params("ex.07.locality");
+  dash::util::BenchmarkParams bench_params("ex.07.locality-split");
   bench_params.print_header();
   bench_params.print_pinning();
 

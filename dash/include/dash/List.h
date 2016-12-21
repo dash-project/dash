@@ -671,7 +671,7 @@ private:
   dash::Team         * _team
                          = nullptr;
   /// DART id of the unit that created the list.
-  dart_unit_t          _myid;
+  team_unit_t          _myid;
   /// Global memory allocation and -access.
   glob_mem_type      * _globmem
                          = nullptr;

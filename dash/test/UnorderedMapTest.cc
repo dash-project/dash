@@ -285,7 +285,7 @@ TEST_F(UnorderedMapTest, UnbalancedGlobalInsert)
   int gidx = 0;
   int unit = 0;
   for (auto git = map.begin(); git != map.end(); ++git) {
-    int      lidx;
+    int      lidx = -1;
     int      nlocal = 0;
     if (unit == 0) {
       lidx   = gidx;
@@ -337,8 +337,8 @@ struct HashCyclic
   : _nunits(team.size())
   { }
 
-  dart_unit_t operator()(const Key & key) {
-    return (key % _nunits);
+  dash::team_unit_t operator()(const Key & key) {
+    return dash::team_unit_t(key % _nunits);
   }
 
 private:

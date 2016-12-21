@@ -1,3 +1,5 @@
+#ifdef MPI_IMPL_ID
+
 #ifndef DASH__UTIL__TEST_PRINTER_H_
 #define DASH__UTIL__TEST_PRINTER_H_
 
@@ -5,6 +7,8 @@
 
 #include <libdash.h>
 #include <list>
+
+#include <mpi.h>
 
 #define TEST_NEUTRAL "\033[0;32m[----------] \033[m"
 #define TEST_SUM     "\033[0;32m[==========] \033[m"
@@ -33,10 +37,10 @@ class TestPrinter : public EmptyTestEventListener {
   std::list<std::string> _failed_tests;
 
   public:
-  TestPrinter():
-    _myid(dash::myid()),
-    _size(dash::size())
-  { }
+  TestPrinter() {
+    MPI_Comm_rank(MPI_COMM_WORLD, &_myid);
+    MPI_Comm_size(MPI_COMM_WORLD, &_size);
+  }
 
   private:
   // Called before any test activity starts.
@@ -76,6 +80,7 @@ class TestPrinter : public EmptyTestEventListener {
 
   // Called after all test activities have ended.
   virtual void OnTestProgramEnd(const UnitTest& unit_test) {
+    MPI_Barrier(MPI_COMM_WORLD);
     if(_myid == 0){
       bool passed = unit_test.Passed() && _testcase_passed;
 
@@ -116,15 +121,15 @@ class TestPrinter : public EmptyTestEventListener {
 
   // Called after a test ends.
   virtual void OnTestEnd(const TestInfo& test_info) {
-    dash::SharedCounter<int> success_units;
-    bool passed = test_info.result()->Passed();
+    int success_units = 0;
+    bool passed       = test_info.result()->Passed();
+    int unit_passed   = passed ? 1 : 0; 
 
-    if(passed){
-      success_units.inc(1);
-    }
-    dash::barrier();
+    MPI_Reduce(&unit_passed, &success_units, 1,
+               MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
     if(_myid == 0){
-      passed            = (success_units.get() == _size);
+      passed            = (success_units == _size);
       _testcase_passed &= passed;
 
       std::string res;
@@ -141,8 +146,10 @@ class TestPrinter : public EmptyTestEventListener {
       }
     }
     // prevent overlapping of tests
-    dash::barrier();
+    MPI_Barrier(MPI_COMM_WORLD);
   }
 };
 
 #endif // DASH__UTIL__TEST_PRINTER_H_
+
+#endif // MPI_IMPL_ID
