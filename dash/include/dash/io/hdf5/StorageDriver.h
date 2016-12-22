@@ -24,10 +24,9 @@
 #include <sstream>
 #include <typeinfo>
 #include <type_traits>
+#include <functional>
 
-#ifdef MPI_IMPL_ID
-#include <mpi.h>
-#else
+#ifndef MPI_IMPL_ID
 #pragma error "HDF5 module requires dart-mpi"
 #endif
 
@@ -39,6 +38,9 @@ namespace hdf5 {
 
 /** forward declaration */
 template < typename T > hid_t get_h5_datatype();
+
+/// Type of converter function from native type to hdf5 datatype
+using type_converter_fun_type = std::function<hid_t()>;
 
 /**
  * DASH wrapper to store an dash::Array or dash::Matrix
@@ -75,8 +77,7 @@ public:
    * \return true if pattern is compatible
    */
 private:
-  template <
-    class pattern_t >
+  template < class pattern_t >
   static constexpr bool _compatible_pattern()
   {
     return dash::pattern_partitioning_traits<pattern_t>::type::rectangular &&
@@ -103,186 +104,6 @@ private:
   }
 
 public:
-  /**
-   * Store all dash::Array values in an HDF5 file using parallel IO.
-   * Collective operation.
-   *
-   * \param  array     Array to store
-   * \param  filename  Filename of HDF5 file including extension
-   * \param  datapath   HDF5 Dataset in which the data is stored
-   * \param  foptions
-   */
-  template <
-    typename value_t,
-    typename index_t,
-    class    pattern_t >
-  typename std::enable_if <
-  _compatible_pattern<pattern_t>() &&
-  pattern_t::ndim() == 1,
-            void >::type
-            static write(
-              dash::Array<value_t, index_t, pattern_t> & array,
-              std::string filename,
-              std::string datapath,
-              hdf5_options foptions = _get_fdefaults())
-  {
-    static_assert(std::is_same<index_t,
-                               typename pattern_t::index_type>::value,
-                  "Specified index_t differs from pattern_t::index_type");
-
-    auto pattern    = array.pattern();
-    auto & team     = array.team();
-    auto pat_dims   = pattern.ndim();
-    long tilesize   = pattern.blocksize(0);
-    // Map native types to HDF5 types
-    auto h5datatype = get_h5_datatype<value_t>();
-    // for tracking opened groups
-    std::list<hid_t> open_groups;
-    // Split path in groups and dataset
-    auto path_vec   = _split_string(datapath, '/');
-    auto dataset    = path_vec.back();
-    // remove dataset from path
-    path_vec.pop_back();
-
-    /* HDF5 definition */
-    hid_t   file_id;
-    hid_t   h5dset;
-    hid_t   internal_type;
-    hid_t   plist_id; // property list identifier
-    hid_t   filespace;
-    hid_t   memspace;
-    hid_t   attr_id;
-    hid_t   loc_id;
-    herr_t  status;
-
-    // get hdf pattern layout
-    hdf5_pattern_spec<1> ts = _get_pattern_hdf_spec<1>(pattern);
-
-    // setup mpi access
-    plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
-
-    dash::Shared<int> f_exists;
-    if (team.myid() == 0) {
-      if (access( filename.c_str(), F_OK ) != -1) {
-        // check if file exists
-        f_exists.set(static_cast<int> (H5Fis_hdf5( filename.c_str())));
-      } else {
-        f_exists.set(-1);
-      }
-    }
-    team.barrier();
-
-    if (foptions.overwrite_file || (f_exists.get() <= 0)) {
-      // HD5 create file
-      file_id = H5Fcreate( filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, plist_id );
-    } else {
-      // Open file in RW mode
-      file_id = H5Fopen( filename.c_str(), H5F_ACC_RDWR, plist_id );
-    }
-    // close property list
-    H5Pclose(plist_id);
-
-    // Traverse path
-    loc_id = file_id;
-    for(std::string elem : path_vec){
-          if(H5Lexists(loc_id, elem.c_str(), H5P_DEFAULT)){
-            // open group
-            DASH_LOG_DEBUG("Open Group", elem);
-            loc_id = H5Gopen2(loc_id, elem.c_str(), H5P_DEFAULT);
-          } else {
-            // create group
-            DASH_LOG_DEBUG("Create Group", elem);
-            loc_id = H5Gcreate2(loc_id, elem.c_str(),
-                                H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-          }
-          if(loc_id != file_id){
-            open_groups.push_front(loc_id);
-          }
-    }
-
-    // Create dataspace
-    filespace     = H5Screate_simple(1, ts.data_dimsf, NULL);
-    memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
-    internal_type = H5Tcopy(h5datatype);
-
-    if(foptions.modify_dataset){
-      // Open dataset in RW mode
-      h5dset = H5Dopen(loc_id, dataset.c_str(), H5P_DEFAULT);
-    } else {
-      // Create dataset
-      h5dset = H5Dcreate(loc_id, dataset.c_str(), internal_type, filespace,
-                        H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    }
-    // Close global dataspace
-    H5Sclose(filespace);
-
-    filespace = H5Dget_space(h5dset);
-
-    // Select Hyperslabs in file
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    // Create property list for collective writes
-    plist_id = H5Pcreate(H5P_DATASET_XFER);
-    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
-    DASH_LOG_DEBUG("write completely filled blocks");
-    // Write completely filled blocks by pattern
-    H5Dwrite(h5dset, internal_type, memspace, filespace,
-             plist_id, array.lbegin());
-
-    // write underfilled blocks
-    ts = _get_pattern_hdf_spec_underfilled<1>(pattern);
-    memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
-
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    DASH_LOG_DEBUG("write partially filled blocks");
-    H5Dwrite(h5dset, internal_type, memspace, filespace,
-             plist_id, array.lbegin());
-
-
-    // Add Attributes
-    if (foptions.store_pattern) {
-      DASH_LOG_DEBUG("write additional attributes to hdf file");
-      auto pat_key = foptions.pattern_metadata_key.c_str();
-      hid_t attrspace = H5Screate(H5S_SCALAR);
-      long attr = (long) tilesize;
-
-      // Delete old attribute when overwriting dataset
-      if(foptions.modify_dataset){
-        H5Adelete(h5dset, pat_key);
-      }
-      hid_t attribute_id = H5Acreate(
-                             h5dset, pat_key, H5T_NATIVE_LONG,
-                             attrspace, H5P_DEFAULT, H5P_DEFAULT);
-      H5Awrite(attribute_id, H5T_NATIVE_LONG, &attr);
-      H5Aclose(attribute_id);
-      H5Sclose(attrspace);
-    }
-
-    // Close all
-    H5Dclose(h5dset);
-    H5Sclose(filespace);
-    H5Sclose(memspace);
-    H5Tclose(internal_type);
-    for(auto group_id : open_groups){
-      H5Gclose(group_id);
-    }
-    H5Fclose(file_id);
-  }
 
   /**
    * Store all dash::Matrix values in an HDF5 file using parallel IO.
@@ -294,36 +115,40 @@ public:
    * \param  datapath   HDF5 Dataset in which the data is stored
    * \param  foptions
    */
-  template <
-    typename value_t,
-    dim_t    ndim,
-    typename index_t,
-    typename pattern_t >
-  typename std::enable_if <
-    _compatible_pattern<pattern_t>(),
-    void
-  >::type
+ template <typename Container_t>
+   typename std::enable_if <
+    _compatible_pattern<typename Container_t::pattern_type>(),
+    void>::type
   static write(
-    dash::Matrix<value_t, ndim, index_t, pattern_t> & array,
-    std::string                                       filename,
-    std::string                                       datapath,
-    hdf5_options                                      foptions
-                                                        = _get_fdefaults())
+      /// Import data in this Container
+      Container_t &  array,
+      /// Filename of HDF5 file including extension
+      std::string    filename,
+      /// HDF5 Dataset in which the data is stored
+      std::string    datapath,
+      /// options how to open and modify data
+      hdf5_options   foptions = _get_fdefaults(),
+      /// \cstd::function to convert native type into h5 type
+      type_converter_fun_type  to_h5_dt_converter =
+                        get_h5_datatype<typename Container_t::value_type>)
   {
-    static_assert(ndim == pattern_t::ndim(),
-                  "Pattern dimension has to match matrix dimension");
+    using pattern_t = typename Container_t::pattern_type;
+    using extent_t  = typename pattern_t::size_type;
+    using index_t   = typename Container_t::index_type;
+    using value_t   = typename Container_t::value_type;
 
-    static_assert(std::is_same<index_t,
-                               typename pattern_t::index_type>::value,
+    constexpr auto ndim = pattern_t::ndim();
+
+    // Check if container dims match pattern dims
+    _verify_container_dims(array);
+    static_assert(std::is_same<index_t, typename pattern_t::index_type>::value,
                   "Specified index_t differs from pattern_t::index_type");
 
-    typedef typename pattern_t::size_type extent_t;
+    auto pattern             = array.pattern();
+    const dash::Team & team  = array.team();
 
-    auto pattern     = array.pattern();
-    auto & team      = array.team();
-    auto pat_dims    = pattern.ndim();
     // Map native types to HDF5 types
-    auto h5datatype  = get_h5_datatype<value_t>();
+    auto h5datatype  = to_h5_dt_converter();
     // for tracking opened groups
     std::list<hid_t> open_groups;
     // Split path in groups and dataset
@@ -339,14 +164,12 @@ public:
     hid_t   plist_id; // property list identifier
     hid_t   filespace;
     hid_t   memspace;
-    hid_t   attr_id;
     hid_t   loc_id;
-    herr_t  status;
 
     hdf5_pattern_spec<ndim> ts;
 
     // get hdf pattern layout
-    ts = _get_pattern_hdf_spec<ndim>(pattern);
+    ts = _get_pattern_hdf_spec(pattern);
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -431,7 +254,7 @@ public:
 
     // write underfilled blocks
     // get hdf pattern layout
-    ts = _get_pattern_hdf_spec_underfilled<ndim>(pattern);
+    ts = _get_pattern_hdf_spec_underfilled(pattern);
     memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
     H5Sselect_hyperslab(
       filespace,
@@ -474,6 +297,7 @@ public:
     }
 
     // Close all
+    H5Pclose(plist_id);
     H5Dclose(h5dset);
     H5Sclose(filespace);
     H5Sclose(memspace);
@@ -485,212 +309,41 @@ public:
   }
 
   /**
-   * Read an HDF5 dataset into a dash::Array using parallel IO
-   * if the array is already allocated, the size has to match the HDF5 dataset
-   * size and all data will be overwritten.
-   * Otherwise the array will be allocated.
-   *
-   * Colletive operation.
-   *
-   * \param array     Import data in this dash::Array
-   * \param filename  Filename of HDF5 file including extension
-   * \param datapath   HDF5 Dataset in which the data is stored
-   * \param foptions
-   */
-  template <
-    typename value_t,
-    typename index_t,
-    class    pattern_t >
-  typename std::enable_if <
-    _compatible_pattern<pattern_t>() && pattern_t::ndim() == 1,
-    void
-  >::type
-  static read(
-    dash::Array<value_t, index_t, pattern_t> & array,
-    std::string                                filename,
-    std::string                                datapath,
-    hdf5_options                               foptions = _get_fdefaults())
-  {
-    typedef typename pattern_t::size_type extent_t;
-
-    static_assert(std::is_same<index_t,
-                               typename pattern_t::index_type>::value,
-                  "Specified index_t differs from pattern_t::index_type");
-
-    extent_t tilesize;
-    int      rank;
-
-    // HDF5 definition
-    hid_t    file_id;
-    hid_t    h5dset;
-    hid_t    internal_type;
-    hid_t    plist_id; // property list identifier
-    hid_t    filespace;
-    hid_t    memspace;
-    // global data dims
-    hsize_t  data_dimsf[1];
-    herr_t   status;
-    // Map native types to HDF5 types
-    hid_t    h5datatype;
-
-    // Check if matrix is already allocated
-    bool is_alloc  = (array.size() != 0);
-
-    // setup mpi access
-    plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    if(is_alloc){
-      dart__io__hdf5__prep_mpio(plist_id, array.team().dart_id());
-    } else {
-      dart__io__hdf5__prep_mpio(plist_id, dash::Team::All().dart_id());
-    }
-
-    // HD5 create file
-    file_id = H5Fopen(filename.c_str(), H5P_DEFAULT, plist_id );
-
-    // close property list
-    H5Pclose(plist_id);
-
-    // Create dataset
-    h5dset = H5Dopen(file_id, datapath.c_str(), H5P_DEFAULT);
-
-    // Get dimensions of data
-    filespace     = H5Dget_space(h5dset);
-    rank          = H5Sget_simple_extent_ndims(filespace);
-
-    DASH_ASSERT_EQ(rank, 1, "Data dimension of HDF5 dataset is not 1");
-
-    status        = H5Sget_simple_extent_dims(filespace, data_dimsf, NULL);
-
-    // Initialize DASH Array
-    // no explicit pattern specified / try to load pattern from hdf5 file
-    auto pat_key = foptions.pattern_metadata_key.c_str();
-
-    if (!is_alloc                          // not allocated
-        && foptions.restore_pattern        // pattern should be restored
-        && H5Aexists(h5dset, pat_key)) { // hdf5 contains pattern
-      hid_t attrspace      = H5Screate(H5S_SCALAR);
-      hid_t attribute_id  = H5Aopen(h5dset, pat_key, H5P_DEFAULT);
-      H5Aread(attribute_id, H5T_NATIVE_LONG, &tilesize);
-      H5Aclose(attribute_id);
-      H5Sclose(attrspace);
-
-      const pattern_t pattern(
-        dash::SizeSpec<1, extent_t>(static_cast<extent_t>(data_dimsf[0])),
-        dash::DistributionSpec<1>(dash::TILE(tilesize)),
-        dash::TeamSpec<1, index_t>(),
-        dash::Team::All());
-
-      array.allocate(pattern);
-    } else if (is_alloc) {
-      DASH_LOG_DEBUG("Array already allocated");
-      // Check if array size matches data extents
-      DASH_ASSERT_EQ(
-        data_dimsf[0],
-        array.size(),
-        "Array size does not match data extents");
-    } else {
-      // Auto deduce pattern
-      const pattern_t pattern(
-        dash::SizeSpec<1, extent_t>(static_cast<extent_t>(data_dimsf[0])),
-        dash::DistributionSpec<1>(),
-        dash::TeamSpec<1, index_t>(),
-        dash::Team::All());
-      array.allocate(pattern);
-    }
-    pattern_t pattern    = array.pattern();
-    h5datatype = get_h5_datatype<value_t>(); // hack
-
-    // get hdf pattern layout
-    hdf5_pattern_spec<1> ts = _get_pattern_hdf_spec<1>(pattern);
-
-    // Create HDF5 memspace
-    memspace       = H5Screate_simple(1, ts.data_dimsm, NULL);
-    internal_type  = H5Tcopy(h5datatype);
-
-    // Select Hyperslabs in file
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    // Create property list for collective reads
-    plist_id = H5Pcreate(H5P_DATASET_XFER);
-    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
-    // read data
-    DASH_LOG_DEBUG("read completely filled blocks");
-    H5Dread(h5dset, internal_type, memspace, filespace,
-            plist_id, array.lbegin());
-
-    // read underfilled blocks
-    // get hdf pattern layout
-    ts = _get_pattern_hdf_spec_underfilled<1>(pattern);
-    memspace      = H5Screate_simple(1, ts.data_dimsm, NULL);
-
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    // Read underfilled blocks by pattern
-    DASH_LOG_DEBUG("read partially filled blocks");
-    H5Dread(h5dset, internal_type, memspace, filespace,
-            plist_id, array.lbegin());
-
-    // Close all
-    H5Dclose(h5dset);
-    H5Sclose(filespace);
-    H5Sclose(memspace);
-    H5Tclose(internal_type);
-    H5Fclose(file_id);
-  }
-
-  /**
    * Read an HDF5 dataset into a dash::Matrix using parallel IO
    * if the matrix is already allocated, the sizes have to match
    * the HDF5 dataset sizes and all data will be overwritten.
    * Otherwise the matrix will be allocated.
    *
    * Collective operation.
-   *
-   * \param  matrix    Import data in this dash::Matrix
-   * \param  filename  Filename of HDF5 file including extension
-   * \param  datapath   HDF5 Dataset in which the data is stored
-   * \param  foptions
    */
-  template <
-    typename value_t,
-    dim_t    ndim,
-    typename index_t,
-    class    pattern_t >
-  typename std::enable_if <
-  _compatible_pattern<pattern_t>(),
-                      void >::type
-                      static read(
-                        dash::Matrix<
-                          value_t,
-                          ndim,
-                          index_t,
-                          pattern_t> & matrix,
-                        std::string    filename,
-                        std::string    datapath,
-                        hdf5_options   foptions = _get_fdefaults())
+ template <typename Container_t>
+   typename std::enable_if <
+    _compatible_pattern<typename Container_t::pattern_type>(),
+    void
+  >::type
+  static read(
+      /// Import data in this Container
+      Container_t &  matrix,
+      /// Filename of HDF5 file including extension
+      std::string    filename,
+      /// HDF5 Dataset in which the data is stored
+      std::string    datapath,
+      /// options how to open and modify data
+      hdf5_options   foptions = _get_fdefaults(),
+      /// \cstd::function to convert native type into h5 type
+      type_converter_fun_type  to_h5_dt_converter =
+                        get_h5_datatype<typename Container_t::value_type>)
   {
-    typedef typename pattern_t::size_type extent_t;
+    using pattern_t = typename Container_t::pattern_type;
+    using extent_t  = typename pattern_t::size_type;
+    using index_t   = typename Container_t::index_type;
+    using value_t   = typename Container_t::value_type;
+
+    constexpr auto ndim = pattern_t::ndim();
 
     static_assert(std::is_same<index_t,
                                typename pattern_t::index_type>::value,
                   "Specified index_t differs from pattern_t::index_type");
-
-    // Split path in groups and dataset
-    //auto path_vec   = _split_string(datapath, '/');
-    //auto dataset    = path_vec.back();
 
     // HDF5 definition
     hid_t   file_id;
@@ -703,13 +356,13 @@ public:
     hsize_t data_dimsf[ndim];
     herr_t  status;
     // Map native types to HDF5 types
-    hid_t h5datatype;
+    hid_t   h5datatype;
     // rank of hdf5 dataset
-    int      rank;
+    int     rank;
     hdf5_pattern_spec<ndim> ts;
 
     // Check if matrix is already allocated
-    bool is_alloc  = (matrix.size() != 0);
+    bool is_alloc = (matrix.size() != 0);
 
     // Setup MPI IO
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -799,16 +452,16 @@ public:
       matrix.allocate(pattern);
     }
 
-    h5datatype = get_h5_datatype<value_t>();
+    h5datatype = to_h5_dt_converter();
     internal_type = H5Tcopy(h5datatype);
 
     // setup extends per dimension
     auto pattern = matrix.pattern();
     //DASH_LOG_DEBUG("Pattern", pattern);
-    ts = _get_pattern_hdf_spec<ndim>(pattern);
+    ts = _get_pattern_hdf_spec(pattern);
 
     // Create dataspace
-    memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
+    memspace = H5Screate_simple(ndim, ts.data_dimsm, NULL);
 
     H5Sselect_hyperslab(
       filespace,
@@ -821,14 +474,14 @@ public:
     // Create property list for collective reads
     plist_id = H5Pcreate(H5P_DATASET_XFER);
     H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
+    
     // read data
     H5Dread(h5dset, internal_type, memspace, filespace,
             plist_id, matrix.lbegin());
 
     // read underfilled blocks
     // get hdf pattern layout
-    ts = _get_pattern_hdf_spec_underfilled<ndim>(pattern);
+    ts = _get_pattern_hdf_spec_underfilled(pattern);
     memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
 
     H5Sselect_hyperslab(
@@ -844,6 +497,7 @@ public:
             plist_id, matrix.lbegin());
 
     // Close all
+    H5Pclose(plist_id);
     H5Dclose(h5dset);
     H5Sclose(filespace);
     H5Sclose(memspace);
@@ -895,15 +549,11 @@ private:
    * \param pattern_t pattern
    * \return hdf5_pattern_spec<ndim>
    */
-  template <
-    dim_t ndim,
-    class pattern_t >
-  typename std::enable_if <
-  _compatible_pattern<pattern_t>(),
-                      hdf5_pattern_spec<ndim >>::type
-                      static inline _get_pattern_hdf_spec(
-                        pattern_t pattern)
+  template < class pattern_t >
+  const static inline hdf5_pattern_spec<pattern_t::ndim()>
+    _get_pattern_hdf_spec(const pattern_t & pattern)
   {
+    constexpr auto ndim = pattern_t::ndim();
     hdf5_pattern_spec<ndim> ts;
     // setup extends per dimension
     for (int i = 0; i < ndim; ++i) {
@@ -926,15 +576,11 @@ private:
    * \param pattern_t pattern
    * \return hdf5_pattern_spec<ndim>
    */
-  template <
-    dim_t ndim,
-    class pattern_t >
-  typename std::enable_if <
-  _compatible_pattern<pattern_t>(),
-                      hdf5_pattern_spec<ndim> >::type
-                      static inline _get_pattern_hdf_spec_underfilled(
-                        pattern_t pattern)
+  template < class pattern_t >
+  const static inline hdf5_pattern_spec<pattern_t::ndim()>
+    _get_pattern_hdf_spec_underfilled(const pattern_t & pattern)
   {
+    constexpr auto ndim = pattern_t::ndim();
     hdf5_pattern_spec<ndim> ts;
 
     for (int i = 0; i < ndim ; i++) {
@@ -958,6 +604,22 @@ private:
     }
     return ts;
   }
+
+  
+  template <
+    dim_t ndim,
+    typename value_t,
+    typename index_t,
+    typename pattern_t>
+  static inline void _verify_container_dims(const Matrix<value_t, ndim, index_t, pattern_t> & container)
+  {
+    static_assert(ndim == pattern_t::ndim(),
+                  "Pattern dimension has to match matrix dimension");
+  }
+  template < class Container_t >
+  static inline void _verify_container_dims(const Container_t & container)
+  {return;}
+
 
 };
 

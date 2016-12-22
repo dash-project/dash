@@ -73,6 +73,45 @@ os << dash::io::hdf5::dataset("temperature")
    << matrix_b;
 ```
 
+## Custom Datatypes
+
+As HDF5 is a self describing data format, native C/C++ datatypes have to be converted into their HDF5 equivalents.
+For the most common primitive types like `int`, `float`, etc. DASH brings a conversion function.
+If not specified by the user, this conversion is done implicitly in DASH's HDF5 storage driver.
+However, if you store data of other types in DASH containers, this conversion cannot be done automatically.
+Therefor the driver provides an IO manipulator (`type_converter`) to set a custom conversion function.
+The probably most common case, using a struct type, is shown in the following example:
+
+```cpp
+// Struct that is stored in DASH array
+struct value_t { double a; int b; };
+
+// Conversion function
+auto converter = [](){
+    hid_t h5tid = H5Tcreate (H5T_COMPOUND, sizeof(value_t));
+    H5Tinsert(h5tid, "a_name", HOFFSET(value_t, a), H5T_NATIVE_DOUBLE);
+    H5Tinsert(h5tid, "b_name", HOFFSET(value_t, b), H5T_NATIVE_INT);
+    return h5tid;
+  };
+
+dash::Array<value_t> array_a(1000);
+// [...]
+// store data
+OutputStream os(_filename);
+    os << dio::dataset("array_a")
+       << dio::type_converter(converter)
+       << array_a;
+
+// restore data
+dash::Array<value_t> array_b(1000);
+InputStream is(_filename);
+is >> dio::dataset("array_a")
+   >> dio::type_converter(converter)
+   >> array_b;
+```
+
+For details how to implement the conversion function, see DASH's [API documentation](https://codedocs.xyz/dash-project/dash/) as well as 
+the [HDF5 type documentation](https://support.hdfgroup.org/HDF5/doc/UG/HDF5_Users_Guide-Responsive%20HTML5/index.html#t=HDF5_Users_Guide%2FDatatypes%2FHDF5_Datatypes.htm).
 
 ## DASH Pattern Handling
 By default, DASH stores the pattern layout as metadata in the hdf5 file. When reading back the file, DASH checks if it contains pattern metadata and creates the new pattern according to the metadata.
