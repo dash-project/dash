@@ -567,59 +567,6 @@ dart_ret_t dart_team_create(
     team_data->window = win;
   }
 
-#if 0
-  /* Another way of generating the available teamID for the newly crated team. */
-  if (subcomm != MPI_COMM_NULL)
-  {
-    /* Get the maximum next_availteamid among all the units belonging to the
-     * created sub-communicator. */
-    MPI_Allreduce (&next_availteamid, &max_teamid, 1, MPI_INT, MPI_MAX, subcomm);
-    int result = dart_adapt_teamlist_alloc (max_teamid, &index);
-
-    if (result == -1)
-    {
-      return DART_ERR_OTHER;
-    }
-
-    *newteam = max_teamid;
-    teams[index] = subcomm;
-    MPI_Comm_rank (subcomm, &rank);
-
-    if (rank == 0)
-    {
-      root = sub_unit;
-      if (sub_unit != 0)
-      {
-        MPI_Send (&root, 1, MPI_INT, 0, 0, comm);
-      }
-    }
-
-    next_availteamid = max_teamid + 1;
-  }
-
-  if (sub_unit == 0)
-  {
-    if (root == -1)
-    {
-      MPI_Recv (&root, 1, MPI_INT, MPI_ANY_SOURCE, 0, comm, MPI_STATUS_IGNORE);
-    }
-  }
-
-  MPI_Bcast (&root, 1, MPI_INT, 0, comm);
-
-  /* Broadcast the calculated max_teamid to all the units not belonging to the
-   * sub-communicator. */
-  MPI_Bcast (&max_teamid, 1, MPI_INT, root, comm);
-  if (subcomm == MPI_COMM_NULL)
-  {
-    /* 'Next_availteamid' is changed iff it is smaller than 'max_teamid + 1' */
-    if (max_teamid + 1 > next_availteamid)
-    {
-      next_availteamid = max_teamid + 1;
-    }
-  }
-#endif
-
   if (subcomm != MPI_COMM_NULL) {
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     dart_allocate_shared_comm(team_data);
