@@ -39,7 +39,7 @@ TEST_F(ShiftTilePatternTest, Distribute1DimTile)
   std::array<index_t, 1> expected_coord;
   for (int x = 0; x < static_cast<int>(extent); ++x) {
     expected_coord[0]         = x;
-    index_t expected_unit_id  = (x / block_size) % team_size;
+    dash::team_unit_t expected_unit_id((x / block_size) % team_size);
     index_t block_index       = x / block_size;
     index_t block_base_offset = block_size * (block_index / team_size);
     index_t expected_offset   = (x % block_size) + block_base_offset;
@@ -188,7 +188,7 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
       int num_l_blocks_y      = num_blocks_y / team_size;
       int block_index_x       = x / block_size_x;
       int block_index_y       = y / block_size_y;
-      int unit_id             = (block_index_x + block_index_y) % team_size;
+      dash::team_unit_t unit_id((block_index_x + block_index_y) % team_size);
 //    int l_block_index_x     = block_index_x / team_size;
       int l_block_index_y     = block_index_y / team_size;
 //    int l_block_index_col   = (block_index_y * num_l_blocks_x) +
@@ -214,11 +214,11 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
                                   std::array<index_t, 2> { x, y });
 //    auto local_coords_col   = pat_tile_col.local_coords(
 //                                std::array<index_t, 2> { x, y });
-      LOG_MESSAGE("R %d,%d, u:%d, b:%d,%d, nlb:%d,%d, lc: %d,%d, lbi:%d, p:%d",
+      LOG_MESSAGE("R %d,%d u:%d b:%d,%d nlb:%d,%d lc: %d,%d lbi:%d p:%d",
                   x, y,
-                  unit_id,
-                  block_index_x, block_index_y,
-                  num_l_blocks_x, num_l_blocks_y,
+                  unit_id.id,
+                  block_index_x,       block_index_y,
+                  num_l_blocks_x,      num_l_blocks_y,
                   local_coords_row[0], local_coords_row[1],
                   l_block_index_row,
                   phase_row);
@@ -234,10 +234,10 @@ TEST_F(ShiftTilePatternTest, Distribute2DimTile)
       auto glob_coords_row =
         pat_tile_row.global(
           unit_id,
-          std::array<index_t, 2> { local_coords_row[0], local_coords_row[1] });
+          std::array<index_t, 2> { local_coords_row[0],
+                                   local_coords_row[1] });
       ASSERT_EQ_U(
-        (std::array<index_t, 2> { x, y }),
-        glob_coords_row);
+        (std::array<index_t, 2> { x, y }), glob_coords_row);
     }
   }
 }
@@ -275,8 +275,8 @@ TEST_F(ShiftTilePatternTest, Tile2DimTeam1Dim)
 
   dash::TeamSpec<2> teamspec_1d(dash::Team::All());
   ASSERT_EQ(1,            teamspec_1d.rank());
-  ASSERT_EQ(dash::size(), teamspec_1d.num_units(0));
-  ASSERT_EQ(1,            teamspec_1d.num_units(1));
+  ASSERT_EQ(dash::size(), teamspec_1d.num_units(dash::team_unit_t{0}));
+  ASSERT_EQ(1,            teamspec_1d.num_units(dash::team_unit_t{1}));
   ASSERT_EQ(dash::size(), teamspec_1d.size());
 
   dash::ShiftTilePattern<2, dash::ROW_MAJOR> pattern(

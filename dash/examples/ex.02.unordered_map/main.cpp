@@ -26,8 +26,8 @@ private:
   typedef dash::default_size_t size_type;
 
 public:
-  typedef Key          argument_type;
-  typedef dart_unit_t  result_type;
+  typedef Key                argument_type;
+  typedef dash::team_unit_t result_type;
 
 public:
   /**
@@ -53,15 +53,15 @@ public:
     const argument_type & key) const
   {
     if (_nunits == 0) {
-      return 0;
+      return result_type{0};
     }
-    return (static_cast<result_type>(key) ^ 0xAA) % _nunits;
+    return result_type((key ^ 0xAA) % _nunits);
   }
 
 private:
   dash::Team * _team   = nullptr;
   size_type    _nunits = 0;
-  dart_unit_t  _myid   = DART_UNDEFINED_UNIT_ID;
+  dash::team_unit_t _myid;
 
 }; // class HashLocal
 

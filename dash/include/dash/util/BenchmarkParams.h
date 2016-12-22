@@ -83,7 +83,7 @@ public:
     const std::string & name,
     T value) const
   {
-    if (dash::myid() != 0) {
+    if (dash::Team::GlobalUnitID() != 0) {
       return;
     }
     int value_w = _header_width - 6 - name.length();
@@ -101,7 +101,7 @@ public:
     const std::string & description,
     T value) const
   {
-    if (dash::myid() != 0) {
+    if (dash::Team::GlobalUnitID() != 0) {
       return;
     }
     int flag_w  =  7;
@@ -117,7 +117,7 @@ public:
   }
 
 private:
-  bool               _myid;
+  global_unit_t _myid;
   int                _header_width = 82;
   config_params_type _config;
   std::string        _name;

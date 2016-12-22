@@ -14,7 +14,7 @@ TEST_F(AtomicTest, FetchAndOp)
   typedef size_t value_t;
 
   value_t     val_init  = 100;
-  dart_unit_t owner     = dash::size() - 1;
+  dash::team_unit_t owner(dash::size() - 1);
   dash::Shared<value_t> shared(owner);
 
   if (dash::myid() == 0) {
@@ -66,12 +66,12 @@ TEST_F(AtomicTest, ArrayElements)
   DASH_LOG_TRACE("AtomicTest.ArrayElements", "barrier #1");
   array.barrier();
 
-  dart_unit_t remote_prev = dash::myid() == 0
+  dash::team_unit_t remote_prev(dash::myid() == 0
                             ? dash::size() - 1
-                            : dash::myid() - 1;
-  dart_unit_t remote_next = dash::myid() == dash::size() - 1
+                            : dash::myid() - 1);
+  dash::team_unit_t remote_next(dash::myid() == dash::size() - 1
                             ? 0
-                            : dash::myid() + 1;
+                            : dash::myid() + 1);
   // Add own value to previous and next unit in the array's iteration order.
   // In effect, sum of all array values should have tripled.
   DASH_LOG_TRACE("AtomicTest.ArrayElements",

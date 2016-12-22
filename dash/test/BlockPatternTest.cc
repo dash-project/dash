@@ -117,7 +117,7 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
   EXPECT_EQ(pat_blocked_col.blocksize(0), block_size);
   EXPECT_EQ(pat_blocked_col.local_capacity(), local_cap);
   // Test local extents:
-  for (size_t u = 0; u < team_size; ++u) {
+  for (dash::team_unit_t u{0}; u < team_size; ++u) {
     size_t local_extent_x;
     if (u < _num_elem / block_size) {
       // Full block
@@ -130,13 +130,13 @@ TEST_F(BlockPatternTest, Distribute1DimBlocked)
       local_extent_x = 0;
     }
     LOG_MESSAGE("local extents: u:%lu, le:%lu",
-      u, local_extent_x);
+      u.id, local_extent_x);
     EXPECT_EQ(local_extent_x, pat_blocked_row.local_extents(u)[0]);
     EXPECT_EQ(local_extent_x, pat_blocked_col.local_extents(u)[0]);
   }
   std::array<index_t, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
-    int expected_unit_id = x / block_size;
+    dash::team_unit_t expected_unit_id(x / block_size);
     int expected_offset  = x % block_size;
     int expected_index   = x;
     expected_coords[0]   = x;
@@ -204,7 +204,7 @@ TEST_F(BlockPatternTest, Distribute1DimCyclic)
   EXPECT_EQ(pat_cyclic_col.local_capacity(), local_cap);
   std::array<index_t, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
-    int expected_unit_id = x % team_size;
+    dash::team_unit_t expected_unit_id(x % team_size);
     int expected_offset  = x / team_size;
     int expected_index   = x;
     expected_coords[0]   = x;
@@ -272,10 +272,10 @@ TEST_F(BlockPatternTest, Distribute1DimBlockcyclic)
     _num_elem, block_size, num_blocks);
   std::array<index_t, 1> expected_coords;
   for (int x = 0; x < _num_elem; ++x) {
-    int unit_id           = (x / block_size) % team_size;
+    dash::team_unit_t unit_id((x / block_size) % team_size);
     int block_index       = x / block_size;
     int block_base_offset = block_size * (block_index / team_size);
-    int expected_unit_id  = block_index % team_size;
+    dash::team_unit_t expected_unit_id(block_index % team_size);
     int expected_offset   = (x % block_size) + block_base_offset;
     int expected_index    = x;
     expected_coords[0]    = x;
@@ -422,7 +422,7 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedY)
       int expected_offset_row_order = expected_index_row_order % max_per_unit;
       int expected_offset_col_order = (y % block_size_y) + (x *
                                         block_size_y_adj);
-      int expected_unit_id          = y / block_size_y;
+      dash::team_unit_t expected_unit_id(y / block_size_y);
       int local_x                   = x;
       int local_y                   = y % block_size_y;
       // Row major:
@@ -510,7 +510,7 @@ TEST_F(BlockPatternTest, Distribute2DimBlockedX)
                                       (y * block_size_x_adj);
       int expected_offset_row_order = expected_index_row_order %
                                         max_per_unit;
-      int expected_unit_id          = x / block_size_x;
+      dash::team_unit_t expected_unit_id(x / block_size_x);
       int local_x                   = x % block_size_x;
       int local_y                   = y;
       // Row major:
@@ -745,7 +745,7 @@ TEST_F(BlockPatternTest, Distribute2DimCyclicX)
       }
 //    int expected_index_row_order  = (y * extent_x) + x;
 //    int expected_index_col_order  = (x * extent_y) + y;
-      int expected_unit_id          = x % team_size;
+      dash::team_unit_t expected_unit_id(x % team_size);
       int expected_offset_col_order = (y * num_blocks_unit_x) +
                                       x / team_size;
       int expected_offset_row_order = ((x / team_size) * extent_y) + y;
@@ -841,7 +841,7 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
   for (int x = 0; x < static_cast<int>(extent_x); ++x) {
     for (int y = 0; y < static_cast<int>(extent_y); ++y) {
       for (int z = 0; z < static_cast<int>(extent_z); ++z) {
-        int unit_id                   = (x / block_size_x) % team_size;
+        dash::team_unit_t unit_id((x / block_size_x) % team_size);
         int num_blocks_x              = dash::math::div_ceil(
                                           extent_x, block_size_x);
         int min_blocks_x              = dash::math::div_ceil(
@@ -871,7 +871,7 @@ TEST_F(BlockPatternTest, Distribute3DimBlockcyclicX)
                                         (y * extent_x) + x;
         int expected_index_row_order  = (x * extent_y * extent_z) +
                                         (y * extent_z) + z;
-        int expected_unit_id          = (x / block_size_x) % team_size;
+        dash::team_unit_t expected_unit_id((x / block_size_x) % team_size);
         int local_index_x             = (local_block_index_x *
                                           block_size_x) +
                                         (x % block_size_x);

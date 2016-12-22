@@ -40,7 +40,7 @@ std::ostream & operator<<(
 {
   std::ostringstream ss;
   ss << "dart_unit_locality_t("
-     <<   "unit:"      << unit_loc.unit                << " "
+     <<   "unit:"      << unit_loc.unit.id             << " "
      <<   "domain:'"   << unit_loc.domain_tag          << "' "
      <<   "host:'"     << unit_loc.hwinfo.host         << "' "
      <<   "numa_id:'"  << unit_loc.hwinfo.numa_id      << "' "
@@ -90,17 +90,17 @@ void Locality::init()
 {
   DASH_LOG_DEBUG("dash::util::Locality::init()");
 
-  if (dart_unit_locality(DART_TEAM_ALL, dash::myid(), &_unit_loc)
+  if (dart_unit_locality(DART_TEAM_ALL, dash::Team::All().myid(), &_unit_loc)
       != DART_OK) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_unit_locality failed " <<
-               "for unit " << dash::myid());
+               "for unit " << dash::Team::GlobalUnitID());
   }
   DASH_LOG_TRACE_VAR("dash::util::Locality::init", _unit_loc);
   if (_unit_loc == nullptr) {
     DASH_THROW(dash::exception::RuntimeError,
                "Locality::init(): dart_unit_locality returned nullptr " <<
-               "for unit " << dash::myid());
+               "for unit " << dash::Team::GlobalUnitID());
   }
   if (dart_domain_team_locality(
         DART_TEAM_ALL, _unit_loc->domain_tag, &_team_loc)
@@ -160,10 +160,8 @@ static void print_domain(
 
   if (domain->num_units > 0) {
     ostr << indent << "units:   " << "{ ";
-    for (int u = 0; u < domain->num_units; ++u) {
-      dart_unit_t g_unit_id;
-      dart_team_unit_l2g(domain->team, domain->unit_ids[u], &g_unit_id);
-      ostr << g_unit_id;
+    for (team_unit_t u{0}; u < domain->num_units; ++u) {
+      ostr << domain->unit_ids[u].id;
       if (u < domain->num_units-1) {
         ostr << ", ";
       }
@@ -176,14 +174,16 @@ static void print_domain(
     uindent += std::string(9, ' ');
 
     for (int u = 0; u < domain->num_units; ++u) {
-      dart_unit_t            unit_id  = domain->unit_ids[u];
-      dart_unit_t            unit_gid = DART_UNDEFINED_UNIT_ID;
+      dart_team_unit_t        unit_lid;
+      dart_global_unit_t     unit_gid = domain->unit_ids[u];
       dart_unit_locality_t * uloc;
-      dart_unit_locality(team, unit_id, &uloc);
-      dart_team_unit_l2g(uloc->team, unit_id, &unit_gid);
-      ostr << uindent << "unit id:   " << uloc->unit << "  ("
-                                       << "in team " << uloc->team << ", "
-                                       << "global: " << unit_gid   << ")"
+
+      dart_team_unit_g2l(domain->team, unit_gid, &unit_lid);
+      dart_unit_locality(domain->team, unit_lid, &uloc);
+
+      ostr << uindent << "unit id:   " << uloc->unit.id << "  ("
+                                       << "in team " << uloc->team  << ", "
+                                       << "global: " << unit_gid.id << ")"
                       << '\n';
       ostr << uindent << "domain:    " << uloc->domain_tag  << '\n';
       ostr << uindent << "host:      " << uloc->hwinfo.host << '\n';

@@ -354,13 +354,16 @@ class MatrixRef< ElementT, NumDimensions, 0, PatternT >
     const MatrixRef<ElementT, NumDimensions, 1, PatternT> & previous,
     index_type coord);
 
+  /**
+   * TODO[TF] The following two functions don't seem to be implemented.
+   */
   inline const GlobRef<ElementT> local_at(
-    dart_unit_t unit,
-    index_type elem) const;
+    team_unit_t unit,
+    index_type   elem) const;
 
   inline GlobRef<ElementT> local_at(
-    dart_unit_t unit,
-    index_type elem);
+    team_unit_t unit,
+    index_type   elem);
 
   inline bool is_local() const;
 

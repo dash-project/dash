@@ -191,7 +191,7 @@ GlobIter<ElementType, PatternType> min_element(
 
     // Pointer to first element in local memory:
     const ElementType * lbegin        = first.globmem().lbegin(
-                                          team.myid());
+                                          dash::Team::GlobalUnitID());
     // Pointers to first / final element in local range:
     const ElementType * l_range_begin = lbegin + local_idx_range.begin;
     const ElementType * l_range_end   = lbegin + local_idx_range.end;
@@ -275,13 +275,11 @@ GlobIter<ElementType, PatternType> min_element(
     return last;
   }
 
-  auto min_elem_unit = static_cast<dart_unit_t>(
-                         gmin_elem_it - local_min_values.begin());
   auto gi_minimum    = gmin_elem_it->g_index;
 
   DASH_LOG_TRACE("dash::min_element",
                  "min. value:", gmin_elem_it->value,
-                 "at unit:",    min_elem_unit,
+                 "at unit:",    (gmin_elem_it - local_min_values.begin()),
                  "global idx:", gi_minimum);
 
   DASH_LOG_TRACE_VAR("dash::min_element", gi_minimum);

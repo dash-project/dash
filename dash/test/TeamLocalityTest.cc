@@ -34,10 +34,10 @@ TEST_F(TeamLocalityTest, GlobalAll)
   EXPECT_EQ_U(team, tloc.team());
 
   DASH_LOG_DEBUG("TeamLocalityTest.GlobalAll",
-                 "team all, global domain, units:", tloc.units().size());
-  EXPECT_EQ_U(team.size(), tloc.units().size());
+                 "team all, global domain, units:", tloc.global_units().size());
+  EXPECT_EQ_U(team.size(), tloc.global_units().size());
 
-  for (auto unit : tloc.units()) {
+  for (auto unit : tloc.global_units()) {
     DASH_LOG_DEBUG("TeamLocalityTest.GlobalAll",
                    "team all, global domain, units[]:", unit);
   }
@@ -56,7 +56,7 @@ TEST_F(TeamLocalityTest, SplitCore)
   }
 
   dash::Team & team = dash::Team::All();
-  int num_split     = std::min<int>(dash::size(), 3);
+  int num_split     = std::min(dash::size(), ssize_t(3));
 
   dash::util::TeamLocality tloc(team);
 
@@ -136,15 +136,15 @@ TEST_F(TeamLocalityTest, GroupUnits)
                  "team locality in Global domain:");
   print_locality_domain("global", tloc.domain());
 
-  std::vector<dart_unit_t> group_1_units;
-  std::vector<dart_unit_t> group_2_units;
-  std::vector<dart_unit_t> group_3_units;
+  std::vector<dash::global_unit_t> group_1_units;
+  std::vector<dash::global_unit_t> group_2_units;
+  std::vector<dash::global_unit_t> group_3_units;
   std::vector<std::string> group_1_tags;
   std::vector<std::string> group_2_tags;
   std::vector<std::string> group_3_tags;
 
-  std::vector<dart_unit_t> shuffled_unit_ids;
-  for (size_t u = 0; u < dash::size(); u++) {
+  std::vector<dash::global_unit_t> shuffled_unit_ids;
+  for (dash::global_unit_t u{0}; u < team.size(); ++u) {
     shuffled_unit_ids.push_back(u);
   }
   std::random_shuffle(shuffled_unit_ids.begin(), shuffled_unit_ids.end());
@@ -160,13 +160,13 @@ TEST_F(TeamLocalityTest, GroupUnits)
 
   group_3_units = shuffled_unit_ids;
 
-  for (dart_unit_t u : group_1_units) {
+  for (dash::global_unit_t u : group_1_units) {
     group_1_tags.push_back(tloc.unit_locality(u).domain_tag());
   }
-  for (dart_unit_t u : group_2_units) {
+  for (dash::global_unit_t u : group_2_units) {
     group_2_tags.push_back(tloc.unit_locality(u).domain_tag());
   }
-  for (dart_unit_t u : group_3_units) {
+  for (dash::global_unit_t u : group_3_units) {
     group_3_tags.push_back(tloc.unit_locality(u).domain_tag());
   }
 
@@ -184,7 +184,7 @@ TEST_F(TeamLocalityTest, GroupUnits)
 
     // TODO: If requested split was not possible, this yields an incorrect
     //       failure:
-    //  EXPECT_EQ_U(group_1_units, group_1.units());
+    //  EXPECT_EQ_U(group_1_units, group_1.global_units());
   }
   if (group_2_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_2_tags);
@@ -235,23 +235,23 @@ TEST_F(TeamLocalityTest, SplitGroups)
                  "team locality in Global domain:");
   print_locality_domain("global", tloc.domain());
 
-  std::vector<dart_unit_t> group_1_units;
-  std::vector<dart_unit_t> group_2_units;
+  std::vector<dash::global_unit_t> group_1_units;
+  std::vector<dash::global_unit_t> group_2_units;
   std::vector<std::string> group_1_tags;
   std::vector<std::string> group_2_tags;
 
   // Put the first 2 units in group 1:
-  group_1_units.push_back(0);
-  group_1_units.push_back(1);
+  group_1_units.push_back(dash::global_unit_t{0});
+  group_1_units.push_back(dash::global_unit_t{1});
   // Put every second unit in group 2, starting at rank 2:
-  for (size_t u = 3; u < dash::size(); u += 2) {
+  for (dash::global_unit_t u{3}; u < team.size(); u += 2) {
     group_2_units.push_back(u);
   }
 
-  for (dart_unit_t u : group_1_units) {
+  for (dash::global_unit_t u : group_1_units) {
     group_1_tags.push_back(tloc.unit_locality(u).domain_tag());
   }
-  for (dart_unit_t u : group_2_units) {
+  for (dash::global_unit_t u : group_2_units) {
     group_2_tags.push_back(tloc.unit_locality(u).domain_tag());
   }
 

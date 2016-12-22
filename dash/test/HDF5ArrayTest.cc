@@ -148,7 +148,7 @@ TEST_F(HDF5ArrayTest, PreAllocation)
   {
     dash::Array<int> array_a(ext_x);
     // Fill
-    fill_array(array_a, dash::myid());
+    fill_array(array_a, static_cast<int>(dash::myid()));
     dash::barrier();
 
     // Set option
@@ -163,7 +163,7 @@ TEST_F(HDF5ArrayTest, PreAllocation)
   dash::barrier();
 
   // Verify
-  verify_array(array_b, dash::myid());
+  verify_array(array_b, static_cast<int>(dash::myid()));
 }
 
 // Test Stream API

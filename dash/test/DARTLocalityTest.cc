@@ -28,7 +28,7 @@ bool domains_are_equal(
     return false;
   }
   for (int u = 0; u < loc_a->num_units; u++) {
-    if (loc_a->unit_ids[u] != loc_b->unit_ids[u]) { return false; }
+    if (loc_a->unit_ids[u].id != loc_b->unit_ids[u].id) { return false; }
   }
   for (int d = 0; d < loc_a->num_domains; d++) {
     EXPECT_EQ_U(loc_a, loc_a->domains[d].parent);
@@ -158,7 +158,7 @@ TEST_F(DARTLocalityTest, UnitLocality)
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", ul->hwinfo.min_threads);
   DASH_LOG_TRACE_VAR("DARTLocalityTest.UnitLocality", ul->hwinfo.max_threads);
 
-  EXPECT_EQ_U(_dash_id, ul->unit);
+  EXPECT_EQ_U(_dash_id, ul->unit.id);
 
   // Units may group multiple cores:
   EXPECT_GE_U(ul->hwinfo.cpu_id,      -1); // -1 if unknown, >= 0 if set

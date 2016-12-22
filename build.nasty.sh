@@ -1,6 +1,6 @@
 #!/bin/sh
 
-BUILD_DIR=./build
+BUILD_DIR=./build.nasty
 
 FORCE_BUILD=false
 if [ "$1" = "-f" ]; then
@@ -55,7 +55,8 @@ fi
 #
 #                    -DENABLE_NASTYMPI=ON \
 #                    -DNASTYMPI_LIBRARY_PATH=<path/to/nasty/lib \
-# Be aware: Do not enable in production
+#
+# !!!!!!!!!!!!!!!!!!!!! DO NOT ENABLE IN PRODUCTION !!!!!!!!!!!!!!!!!!!!!!!!
 
 # Configure with default release build settings:
 mkdir -p $BUILD_DIR
@@ -63,13 +64,13 @@ rm -Rf $BUILD_DIR/*
 (cd $BUILD_DIR && cmake -DCMAKE_BUILD_TYPE=Release \
                         -DENVIRONMENT_TYPE=default \
                         -DDART_IF_VERSION=3.2 \
-                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0/ \
+                        -DINSTALL_PREFIX=$HOME/opt/dash-0.3.0-nasty \
                         -DDART_IMPLEMENTATIONS=mpi \
                         -DENABLE_COMPILER_WARNINGS=ON \
                         -DENABLE_LT_OPTIMIZATION=OFF \
                         -DENABLE_ASSERTIONS=ON \
                         \
-                        -DENABLE_SHARED_WINDOWS=ON \
+                        -DENABLE_SHARED_WINDOWS=OFF \
                         -DENABLE_UNIFIED_MEMORY_MODEL=ON \
                         -DENABLE_DEFAULT_INDEX_TYPE_LONG=ON \
                         \
@@ -88,14 +89,14 @@ rm -Rf $BUILD_DIR/*
                         -DENABLE_PLASMA=ON \
                         -DENABLE_HDF5=ON \
                         \
+                        -DENABLE_NASTYMPI=ON \
+                        \
                         -DBUILD_EXAMPLES=OFF \
                         -DBUILD_TESTS=ON \
                         -DBUILD_DOCS=OFF \
                         \
                         -DIPM_PREFIX=${IPM_HOME} \
                         -DPAPI_PREFIX=${PAPI_HOME} \
-                        \
-                        -DENABLE_NASTYMPI=ON \
                         \
                         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
                         ../ && \
