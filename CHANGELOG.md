@@ -34,6 +34,17 @@ Bugfixes:
 
 ## Build System
 
+- Drastically improved continuous integration, CI configurations for
+  Travis and CircleCI
+- Added codedocs (http://codedocs.xyz) in deploy chain to automate API
+  documentation updates
+- Added readthedocs in deploy chain to generate user guides in distribution
+  documentation
+
+- Added NastyMPI test target in continuous integration
+
+- Added docker container build configurations
+
 - Intel MIC architecture build targets (tested on SuperMIC, Knights Corner).
 - Support for likwid.
 - Support for HDF5.
@@ -59,12 +70,16 @@ Bugfixes:
 
 Features:
 
-- Added function `dart_allreduce`.
+- Introduced strong typing of unit ids depending on reference scope
+  (global or relative to team) as `dart_team_unit_t` / `dash::team_unit_t`
+  and `dart_global_unit_t` / `dash::global_unit_t`.
 
-- Added function `dart_reduce`
+- 
+
+- Added function `dart_allreduce` and `dart_reduce`
 
 - Made global memory allocation and communication operations aware of the underlying 
-  data type to improve stability and performance. 
+  data type to improve stability and performance
 
 - Extended use of `const` specifier in DART communication interface 
 
@@ -102,7 +117,15 @@ Features:
         - `dart__base__locality__unit`
 
 Fixes:
+
 - Added clarification that DART currently does not provide thread-safe access. 
+
+## DART-MPI
+
+Bugfixes:
+
+- Fixed numerous memory leaks
+
 
 # DASH 0.2.0 (2016-03-03)
 
