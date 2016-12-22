@@ -184,6 +184,7 @@ int dart_adapt_teamlist_convert(
 	}
 }
 
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
 {
   int    i;
@@ -244,3 +245,4 @@ dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data)
 
   return DART_OK;
 }
+#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)

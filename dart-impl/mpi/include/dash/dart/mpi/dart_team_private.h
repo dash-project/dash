@@ -223,11 +223,13 @@ int dart_adapt_teamlist_recycle(uint16_t index, int pos);
  */
 int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index);
 
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 /*
  * Allocate shared memory communicator for the given \c team_data.
  * Shared between \c dart_initialize and \c dart_team_create.
  */
 dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data);
+#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
 #endif /*DART_ADAPT_TEAMNODE_H_INCLUDED*/
 
