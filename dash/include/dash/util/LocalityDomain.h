@@ -293,8 +293,8 @@ public:
       for (int sd = 0; sd < num_scope_domains; sd++) {
         DASH_LOG_TRACE("LocalityDomain.scope_domains",
                        "scope_domains[", sd, "]", ":",
-                       (*dart_scope_domains)[sd].domain_tag);
-        scope_domains.push_back(self_t((*dart_scope_domains)[sd]));
+                       dart_scope_domains[sd]->domain_tag);
+        scope_domains.push_back(self_t(*dart_scope_domains[sd]));
       }
       free(dart_scope_domains);
     }
