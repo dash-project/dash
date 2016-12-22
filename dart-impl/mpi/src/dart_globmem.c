@@ -150,15 +150,6 @@ dart_team_memalloc_aligned(
 
 	char * sub_mem;
 
-	/* The units belonging to the specified team are eligible to participate
-	 * below codes enclosed.
-   */
-
-	MPI_Win    win;
-	MPI_Comm   comm;
-	MPI_Aint   disp;
-	MPI_Aint * disp_set = (MPI_Aint*)(malloc(team_size * sizeof (MPI_Aint)));
-
 	uint16_t index;
 	int result = dart_adapt_teamlist_convert(teamid, &index);
   DART_LOG_DEBUG(
@@ -166,11 +157,10 @@ dart_team_memalloc_aligned(
     "index:%d", index);
 
   if (result == -1) {
-    free(disp_set);
     return DART_ERR_INVAL;
   }
 
-  comm = dart_team_data[index].comm;
+  MPI_Comm comm = dart_team_data[index].comm;
 	dart_unit_t localid = 0;
 
 	if (index == 0) {
@@ -237,14 +227,12 @@ dart_team_memalloc_aligned(
       DART_LOG_ERROR("dart_team_memalloc_aligned: "
                      "MPI_Win_allocate_shared failed, error %d (%s)",
                      ret, DART__MPI__ERROR_STR(ret));
-      free(disp_set);
       return DART_ERR_OTHER;
     }
   } else {
     DART_LOG_ERROR("dart_team_memalloc_aligned: "
                    "Shared memory communicator is MPI_COMM_NULL, "
                    "cannot call MPI_Win_allocate_shared");
-    free(disp_set);
     return DART_ERR_OTHER;
   }
 
@@ -274,7 +262,7 @@ dart_team_memalloc_aligned(
   }
 #endif
 
-  win = dart_team_data[index].window;
+  MPI_Win win = dart_team_data[index].window;
   /* Attach the allocated shared memory to win */
   if (MPI_Win_attach(win, sub_mem, nbytes) != MPI_SUCCESS) {
     DART_LOG_ERROR(
@@ -282,20 +270,21 @@ dart_team_memalloc_aligned(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     free(baseptr_set);
 #endif
-    free(disp_set);
     return DART_ERR_OTHER;
   }
+
+  MPI_Aint disp;
 	if (MPI_Get_address(sub_mem, &disp) != MPI_SUCCESS) {
     DART_LOG_ERROR(
       "dart_team_memalloc_aligned: bytes:%lu MPI_Get_address failed", nbytes);
-    free(disp_set);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     free(baseptr_set);
 #endif
     return DART_ERR_OTHER;
   }
 
-	/* Collect the disp information from all the ranks in comm */
+  /* Collect the disp information from all the ranks in comm */
+  MPI_Aint * disp_set = (MPI_Aint*)(malloc(team_size * sizeof (MPI_Aint)));
 	MPI_Allgather(&disp, 1, MPI_AINT, disp_set, 1, MPI_AINT, comm);
 
 	/* -- Updating infos on gptr -- */
@@ -306,10 +295,12 @@ dart_team_memalloc_aligned(
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
+  /* \todo[JS] This operation is not thread-safe */
   if (dart_segment_alloc(dart_memid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: "
         "bytes:%lu Allocation of segment data failed", nbytes);
+    free(disp_set);
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
     free(baseptr_set);
 #endif
@@ -336,6 +327,7 @@ dart_team_memalloc_aligned(
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 	MPI_Info_free(&win_info);
 #endif
+  /* \todo[JS] This operation is not thread-safe */
 	dart_memid++;
 
   DART_LOG_DEBUG(
@@ -403,6 +395,7 @@ dart_ret_t dart_team_memfree(
                  unitid.id, gptr.addr_or_offs.offset, gptr.unitid, teamid);
 	/* Remove the related correspondence relation record from the related
    * translation table. */
+  /* \todo[JS] This operation is not thread-safe */
   if (dart_segment_free(seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }
@@ -455,6 +448,7 @@ dart_team_memregister_aligned(
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
+  /* \todo[JS] This operation is not thread-safe */
   if (dart_segment_alloc(dart_registermemid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
@@ -533,6 +527,7 @@ dart_team_memregister(
   gptr->addr_or_offs.offset = 0;
   gptr->flags = 0;
 
+  /* \todo[JS] This operation is not thread-safe */
   if (dart_segment_alloc(dart_registermemid, index) != DART_OK) {
     DART_LOG_ERROR(
         "dart_team_memalloc_aligned: bytes:%lu Allocation of segment data failed",
@@ -583,6 +578,7 @@ dart_team_memderegister(
     return DART_ERR_INVAL;
   }
   MPI_Win_detach(win, sub_mem);
+  /* \todo[JS] This operation is not thread-safe */
   if (dart_segment_free(seg_id) != DART_OK) {
     return DART_ERR_INVAL;
   }

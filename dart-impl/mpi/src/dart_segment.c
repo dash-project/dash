@@ -84,10 +84,7 @@ static dart_segment_t * get_segment(dart_segid_t segid)
   int slot = hash_segid(segid);
   dart_seghash_elem_t *elem = &hashtab[slot];
 
-  while (elem != NULL) {
-    if (elem->data.segid == segid) {
-      break;
-    }
+  while (elem != NULL && elem->data.segid != segid) {
     elem = elem->next;
   }
 
@@ -104,6 +101,11 @@ static dart_segment_t * get_segment(dart_segid_t segid)
  * @brief Allocates a new segment data struct. May be served from a freelist.
  *
  * @return A pointer to an empty segment data object.
+ *
+ * \todo[JS]: Implement the segment hashtab using lock-free list for free-list and
+ *            lock-free list in the buckets?
+ *            Alternatively, use spin-locks since lock periods should be short
+ *            (maybe get rid of the free-list then?).
  */
 dart_ret_t dart_segment_alloc(dart_segid_t segid, uint16_t team_idx)
 {
@@ -294,6 +296,11 @@ static inline void free_segment_info(dart_segment_info_t *seg_info){
  *
  * @return DART_OK on success.
  *         DART_ERR_INVAL if the segment was not found.
+ *
+ * \todo[JS]: Implement the segment hashtab using lock-free list for free-list and
+ *            lock-free list in the buckets?
+ *            Alternatively, use spin-locks since lock periods should be short
+ *            (maybe get rid of the free-list then?).
  */
 dart_ret_t dart_segment_free(dart_segid_t segid)
 {
