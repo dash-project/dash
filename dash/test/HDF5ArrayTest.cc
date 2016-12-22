@@ -478,9 +478,9 @@ TEST_F(HDF5ArrayTest, AsyncIO)
     // Currently only works if just one container is passed
     OutputStream os(dash::launch::async, _filename);
     os << dio::dataset("array_a")
-      << array_a;
-//      << dio::dataset("g1/array_b")
-//      << array_b
+      << array_a
+      << dio::dataset("g1/array_b")
+      << array_b;
 //      << dio::dataset("g1/g2/array_c")
 //      << array_c;
     
