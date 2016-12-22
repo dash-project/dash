@@ -140,7 +140,7 @@ TEST_F(TeamLocalityTest, SplitNUMA)
 
 TEST_F(TeamLocalityTest, GroupUnits)
 {
-  if (dash::size() < 4) {
+  if (dash::size() < 3) {
     SKIP_TEST();
   }
   if (_dash_id != 0) {
@@ -201,23 +201,33 @@ TEST_F(TeamLocalityTest, GroupUnits)
     auto & group_1 = tloc.group(group_1_tags);
     print_locality_domain("group_1", group_1);
 
-    // TODO: If requested split was not possible, this yields an incorrect
-    //       failure:
-    //  EXPECT_EQ_U(group_1_units, group_1.global_units());
+    auto group_1_units_actual = group_1.units();
+    std::sort(group_1_units.begin(),        group_1_units.end());
+    std::sort(group_1_units_actual.begin(), group_1_units_actual.end());
+
+    EXPECT_EQ_U(group_1_units, group_1_units_actual);
   }
   if (group_2_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_2_tags);
     auto & group_2 = tloc.group(group_2_tags);
     print_locality_domain("group_2", group_2);
 
-    EXPECT_EQ_U(group_2_units, group_2.units());
+    auto group_2_units_actual = group_2.units();
+    std::sort(group_2_units.begin(),        group_2_units.end());
+    std::sort(group_2_units_actual.begin(), group_2_units_actual.end());
+
+    EXPECT_EQ_U(group_2_units, group_2_units_actual);
   }
   if (group_3_tags.size() > 1) {
     DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits", "group:", group_3_tags);
     auto & group_3 = tloc.group(group_3_tags);
     print_locality_domain("group_3", group_3);
 
-    EXPECT_EQ_U(group_3_units, group_3.units());
+    auto group_3_units_actual = group_3.units();
+    std::sort(group_3_units.begin(),        group_3_units.end());
+    std::sort(group_3_units_actual.begin(), group_3_units_actual.end());
+
+    EXPECT_EQ_U(group_3_units, group_3_units_actual);
   }
 
   DASH_LOG_DEBUG("TeamLocalityTest.GroupUnits",

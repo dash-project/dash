@@ -117,7 +117,7 @@ namespace internal {
  * dash::util::LocalityDomain & domain = team_locality.domain();
  *
  * // Leader unit in second subdomain:
- * dart_unit_t leader_id = domain[1].leader_unit();
+ * global_unit_t leader_id = domain[1].leader_unit();
  *
  * // Unit locality data of leader unit:
  * dash::util::UnitLocality & leader_loc = domain[1].unit_locality(leader_id);
@@ -303,7 +303,7 @@ public:
 
 #if 0
   inline const UnitLocality_t & unit_locality(
-      dart_unit_t unit) const
+      team_unit_t unit) const
   {
     if (nullptr == _parent) {
       return (*_unit_localities.find(unit)).second;
@@ -312,7 +312,7 @@ public:
   }
 
   inline UnitLocality_t & unit_locality(
-      dart_unit_t unit)
+      team_unit_t unit)
   {
     if (nullptr == _parent) {
       return _unit_localities[unit];
@@ -469,7 +469,7 @@ private:
 #if 0
   /// Locality descriptors of units in the domain. Only specified in root
   /// locality domain and resolved from parent in upward recursion otherwise.
-  std::unordered_map<dart_unit_t, UnitLocality_t>   _unit_localities;
+  std::unordered_map<team_unit_t, UnitLocality_t>   _unit_localities;
 #endif
   /// Iterator to the first subdomain.
   iterator                                          _begin;

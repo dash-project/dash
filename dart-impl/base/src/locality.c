@@ -153,7 +153,8 @@ dart_ret_t dart__base__locality__create(
   size_t num_units = 0;
   DART_ASSERT_RETURNS(dart_team_size(team, &num_units), DART_OK);
   team_global_domain->num_units = num_units;
-  team_global_domain->unit_ids  = malloc(num_units * sizeof(dart_unit_t));
+  team_global_domain->unit_ids  = malloc(num_units *
+                                         sizeof(dart_global_unit_t));
   for (size_t u = 0; u < num_units; ++u) {
     dart_team_unit_t luid = { u };
     DART_ASSERT_RETURNS(
@@ -683,7 +684,7 @@ dart_ret_t dart__base__locality__domain_group(
 
     if (ret != DART_OK) { return ret; }
 
-    group_domain->unit_ids = malloc(sizeof(dart_unit_t) *
+    group_domain->unit_ids = malloc(sizeof(dart_global_unit_t) *
                                     group_domain->num_units);
 
     /* Remove entries from group domain that are not part of the group:
@@ -692,8 +693,8 @@ dart_ret_t dart__base__locality__domain_group(
                    "select %d subdomains in group = %s",
                    group_size, group_domain->domain_tag);
 
-// TODO DEBUG: check if removed subdomains are correctly destroyed 
-//
+    // TODO DEBUG: check if removed subdomains are correctly destroyed 
+    //
     ret = dart__base__locality__select_subdomains(
             group_domain,
             group_subdomain_tags,
@@ -981,14 +982,14 @@ dart_ret_t dart__base__locality__group_subdomains(
   /*
    * Collect unit ids of group domain:
    */
-  group_domain->unit_ids = malloc(sizeof(dart_unit_t) *
+  group_domain->unit_ids = malloc(sizeof(dart_global_unit_t) *
                                   group_domain->num_units);
   int group_domain_unit_idx = 0;
   for (int gd = 0; gd < num_grouped; gd++) {
     dart_domain_locality_t * group_subdomain = group_domain->children[gd];
     memcpy(group_domain->unit_ids + group_domain_unit_idx,
            group_subdomain->unit_ids,
-           sizeof(dart_unit_t) * group_subdomain->num_units);
+           sizeof(dart_global_unit_t) * group_subdomain->num_units);
     group_domain_unit_idx += group_subdomain->num_units;
   }
 
