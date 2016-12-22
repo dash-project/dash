@@ -8,7 +8,7 @@
 
 #include <libdash.h>
 
-#include <dash/tools/PatternBlockVisualizer.h>
+#include <dash/tools/PatternVisualizer.h>
 
 #include <dash/util/PatternMetrics.h>
 
@@ -31,6 +31,7 @@ typedef struct cli_params_t {
   extent_t    units_y;
   int         tile_x;
   int         tile_y;
+  bool        blocked_display;
   bool        cout;
 } cli_params;
 
@@ -59,10 +60,8 @@ void print_example(
   auto pattern_desc = pattern_to_string(pattern);
   print_pattern_metrics(pattern);
 
-  dash::tools::PatternBlockVisualizer<PatternT> pv(pattern);
+  dash::tools::PatternVisualizer<PatternT> pv(pattern);
   pv.set_title(pattern_desc);
-
-  std::array<index_t, pattern.ndim()> coords = {{0}};
 
   cerr << "Generating visualization of "
        << endl
@@ -70,14 +69,14 @@ void print_example(
        << endl;
 
   if (params.cout) {
-    pv.draw_pattern(std::cout, coords, 1, 0);
+    pv.draw_pattern(std::cout, params.blocked_display);
   } else {
     cerr << "Image file:"
          << endl
          << "    " << pattern_file
          << endl;
     std::ofstream out(pattern_file);
-    pv.draw_pattern(out, coords, 1, 0);
+    pv.draw_pattern(out, params.blocked_display);
     out.close();
   }
 }
@@ -220,6 +219,7 @@ cli_params parse_args(int argc, char * argv[])
   params.units_y = 10;
   params.tile_x  = -1;
   params.tile_y  = -1;
+  params.blocked_display = false;
   params.cout    = false;
   params.type    = "summa";
 
@@ -239,6 +239,9 @@ cli_params parse_args(int argc, char * argv[])
       params.tile_x  = static_cast<extent_t>(atoi(argv[i+2]));
     } else if (flag == "-p") {
       params.cout    = true;
+      i -= 2;
+    } else if (flag == "-b") {
+      params.blocked_display = true;
       i -= 2;
     }
   }

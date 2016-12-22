@@ -30,6 +30,8 @@ private:
         tileszy;
     int blockszx,
         blockszy;
+    int grid_width,
+        grid_height;
     int grid_base;
     int gridx,
         gridy;
@@ -69,10 +71,11 @@ public:
                     const std::string & descr = "")
   : _pattern(pat), _title(title), _descr(descr)
   {
-    _tile_base_size = 10;
-    _fontsz_tiny  = 9;
-    _fontsz       = 9;
-    _fontsz_title = 11;
+    _tile_base_size  = 10;
+    _block_base_size = 26;
+    _fontsz_tiny     =  9;
+    _fontsz          = 10;
+    _fontsz_title    = 12;
   }
 
   PatternVisualizer() = delete;
@@ -85,14 +88,34 @@ public:
     _title = str;
   }
 
-  void draw_pattern(std::ostream & os,
+  void draw_pattern(std::ostream & os, bool blocked_display = false,
                     std::array<index_t, PatternT::ndim()> coords = {},
                     int dimx = 1, int dimy = 0) {
     sizes sz;
     sz.tileszx   = sz.tileszy = _tile_base_size;
-    sz.grid_base = _tile_base_size + 2;
-    sz.gridx     = sz.gridy   = sz.grid_base;
+    sz.blockszx  = sz.blockszy = _block_base_size;
+    if(!blocked_display) {
+        sz.grid_width  = _pattern.extent(dimx);
+        sz.grid_height = _pattern.extent(dimy);
+        sz.grid_base   = _tile_base_size + 2;
+        sz.gridx       = sz.gridy   = sz.grid_base;
+    } else {
+        sz.grid_width  = _pattern.blockspec().extent(dimx);
+        sz.grid_height = _pattern.blockspec().extent(dimy);
+        sz.grid_base   = _block_base_size + 2;
 
+        // Adjust tile sizes proportional to block regions:
+        float block_format = static_cast<float>(_pattern.blocksize(dimy)) /
+                             static_cast<float>(_pattern.blocksize(dimx));
+        if (block_format < 1) {
+          block_format = 1.0 / block_format;
+          sz.blockszx *= block_format;
+        } else {
+          sz.blockszy *= block_format;
+        }
+        sz.gridx        = sz.blockszx + 2;
+        sz.gridy        = sz.blockszy + 2;
+    }
 
     std::string title = _title;
     replace_all(title, "<", "&lt;");
@@ -109,13 +132,13 @@ public:
 
     // draw the pane, including axes and key
     os << "<g transform=\"translate(10,30)\">\n";
-    draw_pane(os, sz, coords, dimx, dimy);
+    draw_pane(os, blocked_display, sz, coords, dimx, dimy);
     os << "</g>\n";
 
     os << "</svg>" << std::endl;
   }
 
-  void draw_pane(std::ostream & os,
+  void draw_pane(std::ostream & os, bool blocked_display,
                  const sizes & sz,
                  std::array<index_t, PatternT::ndim()> coords,
                  int dimx, int dimy) {
@@ -123,12 +146,16 @@ public:
     draw_axes(os, sz, dimx, dimy);
 
     os << "<g transform=\"translate(4,4)\">" << std::endl;
-    draw_local_blocks(os, sz, coords, dimx, dimy);
-    draw_tiles(os, sz, coords, dimx, dimy);
-    draw_local_memlayout(os, sz, coords, dimx, dimy);
+    if(!blocked_display) {
+        draw_local_blocks(os, sz, coords, dimx, dimy);
+        draw_tiles(os, sz, coords, dimx, dimy);
+        draw_local_memlayout(os, sz, coords, dimx, dimy);
+    } else {
+        draw_blocks(os, sz, coords, dimx, dimy);
+    }
     os << "</g>" << std::endl;
 
-    draw_key(os, sz, dimx, dimy, _pattern.extent(dimx)*sz.gridx + 2*sz.grid_base, 0);
+    draw_key(os, sz, dimx, dimy, sz.grid_width * sz.gridx + 2*sz.grid_base, 0);
     os << "</g>" << std::endl;
   }
 
@@ -139,8 +166,8 @@ public:
 
     int startx = offsx;
     int starty = offsy;
-    int lenx   = _pattern.extent(dimx) * sz.gridx + sz.grid_base;
-    int leny   = _pattern.extent(dimy) * sz.gridy + sz.grid_base;
+    int lenx   = sz.grid_width  * sz.gridx + sz.grid_base;
+    int leny   = sz.grid_height * sz.gridy + sz.grid_base;
 
     os << "<defs>\n";
     os << "<marker id=\"arrowhead\" orient=\"auto\"";
@@ -237,6 +264,36 @@ public:
         os << "</title>";
 
           //os << "<!-- i=" << i << " j=" << j << "--> ";
+        os << "</rect>" << std::endl;
+      }
+    }
+  }
+
+  void draw_blocks(std::ostream & os,
+                   const sizes & sz,
+                   std::array<index_t, PatternT::ndim()> coords,
+                   int dimx, int dimy) {
+    std::array<index_t, PatternT::ndim()> block_coords;
+    std::array<index_t, PatternT::ndim()> block_begin_coords;
+    auto blockspec = _pattern.blockspec();
+    for (int i = 0; i < blockspec.extent(dimx); i++) {
+      for (int j = 0; j < blockspec.extent(dimy); j++) {
+        block_coords[dimx] = i;
+        block_coords[dimy] = j;
+        auto block_idx = _pattern.blockspec().at(block_coords);
+        auto block     = _pattern.block(block_idx);
+        block_begin_coords[dimx] = block.offset(dimx);
+        block_begin_coords[dimy] = block.offset(dimy);
+        auto unit      = _pattern.unit_at(block_begin_coords);
+
+        int i_grid = i * sz.gridx;
+        int j_grid = j * sz.gridy;
+
+        os << "<rect x=\"" << i_grid << "\" y=\"" << j_grid << "\" ";
+        os << "height=\"" << sz.blockszy << "\" width=\"" << sz.blockszx << "\" ";
+        os << tilestyle(unit);
+        os << "> ";
+        os << "<!-- i=" << i << " j=" << j << "--> ";
         os << "</rect>" << std::endl;
       }
     }
