@@ -270,5 +270,8 @@ int dart_adapt_teamlist_recycle(uint16_t index, int pos);
  */
 int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index);
 
+
+dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data);
+
 #endif /*DART_ADAPT_TEAMNODE_H_INCLUDED*/
 
