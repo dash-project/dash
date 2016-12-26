@@ -93,7 +93,8 @@ local_index_range(
   // Add 1 to local end index to it points one coordinate past the
   // last index:
   auto lend_index     = pattern.at(lend_gcoords);
-  if (lend_index == std::numeric_limits<typename pattern_t::index_type>::max()) {
+  if (lend_index
+      == std::numeric_limits<typename pattern_t::index_type>::max()) {
     DASH_LOG_ERROR("local_index_range !",
                    "index type too small for for local index range");
   }
@@ -106,9 +107,9 @@ local_index_range(
 /**
  * Resolves the local index range between global view iterators.
  *
- * TODO: Only all-local or all-nonlocal ranges supported for now.
+ * \todo  Only all-local or all-nonlocal ranges supported for now.
  *
- * \b Example:
+ * \par Example:
  *
  *   Total range      | <tt>0 1 2 3 4 5 6 7 8 9</tt>
  *   ---------------- | --------------------------------
@@ -121,9 +122,6 @@ local_index_range(
  *              last element in local memory within the sequence limited
  *              by the given global iterators.
  *
- * \tparam      ElementType  Type of the elements in the sequence
- * \tparam      PatternType  Type of the global iterators' pattern
- *                           implementation
  * \complexity  O(d), with \c d dimensions in the global iterators'
  *              pattern
  *
@@ -209,8 +207,10 @@ local_index_range(
   // Add 1 to local end index to it points one coordinate past the
   // last index:
   auto lend_index     = pattern.at(lend_gcoords);
-  if (lend_index == std::numeric_limits<typename pattern_t::index_type>::max()) {
-    DASH_LOG_ERROR("local_index_range -> index type too small for for local index range");
+  if (lend_index
+      == std::numeric_limits<typename pattern_t::index_type>::max()) {
+    DASH_LOG_ERROR("local_index_range !",
+                   "index type too small for for local index range");
   }
   lend_index += 1;
   // Return local index range
@@ -221,7 +221,7 @@ local_index_range(
 /**
  * Resolves the local address range between global iterators.
  *
- * \b Example:
+ * \par Example:
  *
  *   Total range      | <tt>a b c d e f g h i j</tt>
  *   ---------------- | --------------------------------
@@ -234,9 +234,6 @@ local_index_range(
  *              and last local element within the sequence limited by the
  *              given global iterators.
  *
- * \tparam      ElementType  Type of the elements in the sequence
- * \tparam      PatternType  Type of the global iterators' pattern
- *                           implementation
  * \complexity  O(d), with \c d dimensions in the global iterators'
  *              pattern
  *
@@ -342,5 +339,7 @@ ElementType * local(
 }
 
 } // namespace dash
+
+#include <dash/algorithm/LocalRanges.h>
 
 #endif  // DASH__ALGORITHM__LOCAL_RANGE_H__
