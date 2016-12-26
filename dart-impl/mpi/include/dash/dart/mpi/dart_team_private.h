@@ -183,53 +183,6 @@ typedef struct dart_team_data {
 extern dart_team_data_t dart_team_data[DART_MAX_TEAM_NUMBER];
 
 
-
-#if 0
-
-/* @brief Translate the given teamid (indicated uniquely by the index) into its corresponding communicator.
- *
- * After locating the given teamid in the teamlist,
- * we find that teamlist[i] equals to teamid, which means teams[i]
- * will be the corresponding communicator of teamid.
- */
-extern MPI_Comm dart_teams[DART_MAX_TEAM_NUMBER];
-
-/* @brief Store the sub-communicator with regard to certain node, where the units can
- * communicate via shared memory.
- *
- * The units running in certain node vary
- * according to the specified team.
- * The values of dart_sharedmem_comm_list[i] are different for the units belonging to different nodes.
- */
-#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
-extern MPI_Comm dart_sharedmem_comm_list[DART_MAX_TEAM_NUMBER];
-
-/* @brief Sets of units who are located in the same node for each unit in MAX_TEAM_NUMBER teams.
- *
- * Each element of this array will relate to certain team A.
- * Set of units belonging to the same node vary for different team.
- * Each unit stores all the IDs of those units (including itself) who are parts of team A and
- * located in the same node as it is.
- */
-//extern int* dart_unit_mapping[MAX_TEAM_NUMBER];
-
-/* @brief This table is represented as a hash table
- * , which is used to determine the units who are located in the same node.
- *
- * Each element of this array will relate to certain team.
- */
-extern int* dart_sharedmem_table[DART_MAX_TEAM_NUMBER];
-
-/* @brief Set of the size of node for each unit in MAX_TEAM_NUMBER teams.
- */
-extern int dart_sharedmemnode_size[DART_MAX_TEAM_NUMBER];
-#endif
-
-/* @brief Set of MPI dynamic window objects corresponding to MAX_TEAM_NUMBER teams. */
-extern MPI_Win dart_win_lists[DART_MAX_TEAM_NUMBER];
-
-#endif // 0
-
 #if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
 extern char* *dart_sharedmem_local_baseptr_set;
@@ -269,6 +222,14 @@ int dart_adapt_teamlist_recycle(uint16_t index, int pos);
 /* @brief Locate the given teamid in the alloated-team-list-array.
  */
 int dart_adapt_teamlist_convert (dart_team_t teamid, uint16_t* index);
+
+#if !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
+/*
+ * Allocate shared memory communicator for the given \c team_data.
+ * Shared between \c dart_initialize and \c dart_team_create.
+ */
+dart_ret_t dart_allocate_shared_comm(dart_team_data_t *team_data);
+#endif // !defined(DART_MPI_DISABLE_SHARED_WINDOWS)
 
 #endif /*DART_ADAPT_TEAMNODE_H_INCLUDED*/
 

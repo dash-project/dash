@@ -5,6 +5,9 @@ namespace dash {
 namespace io {
 namespace hdf5 {
 
+/// Datatype is not set yet
+struct UNSPECIFIED_TYPE;
+
 /** Pseudo type traits to map the native c datatype to an hdf5 type.
  * This has to be implemented using a function, as the H5T_NATIVE_*
  * is a macro that expands to a non constant function

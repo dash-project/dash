@@ -28,6 +28,8 @@ class InputStream
     std::string                _filename;
     std::string                _dataset;
     hdf5_options               _foptions;
+    type_converter             _converter;
+    bool           _use_cust_conv = false;
 
   public:
     InputStream(std::string filename)
@@ -39,50 +41,38 @@ class InputStream
     // IO Manipulators
 
     friend InputStream & operator>> (
-        InputStream & is,
-        const dataset   & tbl) {
+        InputStream   & is,
+        const dataset   tbl) {
         is._dataset = tbl._dataset;
         return is;
     }
 
     friend InputStream & operator>> (
-      InputStream & is,
-      setpattern_key    pk) {
+      InputStream    & is,
+      setpattern_key   pk) {
       is._foptions.pattern_metadata_key = pk._key;
       return is;
     }
 
     friend InputStream & operator>> (
-      InputStream & is,
+      InputStream     & is,
       restore_pattern   rs) {
       is._foptions.restore_pattern = rs._restore;
       return is;
     }
 
-
-    // Array Implementation
-    template <
-        typename value_t,
-        typename index_t,
-        class    pattern_t >
     friend InputStream & operator>> (
-        InputStream           & is,
-        dash::Array < value_t,
-                      index_t,
-                      pattern_t > & array);
+      InputStream          & is,
+      const type_converter   conv) {
+      is._converter = conv;
+      is._use_cust_conv = true;
+      return is;
+    }
 
-    // Matrix Implementation
-    template <
-        typename value_t,
-        dim_t    ndim,
-        typename index_t,
-        class    pattern_t >
+    template < typename Container_t >
     friend InputStream & operator>> (
-        InputStream           & is,
-        dash::Matrix< value_t,
-                      ndim,
-                      index_t,
-                      pattern_t > & matrix);
+        InputStream & is,
+        Container_t & matrix);
 };
 
 } // namespace hfd5

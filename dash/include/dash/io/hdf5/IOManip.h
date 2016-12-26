@@ -80,6 +80,18 @@ public:
   { }
 };
 
+class type_converter {
+private:
+    type_converter_fun_type _converter;
+public:
+    type_converter(type_converter_fun_type fun = get_h5_datatype<UNSPECIFIED_TYPE>)
+    : _converter(fun) { }
+
+    operator type_converter_fun_type(){
+        return _converter;
+    }
+};
+
 } // namespace hdf5
 } // namespace io
 } // namespace dash
