@@ -372,10 +372,10 @@ for( auto el : mat.local )
 cout << endl;
 ```
 
-![Illustration of local and global element access modes for a dash::NArray](localview_7x4.svg)
-*Figure 3*
+![Illustration of local and global element access modes for a dash::NArray](narray_localview_7x4.svg)
+\label{fig:pattern-blocked}
 
-Figure 3 shows an example for global and local addressing. Here, a
+Figure \ref{fig:pattern-blocked} shows an example for global and local addressing. Here, a
 $(7 \times 4)$ matrix of `char` elements is distributed cyclic by rows among
 three units.
 The global view is identical for all units and allows element access by global
