@@ -80,6 +80,39 @@ public:
   { }
 };
 
+/**
+ * Converter function to convert non-POT types and especially structs to 
+ * HDF5 types.
+ * 
+ * Example:
+ * \code
+ * // Struct that is stored in DASH array
+ * struct value_t { double a; int b; };
+ *
+ * // Conversion function
+ * auto converter = [](){
+ *   hid_t h5tid = H5Tcreate (H5T_COMPOUND, sizeof(value_t));
+ *   H5Tinsert(h5tid, "a_name", HOFFSET(value_t, a), H5T_NATIVE_DOUBLE);
+ *   H5Tinsert(h5tid, "b_name", HOFFSET(value_t, b), H5T_NATIVE_INT);
+ *   return h5tid;
+ * };
+ *
+ * dash::Array<value_t> array_a(1000);
+ * // [...]
+ * // store data
+ * OutputStream os(_filename);
+ *     os << dio::dataset("array_a")
+ *        << dio::type_converter(converter)
+ *        << array_a;
+ * 
+ * // restore data
+ * dash::Array<value_t> array_b(1000);
+ * InputStream is(_filename);
+ * is >> dio::dataset("array_a")
+ *    >> dio::type_converter(converter)
+ *    >> array_b;
+ * \endcode
+ */
 class type_converter {
 private:
     type_converter_fun_type _converter;

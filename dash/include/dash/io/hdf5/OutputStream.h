@@ -17,7 +17,7 @@ namespace io {
 namespace hdf5 {
 
 /**
- * DASH stream API to store an dash::Array or dash::Matrix
+ * DASH stream API to store a dash container or view
  * in an HDF5 file using parallel IO.
  *
  * All operations are collective.
@@ -41,9 +41,20 @@ private:
   std::vector<std::shared_future<void> > _async_ops;
 
 public:
+  /**
+   * Creates an HDF5 output stream using a launch policy
+   * 
+   * Support of \cdash::launch::async is still highly experimental and requires
+   * thread support in MPI. To wait for outstanding IO operations use
+   * \cflush(). Until the stream is not flushed, no write accesses to the
+   * container, as well as no barriers are allowed.
+   * Otherwise the behavior is undefined.
+   */
     OutputStream(
+        /// 
         dash::launch lpolicy,
         std::string filename,
+        /// device opening flags: \see dash::io::IOSBaseMode
         mode_t open_mode = DeviceMode::no_flags)
         : _filename(filename),
           _dataset("data"),
@@ -54,6 +65,24 @@ public:
         }    
     }
     
+    /**
+     * Creates an HDF5 output stream using blocking IO.
+     * 
+     * The stream takes an arbitrary number of modifiers and objects,
+     * where the objects are stored in the order of passing it to the stream.
+     * 
+     * The interface follows roughly the STL stream concept.
+     * 
+     * Example:
+     * \code
+     *  dash::Array<double> array_a(1000);
+     *  dash::Array<double> array_b(500);
+     * 
+     *  OutputStream os("file.hdf5");
+     *  os << dataset("dataset") << array_a
+     *     << dataset("seconddata") << array_b;
+     * \endcode
+     */ 
     OutputStream(
         std::string filename,
         mode_t open_mode = DeviceMode::no_flags)
@@ -69,7 +98,7 @@ public:
     
     /**
      * Synchronizes with the data sink.
-     * If async IO is used, waits until all data is read
+     * If \cdash::launch::async is used, waits until all data is written
      */
     OutputStream flush(){
       DASH_LOG_DEBUG("flush output stream", _async_ops.size());
@@ -82,6 +111,7 @@ public:
 
     // IO Manipulators
 
+    /// set name of dataset
     friend OutputStream & operator<<(
         OutputStream  & os,
         const dataset   tbl)
@@ -90,6 +120,7 @@ public:
         return os;
     }
 
+    /// set metadata key at which the pattern will be stored
     friend OutputStream & operator<<(
         OutputStream         & os,
         const setpattern_key   pk)
@@ -98,6 +129,7 @@ public:
         return os;
     }
 
+    /// set whether pattern layout should be stored as metadata
     friend OutputStream & operator<<(
         OutputStream         & os,
         const store_pattern    sp) {
@@ -105,6 +137,7 @@ public:
         return os;
     }
 
+    /// modify an already existing dataset instead of overwriting it
     friend OutputStream & operator<<(
         OutputStream         & os,
         const modify_dataset   md)
@@ -113,6 +146,7 @@ public:
         return os;
     }
 
+    /// custom type converter function to convert native type to HDF5 type
     friend OutputStream & operator<< (
       OutputStream         & os,
       const type_converter   conv) {
@@ -121,6 +155,7 @@ public:
       return os;
     }
 
+    /// kicker which stores an container using the specified stream properties.
     template < typename Container_t >
     friend OutputStream & operator<<(
         OutputStream & os,
