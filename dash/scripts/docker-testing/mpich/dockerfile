@@ -3,8 +3,8 @@ FROM          ubuntu:latest
 
 MAINTAINER    The DASH Team <team@dash-project.org>
 
-RUN           apt-get update -y
-RUN           apt-get install -y \
+RUN           apt-get update -y  \
+              apt-get install -y \
                   git \
                   build-essential \
                   cmake \
