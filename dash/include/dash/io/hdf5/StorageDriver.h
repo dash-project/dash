@@ -86,6 +86,12 @@ private:
            !dash::pattern_mapping_traits<pattern_t>::type::diagonal;
     // TODO: check if mapping is regular by checking pattern property
   }
+  
+  template < class iterator >
+  static constexpr bool _is_origin_view(){
+    return !iterator::has_view::value;
+    // TODO: avoid this hack
+  }
 
   static std::vector<std::string> _split_string(
                                     const std::string & str,
@@ -117,7 +123,8 @@ public:
    */
  template <typename Container_t>
    typename std::enable_if <
-    _compatible_pattern<typename Container_t::pattern_type>(),
+    _compatible_pattern<typename Container_t::pattern_type>() &&
+    _is_origin_view<typename Container_t::iterator>(),
     void>::type
   static write(
       /// Import data in this Container
@@ -156,7 +163,7 @@ public:
     auto dataset     = path_vec.back();
     // remove dataset from path
     path_vec.pop_back();
-
+    
     /* HDF5 definition */
     hid_t   file_id;
     hid_t   h5dset;
@@ -167,9 +174,6 @@ public:
     hid_t   loc_id;
 
     hdf5_pattern_spec<ndim> ts;
-
-    // get hdf pattern layout
-    ts = _get_pattern_hdf_spec(pattern);
 
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
@@ -213,10 +217,18 @@ public:
             loc_id = H5Gcreate2(loc_id, elem.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
           }
           if(loc_id != file_id){
-            open_groups.push_front(loc_id);
+            open_groups.push_back(loc_id);
           }
     }
 
+    // ----------- prepare and write dataset --------------
+    
+    // TODO: move section to function
+    // _write_dataset_impl();
+    
+    // get hdf pattern layout
+    ts = _get_pattern_hdf_spec(pattern);
+    
     // Create dataspace
     filespace     = H5Screate_simple(ndim, ts.data_dimsf, NULL);
     memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
@@ -266,6 +278,8 @@ public:
 
     H5Dwrite(h5dset, internal_type, memspace, filespace,
              plist_id, array.lbegin());
+    
+    // ----------- end prepare and write dataset --------------
 
     // Add Attributes
     if (foptions.store_pattern) {
@@ -302,14 +316,36 @@ public:
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Tclose(internal_type);
-    for(auto group_id : open_groups){
-      H5Gclose(group_id);
-    }
+    
+    std::for_each(open_groups.rbegin(), open_groups.rend(),
+                  [](hid_t & group_id){H5Gclose(group_id);});
+    
     H5Fclose(file_id);
   }
 
+#if 1
+  template <typename Container_t>
+  typename std::enable_if <
+    !(_compatible_pattern<typename Container_t::pattern_type>() &&
+    _is_origin_view<typename Container_t::iterator>()),
+    void
+  >::type
+  static write(
+    /// Import data in this Container
+    Container_t & array,
+    /// Filename of HDF5 file including extension
+    std::string filename,
+    /// HDF5 Dataset in which the data is stored
+    std::string datapath,
+    /// options how to open and modify data
+    hdf5_options foptions = _get_fdefaults(),
+    /// \cstd::function to convert native type into h5 type
+    type_converter_fun_type to_h5_dt_converter =
+    get_h5_datatype<typename Container_t::value_type>) { }
+#endif
+  
   /**
-   * Read an HDF5 dataset into a dash::Matrix using parallel IO
+   * Read an HDF5 dataset into a dash container using parallel IO
    * if the matrix is already allocated, the sizes have to match
    * the HDF5 dataset sizes and all data will be overwritten.
    * Otherwise the matrix will be allocated.
@@ -318,7 +354,8 @@ public:
    */
  template <typename Container_t>
    typename std::enable_if <
-    _compatible_pattern<typename Container_t::pattern_type>(),
+    _compatible_pattern<typename Container_t::pattern_type>() &&
+    _is_origin_view<typename Container_t::iterator>(),
     void
   >::type
   static read(
@@ -505,6 +542,28 @@ public:
     H5Fclose(file_id);
   }
 
+#if 1
+  template< class Container_t >
+  typename std::enable_if <
+    !(_compatible_pattern<typename Container_t::pattern_type>() &&
+    _is_origin_view<typename Container_t::iterator>()),
+    void
+  >::type
+  static read(
+    /// Import data in this Container
+    Container_t & matrix,
+    /// Filename of HDF5 file including extension
+    std::string filename,
+    /// HDF5 Dataset in which the data is stored
+    std::string datapath,
+    /// options how to open and modify data
+    hdf5_options foptions = _get_fdefaults(),
+    /// \cstd::function to convert native type into h5 type
+    type_converter_fun_type to_h5_dt_converter =
+    get_h5_datatype<typename Container_t::value_type>)
+  { }
+#endif
+
 public:
   /**
    * Default file options.
@@ -619,7 +678,39 @@ private:
   template < class Container_t >
   static inline void _verify_container_dims(const Container_t & container)
   {return;}
-
+  
+  // ---- write dataset implementation specialisations ----
+  
+  template< class Container_t >
+  typename std::enable_if <
+    _compatible_pattern<typename Container_t::pattern_type>() &&
+    _is_origin_view<typename Container_t::iterator>(),
+    void
+  >::type
+  static _write_dataset_impl() {
+    _write_dataset_impl_zero_copy<Container_t>();
+  }
+  
+  template< class Container_t >
+  typename std::enable_if <
+    !(_compatible_pattern<typename Container_t::pattern_type>() &&
+    _is_origin_view<typename Container_t::iterator>()),
+    void
+  >::type
+  static _write_dataset_impl() {
+    _write_dataset_impl_buffered<Container_t>();
+  }
+  
+  
+  template < class Container_t >
+  static void _write_dataset_impl_zero_copy() {
+    // TODO
+  }
+  
+  template < class Container_t >
+  static void _write_dataset_impl_buffered() {
+    // TODO
+  }
 
 };
 

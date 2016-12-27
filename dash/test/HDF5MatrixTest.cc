@@ -456,13 +456,13 @@ TEST_F(HDF5MatrixTest, DashView)
   }
   
   // Load data into a existing view
-  auto input_view = matrix2d.col(10);
-  dio::InputStream is(_filename);
-  is >> input_view;
+  //auto input_view = matrix2d.col(10);
+  //dio::InputStream is(_filename);
+  //is >> input_view;
   
   // Load data into new matrix
-  dash::Array<int> matrix1d;
-  is >> matrix1d;
+  //dash::Array<int> matrix1d;
+  //is >> matrix1d;
 }
 #endif
 
