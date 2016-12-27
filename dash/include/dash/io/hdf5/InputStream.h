@@ -119,13 +119,6 @@ class InputStream
       is._use_cust_conv = true;
       return is;
     }
-    
-    template< int N >
-    friend InputStream & operator>> (
-      InputStream          & is,
-      const select_block<N>  block) {
-      return is;
-    }
 
     /// kicker which loads an container using the specified stream properties.
     template < typename Container_t >

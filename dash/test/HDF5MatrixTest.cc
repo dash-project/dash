@@ -464,7 +464,9 @@ TEST_F(HDF5MatrixTest, DashView)
   dash::Array<int> matrix1d;
   is >> matrix1d;
 }
+#endif
 
+#if 0 // TODO: Implement and re-enable
 TEST_F(HDF5MatrixTest, HDFView)
 {
   int secret = 0;
@@ -481,11 +483,43 @@ TEST_F(HDF5MatrixTest, HDFView)
   auto position = std::array<size_t,3>({2,4,1}); // top left corner of desired block
   auto extent   = std::array<size_t,3>({4,2,1}); // extents of block
   dio::InputStream is(_filename);
-  is >> dio::select_block<3>(position, extent)
+  is >> dash::block(position, extent)
      >> sub_matrix3d;
   
   // post condition
   // sub_matrix3d has extent {4,2,1}
+}
+
+TEST_F(HDF5MatrixTest, WriteCorresponding)
+{
+  int secret = 0;
+  dash::NArray<int,3> matrix3d(10,8,5);
+  fill_matrix(matrix3d, secret);
+  
+  {
+    dio::OutputStream os(_filename);
+    os << matrix3d;
+  }
+  
+  auto view = matrix3d.col(1);
+  // modify view
+  dash::fill(view.begin(), view.end(), 0);
+  
+  // write slice back
+  dio::OutputStream os(_filename, dio::DeviceMode::App);
+  is >> dio::modify_dataset()
+     >> dash::block(position, extent)
+     >> sub_matrix3d;
+  
+  // post condition
+  // slice in file is updated
+  dash::NArray<int,3> new_matrix3d(10,8,5);
+  
+  dio::InputStream is(_filename);
+  is << new_matrix3d;
+  
+  auto view = new_matrix3d.col(1);
+  dash::for_each(view.begin(), view.end(), [](int & el){ASSERT_EQ_U(0, el)});
 }
 
 #endif

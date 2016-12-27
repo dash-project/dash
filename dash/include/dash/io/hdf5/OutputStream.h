@@ -153,13 +153,6 @@ public:
       os._use_cust_conv = true;
       return os;
     }
-    
-    template< int N >
-    friend OutputStream & operator<< (
-      OutputStream          & os,
-      const select_block<N>   block) {
-      return os;
-    }
 
     /// kicker which stores an container using the specified stream properties.
     template < typename Container_t >

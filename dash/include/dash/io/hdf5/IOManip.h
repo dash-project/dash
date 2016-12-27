@@ -126,13 +126,6 @@ public:
     }
 };
 
-template<int N>
-class select_block {
-public:
-  select_block(std::array<size_t,N> pos, std::array<size_t,N> extents){
-    // TODO
-  }
-};
 
 } // namespace hdf5
 } // namespace io
