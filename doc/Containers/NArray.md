@@ -139,8 +139,7 @@ number of units and rounding up to the next integer. So the number of
 block columns in this example is $\left \lceil{10/4}\right \rceil = 3$
 and the last unit (unit 3) is underfilled.
 
-![Two simple examples for a 16 x 10 DASH blocked pattern, with blocking
-  over the rows (left) or columns (right)](pattern_blocked.svg)
+![Figure 1: Two simple examples for a 16 x 10 DASH blocked pattern, with blocking over the rows (left) or columns (right)](narray_pattern_blocked.svg)
 
 
 ## Accessing Elements
@@ -156,7 +155,7 @@ the following ways:
 
 An element in an N-dimensional matrix `mat` can be accessed by specifying
 its N-dimensional coordinate vector
-$(i_0,\allowbreak i_1,\dots,\allowbreak{}i_{N-1})$.
+$(i_0, i_1, \dots, i_{N-1})$.
 
 Naturally, all coordinate values must be within the allowed range for
 each dimension such that $0 \leq i_k < $ `mat.extent(k)`.
@@ -372,12 +371,11 @@ for( auto el : mat.local )
 cout << endl;
 ```
 
-![Illustration of local and global element access modes for a dash::NArray](narray_localview_7x4.svg)
-\label{fig:pattern-blocked}
+![Figure 2: Illustration of local and global element access modes for a dash::NArray](narray_localview_7x4.svg)
 
-Figure \ref{fig:pattern-blocked} shows an example for global and local addressing. Here, a
-$(7 \times 4)$ matrix of `char` elements is distributed cyclic by rows among
-three units.
+Figure 2 shows an example for global and local addressing.
+Here, a $(7 \times 4)$ matrix of `char` elements is distributed cyclic by rows
+among three units.
 The global view is identical for all units and allows element access by global
 coordinates or global index.
 For example `mat(1,3)` is the same as `mat.elem(7)` and resolves to element
@@ -392,6 +390,15 @@ index for a unit's first local matrix element can be determined as
 
 See Sec. *Patterns* for more information on the mapping functions offered by a
 pattern.
+
+**Element Access for a D-dimensional NArray / NArray View**
+
+Method                  | Synopsis
+----------------------- | -------------------------------------------------
+`operator()(i,j, ...)`  | Element at global coordinates $(i, j, \dots)$
+`at(i,j, ...)`          | Boundary-checked access at global coordinates
+`elem(i)`               | Element at global canonical offset $i$
+`operator[](i)`         | View of the $i$-th $D-1$ dimensional submatrix
 
 
 
@@ -434,9 +441,10 @@ dash::Matrix<int, 2> mat(10,6);
 mat.slice<0>
 ```
 
-![Illustration of 3-dimensional sclices](narray_3d_slices.svg)
-*Two simple examples for a $16 \times 10$ DASH blocked pattern, with blocking over
- the rows (left) or columns (right)*
+![Figure 3: Illustration of 3-dimensional sclices](narray_3d_slices.svg)
+
+Figure 3 shows two simple examples for a $16 \times 10$ DASH blocked pattern,
+with blocking over the rows (left) or columns (right).
 
 
 
