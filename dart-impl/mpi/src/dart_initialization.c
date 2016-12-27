@@ -30,6 +30,7 @@ char**dart_sharedmem_local_baseptr_set;
 struct dart_buddy  *  dart_localpool;
 static int _init_by_dart = 0;
 static int _dart_initialized = 0;
+static int _provided_thread_support = 0;
 
 dart_ret_t dart_init(
   int*    argc,
@@ -49,7 +50,8 @@ dart_ret_t dart_init(
 	if (!mpi_initialized) {
 		_init_by_dart = 1;
     DART_LOG_DEBUG("dart_init: MPI_Init");
-		MPI_Init(argc, argv);
+    // TODO: Introduce DART_THREAD_SUPPORT_LEVEL
+		MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &_provided_thread_support);
 	}
 
 	int      rank;
