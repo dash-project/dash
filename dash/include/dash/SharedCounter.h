@@ -22,7 +22,7 @@ public:
    */
   SharedCounter()
   : _num_units(dash::Team::All().size()),
-    _myid(dash::Team::All().myid()),
+    _myid(dash::Team::GlobalUnitID()),
     _local_counts(_num_units)
   {
     _local_counts.local[0] = 0;
@@ -59,7 +59,7 @@ public:
   ValueType get() const
   {
     ValueType acc = 0;
-    for (dart_unit_t i = 0; i < static_cast<dart_unit_t>(_num_units); ++i) {
+    for (global_unit_t i{0}; i < _num_units; ++i) {
       // use local access on own counter value:
       acc += (i == _myid
                 ? _local_counts.local[0]
@@ -72,7 +72,7 @@ private:
   /// The number of units interacting with the counter
   size_t                 _num_units;
   /// The DART id of the unit that created this local counter intance
-  dart_unit_t            _myid;
+  global_unit_t          _myid;
   /// Buffer containing counter increments/decrements of every unit
   dash::Array<ValueType> _local_counts;
 };

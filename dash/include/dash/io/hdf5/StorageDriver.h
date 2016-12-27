@@ -607,13 +607,13 @@ private:
 
   
   template <
-    dim_t ndims,
+    dim_t ndim,
     typename value_t,
     typename index_t,
     typename pattern_t>
-  static inline void _verify_container_dims(const Matrix<value_t, ndims, index_t, pattern_t> & container)
+  static inline void _verify_container_dims(const Matrix<value_t, ndim, index_t, pattern_t> & container)
   {
-    static_assert(container.ndim() == pattern_t::ndim(),
+    static_assert(ndim == pattern_t::ndim(),
                   "Pattern dimension has to match matrix dimension");
   }
   template < class Container_t >

@@ -1,3 +1,9 @@
+/**
+ * \example ex.01.hello\main.cpp
+ * A simple "hello world" example in which every unit sends a string to std::cout
+ * containing it's \c dash::myid() , the \c dash::size() , the name of the host and it's process id.
+ */
+
 #include <unistd.h>
 #include <iostream>
 #include <cstddef>

@@ -269,7 +269,7 @@ local_range(
   // Local start address from global memory:
   auto pattern = first.pattern();
   auto lbegin  = first.globmem().lbegin(
-                   pattern.team().myid());
+                  dash::Team::GlobalUnitID());
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
     DASH_LOG_TRACE("local_range >", "lbegin null");
@@ -310,7 +310,7 @@ local_range(
   // Local start address from global memory:
   auto pattern = first.pattern();
   auto lbegin  = first.globmem().lbegin(
-                   pattern.team().myid());
+                    dash::Team::GlobalUnitID());
   // Add local offsets to local start address:
   if (lbegin == nullptr) {
     DASH_LOG_TRACE("local_range >", "lbegin null");

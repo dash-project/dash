@@ -12,13 +12,10 @@ TEST_F(MaxElementTest, TestFindArrayDefault)
   if (dash::myid() == 0) {
     for (auto i = 0; i < array.size(); ++i) {
       Element_t value = i * 11;
-      LOG_MESSAGE("Setting array[%d] = %d", i, value);
       array[i] = value;
     }
     // Set maximum element in the center position:
     index_t max_pos = array.size() / 2;
-    LOG_MESSAGE("Setting array[%d] = %d (max)",
-                max_pos, max_value);
     array[max_pos] = max_value;
   }
   // Wait for array initialization
@@ -49,13 +46,10 @@ TEST_F(MaxElementTest, TestFindArrayDistributeBlockcyclic)
   if (dash::myid() == 0) {
     for (auto i = 0; i < array.size(); ++i) {
       Element_t value = i * 23;
-      LOG_MESSAGE("Setting array[%d] = %d", i, value);
       array[i] = value;
     }
     // Set maximum element somewhere in the first half:
     index_t max_pos = array.size() / 3;
-    LOG_MESSAGE("Setting array[%d] = %d (max)",
-                max_pos, max_value);
     array[max_pos] = max_value;
   }
   // Wait for array initialization
@@ -92,14 +86,11 @@ TEST_F(MaxElementTest, TestFindArrayUnderfilled)
   if (dash::myid() == 0) {
     for (auto i = 0; i < array.size(); ++i) {
       Element_t value = i * 23;
-      LOG_MESSAGE("Setting array[%d] = %d", i, value);
       array[i] = value;
     }
     // Set maximum element in the last position which is located
     // in the underfilled block, for extra nastyness:
     index_t max_pos = array.size() - 1;
-    LOG_MESSAGE("Setting array[%d] = %d (max)",
-                max_pos, max_value);
     array[max_pos] = max_value;
   }
   // Wait for array initialization

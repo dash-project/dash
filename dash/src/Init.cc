@@ -1,13 +1,12 @@
 #include <dash/Init.h>
 #include <dash/Team.h>
+#include <dash/Types.h>
 #include <dash/Shared.h>
 #include <dash/util/Locality.h>
 #include <dash/util/Config.h>
 
 
 namespace dash {
-  static int  _myid        = -1;
-  static int  _size        = -1;
   static bool _initialized = false;
 }
 
@@ -88,31 +87,13 @@ void dash::barrier()
   dash::Team::All().barrier();
 }
 
-int dash::myid()
+dash::global_unit_t dash::myid()
 {
-  if (dash::_myid < 0 && dash::is_initialized()) {
-    // First call of dash::myid() after dash::init():
-    dart_unit_t myid;
-    dart_myid(&myid);
-    dash::_myid = myid;
-  } else if (!dash::is_initialized()) {
-    // First call of dash::myid() after dash::finalize():
-    dash::_myid = -1;
-  }
-  return dash::_myid;
+  return dash::Team::GlobalUnitID();
 }
 
-size_t dash::size()
+ssize_t dash::size()
 {
-  if (dash::_size < 0 && dash::is_initialized()) {
-    // First call of dash::size() after dash::init():
-    size_t size;
-    dart_size(&size);
-    dash::_size = size;
-  } else if (!dash::is_initialized()) {
-    // First call of dash::size() after dash::finalize():
-    dash::_size = -1;
-  }
-  return dash::_size;
+  return dash::Team::All().size();
 }
 

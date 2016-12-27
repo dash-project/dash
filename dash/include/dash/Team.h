@@ -50,6 +50,7 @@ class Team
     const Team & team);
 
 public:
+
   typedef struct iterator
   {
     int val;
@@ -135,11 +136,15 @@ public:
       // Free existing resources
       free();
       // Take ownership of data from source
-      _dartid   = t._dartid;
-      _deallocs = t._deallocs;
-      // Release data from source
-      t._deallocs.clear();
-      t._dartid = DART_TEAM_NULL;
+      _deallocs = std::move(t._deallocs);
+      std::swap(_parent,    t._parent);
+      std::swap(_has_group, t._has_group);
+      std::swap(_group,     t._group);
+      std::swap(_dartid,    t._dartid);
+      _position     = t._position;
+      _num_siblings = t._num_siblings;
+      _myid         = t._myid;
+      _size         = t._size;
     }
   }
 
@@ -152,11 +157,15 @@ public:
       // Free existing resources
       free();
       // Take ownership of data from source
-      _dartid   = t._dartid;
-      _deallocs = t._deallocs;
-      // Release data from source
-      t._deallocs.clear();
-      t._dartid = DART_TEAM_NULL;
+      _deallocs = std::move(t._deallocs);
+      std::swap(_parent,    t._parent);
+      std::swap(_has_group, t._has_group);
+      std::swap(_group,     t._group);
+      std::swap(_dartid,    t._dartid);
+      _position     = t._position;
+      _num_siblings = t._num_siblings;
+      _myid         = t._myid;
+      _size         = t._size;
     }
     return *this;
   }
@@ -168,7 +177,12 @@ public:
   {
     DASH_LOG_DEBUG_VAR("Team.~Team()", this);
 
-    Team::unregister_team(this);
+    // Do not register static Team instances as static variable _team might
+    // not be initialized at the time of their instantiation, yet:
+    if (DART_TEAM_NULL != _dartid &&
+        DART_TEAM_ALL  != _dartid) {
+      Team::unregister_team(this);
+    }
 
     if (_has_group)
       dart_group_destroy(&_group);
@@ -185,6 +199,14 @@ public:
   inline static Team & All()
   {
     return Team::_team_all;
+  }
+
+  /**
+   * The invariant unit ID in \c dash::Team::All().
+   */
+  inline static global_unit_t GlobalUnitID()
+  {
+    return global_unit_t(Team::_team_all.myid());
   }
 
   /**
@@ -368,27 +390,27 @@ public:
   }
 
   /**
-   * Whether this Team instance is a member of the group with given group
+   * Whether the group associated with this \c Team instance contains
+   * the unit specified by global id.
    * id.
    *
-   * \param   groupId   The id of the group to test for membership
-   * \return  True if and only if this Team instance is member of a group
-   *          with given id
+   * \param   groupId  the id of the group to test for membership
+   * \return  true     if and only if this Team instance is member of a group
+   *                   with given id
    */
-  bool is_member(size_t groupId) const
+  bool is_member(global_unit_t global_unit_id) const
   {
     if(!get_group()) {
       return false;
     }
-    DASH_LOG_DEBUG_VAR("Team.is_member()", groupId);
     int32_t ismember;
     DASH_ASSERT_RETURNS(
       dart_group_ismember(
         _group,
-        groupId,
+        global_unit_id,
         &ismember),
       DART_OK);
-    return ismember;
+    return (0 != ismember);
   }
 
   inline Team & parent()
@@ -425,7 +447,7 @@ public:
     }
   }
 
-  inline dart_unit_t myid() const
+  inline team_unit_t myid() const
   {
     if (_myid == -1 && dash::is_initialized() && _dartid != DART_TEAM_NULL) {
       DASH_ASSERT_RETURNS(
@@ -479,14 +501,6 @@ public:
   }
 
   /**
-   * Index of this team relative to global team \c dash::Team::All().
-   */
-  inline size_t global_id() const
-  {
-    return _dartid;
-  }
-
-  /**
    * Index of this team relative to parent team.
    */
   inline size_t relative_id() const
@@ -494,13 +508,26 @@ public:
     return _position;
   }
 
+  inline team_unit_t relative_id(
+    global_unit_t global_id)
+  {
+    team_unit_t luid;
+    DASH_ASSERT_RETURNS(
+      dart_team_unit_g2l(
+        _dartid,
+        global_id,
+        &luid),
+      DART_OK);
+    return luid;
+  }
+
   /**
    * Global unit id of specified local unit id.
    */
-  inline dart_unit_t global_id(
-    dart_unit_t local_id)
+  inline global_unit_t global_id(
+    team_unit_t local_id)
   {
-    dart_unit_t g_id;
+    global_unit_t g_id;
     DASH_ASSERT_RETURNS(
       dart_team_unit_l2g(
         _dartid,
@@ -527,24 +554,27 @@ private:
   {
     DASH_LOG_DEBUG("Team.unregister_team",
                    "team id:", team->_dartid);
-    DASH_ASSERT_RETURNS(
-      dart_team_locality_finalize(team->_dartid),
-      DART_OK);
-    dash::Team::_teams.erase(
-      team->_dartid);
+//    if (team->_dartid != DART_TEAM_NULL)
+    {
+      DASH_ASSERT_RETURNS(
+        dart_team_locality_finalize(team->_dartid),
+        DART_OK);
+      dash::Team::_teams.erase(
+        team->_dartid);
+    }
   }
 
 private:
 
-  dart_team_t             _dartid       = DART_TEAM_NULL;
+  dart_team_t             _dartid;
   Team                  * _parent       = nullptr;
   Team                  * _child        = nullptr;
   size_t                  _position     = 0;
   size_t                  _num_siblings = 0;
   mutable size_t          _size         = 0;
-  mutable dart_unit_t     _myid         = -1;
+  mutable team_unit_t     _myid         = UNDEFINED_TEAM_UNIT_ID;
   mutable bool            _has_group    = false;
-  mutable dart_group_t    _group        = nullptr;
+  mutable dart_group_t    _group        = DART_GROUP_NULL;
 
   /// Deallocation list for freeing memory acquired via
   /// team-aligned allocation

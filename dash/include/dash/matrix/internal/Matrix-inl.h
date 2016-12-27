@@ -31,7 +31,10 @@ inline Matrix<T, NumDim, IndexT, PatternT>
   _pattern(
     SizeSpec_t(),
     DistributionSpec_t(),
-    *_team)
+    *_team),
+  _glob_mem(nullptr),
+  _lbegin(nullptr),
+  _lend(nullptr)
 {
   DASH_LOG_TRACE("Matrix()", "default constructor");
 }
@@ -44,13 +47,15 @@ inline Matrix<T, NumDim, IndexT, PatternT>
   Team & t,
   const TeamSpec_t & ts)
 : _team(&t),
-  _myid(_team->myid()),
   _size(0),
   _lsize(0),
   _lcapacity(0),
-  _pattern(ss, ds, ts, t)
+  _pattern(ss, ds, ts, t),
+  _glob_mem(nullptr),
+  _lbegin(nullptr),
+  _lend(nullptr)
 {
-  DASH_LOG_TRACE_VAR("Matrix()", _myid);
+  DASH_LOG_TRACE_VAR("Matrix()", _team->myid());
   allocate(_pattern);
   DASH_LOG_TRACE("Matrix()", "Initialized");
 }
@@ -60,11 +65,13 @@ inline Matrix<T, NumDim, IndexT, PatternT>
 ::Matrix(
   const PatternT & pattern)
 : _team(&pattern.team()),
-  _myid(_team->myid()),
   _size(0),
   _lsize(0),
   _lcapacity(0),
-  _pattern(pattern)
+  _pattern(pattern),
+  _glob_mem(nullptr),
+  _lbegin(nullptr),
+  _lend(nullptr)
 {
   DASH_LOG_TRACE("Matrix()", "pattern instance constructor");
   allocate(_pattern);
@@ -372,7 +379,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   size_type offset,
   size_type extent)
 {
-  return _ref.sub<SubDimension>(offset, extent);
+  return this->_ref.template sub<SubDimension>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -382,7 +389,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 ::sub(
   size_type n)
 {
-  return _ref.sub<SubDimension>(n);
+  return this->_ref.template sub<SubDimension>(n);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -391,7 +398,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 ::col(
   size_type n)
 {
-  return _ref.sub<1>(n);
+  return this->_ref.template sub<1>(n);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -400,7 +407,7 @@ Matrix<T, NumDim, IndexT, PatternT>
 ::row(
   size_type n)
 {
-  return _ref.sub<0>(n);
+  return this->_ref.template sub<0>(n);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -410,7 +417,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   size_type offset,
   size_type extent)
 {
-  return _ref.sub<0>(offset, extent);
+  return this->_ref.template sub<0>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>
@@ -420,7 +427,7 @@ Matrix<T, NumDim, IndexT, PatternT>
   size_type offset,
   size_type extent)
 {
-  return _ref.sub<1>(offset, extent);
+  return this->_ref.template sub<1>(offset, extent);
 }
 
 template <typename T, dim_t NumDim, typename IndexT, class PatternT>

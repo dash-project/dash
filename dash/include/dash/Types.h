@@ -2,7 +2,9 @@
 #define DASH__TYPES_H_
 
 #include <array>
+#include <type_traits>
 #include <dash/dart/if/dart_types.h>
+#include <dash/internal/Unit.h>
 
 
 namespace dash {
@@ -45,7 +47,7 @@ namespace internal {
   typedef size_t        default_unsigned_index;
 #endif
 
-}
+} // namespace internal
 
 /**
  * Signed integer type used as default for index values.
@@ -87,46 +89,47 @@ struct Extent {
  */
 template<typename Type>
 struct dart_datatype {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_UNDEFINED;
 };
-
-template<typename Type>
-const dart_datatype_t dart_datatype<Type>::value = DART_TYPE_UNDEFINED;
-
 
 template<>
 struct dart_datatype<char> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
+};
+
+template<>
+struct dart_datatype<unsigned char> {
+  static constexpr const dart_datatype_t value = DART_TYPE_BYTE;
 };
 
 template<>
 struct dart_datatype<int> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_INT;
 };
 
 template<>
 struct dart_datatype<unsigned int> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_UINT;
 };
 
 template<>
 struct dart_datatype<float> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_FLOAT;
 };
 
 template<>
 struct dart_datatype<long> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_LONG;
 };
 
 template<>
 struct dart_datatype<unsigned long> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_ULONG;
 };
 
 template<>
 struct dart_datatype<double> {
-  static const dart_datatype_t value;
+  static constexpr const dart_datatype_t value = DART_TYPE_DOUBLE;
 };
 
 template <typename T>
@@ -140,6 +143,47 @@ inline dart_storage_t dart_storage(int nvalues) {
   }
   return ds;
 }
+
+/**
+ * Unit ID to use for team-local IDs.
+ *
+ * Note that this is returned by calls to dash::Team::myid(),
+ * including \c dash::Team::All().myid() as it is handled as
+ * a team as well.
+ *
+ * \see unit_id
+ * \see global_unit_t
+ */
+typedef struct
+dash::unit_id<dash::local_unit, dart_team_unit_t>
+team_unit_t;
+
+/**
+ * Unit ID to use for global IDs.
+ *
+ * Note that this typed is returned by \c dash::myid()
+ * and \c dash::Team::GlobalUnitID().
+ *
+ * \see unit_id
+ * \see team_unit_t
+ */
+typedef struct
+dash::unit_id<dash::global_unit, dart_global_unit_t>
+global_unit_t;
+
+/**
+ * Invalid local unit ID.
+ *
+ * This is a typed version of \ref DART_UNDEFINED_UNIT_ID.
+ */
+constexpr team_unit_t    UNDEFINED_TEAM_UNIT_ID{DART_UNDEFINED_UNIT_ID};
+
+/**
+ * Invalid global unit ID.
+ *
+ * This is a typed version of \ref DART_UNDEFINED_UNIT_ID.
+ */
+constexpr global_unit_t UNDEFINED_GLOBAL_UNIT_ID{DART_UNDEFINED_UNIT_ID};
 
 } // namespace dash
 

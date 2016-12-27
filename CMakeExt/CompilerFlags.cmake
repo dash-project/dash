@@ -5,6 +5,15 @@
 # -rdynamic   Instructs the linker to add all symbols, not only used ones,
 #             to the dynamic symbol table
 
+set (DASH_DEVELOPER_COMPILE_FLAGS
+     "-Weffc++ -Wcast-align -Wcast-qual -Wno-ctor-dtor-privacy "
+     "-Wdisabled-optimization -Wformat=2 -Winit-self -Wmissing-declarations "
+     "-Wmissing-include-dirs -Wold-style-cast -Woverloaded-virtual "
+     "-Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo "
+     "-Wstrict-overflow=5 -Wswitch -Wundef -Wno-unused -Wnon-virtual-dtor "
+     "-Wreorder -Wdeprecated -Wno-float-equal")
+ 
+
 set (CXX_WARN_FLAG "")
 set (CC_WARN_FLAG  "")
 if (ENABLE_COMPILER_WARNINGS)

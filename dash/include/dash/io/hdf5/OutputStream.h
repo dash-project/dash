@@ -11,7 +11,6 @@
 
 #include <dash/LaunchPolicy.h>
 
-
 namespace dash {
 namespace io {
 namespace hdf5 {

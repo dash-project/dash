@@ -41,6 +41,30 @@
 #define DART_LOG_OUTPUT_TARGET stderr
 #endif
 
+enum dart__base__term_color_code {
+  DART_LOG_TCOL_DEFAULT = 0,
+  DART_LOG_TCOL_WHITE,
+  DART_LOG_TCOL_RED,
+  DART_LOG_TCOL_GREEN,
+  DART_LOG_TCOL_YELLOW,
+  DART_LOG_TCOL_BLUE,
+  DART_LOG_TCOL_MAGENTA,
+  DART_LOG_TCOL_CYAN,
+  DART_LOG_TCOL_NUM_CODES
+};
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+const int dart__base__term_colors[DART_LOG_TCOL_NUM_CODES];
+
+const int dart__base__unit_term_colors[DART_LOG_TCOL_NUM_CODES-1];
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
 /* GNU variant of basename.3 */
 inline char * dart_base_logging_basename(char *path) {
     char *base = strrchr(path, '/');
@@ -60,11 +84,11 @@ inline char * dart_base_logging_basename(char *path) {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d ERROR ] [ %*d ] %-*s:%-*d !!! DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
@@ -91,11 +115,11 @@ inline char * dart_base_logging_basename(char *path) {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d TRACE ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
@@ -117,11 +141,11 @@ inline char * dart_base_logging_basename(char *path) {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d DEBUG ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \
@@ -143,11 +167,11 @@ inline char * dart_base_logging_basename(char *path) {
     if (sn_ret < 0 || sn_ret >= maxlen) { \
       break; \
     } \
-    dart_unit_t unit_id = -1; \
+    dart_global_unit_t unit_id; \
     dart_myid(&unit_id); \
     fprintf(DART_LOG_OUTPUT_TARGET, \
       "[ %*d INFO  ] [ %*d ] %-*s:%-*d :   DART: %s\n", \
-      DASH__DART_LOGGING__UNIT__WIDTH, unit_id, \
+      DASH__DART_LOGGING__UNIT__WIDTH, unit_id.id, \
       DASH__DART_LOGGING__PROC__WIDTH, pid, \
       DASH__DART_LOGGING__FILE__WIDTH, dart_base_logging_basename(__FILE__), \
       DASH__DART_LOGGING__LINE__WIDTH, __LINE__, \

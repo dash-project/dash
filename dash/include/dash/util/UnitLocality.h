@@ -35,8 +35,8 @@ private:
 public:
 
   UnitLocality(
-    dash::Team  & team,
-    dart_unit_t   unit)
+    dash::Team   & team,
+    team_unit_t    unit)
   : _team(&team)
   {
     DASH_ASSERT_RETURNS(
@@ -63,12 +63,12 @@ public:
   }
 
   UnitLocality(
-    dart_unit_t   unit)
-  : UnitLocality(dash::Team::All(), unit)
+    global_unit_t   unit)
+  : UnitLocality(dash::Team::All(), team_unit_t(unit))
   { }
 
   UnitLocality()
-  : UnitLocality(dash::Team::All(), dash::myid())
+  : UnitLocality(dash::Team::All(), dash::Team::All().myid())
   { }
 
   UnitLocality(const UnitLocality &)             = default;
@@ -106,11 +106,11 @@ public:
     return *_team;
   }
 
-  inline dart_unit_t unit_id() const
+  inline team_unit_t unit_id() const
   {
     return nullptr == _unit_locality
-           ? DART_UNDEFINED_UNIT_ID
-           : _unit_locality->unit;
+           ? UNDEFINED_TEAM_UNIT_ID
+           : team_unit_t(_unit_locality->unit);
   }
 
   inline dash::util::LocalityDomain & node_domain()

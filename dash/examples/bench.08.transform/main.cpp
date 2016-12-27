@@ -424,7 +424,7 @@ void print_local_sizes(
 
   bench_cfg.print_section_start("Data Partitioning");
   bench_cfg.print_param("global", "cpu  mbw  ldw", pattern.size());
-  for (size_t u = 0; u < pattern.team().size(); u++) {
+  for (dash::team_unit_t u{0}; u < pattern.team().size(); u++) {
     std::ostringstream uss;
     uss << "u:" << setw(4) << u;
 

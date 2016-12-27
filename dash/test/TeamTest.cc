@@ -32,11 +32,24 @@ TEST_F(TeamTest, SplitTeamSync)
 {
   auto & team_all = dash::Team::All();
 
+  // TODO: This test case has portability issues and fails in
+  //       distributed test environments and NastyMPI.
+  //       Clarify use case and find variant without writing to
+  //       file in `pwd`.
+  //
+  SKIP_TEST_MSG("not writing to pwd");
+
   if (team_all.size() < 2) {
     SKIP_TEST_MSG("requires at least 2 units");
   }
   if (!team_all.is_leaf()) {
     SKIP_TEST_MSG("team is already splitted. Skip test");
+  }
+
+  // Check if all units are on the same node
+  dash::util::TeamLocality tloc(dash::Team::All());
+  if(tloc.num_nodes() > 1){
+    SKIP_TEST_MSG("test supports only 1 node");
   }
 
   LOG_MESSAGE("team_all contains %d units", team_all.size());
@@ -53,7 +66,7 @@ TEST_F(TeamTest, SplitTeamSync)
 
   if (team_core.dart_id() == 1) {
     LOG_MESSAGE("Unit %d: I am in team %d",
-                team_core.myid(), team_core.dart_id());
+                team_core.myid().id, team_core.dart_id());
 
     usleep(1000 * 1000);
     if (team_core.myid() == 0) {
@@ -61,7 +74,7 @@ TEST_F(TeamTest, SplitTeamSync)
     }
   }
   LOG_MESSAGE("team_all.myid(): %d, team_core.myid(): %d, dash::myid(): %d",
-               team_all.myid(),     team_core.myid(),     dash::myid());
+               team_all.myid().id,  team_core.myid().id,  dash::myid().id);
   LOG_MESSAGE("team_all.position(): %d, team_core.position(): %d",
                team_all.position(),     team_core.position());
   LOG_MESSAGE("team_all.dart_id():  %d, team_core.dart_id(): %d",
@@ -71,7 +84,7 @@ TEST_F(TeamTest, SplitTeamSync)
 
   if (team_core.position() == 0) {
     LOG_MESSAGE("Unit %d: I am in team %d",
-                team_core.myid(), team_core.dart_id());
+                team_core.myid().id, team_core.dart_id());
 
     if (team_core.myid() == 0) {
       std::ifstream infile("test.txt");

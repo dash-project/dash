@@ -4,6 +4,10 @@
 #include <gtest/gtest.h>
 #include <libdash.h>
 
+#include <dash/Halo.h>
+#include <dash/iterator/GlobStencilIter.h>
+
+
 /**
  * Test fixture for class dash::GlobStencilIter.
  */

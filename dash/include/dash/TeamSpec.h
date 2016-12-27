@@ -47,7 +47,8 @@ public:
    */
   TeamSpec(
     Team & team = dash::Team::All())
-  : _is_linear(true)
+  : _is_linear(true),
+    _myid(team.myid())
   {
     DASH_LOG_TRACE_VAR("TeamSpec(t)", team.is_null());
     auto team_size = team.is_null() ? 0 : team.size();
@@ -87,7 +88,8 @@ public:
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All())
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>(
-      other.extents())
+      other.extents()),
+      _myid(team.myid())
   {
     DASH_LOG_TRACE_VAR("TeamSpec(ts, dist, t)", team.is_null());
 #if 0
@@ -139,6 +141,7 @@ public:
   TeamSpec(
     const DistributionSpec<MaxDimensions> & distribution,
     Team & team = dash::Team::All())
+  : _myid(team.myid())
   {
     DASH_LOG_TRACE_VAR("TeamSpec(dist, t)", team.is_null());
     bool distrib_dim_set = false;
@@ -187,7 +190,8 @@ public:
   template<typename ... Types>
   TeamSpec(SizeType value, Types ... values)
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
-      CartesianIndexSpace(value, values...)
+      CartesianIndexSpace(value, values...),
+      _myid(dash::Team::All().myid())
   {
     update_rank();
     this->resize(this->_extents);
@@ -206,7 +210,8 @@ public:
    */
   TeamSpec(const std::array<SizeType, MaxDimensions> & extents)
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
-      CartesianIndexSpace(extents)
+      CartesianIndexSpace(extents),
+      _myid(dash::Team::All().myid())
   {
     update_rank();
     this->resize(this->_extents);
@@ -221,7 +226,8 @@ public:
     const self_t & other)
   : CartesianIndexSpace<MaxDimensions, ROW_MAJOR, IndexType>::
       CartesianIndexSpace(other.extents()),
-    _rank(other._rank)
+    _rank(other._rank),
+    _myid(other._myid)
   { }
 
   void balance_extents()
@@ -268,16 +274,16 @@ public:
    * \code
    *   TeamSpec<2> teamspec(7,4);
    *   // west neighbor is offset -1 in column dimension:
-   *   dart_unit_t neighbor_west = teamspec.neigbor({ 0, -1 });
+   *   team_unit_t neighbor_west = teamspec.neigbor({ 0, -1 });
    *   // second south neighbor is offset -2 in row dimension:
-   *   dart_unit_t neighbor_west = teamspec.neigbor({ -2, 0 });
+   *   team_unit_t neighbor_west = teamspec.neigbor({ -2, 0 });
    * \endcode
    *
    * \returns  The unit id at given offset in the team grid, relative to the
    *           active unit's position in the team, or DART_UNDEFINED_UNIT_ID
    *           if the offset is out of bounds.
    */
-  dart_unit_t neighbor(std::initializer_list<int> offsets) const
+  team_unit_t neighbor(std::initializer_list<int> offsets) const
   {
     auto neighbor_coords = this->coords(_myid);
     dim_t d = 0;
@@ -285,7 +291,7 @@ public:
       neighbor_coords[d] += offset_d;
       if (neighbor_coords[d] < 0 ||
           neighbor_coords[d] >= this->_extents[d]) {
-        return DART_UNDEFINED_UNIT_ID;
+        return UNDEFINED_TEAM_UNIT_ID;
       }
       ++d;
     }
@@ -303,11 +309,11 @@ public:
    *   // assuming dash::myid() == 1, i.e. team spec coordinates are (0,1)
    *   TeamSpec<2> teamspec(2,2);
    *   // west neighbor is offset -1 in column dimension:
-   *   dart_unit_t neighbor_west = teamspec.neigbor_periodic({ 0, -1 });
+   *   team_unit_t neighbor_west = teamspec.neigbor_periodic({ 0, -1 });
    *   // -> unit 0
    *   // second south neighbor at offset -2 in row dimension wraps around
    *   // to row coordinate 0:
-   *   dart_unit_t neighbor_west = teamspec.neigbor_periodic({ -2, 0 });
+   *   team_unit_t neighbor_west = teamspec.neigbor_periodic({ -2, 0 });
    *   // -> unit 1
    * \endcode
    *
@@ -316,7 +322,7 @@ public:
    *           If an offset is out of bounds, it is wrapped around in the
    *           respective dimension as in a torus topology.
    */
-  dart_unit_t periodic_neighbor(std::initializer_list<int> offsets) const
+  team_unit_t periodic_neighbor(std::initializer_list<int> offsets) const
   {
     auto neighbor_coords = this->coords(_myid);
     dim_t d = 0;
@@ -427,7 +433,7 @@ protected:
   /// Whether the team spec is linear
   bool  _is_linear  = false;
   /// Unit id of active unit
-  dart_unit_t _myid = dash::myid();
+  team_unit_t _myid;
 
 }; // class TeamSpec
 

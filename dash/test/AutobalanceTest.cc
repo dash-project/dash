@@ -151,7 +151,7 @@ TEST_F(AutobalanceTest, BalanceTeamSpecNodes)
   const extent_t n_numa_per_node  =  4;
   const extent_t n_cores_per_node = 28;
 
-  dash::util::UnitLocality uloc(dash::Team::All(), dash::myid());
+  dash::util::UnitLocality uloc(dash::myid());
   uloc.hwinfo().num_numa  = n_numa_per_node;
   uloc.hwinfo().num_cores = n_cores_per_node;
 

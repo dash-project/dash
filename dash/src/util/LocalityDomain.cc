@@ -475,8 +475,7 @@ dash::util::LocalityDomain::find(
 dash::util::LocalityDomain::LocalityDomain(
   const dash::util::LocalityDomain & parent,
   dart_domain_locality_t           * domain
-) : _parent(const_cast<dash::util::LocalityDomain *>(&parent)),
-    _domain(domain),
+) : _domain(domain),
     _is_owner(false)
 {
   DASH_LOG_TRACE("LocalityDomain(parent,sd)()",
@@ -513,6 +512,9 @@ dash::util::LocalityDomain::init(
   DASH_LOG_TRACE("LocalityDomain.init",
                  "num_units:", _domain->num_units);
   if (_domain->num_units > 0) {
+    // The underlying domain might be modified, but we
+    // have to store the unit IDs in the original domain
+    // configuration. So we save the initial unit IDs here.
     _unit_ids.insert(_unit_ids.end(),
                      _domain->unit_ids,
                      _domain->unit_ids + _domain->num_units);
