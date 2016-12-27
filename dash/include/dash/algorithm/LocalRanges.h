@@ -45,11 +45,28 @@ local_index_ranges_impl(
 
   LocalIndexRanges<idx_t> res;
 
+  auto pattern = first.pattern();
+
+  idx_t l_offset = 0;
+  for (auto lblock_idx : pattern.local_blockspec()) {
+    auto lblock_view = pattern.local_block_local(lblock_idx);
+    auto lblock_size = lblock_view.size();
+
+    LocalIndexRange<idx_t> lblock_irange;
+    lblock_irange.begin = l_offset;
+    lblock_irange.end   = l_offset + lblock_size;
+    res.ranges.push_back(lblock_irange);
+
+    l_offset += lblock_size;
+  }
+
   return res;
 }
 
 /**
  * Pattern is strided (elements are not contiguous in single blocks)
+ *
+ * \todo   Not implemented
  */
 template<class GlobInputIter>
 typename std::enable_if<
@@ -81,6 +98,9 @@ local_index_ranges_impl(
 } // namespace internal
 
 
+/**
+ * \todo   Not implemented for view ranges, yet
+ */
 template<class GlobInputIter>
 typename std::enable_if<
   !GlobInputIter::has_view::value,
