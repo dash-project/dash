@@ -4,6 +4,7 @@
 #ifdef DASH_ENABLE_HDF5
 
 #include <string>
+#include <array>
 
 namespace dash {
 namespace io {
@@ -123,6 +124,14 @@ public:
     operator type_converter_fun_type(){
         return _converter;
     }
+};
+
+template<int N>
+class select_block {
+public:
+  select_block(std::array<size_t,N> pos, std::array<size_t,N> extents){
+    // TODO
+  }
 };
 
 } // namespace hdf5

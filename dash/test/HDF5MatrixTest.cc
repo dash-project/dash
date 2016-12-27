@@ -440,6 +440,54 @@ TEST_F(HDF5MatrixTest, GroupTest)
   verify_matrix(matrix_b, secret[1]);
   verify_matrix(matrix_c, secret[2]);
 }
+
+TEST_F(HDF5MatrixTest, DashView)
+{
+  int secret = 0;
+  dash::NArray<int,2> matrix2d(100,80);
+  fill_matrix(matrix2d, secret);
+  
+  {
+    auto output_view = matrix2d.col(5);
+
+    // Store View
+    dio::OutputStream os(_filename);
+    os << output_view;
+  }
+  
+  // Load data into a existing view
+  auto input_view = matrix2d.col(10);
+  dio::InputStream is(_filename);
+  is >> input_view;
+  
+  // Load data into new matrix
+  dash::Array<int> matrix1d;
+  is >> matrix1d;
+}
+
+TEST_F(HDF5MatrixTest, HDFView)
+{
+  int secret = 0;
+  dash::NArray<int,3> matrix3d(10,8,5);
+  fill_matrix(matrix3d, secret);
+  
+  {
+    dio::OutputStream os(_filename);
+    os << matrix3d;
+  }
+  
+  // Load subset of data into new matrix
+  dash::NArray<int,3> sub_matrix3d;
+  auto position = std::array<size_t,3>({2,4,1}); // top left corner of desired block
+  auto extent   = std::array<size_t,3>({4,2,1}); // extents of block
+  dio::InputStream is(_filename);
+  is >> dio::select_block<3>(position, extent)
+     >> sub_matrix3d;
+  
+  // post condition
+  // sub_matrix3d has extent {4,2,1}
+}
+
 #endif
 #if 0
 // Test Conversion between dash::Array and dash::Matrix
