@@ -122,11 +122,7 @@ public:
    * \param  foptions
    */
  template <typename Container_t>
-   typename std::enable_if <
-    _compatible_pattern<typename Container_t::pattern_type>() &&
-    _is_origin_view<typename Container_t::iterator>(),
-    void>::type
-  static write(
+ static void write(
       /// Import data in this Container
       Container_t &  array,
       /// Filename of HDF5 file including extension
@@ -284,27 +280,6 @@ public:
     
     H5Fclose(file_id);
   }
-
-#if 1
-  template <typename Container_t>
-  typename std::enable_if <
-    !(_compatible_pattern<typename Container_t::pattern_type>() &&
-    _is_origin_view<typename Container_t::iterator>()),
-    void
-  >::type
-  static write(
-    /// Import data in this Container
-    Container_t & array,
-    /// Filename of HDF5 file including extension
-    std::string filename,
-    /// HDF5 Dataset in which the data is stored
-    std::string datapath,
-    /// options how to open and modify data
-    hdf5_options foptions = _get_fdefaults(),
-    /// \cstd::function to convert native type into h5 type
-    type_converter_fun_type to_h5_dt_converter =
-    get_h5_datatype<typename Container_t::value_type>) { }
-#endif
   
   /**
    * Read an HDF5 dataset into a dash container using parallel IO
@@ -643,6 +618,12 @@ private:
   
   // ---- write dataset implementation specialisations ----
   
+  /**
+   * Switches between different write implementations based on pattern
+   * and container types.
+   * 
+   * Specializes for cases which can be zero-copy implemented
+   */
   template< class Container_t >
   typename std::enable_if <
     _compatible_pattern<typename Container_t::pattern_type>() &&
@@ -658,6 +639,12 @@ private:
     _write_dataset_impl_zero_copy(container, h5dset, internal_type, ts);
   }
   
+   /**
+   * Switches between different write implementations based on pattern
+   * and container types.
+   * 
+   * Specializes for cases which need buffering
+   */
   template< class Container_t >
   typename std::enable_if <
     !(_compatible_pattern<typename Container_t::pattern_type>() &&
@@ -670,7 +657,7 @@ private:
     const hid_t & internal_type,
     const hdf5_pattern_spec<Container_t::pattern_type::ndim()> & ts)
   {
-    _write_dataset_impl_buffered<Container_t>();
+    _write_dataset_impl_buffered(container, h5dset, internal_type, ts);
   }
   
   
@@ -726,7 +713,12 @@ private:
   }
   
   template < class Container_t >
-  static void _write_dataset_impl_buffered() {
+  static void _write_dataset_impl_buffered(
+    Container_t & container,
+    const hid_t & h5dset,
+    const hid_t & internal_type,
+    const hdf5_pattern_spec<Container_t::pattern_type::ndim()> & ts)
+  {
     // TODO
   }
 
