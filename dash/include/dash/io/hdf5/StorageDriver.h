@@ -263,6 +263,7 @@ public:
     // Write completely filled blocks
     H5Dwrite(h5dset, internal_type, memspace, filespace,
              plist_id, array.lbegin());
+    H5Sclose(memspace);
 
     // write underfilled blocks
     // get hdf pattern layout
