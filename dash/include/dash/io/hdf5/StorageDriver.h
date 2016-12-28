@@ -220,18 +220,12 @@ public:
             open_groups.push_back(loc_id);
           }
     }
-
-    // ----------- prepare and write dataset --------------
-    
-    // TODO: move section to function
-    // _write_dataset_impl();
     
     // get hdf pattern layout
     ts = _get_pattern_hdf_spec(pattern);
     
     // Create dataspace
     filespace     = H5Screate_simple(ndim, ts.data_dimsf, NULL);
-    memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
     internal_type = H5Tcopy(h5datatype);
 
     if(foptions.modify_dataset){
@@ -246,39 +240,9 @@ public:
     // Close global dataspace
     H5Sclose(filespace);
 
-    filespace = H5Dget_space(h5dset);
-
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    // Create property list for collective writes
-    plist_id = H5Pcreate(H5P_DATASET_XFER);
-    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-
-    // Write completely filled blocks
-    H5Dwrite(h5dset, internal_type, memspace, filespace,
-             plist_id, array.lbegin());
-    H5Sclose(memspace);
-
-    // write underfilled blocks
-    // get hdf pattern layout
-    ts = _get_pattern_hdf_spec_underfilled(pattern);
-    memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    H5Dwrite(h5dset, internal_type, memspace, filespace,
-             plist_id, array.lbegin());
+    // ----------- prepare and write dataset --------------
+    
+    _write_dataset_impl(array, h5dset, internal_type, ts);
     
     // ----------- end prepare and write dataset --------------
 
@@ -312,10 +276,7 @@ public:
     }
 
     // Close all
-    H5Pclose(plist_id);
     H5Dclose(h5dset);
-    H5Sclose(filespace);
-    H5Sclose(memspace);
     H5Tclose(internal_type);
     
     std::for_each(open_groups.rbegin(), open_groups.rend(),
@@ -688,8 +649,13 @@ private:
     _is_origin_view<typename Container_t::iterator>(),
     void
   >::type
-  static _write_dataset_impl() {
-    _write_dataset_impl_zero_copy<Container_t>();
+  static _write_dataset_impl(
+    Container_t & container,
+    const hid_t & h5dset,
+    const hid_t & internal_type,
+    const hdf5_pattern_spec<Container_t::pattern_type::ndim()> & ts)
+  {
+    _write_dataset_impl_zero_copy(container, h5dset, internal_type, ts);
   }
   
   template< class Container_t >
@@ -698,14 +664,65 @@ private:
     _is_origin_view<typename Container_t::iterator>()),
     void
   >::type
-  static _write_dataset_impl() {
+  static _write_dataset_impl(
+    Container_t & container,
+    const hid_t & h5dset,
+    const hid_t & internal_type,
+    const hdf5_pattern_spec<Container_t::pattern_type::ndim()> & ts)
+  {
     _write_dataset_impl_buffered<Container_t>();
   }
   
   
   template < class Container_t >
-  static void _write_dataset_impl_zero_copy() {
-    // TODO
+  static void _write_dataset_impl_zero_copy(
+    Container_t & container,
+    const hid_t & h5dset,
+    const hid_t & internal_type,
+    const hdf5_pattern_spec<Container_t::pattern_type::ndim()> & ts)
+  {
+    using pattern_t = typename Container_t::pattern_type;
+    constexpr auto ndim = pattern_t::ndim(); 
+    
+    // Create property list for collective writes
+    hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+    
+    hid_t filespace = H5Dget_space(h5dset);
+    hid_t memspace  = H5Screate_simple(ndim, ts.data_dimsm, NULL);
+
+    H5Sselect_hyperslab(
+      filespace,
+      H5S_SELECT_SET,
+      ts.offset,
+      ts.stride,
+      ts.count,
+      ts.block);
+
+    // Write completely filled blocks
+    H5Dwrite(h5dset, internal_type, memspace, filespace,
+             plist_id, container.lbegin());
+    H5Sclose(memspace);
+
+    // write underfilled blocks
+    // get hdf pattern layout
+    auto ts_rem = _get_pattern_hdf_spec_underfilled(container.pattern());
+    memspace = H5Screate_simple(ndim, ts_rem.data_dimsm, NULL);
+    
+    H5Sselect_hyperslab(
+      filespace,
+      H5S_SELECT_SET,
+      ts_rem.offset,
+      ts_rem.stride,
+      ts_rem.count,
+      ts_rem.block);
+
+    H5Dwrite(h5dset, internal_type, memspace, filespace,
+             plist_id, container.lbegin());
+    
+    H5Sclose(memspace);
+    H5Sclose(filespace);
+    H5Pclose(plist_id);
   }
   
   template < class Container_t >
