@@ -1,9 +1,9 @@
 #ifndef DASH__RANGES_H__INCLUDED
 #define DASH__RANGES_H__INCLUDED
 
-#ifdef DOXYGEN
-
 namespace dash {
+
+#ifdef DOXYGEN
 
 /**
  * \defgroup  DashRangeConcept  Multi-dimensional Range Concept
@@ -22,9 +22,24 @@ namespace dash {
  * \}
  */
 
-} // namespace dash
-
 #endif // DOXYGEN
+
+template <class RangeType>
+constexpr auto begin(RangeType & range) -> decltype(range.begin()) {
+  return range.begin();
+}
+
+template <class RangeType>
+constexpr auto end(RangeType & range) -> decltype(range.end()) {
+  return range.end();
+}
+
+template <class Iterator>
+constexpr auto index(Iterator it) -> decltype(it.pos()) {
+  return it.pos();
+}
+
+} // namespace dash
 
 #include <dash/algorithm/LocalRange.h>
 #include <dash/algorithm/LocalRanges.h>

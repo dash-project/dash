@@ -12,10 +12,26 @@ struct view_traits {
 
 };
 
+/**
+ * Inverse operation to \c dash::apply.
+ *
+ */
 template <class ViewT>
 typename ViewT::origin_type & origin(ViewT & view) {
   return view.origin();
 }
+
+/**
+ * Inverse operation to \c dash::origin.
+ *
+ */
+template <class ViewTypeA, class ViewTypeB>
+auto apply(
+  ViewTypeA & view_a,
+  ViewTypeB & view_b) -> decltype(view_a.apply(view_b)) {
+  return view_a.apply(view_b);
+}
+
 
 } // namespace dash
 
