@@ -25,9 +25,9 @@
  *  sub<0>(2).sub<1>(3,4)
  *  :         :
  *  |         |
- *  |         '--> ViewSubMod<0, ViewSubMod<0, ViewOrigin> >
- *  |                            '-----------.-----------'
- *  |                                        '--> parent
+ *  |         '--> ViewSubMod<0, ViewSubMod<-1, ViewOrigin> >
+ *  |                            '------------.-----------'
+ *  |                                         '--> parent
  *  '--> ViewSubMod<-1, ViewOrigin >
  *                      '----.---'
  *                           '--> parent
@@ -69,23 +69,29 @@
 namespace dash {
 
 /*
- * TODO: The ViewMod types cannot satisfy the View concept entirely
- *       because methods like extents(), offsets(), ... cannot be
- *       defined without a known pattern type.
+ * TODO: The ViewMod types don't satisfy the View concept entirely as
+ *       methods like extents(), offsets(), cannot be defined without
+ *       a known pattern type.
  *       Also, view modifiers are not bound to a data domain (like an
  *       array address space), they do not provide access to elements.
- *
- *          matrix.sub<1>(1,2);            is bound to a data domain
- *
- *          os << sub<1>(1,2);             is unbound at this point
- *                                         and no element access can
- *                                         be specified.
- *          os << sub<3>(10,20) << mat;    is bound after container
- *                                         `mat` is passed.
  *
  *       Clarify/ensure that these unbound/unmaterialized/lightweight
  *       views cannot appear in expressions where they are considered
  *       as models of the View concept.
+ *
+ *       Does not seem problematic so far as bound- and unbound views
+ *       have different types (would lead to compiler errors in worst
+ *       case) and users should not be tempted to access elements 
+ *       without specifying a data domain first:
+ *
+ *          matrix.sub<1>(1,2);            is bound to matrix element
+ *                                         domain
+ *
+ *          os << sub<1>(1,2);             view unbound at this point
+ *                                         and value access cannot be
+ *                                         specified.
+ *          os << sub<3>(10,20) << mat;    bound once container `mat`
+ *                                         is passed.
  *
  *
  */
