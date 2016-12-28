@@ -4,7 +4,92 @@
 #include <dash/Types.h>
 #include <dash/View/ViewTraits.h>
 
+/* TODO: Eventually, these probably are not public definitions.
+ *       Move to namespace internal.
+ *
+ * Implementing view modifier chain as combination of command pattern
+ * and chain of responsibility pattern.
+ * For now, only compile-time projections/slices are supported such as:
+ *
+ *   sub<0>(10,20).sub<1>(30,40)
+ *
+ * but not run-time projections/slices like:
+ *
+ *   sub(0, { 10,20 }).sub(1, { 30,40 })
+ *
+ * A view composition is a chained application of view modifier types
+ * that depend on the type of their predecessor in the chain.
+ *
+ * Example:
+ *
+ *  sub<0>(2).sub<1>(3,4)
+ *  :         :
+ *  |         |
+ *  |         '--> ViewSubMod<0, ViewSubMod<0, ViewOrigin> >
+ *  |                            '-----------.-----------'
+ *  |                                        '--> parent
+ *  '--> ViewSubMod<-1, ViewOrigin >
+ *                      '----.---'
+ *                           '--> parent
+ *
+ * Consequently, specific ViewMod types are defined for every modifier
+ * category.
+ * As an alternative, all view modifications could be stored in command
+ * objects of a single ViewMod type. Expressions then could not be evalated
+ * at compile-time, however.
+ *
+ * Currently, only two view modifier types seem to be required:
+ * - ViewSubMod
+ * - ViewBlockMod (-> ViewSubMod)
+ * - ViewLocalMod
+ *
+ * However, View modifier types should subclass a common ViewMod base
+ * class - or vice versa, following the policy pattern with the operation
+ * specified as policy:
+ *
+ *
+ *   template <dim_t DimDiff, class ViewModOperation>
+ *   class ViewMod : ViewModOperation
+ *   {
+ *      // ...
+ *   }
+ *
+ *   class ViewModSubOperation;
+ *   // defines
+ *   // - sub<N>(...)
+ *   // - view_mod_op() { return sub<N>(...); }
+ *
+ *   ViewMod<0, ViewModSubOperation> view_sub(initializer_list);
+ *   // - either calls view_mod_op(initializer_list) in constructor
+ *   // - or provides method sub<N>(...) directly
+ *
+ */
+
+
 namespace dash {
+
+/*
+ * TODO: The ViewMod types cannot satisfy the View concept entirely
+ *       because methods like extents(), offsets(), ... cannot be
+ *       defined without a known pattern type.
+ *       Also, view modifiers are not bound to a data domain (like an
+ *       array address space), they do not provide access to elements.
+ *
+ *          matrix.sub<1>(1,2);            is bound to a data domain
+ *
+ *          os << sub<1>(1,2);             is unbound at this point
+ *                                         and no element access can
+ *                                         be specified.
+ *          os << sub<3>(10,20) << mat;    is bound after container
+ *                                         `mat` is passed.
+ *
+ *       Clarify/ensure that these unbound/unmaterialized/lightweight
+ *       views cannot appear in expressions where they are considered
+ *       as models of the View concept.
+ *
+ *
+ */
+
 
 template <
   dim_t DimDiff,
@@ -26,6 +111,10 @@ public:
     IndexType    end)
   : _origin(origin), _begin(begin), _end(end)
   { }
+
+  constexpr OriginType & origin() const {
+    return _origin;
+  }
 
 private:
   OriginType & _origin;

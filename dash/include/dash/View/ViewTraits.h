@@ -12,6 +12,11 @@ struct view_traits {
 
 };
 
+template <class ViewT>
+typename ViewT::origin_type & origin(ViewT & view) {
+  return view.origin();
+}
+
 } // namespace dash
 
 #endif // DASH__VIEW__VIEW_TRAITS_H__INCLUDED
