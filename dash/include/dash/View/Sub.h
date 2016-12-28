@@ -16,7 +16,7 @@ template <
   class OffsetT >
 ViewSubMod<0, OffsetT>
 sub(OffsetT begin, OffsetT end) {
-  return ViewSubMod<0, OffsetT> sub_viewmod(begin, end);
+  return ViewSubMod<0, OffsetT>(begin, end);;
 }
 
 template <
@@ -35,7 +35,7 @@ template <
   class OffsetT >
 ViewSubMod<-1, OffsetT>
 sub(OffsetT offset) {
- return ViewSubMod<-1, OffsetT> sub_viewmod(offset);
+ return ViewSubMod<-1, OffsetT>(offset);
 }
 
 
