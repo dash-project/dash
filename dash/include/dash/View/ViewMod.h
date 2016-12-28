@@ -2,7 +2,9 @@
 #define DASH__VIEW__VIEW_MOD_H__INCLUDED
 
 #include <dash/Types.h>
+#include <dash/Range.h>
 #include <dash/View/ViewTraits.h>
+
 
 /* TODO: Eventually, these probably are not public definitions.
  *       Move to namespace internal.
@@ -122,6 +124,14 @@ public:
     return _origin;
   }
 
+  constexpr IndexType size() const {
+    return dash::distance(_begin, _end);
+  }
+  
+  constexpr bool empty() const {
+    return size() == 0;
+  }
+
 private:
   OriginType & _origin;
   IndexType    _begin;
@@ -136,11 +146,11 @@ template <
   // the view projection eliminates one dimension of the origin domain
   // difference of dimensionality is \f$(vdim - odim) = -1\f$.
   dim_t DimDiff,
-  class IndexType
->
+  class OriginType,
+  class IndexType = typename OriginType::IndexType >
 class ViewMod
 {
-  typedef ViewMod<DimDiff, IndexType> self_t;
+  typedef ViewMod<DimDiff, OriginType, IndexType> self_t;
 
 public:
 
@@ -160,6 +170,18 @@ public:
     _begin = offset;
     _end   = offset;
     return *this;
+  }
+
+  constexpr OriginType & origin() const {
+    return _origin;
+  }
+
+  constexpr IndexType size() const {
+    return dash::distance(_begin, _end);
+  }
+  
+  constexpr bool empty() const {
+    return size() == 0;
   }
 
 private:
