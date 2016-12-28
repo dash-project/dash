@@ -186,8 +186,9 @@ public:
 
 private:
 
-  IndexType _begin;
-  IndexType _end;
+  OriginType & _origin;
+  IndexType    _begin;
+  IndexType    _end;
 
 }; // class ViewMod
 
