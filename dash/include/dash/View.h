@@ -1,7 +1,12 @@
-#ifndef VIEW_H_INCLUDED
-#define VIEW_H_INCLUDED
+#ifndef DASH__VIEW_H__INCLUDED
+#define DASH__VIEW_H__INCLUDED
 
 #include <dash/Cartesian.h>
+
+#include <dash/View/Sub.h>
+#include <dash/View/ViewMod.h>
+#include <dash/View/ViewTraits.h>
+
 
 namespace dash {
 
@@ -76,9 +81,9 @@ public:
 
 };
 
-//
-// cartesian view class
-//
+/**
+ * Cartesian view class.
+ */
 template<
   typename Iter,
   unsigned int NumDimensions,
@@ -108,4 +113,4 @@ public:
 
 } // namespace dash
 
-#endif //VIEW_H_INCLUDED
+#endif // DASH__VIEW_H__INCLUDED
