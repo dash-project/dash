@@ -166,11 +166,8 @@ public:
     hid_t   internal_type;
     hid_t   plist_id; // property list identifier
     hid_t   filespace;
-    hid_t   memspace;
     hid_t   loc_id;
-
-    hdf5_pattern_spec<ndim> ts;
-
+    
     // setup mpi access
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
     dart__io__hdf5__prep_mpio(plist_id, team.dart_id());
@@ -217,11 +214,11 @@ public:
           }
     }
     
-    // get hdf pattern layout
-    ts = _get_pattern_hdf_spec(pattern);
+    // view extents are relevant (instead of pattern extents)
+    auto filespace_extents = _get_container_extents(array);
     
     // Create dataspace
-    filespace     = H5Screate_simple(ndim, ts.data_dimsf, NULL);
+    filespace     = H5Screate_simple(ndim, filespace_extents.extent, NULL);
     internal_type = H5Tcopy(h5datatype);
 
     if(foptions.modify_dataset){
@@ -238,12 +235,14 @@ public:
 
     // ----------- prepare and write dataset --------------
     
-    _write_dataset_impl(array, h5dset, internal_type, ts);
+    _write_dataset_impl(array, h5dset, internal_type);
     
     // ----------- end prepare and write dataset --------------
 
     // Add Attributes
-    if (foptions.store_pattern) {
+    if (foptions.store_pattern &&
+        _is_origin_view<typename Container_t::iterator>())
+    {
       DASH_LOG_DEBUG("store pattern in hdf5 file");
       auto pat_key = foptions.pattern_metadata_key.c_str();
       extent_t pattern_spec[ndim * 4];
@@ -525,6 +524,16 @@ public:
     hsize_t offset[ndim];
     hsize_t block[ndim];
   };
+  
+  /**
+   * hdf5 pattern specification for parallel IO
+   */
+  template <
+    dim_t ndim >
+  struct hdf5_filespace_spec {
+    hsize_t extent[ndim];
+  };
+  
 
 private:
 
@@ -600,6 +609,25 @@ private:
     }
     return ts;
   }
+  
+  template < typename value_t >
+  const static inline hdf5_filespace_spec<1>
+  _get_container_extents(dash::Array<value_t> & array){
+    hdf5_filespace_spec<1> fs;
+    fs.extent[0] = array.size();
+    return fs;
+  }
+  
+  template < class Container_t >
+  const static inline hdf5_filespace_spec<Container_t::pattern_type::ndim()>
+  _get_container_extents(Container_t & container){
+    constexpr auto ndim = Container_t::pattern_type::ndim();
+    hdf5_filespace_spec<ndim> fs;
+    for(int i=0; i<ndim; ++i){
+      fs.extent[i] = container.extent(i);
+    }
+    return fs;
+  }
 
   
   template <
@@ -633,10 +661,9 @@ private:
   static _write_dataset_impl(
     Container_t & container,
     const hid_t & h5dset,
-    const hid_t & internal_type,
-    const hdf5_pattern_spec<Container_t::pattern_type::ndim()> & ts)
+    const hid_t & internal_type)
   {
-    _write_dataset_impl_zero_copy(container, h5dset, internal_type, ts);
+    _write_dataset_impl_zero_copy(container, h5dset, internal_type);
   }
   
    /**
@@ -654,10 +681,9 @@ private:
   static _write_dataset_impl(
     Container_t & container,
     const hid_t & h5dset,
-    const hid_t & internal_type,
-    const hdf5_pattern_spec<Container_t::pattern_type::ndim()> & ts)
+    const hid_t & internal_type)
   {
-    _write_dataset_impl_buffered(container, h5dset, internal_type, ts);
+    _write_dataset_impl_buffered(container, h5dset, internal_type);
   }
   
   
@@ -665,68 +691,33 @@ private:
   static void _write_dataset_impl_zero_copy(
     Container_t & container,
     const hid_t & h5dset,
-    const hid_t & internal_type,
-    const hdf5_pattern_spec<Container_t::pattern_type::ndim()> & ts)
-  {
-    using pattern_t = typename Container_t::pattern_type;
-    constexpr auto ndim = pattern_t::ndim(); 
-    
-    // Create property list for collective writes
-    hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
-    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-    
-    hid_t filespace = H5Dget_space(h5dset);
-    hid_t memspace  = H5Screate_simple(ndim, ts.data_dimsm, NULL);
-
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    // Write completely filled blocks
-    H5Dwrite(h5dset, internal_type, memspace, filespace,
-             plist_id, container.lbegin());
-    H5Sclose(memspace);
-
-    // write underfilled blocks
-    // get hdf pattern layout
-    auto ts_rem = _get_pattern_hdf_spec_underfilled(container.pattern());
-    memspace = H5Screate_simple(ndim, ts_rem.data_dimsm, NULL);
-    
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts_rem.offset,
-      ts_rem.stride,
-      ts_rem.count,
-      ts_rem.block);
-
-    H5Dwrite(h5dset, internal_type, memspace, filespace,
-             plist_id, container.lbegin());
-    
-    H5Sclose(memspace);
-    H5Sclose(filespace);
-    H5Pclose(plist_id);
-  }
+    const hid_t & internal_type);
   
   template < class Container_t >
   static void _write_dataset_impl_buffered(
     Container_t & container,
     const hid_t & h5dset,
-    const hid_t & internal_type,
-    const hdf5_pattern_spec<Container_t::pattern_type::ndim()> & ts)
-  {
-    // TODO
-  }
+    const hid_t & internal_type);
+  
+  template<
+    typename ElementT,
+    typename PatternT,
+    dim_t    NDim,
+    dim_t    NViewDim >
+  static void _write_dataset_impl_nd_block(
+    dash::MatrixRef< ElementT, NDim, NViewDim, PatternT > & container,
+    const hid_t & h5dset,
+    const hid_t & internal_type);
 
 };
 
 } // namespace hdf5
 } // namespace io
 } // namespace dash
+
+#include <dash/io/hdf5/internal/DriverImplZeroCopy.h>
+#include <dash/io/hdf5/internal/DriverImplBuffered.h>
+#include <dash/io/hdf5/internal/DriverImplNdBlock.h>
 
 #include <dash/io/hdf5/internal/StorageDriver-inl.h>
 
