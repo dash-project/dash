@@ -500,8 +500,6 @@ TEST_F(HDF5ArrayTest, AsyncIO)
   // try unallocated array
   dash::Array<double> array_c;
 
-  dash::barrier();
-
   // There are still progress problems in async input stream.
   InputStream is(dash::launch::async, _filename);
   is >> dio::dataset("array_a")
@@ -514,9 +512,9 @@ TEST_F(HDF5ArrayTest, AsyncIO)
   is.flush();
 
   // Verify data
-  //verify_array(array_a, secret[0]);
-  //verify_array(array_b, secret[1]);
-  //verify_array(array_c, secret[2]);
+  verify_array(array_a, secret[0]);
+  verify_array(array_b, secret[1]);
+  verify_array(array_c, secret[2]);
 
 }
 
