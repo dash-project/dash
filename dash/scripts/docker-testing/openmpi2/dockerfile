@@ -29,10 +29,12 @@ RUN           cd papi*/src/                     \
 ADD           https://www.open-mpi.org/software/ompi/v2.0/downloads/openmpi-2.0.1.tar.gz ompi.tgz
 RUN           tar -xf ompi.tgz
 RUN           cd openmpi*                         \
-            && ./configure --prefix=/opt/openmpi  \
-                           --enable-mpi-thread-multiple \
-            && make                               \
-            && make install
+           && ./configure --prefix=/opt/openmpi   \
+                          --enable-mpi-thread-multiple \
+           && make                                \
+           && make install
+ENV           PATH=${PATH}:/opt/openmpi/bin
+ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/opt/openmpi/lib
 
 # PHDF5 1.10
 ADD           https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/hdf5-1.10.0-patch1.tar.gz phdf5.tgz
@@ -43,12 +45,11 @@ RUN           cd hdf5*                        \
                           --prefix=/opt/phdf5 \
            && make                            \
            && make install
+ENV           HDF5_BASE=/opt/phdf5
 
 # Prepare env
 ENV           PAPI_BASE=/opt/papi
-ENV           HDF5_BASE=/opt/phdf5
-ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib:/opt/openmpi/lib:${HDF5_BASE}/lib
-ENV           PATH=${PATH}:/opt/openmpi/bin
+ENV           LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${PAPI_BASE}/lib:${HDF5_BASE}/lib
 ENV           MPI_EXEC_FLAGS='--allow-run-as-root'
 ENV           VERBOSE_CI='true'
 # Workaround for issue #63
