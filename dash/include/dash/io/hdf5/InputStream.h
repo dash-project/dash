@@ -74,15 +74,23 @@ class InputStream
         : InputStream(dash::launch::sync, filename)
     { }
     
+    ~InputStream(){
+      if(!_async_ops.empty()){
+        _async_ops.back().wait();
+      }
+    }
+    
     /**
      * Synchronizes with the data source.
      * If \cdash::launch::async is used, waits until all data is read
      */
     InputStream flush(){
-        for(auto & fut : _async_ops){
-            fut.wait();
-        }
-        return *this;
+      DASH_LOG_DEBUG("flush input stream", _async_ops.size());
+      if(!_async_ops.empty()){
+        _async_ops.back().wait();
+      }
+      DASH_LOG_DEBUG("input stream flushed");
+      return *this;
     }
 
     // IO Manipulators
@@ -143,6 +151,48 @@ private:
           _dataset,
           _foptions);
       }
+    }
+    
+    template< typename Container_t >
+    void _load_object_impl_async(Container_t & container){
+      auto pos = _async_ops.size();
+
+      // copy state of stream
+      auto s_filename      = _filename;
+      auto s_dataset       = _dataset;
+      auto s_foptions      = _foptions;
+      auto s_use_cust_conv = _use_cust_conv; 
+      type_converter_fun_type s_converter = _converter;
+      
+      // pass pos by value as it might be out of scope when function is called
+      std::shared_future<void> fut = 
+              std::async(std::launch::async,
+                        [&,pos, s_filename, s_dataset, s_foptions, s_converter, s_use_cust_conv](){
+        if(pos != 0){
+          // wait for previous tasks
+          auto last_task = _async_ops[pos-1];
+          DASH_LOG_DEBUG("waiting for future", pos);
+          last_task.wait();
+        }
+        DASH_LOG_DEBUG("execute async io task");
+        
+        if(s_use_cust_conv){
+          StoreHDF::read(
+            container,
+            s_filename,
+            s_dataset,
+            s_foptions,
+            s_converter);
+        } else {
+          StoreHDF::read(
+            container,
+            s_filename,
+            s_dataset,
+            s_foptions);
+        }
+        DASH_LOG_DEBUG("execute async io task done");
+        });
+      _async_ops.push_back(fut);
     }
 };
 

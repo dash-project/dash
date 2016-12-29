@@ -278,6 +278,8 @@ public:
                   [](hid_t & group_id){H5Gclose(group_id);});
     
     H5Fclose(file_id);
+    
+    team.barrier();
   }
   
   /**
@@ -476,6 +478,8 @@ public:
     H5Sclose(memspace);
     H5Tclose(internal_type);
     H5Fclose(file_id);
+    
+    matrix.team().barrier();
   }
 
 #if 1

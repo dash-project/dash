@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <gtest/gtest.h>
 #include <unistd.h>
+#include <c++/5/chrono>
 
 #include "HDF5ArrayTest.h"
 #include "TestBase.h"
@@ -460,11 +461,12 @@ TEST_F(HDF5ArrayTest, CustomType)
 /** TODO currently highly experimental */
 TEST_F(HDF5ArrayTest, AsyncIO)
 {
-  int ext_x = dash::size() * 1;
+  int  ext_x  = dash::size() * 1;
+  long lext_x = 1024*1024*10; // approx. 40 MB
   double secret[] = {10, 11, 12};
   {
     dash::Array<double> array_a(ext_x);
-    dash::Array<double> array_b(ext_x);
+    dash::Array<double> array_b(lext_x);
     dash::Array<double> array_c(ext_x);
 
     // Fill
@@ -480,26 +482,30 @@ TEST_F(HDF5ArrayTest, AsyncIO)
     os << dio::dataset("array_a")
       << array_a
       << dio::dataset("g1/array_b")
-      << array_b;
-//      << dio::dataset("g1/g2/array_c")
-//      << array_c;
+      << array_b
+      << dio::dataset("g1/g2/array_c")
+      << array_c;
     
     LOG_MESSAGE("Async OS setup");
     // Do some computation intense work
     os.flush();
     LOG_MESSAGE("Async OS flushed");
   }
-#if 0
-  dash::Array<double> array_a;
-  dash::Array<double> array_b;
-  dash::Array<double> array_c;
-  InputStream is(dash::launch::async, _filename);
+  
+  dash::Array<double> array_a(ext_x);
+  dash::Array<double> array_b(lext_x);
+  dash::Array<double> array_c(ext_x);
+
+  dash::barrier();
+
+  // There are still progress problems in async input stream.
+  InputStream is(dash::launch::sync, _filename);
   is >> dio::dataset("array_a")
-    >> array_a;
-//    >> dio::dataset("g1/array_b")
-//    >> array_b
-//    >> dio::dataset("g1/g2/array_c")
-//    >> array_c;
+    >> array_a
+    >> dio::dataset("g1/array_b")
+    >> array_b
+    >> dio::dataset("g1/g2/array_c")
+    >> array_c;
   
   is.flush();
 
@@ -507,7 +513,7 @@ TEST_F(HDF5ArrayTest, AsyncIO)
   verify_array(array_a, secret[0]);
   verify_array(array_b, secret[1]);
   verify_array(array_c, secret[2]);
-#endif
+
 }
 
 // Run this test after all other tests as it changes the team state

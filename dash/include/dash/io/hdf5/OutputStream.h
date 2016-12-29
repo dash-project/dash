@@ -11,6 +11,9 @@
 
 #include <dash/LaunchPolicy.h>
 
+#include <chrono>
+#include <thread>
+
 namespace dash {
 namespace io {
 namespace hdf5 {
@@ -90,7 +93,6 @@ public:
     
     ~OutputStream(){
       if(!_async_ops.empty()){
-        DASH_LOG_DEBUG("wait for outstanding tasks");
         _async_ops.back().wait();
       }
     }
@@ -182,21 +184,45 @@ private:
     template< typename Container_t >
     void _store_object_impl_async(Container_t & container){
       auto pos = _async_ops.size();
-      DASH_LOG_DEBUG("Get future at pos", pos);
-
+      
+      // copy state of stream
+      auto s_filename      = _filename;
+      auto s_dataset       = _dataset;
+      auto s_foptions      = _foptions;
+      auto s_use_cust_conv = _use_cust_conv; 
+      type_converter_fun_type s_converter = _converter;
+      
       // pass pos by value as it might be out of scope when function is called
-      std::shared_future<void> fut = std::async(std::launch::async, [&,pos](){
+      std::shared_future<void> fut = 
+              std::async(std::launch::async,
+                        [&,pos, s_filename, s_dataset, s_foptions, s_converter, s_use_cust_conv](){
         if(pos != 0){
           // wait for previous tasks
           auto last_task = _async_ops[pos-1];
+          DASH_LOG_DEBUG("waiting for future", pos);
           last_task.wait();
         }
         DASH_LOG_DEBUG("execute async io task");
-        StoreHDF::write(
-          container,
-          _filename,
-          _dataset,
-          _foptions);});
+        
+        if(s_use_cust_conv){
+          StoreHDF::write(
+            container,
+            s_filename,
+            s_dataset,
+            s_foptions,
+            s_converter);
+        } else {
+          StoreHDF::write(
+            container,
+            s_filename,
+            s_dataset,
+            s_foptions);
+        }
+        // wait for other units in this team to avoid overlapping of
+        // io ops of different teams
+        container.team().barrier();
+        DASH_LOG_DEBUG("execute async io task done");
+        });
       _async_ops.push_back(fut);
     }
 };
