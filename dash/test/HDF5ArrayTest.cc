@@ -479,7 +479,6 @@ TEST_F(HDF5ArrayTest, AsyncIO)
     fill_array(array_c, secret[2]);
     dash::barrier();
 
-    // Set option
 
     // Currently only works if just one container is passed
     OutputStream os(dash::launch::async, _filename);
@@ -498,7 +497,8 @@ TEST_F(HDF5ArrayTest, AsyncIO)
   
   dash::Array<double> array_a(ext_x);
   dash::Array<double> array_b(lext_x);
-  dash::Array<double> array_c(ext_x);
+  // try unallocated array
+  dash::Array<double> array_c;
 
   dash::barrier();
 

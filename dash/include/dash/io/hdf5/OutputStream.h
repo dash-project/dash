@@ -218,9 +218,6 @@ private:
             s_dataset,
             s_foptions);
         }
-        // wait for other units in this team to avoid overlapping of
-        // io ops of different teams
-        container.team().barrier();
         DASH_LOG_DEBUG("execute async io task done");
         });
       _async_ops.push_back(fut);

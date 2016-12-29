@@ -19,9 +19,8 @@ inline InputStream & operator>> (
     Container_t & container)
 {
     if(is._launch_policy == dash::launch::async){
-      std::shared_future<void> fut = std::async(std::launch::async, [&](){
-                   is._load_object_impl(container);});
-      is._async_ops.push_back(fut);
+      is._load_object_impl_async(container);
+      container.barrier();
     } else {
       is._load_object_impl(container);
     }
