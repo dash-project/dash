@@ -462,7 +462,11 @@ TEST_F(HDF5ArrayTest, CustomType)
 TEST_F(HDF5ArrayTest, AsyncIO)
 {
   int  ext_x  = dash::size() * 1;
+#ifndef DEBUG
   long lext_x = 1024*1024*10; // approx. 40 MB
+#else
+  long lext_x = ext_x*2;
+#endif
   double secret[] = {10, 11, 12};
   {
     dash::Array<double> array_a(ext_x);
