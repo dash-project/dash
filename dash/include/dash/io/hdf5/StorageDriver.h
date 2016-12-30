@@ -519,7 +519,7 @@ public:
    * hdf5 pattern specification for parallel IO
    */
   template <
-    dim_t ndim >
+    dim_t ndim>
   struct hdf5_pattern_spec {
     hsize_t data_dimsf[ndim];
     hsize_t data_dimsm[ndim];
@@ -527,6 +527,7 @@ public:
     hsize_t stride[ndim];
     hsize_t offset[ndim];
     hsize_t block[ndim];
+    bool    underfilled_blocks;
   };
   
   /**
@@ -562,17 +563,28 @@ private:
   const static inline hdf5_pattern_spec<pattern_t::ndim()>
     _get_pattern_hdf_spec(const pattern_t & pattern)
   {
+    using index_t = typename pattern_t::index_type;
     constexpr auto ndim = pattern_t::ndim();
     hdf5_pattern_spec<ndim> ts;
+    hdf5_pattern_spec<ndim> ts_empty;
+    ts_empty.underfilled_blocks = true;
+
     // setup extends per dimension
     for (int i = 0; i < ndim; ++i) {
-      auto tilesize    = pattern.blocksize(i);
+      auto tilesize  = pattern.blocksize(i);
+      auto num_tiles = pattern.local_extent(i) / tilesize;
+      DASH_LOG_DEBUG("local extent:", dash::myid(), pattern.local_extent(i));
+      if(num_tiles == 0){
+        // only underfilled blocks
+        return ts_empty;
+      }
+      
       ts.data_dimsf[i] = pattern.extent(i);
-      ts.data_dimsm[i] = (pattern.local_extent(i) / tilesize) * tilesize;
+      ts.data_dimsm[i] = num_tiles * tilesize;
       // number of tiles in this dimension
-      ts.count[i]      = pattern.local_extent(i) / tilesize;
+      ts.count[i]      = num_tiles;
       ts.offset[i]     = pattern.local_block(0).offset(i);
-      ts.block[i]      = pattern.blocksize(i);
+      ts.block[i]      = tilesize;
       ts.stride[i]     = pattern.teamspec().extent(i) * ts.block[i];
     }
     return ts;
@@ -585,32 +597,42 @@ private:
    * \param pattern_t pattern
    * \return hdf5_pattern_spec<ndim>
    */
-  template < class pattern_t >
-  const static inline hdf5_pattern_spec<pattern_t::ndim()>
-    _get_pattern_hdf_spec_underfilled(const pattern_t & pattern)
+  template < dim_t ndim,
+             MemArrange Arr,
+             typename index_t >
+  const static inline hdf5_pattern_spec<ndim>
+    _get_pattern_hdf_spec_underfilled(const dash::Pattern<ndim, Arr, index_t> & pattern)
   {
-    constexpr auto ndim = pattern_t::ndim();
     hdf5_pattern_spec<ndim> ts;
-
-    for (int i = 0; i < ndim ; i++) {
+    
+    for (int i = 0; i < ndim; ++i) {
       auto tilesize    = pattern.blocksize(i);
       auto localsize   = pattern.local_extent(i);
+      // fully filled local blocks
       auto localblocks = localsize / tilesize;
+      // extent in elements of fully filled blocks
       auto lfullsize   = localblocks * tilesize;
-
-      ts.data_dimsf[i] = pattern.extent(i);
-      ts.data_dimsm[i] = localsize - lfullsize;
-      ts.stride[i]     = tilesize;
-      if (localsize != lfullsize) {
-        ts.count[i]    = 1;
-        ts.offset[i]   = pattern.local_block(localblocks).offset(i);
-        ts.block[i]    = localsize - lfullsize;
+      auto lastblckidx = localblocks;
+      
+      if(localsize == lfullsize){
+        lastblckidx-=1;
+        ts.data_dimsm[i] = lfullsize;
       } else {
-        ts.count[i]    = 0;
-        ts.offset[i]   = 0;
-        ts.block[i]    = 0;
+        ts.data_dimsm[i] = localsize - lfullsize;
+        ts.underfilled_blocks |= true;
       }
+      ts.stride[i]   = tilesize;
+      ts.count[i]    = 1;
+      ts.offset[i]   = pattern.local_block(lastblckidx).offset(i);
+      ts.block[i]    = ts.data_dimsm[i];
     }
+    return ts;
+  }
+  
+  template < class pattern_t >
+  const static inline hdf5_pattern_spec<pattern_t::ndim()>
+    _get_pattern_hdf_spec_underfilled(const pattern_t & pattern){
+    hdf5_pattern_spec<pattern_t::ndim()> ts;
     return ts;
   }
   

@@ -47,7 +47,6 @@ void StoreHDF::_write_dataset_impl_nd_block(
   hdf5_pattern_spec<ndim>   ts;
   hdf5_filespace_spec<ndim> fs = _get_container_extents(container);
 
-  ts.data_dimsf[0] = fs.extent[0];
   hid_t filespace  = H5Dget_space(h5dset);
   
   // TODO: Currently only the 1-D Case is implemented

@@ -3,6 +3,7 @@
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
+#include <c++/5/chrono>
 
 namespace dash {
 namespace io {
@@ -16,10 +17,11 @@ void StoreHDF::_write_dataset_impl_zero_copy(
 {
   using pattern_t = typename Container_t::pattern_type;
   constexpr auto ndim = pattern_t::ndim();
-  hdf5_pattern_spec<ndim> ts;
+
+  DASH_LOG_DEBUG("Use zero_copy impl");
 
   // get hdf pattern layout
-  ts = _get_pattern_hdf_spec(container.pattern());
+  auto ts = _get_pattern_hdf_spec(container.pattern());
 
   // Create property list for collective writes
   hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
@@ -28,14 +30,19 @@ void StoreHDF::_write_dataset_impl_zero_copy(
   hid_t filespace = H5Dget_space(h5dset);
   hid_t memspace = H5Screate_simple(ndim, ts.data_dimsm, NULL);
 
-  H5Sselect_hyperslab(
+  if(ts.underfilled_blocks){
+    H5Sselect_none(filespace);
+  } else {
+    H5Sselect_hyperslab(
                       filespace,
                       H5S_SELECT_SET,
                       ts.offset,
                       ts.stride,
                       ts.count,
                       ts.block);
+  }
 
+  DASH_LOG_DEBUG("write completely filled blocks");
   // Write completely filled blocks
   H5Dwrite(h5dset, internal_type, memspace, filespace,
            plist_id, container.lbegin());
@@ -46,16 +53,22 @@ void StoreHDF::_write_dataset_impl_zero_copy(
   auto ts_rem = _get_pattern_hdf_spec_underfilled(container.pattern());
   memspace = H5Screate_simple(ndim, ts_rem.data_dimsm, NULL);
 
-  H5Sselect_hyperslab(
+  if(!ts_rem.underfilled_blocks){
+    std::cout << "Unit " << dash::myid() << " has no underfilled blocks" << std::endl;
+    H5Sselect_none(filespace);
+  } else {
+    H5Sselect_hyperslab(
                       filespace,
                       H5S_SELECT_SET,
                       ts_rem.offset,
                       ts_rem.stride,
                       ts_rem.count,
                       ts_rem.block);
+  }
 
+  DASH_LOG_DEBUG("write partially filled blocks");
   H5Dwrite(h5dset, internal_type, memspace, filespace,
-           plist_id, container.lbegin());
+           plist_id, (container.lbegin()));
 
   H5Sclose(memspace);
   H5Sclose(filespace);

@@ -280,14 +280,64 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
   dash::TeamSpec<2> teamspec_2d(team_size, 1);
   teamspec_2d.balance_extents();
 
-  auto block_size_x = 10;
-  auto block_size_y = 15;
+  auto block_size_x = 12;
+  auto block_size_y = 4;
   auto ext_x        = (block_size_x * teamspec_2d.num_units(0)) - 3;
   auto ext_y        = (block_size_y * teamspec_2d.num_units(1)) - 1;
+  
+  LOG_MESSAGE("Matrix extent (%i,%i)", ext_x, ext_y);
 
   auto size_spec    = dash::SizeSpec<2>(ext_x, ext_y);
 
   // Check TilePattern
+  const pattern_t pattern(
+    size_spec,
+    dash::DistributionSpec<2>(
+      dash::TILE(block_size_x),
+      dash::TILE(block_size_y)),
+    teamspec_2d,
+    dash::Team::All());
+
+  {
+    dash::Matrix<int, 2, index_t, pattern_t> matrix_a;
+    matrix_a.allocate(pattern);
+
+    fill_matrix(matrix_a, 1);
+    //dash::fill(matrix_a.begin(), matrix_a.end(), dash::myid()+10);
+
+    dio::OutputStream os("underfilled.hdf5");
+    os << dio::dataset(_dataset)
+       << matrix_a;
+  }
+  dash::barrier();
+#if 0
+  dash::Matrix<int, 2, index_t, pattern_t> matrix_b;
+  dio::InputStream is("underfilled.hdf5");
+  is >> dio::dataset(_dataset)
+     >> matrix_b;
+  
+  verify_matrix(matrix_b, 1);
+#endif
+}
+
+TEST_F(HDF5MatrixTest, UnderfilledPatMultiple)
+{
+  typedef dash::Pattern<2, dash::ROW_MAJOR> pattern_t;
+  typedef typename pattern_t::index_type    index_t;
+
+  size_t team_size  = dash::Team::All().size();
+
+  dash::TeamSpec<2> teamspec_2d(team_size, 1);
+  teamspec_2d.balance_extents();
+
+  auto block_size_x = 10;
+  auto block_size_y = 15;
+  auto ext_x        = (block_size_x * (teamspec_2d.num_units(0)+1)) - 3;
+  auto ext_y        = (block_size_y * (teamspec_2d.num_units(1)+1)) - 1;
+
+  auto size_spec    = dash::SizeSpec<2>(ext_x, ext_y);
+
+  // Create BlockPattern
   const pattern_t pattern(
     size_spec,
     dash::DistributionSpec<2>(
@@ -308,10 +358,13 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
   }
   dash::barrier();
 
-  dash::Matrix<int, 2, index_t, pattern_t> matrix_b;
+  // restore to simpler pattern 
+  dash::Matrix<int, 2, index_t, pattern_t> matrix_b(ext_x, ext_y);
   dio::InputStream is(_filename);
   is >> dio::dataset(_dataset)
      >> matrix_b;
+  
+  verify_matrix(matrix_b);
 }
 
 TEST_F(HDF5MatrixTest, MultipleDatasets)
