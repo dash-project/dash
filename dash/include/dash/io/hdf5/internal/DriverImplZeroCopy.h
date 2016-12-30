@@ -10,7 +10,8 @@ namespace io {
 namespace hdf5 {
 
 template < class Container_t >
-void StoreHDF::_write_dataset_impl_zero_copy(
+void StoreHDF::_process_dataset_impl_zero_copy(
+              StoreHDF::Mode io_mode,
               Container_t & container,
               const hid_t & h5dset,
               const hid_t & internal_type)
@@ -42,10 +43,15 @@ void StoreHDF::_write_dataset_impl_zero_copy(
                       ts.block);
   }
 
-  DASH_LOG_DEBUG("write completely filled blocks");
-  // Write completely filled blocks
-  H5Dwrite(h5dset, internal_type, memspace, filespace,
+  DASH_LOG_DEBUG("process completely filled blocks");
+  if(io_mode == StoreHDF::Mode::WRITE){
+    H5Dwrite(h5dset, internal_type, memspace, filespace,
            plist_id, container.lbegin());
+  } else {
+    H5Dread(h5dset, internal_type, memspace, filespace,
+           plist_id, container.lbegin());
+  }
+  
   H5Sclose(memspace);
 
   // write underfilled blocks
@@ -54,7 +60,6 @@ void StoreHDF::_write_dataset_impl_zero_copy(
   memspace = H5Screate_simple(ndim, ts_rem.data_dimsm, NULL);
 
   if(!ts_rem.underfilled_blocks){
-    std::cout << "Unit " << dash::myid() << " has no underfilled blocks" << std::endl;
     H5Sselect_none(filespace);
   } else {
     H5Sselect_hyperslab(
@@ -67,9 +72,14 @@ void StoreHDF::_write_dataset_impl_zero_copy(
   }
 
   DASH_LOG_DEBUG("write partially filled blocks");
-  H5Dwrite(h5dset, internal_type, memspace, filespace,
+  if(io_mode == StoreHDF::Mode::WRITE){
+    H5Dwrite(h5dset, internal_type, memspace, filespace,
            plist_id, (container.lbegin()));
-
+  } else {
+    H5Dread(h5dset, internal_type, memspace, filespace,
+           plist_id, (container.lbegin()));
+  }
+  
   H5Sclose(memspace);
   H5Sclose(filespace);
   H5Pclose(plist_id);

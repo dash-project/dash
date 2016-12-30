@@ -326,7 +326,6 @@ public:
     hid_t   internal_type;
     hid_t   plist_id; // property list identifier
     hid_t   filespace;
-    hid_t   memspace;
     // global data dims
     hsize_t data_dimsf[ndim];
     herr_t  status;
@@ -334,7 +333,6 @@ public:
     hid_t   h5datatype;
     // rank of hdf5 dataset
     int     rank;
-    hdf5_pattern_spec<ndim> ts;
 
     // Check if matrix is already allocated
     bool is_alloc = (matrix.size() != 0);
@@ -430,59 +428,20 @@ public:
     h5datatype = to_h5_dt_converter();
     internal_type = H5Tcopy(h5datatype);
 
-    // setup extends per dimension
-    auto pattern = matrix.pattern();
-    //DASH_LOG_DEBUG("Pattern", pattern);
-    ts = _get_pattern_hdf_spec(pattern);
-
-    // Create dataspace
-    memspace = H5Screate_simple(ndim, ts.data_dimsm, NULL);
-
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    // Create property list for collective reads
-    plist_id = H5Pcreate(H5P_DATASET_XFER);
-    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+    // ----------- prepare and read dataset --------------
     
-    // read data
-    H5Dread(h5dset, internal_type, memspace, filespace,
-            plist_id, matrix.lbegin());
-
-    // read underfilled blocks
-    // get hdf pattern layout
-    ts = _get_pattern_hdf_spec_underfilled(pattern);
-    memspace      = H5Screate_simple(ndim, ts.data_dimsm, NULL);
-
-    H5Sselect_hyperslab(
-      filespace,
-      H5S_SELECT_SET,
-      ts.offset,
-      ts.stride,
-      ts.count,
-      ts.block);
-
-    // Read underfilled blocks by pattern
-    H5Dread(h5dset, internal_type, memspace, filespace,
-            plist_id, matrix.lbegin());
+    _read_dataset_impl(matrix, h5dset, internal_type);
+    
+    // ----------- end prepare and write dataset --------------
 
     // Close all
-    H5Pclose(plist_id);
     H5Dclose(h5dset);
-    H5Sclose(filespace);
-    H5Sclose(memspace);
     H5Tclose(internal_type);
     H5Fclose(file_id);
     
     matrix.team().barrier();
   }
 
-#if 1
   template< class Container_t >
   typename std::enable_if <
     !(_compatible_pattern<typename Container_t::pattern_type>() &&
@@ -502,7 +461,6 @@ public:
     type_converter_fun_type to_h5_dt_converter =
     get_h5_datatype<typename Container_t::value_type>)
   { }
-#endif
 
 public:
   /**
@@ -541,6 +499,11 @@ public:
   
 
 private:
+  
+  enum class Mode : uint16_t {
+    READ  = 0x1,
+    WRITE = 0x2
+  };
 
   static inline hdf5_options _get_fdefaults()
   {
@@ -552,6 +515,13 @@ private:
     fopt.pattern_metadata_key = "DASH_PATTERN";
 
     return fopt;
+  }
+  
+  template< dim_t ndim >
+  static const hdf5_pattern_spec<ndim> _get_empty_pattern_spec() {
+    hdf5_pattern_spec<ndim> ts;
+    memset(&ts, 0, sizeof(ts));
+    return ts;
   }
 
   /**
@@ -565,8 +535,9 @@ private:
   {
     using index_t = typename pattern_t::index_type;
     constexpr auto ndim = pattern_t::ndim();
-    hdf5_pattern_spec<ndim> ts;
-    hdf5_pattern_spec<ndim> ts_empty;
+    auto ts = _get_empty_pattern_spec<ndim>();
+    auto ts_empty = _get_empty_pattern_spec<ndim>();
+    
     ts_empty.underfilled_blocks = true;
 
     // setup extends per dimension
@@ -579,7 +550,6 @@ private:
         return ts_empty;
       }
       
-      ts.data_dimsf[i] = pattern.extent(i);
       ts.data_dimsm[i] = num_tiles * tilesize;
       // number of tiles in this dimension
       ts.count[i]      = num_tiles;
@@ -603,7 +573,7 @@ private:
   const static inline hdf5_pattern_spec<ndim>
     _get_pattern_hdf_spec_underfilled(const dash::Pattern<ndim, Arr, index_t> & pattern)
   {
-    hdf5_pattern_spec<ndim> ts;
+    auto ts = _get_empty_pattern_spec<ndim>();
     
     for (int i = 0; i < ndim; ++i) {
       auto tilesize    = pattern.blocksize(i);
@@ -621,10 +591,13 @@ private:
         ts.data_dimsm[i] = localsize - lfullsize;
         ts.underfilled_blocks |= true;
       }
-      ts.stride[i]   = tilesize;
+      ts.stride[i]   = ts.data_dimsm[i];
       ts.count[i]    = 1;
       ts.offset[i]   = pattern.local_block(lastblckidx).offset(i);
       ts.block[i]    = ts.data_dimsm[i];
+    }
+    if(!ts.underfilled_blocks){
+      return _get_empty_pattern_spec<ndim>();
     }
     return ts;
   }
@@ -632,7 +605,7 @@ private:
   template < class pattern_t >
   const static inline hdf5_pattern_spec<pattern_t::ndim()>
     _get_pattern_hdf_spec_underfilled(const pattern_t & pattern){
-    hdf5_pattern_spec<pattern_t::ndim()> ts;
+    auto ts = _get_empty_pattern_spec<pattern_t::ndim()>();
     return ts;
   }
   
@@ -670,7 +643,10 @@ private:
   static inline void _verify_container_dims(const Container_t & container)
   {return;}
   
-  // ---- write dataset implementation specialisations ----
+  
+  // -------------------------------------------------------------------------
+  // ------------ write dataset implementation specialisations ---------------
+  // -------------------------------------------------------------------------
   
   /**
    * Switches between different write implementations based on pattern
@@ -689,7 +665,8 @@ private:
     const hid_t & h5dset,
     const hid_t & internal_type)
   {
-    _write_dataset_impl_zero_copy(container, h5dset, internal_type);
+    _process_dataset_impl_zero_copy(StoreHDF::Mode::WRITE,
+                                    container, h5dset, internal_type);
   }
   
    /**
@@ -714,10 +691,11 @@ private:
   
   
   template < class Container_t >
-  static void _write_dataset_impl_zero_copy(
-    Container_t & container,
-    const hid_t & h5dset,
-    const hid_t & internal_type);
+  static void _process_dataset_impl_zero_copy(
+    StoreHDF::Mode io_mode,
+    Container_t &  container,
+    const hid_t &  h5dset,
+    const hid_t &  internal_type);
   
   template < class Container_t >
   static void _write_dataset_impl_buffered(
@@ -734,6 +712,32 @@ private:
     dash::MatrixRef< ElementT, NDim, NViewDim, PatternT > & container,
     const hid_t & h5dset,
     const hid_t & internal_type);
+  
+  
+  // --------------------------------------------------------------------------
+  // --------------------- READ specializations -------------------------------
+  // --------------------------------------------------------------------------
+  
+  /**
+   * Switches between different read implementations based on pattern
+   * and container types.
+   * 
+   * Specializes for cases which can be zero-copy implemented
+   */
+  template< class Container_t >
+  typename std::enable_if <
+    _compatible_pattern<typename Container_t::pattern_type>() &&
+    _is_origin_view<typename Container_t::iterator>(),
+    void
+  >::type
+  static inline _read_dataset_impl(
+    Container_t & container,
+    const hid_t & h5dset,
+    const hid_t & internal_type)
+  {
+    _process_dataset_impl_zero_copy(StoreHDF::Mode::READ,
+                                    container, h5dset, internal_type);
+  }
 
 };
 

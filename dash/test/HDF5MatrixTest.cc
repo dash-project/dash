@@ -303,23 +303,24 @@ TEST_F(HDF5MatrixTest, UnderfilledPattern)
     matrix_a.allocate(pattern);
 
     fill_matrix(matrix_a, 1);
-    //dash::fill(matrix_a.begin(), matrix_a.end(), dash::myid()+10);
 
-    dio::OutputStream os("underfilled.hdf5");
+    dio::OutputStream os(_filename);
     os << dio::dataset(_dataset)
        << matrix_a;
   }
   dash::barrier();
-#if 0
+
   dash::Matrix<int, 2, index_t, pattern_t> matrix_b;
-  dio::InputStream is("underfilled.hdf5");
+  dio::InputStream is(_filename);
   is >> dio::dataset(_dataset)
      >> matrix_b;
   
   verify_matrix(matrix_b, 1);
-#endif
 }
 
+#if 0
+// Currently not supported, as each unit must have at most
+// one underfilled block
 TEST_F(HDF5MatrixTest, UnderfilledPatMultiple)
 {
   typedef dash::Pattern<2, dash::ROW_MAJOR> pattern_t;
@@ -366,6 +367,7 @@ TEST_F(HDF5MatrixTest, UnderfilledPatMultiple)
   
   verify_matrix(matrix_b);
 }
+#endif
 
 TEST_F(HDF5MatrixTest, MultipleDatasets)
 {
