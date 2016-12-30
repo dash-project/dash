@@ -3,7 +3,6 @@
 
 #include <dash/Types.h>
 #include <dash/Range.h>
-#include <dash/View/ViewTraits.h>
 
 
 /* TODO: Eventually, these probably are not public definitions.
@@ -37,8 +36,8 @@
  * Consequently, specific ViewMod types are defined for every modifier
  * category.
  * As an alternative, all view modifications could be stored in command
- * objects of a single ViewMod type. Expressions then could not be evalated
- * at compile-time, however.
+ * objects of a single ViewMod type. Expressions then could not be
+ * evalated at compile-time, however.
  *
  * Currently, only two view modifier types seem to be required:
  * - ViewSubMod
@@ -46,9 +45,8 @@
  * - ViewLocalMod
  *
  * However, View modifier types should subclass a common ViewMod base
- * class - or vice versa, following the policy pattern with the operation
- * specified as policy:
- *
+ * class - or vice versa, following the policy pattern with the
+ * operation specified as policy:
  *
  *   template <dim_t DimDiff, class ViewModOperation>
  *   class ViewMod : ViewModOperation
@@ -69,6 +67,27 @@
 
 
 namespace dash {
+
+/**
+ * Monotype for the logical symbol that represents a view origin.
+ */
+class ViewOrigin
+{
+  typedef ViewOrigin self_t;
+
+public:
+
+  typedef dash::default_index_t   index_type;
+  typedef self_t                 origin_type;
+
+public:
+
+  constexpr const origin_type & origin() const {
+    return *this;
+  }
+
+};
+
 
 /*
  * TODO: The ViewMod types don't satisfy the View concept entirely as
@@ -101,14 +120,17 @@ namespace dash {
 
 template <
   dim_t DimDiff,
-  class OriginType,
-  class IndexType = typename OriginType::IndexType >
+  class OriginType = ViewOrigin,
+  class IndexType  = typename OriginType::IndexType >
 class ViewSubMod
 {
   typedef ViewSubMod<DimDiff, OriginType, IndexType> self_t;
 
 public:
   constexpr static dim_t dimdiff = DimDiff;
+
+  typedef OriginType    origin_type;
+  typedef IndexType      index_type;
 
 public:
   ViewSubMod() = delete;
@@ -120,11 +142,11 @@ public:
   : _origin(origin), _begin(begin), _end(end)
   { }
 
-  constexpr OriginType & origin() const {
+  constexpr const origin_type & origin() const {
     return _origin;
   }
 
-  constexpr IndexType size() const {
+  constexpr index_type size() const {
     return dash::distance(_begin, _end);
   }
   
@@ -146,8 +168,8 @@ template <
   // the view projection eliminates one dimension of the origin domain
   // difference of dimensionality is \f$(vdim - odim) = -1\f$.
   dim_t DimDiff,
-  class OriginType,
-  class IndexType = typename OriginType::IndexType >
+  class OriginType = ViewOrigin,
+  class IndexType  = typename OriginType::index_type >
 class ViewMod
 {
   typedef ViewMod<DimDiff, OriginType, IndexType> self_t;
@@ -156,8 +178,14 @@ public:
 
   constexpr static dim_t dimdiff = DimDiff;
 
+  typedef OriginType    origin_type;
+  typedef IndexType      index_type;
+
+public:
+  ViewMod() = delete;
+
   template <dim_t SubDim>
-  inline self_t & sub(IndexType begin, IndexType end) {
+  inline self_t & sub(index_type begin, index_type end) {
     // record this sub operation:
     _begin = begin;
     _end   = end;
@@ -165,18 +193,18 @@ public:
   }
 
   template <dim_t SubDim>
-  inline self_t & sub(IndexType offset) {
+  inline self_t & sub(index_type offset) {
     // record this sub operation:
     _begin = offset;
     _end   = offset;
     return *this;
   }
 
-  constexpr OriginType & origin() const {
+  constexpr const origin_type & origin() const {
     return _origin;
   }
 
-  constexpr IndexType size() const {
+  constexpr index_type size() const {
     return dash::distance(_begin, _end);
   }
   
@@ -186,9 +214,9 @@ public:
 
 private:
 
-  OriginType & _origin;
-  IndexType    _begin;
-  IndexType    _end;
+  origin_type & _origin;
+  index_type    _begin;
+  index_type    _end;
 
 }; // class ViewMod
 
