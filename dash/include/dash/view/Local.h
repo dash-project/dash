@@ -4,16 +4,29 @@
 #include <dash/Types.h>
 #include <dash/Range.h>
 
-#include <dash/view/ViewMod.h>
+#include <dash/view/ViewTraits.h>
 
 
 namespace dash {
 
-template <
-  class OriginType >
-constexpr typename OriginType::local_type
-local(OriginType & origin) {
+template <class ViewType>
+constexpr
+typename std::enable_if<
+  dash::view_traits<ViewType>::is_view::value,
+  typename ViewType::local_type &
+>::type
+local(ViewType & origin) {
   return origin.local();
+}
+
+template <class ContainerType>
+constexpr
+typename std::enable_if<
+  !dash::view_traits<ContainerType>::is_view::value,
+  typename ContainerType::local_type &
+>::type
+local(ContainerType & origin) {
+  return origin.local;
 }
 
 } // namespace dash

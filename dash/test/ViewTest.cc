@@ -88,9 +88,10 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
 
   // Origin of block view is array:
   auto & block_origin = dash::origin(block_gview);
+  EXPECT_EQ(a.begin(),  dash::begin(block_origin));
+  EXPECT_EQ(a.end(),    dash::end(block_origin));
 }
 
-#if 0
 TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 {
   int block_size       = 37;
@@ -116,7 +117,5 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   // Origin of local block view is local array index space:
   auto & block_lview_origin = dash::origin(block_lview);
   auto & block_gview_origin = dash::origin(block_lview_origin);
-
 }
-#endif
 

@@ -23,6 +23,12 @@ int main(int argc, char* argv[])
 
   dash::Array<int> array(nunits * block_size);
 
+  for (int l = 0; l < array.local.size(); l++) {
+    array.local[l] = (myid + 1) * 1000 + l;
+  }
+
+  array.barrier();
+
   if (myid == 0) {
     auto sub_0 = dash::sub(block_size * (nunits-1),
                            block_size * (nunits-1) + block_size,
@@ -41,6 +47,12 @@ int main(int argc, char* argv[])
          << "  index(end):     " << dash::index(dash::end(sub_1))   << '\n'
          << "  size:           " << sub_1.size()                    << '\n'
          << endl;
+
+    cout << "sub_1 values:\n";
+    for (auto i = sub_1.begin(); i != sub_1.end(); ++i) {
+      cout << array[dash::index(i)] << " ";
+    }
+    cout << endl;
   }
 
   dash::finalize();

@@ -6,6 +6,7 @@
 #include <dash/Iterator.h>
 
 #include <dash/view/ViewTraits.h>
+#include <dash/view/Local.h>
 
 
 /* TODO: Eventually, these probably are not public definitions.
@@ -74,10 +75,109 @@
  *   // - either calls view_mod_op(initializer_list) in constructor
  *   // - or provides method sub<N>(...) directly
  *
+ *
+ * TODO: The ViewMod types don't satisfy the View concept entirely as
+ *       methods like extents(), offsets(), cannot be defined without
+ *       a known pattern type.
+ *       Also, view modifiers are not bound to a data domain (like an
+ *       array address space), they do not provide access to elements.
+ *
+ *       Clarify/ensure that these unbound/unmaterialized/lightweight
+ *       views cannot appear in expressions where they are considered
+ *       as models of the View concept.
+ *
+ *       Does not seem problematic so far as bound- and unbound views
+ *       have different types (would lead to compiler errors in worst
+ *       case) and users should not be tempted to access elements 
+ *       without specifying a data domain first:
+ *
+ *          matrix.sub<1>(1,2);            is bound to matrix element
+ *                                         domain
+ *
+ *          os << sub<1>(1,2);             view unbound at this point
+ *                                         and value access cannot be
+ *                                         specified.
+ *          os << sub<3>(10,20) << mat;    bound once container `mat`
+ *                                         is passed.
+ *
+ * TODO: Define dereference operator*() for view types, delegating to
+ *       origin::operator* recursively.
  */
 
 
 namespace dash {
+
+#if 0
+template <
+  // Difference of view and origin dimensionality.
+  // For example, when selecting a single row in the origin domain,
+  // the view projection eliminates one dimension of the origin domain
+  // difference of dimensionality is \f$(vdim - odim) = -1\f$.
+  dim_t DimDiff,
+  class OriginType = ViewOrigin,
+  class IndexType  = typename OriginType::index_type >
+class ViewMod
+{
+  typedef ViewMod<DimDiff, OriginType, IndexType> self_t;
+
+public:
+
+  constexpr static dim_t dimdiff = DimDiff;
+
+  typedef typename dash::view_traits<OriginType>::is_local is_local;
+
+  typedef OriginType                                    origin_type;
+  typedef IndexType                                      index_type;
+
+  typedef ViewLocalMod<0, self_t, index_type>            local_type;
+
+public:
+  ViewMod() = delete;
+
+  template <dim_t SubDim>
+  inline self_t & sub(index_type begin, index_type end) {
+    // record this sub operation:
+    _begin = begin;
+    _end   = end;
+    return *this;
+  }
+
+  template <dim_t SubDim>
+  inline self_t & sub(index_type offset) {
+    // record this sub operation:
+    _begin = offset;
+    _end   = offset;
+    return *this;
+  }
+
+  constexpr index_type begin() const {
+    return _begin;
+  }
+
+  constexpr index_type end() const {
+    return _end;
+  }
+
+  constexpr const origin_type & origin() const {
+    return _origin;
+  }
+
+  constexpr index_type size() const {
+    return dash::distance(_begin, _end);
+  }
+  
+  constexpr bool empty() const {
+    return size() == 0;
+  }
+
+private:
+
+  origin_type & _origin;
+  index_type    _begin;
+  index_type    _end;
+
+}; // class ViewMod
+#endif
 
 /**
  * Monotype for the logical symbol that represents a view origin.
@@ -131,6 +231,7 @@ public:
 
   typedef OriginType    origin_type;
   typedef IndexType      index_type;
+  typedef self_t         local_type;
 
 public:
   ViewLocalMod() = delete;
@@ -155,13 +256,13 @@ public:
   }
 
   constexpr auto begin() const
-    -> decltype(dash::begin(dash::origin(*this))) {
-    return dash::begin(_origin) + _begin;
+    -> decltype(dash::local(dash::origin(*this))) {
+    return (dash::local(dash::origin(*this))) + _begin;
   }
 
   constexpr auto end() const
-    -> decltype(dash::begin(dash::origin(*this))) {
-    return dash::begin(_origin) + _end;
+    -> decltype(dash::local(dash::origin(*this))) {
+    return (dash::local(dash::origin(*this))) + _end;
   }
 
   constexpr origin_type & origin() const {
@@ -169,11 +270,19 @@ public:
   }
 
   constexpr index_type size() const {
-    return dash::distance(_begin, _end);
+    return dash::distance(dash::begin(*this), dash::end(*this));
   }
   
   constexpr bool empty() const {
     return size() == 0;
+  }
+
+  inline local_type & local() {
+    return *this;
+  }
+
+  constexpr const local_type & local() const {
+    return *this;
   }
 
 private:
@@ -195,35 +304,6 @@ struct view_traits<ViewLocalMod<DimDiff, OriginType, IndexType> > {
 };
 
 
-/*
- * TODO: The ViewMod types don't satisfy the View concept entirely as
- *       methods like extents(), offsets(), cannot be defined without
- *       a known pattern type.
- *       Also, view modifiers are not bound to a data domain (like an
- *       array address space), they do not provide access to elements.
- *
- *       Clarify/ensure that these unbound/unmaterialized/lightweight
- *       views cannot appear in expressions where they are considered
- *       as models of the View concept.
- *
- *       Does not seem problematic so far as bound- and unbound views
- *       have different types (would lead to compiler errors in worst
- *       case) and users should not be tempted to access elements 
- *       without specifying a data domain first:
- *
- *          matrix.sub<1>(1,2);            is bound to matrix element
- *                                         domain
- *
- *          os << sub<1>(1,2);             view unbound at this point
- *                                         and value access cannot be
- *                                         specified.
- *          os << sub<3>(10,20) << mat;    bound once container `mat`
- *                                         is passed.
- *
- *
- */
-
-
 template <
   dim_t DimDiff,
   class OriginType = ViewOrigin,
@@ -232,14 +312,17 @@ class ViewSubMod
 {
   typedef ViewSubMod<DimDiff, OriginType, IndexType> self_t;
 
+  template <dim_t DD_, class OT_, class IT_>
+  friend class ViewLocalMod;
+
 public:
   constexpr static dim_t dimdiff  = DimDiff;
 
   typedef typename dash::view_traits<OriginType>::is_local is_local;
 
-  typedef OriginType                        origin_type;
-  typedef IndexType                          index_type;
-  typedef typename OriginType::local_type    local_type;
+  typedef OriginType                              origin_type;
+  typedef IndexType                                index_type;
+  typedef ViewLocalMod<0, self_t, index_type>      local_type;
 
 public:
   ViewSubMod() = delete;
@@ -248,7 +331,7 @@ public:
     OriginType & origin,
     IndexType    begin,
     IndexType    end)
-  : _origin(origin), _begin(begin), _end(end)
+  : _origin(origin), _local(*this), _begin(begin), _end(end)
   { }
 
   constexpr bool operator==(const self_t & rhs) const {
@@ -279,92 +362,28 @@ public:
   }
 
   constexpr index_type size() const {
-    return dash::distance(_begin, _end);
+    return dash::distance(dash::begin(*this), dash::end(*this));
   }
   
   constexpr bool empty() const {
     return size() == 0;
   }
 
-  constexpr local_type local() const {
-    return dash::local(*this);
+  inline auto local() -> local_type & {
+    return _local;
+  }
+
+  constexpr auto local() const -> const local_type & {
+    return _local;
   }
 
 private:
-  OriginType & _origin;
-  IndexType    _begin;
-  IndexType    _end;
-
-}; // class ViewSubMod
-
-
-template <
-  // Difference of view and origin dimensionality.
-  // For example, when selecting a single row in the origin domain,
-  // the view projection eliminates one dimension of the origin domain
-  // difference of dimensionality is \f$(vdim - odim) = -1\f$.
-  dim_t DimDiff,
-  class OriginType = ViewOrigin,
-  class IndexType  = typename OriginType::index_type >
-class ViewMod
-{
-  typedef ViewMod<DimDiff, OriginType, IndexType> self_t;
-
-public:
-
-  constexpr static dim_t dimdiff = DimDiff;
-
-  typedef typename dash::view_traits<OriginType>::is_local is_local;
-
-  typedef OriginType    origin_type;
-  typedef IndexType      index_type;
-
-public:
-  ViewMod() = delete;
-
-  template <dim_t SubDim>
-  inline self_t & sub(index_type begin, index_type end) {
-    // record this sub operation:
-    _begin = begin;
-    _end   = end;
-    return *this;
-  }
-
-  template <dim_t SubDim>
-  inline self_t & sub(index_type offset) {
-    // record this sub operation:
-    _begin = offset;
-    _end   = offset;
-    return *this;
-  }
-
-  constexpr index_type begin() const {
-    return _begin;
-  }
-
-  constexpr index_type end() const {
-    return _end;
-  }
-
-  constexpr const origin_type & origin() const {
-    return _origin;
-  }
-
-  constexpr index_type size() const {
-    return dash::distance(_begin, _end);
-  }
-  
-  constexpr bool empty() const {
-    return size() == 0;
-  }
-
-private:
-
   origin_type & _origin;
+  local_type    _local;
   index_type    _begin;
   index_type    _end;
 
-}; // class ViewMod
+}; // class ViewSubMod
 
 } // namespace dash
 
