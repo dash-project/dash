@@ -6,49 +6,78 @@
 
 namespace dash {
 
+namespace detail {
+
+  template<typename T>
+  struct has_origin_type
+  {
+  private:
+    typedef char                      yes;
+    typedef struct { char array[2]; } no;
+
+    template<typename C> static yes test(typename C::origin_type*);
+    template<typename C> static no  test(...);
+  public:
+    static const bool value = sizeof(test<T>(0)) == sizeof(yes);
+  };
+
+  template <class ViewableType>
+  struct _is_view : has_origin_type<ViewableType> { };
+
+}
+
+template <
+  class ViewT,
+  class Enable
+    = typename std::enable_if<detail::_is_view<ViewT>::value, ViewT>::type >
+struct view_traits { };
+
+template <class ViewT>
+struct view_traits< ViewT, ViewT >
+{
+  /// \note Alternative: specialize struct view_traits for \c (DimDiff := 0)
+  std::integral_constant<bool, (ViewT::dimdiff != 0)> is_projection;
+  std::integral_constant<bool, true>                  is_view;
+  std::integral_constant<bool, false>                 is_origin;
+  std::integral_constant<bool,
+    ViewT::is_local ||
+    ViewT::origin_type::is_local::value >             is_local;
+};
+
 /**
  * Specialization of \c dash::view_traits for container types.
  *
  */
-template <
-  class ContainerT,
-  class LocalT =
-          typename std::enable_if<
-            !std::is_same<void, ContainerT>::value,
-            typename ContainerT::local_type
-          >::type >
-struct view_traits {
+template <class ContainerT>
+struct view_traits<ContainerT, void> {
   /// Whether the view type is a projection (has less dimensions than the
   /// view origin).
   std::integral_constant<bool, false>                 is_projection;
+  std::integral_constant<bool, false>                 is_view;
   /// Whether the view type is the view origin.
   std::integral_constant<bool, true>                  is_origin;
   /// Whether the view / container type is a local view.
   /// \note A container type is local if it is identical to its \c local_type
-  std::integral_constant<bool, std::is_same<ContainerT, LocalT>::value >
-                                                      is_local;
+  std::integral_constant<bool, std::is_same<
+                                 ContainerT,
+                                 typename ContainerT::local_type
+                               >::value >             is_local;
 };
 
-template <class ViewT>
-struct view_traits<ViewT, void> {
-  /// \note Alternative: specialize struct view_traits for \c (DimDiff := 0)
-  std::integral_constant<bool, (ViewT::dimdiff != 0)> is_projection;
-  std::integral_constant<bool, false>                 is_origin;
-  std::integral_constant<bool, ViewT::is_local ||
-                               view_traits<typename ViewT::origin_type>
-                                 ::is_local::value >  is_local;
-};
 
 /**
  * Inverse operation to \c dash::apply.
  *
  */
-
 template <class ViewT>
 const typename ViewT::origin_type & origin(const ViewT & view) {
   return view.origin();
 }
 
+/**
+ * Inverse operation to \c dash::apply.
+ *
+ */
 template <class ViewT>
 typename ViewT::origin_type & origin(ViewT & view) {
   return view.origin();
