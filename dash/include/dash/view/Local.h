@@ -23,7 +23,7 @@ template <class ContainerType>
 constexpr
 typename std::enable_if<
   !dash::view_traits<ContainerType>::is_view::value,
-  typename ContainerType::local_type &
+  const typename ContainerType::local_type &
 >::type
 local(const ContainerType & origin) {
   return origin.local;

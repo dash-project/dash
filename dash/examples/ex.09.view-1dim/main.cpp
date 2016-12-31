@@ -30,6 +30,37 @@ int main(int argc, char* argv[])
   array.barrier();
 
   if (myid == 0) {
+    auto & v_local = dash::local(array);
+    auto   v_sub   = dash::sub(2,
+                               block_size - 2,
+                               v_local);
+
+    // TODO:
+    // Expressions
+    //
+    //   // local index of first local array element:
+    //   auto lbeg_li = dash::index(dash::begin(dash::local(a)));
+    //                  // -> 0
+    //   // global index of first local array element
+    //   auto lbeg_gi = dash::index(dash::global(dash::begin(dash::local(a)));
+    //                  // -> a.pattern().global(0)
+    //
+    // ... should be valid; requires dash::Array<T>::local_type::pointer
+    // to provide method .pos() -> index_type.
+
+    cout << "sub(+2,-2, local(array)): \n"
+         << "  begin:   " << dash::begin(v_sub) << '\n'
+         << "  end:     " << dash::end(v_sub)   << '\n'
+         << "  size:    " << v_sub.size()       << '\n';
+    cout << "  values:\n";
+    for (auto i = v_sub.begin(); i != v_sub.end(); ++i) {
+      cout << "    iterator:" << i << ": "
+                              << static_cast<int>(*i) << '\n';
+    }
+    cout << endl;
+  }
+
+  if (myid == 0) {
     auto sub_0 = dash::sub(block_size / 2 * (nunits-1),
                            block_size / 2 * (nunits-1) + block_size,
                            array);
@@ -40,12 +71,10 @@ int main(int argc, char* argv[])
          << "  index(begin):   " << dash::index(dash::begin(sub_0)) << '\n'
          << "  index(end):     " << dash::index(dash::end(sub_0))   << '\n'
          << "  size:           " << sub_0.size()                    << '\n'
-         << endl;
-
-    cout << "sub_0 values:\n";
+         << "  values:";
     for (auto i = sub_0.begin(); i != sub_0.end(); ++i) {
-      cout << "  index:" << dash::index(i) << " iterator:" << i << ":"
-                         << static_cast<int>(*i) << '\n';
+      cout << "    index:" << dash::index(i) << " iterator:" << i << ": "
+                           << static_cast<int>(*i) << '\n';
     }
     cout << endl;
 
@@ -53,12 +82,10 @@ int main(int argc, char* argv[])
          << "  index(begin):   " << dash::index(dash::begin(sub_1)) << '\n'
          << "  index(end):     " << dash::index(dash::end(sub_1))   << '\n'
          << "  size:           " << sub_1.size()                    << '\n'
-         << endl;
-
-    cout << "sub_1 values:\n";
+         << "  values:\n";
     for (auto i = sub_1.begin(); i != sub_1.end(); ++i) {
-      cout << "  index:" << dash::index(i) << " iterator:" << i << ":"
-                         << static_cast<int>(*i) << '\n';
+      cout << "    index:" << dash::index(i) << " iterator:" << i << ": "
+                           << static_cast<int>(*i) << '\n';
     }
     cout << endl;
   }

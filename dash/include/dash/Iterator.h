@@ -26,8 +26,8 @@ namespace dash {
  *   range:          [- - -           - -]
  * \endcode
  *
- * When iterating in local memory range [0,5[ of unit 0, the position of the
- * global iterator to return is 8 != 5
+ * When iterating in local memory range [0,5[ of unit 0, the position of
+ * the global iterator to return is 8 != 5
  *
  * \tparam      ElementType  Type of the elements in the range
  * \complexity  O(1)
@@ -49,6 +49,11 @@ auto distance(
 -> typename Pattern::index_type
 {
   return last - first;
+}
+
+template <class T>
+constexpr std::ptrdiff_t distance(T * first, T * last) {
+  return std::distance(first, last);
 }
 
 /**
