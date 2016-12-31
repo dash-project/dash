@@ -35,6 +35,8 @@ int main(int argc, char* argv[])
          << "  index(end):     " << dash::index(dash::end(sub_0))   << endl
          << "  size:           " << sub_0.size()                    << endl
          << endl;
+
+#if 0
     cout << "sub_1 = sub(<2,-2>, sub_0): " << endl
          << "  index(begin):   " << dash::index(dash::begin(sub_1)) << endl
          << "  index(end):     " << dash::index(dash::end(sub_1))   << endl
@@ -44,7 +46,7 @@ int main(int argc, char* argv[])
                << dash::index(dash::global(dash::end(sub_1)))   << endl
          << "  size:           " << sub_1.size()                    << endl
          << endl;
-
+#endif
   }
 
   dash::finalize();

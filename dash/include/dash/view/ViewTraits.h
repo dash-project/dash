@@ -96,6 +96,9 @@ origin(const Viewable & v);
 
 #else
 
+// ------------------------------------------------------------------------
+// dash::origin(View)
+
 template <class ViewT>
 typename std::enable_if<
   detail::_is_view<ViewT>::value,
@@ -104,6 +107,18 @@ typename std::enable_if<
 origin(const ViewT & view) {
   return view.origin();
 }
+
+template <class ViewT>
+typename std::enable_if<
+  detail::_is_view<ViewT>::value,
+  typename ViewT::origin_type &
+>::type
+origin(ViewT & view) {
+  return view.origin();
+}
+
+// ------------------------------------------------------------------------
+// dash::origin(Container)
 
 template <class ContainerT>
 typename std::enable_if<
@@ -114,21 +129,12 @@ origin(const ContainerT & container) {
   return container;
 }
 
-template <class ViewT>
-typename std::enable_if<
-  detail::_is_view<ViewT>::value,
-  typename ViewT::origin_type &
->::type
-origin(const ViewT & view) {
-  return view.origin();
-}
-
 template <class ContainerT>
 typename std::enable_if<
   !detail::_is_view<ContainerT>::value,
   ContainerT &
 >::type
-origin(const ContainerT & container) {
+origin(ContainerT & container) {
   return container;
 }
 
