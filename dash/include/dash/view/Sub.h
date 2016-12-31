@@ -18,8 +18,8 @@ namespace dash {
 template <
   dim_t SubDim = 0,
   class OffsetT >
-ViewSubMod<0, OffsetT>
-constexpr sub(
+constexpr ViewSubMod<0, OffsetT>
+sub(
     OffsetT begin,
     OffsetT end) {
   return ViewSubMod<0, OffsetT>(begin, end);
@@ -28,8 +28,8 @@ constexpr sub(
 template <
   dim_t SubDim = 0,
   class IndexRangeT >
-ViewSubMod<0, typename IndexRangeT::index_type>
-constexpr sub(
+constexpr ViewSubMod<0, typename IndexRangeT::index_type>
+sub(
     IndexRangeT range) {
   return sub<SubDim>(dash::begin(range),
                      dash::end(range));
@@ -40,8 +40,8 @@ constexpr sub(
 template <
   dim_t SubDim = 0,
   class OffsetT >
-ViewSubMod<-1, OffsetT>
-constexpr sub(
+constexpr ViewSubMod<-1, OffsetT>
+sub(
     OffsetT offset) {
   return ViewSubMod<-1, OffsetT>(offset);
 }
@@ -56,8 +56,8 @@ template <
   dim_t SubDim  = 0,
   class RangeT,
   class OffsetT = typename RangeT::index_type >
-ViewSubMod<0, RangeT, OffsetT>
-constexpr sub(
+constexpr ViewSubMod<0, RangeT, OffsetT>
+sub(
     OffsetT   begin,
     OffsetT   end,
     RangeT  & origin) {

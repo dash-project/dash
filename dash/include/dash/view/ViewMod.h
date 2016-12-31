@@ -247,12 +247,37 @@ public:
   typedef self_t         local_type;
 
 public:
+#if 0
+  class position {
+  public:
+    position() = delete;
+
+    position(const self_t & view_mod, index_type pos)
+      : _view_mod(view_mod), _pos(pos)
+    { }
+
+    constexpr index_type pos() const {
+      return _pos;
+    }
+
+  private:
+    const self_t  & _view_mod;
+    index_type      _pos;
+  };
+#endif
+
   ViewLocalMod() = delete;
 
   ViewLocalMod(OriginType & origin)
   : _origin(origin),
     _begin(origin._begin),
     _end(origin._end)
+  { }
+
+  ViewLocalMod(OriginType & origin, index_type begin, index_type end)
+  : _origin(origin),
+    _begin(begin),
+    _end(end)
   { }
 
   constexpr bool operator==(const self_t & rhs) const {
@@ -268,11 +293,24 @@ public:
     return !(*this == rhs);
   }
 
+  constexpr typename origin_type::local_type
+    operator+(index_type pos) const {
+    return origin_type::local_type(*this, _begin+pos, _end);
+  }
+
   constexpr typename origin_type::local_type & begin() const {
     return (dash::local(_origin)) + _begin;
   }
 
+  inline typename origin_type::local_type & begin() {
+    return (dash::local(_origin)) + _begin;
+  }
+
   constexpr typename origin_type::local_type & end() const {
+    return (dash::local(_origin)) + _end;
+  }
+
+  inline typename origin_type::local_type & end() {
     return (dash::local(_origin)) + _end;
   }
 
@@ -376,7 +414,17 @@ public:
     return dash::begin(_origin) + _begin;
   }
 
+  inline auto begin()
+    -> decltype(dash::begin(dash::origin(*this))) {
+    return dash::begin(_origin) + _begin;
+  }
+
   constexpr auto end() const
+    -> decltype(dash::begin(dash::origin(*this))) {
+    return dash::begin(_origin) + _end;
+  }
+
+  inline auto end()
     -> decltype(dash::begin(dash::origin(*this))) {
     return dash::begin(_origin) + _end;
   }

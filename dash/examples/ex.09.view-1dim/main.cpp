@@ -30,10 +30,13 @@ int main(int argc, char* argv[])
   array.barrier();
 
   if (myid == 0) {
-    auto & v_local = dash::local(array);
-    auto   v_sub   = dash::sub(2,
-                               block_size - 2,
-                               v_local);
+    auto   v_sub     = dash::sub(3,
+                                 block_size - 3,
+                                 array);
+    auto & v_lsub    = dash::local(v_sub);
+    auto   v_sublsub = dash::sub(2,
+                                 block_size - 2,
+                                 v_lsub);
 
     // TODO:
     // Expressions
@@ -48,12 +51,12 @@ int main(int argc, char* argv[])
     // ... should be valid; requires dash::Array<T>::local_type::pointer
     // to provide method .pos() -> index_type.
 
-    cout << "sub(+2,-2, local(array)): \n"
-         << "  begin:   " << dash::begin(v_sub) << '\n'
-         << "  end:     " << dash::end(v_sub)   << '\n'
-         << "  size:    " << v_sub.size()       << '\n';
+    cout << "sub(+2,-2, local( sub(+3,-3, array))): \n"
+         << "  begin:   " << dash::begin(v_sublsub) << '\n'
+         << "  end:     " << dash::end(v_sublsub)   << '\n'
+         << "  size:    " << v_sublsub.size()       << '\n';
     cout << "  values:\n";
-    for (auto i = v_sub.begin(); i != v_sub.end(); ++i) {
+    for (auto i = v_sublsub.begin(); i != v_sublsub.end(); ++i) {
       cout << "    iterator:" << i << ": "
                               << static_cast<int>(*i) << '\n';
     }
@@ -71,7 +74,7 @@ int main(int argc, char* argv[])
          << "  index(begin):   " << dash::index(dash::begin(sub_0)) << '\n'
          << "  index(end):     " << dash::index(dash::end(sub_0))   << '\n'
          << "  size:           " << sub_0.size()                    << '\n'
-         << "  values:";
+         << "  values:\n";
     for (auto i = sub_0.begin(); i != sub_0.end(); ++i) {
       cout << "    index:" << dash::index(i) << " iterator:" << i << ": "
                            << static_cast<int>(*i) << '\n';
