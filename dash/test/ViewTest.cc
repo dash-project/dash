@@ -54,12 +54,18 @@ TEST_F(ViewTest, ArrayBlockedPatternChainedGlobalView)
   auto block_gview_inner = dash::sub(10,
                                      block_size-10,
                                      block_gview_outer);
-  EXPECT_EQ(block_size - 10 - 10, block_gview_inner.size());
+  EXPECT_EQ(block_size - 10 - 10,  block_gview_inner.size());
+  EXPECT_EQ(block_begin_gidx + 10,
+            dash::index(dash::begin(block_gview_inner)));
+  EXPECT_EQ(block_begin_gidx + block_size - 10,
+            dash::index(dash::end(block_gview_inner)));
+
   // Origin of inner view is outer view:
-  auto & block_gview_inner_origin = block_gview_inner.origin();
+  auto & block_gview_inner_origin = dash::origin(block_gview_inner);
   EXPECT_EQ(block_gview_outer, block_gview_inner_origin);
+
   // Origin of outer view is array:
-  auto & block_gview_outer_origin = block_gview_outer.origin();
+  auto & block_gview_outer_origin = dash::origin(block_gview_outer);
   EXPECT_EQ(a.begin(),  dash::begin(block_gview_outer_origin));
   EXPECT_EQ(a.end(),    dash::end(block_gview_outer_origin));
 }
