@@ -91,7 +91,7 @@ public:
   typedef self_t                 origin_type;
 
 public:
-  std::integral_constant<bool, false> is_local;
+  typedef std::integral_constant<bool, false> is_local;
 
 public:
   constexpr const origin_type & origin() const {
@@ -101,10 +101,10 @@ public:
 
 template <>
 struct view_traits<ViewOrigin> {
-  std::integral_constant<bool, false> is_projection;
-  std::integral_constant<bool, true>  is_view;
-  std::integral_constant<bool, true>  is_origin;
-  std::integral_constant<bool, false> is_local;
+  typedef std::integral_constant<bool, false> is_projection;
+  typedef std::integral_constant<bool, true>  is_view;
+  typedef std::integral_constant<bool, true>  is_origin;
+  typedef std::integral_constant<bool, false> is_local;
 };
 
 
@@ -119,7 +119,7 @@ class ViewLocalMod
 public:
   constexpr static dim_t dimdiff  = DimDiff;
 
-  std::integral_constant<bool, true> is_local;
+  typedef std::integral_constant<bool, true> is_local;
 
   typedef OriginType    origin_type;
   typedef IndexType      index_type;
@@ -163,10 +163,10 @@ template <
   class OriginType,
   class IndexType >
 struct view_traits<ViewLocalMod<DimDiff, OriginType, IndexType> > {
-  std::integral_constant<bool, (DimDiff != 0)> is_projection;
-  std::integral_constant<bool, true>           is_view;
-  std::integral_constant<bool, false>          is_origin;
-  std::integral_constant<bool, true>           is_local;
+  typedef std::integral_constant<bool, (DimDiff != 0)> is_projection;
+  typedef std::integral_constant<bool, true>           is_view;
+  typedef std::integral_constant<bool, false>          is_origin;
+  typedef std::integral_constant<bool, true>           is_local;
 };
 
 
@@ -210,9 +210,7 @@ class ViewSubMod
 public:
   constexpr static dim_t dimdiff  = DimDiff;
 
-  std::integral_constant<
-    bool,
-    dash::view_traits<OriginType>::is_local::value > is_local;
+  typedef typename dash::view_traits<OriginType>::is_local is_local;
 
   typedef OriginType                        origin_type;
   typedef IndexType                          index_type;
@@ -249,7 +247,7 @@ public:
   }
 
   constexpr local_type local() const {
-    return local_type(*this);
+    return dash::local(*this);
   }
 
 private:
@@ -275,6 +273,8 @@ class ViewMod
 public:
 
   constexpr static dim_t dimdiff = DimDiff;
+
+  typedef typename dash::view_traits<OriginType>::is_local is_local;
 
   typedef OriginType    origin_type;
   typedef IndexType      index_type;

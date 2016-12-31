@@ -37,13 +37,19 @@ namespace detail {
   template <class ViewT>
   struct _view_traits< ViewT, true >
   {
+    typedef typename ViewT::origin_type                         origin_type;
+
     /// \note Alternative: specialize struct view_traits for \c (DimDiff = 0)
-    std::integral_constant<bool, (ViewT::dimdiff != 0)> is_projection;
-    std::integral_constant<bool, true>                  is_view;
-    std::integral_constant<bool, false>                 is_origin;
-    std::integral_constant<bool,
+    typedef std::integral_constant<bool, (ViewT::dimdiff != 0)> is_projection;
+    typedef std::integral_constant<bool, true>                  is_view;
+    typedef std::integral_constant<bool, false>                 is_origin;
+    typedef std::integral_constant<bool,
+      // either view type is local:
       ViewT::is_local::value ||
-      ViewT::origin_type::is_local::value >             is_local;
+        // or view origin type is a view type ...
+      ( _is_view<origin_type>::value &&
+        // ... and origin type is local:
+        origin_type::is_local::value ) >                        is_local;
   };
 
   /**
@@ -53,17 +59,17 @@ namespace detail {
   struct _view_traits<ContainerT, false > {
     /// Whether the view type is a projection (has less dimensions than the
     /// view's origin type).
-    std::integral_constant<bool, false>                 is_projection;
-    std::integral_constant<bool, false>                 is_view;
+    typedef std::integral_constant<bool, false>                 is_projection;
+    typedef std::integral_constant<bool, false>                 is_view;
     /// Whether the view type is the view origin.
-    std::integral_constant<bool, true>                  is_origin;
+    typedef std::integral_constant<bool, true>                  is_origin;
     /// Whether the view / container type is a local view.
     /// \note A container type is local if it is identical to its
     ///       \c local_type
-    std::integral_constant<bool, std::is_same<
+    typedef std::integral_constant<bool, std::is_same<
                                    ContainerT,
                                    typename ContainerT::local_type
-                                 >::value >             is_local;
+                                 >::value >                     is_local;
   };
 
 } // namespace detail

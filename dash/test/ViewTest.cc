@@ -37,6 +37,28 @@ TEST_F(ViewTest, ArrayBlockedPatternGlobalView)
   EXPECT_EQ(block_end_gidx,   view_end_gidx);
 }
 
+TEST_F(ViewTest, ArrayBlockedPatternChainedGlobalView)
+{
+  int block_size       = 37;
+  int array_size       = dash::size() * block_size;
+  int block_begin_gidx = block_size * dash::myid();
+  int block_end_gidx   = block_size * (dash::myid() + 1);
+
+  dash::Array<int> a(array_size);
+
+  // View to global index range of local block:
+  auto block_gview_outer = dash::sub(block_begin_gidx,
+                                     block_end_gidx,
+                                     a);
+  // Sub-range in block from block index 10 to -10:
+  auto block_gview_inner = dash::sub(10,
+                                     block_size-10,
+                                     block_gview_outer);
+  EXPECT_EQ(block_size - 10 - 10, block_gview_inner.size());
+  // Origin of inner view is outer view:
+  EXPECT_EQ(block_gview_outer, block_gview_inner.origin());
+}
+
 TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
 {
   int block_size       = 37;
@@ -57,6 +79,7 @@ TEST_F(ViewTest, ArrayBlockCyclicPatternGlobalView)
   auto & block_origin = dash::origin(block_gview);
 }
 
+#if 0
 TEST_F(ViewTest, ArrayBlockedPatternLocalView)
 {
   int block_size       = 37;
@@ -84,6 +107,5 @@ TEST_F(ViewTest, ArrayBlockedPatternLocalView)
   auto & block_gview_origin = dash::origin(block_lview_origin);
 
 }
-
-
+#endif
 
