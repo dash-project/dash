@@ -3,14 +3,13 @@
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
-#include <c++/5/bits/stl_vector.h>
 
-namespace dash
-{
-namespace io
-{
-namespace hdf5
-{
+#include <vector>
+
+
+namespace dash {
+namespace io {
+namespace hdf5 {
 
 /**
  * Concept:
@@ -35,14 +34,14 @@ template<
   dim_t ndim,
   dim_t NViewDim >
 void StoreHDF::_write_dataset_impl_nd_block(
-              dash::MatrixRef< ElementT, ndim, NViewDim, PatternT > & container,
-              const hid_t & h5dset,
-              const hid_t & internal_type)
+  dash::MatrixRef< ElementT, ndim, NViewDim, PatternT > & container,
+  const hid_t                                           & h5dset,
+  const hid_t                                           & internal_type)
 {
-  auto & pattern = container.pattern();
-  auto local_elems = container.sub_local();
-  auto tilesize    = pattern.blocksize(0);
-  auto written_elems = 0;
+  auto & pattern       = container.pattern();
+  auto   local_elems   = container.sub_local();
+  auto   tilesize      = pattern.blocksize(0);
+  auto   written_elems = 0;
   
   hdf5_pattern_spec<ndim>   ts;
   hdf5_filespace_spec<ndim> fs = _get_container_extents(container);
@@ -166,8 +165,8 @@ void StoreHDF::_write_dataset_impl_nd_block(
            plist_id, lbegin_lptr);
 }
 
-#endif // DASH__IO__HDF5__INTERNAL_IMPL_ND_BLOCK_H__
-
 } // namespace hdf5
 } // namespace io
 } // namespace dash
+
+#endif // DASH__IO__HDF5__INTERNAL_IMPL_ND_BLOCK_H__

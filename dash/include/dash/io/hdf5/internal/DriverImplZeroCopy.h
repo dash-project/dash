@@ -3,7 +3,9 @@
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
-#include <c++/5/chrono>
+
+#include <chrono>
+
 
 namespace dash {
 namespace io {
@@ -85,8 +87,8 @@ void StoreHDF::_process_dataset_impl_zero_copy(
   H5Pclose(plist_id);
 }
 
-#endif // DASH__IO__HDF5__INTERNAL_IMPL_ZEROCOPY_H__
-
 } // namespace hdf5
 } // namespace io
 } // namespace dash
+
+#endif // DASH__IO__HDF5__INTERNAL_IMPL_ZEROCOPY_H__
